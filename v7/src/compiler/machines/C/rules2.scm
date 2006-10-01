@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.6 2006/09/16 11:19:09 gjr Exp $
+$Id: rules2.scm,v 1.7 2006/10/01 05:38:14 cph Exp $
 
-Copyright (c) 1992, 1999, 2006 Massachusetts Institute of Technology
+Copyright 1993,1997,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,16 +31,8 @@ USA.
 (define-rule predicate
   ;; test for two registers EQ?
   (EQ-TEST (REGISTER (? source1)) (REGISTER (? source2)))
-  (let ((source1 (standard-source! source1 'SCHEME_OBJECT))
-	(source2 (standard-source! source2 'SCHEME_OBJECT)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (" ,source1 " == " ,source2 ")\n\t  goto "
-	    ,if-true-label ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (" ,source1 " != " ,source2 ")\n\t  goto "
-	    ,if-false-label ";\n\t")))
-    (LAP)))
+  (%eq-test (standard-source! source1 'SCHEME_OBJECT)
+	    (standard-source! source2 'SCHEME_OBJECT)))
 
 (define-rule predicate
   ;; test for register EQ? to constant
@@ -79,59 +71,26 @@ USA.
 (define-rule predicate
   ;; Branch if virtual register contains the specified type number
   (TYPE-TEST (REGISTER (? source)) (? type))
-  (let ((source (standard-source! source 'ULONG)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (" ,source " == " ,type ")\n\t  goto " ,if-true-label
-	    ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (" ,source " != " ,type ")\n\t  goto " ,if-false-label
-	    ";\n\t")))
-    (LAP)))
+  (%eq-test (standard-source! source 'ULONG) type))
 
 (define-rule predicate
   ;; Branch if virtual register contains a legal index fixnum
   (PRED-1-ARG INDEX-FIXNUM?
 	      (REGISTER (? source)))
   (let ((source (standard-source! source 'ULONG)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (INDEX_FIXNUM_P (" ,source "))\n\t  goto " ,if-true-label
-	    ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (!(INDEX_FIXNUM_P (" ,source ")))\n\t  goto " ,if-false-label
-	    ";\n\t")))
-    (LAP)))
+    (branch-on-expr (c:ecall "INDEX_FIXNUM_P" source))))
 
 (define (eq-test/constant constant source)
-  (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (" ,source " == current_block[" ,(object->offset constant)
-	    "])\n\t  goto " ,if-true-label ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (" ,source " != current_block[" ,(object->offset constant)
-	    "])\n\t  goto " ,if-false-label ";\n\t")))
-    (LAP)))
+  (%eq-test (standard-source! source 'SCHEME_OBJECT)
+	    (c:cref (object->offset constant))))
 
 (define (eq-test/machine-constant constant source)
-  (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (" ,source " == ((SCHEME_OBJECT) " ,constant "))\n\t  goto "
-	    ,if-true-label ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (" ,source " != ((SCHEME_OBJECT) " ,constant "))\n\t  goto "
-	    ,if-false-label ";\n\t")))
-    (LAP)))
+  (%eq-test (standard-source! source 'SCHEME_OBJECT)
+	    (c:cast 'sobj constant)))
 
 (define (eq-test/non-pointer type datum source)
-  (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (set-current-branches!
-     (lambda (if-true-label)
-       (LAP "if (" ,source " == (MAKE_OBJECT (" ,type ", " ,datum
-	    ")))\n\t  goto " ,if-true-label ";\n\t"))
-     (lambda (if-false-label)
-       (LAP "if (" ,source " != (MAKE_OBJECT (" ,type ", " ,datum
-	    ")))\n\t  goto " ,if-false-label ";\n\t")))
-    (LAP)))
+  (%eq-test (standard-source! source 'SCHEME_OBJECT)
+	    (c:make-object type datum)))
+
+(define (%eq-test source1 source2)
+  (branch-on-expr (c:== source1 source2)))

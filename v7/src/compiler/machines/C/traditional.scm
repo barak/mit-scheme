@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: traditional.scm,v 1.1 2006/09/16 11:19:09 gjr Exp $
+$Id: traditional.scm,v 1.2 2006/10/01 05:38:44 cph Exp $
 
-Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -404,9 +404,9 @@ USA.
 (define char-set:C-char-quoted
   (char-set-union
    ;; Not char-set:not-graphic
-   (char-set-difference char-set:all
-			(char-set-intersection char-set:graphic
-					       (ascii-range->char-set 0 #x7f)))
+   (char-set-invert
+    (char-set-intersection char-set:graphic
+			   (ascii-range->char-set 0 #x7f)))
    (char-set #\\ #\' (integer->char #xA0))))
 
 ;; The following routine relies on the fact that Scheme and C use the

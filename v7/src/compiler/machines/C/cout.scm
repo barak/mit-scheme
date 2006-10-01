@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.24 2006/09/16 11:19:09 gjr Exp $
+$Id: cout.scm,v 1.25 2006/10/01 05:37:50 cph Exp $
 
-Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
+Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,7 +27,7 @@ USA.
 ;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
-
+
 (define-syntax let*/mv
   (rsc-macro-transformer
    (lambda (form environment)
@@ -47,8 +47,8 @@ USA.
 		     (LAMBDA ,values-names
 		       ,(recur (cdr bindings))))))))))))
 
-(define *use-stackify?* true)
-(define *disable-timestamps?* false)
+(define *use-stackify?* #t)
+(define *disable-nonces?* #f)
 (define *C-procedure-name* 'DEFAULT)
 
 (define *subblocks*)			;referenced by stackify
@@ -57,7 +57,7 @@ USA.
   (if (not *use-stackify?*)
       (stringify-data/traditional object output-pathname)
       (stringify-data/stackify object output-pathname)))
-  
+
 (define (stringify-data/stackify object output-pathname)
   (let* ((str (stackify 0 object))
 	 (handle (or (and output-pathname
@@ -71,20 +71,19 @@ USA.
 		     "handle"))
 	 (data-name
 	  (canonicalize-label-name
-	   (string-append handle "_data" (make-time-stamp)))))
-	
-    (list-of-strings->string
-     (append (file-prefix)
+	   (string-append handle "_data_" (make-nonce)))))
+    (c:group (file-prefix)
+	     (c:line)
 	     (file-header 0 handle #f #f #f data-name)
-	     (list "#ifndef WANT_ONLY_CODE\n")
-	     (stackify-output->data-decl "prog" str)
-	     (list "\n")
-	     (object-function-header/stackify data-name)
-	     (list "\tDECLARE_VARIABLES_FOR_OBJECT();\n\n")
-	     (list
-	      "\treturn (unstackify (((unsigned char *) (& prog[0])), 0));")
-	     (function-trailer data-name)
-	     (list "#endif /* WANT_ONLY_CODE */\n")))))
+	     (c:data-section
+	      (stackify-output->data-decl 'prog str)
+	      (c:line)
+	      (c:fn #f 'sobj data-name '()
+		(c:scall "DECLARE_VARIABLES_FOR_OBJECT")
+		(c:line)
+		(c:return (c:ecall 'unstackify
+				   (c:cast 'uchar* (c:aptr 'prog 0))
+				   0)))))))
 
 (define (stringify-data/traditional object output-pathname)
   (let*/mv (((vars prefix suffix) (handle-top-level-data/traditional object))
@@ -99,270 +98,255 @@ USA.
 			"handle"))
 	    (data-name
 	     (canonicalize-label-name
-	      (string-append handle "_data" (make-time-stamp)))))
-
-    (list-of-strings->string
-     (append (file-prefix)
+	      (string-append handle "_data_" (make-nonce)))))
+    (c:group (file-prefix)
+	     (c:line)
 	     (file-header 0 handle #f #f #f data-name)
-	     (list "#ifndef WANT_ONLY_CODE\n")
-	     (object-function-header/traditional data-name)
-	     (->variable-declarations vars)
-	     (list "\tDECLARE_VARIABLES_FOR_OBJECT();\n")
-	     (list "\n\t")
-	     prefix
-	     suffix
-	     (list "\n\treturn (top_level_object);\n")
-	     (function-trailer data-name)
-	     (list "#endif /* WANT_ONLY_CODE */\n")))))
+	     (c:data-section
+	      (c:fn #f 'sobj data-name '()
+		(c:decl 'sobj 'top_level_object)
+		(c:group* (map (lambda (var) (c:decl 'sobj var)) vars))
+		(c:scall "DECLARE_VARIABLES_FOR_OBJECT")
+		(c:line)
+		(c:group* prefix)
+		(c:group* suffix)
+		(c:return 'top_level_object))))))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>
-  (define (canonicalize-name name full?)
-    (if full?
-	(canonicalize-label-name name)
-	(C-quotify-string name)))
+  (let ((top-level? (string-null? suffix)))
 
-  (define (choose-name full? default midfix time-stamp)
-    (let ((path (and info-output-pathname
-		     (merge-pathnames
-		      (if (pair? info-output-pathname)
-			  (car info-output-pathname)
-			  info-output-pathname)))))
-    
-      (cond ((not *C-procedure-name*)
-	     (string-append default suffix time-stamp))
-	    ((not (eq? *C-procedure-name* 'DEFAULT))
-	     (string-append *C-procedure-name*
-			    midfix
-			    suffix))
-	    ((not path)
-	     (string-append default suffix time-stamp))
-	    ((or (string-null? suffix) *disable-timestamps?*)
-	     (let ((dir (pathname-directory path)))
-	       (string-append
-		(if (or (not dir) (null? dir))
-		    default
-		    (canonicalize-name (car (last-pair dir)) full?))
-		"_"
-		(canonicalize-name (pathname-name path) full?)
-		midfix
-		suffix)))
-	    (else
-	     (string-append
-	      (canonicalize-name (pathname-name path) full?)
-	      "_"
-	      default
-	      suffix
-	      time-stamp)))))
-
-  (define (gen-code-name time-stamp)
-    (choose-name true "code" "" time-stamp))
+    (define (canonicalize-name name full?)
+      (if full?
+	  (canonicalize-label-name name)
+	  (C-quotify-string name)))
 
-  (define (gen-data-name time-stamp)
-    (choose-name true "data" "_data" time-stamp))
+    (define (gen-code-name nonce)
+      (choose-name #t "code" "" nonce))
 
-  (define (gen-handle-name time-stamp)
-    (choose-name false "" "" time-stamp))
+    (define (gen-data-name nonce)
+      (choose-name #t "data" "_data" nonce))
 
-  (define (subroutine-information-1)
-    (cond ((eq? *invoke-interface* 'INFINITY)
-	   (values (list "") (list "")))
-	  ((< *invoke-interface* 5)
-	   (values (list-tail (list
-			       "\nDEFLABEL(invoke_interface_0);\n"
-			       "\tutlarg_1 = 0;\n"
-			       "\nDEFLABEL(invoke_interface_1);\n"
-			       "\tutlarg_2 = 0;\n"
-			       "\nDEFLABEL(invoke_interface_2);\n"
-			       "\tutlarg_3 = 0;\n"
-			       "\nDEFLABEL(invoke_interface_3);\n"
-			       "\tutlarg_4 = 0;\n"
-			       "\nDEFLABEL(invoke_interface_4);\n\t"
-			       "INVOKE_INTERFACE_CODE ();\n")
-			      *invoke-interface*)
-		   (list "\tint utlarg_code;\n"
-			 "\tlong utlarg_1, utlarg_2, utlarg_3, utlarg_4;\n")))
-	  (else
-	   (error "subroutine-information-1: Utilities take at most 4 args"
-		  *invoke-interface*))))
+    (define (gen-handle-name nonce)
+      (choose-name #f "" "" nonce))
 
-  (define (subroutine-information-2)
-    (if *used-invoke-primitive*
-	(values (list "\nDEFLABEL(invoke_primitive);\n\t"
-		      "INVOKE_PRIMITIVE_CODE ();")
-		(list "\tSCHEME_OBJECT primitive;\n"
-		      "\tlong primitive_nargs;\n"))
-	(values (list "") (list ""))))
+    (define (choose-name full? default midfix nonce)
+      (let ((path (and info-output-pathname
+		       (merge-pathnames
+			(if (pair? info-output-pathname)
+			    (car info-output-pathname)
+			    info-output-pathname)))))
 
-  (define (subroutine-information)
-    (let*/mv (((code-1 vars-1) (subroutine-information-1))
-	      ((code-2 vars-2) (subroutine-information-2)))
-      (values (append code-1 code-2)
-	      (append vars-1 vars-2))))
+	(cond ((not *C-procedure-name*)
+	       (string-append default suffix "_" nonce))
+	      ((not (eq? *C-procedure-name* 'DEFAULT))
+	       (string-append *C-procedure-name*
+			      midfix
+			      suffix))
+	      ((not path)
+	       (string-append default suffix "_" nonce))
+	      ((or top-level? *disable-nonces?*)
+	       (let ((dir (pathname-directory path)))
+		 (string-append
+		  (if (or (not dir) (null? dir))
+		      default
+		      (canonicalize-name (car (last-pair dir)) full?))
+		  "_"
+		  (canonicalize-name (pathname-name path) full?)
+		  midfix
+		  suffix)))
+	      (else
+	       (string-append (canonicalize-name (pathname-name path) full?)
+			      "_"
+			      default
+			      suffix
+			      "_"
+			      nonce)))))
 
-  (if *purification-root-object*
-      (define-object "PURIFICATION_ROOT"
-	(if (vector? (cdr *purification-root-object*))
-	    *purification-root-object*
-	    (cons (car *purification-root-object*)
-		  (list->vector
-		   (reverse (cdr *purification-root-object*)))))))
+    (define (subroutine-information)
+      (let*/mv (((decls-1 code-1) (subroutine-information-1))
+		((decls-2 code-2) (subroutine-information-2)))
+	(values (c:group decls-1 decls-2)
+		(c:group code-1 code-2))))
 
-  (define-object (special-label/debugging)
-    (let frob ((obj info-output-pathname))
-      (cond ((pathname? obj)
-	     (->namestring/shared obj))
-	    ((pair? obj)
-	     (cons (frob (car obj))
-		   (frob (cdr obj))))
-	    (else
-	     obj))))
+    (define (subroutine-information-1)
+      (if (eq? *invoke-interface* 'INFINITY)
+	  (values (c:group)
+		  (c:group))
+	  (begin
+	    (if (not (< *invoke-interface* 5))
+		(error "Utilities take at most 4 args:" *invoke-interface*))
+	    (values
+	     (c:group (c:decl 'int 'utlarg_code)
+		      (c:decl 'long 'utlarg_1)
+		      (c:decl 'long 'utlarg_2)
+		      (c:decl 'long 'utlarg_3)
+		      (c:decl 'long 'utlarg_4))
+	     (c:group*
+	      (list-tail (list (c:group (c:label 'invoke_interface_0)
+					(c:= 'utlarg_1 0))
+			       (c:group (c:label 'invoke_interface_1)
+					(c:= 'utlarg_2 0))
+			       (c:group (c:label 'invoke_interface_2)
+					(c:= 'utlarg_3 0))
+			       (c:group (c:label 'invoke_interface_3)
+					(c:= 'utlarg_4 0))
+			       (c:group (c:label 'invoke_interface_4)
+					(c:scall "INVOKE_INTERFACE_CODE")))
+			 *invoke-interface*))))))
 
-  (define-object (special-label/environment) unspecific)
-
-  (let*/mv ((label-offset 1)		; First word is vector header
-	    (initial-offset (label->offset initial-label))
-	    ((first-free-offset ntags label-defines label-dispatch
-				label-block-initialization symbol-table)
-	     (handle-labels label-offset))
-	    ((first-object-offset free-defines
-				  free-block-initialization free-symbols)
-	     (handle-free-refs-and-sets first-free-offset))
-	    ((cc-block-size decl-code decl-data
-			    xtra-procs object-prefix
-			    object-defines temp-vars
-			    object-block-initialization)
-	     (handle-objects first-object-offset))
-	    (time-stamp (make-time-stamp))
-	    (handle (gen-handle-name time-stamp))
-	    (code-name (gen-code-name time-stamp))
-	    (data-name (gen-data-name time-stamp))
-	    (decl-code-name (string-append "decl_" code-name))
-	    (decl-data-name (string-append "decl_" data-name))
-	    ((extra-code extra-variables)
-	     (subroutine-information))
-	    ((proxy xtra-procs* decl-code* decl-data* data-prefix data-body)
-	     (data-function-body (string-null? suffix)
-				 ntags
-				 data-name
-				 initial-offset
-				 cc-block-size
-				 temp-vars
-				 object-prefix
-				 label-block-initialization
-				 free-block-initialization
-				 object-block-initialization))
-	    (use-stackify? *use-stackify?*))
-    (values
-     code-name
-     data-name
-     ntags
-     (cons* (cons (special-label/environment)
-		  (- cc-block-size 1))
-	    (cons (special-label/debugging)
-		  (- cc-block-size 2))
-	    (append free-symbols symbol-table))
-     (list-of-strings->string
-      (map (lambda (x)
-	     (list-of-strings->string x)) 
-	   (list
-	    (if (string-null? suffix)
-		(file-prefix)
-		'())
+    (define (subroutine-information-2)
+      (if *used-invoke-primitive*
+	  (values (c:group (c:decl 'sobj 'primitive)
+			   (c:decl 'long 'primitive_nargs))
+		  (c:group (c:label 'invoke_primitive)
+			   (c:scall "INVOKE_PRIMITIVE_CODE")))
+	  (values (c:group)
+		  (c:group))))
 
-	    ;; Extra code
+    (if *purification-root-object*
+	(define-object "PURIFICATION_ROOT"
+	  (if (vector? (cdr *purification-root-object*))
+	      *purification-root-object*
+	      (cons (car *purification-root-object*)
+		    (list->vector
+		     (reverse (cdr *purification-root-object*)))))))
 
-	    xtra-procs
-	    xtra-procs*
+    (define-object (special-label/debugging)
+      (let frob ((obj info-output-pathname))
+	(cond ((pathname? obj)
+	       (->namestring/shared obj))
+	      ((pair? obj)
+	       (cons (frob (car obj))
+		     (frob (cdr obj))))
+	      (else
+	       obj))))
 
-	    ;; defines for the code
+    (define-object (special-label/environment) unspecific)
 
-	    label-defines
-	    object-defines
-	    free-defines
-	    (list "\n")
+    (let*/mv ((label-offset 1)		; First word is vector header
+	      (initial-offset (label->offset initial-label))
+	      ((first-free-offset ntags label-defines label-dispatch
+				  label-block-initialization symbol-table)
+	       (handle-labels label-offset))
+	      ((first-object-offset free-defines
+				    free-block-initialization free-symbols)
+	       (handle-free-refs-and-sets first-free-offset))
+	      ((cc-block-size decl-code decl-data
+			      xtra-procs object-prefix
+			      object-defines temp-vars
+			      object-block-initialization)
+	       (handle-objects first-object-offset))
+	      (nonce (make-nonce))
+	      (handle (gen-handle-name nonce))
+	      (code-name (gen-code-name nonce))
+	      (data-name (gen-data-name nonce))
+	      (decl-code-name (string-append "decl_" code-name))
+	      (decl-data-name (string-append "decl_" data-name))
+	      ((extra-decls extra-code)
+	       (subroutine-information))
+	      ((proxy xtra-procs* decl-code* decl-data* data-prefix data-body)
+	       (data-function-body top-level?
+				   ntags
+				   data-name
+				   initial-offset
+				   cc-block-size
+				   temp-vars
+				   object-prefix
+				   label-block-initialization
+				   free-block-initialization
+				   object-block-initialization))
+	      (use-stackify? *use-stackify?*))
+      (values
+       code-name
+       data-name
+       ntags
+       (cons* (cons (special-label/environment)
+		    (- cc-block-size 1))
+	      (cons (special-label/debugging)
+		    (- cc-block-size 2))
+	      (append free-symbols symbol-table))
+       (c:group
+	(if top-level?
+	    (c:group (file-prefix)
+		     (c:line))
+	    (c:group))
 
-	    ;; the code itself
+	;; Extra code
 
-	    (list "#ifndef WANT_ONLY_DATA\n")
-	    (let ((header (code-function-header code-name)))
-	      (if (string-null? suffix)
-		  header
-		  (cons "static " header)))
-	    (function-decls)
-	    (register-declarations)
-	    extra-variables
-	    (list
-	     "\n"
-	     ;; The assignment is necessary to ensure that we restart properly
-	     ;; after an interrupt when the dynamic link is live
-	     ;; (see DLINK_INTERRUPT_CHECK and comp_interrupt_restart
-	     "\tRdl = (OBJECT_ADDRESS (Rvl));\n"
-	     "\tgoto perform_dispatch;\n\n"
-	     "DEFLABEL(pop_return);\n\t"
-	     "Rpc = (OBJECT_ADDRESS (*Rsp++));\n\n"
-	     "DEFLABEL(perform_dispatch);\n\n\t"
-	     "switch ((* ((unsigned long *) Rpc))"
-	     " - dispatch_base)\n\t{")
-	    label-dispatch
-	    (list
-	     "\n\t  default:\n\t\t"
-	     "UNCACHE_VARIABLES ();\n\t\t"
-	     "return (Rpc);\n\t}\n\t")
-	    (map stringify-object lap-code)
-	    extra-code
-	    (function-trailer code-name)
-	    (list
-	     "#endif /* WANT_ONLY_DATA */\n")
+	xtra-procs
+	xtra-procs*
 
-	    (if (and (string-null? suffix) use-stackify?)
-		(list "\f\n")
-		'())
+	;; defines for the code
 
-	    ;; the data generator
+	(c:group* label-defines)
+	object-defines
+	free-defines
+	(c:line)
 
-	    data-prefix
+	;; the code itself
 
-	    (if (or (string-null? suffix)
-		    (not use-stackify?))
-		(append
-		 (list "\n")
-		 (list "#ifndef WANT_ONLY_CODE\n")
-		 (let ((header (data-function-header data-name)))
-		   (if (string-null? suffix)
-		       header
-		       (cons "static " header)))
-		 data-body
-		 (function-trailer data-name)
-		 (list "#endif /* WANT_ONLY_CODE */\n"))
-		'())
+	(c:code-section
+	 (c:fn (not top-level?) 'sobj* code-name
+	     (list (cons 'sobj* (c:pc-reg))
+		   (cons 'entry_count_t 'dispatch_base))
+	   (function-decls)
+	   (register-declarations)
+	   extra-decls
+	   (c:line)
+	   ;; The assignment is necessary to ensure that we restart properly
+	   ;; after an interrupt when the dynamic link is live
+	   ;; (see DLINK_INTERRUPT_CHECK and comp_interrupt_restart)
+	   (c:= (c:dlink-reg) (c:object-address (c:val-reg)))
+	   (c:goto 'perform_dispatch)
+	   (c:label 'pop_return)
+	   (c:= (c:pc-reg) (c:object-address (c:pop)))
+	   (c:label 'perform_dispatch)
+	   (c:switch (c:- (c:* (c:cast 'ulong* (c:pc-reg))) 'dispatch_base)
+	     (c:group* (map (lambda (item)
+			      (c:group item
+				       (c:line)))
+			    label-dispatch))
+	     (c:case #f
+		     (c:scall "UNCACHE_VARIABLES")
+		     (c:return (c:pc-reg))))
+	   (c:group* lap-code)
+	   extra-code))
 
-	    ;; File footer
+	(if (and top-level? use-stackify?)
+	    (c:page)
+	    (c:group))
 
-	    (if (and (string-null? suffix) use-stackify?)
-		(list "\f\n")
-		'())
+	;; the data generator
 
-	    (cond ((not (string-null? suffix))
-		   '())
-		  ((not use-stackify?)
-		   (file-decls/traditional decl-code-name
-					   decl-code
-					   decl-data-name
-					   decl-data))
-		  (else
-		   (file-decls/stackify decl-code-name
-					decl-code*
-					decl-data-name
-					decl-data*)))
+	data-prefix
 
-	    (if (string-null? suffix)
-		(file-header ntags handle
-			     decl-code-name code-name
-			     decl-data-name data-name)
-		'())
-	    )))
-     proxy)))
+	(if (or top-level? (not use-stackify?))
+	    (c:group (c:line)
+		     (c:data-section 
+		      (c:fn (not top-level?) 'sobj* data-name
+			  (list (cons 'entry_count_t 'dispatch_base))
+			data-body)))
+	    (c:group))
+
+	;; File footer
+	(if top-level?
+	    (c:group (c:line)
+		     (if use-stackify?
+			 (file-decls/stackify decl-code-name
+					      decl-code*
+					      decl-data-name
+					      decl-data*)
+			 (file-decls/traditional decl-code-name
+						 decl-code
+						 decl-data-name
+						 decl-data))
+		     (c:line)
+		     (file-header ntags handle
+				  decl-code-name code-name
+				  decl-data-name data-name))
+	    (c:group)))
+       proxy))))
 
 (define (data-function-body top-level?
 			    ntags
@@ -378,27 +362,24 @@ USA.
   (cond ((not *use-stackify?*)
 	 (values
 	  #f				; proxy
-	  '()				; xtra-procs
-	  #f				; decl-code
-	  #f				; decl-data
-	  '()				; data-prefix
-	  (map (lambda (x) (list-of-strings->string x))
-	       (list (list "\tSCHEME_OBJECT object"
-			   " = (ALLOCATE_VECTOR ("
-			   (number->string (- cc-block-size 1))
-			   "L));\n"
-			   "\tSCHEME_OBJECT * current_block"
-			   " = (OBJECT_ADDRESS (object));\n")
-		     (->variable-declarations temp-vars)
-		     (list "\tDECLARE_VARIABLES_FOR_DATA();\n")
-		     (list "\n\t")
-		     object-prefix
-		     label-block-initialization
-		     free-block-initialization
-		     object-block-initialization
-		     (list "\n\treturn (&current_block["
-			   (stringify-object initial-offset)
-			   "]);\n")))))
+	  (c:group)			; xtra-procs
+	  '()				; decl-code
+	  '()				; decl-data
+	  (c:group)			; data-prefix
+	  (c:group
+	   (c:decl 'sobj
+		   'object
+		   (c:ecall "ALLOCATE_VECTOR"
+			    (c:cast 'ulong (- cc-block-size 1))))
+	   (c:decl 'sobj* 'current_block (c:object-address 'object))
+	   (c:group* (map (lambda (var) (c:decl 'sobj var)) temp-vars))
+	   (c:scall "DECLARE_VARIABLES_FOR_DATA")
+	   (c:line)
+	   (c:group* object-prefix)
+	   (c:group* label-block-initialization)
+	   (c:group* free-block-initialization)
+	   (c:group* object-block-initialization)
+	   (c:return (c:cptr initial-offset)))))
 	((or (not (null? temp-vars))
 	     (not (null? object-prefix)))
 	 (error "data-function-body: stackify inconsistency"))
@@ -407,11 +388,11 @@ USA.
 	  (list->vector (append label-block-initialization
 				free-block-initialization
 				object-block-initialization))
-	  '()				; xtra-procs
+	  (c:group)			; xtra-procs
 	  '()				; decl-code
 	  '()				; decl-data
-	  '()				; data-prefix
-	  '()				; data-body
+	  (c:group)			; data-prefix
+	  (c:group)			; data-body
 	  ))
 	(else
 	 (fluid-let ((*subblocks* '()))
@@ -422,255 +403,143 @@ USA.
 		   (list->vector (append label-block-initialization
 					 free-block-initialization
 					 object-block-initialization)))))
-		 
+
 	     (set! *subblocks* (reverse! *subblocks*))
 	     (values
 	      #f			; proxy
-	      (append-map fake-block->c-code *subblocks*) ; xtra-procs*
+	      (c:group* (map fake-block->c-code *subblocks*)) ; xtra-procs*
 	      *subblocks*		; decl-code
 	      '()			; decl-data
-	      (append
-	       (list "#ifndef WANT_ONLY_CODE\n")
-	       (stackify-output->data-decl name str)
-	       (list "#endif /* WANT_ONLY_CODE */\n"))
-	      (list
-	       "\tSCHEME_OBJECT ccb, * current_block;\n"
-	       "\tDECLARE_VARIABLES_FOR_DATA();\n\n"
-	       "\tccb = (unstackify (((unsigned char *)\n"
-	       "\t                    (& " name "[0])),\n"
-	       "\t                   dispatch_base));\n"
-	       "\tcurrent_block = (OBJECT_ADDRESS (ccb));\n"
-	       "\treturn (& current_block["
-	       (stringify-object initial-offset)
-	       "]);")))))))
+	      (c:data-section (stackify-output->data-decl name str))
+	      (c:group (c:decl 'sobj 'ccb)
+		       (c:decl 'sobj* 'current_block)
+		       (c:scall "DECLARE_VARIABLES_FOR_DATA")
+		       (c:line)
+		       (c:= 'ccb
+			    (c:ecall 'unstackify
+				     (c:cast 'uchar* (c:aptr name 0))
+				     'dispatch_base))
+		       (c:= 'current_block (c:object-address 'ccb))
+		       (c:return (c:cptr initial-offset)))))))))
 
 (define (stackify-output->data-decl name str)
-  (append (list "static CONST unsigned char "
-		name
-		"["
-		(number->string (string-length str))
-		"] =\n")
-	  (C-quotify-data-string/breakup str)
-	  (list ";\n")))
-
-(define-integrable (list-of-strings->string strings)
-  (%string-append strings))
-
-(define-integrable (%symbol->string sym)
-  (system-pair-car sym))
-
-(define (code-function-header name)
-  (list "SCHEME_OBJECT *\n"
-	"DEFUN (" name ", (Rpc, dispatch_base),\n\t"
-	"SCHEME_OBJECT * Rpc AND entry_count_t dispatch_base)\n"
-	"{\n"))
-
-(define (data-function-header name)
-  (list "SCHEME_OBJECT *\n"
-	"DEFUN (" name ", (dispatch_base), entry_count_t dispatch_base)\n"
-	"{\n"))
-
-(define (object-function-header/traditional name)
-  (list "SCHEME_OBJECT\n"
-	"DEFUN_VOID (" name ")\n"
-	"{\n\tSCHEME_OBJECT top_level_object;\n"))
-
-(define (object-function-header/stackify name)
-  (list "SCHEME_OBJECT\n"
-	"DEFUN_VOID (" name ")\n"
-	"{\n"))
+  (c:group (c:line "static const unsigned char " (c:var name)
+		   "[" (c:expr (string-length str)) "] =")
+	   (c:indent*
+	    (let ((strings (C-quotify-data-string/breakup str)))
+	      (let ((p (last-pair strings)))
+		(set-car! p (string-append (car p) ";")))
+	      (map c:line strings)))))
 
 (define (function-decls)
-  (list
-   "\tREGISTER SCHEME_OBJECT * current_block;\n"
-   "\tDECLARE_VARIABLES ();\n"
-   ;; Rdl is initialized right before perform_dispatch.
-   "\tSCHEME_OBJECT * Rdl;\n"))
-
-(define (function-trailer name)
-  (list "\n} /* End of " name ". */\n"))
-
-(define (make-define-statement symbol val)
-  (string-append "#define " (if (symbol? symbol)
-				(symbol->string symbol)
-				symbol)
-		 " "
-		 (if (number? val)
-		     (number->string val)
-		     val)
-		 "\n"))
+  (c:group (c:decl 'sobj* 'current_block)
+	   (c:scall "DECLARE_VARIABLES")
+	   ;; dlink is initialized right before perform_dispatch.
+	   (c:decl 'sobj* (c:dlink-reg))))
 
 (define (file-prefix)
-  (let ((time (get-decoded-time)))
-    (list "/* Emacs: this is -*- C -*- code. */\n\n"
-	  "/* C code produced\n   "
-	  (decoded-time/date-string time)
-	  " at "
-	  (decoded-time/time-string time)
-	  "\n   by Liar version "
-	  (or (get-subsystem-version-string "liar") "?.?")
-	  ".\n */\n\n"
-	  "#include \"liarc.h\"\n\n")))
-
+  (c:group (c:line (c:comment "Emacs: this is -*- C -*- code,"))
+	   (c:line (c:comment "generated "
+			      (get-decoded-time)
+			      " by Liar version "
+			      (or (get-subsystem-version-string "liar")
+				  "UNKNOWN")
+			      "."))
+	   (c:line)
+	   (c:include "liarc.h")))
+
 (define (file-header ntags handle
 		     decl-code-name code-name
 		     decl-data-name data-name)
-  (if (= ntags 0)
-      (list "#ifndef WANT_ONLY_CODE\n"
-	    ;; This must be a single line!
-	    "DECLARE_DATA_OBJECT (\"" handle
-	    "\", " data-name ")\n"
-	    "#endif /* WANT_ONLY_CODE */\n\n"
-	    "DECLARE_DYNAMIC_OBJECT_INITIALIZATION (\""
-	    handle "\")\n")
-      (list "#ifndef WANT_ONLY_DATA\n"
-	    ;; This must be a single line!
-	    "DECLARE_COMPILED_CODE (\"" handle
-	    "\", " (number->string ntags)
-	    ", " decl-code-name
-	    ", " code-name ")\n"
-	    "#endif /* WANT_ONLY_DATA */\n\n"
-	    "#ifndef WANT_ONLY_CODE\n"
-	    ;; This must be a single line!
-	    "DECLARE_COMPILED_DATA (\"" handle
-	    "\", " (if *use-stackify?* "NO_SUBBLOCKS" decl-data-name)
-	    ", " data-name ")\n"
-	    "#endif /* WANT_ONLY_CODE */\n\n"
-	    "DECLARE_DYNAMIC_INITIALIZATION (\""
-	    handle "\")\n")))
-		     
-(define (make-time-stamp)
-  (if *disable-timestamps?*
-      "_timestamp"
-      (let ((time (get-decoded-time)))
-	(string-append
-	 "_"
-	 (number->string (decoded-time/second time)) "_"
-	 (number->string (decoded-time/minute time)) "_"
-	 (number->string (decoded-time/hour time)) "_"
-	 (number->string (decoded-time/day time)) "_"
-	 (number->string (decoded-time/month time)) "_"
-	 (number->string (decoded-time/year time))))))
-		     
-(define (->variable-declarations vars)
-  (if (null? vars)
-      (list "")
-      `("\tSCHEME_OBJECT\n\t  "
-	,(car vars)
-	,@(append-map (lambda (var)
-			(list ",\n\t  " var))
-		      (cdr vars))
-	";\n")))
+  (let ((hs (c:string handle)))
+    (if (= ntags 0)
+	(c:group (c:data-section
+		  ;; This must be a single line!
+		  (c:line (c:call "DECLARE_DATA_OBJECT" hs data-name)))
+		 (c:line)
+		 (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION" hs)))
+	(c:group (c:code-section
+		  ;; This must be a single line!
+		  (c:line (c:call "DECLARE_COMPILED_CODE"
+				  hs
+				  (number->string ntags)
+				  decl-code-name
+				  code-name)))
+		 (c:line)
+		 (c:data-section
+		  ;; This must be a single line!
+		  (c:line (c:call "DECLARE_COMPILED_DATA"
+				  hs
+				  (if *use-stackify?*
+				      "NO_SUBBLOCKS"
+				      decl-data-name)
+				  data-name)))
+		 (c:line)
+		 (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION" hs))))))
+
+(define (make-nonce)
+  (if *disable-nonces?*
+      "nonce"
+      (vector-8b->hexadecimal (random-byte-vector 8))))
 
 (define (file-decls/traditional decl-code-name decl-code
 				decl-data-name decl-data)
-  (append (list "#ifndef WANT_ONLY_DATA\n")
-	  (list
-	   "int\n"
-	   "DEFUN_VOID (" decl-code-name ")\n{\n")
-	  decl-code
-	  (list "\treturn (0);\n}\n"
-		"#endif /* WANT_ONLY_DATA */\n\n")
-	  (list "#ifndef WANT_ONLY_CODE\n")
-	  (list
-	   "int\n"
-	   "DEFUN_VOID (" decl-data-name ")\n{\n")
-	  decl-data
-	  (list "\treturn (0);\n}\n"
-		"#endif /* WANT_ONLY_CODE */\n\n")))
+  (c:group (c:code-section (c:fn #f 'int decl-code-name '()
+			     decl-code
+			     (c:return 0)))
+	   (c:line)
+	   (c:data-section (c:fn #f 'int decl-data-name '()
+			     decl-data
+			     (c:return 0)))))
 
 (define (file-decls/stackify decl-code-name code-blocks
 			     decl-data-name data-blocks)
-  (append
-   (append (list "#ifndef WANT_ONLY_DATA\n")
-	   (if (or (null? code-blocks)
-		   (null? (cdr code-blocks)))
-	       '()
-	       (code-blocks->array-decl decl-code-name code-blocks))
-	   (list
-	    "int\n"
-	    "DEFUN_VOID (" decl-code-name ")\n{\n")
-	   (if (or (null? code-blocks)
-		   (null? (cdr code-blocks)))
-	       (map fake-block->code-decl
-		    code-blocks)
-	       (list "\tDECLARE_SUBCODE_MULTIPLE (arr_"
-		     decl-code-name
-		     ");\n"))
-	   (list "\treturn (0);\n}\n"
-		 "#endif /* WANT_ONLY_DATA */\n\n"))
-   (if *use-stackify?*
-       '()
-       (append
-	(list "#ifndef WANT_ONLY_CODE\n")
-	(if (or (null? data-blocks)
-		(null? (cdr data-blocks)))
-	    '()
-	    (data-blocks->array-decl decl-data-name data-blocks))
-	(list
-	 "int\n"
-	 "DEFUN_VOID (" decl-data-name ")\n{\n")
-	(if (or (null? data-blocks)
-		(null? (cdr data-blocks)))
-	    (map fake-block->data-decl data-blocks)
-	    (list "\tDECLARE_SUBDATA_MULTIPLE (arr_"
-		  decl-data-name
-		  ");\n"))
-	(list "\treturn (0);\n}\n"
-	      "#endif /* WANT_ONLY_CODE */\n\n")
-	))))
-
-(define (code-blocks->array-decl decl-code-name code-blocks)
-  (append (list "static CONST struct liarc_code_S arr_"
-		decl-code-name
-		"["
-		(number->string (length code-blocks))
-		"] =\n{\n")
-	  (map (lambda (code-block)
-		 (string-append
-		  "  { \""
-		  (fake-block/tag code-block)
-		  "\", "
-		  (number->string (fake-block/ntags code-block))
-		  ", "
-		  (fake-block/c-proc code-block)
-		  " },\n"))
-	       code-blocks)
-	  (list "};\n\n")))
-
-(define (data-blocks->array-decl decl-data-name data-blocks)
-  (append (list "static CONST struct liarc_data_S arr_"
-		decl-data-name
-		"["
-		(number->string (length data-blocks))
-		"] =\n{\n")
-	  (map (lambda (data-block)
-		 (string-append
-		  "  { \""
-		  (fake-block/tag data-block)
-		  "\", "
-		  (fake-block/d-proc data-block)
-		  " },\n"))
-	       data-blocks)
-	  (list "};\n\n")))
+  (c:group
+   (c:code-section
+    (if (and (pair? code-blocks)
+	     (null? (cdr code-blocks)))
+	(let ((arrname (string-append "arr_" decl-code-name)))
+	  (c:group (c:array-decl "static const struct liarc_code_S"
+				 arrname
+				 (length code-blocks)
+		     (map (lambda (code-block)
+			    (c:struct-init
+			     (c:string (fake-block/tag code-block))
+			     (fake-block/ntags code-block)
+			     (fake-block/c-proc code-block)))
+			  code-blocks))
+		   (c:line)
+		   (c:fn #f 'int decl-code-name '()
+		     (c:scall "DECLARE_SUBCODE_MULTIPLE" arrname)
+		     (c:return 0))))
+	(c:fn #f 'int decl-code-name '()
+	  (c:group* (map fake-block->code-decl code-blocks))
+	  (c:return 0))))
+   (if (not *use-stackify?*)
+       (c:group
+	(c:line)
+	(c:data-section
+	 (if (and (pair? data-blocks)
+		  (null? (cdr data-blocks)))
+	     (let ((arrname (string-append "arr_" decl-data-name)))
+	       (c:group (c:array-decl "static const struct liarc_data_S"
+				      arrname
+				      (length data-blocks)
+			  (map (lambda (data-block)
+				 (c:struct-init
+				  (c:string (fake-block/tag data-block))
+				  (fake-block/d-proc data-block)))
+			       data-blocks))
+			(c:line)
+			(c:fn #f 'int decl-data-name '()
+			  (c:scall "DECLARE_SUBDATA_MULTIPLE" arrname)
+			  (c:return 0))))
+	     (c:fn #f 'int decl-data-name '()
+	       (c:group* (map fake-block->data-decl data-blocks))
+	       (c:return 0)))))
+       (c:group))))
 
-(define char-set:all
-  (predicate->char-set (lambda (char) char true)))
-
-(define char-set:C-string-quoted
-  (char-set-union
-   ;; Not char-set:not-graphic
-   (char-set-difference char-set:all
-			(char-set-intersection char-set:graphic
-					       (ascii-range->char-set 0 #x7f)))
-   (char-set #\\ #\" #\? (integer->char #xA0))))
-
-(define char-set:C-named-chars
-  (char-set #\\ #\" #\Tab #\BS  ;; #\' Scheme does not quote it in strings
-	    ;; #\VT #\BEL	;; Cannot depend on ANSI C
-	    #\Linefeed #\Return #\Page))
-
-;; This is intended for shortish character strings with the occasionall escape.
+;; This is intended for short strings with an occasional escape.
 
 (define (C-quotify-string string)
   (let* ((len (string-length string))
@@ -700,9 +569,8 @@ USA.
 		  (substring-move! sub 0 len* temp off)
 		  (loop i+1 (fix:+ off len*)))))))))
 
-;; The following routine relies on the fact that Scheme and C use the
-;; same quoting convention for the named characters when they appear
-;; in strings.
+;; This relies on the fact that Scheme and C use the same quoting
+;; convention for the named characters when they appear in strings.
 
 (define (C-quotify-string-char char next)
   (cond ((char-set-member? char-set:C-named-chars char)
@@ -725,87 +593,50 @@ USA.
 		(string-append (make-string (- 3 (string-length s)) #\0)
 			       s)
 		s))))))
+
+(define char-set:C-string-quoted
+  (char-set-union
+   ;; Not char-set:not-graphic
+   (char-set-invert
+    (char-set-intersection char-set:graphic (ascii-range->char-set 0 #x7f)))
+   (char-set #\\ #\" #\? (integer->char #xA0))))
+
+(define char-set:C-named-chars
+  (char-set #\\ #\" #\Tab #\BS  ;; #\' Scheme does not quote it in strings
+	    #\VT #\BEL
+	    #\Linefeed #\Return #\Page))
 
-;; This is intended for binary data encoded as a character string
-;; where most of the characters are not really characters at all.
+;; This is intended for binary data encoded as a string where most of
+;; the characters are not really characters at all.
 
 (define (C-quotify-data-string/breakup string)
-  (let ((len (string-length string)))
-    (define (flush end temp res)
-      (if (= end 0)
-	  res
-	  (cons* "\"" (substring temp 0 end) "\t\""
-		 (if (null? res)
-		     res
-		     (cons "\n" res)))))
-
-    (define (done end temp res)
-      (reverse! (flush end temp res)))
-
-    (define (step3 index pos temp res)
-      (let* ((i+1 (fix:+ index 1))
-	     (sub (C-quotify-string-char
-		   (string-ref string index)
-		   (and (fix:< i+1 len)
-			(string-ref string i+1))))
-	     (len* (string-length sub))
-	     (next (fix:+ pos len*)))
-	(if (fix:> len* 4)
-	    (error "C-quotify-string/breakup: Large character expansion!"
-		   sub))
-	(if (fix:>= next 65)
-	    (error "C-quotify-string/breakup: Overrun!" next))
-	(substring-move! sub 0 len* temp pos)
-	(if (fix:>= next 60)
-	    (step1 i+1 0 (make-string 65) (flush next temp res))
-	    (step1 i+1 next temp res))))
-
-    (define (step2 src lim dst temp res)
-      (cond ((fix:< src lim)
-	     (let ((room (fix:- 60 dst))
-		   (have (fix:- lim src)))
-	       (cond ((fix:<= have room)
-		      (substring-move! string src lim temp dst)
-		      (step2 lim lim (fix:+ dst have) temp res))
-		     ((fix:= room 0)
-		      (step2 src lim 0 (make-string 65) (flush dst temp res)))
-		     (else
-		      (let ((src* (fix:+ src room))
-			    (end (fix:+ dst room)))
-			(substring-move! string src src* temp dst)
-			(step2 src* lim 0 (make-string 65)
-			       (flush end temp res)))))))
-	    ((fix:>= lim len)
-	     (done dst temp res))
-	    ((fix:>= dst 60)
-	     (step3 lim 0 (make-string 65) (flush dst temp res)))
-	    (else
-	     (step3 lim dst temp res))))
-
-    (define (step1 src dst temp res)
-      (if (fix:>= src len)
-	  (done dst temp res)
-	  (let ((index (substring-find-next-char-in-set
-			string src len char-set:C-string-quoted)))
-	    (cond ((not index)
-		   (step2 src len dst temp res))
-		  ((fix:= index src)
-		   (step3 index dst temp res))
-		  (else
-		   (step2 src index dst temp res))))))
-      
-    (step1 0 0 (make-string 65) '())))
+  (let ((n-bytes (vector-8b-length string))
+	(new-string
+	 (lambda ()
+	   (let ((s (make-string 66)))
+	     (string-set! s 0 #\")
+	     s))))
+    (let loop ((i 0) (s (new-string)) (j 1))
+      (if (fix:< i n-bytes)
+	  (if (fix:< j 62)
+	      (let ((b (vector-8b-ref string i)))
+		(string-set! s j #\\)
+		(string-set! s (fix:+ j 1) #\x)
+		(string-set! s (fix:+ j 2)
+			     (digit->char (fix:quotient b #x10) 16))
+		(string-set! s (fix:+ j 3)
+			     (digit->char (fix:remainder b #x10) 16))
+		(loop (fix:+ i 1) s (fix:+ j 4)))
+	      (begin
+		(string-set! s j #\")
+		(cons s (loop i (new-string) 1))))
+	  (if (fix:> j 1)
+	      (begin
+		(string-set! s j #\")
+		(set-string-length! s (fix:+ j 1))
+		(list s))
+	      '())))))
 
-(define (stringify-object x)
-  (cond ((string? x)
-	 x)
-	((symbol? x)
-	 (%symbol->string x))
-	((number? x)
-	 (number->string x))
-	(else
-	 (error "stringify: Unknown frob" x))))
-
 (define (handle-objects start-offset)
   (if *use-stackify?*
       (handle-objects/stackify start-offset)
@@ -814,30 +645,27 @@ USA.
 (define (handle-objects/stackify start-offset)
   ;; returns <next-offset decl-code decl-data xtra-procs object-prefix
   ;;         object-defines temp-vars object-block-initialization>
-  (define (iter offset table defines objects)
-    (if (null? table)
-	(values offset
-		#f			; xtra code decls
-		#f			; xtra data decls
-		'()			; xtra procs
-		'()
-		defines
-		'()
-		(reverse! objects))
+  (let iter
+      ((offset start-offset)
+       (table (reverse (table->list-of-entries objects)))
+       (defines '())
+       (objects '()))
+    (if (pair? table)
 	(let ((entry (car table)))
 	  (iter (+ offset 1)
 		(cdr table)
-		(cons (make-define-statement (entry-label entry) offset)
-		      defines)
-		(cons (entry-value entry)
-		      objects)))))
+		(cons (c:define (entry-label entry) offset) defines)
+		(cons (entry-value entry) objects)))
+	(values offset
+		(c:group)		; code decls
+		(c:group)		; data decls
+		(c:group)		; procs
+		'()			; object-prefix
+		(c:group* defines)
+		'()
+		(reverse! objects)	; object-block-initialization
+		))))
 
-  (iter start-offset
-	(reverse (table->list-of-entries objects))
-	'()				; defines
-	'()				; objects
-	))
-
 (define (handle-objects/traditional start-offset)
   ;; All the reverses produce the correct order in the output block.
   ;; The incoming objects are reversed
@@ -848,47 +676,38 @@ USA.
   (fluid-let ((new-variables '())
 	      (*subblocks* '())
 	      (num 0))
-
-    (define (iter offset table names defines objects)
-      (if (null? table)
-	  (with-values
-	      (lambda () (->constructors (reverse names)
-					 (reverse objects)))
-	    (lambda (prefix suffix)
-	      (values offset
-		      (map fake-block->code-decl *subblocks*)
-		      (map fake-block->data-decl *subblocks*)
-		      (append-map fake-block->c-code *subblocks*)
-		      prefix
-		      defines
-		      new-variables
-		      suffix)))
+    (let iter
+	((offset start-offset)
+	 (table (reverse (table->list-of-entries objects)))
+	 (names '())
+	 (defines '())
+	 (objects '()))
+      (if (pair? table)
 	  (let ((entry (car table)))
 	    (iter (+ offset 1)
 		  (cdr table)
-		  (cons (string-append "current_block["
-				       (entry-label entry) "]")
-			names)
-		  (cons (make-define-statement (entry-label entry) offset)
-			defines)
-		  (cons (entry-value entry)
-			objects)))))
-
-    (iter start-offset
-	  (reverse (table->list-of-entries objects))
-	  '()				; names
-	  '()				; defines
-	  '()				; objects
-	  )))
+		  (cons (c:aref 'current-block (entry-label entry)) names)
+		  (cons (c:define (entry-label entry) offset) defines)
+		  (cons (entry-value entry) objects)))
+	  (receive (prefix suffix)
+	      (->constructors (reverse names)
+			      (reverse objects))
+	    (values offset
+		    (c:group* (map fake-block->code-decl *subblocks*))
+		    (c:group* (map fake-block->data-decl *subblocks*))
+		    (c:group* (map fake-block->c-code *subblocks*))
+		    (map c:line prefix)
+		    (c:group* defines)
+		    new-variables
+		    suffix))))))
 
 (define (handle-top-level-data/traditional object)
   (fluid-let ((new-variables '())
 	      (num 0))
-    (with-values
-	(lambda () (->constructors (list "top_level_object")
-				   (list object)))
-      (lambda (prefix suffix)
-	(values new-variables prefix suffix)))))
+    (receive (prefix suffix)
+	(->constructors (list "top_level_object")
+			(list object))
+      (values new-variables prefix suffix))))
 
 (define-integrable *execute-cache-size-in-words* 2)
 (define-integrable *variable-cache-size-in-words* 1)
@@ -897,31 +716,8 @@ USA.
   ;; process free-uuo-links free-references free-assignments global-uuo-links
   ;; returns <next-offset define-code data-init-code symbol-table-components>
 
-  (define (make-linkage-section-header start kind count)
-    (if *use-stackify?*
-	(stackify/make-linkage-header kind count)
-	(let ((kind
-	       (case kind
-		 ((operator-linkage-kind) "OPERATOR_LINKAGE_KIND")
-		 ((global-operator-linkage-kind) "GLOBAL_OPERATOR_LINKAGE_KIND")
-		 ((assignment-linkage-kind) "ASSIGNMENT_LINKAGE_KIND")
-		 ((reference-linkage-kind) "REFERENCE_LINKAGE_KIND")
-		 (else (error "make-linkage-section-header: unknown kind"
-			      kind)))))
-	  (string-append "current_block[" (number->string start)
-			 "L] = (MAKE_LINKER_HEADER (" kind
-			 ", " (number->string count) "));\n\t"))))
-
-  (define (insert-symbol label symbol)
-    (let ((name (symbol->string symbol)))
-      (string-append "current_block[" label
-		     "] = (C_SYM_INTERN ("
-		     (number->string (string-length name))
-		     ", \"" name "\"));\n\t")))
-
   (define (process-links start links kind)
-    (if (null? (cdr links))
-	(values start 0 '() '())
+    (if (pair? (cdr links))
 	(let ((use-stackify? *use-stackify?*))
 	  ;; The following code implicitly assumes that
 	  ;; *execute-cache-size-in-words* is 2 -- check it
@@ -935,9 +731,9 @@ USA.
 	    (cond ((null? links)
 		   (values offset
 			   1
-			   (reverse defines)
+			   (reverse! defines)
 			   (cons (make-linkage-section-header start kind count)
-				 (reverse inits))))
+				 (reverse! inits))))
 		  ((null? (cdr (car links)))
 		   (process count (cdr links) offset defines inits))
 		  (else
@@ -949,51 +745,75 @@ USA.
 				(cons (cons (caar links) (cddar links))
 				      (cdr links))
 				(+ offset *execute-cache-size-in-words*)
-				(cons (make-define-statement symbol offset)
+				(cons (c:define symbol offset)
 				      defines)
 				(if use-stackify?
 				    (cons* (stackify/make-uuo-arity arity)
 					   (stackify/make-uuo-name name)
 					   inits)
-				    (cons (string-append
+				    (cons (c:group
 					   (insert-symbol symbol name)
-					   "current_block["
-					   symbol
-					   " + 1] = ((SCHEME_OBJECT) ("
-					   (number->string arity) "));\n\t")
-					  inits)))))))))))
-
+					   (c:= (c:cref (c:+ symbol 1))
+						(c:cast 'sobj arity)))
+					  inits)))))))))
+	(values start 0 '() '())))
+
   (define (process-table start table kind)
     (let ((use-stackify? *use-stackify?*))
       ;; The following code implicitly assumes that
       ;; *variable-cache-size-in-words* is 1 -- check it below
 
       (define (iter offset table defines inits)
-	(if (null? table)
-	    (values offset
-		    1
-		    (reverse defines)
-		    (cons (make-linkage-section-header start kind
-						       (- offset (+ start 1)))
-			  (reverse inits)))
+	(if (pair? table)
 	    (let ((symbol (entry-label (car table))))
 	      (iter (+ offset *variable-cache-size-in-words*)
 		    (cdr table)
-		    (cons (make-define-statement symbol offset)
+		    (cons (c:define symbol offset)
 			  defines)
 		    (if use-stackify?
 			(cons (stackify/make-var-ref-entry
 			       (entry-value (car table)))
 			      inits)
 			(cons (insert-symbol symbol (entry-value (car table)))
-			      inits))))))
+			      inits))))
+	    (values offset
+		    1
+		    (reverse! defines)
+		    (cons (make-linkage-section-header start kind
+						       (- offset (+ start 1)))
+			  (reverse! inits)))))
 
       (if (and use-stackify? (not (= *variable-cache-size-in-words* 1)))
 	  (error "process-links: Size inconsistency"))
 
-      (if (null? table)
-	  (values start 0 '() '())
-	  (iter (+ start 1) table '() '()))))
+      (if (pair? table)
+	  (iter (+ start 1) table '() '())
+	  (values start 0 '() '()))))
+
+  (define (make-linkage-section-header start kind count)
+    (if *use-stackify?*
+	(stackify/make-linkage-header kind count)
+	(c:= (c:cref start)
+	     (c:ecall "MAKE_LINKER_HEADER"
+		      (case kind
+			((operator-linkage-kind)
+			 "OPERATOR_LINKAGE_KIND")
+			((global-operator-linkage-kind)
+			 "GLOBAL_OPERATOR_LINKAGE_KIND")
+			((assignment-linkage-kind)
+			 "ASSIGNMENT_LINKAGE_KIND")
+			((reference-linkage-kind)
+			 "REFERENCE_LINKAGE_KIND")
+			(else
+			 (error "Unknown linkage kind:" kind)))
+		      count))))
+
+  (define (insert-symbol label symbol)
+    (let ((name (symbol->string symbol)))
+      (c:= (c:cref label)
+	   (c:ecall "C_SYM_INTERN"
+		    (string-length name)
+		    (c:string name)))))
 
   (let*/mv (((offset uuos? uuodef uuoinit)
 	     (process-links start-offset free-uuo-links
@@ -1010,14 +830,14 @@ USA.
 	     (process-links offset global-uuo-links
 			    'global-operator-linkage-kind))
 	    (free-references-sections (+ uuos? refs? asss? glob?)))
-    
+
     (values
      offset
-     (append uuodef refdef assdef globdef
-	     (list (make-define-statement (special-label/free-references)
-					  start-offset)
-		   (make-define-statement (special-label/number-of-sections)
-					  free-references-sections)))
+     (c:group* (append! uuodef refdef assdef globdef
+			(list (c:define (special-label/free-references)
+					start-offset)
+			      (c:define (special-label/number-of-sections)
+					free-references-sections))))
      (append uuoinit refinit assinit globinit)
      (list (cons (special-label/free-references)
 		 start-offset)
@@ -1030,84 +850,69 @@ USA.
   ;; returns <next-offset n-labels define-code dispatch-code
   ;;          data-init-code symbol-table-components>
   (let ((use-stackify? *use-stackify?*))
-    (define (iter offset tagno labels label-defines
-		  label-dispatch label-block-initialization
-		  label-bindings)
-      (if (null? labels)
-	  (values (- offset 1)
-		  tagno
-		  (reverse label-defines)
-		  (reverse label-dispatch)
-		  (if (not use-stackify?)
-		      (cons (string-append
-			     "current_block["
-			     (number->string label-block-offset)
-			     "L] = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, "
-			     (number->string (- (- offset 1)
-						(+ label-block-offset 1)))
-			     "));\n\t")
-			    (reverse label-block-initialization))
-		      (cons (stackify/make-nm-header
-			     (- (- offset 1)
-				(+ label-block-offset 1)))
-			    (reverse label-block-initialization)))
-		  label-bindings)
+    (let iter
+	((offset (+ label-block-offset *label-sizes-in-words*))
+	 (tagno 0)
+	 (labels (reverse! labels))
+	 (label-defines '())
+	 (label-dispatch '())
+	 (label-block-initialization '())
+	 (label-bindings '()))
+      (if (pair? labels)
 	  (let* ((label-data (car labels))
-		 (a-symbol (or (symbol-1 label-data)
-			       (symbol-2 label-data))))
+		 (symbol (or (symbol-1 label-data)
+			     (symbol-2 label-data))))
 	    (iter (+ offset *label-sizes-in-words*)
 		  (+ tagno 1)
 		  (cdr labels)
-		  (cons (string-append
-			 (make-define-statement a-symbol offset)
-			 (let ((other-symbol (or (symbol-2 label-data)
-						 (symbol-1 label-data))))
-			   (if (eq? other-symbol a-symbol)
-			       ""
-			       (make-define-statement other-symbol a-symbol)))
-			 (if (dispatch-1 label-data)
-			     (make-define-statement (dispatch-1 label-data)
-						    tagno)
-			     "")
-			 (if (dispatch-2 label-data)
-			     (make-define-statement (dispatch-2 label-data)
-						    tagno)
-			     ""))
+		  (cons (c:group (c:define symbol offset)
+				 (let ((symbol*
+					(or (symbol-2 label-data)
+					    (symbol-1 label-data))))
+				   (if (eq? symbol* symbol)
+				       (c:group)
+				       (c:define symbol* symbol)))
+				 (if (dispatch-1 label-data)
+				     (c:define (dispatch-1 label-data) tagno)
+				     (c:group))
+				 (if (dispatch-2 label-data)
+				     (c:define (dispatch-2 label-data) tagno)
+				     (c:group)))
 			label-defines)
-		  (cons (string-append
-			 "\n\t  case "
-			 (number->string tagno) ":\n\t\t"
-			 "current_block = (Rpc - " a-symbol ");\n\t\t"
-			 "goto "
-			 (symbol->string (or (label-1 label-data)
-					     (label-2 label-data)))
-			 ";\n")
+		  (cons (c:case tagno
+				(c:= 'current_block (c:- (c:pc-reg) symbol))
+				(c:goto (or (label-1 label-data)
+					    (label-2 label-data))))
 			label-dispatch)
 		  (add-label-initialization use-stackify?
-					    a-symbol
+					    symbol
 					    tagno
 					    offset
 					    (code-word-sel label-data)
 					    label-block-initialization)
-		  (append
-		   (if (label-1 label-data)
-		       (list (cons (label-1 label-data) offset))
-		       '())
-		   (if (label-2 label-data)
-		       (list (cons (label-2 label-data) offset))
-		       '())
-		   label-bindings)))))
-
-    (iter (+ label-block-offset *label-sizes-in-words*)	; offset
-	  0				; tagno
-	  (reverse! labels)		; labels
-	  '()				; label-defines
-	  '()				; label-dispatch
-	  '()				; label-block-initialization
-	  '()				; label-bindings
-	  )))
+		  (append! (if (label-1 label-data)
+			       (list (cons (label-1 label-data) offset))
+			       '())
+			   (if (label-2 label-data)
+			       (list (cons (label-2 label-data) offset))
+			       '())
+			   label-bindings)))
+	  (values (- offset 1)
+		  tagno
+		  (reverse! label-defines)
+		  (reverse! label-dispatch)
+		  (cons (if use-stackify?
+			    (stackify/make-nm-header
+			     (- (- offset 1)
+				(+ label-block-offset 1)))
+			    (c:= (c:cref label-block-offset)
+				 (c:make-object "TC_MANIFEST_NM_VECTOR"
+						(- (- offset 1)
+						   (+ label-block-offset 1)))))
+			(reverse! label-block-initialization))
+		  label-bindings)))))
 
-(define (add-label-initialization use-stackify? a-symbol tagno
+(define (add-label-initialization use-stackify? symbol tagno
 				  offset code-word rest)
   (if use-stackify?
       (begin
@@ -1117,35 +922,32 @@ USA.
 	(cons* (stackify/make-label-relative-entry tagno)
 	       (stackify/make-label-descriptor code-word offset)
 	       rest))
-      (cons (string-append "WRITE_LABEL_DESCRIPTOR(&current_block["
-			   a-symbol "], 0x"
-			   (number->string code-word 16)
-			   ", " a-symbol ");\n\t"
-			   "current_block [" a-symbol
-			   "] = (dispatch_base + "
-			   (number->string tagno)
-			   ");\n\t")
+      (cons (c:group (c:scall "WRITE_LABEL_DESCRIPTOR"
+			      (c:cptr symbol)
+			      (c:hex code-word)
+			      symbol)
+		     (c:= (c:cref symbol) (c:+ 'dispatch_base tagno)))
 	    rest)))
 
 (define-structure (fake-compiled-procedure
 		   (constructor make-fake-compiled-procedure)
 		   (conc-name fake-procedure/))
-  (block-name false read-only true)
-  (label-tag false read-only true)
-  (block false read-only true)
-  (label-value false read-only true))
+  (block-name #f read-only #t)
+  (label-tag #f read-only #t)
+  (block #f read-only #t)
+  (label-value #f read-only #t))
 
 (define-structure (fake-compiled-block
 		   (constructor make-fake-compiled-block)
 		   (conc-name fake-block/))
-  (name false read-only true)
-  (tag false read-only true)
-  (c-proc false read-only true)
-  (d-proc false read-only true)
-  (c-code false read-only true)
-  (index false read-only true)
-  (ntags false read-only true)
-  (proxy false read-only true))
+  (name #f read-only #t)
+  (tag #f read-only #t)
+  (c-proc #f read-only #t)
+  (d-proc #f read-only #t)
+  (c-code #f read-only #t)
+  (index #f read-only #t)
+  (ntags #f read-only #t)
+  (proxy #f read-only #t))
 
 (define fake-compiled-block-name-prefix "ccBlock")
 
@@ -1154,21 +956,21 @@ USA.
 		 "_" (number->string (-1+ number))))
 
 (define (fake-block->code-decl block)
-  (string-append "\tDECLARE_SUBCODE (\""
-		 (fake-block/tag block)
-		 "\", " (number->string (fake-block/ntags block))
-		 ", NO_SUBBLOCKS, "
-		 (fake-block/c-proc block) ");\n"))
+  (c:scall "DECLARE_SUBCODE"
+	   (c:string (fake-block/tag block))
+	   (fake-block/ntags block)
+	   "NO_SUBBLOCKS"
+	   (fake-block/c-proc block)))
 
 (define (fake-block->data-decl block)
-  (string-append "\tDECLARE_SUBDATA (\""
-		 (fake-block/tag block)
-		 "\", NO_SUBBLOCKS, "
-		 (fake-block/d-proc block) ");\n"))
+  (c:scall "DECLARE_SUBDATA"
+	   (c:string (fake-block/tag block))
+	   "NO_SUBBLOCKS"
+	   (fake-block/d-proc block)))
 
 (define (fake-block->c-code block)
-  (list (fake-block/c-code block)
-	"\f\n"))
+  (c:group (fake-block/c-code block)
+	   (c:page)))
 
 ;; Miscellaneous utilities
 
@@ -1198,3 +1000,482 @@ USA.
   (and (exact-integer? value)
        (<= guaranteed-long/lower-limit value)
        (< value guaranteed-long/upper-limit)))
+
+;;;; Output abstraction
+
+(define-record-type <c:line>
+    (c:%make-line indentation text)
+    c:line?
+  (indentation c:line-indentation)
+  (text c:line-text))
+
+(define-guarantee c:line "C line")
+
+(define (c:line . items)
+  (c:%make-line 0 (apply string-append items)))
+
+(define (c:line-items items)
+  (if (pair? items)
+      (if (pair? (cdr items))
+	  (apply string-append (map c:line-item items))
+	  (c:line-item (car items)))
+      ""))
+
+(define (c:line-item item)
+  (cond ((string? item) item)
+	((char? item) (string item))
+	((symbol? item) (symbol-name item))
+	((number? item) (number->string item))
+	((decoded-time? item) (decoded-time->iso8601-string item))
+	(else (error:wrong-type-argument item "C line item" 'C:LINE-ITEM))))
+
+(define (c:make-line indentation text)
+  (c:%make-line (if (or (string-null? text)
+			(string-prefix? "#" text)
+			(string-prefix? "\f" text))
+		    0
+		    indentation)
+		text))
+
+(define (c:write-line line port)
+  (let ((qr
+	 (integer-divide (* (max 0 (c:line-indentation line))
+			    c:indentation-delta)
+			 c:indentation-tab-width)))
+    (let ((n (integer-divide-quotient qr)))
+      (do ((i 0 (+ i 1)))
+	  ((not (< i n)))
+	(write-char #\tab port)))
+    (let ((n (integer-divide-remainder qr)))
+      (do ((i 0 (+ i 1)))
+	  ((not (< i n)))
+	(write-char #\space port))))
+  (write-string (c:line-text line) port)
+  (newline port))
+
+(define c:indentation-delta 2)
+(define c:indentation-tab-width 8)
+
+(define (c:label-line? line)
+  (string-prefix? "DEFLABEL " (c:line-text line)))
+
+(define (c:blank-line? line)
+  (string-null? (c:line-text line)))
+
+(define-record-type <c:group>
+    (c:%make-group lines)
+    c:group?
+  (lines c:group-lines))
+
+(define-guarantee c:group "C group")
+
+(define (c:group . items)
+  (c:group* items))
+
+(define (c:group* items)
+  (if (and (pair? items)
+	   (c:group? (car items))
+	   (null? (cdr items)))
+      (car items)
+      (c:make-group
+       (append-map (lambda (item)
+		     (cond ((c:line? item) (list item))
+			   ((c:group? item) (c:group-lines item))
+			   ((not item) '())
+			   (else (error:not-c:line item 'C:GROUP*))))
+		   items))))
+
+(define c:make-group
+  (let ((empty (c:%make-group '())))
+    (lambda (lines)
+      (if (null? lines)
+	  empty
+	  (c:%make-group lines)))))
+
+(define (c:group-length group)
+  (length (c:group-lines group)))
+
+(define (c:indent . items)
+  (c:indent* items))
+
+(define (c:indent* items)
+  (c:%indent (c:group* items) 1))
+
+(define (c:exdent . items)
+  (c:exdent* items))
+
+(define (c:exdent* items)
+  (c:%indent (c:group* items) -1))
+
+(define (c:%indent item delta)
+  (let ((indent-line
+	 (lambda (line)
+	   (c:make-line (+ (c:line-indentation line) delta)
+			(c:line-text line)))))
+    (cond ((c:line? item)
+	   (indent-line item))
+	  ((c:group? item)
+	   (c:make-group (map indent-line (c:group-lines item))))
+	  (else
+	   (error:not-c:line item 'C:%INDENT)))))
+
+(define (c:write-group group port)
+  (cond ((c:line? group) (c:write-line group port))
+	((c:group? group)
+	 (let loop ((lines (c:group-lines group)) (prev #f))
+	   (if (pair? lines)
+	       (let ((line (car lines))
+		     (lines (cdr lines)))
+		 (if (and (c:label-line? line)
+			  (not (and prev
+				    (or (c:label-line? prev)
+					(c:blank-line? prev)))))
+		     (newline port))
+		 (c:write-line line port)
+		 (loop lines line)))))
+	(else (error:not-c:group group 'C:WRITE-GROUP))))
+
+(define (c:comment . content)
+  (string-append "/* " (c:line-items content) " */"))
+
+(define (c:string . content)
+  (string-append "\"" (c:line-items content) "\""))
+
+(define (c:parens . content)
+  (string-append "(" (c:line-items content) ")"))
+
+(define (c:struct-init . exprs)
+  (string-append "{ " (c:comma-list exprs) " }"))
+
+(define (c:comma-list exprs)
+  (decorated-string-append "" ", " "" (map c:line-item exprs)))
+
+(define (c:hex n)
+  (string-append "0x" (number->string n 16)))
+
+(define (c:page)
+  (c:line "\f"))
+
+(define (c:brace-group . items)
+  (c:brace-group* items))
+
+(define (c:brace-group* items)
+  (c:group (c:line "{")
+	   (c:indent* items)
+	   (c:line "}")))
+
+(define (c:code-section . items)
+  (apply c:ifndef "WANT_ONLY_DATA" items))
+
+(define (c:data-section . items)
+  (apply c:ifndef "WANT_ONLY_CODE" items))
+
+(define (c:ifndef symbol . body)
+  (c:group (c:line "#ifndef " (c:var symbol))
+	   (c:group* body)
+	   (c:line "#endif")))
+
+(define (c:include name)
+  (c:line "#include "
+	  (if (and (string-prefix? "<" name)
+		   (string-suffix? ">" name))
+	      name
+	      (string-append "\"" name "\""))))
+
+(define (c:define symbol val)
+  (c:line "#define " (c:var symbol) " " (c:expr val)))
+
+(define (c:fn static? rtype name adecls . body)
+  (c:group (c:line (if static? "static " "")
+		   (c:type rtype))
+	   (c:line name
+		   " "
+		   (if (null? adecls)
+		       "(void)"
+		       (c:parens
+			(c:comma-list (map (lambda (p)
+					     (string-append (c:type (car p))
+							    " "
+							    (c:var (cdr p))))
+					   adecls)))))
+	   (c:brace-group* body)))
+
+(define (c:= var val)
+  (c:line (c:expr var) " = " (c:expr val) ";"))
+
+(define (c:+= var val)
+  (c:line (c:expr var) " += " (c:expr val) ";"))
+
+(define (c:-= var val)
+  (c:line (c:expr var) " -= " (c:expr val) ";"))
+
+(define (c:*= var val)
+  (c:line (c:expr var) " *= " (c:expr val) ";"))
+
+(define (c:/= var val)
+  (c:line (c:expr var) " /= " (c:expr val) ";"))
+
+(define (c:goto label)
+  (c:line "goto " (c:var label) ";"))
+
+(define (c:label label)
+  (c:exdent (c:scall "DEFLABEL" label)))
+
+(define (c:return expr)
+  (c:line "return " (c:pexpr expr) ";"))
+
+(define (c:scall function . args)
+  (c:line (apply c:call function args) ";"))
+
+(define (c:ecall function . args)
+  (c:parens (apply c:call function args)))
+
+(define (c:call function . args)
+  (string-append (c:expr function)
+		 " "
+		 (let ((args (map c:expr args)))
+		   (if (and (pair? args)
+			    (null? (cdr args))
+			    (c:%parenthesized? (car args)))
+		       (car args)
+		       (c:parens (c:comma-list args))))))
+
+(define (c:switch expr . cases)
+  (c:group (c:line "switch " (c:pexpr expr))
+	   (c:indent (c:brace-group* cases))))
+
+(define (c:case tag . items)
+  (c:group (c:exdent
+	    (c:line (if tag
+			(string-append "case " (c:line-item tag))
+			"default")
+		    ":"))
+	   (c:group* items)))
+
+(define (c:if-goto pred label)
+  (c:group (c:line "if " (c:pexpr pred))
+	   (c:indent (c:goto label))))
+
+(define (c:while expr . body)
+  (c:group (c:line "while " (c:pexpr expr))
+	   (c:indent (c:brace-group* body))))
+
+(define (c:cast type expr)
+  (let ((type (c:type type))
+	(expr (c:expr expr)))
+    (let ((p
+	   (and (c:%decimal? expr)
+		(assoc type c:decimal-suffixes))))
+      (if p
+	  (string-append expr (cdr p))
+	  (string-append "((" type ") " expr ")")))))
+
+(define c:decimal-suffixes
+  '(("long" . "L")
+    ("unsigned" . "U")
+    ("unsigned long" . "UL")))
+
+(define (c:%decimal? e)
+  (let ((n (string-length e)))
+    (let loop
+	((i
+	  (if (or (string-prefix? "-" e)
+		  (string-prefix? "+" e))
+	      1
+	      0)))
+      (if (fix:< i n)
+	  (and (char-set-member? c:decimal-chars (string-ref e i))
+	       (loop (fix:+ i 1)))
+	  #t))))
+
+(define c:decimal-chars
+  (ascii-range->char-set (char->integer #\0)
+			 (+ (char->integer #\9) 1)))
+
+(define (c:type type)
+  (or (and (symbol? type)
+	   (let ((p (assq type type-abbrevs)))
+	     (and p
+		  (cdr p))))
+      (c:line-item type)))
+
+(define type-abbrevs
+  (let ((types
+	 (let ((types '(char short int long float double)))
+	   `(,@(map (lambda (t)
+		      (cons t (symbol-name t)))
+		    types)
+	     ,@(map (lambda (t)
+		      (cons (symbol 'u t)
+			    (string-append "unsigned " (symbol-name t))))
+		    types)
+	     (sobj . "SCHEME_OBJECT")))))
+    `(,@types
+      ,@(map (lambda (p)
+	       (cons (symbol (car p) '*)
+		     (string-append (cdr p) " *")))
+	     types))))
+
+(define (c:decl type var #!optional val)
+  (c:line (c:type type) " " (c:var var)
+	  (if (default-object? val) "" (string-append " = " (c:expr val)))
+	  ";"))
+
+(define (c:var item)
+  (cond ((string? item) item)
+	((symbol? item) (symbol-name item))
+	(else (error:wrong-type-argument item "C variable" 'C:VAR))))
+
+(define (c:array-decl type name dim items)
+  (let ((lines (list-copy items)))
+    (if (pair? lines)
+	(let loop ((lines lines))
+	  (if (pair? (cdr lines))
+	      (begin
+		(set-car! lines (c:line (c:line-item (car lines)) ","))
+		(loop (cdr lines)))
+	      (set-car! lines (c:line (c:line-item (car lines)))))))
+    (c:group (c:line (c:type type) " " (c:var name) " [" (c:expr dim) "] =")
+	     (c:indent (c:group (c:line "{")
+				(c:indent (c:group* lines))
+				(c:line "};"))))))
+
+(define (c:expr expr)
+  (let ((expr (c:line-item expr)))
+    (if (or (c:%identifier? expr)
+	    (string->number expr)
+	    (c:%parenthesized? expr)
+	    (and (string-prefix? "\"" expr)
+		 (string-suffix? "\"" expr)))
+	expr
+	(string-append "(" expr ")"))))
+
+(define (c:pexpr expr)
+  (let ((expr (c:line-item expr)))
+    (if (c:%parenthesized? expr)
+	expr
+	(string-append "(" expr ")"))))
+
+(define (c:%identifier? e)
+  (let ((n (string-length e)))
+    (let loop ((i 0))
+      (if (fix:< i n)
+	  (and (char-set-member? c:identifier-chars (string-ref e i))
+	       (loop (fix:+ i 1)))
+	  #t))))
+
+(define c:identifier-chars
+  (char-set-union (ascii-range->char-set (char->integer #\A)
+					 (+ (char->integer #\Z) 1))
+		  (ascii-range->char-set (char->integer #\a)
+					 (+ (char->integer #\z) 1))
+		  (ascii-range->char-set (char->integer #\0)
+					 (+ (char->integer #\9) 1))
+		  (char-set #\_)))
+
+(define (c:%parenthesized? e)
+  (and (string-prefix? "(" e)
+       (string-suffix? ")" e)))
+
+(define (c:predec expr)
+  (string-append "--" (c:expr expr)))
+
+(define (c:preinc expr)
+  (string-append "++" (c:expr expr)))
+
+(define (c:postdec expr)
+  (string-append (c:expr expr) "--"))
+
+(define (c:postinc expr)
+  (string-append (c:expr expr) "++"))
+
+(define (c:aref array index)
+  (string-append "(" (c:expr array) " [" (c:expr index) "])"))
+
+(define (c:aptr array index)
+  (c:& (c:aref array index)))
+
+(define (c:?: a b c . rest)
+  (apply string-append
+	 "("
+	 (c:expr a)
+	 " ? "
+	 (c:expr b)
+	 " : "
+	 (c:expr c)
+	 (let loop ((exprs rest))
+	   (if (pair? exprs)
+	       (begin
+		 (if (not (pair? (cdr exprs)))
+		     (error "C:?: requires even number of args."))
+		 (cons* " ? "
+			(c:expr (car exprs))
+			" : "
+			(c:expr (cadr exprs))
+			(loop (cddr exprs))))
+	       (list ")")))))
+
+(define (c:unary op a)
+  (string-append "(" (c:line-item op) " " (c:expr a) ")"))
+
+(define (c:! a)
+  (c:unary "!" a))
+
+(define (c:~ a)
+  (c:unary "~" a))
+
+(define (c:binary-infix op a b)
+  (string-append "(" (c:expr a) " " (c:line-item op) " " (c:expr b) ")"))
+
+(define (c:== a b)
+  (c:binary-infix "==" a b))
+
+(define (c:!= a b)
+  (c:binary-infix "==" a b))
+
+(define (c:> a b)
+  (c:binary-infix ">" a b))
+
+(define (c:>= a b)
+  (c:binary-infix ">=" a b))
+
+(define (c:< a b)
+  (c:binary-infix "<" a b))
+
+(define (c:<= a b)
+  (c:binary-infix "<=" a b))
+
+(define (c:\| a b)
+  (c:binary-infix "|" a b))
+
+(define (c:^ a b)
+  (c:binary-infix "^" a b))
+
+(define (c:&~ a b)
+  (c:binary-infix "&~" a b))
+
+(define (c:/ a b)
+  (c:binary-infix "/" a b))
+
+(define (c:ubinary op a b)
+  (if (default-object? b)
+      (c:unary op a)
+      (c:binary-infix op a b)))
+
+(define (c:& a #!optional b)
+  (c:ubinary "&" a b))
+
+(define (c:* a #!optional b)
+  (c:ubinary "*" a b))
+
+(define (c:+ a #!optional b)
+  (c:ubinary "+" a b))
+
+(define (c:- a #!optional b)
+  (c:ubinary "-" a b))
+
+;;; Edwin Variables:
+;;; lisp-indent/c:fn: 4
+;;; lisp-indent/c:switch: 1
+;;; lisp-indent/let*/mv: 1
+;;; End:

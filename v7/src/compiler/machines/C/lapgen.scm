@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.19 2006/09/17 12:10:04 gjr Exp $
+$Id: lapgen.scm,v 1.20 2006/10/01 05:38:02 cph Exp $
 
 Copyright 1993,1998,2001,2002,2004,2006 Massachusetts Institute of Technology
 
@@ -85,7 +85,7 @@ USA.
 	(else
 	 (comp-internal-error "Unknown machine register"
 			      'MACHINE-REGISTER-NAME reg))))
-    
+
 (define (machine-register-type reg)
   (cond ((eq? reg regnum:value)
 	 "SCHEME_OBJECT")
@@ -102,10 +102,10 @@ USA.
   (< reg number-of-machine-registers))
 
 (define (rhs-cast reg type)
-  (string-append "((" (type->name type) ") " reg ")"))
+  (c:cast (type->name type) reg))
 
 (define (lhs-cast reg type)
-  (string-append "(* ((" (type->name type) " *) &" reg "))"))
+  (c:* (c:cast (type->name type) (c:& reg))))
 
 (define permanent-register-list)
 (define current-register-list)
@@ -210,12 +210,13 @@ USA.
 	   name))))
 
 (define (register-declarations)
-  (append-map
-   (lambda (register)
-     (map (lambda (spec)
-	    (string-append "\t" (type->name (car spec)) " " (cdr spec) ";\n"))
-	  (cdr register)))
-   permanent-register-list))
+  (c:group*
+   (append-map
+    (lambda (register)
+      (map (lambda (spec)
+	     (c:decl (type->name (car spec)) (cdr spec)))
+	   (cdr register)))
+    permanent-register-list)))
 
 (define (standard-move-to-target! src tgt)
   (let ((src-type (register-type src)))
@@ -226,11 +227,11 @@ USA.
 	  ((register-is-machine-register? tgt)
 	   (let ((src (standard-source! src
 					(machine-register-type-symbol tgt))))
-	     (LAP ,(machine-register-name tgt) " = " ,src ";\n\t")))
+	     (LAP ,(c:= (machine-register-name tgt) src))))
 	  ((register-is-machine-register? src)
 	   (let ((tgt (standard-target! tgt
 					(machine-register-type-symbol src))))
-	     (LAP ,tgt " = " ,(machine-register-name src) ";\n\t")))
+	     (LAP ,(c:= tgt (machine-register-name src)))))
 	  (else
 	   (let ((reg-type
 		  (case src-type
@@ -240,35 +241,124 @@ USA.
 		     (comp-internal-error "Unknown RTL register type"
 					  'STANDARD-MOVE-TO-TARGET!
 					  src-type)))))
-	     (LAP ,(find-register! tgt reg-type) " = "
-		  ,(find-register! src reg-type) ";\n\t"))))))
+	     (LAP ,(c:= (find-register! tgt reg-type)
+			(find-register! src reg-type))))))))
 
-;;;; Communicate with cout.scm
+;;;; Communicate with "cout.scm"
+
+(define (c:invoke-interface-0 code)
+  (use-invoke-interface! 0)
+  (c:scall "INVOKE_INTERFACE_0" code))
+
+(define (c:invoke-interface-1 code arg1)
+  (use-invoke-interface! 1)
+  (c:scall "INVOKE_INTERFACE_1" code arg1))
+
+(define (c:invoke-interface-2 code arg1 arg2)
+  (use-invoke-interface! 2)
+  (c:scall "INVOKE_INTERFACE_2" code arg1 arg2))
+
+(define (c:invoke-interface-3 code arg1 arg2 arg3)
+  (use-invoke-interface! 3)
+  (c:scall "INVOKE_INTERFACE_3" code arg1 arg2 arg3))
+
+(define (c:invoke-interface-4 code arg1 arg2 arg3 arg4)
+  (use-invoke-interface! 4)
+  (c:scall "INVOKE_INTERFACE_4" code arg1 arg2 arg3 arg4))
 
 (define (use-invoke-interface! number)
   (set! *invoke-interface*
 	(let ((old *invoke-interface*))
-	  (if (eq? old 'infinity)
+	  (if (eq? old 'INFINITY)
 	      number
-	      (min old number)))))
+	      (min old number))))
+  unspecific)
 
-(define (use-invoke-primitive!)
-  (set! *used-invoke-primitive* true))
+(define (c:invoke-primitive prim arity)
+  (set! *used-invoke-primitive* #t)
+  (c:scall "INVOKE_PRIMITIVE" prim arity))
 
-(define (use-closure-interrupt-check!)
-  (use-invoke-interface! 0))
+(define (c:closure-interrupt-check)
+  (use-invoke-interface! 0)
+  (c:scall "CLOSURE_INTERRUPT_CHECK" code:compiler-interrupt-closure))
 
-(define (use-interrupt-check!)
-  (use-invoke-interface! 1))
+(define (c:interrupt-check code block-label)
+  (use-invoke-interface! 1)
+  (c:scall "INTERRUPT_CHECK" code block-label))
 
-(define (use-dlink-interrupt-check!)
-  (use-invoke-interface! 2))
+(define (c:dlink-interrupt-check block-label)
+  (use-invoke-interface! 2)
+  (c:scall "DLINK_INTERRUPT_CHECK"
+	   code:compiler-interrupt-dlink
+	   block-label))
 
-(define (use-jump-execute-chache!)
-  (set! *use-jump-execute-chache* #t))
+(define (c:jump address)
+  (set! *use-jump-execute-chache* #t)
+  (c:scall "JUMP" address))
 
-(define (use-pop-return!)
-  (set! *use-pop-return* #t))
+(define (c:pop-return)
+  (set! *use-pop-return* #t)
+  (c:goto 'pop_return))
+
+(define (c:reg-block)
+  "Rrb")
+
+(define (c:free-reg)
+  "Rhp")
+
+(define (c:sp-reg)
+  "Rsp")
+
+(define (c:val-reg)
+  "Rvl")
+
+(define (c:dlink-reg)
+  "Rdl")
+
+(define (c:pc-reg)
+  "Rpc")
+
+(define (c:rref index)
+  (c:aref (c:reg-block) index))
+
+(define (c:env-reg)
+  (c:rref "REGBLOCK_ENV"))
+
+(define (c:push object)
+  (c:= (c:* (c:predec (c:sp-reg))) object))
+
+(define (c:pop)
+  (c:* (c:postinc (c:sp-reg))))
+
+(define (c:tos)
+  (c:* (c:sp-reg)))
+
+(define (c:sref index)
+  (c:aref (c:sp-reg) index))
+
+(define (c:sptr index)
+  (c:aptr (c:sp-reg) index))
+
+(define (c:cref index)
+  (c:aref 'current_block index))
+
+(define (c:cptr index)
+  (c:aptr 'current_block index))
+
+(define (c:make-object type datum)
+  (c:ecall "MAKE_OBJECT" type datum))
+
+(define (c:make-pointer-object type address)
+  (c:ecall "MAKE_POINTER_OBJECT" type address))
+
+(define (c:object-type expr)
+  (c:ecall "OBJECT_TYPE" expr))
+
+(define (c:object-datum expr)
+  (c:ecall "OBJECT_DATUM" expr))
+
+(define (c:object-address expr)
+  (c:ecall "OBJECT_ADDRESS" expr))
 
 ;;;; Constants, Labels, and Various Caches
 
@@ -548,33 +638,23 @@ USA.
 		       'REGISTER->HOME-TRANSFER one two))
 
 (define (lap:make-label-statement label)
-  (LAP "\nDEFLABEL(" ,label ");\n\t" ))
+  (LAP ,(c:label label)))
 
 (define (lap:make-unconditional-branch label)
-  (LAP "goto " ,label ";\n\t"))
+  (LAP ,(c:goto label)))
 
 (define (lap:make-entry-point label block-start-label)
   block-start-label			; ignored
   (declare-block-label! expression-code-word label #f)
   (lap:make-label-statement label))
 
-(define (compare cc val1 val2)
-  (set-current-branches!
-   (lambda (label)
-     (LAP "if (" ,val1 ,cc ,val2 ")\n\t  goto " ,label ";\n\t"))
-   (lambda (label)
-     (LAP "if (!(" ,val1 ,cc ,val2 "))\n\t  goto " ,label ";\n\t")))
+(define (branch-on-expr expr)
+  (set-current-branches! (lambda (label) (LAP ,(c:if-goto expr label)))
+			 (lambda (label) (LAP ,(c:if-goto (c:! expr) label))))
   (LAP))
 
-(define (compare/unsigned cc val1 val2)
-  (set-current-branches!
-   (lambda (label)
-     (LAP "if (((unsigned long) " ,val1 ")"
-	  ,cc "((unsigned long) " ,val2 "))\n\t  goto " ,label ";\n\t"))
-   (lambda (label)
-     (LAP "if (!(((unsigned long) " ,val1 ")"
-	  ,cc "((unsigned long) " ,val2 ")))\n\t  goto " ,label ";\n\t")))
-  (LAP))
+(define (compare c:?? val1 val2)
+  (branch-on-expr (c:?? val1 val2)))
 
 (define (define-arithmetic-method operator methods method)
   (let ((entry (assq operator (cdr methods))))
@@ -588,32 +668,33 @@ USA.
 	   (comp-internal-error "Unknown operator" 'LOOKUP-ARITHMETIC-METHOD
 				operator))))
 
-(let-syntax ((define-codes
-	       (sc-macro-transformer
-		(lambda (form environment)
-		  environment
-		  `(BEGIN
-		     ,@(let loop ((names (cddr form)) (index (cadr form)))
-			 (if (pair? names)
-			     (cons `(DEFINE-INTEGRABLE
-				      ,(symbol-append 'CODE:COMPILER-
-						      (car names))
-				      ,index)
-				   (loop (cdr names) (1+ index)))
-			     `())))))))
-  (define-codes #x012
-    primitive-apply primitive-lexpr-apply
-    apply error lexpr-apply link
-    interrupt-closure interrupt-dlink interrupt-procedure 
-    interrupt-continuation interrupt-ic-procedure
-    assignment-trap cache-reference-apply
-    reference-trap safe-reference-trap unassigned?-trap
-    -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
-    access lookup safe-lookup unassigned? unbound?
-    set! define lookup-apply primitive-error
-    quotient remainder modulo
-    reflect-to-interface interrupt-continuation-2
-    compiled-code-bkpt compiled-closure-bkpt))
+(define-syntax define-codes
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(BEGIN
+	,@(let loop ((names (cddr form)) (index (cadr form)))
+	    (if (pair? names)
+		(cons `(DEFINE-INTEGRABLE
+			 ,(symbol-append 'CODE:COMPILER-
+					 (car names))
+			 ,index)
+		      (loop (cdr names) (1+ index)))
+		`()))))))
+
+(define-codes #x012
+  primitive-apply primitive-lexpr-apply
+  apply error lexpr-apply link
+  interrupt-closure interrupt-dlink interrupt-procedure
+  interrupt-continuation interrupt-ic-procedure
+  assignment-trap cache-reference-apply
+  reference-trap safe-reference-trap unassigned?-trap
+  -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
+  access lookup safe-lookup unassigned? unbound?
+  set! define lookup-apply primitive-error
+  quotient remainder modulo
+  reflect-to-interface interrupt-continuation-2
+  compiled-code-bkpt compiled-closure-bkpt)
 
 
 (define (pre-lapgen-analysis rgraphs)

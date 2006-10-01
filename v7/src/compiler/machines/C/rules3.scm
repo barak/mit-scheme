@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.13 2003/02/14 18:28:02 cph Exp $
+$Id: rules3.scm,v 1.14 2006/10/01 05:38:20 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,9 +31,8 @@ USA.
 ;;;; Invocations
 
 (define (pop-return)
-  (use-pop-return!)
   (LAP ,@(clear-map!)
-       "goto pop_return;\n\t"))
+       ,(c:pop-return)))
 
 (define-rule statement
   (POP-RETURN)
@@ -42,18 +41,17 @@ USA.
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
   continuation				;ignore
-  (let ()
-    (use-invoke-interface! 2)
-    (LAP ,@(clear-map!)
-	 "{\n\t  SCHEME_OBJECT procedure = *Rsp++;\n\t"
-	 "  INVOKE_INTERFACE_2 (" ,code:compiler-apply ", procedure, "
-	 ,frame-size ");\n\t}\n\t")))
+  (LAP ,@(clear-map!)
+       ,(c:brace-group (c:decl 'sobj 'procedure (c:pop))
+		       (c:invoke-interface-2 code:compiler-apply
+					     'procedure
+					     frame-size))))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
   frame-size continuation		;ignore
   (LAP ,@(clear-map!)
-       "goto " ,label ";\n\t"))
+       ,(c:goto label)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-JUMP (? frame-size) (? continuation))
@@ -63,46 +61,40 @@ USA.
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation				;ignore
-  (let ()
-    (use-invoke-interface! 2)
-    (LAP ,@(clear-map!)
-	 "{\n\t  SCHEME_OBJECT * procedure_address = &current_block["
-	 ,(label->offset label)
-	 "];\n\t  INVOKE_INTERFACE_2 (" ,code:compiler-lexpr-apply
-	 ", procedure_address, " ,number-pushed ");\n\t}\n\t")))
+  (LAP ,@(clear-map!)
+       ,(c:brace-group (c:decl 'sobj*
+			       'procedure_address
+			       (c:cptr (label->offset label)))
+		       (c:invoke-interface-2 code:compiler-lexpr-apply
+					     'procedure_address
+					     number-pushed))))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
   continuation				;ignore
   ;; Destination address is at TOS; pop it into second-arg
-  (let ()
-    (use-invoke-interface! 2)
-    (LAP
-     ,@(clear-map!)
-     "{n\t SCHEME_OBJECT procedure = *Rsp++;\n\t  "
-     "SCHEME_OBJECT * procedure_address = (OBJECT_ADDRESS (procedure));\n\t"
-     "  INVOKE_INTERFACE_2 (" ,code:compiler-lexpr-apply
-     ", procedure_address, " ,number-pushed ");\n\t}\n\t")))
+  (LAP ,@(clear-map!)
+       ,(c:brace-group (c:decl 'sobj 'procedure (c:pop))
+		       (c:decl 'sobj*
+			       'procedure_address
+			       (c:object-address 'procedure))
+		       (c:invoke-interface-2 code:compiler-lexpr-apply
+					     'procedure_address
+					     number-pushed))))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
   continuation				;ignore
-  (begin
-    (use-jump-execute-chache!)
-    (LAP ,@(clear-map!)
-	 "JUMP ((SCHEME_OBJECT *) (current_block["
-	 ,(free-uuo-link-label name frame-size)
-	 "]));\n\t")))
+  (LAP ,@(clear-map!)
+       ,(c:jump (c:cast 'sobj*
+			(c:cref (free-uuo-link-label name frame-size))))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation				;ignore
-  (begin
-    (use-jump-execute-chache!)
-    (LAP ,@(clear-map!)
-	 "JUMP ((SCHEME_OBJECT *) (current_block["
-	 ,(global-uuo-link-label name frame-size)
-	 "]));\n\t")))
+  (LAP ,@(clear-map!)
+       ,(c:jump (c:cast 'sobj*
+			(c:cref (global-uuo-link-label name frame-size))))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size)
@@ -110,10 +102,11 @@ USA.
 			      (REGISTER (? extension)))
   continuation				;ignore
   (let ((extension (standard-source! extension 'SCHEME_OBJECT*)))
-    (use-invoke-interface! 3)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_3 (" ,code:compiler-cache-reference-apply
-	 ", " ,extension ", current_block, " ,frame-size ");\n\t")))
+	 ,(c:invoke-interface-3 code:compiler-cache-reference-apply
+				extension
+				'current_block
+				frame-size))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size)
@@ -122,50 +115,34 @@ USA.
 		     (? name))
   continuation				;ignore
   (let ((environment (standard-source! environment 'SCHEME_OBJECT)))
-    (use-invoke-interface! 3)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_3 (" ,code:compiler-lookup-apply
-	 ", " ,environment ", current_block[" ,(object->offset name) "]"
-	 ", " ,frame-size ");\n\t")))
+	 ,(c:invoke-interface-3 code:compiler-lookup-apply
+				environment
+				(c:cref (object->offset name))
+				frame-size))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				;ignore
-  (cond ((eq? primitive compiled-error-procedure)
-	 (use-invoke-interface! 1)
-	 (LAP ,@(clear-map!)
-	      "INVOKE_INTERFACE_1 (" ,code:compiler-error ", "
-	      ,frame-size ");\n\t"))
-	(else
-	 (let ((arity (primitive-procedure-arity primitive)))
-	   (cond ((= arity (-1+ frame-size))
-		  (use-invoke-primitive!)
-		  (LAP ,@(clear-map!)
-		       "INVOKE_PRIMITIVE (current_block["
-		       ,(object->offset primitive) "], "
-		       ,arity
-		       ");\n\t"))
-		 #|
-		 ((= arity -1)
-		  (LAP ,@(clear-map!)
-		       "INVOKE_INTERFACE_2 (" ,code:compiler-apply
-		       ", (current_block[" ,(object->offset primitive) "]"
-		       ", " ,frame-size ");\n\t"))
-		 |#
-		 (else
-		  (if (not (= arity -1))
-		      (error "Wrong number of arguments to primitive"
-			     primitive (-1+ frame-size)))
-		  (use-invoke-interface! 2)
-		  (LAP ,@(clear-map!)
-		       "INVOKE_INTERFACE_2 (" ,code:compiler-apply
-		       ", current_block[" ,(object->offset primitive) "]"
-		       ", " ,frame-size ");\n\t")))))))
+  (LAP ,@(clear-map!)
+       ,(if (eq? primitive compiled-error-procedure)
+	    (c:invoke-interface-1 code:compiler-error frame-size)
+	    (let ((prim (c:cref (object->offset primitive)))
+		  (arity (primitive-procedure-arity primitive))
+		  (nargs (- frame-size 1)))
+	      (if (= arity nargs)
+		  (c:invoke-primitive prim arity)
+		  (begin
+		    (if (not (= arity -1))
+			(warn "Wrong number of arguments to primitive:"
+			      primitive nargs arity))
+		    (c:invoke-interface-2 code:compiler-apply
+					  prim
+					  frame-size)))))))
 
 (define (invoke-special-primitive code)
-  (use-invoke-interface! 0)
   (LAP ,@(clear-map!)
-       "INVOKE_INTERFACE_0 (" ,code ");\n\t"))
+       ,(c:invoke-interface-0 code)))
 
 (let-syntax
     ((define-special-primitive-invocation
@@ -216,33 +193,32 @@ USA.
   ;; Move <frame-size> words back to dynamic link marker
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER (? new-frame)))
   (let ((new-frame (standard-source! new-frame 'SCHEME_OBJECT*)))
-    (move-frame-up frame-size new-frame "")))
+    (LAP ,(move-frame-up frame-size new-frame))))
 
-(define (move-frame-up frame-size new-frame pfx)
+(define (move-frame-up frame-size new-frame)
   (case frame-size
     ((0)
-     (LAP ,pfx "Rsp = " ,new-frame ";\n\t"))
+     (c:group (c:= (c:sp-reg) new-frame)))
     ((1)
-     (LAP ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
-	  ,pfx "Rsp = " ,new-frame ";\n\t"))
+     (c:group (c:= (c:* (c:predec new-frame)) (c:sref 0))
+	      (c:= (c:sp-reg) new-frame)))
     ((2)
-     (LAP ,pfx "*--" ,new-frame " = Rsp[1];\n\t"
-	  ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
-	  ,pfx "Rsp = " ,new-frame ";\n\t"))
+     (c:group (c:= (c:* (c:predec new-frame)) (c:sref 1))
+	      (c:= (c:* (c:predec new-frame)) (c:sref 0))
+	      (c:= (c:sp-reg) new-frame)))
     ((3)
-     (LAP ,pfx "*--" ,new-frame " = Rsp[2];\n\t"
-	  ,pfx "*--" ,new-frame " = Rsp[1];\n\t"
-	  ,pfx "*--" ,new-frame " = Rsp[0];\n\t"
-	  ,pfx "Rsp = " ,new-frame ";\n\t"))
+     (c:group (c:= (c:* (c:predec new-frame)) (c:sref 2))
+	      (c:= (c:* (c:predec new-frame)) (c:sref 1))
+	      (c:= (c:* (c:predec new-frame)) (c:sref 0))
+	      (c:= (c:sp-reg) new-frame)))
     (else
-     (LAP ,pfx "{\n\t  SCHEME_OBJECT * frame_top = &Rsp["
-	  ,frame-size "];\n\t"
-	  ,pfx "SCHEME_OBJECT * new_frame = " ,new-frame ";\n\t"
-	  ,pfx "  long frame_size = " ,frame-size ";\n\t"
-	  ,pfx "  while ((--frame_size) >= 0)"
-	  ,pfx "    *--new_frame = *--frame_top;\n\t"
-	  ,pfx "  Rsp = new_frame;\n\t"
-	  ,pfx "}\n\t"))))
+     (c:brace-group
+      (c:decl 'sobj* "MFUp1" (c:sptr frame-size))
+      (c:decl 'sobj* "MFUp2" new-frame)
+      (c:while (c:> "MFUp1" (c:sp-reg))
+	       (c:= (c:* (c:predec "MFUp2"))
+		    (c:* (c:predec "MFUp1"))))
+      (c:= (c:sp-reg) "MFUp2")))))
 
 ;;; DYNAMIC-LINK instructions have a <frame-size>, <new frame end>,
 ;;; and <current dynamic link> as arguments.  They pop the stack by
@@ -258,11 +234,12 @@ USA.
 				  (REGISTER (? choice-2)))
   (let ((choice-1 (standard-source! choice-1 'SCHEME_OBJECT*))
 	(choice-2 (standard-source! choice-2 'SCHEME_OBJECT*)))
-    (LAP "{\n\t  SCHEME_OBJECT * new_frame_1;\n\t"
-	 "  new_frame_1 = ((" ,choice-1 " <= " ,choice-2 ") ? "
-	 ,choice-1 " : " ,choice-2 ");\n\t"
-	 ,@(move-frame-up frame-size "new_frame_1" "  ")
-	 "}\n\t")))
+    (LAP ,(c:brace-group
+	   (c:decl 'sobj* "IPDLp1"
+		   (c:?: (c:<= choice-1 choice-2)
+			 choice-1
+			 choice-2))
+	   (move-frame-up frame-size "IPDLp1")))))
 
 ;;; Entry point types
 
@@ -331,24 +308,20 @@ USA.
 (define (simple-procedure-header code-word label e-label code)
   (declare-block-label! code-word label e-label)
   (let ((block-label (label->offset label)))
-    (use-interrupt-check!)
     (LAP ,@(if (not e-label)
 	       (LAP)
 	       (label-statement e-label))
 	 ,@(label-statement label)
-	 "INTERRUPT_CHECK ("  ,code  ", (" ,block-label "));\n\t")))
+	 ,(c:interrupt-check code block-label))))
 
 (define (dlink-procedure-header code-word label e-label)
   (declare-block-label! code-word label e-label)
   (let ((block-label (label->offset label)))
-    (use-dlink-interrupt-check!)
     (LAP ,@(if (not e-label)
 	       (LAP)
 	       (label-statement e-label))
 	 ,@(label-statement label)
-	 "DLINK_INTERRUPT_CHECK ("
-	 ,code:compiler-interrupt-dlink
-	 ", ("  ,block-label "));\n\t")))
+	 ,(c:dlink-interrupt-check block-label))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? internal-label))
@@ -408,34 +381,32 @@ USA.
     (let ((external-label (rtl-procedure/external-label rtl-proc)))
       (declare-block-label! (internal-procedure-code-word rtl-proc)
 			    #f external-label)
-      (use-closure-interrupt-check!)
       (LAP ,@(label-statement external-label)
-	   "CLOSURE_HEADER (" ,(label->offset external-label) ");\n\t"
+	   ,(c:scall "CLOSURE_HEADER" (label->offset external-label))
 	   ,@(label-statement internal-label)
-	   "CLOSURE_INTERRUPT_CHECK ("
-	   ,(number->string code:compiler-interrupt-closure)
-	   ");\n\t"))))
+	   ,(c:closure-interrupt-check)))))
 
 (define (write-closure-entry internal-label min max offset)
   (let ((external-label
 	 (rtl-procedure/external-label (label->object internal-label))))
-    (LAP "WRITE_LABEL_DESCRIPTOR (Rhp, 0x"
-	 ,(number->string (make-procedure-code-word min max) 16) ", "
-	 ,offset ");\n\t"
-	 "Rhp[0] = (dispatch_base + "
-	 ,(label->dispatch-tag external-label)
-	 ");\n\t"
-	 "Rhp[1] = ((SCHEME_OBJECT) (&current_block["
-	 ,(label->offset external-label) "]));\n\t")))
+    (LAP ,(c:scall "WRITE_LABEL_DESCRIPTOR"
+		   (c:free-reg)
+		   (c:hex (make-procedure-code-word min max))
+		   offset)
+	 ,(c:= (c:aref (c:free-reg) 0)
+	       (c:+ 'dispatch_base (label->dispatch-tag external-label)))
+	 ,(c:= (c:aref (c:free-reg) 1)
+	       (c:cast 'sobj (c:cptr (label->offset external-label)))))))
 
 (define (cons-closure target label min max nvars)
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP "* Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
-	 ,(+ closure-entry-size nvars) "));\n\t"
-	 "Rhp += 2;\n\t"
-	 ,target " = Rhp;\n\t"
+    (LAP ,(c:= (c:* (c:free-reg))
+	       (c:make-object "TC_MANIFEST_CLOSURE"
+			      (+ closure-entry-size nvars)))
+	 ,(c:+= (c:free-reg) 2)
+	 ,(c:= target (c:free-reg))
 	 ,@(write-closure-entry label min max 2)
-	 "Rhp += " ,(+ nvars 2) ";\n\t")))
+	 ,(c:+= (c:free-reg) (+ nvars 2)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -450,10 +421,11 @@ USA.
   (case nentries
     ((0)
      (let ((dest (standard-target! target 'SCHEME_OBJECT*)))
-       (LAP ,dest " = Rhp;\n\t"
-	    "*Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-vector)
-	    ", " ,nvars "));\n\t"
-	    "Rhp += " ,(+ nvars 1) ";\n\t")))
+       (LAP ,(c:= dest (c:free-reg))
+	    ,(c:= (c:* (c:free-reg))
+		  (c:make-object "TC_MANIFEST_VECTOR"
+				 nvars))
+	    ,(c:+= (c:free-reg) (+ nvars 1)))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (cons-closure target (car entry) (cadr entry) (caddr entry) nvars)))
@@ -462,12 +434,13 @@ USA.
 
 (define (cons-multiclosure target nentries nvars entries)
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP "* Rhp = (MAKE_OBJECT (" ,(ucode-type manifest-closure) ", "
-	 ,(1+ (+ (* nentries closure-entry-size) nvars)) "));\n\t"
-	 "Rhp += 2;\n\t"
-	 "WRITE_LABEL_DESCRIPTOR (Rhp, " ,nentries ", 0);\n\t"
-	 "Rhp += 1;\n\t"
-	 ,target " = Rhp;\n\t"
+    (LAP ,(c:= (c:* (c:free-reg))
+	       (c:make-object "TC_MANIFEST_CLOSURE"
+			      (+ 1 (* nentries closure-entry-size) nvars)))
+	 ,(c:+= (c:free-reg) 2)
+	 ,(c:scall "WRITE_LABEL_DESCRIPTOR" (c:free-reg) nentries 0)
+	 ,(c:+= (c:free-reg) 1)
+	 ,(c:= target (c:free-reg))
 	 ,@(reduce-right
 	    (lambda (lap1 lap2)
 	      (LAP ,@lap1 ,@lap2))
@@ -477,18 +450,15 @@ USA.
 			 (min (cadr entry))
 			 (max (caddr entry)))
 		     (LAP ,@(write-closure-entry label min max offset)
-			  "Rhp += 3;\n\t")))
+			  ,(c:+= (c:free-reg) 3))))
 		 entries (make-multiclosure-offsets nentries)))
-	 "Rhp += " ,(- nvars 1) ";\n\t")))
+	 ,(c:+= (c:free-reg) (- nvars 1)))))
 	 
 (define (make-multiclosure-offsets nentries)
-  (let generate ((x nentries)
-		 (offset 3))
-    (if (= 0 x)
-	'()
-	(cons offset
-	      (generate (-1+ x)
-			(+ offset closure-entry-size))))))
+  (let generate ((n nentries) (offset 3))
+    (if (> n 0)
+	(cons offset (generate (- n 1) (+ offset closure-entry-size)))
+	'())))
 
 ;;;; Entry Header
 ;;; This is invoked by the top level of the LAP generator.
@@ -497,14 +467,13 @@ USA.
 				   free-ref-offset n-sections)
   (let ((label (generate-label)))
     (declare-block-label! (continuation-code-word false) false label)
-    (use-invoke-interface! 4)
-    (LAP "current_block[" ,environment-label
-	 "] = Rrb[REGBLOCK_ENV];\n\t"
-	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
-	 ", &current_block[" ,(label->offset label) "]"
-	 ",\n\t\t\t\tcurrent_block"
-	 ",\n\t\t\t\t&current_block[" ,free-ref-offset "]"
-	 ",\n\t\t\t\t" ,n-sections ");\n\t"
+    (LAP ,(c:= (c:cref environment-label)
+	       (c:env-reg))
+	 ,(c:invoke-interface-4 code:compiler-link
+				(c:cptr (label->offset label))
+				'current_block
+				(c:cptr free-ref-offset)
+				n-sections)
 	 ,@(label-statement label))))
 
 (define (generate/remote-link code-block-label
@@ -514,16 +483,17 @@ USA.
   (let ((label (generate-label)))
     (add-remote-link! code-block-label)
     (declare-block-label! (continuation-code-word false) false label)
-    (use-invoke-interface! 4)
-    (LAP "{\n\t  SCHEME_OBJECT * subblock = (OBJECT_ADDRESS (current_block["
-	 ,code-block-label "]));\n\t  "
-	 "subblock[" ,environment-offset
-	 "] = Rrb[REGBLOCK_ENV];\n\t  "
-	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
-	 ", &current_block[" ,(label->offset label) "]"
-	 ",\n\t\t\t\t  subblock"
-	 ",\n\t\t\t\t  &subblock[" ,free-ref-offset "]"
-	 ",\n\t\t\t\t"  ,n-sections ");\n\t}\n\t"
+    (LAP ,(c:brace-group
+	   (c:decl 'sobj*
+		   'sub_block
+		   (c:object-address (c:cref code-block-label)))
+	   (c:= (c:aref 'sub_block environment-offset)
+		(c:env-reg))
+	   (c:invoke-interface-4 code:compiler-link
+				 (c:cptr (label->offset label))
+				 'sub_block
+				 (c:aptr 'sub_block free-ref-offset)
+				 n-sections))
 	 ,@(label-statement label))))
 
 (define (add-remote-link! label)
@@ -539,56 +509,41 @@ USA.
   (intern "#[PURIFICATION-ROOT]"))
 
 (define (generate/remote-links n-code-blocks code-blocks-label n-sections)
-  (define-integrable max-line-width 80)
-
-  (define (sections->c-sections mul? posn n-sections)
-    (cond ((not (null? n-sections))
-	   (let* ((val (number->string (car n-sections)))
-		  (next (+ posn (+ 2 (string-length val)))))
-	     (if (>= (1+ next) max-line-width)
-		 (LAP ",\n\t\t" ,val
-		      ,@(sections->c-sections true
-					      (+ 16 (string-length val))
-					      (cdr n-sections)))
-		 (LAP ", " ,val
-		      ,@(sections->c-sections mul? next (cdr n-sections))))))
-	  ((or mul? (>= (+ posn 2) max-line-width))
-	   (LAP "\n\t      "))
-	  (else
-	   (LAP))))
-
   (let ((label (generate-label))
 	(done (generate-label)))
     (set! *purification-root-object*
 	  (cons *purification-root-marker*
 		(object-label-value code-blocks-label)))
     (declare-block-label! (continuation-code-word false) false label)
-    (use-invoke-interface! 4)
-    (LAP "*--Rsp = (LONG_TO_UNSIGNED_FIXNUM (1L));\n\t"
+    (LAP ,(c:push (c:ecall "ULONG_TO_FIXNUM" (c:cast 'ulong 1)))
 	 ,@(label-statement label)
-	 "{\n\t  "
-	 "static CONST short sections []\n\t    = {\t0"
-	 ,@(sections->c-sections false 17 (vector->list n-sections))
-	 "};\n\t  "
-	 "long counter = (OBJECT_DATUM (* Rsp));\n\t  "
-	 "SCHEME_OBJECT blocks, * subblock;\n\t  "
-	 "short section;\n\t\n\t  "
-	 "if (counter > " ,n-code-blocks "L)\n\t    goto " ,done ";\n\t  "
-	 "blocks = current_block[" ,code-blocks-label "];\n\t  "
-	 "subblock = (OBJECT_ADDRESS (MEMORY_REF (blocks, counter)));\n\t  "
-	 "subblock[(OBJECT_DATUM (subblock[0]))]\n\t  "
-	 "  = Rrb[REGBLOCK_ENV];\n\t  "
-	 "section = sections[counter];\n\t  "
-	 "counter += 1;\n\t  "
-	 "*Rsp = (LONG_TO_UNSIGNED_FIXNUM (counter));\n\t  "
-	 "INVOKE_INTERFACE_4 (" ,code:compiler-link
-	 ", &current_block[" ,(label->offset label) "]"
-	 ",\n\t\t\t\t  subblock"
-	 ",\n\t\t\t\t  (subblock"
-	 "\n\t\t\t\t   + (2 + (OBJECT_DATUM (subblock[1]))))"
-	 ",\n\t\t\t\t  section);\n\t}\n\t"
+	 ,(c:brace-group
+	   (c:array-decl "static const short"
+			 'sections
+			 ""
+			 (cons 0 (vector->list n-sections)))
+	   (c:decl 'ulong 'counter (c:object-datum (c:tos)))
+	   (c:decl 'sobj 'blocks)
+	   (c:decl 'sobj* 'sub_block)
+	   (c:decl 'short 'section)
+	   (c:if-goto (c:> 'counter n-code-blocks) done)
+	   (c:= 'blocks (c:cref code-blocks-label))
+	   (c:= 'sub_block
+		(c:object-address (c:ecall "MEMORY_REF" 'blocks 'counter)))
+	   (c:= (c:aref 'sub_block (c:object-datum (c:aref 'sub_block 0)))
+		(c:env-reg))
+	   (c:= 'section (c:aref 'sections 'counter))
+	   (c:= (c:tos) (c:ecall "ULONG_TO_FIXNUM" (c:+ 'counter 1)))
+	   (c:invoke-interface-4 code:compiler-link
+				 (c:cptr (label->offset label))
+				 'sub_block
+				 (c:+ 'sub_block
+				      (c:+ 2
+					   (c:object-datum
+					    (c:aref 'sub_block 1))))
+				 'section))
 	 ,@(label-statement done)
-	 "Rsp += 1;\n\t")))
+	 ,(c:+= (c:sp-reg) 1))))
 
 #|
 (define (generate/constants-block constants references assignments uuo-links

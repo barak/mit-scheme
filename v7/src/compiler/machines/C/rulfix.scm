@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.8 2006/09/17 12:10:04 gjr Exp $
+$Id: rulfix.scm,v 1.9 2006/10/01 05:38:32 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002, 2006 Massachusetts Institute of Technology
+Copyright 1993,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,16 +31,16 @@ USA.
 ;;;; Conversions
 
 (define (object->fixnum source target)
-  (LAP ,target " = (FIXNUM_TO_LONG (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:ecall "FIXNUM_TO_LONG" source))))
 
 (define (address->fixnum source target)
-  (LAP ,target " = (ADDRESS_TO_LONG (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:ecall "ADDRESS_TO_LONG" source))))
 
 (define (fixnum->object source target)
-  (LAP ,target " = (LONG_TO_FIXNUM (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:ecall "LONG_TO_FIXNUM" source))))
 
 (define (fixnum->address source target)
-  (LAP ,target " = (LONG_TO_ADDRESS (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:ecall "LONG_TO_ADDRESS" source))))
 
 (define-rule statement
   ;; convert a fixnum object to a "fixnum integer"
@@ -52,7 +52,7 @@ USA.
   ;; load a fixnum constant as a "fixnum integer"
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? constant))))
   (let ((target (standard-target! target 'LONG)))
-    (LAP ,target " = " ,(longify constant) ";\n\t")))
+    (LAP ,(c:= target (longify constant)))))
 
 (define-rule statement
   ;; convert a memory address to a "fixnum integer"
@@ -82,23 +82,12 @@ USA.
 ;; "Fixnum" in this context means a C long
 
 (define (no-overflow-branches!)
-  (set-current-branches!
-   (lambda (if-overflow)
-     if-overflow
-     (LAP))
-   (lambda (if-no-overflow)
-     (LAP "goto " ,if-no-overflow ";\n\t"))))
+  (set-current-branches! (lambda (label) label (LAP))
+			 (lambda (label) (LAP ,(c:goto label)))))
 
 (define (standard-overflow-branches! overflow? result)
   (if overflow?
-      (set-current-branches!
-       (lambda (if-overflow)
-	 (LAP "if (!( LONG_TO_FIXNUM_P (" ,result ")))\n\t  goto "
-	      ,if-overflow ";\n\t"))
-       (lambda (if-not-overflow)
-	 (LAP "if ( LONG_TO_FIXNUM_P (" ,result "))\n\t  goto "
-	      ,if-not-overflow ";\n\t"))))
-  unspecific)
+      (branch-on-expr (c:! (c:ecall "LONG_TO_FIXNUM_P" result)))))
 
 (define (guarantee-signed-fixnum n)
   (if (not (signed-fixnum? n)) (error "Not a signed fixnum" n))
@@ -137,17 +126,18 @@ USA.
 
 (define (fixnum-add-constant tgt src constant overflow?)
   (standard-overflow-branches! overflow? tgt)
-  (cond ((back-end:= constant 0)
-	 (LAP ,tgt " = " ,src ";\n\t"))
-	((and (number? constant) (< constant 0))
-	 (LAP ,tgt " = (" ,src " - " ,(- constant) "L);\n\t"))
-	(else
-	 (LAP ,tgt " = (" ,src " + " ,(longify constant) ");\n\t"))))
+  (LAP ,(c:= tgt
+	     (cond ((back-end:= constant 0)
+		    src)
+		   ((and (number? constant) (< constant 0))
+		    (c:- src (longify (- constant))))
+		   (else
+		    (c:+ src (longify constant)))))))
 
 (define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (tgt src1 overflow?)
     (if overflow? (no-overflow-branches!))
-    (LAP ,tgt " = ( ~ " ,src1 ");\n\t")))
+    (LAP ,(c:= tgt (c:~ src1)))))
 
 (define-rule statement
   ;; execute a binary fixnum operation
@@ -166,46 +156,45 @@ USA.
 (define fixnum-methods/2-args
   (list 'FIXNUM-METHODS/2-ARGS))
 
-(let-syntax
-    ((binary-fixnum
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let ((name (cadr form))
-	       (instr (caddr form)))
-	   `(DEFINE-ARITHMETIC-METHOD ',name FIXNUM-METHODS/2-ARGS
-	      (LAMBDA (TGT SRC1 SRC2 OVERFLOW?)
-		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
-		(LAP ,',tgt " = (" ,',src1 ,instr ,',src2 ");\n\t"))))))))
-  (binary-fixnum FIXNUM-AND	" & ")
-  (binary-fixnum FIXNUM-OR	" | ")
-  (binary-fixnum FIXNUM-XOR	" ^ ")
-  (binary-fixnum FIXNUM-ANDC	" & ~ "))
+(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:& src1 src2)))))
 
-(let-syntax
-    ((binary-fixnum
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let ((name (cadr form))
-	       (instr (caddr form)))
-	   `(DEFINE-ARITHMETIC-METHOD ',name FIXNUM-METHODS/2-ARGS
-	      (LAMBDA (TGT SRC1 SRC2 OVERFLOW?)
-		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
-		(LAP ,',tgt
-		     " = (" ,instr " (" ,',src1 ", " ,',src2 "));\n\t"))))))))
-  (binary-fixnum FIXNUM-REMAINDER "FIXNUM_REMAINDER")
-  (binary-fixnum FIXNUM-LSH "FIXNUM_LSH"))
+(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:\| src1 src2)))))
+
+(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:^ src1 src2)))))
+
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:&~ src1 src2)))))
+
+(define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:ecall "FIXNUM_REMAINDER" src1 src2)))))
+
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
+  (lambda (tgt src1 src2 overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:ecall "FIXNUM_LSH" src1 src2)))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
     (standard-overflow-branches! overflow? tgt)
-    (LAP ,tgt " = (FIXNUM_QUOTIENT (" ,src1 ", " ,src2 "));\n\t")))
+    (LAP ,(c:= tgt (c:ecall "FIXNUM_QUOTIENT" src1 src2)))))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
     (standard-overflow-branches! overflow? tgt)
-    (LAP ,tgt " = (" ,src1 " + " ,src2 ");\n\t")))
+    (LAP ,(c:= tgt (c:+ src1 src2)))))
 
 (define-arithmetic-method 'MINUS-FIXNUM fixnum-methods/2-args
   (lambda (tgt src1 src2 overflow?)
@@ -214,29 +203,22 @@ USA.
 	    (begin
 	      (no-overflow-branches!)
 	      ; we don't use zero directly because we care about the tag
-	      (LAP ,tgt " = (" ,src2 " - " ,src2 ");\n\t"))
+	      (LAP ,(c:= tgt (c:- src2 src2))))
 	    (do-overflow-subtraction tgt src1 src2))
-	(LAP ,tgt " = (" ,src1 " - " ,src2 ");\n\t"))))
+	(LAP ,(c:= tgt (c:- src1 src2))))))
 
 (define (do-overflow-subtraction tgt src1 src2)
   (standard-overflow-branches! true tgt)
-  (LAP ,tgt " = (" ,src1 " - " ,src2 ");\n\t"))
+  (LAP ,(c:= tgt (c:- src1 src2))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (lambda (target src1 src2 overflow?)
     (if (not overflow?)
-	(LAP ,target " = (" ,src1 " * " ,src2 ");\n\t")
+	(LAP ,(c:= target (c:* src1 src2)))
 	(overflow-product! target src1 src2))))
 
 (define (overflow-product! target src1 src2)
-  (set-current-branches!
-   (lambda (if-overflow-label)
-     (LAP "if (multiply_with_overflow ( " ,src1 ", " ,src2 ", &" ,target
-	  "))\n\t  goto " ,if-overflow-label ";\n\t"))
-   (lambda (if-not-overflow-label)
-     (LAP "if (!(multiply_with_overflow ( " ,src1 ", " ,src2 ", &" ,target
-	  ")))\n\t  goto " ,if-not-overflow-label ";\n\t")))
-  (LAP))
+  (branch-on-expr (c:ecall "multiply_with_overflow" src1 src2 (c:& target))))
 
 (define-rule statement
   ;; execute binary fixnum operation with constant second arg
@@ -313,28 +295,24 @@ USA.
   (lambda (tgt src constant overflow?)
     (cond ((back-end:= constant 0)
 	   (if overflow? (no-overflow-branches!))
-	   (LAP ,tgt " = 0L;\n\t"))
+	   (LAP ,(c:= tgt (c:cast 'long 0))))
 	  ((back-end:= constant 1)
 	   (if overflow? (no-overflow-branches!))
-	   (LAP ,tgt " = " ,src ";\n\t"))
+	   (LAP ,(c:= tgt src)))
 	  ((and (number? constant)
 		(power-of-2? (abs constant)))
 	   =>
 	   (lambda (power-of-two)
 	     (if (not overflow?)
-		 (LAP ,tgt
-		      ,(if (negative? constant)
-			   " = (- "
-			   " = ")
-		      "(LEFT_SHIFT (" ,src ", " ,power-of-two
-		      "))"
-		      ,(if (negative? constant)
-			   ")"
-			   "")
-		      ";\n\t")
+		 (LAP ,(c:= tgt
+			    (let ((shift
+				   (c:ecall "LEFT_SHIFT" src power-of-two)))
+			      (if (< constant 0)
+				  (c:- shift)
+				  shift))))
 		 (overflow-product! tgt src constant))))
 	  ((not overflow?)
-	   (LAP ,tgt " = (" ,src " * " ,(longify constant) ");\n\t"))
+	   (LAP ,(c:= tgt (c:* src (longify constant)))))
 	  (else
 	   (overflow-product! tgt src constant)))))
 
@@ -344,7 +322,7 @@ USA.
     (guarantee-signed-fixnum constant)
     (if overflow?
 	(do-overflow-subtraction tgt constant src)
-	(LAP ,tgt " = (" ,constant " - " ,src ");\n\t"))))
+	(LAP ,(c:= tgt (c:- (longify constant) src))))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT
   fixnum-methods/2-args/register*constant
@@ -353,31 +331,32 @@ USA.
 	   (error "fixnum-quotient constant division by zero."))
 	  ((back-end:= constant 1)
 	   (if overflow? (no-overflow-branches!))
-	   (LAP ,tgt " = " ,src ";\n\t"))
+	   (LAP ,(c:= tgt src)))
 	  ((back-end:= constant -1)
 	   (standard-overflow-branches! overflow? tgt)
-	   (LAP ,tgt " = - " ,src ";\n\t"))
+	   (LAP ,(c:= tgt (c:- src))))
 	  ((and (number? constant)
 		(power-of-2? (abs constant)))
 	   =>
 	   (lambda (power-of-two)
 	     (if overflow?
 		 (no-overflow-branches!))
-	     (LAP ,tgt
-		  ,(if (negative? constant)
-		       " = (- "
-		       " = ")
-		  "((" ,src " < 0) ? (RIGHT_SHIFT ((" ,src " + "
-		  ,(-1+ (abs constant)) "), " ,power-of-two "))"
-		  " : (RIGHT_SHIFT (" ,src " ," ,power-of-two ")))"
-		  ,(if (negative? constant)
-		       ")"
-		       "")
-		  ";\n\t")))
+	     (LAP ,(c:= tgt
+			(let ((shift
+			       (c:?: (c:< src 0)
+				     (c:ecall "RIGHT_SHIFT"
+					      (c:+ src (- (abs constant) 1))
+					      power-of-two)
+				     (c:ecall "RIGHT_SHIFT"
+					      src
+					      power-of-two))))
+			  (if (< constant 0)
+			      (c:- shift)
+			      shift))))))
 	  (else
 	   (standard-overflow-branches! overflow? tgt)
-	   (LAP ,tgt " = (FIXNUM_QUOTIENT (" ,src ", " ,(longify constant)
-		"));\n\t")))))
+	   (LAP ,(c:= tgt
+		      (c:ecall "FIXNUM_QUOTIENT" src (longify constant))))))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER
   fixnum-methods/2-args/register*constant
@@ -386,20 +365,29 @@ USA.
       (if overflow? (no-overflow-branches!))
       (cond ((back-end:= constant 0)
 	     (error "fixnum-remainder constant division by zero."))
-	    ((back-end:= constant 1) 
-	     (LAP ,tgt " = 0;\n\t"))
+	    ((back-end:= constant 1)
+	     (LAP ,(c:= tgt 0)))
 	    ((and (number? constant)
 		  (power-of-2? constant))
 	     =>
 	     (lambda (power-of-two)
-	       (LAP "{\n\t  long temp = (" ,src " & " ,(-1+ constant)
-		    "L);\n\t  "
-		    ,tgt " = ((" ,src " >= 0) ? temp : ((temp == 0) ? 0"
-		    " : (temp | (LEFT_SHIFT (-1L, " ,power-of-two
-		    ")))));\n\t}\n\t")))
+	       (LAP ,(c:brace-group
+		      (c:decl 'long 'temp
+			      (c:& src (c:cast 'long (- constant 1))))
+		      (c:= tgt
+			   (c:?: (c:>= src 0)
+				 'temp
+				 (c:== 'temp 0)
+				 0
+				 (c:\| 'temp
+				       (c:ecall "LEFT_SHIFT"
+						(c:cast 'long -1)
+						power-of-two))))))))
 	    (else
-	     (LAP ,tgt " = (FIXNUM_REMAINDER (" ,src ", " ,(longify constant)
-		  "));\n\t"))))))
+	     (LAP ,(c:= tgt
+			(c:ecall "FIXNUM_REMAINDER"
+				 src
+				 (longify constant)))))))))
 
 (define-arithmetic-method 'FIXNUM-LSH
   fixnum-methods/2-args/register*constant
@@ -407,38 +395,42 @@ USA.
     (cond (overflow? 
 	   (error "fixnum-lsh overflow what??"))
 	  ((back-end:= constant 0)
-	   (LAP ,tgt " = " ,src ";\n\t"))
+	   (LAP ,(c:= tgt src)))
 	  ((not (number? constant))
-	   (LAP ,tgt " = (FIXNUM_LSH (" ,src ", " ,constant "));\n\t"))
+	   (LAP ,(c:= tgt (c:ecall "FIXNUM_LSH" src constant))))
 	  ((positive? constant)
-	   (LAP ,tgt " = (LEFT_SHIFT (" ,src ", " ,constant "));\n\t"))
+	   (LAP ,(c:= tgt (c:ecall "LEFT_SHIFT" src constant))))
 	  (else
-	   (LAP "{\n\t  unsigned long temp = ((unsigned long) " ,src ");\n\t  "
-		,tgt " = ((long) (RIGHT_SHIFT_UNSIGNED (temp, " ,(- constant)
-		")));\n\t}\n\t")))))
+	   (LAP ,(c:= tgt
+		      (c:cast 'long
+			      (c:ecall "RIGHT_SHIFT_UNSIGNED"
+				       (c:cast 'ulong src)
+				       (- constant)))))))))
 
-(let-syntax
-    ((binary-fixnum
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let ((name (cadr form))
-	       (instr (caddr form)))
-	   `(DEFINE-ARITHMETIC-METHOD ',name
-	      FIXNUM-METHODS/2-ARGS/REGISTER*CONSTANT
-	      (LAMBDA (TGT SRC1 CONSTANT OVERFLOW?)
-		(IF OVERFLOW? (NO-OVERFLOW-BRANCHES!))
-		(LAP ,',tgt " = (" ,',src1 ,instr ,',(longify constant)
-		     ");\n\t"))))))))
-  (binary-fixnum FIXNUM-AND	" & ")
-  (binary-fixnum FIXNUM-OR	" | ")
-  (binary-fixnum FIXNUM-XOR	" ^ ")
-  (binary-fixnum FIXNUM-ANDC	" & ~ "))
+(define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args/register*constant
+  (lambda (tgt src1 constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:& src1 (longify constant))))))
+
+(define-arithmetic-method 'FIXNUM-OR fixnum-methods/2-args/register*constant
+  (lambda (tgt src1 constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:\| src1 (longify constant))))))
+
+(define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args/register*constant
+  (lambda (tgt src1 constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:^ src1 (longify constant))))))
+
+(define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args/register*constant
+  (lambda (tgt src1 constant overflow?)
+    (if overflow? (no-overflow-branches!))
+    (LAP ,(c:= tgt (c:&~ src1 (longify constant))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args/constant*register
   (lambda (tgt constant src2 overflow?)
     (if overflow? (no-overflow-branches!))
-    (LAP ,tgt " = (" ,(longify constant) " & ~ " ,src2 ");\n\t")))
+    (LAP ,(c:= tgt (c:&~ (longify constant) src2)))))
 
 ;;;; Predicates
 
@@ -455,55 +447,57 @@ USA.
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
   (compare (case predicate
-	     ((ZERO-FIXNUM?) " == ")
-	     ((NEGATIVE-FIXNUM?) " < ")
-	     ((POSITIVE-FIXNUM?) " > ")
+	     ((ZERO-FIXNUM?) c:==)
+	     ((NEGATIVE-FIXNUM?) c:<)
+	     ((POSITIVE-FIXNUM?) c:>)
 	     (else (error "unknown fixnum predicate" predicate)))
 	   (standard-source! source 'LONG)
-	   "0"))
+	   0))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
-  ((comparator predicate)
-   (fixnum-pred-2->cc predicate)
-   (standard-source! source1 'LONG)
-   (standard-source! source2 'LONG)))
+  (fix-compare-2 predicate
+		 (standard-source! source1 'LONG)
+		 (standard-source! source2 'LONG)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (REGISTER (? source))
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
-  ((comparator predicate)
-   (fixnum-pred-2->cc predicate)
-   (standard-source! source 'LONG)
-   (longify constant)))
+  (fix-compare-2 predicate
+		 (standard-source! source 'LONG)
+		 (longify constant)))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (REGISTER (? source)))
-  ((comparator predicate)
-   (fixnum-pred-2->cc predicate)
-   (longify constant)
-   (standard-source! source 'LONG)))
+  (fix-compare-2 predicate
+		 (longify constant)
+		 (standard-source! source 'LONG)))
  
-(define-integrable (comparator predicate)
-  (if (memq predicate '(UNSIGNED-LESS-THAN-FIXNUM?
-			UNSIGNED-GREATER-THAN-FIXNUM?))
-      compare/unsigned
-      compare))
-
-(define (fixnum-pred-2->cc predicate)
+(define (fix-compare-2 predicate src1 src2)
   (case predicate
-    ((EQUAL-FIXNUM?) " == ")
-    ((LESS-THAN-FIXNUM? UNSIGNED-LESS-THAN-FIXNUM?) " < ")
-    ((GREATER-THAN-FIXNUM? UNSIGNED-GREATER-THAN-FIXNUM?) " > ")
+    ((EQUAL-FIXNUM?)
+     (compare c:== src1 src2))
+    ((LESS-THAN-FIXNUM?)
+     (compare c:< src1 src2))
+    ((GREATER-THAN-FIXNUM?)
+     (compare c:> src1 src2))
+    ((UNSIGNED-LESS-THAN-FIXNUM?)
+     (compare c:<
+	      (c:cast 'ulong src1)
+	      (c:cast 'ulong src2)))
+    ((UNSIGNED-GREATER-THAN-FIXNUM?)
+     (compare c:>
+	      (c:cast 'ulong src1)
+	      (c:cast 'ulong src2)))
     (else
      (error "unknown fixnum predicate" predicate))))
 
 (define (longify constant)
   (if (number? constant)
-      (string-append (number->string constant) "L")
+      (c:cast 'long constant)
       constant))

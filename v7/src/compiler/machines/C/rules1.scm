@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.10 2003/02/14 18:28:02 cph Exp $
+$Id: rules1.scm,v 1.11 2006/10/01 05:38:08 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright 1993,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -47,7 +47,7 @@ USA.
   (let* ((datum (standard-source! datum 'SCHEME_OBJECT*))
 	 (type (standard-source! type 'ULONG))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_POINTER_OBJECT (" ,type ", " ,datum "));\n\t")))
+    (LAP ,(c:= target (c:make-pointer-object type datum)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -55,21 +55,21 @@ USA.
   (let* ((datum (standard-source! datum 'SCHEME_OBJECT*))
 	 (type (standard-source! type 'ULONG))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_OBJECT (" ,type ", " ,datum "));\n\t")))
+    (LAP ,(c:= target (c:make-object type datum)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
   (let* ((datum (standard-source! source 'SCHEME_OBJECT*))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_POINTER_OBJECT (" ,type ", " ,datum "));\n\t")))
+    (LAP ,(c:= target (c:make-pointer-object type datum)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type)) (REGISTER (? source))))
   (let* ((datum (standard-source! source 'ULONG))
 	 (target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_OBJECT (" ,type ", " ,datum "));\n\t")))
+    (LAP ,(c:= target (c:make-object type datum)))))
 
 (define (standard-unary-conversion source source-type target target-type
 				   conversion)
@@ -85,13 +85,13 @@ USA.
     (conversion source1 source2 target)))
 
 (define (object->type source target)
-  (LAP ,target " = (OBJECT_TYPE (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:object-type source))))
 
 (define (object->datum source target)
-  (LAP ,target " = (OBJECT_DATUM (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:object-datum source))))
 
 (define (object->address source target)
-  (LAP ,target " = (OBJECT_ADDRESS (" ,source "));\n\t"))
+  (LAP ,(c:= target (c:object-address source))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
@@ -119,7 +119,7 @@ USA.
    index 'LONG
    target 'SCHEME_OBJECT*
    (lambda (base index target)
-     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+     (LAP ,(c:= target (c:aptr base index))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -128,7 +128,7 @@ USA.
   (standard-unary-conversion
    source 'SCHEME_OBJECT* target 'SCHEME_OBJECT*
    (lambda (source target)
-     (LAP ,target " = &" ,source "[" ,offset "];\n\t"))))
+     (LAP ,(c:= target (c:aptr source offset))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -139,7 +139,7 @@ USA.
    index 'LONG
    target 'CHAR*
    (lambda (base index target)
-     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+     (LAP ,(c:= target (c:aptr base index))))))
 
 ;; This rule is not written in the obvious way (commented out) because
 ;; it is used by the code generator to bump closures.  Sometimes the
@@ -155,12 +155,12 @@ USA.
   (standard-unary-conversion
    source 'CHAR* target 'CHAR*
    (lambda (source target)
-     (LAP ,target " = &" ,source "[" ,offset "];\n\t")))
+     (LAP ,(c:= target (c:aptr source offset)))))
   |#
   (standard-unary-conversion
    source 'LONG target 'ULONG
    (lambda (source target)
-     (LAP ,target " = ((unsigned long) (" ,source " + " ,offset "));\n\t"))))
+     (LAP ,(c:= target (c:cast 'ulong (c:+ source offset)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -171,7 +171,7 @@ USA.
    index 'LONG
    target 'DOUBLE*
    (lambda (base index target)
-     (LAP ,target " = &" ,base "[" ,index "];\n\t"))))
+     (LAP ,(c:= target (c:aptr base index))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -180,7 +180,7 @@ USA.
   (standard-unary-conversion
    source 'DOUBLE* target 'DOUBLE*
    (lambda (source target)
-     (LAP ,target " = &" ,source "[" ,offset "];\n\t"))))
+     (LAP ,(c:= target (c:aptr source offset))))))
 
 ;;;; Loading of Constants
 
@@ -188,28 +188,26 @@ USA.
   ;; load a machine constant
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? source)))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = ((SCHEME_OBJECT) " ,source ");\n\t")))
+    (LAP ,(c:= target (c:cast 'sobj source)))))
 
 (define-rule statement
   ;; load a Scheme constant
   (ASSIGN (REGISTER (? target)) (CONSTANT (? source)))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = current_block[" ,(object->offset source) "];\n\t")))
+    (LAP ,(c:= target (c:cref (object->offset source))))))
 
 (define-rule statement
   ;; load the type part of a Scheme constant
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (CONSTANT (? constant))))
   (let ((target (standard-target! target 'ULONG)))
-    (LAP ,target " = (OBJECT_TYPE (current_block["
-	 ,(object->offset constant) "]));\n\t")))
+    (LAP ,(c:= target (c:object-type (c:cref (object->offset constant)))))))
 
 (define-rule statement
   ;; load the datum part of a Scheme constant
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
   (QUALIFIER (non-pointer-object? constant))
   (let ((target (standard-target! target 'ULONG)))
-    (LAP ,target " = (OBJECT_DATUM (current_block["
-	 ,(object->offset constant) "]));\n\t")))
+    (LAP ,(c:= target (c:object-datum (c:cref (object->offset constant)))))))
 
 (define-rule statement
   ;; load a synthesized constant
@@ -217,33 +215,33 @@ USA.
 	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
 			    (MACHINE-CONSTANT (? datum))))
   (let((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_OBJECT (" ,type ", " ,datum "));\n\t")))
+    (LAP ,(c:= target (c:make-object type datum)))))
 
 (define-rule statement
   ;; load the address of a variable reference cache
   (ASSIGN (REGISTER (? target)) (VARIABLE-CACHE (? name)))
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,target " = ((SCHEME_OBJECT *) current_block["
-	 ,(free-reference->offset name) "]);\n\t")))
+    (LAP ,(c:= target
+	       (c:cast 'sobj* (c:cref (free-reference->offset name)))))))
 
 (define-rule statement
   ;; load the address of an assignment cache
   (ASSIGN (REGISTER (? target)) (ASSIGNMENT-CACHE (? name)))
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,target " = ((SCHEME_OBJECT *) current_block["
-	 ,(free-assignment->offset name) "]);\n\t")))
+    (LAP ,(c:= target
+	       (c:cast 'sobj* (c:cref (free-assignment->offset name)))))))
 
 (define-rule statement
   ;; load the address of a procedure's entry point
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,target " = &current_block[" ,(label->offset label) "];\n\t")))
+    (LAP ,(c:= target (c:cptr (label->offset label))))))
 
 (define-rule statement
   ;; load the address of a continuation
   (ASSIGN (REGISTER (? target)) (ENTRY:CONTINUATION (? label)))
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,target " = &current_block[" ,(label->offset label) "];\n\t")))
+    (LAP ,(c:= target (c:cptr (label->offset label))))))
 
 (define-rule statement
   ;; load a procedure object
@@ -251,8 +249,8 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:PROCEDURE (? label))))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_POINTER_OBJECT (" ,type ", &current_block["
-	 ,(label->offset label) "]));\n\t")))
+    (LAP ,(c:= target
+	       (c:make-pointer-object type (c:cptr (label->offset label)))))))
 
 (define-rule statement
   ;; load a return address object
@@ -260,8 +258,8 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(ENTRY:CONTINUATION (? label))))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = (MAKE_POINTER_OBJECT (" ,type ", &current_block["
-	 ,(label->offset label) "]));\n\t")))
+    (LAP ,(c:= target
+	       (c:make-pointer-object type (c:cptr (label->offset label)))))))
 
 ;;;; Transfers from memory
 
@@ -271,13 +269,13 @@ USA.
   (standard-unary-conversion
    address 'SCHEME_OBJECT* target 'SCHEME_OBJECT
    (lambda (address target)
-     (LAP ,target " = " ,address "[" ,offset "];\n\t"))))
+     (LAP ,(c:= target (c:aref address offset))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (POST-INCREMENT (REGISTER (? rsp)) 1))
   (QUALIFIER (= rsp regnum:stack-pointer))
   (let ((target (standard-target! target 'SCHEME_OBJECT)))
-    (LAP ,target " = *Rsp++;\n\t")))
+    (LAP ,(c:= target (c:pop)))))
 
 ;;;; Transfers to memory
 
@@ -288,7 +286,7 @@ USA.
   (QUALIFIER (word-register? source))
   (let* ((source (standard-source! source 'SCHEME_OBJECT))
 	 (address (standard-source! address 'SCHEME_OBJECT*)))
-    (LAP ,address "[" ,offset "] = " ,source ";\n\t")))
+    (LAP ,(c:= (c:aref address offset) source))))
 
 (define-rule statement
   ;; Push an object register on the heap
@@ -297,7 +295,7 @@ USA.
   (QUALIFIER (and (word-register? source)
 		  (= rfree regnum:free)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (LAP "*Rhp++ = " ,source ";\n\t")))
+    (LAP ,(c:= (c:* (c:postinc (c:free-reg))) source))))
 
 (define-rule statement
   ;; Push an object register on the stack
@@ -306,7 +304,7 @@ USA.
   (QUALIFIER (and (word-register? source)
 		  (= rsp regnum:stack-pointer)))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
-    (LAP "*--Rsp = " ,source ";\n\t")))
+    (LAP ,(c:push source))))
 
 ;; Cheaper, common patterns.
 
@@ -314,20 +312,20 @@ USA.
   (ASSIGN (OFFSET (REGISTER (? address)) (MACHINE-CONSTANT (? offset)))
 	  (MACHINE-CONSTANT 0))
   (let ((address (standard-source! address 'SCHEME_OBJECT*)))
-    (LAP ,address "[" ,offset "] = ((SCHEME_OBJECT) 0);\n\t")))
+    (LAP ,(c:= (c:aref address offset) (c:cast 'sobj 0)))))
 
 (define-rule statement
   ; Push NIL (or whatever is represented by a machine 0) on heap
   (ASSIGN (POST-INCREMENT (REGISTER (? rfree)) 1) (MACHINE-CONSTANT 0))
   (QUALIFIER (= rfree regnum:free))
-  (LAP "*Rhp++ = ((SCHEME_OBJECT) 0);\n\t"))
+    (LAP ,(c:= (c:* (c:postinc (c:free-reg))) (c:cast 'sobj 0))))
 
 (define-rule statement
   ;; Push 0 on the stack
   (ASSIGN (PRE-INCREMENT (REGISTER (? rsp)) -1)
 	  (MACHINE-CONSTANT (? const)))
   (QUALIFIER (= rsp regnum:stack-pointer))
-  (LAP "*--Rsp = ((SCHEME_OBJECT) " ,const ");\n\t"))
+  (LAP ,(c:push (c:cast 'sobj const))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
@@ -339,7 +337,7 @@ USA.
   (standard-unary-conversion
    address 'SCHEME_OBJECT* target 'ULONG
    (lambda (address target)
-     (LAP ,target " = (CHAR_TO_ASCII (" ,address "[" ,offset "]));\n\t"))))
+     (LAP ,(c:= target (c:ecall "CHAR_TO_ASCII" (c:aref address offset)))))))
 
 (define-rule statement
   ;; load ASCII byte from memory
@@ -348,8 +346,8 @@ USA.
 		       (MACHINE-CONSTANT (? offset))))
   (standard-unary-conversion address 'CHAR* target 'ULONG
     (lambda (address target)
-      (LAP ,target " = ((unsigned long) (((unsigned char *) " ,address ")["
-	   ,offset "]));\n\t"))))
+      (LAP ,(c:= target
+		 (c:cast 'ulong (c:aref (c:cast 'uchar* address) offset)))))))
 
 (define-rule statement
   ;; convert char object to ASCII byte
@@ -357,7 +355,7 @@ USA.
 	  (CHAR->ASCII (REGISTER (? source))))
   (standard-unary-conversion source 'SCHEME_OBJECT target 'ULONG
     (lambda (source target)
-      (LAP ,target " = (CHAR_TO_ASCII (" ,source "));\n\t"))))
+      (LAP ,(c:= target (c:ecall "CHAR_TO_ASCII" source))))))
 
 (define-rule statement
   ;; store null byte in memory
@@ -365,7 +363,7 @@ USA.
 		       (MACHINE-CONSTANT (? offset)))
 	  (CHAR->ASCII (CONSTANT #\NUL)))
   (let ((address (standard-source! address 'CHAR*)))
-    (LAP ,address "[" ,offset "] = '\\0';\n\t")))
+    (LAP ,(c:= (c:aref address offset) "'\\0'"))))
 
 (define-rule statement
   ;; store ASCII byte in memory
@@ -374,7 +372,7 @@ USA.
 	  (REGISTER (? source)))
   (let ((address (standard-source! address 'CHAR*))
 	(source (standard-source! source 'ULONG)))
-    (LAP ,address "[" ,offset "] = ((char) " ,source ");\n\t")))
+    (LAP ,(c:= (c:aref address offset) (c:cast 'char source)))))
 
 (define-rule statement
   ;; convert char object to ASCII byte and store it in memory
@@ -384,5 +382,5 @@ USA.
 	  (CHAR->ASCII (REGISTER (? source))))
   (let ((address (standard-source! address 'CHAR*))
 	(source (standard-source! source 'SCHEME_OBJECT)))
-    (LAP ,address "[" ,offset "] = ((char) (CHAR_TO_ASCII (" ,source
-	 ")));\n\t")))
+    (LAP ,(c:= (c:aref address offset)
+	       (c:cast 'char (c:ecall "CHAR_TO_ASCII" source))))))

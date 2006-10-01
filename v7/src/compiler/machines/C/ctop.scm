@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.17 2006/09/17 12:10:04 gjr Exp $
+$Id: ctop.scm,v 1.18 2006/10/01 05:37:56 cph Exp $
 
-Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
+Copyright 1993,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +43,7 @@ USA.
   (let ((pair (vector-ref object 1)))
     (call-with-output-file pathname
       (lambda (port)
-	(write-string (cdr pair) port)))
+	(c:write-group (cdr pair) port)))
     (if compiler:invoke-c-compiler? (c-compile pathname))))
 
 (define (compile-data-from-file obj pathname)

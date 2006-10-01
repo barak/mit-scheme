@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.9 2003/02/14 18:28:02 cph Exp $
+$Id: rulflo.scm,v 1.10 2006/10/01 05:38:38 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,14 +34,14 @@ USA.
 	  (FLOAT->OBJECT (REGISTER (? source))))
   (let ((source (standard-source! source 'DOUBLE)))
     (let ((target (standard-target! target 'SCHEME_OBJECT)))
-      (LAP "INLINE_DOUBLE_TO_FLONUM (" ,source ", " ,target ");\n\t"))))
+      (LAP ,(c:scall "INLINE_DOUBLE_TO_FLONUM" source target)))))
 
 (define-rule statement
   ;; convert a flonum object to a floating-point number
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (REGISTER (? source))))
   (let ((source (standard-source! source 'SCHEME_OBJECT)))
     (let ((target (standard-target! target 'DOUBLE)))
-      (LAP ,target " = (FLONUM_TO_DOUBLE (" ,source "));\n\t"))))
+      (LAP ,(c:= target (c:ecall "FLONUM_TO_DOUBLE" source))))))
 
 ;;;; Floating-point vector support
 
@@ -53,7 +53,7 @@ USA.
    base 'DOUBLE*
    target 'DOUBLE
    (lambda (base target)
-     (LAP ,target " = " ,base "[" ,offset "];\n\t"))))
+     (LAP ,(c:= target (c:aref base offset))))))
   
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (REGISTER (? base))
@@ -61,7 +61,7 @@ USA.
 	  (REGISTER (? source)))
   (let ((base (standard-source! base 'DOUBLE*))
 	(source (standard-source! source 'DOUBLE)))
-    (LAP ,base "[" ,offset "] = " ,source ";\n\t")))
+    (LAP ,(c:= (c:aref base offset) source))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -71,7 +71,7 @@ USA.
    index 'LONG
    target 'DOUBLE
    (lambda (base index target)
-     (LAP ,target " = " ,base "[" ,index "];\n\t"))))
+     (LAP ,(c:= target (c:aref base index))))))
 
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (REGISTER (? base)) (REGISTER (? index)))
@@ -79,7 +79,7 @@ USA.
   (let ((base (standard-source! base 'DOUBLE*))
 	(source (standard-source! source 'DOUBLE))
 	(index (standard-source! index 'LONG)))
-    (LAP ,base "[" ,index "] = " ,source ";\n\t")))
+     (LAP ,(c:= (c:aref base index) source))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -90,8 +90,9 @@ USA.
    base 'SCHEME_OBJECT*
    target 'DOUBLE
    (lambda (base target)
-     (LAP ,target
-	  " = ((double *) &" ,base "[" ,w-offset "])[" ,f-offset "];\n\t"))))
+     (LAP ,(c:= target
+		(c:aref (c:cast 'double* (c:aptr base w-offset))
+			f-offset))))))
 
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
@@ -100,8 +101,9 @@ USA.
 	  (REGISTER (? source)))
   (let ((base (standard-source! base 'SCHEME_OBJECT*))
 	(source (standard-source! source 'DOUBLE)))
-    (LAP "((double *) &" ,base "[" ,w-offset "])[" ,f-offset "] = "
-	 ,source ";\n\t")))
+    (LAP ,(c:= (c:aref (c:cast 'double* (c:aptr base w-offset))
+		       f-offset)
+	       source))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -113,8 +115,9 @@ USA.
    index 'LONG
    target 'DOUBLE
    (lambda (base index target)
-     (LAP ,target
-	  " = ((double *) &" ,base "[" ,w-offset "])[" ,index "];\n\t"))))
+     (LAP ,(c:= target
+		(c:aref (c:cast 'double* (c:aptr base w-offset))
+			index))))))
 
 (define-rule statement
   (ASSIGN (FLOAT-OFFSET (OFFSET-ADDRESS (REGISTER (? base))
@@ -124,8 +127,9 @@ USA.
   (let ((base (standard-source! base 'SCHEME_OBJECT*))
 	(index (standard-source! index 'LONG))
 	(source (standard-source! source 'DOUBLE)))
-    (LAP "((double *) &" ,base "[" ,w-offset "])[" ,index "] = "
-	 ,source ";\n\t")))
+    (LAP ,(c:= (c:aref (c:cast 'double* (c:aptr base w-offset))
+		       index)
+	       source))))
 
 ;;;; Flonum Arithmetic
 
@@ -146,18 +150,20 @@ USA.
 
 (define-arithmetic-method 'FLONUM-ABS flonum-methods/1-arg
   (lambda (target source)
-    (LAP ,target " =  ((" ,source " >= 0.) ? " ,source " : (-" ,source
-	 "));\n\t")))
+    (LAP ,(c:= target
+	       (c:?: (c:< source 0.)
+		     (c:- source)
+		     source)))))
 
 (define-arithmetic-method 'FLONUM-NEGATE flonum-methods/1-arg
   (lambda (target source)
-    (LAP ,target " = (- " ,source ");\n\t")))
+    (LAP ,(c:= target (c:- source)))))
 
 (let ((define-use-function
 	(lambda (name function)
 	  (define-arithmetic-method name flonum-methods/1-arg
 	    (lambda (target source)
-	      (LAP ,target " = (" ,function " (" ,source "));\n\t"))))))
+	      (LAP ,(c:= target (c:ecall function source))))))))
   (define-use-function 'FLONUM-ACOS "DOUBLE_ACOS")
   (define-use-function 'FLONUM-ASIN "DOUBLE_ASIN")
   (define-use-function 'FLONUM-ATAN "DOUBLE_ATAN")
@@ -192,33 +198,34 @@ USA.
 (define flonum-methods/2-args
   (list 'FLONUM-METHODS/2-ARGS))
 
-(let-syntax
-    ((define-flonum-operation
-       (sc-macro-transformer
-	(lambda (form environment)
-	  environment
-	  `(DEFINE-ARITHMETIC-METHOD ',(cadr form) FLONUM-METHODS/2-ARGS
-	     (LAMBDA (TARGET SOURCE1 SOURCE2)
-	       (LAP ,',target " = (" ,',source1 ,(caddr form) ,',source2
-		    ");\n\t")))))))
-  (define-flonum-operation flonum-add " + ")
-  (define-flonum-operation flonum-subtract " - ")
-  (define-flonum-operation flonum-multiply " * ")
-  (define-flonum-operation flonum-divide " / "))
+(define-arithmetic-method 'FLONUM-ADD flonum-methods/2-args
+  (lambda (target source1 source2)
+    (LAP ,(c:= target (c:+ source1 source2)))))
+
+(define-arithmetic-method 'FLONUM-SUBTRACT flonum-methods/2-args
+  (lambda (target source1 source2)
+    (LAP ,(c:= target (c:- source1 source2)))))
+
+(define-arithmetic-method 'FLONUM-MULTIPLY flonum-methods/2-args
+  (lambda (target source1 source2)
+    (LAP ,(c:= target (c:* source1 source2)))))
+
+(define-arithmetic-method 'FLONUM-DIVIDE flonum-methods/2-args
+  (lambda (target source1 source2)
+    (LAP ,(c:= target (c:/ source1 source2)))))
 
 (define-arithmetic-method 'FLONUM-ATAN2 flonum-methods/2-args
   (lambda (target source1 source2)
-    (LAP ,target " = (DOUBLE_ATAN2 (" ,source1 ", " ,source2
-	 "));\n\t")))
+    (LAP ,(c:= target (c:ecall "DOUBLE_ATAN2" source1 source2)))))
 
 ;;;; Flonum Predicates
 
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate) (REGISTER (? source)))
   (compare (case predicate
-	     ((FLONUM-ZERO?) " == ")
-	     ((FLONUM-NEGATIVE?) " < ")
-	     ((FLONUM-POSITIVE?) " > ")
+	     ((FLONUM-ZERO?) c:==)
+	     ((FLONUM-NEGATIVE?) c:<)
+	     ((FLONUM-POSITIVE?) c:>)
 	     (else (error "unknown flonum predicate" predicate)))
 	   (standard-source! source 'DOUBLE)
 	   "0.0"))
@@ -228,9 +235,9 @@ USA.
 		      (REGISTER (? source1))
 		      (REGISTER (? source2)))
   (compare (case predicate
-	     ((FLONUM-EQUAL?) " == ")
-	     ((FLONUM-LESS?) " < ")
-	     ((FLONUM-GREATER?) " > ")
+	     ((FLONUM-EQUAL?) c:==)
+	     ((FLONUM-LESS?) c:<)
+	     ((FLONUM-GREATER?) c:>)
 	     (else (error "unknown flonum predicate" predicate)))
 	   (standard-source! source1 'DOUBLE)
 	   (standard-source! source2 'DOUBLE)))

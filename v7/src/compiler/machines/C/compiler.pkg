@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.17 2006/09/16 11:19:09 gjr Exp $
+$Id: compiler.pkg,v 1.18 2006/10/01 05:37:44 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002, 2006 Massachusetts Institute of Technology
+Copyright 1993,1994,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -706,6 +706,7 @@ USA.
 	  lap:make-unconditional-branch)
   (export (compiler top-level)
 	  *block-associations*
+	  c:write-group
 	  current-register-list
 	  fake-compiled-block-name
 	  free-assignments
