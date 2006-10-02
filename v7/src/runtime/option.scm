@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.49 2006/09/16 11:19:09 gjr Exp $
+$Id: option.scm,v 14.50 2006/10/02 04:18:06 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
@@ -87,8 +87,8 @@ USA.
       (standard-load-options)))
 
 (define (standard-load-options)
-  (or (library-file? "options/optiondb")
-      (library-file? "runtime/optiondb") ; for C back end
+  (or (library-file? "runtime/optiondb") ; for C back end
+      (library-file? "options/optiondb")
       (error "Cannot locate a load-option database")
       "optiondb"))
 
@@ -97,26 +97,10 @@ USA.
    (merge-pathnames library-internal-path (library-directory-pathname ""))))
 
 (define (confirm-pathname pathname)
-  (let loop ((file-types load/default-types))
-    (and (pair? file-types)
-	 (let ((full-pathname (pathname-new-type pathname (caar file-types))))
-	   (cond ((file-exists? full-pathname)
-		  ; not FULL-PATHNAME    
-		  pathname)
-		 ((not (caar file-types))
-		  (let ((prim
-			 (ucode-primitive initialize-c-compiled-block 1))
-			(d (pathname-directory pathname)))
-		    (if (and (implemented-primitive-procedure? prim)
-			     (pair? d)
-			     (prim (string-append
-				    (car (last-pair d))
-				    "_"
-				    (pathname-name pathname))))
-			pathname
-			(loop (cdr file-types)))))
-		 (else
-		  (loop (cdr file-types))))))))
+  (receive (pathname* loader)
+      (search-types-in-order pathname load/default-types)
+    pathname*
+    (and loader pathname)))
 
 (define loaded-options '())
 (define *options* '())			; Current options.

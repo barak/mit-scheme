@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.77 2006/09/16 11:19:09 gjr Exp $
+$Id: load.scm,v 14.78 2006/10/02 04:18:01 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -194,38 +194,21 @@ USA.
 	     (if (not pathname)
 		 (fail)
 		 (values pathname loader)))))))
-
-(define (try-built-in pathname wrapper)
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1))
-	(d (pathname-directory pathname)))
-    (if (or (not (implemented-primitive-procedure? prim))
-	    (not (pair? d)))
-	(values #f #f)
-	(let* ((name (string-append (car (last-pair d))
-				    "_"
-				    (pathname-name pathname)))
-	       (value (prim name)))
-	  (if (not value)
-	      (values #f #f)
-	      (values pathname (wrapper value)))))))
-
+
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
     (cond ((not (pair? types))
 	   (values #f #f))
-	  ((caar types)
+	  ((not (caar types))
+	   (let ((value (try-built-in pathname)))
+	     (if value
+		 (values pathname ((cadar types) value))
+		 (loop (cdr types)))))
+	  (else
 	   (let ((pathname (pathname-new-type pathname (caar types))))
 	     (if (file-exists? pathname)
 		 (values pathname (cadar types))
-		 (loop (cdr types)))))
-	  (else
-	   (call-with-values
-	       (lambda ()
-		 (try-built-in pathname (cadar types)))
-	     (lambda (pathname loader)
-	       (if pathname
-		   (values pathname loader)
-		   (loop (cdr types)))))))))
+		 (loop (cdr types))))))))
 
 ;; This always considers a built-in to be the newest.
 
@@ -237,28 +220,30 @@ USA.
     (cond ((not (pair? types))
 	   (values latest-pathname latest-loader))
 	  ((not (caar types))
-	   (call-with-values
-	       (lambda ()
-		 (try-built-in pathname (cadar types)))
-	     (lambda (pathname* loader*)
-	       (if pathname*
-		   (values pathname* loader*)
-		   (loop (cdr types)
-			 latest-pathname
-			 latest-loader
-			 latest-time)))))
+	   (let ((value (try-built-in pathname)))
+	     (if value
+		 (values pathname ((cadar types) value))
+		 (loop (cdr types)
+		       latest-pathname
+		       latest-loader
+		       latest-time))))
 	  (else
-	   (let ((pathname (pathname-new-type pathname (caar types)))
-		 (skip
-		  (lambda ()
-		    (loop (cdr types)
-			  latest-pathname
-			  latest-loader
-			  latest-time))))
+	   (let ((pathname (pathname-new-type pathname (caar types))))
 	     (let ((time (file-modification-time-indirect pathname)))
 	       (if (and time (> time latest-time))
 		   (loop (cdr types) pathname (cadar types) time)
-		   (skip))))))))
+		   (loop (cdr types)
+			 latest-pathname
+			 latest-loader
+			 latest-time))))))))
+
+(define (try-built-in pathname)
+  (let ((d (pathname-directory pathname)))
+    (and (pair? d)
+	 ((ucode-primitive initialize-c-compiled-block 1)
+	  (string-append (last d)
+			 "_"
+			 (pathname-name pathname))))))
 
 (define (load/internal pathname environment purify? load-noisily?)
   (let* ((port (open-input-file pathname))

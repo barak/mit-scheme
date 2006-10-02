@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.595 2006/09/16 11:19:09 gjr Exp $
+$Id: runtime.pkg,v 14.596 2006/10/02 04:18:15 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -2395,6 +2395,8 @@ USA.
 	  set-command-line-parser!
 	  simple-command-line-parser
 	  with-eval-unit)
+  (export (runtime options)
+	  search-types-in-order)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
