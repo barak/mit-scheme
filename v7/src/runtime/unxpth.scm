@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.29 2004/02/16 05:39:37 cph Exp $
+$Id: unxpth.scm,v 14.30 2006/10/02 04:16:48 cph Exp $
 
 Copyright 1987,1988,1989,1991,1994,1995 Massachusetts Institute of Technology
-Copyright 1996,1997,2001,2004 Massachusetts Institute of Technology
+Copyright 1996,1997,2001,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -206,10 +206,9 @@ USA.
        (error:illegal-pathname-component device "device"))
    (cond ((not directory)
 	  directory)
-	 ((and (list? directory)
-	       (not (null? directory))
+	 ((and (pair? directory)
 	       (memq (car directory) '(RELATIVE ABSOLUTE))
-	       (for-all? (cdr directory)
+	       (list-of-type? (cdr directory)
 		 (lambda (element)
 		   (if (string? element)
 		       (not (string-null? element))
