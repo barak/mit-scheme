@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.41 2006/10/04 05:51:55 savannah-arthur Exp $
+$Id: genio.scm,v 1.42 2006/10/04 19:02:17 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -532,9 +532,9 @@ USA.
       (initialize-name-map sizer)
       (initialize-name-map normalizer)
       (initialize-name-map denormalizer)))
-  (set! binary-decoder (name->decoder 'ISO-8859-1))
-  (set! binary-encoder (name->encoder 'ISO-8859-1))
-  (set! binary-sizer (name->sizer 'ISO-8859-1))
+  (set! binary-decoder (name->decoder 'BINARY))
+  (set! binary-encoder (name->encoder 'BINARY))
+  (set! binary-sizer (name->sizer 'BINARY))
   (set! binary-normalizer (name->normalizer 'BINARY))
   (set! binary-denormalizer (name->denormalizer 'BINARY))
   unspecific)
@@ -675,7 +675,7 @@ USA.
   (fix:- (input-buffer-end ib) (input-buffer-start ib)))
 
 (define (input-buffer-encoded-character-size ib char)
-  ((input-buffer-compute-encoded-character-size ib) char))
+  ((input-buffer-compute-encoded-character-size ib) ib char))
 
 (define (read-next-char ib)
   ((input-buffer-normalize ib) ib))
@@ -762,6 +762,9 @@ USA.
 (define (input-buffer-free-bytes ib)
   (fix:- (input-buffer-end ib)
 	 (input-buffer-start ib)))
+
+(define (input-buffer-using-binary-normalizer? ib)
+  (eq? (input-buffer-normalize ib) binary-normalizer))
 
 (define (read-substring:wide-string ib string start end)
   (let ((v (wide-string-contents string)))
@@ -818,9 +821,6 @@ USA.
 (define (input-buffer-in-8-bit-mode? ib)
   (and (eq? (input-buffer-decode ib) binary-decoder)
        (eq? (input-buffer-normalize ib) binary-normalizer)))
-
-(define (input-buffer-using-binary-normalizer? ib)
-  (eq? (input-buffer-normalize ib) binary-normalizer))
 
 (define (read-to-8-bit ib string start end)
   (let ((n
@@ -937,12 +937,12 @@ USA.
 		  (else (fix:+ column 1))))))
 	 #t)))
 
-(define (output-buffer-in-8-bit-mode? ib)
-  (and (eq? (output-buffer-encode ib) binary-encoder)
-       (eq? (output-buffer-denormalize ib) binary-denormalizer)))
+(define (output-buffer-in-8-bit-mode? ob)
+  (and (eq? (output-buffer-encode ob) binary-encoder)
+       (eq? (output-buffer-denormalize ob) binary-denormalizer)))
 
-(define (output-buffer-using-binary-denormalizer? ib)
-  (eq? (output-buffer-denormalize ib) binary-denormalizer))
+(define (output-buffer-using-binary-denormalizer? ob)
+  (eq? (output-buffer-denormalize ob) binary-denormalizer))
 
 (define (encode-char ob char)
   (set-output-buffer-start!
@@ -1035,7 +1035,9 @@ USA.
     1))
 
 (define-sizer 'ISO-8859-1
-  (lambda (cp) 1))
+  (lambda (ib cp)
+    ib cp
+    1))
 
 (define-decoder-alias 'BINARY 'ISO-8859-1)
 (define-encoder-alias 'BINARY 'ISO-8859-1)
@@ -1068,9 +1070,7 @@ USA.
 		(RECEIVE (LHS RHS) (REVERSE-ISO-8859-MAP ,start ',code-points)
 		  (LAMBDA (OB CP)
 		    (ENCODE-8-BIT OB CP ,start LHS RHS))))
-	      (DEFINE-SIZER ',name
-		  (LAMBDA (CP)
-		    (SIZE-8-BIT CP)))))
+	      (DEFINE-SIZER-ALIAS ',name 'ISO-8859-1)))
 	 (ill-formed-syntax form)))))
 
 (define (decode-8-bit ib table)
@@ -1106,9 +1106,6 @@ USA.
     (let ((lhs (make-vector n))
 	  (rhs (make-vector-8b n)))
       (do ((alist (sort (let loop ((code-points code-points) (i start))
-
-(define (size-iso-8859 cp)
-  1)
 			  (if (pair? code-points)
 			      (if (car code-points)
 				  (cons (cons (car code-points) i)
@@ -1460,14 +1457,6 @@ USA.
   #x0160 #x0143 #x0145 #x00d3 #x014c #x00d5 #x00d6 #x00d7
   #x0172 #x0141 #x015a #x016a #x00dc #x017b #x017d #x00df
   #x0105 #x012f #x0101 #x0107 #x00e4 #x00e5 #x0119 #x0113
-(define-sizer 'UTF-8
-  (lambda (cp)
-    (cond ((fix:< cp #x00000080) 1)
-	  ((fix:< cp #x00000800) 2)
-	  ((fix:< cp #x00010000) 3)
-	  ((fix:< cp #x00110000) 4)
-	  (else (error:char-encoding ob cp)))))
-
   #x010d #x00e9 #x017a #x0117 #x0123 #x0137 #x012b #x013c
   #x0161 #x0144 #x0146 #x00f3 #x014d #x00f5 #x00f6 #x00f7
   #x0173 #x0142 #x015b #x016b #x00fc #x017c #x017e #x02d9)
@@ -1643,6 +1632,14 @@ USA.
 	    (else
 	     (error:char-encoding ob cp))))))
 
+(define-sizer 'UTF-8
+  (lambda (ib cp)
+    (cond ((fix:< cp #x00000080) 1)
+	  ((fix:< cp #x00000800) 2)
+	  ((fix:< cp #x00010000) 3)
+	  ((fix:< cp #x00110000) 4)
+	  (else (error:char-encoding ib cp)))))
+
 (define-integrable (get-byte bv base offset)
   (vector-8b-ref bv (fix:+ base offset)))
 
@@ -1659,22 +1656,12 @@ USA.
   (or (fix:= (fix:and #xF800 n) #xD800)
       (fix:= (fix:and #xFFFE n) #xFFFE)))
 
-(let ((alias
-       (lambda ()
-	 (if (host-big-endian?)
-	     'UTF-16BE
-	     'UTF-16LE))))
+(let ((alias (lambda () (if (host-big-endian?) 'UTF-16BE 'UTF-16LE))))
   (define-decoder-alias 'UTF-16 alias)
-  (define-encoder-alias 'UTF-16 alias)
-  (define-sizer-alias 'UTF-16 alias))
+  (define-encoder-alias 'UTF-16 alias))
 
-(define-decoder 'UTF-16BE
-  (lambda (ib)
-    (decode-utf-16 ib be-bytes->digit16)))
-
-(define-decoder 'UTF-16LE
-  (lambda (ib)
-    (decode-utf-16 ib le-bytes->digit16)))
+(define-decoder 'UTF-16BE (lambda (ib) (decode-utf-16 ib be-bytes->digit16)))
+(define-decoder 'UTF-16LE (lambda (ib) (decode-utf-16 ib le-bytes->digit16)))
 
 (define-integrable (decode-utf-16 ib combine)
 
@@ -1704,17 +1691,9 @@ USA.
   (lambda (ob cp)
     (encode-utf-16 ob cp high-byte low-byte)))
 
-(define-sizer 'UTF-16BE
-  (lambda (cp)
-    (size-utf-16 cp)))
-
 (define-encoder 'UTF-16LE
   (lambda (ob cp)
     (encode-utf-16 ob cp low-byte high-byte)))
-
-(define-sizer 'UTF-16LE
-  (lambda (cp)
-    (size-utf-16 cp)))
 
 (define-integrable (encode-utf-16 ob cp first-byte second-byte)
   (let ((bv (output-buffer-bytes ob))
@@ -1734,10 +1713,13 @@ USA.
 	  (else
 	   (error:char-encoding ob cp)))))
 
-(define-integrable (size-utf-16 cp)
-  (cond ((fix:< cp #x10000) 2)
-	((fix:< cp #x110000) 4)
-	(else (error:char-encoding ob cp))))
+(define-sizer 'UTF-16
+  (lambda (ib cp)
+    (cond ((fix:< cp #x00010000) 2)
+	  ((fix:< cp #x00110000) 4)
+	  (else (error:char-encoding ib cp)))))
+(define-sizer-alias 'UTF-16BE 'UTF-16)
+(define-sizer-alias 'UTF-16LE 'UTF-16)
 
 (define-integrable (be-bytes->digit16 b0 b1) (fix:or (fix:lsh b0 8) b1))
 (define-integrable (le-bytes->digit16 b0 b1) (fix:or b0 (fix:lsh b1 8)))
@@ -1757,8 +1739,7 @@ USA.
 	     'UTF-32BE
 	     'UTF-32LE))))
   (define-decoder-alias 'UTF-32 alias)
-  (define-encoder-alias 'UTF-32 alias)
-  (define-sizer-alias 'UTF-32 alias))
+  (define-encoder-alias 'UTF-32 alias))
 
 (define-decoder 'UTF-32BE
   (lambda (ib)
@@ -1804,12 +1785,6 @@ USA.
 	  4)
 	(error:char-encoding ob cp))))
 
-(define-sizer 'UTF-32BE
-  (lambda (cp)
-    (if (fix:< cp #x110000)
-	4
-	(error:char-encoding ob cp))))
-
 (define-encoder 'UTF-32LE
   (lambda (ob cp)
     (if (fix:< cp #x110000)
@@ -1822,11 +1797,12 @@ USA.
 	  4)
 	(error:char-encoding ob cp))))
 
-(define-sizer 'UTF-32LE
-  (lambda (cp)
-    (if (fix:< cp #x110000)
-	4
-	(error:char-encoding ob cp))))
+(define-sizer 'UTF-32
+  (lambda (ib cp)
+    (cond ((fix:< cp #x110000) 4)
+	  (else (error:char-encoding ib cp)))))
+(define-sizer-alias 'UTF-32BE 'UTF-32)
+(define-sizer-alias 'UTF-32LE 'UTF-32)
 
 ;;;; Normalizers
 
