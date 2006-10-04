@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.24 2006/08/09 05:48:53 savannah-arthur Exp $
+$Id: strout.scm,v 14.25 2006/10/04 05:51:55 savannah-arthur Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -45,9 +45,6 @@ USA.
 
 (define (get-output-string! port)
   ((port/operation port 'EXTRACT-OUTPUT!) port))
-
-(define (port-position port)
-  ((port/operation port 'POSITION) port))
 
 (define (call-with-output-string generator)
   (let ((port (open-output-string)))

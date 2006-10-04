@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.596 2006/10/02 04:18:15 cph Exp $
+$Id: runtime.pkg,v 14.597 2006/10/04 05:51:55 savannah-arthur Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1744,7 +1744,14 @@ USA.
 	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
 	  generic-i/o-port-type
-	  make-gstate)
+	  clear-input-buffer
+	  input-buffer-compute-encoded-character-size
+	  input-buffer-free-space
+	  input-buffer-using-binary-normalizer?
+	  make-gstate
+	  output-buffer-using-binary-denormalizer?
+	  port-input-buffer
+	  port-output-buffer)
   (export (runtime string-input)
 	  generic-i/o-port-type
 	  make-gstate
@@ -1919,6 +1926,7 @@ USA.
 	  notification-output-port
 	  output-port-type?
 	  output-port?
+	  port-position
 	  port-type/char-ready?
 	  port-type/discard-char
 	  port-type/discretionary-flush-output
@@ -1976,6 +1984,7 @@ USA.
 	  set-current-output-port!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
+	  set-port-position!
 	  set-port/state!
 	  set-trace-output-port!
 	  trace-output-port
@@ -1984,6 +1993,8 @@ USA.
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
+  (export (runtime file-i/o-port)
+	  port/unread)
   (export (runtime input-port)
 	  port/operation/char-ready?
 	  port/operation/discard-char
@@ -4067,7 +4078,6 @@ USA.
 	  get-output-string!
 	  (make-accumulator-output-port open-output-string)
 	  open-output-string
-	  port-position
 	  (with-string-output-port call-with-output-string)
 	  with-output-to-string)
   (initialization (initialize-package!)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.42 2006/02/24 17:42:50 cph Exp $
+$Id: port.scm,v 1.43 2006/10/04 05:51:55 savannah-arthur Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -569,6 +569,12 @@ USA.
   (define-port-operation fresh-line)
   (define-port-operation flush-output)
   (define-port-operation discretionary-flush-output))
+
+(define (port-position port)
+  ((port/operation port 'POSITION) port))
+
+(define (set-port-position! port position)
+  ((port/operation port 'SET-POSITION!) port position))
 
 (set-record-type-unparser-method! <port>
   (lambda (state port)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.27 2005/12/14 05:44:31 cph Exp $
+$Id: fileio.scm,v 1.28 2006/10/04 05:51:55 savannah-arthur Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
 Copyright 2001,2004,2005 Massachusetts Institute of Technology
@@ -31,10 +31,12 @@ USA.
 
 (define (initialize-package!)
   (let ((other-operations
-	 `((WRITE-SELF ,operation/write-self)
-	   (LENGTH ,operation/length)
+	 `((LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
-	   (TRUENAME ,operation/truename))))
+	   (POSITION ,operation/position)
+	   (SET-POSITION! ,operation/set-position!)
+	   (TRUENAME ,operation/truename)
+	   (WRITE-SELF ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
 	     (make-port-type other-operations
@@ -70,6 +72,46 @@ USA.
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
   (write (->namestring (operation/truename port)) output-port))
+
+(define (guarantee-input-port-using-binary-normalizer port)
+  (if (not (input-buffer-using-binary-normalizer? (port-input-buffer port)))
+      (error:wrong-type-datum port "port using binary normalizer")))
+
+(define (guarantee-output-port-using-binary-denormalizer port)
+  (if (not (output-buffer-using-binary-denormalizer? (port-output-buffer port)))
+      (error:wrong-type-datum port "port using binary denormalizer")))
+
+(define (operation/position port)
+  (guarantee-port port 'OPERATION/POSITION)
+  (if (output-port? port)
+      (begin
+	(guarantee-output-port-using-binary-denormalizer port)
+	(flush-output port)
+	(channel-file-position (port/output-channel port)))
+      (let ((input-buffer (port-input-buffer port)))
+	(guarantee-input-port-using-binary-normalizer port)
+	(- (channel-file-position (port/input-channel port))
+	   (input-buffer-free-bytes input-buffer)
+	   (let ((unread-char (port/unread port)))
+	     (if unread-char
+		 ((input-buffer-compute-encoded-character-size input-buffer)
+		  unread-char)
+		 0))))))
+
+(define (operation/set-position! port position)
+  (guarantee-port port 'OPERATION/SET-POSITION!)
+  (guarantee-exact-nonnegative-integer position 'OPERATION/SET-POSITION!)
+  (guarantee-input-port port 'OPERATION/SET-POSITION!)
+  (cond ((output-port? port)
+	 (guarantee-output-port-using-binary-denormalizer port)
+	 (flush-output port)
+	 (channel-file-set-position (port/output-channel port)
+				    position))
+	(else
+	 (guarantee-input-port-using-binary-normalizer port)
+	 (clear-input-buffer (port-input-buffer port))
+	 (channel-file-set-position (port/input-channel port)
+				    position))))
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
@@ -142,7 +184,7 @@ USA.
       (close-port port)
       value)))
 
-(define call-with-input-file 
+(define call-with-input-file
   (make-call-with-file open-input-file))
 
 (define call-with-binary-input-file
