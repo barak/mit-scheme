@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.29 2006/10/04 19:02:10 cph Exp $
+$Id: fileio.scm,v 1.30 2006/10/04 22:38:41 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,10 +105,12 @@ USA.
 	   (not (eq? (port/input-channel port) (port/output-channel port))))
       (error:bad-range-argument port caller))
   (if (and (input-port? port)
-	   (input-buffer-using-binary-normalizer? (port-input-buffer port)))
+	   (not (input-buffer-using-binary-normalizer?
+		 (port-input-buffer port))))
       (error:bad-range-argument port caller))
   (if (and (output-port? port)
-	   (output-buffer-using-binary-denormalizer? (port-output-buffer port)))
+	   (not (output-buffer-using-binary-denormalizer?
+		 (port-output-buffer port))))
       (error:bad-range-argument port caller)))
 
 (define (open-input-file filename)
