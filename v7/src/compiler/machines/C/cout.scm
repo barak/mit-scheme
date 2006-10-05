@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.25 2006/10/01 05:37:50 cph Exp $
+$Id: cout.scm,v 1.26 2006/10/05 04:55:54 cph Exp $
 
 Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
@@ -74,7 +74,7 @@ USA.
 	   (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (file-header 0 handle #f #f #f data-name)
+	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (stackify-output->data-decl 'prog str)
 	      (c:line)
@@ -101,7 +101,7 @@ USA.
 	      (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (file-header 0 handle #f #f #f data-name)
+	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (c:fn #f 'sobj data-name '()
 		(c:decl 'sobj 'top_level_object)
@@ -111,6 +111,11 @@ USA.
 		(c:group* prefix)
 		(c:group* suffix)
 		(c:return 'top_level_object))))))
+
+(define (declare-data-object handle proc)
+  (c:group (c:data-section (declare-object handle proc))
+	   (c:line)
+	   (declare-dynamic-object-initialization handle)))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>
@@ -245,18 +250,17 @@ USA.
 	      (decl-data-name (string-append "decl_" data-name))
 	      ((extra-decls extra-code)
 	       (subroutine-information))
-	      ((proxy xtra-procs* decl-code* decl-data* data-prefix data-body)
-	       (data-function-body top-level?
-				   ntags
-				   data-name
-				   initial-offset
-				   cc-block-size
-				   temp-vars
-				   object-prefix
-				   label-block-initialization
-				   free-block-initialization
-				   object-block-initialization))
-	      (use-stackify? *use-stackify?*))
+	      ((proxy xtra-procs* decl-code* data-generator)
+	       (make-data-generator top-level?
+				    ntags
+				    data-name
+				    initial-offset
+				    cc-block-size
+				    temp-vars
+				    object-prefix
+				    label-block-initialization
+				    free-block-initialization
+				    object-block-initialization)))
       (values
        code-name
        data-name
@@ -284,158 +288,160 @@ USA.
 	free-defines
 	(c:line)
 
-	;; the code itself
-
-	(c:code-section
-	 (c:fn (not top-level?) 'sobj* code-name
-	     (list (cons 'sobj* (c:pc-reg))
-		   (cons 'entry_count_t 'dispatch_base))
-	   (function-decls)
-	   (register-declarations)
-	   extra-decls
-	   (c:line)
-	   ;; The assignment is necessary to ensure that we restart properly
-	   ;; after an interrupt when the dynamic link is live
-	   ;; (see DLINK_INTERRUPT_CHECK and comp_interrupt_restart)
-	   (c:= (c:dlink-reg) (c:object-address (c:val-reg)))
-	   (c:goto 'perform_dispatch)
-	   (c:label 'pop_return)
-	   (c:= (c:pc-reg) (c:object-address (c:pop)))
-	   (c:label 'perform_dispatch)
-	   (c:switch (c:- (c:* (c:cast 'ulong* (c:pc-reg))) 'dispatch_base)
-	     (c:group* (map (lambda (item)
-			      (c:group item
-				       (c:line)))
-			    label-dispatch))
-	     (c:case #f
-		     (c:scall "UNCACHE_VARIABLES")
-		     (c:return (c:pc-reg))))
-	   (c:group* lap-code)
-	   extra-code))
-
-	(if (and top-level? use-stackify?)
-	    (c:page)
-	    (c:group))
-
-	;; the data generator
-
-	data-prefix
-
-	(if (or top-level? (not use-stackify?))
-	    (c:group (c:line)
-		     (c:data-section 
-		      (c:fn (not top-level?) 'sobj* data-name
-			  (list (cons 'entry_count_t 'dispatch_base))
-			data-body)))
-	    (c:group))
-
-	;; File footer
-	(if top-level?
-	    (c:group (c:line)
-		     (if use-stackify?
-			 (file-decls/stackify decl-code-name
-					      decl-code*
-					      decl-data-name
-					      decl-data*)
-			 (file-decls/traditional decl-code-name
-						 decl-code
-						 decl-data-name
-						 decl-data))
-		     (c:line)
-		     (file-header ntags handle
-				  decl-code-name code-name
-				  decl-data-name data-name))
-	    (c:group)))
+	(let ((fn
+	       (c:fn (not top-level?) 'sobj* code-name
+		   (list (cons 'sobj* (c:pc-reg))
+			 (cons 'entry_count_t 'dispatch_base))
+		 (c:decl 'sobj* 'current_block)
+		 (c:scall "DECLARE_VARIABLES")
+		 ;; dlink is initialized right before perform_dispatch.
+		 (c:decl 'sobj* (c:dlink-reg))
+		 (register-declarations)
+		 extra-decls
+		 (c:line)
+		 ;; The assignment is necessary to ensure that we
+		 ;; restart properly after an interrupt when the
+		 ;; dynamic link is live (see DLINK_INTERRUPT_CHECK
+		 ;; and comp_interrupt_restart)
+		 (c:= (c:dlink-reg) (c:object-address (c:val-reg)))
+		 (c:goto 'perform_dispatch)
+		 (c:label 'pop_return)
+		 (c:= (c:pc-reg) (c:object-address (c:pop)))
+		 (c:label 'perform_dispatch)
+		 (c:switch (c:- (c:* (c:cast 'ulong* (c:pc-reg)))
+				'dispatch_base)
+		   (c:group* (map (lambda (item)
+				    (c:group item
+					     (c:line)))
+				  label-dispatch))
+		   (c:case #f
+			   (c:scall "UNCACHE_VARIABLES")
+			   (c:return (c:pc-reg))))
+		 (c:group* lap-code)
+		 extra-code)))
+	  (if top-level?
+	      (c:group
+	       (if *use-stackify?*
+		   (top-level/stackify handle ntags fn
+				       decl-code-name code-name decl-code*
+				       data-generator data-name)
+		   (top-level/traditional handle ntags fn
+					  decl-code-name code-name decl-code
+					  data-generator
+					  decl-data-name data-name decl-data))
+	       (c:line)
+	       (if (> ntags 0)
+		   (declare-dynamic-initialization handle)
+		   (declare-dynamic-object-initialization handle)))
+	      (c:group
+	       (c:code-section fn)
+	       (if *use-stackify?*
+		   (c:group)
+		   (c:group (c:line)
+			    (c:data-section data-generator)))))))
        proxy))))
 
-(define (data-function-body top-level?
-			    ntags
-			    data-name
-			    initial-offset
-			    cc-block-size
-			    temp-vars
-			    object-prefix
-			    label-block-initialization
-			    free-block-initialization
-			    object-block-initialization)
-  ;; returns <proxy xtra-procs decl-code decl-data data-prefix data-body>
-  (cond ((not *use-stackify?*)
-	 (values
-	  #f				; proxy
-	  (c:group)			; xtra-procs
-	  '()				; decl-code
-	  '()				; decl-data
-	  (c:group)			; data-prefix
-	  (c:group
-	   (c:decl 'sobj
-		   'object
-		   (c:ecall "ALLOCATE_VECTOR"
-			    (c:cast 'ulong (- cc-block-size 1))))
-	   (c:decl 'sobj* 'current_block (c:object-address 'object))
-	   (c:group* (map (lambda (var) (c:decl 'sobj var)) temp-vars))
-	   (c:scall "DECLARE_VARIABLES_FOR_DATA")
-	   (c:line)
-	   (c:group* object-prefix)
-	   (c:group* label-block-initialization)
-	   (c:group* free-block-initialization)
-	   (c:group* object-block-initialization)
-	   (c:return (c:cptr initial-offset)))))
-	((or (not (null? temp-vars))
-	     (not (null? object-prefix)))
-	 (error "data-function-body: stackify inconsistency"))
-	((not top-level?)
-	 (values
-	  (list->vector (append label-block-initialization
-				free-block-initialization
-				object-block-initialization))
-	  (c:group)			; xtra-procs
-	  '()				; decl-code
-	  '()				; decl-data
-	  (c:group)			; data-prefix
-	  (c:group)			; data-body
-	  ))
-	(else
-	 (fluid-let ((*subblocks* '()))
-	   (let ((name (string-append "prog_" data-name))
-		 (str
-		  (stackify
-		   ntags
-		   (list->vector (append label-block-initialization
-					 free-block-initialization
-					 object-block-initialization)))))
+(define (make-data-generator top-level?
+			     ntags
+			     data-name
+			     initial-offset
+			     cc-block-size
+			     temp-vars
+			     object-prefix
+			     label-block-initialization
+			     free-block-initialization
+			     object-block-initialization)
+  ;; returns <proxy xtra-procs decl-code data-generator>
+  (if *use-stackify?*
+      (make-data-generator/stackify top-level?
+				    ntags
+				    data-name
+				    initial-offset
+				    label-block-initialization
+				    free-block-initialization
+				    object-block-initialization)
+      (make-data-generator/traditional top-level?
+				       data-name
+				       initial-offset
+				       cc-block-size
+				       temp-vars
+				       object-prefix
+				       label-block-initialization
+				       free-block-initialization
+				       object-block-initialization)))
 
-	     (set! *subblocks* (reverse! *subblocks*))
-	     (values
-	      #f			; proxy
-	      (c:group* (map fake-block->c-code *subblocks*)) ; xtra-procs*
-	      *subblocks*		; decl-code
-	      '()			; decl-data
-	      (c:data-section (stackify-output->data-decl name str))
-	      (c:group (c:decl 'sobj 'ccb)
-		       (c:decl 'sobj* 'current_block)
-		       (c:scall "DECLARE_VARIABLES_FOR_DATA")
+(define (make-data-generator/traditional top-level?
+					 data-name
+					 initial-offset
+					 cc-block-size
+					 temp-vars
+					 object-prefix
+					 label-block-initialization
+					 free-block-initialization
+					 object-block-initialization)
+  (values #f
+	  (c:group)
+	  '()
+	  (c:fn (not top-level?) 'sobj* data-name
+	      (list (cons 'entry_count_t 'dispatch_base))
+	    (c:decl 'sobj
+		    'object
+		    (c:ecall "ALLOCATE_VECTOR"
+			     (c:cast 'ulong (- cc-block-size 1))))
+	    (c:decl 'sobj* 'current_block (c:object-address 'object))
+	    (c:group* (map (lambda (var) (c:decl 'sobj var)) temp-vars))
+	    (c:scall "DECLARE_VARIABLES_FOR_DATA")
+	    (c:line)
+	    (c:group* object-prefix)
+	    (c:group* label-block-initialization)
+	    (c:group* free-block-initialization)
+	    (c:group* object-block-initialization)
+	    (c:return (c:cptr initial-offset)))))
+
+(define (make-data-generator/stackify top-level?
+				      ntags
+				      data-name
+				      initial-offset
+				      label-block-initialization
+				      free-block-initialization
+				      object-block-initialization)
+  (let ((initv
+	 (list->vector (append label-block-initialization
+			       free-block-initialization
+			       object-block-initialization))))
+    (if top-level?
+	(fluid-let ((*subblocks* '()))
+	  (let ((name (string-append "prog_" data-name))
+		(str (stackify ntags initv)))
+	    (let ((subblocks (reverse! *subblocks*)))
+	      (values #f
+		      (c:group* (map fake-block->c-code subblocks))
+		      subblocks
+		      (c:group
+		       (stackify-output->data-decl name str)
 		       (c:line)
-		       (c:= 'ccb
-			    (c:ecall 'unstackify
-				     (c:cast 'uchar* (c:aptr name 0))
-				     'dispatch_base))
-		       (c:= 'current_block (c:object-address 'ccb))
-		       (c:return (c:cptr initial-offset)))))))))
-
+		       (c:fn #f 'sobj* data-name
+			   (list (cons 'entry_count_t 'dispatch_base))
+			 (c:decl 'sobj 'ccb)
+			 (c:decl 'sobj* 'current_block)
+			 (c:scall "DECLARE_VARIABLES_FOR_DATA")
+			 (c:line)
+			 (c:= 'ccb
+			      (c:ecall 'unstackify
+				       (c:cast 'uchar* (c:aptr name 0))
+				       'dispatch_base))
+			 (c:= 'current_block (c:object-address 'ccb))
+			 (c:return (c:cptr initial-offset))))))))
+	(values initv (c:group) '() (c:group)))))
+
 (define (stackify-output->data-decl name str)
   (c:group (c:line "static const unsigned char " (c:var name)
-		   "[" (c:expr (string-length str)) "] =")
+		   " [" (c:expr (string-length str)) "] =")
 	   (c:indent*
 	    (let ((strings (C-quotify-data-string/breakup str)))
 	      (let ((p (last-pair strings)))
 		(set-car! p (string-append (car p) ";")))
 	      (map c:line strings)))))
-
-(define (function-decls)
-  (c:group (c:decl 'sobj* 'current_block)
-	   (c:scall "DECLARE_VARIABLES")
-	   ;; dlink is initialized right before perform_dispatch.
-	   (c:decl 'sobj* (c:dlink-reg))))
 
 (define (file-prefix)
   (c:group (c:line (c:comment "Emacs: this is -*- C -*- code,"))
@@ -448,96 +454,107 @@ USA.
 	   (c:line)
 	   (c:include "liarc.h")))
 
-(define (file-header ntags handle
-		     decl-code-name code-name
-		     decl-data-name data-name)
-  (let ((hs (c:string handle)))
-    (if (= ntags 0)
-	(c:group (c:data-section
-		  ;; This must be a single line!
-		  (c:line (c:call "DECLARE_DATA_OBJECT" hs data-name)))
-		 (c:line)
-		 (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION" hs)))
-	(c:group (c:code-section
-		  ;; This must be a single line!
-		  (c:line (c:call "DECLARE_COMPILED_CODE"
-				  hs
-				  (number->string ntags)
-				  decl-code-name
-				  code-name)))
-		 (c:line)
-		 (c:data-section
-		  ;; This must be a single line!
-		  (c:line (c:call "DECLARE_COMPILED_DATA"
-				  hs
-				  (if *use-stackify?*
-				      "NO_SUBBLOCKS"
-				      decl-data-name)
-				  data-name)))
-		 (c:line)
-		 (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION" hs))))))
-
 (define (make-nonce)
   (if *disable-nonces?*
       "nonce"
       (vector-8b->hexadecimal (random-byte-vector 8))))
-
-(define (file-decls/traditional decl-code-name decl-code
-				decl-data-name decl-data)
-  (c:group (c:code-section (c:fn #f 'int decl-code-name '()
-			     decl-code
-			     (c:return 0)))
-	   (c:line)
-	   (c:data-section (c:fn #f 'int decl-data-name '()
-			     decl-data
-			     (c:return 0)))))
 
-(define (file-decls/stackify decl-code-name code-blocks
-			     decl-data-name data-blocks)
-  (c:group
-   (c:code-section
-    (if (and (pair? code-blocks)
-	     (null? (cdr code-blocks)))
-	(let ((arrname (string-append "arr_" decl-code-name)))
-	  (c:group (c:array-decl "static const struct liarc_code_S"
-				 arrname
-				 (length code-blocks)
-		     (map (lambda (code-block)
-			    (c:struct-init
-			     (c:string (fake-block/tag code-block))
-			     (fake-block/ntags code-block)
-			     (fake-block/c-proc code-block)))
-			  code-blocks))
-		   (c:line)
-		   (c:fn #f 'int decl-code-name '()
-		     (c:scall "DECLARE_SUBCODE_MULTIPLE" arrname)
-		     (c:return 0))))
-	(c:fn #f 'int decl-code-name '()
-	  (c:group* (map fake-block->code-decl code-blocks))
-	  (c:return 0))))
-   (if (not *use-stackify?*)
-       (c:group
-	(c:line)
-	(c:data-section
-	 (if (and (pair? data-blocks)
-		  (null? (cdr data-blocks)))
-	     (let ((arrname (string-append "arr_" decl-data-name)))
-	       (c:group (c:array-decl "static const struct liarc_data_S"
-				      arrname
-				      (length data-blocks)
-			  (map (lambda (data-block)
-				 (c:struct-init
-				  (c:string (fake-block/tag data-block))
-				  (fake-block/d-proc data-block)))
-			       data-blocks))
-			(c:line)
-			(c:fn #f 'int decl-data-name '()
-			  (c:scall "DECLARE_SUBDATA_MULTIPLE" arrname)
-			  (c:return 0))))
-	     (c:fn #f 'int decl-data-name '()
-	       (c:group* (map fake-block->data-decl data-blocks))
-	       (c:return 0)))))
-       (c:group))))
+(define (top-level/stackify handle ntags code-fn
+			    decl-code-name code-name code-blocks
+			    data-generator data-name)
+  (if (> ntags 0)
+      (c:group (c:code-section code-fn
+			       (c:line)
+			       (declare-subcodes decl-code-name code-blocks)
+			       (c:line)
+			       (declare-code handle ntags
+					     decl-code-name code-name))
+	       (c:page)
+	       (c:data-section data-generator
+			       (c:line)
+			       (declare-data handle "NO_SUBBLOCKS" data-name)))
+      (c:group (c:code-section code-fn
+			       (c:line)
+			       (declare-subcodes decl-code-name code-blocks))
+	       (c:page)
+	       (c:data-section data-generator
+			       (c:line)
+			       (declare-object handle data-name)))))
+
+(define (top-level/traditional handle ntags code-fn
+			       decl-code-name code-name decl-code
+			       data-generator
+			       decl-data-name data-name decl-data)
+  (let ((decl-code-fn
+	 (c:fn #f 'int decl-code-name '()
+	   decl-code
+	   (c:return 0)))
+	(decl-data-fn
+	 (c:fn #f 'int decl-data-name '()
+	   decl-data
+	   (c:return 0))))
+    (if (> ntags 0)
+	(c:group (c:code-section code-fn
+				 (c:line)
+				 decl-code-fn
+				 (c:line)
+				 (declare-code handle ntags
+					       decl-code-name code-name))
+		 (c:line)
+		 (c:data-section data-generator
+				 (c:line)
+				 decl-data-fn
+				 (c:line)
+				 (declare-data handle
+					       decl-data-name data-name)))
+	(c:group (c:code-section code-fn
+				 (c:line)
+				 decl-code-fn)
+		 (c:line)
+		 (c:data-section data-generator
+				 (c:line)
+				 decl-data-fn
+				 (c:line)
+				 (declare-object handle data-name))))))
+
+(define (declare-code handle ntags decl proc)
+  ;; This must be a single line!
+  (c:line (c:call "DECLARE_COMPILED_CODE" (c:string handle) ntags decl proc)))
+
+(define (declare-data handle decl proc)
+  ;; This must be a single line!
+  (c:line (c:call "DECLARE_COMPILED_DATA" (c:string handle) decl proc)))
+
+(define (declare-object handle proc)
+  ;; This must be a single line!
+  (c:line (c:call "DECLARE_DATA_OBJECT" (c:string handle) proc)))
+
+(define (declare-dynamic-initialization handle)
+  (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION" (c:string handle))))
+
+(define (declare-dynamic-object-initialization handle)
+  (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION" (c:string handle))))
+
+(define (declare-subcodes decl-name blocks)
+  (if (and (pair? blocks)
+	   (pair? (cdr blocks)))
+      (let ((arrname (string-append "arr_" decl-name)))
+	(c:group (c:array-decl "static const struct liarc_code_S"
+		     arrname
+		     (length blocks)
+		   (map (lambda (code-block)
+			  (c:struct-init
+			   (c:string (fake-block/tag code-block))
+			   (fake-block/ntags code-block)
+			   (fake-block/c-proc code-block)))
+			blocks))
+		 (c:line)
+		 (c:fn #f 'int decl-name '()
+		       (c:scall "DECLARE_SUBCODE_MULTIPLE" arrname)
+		       (c:return 0))))
+      (c:fn #f 'int decl-name '()
+	    (c:group* (map fake-block->code-decl blocks))
+	    (c:return 0))))
 
 ;; This is intended for short strings with an occasional escape.
 
@@ -718,10 +735,10 @@ USA.
 
   (define (process-links start links kind)
     (if (pair? (cdr links))
-	(let ((use-stackify? *use-stackify?*))
+	(begin
 	  ;; The following code implicitly assumes that
 	  ;; *execute-cache-size-in-words* is 2 -- check it
-	  (if (and use-stackify? (not (= *execute-cache-size-in-words* 2)))
+	  (if (and *use-stackify?* (not (= *execute-cache-size-in-words* 2)))
 	      (error "process-links: Size inconsistency"))
 	  (let process ((count 0)
 			(links (cdr links))
@@ -747,7 +764,7 @@ USA.
 				(+ offset *execute-cache-size-in-words*)
 				(cons (c:define symbol offset)
 				      defines)
-				(if use-stackify?
+				(if *use-stackify?*
 				    (cons* (stackify/make-uuo-arity arity)
 					   (stackify/make-uuo-name name)
 					   inits)
@@ -759,36 +776,35 @@ USA.
 	(values start 0 '() '())))
 
   (define (process-table start table kind)
-    (let ((use-stackify? *use-stackify?*))
-      ;; The following code implicitly assumes that
-      ;; *variable-cache-size-in-words* is 1 -- check it below
+    ;; The following code implicitly assumes that
+    ;; *variable-cache-size-in-words* is 1 -- check it below
 
-      (define (iter offset table defines inits)
-	(if (pair? table)
-	    (let ((symbol (entry-label (car table))))
-	      (iter (+ offset *variable-cache-size-in-words*)
-		    (cdr table)
-		    (cons (c:define symbol offset)
-			  defines)
-		    (if use-stackify?
-			(cons (stackify/make-var-ref-entry
-			       (entry-value (car table)))
-			      inits)
-			(cons (insert-symbol symbol (entry-value (car table)))
-			      inits))))
-	    (values offset
-		    1
-		    (reverse! defines)
-		    (cons (make-linkage-section-header start kind
-						       (- offset (+ start 1)))
-			  (reverse! inits)))))
-
-      (if (and use-stackify? (not (= *variable-cache-size-in-words* 1)))
-	  (error "process-links: Size inconsistency"))
-
+    (define (iter offset table defines inits)
       (if (pair? table)
-	  (iter (+ start 1) table '() '())
-	  (values start 0 '() '()))))
+	  (let ((symbol (entry-label (car table))))
+	    (iter (+ offset *variable-cache-size-in-words*)
+		  (cdr table)
+		  (cons (c:define symbol offset)
+			defines)
+		  (if *use-stackify?*
+		      (cons (stackify/make-var-ref-entry
+			     (entry-value (car table)))
+			    inits)
+		      (cons (insert-symbol symbol (entry-value (car table)))
+			    inits))))
+	  (values offset
+		  1
+		  (reverse! defines)
+		  (cons (make-linkage-section-header start kind
+						     (- offset (+ start 1)))
+			(reverse! inits)))))
+
+    (if (and *use-stackify?* (not (= *variable-cache-size-in-words* 1)))
+	(error "process-links: Size inconsistency"))
+
+    (if (pair? table)
+	(iter (+ start 1) table '() '())
+	(values start 0 '() '())))
 
   (define (make-linkage-section-header start kind count)
     (if *use-stackify?*
@@ -849,72 +865,69 @@ USA.
 (define (handle-labels label-block-offset)
   ;; returns <next-offset n-labels define-code dispatch-code
   ;;          data-init-code symbol-table-components>
-  (let ((use-stackify? *use-stackify?*))
-    (let iter
-	((offset (+ label-block-offset *label-sizes-in-words*))
-	 (tagno 0)
-	 (labels (reverse! labels))
-	 (label-defines '())
-	 (label-dispatch '())
-	 (label-block-initialization '())
-	 (label-bindings '()))
-      (if (pair? labels)
-	  (let* ((label-data (car labels))
-		 (symbol (or (symbol-1 label-data)
-			     (symbol-2 label-data))))
-	    (iter (+ offset *label-sizes-in-words*)
-		  (+ tagno 1)
-		  (cdr labels)
-		  (cons (c:group (c:define symbol offset)
-				 (let ((symbol*
-					(or (symbol-2 label-data)
-					    (symbol-1 label-data))))
-				   (if (eq? symbol* symbol)
-				       (c:group)
-				       (c:define symbol* symbol)))
-				 (if (dispatch-1 label-data)
-				     (c:define (dispatch-1 label-data) tagno)
-				     (c:group))
-				 (if (dispatch-2 label-data)
-				     (c:define (dispatch-2 label-data) tagno)
-				     (c:group)))
-			label-defines)
-		  (cons (c:case tagno
-				(c:= 'current_block (c:- (c:pc-reg) symbol))
-				(c:goto (or (label-1 label-data)
-					    (label-2 label-data))))
-			label-dispatch)
-		  (add-label-initialization use-stackify?
-					    symbol
-					    tagno
-					    offset
-					    (code-word-sel label-data)
-					    label-block-initialization)
-		  (append! (if (label-1 label-data)
-			       (list (cons (label-1 label-data) offset))
-			       '())
-			   (if (label-2 label-data)
-			       (list (cons (label-2 label-data) offset))
-			       '())
-			   label-bindings)))
-	  (values (- offset 1)
-		  tagno
-		  (reverse! label-defines)
-		  (reverse! label-dispatch)
-		  (cons (if use-stackify?
-			    (stackify/make-nm-header
-			     (- (- offset 1)
-				(+ label-block-offset 1)))
-			    (c:= (c:cref label-block-offset)
-				 (c:make-object "TC_MANIFEST_NM_VECTOR"
-						(- (- offset 1)
-						   (+ label-block-offset 1)))))
-			(reverse! label-block-initialization))
-		  label-bindings)))))
+  (let iter
+      ((offset (+ label-block-offset *label-sizes-in-words*))
+       (tagno 0)
+       (labels (reverse! labels))
+       (label-defines '())
+       (label-dispatch '())
+       (label-block-initialization '())
+       (label-bindings '()))
+    (if (pair? labels)
+	(let* ((label-data (car labels))
+	       (symbol (or (symbol-1 label-data)
+			   (symbol-2 label-data))))
+	  (iter (+ offset *label-sizes-in-words*)
+		(+ tagno 1)
+		(cdr labels)
+		(cons (c:group (c:define symbol offset)
+			       (let ((symbol*
+				      (or (symbol-2 label-data)
+					  (symbol-1 label-data))))
+				 (if (eq? symbol* symbol)
+				     (c:group)
+				     (c:define symbol* symbol)))
+			       (if (dispatch-1 label-data)
+				   (c:define (dispatch-1 label-data) tagno)
+				   (c:group))
+			       (if (dispatch-2 label-data)
+				   (c:define (dispatch-2 label-data) tagno)
+				   (c:group)))
+		      label-defines)
+		(cons (c:case tagno
+			      (c:= 'current_block (c:- (c:pc-reg) symbol))
+			      (c:goto (or (label-1 label-data)
+					  (label-2 label-data))))
+		      label-dispatch)
+		(add-label-initialization symbol
+					  tagno
+					  offset
+					  (code-word-sel label-data)
+					  label-block-initialization)
+		(append! (if (label-1 label-data)
+			     (list (cons (label-1 label-data) offset))
+			     '())
+			 (if (label-2 label-data)
+			     (list (cons (label-2 label-data) offset))
+			     '())
+			 label-bindings)))
+	(values (- offset 1)
+		tagno
+		(reverse! label-defines)
+		(reverse! label-dispatch)
+		(cons (if *use-stackify?*
+			  (stackify/make-nm-header
+			   (- (- offset 1)
+			      (+ label-block-offset 1)))
+			  (c:= (c:cref label-block-offset)
+			       (c:make-object "TC_MANIFEST_NM_VECTOR"
+					      (- (- offset 1)
+						 (+ label-block-offset 1)))))
+		      (reverse! label-block-initialization))
+		label-bindings))))
 
-(define (add-label-initialization use-stackify? symbol tagno
-				  offset code-word rest)
-  (if use-stackify?
+(define (add-label-initialization symbol tagno offset code-word rest)
+  (if *use-stackify?*
       (begin
 	;; Note: This implicitly knows that a label takes up two words.
 	(if (not (= *label-sizes-in-words* 2))
@@ -1172,8 +1185,10 @@ USA.
 
 (define (c:ifndef symbol . body)
   (c:group (c:line "#ifndef " (c:var symbol))
+	   (c:line)
 	   (c:group* body)
-	   (c:line "#endif")))
+	   (c:line)
+	   (c:line "#endif " (c:comment "!" symbol))))
 
 (define (c:include name)
   (c:line "#include "
@@ -1478,4 +1493,5 @@ USA.
 ;;; lisp-indent/c:fn: 4
 ;;; lisp-indent/c:switch: 1
 ;;; lisp-indent/let*/mv: 1
+;;; lisp-indent/c:array-decl: 3
 ;;; End:
