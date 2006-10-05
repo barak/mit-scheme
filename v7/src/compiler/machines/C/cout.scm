@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.26 2006/10/05 04:55:54 cph Exp $
+$Id: cout.scm,v 1.27 2006/10/05 19:14:39 cph Exp $
 
 Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
@@ -1040,6 +1040,8 @@ USA.
 	((symbol? item) (symbol-name item))
 	((number? item) (number->string item))
 	((decoded-time? item) (decoded-time->iso8601-string item))
+	((not item) "false")
+	((eq? item #t) "true")
 	(else (error:wrong-type-argument item "C line item" 'C:LINE-ITEM))))
 
 (define (c:make-line indentation text)
