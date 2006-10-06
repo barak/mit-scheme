@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.27 2006/10/05 19:14:39 cph Exp $
+$Id: cout.scm,v 1.28 2006/10/06 04:53:35 cph Exp $
 
 Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
@@ -1473,6 +1473,12 @@ USA.
 
 (define (c:/ a b)
   (c:binary-infix "/" a b))
+
+(define (c:<< a b)
+  (c:binary-infix "<<" a b))
+
+(define (c:>> a b)
+  (c:binary-infix ">>" a b))
 
 (define (c:ubinary op a b)
   (if (default-object? b)
