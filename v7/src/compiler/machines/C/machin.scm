@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.11 2006/09/16 11:19:09 gjr Exp $
+$Id: machin.scm,v 1.12 2006/10/06 05:00:34 cph Exp $
 
-Copyright (c) 1992-1999, 2006 Massachusetts Institute of Technology
+Copyright 1993,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -109,10 +109,7 @@ USA.
   (let ((entry-delta (- entry* entry)))
     (if (zero? entry-delta)
 	0
-	(string-append "(CLOSURE_ENTRY_DELTA * "
-		       (number->string
-			(* closure-entry-size entry-delta))
-		       ")"))))
+	(c:* "CLOSURE_ENTRY_DELTA" (* closure-entry-size entry-delta)))))
 
 ;; Bump to the canonical entry point.  On a RISC (which forces
 ;; longword alignment for entry points anyway) there is no need to

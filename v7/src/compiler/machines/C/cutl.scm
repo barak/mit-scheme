@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cutl.scm,v 1.4 2003/02/14 18:28:02 cph Exp $
+$Id: cutl.scm,v 1.5 2006/10/06 05:00:29 cph Exp $
 
-Copyright (c) 1992, 1999 Massachusetts Institute of Technology
+Copyright 1993,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,102 +27,48 @@ USA.
 ;;; package: (compiler)
 
 (declare (usual-integrations))
-
-(define (->back-end-number x)
-  (if (number? x)
-      (number->string x)
-      x))
-
-(define (back-end:= x y)
-  (cond ((and (number? x) (number? y))
-	 (= x y))
-	(else
-	 (equal? x y))))
 
 (define (back-end:+ x y)
-  (cond ((and (number? x) (number? y))
-	 (+ x y))
-	((and (number? y) (= y 0))
-	 x)
-	((and (number? x) (= x 0))
-	 y)
-	(else
-	 (string-append "("
-			(->back-end-number x)
-			" + "
-			(->back-end-number y)
-			")"))))
+  (cond ((and (number? x) (number? y)) (+ x y))
+	((and (number? y) (= y 0)) x)
+	((and (number? x) (= x 0)) y)
+	(else (c:+ x y))))
 
 (define (back-end:- x y)
-  (cond ((and (number? x) (number? y))
-	 (- x y))
-	((and (number? y) (= y 0))
-	 x)
-	((equal? x y)
-	 0)
-	(else
-	 (string-append "("
-			(->back-end-number x)
-			" - "
-			(->back-end-number y)
-			")"))))
+  (cond ((and (number? x) (number? y)) (- x y))
+	((and (number? y) (= y 0)) x)
+	((equal? x y) 0)
+	(else (c:- x y))))
 
 (define (back-end:* x y)
-  (cond ((and (number? x) (number? y))
-	 (* x y))
-	((and (number? y) (= y 1))
-	 x)
-	((and (number? y) (= y 0))
-	 0)
-	((and (number? x) (= x 1))
-	 y)
-	((and (number? x) (= x 0))
-	 0)
-	(else
-	 (string-append "("
-			(->back-end-number x)
-			" * "
-			(->back-end-number y)
-			")"))))
+  (cond ((and (number? x) (number? y)) (* x y))
+	((and (number? y) (= y 1)) x)
+	((and (number? y) (= y 0)) 0)
+	((and (number? x) (= x 1)) y)
+	((and (number? x) (= x 0)) 0)
+	(else (c:* x y))))
 
 (define (back-end:quotient x y)
-  (cond ((and (number? x) (number? y))
-	 (quotient x y))
-	((and (number? y) (= y 1))
-	 x)
-	((and (number? x) (= x 0))
-	 0)
-	((equal? x y)
-	 1)
-	(else
-	 (string-append "("
-			(->back-end-number x)
-			" / "
-			(->back-end-number y)
-			")"))))
+  (cond ((and (number? x) (number? y)) (quotient x y))
+	((and (number? y) (= y 1)) x)
+	((and (number? x) (= x 0)) 0)
+	((equal? x y) 1)
+	(else (c:/ x y))))
 
 (define (back-end:expt x y)
-  (cond ((and (number? x) (number? y))
-	 (expt x y))
-	((and (number? x)
-	      (or (= x 0) (= x 1)))
-	 x)
-	((and (number? y) (= y 0))
-	 1)
-	((and (number? y) (= y 1))
-	 x)
-	((and (number? x) (= x 2))
-	 (string-append "(1 << "
-			(->back-end-number y)
-			")"))
-	(else
-	 (error "back-end:expt: Cannot exponentiate"
-		x y))))
+  (cond ((and (number? x) (number? y)) (expt x y))
+	((and (number? x) (or (= x 0) (= x 1))) x)
+	((and (number? y) (= y 0)) 1)
+	((and (number? y) (= y 1)) x)
+	((and (number? x) (= x 2)) (c:<< 1 y))
+	(else (error "back-end:expt: Cannot exponentiate:" x y))))
 
-;; This is a lie, but it is used only in places where false is the
-;; correct default.
+(define (back-end:= x y)
+  (cond ((and (number? x) (number? y)) (= x y))
+	(else (equal? x y))))
 
 (define (back-end:< x y)
-  (and (number? x)
-       (number? y)
-       (< x y)))
+  ;; This is a lie, but it is used only in places where #f is the
+  ;; correct default.
+  (cond ((and (number? x) (number? y)) (< x y))
+	(else #f)))
