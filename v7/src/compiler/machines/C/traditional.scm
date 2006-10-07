@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: traditional.scm,v 1.3 2006/10/05 19:14:52 cph Exp $
+$Id: traditional.scm,v 1.4 2006/10/07 05:49:37 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -38,7 +38,7 @@ USA.
       (values prefix
 	      (c:group suffix
 		       (c:group* (map (lambda (object&name)
-					(top-level-updator object&name table))
+					(top-level-updater object&name table))
 				      table))
 		       (c:group*
 			(map (lambda (name object)
@@ -59,12 +59,14 @@ USA.
 	     (lambda (entry1 entry2)
 	       (let ((obj1 (cadr entry1))
 		     (obj2 (cadr entry2)))
-		 (if (not (fake-compiled-block? obj2))
-		     (or (fake-compiled-block? obj1)
-			 (< (car entry1) (car entry2)))
-		     (and (fake-compiled-block? obj1)
-			  (< (fake-block/index obj1)
-			     (fake-block/index obj2)))))))))
+		 (if (fake-compiled-block? obj1)
+		     (if (fake-compiled-block? obj2)
+			 (< (fake-block/index obj1)
+			    (fake-block/index obj2))
+			 #t)
+		     (if (fake-compiled-block? obj2)
+			 #f
+			 (< (car entry1) (car entry2)))))))))
 
 (define-integrable (table/find table value)
   ;; assv ?
@@ -79,10 +81,9 @@ USA.
 		(c:group suffix* suffix)))
 	(values prefix suffix))))
 
-(define (top-level-constructor object&name)
-  ;; (values prefix suffix)
-  (let ((name (cdr object&name))
-	(object (car object&name)))
+(define (top-level-constructor o.n)
+  (let ((object (car o.n))
+	(name (cdr o.n)))
     (cond ((pair? object)
 	   (values (c:group)
 		   (c:= name (c:ecall "CONS" #f #f))))
@@ -112,9 +113,9 @@ USA.
 	   (values (c:group)
 		   (c:= name (->simple-C-object object)))))))
 
-(define (top-level-updator object&name table)
-  (let ((name (cdr object&name))
-	(object (car object&name)))
+(define (top-level-updater o.n table)
+  (let ((object (car o.n))
+	(name (cdr o.n)))
 
     (define-integrable (do-vector-like object vlength vref vset-name)
       (let loop ((i (vlength object)) (code (c:group)))
@@ -278,15 +279,13 @@ USA.
 		(table (cons (cons node name) table)))
 
 	   (define-integrable (do-vector-like node vlength vref)
-	     (let loop ((table table)
-			(i (vlength node)))
-	       (if (zero? i)
-		   table
-		   (let ((i-1 (- i 1)))
-		     (loop (insert-in-table (vref node i-1)
-					    depth*
-					    table)
-			   i-1)))))
+	     (let loop ((table table) (i (vlength node)))
+	       (if (fix:> i 0)
+		   (loop (insert-in-table (vref node (fix:- i 1))
+					  depth*
+					  table)
+			 (fix:- i 1))
+		   table)))
 	     
 	   (cond ((pair? node)
 		  ;; Special treatment on the CDR because of RCONSM.
