@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules3.scm,v 1.14 2006/10/01 05:38:20 cph Exp $
+$Id: rules3.scm,v 1.15 2006/10/07 05:50:22 cph Exp $
 
 Copyright 1993,2001,2002,2006 Massachusetts Institute of Technology
 
@@ -386,33 +386,33 @@ USA.
 	   ,@(label-statement internal-label)
 	   ,(c:closure-interrupt-check)))))
 
-(define (write-closure-entry internal-label min max offset)
-  (let ((external-label
-	 (rtl-procedure/external-label (label->object internal-label))))
-    (LAP ,(c:scall "WRITE_LABEL_DESCRIPTOR"
-		   (c:free-reg)
-		   (c:hex (make-procedure-code-word min max))
-		   offset)
-	 ,(c:= (c:aref (c:free-reg) 0)
-	       (c:+ 'dispatch_base (label->dispatch-tag external-label)))
-	 ,(c:= (c:aref (c:free-reg) 1)
-	       (c:cast 'sobj (c:cptr (label->offset external-label)))))))
-
-(define (cons-closure target label min max nvars)
-  (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,(c:= (c:* (c:free-reg))
-	       (c:make-object "TC_MANIFEST_CLOSURE"
-			      (+ closure-entry-size nvars)))
-	 ,(c:+= (c:free-reg) 2)
-	 ,(c:= target (c:free-reg))
-	 ,@(write-closure-entry label min max 2)
-	 ,(c:+= (c:free-reg) (+ nvars 2)))))
-
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-CLOSURE (ENTRY:PROCEDURE (? procedure-label))
 			(? min) (? max) (? nvars)))
   (cons-closure target procedure-label min max nvars))
+
+(define (cons-closure target label min max nvars)
+  (let ((target (standard-target! target 'SCHEME_OBJECT*)))
+    (LAP ,(c:= (c:* (c:postinc (c:free-reg)))
+	       (c:make-object "TC_MANIFEST_CLOSURE"
+			      (+ closure-entry-size nvars)))
+	 ,(c:= target (c:+ (c:free-reg) 1))
+	 ,@(write-closure-entry label min max 2)
+	 ,(c:+= (c:free-reg) nvars))))
+
+(define (write-closure-entry internal-label min max offset)
+  (let ((external-label
+	 (rtl-procedure/external-label (label->object internal-label))))
+    (LAP ,(c:+= (c:free-reg) 1)
+	 ,(c:scall "WRITE_LABEL_DESCRIPTOR"
+		   (c:free-reg)
+		   (c:hex (make-procedure-code-word min max))
+		   offset)
+	 ,(c:= (c:* (c:postinc (c:free-reg)))
+	       (c:+ 'dispatch_base (label->dispatch-tag external-label)))
+	 ,(c:= (c:* (c:postinc (c:free-reg)))
+	       (c:cast 'sobj (c:cptr (label->offset external-label)))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -422,10 +422,9 @@ USA.
     ((0)
      (let ((dest (standard-target! target 'SCHEME_OBJECT*)))
        (LAP ,(c:= dest (c:free-reg))
-	    ,(c:= (c:* (c:free-reg))
-		  (c:make-object "TC_MANIFEST_VECTOR"
-				 nvars))
-	    ,(c:+= (c:free-reg) (+ nvars 1)))))
+	    ,(c:= (c:* (c:postinc (c:free-reg)))
+		  (c:make-object "TC_MANIFEST_VECTOR" nvars))
+	    ,(c:+= (c:free-reg) nvars))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (cons-closure target (car entry) (cadr entry) (caddr entry) nvars)))
@@ -434,25 +433,24 @@ USA.
 
 (define (cons-multiclosure target nentries nvars entries)
   (let ((target (standard-target! target 'SCHEME_OBJECT*)))
-    (LAP ,(c:= (c:* (c:free-reg))
+    (LAP ,(c:= (c:* (c:postinc (c:free-reg)))
 	       (c:make-object "TC_MANIFEST_CLOSURE"
 			      (+ 1 (* nentries closure-entry-size) nvars)))
-	 ,(c:+= (c:free-reg) 2)
-	 ,(c:scall "WRITE_LABEL_DESCRIPTOR" (c:free-reg) nentries 0)
 	 ,(c:+= (c:free-reg) 1)
-	 ,(c:= target (c:free-reg))
+	 ,(c:scall "WRITE_LABEL_DESCRIPTOR" (c:free-reg) nentries 0)
+	 ,(c:= target (c:+ (c:free-reg) 1))
 	 ,@(reduce-right
 	    (lambda (lap1 lap2)
 	      (LAP ,@lap1 ,@lap2))
 	    (LAP)
 	    (map (lambda (entry offset)
-		   (let ((label (car entry))
-			 (min (cadr entry))
-			 (max (caddr entry)))
-		     (LAP ,@(write-closure-entry label min max offset)
-			  ,(c:+= (c:free-reg) 3))))
-		 entries (make-multiclosure-offsets nentries)))
-	 ,(c:+= (c:free-reg) (- nvars 1)))))
+		   (write-closure-entry (car entry)
+					(cadr entry)
+					(caddr entry)
+					offset))
+		 entries
+		 (make-multiclosure-offsets nentries)))
+	 ,(c:+= (c:free-reg) nvars))))
 	 
 (define (make-multiclosure-offsets nentries)
   (let generate ((n nentries) (offset 3))
