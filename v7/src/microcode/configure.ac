@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.16 2006/10/01 21:11:39 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.17 2006/10/07 20:56:02 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -153,8 +153,8 @@ MODULE_BASES=
 MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
 COMPILED_DEFS=
-COMPILED_SOURCES_1=
-COMPILED_OBJECTS_1=
+COMPILED_SOURCES=
+COMPILED_OBJECTS=
 CMPAUXMDO=
 
 dnl Checks for programs.
