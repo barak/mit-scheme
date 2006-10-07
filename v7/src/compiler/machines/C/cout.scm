@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.28 2006/10/06 04:53:35 cph Exp $
+$Id: cout.scm,v 1.29 2006/10/07 05:48:58 cph Exp $
 
 Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
@@ -703,7 +703,7 @@ USA.
 	  (let ((entry (car table)))
 	    (iter (+ offset 1)
 		  (cdr table)
-		  (cons (c:aref 'current-block (entry-label entry)) names)
+		  (cons (c:cref (entry-label entry)) names)
 		  (cons (c:define (entry-label entry) offset) defines)
 		  (cons (entry-value entry) objects)))
 	  (receive (prefix suffix)
