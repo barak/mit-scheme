@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.20 2006/10/01 05:38:02 cph Exp $
+$Id: lapgen.scm,v 1.21 2006/10/08 01:27:59 cph Exp $
 
 Copyright 1993,1998,2001,2002,2004,2006 Massachusetts Institute of Technology
 
@@ -344,21 +344,6 @@ USA.
 
 (define (c:cptr index)
   (c:aptr 'current_block index))
-
-(define (c:make-object type datum)
-  (c:ecall "MAKE_OBJECT" type datum))
-
-(define (c:make-pointer-object type address)
-  (c:ecall "MAKE_POINTER_OBJECT" type address))
-
-(define (c:object-type expr)
-  (c:ecall "OBJECT_TYPE" expr))
-
-(define (c:object-datum expr)
-  (c:ecall "OBJECT_DATUM" expr))
-
-(define (c:object-address expr)
-  (c:ecall "OBJECT_ADDRESS" expr))
 
 ;;;; Constants, Labels, and Various Caches
 
