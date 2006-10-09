@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.17 2006/09/25 04:36:56 cph Exp $
+$Id: c.c,v 1.18 2006/10/09 06:51:04 cph Exp $
 
 Copyright 1993,2002,2006 Massachusetts Institute of Technology
 
@@ -255,24 +255,28 @@ DEFUN (find_compiled_block, (name), char * name)
 }
 
 int
-DEFUN (declare_compiled_data,
-       (name, decl_data, data_proc),
+DEFUN (declare_compiled_data_ns, (name, data_proc),
+       char * name
+       AND SCHEME_OBJECT * EXFUN ((* data_proc), (entry_count_t)))
+{
+  entry_count_t slot = (find_compiled_block (name));
+  if ((slot == max_compiled_blocks)
+      || ((compiled_blocks_table[slot].data.errgen != uninitialized_data)
+	  && (compiled_blocks_table[slot].data.constructor != data_proc)))
+    return (-1);
+  compiled_blocks_table[slot].flags &= (~ COMPILED_BLOCK_FLAG_DATA_ONLY);
+  compiled_blocks_table[slot].data.constructor = data_proc;
+  return (0);  
+}
+
+int
+DEFUN (declare_compiled_data, (name, decl_data, data_proc),
        char * name
        AND int EXFUN ((* decl_data), (void))
        AND SCHEME_OBJECT * EXFUN ((* data_proc), (entry_count_t)))
 {
-  entry_count_t slot = (find_compiled_block (name));
-
-  if (slot == max_compiled_blocks)
-    return (-1);
-  
-  if ((compiled_blocks_table[slot].data.errgen != uninitialized_data)
-      && (compiled_blocks_table[slot].data.constructor != data_proc))
-    return (-1);
-
-  compiled_blocks_table[slot].flags &= (~ COMPILED_BLOCK_FLAG_DATA_ONLY);
-  compiled_blocks_table[slot].data.constructor = data_proc;
-  return (* decl_data) ();  
+  int rc = (declare_compiled_data_ns (name, data_proc));
+  return ((rc == 0) ? ((*decl_data) ()) : rc);
 }
 
 SCHEME_OBJECT
@@ -293,8 +297,7 @@ DEFUN (initialize_subblock, (name), char * name)
 }
 
 SCHEME_OBJECT
-DEFUN (initialize_C_compiled_block, (argno, name),
-       int argno AND char * name)
+DEFUN (initialize_C_compiled_block, (argno, name), int argno AND char * name)
 {
   SCHEME_OBJECT val;
   entry_count_t slot;

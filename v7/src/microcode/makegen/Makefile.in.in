@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.33 2006/10/01 21:00:46 cph Exp $
+# $Id: Makefile.in.in,v 1.34 2006/10/09 06:51:10 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -374,11 +374,11 @@ $(GC_HEAD_FILES)
 compinit.h: $(COMPILED_SOURCES) liarc.tch Makefile
 	rm -f $@
 	grep \^DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' -e 's/)/);/' > $@
+	| sed -e 's/.*:/  /' > $@
 	grep \^DECLARE_COMPILED_DATA liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' -e 's/)/);/' >> $@
+	| sed -e 's/.*:/  /' >> $@
 	grep \^DECLARE_DATA_OBJECT liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' -e 's/)/);/' >> $@
+	| sed -e 's/.*:/  /' >> $@
 
 foo $(COMPILED_OBJECTS): liarc.tch
 liarc.tch: liarc.h $(LIARC_HEAD_FILES)

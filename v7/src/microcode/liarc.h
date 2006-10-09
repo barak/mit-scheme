@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.22 2006/09/16 11:19:09 gjr Exp $
+$Id: liarc.h,v 1.23 2006/10/09 06:50:58 cph Exp $
 
 Copyright (c) 1992-2002, 2006 Massachusetts Institute of Technology
 
@@ -228,6 +228,10 @@ REGISTER SCHEME_OBJECT * lcl_membase = memory_base
   JUMP ((SCHEME_OBJECT *) (current_block[label]))
 
 #define POP_RETURN() goto pop_return
+
+#define INVOKE_PRIMITIVE_DECLS						\
+  SCHEME_OBJECT primitive;						\
+  long primitive_nargs;
 
 #define INVOKE_PRIMITIVE(prim, nargs) do				\
 {									\
@@ -235,8 +239,9 @@ REGISTER SCHEME_OBJECT * lcl_membase = memory_base
   primitive_nargs = (nargs);						\
   goto invoke_primitive;						\
 } while (0)
-
-#define INVOKE_PRIMITIVE_CODE() do					\
+
+#define INVOKE_PRIMITIVE_TARGET						\
+DEFLABEL (invoke_primitive)						\
 {									\
   SCHEME_OBJECT * destination;						\
 									\
@@ -246,9 +251,77 @@ REGISTER SCHEME_OBJECT * lcl_membase = memory_base
   destination = (OBJECT_ADDRESS (STACK_POP ()));			\
   CACHE_VARIABLES ();							\
   JUMP (destination);							\
-} while(0)
+}
+
+#define INVOKE_INTERFACE_DECLS						\
+  int utlarg_code;							\
+  long utlarg_1;							\
+  long utlarg_2;							\
+  long utlarg_3;							\
+  long utlarg_4;
 
-#define INVOKE_INTERFACE_CODE() do					\
+#define INVOKE_INTERFACE_0(code) do					\
+{									\
+  utlarg_code = (code);							\
+  goto invoke_interface_0;						\
+} while (0)
+
+#define INVOKE_INTERFACE_1(code, one) do				\
+{									\
+  utlarg_code = (code);							\
+  utlarg_1 = ((long) (one));						\
+  goto invoke_interface_1;						\
+} while (0)
+
+#define INVOKE_INTERFACE_2(code, one, two) do				\
+{									\
+  utlarg_code = (code);							\
+  utlarg_1 = ((long) (one));						\
+  utlarg_2 = ((long) (two));						\
+  goto invoke_interface_2;						\
+} while (0)
+
+#define INVOKE_INTERFACE_3(code, one, two, three) do			\
+{									\
+  utlarg_code = (code);							\
+  utlarg_1 = ((long) (one));						\
+  utlarg_2 = ((long) (two));						\
+  utlarg_3 = ((long) (three));						\
+  goto invoke_interface_3;						\
+} while (0)
+
+#define INVOKE_INTERFACE_4(code, one, two, three, four) do		\
+{									\
+  utlarg_code = (code);							\
+  utlarg_1 = ((long) (one));						\
+  utlarg_2 = ((long) (two));						\
+  utlarg_3 = ((long) (three));						\
+  utlarg_4 = ((long) (four));						\
+  goto invoke_interface_4;						\
+} while (0)
+
+#define INVOKE_INTERFACE_TARGET_0					\
+DEFLABEL (invoke_interface_0)						\
+  utlarg_1 = 0;								\
+  INVOKE_INTERFACE_TARGET_1
+
+#define INVOKE_INTERFACE_TARGET_1					\
+DEFLABEL (invoke_interface_1)						\
+  utlarg_2 = 0;								\
+  INVOKE_INTERFACE_TARGET_2
+
+#define INVOKE_INTERFACE_TARGET_2					\
+DEFLABEL (invoke_interface_2)						\
+  utlarg_3 = 0;								\
+  INVOKE_INTERFACE_TARGET_3
+
+#define INVOKE_INTERFACE_TARGET_3					\
+DEFLABEL (invoke_interface_3)						\
+  utlarg_4 = 0;								\
+  INVOKE_INTERFACE_TARGET_4
+
+#define INVOKE_INTERFACE_TARGET_4					\
+DEFLABEL (invoke_interface_4)						\
 {									\
   SCHEME_OBJECT * destination;						\
 									\
@@ -257,47 +330,7 @@ REGISTER SCHEME_OBJECT * lcl_membase = memory_base
 				 utlarg_3, utlarg_4));			\
   CACHE_VARIABLES ();							\
   JUMP (destination);							\
-} while (0)
-
-#define INVOKE_INTERFACE_4(code, one, two, three, four) do		\
-{									\
-  utlarg_4 = ((long) (four));						\
-  utlarg_3 = ((long) (three));						\
-  utlarg_2 = ((long) (two));						\
-  utlarg_1 = ((long) (one));						\
-  utlarg_code = (code);							\
-  goto invoke_interface_4;						\
-} while (0)
-
-#define INVOKE_INTERFACE_3(code, one, two, three) do			\
-{									\
-  utlarg_3 = ((long) (three));						\
-  utlarg_2 = ((long) (two));						\
-  utlarg_1 = ((long) (one));						\
-  utlarg_code = (code);							\
-  goto invoke_interface_3;						\
-} while (0)
-
-#define INVOKE_INTERFACE_2(code, one, two) do				\
-{									\
-  utlarg_2 = ((long) (two));						\
-  utlarg_1 = ((long) (one));						\
-  utlarg_code = (code);							\
-  goto invoke_interface_2;						\
-} while (0)
-
-#define INVOKE_INTERFACE_1(code, one) do				\
-{									\
-  utlarg_1 = ((long) (one));						\
-  utlarg_code = (code);							\
-  goto invoke_interface_1;						\
-} while (0)
-
-#define INVOKE_INTERFACE_0(code) do					\
-{									\
-  utlarg_code = (code);							\
-  goto invoke_interface_0;						\
-} while (0)
+}
 
 #define MAX_BIT_SHIFT DATUM_LENGTH
 
@@ -380,19 +413,17 @@ struct liarc_data_S
   SCHEME_OBJECT * EXFUN ((* data), (entry_count_t));
 };
 
-#define DECLARE_SUBCODE(name, nentries, decl_code, code) do		\
+#define DECLARE_SUBCODE(name, nentries, code) do			\
 {									\
-  int result = (declare_compiled_code (name, nentries,			\
-				       decl_code, code));		\
-									\
+  int result								\
+    = (declare_compiled_code (name, nentries, NO_SUBBLOCKS, code));	\
   if (result != 0)							\
     return (result);							\
 } while (0)
 
-#define DECLARE_SUBDATA(name, decl_data, data) do			\
+#define DECLARE_SUBDATA(name, data) do					\
 {									\
-  int result = (declare_compiled_data (name, decl_data, data));		\
-									\
+  int result = (declare_compiled_data (name, NO_SUBBLOCKS, data));	\
   if (result != 0)							\
     return (result);							\
 } while (0)
@@ -419,84 +450,73 @@ struct liarc_data_S
 
 #ifndef COMPILE_FOR_DYNAMIC_LOADING
 
-/* This does nothing in the sources. */
-
-# define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
-  extern int EXFUN (decl_code, (void));					\
-  extern SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, entry_count_t));
-
-# define DECLARE_COMPILED_DATA(name, decl_data, data)			\
-  extern int EXFUN (decl_data, (void));					\
-  extern SCHEME_OBJECT * EXFUN (data, (entry_count_t));
-
-# define DECLARE_DATA_OBJECT(name, data)				\
-  extern SCHEME_OBJECT EXFUN (data, (void));
-
-# define DECLARE_DYNAMIC_INITIALIZATION(name)
-
-# define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)
+#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)
+#define DECLARE_COMPILED_DATA(name, decl_data, data)
+#define DECLARE_COMPILED_DATA_NS(name, data)
+#define DECLARE_DATA_OBJECT(name, data)
+#define DECLARE_DYNAMIC_INITIALIZATION(name)
+#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)
 
 #else /* COMPILE_FOR_DYNAMIC_LOADING */
 
-# define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
-  static int								\
-  DEFUN_VOID (dload_initialize_code)					\
-  {									\
-    int EXFUN (decl_code, (void));					\
-    SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, entry_count_t));	\
-									\
-    return (declare_compiled_code (name, nentries,			\
-				   decl_code, code));			\
-  }
+#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
+int EXFUN (decl_code, (void));						\
+SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, entry_count_t));		\
+static int								\
+DEFUN_VOID (dload_initialize_code)					\
+{									\
+  return (declare_compiled_code (name, nentries, decl_code, code));	\
+}
 
-# define DECLARE_COMPILED_DATA(name, decl_data, data)			\
-  static int								\
-  DEFUN_VOID (dload_initialize_data)					\
-  {									\
-    int EXFUN (decl_data, (void));					\
-    SCHEME_OBJECT * EXFUN (data, (entry_count_t));			\
-									\
-    return (declare_compiled_data (name, decl_data, data));		\
-  }
+#define DECLARE_COMPILED_DATA(name, decl_data, data)			\
+int EXFUN (decl_data, (void));						\
+SCHEME_OBJECT * EXFUN (data, (entry_count_t));				\
+static int								\
+DEFUN_VOID (dload_initialize_data)					\
+{									\
+  return (declare_compiled_data (name, decl_data, data));		\
+}
 
-# define DECLARE_DATA_OBJECT(name, data)				\
-  static int								\
-  DEFUN_VOID (dload_initialize_data)					\
-  {									\
-    SCHEME_OBJECT EXFUN (data, (void));					\
-									\
-    return (declare_data_object (name, data));				\
-  }
+#define DECLARE_COMPILED_DATA_NS(name, data)				\
+SCHEME_OBJECT * EXFUN (data, (entry_count_t));				\
+static int								\
+DEFUN_VOID (dload_initialize_data)					\
+{									\
+  return (declare_compiled_data_ns (name, data));			\
+}
 
+#define DECLARE_DATA_OBJECT(name, data)					\
+SCHEME_OBJECT EXFUN (data, (void));					\
+static int								\
+DEFUN_VOID (dload_initialize_data)					\
+{									\
+  return (declare_data_object (name, data));				\
+}
 
-# define DECLARE_DYNAMIC_INITIALIZATION(name)				\
-  extern char * EXFUN (dload_initialize_file, (void));			\
-									\
-  char *								\
-  DEFUN_VOID (dload_initialize_file)					\
-  {									\
-    int result = (dload_initialize_code ());				\
-    if (result != 0)							\
-      return ((char *) NULL);						\
-    result = (dload_initialize_data ());				\
-    if (result != 0)							\
-      return ((char *) NULL);						\
-    else								\
-      return (name);							\
-  }
+#define DECLARE_DYNAMIC_INITIALIZATION(name)				\
+char *									\
+DEFUN_VOID (dload_initialize_file)					\
+{									\
+  int result = (dload_initialize_code ());				\
+  if (result != 0)							\
+    return ((char *) NULL);						\
+  result = (dload_initialize_data ());					\
+  if (result != 0)							\
+    return ((char *) NULL);						\
+  else									\
+    return (name);							\
+}
 
-# define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)			\
-  extern char * EXFUN (dload_initialize_file, (void));			\
-									\
-  char *								\
-  DEFUN_VOID (dload_initialize_file)					\
-  {									\
-    int result = (dload_initialize_data ());				\
-    if (result != 0)							\
-      return ((char *) NULL);						\
-    else								\
-      return (name);							\
-  }
+#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)			\
+char *									\
+DEFUN_VOID (dload_initialize_file)					\
+{									\
+  int result = (dload_initialize_data ());				\
+  if (result != 0)							\
+    return ((char *) NULL);						\
+  else									\
+    return (name);							\
+}
 
 #endif /* COMPILE_FOR_DYNAMIC_LOADING */
 
@@ -518,6 +538,9 @@ extern int
   EXFUN (declare_compiled_data,
 	 (char *,
 	  int EXFUN ((*), (void)),
+	  SCHEME_OBJECT * EXFUN ((*), (entry_count_t)))),
+  EXFUN (declare_compiled_data_ns,
+	 (char *,
 	  SCHEME_OBJECT * EXFUN ((*), (entry_count_t)))),
   EXFUN (declare_data_object,
 	 (char *,
