@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.30 2006/10/08 01:27:47 cph Exp $
+$Id: cout.scm,v 1.31 2006/10/09 06:48:27 cph Exp $
 
 Copyright 1993,1998,2006 Massachusetts Institute of Technology
 
@@ -181,31 +181,19 @@ USA.
 	  (begin
 	    (if (not (< *invoke-interface* 5))
 		(error "Utilities take at most 4 args:" *invoke-interface*))
-	    (values
-	     (c:group (c:decl 'int 'utlarg_code)
-		      (c:decl 'long 'utlarg_1)
-		      (c:decl 'long 'utlarg_2)
-		      (c:decl 'long 'utlarg_3)
-		      (c:decl 'long 'utlarg_4))
-	     (c:group*
-	      (list-tail (list (c:group (c:label 'invoke_interface_0)
-					(c:= 'utlarg_1 0))
-			       (c:group (c:label 'invoke_interface_1)
-					(c:= 'utlarg_2 0))
-			       (c:group (c:label 'invoke_interface_2)
-					(c:= 'utlarg_3 0))
-			       (c:group (c:label 'invoke_interface_3)
-					(c:= 'utlarg_4 0))
-			       (c:group (c:label 'invoke_interface_4)
-					(c:scall "INVOKE_INTERFACE_CODE")))
-			 *invoke-interface*))))))
+	    (values (c:line "INVOKE_INTERFACE_DECLS")
+		    (c:exdent
+		     (c:line (vector-ref '#("INVOKE_INTERFACE_TARGET_0"
+					    "INVOKE_INTERFACE_TARGET_1"
+					    "INVOKE_INTERFACE_TARGET_2"
+					    "INVOKE_INTERFACE_TARGET_3"
+					    "INVOKE_INTERFACE_TARGET_4")
+					 *invoke-interface*)))))))
 
     (define (subroutine-information-2)
       (if *used-invoke-primitive*
-	  (values (c:group (c:decl 'sobj 'primitive)
-			   (c:decl 'long 'primitive_nargs))
-		  (c:group (c:label 'invoke_primitive)
-			   (c:scall "INVOKE_PRIMITIVE_CODE")))
+	  (values (c:line "INVOKE_PRIMITIVE_DECLS")
+		  (c:exdent (c:line "INVOKE_PRIMITIVE_TARGET")))
 	  (values (c:group)
 		  (c:group))))
 
@@ -472,7 +460,7 @@ USA.
 	       (c:page)
 	       (c:data-section data-generator
 			       (c:line)
-			       (declare-data handle "NO_SUBBLOCKS" data-name)))
+			       (declare-data-no-subblocks handle data-name)))
       (c:group (c:code-section code-fn
 			       (c:line)
 			       (declare-subcodes decl-code-name code-blocks))
@@ -520,6 +508,10 @@ USA.
 (define (declare-code handle ntags decl proc)
   ;; This must be a single line!
   (c:line (c:call "DECLARE_COMPILED_CODE" (c:string handle) ntags decl proc)))
+
+(define (declare-data-no-subblocks handle proc)
+  ;; This must be a single line!
+  (c:line (c:call "DECLARE_COMPILED_DATA_NS" (c:string handle) proc)))
 
 (define (declare-data handle decl proc)
   ;; This must be a single line!
@@ -972,13 +964,11 @@ USA.
   (c:scall "DECLARE_SUBCODE"
 	   (c:string (fake-block/tag block))
 	   (fake-block/ntags block)
-	   "NO_SUBBLOCKS"
 	   (fake-block/c-proc block)))
 
 (define (fake-block->data-decl block)
   (c:scall "DECLARE_SUBDATA"
 	   (c:string (fake-block/tag block))
-	   "NO_SUBBLOCKS"
 	   (fake-block/d-proc block)))
 
 (define (fake-block->c-code block)

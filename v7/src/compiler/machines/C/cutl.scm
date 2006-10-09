@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cutl.scm,v 1.6 2006/10/08 01:27:53 cph Exp $
+$Id: cutl.scm,v 1.7 2006/10/09 06:48:32 cph Exp $
 
 Copyright 1993,2006 Massachusetts Institute of Technology
 
@@ -201,7 +201,9 @@ USA.
 	(else (error:not-c:group group 'C:WRITE-GROUP))))
 
 (define (c:label-line? line)
-  (string-prefix? "DEFLABEL " (c:line-text line)))
+  (or (string-prefix? "DEFLABEL " (c:line-text line))
+      (string-prefix? "INVOKE_INTERFACE_TARGET_" (c:line-text line))
+      (string=? "INVOKE_PRIMITIVE_TARGET" (c:line-text line))))
 
 (define (c:comment . content)
   (string-append "/* " (c:line-items content) " */"))
@@ -277,7 +279,7 @@ USA.
   (c:line "goto " (c:var label) ";"))
 
 (define (c:label label)
-  (c:exdent (c:scall "DEFLABEL" label)))
+  (c:exdent (c:line (c:call "DEFLABEL" label))))
 
 (define (c:return expr)
   (c:line "return " (c:pexpr expr) ";"))
