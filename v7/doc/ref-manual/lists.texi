@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: lists.texi,v 1.2 2006/06/14 04:26:50 cph Exp $
+@c $Id: lists.texi,v 1.3 2006/10/10 13:43:48 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -587,7 +587,7 @@ signals an error.
 @cindex type predicate, for empty list
 @cindex empty list, predicate for
 Returns @code{#t} if @var{object} is the empty list; otherwise returns
-@code{#f} (but @pxref{True and False}).
+@code{#f}.
 
 @example
 @group
