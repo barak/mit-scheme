@@ -55,5 +55,5 @@ generate_log ()
     fi
 }
 
-generate_log /gunk/hlsim/doc
-generate_log /gunk/hlsim/src
+#generate_log /gunk/hlsim/doc
+#generate_log /gunk/hlsim/src
