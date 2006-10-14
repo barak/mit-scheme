@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.42 2006/10/04 19:02:17 cph Exp $
+$Id: genio.scm,v 1.43 2006/10/14 06:26:25 savannah-arthur Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -954,8 +954,8 @@ USA.
   (set-output-buffer-encode! ob (name->encoder coding))
   (if (column-tracking-coder? coding)
       (if (not (output-buffer-column ob))
-	  (set! ob 0))
-      (set! ob #f))
+	  (set-output-buffer-column! ob 0))
+      (set-output-buffer-column! ob #f))
   unspecific)
 
 (define (set-output-buffer-line-ending! ob name)
