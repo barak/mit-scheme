@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.78 2006/10/02 04:18:01 cph Exp $
+$Id: load.scm,v 14.79 2006/10/16 06:23:45 savannah-arthur Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -240,10 +240,12 @@ USA.
 (define (try-built-in pathname)
   (let ((d (pathname-directory pathname)))
     (and (pair? d)
-	 ((ucode-primitive initialize-c-compiled-block 1)
-	  (string-append (last d)
-			 "_"
-			 (pathname-name pathname))))))
+	 (let ((tail (last d)))
+	   (and (string? tail)		;Doesn't handle UP ("..").
+		((ucode-primitive initialize-c-compiled-block 1)
+		 (string-append tail
+				"_"
+				(pathname-name pathname))))))))
 
 (define (load/internal pathname environment purify? load-noisily?)
   (let* ((port (open-input-file pathname))
