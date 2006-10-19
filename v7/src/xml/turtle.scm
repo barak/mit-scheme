@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.9 2006/10/19 17:48:24 cph Exp $
+$Id: turtle.scm,v 1.10 2006/10/19 19:19:20 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -85,12 +85,8 @@ USA.
   (*parser
    (encapsulate vector->list
      (seq parse:predicate-object-list-1
-	  (* (seq parse:ws*
-		  ";"
-		  parse:ws*
-		  parse:predicate-object-list-1))
-	  (? (seq parse:ws*
-		  ";"))))))
+	  (* (seq parse:ws* ";" parse:ws* parse:predicate-object-list-1))
+	  (? (seq parse:ws* ";"))))))
 
 (define parse:predicate-object-list-1
   (*parser
@@ -104,10 +100,7 @@ USA.
 	       (error #f "Expected whitespace"))
 	  (encapsulate vector->list
 	    (seq parse:object-required
-		 (* (seq parse:ws*
-			 ","
-			 parse:ws*
-			 parse:object-required))))))))
+		 (* (seq parse:ws* "," parse:ws* parse:object-required))))))))
 
 (define parse:subject
   (*parser (alt parse:resource parse:blank)))
@@ -148,8 +141,10 @@ USA.
 		 parse:ws*
 		 (alt ")"
 		      (seq parse:object-required
-			   (* (seq parse:ws+ parse:object))
 			   parse:ws*
+			   (* (seq ","
+				   parse:ws*
+				   parse:object-required))
 			   (alt ")"
 				(error #f
 				       "Expected close parenthesis"))))))))))
@@ -549,7 +544,8 @@ USA.
 	    (post-process-collection (cdr resources) prefixes base-uri)
 	  (let ((p (make-rdf-bnode)))
 	    (values p
-		    (cons* (make-rdf-triple p rdf:first first)
+		    (cons* (make-rdf-triple p rdf:type rdf:List)
+			   (make-rdf-triple p rdf:first first)
 			   (make-rdf-triple p rdf:rest rest)
 			   (append! triples triples*))))))
       (values rdf:nil '())))
@@ -610,49 +606,55 @@ USA.
 	(write-rdf/nt-uri uri port))))
 
 (define (write-properties triples bnodes indentation port)
-  (let ((triples (sort triples triple<?)))
-    (write-property (car triples) bnodes indentation port)
-    (for-each (lambda (t)
-		(write-indentation indentation port)
-		(write-string "; " port)
-		(write-property t bnodes indentation port))
-	      (cdr triples))))
+  (write-property (car triples) bnodes indentation port)
+  (for-each (lambda (t)
+	      (write-indentation indentation port)
+	      (write-string "; " port)
+	      (write-property t bnodes indentation port))
+	    (cdr triples)))
 
-(define (triple<? t1 t2)
-  (let ((p1 (rdf-triple-predicate t1))
-	(p2 (rdf-triple-predicate t2)))
-    (and (not (eq? p2 rdf:type))
-	 (if (eq? p1 rdf:type)
-	     #t
-	     (string<? (uri->string p1) (uri->string p2))))))
-
 (define (write-property t bnodes indentation port)
   (let ((p (rdf-triple-predicate t)))
     (if (eq? p rdf:type)
 	(write-string "a" port)
 	(write-rdf/turtle-uri p port)))
   (write-string " " port)
-  (let ((o (rdf-triple-object t)))
-    (cond ((uri? o) (write-rdf/turtle-uri o port))
-	  ((rdf-literal? o) (write-literal o port))
-	  ((rdf-bnode? o) (write-bnode o bnodes indentation port))
-	  (else (error "Unknown RDF object:" o))))
+  (write-object (rdf-triple-object t) bnodes indentation port)
   (newline port))
+
+(define (write-object o bnodes indentation port)
+  (cond ((uri? o)
+	 (if (eq? o rdf:nil)
+	     (write-string "()" port)
+	     (write-rdf/turtle-uri o port)))
+	((rdf-literal? o)
+	 (write-literal o port))
+	((rdf-bnode? o)
+	 (write-bnode o bnodes indentation port))
+	(else
+	 (error "Unknown RDF object:" o))))
 
 (define (write-bnode bnode bnodes indentation port)
-  (let ((ts
-	 (find-matching-item bnodes
-	   (lambda (ts)
-	     (eq? (rdf-triple-subject (car ts)) bnode)))))
-    (if ts
-	(begin
-	  (write-string "[" port)
-	  (newline port)
-	  (write-indentation (+ indentation 1) port)
-	  (write-properties ts bnodes (+ indentation 1) port)
-	  (write-indentation indentation port)
-	  (write-string "]" port))
-	(write-rdf/nt-bnode bnode port))))
+  (cond ((rdf-list->list bnode bnodes)
+	 => (lambda (items)
+	      (write-string "(" port)
+	      (write-object (car items) bnodes indentation port)
+	      (for-each (lambda (item)
+			  (write-string ", " port)
+			  (write-object item bnodes indentation port))
+			(cdr items))
+	      (write-string ")" port)))
+	((find-in-bnodes bnode bnodes)
+	 => (lambda (ts)
+	      (write-string "[" port)
+	      (newline port)
+	      (let ((indentation (+ indentation 1)))
+		(write-indentation indentation port)
+		(write-properties ts bnodes indentation port))
+	      (write-indentation indentation port)
+	      (write-string "]" port)))
+	(else
+	 (write-rdf/nt-bnode bnode port))))
 
 (define (write-literal literal port)
   (let ((text (rdf-literal-text literal)))
@@ -697,8 +699,32 @@ USA.
 				    (lambda (triples) (cons triple triples))
 				    (lambda () '())))
 	      triples)
-    (split-list (hash-table/datum-list table)
+    (split-list (sort (map (lambda (ts) (sort ts triple<?))
+			   (hash-table/datum-list table))
+		  (lambda (a b)
+		    (subject<? (rdf-triple-subject (car a))
+			       (rdf-triple-subject (car b)))))
 		(lambda (ts) (uri? (rdf-triple-subject (car ts)))))))
+
+(define (triple<? t1 t2)
+  (let ((p1 (rdf-triple-predicate t1))
+	(p2 (rdf-triple-predicate t2)))
+    (and (not (eq? p2 rdf:type))
+	 (if (eq? p1 rdf:type)
+	     #t
+	     (uri<? p1 p2)))))
+
+(define (subject<? a b)
+  (if (uri? a)
+      (if (uri? b)
+	  (uri<? a b)
+	  #t)
+      (if (uri? b)
+	  #f
+	  (string<? (rdf-bnode-name a) (rdf-bnode-name b)))))
+
+(define (uri<? a b)
+  (string<? (uri->string a) (uri->string b)))
 
 (define (split-bnodes-by-nrefs bnodes triples)
   (split-list bnodes
@@ -709,6 +735,34 @@ USA.
 			 (or (eq? (rdf-triple-predicate triple) bnode)
 			     (eq? (rdf-triple-object triple) bnode)))))
 		   1))))
+
+(define (rdf-list->list node bnodes)
+  (let loop ((node node))
+    (if (eq? node rdf:nil)
+	'()
+	(let ((ts (find-in-bnodes node bnodes)))
+	  (and ts
+	       (let ((p (bnode->pair ts)))
+		 (and p
+		      (let ((rest (loop (cdr p))))
+			(and rest
+			     (cons (car p) rest))))))))))
+
+(define (bnode->pair ts)
+  (and (eq? (rdf-triple-predicate (car ts)) rdf:type)
+       (eq? (rdf-triple-object (car ts)) rdf:List)
+       (pair? (cdr ts))
+       (eq? (rdf-triple-predicate (cadr ts)) rdf:first)
+       (pair? (cddr ts))
+       (eq? (rdf-triple-predicate (caddr ts)) rdf:rest)
+       (null? (cdddr ts))
+       (cons (rdf-triple-object (cadr ts))
+	     (rdf-triple-object (caddr ts)))))
+
+(define (find-in-bnodes bnode bnodes)
+  (find-matching-item bnodes
+    (lambda (ts)
+      (eq? (rdf-triple-subject (car ts)) bnode))))
 
 (define (split-list items predicate)
   (let loop ((items items) (true '()) (false '()))
@@ -729,14 +783,17 @@ USA.
 (define rdf:type
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
 
-(define rdf:nil
-  (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"))
+(define rdf:List
+  (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#List"))
 
 (define rdf:first
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#first"))
 
 (define rdf:rest
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#rest"))
+
+(define rdf:nil
+  (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"))
 
 (define xsd:integer
   (string->uri "http://www.w3.org/2001/XMLSchema#integer"))
