@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.16 2006/08/02 05:05:14 cph Exp $
+$Id: rdf-struct.scm,v 1.17 2006/10/19 15:20:33 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -291,23 +291,31 @@ USA.
     (and p
 	 (cdr p))))
 
-(define (uri->rdf-qname uri #!optional error? registry)
-  (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
+(define (uri->rdf-prefix uri #!optional error? registry)
+  (let ((s (uri->string (->absolute-uri uri 'URI->RDF-PREFIX))))
     (let ((p
 	   (let ((alist
 		  (registry-bindings
-		   (check-registry registry 'URI->RDF-QNAME)))
+		   (check-registry registry 'URI->RDF-PREFIX)))
 		 (filter (lambda (p) (string-prefix? (cdr p) s))))
 	     (or (find-matching-item alist
 		   (lambda (p)
 		     (and (not (eq? (car p) ':))
 			  (filter p))))
 		 (find-matching-item alist filter)))))
-      (if (and error? (not p))
-	  (error:bad-range-argument uri 'URI->RDF-QNAME))
-      (and p
-	   (symbol (car p)
-		   (string-tail s (string-length (cdr p))))))))
+      (if p
+	  (values (car p) (cdr p))
+	  (begin
+	    (if error? (error:bad-range-argument uri 'URI->RDF-PREFIX))
+	    (values #f #f))))))
+
+(define (uri->rdf-qname uri #!optional error? registry)
+  (let ((uri (->absolute-uri uri 'URI->RDF-QNAME)))
+    (receive (prefix expansion) (uri->rdf-prefix uri error? registry)
+      (and prefix
+	   (symbol prefix
+		   (string-tail (uri->string uri)
+				(string-length expansion)))))))
 
 (define (rdf-qname->uri qname #!optional error? registry)
   (receive (prefix local) (split-rdf-qname qname)
