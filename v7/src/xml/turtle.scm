@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.7 2006/08/02 05:05:20 cph Exp $
+$Id: turtle.scm,v 1.8 2006/10/19 15:22:23 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -23,21 +23,24 @@ USA.
 
 |#
 
-;;;; Parser for RDF/Turtle
+;;;; Codec for RDF/Turtle
 
 (declare (usual-integrations))
 
+;;;; Decoder
+
 (define (read-rdf/turtle-file pathname #!optional base-uri)
   (let ((pathname (pathname-default-type pathname "ttl")))
     (call-with-input-file pathname
       (lambda (port)
+	(port/set-coding port 'UTF-8)
 	(fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
 	  (post-process-parser-output
 	   (parse-turtle-doc (input-port->parser-buffer port))
 	   (if (default-object? base-uri)
 	       (pathname->uri (merge-pathnames pathname))
 	       (merge-uris (file-namestring pathname)
-			   (->absolute-uri base-uri 'read-turtle-file)))))))))
+			   (->absolute-uri base-uri 'READ-TURTLE-FILE)))))))))
 
 (define (parse-turtle-doc buffer)
   (parse:ws* buffer)
@@ -57,7 +60,7 @@ USA.
 
 (define parse:directive
   (*parser
-   (encapsulate (lambda (v) (cons 'prefix (vector->list v)))
+   (encapsulate (lambda (v) (cons 'PREFIX (vector->list v)))
      (seq "@"
 	  (alt (seq "prefix" parse:ws+)
 	       (error #f "Unknown directive name"))
@@ -71,7 +74,7 @@ USA.
 (define parse:triples
   (*parser
    (encapsulate (lambda (v)
-		  (cons* 'triples
+		  (cons* 'TRIPLES
 			 (vector-ref v 0)
 			 (vector-ref v 1)))
      (seq parse:subject
@@ -90,22 +93,21 @@ USA.
 		  ";"))))))
 
 (define parse:predicate-object-list-1
-  (let ((rdf:type (->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type")))
-    (*parser
-     (encapsulate (lambda (v)
-		    (cons (vector-ref v 0)
-			  (vector-ref v 1)))
-       (seq (alt parse:resource
-		 (map (lambda (v) v rdf:type)
-		      (match "a")))
-	    (alt parse:ws+
-		 (error #f "Expected whitespace"))
-	    (encapsulate vector->list
-	      (seq parse:object-required
-		   (* (seq parse:ws*
-			   ","
-			   parse:ws*
-			   parse:object-required)))))))))
+  (*parser
+   (encapsulate (lambda (v)
+		  (cons (vector-ref v 0)
+			(vector-ref v 1)))
+     (seq (alt parse:resource
+	       (map (lambda (v) v rdf:type)
+		    (match "a")))
+	  (alt parse:ws+
+	       (error #f "Expected whitespace"))
+	  (encapsulate vector->list
+	    (seq parse:object-required
+		 (* (seq parse:ws*
+			 ","
+			 parse:ws*
+			 parse:object-required))))))))
 
 (define parse:subject
   (*parser (alt parse:resource parse:blank)))
@@ -121,7 +123,7 @@ USA.
 (define parse:resource
   (*parser
    (alt (map string->uri parse:uriref)
-	(encapsulate (lambda (v) (cons 'qname (vector->list v)))
+	(encapsulate (lambda (v) (cons 'QNAME (vector->list v)))
 	  (seq (alt parse:prefix-name (values #f))
 	       ":"
 	       (alt parse:name (values #f)))))))
@@ -135,13 +137,13 @@ USA.
 	  ;; brackets, but the spec is written like this:
 	  (encapsulate (lambda (v) v (make-rdf-bnode))
 	    "[]")
-	  (map (lambda (pols) (cons 'blank-node pols))
+	  (map (lambda (pols) (cons 'BLANK-NODE pols))
 	       (seq "["
 		    parse:ws*
 		    parse:predicate-object-list
 		    parse:ws*
 		    (alt "]" (error p "Malformed blank node"))))
-	  (encapsulate (lambda (v) (cons 'collection (vector->list v)))
+	  (encapsulate (lambda (v) (cons 'COLLECTION (vector->list v)))
 	    (seq "("
 		 parse:ws*
 		 (alt ")"
@@ -179,7 +181,7 @@ USA.
 				 (symbol? type)
 				 (absolute-uri? type))
 			     (make-rdf-literal string type)
-			     (list 'typed-literal string type))))
+			     (list 'TYPED-LITERAL string type))))
 	  (seq (alt parse:long-string parse:string)
 	       (alt (seq "@"
 			 (alt parse:language
@@ -216,9 +218,6 @@ USA.
 	   xsd:integer))
 	(match (seq (? (alt "-" "+"))
 		    (+ (char-set char-set:turtle-digit)))))))
-
-(define xsd:integer
-  (string->uri "http://www.w3.org/2001/XMLSchema#integer"))
 
 (define parse:double
   (let ((match:exponent
@@ -239,9 +238,6 @@ USA.
 			   (seq (+ (char-set char-set:turtle-digit))
 				match:exponent))))))))
 
-(define xsd:double
-  (string->uri "http://www.w3.org/2001/XMLSchema#double"))
-
 (define parse:decimal
   (*parser
    (map (lambda (s) (make-rdf-literal s xsd:decimal))
@@ -254,16 +250,10 @@ USA.
 			 ;;(+ (char-set char-set:turtle-digit))
 			 ))))))
 
-(define xsd:decimal
-  (string->uri "http://www.w3.org/2001/XMLSchema#decimal"))
-
 (define parse:boolean
   (*parser
    (map (lambda (s) (make-rdf-literal s xsd:boolean))
 	(match (alt "true" "false")))))
-
-(define xsd:boolean
-  (string->uri "http://www.w3.org/2001/XMLSchema#boolean"))
 
 ;;;; Alphabets
 
@@ -304,7 +294,7 @@ USA.
 (define alphabet:name-char
   (alphabet+ alphabet:name-start-char
 	     (code-points->alphabet
-	      '(#x002d
+	      '(#x002D
 		(#x0030 . #x0039)
 		#x00B7
 		(#x0300 . #x036F)
@@ -375,7 +365,7 @@ USA.
       (define (finish)
 	(vector (get-output-string output)))
 
-      (port/set-coding output 'utf-8)
+      (port/set-coding output 'UTF-8)
       (and (match-parser-buffer-string buffer start-delim)
 	   (read-head)))))
 
@@ -471,7 +461,7 @@ USA.
 		  (cons prefix v)))
 	      (keep-matching-items stmts
 		(lambda (stmt)
-		  (eq? (car stmt) 'prefix))))))
+		  (eq? (car stmt) 'PREFIX))))))
     (append-map! (lambda (stmt)
 		   (case (car stmt)
 		     ((triples)
@@ -563,6 +553,188 @@ USA.
 			   (make-rdf-triple p rdf:rest rest)
 			   (append! triples triples*))))))
       (values rdf:nil '())))
+
+;;;; Encoder
+
+(define (write-rdf/turtle-file triples pathname)
+  (call-with-output-file pathname
+    (lambda (port)
+      (port/set-coding port 'UTF-8)
+      (write-rdf/turtle triples port))))
+
+(define (write-rdf/turtle triples #!optional port)
+  (write-prefixes triples port)
+  (receive (uris bnodes) (sort-triples-by-subject triples)
+    (receive (inline separate) (split-bnodes-by-nrefs bnodes triples)
+      (for-each (lambda (ts)
+		  (write-subject ts inline port))
+		uris)
+      (for-each (lambda (ts)
+		  (write-subject ts inline port))
+		separate))))
+
+(define (write-prefixes triples port)
+  (let ((table (make-eq-hash-table)))
+    (let ((check-obj
+	   (lambda (o)
+	     (if (uri? o)
+		 (receive (prefix expansion) (uri->rdf-prefix o #f)
+		   (if prefix
+		       (hash-table/put! table prefix expansion)))))))
+      (for-each (lambda (t)
+		  (check-obj (rdf-triple-subject t))
+		  (check-obj (rdf-triple-predicate t))
+		  (check-obj (rdf-triple-object t)))
+		triples))
+    (hash-table/for-each table
+      (lambda (prefix expansion)
+	(write-string "@prefix " port)
+	(write-symbol prefix port)
+	(write-string " <" port)
+	(write-string expansion port)
+	(write-string "> ." port)
+	(newline port)))))
+
+(define (write-subject triples bnodes port)
+  (newline port)
+  (let ((s (rdf-triple-subject (car triples))))
+    (cond ((uri? s) (write-rdf-uri s port))
+	  ((rdf-bnode? s) (write-rdf-bnode s port))
+	  (else (error "Unknown RDF subject:" s))))
+  (write-string " " port)
+  (write-properties triples bnodes 1 port)
+  (write-string "." port)
+  (newline port))
+
+(define (write-properties triples bnodes indentation port)
+  (let ((triples (sort triples triple<?)))
+    (write-property (car triples) bnodes indentation port)
+    (for-each (lambda (t)
+		(write-indentation indentation port)
+		(write-string "; " port)
+		(write-property t bnodes indentation port))
+	      (cdr triples))))
+
+(define (triple<? t1 t2)
+  (let ((p1 (rdf-triple-predicate t1))
+	(p2 (rdf-triple-predicate t2)))
+    (and (not (eq? p2 rdf:type))
+	 (if (eq? p1 rdf:type)
+	     #t
+	     (string<? (uri->string p1) (uri->string p2))))))
+
+(define (write-property t bnodes indentation port)
+  (let ((p (rdf-triple-predicate t)))
+    (if (eq? p rdf:type)
+	(write-string "a" port)
+	(write-rdf-uri p port)))
+  (write-string " " port)
+  (let ((o (rdf-triple-object t)))
+    (cond ((uri? o)
+	   (write-rdf-uri o port))
+	  ((rdf-literal? o)
+	   (if (let ((type (rdf-literal-type o)))
+		 (or (eq? type xsd:boolean)
+		     (eq? type xsd:decimal)
+		     (eq? type xsd:double)
+		     (eq? type xsd:integer)))
+	       (write-string (rdf-literal-text o) port)
+	       (write-literal o port)))
+	  ((rdf-bnode? o)
+	   (let ((ts
+		  (find-matching-item bnodes
+		    (lambda (ts)
+		      (eq? (rdf-triple-subject (car ts)) o)))))
+	     (if ts
+		 (write-inline-bnode ts bnodes indentation port)
+		 (write-rdf-bnode o port))))
+	  (else
+	   (error "Unknown RDF object:" o))))
+  (newline port))
+
+(define (write-inline-bnode triples bnodes indentation port)
+  (write-string "[" port)
+  (newline port)
+  (write-indentation (+ indentation 1) port)
+  (write-properties triples bnodes (+ indentation 1) port)
+  (write-indentation indentation port)
+  (write-string "]" port))
+
+(define (write-literal literal port)
+  (write-literal-text (rdf-literal-text literal) port)
+  (cond ((rdf-literal-type literal)
+	 => (lambda (uri)
+	      (write-string "^^" port)
+	      (write-rdf-uri uri port)))
+	((rdf-literal-language literal)
+	 => (lambda (lang)
+	      (write-char #\@ port)
+	      (write-string (symbol-name lang) port)))))
+
+(define (write-literal-text text port)
+  (let ((tport (open-input-string text)))
+    (port/set-coding tport 'UTF-8)
+    (if (string-find-next-char text #\newline)
+	(begin
+	  (write-string "\"\"\"" port)
+	  (let loop ()
+	    (let ((char (read-char tport)))
+	      (if (not (eof-object? char))
+		  (begin
+		    (if (char=? char #\newline)
+			(newline port)
+			(write-literal-char char port))
+		    (loop)))))
+	  (write-string "\"\"\"" port))
+	(begin
+	  (write-string "\"" port)
+	  (let loop ()
+	    (let ((char (read-char tport)))
+	      (if (not (eof-object? char))
+		  (begin
+		    (write-literal-char char port)
+		    (loop)))))
+	  (write-string "\"" port)))))
+
+(define (sort-triples-by-subject triples)
+  (let ((table (make-eq-hash-table)))
+    (for-each (lambda (triple)
+		(hash-table-update! table
+				    (rdf-triple-subject triple)
+				    (lambda (triples) (cons triple triples))
+				    (lambda () '())))
+	      triples)
+    (split-list (hash-table/datum-list table)
+		(lambda (ts) (uri? (rdf-triple-subject (car ts)))))))
+
+(define (split-bnodes-by-nrefs bnodes triples)
+  (split-list bnodes
+	      (lambda (ts)
+		(= (let ((bnode (rdf-triple-subject (car ts))))
+		     (count-matching-items triples
+		       (lambda (triple)
+			 (or (eq? (rdf-triple-predicate triple) bnode)
+			     (eq? (rdf-triple-object triple) bnode)))))
+		   1))))
+
+(define (split-list items predicate)
+  (let loop ((items items) (true '()) (false '()))
+    (if (pair? items)
+	(if (predicate (car items))
+	    (loop (cdr items) (cons (car items) true) false)
+	    (loop (cdr items) true (cons (car items) false)))
+	(values (reverse! true) (reverse! false)))))
+
+(define (write-symbol symbol port)
+  (write-string (symbol-name symbol) port))
+
+(define (write-indentation indentation port)
+  (do ((i 0 (+ i 1)))
+      ((not (< i indentation)))
+    (write-char #\tab port)))
+
+(define rdf:type
+  (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
 
 (define rdf:nil
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"))
@@ -572,3 +744,15 @@ USA.
 
 (define rdf:rest
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#rest"))
+
+(define xsd:integer
+  (string->uri "http://www.w3.org/2001/XMLSchema#integer"))
+
+(define xsd:double
+  (string->uri "http://www.w3.org/2001/XMLSchema#double"))
+
+(define xsd:decimal
+  (string->uri "http://www.w3.org/2001/XMLSchema#decimal"))
+
+(define xsd:boolean
+  (string->uri "http://www.w3.org/2001/XMLSchema#boolean"))
