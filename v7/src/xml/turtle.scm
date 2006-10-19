@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.8 2006/10/19 15:22:23 cph Exp $
+$Id: turtle.scm,v 1.9 2006/10/19 17:48:24 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -560,18 +560,15 @@ USA.
   (call-with-output-file pathname
     (lambda (port)
       (port/set-coding port 'UTF-8)
-      (write-rdf/turtle triples port))))
-
-(define (write-rdf/turtle triples #!optional port)
-  (write-prefixes triples port)
-  (receive (uris bnodes) (sort-triples-by-subject triples)
-    (receive (inline separate) (split-bnodes-by-nrefs bnodes triples)
-      (for-each (lambda (ts)
-		  (write-subject ts inline port))
-		uris)
-      (for-each (lambda (ts)
-		  (write-subject ts inline port))
-		separate))))
+      (write-prefixes triples port)
+      (receive (uris bnodes) (sort-triples-by-subject triples)
+	(receive (inline separate) (split-bnodes-by-nrefs bnodes triples)
+	  (for-each (lambda (ts)
+		      (write-subject ts inline port))
+		    uris)
+	  (for-each (lambda (ts)
+		      (write-subject ts inline port))
+		    separate))))))
 
 (define (write-prefixes triples port)
   (let ((table (make-eq-hash-table)))
@@ -598,14 +595,20 @@ USA.
 (define (write-subject triples bnodes port)
   (newline port)
   (let ((s (rdf-triple-subject (car triples))))
-    (cond ((uri? s) (write-rdf-uri s port))
-	  ((rdf-bnode? s) (write-rdf-bnode s port))
+    (cond ((uri? s) (write-rdf/turtle-uri s port))
+	  ((rdf-bnode? s) (write-rdf/nt-bnode s port))
 	  (else (error "Unknown RDF subject:" s))))
   (write-string " " port)
   (write-properties triples bnodes 1 port)
   (write-string "." port)
   (newline port))
-
+
+(define (write-rdf/turtle-uri uri port)
+  (let ((qname (uri->rdf-qname uri #f)))
+    (if qname
+	(write-string (symbol-name qname) port)
+	(write-rdf/nt-uri uri port))))
+
 (define (write-properties triples bnodes indentation port)
   (let ((triples (sort triples triple<?)))
     (write-property (car triples) bnodes indentation port)
@@ -622,79 +625,69 @@ USA.
 	 (if (eq? p1 rdf:type)
 	     #t
 	     (string<? (uri->string p1) (uri->string p2))))))
-
+
 (define (write-property t bnodes indentation port)
   (let ((p (rdf-triple-predicate t)))
     (if (eq? p rdf:type)
 	(write-string "a" port)
-	(write-rdf-uri p port)))
+	(write-rdf/turtle-uri p port)))
   (write-string " " port)
   (let ((o (rdf-triple-object t)))
-    (cond ((uri? o)
-	   (write-rdf-uri o port))
-	  ((rdf-literal? o)
-	   (if (let ((type (rdf-literal-type o)))
-		 (or (eq? type xsd:boolean)
-		     (eq? type xsd:decimal)
-		     (eq? type xsd:double)
-		     (eq? type xsd:integer)))
-	       (write-string (rdf-literal-text o) port)
-	       (write-literal o port)))
-	  ((rdf-bnode? o)
-	   (let ((ts
-		  (find-matching-item bnodes
-		    (lambda (ts)
-		      (eq? (rdf-triple-subject (car ts)) o)))))
-	     (if ts
-		 (write-inline-bnode ts bnodes indentation port)
-		 (write-rdf-bnode o port))))
-	  (else
-	   (error "Unknown RDF object:" o))))
+    (cond ((uri? o) (write-rdf/turtle-uri o port))
+	  ((rdf-literal? o) (write-literal o port))
+	  ((rdf-bnode? o) (write-bnode o bnodes indentation port))
+	  (else (error "Unknown RDF object:" o))))
   (newline port))
 
-(define (write-inline-bnode triples bnodes indentation port)
-  (write-string "[" port)
-  (newline port)
-  (write-indentation (+ indentation 1) port)
-  (write-properties triples bnodes (+ indentation 1) port)
-  (write-indentation indentation port)
-  (write-string "]" port))
-
+(define (write-bnode bnode bnodes indentation port)
+  (let ((ts
+	 (find-matching-item bnodes
+	   (lambda (ts)
+	     (eq? (rdf-triple-subject (car ts)) bnode)))))
+    (if ts
+	(begin
+	  (write-string "[" port)
+	  (newline port)
+	  (write-indentation (+ indentation 1) port)
+	  (write-properties ts bnodes (+ indentation 1) port)
+	  (write-indentation indentation port)
+	  (write-string "]" port))
+	(write-rdf/nt-bnode bnode port))))
+
 (define (write-literal literal port)
-  (write-literal-text (rdf-literal-text literal) port)
-  (cond ((rdf-literal-type literal)
-	 => (lambda (uri)
-	      (write-string "^^" port)
-	      (write-rdf-uri uri port)))
-	((rdf-literal-language literal)
-	 => (lambda (lang)
-	      (write-char #\@ port)
-	      (write-string (symbol-name lang) port)))))
+  (let ((text (rdf-literal-text literal)))
+    (if (let ((type (rdf-literal-type literal)))
+	  (or (eq? type xsd:boolean)
+	      (eq? type xsd:decimal)
+	      (eq? type xsd:double)
+	      (eq? type xsd:integer)))
+	(write-string text port)
+	(begin
+	  (write-literal-text text port)
+	  (cond ((rdf-literal-type literal)
+		 => (lambda (uri)
+		      (write-string "^^" port)
+		      (write-rdf/turtle-uri uri port)))
+		((rdf-literal-language literal)
+		 => (lambda (lang)
+		      (write-string "@" port)
+		      (write-symbol lang port))))))))
 
 (define (write-literal-text text port)
-  (let ((tport (open-input-string text)))
-    (port/set-coding tport 'UTF-8)
-    (if (string-find-next-char text #\newline)
-	(begin
-	  (write-string "\"\"\"" port)
-	  (let loop ()
-	    (let ((char (read-char tport)))
-	      (if (not (eof-object? char))
-		  (begin
-		    (if (char=? char #\newline)
-			(newline port)
-			(write-literal-char char port))
-		    (loop)))))
-	  (write-string "\"\"\"" port))
-	(begin
-	  (write-string "\"" port)
-	  (let loop ()
-	    (let ((char (read-char tport)))
-	      (if (not (eof-object? char))
-		  (begin
-		    (write-literal-char char port)
-		    (loop)))))
-	  (write-string "\"" port)))))
+  (if (string-find-next-char text #\newline)
+      (let ((tport (open-input-string text)))
+	(port/set-coding tport 'UTF-8)
+	(write-string "\"\"\"" port)
+	(let loop ()
+	  (let ((char (read-char tport)))
+	    (if (not (eof-object? char))
+		(begin
+		  (if (char=? char #\newline)
+		      (newline port)
+		      (write-literal-char char port))
+		  (loop)))))
+	(write-string "\"\"\"" port))
+      (write-rdf/nt-literal-text text port)))
 
 (define (sort-triples-by-subject triples)
   (let ((table (make-eq-hash-table)))

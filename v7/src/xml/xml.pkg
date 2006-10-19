@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.81 2006/10/19 15:22:25 cph Exp $
+$Id: xml.pkg,v 1.82 2006/10/19 17:48:26 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -588,8 +588,7 @@ USA.
 	  register-rdf-prefix
 	  split-rdf-qname
 	  uri->rdf-prefix
-	  uri->rdf-qname
-	  write-rdf-uri)
+	  uri->rdf-qname)
   (export (runtime rdf)
 	  %make-rdf-literal
 	  match-bnode-name
@@ -604,21 +603,22 @@ USA.
 	  read-rdf/nt
 	  read-rdf/nt-file
 	  rdf/nt-file->source
-	  write-rdf-bnode
-	  write-rdf-literal
-	  write-rdf-uri-ref
 	  write-rdf/nt
-	  write-rdf/nt-file)
+	  write-rdf/nt-bnode
+	  write-rdf/nt-file
+	  write-rdf/nt-literal
+	  write-rdf/nt-uri)
   (export (runtime rdf turtle)
-	  write-literal-char))
+	  write-literal-char
+	  write-rdf/nt-literal-text))
 
 (define-package (runtime rdf turtle)
   (files "turtle")
   (parent (runtime rdf))
   (export ()
 	  read-rdf/turtle-file
-	  write-rdf/turtle
-	  write-rdf/turtle-file)
+	  write-rdf/turtle-file
+	  write-rdf/turtle-uri)
   (export (runtime rdf)
 	  match:name
 	  match:prefix-name))

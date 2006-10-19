@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.17 2006/10/19 15:20:33 cph Exp $
+$Id: rdf-struct.scm,v 1.18 2006/10/19 17:48:23 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -58,12 +58,6 @@ USA.
   (if (rdf-qname? uri)
       (rdf-qname->uri uri)
       (->absolute-uri uri caller)))
-
-(define (write-rdf-uri uri port)
-  (let ((qname (uri->rdf-qname uri #f)))
-    (if qname
-	(write-string (symbol-name qname) port)
-	(write-rdf-uri-ref uri port))))
 
 ;;;; Blank nodes
 
@@ -78,7 +72,7 @@ USA.
   (standard-unparser-method 'RDF-BNODE
     (lambda (bnode port)
       (write-char #\space port)
-      (write-rdf-bnode bnode port))))
+      (write-rdf/nt-bnode bnode port))))
 
 (define (make-rdf-bnode #!optional name)
   (cond ((default-object? name)
@@ -197,7 +191,7 @@ USA.
   (standard-unparser-method 'RDF-LITERAL
     (lambda (literal port)
       (write-char #\space port)
-      (write-rdf-literal literal port))))
+      (write-rdf/nt-literal literal port))))
 
 (define (make-rdf-literal text type)
   (guarantee-utf8-string text 'RDF-LITERAL)
