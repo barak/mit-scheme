@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.11 2006/10/20 01:19:33 cph Exp $
+$Id: turtle.scm,v 1.12 2006/10/20 02:04:05 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -557,14 +557,7 @@ USA.
     (lambda (port)
       (port/set-coding port 'UTF-8)
       (write-prefixes triples port)
-      (receive (uris bnodes) (sort-triples-by-subject triples)
-	(receive (inline separate) (split-bnodes-by-nrefs bnodes triples)
-	  (for-each (lambda (ts)
-		      (write-subject ts inline port))
-		    uris)
-	  (for-each (lambda (ts)
-		      (write-subject ts inline port))
-		    separate))))))
+      (write-rdf/turtle-triples triples port))))
 
 (define (write-prefixes triples port)
   (let ((table (make-eq-hash-table)))
@@ -572,22 +565,54 @@ USA.
 	   (lambda (o)
 	     (if (uri? o)
 		 (receive (prefix expansion) (uri->rdf-prefix o #f)
-		   (if prefix
-		       (hash-table/put! table prefix expansion)))))))
+		   (if (and prefix (not (hash-table/get table prefix #f)))
+		       (begin
+			 (write-rdf/turtle-prefix prefix expansion port)
+			 (hash-table/put! table prefix #t))))))))
       (for-each (lambda (t)
 		  (check-obj (rdf-triple-subject t))
 		  (check-obj (rdf-triple-predicate t))
 		  (check-obj (rdf-triple-object t)))
-		triples))
-    (hash-table/for-each table
-      (lambda (prefix expansion)
-	(write-string "@prefix " port)
-	(write-symbol prefix port)
-	(write-string " <" port)
-	(write-string expansion port)
-	(write-string "> ." port)
-	(newline port)))))
+		triples))))
 
+(define (write-rdf/turtle-prefix prefix expansion port)
+  (write-string "@prefix " port)
+  (write-symbol prefix port)
+  (write-string " <" port)
+  (write-string expansion port)
+  (write-string "> ." port)
+  (newline port))
+
+(define (write-rdf/turtle-triples ts port)
+  (receive (uris bnodes)
+      (split-list ts (lambda (t) (uri? (rdf-triple-subject t))))
+    (receive (inline separate)
+	(split-list bnodes
+		    (lambda (t)
+		      (= (let ((bnode (rdf-triple-subject t)))
+			   (count-matching-items ts
+			     (lambda (t)
+			       (eq? (rdf-triple-object t) bnode))))
+			 1)))
+      (let ((inline (group-triples-by-subject inline)))
+	(for-each (lambda (ts)
+		    (write-subject ts inline port))
+		  (group-triples-by-subject uris))
+	(for-each (lambda (ts)
+		    (write-subject ts inline port))
+		  (group-triples-by-subject separate))))))
+
+(define (group-triples-by-subject ts)
+  (let loop ((ts (sort-triples ts)) (groups '()))
+    (if (pair? ts)
+	(let grow ((ts (cdr ts)) (group (list (car ts))))
+	  (if (and (pair? ts)
+		   (eq? (rdf-triple-subject (car ts))
+			(rdf-triple-subject (car group))))
+	      (grow (cdr ts) (cons (car ts) group))
+	      (loop ts (cons (reverse! group) groups))))
+	(reverse! groups))))
+
 (define (write-subject triples bnodes port)
   (newline port)
   (let ((s (rdf-triple-subject (car triples))))
@@ -602,31 +627,32 @@ USA.
   (write-string "." port)
   (newline port))
 
-(define (write-properties triples bnodes indentation port)
-  (let loop ((triples triples))
-    (write-property (car triples) bnodes indentation port)
-    (let ((p (rdf-triple-predicate (car triples))))
-      (let oloop ((triples (cdr triples)))
-	(if (pair? triples)
-	    (if (eq? (rdf-triple-predicate (car triples)) p)
-		(begin
-		  (write-string "," port)
-		  (write-object (rdf-triple-object (car triples))
-				#t bnodes indentation port)
-		  (oloop (cdr triples)))
-		(begin
-		  (write-string ";" port)
-		  (newline port)
-		  (write-indentation indentation port)
-		  (loop triples))))))))
+(define (write-properties ts bnodes indentation port)
+  (let loop ((ts ts))
+    (let ((t (car ts)))
+      (let ((p (rdf-triple-predicate t)))
+	(if (eq? p rdf:type)
+	    (write-string "a" port)
+	    (write-rdf/turtle-uri p port)))
+      (write-object (rdf-triple-object t) #t bnodes indentation port)
+      (let ((p (rdf-triple-predicate t)))
+	(let oloop ((ts (cdr ts)))
+	  (if (pair? ts)
+	      (if (eq? (rdf-triple-predicate (car ts)) p)
+		  (begin
+		    (write-string "," port)
+		    (write-object (rdf-triple-object (car ts))
+				  #t
+				  bnodes
+				  indentation
+				  port)
+		    (oloop (cdr ts)))
+		  (begin
+		    (write-string ";" port)
+		    (newline port)
+		    (write-indentation indentation port)
+		    (loop ts)))))))))
 
-(define (write-property t bnodes indentation port)
-  (let ((p (rdf-triple-predicate t)))
-    (if (eq? p rdf:type)
-	(write-string "a" port)
-	(write-rdf/turtle-uri p port)))
-  (write-object (rdf-triple-object t) #t bnodes indentation port))
-
 (define (write-object o space? bnodes indentation port)
   (cond ((uri? o)
 	 (if space? (write-string " " port))
@@ -640,7 +666,7 @@ USA.
 	 (write-bnode o space? bnodes indentation port))
 	(else
 	 (error "Unknown RDF object:" o))))
-
+
 (define (write-bnode bnode space? bnodes indentation port)
   (cond ((rdf-list->list bnode bnodes)
 	 => (lambda (items)
@@ -698,50 +724,41 @@ USA.
 		  (loop)))))
 	(write-string "\"\"\"" port))
       (write-rdf/nt-literal-text text port)))
+
+(define (write-rdf/turtle-uri uri port)
+  (let ((qname (uri->rdf-qname uri #f)))
+    (if qname
+	(write-string (symbol-name qname) port)
+	(write-rdf/nt-uri uri port))))
 
-(define (sort-triples-by-subject triples)
-  (let ((table (make-eq-hash-table)))
-    (for-each (lambda (triple)
-		(hash-table-update! table
-				    (rdf-triple-subject triple)
-				    (lambda (triples) (cons triple triples))
-				    (lambda () '())))
-	      triples)
-    (split-list (sort (map (lambda (ts) (sort ts triple<?))
-			   (hash-table/datum-list table))
-		  (lambda (a b)
-		    (subject<? (rdf-triple-subject (car a))
-			       (rdf-triple-subject (car b)))))
-		(lambda (ts) (uri? (rdf-triple-subject (car ts)))))))
-
-(define (triple<? t1 t2)
-  (let ((p1 (rdf-triple-predicate t1))
-	(p2 (rdf-triple-predicate t2)))
-    (and (not (eq? p2 rdf:type))
-	 (if (eq? p1 rdf:type)
-	     #t
-	     (uri<? p1 p2)))))
-
-(define (subject<? a b)
-  (if (uri? a)
-      (if (uri? b)
-	  (uri<? a b)
-	  #t)
-      (if (uri? b)
-	  #f
-	  (string<? (rdf-bnode-name a) (rdf-bnode-name b)))))
+(define (sort-triples triples)
+  (sort triples
+    (lambda (t1 t2)
+      (let ((s1 (rdf-triple-subject t1))
+	    (s2 (rdf-triple-subject t2)))
+	(if (eq? s1 s2)
+	    (let ((p1 (rdf-triple-predicate t1))
+		  (p2 (rdf-triple-predicate t2)))
+	      (if (eq? p1 p2)
+		  #f			;???
+		  (if (eq? p2 rdf:type)
+		      #f
+		      (if (eq? p1 rdf:type)
+			  #t
+			  (uri<? p1 p2)))))
+	    (if (uri? s1)
+		(if (uri? s2)
+		    (uri<? s1 s2)
+		    #t)
+		(if (uri? s2)
+		    #f
+		    (rdf-bnode<? s1 s2))))))))
 
 (define (uri<? a b)
   (string<? (uri->string a) (uri->string b)))
 
-(define (split-bnodes-by-nrefs bnodes triples)
-  (split-list bnodes
-	      (lambda (ts)
-		(= (let ((bnode (rdf-triple-subject (car ts))))
-		     (count-matching-items triples
-		       (lambda (triple)
-			 (eq? (rdf-triple-object triple) bnode))))
-		   1))))
+(define (rdf-bnode<? a b)
+  (string<? (rdf-bnode-name a) (rdf-bnode-name b)))
 
 (define (rdf-list->list node bnodes)
   (let loop ((node node))
@@ -749,42 +766,22 @@ USA.
 	'()
 	(let ((ts (find-in-bnodes node bnodes)))
 	  (and ts
-	       (let ((p (bnode->pair ts)))
-		 (and p
-		      (let ((rest (loop (cdr p))))
-			(and rest
-			     (cons (car p) rest))))))))))
+	       (eq? (rdf-triple-predicate (car ts)) rdf:type)
+	       (eq? (rdf-triple-object (car ts)) rdf:List)
+	       (pair? (cdr ts))
+	       (eq? (rdf-triple-predicate (cadr ts)) rdf:first)
+	       (pair? (cddr ts))
+	       (eq? (rdf-triple-predicate (caddr ts)) rdf:rest)
+	       (null? (cdddr ts))
+	       (let ((rest (loop (rdf-triple-object (caddr ts)))))
+		 (and rest
+		      (cons (rdf-triple-object (cadr ts)) rest))))))))
 
-(define (bnode->pair ts)
-  (and (eq? (rdf-triple-predicate (car ts)) rdf:type)
-       (eq? (rdf-triple-object (car ts)) rdf:List)
-       (pair? (cdr ts))
-       (eq? (rdf-triple-predicate (cadr ts)) rdf:first)
-       (pair? (cddr ts))
-       (eq? (rdf-triple-predicate (caddr ts)) rdf:rest)
-       (null? (cdddr ts))
-       (cons (rdf-triple-object (cadr ts))
-	     (rdf-triple-object (caddr ts)))))
-
 (define (find-in-bnodes bnode bnodes)
   (find-matching-item bnodes
     (lambda (ts)
       (eq? (rdf-triple-subject (car ts)) bnode))))
-
-(define (split-list items predicate)
-  (let loop ((items items) (true '()) (false '()))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (loop (cdr items) (cons (car items) true) false)
-	    (loop (cdr items) true (cons (car items) false)))
-	(values (reverse! true) (reverse! false)))))
-
-(define (write-rdf/turtle-uri uri port)
-  (let ((qname (uri->rdf-qname uri #f)))
-    (if qname
-	(write-string (symbol-name qname) port)
-	(write-rdf/nt-uri uri port))))
-
+
 (define (write-symbol symbol port)
   (write-string (symbol-name symbol) port))
 
@@ -802,6 +799,14 @@ USA.
 
 (define (indent-space indentation)
   (+ indentation 1))
+
+(define (split-list items predicate)
+  (let loop ((items items) (true '()) (false '()))
+    (if (pair? items)
+	(if (predicate (car items))
+	    (loop (cdr items) (cons (car items) true) false)
+	    (loop (cdr items) true (cons (car items) false)))
+	(values (reverse! true) (reverse! false)))))
 
 (define rdf:type
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
