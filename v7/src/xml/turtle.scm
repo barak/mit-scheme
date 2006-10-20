@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.10 2006/10/19 19:19:20 cph Exp $
+$Id: turtle.scm,v 1.11 2006/10/20 01:19:33 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -594,66 +594,74 @@ USA.
     (cond ((uri? s) (write-rdf/turtle-uri s port))
 	  ((rdf-bnode? s) (write-rdf/nt-bnode s port))
 	  (else (error "Unknown RDF subject:" s))))
-  (write-string " " port)
-  (write-properties triples bnodes 1 port)
+  (newline port)
+  (let ((indentation (indent-tab 0)))
+    (write-indentation indentation port)
+    (write-properties triples bnodes indentation port)
+    (newline port))
   (write-string "." port)
   (newline port))
 
-(define (write-rdf/turtle-uri uri port)
-  (let ((qname (uri->rdf-qname uri #f)))
-    (if qname
-	(write-string (symbol-name qname) port)
-	(write-rdf/nt-uri uri port))))
-
 (define (write-properties triples bnodes indentation port)
-  (write-property (car triples) bnodes indentation port)
-  (for-each (lambda (t)
-	      (write-indentation indentation port)
-	      (write-string "; " port)
-	      (write-property t bnodes indentation port))
-	    (cdr triples)))
+  (let loop ((triples triples))
+    (write-property (car triples) bnodes indentation port)
+    (let ((p (rdf-triple-predicate (car triples))))
+      (let oloop ((triples (cdr triples)))
+	(if (pair? triples)
+	    (if (eq? (rdf-triple-predicate (car triples)) p)
+		(begin
+		  (write-string "," port)
+		  (write-object (rdf-triple-object (car triples))
+				#t bnodes indentation port)
+		  (oloop (cdr triples)))
+		(begin
+		  (write-string ";" port)
+		  (newline port)
+		  (write-indentation indentation port)
+		  (loop triples))))))))
 
 (define (write-property t bnodes indentation port)
   (let ((p (rdf-triple-predicate t)))
     (if (eq? p rdf:type)
 	(write-string "a" port)
 	(write-rdf/turtle-uri p port)))
-  (write-string " " port)
-  (write-object (rdf-triple-object t) bnodes indentation port)
-  (newline port))
+  (write-object (rdf-triple-object t) #t bnodes indentation port))
 
-(define (write-object o bnodes indentation port)
+(define (write-object o space? bnodes indentation port)
   (cond ((uri? o)
+	 (if space? (write-string " " port))
 	 (if (eq? o rdf:nil)
 	     (write-string "()" port)
 	     (write-rdf/turtle-uri o port)))
 	((rdf-literal? o)
+	 (if space? (write-string " " port))
 	 (write-literal o port))
 	((rdf-bnode? o)
-	 (write-bnode o bnodes indentation port))
+	 (write-bnode o space? bnodes indentation port))
 	(else
 	 (error "Unknown RDF object:" o))))
 
-(define (write-bnode bnode bnodes indentation port)
+(define (write-bnode bnode space? bnodes indentation port)
   (cond ((rdf-list->list bnode bnodes)
 	 => (lambda (items)
+	      (if space? (write-string " " port))
 	      (write-string "(" port)
-	      (write-object (car items) bnodes indentation port)
+	      (write-object (car items) #f bnodes indentation port)
 	      (for-each (lambda (item)
-			  (write-string ", " port)
-			  (write-object item bnodes indentation port))
+			  (write-string "," port)
+			  (write-object item #t bnodes indentation port))
 			(cdr items))
 	      (write-string ")" port)))
 	((find-in-bnodes bnode bnodes)
 	 => (lambda (ts)
-	      (write-string "[" port)
-	      (newline port)
-	      (let ((indentation (+ indentation 1)))
+	      (let ((indentation (indent-tab indentation)))
+		(newline port)
 		(write-indentation indentation port)
-		(write-properties ts bnodes indentation port))
-	      (write-indentation indentation port)
-	      (write-string "]" port)))
+		(write-string "[" port)
+		(write-properties ts bnodes (indent-space indentation) port)
+		(write-string "]" port))))
 	(else
+	 (if space? (write-string " " port))
 	 (write-rdf/nt-bnode bnode port))))
 
 (define (write-literal literal port)
@@ -732,8 +740,7 @@ USA.
 		(= (let ((bnode (rdf-triple-subject (car ts))))
 		     (count-matching-items triples
 		       (lambda (triple)
-			 (or (eq? (rdf-triple-predicate triple) bnode)
-			     (eq? (rdf-triple-object triple) bnode)))))
+			 (eq? (rdf-triple-object triple) bnode))))
 		   1))))
 
 (define (rdf-list->list node bnodes)
@@ -772,13 +779,29 @@ USA.
 	    (loop (cdr items) true (cons (car items) false)))
 	(values (reverse! true) (reverse! false)))))
 
+(define (write-rdf/turtle-uri uri port)
+  (let ((qname (uri->rdf-qname uri #f)))
+    (if qname
+	(write-string (symbol-name qname) port)
+	(write-rdf/nt-uri uri port))))
+
 (define (write-symbol symbol port)
   (write-string (symbol-name symbol) port))
 
 (define (write-indentation indentation port)
-  (do ((i 0 (+ i 1)))
-      ((not (< i indentation)))
-    (write-char #\tab port)))
+  (let loop ((indentation indentation))
+    (cond ((>= indentation 8)
+	   (write-char #\tab port)
+	   (loop (- indentation 8)))
+	  ((>= indentation 1)
+	   (write-char #\space port)
+	   (loop (- indentation 1))))))
+
+(define (indent-tab indentation)
+  (* (+ (quotient indentation 8) 1) 8))
+
+(define (indent-space indentation)
+  (+ indentation 1))
 
 (define rdf:type
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
