@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.31 2003/04/25 03:09:55 cph Exp $
+$Id: calias.scm,v 1.32 2006/10/22 16:09:24 cph Exp $
 
 Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -78,9 +78,6 @@ USA.
 	(if entry
 	    (unmap-alias-key (car entry))
 	    key))))
-
-(define-integrable (ascii-controlified? char)
-  (< (char-code char) #x20))
 
 (define-variable enable-emacs-key-names
   "True means keys are shown using Emacs-style names."
@@ -93,12 +90,6 @@ USA.
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
         (else (error:wrong-type-argument key "key" 'KEY-NAME))))
-
-(define (button-name button)
-  (string-append "button-"
-		 (if (button/down? button) "down" "up")
-		 "-"
-		 (number->string (button/number button))))
 
 (define (xkey->name xkey)
   (let ((keys (xkey->list xkey)))
@@ -161,7 +152,7 @@ USA.
 (define (key-bucky-bits key)
   (cond ((char? key) (char-bits key))
 	((special-key? key) (special-key/bucky-bits key))
-	((button? key) (button/bucky-bits key))
+	((button? key) (button-bits key))
         (else (error:wrong-type-argument key "key" 'KEY-BUCKY-BITS))))
 
 (define (key<? key1 key2)
@@ -190,8 +181,7 @@ USA.
 	      (and (special-key? key2)
 		   (string=? (special-key/name key1) (special-key/name key2))))
 	     ((button? key1)
-	      (and (button? key2)
-		   (string<? (button-name key1) (button-name key2))))
+	      (eq? key1 key2))
 	     (else
 	      (error:wrong-type-argument key1 "key" 'KEY=?)))))
 

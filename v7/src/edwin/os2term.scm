@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: os2term.scm,v 1.25 2003/02/14 18:28:12 cph Exp $
+$Id: os2term.scm,v 1.26 2006/10/22 16:09:48 cph Exp $
 
 Copyright 1994,1995,1996,1997,2000,2003 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -805,16 +806,15 @@ USA.
 (define (translate-key-event event)
   (let ((code (key-event/code event))
 	(flags (key-event/flags event)))
-    (let ((control (if (fix:= 0 (fix:and flags KC_CTRL)) 0 2))
-	  (meta (if (fix:= 0 (fix:and flags KC_ALT)) 0 1)))
+    (let ((bits (flags->bucky-bits flags)))
       (let ((process-code
 	     (lambda (code)
-	       (if (and (fix:<= #o100 code) (fix:< code #o140)
-			(not (fix:= 0 control)))
-		   (make-char (fix:and code #o037) meta)
-		   (make-char code (fix:or meta control))))))
+	       (if (and (fix:<= #x40 code) (fix:< code #x60)
+			(fix:= (fix:and bits #x1) #x1))
+		   (make-char (fix:and code #o037) (fix:andc bits #x1))
+		   (make-char code bits)))))
 	(if (fix:= 0 (fix:and flags KC_VIRTUALKEY))
-	    (and (fix:< code #o200)
+	    (and (fix:< code #x80)
 		 (process-code code))
 	    (let ((key
 		   (and (fix:< code (vector-length virtual-key-table))
@@ -822,7 +822,7 @@ USA.
 	      (and key
 		   (if (fix:fixnum? key)
 		       (process-code key)
-		       (make-special-key key (fix:or meta control))))))))))
+		       (make-special-key key bits)))))))))
 
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
@@ -895,12 +895,14 @@ USA.
   (lambda (screen event)
     (and (eq? button-event-type:down (button-event/type event))
 	 (if (os2win-focus? (screen-wid screen))
-	     (make-input-event 'BUTTON
-			       execute-button-command
-			       screen
-			       (make-down-button (button-event/number event))
-			       (x->cx screen (button-event/x event))
-			       (y->cy screen (button-event/y event)))
+	     (make-input-event
+	      'BUTTON
+	      execute-button-command
+	      screen
+	      (make-down-button (button-event/number event)
+				(flags->bucky-bits (button-event/flags event)))
+	      (x->cx screen (button-event/x event))
+	      (y->cy screen (button-event/y event)))
 	     (begin
 	       (os2win-activate (screen-wid screen))
 	       #f)))))
@@ -1027,3 +1029,7 @@ USA.
     (vector-set! table VK_EREOF		'EREOF)
     (vector-set! table VK_PA1		'PA1)
     table))
+
+(define (flags->bucky-bits flags)
+  (fix:or (if (fix:= 0 (fix:and flags KC_CTRL)) #x2 #x0)
+	  (if (fix:= 0 (fix:and flags KC_ALT))  #x1 #x0)))

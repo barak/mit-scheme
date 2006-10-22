@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.76 2006/10/21 21:16:53 riastradh Exp $
+$Id: xterm.scm,v 1.77 2006/10/22 16:10:06 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -672,7 +672,9 @@ USA.
 	   'BUTTON
 	   execute-button-command
 	   screen
-	   (make-down-button (vector-ref event 4))
+	   (let ((n (vector-ref event 4)))
+	     (make-down-button (fix:and n #x0FF)
+			       (fix:lsh (fix:and n #xF00) -8)))
 	   (xterm-map-x-coordinate xterm (vector-ref event 2))
 	   (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 
@@ -688,7 +690,9 @@ USA.
 	   'BUTTON
 	   execute-button-command
 	   screen
-	   (make-up-button (vector-ref event 4))
+	   (let ((n (vector-ref event 4)))
+	     (make-up-button (fix:and n #x0FF)
+			     (fix:lsh (fix:and n #xF00) -8)))
 	   (xterm-map-x-coordinate xterm (vector-ref event 2))
 	   (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 

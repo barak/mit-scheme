@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.296 2006/06/16 19:02:27 riastradh Exp $
+$Id: edwin.pkg,v 1.297 2006/10/22 16:09:41 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -1272,6 +1272,7 @@ USA.
 	    screen-pel-height)
     (import (runtime os2-window-primitives)
 	    button-event-type:down
+	    button-event/flags
 	    button-event/number
 	    button-event/type
 	    button-event/x

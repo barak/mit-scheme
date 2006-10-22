@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: edtfrm.scm,v 1.94 2003/02/14 18:28:12 cph Exp $
+$Id: edtfrm.scm,v 1.95 2006/10/22 16:09:29 cph Exp $
 
-Copyright 1985, 1989-1999, 2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1993,1995 Massachusetts Institute of Technology
+Copyright 1996,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -185,5 +186,5 @@ USA.
 		      (with-current-button-event
 			  (make-button-event frame relative-x relative-y)
 			(lambda () (execute-command command)))))
-		((button/down? button)
+		((button-down? button)
 		 (editor-beep)))))))

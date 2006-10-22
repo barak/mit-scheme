@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: win32.scm,v 1.18 2003/02/14 18:28:14 cph Exp $
+$Id: win32.scm,v 1.19 2006/10/22 16:10:00 cph Exp $
 
 Copyright 1994,1995,1996,1997,1999,2000 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright 2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -609,28 +609,18 @@ USA.
 
 (define (decode-key-event event)
   (let ((key (key-event/character event))
-	(cont-state (key-event/control-key-state event)))
-    (let ((alt? (some-bits? control-key:alt-pressed cont-state))
-	  (control? (some-bits? control-key:control-pressed cont-state))
-	  (shift? (some-bits? control-key:shift-pressed cont-state)))
-      (cond ((fix:= key -1)
-	     (let ((vk-code (key-event/virtual-keycode event))
-		   (bucky-bits
-		    (+ (if alt? 1 0)     ; M-
-		       (if control? 2 0) ; C-
-		       (if shift? 4 0)   ; S-
-		       )))
-	       (win32-make-special-key vk-code bucky-bits)))
-	    ((and control? alt?)
-	     (char-control-metafy (integer->char key)))
-	    (alt?
-	     (char-metafy (integer->char key)))
-	    ;;((and control? (eq? key 32))
-	    ;; #\c-space)
-	    (control?
-	     (char-controlify (integer->char key)))
-	    (else
-	     (integer->char key))))))
+	(state (key-event/control-key-state event)))
+    (let ((bits (control-keys->bits state)))
+      (if (fix:= key -1)
+	  (win32-make-special-key
+	   (key-event/virtual-keycode event)
+	   (fix:or (if (some-bits? control-key:shift-pressed state) #x4 #x0)
+		   bits))
+	  (merge-bucky-bits (integer->char key) bits)))))
+
+(define (control-keys->bits state)
+  (fix:or (if (some-bits? control-key:alt-pressed state)     #x1 #x0)
+	  (if (some-bits? control-key:control-pressed state) #x2 #x0)))
 
 (define-event-handler event-type:mouse
   (lambda (screen event)
@@ -645,7 +635,8 @@ USA.
 	(cond ((some-bits? button-state:left-pressed state) 0)
 	      ((some-bits? button-state:right-pressed state) 2)
 	      ((some-bits? button-state:middle-pressed state) 1)
-	      (else 0))))
+	      (else 0)))
+      (control-keys->bits (mouse-event/control-key-state event)))
      (mouse-event/column event)
      (mouse-event/row event))))
 

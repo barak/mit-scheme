@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.55 2005/07/31 02:59:37 cph Exp $
+$Id: utils.scm,v 1.56 2006/10/22 16:09:54 cph Exp $
 
-Copyright 1986, 1989-2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2001,2002,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -227,32 +229,34 @@ USA.
   (char-set))
 
 (define char-set:return
-  (char-set #\Return))
+  (char-set #\return))
 
 (define char-set:not-space
-  (char-set-invert (char-set #\Space)))
+  (char-set-invert (char-set #\space)))
+
+(define (ascii-controlified? char)
+  (fix:< (char-code char) #x20))
 
 (define (char-controlify char)
-  (if (ascii-controlified? char)
-      char
-      (make-char (char-code char)
-		 (let ((bits (char-bits char)))
-		   (if (odd? (quotient bits 2)) bits (+ bits 2))))))
+  (make-char (char-code char)
+	     (if (ascii-controlified? char)
+		 (fix:andc (char-bits char) #x2)
+		 (fix:or (char-bits char) #x2))))
 
 (define (char-controlified? char)
-  (or (ascii-controlified? char)
-      (odd? (quotient (char-bits char) 2))))
+  (if (ascii-controlified? char)
+      #t
+      (fix:= #x2 (fix:and (char-bits char) #x2))))
 
 (define (char-metafy char)
   (make-char (char-code char)
-	     (let ((bits (char-bits char)))
-	       (if (odd? bits) bits (1+ bits)))))
+	     (fix:or (char-bits char) #x1)))
 
-(define-integrable (char-metafied? char)
-  (odd? (char-bits char)))
+(define (char-metafied? char)
+  (fix:= #x1 (fix:and (char-bits char) #x1)))
 
 (define (char-control-metafy char)
-  (char-controlify (char-metafy char)))
+  (char-metafy (char-controlify char)))
 
 (define (char-base char)
   (make-char (char-code char) 0))
