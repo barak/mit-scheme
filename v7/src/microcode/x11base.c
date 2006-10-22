@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.87 2006/10/22 01:59:23 cph Exp $
+$Id: x11base.c,v 1.88 2006/10/22 15:39:18 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -1123,56 +1123,13 @@ DEFUN (make_event_object, (xw, type, extra),
   return (result);
 }
 
-static SCHEME_OBJECT
-DEFUN (button_event, (xw, event, type),
-       struct xwindow * xw AND
-       XButtonEvent * event AND
-       enum event_type type)
-{
-  SCHEME_OBJECT result = (make_event_object (xw, type, 4));
-  EVENT_INTEGER (result, EVENT_0, (event -> x));
-  EVENT_INTEGER (result, EVENT_1, (event -> y));
-  {
-    SCHEME_OBJECT conversion;
-    int button_number;
-    switch (event -> button)
-      {
-      case Button1: button_number = 1; break;
-      case Button2: button_number = 2; break;
-      case Button3: button_number = 3; break;
-      case Button4: button_number = 4; break;
-      case Button5: button_number = 5; break;
-      default: button_number = 0; break;
-      }
-    if (button_number) {
-      struct xdisplay * xd = (XW_XD (xw));
-      --button_number;
-      if (X_MODIFIER_MASK_SHIFT_P ((event -> state), xd)) {
-	button_number += 5;
-      }
-      if (X_MODIFIER_MASK_CONTROL_P ((event -> state), xd)) {
-	button_number += 10;
-      }
-      if (X_MODIFIER_MASK_META_P ((event -> state), xd)) {
-	button_number += 20;
-      }
-      conversion = (LONG_TO_UNSIGNED_FIXNUM (button_number));
-    } else {
-      conversion = (SHARP_F);
-    }
-    VECTOR_SET (result, EVENT_2, conversion);
-  }
-  EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
-  return (result);
-}
-
 /* This handles only the modifier bits that Scheme supports.
    At the moment, these are Control, Meta, Super, and Hyper.
    This might want to change if the character abstraction were ever to
    change, or if the X11 interface were to be changed to use something
    other than Scheme characters to convey key presses. */
 
-static SCHEME_OBJECT
+static unsigned long
 DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
        unsigned int mask AND
        struct xdisplay * xd)
@@ -1182,7 +1139,7 @@ DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
   if (X_MODIFIER_MASK_META_P    (mask, xd)) bucky |= CHAR_BITS_META;
   if (X_MODIFIER_MASK_SUPER_P   (mask, xd)) bucky |= CHAR_BITS_SUPER;
   if (X_MODIFIER_MASK_HYPER_P   (mask, xd)) bucky |= CHAR_BITS_HYPER;
-  return (ULONG_TO_FIXNUM (bucky));
+  return (bucky);
 }
 
 /* I'm not sure why we have a function for this. */
@@ -1205,6 +1162,27 @@ DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
   if (x_state & Button4Mask) scheme_state |= 0x0800;
   if (x_state & Button5Mask) scheme_state |= 0x1000;
   return (ULONG_TO_FIXNUM (scheme_state));
+}
+
+static SCHEME_OBJECT
+DEFUN (button_event, (xw, event, type),
+       struct xwindow * xw AND
+       XButtonEvent * event AND
+       enum event_type type)
+{
+  SCHEME_OBJECT result = (make_event_object (xw, type, 4));
+  EVENT_INTEGER (result, EVENT_0, (event -> x));
+  EVENT_INTEGER (result, EVENT_1, (event -> y));
+  VECTOR_SET
+    (result, EVENT_2,
+     ((((event -> button) >= 1) && ((event -> button) <= 256))
+      ? (ULONG_TO_FIXNUM
+	 (((event -> button) - 1)
+	  | ((x_modifier_mask_to_bucky_bits ((event -> state), (XW_XD (xw))))
+	     << 8)))
+      : SHARP_F));
+  EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
+  return (result);
 }
 
 static XComposeStatus compose_status;
@@ -1252,15 +1230,10 @@ DEFUN (key_event, (xw, event, type),
 	 X has already controlified, so Scheme may choose to ignore
 	 the control bucky bit.  */
       VECTOR_SET (result, EVENT_1,
-                  (x_modifier_mask_to_bucky_bits ((event -> state),
-                                                  (XW_XD (xw)))));
-      /* Move vendor-specific bit from bit 28 (zero-based) to bit 23
-	 so that all keysym values will fit in Scheme fixnums.  */
-      VECTOR_SET
-	(result,
-	 EVENT_2,
-	 (LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
-				   | (0x800000 & (keysym >> 5)))));
+		  (ULONG_TO_FIXNUM
+		   (x_modifier_mask_to_bucky_bits ((event -> state),
+						   (XW_XD (xw))))));
+      VECTOR_SET (result, EVENT_2, (ulong_to_integer (keysym)));
       EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
       return (result);
     }
