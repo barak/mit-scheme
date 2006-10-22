@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.86 2006/10/21 16:05:58 riastradh Exp $
+$Id: x11base.c,v 1.87 2006/10/22 01:59:23 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
@@ -1177,12 +1177,12 @@ DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
        unsigned int mask AND
        struct xdisplay * xd)
 {
-  long bucky = 0;
+  unsigned long bucky = 0;
   if (X_MODIFIER_MASK_CONTROL_P (mask, xd)) bucky |= CHAR_BITS_CONTROL;
   if (X_MODIFIER_MASK_META_P    (mask, xd)) bucky |= CHAR_BITS_META;
   if (X_MODIFIER_MASK_SUPER_P   (mask, xd)) bucky |= CHAR_BITS_SUPER;
   if (X_MODIFIER_MASK_HYPER_P   (mask, xd)) bucky |= CHAR_BITS_HYPER;
-  return (LONG_TO_UNSIGNED_FIXNUM (bucky));
+  return (ULONG_TO_FIXNUM (bucky));
 }
 
 /* I'm not sure why we have a function for this. */
@@ -1190,7 +1190,7 @@ DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
 static SCHEME_OBJECT
 DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
 {
-  long scheme_state = 0;
+  unsigned long scheme_state = 0;
   if (x_state & ControlMask) scheme_state |= 0x0001;
   if (x_state & Mod1Mask)    scheme_state |= 0x0002;
   if (x_state & Mod2Mask)    scheme_state |= 0x0004;
@@ -1204,7 +1204,7 @@ DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
   if (x_state & Button3Mask) scheme_state |= 0x0400;
   if (x_state & Button4Mask) scheme_state |= 0x0800;
   if (x_state & Button5Mask) scheme_state |= 0x1000;
-  return (LONG_TO_UNSIGNED_FIXNUM (scheme_state));
+  return (ULONG_TO_FIXNUM (scheme_state));
 }
 
 static XComposeStatus compose_status;
