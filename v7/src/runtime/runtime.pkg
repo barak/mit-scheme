@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.598 2006/10/04 19:02:26 cph Exp $
+$Id: runtime.pkg,v 14.599 2006/10/24 04:08:58 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -973,8 +973,14 @@ USA.
 	  char->integer
 	  char->name
 	  char-ascii?
+	  char-bit:control
+	  char-bit:hyper
+	  char-bit:meta
+	  char-bit:super
 	  char-bits
+	  char-bits-clear?
 	  char-bits-limit
+	  char-bits-set?
 	  char-ci<=?
 	  char-ci<?
 	  char-ci=?
@@ -992,6 +998,7 @@ USA.
 	  char>?
 	  char?
 	  chars->ascii
+	  clear-char-bits
 	  code->char
 	  digit->char
 	  error:not-char
@@ -1001,7 +1008,8 @@ USA.
 	  integer->char
 	  make-char
 	  name->char
-	  radix?)
+	  radix?
+	  set-char-bits)
   (export (runtime string)
 	  %char<?
 	  downcase-table

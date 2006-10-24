@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.26 2005/06/03 13:32:16 cph Exp $
+$Id: char.scm,v 14.27 2006/10/24 04:08:46 cph Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
-Copyright 1998,2001,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 1998,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,6 +65,28 @@ USA.
 (define (char-bits char)
   (guarantee-char char 'CHAR-BITS)
   (%char-bits char))
+
+(define (char-bits-set? bits char)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-SET?)
+  (guarantee-char char 'CHAR-BITS-SET?)
+  (fix:= bits (fix:and (%char-bits char) bits)))
+
+(define (char-bits-clear? bits char)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'CHAR-BITS-CLEAR?)
+  (guarantee-char char 'CHAR-BITS-CLEAR?)
+  (fix:= 0 (fix:and (%char-bits char) bits)))
+
+(define (set-char-bits bits char)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'SET-CHAR-BITS)
+  (guarantee-char char 'SET-CHAR-BITS)
+  (%make-char (%char-code char)
+	      (fix:or (%char-bits char) bits)))
+
+(define (clear-char-bits bits char)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'CLEAR-CHAR-BITS)
+  (guarantee-char char 'CLEAR-CHAR-BITS)
+  (%make-char (%char-code char)
+	      (fix:andc (%char-bits char) bits)))
 
 (define (char-ascii? char)
   (guarantee-char char 'CHAR-ASCII?)
@@ -354,3 +376,8 @@ USA.
     (#x02 "C" "control" "ctrl")
     (#x04 "S" "super")
     (#x08 "H" "hyper")))
+
+(define char-bit:meta #x01)
+(define char-bit:control #x02)
+(define char-bit:super #x04)
+(define char-bit:hyper #x08)
