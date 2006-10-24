@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: basic.scm,v 1.144 2005/10/24 01:55:50 cph Exp $
+$Id: basic.scm,v 1.145 2006/10/24 04:13:14 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1999,2000,2005 Massachusetts Institute of Technology
+Copyright 1999,2000,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -156,7 +156,9 @@ amount of space allocated to hold them is
 This command followed by an = is equivalent to a Control-=."
   ()
   (lambda ()
-    (read-extension-key char-controlify)))
+    (read-extension-key
+     (lambda (char)
+       (merge-bucky-bits char char-bit:control)))))
 
 (define-command meta-prefix
   "Sets Meta-bit of following character. 
@@ -166,19 +168,20 @@ into Control-Meta-A.  Otherwise, it turns ^A into plain Meta-A."
   ()
   (lambda ()
     (read-extension-key
-     (if (let ((char (current-command-key)))
-	   (and (char? char)
-		(char=? #\altmode char)))
-	 char-metafy
-	 (lambda (char)
-	   (char-metafy (char-base char)))))))
+     (lambda (char)
+       (merge-bucky-bits (if (eqv? (current-command-key) #\altmode)
+			     char
+			     (char-base char))
+			 char-bit:meta)))))
 
 (define-command control-meta-prefix
   "Sets Control- and Meta-bits of following character.
 Turns a following A (or C-A) into a Control-Meta-A."
   ()
   (lambda ()
-    (read-extension-key char-control-metafy)))
+    (read-extension-key
+     (lambda (char)
+       (merge-bucky-bits char (fix:or char-bit:control char-bit:meta))))))
 
 (define execute-extended-keys?
   #t)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.56 2006/10/22 16:09:54 cph Exp $
+$Id: utils.scm,v 1.57 2006/10/24 04:14:01 cph Exp $
 
 Copyright 1987,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2001,2002,2005 Massachusetts Institute of Technology
@@ -224,7 +224,7 @@ USA.
 	  (and (fix:>= k 0)
 	       (fix:< k 10)
 	       (loop (fix:+ index 1) (+ (* n 10) k)))))))
-
+
 (define char-set:null
   (char-set))
 
@@ -234,29 +234,15 @@ USA.
 (define char-set:not-space
   (char-set-invert (char-set #\space)))
 
+(define (merge-bucky-bits char bits)
+  (make-char (char-code char)
+	     (let ((bits (fix:or (char-bits char) bits)))
+	       (if (ascii-controlified? char)
+		   (fix:andc bits char-bit:control)
+		   bits))))
+
 (define (ascii-controlified? char)
   (fix:< (char-code char) #x20))
-
-(define (char-controlify char)
-  (make-char (char-code char)
-	     (if (ascii-controlified? char)
-		 (fix:andc (char-bits char) #x2)
-		 (fix:or (char-bits char) #x2))))
-
-(define (char-controlified? char)
-  (if (ascii-controlified? char)
-      #t
-      (fix:= #x2 (fix:and (char-bits char) #x2))))
-
-(define (char-metafy char)
-  (make-char (char-code char)
-	     (fix:or (char-bits char) #x1)))
-
-(define (char-metafied? char)
-  (fix:= #x1 (fix:and (char-bits char) #x1)))
-
-(define (char-control-metafy char)
-  (char-metafy (char-controlify char)))
 
 (define (char-base char)
   (make-char (char-code char) 0))

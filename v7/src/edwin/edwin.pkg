@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.297 2006/10/22 16:09:41 cph Exp $
+$Id: edwin.pkg,v 1.298 2006/10/24 04:13:31 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -466,10 +466,6 @@ USA.
   (export (edwin)
 	  append-command-prompt!
 	  append-message
-	  char-base
-	  char-control-metafy
-	  char-controlify
-	  char-metafy
 	  clear-message
 	  command-prompt
 	  keyboard-read

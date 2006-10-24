@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.32 2006/10/22 16:09:24 cph Exp $
+$Id: calias.scm,v 1.33 2006/10/24 04:13:23 cph Exp $
 
 Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2002,2003,2006 Massachusetts Institute of Technology
@@ -46,11 +46,12 @@ USA.
     (cond (entry
 	   (remap-alias-key (cdr entry)))
 	  ((and (char? key)
-		(odd? (quotient (char-bits key) 2))) ;Control bit is set
+		(char-bits-set? char-bit:control key))
 	   (let ((code (char-code key))
 		 (remap
 		  (lambda (code)
-		    (make-char code (- (char-bits key) 2)))))
+		    (make-char code
+			       (fix:andc (char-bits key) char-bit:control)))))
 	     (cond ((<= #x40 code #x5F) (remap (- code #x40)))
 		   ((<= #x61 code #x7A) (remap (- code #x60)))
 		   (else key))))
@@ -66,11 +67,11 @@ USA.
 		      (= code #x0D)	;return
 		      (= code #x1B)	;altmode
 		      )))
-	   (even? (quotient (char-bits key) 2)))
+	   (char-bits-clear? char-bit:control key))
       (unmap-alias-key
        (make-char (let ((code (char-code key)))
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
-		  (+ (char-bits key) 2)))
+		  (fix:or (char-bits key) char-bit:control)))
       (let ((entry
 	     (list-search-positive alias-keys
 	       (lambda (entry)
@@ -133,10 +134,16 @@ USA.
 			     "DEL"
 			     (vector-ref (ref-variable char-image-strings #f)
 					 code)))))
-	   (cond ((< bits 2)		; no bits or Meta only
+	   (cond ((or (fix:= bits 0)
+		      (fix:= bits char-bit:meta))
 		  (process-code bits))
-		 ((and handle-prefixes? (< bits 4))
-		  (string-append (if (= 2 bits) "C-^ " "C-z ")
+		 ((and handle-prefixes?
+		       (not (fix:= 0 (fix:and bits
+					      (fix:or char-bit:control
+						      char-bit:meta)))))
+		  (string-append (if (fix:= bits char-bit:control)
+				     "C-^ "
+				     "C-z ")
 				 (process-code 0)))
 		 (else
 		  (char->name (unmap-alias-key key))))))

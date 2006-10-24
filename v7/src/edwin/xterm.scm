@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.77 2006/10/22 16:10:06 cph Exp $
+$Id: xterm.scm,v 1.78 2006/10/24 04:14:11 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
@@ -412,14 +412,8 @@ USA.
 					(vector-ref event 3)))
 		   ((fix:= end 1)
 		    (let ((char
-			   (let ((code (char-code (string-ref string 0)))
-				 (bucky-bits (vector-ref event 3)))
-			     (make-char code
-					;; Remove the control bit if this
-					;; already is a control character.
-					(if (fix:< code #x20)
-					    (fix:andc bucky-bits 2)
-					    bucky-bits)))))
+			   (merge-bucky-bits (string-ref string 0)
+					     (vector-ref event 3))))
 		      (if (and signal-interrupts? (char=? char #\BEL))
 			  (begin
 			    (signal-interrupt!)

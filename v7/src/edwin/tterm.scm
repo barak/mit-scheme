@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.42 2005/12/25 17:04:39 riastradh Exp $
+$Id: tterm.scm,v 1.43 2006/10/24 04:13:51 cph Exp $
 
 Copyright 1990,1991,1993,1994,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -198,7 +198,8 @@ USA.
 				 (let ((code (vector-8b-ref string start)))
 				   (if (fix:< code #x80)
 				       (make-char code 0)
-				       (make-char (fix:and code #x7f) 1))))))
+				       (make-char (fix:and code #x7F)
+						  char-bit:meta))))))
 			 (let* ((key-seq  (caar key-pairs))
 				(n-seq    (string-length key-seq)))
 			   (cond ((and (fix:<= n-seq n-chars)

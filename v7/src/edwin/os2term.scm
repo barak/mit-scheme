@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2term.scm,v 1.26 2006/10/22 16:09:48 cph Exp $
+$Id: os2term.scm,v 1.27 2006/10/24 04:13:41 cph Exp $
 
 Copyright 1994,1995,1996,1997,2000,2003 Massachusetts Institute of Technology
 Copyright 2006 Massachusetts Institute of Technology
@@ -810,8 +810,10 @@ USA.
       (let ((process-code
 	     (lambda (code)
 	       (if (and (fix:<= #x40 code) (fix:< code #x60)
-			(fix:= (fix:and bits #x1) #x1))
-		   (make-char (fix:and code #o037) (fix:andc bits #x1))
+			(fix:= (fix:and bits char-bit:control)
+			       char-bit:control))
+		   (make-char (fix:and code #x1F)
+			      (fix:andc bits char-bit:control))
 		   (make-char code bits)))))
 	(if (fix:= 0 (fix:and flags KC_VIRTUALKEY))
 	    (and (fix:< code #x80)
