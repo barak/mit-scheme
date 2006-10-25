@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.14 2003/02/14 18:28:01 cph Exp $
+$Id: asstop.scm,v 1.15 2006/10/25 05:42:13 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -140,19 +140,19 @@ USA.
   (compiler-phase
    "Assembly"
    (lambda ()
-     (with-values (lambda () (assemble *block-label* (last-reference *lap*)))
-       (lambda (count code-vector labels bindings)
-	 (set! *code-vector* code-vector)
-	 (set! *entry-points* labels)
-	 (set! *label-bindings* bindings)
-	 (if compiler:show-phases?
-	     (begin
-	       (newline)
-	       (write-string *output-prefix*)
-	       (write-string "  Branch tensioning done in ")
-	       (write (1+ count))
-	       (write-string
-		(if (zero? count) " iteration." " iterations.")))))))))
+     (receive (count code-vector labels bindings)
+	 (assemble *block-label* (last-reference *lap*))
+       (set! *code-vector* code-vector)
+       (set! *entry-points* labels)
+       (set! *label-bindings* bindings)
+       (if compiler:show-phases?
+	   (write-notification-line
+	    (lambda (port)
+	      (write-string "Branch tensioning done in " port)
+	      (write (+ count 1) port)
+	      (write-string " iteration" port)
+	      (if (> count 0) (write-string "s" port))
+	      (write-string "." port))))))))
 
 (define (phase/link)
   (compiler-phase
@@ -276,55 +276,43 @@ USA.
 ;;; Various ways of dumping an info file
 
 (define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname #t)
-  (announce-info-files pathname))
+  (fasdump binf pathname))
 
 (define (compiler:dump-bif/bsm-files binf pathname)
   (let ((bif-path (pathname-new-type pathname "bif"))
 	(bsm-path (pathname-new-type pathname "bsm")))
     (let ((bsm (split-inf-structure! binf bsm-path)))
-      (fasdump binf bif-path #t)
-      (fasdump bsm bsm-path #t))
-    (announce-info-files bif-path bsm-path)))
+      (fasdump binf bif-path)
+      (fasdump bsm bsm-path))))
   
 (define (compiler:dump-bci/bcs-files binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci"))
 	(bcs-path (pathname-new-type pathname "bcs")))
     (let ((bsm (split-inf-structure! binf bcs-path)))
-      (call-with-temporary-filename
-	(lambda (bif-name)
-	  (fasdump binf bif-name #t)
-	  (compress bif-name bci-path)))
-      (call-with-temporary-filename
-	(lambda (bsm-name)
-	  (fasdump bsm bsm-name #t)
-	  (compress bsm-name bcs-path))))
-    (announce-info-files bci-path bcs-path)))
-  
+      (dump-compressed binf bci-path)
+      (dump-compressed bsm bcs-path))))
+
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
     (split-inf-structure! binf #f)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(fasdump binf bif-name #t)
-	(compress bif-name bci-path)))
-    (announce-info-files bci-path)))
+    (dump-compressed binf bci-path)))
 
-(define (announce-info-files . files)
-  (if compiler:noisy?
-      (let ((port (nearest-cmdl/port)))
-	(let loop ((files files))
-	  (if (null? files)
-	      unspecific
-	      (begin
-		(fresh-line port)
-		(write-string ";")
-		(write (->namestring (car files)))
-		(write-string " dumped ")
-		(loop (cdr files))))))))
+(define (dump-compressed object path)
+  (with-notification (lambda (port)
+		       (write-string "Dumping " port)
+		       (write (enough-namestring path) port))
+    (lambda ()
+      (call-with-temporary-filename
+	(lambda (temp)
+	  (fasdump object temp #t)
+	  (compress temp path))))))
 
 (define compiler:dump-info-file
   compiler:dump-bci-file)
+
+(define (compile-data-from-file scode output-pathname)
+  scode output-pathname
+  (error "Illegal operation:" 'COMPILE-DATA-FROM-FILE))
 
 ;;;; LAP->CODE
 ;;; Example of `lap->code' usage (MC68020):

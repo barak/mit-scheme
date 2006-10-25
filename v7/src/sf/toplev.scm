@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.27 2006/09/29 19:30:07 cph Exp $
+$Id: toplev.scm,v 4.28 2006/10/25 05:41:02 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,2000,2001,2002 Massachusetts Institute of Technology
@@ -134,26 +134,31 @@ USA.
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
-  (let ((start-date (get-decoded-time)))
+  (let ((do-it
+	 (let ((start-date (get-decoded-time)))
+	   (lambda ()
+	     (fasdump (make-comment
+		       `((SOURCE-FILE . ,(->namestring input-pathname))
+			 (DATE ,(decoded-time/year start-date)
+			       ,(decoded-time/month start-date)
+			       ,(decoded-time/day start-date))
+			 (TIME ,(decoded-time/hour start-date)
+			       ,(decoded-time/minute start-date)
+			       ,(decoded-time/second start-date)))
+		       (sf/file->scode input-pathname bin-pathname
+				       environment declarations))
+		      bin-pathname)))))
     (if sf:noisy?
-	(let ((port (notification-output-port)))
-	  (fresh-line port)
-	  (write-string "Syntax file: " port)
-	  (write (enough-namestring input-pathname) port)
-	  (write-string " " port)
-	  (write (enough-namestring bin-pathname) port)
-	  (newline port)))
-    (fasdump (make-comment
-	      `((SOURCE-FILE . ,(->namestring input-pathname))
-		(DATE ,(decoded-time/year start-date)
-		      ,(decoded-time/month start-date)
-		      ,(decoded-time/day start-date))
-		(TIME ,(decoded-time/hour start-date)
-		      ,(decoded-time/minute start-date)
-		      ,(decoded-time/second start-date)))
-	      (sf/file->scode input-pathname bin-pathname
-			      environment declarations))
-	     bin-pathname)))
+	(let ((message
+	       (lambda (port)
+		 (write-string "Syntax file: " port)
+		 (write (enough-namestring input-pathname) port)
+		 (write-string " " port)
+		 (write (enough-namestring bin-pathname) port))))
+	  (if (eq? sf:noisy? 'old-style)
+	      (timed message do-it)
+	      (with-notification message do-it)))
+	(do-it))))
 
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
@@ -247,82 +252,58 @@ USA.
 	  expression))))
 
 (define (integrate/kernel get-scode)
-  (fluid-let ((previous-name #f)
-	      (previous-process-time #f)
-	      (previous-real-time #f))
-    (receive (expression externs-block externs)
-	(call-with-values
-	    (lambda ()
-	      (call-with-values (lambda () (phase:transform (get-scode)))
-		phase:optimize))
-	  phase:generate-scode)
-      (end-phase)
-      (values expression externs-block externs))))
-
+  (receive (operations environment expression)
+      (receive (block expression) (phase:transform (get-scode))
+	(phase:optimize block expression))
+    (phase:generate-scode operations environment expression)))
+
 (define (phase:read filename)
-  (mark-phase "Read")
-  (read-file filename))
+  (in-phase "Read" (lambda () (read-file filename))))
 
 (define (phase:syntax s-expressions environment declarations)
-  (mark-phase "Syntax")
-  (syntax* (if (null? declarations)
-	       s-expressions
-	       (cons (cons (close-syntax 'DECLARE system-global-environment)
-			   declarations)
-		     s-expressions))
-	   environment))
+  (in-phase "Syntax"
+    (lambda ()
+      (syntax* (if (null? declarations)
+		   s-expressions
+		   (cons (cons (close-syntax 'DECLARE
+					     system-global-environment)
+			       declarations)
+			 s-expressions))
+	       environment))))
 
 (define (phase:transform scode)
-  (mark-phase "Transform")
-  (transform/top-level scode sf/top-level-definitions))
+  (in-phase "Transform"
+    (lambda ()
+      (transform/top-level scode sf/top-level-definitions))))
 
 (define (phase:optimize block expression)
-  (mark-phase "Optimize")
-  (integrate/top-level block expression))
+  (in-phase "Optimize" (lambda () (integrate/top-level block expression))))
 
 (define (phase:generate-scode operations environment expression)
-  (mark-phase "Generate SCode")
-  (receive (externs-block externs)
-      (operations->external operations environment)
-    (values (cgen/external expression) externs-block externs)))
+  (in-phase "Generate SCode"
+    (lambda ()
+      (receive (externs-block externs)
+	  (operations->external operations environment)
+	(values (cgen/external expression) externs-block externs)))))
 
-(define previous-name)
-(define previous-process-time)
-(define previous-real-time)
-
-(define (mark-phase this-name)
-  (end-phase)
+(define (in-phase name thunk)
   (if (eq? sf:noisy? 'old-style)
-      (let ((port (notification-output-port)))
-	(fresh-line port)
-	(write-string "    " port)
-	(write-string this-name port)
-	(write-string "..." port)
-	(newline port)))
-  (set! previous-name this-name)
-  unspecific)
+      (timed (lambda (port)
+	       (write-string name port))
+	     thunk)
+      (thunk)))
 
-(define (end-phase)
-  (let ((this-process-time (process-time-clock))
-	(this-real-time (real-time-clock)))
-    (if previous-process-time
-	(let ((delta-process-time (- this-process-time previous-process-time)))
-	  (time-report "      Time taken"
-		       delta-process-time
-		       (- this-real-time previous-real-time))))
-    (set! previous-process-time this-process-time)
-    (set! previous-real-time this-real-time))
-  unspecific)
-
-;; Should match the compiler.  We'll merge the two at some point.
-(define (time-report prefix process-time real-time)
-  (if (eq? sf:noisy? 'old-style)
-      (let ((port (notification-output-port)))
-	(fresh-line port)
-	(write-string prefix port)
-	(write-string ": " port)
-	(write (/ (exact->inexact process-time) 1000) port)
-	(write-string " (process time); " port)
-	(write (/ (exact->inexact real-time) 1000) port)
-	(write-string " (real time)" port)
-	(newline port))))
+(define (timed message thunk)
+  (let ((start-process-time (process-time-clock))
+	(start-real-time (real-time-clock)))
+    (let ((v (with-notification message thunk)))
+      (let ((process-time (- (process-time-clock) start-process-time))
+	    (real-time (- (real-time-clock) start-real-time)))
+	(write-notification-line
+	 (lambda (port)
+	   (write-string "Time taken: " port)
+	   (write (/ (exact->inexact process-time) 1000) port)
+	   (write-string " (process time); " port)
+	   (write (/ (exact->inexact real-time) 1000) port)
+	   (write-string " (real time)" port))))
+      v)))

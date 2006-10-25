@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.18 2006/10/01 05:37:56 cph Exp $
+$Id: ctop.scm,v 1.19 2006/10/25 05:42:48 cph Exp $
 
 Copyright 1993,2006 Massachusetts Institute of Technology
 
@@ -589,24 +589,17 @@ USA.
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
     (split-inf-structure! binf false)
-    (call-with-temporary-filename
-      (lambda (bif-name)
-	(fasdump binf bif-name true)
-	(compress bif-name bci-path)))
-    (announce-info-files bci-path)))
+    (dump-compressed binf bci-path)))
 
-(define (announce-info-files . files)
-  (if compiler:noisy?
-      (let ((port (nearest-cmdl/port)))
-	(let loop ((files files))
-	  (if (null? files)
-	      unspecific
-	      (begin
-		(fresh-line port)
-		(write-string ";")
-		(write (->namestring (car files)))
-		(write-string " dumped ")
-		(loop (cdr files))))))))
+(define (dump-compressed object path)
+  (with-notification (lambda (port)
+		       (write-string "Dumping " port)
+		       (write (enough-namestring path) port))
+    (lambda ()
+      (call-with-temporary-filename
+	(lambda (temp)
+	  (fasdump object temp #t)
+	  (compress temp path))))))
 
 (define compiler:dump-info-file compiler:dump-bci-file)
 
