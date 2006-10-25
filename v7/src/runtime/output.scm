@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.36 2005/03/30 03:50:18 cph Exp $
+$Id: output.scm,v 14.37 2006/10/25 03:15:15 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1999,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,6 +57,9 @@ USA.
 (define (output-port/fresh-line port)
   ((port/operation/fresh-line port) port))
 
+(define (output-port/line-start? port)
+  ((port/operation/line-start? port) port))
+
 (define (output-port/flush-output port)
   ((port/operation/flush-output port) port))
 
@@ -79,6 +82,11 @@ USA.
 
 (define (output-port/column port)
   (let ((operation (port/operation port 'OUTPUT-COLUMN)))
+    (and operation
+	 (operation port))))
+
+(define (output-port/bytes-written port)
+  (let ((operation (port/operation port 'BYTES-WRITTEN)))
     (and operation
 	 (operation port))))
 

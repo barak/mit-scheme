@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.599 2006/10/24 04:08:58 cph Exp $
+$Id: runtime.pkg,v 14.600 2006/10/25 03:15:29 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1940,6 +1940,7 @@ USA.
 	  port-type/discretionary-flush-output
 	  port-type/flush-output
 	  port-type/fresh-line
+	  port-type/line-start?
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
@@ -2016,6 +2017,7 @@ USA.
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
 	  port/operation/fresh-line
+	  port/operation/line-start?
 	  port/operation/write-char
 	  port/operation/write-external-substring
 	  port/operation/write-substring
@@ -2076,10 +2078,12 @@ USA.
 	  flush-output
 	  fresh-line
 	  newline
+	  output-port/bytes-written
 	  output-port/column
 	  output-port/discretionary-flush
 	  output-port/flush-output
 	  output-port/fresh-line
+	  output-port/line-start?
 	  output-port/write-char
 	  output-port/write-object
 	  output-port/write-external-string

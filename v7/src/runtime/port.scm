@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.43 2006/10/04 05:51:55 savannah-arthur Exp $
+$Id: port.scm,v 1.44 2006/10/25 03:15:22 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -51,6 +51,7 @@ USA.
   (write-wide-substring #f read-only #t)
   (write-external-substring #f read-only #t)
   (fresh-line #f read-only #t)
+  (line-start? #f read-only #t)
   (flush-output #f read-only #t)
   (discretionary-flush-output #f read-only #t))
 
@@ -161,6 +162,7 @@ USA.
 		       (op 'WRITE-WIDE-SUBSTRING)
 		       (op 'WRITE-EXTERNAL-SUBSTRING)
 		       (op 'FRESH-LINE)
+		       (op 'LINE-START?)
 		       (op 'FLUSH-OUTPUT)
 		       (op 'DISCRETIONARY-FLUSH-OUTPUT)))))
 
@@ -492,6 +494,11 @@ USA.
 		    (not (char=? (port/previous port) #\newline)))
 	       (write-char port #\newline)
 	       0)))
+	((LINE-START)
+	 (lambda (port)
+	   (if (port/previous port)
+	       (char=? (port/previous port) #\newline)
+	       'UNKNOWN)))
 	((FLUSH-OUTPUT) flush-output)
 	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
 	(else (op name))))))
@@ -567,6 +574,7 @@ USA.
   (define-port-operation write-wide-substring)
   (define-port-operation write-external-substring)
   (define-port-operation fresh-line)
+  (define-port-operation line-start?)
   (define-port-operation flush-output)
   (define-port-operation discretionary-flush-output))
 

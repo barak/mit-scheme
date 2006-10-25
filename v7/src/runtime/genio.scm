@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.44 2006/10/25 02:50:01 cph Exp $
+$Id: genio.scm,v 1.45 2006/10/25 03:15:09 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -118,6 +118,7 @@ USA.
 	   (SET-INPUT-TERMINAL-MODE ,generic-io/set-input-terminal-mode)))
 	(ops:out1
 	 `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
+	   (BYTES-WRITTEN ,generic-io/bytes-written)
 	   (CLOSE-OUTPUT ,generic-io/close-output)
 	   (FLUSH-OUTPUT ,generic-io/flush-output)
 	   (OUTPUT-COLUMN ,generic-io/output-column)
@@ -299,6 +300,9 @@ USA.
 
 (define (generic-io/buffered-output-bytes port)
   (output-buffer-start (port-output-buffer port)))
+
+(define (generic-io/bytes-written port)
+  (output-buffer-total (port-output-buffer port)))
 
 ;;;; Non-specific operations
 
@@ -849,6 +853,7 @@ USA.
   (sink #f read-only #t)
   (bytes #f read-only #t)
   start
+  total
   encode
   denormalize
   column)
@@ -856,6 +861,7 @@ USA.
 (define (make-output-buffer sink coder-name normalizer-name)
   (%make-output-buffer sink
 		       (make-string byte-buffer-length)
+		       0
 		       0
 		       (name->encoder coder-name)
 		       (name->denormalizer
@@ -944,10 +950,9 @@ USA.
   (eq? (output-buffer-denormalize ob) binary-denormalizer))
 
 (define (encode-char ob char)
-  (set-output-buffer-start!
-   ob
-   (fix:+ (output-buffer-start ob)
-	  ((output-buffer-encode ob) ob (char->integer char)))))
+  (let ((n-bytes ((output-buffer-encode ob) ob (char->integer char))))
+    (set-output-buffer-start! ob (fix:+ (output-buffer-start ob) n-bytes))
+    (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n-bytes))))
 
 (define (set-output-buffer-coding! ob coding)
   (set-output-buffer-encode! ob (name->encoder coding))
@@ -963,7 +968,11 @@ USA.
 (define (write-substring:string ob string start end)
   (if (output-buffer-in-8-bit-mode? ob)
       (let ((bv (output-buffer-bytes ob))
-	    (be (output-buffer-end ob)))
+	    (be (output-buffer-end ob))
+	    (ok
+	     (lambda (n)
+	       (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n))
+	       n)))
 	(let loop ((i start) (bi (output-buffer-start ob)))
 	  (if (fix:< i end)
 	      (if (fix:< bi be)
@@ -973,12 +982,16 @@ USA.
 		  (begin
 		    (set-output-buffer-start! ob be)
 		    (let ((n (drain-output-buffer ob)))
-		      (cond ((not n) (and (fix:> i start) (fix:- i start)))
-			    ((fix:> n 0) (loop i (output-buffer-start ob)))
-			    (else (fix:- i start))))))
+		      (cond ((not n)
+			     (and (fix:> i start)
+				  (ok (fix:- i start))))
+			    ((fix:> n 0)
+			     (loop i (output-buffer-start ob)))
+			    (else
+			     (ok (fix:- i start)))))))
 	      (begin
 		(set-output-buffer-start! ob bi)
-		(fix:- end start)))))
+		(ok (fix:- end start))))))
       (let loop ((i start))
 	(if (fix:< i end)
 	    (if (write-next-char ob (string-ref string i))
