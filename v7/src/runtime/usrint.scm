@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.21 2005/04/01 04:47:12 cph Exp $
+$Id: usrint.scm,v 1.22 2006/10/25 04:25:37 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
-Copyright 2003,2005 Massachusetts Institute of Technology
+Copyright 2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -190,7 +190,7 @@ USA.
 		(write-string (cdr prompt) port))
 	      (write-string prompt port))
 	  (flush-output port)))))
-
+
 ;;;; Debugger Support
 
 (define (port/debugger-failure port message)
@@ -288,3 +288,40 @@ USA.
   (let ((operation (port/operation port 'READ-FINISH)))
     (if operation
 	(operation port))))
+
+;;;; Activity notification
+
+(define *notification-depth* 0)
+
+(define (with-notification message thunk)
+  (let ((port (notification-output-port)))
+    (let ((prefix
+	   (lambda ()
+	     (fresh-line port)
+	     (write-string ";" port)
+	     (do ((i 0 (+ i 1)))
+		 ((not (< i *notification-depth*)))
+	       (write-string "  " port))
+	     (message port)
+	     (write-string "... " port))))
+      (prefix)
+      (let ((n (output-port/bytes-written port)))
+	(let ((p
+	       (call-with-current-continuation
+		(lambda (k)
+		  (bind-condition-handler (list condition-type:error)
+		      (lambda (condition)
+			(k (cons #f condition)))
+		    (lambda ()
+		      (fluid-let ((*notification-depth*
+				   (+ *notification-depth* 1)))
+			(cons #t (thunk)))))))))
+	  (if (if n
+		  (> (output-port/bytes-written port) n)
+		  (output-port/line-start? port))
+	      (prefix))
+	  (write-string (if (car p) "done" "ERROR") port)
+	  (newline port)
+	  (if (car p)
+	      (cdr p)
+	      (signal-condition (cdr p))))))))

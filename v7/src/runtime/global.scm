@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.74 2006/09/15 01:20:04 cph Exp $
+$Id: global.scm,v 14.75 2006/10/25 04:25:17 cph Exp $
 
 Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1998,2000,2001,2003,2004,2006 Massachusetts Institute of Technology
@@ -341,37 +341,27 @@ USA.
       ((ucode-primitive primitive-impurify) object))
   object)
 
-(define (fasdump object filename
-		 #!optional suppress-messages? dump-option)
-  (let* ((filename (->namestring (merge-pathnames filename)))
-	 (do-it
-	  (lambda (start-message end-message)
-	    (start-message)
-	    (let loop ()
-	      (if ((ucode-primitive primitive-fasdump)
-		   object filename
-		   (if (default-object? dump-option)
-		       #f
-		       dump-option))
-		  (end-message)
-		  (begin
-		    (with-simple-restart 'RETRY "Try again."
-		      (lambda ()
-			(error "FASDUMP: Object is too large to be dumped:"
-			       object)))
-		    (loop))))))
-	 (no-print (lambda () unspecific)))
-    (if (or (default-object? suppress-messages?)
-	    (not suppress-messages?))
-	(let ((port (notification-output-port)))
-	  (do-it (lambda ()
-		   (fresh-line port)
-		   (write-string ";Dumping " port)
-		   (write (enough-namestring filename) port))
-		 (lambda ()
-		   (write-string " -- done" port)
-		   (newline port))))
-	(do-it no-print no-print))))
+(define (fasdump object filename #!optional quiet? dump-option)
+  (let ((filename (->namestring (merge-pathnames filename)))
+	(quiet? (if (default-object? quiet?) #f quiet?))
+	(dump-option (if (default-object? dump-option) #f dump-option)))
+    (let ((do-it
+	   (lambda ()
+	     (let loop ()
+	       (if (not ((ucode-primitive primitive-fasdump)
+			 object filename dump-option))
+		   (begin
+		     (with-simple-restart 'RETRY "Try again."
+		       (lambda ()
+			 (error "FASDUMP: Object is too large to be dumped:"
+				object)))
+		     (loop)))))))
+    (if quiet?
+	(do-it)
+	(with-notification (lambda (port)
+			     (write-string "Dumping " port)
+			     (write (enough-namestring filename) port))
+	  do-it)))))
 
 ;;;; Hook lists
 

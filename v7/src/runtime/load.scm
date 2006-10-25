@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.79 2006/10/16 06:23:45 savannah-arthur Exp $
+$Id: load.scm,v 14.80 2006/10/25 04:25:23 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -375,14 +375,10 @@ USA.
 (define (loading-message suppress-loading-message? pathname do-it)
   (if suppress-loading-message?
       (do-it)
-      (let ((port (notification-output-port)))
-	(fresh-line port)
-	(write-string ";Loading " port)
-	(write (enough-namestring pathname) port)
-	(let ((value (do-it)))
-	  (write-string " -- done" port)
-	  (newline port)
-	  value))))
+      (with-notification (lambda (port)
+			   (write-string "Loading " port)
+			   (write (enough-namestring pathname) port))
+	do-it)))
 
 (define *purification-root-marker*)
 
