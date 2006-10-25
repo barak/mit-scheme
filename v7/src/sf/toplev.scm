@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.28 2006/10/25 05:41:02 cph Exp $
+$Id: toplev.scm,v 4.29 2006/10/25 17:49:55 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,2000,2001,2002 Massachusetts Institute of Technology
@@ -151,9 +151,9 @@ USA.
     (if sf:noisy?
 	(let ((message
 	       (lambda (port)
-		 (write-string "Syntax file: " port)
+		 (write-string "Generating SCode for file: " port)
 		 (write (enough-namestring input-pathname) port)
-		 (write-string " " port)
+		 (write-string " => " port)
 		 (write (enough-namestring bin-pathname) port))))
 	  (if (eq? sf:noisy? 'old-style)
 	      (timed message do-it)
