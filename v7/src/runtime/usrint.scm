@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.22 2006/10/25 04:25:37 cph Exp $
+$Id: usrint.scm,v 1.23 2006/10/25 05:05:24 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
 Copyright 2003,2005,2006 Massachusetts Institute of Technology
@@ -325,3 +325,12 @@ USA.
 	  (if (car p)
 	      (cdr p)
 	      (signal-condition (cdr p))))))))
+
+(define (write-notification-line message)
+  (let ((port (notification-output-port)))
+    (fresh-line port)
+    (write-string ";" port)
+    (do ((i 0 (+ i 1)))
+	((not (< i *notification-depth*)))
+      (write-string "  " port))
+    (message port)))

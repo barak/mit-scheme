@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.601 2006/10/25 04:25:32 cph Exp $
+$Id: runtime.pkg,v 14.602 2006/10/25 05:05:19 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -4270,7 +4270,8 @@ USA.
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
 	  prompt-for-expression
-	  with-notification)
+	  with-notification
+	  write-notification-line)
   (export (runtime rep)
 	  port/set-default-environment
 	  port/write-result)
