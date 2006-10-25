@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: edwin.sf,v 1.33 2005/01/11 03:13:23 cph Exp $
+$Id: edwin.sf,v 1.34 2006/10/25 17:30:24 cph Exp $
 
 Copyright 1989,1990,1991,1992,1995,1996 Massachusetts Institute of Technology
-Copyright 1999,2000,2001,2005 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,13 +51,13 @@ USA.
 
 (let ((read-class-definitions
        (lambda (filename)
-	 (fresh-line)
-	 (write-string "Pre-loading class definitions from ")
-	 (write filename)
-	 (syntax* (read-file (string-append filename ".scm"))
-		  (->environment '(EDWIN WINDOW)))
-	 (write-string " -- done")
-	 (newline))))
+	 (with-notification
+	     (lambda (port)
+	       (write-string "Pre-loading class definitions from " port)
+	       (write filename port))
+	   (lambda ()
+	     (syntax* (read-file (string-append filename ".scm"))
+		      (->environment '(EDWIN WINDOW))))))))
   (read-class-definitions "window")
   (read-class-definitions "utlwin")
   (read-class-definitions "modwin")
