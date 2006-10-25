@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.43 2006/10/14 06:26:25 savannah-arthur Exp $
+$Id: genio.scm,v 1.44 2006/10/25 02:50:01 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -78,8 +78,7 @@ USA.
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
-  line-ending
-  column)
+  line-ending)
 
 (define (make-gstate source sink coder-name normalizer-name . extra)
   (list->vector
