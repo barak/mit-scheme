@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.44 2006/10/25 03:15:22 cph Exp $
+$Id: port.scm,v 1.45 2006/10/25 04:23:06 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -494,7 +494,7 @@ USA.
 		    (not (char=? (port/previous port) #\newline)))
 	       (write-char port #\newline)
 	       0)))
-	((LINE-START)
+	((LINE-START?)
 	 (lambda (port)
 	   (if (port/previous port)
 	       (char=? (port/previous port) #\newline)
