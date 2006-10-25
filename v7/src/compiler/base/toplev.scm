@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.67 2006/10/25 17:32:56 cph Exp $
+$Id: toplev.scm,v 4.68 2006/10/25 17:43:23 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -112,15 +112,14 @@ USA.
 (define (cf input #!optional output)
   (let ((kernel
 	 (lambda (source-file)
-	   (with-values
-	       (lambda () (sf/pathname-defaulting source-file #f #f))
-	     (lambda (source-pathname bin-pathname spec-pathname)
-	       ;; Maybe this should be done only if scode-file
-	       ;; does not exist or is older than source-file.
-	       (sf source-pathname bin-pathname spec-pathname)
-	       (if (default-object? output)
-		   (compile-bin-file bin-pathname)
-		   (compile-bin-file bin-pathname output)))))))
+	   (receive (source-pathname bin-pathname spec-pathname)
+	       (sf/pathname-defaulting source-file #f #f)
+	     ;; Maybe this should be done only if scode-file
+	     ;; does not exist or is older than source-file.
+	     (sf source-pathname bin-pathname spec-pathname)
+	     (if (default-object? output)
+		 (compile-bin-file bin-pathname)
+		 (compile-bin-file bin-pathname output))))))
     (if (pair? input)
 	(for-each kernel input)
 	(kernel input))))
@@ -187,7 +186,7 @@ USA.
 		  (if compiler:noisy?
 		      (with-notification
 			  (lambda (port)
-			    (write-string "Compile File: " port)
+			    (write-string "Compiling file: " port)
 			    (write (enough-namestring input-pathname) port)
 			    (write-string " => " port)
 			    (write (enough-namestring output-pathname) port))
@@ -829,15 +828,13 @@ USA.
     (lambda ()
       (set! *ic-procedure-headers* '())
       (initialize-machine-register-map!)
-      (with-values
-	  (lambda ()
-	    (generate/top-level (last-reference *root-expression*)))
-	(lambda (expression procedures continuations rgraphs)
-	  (set! *rtl-expression* expression)
-	  (set! *rtl-procedures* procedures)
-	  (set! *rtl-continuations* continuations)
-	  (set! *rtl-graphs* rgraphs)
-	  unspecific))
+      (receive (expression procedures continuations rgraphs)
+	  (generate/top-level (last-reference *root-expression*))
+	(set! *rtl-expression* expression)
+	(set! *rtl-procedures* procedures)
+	(set! *rtl-continuations* continuations)
+	(set! *rtl-graphs* rgraphs)
+	unspecific)
       (if *procedure-result?*
 	  (set! *rtl-expression* #f))
       (set! label->object
@@ -996,16 +993,14 @@ USA.
 		       (linearize-lap *rtl-root*
 				      *rtl-procedures*
 				      *rtl-continuations*))))
-      (with-values
-	  (lambda ()
-	    (info-generation-phase-2 *rtl-expression*
-				     *rtl-procedures*
-				     *rtl-continuations*))
-	(lambda (expression procedures continuations)
-	  (set! *dbg-expression* expression)
-	  (set! *dbg-procedures* procedures)
-	  (set! *dbg-continuations* continuations)
-	  unspecific))
+      (receive (expression procedures continuations)
+	  (info-generation-phase-2 *rtl-expression*
+				   *rtl-procedures*
+				   *rtl-continuations*)
+	(set! *dbg-expression* expression)
+	(set! *dbg-procedures* procedures)
+	(set! *dbg-continuations* continuations)
+	unspecific)
       (if (not compiler:preserve-data-structures?)
 	  (begin
 	    (set! *rtl-expression*)
