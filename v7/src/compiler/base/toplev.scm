@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.66 2006/10/25 05:42:21 cph Exp $
+$Id: toplev.scm,v 4.67 2006/10/25 17:32:56 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -64,7 +64,7 @@ USA.
 	      (begin
 		(write-notification-line
 		 (lambda (port)
-		   (write-string ";Generating " port)
+		   (write-string "Generating " port)
 		   (write (->namestring output-file) port)
 		   (write-string " because of:" port)
 		   (for-each (lambda (reason)
@@ -187,7 +187,7 @@ USA.
 		  (if compiler:noisy?
 		      (with-notification
 			  (lambda (port)
-			    (write-string ";Compile File: " port)
+			    (write-string "Compile File: " port)
 			    (write (enough-namestring input-pathname) port)
 			    (write-string " => " port)
 			    (write (enough-namestring output-pathname) port))
