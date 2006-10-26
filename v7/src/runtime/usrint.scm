@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.24 2006/10/25 05:40:21 cph Exp $
+$Id: usrint.scm,v 1.25 2006/10/26 05:01:47 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,2001 Massachusetts Institute of Technology
 Copyright 2003,2005,2006 Massachusetts Institute of Technology
@@ -294,32 +294,34 @@ USA.
 (define *notification-depth* 0)
 
 (define (with-notification message thunk)
-  (let ((port (notification-output-port)))
-    (start-notification-line)
-    (message port)
-    (write-string "... " port)
-    (let ((n (output-port/bytes-written port)))
-      (let ((p
-	     (call-with-current-continuation
-	      (lambda (k)
-		(bind-condition-handler (list condition-type:error)
-		    (lambda (condition)
-		      (k (cons #f condition)))
-		  (lambda ()
-		    (fluid-let ((*notification-depth*
-				 (+ *notification-depth* 1)))
-		      (cons #t (thunk)))))))))
-	(if (if n
-		(> (output-port/bytes-written port) n)
-		(output-port/line-start? port))
-	    (begin
-	      (start-notification-line)
-	      (write-string "... " port)))
-	(write-string (if (car p) "done" "ERROR") port)
-	(newline port)
-	(if (car p)
-	    (cdr p)
-	    (signal-condition (cdr p)))))))
+  (let ((port (notification-output-port))
+	(done? #f)
+	(n))
+    (dynamic-wind
+     (lambda ()
+       (start-notification-line)
+       (message port)
+       (write-string "... " port)
+       (set! n (output-port/bytes-written port))
+       unspecific)
+     (lambda ()
+       (let ((v
+	      (fluid-let ((*notification-depth* (+ *notification-depth* 1)))
+		(thunk))))
+	 (set! done? #t)
+	 v))
+     (lambda ()
+       (if done?
+	   (begin
+	     (if (if n
+		     (> (output-port/bytes-written port) n)
+		     (output-port/line-start? port))
+		 (begin
+		   (start-notification-line)
+		   (write-string "... " port)))
+	     (set! n)
+	     (write-string "done" port)
+	     (newline port)))))))
 
 (define (write-notification-line message)
   (start-notification-line)
