@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.12 2006/10/20 02:04:05 cph Exp $
+$Id: turtle.scm,v 1.13 2006/10/26 02:31:31 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -145,7 +145,7 @@ USA.
 			   (* (seq ","
 				   parse:ws*
 				   parse:object-required))
-			   (alt ")"
+			   (alt (seq parse:ws* ")")
 				(error #f
 				       "Expected close parenthesis"))))))))))
 
