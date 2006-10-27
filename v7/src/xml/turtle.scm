@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.13 2006/10/26 02:31:31 cph Exp $
+$Id: turtle.scm,v 1.14 2006/10/27 13:49:15 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -566,14 +566,20 @@ USA.
 	     (if (uri? o)
 		 (receive (prefix expansion) (uri->rdf-prefix o #f)
 		   (if (and prefix (not (hash-table/get table prefix #f)))
-		       (begin
-			 (write-rdf/turtle-prefix prefix expansion port)
-			 (hash-table/put! table prefix #t))))))))
+		       (hash-table/put! table prefix expansion)))))))
       (for-each (lambda (t)
 		  (check-obj (rdf-triple-subject t))
 		  (check-obj (rdf-triple-predicate t))
 		  (check-obj (rdf-triple-object t)))
-		triples))))
+		triples))
+    (for-each (lambda (p)
+		(write-rdf/turtle-prefix (car p) (cdr p) port))
+	      (sort (hash-table->alist table)
+		(lambda (a b)
+		  (let ((a (symbol-name (car a)))
+			(b (symbol-name (car b))))
+		    (substring<? a 0 (fix:- (string-length a) 1)
+				 b 0 (fix:- (string-length b) 1))))))))
 
 (define (write-rdf/turtle-prefix prefix expansion port)
   (write-string "@prefix " port)
@@ -594,103 +600,134 @@ USA.
 			     (lambda (t)
 			       (eq? (rdf-triple-object t) bnode))))
 			 1)))
-      (let ((inline (group-triples-by-subject inline)))
+      (let ((inline-bnode
+	     (let ((inline (group-triples-by-subject inline)))
+	       (lambda (bnode)
+		 (find-matching-item inline
+		   (lambda (ts)
+		     (eq? (rdf-triple-subject (car ts)) bnode)))))))
 	(for-each (lambda (ts)
-		    (write-subject ts inline port))
+		    (write-top-level ts inline-bnode port))
 		  (group-triples-by-subject uris))
 	(for-each (lambda (ts)
-		    (write-subject ts inline port))
+		    (write-top-level ts inline-bnode port))
 		  (group-triples-by-subject separate))))))
 
 (define (group-triples-by-subject ts)
-  (let loop ((ts (sort-triples ts)) (groups '()))
-    (if (pair? ts)
-	(let grow ((ts (cdr ts)) (group (list (car ts))))
-	  (if (and (pair? ts)
-		   (eq? (rdf-triple-subject (car ts))
-			(rdf-triple-subject (car group))))
-	      (grow (cdr ts) (cons (car ts) group))
-	      (loop ts (cons (reverse! group) groups))))
-	(reverse! groups))))
+  (group-triples (sort-triples ts) rdf-triple-subject))
 
-(define (write-subject triples bnodes port)
+(define (write-top-level ts inline-bnode port)
   (newline port)
-  (let ((s (rdf-triple-subject (car triples))))
-    (cond ((uri? s) (write-rdf/turtle-uri s port))
-	  ((rdf-bnode? s) (write-rdf/nt-bnode s port))
-	  (else (error "Unknown RDF subject:" s))))
+  (let ((groups (group-triples ts rdf-triple-predicate))
+	(indentation (indent+ 0)))
+    (write-rdf/turtle-subject (rdf-triple-subject (caar groups)) port)
+    (let ((writer
+	   (and (eq? (rdf-triple-predicate (caar groups)) rdf:type)
+		(null? (cdar groups))
+		(linear-object-writer (rdf-triple-object (caar groups))
+				      inline-bnode))))
+      (if writer
+	  (begin
+	    (space port)
+	    (write-rdf/turtle-predicate rdf:type port)
+	    (space port)
+	    (writer port)
+	    (write-pgroups-tail groups indentation inline-bnode port))
+	  (write-pgroups groups indentation inline-bnode port))))
   (newline port)
-  (let ((indentation (indent-tab 0)))
-    (write-indentation indentation port)
-    (write-properties triples bnodes indentation port)
-    (newline port))
   (write-string "." port)
   (newline port))
 
-(define (write-properties ts bnodes indentation port)
-  (let loop ((ts ts))
-    (let ((t (car ts)))
-      (let ((p (rdf-triple-predicate t)))
-	(if (eq? p rdf:type)
-	    (write-string "a" port)
-	    (write-rdf/turtle-uri p port)))
-      (write-object (rdf-triple-object t) #t bnodes indentation port)
-      (let ((p (rdf-triple-predicate t)))
-	(let oloop ((ts (cdr ts)))
-	  (if (pair? ts)
-	      (if (eq? (rdf-triple-predicate (car ts)) p)
-		  (begin
-		    (write-string "," port)
-		    (write-object (rdf-triple-object (car ts))
-				  #t
-				  bnodes
-				  indentation
-				  port)
-		    (oloop (cdr ts)))
-		  (begin
-		    (write-string ";" port)
-		    (newline port)
-		    (write-indentation indentation port)
-		    (loop ts)))))))))
-
-(define (write-object o space? bnodes indentation port)
-  (cond ((uri? o)
-	 (if space? (write-string " " port))
-	 (if (eq? o rdf:nil)
-	     (write-string "()" port)
-	     (write-rdf/turtle-uri o port)))
-	((rdf-literal? o)
-	 (if space? (write-string " " port))
-	 (write-literal o port))
+(define (linear-object-writer o inline-bnode)
+  (cond ((rdf-list->list o inline-bnode)
+	 => (lambda (objects)
+	      (cond ((null? objects)
+		     (lambda (port)
+		       (write-string "()" port)))
+		    ((and (pair? objects)
+			  (null? (cdr objects))
+			  (linear-object-writer (car objects) inline-bnode))
+		     => (lambda (write-elt)
+			  (lambda (port)
+			    (write-string "(" port)
+			    (write-elt port)
+			    (write-string ")" port))))
+		    (else #f))))
 	((rdf-bnode? o)
-	 (write-bnode o space? bnodes indentation port))
+	 (and (not (inline-bnode o))
+	      (lambda (port)
+		(write-rdf/nt-bnode o port))))
+	((uri? o)
+	 (lambda (port)
+	   (write-rdf/turtle-uri o port)))
+	((rdf-literal? o)
+	 (lambda (port)
+	   (write-rdf/turtle-literal o port)))
 	(else
 	 (error "Unknown RDF object:" o))))
 
-(define (write-bnode bnode space? bnodes indentation port)
-  (cond ((rdf-list->list bnode bnodes)
-	 => (lambda (items)
-	      (if space? (write-string " " port))
-	      (write-string "(" port)
-	      (write-object (car items) #f bnodes indentation port)
-	      (for-each (lambda (item)
-			  (write-string "," port)
-			  (write-object item #t bnodes indentation port))
-			(cdr items))
-	      (write-string ")" port)))
-	((find-in-bnodes bnode bnodes)
-	 => (lambda (ts)
-	      (let ((indentation (indent-tab indentation)))
-		(newline port)
-		(write-indentation indentation port)
-		(write-string "[" port)
-		(write-properties ts bnodes (indent-space indentation) port)
-		(write-string "]" port))))
-	(else
-	 (if space? (write-string " " port))
-	 (write-rdf/nt-bnode bnode port))))
+(define (write-pgroups groups indentation inline-bnode port)
+  (write-pgroup (car groups) indentation inline-bnode port)
+  (write-pgroups-tail groups indentation inline-bnode port))
 
-(define (write-literal literal port)
+(define (write-pgroups-tail groups indentation inline-bnode port)
+  (for-each (lambda (ts)
+	      (write-string ";" port)
+	      (write-pgroup ts indentation inline-bnode port))
+	    (cdr groups)))
+
+(define (write-pgroup ts indentation inline-bnode port)
+  (write-indentation indentation port)
+  (let ((p (rdf-triple-predicate (car ts)))
+	(os (map rdf-triple-object ts)))
+    (write-rdf/turtle-predicate p port)
+    (let ((writer
+	   (and (null? (cdr os))
+		(linear-object-writer (car os) inline-bnode))))
+      (if writer
+	  (begin
+	    (space port)
+	    (writer port))
+	  (write-ogroup os indentation inline-bnode port)))))
+
+(define (write-ogroup os indentation inline-bnode port)
+  (let ((indentation (indent+ indentation)))
+    (write-object (car os) indentation inline-bnode port)
+    (for-each (lambda (o)
+		(write-string "," port)
+		(write-object o indentation inline-bnode port))
+	      (cdr os))))
+
+(define (write-object o indentation inline-bnode port)
+  (write-indentation indentation port)
+  (cond ((linear-object-writer o inline-bnode)
+	 => (lambda (writer)
+	      (writer port)))
+	((rdf-list->list o inline-bnode)
+	 => (lambda (os)
+	      (write-string "(" port)
+	      (write-ogroup os indentation inline-bnode port)
+	      (write-indentation indentation port)
+	      (write-string ")" port)))
+	(else
+	 (let ((groups
+		(group-triples (inline-bnode o) rdf-triple-predicate)))
+	   (write-string "[" port)
+	   (write-pgroups groups (indent+ indentation) inline-bnode port)
+	   (write-indentation indentation port)
+	   (write-string "]" port)))))
+
+(define (write-rdf/turtle-subject s port)
+  (cond ((uri? s) (write-rdf/turtle-uri s port))
+	((rdf-bnode? s) (write-rdf/nt-bnode s port))
+	(else (error "Unknown RDF subject:" s))))
+
+(define (write-rdf/turtle-predicate p port)
+  (if (eq? p rdf:type)
+      (write-string "a" port)
+      (write-rdf/turtle-uri p port)))
+
+(define (write-rdf/turtle-literal literal port)
   (let ((text (rdf-literal-text literal)))
     (if (let ((type (rdf-literal-type literal)))
 	  (or (eq? type xsd:boolean)
@@ -754,17 +791,27 @@ USA.
 		    #f
 		    (rdf-bnode<? s1 s2))))))))
 
+(define (group-triples ts accessor)
+  (let loop ((ts ts) (groups '()))
+    (if (pair? ts)
+	(let grow ((ts (cdr ts)) (group (list (car ts))))
+	  (if (and (pair? ts)
+		   (eq? (accessor (car ts)) (accessor (car group))))
+	      (grow (cdr ts) (cons (car ts) group))
+	      (loop ts (cons (reverse! group) groups))))
+	(reverse! groups))))
+
 (define (uri<? a b)
   (string<? (uri->string a) (uri->string b)))
 
 (define (rdf-bnode<? a b)
   (string<? (rdf-bnode-name a) (rdf-bnode-name b)))
 
-(define (rdf-list->list node bnodes)
+(define (rdf-list->list node inline-bnode)
   (let loop ((node node))
     (if (eq? node rdf:nil)
 	'()
-	(let ((ts (find-in-bnodes node bnodes)))
+	(let ((ts (inline-bnode node)))
 	  (and ts
 	       (eq? (rdf-triple-predicate (car ts)) rdf:type)
 	       (eq? (rdf-triple-object (car ts)) rdf:List)
@@ -776,16 +823,15 @@ USA.
 	       (let ((rest (loop (rdf-triple-object (caddr ts)))))
 		 (and rest
 		      (cons (rdf-triple-object (cadr ts)) rest))))))))
-
-(define (find-in-bnodes bnode bnodes)
-  (find-matching-item bnodes
-    (lambda (ts)
-      (eq? (rdf-triple-subject (car ts)) bnode))))
 
+(define (space port)
+  (write-char #\space port))
+
 (define (write-symbol symbol port)
   (write-string (symbol-name symbol) port))
 
 (define (write-indentation indentation port)
+  (newline port)
   (let loop ((indentation indentation))
     (cond ((>= indentation 8)
 	   (write-char #\tab port)
@@ -794,11 +840,8 @@ USA.
 	   (write-char #\space port)
 	   (loop (- indentation 1))))))
 
-(define (indent-tab indentation)
-  (* (+ (quotient indentation 8) 1) 8))
-
-(define (indent-space indentation)
-  (+ indentation 1))
+(define (indent+ indentation)
+  (+ indentation 2))
 
 (define (split-list items predicate)
   (let loop ((items items) (true '()) (false '()))
