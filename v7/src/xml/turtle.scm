@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.15 2006/10/29 05:32:35 cph Exp $
+$Id: turtle.scm,v 1.16 2006/10/29 06:20:04 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -29,7 +29,7 @@ USA.
 
 ;;;; Decoder
 
-(define (read-rdf/turtle-file pathname registry #!optional base-uri)
+(define (read-rdf/turtle-file pathname #!optional base-uri)
   (let ((pathname (pathname-default-type pathname "ttl")))
     (call-with-input-file pathname
       (lambda (port)
@@ -37,7 +37,6 @@ USA.
 	(fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
 	  (post-process-parser-output
 	   (parse-turtle-doc (input-port->parser-buffer port))
-	   registry
 	   (if (default-object? base-uri)
 	       (pathname->uri (merge-pathnames pathname))
 	       (merge-uris (file-namestring pathname)
@@ -447,27 +446,30 @@ USA.
 
 ;;; This code does prefix expansion and URI merging.
 
-(define (post-process-parser-output stmts registry base-uri)
-  (let ((prefixes
-	 (map (lambda (p)
-		(let ((prefix (cadr p))
-		      (v (uri->string (merge-uris (caddr p) base-uri))))
-		  (if prefix
-		      (register-rdf-prefix (symbol prefix ':) v registry))
-		  (cons prefix v)))
-	      (keep-matching-items stmts
-		(lambda (stmt)
-		  (eq? (car stmt) 'PREFIX))))))
-    (append-map! (lambda (stmt)
-		   (case (car stmt)
-		     ((triples)
-		      (post-process-triples (cadr stmt)
-					    (cddr stmt)
-					    prefixes
-					    base-uri))
-		     ((prefix) '())
-		     (else (error "Unknown statement:" stmt))))
-		 stmts)))
+(define (post-process-parser-output stmts base-uri)
+  (let ((registry (new-rdf-prefix-registry)))
+    (values
+     (let ((prefixes
+	    (map (lambda (p)
+		   (let ((prefix (cadr p))
+			 (v (uri->string (merge-uris (caddr p) base-uri))))
+		     (if prefix
+			 (register-rdf-prefix (symbol prefix ':) v registry))
+		     (cons prefix v)))
+		 (keep-matching-items stmts
+		   (lambda (stmt)
+		     (eq? (car stmt) 'PREFIX))))))
+       (append-map! (lambda (stmt)
+		      (case (car stmt)
+			((triples)
+			 (post-process-triples (cadr stmt)
+					       (cddr stmt)
+					       prefixes
+					       base-uri))
+			((prefix) '())
+			(else (error "Unknown statement:" stmt))))
+		    stmts))
+     registry)))
 
 (define (post-process-triples subject pols prefixes base-uri)
   (receive (subject triples) (post-process-resource subject prefixes base-uri)
@@ -557,15 +559,20 @@ USA.
   (call-with-output-file pathname
     (lambda (port)
       (port/set-coding port 'UTF-8)
-      (write-rdf/turtle-prefixes triples registry port)
-      (write-rdf/turtle-triples triples registry port))))
+      (port/set-rdf-prefix-registry port registry)
+      (write-rdf/turtle triples port))))
 
-(define (write-rdf/turtle-prefixes triples registry port)
+(define (write-rdf/turtle triples port)
+  (write-rdf/turtle-prefixes triples port)
+  (write-rdf/turtle-triples triples port))
+
+(define (write-rdf/turtle-prefixes triples port)
   (let ((table (make-eq-hash-table)))
     (let ((check-obj
 	   (lambda (o)
 	     (if (uri? o)
-		 (receive (prefix expansion) (uri->rdf-prefix o registry #f)
+		 (receive (prefix expansion)
+		     (uri->rdf-prefix o (port/rdf-prefix-registry port) #f)
 		   (if (and prefix (not (hash-table/get table prefix #f)))
 		       (hash-table/put! table prefix expansion)))))))
       (for-each (lambda (t)
@@ -590,7 +597,7 @@ USA.
   (write-string "> ." port)
   (newline port))
 
-(define (write-rdf/turtle-triples triples registry port)
+(define (write-rdf/turtle-triples triples port)
   (receive (uris bnodes)
       (split-list triples (lambda (t) (uri? (rdf-triple-subject t))))
     (receive (inline separate)
@@ -608,39 +615,38 @@ USA.
 		   (lambda (ts)
 		     (eq? (rdf-triple-subject (car ts)) bnode)))))))
 	(for-each (lambda (ts)
-		    (write-top-level ts inline-bnode registry port))
+		    (write-top-level ts inline-bnode port))
 		  (group-triples-by-subject uris))
 	(for-each (lambda (ts)
-		    (write-top-level ts inline-bnode registry port))
+		    (write-top-level ts inline-bnode port))
 		  (group-triples-by-subject separate))))))
 
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
 
-(define (write-top-level ts inline-bnode registry port)
+(define (write-top-level ts inline-bnode port)
   (newline port)
   (let ((groups (group-triples ts rdf-triple-predicate))
 	(indentation (indent+ 0)))
-    (write-rdf/turtle-subject (rdf-triple-subject (caar groups)) registry port)
+    (write-rdf/turtle-subject (rdf-triple-subject (caar groups)) port)
     (let ((writer
 	   (and (eq? (rdf-triple-predicate (caar groups)) rdf:type)
 		(null? (cdar groups))
 		(linear-object-writer (rdf-triple-object (caar groups))
-				      inline-bnode
-				      registry))))
+				      inline-bnode))))
       (if writer
 	  (begin
 	    (space port)
-	    (write-rdf/turtle-predicate rdf:type registry port)
+	    (write-rdf/turtle-predicate rdf:type port)
 	    (space port)
 	    (writer port)
-	    (write-pgroups-tail groups indentation inline-bnode registry port))
-	  (write-pgroups groups indentation inline-bnode registry port))))
+	    (write-pgroups-tail groups indentation inline-bnode port))
+	  (write-pgroups groups indentation inline-bnode port))))
   (newline port)
   (write-string "." port)
   (newline port))
 
-(define (linear-object-writer o inline-bnode registry)
+(define (linear-object-writer o inline-bnode)
   (cond ((rdf-list->list o inline-bnode)
 	 => (lambda (objects)
 	      (cond ((null? objects)
@@ -648,9 +654,7 @@ USA.
 		       (write-string "()" port)))
 		    ((and (pair? objects)
 			  (null? (cdr objects))
-			  (linear-object-writer (car objects)
-						inline-bnode
-						registry))
+			  (linear-object-writer (car objects) inline-bnode))
 		     => (lambda (write-elt)
 			  (lambda (port)
 			    (write-string "(" port)
@@ -663,79 +667,75 @@ USA.
 		(write-rdf/nt-bnode o port))))
 	((uri? o)
 	 (lambda (port)
-	   (write-rdf/turtle-uri o registry port)))
+	   (write-rdf/turtle-uri o port)))
 	((rdf-literal? o)
 	 (lambda (port)
-	   (write-rdf/turtle-literal o registry port)))
+	   (write-rdf/turtle-literal o port)))
 	(else
 	 (error "Unknown RDF object:" o))))
 
-(define (write-pgroups groups indentation inline-bnode registry port)
-  (write-pgroup (car groups) indentation inline-bnode registry port)
-  (write-pgroups-tail groups indentation inline-bnode registry port))
+(define (write-pgroups groups indentation inline-bnode port)
+  (write-pgroup (car groups) indentation inline-bnode port)
+  (write-pgroups-tail groups indentation inline-bnode port))
 
-(define (write-pgroups-tail groups indentation inline-bnode registry port)
+(define (write-pgroups-tail groups indentation inline-bnode port)
   (for-each (lambda (ts)
 	      (write-string ";" port)
-	      (write-pgroup ts indentation inline-bnode registry port))
+	      (write-pgroup ts indentation inline-bnode port))
 	    (cdr groups)))
 
-(define (write-pgroup ts indentation inline-bnode registry port)
+(define (write-pgroup ts indentation inline-bnode port)
   (write-indentation indentation port)
   (let ((p (rdf-triple-predicate (car ts)))
 	(os (map rdf-triple-object ts)))
-    (write-rdf/turtle-predicate p registry port)
+    (write-rdf/turtle-predicate p port)
     (let ((writer
 	   (and (null? (cdr os))
-		(linear-object-writer (car os) inline-bnode registry))))
+		(linear-object-writer (car os) inline-bnode))))
       (if writer
 	  (begin
 	    (space port)
 	    (writer port))
-	  (write-ogroup os indentation inline-bnode registry port)))))
+	  (write-ogroup os indentation inline-bnode port)))))
 
-(define (write-ogroup os indentation inline-bnode registry port)
+(define (write-ogroup os indentation inline-bnode port)
   (let ((indentation (indent+ indentation)))
-    (write-object (car os) indentation inline-bnode registry port)
+    (write-object (car os) indentation inline-bnode port)
     (for-each (lambda (o)
 		(write-string "," port)
-		(write-object o indentation inline-bnode registry port))
+		(write-object o indentation inline-bnode port))
 	      (cdr os))))
 
-(define (write-object o indentation inline-bnode registry port)
+(define (write-object o indentation inline-bnode port)
   (write-indentation indentation port)
-  (cond ((linear-object-writer o inline-bnode registry)
+  (cond ((linear-object-writer o inline-bnode)
 	 => (lambda (writer)
 	      (writer port)))
 	((rdf-list->list o inline-bnode)
 	 => (lambda (os)
 	      (write-string "(" port)
-	      (write-ogroup os indentation inline-bnode registry port)
+	      (write-ogroup os indentation inline-bnode port)
 	      (write-indentation indentation port)
 	      (write-string ")" port)))
 	(else
 	 (let ((groups
 		(group-triples (inline-bnode o) rdf-triple-predicate)))
 	   (write-string "[" port)
-	   (write-pgroups groups
-			  (indent+ indentation)
-			  inline-bnode
-			  registry
-			  port)
+	   (write-pgroups groups (indent+ indentation) inline-bnode port)
 	   (write-indentation indentation port)
 	   (write-string "]" port)))))
 
-(define (write-rdf/turtle-subject s registry port)
-  (cond ((uri? s) (write-rdf/turtle-uri s registry port))
+(define (write-rdf/turtle-subject s port)
+  (cond ((uri? s) (write-rdf/turtle-uri s port))
 	((rdf-bnode? s) (write-rdf/nt-bnode s port))
 	(else (error "Unknown RDF subject:" s))))
 
-(define (write-rdf/turtle-predicate p registry port)
+(define (write-rdf/turtle-predicate p port)
   (if (eq? p rdf:type)
       (write-string "a" port)
-      (write-rdf/turtle-uri p registry port)))
+      (write-rdf/turtle-uri p port)))
 
-(define (write-rdf/turtle-literal literal registry port)
+(define (write-rdf/turtle-literal literal port)
   (let ((text (rdf-literal-text literal)))
     (if (let ((type (rdf-literal-type literal)))
 	  (or (eq? type xsd:boolean)
@@ -748,7 +748,7 @@ USA.
 	  (cond ((rdf-literal-type literal)
 		 => (lambda (uri)
 		      (write-string "^^" port)
-		      (write-rdf/turtle-uri uri registry port)))
+		      (write-rdf/turtle-uri uri port)))
 		((rdf-literal-language literal)
 		 => (lambda (lang)
 		      (write-string "@" port)
@@ -770,8 +770,8 @@ USA.
 	(write-string "\"\"\"" port))
       (write-rdf/nt-literal-text text port)))
 
-(define (write-rdf/turtle-uri uri registry port)
-  (let ((qname (uri->rdf-qname uri registry #f)))
+(define (write-rdf/turtle-uri uri port)
+  (let ((qname (uri->rdf-qname uri (port/rdf-prefix-registry port) #f)))
     (if qname
 	(write-string (symbol-name qname) port)
 	(write-rdf/nt-uri uri port))))
