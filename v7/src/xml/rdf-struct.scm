@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.18 2006/10/19 17:48:23 cph Exp $
+$Id: rdf-struct.scm,v 1.19 2006/10/29 05:23:59 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -285,7 +285,7 @@ USA.
     (and p
 	 (cdr p))))
 
-(define (uri->rdf-prefix uri #!optional error? registry)
+(define (uri->rdf-prefix uri #!optional registry error?)
   (let ((s (uri->string (->absolute-uri uri 'URI->RDF-PREFIX))))
     (let ((p
 	   (let ((alist
@@ -303,15 +303,15 @@ USA.
 	    (if error? (error:bad-range-argument uri 'URI->RDF-PREFIX))
 	    (values #f #f))))))
 
-(define (uri->rdf-qname uri #!optional error? registry)
+(define (uri->rdf-qname uri #!optional registry error?)
   (let ((uri (->absolute-uri uri 'URI->RDF-QNAME)))
-    (receive (prefix expansion) (uri->rdf-prefix uri error? registry)
+    (receive (prefix expansion) (uri->rdf-prefix uri registry error?)
       (and prefix
 	   (symbol prefix
 		   (string-tail (uri->string uri)
 				(string-length expansion)))))))
 
-(define (rdf-qname->uri qname #!optional error? registry)
+(define (rdf-qname->uri qname #!optional registry error?)
   (receive (prefix local) (split-rdf-qname qname)
     (let ((expansion (rdf-prefix-expansion prefix registry)))
       (if expansion
@@ -384,9 +384,10 @@ USA.
       (let ((registry *default-rdf-prefix-registry*))
 	(if (rdf-prefix-registry? registry)
 	    registry
-	    (begin
+	    (let ((registry (new-rdf-prefix-registry)))
 	      (warn "*default-rdf-prefix-registry* has illegal value.")
-	      (new-rdf-prefix-registry))))
+	      (set! *default-rdf-prefix-registry* registry)
+	      registry)))
       (begin
 	(guarantee-rdf-prefix-registry registry caller)
 	registry)))
