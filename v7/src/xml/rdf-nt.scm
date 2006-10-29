@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.9 2006/10/19 17:48:21 cph Exp $
+$Id: rdf-nt.scm,v 1.10 2006/10/29 06:17:49 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -51,10 +51,10 @@ USA.
 	    triple)))))
 
 (define (read-rdf/nt port)
-  (fluid-let ((*rdf-bnode-registry* (port/bnode-registry port)))
+  (fluid-let ((*rdf-bnode-registry* (port/rdf-bnode-registry port)))
     (let ((triple (%read-rdf/nt port)))
       (if (eof-object? triple)
-	  (port/drop-bnode-registry port))
+	  (port/drop-rdf-bnode-registry port))
       triple)))
 
 (define (%read-rdf/nt port)

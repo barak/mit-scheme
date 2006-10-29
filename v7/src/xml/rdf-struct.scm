@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.19 2006/10/29 05:23:59 cph Exp $
+$Id: rdf-struct.scm,v 1.20 2006/10/29 06:17:56 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -141,14 +141,14 @@ USA.
 (define *rdf-bnode-registry*
   (make-rdf-bnode-registry))
 
-(define (port/bnode-registry port)
-  (or (port/get-property port 'PORT/BNODE-REGISTRY #f)
-      (let ((table (make-string-hash-table)))
-	(port/set-property! port 'PORT/BNODE-REGISTRY table)
+(define (port/rdf-bnode-registry port)
+  (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
+      (let ((table (make-rdf-bnode-registry)))
+	(port/set-property! port 'RDF-BNODE-REGISTRY table)
 	table)))
 
-(define (port/drop-bnode-registry port)
-  (port/remove-property! port 'PORT/DROP-BNODE-REGISTRY))
+(define (port/drop-rdf-bnode-registry port)
+  (port/remove-property! port 'RDF-BNODE-REGISTRY))
 
 (define (rdf-bnode->handle bnode)
   (string-append bnode-handle-prefix (number->string (hash bnode))))
@@ -261,20 +261,29 @@ USA.
 
 (define (register-rdf-prefix prefix expansion #!optional registry)
   (guarantee-rdf-prefix prefix 'REGISTER-RDF-PREFIX)
-  (let ((registry (check-registry registry 'REGISTER-RDF-PREFIX)))
-    (let ((p (assq prefix (registry-bindings registry)))
-	  (new
-	   (uri->string
-	    (->absolute-uri expansion 'REGISTER-RDF-PREFIX))))
-      (if p
-	  (if (not (string=? (cdr p) new))
-	      (begin
-		(warn "RDF prefix override:" prefix (cdr p) new)
-		(set-cdr! p new)))
-	  (set-registry-bindings! registry
-				  (cons (cons prefix new)
-					(registry-bindings registry))))))
+  (%register-rdf-prefix prefix
+			(uri->string
+			 (->absolute-uri expansion 'REGISTER-RDF-PREFIX))
+			(check-registry registry 'REGISTER-RDF-PREFIX))
   prefix)
+
+(define (merge-rdf-prefix-registry! from-registry #!optional to-registry)
+  (guarantee-rdf-prefix-registry from-registry 'MERGE-RDF-PREFIX-REGISTRY!)
+  (let ((to-registry (check-registry to-registry 'MERGE-RDF-PREFIX-REGISTRY!)))
+    (for-each (lambda (p1)
+		(%register-rdf-prefix (car p1) (cdr p1) to-registry))
+	      (registry-bindings from-registry))))
+
+(define (%register-rdf-prefix prefix expansion registry)
+  (let ((p (assq prefix (registry-bindings registry))))
+    (if p
+	(if (not (string=? (cdr p) expansion))
+	    (begin
+	      (warn "RDF prefix override:" prefix (cdr p) expansion)
+	      (set-cdr! p expansion)))
+	(set-registry-bindings! registry
+				(cons (cons prefix expansion)
+				      (registry-bindings registry))))))
 
 (define (rdf-prefix-expansion prefix #!optional registry)
   (guarantee-rdf-prefix prefix 'RDF-PREFIX-EXPANSION)
@@ -403,3 +412,14 @@ USA.
 
 (define *default-rdf-prefix-registry*
   (new-rdf-prefix-registry))
+
+(define (port/set-rdf-prefix-registry port registry)
+  (if registry
+      (begin
+	(guarantee-rdf-prefix-registry registry 'PORT/SET-RDF-PREFIX-REGISTRY!)
+	(port/set-property! port 'RDF-PREFIX-REGISTRY registry))
+      (port/remove-property! port 'RDF-PREFIX-REGISTRY)))
+
+(define (port/rdf-prefix-registry port)
+  (or (port/get-property port 'RDF-PREFIX-REGISTRY #f)
+      *default-rdf-prefix-registry*))
