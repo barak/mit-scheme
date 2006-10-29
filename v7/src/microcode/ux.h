@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.79 2006/09/16 11:19:09 gjr Exp $
+$Id: ux.h,v 1.80 2006/10/29 17:25:15 riastradh Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2003 Massachusetts Institute of Technology
@@ -735,6 +735,13 @@ extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
 #  define EMULATE_TCGETPGRP
    extern int EXFUN (UX_tcsetpgrp, (int, pid_t));
 #  define EMULATE_TCSETPGRP
+#endif
+
+/* In Darwin, setsid doesn't work in vforked processes,
+   so force the use of fork instead. */
+#ifdef __APPLE__
+#  undef UX_vfork
+#  define UX_vfork fork
 #endif
 
 #ifdef HAVE_SIGACTION
