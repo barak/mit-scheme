@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.53 2005/07/24 05:06:40 cph Exp $
+$Id: uxio.c,v 1.54 2006/10/29 16:43:38 riastradh Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
@@ -705,7 +705,7 @@ DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
 	(nfds,
 	 ((OS_process_any_status_change ())
 	  ? ((errno = EINTR), (-1))
-	  : (UX_select (1,
+	  : (UX_select ((fd + 1),
 			(&readable),
 			(&writeable),
 			0,
