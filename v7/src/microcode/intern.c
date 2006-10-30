@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.61 2005/01/01 05:44:12 cph Exp $
+$Id: intern.c,v 9.62 2006/10/30 06:02:30 cph Exp $
 
 Copyright 1987,1988,1989,1992,1994,1996 Massachusetts Institute of Technology
-Copyright 2000,2004,2005 Massachusetts Institute of Technology
+Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +38,7 @@ USA.
 
 /* Hashing strings */
 
-#define STRING_HASH_BITS 16
+/* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
 
 static unsigned int
 DEFUN (string_hash, (length, string),
@@ -47,15 +47,10 @@ DEFUN (string_hash, (length, string),
 {
   CONST char * scan = string;
   CONST char * end = (scan + length);
-  unsigned int result = 0;
+  unsigned int result = 2166136261;
   while (scan < end)
-    {
-      result <<= 1;
-      result |= (result >> STRING_HASH_BITS);
-      result ^= (*scan++);
-      result &= ((1 << STRING_HASH_BITS) - 1);
-    }
-  return (result);
+    result = ((result * 16777619) + (*scan++));
+  return (result & ((unsigned int) BIGGEST_FIXNUM));
 }
 
 static SCHEME_OBJECT *
