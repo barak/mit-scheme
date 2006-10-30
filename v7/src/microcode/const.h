@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.52 2004/12/06 21:32:46 cph Exp $
+$Id: const.h,v 9.53 2006/10/30 05:50:53 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1997,2000,2002,2004 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -66,7 +67,7 @@ USA.
 #define FILE_NAME_LENGTH	1024   	/* Max. chars. in a file name */
 #endif
 
-#define OBARRAY_SIZE		3001	/* Interning hash table */
+#define OBARRAY_SIZE		32771	/* Interning hash table */
 
 #ifndef STACK_GUARD_SIZE
 #define STACK_GUARD_SIZE	4096	/* Cells between constant and
