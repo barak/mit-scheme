@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.45 2006/10/25 03:15:09 cph Exp $
+$Id: genio.scm,v 1.46 2006/11/01 05:09:42 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -259,7 +259,6 @@ USA.
 (define (generic-io/flush-output port)
   (force-drain-output-buffer (port-output-buffer port)))
 
-
 (define (generic-io/output-column port)
   (output-buffer-column (port-output-buffer port)))
 
@@ -307,18 +306,42 @@ USA.
 ;;;; Non-specific operations
 
 (define (generic-io/close port)
-  (generic-io/close-input port)
-  (generic-io/close-output port))
+  (maybe-close-input port)
+  (maybe-close-output port)
+  (maybe-close-channels port))
 
 (define (generic-io/close-output port)
+  (maybe-close-output port)
+  (maybe-close-channels port))
+
+(define (generic-io/close-input port)
+  (maybe-close-input port)
+  (maybe-close-channels port))
+
+(define (maybe-close-input port)
+  (let ((ib (port-input-buffer port)))
+    (if ib
+	(close-input-buffer ib))))
+
+(define (maybe-close-output port)
   (let ((ob (port-output-buffer port)))
     (if ob
 	(close-output-buffer ob))))
 
-(define (generic-io/close-input port)
-  (let ((ib (port-input-buffer port)))
-    (if ib
-	(close-input-buffer ib))))
+(define (maybe-close-channels port)
+  (let ((ib (port-input-buffer port))
+	(ob (port-output-buffer port)))
+    (let ((ic (and ib (input-buffer-channel ib)))
+	  (oc (and ob (output-buffer-channel ob))))
+      (if (and ic (eq? ic oc))
+	  (if (and (not (%input-buffer-open? ib))
+		   (not (%output-buffer-open? ob)))
+	      (channel-close ic))
+	  (begin
+	    (if (and ic (not (%input-buffer-open? ib)))
+		(channel-close ic))
+	    (if (and oc (not (%output-buffer-open? ob)))
+		(channel-close oc)))))))
 
 (define (generic-io/output-open? port)
   (let ((ob (port-output-buffer port)))
@@ -654,16 +677,19 @@ USA.
 		      (name->sizer coder-name)))
 
 (define (input-buffer-open? ib)
-  ((source/open? (input-buffer-source ib))))
+  (and (%input-buffer-open? ib)
+       ((source/open? (input-buffer-source ib)))))
+
+(define (%input-buffer-open? ib)
+  (fix:>= (input-buffer-end ib) 0))
 
 (define (clear-input-buffer ib)
   (set-input-buffer-start! ib byte-buffer-length)
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
-  (set-input-buffer-start! ib 0)
-  (set-input-buffer-end! ib 0)
-  ((source/close (input-buffer-source ib))))
+  (set-input-buffer-start! ib -1)
+  (set-input-buffer-end! ib -1))
 
 (define (input-buffer-channel ib)
   ((source/get-channel (input-buffer-source ib))))
@@ -672,7 +698,7 @@ USA.
   ((source/get-port (input-buffer-source ib))))
 
 (define-integrable (input-buffer-at-eof? ib)
-  (fix:= (input-buffer-end ib) 0))
+  (fix:<= (input-buffer-end ib) 0))
 
 (define-integrable (input-buffer-byte-count ib)
   (fix:- (input-buffer-end ib) (input-buffer-start ib)))
@@ -877,14 +903,17 @@ USA.
       (string-prefix-ci? "ISO-8859-" (symbol-name coder-name))))
 
 (define (output-buffer-open? ob)
-  ((sink/open? (output-buffer-sink ob))))
+  (and (%output-buffer-open? ob)
+       ((sink/open? (output-buffer-sink ob)))))
+
+(define (%output-buffer-open? ob)
+  (fix:>= (output-buffer-start ob) 0))
 
 (define (close-output-buffer ob)
-  (let ((sink (output-buffer-sink ob)))
-    (if ((sink/open? sink))
-	(begin
-	  (force-drain-output-buffer ob)
-	  ((sink/close sink))))))
+  (if (output-buffer-open? ob)
+      (begin
+	(force-drain-output-buffer ob)
+	(set-output-buffer-start! ob -1))))
 
 (define (output-buffer-channel ob)
   ((sink/get-channel (output-buffer-sink ob))))
