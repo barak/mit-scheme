@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.31 2006/10/29 17:25:15 riastradh Exp $
+$Id: uxproc.c,v 1.32 2006/11/01 05:16:30 cph Exp $
 
-Copyright (c) 1990-2001, 2006 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1996,1997 Massachusetts Institute of Technology
+Copyright 2000,2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
