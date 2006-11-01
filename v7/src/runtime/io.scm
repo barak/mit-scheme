@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.83 2005/10/23 21:03:52 cph Exp $
+$Id: io.scm,v 14.84 2006/11/01 05:19:58 cph Exp $
 
 Copyright 1986,1987,1988,1990,1991,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1998,1999,2000,2001 Massachusetts Institute of Technology
-Copyright 2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,10 +95,10 @@ USA.
 	 (remove-from-gc-finalizer! open-channels channel)))))
 
 (define-integrable (channel-open? channel)
-  (channel-descriptor channel))
+  (if (channel-descriptor channel) #t #f))
 
 (define-integrable (channel-closed? channel)
-  (not (channel-descriptor channel)))
+  (if (channel-descriptor channel) #f #t))
 
 (define (close-all-open-files)
   (close-all-open-channels channel-type=file?))
