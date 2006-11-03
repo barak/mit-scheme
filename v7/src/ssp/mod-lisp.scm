@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.31 2006/07/20 17:09:44 riastradh Exp $
+$Id: mod-lisp.scm,v 1.32 2006/11/03 06:30:42 cph Exp $
 
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -115,7 +115,7 @@ USA.
 		 (mod-lisp-expander request response pathname handler)
 		 (let ((pathname (->pathname pathname)))
 		   (if (file-regular? pathname)
-		       (set-entity response pathname)
+		       (maybe-set-entity request response pathname)
 		       (status-response! response
 					 404
 					 (list "The document "
@@ -148,10 +148,10 @@ USA.
 	   (let ((user-name ((http-message-authenticator request))))
 	     (cond ((or (string? user-name) (not user-name))
 		    (set! *current-user-name* user-name)
-		    (set-entity response
-				(call-with-output-string
-				  (lambda (port)
-				    (expander pathname port)))))
+		    (maybe-set-entity request response
+				      (call-with-output-string
+					(lambda (port)
+					  (expander pathname port)))))
 		   ((and (procedure? user-name)
 			 (procedure-arity-valid? user-name 0))
 		    (user-name))
@@ -191,7 +191,7 @@ USA.
 	      (case keyword
 		((METHOD)
 		 (let ((method (intern datum)))
-		   (if (not (memq method '(GET POST)))
+		   (if (not (memq method '(GET POST HEAD)))
 		       (error "Unknown HTTP method:" method))
 		   (set-http-message-method! request method)))
 		((URL)
@@ -509,6 +509,12 @@ USA.
 						 'SET-ENTITY)))))
   (set-http-message-entity! message entity))
 
+(define (maybe-set-entity request response entity)
+  (set-entity response
+	      (if (eq? (http-message-method request) 'HEAD)
+		  ""
+		  entity)))
+
 (define (message-keyword-proc accessor name)
   (lambda (message keyword #!optional error?)
     (let ((p (assq keyword (accessor message))))
@@ -607,7 +613,7 @@ USA.
   (set-cookie *current-response* name value attrs))
 
 (define (http-response-entity entity)
-  (set-entity *current-response* entity))
+  (maybe-set-entity *current-request* *current-response* entity))
 
 (define (http-status-response code . extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)
