@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.80 2006/10/25 04:25:23 cph Exp $
+$Id: load.scm,v 14.81 2006/11/04 06:38:24 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
@@ -265,7 +265,7 @@ USA.
 	      (write-stream (value-stream)
 			    (lambda (exp&value)
 			      (repl-write (cdr exp&value) (car exp&value))))
-	      (loading-message load/suppress-loading-message? pathname
+	      (with-loading-message pathname
 		(lambda ()
 		  (write-stream (value-stream)
 				(lambda (exp&value) exp&value #f)))))))))
@@ -277,36 +277,37 @@ USA.
 				       (pathname-new-type pathname "scm")))
 	(warn "Source file newer than binary:" namestring))
     (let ((value
-	   (loading-message suppress-loading-message? pathname
+	   (with-loading-message pathname
 	     (lambda ()
-	       ((ucode-primitive binary-fasload) namestring)))))
+	       ((ucode-primitive binary-fasload) namestring))
+	     suppress-loading-message?)))
       (fasload/update-debugging-info! value pathname)
       value)))
 
 (define (fasload-object-file pathname suppress-loading-message?)
-  (loading-message
-   suppress-loading-message? pathname
-   (lambda ()
-     (let* ((handle ((ucode-primitive load-object-file 1)
-		     (->namestring pathname)))
-	    (cth ((ucode-primitive object-lookup-symbol 3)
-		  handle "dload_initialize_file" 0)))
-       (if (not cth)
-	   (error "load-object-file: Cannot find init procedure" pathname))
-       (let ((scode ((ucode-primitive initialize-c-compiled-block 1)
-		     ((ucode-primitive address-to-string 1)
-		      ((ucode-primitive invoke-c-thunk 1)
-		       cth)))))
-	 (fasload/update-debugging-info! scode pathname)
-	 scode)))))
+  (with-loading-message pathname
+    (lambda ()
+      (let* ((handle ((ucode-primitive load-object-file 1)
+		      (->namestring pathname)))
+	     (cth ((ucode-primitive object-lookup-symbol 3)
+		   handle "dload_initialize_file" 0)))
+	(if (not cth)
+	    (error "load-object-file: Cannot find init procedure" pathname))
+	(let ((scode ((ucode-primitive initialize-c-compiled-block 1)
+		      ((ucode-primitive address-to-string 1)
+		       ((ucode-primitive invoke-c-thunk 1)
+			cth)))))
+	  (fasload/update-debugging-info! scode pathname)
+	  scode)))
+    suppress-loading-message?))
 
 (define (wrapper/fasload/built-in value)
   (lambda (pathname suppress-loading-message?)
-    (loading-message
-     suppress-loading-message? pathname
-     (lambda ()
-       (fasload/update-debugging-info! value pathname)
-       value))))
+    (with-loading-message pathname
+      (lambda ()
+	(fasload/update-debugging-info! value pathname)
+	value)
+      suppress-loading-message?)))
 
 (define (load-object-file pathname environment purify? load-noisily?)
   load-noisily?		; ignored
@@ -318,11 +319,10 @@ USA.
 (define (wrapper/load/built-in scode)
   (lambda (pathname environment purify? load-noisily?)
     load-noisily?			; ignored
-    (loading-message
-     load/suppress-loading-message? pathname
-     (lambda ()
-       (fasload/update-debugging-info! scode pathname)
-       (load-scode-end scode environment purify?)))))
+    (with-loading-message pathname
+      (lambda ()
+	(fasload/update-debugging-info! scode pathname)
+	(load-scode-end scode environment purify?)))))
 
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))
@@ -372,13 +372,15 @@ USA.
   (set! loaded-object-files '())
   unspecific)
 
-(define (loading-message suppress-loading-message? pathname do-it)
-  (if suppress-loading-message?
-      (do-it)
+(define (with-loading-message pathname thunk #!optional suppress-message?)
+  (if (if (default-object? suppress-message?)
+	  load/suppress-loading-message?
+	  suppress-message?)
+      (thunk)
       (with-notification (lambda (port)
 			   (write-string "Loading " port)
 			   (write (enough-namestring pathname) port))
-	do-it)))
+	thunk)))
 
 (define *purification-root-marker*)
 
