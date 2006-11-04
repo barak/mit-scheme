@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.55 2006/06/26 16:16:18 riastradh Exp $
+$Id: ed-ffi.scm,v 1.56 2006/11/04 20:25:17 riastradh Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
@@ -105,6 +105,7 @@ USA.
     ("kmacro"	(edwin))
     ("lincom"	(edwin))
     ("linden"	(edwin lisp-indentation))
+    ("lisppaste" (edwin lisppaste))
     ("loadef"	(edwin))
     ("lspcom"	(edwin))
     ("macros"	(edwin macros))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.77 2006/10/25 17:29:21 cph Exp $
+$Id: decls.scm,v 1.78 2006/11/04 20:25:17 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -166,6 +166,7 @@ USA.
 		"kmacro"
 		"lincom"
 		"linden"
+		"lisppaste"
 		"loadef"
 		"lspcom"
 		"malias"
