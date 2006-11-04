@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.603 2006/11/04 06:38:32 cph Exp $
+$Id: runtime.pkg,v 14.604 2006/11/04 20:16:47 riastradh Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -5053,6 +5053,7 @@ USA.
   (files "http-client")
   (parent (runtime))
   (export ()
+	  adjoin-http-header-fields
 	  call-with-http-connection
 	  call-with-http-response:entity-request
 	  call-with-http-response:get
@@ -5089,6 +5090,7 @@ USA.
 	  read-http-response
 	  receive-http-response
 	  send-http-request
+	  valid-http-header-field?
 	  write-http-request
 	  ))
 

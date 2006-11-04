@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.2 2006/08/02 18:18:10 cph Exp $
+$Id: http-client.scm,v 14.3 2006/11/04 20:16:47 riastradh Exp $
 
 Copyright 2006 Taylor R. Campbell
 
@@ -151,7 +151,7 @@ USA.
 (define (send-http-request connection method request-uri header-fields content)
   (write-http-request method
                       request-uri
-                      (rfc822:adjoin-header-fields
+                      (adjoin-http-header-fields
                        `((HOST ,(http-connection/host-string connection)))
                        header-fields
                        (if (string? content)
@@ -341,6 +341,9 @@ USA.
 ;;; RFC 822 support, and something ought to be done about RFC 2822.
 ;;; Some day.
 
+(define (valid-http-header-field? obj)
+  (rfc822:header-field? obj))
+
 (define (rfc822:header-field? obj)
   (and (pair? obj)
        (symbol? (car obj))
@@ -370,7 +373,7 @@ USA.
       (eq? (rfc822:header-field-name header-field)
            name))))
 
-(define (rfc822:adjoin-header-fields left header-fields right)
+(define (adjoin-http-header-fields left header-fields right)
   (let ((clean (lambda (other-header-fields)
                  (delete-matching-items other-header-fields
                    (lambda (header-field)
