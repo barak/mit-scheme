@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.86 2006/10/29 06:20:11 cph Exp $
+$Id: xml.pkg,v 1.87 2006/11/04 20:23:19 riastradh Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -510,6 +510,7 @@ USA.
 	  *xml-rpc:encode-value-handler*
 	  condition-type:bad-xml-rpc-message
 	  condition-type:xml-rpc-fault
+	  xml-rpc
 	  xml-rpc:condition->fault
 	  xml-rpc:fault
 	  xml-rpc:parse-request

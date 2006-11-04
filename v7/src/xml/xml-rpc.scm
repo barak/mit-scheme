@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.7 2006/08/01 04:23:41 cph Exp $
+$Id: xml-rpc.scm,v 1.8 2006/11/04 20:23:19 riastradh Exp $
 
 Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -23,9 +23,50 @@ USA.
 
 |#
 
-;;;; XML-RPC message codecs
+;;;; XML-RPC
 
 (declare (usual-integrations))
+
+(define (xml-rpc uri request #!optional header-fields)
+  (let* ((request (->xml-rpc-request request 'XML-RPC)))
+    (call-with-http-response:post uri
+                                  (xml-rpc:header-fields header-fields)
+                                  (xml->string request)
+      (lambda (http-response content-port)
+        (if (not (= 200 (http-response/status-code http-response)))
+            (error "HTTP error:" (http-response/reason http-response)))
+        (xml-rpc:parse-response (read-xml content-port))))))
+
+(define (->xml-rpc-request request #!optional caller)
+  (cond ((list? request)
+         (apply xml-rpc:request request))
+        ((or (xml-document? request)
+             (xml-element? request))
+         request)
+        (else
+         (error:wrong-type-argument request
+                                    "XML-RPC request"
+                                    caller))))
+
+(define (xml-rpc:header-fields #!optional header-fields)
+  (adjoin-http-header-fields
+   ;; The XML-RPC specification mandates at least User-Agent, Host,
+   ;; Content-Type, and Content-Length.  The HTTP client abstraction
+   ;; automatically supplies Host, and also Content-Length if the
+   ;; content is passed as a string (which it is).
+   `((USER-AGENT ,(xml-rpc:default-scheme-user-agent-string)))
+   (if (default-object? header-fields)
+       '()
+       (begin
+         (guarantee-list-of-type header-fields
+                                 valid-http-header-field?
+                                 "HTTP header fields")
+         header-fields))
+   '((CONTENT-TYPE "text/xml"))))
+
+(define (xml-rpc:default-scheme-user-agent-string)
+  (string-append "MIT-Scheme/"
+                 (get-subsystem-version-string "release")))
 
 (define (xml-rpc:request name . objects)
   (rpc-elt:method-call (rpc-elt:method-name name)
