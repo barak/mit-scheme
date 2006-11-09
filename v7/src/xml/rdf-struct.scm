@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.20 2006/10/29 06:17:56 cph Exp $
+$Id: rdf-struct.scm,v 1.21 2006/11/09 19:43:54 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -75,18 +75,16 @@ USA.
       (write-rdf/nt-bnode bnode port))))
 
 (define (make-rdf-bnode #!optional name)
-  (cond ((default-object? name)
-	 (let ((name (generate-bnode-name)))
-	   (let ((bnode (%make-rdf-bnode name)))
-	     (hash-table/put! *rdf-bnode-registry* name bnode)
-	     bnode)))
-	((and (string? name)
-	      (complete-match match-bnode-name name))
-	 (hash-table/intern! *rdf-bnode-registry* name
-	   (lambda ()
-	     (%make-rdf-bnode name))))
-	(else
-	 (error:wrong-type-argument name "RDF bnode name" 'RDF-BNODE))))
+  (if (default-object? name)
+      (let ((name (generate-bnode-name)))
+	(let ((bnode (%make-rdf-bnode name)))
+	  (hash-table/put! *rdf-bnode-registry* name bnode)
+	  bnode))
+      (begin
+	(guarantee-string name 'MAKE-RDF-BNODE)
+	(hash-table/intern! *rdf-bnode-registry*
+	    (string-append "X" name)
+	  make-rdf-bnode))))
 
 (define (generate-bnode-name)
   (let loop ()
