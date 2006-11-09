@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.22 2006/11/09 20:07:40 cph Exp $
+$Id: rdf-struct.scm,v 1.23 2006/11/09 20:11:50 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -81,7 +81,7 @@ USA.
 	(hash-table/intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
 (define (rdf-bnode-name bnode)
-  (string-append bnode-prefix (number->string (hash bnode))))
+  (string-append "B" (number->string (hash bnode))))
 
 (define (%decode-bnode-uri uri)
   (let ((handle-uri
@@ -96,16 +96,12 @@ USA.
 	  (else #f))))
 
 (define parse-bnode
-  (let ((prefix (lambda (b) (match-parser-buffer-string b bnode-prefix)))
-	(digits (ascii-range->char-set #x30 #x3A)))
+  (let ((digits (ascii-range->char-set #x30 #x3A)))
     (*parser
-     (seq (noise prefix)
+     (seq (noise "_:B")
 	  (map (lambda (s) (string->number s 10 #t))
 	       (match (+ (char-set digits))))
 	  (noise (end-of-input))))))
-
-(define bnode-prefix
-  "_:B")
 
 (define (make-rdf-bnode-registry)
   (make-string-hash-table))
