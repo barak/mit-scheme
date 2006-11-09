@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.45 2006/10/25 04:23:06 cph Exp $
+$Id: port.scm,v 1.46 2006/11/09 20:04:55 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -637,17 +637,29 @@ USA.
 	 (operation port))))
 
 (define (port/get-property port name default)
+  (guarantee-symbol name 'PORT/GET-PROPERTY)
   (let ((p (assq name (port/properties port))))
     (if p
 	(cdr p)
 	default)))
 
 (define (port/set-property! port name value)
+  (guarantee-symbol name 'PORT/SET-PROPERTY!)
   (let ((alist (port/properties port)))
     (let ((p (assq name alist)))
       (if p
 	  (set-cdr! p value)
 	  (set-port/properties! port (cons (cons name value) alist))))))
+
+(define (port/intern-property! port name get-value)
+  (guarantee-symbol name 'PORT/INTERN-PROPERTY!)
+  (let ((alist (port/properties port)))
+    (let ((p (assq name alist)))
+      (if p
+	  (cdr p)
+	  (let ((value (get-value)))
+	    (set-port/properties! port (cons (cons name value) alist))
+	    value)))))
 
 (define (port/remove-property! port name)
   (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
