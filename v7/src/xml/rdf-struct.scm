@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.21 2006/11/09 19:43:54 cph Exp $
+$Id: rdf-struct.scm,v 1.22 2006/11/09 20:07:40 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -43,7 +43,7 @@ USA.
 
 (define (canonicalize-rdf-subject subject #!optional caller)
   (cond ((rdf-bnode? subject) subject)
-	((%decode-bnode-uri subject caller))
+	((%decode-bnode-uri subject))
 	(else (canonicalize-rdf-uri subject caller))))
 
 (define (canonicalize-rdf-predicate predicate #!optional caller)
@@ -62,9 +62,8 @@ USA.
 ;;;; Blank nodes
 
 (define-record-type <rdf-bnode>
-    (%make-rdf-bnode name)
-    rdf-bnode?
-  (name rdf-bnode-name))
+    (%make-rdf-bnode)
+    rdf-bnode?)
 
 (define-guarantee rdf-bnode "RDF bnode")
 
@@ -72,66 +71,41 @@ USA.
   (standard-unparser-method 'RDF-BNODE
     (lambda (bnode port)
       (write-char #\space port)
-      (write-rdf/nt-bnode bnode port))))
+      (write-string (rdf-bnode-name bnode) port))))
 
 (define (make-rdf-bnode #!optional name)
   (if (default-object? name)
-      (let ((name (generate-bnode-name)))
-	(let ((bnode (%make-rdf-bnode name)))
-	  (hash-table/put! *rdf-bnode-registry* name bnode)
-	  bnode))
+      (%make-rdf-bnode)
       (begin
 	(guarantee-string name 'MAKE-RDF-BNODE)
-	(hash-table/intern! *rdf-bnode-registry*
-	    (string-append "X" name)
-	  make-rdf-bnode))))
+	(hash-table/intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
-(define (generate-bnode-name)
-  (let loop ()
-    (let ((name
-	   (string-append "B"
-			  (vector-8b->hexadecimal (random-byte-vector 8)))))
-      (if (hash-table/get *rdf-bnode-registry* name #f)
-	  (loop)
-	  name))))
+(define (rdf-bnode-name bnode)
+  (string-append bnode-prefix (number->string (hash bnode))))
 
-(define (%decode-bnode-uri uri caller)
-  (let ((lookup
+(define (%decode-bnode-uri uri)
+  (let ((handle-uri
 	 (lambda (uri)
-	   (let ((bnode
-		  (hash-table/get *rdf-bnode-registry*
-				  (string-tail uri 2)
-				  #f)))
-	     (if (not bnode)
-		 (error:bad-range-argument uri caller))
-	     bnode))))
-    (let ((handle-uri
-	   (lambda (uri)
-	     (cond ((complete-match match-bnode-uri uri) (lookup uri))
-		   ((handle->rdf-bnode uri #f))
-		   (else #f)))))
-      (cond ((string? uri) (handle-uri uri))
-	    ((symbol? uri) (handle-uri (symbol-name uri)))
-	    (else #f)))))
-
-(define (complete-match matcher string)
-  (let ((buffer (string->parser-buffer string)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
+	   (let ((v
+		  (and (string? uri)
+		       (parse-bnode (string->parser-buffer uri)))))
+	     (and v
+		  (unhash (vector-ref v 0)))))))
+    (cond ((string? uri) (handle-uri uri))
+	  ((symbol? uri) (handle-uri (symbol-name uri)))
+	  (else #f))))
 
-(define match-bnode-uri
-  (*matcher (seq "_:" match-bnode-name)))
+(define parse-bnode
+  (let ((prefix (lambda (b) (match-parser-buffer-string b bnode-prefix)))
+	(digits (ascii-range->char-set #x30 #x3A)))
+    (*parser
+     (seq (noise prefix)
+	  (map (lambda (s) (string->number s 10 #t))
+	       (match (+ (char-set digits))))
+	  (noise (end-of-input))))))
 
-(define match-bnode-name
-  (let* ((name-head
-	  (char-set-union (ascii-range->char-set #x41 #x5B)
-			  (ascii-range->char-set #x61 #x7B)))
-	 (name-tail
-	  (char-set-union name-head
-			  (ascii-range->char-set #x30 #x3A))))
-    (*matcher
-     (seq (char-set name-head)
-	  (* (char-set name-tail))))))
+(define bnode-prefix
+  "_:B")
 
 (define (make-rdf-bnode-registry)
   (make-string-hash-table))
@@ -147,33 +121,6 @@ USA.
 
 (define (port/drop-rdf-bnode-registry port)
   (port/remove-property! port 'RDF-BNODE-REGISTRY))
-
-(define (rdf-bnode->handle bnode)
-  (string-append bnode-handle-prefix (number->string (hash bnode))))
-
-(define (handle->rdf-bnode handle #!optional caller)
-  (let ((v
-	 (and (string? handle)
-	      (parse-bnode-handle (string->parser-buffer handle)))))
-    (if v
-	(unhash (vector-ref v 0))
-	(begin
-	  (if caller
-	      (error:wrong-type-argument handle "RDF bnode handle" caller))
-	  #f))))
-
-(define parse-bnode-handle
-  (let ((prefix
-	 (lambda (b) (match-parser-buffer-string b bnode-handle-prefix)))
-	(digits (ascii-range->char-set #x30 #x3A)))
-    (*parser
-     (seq (noise prefix)
-	  (map (lambda (s) (string->number s 10 #t))
-	       (match (+ (char-set digits))))
-	  (noise (end-of-input))))))
-
-(define bnode-handle-prefix
-  "_bnode_:")
 
 ;;;; Literals
 
@@ -200,6 +147,11 @@ USA.
 						  (symbol-name type))))
 			 type
 			 (->absolute-uri type 'RDF-LITERAL))))
+
+(define (complete-match matcher string)
+  (let ((buffer (string->parser-buffer string)))
+    (and (matcher buffer)
+	 (not (peek-parser-buffer-char buffer)))))
 
 (define match-language
   (let* ((language-head (ascii-range->char-set #x61 #x7B))

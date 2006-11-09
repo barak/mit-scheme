@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.10 2006/10/29 06:17:49 cph Exp $
+$Id: rdf-nt.scm,v 1.11 2006/11/09 20:07:38 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -101,6 +101,17 @@ USA.
    (encapsulate (lambda (v) (make-rdf-bnode (vector-ref v 0)))
      (seq "_:"
 	  (match match-bnode-name)))))
+
+(define match-bnode-name
+  (let* ((name-head
+	  (char-set-union (ascii-range->char-set #x41 #x5B)
+			  (ascii-range->char-set #x61 #x7B)))
+	 (name-tail
+	  (char-set-union name-head
+			  (ascii-range->char-set #x30 #x3A))))
+    (*matcher
+     (seq (char-set name-head)
+	  (* (char-set name-tail))))))
 
 (define parse-literal
   (*parser

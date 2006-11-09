@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.87 2006/11/04 20:23:19 riastradh Exp $
+$Id: xml.pkg,v 1.88 2006/11/09 20:07:42 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -554,7 +554,6 @@ USA.
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
-	  handle->rdf-bnode
 	  make-rdf-bnode-registry
 	  make-rdf-bnode
 	  make-rdf-index
@@ -567,7 +566,6 @@ USA.
 	  port/rdf-bnode-registry
 	  port/rdf-prefix-registry
 	  port/set-rdf-prefix-registry
-	  rdf-bnode->handle
 	  rdf-bnode-name
 	  rdf-bnode?
 	  rdf-index-objects
@@ -597,7 +595,6 @@ USA.
 	  uri->rdf-qname)
   (export (runtime rdf)
 	  %make-rdf-literal
-	  match-bnode-name
 	  match-language))
 
 (define-package (runtime rdf nt)
