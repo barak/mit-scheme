@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.52 2006/03/05 04:05:00 cph Exp $
+$Id: imail-summary.scm,v 1.53 2006/11/10 03:04:22 cph Exp $
 
 Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 
@@ -56,9 +56,10 @@ The commands affected are:
   boolean?)
 
 (define-variable imail-summary-subject-width
-  "Width of the subject field, in characters."
-  35
-  exact-nonnegative-integer?)
+  "Width of the subject field, in characters.
+Negative numbers instead say how much to reserve for the from field."
+  -24
+  exact-integer?)
 
 (define-variable imail-summary-height
   "Height of the summary window, either in lines or as a fraction.
@@ -288,8 +289,7 @@ SUBJECT is a string of regexps separated by commas."
 			     messages)))
 		 (reverse! messages))))
 	  (index-digits (exact-nonnegative-integer-digits end))
-	  (show-date? (ref-variable imail-summary-show-date buffer))
-	  (subject-width (imail-summary-subject-width buffer)))
+	  (show-date? (ref-variable imail-summary-show-date buffer)))
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	(insert-string " Flags" mark)
 	(insert-string " " mark)
@@ -297,7 +297,10 @@ SUBJECT is a string of regexps separated by commas."
 	(insert-string " Length" mark)
 	(if show-date? (insert-string "  Date " mark))
 	(insert-string "  " mark)
-	(insert-string-pad-right "Subject" subject-width #\space mark)
+	(insert-string-pad-right "Subject"
+				 (imail-summary-subject-width mark)
+				 #\space
+				 mark)
 	(insert-string "  " mark)
 	(insert-string "From" mark)
 	(insert-newline mark)
@@ -307,7 +310,7 @@ SUBJECT is a string of regexps separated by commas."
 	(insert-string " ------" mark)
 	(if show-date? (insert-string " ------" mark))
 	(insert-string "  " mark)
-	(insert-chars #\- subject-width mark)
+	(insert-chars #\- (imail-summary-subject-width mark) mark)
 	(insert-string "  " mark)
 	(insert-chars #\-
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
@@ -344,7 +347,10 @@ SUBJECT is a string of regexps separated by commas."
   (insert-newline mark))
 
 (define (imail-summary-subject-width mark)
-  (max (ref-variable imail-summary-subject-width mark)
+  (max (let ((w (ref-variable imail-summary-subject-width mark)))
+	 (if (< w 0)
+	     (- (mark-x-size mark) (mark-column mark) (- w))
+	     w))
        (string-length "Subject")))
 
 (define (message-flag-markers message)
