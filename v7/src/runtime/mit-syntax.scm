@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.26 2006/06/12 17:53:08 cph Exp $
+$Id: mit-syntax.scm,v 14.27 2006/11/15 00:38:21 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2004,2005,2006 Massachusetts Institute of Technology
@@ -334,7 +334,9 @@ USA.
 	  (if-error)))))
 
 (define supported-srfi-features
-  '(SRFI-0
+  '(MIT
+    MIT/GNU
+    SRFI-0
     SRFI-1
     SRFI-2
     SRFI-6
