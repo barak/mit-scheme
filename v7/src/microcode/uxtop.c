@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.30 2003/07/09 22:53:55 cph Exp $
+$Id: uxtop.c,v 1.31 2006/11/22 18:50:48 cph Exp $
 
 Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -363,6 +364,7 @@ static char * syscall_names_table [] =
   "select",
   "setitimer",
   "setpgid",
+  "shutdown",
   "sighold",
   "sigprocmask",
   "sigsuspend",

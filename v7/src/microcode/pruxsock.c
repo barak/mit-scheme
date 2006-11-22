@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.22 2003/02/14 18:28:23 cph Exp $
+$Id: pruxsock.c,v 1.23 2006/11/22 18:50:41 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1996,1997 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -61,6 +62,16 @@ DEFUN (arg_host, (arg), unsigned int arg)
   if ((STRING_LENGTH (ARG_REF (arg))) != (OS_host_address_length ()))
     error_bad_range_arg (arg);
   return (STRING_LOC ((ARG_REF (arg)), 0));
+}
+
+static Tchannel
+DEFUN (arg_client_socket, (arg), unsigned int arg)
+{
+  Tchannel socket = (arg_nonnegative_integer (arg));
+  if (! (((OS_channel_type (socket)) == channel_type_tcp_stream_socket)
+	 || ((OS_channel_type (socket)) == channel_type_unix_stream_socket)))
+    error_bad_range_arg (arg);
+  return (socket);
 }
 
 static Tchannel
@@ -248,6 +259,14 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
   signal_error_from_primitive (ERR_UNIMPLEMENTED_PRIMITIVE);
 #endif
   PRIMITIVE_RETURN (SHARP_T);
+}
+
+DEFINE_PRIMITIVE ("SHUTDOWN-SOCKET", Prim_shutdown_socket, 2, 2, "")
+{
+  PRIMITIVE_HEADER (2);
+  OS_shutdown_socket ((arg_client_socket (1)),
+		      (arg_integer_in_range (2, 1, 4)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("NEW-OPEN-TCP-SERVER-SOCKET", Prim_new_open_tcp_server_socket, 2, 2,

@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.17 2003/07/09 22:53:51 cph Exp $
+$Id: syscall.h,v 1.18 2006/11/22 18:50:43 cph Exp $
 
 Copyright 1993,1994,1995,1996,1997,1999 Massachusetts Institute of Technology
-Copyright 2000,2003 Massachusetts Institute of Technology
+Copyright 2000,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,12 +24,10 @@ USA.
 
 */
 
-/* OS system calls and errors.
-   Must match utabmd.scm
- */
+/* OS system calls and errors.  */
 
 #ifndef SCM_SYSCALL_H
-#define  SCM_SYSCALL_H
+#define SCM_SYSCALL_H 1
 
 #include "config.h"
 
@@ -47,6 +45,8 @@ USA.
 #undef DEFINE_WIN32_SYSCALLS
 
 #else /* not __WIN32__ */
+
+/* Unix case, inline for historical reasons.  Must match "uxtop.c".  */
 
 enum syscall_names
 {
@@ -86,6 +86,7 @@ enum syscall_names
   syscall_select,
   syscall_setitimer,
   syscall_setpgid,
+  syscall_shutdown,
   syscall_sighold,
   syscall_sigprocmask,
   syscall_sigsuspend,

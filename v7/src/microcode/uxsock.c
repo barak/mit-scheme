@@ -1,9 +1,9 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.31 2003/07/09 22:53:38 cph Exp $
+$Id: uxsock.c,v 1.32 2006/11/22 18:50:44 cph Exp $
 
 Copyright 1993,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -117,6 +117,21 @@ do_connect (int s, struct sockaddr * address, socklen_t addr_len)
 	  error_system_call (error, syscall_connect);
       }
     }
+}
+
+void
+DEFUN (OS_shutdown_socket, (channel, stype),
+       Tchannel channel AND
+       unsigned long stype)
+{
+  STD_VOID_SYSTEM_CALL
+    (syscall_shutdown,
+     (shutdown ((CHANNEL_DESCRIPTOR (channel)),
+		(((stype & 0x3) == 0x1)
+		 ? SHUT_RD
+		 : ((stype & 0x3) == 0x2)
+		 ? SHUT_WR
+		 : SHUT_RDWR))));
 }
 
 int
