@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.62 2006/10/30 06:02:30 cph Exp $
+$Id: intern.c,v 9.63 2006/11/22 04:36:35 cph Exp $
 
 Copyright 1987,1988,1989,1992,1994,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
@@ -45,11 +45,11 @@ DEFUN (string_hash, (length, string),
        unsigned long length AND
        CONST char * string)
 {
-  CONST char * scan = string;
-  CONST char * end = (scan + length);
-  unsigned int result = 2166136261;
+  CONST unsigned char * scan = string;
+  CONST unsigned char * end = (scan + length);
+  unsigned int result = 0x811c9dc5;
   while (scan < end)
-    result = ((result * 16777619) + (*scan++));
+    result = ((result * 0x1000193) + (*scan++));
   return (result & ((unsigned int) BIGGEST_FIXNUM));
 }
 
