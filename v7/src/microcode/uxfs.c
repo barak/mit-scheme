@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.25 2003/02/14 18:28:24 cph Exp $
+$Id: uxfs.c,v 1.26 2006/11/22 18:13:49 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1995,1996,1997 Massachusetts Institute of Technology
+Copyright 1998,1999,2000,2001,2002,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,6 +54,9 @@ USA.
    are unlikely to be changed, so this ought to be safe.  */
 #    ifndef AFFS_SUPER_MAGIC
 #      define AFFS_SUPER_MAGIC 0xadff
+#    endif
+#    ifndef CIFS_MAGIC_NUMBER
+#      define CIFS_MAGIC_NUMBER 0xFF534D42
 #    endif
 #    ifndef COH_SUPER_MAGIC
 #      define COH_SUPER_MAGIC 0x012FF7B7
@@ -250,6 +254,7 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
 #ifdef __linux__
   switch (s . f_type)
     {
+    case CIFS_MAGIC_NUMBER:	return ("cifs");
     case COH_SUPER_MAGIC:	return ("coherent");
     case EXT_SUPER_MAGIC:	return ("ext");
     case EXT2_SUPER_MAGIC:	return ("ext2");
