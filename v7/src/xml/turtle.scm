@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.16 2006/10/29 06:20:04 cph Exp $
+$Id: turtle.scm,v 1.17 2006/11/22 18:02:31 cph Exp $
 
 Copyright 2006 Massachusetts Institute of Technology
 
@@ -141,13 +141,10 @@ USA.
 		 parse:ws*
 		 (alt ")"
 		      (seq parse:object-required
+			   (* (seq parse:ws+
+				   parse:object))
 			   parse:ws*
-			   (* (seq ","
-				   parse:ws*
-				   parse:object-required))
-			   (alt (seq parse:ws* ")")
-				(error #f
-				       "Expected close parenthesis"))))))))))
+			   (alt ")" (error p "Malformed list"))))))))))
 
 (define parse:name
   (*parser (match match:name)))
@@ -696,15 +693,12 @@ USA.
 	  (begin
 	    (space port)
 	    (writer port))
-	  (write-ogroup os indentation inline-bnode port)))))
-
-(define (write-ogroup os indentation inline-bnode port)
-  (let ((indentation (indent+ indentation)))
-    (write-object (car os) indentation inline-bnode port)
-    (for-each (lambda (o)
-		(write-string "," port)
-		(write-object o indentation inline-bnode port))
-	      (cdr os))))
+	  (let ((indentation (indent+ indentation)))
+	    (write-object (car os) indentation inline-bnode port)
+	    (for-each (lambda (o)
+			(write-string "," port)
+			(write-object o indentation inline-bnode port))
+		      (cdr os)))))))
 
 (define (write-object o indentation inline-bnode port)
   (write-indentation indentation port)
@@ -714,7 +708,10 @@ USA.
 	((rdf-list->list o inline-bnode)
 	 => (lambda (os)
 	      (write-string "(" port)
-	      (write-ogroup os indentation inline-bnode port)
+	      (let ((indentation (indent+ indentation)))
+		(for-each (lambda (o)
+			    (write-object o indentation inline-bnode port))
+			  os))
 	      (write-indentation indentation port)
 	      (write-string ")" port)))
 	(else
