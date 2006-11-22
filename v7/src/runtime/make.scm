@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.105 2006/09/16 11:19:09 gjr Exp $
+$Id: make.scm,v 14.106 2006/11/22 18:51:11 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
@@ -469,6 +469,7 @@ USA.
    (RUNTIME GENERIC-I/O-PORT)
    (RUNTIME FILE-I/O-PORT)
    (RUNTIME CONSOLE-I/O-PORT)
+   (RUNTIME SOCKET)
    (RUNTIME TRANSCRIPT)
    (RUNTIME STRING-INPUT)
    (RUNTIME STRING-OUTPUT)

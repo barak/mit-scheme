@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.605 2006/11/09 20:04:57 cph Exp $
+$Id: runtime.pkg,v 14.606 2006/11/22 18:51:12 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -1740,18 +1740,20 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
-	  make-generic-i/o-port)
-  (export (runtime console-i/o-port)
 	  generic-i/o-port-type
 	  generic-io/char-ready?
+	  generic-io/close-input
+	  generic-io/close-output
 	  generic-io/flush-output
+	  generic-io/io-open?
 	  generic-io/read-char
+	  make-generic-i/o-port)
+  (export (runtime console-i/o-port)
 	  input-buffer-contents
 	  make-gstate
 	  port-input-buffer
 	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
-	  generic-i/o-port-type
 	  clear-input-buffer
 	  input-buffer-encoded-character-size
 	  input-buffer-free-bytes
@@ -1761,15 +1763,12 @@ USA.
 	  port-input-buffer
 	  port-output-buffer)
   (export (runtime string-input)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-source)
   (export (runtime string-output)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-sink)
   (export (runtime truncated-string-output)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-sink)
   (initialization (initialize-package!)))
@@ -3329,7 +3328,8 @@ USA.
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
 	  os/hostname
-	  tcp-server-connection-accept))
+	  tcp-server-connection-accept)
+  (initialization (initialize-package!)))
 
 (define-package (runtime subprocess)
   (file-case options
