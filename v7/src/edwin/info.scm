@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: info.scm,v 1.140 2003/02/14 18:28:12 cph Exp $
+$Id: info.scm,v 1.141 2006/11/23 04:56:19 riastradh Exp $
 
-Copyright 1986, 1989-2002 Massachusetts Institute of Technology
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2006
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,30 +139,33 @@ discusses one topic and contains references to other nodes
 which discuss related topics.  Info has commands to follow
 the references and show you other nodes.
 
-h	Invoke the Info tutorial.
+\\[info-help]	Invoke the Info tutorial.
 
 Selecting other nodes:
-n	Move to the \"next\" node of this node.
-p	Move to the \"previous\" node of this node.
-u	Move \"up\" from this node.
-m	Pick menu item specified by name (or abbreviation).
+\\[info-current-menu-item]	Follow the menu item the point is on.
+\\[info-next]	Move to the \"next\" node of this node.
+\\[info-previous]	Move to the \"previous\" node of this node.
+\\[info-up]	Move \"up\" from this node.
+\\[info-menu]	Pick menu item specified by name (or abbreviation).
 	Picking a menu item causes another node to be selected.
-f	Follow a cross reference.  Reads name of reference.
-l	Move to the last node you were at.
+\\[info-follow-reference]	Follow a cross reference.  Reads name of reference.
+\\[info-last]	Move to the last node you were at.
 
 Moving within a node:
-Space	scroll forward a page.
-Rubout	scroll backward.
-b	Go to beginning of node.
+\\[scroll-up]	scroll forward a page.
+\\[scroll-down]	scroll backward.
+\\[beginning-of-buffer]	Go to beginning of node.
+\\[info-find-next-reference]	Find the next menu item or cross reference in the node.
+\\[info-find-previous-reference]	Find the previous menu item or cross reference in the node.
 
 Advanced commands:
-q	Quit Info: reselect previously selected buffer.
-e	Edit contents of selected node.
+\\[info-exit]	Quit Info: reselect previously selected buffer.
+\\[info-edit]	Edit contents of selected node.
 1	Pick first item in node's menu.
 2, 3, 4, 5   Pick second ... fifth item in node's menu.
-g	Move to node specified by name.
+\\[info-goto-node]	Move to node specified by name.
 	You may include a filename as well, as (FILENAME)NODENAME.
-s	Search through this Info file for specified regexp,
+\\[info-search]	Search through this Info file for specified regexp,
 	and select the node in which the next occurrence is found."
   (lambda (buffer)
     (define-variable-local-value! buffer (ref-variable-object syntax-table)
@@ -188,6 +193,9 @@ s	Search through this Info file for specified regexp,
 
 (define-key 'info #\space 'scroll-up)
 (define-key 'info #\. 'beginning-of-buffer)
+(define-key 'info #\return 'info-current-menu-item)
+(define-key 'info #\tab 'info-find-next-reference)
+(define-key 'info #\M-tab 'info-find-previous-reference)
 (define-key 'info #\1 'info-first-menu-item)
 (define-key 'info #\2 'info-second-menu-item)
 (define-key 'info #\3 'info-third-menu-item)
@@ -268,6 +276,25 @@ s	Search through this Info file for specified regexp,
       (set-current-point!
        (mark+ (region-start (buffer-unclipped-region (current-buffer)))
 	      (vector-ref entry 2))))))
+
+(define (find-reference-command re-search default-start default-end)
+  (define (search from)
+    (re-search reference-item-regexp from (default-end (current-buffer)) #t))
+  (lambda ()
+    (set-current-point!
+     (or (search (current-point))
+	 (search (default-start (current-buffer)))
+	 (editor-error "No references in this node!")))))
+
+(define-command info-find-next-reference
+  "Find the starting point of the next menu item or cross reference."
+  ()
+  (find-reference-command re-search-forward buffer-start buffer-end))
+
+(define-command info-find-previous-reference
+  "Find the starting point of the previous menu item or cross reference."
+  ()
+  (find-reference-command re-search-backward buffer-end buffer-start))
 
 ;;;; Miscellaneous
 
@@ -495,20 +522,43 @@ except for \\[info-cease-edit] to return to Info."
 
 (define (find-menu)
   (let ((buffer (current-buffer)))
-    (re-search-forward "^\\* menu:"
+    (re-search-forward menu-indicator-regexp
 		       (buffer-start buffer)
 		       (buffer-end buffer)
 		       #t)))
 
-(define menu-item-regexp
-  "\n\\* [ \t]*\\([^:\t\n]*\\)[ \t]*:")
+(define rexp:menu-indicator
+  (rexp-sequence (rexp-line-start)
+		 "* Menu:"))
+
+(define menu-indicator-regexp (rexp-compile rexp:menu-indicator))
+
+(define rexp:menu-item
+  (rexp-sequence
+   (rexp-line-start)
+   "* "
+   (rexp* (char-set #\space #\tab))
+   (rexp-group (rexp* (char-set-invert (char-set #\: #\tab #\newline))))
+   (rexp* (char-set #\space #\tab))
+   ":"))
+
+(define menu-item-regexp (rexp-compile rexp:menu-item))
+
+(define rexp:cross-reference-item
+  (rexp-sequence "*Note" (rexp* (char-set #\space #\tab #\newline))))
+
+(define cross-reference-item-regexp (rexp-compile rexp:cross-reference-item))
+
+(define rexp:reference-item
+  (rexp-alternatives rexp:menu-item rexp:cross-reference-item))
+
+(define reference-item-regexp (rexp-compile rexp:reference-item))
 
 (define (collect-menu-items mark)
-  (let ((pattern (re-compile-pattern menu-item-regexp false))
-	(group (mark-group mark)))
+  (let ((group (mark-group mark)))
     (let ((end (group-end-index group)))
       (let loop ((start (mark-index mark)))
-	(if (re-search-buffer-forward pattern #f group start end)
+	(if (re-search-buffer-forward menu-item-regexp #f group start end)
 	    (let ((item (re-match-start-index 1)))
 	      (let ((keyword
 		     (group-extract-string group
@@ -519,17 +569,16 @@ except for \\[info-cease-edit] to return to Info."
 	    '())))))
 
 (define (mark-menu-items mark marker)
-  (let ((pattern (re-compile-pattern menu-item-regexp false))
-	(group (mark-group mark)))
+  (let ((group (mark-group mark)))
     (let ((end (group-end-index group)))
       (let loop ((start (mark-index mark)))
-	(if (re-search-buffer-forward pattern #f group start end)
+	(if (re-search-buffer-forward menu-item-regexp #f group start end)
 	    (let ((item (re-match-start-index 1)))
 	      (marker group
 		      item
 		      (re-match-end-index 1))
 	      (loop item)))))))
-
+
 (define (next-menu-item mark)
   (and (re-search-forward menu-item-regexp mark (group-end mark) false)
        (re-match-start 1)))
@@ -592,7 +641,7 @@ The name may be an abbreviation of the reference name."
 	      (collect-cref-items item)))))
 
 (define (next-cref-item start)
-  (re-search-forward "\\*Note[ \t\n]*" start (group-end start) true))
+  (re-search-forward cross-reference-item-regexp start (group-end start) true))
 
 (define (cref-item-keyword item)
   (let ((colon (char-search-forward #\: item (group-end item) false)))
