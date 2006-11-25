@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.53 2006/09/16 11:19:09 gjr Exp $
+$Id: bignum.c,v 9.54 2006/11/25 05:07:41 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1996,1997,2000 Massachusetts Institute of Technology
@@ -591,7 +591,7 @@ DEFUN (double_to_bignum, (x), double x)
     }
     while (start < scan)
       {
-	if ((significand == 0)  || (n_valid_bits <= 0))
+	if ((significand == 0)  || (n_valid_bits == 0))
 	  {
 	    while (start < scan)
 	      (*--scan) = 0;

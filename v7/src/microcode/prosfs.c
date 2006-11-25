@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.18 2003/02/14 18:28:23 cph Exp $
+$Id: prosfs.c,v 1.19 2006/11/25 05:07:58 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1995,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -269,8 +270,12 @@ Return #F if the file existed and its time was modified.\n\
 Otherwise the file did not exist and it was created.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (OS_file_touch ((CONST char *) (STRING_ARG (1)))));
+  {
+    int rc = (OS_file_touch ((CONST char *) (STRING_ARG (1))));
+    if (rc < 0)
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (rc));
+  }
 }
 
 DEFINE_PRIMITIVE ("NEW-DIRECTORY-OPEN", Prim_new_directory_open, 1, 1,

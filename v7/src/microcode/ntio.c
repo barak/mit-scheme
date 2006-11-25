@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.31 2003/09/26 13:34:10 cph Exp $
+$Id: ntio.c,v 1.32 2006/11/25 05:07:53 cph Exp $
 
 Copyright 1993,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +31,8 @@ USA.
 #include "ntgui.h"
 #include "osterm.h"
 #include "osfile.h"
+#include "osproc.h"
+#include "ostty.h"
 #include "outf.h"
 #include "ossig.h"
 #include "intrpt.h"

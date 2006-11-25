@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ntfs.c,v 1.30 2003/02/14 18:28:20 cph Exp $
+$Id: ntfs.c,v 1.31 2006/11/25 05:07:47 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,1997,1998 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -362,7 +363,7 @@ OS_file_touch (const char * filename)
     struct stat file_status;
     STD_VOID_UNIX_CALL (fstat, (fd, (&file_status)));
     if (((file_status . st_mode) & S_IFMT) != S_IFREG)
-      error_bad_range_arg (1);
+      return (-1);
     /* CASE 3: file length of 0 needs special treatment. */
     if ((file_status . st_size) == 0)
      {
