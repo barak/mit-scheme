@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.17 2004/12/20 04:36:44 cph Exp $
+$Id: ntapi.h,v 1.18 2006/11/25 05:11:43 cph Exp $
 
 Copyright 1997,1999,2000,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -92,6 +93,7 @@ enum syscall_names
   apicall_select,
   apicall_send,
   apicall_setsockopt,
+  apicall_shutdown,
   apicall_socket,
 
   /* C Library's unix-style procedures: */
@@ -954,6 +956,7 @@ static char * syscall_names_table [] =
   "send",
   "select",
   "set-socket-option",
+  "shutdown",
   "socket",
 
   /* C Library's unix-style procedures: */

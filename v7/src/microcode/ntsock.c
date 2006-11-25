@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.19 2006/01/29 06:37:30 cph Exp $
+$Id: ntsock.c,v 1.20 2006/11/25 05:11:48 cph Exp $
 
 Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 Copyright 2006 Massachusetts Institute of Technology
@@ -291,6 +291,15 @@ socket_channel_write (Tchannel channel, const void * buffer,
   VALUE_SOCKET_CALL
     (send, ((CHANNEL_SOCKET (channel)), buffer, n_bytes, 0), n_written);
   return (n_written);
+}
+
+void
+OS_shutdown_socket (Tchannel channel, unsigned long how)
+{
+  VOID_SOCKET_CALL
+    (shutdown,
+     ((CHANNEL_SOCKET (channel)),
+      ((how == 1) ? SD_RECEIVE : (how == 2) ? SD_SEND : SD_BOTH)));
 }
 
 static void
