@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.32 2006/10/22 16:09:35 cph Exp $
+$Id: edtstr.scm,v 1.33 2006/12/09 02:02:26 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,2003,2006 Massachusetts Institute of Technology
 
@@ -129,7 +129,9 @@ USA.
   (symbol-name (button-symbol button)))
 
 (set-record-type-unparser-method! <button>
-  (simple-unparser-method (record-type-name <button>) button-symbol))
+  (simple-unparser-method (record-type-name <button>)
+    (lambda (button)
+      (list (button-symbol button)))))
 
 (define-structure (button-event (conc-name button-event/))
   (window #f read-only #t)
