@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.31 2006/10/05 05:44:39 savannah-arthur Exp $
+$Id: fileio.scm,v 1.32 2006/12/11 07:37:46 savannah-arthur Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
 Copyright 2001,2004,2005,2006 Massachusetts Institute of Technology
@@ -109,9 +109,8 @@ USA.
 		 (port-input-buffer port))))
       (error:bad-range-argument port caller))
   (if (and (output-port? port)
-	   (or (not (input-port? port))
-	       (not (output-buffer-using-binary-denormalizer?
-		     (port-output-buffer port)))))
+	   (not (output-buffer-using-binary-denormalizer?
+		 (port-output-buffer port))))
       (error:bad-range-argument port caller)))
 
 (define (open-input-file filename)
