@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.120 2006/05/15 02:43:54 cph Exp $
+$Id: unix.scm,v 1.121 2006/12/20 07:24:47 cph Exp $
 
 Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
@@ -666,8 +666,9 @@ option, instead taking -P <filename>."
   (cons "~/mbox" system-mailboxes))
 
 (define (os/sendmail-program)
-  (or (list-search-positive
-	  '("/usr/lib/sendmail" "/usr/sbin/sendmail" "/usr/ucblib/sendmail")
+  (or (os/find-program "sendmail" #f (ref-variable exec-path) #f)
+      (find-matching-item
+	  '("/usr/sbin/sendmail" "/usr/lib/sendmail" "/usr/ucblib/sendmail")
 	file-executable?)
       "fakemail"))
 
