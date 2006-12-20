@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.87 2006/06/12 04:19:43 cph Exp $
+$Id: sendmail.scm,v 1.88 2006/12/20 07:22:23 cph Exp $
 
 Copyright 1991,1992,1993,1994,1995,1996 Massachusetts Institute of Technology
 Copyright 1997,1998,2000,2001,2003,2004 Massachusetts Institute of Technology
@@ -150,8 +150,8 @@ is ignored."
 
 (define-variable sendmail-program
   "Filename of sendmail program."
-  (os/sendmail-program)
-  string?)
+  #f
+  string-or-false?)
 
 (define-variable send-mail-procedure
   "Procedure to call to send the current buffer as mail.
@@ -862,7 +862,9 @@ the user from the mailer."
 
 (define (send-mail-using-sendmail message-pathname lookup-context)
   (message "Sending...")
-  (let ((program (ref-variable sendmail-program lookup-context)))
+  (let ((program
+	 (or (ref-variable sendmail-program lookup-context)
+	     (os/sendmail-program))))
     (if (ref-variable mail-interactive lookup-context)
 	(call-with-temporary-buffer " sendmail errors"
 	  (lambda (error-buffer)
