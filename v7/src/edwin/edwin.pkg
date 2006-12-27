@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.298 2006/10/24 04:13:31 cph Exp $
+$Id: edwin.pkg,v 1.299 2006/12/27 08:10:08 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
@@ -2031,3 +2031,54 @@ USA.
 	  edwin-variable$add-log-full-name
 	  edwin-variable$add-log-mailing-address
 	  edwin-variable$debian-changelog-mode-hook))
+
+(define-package (edwin lisppaste)
+  (files "lisppaste")
+  (parent (edwin))
+  (export (edwin)
+	  ;; All of the lisppaste-related variables are defined in
+	  ;; loadefs.scm in order to be available before the lisppaste
+	  ;; library is loaded, and are therefore not listed here.
+	  edwin-command$lisppaste-annotate-with-buffer
+	  edwin-command$lisppaste-annotate-with-region
+	  edwin-command$lisppaste-buffer
+	  edwin-command$lisppaste-channels
+	  edwin-command$lisppaste-insert-paste
+	  edwin-command$lisppaste-insert-annotation
+	  edwin-command$lisppaste-region
+
+	  ;; Edwin lisppaste operations
+	  lisppaste-annotate
+	  lisppaste-create
+	  lisppaste-default-annotation-number
+	  lisppaste-default-channel
+	  lisppaste-default-nickname
+	  lisppaste-default-number
+	  lisppaste-insert-paste
+	  lisppaste-list-pastes
+	  prompt-for-lisppaste-annotation-number
+	  maybe-prompt-for-lisppaste-channel
+	  maybe-prompt-for-lisppaste-nickname
+	  maybe-prompt-for-lisppaste-number
+	  prompt-for-lisppaste-annotation-title
+	  prompt-for-lisppaste-title
+	  show-lisppaste
+
+	  ;; Edwin-independent RPC interface
+	  lisppaste-entry/channel
+	  lisppaste-entry/components
+	  lisppaste-entry/annotations
+	  lisppaste-entry/content
+	  lisppaste-entry/nickname
+	  lisppaste-entry/number
+	  lisppaste-entry/time
+	  lisppaste-entry/title
+	  lisppaste-rpc			;Generic RPC interface
+	  lisppaste:new-paste		;RPC commands
+	  lisppaste:paste-header
+	  lisppaste:paste-headers
+	  lisppaste:paste-headers-by-channel
+	  lisppaste:paste-annotation-headers
+	  lisppaste:paste-details
+	  lisppaste:list-channels
+	  ))
