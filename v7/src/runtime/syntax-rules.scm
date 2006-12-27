@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.6 2003/03/07 21:13:29 cph Exp $
+$Id: syntax-rules.scm,v 14.7 2006/12/27 06:53:04 riastradh Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -155,21 +155,19 @@ USA.
 		(r-l (rename 'L))
 		(r-lambda (rename 'LAMBDA)))
 	    `(((,r-lambda
-		(,r-loop)
-		(,(rename 'BEGIN)
-		 (,(rename 'SET!)
-		  ,r-loop
-		  (,r-lambda
-		   (,r-l)
-		   (,(rename 'IF)
-		    (,(rename 'NULL?) ,r-l)
-		    #T
-		    ,(conjunction
-		      `(,(rename 'PAIR?) ,r-l)
-		      (conjunction (loop pattern `(,(rename 'CAR) ,r-l))
-				   `(,r-loop (,(rename 'CDR) ,r-l)))))))
-		 ,r-loop))
-	       #F)
+		()
+		(,(rename 'DEFINE)
+		 ,r-loop
+		 (,r-lambda
+		  (,r-l)
+		  (,(rename 'IF)
+		   (,(rename 'NULL?) ,r-l)
+		   #T
+		   ,(conjunction
+		     `(,(rename 'PAIR?) ,r-l)
+		     (conjunction (loop pattern `(,(rename 'CAR) ,r-l))
+				  `(,r-loop (,(rename 'CDR) ,r-l)))))))
+		,r-loop))
 	      ,expression))))
        (conjunction
 	(lambda (predicate consequent)
@@ -223,9 +221,7 @@ USA.
 			  (error "illegal control/ellipsis combination"
 				 control sids))))
 		 (syntax-error "Missing ellipsis in expansion." #f))
-	     (loop control (cdr ellipses)))
-	    ((pair? ellipses)
-	     (syntax-error "Extra ellipsis in expansion." #f))))))
+	     (loop control (cdr ellipses)))))))
 
 (define (generate-ellipsis rename ellipsis body syntax-error)
   (let ((sids (ellipsis-sids ellipsis)))
