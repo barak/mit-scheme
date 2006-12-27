@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.7 2006/12/27 06:53:04 riastradh Exp $
+$Id: syntax-rules.scm,v 14.8 2006/12/27 07:01:09 riastradh Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
