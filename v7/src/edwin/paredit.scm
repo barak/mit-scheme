@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.7 2006/07/03 19:41:23 riastradh Exp $
+$Id: paredit.scm,v 1.8 2006/12/28 22:28:20 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -293,7 +293,8 @@ With a prefix argument, simply delete a character forward, without
                          (char=? syn #\" )))
                    ;; Enter into an S-expression forward.
                    (set-current-point! (mark1+ point)))
-                  ((and (not (mark-right-char-quoted?
+                  ((and (not (group-start? point))
+			(not (mark-right-char-quoted?
                               (mark-1+ point)))
                         (char=? (char-syntax right)
                                 #\) )
