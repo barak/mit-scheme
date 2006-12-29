@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.27 2006/10/24 04:08:46 cph Exp $
+$Id: char.scm,v 14.28 2006/12/29 04:32:43 riastradh Exp $
 
 Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
 Copyright 1998,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
@@ -202,8 +202,8 @@ USA.
 	     (vector-8b-set! downcase-table i j)
 	     (vector-8b-set! upcase-table j i)))))
     (case-range 65 90 97)
-    (case-range 224 246 192)
-    (case-range 248 254 216)))
+    (case-range 192 214 224)
+    (case-range 216 222 248)))
 
 (define 0-code)
 (define upper-a-code)
