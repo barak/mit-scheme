@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.10 2006/07/26 19:04:41 cph Exp $
+$Id: xhtml-expander.scm,v 1.11 2006/12/31 05:59:47 cph Exp $
 
 Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -35,13 +35,6 @@ USA.
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))
-    (if (not (xml-document-declaration document))
-	(begin
-	  (set-xml-document-declaration! document
-					 (make-xml-declaration "1.0" #f #f))
-	  (set-xml-document-misc-1! document
-				    (cons "\n"
-					  (xml-document-misc-1 document)))))
     (if (not (xml-document-dtd document))
 	(begin
 	  (set-xml-document-dtd! document html-1.0-dtd)
