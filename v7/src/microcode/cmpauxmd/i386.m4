@@ -1,9 +1,10 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.65 2007/01/05 15:33:08 cph Exp $
+### $Id: i386.m4,v 1.66 2007/01/05 21:19:26 cph Exp $
 ###
-### Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
-### Copyright 2002,2003,2005 Massachusetts Institute of Technology
+### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
+###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
+###     2004, 2005, 2006, 2007 Massachusetts Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###

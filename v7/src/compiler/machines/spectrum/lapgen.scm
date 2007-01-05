@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.54 2007/01/05 15:33:05 cph Exp $
+$Id: lapgen.scm,v 4.55 2007/01/05 21:19:22 cph Exp $
 
-Copyright 1986,1987,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1998,2001,2002,2004 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

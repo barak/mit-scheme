@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.81 2007/01/05 15:33:08 cph Exp $
+$Id: ux.h,v 1.82 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
-Copyright 1996,1997,1998,1999,2000,2003 Massachusetts Institute of Technology
-Copyright 2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

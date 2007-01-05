@@ -1,9 +1,11 @@
 #| -*-Scheme-*-
 
-$Id: rgspcm.scm,v 1.5 2007/01/05 15:33:04 cph Exp $
+$Id: rgspcm.scm,v 1.6 2007/01/05 21:19:21 cph Exp $
 $MC68020-Header: rgspcm.scm,v 4.1 87/12/30 07:05:38 GMT cph Exp $
 
-Copyright (c) 1987, 1989, 1990, 1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 

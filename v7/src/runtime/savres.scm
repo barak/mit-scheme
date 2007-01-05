@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.47 2007/01/05 15:33:10 cph Exp $
+$Id: savres.scm,v 14.48 2007/01/05 21:19:28 cph Exp $
 
-Copyright 1988,1989,1990,1991,1992,1995 Massachusetts Institute of Technology
-Copyright 1998,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,9 +124,32 @@ USA.
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port 'IDENTIFY-WORLD))))
-    (write-string "Copyright " port)
-    (write (decoded-time/year (or time-world-saved (get-decoded-time))) port)
-    (write-string " Massachusetts Institute of Technology." port)
+    (let ((strings
+	   `("Copyright (C)"
+	     ,@(let loop ((ys copyright-years))
+		 (if (pair? (cdr ys))
+		     (cons (string-append (number->string (car ys)) ",")
+			   (loop (cdr ys)))
+		     (list (number->string (car ys)))))
+	     "Massachusetts"
+	     "Institute"
+	     "of"
+	     "Technology")))
+      (write-string (car strings) port)
+      (let loop
+	  ((strings (cdr strings))
+	   (col (string-length (car strings))))
+	(if (pair? strings)
+	    (let ((col* (+ col 1 (string-length (car strings)))))
+	      (if (<= col* 70)
+		  (begin
+		    (write-string " " port)
+		    (write-string (car strings) port)
+		    (loop (cdr strings) col*))
+		  (begin
+		    (newline port)
+		    (write-string "   " port)
+		    (loop strings 0)))))))
     (newline port)
     (write-string license-statement port)
     (newline port)
