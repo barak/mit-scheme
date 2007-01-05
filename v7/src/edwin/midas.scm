@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: midas.scm,v 1.25 2003/02/14 18:28:12 cph Exp $
+$Id: midas.scm,v 1.26 2007/01/05 15:33:06 cph Exp $
 
 Copyright 1986, 1989-2001 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

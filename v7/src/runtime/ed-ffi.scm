@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.37 2005/05/24 04:50:08 cph Exp $
+$Id: ed-ffi.scm,v 1.38 2007/01/05 15:33:09 cph Exp $
 
 Copyright (c) 1991,1996,1997,1999,2000 Massachusetts Institute of Technology
 Copyright (c) 2001,2002,2003,2005 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

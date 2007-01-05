@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-parser.scm,v 1.13 2004/02/24 20:49:08 cph Exp $
+$Id: test-parser.scm,v 1.14 2007/01/05 15:33:11 cph Exp $
 
 Copyright 2001,2004 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

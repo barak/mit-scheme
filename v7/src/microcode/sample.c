@@ -16,12 +16,12 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
 
-/* $Id: sample.c,v 9.28 2003/02/14 18:28:23 cph Exp $ */
+/* $Id: sample.c,v 9.29 2007/01/05 15:33:08 cph Exp $ */
 
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking

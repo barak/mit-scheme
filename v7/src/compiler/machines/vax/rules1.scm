@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 4.10 2003/02/14 18:28:07 cph Exp $
+$Id: rules1.scm,v 4.11 2007/01/05 15:33:05 cph Exp $
 $MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
 Copyright (c) 1987, 1989, 1991, 1999 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

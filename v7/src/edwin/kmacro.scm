@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: kmacro.scm,v 1.48 2005/02/18 01:05:34 cph Exp $
+$Id: kmacro.scm,v 1.49 2007/01/05 15:33:06 cph Exp $
 
 Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 2001,2005 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

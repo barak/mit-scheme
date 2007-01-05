@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: search.scm,v 1.159 2004/11/19 16:54:23 cph Exp $
+$Id: search.scm,v 1.160 2007/01/05 15:33:06 cph Exp $
 
 Copyright 1986,1989,1990,1991,2001,2002 Massachusetts Institute of Technology
 Copyright 2003,2004 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

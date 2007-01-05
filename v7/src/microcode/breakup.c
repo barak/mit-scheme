@@ -16,12 +16,12 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
 
-/* $Id: breakup.c,v 9.27 2003/02/14 18:28:18 cph Exp $ */
+/* $Id: breakup.c,v 9.28 2007/01/05 15:33:06 cph Exp $ */
 
 #include <stdio.h>
 

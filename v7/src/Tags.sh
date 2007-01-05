@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Tags.sh,v 1.4 2003/02/14 18:48:11 cph Exp $
+# $Id: Tags.sh,v 1.5 2007/01/05 15:33:03 cph Exp $
 #
 # Copyright 2000 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility to make TAGS files for MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.

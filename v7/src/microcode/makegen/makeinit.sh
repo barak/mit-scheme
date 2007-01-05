@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: makeinit.sh,v 1.13 2006/09/25 04:39:07 cph Exp $
+# $Id: makeinit.sh,v 1.14 2007/01/05 15:33:09 cph Exp $
 #
 # Copyright 2000,2006 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Script to create "Makefile.in".
 # Requires `gcc' and `scheme'.

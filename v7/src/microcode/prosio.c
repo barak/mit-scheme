@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.24 2003/03/25 01:12:29 cph Exp $
+$Id: prosio.c,v 1.25 2007/01/05 15:33:07 cph Exp $
 
 Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */

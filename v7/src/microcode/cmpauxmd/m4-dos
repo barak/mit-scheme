@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: m4-dos,v 1.4 2003/02/14 18:28:25 cph Exp $
+# $Id: m4-dos,v 1.5 2007/01/05 15:33:08 cph Exp $
 #
 # Copyright (c) 2000 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Processing to get DOS (or Win32 or OS/2) assembly language from "i386.m4".
 

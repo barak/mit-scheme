@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgspcm.scm,v 1.4 2003/02/14 18:28:05 cph Exp $
+$Id: rgspcm.scm,v 1.5 2007/01/05 15:33:04 cph Exp $
 $MC68020-Header: rgspcm.scm,v 4.1 87/12/30 07:05:38 GMT cph Exp $
 
 Copyright (c) 1987, 1989, 1990, 1999 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

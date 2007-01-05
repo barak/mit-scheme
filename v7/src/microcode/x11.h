@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11.h,v 1.21 2006/10/21 16:05:58 riastradh Exp $
+$Id: x11.h,v 1.22 2007/01/05 15:33:08 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,2000 Massachusetts Institute of Technology
 Copyright 2005,2006 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */

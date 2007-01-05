@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: utabmd.sh,v 1.8 2006/12/27 08:32:01 riastradh Exp $
+# $Id: utabmd.sh,v 1.9 2007/01/05 15:33:08 cph Exp $
 #
 # Copyright 2002,2003,2006 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 if [ -z "${SCHEME_COMPILER}" ]; then
     SCHEME_COMPILER="scheme --compiler --heap 3000"

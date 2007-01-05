@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: motcom.scm,v 1.52 2005/11/24 00:00:59 riastradh Exp $
+$Id: motcom.scm,v 1.53 2007/01/05 15:33:06 cph Exp $
 
 Copyright 1987,1989,1991,1993,2003 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

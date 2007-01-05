@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.h,v 9.50 2004/01/07 05:30:26 cph Exp $
+$Id: prim.h,v 9.51 2007/01/05 15:33:07 cph Exp $
 
 Copyright 1987,1988,1989,1992,1993,2001 Massachusetts Institute of Technology
 Copyright 2004 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */

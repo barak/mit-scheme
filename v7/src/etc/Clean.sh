@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.14 2006/09/29 19:28:56 cph Exp $
+# $Id: Clean.sh,v 1.15 2007/01/05 15:33:06 cph Exp $
 #
 # Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility for cleaning up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.

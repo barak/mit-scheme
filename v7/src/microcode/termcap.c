@@ -91,8 +91,8 @@ their licenses terminated so long as such parties remain in full compliance.
 
   5. If you wish to incorporate parts of this program into other free
 programs whose distribution conditions are different, write to the
-Free Software Foundation Inc. at 59 Temple Place - Suite 330, Boston,
-MA 02111-1307, USA.  We have not yet worked out a simple rule that can
+Free Software Foundation Inc. at 51 Franklin St, Fifth Floor, Boston,
+MA 02110-1301, USA.  We have not yet worked out a simple rule that can
 be stated here, but we will often permit this.  We will be guided by
 the two goals of preserving the free status of all derivatives of our
 free software and of promoting the sharing and reuse of software.

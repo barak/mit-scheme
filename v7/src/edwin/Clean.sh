@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.10 2006/10/25 17:24:32 cph Exp $
+# $Id: Clean.sh,v 1.11 2007/01/05 15:33:05 cph Exp $
 #
 # Copyright 2000,2001,2002,2006 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility for cleaning up the MIT/GNU Scheme edwin directory.
 # The working directory must be the edwin directory.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: validate-xdoc.scm,v 1.1 2004/11/01 19:21:05 cph Exp $
+$Id: validate-xdoc.scm,v 1.2 2007/01/05 15:33:10 cph Exp $
 
 Copyright 2003 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

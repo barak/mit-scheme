@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.31 2003/07/22 02:19:51 cph Exp $
+###     $Id: makefile,v 1.32 2007/01/05 15:33:09 cph Exp $
 ###
 ###     Copyright 1993,1994,1995,1996 Massachusetts Institute of Technology
 ###     Copyright 1998,1999,2001,2003 Massachusetts Institute of Technology
@@ -20,8 +20,8 @@
 ###
 ###     You should have received a copy of the GNU General Public
 ###     License along with MIT/GNU Scheme; if not, write to the Free
-###     Software Foundation, Inc., 59 Temple Place - Suite 330,
-###     Boston, MA 02111-1307, USA.
+###     Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+###     Boston, MA 02110-1301, USA.
 
 #### Makefile for Scheme under Win32 compiled by Microsoft Visual C++.
 !include <win32.mak>

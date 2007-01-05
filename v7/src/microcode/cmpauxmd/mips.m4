@@ -1,6 +1,6 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ### $Id: mips.m4,v 1.18 2003/02/14 18:28:25 cph Exp $
+ ### $Id: mips.m4,v 1.19 2007/01/05 15:33:08 cph Exp $
  ###
  ### Copyright (c) 1989-1999, 2002 Massachusetts Institute of Technology
  ###
@@ -18,8 +18,8 @@
  ###
  ### You should have received a copy of the GNU General Public License
  ### along with MIT/GNU Scheme; if not, write to the Free Software
- ### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- ### 02111-1307, USA.
+ ### Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ ### 02110-1301, USA.
 
  #### MIPS Architecture assembly language part of the compiled
  #### code interface. See cmpint.txt, cmpint.c, cmpint-mips.h, and

@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: vax.m4,v 1.7 2003/02/14 18:28:25 cph Exp $
+### $Id: vax.m4,v 1.8 2007/01/05 15:33:08 cph Exp $
 ###
 ### Copyright (c) 1991-2000, 2002 Massachusetts Institute of Technology
 ###
@@ -18,8 +18,8 @@
 ###
 ### You should have received a copy of the GNU General Public License
 ### along with MIT/GNU Scheme; if not, write to the Free Software
-### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-### 02111-1307, USA.
+### Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+### 02110-1301, USA.
 
 #### Vax assembly language (BSD as Syntax) part of the compiled code
 #### interface.  See cmpint.txt, cmpaux.txt, cmpint.c, cmpint-vax.h,

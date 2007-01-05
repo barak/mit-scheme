@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: ntasutl.asm,v 1.8 2003/02/14 18:28:20 cph Exp $
+;;; $Id: ntasutl.asm,v 1.9 2007/01/05 15:33:06 cph Exp $
 ;;;
 ;;; Copyright (c) 1992-1999 Massachusetts Institute of Technology
 ;;;
@@ -18,8 +18,8 @@
 ;;;
 ;;; You should have received a copy of the GNU General Public License
 ;;; along with MIT/GNU Scheme; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+;;; Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+;;; 02110-1301, USA.
 ;;;
 
 .386

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.35 2006/08/16 04:11:55 cph Exp $
+$Id: syntax.c,v 1.36 2007/01/05 15:33:08 cph Exp $
 
 Copyright 1987,1988,1989,1991,1993,1996 Massachusetts Institute of Technology
 Copyright 2000,2004,2005,2006 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */

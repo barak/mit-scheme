@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Stage.sh,v 1.6 2003/02/14 18:48:11 cph Exp $
+# $Id: Stage.sh,v 1.7 2007/01/05 15:33:06 cph Exp $
 #
 # Copyright 2000,2001 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility for MIT/GNU Scheme compiler staging.
 

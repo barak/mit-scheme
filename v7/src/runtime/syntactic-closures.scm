@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntactic-closures.scm,v 14.16 2003/04/17 02:52:16 cph Exp $
+$Id: syntactic-closures.scm,v 14.17 2007/01/05 15:33:10 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
