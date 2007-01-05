@@ -1,9 +1,9 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.16 2006/08/10 05:28:05 savannah-arthur Exp $
+@c $Id: io.texi,v 1.17 2007/01/05 21:48:31 cph Exp $
 
-@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
-@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
-@c Copyright 2002,2003,2004,2005,2006 Massachusetts Institute of Technology
+@c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+@c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+@c     2005, 2006, 2007 Massachusetts Institute of Technology
 @c See file scheme.texinfo for copying conditions.
 
 @node Input/Output, Operating-System Interface, Environments, Top
