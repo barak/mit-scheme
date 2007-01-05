@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.107 2006/02/06 02:14:26 cph Exp $
+@comment $Id: user.texinfo,v 1.108 2007/01/05 15:27:23 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.91
@@ -4540,7 +4540,7 @@ permitted but does nothing.
 
 @display
 Copyright @copyright{} 2000,2001,2002 Free Software Foundation, Inc.
-59 Temple Place, Suite 330, Boston, MA  02111-1307, USA
+51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 
 Everyone is permitted to copy and distribute verbatim copies
 of this license document, but changing it is not allowed.
