@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rexp.scm,v 1.26 2007/01/05 21:19:28 cph Exp $
+$Id: rexp.scm,v 1.27 2007/01/07 06:48:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -106,7 +106,10 @@ USA.
 	      rexps))
 
 (define (rexp-group . rexps)
-  `(GROUP ,(apply rexp-sequence rexps)))
+  (let ((rexp (apply rexp-sequence rexps)))
+    (if (and (pair? rexp) (eq? (car rexp) 'GROUP))
+	rexp
+	`(GROUP ,rexp))))
 
 (define (rexp-optional . rexps)
   `(OPTIONAL ,(rexp-groupify (apply rexp-sequence rexps))))
