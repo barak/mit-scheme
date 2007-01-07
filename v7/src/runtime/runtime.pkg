@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.608 2007/01/05 21:19:28 cph Exp $
+$Id: runtime.pkg,v 14.609 2007/01/07 09:11:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1744,7 +1744,6 @@ USA.
 	  generic-io/close-input
 	  generic-io/close-output
 	  generic-io/flush-output
-	  generic-io/io-open?
 	  generic-io/read-char
 	  make-generic-i/o-port)
   (export (runtime console-i/o-port)
@@ -1958,6 +1957,7 @@ USA.
 	  port/get-property
 	  port/input-blocking-mode
 	  port/input-channel
+	  port/input-open?
 	  port/input-terminal-mode
 	  port/intern-property!
 	  port/known-coding?
@@ -1965,10 +1965,12 @@ USA.
 	  port/known-line-ending?
 	  port/known-line-endings
 	  port/line-ending
+	  port/open?
 	  port/operation
 	  port/operation-names
 	  port/output-blocking-mode
 	  port/output-channel
+	  port/output-open?
 	  port/output-terminal-mode
 	  port/remove-property!
 	  port/set-coding

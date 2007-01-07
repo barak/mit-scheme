@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.49 2007/01/05 21:19:28 cph Exp $
+$Id: genio.scm,v 1.50 2007/01/07 09:11:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -144,6 +144,7 @@ USA.
 	   (KNOWN-LINE-ENDING? ,generic-io/known-line-ending?)
 	   (KNOWN-LINE-ENDINGS ,generic-io/known-line-endings)
 	   (LINE-ENDING ,generic-io/line-ending)
+	   (OPEN? ,generic-io/open?)
 	   (SET-CODING ,generic-io/set-coding)
 	   (SET-LINE-ENDING ,generic-io/set-line-ending)
 	   (SUPPORTS-CODING? ,generic-io/supports-coding?)
@@ -356,9 +357,15 @@ USA.
     (and ib
 	 (input-buffer-open? ib))))
 
-(define (generic-io/io-open? port)
-  (and (generic-io/input-open? port)
-       (generic-io/output-open? port)))
+(define (generic-io/open? port)
+  (and (let ((ib (port-input-buffer port)))
+	 (if ib
+	     (input-buffer-open? ib)
+	     #t))
+       (let ((ob (port-output-buffer port)))
+	 (if ob
+	     (output-buffer-open? ob)
+	     #t))))
 
 (define (generic-io/write-self port output-port)
   (cond ((i/o-port? port)

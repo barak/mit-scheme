@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.48 2007/01/05 21:19:28 cph Exp $
+$Id: port.scm,v 1.49 2007/01/07 09:11:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -626,6 +626,33 @@ USA.
   (let ((close-output (port/operation port 'CLOSE-OUTPUT)))
     (if close-output
 	(close-output port))))
+
+(define (port/open? port)
+  (let ((open? (port/operation port 'OPEN?)))
+    (if open?
+	(open? port)
+	(and (if (input-port? port) (%input-open? port) #t)
+	     (if (output-port? port) (%output-open? port) #t)))))
+
+(define (port/input-open? port)
+  (and (input-port? port)
+       (%input-open? port)))
+
+(define (%input-open? port)
+  (let ((open? (port/operation port 'INPUT-OPEN?)))
+    (if open?
+	(open? port)
+	#t)))
+
+(define (port/output-open? port)
+  (and (output-port? port)
+       (%output-open? port)))
+
+(define (%output-open? port)
+  (let ((open? (port/operation port 'OUTPUT-OPEN?)))
+    (if open?
+	(open? port)
+	#t)))
 
 (define (port/input-channel port)
   (let ((operation (port/operation port 'INPUT-CHANNEL)))
