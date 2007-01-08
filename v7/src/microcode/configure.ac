@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.19 2007/01/05 21:19:25 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.20 2007/01/08 14:45:17 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -159,7 +159,7 @@ MODULE_LDFLAGS=
 COMPILED_DEFS=
 COMPILED_SOURCES=
 COMPILED_OBJECTS=
-CMPAUXMDO=
+CBE_RULES=
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -867,7 +867,7 @@ if test "${scheme_arch}" != ""; then
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
-    CMPAUXMDO="Ignore-me.o"
+    CBE_RULES="/dev/null"
 else
     AC_MSG_RESULT([yes, using portable C code])
     AC_DEFINE([NATIVE_CODE_IS_C], [1],
@@ -885,7 +885,7 @@ else
     for D in back base fggen fgopt machines/C rtlbase rtlgen rtlopt; do
     	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c)"
     done
-    CMPAUXMDO="cmpauxmd.o"    
+    CBE_RULES="makegen/cbe-rules"
 fi
 
 for base in ${OPTIONAL_BASES}; do
@@ -927,7 +927,7 @@ AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST([COMPILED_DEFS])
 AC_SUBST([COMPILED_SOURCES])
 AC_SUBST([COMPILED_OBJECTS])
-AC_SUBST([CMPAUXMDO])
+AC_SUBST_FILE([CBE_RULES])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

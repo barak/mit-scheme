@@ -1,0 +1,44 @@
+# **** C back end rules ****
+
+@CMPAUXMDO@: cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h avltree.h \
+	outf.h extern.h
+
+compinit.o: compinit.c compinit.h liarc.tch
+
+unstackify.o: unstackify.c stackops.h liarc.tch
+
+LIARC_HEAD_FILES = \
+ansidecl.h \
+config.h \
+dstack.h \
+default.h \
+object.h \
+sdata.h \
+types.h \
+errors.h \
+const.h \
+interp.h \
+prim.h \
+trap.h \
+outf.h \
+extern.h \
+$(GC_HEAD_FILES)
+
+# The following includes liarc.tch in case COMPILED_SOURCES is empty,
+# to prevent grep from reading stdin.
+
+compinit.h: $(COMPILED_SOURCES) liarc.tch Makefile
+	rm -f $@
+	grep \^DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) \
+	| sed -e 's/.*:/  /' > $@
+	grep \^DECLARE_COMPILED_DATA liarc.tch $(COMPILED_SOURCES) \
+	| sed -e 's/.*:/  /' >> $@
+	grep \^DECLARE_DATA_OBJECT liarc.tch $(COMPILED_SOURCES) \
+	| sed -e 's/.*:/  /' >> $@
+
+foo $(COMPILED_OBJECTS): liarc.tch
+liarc.tch: liarc.h $(LIARC_HEAD_FILES)
+	rm -f $@
+	echo "touch" > $@
+
+# **** End C back end rules ***

@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.37 2007/01/08 05:38:57 cph Exp $
+# $Id: Makefile.in.in,v 1.38 2007/01/08 14:45:17 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -196,7 +196,7 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
 # **** Implicit rules ****
 
 .SUFFIXES:
-.SUFFIXES: .s .c .o .m4
+.SUFFIXES: .c .o .s .m4
 
 .c.o:
 	$(COMPILE) -o $*.o -c $*.c
@@ -344,50 +344,7 @@ install-auxDATA: $(aux_DATA)
 
 @(write-dependencies)@
 
-# **** C back end stuff (II) ****
-
-@CMPAUXMDO@: cmpauxmd.c liarc.tch prims.h bignum.h bitstr.h avltree.h \
-	outf.h extern.h
-
-compinit.o: compinit.c compinit.h liarc.tch
-
-unstackify.o: unstackify.c stackops.h liarc.tch
-
-LIARC_HEAD_FILES = \
-ansidecl.h \
-config.h \
-dstack.h \
-default.h \
-object.h \
-sdata.h \
-types.h \
-errors.h \
-const.h \
-interp.h \
-prim.h \
-trap.h \
-outf.h \
-extern.h \
-$(GC_HEAD_FILES)
-
-# The following includes liarc.tch in case COMPILED_SOURCES is empty,
-# to prevent grep from reading stdin.
-
-compinit.h: $(COMPILED_SOURCES) liarc.tch Makefile
-	rm -f $@
-	grep \^DECLARE_COMPILED_CODE liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' > $@
-	grep \^DECLARE_COMPILED_DATA liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' >> $@
-	grep \^DECLARE_DATA_OBJECT liarc.tch $(COMPILED_SOURCES) \
-	| sed -e 's/.*:/  /' >> $@
-
-foo $(COMPILED_OBJECTS): liarc.tch
-liarc.tch: liarc.h $(LIARC_HEAD_FILES)
-	rm -f $@
-	echo "touch" > $@
-
-# **** End C back end stuff (II) ***
+@CBE_RULES@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
