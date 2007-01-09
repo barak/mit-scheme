@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.77 2007/01/05 21:19:28 cph Exp $
+$Id: global.scm,v 14.78 2007/01/09 06:36:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -311,10 +311,7 @@ USA.
   ;; Note: the unparser takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
-  (or (eq? object undefined-conditional-branch)
-      ;; same as `undefined-conditional-branch'.
-      ;; (eq? object *the-non-printing-object*)
-      ;; (eq? object unspecific)
+  (or (eq? object unspecific)
       (eq? object (object-new-type (ucode-type constant) 2))))
 
 (define unspecific
