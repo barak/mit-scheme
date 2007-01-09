@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.20 2007/01/08 14:45:17 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.21 2007/01/09 03:56:12 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -140,7 +140,6 @@ enable_c_back_end="${enable_c_back_end:-no}"
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
 GC_HEAD_FILES=
-LIB_X11=
 M4_FLAGS=
 OPTIONAL_BASES=
 OPTIONAL_OBJECTS=
@@ -774,10 +773,16 @@ if test "${enable_valgrind_mode:-no}" != "no"; then
 fi
 
 dnl Add support for X if present.
-if test "${no_x}" = "yes"; then
-    LIB_X11=
-else
-    LIB_X11=-lX11
+if test "${no_x}" != "yes"; then
+    if test "x${x_includes}" != x; then
+	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
+	CFLAGS="${CFLAGS} ${FOO}"
+    fi
+    if test "x${x_libraries}" != x; then
+	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
+	LIBS="${LIBS} ${FOO}"
+    fi
+    LIBS="${LIBS} -lX11"
     OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
 fi
 
@@ -909,7 +914,6 @@ fi
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
-AC_SUBST([LIB_X11])
 AC_SUBST([M4_FLAGS])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([OPTIONAL_SOURCES])

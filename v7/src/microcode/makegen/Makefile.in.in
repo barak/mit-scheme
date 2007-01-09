@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.38 2007/01/08 14:45:17 cph Exp $
+# $Id: Makefile.in.in,v 1.39 2007/01/09 03:56:24 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -98,7 +98,6 @@ GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@ $(COMPILED_SOURCES)
 OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@ $(COMPILED_OBJECTS)
 STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
-X_LIBS = @LIB_X11@
 PRBFISH_LIBS = @PRBFISH_LIBS@
 PRMD5_LIBS = @PRMD5_LIBS@
 
@@ -141,13 +140,13 @@ scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
 scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
 scheme_DEPENDENCIES = 
 scheme_LDFLAGS = @DLD_LDFLAGS@
-scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+scheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
 bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
 bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
 bchscheme_DEPENDENCIES = 
 bchscheme_LDFLAGS = @DLD_LDFLAGS@
-bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+bchscheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
 bchdrn_SOURCES = bchdrn.c bchutl.c
 bchdrn_OBJECTS = bchdrn.o bchutl.o
