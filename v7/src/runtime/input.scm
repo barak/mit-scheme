@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.33 2007/01/05 21:19:28 cph Exp $
+$Id: input.scm,v 14.34 2007/01/09 06:16:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,9 +43,6 @@ USA.
 
 (define (input-port/peek-char port)
   ((port/operation/peek-char port) port))
-
-(define (input-port/discard-char port)
-  ((port/operation/discard-char port) port))
 
 (define (input-port/read-string! port string)
   (input-port/read-substring! port string 0 (string-length string)))
@@ -173,9 +170,6 @@ USA.
     (let loop ()
       (or (input-port/peek-char port)
 	  (loop)))))
-
-(define (discard-char #!optional port)
-  (input-port/discard-char (optional-input-port port 'DISCARD-CHAR)))
 
 (define (read-char-no-hang #!optional port)
   (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))

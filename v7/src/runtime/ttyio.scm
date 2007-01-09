@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.25 2007/01/05 21:19:28 cph Exp $
+$Id: ttyio.scm,v 1.26 2007/01/09 06:17:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,6 +39,7 @@ USA.
 	    `((BEEP ,operation/beep)
 	      (CHAR-READY? ,generic-io/char-ready?)
 	      (CLEAR ,operation/clear)
+	      (DISCRETIONARY-WRITE-CHAR ,operation/discretionary-write-char)
 	      (DISCRETIONARY-FLUSH-OUTPUT ,generic-io/flush-output)
 	      (READ-CHAR ,operation/read-char)
 	      (READ-FINISH ,operation/read-finish)
@@ -52,10 +53,7 @@ USA.
 	(set! the-console-port port)
 	(set-console-i/o-port! port)
 	(set-current-input-port! port)
-	(set-current-output-port! port)))
-    (set! *char-ready? (port-type/char-ready? gtype))
-    (set! *read-char (port-type/read-char gtype))
-    (set! *unread-char (port-type/unread-char gtype)))
+	(set-current-output-port! port))))
   (add-event-receiver! event:before-exit save-console-input)
   (add-event-receiver! event:after-restore reset-console))
 
@@ -102,9 +100,6 @@ USA.
 (define console-i/o-port)
 (define console-input-port)
 (define console-output-port)
-(define *char-ready?)
-(define *read-char)
-(define *unread-char)
 
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))
@@ -115,24 +110,20 @@ USA.
 		(fresh-line port)
 		(write-string "End of input stream reached." port)))
 	  (%exit)))
-    (maybe-echo-input port char)
     char))
 
 (define (operation/read-finish port)
   (let loop ()
-    (if (*char-ready? port)
-	(let ((char (*read-char port)))
+    (if (char-ready? port)
+	(let ((char (read-char port)))
 	  (if (not (eof-object? char))
-	      (begin
-		(maybe-echo-input port char)
-		(if (char-whitespace? char)
-		    (loop)
-		    (*unread-char port char)))))))
+	      (if (char-whitespace? char)
+		  (loop)
+		  (unread-char char port))))))
   (output-port/discretionary-flush port))
 
-(define (maybe-echo-input port char)
-  (if (and char
-	   (cstate-echo-input? (port/state port))
+(define (operation/discretionary-write-char char port)
+  (if (and (cstate-echo-input? (port/state port))
 	   (not (nearest-cmdl/batch-mode?)))
       (output-port/write-char port char)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.65 2007/01/05 21:19:28 cph Exp $
+$Id: parse.scm,v 14.66 2007/01/09 06:16:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -270,7 +270,7 @@ USA.
 	       (begin
 		 (set! prefix (cdr prefix))
 		 unspecific)
-	       (discard-char port)))))
+	       (read-char port)))))
     (let read-unquoted ((quoted? #f))
       (let ((char (%peek)))
 	(if (or (eof-object? char)
@@ -420,7 +420,7 @@ USA.
   ctx char
   (if (char=? (peek-char/no-eof port) #\@)
       (begin
-	(discard-char port)
+	(read-char port)
 	(list 'UNQUOTE-SPLICING (read-object port db)))
       (list 'UNQUOTE (read-object port db))))
 
@@ -574,20 +574,20 @@ USA.
   (list 'NON-SHARED-OBJECT))
 
 (define (read-char port)
-  (let loop ()
-    (or (input-port/read-char port)
-	(loop))))
+  (let ((char
+	 (let loop ()
+	   (or (input-port/read-char port)
+	       (loop))))
+	(op (port/operation port 'DISCRETIONARY-WRITE-CHAR)))
+    (if op
+	(op char port))
+    char))
 
 (define (read-char/no-eof port)
   (let ((char (read-char port)))
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
-
-(define (discard-char port)
-  (let loop ()
-    (if (not (input-port/discard-char port))
-	(loop))))
 
 (define (peek-char port)
   (let loop ()

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.609 2007/01/07 09:11:18 cph Exp $
+$Id: runtime.pkg,v 14.610 2007/01/09 06:16:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1933,7 +1933,6 @@ USA.
 	  output-port?
 	  port-position
 	  port-type/char-ready?
-	  port-type/discard-char
 	  port-type/discretionary-flush-output
 	  port-type/flush-output
 	  port-type/fresh-line
@@ -2007,7 +2006,6 @@ USA.
 	  port/unread)
   (export (runtime input-port)
 	  port/operation/char-ready?
-	  port/operation/discard-char
 	  port/operation/peek-char
 	  port/operation/read-char
 	  port/operation/read-external-substring
@@ -2041,18 +2039,18 @@ USA.
   (files "input")
   (parent (runtime))
   (export ()
+	  (discard-char read-char)
+	  (input-port/discard-char input-port/read-char)
 	  char-ready?
-	  discard-char
 	  eof-object?
 	  input-port/char-ready?
-	  input-port/discard-char
 	  input-port/discard-chars
 	  input-port/peek-char
 	  input-port/read-char
-	  input-port/read-line
-	  input-port/read-string
 	  input-port/read-external-string!
 	  input-port/read-external-substring!
+	  input-port/read-line
+	  input-port/read-string
 	  input-port/read-string!
 	  input-port/read-substring!
 	  input-port/read-wide-string!

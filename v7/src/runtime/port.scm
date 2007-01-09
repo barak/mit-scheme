@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.49 2007/01/07 09:11:11 cph Exp $
+$Id: port.scm,v 1.50 2007/01/09 06:16:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,7 +42,6 @@ USA.
   (read-char #f read-only #t)
   (unread-char #f read-only #t)
   (peek-char #f read-only #t)
-  (discard-char #f read-only #t)
   (read-substring #f read-only #t)
   (read-wide-substring #f read-only #t)
   (read-external-substring #f read-only #t)
@@ -154,7 +153,6 @@ USA.
 		       (op 'READ-CHAR)
 		       (op 'UNREAD-CHAR)
 		       (op 'PEEK-CHAR)
-		       (op 'DISCARD-CHAR)
 		       (op 'READ-SUBSTRING)
 		       (op 'READ-WIDE-SUBSTRING)
 		       (op 'READ-EXTERNAL-SUBSTRING)
@@ -368,13 +366,6 @@ USA.
 			 (set-port/unread! port char)
 			 (transcribe-char char port)))
 		   char)))))
-	(discard-char
-	 (let ((defer (op 'READ-CHAR)))
-           (lambda (port)
-             (if (port/unread port)
-                 (set-port/unread! port #f)
-                 (defer port))
-             unspecific)))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
@@ -422,7 +413,6 @@ USA.
 	((READ-CHAR) read-char)
 	((UNREAD-CHAR) unread-char)
 	((PEEK-CHAR) peek-char)
-	((DISCARD-CHAR) discard-char)
 	((READ-SUBSTRING) read-substring)
 	((READ-WIDE-SUBSTRING) read-wide-substring)
 	((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -566,7 +556,6 @@ USA.
   (define-port-operation read-char)
   (define-port-operation unread-char)
   (define-port-operation peek-char)
-  (define-port-operation discard-char)
   (define-port-operation read-substring)
   (define-port-operation read-wide-substring)
   (define-port-operation read-external-substring)
