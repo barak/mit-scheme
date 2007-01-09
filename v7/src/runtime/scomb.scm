@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.26 2007/01/05 21:19:28 cph Exp $
+$Id: scomb.scm,v 14.27 2007/01/09 06:37:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -173,20 +173,16 @@ USA.
 
 ;;;; Conditional
 
-(define (make-conditional predicate consequent #!optional alternative)
-  (let ((alternative
-	 (if (default-object? alternative)
-	     undefined-conditional-branch
-	     alternative)))
-    (if (and (combination? predicate)
-	     (eq? (combination-operator predicate) (ucode-primitive not)))
-	(make-conditional (car (combination-operands predicate))
-			  alternative
-			  consequent)
-	(&typed-triple-cons (ucode-type conditional)
-			    predicate
-			    consequent
-			    alternative))))
+(define (make-conditional predicate consequent alternative)
+  (if (and (combination? predicate)
+	   (eq? (combination-operator predicate) (ucode-primitive not)))
+      (make-conditional (car (combination-operands predicate))
+			alternative
+			consequent)
+      (&typed-triple-cons (ucode-type conditional)
+			  predicate
+			  consequent
+			  alternative)))
 
 (define (conditional? object)
   (object-type? (ucode-type conditional) object))
