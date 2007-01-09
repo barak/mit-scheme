@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.26 2007/01/09 06:17:04 cph Exp $
+$Id: ttyio.scm,v 1.27 2007/01/09 06:38:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -109,7 +109,11 @@ USA.
 	      (begin
 		(fresh-line port)
 		(write-string "End of input stream reached." port)))
-	  (%exit)))
+	  (if (let ((condition (nearest-repl/condition)))
+		(and condition
+		     (condition/error? condition)))
+	      (%exit 1)
+	      (%exit))))
     char))
 
 (define (operation/read-finish port)
