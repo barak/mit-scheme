@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.23 2007/01/10 08:00:38 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.24 2007/01/10 08:17:22 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -115,25 +115,35 @@ AH_BOTTOM(
 
 dnl Feature options.
 AC_ARG_ENABLE([c-back-end],
-[[  --enable-c-back-end     Build portable system with C output [no]]])
+    AS_HELP_STRING([--enable-c-back-end],
+	[Build portable system with C output [[no]]]))
 AC_ARG_ENABLE([static-libs],
-[[  --enable-static-libs    Link some libraries statically [no]]])
+    AS_HELP_STRING([--enable-static-libs],
+	[Link some libraries statically [[no]]]))
 AC_ARG_ENABLE([dynamic-modules],
-[[  --enable-dynamic-modules Link some primitives dynamically [yes]]])
+    AS_HELP_STRING([--enable-dynamic-modules],
+	[Link some primitives dynamically [[yes]]]))
 AC_ARG_ENABLE([valgrind-mode],
-[[  --enable-valgrind-mode  Support running under valgrind [no]]])
+    AS_HELP_STRING([--enable-valgrind-mode],
+	[Support running under valgrind [[no]]]))
 AC_ARG_WITH([openssl],
-[[  --with-openssl          Use OpenSSL crypto library if available [yes]]])
+    AS_HELP_STRING([--with-openssl],
+	[Use OpenSSL crypto library if available [[yes]]]))
 AC_ARG_WITH([mhash],
-[[  --with-mhash            Use mhash library if available [yes]]])
+    AS_HELP_STRING([--with-mhash],
+	[Use mhash library if available [[yes]]]))
 AC_ARG_WITH([mcrypt],
-[[  --with-mcrypt           Use mcrypt library if available [yes]]])
+    AS_HELP_STRING([--with-mcrypt],
+	[Use mcrypt library if available [[yes]]]))
 AC_ARG_WITH([gdbm],
-[[  --with-gdbm             Use gdbm library if available [yes]]])
+    AS_HELP_STRING([--with-gdbm],
+	[Use gdbm library if available [[yes]]]))
 AC_ARG_WITH([db4],
-[[  --with-db4              Use Berkeley DB v4 library if available [yes]]])
+    AS_HELP_STRING([--with-db4],
+	[Use Berkeley DB v4 library if available [[yes]]]))
 AC_ARG_WITH([libpq],
-[[  --with-libpq            Use PostgreSQL libpq library if available [yes]]])
+    AS_HELP_STRING([--with-libpq],
+	[Use PostgreSQL libpq library if available [[yes]]]))
 
 : ${enable_c_back_end='no'}
 : ${enable_static_libs='no'}
