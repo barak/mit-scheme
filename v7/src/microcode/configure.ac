@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.22 2007/01/09 18:50:18 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.23 2007/01/10 08:00:38 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -135,7 +135,16 @@ AC_ARG_WITH([db4],
 AC_ARG_WITH([libpq],
 [[  --with-libpq            Use PostgreSQL libpq library if available [yes]]])
 
-enable_c_back_end="${enable_c_back_end:-no}"
+: ${enable_c_back_end='no'}
+: ${enable_static_libs='no'}
+: ${enable_dynamic_modules='yes'}
+: ${enable_valgrind_mode='no'}
+: ${with_openssl='yes'}
+: ${with_mhash='yes'}
+: ${with_mcrypt='yes'}
+: ${with_gdbm='yes'}
+: ${with_db4='yes'}
+: ${with_libpq='yes'}
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
@@ -166,11 +175,11 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-if test "${GCC}" = "yes"; then
+if test "${GCC}" = yes; then
     CFLAGS="${CFLAGS} -Wall"
 fi
-if test "$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)"
-then
+FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
+if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 
@@ -178,25 +187,6 @@ dnl Checks for libraries.
 AC_CHECK_LIB([dl], [dlopen])
 AC_CHECK_LIB([m], [exp])
 
-AC_CHECK_LIB([crypto], [BF_set_key],
-    [scheme_cv_lib_crypto=yes],
-    [scheme_cv_lib_crypto=no])
-AC_CHECK_LIB([mhash], [mhash_count],
-    [scheme_cv_lib_mhash=yes],
-    [scheme_cv_lib_mhash=no])
-AC_CHECK_LIB([mcrypt], [mcrypt_generic_init],
-    [scheme_cv_lib_mcrypt=yes],
-    [scheme_cv_lib_mcrypt=no],
-    [-lltdl])
-AC_CHECK_LIB([blowfish], [BF_set_key],
-    [scheme_cv_lib_blowfish=yes],
-    [scheme_cv_lib_blowfish=no])
-AC_CHECK_LIB([md5], [MD5Init],
-    [scheme_cv_lib_md5=yes],
-    [scheme_cv_lib_md5=no])
-AC_CHECK_LIB([gdbm], [gdbm_open],
-    [scheme_cv_lib_gdbm=yes],
-    [scheme_cv_lib_gdbm=no])
 AC_CHECK_LIB([ncurses], [tparm],
     [scheme_cv_lib_ncurses=yes],
     [scheme_cv_lib_ncurses=no])
@@ -209,32 +199,6 @@ AC_CHECK_LIB([curses], [tparm],
 AC_CHECK_LIB([termcap], [tparam],
     [scheme_cv_lib_termcap=yes],
     [scheme_cv_lib_termcap=no])
-AC_CHECK_LIB([pq], [PQconnectdb],
-    [scheme_cv_lib_pq=yes],
-    [scheme_cv_lib_pq=no])
-
-AC_MSG_CHECKING([for db_create in -ldb-4])
-save_LIBS="$LIBS"
-LIBS="-ldb-4 $LIBS"
-AC_TRY_LINK(
-    [#include <db.h>],
-    [DB * db; db_create ((&db), 0, 0);],
-    [scheme_cv_lib_db4=yes],
-    [scheme_cv_lib_db4=no])
-LIBS="$save_LIBS"
-AC_MSG_RESULT(${scheme_cv_lib_db4})
-
-if test "${scheme_cv_lib_pq}" = "yes"; then
-    PQ_INCLUDE=
-    if test -x "/usr/bin/pg_config"; then
-	PQ_INCLUDE="$(/usr/bin/pg_config --includedir 2> /dev/null)"
-    elif test -d "/usr/include/postgresql"; then
-	PQ_INCLUDE="/usr/include/postgresql"
-    fi
-    if test "${PQ_INCLUDE}"; then
-	CPPFLAGS="${CPPFLAGS} -I${PQ_INCLUDE}"
-    fi
-fi
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
@@ -245,9 +209,7 @@ AC_CHECK_HEADERS([bsdtty.h fcntl.h limits.h malloc.h sgtty.h stropts.h time.h])
 AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h])
 AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h])
 AC_CHECK_HEADERS([stdbool.h termio.h termios.h unistd.h utime.h])
-AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h blowfish.h md5.h])
-AC_CHECK_HEADERS([mhash.h mcrypt.h gdbm.h db.h curses.h term.h dlfcn.h])
-AC_CHECK_HEADERS([sys/mman.h libpq-fe.h])
+AC_CHECK_HEADERS([curses.h term.h dlfcn.h sys/mman.h])
 
 dnl Checks for typedefs
 AC_TYPE_MODE_T
@@ -274,7 +236,7 @@ AC_TRY_COMPILE([
     [scheme_cv_type_clock_t=yes],
     [scheme_cv_type_clock_t=no])
 AC_MSG_RESULT(${scheme_cv_type_clock_t})
-if test "${scheme_cv_type_clock_t}" = "no"; then
+if test "${scheme_cv_type_clock_t}" = no; then
     AC_DEFINE([clock_t], [unsigned long],
 	[Define to `unsigned long' if <time.h> doesn't define.])
 fi
@@ -295,12 +257,12 @@ AC_TRY_COMPILE([
     [scheme_cv_type_time_t=yes],
     [scheme_cv_type_time_t=no])
 AC_MSG_RESULT(${scheme_cv_type_time_t})
-if test "${scheme_cv_type_time_t}" = "no"; then
+if test "${scheme_cv_type_time_t}" = no; then
     AC_DEFINE([time_t], [long],
 	[Define to `long' if <time.h> doesn't define.])
 fi
 
-if test "${ac_cv_header_sys_socket_h}" = "yes"; then
+if test "${ac_cv_header_sys_socket_h}" = yes; then
     AC_MSG_CHECKING([for socklen_t])
     AC_TRY_COMPILE([
 #include <sys/types.h>
@@ -309,7 +271,7 @@ if test "${ac_cv_header_sys_socket_h}" = "yes"; then
 	[scheme_cv_type_socklen_t=yes],
 	[scheme_cv_type_socklen_t=no])
     AC_MSG_RESULT(${scheme_cv_type_socklen_t})
-    if test "${scheme_cv_type_socklen_t}" = "no"; then
+    if test "${scheme_cv_type_socklen_t}" = no; then
 	AC_DEFINE([socklen_t], [int],
 	    [Define to `int' if <sys/socket.h> doesn't define.])
     fi
@@ -328,7 +290,7 @@ AC_TRY_COMPILE([
 	[scheme_cv_type_cc_t=yes],
 	[scheme_cv_type_cc_t=no])
 AC_MSG_RESULT(${scheme_cv_type_cc_t})
-if test "${scheme_cv_type_cc_t}" = "no"; then
+if test "${scheme_cv_type_cc_t}" = no; then
     AC_DEFINE([cc_t], [unsigned char],
 	[Define to `unsigned char' if <termios.h> doesn't define.])
 fi
@@ -346,7 +308,7 @@ AC_TRY_COMPILE([
 	[scheme_cv_type_speed_t=yes],
 	[scheme_cv_type_speed_t=no])
 AC_MSG_RESULT(${scheme_cv_type_speed_t})
-if test "${scheme_cv_type_speed_t}" = "no"; then
+if test "${scheme_cv_type_speed_t}" = no; then
     AC_DEFINE([speed_t], [short],
 	[Define to `short' if <termios.h> doesn't define.])
 fi
@@ -359,7 +321,7 @@ AC_STRUCT_TIMEZONE
 dnl Timezone stuff is hairy; there's no standard.
 have_timezone_info=no
 
-if test "${have_timezone_info}" = "no"; then
+if test "${have_timezone_info}" = no; then
     AC_MSG_CHECKING([for tm_gmtoff in struct tm])
     AC_TRY_LINK(
 	[#include <time.h>],
@@ -367,7 +329,7 @@ if test "${have_timezone_info}" = "no"; then
 	[scheme_cv_struct_tm_gmtoff=yes],
 	[scheme_cv_struct_tm_gmtoff=no])
     AC_MSG_RESULT(${scheme_cv_struct_tm_gmtoff})
-    if test "${scheme_cv_struct_tm_gmtoff}" = "yes"; then
+    if test "${scheme_cv_struct_tm_gmtoff}" = yes; then
 	AC_DEFINE([HAVE_TM_GMTOFF], [1],
 	    [Define if `struct tm' has the `tm_gmtoff' member.])
 	AC_DEFINE([TM_GMTOFF], [tm_gmtoff],
@@ -376,7 +338,7 @@ if test "${have_timezone_info}" = "no"; then
     fi
 fi
 
-if test "${have_timezone_info}" = "no"; then
+if test "${have_timezone_info}" = no; then
     AC_MSG_CHECKING([for __tm_gmtoff in struct tm])
     AC_TRY_LINK(
 	[#include <time.h>],
@@ -384,7 +346,7 @@ if test "${have_timezone_info}" = "no"; then
 	[scheme_cv_struct___tm_gmtoff=yes],
 	[scheme_cv_struct___tm_gmtoff=no])
     AC_MSG_RESULT(${scheme_cv_struct___tm_gmtoff})
-    if test "${scheme_cv_struct___tm_gmtoff}" = "yes"; then
+    if test "${scheme_cv_struct___tm_gmtoff}" = yes; then
 	AC_DEFINE([HAVE_TM_GMTOFF], [1],
 	    [Define if `struct tm' has the `tm_gmtoff' member.])
 	AC_DEFINE([TM_GMTOFF], [__tm_gmtoff],
@@ -393,7 +355,7 @@ if test "${have_timezone_info}" = "no"; then
     fi
 fi
 
-if test "${have_timezone_info}" = "no"; then
+if test "${have_timezone_info}" = no; then
     AC_MSG_CHECKING([for __timezone])
     AC_TRY_LINK([
 #ifdef TIME_WITH_SYS_TIME
@@ -410,7 +372,7 @@ if test "${have_timezone_info}" = "no"; then
 	[scheme_cv_var___timezone=yes],
 	[scheme_cv_var___timezone=no])
     AC_MSG_RESULT(${scheme_cv_var___timezone})
-    if test "${scheme_cv_var___timezone}" = "yes"; then
+    if test "${scheme_cv_var___timezone}" = yes; then
 	AC_DEFINE([HAVE_TIMEZONE], [1],
 	    [Define if timezone variable is available.])
 	AC_DEFINE([TIMEZONE], [__timezone],
@@ -419,7 +381,7 @@ if test "${have_timezone_info}" = "no"; then
     fi
 fi
 
-if test "${have_timezone_info}" = "no"; then
+if test "${have_timezone_info}" = no; then
     AC_MSG_CHECKING([for _timezone])
     AC_TRY_LINK([
 #ifdef TIME_WITH_SYS_TIME
@@ -436,7 +398,7 @@ if test "${have_timezone_info}" = "no"; then
 	[scheme_cv_var__timezone=yes],
 	[scheme_cv_var__timezone=no])
     AC_MSG_RESULT(${scheme_cv_var__timezone})
-    if test "${scheme_cv_var__timezone}" = "yes"; then
+    if test "${scheme_cv_var__timezone}" = yes; then
 	AC_DEFINE([HAVE_TIMEZONE], [1],
 	    [Define if timezone variable is available.])
 	AC_DEFINE([TIMEZONE], [_timezone],
@@ -445,7 +407,7 @@ if test "${have_timezone_info}" = "no"; then
     fi
 fi
 
-if test "${have_timezone_info}" = "no"; then
+if test "${have_timezone_info}" = no; then
     AC_MSG_CHECKING([for timezone])
     AC_TRY_LINK([
 #ifdef TIME_WITH_SYS_TIME
@@ -462,7 +424,7 @@ if test "${have_timezone_info}" = "no"; then
 	[scheme_cv_var_timezone=yes],
 	[scheme_cv_var_timezone=no])
     AC_MSG_RESULT(${scheme_cv_var_timezone})
-    if test "${scheme_cv_var_timezone}" = "yes"; then
+    if test "${scheme_cv_var_timezone}" = yes; then
 	AC_DEFINE([HAVE_TIMEZONE], [1],
 	    [Define if timezone variable is available.])
 	AC_DEFINE([TIMEZONE], [timezone],
@@ -471,7 +433,7 @@ if test "${have_timezone_info}" = "no"; then
     fi
 fi
 
-if test "${ac_cv_header_bsdtty_h}" = "yes"; then
+if test "${ac_cv_header_bsdtty_h}" = yes; then
     AC_MSG_CHECKING([for struct ltchars])
     AC_TRY_COMPILE(
 	[#include <bsdtty.h>],
@@ -479,7 +441,7 @@ if test "${ac_cv_header_bsdtty_h}" = "yes"; then
 	[scheme_cv_struct_ltchars=yes],
 	[scheme_cv_struct_ltchars=no])
     AC_MSG_RESULT(${scheme_cv_struct_ltchars})
-    if test "${scheme_cv_struct_ltchars}" = "yes"; then
+    if test "${scheme_cv_struct_ltchars}" = yes; then
 	AC_DEFINE([HAVE_STRUCT_LTCHARS], [1],
 	    [Define if `struct ltchars' is defined in <bsdtty.h>.])
     fi
@@ -492,7 +454,7 @@ AC_TRY_COMPILE(
     [scheme_cv_struct_hostent_h_addr_list=yes],
     [scheme_cv_struct_hostent_h_addr_list=no])
 AC_MSG_RESULT(${scheme_cv_struct_hostent_h_addr_list})
-if test "${scheme_cv_struct_hostent_h_addr_list}" = "yes"; then
+if test "${scheme_cv_struct_hostent_h_addr_list}" = yes; then
     AC_DEFINE([HAVE_HOSTENT_H_ADDR_LIST], [1],
 	[Define if `struct hostent' has the `h_addr_list' member.])
 fi
@@ -504,7 +466,7 @@ AC_TRY_COMPILE(
     [scheme_cv_struct_sigcontext=yes],
     [scheme_cv_struct_sigcontext=no])
 AC_MSG_RESULT(${scheme_cv_struct_sigcontext})
-if test "${scheme_cv_struct_sigcontext}" = "yes"; then
+if test "${scheme_cv_struct_sigcontext}" = yes; then
     AC_DEFINE([HAVE_STRUCT_SIGCONTEXT], [1],
 	[Define if `struct sigcontext' is defined in <signal.h>.])
 fi
@@ -555,55 +517,64 @@ AC_SYS_LARGEFILE
 AC_SYS_LONG_FILE_NAMES
 AC_SYS_RESTARTABLE_SYSCALLS
 
-if test "${ac_cv_lib_dl_dlopen}" = "yes"; then
+if test "${ac_cv_lib_dl_dlopen}" = yes; then
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
-    enable_dynamic_modules="${enable_dynamic_modules:-yes}"
+    : ${enable_dynamic_modules='yes'}
 else
-    enable_dynamic_modules="no"
+    enable_dynamic_modules=no
 fi
 
-dnl Handle options to enable/disable use of some libraries.
-test "${with_openssl:-yes}" = "yes" || scheme_cv_lib_crypto="no"
-test "${with_mhash:-yes}" = "yes" || scheme_cv_lib_mhash="no"
-test "${with_mcrypt:-yes}" = "yes" || scheme_cv_lib_mcrypt="no"
-test "${with_gdbm:-yes}" = "yes" || scheme_cv_lib_gdbm="no"
-test "${with_db4:-yes}" = "yes" || scheme_cv_lib_db4="no"
-test "${with_libpq:-yes}" = "yes" || scheme_cv_lib_pq="no"
-
-dnl OK, now some complex logic to handle the crypto stuff.
-
-dnl Next, we decide which libraries to use.  We mostly want support
-dnl for Blowfish and MD5, each of which can come from multiple libraries.
-HAVE_BLOWFISH="no"
-HAVE_MD5="no"
-
-dnl The OpenSSL crypto library provides support for both, and is preferred.
-if test "${scheme_cv_lib_crypto}" = "yes"; then
-    AC_DEFINE([HAVE_LIBCRYPTO], [1],
-	[Define if OpenSSL crypto library is present.])
-    if test "${ac_cv_header_openssl_blowfish_h}" = "yes" \
-	    || test "${ac_cv_header_blowfish_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
-	    MODULE_BASES="${MODULE_BASES} prbfish"
-	    PRBFISH_LIBS="-lcrypto"
+dnl curses/termcap/terminfo support.
+if test "${scheme_cv_lib_ncurses}" = yes; then
+    AC_DEFINE([HAVE_LIBNCURSES], [1],
+	[Define if ncurses library is present.])
+    if test "${ac_cv_header_curses_h}" = yes \
+	&& test "${ac_cv_header_term_h}" = yes; then
+	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
+	if test "${scheme_cv_lib_ncurses_defines_tparam}" = yes; then
+	    AC_DEFINE([LIBNCURSES_DEFINES_TPARAM], [1],
+		[Define if ncurses library defines `tparam'.])
 	else
-	    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
 	fi
-	HAVE_BLOWFISH="yes"
     fi
-    if test "${ac_cv_header_openssl_md5_h}" = "yes" \
-	    || test "${ac_cv_header_md5_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
-	    MODULE_BASES="${MODULE_BASES} prmd5"
+else
+    if test "${scheme_cv_lib_curses}" = yes; then
+	AC_DEFINE([HAVE_LIBCURSES], [1],
+	    [Define if curses library is present.])
+	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcurses"
+	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+    else
+	if test "${scheme_cv_lib_termcap}" = yes; then
+	    AC_DEFINE([HAVE_LIBTERMCAP], [1],
+		[Define if termcap library is present.])
+	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ltermcap"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
+	else
+	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+	fi
+    fi
+fi
+
+if test "${with_openssl}" != no; then
+    if test "${with_openssl}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
+	LIBS="${LIBS} -L${with_openssl}/lib"
+    fi
+    AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h])
+    AC_CHECK_LIB([crypto], [BF_set_key])
+    if test "${ac_cv_header_openssl_blowfish_h}" = yes \
+	    && test "${ac_cv_header_openssl_md5_h}" = yes \
+	    && test "${ac_cv_lib_crypto_bf_set_key}" = yes ; then
+	AC_DEFINE([HAVE_LIBCRYPTO], [1],
+	    [Define if OpenSSL crypto library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
+	    MODULE_BASES="${MODULE_BASES} prbfish prmd5"
+	    PRBFISH_LIBS="-lcrypto"
 	    PRMD5_LIBS="-lcrypto"
 	else
-	    OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
-	fi
-	HAVE_MD5="yes"
-    fi
-    if test "${enable_dynamic_modules}" != "yes"; then
-	if test "${HAVE_BLOWFISH}" = "yes" || test "${HAVE_MD5}" = "yes"; then
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcrypto"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} prbfish prmd5"
 	fi
     fi
 fi
@@ -615,30 +586,43 @@ dnl must conditionalize their dependencies on <mhash.h> & <mcrypt.h>,
 dnl respectively, to avoid warnings in "Makefile.deps" and its embeds.
 dnl Finally, note that "prmd5.c" is similarly conditionalized as well.
 
-dnl The mhash library provides md5 support.  It can be loaded in addition
+dnl The mhash library provides MD5 support.  It can be loaded in addition
 dnl to other MD5 libraries and provides a rich set of hashes.
-if test "${scheme_cv_lib_mhash}" = "yes"; then
-    AC_DEFINE([HAVE_LIBMHASH], [1],
-	[Define if mhash library is present.])
-    if test "${ac_cv_header_mhash_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
+if test "${with_mhash}" != no; then
+    if test "${with_mhash}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_mhash}/include"
+	LIBS="${LIBS} -L${with_mhash}/lib"
+    fi
+    AC_CHECK_HEADERS([mhash.h])
+    AC_CHECK_LIB([mhash], [mhash_count])
+    if test "${ac_cv_header_mhash_h}" = yes \
+	    && test "${ac_cv_lib_mhash_mhash_count}" = yes ; then
+	AC_DEFINE([HAVE_LIBMHASH], [1],
+	    [Define if mhash library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
 	    MODULE_BASES="${MODULE_BASES} prmhash"
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmhash"
 	    OPTIONAL_BASES="${OPTIONAL_BASES} prmhash"
 	fi
-	HAVE_MD5="yes"
     fi
 fi
 
 dnl The mcrypt library provides blowfish, but its CFB mode is 8 bit.
 dnl We have been using 64-bit CFB, so this isn't really compatible.
 dnl But mcrypt provides many ciphers and can be loaded in addition.
-if test "${scheme_cv_lib_mcrypt}" = "yes"; then
-    AC_DEFINE([HAVE_LIBMCRYPT], [1],
-	[Define if mcrypt library is present.])
-    if test "${ac_cv_header_mcrypt_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
+if test "${with_mcrypt}" != no; then
+    if test "${with_mcrypt}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_mcrypt}/include"
+	LIBS="${LIBS} -L${with_mcrypt}/lib"
+    fi
+    AC_CHECK_HEADERS([mcrypt.h])
+    AC_CHECK_LIB([mcrypt], [mcrypt_generic_init], [], [], [-lltdl])
+    if test "${ac_cv_header_mcrypt_h}" = yes \
+	    && test "${ac_cv_lib_mcrypt_mcrypt_generic_init}" = yes ; then
+	AC_DEFINE([HAVE_LIBMCRYPT], [1],
+	    [Define if mcrypt library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
 	    MODULE_BASES="${MODULE_BASES} prmcrypt"
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lmcrypt -lltdl"
@@ -647,51 +631,19 @@ if test "${scheme_cv_lib_mcrypt}" = "yes"; then
     fi
 fi
 
-dnl This is a stripped-down library that provides just Blowfish.  It
-dnl seems to be code that was extracted from OpenSSL long ago.  We
-dnl used this for a long time but no longer do.
-if test "${HAVE_BLOWFISH}" = "no"; then
-    if test "${scheme_cv_lib_blowfish}" = "yes"; then
-	AC_DEFINE([HAVE_LIBBLOWFISH], [1],
-	    [Define if blowfish library is present.])
-	if test "${ac_cv_header_blowfish_h}" = "yes"; then
-	    if test "${enable_dynamic_modules}" = "yes"; then
-		MODULE_BASES="${MODULE_BASES} prbfish"
-		PRBFISH_LIBS="-lblowfish"
-	    else
-		STATIC_LIBS="${STATIC_LIBS} -lblowfish"
-		OPTIONAL_BASES="${OPTIONAL_BASES} prbfish"
-	    fi
-	    HAVE_BLOWFISH="yes"
-	fi
+dnl gdbm support
+if test "${with_gdbm}" != no; then
+    if test "${with_gdbm}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_gdbm}/include"
+	LIBS="${LIBS} -L${with_gdbm}/lib"
     fi
-fi
-
-dnl This is Phil Karn's MD5 implementation, which seems to have nearly
-dnl the same interface as that of OpenSSL.
-if test "${HAVE_MD5}" = "no"; then
-    if test "${scheme_cv_lib_md5}" = "yes"; then
-	AC_DEFINE([HAVE_LIBMD5], [1],
-	    [Define if md5 library is present.])
-	if test "${ac_cv_header_md5_h}" = "yes"; then
-	    if test "${enable_dynamic_modules}" = "yes"; then
-		MODULE_BASES="${MODULE_BASES} prmd5"
-		PRMD5_LIBS="-lmd5"
-	    else
-		STATIC_LIBS="${STATIC_LIBS} -lmd5"
-		OPTIONAL_BASES="${OPTIONAL_BASES} prmd5"
-	    fi
-	    HAVE_MD5="yes"
-	fi
-    fi
-fi
-
-dnl gdbm support.
-if test "${scheme_cv_lib_gdbm}" = "yes"; then
-    AC_DEFINE([HAVE_LIBGDBM], [1],
-	[Define if gdbm library is present.])
-    if test "${ac_cv_header_gdbm_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
+    AC_CHECK_HEADERS([gdbm.h])
+    AC_CHECK_LIB([gdbm], [gdbm_open])
+    if test "${ac_cv_header_gdbm_h}" = yes \
+	    && test "${ac_cv_lib_gdbm_gdbm_open}" = yes; then
+	AC_DEFINE([HAVE_LIBGDBM], [1],
+	    [Define if gdbm library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
 	    MODULE_BASES="${MODULE_BASES} prgdbm"
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lgdbm"
@@ -700,12 +652,28 @@ if test "${scheme_cv_lib_gdbm}" = "yes"; then
     fi
 fi
 
-dnl db4 support.
-if test "${scheme_cv_lib_db4}" = "yes"; then
-    AC_DEFINE([HAVE_LIBDB4], [1],
-	[Define if db4 library is present.])
-    if test "${ac_cv_header_db_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
+dnl db4 support
+if test "${with_db4}" != no; then
+    if test "${with_db4}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_db4}/include"
+	LIBS="${LIBS} -L${with_db4}/lib"
+    fi
+    AC_CHECK_HEADERS([db.h])
+    AC_MSG_CHECKING([for db_create in -ldb-4])
+    save_LIBS=${LIBS}
+    LIBS="-ldb-4 ${LIBS}"
+    AC_TRY_LINK(
+	[#include <db.h>],
+	[DB * db; db_create ((&db), 0, 0);],
+	[scheme_cv_lib_db4=yes],
+	[scheme_cv_lib_db4=no])
+    LIBS=${save_LIBS}
+    AC_MSG_RESULT(${scheme_cv_lib_db4})
+    if test "${ac_cv_header_db_h}" = yes \
+	    && test "${scheme_cv_lib_db4}" = yes; then
+	AC_DEFINE([HAVE_LIBDB4], [1],
+	    [Define if db4 library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
 	    MODULE_BASES="${MODULE_BASES} prdb4"
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ldb-4"
@@ -714,44 +682,31 @@ if test "${scheme_cv_lib_db4}" = "yes"; then
     fi
 fi
 
-dnl curses/termcap/terminfo support.
-if test "${scheme_cv_lib_ncurses}" = "yes"; then
-    AC_DEFINE([HAVE_LIBNCURSES], [1],
-	[Define if ncurses library is present.])
-    if test "${ac_cv_header_curses_h}" = "yes" \
-	&& test "${ac_cv_header_term_h}" = "yes"; then
-	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lncurses"
-	if test "${scheme_cv_lib_ncurses_defines_tparam}" = "yes"; then
-	    AC_DEFINE([LIBNCURSES_DEFINES_TPARAM], [1],
-		[Define if ncurses library defines `tparam'.])
-	else
-	    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
-	fi
-    fi
-else
-    if test "${scheme_cv_lib_curses}" = "yes"; then
-	AC_DEFINE([HAVE_LIBCURSES], [1],
-	    [Define if curses library is present.])
-	QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lcurses"
-	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+dnl PostgreSQL support
+if test "${with_libpq}" != no; then
+    if test "${with_libpq}" != yes; then
+	CPPFLAGS="${CPPFLAGS} -I${with_libpq}/include"
+	LIBS="${LIBS} -L${with_libpq}/lib"
     else
-	if test "${scheme_cv_lib_termcap}" = "yes"; then
-	    AC_DEFINE([HAVE_LIBTERMCAP], [1],
-		[Define if termcap library is present.])
-	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -ltermcap"
-	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
-	else
-	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+	AC_PATH_PROG([PG_CONFIG], [pg_config])
+	if test "${PG_CONFIG}" != no; then
+	    libpq_inc=`${PG_CONFIG} --includedir 2>/dev/null`
+	    if test "${libpq_inc}" != /usr/include; then
+		CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
+	    fi
+	    libpq_lib=`${PG_CONFIG} --libdir 2>/dev/null`
+	    if test "${libpq_lib}" != /usr/lib; then
+		LIBS="${LIBS} -L${libpq_lib}"
+	    fi
 	fi
     fi
-fi
-
-dnl PostgreSQL support.
-if test "${scheme_cv_lib_pq}" = "yes"; then
-    AC_DEFINE([HAVE_LIBPQ], [1],
-	[Define if PostgreSQL libpq library is present.])
-    if test "${ac_cv_header_libpq_fe_h}" = "yes"; then
-	if test "${enable_dynamic_modules}" = "yes"; then
+    AC_CHECK_HEADERS([libpq-fe.h])
+    AC_CHECK_LIB([pq], [PQconnectdb])
+    if test "${ac_cv_header_libpq_fe_h}" = yes \
+	    && test "${ac_cv_lib_pq_pqconnectdb}" = yes ; then
+	AC_DEFINE([HAVE_LIBPQ], [1],
+	    [Define if PostgreSQL libpq library is present.])
+	if test "${enable_dynamic_modules}" = yes; then
 	    MODULE_BASES="${MODULE_BASES} prpgsql"
 	else
 	    QUASI_STATIC_LIBS="${QUASI_STATIC_LIBS} -lpq"
@@ -761,22 +716,22 @@ if test "${scheme_cv_lib_pq}" = "yes"; then
 fi
 
 dnl Decide whether we're using static or dynamic libraries.
-if test "${enable_static_libs:-no}" = "no"; then
+if test "${enable_static_libs}" = no; then
     LIBS="${LIBS}${QUASI_STATIC_LIBS}"
 else
     STATIC_LIBS="${STATIC_LIBS}${QUASI_STATIC_LIBS}"
 fi
 
-if test "${enable_valgrind_mode:-no}" != "no"; then
+if test "${enable_valgrind_mode}" != no; then
     SCHEME_DEFS="${SCHEME_DEFS} -DVALGRIND_MODE"
     M4_FLAGS="${M4_FLAGS} -P VALGRIND_MODE,1"
 fi
 
 dnl Add support for X if present.
-if test "${no_x}" != "yes"; then
+if test "${no_x}" != yes; then
     if test "x${x_includes}" != x; then
 	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
-	CFLAGS="${CFLAGS} ${FOO}"
+	CPPFLAGS="${CPPFLAGS} ${FOO}"
     fi
     if test "x${x_libraries}" != x; then
 	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
@@ -787,10 +742,10 @@ if test "${no_x}" != "yes"; then
 fi
 
 dnl Add OS-dependent customizations.
-DO_GCC_TESTS="no"
-case "$host_os" in
+DO_GCC_TESTS=no
+case ${host_os} in
 linux-gnu)
-    DO_GCC_TESTS="yes"
+    DO_GCC_TESTS=yes
     ;;
 freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
@@ -799,15 +754,15 @@ darwin*)
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -dynamiclib -flat_namespace -undefined suppress"
     ;;
 solaris*)
-    if test "${GCC}" = "yes"; then
-	DO_GCC_TESTS="yes"
+    if test "${GCC}" = yes; then
+	DO_GCC_TESTS=yes
 	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     fi
     ;;
 esac
 
-if test "${DO_GCC_TESTS}" = "yes"; then
-    if test "${STATIC_LIBS}" != ""; then
+if test "${DO_GCC_TESTS}" = yes; then
+    if test "x${STATIC_LIBS}" != x; then
 	STATIC_PREFIX="-Xlinker -Bstatic"
 	STATIC_SUFFIX="-Xlinker -Bdynamic"
     fi
@@ -827,7 +782,7 @@ return 1;
 	[scheme_cv_linux_elf=yes],
 	[scheme_cv_linux_elf=no])
     AC_MSG_RESULT(${scheme_cv_linux_elf})
-    if test "${scheme_cv_linux_elf}" = "yes"; then
+    if test "${scheme_cv_linux_elf}" = yes; then
 	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     fi
 fi
@@ -838,8 +793,8 @@ AC_MSG_CHECKING([for native-code support])
 scheme_arch=
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
 GC_HEAD_FILES="gccode.h cmpgc.h"
-if test "${enable_c_back_end}" = "no"; then
-    case "$host_cpu" in
+if test "${enable_c_back_end}" = no; then
+    case ${host_cpu} in
     alpha*)
 	scheme_arch=alpha
 	;;
@@ -868,14 +823,14 @@ if test "${enable_c_back_end}" = "no"; then
 fi
 AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
     [Define if architecture has native-code compiler support.])
-if test "${scheme_arch}" != ""; then
+if test "x${scheme_arch}" != x; then
     AC_MSG_RESULT([yes, for ${scheme_arch}])
     test -f cmpauxmd.m4 || ${LN_S} cmpauxmd/${scheme_arch}.m4 cmpauxmd.m4
     test -f cmpintmd.h || ${LN_S} cmpintmd/${scheme_arch}.h cmpintmd.h
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
-    CBE_RULES="/dev/null"
+    CBE_RULES=/dev/null
 else
     AC_MSG_RESULT([yes, using portable C code])
     AC_DEFINE([NATIVE_CODE_IS_C], [1],
@@ -893,7 +848,7 @@ else
     for D in back base fggen fgopt machines/C rtlbase rtlgen rtlopt; do
     	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c)"
     done
-    CBE_RULES="makegen/cbe-rules"
+    CBE_RULES=makegen/cbe-rules
 fi
 
 for base in ${OPTIONAL_BASES}; do
@@ -902,14 +857,14 @@ for base in ${OPTIONAL_BASES}; do
 done
 
 MODULE_TARGETS=
-if test "${MODULE_BASES}" = ""; then
-    MODULE_RULES="/dev/null"
+if test "x${MODULE_BASES}" = x; then
+    MODULE_RULES=/dev/null
 else
-    MODULE_RULES="config.modrules"
+    MODULE_RULES=config.modrules
     rm -f "${MODULE_RULES}"
     for BASE in ${MODULE_BASES}; do
 	MODULE_TARGETS="${MODULE_TARGETS} ${BASE}.so"
-	echo "" >> "${MODULE_RULES}"
+	echo >> "${MODULE_RULES}"
 	echo "${BASE}.o: ${BASE}.c" >> "${MODULE_RULES}"
 	echo "	\$(COMPILE_MODULE) -c \$*.c" >> "${MODULE_RULES}"
     done
