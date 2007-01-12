@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.26 2007/01/12 06:17:27 cph Exp $
+$Id: liarc.h,v 1.27 2007/01/12 06:27:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,12 +27,6 @@ USA.
 
 #ifndef LIARC_INCLUDED
 #define LIARC_INCLUDED
-
-#ifndef COMPILE_FOR_STATIC_LINKING
-#ifndef COMPILE_FOR_DYNAMIC_LOADING
-#define COMPILE_FOR_DYNAMIC_LOADING
-#endif
-#endif
 
 #ifndef MIT_SCHEME
 #define MIT_SCHEME
@@ -61,6 +55,12 @@ USA.
 #else
 #  include <varargs.h>
 #endif /* __STDC__ */
+
+#ifndef COMPILE_FOR_STATIC_LINKING
+#ifndef COMPILE_FOR_DYNAMIC_LOADING
+#define COMPILE_FOR_DYNAMIC_LOADING
+#endif
+#endif
 
 #ifdef __GNUC__
 /* Add attributes to avoid warnings from -Wall for unreferenced labels */
