@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.40 2007/01/12 02:16:47 cph Exp $
+# $Id: Makefile.in.in,v 1.41 2007/01/12 02:57:10 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -62,10 +62,6 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-# **** C back end stuff (I) ****
-COMPILED_SOURCES = @COMPILED_SOURCES@
-COMPILED_OBJECTS = $(COMPILED_SOURCES:.c=.o)
-
 # **** Tool configuration ****
 
 AUXDIR = $(libdir)/mit-scheme
@@ -76,10 +72,9 @@ AS = as
 TAR = tar
 GZIP_ENV = --best
 
-DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
-	@SCHEME_DEFS@ -I. -I$(srcdir) -I.
+DEFS = @DEFS@ @SCHEME_DEFS@ -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\"
 CFLAGS = @CFLAGS@
-CPPFLAGS = @CPPFLAGS@
+CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 M4_FLAGS = @M4_FLAGS@
@@ -87,15 +82,30 @@ AS_FLAGS = @AS_FLAGS@
 
 COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS)
 CCLD = $(CC)
-LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
+LINK = $(CCLD) $(LDFLAGS) -o $@
 EXPAND = $(M4) $(M4_FLAGS)
 ASSEMBLE = $(AS) $(AS_FLAGS)
 
-# **** Configured files ****
+# **** File configuration ****
+
+SHARED_SOURCES = @(write-sources "files-core")@ \
+	@(write-sources "files-os-prim")@ \
+	@(write-sources "files-unix")@ \
+	$(OPTIONAL_SOURCES)
+SHARED_OBJECTS = @(write-objects "files-core")@ \
+	@(write-objects "files-os-prim")@ \
+	@(write-objects "files-unix")@ \
+	$(OPTIONAL_OBJECTS)
+
+STD_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-std")@
+STD_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-std")@
+
+BCH_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-bch")@
+BCH_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-bch")@
 
 GC_HEAD_FILES = @GC_HEAD_FILES@
-OPTIONAL_SOURCES = @OPTIONAL_SOURCES@ $(COMPILED_SOURCES)
-OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@ $(COMPILED_OBJECTS)
+OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
+OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
 STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
 PRBFISH_LIBS = @PRBFISH_LIBS@
 PRMD5_LIBS = @PRMD5_LIBS@
@@ -107,25 +117,9 @@ COMPILE_MODULE = $(COMPILE) $(MODULE_CFLAGS)
 LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
 MODULE_LIBS = -lc
 
-# **** Non-configured files ****
+# **** Rules for C back end (part 1) ****
 
-CORE_SOURCES = @(write-sources "files-core")@
-OS_PRIM_SOURCES = @(write-sources "files-os-prim")@
-UNIX_SOURCES =  @(write-sources "files-unix")@
-STD_GC_SOURCES = @(write-sources "files-gc-std")@
-BCH_GC_SOURCES = @(write-sources "files-gc-bch")@
-
-CORE_OBJECTS = @(write-objects "files-core")@
-OS_PRIM_OBJECTS = @(write-objects "files-os-prim")@
-UNIX_OBJECTS =  @(write-objects "files-unix")@
-STD_GC_OBJECTS = @(write-objects "files-gc-std")@
-BCH_GC_OBJECTS = @(write-objects "files-gc-bch")@
-
-SHARED_SOURCES = $(CORE_SOURCES) $(OS_PRIM_SOURCES) $(UNIX_SOURCES) \
-	$(OPTIONAL_SOURCES)
-
-SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
-	$(OPTIONAL_OBJECTS)
+@LIARC_RULES_1@
 
 # **** Program definitions ****
 
@@ -135,14 +129,14 @@ aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
 
-scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
-scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
+scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
+scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
 scheme_DEPENDENCIES = 
 scheme_LDFLAGS = @DLD_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
-bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
-bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
+bchscheme_SOURCES = $(BCH_SOURCES) bchdef.c $(LIARC_SOURCES)
+bchscheme_OBJECTS = $(BCH_OBJECTS) bchdef.o $(LIARC_OBJECTS)
 bchscheme_DEPENDENCIES = 
 bchscheme_LDFLAGS = @DLD_LDFLAGS@
 bchscheme_LIBS = $(STATIC_LIBS) $(LIBS)
@@ -181,15 +175,16 @@ ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
-MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c \
-	compinit.h utabmd.c utabmd.bci *.tch
+MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.h utabmd.c utabmd.bci \
+	bchdef.c
 
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
-	cmpauxmd.m4 cmpauxmd.c cmpintmd.h TAGS makegen-cc
+	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc
 
-MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
+MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-rules-1 \
+	config.h.in configure TAGS
 
 # **** Implicit rules ****
 
@@ -215,17 +210,17 @@ scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
 
-usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim Makefile
+usrdef.c: $(STD_SOURCES) findprim Makefile
 	-rm -f $@
-	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
+	./findprim $(STD_SOURCES) > usrdef.c
 
 bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
 
-bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim Makefile
+bchdef.c: $(BCH_SOURCES) findprim Makefile
 	-rm -f $@
-	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
+	./findprim $(BCH_SOURCES) > bchdef.c
 
 gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
 	-rm -f $@
@@ -275,7 +270,8 @@ prpgsql.so: prpgsql.o
 
 tags: TAGS
 TAGS:
-	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
+	etags -r '/^DEF[A-Z0-9_]*[ \t]*(\("[^"]+"\|[a-zA-Z_][a-zA-Z0-9_]*\)/' \
+	    *.[ch] */*.[ch]
 
 mostlyclean:
 	-rm -f $(MOSTLYCLEAN_FILES)
@@ -299,7 +295,7 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	@list='$(bin_PROGRAMS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
+		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
 		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
 	    fi; \
 	done
@@ -309,7 +305,7 @@ install-auxPROGRAMS: $(aux_PROGRAMS)
 	@list='$(aux_PROGRAMS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
 		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
@@ -319,7 +315,7 @@ install-auxLIBS: $(aux_LIBS)
 	@list='$(aux_LIBS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
 	    fi; \
 	done
@@ -329,7 +325,7 @@ install-auxDATA: $(aux_DATA)
 	@list='$(aux_DATA)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
-		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
+		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
@@ -342,7 +338,9 @@ install-auxDATA: $(aux_DATA)
 
 @(write-dependencies)@
 
-@CBE_RULES@
+# **** Rules for C back end (part 2) ****
+
+@LIARC_RULES_2@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

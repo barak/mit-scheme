@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.27 2007/01/12 02:22:06 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.28 2007/01/12 02:57:10 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -184,9 +184,8 @@ MODULE_TARGETS=
 MODULE_RULES=/dev/null
 MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
-COMPILED_SOURCES=
-COMPILED_OBJECTS=
-CBE_RULES=/dev/null
+LIARC_RULES_1=/dev/null
+LIARC_RULES_2=/dev/null
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -817,14 +816,8 @@ c)
     AC_DEFINE([COMPILE_FOR_STATIC_LINKING], [1],
 	[Define to 1 for static compilation of C native code.])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
-    COMPILED_SOURCES="utabmd.c"
-    for D in runtime sf cref star-parser compiler; do
-    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../${D}/*.c)"
-    done
-    for D in back base fggen fgopt machines/C rtlbase rtlgen rtlopt; do
-    	COMPILED_SOURCES="${COMPILED_SOURCES} \$(wildcard ../compiler/${D}/*.c)"
-    done
-    CBE_RULES=makegen/cbe-rules
+    LIARC_RULES_1=liarc-rules-1
+    LIARC_RULES_2=makegen/liarc-rules-2
     ;;
 *)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
@@ -877,9 +870,8 @@ AC_SUBST([MODULE_TARGETS])
 AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
-AC_SUBST([COMPILED_SOURCES])
-AC_SUBST([COMPILED_OBJECTS])
-AC_SUBST_FILE([CBE_RULES])
+AC_SUBST_FILE([LIARC_RULES_1])
+AC_SUBST_FILE([LIARC_RULES_2])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
