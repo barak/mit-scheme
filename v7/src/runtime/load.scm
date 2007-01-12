@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.83 2007/01/05 21:19:28 cph Exp $
+$Id: load.scm,v 14.84 2007/01/12 10:23:04 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -175,7 +175,7 @@ USA.
 						find-pathname
 						(list filename default-types))
 			  default-types))))
-    (cond ((file-exists? pathname)
+    (cond ((file-regular? pathname)
 	   (values pathname
 		   (let ((find-loader
 			  (lambda (extension)
@@ -206,7 +206,7 @@ USA.
 		 (loop (cdr types)))))
 	  (else
 	   (let ((pathname (pathname-new-type pathname (caar types))))
-	     (if (file-exists? pathname)
+	     (if (file-regular? pathname)
 		 (values pathname (cadar types))
 		 (loop (cdr types))))))))
 
@@ -348,7 +348,7 @@ USA.
 		 (let ((find
 			(lambda (type)
 			  (let ((pathname (pathname-new-type pathname type)))
-			    (and (file-exists? pathname)
+			    (and (file-regular? pathname)
 				 pathname)))))
 		   (or (find "so")
 		       (find "sl")))))
