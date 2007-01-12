@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.11 2007/01/05 21:19:20 cph Exp $
+# $Id: Clean.sh,v 1.12 2007/01/12 06:19:49 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -31,9 +31,9 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-TOPDIR="${TOPDIR:-$(pwd)/..}"
+TOPDIR=${TOPDIR:-$(pwd)/..}
 export TOPDIR
-CLEANSH="${TOPDIR}/etc/Clean.sh"
+CLEANSH=${TOPDIR}/etc/Clean.sh
 "${CLEANSH}" "${1}" rm-pkg
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
@@ -45,7 +45,8 @@ done
 
 case "${1}" in
 distclean | maintainer-clean)
-    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
+    rm -f machine compiler.cbf compiler.pkg compiler.sf
+    "${CLEANSH}" "${1}" rm-bin rm-com
     ;;
 esac
 

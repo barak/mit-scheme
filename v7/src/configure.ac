@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.5 2007/01/05 21:19:20 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.6 2007/01/12 06:19:45 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -28,8 +28,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 ])
 
-AC_ARG_ENABLE([c-back-end],
-[[  --enable-c-back-end     Build portable system with C output [no]]])
+AC_ARG_ENABLE([native-code],
+    AS_HELP_STRING([--enable-native-code],
+	[Support native compiled code if available [[yes]]]))
 
 AC_PROG_INSTALL
 AC_PROG_LN_S

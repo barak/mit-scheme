@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: configure,v 1.10 2007/01/05 21:19:20 cph Exp $
+# $Id: configure,v 1.11 2007/01/12 06:19:53 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -23,16 +23,19 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-enable_c_back_end="no"
-
+MACHINE=
 while test $# -gt 0; do
     case "${1}" in
-    (--enable-c-back-end)
-	enable_c_back_end="yes"
+    (--enable-native-code=c)
+	MACHINE=C
 	shift
 	;;
-    (--disable-c-back-end)
-	enable_c_back_end="no"
+    (--enable-native-code)
+	MACHINE=
+	shift
+	;;
+    (--disable-native-code | --enable-native-code=no)
+	MACHINE=none
 	shift
 	;;
     (*)
@@ -41,39 +44,48 @@ while test $# -gt 0; do
     esac
 done
 
-if test ! -e machine; then
-    if test "${enable_c_back_end}" = "yes"; then
-	MACHINE="C"
-    else
-	case `./config.guess` in
-	(alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)
-	    MACHINE="alpha"
-	    ;;
-	(m68k-*)
-	    MACHINE="bobcat"
-	    ;;
-	(i[3456]86-*)
-	    MACHINE="i386"
-	    ;;
-	(mips-* | mipsel-*)
-	    MACHINE="mips"
-	    ;;
-	(sparc-*)
-	    MACHINE="sparc"
-	    ;;
-	(hppa-* | hppa1.[01]-* | hppa2.?-*)
-	    MACHINE="spectrum"
-	    ;;
-	(vax-*)
-	    MACHINE="vax"
-	    ;;
-	(*)
-	    MACHINE="C"
-	    ;;
-	esac
-    fi
-    ln -s "machines/${MACHINE}" machine
+if test "x${MACHINE}" = x; then
+    case `./config.guess` in
+    (alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)
+	MACHINE=alpha
+	;;
+    (m68k-*)
+	MACHINE=bobcat
+	;;
+    (i[3456]86-*)
+	MACHINE=i386
+	;;
+    (mips-* | mipsel-*)
+	MACHINE=mips
+	;;
+    (sparc-*)
+	MACHINE=sparc
+	;;
+    (hppa-* | hppa1.[01]-* | hppa2.?-*)
+	MACHINE=spectrum
+	;;
+    (vax-*)
+	MACHINE=vax
+	;;
+    (*)
+	MACHINE=none
+	;;
+    esac
 fi
-for FN in compiler.cbf compiler.pkg compiler.sf make.com; do
-    test -h "${FN}" || ln -s "machine/${FN}" .;
+
+if test "${MACHINE}" = none; then
+    exit 0
+fi
+
+ln -s "machines/${MACHINE}" machine
+
+LINKS="compiler.cbf compiler.pkg compiler.sf"
+if test "${MACHINE}" = C; then
+    LINKS="${LINKS} make.so"
+else
+    LINKS="${LINKS} make.com"
+fi
+
+for FN in ${LINKS}; do
+    ln -s machine/${FN} ${FN}
 done
