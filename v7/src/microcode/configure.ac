@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.26 2007/01/12 02:16:47 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.27 2007/01/12 02:22:06 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -124,6 +124,11 @@ AC_ARG_ENABLE([valgrind-mode],
 	[Support running under valgrind [[no]]]))
 : ${enable_valgrind_mode='no'}
 
+AC_ARG_ENABLE([debugging],
+    AS_HELP_STRING([--enable-debugging],
+	[Compile with debugging support [[no]]]))
+: ${enable_debugging='no'}
+
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
@@ -190,6 +195,12 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 if test ${GCC} = yes; then
+    if test ${enable_debugging} = no; then
+	CFLAGS=-O3
+    else
+	CFLAGS="-O0 -g"
+	LDFLAGS="${LDFLAGS} -g"
+    fi
     CFLAGS="${CFLAGS} -Wall"
 fi
 FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
@@ -560,9 +571,6 @@ if test "${with_mhash}" != no; then
 	    [
 	    AC_DEFINE([HAVE_LIBMHASH], [1],
 		[Define to 1 if you have the `mhash' library (-lmhash).])
-	    if test ${enable_debugging} != no; then
-	       LIBS="-lmhash ${LIBS}"
-	    fi
 	    MODULE_LIBS="-lmhash ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prmhash"
 	    if test "x${PRMD5_LIBS}" = x; then
