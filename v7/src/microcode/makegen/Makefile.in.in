@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.42 2007/01/12 03:53:59 cph Exp $
+# $Id: Makefile.in.in,v 1.43 2007/01/12 06:30:04 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -176,7 +176,7 @@ ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
 MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.h utabmd.c utabmd.bci \
-	bchdef.c
+	bchdef.c $(LIARC_OBJECTS)
 
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
