@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prostty.c,v 1.11 2007/01/05 21:19:25 cph Exp $
+$Id: prostty.c,v 1.12 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -66,16 +66,14 @@ DEFINE_PRIMITIVE ("TTY-COMMAND-BEEP", Prim_tty_command_beep, 0, 0,
   "Return a string that, when written to the display, will make it beep.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) (OS_tty_command_beep ())));
+  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_beep ()));
 }
 
 DEFINE_PRIMITIVE ("TTY-COMMAND-CLEAR", Prim_tty_command_clear, 0, 0,
   "Return a string that, when written to the display, will clear it.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) (OS_tty_command_clear ())));
+  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_clear ()));
 }
 
 DEFINE_PRIMITIVE ("TTY-NEXT-INTERRUPT-CHAR", Prim_tty_next_interrupt_char, 0, 0,

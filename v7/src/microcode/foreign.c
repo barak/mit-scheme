@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: foreign.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: foreign.c,v 1.9 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -297,7 +297,7 @@ DEFUN (foreign_pointer_to_scheme_object, (ptr_to_ptr, type),
       case FOREIGN_STRING:
 	temp_ptr = ALIGN_FOREIGN_POINTER (*ptr_to_ptr, FOREIGN_STRING);
         *ptr_to_ptr = (((unsigned char *) temp_ptr) + 1);
-	return (char_pointer_to_string ((unsigned char *) temp_ptr;
+	return (char_pointer_to_string (temp_ptr));
       case FOREIGN_PTR:
 	temp_ptr = ALIGN_FOREIGN_POINTER (*ptr_to_ptr, FOREIGN_PTR);
         *ptr_to_ptr = (((PTR) temp_ptr) + 1);

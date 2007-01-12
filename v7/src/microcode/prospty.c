@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prospty.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: prospty.c,v 1.9 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -57,10 +57,8 @@ Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
     {
       SCHEME_OBJECT vector = (allocate_marked_vector (TC_VECTOR, 3, 1));
       VECTOR_SET (vector, 0, (long_to_integer (channel)));
-      VECTOR_SET (vector, 1,
-		  (char_pointer_to_string ((unsigned char *) master_name)));
-      VECTOR_SET (vector, 2,
-		  (char_pointer_to_string ((unsigned char *) slave_name)));
+      VECTOR_SET (vector, 1, (char_pointer_to_string (master_name)));
+      VECTOR_SET (vector, 2, (char_pointer_to_string (slave_name)));
       transaction_commit ();
       PRIMITIVE_RETURN (vector);
     }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.25 2007/01/05 21:19:25 cph Exp $
+$Id: pruxsock.c,v 1.26 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -165,8 +165,7 @@ DEFINE_PRIMITIVE ("GET-HOST-NAME", Prim_get_host_name, 0, 0, 0)
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
-	SCHEME_OBJECT result
-	  = (char_pointer_to_string ((unsigned char *) host_name));
+	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
 	OS_free ((PTR) host_name);
 	PRIMITIVE_RETURN (result);
       }
@@ -182,8 +181,7 @@ DEFINE_PRIMITIVE ("CANONICAL-HOST-NAME", Prim_canonical_host_name, 1, 1, 0)
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
-	SCHEME_OBJECT result
-	  = (char_pointer_to_string ((unsigned char *) host_name));
+	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
 	OS_free ((PTR) host_name);
 	PRIMITIVE_RETURN (result);
       }
@@ -199,8 +197,7 @@ DEFINE_PRIMITIVE ("GET-HOST-BY-ADDRESS", Prim_get_host_by_address, 1, 1, 0)
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
-	SCHEME_OBJECT result
-	  = (char_pointer_to_string ((unsigned char *) host_name));
+	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
 	OS_free ((PTR) host_name);
 	PRIMITIVE_RETURN (result);
       }

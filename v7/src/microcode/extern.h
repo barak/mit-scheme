@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.67 2007/01/05 21:19:25 cph Exp $
+$Id: extern.h,v 9.68 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -212,13 +212,11 @@ extern SCHEME_OBJECT EXFUN (allocate_marked_vector, (int, long, Boolean));
 extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
 extern SCHEME_OBJECT EXFUN (allocate_string, (unsigned long));
 extern SCHEME_OBJECT EXFUN (allocate_string_no_gc, (unsigned long));
+extern SCHEME_OBJECT EXFUN (memory_to_string, (unsigned long, CONST void *));
 extern SCHEME_OBJECT EXFUN
-  (memory_to_string, (unsigned long, CONST unsigned char *));
-extern SCHEME_OBJECT EXFUN
-  (memory_to_string_no_gc, (unsigned long, CONST unsigned char *));
-extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (CONST unsigned char *));
-extern SCHEME_OBJECT EXFUN
-  (char_pointer_to_string_no_gc, (CONST unsigned char *));
+  (memory_to_string_no_gc, (unsigned long, CONST void *));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_string, (CONST char *));
+extern SCHEME_OBJECT EXFUN (char_pointer_to_string_no_gc, (CONST char *));
 extern CONST char * EXFUN (arg_symbol, (int));
 extern CONST char * EXFUN (arg_interned_symbol, (int));
 extern SCHEME_OBJECT EXFUN (string_to_symbol, (SCHEME_OBJECT));

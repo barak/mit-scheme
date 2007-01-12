@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: os2xcpt.c,v 1.18 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -770,8 +770,7 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
     }
   {
     const char * name = (find_exception_name (report -> ExceptionNum));
-    trap_name
-      = ((name == 0) ? SHARP_F : (char_pointer_to_string ((char *) name)));
+    trap_name = ((name == 0) ? SHARP_F : (char_pointer_to_string (name)));
   }
   /* Push the hardware-trap stack frame.  The continuation parser will
      find this and use it to present meaningful debugging information

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.121 2007/01/05 21:19:25 cph Exp $
+$Id: boot.c,v 9.122 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -213,7 +213,7 @@ DEFUN (names_to_vector, (length, names),
   unsigned int i;
   for (i = 0; (i < length); i += 1)
     {
-      VECTOR_SET (v, i, (char_pointer_to_symbol (names [i])));
+      VECTOR_SET (v, i, (char_pointer_to_symbol ((char *) (names [i]))));
     }
   return (v);
 }
@@ -409,7 +409,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
   switch (Start_Prim)
   {
     case BOOT_FASLOAD:	/* (SCODE-EVAL (BINARY-FASLOAD <file>) GLOBAL-ENV) */
-      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      FName = (char_pointer_to_string (File_Name));
       prim = (make_primitive ("BINARY-FASLOAD", 1));
       inner_arg = Free;
       *Free++ = prim;
@@ -422,7 +422,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
       break;
 
     case BOOT_LOAD_BAND:	/* (LOAD-BAND <file>) */
-      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      FName = (char_pointer_to_string (File_Name));
       prim = (make_primitive ("LOAD-BAND", 1));
       inner_arg = Free;
       *Free++ = prim;
@@ -442,7 +442,7 @@ DEFUN (Start_Scheme, (Start_Prim, File_Name),
 
     case BOOT_EXECUTE:
       /* (SCODE-EVAL (INITIALIZE-C-COMPILED-BLOCK <file>) GLOBAL-ENV) */
-      FName = (char_pointer_to_string ((unsigned char *) File_Name));
+      FName = (char_pointer_to_string (File_Name));
       prim = (make_primitive ("INITIALIZE-C-COMPILED-BLOCK", 1));
       inner_arg = Free;
       *Free++ = prim;
@@ -603,8 +603,7 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   Result = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
   FAST_VECTOR_SET (Result, ID_RELEASE, SHARP_F);
   FAST_VECTOR_SET
-    (Result, ID_MICRO_VERSION,
-     (char_pointer_to_string ((unsigned char *) PACKAGE_VERSION)));
+    (Result, ID_MICRO_VERSION, (char_pointer_to_string (PACKAGE_VERSION)));
   FAST_VECTOR_SET (Result, ID_MICRO_MOD, SHARP_F);
   FAST_VECTOR_SET
     (Result, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
@@ -617,15 +616,13 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   FAST_VECTOR_SET
     (Result, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
   FAST_VECTOR_SET
-    (Result, ID_OS_NAME, (char_pointer_to_string ((unsigned char *) OS_Name)));
+    (Result, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
   FAST_VECTOR_SET (Result, ID_OS_VARIANT,
-		   (char_pointer_to_string ((unsigned char *) OS_Variant)));
+		   (char_pointer_to_string (OS_Variant)));
   FAST_VECTOR_SET (Result, ID_STACK_TYPE,
-		   (char_pointer_to_string
-		    ((unsigned char *) STACK_TYPE_STRING)));
+		   (char_pointer_to_string (STACK_TYPE_STRING)));
   FAST_VECTOR_SET (Result, ID_MACHINE_TYPE,
-		   (char_pointer_to_string
-		    ((unsigned char *) MACHINE_TYPE)));
+		   (char_pointer_to_string (MACHINE_TYPE)));
   PRIMITIVE_RETURN (Result);
 }
 
@@ -644,8 +641,7 @@ DEFINE_PRIMITIVE ("MICROCODE-SYSTEM-ERROR-NAMES", Prim_microcode_syserr_names, 0
 DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) option_utabmd_file));
+  PRIMITIVE_RETURN (char_pointer_to_string (option_utabmd_file));
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0)
@@ -665,8 +661,7 @@ DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0
 	(allocate_marked_vector (TC_VECTOR, (end - scan), 1));
       SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
       while (scan < end)
-	(*scan_result++) =
-	  (char_pointer_to_string ((unsigned char *) *scan++));
+	(*scan_result++) = (char_pointer_to_string (*scan++));
       PRIMITIVE_RETURN (result);
     }
   }
@@ -680,7 +675,7 @@ DEFUN (argv_to_object, (argc, argv), int argc AND CONST char ** argv)
   CONST char ** end = (scan + argc);
   SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
   while (scan < end)
-    (*scan_result++) = (char_pointer_to_string ((unsigned char *) *scan++));
+    (*scan_result++) = (char_pointer_to_string (*scan++));
   return (result);
 }
 

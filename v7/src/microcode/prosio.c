@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.26 2007/01/05 21:19:25 cph Exp $
+$Id: prosio.c,v 1.27 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -146,8 +146,7 @@ DEFINE_PRIMITIVE ("CHANNEL-TYPE-NAME", Prim_channel_type_name, 1, 1,
   index = ((unsigned int) type);
   if (index >= ((sizeof (channel_type_names)) / (sizeof (char *))))
     PRIMITIVE_RETURN (SHARP_F);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) (channel_type_names [index])));
+  PRIMITIVE_RETURN (char_pointer_to_string (channel_type_names [index]));
 }
 
 DEFINE_PRIMITIVE ("CHANNEL-READ", Prim_channel_read, 4, 4,

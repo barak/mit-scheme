@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.36 2007/01/05 21:19:25 cph Exp $
+$Id: comutl.c,v 1.37 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -145,7 +145,7 @@ DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1,
   if (result == ((char *) NULL))
     PRIMITIVE_RETURN (SHARP_F);
   else
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+    PRIMITIVE_RETURN (char_pointer_to_string (result));
 }
 
 DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
@@ -159,7 +159,7 @@ DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
   if (result == ((char *) NULL))
     PRIMITIVE_RETURN (SHARP_F);
   else
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+    PRIMITIVE_RETURN (char_pointer_to_string (result));
 }
 
 /* This is only meaningful for the C back end. */

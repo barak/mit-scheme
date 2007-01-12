@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.34 2007/01/05 21:19:25 cph Exp $
+$Id: uxsock.c,v 1.35 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -307,7 +307,7 @@ DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
        unsigned int * peer_port)
 {
   static struct sockaddr_in address;
-  int address_length = (sizeof (struct sockaddr_in));
+  socklen_t address_length = (sizeof (struct sockaddr_in));
   int s;
   while (1)
     {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttterm.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: nttterm.c,v 1.9 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -63,7 +63,7 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
 	       (arg_nonnegative_integer (3)),
 	       (arg_nonnegative_integer (4)),
 	       (arg_nonnegative_integer (5))));
-    SCHEME_OBJECT result = (char_pointer_to_string ((unsigned char *) s));
+    SCHEME_OBJECT result = (char_pointer_to_string (s));
     free (s);
     PRIMITIVE_RETURN (result);
   }
@@ -77,10 +77,9 @@ DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
     PRIMITIVE_RETURN
       (char_pointer_to_string
-       ((unsigned char *)
-	(tgoto ((STRING_ARG (1)),
-		(arg_nonnegative_integer (2)),
-		(arg_nonnegative_integer (3))))));
+       (tgoto ((STRING_ARG (1)),
+	       (arg_nonnegative_integer (2)),
+	       (arg_nonnegative_integer (3)))));
   }
 }
 

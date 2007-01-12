@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.90 2007/01/05 21:19:25 cph Exp $
+$Id: x11base.c,v 1.91 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1892,8 +1892,7 @@ DEFINE_PRIMITIVE ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0)
       (XGetDefault
        ((XD_DISPLAY (x_display_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
     PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) result)));
+      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
   }
 }
 
@@ -2525,8 +2524,7 @@ DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
 	(allocate_marked_vector (TC_VECTOR, actual_count, false));
       unsigned int i;
       for (i = 0;  (i < actual_count);  i += 1)
-	VECTOR_SET (result, i,
-		    (char_pointer_to_string ((unsigned char *) (names[i]))));
+	VECTOR_SET (result, i, (char_pointer_to_string (names[i])));
       XFreeFontNames (names);
       PRIMITIVE_RETURN (result);
     }
@@ -2555,7 +2553,7 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
     unsigned char error_code = (x_error_code (display));
     SCHEME_OBJECT result
       = ((error_code == 0)
-	 ? (char_pointer_to_string ((unsigned char *) name))
+	 ? (char_pointer_to_string (name))
 	 : (ulong_to_integer (error_code)));
     if (name != 0)
       XFree (name);

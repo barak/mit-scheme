@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.53 2007/01/05 21:19:25 cph Exp $
+$Id: sysprim.c,v 9.54 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -167,7 +167,7 @@ DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 DEFINE_PRIMITIVE ("SCHEME-PROGRAM-NAME", Prim_scheme_program_name, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string ((char *) (scheme_program_name)));
+  PRIMITIVE_RETURN (char_pointer_to_string (scheme_program_name));
 }
 
 DEFINE_PRIMITIVE ("READ-BYTE-FROM-MEMORY", Prim_read_byte_from_memory, 1, 1,

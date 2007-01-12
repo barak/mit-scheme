@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.11 2007/01/05 21:19:25 cph Exp $
+$Id: prpgsql.c,v 1.12 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -195,7 +195,7 @@ DEFINE_PRIMITIVE ("PQ-GET-LINE", Prim_pq_get_line, 2, 2, 0)
   CHECK_ARG (2, STRING_P);
   PRIMITIVE_RETURN
     (long_to_integer (PQgetline ((ARG_CONN (1)),
-				 (STRING_LOC ((ARG_REF (2)), 0)),
+				 (STRING_POINTER (ARG_REF (2))),
 				 (STRING_LENGTH (ARG_REF (2))))));
 }
 
@@ -205,7 +205,7 @@ DEFINE_PRIMITIVE ("PQ-PUT-LINE", Prim_pq_put_line, 2, 2, 0)
   CHECK_ARG (2, STRING_P);
   PRIMITIVE_RETURN
     (long_to_integer (PQputnbytes ((ARG_CONN (1)),
-				   (STRING_LOC ((ARG_REF (2)), 0)),
+				   (STRING_POINTER (ARG_REF (2))),
 				   (STRING_LENGTH (ARG_REF (2))))));
 }
 
@@ -218,7 +218,7 @@ DEFINE_PRIMITIVE ("PQ-ESCAPE-STRING", Prim_pq_escape_string, 2, 2, 0)
   CHECK_ARG (1, STRING_P);
   PRIMITIVE_RETURN
     (ulong_to_integer (PQescapeString ((STRING_ARG (2)),
-				       (STRING_LOC ((ARG_REF (1)), 0)),
+				       (STRING_POINTER (ARG_REF (1))),
 				       (STRING_LENGTH (ARG_REF (1))))));
 }
 
@@ -230,9 +230,9 @@ DEFINE_PRIMITIVE ("PQ-ESCAPE-BYTEA", Prim_pq_escape_bytea, 1, 1, 0)
     size_t escaped_length;
     unsigned char * escaped
       = (PQescapeBytea ((STRING_LOC ((ARG_REF (1)), 0)),
-			 (STRING_LENGTH (ARG_REF (1))),
-			 (&escaped_length)));
-    SCHEME_OBJECT s = (char_pointer_to_string (escaped));
+			(STRING_LENGTH (ARG_REF (1))),
+			(&escaped_length)));
+    SCHEME_OBJECT s = (char_pointer_to_string ((char *) escaped));
     PQfreemem (escaped);
     PRIMITIVE_RETURN (s);
   }
@@ -244,7 +244,8 @@ DEFINE_PRIMITIVE ("PQ-UNESCAPE-BYTEA", Prim_pq_unescape_bytea, 1, 1, 0)
   {
     size_t unescaped_length;
     unsigned char * unescaped
-      = (PQunescapeBytea ((STRING_ARG (1)), (&unescaped_length)));
+      = (PQunescapeBytea (((unsigned char *) (STRING_ARG (1))),
+			  (&unescaped_length)));
     if (unescaped == 0)
       error_bad_range_arg (1);
     {

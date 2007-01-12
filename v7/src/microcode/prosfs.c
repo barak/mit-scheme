@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.21 2007/01/05 21:19:25 cph Exp $
+$Id: prosfs.c,v 1.22 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -45,7 +45,7 @@ extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
   PRIMITIVE_RETURN							\
     ((result == 0)							\
      ? SHARP_F								\
-     : (char_pointer_to_string ((unsigned char *) result)));		\
+     : (char_pointer_to_string (result)));				\
 }
 
 DEFINE_PRIMITIVE ("FILE-EXISTS?", Prim_file_exists_p, 1, 1,

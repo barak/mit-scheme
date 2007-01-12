@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxfs.c,v 9.60 2007/01/05 21:19:25 cph Exp $
+$Id: pruxfs.c,v 9.61 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -169,9 +169,8 @@ DEFUN (file_attributes_internal, (s), struct stat * s)
     case S_IFLNK:
       VECTOR_SET (result, 0,
 		  (char_pointer_to_string
-		   ((unsigned char *)
-		    (OS_file_soft_link_p
-		     ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0)))))));
+		   (OS_file_soft_link_p
+		    ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0))))));
       break;
 #endif
     default:
@@ -311,7 +310,6 @@ DEFINE_PRIMITIVE ("FILE-SYSTEM-TYPE", Prim_file_system_type, 1, 1, 0)
   {
     CONST char * result = (UX_file_system_type (STRING_ARG (1)));
     PRIMITIVE_RETURN
-      (char_pointer_to_string
-       ((unsigned char *) ((result == 0) ? "unknown" : result)));
+      (char_pointer_to_string ((result == 0) ? "unknown" : result));
   }
 }

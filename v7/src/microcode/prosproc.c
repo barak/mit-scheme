@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.23 2007/01/05 21:19:25 cph Exp $
+$Id: prosproc.c,v 1.24 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -61,8 +61,7 @@ DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 	(allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
       SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
       while (scan_environ < end_environ)
-	(*scan_result++) =
-	  (char_pointer_to_string ((unsigned char *) (*scan_environ++)));
+	(*scan_result++) = (char_pointer_to_string (*scan_environ++));
       PRIMITIVE_RETURN (result);
     }
   }

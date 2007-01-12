@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.25 2007/01/05 21:19:25 cph Exp $
+$Id: pros2pm.c,v 1.26 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -773,7 +773,7 @@ DEFINE_PRIMITIVE ("OS2-CLIPBOARD-READ-TEXT", Prim_OS2_clipboard_read_text, 0, 0,
       result = SHARP_F;
     else
       {
-	result = (char_pointer_to_string ((unsigned char *) text));
+	result = (char_pointer_to_string (text));
 	OS_free ((void *) text);
       }
     PRIMITIVE_RETURN (result);
@@ -920,7 +920,7 @@ DEFINE_PRIMITIVE ("OS2WIN-FONT-DIALOG", Prim_OS2_window_font_dialog, 2, 2, 0)
 				   : (STRING_ARG (2)))));
   if (spec == 0)
     PRIMITIVE_RETURN (SHARP_F);
-  result = (char_pointer_to_string ((char *) spec));
+  result = (char_pointer_to_string (spec));
   OS_free ((void *) spec);
   PRIMITIVE_RETURN (result);
 }

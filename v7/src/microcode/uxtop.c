@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.33 2007/01/05 21:19:25 cph Exp $
+$Id: uxtop.c,v 1.34 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -393,10 +393,10 @@ static char * syscall_names_table [] =
 };
 
 void
-OS_syscall_names (unsigned int * length, unsigned char *** names)
+OS_syscall_names (unsigned int * length, char *** names)
 {
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syscall_names_table);
+  (*names) = syscall_names_table;
 }
 
 static char * syserr_names_table [] =
@@ -443,8 +443,8 @@ static char * syserr_names_table [] =
 };
 
 void
-OS_syserr_names (unsigned int * length, unsigned char *** names)
+OS_syserr_names (unsigned int * length, char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syserr_names_table);
+  (*names) = syserr_names_table;
 }

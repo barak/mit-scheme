@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bchmmg.c,v 9.106 2007/01/05 21:19:25 cph Exp $
+$Id: bchmmg.c,v 9.107 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -3492,7 +3492,7 @@ DEFUN_VOID (statistics_names)
   for (cntr = 0, ptr = &all_gc_statistics[0], scan = (VECTOR_LOC (vector, 0));
        cntr < len;
        cntr++, ptr++)
-    *scan++ = (char_pointer_to_string ((unsigned char *) ptr->name));
+    *scan++ = (char_pointer_to_string (ptr->name));
   return (vector);
 }
 
@@ -3561,8 +3561,7 @@ DEFINE_PRIMITIVE ("BCHSCHEME-PARAMETERS-GET", Prim_bchscheme_get_params, 0, 0, 0
   VECTOR_SET (vector, 2, (long_to_integer ((long) read_overlap)));
   VECTOR_SET (vector, 3, (long_to_integer ((long) write_overlap)));
   VECTOR_SET (vector, 4, (long_to_integer ((long) (GET_SLEEP_DELTA ()))));
-  VECTOR_SET (vector, 5, (char_pointer_to_string
-			  ((unsigned char *) drone_file_name)));
+  VECTOR_SET (vector, 5, (char_pointer_to_string (drone_file_name)));
 
   PRIMITIVE_RETURN (vector);
 }

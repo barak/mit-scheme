@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.44 2007/01/05 21:19:25 cph Exp $
+$Id: uxtrap.c,v 1.45 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -188,7 +188,7 @@ SCHEME_OBJECT
 DEFUN (find_ccblock, (pc), unsigned long pc)
 {
   SCHEME_OBJECT * block_addr;
-  int index;
+  unsigned int index;
 
   block_addr = 0;
   classify_pc (pc, (&block_addr), (&index));
@@ -358,7 +358,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   unsigned long pc = (SIGCONTEXT_PC (scp));
   SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
   SCHEME_OBJECT * block_addr;
-  int index;
+  unsigned int index;
   SCHEME_OBJECT * new_sp = 0;
   struct trap_recovery_info recovery_info;
 
@@ -391,7 +391,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       new_sp = sp_register;
       SET_RECOVERY_INFO
 	(STATE_UTILITY,
-	 (LONG_TO_UNSIGNED_FIXNUM (index)),
+	 (ULONG_TO_FIXNUM (index)),
 	 UNSPECIFIC);
       break;
 
@@ -400,7 +400,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
       SET_RECOVERY_INFO
 	(STATE_BUILTIN,
-	 (LONG_TO_UNSIGNED_FIXNUM (index)),
+	 (ULONG_TO_FIXNUM (index)),
 	 UNSPECIFIC);
       break;
 
@@ -628,7 +628,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
 
   signal_name =
     ((signo != 0)
-     ? (char_pointer_to_string ((unsigned char *) (find_signal_name (signo))))
+     ? (char_pointer_to_string (find_signal_name (signo)))
      : SHARP_F);
 
   if (Free > MemTop)
@@ -725,9 +725,7 @@ DEFUN (find_signal_code_name, (signo, info, scp),
     }
   return
     (cons ((ulong_to_integer (code)),
-	   ((name == 0)
-	    ? SHARP_F
-	    : (char_pointer_to_string ((unsigned char *) name)))));
+	   ((name == 0) ? SHARP_F : (char_pointer_to_string (name)))));
 }
 
 static enum pc_location

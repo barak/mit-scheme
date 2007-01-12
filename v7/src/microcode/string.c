@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.51 2007/01/05 21:19:25 cph Exp $
+$Id: string.c,v 9.52 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -66,34 +66,36 @@ DEFUN (allocate_string_no_gc, (nbytes), unsigned long nbytes)
 SCHEME_OBJECT
 DEFUN (memory_to_string, (nbytes, data),
        unsigned long nbytes AND
-       CONST unsigned char * data)
+       CONST void * data)
 {
   SCHEME_OBJECT result = (allocate_string (nbytes));
   unsigned char * scan_result = (STRING_LOC (result, 0));
   unsigned char * end_result = (scan_result + nbytes);
+  CONST unsigned char * scan_data = data;
   while (scan_result < end_result)
-    (*scan_result++) = (*data++);
+    (*scan_result++) = (*scan_data++);
   return (result);
 }
 
 SCHEME_OBJECT
 DEFUN (memory_to_string_no_gc, (nbytes, data),
        unsigned long nbytes AND
-       CONST unsigned char * data)
+       CONST void * data)
 {
   SCHEME_OBJECT result = (allocate_string_no_gc (nbytes));
   unsigned char * scan_result = (STRING_LOC (result, 0));
   unsigned char * end_result = (scan_result + nbytes);
+  CONST unsigned char * scan_data = data;
   while (scan_result < end_result)
-    (*scan_result++) = (*data++);
+    (*scan_result++) = (*scan_data++);
   return (result);
 }
 
 SCHEME_OBJECT
 DEFUN (char_pointer_to_string, (char_pointer),
-       CONST unsigned char * char_pointer)
+       CONST char * char_pointer)
 {
-  CONST unsigned char * scan = char_pointer;
+  CONST char * scan = char_pointer;
   if (scan == 0)
     scan += 1;
   else
@@ -104,9 +106,9 @@ DEFUN (char_pointer_to_string, (char_pointer),
 
 SCHEME_OBJECT
 DEFUN (char_pointer_to_string_no_gc, (char_pointer),
-       CONST unsigned char * char_pointer)
+       CONST char * char_pointer)
 {
-  CONST unsigned char * scan = char_pointer;
+  CONST char * scan = char_pointer;
   if (scan == 0)
     scan += 1;
   else

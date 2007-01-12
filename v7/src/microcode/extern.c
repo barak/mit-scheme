@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.42 2007/01/05 21:19:25 cph Exp $
+$Id: extern.c,v 9.43 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -127,7 +127,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
       PRIMITIVE_RETURN
 	((answer == 0)
 	 ? SHARP_F
-	 : (char_pointer_to_string ((unsigned char *) answer)));
+	 : (char_pointer_to_string (answer)));
     }
   }
 }
@@ -155,9 +155,7 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
       fast long number = (PRIMITIVE_NUMBER (primitive));
       if ((number < 0) || (number > (NUMBER_OF_PRIMITIVES ())))
 	error_bad_range_arg (1);
-      PRIMITIVE_RETURN
-	(char_pointer_to_string ((unsigned char *)
-				 (PRIMITIVE_NAME (primitive))));
+      PRIMITIVE_RETURN (char_pointer_to_string (PRIMITIVE_NAME (primitive)));
     }
   }
 }

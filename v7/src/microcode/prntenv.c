@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntenv.c,v 1.14 2007/01/05 21:19:25 cph Exp $
+$Id: prntenv.c,v 1.15 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,7 +44,7 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
     if (time_string == 0)
       PRIMITIVE_RETURN (SHARP_F);
     (time_string[24]) = '\0';
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) time_string));
+    PRIMITIVE_RETURN (char_pointer_to_string (time_string));
   }
 }
 
@@ -60,7 +60,7 @@ The result is either a string (the variable's value),\n\
     PRIMITIVE_RETURN
       ((variable_value == 0)
        ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) variable_value)));
+       : (char_pointer_to_string (variable_value)));
   }
 }
 

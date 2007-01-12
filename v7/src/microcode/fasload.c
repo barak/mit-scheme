@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.98 2007/01/05 21:19:25 cph Exp $
+$Id: fasload.c,v 9.99 2007/01/12 03:45:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -855,9 +855,9 @@ The result is a string, or #F if the system was not restored.")
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN
     ((reload_band_name != 0)
-     ? (char_pointer_to_string ((unsigned char *) reload_band_name))
+     ? (char_pointer_to_string (reload_band_name))
      : (option_band_file != 0)
-     ? (char_pointer_to_string ((unsigned char *) option_band_file))
+     ? (char_pointer_to_string (option_band_file))
      : SHARP_F);
 }
 
