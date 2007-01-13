@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.30 2007/01/13 07:12:29 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.31 2007/01/13 07:45:54 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -658,20 +658,27 @@ fi
 dnl PostgreSQL support
 if test "${with_libpq}" != no; then
     if test "${with_libpq}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_libpq}/include"
-	LDFLAGS="${LDFLAGS} -L${with_libpq}/lib"
+	libpq_inc=${with_libpq}/include
+	libpq_lib=${with_libpq}/lib
     else
 	AC_PATH_PROG([PG_CONFIG], [pg_config])
-	if test ${PG_CONFIG} != no; then
+	if test "x${PG_CONFIG}" != x; then
 	    libpq_inc=`${PG_CONFIG} --includedir 2>/dev/null`
-	    if test "${libpq_inc}" != /usr/include; then
-		CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
-	    fi
 	    libpq_lib=`${PG_CONFIG} --libdir 2>/dev/null`
-	    if test "${libpq_lib}" != /usr/lib; then
-		LDFLAGS="${LDFLAGS} -L${libpq_lib}"
+	else
+	    if test -d /usr/include/postgresql; then
+	       libpq_inc=/usr/include/postgresql
+	    else
+	       libpq_inc=/usr/include
 	    fi
+	    libpq_lib=/usr/lib
 	fi
+    fi
+    if test "${libpq_inc}" != /usr/include; then
+	CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
+    fi
+    if test "${libpq_lib}" != /usr/lib; then
+	LDFLAGS="${LDFLAGS} -L${libpq_lib}"
     fi
     AC_CHECK_HEADER([libpq-fe.h],
 	[
