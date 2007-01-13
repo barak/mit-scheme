@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.29 2007/01/12 03:14:55 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.30 2007/01/13 07:12:29 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -285,15 +285,15 @@ AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
-AC_TYPE_INT8_T
-AC_TYPE_INT16_T
-AC_TYPE_INT32_T
-AC_TYPE_INTPTR_T
+#AC_TYPE_INT8_T
+#AC_TYPE_INT16_T
+#AC_TYPE_INT32_T
+#AC_TYPE_INTPTR_T
 
-AC_TYPE_UINT8_T
-AC_TYPE_UINT16_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINTPTR_T
+#AC_TYPE_UINT8_T
+#AC_TYPE_UINT16_T
+#AC_TYPE_UINT32_T
+#AC_TYPE_UINTPTR_T
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
@@ -304,8 +304,8 @@ AC_CHECK_SIZEOF([unsigned short])
 AC_CHECK_SIZEOF([unsigned int])
 AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_SIZEOF([void *])
-AC_CHECK_SIZEOF([intptr_t])
-AC_CHECK_SIZEOF([uintptr_t])
+#AC_CHECK_SIZEOF([intptr_t])
+#AC_CHECK_SIZEOF([uintptr_t])
 
 if test ${ac_cv_sizeof_char} -ne 1; then
     AC_MSG_ERROR([SIZEOF_CHAR is not 1])
@@ -634,13 +634,24 @@ if test "${with_db_4}" != no; then
 	[
 	AC_DEFINE([HAVE_DB_H], [1],
 	    [Define to 1 if you have the <db.h> header file.])
-	AC_CHECK_LIB([db-4], [db_create],
+	AC_MSG_CHECKING([for db_create in -ldb-4])
+	save_LIBS=${LIBS}
+	LIBS="${LIBS} -ldb-4"
+	AC_LINK_IFELSE(
+	    [AC_LANG_PROGRAM(
+		[[#include <db.h>]],
+		[[db_create (0, 0, 0)]])],
 	    [
+	    AC_MSG_RESULT([yes])
 	    AC_DEFINE([HAVE_LIBDB_4], [1], 
 		[Define to 1 if you have the `db-4' library (-ldb-4).])
 	    MODULE_LIBS="-ldb-4 ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prdb4"
+	    ],
+	    [
+	    AC_MSG_RESULT([no])
 	    ])
+	LIBS=${save_LIBS}
 	])
 fi
 
