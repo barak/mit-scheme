@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.97 2007/01/05 21:19:24 cph Exp $
+$Id: vc.scm,v 1.98 2007/01/14 01:58:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2142,7 +2142,9 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'DIFF vc-type:svn
   (lambda (master rev1 rev2 simple?)
-    (let ((buffer (get-vc-diff-buffer simple?)))
+    (let ((buffer (get-vc-diff-buffer simple?))
+	  (switches
+	   (ref-variable diff-switches (vc-workfile-buffer master #f))))
       (let ((options `((STATUS 1) (BUFFER ,buffer))))
 	(if (equal? "0" (vc-backend-workfile-revision master))
 	    ;; This file is added but not yet committed; there is no
@@ -2157,18 +2159,19 @@ the value of vc-log-mode-hook."
 		  ;; Diff against /dev/null.
 		  (= 1
 		     (vc-run-command master options "diff"
-				     (ref-variable diff-switches
-						   (vc-workfile-buffer master
-								       #f))
+				     switches
 				     "/dev/null"
 				     (file-pathname
 				      (vc-master-workfile master))))))
 	    (begin
 	      (vc-run-command master options "svn" "diff"
-			      (and simple?
-				   (ref-variable
-				    diff-switches
-				    (vc-workfile-buffer master #f)))
+			      (if simple?
+				  #f
+				  (let loop ((switches switches))
+				    (if (pair? switches)
+					(cons* "-x" (car switches)
+					       (loop (cdr switches)))
+					'())))
 			      (and rev1 (string-append "-r" rev1))
 			      (and rev2 (string-append "-r" rev2))
 			      (file-pathname (vc-master-workfile master)))
