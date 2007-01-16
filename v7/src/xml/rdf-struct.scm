@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.24 2007/01/05 21:19:29 cph Exp $
+$Id: rdf-struct.scm,v 1.25 2007/01/16 21:16:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -303,7 +303,7 @@ USA.
 
 (define (rdf-qname? object)
   (and (interned-symbol? object)
-       (complete-match match-qname (symbol-name object))))
+       (match-prefix (string->parser-buffer (symbol-name object)))))
 
 (define-guarantee rdf-qname "RDF QName")
 
@@ -312,9 +312,6 @@ USA.
        (complete-match match-prefix (symbol-name object))))
 
 (define-guarantee rdf-prefix "RDF prefix")
-
-(define match-qname
-  (*matcher (seq match-prefix match:name)))
 
 (define match-prefix
   (*matcher (seq (? match:prefix-name) ":")))
