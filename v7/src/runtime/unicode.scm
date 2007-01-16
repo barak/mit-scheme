@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.29 2007/01/05 21:19:28 cph Exp $
+$Id: unicode.scm,v 1.30 2007/01/16 08:03:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,9 +46,6 @@ USA.
 ;;; this is disallowed.  For example, #\A is normally represented as
 ;;; #x41, but could also be written as #xC1 #x81, or even longer
 ;;; sequences.
-;;;
-;;; Additionally, the codes #xD800 through #xDFFF, #xFFFE, and #xFFFF
-;;; are disallowed, as they are not valid Unicode characters.
 ;;;
 ;;; UTF-16 encoding
 ;;; ===============
@@ -138,8 +135,7 @@ USA.
 
 (define (wide-char? object)
   (and (char? object)
-       (fix:= (char-bits object) 0)
-       (unicode-code-point? (char-code object))))
+       (legal-code-32? (char->integer object))))
 
 (define-guarantee wide-char "a Unicode character")
 
@@ -150,16 +146,16 @@ USA.
 (define-guarantee unicode-code-point "a Unicode code point")
 
 (define-integrable (legal-code-32? pt)
-  (if (fix:< pt #x10000)
-      (legal-code-16? pt)
-      (fix:< pt char-code-limit)))
+  (and (fix:< pt char-code-limit)
+       (not (non-character? pt))))
 
 (define-integrable (legal-code-16? pt)
-  (not (illegal-code-16? pt)))
+  (not (non-character? pt)))
 
-(define-integrable (illegal-code-16? pt)
-  (or (fix:= #xD800 (fix:and #xF800 pt))
-      (fix:= #xFFFE (fix:and #xFFFE pt))))
+(define-integrable (non-character? pt)
+  (or (and (fix:>= pt #xD800) (fix:< pt #xDFFF))
+      (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
+      (fix:= #x00FFFE (fix:and #x00FFFE pt))))
 
 ;;;; Alphabets
 
@@ -795,7 +791,7 @@ USA.
 		    (error "Illegal UTF-16 subsequent digit:" d1))
 		(combine-surrogates d0 d1))
 	      (begin
-		(if (illegal-code-16? d0)
+		(if (non-character? d0)
 		    (error:not-unicode-code-point d0 caller))
 		d0))))))
 
@@ -971,7 +967,7 @@ USA.
 		 (let ((b1 (get-next)))
 		   (%vc3 b0 b1)
 		   (let ((pt (%cp3 b0 b1 (get-next))))
-		     (if (illegal-code-16? pt)
+		     (if (non-character? pt)
 			 (error:not-unicode-code-point pt caller))
 		     pt)))
 		((fix:< b0 #xF8)
