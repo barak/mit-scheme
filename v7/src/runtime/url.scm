@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.49 2007/01/17 03:31:00 cph Exp $
+$Id: url.scm,v 1.50 2007/01/17 16:04:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -333,10 +333,10 @@ USA.
   ;; Kludge: take advantage of fact that (NOT (NOT #!DEFAULT)).
   (let* ((do-parse
 	  (lambda (string)
-	    (let ((uri (*parse-string parser string)))
-	      (if (and (not uri) caller)
+	    (let ((v (*parse-string parser string)))
+	      (if (and (not v) caller)
 		  (error:bad-range-argument object caller))
-	      uri)))
+	      (vector-ref v 0))))
 	 (do-string
 	  (lambda (string)
 	    (or (hash-table/get interned-uris string #f)
