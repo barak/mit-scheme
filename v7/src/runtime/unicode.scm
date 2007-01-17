@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.30 2007/01/16 08:03:05 cph Exp $
+$Id: unicode.scm,v 1.31 2007/01/17 15:42:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -140,8 +140,12 @@ USA.
 (define-guarantee wide-char "a Unicode character")
 
 (define (unicode-code-point? object)
+  (and (%unicode-code-point? object)
+       (not (non-character? object))))
+
+(define (%unicode-code-point? object)
   (and (index-fixnum? object)
-       (legal-code-32? object)))
+       (fix:< pt char-code-limit)))
 
 (define-guarantee unicode-code-point "a Unicode code point")
 
@@ -217,10 +221,10 @@ USA.
 
 (define (well-formed-item? item)
   (if (pair? item)
-      (and (unicode-code-point? (car item))
-	   (unicode-code-point? (cdr item))
+      (and (%unicode-code-point? (car item))
+	   (%unicode-code-point? (cdr item))
 	   (fix:< (car item) (cdr item)))
-      (unicode-code-point? item)))
+      (%unicode-code-point? item)))
 
 (define-guarantee well-formed-code-point-list "a Unicode code-point list")
 
