@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.31 2007/01/17 15:42:39 cph Exp $
+$Id: unicode.scm,v 1.32 2007/01/17 15:58:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -145,7 +145,7 @@ USA.
 
 (define (%unicode-code-point? object)
   (and (index-fixnum? object)
-       (fix:< pt char-code-limit)))
+       (fix:< object char-code-limit)))
 
 (define-guarantee unicode-code-point "a Unicode code point")
 
