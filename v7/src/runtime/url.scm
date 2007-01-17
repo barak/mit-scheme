@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.50 2007/01/17 16:04:37 cph Exp $
+$Id: url.scm,v 1.51 2007/01/17 21:01:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -369,7 +369,9 @@ USA.
 	   (default-object? start)
 	   (default-object? end)
 	   (hash-table/get interned-uris string #f))
-      (*parse-string parser string start end)
+      (let ((v (*parse-string parser string start end)))
+	(and v
+	     (vector-ref v 0)))
       (error:bad-range-argument string caller)))
 
 (define parse-uri
