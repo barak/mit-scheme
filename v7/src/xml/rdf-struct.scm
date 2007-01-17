@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.26 2007/01/17 03:42:52 cph Exp $
+$Id: rdf-struct.scm,v 1.27 2007/01/17 21:00:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -301,8 +301,10 @@ USA.
   (*matcher (seq match-prefix match-tail)))
 
 (define (match-tail buffer)
-  (and (read-parser-buffer-char buffer)
-       (match-tail buffer)))
+  (let loop ()
+    (if (read-parser-buffer-char buffer)
+	(loop)))
+  #t)
 
 (define (rdf-prefix? object)
   (and (interned-symbol? object)
