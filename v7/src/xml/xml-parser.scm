@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.72 2007/01/05 21:19:29 cph Exp $
+$Id: xml-parser.scm,v 1.73 2007/01/17 03:43:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -86,35 +86,34 @@ USA.
   (let ((coding (determine-coding port)))
     (parse-xml (input-port->parser-buffer port)
 	       coding
-	       (if (default-object? pi-handlers)
-		   '()
-		   (begin
-		     (guarantee-pi-handlers pi-handlers 'READ-XML)
-		     pi-handlers)))))
+	       (guarantee-pi-handlers pi-handlers 'READ-XML))))
 
 (define (string->xml string #!optional start end pi-handlers)
-  (parse-xml (string->parser-buffer string
-				    (if (default-object? start) #f start)
-				    (if (default-object? end) #f end))
+  (parse-xml (string->parser-buffer string start end)
 	     (if (string? string)
 		 'ISO-8859-1
 		 'ANY)
-	     (if (default-object? pi-handlers)
-		 '()
-		 (begin
-		   (guarantee-pi-handlers pi-handlers 'STRING->XML)
-		   pi-handlers))))
+	     (guarantee-pi-handlers pi-handlers 'STRING->XML)))
+
+(define (utf8-string->xml string #!optional start end pi-handlers)
+  (parse-xml (utf8-string->parser-buffer string start end)
+	     'UTF-8
+	     (guarantee-pi-handlers pi-handlers 'UTF8-STRING->XML)))
 
 (define (guarantee-pi-handlers object caller)
-  (if (not (list-of-type? object
-	     (lambda (entry)
-	       (and (pair? entry)
-		    (symbol? (car entry))
-		    (pair? (cdr entry))
-		    (procedure? (cadr entry))
-		    (procedure-arity-valid? (cadr entry) 1)
-		    (null? (cddr entry))))))
-      (error:wrong-type-argument object "handler alist" caller)))
+  (if (default-object? object)
+      '()
+      (begin
+	(if (not (list-of-type? object
+		   (lambda (entry)
+		     (and (pair? entry)
+			  (symbol? (car entry))
+			  (pair? (cdr entry))
+			  (procedure? (cadr entry))
+			  (procedure-arity-valid? (cadr entry) 1)
+			  (null? (cddr entry))))))
+	    (error:wrong-type-argument object "handler alist" caller))
+	object)))
 
 ;;;; Character coding
 
@@ -296,12 +295,12 @@ USA.
 	   (if (and (not text-decl?) (not version))
 	       (perror p "Missing XML version"))
 	   (if (and version
-		    (not (match-xml-version (string->parser-buffer version))))
+		    (not (*match-string match-xml-version version)))
 	       (perror p "Malformed XML version" version))
 	   (if (and version (not (string=? version "1.0")))
 	       (perror p "Unsupported XML version" version))
 	   (if (not (if encoding
-			(match-encoding (string->parser-buffer encoding))
+			(*match-string match-encoding encoding)
 			(not text-decl?)))
 	       (perror p "Malformed encoding attribute" encoding))
 	   (if standalone
@@ -339,14 +338,13 @@ USA.
 
 (define match-xml-version		;[26]
   (let ((cs (char-set-union char-set:alphanumeric (string->char-set "_.:-"))))
-    (*matcher (complete (+ (char-set cs))))))
+    (*matcher (+ (char-set cs)))))
 
 (define match-encoding			;[81]
   (let ((cs (char-set-union char-set:alphanumeric (string->char-set "_.-"))))
     (*matcher
-     (complete
-      (seq (char-set char-set:alphabetic)
-	   (* (char-set cs)))))))
+     (seq (char-set char-set:alphabetic)
+	  (* (char-set cs))))))
 
 ;;;; Elements
 
@@ -840,7 +838,7 @@ USA.
   (call-with-output-string
     (lambda (port)
       (let normalize-string ((string string))
-	(let ((b (string->parser-buffer (normalize-line-endings string))))
+	(let ((b (utf8-string->parser-buffer (normalize-line-endings string))))
 	  (let loop ()
 	    (let* ((p (get-parser-buffer-pointer b))
 		   (char (read-parser-buffer-char b)))
@@ -1000,8 +998,7 @@ USA.
   (let ((v
 	 (expand-entity-value name p
 	   (lambda ()
-	     ((*parser (complete parse-content))
-	      (string->parser-buffer string))))))
+	     (*parse-utf8-string parse-content string)))))
     (if (not v)
 	(perror p "Malformed entity reference" string))
     v))
@@ -1339,7 +1336,7 @@ USA.
 	     (string? (vector-ref v 0)))
 	(let ((v*
 	       (fluid-let ((*external-expansion?* #t))
-		 (parser (string->parser-buffer (vector-ref v 0))))))
+		 (*parse-utf8-string parser (vector-ref v 0)))))
 	  (if (not v*)
 	      (perror ptr
 		      (string-append "Malformed " description)

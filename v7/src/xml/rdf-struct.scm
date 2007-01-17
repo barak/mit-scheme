@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.25 2007/01/16 21:16:46 cph Exp $
+$Id: rdf-struct.scm,v 1.26 2007/01/17 03:42:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -86,16 +86,12 @@ USA.
   (string-append "B" (number->string (hash bnode))))
 
 (define (%decode-bnode-uri uri)
-  (let ((handle-uri
-	 (lambda (uri)
-	   (let ((v
-		  (and (string? uri)
-		       (parse-bnode (string->parser-buffer uri)))))
-	     (and v
-		  (unhash (vector-ref v 0)))))))
-    (cond ((string? uri) (handle-uri uri))
-	  ((symbol? uri) (handle-uri (symbol-name uri)))
-	  (else #f))))
+  (let ((v
+	 (cond ((string? uri) (*parse-string parse-bnode uri))
+	       ((symbol? uri) (*parse-symbol parse-bnode uri))
+	       (else #f))))
+    (and v
+	 (unhash (vector-ref v 0)))))
 
 (define parse-bnode
   (let ((digits (ascii-range->char-set #x30 #x3A)))
@@ -141,15 +137,9 @@ USA.
   (%make-rdf-literal text
 		     (if (or (not type)
 			     (and (interned-symbol? type)
-				  (complete-match match-language
-						  (symbol-name type))))
+				  (*match-symbol match-language type)))
 			 type
 			 (->absolute-uri type 'RDF-LITERAL))))
-
-(define (complete-match matcher string)
-  (let ((buffer (string->parser-buffer string)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
 
 (define match-language
   (let* ((language-head (ascii-range->char-set #x61 #x7B))
@@ -279,8 +269,8 @@ USA.
 
 (define (make-rdf-qname prefix local)
   (guarantee-rdf-prefix prefix 'MAKE-RDF-QNAME)
-  (guarantee-string local 'MAKE-RDF-QNAME)
-  (if (not (complete-match match:name local))
+  (guarantee-utf8-string local 'MAKE-RDF-QNAME)
+  (if (not (*match-utf8-string match:name local))
       (error:bad-range-argument local 'MAKE-RDF-QNAME))
   (symbol prefix local))
 
@@ -303,13 +293,20 @@ USA.
 
 (define (rdf-qname? object)
   (and (interned-symbol? object)
-       (match-prefix (string->parser-buffer (symbol-name object)))))
+       (*match-symbol match-qname object)))
 
 (define-guarantee rdf-qname "RDF QName")
 
+(define match-qname
+  (*matcher (seq match-prefix match-tail)))
+
+(define (match-tail buffer)
+  (and (read-parser-buffer-char buffer)
+       (match-tail buffer)))
+
 (define (rdf-prefix? object)
   (and (interned-symbol? object)
-       (complete-match match-prefix (symbol-name object))))
+       (*match-symbol match-prefix object)))
 
 (define-guarantee rdf-prefix "RDF prefix")
 

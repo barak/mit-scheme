@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.19 2007/01/05 21:19:29 cph Exp $
+$Id: turtle.scm,v 1.20 2007/01/17 03:42:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -770,10 +770,18 @@ USA.
       (write-rdf/nt-literal-text text port)))
 
 (define (write-rdf/turtle-uri uri port)
-  (let ((qname (uri->rdf-qname uri (port/rdf-prefix-registry port) #f)))
-    (if qname
-	(write-string (symbol-name qname) port)
-	(write-rdf/nt-uri uri port))))
+  (let* ((s (uri->string uri))
+	 (end (string-length s)))
+    (receive (prefix expansion)
+	(uri->rdf-prefix uri (port/rdf-prefix-registry port) #f)
+      (if prefix
+	  (let ((start (string-length expansion)))
+	    (if (*match-string match:name s start end)
+		(begin
+		  (write-string (symbol-name prefix) port)
+		  (write-substring s start end port))
+		(write-rdf/nt-uri uri port)))
+	  (write-rdf/nt-uri uri port)))))
 
 (define (sort-triples triples)
   (sort triples
