@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: keyparse.scm,v 1.8 2007/01/05 21:19:23 cph Exp $
+$Id: keyparse.scm,v 1.9 2007/01/18 00:19:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -78,8 +78,8 @@ USA.
   (let ((leaders (description/statement-leaders description))
 	(regexp
 	 (if (compiled-regexp? regexp)
-	     (re-compile-pattern regexp #f)
-	     regexp)))
+	     regexp
+	     (re-compile-pattern regexp #f))))
     (let ((entry (assoc name leaders)))
       (if entry
 	  (set-cdr! entry (list regexp parser))
