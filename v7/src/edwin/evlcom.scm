@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.73 2007/01/05 21:19:23 cph Exp $
+$Id: evlcom.scm,v 1.74 2007/01/18 02:03:39 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -278,9 +278,8 @@ Has no effect if evaluate-in-inferior-repl is false."
     (read-from-string
      (apply prompt-for-string
 	    prompt
-	    (if (default-object? default)
-		#f
-		(write-to-string default))
+	    (and (not (default-object? default))
+		 default)
 	    'MODE
 	    (lambda (buffer)
 	      (set-buffer-major-mode! buffer
