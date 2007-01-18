@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.58 2007/01/05 21:19:28 cph Exp $
+$Id: record.scm,v 1.59 2007/01/18 02:30:37 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -375,6 +375,7 @@ USA.
 	  (let ((n (%record-type-length record-type)))
 	    (let ((record (%make-record n #f))
 		  (seen? (vector-cons n #f)))
+	      (%record-set! record 0 (%record-type-dispatch-tag record-type))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
 			     (symbol? (car kl))
