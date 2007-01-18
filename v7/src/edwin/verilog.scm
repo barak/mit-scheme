@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: verilog.scm,v 1.14 2007/01/05 21:19:24 cph Exp $
+$Id: verilog.scm,v 1.15 2007/01/18 02:15:05 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -182,27 +182,28 @@ USA.
 
 (define (define-standard-keyword keyword end parse-header)
   (define-keyparser-pattern keyword verilog-description
-    (make-keyparser-fragment 'KEYWORD
-			     keyword
-			     'PARSE-HEADER
-			     parse-header
-			     'INDENT-HEADER
-			     continued-header-indent
-			     'PARSE-BODY
-			     keyparse-forward
-			     'INDENT-BODY
-			     continued-statement-indent)
-    (and end
-	 (make-keyparser-fragment 'KEYWORD
-				  end
-				  'PARSE-HEADER
-				  parse-forward-noop
-				  'INDENT-HEADER
-				  continued-header-indent
-				  'PARSE-BODY
-				  #f
-				  'INDENT-BODY
-				  #f))))
+    (list
+     (make-keyparser-fragment 'KEYWORD
+			      keyword
+			      'PARSE-HEADER
+			      parse-header
+			      'INDENT-HEADER
+			      continued-header-indent
+			      'PARSE-BODY
+			      keyparse-forward
+			      'INDENT-BODY
+			      continued-statement-indent)
+     (and end
+	  (make-keyparser-fragment 'KEYWORD
+				   end
+				   'PARSE-HEADER
+				   parse-forward-noop
+				   'INDENT-HEADER
+				   continued-header-indent
+				   'PARSE-BODY
+				   #f
+				   'INDENT-BODY
+				   #f)))))
 
 (define-standard-keyword "always" #f
   parse-forward-noop)
