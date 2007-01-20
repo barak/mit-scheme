@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.23 2005/12/13 06:41:02 cph Exp $
+# $Id: make-dist-files,v 1.24 2007/01/20 03:43:15 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
@@ -68,7 +68,9 @@ if [ ! -f "${SRC_FILE}" ]; then
 fi
 
 MKDIR="install -d -m 755"
-INSTALL="install --preserve-timestamps"
+INSTALL="install"
+FOO=$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)
+[ -n "${FOO}" ] && INSTALL="${INSTALL} --preserve-timestamps"
 INSTALL_DATA="${INSTALL} -m 644"
 
 # It takes a lot of work to build the image.
