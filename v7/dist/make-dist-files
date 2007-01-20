@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.24 2007/01/20 03:43:15 cph Exp $
+# $Id: make-dist-files,v 1.25 2007/01/20 03:55:34 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
@@ -105,10 +105,6 @@ if [ ! -f "${STAMP_IMAGE}" ]; then
     make install-info-gz DESTDIR="${IMAGE_DIR}" \
 	infodir=/usr/local/lib/mit-scheme/edwin/info
     make install-html DESTDIR="${IMAGE_DIR}"
-
-    ${INSTALL_DATA} ${DIST_DIR}/info/dir "${AUXDIR}/edwin/info/."
-    ${INSTALL_DATA} ${DIST_DIR}/info/r4rs.* "${AUXDIR}/edwin/info/."
-    ${INSTALL_DATA} ${DIST_DIR}/info/r5rs.* "${AUXDIR}/edwin/info/."
 
     ALL_BANDS="runtime.com compiler.com edwin.com all.com 6001.com"
     case "${TYPE}" in
