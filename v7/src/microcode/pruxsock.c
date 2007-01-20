@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.26 2007/01/12 03:45:55 cph Exp $
+$Id: pruxsock.c,v 1.27 2007/01/20 23:49:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -262,9 +262,12 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
 DEFINE_PRIMITIVE ("SHUTDOWN-SOCKET", Prim_shutdown_socket, 2, 2, "")
 {
   PRIMITIVE_HEADER (2);
-  OS_shutdown_socket ((arg_client_socket (1)),
-		      (arg_integer_in_range (2, 1, 4)));
-  PRIMITIVE_RETURN (UNSPECIFIC);
+  SOCKET_CODE
+    ({
+      OS_shutdown_socket ((arg_client_socket (1)),
+			  (arg_integer_in_range (2, 1, 4)));
+      PRIMITIVE_RETURN (UNSPECIFIC);
+    });
 }
 
 DEFINE_PRIMITIVE ("NEW-OPEN-TCP-SERVER-SOCKET", Prim_new_open_tcp_server_socket, 2, 2,
