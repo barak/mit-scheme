@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.32 2007/01/20 03:08:49 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.33 2007/01/20 21:59:32 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -408,14 +408,14 @@ if test ${have_timezone_info} = no; then
 	[SCM_INC_TIME])
 fi
 
-if test -n ${val_tm_gmtoff}; then
+if test -n "${val_tm_gmtoff}"; then
     AC_DEFINE([HAVE_TM_GMTOFF], [1],
 	[Define if `struct tm' has the `tm_gmtoff' member.])
     AC_DEFINE_UNQUOTED([TM_GMTOFF], [${val_tm_gmtoff}],
 	[Define to name of `tm_gmtoff' member if available.])
 fi
 
-if test -n ${val_timezone}; then
+if test -n "${val_timezone}"; then
     AC_DEFINE([HAVE_TIMEZONE], [1],
 	[Define if timezone variable is available.])
     AC_DEFINE_UNQUOTED([TIMEZONE], [${val_timezone}],
