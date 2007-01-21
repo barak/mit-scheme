@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.21 2007/01/05 21:19:20 cph Exp $
+$Id: ctop.scm,v 1.22 2007/01/21 05:15:05 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -160,6 +160,7 @@ USA.
     (call-program* (cons (c-compiler-name)
 			 (append (c-compiler-switches)
 				 (cons*
+				  "-DCOMPILE_FOR_DYNAMIC_LOADING"
 				  "-o"
 				  object
 				  (list source)))))
@@ -274,12 +275,12 @@ USA.
 	new)))
 
 (define (c-compiler-name)
-  (or compiler:c-linker-name
+  (or compiler:c-compiler-name
       (let ((new (let ((place (find-switches #f)))
 		   (if place
 		       (list-ref place 4)
 		       "cc"))))
-	(set! compiler:c-linker-name new)
+	(set! compiler:c-compiler-name new)
 	new)))
 
 (define (c-compiler-switches)
