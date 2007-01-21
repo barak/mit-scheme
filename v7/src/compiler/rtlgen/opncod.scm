@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.77 2007/01/05 21:19:23 cph Exp $
+$Id: opncod.scm,v 4.78 2007/01/21 11:29:15 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -865,7 +865,8 @@ USA.
 	     (rtl:make-address->fixnum (rtl:make-address locative))
 	     (rtl:make-address->fixnum
 	      (rtl:make-fetch register:memory-top))))))
-	finish
+	(lambda (expression)
+	  (finish (rtl:make-true-test expression)))
 	'HEAP-AVAILABLE?
 	expressions)))
    '(0)
