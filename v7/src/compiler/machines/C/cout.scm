@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.33 2007/01/05 21:19:20 cph Exp $
+$Id: cout.scm,v 1.34 2007/01/21 22:19:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -307,7 +307,7 @@ USA.
 		   (c:case #f
 			   (c:scall "UNCACHE_VARIABLES")
 			   (c:return (c:pc-reg))))
-		 (c:group* lap-code)
+		 (c:group* (map maybe-lap-comment lap-code))
 		 extra-code)))
 	  (if top-level?
 	      (c:group
@@ -330,6 +330,20 @@ USA.
 		   (c:group (c:line)
 			    (c:data-section data-generator)))))))
        proxy))))
+
+(define (maybe-lap-comment instruction)
+  (if (lap-comment? instruction)
+      (c:line (c:comment (write-to-string (lap-comment-text instruction))))
+      instruction))
+
+(define (lap-comment? object)
+  (and (pair? object)
+       (eq? 'COMMENT (car object))
+       (pair? (cdr object))
+       (null? (cddr object))))
+
+(define (lap-comment-text comment)
+  (cadr comment))
 
 (define (make-data-generator top-level?
 			     ntags
