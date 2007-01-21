@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cutl.scm,v 1.9 2007/01/05 21:19:20 cph Exp $
+$Id: cutl.scm,v 1.10 2007/01/21 23:19:54 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -208,7 +208,23 @@ USA.
       (string=? "INVOKE_PRIMITIVE_TARGET" (c:line-text line))))
 
 (define (c:comment . content)
-  (string-append "/* " (c:line-items content) " */"))
+  (string-append "/* " (c:preserve-comment (c:line-items content)) " */"))
+
+(define (c:preserve-comment comment)
+  (cond ((string-search-forward "*/" comment)
+         => (lambda (index)
+              (call-with-output-string
+                (lambda (port)
+                  (let ((end (string-length comment)))
+                    (let loop ((start 0) (index index))
+                      (write-substring comment start index port)
+                      (write-string "*\\/" port)
+                      (let ((index (+ index 2)))
+                        (cond ((substring-search-forward "*/" comment index end)
+                               => (lambda (index*) (loop index index*)))
+                              (else
+                               (write-substring comment index end port))))))))))
+        (else comment)))
 
 (define (c:string . content)
   (string-append "\"" (c:line-items content) "\""))
