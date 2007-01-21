@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debuge.scm,v 1.60 2007/01/05 21:19:23 cph Exp $
+$Id: debuge.scm,v 1.61 2007/01/21 01:10:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -101,7 +101,8 @@ USA.
     (with-output-to-temporary-buffer "*standard-marks*" '()
       (lambda ()
 	(let ((buffer-frame (current-window)))
-	  (let ((window (car (instance-ref buffer-frame 'text-inferior)))
+	  (let ((window
+		 (vector-ref (instance-ref buffer-frame 'text-inferior) 1))
 		(buffer (window-buffer buffer-frame)))
 	    (let ((show-mark
 		   (lambda (name mark)
@@ -113,10 +114,10 @@ USA.
 		     (lambda (name)
 		       (show-mark name (instance-ref window name)))))
 		(show-instance 'point)
-		(show-instance 'start-line-mark)
+		(show-instance 'current-start-mark)
 		(show-instance 'start-mark)
-		(show-instance 'end-mark)
-		(show-instance 'end-line-mark))
+		(show-instance 'start-line-mark)
+		(show-instance 'current-end-mark))
 	      (let ((group (buffer-group buffer)))
 		(show-mark 'group-start-mark (group-start-mark group))
 		(show-mark 'group-end-mark (group-end-mark group))
