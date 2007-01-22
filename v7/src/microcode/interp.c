@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.104 2007/01/05 21:19:25 cph Exp $
+$Id: interp.c,v 9.105 2007/01/22 08:43:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,7 +37,7 @@ USA.
 #include "zones.h"
 #include "prmcon.h"
 
-extern PTR EXFUN (obstack_chunk_alloc, (unsigned int size));
+extern PTR EXFUN (obstack_chunk_alloc, (size_t size));
 extern void EXFUN (free, (PTR ptr));
 #define obstack_chunk_free free
 extern void EXFUN (back_out_of_primitive_internal, (void));

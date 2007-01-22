@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.122 2007/01/12 03:45:55 cph Exp $
+$Id: boot.c,v 9.123 2007/01/22 08:43:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -65,13 +65,13 @@ static unsigned int reload_saved_string_length;
 Boolean scheme_dumped_p = false;
 
 PTR
-DEFUN (obstack_chunk_alloc, (size), unsigned int size)
+DEFUN (obstack_chunk_alloc, (size), size_t size)
 {
   PTR result = (malloc (size));
   if (result == 0)
     {
       outf_fatal ("\n%s: unable to allocate obstack chunk of %d bytes\n",
-	       scheme_program_name, size);
+		  scheme_program_name, ((int) size));
       Microcode_Termination (TERM_EXIT);
     }
   return (result);
