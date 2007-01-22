@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.33 2007/01/20 21:59:32 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.34 2007/01/22 06:11:07 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -696,18 +696,25 @@ fi
 
 dnl Decide whether we're using static or dynamic libraries.
 if test "${enable_static_libs}" = no; then
-    AC_CHECK_LIB([dl], [dlopen],
+    AC_CHECK_LIB([c], [dlopen],
 	[
-	AC_DEFINE([HAVE_LIBDL], [1],
-	    [Define to 1 if you have the `dl' library (-ldl).])
-	LIBS="${STATIC_LIBS} -ldl ${LIBS}"
-	STATIC_LIBS=
-	OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+	LIBS="${STATIC_LIBS} ${LIBS}"
 	],
-	[enable_static_libs=yes])
+	[
+	AC_CHECK_LIB([dl], [dlopen],
+	    [
+	    AC_DEFINE([HAVE_LIBDL], [1],
+		[Define to 1 if you have the `dl' library (-ldl).])
+	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
+	    ],
+	    [enable_static_libs=yes])
+	]
 fi
 if test ${enable_static_libs} != no; then
     STATIC_LIBS=${MODULE_LIBS}${STATIC_LIBS}
+else
+    STATIC_LIBS=
+    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
 fi
 
 if test ${enable_valgrind_mode} != no; then
@@ -739,7 +746,16 @@ freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     ;;
 darwin*)
+    LDFLAGS="${LDFLAGS} -Wl,-pagezero_size,04000000"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -dynamiclib -flat_namespace -undefined suppress"
+    ;;
+netbsd*)
+    DO_GCC_TESTS=yes
+    dnl NetBSD, by default, has programs find non-base libraries via RPATH
+    if test "x${x_libraries}" != x; then
+	FOO=-Wl,-rpath,`echo ${x_libraries} | sed -e "s/:/ -Wl,-rpath,/g"`
+	LDFLAGS="${LDFLAGS} ${FOO}"
+    fi
     ;;
 solaris*)
     if test ${GCC} = yes; then
