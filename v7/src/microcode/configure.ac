@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.34 2007/01/22 06:11:07 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.35 2007/01/22 06:38:39 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -696,7 +696,7 @@ fi
 
 dnl Decide whether we're using static or dynamic libraries.
 if test "${enable_static_libs}" = no; then
-    AC_CHECK_LIB([c], [dlopen],
+    AC_CHECK_FUNC([dlopen],
 	[
 	LIBS="${STATIC_LIBS} ${LIBS}"
 	],
@@ -708,7 +708,7 @@ if test "${enable_static_libs}" = no; then
 	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
 	    ],
 	    [enable_static_libs=yes])
-	]
+	])
 fi
 if test ${enable_static_libs} != no; then
     STATIC_LIBS=${MODULE_LIBS}${STATIC_LIBS}
