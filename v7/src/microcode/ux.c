@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.30 2007/01/05 21:19:25 cph Exp $
+$Id: ux.c,v 1.31 2007/01/22 07:47:39 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -708,6 +708,14 @@ mmap_heap_malloc (unsigned long requested_length)
     unsigned long ps = (UX_getpagesize ());
     request = (((requested_length + (ps - 1)) / ps) * ps);
   }
+#ifdef __APPLE__
+  /* On OS X, we reserved the __PAGEZERO segment up to 0x4000000 by a */
+  /* magic linker command, but it works only if we request MAP_FIXED. */
+  /* (The third argument to `mmap_heap_malloc_1' specifies this.)     */
+  /* Since OS X does no address space randomization and has no /proc/ */
+  /* directory, there's no need to try `find_suitable_address'.       */
+  result = (mmap_heap_malloc_1 (min_result, request, true));
+#else
   switch (find_suitable_address (request,
 				 min_result,
 				 max_result,
@@ -725,6 +733,7 @@ mmap_heap_malloc (unsigned long requested_length)
       result = (mmap_heap_malloc_1 (min_result, request, false));
       break;
     }
+#endif
   if (result != 0)
     {
       if ((((unsigned long) result) >= min_result)
