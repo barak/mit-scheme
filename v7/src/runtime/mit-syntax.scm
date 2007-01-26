@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.29 2007/01/05 21:19:28 cph Exp $
+$Id: mit-syntax.scm,v 14.30 2007/01/26 02:38:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -413,7 +413,8 @@ USA.
 		   (bindings (caddr form))
 		   (body (cdddr form)))
 	       `((,(rename 'LETREC)
-		  ((,name (,(rename 'LAMBDA) ,(map car bindings) ,@body)))
+		  ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
+						   ,@body)))
 		  ,name)
 		 ,@(map (lambda (binding)
 			  (if (pair? (cdr binding))
