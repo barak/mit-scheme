@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.22 2007/01/21 05:15:05 riastradh Exp $
+$Id: ctop.scm,v 1.23 2007/01/28 23:03:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -186,14 +186,14 @@ USA.
     ("MacOSX"				; "MacOSX-PowerPC-32"
      "dylib"
      ("-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-dynamiclib" "-flat_namespace" "-undefined" "suppress")
+     ("-dylib" "-flat_namespace" "-undefined" "suppress")
      "cc"
      "ld")
     ;; 64-bit PowerPC MacOSX
     ("MacOSX-PowerPC-64"
      "dylib"
      ("-m64" "-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-m64" "-dynamiclib" "-flat_namespace" "-undefined" "suppress")
+     ("-m64" "-dylib" "-flat_namespace" "-undefined" "suppress")
      "gcc-4.0"
      "ld")
     ;; 32-bit i386 Linux
