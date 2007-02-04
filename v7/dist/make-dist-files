@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-dist-files,v 1.25 2007/01/20 03:55:34 cph Exp $
+# $Id: make-dist-files,v 1.26 2007/02/04 02:56:10 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
@@ -83,7 +83,7 @@ if [ ! -f "${STAMP_BUILD}" ];then
 
     cd "${BUILD_DIR}/src"
     ./configure --enable-static-libs=yes --enable-dynamic-modules=no \
-	--with-mcrypt=no --with-libpq=no --with-db4=no
+	--with-mcrypt=no --with-libpq=no --with-db-4=no
     make
 
     cd "${BUILD_DIR}/doc"
