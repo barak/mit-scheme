@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.10 2007/01/05 21:19:28 cph Exp $
+$Id: syntax-rules.scm,v 14.11 2007/02/04 00:17:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,7 +43,7 @@ USA.
        (expand/syntax-rules form rename compare syntax-error)))))
 
 (define (expand/syntax-rules form rename compare syntax-error)
-  (if (syntax-match? '((* IDENTIFIER) + ((IDENTIFIER . DATUM) EXPRESSION))
+  (if (syntax-match? '((* IDENTIFIER) * ((IDENTIFIER . DATUM) EXPRESSION))
 		     (cdr form))
       (let ((keywords (cadr form))
 	    (clauses (cddr form)))
