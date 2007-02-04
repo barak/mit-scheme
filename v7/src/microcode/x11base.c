@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.92 2007/02/04 18:36:12 riastradh Exp $
+$Id: x11base.c,v 1.93 2007/02/04 18:39:05 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1038,8 +1038,10 @@ xw_process_event (struct xwindow * xw, XEvent * event)
     case MappingNotify:
       switch ((event->xmapping) . request)
 	{
-	case MappingKeyboard:
 	case MappingModifier:
+	  x_initialize_display_modifier_masks ((XW_XD (xw)));
+	  /* Fall through. */
+	case MappingKeyboard:
 	  XRefreshKeyboardMapping (& (event->xmapping));
 	  break;
 	}
