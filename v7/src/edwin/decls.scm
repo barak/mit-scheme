@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.80 2007/01/05 21:19:23 cph Exp $
+$Id: decls.scm,v 1.81 2007/02/05 18:26:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -53,15 +53,27 @@ USA.
 				   true))))))))
 	      (if (not (null? reasons))
 		  (begin
-		    (write-notification-line
-		     (lambda (port)
-		       (write-string "Processing " port)
-		       (write source port)
-		       (write-string " because of:" port)
-		       (for-each (lambda (reason)
-				   (write-char #\space port)
-				   (write reason port))
-				 reasons)))
+		    (if (environment-bound? system-global-environment
+					    'write-notification-line)
+			(write-notification-line
+			 (lambda (port)
+			   (write-string "Processing " port)
+			   (write source port)
+			   (write-string " because of:" port)
+			   (for-each (lambda (reason)
+				       (write-char #\space port)
+				       (write reason port))
+				     reasons)))
+			(begin
+			  (fresh-line)
+			  (write-string "Processing ")
+			  (write source)
+			  (write-string " because of:")
+			  (for-each (lambda (reason)
+				      (write-char #\space)
+				      (write reason))
+				    reasons)
+			  (newline)))
 		    (fluid-let ((sf/default-syntax-table environment)
 				(sf/default-declarations
 				 (map (lambda (dependency)

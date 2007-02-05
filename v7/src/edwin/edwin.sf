@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.sf,v 1.36 2007/01/05 21:19:23 cph Exp $
+$Id: edwin.sf,v 1.37 2007/02/05 18:26:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,13 +52,22 @@ USA.
 
 (let ((read-class-definitions
        (lambda (filename)
-	 (with-notification
-	     (lambda (port)
-	       (write-string "Pre-loading class definitions from " port)
-	       (write filename port))
-	   (lambda ()
-	     (syntax* (read-file (string-append filename ".scm"))
-		      (->environment '(EDWIN WINDOW))))))))
+	 (if (environment-bound? system-global-environment 'with-notification)
+	     (with-notification
+		 (lambda (port)
+		   (write-string "Pre-loading class definitions from " port)
+		   (write filename port))
+	       (lambda ()
+		 (syntax* (read-file (string-append filename ".scm"))
+			  (->environment '(EDWIN WINDOW)))))
+	     (begin
+	       (fresh-line)
+	       (write-string "Pre-loading class definitions from ")
+	       (write filename)
+	       (syntax* (read-file (string-append filename ".scm"))
+			(->environment '(EDWIN WINDOW)))
+	       (write-string " -- done")
+	       (newline))))))
   (read-class-definitions "window")
   (read-class-definitions "utlwin")
   (read-class-definitions "modwin")
