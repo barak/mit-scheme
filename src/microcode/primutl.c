@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.80 2005/07/24 05:08:55 cph Exp $
+$Id: primutl.c,v 9.83 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1993,2000,2001,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -345,9 +347,25 @@ DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
 SCHEME_OBJECT
 DEFUN (make_primitive, (name, arity), char * name AND int arity)
 {
-  SCHEME_OBJECT result;
+  /* This copies the name (and probes twice) because unstackify'd
+     primitive name strings are ephemeral.
+  */
 
-  result = (declare_primitive (name,
+  SCHEME_OBJECT result;
+  char * name_to_insert;
+  tree_node prim = (tree_lookup (prim_procedure_tree, name));
+				 
+  if (prim != ((tree_node) NULL))
+    name_to_insert = ((char *) (prim->name));
+  else
+  {
+    name_to_insert = ((char *) (malloc (1 + (strlen (name)))));
+    if (name_to_insert == ((char *) NULL))
+      error_in_system_call (syserr_not_enough_space, syscall_malloc);
+    strcpy (name_to_insert, name);
+  }
+
+  result = (declare_primitive (name_to_insert,
 			       Prim_unimplemented,
 			       arity,
 			       arity,

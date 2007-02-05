@@ -1,0 +1,255 @@
+# This file automatically generated at 2007-02-05T13:53:01-0500.
+
+LIARC_HEAD_FILES = ansidecl.h cmpgc.h cmpintmd.h cmptype.h config.h \
+	confshared.h const.h default.h dstack.h errors.h extern.h interp.h \
+	liarc.h object.h outf.h prim.h sdata.h trap.h types.h
+
+LIARC_SOURCES = utabmd.c ../runtime/advice.c ../runtime/apply.c \
+	../runtime/apropos.c ../runtime/arith.c ../runtime/berkeley-db.c \
+	../runtime/bitstr.c ../runtime/blowfish.c ../runtime/boole.c \
+	../runtime/boot.c ../runtime/char.c ../runtime/chrset.c \
+	../runtime/chrsyn.c ../runtime/codwlk.c ../runtime/conpar.c \
+	../runtime/contin.c ../runtime/cpoint.c ../runtime/cpress.c \
+	../runtime/crypto.c ../runtime/datime.c ../runtime/dbgcmd.c \
+	../runtime/dbgutl.c ../runtime/debug.c ../runtime/defstr.c \
+	../runtime/dosdir.c ../runtime/dosprm.c ../runtime/dosproc.c \
+	../runtime/dospth.c ../runtime/dragon4.c ../runtime/ed-ffi.c \
+	../runtime/emacs.c ../runtime/equals.c ../runtime/error.c \
+	../runtime/events.c ../runtime/fileio.c ../runtime/fixart.c \
+	../runtime/format.c ../runtime/framex.c ../runtime/gc.c \
+	../runtime/gcdemn.c ../runtime/gcfinal.c ../runtime/gcnote.c \
+	../runtime/gcstat.c ../runtime/gdatab.c ../runtime/gdbm.c \
+	../runtime/gencache.c ../runtime/geneqht.c ../runtime/generic.c \
+	../runtime/genio.c ../runtime/genmult.c ../runtime/gensym.c \
+	../runtime/gentag.c ../runtime/global.c ../runtime/graphics.c \
+	../runtime/hash.c ../runtime/hashtb.c ../runtime/histry.c \
+	../runtime/http-client.c ../runtime/infstr.c ../runtime/infutl.c \
+	../runtime/input.c ../runtime/intrpt.c ../runtime/io.c \
+	../runtime/krypt.c ../runtime/kryptdum.c ../runtime/lambda.c \
+	../runtime/lambdx.c ../runtime/list.c ../runtime/load.c \
+	../runtime/make.c ../runtime/mime-codec.c ../runtime/mit-syntax.c \
+	../runtime/msort.c ../runtime/ntdir.c ../runtime/ntprm.c \
+	../runtime/numint.c ../runtime/numpar.c ../runtime/option.c \
+	../runtime/optiondb.c ../runtime/ordvec.c ../runtime/os2ctype.c \
+	../runtime/os2dir.c ../runtime/os2graph.c ../runtime/os2prm.c \
+	../runtime/os2winp.c ../runtime/output.c ../runtime/packag.c \
+	../runtime/parse.c ../runtime/parser-buffer.c ../runtime/partab.c \
+	../runtime/pathnm.c ../runtime/pgsql.c ../runtime/poplat.c \
+	../runtime/port.c ../runtime/pp.c ../runtime/prgcop.c \
+	../runtime/process.c ../runtime/prop1d.c ../runtime/prop2d.c \
+	../runtime/qsort.c ../runtime/queue.c ../runtime/random.c \
+	../runtime/rbtree.c ../runtime/record.c ../runtime/recslot.c \
+	../runtime/regexp.c ../runtime/rep.c ../runtime/rexp.c \
+	../runtime/rgxcmp.c ../runtime/savres.c ../runtime/scan.c \
+	../runtime/scode.c ../runtime/scomb.c ../runtime/sdata.c \
+	../runtime/sfile.c ../runtime/socket.c ../runtime/srfi-1.c \
+	../runtime/starbase.c ../runtime/stream.c ../runtime/string.c \
+	../runtime/strnin.c ../runtime/strott.c ../runtime/strout.c \
+	../runtime/symbol.c ../runtime/syncproc.c \
+	../runtime/syntactic-closures.c ../runtime/syntax-check.c \
+	../runtime/syntax-output.c ../runtime/syntax-rules.c \
+	../runtime/syntax-transforms.c ../runtime/sysclk.c \
+	../runtime/sysmac.c ../runtime/system.c ../runtime/thread.c \
+	../runtime/tscript.c ../runtime/ttyio.c ../runtime/tvector.c \
+	../runtime/udata.c ../runtime/uenvir.c ../runtime/uerror.c \
+	../runtime/unicode.c ../runtime/unpars.c ../runtime/unsyn.c \
+	../runtime/unxdir.c ../runtime/unxprm.c ../runtime/unxpth.c \
+	../runtime/uproc.c ../runtime/url.c ../runtime/urtrap.c \
+	../runtime/usrint.c ../runtime/utabs.c ../runtime/vector.c \
+	../runtime/version.c ../runtime/where.c ../runtime/win32-registry.c \
+	../runtime/wind.c ../runtime/wrkdir.c ../runtime/wttree.c \
+	../runtime/x11graph.c ../runtime/xeval.c ../runtime/ystep.c \
+	../sf/butils.c ../sf/cgen.c ../sf/chtype.c ../sf/copy.c \
+	../sf/emodel.c ../sf/free.c ../sf/gconst.c ../sf/gimprt.c \
+	../sf/lsets.c ../sf/make.c ../sf/object.c ../sf/pardec.c \
+	../sf/pthmap.c ../sf/reduct.c ../sf/subst.c ../sf/table.c \
+	../sf/tables.c ../sf/toplev.c ../sf/usicon.c ../sf/usiexp.c \
+	../sf/xform.c ../cref/anfile.c ../cref/conpkg.c ../cref/forpkg.c \
+	../cref/make.c ../cref/mset.c ../cref/object.c ../cref/redpkg.c \
+	../cref/toplev.c ../compiler/back/asmmac.c ../compiler/back/asutl.c \
+	../compiler/back/bittop.c ../compiler/back/bitutl.c \
+	../compiler/back/insseq.c ../compiler/back/lapgn1.c \
+	../compiler/back/lapgn2.c ../compiler/back/lapgn3.c \
+	../compiler/back/linear.c ../compiler/back/mermap.c \
+	../compiler/back/regmap.c ../compiler/back/syerly.c \
+	../compiler/back/symtab.c ../compiler/back/syntax.c \
+	../compiler/base/asstop.c ../compiler/base/blocks.c \
+	../compiler/base/cfg1.c ../compiler/base/cfg2.c \
+	../compiler/base/cfg3.c ../compiler/base/constr.c \
+	../compiler/base/contin.c ../compiler/base/crsend.c \
+	../compiler/base/crstop.c ../compiler/base/ctypes.c \
+	../compiler/base/debug.c ../compiler/base/enumer.c \
+	../compiler/base/infnew.c ../compiler/base/lvalue.c \
+	../compiler/base/macros.c ../compiler/base/make.c \
+	../compiler/base/mvalue.c ../compiler/base/object.c \
+	../compiler/base/pmerly.c ../compiler/base/pmlook.c \
+	../compiler/base/pmpars.c ../compiler/base/proced.c \
+	../compiler/base/refctx.c ../compiler/base/rvalue.c \
+	../compiler/base/scode.c ../compiler/base/sets.c \
+	../compiler/base/subprb.c ../compiler/base/switch.c \
+	../compiler/base/toplev.c ../compiler/base/utils.c \
+	../compiler/fggen/canon.c ../compiler/fggen/declar.c \
+	../compiler/fggen/fggen.c ../compiler/fgopt/blktyp.c \
+	../compiler/fgopt/closan.c ../compiler/fgopt/conect.c \
+	../compiler/fgopt/contan.c ../compiler/fgopt/delint.c \
+	../compiler/fgopt/desenv.c ../compiler/fgopt/envopt.c \
+	../compiler/fgopt/folcon.c ../compiler/fgopt/offset.c \
+	../compiler/fgopt/operan.c ../compiler/fgopt/order.c \
+	../compiler/fgopt/outer.c ../compiler/fgopt/param.c \
+	../compiler/fgopt/reord.c ../compiler/fgopt/reteqv.c \
+	../compiler/fgopt/reuse.c ../compiler/fgopt/sideff.c \
+	../compiler/fgopt/simapp.c ../compiler/fgopt/simple.c \
+	../compiler/fgopt/subfre.c ../compiler/fgopt/varind.c \
+	../compiler/machines/C/cout.c ../compiler/machines/C/ctop.c \
+	../compiler/machines/C/cutl.c ../compiler/machines/C/decls.c \
+	../compiler/machines/C/lapgen.c ../compiler/machines/C/machin.c \
+	../compiler/machines/C/make.c ../compiler/machines/C/rgspcm.c \
+	../compiler/machines/C/rules1.c ../compiler/machines/C/rules2.c \
+	../compiler/machines/C/rules3.c ../compiler/machines/C/rules4.c \
+	../compiler/machines/C/rulfix.c ../compiler/machines/C/rulflo.c \
+	../compiler/machines/C/rulrew.c ../compiler/machines/C/stackify.c \
+	../compiler/machines/C/stackops.c \
+	../compiler/machines/C/traditional.c ../compiler/rtlbase/regset.c \
+	../compiler/rtlbase/rgraph.c ../compiler/rtlbase/rtlcfg.c \
+	../compiler/rtlbase/rtlcon.c ../compiler/rtlbase/rtlexp.c \
+	../compiler/rtlbase/rtline.c ../compiler/rtlbase/rtlobj.c \
+	../compiler/rtlbase/rtlreg.c ../compiler/rtlbase/rtlty1.c \
+	../compiler/rtlbase/rtlty2.c ../compiler/rtlbase/valclass.c \
+	../compiler/rtlgen/fndblk.c ../compiler/rtlgen/fndvar.c \
+	../compiler/rtlgen/opncod.c ../compiler/rtlgen/rgcomb.c \
+	../compiler/rtlgen/rgproc.c ../compiler/rtlgen/rgretn.c \
+	../compiler/rtlgen/rgrval.c ../compiler/rtlgen/rgstmt.c \
+	../compiler/rtlgen/rtlgen.c ../compiler/rtlopt/ralloc.c \
+	../compiler/rtlopt/rcompr.c ../compiler/rtlopt/rcse1.c \
+	../compiler/rtlopt/rcse2.c ../compiler/rtlopt/rcseep.c \
+	../compiler/rtlopt/rcseht.c ../compiler/rtlopt/rcserq.c \
+	../compiler/rtlopt/rcsesr.c ../compiler/rtlopt/rdebug.c \
+	../compiler/rtlopt/rdflow.c ../compiler/rtlopt/rerite.c \
+	../compiler/rtlopt/rinvex.c ../compiler/rtlopt/rlife.c \
+	../compiler/rtlopt/rtlcsm.c ../star-parser/matcher.c \
+	../star-parser/parser.c ../star-parser/shared.c
+
+LIARC_OBJECTS = utabmd.o ../runtime/advice.o ../runtime/apply.o \
+	../runtime/apropos.o ../runtime/arith.o ../runtime/berkeley-db.o \
+	../runtime/bitstr.o ../runtime/blowfish.o ../runtime/boole.o \
+	../runtime/boot.o ../runtime/char.o ../runtime/chrset.o \
+	../runtime/chrsyn.o ../runtime/codwlk.o ../runtime/conpar.o \
+	../runtime/contin.o ../runtime/cpoint.o ../runtime/cpress.o \
+	../runtime/crypto.o ../runtime/datime.o ../runtime/dbgcmd.o \
+	../runtime/dbgutl.o ../runtime/debug.o ../runtime/defstr.o \
+	../runtime/dosdir.o ../runtime/dosprm.o ../runtime/dosproc.o \
+	../runtime/dospth.o ../runtime/dragon4.o ../runtime/ed-ffi.o \
+	../runtime/emacs.o ../runtime/equals.o ../runtime/error.o \
+	../runtime/events.o ../runtime/fileio.o ../runtime/fixart.o \
+	../runtime/format.o ../runtime/framex.o ../runtime/gc.o \
+	../runtime/gcdemn.o ../runtime/gcfinal.o ../runtime/gcnote.o \
+	../runtime/gcstat.o ../runtime/gdatab.o ../runtime/gdbm.o \
+	../runtime/gencache.o ../runtime/geneqht.o ../runtime/generic.o \
+	../runtime/genio.o ../runtime/genmult.o ../runtime/gensym.o \
+	../runtime/gentag.o ../runtime/global.o ../runtime/graphics.o \
+	../runtime/hash.o ../runtime/hashtb.o ../runtime/histry.o \
+	../runtime/http-client.o ../runtime/infstr.o ../runtime/infutl.o \
+	../runtime/input.o ../runtime/intrpt.o ../runtime/io.o \
+	../runtime/krypt.o ../runtime/kryptdum.o ../runtime/lambda.o \
+	../runtime/lambdx.o ../runtime/list.o ../runtime/load.o \
+	../runtime/make.o ../runtime/mime-codec.o ../runtime/mit-syntax.o \
+	../runtime/msort.o ../runtime/ntdir.o ../runtime/ntprm.o \
+	../runtime/numint.o ../runtime/numpar.o ../runtime/option.o \
+	../runtime/optiondb.o ../runtime/ordvec.o ../runtime/os2ctype.o \
+	../runtime/os2dir.o ../runtime/os2graph.o ../runtime/os2prm.o \
+	../runtime/os2winp.o ../runtime/output.o ../runtime/packag.o \
+	../runtime/parse.o ../runtime/parser-buffer.o ../runtime/partab.o \
+	../runtime/pathnm.o ../runtime/pgsql.o ../runtime/poplat.o \
+	../runtime/port.o ../runtime/pp.o ../runtime/prgcop.o \
+	../runtime/process.o ../runtime/prop1d.o ../runtime/prop2d.o \
+	../runtime/qsort.o ../runtime/queue.o ../runtime/random.o \
+	../runtime/rbtree.o ../runtime/record.o ../runtime/recslot.o \
+	../runtime/regexp.o ../runtime/rep.o ../runtime/rexp.o \
+	../runtime/rgxcmp.o ../runtime/savres.o ../runtime/scan.o \
+	../runtime/scode.o ../runtime/scomb.o ../runtime/sdata.o \
+	../runtime/sfile.o ../runtime/socket.o ../runtime/srfi-1.o \
+	../runtime/starbase.o ../runtime/stream.o ../runtime/string.o \
+	../runtime/strnin.o ../runtime/strott.o ../runtime/strout.o \
+	../runtime/symbol.o ../runtime/syncproc.o \
+	../runtime/syntactic-closures.o ../runtime/syntax-check.o \
+	../runtime/syntax-output.o ../runtime/syntax-rules.o \
+	../runtime/syntax-transforms.o ../runtime/sysclk.o \
+	../runtime/sysmac.o ../runtime/system.o ../runtime/thread.o \
+	../runtime/tscript.o ../runtime/ttyio.o ../runtime/tvector.o \
+	../runtime/udata.o ../runtime/uenvir.o ../runtime/uerror.o \
+	../runtime/unicode.o ../runtime/unpars.o ../runtime/unsyn.o \
+	../runtime/unxdir.o ../runtime/unxprm.o ../runtime/unxpth.o \
+	../runtime/uproc.o ../runtime/url.o ../runtime/urtrap.o \
+	../runtime/usrint.o ../runtime/utabs.o ../runtime/vector.o \
+	../runtime/version.o ../runtime/where.o ../runtime/win32-registry.o \
+	../runtime/wind.o ../runtime/wrkdir.o ../runtime/wttree.o \
+	../runtime/x11graph.o ../runtime/xeval.o ../runtime/ystep.o \
+	../sf/butils.o ../sf/cgen.o ../sf/chtype.o ../sf/copy.o \
+	../sf/emodel.o ../sf/free.o ../sf/gconst.o ../sf/gimprt.o \
+	../sf/lsets.o ../sf/make.o ../sf/object.o ../sf/pardec.o \
+	../sf/pthmap.o ../sf/reduct.o ../sf/subst.o ../sf/table.o \
+	../sf/tables.o ../sf/toplev.o ../sf/usicon.o ../sf/usiexp.o \
+	../sf/xform.o ../cref/anfile.o ../cref/conpkg.o ../cref/forpkg.o \
+	../cref/make.o ../cref/mset.o ../cref/object.o ../cref/redpkg.o \
+	../cref/toplev.o ../compiler/back/asmmac.o ../compiler/back/asutl.o \
+	../compiler/back/bittop.o ../compiler/back/bitutl.o \
+	../compiler/back/insseq.o ../compiler/back/lapgn1.o \
+	../compiler/back/lapgn2.o ../compiler/back/lapgn3.o \
+	../compiler/back/linear.o ../compiler/back/mermap.o \
+	../compiler/back/regmap.o ../compiler/back/syerly.o \
+	../compiler/back/symtab.o ../compiler/back/syntax.o \
+	../compiler/base/asstop.o ../compiler/base/blocks.o \
+	../compiler/base/cfg1.o ../compiler/base/cfg2.o \
+	../compiler/base/cfg3.o ../compiler/base/constr.o \
+	../compiler/base/contin.o ../compiler/base/crsend.o \
+	../compiler/base/crstop.o ../compiler/base/ctypes.o \
+	../compiler/base/debug.o ../compiler/base/enumer.o \
+	../compiler/base/infnew.o ../compiler/base/lvalue.o \
+	../compiler/base/macros.o ../compiler/base/make.o \
+	../compiler/base/mvalue.o ../compiler/base/object.o \
+	../compiler/base/pmerly.o ../compiler/base/pmlook.o \
+	../compiler/base/pmpars.o ../compiler/base/proced.o \
+	../compiler/base/refctx.o ../compiler/base/rvalue.o \
+	../compiler/base/scode.o ../compiler/base/sets.o \
+	../compiler/base/subprb.o ../compiler/base/switch.o \
+	../compiler/base/toplev.o ../compiler/base/utils.o \
+	../compiler/fggen/canon.o ../compiler/fggen/declar.o \
+	../compiler/fggen/fggen.o ../compiler/fgopt/blktyp.o \
+	../compiler/fgopt/closan.o ../compiler/fgopt/conect.o \
+	../compiler/fgopt/contan.o ../compiler/fgopt/delint.o \
+	../compiler/fgopt/desenv.o ../compiler/fgopt/envopt.o \
+	../compiler/fgopt/folcon.o ../compiler/fgopt/offset.o \
+	../compiler/fgopt/operan.o ../compiler/fgopt/order.o \
+	../compiler/fgopt/outer.o ../compiler/fgopt/param.o \
+	../compiler/fgopt/reord.o ../compiler/fgopt/reteqv.o \
+	../compiler/fgopt/reuse.o ../compiler/fgopt/sideff.o \
+	../compiler/fgopt/simapp.o ../compiler/fgopt/simple.o \
+	../compiler/fgopt/subfre.o ../compiler/fgopt/varind.o \
+	../compiler/machines/C/cout.o ../compiler/machines/C/ctop.o \
+	../compiler/machines/C/cutl.o ../compiler/machines/C/decls.o \
+	../compiler/machines/C/lapgen.o ../compiler/machines/C/machin.o \
+	../compiler/machines/C/make.o ../compiler/machines/C/rgspcm.o \
+	../compiler/machines/C/rules1.o ../compiler/machines/C/rules2.o \
+	../compiler/machines/C/rules3.o ../compiler/machines/C/rules4.o \
+	../compiler/machines/C/rulfix.o ../compiler/machines/C/rulflo.o \
+	../compiler/machines/C/rulrew.o ../compiler/machines/C/stackify.o \
+	../compiler/machines/C/stackops.o \
+	../compiler/machines/C/traditional.o ../compiler/rtlbase/regset.o \
+	../compiler/rtlbase/rgraph.o ../compiler/rtlbase/rtlcfg.o \
+	../compiler/rtlbase/rtlcon.o ../compiler/rtlbase/rtlexp.o \
+	../compiler/rtlbase/rtline.o ../compiler/rtlbase/rtlobj.o \
+	../compiler/rtlbase/rtlreg.o ../compiler/rtlbase/rtlty1.o \
+	../compiler/rtlbase/rtlty2.o ../compiler/rtlbase/valclass.o \
+	../compiler/rtlgen/fndblk.o ../compiler/rtlgen/fndvar.o \
+	../compiler/rtlgen/opncod.o ../compiler/rtlgen/rgcomb.o \
+	../compiler/rtlgen/rgproc.o ../compiler/rtlgen/rgretn.o \
+	../compiler/rtlgen/rgrval.o ../compiler/rtlgen/rgstmt.o \
+	../compiler/rtlgen/rtlgen.o ../compiler/rtlopt/ralloc.o \
+	../compiler/rtlopt/rcompr.o ../compiler/rtlopt/rcse1.o \
+	../compiler/rtlopt/rcse2.o ../compiler/rtlopt/rcseep.o \
+	../compiler/rtlopt/rcseht.o ../compiler/rtlopt/rcserq.o \
+	../compiler/rtlopt/rcsesr.o ../compiler/rtlopt/rdebug.o \
+	../compiler/rtlopt/rdflow.o ../compiler/rtlopt/rerite.o \
+	../compiler/rtlopt/rinvex.o ../compiler/rtlopt/rlife.o \
+	../compiler/rtlopt/rtlcsm.o ../star-parser/matcher.o \
+	../star-parser/parser.o ../star-parser/shared.o

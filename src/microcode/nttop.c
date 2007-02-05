@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.36 2006/01/29 06:37:30 cph Exp $
+$Id: nttop.c,v 1.39 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1993,1997,1998,2000,2003,2004 Massachusetts Institute of Technology
-Copyright 2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -206,12 +207,6 @@ OS_initialize (void)
 void
 OS_announcement (void)
 {
-#if 0
-  /* To make our compiler vendors happy. */
-  outf_console
-    ("Copyright (c) 1993-1995 Massachusetts Institute of Technology\n");
-  outf_console ("\n");
-#endif
 }
 
 void
@@ -487,6 +482,17 @@ bcopy (const char * s1, char * s2, int n)
     *s2++ = *s1++;
 }
 #endif
+
+/* This is called during initialization, when the error system is not
+   set up.
+*/
+
+void *
+OS_malloc_init (unsigned int size)
+{
+  void * result = (malloc (size));
+  return (result);
+}
 
 void *
 OS_malloc (unsigned int size)

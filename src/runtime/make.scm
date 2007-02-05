@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.103 2006/08/02 16:27:09 riastradh Exp $
+$Id: make.scm,v 14.108 2007/01/05 21:19:28 cph Exp $
 
-Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -243,12 +243,20 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (cond ((map-filename filename)
-	 => (lambda (mapped)
-	      (fasload mapped purify?)))
-	((not optional?)
-	 (fatal-error (string-append "Could not find " filename)))
-	(else #f)))
+  (let* ((block-name (string-append "runtime_" filename))
+	 (value (initialize-c-compiled-block block-name)))
+    (cond (value
+	   (tty-write-string newline-string)
+	   (tty-write-string block-name)
+	   (tty-write-string " initialized")
+	   (remember-to-purify purify? filename value))
+	  ((map-filename filename)
+	   => (lambda (mapped)
+		(fasload mapped purify?)))
+	  ((not optional?)
+	   (fatal-error (string-append "Could not find " filename)))
+	  (else
+	   #f))))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -279,6 +287,19 @@ USA.
 
 (define fasload-purification-queue
   '())
+
+(define (implemented-primitive-procedure? primitive)
+  ((ucode-primitive get-primitive-address)
+   (intern ((ucode-primitive get-primitive-name) (object-datum primitive)))
+   #f))
+
+(define initialize-c-compiled-block
+  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
+    (if (implemented-primitive-procedure? prim)
+	prim
+	(lambda (name)
+	  name				; ignored
+	  #f))))
 
 (define os-name
   (intern os-name-string))
@@ -316,11 +337,13 @@ USA.
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 
 (define packages-file
-  (fasload (cond ((eq? os-name 'NT) "runtime-w32.pkd")
-		 ((eq? os-name 'OS/2) "runtime-os2.pkd")
-		 ((eq? os-name 'UNIX) "runtime-unx.pkd")
-		 (else "runtime-unk.pkd"))
-	   #f))
+  (let ((name (cond ((eq? os-name 'NT) "runtime-w32")
+		    ((eq? os-name 'OS/2) "runtime-os2")
+		    ((eq? os-name 'UNIX) "runtime-unx")
+		    (else "runtime-unk"))))
+    (or (initialize-c-compiled-block (string-append "runtime_" name))
+	(fasload (string-append name ".pkd") #f))))
+
 ((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
  packages-file)
 
@@ -402,7 +425,6 @@ USA.
    (RUNTIME APPLY)
    (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
-   (RUNTIME SAVE/RESTORE)
    (RUNTIME SYSTEM-CLOCK)
    ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS! #t)
    ;; Basic data structures
@@ -447,6 +469,7 @@ USA.
    (RUNTIME GENERIC-I/O-PORT)
    (RUNTIME FILE-I/O-PORT)
    (RUNTIME CONSOLE-I/O-PORT)
+   (RUNTIME SOCKET)
    (RUNTIME TRANSCRIPT)
    (RUNTIME STRING-INPUT)
    (RUNTIME STRING-OUTPUT)

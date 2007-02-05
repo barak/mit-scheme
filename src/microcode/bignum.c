@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.52 2004/10/17 21:35:40 cph Exp $
+$Id: bignum.c,v 9.56 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1992,1993,1994,1996,1997,2000 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -591,7 +591,7 @@ DEFUN (double_to_bignum, (x), double x)
     }
     while (start < scan)
       {
-	if ((significand == 0)  || (n_valid_bits <= 0))
+	if ((significand == 0)  || (n_valid_bits == 0))
 	  {
 	    while (start < scan)
 	      (*--scan) = 0;
@@ -679,7 +679,7 @@ DEFUN (bignum_to_double, (bignum), bignum_type bignum)
 	if (current_digit_bit_count == BIGNUM_DIGIT_LENGTH) {
 	  if (index == 0) /* there is no guard bit */
 	    goto finished;
-	  guard_bit_mask = (1 << (BIGNUM_DIGIT_LENGTH - 1));
+	  guard_bit_mask = (1UL << (BIGNUM_DIGIT_LENGTH - 1));
 	  rounding_correction = 1;
 	  index -= 1;
 	} else {

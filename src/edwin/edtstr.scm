@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edtstr.scm,v 1.31 2003/03/06 05:14:21 cph Exp $
+$Id: edtstr.scm,v 1.35 2007/01/05 21:19:23 cph Exp $
 
-Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -87,6 +89,52 @@ USA.
 
 ;;;; Buttons
 
+(define-record-type <button>
+    (%%make-button number bits down? symbol)
+    button?
+  (number button-number)
+  (bits button-bits)
+  (down? button-down?)
+  (symbol button-symbol))
+
+(define (make-down-button number #!optional bits)
+  (%make-button number bits #t 'MAKE-DOWN-BUTTON))
+
+(define (make-up-button number #!optional bits)
+  (%make-button number bits #f 'MAKE-UP-BUTTON))
+
+(define (%make-button number bits down? caller)
+  (let ((bits (if (default-object? bits) 0 bits)))
+    (guarantee-limited-index-fixnum number #x100 caller)
+    (guarantee-limited-index-fixnum bits #x10 caller)
+    (let ((name
+	   (symbol (bucky-bits->prefix bits)
+		   'BUTTON-
+		   number
+		   (if down? '-DOWN '-UP))))
+      (hash-table/intern! buttons-table name
+	(lambda ()
+	  (%%make-button number bits down? name))))))
+
+(define buttons-table
+  (make-strong-eq-hash-table))
+
+(define (down-button? object)
+  (and (button? object)
+       (button-down? object)))
+
+(define (up-button? object)
+  (and (button? object)
+       (not (button-down? object))))
+
+(define (button-name button)
+  (symbol-name (button-symbol button)))
+
+(set-record-type-unparser-method! <button>
+  (simple-unparser-method (record-type-name <button>)
+    (lambda (button)
+      (list (button-symbol button)))))
+
 (define-structure (button-event (conc-name button-event/))
   (window #f read-only #t)
   (x #f read-only #t)
@@ -112,49 +160,3 @@ USA.
      thunk
      (lambda ()
        (set-editor-button-event! current-editor old-button-event)))))
-
-(define-record-type <button>
-  (%%make-button number down?)
-  button?
-  (number button/number)
-  (down? button/down?))
-
-(define make-down-button)
-(define make-up-button)
-(let ((%make-button
-       (lambda (buttons number down?)
-	 (or (vector-ref buttons number)
-	     (let ((button (%%make-button number down?)))
-	       (vector-set! buttons number button)
-	       button))))
-      (down-buttons '#())
-      (up-buttons '#()))
-  (set! make-down-button
-	(lambda (number)
-	  (if (>= number (vector-length down-buttons))
-	      (set! down-buttons (vector-grow down-buttons (+ number 1) #f)))
-	  (%make-button down-buttons number #t)))
-  (set! make-up-button
-	(lambda (number)
-	  (if (>= number (vector-length up-buttons))
-	      (set! up-buttons (vector-grow up-buttons (+ number 1) #f)))
-	  (%make-button up-buttons number #f))))
-
-(define (down-button? object)
-  (and (button? object)
-       (button/down? object)))
-
-(define (up-button? object)
-  (and (button? object)
-       (not (button/down? object))))
-
-(define (button/bucky-bits button)
-  button
-  0)
-
-(set-record-type-unparser-method! <button>
-  (standard-unparser-method (record-type-name <button>)
-    (lambda (button port)
-      (write-string (if (button/down? button) "down" "up") port)
-      (write-char #\space port)
-      (write (button/number button) port))))

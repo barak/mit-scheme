@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: foreign.c,v 1.6 2004/11/21 04:17:37 cph Exp $
+$Id: foreign.c,v 1.9 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1992, 1999, 2000 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -295,7 +297,7 @@ DEFUN (foreign_pointer_to_scheme_object, (ptr_to_ptr, type),
       case FOREIGN_STRING:
 	temp_ptr = ALIGN_FOREIGN_POINTER (*ptr_to_ptr, FOREIGN_STRING);
         *ptr_to_ptr = (((unsigned char *) temp_ptr) + 1);
-	return (char_pointer_to_string ((unsigned char *) temp_ptr;
+	return (char_pointer_to_string (temp_ptr));
       case FOREIGN_PTR:
 	temp_ptr = ALIGN_FOREIGN_POINTER (*ptr_to_ptr, FOREIGN_PTR);
         *ptr_to_ptr = (((PTR) temp_ptr) + 1);

@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: prgdbm.c,v 1.6 2003/08/21 20:59:10 cph Exp $
+$Id: prgdbm.c,v 1.9 2007/01/12 03:45:55 cph Exp $
 
-Copyright 1996,1997,1999,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -104,7 +106,7 @@ static struct allocation_table dbf_table;
   ((GDBM_FILE) (allocation_item_arg ((arg), (&dbf_table))))
 
 #define GDBM_ERROR_VAL()						\
-  (char_pointer_to_string ((unsigned char *) (gdbm_strerror (gdbm_errno))))
+  (char_pointer_to_string (gdbm_strerror (gdbm_errno)))
 
 #define VOID_GDBM_CALL(expression)					\
   (((expression) == 0) ? SHARP_F : (GDBM_ERROR_VAL ()))
@@ -238,7 +240,7 @@ DEFINE_PRIMITIVE ("GDBM-SYNC", Prim_gdbm_sync, 1, 1, 0)
 DEFINE_PRIMITIVE ("GDBM-VERSION", Prim_gdbm_version, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) gdbm_version));
+  PRIMITIVE_RETURN (char_pointer_to_string (gdbm_version));
 }
 
 DEFINE_PRIMITIVE ("GDBM-SETOPT", Prim_gdbm_setopt, 3, 3, 0)

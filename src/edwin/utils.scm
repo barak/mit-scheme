@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.55 2005/07/31 02:59:37 cph Exp $
+$Id: utils.scm,v 1.59 2007/01/05 21:19:24 cph Exp $
 
-Copyright 1986, 1989-2002 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -222,37 +224,25 @@ USA.
 	  (and (fix:>= k 0)
 	       (fix:< k 10)
 	       (loop (fix:+ index 1) (+ (* n 10) k)))))))
-
+
 (define char-set:null
   (char-set))
 
 (define char-set:return
-  (char-set #\Return))
+  (char-set #\return))
 
 (define char-set:not-space
-  (char-set-invert (char-set #\Space)))
+  (char-set-invert (char-set #\space)))
 
-(define (char-controlify char)
-  (if (ascii-controlified? char)
-      char
-      (make-char (char-code char)
-		 (let ((bits (char-bits char)))
-		   (if (odd? (quotient bits 2)) bits (+ bits 2))))))
-
-(define (char-controlified? char)
-  (or (ascii-controlified? char)
-      (odd? (quotient (char-bits char) 2))))
-
-(define (char-metafy char)
+(define (merge-bucky-bits char bits)
   (make-char (char-code char)
-	     (let ((bits (char-bits char)))
-	       (if (odd? bits) bits (1+ bits)))))
+	     (let ((bits (fix:or (char-bits char) bits)))
+	       (if (ascii-controlified? char)
+		   (fix:andc bits char-bit:control)
+		   bits))))
 
-(define-integrable (char-metafied? char)
-  (odd? (char-bits char)))
-
-(define (char-control-metafy char)
-  (char-controlify (char-metafy char)))
+(define (ascii-controlified? char)
+  (fix:< (char-code char) #x20))
 
 (define (char-base char)
   (make-char (char-code char) 0))

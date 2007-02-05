@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.25 2003/02/14 18:28:24 cph Exp $
+$Id: uxfs.c,v 1.29 2007/01/05 21:19:25 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -53,6 +55,9 @@ USA.
    are unlikely to be changed, so this ought to be safe.  */
 #    ifndef AFFS_SUPER_MAGIC
 #      define AFFS_SUPER_MAGIC 0xadff
+#    endif
+#    ifndef CIFS_MAGIC_NUMBER
+#      define CIFS_MAGIC_NUMBER 0xFF534D42
 #    endif
 #    ifndef COH_SUPER_MAGIC
 #      define COH_SUPER_MAGIC 0x012FF7B7
@@ -250,6 +255,7 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
 #ifdef __linux__
   switch (s . f_type)
     {
+    case CIFS_MAGIC_NUMBER:	return ("cifs");
     case COH_SUPER_MAGIC:	return ("coherent");
     case EXT_SUPER_MAGIC:	return ("ext");
     case EXT2_SUPER_MAGIC:	return ("ext2");
@@ -475,7 +481,7 @@ DEFUN (OS_file_touch, (filename), CONST char * filename)
     struct stat file_status;
     STD_VOID_SYSTEM_CALL (syscall_fstat, (UX_fstat (fd, (&file_status))));
     if (((file_status . st_mode) & S_IFMT) != S_IFREG)
-      error_system_call (errno, syscall_open);
+      return (-1);
     /* CASE 3: file length of 0 needs special treatment. */
     if ((file_status . st_size) == 0)
       {

@@ -1,12 +1,14 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.2 2004/11/01 19:21:21 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.6 2007/01/12 06:19:45 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
-[Copyright 2000,2001,2004 Massachusetts Institute of Technology
+[Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -22,9 +24,13 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 ])
+
+AC_ARG_ENABLE([native-code],
+    AS_HELP_STRING([--enable-native-code],
+	[Support native compiled code if available [[yes]]]))
 
 AC_PROG_INSTALL
 AC_PROG_LN_S

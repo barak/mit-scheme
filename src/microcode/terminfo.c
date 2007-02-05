@@ -1,8 +1,11 @@
 /* Interface from Emacs to terminfo.
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
-   Copyright (C) 1998-2001 Massachusetts Institute of Technology
 
-$Id: terminfo.c,v 1.7 2001/03/03 05:14:10 cph Exp $
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
+
+$Id: terminfo.c,v 1.8 2007/01/05 21:19:25 cph Exp $
 
 This file is part of GNU Emacs.
 

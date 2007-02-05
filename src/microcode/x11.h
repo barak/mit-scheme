@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: x11.h,v 1.20 2005/11/12 22:53:29 cph Exp $
+$Id: x11.h,v 1.23 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1989,1990,1991,1992,1993,2000 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -41,6 +42,22 @@ struct xdisplay
   Atom wm_take_focus;
   XEvent cached_event;
   char cached_event_p;
+
+  /* X key events have 8-bit modifier masks, three bits of which are
+     defined to be Shift, Lock, and Control, identified with ShiftMask,
+     LockMask, and ControlMask; and five bits of which are unspecified
+     named only mod1 to mod5.  Which ones mean Meta, Super, Hyper, &c.,
+     vary from system to system, however, so, on initializing the display
+     record, we grovel through some tables (XGetKeyboardMapping and
+     XGetModifierMapping) to find which ones the various modifier
+     keysyms are assigned to, and cache them here.
+
+     Scheme knows about Shift, Control, Meta, Super, and Hyper.  Of
+     these, only Meta, Super, and Hyper are identified by numbered
+     modifier masks.  All other modifiers are ignored. */
+  int modifier_mask_meta;
+  int modifier_mask_super;
+  int modifier_mask_hyper;
 
   /* The type of window manager we have.  If we move FRAME_OUTER_WINDOW
      to x/y 0/0, some window managers (type A) puts the window manager
@@ -64,8 +81,27 @@ struct xdisplay
 #define XD_WM_TAKE_FOCUS(xd) ((xd) -> wm_take_focus)
 #define XD_CACHED_EVENT(xd) ((xd) -> cached_event)
 #define XD_CACHED_EVENT_P(xd) ((xd) -> cached_event_p)
+#define XD_MODIFIER_MASK_SHIFT(xd) (ShiftMask)
+#define XD_MODIFIER_MASK_CONTROL(xd) (ControlMask)
+#define XD_MODIFIER_MASK_LOCK(xd) (LockMask)
+#define XD_MODIFIER_MASK_META(xd) ((xd) -> modifier_mask_meta)
+#define XD_MODIFIER_MASK_SUPER(xd) ((xd) -> modifier_mask_super)
+#define XD_MODIFIER_MASK_HYPER(xd) ((xd) -> modifier_mask_hyper)
 #define XD_WM_TYPE(xd) ((xd) -> wm_type)
 #define XD_TO_OBJECT(xd) (LONG_TO_UNSIGNED_FIXNUM (XD_ALLOCATION_INDEX (xd)))
+
+#define X_MODIFIER_MASK_SHIFT_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_SHIFT (xd)))
+#define X_MODIFIER_MASK_CONTROL_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_CONTROL (xd)))
+#define X_MODIFIER_MASK_LOCK_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_LOCK (xd)))
+#define X_MODIFIER_MASK_META_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_META (xd)))
+#define X_MODIFIER_MASK_SUPER_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_SUPER (xd)))
+#define X_MODIFIER_MASK_HYPER_P(modifier_mask, xd) \
+  ((modifier_mask) & (XD_MODIFIER_MASK_HYPER (xd)))
 
 extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
 

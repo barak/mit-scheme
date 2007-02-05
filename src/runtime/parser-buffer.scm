@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.16 2006/06/10 04:06:47 cph Exp $
+$Id: parser-buffer.scm,v 1.20 2007/01/17 03:39:35 cph Exp $
 
-Copyright 2001,2002,2003,2004,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -27,8 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Parser buffer abstraction
-
 (define-structure parser-buffer
   ;; The string buffer, as a substring:
   string
@@ -71,11 +71,43 @@ USA.
 						     'STRING->PARSER-BUFFER))))
 	  (make-parser-buffer string start end 0 0 #f #t 0)))))
 
+(define (utf8-string->parser-buffer string #!optional start end)
+  (let ((ws (utf8-string->wide-string string start end)))
+    (make-parser-buffer ws 0 (%wide-string-length ws) 0 0 #f #t 0)))
+
 (define (input-port->parser-buffer port)
   (guarantee-input-port port 'INPUT-PORT->PARSER-BUFFER)
   (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0))
 
 (define-integrable min-length 256)
+
+(define (complete-*match matcher buffer)
+  (and (matcher buffer)
+       (not (peek-parser-buffer-char buffer))))
+
+(define (*match-string matcher string #!optional start end)
+  (complete-*match matcher (string->parser-buffer string start end)))
+
+(define (*match-utf8-string matcher string #!optional start end)
+  (complete-*match matcher (utf8-string->parser-buffer string start end)))
+
+(define (*match-symbol matcher symbol)
+  (*match-utf8-string matcher (symbol-name symbol)))
+
+(define (complete-*parse parser buffer)
+  (let ((v (parser buffer)))
+    (and v
+	 (not (peek-parser-buffer-char buffer))
+	 v)))
+
+(define (*parse-string parser string #!optional start end)
+  (complete-*parse parser (string->parser-buffer string start end)))
+
+(define (*parse-utf8-string parser string #!optional start end)
+  (complete-*parse parser (utf8-string->parser-buffer string start end)))
+
+(define (*parse-symbol parser symbol)
+  (*parse-utf8-string parser (symbol-name symbol)))
 
 (define-structure parser-buffer-pointer
   (index #f read-only #t)

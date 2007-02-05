@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: ppband.c,v 9.65 2006/06/10 05:24:54 cph Exp $
+$Id: ppband.c,v 9.68 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1993,1999,2000,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -74,8 +75,11 @@ USA.
 #  if (SIZEOF_UNSIGNED_LONG == 4)	/* 32-bit word versions */
 #    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 16)
 #    define UNSIGNED_LONG_LOW_HALF(unsigned_long)  ((unsigned_long) & 0xFFFF)
+#  elif (SIZEOF_UNSIGNED_LONG == 8)	/* 32-bit word versions */
+#    define UNSIGNED_LONG_HIGH_HALF(unsigned_long) ((unsigned_long) >> 32)
+#    define UNSIGNED_LONG_LOW_HALF(unsigned_long)  ((unsigned_long) & 0xFFFFFFFF)
 #  else
-#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#    error "Unexpected SIZEOF_UNSIGNED_LONG for ppband."
 #  endif
 #else
 #  error "`ppband' assumes that (CHAR_BIT == 8) is true."
@@ -310,8 +314,12 @@ DEFUN (scheme_symbol, (From), unsigned long From)
 #      define Display_LOC_HILO_RAW_FORMAT_STRING "%7lx:               "\
                                                 "[%04lx|%04lx]  =  "
 #    endif
+#  elif (SIZEOF_UNSIGNED_LONG == 8)
+#      define Display_LOC_TYPE_DAT_FORMAT_STRING "%7lx:   %2lx|%15lx  "
+#      define Display_LOC_HILO_RAW_FORMAT_STRING "%7lx:               "\
+                                                "[%08lx|%08lx]  =  "
 #  else
-#    error "`ppband' assumes that (SIZEOF_UNSIGNED_LONG == 4) is true."
+#    error "Unexpected SIZEOF_UNSIGNED_LONG for ppband."
 #  endif
 #else
 #  error "`ppband' assumes that (CHAR_BIT == 8) is true."

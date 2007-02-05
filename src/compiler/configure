@@ -1,8 +1,10 @@
 #!/bin/sh
 
-# $Id: configure,v 1.6 2003/02/14 18:28:00 cph Exp $
+# $Id: configure,v 1.12 2007/02/05 18:43:08 cph Exp $
 #
-# Copyright (c) 2000 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -18,39 +20,72 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
-if test ! -e machine; then
-    case `./config.guess` in
-    alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-* )
-	MACHINE=alpha
+MACHINE=
+while test $# -gt 0; do
+    case "${1}" in
+    --enable-native-code=c)
+	MACHINE=C
+	shift
 	;;
-    m68k-* )
-	MACHINE=bobcat
+    --enable-native-code)
+	MACHINE=
+	shift
 	;;
-    i[3456]86-* )
-	MACHINE=i386
+    --disable-native-code | --enable-native-code=no)
+	MACHINE=none
+	shift
 	;;
-    mips-* | mipsel-* )
-	MACHINE=mips
-	;;
-    sparc-* )
-	MACHINE=sparc
-	;;
-    hppa-* | hppa1.[01]-* | hppa2.?-* )
-	MACHINE=spectrum
-	;;
-    vax-* )
-	MACHINE=vax
-	;;
-    * )
-	echo "Unable to determine machine type."
-	exit 1
+    *)
+	shift
 	;;
     esac
-    ln -s machines/${MACHINE} machine
+done
+
+if test "x${MACHINE}" = x; then
+    case `./config.guess` in
+    alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)
+	MACHINE=alpha
+	;;
+    m68k-*)
+	MACHINE=bobcat
+	;;
+    i[3456]86-*)
+	MACHINE=i386
+	;;
+    mips-* | mipsel-*)
+	MACHINE=mips
+	;;
+    sparc-*)
+	MACHINE=sparc
+	;;
+    hppa-* | hppa1.[01]-* | hppa2.?-*)
+	MACHINE=spectrum
+	;;
+    vax-*)
+	MACHINE=vax
+	;;
+    *)
+	MACHINE=none
+	;;
+    esac
 fi
-for FN in compiler.cbf compiler.pkg compiler.sf make.com; do \
-    test -e ${FN} || ln -s machine/${FN} .; \
+
+if test "${MACHINE}" = none; then
+    exit 0
+fi
+
+ln -s "machines/${MACHINE}" machine
+
+LINKS="compiler.cbf compiler.pkg compiler.sf"
+if test "${MACHINE}" = C; then
+    LINKS="${LINKS} make.so"
+else
+    LINKS="${LINKS} make.com"
+fi
+
+for FN in ${LINKS}; do
+    ln -s machine/${FN} ${FN}
 done

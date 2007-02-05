@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: uxtrap.c,v 1.41 2005/06/27 06:03:36 cph Exp $
+$Id: uxtrap.c,v 1.45 2007/01/12 03:45:55 cph Exp $
 
-Copyright 1990,1991,1992,1993,1995,1997 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -35,6 +36,10 @@ USA.
 #  include "gccode.h"
 #  if defined(HAVE_SIGCONTEXT) && !defined(USE_STACKLETS)
 #    define ENABLE_TRAP_RECOVERY 1
+#  endif
+   /* FIXME: Support ppc, ppc64, x86_64, and ia64 */
+#  if defined(__ppc__) || defined(__ppc64__) || defined(__x86_64__) || defined(__ia64__)
+#    undef ENABLE_TRAP_RECOVERY
 #  endif
 #endif
 
@@ -183,7 +188,7 @@ SCHEME_OBJECT
 DEFUN (find_ccblock, (pc), unsigned long pc)
 {
   SCHEME_OBJECT * block_addr;
-  int index;
+  unsigned int index;
 
   block_addr = 0;
   classify_pc (pc, (&block_addr), (&index));
@@ -316,6 +321,8 @@ DEFUN (trap_handler, (message, signo, info, scp),
     }
 }
 
+#define PC_ALIGNED_P(pc) ((((unsigned long) (pc)) & PC_ALIGNMENT_MASK) == 0)
+
 #ifdef ENABLE_TRAP_RECOVERY
 
 /* Heuristic recovery from Unix signals (traps).
@@ -335,8 +342,6 @@ DEFUN (trap_handler, (message, signo, info, scp),
 #define ALIGNED_P(addr)							\
   ((((unsigned long) (addr)) & SCHEME_ALIGNMENT_MASK) == 0)
 
-#define PC_ALIGNED_P(pc) ((((unsigned long) (pc)) & PC_ALIGNMENT_MASK) == 0)
-
 #define SET_RECOVERY_INFO(s, arg1, arg2) do				\
 {									\
   (recovery_info . state) = s;						\
@@ -353,7 +358,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
   unsigned long pc = (SIGCONTEXT_PC (scp));
   SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
   SCHEME_OBJECT * block_addr;
-  int index;
+  unsigned int index;
   SCHEME_OBJECT * new_sp = 0;
   struct trap_recovery_info recovery_info;
 
@@ -386,7 +391,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       new_sp = sp_register;
       SET_RECOVERY_INFO
 	(STATE_UTILITY,
-	 (LONG_TO_UNSIGNED_FIXNUM (index)),
+	 (ULONG_TO_FIXNUM (index)),
 	 UNSPECIFIC);
       break;
 
@@ -395,7 +400,7 @@ DEFUN (continue_from_trap, (signo, info, scp),
       Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
       SET_RECOVERY_INFO
 	(STATE_BUILTIN,
-	 (LONG_TO_UNSIGNED_FIXNUM (index)),
+	 (ULONG_TO_FIXNUM (index)),
 	 UNSPECIFIC);
       break;
 
@@ -623,7 +628,7 @@ DEFUN (setup_trap_frame, (signo, info, scp, trinfo, new_stack_pointer),
 
   signal_name =
     ((signo != 0)
-     ? (char_pointer_to_string ((unsigned char *) (find_signal_name (signo))))
+     ? (char_pointer_to_string (find_signal_name (signo)))
      : SHARP_F);
 
   if (Free > MemTop)
@@ -720,9 +725,7 @@ DEFUN (find_signal_code_name, (signo, info, scp),
     }
   return
     (cons ((ulong_to_integer (code)),
-	   ((name == 0)
-	    ? SHARP_F
-	    : (char_pointer_to_string ((unsigned char *) name)))));
+	   ((name == 0) ? SHARP_F : (char_pointer_to_string (name)))));
 }
 
 static enum pc_location

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.31 2006/07/20 17:09:44 riastradh Exp $
+$Id: mod-lisp.scm,v 1.34 2007/01/05 21:19:29 cph Exp $
 
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -115,7 +117,7 @@ USA.
 		 (mod-lisp-expander request response pathname handler)
 		 (let ((pathname (->pathname pathname)))
 		   (if (file-regular? pathname)
-		       (set-entity response pathname)
+		       (maybe-set-entity request response pathname)
 		       (status-response! response
 					 404
 					 (list "The document "
@@ -148,10 +150,10 @@ USA.
 	   (let ((user-name ((http-message-authenticator request))))
 	     (cond ((or (string? user-name) (not user-name))
 		    (set! *current-user-name* user-name)
-		    (set-entity response
-				(call-with-output-string
-				  (lambda (port)
-				    (expander pathname port)))))
+		    (maybe-set-entity request response
+				      (call-with-output-string
+					(lambda (port)
+					  (expander pathname port)))))
 		   ((and (procedure? user-name)
 			 (procedure-arity-valid? user-name 0))
 		    (user-name))
@@ -191,7 +193,7 @@ USA.
 	      (case keyword
 		((METHOD)
 		 (let ((method (intern datum)))
-		   (if (not (memq method '(GET POST)))
+		   (if (not (memq method '(GET POST HEAD)))
 		       (error "Unknown HTTP method:" method))
 		   (set-http-message-method! request method)))
 		((URL)
@@ -509,6 +511,12 @@ USA.
 						 'SET-ENTITY)))))
   (set-http-message-entity! message entity))
 
+(define (maybe-set-entity request response entity)
+  (set-entity response
+	      (if (eq? (http-message-method request) 'HEAD)
+		  ""
+		  entity)))
+
 (define (message-keyword-proc accessor name)
   (lambda (message keyword #!optional error?)
     (let ((p (assq keyword (accessor message))))
@@ -607,7 +615,7 @@ USA.
   (set-cookie *current-response* name value attrs))
 
 (define (http-response-entity entity)
-  (set-entity *current-response* entity))
+  (maybe-set-entity *current-request* *current-response* entity))
 
 (define (http-status-response code . extra)
   (guarantee-exact-nonnegative-integer code 'HTTP-STATUS-RESPONSE)

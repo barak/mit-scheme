@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: calias.scm,v 1.31 2003/04/25 03:09:55 cph Exp $
+$Id: calias.scm,v 1.35 2007/01/05 21:19:23 cph Exp $
 
-Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -46,11 +47,12 @@ USA.
     (cond (entry
 	   (remap-alias-key (cdr entry)))
 	  ((and (char? key)
-		(odd? (quotient (char-bits key) 2))) ;Control bit is set
+		(char-bits-set? char-bit:control key))
 	   (let ((code (char-code key))
 		 (remap
 		  (lambda (code)
-		    (make-char code (- (char-bits key) 2)))))
+		    (make-char code
+			       (fix:andc (char-bits key) char-bit:control)))))
 	     (cond ((<= #x40 code #x5F) (remap (- code #x40)))
 		   ((<= #x61 code #x7A) (remap (- code #x60)))
 		   (else key))))
@@ -66,11 +68,11 @@ USA.
 		      (= code #x0D)	;return
 		      (= code #x1B)	;altmode
 		      )))
-	   (even? (quotient (char-bits key) 2)))
+	   (char-bits-clear? char-bit:control key))
       (unmap-alias-key
        (make-char (let ((code (char-code key)))
 		    (+ code (if (<= #x01 code #x1A) #x60 #x40)))
-		  (+ (char-bits key) 2)))
+		  (fix:or (char-bits key) char-bit:control)))
       (let ((entry
 	     (list-search-positive alias-keys
 	       (lambda (entry)
@@ -78,9 +80,6 @@ USA.
 	(if entry
 	    (unmap-alias-key (car entry))
 	    key))))
-
-(define-integrable (ascii-controlified? char)
-  (< (char-code char) #x20))
 
 (define-variable enable-emacs-key-names
   "True means keys are shown using Emacs-style names."
@@ -93,12 +92,6 @@ USA.
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
         (else (error:wrong-type-argument key "key" 'KEY-NAME))))
-
-(define (button-name button)
-  (string-append "button-"
-		 (if (button/down? button) "down" "up")
-		 "-"
-		 (number->string (button/number button))))
 
 (define (xkey->name xkey)
   (let ((keys (xkey->list xkey)))
@@ -142,10 +135,16 @@ USA.
 			     "DEL"
 			     (vector-ref (ref-variable char-image-strings #f)
 					 code)))))
-	   (cond ((< bits 2)		; no bits or Meta only
+	   (cond ((or (fix:= bits 0)
+		      (fix:= bits char-bit:meta))
 		  (process-code bits))
-		 ((and handle-prefixes? (< bits 4))
-		  (string-append (if (= 2 bits) "C-^ " "C-z ")
+		 ((and handle-prefixes?
+		       (not (fix:= 0 (fix:and bits
+					      (fix:or char-bit:control
+						      char-bit:meta)))))
+		  (string-append (if (fix:= bits char-bit:control)
+				     "C-^ "
+				     "C-z ")
 				 (process-code 0)))
 		 (else
 		  (char->name (unmap-alias-key key))))))
@@ -161,7 +160,7 @@ USA.
 (define (key-bucky-bits key)
   (cond ((char? key) (char-bits key))
 	((special-key? key) (special-key/bucky-bits key))
-	((button? key) (button/bucky-bits key))
+	((button? key) (button-bits key))
         (else (error:wrong-type-argument key "key" 'KEY-BUCKY-BITS))))
 
 (define (key<? key1 key2)
@@ -190,8 +189,7 @@ USA.
 	      (and (special-key? key2)
 		   (string=? (special-key/name key1) (special-key/name key2))))
 	     ((button? key1)
-	      (and (button? key2)
-		   (string<? (button-name key1) (button-name key2))))
+	      (eq? key1 key2))
 	     (else
 	      (error:wrong-type-argument key1 "key" 'KEY=?)))))
 

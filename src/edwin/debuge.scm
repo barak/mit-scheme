@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: debuge.scm,v 1.58 2004/02/16 05:43:09 cph Exp $
+$Id: debuge.scm,v 1.61 2007/01/21 01:10:18 riastradh Exp $
 
-Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1995,1998,2000,2004 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -100,7 +101,8 @@ USA.
     (with-output-to-temporary-buffer "*standard-marks*" '()
       (lambda ()
 	(let ((buffer-frame (current-window)))
-	  (let ((window (car (instance-ref buffer-frame 'text-inferior)))
+	  (let ((window
+		 (vector-ref (instance-ref buffer-frame 'text-inferior) 1))
 		(buffer (window-buffer buffer-frame)))
 	    (let ((show-mark
 		   (lambda (name mark)
@@ -112,10 +114,10 @@ USA.
 		     (lambda (name)
 		       (show-mark name (instance-ref window name)))))
 		(show-instance 'point)
-		(show-instance 'start-line-mark)
+		(show-instance 'current-start-mark)
 		(show-instance 'start-mark)
-		(show-instance 'end-mark)
-		(show-instance 'end-line-mark))
+		(show-instance 'start-line-mark)
+		(show-instance 'current-end-mark))
 	      (let ((group (buffer-group buffer)))
 		(show-mark 'group-start-mark (group-start-mark group))
 		(show-mark 'group-end-mark (group-end-mark group))

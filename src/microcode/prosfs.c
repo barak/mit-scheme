@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: prosfs.c,v 1.18 2003/02/14 18:28:23 cph Exp $
+$Id: prosfs.c,v 1.22 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -43,7 +45,7 @@ extern void EXFUN (OS_file_copy, (CONST char *, CONST char *));
   PRIMITIVE_RETURN							\
     ((result == 0)							\
      ? SHARP_F								\
-     : (char_pointer_to_string ((unsigned char *) result)));		\
+     : (char_pointer_to_string (result)));				\
 }
 
 DEFINE_PRIMITIVE ("FILE-EXISTS?", Prim_file_exists_p, 1, 1,
@@ -269,8 +271,12 @@ Return #F if the file existed and its time was modified.\n\
 Otherwise the file did not exist and it was created.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT (OS_file_touch ((CONST char *) (STRING_ARG (1)))));
+  {
+    int rc = (OS_file_touch ((CONST char *) (STRING_ARG (1))));
+    if (rc < 0)
+      error_bad_range_arg (1);
+    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (rc));
+  }
 }
 
 DEFINE_PRIMITIVE ("NEW-DIRECTORY-OPEN", Prim_new_directory_open, 1, 1,

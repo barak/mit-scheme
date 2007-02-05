@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: win32.scm,v 1.18 2003/02/14 18:28:14 cph Exp $
+$Id: win32.scm,v 1.21 2007/01/05 21:19:24 cph Exp $
 
-Copyright 1994,1995,1996,1997,1999,2000 Massachusetts Institute of Technology
-Copyright 2002,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -609,28 +610,18 @@ USA.
 
 (define (decode-key-event event)
   (let ((key (key-event/character event))
-	(cont-state (key-event/control-key-state event)))
-    (let ((alt? (some-bits? control-key:alt-pressed cont-state))
-	  (control? (some-bits? control-key:control-pressed cont-state))
-	  (shift? (some-bits? control-key:shift-pressed cont-state)))
-      (cond ((fix:= key -1)
-	     (let ((vk-code (key-event/virtual-keycode event))
-		   (bucky-bits
-		    (+ (if alt? 1 0)     ; M-
-		       (if control? 2 0) ; C-
-		       (if shift? 4 0)   ; S-
-		       )))
-	       (win32-make-special-key vk-code bucky-bits)))
-	    ((and control? alt?)
-	     (char-control-metafy (integer->char key)))
-	    (alt?
-	     (char-metafy (integer->char key)))
-	    ;;((and control? (eq? key 32))
-	    ;; #\c-space)
-	    (control?
-	     (char-controlify (integer->char key)))
-	    (else
-	     (integer->char key))))))
+	(state (key-event/control-key-state event)))
+    (let ((bits (control-keys->bits state)))
+      (if (fix:= key -1)
+	  (win32-make-special-key
+	   (key-event/virtual-keycode event)
+	   (fix:or (if (some-bits? control-key:shift-pressed state) #x4 #x0)
+		   bits))
+	  (merge-bucky-bits (integer->char key) bits)))))
+
+(define (control-keys->bits state)
+  (fix:or (if (some-bits? control-key:alt-pressed state)     #x1 #x0)
+	  (if (some-bits? control-key:control-pressed state) #x2 #x0)))
 
 (define-event-handler event-type:mouse
   (lambda (screen event)
@@ -645,7 +636,8 @@ USA.
 	(cond ((some-bits? button-state:left-pressed state) 0)
 	      ((some-bits? button-state:right-pressed state) 2)
 	      ((some-bits? button-state:middle-pressed state) 1)
-	      (else 0))))
+	      (else 0)))
+      (control-keys->bits (mouse-event/control-key-state event)))
      (mouse-event/column event)
      (mouse-event/row event))))
 

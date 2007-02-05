@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.27 2005/08/22 01:15:07 cph Exp $
+$Id: ux.c,v 1.31 2007/01/22 07:47:39 riastradh Exp $
 
-Copyright 1991,1992,1993,1996,1997,2000 Massachusetts Institute of Technology
-Copyright 2002,2003,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -616,6 +617,17 @@ DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
 }
 #endif /* EMULATE_FPATHCONF */
 
+/* This is called during initialization, when the error system is not
+   set up.
+*/
+
+void *
+DEFUN (OS_malloc_init, (size), unsigned int size)
+{
+  void * result = (UX_malloc (size));
+  return (result);
+}
+
 void *
 DEFUN (OS_malloc, (size), unsigned int size)
 {
@@ -696,6 +708,14 @@ mmap_heap_malloc (unsigned long requested_length)
     unsigned long ps = (UX_getpagesize ());
     request = (((requested_length + (ps - 1)) / ps) * ps);
   }
+#ifdef __APPLE__
+  /* On OS X, we reserved the __PAGEZERO segment up to 0x4000000 by a */
+  /* magic linker command, but it works only if we request MAP_FIXED. */
+  /* (The third argument to `mmap_heap_malloc_1' specifies this.)     */
+  /* Since OS X does no address space randomization and has no /proc/ */
+  /* directory, there's no need to try `find_suitable_address'.       */
+  result = (mmap_heap_malloc_1 (min_result, request, true));
+#else
   switch (find_suitable_address (request,
 				 min_result,
 				 max_result,
@@ -713,6 +733,7 @@ mmap_heap_malloc (unsigned long requested_length)
       result = (mmap_heap_malloc_1 (min_result, request, false));
       break;
     }
+#endif
   if (result != 0)
     {
       if ((((unsigned long) result) >= min_result)

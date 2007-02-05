@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.85 2005/11/16 04:00:16 cph Exp $
+$Id: x11base.c,v 1.93 2007/02/04 18:39:05 riastradh Exp $
 
-Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
-Copyright 1995,1996,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -565,7 +565,7 @@ get_wm_decor_geometry (struct xwindow * xw)
   return (decor != (XW_WINDOW (xw)));
 }
 
-/* Open/Close Windows and Displays */
+/* Open/Close Windows */
 
 #define MAKE_GC(gc, fore, back)						\
 {									\
@@ -641,6 +641,8 @@ static int
 DEFUN (x_close_window_io_error, (display), Display * display)
 {
   longjmp (x_close_window_jmp_buf, 1);
+  /*NOTREACHED*/
+  return (0);
 }
 
 static void
@@ -668,6 +670,121 @@ DEFUN (x_close_window, (xw), struct xwindow * xw)
     }
   XSetIOErrorHandler (x_io_error_handler);
   free (xw);
+}
+
+/* Initialize/Close Displays */
+
+#define MODIFIER_INDEX_TO_MASK(N) (1 << (N))
+
+/* Grovel through the X server's keycode and modifier mappings to find
+   out what we ought to interpret as Meta, Hyper, and Super, based on
+   what modifiers are associated with keycodes that are associated with
+   keysyms Meta_L, Meta_R, Alt_L, Alt_R, Hyper_L, &c.
+
+   Adapted from GNU Emacs. */
+
+static void
+DEFUN (x_initialize_display_modifier_masks, (xd), struct xdisplay * xd)
+{
+  int min_keycode;
+  int max_keycode;
+  XModifierKeymap * modifier_keymap;
+  KeyCode * modifier_to_keycodes_table;
+  int keycodes_per_modifier;
+  KeySym * keycode_to_keysyms_table;
+  int keysyms_per_keycode;
+
+  (XD_MODIFIER_MASK_META (xd)) = 0;
+  (XD_MODIFIER_MASK_SUPER (xd)) = 0;
+  (XD_MODIFIER_MASK_HYPER (xd)) = 0;
+
+  modifier_keymap = (XGetModifierMapping ((XD_DISPLAY (xd))));
+  modifier_to_keycodes_table = (modifier_keymap -> modifiermap);
+  keycodes_per_modifier = (modifier_keymap -> max_keypermod);
+
+  XDisplayKeycodes ((XD_DISPLAY (xd)), (& min_keycode), (& max_keycode));
+
+  keycode_to_keysyms_table =
+    (XGetKeyboardMapping ((XD_DISPLAY (xd)),
+                          min_keycode,
+                          (max_keycode - min_keycode + 1),
+                          (& keysyms_per_keycode)));
+
+  /* Go through each of the 8 non-preassigned modifiers, which start at
+     3 (Mod1), after Shift, Control, and Lock.  For each modifier, go
+     through all of the (non-zero) keycodes attached to it; for each
+     keycode, go through all of the keysyms attached to it; check each
+     keysym for the modifiers that we're interested in (Meta, Hyper,
+     and Super). */
+
+  {
+    int modifier_index;
+
+    for (modifier_index = 3; (modifier_index < 8); modifier_index += 1)
+      {
+        int modifier_mask = (MODIFIER_INDEX_TO_MASK (modifier_index));
+        KeyCode * keycodes =
+          (& (modifier_to_keycodes_table
+              [modifier_index * keycodes_per_modifier]));
+
+        /* This is a flag specifying whether the modifier has already
+           been identified as Meta, which takes precedence over Hyper
+           and Super.  (What about precedence between Hyper and
+           Super...?  This is GNU Emacs's behaviour.) */
+        int modifier_is_meta_p = 0;
+
+        int keycode_index;
+
+        for (keycode_index = 0;
+             (keycode_index < keycodes_per_modifier);
+             keycode_index += 1)
+          {
+            KeyCode keycode = (keycodes [keycode_index]);
+
+            if (keycode == 0)
+              continue;
+
+            {
+              int keysym_index;
+              KeySym * keysyms =
+                (& (keycode_to_keysyms_table
+                    [(keycode - min_keycode) * keysyms_per_keycode]));
+
+              for (keysym_index = 0;
+                   (keysym_index < keysyms_per_keycode);
+                   keysym_index += 1)
+                switch (keysyms [keysym_index])
+                  {
+                  case XK_Meta_L:
+                  case XK_Meta_R:
+                  case XK_Alt_L:
+                  case XK_Alt_R:
+                    modifier_is_meta_p = 1;
+                    (XD_MODIFIER_MASK_META (xd)) |= modifier_mask;
+                    break;
+
+                  case XK_Hyper_L:
+                  case XK_Hyper_R:
+                    if (! modifier_is_meta_p)
+                      (XD_MODIFIER_MASK_HYPER (xd)) |= modifier_mask;
+                    goto next_modifier;
+
+                  case XK_Super_L:
+                  case XK_Super_R:
+                    if (! modifier_is_meta_p)
+                      (XD_MODIFIER_MASK_SUPER (xd)) |= modifier_mask;
+                    goto next_modifier;
+                  }
+            }
+          }
+
+      next_modifier:
+        continue;
+      }
+  }
+
+  XFree (((char *) keycode_to_keysyms_table));
+  XFreeModifiermap (modifier_keymap);
 }
 
 static void
@@ -921,8 +1038,10 @@ xw_process_event (struct xwindow * xw, XEvent * event)
     case MappingNotify:
       switch ((event->xmapping) . request)
 	{
-	case MappingKeyboard:
 	case MappingModifier:
+	  x_initialize_display_modifier_masks ((XW_XD (xw)));
+	  /* Fall through. */
+	case MappingKeyboard:
 	  XRefreshKeyboardMapping (& (event->xmapping));
 	  break;
 	}
@@ -1008,6 +1127,47 @@ DEFUN (make_event_object, (xw, type, extra),
   return (result);
 }
 
+/* This handles only the modifier bits that Scheme supports.
+   At the moment, these are Control, Meta, Super, and Hyper.
+   This might want to change if the character abstraction were ever to
+   change, or if the X11 interface were to be changed to use something
+   other than Scheme characters to convey key presses. */
+
+static unsigned long
+DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
+       unsigned int mask AND
+       struct xdisplay * xd)
+{
+  unsigned long bucky = 0;
+  if (X_MODIFIER_MASK_CONTROL_P (mask, xd)) bucky |= CHAR_BITS_CONTROL;
+  if (X_MODIFIER_MASK_META_P    (mask, xd)) bucky |= CHAR_BITS_META;
+  if (X_MODIFIER_MASK_SUPER_P   (mask, xd)) bucky |= CHAR_BITS_SUPER;
+  if (X_MODIFIER_MASK_HYPER_P   (mask, xd)) bucky |= CHAR_BITS_HYPER;
+  return (bucky);
+}
+
+/* I'm not sure why we have a function for this. */
+
+static SCHEME_OBJECT
+DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
+{
+  unsigned long scheme_state = 0;
+  if (x_state & ControlMask) scheme_state |= 0x0001;
+  if (x_state & Mod1Mask)    scheme_state |= 0x0002;
+  if (x_state & Mod2Mask)    scheme_state |= 0x0004;
+  if (x_state & Mod3Mask)    scheme_state |= 0x0008;
+  if (x_state & ShiftMask)   scheme_state |= 0x0010;
+  if (x_state & LockMask)    scheme_state |= 0x0020;
+  if (x_state & Mod4Mask)    scheme_state |= 0x0040;
+  if (x_state & Mod5Mask)    scheme_state |= 0x0080;
+  if (x_state & Button1Mask) scheme_state |= 0x0100;
+  if (x_state & Button2Mask) scheme_state |= 0x0200;
+  if (x_state & Button3Mask) scheme_state |= 0x0400;
+  if (x_state & Button4Mask) scheme_state |= 0x0800;
+  if (x_state & Button5Mask) scheme_state |= 0x1000;
+  return (ULONG_TO_FIXNUM (scheme_state));
+}
+
 static SCHEME_OBJECT
 DEFUN (button_event, (xw, event, type),
        struct xwindow * xw AND
@@ -1017,60 +1177,16 @@ DEFUN (button_event, (xw, event, type),
   SCHEME_OBJECT result = (make_event_object (xw, type, 4));
   EVENT_INTEGER (result, EVENT_0, (event -> x));
   EVENT_INTEGER (result, EVENT_1, (event -> y));
-  {
-    SCHEME_OBJECT conversion;
-    int button_number;
-    switch (event -> button)
-      {
-      case Button1: button_number = 1; break;
-      case Button2: button_number = 2; break;
-      case Button3: button_number = 3; break;
-      case Button4: button_number = 4; break;
-      case Button5: button_number = 5; break;
-      default: button_number = 0; break;
-      }
-    if (button_number) {
-      --button_number;
-      if ((event -> state) & ShiftMask) {
-	button_number += 5;
-      }
-      if ((event -> state) & ControlMask) {
-	button_number += 10;
-      }
-      if ((event -> state) & Mod1Mask) {
-	button_number += 20;
-      }
-      conversion = (LONG_TO_UNSIGNED_FIXNUM (button_number));
-    } else {
-      conversion = (SHARP_F);
-    }
-    VECTOR_SET (result, EVENT_2, conversion);
-  }
+  VECTOR_SET
+    (result, EVENT_2,
+     ((((event -> button) >= 1) && ((event -> button) <= 256))
+      ? (ULONG_TO_FIXNUM
+	 (((event -> button) - 1)
+	  | ((x_modifier_mask_to_bucky_bits ((event -> state), (XW_XD (xw))))
+	     << 8)))
+      : SHARP_F));
   EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
   return (result);
-}
-
-static SCHEME_OBJECT
-DEFUN (convert_bucky_bits, (state, allp), unsigned int state AND int allp)
-{
-  long bucky = 0;
-  if (state & Mod1Mask)    bucky |= 0x0001; /* meta */
-  if (state & ControlMask) bucky |= 0x0002; /* control */
-  if (allp)
-    {
-      if (state & Mod2Mask)    bucky |= 0x0004; /* super */
-      if (state & Mod3Mask)    bucky |= 0x0008; /* hyper */
-      if (state & ShiftMask)   bucky |= 0x0010;
-      if (state & LockMask)    bucky |= 0x0020;
-      if (state & Mod4Mask)    bucky |= 0x0040;
-      if (state & Mod5Mask)    bucky |= 0x0080;
-      if (state & Button1Mask) bucky |= 0x0100;
-      if (state & Button2Mask) bucky |= 0x0200;
-      if (state & Button3Mask) bucky |= 0x0400;
-      if (state & Button4Mask) bucky |= 0x0800;
-      if (state & Button5Mask) bucky |= 0x1000;
-    }
-  return (LONG_TO_UNSIGNED_FIXNUM (bucky));
 }
 
 static XComposeStatus compose_status;
@@ -1117,14 +1233,11 @@ DEFUN (key_event, (xw, event, type),
       /* Create Scheme bucky bits (kept independent of the character).
 	 X has already controlified, so Scheme may choose to ignore
 	 the control bucky bit.  */
-      VECTOR_SET (result, EVENT_1, (convert_bucky_bits ((event -> state), 0)));
-      /* Move vendor-specific bit from bit 28 (zero-based) to bit 23
-	 so that all keysym values will fit in Scheme fixnums.  */
-      VECTOR_SET
-	(result,
-	 EVENT_2,
-	 (LONG_TO_UNSIGNED_FIXNUM ((keysym & 0xffffff)
-				   | (0x800000 & (keysym >> 5)))));
+      VECTOR_SET (result, EVENT_1,
+		  (ULONG_TO_FIXNUM
+		   (x_modifier_mask_to_bucky_bits ((event -> state),
+						   (XW_XD (xw))))));
+      VECTOR_SET (result, EVENT_2, (ulong_to_integer (keysym)));
       EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
       return (result);
     }
@@ -1165,7 +1278,8 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 	  EVENT_INTEGER (result, EVENT_0, ((event -> xmotion) . x));
 	  EVENT_INTEGER (result, EVENT_1, ((event -> xmotion) . y));
 	  VECTOR_SET (result, EVENT_2,
-		      (convert_bucky_bits (((event -> xmotion) . state), 1)));
+                      (x_key_button_mask_to_scheme
+                       (((event -> xmotion) . state))));
 	}
       break;
     case ConfigureNotify:
@@ -1547,6 +1661,7 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
     (XD_WM_TAKE_FOCUS (xd)) =
       (XInternAtom ((XD_DISPLAY (xd)), "WM_TAKE_FOCUS", False));
     (XD_CACHED_EVENT_P (xd)) = 0;
+    x_initialize_display_modifier_masks (xd);
     XRebindKeysym ((XD_DISPLAY (xd)), XK_BackSpace, 0, 0, "\177", 1);
     PRIMITIVE_RETURN (XD_TO_OBJECT (xd));
   }
@@ -1781,8 +1896,7 @@ DEFINE_PRIMITIVE ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0)
       (XGetDefault
        ((XD_DISPLAY (x_display_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
     PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) result)));
+      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
   }
 }
 
@@ -1859,7 +1973,7 @@ DEFINE_PRIMITIVE ("X-WINDOW-QUERY-POINTER", Prim_x_window_query_pointer, 1, 1, 0
     VECTOR_SET (result, 1, (long_to_integer (root_y)));
     VECTOR_SET (result, 2, (long_to_integer (win_x)));
     VECTOR_SET (result, 3, (long_to_integer (win_y)));
-    VECTOR_SET (result, 4, (convert_bucky_bits (keys_buttons, 1)));
+    VECTOR_SET (result, 4, (x_key_button_mask_to_scheme (keys_buttons)));
     PRIMITIVE_RETURN (result);
   }
 }
@@ -2414,8 +2528,7 @@ DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
 	(allocate_marked_vector (TC_VECTOR, actual_count, false));
       unsigned int i;
       for (i = 0;  (i < actual_count);  i += 1)
-	VECTOR_SET (result, i,
-		    (char_pointer_to_string ((unsigned char *) (names[i]))));
+	VECTOR_SET (result, i, (char_pointer_to_string (names[i])));
       XFreeFontNames (names);
       PRIMITIVE_RETURN (result);
     }
@@ -2444,7 +2557,7 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
     unsigned char error_code = (x_error_code (display));
     SCHEME_OBJECT result
       = ((error_code == 0)
-	 ? (char_pointer_to_string ((unsigned char *) name))
+	 ? (char_pointer_to_string (name))
 	 : (ulong_to_integer (error_code)));
     if (name != 0)
       XFree (name);

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.16 2006/08/02 05:05:14 cph Exp $
+$Id: rdf-struct.scm,v 1.27 2007/01/17 21:00:48 cph Exp $
 
-Copyright 2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +45,7 @@ USA.
 
 (define (canonicalize-rdf-subject subject #!optional caller)
   (cond ((rdf-bnode? subject) subject)
-	((%decode-bnode-uri subject caller))
+	((%decode-bnode-uri subject))
 	(else (canonicalize-rdf-uri subject caller))))
 
 (define (canonicalize-rdf-predicate predicate #!optional caller)
@@ -58,19 +60,12 @@ USA.
   (if (rdf-qname? uri)
       (rdf-qname->uri uri)
       (->absolute-uri uri caller)))
-
-(define (write-rdf-uri uri port)
-  (let ((qname (uri->rdf-qname uri #f)))
-    (if qname
-	(write-string (symbol-name qname) port)
-	(write-rdf-uri-ref uri port))))
 
 ;;;; Blank nodes
 
 (define-record-type <rdf-bnode>
-    (%make-rdf-bnode name)
-    rdf-bnode?
-  (name rdf-bnode-name))
+    (%make-rdf-bnode)
+    rdf-bnode?)
 
 (define-guarantee rdf-bnode "RDF bnode")
 
@@ -78,68 +73,33 @@ USA.
   (standard-unparser-method 'RDF-BNODE
     (lambda (bnode port)
       (write-char #\space port)
-      (write-rdf-bnode bnode port))))
+      (write-string (rdf-bnode-name bnode) port))))
 
 (define (make-rdf-bnode #!optional name)
-  (cond ((default-object? name)
-	 (let ((name (generate-bnode-name)))
-	   (let ((bnode (%make-rdf-bnode name)))
-	     (hash-table/put! *rdf-bnode-registry* name bnode)
-	     bnode)))
-	((and (string? name)
-	      (complete-match match-bnode-name name))
-	 (hash-table/intern! *rdf-bnode-registry* name
-	   (lambda ()
-	     (%make-rdf-bnode name))))
-	(else
-	 (error:wrong-type-argument name "RDF bnode name" 'RDF-BNODE))))
+  (if (default-object? name)
+      (%make-rdf-bnode)
+      (begin
+	(guarantee-string name 'MAKE-RDF-BNODE)
+	(hash-table/intern! *rdf-bnode-registry* name %make-rdf-bnode))))
 
-(define (generate-bnode-name)
-  (let loop ()
-    (let ((name
-	   (string-append "B"
-			  (vector-8b->hexadecimal (random-byte-vector 8)))))
-      (if (hash-table/get *rdf-bnode-registry* name #f)
-	  (loop)
-	  name))))
+(define (rdf-bnode-name bnode)
+  (string-append "B" (number->string (hash bnode))))
 
-(define (%decode-bnode-uri uri caller)
-  (let ((lookup
-	 (lambda (uri)
-	   (let ((bnode
-		  (hash-table/get *rdf-bnode-registry*
-				  (string-tail uri 2)
-				  #f)))
-	     (if (not bnode)
-		 (error:bad-range-argument uri caller))
-	     bnode))))
-    (let ((handle-uri
-	   (lambda (uri)
-	     (cond ((complete-match match-bnode-uri uri) (lookup uri))
-		   ((handle->rdf-bnode uri #f))
-		   (else #f)))))
-      (cond ((string? uri) (handle-uri uri))
-	    ((symbol? uri) (handle-uri (symbol-name uri)))
-	    (else #f)))))
-
-(define (complete-match matcher string)
-  (let ((buffer (string->parser-buffer string)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
+(define (%decode-bnode-uri uri)
+  (let ((v
+	 (cond ((string? uri) (*parse-string parse-bnode uri))
+	       ((symbol? uri) (*parse-symbol parse-bnode uri))
+	       (else #f))))
+    (and v
+	 (unhash (vector-ref v 0)))))
 
-(define match-bnode-uri
-  (*matcher (seq "_:" match-bnode-name)))
-
-(define match-bnode-name
-  (let* ((name-head
-	  (char-set-union (ascii-range->char-set #x41 #x5B)
-			  (ascii-range->char-set #x61 #x7B)))
-	 (name-tail
-	  (char-set-union name-head
-			  (ascii-range->char-set #x30 #x3A))))
-    (*matcher
-     (seq (char-set name-head)
-	  (* (char-set name-tail))))))
+(define parse-bnode
+  (let ((digits (ascii-range->char-set #x30 #x3A)))
+    (*parser
+     (seq (noise "_:B")
+	  (map (lambda (s) (string->number s 10 #t))
+	       (match (+ (char-set digits))))
+	  (noise (end-of-input))))))
 
 (define (make-rdf-bnode-registry)
   (make-string-hash-table))
@@ -147,41 +107,14 @@ USA.
 (define *rdf-bnode-registry*
   (make-rdf-bnode-registry))
 
-(define (port/bnode-registry port)
-  (or (port/get-property port 'PORT/BNODE-REGISTRY #f)
-      (let ((table (make-string-hash-table)))
-	(port/set-property! port 'PORT/BNODE-REGISTRY table)
+(define (port/rdf-bnode-registry port)
+  (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
+      (let ((table (make-rdf-bnode-registry)))
+	(port/set-property! port 'RDF-BNODE-REGISTRY table)
 	table)))
 
-(define (port/drop-bnode-registry port)
-  (port/remove-property! port 'PORT/DROP-BNODE-REGISTRY))
-
-(define (rdf-bnode->handle bnode)
-  (string-append bnode-handle-prefix (number->string (hash bnode))))
-
-(define (handle->rdf-bnode handle #!optional caller)
-  (let ((v
-	 (and (string? handle)
-	      (parse-bnode-handle (string->parser-buffer handle)))))
-    (if v
-	(unhash (vector-ref v 0))
-	(begin
-	  (if caller
-	      (error:wrong-type-argument handle "RDF bnode handle" caller))
-	  #f))))
-
-(define parse-bnode-handle
-  (let ((prefix
-	 (lambda (b) (match-parser-buffer-string b bnode-handle-prefix)))
-	(digits (ascii-range->char-set #x30 #x3A)))
-    (*parser
-     (seq (noise prefix)
-	  (map (lambda (s) (string->number s 10 #t))
-	       (match (+ (char-set digits))))
-	  (noise (end-of-input))))))
-
-(define bnode-handle-prefix
-  "_bnode_:")
+(define (port/drop-rdf-bnode-registry port)
+  (port/remove-property! port 'RDF-BNODE-REGISTRY))
 
 ;;;; Literals
 
@@ -197,15 +130,14 @@ USA.
   (standard-unparser-method 'RDF-LITERAL
     (lambda (literal port)
       (write-char #\space port)
-      (write-rdf-literal literal port))))
+      (write-rdf/nt-literal literal port))))
 
 (define (make-rdf-literal text type)
   (guarantee-utf8-string text 'RDF-LITERAL)
   (%make-rdf-literal text
 		     (if (or (not type)
 			     (and (interned-symbol? type)
-				  (complete-match match-language
-						  (symbol-name type))))
+				  (*match-symbol match-language type)))
 			 type
 			 (->absolute-uri type 'RDF-LITERAL))))
 
@@ -267,20 +199,29 @@ USA.
 
 (define (register-rdf-prefix prefix expansion #!optional registry)
   (guarantee-rdf-prefix prefix 'REGISTER-RDF-PREFIX)
-  (let ((registry (check-registry registry 'REGISTER-RDF-PREFIX)))
-    (let ((p (assq prefix (registry-bindings registry)))
-	  (new
-	   (uri->string
-	    (->absolute-uri expansion 'REGISTER-RDF-PREFIX))))
-      (if p
-	  (if (not (string=? (cdr p) new))
-	      (begin
-		(warn "RDF prefix override:" prefix (cdr p) new)
-		(set-cdr! p new)))
-	  (set-registry-bindings! registry
-				  (cons (cons prefix new)
-					(registry-bindings registry))))))
+  (%register-rdf-prefix prefix
+			(uri->string
+			 (->absolute-uri expansion 'REGISTER-RDF-PREFIX))
+			(check-registry registry 'REGISTER-RDF-PREFIX))
   prefix)
+
+(define (merge-rdf-prefix-registry! from-registry #!optional to-registry)
+  (guarantee-rdf-prefix-registry from-registry 'MERGE-RDF-PREFIX-REGISTRY!)
+  (let ((to-registry (check-registry to-registry 'MERGE-RDF-PREFIX-REGISTRY!)))
+    (for-each (lambda (p1)
+		(%register-rdf-prefix (car p1) (cdr p1) to-registry))
+	      (registry-bindings from-registry))))
+
+(define (%register-rdf-prefix prefix expansion registry)
+  (let ((p (assq prefix (registry-bindings registry))))
+    (if p
+	(if (not (string=? (cdr p) expansion))
+	    (begin
+	      (warn "RDF prefix override:" prefix (cdr p) expansion)
+	      (set-cdr! p expansion)))
+	(set-registry-bindings! registry
+				(cons (cons prefix expansion)
+				      (registry-bindings registry))))))
 
 (define (rdf-prefix-expansion prefix #!optional registry)
   (guarantee-rdf-prefix prefix 'RDF-PREFIX-EXPANSION)
@@ -291,25 +232,33 @@ USA.
     (and p
 	 (cdr p))))
 
-(define (uri->rdf-qname uri #!optional error? registry)
-  (let ((s (uri->string (->absolute-uri uri 'URI->RDF-QNAME))))
+(define (uri->rdf-prefix uri #!optional registry error?)
+  (let ((s (uri->string (->absolute-uri uri 'URI->RDF-PREFIX))))
     (let ((p
 	   (let ((alist
 		  (registry-bindings
-		   (check-registry registry 'URI->RDF-QNAME)))
+		   (check-registry registry 'URI->RDF-PREFIX)))
 		 (filter (lambda (p) (string-prefix? (cdr p) s))))
 	     (or (find-matching-item alist
 		   (lambda (p)
 		     (and (not (eq? (car p) ':))
 			  (filter p))))
 		 (find-matching-item alist filter)))))
-      (if (and error? (not p))
-	  (error:bad-range-argument uri 'URI->RDF-QNAME))
-      (and p
-	   (symbol (car p)
-		   (string-tail s (string-length (cdr p))))))))
+      (if p
+	  (values (car p) (cdr p))
+	  (begin
+	    (if error? (error:bad-range-argument uri 'URI->RDF-PREFIX))
+	    (values #f #f))))))
+
+(define (uri->rdf-qname uri #!optional registry error?)
+  (let ((uri (->absolute-uri uri 'URI->RDF-QNAME)))
+    (receive (prefix expansion) (uri->rdf-prefix uri registry error?)
+      (and prefix
+	   (symbol prefix
+		   (string-tail (uri->string uri)
+				(string-length expansion)))))))
 
-(define (rdf-qname->uri qname #!optional error? registry)
+(define (rdf-qname->uri qname #!optional registry error?)
   (receive (prefix local) (split-rdf-qname qname)
     (let ((expansion (rdf-prefix-expansion prefix registry)))
       (if expansion
@@ -320,8 +269,8 @@ USA.
 
 (define (make-rdf-qname prefix local)
   (guarantee-rdf-prefix prefix 'MAKE-RDF-QNAME)
-  (guarantee-string local 'MAKE-RDF-QNAME)
-  (if (not (complete-match match:name local))
+  (guarantee-utf8-string local 'MAKE-RDF-QNAME)
+  (if (not (*match-utf8-string match:name local))
       (error:bad-range-argument local 'MAKE-RDF-QNAME))
   (symbol prefix local))
 
@@ -344,18 +293,24 @@ USA.
 
 (define (rdf-qname? object)
   (and (interned-symbol? object)
-       (complete-match match-qname (symbol-name object))))
+       (*match-symbol match-qname object)))
 
 (define-guarantee rdf-qname "RDF QName")
 
+(define match-qname
+  (*matcher (seq match-prefix match-tail)))
+
+(define (match-tail buffer)
+  (let loop ()
+    (if (read-parser-buffer-char buffer)
+	(loop)))
+  #t)
+
 (define (rdf-prefix? object)
   (and (interned-symbol? object)
-       (complete-match match-prefix (symbol-name object))))
+       (*match-symbol match-prefix object)))
 
 (define-guarantee rdf-prefix "RDF prefix")
-
-(define match-qname
-  (*matcher (seq match-prefix match:name)))
 
 (define match-prefix
   (*matcher (seq (? match:prefix-name) ":")))
@@ -382,9 +337,10 @@ USA.
       (let ((registry *default-rdf-prefix-registry*))
 	(if (rdf-prefix-registry? registry)
 	    registry
-	    (begin
+	    (let ((registry (new-rdf-prefix-registry)))
 	      (warn "*default-rdf-prefix-registry* has illegal value.")
-	      (new-rdf-prefix-registry))))
+	      (set! *default-rdf-prefix-registry* registry)
+	      registry)))
       (begin
 	(guarantee-rdf-prefix-registry registry caller)
 	registry)))
@@ -400,3 +356,14 @@ USA.
 
 (define *default-rdf-prefix-registry*
   (new-rdf-prefix-registry))
+
+(define (port/set-rdf-prefix-registry port registry)
+  (if registry
+      (begin
+	(guarantee-rdf-prefix-registry registry 'PORT/SET-RDF-PREFIX-REGISTRY!)
+	(port/set-property! port 'RDF-PREFIX-REGISTRY registry))
+      (port/remove-property! port 'RDF-PREFIX-REGISTRY)))
+
+(define (port/rdf-prefix-registry port)
+  (or (port/get-property port 'RDF-PREFIX-REGISTRY #f)
+      *default-rdf-prefix-registry*))

@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.42 2006/02/24 17:42:50 cph Exp $
+$Id: port.scm,v 1.50 2007/01/09 06:16:53 cph Exp $
 
-Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -41,7 +42,6 @@ USA.
   (read-char #f read-only #t)
   (unread-char #f read-only #t)
   (peek-char #f read-only #t)
-  (discard-char #f read-only #t)
   (read-substring #f read-only #t)
   (read-wide-substring #f read-only #t)
   (read-external-substring #f read-only #t)
@@ -51,6 +51,7 @@ USA.
   (write-wide-substring #f read-only #t)
   (write-external-substring #f read-only #t)
   (fresh-line #f read-only #t)
+  (line-start? #f read-only #t)
   (flush-output #f read-only #t)
   (discretionary-flush-output #f read-only #t))
 
@@ -152,7 +153,6 @@ USA.
 		       (op 'READ-CHAR)
 		       (op 'UNREAD-CHAR)
 		       (op 'PEEK-CHAR)
-		       (op 'DISCARD-CHAR)
 		       (op 'READ-SUBSTRING)
 		       (op 'READ-WIDE-SUBSTRING)
 		       (op 'READ-EXTERNAL-SUBSTRING)
@@ -161,6 +161,7 @@ USA.
 		       (op 'WRITE-WIDE-SUBSTRING)
 		       (op 'WRITE-EXTERNAL-SUBSTRING)
 		       (op 'FRESH-LINE)
+		       (op 'LINE-START?)
 		       (op 'FLUSH-OUTPUT)
 		       (op 'DISCRETIONARY-FLUSH-OUTPUT)))))
 
@@ -365,13 +366,6 @@ USA.
 			 (set-port/unread! port char)
 			 (transcribe-char char port)))
 		   char)))))
-	(discard-char
-	 (let ((defer (op 'READ-CHAR)))
-           (lambda (port)
-             (if (port/unread port)
-                 (set-port/unread! port #f)
-                 (defer port))
-             unspecific)))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
@@ -419,7 +413,6 @@ USA.
 	((READ-CHAR) read-char)
 	((UNREAD-CHAR) unread-char)
 	((PEEK-CHAR) peek-char)
-	((DISCARD-CHAR) discard-char)
 	((READ-SUBSTRING) read-substring)
 	((READ-WIDE-SUBSTRING) read-wide-substring)
 	((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -492,6 +485,11 @@ USA.
 		    (not (char=? (port/previous port) #\newline)))
 	       (write-char port #\newline)
 	       0)))
+	((LINE-START?)
+	 (lambda (port)
+	   (if (port/previous port)
+	       (char=? (port/previous port) #\newline)
+	       'UNKNOWN)))
 	((FLUSH-OUTPUT) flush-output)
 	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
 	(else (op name))))))
@@ -558,7 +556,6 @@ USA.
   (define-port-operation read-char)
   (define-port-operation unread-char)
   (define-port-operation peek-char)
-  (define-port-operation discard-char)
   (define-port-operation read-substring)
   (define-port-operation read-wide-substring)
   (define-port-operation read-external-substring)
@@ -567,8 +564,15 @@ USA.
   (define-port-operation write-wide-substring)
   (define-port-operation write-external-substring)
   (define-port-operation fresh-line)
+  (define-port-operation line-start?)
   (define-port-operation flush-output)
   (define-port-operation discretionary-flush-output))
+
+(define (port-position port)
+  ((port/operation port 'POSITION) port))
+
+(define (set-port-position! port position)
+  ((port/operation port 'SET-POSITION!) port position))
 
 (set-record-type-unparser-method! <port>
   (lambda (state port)
@@ -612,6 +616,33 @@ USA.
     (if close-output
 	(close-output port))))
 
+(define (port/open? port)
+  (let ((open? (port/operation port 'OPEN?)))
+    (if open?
+	(open? port)
+	(and (if (input-port? port) (%input-open? port) #t)
+	     (if (output-port? port) (%output-open? port) #t)))))
+
+(define (port/input-open? port)
+  (and (input-port? port)
+       (%input-open? port)))
+
+(define (%input-open? port)
+  (let ((open? (port/operation port 'INPUT-OPEN?)))
+    (if open?
+	(open? port)
+	#t)))
+
+(define (port/output-open? port)
+  (and (output-port? port)
+       (%output-open? port)))
+
+(define (%output-open? port)
+  (let ((open? (port/operation port 'OUTPUT-OPEN?)))
+    (if open?
+	(open? port)
+	#t)))
+
 (define (port/input-channel port)
   (let ((operation (port/operation port 'INPUT-CHANNEL)))
     (and operation
@@ -623,17 +654,29 @@ USA.
 	 (operation port))))
 
 (define (port/get-property port name default)
+  (guarantee-symbol name 'PORT/GET-PROPERTY)
   (let ((p (assq name (port/properties port))))
     (if p
 	(cdr p)
 	default)))
 
 (define (port/set-property! port name value)
+  (guarantee-symbol name 'PORT/SET-PROPERTY!)
   (let ((alist (port/properties port)))
     (let ((p (assq name alist)))
       (if p
 	  (set-cdr! p value)
 	  (set-port/properties! port (cons (cons name value) alist))))))
+
+(define (port/intern-property! port name get-value)
+  (guarantee-symbol name 'PORT/INTERN-PROPERTY!)
+  (let ((alist (port/properties port)))
+    (let ((p (assq name alist)))
+      (if p
+	  (cdr p)
+	  (let ((value (get-value)))
+	    (set-port/properties! port (cons (cons name value) alist))
+	    value)))))
 
 (define (port/remove-property! port name)
   (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)

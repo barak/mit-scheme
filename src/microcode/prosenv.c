@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.19 2003/02/14 18:28:23 cph Exp $
+$Id: prosenv.c,v 1.22 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -206,8 +208,7 @@ DEFINE_PRIMITIVE ("WORKING-DIRECTORY-PATHNAME", Prim_working_dir_pathname, 0, 0,
   "Return the current working directory as a string.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string
-		    ((unsigned char *) OS_working_dir_pathname ()));
+  PRIMITIVE_RETURN (char_pointer_to_string (OS_working_dir_pathname ()));
 }
 
 DEFINE_PRIMITIVE ("SET-WORKING-DIRECTORY-PATHNAME!", Prim_set_working_dir_pathname, 1, 1,
@@ -225,7 +226,6 @@ DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1
     CONST char * message =
       (OS_error_code_to_message (arg_nonnegative_integer (1)));
     PRIMITIVE_RETURN
-      ((message == 0) ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) message)));
+      ((message == 0) ? SHARP_F : (char_pointer_to_string (message)));
   }
 }

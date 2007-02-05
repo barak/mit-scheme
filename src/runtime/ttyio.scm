@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.23 2005/12/14 05:44:53 cph Exp $
+$Id: ttyio.scm,v 1.27 2007/01/09 06:38:29 cph Exp $
 
-Copyright 1991,1993,1996,1999,2003,2004 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -38,6 +39,7 @@ USA.
 	    `((BEEP ,operation/beep)
 	      (CHAR-READY? ,generic-io/char-ready?)
 	      (CLEAR ,operation/clear)
+	      (DISCRETIONARY-WRITE-CHAR ,operation/discretionary-write-char)
 	      (DISCRETIONARY-FLUSH-OUTPUT ,generic-io/flush-output)
 	      (READ-CHAR ,operation/read-char)
 	      (READ-FINISH ,operation/read-finish)
@@ -51,10 +53,7 @@ USA.
 	(set! the-console-port port)
 	(set-console-i/o-port! port)
 	(set-current-input-port! port)
-	(set-current-output-port! port)))
-    (set! *char-ready? (port-type/char-ready? gtype))
-    (set! *read-char (port-type/read-char gtype))
-    (set! *unread-char (port-type/unread-char gtype)))
+	(set-current-output-port! port))))
   (add-event-receiver! event:before-exit save-console-input)
   (add-event-receiver! event:after-restore reset-console))
 
@@ -101,9 +100,6 @@ USA.
 (define console-i/o-port)
 (define console-input-port)
 (define console-output-port)
-(define *char-ready?)
-(define *read-char)
-(define *unread-char)
 
 (define (operation/read-char port)
   (let ((char (generic-io/read-char port)))
@@ -113,25 +109,25 @@ USA.
 	      (begin
 		(fresh-line port)
 		(write-string "End of input stream reached." port)))
-	  (%exit)))
-    (maybe-echo-input port char)
+	  (if (let ((condition (nearest-repl/condition)))
+		(and condition
+		     (condition/error? condition)))
+	      (%exit 1)
+	      (%exit))))
     char))
 
 (define (operation/read-finish port)
   (let loop ()
-    (if (*char-ready? port)
-	(let ((char (*read-char port)))
+    (if (char-ready? port)
+	(let ((char (read-char port)))
 	  (if (not (eof-object? char))
-	      (begin
-		(maybe-echo-input port char)
-		(if (char-whitespace? char)
-		    (loop)
-		    (*unread-char port char)))))))
+	      (if (char-whitespace? char)
+		  (loop)
+		  (unread-char char port))))))
   (output-port/discretionary-flush port))
 
-(define (maybe-echo-input port char)
-  (if (and char
-	   (cstate-echo-input? (port/state port))
+(define (operation/discretionary-write-char char port)
+  (if (and (cstate-echo-input? (port/state port))
 	   (not (nearest-cmdl/batch-mode?)))
       (output-port/write-char port char)))
 

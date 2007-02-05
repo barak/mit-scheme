@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.27 2005/12/14 05:44:31 cph Exp $
+$Id: fileio.scm,v 1.34 2007/01/05 21:19:28 cph Exp $
 
-Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -31,10 +32,12 @@ USA.
 
 (define (initialize-package!)
   (let ((other-operations
-	 `((WRITE-SELF ,operation/write-self)
-	   (LENGTH ,operation/length)
+	 `((LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
-	   (TRUENAME ,operation/truename))))
+	   (POSITION ,operation/position)
+	   (SET-POSITION! ,operation/set-position!)
+	   (TRUENAME ,operation/truename)
+	   (WRITE-SELF ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
 	     (make-port-type other-operations
@@ -70,6 +73,46 @@ USA.
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
   (write (->namestring (operation/truename port)) output-port))
+
+(define (operation/position port)
+  (guarantee-positionable-port port 'OPERATION/POSITION)
+  (if (output-port? port)
+      (flush-output port))
+  (if (input-port? port)
+      (let ((input-buffer (port-input-buffer port)))
+	(- (channel-file-position (port/input-channel port))
+	   (input-buffer-free-bytes input-buffer)
+	   (let ((unread-char (port/unread port)))
+	     (if unread-char
+		 (input-buffer-encoded-character-size input-buffer unread-char)
+		 0))))
+      (channel-file-position (port/output-channel port))))
+
+(define (operation/set-position! port position)
+  (guarantee-positionable-port port 'OPERATION/SET-POSITION!)
+  (guarantee-exact-nonnegative-integer position 'OPERATION/SET-POSITION!)
+  (if (output-port? port)
+      (flush-output port))
+  (if (input-port? port)
+      (clear-input-buffer (port-input-buffer port)))
+  (channel-file-set-position (if (input-port? port)
+				 (port/input-channel port)
+				 (port/output-channel port))
+			     position))
+
+(define (guarantee-positionable-port port caller)
+  (guarantee-port port caller)
+  (if (and (i/o-port? port)
+	   (not (eq? (port/input-channel port) (port/output-channel port))))
+      (error:bad-range-argument port caller))
+  (if (and (input-port? port)
+	   (not (input-buffer-using-binary-normalizer?
+		 (port-input-buffer port))))
+      (error:bad-range-argument port caller))
+  (if (and (output-port? port)
+	   (not (output-buffer-using-binary-denormalizer?
+		 (port-output-buffer port))))
+      (error:bad-range-argument port caller)))
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
@@ -142,7 +185,7 @@ USA.
       (close-port port)
       value)))
 
-(define call-with-input-file 
+(define call-with-input-file
   (make-call-with-file open-input-file))
 
 (define call-with-binary-input-file

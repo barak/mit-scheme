@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.55 2005/10/24 05:31:07 cph Exp $
+$Id: record.scm,v 1.59 2007/01/18 02:30:37 riastradh Exp $
 
-Copyright 1989,1990,1991,1993,1994,1996 Massachusetts Institute of Technology
-Copyright 1997,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -295,24 +296,23 @@ USA.
       (let ((tag (%record-type-dispatch-tag record-type))
 	    (n-fields (%record-type-n-fields record-type)))
 	(expand-cases tag n-fields 16
-	  (let ((length (fix:+ 1 n-fields)))
+	  (let ((reclen (fix:+ 1 n-fields)))
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record length #f))
+		    (let ((record (%make-record reclen #f))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
 							      n-fields
 							      field-values))))
 		      (%record-set! record 0 tag)
-		      (let loop ((i 1) (values field-values))
-			(if (fix:< i length)
-			    (begin
-			      (if (not (pair? values)) (lose))
-			      (%record-set! record i (car values))
-			      (loop (cdr values) (fix:+ i 1)))
-			    (if (not (null? values)) (lose))))
+		      (do ((i 1 (fix:+ i 1))
+			   (vals field-values (cdr vals)))
+			  ((not (fix:< i reclen))
+			   (if (not (null? vals)) (lose)))
+			(if (not (pair? vals)) (lose))
+			(%record-set! record i (car vals)))
 		      record))))
 	      constructor)))))))
 
@@ -375,6 +375,7 @@ USA.
 	  (let ((n (%record-type-length record-type)))
 	    (let ((record (%make-record n #f))
 		  (seen? (vector-cons n #f)))
+	      (%record-set! record 0 (%record-type-dispatch-tag record-type))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
 			     (symbol? (car kl))

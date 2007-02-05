@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: rules4.scm,v 1.4 2003/02/14 18:28:02 cph Exp $
+$Id: rules4.scm,v 1.7 2007/01/05 21:19:20 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -35,14 +37,12 @@ USA.
 				    (REGISTER (? extension))
 				    (? safe?))
   (let ((extension (standard-source! extension 'SCHEME_OBJECT*)))
-    (use-invoke-interface! 2)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_2 ("
-	 ,(if safe?
-	      code:compiler-safe-reference-trap
-	      code:compiler-reference-trap)
-	 ", &current_block[" ,(label->offset cont) "], "
-	 ,extension ");\n\t")))
+	 ,(c:invoke-interface-2 (if safe?
+				    code:compiler-safe-reference-trap
+				    code:compiler-reference-trap)
+				(c:cptr (label->offset cont))
+				extension))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont)
@@ -50,23 +50,20 @@ USA.
 				     (REGISTER (? value)))
   (let ((value (standard-source! value 'SCHEME_OBJECT))
 	(extension (standard-source! extension 'SCHEME_OBJECT*)))
-    (use-invoke-interface! 3)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_3 ("
-	 ,code:compiler-assignment-trap
-	 ", &current_block[" ,(label->offset cont) "], "
-	 ,extension
-	 ", " ,value ");\n\t")))
+	 ,(c:invoke-interface-3 code:compiler-assignment-trap
+				(c:cptr (label->offset cont))
+				extension
+				value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont)
 				      (REGISTER (? extension)))
   (let ((extension (standard-source! extension 'SCHEME_OBJECT*)))
-    (use-invoke-interface! 2)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_2 (" ,code:compiler-unassigned?-trap
-	 ", &current_block[" ,(label->offset cont) "], "
-	 ,extension ");\n\t")))
+	 ,(c:invoke-interface-2 code:compiler-unassigned?-trap
+				(c:cref (label->offset cont))
+				extension))))
 
 ;;;; Interpreter Calls
 
@@ -102,12 +99,11 @@ USA.
 
 (define (lookup-call code cont environment name)
   (let ((environment (standard-source! environment 'SCHEME_OBJECT)))
-    (use-invoke-interface! 3)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_3 (" ,code
-	 ", &current_block[" ,(label->offset cont) "], "
-	 ,environment ", "
-	 "current_block[" ,(object->offset name) "]);\n\t")))
+	 ,(c:invoke-interface-3 code
+				(c:cptr (label->offset cont))
+				environment
+				(c:cref (object->offset name))))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? cont)
@@ -126,9 +122,9 @@ USA.
 (define (assignment-call code cont environment name value)
   (let ((environment (standard-source! environment 'SCHEME_OBJECT))
 	(value (standard-source! value 'SCHEME_OBJECT)))
-    (use-invoke-interface! 4)
     (LAP ,@(clear-map!)
-	 "INVOKE_INTERFACE_4 (" ,code
-	 ", &current_block[" ,(label->offset cont) "], "
-	 ,environment ", "
-	 "current_block[" ,(object->offset name) "], " ,value ");\n\t")))
+	 ,(c:invoke-interface-4 code
+				(c:cptr (label->offset cont))
+				environment
+				(c:cref (object->offset name))
+				value))))

@@ -1,3 +1,3485 @@
+2007-02-05 13:43  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/configure (1.12):
+
+	Remove leading parens that cause trouble on NetBSD.
+
+2007-02-05 13:26  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/: decls.scm (1.81), edwin.sf (1.37):
+
+	Updates to make sure that Edwin can be compiled by previous snapshot.
+
+2007-02-04 21:38  Chris Hanson <edu/mit/csail/cph>
+
+	* imail/clean.sh (1.5):
+
+	File conflicts with Clean.sh on win32.
+
+2007-02-04 16:55  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/cmpint.c (1.108):
+
+	Fix bug in compiler reference trap restarts: the name will be at the
+	top of the stack, not in the expression register.
+
+2007-02-04 13:39  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/x11base.c (1.93):
+
+	Reinitialize the local display modifier mask table on MappingModifier
+	requests in MappingNotify events, so that the user can reconfigure
+	modifier masks on the fly without confusing Scheme programs.
+
+2007-02-04 13:36  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/x11base.c (1.92):
+
+	Eliminate compiler warning about non-return from non-void function
+	x_close_window_io_error, which calls longjmp instead.
+
+2007-02-03 19:17  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/syntax-rules.scm (14.11):
+
+	Permit (SYNTAX-RULES ()), which is the only portable way to define a
+	SYNTACTIC-ERROR macro.
+
+2007-01-28 18:03  Taylor Campbell <net/mumble/campbell>
+
+	* compiler/machines/C/ctop.scm (1.23):
+
+	ld on OS X wants `-dylib', not `-dynamiclib', now that we're actually
+	using it instead of the C compiler executable.
+
+2007-01-25 21:38  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/mit-syntax.scm (14.30):
+
+	Use NAMED-LAMBDA in the output of named LET.
+
+2007-01-22 13:30  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/: boot.c (9.124), boot.c (9.118.2.8):
+
+	Use `OS_file_access', not `access', in `FILE_READABLE' macro.
+
+2007-01-22 09:34  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.31):
+
+	Simplify slightly.
+
+2007-01-22 09:31  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.30):
+
+	Revert to using AC_CHECK_TYPE rather than AC_TYPE_[U]INTn, since the
+	latter is too new for some platforms.
+
+2007-01-22 09:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: makegen/Makefile.in.in (1.25.2.18), configure.ac
+	  (1.6.2.29):
+
+	Rename DLD_LDFLAGS to SCHEME_LDFLAGS.
+
+2007-01-22 03:43  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/: boot.c (9.123), interp.c (9.105), boot.c (9.118.2.7),
+	  interp.c (9.102.2.8):
+
+	Eliminate compiler warnings for obstack_chunk_alloc.
+
+2007-01-22 03:35  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.36):
+
+	On OS X, add -Wl,-pagezero_size,04000000 to DLD_LDFLAGS, not LDFLAGS,
+	so that it is passed only when building the `scheme' and `bchscheme'
+	binaries, not when compiling all object files.
+
+2007-01-22 03:12  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.6.2.28):
+
+	Comment out unused C99 fixed-width integer type tests, as in the new
+	microcode.
+
+2007-01-22 02:47  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/ux.c (1.31):
+
+	Specialize mmap_heap_malloc on OS X to pass MAP_FIXED always.
+
+	This conditional is ugly; perhaps it ought to be refactored.  However,
+	after the change to the configuration script to add the linker option
+	reserving low address space, this is necessary for anything to work at
+	all on OS X for the moment.
+
+2007-01-22 01:41  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.15.2.6):
+
+	Add code to relocate pointers in compiled_entries when compiled_blocks
+	is relocated to a new address.  Fix typo.
+
+2007-01-22 01:38  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.35), configure.ac (1.6.2.27):
+
+	Fix typo.  Use AC_CHECK_FUNC(...) rather than AC_CHECK_LIB([c],...).
+
+2007-01-22 01:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasload.c (9.96.2.20):
+
+	Fix typo in previous change.
+
+2007-01-22 01:05  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.26), configure.ac (1.34):
+
+	Incorporate changes for NetBSD from Jed Davis.
+
+2007-01-22 01:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.18), fasl.c (1.1.2.8), fasl.h
+	  (9.40.2.11), fasload.c (9.96.2.19), cmpauxmd/c.c (1.15.2.5),
+	  cmpintmd/c.h (1.9.2.4):
+
+	Hook up code to export and import the C code table.  This was
+	disconnected when redesigning the fasdump/fasload code and never
+	reconnected.
+
+2007-01-21 23:20  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.25), pruxsock.c (1.22.2.5):
+
+	Forward-port riastradh's changes from trunk.
+
+2007-01-21 18:19  Taylor Campbell <net/mumble/campbell>
+
+	* compiler/machines/C/cutl.scm (1.10):
+
+	Fix up C comments so that */ inside them will not destroy the output.
+
+2007-01-21 17:19  Taylor Campbell <net/mumble/campbell>
+
+	* compiler/machines/C/cout.scm (1.34):
+
+	Hack STRINGIFY to support lap comments, in case the user set
+	COMPILER:GENERATE-LAP-FILES? and COMPILER:INTERSPERSE-RTL-IN-LAP?, so
+	that it puts comments in the C output instead of signalling an obscure
+	error, even though the resulting *.lap files are not very useful.
+
+2007-01-21 06:29  Taylor Campbell <net/mumble/campbell>
+
+	* compiler/rtlgen/opncod.scm (4.78):
+
+	Fix bug in the open-coder for HEAP-AVAILABLE? with type checking
+	turned on.  It was passing the FINISH continuation on to
+	OPEN-CODE:WITH-CHECKS, but that would call FINISH with an RTL
+	expression, whereas the callers of the open-coder want an RTL
+	predicate CFG.  Now, like other predicate open-coders,
+	HEAP-AVAILABLE?'s wraps the expression in a true test.
+
+2007-01-21 00:15  Taylor Campbell <net/mumble/campbell>
+
+	* compiler/machines/C/ctop.scm (1.22):
+
+	In C-COMPILER-NAME, read from and write to the variable
+	COMPILER:C-COMPILER-NAME, not COMPILER:C-LINKER-NAME.
+
+2007-01-20 20:10  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/debuge.scm (1.61):
+
+	Make DEBUG-SHOW-STANDARD-MARKS work again.  It doesn't show quite the
+	same information as before, but at least it doesn't fail horribly now.
+
+2007-01-20 18:49  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/pruxsock.c (1.27):
+
+	Wrap the new SHUTDOWN-SOCKET primitive's body in SOCKET_CODE.
+
+2007-01-20 16:59  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.33):
+
+	Enclose the argument to `test -n' in double-quotes in the tests for
+	the `struct tm' member `tm_gmtoff' and the `timezone' variable.
+
+2007-01-19 22:08  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.32):
+
+	Pass `-MG' to `gcc' in the generated `makegen-cc' script.  The meaning
+	of `-MM' was changed in recent versions of GCC so that it does not
+	mask errors about absent system headers, but with `-MG' it uses the
+	old semantics.
+
+2007-01-19 00:03  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/error.scm (14.73):
+
+	In wrong-number-of-arguments errors where the minimum number of
+	arguments is equal to the maximum number of arguments, write that
+	number, not the confusing arity object, in the condition report.
+
+2007-01-17 21:30  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/record.scm (1.59):
+
+	Initialize newly constructed records in keyword constructors to have
+	the proper dispatch tag.
+
+2007-01-17 21:15  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/verilog.scm (1.15):
+
+	In DEFINE-STANDARD-KEYWORD, pass a list of fragments to
+	DEFINE-KEYPARSER-PATTERN as one argument, not the fragments as
+	separate arguments.  This is supposed to be a `pattern' structure,
+	although it might be better to have an abstract MAKE-PATTERN
+	constructor or something instead of exposing the representation of
+	patterns as lists.
+
+2007-01-17 21:03  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/evlcom.scm (1.74):
+
+	In PROMPT-FOR-EXPRESSION, don't pass the default expression through
+	WRITE-TO-STRING before handing it to PROMPT-FOR-STRING, because
+	PROMPT-FOR-STRING already does that.
+
+2007-01-17 19:19  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/keyparse.scm (1.9):
+
+	In DEFINE-KEYPARSER-STATEMENT-LEADER, compile the regular expression
+	if it is *not* a compiled regular expression, not if it is.
+
+2007-01-17 16:01  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/url.scm (1.51):
+
+	Fix another thinko.
+
+2007-01-17 16:00  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.27):
+
+	Fix broken definition of MATCH-TAIL.
+
+2007-01-17 11:04  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/url.scm (1.50):
+
+	Fix thinko.
+
+2007-01-17 10:58  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unicode.scm (1.32):
+
+	Fix typo in previous change.
+
+2007-01-17 10:42  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unicode.scm (1.31):
+
+	Don't consider non-characters in WELL-FORMED-CODE-POINT-LIST?.
+
+2007-01-16 22:42  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.26), turtle.scm (1.20), xml.pkg (1.91),
+	  xml-names.scm (1.15), xml-parser.scm (1.73):
+
+	Use new matching/parsing utility procedures.  Implement
+	UTF8-STRING->XML.  Fix turtle URI output so that qnames conform to
+	turtle syntax.
+
+2007-01-16 22:39  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: parser-buffer.scm (1.20), runtime.pkg (14.612):
+
+	Add utility procedures for matching and parsing.
+
+2007-01-16 22:31  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/url.scm (1.49):
+
+	Use new matching procedures.
+
+2007-01-16 21:48  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: parser-buffer.scm (1.19), runtime.pkg (14.611):
+
+	Implement UTF8-STRING->PARSER-BUFFER.
+
+2007-01-16 16:16  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.25):
+
+	Allow the local part of an RDF qname to be an arbitrary UTF-8 string.
+
+2007-01-16 03:03  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unicode.scm (1.30):
+
+	Add non-character range FDD0 through FDEF.  Simplify logic used to
+	determine legal characters.
+
+2007-01-13 20:58  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.98):
+
+	For svn, quote diff-switches with "-x" prefix.
+
+2007-01-13 02:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.31), configure.ac (1.6.2.24):
+
+	Properly handle case where pg_config isn't available.
+
+2007-01-13 02:12  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.23):
+
+	Berkeley DB uses versioned symbols in older versions, so AC_CHECK_LIB
+	can't be used; instead use AC_LINK_IFELSE.
+
+2007-01-13 02:12  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.30):
+
+	Berkeley DB uses versioned symbols in older versions, so AC_CHECK_LIB
+	can't be used; instead use AC_LINK_IFELSE.  Also, comment out C99
+	fixed-width integer type tests which are (a) not used, and (b) only in
+	the latest version of autoconf.
+
+2007-01-12 05:23  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/load.scm (14.84):
+
+	Use FILE-REGULAR?, not FILE-EXISTS?, to test for the existence of files
+	to load, to avoid accidentally trying to load directories that happen
+	to have the same name sans type as files we're interested in.
+
+2007-01-12 01:29  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/: Makefile.in.in (1.25.2.17), Makefile.in.in
+	  (1.43):
+
+	Make sure that LIARC_OBJECTS are cleaned along with other .o files.
+
+2007-01-12 01:27  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: liarc.h (1.27), liarc.h (1.21.2.5):
+
+	Since COMPILE_FOR_STATIC_LINKING is now defined in "config.h",
+	all references must be moved after that #include.
+
+2007-01-12 01:19  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.6), compiler/Clean.sh (1.12), compiler/configure
+	  (1.11):
+
+	Replace "--enable-c-back-end" with "--enable-native-code".  Update
+	compiler cleaning and configuration to handle C shared-object files.
+
+2007-01-12 01:18  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/make-compinit (1.2):
+
+	Add necessary file from pre-v15 branch.
+
+2007-01-12 01:17  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: liarc.h (1.26), cmpauxmd/c.c (1.21):
+
+	Fix two more places with pointer signedness warnings.
+
+2007-01-11 22:53  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/: Makefile.in.in (1.42), Makefile.in.in
+	  (1.25.2.16):
+
+	Move "autom4te.cache" from "make maintainer-clean" to "make distclean".
+
+2007-01-11 22:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bchmmg.c (9.107), boot.c (9.122), comutl.c (1.37),
+	  extern.c (9.43), extern.h (9.68), fasload.c (9.99), foreign.c
+	  (1.9), intern.c (9.66), nttterm.c (1.9), object.h (9.64),
+	  os2xcpt.c (1.18), prgdbm.c (1.9), prims.h (9.55), prntenv.c
+	  (1.15), pros2pm.c (1.26), prosenv.c (1.22), prosfs.c (1.22),
+	  prosio.c (1.27), prosproc.c (1.24), prospty.c (1.9), prostty.c
+	  (1.12), prpgsql.c (1.12), pruxdld.c (1.22), pruxenv.c (1.25),
+	  pruxfs.c (9.61), pruxsock.c (1.26), string.c (9.52), sysprim.c
+	  (9.54), tterm.c (1.20), uxsock.c (1.35), uxtop.c (1.34), uxtrap.c
+	  (1.45), x11base.c (1.91):
+
+	Eliminate pointer signedness warnings.
+
+2007-01-11 22:14  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.22), configure.ac (1.29):
+
+	Fix two bugs causing mis-configuration of modules.
+
+2007-01-11 21:57  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.28), liarc-gendeps.c (1.2),
+	  makegen/Makefile.in.in (1.41), makegen/cbe-rules (1.3),
+	  makegen/dirs-liarc.scm (1.2), makegen/liarc-rules-2 (1.2),
+	  makegen/makegen.scm (1.15), makegen/makeinit.sh (1.16):
+
+	Merge in most changes from pre-v15 branch.  In particular, the new
+	mechanism for configuring the C back end.
+
+2007-01-11 21:53  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.25.2.15):
+
+	Tweak to minimize diff with trunk.
+
+2007-01-11 21:22  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.27):
+
+	Add --enable-debugging.
+
+2007-01-11 21:16  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.26), makegen/Makefile.in.in (1.40):
+
+	Eliminate COMPILED_DEFS.
+
+2007-01-11 21:14  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.21), makegen/Makefile.in.in
+	  (1.25.2.14):
+
+	Eliminate MODULE_OBJECTS.
+
+2007-01-11 16:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.25):
+
+	Merge in most of the changes from pre-v15 branch; eliminate gratuitous
+	differences with that file.
+
+2007-01-11 16:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.20):
+
+	Incorporate changes from trunk.  Tweak to conform to recommended shell
+	practice.
+
+	Use M4 macros to share #include sequences.  Use new macros
+	AC_TYPE_[U]INTxx_T and AC_CHECK_MEMBER.
+
+	Replace obsolete AC_TRY_xxx macros with AC_xxx_IFELSE.  Replace most
+	instances of AC_TRY_COMPILE with AC_CHECK_TYPE and AC_CHECK_MEMBER.
+
+	Eliminate most references to ac_cv_ variables; eliminate all
+	scheme_cv_ variables.
+
+2007-01-10 03:17  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.24):
+
+	Use AS_HELP_STRING to simplify --with and --enable descriptions.
+
+2007-01-10 03:00  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.23):
+
+	Restructure handling of optional libraries; new code is simpler and
+	hopefully more effective.  In particular, problems identified by Aaron
+	Hsu should now be addressed.  Additionally, many changes were made to
+	conform to the autoconf shell programming guidelines.
+
+	A user-visible change is that --with-FOO may now specify a path, so
+	that --with-FOO=BAR adds "-IBAR/include" to CFLAGS and "-LBAR/lib" to
+	LDFLAGS.
+
+2007-01-09 13:50  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.22):
+
+	Add Aaron Hsu's patch to support compilation of modules under OS X.
+
+2007-01-09 01:38  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/ttyio.scm (1.27):
+
+	Set non-zero exit code if EOF reached inside error REPL.
+
+2007-01-09 01:37  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/scomb.scm (14.27):
+
+	Don't allow MAKE-CONDITIONAL to accept two arguments; require three.
+	Otherwise, programs of the form (IF <a> <b> #!DEFAULT) miscompile.
+
+2007-01-09 01:36  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/global.scm (14.78):
+
+	Simplify UNDEFINED-VALUE?.
+
+2007-01-09 01:16  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: input.scm (14.34), parse.scm (14.66), port.scm (1.50),
+	  runtime.pkg (14.610), ttyio.scm (1.26):
+
+	Fix echoing of input when standard input is redirected to a file.
+	Eliminate separate implementation of DISCARD-CHAR; the top-level
+	procedures are now aliases for READ-CHAR.
+
+2007-01-08 22:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.19):
+
+	Remove overlooked vestige of LIB_X11 variable.
+
+2007-01-08 22:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.21), makegen/Makefile.in.in (1.39):
+
+	Fix bug: add X include and libraries directories to CFLAGS and LIBS
+	respectively.
+
+2007-01-08 22:52  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.18), makegen/Makefile.in.in
+	  (1.25.2.13), makegen/liarc-rules-2 (1.1.2.1), makegen/makegen.scm
+	  (1.7.2.5), makegen/makeinit.sh (1.10.2.6):
+
+	Change makefile generation so that liarc fragments appear in makefile
+	only when configuring for liarc.  Also, fix bug: add X include and
+	libraries directories to CFLAGS and LIBS respectively.
+
+2007-01-08 09:55  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/cbe-rules (1.2):
+
+	Add copyright/license statements and fix typo.
+
+2007-01-08 09:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.20), makegen/Makefile.in.in (1.38),
+	  makegen/cbe-rules (1.1):
+
+	Conditionally include C-back-end rules in Makefile, since it seems
+	these are stimulating the bug in make.  Undo previous change since it
+	did not fix the problem.
+
+2007-01-08 00:38  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/: Makefile.in.in (1.37), Makefile.in.in
+	  (1.25.2.12):
+
+	Work around bug in "make" prior to version 3.81 by changing the
+	.SUFFIXES order.
+
+2007-01-07 22:57  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/strout.scm (14.28):
+
+	Fix bug: GET-OUTPUT-STRING! would always return a null string.
+
+2007-01-07 04:11  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: genio.scm (1.50), port.scm (1.49), runtime.pkg
+	  (14.609), socket.scm (1.32):
+
+	Implement PORT/OPEN?, PORT/INPUT-OPEN?, and PORT/OUTPUT-OPEN?.
+
+2007-01-07 01:48  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/rexp.scm (1.27):
+
+	Elide nested groups.
+
+2007-01-05 19:09  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: Clean.sh (1.4.2.2), Setup.sh (1.8.2.3), artutl.c
+	  (1.18.2.5), avltree.c (1.8.2.3), avltree.h (1.7.2.3), bignmint.h
+	  (1.8.2.3), bignum.c (9.52.2.5), bignum.h (9.33.2.4), bigprm.c
+	  (1.8.2.3), bitstr.c (9.65.2.6), bitstr.h (1.12.2.3), bkpt.c
+	  (9.34.2.3), bkpt.h (9.36.2.3), boot.c (9.118.2.6), char.c
+	  (9.35.2.3), cmpgc.h (1.34.2.5), cmpint.c (1.103.2.17), cmpint.h
+	  (10.12.2.10), comlin.c (1.11.2.4), comlin.h (1.9.2.3), compinit.c
+	  (1.6.2.4), comutl.c (1.33.2.5), configure.ac (1.6.2.17),
+	  confshared.h (11.8.2.9), const.h (9.52.2.6), copyrigh.c
+	  (1.5.2.3), critsec.h (1.6.2.3), daemon.c (9.34.2.3), debug.c
+	  (9.58.2.6), dfloat.c (1.8.2.3), dstack.h (1.13.2.3), edwin.h
+	  (1.11.2.3), error.c (1.9.2.3), errors.h (9.46.2.6), extern.c
+	  (9.40.2.3), extern.h (9.65.2.11), fasdump.c (9.68.2.17), fasl.c
+	  (1.1.2.7), fasl.h (9.40.2.10), fasload.c (9.96.2.18), findprim.c
+	  (9.58.2.3), fixnum.c (9.46.2.3), fixobj.h (9.40.2.3), flonum.c
+	  (9.45.2.3), gc.h (9.36.2.5), gccode.h (9.60.2.12), gcloop.c
+	  (9.51.2.21), generic.c (9.41.2.3), history.h (9.33.2.4), hooks.c
+	  (9.66.2.5), hppacach.c (1.15.2.3), hppacach.h (1.8.2.3),
+	  hppanwca.c (1.7.2.3), hunk.c (9.31.2.4), intern.c (9.61.2.7),
+	  interp.c (9.102.2.7), interp.h (9.50.2.5), intext.c (1.7.2.3),
+	  intext.h (1.7.2.3), intprm.c (1.12.2.3), intrpt.h (1.24.2.5),
+	  liarc.h (1.21.2.4), list.c (9.35.2.4), lookprm.c (1.21.2.3),
+	  lookup.c (9.70.2.5), lookup.h (9.57.2.3), memmag.c (9.71.2.9),
+	  memmag.h (1.10.2.5), missing.c (9.35.2.3), mul.c (9.37.2.4), nt.h
+	  (1.11.2.3), ntapi.h (1.17.2.3), ntasutl.asm (1.8.2.3), ntenv.c
+	  (1.21.2.3), ntfile.c (1.16.2.2), ntfs.c (1.30.2.4), ntfs.h
+	  (1.7.2.3), ntgui.c (1.31.2.3), ntgui.h (1.10.2.3), ntio.c
+	  (1.31.2.4), ntio.h (1.14.2.3), ntproc.c (1.10.2.3), ntproc.h
+	  (1.4.2.3), ntscmlib.h (1.12.2.3), ntscreen.c (1.51.2.4),
+	  ntscreen.h (1.22.2.4), ntsig.c (1.24.2.3), ntsock.c (1.18.2.4),
+	  ntsys.c (1.11.2.3), ntsys.h (1.10.2.3), ntterm.h (1.6.2.3),
+	  nttop.c (1.35.2.6), nttop.h (1.6.2.3), nttrap.c (1.26.2.7),
+	  nttrap.h (1.7.2.3), nttterm.c (1.6.2.3), nttty.c (1.10.2.3),
+	  object.h (9.59.2.10), obstack.c (1.8.2.3), obstack.h (1.14.2.3),
+	  option.c (1.61.2.10), option.h (1.16.2.4), os.h (1.9.2.4), os2.c
+	  (1.10.2.4), os2.h (1.10.2.3), os2api.h (1.14.2.3), os2conio.c
+	  (1.12.2.3), os2cthrd.c (1.12.2.3), os2cthrd.h (1.9.2.3),
+	  os2ctty.c (1.6.2.3), os2ctty.h (1.4.2.3), os2env.c (1.16.2.3),
+	  os2file.c (1.5.2.3), os2fs.c (1.16.2.3), os2io.c (1.11.2.2),
+	  os2io.h (1.6.2.3), os2msg.c (1.17.2.4), os2msg.h (1.18.2.3),
+	  os2pipe.c (1.10.2.3), os2pm.c (1.35.2.3), os2pm.h (1.15.2.3),
+	  os2pmcon.c (1.31.2.3), os2pmcon.h (1.6.2.3), os2pmcon.rc
+	  (1.7.2.3), os2proc.c (1.9.2.3), os2proc.h (1.4.2.3), os2sock.c
+	  (1.20.2.3), os2term.c (1.6.2.3), os2thrd.c (1.8.2.3), os2thrd.h
+	  (1.6.2.3), os2top.c (1.23.2.4), os2tty.c (1.4.2.3), os2xcpt.c
+	  (1.15.2.6), osctty.h (1.6.2.3), osenv.h (1.12.2.3), osfile.h
+	  (1.6.2.3), osfs.h (1.12.2.3), osio.h (1.19.2.3), osproc.h
+	  (1.12.2.3), ospty.h (1.6.2.3), osscheme.c (1.14.2.4), osscheme.h
+	  (1.13.2.4), ossig.h (1.6.2.3), osterm.h (1.13.2.3), ostop.h
+	  (1.7.2.3), ostty.c (1.6.2.3), ostty.h (1.7.2.3), outf.c
+	  (1.14.2.4), outf.h (1.7.2.3), prbfish.c (1.14.2.3), prdb4.c
+	  (1.2.2.5), prename.h (1.11.2.3), prgdbm.c (1.6.2.3), prim.c
+	  (9.45.2.5), prim.h (9.50.2.3), prims.h (9.52.2.4), primutl.c
+	  (9.80.2.4), prmcrypt.c (1.5.2.4), prmd5.c (1.9.2.3), prmhash.c
+	  (11.6.2.5), prntenv.c (1.12.2.3), prntfs.c (1.19.2.3), prntio.c
+	  (1.15.2.3), pros2fs.c (1.20.2.3), pros2io.c (1.13.2.3), pros2pm.c
+	  (1.23.2.3), prosenv.c (1.19.2.3), prosfile.c (1.12.2.3), prosfs.c
+	  (1.18.2.4), prosio.c (1.24.2.3), prosproc.c (1.21.2.3), prospty.c
+	  (1.6.2.3), prosterm.c (1.18.2.3), prostty.c (1.9.2.3), prpgsql.c
+	  (1.9.2.3), pruxdld.c (1.19.2.3), pruxenv.c (1.22.2.4), pruxfs.c
+	  (9.58.2.3), pruxio.c (1.10.2.3), pruxsock.c (1.22.2.4), ptrvec.c
+	  (1.5.2.3), purify.c (9.65.2.12), purutl.c (9.54.2.11), regex.c
+	  (1.22.2.3), regex.h (1.9.2.3), returns.h (9.45.2.3), rgxprim.c
+	  (1.15.2.3), sample.c (9.28.2.3), scheme.h (9.42.2.4), scode.h
+	  (9.29.2.3), sdata.h (9.42.2.3), stack.h (9.44.2.5), stackops.h
+	  (11.1.2.2), step.c (9.39.2.3), storage.c (9.60.2.6), string.c
+	  (9.49.2.3), svm1-defns.h (1.1.2.5), svm1-interp.c (1.1.2.3),
+	  syntax.c (1.30.2.4), syntax.h (1.14.2.3), syscall.h (1.17.2.4),
+	  sysprim.c (9.51.2.4), term.c (1.20.2.4), termcap.c (1.8.2.3),
+	  terminfo.c (1.7.10.2), tparam.c (1.8.2.3), transact.c (1.7.2.3),
+	  trap.h (9.51.2.4), tterm.c (1.16.2.3), types.h (9.40.2.6),
+	  unstackify.c (11.1.2.2), usrdef.h (9.46.2.3), utabmd.scm
+	  (9.88.2.6), utabmd.sh (1.5.2.4), utils.c (9.87.2.10), ux.c
+	  (1.27.2.4), ux.h (1.78.2.6), uxctty.c (1.16.2.3), uxenv.c
+	  (1.23.2.3), uxfile.c (1.13.2.3), uxfs.c (1.25.2.5), uxio.c
+	  (1.53.2.4), uxio.h (1.7.2.3), uxproc.c (1.29.2.3), uxproc.h
+	  (1.8.2.3), uxselect.h (1.8.2.3), uxsig.c (1.42.2.9), uxsig.h
+	  (1.10.2.3), uxsock.c (1.31.2.4), uxsock.h (1.12.2.4), uxterm.c
+	  (1.31.2.3), uxterm.h (1.7.2.3), uxtop.c (1.30.2.5), uxtop.h
+	  (1.5.2.3), uxtrap.c (1.41.2.8), uxtrap.h (1.35.2.5), uxtty.c
+	  (1.12.2.4), uxutil.c (1.9.2.3), uxutil.h (1.5.2.3), vector.c
+	  (9.42.2.4), wind.c (1.8.2.3), winder.h (9.28.2.3), x11.h
+	  (1.19.2.5), x11base.c (1.81.2.9), x11color.c (1.7.2.3),
+	  x11graph.c (1.43.2.3), x11term.c (1.29.2.6), xdebug.c (9.37.2.5),
+	  cmpauxmd/alpha.m4 (1.2.2.2), cmpauxmd/asmcvt.c (1.4.2.3),
+	  cmpauxmd/c.c (1.15.2.4), cmpauxmd/hppa.m4 (1.42.2.3),
+	  cmpauxmd/i386.m4 (1.64.2.3), cmpauxmd/m4-dos (1.4.2.3),
+	  cmpauxmd/makefile (1.10.2.2), cmpauxmd/mc68k.m4 (1.30.2.3),
+	  cmpauxmd/mips.m4 (1.18.2.3), cmpauxmd/vax.m4 (1.7.2.3),
+	  cmpintmd/alpha.h (1.7.2.5), cmpintmd/c-config.h (1.1.2.2),
+	  cmpintmd/c.c (1.1.2.2), cmpintmd/c.h (1.9.2.3), cmpintmd/hppa.h
+	  (1.54.2.5), cmpintmd/i386-config.h (1.1.2.2), cmpintmd/i386.c
+	  (1.1.2.4), cmpintmd/i386.h (1.37.2.10), cmpintmd/mc68k.h
+	  (1.38.2.6), cmpintmd/mips.h (1.25.2.6), cmpintmd/none-config.h
+	  (1.1.2.2), cmpintmd/none.c (1.1.2.2), cmpintmd/none.h (1.1.2.3),
+	  cmpintmd/svm1-config.h (1.1.2.2), cmpintmd/svm1.c (1.1.2.4),
+	  cmpintmd/svm1.h (1.1.2.11), cmpintmd/vax.h (1.11.2.5),
+	  makegen/Makefile.in.in (1.25.2.11), makegen/dirs-liarc.scm
+	  (1.1.2.2), makegen/files-core.scm (1.4.2.5),
+	  makegen/files-optional.scm (1.6.2.5), makegen/files-os-prim.scm
+	  (1.4.2.3), makegen/files-other.scm (1.4.2.3),
+	  makegen/files-unix.scm (1.4.2.3), makegen/m4.sh (1.4.2.3),
+	  makegen/makegen.scm (1.7.2.4), makegen/makeinit.sh (1.10.2.5),
+	  ntutl/bch-p-nt.lst (1.8.2.3), ntutl/config.bat (1.7.2.1),
+	  ntutl/config.h (1.7.2.5), ntutl/makefile (1.31.2.2),
+	  ntutl/makefile.wcc (1.20.2.3), ntutl/scheme16.c (1.14.2.3),
+	  ntutl/scheme16.mak (1.5.2.2), ntutl/scheme31.c (1.13.2.3),
+	  ntutl/scheme32.c (1.20.2.3), ntutl/scm-p-nt.lst (1.8.2.3),
+	  ntutl/setenv.bat (1.2.2.1), ntutl/wconfig.bat (1.4.2.2),
+	  os2utl/config.cmd (1.5.2.1), os2utl/config.h (1.7.2.4),
+	  os2utl/makefile (1.17.2.3), os2utl/makefile.cmn (1.16.2.2),
+	  os2utl/makefile.emx (1.11.2.3), os2utl/makefile.gcc (1.10.2.3),
+	  os2utl/makefile.vac (1.10.2.3), os2utl/makefile.wcc (1.11.2.3),
+	  os2utl/mkos2pm.scm (1.4.2.3):
+
+	Update copyright statements to GNU standard.
+
+2007-01-05 17:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.16), os2pm.scm (1.16.2.3),
+	  termcap.c (1.8.2.2), tparam.c (1.8.2.2):
+
+	Update FSF address.
+
+2007-01-05 16:19  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.10), Makefile.in (1.28), Makefile.std (1.15),
+	  Setup.sh (1.16), Tags.sh (1.6), configure.ac (1.5), 6001/6001.cbf
+	  (1.11), 6001/6001.pkg (1.19), 6001/6001.sf (1.18), 6001/arith.scm
+	  (1.15), 6001/edextra.scm (1.38), 6001/floppy.scm (1.30),
+	  6001/make.scm (15.40), 6001/nodefs.scm (1.18), 6001/pic-imag.scm
+	  (1.14), 6001/pic-ops.scm (1.10), 6001/pic-read.scm (1.11),
+	  6001/pic-reco.scm (1.13), 6001/picture.scm (1.34),
+	  compiler/Clean.sh (1.11), compiler/Setup.sh (1.9),
+	  compiler/Stage.sh (1.7), compiler/Tags.sh (1.6),
+	  compiler/configure (1.10), compiler/back/asmmac.scm (1.22),
+	  compiler/back/asutl.scm (1.7), compiler/back/bittop.scm (1.27),
+	  compiler/back/bitutl.scm (1.14), compiler/back/insseq.scm (4.8),
+	  compiler/back/lapgn1.scm (4.23), compiler/back/lapgn2.scm (1.27),
+	  compiler/back/lapgn3.scm (4.20), compiler/back/linear.scm (4.21),
+	  compiler/back/mermap.scm (1.9), compiler/back/regmap.scm (4.18),
+	  compiler/back/syerly.scm (1.16), compiler/back/symtab.scm (1.51),
+	  compiler/back/syntax.scm (1.33), compiler/base/asstop.scm (1.17),
+	  compiler/base/blocks.scm (4.19), compiler/base/cfg1.scm (4.11),
+	  compiler/base/cfg2.scm (4.8), compiler/base/cfg3.scm (4.9),
+	  compiler/base/constr.scm (1.8), compiler/base/contin.scm (4.13),
+	  compiler/base/crsend.scm (1.17), compiler/base/crstop.scm (1.17),
+	  compiler/base/ctypes.scm (4.20), compiler/base/debug.scm (4.20),
+	  compiler/base/enumer.scm (4.8), compiler/base/infnew.scm (4.16),
+	  compiler/base/lvalue.scm (4.30), compiler/base/macros.scm (4.34),
+	  compiler/base/make.scm (4.127), compiler/base/mvalue.scm (3.5),
+	  compiler/base/object.scm (4.13), compiler/base/pmerly.scm (1.13),
+	  compiler/base/pmlook.scm (1.14), compiler/base/pmpars.scm (1.12),
+	  compiler/base/proced.scm (4.27), compiler/base/refctx.scm (1.7),
+	  compiler/base/rvalue.scm (4.12), compiler/base/scode.scm (4.18),
+	  compiler/base/sets.scm (4.6), compiler/base/subprb.scm (4.12),
+	  compiler/base/switch.scm (4.31), compiler/base/toplev.scm (4.70),
+	  compiler/base/utils.scm (4.34), compiler/documentation/cmpaux.txt
+	  (1.5), compiler/documentation/cmpint.txt (1.13),
+	  compiler/documentation/porting.guide (1.27), compiler/etc/asm.scm
+	  (1.7), compiler/etc/comcmp.scm (1.15), compiler/etc/comfiles.scm
+	  (1.11), compiler/etc/disload.scm (1.16), compiler/etc/stackp.scm
+	  (1.11), compiler/etc/xcbfdir.scm (1.13), compiler/fggen/canon.scm
+	  (1.27), compiler/fggen/declar.scm (1.10),
+	  compiler/fggen/fggen.scm (4.42), compiler/fgopt/blktyp.scm
+	  (4.20), compiler/fgopt/closan.scm (4.34),
+	  compiler/fgopt/conect.scm (4.10), compiler/fgopt/contan.scm
+	  (4.14), compiler/fgopt/delint.scm (1.8),
+	  compiler/fgopt/desenv.scm (4.9), compiler/fgopt/envopt.scm
+	  (1.14), compiler/fgopt/folcon.scm (4.13),
+	  compiler/fgopt/offset.scm (4.13), compiler/fgopt/operan.scm
+	  (4.12), compiler/fgopt/order.scm (4.22), compiler/fgopt/outer.scm
+	  (4.10), compiler/fgopt/param.scm (1.8), compiler/fgopt/reord.scm
+	  (1.7), compiler/fgopt/reteqv.scm (1.6), compiler/fgopt/reuse.scm
+	  (1.12), compiler/fgopt/sideff.scm (1.13),
+	  compiler/fgopt/simapp.scm (4.13), compiler/fgopt/simple.scm
+	  (4.11), compiler/fgopt/subfre.scm (1.12),
+	  compiler/fgopt/varind.scm (1.9), compiler/machines/C/compiler.cbf
+	  (1.7), compiler/machines/C/compiler.pkg (1.21),
+	  compiler/machines/C/compiler.sf (1.14),
+	  compiler/machines/C/cout.scm (1.33), compiler/machines/C/ctop.scm
+	  (1.21), compiler/machines/C/cutl.scm (1.9),
+	  compiler/machines/C/decls.scm (1.12),
+	  compiler/machines/C/lapgen.scm (1.23),
+	  compiler/machines/C/machin.scm (1.14),
+	  compiler/machines/C/make.scm (1.9),
+	  compiler/machines/C/rgspcm.scm (1.7),
+	  compiler/machines/C/rules1.scm (1.13),
+	  compiler/machines/C/rules2.scm (1.9),
+	  compiler/machines/C/rules3.scm (1.17),
+	  compiler/machines/C/rules4.scm (1.7),
+	  compiler/machines/C/rulfix.scm (1.11),
+	  compiler/machines/C/rulflo.scm (1.12),
+	  compiler/machines/C/rulrew.scm (1.9),
+	  compiler/machines/C/stackify.scm (1.3),
+	  compiler/machines/C/stackops.scm (1.3),
+	  compiler/machines/C/traditional.scm (1.6),
+	  compiler/machines/alpha/assmd.scm (1.8),
+	  compiler/machines/alpha/coerce.scm (1.7),
+	  compiler/machines/alpha/compiler.cbf (1.7),
+	  compiler/machines/alpha/compiler.pkg (1.21),
+	  compiler/machines/alpha/compiler.sf (1.14),
+	  compiler/machines/alpha/dassm1.scm (1.8),
+	  compiler/machines/alpha/dassm2.scm (1.8),
+	  compiler/machines/alpha/dassm3.scm (1.6),
+	  compiler/machines/alpha/decls.scm (1.13),
+	  compiler/machines/alpha/inerly.scm (1.10),
+	  compiler/machines/alpha/insmac.scm (1.10),
+	  compiler/machines/alpha/instr1.scm (1.10),
+	  compiler/machines/alpha/instr2.scm (1.8),
+	  compiler/machines/alpha/instr3.scm (1.8),
+	  compiler/machines/alpha/lapgen.scm (1.14),
+	  compiler/machines/alpha/lapopt.scm (1.6),
+	  compiler/machines/alpha/machin.scm (1.12),
+	  compiler/machines/alpha/make.scm (1.8),
+	  compiler/machines/alpha/rgspcm.scm (1.6),
+	  compiler/machines/alpha/rules1.scm (1.8),
+	  compiler/machines/alpha/rules2.scm (1.7),
+	  compiler/machines/alpha/rules3.scm (1.14),
+	  compiler/machines/alpha/rules4.scm (1.8),
+	  compiler/machines/alpha/rulfix.scm (1.9),
+	  compiler/machines/alpha/rulflo.scm (1.10),
+	  compiler/machines/alpha/rulrew.scm (1.7),
+	  compiler/machines/bobcat/assmd.scm (1.43),
+	  compiler/machines/bobcat/coerce.scm (1.15),
+	  compiler/machines/bobcat/compiler.cbf (1.7),
+	  compiler/machines/bobcat/compiler.pkg (1.58),
+	  compiler/machines/bobcat/compiler.sf (1.26),
+	  compiler/machines/bobcat/dassm1.scm (4.26),
+	  compiler/machines/bobcat/dassm2.scm (4.29),
+	  compiler/machines/bobcat/dassm3.scm (4.13),
+	  compiler/machines/bobcat/decls.scm (4.44),
+	  compiler/machines/bobcat/flinstr1.scm (1.8),
+	  compiler/machines/bobcat/flinstr2.scm (1.8),
+	  compiler/machines/bobcat/inerly.scm (1.15),
+	  compiler/machines/bobcat/insmac.scm (1.136),
+	  compiler/machines/bobcat/instr1.scm (1.72),
+	  compiler/machines/bobcat/instr2.scm (1.25),
+	  compiler/machines/bobcat/instr3.scm (1.24),
+	  compiler/machines/bobcat/instr4.scm (1.10),
+	  compiler/machines/bobcat/insutl.scm (1.13),
+	  compiler/machines/bobcat/lapgen.scm (4.58),
+	  compiler/machines/bobcat/lapopt.scm (1.6),
+	  compiler/machines/bobcat/machin.scm (4.38),
+	  compiler/machines/bobcat/make.scm-68020 (4.93),
+	  compiler/machines/bobcat/make.scm-68040 (4.94),
+	  compiler/machines/bobcat/mc68ktgl.scm (1.7),
+	  compiler/machines/bobcat/rgspcm.scm (4.7),
+	  compiler/machines/bobcat/rules1.scm (4.43),
+	  compiler/machines/bobcat/rules2.scm (4.19),
+	  compiler/machines/bobcat/rules3.scm (4.47),
+	  compiler/machines/bobcat/rules4.scm (4.19),
+	  compiler/machines/bobcat/rulrew.scm (1.11),
+	  compiler/machines/i386/assmd.scm (1.10),
+	  compiler/machines/i386/coerce.scm (1.7),
+	  compiler/machines/i386/compiler.cbf (1.8),
+	  compiler/machines/i386/compiler.pkg (1.34),
+	  compiler/machines/i386/compiler.sf (1.23),
+	  compiler/machines/i386/dassm1.scm (1.17),
+	  compiler/machines/i386/dassm2.scm (1.16),
+	  compiler/machines/i386/dassm3.scm (1.14),
+	  compiler/machines/i386/decls.scm (1.16),
+	  compiler/machines/i386/inerly.scm (1.11),
+	  compiler/machines/i386/insmac.scm (1.21),
+	  compiler/machines/i386/instr1.scm (1.20),
+	  compiler/machines/i386/instr2.scm (1.14),
+	  compiler/machines/i386/instrf.scm (1.22),
+	  compiler/machines/i386/insutl.scm (1.15),
+	  compiler/machines/i386/lapgen.scm (1.37),
+	  compiler/machines/i386/lapopt.scm (1.10),
+	  compiler/machines/i386/machin.scm (1.23),
+	  compiler/machines/i386/make.scm (1.10),
+	  compiler/machines/i386/pc-make.scm (1.6),
+	  compiler/machines/i386/rgspcm.scm (1.8),
+	  compiler/machines/i386/rules1.scm (1.23),
+	  compiler/machines/i386/rules2.scm (1.13),
+	  compiler/machines/i386/rules3.scm (1.42),
+	  compiler/machines/i386/rules4.scm (1.12),
+	  compiler/machines/i386/rulfix.scm (1.38),
+	  compiler/machines/i386/rulflo.scm (1.29),
+	  compiler/machines/i386/rulrew.scm (1.19),
+	  compiler/machines/mips/assmd.scm (1.9),
+	  compiler/machines/mips/coerce.scm (1.6),
+	  compiler/machines/mips/compiler.cbf (1.7),
+	  compiler/machines/mips/compiler.pkg (1.28),
+	  compiler/machines/mips/compiler.sf-big (1.16),
+	  compiler/machines/mips/compiler.sf-little (1.16),
+	  compiler/machines/mips/dassm1.scm (1.11),
+	  compiler/machines/mips/dassm2.scm (1.11),
+	  compiler/machines/mips/dassm3.scm (1.8),
+	  compiler/machines/mips/decls.scm (1.17),
+	  compiler/machines/mips/inerly.scm (1.10),
+	  compiler/machines/mips/insmac.scm (1.10),
+	  compiler/machines/mips/instr1.scm (1.13),
+	  compiler/machines/mips/instr2a.scm (1.11),
+	  compiler/machines/mips/instr2b.scm (1.10),
+	  compiler/machines/mips/instr3.scm (1.9),
+	  compiler/machines/mips/lapgen.scm (1.23),
+	  compiler/machines/mips/lapopt.scm (1.6),
+	  compiler/machines/mips/machin.scm (1.19),
+	  compiler/machines/mips/make.scm-big (4.93),
+	  compiler/machines/mips/make.scm-little (4.93),
+	  compiler/machines/mips/mips.scm (1.8),
+	  compiler/machines/mips/rgspcm.scm (1.6),
+	  compiler/machines/mips/rules1.scm (1.11),
+	  compiler/machines/mips/rules2.scm (1.7),
+	  compiler/machines/mips/rules3.scm (1.24),
+	  compiler/machines/mips/rules4.scm (1.8),
+	  compiler/machines/mips/rulfix.scm (1.15),
+	  compiler/machines/mips/rulflo.scm (1.14),
+	  compiler/machines/mips/rulrew.scm (1.11),
+	  compiler/machines/sparc/assmd.scm (1.8),
+	  compiler/machines/sparc/cf.h-sparc (1.6),
+	  compiler/machines/sparc/cmpaux-sparc.m4 (1.6),
+	  compiler/machines/sparc/cmpint-sparc.h (1.6),
+	  compiler/machines/sparc/coerce.scm (1.6),
+	  compiler/machines/sparc/decls.scm (1.11),
+	  compiler/machines/sparc/inerly.scm (1.10),
+	  compiler/machines/sparc/insmac.scm (1.9),
+	  compiler/machines/sparc/instr1.scm (1.8),
+	  compiler/machines/sparc/instr2a.scm (1.8),
+	  compiler/machines/sparc/instr2b.scm (1.8),
+	  compiler/machines/sparc/instr3.scm (1.8),
+	  compiler/machines/sparc/lapgen.scm (1.10),
+	  compiler/machines/sparc/lapopt.scm (1.6),
+	  compiler/machines/sparc/machin.scm (1.7),
+	  compiler/machines/sparc/make.scm (1.7),
+	  compiler/machines/sparc/rgspcm.scm (1.6),
+	  compiler/machines/sparc/rules1.scm (1.6),
+	  compiler/machines/sparc/rules2.scm (1.6),
+	  compiler/machines/sparc/rules3.scm (1.8),
+	  compiler/machines/sparc/rules4.scm (1.6),
+	  compiler/machines/sparc/rulfix.scm (1.6),
+	  compiler/machines/sparc/rulflo.scm (1.8),
+	  compiler/machines/sparc/rulrew.scm (1.6),
+	  compiler/machines/spectrum/assmd.scm (1.37),
+	  compiler/machines/spectrum/coerce.scm (1.10),
+	  compiler/machines/spectrum/compiler.cbf (1.7),
+	  compiler/machines/spectrum/compiler.pkg (1.58),
+	  compiler/machines/spectrum/compiler.sf (1.26),
+	  compiler/machines/spectrum/dassm1.scm (4.26),
+	  compiler/machines/spectrum/dassm2.scm (4.27),
+	  compiler/machines/spectrum/dassm3.scm (1.7),
+	  compiler/machines/spectrum/decls.scm (4.42),
+	  compiler/machines/spectrum/inerly.scm (1.10),
+	  compiler/machines/spectrum/insmac.scm (1.10),
+	  compiler/machines/spectrum/instr1.scm (1.10),
+	  compiler/machines/spectrum/instr2.scm (1.15),
+	  compiler/machines/spectrum/instr3.scm (1.9),
+	  compiler/machines/spectrum/lapgen.scm (4.55),
+	  compiler/machines/spectrum/lapopt.scm (1.19),
+	  compiler/machines/spectrum/machin.scm (4.34),
+	  compiler/machines/spectrum/make.scm (4.94),
+	  compiler/machines/spectrum/rgspcm.scm (4.8),
+	  compiler/machines/spectrum/rules1.scm (4.40),
+	  compiler/machines/spectrum/rules2.scm (4.19),
+	  compiler/machines/spectrum/rules3.scm (4.48),
+	  compiler/machines/spectrum/rules4.scm (4.17),
+	  compiler/machines/spectrum/rulfix.scm (4.54),
+	  compiler/machines/spectrum/rulflo.scm (4.46),
+	  compiler/machines/spectrum/rulrew.scm (1.17),
+	  compiler/machines/vax/assmd.scm (4.13),
+	  compiler/machines/vax/coerce.scm (1.9),
+	  compiler/machines/vax/compiler.cbf (1.10),
+	  compiler/machines/vax/compiler.pkg (1.30),
+	  compiler/machines/vax/compiler.sf (1.17),
+	  compiler/machines/vax/dassm1.scm (4.13),
+	  compiler/machines/vax/dassm2.scm (4.19),
+	  compiler/machines/vax/dassm3.scm (1.8),
+	  compiler/machines/vax/decls.scm (4.20),
+	  compiler/machines/vax/dsyn.scm (1.16),
+	  compiler/machines/vax/inerly.scm (1.14),
+	  compiler/machines/vax/insmac.scm (1.21),
+	  compiler/machines/vax/instr1.scm (1.14),
+	  compiler/machines/vax/instr2.scm (1.15),
+	  compiler/machines/vax/instr3.scm (1.18),
+	  compiler/machines/vax/insutl.scm (4.8),
+	  compiler/machines/vax/lapgen.scm (4.23),
+	  compiler/machines/vax/lapopt.scm (1.6),
+	  compiler/machines/vax/machin.scm (4.17),
+	  compiler/machines/vax/make.scm (4.93),
+	  compiler/machines/vax/rgspcm.scm (4.7),
+	  compiler/machines/vax/rules1.scm (4.12),
+	  compiler/machines/vax/rules2.scm (4.9),
+	  compiler/machines/vax/rules3.scm (4.18),
+	  compiler/machines/vax/rules4.scm (4.9),
+	  compiler/machines/vax/rulfix.scm (1.12),
+	  compiler/machines/vax/rulrew.scm (1.7),
+	  compiler/rtlbase/regset.scm (1.8), compiler/rtlbase/rgraph.scm
+	  (4.13), compiler/rtlbase/rtlcfg.scm (4.14),
+	  compiler/rtlbase/rtlcon.scm (4.34), compiler/rtlbase/rtlexp.scm
+	  (4.24), compiler/rtlbase/rtline.scm (4.15),
+	  compiler/rtlbase/rtlobj.scm (4.16), compiler/rtlbase/rtlreg.scm
+	  (4.14), compiler/rtlbase/rtlty1.scm (4.27),
+	  compiler/rtlbase/rtlty2.scm (4.17), compiler/rtlbase/valclass.scm
+	  (1.11), compiler/rtlgen/fndblk.scm (4.16),
+	  compiler/rtlgen/fndvar.scm (1.11), compiler/rtlgen/opncod.scm
+	  (4.77), compiler/rtlgen/rgcomb.scm (4.25),
+	  compiler/rtlgen/rgproc.scm (4.18), compiler/rtlgen/rgretn.scm
+	  (4.18), compiler/rtlgen/rgrval.scm (4.27),
+	  compiler/rtlgen/rgstmt.scm (4.21), compiler/rtlgen/rtlgen.scm
+	  (4.34), compiler/rtlopt/ralloc.scm (1.22),
+	  compiler/rtlopt/rcompr.scm (1.19), compiler/rtlopt/rcse1.scm
+	  (4.28), compiler/rtlopt/rcse2.scm (4.18),
+	  compiler/rtlopt/rcseep.scm (4.11), compiler/rtlopt/rcseht.scm
+	  (4.17), compiler/rtlopt/rcserq.scm (4.11),
+	  compiler/rtlopt/rcsesr.scm (4.8), compiler/rtlopt/rdebug.scm
+	  (1.8), compiler/rtlopt/rdflow.scm (1.8),
+	  compiler/rtlopt/rerite.scm (1.9), compiler/rtlopt/rinvex.scm
+	  (1.14), compiler/rtlopt/rlife.scm (1.65),
+	  compiler/rtlopt/rtlcsm.scm (1.6), cref/Makefile.in (1.8),
+	  cref/anfile.scm (1.11), cref/conpkg.scm (1.18), cref/cref.cbf
+	  (1.7), cref/cref.pkg (1.14), cref/cref.sf (1.20), cref/forpkg.scm
+	  (1.14), cref/make.scm (1.30), cref/mset.scm (1.6),
+	  cref/object.scm (1.18), cref/redpkg.scm (1.30), cref/toplev.scm
+	  (1.27), cref/triv.pkg (1.11), edwin/Clean.sh (1.12),
+	  edwin/Makefile.in (1.12), edwin/abbrev.scm (1.12), edwin/ansi.scm
+	  (1.12), edwin/argred.scm (1.38), edwin/artdebug.scm (1.37),
+	  edwin/autold.scm (1.68), edwin/autosv.scm (1.39), edwin/basic.scm
+	  (1.147), edwin/bios.scm (1.9), edwin/bufcom.scm (1.112),
+	  edwin/buffer.scm (1.195), edwin/buffrm.scm (1.65),
+	  edwin/bufinp.scm (1.15), edwin/bufmnu.scm (1.136),
+	  edwin/bufout.scm (1.19), edwin/bufset.scm (1.17),
+	  edwin/bufwfs.scm (1.25), edwin/bufwin.scm (1.318),
+	  edwin/bufwiu.scm (1.40), edwin/bufwmc.scm (1.23),
+	  edwin/c-mode.scm (1.65), edwin/calias.scm (1.35),
+	  edwin/cinden.scm (1.25), edwin/class.scm (1.77), edwin/clscon.scm
+	  (1.16), edwin/clsmac.scm (1.15), edwin/comatch.scm (1.9),
+	  edwin/comhst.scm (1.11), edwin/comint.scm (1.34),
+	  edwin/comman.scm (1.90), edwin/compile.scm (1.19),
+	  edwin/comred.scm (1.128), edwin/comtab.scm (1.77),
+	  edwin/comwin.scm (1.152), edwin/curren.scm (1.150),
+	  edwin/dabbrev.scm (1.9), edwin/debian-changelog.scm (1.11),
+	  edwin/debug.scm (1.72), edwin/debuge.scm (1.60), edwin/decls.scm
+	  (1.80), edwin/dired.scm (1.201), edwin/diros2.scm (1.9),
+	  edwin/dirunx.scm (1.18), edwin/dirw32.scm (1.9),
+	  edwin/display.scm (1.12), edwin/docstr.scm (1.9), edwin/dos.scm
+	  (1.58), edwin/doscom.scm (1.8), edwin/dosfile.scm (1.47),
+	  edwin/dosproc.scm (1.14), edwin/dosshell.scm (1.10),
+	  edwin/ed-ffi.scm (1.58), edwin/editor.scm (1.264),
+	  edwin/edtfrm.scm (1.97), edwin/edtstr.scm (1.35), edwin/edwin.cbf
+	  (1.8), edwin/edwin.ldr (1.80), edwin/edwin.pkg (1.302),
+	  edwin/edwin.sf (1.36), edwin/evlcom.scm (1.73), edwin/eystep.scm
+	  (1.11), edwin/filcom.scm (1.228), edwin/fileio.scm (1.170),
+	  edwin/fill.scm (1.75), edwin/grpops.scm (1.33), edwin/hlpcom.scm
+	  (1.131), edwin/htmlmode.scm (1.16), edwin/image.scm (1.142),
+	  edwin/info.scm (1.143), edwin/input.scm (1.107), edwin/intmod.scm
+	  (1.124), edwin/iserch.scm (1.28), edwin/javamode.scm (1.16),
+	  edwin/key-w32.scm (1.8), edwin/key-x11.scm (1.10),
+	  edwin/keymap.scm (1.22), edwin/keyparse.scm (1.8),
+	  edwin/kilcom.scm (1.77), edwin/kmacro.scm (1.50),
+	  edwin/lincom.scm (1.129), edwin/linden.scm (1.134),
+	  edwin/loadef.scm (1.52), edwin/lspcom.scm (1.165),
+	  edwin/macros.scm (1.80), edwin/make.scm (3.123), edwin/malias.scm
+	  (1.12), edwin/manual.scm (1.21), edwin/midas.scm (1.27),
+	  edwin/modefs.scm (1.169), edwin/modes.scm (1.40),
+	  edwin/modlin.scm (1.28), edwin/modwin.scm (1.47),
+	  edwin/motcom.scm (1.54), edwin/motion.scm (1.93),
+	  edwin/mousecom.scm (1.10), edwin/nntp.scm (1.34),
+	  edwin/notify.scm (1.26), edwin/nvector.scm (1.13),
+	  edwin/occur.scm (1.13), edwin/os2.scm (1.56), edwin/os2com.scm
+	  (1.10), edwin/os2term.scm (1.29), edwin/outline.scm (1.14),
+	  edwin/pasmod.scm (1.56), edwin/paths.scm (1.20), edwin/print.scm
+	  (1.25), edwin/process.scm (1.69), edwin/prompt.scm (1.204),
+	  edwin/pwedit.scm (1.14), edwin/pwparse.scm (1.6),
+	  edwin/rcsparse.scm (1.8), edwin/reccom.scm (1.19),
+	  edwin/regcom.scm (1.27), edwin/regexp.scm (1.86),
+	  edwin/regops.scm (1.93), edwin/rename.scm (1.13),
+	  edwin/replaz.scm (1.85), edwin/rfc822.scm (3.9), edwin/ring.scm
+	  (1.17), edwin/rmail.scm (1.78), edwin/rmailsrt.scm (1.18),
+	  edwin/rmailsum.scm (1.41), edwin/schmod.scm (1.76),
+	  edwin/scrcom.scm (1.13), edwin/screen.scm (1.124),
+	  edwin/search.scm (1.161), edwin/sendmail.scm (1.90),
+	  edwin/sercom.scm (1.70), edwin/shell.scm (1.28), edwin/simple.scm
+	  (1.59), edwin/snr.scm (1.69), edwin/sort.scm (1.13),
+	  edwin/strpad.scm (1.13), edwin/strtab.scm (1.52),
+	  edwin/struct.scm (1.103), edwin/syntax.scm (1.97),
+	  edwin/tagutl.scm (1.65), edwin/techinfo.scm (1.10),
+	  edwin/telnet.scm (1.19), edwin/termcap.scm (1.11),
+	  edwin/texcom.scm (1.51), edwin/things.scm (1.93),
+	  edwin/tparse.scm (1.80), edwin/tterm.scm (1.45), edwin/tximod.scm
+	  (1.33), edwin/txtprp.scm (1.28), edwin/undo.scm (1.68),
+	  edwin/unix.scm (1.123), edwin/utils.scm (1.59), edwin/utlwin.scm
+	  (1.65), edwin/vc.scm (1.97), edwin/verilog.scm (1.14),
+	  edwin/vhdl.scm (1.14), edwin/webster.scm (1.10), edwin/win32.scm
+	  (1.21), edwin/win32com.scm (1.13), edwin/wincom.scm (1.138),
+	  edwin/window.scm (1.165), edwin/winout.scm (1.20),
+	  edwin/winren.scm (1.11), edwin/xcom.scm (1.27), edwin/xform.scm
+	  (1.17), edwin/xmodef.scm (1.8), edwin/xterm.scm (1.80),
+	  etc/Clean.sh (1.16), etc/Setup.sh (1.12), etc/Stage.sh (1.8),
+	  etc/Tags.sh (1.6), etc/build-bands.sh (1.6), etc/compile.scm
+	  (1.12), etc/compile.sh (1.10), etc/functions.sh (1.6),
+	  etc/optiondb.scm (1.17), etc/script.scm (1.4), imail/Makefile.in
+	  (1.8), imail/compile.scm (1.24), imail/ed-ffi.scm (1.25),
+	  imail/imail-browser.scm (1.14), imail/imail-core.scm (1.156),
+	  imail/imail-file.scm (1.89), imail/imail-imap.scm (1.208),
+	  imail/imail-rmail.scm (1.75), imail/imail-summary.scm (1.55),
+	  imail/imail-top.scm (1.296), imail/imail-umail.scm (1.56),
+	  imail/imail-util.scm (1.48), imail/imail.pkg (1.103),
+	  imail/imap-response.scm (1.50), imail/imap-syntax.scm (1.23),
+	  imail/load.scm (1.46), imail/print.sh (1.13), microcode/Clean.sh
+	  (1.6), microcode/Setup.sh (1.11), microcode/array.c (9.50),
+	  microcode/array.h (9.40), microcode/artutl.c (1.20),
+	  microcode/avltree.c (1.10), microcode/avltree.h (1.9),
+	  microcode/bchdmp.c (9.94), microcode/bchdrn.c (1.14),
+	  microcode/bchdrn.h (1.14), microcode/bchgcc.h (9.67),
+	  microcode/bchgcl.c (9.58), microcode/bchmmg.c (9.106),
+	  microcode/bchpur.c (9.76), microcode/bchutl.c (1.17),
+	  microcode/bignmint.h (1.10), microcode/bignum.c (9.56),
+	  microcode/bignum.h (9.35), microcode/bigprm.c (1.10),
+	  microcode/bintopsb.c (9.81), microcode/bitstr.c (9.68),
+	  microcode/bitstr.h (1.14), microcode/bkpt.c (9.36),
+	  microcode/bkpt.h (9.38), microcode/bltdef.h (1.8),
+	  microcode/boot.c (9.121), microcode/breakup.c (9.29),
+	  microcode/char.c (9.37), microcode/cmpgc.h (1.36),
+	  microcode/cmpint.c (1.107), microcode/cmpint.h (10.14),
+	  microcode/cmptype.h (1.8), microcode/comlin.c (1.14),
+	  microcode/comlin.h (1.11), microcode/compinit.c (1.10),
+	  microcode/comutl.c (1.36), microcode/configure.ac (1.19),
+	  microcode/confshared.h (11.11), microcode/const.h (9.55),
+	  microcode/copyrigh.c (1.7), microcode/critsec.h (1.8),
+	  microcode/daemon.c (9.36), microcode/debug.c (9.60),
+	  microcode/default.h (9.49), microcode/dfloat.c (1.10),
+	  microcode/dmpwrld.c (9.45), microcode/dstack.h (1.15),
+	  microcode/dump.c (9.44), microcode/edwin.h (1.13),
+	  microcode/error.c (1.12), microcode/errors.h (9.48),
+	  microcode/extern.c (9.42), microcode/extern.h (9.67),
+	  microcode/fasdump.c (9.70), microcode/fasl.h (9.43),
+	  microcode/fasload.c (9.98), microcode/fft.c (9.37),
+	  microcode/fhooks.c (9.39), microcode/findprim.c (9.60),
+	  microcode/fixnum.c (9.48), microcode/fixobj.h (9.42),
+	  microcode/flonum.c (9.47), microcode/foreign.c (1.8),
+	  microcode/foreign.h (1.7), microcode/future.c (9.33),
+	  microcode/futures.h (9.34), microcode/gc.h (9.38),
+	  microcode/gccode.h (9.62), microcode/gcloop.c (9.53),
+	  microcode/gctype.c (9.38), microcode/generic.c (9.43),
+	  microcode/gpio.c (1.15), microcode/history.h (9.36),
+	  microcode/hooks.c (9.68), microcode/hppacach.c (1.17),
+	  microcode/hppacach.h (1.10), microcode/hppanwca.c (1.9),
+	  microcode/hunk.c (9.33), microcode/image.c (9.39),
+	  microcode/image.h (9.29), microcode/intercom.c (9.38),
+	  microcode/intern.c (9.65), microcode/interp.c (9.104),
+	  microcode/interp.h (9.52), microcode/intext.c (1.9),
+	  microcode/intext.h (1.9), microcode/intprm.c (1.14),
+	  microcode/intrpt.h (1.26), microcode/liarc.h (1.25),
+	  microcode/list.c (9.37), microcode/load.c (9.45),
+	  microcode/locks.h (9.30), microcode/lookprm.c (1.23),
+	  microcode/lookup.c (9.74), microcode/lookup.h (9.59),
+	  microcode/memmag.c (9.74), microcode/memmag.h (1.12),
+	  microcode/missing.c (9.37), microcode/mul.c (9.39),
+	  microcode/nt.h (1.13), microcode/ntapi.h (1.20),
+	  microcode/ntasutl.asm (1.10), microcode/ntenv.c (1.23),
+	  microcode/ntfile.c (1.18), microcode/ntfs.c (1.33),
+	  microcode/ntfs.h (1.9), microcode/ntgui.c (1.33),
+	  microcode/ntgui.h (1.12), microcode/ntio.c (1.34),
+	  microcode/ntio.h (1.16), microcode/ntproc.c (1.12),
+	  microcode/ntproc.h (1.6), microcode/ntscmlib.h (1.14),
+	  microcode/ntscreen.c (1.54), microcode/ntscreen.h (1.25),
+	  microcode/ntsig.c (1.26), microcode/ntsock.c (1.22),
+	  microcode/ntsys.c (1.13), microcode/ntsys.h (1.12),
+	  microcode/ntterm.h (1.8), microcode/nttop.c (1.39),
+	  microcode/nttop.h (1.8), microcode/nttrap.c (1.29),
+	  microcode/nttrap.h (1.9), microcode/nttterm.c (1.8),
+	  microcode/nttty.c (1.12), microcode/object.h (9.63),
+	  microcode/option.c (1.64), microcode/option.h (1.18),
+	  microcode/os.h (1.12), microcode/os2.c (1.13), microcode/os2.h
+	  (1.12), microcode/os2api.h (1.16), microcode/os2conio.c (1.14),
+	  microcode/os2cthrd.c (1.14), microcode/os2cthrd.h (1.11),
+	  microcode/os2ctty.c (1.8), microcode/os2ctty.h (1.6),
+	  microcode/os2env.c (1.18), microcode/os2file.c (1.7),
+	  microcode/os2fs.c (1.18), microcode/os2io.c (1.13),
+	  microcode/os2io.h (1.8), microcode/os2msg.c (1.19),
+	  microcode/os2msg.h (1.20), microcode/os2pipe.c (1.12),
+	  microcode/os2pm.c (1.37), microcode/os2pm.h (1.17),
+	  microcode/os2pm.scm (1.18), microcode/os2pmcon.c (1.33),
+	  microcode/os2pmcon.h (1.8), microcode/os2pmcon.rc (1.9),
+	  microcode/os2proc.c (1.11), microcode/os2proc.h (1.6),
+	  microcode/os2sock.c (1.22), microcode/os2term.c (1.8),
+	  microcode/os2thrd.c (1.10), microcode/os2thrd.h (1.8),
+	  microcode/os2top.c (1.25), microcode/os2tty.c (1.6),
+	  microcode/os2xcpt.c (1.17), microcode/osctty.h (1.8),
+	  microcode/osenv.h (1.14), microcode/osfile.h (1.8),
+	  microcode/osfs.h (1.14), microcode/osio.h (1.21),
+	  microcode/osproc.h (1.14), microcode/ospty.h (1.8),
+	  microcode/osscheme.c (1.17), microcode/osscheme.h (1.16),
+	  microcode/ossig.h (1.8), microcode/osterm.h (1.15),
+	  microcode/ostop.h (1.9), microcode/ostty.c (1.8),
+	  microcode/ostty.h (1.9), microcode/outf.c (1.16),
+	  microcode/outf.h (1.9), microcode/ppband.c (9.68),
+	  microcode/prbfish.c (1.16), microcode/prdb4.c (1.6),
+	  microcode/prename.h (1.13), microcode/prgdbm.c (1.8),
+	  microcode/prim.c (9.48), microcode/prim.h (9.52),
+	  microcode/prims.h (9.54), microcode/primutl.c (9.83),
+	  microcode/prmcon.c (1.9), microcode/prmcon.h (1.8),
+	  microcode/prmcrypt.c (1.9), microcode/prmd5.c (1.11),
+	  microcode/prmhash.c (11.11), microcode/prntenv.c (1.14),
+	  microcode/prntfs.c (1.21), microcode/prntio.c (1.17),
+	  microcode/pros2fs.c (1.22), microcode/pros2io.c (1.15),
+	  microcode/pros2pm.c (1.25), microcode/prosenv.c (1.21),
+	  microcode/prosfile.c (1.14), microcode/prosfs.c (1.21),
+	  microcode/prosio.c (1.26), microcode/prosproc.c (1.23),
+	  microcode/prospty.c (1.8), microcode/prosterm.c (1.20),
+	  microcode/prostty.c (1.11), microcode/prpgsql.c (1.11),
+	  microcode/pruxdld.c (1.21), microcode/pruxenv.c (1.24),
+	  microcode/pruxfs.c (9.60), microcode/pruxio.c (1.12),
+	  microcode/pruxsock.c (1.25), microcode/psbmap.h (9.49),
+	  microcode/psbtobin.c (9.66), microcode/ptrvec.c (1.8),
+	  microcode/purify.c (9.67), microcode/purutl.c (9.56),
+	  microcode/regex.c (1.24), microcode/regex.h (1.11),
+	  microcode/returns.h (9.47), microcode/rgxprim.c (1.17),
+	  microcode/sample.c (9.30), microcode/scheme.h (9.44),
+	  microcode/scode.h (9.31), microcode/sdata.h (9.44),
+	  microcode/sgraph.h (1.11), microcode/sgraph_a.c (1.21),
+	  microcode/sgx.c (1.13), microcode/sgx11.c (1.8),
+	  microcode/stack.h (9.46), microcode/stackops.h (11.3),
+	  microcode/starbase.c (1.11), microcode/starbasx.c (1.10),
+	  microcode/step.c (9.41), microcode/storage.c (9.62),
+	  microcode/string.c (9.51), microcode/syntax.c (1.37),
+	  microcode/syntax.h (1.16), microcode/syscall.h (1.20),
+	  microcode/sysprim.c (9.53), microcode/term.c (1.22),
+	  microcode/terminfo.c (1.8), microcode/transact.c (1.9),
+	  microcode/trap.h (9.53), microcode/tterm.c (1.19),
+	  microcode/types.h (9.42), microcode/unstackify.c (11.3),
+	  microcode/usrdef.h (9.48), microcode/utabmd.scm (9.91),
+	  microcode/utabmd.sh (1.10), microcode/utils.c (9.89),
+	  microcode/ux.c (1.30), microcode/ux.h (1.82), microcode/uxctty.c
+	  (1.18), microcode/uxenv.c (1.25), microcode/uxfile.c (1.15),
+	  microcode/uxfs.c (1.29), microcode/uxio.c (1.56),
+	  microcode/uxio.h (1.9), microcode/uxproc.c (1.34),
+	  microcode/uxproc.h (1.10), microcode/uxselect.h (1.10),
+	  microcode/uxsig.c (1.48), microcode/uxsig.h (1.12),
+	  microcode/uxsock.c (1.34), microcode/uxsock.h (1.15),
+	  microcode/uxterm.c (1.33), microcode/uxterm.h (1.9),
+	  microcode/uxtop.c (1.33), microcode/uxtop.h (1.7),
+	  microcode/uxtrap.c (1.44), microcode/uxtrap.h (1.37),
+	  microcode/uxtty.c (1.15), microcode/uxutil.c (1.11),
+	  microcode/uxutil.h (1.7), microcode/uxyp.c (1.7),
+	  microcode/vector.c (9.44), microcode/wabbit.c (1.13),
+	  microcode/wind.c (1.11), microcode/winder.h (9.30),
+	  microcode/wsize.c (9.38), microcode/x11.h (1.23),
+	  microcode/x11base.c (1.90), microcode/x11color.c (1.9),
+	  microcode/x11graph.c (1.45), microcode/x11term.c (1.34),
+	  microcode/xdebug.c (9.39), microcode/zones.h (9.30),
+	  microcode/cmpauxmd/alpha.m4 (1.3), microcode/cmpauxmd/asmcvt.c
+	  (1.6), microcode/cmpauxmd/c.c (1.20), microcode/cmpauxmd/hppa.m4
+	  (1.44), microcode/cmpauxmd/i386.m4 (1.66),
+	  microcode/cmpauxmd/m4-dos (1.6), microcode/cmpauxmd/makefile
+	  (1.12), microcode/cmpauxmd/mc68k.m4 (1.32),
+	  microcode/cmpauxmd/mips.m4 (1.20), microcode/cmpauxmd/vax.m4
+	  (1.9), microcode/cmpintmd/alpha.h (1.8), microcode/cmpintmd/c.h
+	  (1.12), microcode/cmpintmd/hppa.h (1.56),
+	  microcode/cmpintmd/i386.h (1.39), microcode/cmpintmd/mc68k.h
+	  (1.40), microcode/cmpintmd/mips.h (1.27),
+	  microcode/cmpintmd/vax.h (1.13), microcode/makegen/Makefile.in.in
+	  (1.36), microcode/makegen/files-core.scm (1.6),
+	  microcode/makegen/files-gc-bch.scm (1.6),
+	  microcode/makegen/files-gc-std.scm (1.6),
+	  microcode/makegen/files-optional.scm (1.8),
+	  microcode/makegen/files-os-prim.scm (1.6),
+	  microcode/makegen/files-other.scm (1.8),
+	  microcode/makegen/files-unix.scm (1.6), microcode/makegen/m4.sh
+	  (1.6), microcode/makegen/makegen.scm (1.14),
+	  microcode/makegen/makeinit.sh (1.15),
+	  microcode/ntutl/bch-p-nt.lst (1.10), microcode/ntutl/config.bat
+	  (1.8), microcode/ntutl/config.h (1.13), microcode/ntutl/makefile
+	  (1.33), microcode/ntutl/makefile.wcc (1.23),
+	  microcode/ntutl/scheme16.c (1.16), microcode/ntutl/scheme16.mak
+	  (1.7), microcode/ntutl/scheme31.c (1.15),
+	  microcode/ntutl/scheme32.c (1.22), microcode/ntutl/scm-p-nt.lst
+	  (1.10), microcode/ntutl/setenv.bat (1.3),
+	  microcode/ntutl/wconfig.bat (1.5), microcode/os2utl/config.cmd
+	  (1.6), microcode/os2utl/config.h (1.11),
+	  microcode/os2utl/makefile (1.19), microcode/os2utl/makefile.cmn
+	  (1.18), microcode/os2utl/makefile.emx (1.13),
+	  microcode/os2utl/makefile.gcc (1.12),
+	  microcode/os2utl/makefile.vac (1.12),
+	  microcode/os2utl/makefile.wcc (1.13),
+	  microcode/os2utl/mkos2pm.scm (1.6), pcsample/load.scm (1.11),
+	  pcsample/pcs.cbf (1.7), pcsample/pcs.pkg (1.7), pcsample/pcs.sf
+	  (1.7), pcsample/pcsample.c (1.10), pcsample/pcsample.scm (1.8),
+	  pcsample/pcsboot.scm (1.6), pcsample/pcscobl.c (1.6),
+	  pcsample/pcscobl.scm (1.7), pcsample/pcsdisp.scm (1.8),
+	  pcsample/pcsdld.c (1.9), pcsample/pcsintrp.scm (1.6),
+	  pcsample/pcsiproc.c (1.6), pcsample/pcsiproc.scm (1.6),
+	  pcsample/pribinut.scm (1.6), rcs/compile.scm (1.8),
+	  rcs/format.scm (1.7), rcs/load.scm (1.8), rcs/logmer.scm (1.31),
+	  rcs/mklogs.scm (1.26), rcs/nparse.scm (1.7), rcs/object.scm
+	  (1.10), rcs/rcs.pkg (1.11), runtime/Makefile.in (1.12),
+	  runtime/advice.scm (14.23), runtime/apply.scm (1.9),
+	  runtime/apropos.scm (1.9), runtime/arith.scm (1.65),
+	  runtime/berkeley-db.scm (1.6), runtime/bitstr.scm (14.8),
+	  runtime/blowfish.scm (1.28), runtime/boole.scm (14.8),
+	  runtime/boot.scm (14.25), runtime/char.scm (14.30),
+	  runtime/chrset.scm (14.22), runtime/chrsyn.scm (1.10),
+	  runtime/codwlk.scm (14.8), runtime/conpar.scm (14.51),
+	  runtime/contin.scm (14.17), runtime/cpoint.scm (14.12),
+	  runtime/cpress.scm (1.16), runtime/crypto.scm (14.20),
+	  runtime/datime.scm (14.43), runtime/dbgcmd.scm (14.20),
+	  runtime/dbgutl.scm (14.27), runtime/debug.scm (14.49),
+	  runtime/defstr.scm (14.57), runtime/dosdir.scm (1.14),
+	  runtime/dosprm.scm (1.49), runtime/dosproc.scm (1.7),
+	  runtime/dospth.scm (1.46), runtime/dragon4.scm (1.20),
+	  runtime/ed-ffi.scm (1.39), runtime/emacs.scm (14.42),
+	  runtime/equals.scm (14.14), runtime/error.scm (14.72),
+	  runtime/events.scm (14.9), runtime/fileio.scm (1.34),
+	  runtime/fixart.scm (1.17), runtime/format.scm (14.11),
+	  runtime/framex.scm (14.23), runtime/gc.scm (14.25),
+	  runtime/gcdemn.scm (14.12), runtime/gcfinal.scm (14.12),
+	  runtime/gcnote.scm (14.20), runtime/gcstat.scm (14.10),
+	  runtime/gdatab.scm (14.11), runtime/gdbm.scm (1.10),
+	  runtime/gencache.scm (1.7), runtime/geneqht.scm (1.6),
+	  runtime/generic.scm (1.16), runtime/genio.scm (1.49),
+	  runtime/genmult.scm (1.8), runtime/gensym.scm (14.10),
+	  runtime/gentag.scm (1.8), runtime/global.scm (14.77),
+	  runtime/graphics.scm (1.26), runtime/hash.scm (14.12),
+	  runtime/hashtb.scm (1.37), runtime/histry.scm (14.10),
+	  runtime/infstr.scm (1.20), runtime/infutl.scm (1.72),
+	  runtime/input.scm (14.33), runtime/intrpt.scm (14.29),
+	  runtime/io.scm (14.86), runtime/krypt.scm (1.16),
+	  runtime/kryptdum.scm (1.6), runtime/lambda.scm (14.21),
+	  runtime/lambdx.scm (14.14), runtime/list.scm (14.54),
+	  runtime/load.scm (14.83), runtime/make.scm (14.108),
+	  runtime/mime-codec.scm (14.18), runtime/mit-syntax.scm (14.29),
+	  runtime/msort.scm (14.13), runtime/ntdir.scm (1.6),
+	  runtime/ntprm.scm (1.49), runtime/numint.scm (1.10),
+	  runtime/numpar.scm (14.22), runtime/option.scm (14.52),
+	  runtime/optiondb.scm (1.19), runtime/ordvec.scm (1.7),
+	  runtime/os2ctype.scm (1.8), runtime/os2dir.scm (1.9),
+	  runtime/os2graph.scm (1.27), runtime/os2prm.scm (1.56),
+	  runtime/os2winp.scm (1.22), runtime/output.scm (14.39),
+	  runtime/packag.scm (14.50), runtime/parse.scm (14.65),
+	  runtime/parser-buffer.scm (1.18), runtime/partab.scm (14.11),
+	  runtime/pathnm.scm (14.51), runtime/pgsql.scm (1.13),
+	  runtime/poplat.scm (14.8), runtime/port.scm (1.48),
+	  runtime/pp.scm (14.52), runtime/prgcop.scm (1.11),
+	  runtime/process.scm (1.34), runtime/prop1d.scm (14.10),
+	  runtime/prop2d.scm (14.7), runtime/qsort.scm (14.9),
+	  runtime/queue.scm (14.9), runtime/random.scm (14.40),
+	  runtime/rbtree.scm (1.11), runtime/record.scm (1.58),
+	  runtime/recslot.scm (1.12), runtime/regexp.scm (1.17),
+	  runtime/rep.scm (14.68), runtime/rexp.scm (1.26),
+	  runtime/rgxcmp.scm (1.127), runtime/runtime.cbf (1.7),
+	  runtime/runtime.pkg (14.608), runtime/runtime.sf (14.23),
+	  runtime/savres.scm (14.48), runtime/scan.scm (14.11),
+	  runtime/scode.scm (14.24), runtime/scomb.scm (14.26),
+	  runtime/sdata.scm (14.7), runtime/sfile.scm (14.42),
+	  runtime/site.scm.dos (1.18), runtime/site.scm.unix (1.19),
+	  runtime/socket.scm (1.31), runtime/srfi-1.scm (1.3),
+	  runtime/starbase.scm (1.22), runtime/stream.scm (14.22),
+	  runtime/string.scm (14.63), runtime/strnin.scm (14.20),
+	  runtime/strott.scm (14.17), runtime/strout.scm (14.27),
+	  runtime/symbol.scm (1.23), runtime/syncproc.scm (1.13),
+	  runtime/syntactic-closures.scm (14.18), runtime/syntax-check.scm
+	  (14.7), runtime/syntax-output.scm (14.13),
+	  runtime/syntax-rules.scm (14.10), runtime/syntax-transforms.scm
+	  (14.9), runtime/sysclk.scm (14.8), runtime/sysmac.scm (14.16),
+	  runtime/system.scm (14.18), runtime/thread.scm (1.42),
+	  runtime/tscript.scm (1.11), runtime/ttyio.scm (1.25),
+	  runtime/tvector.scm (1.7), runtime/udata.scm (14.25),
+	  runtime/uenvir.scm (14.62), runtime/uerror.scm (14.55),
+	  runtime/unicode.scm (1.29), runtime/unpars.scm (14.68),
+	  runtime/unsyn.scm (14.34), runtime/unxdir.scm (14.16),
+	  runtime/unxprm.scm (1.74), runtime/unxpth.scm (14.32),
+	  runtime/uproc.scm (1.21), runtime/url.scm (1.48),
+	  runtime/urtrap.scm (14.19), runtime/usrint.scm (1.27),
+	  runtime/utabs.scm (14.22), runtime/vector.scm (14.27),
+	  runtime/version.scm (14.223), runtime/where.scm (14.16),
+	  runtime/win32-registry.scm (1.3), runtime/wind.scm (14.13),
+	  runtime/wrkdir.scm (14.12), runtime/wttree.scm (1.14),
+	  runtime/x11graph.scm (1.60), runtime/xeval.scm (1.14),
+	  runtime/ystep.scm (1.9), runtime-check/Clean.sh (1.8),
+	  runtime-check/Setup.sh (1.11), runtime-check/runtime.cbf (1.5),
+	  sf/butils.scm (4.16), sf/cgen.scm (4.9), sf/chtype.scm (4.8),
+	  sf/copy.scm (4.10), sf/emodel.scm (4.8), sf/free.scm (4.8),
+	  sf/gconst.scm (4.35), sf/gimprt.scm (4.6), sf/lsets.scm (4.7),
+	  sf/make.scm (4.46), sf/object.scm (4.21), sf/pardec.scm (4.18),
+	  sf/pthmap.scm (4.9), sf/reduct.scm (4.14), sf/sf.cbf (1.7),
+	  sf/sf.pkg (4.21), sf/sf.sf (4.16), sf/subst.scm (4.22),
+	  sf/table.scm (4.9), sf/tables.scm (4.7), sf/toplev.scm (4.31),
+	  sf/usicon.scm (4.10), sf/usiexp.scm (4.48), sf/xform.scm (4.15),
+	  sicp/compat.scm (1.13), sicp/genenv.scm (1.7), sicp/graphics.scm
+	  (1.9), sicp/sbuild.scm (1.10), sicp/stream.scm (1.6),
+	  sicp/strmac.scm (1.7), sicp/studen.scm (1.16), sos/Makefile.in
+	  (1.8), sos/class.scm (1.19), sos/compile.scm (1.11),
+	  sos/ed-ffi.scm (1.7), sos/instance.scm (1.19), sos/load.scm
+	  (1.18), sos/macros.scm (1.20), sos/method.scm (1.18),
+	  sos/microbench.scm (1.7), sos/printer.scm (1.7), sos/slot.scm
+	  (1.12), sos/sos.pkg (1.15), ssp/Makefile.in (1.5),
+	  ssp/compile.scm (1.9), ssp/expenv.scm (1.3), ssp/load.scm (1.8),
+	  ssp/mod-lisp.scm (1.34), ssp/ssp.pkg (1.23),
+	  ssp/xhtml-expander.scm (1.13), ssp/xmlrpc.scm (1.15),
+	  star-parser/Makefile.in (1.7), star-parser/compile.scm (1.11),
+	  star-parser/ed-ffi.scm (1.10), star-parser/load.scm (1.20),
+	  star-parser/matcher.scm (1.37), star-parser/parser.pkg (1.24),
+	  star-parser/parser.scm (1.38), star-parser/shared.scm (1.34),
+	  star-parser/test-parser.scm (1.9), swat/scheme/swat.sf (1.8),
+	  wabbit/load.scm (1.8), wabbit/wabbit.cbf (1.6), wabbit/wabbit.pkg
+	  (1.6), wabbit/wabbit.scm (1.6), wabbit/wabbit.sf (1.8),
+	  win32/clipbrd.scm (1.10), win32/dib.scm (1.10),
+	  win32/ffimacro.scm (1.12), win32/graphics.scm (1.22),
+	  win32/make.scm (1.18), win32/module.scm (1.8), win32/protect.scm
+	  (1.7), win32/wf_user.scm (1.14), win32/win32.cbf (1.7),
+	  win32/win32.pkg (1.19), win32/win32.sf (1.14), win32/win_ffi.scm
+	  (1.16), win32/wingdi.scm (1.7), win32/winnt.scm (1.7),
+	  win32/winuser.scm (1.7), win32/wt_user.scm (1.10),
+	  win32/dibutils/dibutils.c (1.8), win32/dibutils/dibutils.def
+	  (1.7), win32/dibutils/dibutils.h (1.8),
+	  win32/dibutils/makefile.msc (1.8), win32/dibutils/makefile.wcc
+	  (1.8), xdoc/Makefile.in (1.4), xdoc/compile.scm (1.4),
+	  xdoc/db.scm (1.7), xdoc/load.scm (1.5), xdoc/validate-xdoc.scm
+	  (1.3), xdoc/xdoc.pkg (1.8), xdoc/xdoc.scm (1.6), xml/Makefile.in
+	  (1.8), xml/compile.scm (1.20), xml/ed-ffi.scm (1.12),
+	  xml/load.scm (1.19), xml/parser-macro.scm (1.11), xml/rdf-nt.scm
+	  (1.12), xml/rdf-struct.scm (1.24), xml/test-parser.scm (1.15),
+	  xml/test-turtle.scm (1.3), xml/turtle.scm (1.19),
+	  xml/xhtml-entities.scm (1.6), xml/xhtml.scm (1.23),
+	  xml/xml-chars.scm (1.9), xml/xml-names.scm (1.14),
+	  xml/xml-output.scm (1.42), xml/xml-parser.scm (1.72),
+	  xml/xml-rpc.scm (1.10), xml/xml-struct.scm (1.57), xml/xml.pkg
+	  (1.90), xml/xpath.scm (1.6):
+
+	Update copyright statements to GNU standard.
+
+2007-01-05 10:33  Chris Hanson <edu/mit/csail/cph>
+
+	* COPYING (1.7), Clean.sh (1.9), Makefile.in (1.27), Makefile.std
+	  (1.14), Setup.sh (1.15), Tags.sh (1.5), configure.ac (1.4),
+	  6001/6001.cbf (1.10), 6001/6001.pkg (1.18), 6001/6001.sf (1.17),
+	  6001/arith.scm (1.14), 6001/edextra.scm (1.37), 6001/floppy.scm
+	  (1.29), 6001/make.scm (15.39), 6001/nodefs.scm (1.17),
+	  6001/pic-imag.scm (1.13), 6001/pic-ops.scm (1.9),
+	  6001/pic-read.scm (1.10), 6001/pic-reco.scm (1.12),
+	  6001/picture.scm (1.33), compiler/Clean.sh (1.10),
+	  compiler/Setup.sh (1.8), compiler/Stage.sh (1.6),
+	  compiler/Tags.sh (1.5), compiler/config.guess (1.3),
+	  compiler/configure (1.9), compiler/back/asmmac.scm (1.21),
+	  compiler/back/asutl.scm (1.6), compiler/back/bittop.scm (1.26),
+	  compiler/back/bitutl.scm (1.13), compiler/back/insseq.scm (4.7),
+	  compiler/back/lapgn1.scm (4.22), compiler/back/lapgn2.scm (1.26),
+	  compiler/back/lapgn3.scm (4.19), compiler/back/linear.scm (4.20),
+	  compiler/back/mermap.scm (1.8), compiler/back/regmap.scm (4.17),
+	  compiler/back/syerly.scm (1.15), compiler/back/symtab.scm (1.50),
+	  compiler/back/syntax.scm (1.32), compiler/base/asstop.scm (1.16),
+	  compiler/base/blocks.scm (4.18), compiler/base/cfg1.scm (4.10),
+	  compiler/base/cfg2.scm (4.7), compiler/base/cfg3.scm (4.8),
+	  compiler/base/constr.scm (1.7), compiler/base/contin.scm (4.12),
+	  compiler/base/crsend.scm (1.16), compiler/base/crstop.scm (1.16),
+	  compiler/base/ctypes.scm (4.19), compiler/base/debug.scm (4.19),
+	  compiler/base/enumer.scm (4.7), compiler/base/infnew.scm (4.15),
+	  compiler/base/lvalue.scm (4.29), compiler/base/macros.scm (4.33),
+	  compiler/base/make.scm (4.126), compiler/base/mvalue.scm (3.4),
+	  compiler/base/object.scm (4.12), compiler/base/pmerly.scm (1.12),
+	  compiler/base/pmlook.scm (1.13), compiler/base/pmpars.scm (1.11),
+	  compiler/base/proced.scm (4.26), compiler/base/refctx.scm (1.6),
+	  compiler/base/rvalue.scm (4.11), compiler/base/scode.scm (4.17),
+	  compiler/base/sets.scm (4.5), compiler/base/subprb.scm (4.11),
+	  compiler/base/switch.scm (4.30), compiler/base/toplev.scm (4.69),
+	  compiler/base/utils.scm (4.33), compiler/etc/asm.scm (1.6),
+	  compiler/etc/comcmp.scm (1.14), compiler/etc/comfiles.scm (1.10),
+	  compiler/etc/disload.scm (1.15), compiler/etc/stackp.scm (1.10),
+	  compiler/etc/xcbfdir.scm (1.12), compiler/fggen/canon.scm (1.26),
+	  compiler/fggen/declar.scm (1.9), compiler/fggen/fggen.scm (4.41),
+	  compiler/fgopt/blktyp.scm (4.19), compiler/fgopt/closan.scm
+	  (4.33), compiler/fgopt/conect.scm (4.9),
+	  compiler/fgopt/contan.scm (4.13), compiler/fgopt/delint.scm
+	  (1.7), compiler/fgopt/desenv.scm (4.8), compiler/fgopt/envopt.scm
+	  (1.13), compiler/fgopt/folcon.scm (4.12),
+	  compiler/fgopt/offset.scm (4.12), compiler/fgopt/operan.scm
+	  (4.11), compiler/fgopt/order.scm (4.21), compiler/fgopt/outer.scm
+	  (4.9), compiler/fgopt/param.scm (1.7), compiler/fgopt/reord.scm
+	  (1.6), compiler/fgopt/reteqv.scm (1.5), compiler/fgopt/reuse.scm
+	  (1.11), compiler/fgopt/sideff.scm (1.12),
+	  compiler/fgopt/simapp.scm (4.12), compiler/fgopt/simple.scm
+	  (4.10), compiler/fgopt/subfre.scm (1.11),
+	  compiler/fgopt/varind.scm (1.8), compiler/machines/C/compiler.cbf
+	  (1.6), compiler/machines/C/compiler.pkg (1.20),
+	  compiler/machines/C/compiler.sf (1.13),
+	  compiler/machines/C/cout.scm (1.32), compiler/machines/C/ctop.scm
+	  (1.20), compiler/machines/C/cutl.scm (1.8),
+	  compiler/machines/C/decls.scm (1.11),
+	  compiler/machines/C/lapgen.scm (1.22),
+	  compiler/machines/C/machin.scm (1.13),
+	  compiler/machines/C/make.scm (1.8),
+	  compiler/machines/C/rgspcm.scm (1.6),
+	  compiler/machines/C/rules1.scm (1.12),
+	  compiler/machines/C/rules2.scm (1.8),
+	  compiler/machines/C/rules3.scm (1.16),
+	  compiler/machines/C/rules4.scm (1.6),
+	  compiler/machines/C/rulfix.scm (1.10),
+	  compiler/machines/C/rulflo.scm (1.11),
+	  compiler/machines/C/rulrew.scm (1.8),
+	  compiler/machines/C/stackify.scm (1.2),
+	  compiler/machines/C/stackops.scm (1.2),
+	  compiler/machines/C/traditional.scm (1.5),
+	  compiler/machines/alpha/assmd.scm (1.7),
+	  compiler/machines/alpha/coerce.scm (1.6),
+	  compiler/machines/alpha/compiler.cbf (1.6),
+	  compiler/machines/alpha/compiler.pkg (1.20),
+	  compiler/machines/alpha/compiler.sf (1.13),
+	  compiler/machines/alpha/dassm1.scm (1.7),
+	  compiler/machines/alpha/dassm2.scm (1.7),
+	  compiler/machines/alpha/dassm3.scm (1.5),
+	  compiler/machines/alpha/decls.scm (1.12),
+	  compiler/machines/alpha/inerly.scm (1.9),
+	  compiler/machines/alpha/insmac.scm (1.9),
+	  compiler/machines/alpha/instr1.scm (1.9),
+	  compiler/machines/alpha/instr2.scm (1.7),
+	  compiler/machines/alpha/instr3.scm (1.7),
+	  compiler/machines/alpha/lapgen.scm (1.13),
+	  compiler/machines/alpha/lapopt.scm (1.5),
+	  compiler/machines/alpha/machin.scm (1.11),
+	  compiler/machines/alpha/make.scm (1.7),
+	  compiler/machines/alpha/rgspcm.scm (1.5),
+	  compiler/machines/alpha/rules1.scm (1.7),
+	  compiler/machines/alpha/rules2.scm (1.6),
+	  compiler/machines/alpha/rules3.scm (1.13),
+	  compiler/machines/alpha/rules4.scm (1.7),
+	  compiler/machines/alpha/rulfix.scm (1.8),
+	  compiler/machines/alpha/rulflo.scm (1.9),
+	  compiler/machines/alpha/rulrew.scm (1.6),
+	  compiler/machines/bobcat/assmd.scm (1.42),
+	  compiler/machines/bobcat/coerce.scm (1.14),
+	  compiler/machines/bobcat/compiler.cbf (1.6),
+	  compiler/machines/bobcat/compiler.pkg (1.57),
+	  compiler/machines/bobcat/compiler.sf (1.25),
+	  compiler/machines/bobcat/dassm1.scm (4.25),
+	  compiler/machines/bobcat/dassm2.scm (4.28),
+	  compiler/machines/bobcat/dassm3.scm (4.12),
+	  compiler/machines/bobcat/decls.scm (4.43),
+	  compiler/machines/bobcat/flinstr1.scm (1.7),
+	  compiler/machines/bobcat/flinstr2.scm (1.7),
+	  compiler/machines/bobcat/inerly.scm (1.14),
+	  compiler/machines/bobcat/insmac.scm (1.135),
+	  compiler/machines/bobcat/instr1.scm (1.71),
+	  compiler/machines/bobcat/instr2.scm (1.24),
+	  compiler/machines/bobcat/instr3.scm (1.23),
+	  compiler/machines/bobcat/instr4.scm (1.9),
+	  compiler/machines/bobcat/insutl.scm (1.12),
+	  compiler/machines/bobcat/lapgen.scm (4.57),
+	  compiler/machines/bobcat/lapopt.scm (1.5),
+	  compiler/machines/bobcat/machin.scm (4.37),
+	  compiler/machines/bobcat/make.scm-68020 (4.92),
+	  compiler/machines/bobcat/make.scm-68040 (4.93),
+	  compiler/machines/bobcat/mc68ktgl.scm (1.6),
+	  compiler/machines/bobcat/rgspcm.scm (4.6),
+	  compiler/machines/bobcat/rules1.scm (4.42),
+	  compiler/machines/bobcat/rules2.scm (4.18),
+	  compiler/machines/bobcat/rules3.scm (4.46),
+	  compiler/machines/bobcat/rules4.scm (4.18),
+	  compiler/machines/bobcat/rulrew.scm (1.10),
+	  compiler/machines/i386/assmd.scm (1.9),
+	  compiler/machines/i386/coerce.scm (1.6),
+	  compiler/machines/i386/compiler.cbf (1.7),
+	  compiler/machines/i386/compiler.pkg (1.33),
+	  compiler/machines/i386/compiler.sf (1.22),
+	  compiler/machines/i386/dassm1.scm (1.16),
+	  compiler/machines/i386/dassm2.scm (1.15),
+	  compiler/machines/i386/dassm3.scm (1.13),
+	  compiler/machines/i386/decls.scm (1.15),
+	  compiler/machines/i386/inerly.scm (1.10),
+	  compiler/machines/i386/insmac.scm (1.20),
+	  compiler/machines/i386/instr1.scm (1.19),
+	  compiler/machines/i386/instr2.scm (1.13),
+	  compiler/machines/i386/instrf.scm (1.21),
+	  compiler/machines/i386/insutl.scm (1.14),
+	  compiler/machines/i386/lapgen.scm (1.36),
+	  compiler/machines/i386/lapopt.scm (1.9),
+	  compiler/machines/i386/machin.scm (1.22),
+	  compiler/machines/i386/make.scm (1.9),
+	  compiler/machines/i386/pc-make.scm (1.5),
+	  compiler/machines/i386/rgspcm.scm (1.7),
+	  compiler/machines/i386/rules1.scm (1.22),
+	  compiler/machines/i386/rules2.scm (1.12),
+	  compiler/machines/i386/rules3.scm (1.41),
+	  compiler/machines/i386/rules4.scm (1.11),
+	  compiler/machines/i386/rulfix.scm (1.37),
+	  compiler/machines/i386/rulflo.scm (1.28),
+	  compiler/machines/i386/rulrew.scm (1.18),
+	  compiler/machines/mips/assmd.scm (1.8),
+	  compiler/machines/mips/coerce.scm (1.5),
+	  compiler/machines/mips/compiler.cbf (1.6),
+	  compiler/machines/mips/compiler.pkg (1.27),
+	  compiler/machines/mips/compiler.sf-big (1.15),
+	  compiler/machines/mips/compiler.sf-little (1.15),
+	  compiler/machines/mips/dassm1.scm (1.10),
+	  compiler/machines/mips/dassm2.scm (1.10),
+	  compiler/machines/mips/dassm3.scm (1.7),
+	  compiler/machines/mips/decls.scm (1.16),
+	  compiler/machines/mips/inerly.scm (1.9),
+	  compiler/machines/mips/insmac.scm (1.9),
+	  compiler/machines/mips/instr1.scm (1.12),
+	  compiler/machines/mips/instr2a.scm (1.10),
+	  compiler/machines/mips/instr2b.scm (1.9),
+	  compiler/machines/mips/instr3.scm (1.8),
+	  compiler/machines/mips/lapgen.scm (1.22),
+	  compiler/machines/mips/lapopt.scm (1.5),
+	  compiler/machines/mips/machin.scm (1.18),
+	  compiler/machines/mips/make.scm-big (4.92),
+	  compiler/machines/mips/make.scm-little (4.92),
+	  compiler/machines/mips/mips.scm (1.7),
+	  compiler/machines/mips/rgspcm.scm (1.5),
+	  compiler/machines/mips/rules1.scm (1.10),
+	  compiler/machines/mips/rules2.scm (1.6),
+	  compiler/machines/mips/rules3.scm (1.23),
+	  compiler/machines/mips/rules4.scm (1.7),
+	  compiler/machines/mips/rulfix.scm (1.14),
+	  compiler/machines/mips/rulflo.scm (1.13),
+	  compiler/machines/mips/rulrew.scm (1.10),
+	  compiler/machines/sparc/assmd.scm (1.7),
+	  compiler/machines/sparc/cf.h-sparc (1.5),
+	  compiler/machines/sparc/cmpaux-sparc.m4 (1.5),
+	  compiler/machines/sparc/cmpint-sparc.h (1.5),
+	  compiler/machines/sparc/coerce.scm (1.5),
+	  compiler/machines/sparc/decls.scm (1.10),
+	  compiler/machines/sparc/inerly.scm (1.9),
+	  compiler/machines/sparc/insmac.scm (1.8),
+	  compiler/machines/sparc/instr1.scm (1.7),
+	  compiler/machines/sparc/instr2a.scm (1.7),
+	  compiler/machines/sparc/instr2b.scm (1.7),
+	  compiler/machines/sparc/instr3.scm (1.7),
+	  compiler/machines/sparc/lapgen.scm (1.9),
+	  compiler/machines/sparc/lapopt.scm (1.5),
+	  compiler/machines/sparc/machin.scm (1.6),
+	  compiler/machines/sparc/make.scm (1.6),
+	  compiler/machines/sparc/rgspcm.scm (1.5),
+	  compiler/machines/sparc/rules1.scm (1.5),
+	  compiler/machines/sparc/rules2.scm (1.5),
+	  compiler/machines/sparc/rules3.scm (1.7),
+	  compiler/machines/sparc/rules4.scm (1.5),
+	  compiler/machines/sparc/rulfix.scm (1.5),
+	  compiler/machines/sparc/rulflo.scm (1.7),
+	  compiler/machines/sparc/rulrew.scm (1.5),
+	  compiler/machines/spectrum/assmd.scm (1.36),
+	  compiler/machines/spectrum/coerce.scm (1.9),
+	  compiler/machines/spectrum/compiler.cbf (1.6),
+	  compiler/machines/spectrum/compiler.pkg (1.57),
+	  compiler/machines/spectrum/compiler.sf (1.25),
+	  compiler/machines/spectrum/dassm1.scm (4.25),
+	  compiler/machines/spectrum/dassm2.scm (4.26),
+	  compiler/machines/spectrum/dassm3.scm (1.6),
+	  compiler/machines/spectrum/decls.scm (4.41),
+	  compiler/machines/spectrum/inerly.scm (1.9),
+	  compiler/machines/spectrum/insmac.scm (1.9),
+	  compiler/machines/spectrum/instr1.scm (1.9),
+	  compiler/machines/spectrum/instr2.scm (1.14),
+	  compiler/machines/spectrum/instr3.scm (1.8),
+	  compiler/machines/spectrum/lapgen.scm (4.54),
+	  compiler/machines/spectrum/lapopt.scm (1.18),
+	  compiler/machines/spectrum/machin.scm (4.33),
+	  compiler/machines/spectrum/make.scm (4.93),
+	  compiler/machines/spectrum/rgspcm.scm (4.7),
+	  compiler/machines/spectrum/rules1.scm (4.39),
+	  compiler/machines/spectrum/rules2.scm (4.18),
+	  compiler/machines/spectrum/rules3.scm (4.47),
+	  compiler/machines/spectrum/rules4.scm (4.16),
+	  compiler/machines/spectrum/rulfix.scm (4.53),
+	  compiler/machines/spectrum/rulflo.scm (4.45),
+	  compiler/machines/spectrum/rulrew.scm (1.16),
+	  compiler/machines/vax/assmd.scm (4.12),
+	  compiler/machines/vax/coerce.scm (1.8),
+	  compiler/machines/vax/compiler.cbf (1.9),
+	  compiler/machines/vax/compiler.pkg (1.29),
+	  compiler/machines/vax/compiler.sf (1.16),
+	  compiler/machines/vax/dassm1.scm (4.12),
+	  compiler/machines/vax/dassm2.scm (4.18),
+	  compiler/machines/vax/dassm3.scm (1.7),
+	  compiler/machines/vax/decls.scm (4.19),
+	  compiler/machines/vax/dsyn.scm (1.15),
+	  compiler/machines/vax/inerly.scm (1.13),
+	  compiler/machines/vax/insmac.scm (1.20),
+	  compiler/machines/vax/instr1.scm (1.13),
+	  compiler/machines/vax/instr2.scm (1.14),
+	  compiler/machines/vax/instr3.scm (1.17),
+	  compiler/machines/vax/insutl.scm (4.7),
+	  compiler/machines/vax/lapgen.scm (4.22),
+	  compiler/machines/vax/lapopt.scm (1.5),
+	  compiler/machines/vax/machin.scm (4.16),
+	  compiler/machines/vax/make.scm (4.92),
+	  compiler/machines/vax/rgspcm.scm (4.6),
+	  compiler/machines/vax/rules1.scm (4.11),
+	  compiler/machines/vax/rules2.scm (4.8),
+	  compiler/machines/vax/rules3.scm (4.17),
+	  compiler/machines/vax/rules4.scm (4.8),
+	  compiler/machines/vax/rulfix.scm (1.11),
+	  compiler/machines/vax/rulrew.scm (1.6),
+	  compiler/rtlbase/regset.scm (1.7), compiler/rtlbase/rgraph.scm
+	  (4.12), compiler/rtlbase/rtlcfg.scm (4.13),
+	  compiler/rtlbase/rtlcon.scm (4.33), compiler/rtlbase/rtlexp.scm
+	  (4.23), compiler/rtlbase/rtline.scm (4.14),
+	  compiler/rtlbase/rtlobj.scm (4.15), compiler/rtlbase/rtlreg.scm
+	  (4.13), compiler/rtlbase/rtlty1.scm (4.26),
+	  compiler/rtlbase/rtlty2.scm (4.16), compiler/rtlbase/valclass.scm
+	  (1.10), compiler/rtlgen/fndblk.scm (4.15),
+	  compiler/rtlgen/fndvar.scm (1.10), compiler/rtlgen/opncod.scm
+	  (4.76), compiler/rtlgen/rgcomb.scm (4.24),
+	  compiler/rtlgen/rgproc.scm (4.17), compiler/rtlgen/rgretn.scm
+	  (4.17), compiler/rtlgen/rgrval.scm (4.26),
+	  compiler/rtlgen/rgstmt.scm (4.20), compiler/rtlgen/rtlgen.scm
+	  (4.33), compiler/rtlopt/ralloc.scm (1.21),
+	  compiler/rtlopt/rcompr.scm (1.18), compiler/rtlopt/rcse1.scm
+	  (4.27), compiler/rtlopt/rcse2.scm (4.17),
+	  compiler/rtlopt/rcseep.scm (4.10), compiler/rtlopt/rcseht.scm
+	  (4.16), compiler/rtlopt/rcserq.scm (4.10),
+	  compiler/rtlopt/rcsesr.scm (4.7), compiler/rtlopt/rdebug.scm
+	  (1.7), compiler/rtlopt/rdflow.scm (1.7),
+	  compiler/rtlopt/rerite.scm (1.8), compiler/rtlopt/rinvex.scm
+	  (1.13), compiler/rtlopt/rlife.scm (1.64),
+	  compiler/rtlopt/rtlcsm.scm (1.5), cref/Makefile.in (1.7),
+	  cref/anfile.scm (1.10), cref/conpkg.scm (1.17), cref/cref.cbf
+	  (1.6), cref/cref.pkg (1.13), cref/cref.sf (1.19), cref/forpkg.scm
+	  (1.13), cref/make.scm (1.29), cref/mset.scm (1.5),
+	  cref/object.scm (1.17), cref/redpkg.scm (1.29), cref/toplev.scm
+	  (1.26), cref/triv.pkg (1.10), edwin/Clean.sh (1.11),
+	  edwin/Makefile.in (1.11), edwin/abbrev.scm (1.11), edwin/ansi.scm
+	  (1.11), edwin/argred.scm (1.37), edwin/artdebug.scm (1.36),
+	  edwin/autold.scm (1.67), edwin/autosv.scm (1.38), edwin/basic.scm
+	  (1.146), edwin/bios.scm (1.8), edwin/bufcom.scm (1.111),
+	  edwin/buffer.scm (1.194), edwin/buffrm.scm (1.64),
+	  edwin/bufinp.scm (1.14), edwin/bufmnu.scm (1.135),
+	  edwin/bufout.scm (1.18), edwin/bufset.scm (1.16),
+	  edwin/bufwfs.scm (1.24), edwin/bufwin.scm (1.317),
+	  edwin/bufwiu.scm (1.39), edwin/bufwmc.scm (1.22),
+	  edwin/c-mode.scm (1.64), edwin/calias.scm (1.34),
+	  edwin/cinden.scm (1.24), edwin/class.scm (1.76), edwin/clscon.scm
+	  (1.15), edwin/clsmac.scm (1.14), edwin/comatch.scm (1.8),
+	  edwin/comhst.scm (1.10), edwin/comint.scm (1.33),
+	  edwin/comman.scm (1.89), edwin/compile.scm (1.18),
+	  edwin/comred.scm (1.127), edwin/comtab.scm (1.76),
+	  edwin/comwin.scm (1.151), edwin/curren.scm (1.149),
+	  edwin/dabbrev.scm (1.8), edwin/debian-changelog.scm (1.10),
+	  edwin/debug.scm (1.71), edwin/debuge.scm (1.59), edwin/decls.scm
+	  (1.79), edwin/dired.scm (1.200), edwin/diros2.scm (1.8),
+	  edwin/dirunx.scm (1.17), edwin/dirw32.scm (1.8),
+	  edwin/display.scm (1.11), edwin/docstr.scm (1.8), edwin/dos.scm
+	  (1.57), edwin/doscom.scm (1.7), edwin/dosfile.scm (1.46),
+	  edwin/dosproc.scm (1.13), edwin/dosshell.scm (1.9),
+	  edwin/ed-ffi.scm (1.57), edwin/editor.scm (1.263),
+	  edwin/edtfrm.scm (1.96), edwin/edtstr.scm (1.34), edwin/edwin.cbf
+	  (1.7), edwin/edwin.ldr (1.79), edwin/edwin.pkg (1.301),
+	  edwin/edwin.sf (1.35), edwin/evlcom.scm (1.72), edwin/eystep.scm
+	  (1.10), edwin/filcom.scm (1.227), edwin/fileio.scm (1.169),
+	  edwin/fill.scm (1.74), edwin/grpops.scm (1.32), edwin/hlpcom.scm
+	  (1.130), edwin/htmlmode.scm (1.15), edwin/image.scm (1.141),
+	  edwin/info.scm (1.142), edwin/input.scm (1.106), edwin/intmod.scm
+	  (1.123), edwin/iserch.scm (1.27), edwin/javamode.scm (1.15),
+	  edwin/key-w32.scm (1.7), edwin/key-x11.scm (1.9),
+	  edwin/keymap.scm (1.21), edwin/keyparse.scm (1.7),
+	  edwin/kilcom.scm (1.76), edwin/kmacro.scm (1.49),
+	  edwin/lincom.scm (1.128), edwin/linden.scm (1.133),
+	  edwin/loadef.scm (1.51), edwin/lspcom.scm (1.164),
+	  edwin/macros.scm (1.79), edwin/make.scm (3.122), edwin/malias.scm
+	  (1.11), edwin/manual.scm (1.20), edwin/midas.scm (1.26),
+	  edwin/modefs.scm (1.168), edwin/modes.scm (1.39),
+	  edwin/modlin.scm (1.27), edwin/modwin.scm (1.46),
+	  edwin/motcom.scm (1.53), edwin/motion.scm (1.92),
+	  edwin/mousecom.scm (1.9), edwin/nntp.scm (1.33), edwin/notify.scm
+	  (1.25), edwin/nvector.scm (1.12), edwin/occur.scm (1.12),
+	  edwin/os2.scm (1.55), edwin/os2com.scm (1.9), edwin/os2term.scm
+	  (1.28), edwin/outline.scm (1.13), edwin/pasmod.scm (1.55),
+	  edwin/paths.scm (1.19), edwin/print.scm (1.24), edwin/process.scm
+	  (1.68), edwin/prompt.scm (1.203), edwin/pwedit.scm (1.13),
+	  edwin/pwparse.scm (1.5), edwin/rcsparse.scm (1.7),
+	  edwin/reccom.scm (1.18), edwin/regcom.scm (1.26),
+	  edwin/regexp.scm (1.85), edwin/regops.scm (1.92),
+	  edwin/rename.scm (1.12), edwin/replaz.scm (1.84),
+	  edwin/rfc822.scm (3.8), edwin/ring.scm (1.16), edwin/rmail.scm
+	  (1.77), edwin/rmailsrt.scm (1.17), edwin/rmailsum.scm (1.40),
+	  edwin/schmod.scm (1.75), edwin/scrcom.scm (1.12),
+	  edwin/screen.scm (1.123), edwin/search.scm (1.160),
+	  edwin/sendmail.scm (1.89), edwin/sercom.scm (1.69),
+	  edwin/shell.scm (1.27), edwin/simple.scm (1.58), edwin/snr.scm
+	  (1.68), edwin/sort.scm (1.12), edwin/strpad.scm (1.12),
+	  edwin/strtab.scm (1.51), edwin/struct.scm (1.102),
+	  edwin/syntax.scm (1.96), edwin/tagutl.scm (1.64),
+	  edwin/techinfo.scm (1.9), edwin/telnet.scm (1.18),
+	  edwin/termcap.scm (1.10), edwin/texcom.scm (1.50),
+	  edwin/things.scm (1.92), edwin/tparse.scm (1.79), edwin/tterm.scm
+	  (1.44), edwin/tximod.scm (1.32), edwin/txtprp.scm (1.27),
+	  edwin/undo.scm (1.67), edwin/unix.scm (1.122), edwin/utils.scm
+	  (1.58), edwin/utlwin.scm (1.64), edwin/vc.scm (1.96),
+	  edwin/verilog.scm (1.13), edwin/vhdl.scm (1.13),
+	  edwin/webster.scm (1.9), edwin/win32.scm (1.20),
+	  edwin/win32com.scm (1.12), edwin/wincom.scm (1.137),
+	  edwin/window.scm (1.164), edwin/winout.scm (1.19),
+	  edwin/winren.scm (1.10), edwin/xcom.scm (1.26), edwin/xform.scm
+	  (1.16), edwin/xmodef.scm (1.7), edwin/xterm.scm (1.79),
+	  etc/Clean.sh (1.15), etc/Setup.sh (1.11), etc/Stage.sh (1.7),
+	  etc/Tags.sh (1.5), etc/build-bands.sh (1.5), etc/compile.scm
+	  (1.11), etc/compile.sh (1.9), etc/functions.sh (1.5),
+	  etc/optiondb.scm (1.16), etc/script.scm (1.3), imail/Makefile.in
+	  (1.7), imail/compile.scm (1.23), imail/ed-ffi.scm (1.24),
+	  imail/imail-browser.scm (1.13), imail/imail-core.scm (1.155),
+	  imail/imail-file.scm (1.88), imail/imail-imap.scm (1.207),
+	  imail/imail-mime.scm (1.5), imail/imail-rmail.scm (1.74),
+	  imail/imail-summary.scm (1.54), imail/imail-top.scm (1.295),
+	  imail/imail-umail.scm (1.55), imail/imail-util.scm (1.47),
+	  imail/imail.pkg (1.102), imail/imap-response.scm (1.49),
+	  imail/imap-syntax.scm (1.22), imail/load.scm (1.45),
+	  imail/print.sh (1.12), microcode/Clean.sh (1.5),
+	  microcode/Setup.sh (1.10), microcode/ansidecl.h (1.9),
+	  microcode/array.c (9.49), microcode/array.h (9.39),
+	  microcode/artutl.c (1.19), microcode/avltree.c (1.9),
+	  microcode/avltree.h (1.8), microcode/bchdmp.c (9.93),
+	  microcode/bchdrn.c (1.13), microcode/bchdrn.h (1.13),
+	  microcode/bchgcc.h (9.66), microcode/bchgcl.c (9.57),
+	  microcode/bchmmg.c (9.105), microcode/bchpur.c (9.75),
+	  microcode/bchutl.c (1.16), microcode/bignmint.h (1.9),
+	  microcode/bignum.c (9.55), microcode/bignum.h (9.34),
+	  microcode/bigprm.c (1.9), microcode/bintopsb.c (9.80),
+	  microcode/bitstr.c (9.67), microcode/bitstr.h (1.13),
+	  microcode/bkpt.c (9.35), microcode/bkpt.h (9.37),
+	  microcode/bltdef.h (1.7), microcode/boot.c (9.120),
+	  microcode/breakup.c (9.28), microcode/char.c (9.36),
+	  microcode/cmpgc.h (1.35), microcode/cmpint.c (1.106),
+	  microcode/cmpint.h (10.13), microcode/cmptype.h (1.7),
+	  microcode/comlin.c (1.13), microcode/comlin.h (1.10),
+	  microcode/compinit.c (1.9), microcode/comutl.c (1.35),
+	  microcode/config.guess (11.6), microcode/config.sub (11.6),
+	  microcode/configure.ac (1.18), microcode/confshared.h (11.10),
+	  microcode/const.h (9.54), microcode/copyrigh.c (1.6),
+	  microcode/critsec.h (1.7), microcode/daemon.c (9.35),
+	  microcode/debug.c (9.59), microcode/default.h (9.48),
+	  microcode/dfloat.c (1.9), microcode/dmpwrld.c (9.44),
+	  microcode/dstack.h (1.14), microcode/dump.c (9.43),
+	  microcode/edwin.h (1.12), microcode/error.c (1.11),
+	  microcode/errors.h (9.47), microcode/extern.c (9.41),
+	  microcode/extern.h (9.66), microcode/fasdump.c (9.69),
+	  microcode/fasl.h (9.42), microcode/fasload.c (9.97),
+	  microcode/fft.c (9.36), microcode/fhooks.c (9.38),
+	  microcode/findprim.c (9.59), microcode/fixnum.c (9.47),
+	  microcode/fixobj.h (9.41), microcode/flonum.c (9.46),
+	  microcode/foreign.c (1.7), microcode/foreign.h (1.6),
+	  microcode/future.c (9.32), microcode/futures.h (9.33),
+	  microcode/gc.h (9.37), microcode/gccode.h (9.61),
+	  microcode/gcloop.c (9.52), microcode/gctype.c (9.37),
+	  microcode/generic.c (9.42), microcode/gpio.c (1.14),
+	  microcode/history.h (9.35), microcode/hooks.c (9.67),
+	  microcode/hppacach.c (1.16), microcode/hppacach.h (1.9),
+	  microcode/hppanwca.c (1.8), microcode/hunk.c (9.32),
+	  microcode/image.c (9.38), microcode/image.h (9.28),
+	  microcode/intercom.c (9.37), microcode/intern.c (9.64),
+	  microcode/interp.c (9.103), microcode/interp.h (9.51),
+	  microcode/intext.c (1.8), microcode/intext.h (1.8),
+	  microcode/intprm.c (1.13), microcode/intrpt.h (1.25),
+	  microcode/liarc.h (1.24), microcode/list.c (9.36),
+	  microcode/load.c (9.44), microcode/locks.h (9.29),
+	  microcode/lookprm.c (1.22), microcode/lookup.c (9.73),
+	  microcode/lookup.h (9.58), microcode/memmag.c (9.73),
+	  microcode/memmag.h (1.11), microcode/missing.c (9.36),
+	  microcode/mul.c (9.38), microcode/nt.h (1.12), microcode/ntapi.h
+	  (1.19), microcode/ntasutl.asm (1.9), microcode/ntenv.c (1.22),
+	  microcode/ntfile.c (1.17), microcode/ntfs.c (1.32),
+	  microcode/ntfs.h (1.8), microcode/ntgui.c (1.32),
+	  microcode/ntgui.h (1.11), microcode/ntio.c (1.33),
+	  microcode/ntio.h (1.15), microcode/ntproc.c (1.11),
+	  microcode/ntproc.h (1.5), microcode/ntscmlib.h (1.13),
+	  microcode/ntscreen.c (1.53), microcode/ntscreen.h (1.24),
+	  microcode/ntsig.c (1.25), microcode/ntsock.c (1.21),
+	  microcode/ntsys.c (1.12), microcode/ntsys.h (1.11),
+	  microcode/ntterm.h (1.7), microcode/nttop.c (1.38),
+	  microcode/nttop.h (1.7), microcode/nttrap.c (1.28),
+	  microcode/nttrap.h (1.8), microcode/nttterm.c (1.7),
+	  microcode/nttty.c (1.11), microcode/object.h (9.62),
+	  microcode/obstack.c (1.9), microcode/obstack.h (1.15),
+	  microcode/option.c (1.63), microcode/option.h (1.17),
+	  microcode/os.h (1.11), microcode/os2.c (1.12), microcode/os2.h
+	  (1.11), microcode/os2api.h (1.15), microcode/os2conio.c (1.13),
+	  microcode/os2cthrd.c (1.13), microcode/os2cthrd.h (1.10),
+	  microcode/os2ctty.c (1.7), microcode/os2ctty.h (1.5),
+	  microcode/os2env.c (1.17), microcode/os2file.c (1.6),
+	  microcode/os2fs.c (1.17), microcode/os2io.c (1.12),
+	  microcode/os2io.h (1.7), microcode/os2msg.c (1.18),
+	  microcode/os2msg.h (1.19), microcode/os2pipe.c (1.11),
+	  microcode/os2pm.c (1.36), microcode/os2pm.h (1.16),
+	  microcode/os2pm.scm (1.17), microcode/os2pmcon.c (1.32),
+	  microcode/os2pmcon.h (1.7), microcode/os2pmcon.rc (1.8),
+	  microcode/os2proc.c (1.10), microcode/os2proc.h (1.5),
+	  microcode/os2sock.c (1.21), microcode/os2term.c (1.7),
+	  microcode/os2thrd.c (1.9), microcode/os2thrd.h (1.7),
+	  microcode/os2top.c (1.24), microcode/os2tty.c (1.5),
+	  microcode/os2xcpt.c (1.16), microcode/osctty.h (1.7),
+	  microcode/osenv.h (1.13), microcode/osfile.h (1.7),
+	  microcode/osfs.h (1.13), microcode/osio.h (1.20),
+	  microcode/osproc.h (1.13), microcode/ospty.h (1.7),
+	  microcode/osscheme.c (1.16), microcode/osscheme.h (1.15),
+	  microcode/ossig.h (1.7), microcode/osterm.h (1.14),
+	  microcode/ostop.h (1.8), microcode/ostty.c (1.7),
+	  microcode/ostty.h (1.8), microcode/outf.c (1.15),
+	  microcode/outf.h (1.8), microcode/ppband.c (9.67),
+	  microcode/prbfish.c (1.15), microcode/prdb4.c (1.5),
+	  microcode/prename.h (1.12), microcode/prgdbm.c (1.7),
+	  microcode/prim.c (9.47), microcode/prim.h (9.51),
+	  microcode/prims.h (9.53), microcode/primutl.c (9.82),
+	  microcode/prmcon.c (1.8), microcode/prmcon.h (1.7),
+	  microcode/prmcrypt.c (1.8), microcode/prmd5.c (1.10),
+	  microcode/prmhash.c (11.10), microcode/prntenv.c (1.13),
+	  microcode/prntfs.c (1.20), microcode/prntio.c (1.16),
+	  microcode/pros2fs.c (1.21), microcode/pros2io.c (1.14),
+	  microcode/pros2pm.c (1.24), microcode/prosenv.c (1.20),
+	  microcode/prosfile.c (1.13), microcode/prosfs.c (1.20),
+	  microcode/prosio.c (1.25), microcode/prosproc.c (1.22),
+	  microcode/prospty.c (1.7), microcode/prosterm.c (1.19),
+	  microcode/prostty.c (1.10), microcode/prpgsql.c (1.10),
+	  microcode/pruxdld.c (1.20), microcode/pruxenv.c (1.23),
+	  microcode/pruxfs.c (9.59), microcode/pruxio.c (1.11),
+	  microcode/pruxsock.c (1.24), microcode/psbmap.h (9.48),
+	  microcode/psbtobin.c (9.65), microcode/ptrvec.c (1.7),
+	  microcode/purify.c (9.66), microcode/purutl.c (9.55),
+	  microcode/regex.c (1.23), microcode/regex.h (1.10),
+	  microcode/returns.h (9.46), microcode/rgxprim.c (1.16),
+	  microcode/sample.c (9.29), microcode/scheme.h (9.43),
+	  microcode/scode.h (9.30), microcode/sdata.h (9.43),
+	  microcode/sgraph.h (1.10), microcode/sgraph_a.c (1.20),
+	  microcode/sgx.c (1.12), microcode/sgx11.c (1.7),
+	  microcode/stack.h (9.45), microcode/stackops.h (11.2),
+	  microcode/starbase.c (1.10), microcode/starbasx.c (1.9),
+	  microcode/step.c (9.40), microcode/storage.c (9.61),
+	  microcode/string.c (9.50), microcode/syntax.c (1.36),
+	  microcode/syntax.h (1.15), microcode/syscall.h (1.19),
+	  microcode/sysprim.c (9.52), microcode/term.c (1.21),
+	  microcode/termcap.c (1.9), microcode/tparam.c (1.9),
+	  microcode/transact.c (1.8), microcode/trap.h (9.52),
+	  microcode/tterm.c (1.18), microcode/types.h (9.41),
+	  microcode/unexec.c (9.26), microcode/unstackify.c (11.2),
+	  microcode/usrdef.h (9.47), microcode/utabmd.scm (9.90),
+	  microcode/utabmd.sh (1.9), microcode/utils.c (9.88),
+	  microcode/ux.c (1.29), microcode/ux.h (1.81), microcode/uxctty.c
+	  (1.17), microcode/uxenv.c (1.24), microcode/uxfile.c (1.14),
+	  microcode/uxfs.c (1.28), microcode/uxio.c (1.55),
+	  microcode/uxio.h (1.8), microcode/uxproc.c (1.33),
+	  microcode/uxproc.h (1.9), microcode/uxselect.h (1.9),
+	  microcode/uxsig.c (1.47), microcode/uxsig.h (1.11),
+	  microcode/uxsock.c (1.33), microcode/uxsock.h (1.14),
+	  microcode/uxterm.c (1.32), microcode/uxterm.h (1.8),
+	  microcode/uxtop.c (1.32), microcode/uxtop.h (1.6),
+	  microcode/uxtrap.c (1.43), microcode/uxtrap.h (1.36),
+	  microcode/uxtty.c (1.14), microcode/uxutil.c (1.10),
+	  microcode/uxutil.h (1.6), microcode/uxyp.c (1.6),
+	  microcode/vector.c (9.43), microcode/wabbit.c (1.12),
+	  microcode/wind.c (1.10), microcode/winder.h (9.29),
+	  microcode/wsize.c (9.37), microcode/x11.h (1.22),
+	  microcode/x11base.c (1.89), microcode/x11color.c (1.8),
+	  microcode/x11graph.c (1.44), microcode/x11term.c (1.33),
+	  microcode/xdebug.c (9.38), microcode/zones.h (9.29),
+	  microcode/cmpauxmd/asmcvt.c (1.5), microcode/cmpauxmd/c.c (1.19),
+	  microcode/cmpauxmd/hppa.m4 (1.43), microcode/cmpauxmd/i386.m4
+	  (1.65), microcode/cmpauxmd/m4-dos (1.5),
+	  microcode/cmpauxmd/makefile (1.11), microcode/cmpauxmd/mc68k.m4
+	  (1.31), microcode/cmpauxmd/mips.m4 (1.19),
+	  microcode/cmpauxmd/vax.m4 (1.8), microcode/cmpintmd/c.h (1.11),
+	  microcode/cmpintmd/hppa.h (1.55), microcode/cmpintmd/i386.h
+	  (1.38), microcode/cmpintmd/mc68k.h (1.39),
+	  microcode/cmpintmd/mips.h (1.26), microcode/cmpintmd/vax.h
+	  (1.12), microcode/makegen/Makefile.in.in (1.35),
+	  microcode/makegen/files-core.scm (1.5),
+	  microcode/makegen/files-gc-bch.scm (1.5),
+	  microcode/makegen/files-gc-std.scm (1.5),
+	  microcode/makegen/files-optional.scm (1.7),
+	  microcode/makegen/files-os-prim.scm (1.5),
+	  microcode/makegen/files-other.scm (1.7),
+	  microcode/makegen/files-unix.scm (1.5), microcode/makegen/m4.sh
+	  (1.5), microcode/makegen/makegen.scm (1.13),
+	  microcode/makegen/makeinit.sh (1.14),
+	  microcode/ntutl/bch-p-nt.lst (1.9), microcode/ntutl/config.h
+	  (1.12), microcode/ntutl/makefile (1.32),
+	  microcode/ntutl/makefile.wcc (1.22), microcode/ntutl/scheme16.c
+	  (1.15), microcode/ntutl/scheme16.mak (1.6),
+	  microcode/ntutl/scheme31.c (1.14), microcode/ntutl/scheme32.c
+	  (1.21), microcode/ntutl/scm-p-nt.lst (1.9),
+	  microcode/os2utl/config.h (1.10), microcode/os2utl/makefile
+	  (1.18), microcode/os2utl/makefile.cmn (1.17),
+	  microcode/os2utl/makefile.emx (1.12),
+	  microcode/os2utl/makefile.gcc (1.11),
+	  microcode/os2utl/makefile.vac (1.11),
+	  microcode/os2utl/makefile.wcc (1.12),
+	  microcode/os2utl/mkos2pm.scm (1.5), pcsample/load.scm (1.10),
+	  pcsample/pcs.cbf (1.6), pcsample/pcs.pkg (1.6), pcsample/pcs.sf
+	  (1.6), pcsample/pcsample.c (1.9), pcsample/pcsample.scm (1.7),
+	  pcsample/pcsboot.scm (1.5), pcsample/pcscobl.c (1.5),
+	  pcsample/pcscobl.scm (1.6), pcsample/pcsdisp.scm (1.7),
+	  pcsample/pcsdld.c (1.8), pcsample/pcsintrp.scm (1.5),
+	  pcsample/pcsiproc.c (1.5), pcsample/pcsiproc.scm (1.5),
+	  pcsample/pribinut.scm (1.5), rcs/compile.scm (1.7),
+	  rcs/format.scm (1.6), rcs/load.scm (1.7), rcs/logmer.scm (1.30),
+	  rcs/mklogs.scm (1.25), rcs/nparse.scm (1.6), rcs/object.scm
+	  (1.9), rcs/rcs.pkg (1.10), runtime/Makefile.in (1.11),
+	  runtime/advice.scm (14.22), runtime/apply.scm (1.8),
+	  runtime/apropos.scm (1.8), runtime/arith.scm (1.64),
+	  runtime/berkeley-db.scm (1.5), runtime/bitstr.scm (14.7),
+	  runtime/blowfish.scm (1.27), runtime/boole.scm (14.7),
+	  runtime/boot.scm (14.24), runtime/char.scm (14.29),
+	  runtime/chrset.scm (14.21), runtime/chrsyn.scm (1.9),
+	  runtime/codwlk.scm (14.7), runtime/conpar.scm (14.50),
+	  runtime/contin.scm (14.16), runtime/cpoint.scm (14.11),
+	  runtime/cpress.scm (1.15), runtime/crypto.scm (14.19),
+	  runtime/datime.scm (14.42), runtime/dbgcmd.scm (14.19),
+	  runtime/dbgutl.scm (14.26), runtime/debug.scm (14.48),
+	  runtime/defstr.scm (14.56), runtime/dosdir.scm (1.13),
+	  runtime/dosprm.scm (1.48), runtime/dosproc.scm (1.6),
+	  runtime/dospth.scm (1.45), runtime/dragon4.scm (1.19),
+	  runtime/ed-ffi.scm (1.38), runtime/emacs.scm (14.41),
+	  runtime/equals.scm (14.13), runtime/error.scm (14.71),
+	  runtime/events.scm (14.8), runtime/fileio.scm (1.33),
+	  runtime/fixart.scm (1.16), runtime/format.scm (14.10),
+	  runtime/framex.scm (14.22), runtime/gc.scm (14.24),
+	  runtime/gcdemn.scm (14.11), runtime/gcfinal.scm (14.11),
+	  runtime/gcnote.scm (14.19), runtime/gcstat.scm (14.9),
+	  runtime/gdatab.scm (14.10), runtime/gdbm.scm (1.9),
+	  runtime/gencache.scm (1.6), runtime/geneqht.scm (1.5),
+	  runtime/generic.scm (1.15), runtime/genio.scm (1.48),
+	  runtime/genmult.scm (1.7), runtime/gensym.scm (14.9),
+	  runtime/gentag.scm (1.7), runtime/global.scm (14.76),
+	  runtime/graphics.scm (1.25), runtime/hash.scm (14.11),
+	  runtime/hashtb.scm (1.36), runtime/histry.scm (14.9),
+	  runtime/infstr.scm (1.19), runtime/infutl.scm (1.71),
+	  runtime/input.scm (14.32), runtime/intrpt.scm (14.28),
+	  runtime/io.scm (14.85), runtime/krypt.scm (1.15),
+	  runtime/kryptdum.scm (1.5), runtime/lambda.scm (14.20),
+	  runtime/lambdx.scm (14.13), runtime/list.scm (14.53),
+	  runtime/load.scm (14.82), runtime/make.scm (14.107),
+	  runtime/mime-codec.scm (14.17), runtime/mit-syntax.scm (14.28),
+	  runtime/msort.scm (14.12), runtime/ntdir.scm (1.5),
+	  runtime/ntprm.scm (1.48), runtime/numint.scm (1.9),
+	  runtime/numpar.scm (14.21), runtime/option.scm (14.51),
+	  runtime/optiondb.scm (1.18), runtime/ordvec.scm (1.6),
+	  runtime/os2ctype.scm (1.7), runtime/os2dir.scm (1.8),
+	  runtime/os2graph.scm (1.26), runtime/os2prm.scm (1.55),
+	  runtime/os2winp.scm (1.21), runtime/output.scm (14.38),
+	  runtime/packag.scm (14.49), runtime/parse.scm (14.64),
+	  runtime/parser-buffer.scm (1.17), runtime/partab.scm (14.10),
+	  runtime/pathnm.scm (14.50), runtime/pgsql.scm (1.12),
+	  runtime/poplat.scm (14.7), runtime/port.scm (1.47),
+	  runtime/pp.scm (14.51), runtime/prgcop.scm (1.10),
+	  runtime/process.scm (1.33), runtime/prop1d.scm (14.9),
+	  runtime/prop2d.scm (14.6), runtime/qsort.scm (14.8),
+	  runtime/queue.scm (14.8), runtime/random.scm (14.39),
+	  runtime/rbtree.scm (1.10), runtime/record.scm (1.57),
+	  runtime/recslot.scm (1.11), runtime/regexp.scm (1.16),
+	  runtime/rep.scm (14.67), runtime/rexp.scm (1.25),
+	  runtime/rgxcmp.scm (1.126), runtime/runtime.cbf (1.6),
+	  runtime/runtime.pkg (14.607), runtime/runtime.sf (14.22),
+	  runtime/savres.scm (14.47), runtime/scan.scm (14.10),
+	  runtime/scode.scm (14.23), runtime/scomb.scm (14.25),
+	  runtime/sdata.scm (14.6), runtime/sfile.scm (14.41),
+	  runtime/site.scm.dos (1.17), runtime/site.scm.unix (1.18),
+	  runtime/socket.scm (1.30), runtime/srfi-1.scm (1.2),
+	  runtime/starbase.scm (1.21), runtime/stream.scm (14.21),
+	  runtime/string.scm (14.62), runtime/strnin.scm (14.19),
+	  runtime/strott.scm (14.16), runtime/strout.scm (14.26),
+	  runtime/symbol.scm (1.22), runtime/syncproc.scm (1.12),
+	  runtime/syntactic-closures.scm (14.17), runtime/syntax-check.scm
+	  (14.6), runtime/syntax-output.scm (14.12),
+	  runtime/syntax-rules.scm (14.9), runtime/syntax-transforms.scm
+	  (14.8), runtime/sysclk.scm (14.7), runtime/sysmac.scm (14.15),
+	  runtime/system.scm (14.17), runtime/thread.scm (1.41),
+	  runtime/tscript.scm (1.10), runtime/ttyio.scm (1.24),
+	  runtime/tvector.scm (1.6), runtime/udata.scm (14.24),
+	  runtime/uenvir.scm (14.61), runtime/uerror.scm (14.54),
+	  runtime/unicode.scm (1.28), runtime/unpars.scm (14.67),
+	  runtime/unsyn.scm (14.33), runtime/unxdir.scm (14.15),
+	  runtime/unxprm.scm (1.73), runtime/unxpth.scm (14.31),
+	  runtime/uproc.scm (1.20), runtime/url.scm (1.47),
+	  runtime/urtrap.scm (14.18), runtime/usrint.scm (1.26),
+	  runtime/utabs.scm (14.21), runtime/vector.scm (14.26),
+	  runtime/version.scm (14.222), runtime/where.scm (14.15),
+	  runtime/win32-registry.scm (1.2), runtime/wind.scm (14.12),
+	  runtime/wrkdir.scm (14.11), runtime/wttree.scm (1.13),
+	  runtime/x11graph.scm (1.59), runtime/xeval.scm (1.13),
+	  runtime/ystep.scm (1.8), runtime-check/Clean.sh (1.7),
+	  runtime-check/Setup.sh (1.10), runtime-check/runtime.cbf (1.4),
+	  sf/butils.scm (4.15), sf/cgen.scm (4.8), sf/chtype.scm (4.7),
+	  sf/copy.scm (4.9), sf/emodel.scm (4.7), sf/free.scm (4.7),
+	  sf/gconst.scm (4.34), sf/gimprt.scm (4.5), sf/lsets.scm (4.6),
+	  sf/make.scm (4.45), sf/object.scm (4.20), sf/pardec.scm (4.17),
+	  sf/pthmap.scm (4.8), sf/reduct.scm (4.13), sf/sf.cbf (1.6),
+	  sf/sf.pkg (4.20), sf/sf.sf (4.15), sf/subst.scm (4.21),
+	  sf/table.scm (4.8), sf/tables.scm (4.6), sf/toplev.scm (4.30),
+	  sf/usicon.scm (4.9), sf/usiexp.scm (4.47), sf/xform.scm (4.14),
+	  sicp/compat.scm (1.12), sicp/genenv.scm (1.6), sicp/graphics.scm
+	  (1.8), sicp/sbuild.scm (1.9), sicp/stream.scm (1.5),
+	  sicp/strmac.scm (1.6), sicp/studen.scm (1.15), sos/Makefile.in
+	  (1.7), sos/class.scm (1.18), sos/compile.scm (1.10),
+	  sos/ed-ffi.scm (1.6), sos/instance.scm (1.18), sos/load.scm
+	  (1.17), sos/macros.scm (1.19), sos/method.scm (1.17),
+	  sos/microbench.scm (1.6), sos/printer.scm (1.6), sos/slot.scm
+	  (1.11), sos/sos.pkg (1.14), ssp/Makefile.in (1.4),
+	  ssp/compile.scm (1.8), ssp/expenv.scm (1.2), ssp/load.scm (1.7),
+	  ssp/mod-lisp.scm (1.33), ssp/ssp.pkg (1.22),
+	  ssp/xhtml-expander.scm (1.12), ssp/xmlrpc.scm (1.14),
+	  star-parser/Makefile.in (1.6), star-parser/compile.scm (1.10),
+	  star-parser/ed-ffi.scm (1.9), star-parser/load.scm (1.19),
+	  star-parser/matcher.scm (1.36), star-parser/parser.pkg (1.23),
+	  star-parser/parser.scm (1.37), star-parser/shared.scm (1.33),
+	  star-parser/test-parser.scm (1.8), swat/scheme/swat.sf (1.7),
+	  wabbit/load.scm (1.7), wabbit/wabbit.cbf (1.5), wabbit/wabbit.pkg
+	  (1.5), wabbit/wabbit.scm (1.5), wabbit/wabbit.sf (1.7),
+	  win32/clipbrd.scm (1.9), win32/dib.scm (1.9), win32/ffimacro.scm
+	  (1.11), win32/graphics.scm (1.21), win32/make.scm (1.17),
+	  win32/module.scm (1.7), win32/protect.scm (1.6),
+	  win32/wf_user.scm (1.13), win32/win32.cbf (1.6), win32/win32.pkg
+	  (1.18), win32/win32.sf (1.13), win32/win_ffi.scm (1.15),
+	  win32/wingdi.scm (1.6), win32/winnt.scm (1.6), win32/winuser.scm
+	  (1.6), win32/wt_user.scm (1.9), win32/dibutils/dibutils.c (1.7),
+	  win32/dibutils/dibutils.def (1.6), win32/dibutils/dibutils.h
+	  (1.7), win32/dibutils/makefile.msc (1.7),
+	  win32/dibutils/makefile.wcc (1.7), xdoc/Makefile.in (1.3),
+	  xdoc/compile.scm (1.3), xdoc/db.scm (1.6), xdoc/load.scm (1.4),
+	  xdoc/validate-xdoc.scm (1.2), xdoc/xdoc.pkg (1.7), xdoc/xdoc.scm
+	  (1.5), xml/Makefile.in (1.7), xml/compile.scm (1.19),
+	  xml/ed-ffi.scm (1.11), xml/load.scm (1.18), xml/parser-macro.scm
+	  (1.10), xml/test-parser.scm (1.14), xml/test-turtle.scm (1.2),
+	  xml/turtle.scm (1.18), xml/xhtml-entities.scm (1.5),
+	  xml/xhtml.scm (1.22), xml/xml-chars.scm (1.8), xml/xml-names.scm
+	  (1.13), xml/xml-output.scm (1.41), xml/xml-parser.scm (1.71),
+	  xml/xml-rpc.scm (1.9), xml/xml-struct.scm (1.56), xml/xml.pkg
+	  (1.89), xml/xpath.scm (1.5):
+
+	Update FSF address.
+
+2006-12-31 00:59  Chris Hanson <edu/mit/csail/cph>
+
+	* ssp/xhtml-expander.scm (1.11):
+
+	Don't provide a default <?xml> declaration.  The absence of the
+	declaration is equivalent to its presence, and avoids confusing
+	non-XML browsers.
+
+2006-12-28 23:32  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/char.scm (14.28):
+
+	Fix case conversion tables for high ISO-8859-1 characters so that they
+	are not reversed.
+
+2006-12-28 17:28  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.8):
+
+	Fix bug in paredit forward character deletion at the beginning of the
+	buffer: formerly it would cause a hardware trap, because it would ask
+	for the non-existent character before the point, without checking
+	whether there is in fact a valid character position in the buffer
+	there.
+
+2006-12-28 10:31  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/edwin.pkg (1.300):
+
+	Add XML package definitions to eliminate CREF warnings.
+
+2006-12-28 10:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/utabmd.sh (1.5.2.3):
+
+	Propagate Taylor's patch to pre-v15 branch.
+
+2006-12-27 19:08  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/confshared.h (11.8.2.8):
+
+	Fix bug in prior change.
+
+2006-12-27 17:27  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/confshared.h (11.8.2.7):
+
+	Define PC_ZERO_BITS for non-native architectures, but only when
+	needed.
+
+2006-12-27 03:32  Taylor Campbell <net/mumble/campbell>
+
+	* etc/compile.sh (1.8), microcode/utabmd.sh (1.8):
+
+	Twiddle default heap size for shell scripts that invoke Scheme with the
+	compiler loaded, so that they fit in the absurdly small limits on OS
+	X/Intel.  3000 seems to be the largest number of blocks we can rely on.
+
+2006-12-27 03:10  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/edwin.pkg (1.299):
+
+	Argh!  Add long-forgotten (EDWIN LISPPASTE) package...
+
+2006-12-27 02:01  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/syntax-rules.scm (14.8):
+
+	Update copyright date.
+
+2006-12-27 01:53  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/syntax-rules.scm (14.7):
+
+	Improve code generated for segment variable matching in SYNTAX-RULES.
+	Before it used an idiom of
+
+	  ((LET ((LOOP #F)) (SET! LOOP (LAMBDA () ...)) LOOP)
+	   ...),
+
+	which caused spurious & confusing `Possible inapplicable operator #f'
+	warnings from the compiler's flow analyzer.  Now it uses
+
+	  ((LET () (DEFINE LOOP (LAMBDA () ...)) LOOP)
+	   ...),
+
+	like the code generated for named LET.
+
+2006-12-20 02:24  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/unix.scm (1.121):
+
+	Use OS/FIND-PROGRAM to search path for sendmail.
+
+2006-12-20 02:22  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/sendmail.scm (1.88):
+
+	Defer call to OS/SENDMAIL-PROGRAM until mail is to be sent.  Otherwise
+	it is run when Edwin is built, and will probably be incorrect for the
+	target system.
+
+2006-12-11 02:37  Arthur Gleckler <edu/mit/csail/zurich/arthur>
+
+	* runtime/fileio.scm (1.32):
+
+	Reverted change 1.30-1.31, which was supposed to require that output
+	ports passed to `port-position' and `set-port-positon!' also be input
+	ports.  This restriction was unnecessary and the change had a bug
+	anyway.
+
+2006-12-08 21:02  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/edtstr.scm (1.33):
+
+	Fix unparser method for buttons: the procedure given to
+	SIMPLE-UNPARSER-METHOD must return a list of components.
+
+2006-11-27 17:52  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/Makefile.in (1.10):
+
+	*Again* belatedly add another package to the list of options to
+	install, this one lisppaste...
+
+2006-11-25 00:11  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ntapi.h (1.18), ntsock.c (1.20), ntapi.h (1.17.2.2),
+	  ntsock.c (1.18.2.3):
+
+	Implement win32 socket shutdown support.
+
+2006-11-25 00:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bignum.c (9.54), ntfs.c (1.31), ntio.c (1.32),
+	  prosfs.c (1.19), uxfs.c (1.27), bignum.c (9.52.2.4), ntfs.c
+	  (1.30.2.3), ntio.c (1.31.2.3), prosfs.c (1.18.2.3), uxfs.c
+	  (1.25.2.4):
+
+	Eliminate win32 compiler warnings.
+
+2006-11-22 23:56  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/info.scm (1.141):
+
+	Apply some improvements on Aaron Hawley's long-overdue patch to the
+	Info mode.  TAB now cycles through references (menu items and cross
+	references); M-TAB cycles backward; RET by default runs
+	`info-current-menu-item', without having to customize the
+	`info-selection-key' variable; and all of the relevant regular
+	expressions now are defined at the top level, not hard-coded as
+	literals in the procedures that refer to them, and use the REXP
+	abstraction for clarity, since I couldn't follow the baroque string
+	notation without painstakingly rewriting it character by character.
+
+2006-11-22 13:51  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: genio.scm (1.47), make.scm (14.106), runtime.pkg
+	  (14.606), socket.scm (1.29):
+
+	Use shutdown-socket primitive to close one side of a socket.
+
+2006-11-22 13:50  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: pruxsock.c (1.23), syscall.h (1.18), uxsock.c (1.32),
+	  uxsock.h (1.13), uxtop.c (1.31):
+
+	Add SHUTDOWN-SOCKET primitive.
+
+2006-11-22 13:13  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/uxfs.c (1.26):
+
+	Add support for CIFS fs type.
+
+2006-11-22 13:02  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.17):
+
+	Fix bug: list notation doesn't use commas.
+
+2006-11-21 23:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: intern.c (9.61.2.6), intern.c (9.63):
+
+	Make sure constants are unsigned in string_hash.
+
+2006-11-15 02:54  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: prims.h (9.52.2.3), pruxsock.c (1.22.2.3), syscall.h
+	  (1.17.2.3), utils.c (9.87.2.9), uxsock.c (1.31.2.3), uxsock.h
+	  (1.12.2.3), uxtop.c (1.30.2.4):
+
+	Add SHUTDOWN-SOCKET primitive.
+
+2006-11-15 02:52  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/uxfs.c (1.25.2.3):
+
+	Add support for CIFS fs type.
+
+2006-11-14 19:38  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/mit-syntax.scm (14.27):
+
+	Add MIT and MIT/GNU to cond-expand features.
+
+2006-11-09 22:04  Chris Hanson <edu/mit/csail/cph>
+
+	* imail/imail-summary.scm (1.53):
+
+	Change summary so that "from" field is fixed width and subject fills
+	available space.  The old behavior is still available, but no longer
+	the default.
+
+2006-11-09 15:11  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.23):
+
+	Fix thinko in previous change.
+
+2006-11-09 15:07  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.11), rdf-struct.scm (1.22), xml.pkg (1.88):
+
+	Change bnodes so they don't carry their names around.  Instead,
+	generate the names on demand from their hash numbers, which guarantees
+	uniqueness without a lot of digits.  As a corollary this obviates the
+	bnode "handle" mechanism, so that's removed.
+
+2006-11-09 15:04  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: port.scm (1.46), runtime.pkg (14.605):
+
+	Implement PORT/INTERN-PROPERTY!.
+
+2006-11-09 14:43  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.21):
+
+	Change bnode mechanism so that user-supplied names are used only for
+	parsing.
+
+2006-11-04 15:25  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/: decls.scm (1.78), ed-ffi.scm (1.56), lisppaste.scm (1.1),
+	  loadef.scm (1.50):
+
+	New Edwin library: a front end for lisppaste, using its XML-RPC interface.
+	See <http://paste.lisp.org/> for details.
+
+2006-11-04 15:23  Taylor Campbell <net/mumble/campbell>
+
+	* xml/: xml-rpc.scm (1.8), xml.pkg (1.87):
+
+	Implement a simple XML-RPC client.
+
+2006-11-04 15:16  Taylor Campbell <net/mumble/campbell>
+
+	* runtime/: http-client.scm (14.3), runtime.pkg (14.604):
+
+	Rename two internal operations in RFC 822 headers in the HTTP client,
+	and export them, so that users of the library can get at them.
+
+	This is a lame workaround for the problem that the RFC 822 support lies
+	in Edwin, rather than the run-time system.  At some point that should
+	be fixed properly, and the support updated to RFC 2822, but this works
+	for now.
+
+2006-11-04 01:38  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: load.scm (14.81), runtime.pkg (14.603):
+
+	Implement WITH-LOADING-MESSAGE to capture common pattern of loading
+	files in various ways.
+
+2006-11-03 01:30  Chris Hanson <edu/mit/csail/cph>
+
+	* ssp/mod-lisp.scm (1.32):
+
+	Add support for HEAD requests.
+
+2006-11-01 00:19  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/io.scm (14.84):
+
+	Change CHANNEL-OPEN? to return #T when true.
+
+2006-11-01 00:16  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ux.h (1.78.2.5), uxproc.c (1.32):
+
+	Update copyright dates.
+
+2006-11-01 00:09  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/genio.scm (1.46):
+
+	When an I/O port shares the same channel for input and output, don't
+	close the channel unless both the input and output sides of the port
+	are closed.
+
+2006-10-30 01:04  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: intern.c (9.61.2.4), intern.c (9.61.2.5):
+
+	Fix compiler warning.
+
+2006-10-30 01:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: intern.c (9.61.2.3), intern.c (9.62):
+
+	Change STRING-HASH to use FNV hash algorithm.
+
+2006-10-30 00:50  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: const.h (9.53), const.h (9.52.2.5):
+
+	Increase obarray size to more reasonable value.  A current
+	fully-loaded band has about 28500 interned symbols, so this value
+	should provide for very small buckets.
+
+2006-10-29 12:25  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/: ux.h (1.80), uxproc.c (1.31):
+
+	Redefine `UX_vfork' to be `fork' on OS X, because setsid and others are
+	not allowed in vforked processes.  Always check the value of setsid,
+	since it should work on OS X now that we use fork there instead of
+	vfork.
+
+2006-10-29 12:22  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/ux.h (1.78.2.4):
+
+	Redefine `UX_vfork' to be `fork' on OS X, not `UX_setsid' so that it
+	ignores the value of `setsid' and always returns zero.  `setsid' is
+	correct; it just isn't allowed in vforked processes.
+
+2006-10-29 11:43  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/: uxio.c (1.54), uxio.c (1.53.2.3):
+
+	Fix bug in calling select(2): its first argument is one greater than
+	the highest file descriptor involved, _not_ the number of file
+	descriptors involved.
+
+2006-10-29 01:20  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.16), xml.pkg (1.86):
+
+	Revert previous change and reimplement functionality using new
+	procedures PORT/RDF-PREFIX-REGISTRY and PORT/SET-RDF-PREFIX-REGISTRY.
+	Implement new procedure WRITE-RDF/TURTLE.  Change READ-RDF/TURTLE-FILE
+	to return two values, a list of triples and a newly-allocated prefix
+	registry.
+
+2006-10-29 01:17  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.10), rdf-struct.scm (1.20), xml.pkg (1.85):
+
+	Rename PORT/BNODE-REGISTRY and PORT/DROP-BNODE-REGISTRY and export
+	them to global environment.  Make analogous procedures for prefix
+	registries.  Add new procedure to merge one prefix registry into
+	another.
+
+2006-10-29 01:35  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/xml.pkg (1.84):
+
+	Export several more Turtle output procedures.
+
+2006-10-29 01:32  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.15):
+
+	Change all Turtle procedures to require a prefix-registry argument.
+
+2006-10-29 01:23  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.19):
+
+	Exchange position of REGISTRY and ERROR? arguments on RDF-QNAME->URI,
+	URI->RDF-QNAME, and URI->RDF-PREFIX.
+
+2006-10-27 16:55  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.15):
+
+	Fix typo: when creating MODULE_RULES use ">>" rather than ">".
+
+2006-10-27 09:49  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.14):
+
+	Rewrite Turtle encoder to have simpler, more consistent indentation,
+	and to sort prefix definitions by name.
+
+2006-10-26 01:01  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/usrint.scm (1.25):
+
+	Change WITH-NOTIFICATION to use a different strategy for dealing with
+	errors.  The previous strategy wasn't signalling the errors right, for
+	reasons I don't understand.
+
+2006-10-25 22:31  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.13):
+
+	Fix bug: list parser wasn't recognizing whitespace before the close
+	paren.
+
+2006-10-25 14:13  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.16), fasl.c (1.1.2.6), fasl.h
+	  (9.40.2.9), fasload.c (9.96.2.17):
+
+	Change fasdump to temporarily generate older version fasl files, for
+	compatibility with trunk microcode.
+
+2006-10-25 13:49  Chris Hanson <edu/mit/csail/cph>
+
+	* sf/toplev.scm (4.29):
+
+	Change "Syntax file" to "Generating SCode for file".
+
+2006-10-25 13:43  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/toplev.scm (4.68):
+
+	Change "Compile File" to "Compiling file".
+
+2006-10-25 13:32  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/toplev.scm (4.67):
+
+	Eliminate unnecessary semicolons in notification lines.
+
+2006-10-25 13:30  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/edwin.sf (1.34):
+
+	Use WITH-NOTIFICATION when pre-loading class definitions.
+
+2006-10-25 13:29  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/decls.scm (1.77):
+
+	Use WRITE-NOTIFICATION-LINE to generate dependency notifications.
+
+2006-10-25 13:24  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/Clean.sh (1.10):
+
+	Don't use generic script to delete packaging files.  That script's
+	general patterns delete "key-w32.scm" too.
+
+2006-10-25 01:41  Chris Hanson <edu/mit/csail/cph>
+
+	* sf/toplev.scm (4.28), compiler/base/asstop.scm (1.15),
+	  compiler/base/toplev.scm (4.66), compiler/machines/C/ctop.scm
+	  (1.19):
+
+	Use new WITH-NOTIFICATION and WRITE-NOTIFICATION-LINE to generate
+	status output.
+
+2006-10-25 01:40  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/usrint.scm (1.24):
+
+	Change way that WITH-NOTIFICATION prints "refresh" line.
+
+2006-10-25 01:05  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.602), usrint.scm (1.23):
+
+	Add WRITE-NOTIFICATION-LINE.
+
+2006-10-25 00:25  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: global.scm (14.75), load.scm (14.80), runtime.pkg
+	  (14.601), usrint.scm (1.22):
+
+	Implement WITH-NOTIFICATION to provide more uniform handling of status
+	notifications, such as "Loading" messages from LOAD.
+
+2006-10-25 00:23  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/port.scm (1.45):
+
+	Fix typo in previous change.
+
+2006-10-24 23:15  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: genio.scm (1.45), output.scm (14.37), port.scm (1.44),
+	  runtime.pkg (14.600):
+
+	Implement new output operations OUTPUT-PORT/LINE-START? and
+	OUTPUT-PORT/BYTES-WRITTEN.
+
+2006-10-24 22:50  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/genio.scm (1.44):
+
+	Eliminate unused COLUMN field from GSTATE structure.
+
+2006-10-24 22:12  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/bitstr.c (9.65.2.5):
+
+	Reverse arguments in _call_ to ulong_to_bit_string, not in its
+	definition.
+
+2006-10-24 00:13  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/: basic.scm (1.145), calias.scm (1.33), edwin.pkg (1.298),
+	  os2term.scm (1.27), tterm.scm (1.43), utils.scm (1.57), xterm.scm
+	  (1.78):
+
+	Eliminate CHAR-CONTROLIFY and friends in favor of more general
+	MERGE-BUCKY-BITS.  Use new bucky-bit abstractions from runtime.
+
+2006-10-24 00:08  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: char.scm (14.27), runtime.pkg (14.599):
+
+	Store bucky bits in variables, and provide operations to test and set
+	them.  This should provide a little more abstraction than at present.
+
+2006-10-23 17:48  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/bitstr.c (9.65.2.4):
+
+	Fix parameter order of ulong_to_bit_string.
+
+2006-10-22 18:15  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpint.c (1.103.2.16):
+
+	Fix bug in return_to_compiled_code: CET_INTERNAL_CONTINUATION should
+	also be recognized as a legal return address.
+
+2006-10-22 12:24  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.25.2.10):
+
+	Restore "echo" calls in install rules.  These are there to compensate
+	for "@" prefix on those for loops.
+
+2006-10-22 12:09  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/: calias.scm (1.32), edtfrm.scm (1.95), edtstr.scm (1.32),
+	  edwin.pkg (1.297), os2term.scm (1.26), utils.scm (1.56),
+	  win32.scm (1.19), xterm.scm (1.77):
+
+	Change pointer-button abstraction to have bucky bits, and update
+	different terminal drivers to supply them.
+
+2006-10-22 11:39  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: x11base.c (1.88), x11base.c (1.81.2.8):
+
+	Change representation of pointer-button codes to include 8 bits of
+	button number of 4 bucky bits.  Don't try to fit keysym into a fixnum;
+	it's a 29-bit value that must be preserved.
+
+2006-10-21 21:59  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/x11base.c (1.87):
+
+	Change x_modifier_mask_to_bucky_bits and x_key_button_mask_to_scheme
+	to use unsigned long rather than long for computing result.
+
+2006-10-21 17:16  Taylor Campbell <net/mumble/campbell>
+
+	* edwin/xterm.scm (1.76):
+
+	Strip the bucky bit for control from key input events only if the
+	character is already a control character.  Otherwise leave it in, so
+	that other characters can be control-modified without using the
+	clumsier C-z or C-^ prefix key bindings.
+
+2006-10-21 12:05  Taylor Campbell <net/mumble/campbell>
+
+	* microcode/: object.h (9.61), x11.h (1.21), x11base.c (1.86),
+	  object.h (9.59.2.9), x11.h (1.19.2.4), x11base.c (1.81.2.7):
+
+	Find interpretation of modifier masks through the X server's modifier
+	mapping and keyboard mapping by finding which modifier masks are
+	associated with keycodes mapped to the keysyms for modifier keys.  This
+	now follows the ICCCM, rather than assuming that Mod1 means Meta, Mod2
+	means Super, and so on.  Edwin also now recognizes Super and Hyper in
+	key presses as a result; before it would ignore any modifier masks
+	other than Control and Mod1 (Meta).
+
+2006-10-19 22:04  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.12), xml.pkg (1.83):
+
+	Export procedures to generate parts of turtle file, for use by
+	simple-schema.  Simplify algorithms a bit, and clean up code layout.
+
+2006-10-19 21:19  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.11):
+
+	Change output to use simpler and more consistent indentation.
+
+2006-10-19 15:19  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.10):
+
+	Implement support for writing collection syntax.
+
+2006-10-19 13:48  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.9), rdf-struct.scm (1.18), turtle.scm (1.9),
+	  xml.pkg (1.82):
+
+	Do a better job distinguishing procedures that generate RDF/NT syntax.
+	Previously these were referred to by generic names.
+
+2006-10-19 11:22  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.8), xml.pkg (1.81):
+
+	Implement Turtle output.
+
+2006-10-19 11:20  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.17):
+
+	Add URI->RDF-PREFIX.
+
+2006-10-16 02:23  Arthur Gleckler <edu/mit/csail/zurich/arthur>
+
+	* runtime/load.scm (14.79):
+
+	Fixed bug: LOAD failed with relative pathnames, e.g.:
+
+	  (load "../foo.scm")
+
+2006-10-14 02:26  Arthur Gleckler <edu/mit/csail/zurich/arthur>
+
+	* runtime/genio.scm (1.43):
+
+	Fixed typos in `set-output-buffer-coding!'.
+
+2006-10-12 18:43  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/config.guess (1.2), microcode/config.guess (11.5),
+	  microcode/config.sub (11.5):
+
+	Update config.{guess,sub}.
+
+2006-10-09 03:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: compinit.c (1.6.2.3), configure.ac (1.6.2.14),
+	  interp.h (9.50.2.4), liarc-gendeps.c (1.1.2.1), liarc.h
+	  (1.21.2.3), make-compinit (1.1.2.1), cmpauxmd/c.c (1.15.2.3),
+	  makegen/dirs-liarc.scm (1.1.2.1), makegen/Makefile.in.in
+	  (1.25.2.9), makegen/makegen.scm (1.7.2.3):
+
+	A bunch of changes to (1) clean up interface with LIARC; (2)
+	simplify building of Makefile; and (3) eliminate use of GNU make
+	features in Makefile.
+
+2006-10-09 02:50  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: compinit.c (1.8), liarc.h (1.23), cmpauxmd/c.c
+	  (1.18), makegen/Makefile.in.in (1.34):
+
+	Change interface to C native code to simplify porting to new
+	microcode.
+
+2006-10-09 02:48  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: cout.scm (1.31), cutl.scm (1.7):
+
+	Clean up output a little to simplify porting to new microcode.
+
+2006-10-07 21:26  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: compiler.pkg (1.19), cout.scm (1.30),
+	  cutl.scm (1.6), lapgen.scm (1.21):
+
+	Move C output abstraction to "cutl.scm" so that it's available earlier
+	in the load sequence.
+
+2006-10-07 16:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.17):
+
+	Fix typo.
+
+2006-10-07 16:53  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: compinit.c (1.6.2.2), configure.ac (1.6.2.13),
+	  liarc.h (1.21.2.2), stackops.h (11.1.2.1), unstackify.c
+	  (11.1.2.1), cmpauxmd/c.c (1.15.2.2), cmpintmd/c.c (1.1.2.1),
+	  cmpintmd/c-config.h (1.1.2.1), cmpintmd/c.h (1.9.2.2),
+	  makegen/Makefile.in.in (1.25.2.8):
+
+	Initial draft of C native code support.  Compiles and links without
+	runtime, but not tested yet.
+
+2006-10-07 16:52  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: artutl.c (1.18.2.4), cmpint.c (1.103.2.15), extern.h
+	  (9.65.2.10), fasload.c (9.96.2.16), mul.c (9.37.2.3), prim.c
+	  (9.45.2.4):
+
+	Fix a handful of compilation errors that crop up when configured with
+	"--enable-native-code=c".
+
+2006-10-07 16:50  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/bignum.h (9.33.2.3):
+
+	Add conditional to guard against re-inclusion.
+
+2006-10-07 02:21  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/usermap (1.7):
+
+	Add "savannah-arthur".
+
+2006-10-07 02:00  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.14), cmpint.h (10.12.2.9),
+	  cmpintmd/i386.c (1.1.2.3), cmpintmd/i386.h (1.37.2.9),
+	  cmpintmd/svm1.c (1.1.2.3):
+
+	Change old-style format-word code to use "uint16_t" rather than
+	"unsigned short".  Change store_trampoline_insns to return a bool
+	rather than void.
+
+2006-10-07 01:58  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.6.2.12):
+
+	Lots of changes to conform to autoconf shell-programming advice.
+	Also, make sure we have standard 8-, 16-, and 32-bit integer types.
+
+2006-10-07 01:50  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/rules3.scm (1.15):
+
+	Reorganize closure code slightly to clarify.
+
+2006-10-07 01:49  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/traditional.scm (1.4):
+
+	Tweak.
+
+2006-10-07 01:48  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.29):
+
+	Fix typo.
+
+2006-10-06 01:00  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: cutl.scm (1.5), machin.scm (1.12):
+
+	Update some more code to use C output abstraction.
+
+2006-10-06 00:53  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.28):
+
+	Add C:<< and C:>>.
+
+2006-10-05 15:37  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/comutl.c (1.33.2.4):
+
+	Restore primitive: INITIALIZE-C-COMPILED-BLOCK.
+
+2006-10-05 15:14  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/traditional.scm (1.3):
+
+	Use C output abstraction.
+
+2006-10-05 15:14  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.27):
+
+	Allow booleans as line items, and translate them to C booleans.
+
+2006-10-05 01:44  Arthur Gleckler <edu/mit/csail/zurich/arthur>
+
+	* runtime/fileio.scm (1.31):
+
+	Fixed: Change 1.28 removed the check that output ports passed to
+	`port-position' and `set-port-position!' must also be input ports.
+
+2006-10-05 00:55  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.26):
+
+	Restructure code that generates the code and data for a file's top
+	level.
+
+2006-10-04 18:38  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/fileio.scm (1.30):
+
+	Fix bug: sense of test for binary de/normalizers was reversed.
+
+2006-10-04 15:28  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpintmd/: i386.h (1.37.2.8), svm1.h (1.1.2.10):
+
+	Minor layout tweaks.
+
+2006-10-04 15:27  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.13), cmpint.h (10.12.2.8),
+	  cmpintmd/i386.c (1.1.2.2):
+
+	Pull out common code to handle old-style format words, for reuse with
+	C back end.
+
+2006-10-04 15:02  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: fileio.scm (1.29), genio.scm (1.42), runtime.pkg
+	  (14.598):
+
+	Fix and handful of bugs.
+
+2006-10-04 01:59  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpint.c (1.103.2.12):
+
+	Tweak layout.
+
+2006-10-04 01:51  Arthur Gleckler <edu/mit/csail/zurich/arthur>
+
+	* runtime/: fileio.scm (1.28), genio.scm (1.41), port.scm (1.43),
+	  runtime.pkg (14.597), strout.scm (14.25):
+
+	Added `port-position' and `set-port-position!' operations on file I/O
+	ports.  The `port-position' procedure returns the offset, in bytes,
+	from the beginning of the file.  The `set-port-position!' procedure
+	sets the position.
+
+	Both operations work only on ports that are opened with binary
+	normalizers or denormalizers, i.e. ones that make no transformation.
+	We should consider lifting this restriction, but this is a useful
+	addition even with it.
+
+	When used with output ports, the port passed to these procedures must
+	also be an input port.
+
+	The `port-position' procedure works even after a character has been
+	"unread", even for ports with non-single-byte character encodings.
+
+2006-10-04 01:00  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: confshared.h (11.8.2.6), nttrap.c (1.26.2.6),
+	  os2xcpt.c (1.15.2.5), uxtrap.c (1.41.2.7), uxtrap.h (1.35.2.4),
+	  cmpintmd/alpha.h (1.7.2.4), cmpintmd/hppa.h (1.54.2.4),
+	  cmpintmd/i386.h (1.37.2.7), cmpintmd/mc68k.h (1.38.2.5),
+	  cmpintmd/mips.h (1.25.2.5), cmpintmd/svm1.h (1.1.2.9),
+	  cmpintmd/vax.h (1.11.2.4):
+
+	Definition of PC_ZERO_BITS doesn't depend on the compiled-code
+	interface; it's a function of the host architecture.
+
+2006-10-03 22:32  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.11), cmpint.h (10.12.2.7),
+	  configure.ac (1.6.2.11), confshared.h (11.8.2.5), fasl.c
+	  (1.1.2.5), fasl.h (9.40.2.8), fasload.c (9.96.2.15), option.c
+	  (1.61.2.9), utils.c (9.87.2.8), uxsig.c (1.42.2.8),
+	  cmpintmd/alpha.h (1.7.2.3), cmpintmd/hppa.h (1.54.2.3),
+	  cmpintmd/i386-config.h (1.1.2.1), cmpintmd/i386.h (1.37.2.6),
+	  cmpintmd/mc68k.h (1.38.2.4), cmpintmd/mips.h (1.25.2.4),
+	  cmpintmd/none-config.h (1.1.2.1), cmpintmd/none.h (1.1.2.2),
+	  cmpintmd/svm1-config.h (1.1.2.1), cmpintmd/svm1.h (1.1.2.8),
+	  cmpintmd/vax.h (1.11.2.3), makegen/Makefile.in.in (1.25.2.7),
+	  cmptype.h (1.6.2.2):
+
+	More restructuring of compiled-code interface in preparation for
+	support of C back end.
+
+2006-10-03 20:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.25.2.6):
+
+	Change "make TAGS" to search for all .c and .h files.
+
+2006-10-03 11:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpintmd/: svm1.c (1.1.2.2), svm1.h (1.1.2.7):
+
+	Move include of "svm1-defns.h" from "cmpintmd.h" to "cmpintmd.c".  It
+	isn't needed elsewhere.
+
+2006-10-03 02:46  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: svm1-defns.h (1.1.2.4), svm1-interp.c (1.1.2.2):
+
+	Finish implementing instruction set.  Take advantage of new generated
+	macros for building decoder tables.
+
+2006-10-03 02:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: artutl.c (1.18.2.3), extern.h (9.65.2.9):
+
+	Implement double_round.
+
+2006-10-02 21:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/svm1-defns.h (1.1.2.3):
+
+	Updated definitions, without useless unsigned comparisons to zero.
+
+2006-10-02 16:03  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.10), cmpint.h (10.12.2.5),
+	  configure.ac (1.6.2.10), extern.h (9.65.2.8), svm1-interp.c
+	  (1.1.2.1), uxsig.c (1.42.2.7), cmpintmd/i386.c (1.1.2.1),
+	  cmpintmd/i386.h (1.37.2.4), cmpintmd/none.c (1.1.2.1),
+	  cmpintmd/svm1.c (1.1.2.1), cmpintmd/svm1.h (1.1.2.5),
+	  makegen/files-optional.scm (1.6.2.4), makegen/Makefile.in.in
+	  (1.25.2.5), svm1.c (1.1.2.3), cmpint.h (10.12.2.6),
+	  cmpintmd/i386.h (1.37.2.5), cmpintmd/svm1.h (1.1.2.6):
+
+	Move arch-specific parts of "cmpint.c" into new files, which will be
+	linked in as "cmpintmd.c".  Rename "svm1.c" to "svm1-interp.c" to
+	avoid confusion.
+
+2006-10-02 14:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: confshared.h (11.8.2.4), utabmd.scm (9.88.2.5):
+
+	Some more changes for C back end.
+
+2006-10-02 14:34  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bitstr.c (9.65.2.3), extern.h (9.65.2.7):
+
+	Make sure allocate_bit_string is exported for C back end.  Rewrite
+	parts of "bitstr.c" to simplify.
+
+2006-10-02 14:33  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ntutl/config.h (1.7.2.4), os2utl/config.h (1.7.2.3):
+
+	Update microcode version strings.
+
+2006-10-02 14:33  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.9), Setup.sh (1.8.2.2),
+	  makegen/Makefile.in.in (1.25.2.4), makegen/makeinit.sh
+	  (1.10.2.4):
+
+	Port configuration changes from trunk.
+
+2006-10-02 14:32  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/option.c (1.61.2.8):
+
+	Don't run check_fasl_cc_version when reading band sizes, because the
+	necessary arguments aren't yet initialized.
+
+2006-10-02 13:57  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpint.h (10.12.2.4):
+
+	Export C_return_value when needed.
+
+2006-10-02 00:18  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: load.scm (14.78), option.scm (14.50), runtime.pkg
+	  (14.596):
+
+	Fix bug: LOAD-OPTION was generating a SIGSEGV when trying to load a
+	runtime option, because it was confused by the "options" subdirectory.
+
+2006-10-02 00:16  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unxpth.scm (14.30):
+
+	Tweak logic of MAKE-PATHNAME to simplify it.
+
+2006-10-01 23:28  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/files-compiled.scm (1.2):
+
+	Remove now-unused "files-compiled.scm".
+
+2006-10-01 17:11  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.16):
+
+	Fix another typo.
+
+2006-10-01 17:00  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.33):
+
+	Missed two references to @X_LIBS@.
+
+2006-10-01 16:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.15), makegen/Makefile.in.in (1.32),
+	  makegen/makegen.scm (1.12):
+
+	Update configuration to handle COMPILED_SOURCES better.  Also use
+	AC_PATH_X rather than AC_PATH_XTRA to eliminate unnecessary
+	dependencies in the output.
+
+2006-10-01 01:37  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: compiler.pkg (1.18), cout.scm (1.25),
+	  ctop.scm (1.18), lapgen.scm (1.20), rules1.scm (1.11), rules2.scm
+	  (1.7), rules3.scm (1.14), rules4.scm (1.5), rulfix.scm (1.9),
+	  rulflo.scm (1.10), traditional.scm (1.2):
+
+	Reimplement C output generation.  There's now a procedural layer for
+	generating C code, which gives significantly greater control over the
+	output formatting.  Code using the layer is simpler and clearer than
+	what it replaces.
+
+	Additionally, the output no longer uses DEFUN, EXFUN, etc., instead
+	generating ANSI C.  This allows the generated code to be used with the
+	(unreleased) v15 microcode.
+
+2006-09-29 15:30  Chris Hanson <edu/mit/csail/cph>
+
+	* sf/toplev.scm (4.27):
+
+	Make SF quieter.
+
+2006-09-29 15:28  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/Clean.sh (1.9), etc/Clean.sh (1.14),
+	  microcode/makegen/Makefile.in.in (1.31):
+
+	Fix cleaning rules to eliminate stuff generated by C back end.
+
+2006-09-28 19:48  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/Clean.sh (1.13):
+
+	Also clean up files generated by compiling to C.
+
+2006-09-26 02:58  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/datime.scm (14.41):
+
+	Use "T" as ISO-8601 date/time separator, since it makes the result
+	useful in more contexts.
+
+2006-09-25 01:57  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/script.scm (1.2):
+
+	Rewrite so that the script is run when the working directory is the
+	root of the scheme tree, rather than the runtime subdirectory.  Also
+	do a little simplification.
+
+2006-09-25 01:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makegen.scm (1.11):
+
+	Untangle the c-back-end knot by using $(wildcard ...) in the generated
+	makefile rather than explicit enumeration of the files.
+
+2006-09-25 00:39  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.3), compiler/configure (1.8),
+	  microcode/configure.ac (1.14):
+
+	Add support for "--enable-c-back-end", to override native-code support
+	if desired.
+
+2006-09-25 00:38  Chris Hanson <edu/mit/csail/cph>
+
+	* Setup.sh (1.14), compiler/Setup.sh (1.7), etc/Setup.sh (1.10),
+	  microcode/Setup.sh (1.9), microcode/makegen/makeinit.sh (1.13),
+	  runtime-check/Setup.sh (1.9):
+
+	Change all "Setup.sh" scripts to accept arguments and pass them
+	along.  "Setup.sh" in microcode passes those arguments to configure.
+
+2006-09-25 00:36  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.17):
+
+	If <stdlib.h> is available, use that rather than explicitly declaring
+	malloc and realloc.
+
+2006-09-24 19:54  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.13), microcode/ntutl/config.h (1.11),
+	  microcode/os2utl/config.h (1.9), runtime/version.scm (14.221),
+	  compiler/base/make.scm (4.125):
+
+	Bump version number for C-back-end changes.
+
+2006-09-24 19:51  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/: rtlgen/opncod.scm (4.75), base/utils.scm (4.32):
+
+	Fix bug: must use generic arithmetic when comparing
+	SIGNED-FIXNUM/UPPER-LIMIT, since it's an exclusive limit and not
+	usually representable as a fixnum.
+
+2006-09-22 14:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ux.h (1.78.2.3), uxsig.c (1.42.2.6), uxtrap.c
+	  (1.41.2.6):
+
+	Forward-port changes to support OSX and NetBSD.
+
+2006-09-22 13:59  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: nttop.c (1.35.2.5), object.h (9.59.2.8), os2.c
+	  (1.10.2.3), os2msg.c (1.17.2.3), os2top.c (1.23.2.3), os.h
+	  (1.9.2.3), ux.c (1.27.2.3):
+
+	Forward-port new procedure OS_malloc_init() from gjr changes.  Change
+	signatures to use "size_t" rather than "unsigned int".
+
+2006-09-22 13:57  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/boot.c (9.118.2.5):
+
+	Export machine type to Scheme.
+
+2006-09-22 13:56  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: bignum.c (9.52.2.3), comlin.c (1.11.2.3), history.h
+	  (9.33.2.3):
+
+	Forward-port some compilation fixes from gjr.
+
+2006-09-22 13:54  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasl.c (1.1.2.4), fasl.h (9.40.2.7), fasload.c
+	  (9.96.2.14), option.c (1.61.2.7):
+
+	Check band versions before using its size parameters.
+
+2006-09-21 00:52  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ntutl/config.h (1.9), os2utl/config.h (1.8),
+	  ntutl/config.h (1.10):
+
+	Bump version number to current.  This probably should be automated by
+	the configure script.
+
+2006-09-17 08:10  Guillermo J. Rozas <edu/mit/csail/zurich/gjr>
+
+	* compiler/machines/C/: ctop.scm (1.17), lapgen.scm (1.19),
+	  make.scm (1.7), rulfix.scm (1.8):
+
+	1. Add unsigned fixnum comparisons, needed to compile runtime-check.
+
+	2. C back end:
+	   Eliminate use of the 'system' primitive and use run-shell-command
+	   from option synchronous-subprocess.
+
+2006-09-16 07:19  Guillermo J. Rozas <edu/mit/csail/zurich/gjr>
+
+	* Setup.sh (1.13), compiler/configure (1.7),
+	  compiler/base/toplev.scm (4.65), compiler/base/utils.scm (4.31),
+	  compiler/fggen/fggen.scm (4.40), compiler/machines/C/compiler.pkg
+	  (1.17), compiler/machines/C/compiler.sf (1.12),
+	  compiler/machines/C/cout.scm (1.24), compiler/machines/C/ctop.scm
+	  (1.16), compiler/machines/C/decls.scm (1.10),
+	  compiler/machines/C/lapgen.scm (1.18),
+	  compiler/machines/C/machin.scm (1.11),
+	  compiler/machines/C/make.scm (1.6),
+	  compiler/machines/C/recomp.scr (1.2),
+	  compiler/machines/C/rules2.scm (1.6),
+	  compiler/machines/C/rulrew.scm (1.7),
+	  compiler/machines/C/stackify.scm (1.1),
+	  compiler/machines/C/stackops.scm (1.1),
+	  compiler/machines/C/swmake (1.2),
+	  compiler/machines/C/traditional.scm (1.1),
+	  compiler/rtlgen/opncod.scm (4.74), etc/script.scm (1.1),
+	  microcode/bignum.c (9.53), microcode/bintopsb.c (9.79),
+	  microcode/bitstr.c (9.66), microcode/boot.c (9.119),
+	  microcode/cmpint.c (1.105), microcode/comlin.c (1.12),
+	  microcode/compinit.c (1.7), microcode/comutl.c (1.34),
+	  microcode/configure.ac (1.12), microcode/confshared.h (11.9),
+	  microcode/error.c (1.10), microcode/fasl.h (9.41),
+	  microcode/history.h (9.34), microcode/liarc.h (1.22),
+	  microcode/memmag.c (9.72), microcode/nttop.c (1.37),
+	  microcode/object.h (9.60), microcode/option.c (1.62),
+	  microcode/os.h (1.10), microcode/os2.c (1.11), microcode/ppband.c
+	  (9.66), microcode/prim.c (9.46), microcode/primutl.c (9.81),
+	  microcode/psbtobin.c (9.64), microcode/ptrvec.c (1.6),
+	  microcode/stackops.h (11.1), microcode/tterm.c (1.17),
+	  microcode/unstackify.c (11.1), microcode/utabmd.scm (9.89),
+	  microcode/ux.c (1.28), microcode/ux.h (1.79), microcode/uxproc.c
+	  (1.30), microcode/uxsig.c (1.46), microcode/uxtrap.c (1.42),
+	  microcode/wind.c (1.9), microcode/cmpauxmd/c.c (1.16),
+	  microcode/cmpintmd/c.h (1.10), microcode/makegen/Makefile.in.in
+	  (1.30), microcode/makegen/files-compiled.scm (1.1),
+	  microcode/makegen/makegen.scm (1.10), runtime/load.scm (14.77),
+	  runtime/make.scm (14.105), runtime/option.scm (14.49),
+	  runtime/packag.scm (14.48), runtime/random.scm (14.38),
+	  runtime/runtime.pkg (14.595), runtime/utabs.scm (14.20):
+
+	Changes to resurrect the C back end.
+
+	Changes to make the microcode work on OSX/Power PC.
+
+	Changes to make the microcode when compiled by a 64-bit compiler
+	(x86_64, Power PC, Itanium).
+
+2006-09-16 01:29  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/record.scm (1.56):
+
+	Fix bug: typo was causing WNA error to be signalled from record
+	constructors of large records.
+
+2006-09-14 21:32  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gcloop.c (9.51.2.20):
+
+	Eliminate error when looking up gc-type of undefined types.
+
+2006-09-14 21:23  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: make.scm (14.104), runtime.pkg (14.594), savres.scm
+	  (14.46):
+
+	Eliminate long-unused DUMP-WORLD.
+
+2006-09-14 21:20  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/global.scm (14.74):
+
+	Fix broken reference: TYPE-CODE->GC-TYPE should be TYPE->GC-TYPE.
+
+2006-09-08 23:42  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/option.c (1.61.2.6):
+
+	Guarantee sufficient heap space when using --fasl, by adding
+	LARGE_CONSTANT_SIZE to the normal "large" value.
+
+2006-09-08 23:30  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/uerror.scm (14.53):
+
+	Ignore undefined microcode error names.  Signalling errors at this
+	point in the cold load makes the transition to the new microcode
+	unpleasant.
+
+2006-09-08 22:34  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.14), fasdump.c (9.68.2.15):
+
+	Fix conditionalization of CHECKSUM macros.
+
+2006-09-08 22:31  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.26), cref/Makefile.in (1.6), edwin/Makefile.in
+	  (1.9), imail/Makefile.in (1.6), runtime/Makefile.in (1.10),
+	  sos/Makefile.in (1.6), ssp/Makefile.in (1.3),
+	  star-parser/Makefile.in (1.5), xdoc/Makefile.in (1.2),
+	  xml/Makefile.in (1.6):
+
+	Add datarootdir to Makefiles.
+
+2006-09-08 13:17  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.13), fasload.c (9.96.2.13),
+	  gccode.h (9.60.2.11), gcloop.c (9.51.2.19):
+
+	Simplify mechanism used to handle weak pairs.
+
+2006-09-08 13:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: option.c (1.61.2.5), option.h (1.16.2.3):
+
+	Eliminate bchscheme options.
+
+2006-09-08 13:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpint.c (1.103.2.9):
+
+	Add comments to explain START_OPERATOR_RELOCATION kludge.
+
+2006-09-08 10:38  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/utils.scm (4.30), runtime/global.scm (14.73),
+	  runtime/hash.scm (14.10), runtime/unpars.scm (14.66):
+
+	Eliminate references to MANIFEST-SPECIAL-NM-VECTOR.  This type is
+	about to go away, and these references aren't normally needed.
+
+2006-09-08 08:43  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/edwin.ldr (1.78):
+
+	"undo" must be loaded after "editor".
+
+2006-09-08 02:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpgc.h (1.34.2.4), cmpint.c (1.103.2.8), gcloop.c
+	  (9.51.2.18):
+
+	Fix some bugs in the CC linking code.  Eliminate unused
+	END_OPERATOR_RELOCATION and END_CLOSURE_RELOCATION macros.
+
+2006-09-08 02:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpintmd/svm1.h (1.1.2.4):
+
+	Don't define symbols to their default value.
+
+2006-09-07 23:33  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/purify.c (9.65.2.11):
+
+	Fix bug: update_weak_pointers() must be called exactly once.
+
+2006-09-07 22:42  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: gccode.h (9.60.2.10), gcloop.c (9.51.2.17):
+
+	Fix memory leak: weak pairs were being handled as pairs.  Now that's
+	embarrassing!
+
+2006-09-07 22:18  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.12), gccode.h (9.60.2.9), gcloop.c
+	  (9.51.2.16), memmag.c (9.71.2.8):
+
+	Rename walk_tospace() to save_tospace().  Eliminate
+	save_tospace_to_newspace() using save_tospace().
+
+2006-09-07 14:27  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasdump.c (9.68.2.11), gccode.h (9.60.2.8), gcloop.c
+	  (9.51.2.15), memmag.c (9.71.2.7):
+
+	Replace very specific save_tospace_to_fasl_file() with more generic
+	walk_tospace().  Change phrase "gc_objects_referring" with
+	"gc_object_references".
+
 2006-09-06 01:06  Chris Hanson <edu/mit/csail/cph>
 
 	* microcode/: configure.ac (1.6.2.8), fasdump.c (9.68.2.10):
@@ -248,7 +3730,7 @@
 	Change representation of characters in PSB files to account for
 	unicode.
 
-2006-08-26 23:03  savannah-arthur
+2006-08-26 23:03  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* runtime/string.scm (14.61):
 
@@ -335,7 +3817,7 @@
 
 	Fix typo in previous change.
 
-2006-08-09 01:48  savannah-arthur
+2006-08-09 01:48  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* runtime/: runtime.pkg (14.592), strout.scm (14.24):
 
@@ -381,7 +3863,7 @@
 
 	New simple HTTP client abstraction.
 
-2006-08-02 01:54  savannah-arthur
+2006-08-02 01:54  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* runtime/hashtb.scm (1.35):
 

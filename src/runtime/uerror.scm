@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.52 2003/02/14 18:28:34 cph Exp $
+$Id: uerror.scm,v 14.55 2007/01/05 21:19:28 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -51,17 +53,22 @@ USA.
 
 (define error-handler-vector)
 (define default-error-handler)
+(define unknown-error-names)
 
 (define (define-error-handler error-name handler)
-  (vector-set! error-handler-vector
-	       (or (microcode-error/name->code error-name)
-		   (error "Unknown microcode error name:" error-name))
-	       (lambda (error-code interrupt-enables)
-		 (set-interrupt-enables! interrupt-enables)
-		 (call-with-current-continuation
-		  (lambda (continuation)
-		    (handler continuation)
-		    (default-error-handler continuation error-code))))))
+  (let ((error-code (microcode-error/name->code error-name)))
+    (if error-code
+	(vector-set! error-handler-vector
+		     error-code
+		     (lambda (error-code interrupt-enables)
+		       (set-interrupt-enables! interrupt-enables)
+		       (call-with-current-continuation
+			(lambda (continuation)
+			  (handler continuation)
+			  (default-error-handler continuation error-code)))))
+	(begin
+	  (set! unknown-error-names (cons error-name unknown-error-names))
+	  unspecific))))
 
 (define (define-low-level-handler error-name handler)
   (vector-set! error-handler-vector
@@ -430,6 +437,8 @@ USA.
 	    (doit (vector-ref error-code 0)
 		  (subvector->list error-code 1 (vector-length error-code)))
 	    (doit error-code '()))))))
+
+(set! unknown-error-names '())
 
 (define-low-level-handler 'ERROR-WITH-ARGUMENT
   (lambda (continuation argument)

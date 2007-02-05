@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.12 2004/12/07 04:29:58 cph Exp $
+# $Id: Setup.sh,v 1.16 2007/01/05 21:19:20 cph Exp $
 #
-# Copyright 2000,2001,2003,2004 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -18,8 +20,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility to set up the MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
@@ -34,6 +36,7 @@ fi
 # lib
 maybe_mkdir lib
 maybe_link lib/SRC ..
+maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/options ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
@@ -45,9 +48,9 @@ maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
 maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
 
-for SUBDIR in 6001 compiler cref edwin imail microcode rcs \
-	runtime runtime-check sf sos ssp star-parser win32 xdoc xml; do
+for SUBDIR in 6001 compiler cref edwin imail rcs runtime runtime-check \
+              sf sos ssp star-parser win32 xdoc xml microcode; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    ( cd ${SUBDIR} && ./Setup.sh ) || exit 1
+    ( cd ${SUBDIR} && ./Setup.sh "$@" ) || exit 1
 done

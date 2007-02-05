@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.8 2003/02/14 18:48:11 cph Exp $
+# $Id: Clean.sh,v 1.12 2007/01/12 06:19:49 cph Exp $
 #
-# Copyright 2000,2001,2003 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -18,29 +20,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 # Utility for cleaning up the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
 if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
+    echo "usage: ${0} <command>"
     exit 1
 fi
 
-../etc/Clean.sh "${1}" rm-pkg
+TOPDIR=${TOPDIR:-$(pwd)/..}
+export TOPDIR
+CLEANSH=${TOPDIR}/etc/Clean.sh
+"${CLEANSH}" "${1}" rm-pkg
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
-    if [ -d ${SUBDIR} ]; then
+    if [ -d "${SUBDIR}" ]; then
 	echo "making ${1} in ${SUBDIR}"
-	(cd ${SUBDIR} && rm -f *.bin *.ext *.com *.bci)
+	(cd "${SUBDIR}" && "${CLEANSH}" "${1}" rm-bin rm-com)
     fi
 done
 
 case "${1}" in
 distclean | maintainer-clean)
-    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com
+    rm -f machine compiler.cbf compiler.pkg compiler.sf
+    "${CLEANSH}" "${1}" rm-bin rm-com
     ;;
 esac
 

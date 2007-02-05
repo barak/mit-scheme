@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.59 2005/07/24 05:10:03 cph Exp $
+$Id: object.h,v 9.64 2007/01/12 03:45:55 cph Exp $
 
-Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -120,7 +120,7 @@ USA.
 /* Machine dependencies */
 
 #ifndef HEAP_MALLOC
-#  define HEAP_MALLOC OS_malloc
+#  define HEAP_MALLOC OS_malloc_init
 #endif
 
 #ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
@@ -163,12 +163,18 @@ extern SCHEME_OBJECT * memory_base;
   (high) = (memory_base + _space);					\
 } while (0)
 
+#define MEMBASE memory_base
+
+/* These use the MEMBASE macro so that C-compiled code can cache
+   memory_base locally and use the local version.
+*/
+
 #ifndef DATUM_TO_ADDRESS
-#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
+#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + MEMBASE))
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
+#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - MEMBASE))
 #endif
 
 #endif /* HEAP_IN_LOW_MEMORY */
@@ -331,6 +337,8 @@ extern SCHEME_OBJECT * memory_base;
 #define STRING_LOC(string, index)					\
   (((unsigned char *) (MEMORY_LOC (string, STRING_CHARS))) + (index))
 
+#define STRING_POINTER(s) ((char *) (MEMORY_LOC (s, STRING_CHARS)))
+
 #define STRING_REF(string, index)					\
   ((int) (* (STRING_LOC ((string), (index)))))
 
@@ -346,7 +354,8 @@ extern SCHEME_OBJECT * memory_base;
 
 #define CHAR_BITS_META 		0x1
 #define CHAR_BITS_CONTROL 	0x2
-#define CHAR_BITS_CONTROL_META	0x3
+#define CHAR_BITS_SUPER		0x4
+#define CHAR_BITS_HYPER		0x8
 
 #define MAX_ASCII (1L << ASCII_LENGTH)
 #define MAX_CODE (1L << CODE_LENGTH)
@@ -365,7 +374,8 @@ extern SCHEME_OBJECT * memory_base;
 #define MAKE_CHAR(bucky_bits, code)					\
   (MAKE_OBJECT								\
    (TC_CHARACTER,							\
-    (((unsigned long) (bucky_bits)) << (CODE_LENGTH)) | (code)))
+    (((unsigned long) (bucky_bits)) << (CODE_LENGTH))			\
+    | ((unsigned long) (code))))
 
 #define CHAR_BITS(chr)						\
   ((((unsigned long) (OBJECT_DATUM (chr))) >> CODE_LENGTH) & CHAR_MASK_BITS)

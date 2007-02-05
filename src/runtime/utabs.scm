@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.19 2005/04/14 04:42:53 cph Exp $
+$Id: utabs.scm,v 14.22 2007/01/05 21:19:28 cph Exp $
 
-Copyright 1986,1987,1988,1991,1992,1994 Massachusetts Institute of Technology
-Copyright 2001,2003,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -54,11 +55,17 @@ USA.
 
 (define (read-microcode-tables! #!optional filename)
   (set! microcode-tables-identification
-	(scode-eval ((ucode-primitive binary-fasload)
-		     (if (default-object? filename)
-			 ((ucode-primitive microcode-tables-filename))
-			 filename))
-		    system-global-environment))
+	(scode-eval
+	 (or (let ((prim ((ucode-primitive get-primitive-address)
+			  'initialize-c-compiled-block
+			  #f)))
+	       (and prim
+		    (prim "microcode_utabmd")))
+	     ((ucode-primitive binary-fasload)
+	      (if (default-object? filename)
+		  ((ucode-primitive microcode-tables-filename))
+		  filename)))
+	 system-global-environment))
   (set! identification-vector ((ucode-primitive microcode-identify)))
   (set! errors-slot (fixed-object/name->code 'MICROCODE-ERRORS-VECTOR))
   (set! identifications-slot
@@ -94,6 +101,10 @@ USA.
 	  (cond ((string? string) (intern string))
 		((not string) 'STANDARD)
 		(else (error "Illegal stack type:" string)))))
+  (set! microcode-id/machine-type
+	(if (microcode-table-search identifications-slot 'MACHINE-TYPE-STRING)
+	    (microcode-identification-item 'MACHINE-TYPE-STRING)
+	    "unknown-machine"))
   (set! microcode-id/tty-x-size
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
@@ -126,6 +137,7 @@ USA.
 (define microcode-id/operating-system-name)
 (define microcode-id/operating-system-variant)
 (define microcode-id/stack-type)
+(define microcode-id/machine-type)
 
 (define-integrable fixed-objects-slot 15)
 (define non-object-slot)

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.296 2006/06/16 19:02:27 riastradh Exp $
+$Id: edwin.pkg,v 1.302 2007/01/05 21:19:23 cph Exp $
 
-Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
-Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -28,6 +28,7 @@ USA.
 ;;;; Edwin Packaging
 
 (global-definitions "../runtime/runtime")
+(global-definitions "../xml/xml")
 
 (define-package (edwin)
   (files "utils"
@@ -466,10 +467,6 @@ USA.
   (export (edwin)
 	  append-command-prompt!
 	  append-message
-	  char-base
-	  char-control-metafy
-	  char-controlify
-	  char-metafy
 	  clear-message
 	  command-prompt
 	  keyboard-read
@@ -1272,6 +1269,7 @@ USA.
 	    screen-pel-height)
     (import (runtime os2-window-primitives)
 	    button-event-type:down
+	    button-event/flags
 	    button-event/number
 	    button-event/type
 	    button-event/x
@@ -2034,3 +2032,54 @@ USA.
 	  edwin-variable$add-log-full-name
 	  edwin-variable$add-log-mailing-address
 	  edwin-variable$debian-changelog-mode-hook))
+
+(define-package (edwin lisppaste)
+  (files "lisppaste")
+  (parent (edwin))
+  (export (edwin)
+	  ;; All of the lisppaste-related variables are defined in
+	  ;; loadefs.scm in order to be available before the lisppaste
+	  ;; library is loaded, and are therefore not listed here.
+	  edwin-command$lisppaste-annotate-with-buffer
+	  edwin-command$lisppaste-annotate-with-region
+	  edwin-command$lisppaste-buffer
+	  edwin-command$lisppaste-channels
+	  edwin-command$lisppaste-insert-paste
+	  edwin-command$lisppaste-insert-annotation
+	  edwin-command$lisppaste-region
+
+	  ;; Edwin lisppaste operations
+	  lisppaste-annotate
+	  lisppaste-create
+	  lisppaste-default-annotation-number
+	  lisppaste-default-channel
+	  lisppaste-default-nickname
+	  lisppaste-default-number
+	  lisppaste-insert-paste
+	  lisppaste-list-pastes
+	  prompt-for-lisppaste-annotation-number
+	  maybe-prompt-for-lisppaste-channel
+	  maybe-prompt-for-lisppaste-nickname
+	  maybe-prompt-for-lisppaste-number
+	  prompt-for-lisppaste-annotation-title
+	  prompt-for-lisppaste-title
+	  show-lisppaste
+
+	  ;; Edwin-independent RPC interface
+	  lisppaste-entry/channel
+	  lisppaste-entry/components
+	  lisppaste-entry/annotations
+	  lisppaste-entry/content
+	  lisppaste-entry/nickname
+	  lisppaste-entry/number
+	  lisppaste-entry/time
+	  lisppaste-entry/title
+	  lisppaste-rpc			;Generic RPC interface
+	  lisppaste:new-paste		;RPC commands
+	  lisppaste:paste-header
+	  lisppaste:paste-headers
+	  lisppaste:paste-headers-by-channel
+	  lisppaste:paste-annotation-headers
+	  lisppaste:paste-details
+	  lisppaste:list-channels
+	  ))

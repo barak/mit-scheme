@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.294 2005/12/16 02:04:59 riastradh Exp $
+$Id: imail-top.scm,v 1.296 2007/01/05 21:19:25 cph Exp $
 
-Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#

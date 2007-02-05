@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: loadef.scm,v 1.49 2006/06/16 19:02:27 riastradh Exp $
+$Id: loadef.scm,v 1.52 2007/01/05 21:19:23 cph Exp $
 
-Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -346,6 +346,57 @@ This is usually 103 or 2627."
 (define-variable webster-buffer-name
   "The name to use for webster interaction buffer."
   "*webster*"
+  string?)
+
+;;; ****************
+
+(define-library 'LISPPASTE
+  '("lisppaste" (EDWIN LISPPASTE)))
+
+(define-autoload-command 'lisppaste-channels 'LISPPASTE
+  "List all the channels supported by lisppaste in a temporary buffer.")
+
+(define-autoload-command 'lisppaste-insert-paste 'LISPPASTE
+  "Insert the numbered paste at the point.
+With a prefix argument, also show a header describing the paste.")
+
+(define-autoload-command 'lisppaste-insert-annotation 'LISPPASTE
+  "Insert the annotation of the numbered paste at the point.
+With a prefix argument, also show a header describing the annotation.")
+
+(define-autoload-command 'lisppaste-buffer 'LISPPASTE
+  "Create a new paste of the current buffer.")
+
+(define-autoload-command 'lisppaste-region 'LISPPASTE
+  "Create a new paste of the current region.")
+
+(define-autoload-command 'lisppaste-annotate-with-buffer 'LISPPASTE
+  "Annotate an existing paste with the current buffer.")
+
+(define-autoload-command 'lisppaste-annotate-with-region 'LISPPASTE
+  "Annotate an existing paste with the region.")
+
+(define-autoload-command 'lisppaste-list-pastes 'LISPPASTE
+  "List the headers of the last number of pastes.
+With a prefix argument, list pastes starting at a certain number.")
+
+(define-autoload-command 'lisppaste-list-channel-pastes 'LISPPASTE
+  "List the headers of the last few pastes in a certain channel.
+With a prefix argument, list pastes starting at a certain number.")
+
+(define-variable lisppaste-rpc-uri
+  "URI of the lisppaste XML-RPC service."
+  "http://common-lisp.net:8185/RPC2"
+  ->uri)
+
+(define-variable lisppaste-default-channel
+  "Default channel for lisppaste requests."
+  #f
+  string?)
+
+(define-variable lisppaste-default-nickname
+  "Default IRC nickname for lisppaste requests."
+  #f
   string?)
 
 ;;; ****************
