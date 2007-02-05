@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: io.texi,v 1.17 2007/01/05 21:48:31 cph Exp $
+@c $Id: io.texi,v 1.18 2007/02/05 18:44:00 cph Exp $
 
 @c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 @c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -1547,12 +1547,6 @@ subsequent attempt to read from the port will get that character again.
 In other respects this operation behaves like @code{read-char}.
 @end defop
 
-@defop operation {input port} discard-char input-port
-Discards the next character available from @var{input-port} and returns
-an unspecified value.  In other respects this operation behaves like
-@code{read-char}.
-@end defop
-
 @defop operation {input port} char-ready? input-port k
 @code{char-ready?} returns @code{#t} if at least one character is
 available to be read from @var{input-port}.  If no characters are
@@ -1564,17 +1558,15 @@ available while it is waiting.
 @defop operation {input port} read-string input-port char-set
 @defopx operation {input port} discard-chars input-port char-set
 @cindex string, input from port
-These operations are like @code{read-char} and @code{discard-char},
-except that they read or discard multiple characters at once.  This can
-have a marked performance improvement on buffered input ports.  All
-characters up to, but excluding, the first character in @var{char-set}
-(or end of file) are read from @var{input-port}.  @code{read-string}
-returns these characters as a newly allocated string, while
-@code{discard-chars} discards them and returns an unspecified value.
-These operations hang until sufficient input is available, even if
-@var{input-port} is in non-blocking mode.  If end of file is encountered
-before any input characters, @code{read-string} returns an end-of-file
-object.
+These operations are like @code{read-char}, except that they read or
+discard multiple characters at once.  All characters up to, but
+excluding, the first character in @var{char-set} (or end of file) are
+read from @var{input-port}.  @code{read-string} returns these characters
+as a newly allocated string, while @code{discard-chars} discards them
+and returns an unspecified value.  These operations hang until
+sufficient input is available, even if @var{input-port} is in
+non-blocking mode.  If end of file is encountered before any input
+characters, @code{read-string} returns an end-of-file object.
 @end defop
 
 @defop operation {input port} read-substring input-port string start end
@@ -1595,7 +1587,6 @@ This is an extremely fast way to read characters from a port.
 
 @deffn procedure input-port/read-char input-port
 @deffnx procedure input-port/peek-char input-port
-@deffnx procedure input-port/discard-char input-port
 @deffnx procedure input-port/char-ready? input-port k
 @deffnx procedure input-port/read-string input-port char-set
 @deffnx procedure input-port/discard-chars input-port char-set
