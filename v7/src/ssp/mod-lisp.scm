@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.34 2007/01/05 21:19:29 cph Exp $
+$Id: mod-lisp.scm,v 1.35 2007/02/08 03:36:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -302,17 +302,18 @@ USA.
 ;;;; Cookie support
 
 (define (parse-cookie message string)
-  (set-http-message-cookies!
-   message
-   (append! (http-message-cookies message)
-	    (map (lambda (binding)
-		   (let ((nv (burst-string binding #\= #f)))
-		     (if (not (and (pair? nv)
-				   (pair? (cdr nv))
-				   (null? (cddr nv))))
-			 (error "Malformed cookie value:" string))
-		     (cons (intern (car nv)) (cadr nv))))
-		 (map string-trim (burst-string string #\; #f))))))
+  (let ((bindings
+	 (map (lambda (binding)
+		(let ((e (string-find-next-char binding #\=)))
+		  (and e
+		       (cons (intern (string-head binding e))
+			     (string-tail binding (fix:+ e 1))))))
+	      (map string-trim (burst-string string #\; #f)))))
+    (if (memq #f bindings)
+	(warn "Malformed cookie value:" string)
+	(set-http-message-cookies! message
+				   (append! (http-message-cookies message)
+					    bindings)))))
 
 (define (set-cookie message name value attrs)
   ;; Version 0 ("netscape") cookies.
