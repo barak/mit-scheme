@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.74 2007/01/05 21:19:25 cph Exp $
+$Id: memmag.c,v 9.75 2007/02/10 19:17:38 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -650,7 +650,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  exp_register = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free - GC_Space_Needed));
   Save_Cont ();
  Pushed ();
 
