@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.25 2007/01/12 03:45:55 cph Exp $
+$Id: pruxenv.c,v 1.26 2007/02/11 18:42:52 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -203,10 +203,10 @@ DEFINE_PRIMITIVE ("HOSTNAME", Prim_hostname, 0, 0,
 #ifdef HAVE_SOCKETS
     STD_VOID_SYSTEM_CALL (syscall_gethostname,
 			  UX_gethostname (this_host_name, HOSTNAMESIZE));
-    PRIMITIVE_RETURN (char_pointer_to_string (this_host_name));
 #else
     strcpy (this_host_name, "unknown-host");
 #endif
+    PRIMITIVE_RETURN (char_pointer_to_string (this_host_name));
   }
 }
 
