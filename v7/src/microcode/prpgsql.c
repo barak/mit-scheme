@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.12 2007/01/12 03:45:55 cph Exp $
+$Id: prpgsql.c,v 1.13 2007/02/11 05:55:00 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,9 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
-#include <libpq-fe.h>
+#ifdef HAVE_LIBPQ_FE_H
+#  include <libpq-fe.h>
+#endif
 
 #define ARG_CONN(n) ((PGconn *) (arg_ulong_integer (n)))
 #define ARG_RESULT(n) ((PGresult *) (arg_ulong_integer (n)))

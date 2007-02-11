@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.6 2007/01/05 21:19:25 cph Exp $
+$Id: prdb4.c,v 1.7 2007/02/11 05:55:00 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,7 +31,10 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include <errno.h>
-#include <db.h>
+
+#ifdef HAVE_DB_H
+#  include <db.h>
+#endif
 
 #define UNIFIED_VERSION							\
   ((DB_VERSION_MAJOR * 0x10000)						\
