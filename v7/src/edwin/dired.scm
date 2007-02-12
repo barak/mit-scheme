@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dired.scm,v 1.201 2007/01/05 21:19:23 cph Exp $
+$Id: dired.scm,v 1.202 2007/02/12 20:47:47 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -90,6 +90,7 @@ Space and Rubout can be used to move down and up by lines.
 (define-key 'dired #\d 'dired-flag-file-deletion)
 (define-key 'dired #\e 'dired-find-file)
 (define-key 'dired #\f 'dired-find-file)
+(define-key 'dired #\return 'dired-find-file)
 (define-key 'dired #\g 'dired-revert)
 (define-key 'dired #\h 'describe-mode)
 (define-key 'dired #\m 'dired-mark)
