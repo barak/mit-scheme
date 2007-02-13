@@ -1,6 +1,6 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile.wcc,v 1.23 2007/01/05 21:19:26 cph Exp $
+###     $Id: makefile.wcc,v 1.24 2007/02/13 19:25:15 cph Exp $
 ###
 ###     Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###         1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
@@ -28,9 +28,9 @@
 #### Makefile for Scheme under Win32 compiled by Watcom C/C++
 ###  This makefile is meant to be used with Watcom make.
 
-USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c # prpgsql.c
-USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj # prpgsql.obj
-USER_LIBS = library wsock32.lib,blowfish.lib,gdbm.lib,md5.lib # ,pq.lib
+USER_PRIM_SOURCES = # prbfish.c prgdbm.c prmd5.c prpgsql.c
+USER_PRIM_OBJECTS = # prbfish.obj prgdbm.obj prmd5.obj prpgsql.obj
+USER_LIBS = library wsock32.lib #,blowfish.lib,gdbm.lib,md5.lib,pq.lib
 
 CC = wcc386
 M4 = m4
