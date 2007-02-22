@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.21 2007/02/22 18:39:13 cph Exp $
+$Id: turtle.scm,v 1.22 2007/02/22 18:39:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -603,14 +603,13 @@ USA.
 		       3
 		       (lambda (t)
 			 (let ((s (rdf-triple-subject t)))
-			   (if (uri? s)
-			       0
-			       (if (= (count-matching-items triples
-					(lambda (t)
-					  (eq? (rdf-triple-object t) s)))
-				      1)
-				   1
-				   2)))))
+			   (cond ((uri? s) 0)
+				 ((= (count-matching-items triples
+				       (lambda (t)
+					 (eq? (rdf-triple-object t) s)))
+				     1)
+				  1)
+				 (else 2)))))
       (let ((inline-bnode
 	     (let ((in-line (group-triples-by-subject in-line)))
 	       (lambda (bnode)
