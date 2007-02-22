@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.22 2007/02/22 18:39:43 cph Exp $
+$Id: turtle.scm,v 1.23 2007/02/22 18:41:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -635,7 +635,6 @@ USA.
     (if t
 	(eliminate-unused-bnodes
 	 (let ((s (rdf-triple-subject t)))
-	   (write-line s)
 	   (delete-matching-items triples
 	     (lambda (t)
 	       (eq? (rdf-triple-subject t) s)))))
