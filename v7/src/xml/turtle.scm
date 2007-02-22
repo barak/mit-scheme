@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.20 2007/01/17 03:42:56 cph Exp $
+$Id: turtle.scm,v 1.21 2007/02/22 18:39:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -595,22 +595,26 @@ USA.
   (write-string expansion port)
   (write-string "> ." port)
   (newline port))
-
+
 (define (write-rdf/turtle-triples triples port)
-  (receive (uris bnodes)
-      (split-list triples (lambda (t) (uri? (rdf-triple-subject t))))
-    (receive (inline separate)
-	(split-list bnodes
-		    (lambda (t)
-		      (= (let ((bnode (rdf-triple-subject t)))
-			   (count-matching-items triples
-			     (lambda (t)
-			       (eq? (rdf-triple-object t) bnode))))
-			 1)))
+  (let ((triples (eliminate-unused-bnodes triples)))
+    (receive (uris in-line out-of-line)
+	(classify-list triples
+		       3
+		       (lambda (t)
+			 (let ((s (rdf-triple-subject t)))
+			   (if (uri? s)
+			       0
+			       (if (= (count-matching-items triples
+					(lambda (t)
+					  (eq? (rdf-triple-object t) s)))
+				      1)
+				   1
+				   2)))))
       (let ((inline-bnode
-	     (let ((inline (group-triples-by-subject inline)))
+	     (let ((in-line (group-triples-by-subject in-line)))
 	       (lambda (bnode)
-		 (find-matching-item inline
+		 (find-matching-item in-line
 		   (lambda (ts)
 		     (eq? (rdf-triple-subject (car ts)) bnode)))))))
 	(for-each (lambda (ts)
@@ -618,7 +622,25 @@ USA.
 		  (group-triples-by-subject uris))
 	(for-each (lambda (ts)
 		    (write-top-level ts inline-bnode port))
-		  (group-triples-by-subject separate))))))
+		  (group-triples-by-subject out-of-line))))))
+
+(define (eliminate-unused-bnodes triples)
+  (let ((t
+	 (find-matching-item triples
+	   (lambda (t)
+	     (let ((s (rdf-triple-subject t)))
+	       (and (rdf-bnode? s)
+		    (not (find-matching-item triples
+			   (lambda (t)
+			     (eq? (rdf-triple-object t) s))))))))))
+    (if t
+	(eliminate-unused-bnodes
+	 (let ((s (rdf-triple-subject t)))
+	   (write-line s)
+	   (delete-matching-items triples
+	     (lambda (t)
+	       (eq? (rdf-triple-subject t) s)))))
+	triples)))
 
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
@@ -858,13 +880,19 @@ USA.
 (define (indent+ indentation)
   (+ indentation 2))
 
-(define (split-list items predicate)
-  (let loop ((items items) (true '()) (false '()))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (loop (cdr items) (cons (car items) true) false)
-	    (loop (cdr items) true (cons (car items) false)))
-	(values (reverse! true) (reverse! false)))))
+(define (classify-list items n-classes classifier)
+  (let ((classes (make-vector n-classes '())))
+    (for-each (lambda (item)
+		(let ((i (classifier item)))
+		  (if i
+		      (begin
+			(if (not (and (exact-nonnegative-integer? i)
+				      (< i n-classes)))
+			    (error "Illegal classifier result:" i))
+			(vector-set! classes i
+				     (cons item (vector-ref classes i)))))))
+	      items)
+    (apply values (map reverse! (vector->list classes)))))
 
 (define rdf:type
   (string->uri "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"))
