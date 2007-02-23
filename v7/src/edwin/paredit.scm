@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.9 2007/02/23 11:37:09 riastradh Exp $
+$Id: paredit.scm,v 1.10 2007/02/23 11:38:32 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -215,7 +215,7 @@ If in a character literal, do nothing.  This prevents accidentally
                         (flash-sexp-match))
                  ;; Elsewhere in a string: insert escaped.
                  (begin (insert-char #\\ )
-                        (insert-char #\space))))
+                        (insert-char #\"))))
             ((parse-state-in-comment? state)
              (insert-char #\" ))
             ((not (mark-right-char-quoted? (current-point)))
