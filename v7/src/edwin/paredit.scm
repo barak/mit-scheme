@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.8 2006/12/28 22:28:20 riastradh Exp $
+$Id: paredit.scm,v 1.9 2007/02/23 11:37:09 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -847,7 +847,11 @@ Both must be lists, strings, or atoms; error if there is mismatch."
 (define (lisp-indent-line-and-sexp)
   (lisp-indent-line #f)
   (let ((point (current-point)))
-    (if (forward-one-sexp point)
+    (if (cond ((forward-one-sexp point)
+               => (lambda (end)
+                    (mark= (line-start (backward-one-sexp end) 0)
+                           (line-start point 0))))
+              (else #f))
         (lisp-indent-sexp point))))
 
 ;;; In paredit.el, the ABSOLUTELY? argument determined whether or not
