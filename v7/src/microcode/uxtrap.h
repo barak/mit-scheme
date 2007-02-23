@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.37 2007/01/05 21:19:25 cph Exp $
+$Id: uxtrap.h,v 1.38 2007/02/23 23:45:28 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -501,6 +501,12 @@ typedef struct
 #endif /* not _POSIX_REALTIME_SIGNALS */
 
 #endif /* __linux__ */
+
+#ifdef __FreeBSD__
+
+#include <ucontext.h>
+
+#endif
 
 #ifdef _MACH_UNIX
 /* The following are true for Mach (BSD 4.3 compatible).
