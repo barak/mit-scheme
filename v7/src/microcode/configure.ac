@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.37 2007/02/23 23:45:28 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.38 2007/02/24 17:09:42 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -177,7 +177,7 @@ STATIC_SUFFIX=
 PRBFISH_LIBS=
 PRMD5_LIBS=
 SCHEME_DEFS=
-DLD_LDFLAGS=
+SCHEME_LDFLAGS=
 MODULE_BASES=
 MODULE_LIBS=
 MODULE_TARGETS=
@@ -285,15 +285,42 @@ AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
-#AC_TYPE_INT8_T
-#AC_TYPE_INT16_T
-#AC_TYPE_INT32_T
-#AC_TYPE_INTPTR_T
+dnl These macros are too new; we'll handle this by hand for now.
 
-#AC_TYPE_UINT8_T
-#AC_TYPE_UINT16_T
-#AC_TYPE_UINT32_T
-#AC_TYPE_UINTPTR_T
+dnl AC_TYPE_INT8_T
+dnl AC_TYPE_INT16_T
+dnl AC_TYPE_INT32_T
+dnl AC_TYPE_INTPTR_T
+dnl AC_TYPE_UINT8_T
+dnl AC_TYPE_UINT16_T
+dnl AC_TYPE_UINT32_T
+dnl AC_TYPE_UINTPTR_T
+
+define([SCM_STDINT_MSG], [Define replacement if no <stdint.h>.])dnl
+
+AC_CHECK_TYPE([int8_t],,
+    [AC_DEFINE_UNQUOTED([int8_t], [signed char], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([int16_t],,
+    [AC_DEFINE_UNQUOTED([int16_t], [short], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([int32_t],,
+    [AC_DEFINE_UNQUOTED([int32_t], [int], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint8_t],,
+    [AC_DEFINE_UNQUOTED([uint8_t], [unsigned char], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint16_t],,
+    [AC_DEFINE_UNQUOTED([uint16_t], [unsigned short], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint32_t],,
+    [AC_DEFINE_UNQUOTED([uint32_t], [unsigned int], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([intptr_t],,
+    [AC_DEFINE_UNQUOTED([intptr_t], [long], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uintptr_t],,
+    [AC_DEFINE_UNQUOTED([uintptr_t], [unsigned long], SCM_STDINT_MSG)])
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
@@ -304,8 +331,8 @@ AC_CHECK_SIZEOF([unsigned short])
 AC_CHECK_SIZEOF([unsigned int])
 AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_SIZEOF([void *])
-#AC_CHECK_SIZEOF([intptr_t])
-#AC_CHECK_SIZEOF([uintptr_t])
+AC_CHECK_SIZEOF([intptr_t])
+AC_CHECK_SIZEOF([uintptr_t])
 
 if test ${ac_cv_sizeof_char} -ne 1; then
     AC_MSG_ERROR([SIZEOF_CHAR is not 1])
@@ -747,7 +774,7 @@ freebsd*)
     DO_GCC_TESTS=yes
     ;;
 darwin*)
-    DLD_LDFLAGS="${DLD_LDFLAGS} -Wl,-pagezero_size,04000000"
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -dynamiclib -flat_namespace -undefined suppress"
     ;;
 netbsd*)
@@ -771,7 +798,7 @@ if test ${DO_GCC_TESTS} = yes; then
 	STATIC_PREFIX="-Xlinker -Bstatic"
 	STATIC_SUFFIX="-Xlinker -Bdynamic"
     fi
-    DLD_LDFLAGS="${DLD_LDFLAGS} -export-dynamic"
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared"
     AC_MSG_CHECKING([for ELF binaries])
@@ -898,7 +925,7 @@ AC_SUBST([STATIC_SUFFIX])
 AC_SUBST([PRBFISH_LIBS])
 AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])
-AC_SUBST([DLD_LDFLAGS])
+AC_SUBST([SCHEME_LDFLAGS])
 AC_SUBST([MODULE_TARGETS])
 AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])

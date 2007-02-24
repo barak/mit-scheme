@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.43 2007/01/12 06:30:04 cph Exp $
+# $Id: Makefile.in.in,v 1.44 2007/02/24 17:09:46 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -132,13 +132,13 @@ EXTRA_PROGRAMS = findprim bintopsb psbtobin
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
 scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
 scheme_DEPENDENCIES = 
-scheme_LDFLAGS = @DLD_LDFLAGS@
+scheme_LDFLAGS = @SCHEME_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
 bchscheme_SOURCES = $(BCH_SOURCES) bchdef.c $(LIARC_SOURCES)
 bchscheme_OBJECTS = $(BCH_OBJECTS) bchdef.o $(LIARC_OBJECTS)
 bchscheme_DEPENDENCIES = 
-bchscheme_LDFLAGS = @DLD_LDFLAGS@
+bchscheme_LDFLAGS = @SCHEME_LDFLAGS@
 bchscheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
 bchdrn_SOURCES = bchdrn.c bchutl.c
