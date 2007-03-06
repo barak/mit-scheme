@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xcom.scm,v 1.27 2007/01/05 21:19:24 cph Exp $
+$Id: xcom.scm,v 1.28 2007/03/06 00:30:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,6 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define-primitives
+  (x-list-fonts 3)
   (x-set-default-font 2)
   (x-window-clear 1)
   (x-window-get-position 1)
@@ -91,23 +92,6 @@ USA.
   (lambda (color)
     (x-window-set-mouse-color (current-xterm) color)))
 
-(define-command set-font
-  "Set text font of selected frame to FONT."
-  "sSet font"
-  (lambda (font)
-    (let ((xterm (current-xterm)))
-      (let ((x-size (xterm-x-size xterm))
-	    (y-size (xterm-y-size xterm)))
-	(if (not (x-window-set-font xterm font))
-	    (editor-error "Unknown font name: " font))
-	(xterm-reconfigure xterm x-size y-size)))))
-
-(define-command set-default-font
-  "Set text font to be used in new frames."
-  "sSet default font"
-  (lambda (font)
-    (x-set-default-font (screen-display (selected-screen)) font)))
-
 (define-command set-border-width
   "Set border width of selected frame to WIDTH."
   "nSet border width"
@@ -120,6 +104,62 @@ USA.
   "nSet internal border width"
   (lambda (width)
     (x-window-set-internal-border-width (current-xterm) (max 0 width))))
+
+(define-command set-font
+  "Set text font of selected frame to FONT."
+  (lambda ()
+    (list (prompt-for-x-font-name "Set font" #f)))
+  (lambda (font)
+    (let ((xterm (current-xterm)))
+      (let ((x-size (xterm-x-size xterm))
+	    (y-size (xterm-y-size xterm)))
+	(if (not (x-window-set-font xterm font))
+	    (editor-error "Unknown font name: " font))
+	(xterm-reconfigure xterm x-size y-size)))))
+
+(define-command set-default-font
+  "Set text font to be used in new frames."
+  (lambda ()
+    (list (prompt-for-x-font-name "Set default font" #f)))
+  (lambda (font)
+    (x-set-default-font (screen-display (selected-screen)) font)))
+
+(define-command font-apropos
+  "Show all X fonts whose names match a given regular expression."
+  "sFont apropos (regexp)"
+  (lambda (regexp)
+    (with-output-to-help-display
+     (lambda ()
+       (font-apropos regexp)))))
+
+(define-command apropos-font
+  (command-description (ref-command-object font-apropos))
+  (command-interactive-specification (ref-command-object font-apropos))
+  (command-procedure (ref-command-object font-apropos)))
+
+(define (font-apropos regexp)
+  (for-each (lambda (font)
+              (write-string font)
+              (newline))
+            (string-table-apropos (x-font-name-table) regexp)))
+
+(define (prompt-for-x-font-name prompt default . options)
+  (apply prompt-for-string-table-name prompt default (x-font-name-table)
+         options))
+
+(define (x-font-name-table)
+  (build-x-font-name-table (screen-display (selected-screen))
+                           "*"
+                           #f))
+
+(define (build-x-font-name-table display pattern limit)
+  (let ((font-name-vector (x-list-fonts display pattern limit))
+        (font-name-table (make-string-table)))
+    (do ((index 0 (fix:+ index 1)))
+        ((fix:= index (vector-length font-name-vector)))
+      (let ((font-name (vector-ref font-name-vector index)))
+        (string-table-put! font-name-table font-name font-name)))
+    font-name-table))
 
 (define-command show-frame-size
   "Show size of editor frame."
