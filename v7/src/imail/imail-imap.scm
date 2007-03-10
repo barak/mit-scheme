@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.208 2007/01/05 21:19:25 cph Exp $
+$Id: imail-imap.scm,v 1.209 2007/03/10 17:35:57 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1517,7 +1517,7 @@ USA.
 			(assq keyword alist))
 		      (lambda (keyword item)
 			(set-cdr! (assq keyword alist) (list item)))))))
-	    `(FETCH ,(+ (message-index message) 1) ,@alist)))
+	    `(FETCH ,(+ (%message-index message) 1) ,@alist)))
 	(lambda ()
 	  (fetch-message-items-1 message keywords suffix)))))
 
