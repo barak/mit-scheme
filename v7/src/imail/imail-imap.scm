@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.210 2007/03/11 17:33:37 riastradh Exp $
+$Id: imail-imap.scm,v 1.211 2007/03/11 22:38:55 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1887,7 +1887,7 @@ USA.
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (imap:command:expunge (guarantee-imap-folder-open folder)))
 
-(define-method search-folder ((folder <imap-folder>) criteria)
+(define-method %search-folder ((folder <imap-folder>) criteria)
   (map (lambda (index) (- index 1))
        (imap:response:search-indices
 	(let ((connection (guarantee-imap-folder-open folder)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.164 2007/03/11 17:33:37 riastradh Exp $
+$Id: imail-core.scm,v 1.165 2007/03/11 22:38:55 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -538,9 +538,14 @@ USA.
 
 ;; -------------------------------------------------------------------
 ;; Search FOLDER for messages matching CRITERIA.  At present, CRITERIA
-;; may be a string.  Returns a list of messages.
+;; may be a string.  Returns a list of message indices.
 
-(define-generic search-folder (folder criteria))
+(define (search-folder folder criteria)
+  (map (lambda (index)
+         (unmap-folder-index folder index))
+       (%search-folder folder criteria)))
+
+(define-generic %search-folder (folder criteria))
 
 ;; -------------------------------------------------------------------
 ;; Compare FOLDER's cache with the persistent folder and return a

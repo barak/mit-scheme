@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.90 2007/03/11 17:33:37 riastradh Exp $
+$Id: imail-file.scm,v 1.91 2007/03/11 22:38:55 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -359,7 +359,7 @@ USA.
 			       (loop (fix:+ i 1) (fix:+ i* 1)))))))
 		 (set-file-folder-messages! folder messages*)))))))))
 
-(define-method search-folder ((folder <file-folder>) criteria)
+(define-method %search-folder ((folder <file-folder>) criteria)
   (cond ((string? criteria)
 	 (let ((n (folder-length folder)))
 	   (let loop ((index 0) (winners '()))
