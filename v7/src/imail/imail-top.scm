@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.296 2007/01/05 21:19:25 cph Exp $
+$Id: imail-top.scm,v 1.297 2007/03/11 01:11:33 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1560,10 +1560,7 @@ With prefix argument, sort them in reverse order."
 	"")))
 
 (define (sort-selected-folder < message-key)
-  (set-folder-order! (selected-folder)
-		     (make-folder-order
-		      (lambda (a b)
-			(< (message-key a) (message-key b))))))
+  (set-folder-order! (selected-folder) (make-folder-order < message-key)))
 
 ;;;; Miscellany
 
