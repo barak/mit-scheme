@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.159 2007/03/11 04:32:07 riastradh Exp $
+$Id: imail-core.scm,v 1.160 2007/03/11 15:04:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -410,6 +410,7 @@ USA.
 (define set-folder-order!
   (let ((modifier (slot-modifier <folder> 'ORDER)))
     (lambda (folder order)
+      (if order (memoize-folder-order order folder))
       (let ((original-order (folder-order folder)))
         (modifier folder order)
         (cond ((and (not original-order) order)
@@ -732,15 +733,18 @@ USA.
 		   (constructor make-folder-order (predicate selector)))
   (predicate #f read-only #t)
   (selector #f read-only #t)
-  (tree #f))
+  (tree #f)
+  (modification-count -1))
 
 (define (map-folder-index folder index)
   (let ((order (folder-order folder)))
     (if order
 	(begin
 	  (memoize-folder-order order folder)
-          (%message-index
-           (wt-tree/index-datum (folder-order-tree order) index)))
+          (let ((tree (folder-order-tree order)))
+            (if (< index (wt-tree/size tree))
+                (%message-index (wt-tree/index-datum tree index))
+                index)))
 	index)))
 
 (define (unmap-folder-index folder index)
@@ -748,10 +752,11 @@ USA.
     (if order
 	(begin
 	  (memoize-folder-order order folder)
-          (wt-tree/rank (folder-order-tree order)
-                        (cons ((folder-order-selector order)
-                               (%get-message folder index))
-                              index)))
+          (or (wt-tree/rank (folder-order-tree order)
+                            (cons ((folder-order-selector order)
+                                   (%get-message folder index))
+                                  index))
+              index))
 	index)))
 
 (define (make-wt-message-tree key<?)
@@ -763,22 +768,32 @@ USA.
                (< (cdr a) (cdr b))))))))
 
 (define (memoize-folder-order order folder)
-  (without-interrupts
+  (let loop ()
+    (let ((modification-count (folder-order-modification-count order)))
+      (if (not (= modification-count (object-modification-count folder)))
+          (if (not (folder-order-tree order))
+              (begin
+                (set-folder-order-tree!
+                 order
+                 (build-folder-order-tree order folder))
+                (set-folder-order-modification-count! order modification-count)
+                (loop)))))))
+
+(define (build-folder-order-tree order folder)
+  ((imail-ui:message-wrapper "Sorting folder")
    (lambda ()
-     (if (not (folder-order-tree order))
-         ((imail-ui:message-wrapper "Sorting folder")
-          (lambda ()
-            (let ((length (folder-length folder))
-                  (selector (folder-order-selector order))
-                  (tree (make-wt-message-tree (folder-order-predicate order))))
-              (do ((index 0 (+ index 1)))
-                  ((= index length))
-                (imail-ui:progress-meter index #f)
-                (let ((message (%get-message folder index)))
-                  (wt-tree/add! tree
-                                (cons (selector message) index)
-                                message)))
-              (set-folder-order-tree! order tree))))))))
+     (let ((length (folder-length folder))
+           (selector (folder-order-selector order))
+           (tree (make-wt-message-tree (folder-order-predicate order))))
+       (do ((index 0 (+ index 1)))
+           ((= index length))
+         (if (zero? (remainder index 100))
+             (imail-ui:progress-meter index #f))
+         (let ((message (%get-message folder index)))
+           (wt-tree/add! tree
+                         (cons (selector message) index)
+                         message)))
+       tree))))
 
 (define (update-folder-order folder modification-type arguments)
   (without-interrupts
