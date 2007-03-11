@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.160 2007/03/11 15:04:31 riastradh Exp $
+$Id: imail-core.scm,v 1.161 2007/03/11 15:35:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -780,6 +780,7 @@ USA.
                 (loop)))))))
 
 (define (build-folder-order-tree order folder)
+  (preload-folder-outlines folder)
   ((imail-ui:message-wrapper "Sorting folder")
    (lambda ()
      (let ((length (folder-length folder))
