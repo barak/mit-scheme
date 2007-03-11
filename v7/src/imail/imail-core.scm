@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.157 2007/03/11 01:11:19 riastradh Exp $
+$Id: imail-core.scm,v 1.158 2007/03/11 03:59:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -780,7 +780,7 @@ USA.
                                 message)))
               (set-folder-order-tree! order tree))))))))
 
-(define (update-folder-order folder modification-type . args)
+(define (update-folder-order folder modification-type arguments)
   (without-interrupts
    (lambda ()
      (let ((order (folder-order folder)))
@@ -791,8 +791,8 @@ USA.
              ((INCREASE-LENGTH)
               (let ((tree (folder-order-tree order)))
                 (if tree
-                    (let ((index (car args))
-                          (count (cadr args))
+                    (let ((index (car arguments))
+                          (count (cadr arguments))
                           (selector (folder-order-selector order)))
                       (do ((index index (+ index 1)))
                           ((= index count))
@@ -803,7 +803,7 @@ USA.
              ((EXPUNGE)
               (let ((tree (folder-order-tree order)))
                 (if tree
-                    (let ((index (car args))
+                    (let ((index (car arguments))
                           (selector (folder-order-selector order)))
                       (wt-tree/delete!
                        tree
