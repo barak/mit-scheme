@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.158 2007/03/11 03:59:12 riastradh Exp $
+$Id: imail-core.scm,v 1.159 2007/03/11 04:32:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -412,9 +412,9 @@ USA.
     (lambda (folder order)
       (let ((original-order (folder-order folder)))
         (modifier folder order)
-        (cond ((not (and original-order order))
+        (cond ((and (not original-order) order)
                (receive-modification-events folder update-folder-order))
-              ((not (or original-order order))
+              ((and original-order (not order))
                (ignore-modification-events folder update-folder-order))))
       (object-modified! folder 'REORDERED))))
 
