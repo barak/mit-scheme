@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.163 2007/03/11 15:49:44 riastradh Exp $
+$Id: imail-core.scm,v 1.164 2007/03/11 17:33:37 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -733,8 +733,7 @@ USA.
 		   (constructor make-folder-order (predicate selector)))
   (predicate #f read-only #t)
   (selector #f read-only #t)
-  (tree #f)
-  (modification-count -1))
+  (tree #f))
 
 (define (map-folder-index folder index)
   (let ((order (folder-order folder)))
@@ -766,17 +765,29 @@ USA.
       (or (key<? (car a) (car b))
           (and (not (key<? (car b) (car a)))
                (< (cdr a) (cdr b))))))))
+
+(define (message-order-key message)
+  (let ((folder (message-folder message)))
+    (if (not folder)
+        (error "Message has no ordering key:" message))
+    (let ((order (folder-order folder)))
+      (if (not order)
+          #f
+          (cons ((folder-order-selector order) message)
+                (%message-index message))))))
 
 (define (memoize-folder-order order folder)
-  (let loop ()
-    (let ((modification-count (folder-order-modification-count order)))
-      (if (not (= modification-count (object-modification-count folder)))
-          (begin
-            (set-folder-order-tree!
-             order
-             (build-folder-order-tree order folder))
-            (set-folder-order-modification-count! order modification-count)
-            (loop))))))
+  (let loop ((modification-count (object-modification-count folder)))
+    (if (not (folder-order-tree order))
+        (begin
+          (set-folder-order-tree!
+           order
+           (build-folder-order-tree order folder))
+          (let ((modification-count* (object-modification-count folder)))
+            (if (not (= modification-count modification-count*))
+                (begin
+                  (imail-ui:message "Folder changed; resorting")
+                  (loop modification-count*))))))))
 
 (define (build-folder-order-tree order folder)
   (preload-folder-outlines folder)
@@ -818,12 +829,8 @@ USA.
              ((EXPUNGE)
               (let ((tree (folder-order-tree order)))
                 (if tree
-                    (let ((index (car arguments))
-                          (selector (folder-order-selector order)))
-                      (wt-tree/delete!
-                       tree
-                       (cons (selector (%get-message folder index))
-                             index))))))))))))
+                    (let ((key (cadr arguments)))
+                      (wt-tree/delete! tree key)))))))))))
 
 ;;;; Message flags
 
