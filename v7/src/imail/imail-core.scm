@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.161 2007/03/11 15:35:18 riastradh Exp $
+$Id: imail-core.scm,v 1.162 2007/03/11 15:48:28 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -771,13 +771,12 @@ USA.
   (let loop ()
     (let ((modification-count (folder-order-modification-count order)))
       (if (not (= modification-count (object-modification-count folder)))
-          (if (not (folder-order-tree order))
-              (begin
-                (set-folder-order-tree!
-                 order
-                 (build-folder-order-tree order folder))
-                (set-folder-order-modification-count! order modification-count)
-                (loop)))))))
+          (begin
+            (set-folder-order-tree!
+             order
+             (build-folder-order-tree order folder))
+            (set-folder-order-modification-count! order modification-count)
+            (loop))))))
 
 (define (build-folder-order-tree order folder)
   (preload-folder-outlines folder)
