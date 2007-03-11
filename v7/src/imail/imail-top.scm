@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.297 2007/03/11 01:11:33 riastradh Exp $
+$Id: imail-top.scm,v 1.298 2007/03/11 22:26:45 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -180,6 +180,13 @@ Likewise, a text/plain entity is always shown inline.
 Note that this variable does not affect subparts of multipart/alternative."
   '(HTML ENRICHED)
   list-of-strings?)
+
+(define-variable imail-inline-mime-text-limit
+  "Size limit in octets for showing MIME text message parts in-line.
+MIME text message parts less than this size are shown in-line by default.
+This variable can also be #F; then all parts will be shown in-line."
+  8192
+  (lambda (x) (or (boolean? x) (exact-nonnegative-integer? x))))
 
 (define-variable imail-mime-attachment-directory
   "Default directory in which to store MIME attachments.
@@ -2486,7 +2493,10 @@ Negative argument means search in reverse."
 					    mark))
 		       "\\'")
 	(mime-body-parameter body 'CHARSET "us-ascii")
-	#t)))
+	#t)
+       (let ((limit (ref-variable imail-inline-mime-text-limit mark)))
+         (or (not limit)
+             (< (mime-body-one-part-n-octets body) limit)))))
 
 (define-method walk-mime-message-part
     (message (body <mime-body-multipart>) selector context mark)
