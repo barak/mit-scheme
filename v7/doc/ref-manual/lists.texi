@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: lists.texi,v 1.4 2007/01/05 21:48:31 cph Exp $
+@c $Id: lists.texi,v 1.5 2007/03/21 15:08:55 cph Exp $
 
 @c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 @c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -1026,34 +1026,34 @@ is unspecified.
 @section Reduction of Lists
 @cindex reduction, of list
 
-@deffn procedure reduce procedure initial list
+@deffn procedure reduce-left procedure initial list
 Combines all the elements of @var{list} using the binary operation
 @var{procedure}.  For example, using @code{+} one can add up all the
 elements:
 
 @example
-(reduce + 0 list-of-numbers)
+(reduce-left + 0 list-of-numbers)
 @end example
 
 The argument @var{initial} is used only if @var{list} is empty; in this
-case @var{initial} is the result of the call to @code{reduce}.  If
+case @var{initial} is the result of the call to @code{reduce-left}.  If
 @var{list} has a single argument, it is returned.  Otherwise, the arguments
 are reduced in a left-associative fashion.  For example:
 
 @example
 @group
-(reduce + 0 '(1 2 3 4))                 @result{} 10
-(reduce + 0 '(1 2))                     @result{} 3
-(reduce + 0 '(1))                       @result{} 1
-(reduce + 0 '())                        @result{} 0
-(reduce + 0 '(foo))                     @result{} foo
-(reduce list '() '(1 2 3 4))            @result{} (((1 2) 3) 4)
+(reduce-left + 0 '(1 2 3 4))            @result{} 10
+(reduce-left + 0 '(1 2))                @result{} 3
+(reduce-left + 0 '(1))                  @result{} 1
+(reduce-left + 0 '())                   @result{} 0
+(reduce-left + 0 '(foo))                @result{} foo
+(reduce-left list '() '(1 2 3 4))       @result{} (((1 2) 3) 4)
 @end group
 @end example
 @end deffn
 
 @deffn procedure reduce-right procedure initial list
-Like @code{reduce} except that it is right-associative.
+Like @code{reduce-left} except that it is right-associative.
 
 @example
 (reduce-right list '() '(1 2 3 4))      @result{} (1 (2 (3 4)))
@@ -1062,7 +1062,7 @@ Like @code{reduce} except that it is right-associative.
 
 @deffn procedure fold-right procedure initial list
 Combines all of the elements of @var{list} using the binary operation
-@var{procedure}.  Unlike @code{reduce} and @code{reduce-right},
+@var{procedure}.  Unlike @code{reduce-left} and @code{reduce-right},
 @var{initial} is always used:
 
 @example
