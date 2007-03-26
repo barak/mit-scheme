@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.124 2007/01/05 21:19:23 cph Exp $
+$Id: intmod.scm,v 1.125 2007/03/26 23:33:48 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -261,11 +261,26 @@ evaluated in the specified inferior REPL buffer."
 		(without-interrupts
 		 (lambda ()
 		   (set-car! (buffer-modes buffer) mode)
-		   (set-buffer-comtabs! buffer (mode-comtabs mode))))
+		   (switch-comtabs! buffer mode mode*)))
 		(buffer-modeline-event! buffer 'BUFFER-MODES))
 	      (begin
 		(set-buffer-major-mode! buffer mode)
 		(attach-buffer-interface-port! buffer port)))))))
+
+(define (switch-comtabs! buffer new-mode old-mode)
+  (let ((comtabs (buffer-comtabs buffer))
+	(new-comtabs (mode-comtabs new-mode))
+	(old-comtabs (mode-comtabs old-mode)))
+    (if (eq? comtabs old-comtabs)
+	(set-buffer-comtabs! buffer new-comtabs)
+	(let loop ((previous comtabs))
+	  (let ((comtabs (cdr previous)))
+	    (cond ((eq? comtabs old-comtabs)
+		   (set-cdr! previous new-comtabs))
+		  ((not (pair? comtabs))
+		   (warn ";Buffer's comtabs do not match its mode:" buffer))
+		  (else
+		   (loop comtabs))))))))
 
 (define (attach-buffer-interface-port! buffer port)
   (if (not (memq buffer repl-buffers))
