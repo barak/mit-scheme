@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.125 2007/03/26 23:33:48 riastradh Exp $
+$Id: intmod.scm,v 1.126 2007/03/26 23:54:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -687,24 +687,7 @@ If this is an error, the debugger examines the error condition."
 			 (region-end region)
 			 mark))))
   (let ((port (buffer-interface-port buffer #t)))
-    (let ((input-end
-	   (let ((mark
-		  (let ((end (buffer-end buffer))
-			(end* (region-end region)))
-		    (if (mark~ end end*)
-			(begin
-			  (set-buffer-point! buffer end*)
-			  end*)
-			end))))
-	     (cond ((eqv? #\newline (extract-right-char mark))
-		    (mark1+ mark))
-		   ((line-start? mark)
-		    mark)
-		   (else
-		    (let ((mark (mark-left-inserting-copy mark)))
-		      (insert-newline mark)
-		      (mark-temporary! mark)
-		      mark))))))
+    (let ((input-end (inferior-repl-input-end buffer region)))
       (move-mark-to! (port/mark port) input-end)
       (move-mark-to! (ref-variable comint-last-input-end buffer) input-end))
     (let ((queue (port/expression-queue port)))
@@ -721,6 +704,27 @@ If this is an error, the debugger examines the error condition."
 		    (read-expressions-from-region region))))
       (if (not (queue-empty? queue))
 	  (end-input-wait port)))))
+
+(define (inferior-repl-input-end buffer region)
+  (receive (mark in-buffer?)
+      (let ((end (buffer-end buffer))
+	    (end* (region-end region)))
+	(if (mark~ end end*)
+	    (values end* #t)
+	    (values end #f)))
+    (let ((mark
+	   (cond ((eqv? #\newline (extract-right-char mark))
+		  (mark1+ mark))
+		 ((line-start? mark)
+		  mark)
+		 (else
+		  (let ((mark (mark-left-inserting-copy mark)))
+		    (insert-newline mark)
+		    (mark-temporary! mark)
+		    mark)))))
+      (if in-buffer?
+	  (set-buffer-point! buffer mark))
+      mark)))
 
 (define (inferior-repl-eval-expression buffer expression)
   (inferior-repl-eval-ok? buffer)
