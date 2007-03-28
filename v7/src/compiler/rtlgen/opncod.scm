@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.78 2007/01/21 11:29:15 riastradh Exp $
+$Id: opncod.scm,v 4.79 2007/03/28 02:29:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -377,7 +377,7 @@ USA.
 			  make-false-pcfg
 			  make-true-pcfg
 			  identity-procedure)
-      (make-null-cfg)))
+      (make-true-pcfg)))
 
 (define (generate-type-test type expression if-false if-true if-test)
   (if (rtl:constant? expression)
@@ -418,7 +418,7 @@ USA.
 	    (rtl:make-object->fixnum index-expression)
 	    (rtl:make-object->fixnum limit-locative))))
 	(else
-	 (make-null-cfg))))
+	 (make-true-pcfg))))
 |#
 
 (define (open-code:index-check index-expression limit-locative)
@@ -432,16 +432,16 @@ USA.
 	    'UNSIGNED-LESS-THAN-FIXNUM?
 	    (rtl:make-object->fixnum index-expression)
 	    (rtl:make-object->fixnum limit-locative)))
-	  (make-null-cfg)))
+	  (make-false-pcfg)))
 	(compiler:generate-type-checks?
 	 (open-code:type-check index-expression (ucode-type fixnum)))
 	(else
-	 (make-null-cfg))))
+	 (make-true-pcfg))))
 
 (define (open-code:nonnegative-check expression)
   (if compiler:generate-range-checks?
       (generate-nonnegative-check expression)
-      (make-null-cfg)))
+      (make-true-pcfg)))
 
 (define (generate-nonnegative-check expression)
   (if (and (rtl:constant? expression)
@@ -459,7 +459,7 @@ USA.
   (if (or compiler:generate-range-checks?
 	  compiler:generate-type-checks?)
       (generate-index-fixnum-check expression)
-      (make-null-cfg)))
+      (make-true-pcfg)))
 
 (define (generate-index-fixnum-check expression)
   (if (rtl:constant? expression)
