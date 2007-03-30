@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.50 2007/01/07 09:11:07 cph Exp $
+$Id: genio.scm,v 1.51 2007/03/30 08:17:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1062,7 +1062,7 @@ USA.
     (let loop ((i start))
       (if (< i end)
 	  (let ((n (min (- end i) #x1000)))
-	    (substring-move! string i (+ i n) bounce 0)
+	    (xsubstring-move! string i (+ i n) bounce 0)
 	    (let ((m (write-substring:string ob bounce 0 n)))
 	      (cond ((not m)
 		     (and (> i start)
