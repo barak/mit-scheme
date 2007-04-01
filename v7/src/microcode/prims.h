@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.55 2007/01/12 03:45:55 cph Exp $
+$Id: prims.h,v 9.56 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -108,6 +108,7 @@ extern long EXFUN (arg_ascii_integer, (int));
    ? (STRING_POINTER (ARG_REF (arg)))					\
    : ((error_wrong_type_arg (arg)), ((char *) 0)))
 
+extern PTR EXFUN (lookup_external_string, (SCHEME_OBJECT, unsigned long *));
 extern PTR EXFUN (arg_extended_string, (unsigned int, unsigned long *));
 
 #define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != SHARP_F)

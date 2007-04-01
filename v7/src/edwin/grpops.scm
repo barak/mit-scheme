@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: grpops.scm,v 1.33 2007/01/05 21:19:23 cph Exp $
+$Id: grpops.scm,v 1.34 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -78,12 +78,12 @@ USA.
 			     (fix:+ start* (fix:- gap-start start)))))))
 
 (define (group-left-char group index)
-  (string-ref (group-text group)
-	      (fix:- (group-index->position-integrable group index #f) 1)))
+  (xstring-ref (group-text group)
+	       (fix:- (group-index->position-integrable group index #f) 1)))
 
 (define (group-right-char group index)
-  (string-ref (group-text group)
-	      (group-index->position-integrable group index #t)))
+  (xstring-ref (group-text group)
+	       (group-index->position-integrable group index #t)))
 
 (define (group-extract-and-delete-string! group start end)
   (let ((string (group-extract-string group start end)))
@@ -100,11 +100,7 @@ USA.
       (error:bad-range-argument n 'GROUP-INSERT-CHARS!))
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (prepare-gap-for-insert! group index n)
-    (let ((text (group-text group))
-	  (end (fix:+ index n)))
-      (do ((index index (fix:+ index 1)))
-	  ((fix:= index end))
-	(string-set! text index char)))
+    (xsubstring-fill! (group-text group) index (fix:+ index n) char)
     (finish-group-insert! group index n)
     (set-interrupt-enables! interrupt-mask)
     unspecific))
@@ -222,7 +218,7 @@ USA.
 	    (set-group-gap-end! group gap-end)
 	    (set-group-gap-length! group (fix:- gap-end start))
 	    (if (and (group-shrink-length group)
-		     (fix:<= (fix:- (string-length text)
+		     (fix:<= (fix:- (xstring-length text)
 				    (fix:- gap-end start))
 			     (group-shrink-length group)))
 		(shrink-group! group))))
@@ -266,9 +262,9 @@ USA.
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok))
 	(end-index (fix:+ index 1)))
     (prepare-gap-for-replace! group index end-index)
-    (string-set! (group-text group)
-		 (group-index->position-integrable group index #t)
-		 char)
+    (xstring-set! (group-text group)
+		  (group-index->position-integrable group index #t)
+		  char)
     (finish-group-replace! group index end-index)
     (set-interrupt-enables! interrupt-mask)
     unspecific))
@@ -333,7 +329,7 @@ USA.
 	(gap-start (group-gap-start group))
 	(gap-end (group-gap-end group))
 	(realloc-factor (group-reallocation-factor group)))
-    (let ((text-length (string-length text))
+    (let ((text-length (xstring-length text))
 	  (gap-delta (- new-gap-start gap-start)))
       (let ((n-chars (- text-length (group-gap-length group))))
 	(let ((new-text-length
@@ -343,7 +339,7 @@ USA.
 		     (if (< length minimum-text-length)
 			 (loop length)
 			 length))))))
-	  (let ((new-text (string-allocate new-text-length))
+	  (let ((new-text (allocate-buffer-storage new-text-length))
 		(new-gap-length (- new-text-length n-chars)))
 	    (let ((new-gap-end (+ new-gap-start new-gap-length)))
 	      (cond ((= gap-delta 0)
@@ -370,9 +366,10 @@ USA.
 
 (define (shrink-group! group)
   (let ((text (group-text group))
+	(gap-start (group-gap-start group))
 	(gap-length (group-gap-length group))
 	(realloc-factor (group-reallocation-factor group)))
-    (let ((text-length (string-length text)))
+    (let ((text-length (xstring-length text)))
       (let ((n-chars (- text-length gap-length)))
 	(let ((new-text-length
 	       (if (= n-chars 0)
@@ -385,18 +382,20 @@ USA.
 			     length
 			     (loop length)))))))
 	      (gap-end (group-gap-end group)))
-	  (let ((delta (- text-length new-text-length)))
+	  (let ((new-text (allocate-buffer-storage new-text-length))
+		(delta (- text-length new-text-length)))
 	    (let ((new-gap-end (- gap-end delta)))
-	      (%substring-move! text gap-end text-length text new-gap-end)
+	      (%substring-move! text 0 gap-start new-text 0)
+	      (%substring-move! text gap-end text-length new-text new-gap-end)
 	      (set-group-gap-end! group new-gap-end)
-	      (set-group-gap-length! group (- gap-length delta))))
-	  (set-string-maximum-length! text new-text-length))))
+	      (set-group-gap-length! group (- gap-length delta)))
+	    (set-group-text! group new-text)))))
     (memoize-shrink-length! group realloc-factor)))
 
 (define (memoize-shrink-length! group realloc-factor)
   (set-group-shrink-length!
    group
-   (compute-shrink-length (string-length (group-text group)) realloc-factor)))
+   (compute-shrink-length (xstring-length (group-text group)) realloc-factor)))
 
 (define (compute-shrink-length length realloc-factor)
   (floor (/ (floor (/ length realloc-factor)) realloc-factor)))

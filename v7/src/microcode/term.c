@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.22 2007/01/05 21:19:25 cph Exp $
+$Id: term.c,v 1.23 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,6 +32,7 @@ USA.
 #include "osfile.h"
 #include "edwin.h"
 #include "option.h"
+#include "prims.h"
 
 extern long death_blow;
 extern char * Term_Messages [];
@@ -285,8 +286,9 @@ DEFUN_VOID (edwin_auto_save)
 	  SCHEME_OBJECT group = (PAIR_CAR (entry));
 	  char * namestring = ((char *) (STRING_LOC ((PAIR_CDR (entry)), 0)));
 	  SCHEME_OBJECT text = (GROUP_TEXT (group));
-	  unsigned char * start = (STRING_LOC (text, 0));
-	  unsigned char * end = (start + (STRING_LENGTH (text)));
+	  unsigned long length;
+	  unsigned char * start = (lookup_external_string (text, (&length)));
+	  unsigned char * end = (start + length);
 	  unsigned char * gap_start = (start + (GROUP_GAP_START (group)));
 	  unsigned char * gap_end = (start + (GROUP_GAP_END (group)));
 	  if ((start < gap_start) || (gap_end < end))

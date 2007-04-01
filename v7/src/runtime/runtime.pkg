@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.613 2007/03/21 15:06:16 cph Exp $
+$Id: runtime.pkg,v 14.614 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -766,6 +766,7 @@ USA.
 	  decorated-string-append
 	  error:not-string
 	  error:not-xstring
+	  external-string-descriptor
 	  external-string-length
 	  external-string?
 	  guarantee-string
@@ -891,12 +892,21 @@ USA.
 	  vector-8b-find-previous-char-ci
 	  vector-8b-ref
 	  vector-8b-set!
+	  xstring-fill!
 	  xstring-length
 	  xstring-move!
+	  xstring-ref
+	  xstring-set!
 	  xstring?
+	  xsubstring
+	  xsubstring-fill!
+	  xsubstring-find-next-char
+	  xsubstring-find-next-char-ci
+	  xsubstring-find-next-char-in-set
+	  xsubstring-find-previous-char
+	  xsubstring-find-previous-char-ci
+	  xsubstring-find-previous-char-in-set
 	  xsubstring-move!)
-  (export (runtime primitive-io)
-	  external-string-descriptor)
   (export (runtime generic-i/o-port)
 	  %substring-move!)
   (initialization (initialize-package!)))

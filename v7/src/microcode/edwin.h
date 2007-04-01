@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: edwin.h,v 1.13 2007/01/05 21:19:25 cph Exp $
+$Id: edwin.h,v 1.14 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,6 +30,9 @@ USA.
 
 #define GROUP_P VECTOR_P
 #define GROUP_TEXT(group) (VECTOR_REF ((group), 1))
+
+#define GROUP_TEXT_LOC(group, offset)					\
+  (((unsigned char *) (integer_to_ulong (GROUP_TEXT (group)))) + (offset))
 
 #define GROUP_GAP_START(group)						\
   (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((group), 2)))

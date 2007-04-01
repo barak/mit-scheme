@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: rgxprim.c,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: rgxprim.c,v 1.18 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -197,7 +197,7 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
   group = (ARG_REF (5));						\
   match_start = (arg_nonnegative_integer (6));				\
   match_end = (arg_nonnegative_integer (7));				\
-  text = (STRING_LOC ((GROUP_TEXT (group)), 0));			\
+  text = (GROUP_TEXT_LOC (group, 0));					\
   text_start = (MARK_INDEX (GROUP_START_MARK (group)));			\
   text_end = (MARK_INDEX (GROUP_END_MARK (group)));			\
   gap_start = (GROUP_GAP_START (group));				\

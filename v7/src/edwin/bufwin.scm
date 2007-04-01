@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufwin.scm,v 1.318 2007/01/05 21:19:23 cph Exp $
+$Id: bufwin.scm,v 1.319 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -631,21 +631,21 @@ USA.
 
 (define (%window-line-start-index? window index)
   (or (%window-group-start-index? window index)
-      (char=? (string-ref (group-text (%window-group window))
-			  (fix:- (group-index->position-integrable
-				  (%window-group window)
-				  index
-				  #f)
-				 1))
+      (char=? (xstring-ref (group-text (%window-group window))
+			   (fix:- (group-index->position-integrable
+				   (%window-group window)
+				   index
+				   #f)
+				  1))
 	      #\newline)))
 
 (define (%window-line-end-index? window index)
   (or (%window-group-end-index? window index)
-      (char=? (string-ref (group-text (%window-group window))
-			  (group-index->position-integrable
-			   (%window-group window)
-			   index
-			   #t))
+      (char=? (xstring-ref (group-text (%window-group window))
+			   (group-index->position-integrable
+			    (%window-group window)
+			    index
+			    #t))
 	      #\newline)))
 
 (define (clip-mark-to-display window mark)

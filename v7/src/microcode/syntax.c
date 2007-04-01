@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.37 2007/01/05 21:19:25 cph Exp $
+$Id: syntax.c,v 1.38 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -220,7 +220,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   syntax_table = (ARG_REF (1));						\
   CHECK_ARG (2, GROUP_P);						\
   group = (ARG_REF (2));						\
-  first_char = (STRING_LOC ((GROUP_TEXT (group)), 0));			\
+  first_char = (GROUP_TEXT_LOC (group, 0));				\
   start = (first_char + (arg_nonnegative_integer (3)));			\
   end = (first_char + (arg_nonnegative_integer (4)));			\
   gap_start = (first_char + (GROUP_GAP_START (group)));			\
