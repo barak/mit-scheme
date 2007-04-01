@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.63 2007/01/05 21:19:28 cph Exp $
+$Id: string.scm,v 14.64 2007/04/01 17:51:33 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,6 +44,7 @@ USA.
 ;;;; Primitives
 
 (define-primitives
+  read-byte-from-memory
   set-string-length!
   set-string-maximum-length!
   string-allocate
@@ -56,7 +57,9 @@ USA.
   substring-move-left!
   substring-move-right!
   vector-8b-ref
-  vector-8b-set!)
+  vector-8b-set!
+  write-byte-to-memory
+  )
 
 (define-integrable (vector-8b-fill! string start end ascii)
   (substring-fill! string start end (ascii->char ascii)))
@@ -1417,6 +1420,26 @@ USA.
 	(else
 	 (error:wrong-type-argument xstring "xstring" 'XSTRING-LENGTH))))
 
+(define (xstring-ref xstring index)
+  (cond ((external-string? xstring)
+	 (ascii->char
+	  (read-byte-from-memory
+	   (+ (external-string-descriptor xstring) index))))
+	((string? xstring)
+	 (string-ref xstring index))
+	(else
+	 (error:wrong-type-argument xstring "xstring" 'XSTRING-REF))))
+
+(define (xstring-set! xstring index char)
+  (cond ((external-string? xstring)
+	 (write-byte-to-memory
+	  (char->ascii char)
+	  (+ (external-string-descriptor xstring) index)))
+	((string? xstring)
+	 (string-set! xstring index char))
+	(else
+	 (error:wrong-type-argument xstring "xstring" 'XSTRING-SET!))))
+
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
 
@@ -1432,6 +1455,82 @@ USA.
 	  ((> start2 start1)
 	   (substring-move-right! (deref xstring1) start1 end1
 				  (deref xstring2) start2)))))
+
+(define (xsubstring xstring start end)
+  (guarantee-xsubstring xstring start end 'XSUBSTRING)
+  (let ((string (make-string (fix:- end start))))
+    (xsubstring-move! xstring start end string 0)
+    string))
+
+(define (xstring-fill! xstring char)
+  (cond ((external-string? xstring)
+	 (external-substring-fill! (external-string-descriptor xstring)
+				   0
+				   (external-string-length xstring)
+				   char))
+	((string? xstring)
+	 (string-fill! xstring char))
+	(else
+	 (error:wrong-type-argument xstring "xstring" 'XSTRING-FILL!))))
+
+(define (xsubstring-fill! xstring start end char)
+  (cond ((external-string? xstring)
+	 (external-substring-fill! (external-string-descriptor xstring)
+				   start
+				   end
+				   char))
+	((string? xstring)
+	 (substring-fill! xstring start end char))
+	(else
+	 (error:wrong-type-argument xstring "xstring" 'XSTRING-FILL!))))
+
+(define-integrable (external-substring-fill! descriptor start end char)
+  ((ucode-primitive VECTOR-8B-FILL!) descriptor start end (char->ascii char)))
+
+(define-integrable (xsubstring-find-char xstring start end datum finder caller)
+  (guarantee-xsubstring xstring start end caller)
+  (cond ((external-string? xstring)
+	 (finder (external-string-descriptor xstring) start end datum))
+	((string? xstring)
+	 (finder xstring start end datum))
+	(else
+	 (error:wrong-type-argument xstring "xstring" caller))))
+
+(define (xsubstring-find-next-char xstring start end char)
+  (guarantee-char char 'XSUBSTRING-FIND-NEXT-CHAR)
+  (xsubstring-find-char xstring start end (char->ascii char)
+			(ucode-primitive VECTOR-8B-FIND-NEXT-CHAR)
+			'XSUBSTRING-FIND-NEXT-CHAR))
+
+(define (xsubstring-find-next-char-ci xstring start end char)
+  (guarantee-char char 'XSUBSTRING-FIND-NEXT-CHAR-CI)
+  (xsubstring-find-char xstring start end (char->ascii char)
+			(ucode-primitive VECTOR-8B-FIND-NEXT-CHAR-CI)
+			'XSUBSTRING-FIND-NEXT-CHAR-CI))
+
+(define (xsubstring-find-next-char-in-set xstring start end char-set)
+  (guarantee-char-set char-set 'XSUBSTRING-FIND-NEXT-CHAR-IN-SET)
+  (xsubstring-find-char xstring start end (char-set-table char-set)
+			(ucode-primitive SUBSTRING-FIND-NEXT-CHAR-IN-SET)
+			'XSUBSTRING-FIND-NEXT-CHAR-IN-SET))
+
+(define (xsubstring-find-previous-char xstring start end char)
+  (guarantee-char char 'XSUBSTRING-FIND-PREVIOUS-CHAR)
+  (xsubstring-find-char xstring start end (char->ascii char)
+			(ucode-primitive VECTOR-8B-FIND-PREVIOUS-CHAR)
+			'XSUBSTRING-FIND-PREVIOUS-CHAR))
+
+(define (xsubstring-find-previous-char-ci xstring start end char)
+  (guarantee-char char 'XSUBSTRING-FIND-PREVIOUS-CHAR-CI)
+  (xsubstring-find-char xstring start end (char->ascii char)
+			(ucode-primitive VECTOR-8B-FIND-PREVIOUS-CHAR-CI)
+			'XSUBSTRING-FIND-PREVIOUS-CHAR-CI))
+
+(define (xsubstring-find-previous-char-in-set xstring start end char-set)
+  (guarantee-char-set char-set 'XSUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
+  (xsubstring-find-char xstring start end (char-set-table char-set)
+			(ucode-primitive SUBSTRING-FIND-PREVIOUS-CHAR-IN-SET)
+			'XSUBSTRING-FIND-PREVIOUS-CHAR-IN-SET))
 
 ;;;; Guarantors
 ;;
@@ -1469,6 +1568,19 @@ USA.
 (define (guarantee-substring/fail string start end caller)
   (guarantee-string string caller)
   (guarantee-substring-end-index end (string-length string) caller)
+  (guarantee-substring-start-index start end caller))
+
+(define-integrable (guarantee-xsubstring xstring start end caller)
+  (if (not (and (xstring? xstring)
+		(index-fixnum? start)
+		(index-fixnum? end)
+		(fix:<= start end)
+		(Fix:<= end (xstring-length xstring))))
+      (guarantee-xsubstring/fail xstring start end caller)))
+
+(define (guarantee-xsubstring/fail xstring start end caller)
+  (guarantee-xstring xstring caller)
+  (guarantee-substring-end-index end (xstring-length xstring) caller)
   (guarantee-substring-start-index start end caller))
 
 (define-integrable (guarantee-substring-end-index end length caller)
