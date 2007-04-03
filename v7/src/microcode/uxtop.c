@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.34 2007/01/12 03:45:55 cph Exp $
+$Id: uxtop.c,v 1.35 2007/04/03 03:58:58 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -303,7 +303,10 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 CONST char *
 DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
 {
-  return (strerror (syserr_to_error_code ((enum syserr_names) syserr)));
+  return
+    ((syserr == 0)
+     ? 0
+     : (strerror (syserr_to_error_code ((enum syserr_names) syserr))));
 }
 
 #else /* not HAVE_STRERROR */
