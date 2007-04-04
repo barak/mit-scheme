@@ -1,4 +1,0 @@
-#!/bin/sh
-grep \^DECLARE_COMPILED_CODE "${@}" | sed -e 's/.*:/  /'
-grep \^DECLARE_COMPILED_DATA "${@}" | sed -e 's/.*:/  /'
-grep \^DECLARE_DATA_OBJECT "${@}" | sed -e 's/.*:/  /'

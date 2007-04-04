@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.12 2007/01/12 06:19:49 cph Exp $
+# $Id: Clean.sh,v 1.13 2007/04/04 05:08:18 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -36,17 +36,26 @@ export TOPDIR
 CLEANSH=${TOPDIR}/etc/Clean.sh
 "${CLEANSH}" "${1}" rm-pkg
 
+case "${1}" in
+c-clean)
+    SUBDIR_CMDS="rm-bin rm-com-sans-c"
+    ;;
+*)
+    SUBDIR_CMDS="rm-bin rm-com"
+    ;;
+esac
+
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
     if [ -d "${SUBDIR}" ]; then
 	echo "making ${1} in ${SUBDIR}"
-	(cd "${SUBDIR}" && "${CLEANSH}" "${1}" rm-bin rm-com)
+	(cd "${SUBDIR}" && "${CLEANSH}" "${1}" "${SUBDIR_CMDS}")
     fi
 done
 
 case "${1}" in
-distclean | maintainer-clean)
+distclean | maintainer-clean | c-clean)
     rm -f machine compiler.cbf compiler.pkg compiler.sf
-    "${CLEANSH}" "${1}" rm-bin rm-com
+    "${CLEANSH}" "${1}" "${SUBDIR_CMDS}"
     ;;
 esac
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: autold.scm,v 1.68 2007/01/05 21:19:23 cph Exp $
+$Id: autold.scm,v 1.69 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -151,6 +151,33 @@ USA.
 	    (hook)
 	    (loop))))
     (if entry (loop))))
+
+(define (load-library library)
+  (for-each (lambda (entry)
+	      (let ((file (car entry))
+		    (environment (->environment (cadr entry)))
+		    (purify? (or (null? (cddr entry)) (caddr entry))))
+		(cond (((let-syntax ((ucode-primitive
+				      (sc-macro-transformer
+				       (lambda (form environment)
+					 environment
+					 (apply make-primitive-procedure
+						(cdr form))))))
+			  (ucode-primitive initialize-c-compiled-block 1))
+			(string-append "edwin_" file))
+		       => (lambda (obj)
+			    (if purify? (purify obj))
+			    (scode-eval obj environment)))
+		      (else
+		       (load (merge-pathnames file (edwin-binary-directory))
+			     environment
+			     'DEFAULT
+			     purify?)))))
+	    (cdr library))
+  (if (not (memq (car library) loaded-libraries))
+      (set! loaded-libraries
+	    (cons (car library) loaded-libraries)))
+  (run-library-load-hooks! (car library)))
 
 ;;;; Loading
 
@@ -176,41 +203,27 @@ Second arg is prefix arg when called interactively."
   (let ((force? (if (default-object? force?) #f force?))
 	(interactive? (if (default-object? interactive?) #f interactive?)))
     (let ((do-it
-	   (lambda (library)
-	     (let ((directory (edwin-binary-directory)))
-	       (for-each
-		(lambda (entry)
-		  (load (merge-pathnames (car entry) directory)
-			(cadr entry)
-			'DEFAULT
-			(or (null? (cddr entry)) (caddr entry))))
-		(cdr library)))
-	     (if (not (memq (car library) loaded-libraries))
-		 (set! loaded-libraries
-		       (cons (car library) loaded-libraries)))
-	     (run-library-load-hooks! (car library)))))
-      (let ((do-it
-	     (lambda ()
-	       (let ((library (assq name known-libraries)))
-		 (if (not library)
-		     (error "Unknown library name:" name))
-		 (if interactive?
-		     (with-output-to-transcript-buffer
-		      (lambda ()
-			(bind-condition-handler (list condition-type:error)
-			    evaluation-error-handler
-			  (lambda ()
-			    (fluid-let ((load/suppress-loading-message? #t))
-			      ((message-wrapper #f "Loading " (car library))
-			       (lambda ()
-				 (do-it library))))))))
-		     (do-it library))))))
-	(cond ((not (library-loaded? name))
-	       (do-it))
-	      ((not force?)
-	       (if interactive? (message "Library already loaded: " name)))
-	      ((not (eq? force? 'NO-WARN))
-	       (do-it)))))))
+	   (lambda ()
+	     (let ((library (assq name known-libraries)))
+	       (if (not library)
+		   (error "Unknown library name:" name))
+	       (if interactive?
+		   (with-output-to-transcript-buffer
+		       (lambda ()
+			 (bind-condition-handler (list condition-type:error)
+			     evaluation-error-handler
+			   (lambda ()
+			     (fluid-let ((load/suppress-loading-message? #t))
+			       ((message-wrapper #f "Loading " (car library))
+				(lambda ()
+				  (load-library library))))))))
+		   (load-library library))))))
+      (cond ((not (library-loaded? name))
+	     (do-it))
+	    ((not force?)
+	     (if interactive? (message "Library already loaded: " name)))
+	    ((not (eq? force? 'NO-WARN))
+	     (do-it))))))
 
 (define-command load-file
   "Load the Edwin binary file FILENAME.

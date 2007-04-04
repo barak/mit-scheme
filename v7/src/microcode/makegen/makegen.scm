@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.15 2007/01/12 02:57:10 cph Exp $
+$Id: makegen.scm,v 1.16 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,6 +33,7 @@ USA.
 (load-option 'SYNCHRONOUS-SUBPROCESS)
 
 (define (generate-makefile)
+  (generate-liarc-files)
   (let ((file-lists
 	 (map (lambda (pathname)
 		(cons (pathname-name pathname)
@@ -62,25 +63,7 @@ USA.
 			  (loop
 			   (if (char=? #\newline char)
 			       0
-			       (+ column 1)))))))))))))
-  (call-with-output-file "liarc-rules-1"
-    (lambda (output)
-      (write-header output)
-      (write-rule "LIARC_HEAD_FILES"
-		  "="
-		  (cddr (generate-rule "liarc-gendeps.c"))
-		  output)
-      (newline output)
-      (newline output)
-      (let ((files
-	     (cons "utabmd"
-		   (enumerate-directories
-		    (read-file "makegen/dirs-liarc.scm")))))
-	(write-rule "LIARC_SOURCES" "=" (files+suffix files ".c") output)
-	(newline output)
-	(newline output)
-	(write-rule "LIARC_OBJECTS" "=" (files+suffix files ".o") output)
-	(newline output)))))
+			       (+ column 1))))))))))))))
 
 (define (write-header output)
   (write-string "# This file automatically generated at " output)
@@ -89,6 +72,138 @@ USA.
   (write-string "." output)
   (newline output)
   (newline output))
+
+(define (generate-liarc-files)
+  (generate-liarc-variables)
+  (generate-liarc-rules))
+
+(define (generate-liarc-variables)
+  (call-with-output-file "liarc-vars"
+    (lambda (output)
+      (write-header output)
+      (write-rule "LIARC_HEAD_FILES"
+		  "="
+		  (cddr (generate-rule "liarc-gendeps.c"))
+		  output)
+      (newline output)
+      (newline output)
+      (write-rule "LIARC_BOOT_BUNDLES" "=" '("sf+compiler.so") output)
+      (newline output)
+      (write-rule "LIARC_INSTALL" "=" '("install-liarc-bundles") output)
+      (newline output)
+      (generate-liarc-static-variables output)
+      (generate-liarc-dynamic-variables output))))
+
+(define (generate-liarc-rules)
+  (call-with-output-file "liarc-rules"
+    (lambda (output)
+      (write-header output)
+      (generate-liarc-static-rules output)
+      (generate-liarc-dynamic-rules output))))
+
+(define (generate-liarc-static-variables output)
+  (let ((files (liarc-static-files)))
+    (write-rule "LIARC_SOURCES" "=" (files+suffix files ".c") output)
+    (newline output)
+    (newline output)
+    (write-rule "LIARC_OBJECTS" "=" (files+suffix files ".o") output)
+    (newline output)
+    (newline output)))
+
+(define (generate-liarc-static-rules output)
+  (call-with-input-file "makegen/liarc-base-rules"
+    (lambda (input)
+      (let loop ()
+	(let ((char (read-char input)))
+	  (if (not (eof-object? char))
+	      (begin (write-char char output)
+		     (loop)))))))
+  (newline output))
+
+(define (generate-liarc-dynamic-variables output)
+  (let ((bundles (liarc-dynamic-bundles)))
+    (write-rule "LIARC_BUNDLE_CLEAN_FILES"
+		"="
+		(append-map (lambda (bundle)
+			      (map (lambda (suffix)
+				     (string-append (car bundle) suffix))
+				   '("-init.h" "-init.c" "-init.o" ".so")))
+			    bundles)
+		output)
+    (newline output)
+    (write-rule "LIARC_BUNDLES"
+		"="
+		;; Adding "all" to this list is a kludge for debugging
+		;; info.  Exactly what this kludge accomplishes I have
+		;; totally forgotten.
+		(cons "all"
+		      (map (lambda (bundle)
+			     (string-append (car bundle) ".so"))
+			   (liarc-dynamic-bundles)))
+		output)))
+
+(define (generate-liarc-dynamic-rules output)
+  (for-each (lambda (bundle)
+	      (let ((files
+		     (append (append-map package-description-files
+					 (cadr bundle))
+			     (enumerate-directories (cddr bundle)))))
+		(write-rule (string-append (car bundle) ".so")
+			    ":"
+			    (files+suffix files ".o")
+			    output)
+		(newline output)
+		(let ((write-command
+		       (lambda (prefix suffix)
+			 (write-char #\tab output)
+			 (write-string prefix output)
+			 (write-string (car bundle) output)
+			 (write-string suffix output)
+			 (newline output))))
+		  (write-command "$(SHELL) ../etc/c-bundle.sh library "
+				 "-init $(^:.o=.c)")
+		  (write-command "$(COMPILE_MODULE) -c " "-init.c")
+		  (write-command "$(LINK_MODULE) " "-init.o $^")
+		  (write-command "rm -f " "-init.h")
+		  (write-command "rm -f " "-init.c")
+		  (write-command "rm -f " "-init.o"))
+		(newline output)))
+	    (liarc-dynamic-bundles)))
+
+(define (liarc-static-files)
+  (append '("utabmd")
+	  (append-map package-description-files
+		      (read-file "makegen/pkds-liarc.scm"))
+	  (enumerate-directories (read-file "makegen/dirs-liarc.scm"))))
+
+(define (liarc-dynamic-bundles)
+  (read-file "makegen/bundles-liarc.scm"))
+
+(define (enumerate-directories specs)
+  (map (lambda (path)
+	 (enough-namestring (pathname-new-type path #f)))
+       (append-map (lambda (spec)
+		     (let ((dir (pathname-as-directory (car spec))))
+		       (if (file-directory? dir)
+			   (delete-matching-items
+			       (directory-read (merge-pathnames "*.scm" dir))
+			     (lambda (path)
+			       (member (pathname-name path) (cdr spec))))
+			   (begin
+			     (warn "Can't read directory:" dir)
+			     '()))))
+		   specs)))
+
+(define os-pkd-suffixes '("unx" "w32" "os2"))
+
+(define (package-description-files descriptor)
+  (receive (filename suffixes)
+      (if (pair? descriptor)
+	  (values (car descriptor) (cdr descriptor))
+	  (values descriptor os-pkd-suffixes))
+    (map (lambda (suffix)
+	   (string-append filename "-" suffix))
+	 suffixes)))
 
 (define (interpret-command command column file-lists output)
   (let ((malformed (lambda () (error "Malformed command:" command))))
@@ -119,21 +234,6 @@ USA.
 	 (write-dependencies file-lists "Makefile.deps" output))
 	(else
 	 (error "Unknown command:" command)))))))
-
-(define (enumerate-directories specs)
-  (map (lambda (path)
-	 (enough-namestring (pathname-new-type path #f)))
-       (append-map (lambda (spec)
-		     (let ((dir (pathname-as-directory (car spec))))
-		       (if (file-directory? dir)
-			   (delete-matching-items
-			       (directory-read (merge-pathnames "*.scm" dir))
-			     (lambda (path)
-			       (member (pathname-name path) (cdr spec))))
-			   (begin
-			     (warn "Can't read directory:" dir)
-			     '()))))
-		   specs)))
 
 (define (files+suffix files suffix)
   (map (lambda (file)

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.6 2007/01/12 06:19:45 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.7 2007/04/04 05:08:18 riastradh Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -31,6 +31,24 @@ USA.
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
+: ${enable_native_code='yes'}
+
+case ${enable_native_code} in
+c)
+    COMPILE_SCRIPT=c-compile.sh
+    BUILD_BANDS_SCRIPT=c-build-bands.sh
+    INSTALL_COM=:
+    ;;
+*)
+    COMPILE_SCRIPT=compile.sh
+    BUILD_BANDS_SCRIPT=build-bands.sh
+    INSTALL_COM='$(INSTALL_DATA)'
+    ;;
+esac
+
+AC_SUBST(COMPILE_SCRIPT)
+AC_SUBST(BUILD_BANDS_SCRIPT)
+AC_SUBST(INSTALL_COM)
 
 AC_PROG_INSTALL
 AC_PROG_LN_S

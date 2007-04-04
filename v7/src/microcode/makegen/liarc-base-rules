@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: liarc-rules-2,v 1.2 2007/01/12 02:57:10 cph Exp $
+# $Id: liarc-base-rules,v 1.1 2007/04/04 05:08:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -30,6 +30,17 @@ cmpauxmd.o: cmpauxmd.c $(LIARC_HEAD_FILES) prims.h bignum.h bitstr.h avltree.h
 compinit.o: compinit.c compinit.h $(LIARC_HEAD_FILES)
 unstackify.o: unstackify.c stackops.h $(LIARC_HEAD_FILES)
 
-compinit.h: $(LIARC_SOURCES) Makefile
+compinit.c compinit.h: $(LIARC_SOURCES) Makefile
 	rm -f $@
-	./make-compinit $(LIARC_SOURCES) > $@
+	sh ../etc/c-bundle.sh static compinit $(LIARC_SOURCES)
+
+install-liarc-bundles: $(LIARC_BUNDLES)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/shared
+	@for p in $(LIARC_BUNDLES); do \
+	    if test -f $$p; then \
+		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/shared/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/shared/.; \
+	    fi; \
+	done
+
+.PHONY: install-liarc-bundles

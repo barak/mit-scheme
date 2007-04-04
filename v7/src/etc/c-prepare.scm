@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: script.scm,v 1.4 2007/01/05 21:19:25 cph Exp $
+$Id: c-prepare.scm,v 1.1 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,13 +25,15 @@ USA.
 
 |#
 
-;;;; Program to compile MIT/GNU Scheme
-
-;;; This is used to compile a part of the system written in Scheme.
-;;; This is the part of the system statically linked into the
-;;; microcode when using the C back end of the compiler.
+;;; This compiles the Scheme code that will be statically linked to
+;;; the microcode when using the C back end.
 
 (fluid-let ((compiler:invoke-c-compiler? #f))
+  (define (compile-package-descriptions subsystem)
+    (for-each (lambda (os-suffix)
+		(cbf (pathname-new-type (string-append subsystem "-" os-suffix)
+					"pkd")))
+	      '("unx" "w32" "os2")))
   (with-working-directory-pathname "microcode"
     (lambda ()
       (if (or (not (file-exists? "utabmd.bin"))
@@ -39,14 +41,19 @@ USA.
 		 (file-modification-time-indirect "utabmd.bin")))
 	  (sf "utabmd"))
       (cbf "utabmd")))
-  (for-each (lambda (dir)
-	      (with-working-directory-pathname dir
+  (for-each (lambda (subsystem)
+	      (with-working-directory-pathname subsystem
 		(lambda ()
-		  (load (string-append dir ".sf"))
-		  (load (string-append dir ".cbf"))
-		  (cbf (string-append dir "-unx.pkd")))))
-	    '("runtime" "sf" "cref" "compiler"))
+		  (load (pathname-new-type subsystem "sf"))
+		  (load (pathname-new-type subsystem "cbf"))
+		  (compile-package-descriptions subsystem))))
+	    '("runtime" "sf" "cref"))
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.sf")
+      (load "compiler.cbf")
+      (cbf "compiler-unx.pkd")))
   (with-working-directory-pathname "star-parser"
     (lambda ()
-      (load "compile.scm")
-      (cbf "parser-unx.pkd"))))
+      (load "compile")
+      (compile-package-descriptions "parser"))))

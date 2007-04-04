@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.16 2007/01/05 21:19:20 cph Exp $
+# $Id: Setup.sh,v 1.17 2007/04/04 05:08:18 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -47,6 +47,12 @@ maybe_mkdir lib/edwin/etc
 maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
 maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
+
+# lib/shared
+maybe_mkdir lib/shared
+for BUNDLE in sf+compiler edwin 6001 cref imail sos ssp xdoc xml; do
+    maybe_link "lib/shared/${BUNDLE}.so" "../../microcode/${BUNDLE}.so"
+done
 
 for SUBDIR in 6001 compiler cref edwin imail rcs runtime runtime-check \
               sf sos ssp star-parser win32 xdoc xml microcode; do

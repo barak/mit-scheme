@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.16 2007/01/05 21:19:25 cph Exp $
+# $Id: Clean.sh,v 1.17 2007/04/04 05:08:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -28,7 +28,14 @@
 
 if [ $# -eq 1 ]; then
     COMMAND="${1}"
-    KEYWORDS="rm-bin rm-com rm-pkg"
+    case "${COMMAND}" in
+    c-clean)
+	KEYWORDS="rm-bin rm-com-sans-c rm-pkg"
+	;;
+    *)
+	KEYWORDS="rm-bin rm-com rm-pkg"
+	;;
+    esac
 elif [ $# -ge 2 ]; then
     COMMAND="${1}"
     shift
@@ -47,7 +54,7 @@ mostlyclean)
 clean)
     FULL="yes"
     ;;
-distclean)
+distclean | c-clean)
     FULL="yes"
     DIST="yes"
     ;;
@@ -90,13 +97,21 @@ for KEYWORD in ${KEYWORDS}; do
 	echo "rm -f *.com *.bci *.c *.o *.so *.sl *.dylib"
 	rm -f *.com *.bci *.c *.o *.so *.sl *.dylib
 	;;
+    rm-com-sans-c)
+	echo "rm -f *.com *.bci *.o *.so *.sl *.dylib"
+	rm -f *.com *.bci *.o *.so *.sl *.dylib
+        ;;
     rm-old-pkg)
 	echo "rm -f *.bco *.bld *.glo *.con *.ldr"
 	rm -f *.bco *.bld *.glo *.con *.ldr
 	;;
     rm-pkg)
-	echo "rm -f *-unx.* *-w32.* *-os2.*"
-	rm -f *-unx.* *-w32.* *-os2.*
+	echo "rm -f *-unx.crf *-unx.fre *-unx.pkd"
+	rm -f *-unx.crf *-unx.fre *-unx.pkd
+	echo "rm -f *-w32.crf *-w32.fre *-w32.pkd"
+	rm -f *-w32.crf *-w32.fre *-w32.pkd
+	echo "rm -f *-os2.crf *-os2.fre *-os2.pkd"
+	rm -f *-os2.crf *-os2.fre *-os2.pkd
 	;;
     esac
 done

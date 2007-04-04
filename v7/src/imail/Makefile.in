@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.8 2007/01/05 21:19:25 cph Exp $
+# $Id: Makefile.in,v 1.9 2007/04/04 05:08:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -59,6 +59,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_COM = @INSTALL_COM@
 
 LN_S = @LN_S@
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -80,7 +81,10 @@ tags TAGS:
 
 install:
 	$(mkinstalldirs) $(DESTDIR)$(IMAIL_DIR)
-	$(INSTALL_DATA) *.com $(DESTDIR)$(IMAIL_DIR)/.
+	@for F in *.com; do \
+	    echo "$(INSTALL_COM) $${F} $(DESTDIR)$(IMAIL_DIR)/.";\
+	    $(INSTALL_COM) $${F} $(DESTDIR)$(IMAIL_DIR)/.;\
+	done
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(IMAIL_DIR)/.
 	$(INSTALL_DATA) imail-unx.pkd $(DESTDIR)$(IMAIL_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(IMAIL_DIR)/.

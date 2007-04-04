@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# $Id: make-c-files,v 1.1 2007/04/04 05:08:18 riastradh Exp $
+#
+# Copyright 2007 Massachusetts Institute of Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+set -e
+
+if [ $# -gt 3 ]; then
+    echo "usage: ${0} [TYPE [VERSION [DESTINATION]]]"
+    exit 1
+fi
+
+TYPE="${1:-std}"
+VERSION="${2}"
+DESTINATION="${3}"
+
+case "${TYPE}" in
+(6001 | all | std)
+    ;;
+(snapshot)
+    [ "${VERSION}" ] || VERSION="snapshot"
+    ;;
+(*)
+    echo "Unknown distribution type: ${TYPE}"
+    echo "Valid types: std all 6001 snapshot"
+    exit 1
+    ;;
+esac
+
+if [ "${VERSION}" = "snapshot" ]; then
+    VERSION=$(date +%Y%m%d)
+fi
+
+DIST_DIR="/scheme/v7/dist"
+
+. "${DIST_DIR}/release-prefix"
+
+TL_DIR="$(pwd)"
+
+C_DIR_REL="$(get_release_prefix "${VERSION}")"
+C_DIR="${TL_DIR}/${C_DIR_REL}"
+SRC_FILE="${SRC_FILE}.tar.gz"
+STAMP_C="${TL_DIR}/stamp-c"
+
+if [ ! -f "${SRC_FILE}" ]; then
+    echo "No source file: ${SRC_FILE}"
+    exit 1
+fi
+
+if [ ! -f "${STAMP_BUILD}" ]; then
+    rm -rf "${C_DIR}"
+
+    tar xzf "${SRC_FILE}"
+
+    cd "${C_DIR}/src"
+    ./configure --enable-native-code=c
+    make c
+    make c-clean
+fi
+
+tarfile="${C_DIR}-c.tar.gz"
+zipfile="${C_DIR}-c.zip"
+
+rm -f "${tarfile}"
+rm -f "${zipfile}"
+
+tar cvzf "${tarfile}" "${C_DIR}"
+
+for S in $(find ${C_DIR} -type l); do
+    [ ! -r "${S}" ] && rm -f "${S}"
+done
+
+zip -rl "${zipfile}" "${C_DIR}"
+chmod -w "${zipfile}"
+
+rm -rf "${C_DIR}"

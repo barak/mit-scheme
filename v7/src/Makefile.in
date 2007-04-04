@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.28 2007/01/05 21:19:20 cph Exp $
+# $Id: Makefile.in,v 1.29 2007/04/04 05:08:18 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -68,11 +68,24 @@ INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos ssp star-parser \
 AUXDIR = @AUXDIR@
 EDETC = $(AUXDIR)/edwin/etc
 
+COMPILE_SCRIPT = @COMPILE_SCRIPT@
+BUILD_BANDS_SCRIPT = @BUILD_BANDS_SCRIPT@
 
 all:
 	( cd microcode && $(MAKE) all )
-	$(srcdir)/etc/compile.sh $(srcdir)
-	$(srcdir)/etc/build-bands.sh
+	$(srcdir)/etc/$(COMPILE_SCRIPT) $(srcdir)
+	( cd microcode && $(MAKE) liarc-bundles )
+	$(srcdir)/etc/$(BUILD_BANDS_SCRIPT)
+
+c: boot-compiler.com
+	$(srcdir)/etc/c-prepare.sh
+
+boot-compiler.com:
+	$(srcdir)/etc/c-boot-compiler.sh
+
+c-clean:
+	-rm -f boot-compiler.com
+	$(srcdir)/Clean.sh $@ $(SUBDIRS)
 
 mostlyclean clean distclean maintainer-clean:
 	$(srcdir)/Clean.sh $@ $(SUBDIRS)
@@ -94,3 +107,4 @@ install:
 	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
 
 .PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
+.PHONY: c c-clean

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dirs-liarc.scm,v 1.3 2007/04/04 05:08:19 riastradh Exp $
+$Id: pkds-liarc.scm,v 1.1 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,9 +25,9 @@ USA.
 
 |#
 
-;;;; Directories holding statically-linked C files.
+;;;; Pathnames of package description files
 
-;;; Format is a list with the directory in the car and a list of
-;;; exclusions in the cdr.
+;;; Format is either the filename of the package description file, or
+;;; a pair of that and a list of all of the OS types we want.
 
-("../runtime")
+"../runtime/runtime"

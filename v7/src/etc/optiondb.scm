@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: optiondb.scm,v 1.18 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,25 +52,31 @@ USA.
 		    (pathname-new-type name (car type)))))))))
     (lambda ()
       (if (not (name->package package-name))
-	  (let dir-loop ((dirs dirs))
-	    (if (pair? dirs)
-		(let ((directory
-		       (merge-pathnames place
-					(pathname-as-directory (car dirs)))))
-		  (if (file-directory? directory)
-		      (let file-loop ((files files))
-			(if (pair? files)
-			    (if (test
-				 (merge-pathnames
-				  (car files)
-				  (pathname-as-directory directory)))
-				(with-working-directory-pathname directory
-				  (lambda ()
-				    (load (car files) '(RUNTIME))))
-				(file-loop (cdr files)))
-			    (dir-loop (cdr dirs))))
-		      (dir-loop (cdr dirs))))
-		(error "Unable to find package directory:" place)))))))
+	  (begin
+	    (ignore-errors
+	     (lambda ()
+	       (load (merge-pathnames
+		      place
+		      (system-library-directory-pathname "shared")))))
+	    (let dir-loop ((dirs dirs))
+	      (if (pair? dirs)
+		  (let ((directory
+			 (merge-pathnames place
+					  (pathname-as-directory (car dirs)))))
+		    (if (file-directory? directory)
+			(let file-loop ((files files))
+			  (if (pair? files)
+			      (if (test
+				   (merge-pathnames
+				    (car files)
+				    (pathname-as-directory directory)))
+				  (with-working-directory-pathname directory
+				    (lambda ()
+				      (load (car files) '(RUNTIME))))
+				  (file-loop (cdr files)))
+			      (dir-loop (cdr dirs))))
+			(dir-loop (cdr dirs))))
+		  (error "Unable to find package directory:" place))))))))
 
 (define-load-option 'EDWIN
   (guarded-system-loader '(edwin) "edwin"))

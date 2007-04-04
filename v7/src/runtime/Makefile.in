@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.12 2007/01/05 21:19:27 cph Exp $
+# $Id: Makefile.in,v 1.13 2007/04/04 05:08:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -59,6 +59,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_COM = @INSTALL_COM@
 
 LN_S = @LN_S@
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -87,8 +88,8 @@ install:
 	-rm -rf $(DESTDIR)$(RODIR)
 	$(mkinstalldirs) $(DESTDIR)$(RODIR)
 	@for F in $(RUNOPTS); do \
-	    echo "$(INSTALL_DATA) $${F}.com $(DESTDIR)$(RODIR)/.";\
-	    $(INSTALL_DATA) $${F}.com $(DESTDIR)$(RODIR)/.;\
+	    echo "$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
+	    $(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.;\
 	done
 	@for F in $(RUNOPTS); do \
 	    REL="../SRC/runtime/$${F}.bci";\

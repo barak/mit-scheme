@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.50 2007/01/05 21:19:28 cph Exp $
+$Id: packag.scm,v 14.51 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -213,7 +213,7 @@ USA.
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
-
+
 (define (package-set-pathname pathname #!optional os-type)
   (make-pathname (pathname-host pathname)
 		 (pathname-device pathname)
@@ -242,11 +242,12 @@ USA.
 		(value (prim name)))
 	   (if (or (not value) load/suppress-loading-message?)
 	       value
-	       (let ((port (notification-output-port)))
-		 (fresh-line port)
-		 (write-string ";Initialized " port)
-		 (write name port)
-		 value))))))
+               (begin
+                 (write-notification-line
+                  (lambda (port)
+                    (write-string "Initialized " port)
+                    (write name port)))
+                 value))))))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))

@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.5 2007/01/05 21:19:29 cph Exp $
+# $Id: Makefile.in,v 1.6 2007/04/04 05:08:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -54,6 +54,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_COM = @INSTALL_COM@
 
 LN_S = @LN_S@
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -68,7 +69,10 @@ include ../Makefile.std
 
 install:
 	$(mkinstalldirs) $(DESTDIR)$(SSP_DIR)
-	$(INSTALL_DATA) *.com $(DESTDIR)$(SSP_DIR)/.
+	@for F in *.com; do \
+	    echo "$(INSTALL_COM) $${F} $(DESTDIR)$(SSP_DIR)/.";\
+	    $(INSTALL_COM) $${F} $(DESTDIR)$(SSP_DIR)/.;\
+	done
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) ssp-unx.pkd $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(SSP_DIR)/.

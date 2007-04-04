@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.10 2007/01/05 21:19:20 cph Exp $
+# $Id: Clean.sh,v 1.11 2007/04/04 05:08:18 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -33,6 +33,7 @@ fi
 
 COMMAND=$1
 shift
+SUBDIRS="$@"
 
 FULL=no
 DIST=no
@@ -43,7 +44,7 @@ mostlyclean)
 clean)
     FULL=yes
     ;;
-distclean)
+distclean | c-clean)
     FULL=yes
     DIST=yes
     ;;
@@ -73,7 +74,7 @@ if [ ${MAINTAINER} = yes ]; then
     rm -rf configure lib autom4te.cache
 fi
 
-for SUBDIR; do
+for SUBDIR in ${SUBDIRS}; do
     if test -x ${SUBDIR}/Clean.sh; then
 	echo "making ${COMMAND} in ${SUBDIR}"
 	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
