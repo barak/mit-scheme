@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.51 2007/04/04 05:08:19 riastradh Exp $
+$Id: packag.scm,v 14.52 2007/04/04 18:35:16 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -525,16 +525,13 @@ USA.
     (lambda (description)
       (let ((expressions (selector description)))
 	(if (fix:> (vector-length expressions) 0)
-	    (let ((name (load-description/name description))
-		  (port (notification-output-port)))
-	      (fresh-line port)
-	      (write-string ";" port)
-	      (write-string verb port)
-	      (write-string " package " port)
-	      (write name port)
-	      (for-each-vector-element expressions
-		(let ((environment (find-package-environment name)))
-		  (lambda (expression)
-		    (eval expression environment))))
-	      (write-string " -- done" port)
-	      (newline port)))))))
+	    (let ((name (load-description/name description)))
+	      (with-notification (lambda (port)
+				   (write-string verb port)
+				   (write-string " package " port)
+				   (write name port))
+		(lambda ()
+		  (for-each-vector-element expressions
+		    (let ((environment (find-package-environment name)))
+		      (lambda (expression)
+			(eval expression environment))))))))))))
