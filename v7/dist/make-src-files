@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.26 2007/01/20 03:50:06 cph Exp $
+# $Id: make-src-files,v 1.27 2007/04/04 05:33:47 riastradh Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -30,7 +30,9 @@ else
     exit 1
 fi
 
-INSTALL="install --preserve-timestamps"
+INSTALL="install"
+FOO=$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)
+[ -n "${FOO}" ] && INSTALL="${INSTALL} --preserve-timestamps"
 INSTALL_DATA="${INSTALL} -m 644"
 
 if [ "${VERSION}" = "snapshot" ]; then
