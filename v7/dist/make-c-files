@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-c-files,v 1.1 2007/04/04 05:08:18 riastradh Exp $
+# $Id: make-c-files,v 1.2 2007/04/04 06:43:48 riastradh Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -57,7 +57,7 @@ TL_DIR="$(pwd)"
 
 C_DIR_REL="$(get_release_prefix "${VERSION}")"
 C_DIR="${TL_DIR}/${C_DIR_REL}"
-SRC_FILE="${SRC_FILE}.tar.gz"
+SRC_FILE="${C_DIR}.tar.gz"
 STAMP_C="${TL_DIR}/stamp-c"
 
 if [ ! -f "${SRC_FILE}" ]; then
@@ -65,7 +65,7 @@ if [ ! -f "${SRC_FILE}" ]; then
     exit 1
 fi
 
-if [ ! -f "${STAMP_BUILD}" ]; then
+if [ ! -f "${STAMP_C}" ]; then
     rm -rf "${C_DIR}"
 
     tar xzf "${SRC_FILE}"
@@ -74,6 +74,8 @@ if [ ! -f "${STAMP_BUILD}" ]; then
     ./configure --enable-native-code=c
     make c
     make c-clean
+
+    touch "${STAMP_C}"
 fi
 
 tarfile="${C_DIR}-c.tar.gz"
@@ -82,13 +84,14 @@ zipfile="${C_DIR}-c.zip"
 rm -f "${tarfile}"
 rm -f "${zipfile}"
 
-tar cvzf "${tarfile}" "${C_DIR}"
+tar cvzf "${tarfile}" "${C_DIR_REL}"
 
+rm -rf "${C_DIR}/src/lib"
 for S in $(find ${C_DIR} -type l); do
     [ ! -r "${S}" ] && rm -f "${S}"
 done
 
-zip -rl "${zipfile}" "${C_DIR}"
+zip -rl "${zipfile}" "${C_DIR_REL}"
 chmod -w "${zipfile}"
 
 rm -rf "${C_DIR}"
