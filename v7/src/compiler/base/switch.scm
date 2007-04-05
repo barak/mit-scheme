@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.31 2007/01/05 21:19:20 cph Exp $
+$Id: switch.scm,v 4.32 2007/04/05 17:36:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -50,12 +50,12 @@ USA.
 (define compiler:generate-rtl-files? #f)
 (define compiler:generate-lap-files? #f)
 (define compiler:intersperse-rtl-in-lap? #t)
-(define compiler:generate-range-checks? #f)
-(define compiler:generate-type-checks? #f)
+(define compiler:generate-range-checks? #t)
+(define compiler:generate-type-checks? #t)
 (define compiler:generate-stack-checks? #t)
 (define compiler:open-code-flonum-checks? #f)
 (define compiler:use-multiclosures? #f)
-(define compiler:coalescing-constant-warnings? #t)
+(define compiler:coalescing-constant-warnings? #f)
 (define compiler:cross-compiling? #f)
 ;; This only works in the C back end, right now
 (define compiler:compress-top-level? #f)
