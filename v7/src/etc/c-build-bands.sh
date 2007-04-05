@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-build-bands.sh,v 1.1 2007/04/04 05:08:19 riastradh Exp $
+# $Id: c-build-bands.sh,v 1.2 2007/04/05 17:49:54 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -36,14 +36,3 @@ microcode/scheme --library lib --large <<EOF
 (load-option 'EDWIN)
 (disk-save "lib/edwin.com")
 EOF
-
-(
-    cd runtime-check
-    ../microcode/scheme --library ../lib --fasl runtime_make <<EOF
-(load "../microcode/edwin.so")
-(load-option 'EDWIN)
-(load "../microcode/6001.so")
-(load-option 'STUDENT)
-(disk-save "../lib/6001.com")
-EOF
-)

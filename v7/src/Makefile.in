@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.29 2007/04/04 05:08:18 riastradh Exp $
+# $Id: Makefile.in,v 1.30 2007/04/05 17:49:54 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -61,7 +61,7 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-SUBDIRS = 6001 compiler rcs runtime-check sf win32 $(INSTALLED_SUBDIRS)
+SUBDIRS = 6001 compiler rcs sf win32 $(INSTALLED_SUBDIRS)
 INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos ssp star-parser \
 	 xdoc xml
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.17 2007/04/04 05:08:18 riastradh Exp $
+# $Id: Setup.sh,v 1.18 2007/04/05 17:49:54 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -54,7 +54,7 @@ for BUNDLE in sf+compiler edwin 6001 cref imail sos ssp xdoc xml; do
     maybe_link "lib/shared/${BUNDLE}.so" "../../microcode/${BUNDLE}.so"
 done
 
-for SUBDIR in 6001 compiler cref edwin imail rcs runtime runtime-check \
+for SUBDIR in 6001 compiler cref edwin imail rcs runtime \
               sf sos ssp star-parser win32 xdoc xml microcode; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
