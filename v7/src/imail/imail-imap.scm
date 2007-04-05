@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.211 2007/03/11 22:38:55 riastradh Exp $
+$Id: imail-imap.scm,v 1.212 2007/04/05 03:23:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -355,43 +355,73 @@ USA.
       ((urls
 	(run-list-command
 	 url
-	 (string-append (imap-mailbox/url->server url prefix) "%")))
+	 ;; Some IMAP servers don't like a mailbox of `/%' in LIST
+	 ;; commands, and others simply returna uselessly empty
+         ;; result, so we have a special case for the root mailbox.
+	 (if (string=? prefix "/")
+	     "%"
+	     (string-append (imap-mailbox/url->server url prefix) "%"))))
        (results '()))
     (if (pair? urls)
 	(loop (cdr urls)
 	      (cond ((imap-folder-url-selectable? (car urls))
 		     (cons (car urls) results))
 		    ((imap-folder-url-corresponding-container (car urls))
-		     => (lambda (url) (cons url results)))
+		     => (lambda (container-url)
+			  ;; Some IMAP servers will return the
+			  ;; container URL as an answer to the LIST
+			  ;; command, but it is uninteresting here, so
+			  ;; we filter it out.  (Should this filtering
+                          ;; be done by RUN-LIST-COMMAND?)
+			  (if (eq? container-url url)
+			      results
+			      (cons container-url results))))
 		    (else results)))
 	(reverse! results))))
 
 (define (run-list-command url mailbox)
   (let ((t (get-universal-time)))
-    (map (lambda (response)
-	   (let ((mailbox
-		  (let ((delimiter (imap:response:list-delimiter response))
-			(mailbox
-			 (imap:decode-mailbox-name
-			  (imap:response:list-mailbox response))))
-		    (if delimiter
-			(string-replace mailbox (string-ref delimiter 0) #\/)
-			mailbox)))
-		 (flags (imap:response:list-flags response)))
-	     (let ((url (imap-url-new-mailbox url mailbox)))
-	       (set-imap-folder-url-list-time! url t)
-	       (set-imap-folder-url-exists?! url #t)
-	       (set-imap-folder-url-selectable?!
-		url
-		(not (memq '\\NOSELECT flags)))
-	       (set-imap-folder-url-corresponding-container!
-		url
-		(and (not (memq '\\NOINFERIORS flags))
-		     (imap-url-new-mailbox url (string-append mailbox "/"))))
-	       url)))
-	 (with-open-imap-connection url
-	   (lambda (connection)
-	     (imap:command:list connection "" mailbox))))))
+    (append-map (lambda (response)
+		  (cond ((list-command-response-folder-url response url t)
+			 => list)
+			(else '())))
+		(with-open-imap-connection url
+		  (lambda (connection)
+		    (imap:command:list connection "" mailbox))))))
+
+(define (list-command-response-folder-url response url t)
+  (let ((mailbox
+	 (let ((delimiter (imap:response:list-delimiter response))
+	       (mailbox
+		(imap:decode-mailbox-name
+		 (imap:response:list-mailbox response))))
+	   (if delimiter
+	       (string-replace mailbox (string-ref delimiter 0) #\/)
+	       mailbox)))
+	(flags (imap:response:list-flags response)))
+    (let ((url (imap-url-new-mailbox url mailbox))
+	  (noselect? (memq '\\NOSELECT flags))
+	  (noinferiors? (memq '\\NOINFERIORS flags)))
+      (if (and noselect? noinferiors?)
+	  #f				;Completely uninteresting.
+	  (receive (folder-url container-url)
+	      (cond ((imap-folder-url? url)
+		     (values url
+			     (and (not noinferiors?)
+				  (imap-url-new-mailbox url
+							(string-append mailbox
+								       "/")))))
+		    ((imap-container-url? url)
+		     (values (imap-container-url-corresponding-folder url)
+			     (and (not noinferiors?) url)))
+		    (else
+		     (error "Bad IMAP URL returned by LIST:" url)))
+	    (set-imap-folder-url-list-time! folder-url t)
+	    (set-imap-folder-url-exists?! folder-url #t)
+	    (set-imap-folder-url-selectable?! folder-url (not noselect?))
+	    (set-imap-folder-url-corresponding-container! folder-url
+							  container-url)
+	    folder-url)))))
 
 ;;;; URL->server delimiter conversion
 
