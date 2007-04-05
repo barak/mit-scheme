@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.20 2007/01/05 21:19:29 cph Exp $
+$Id: macros.scm,v 1.21 2007/04/05 02:35:14 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -231,19 +231,22 @@ USA.
 	   (if (or (and standard? (eq? 'STANDARD arg))
 		   (eq? keyword arg)
 		   (and (pair? arg) (memq keyword arg)))
-	       `((,(close-syntax 'DEFINE environment)
-		   ,(or (plist-lookup keyword (cdr slot-argument) #f)
-			(let ((name
-			       (intern
-				(generate
-				 (string-append (strip-angle-brackets name)
-						separator
-						(symbol->string
-						 (car slot-argument)))))))
-			  (set-cdr! slot-argument
-				    (cons* keyword name (cdr slot-argument)))
-			  name))
-		   (,(absolute 'MAKE-GENERIC-PROCEDURE environment) ,arity)))
+	       ((lambda (name)
+		  `((,(close-syntax 'DEFINE environment)
+		     ,name
+		     (,(absolute 'MAKE-GENERIC-PROCEDURE environment)
+		      ,arity
+		      ',name))))
+		(or (plist-lookup keyword (cdr slot-argument) #f)
+		    (let ((name (intern
+				 (generate
+				  (string-append (strip-angle-brackets name)
+						 separator
+						 (symbol->string
+						  (car slot-argument)))))))
+		      (set-cdr! slot-argument
+				(cons* keyword name (cdr slot-argument)))
+		      name)))
 	       '()))))
     (append (translate 'ACCESSOR #t 1
 		       (lambda (root) root))
