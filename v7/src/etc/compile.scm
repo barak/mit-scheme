@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: compile.scm,v 1.13 2007/04/05 17:42:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -49,7 +49,4 @@ USA.
 	  (load "cref.sf"))))
   (for-each (lambda (name)
 	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "star-parser" "imail" "xml" "ssp" "xdoc"))
-  (with-working-directory-pathname "runtime-check"
-    (lambda ()
-      (load "runtime.cbf"))))
+	    '("sos" "star-parser" "imail" "xml" "ssp" "xdoc")))
