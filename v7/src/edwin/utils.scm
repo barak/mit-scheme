@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.60 2007/04/01 17:33:07 riastradh Exp $
+$Id: utils.scm,v 1.61 2007/04/05 22:24:42 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -105,7 +105,7 @@ USA.
   (with-interrupt-mask interrupt-mask/none
     (lambda (mask)
       (let ((n-words			;Add two, for manifest & length.
-	     (fix:+ 2 (chars->words n-chars))))
+	     (fix:+ 2 (chars->words (fix:+ n-chars 1)))))
 	(if (not ((ucode-primitive heap-available? 1) n-words))
 	    (with-interrupt-mask interrupt-mask/gc-normal
 	      (lambda (ignore)
@@ -119,9 +119,9 @@ USA.
 	   ((ucode-primitive primitive-object-set-type 2)
 	    (ucode-type manifest-nm-vector)
 	    (fix:- n-words 1)))		;Subtract one for the manifest.
-	  (set-string-length! result n-chars)
-	  ;; This won't work if range-checking is turned on.
+	  (set-string-length! result (fix:+ n-chars 1))
 	  (string-set! result n-chars #\nul)
+	  (set-string-length! result n-chars)
 	  ((ucode-primitive primitive-increment-free 1) n-words)
 	  (set-interrupt-enables! mask)
 	  result)))))
