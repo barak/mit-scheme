@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.300 2007/04/05 01:56:09 riastradh Exp $
+$Id: imail-top.scm,v 1.301 2007/04/05 22:42:35 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2731,7 +2731,7 @@ Negative argument means search in reverse."
 	       => (lambda (expansions)
 		    (hash-table/remove! expansions key)
 		    (if (zero? (hash-table/count expansions))
-			(buffer-put! buffer 'IMAIL-MIME-EXPANSIONS #f)))))
+			(buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)))))
 	(hash-table/put!
 	 (or (buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	     (let ((expansions (make-equal-hash-table)))
