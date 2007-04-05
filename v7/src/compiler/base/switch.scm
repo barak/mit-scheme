@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: switch.scm,v 4.32 2007/04/05 17:36:19 cph Exp $
+$Id: switch.scm,v 4.33 2007/04/05 19:52:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,7 +36,7 @@ USA.
 (define compiler:compile-by-procedures? #t)
 (define compiler:noisy? #t)
 (define compiler:show-time-reports? #f)
-(define compiler:show-procedures? #t)
+(define compiler:show-procedures? #f)
 (define compiler:show-phases? #f)
 (define compiler:show-subphases? #f)
 (define compiler:preserve-data-structures? #f)
