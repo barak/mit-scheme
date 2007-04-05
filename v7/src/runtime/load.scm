@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.84 2007/01/12 10:23:04 riastradh Exp $
+$Id: load.scm,v 14.85 2007/04/05 17:49:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -131,13 +131,18 @@ USA.
 	#f)))
 
 (define (with-eval-unit uri thunk)
-  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
-    (thunk)))
+  (let ((uri (->absolute-uri uri 'WITH-EVAL-UNIT)))
+    (fluid-let ((*eval-unit* uri))
+      (let ((pathname (uri->pathname uri #f)))
+	(if pathname
+	    (with-working-directory-pathname (directory-pathname pathname)
+	      thunk)
+	    (thunk))))))
 
 (define (current-load-pathname)
   (or (uri->pathname (current-eval-unit) #f)
       (error condition-type:not-loading)))
-
+
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
   (set! load/after-load-hooks (cons hook load/after-load-hooks))
@@ -151,7 +156,7 @@ USA.
 	  (values result (reverse load/after-load-hooks))))
     (for-each (lambda (hook) (hook)) hooks)
     result))
-
+
 (define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? #t))
     (load filename environment syntax-table purify?)))
@@ -330,7 +335,7 @@ USA.
 		       (if (default-object? environment)
 			   (nearest-repl/environment)
 			   environment)))
-
+
 (define (load-library-object-file name errors? #!optional noisy?)
   (let ((directory (system-library-directory-pathname "lib"))
 	(nsf
