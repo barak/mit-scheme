@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.13 2007/04/04 05:08:18 riastradh Exp $
+# $Id: Clean.sh,v 1.14 2007/04/05 00:25:30 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -31,7 +31,7 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-TOPDIR=${TOPDIR:-$(pwd)/..}
+TOPDIR=${TOPDIR:-`pwd`/..}
 export TOPDIR
 CLEANSH=${TOPDIR}/etc/Clean.sh
 "${CLEANSH}" "${1}" rm-pkg
