@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.6 2007/01/05 21:19:25 cph Exp $
+# $Id: build-bands.sh,v 1.7 2007/04/05 17:43:24 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -45,12 +45,3 @@ microcode/scheme --library lib --large <<EOF
 (load-option 'EDWIN)
 (disk-save "lib/edwin.com")
 EOF
-
-(
-    cd runtime-check
-    ../microcode/scheme --library ../lib --fasl make.com <<EOF
-(load-option 'EDWIN)
-(load-option 'STUDENT)
-(disk-save "../lib/6001.com")
-EOF
-)
