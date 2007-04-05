@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.61 2007/04/05 22:24:42 riastradh Exp $
+$Id: utils.scm,v 1.62 2007/04/05 22:36:14 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,10 +142,10 @@ USA.
      0
      ((ucode-primitive primitive-object-set-type 2)
       (ucode-type manifest-nm-vector)
-      (fix:+ 1 (chars->words n-chars))))    ;Add one word for the length.
-    (set-string-length! string n-chars)
-    ;; This won't work if range-checking is turned on.
+      (fix:+ 1 (chars->words (fix:+ n-chars 1)))))
+    (set-string-length! string (fix:+ n-chars 1))
     (string-set! string n-chars #\nul)
+    (set-string-length! string n-chars)
     (set-interrupt-enables! mask)
     unspecific))
 
