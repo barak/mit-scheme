@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.125 2007/04/07 12:43:29 cph Exp $
+$Id: boot.c,v 9.126 2007/04/07 19:53:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,7 +37,7 @@ USA.
 #include "ostty.h"
 
 #ifdef NATIVE_CODE_IS_C
-#  include "ostty.h"
+#  include "osfs.h"
 #  define FILE_READABLE(filename) (OS_file_access ((filename), 4))
 #endif
 
