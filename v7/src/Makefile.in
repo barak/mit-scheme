@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.30 2007/04/05 17:49:54 cph Exp $
+# $Id: Makefile.in,v 1.31 2007/04/07 04:02:04 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -83,11 +83,8 @@ c: boot-compiler.com
 boot-compiler.com:
 	$(srcdir)/etc/c-boot-compiler.sh
 
-c-clean:
+mostlyclean clean distclean maintainer-clean c-clean:
 	-rm -f boot-compiler.com
-	$(srcdir)/Clean.sh $@ $(SUBDIRS)
-
-mostlyclean clean distclean maintainer-clean:
 	$(srcdir)/Clean.sh $@ $(SUBDIRS)
 
 tags TAGS:
