@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.124 2007/01/22 18:30:16 riastradh Exp $
+$Id: boot.c,v 9.125 2007/04/07 12:43:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,6 +35,11 @@ USA.
 #endif
 #include "ostop.h"
 #include "ostty.h"
+
+#ifdef NATIVE_CODE_IS_C
+#  include "ostty.h"
+#  define FILE_READABLE(filename) (OS_file_access ((filename), 4))
+#endif
 
 #if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
 #include <unistd.h>
@@ -93,8 +98,6 @@ DECLARE_CRITICAL_SECTION ();
 #ifndef main_name
 #define main_name main
 #endif
-
-#define FILE_READABLE(filename) (OS_file_access ((filename), 4))
 
 int
 DEFUN (main_name, (argc, argv),
@@ -193,7 +196,7 @@ DEFUN (main_name, (argc, argv),
 	compiler_initialize (1);
 	Start_Scheme (BOOT_EXECUTE, option_fasl_file);
       }
-#endif /* NATIVE_CODE_IS_C */
+#endif
       else
 	{
 	  compiler_initialize (1);
