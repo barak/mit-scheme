@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.1 2007/04/04 05:08:19 riastradh Exp $
+# $Id: c-boot-compiler.sh,v 1.2 2007/04/07 04:03:37 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -36,16 +36,17 @@ fi
 # loads them independently.)
 
 ${SCHEME_COMPILER} <<EOF
-(with-working-directory-pathname "cref"
-  (lambda ()
-    (load "cref.sf")
-    (load "cref.cbf")
-    (if (not (name->package '(CROSS-REFERENCE)))
-	(load "make"))))
-(with-working-directory-pathname "sf"
-  (lambda ()
-    (load "sf.sf")
-    (load "sf.cbf")))
+(begin
+  (with-working-directory-pathname "cref"
+    (lambda ()
+      (load "cref.sf")
+      (load "cref.cbf")
+      (if (not (name->package '(CROSS-REFERENCE)))
+	  (load "make"))))
+  (with-working-directory-pathname "sf"
+    (lambda ()
+      (load "sf.sf")
+      (load "sf.cbf"))))
 EOF
 
 # Step 2: Load CREF and SF, and syntax the compiler configured with
@@ -53,20 +54,20 @@ EOF
 
 # (There *must* be a better way to write this...)
 
-LOAD_SF_CREF=`cat <<EOF
+LOAD_SF_CREF='
 (for-each (lambda (subdirectory)
             (with-working-directory-pathname subdirectory
               (lambda ()
                 (load "make"))))
-          '("cref" "sf"))
-EOF
-`
+          (quote ("cref" "sf")))
+'
 
 ${SCHEME_LARGE} <<EOF
-${LOAD_SF_CREF}
-(with-working-directory-pathname "compiler"
-  (lambda ()
-    (load "compiler.sf")))
+(begin
+  ${LOAD_SF_CREF}
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.sf"))))
 EOF
 
 # Step 3: Now that the compiler with the C back end is syntaxed and
@@ -83,9 +84,10 @@ EOF
 # and save a band.
 
 ${SCHEME_LARGE} <<EOF
-${LOAD_SF_CREF}
-(with-working-directory-pathname "compiler"
-  (lambda ()
-    (load "machines/C/make")))
-(disk-save "boot-compiler.com")
+(begin
+  ${LOAD_SF_CREF}
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "machines/C/make")))
+  (disk-save "boot-compiler.com"))
 EOF
