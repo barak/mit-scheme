@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-initial-bands.sh,v 1.1 2007/04/04 05:08:19 riastradh Exp $
+# $Id: c-initial-bands.sh,v 1.2 2007/04/09 16:44:06 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -31,10 +31,13 @@ EOF
 )
 
 microcode/scheme --library lib --large <<EOF
-(load "microcode/sf+compiler.so")
-(load-option 'SF)
-(with-working-directory-pathname "compiler"
-  (lambda ()
-    (load "machines/C/make")))
-(load-option '*PARSER)
-(disk-save "lib/compiler.com")
+(begin
+  (load "microcode/sf+compiler.so")
+  (load-option (quote SF))
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "machines/C/make")))
+  (load-option (quote *PARSER))
+  (load-option (quote CREF))
+  (disk-save "lib/compiler.com"))
+EOF
