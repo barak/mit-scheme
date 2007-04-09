@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.45 2007/04/04 05:08:19 riastradh Exp $
+# $Id: Makefile.in.in,v 1.46 2007/04/09 16:43:05 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -175,8 +175,8 @@ ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
-MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.h utabmd.c utabmd.bci \
-	bchdef.c $(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES)
+MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.c compinit.h utabmd.c \
+	utabmd.bci bchdef.c $(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES)
 
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
@@ -186,9 +186,9 @@ DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS
 
-C_CLEAN_FILES = *.o usrdef.c compinit.h utabmd.bci bchdef.c $(LIARC_OBJECTS) \
-	$(LIARC_BUNDLE_CLEAN_FILES) $(ALL_PROGRAMS) $(ALL_LIBS) \
-	$(EXTRA_PROGRAMS) $(DISTCLEAN_FILES)
+C_CLEAN_FILES = *.o usrdef.c compinit.c compinit.h utabmd.bci bchdef.c \
+	$(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES) $(ALL_PROGRAMS) \
+	$(ALL_LIBS) $(EXTRA_PROGRAMS) $(DISTCLEAN_FILES)
 
 # **** Implicit rules ****
 
