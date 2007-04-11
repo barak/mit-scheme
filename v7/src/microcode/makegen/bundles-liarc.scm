@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bundles-liarc.scm,v 1.2 2007/04/09 16:42:20 cph Exp $
+$Id: bundles-liarc.scm,v 1.3 2007/04/11 19:33:28 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,7 +28,7 @@ USA.
 ;;;; Bundles for LIARC to be linked into dynamically loadable shared
 ;;;; objects.
 
-;;; Format: (bundle (package*) source-directoory*)
+;;; Format: (bundle (package*) source-directory*)
 ;;;   bundle ::= string
 ;;;   package ::= pathname | (pathname os-type*)
 ;;;   source-directory ::= (pathname exclude-filename*)
