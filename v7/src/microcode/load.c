@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.46 2007/04/14 03:45:38 cph Exp $
+$Id: load.c,v 9.47 2007/04/14 05:39:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -187,8 +187,13 @@ DEFUN (initialize_variables_from_fasl_header, (buffer),
     C_Code_Table_Size = (OBJECT_DATUM (buffer[FASL_Offset_C_Size]));
   }
   dumped_memory_base = ((long) buffer[FASL_Offset_Mem_Base]);
-  if ((dumped_memory_base == 0) ? (memory_base != 0) : (memory_base == 0))
+#ifdef HEAP_IN_LOW_MEMORY
+  if (dumped_memory_base != 0)
     return (FASL_FILE_BAD_MACHINE);
+#else
+  if (dumped_memory_base == 0)
+    return (FASL_FILE_BAD_MACHINE);
+#endif
 
 #ifndef INHIBIT_FASL_VERSION_CHECK
   /* The error messages here should be handled by the runtime system! */
