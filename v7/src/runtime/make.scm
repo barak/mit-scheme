@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.108 2007/01/05 21:19:28 cph Exp $
+$Id: make.scm,v 14.109 2007/04/14 03:52:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -243,7 +243,7 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "runtime_" filename))
+  (let* ((block-name (string-append "runtime_" filename ".bin"))
 	 (value (initialize-c-compiled-block block-name)))
     (cond (value
 	   (tty-write-string newline-string)
@@ -263,13 +263,19 @@ USA.
     (tty-write-string " evaluated")
     value))
 
-(define (string-append x y)
-  (let ((x-length (string-length x))
-	(y-length (string-length y)))
-    (let ((result (string-allocate (+ x-length y-length))))
-      (substring-move-right! x 0 x-length result 0)
-      (substring-move-right! y 0 y-length result x-length)
-      result)))
+(define (string-append . strings)
+  (let ((result
+	 (string-allocate
+	  (let loop ((strings strings) (n 0))
+	    (if (pair? strings)
+		(loop (cdr strings) (fix:+ (string-length (car strings)) n))
+		n)))))
+    (let loop ((strings strings) (start 0))
+      (if (pair? strings)
+	  (let ((n (string-length (car strings))))
+	    (substring-move-right! (car strings) 0 n result start)
+	    (loop (cdr strings) (fix:+ start n)))))
+    result))
 
 (define (string-downcase string)
   (let ((size (string-length string)))
@@ -285,8 +291,7 @@ USA.
 (define (intern string)
   (string->symbol (string-downcase string)))
 
-(define fasload-purification-queue
-  '())
+(define fasload-purification-queue '())
 
 (define (implemented-primitive-procedure? primitive)
   ((ucode-primitive get-primitive-address)
@@ -297,9 +302,7 @@ USA.
   (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
     (if (implemented-primitive-procedure? prim)
 	prim
-	(lambda (name)
-	  name				; ignored
-	  #f))))
+	(lambda (name) name #f))))
 
 (define os-name
   (intern os-name-string))
@@ -337,12 +340,15 @@ USA.
 (package/add-child! system-global-package 'PACKAGE environment-for-package)
 
 (define packages-file
-  (let ((name (cond ((eq? os-name 'NT) "runtime-w32")
-		    ((eq? os-name 'OS/2) "runtime-os2")
-		    ((eq? os-name 'UNIX) "runtime-unx")
-		    (else "runtime-unk"))))
+  (let ((name
+	 (string-append "runtime-"
+			(cond ((eq? os-name 'NT) "w32")
+			      ((eq? os-name 'OS/2) "os2")
+			      ((eq? os-name 'UNIX) "unx")
+			      (else "unk"))
+			".pkd")))
     (or (initialize-c-compiled-block (string-append "runtime_" name))
-	(fasload (string-append name ".pkd") #f))))
+	(fasload name #f))))
 
 ((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
  packages-file)

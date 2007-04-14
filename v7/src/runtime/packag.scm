@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.52 2007/04/04 18:35:16 riastradh Exp $
+$Id: packag.scm,v 14.53 2007/04/14 03:52:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -163,28 +163,21 @@ USA.
 		    package-name-tag
 		    system-global-package))
 
-(define system-loader/enable-query? #f)
-
-(define (quasi-fasload pathname)
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1))
-	(path (merge-pathnames pathname)))
-    (or (and (implemented-primitive-procedure? prim)
-	     (prim (string-append (car (last-pair (pathname-directory path)))
-				  "_"
-				  (pathname-name path))))
-	(fasload pathname))))
-
 (define (load-package-set filename #!optional options)
-  (let ((os-type microcode-id/operating-system))
-    (let ((pathname (package-set-pathname filename os-type))
+  (let ((pathname (merge-pathnames filename))
+	(os-type microcode-id/operating-system))
+    (let ((dir (directory-pathname pathname))
+	  (pkg (package-set-pathname pathname os-type))
 	  (options
 	   (cons (cons 'OS-TYPE os-type)
 		 (if (default-object? options) '() options))))
-      (with-working-directory-pathname (directory-pathname pathname)
+      (with-working-directory-pathname dir
 	(lambda ()
-	  (let ((file (quasi-fasload pathname)))
+	  (let ((file
+		 (or (built-in-object-file pkg)
+		     (fasload pkg))))
 	    (if (not (package-file? file))
-		(error "Malformed package-description file:" pathname))
+		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
 	    (fluid-let
 		((load/default-types
@@ -196,14 +189,13 @@ USA.
 	      (let ((alternate-loader
 		     (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
 		    (load-component
-		     (lambda (component environment)
-		       (let ((value
-			      (filename->compiled-object filename component)))
+		     (lambda (name environment)
+		       (let ((value (filename->compiled-object dir name)))
 			 (if value
 			     (begin
 			       (purify (load/purification-root value))
 			       (scode-eval value environment))
-			     (load component environment 'DEFAULT #t))))))
+			     (load name environment 'DEFAULT #t))))))
 		(if alternate-loader
 		    (alternate-loader load-component options)
 		    (begin
@@ -213,41 +205,32 @@ USA.
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
-
-(define (package-set-pathname pathname #!optional os-type)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 (string-append (pathname-name pathname)
-				(case (if (default-object? os-type)
-					  microcode-id/operating-system
-					  os-type)
-				  ((NT) "-w32")
-				  ((OS/2) "-os2")
-				  ((UNIX) "-unx")
-				  (else "-unk")))
-		 "pkd"
-		 (pathname-version pathname)))
 
-(define (filename->compiled-object system component)
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
-    (and (implemented-primitive-procedure? prim)
-	 (let* ((name
-		 (let* ((p (->pathname component))
-			(d (pathname-directory p)))
-		   (string-append
-		    (if (pair? d) (car (last-pair d)) system)
-		    "_"
-		    (pathname-name p))))
-		(value (prim name)))
-	   (if (or (not value) load/suppress-loading-message?)
-	       value
-               (begin
-                 (write-notification-line
-                  (lambda (port)
-                    (write-string "Initialized " port)
-                    (write name port)))
-                 value))))))
+(define system-loader/enable-query? #f)
+
+(define (package-set-pathname pathname #!optional os-type)
+  (pathname-new-type
+   (pathname-new-name pathname
+		      (string-append (pathname-name pathname)
+				     "-"
+				     (case (if (default-object? os-type)
+					       microcode-id/operating-system
+					       os-type)
+				       ((NT) "w32")
+				       ((OS/2) "os2")
+				       ((UNIX) "unx")
+				       (else "unk"))))
+   "pkd"))
+
+(define (filename->compiled-object directory name)
+  (let ((pathname (merge-pathnames name directory)))
+    (let ((value (built-in-object-file pathname)))
+      (if (and value (not load/suppress-loading-message?))
+	  (write-notification-line
+	   (lambda (port)
+	     (write-string "Initialized " port)
+	     (write (enough-namestring pathname) port))))
+      value)))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))

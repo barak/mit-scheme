@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.70 2007/01/05 21:19:20 cph Exp $
+$Id: toplev.scm,v 4.71 2007/04/14 03:52:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -139,28 +139,30 @@ USA.
 	 (and (not (default-object? output-string)) output-string)
 	 (make-pathname #f #f #f #f "bin" 'NEWEST)
 	 (lambda (input-pathname output-pathname)
-	   (let ((scode (compiler-fasload input-pathname)))
-	     (if (and (scode/constant? scode)
-		      (not compiler:compile-data-files-as-expressions?))
-		 (compile-data-from-file scode output-pathname)
-		 (maybe-open-file
-		  compiler:generate-rtl-files?
-		  (pathname-new-type output-pathname "rtl")
-		  (lambda (rtl-output-port)
-		    (maybe-open-file
-		     compiler:generate-lap-files?
-		     (pathname-new-type output-pathname "lap")
-		     (lambda (lap-output-port)
-		       (fluid-let ((*debugging-key*
-				    (random-byte-vector 32)))
-			 (compile-scode/internal
-			  scode
-			  (pathname-new-type output-pathname "inf")
-			  rtl-output-port
-			  lap-output-port))))))))))
+	   (fluid-let ((*compiler-input-pathname* input-pathname))
+	     (let ((scode (compiler-fasload input-pathname)))
+	       (if (and (scode/constant? scode)
+			(not compiler:compile-data-files-as-expressions?))
+		   (compile-data-from-file scode output-pathname)
+		   (maybe-open-file
+		    compiler:generate-rtl-files?
+		    (pathname-new-type output-pathname "rtl")
+		    (lambda (rtl-output-port)
+		      (maybe-open-file
+		       compiler:generate-lap-files?
+		       (pathname-new-type output-pathname "lap")
+		       (lambda (lap-output-port)
+			 (fluid-let ((*debugging-key*
+				      (random-byte-vector 32)))
+			   (compile-scode/internal
+			    scode
+			    (pathname-new-type output-pathname "inf")
+			    rtl-output-port
+			    lap-output-port)))))))))))
 	unspecific)))
 
 (define *debugging-key*)
+(define *compiler-input-pathname*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?

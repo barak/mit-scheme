@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.87 2007/04/09 16:41:56 cph Exp $
+$Id: load.scm,v 14.88 2007/04/14 03:52:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -166,6 +166,11 @@ USA.
 
 (define (find-pathname filename default-types)
   (let ((pathname (merge-pathnames filename))
+	(find-loader
+	 (lambda (extension)
+	   (let ((place (assoc extension default-types)))
+	     (and place
+		  (cadr place)))))
 	(fail
 	 (lambda ()
 	   (find-pathname (error:file-operation filename
@@ -175,17 +180,17 @@ USA.
 						find-pathname
 						(list filename default-types))
 			  default-types))))
-    (cond ((file-regular? pathname)
+    (cond ((built-in-object-file pathname)
+	   => (lambda (value)
+		(values pathname
+			((find-loader #f) value))))
+	  ((file-regular? pathname)
 	   (values pathname
-		   (let ((find-loader
-			  (lambda (extension)
-			    (let ((place (assoc extension default-types)))
-			      (and place
-				   (cadr place))))))
-		     (or (and (pathname-type pathname)
-			      (find-loader (pathname-type pathname)))
-			 (find-loader "scm")
-			 (find-loader "bin")))))
+		   (or (and (pathname-type pathname)
+			    (find-loader (pathname-type pathname)))
+		       (and (fasl-file? pathname)
+			    (find-loader "bin"))
+		       (find-loader "scm"))))
 	  ((pathname-type pathname)
 	   (fail))
 	  (else
@@ -200,7 +205,7 @@ USA.
     (cond ((not (pair? types))
 	   (values #f #f))
 	  ((not (caar types))
-	   (let ((value (try-built-in pathname)))
+	   (let ((value (built-in-object-file pathname)))
 	     (if value
 		 (values pathname ((cadar types) value))
 		 (loop (cdr types)))))
@@ -220,7 +225,7 @@ USA.
     (cond ((not (pair? types))
 	   (values latest-pathname latest-loader))
 	  ((not (caar types))
-	   (let ((value (try-built-in pathname)))
+	   (let ((value (built-in-object-file pathname)))
 	     (if value
 		 (values pathname ((cadar types) value))
 		 (loop (cdr types)
@@ -236,39 +241,26 @@ USA.
 			 latest-pathname
 			 latest-loader
 			 latest-time))))))))
-
-(define (try-built-in pathname)
-  (let ((d (pathname-directory pathname)))
-    (and (pair? d)
-	 (let ((tail (last d)))
-	   (and (string? tail)		;Doesn't handle UP ("..").
-		((ucode-primitive initialize-c-compiled-block 1)
-		 (string-append tail
-				"_"
-				(pathname-name pathname))))))))
 
 (define (load/internal pathname environment purify? load-noisily?)
-  (let* ((port (open-input-file pathname))
-	 (fasl-marker (peek-char port)))
-    (if (and (not (eof-object? fasl-marker))
-	     (= 250 (char->ascii fasl-marker)))
-	(begin
-	  (close-input-port port)
-	  (load-scode-end (fasload/internal pathname
-					    load/suppress-loading-message?)
-			  environment
-			  purify?))
-	(let ((value-stream
-	       (lambda ()
-		 (eval-stream (read-stream port environment) environment))))
-	  (if load-noisily?
-	      (write-stream (value-stream)
-			    (lambda (exp&value)
-			      (repl-write (cdr exp&value) (car exp&value))))
-	      (with-loading-message pathname
-		(lambda ()
-		  (write-stream (value-stream)
-				(lambda (exp&value) exp&value #f)))))))))
+  (if (fasl-file? pathname)
+      (load-scode-end (fasload/internal pathname
+					load/suppress-loading-message?)
+		      environment
+		      purify?)
+      (call-with-input-file pathname
+	(lambda (port)
+	  (let ((value-stream
+		 (lambda ()
+		   (eval-stream (read-stream port environment) environment))))
+	    (if load-noisily?
+		(write-stream (value-stream)
+			      (lambda (exp&value)
+				(repl-write (cdr exp&value) (car exp&value))))
+		(with-loading-message pathname
+		  (lambda ()
+		    (write-stream (value-stream)
+				  (lambda (exp&value) exp&value #f))))))))))
 
 (define (fasload/internal pathname suppress-loading-message?)
   (let ((namestring (->namestring pathname)))
@@ -287,19 +279,40 @@ USA.
 (define (fasload-object-file pathname suppress-loading-message?)
   (with-loading-message pathname
     (lambda ()
-      (let* ((handle ((ucode-primitive load-object-file 1)
-		      (->namestring pathname)))
-	     (cth ((ucode-primitive object-lookup-symbol 3)
-		   handle "dload_initialize_file" 0)))
-	(if (not cth)
-	    (error "load-object-file: Cannot find init procedure" pathname))
-	(let ((scode ((ucode-primitive initialize-c-compiled-block 1)
-		      ((ucode-primitive address-to-string 1)
-		       ((ucode-primitive invoke-c-thunk 1)
-			cth)))))
-	  (fasload/update-debugging-info! scode pathname)
-	  scode)))
+      (let ((scode (fasload-liarc-object-file pathname)))
+	(fasload/update-debugging-info! scode pathname)
+	scode))
     suppress-loading-message?))
+
+(define (fasload-liarc-object-file pathname)
+  (let* ((handle ((ucode-primitive load-object-file 1)
+		  (->namestring pathname)))
+	 (cth ((ucode-primitive object-lookup-symbol 3)
+	       handle "dload_initialize_file" 0)))
+    (if (not cth)
+	(error "Cannot find init procedure:" pathname))
+    ((ucode-primitive initialize-c-compiled-block 1)
+     ((ucode-primitive address-to-string 1)
+      ((ucode-primitive invoke-c-thunk 1)
+       cth)))))
+
+(define (built-in-object-file pathname)
+  (let ((handle (liarc-object-pathname->handle pathname)))
+    (and handle
+	 ((ucode-primitive initialize-c-compiled-block 1) handle))))
+
+(define (liarc-object-pathname->handle pathname)
+  (let ((pathname (merge-pathnames pathname)))
+    (let ((d (pathname-directory pathname))
+	  (n (pathname-name pathname))
+	  (t (pathname-type pathname)))
+      (and (pair? d)
+	   (let ((tail (last d)))
+	     (and (string? tail)	;Doesn't handle UP ("..").
+		  (string-append tail "_" n
+				 (cond ((not t) ".bin")
+				       ((string? t) (string-append "." t))
+				       (else "")))))))))
 
 (define (wrapper/fasload/built-in value)
   (lambda (pathname suppress-loading-message?)
@@ -429,6 +442,18 @@ USA.
 	      (loop (stream-car stream) (stream-cdr stream)))
 	    (cdr exp&value)))
       unspecific))
+
+(define (fasl-file? pathname)
+  (call-with-binary-input-file pathname
+    (lambda (port)
+      (let ((n (vector-ref (gc-space-status) 0)))
+	(let ((marker (make-string n)))
+	  (and (eqv? (read-string! marker port) n)
+	       (let loop ((i 0))
+		 (if (fix:< i n)
+		     (and (fix:= (vector-8b-ref marker i) #xFA)
+			  (loop (fix:+ i 1)))
+		     #t))))))))
 
 ;;;; Command Line Parser
 

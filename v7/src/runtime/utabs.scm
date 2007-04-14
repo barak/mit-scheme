@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.22 2007/01/05 21:19:28 cph Exp $
+$Id: utabs.scm,v 14.23 2007/04/14 03:53:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -56,11 +56,8 @@ USA.
 (define (read-microcode-tables! #!optional filename)
   (set! microcode-tables-identification
 	(scode-eval
-	 (or (let ((prim ((ucode-primitive get-primitive-address)
-			  'initialize-c-compiled-block
-			  #f)))
-	       (and prim
-		    (prim "microcode_utabmd")))
+	 (or ((ucode-primitive initialize-c-compiled-block 1)
+	      "microcode_utabmd.bin")
 	     ((ucode-primitive binary-fasload)
 	      (if (default-object? filename)
 		  ((ucode-primitive microcode-tables-filename))

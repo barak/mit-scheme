@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.614 2007/04/01 17:33:07 riastradh Exp $
+$Id: runtime.pkg,v 14.615 2007/04/14 03:52:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2407,12 +2407,16 @@ USA.
   (parent (runtime))
   (export ()
 	  argument-command-line-parser
+	  built-in-object-file
 	  condition-type:not-loading
 	  current-eval-unit
 	  current-load-pathname
+	  fasl-file?
 	  fasload
 	  fasload-latest
+	  fasload-liarc-object-file
 	  fasload/default-types
+	  liarc-object-pathname->handle
 	  load
 	  load-latest
 	  load-library-object-file

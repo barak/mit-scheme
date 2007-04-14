@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.34 2007/01/21 22:19:06 riastradh Exp $
+$Id: cout.scm,v 1.35 2007/04/14 03:52:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -45,9 +45,8 @@ USA.
 	       (else
 		(let ((values-names (caar bindings))
 		      (values-form (cadar bindings)))
-		  `(WITH-VALUES (LAMBDA () ,values-form)
-		     (LAMBDA ,values-names
-		       ,(recur (cdr bindings))))))))))))
+		  `(RECEIVE ,values-names ,values-form
+		     ,(recur (cdr bindings)))))))))))
 
 (define *use-stackify?* #t)
 (define *disable-nonces?* #f)
@@ -62,15 +61,7 @@ USA.
 
 (define (stringify-data/stackify object output-pathname)
   (let* ((str (stackify 0 object))
-	 (handle (or (and output-pathname
-			  (let ((dir (pathname-directory output-pathname)))
-			    (string-append
-			     (if (or (not dir) (null? dir))
-				 ""
-				 (car (last-pair dir)))
-			     "_"
-			     (pathname-name output-pathname))))
-		     "handle"))
+	 (handle (default-file-handle))
 	 (data-name
 	  (canonicalize-label-name
 	   (string-append handle "_data_" (make-nonce)))))
@@ -89,15 +80,7 @@ USA.
 
 (define (stringify-data/traditional object output-pathname)
   (let*/mv (((vars prefix suffix) (handle-top-level-data/traditional object))
-	    (handle (or (and output-pathname
-			     (let ((dir (pathname-directory output-pathname)))
-			       (string-append
-				(if (or (not dir) (null? dir))
-				    ""
-				    (car (last-pair dir)))
-				"_"
-				(pathname-name output-pathname))))
-			"handle"))
+	    (handle (default-file-handle))
 	    (data-name
 	     (canonicalize-label-name
 	      (string-append handle "_data_" (make-nonce)))))
@@ -118,6 +101,10 @@ USA.
   (c:group (c:data-section (declare-object handle proc))
 	   (c:line)
 	   (declare-dynamic-object-initialization handle)))
+
+(define (default-file-handle)
+  (or (liarc-object-pathname->handle *compiler-input-pathname*)
+      "handle"))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>
@@ -138,37 +125,25 @@ USA.
       (choose-name #f "" "" nonce))
 
     (define (choose-name full? default midfix nonce)
-      (let ((path (and info-output-pathname
-		       (merge-pathnames
-			(if (pair? info-output-pathname)
-			    (car info-output-pathname)
-			    info-output-pathname)))))
-
-	(cond ((not *C-procedure-name*)
-	       (string-append default suffix "_" nonce))
-	      ((not (eq? *C-procedure-name* 'DEFAULT))
-	       (string-append *C-procedure-name*
-			      midfix
-			      suffix))
-	      ((not path)
-	       (string-append default suffix "_" nonce))
-	      ((or top-level? *disable-nonces?*)
-	       (let ((dir (pathname-directory path)))
-		 (string-append
-		  (if (or (not dir) (null? dir))
-		      default
-		      (canonicalize-name (car (last-pair dir)) full?))
-		  "_"
-		  (canonicalize-name (pathname-name path) full?)
-		  midfix
-		  suffix)))
-	      (else
-	       (string-append (canonicalize-name (pathname-name path) full?)
-			      "_"
-			      default
-			      suffix
-			      "_"
-			      nonce)))))
+      (cond ((not *C-procedure-name*)
+	     (string-append default suffix "_" nonce))
+	    ((not (eq? *C-procedure-name* 'DEFAULT))
+	     (string-append *C-procedure-name*
+			    midfix
+			    suffix))
+	    ((not info-output-pathname)
+	     (string-append default suffix "_" nonce))
+	    ((or top-level? *disable-nonces?*)
+	     (string-append (canonicalize-name (default-file-handle) full?)
+			    midfix
+			    suffix))
+	    (else
+	     (string-append (canonicalize-name (default-file-handle) full?)
+			    "_"
+			    default
+			    suffix
+			    "_"
+			    nonce))))
 
     (define (subroutine-information)
       (let*/mv (((decls-1 code-1) (subroutine-information-1))

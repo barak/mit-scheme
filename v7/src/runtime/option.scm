@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.52 2007/01/05 21:19:28 cph Exp $
+$Id: option.scm,v 14.53 2007/04/14 03:52:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -114,27 +114,26 @@ USA.
   (lambda ()
     (let ((environment (package/environment (find-package package-name)))
 	  (runtime (pathname-as-directory "runtime")))
-      (for-each (lambda (file)
-		  (let ((file (force* file)))
-		    (cond 
-		     (((ucode-primitive initialize-c-compiled-block 1)
-		       (string-append "runtime_" file))
-		      => (lambda (obj)
-			   (purify obj)
-			   (scode-eval obj environment)))
-		     (else
-		      (let* ((options (library-directory-pathname "options"))
-			     (pathname (merge-pathnames file options)))
-			(with-directory-rewriting-rule options runtime
+      (for-each
+       (lambda (file)
+	 (let ((file (force* file)))
+	   (cond ((built-in-object-file (merge-pathnames file runtime))
+		  => (lambda (obj)
+		       (purify obj)
+		       (scode-eval obj environment)))
+		 (else
+		  (let* ((options (library-directory-pathname "options"))
+			 (pathname (merge-pathnames file options)))
+		    (with-directory-rewriting-rule options runtime
+		      (lambda ()
+			(with-working-directory-pathname
+			    (directory-pathname pathname)
 			  (lambda ()
-			    (with-working-directory-pathname
-				(directory-pathname pathname)
-			      (lambda ()
-				(load pathname
-				      environment
-				      'DEFAULT
-				      #t))))))))))
-		files)
+			    (load pathname
+				  environment
+				  'DEFAULT
+				  #t))))))))))
+       files)
       (flush-purification-queue!)
       (eval init-expression environment))))
 

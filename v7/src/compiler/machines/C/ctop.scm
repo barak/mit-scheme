@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.23 2007/01/28 23:03:06 riastradh Exp $
+$Id: ctop.scm,v 1.24 2007/04/14 03:52:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -60,21 +60,7 @@ USA.
      (load shared-library-pathname environment))))
 
 (define (compiler-output->compiled-expression compiler-output)
-  (finish-c-compilation
-   compiler-output
-   (lambda (pathname)
-     (let* ((handle ((ucode-primitive load-object-file 1)
-		     (->namestring pathname)))
-	    (cth ((ucode-primitive object-lookup-symbol 3)
-		  handle "dload_initialize_file" 0)))
-       (if (not cth)
-	   (error "compiler-output->compiled-expression:"
-		  "Cannot find init procedure"
-		  pathname))
-       ((ucode-primitive initialize-c-compiled-block 1)
-	((ucode-primitive address-to-string 1)
-	 ((ucode-primitive invoke-c-thunk 1)
-	  cth)))))))
+  (finish-c-compilation compiler-output fasload-liarc-object-file))
 
 (define (compile-scode/internal/hook action)
   (if (not (eq? *info-output-filename* 'KEEP))

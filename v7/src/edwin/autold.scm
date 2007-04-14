@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: autold.scm,v 1.69 2007/04/04 05:08:19 riastradh Exp $
+$Id: autold.scm,v 1.70 2007/04/14 03:52:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -156,15 +156,9 @@ USA.
   (for-each (lambda (entry)
 	      (let ((file (car entry))
 		    (environment (->environment (cadr entry)))
-		    (purify? (or (null? (cddr entry)) (caddr entry))))
-		(cond (((let-syntax ((ucode-primitive
-				      (sc-macro-transformer
-				       (lambda (form environment)
-					 environment
-					 (apply make-primitive-procedure
-						(cdr form))))))
-			  (ucode-primitive initialize-c-compiled-block 1))
-			(string-append "edwin_" file))
+		    (purify? (if (pair? (cddr entry)) (caddr entry) #t)))
+		(cond ((built-in-object-file
+			(merge-pathnames file (pathname-as-directory "edwin")))
 		       => (lambda (obj)
 			    (if purify? (purify obj))
 			    (scode-eval obj environment)))
