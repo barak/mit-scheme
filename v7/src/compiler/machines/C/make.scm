@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.9 2007/01/05 21:19:20 cph Exp $
+$Id: make.scm,v 1.10 2007/04/14 03:54:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,18 +29,18 @@ USA.
 
 (declare (usual-integrations))
 
-(load-option 'synchronous-subprocess)
+(load-option 'SYNCHRONOUS-SUBPROCESS)
 
-(begin
-  (declare-shared-library "sf+compiler" (lambda () true))
-  (let ((value ((load "base/make")
-		(string-append "C/" microcode-id/machine-type))))
-    (set! (access compiler:compress-top-level? (->environment '(compiler)))
-	  true)
-    (set! (access compiler:compile-data-files-as-expressions?
-		  (->environment '(compiler top-level)))
-	  false)
-    (set! (access compiler:fggen-unmap-reference-traps-early?
-		  (->environment '(compiler fg-generator)))
-	  false)
-    value))
+(declare-shared-library "compiler" (lambda () #t))
+(let ((value ((load "base/make")
+	      (string-append "C/" microcode-id/machine-type))))
+  (set! (access compiler:compress-top-level?
+		(->environment '(compiler)))
+	#t)
+  (set! (access compiler:compile-data-files-as-expressions?
+		(->environment '(compiler top-level)))
+	false)
+  (set! (access compiler:fggen-unmap-reference-traps-early?
+		(->environment '(compiler fg-generator)))
+	false)
+  value)

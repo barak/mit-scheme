@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.18 2007/04/05 17:49:54 cph Exp $
+# $Id: Setup.sh,v 1.19 2007/04/14 03:54:37 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -50,7 +50,7 @@ maybe_link lib/edwin/autoload ../../edwin
 
 # lib/shared
 maybe_mkdir lib/shared
-for BUNDLE in sf+compiler edwin 6001 cref imail sos ssp xdoc xml; do
+for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
     maybe_link "lib/shared/${BUNDLE}.so" "../../microcode/${BUNDLE}.so"
 done
 

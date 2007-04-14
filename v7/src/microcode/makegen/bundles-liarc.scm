@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bundles-liarc.scm,v 1.3 2007/04/11 19:33:28 cph Exp $
+$Id: bundles-liarc.scm,v 1.4 2007/04/14 03:54:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,11 +36,14 @@ USA.
 ;++ This is fragile: excluding filenames is bogus.  But it will work
 ;++ until we get a real module system.
 
-("sf+compiler"
- ("../sf/sf"
-  ("../compiler/compiler" "unx")
-  "../star-parser/parser")
- ("../sf")
+;; These are listed alphabetically; I don't think the order matters.
+
+("6001"
+ ("../6001/6001")
+ ("../6001"))
+
+("compiler"
+ (("../compiler/compiler" "unx"))
  ("../compiler")
  ("../compiler/base")
  ("../compiler/back")
@@ -49,26 +52,23 @@ USA.
  ("../compiler/machines/C")
  ("../compiler/rtlbase")
  ("../compiler/rtlgen")
- ("../compiler/rtlopt")
- ("../star-parser" "compile" "ed-ffi" "load" "test-parser"))
-
-("edwin"
- ("../edwin/edwin")
- ("../edwin" "decls"))
-
-;; These are listed alphabetically; I don't think the order matters.
-
-("6001"
- ("../6001/6001")
- ("../6001"))
+ ("../compiler/rtlopt"))
 
 ("cref"
  ("../cref/cref")
  ("../cref"))
 
+("edwin"
+ ("../edwin/edwin")
+ ("../edwin" "decls"))
+
 ("imail"
  ("../imail/imail")
  ("../imail" "compile" "ed-ffi" "fake-env" "load"))
+
+("sf"
+ ("../sf/sf")
+ ("../sf"))
 
 ("sos"
  ("../sos/sos")
@@ -77,6 +77,10 @@ USA.
 ("ssp"
  ("../ssp/ssp")
  ("../ssp" "compile" "load"))
+
+("star-parser"
+ ("../star-parser/parser")
+ ("../star-parser" "compile" "ed-ffi" "load" "test-parser"))
 
 ("xdoc"
  ("../xdoc/xdoc")

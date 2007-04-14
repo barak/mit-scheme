@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-initial-bands.sh,v 1.2 2007/04/09 16:44:06 cph Exp $
+# $Id: c-initial-bands.sh,v 1.3 2007/04/14 03:54:50 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -25,15 +25,15 @@ set -e
 
 (
     cd runtime
-    ../microcode/scheme --library ../lib --fasl runtime_make <<EOF
+    ../microcode/scheme --library ../lib --fasl runtime_make.bin <<EOF
 (disk-save "../lib/runtime.com")
 EOF
 )
 
 microcode/scheme --library lib --large <<EOF
 (begin
-  (load "microcode/sf+compiler.so")
   (load-option (quote SF))
+  (load "lib/shared/compiler.so")
   (with-working-directory-pathname "compiler"
     (lambda ()
       (load "machines/C/make")))
