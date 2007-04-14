@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.71 2007/04/14 03:52:22 cph Exp $
+$Id: toplev.scm,v 4.72 2007/04/14 05:52:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -204,7 +204,7 @@ USA.
 
 (define (compiler-fasload pathname)
   (let ((scode
-	 (let ((scode (fasload pathname)))
+	 (let ((scode (fasload pathname #t)))
 	   (if (scode/comment? scode)
 	       (scode/comment-expression scode)
 	       scode))))

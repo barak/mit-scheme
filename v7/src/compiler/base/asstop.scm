@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.17 2007/01/05 21:19:20 cph Exp $
+$Id: asstop.scm,v 1.18 2007/04/14 05:52:28 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,7 +35,7 @@ USA.
 (define compiled-output-extension "com")
 
 (define (compiler-file-output object pathname)
-  (fasdump object pathname))
+  (fasdump object pathname #t))
 
 (define (compiler-output->procedure scode environment)
   (scode-eval scode environment))
@@ -278,14 +278,14 @@ USA.
 ;;; Various ways of dumping an info file
 
 (define (compiler:dump-inf-file binf pathname)
-  (fasdump binf pathname))
+  (compiler-file-output binf pathname))
 
 (define (compiler:dump-bif/bsm-files binf pathname)
   (let ((bif-path (pathname-new-type pathname "bif"))
 	(bsm-path (pathname-new-type pathname "bsm")))
     (let ((bsm (split-inf-structure! binf bsm-path)))
-      (fasdump binf bif-path)
-      (fasdump bsm bsm-path))))
+      (compiler-file-output binf bif-path)
+      (compiler-file-output bsm bsm-path))))
   
 (define (compiler:dump-bci/bcs-files binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci"))
@@ -306,7 +306,7 @@ USA.
     (lambda ()
       (call-with-temporary-filename
 	(lambda (temp)
-	  (fasdump object temp #t)
+	  (compiler-file-output object temp)
 	  (compress temp path))))))
 
 (define compiler:dump-info-file

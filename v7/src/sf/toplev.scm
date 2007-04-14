@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.31 2007/01/05 21:19:29 cph Exp $
+$Id: toplev.scm,v 4.32 2007/04/14 05:53:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -147,7 +147,8 @@ USA.
 			       ,(decoded-time/second start-date)))
 		       (sf/file->scode input-pathname bin-pathname
 				       environment declarations))
-		      bin-pathname)))))
+		      bin-pathname
+		      #t)))))
     (if sf:noisy?
 	(let ((message
 	       (lambda (port)
@@ -188,7 +189,7 @@ USA.
   (let ((pathname (merge-pathnames pathname sf/default-externs-pathname)))
     (let ((namestring (->namestring pathname)))
       (if (file-exists? pathname)
-	  (let ((object (fasload pathname))
+	  (let ((object (fasload pathname #t))
 		(wrong-version
 		 (lambda (version)
 		   (warn (string-append
@@ -216,14 +217,15 @@ USA.
 		  (else
 		   (error "Not an externs file:" namestring))))
 	  (begin
-	    (warn "Nonexistent externs file:" namestring)
+	    (warn "Missing externs file:" namestring)
 	    (values #f '()))))))
 
 (define (write-externs-file pathname externs-block externs)
   (cond ((not (null? externs))
 	 (fasdump (vector externs-file-tag externs-file-version
 			  externs-block externs)
-		  pathname))
+		  pathname
+		  #t))
 	((file-exists? pathname)
 	 (delete-file pathname))))
 
