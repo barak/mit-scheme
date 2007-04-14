@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.24 2007/04/14 03:52:35 cph Exp $
+$Id: ctop.scm,v 1.25 2007/04/14 14:23:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -581,14 +581,10 @@ USA.
     (dump-compressed binf bci-path)))
 
 (define (dump-compressed object path)
-  (with-notification (lambda (port)
-		       (write-string "Dumping " port)
-		       (write (enough-namestring path) port))
-    (lambda ()
-      (call-with-temporary-filename
-	(lambda (temp)
-	  (fasdump object temp #t)
-	  (compress temp path))))))
+  (call-with-temporary-filename
+    (lambda (temp)
+      (fasdump object temp #t)
+      (compress temp path))))
 
 (define compiler:dump-info-file compiler:dump-bci-file)
 
