@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.15 2007/04/07 04:02:22 cph Exp $
+# $Id: Clean.sh,v 1.16 2007/04/14 03:55:26 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -35,7 +35,6 @@ TOPDIR=${TOPDIR:-`pwd`/..}
 export TOPDIR
 CLEANSH=${TOPDIR}/etc/Clean.sh
 "${CLEANSH}" "${1}" rm-pkg
-rm -f compiler-unx.c compiler-unx.o
 
 case "${1}" in
 c-clean)
@@ -57,6 +56,15 @@ case "${1}" in
 distclean | maintainer-clean | c-clean)
     rm -f machine compiler.cbf compiler.pkg compiler.sf
     "${CLEANSH}" "${1}" "${SUBDIR_CMDS}"
+    ;;
+esac
+
+rm -f compiler-unx.o
+case "${1}" in
+c-clean)
+    ;;
+*)
+    rm -f compiler-unx.c
     ;;
 esac
 
