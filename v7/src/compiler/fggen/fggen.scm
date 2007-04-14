@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.42 2007/01/05 21:19:20 cph Exp $
+$Id: fggen.scm,v 4.43 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -97,11 +97,9 @@ USA.
   (map (lambda (name) (make-variable block name)) names))
 
 (define (generate/body block continuation context declarations expression)
-  ;; The call to `process-declarations!' must come after the
-  ;; expression is generated because it can refer to the set of free
-  ;; variables in the expression.
+  (process-pre-declarations! block declarations)
   (let ((scfg (generate/expression block continuation context expression)))
-    (process-top-level-declarations! block declarations)
+    (process-post-declarations! block declarations)
     scfg))
 
 ;;;; Continuations

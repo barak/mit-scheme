@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.79 2007/03/28 02:29:24 riastradh Exp $
+$Id: opncod.scm,v 4.80 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -76,15 +76,19 @@ USA.
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
     (and (primitive-arity-correct? primitive (length operands))
-	 (with-values (lambda () ((vector-ref entry 0) operands))
-	   (lambda (generator indices internal-close-coding?)
-	     (and generator
-		  (make-inliner entry
-				generator
-				indices
-				(if (boolean? internal-close-coding?)
-				    internal-close-coding?
-				    (internal-close-coding?)))))))))
+	 (receive (generator indices internal-close-coding?)
+	     ((vector-ref entry 0) operands
+				   primitive
+				   (combination/block combination))
+	   (and generator
+		(make-inliner entry
+			      generator
+			      indices
+			      (if (boolean? internal-close-coding?)
+				  internal-close-coding?
+				  (internal-close-coding?
+				   primitive
+				   (combination/block combination)))))))))
 
 ;;;; Code Generator
 
@@ -249,19 +253,20 @@ USA.
 ;;;; Operand Filters
 
 (define (simple-open-coder generator operand-indices internal-close-coding?)
-  (lambda (operands)
-    operands
+  (lambda (operands primitive block)
+    operands primitive block
     (values generator operand-indices internal-close-coding?)))
 
 (define (conditional-open-coder predicate open-coder)
-  (lambda (operands)
-    (if (predicate operands)
-	(open-coder operands)
+  (lambda (operands primitive block)
+    (if (predicate operands primitive block)
+	(open-coder operands primitive block)
 	(values false '() false))))
 
 (define (constant-filter predicate)
   (lambda (generator constant-index operand-indices internal-close-coding?)
-    (lambda (operands)
+    (lambda (operands primitive block)
+      primitive block			;ignore
       (let ((operand (rvalue-known-value (list-ref operands constant-index))))
 	(if (and operand
 		 (rvalue/constant? operand)
@@ -280,15 +285,15 @@ USA.
      (and (exact-nonnegative-integer? operand)
 	  (back-end:< operand scheme-type-limit)))))
 
-(define (internal-close-coding-for-type-checks)
-  compiler:generate-type-checks?)
+(define (internal-close-coding-for-type-checks primitive block)
+  (block/generate-type-checks? block primitive))
 
-(define (internal-close-coding-for-range-checks)
-  compiler:generate-range-checks?)
+(define (internal-close-coding-for-range-checks primitive block)
+  (block/generate-range-checks? block primitive))
 
-(define (internal-close-coding-for-type-or-range-checks)
-  (or compiler:generate-type-checks?
-      compiler:generate-range-checks?))
+(define (internal-close-coding-for-type-or-range-checks primitive block)
+  (or (block/generate-type-checks? block primitive)
+      (block/generate-range-checks? block primitive)))
 
 ;;;; Constraint Checkers
 
@@ -370,8 +375,9 @@ USA.
       continuation-label
       primitive))))
 
-(define (open-code:type-check expression type)
-  (if (and type compiler:generate-type-checks?)
+(define (open-code:type-check expression type primitive block)
+  (if (and type
+	   (block/generate-type-checks? block primitive))
       (generate-type-test type
 			  expression
 			  make-false-pcfg
@@ -410,8 +416,9 @@ USA.
 ;; This is not reasonable since the port may not include such open codings.
 
 #|
-(define (open-code:range-check index-expression limit-locative)
-  (cond ((and limit-locative compiler:generate-range-checks?)
+(define (open-code:range-check index-expression limit-locative
+			       primitive block)
+  (cond ((and limit-locative (block/generate-range-checks? block primitive))
 	 (pcfg/prefer-consequent!
 	   (rtl:make-fixnum-pred-2-args
 	    'UNSIGNED-LESS-THAN-FIXNUM?
@@ -421,25 +428,28 @@ USA.
 	 (make-true-pcfg))))
 |#
 
-(define (open-code:index-check index-expression limit-locative)
+(define (open-code:index-check index-expression limit-locative
+			       primitive block)
   (cond ((not limit-locative)
-	 (open-code:index-fixnum-check index-expression))
-	(compiler:generate-range-checks?
+	 (open-code:index-fixnum-check index-expression primitive block))
+	((block/generate-range-checks? block primitive)
 	 (pcfg*pcfg->pcfg!
-	  (open-code:type-check index-expression (ucode-type fixnum))
+	  (open-code:type-check index-expression (ucode-type fixnum)
+				primitive block)
 	  (pcfg/prefer-consequent!
 	   (rtl:make-fixnum-pred-2-args
 	    'UNSIGNED-LESS-THAN-FIXNUM?
 	    (rtl:make-object->fixnum index-expression)
 	    (rtl:make-object->fixnum limit-locative)))
 	  (make-false-pcfg)))
-	(compiler:generate-type-checks?
-	 (open-code:type-check index-expression (ucode-type fixnum)))
+	((block/generate-type-checks? block primitive)
+	 (open-code:type-check index-expression (ucode-type fixnum)
+			       primitive block))
 	(else
 	 (make-true-pcfg))))
 
-(define (open-code:nonnegative-check expression)
-  (if compiler:generate-range-checks?
+(define (open-code:nonnegative-check expression primitive block)
+  (if (block/generate-range-checks? block primitive)
       (generate-nonnegative-check expression)
       (make-true-pcfg)))
 
@@ -455,9 +465,9 @@ USA.
 	 'NEGATIVE-FIXNUM?
 	 (rtl:make-object->fixnum expression))))))
 
-(define (open-code:index-fixnum-check expression)
-  (if (or compiler:generate-range-checks?
-	  compiler:generate-type-checks?)
+(define (open-code:index-fixnum-check expression primitive block)
+  (if (or (block/generate-range-checks? block primitive)
+	  (block/generate-type-checks? block primitive))
       (generate-index-fixnum-check expression)
       (make-true-pcfg)))
 
@@ -482,12 +492,16 @@ USA.
 	    (index (cadr expressions)))
 	(open-code:with-checks
 	 combination
-	 (cons*
-	  (open-code:type-check object base-type)
-	  (open-code:index-check index (length-expression object))
-	  (if value-type
-	      (list (open-code:type-check (caddr expressions) value-type))
-	      '()))
+	 (let ((block (combination/block combination)))
+	   (cons*
+	    (open-code:type-check object base-type name block)
+	    (open-code:index-check index (length-expression object) name block)
+	    (if value-type
+		(list (open-code:type-check (caddr expressions)
+					    value-type
+					    name
+					    block))
+		'())))
 	 (index-locative object index
 	   (lambda (locative)
 	     (generator locative expressions finish)))
@@ -707,7 +721,8 @@ USA.
    false))
 
 (define-open-coder/predicate 'OBJECT-TYPE?
-  (lambda (operands)
+  (lambda (operands primitive block)
+    primitive block			;ignore
     (let ((operand (rvalue-known-value (car operands))))
       (if (and operand
 	       (rvalue/constant? operand)
@@ -728,10 +743,11 @@ USA.
 			  (object (cadr expressions)))
 		      (open-code:with-checks
 		       combination
-		       (list
-			(open-code:index-check type
-					       (rtl:make-constant
-						scheme-type-limit)))
+		       (list (open-code:index-check
+			      type
+			      (rtl:make-constant scheme-type-limit)
+			      'OBJECT-TYPE?
+			      (combination/block combination)))
 		       (finish
 			(rtl:make-eq-test (rtl:make-object->datum type)
 					  (rtl:make-object->type object)))
@@ -788,7 +804,10 @@ USA.
      (let ((mask (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:type-check mask (ucode-type fixnum)))
+	(list (open-code:type-check mask
+				    (ucode-type fixnum)
+				    'SET-INTERRUPT-ENABLES!
+				    (combination/block combination)))
 	(let ((assignment
 	       (rtl:make-assignment register:int-mask
 				    (rtl:make-object->datum mask))))
@@ -824,7 +843,9 @@ USA.
      (let ((length (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:index-fixnum-check length))
+	(list (open-code:index-fixnum-check length
+					    'PRIMITIVE-INCREMENT-FREE
+					    (combination/block combination)))
 	(let ((assignment
 	       ((index-locative-generator rtl:locative-object-offset
 					  rtl:locative-object-index
@@ -851,7 +872,9 @@ USA.
      (let ((length (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:index-fixnum-check length))
+	(list (open-code:index-fixnum-check length
+					    'HEAP-AVAILABLE?
+					    (combination/block combination)))
 	((index-locative-generator rtl:locative-object-offset
 				   rtl:locative-object-index
 				   0
@@ -888,7 +911,8 @@ USA.
     (filter/type-code open-code/pair-cons 0 '(1 2) false)))
 
 (define-open-coder/value 'VECTOR
-  (lambda (operands)
+  (lambda (operands primitive block)
+    primitive block			;ignore
     (if (< (length operands) 32)
 	(values (lambda (combination expressions finish)
 		  combination
@@ -901,7 +925,8 @@ USA.
 	(values false false false))))
 
 (define-open-coder/value '%RECORD
-  (lambda (operands)
+  (lambda (operands primitive block)
+    primitive block			;ignore
     (if (< 1 (length operands) 32)
 	(values (lambda (combination expressions finish)
 		  combination
@@ -933,7 +958,9 @@ USA.
      (let ((length (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:nonnegative-check length))
+	(list (open-code:nonnegative-check length
+					   'STRING-ALLOCATE
+					   (combination/block combination)))
 	(scfg*scfg->scfg!
 	 (finish
 	  (rtl:make-typed-cons:string
@@ -957,7 +984,9 @@ USA.
        (let ((length (car expressions)))
 	 (open-code:with-checks
 	  combination
-	  (list (open-code:index-fixnum-check length)
+	  (list (open-code:index-fixnum-check length
+					      name
+					      (combination/block combination))
 		(make-false-pcfg))
 	  (make-null-cfg)
 	  finish
@@ -978,7 +1007,10 @@ USA.
 	      (let ((expression (car expressions)))
 		(open-code:with-checks
 		 combination
-		 (list (open-code:type-check expression type))
+		 (list (open-code:type-check expression
+					     type
+					     name
+					     (combination/block combination)))
 		 (finish (make-fetch (rtl:locative-offset expression index)))
 		 finish
 		 name
@@ -1044,7 +1076,10 @@ USA.
 	      (let ((object (car expressions)))
 		(open-code:with-checks
 		 combination
-		 (list (open-code:type-check object type))
+		 (list (open-code:type-check object
+					     type
+					     name
+					     (combination/block combination)))
 		 (finish-vector-assignment (rtl:locative-offset object index)
 					   (cadr expressions)
 					   finish)
@@ -1063,8 +1098,10 @@ USA.
 	   (length (cadr expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:type-check object (ucode-type string))
-	      (open-code:index-fixnum-check length))
+	(let ((name 'SET-STRING-LENGTH!)
+	      (block (combination/block combination)))
+	  (list (open-code:type-check object (ucode-type string) name block)
+		(open-code:index-fixnum-check length name block)))
 	(finish-vector-assignment (rtl:locative-offset object 1)
 				  (rtl:make-object->datum length)
 				  finish)
@@ -1102,15 +1139,18 @@ USA.
 
 (define-open-coder/value 'INTEGER->CHAR
   (conditional-open-coder
-   (lambda (operands)
+   (lambda (operands primitive block)
      operands
-     (not compiler:generate-range-checks?))
+     (not (block/generate-range-checks? block primitive)))
    (simple-open-coder
     (lambda (combination expressions finish)
       (let ((arg (car expressions)))
 	(open-code:with-checks
 	 combination
-	 (list (open-code:type-check arg (ucode-type fixnum)))
+	 (list (open-code:type-check arg
+				     (ucode-type fixnum)
+				     'INTEGER->CHAR
+				     (combination/block combination)))
 	 (finish
 	  (rtl:make-cons-non-pointer
 	   (rtl:make-machine-constant (ucode-type character))
@@ -1127,7 +1167,10 @@ USA.
      (let ((char (car expressions)))
        (open-code:with-checks
 	combination
-	(list (open-code:type-check char (ucode-type character)))
+	(list (open-code:type-check char
+				    (ucode-type character)
+				    'CHAR->INTEGER
+				    (combination/block combination)))
 	(finish
 	 (rtl:make-cons-non-pointer
 	  (rtl:make-machine-constant (ucode-type fixnum))
@@ -1337,8 +1380,8 @@ USA.
 
 (define (floating-point-open-coder generator indices internal-close-coding?)
   (conditional-open-coder
-   (lambda (operands)
-     operands				; ignored
+   (lambda (operands primitive block)
+     operands primitive block		; ignored
      compiler:open-code-floating-point-arithmetic?)
    (simple-open-coder generator indices internal-close-coding?)))
 
@@ -1350,7 +1393,10 @@ USA.
 	(let ((argument (car expressions)))
 	  (open-code:with-checks
 	   combination
-	   (list (open-code:type-check argument (ucode-type flonum)))
+	   (list (open-code:type-check argument
+				       (ucode-type flonum)
+				       flonum-operator
+				       (combination/block combination)))
 	   (finish (rtl:make-float->object
 		    (rtl:make-flonum-1-arg
 		     flonum-operator
@@ -1374,8 +1420,10 @@ USA.
 	      (arg2 (cadr expressions)))
 	  (open-code:with-checks
 	   combination
-	   (list (open-code:type-check arg1 (ucode-type flonum))
-		 (open-code:type-check arg2 (ucode-type flonum)))
+	   (let ((name flonum-operator)
+		 (block (combination/block combination)))
+	     (list (open-code:type-check arg1 (ucode-type flonum) name block)
+		   (open-code:type-check arg2 (ucode-type flonum) name block)))
 	   (finish
 	    (rtl:make-float->object
 	     (rtl:make-flonum-2-args
@@ -1398,7 +1446,10 @@ USA.
 	(let ((argument (car expressions)))
 	  (open-code:with-checks
 	   combination
-	   (list (open-code:type-check argument (ucode-type flonum)))
+	   (list (open-code:type-check argument
+				       (ucode-type flonum)
+				       flonum-pred
+				       (combination/block combination)))
 	   (finish
 	    (rtl:make-flonum-pred-1-arg
 	     flonum-pred
@@ -1420,8 +1471,10 @@ USA.
 	      (arg2 (cadr expressions)))
 	  (open-code:with-checks
 	   combination
-	   (list (open-code:type-check arg1 (ucode-type flonum))
-		 (open-code:type-check arg2 (ucode-type flonum)))
+	   (let ((name flonum-pred)
+		 (block (combination/block combination)))
+	     (list (open-code:type-check arg1 (ucode-type flonum) name block)
+		   (open-code:type-check arg2 (ucode-type flonum) name block)))
 	   (finish (rtl:make-flonum-pred-2-args
 		    flonum-pred
 		    (rtl:make-object->float arg1)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blocks.scm,v 4.19 2007/01/05 21:19:20 cph Exp $
+$Id: blocks.scm,v 4.20 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -91,6 +91,8 @@ from the continuation, and then "glued" into place afterwards.
 			;analysis not to alter this block's layout
 			;(i.e., don't make any of the block's
 			;procedure's parameters be passed by register)
+  type-checks		;true, false, or a list (<default> <check>
+  range-checks		;  <no-check>)
   )
 
 (define *blocks*)
@@ -99,12 +101,18 @@ from the continuation, and then "glued" into place afterwards.
   (let ((block
 	 (make-rvalue block-tag (enumeration/name->index block-types type)
 		      parent '() '() #f #f '()'() '() '() '() '() '()
-		      #f #f 'UNKNOWN 'UNKNOWN 'UNKNOWN #f)))
+		      #f #f 'UNKNOWN 'UNKNOWN 'UNKNOWN #f
+		      (if parent
+			  (block-type-checks parent)
+			  compiler:generate-type-checks?)
+		      (if parent
+			  (block-range-checks parent)
+			  compiler:generate-range-checks?))))
     (if parent
 	(set-block-children! parent (cons block (block-children parent))))
     (set! *blocks* (cons block *blocks*))
     block))
-
+
 (define-vector-tag-unparser block-tag
   (lambda (state block)
     ((standard-unparser
@@ -139,6 +147,27 @@ from the continuation, and then "glued" into place afterwards.
 
 (define block-passed-out?
   rvalue-%passed-out?)
+
+(define (block/generate-type-checks? block primitive)
+  (block/generate-checks? block primitive block-type-checks))
+
+(define (block/generate-range-checks? block primitive)
+  (block/generate-checks? block primitive block-range-checks))
+
+(define (block/generate-checks? block primitive block-checks)
+  (let ((checks (block-checks block)))
+    (if (boolean? checks)
+	checks
+	(let ((primitive
+	       (if (primitive-procedure? primitive)
+		   (primitive-procedure-name primitive)
+		   primitive))
+	      (default (car checks))
+	      (do-check (cadr checks))
+	      (dont-check (caddr checks)))
+	  (cond ((memq primitive do-check) #t)
+		((memq primitive dont-check) #f)
+		(else default))))))
 
 ;;;; Block Type
 

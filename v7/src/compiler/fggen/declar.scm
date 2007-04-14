@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: declar.scm,v 1.10 2007/01/05 21:19:20 cph Exp $
+$Id: declar.scm,v 1.11 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,7 +29,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define (process-top-level-declarations! block declarations)
+;;; A block's declarations are processed in two phases: before and
+;;; after the flow graph is generated for the block's children.  See
+;;; GENERATE/BODY in fggen/fggen.scm.  Some declarations need to refer
+;;; to information about variables bound by the block, so they use
+;;; post-declarations; others need to establish information that the
+;;; children can inherit from, so they use pre-declarations.
+
+(define (process-top-level-declarations! block declarations handlers)
   (process-declarations!
    block
    (let loop
@@ -40,30 +47,63 @@ USA.
 	 (loop (if (assq (caar defaults) declarations)
 		   declarations
 		   (cons (car defaults) declarations))
-	       (cdr defaults))))))
+	       (cdr defaults))))
+   handlers))
 
-(define (process-declarations! block declarations)
+(define (process-declarations! block declarations handlers)
   (for-each (lambda (declaration)
-	      (process-declaration! block declaration))
+	      (process-declaration! block declaration handlers))
 	    declarations))
 
-(define (process-declaration! block declaration)
-  (let ((entry (assq (car declaration) known-declarations)))
+(define (process-declaration! block declaration handlers)
+  (let ((entry (assq (car declaration) handlers)))
     (if entry
 	((cdr entry) block (car declaration) (cdr declaration))
 	(warn "Unknown declaration name" (car declaration)))))
 
-(define known-declarations
-  '())
+(define (declaration-processor get-handlers)
+  (lambda (block declarations)
+    (process-top-level-declarations! block declarations (get-handlers))))
 
-(define (define-declaration keyword handler)
-  (let ((entry (assq keyword known-declarations)))
-    (if entry
-	(set-cdr! entry handler)
-	(set! known-declarations
-	      (cons (cons keyword handler)
-		    known-declarations))))
-  keyword)
+(define (declaration-definer get-handlers set-handlers!)
+  (lambda (keyword handler)
+    (let ((handlers (get-handlers)))
+      (cond ((assq keyword handlers)
+	     => (lambda (entry)
+		  (set-cdr! entry handler)))
+	    (else
+	     (set-handlers! (cons (cons keyword handler) handlers)))))
+    keyword))
+
+(define pre-declarations '())
+(define post-declarations '())
+
+(define process-pre-declarations!
+  (declaration-processor (lambda () pre-declarations)))
+
+(define process-post-declarations!
+  (declaration-processor (lambda () post-declarations)))
+
+(define define-pre-declaration
+  (declaration-definer (lambda () pre-declarations)
+		       (lambda (handlers) (set! pre-declarations handlers))))
+
+(define define-post-declaration
+  (declaration-definer (lambda () post-declarations)
+		       (lambda (handlers) (set! post-declarations handlers))))
+
+(define (define-pre-only-declaration keyword handler)
+  (define-pre-declaration keyword handler)
+  (define-post-declaration keyword ignored-declaration))
+
+(define (define-post-only-declaration keyword handler)
+  (define-pre-declaration keyword ignored-declaration)
+  (define-post-declaration keyword handler))
+
+(define ignored-declaration
+  (lambda (block keyword parameters)
+    block keyword parameters		;ignore
+    unspecific))
 
 (package (boolean-variable-property)
 
@@ -129,10 +169,48 @@ USA.
 
 )
 
-(define-declaration 'UUO-LINK boolean-variable-property)
-(define-declaration 'CONSTANT boolean-variable-property)
-(define-declaration 'IGNORE-REFERENCE-TRAPS boolean-variable-property)
-(define-declaration 'IGNORE-ASSIGNMENT-TRAPS boolean-variable-property)
-(define-declaration 'USUAL-DEFINITION boolean-variable-property)
-(define-declaration 'SIDE-EFFECT-FREE boolean-variable-property)
-(define-declaration 'PURE-FUNCTION boolean-variable-property)
+(define-post-only-declaration 'UUO-LINK boolean-variable-property)
+(define-post-only-declaration 'CONSTANT boolean-variable-property)
+(define-post-only-declaration 'IGNORE-REFERENCE-TRAPS
+  boolean-variable-property)
+(define-post-only-declaration 'IGNORE-ASSIGNMENT-TRAPS
+  boolean-variable-property)
+(define-post-only-declaration 'USUAL-DEFINITION boolean-variable-property)
+(define-post-only-declaration 'SIDE-EFFECT-FREE boolean-variable-property)
+(define-post-only-declaration 'PURE-FUNCTION boolean-variable-property)
+
+;;;; Safety Check Declarations
+
+(let ()
+  (define (check-property block-checks set-block-checks! enable?)
+    (lambda (block keyword primitives)
+      keyword				;ignore
+      (set-block-checks!
+       block
+       (let ((checks (block-checks block)))
+	 (if (null? primitives)
+	     enable?
+	     (if (boolean? checks)
+		 (if (eqv? checks enable?)
+		     checks
+		     (if enable?
+			 (list checks primitives '())
+			 (list checks '() primitives)))
+		 (let ((default (car checks))
+		       (do-check (cadr checks))
+		       (dont-check (caddr checks)))
+		   (if enable?
+		       (list default
+			     (eq-set-adjoin primitives do-check)
+			     dont-check)
+		       (list default
+			     do-check
+			     (eq-set-adjoin primitives dont-check))))))))))
+  (define-pre-only-declaration 'TYPE-CHECKS
+    (check-property block-type-checks set-block-type-checks! #t))
+  (define-pre-only-declaration 'NO-TYPE-CHECKS
+    (check-property block-type-checks set-block-type-checks! #f))
+  (define-pre-only-declaration 'RANGE-CHECKS
+    (check-property block-range-checks set-block-range-checks! #t))
+  (define-pre-only-declaration 'NO-RANGE-CHECKS
+    (check-property block-range-checks set-block-range-checks! #f)))
