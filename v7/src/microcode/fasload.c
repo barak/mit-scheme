@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.99 2007/01/12 03:45:55 cph Exp $
+$Id: fasload.c,v 9.100 2007/04/14 03:53:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -399,7 +399,7 @@ DEFUN (relocate, (P), long P)
 static SCHEME_OBJECT * relocate_temp;
 
 #define RELOCATE(P)							\
-  (RELOCATE_INTO (Relocate_Temp, P), relocate_temp)
+  (RELOCATE_INTO (relocate_temp, P), relocate_temp)
 
 #endif /* Conditional_Bug */
 #endif /* ENABLE_DEBUGGING_TOOLS */
