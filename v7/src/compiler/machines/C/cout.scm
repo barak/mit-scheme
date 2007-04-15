@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.36 2007/04/15 15:41:12 cph Exp $
+$Id: cout.scm,v 1.37 2007/04/15 17:36:57 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -103,7 +103,8 @@ USA.
 	   (declare-dynamic-object-initialization handle)))
 
 (define (default-file-handle)
-  (or (liarc-object-pathname->handle *compiler-output-pathname*)
+  (or (liarc-object-pathname->handle
+       (pathname-new-type *compiler-output-pathname* (c-output-extension)))
       "handle"))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
