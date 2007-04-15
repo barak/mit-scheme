@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.24 2007/04/15 17:36:26 cph Exp $
+$Id: compiler.pkg,v 1.25 2007/04/15 18:02:15 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -257,6 +257,7 @@ USA.
   (export (compiler)
 	  *compiler-input-pathname*
 	  *compiler-output-pathname*
+	  c-output-extension
 	  canonicalize-label-name)
   (export (compiler fg-generator)
 	  compile-recursively)
