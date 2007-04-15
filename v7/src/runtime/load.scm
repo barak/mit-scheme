@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.92 2007/04/15 17:38:38 cph Exp $
+$Id: load.scm,v 14.93 2007/04/15 17:50:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -176,7 +176,8 @@ USA.
 						find-pathname
 						(list filename default-types))
 			  default-types))))
-    (cond ((built-in-object-file pathname)
+    (cond ((and (pathname-type pathname)
+		(built-in-object-file pathname))
 	   => (lambda (value)
 		(values pathname
 			((find-loader #f) value))))
@@ -298,7 +299,7 @@ USA.
 	 ((ucode-primitive initialize-c-compiled-block 1) handle))))
 
 (define (liarc-object-pathname->handle pathname)
-  (let ((pathname (merge-pathnames pathname)))
+  (let ((pathname (pathname-simplify (merge-pathnames pathname))))
     (let ((d (pathname-directory pathname))
 	  (n (pathname-name pathname))
 	  (t (pathname-type pathname)))
