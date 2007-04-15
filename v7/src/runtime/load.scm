@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.91 2007/04/15 15:50:34 cph Exp $
+$Id: load.scm,v 14.92 2007/04/15 17:38:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,16 +38,12 @@ USA.
   (set! load/default-types
 	`((#f ,wrapper/load/built-in)
 	  ("so" ,load-object-file)
-	  ("sl" ,load-object-file)
-	  ("dylib" ,load-object-file)
 	  ("com" ,load/internal)
 	  ("bin" ,load/internal)
 	  ("scm" ,load/internal)))
   (set! fasload/default-types
 	`((#f ,wrapper/fasload/built-in)
 	  ("so" ,fasload-object-file)
-	  ("sl" ,fasload-object-file)
-	  ("dylib" ,fasload-object-file)
 	  ("com" ,fasload/internal)
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
@@ -355,31 +351,25 @@ USA.
     (let ((pathname (merge-pathnames name directory)))
       (if (there-exists? loaded-object-files
 	    (lambda (pathname*)
-	      (pathname=? pathname pathname*)))
+	      (pathname=? pathname* pathname)))
 	  #t
-	  (let ((pathname*
-		 (let ((find
-			(lambda (type)
-			  (let ((pathname (pathname-new-type pathname type)))
-			    (and (file-regular? pathname)
-				 pathname)))))
-		   (or (find "so")
-		       (find "sl")))))
-	    (cond ((not pathname*)
-		   (nsf))
-		  ((ignore-errors
+	  (let ((pathname* (pathname-new-type pathname "so")))
+	    (if (not (file-regular? pathname*))
+		(nsf))
+	    (let ((condition
+		   (ignore-errors
 		    (lambda ()
 		      (fluid-let ((load/suppress-loading-message?
 				   (if (default-object? noisy?) #f noisy?)))
-			(load pathname*))))
-		   => (lambda (condition)
-			(if errors?
-			    (signal-condition condition)
-			    condition)))
-		  (else
-		   (set! loaded-object-files
-			 (cons pathname loaded-object-files))
-		   #t)))))))
+			(load pathname*))))))
+	      (if condition
+		  (if errors?
+		      (signal-condition condition)
+		      condition)
+		  (begin
+		    (set! loaded-object-files
+			  (cons pathname loaded-object-files))
+		    #t))))))))
 
 (define (reset-loaded-object-files!)
   (set! loaded-object-files '())
