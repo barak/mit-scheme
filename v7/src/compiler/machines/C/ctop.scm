@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.25 2007/04/14 14:23:12 cph Exp $
+$Id: ctop.scm,v 1.26 2007/04/15 17:36:30 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,13 +33,12 @@ USA.
 ;;;; Exports to the compiler
 
 (define compiled-output-extension "c")
-(define compiler:invoke-c-compiler? true)
-(define compiler:invoke-verbose? true)
+(define compiler:invoke-c-compiler? #t)
+(define compiler:invoke-verbose? #t)
 (define compiler:c-compiler-name #f)
-(define compiler:c-compiler-switches 'UNKNOWN)
+(define compiler:c-compiler-switches #f)
 (define compiler:c-linker-name #f)
-(define compiler:c-linker-switches 'UNKNOWN)
-(define compiler:c-linker-output-extension #f)
+(define compiler:c-linker-switches #f)
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
@@ -83,7 +82,7 @@ USA.
 	(delete-file pathname))
     (if (pathname-type pathname)
 	(pathname-new-name
-	 (pathname-new-type pathname false)
+	 (pathname-new-type pathname #f)
 	 (string-append (pathname-name pathname)
 			"_"
 			(pathname-type pathname)))
@@ -93,9 +92,9 @@ USA.
   (let* ((file (compiler-temporary-file-pathname))
 	 (filec (pathname-new-type file "c")))
     (dynamic-wind
-     (lambda () false)
+     (lambda () #f)
      (lambda ()
-       (fluid-let ((compiler:invoke-c-compiler? true))
+       (fluid-let ((compiler:invoke-c-compiler? #t))
 	 (compiler-file-output compiler-output filec)
 	 (action (pathname-new-type file (c-output-extension)))))
      (lambda ()
@@ -108,63 +107,53 @@ USA.
 		       ;; (c-output-extension)
 		       ))))))
 
-(define (list->command-line l)
-  (let ((l (reverse l)))
-    (if (null? l)
-	""
-	(let loop ((res (car l))
-		   (l (cdr l)))
-	  (if (null? l)
-	      res
-	      (loop (string-append (car l) " " res)
-		    (cdr l)))))))  
-
 (define (c-compile pathname)
   (let ((source (enough-namestring pathname))
 	(object (enough-namestring (pathname-new-type pathname "o")))
-	(call-program*
-	 (lambda (l)
-	   (let ((command-line (list->command-line l)))
-	     (if compiler:invoke-verbose?
-		 (begin
-		   (newline)
-		   (write-string ";Executing \"")
-		   (write-string command-line)
-		   (write-string "\"")))
-	     (let ((result (run-shell-command command-line)))
-	       #|
-	       ;; Some C compilers always fail
-	       (if (not (zero? result))
-		   (error "compiler: C compiler/linker failed"))
-	       |#
-	       result)))))
-    (if compiler:noisy?
-	(begin
-	  (newline)
-	  (display ";Compiling ")
-	  (display source)))
-    (call-program* (cons (c-compiler-name)
-			 (append (c-compiler-switches)
-				 (cons*
-				  "-DCOMPILE_FOR_DYNAMIC_LOADING"
-				  "-o"
-				  object
-				  (list source)))))
-    (if compiler:noisy?
-	(begin
-	  (newline)
-	  (display ";Linking ")
-	  (display object)))
-    (call-program*
-     (cons (c-linker-name)
-	   (append (list "-o")
-		   (list
-		    (enough-namestring
-		     (pathname-new-type pathname
-					(c-output-extension))))
-		   (c-linker-switches)
-		   (list object))))
+	(run
+	 (lambda items
+	   (let ((command-line
+		  (decorated-string-append "" " " ""
+					   (let flatten ((items items))
+					     (append-map! (lambda (item)
+							    (if (list? item)
+								(flatten item)
+								(list item)))
+							  items)))))
+	     (maybe-with-notification compiler:invoke-verbose?
+				      (lambda (port)
+					(write-string "Executing " port)
+					(write command-line port))
+	       (lambda ()
+		 (run-shell-command command-line)))))))
+    (maybe-with-notification compiler:noisy?
+			     (lambda (port)
+			       (write-string "Compiling " port)
+			       (write-string source port))
+      (lambda ()
+	(run (c-compiler-name)
+	     (c-compiler-switches)
+	     "-DCOMPILE_FOR_DYNAMIC_LOADING"
+	     "-o"
+	     object
+	     source)))
+    (maybe-with-notification compiler:noisy?
+			     (lambda (port)
+			       (write-string "Linking " port)
+			       (write-string object port))
+      (lambda ()
+	(run (c-linker-name)
+	     "-o"
+	     (enough-namestring
+	      (pathname-new-type pathname (c-output-extension)))
+	     (c-linker-switches)
+	     object)))
     (delete-file object)))
+
+(define (maybe-with-notification flag message thunk)
+  (if flag
+      (with-notification message thunk)
+      (thunk)))
 
 (define c-compiler-switch-table
   `(
@@ -255,64 +244,49 @@ USA.
 	   (error fail-name "Unknown OS/machine"))))
 
 (define (c-output-extension)
-  (or compiler:c-linker-output-extension
-      (let ((new (list-ref (find-switches 'c-output-extension) 1)))
-	(set! compiler:c-linker-output-extension new)
-	new)))
+  ;; Always use .so -- this simplifies logic for built-in objects.
+  ;;(list-ref (find-switches 'c-output-extension) 1)
+  "so")
 
 (define (c-compiler-name)
   (or compiler:c-compiler-name
-      (let ((new (let ((place (find-switches #f)))
-		   (if place
-		       (list-ref place 4)
-		       "cc"))))
-	(set! compiler:c-compiler-name new)
-	new)))
+      (let ((p (find-switches #f)))
+	(if p
+	    (list-ref p 4)
+	    "cc"))))
 
 (define (c-compiler-switches)
-  (if (not (eq? compiler:c-compiler-switches 'UNKNOWN))
-      compiler:c-compiler-switches
-      (let ((place (find-switches 'c-compiler-switches))
+  (or compiler:c-compiler-switches
+      (let ((p (find-switches 'c-compiler-switches))
 	    (dir (system-library-directory-pathname "include")))
 	(if (not dir)
 	    (error 'c-compiler-switches
-		   "Cannot find \"include\" directory")
-	    (let ((result
-		   (append
-		    (list-ref place 2)
-		    (list
-		     (string-append
-		      "-I"
-		      (->namestring
-		       (directory-pathname-as-file dir)))))))
-	      (set! compiler:c-compiler-switches result)
-	      result)))))
+		   "Cannot find \"include\" directory"))
+	(append (list-ref p 2)
+		(list
+		 (string-append
+		  "-I"
+		  (->namestring (directory-pathname-as-file dir))))))))
 
 (define (c-linker-name)
   (or compiler:c-linker-name
-      (let ((new (let ((place (find-switches #f)))
-		   (if place
-		       (list-ref place 5)
-		       "ld"))))
-	(set! compiler:c-linker-name new)
-	new)))
+      (let ((p (find-switches #f)))
+	(if p
+	    (list-ref p 5)
+	    "ld"))))
 
 (define (c-linker-switches)
-  (if (not (eq? compiler:c-linker-switches 'UNKNOWN))
-      compiler:c-linker-switches
-      (let* ((place (find-switches 'c-linker-switches))
-	     (switches
-	      (let ((switches (list-ref place 3)))
-		(if (not (procedure? switches))
-		    switches
-		    (let ((dir (system-library-directory-pathname
-				"include")))
-		      (if (not dir)
-			  (error 'c-linker-switches
-				 "Cannot find \"include\" directory"))
-		      (switches dir))))))
-	(set! compiler:c-linker-switches switches)
-	switches)))
+  (or compiler:c-linker-switches
+      (let ((p (find-switches 'c-linker-switches)))
+	(let ((switches (list-ref p 3)))
+	  (if (not (procedure? switches))
+	      switches
+	      (let ((dir (system-library-directory-pathname
+			  "include")))
+		(if (not dir)
+		    (error 'c-linker-switches
+			   "Cannot find \"include\" directory"))
+		(switches dir)))))))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
@@ -454,10 +428,10 @@ USA.
   (set! *external-labels* '())
   (set! *special-labels* (make-special-labels))
   (set! *invoke-interface* 'INFINITY)
-  (set! *used-invoke-primitive* false)
-  (set! *use-jump-execute-chache* false)
-  (set! *use-pop-return* false)
-  (set! *purification-root-object* false)
+  (set! *used-invoke-primitive* #f)
+  (set! *use-jump-execute-chache* #f)
+  (set! *use-pop-return* #f)
+  (set! *purification-root-object* #f)
   (set! *end-of-block-code* (LAP))
   unspecific)
 
@@ -560,7 +534,7 @@ USA.
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
 				   info
-				   false)
+				   #f)
 			   *recursive-compilation-results*))
 	       unspecific)
 	      (else
@@ -577,7 +551,7 @@ USA.
 
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf false)
+    (split-inf-structure! binf #f)
     (dump-compressed binf bci-path)))
 
 (define (dump-compressed object path)
