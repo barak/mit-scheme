@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.109 2007/04/14 03:52:47 cph Exp $
+$Id: make.scm,v 14.110 2007/04/15 15:50:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -243,7 +243,7 @@ USA.
 	       bin-file)))))
 
 (define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "runtime_" filename ".bin"))
+  (let* ((block-name (string-append "runtime_" filename ".so"))
 	 (value (initialize-c-compiled-block block-name)))
     (cond (value
 	   (tty-write-string newline-string)

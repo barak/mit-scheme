@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.90 2007/04/15 15:42:20 cph Exp $
+$Id: load.scm,v 14.91 2007/04/15 15:50:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -310,7 +310,7 @@ USA.
 	   (let ((tail (last d)))
 	     (and (string? tail)	;Doesn't handle UP ("..").
 		  (string-append tail "_" n
-				 (cond ((not t) ".bin")
+				 (cond ((not t) ".so")
 				       ((string? t) (string-append "." t))
 				       (else "")))))))))
 
