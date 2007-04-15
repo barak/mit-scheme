@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.1 2007/04/04 05:08:19 riastradh Exp $
+# $Id: c-compile.sh,v 1.2 2007/04/15 08:16:34 riastradh Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -38,7 +38,7 @@ if [ -z "${SCHEME_COMPILER}" ]; then
 	sh etc/c-initial-bands.sh
     )
     SCHEME_COMPILER="${DIR}/microcode/scheme --library ${DIR}/lib"
-    SCHEME_COMPILER="${SCHEME_COMPILER} --compiler --heap 3000"
+    SCHEME_COMPILER="${SCHEME_COMPILER} --compiler --heap 3000 --stack 200"
 fi
 
 ${SCHEME_COMPILER} < "${DIR}/etc/c-compile.scm"
