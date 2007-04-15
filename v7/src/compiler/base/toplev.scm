@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.72 2007/04/14 05:52:53 cph Exp $
+$Id: toplev.scm,v 4.73 2007/04/15 15:41:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -139,7 +139,8 @@ USA.
 	 (and (not (default-object? output-string)) output-string)
 	 (make-pathname #f #f #f #f "bin" 'NEWEST)
 	 (lambda (input-pathname output-pathname)
-	   (fluid-let ((*compiler-input-pathname* input-pathname))
+	   (fluid-let ((*compiler-input-pathname* input-pathname)
+		       (*compiler-output-pathname* output-pathname))
 	     (let ((scode (compiler-fasload input-pathname)))
 	       (if (and (scode/constant? scode)
 			(not compiler:compile-data-files-as-expressions?))
@@ -163,6 +164,7 @@ USA.
 
 (define *debugging-key*)
 (define *compiler-input-pathname*)
+(define *compiler-output-pathname*)
 
 (define (maybe-open-file open? pathname receiver)
   (if open?
