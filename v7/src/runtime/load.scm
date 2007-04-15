@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.88 2007/04/14 03:52:43 cph Exp $
+$Id: load.scm,v 14.89 2007/04/15 07:49:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -95,7 +95,7 @@ USA.
 	 (let ((kernel
 		(lambda (filename last-file?)
 		  (receive (pathname loader)
-		      (find-pathname filename load/default-types)
+		      (find-pathname filename load/default-types #t)
 		    (with-eval-unit (pathname->uri pathname)
 		      (lambda ()
 			(let ((load-it
@@ -118,7 +118,7 @@ USA.
 
 (define (fasload filename #!optional suppress-loading-message?)
   (receive (pathname loader)
-      (find-pathname filename fasload/default-types)
+      (find-pathname filename fasload/default-types #f)
     (loader pathname
 	    (if (default-object? suppress-loading-message?)
 		load/suppress-loading-message?
@@ -164,7 +164,7 @@ USA.
   (fluid-let ((load/default-find-pathname-with-type find-latest-file))
     (apply fasload args)))
 
-(define (find-pathname filename default-types)
+(define (find-pathname filename default-types built-in?)
   (let ((pathname (merge-pathnames filename))
 	(find-loader
 	 (lambda (extension)
@@ -180,7 +180,8 @@ USA.
 						find-pathname
 						(list filename default-types))
 			  default-types))))
-    (cond ((built-in-object-file pathname)
+    (cond ((and built-in?
+		(built-in-object-file pathname))
 	   => (lambda (value)
 		(values pathname
 			((find-loader #f) value))))
