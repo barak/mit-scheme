@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.37 2007/04/15 17:36:57 cph Exp $
+$Id: cout.scm,v 1.38 2007/04/15 19:21:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -104,7 +104,11 @@ USA.
 
 (define (default-file-handle)
   (or (liarc-object-pathname->handle
-       (pathname-new-type *compiler-output-pathname* (c-output-extension)))
+       (pathname-new-type *compiler-output-pathname*
+			  (let ((t (pathname-type *compiler-input-pathname*)))
+			    (if (equal? t "bin")
+				(c-output-extension)
+				t))))
       "handle"))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
