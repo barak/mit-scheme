@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: unstackify.c,v 11.3 2007/01/05 21:19:25 cph Exp $
+$Id: unstackify.c,v 11.4 2007/04/17 06:02:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1057,8 +1057,10 @@ DEFUN (unstackify_restore_context, (context), stackify_context_t context)
 }
 
 SCHEME_OBJECT
-DEFUN (unstackify, (bytes, db),
-       unsigned char * bytes AND entry_count_t db)
+DEFUN (unstackify, (bytes, n_bytes, db),
+       unsigned char * bytes
+       AND unsigned long n_bytes
+       AND entry_count_t db)
 {
     unsigned char op;
     SCHEME_OBJECT result;

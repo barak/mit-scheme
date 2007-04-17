@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.27 2007/01/12 06:27:29 cph Exp $
+$Id: liarc.h,v 1.28 2007/04/17 06:02:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -554,7 +554,8 @@ extern int
 extern SCHEME_OBJECT
   EXFUN (initialize_subblock, (char *)),
   * EXFUN (invoke_utility, (int, long, long, long, long)),
-  EXFUN (unstackify, (unsigned char * prog, entry_count_t dispatch_base));
+  EXFUN (unstackify,
+	 (unsigned char * prog, unsigned long, entry_count_t dispatch_base));
 
 extern double
   EXFUN (acos, (double)),

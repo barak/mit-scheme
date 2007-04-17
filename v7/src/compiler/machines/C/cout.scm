@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.38 2007/04/15 19:21:53 cph Exp $
+$Id: cout.scm,v 1.39 2007/04/17 06:02:06 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -76,6 +76,7 @@ USA.
 		(c:line)
 		(c:return (c:ecall 'unstackify
 				   (c:cast 'uchar* (c:aptr 'prog 0))
+				   (c:ecall 'sizeof 'prog)
 				   0)))))))
 
 (define (stringify-data/traditional object output-pathname)
@@ -413,6 +414,7 @@ USA.
 			 (c:= 'ccb
 			      (c:ecall 'unstackify
 				       (c:cast 'uchar* (c:aptr name 0))
+				       (c:ecall 'sizeof name)
 				       'dispatch_base))
 			 (c:= 'current_block (c:object-address 'ccb))
 			 (c:return (c:cptr initial-offset))))))))
