@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.101 2007/04/22 16:31:22 cph Exp $
+$Id: fasload.c,v 9.102 2007/04/22 16:40:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -405,7 +405,9 @@ load_file (fasl_file_handle_t handle)
 	 && (((FASLHDR_STACK_START (fh)) == 0)
 	     || ((FASLHDR_STACK_START (fh)) == new_stack_start))
 	 && ((FASLHDR_STACK_END (fh)) == new_stack_end)
+#ifndef HEAP_IN_LOW_MEMORY
 	 && ((FASLHDR_MEMORY_BASE (fh)) == memory_base)
+#endif
 	 && (primitive_numbers_unchanged_p (new_prim_table))))
     {
       current_gc_table = (relocate_block_table ());
