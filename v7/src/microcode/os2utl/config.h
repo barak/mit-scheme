@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.12 2007/04/22 16:31:24 cph Exp $
+$Id: config.h,v 1.13 2007/04/22 18:04:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -85,14 +85,14 @@ typedef unsigned char cc_t;
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "MIT/GNU Scheme microcode"
 
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "15.1"
+
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "MIT/GNU Scheme microcode 15.0"
+#define PACKAGE_STRING PACKAGE_NAME PACKAGE_VERSION
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "mit-scheme"
-
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "15.0"
 
 /* Include the shared configuration header.  */
 #include "confshared.h"
