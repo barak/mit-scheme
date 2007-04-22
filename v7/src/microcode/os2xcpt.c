@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2xcpt.c,v 1.18 2007/01/12 03:45:55 cph Exp $
+$Id: os2xcpt.c,v 1.19 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,14 +25,10 @@ USA.
 
 */
 
-#include <stdarg.h>
 #include "scheme.h"
 #include "gccode.h"
 #include "os2.h"
 
-extern int pc_to_utility_index (unsigned long);
-extern int pc_to_builtin_index (unsigned long);
-extern SCHEME_OBJECT * find_constant_space_block (SCHEME_OBJECT *);
 extern int OS2_disable_stack_guard (void *);
 extern int OS2_essential_thread_p (TID);
 extern void OS2_message_box (const char *, const char *, int);
@@ -70,16 +66,8 @@ typedef struct
   const char * description;
 } exception_entry_t;
 
-#define PC_ALIGNMENT_MASK ((1 << PC_ZERO_BITS) - 1)
 #define SCHEME_ALIGNMENT_MASK ((sizeof (long)) - 1)
 #define FREE_PARANOIA_MARGIN 0x100
-
-#ifdef HAS_COMPILER_SUPPORT
-#define ALLOW_ONLY_C 0
-#else
-#define ALLOW_ONLY_C 1
-#define PLAUSIBLE_CC_BLOCK_P(block) 0
-#endif
 
 static ULONG find_program_end_address (void);
 extern ULONG APIENTRY OS2_exception_handler
@@ -349,7 +337,7 @@ OS2_exception_handler (PEXCEPTIONREPORTRECORD report,
 static void
 trap_immediate_termination (void)
 {
-  extern void EXFUN (OS_restore_external_state, (void));
+  extern void OS_restore_external_state (void);
   trap_state = trap_state_exitting_hard;
   OS_restore_external_state ();
   exit (1);
@@ -416,7 +404,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
 
   /* Classify the PC location.  */
   pc = (context -> ctx_RegEip);
-  if ((pc & PC_ALIGNMENT_MASK) != 0)
+  if (!PC_ALIGNED_P (pc))
     pc_location = pc_in_hyperspace;
   else if (pc <= program_end_address)
     {
@@ -424,22 +412,20 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
 	pc_location = pc_in_builtin;
       else if ((pc_to_utility_index (pc)) != (-1))
 	pc_location = pc_in_utility;
-      else if (PRIMITIVE_P (Registers[REGBLOCK_PRIMITIVE]))
+      else if (PRIMITIVE_P (GET_PRIMITIVE))
 	pc_location = pc_in_primitive;
       else
 	pc_location = pc_in_c;
     }
-  else if (ALLOW_ONLY_C)
-    pc_location = pc_in_hyperspace;
-  else if ((((ULONG) Heap_Bottom) <= pc) && (pc < ((ULONG) Heap_Top)))
+  else if ((((ULONG) heap_start) <= pc) && (pc < ((ULONG) heap_end)))
     {
       pc_location = pc_in_heap;
-      block_address = (find_block_address (((void *) pc), Heap_Bottom));
+      block_address = (find_block_address (((void *) pc), heap_start));
     }
-  else if ((((ULONG) Constant_Space) <= pc) && (pc < ((ULONG) Constant_Top)))
+  else if ((((ULONG) constant_start) <= pc) && (pc < ((ULONG) constant_end)))
     {
       pc_location = pc_in_heap;
-      block_address = (find_block_address (((void *) pc), Constant_Space));
+      block_address = (find_block_address (((void *) pc), constant_start));
     }
   else
     pc_location = pc_in_hyperspace;
@@ -454,14 +440,13 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
     case pc_in_utility:
     case pc_in_primitive:
     case pc_in_c:
-      new_sp = sp_register;
+      new_sp = stack_pointer;
       break;
     default:
       new_sp = 0;
       break;
     }
-  if (! ((Stack_Bottom <= new_sp)
-	 && (new_sp < Stack_Top)
+  if (! ((ADDRESS_IN_STACK_P (new_sp))
 	 && ((((ULONG) new_sp) & SCHEME_ALIGNMENT_MASK) == 0)))
     new_sp = 0;
 
@@ -472,8 +457,7 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
       if (block_address != 0)
 	{
 	  (trinfo . state) = STATE_COMPILED_CODE;
-	  (trinfo . pc_info_1)
-	    = (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_address));
+	  (trinfo . pc_info_1) = (MAKE_CC_BLOCK (block_address));
 	  (trinfo . pc_info_2)
 	    = (LONG_TO_UNSIGNED_FIXNUM (pc - ((ULONG) block_address)));
 	}
@@ -497,14 +481,13 @@ continue_from_trap (PEXCEPTIONREPORTRECORD report, PCONTEXTRECORD context)
       (trinfo . pc_info_1)
 	= (LONG_TO_UNSIGNED_FIXNUM (pc_to_utility_index (pc)));
       (trinfo . pc_info_2) = UNSPECIFIC;
-      Free = ((new_sp == 0) ? MemTop : (interpreter_free (0)));
+      Free = ((new_sp == 0) ? heap_alloc_limit : (interpreter_free (0)));
       break;
     case pc_in_primitive:
       (trinfo . state) = STATE_PRIMITIVE;
-      (trinfo . pc_info_1) = (Registers[REGBLOCK_PRIMITIVE]);
-      (trinfo . pc_info_2)
-	= (LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
-      Free = ((new_sp == 0) ? MemTop : (interpreter_free (0)));
+      (trinfo . pc_info_1) = GET_PRIMITIVE;
+      (trinfo . pc_info_2) = (ULONG_TO_FIXNUM (GET_LEXPR_ACTUALS));
+      Free = ((new_sp == 0) ? heap_alloc_limit : (interpreter_free (0)));
       break;
     default:
       (trinfo . state) = STATE_UNKNOWN;
@@ -590,8 +573,8 @@ compiled_code_free (PCONTEXTRECORD context)
     {
       ULONG edi = (context -> ctx_RegEdi);
       if (((edi & SCHEME_ALIGNMENT_MASK) == 0)
-	  && (((ULONG) Heap_Bottom) <= edi)
-	  && (edi < ((ULONG) Heap_Top)))
+	  && (((ULONG) heap_start) <= edi)
+	  && (edi < ((ULONG) heap_end)))
 	return (((SCHEME_OBJECT *) edi) + FREE_PARANOIA_MARGIN);
     }
   return (interpreter_free (1));
@@ -601,15 +584,15 @@ static SCHEME_OBJECT *
 interpreter_free (int force_gc)
 {
   return
-    ((((force_gc ? MemTop : Heap_Bottom) <= Free)
-      && (Free < Heap_Top)
+    ((((force_gc ? heap_alloc_limit : heap_start) <= Free)
+      && (Free < heap_end)
       && ((((ULONG) Free) & SCHEME_ALIGNMENT_MASK) == 0))
-     ? (((Free + FREE_PARANOIA_MARGIN) < MemTop)
+     ? (((Free + FREE_PARANOIA_MARGIN) < heap_alloc_limit)
 	? (Free + FREE_PARANOIA_MARGIN)
-	: (Free < MemTop)
-	? MemTop
+	: (Free < heap_alloc_limit)
+	? heap_alloc_limit
 	: Free)
-     : MemTop);
+     : heap_alloc_limit);
 }
 
 /* Find the compiled code block in area which contains `pc_value'.
@@ -622,34 +605,21 @@ interpreter_free (int force_gc)
 static SCHEME_OBJECT *
 find_block_address (char * pc_value, SCHEME_OBJECT * area_start)
 {
-  if (area_start == Constant_Space)
-    {
-      SCHEME_OBJECT * constant_block =
-	(find_constant_space_block
-	 ((SCHEME_OBJECT *)
-	  (((unsigned long) pc_value) &~ SCHEME_ALIGNMENT_MASK)));
-      return
-	((constant_block == 0)
-	 ? 0
-	 : (find_block_address_in_area (pc_value, constant_block)));
-    }
-  {
-    SCHEME_OBJECT * nearest_word =
-      ((SCHEME_OBJECT *)
+  SCHEME_OBJECT * nearest_word
+    = ((SCHEME_OBJECT *)
        (((unsigned long) pc_value) &~ SCHEME_ALIGNMENT_MASK));
-    long maximum_distance = (nearest_word - area_start);
-    long distance = maximum_distance;
-    while ((distance / 2) > MINIMUM_SCAN_RANGE)
-      distance = (distance / 2);
-    while ((distance * 2) < maximum_distance)
-      {
-	SCHEME_OBJECT * block =
-	  (find_block_address_in_area (pc_value, (nearest_word - distance)));
-	if (block != 0)
-	  return (block);
-	distance *= 2;
-      }
-  }
+  long maximum_distance = (nearest_word - area_start);
+  long distance = maximum_distance;
+  while ((distance / 2) > MINIMUM_SCAN_RANGE)
+    distance = (distance / 2);
+  while ((distance * 2) < maximum_distance)
+    {
+      SCHEME_OBJECT * block
+	= (find_block_address_in_area (pc_value, (nearest_word - distance)));
+      if (block != 0)
+	return (block);
+      distance *= 2;
+    }
   return (find_block_address_in_area (pc_value, area_start));
 }
 
@@ -668,33 +638,32 @@ find_block_address_in_area (char * pc_value, SCHEME_OBJECT * area_start)
       switch (OBJECT_TYPE (object))
 	{
 	case TC_LINKAGE_SECTION:
-	  switch (READ_LINKAGE_KIND (object))
-	    {
-	    case GLOBAL_OPERATOR_LINKAGE_KIND:
-	    case OPERATOR_LINKAGE_KIND:
-	      {
-		long count = (READ_OPERATOR_LINKAGE_COUNT (object));
-		area = ((END_OPERATOR_LINKAGE_AREA (area, count)) + 1);
-	      }
-	      break;
-	    case ASSIGNMENT_LINKAGE_KIND:
-	    case CLOSURE_PATTERN_LINKAGE_KIND:
-	    case REFERENCE_LINKAGE_KIND:
-	    default:
-	      area += ((READ_CACHE_LINKAGE_COUNT (object)) + 1);
-	      break;
-	    }
-	  break;
-	case TC_MANIFEST_CLOSURE:
-	  area += 1;
 	  {
-	    long count = (MANIFEST_CLOSURE_COUNT (area));
-	    area = (MANIFEST_CLOSURE_END (area, count));
+	    unsigned long count = (linkage_section_count (object));
+	    area += 1;
+	    switch (linkage_section_type (object))
+	      {
+	      case LINKAGE_SECTION_TYPE_OPERATOR:
+	      case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+		area += (count * UUO_LINK_SIZE);
+		break;
+
+	      case LINKAGE_SECTION_TYPE_REFERENCE:
+	      case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+	      default:
+		area += count;
+		break;
+	      }
 	  }
 	  break;
+
+	case TC_MANIFEST_CLOSURE:
+	  area = (compiled_closure_objects (area + 1));
+	  break;
+
 	case TC_MANIFEST_NM_VECTOR:
 	  {
-	    long count = (OBJECT_DATUM (object));
+	    unsigned long count = (OBJECT_DATUM (object));
 	    if (((char *) (area + (count + 1))) < pc_value)
 	      {
 		area += (count + 1);
@@ -704,14 +673,15 @@ find_block_address_in_area (char * pc_value, SCHEME_OBJECT * area_start)
 	    {
 	      SCHEME_OBJECT * block = (area - 1);
 	      return
-		(((area == first_valid)
-		  || ((OBJECT_TYPE (* block)) != TC_MANIFEST_VECTOR)
-		  || ((OBJECT_DATUM (* block)) < ((unsigned long) (count + 1)))
-		  || (! (PLAUSIBLE_CC_BLOCK_P (block))))
-		 ? 0
-		 : block);
+		(((area > first_valid)
+		  && ((OBJECT_TYPE (*block)) == TC_MANIFEST_VECTOR)
+		  && ((OBJECT_DATUM (*block)) >= (count + 1))
+		  && (plausible_cc_block_p (block)))
+		 ? block
+		 : 0);
 	    }
 	  }
+
 	default:
 	  area += 1;
 	  break;
@@ -731,41 +701,41 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
   SCHEME_OBJECT trap_name;
 
   /* Disable interrupts while building stack frame.  */
-  saved_mask = (FETCH_INTERRUPT_MASK ());
+  saved_mask = GET_INT_MASK;
   SET_INTERRUPT_MASK (0);
 
   /* Get the trap handler -- lose if there isn't one.  */
   handler
-    = ((Valid_Fixed_Obj_Vector ())
-       ? (Get_Fixed_Obj_Slot (Trap_Handler))
+    = ((VECTOR_P (fixed_objects))
+       ? (VECTOR_REF (fixed_objects, TRAP_HANDLER))
        : SHARP_F);
-  if (handler == SHARP_F)
+  if (!INTERPRETER_APPLICABLE_P (handler))
     {
       noise_start ();
       noise ("There is no trap handler for recovery!\n");
       noise ("This occurred during ");
       describe_exception ((report -> ExceptionNum), 0);
       noise (".\n");
-      noise ("pc = 0x%08x; sp = 0x%08x.\n",
+      noise ("pc = %#08x; sp = %#08x.\n",
 	     (context -> ctx_RegEip), (context -> ctx_RegEsp));
       (void) noise_end ("Exception Info", (MB_OK | MB_ERROR));
       termination_trap ();
     }
 
   /* Set the GC interrupt bit if necessary.  */
-  if (Free >= MemTop)
-    Request_GC (0);
+  if (!FREE_OK_P (Free))
+    REQUEST_GC (0);
 
   /* Make sure the stack is correctly initialized.  */
   if (new_sp != 0)
-    sp_register = new_sp;
+    stack_pointer = new_sp;
   else
     {
       INITIALIZE_STACK ();
      Will_Push (CONTINUATION_SIZE);
-      Store_Return (RC_END_OF_COMPUTATION);
-      exp_register = SHARP_F;
-      Save_Cont ();
+      SET_RC (RC_END_OF_COMPUTATION);
+      SET_EXP (SHARP_F);
+      SAVE_CONT ();
      Pushed ();
     }
   {
@@ -783,21 +753,21 @@ setup_trap_frame (PEXCEPTIONREPORTRECORD report,
   STACK_PUSH (BOOLEAN_TO_OBJECT (new_sp != 0));
   STACK_PUSH (long_to_integer (report -> ExceptionNum));
   STACK_PUSH (trap_name);
-  Store_Return (RC_HARDWARE_TRAP);
-  exp_register = UNSPECIFIC;
-  Save_Cont ();
+  SET_RC (RC_HARDWARE_TRAP);
+  SET_EXP (UNSPECIFIC);
+  SAVE_CONT ();
  Pushed ();
 
   /* Make sure the history register is properly initialized.  */
   if ((new_sp != 0) && ((trinfo -> state) == STATE_COMPILED_CODE))
-    Stop_History ();
-  history_register = (Make_Dummy_History ());
+    stop_history ();
+  history_register = (make_dummy_history ());
 
   /* Push the call frame for the trap handler.  */
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (trap_name);
   STACK_PUSH (handler);
-  STACK_PUSH (STACK_FRAME_HEADER + 1);
+  PUSH_APPLY_FRAME_HEADER (1);
  Pushed ();
 
   /* Restore the interrupt mask and call the handler.  */
@@ -945,7 +915,7 @@ OS2_subthread_exception_handler (PEXCEPTIONREPORTRECORD report,
   PPIB ppib;
   TID tid;
   char * format
-    = "Scheme has detected exception number 0x%08x within thread %d.%s%s\
+    = "Scheme has detected exception number %#08x within thread %d.%s%s\
   This indicates a bug in the Scheme implementation.\
   Please report this information to a Scheme wizard.\n\n";
   char backtrace [1024];
@@ -979,13 +949,13 @@ OS2_subthread_exception_handler (PEXCEPTIONREPORTRECORD report,
       ULONG * ebp = ((ULONG *) (context -> ctx_RegEbp));
       unsigned int count = 0;
       sprintf (backtrace, "  (Backtrace:");
-      sprintf ((backtrace + (strlen (backtrace))), " 0x%08x",
+      sprintf ((backtrace + (strlen (backtrace))), " %#08x",
 	       (context -> ctx_RegEip));
       while ((((char *) ebp) > ((char *) (ptib -> tib_pstack)))
 	     && (((char *) ebp) < ((char *) (ptib -> tib_pstacklimit)))
 	     && (count < 10))
 	{
-	  sprintf ((backtrace + (strlen (backtrace))), " 0x%08x", (ebp[1]));
+	  sprintf ((backtrace + (strlen (backtrace))), " %#08x", (ebp[1]));
 	  ebp = ((ULONG *) (ebp[0]));
 	}
       sprintf ((backtrace + (strlen (backtrace))), ")");

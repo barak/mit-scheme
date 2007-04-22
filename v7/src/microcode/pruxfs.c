@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxfs.c,v 9.61 2007/01/12 03:45:55 cph Exp $
+$Id: pruxfs.c,v 9.62 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,16 +32,15 @@ USA.
 #include "ux.h"
 #include "osfs.h"
 
-extern int EXFUN
-  (UX_read_file_status, (CONST char * filename, struct stat * s));
-extern int EXFUN
-  (UX_read_file_status_indirect, (CONST char * filename, struct stat * s));
-extern CONST char * EXFUN (UX_file_system_type, (CONST char * name));
+extern int UX_read_file_status (const char * filename, struct stat * s);
+extern int UX_read_file_status_indirect
+  (const char * filename, struct stat * s);
+extern const char * UX_file_system_type (const char * name);
 
-static SCHEME_OBJECT EXFUN (file_attributes_internal, (struct stat * s));
-static void EXFUN (file_mode_string, (struct stat * s, char * a));
-static char EXFUN (file_type_letter, (struct stat * s));
-static void EXFUN (rwx, (unsigned short bits, char * chars));
+static SCHEME_OBJECT file_attributes_internal (struct stat * s);
+static void file_mode_string (struct stat * s, char * a);
+static char file_type_letter (struct stat * s);
+static void rwx (unsigned short bits, char * chars);
 
 DEFINE_PRIMITIVE ("FILE-MODES", Prim_file_modes, 1, 1,
   "Return mode bits of FILE, as an integer.")
@@ -156,7 +155,7 @@ DEFINE_PRIMITIVE ("FILE-ATTRIBUTES-INDIRECT", Prim_file_attributes_indirect, 1, 
      FILE_ATTRIBUTES_PRIMITIVE (UX_read_file_status_indirect)
 
 static SCHEME_OBJECT
-DEFUN (file_attributes_internal, (s), struct stat * s)
+file_attributes_internal (struct stat * s)
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, 10, true));
   SCHEME_OBJECT modes = (allocate_string (10));
@@ -169,8 +168,7 @@ DEFUN (file_attributes_internal, (s), struct stat * s)
     case S_IFLNK:
       VECTOR_SET (result, 0,
 		  (char_pointer_to_string
-		   (OS_file_soft_link_p
-		    ((CONST char *) (STRING_LOC ((ARG_REF (1)), 0))))));
+		   (OS_file_soft_link_p (STRING_POINTER (ARG_REF (1))))));
       break;
 #endif
     default:
@@ -184,7 +182,7 @@ DEFUN (file_attributes_internal, (s), struct stat * s)
   VECTOR_SET (result, 5, (long_to_integer (s -> st_mtime)));
   VECTOR_SET (result, 6, (long_to_integer (s -> st_ctime)));
   VECTOR_SET (result, 7, (long_to_integer (s -> st_size)));
-  file_mode_string (s, ((char *) (STRING_LOC (modes, 0))));
+  file_mode_string (s, (STRING_POINTER (modes)));
   VECTOR_SET (result, 8, modes);
   VECTOR_SET (result, 9, (long_to_integer (s -> st_ino)));
   return (result);
@@ -222,7 +220,7 @@ DEFUN (file_attributes_internal, (s), struct stat * s)
 	be retained in swap space after execution), '-' otherwise. */
 
 static void
-DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
+file_mode_string (struct stat * s, char * a)
 {
   (a[0]) = (file_type_letter (s));
   rwx ((((s -> st_mode) & 0700) << 0), (& (a [1])));
@@ -243,7 +241,7 @@ DEFUN (file_mode_string, (s, a), struct stat * s AND char * a)
 }
 
 static char
-DEFUN (file_type_letter, (s), struct stat * s)
+file_type_letter (struct stat * s)
 {
   switch ((s -> st_mode) & S_IFMT)
     {
@@ -281,7 +279,7 @@ DEFUN (file_type_letter, (s), struct stat * s)
 }
 
 static void
-DEFUN (rwx, (bits, chars), unsigned short bits AND char * chars)
+rwx (unsigned short bits, char * chars)
 {
   (chars[0]) = (((bits & S_IRUSR) != 0) ? 'r' : '-');
   (chars[1]) = (((bits & S_IWUSR) != 0) ? 'w' : '-');
@@ -308,7 +306,7 @@ DEFINE_PRIMITIVE ("FILE-SYSTEM-TYPE", Prim_file_system_type, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    CONST char * result = (UX_file_system_type (STRING_ARG (1)));
+    const char * result = (UX_file_system_type (STRING_ARG (1)));
     PRIMITIVE_RETURN
       (char_pointer_to_string ((result == 0) ? "unknown" : result));
   }

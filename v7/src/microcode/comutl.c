@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.37 2007/01/12 03:45:55 cph Exp $
+$Id: comutl.c,v 1.38 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,150 +30,175 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-extern SCHEME_OBJECT
-  * EXFUN (compiled_entry_to_block_address, (SCHEME_OBJECT));
-
-extern long
-  EXFUN (compiled_entry_to_block_offset, (SCHEME_OBJECT)),
-  EXFUN (coerce_to_compiled, (SCHEME_OBJECT, long, SCHEME_OBJECT *));
-
-extern void EXFUN (compiled_entry_type, (SCHEME_OBJECT, long *));
-
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block, 1, 1,
-  "Given a compiled code address, return its compiled code block.")
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block,
+		  1, 1, "(ADDRESS)\n\
+Given a compiled-code entry ADDRESS, return its block.")
 {
   PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  PRIMITIVE_RETURN
-    (MAKE_POINTER_OBJECT
-     (TC_COMPILED_CODE_BLOCK,
-      (compiled_entry_to_block_address (ARG_REF (1)))));
+  CHECK_ARG (1, CC_ENTRY_P);
+  PRIMITIVE_RETURN (cc_entry_to_block (ARG_REF (1)));
 }
 
-DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET", Prim_comp_code_address_offset, 1, 1,
-  "Given a compiled code address, return its offset into its block.")
+DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->OFFSET",
+		  Prim_comp_code_address_offset, 1, 1, "(ADDRESS)\n\
+Given a compiled-code entry ADDRESS, return its offset into its block.")
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  PRIMITIVE_RETURN
-    (LONG_TO_FIXNUM (compiled_entry_to_block_offset (ARG_REF (1))));
+  CHECK_ARG (1, CC_ENTRY_P);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (cc_entry_to_block_offset (ARG_REF (1))));
 }
-
-#ifndef USE_STACKLETS
 
 DEFINE_PRIMITIVE ("STACK-TOP-ADDRESS", Prim_stack_top_address, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (long_to_integer ((long) (ADDRESS_TO_DATUM (Stack_Top))));
+  PRIMITIVE_RETURN (ulong_to_integer (ADDRESS_TO_DATUM (STACK_BOTTOM)));
 }
 
 DEFINE_PRIMITIVE ("STACK-ADDRESS-OFFSET", Prim_stack_address_offset, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 
-  CHECK_ARG (1, STACK_ADDRESS_P);
-  PRIMITIVE_RETURN
-    (long_to_integer
-     (STACK_LOCATIVE_DIFFERENCE ((Stack_Top),
-				 (OBJECT_ADDRESS (ARG_REF (1))))));
-}
-
-#endif /* USE_STACKLETS */
-
-DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_type, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (1, CC_STACK_ENV_P);
   {
-    long results [3];
-    compiled_entry_type ((ARG_REF (1)), results);
+    SCHEME_OBJECT * address = (OBJECT_ADDRESS (ARG_REF (1)));
+    if (!ADDRESS_IN_STACK_P (address))
+      error_bad_range_arg (1);
     PRIMITIVE_RETURN
-      (hunk3_cons ((LONG_TO_FIXNUM (results [0])),
-		   (LONG_TO_FIXNUM (results [1])),
-		   (LONG_TO_FIXNUM (results [2]))));
+      (ulong_to_integer (SP_TO_N_PUSHED (address, stack_start, stack_end)));
   }
 }
 
-DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2, 0)
+DEFINE_PRIMITIVE ("COMPILED-ENTRY-KIND", Prim_compiled_entry_kind, 1, 1, 0)
 {
-  SCHEME_OBJECT temp;
-  long result;
-  PRIMITIVE_HEADER(2);
-  result = (coerce_to_compiled ((ARG_REF (1)), (arg_integer (2)), &temp));
-  switch(result)
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, CC_ENTRY_P);
   {
-    case PRIM_DONE:
-      PRIMITIVE_RETURN(temp);
+    cc_entry_type_t cet;
+    unsigned long kind = 4;
+    unsigned long field1 = 0;
+    long field2 = 0;
 
-    case PRIM_INTERRUPT:
-      Primitive_GC(10);
-      /*NOTREACHED*/
+    if (!read_cc_entry_type ((&cet), (CC_ENTRY_ADDRESS (ARG_REF (1)))))
+      switch (cet.marker)
+	{
+	case CET_PROCEDURE:
+	  kind = 0;
+	  field1 = (1 + (cet.args.for_procedure.n_required));
+	  field2 = (field1 + (cet.args.for_procedure.n_optional));
+	  if (cet.args.for_procedure.rest_p)
+	    field2 = (- (field2 + 1));
+	  break;
 
-    default:
-      error_bad_range_arg (2);
-      /*NOTREACHED*/
-      return (0);
+	case CET_CONTINUATION:
+	  kind = 1;
+	  field1 = 0;
+	  field2 = (cet.args.for_continuation.offset);
+	  break;
+
+	case CET_EXPRESSION:
+	  kind = 2;
+	  field1 = 0;
+	  field2 = 0;
+	  break;
+
+	case CET_INTERNAL_CONTINUATION:
+	  kind = 1;
+	  field1 = 1;
+	  field2 = (-1);
+	  break;
+
+	case CET_INTERNAL_PROCEDURE:
+	case CET_TRAMPOLINE:
+	  kind = 3;
+	  field1 = 1;
+	  field2 = 0;
+	  break;
+
+	case CET_RETURN_TO_INTERPRETER:
+	  kind = 1;
+	  field1 = 2;
+	  field2 = ((ARG_REF (1)) != return_to_interpreter);
+	  break;
+
+	case CET_CLOSURE:
+	  kind = 3;
+	  field1 = 0;
+	  field2 = 0;
+	  break;
+	}
+    PRIMITIVE_RETURN
+      (hunk3_cons ((ULONG_TO_FIXNUM (kind)),
+		   (ULONG_TO_FIXNUM (field1)),
+		   (LONG_TO_FIXNUM (field2))));
+  }
+}
+
+DEFINE_PRIMITIVE ("COERCE-TO-COMPILED-PROCEDURE", Prim_coerce_to_closure, 2, 2,
+		  0)
+{
+  PRIMITIVE_HEADER (2);
+  {
+    SCHEME_OBJECT temp;
+    long result
+      = (coerce_to_compiled ((ARG_REF (1)), (arg_ulong_integer (2)), (&temp)));
+    switch (result)
+      {
+      case PRIM_DONE:
+	break;
+
+      case PRIM_INTERRUPT:
+	Primitive_GC (10);
+	/*NOTREACHED*/
+	break;
+
+      default:
+	error_bad_range_arg (2);
+	/*NOTREACHED*/
+	break;
+      }
+    PRIMITIVE_RETURN (temp);
   }
 }
 
-DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_compiled_closure_to_entry, 1, 1,
+DEFINE_PRIMITIVE ("COMPILED-CLOSURE->ENTRY", Prim_cc_closure_to_entry, 1, 1,
   "Given a compiled closure, return the entry point which it invokes.")
 {
-  long entry_type [3];
-  SCHEME_OBJECT closure;
-  extern long EXFUN (compiled_entry_closure_p, (SCHEME_OBJECT));
-  extern SCHEME_OBJECT EXFUN (compiled_closure_to_entry, (SCHEME_OBJECT));
   PRIMITIVE_HEADER (1);
-
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
-  closure = (ARG_REF (1));
-  compiled_entry_type (closure, (& (entry_type [0])));
-  if (! (((entry_type [0]) == 0) && (compiled_entry_closure_p (closure))))
+  CHECK_ARG (1, CC_ENTRY_P);
+  if (!cc_entry_closure_p (ARG_REF (1)))
     error_bad_range_arg (1);
-  PRIMITIVE_RETURN (compiled_closure_to_entry (closure));
+  PRIMITIVE_RETURN (cc_closure_to_entry (ARG_REF (1)));
 }
-
-DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1,
-  "Given an integer, return the name of the corresponding compiled code utility.")
+
+DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1, 0)
 {
-  extern char * EXFUN (utility_index_to_name, (int));
-  char * result;
   PRIMITIVE_HEADER (1);
-
-  result = (utility_index_to_name (arg_integer (1)));
-  if (result == ((char *) NULL))
-    PRIMITIVE_RETURN (SHARP_F);
-  else
-    PRIMITIVE_RETURN (char_pointer_to_string (result));
+  {
+    const char * name = (utility_index_to_name (arg_ulong_integer (1)));
+    PRIMITIVE_RETURN ((name == 0) ? SHARP_F : (char_pointer_to_string (name)));
+  }
 }
 
-DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
-  "Given an integer, return the name of the corresponding compiled code utility.")
+DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1, 0)
 {
-  extern char * EXFUN (builtin_index_to_name, (int));
-  char * result;
   PRIMITIVE_HEADER (1);
-
-  result = (builtin_index_to_name (arg_integer (1)));
-  if (result == ((char *) NULL))
-    PRIMITIVE_RETURN (SHARP_F);
-  else
-    PRIMITIVE_RETURN (char_pointer_to_string (result));
+  {
+    const char * name = (builtin_index_to_name (arg_ulong_integer (1)));
+    PRIMITIVE_RETURN ((name == 0) ? SHARP_F : (char_pointer_to_string (name)));
+  }
 }
 
-/* This is only meaningful for the C back end. */
+#ifdef CC_IS_C
+   extern SCHEME_OBJECT initialize_C_compiled_block (int, const char *);
+#endif
 
 DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK",
 		  Prim_initialize_C_compiled_block, 1, 1,
   "Given the tag of a compiled object, return the object.")
 {
-#ifdef NATIVE_CODE_IS_C
-  extern SCHEME_OBJECT EXFUN (initialize_C_compiled_block, (int, char *));
-  SCHEME_OBJECT val;
-
-  val = (initialize_C_compiled_block (1, (STRING_ARG (1))));
-  PRIMITIVE_RETURN (val);
+  PRIMITIVE_HEADER (1);
+#ifdef CC_IS_C
+  PRIMITIVE_RETURN (initialize_C_compiled_block (1, (STRING_ARG (1))));
 #else
   PRIMITIVE_RETURN (SHARP_F);
 #endif
@@ -183,43 +208,36 @@ DEFINE_PRIMITIVE ("DECLARE-COMPILED-CODE-BLOCK",
 		  Prim_declare_compiled_code_block, 1, 1,
   "Ensure cache coherence for a compiled-code block newly constructed.")
 {
-  extern void EXFUN (declare_compiled_code_block, (SCHEME_OBJECT));
-  SCHEME_OBJECT new_cc_block;
   PRIMITIVE_HEADER (1);
-
-  new_cc_block = (ARG_REF (1));
-  if ((OBJECT_TYPE (new_cc_block)) != TC_COMPILED_CODE_BLOCK)
-    error_wrong_type_arg (1);
-  declare_compiled_code_block (new_cc_block);
-  PRIMITIVE_RETURN (SHARP_T);
+  {
+    SCHEME_OBJECT new_cc_block = (ARG_REF (1));
+    if (!CC_BLOCK_P (new_cc_block))
+      error_wrong_type_arg (1);
+    declare_compiled_code_block (new_cc_block);
+    PRIMITIVE_RETURN (SHARP_T);
+  }
 }
 
-extern SCHEME_OBJECT EXFUN (bkpt_install, (PTR));
-extern SCHEME_OBJECT EXFUN (bkpt_closure_install, (PTR));
-extern Boolean EXFUN (bkpt_p, (PTR));
-extern SCHEME_OBJECT EXFUN (bkpt_proceed, (PTR, SCHEME_OBJECT, SCHEME_OBJECT));
-extern void EXFUN (bkpt_remove, (PTR, SCHEME_OBJECT));
-
 DEFINE_PRIMITIVE ("BKPT/INSTALL", Prim_install_bkpt, 1, 1,
 		  "(compiled-entry-object)\n\
 Install a breakpoint trap in a compiled code object.\n\
 Returns false or a handled needed by REMOVE-BKPT and ONE-STEP-PROCEED.")
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (1, CC_ENTRY_P);
 
   {
     SCHEME_OBJECT * entry = (OBJECT_ADDRESS (ARG_REF (1)));
     SCHEME_OBJECT * block;
 
-    if (bkpt_p ((PTR) entry))
+    if (bkpt_p ((void *) entry))
       error_bad_range_arg (1);
 
-    block = (compiled_entry_to_block_address (ARG_REF (1)));
+    block = (cc_entry_to_block_address (ARG_REF (1)));
     if ((OBJECT_TYPE (block[0])) == TC_MANIFEST_CLOSURE)
-      PRIMITIVE_RETURN (bkpt_closure_install ((PTR) entry));
+      PRIMITIVE_RETURN (bkpt_closure_install ((void *) entry));
     else
-      PRIMITIVE_RETURN (bkpt_install ((PTR) entry));
+      PRIMITIVE_RETURN (bkpt_install ((void *) entry));
   }
 }
 
@@ -228,16 +246,16 @@ DEFINE_PRIMITIVE ("BKPT/REMOVE", Prim_remove_bkpt, 2, 2,
 Remove a breakpoint trap installed by INSTALL-BKPT.")
 {
   PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (1, CC_ENTRY_P);
   CHECK_ARG (2, NON_MARKED_VECTOR_P);
 
   {
     SCHEME_OBJECT * entry = (OBJECT_ADDRESS (ARG_REF (1)));
     SCHEME_OBJECT handle = (ARG_REF (2));
 
-    if (! (bkpt_p ((PTR) entry)))
+    if (! (bkpt_p ((void *) entry)))
       error_bad_range_arg (1);
-    bkpt_remove (((PTR) entry), handle);
+    bkpt_remove (((void *) entry), handle);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
@@ -247,10 +265,10 @@ DEFINE_PRIMITIVE ("BKPT?", Prim_bkpt_p, 1, 1,
 True if there is a breakpoint trap in compiled-entry-object.")
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (1, CC_ENTRY_P);
 
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT
-		    (bkpt_p ((PTR) (OBJECT_ADDRESS (ARG_REF (1))))));
+		    (bkpt_p ((void *) (OBJECT_ADDRESS (ARG_REF (1))))));
 }
 
 DEFINE_PRIMITIVE ("BKPT/PROCEED", Prim_bkpt_proceed, 3, 3,
@@ -258,10 +276,10 @@ DEFINE_PRIMITIVE ("BKPT/PROCEED", Prim_bkpt_proceed, 3, 3,
 Proceed the computation from the current breakpoint.")
 {
   PRIMITIVE_HEADER (3);
-  CHECK_ARG (1, COMPILED_CODE_ADDRESS_P);
+  CHECK_ARG (1, CC_ENTRY_P);
   CHECK_ARG (2, NON_MARKED_VECTOR_P);
 
-  PRIMITIVE_RETURN (bkpt_proceed (((PTR) (OBJECT_ADDRESS (ARG_REF (1)))),
+  PRIMITIVE_RETURN (bkpt_proceed (((void *) (OBJECT_ADDRESS (ARG_REF (1)))),
 				  (ARG_REF (2)),
 				  (ARG_REF (3))));
 }

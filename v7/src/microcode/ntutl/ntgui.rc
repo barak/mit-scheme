@@ -35,7 +35,7 @@ BEGIN
 	VALUE "FileDescription", "MIT/GNU Scheme Microcode"
 	VALUE "FileVersion", "14.11"
 	VALUE "InternalName", "SCHEME"
-	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2003"
+	VALUE "LegalCopyright", "Copyright 1993,1994,1995,2000,2003 Massachusetts Institute of Technology"
 	VALUE "OriginalFilename", "SCHEME.EXE"
 	VALUE "ProductName", "MIT/GNU Scheme"
 	VALUE "ProductVersion", "7.8.0"

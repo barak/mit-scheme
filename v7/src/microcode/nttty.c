@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttty.c,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: nttty.c,v 1.13 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -71,13 +71,13 @@ OS_tty_y_size (void)
   return (tty_y_size);
 }
 
-CONST char *
+const char *
 OS_tty_command_beep (void)
 {
   return (tty_command_beep);
 }
 
-CONST char *
+const char *
 OS_tty_command_clear (void)
 {
   return (tty_command_clear);
@@ -100,11 +100,11 @@ char PC;
 
 int
 tputs (string, nlines, outfun)
-     register char * string;
+     char * string;
      int nlines;
-     register int (*outfun) ();
+     int (*outfun) ();
 {
-  register int padcount = 0;
+  int padcount = 0;
 
   if (string == (char *) 0)
     return (0);

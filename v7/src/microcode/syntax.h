@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.h,v 1.16 2007/01/05 21:19:25 cph Exp $
+$Id: syntax.h,v 1.17 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,9 +28,9 @@ USA.
 /* Definitions for Edwin syntax tables. */
 
 /* NOTE: This program was created by translation from the syntax table
-code of GNU Emacs; it was translated from the original C to 68000
-assembly language (in 1986), and then translated back from 68000
-assembly language to C (in 1987).  */
+   code of GNU Emacs; it was translated from the original C to 68000
+   assembly language (in 1986), and then translated back from 68000
+   assembly language to C (in 1987).  */
 
 /* CODE is the syntax code for the character. */
 #define SYNTAX_ENTRY_CODE(entry) ((enum syntaxcode) ((entry) & 0xF))

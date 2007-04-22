@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.34 2007/01/05 21:19:25 cph Exp $
+$Id: ntio.c,v 1.35 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -431,7 +431,7 @@ initialize_channel_class_named_pipe (void)
 
 static long
 cooked_channel_write (Tchannel channel, const void * buffer,
-		      unsigned long n_bytes) 
+		      unsigned long n_bytes)
 {
   /* Map LF to CR/LF */
   static const unsigned char crlf [] = {CARRIAGE_RETURN, LINEFEED};
@@ -645,9 +645,9 @@ OS_have_ptys_p (void)
 int OS_have_select_p = 0;
 
 extern HANDLE master_tty_window;
-extern void EXFUN (NT_initialize_channels, (void));
-extern void EXFUN (NT_reset_channels, (void));
-extern void EXFUN (NT_restore_channels, (void));
+extern void NT_initialize_channels (void);
+extern void NT_reset_channels (void);
+extern void NT_restore_channels (void);
 
 void
 NT_reset_channels (void)
@@ -930,7 +930,7 @@ test_single_object (Tchannel channel, unsigned int qmode)
      ? SELECT_PROCESS_STATUS_CHANGE
      : 0);
 }
-  
+
 
 static unsigned int
 test_single_object_1 (Tchannel channel, unsigned int qmode)

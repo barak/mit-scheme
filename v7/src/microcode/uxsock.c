@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.35 2007/01/12 03:45:55 cph Exp $
+$Id: uxsock.c,v 1.36 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,14 +33,11 @@ USA.
 #include "uxsock.h"
 #include "uxio.h"
 #include "prims.h"
-#include "limits.h"
 
 static void do_connect (int, struct sockaddr *, socklen_t);
 
 Tchannel
-DEFUN (OS_open_tcp_stream_socket, (host, port),
-       PTR host AND
-       unsigned int port)
+OS_open_tcp_stream_socket (void * host, unsigned int port)
 {
   int s;
   Tchannel channel;
@@ -121,9 +118,7 @@ do_connect (int s, struct sockaddr * address, socklen_t addr_len)
 }
 
 void
-DEFUN (OS_shutdown_socket, (channel, stype),
-       Tchannel channel AND
-       unsigned long stype)
+OS_shutdown_socket (Tchannel channel, unsigned long stype)
 {
   STD_VOID_SYSTEM_CALL
     (syscall_shutdown,
@@ -136,29 +131,26 @@ DEFUN (OS_shutdown_socket, (channel, stype),
 }
 
 int
-DEFUN (OS_get_service_by_name, (service_name, protocol_name),
-       CONST char * service_name AND
-       CONST char * protocol_name)
+OS_get_service_by_name (const char * service_name, const char * protocol_name)
 {
   struct servent * entry = (UX_getservbyname (service_name, protocol_name));
   return ((entry == 0) ? (-1) : (entry -> s_port));
 }
 
 unsigned long
-DEFUN (OS_get_service_by_number, (port_number),
-       CONST unsigned long port_number)
+OS_get_service_by_number (const unsigned long port_number)
 {
   return ((unsigned long) (htons ((unsigned short) port_number)));
 }
 
 unsigned int
-DEFUN_VOID (OS_host_address_length)
+OS_host_address_length (void)
 {
   return (sizeof (struct in_addr));
 }
 
 char **
-DEFUN (OS_get_host_by_name, (host_name), CONST char * host_name)
+OS_get_host_by_name (const char * host_name)
 {
   struct hostent * entry = (UX_gethostbyname (host_name));
   if (entry == 0)
@@ -177,8 +169,8 @@ DEFUN (OS_get_host_by_name, (host_name), CONST char * host_name)
 
 #define HOSTNAMESIZE 1024
 
-CONST char *
-DEFUN_VOID (OS_get_host_name)
+const char *
+OS_get_host_name (void)
 {
   char host_name [HOSTNAMESIZE];
   STD_VOID_SYSTEM_CALL
@@ -190,8 +182,8 @@ DEFUN_VOID (OS_get_host_name)
   }
 }
 
-CONST char *
-DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
+const char *
+OS_canonical_host_name (const char * host_name)
 {
   struct hostent * entry = (gethostbyname (host_name));
   if (entry == 0)
@@ -203,8 +195,8 @@ DEFUN (OS_canonical_host_name, (host_name), CONST char * host_name)
   }
 }
 
-CONST char *
-DEFUN (OS_get_host_by_address, (host_addr), CONST char * host_addr)
+const char *
+OS_get_host_by_address (const char * host_addr)
 {
   struct hostent * entry
     = (gethostbyaddr (host_addr, (OS_host_address_length ()), AF_INET));
@@ -218,20 +210,20 @@ DEFUN (OS_get_host_by_address, (host_addr), CONST char * host_addr)
 }
 
 void
-DEFUN (OS_host_address_any, (addr), PTR addr)
+OS_host_address_any (void * addr)
 {
   (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_ANY));
 }
 
 void
-DEFUN (OS_host_address_loopback, (addr), PTR addr)
+OS_host_address_loopback (void * addr)
 {
   (((struct in_addr *) addr) -> s_addr) = (htonl (INADDR_LOOPBACK));
 }
 
 #ifdef HAVE_UNIX_SOCKETS
 Tchannel
-DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
+OS_open_unix_stream_socket (const char * filename)
 {
   int s;
   Tchannel channel;
@@ -253,7 +245,7 @@ DEFUN (OS_open_unix_stream_socket, (filename), CONST char * filename)
 #endif /* HAVE_UNIX_SOCKETS */
 
 Tchannel
-DEFUN_VOID (OS_create_tcp_server_socket)
+OS_create_tcp_server_socket (void)
 {
   int s;
   STD_UINT_SYSTEM_CALL
@@ -262,10 +254,7 @@ DEFUN_VOID (OS_create_tcp_server_socket)
 }
 
 void
-DEFUN (OS_bind_tcp_server_socket, (channel, host, port),
-       Tchannel channel AND
-       PTR host AND
-       unsigned int port)
+OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 {
   struct sockaddr_in address;
   int one = 1;
@@ -293,7 +282,7 @@ DEFUN (OS_bind_tcp_server_socket, (channel, host, port),
 #endif
 
 void
-DEFUN (OS_listen_tcp_server_socket, (channel), Tchannel channel)
+OS_listen_tcp_server_socket (Tchannel channel)
 {
   STD_VOID_SYSTEM_CALL
     (syscall_listen,
@@ -301,10 +290,9 @@ DEFUN (OS_listen_tcp_server_socket, (channel), Tchannel channel)
 }
 
 Tchannel
-DEFUN (OS_server_connection_accept, (channel, peer_host, peer_port),
-       Tchannel channel AND
-       PTR peer_host AND
-       unsigned int * peer_port)
+OS_server_connection_accept (Tchannel channel,
+			     void * peer_host,
+			     unsigned int * peer_port)
 {
   static struct sockaddr_in address;
   socklen_t address_length = (sizeof (struct sockaddr_in));

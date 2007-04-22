@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: starbasx.c,v 1.10 2007/01/05 21:19:25 cph Exp $
+$Id: none.h,v 1.2 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,25 +25,23 @@ USA.
 
 */
 
-/* Starbase/X11 interface */
+/* Compiled code interface stub.  */
 
-#include "scheme.h"
-#include "prims.h"
-#include "x11.h"
-#include <starbase.c.h>
+#ifndef SCM_CMPINTMD_H_INCLUDED
+#define SCM_CMPINTMD_H_INCLUDED 1
 
-DEFINE_PRIMITIVE ("X11-WINDOW-STARBASE-FILENAME", Prim_x11_window_starbase_filename, 1, 1,
-  "Given a window, returns the name of a file which can be opened\n\
-as a Starbase graphics device.")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    struct xwindow * xw = (x_window_arg (1));
-    char * starbase_filename =
-      (make_X11_gopen_string ((XW_DISPLAY (xw)), (XW_WINDOW (xw))));
-    PRIMITIVE_RETURN
-      ((starbase_filename == 0)
-       ? SHARP_F
-       : (char_pointer_to_string (starbase_filename)));
-  }
-}
+typedef byte_t insn_t;
+
+#define compiler_interface_version (0UL)
+#define compiler_processor_type COMPILER_PROCESSOR_TYPE
+#define compiler_utilities SHARP_F
+
+#define return_to_interpreter SHARP_F
+#define reflect_to_interface SHARP_F
+
+#define compiler_initialize(faslp) do {} while (false)
+#define guarantee_interp_return() do {} while (false)
+
+#define CC_ENTRY_P(object) (false)
+
+#endif /* !SCM_CMPINTMD_H_INCLUDED */

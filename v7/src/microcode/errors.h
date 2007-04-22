@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: errors.h,v 9.48 2007/01/05 21:19:25 cph Exp $
+$Id: errors.h,v 9.49 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,10 +30,9 @@ USA.
 #ifndef SCM_ERRORS_H
 #define SCM_ERRORS_H
 
-/* All error and termination codes must be positive
- * to allow primitives to return either an error code
- * or a primitive flow control value (see const.h)
- */
+/* All error and termination codes must be positive to allow
+   primitives to return either an error code or a primitive flow
+   control value (see const.h).  */
 
 #define ERR_BAD_ERROR_CODE			0x00
 #define ERR_UNBOUND_VARIABLE			0x01
@@ -55,15 +54,13 @@ USA.
 #define ERR_ARG_2_BAD_RANGE			0x11
 #define ERR_ARG_3_BAD_RANGE			0x12
 #define ERR_MACRO_BINDING			0x13
-/* #define ERR_FASDUMP_OVERFLOW			0x14 */
-#define ERR_BAD_INTERRUPT_CODE			0x15 /* Not generated */
+#define ERR_FASDUMP_OBJECT_TOO_LARGE		0x14
+/* #define ERR_BAD_INTERRUPT_CODE		0x15 */
 /* #define ERR_NO_ERRORS			0x16 */
 #define ERR_FASL_FILE_TOO_BIG			0x17
 #define ERR_FASL_FILE_BAD_DATA			0x18
-#define ERR_IMPURIFY_OUT_OF_SPACE		0x19
-
-/* The following do not exist in the 68000 version */
-#define ERR_WRITE_INTO_PURE_SPACE		0x1A
+/* #define ERR_IMPURIFY_OUT_OF_SPACE		0x19 */
+/* #define ERR_WRITE_INTO_PURE_SPACE		0x1A */
 /* #define ERR_LOSING_SPARE_HEAP		0x1B */
 /* #define ERR_NO_HASH_TABLE			0x1C */
 #define ERR_BAD_SET                             0x1D
@@ -71,8 +68,6 @@ USA.
 #define ERR_ARG_2_FAILED_COERCION      		0x1F
 #define ERR_OUT_OF_FILE_HANDLES			0x20
 /* #define ERR_SHELL_DIED			0x21 */
-
-/* Late additions to both 68000 and C world */
 #define ERR_ARG_4_BAD_RANGE			0x22
 #define ERR_ARG_5_BAD_RANGE			0x23
 #define ERR_ARG_6_BAD_RANGE			0x24
@@ -103,10 +98,8 @@ USA.
 #define ERR_STACK_HAS_SLIPPED			0x3D
 #define ERR_CANNOT_RECURSE			0x3E
 
-/*
-  If you add any error codes here, add them to
-  the table below and to utabmd.scm as well.
- */
+/* If you add any error codes here, add them to the table below and to
+   utabmd.scm as well.  */
 
 #define MAX_ERROR				0x3E
 
@@ -116,8 +109,8 @@ USA.
 /* 0x01 */		"UNBOUND-VARIABLE",				\
 /* 0x02 */		"UNASSIGNED-VARIABLE",				\
 /* 0x03 */		"INAPPLICABLE-OBJECT",				\
-/* 0x04 */		"OUT-OF-HASH-NUMBERS",				\
-/* 0x05 */		"ENVIRONMENT-CHAIN-TOO-DEEP",			\
+/* 0x04 */		"ERROR-IN-SYSTEM-CALL",				\
+/* 0x05 */		"ERROR-WITH-ARGUMENT",				\
 /* 0x06 */		"BAD-FRAME",					\
 /* 0x07 */		"BROKEN-COMPILED-VARIABLE",			\
 /* 0x08 */		"UNDEFINED-USER-TYPE",				\
@@ -131,21 +124,21 @@ USA.
 /* 0x10 */		"ARG-1-BAD-RANGE",				\
 /* 0x11 */		"ARG-2-BAD-RANGE",				\
 /* 0x12 */		"ARG-3-BAD-RANGE",				\
-/* 0x13 */		"BAD-COMBINATION",				\
-/* 0x14 */		"FASDUMP-OVERFLOW",				\
-/* 0x15 */		"BAD-INTERRUPT-CODE",				\
-/* 0x16 */		"NO-ERRORS",					\
+/* 0x13 */		"MACRO-BINDING",				\
+/* 0x14 */		"FASDUMP-OBJECT-TOO-LARGE",			\
+/* 0x15 */		0,						\
+/* 0x16 */		0,						\
 /* 0x17 */		"FASL-FILE-TOO-BIG",				\
 /* 0x18 */		"FASL-FILE-BAD-DATA",				\
-/* 0x19 */		"IMPURIFY-OUT-OF-SPACE",			\
+/* 0x19 */		0,						\
 /* 0x1A */		"WRITE-INTO-PURE-SPACE",			\
-/* 0x1B */		"LOSING-SPARE-HEAP",				\
-/* 0x1C */		"NO-HASH-TABLE",				\
+/* 0x1B */		0,						\
+/* 0x1C */		0,						\
 /* 0x1D */		"BAD-SET",					\
 /* 0x1E */		"ARG-1-FAILED-COERCION",			\
 /* 0x1F */		"ARG-2-FAILED-COERCION",			\
 /* 0x20 */		"OUT-OF-FILE-HANDLES",				\
-/* 0x21 */		"SHELL-DIED",					\
+/* 0x21 */		0,						\
 /* 0x22 */		"ARG-4-BAD-RANGE",				\
 /* 0x23 */		"ARG-5-BAD-RANGE",				\
 /* 0x24 */		"ARG-6-BAD-RANGE",				\
@@ -202,7 +195,7 @@ USA.
 #define TERM_GC_OUT_OF_SPACE			0x14
 #define TERM_NO_SPACE				0x15
 #define TERM_SIGNAL				0x16
-#define TERM_TOUCH				0x17
+/* #define TERM_				0x17 */
 #define TERM_SAVE_AND_EXIT			0x18
 #define TERM_TRAP				0x19
 #define TERM_BAD_BACK_OUT			0x1a
@@ -270,10 +263,10 @@ USA.
 /* 0x14 */		"Out of space after garbage collection",	\
 /* 0x15 */		"Out of memory: Available memory exceeded",	\
 /* 0x16 */		"Unhandled signal received",			\
-/* 0x17 */		"Touch without futures support",		\
+/* 0x17 */		0,						\
 /* 0x18 */		"Halt requested by external source",		\
 /* 0x19 */		"User requested termination after trap",	\
-/* 0x1a */		"Backing out of non-primitive"			\
+/* 0x1A */		"Backing out of non-primitive"			\
 }
 
 #endif /* SCM_ERRORS_H */

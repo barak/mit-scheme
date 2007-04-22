@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: rgxprim.c,v 1.18 2007/04/01 17:33:07 riastradh Exp $
+$Id: rgxprim.c,v 1.19 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -102,8 +102,8 @@ DEFINE_PRIMITIVE ("RE-CHAR-SET-ADJOIN!", Prim_re_char_set_adjoin, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
 {
-  fast SCHEME_OBJECT pattern;
-  fast int can_be_null;
+  SCHEME_OBJECT pattern;
+  int can_be_null;
   PRIMITIVE_HEADER (4);
   CHECK_ARG (1, STRING_P);
   pattern = (ARG_REF (1));
@@ -137,7 +137,7 @@ DEFINE_PRIMITIVE ("RE-COMPILE-FASTMAP", Prim_re_compile_fastmap, 4, 4, 0)
 
 #define RE_SUBSTRING_PRIMITIVE(procedure)				\
 {									\
-  fast SCHEME_OBJECT regexp;						\
+  SCHEME_OBJECT regexp;							\
   long match_start, match_end, text_end;				\
   unsigned char * text;							\
   struct re_buffer buffer;						\
@@ -181,7 +181,7 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
 
 #define RE_BUFFER_PRIMITIVE(procedure)					\
 {									\
-  fast SCHEME_OBJECT regexp, group;					\
+  SCHEME_OBJECT regexp, group;						\
   long match_start, match_end, text_start, text_end, gap_start;		\
   unsigned char * text;							\
   struct re_buffer buffer;						\
@@ -197,7 +197,7 @@ DEFINE_PRIMITIVE ("RE-SEARCH-SUBSTRING-BACKWARD", Prim_re_search_substr_backward
   group = (ARG_REF (5));						\
   match_start = (arg_nonnegative_integer (6));				\
   match_end = (arg_nonnegative_integer (7));				\
-  text = (GROUP_TEXT_LOC (group, 0));					\
+  text = (GROUP_TEXT (group, 0));					\
   text_start = (MARK_INDEX (GROUP_START_MARK (group)));			\
   text_end = (MARK_INDEX (GROUP_END_MARK (group)));			\
   gap_start = (GROUP_GAP_START (group));				\

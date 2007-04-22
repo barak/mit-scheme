@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.14 2007/01/05 21:19:25 cph Exp $
+$Id: intprm.c,v 1.15 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,12 +29,10 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "zones.h"
 
 #define INTEGER_TEST(test)						\
 {									\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, INTEGER_P);						\
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (test (ARG_REF (1))));		\
 }
@@ -49,7 +47,6 @@ DEFINE_PRIMITIVE ("INTEGER-POSITIVE?", Prim_integer_positive_p, 1, 1, 0)
 #define INTEGER_COMPARISON(comparison)					\
 {									\
   PRIMITIVE_HEADER (2);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, INTEGER_P);						\
   CHECK_ARG (2, INTEGER_P);						\
   PRIMITIVE_RETURN							\
@@ -64,7 +61,6 @@ DEFINE_PRIMITIVE ("INTEGER-LESS?", Prim_integer_less_p, 2, 2, 0)
 DEFINE_PRIMITIVE ("INTEGER-GREATER?", Prim_integer_greater_p, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, INTEGER_P);
   CHECK_ARG (2, INTEGER_P);
   PRIMITIVE_RETURN
@@ -74,7 +70,6 @@ DEFINE_PRIMITIVE ("INTEGER-GREATER?", Prim_integer_greater_p, 2, 2, 0)
 #define INTEGER_BINARY_OPERATION(operator)				\
 {									\
   PRIMITIVE_HEADER (2);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, INTEGER_P);						\
   CHECK_ARG (2, INTEGER_P);						\
   PRIMITIVE_RETURN (operator ((ARG_REF (1)), (ARG_REF (2))));		\
@@ -90,7 +85,6 @@ DEFINE_PRIMITIVE ("INTEGER-MULTIPLY", Prim_integer_multiply, 2, 2, 0)
 #define INTEGER_UNARY_OPERATION(operator)				\
 {									\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, INTEGER_P);						\
   PRIMITIVE_RETURN (operator (ARG_REF (1)));				\
 }
@@ -109,7 +103,6 @@ DEFINE_PRIMITIVE ("INTEGER-DIVIDE", Prim_integer_divide, 2, 2, 0)
   SCHEME_OBJECT quotient;
   SCHEME_OBJECT remainder;
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, INTEGER_P);
   CHECK_ARG (2, INTEGER_P);
   if (integer_divide ((ARG_REF (1)), (ARG_REF (2)), (&quotient), (&remainder)))
@@ -121,7 +114,6 @@ DEFINE_PRIMITIVE ("INTEGER-DIVIDE", Prim_integer_divide, 2, 2, 0)
 {									\
   SCHEME_OBJECT result;							\
   PRIMITIVE_HEADER (2);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, INTEGER_P);						\
   CHECK_ARG (2, INTEGER_P);						\
   result = (operator ((ARG_REF (1)), (ARG_REF (2))));			\
@@ -139,7 +131,7 @@ DEFINE_PRIMITIVE ("INTEGER?", Prim_integer_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    fast SCHEME_OBJECT integer = (ARG_REF (1));
+    SCHEME_OBJECT integer = (ARG_REF (1));
     PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (INTEGER_P (integer)));
   }
 }
@@ -147,11 +139,10 @@ DEFINE_PRIMITIVE ("INTEGER?", Prim_integer_p, 1, 1, 0)
 DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, INTEGER_P);
   {
-    fast SCHEME_OBJECT integer = (ARG_REF (1));
-    fast long control = (arg_index_integer (2, 4));
+    SCHEME_OBJECT integer = (ARG_REF (1));
+    long control = (arg_index_integer (2, 4));
     if (FIXNUM_P (integer))
     {
       long X = (FIXNUM_TO_LONG (integer));
@@ -177,7 +168,6 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
 DEFINE_PRIMITIVE ("INTEGER-SHIFT-LEFT", Prim_integer_shift_left, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, INTEGER_P);
   {
     SCHEME_OBJECT n = (ARG_REF (1));
@@ -188,7 +178,7 @@ DEFINE_PRIMITIVE ("INTEGER-SHIFT-LEFT", Prim_integer_shift_left, 2, 2, 0)
 }
 
 static unsigned int
-DEFUN (list_to_integer_producer, (context), PTR context)
+list_to_integer_producer (void * context)
 {
   SCHEME_OBJECT * digits = context;
   unsigned int digit = (UNSIGNED_FIXNUM_TO_LONG (PAIR_CAR (*digits)));
@@ -202,7 +192,6 @@ LIST is a non-null list of digits in RADIX, most-significant first.\n\
 Converts the list to an integer.  NEGATIVE? specifies the sign.")
 {
   PRIMITIVE_HEADER (3);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, PAIR_P);
   {
     SCHEME_OBJECT digits = (ARG_REF (1));

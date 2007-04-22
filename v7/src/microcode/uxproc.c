@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.34 2007/01/05 21:19:25 cph Exp $
+$Id: uxproc.c,v 1.35 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,6 +25,7 @@ USA.
 
 */
 
+#include "scheme.h"
 #include "ux.h"
 #include "uxproc.h"
 #include "uxio.h"
@@ -35,18 +36,18 @@ USA.
 #include "error: can't hack subprocess I/O without dup2() or equivalent"
 #endif
 
-extern void EXFUN ((*subprocess_death_hook), (pid_t pid, int * status));
-extern void EXFUN ((*stop_signal_hook), (int signo));
-extern void EXFUN (stop_signal_default, (int signo));
-extern int EXFUN (OS_ctty_fd, (void));
-extern void EXFUN (UX_initialize_child_signals, (void));
+extern void (*subprocess_death_hook) (pid_t pid, int * status);
+extern void (*stop_signal_hook) (int signo);
+extern void stop_signal_default (int signo);
+extern int OS_ctty_fd (void);
+extern void UX_initialize_child_signals (void);
 
-static void EXFUN (subprocess_death, (pid_t pid, int * status));
-static void EXFUN (stop_signal_handler, (int signo));
-static void EXFUN (give_terminal_to, (Tprocess process));
-static void EXFUN (get_terminal_back, (void));
-static void EXFUN (process_wait, (Tprocess process));
-static int EXFUN (child_setup_tty, (int fd));
+static void subprocess_death (pid_t pid, int * status);
+static void stop_signal_handler (int signo);
+static void give_terminal_to (Tprocess process);
+static void get_terminal_back (void);
+static void process_wait (Tprocess process);
+static int child_setup_tty (int fd);
 
 size_t OS_process_table_size;
 struct process * process_table;
@@ -80,13 +81,13 @@ static long sync_tick;
 #ifdef HAVE_POSIX_SIGNALS
 
 static void
-DEFUN (restore_signal_mask, (environment), PTR environment)
+restore_signal_mask (void * environment)
 {
   UX_sigprocmask (SIG_SETMASK, ((sigset_t *) environment), 0);
 }
 
 static void
-DEFUN_VOID (block_sigchld)
+block_sigchld (void)
 {
   sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
   sigset_t sigchld;
@@ -97,7 +98,7 @@ DEFUN_VOID (block_sigchld)
 }
 
 static void
-DEFUN_VOID (block_jc_signals)
+block_jc_signals (void)
 {
   sigset_t * outside = (dstack_alloc (sizeof (sigset_t)));
   sigset_t jc_signals;
@@ -114,7 +115,7 @@ DEFUN_VOID (block_jc_signals)
 static sigset_t grabbed_signal_mask;
 
 static void
-DEFUN_VOID (grab_signal_mask)
+grab_signal_mask (void)
 {
   UX_sigprocmask (SIG_BLOCK, 0, (&grabbed_signal_mask));
 }
@@ -124,13 +125,13 @@ DEFUN_VOID (grab_signal_mask)
 #ifdef HAVE_SIGHOLD
 
 static void
-DEFUN (release_sigchld, (environment), PTR environment)
+release_sigchld (void * environment)
 {
   UX_sigrelse (SIGCHLD);
 }
 
 static void
-DEFUN_VOID (block_sigchld)
+block_sigchld (void)
 {
   UX_sighold (SIGCHLD);
   transaction_record_action (tat_always, release_sigchld, 0);
@@ -148,7 +149,7 @@ DEFUN_VOID (block_sigchld)
 #endif /* not HAVE_POSIX_SIGNALS */
 
 void
-DEFUN_VOID (UX_initialize_processes)
+UX_initialize_processes (void)
 {
   OS_process_table_size = (UX_SC_CHILD_MAX ());
   process_table =
@@ -179,7 +180,7 @@ DEFUN_VOID (UX_initialize_processes)
 }
 
 void
-DEFUN_VOID (UX_reset_processes)
+UX_reset_processes (void)
 {
   UX_free (process_table);
   process_table = 0;
@@ -187,7 +188,7 @@ DEFUN_VOID (UX_reset_processes)
 }
 
 static void
-DEFUN (process_allocate_abort, (environment), PTR environment)
+process_allocate_abort (void * environment)
 {
   Tprocess process = (* ((Tprocess *) environment));
   switch (PROCESS_RAW_STATUS (process))
@@ -203,7 +204,7 @@ DEFUN (process_allocate_abort, (environment), PTR environment)
 }
 
 static Tprocess
-DEFUN_VOID (process_allocate)
+process_allocate (void)
 {
   Tprocess process;
   for (process = 0; (process < OS_process_table_size); process += 1)
@@ -220,38 +221,32 @@ DEFUN_VOID (process_allocate)
 }
 
 void
-DEFUN (OS_process_deallocate, (process), Tprocess process)
+OS_process_deallocate (Tprocess process)
 {
   (PROCESS_ID (process)) = 0;
   (PROCESS_RAW_STATUS (process)) = process_status_free;
 }
 
 Tprocess
-DEFUN (OS_make_subprocess,
-       (filename, argv, envp, working_directory,
-	ctty_type, ctty_name,
-	channel_in_type, channel_in,
-	channel_out_type, channel_out,
-	channel_err_type, channel_err),
-       CONST char * filename AND
-       CONST char ** argv AND
-       CONST char ** VOLATILE envp AND
-       CONST char * working_directory AND
-       enum process_ctty_type ctty_type AND
-       char * ctty_name AND
-       enum process_channel_type channel_in_type AND
-       Tchannel channel_in AND
-       enum process_channel_type channel_out_type AND
-       Tchannel channel_out AND
-       enum process_channel_type channel_err_type AND
-       Tchannel channel_err)
+OS_make_subprocess (const char * filename,
+		    const char ** argv,
+		    const char ** volatile envp,
+		    const char * working_directory,
+		    enum process_ctty_type ctty_type,
+		    char * ctty_name,
+		    enum process_channel_type channel_in_type,
+		    Tchannel channel_in,
+		    enum process_channel_type channel_out_type,
+		    Tchannel channel_out,
+		    enum process_channel_type channel_err_type,
+		    Tchannel channel_err)
 {
   pid_t child_pid;
-  Tprocess child;
-  VOLATILE enum process_jc_status child_jc_status = process_jc_status_no_ctty;
+  volatile Tprocess child;
+  volatile enum process_jc_status child_jc_status = process_jc_status_no_ctty;
 
   if (envp == 0)
-    envp = ((CONST char **) environ);
+    envp = ((const char **) environ);
   switch (ctty_type)
     {
     case process_ctty_type_none:
@@ -411,14 +406,14 @@ DEFUN (OS_make_subprocess,
   UX_initialize_child_signals ();
 
   /* Start the process. */
-  execve (filename, ((char * CONST *) argv), ((char * CONST *) envp));
+  execve (filename, ((char * const *) argv), ((char * const *) envp));
  kill_child:
   _exit (1);
 }
 
 #define DEFUN_PROCESS_ACCESSOR(name, result_type, accessor)		\
 result_type								\
-DEFUN (name, (process), Tprocess process)				\
+name (Tprocess process)							\
 {									\
   return (accessor (process));						\
 }
@@ -430,7 +425,7 @@ DEFUN_PROCESS_ACCESSOR
   (OS_process_jc_status, enum process_jc_status, PROCESS_JC_STATUS)
 
 int
-DEFUN (OS_process_valid_p, (process), Tprocess process)
+OS_process_valid_p (Tprocess process)
 {
   switch (PROCESS_RAW_STATUS (process))
     {
@@ -445,7 +440,7 @@ DEFUN (OS_process_valid_p, (process), Tprocess process)
 }
 
 int
-DEFUN (OS_process_continuable_p, (process), Tprocess process)
+OS_process_continuable_p (Tprocess process)
 {
   switch (PROCESS_RAW_STATUS (process))
     {
@@ -458,7 +453,7 @@ DEFUN (OS_process_continuable_p, (process), Tprocess process)
 }
 
 int
-DEFUN (OS_process_foregroundable_p, (process), Tprocess process)
+OS_process_foregroundable_p (Tprocess process)
 {
   switch (PROCESS_JC_STATUS (process))
     {
@@ -471,7 +466,7 @@ DEFUN (OS_process_foregroundable_p, (process), Tprocess process)
 }
 
 int
-DEFUN (OS_process_status_sync, (process), Tprocess process)
+OS_process_status_sync (Tprocess process)
 {
   transaction_begin ();
   block_sigchld ();
@@ -484,7 +479,7 @@ DEFUN (OS_process_status_sync, (process), Tprocess process)
 }
 
 int
-DEFUN_VOID (OS_process_status_sync_all)
+OS_process_status_sync_all (void)
 {
   transaction_begin ();
   block_sigchld ();
@@ -497,16 +492,16 @@ DEFUN_VOID (OS_process_status_sync_all)
 }
 
 int
-DEFUN_VOID (OS_process_any_status_change)
+OS_process_any_status_change (void)
 {
   return (process_tick != sync_tick);
 }
 
 void
-DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
+OS_process_send_signal (Tprocess process, int sig)
 {
   STD_VOID_SYSTEM_CALL
-    (syscall_kill, 
+    (syscall_kill,
      (UX_kill ((((PROCESS_JC_STATUS (process)) == process_jc_status_jc)
 		? (- (PROCESS_ID (process)))
 		: (PROCESS_ID (process))),
@@ -514,37 +509,37 @@ DEFUN (OS_process_send_signal, (process, sig), Tprocess process AND int sig)
 }
 
 void
-DEFUN (OS_process_kill, (process), Tprocess process)
+OS_process_kill (Tprocess process)
 {
   OS_process_send_signal (process, SIGKILL);
 }
 
 void
-DEFUN (OS_process_stop, (process), Tprocess process)
+OS_process_stop (Tprocess process)
 {
   OS_process_send_signal (process, SIGTSTP);
 }
 
 void
-DEFUN (OS_process_interrupt, (process), Tprocess process)
+OS_process_interrupt (Tprocess process)
 {
   OS_process_send_signal (process, SIGINT);
 }
 
 void
-DEFUN (OS_process_quit, (process), Tprocess process)
+OS_process_quit (Tprocess process)
 {
   OS_process_send_signal (process, SIGQUIT);
 }
 
 void
-DEFUN (OS_process_hangup, (process), Tprocess process)
+OS_process_hangup (Tprocess process)
 {
   OS_process_send_signal (process, SIGHUP);
 }
 
 void
-DEFUN (OS_process_continue_background, (process), Tprocess process)
+OS_process_continue_background (Tprocess process)
 {
   transaction_begin ();
   block_sigchld ();
@@ -557,7 +552,7 @@ DEFUN (OS_process_continue_background, (process), Tprocess process)
 }
 
 void
-DEFUN (OS_process_continue_foreground, (process), Tprocess process)
+OS_process_continue_foreground (Tprocess process)
 {
   transaction_begin ();
   grab_signal_mask ();
@@ -566,14 +561,14 @@ DEFUN (OS_process_continue_foreground, (process), Tprocess process)
   if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
       NEW_RAW_STATUS (process, process_status_running, 0);
-      OS_process_send_signal (process, SIGCONT); 
+      OS_process_send_signal (process, SIGCONT);
     }
   process_wait (process);
   transaction_commit ();
 }
 
 void
-DEFUN (OS_process_wait, (process), Tprocess process)
+OS_process_wait (Tprocess process)
 {
   transaction_begin ();
   grab_signal_mask ();
@@ -583,13 +578,13 @@ DEFUN (OS_process_wait, (process), Tprocess process)
 }
 
 static void
-DEFUN (get_terminal_back_1, (environment), PTR environment)
+get_terminal_back_1 (void * environment)
 {
   get_terminal_back ();
 }
 
 static void
-DEFUN (give_terminal_to, (process), Tprocess process)
+give_terminal_to (Tprocess process)
 {
   if (((PROCESS_JC_STATUS (process)) == process_jc_status_jc)
       && (SCHEME_IN_FOREGROUND ()))
@@ -603,7 +598,7 @@ DEFUN (give_terminal_to, (process), Tprocess process)
 }
 
 static void
-DEFUN_VOID (get_terminal_back)
+get_terminal_back (void)
 {
   if (foreground_child_process != NO_PROCESS)
     {
@@ -615,7 +610,7 @@ DEFUN_VOID (get_terminal_back)
 }
 
 static void
-DEFUN (process_wait, (process), Tprocess process)
+process_wait (Tprocess process)
 {
 #ifdef HAVE_POSIX_SIGNALS
   while (((PROCESS_RAW_STATUS (process)) == process_status_running)
@@ -641,7 +636,7 @@ DEFUN (process_wait, (process), Tprocess process)
 }
 
 static Tprocess
-DEFUN (find_process, (pid), pid_t pid)
+find_process (pid_t pid)
 {
   Tprocess process;
   for (process = 0; (process < OS_process_table_size); process += 1)
@@ -651,7 +646,7 @@ DEFUN (find_process, (pid), pid_t pid)
 }
 
 static void
-DEFUN (subprocess_death, (pid, status), pid_t pid AND int * status)
+subprocess_death (pid_t pid, int * status)
 {
   Tprocess process = (find_process (pid));
   if (process != NO_PROCESS)
@@ -675,7 +670,7 @@ DEFUN (subprocess_death, (pid, status), pid_t pid AND int * status)
 }
 
 static void
-DEFUN (stop_signal_handler, (signo), int signo)
+stop_signal_handler (int signo)
 {
   /* If Scheme gets a stop signal while waiting on a foreground
      subprocess, it must grab the terminal back from the subprocess
@@ -721,7 +716,7 @@ DEFUN (stop_signal_handler, (signo), int signo)
 #endif
 
 static int
-DEFUN (child_setup_tty, (fd), int fd)
+child_setup_tty (int fd)
 {
   cc_t disabled_char = (UX_PC_VDISABLE (fd));
   struct termios s;
@@ -746,7 +741,7 @@ DEFUN (child_setup_tty, (fd), int fd)
 #ifdef HAVE_TERMIO_H
 
 static int
-DEFUN (child_setup_tty, (fd), int fd)
+child_setup_tty (int fd)
 {
   cc_t disabled_char = (UX_PC_VDISABLE (fd));
   struct termio s;
@@ -783,7 +778,7 @@ DEFUN (child_setup_tty, (fd), int fd)
 #ifdef HAVE_SGTTY_H
 
 static int
-DEFUN (child_setup_tty, (fd), int fd)
+child_setup_tty (int fd)
 {
   struct sgttyb s;
   if ((ioctl (fd, TIOCGETP, (&s))) < 0)

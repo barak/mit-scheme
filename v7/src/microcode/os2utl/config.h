@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: config.h,v 1.11 2007/01/05 21:19:26 cph Exp $
+$Id: config.h,v 1.12 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -73,9 +73,6 @@ typedef unsigned char cc_t;
 /* Define if you have the <fcntl.h> header file.  */
 #define HAVE_FCNTL_H 1
 
-/* Define if architecture has native-code compiler support.  */
-#define HAS_COMPILER_SUPPORT 1
-
 /* Define if you have the <blowfish.h> header file.  */
 #define HAVE_BLOWFISH_H 1
 
@@ -86,16 +83,16 @@ typedef unsigned char cc_t;
 #define PACKAGE_BUGREPORT "bug-mit-scheme@gnu.org"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "MIT/GNU Scheme"
+#define PACKAGE_NAME "MIT/GNU Scheme microcode"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "MIT/GNU Scheme 14.18"
+#define PACKAGE_STRING "MIT/GNU Scheme microcode 15.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "mit-scheme"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "14.18"
+#define PACKAGE_VERSION "15.0"
 
 /* Include the shared configuration header.  */
 #include "confshared.h"

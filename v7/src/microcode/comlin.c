@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Id: comlin.c,v 1.15 2007/04/22 16:31:22 cph Exp $
+
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007 Massachusetts Institute of Technology
@@ -23,15 +25,11 @@ USA.
 
 */
 
-/* $Id: comlin.c,v 1.14 2007/01/05 21:19:25 cph Exp $
- *
- * This file contains the scheme command parser.
- *
- */
+/* The scheme command parser.  */
 
 #include <stdio.h>
 #ifndef toupper
-#include <ctype.h>
+#  include <ctype.h>
 #endif
 
 #include "comlin.h"
@@ -39,51 +37,41 @@ USA.
 /* Some string utilities */
 
 char *
-DEFUN (remove_initial_substring, (sub, str),
-       register char * sub
-       AND register char * str)
+remove_initial_substring (char * sub, char * str)
 {
   for ( ; *sub != '\0'; sub++, str++)
-  {
-    if (*sub != *str)
     {
-      return ((char *) NULL);
+      if (*sub != *str)
+	return (0);
     }
-  }
   return (str);
 }
 
-boolean
-DEFUN (STREQUAL, (s1, s2),
-       register char * s1
-       AND register char * s2)
+bool
+STREQUAL (char * s1, char * s2)
 {
   for ( ; *s1 != '\0'; s1++, s2++)
-  {
-    if (toupper(*s1) != toupper(*s2))
     {
-      return (false);
+      if (toupper(*s1) != toupper(*s2))
+	return (false);
     }
-  }
   return (*s2 == '\0');
 }
 
 /* Usage information */
 
 void
-DEFUN (print_usage_and_exit, (options, val),
-       struct keyword_struct * options
-       AND int val)
+print_usage_and_exit (struct keyword_struct * options, int val)
 {
-  register int i;
+  int i;
 
   fprintf(stderr, "usage: %s", program_name);
 
   if ((options[0].type_tag) == LAST_KYWRD)
-  {
-    fprintf(stderr, "\n");
-    exit(val);
-  }
+    {
+      fprintf(stderr, "\n");
+      exit(val);
+    }
 
   fprintf(stderr, " [args]\n");
   fprintf(stderr, "    where args are as follows:\n");
@@ -91,35 +79,33 @@ DEFUN (print_usage_and_exit, (options, val),
   for (i = 0;
        ((options[i].type_tag) != LAST_KYWRD);
        i++)
-  {
-    switch (options[i].type_tag)
     {
-      case BOOLEAN_KYWRD:
-	fprintf(stderr, "        %s={true,false}\n",
-		options[i].keyword);
-	break;
+      switch (options[i].type_tag)
+	{
+	case BOOLEAN_KYWRD:
+	  fprintf(stderr, "        %s={true,false}\n",
+		  options[i].keyword);
+	  break;
 
-      case INT_KYWRD:
-      case DOUBLE_KYWRD:
-	fprintf(stderr, "        %s=%s\n",
-		options[i].keyword, options[i].format);
-	break;
+	case INT_KYWRD:
+	case DOUBLE_KYWRD:
+	  fprintf(stderr, "        %s=%s\n",
+		  options[i].keyword, options[i].format);
+	  break;
 
-      case STRING_KYWRD:
-	fprintf(stderr, "        %s=%%s\n",
-		options[i].keyword);
-	break;
+	case STRING_KYWRD:
+	  fprintf(stderr, "        %s=%%s\n",
+		  options[i].keyword);
+	  break;
+	}
     }
-  }
   exit(val);
 }
 
 void
-DEFUN (supply, (options, j),
-       struct keyword_struct * options
-       AND int j)
+supply (struct keyword_struct * options, int j)
 {
-  if (options[j].supplied_p != ((boolean *) NULL))
+  if (options[j].supplied_p != 0)
   {
     if (*(options[j].supplied_p))
     {
@@ -138,20 +124,17 @@ DEFUN (supply, (options, j),
 
 char * program_name;
 
-/* This parser assumes that no keyword is an initial
-   substring of another.
- */
+/* This parser assumes that no keyword is an initial substring of
+   another.  */
 
 void
-DEFUN (parse_keywords,
-       (argc, argv, options, allow_others_p),
-       int argc
-       AND char **argv
-       AND struct keyword_struct * options
-       AND boolean allow_others_p)
+parse_keywords (int argc,
+		char **argv,
+		struct keyword_struct * options,
+		bool allow_others_p)
 {
-  register int i, j, length;
-  char *argument;
+  int i, j, length;
+  char * argument;
 
   program_name = argv[0];
   argv += 1;
@@ -163,11 +146,11 @@ DEFUN (parse_keywords,
        ((options[length].type_tag) != LAST_KYWRD);
        length++)
   {
-    if (options[length].supplied_p != ((boolean *) NULL))
+    if (options[length].supplied_p != 0)
     {
       *(options[length].supplied_p) = false;
     }
-
+
     switch (options[length].type_tag)
     {
       case BOOLEAN_KYWRD:
@@ -204,7 +187,7 @@ DEFUN (parse_keywords,
 	exit(1);
     }
   }
-
+
   for (i = 0; i < argc; i++)
   {
     for (j = 0; j < length; j++)
@@ -217,7 +200,7 @@ DEFUN (parse_keywords,
 
 	  case BOOLEAN_KYWRD:
 	  {
-	    boolean value = false;
+	    bool value = false;
 
 	    if (*argument != '\0')
 	    {
@@ -227,6 +210,8 @@ DEFUN (parse_keywords,
 			"parse_keywords: unrecognized parameter: %s\n",
 			argv[i]);
 		print_usage_and_exit(&options[0], 1);
+		/*NOTREACHED*/
+		value = false;
 	      }
 	      else
 	      {
@@ -247,6 +232,8 @@ DEFUN (parse_keywords,
 			  "parse_keywords: Invalid boolean value: %s\n",
 			  argv[i]);
 		  print_usage_and_exit(&options[0], 1);
+		  /*NOTREACHED*/
+		  value = false;
 		}
 	      }
 	    }
@@ -258,7 +245,7 @@ DEFUN (parse_keywords,
 	    *(BOOLEAN_LVALUE(options[j])) = value;
 	    break;
 	  }
-
+
 	  case INT_KYWRD:
 	    if (*argument != '=')
 	    {
@@ -292,7 +279,7 @@ DEFUN (parse_keywords,
 	    supply(options, j);
 	    sscanf(&argument[1], options[j].format, DOUBLE_LVALUE(options[j]));
 	    break;
-
+
 	  case STRING_KYWRD:
 	    if (*argument != '=')
 	    {
@@ -321,5 +308,4 @@ DEFUN (parse_keywords,
       print_usage_and_exit(&options[0], 1);
     }
   }
-  return;
 }

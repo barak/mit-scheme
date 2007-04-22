@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixnum.c,v 9.48 2007/01/05 21:19:25 cph Exp $
+$Id: fixnum.c,v 9.49 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,18 +34,18 @@ USA.
 #include "prims.h"
 
 static long
-DEFUN (arg_fixnum, (n), int n)
+arg_fixnum (int n)
 {
-  fast SCHEME_OBJECT argument = (ARG_REF (n));
+  SCHEME_OBJECT argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
     error_wrong_type_arg (n);
   return (FIXNUM_TO_LONG (argument));
 }
 
 static long
-DEFUN (arg_unsigned_fixnum, (n), int n)
+arg_unsigned_fixnum (int n)
 {
-  fast SCHEME_OBJECT argument = (ARG_REF (n));
+  SCHEME_OBJECT argument = (ARG_REF (n));
   if (! (FIXNUM_P (argument)))
     error_wrong_type_arg (n);
   return (UNSIGNED_FIXNUM_TO_LONG (argument));
@@ -112,7 +112,7 @@ DEFINE_PRIMITIVE ("GREATER-THAN-FIXNUM?", Prim_greater_fixnum, 2, 2, 0)
 
 #define FIXNUM_RESULT(fixnum)						\
 {									\
-  fast long result = (fixnum);						\
+  long result = (fixnum);						\
   if (! (LONG_TO_FIXNUM_P (result)))					\
     error_bad_range_arg (1);						\
   PRIMITIVE_RETURN (LONG_TO_FIXNUM (result));				\
@@ -157,7 +157,7 @@ DEFINE_PRIMITIVE ("MULTIPLY-FIXNUM", Prim_multiply_fixnum, 2, 2, 0)
   CHECK_ARG (1, FIXNUM_P);
   CHECK_ARG (2, FIXNUM_P);
   {
-    fast long result = (Mul ((ARG_REF (1)), (ARG_REF (2))));
+    long result = (Mul ((ARG_REF (1)), (ARG_REF (2))));
     if (result == SHARP_F)
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (result);
@@ -166,10 +166,10 @@ DEFINE_PRIMITIVE ("MULTIPLY-FIXNUM", Prim_multiply_fixnum, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("DIVIDE-FIXNUM", Prim_divide_fixnum, 2, 2, 0)
 {
-  fast long numerator;
-  fast long denominator;
-  fast long quotient;
-  fast long remainder;
+  long numerator;
+  long denominator;
+  long quotient;
+  long remainder;
   PRIMITIVE_HEADER (2);
   numerator = (arg_fixnum (1));
   denominator = (arg_fixnum (2));
@@ -211,9 +211,9 @@ DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    fast long numerator = (arg_fixnum (1));
-    fast long denominator = (arg_fixnum (2));
-    fast long quotient =
+    long numerator = (arg_fixnum (1));
+    long denominator = (arg_fixnum (2));
+    long quotient =
       ((denominator > 0)
        ? ((numerator < 0)
 	  ? (- ((- numerator) / denominator))
@@ -233,8 +233,8 @@ DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   {
-    fast long numerator = (arg_fixnum (1));
-    fast long denominator = (arg_fixnum (2));
+    long numerator = (arg_fixnum (1));
+    long denominator = (arg_fixnum (2));
     PRIMITIVE_RETURN
       (LONG_TO_FIXNUM
        ((denominator > 0)
@@ -251,9 +251,9 @@ DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 {
-  fast long x;
-  fast long y;
-  fast long z;
+  long x;
+  long y;
+  long z;
   PRIMITIVE_HEADER (2);
   x = (arg_fixnum (1));
   y = (arg_fixnum (2));
@@ -273,7 +273,7 @@ DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 #define FIXNUM_BOOLEAN_BODY(operation)					\
 do									\
 {									\
-  fast unsigned long x, y, z;						\
+  unsigned long x, y, z;						\
 									\
   PRIMITIVE_HEADER (2);							\
 									\
@@ -311,7 +311,7 @@ DEFINE_PRIMITIVE ("FIXNUM-XOR", Prim_fixnum_xor, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("FIXNUM-NOT", Prim_fixnum_not, 1, 1, 0)
 {
-  fast unsigned long x, z;
+  unsigned long x, z;
 
   PRIMITIVE_HEADER (1);
 
@@ -323,8 +323,8 @@ DEFINE_PRIMITIVE ("FIXNUM-NOT", Prim_fixnum_not, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 {
-  fast unsigned long x, z;
-  fast long y;
+  unsigned long x, z;
+  long y;
 
   PRIMITIVE_HEADER (2);
 

@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.46 2007/04/09 16:43:05 cph Exp $
+# $Id: Makefile.in.in,v 1.47 2007/04/22 16:31:24 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -88,20 +88,14 @@ ASSEMBLE = $(AS) $(AS_FLAGS)
 
 # **** File configuration ****
 
-SHARED_SOURCES = @(write-sources "files-core")@ \
+STD_SOURCES = @(write-sources "files-core")@ \
 	@(write-sources "files-os-prim")@ \
 	@(write-sources "files-unix")@ \
 	$(OPTIONAL_SOURCES)
-SHARED_OBJECTS = @(write-objects "files-core")@ \
+STD_OBJECTS = @(write-objects "files-core")@ \
 	@(write-objects "files-os-prim")@ \
 	@(write-objects "files-unix")@ \
 	$(OPTIONAL_OBJECTS)
-
-STD_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-std")@
-STD_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-std")@
-
-BCH_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-bch")@
-BCH_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-bch")@
 
 GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
@@ -123,11 +117,11 @@ MODULE_LIBS = -lc
 
 # **** Program definitions ****
 
-bin_PROGRAMS = scheme bchscheme
-aux_PROGRAMS = gcdrone ppband
+bin_PROGRAMS = scheme
+aux_PROGRAMS =
 aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
-EXTRA_PROGRAMS = findprim bintopsb psbtobin
+EXTRA_PROGRAMS = findprim
 
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
 scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
@@ -135,60 +129,31 @@ scheme_DEPENDENCIES =
 scheme_LDFLAGS = @SCHEME_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(LIBS)
 
-bchscheme_SOURCES = $(BCH_SOURCES) bchdef.c $(LIARC_SOURCES)
-bchscheme_OBJECTS = $(BCH_OBJECTS) bchdef.o $(LIARC_OBJECTS)
-bchscheme_DEPENDENCIES = 
-bchscheme_LDFLAGS = @SCHEME_LDFLAGS@
-bchscheme_LIBS = $(STATIC_LIBS) $(LIBS)
-
-bchdrn_SOURCES = bchdrn.c bchutl.c
-bchdrn_OBJECTS = bchdrn.o bchutl.o
-bchdrn_DEPENDENCIES = 
-bchdrn_LDFLAGS = 
-bchdrn_LIBS = $(LIBS)
-
 findprim_SOURCES = findprim.c
 findprim_OBJECTS = findprim.o
 findprim_DEPENDENCIES = 
 findprim_LDFLAGS = 
 findprim_LIBS = $(LIBS)
 
-bintopsb_SOURCES = bintopsb.c missing.c
-bintopsb_OBJECTS = bintopsb.o missing.o
-bintopsb_DEPENDENCIES = 
-bintopsb_LDFLAGS = 
-bintopsb_LIBS = $(LIBS)
-
-psbtobin_SOURCES = psbtobin.c missing.c
-psbtobin_OBJECTS = psbtobin.o missing.o
-psbtobin_DEPENDENCIES = 
-psbtobin_LDFLAGS = 
-psbtobin_LIBS = $(LIBS)
-
-ppband_SOURCES = ppband.c outf.c
-ppband_OBJECTS = ppband.o outf.o
-ppband_DEPENDENCIES = load.c storage.c
-ppband_LDFLAGS = 
-ppband_LIBS = $(LIBS)
-
 ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
-MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.c compinit.h utabmd.c \
-	utabmd.bci bchdef.c $(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES)
+MOSTLYCLEAN_C_FILES = *.o usrdef.c compinit.c compinit.h \
+	$(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES)
+
+MOSTLYCLEAN_FILES = $(MOSTLYCLEAN_C_FILES) cmpauxmd.s utabmd.c utabmd.bci
 
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
-	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc
+	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
+	cmpintmd-config.h cmpintmd.c
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS
 
-C_CLEAN_FILES = *.o usrdef.c compinit.c compinit.h utabmd.bci bchdef.c \
-	$(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES) $(ALL_PROGRAMS) \
-	$(ALL_LIBS) $(EXTRA_PROGRAMS) $(DISTCLEAN_FILES)
+C_CLEAN_FILES = $(MOSTLYCLEAN_C_FILES) $(CLEAN_FILES) $(DISTCLEAN_FILES)
 
 # **** Implicit rules ****
 
@@ -220,33 +185,9 @@ usrdef.c: $(STD_SOURCES) findprim Makefile
 	-rm -f $@
 	./findprim $(STD_SOURCES) > usrdef.c
 
-bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
-
-bchdef.c: $(BCH_SOURCES) findprim Makefile
-	-rm -f $@
-	./findprim $(BCH_SOURCES) > bchdef.c
-
-gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
-
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
-
-bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
-
-psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
-
-ppband: $(ppband_OBJECTS) $(ppband_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(ppband_LDFLAGS) $(ppband_OBJECTS) $(ppband_LIBS)
 
 utabmd.bin: utabmd.scm
 	./utabmd.sh

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.35 2007/04/03 03:58:58 cph Exp $
+$Id: uxtop.c,v 1.36 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,46 +32,40 @@ USA.
 #include "errors.h"
 #include "option.h"
 #include "config.h"
-#include "default.h"
+#include "object.h"
 #include "extern.h"
 
-extern void EXFUN (UX_initialize_channels, (void));
-extern void EXFUN (UX_initialize_ctty, (int interactive));
-extern void EXFUN (UX_initialize_directory_reader, (void));
-extern void EXFUN (UX_initialize_environment, (void));
-extern void EXFUN (UX_initialize_processes, (void));
-extern void EXFUN (UX_initialize_signals, (void));
-extern void EXFUN (UX_initialize_terminals, (void));
-extern void EXFUN (UX_initialize_trap_recovery, (void));
-extern void EXFUN (UX_initialize_tty, (void));
-extern void EXFUN (UX_initialize_userio, (void));
+extern void UX_initialize_channels (void);
+extern void UX_initialize_ctty (int interactive);
+extern void UX_initialize_directory_reader (void);
+extern void UX_initialize_environment (void);
+extern void UX_initialize_processes (void);
+extern void UX_initialize_signals (void);
+extern void UX_initialize_terminals (void);
+extern void UX_initialize_trap_recovery (void);
+extern void UX_initialize_tty (void);
+extern void UX_initialize_userio (void);
 
-extern void EXFUN (UX_reset_channels, (void));
-extern void EXFUN (UX_reset_processes, (void));
-extern void EXFUN (UX_reset_terminals, (void));
-extern void EXFUN (execute_reload_cleanups, (void));
+extern void UX_reset_channels (void);
+extern void UX_reset_processes (void);
+extern void UX_reset_terminals (void);
 
-extern cc_t EXFUN (OS_ctty_quit_char, (void));
-extern void EXFUN (UX_ctty_save_external_state, (void));
-extern void EXFUN (UX_ctty_save_internal_state, (void));
-extern void EXFUN (UX_ctty_restore_internal_state, (void));
-extern void EXFUN (UX_ctty_restore_external_state, (void));
-
-/* reset_interruptable_extent */
-
-extern CONST char * OS_Name;
-extern CONST char * OS_Variant;
+extern cc_t OS_ctty_quit_char (void);
+extern void UX_ctty_save_external_state (void);
+extern void UX_ctty_save_internal_state (void);
+extern void UX_ctty_restore_internal_state (void);
+extern void UX_ctty_restore_external_state (void);
 
 static int interactive;
 
 int
-DEFUN_VOID (OS_under_emacs_p)
+OS_under_emacs_p (void)
 {
   return (option_emacs_subprocess);
 }
 
 void
-DEFUN_VOID (OS_initialize)
+OS_initialize (void)
 {
   initialize_interruptable_extent ();
   {
@@ -109,7 +103,7 @@ DEFUN_VOID (OS_initialize)
 }
 
 void
-DEFUN_VOID (OS_announcement)
+OS_announcement (void)
 {
   if ((!option_emacs_subprocess) && (OS_ctty_interrupt_control ()))
     fprintf
@@ -119,7 +113,7 @@ DEFUN_VOID (OS_announcement)
 }
 
 void
-DEFUN_VOID (OS_reset)
+OS_reset (void)
 {
   /*
     There should really be a reset for each initialize above,
@@ -133,7 +127,7 @@ DEFUN_VOID (OS_reset)
 }
 
 void
-DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
+OS_quit (int code, int abnormal_p)
 {
   fflush (stdout);
   if (abnormal_p
@@ -156,7 +150,7 @@ DEFUN (OS_quit, (code, abnormal_p), int code AND int abnormal_p)
 }
 
 void
-DEFUN_VOID (UX_dump_core)
+UX_dump_core (void)
 {
   OS_restore_external_state ();
   /* Unmask this too? */
@@ -165,40 +159,40 @@ DEFUN_VOID (UX_dump_core)
 }
 
 void
-DEFUN_VOID (OS_save_external_state)
+OS_save_external_state (void)
 {
   UX_ctty_save_external_state ();
 }
 
 void
-DEFUN_VOID (OS_save_internal_state)
+OS_save_internal_state (void)
 {
   UX_ctty_save_internal_state ();
 }
 
 void
-DEFUN_VOID (OS_restore_internal_state)
+OS_restore_internal_state (void)
 {
   UX_ctty_restore_internal_state ();
 }
 
 void
-DEFUN_VOID (OS_restore_external_state)
+OS_restore_external_state (void)
 {
   UX_ctty_restore_external_state ();
 }
 
 enum syserr_names
-DEFUN (OS_error_code_to_syserr, (code), int code)
+OS_error_code_to_syserr (int code)
 {
   switch (code)
     {
     case E2BIG:		return (syserr_arg_list_too_long);
     case EACCES:	return (syserr_permission_denied);
-    case EAGAIN:	return (syserr_resource_temporarily_unavailable);
 #ifdef EADDRINUSE
     case EADDRINUSE:	return (syserr_address_in_use);
 #endif
+    case EAGAIN:	return (syserr_resource_temporarily_unavailable);
     case EBADF:		return (syserr_bad_file_descriptor);
     case EBUSY:		return (syserr_resource_busy);
     case ECHILD:	return (syserr_no_child_processes);
@@ -244,7 +238,7 @@ DEFUN (OS_error_code_to_syserr, (code), int code)
 }
 
 static int
-DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
+syserr_to_error_code (enum syserr_names syserr)
 {
   switch (syserr)
     {
@@ -300,8 +294,8 @@ DEFUN (syserr_to_error_code, (syserr), enum syserr_names syserr)
 
 #ifdef HAVE_STRERROR
 
-CONST char *
-DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
+const char *
+OS_error_code_to_message (unsigned int syserr)
 {
   return
     ((syserr == 0)
@@ -320,8 +314,8 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
   extern int sys_nerr;
 #endif
 
-CONST char *
-DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
+const char *
+OS_error_code_to_message (unsigned int syserr)
 {
   int code = (syserr_to_error_code ((enum syserr_names) syserr));
   return (((code > 0) && (code <= sys_nerr)) ? (sys_errlist [code]) : 0);
@@ -329,7 +323,7 @@ DEFUN (OS_error_code_to_message, (syserr), unsigned int syserr)
 
 #endif /* not HAVE_STRERROR */
 
-static char * syscall_names_table [] =
+static const char * syscall_names_table [] =
 {
   "accept",
   "bind",
@@ -396,13 +390,13 @@ static char * syscall_names_table [] =
 };
 
 void
-OS_syscall_names (unsigned int * length, char *** names)
+OS_syscall_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
   (*names) = syscall_names_table;
 }
 
-static char * syserr_names_table [] =
+static const char * syserr_names_table [] =
 {
   "unknown",
   "address-in-use",
@@ -446,7 +440,7 @@ static char * syserr_names_table [] =
 };
 
 void
-OS_syserr_names (unsigned int * length, char *** names)
+OS_syserr_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = syserr_names_table;

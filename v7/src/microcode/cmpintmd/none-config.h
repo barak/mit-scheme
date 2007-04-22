@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: image.h,v 9.29 2007/01/05 21:19:25 cph Exp $
+$Id: none-config.h,v 1.2 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -24,46 +24,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
-
-extern Image_Fast_Transpose ();
-/* REAL * Array;
-   long nrows;
-   OPTIMIZATION for square images */
 
-extern Image_Transpose ();
-/* REAL * Array;
-   REAL * New_Array;
-   long nrows;
-   long ncols; */
+#ifndef SCM_CMPINTMD_CONFIG_H_INCLUDED
+#define SCM_CMPINTMD_CONFIG_H_INCLUDED 1
 
-extern Image_Rotate_90clw ();
-/* REAL * Array;
-   REAL * Rotated_Array;
-   long nrows;
-   long ncols; */
+#define COMPILER_PROCESSOR_TYPE COMPILER_NONE_TYPE
+#define NO_CC_SUPPORT_P 1
 
-extern Image_Rotate_90cclw ();
-/* REAL * Array;
-   REAL * Rotated_Array;
-   long nrows;
-   long ncols; */
-
-extern Image_Mirror ();
-/* REAL * Array;
-   long nrows;
-   long ncols; */
-
-extern Image_Mirror_Upside_Down ();
-/* REAL * Array;
-   long nrows;
-   long ncols;
-   REAL * Temp_Row; */
-
-extern Image_Rotate_90clw_Mirror ();
-/* REAL * Array;
-   REAL * Rotated_Array;
-   long nrows;
-   long ncols; */
-
-extern Image_Draw_Magnify_N_Times_With_Offset_Scale ();
-extern Image_Draw_Magnify_N_Times_With_Offset_Scale_Only ();
+#endif /* !SCM_CMPINTMD_CONFIG_H_INCLUDED */

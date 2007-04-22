@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ostty.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: ostty.h,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,13 @@ USA.
 
 #include "os.h"
 
-extern Tchannel EXFUN (OS_tty_input_channel, (void));
-extern Tchannel EXFUN (OS_tty_output_channel, (void));
-extern unsigned int EXFUN (OS_tty_x_size, (void));
-extern unsigned int EXFUN (OS_tty_y_size, (void));
-extern CONST char * EXFUN (OS_tty_command_beep, (void));
-extern CONST char * EXFUN (OS_tty_command_clear, (void));
-extern cc_t EXFUN (OS_tty_next_interrupt_char, (void));
-extern cc_t EXFUN (OS_tty_map_interrupt_char, (cc_t));
+extern Tchannel OS_tty_input_channel (void);
+extern Tchannel OS_tty_output_channel (void);
+extern unsigned int OS_tty_x_size (void);
+extern unsigned int OS_tty_y_size (void);
+extern const char * OS_tty_command_beep (void);
+extern const char * OS_tty_command_clear (void);
+extern cc_t OS_tty_next_interrupt_char (void);
+extern cc_t OS_tty_map_interrupt_char (cc_t);
 
 #endif /* SCM_OSTTY_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.31 2007/01/22 07:47:39 riastradh Exp $
+$Id: ux.c,v 1.32 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,7 +33,7 @@ USA.
 #endif
 
 void
-DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
+UX_prim_check_errno (enum syscall_names name)
 {
   if (errno != EINTR)
     error_system_call (errno, name);
@@ -43,7 +43,7 @@ DEFUN (UX_prim_check_errno, (name), enum syscall_names name)
 #ifdef HAVE_TERMIOS_H
 
 int
-DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_get_state (int fd, Ttty_state * s)
 {
   return
     ((((tcgetattr (fd, (& (s -> tio)))) < 0)
@@ -54,7 +54,7 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 }
 
 int
-DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_set_state (int fd, Ttty_state * s)
 {
   return
     ((((tcsetattr (fd, TCSANOW, (& (s -> tio)))) < 0)
@@ -68,7 +68,7 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 #ifdef HAVE_TERMIO_H
 
 int
-DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_get_state (int fd, Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TCGETA, (& (s -> tio)))) < 0)
@@ -79,7 +79,7 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 }
 
 int
-DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_set_state (int fd, Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TCSETA, (& (s -> tio)))) < 0)
@@ -90,13 +90,13 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 }
 
 int
-DEFUN (UX_tcdrain, (fd), int fd)
+UX_tcdrain (int fd)
 {
   return (UX_ioctl (fd, TCSBRK, 1));
 }
 
 int
-DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
+UX_tcflush (int fd, int queue_selector)
 {
   return (UX_ioctl (fd, TCFLSH, queue_selector));
 }
@@ -106,7 +106,7 @@ DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
 #ifdef HAVE_SGTTY_H
 
 int
-DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_get_state (int fd, Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TIOCGETP, (& (s -> sg)))) < 0)
@@ -119,7 +119,7 @@ DEFUN (UX_terminal_get_state, (fd, s), int fd AND Ttty_state * s)
 }
 
 int
-DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
+UX_terminal_set_state (int fd, Ttty_state * s)
 {
   return
     ((((UX_ioctl (fd, TIOCSETN, (& (s -> sg)))) < 0)
@@ -132,14 +132,14 @@ DEFUN (UX_terminal_set_state, (fd, s), int fd AND Ttty_state * s)
 }
 
 int
-DEFUN (UX_tcdrain, (fd), int fd)
+UX_tcdrain (int fd)
 {
   /* BSD provides no such feature -- pretend it worked. */
   return (0);
 }
 
 int
-DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
+UX_tcflush (int fd, int queue_selector)
 {
   /* Losing BSD always flushes input and output together. */
   int zero = 0;
@@ -152,7 +152,7 @@ DEFUN (UX_tcflush, (fd, queue_selector), int fd AND int queue_selector)
 
 #ifdef SLAVE_PTY_P
 int
-DEFUN (UX_setup_slave_pty, (fd), int fd)
+UX_setup_slave_pty (int fd)
 {
   return
     (((ioctl (fd, I_PUSH, "ptem")) == 0)
@@ -167,7 +167,7 @@ DEFUN (UX_setup_slave_pty, (fd), int fd)
 
 #ifdef EMULATE_GETPGRP
 pid_t
-DEFUN_VOID (UX_getpgrp)
+UX_getpgrp (void)
 {
   return (getpgrp (getpid ()));
 }
@@ -175,7 +175,7 @@ DEFUN_VOID (UX_getpgrp)
 
 #ifdef EMULATE_SETSID
 pid_t
-DEFUN_VOID (UX_setsid)
+UX_setsid (void)
 {
 #ifdef TIOCNOTTY
   int fd = (UX_open ("/dev/tty", O_RDWR, 0));
@@ -191,7 +191,7 @@ DEFUN_VOID (UX_setsid)
 
 #ifdef EMULATE_SETPGID
 int
-DEFUN (UX_setpgid, (pid, pgid), pid_t pid AND pid_t pgid)
+UX_setpgid (pid_t pid, pid_t pgid)
 {
   errno = ENOSYS;
   return (-1);
@@ -200,7 +200,7 @@ DEFUN (UX_setpgid, (pid, pgid), pid_t pid AND pid_t pgid)
 
 #ifdef EMULATE_CTERMID
 char *
-DEFUN (UX_ctermid, (s), char * s)
+UX_ctermid (char * s)
 {
   static char result [] = "/dev/tty";
   if (s == 0)
@@ -212,7 +212,7 @@ DEFUN (UX_ctermid, (s), char * s)
 
 #ifdef EMULATE_KILL
 int
-DEFUN (UX_kill, (pid, sig), pid_t pid AND int sig)
+UX_kill (pid_t pid, int sig)
 {
   return ((pid >= 0) ? (kill (pid, sig)) : (killpg ((-pid), sig)));
 }
@@ -220,7 +220,7 @@ DEFUN (UX_kill, (pid, sig), pid_t pid AND int sig)
 
 #ifdef EMULATE_TCGETPGRP
 pid_t
-DEFUN (UX_tcgetpgrp, (fd), int fd)
+UX_tcgetpgrp (int fd)
 {
 #ifdef TIOCGPGRP
   pid_t pgrp_id;
@@ -234,9 +234,7 @@ DEFUN (UX_tcgetpgrp, (fd), int fd)
 
 #ifdef EMULATE_TCSETPGRP
 int
-DEFUN (UX_tcsetpgrp, (fd, pgrp_id),
-       int fd AND
-       pid_t pgrp_id)
+UX_tcsetpgrp (int fd, pid_t pgrp_id)
 {
 #ifdef TIOCSPGRP
   return (UX_ioctl (fd, TIOCSPGRP, (&pgrp_id)));
@@ -249,9 +247,7 @@ DEFUN (UX_tcsetpgrp, (fd, pgrp_id),
 
 #ifdef EMULATE_GETCWD
 char *
-DEFUN (UX_getcwd, (buffer, length),
-       char * buffer AND
-       size_t length)
+UX_getcwd (char * buffer, size_t length)
 {
   char internal_buffer [MAXPATHLEN + 2];
   char * collection_buffer;
@@ -327,10 +323,7 @@ DEFUN (UX_getcwd, (buffer, length),
 
 #ifdef EMULATE_WAITPID
 int
-DEFUN (UX_waitpid, (pid, stat_loc, options),
-       pid_t pid AND
-       int * stat_loc AND
-       int options)
+UX_waitpid (pid_t pid, int * stat_loc, int options)
 {
   if (pid == (-1))
     return (wait3 (stat_loc, options, 0));
@@ -345,7 +338,7 @@ DEFUN (UX_waitpid, (pid, stat_loc, options),
 
 #ifdef EMULATE_DUP2
 int
-DEFUN (UX_dup2, (fd, fd2), int fd AND int fd2)
+UX_dup2 (int fd, int fd2)
 {
   if (fd != fd2)
     UX_close (fd2);
@@ -360,9 +353,7 @@ DEFUN (UX_dup2, (fd, fd2), int fd AND int fd2)
 
 #ifdef EMULATE_RENAME
 int
-DEFUN (UX_rename, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
+UX_rename (const char * from_name, const char * to_name)
 {
   int result;
   if ((result = (UX_access (from_name, 0))) < 0)
@@ -388,9 +379,7 @@ DEFUN (UX_rename, (from_name, to_name),
 
 #ifdef EMULATE_MKDIR
 int
-DEFUN (UX_mkdir, (name, mode),
-       CONST char * name AND
-       mode_t mode)
+UX_mkdir (const char * name, mode_t mode)
 {
   return (UX_mknod (name, ((mode & MODE_DIR) | S_IFDIR), ((dev_t) 0)));
 }
@@ -399,7 +388,7 @@ DEFUN (UX_mkdir, (name, mode),
 #ifdef _POSIX_VERSION
 
 cc_t
-DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
+UX_PC_VDISABLE (int fildes)
 {
 #ifdef _POSIX_VDISABLE
   return ((cc_t) _POSIX_VDISABLE);
@@ -412,7 +401,7 @@ DEFUN (UX_PC_VDISABLE, (fildes), int fildes)
 static clock_t memoized_clk_tck = 0;
 
 clock_t
-DEFUN_VOID (UX_SC_CLK_TCK)
+UX_SC_CLK_TCK (void)
 {
   if (memoized_clk_tck == 0)
     memoized_clk_tck = ((clock_t) (sysconf (_SC_CLK_TCK)));
@@ -424,21 +413,21 @@ DEFUN_VOID (UX_SC_CLK_TCK)
 #ifndef HAVE_SIGACTION
 
 int
-DEFUN (UX_sigemptyset, (set), sigset_t * set)
+UX_sigemptyset (sigset_t * set)
 {
   (*set) = 0;
   return (0);
 }
 
 int
-DEFUN (UX_sigfillset, (set), sigset_t * set)
+UX_sigfillset (sigset_t * set)
 {
   (*set) = (-1);
   return (0);
 }
 
 int
-DEFUN (UX_sigaddset, (set, signo), sigset_t * set AND int signo)
+UX_sigaddset (sigset_t * set, int signo)
 {
   if (signo <= 0)
     return (-1);
@@ -452,7 +441,7 @@ DEFUN (UX_sigaddset, (set, signo), sigset_t * set AND int signo)
 }
 
 int
-DEFUN (UX_sigdelset, (set, signo), sigset_t * set AND int signo)
+UX_sigdelset (sigset_t * set, int signo)
 {
   if (signo <= 0)
     return (-1);
@@ -466,7 +455,7 @@ DEFUN (UX_sigdelset, (set, signo), sigset_t * set AND int signo)
 }
 
 int
-DEFUN (UX_sigismember, (set, signo), CONST sigset_t * set AND int signo)
+UX_sigismember (const sigset_t * set, int signo)
 {
   if (signo <= 0)
     return (-1);
@@ -485,10 +474,7 @@ DEFUN (UX_sigismember, (set, signo), CONST sigset_t * set AND int signo)
 #endif
 
 int
-DEFUN (UX_sigaction, (signo, act, oact),
-       int signo AND
-       CONST struct sigaction * act AND
-       struct sigaction * oact)
+UX_sigaction (int signo, const struct sigaction * act, struct sigaction * oact)
 {
   struct sigvec svec;
   struct sigvec sovec;
@@ -512,10 +498,7 @@ DEFUN (UX_sigaction, (signo, act, oact),
 }
 
 int
-DEFUN (UX_sigprocmask, (how, set, oset),
-       int how AND
-       CONST sigset_t * set AND
-       sigset_t * oset)
+UX_sigprocmask (int how, const sigset_t * set, sigset_t * oset)
 {
   long omask;
   if (set == 0)
@@ -544,7 +527,7 @@ DEFUN (UX_sigprocmask, (how, set, oset),
 }
 
 int
-DEFUN (UX_sigsuspend, (set), CONST sigset_t * set)
+UX_sigsuspend (const sigset_t * set)
 {
   return (sigpause (*set));
 }
@@ -554,7 +537,7 @@ DEFUN (UX_sigsuspend, (set), CONST sigset_t * set)
 
 #ifdef EMULATE_SYSCONF
 long
-DEFUN (sysconf, (parameter), int parameter)
+sysconf (int parameter)
 {
   switch (parameter)
   {
@@ -603,7 +586,7 @@ DEFUN (sysconf, (parameter), int parameter)
 
 #ifdef EMULATE_FPATHCONF
 long
-DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
+fpathconf (int filedes, int parameter)
 {
   switch (parameter)
   {
@@ -617,19 +600,14 @@ DEFUN (fpathconf, (filedes, parameter), int filedes AND int parameter)
 }
 #endif /* EMULATE_FPATHCONF */
 
-/* This is called during initialization, when the error system is not
-   set up.
-*/
-
 void *
-DEFUN (OS_malloc_init, (size), unsigned int size)
+OS_malloc_init (size_t size)
 {
-  void * result = (UX_malloc (size));
-  return (result);
+  return (UX_malloc (size));
 }
 
 void *
-DEFUN (OS_malloc, (size), unsigned int size)
+OS_malloc (size_t size)
 {
   void * result = (UX_malloc (size));
   if (result == 0)
@@ -638,7 +616,7 @@ DEFUN (OS_malloc, (size), unsigned int size)
 }
 
 void *
-DEFUN (OS_realloc, (ptr, size), void * ptr AND unsigned int size)
+OS_realloc (void * ptr, size_t size)
 {
   void * result = (UX_realloc (ptr, size));
   if (result == 0)
@@ -647,7 +625,7 @@ DEFUN (OS_realloc, (ptr, size), void * ptr AND unsigned int size)
 }
 
 void
-DEFUN (OS_free, (ptr), void * ptr)
+OS_free (void * ptr)
 {
   UX_free (ptr);
 }
@@ -656,7 +634,7 @@ DEFUN (OS_free, (ptr), void * ptr)
 #ifdef HAVE_SYSCONF
 
 unsigned long
-DEFUN_VOID (UX_getpagesize)
+UX_getpagesize (void)
 {
   static int vp = 0;
   static long v;

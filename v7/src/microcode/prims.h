@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.56 2007/04/01 17:33:07 riastradh Exp $
+$Id: prims.h,v 9.57 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,13 +32,12 @@ USA.
 #ifndef SCM_PRIMS_H
 #define SCM_PRIMS_H
 
-#include "ansidecl.h"
+#include "scheme.h"
 
 /* Definition of primitives. */
 
 #define DEFINE_PRIMITIVE(scheme_name, fn_name, min_args, max_args, doc)	\
-extern SCHEME_OBJECT EXFUN (fn_name, (void));				\
-SCHEME_OBJECT DEFUN_VOID (fn_name)
+SCHEME_OBJECT fn_name (void)
 
 /* Can be used for `max_args' in `DEFINE_PRIMITIVE' to indicate that
    the primitive has no upper limit on its arity.  */
@@ -46,30 +45,28 @@ SCHEME_OBJECT DEFUN_VOID (fn_name)
 
 /* Primitives should have this as their first statement. */
 #ifdef ENABLE_PRIMITIVE_PROFILING
-#define PRIMITIVE_HEADER(n_args) record_primitive_entry (exp_register)
+   extern void record_primitive_entry (SCHEME_OBJECT);
+#  define PRIMITIVE_HEADER(n_args) record_primitive_entry (GET_EXP)
 #else
-#define PRIMITIVE_HEADER(n_args) {}
+#  define PRIMITIVE_HEADER(n_args) do {} while (0)
 #endif
 
 /* Primitives return by performing one of the following operations. */
 #define PRIMITIVE_RETURN(value)	return (value)
 #define PRIMITIVE_ABORT abort_to_interpreter
 
-extern void EXFUN (canonicalize_primitive_context, (void));
-#define PRIMITIVE_CANONICALIZE_CONTEXT canonicalize_primitive_context
-
 /* Various utilities */
 
-#define Primitive_GC(Amount)						\
+#define Primitive_GC(Amount) do						\
 {									\
-  Request_GC (Amount);							\
+  REQUEST_GC (Amount);							\
   signal_interrupt_from_primitive ();					\
-}
+} while (0)
 
-#define Primitive_GC_If_Needed(Amount)					\
+#define Primitive_GC_If_Needed(Amount) do				\
 {									\
-  if (GC_Check (Amount)) Primitive_GC (Amount);				\
-}
+  if (GC_NEEDED_P (Amount)) Primitive_GC (Amount);			\
+} while (0)
 
 #define CHECK_ARG(argument, type_p) do					\
 {									\
@@ -79,24 +76,25 @@ extern void EXFUN (canonicalize_primitive_context, (void));
 
 #define ARG_LOC(argument) (STACK_LOC (argument - 1))
 #define ARG_REF(argument) (STACK_REF (argument - 1))
-#define LEXPR_N_ARGUMENTS() (Registers[REGBLOCK_LEXPR_ACTUALS])
 
-extern void EXFUN (signal_error_from_primitive, (long error_code));
-extern void EXFUN (signal_interrupt_from_primitive, (void));
-extern void EXFUN (error_wrong_type_arg, (int));
-extern void EXFUN (error_bad_range_arg, (int));
-extern void EXFUN (error_external_return, (void));
-extern void EXFUN (error_with_argument, (SCHEME_OBJECT));
-extern long EXFUN (arg_integer, (int));
-extern long EXFUN (arg_nonnegative_integer, (int));
-extern long EXFUN (arg_index_integer, (int, long));
-extern long EXFUN (arg_integer_in_range, (int, long, long));
-extern unsigned long EXFUN (arg_ulong_integer, (int));
-extern unsigned long EXFUN (arg_ulong_index_integer, (int, unsigned long));
-extern double EXFUN (arg_real_number, (int));
-extern double EXFUN (arg_real_in_range, (int, double, double));
-extern long EXFUN (arg_ascii_char, (int));
-extern long EXFUN (arg_ascii_integer, (int));
+extern void signal_error_from_primitive (long) NORETURN;
+extern void signal_interrupt_from_primitive (void) NORETURN;
+extern void error_wrong_type_arg (int) NORETURN;
+extern void error_bad_range_arg (int) NORETURN;
+extern void error_external_return (void) NORETURN;
+extern void error_with_argument (SCHEME_OBJECT) NORETURN;
+extern long arg_integer (int);
+extern long arg_nonnegative_integer (int);
+extern long arg_index_integer (int, long);
+extern long arg_integer_in_range (int, long, long);
+extern unsigned long arg_ulong_integer (int);
+extern unsigned long arg_ulong_index_integer (int, unsigned long);
+extern unsigned long arg_ulong_integer_in_range
+  (int, unsigned long, unsigned long);
+extern double arg_real_number (int);
+extern double arg_real_in_range (int, double, double);
+extern long arg_ascii_char (int);
+extern long arg_ascii_integer (int);
 
 #define UNSIGNED_FIXNUM_ARG(arg)					\
   ((FIXNUM_P (ARG_REF (arg)))						\
@@ -108,8 +106,7 @@ extern long EXFUN (arg_ascii_integer, (int));
    ? (STRING_POINTER (ARG_REF (arg)))					\
    : ((error_wrong_type_arg (arg)), ((char *) 0)))
 
-extern PTR EXFUN (lookup_external_string, (SCHEME_OBJECT, unsigned long *));
-extern PTR EXFUN (arg_extended_string, (unsigned int, unsigned long *));
+extern unsigned char * arg_extended_string (unsigned int, unsigned long *);
 
 #define BOOLEAN_ARG(arg) ((ARG_REF (arg)) != SHARP_F)
 

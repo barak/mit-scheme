@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxutil.h,v 1.7 2007/01/05 21:19:25 cph Exp $
+$Id: uxutil.h,v 1.8 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,12 @@ USA.
 
 #include "os.h"
 
-extern CONST char * EXFUN (char_description, (unsigned char c, int long_p));
-extern void EXFUN (userio_buffered_input, (void));
-extern char EXFUN (userio_read_char, (void));
-extern char EXFUN (userio_read_char_raw, (void));
-extern char EXFUN
-  (userio_choose_option,
-   (CONST char * herald, CONST char * prompt, CONST char ** choices));
-extern int EXFUN (userio_confirm, (CONST char * prompt));
+extern const char * char_description (unsigned char c, int long_p);
+extern void userio_buffered_input (void);
+extern char userio_read_char (void);
+extern char userio_read_char_raw (void);
+extern char userio_choose_option
+  (const char * herald, const char * prompt, const char ** choices);
+extern int userio_confirm (const char * prompt);
 
 #endif /* SCM_UXUTIL_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.33 2007/01/05 21:19:25 cph Exp $
+$Id: ntgui.c,v 1.34 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,8 +25,6 @@ USA.
 
 */
 
-#include <string.h>
-#include <stdarg.h>
 #include "scheme.h"
 #include "prims.h"
 #include "os.h"
@@ -126,7 +124,7 @@ WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 }
 
 BOOL
-DEFUN (InitApplication, (hInstance), HANDLE hInstance)
+InitApplication (HANDLE hInstance)
 {
     static BOOL done = FALSE;
     if (done) return (TRUE);
@@ -137,14 +135,14 @@ DEFUN (InitApplication, (hInstance), HANDLE hInstance)
 static BOOL instance_initialized = FALSE;
 
 BOOL
-DEFUN (InitInstance, (hInstance, nCmdShow), HANDLE hInstance AND int nCmdShow)
+InitInstance (HANDLE hInstance, int nCmdShow)
 {
   instance_initialized = TRUE;
   return (Screen_InitInstance (hInstance, nCmdShow));
 }
 
 void
-DEFUN_VOID (nt_gui_default_poll)
+nt_gui_default_poll (void)
 {
   MSG msg;
   int events_processed = 0;
@@ -233,10 +231,10 @@ DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2, 0)
   }
 }
 
-extern void EXFUN (NT_gui_init, (void));
+extern void NT_gui_init (void);
 
 void
-DEFUN_VOID (NT_gui_init)
+NT_gui_init (void)
 {
   if (!instance_initialized)
     {
@@ -254,7 +252,7 @@ scheme_object_to_windows_object (SCHEME_OBJECT thing)
       return  integer_to_long (thing);
 
     if (STRING_P (thing))
-      return  (long) STRING_LOC (thing, 0);
+      return  (long) (STRING_POINTER (thing));
 
     if (thing==SHARP_F)
       return  0;
@@ -352,7 +350,7 @@ DEFINE_PRIMITIVE ("SET-GENERAL-SCHEME-WNDPROC", Prim_set_general_scheme_wndproc,
   PRIMITIVE_HEADER(1);
   {
     SCHEME_OBJECT  wndproc = ARG_REF(1);
-    if (! (ADDRESS_CONSTANT_P (OBJECT_ADDRESS (wndproc))))
+    if (!ADDRESS_IN_CONSTANT_P (OBJECT_ADDRESS (wndproc)))
       signal_error_from_primitive (ERR_ARG_1_WRONG_TYPE);
     general_scheme_wndproc = wndproc;
     PRIMITIVE_RETURN (UNSPECIFIC);
@@ -412,10 +410,9 @@ DEFINE_PRIMITIVE ("GET-HANDLE", Prim_get_handle, 1, 1,
 }
 
 static unsigned long
-DEFUN (arg_ulong_default, (arg_number, def),
-       int arg_number AND unsigned long def)
+arg_ulong_default (int arg_number, unsigned long def)
 {
-  fast SCHEME_OBJECT object = (ARG_REF (arg_number));
+  SCHEME_OBJECT object = (ARG_REF (arg_number));
   if (object == SHARP_F)
     return  def;
   if (! (INTEGER_P (object)))
@@ -447,8 +444,8 @@ DEFINE_PRIMITIVE ("WIN:CREATE-WINDOW", Prim_create_window, 10, 10,
 
     CHECK_ARG (1, STRING_P);
     CHECK_ARG (2, STRING_P);
-    class_name = STRING_LOC (ARG_REF (1), 0);
-    window_name = STRING_LOC (ARG_REF (2), 0);
+    class_name = (STRING_POINTER (ARG_REF (1)));
+    window_name = (STRING_POINTER (ARG_REF (2)));
     style = integer_to_ulong (ARG_REF (3));
     x = (int) arg_ulong_default (4, ((unsigned long) CW_USEDEFAULT));
     y = (int) arg_ulong_default (5, ((unsigned long) CW_USEDEFAULT));
@@ -532,7 +529,7 @@ DEFINE_PRIMITIVE ("NT:GET-MODULE-HANDLE", Prim_get_module_handle, 1, 1,
     PRIMITIVE_HEADER (1);
 
     CHECK_ARG (1, STRING_P);
-    it = GetModuleHandle (STRING_LOC (ARG_REF (1), 0));
+    it = GetModuleHandle (STRING_POINTER (ARG_REF (1)));
     PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
@@ -544,7 +541,7 @@ DEFINE_PRIMITIVE ("NT:LOAD-LIBRARY", Prim_nt_load_library, 1, 1,
     PRIMITIVE_HEADER (1);
 
     CHECK_ARG (1, STRING_P);
-    it = LoadLibrary ((LPSTR)STRING_LOC (ARG_REF (1), 0));
+    it = LoadLibrary ((LPSTR) (STRING_POINTER (ARG_REF (1))));
     PRIMITIVE_RETURN (long_to_integer ((long) it));
 }
 
@@ -574,7 +571,7 @@ DEFINE_PRIMITIVE ("NT:GET-PROC-ADDRESS", Prim_nt_get_proc_address, 2, 2,
     module   = (HMODULE) arg_integer (1);
     function = ARG_REF (2);
     if (STRING_P (function))
-      function_name = STRING_LOC (function, 0);
+      function_name = (STRING_POINTER (function));
     else
       function_name = (LPSTR) arg_integer (2);
 
@@ -598,12 +595,11 @@ DEFINE_PRIMITIVE ("NT:SEND-MESSAGE", Prim_send_message, 4, 4,
     wParam  = arg_integer (3);
     thing = ARG_REF (4);
     if (STRING_P (thing))
-      lParam = (LPARAM) STRING_LOC (thing, 0);
+      lParam = (LPARAM) (STRING_POINTER (thing));
     else
       lParam = arg_integer (4);
 
-    PRIMITIVE_RETURN (
-      long_to_integer (SendMessage (hwnd, message, wParam, lParam)));
+    PRIMITIVE_RETURN (long_to_integer (SendMessage (hwnd, message, wParam, lParam)));
 }
 
 static SCHEME_OBJECT call_ff_really (void);
@@ -620,17 +616,17 @@ DEFINE_PRIMITIVE ("CALL-FF", Prim_call_ff, 0, LEXPR, 0)
 static SCHEME_OBJECT
 call_ff_really (void)
 {
-  long function_address;
+  unsigned long function_address;
   SCHEME_OBJECT * argument_scan;
   SCHEME_OBJECT * argument_limit;
   long result = UNSPECIFIC;
-  long nargs = (LEXPR_N_ARGUMENTS ());
+  unsigned long nargs = GET_LEXPR_ACTUALS;
   if (nargs < 1)
     signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   if (nargs > 30)
     signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 
-  function_address = (arg_integer (1));
+  function_address = (arg_ulong_integer (1));
   argument_scan = (ARG_LOC (nargs + 1));
   argument_limit = (ARG_LOC (2));
   while (argument_scan > argument_limit)
@@ -685,7 +681,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-REF", Prim_int32_offset_ref, 2, 2,
       long *base;
       int  offset;
       CHECK_ARG (1, STRING_P);
-      base = (long*) STRING_LOC (ARG_REF(1), 0);
+      base = (long*) (STRING_POINTER (ARG_REF (1)));
       offset  = arg_integer (2);
       PRIMITIVE_RETURN ( long_to_integer(* (long*) (((char*)base)+offset) ) );
     }
@@ -701,7 +697,7 @@ DEFINE_PRIMITIVE ("INT32-OFFSET-SET!", Prim_int32_offset_set, 3, 3,
       int  offset;
       long value;
       CHECK_ARG (1, STRING_P);
-      base   = (long*) STRING_LOC (ARG_REF(1), 0);
+      base   = (long*) (STRING_POINTER (ARG_REF (1)));
       offset = arg_integer (2);
       value  = scheme_object_to_windows_object (ARG_REF (3));
       * (long*) (((char*)base)+offset)  =  value;
@@ -718,7 +714,7 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-REF", Prim_uint32_offset_ref, 2, 2,
       unsigned long *base;
       int  offset;
       CHECK_ARG (1, STRING_P);
-      base = (unsigned long*) STRING_LOC (ARG_REF(1), 0);
+      base = (unsigned long*) (STRING_POINTER (ARG_REF (1)));
       offset  = arg_integer (2);
       PRIMITIVE_RETURN
 	(ulong_to_integer(* (unsigned long*) (((char*)base)+offset)));
@@ -735,7 +731,7 @@ DEFINE_PRIMITIVE ("UINT32-OFFSET-SET!", Prim_uint32_offset_set, 3, 3,
       int  offset;
       unsigned long value;
       CHECK_ARG (1, STRING_P);
-      base   = (unsigned long*) STRING_LOC (ARG_REF(1), 0);
+      base   = (unsigned long*) (STRING_POINTER (ARG_REF (1)));
       offset = arg_integer (2);
       value  = scheme_object_to_windows_object (ARG_REF (3));
       * (unsigned long*) (((char*)base)+offset)  =  value;
@@ -788,9 +784,8 @@ static char * askuserbuffer = ((char *) NULL);
 static int askuserbufferlength = 0;
 
 static BOOL APIENTRY
-DEFUN (askuserdlgproc, (hwnddlg, message, wparam, lparam),
-       HWND hwnddlg AND UINT message
-       AND WPARAM wparam AND LPARAM lparam)
+askuserdlgproc (HWND hwnddlg, UINT message,
+       WPARAM wparam, LPARAM lparam)
 {
   switch (message)
   {
@@ -825,7 +820,7 @@ DEFUN (askuserdlgproc, (hwnddlg, message, wparam, lparam),
 }
 
 char *
-DEFUN (AskUser, (buf, len), char * buf AND int len)
+AskUser (char * buf, int len)
 {
   char * result;
 

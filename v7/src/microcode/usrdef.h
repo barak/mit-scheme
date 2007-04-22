@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: usrdef.h,v 9.48 2007/01/05 21:19:25 cph Exp $
+$Id: usrdef.h,v 9.49 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,15 +33,11 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-extern SCHEME_OBJECT EXFUN ((* (Static_Primitive_Procedure_Table[])), (void));
+extern SCHEME_OBJECT (* (Static_Primitive_Procedure_Table[])) (void);
 extern int Static_Primitive_Arity_Table[];
 extern int Static_Primitive_Count_Table[];
-extern CONST char * Static_Primitive_Name_Table[];
-extern CONST char * Static_Primitive_Documentation_Table[];
+extern const char * Static_Primitive_Name_Table[];
+extern const char * Static_Primitive_Documentation_Table[];
 extern long MAX_STATIC_PRIMITIVE;
-
-extern void
-  EXFUN (Microcode_Termination, (int)),
-  EXFUN (signal_error_from_primitive, (long));
 
 #endif /* SCM_USRDEF_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syntax.c,v 1.38 2007/04/01 17:33:07 riastradh Exp $
+$Id: syntax.c,v 1.39 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,11 +28,9 @@ USA.
 /* Primitives to support Edwin syntax tables, word and list parsing. */
 
 /* NOTE: This program was created by translation from the syntax table
-code of GNU Emacs; it was translated from the original C to 68000
-assembly language (in 1986), and then translated back from 68000
-assembly language to C (in 1987).  Users should be aware that the GNU
-GENERAL PUBLIC LICENSE may apply to this code.  A copy of that license
-should have been included along with this file. */
+   code of GNU Emacs; it was translated from the original C to 68000
+   assembly language (in 1986), and then translated back from 68000
+   assembly language to C (in 1987).  */
 
 #include "scheme.h"
 #include "prims.h"
@@ -210,9 +208,9 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 /* Parser Initialization */
 
 #define NORMAL_INITIALIZATION_COMMON(arity)				\
-  fast SCHEME_OBJECT syntax_table;					\
-  fast SCHEME_OBJECT group;						\
-  fast unsigned char * start;						\
+  SCHEME_OBJECT syntax_table;						\
+  SCHEME_OBJECT group;							\
+  unsigned char * start;						\
   unsigned char * first_char, * end;					\
   long gap_length;							\
   PRIMITIVE_HEADER (arity);						\
@@ -220,7 +218,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
   syntax_table = (ARG_REF (1));						\
   CHECK_ARG (2, GROUP_P);						\
   group = (ARG_REF (2));						\
-  first_char = (GROUP_TEXT_LOC (group, 0));				\
+  first_char = (GROUP_TEXT (group, 0));					\
   start = (first_char + (arg_nonnegative_integer (3)));			\
   end = (first_char + (arg_nonnegative_integer (4)));			\
   gap_start = (first_char + (GROUP_GAP_START (group)));			\
@@ -229,7 +227,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define NORMAL_INITIALIZATION_FORWARD(arity)				\
   unsigned char * gap_start;						\
-  fast unsigned char * gap_end;						\
+  unsigned char * gap_end;						\
   NORMAL_INITIALIZATION_COMMON (arity);					\
   if (start >= gap_start)						\
     start += gap_length;						\
@@ -237,7 +235,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
     end += gap_length
 
 #define NORMAL_INITIALIZATION_BACKWARD(arity)				\
-  fast unsigned char * gap_start;					\
+  unsigned char * gap_start;						\
   unsigned char * gap_end;						\
   NORMAL_INITIALIZATION_COMMON (arity);					\
   if (start > gap_start)						\
@@ -247,7 +245,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define SCAN_LIST_INITIALIZATION(initialization)			\
   long depth, min_depth;						\
-  Boolean sexp_flag, ignore_comments, math_exit;			\
+  bool sexp_flag, ignore_comments, math_exit;				\
   int c;								\
   initialization (7);							\
   depth = (arg_integer (5));						\
@@ -348,7 +346,7 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
 {
-  Boolean quoted;
+  bool quoted;
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   RIGHT_QUOTED_P (start, quoted);
@@ -360,7 +358,7 @@ DEFINE_PRIMITIVE ("QUOTED-CHAR?", Prim_quoted_char_p, 4, 4, 0)
 
 DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars, 4, 4, 0)
 {
-  Boolean quoted;
+  bool quoted;
   NORMAL_INITIALIZATION_BACKWARD (4);
 
   while (true)
@@ -379,7 +377,7 @@ DEFINE_PRIMITIVE ("SCAN-BACKWARD-PREFIX-CHARS", Prim_scan_backward_prefix_chars,
 
 DEFINE_PRIMITIVE ("SCAN-FORWARD-PREFIX-CHARS", Prim_scan_forward_prefix_chars, 4, 4, 0)
 {
-  Boolean quoted;
+  bool quoted;
   NORMAL_INITIALIZATION_FORWARD (4);
 
   while (true)
@@ -588,7 +586,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 
 DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 {
-  Boolean quoted;
+  bool quoted;
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
   while (true)
@@ -754,7 +752,7 @@ struct levelstruct { unsigned char * last, * previous; };
 DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 {
   long target_depth;
-  Boolean stop_before;
+  bool stop_before;
   SCHEME_OBJECT state_argument;
   long depth = 0;
   long in_string = -1;		/* -1 or delimiter character */
@@ -766,7 +764,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
   unsigned int in_comment = 0;
   unsigned int comment_style = COMMENT_STYLE_A;
   unsigned char * comment_start = 0;
-  Boolean quoted = false;
+  bool quoted = false;
   struct levelstruct level_start[LEVEL_ARRAY_LENGTH];
   struct levelstruct *level;
   struct levelstruct *level_end;
@@ -854,7 +852,7 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	error_bad_range_arg (7);
 
       quoted = ((VECTOR_REF (state_argument, SSF_STATE_QUOTED_P)) != SHARP_F);
-      
+
       if (in_comment != 0)
 	{
 	  temp = (VECTOR_REF (state_argument, SSF_STATE_COMMENT_START));
@@ -1051,13 +1049,13 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 
  done:
   result = (allocate_marked_vector (TC_VECTOR, SSF_STATE_LENGTH, true));
-  FAST_VECTOR_SET (result, SSF_STATE_DEPTH, (LONG_TO_FIXNUM (depth)));
-  FAST_VECTOR_SET
+  VECTOR_SET (result, SSF_STATE_DEPTH, (LONG_TO_FIXNUM (depth)));
+  VECTOR_SET
     (result, SSF_STATE_IN_STRING_P,
      ((in_string == -1)
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM (in_string))));
-  FAST_VECTOR_SET
+  VECTOR_SET
     (result, SSF_STATE_COMMENT_STATE,
      ((in_comment == 0)
       ? SHARP_F
@@ -1068,27 +1066,27 @@ DEFINE_PRIMITIVE ("SCAN-SEXPS-FORWARD", Prim_scan_sexps_forward, 7, 7, 0)
 	  : (comment_style == COMMENT_STYLE_A)
 	  ? in_comment
 	  : (in_comment + 4)))));
-  FAST_VECTOR_SET (result, SSF_STATE_QUOTED_P, (BOOLEAN_TO_OBJECT (quoted)));
-  FAST_VECTOR_SET
+  VECTOR_SET (result, SSF_STATE_QUOTED_P, (BOOLEAN_TO_OBJECT (quoted)));
+  VECTOR_SET
     (result, SSF_STATE_START_OF_SEXP,
      (((level -> last) == NULL)
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM ((SCAN_TO_INDEX (level -> last)) - 1))));
-  FAST_VECTOR_SET
+  VECTOR_SET
     (result, SSF_STATE_LAST_SEXP,
      (((level -> previous) == NULL)
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM ((SCAN_TO_INDEX (level -> previous)) - 1))));
-  FAST_VECTOR_SET
+  VECTOR_SET
     (result, SSF_STATE_CONTAINING_SEXP,
      (((level == level_start) || (((level - 1) -> last) == NULL))
       ? SHARP_F
       : (LONG_TO_UNSIGNED_FIXNUM
 	 ((SCAN_TO_INDEX ((level - 1) -> last)) - 1))));
-  FAST_VECTOR_SET
+  VECTOR_SET
     (result, SSF_STATE_LOCATION,
      (LONG_TO_UNSIGNED_FIXNUM (SCAN_TO_INDEX (start))));
-  FAST_VECTOR_SET
+  VECTOR_SET
     (result, SSF_STATE_COMMENT_START,
      ((in_comment == 0)
       ? SHARP_F

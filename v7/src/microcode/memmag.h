@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.h,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: memmag.h,v 1.13 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,39 +25,71 @@ USA.
 
 */
 
-/* OS-dependent conditionalization of memory management stuff. */
+/* Memory management */
 
 #ifndef SCM_MEMMAG_H
-#define SCM_MEMMAG_H
+#define SCM_MEMMAG_H 1
 
-#ifdef __WIN32__
-   extern void win32_allocate_registers (void);
-   extern void win32_deallocate_registers (void);
-#  define ALLOCATE_REGISTERS win32_allocate_registers
-#  define DEALLOCATE_REGISTERS win32_deallocate_registers
+/* Overflow detection, various cases */
 
-#  include "ntscmlib.h"
+#define GC_ENABLED_P() (INTERRUPT_ENABLED_P (INT_GC))
 
-   extern BOOL win32_under_win32s_p (void);
+#define HEAP_AVAILABLE							\
+  ((unsigned long) ((FREE_OK_P (Free)) ? (heap_alloc_limit - Free) : 0))
 
-   extern char * NT_allocate_heap (unsigned long, unsigned long *);
-   extern void NT_release_heap (char *, unsigned long);
-#  define WIN32_ALLOCATE_HEAP NT_allocate_heap
-#  define WIN32_RELEASE_HEAP NT_release_heap
+#define FREE_OK_P(free)							\
+  (((free) >= heap_start) && ((free) < heap_alloc_limit))
 
-   static unsigned long scheme_heap_handle;
+#define HEAP_AVAILABLE_P(n_words)					\
+  ((FREE_OK_P (Free)) && ((Free + (n_words)) <= heap_alloc_limit))
+
+#define GC_NEEDED_P(n_words)						\
+  ((!HEAP_AVAILABLE_P (n_words)) && (GC_ENABLED_P ()))
+
+#define SPACE_BEFORE_GC()						\
+  ((GC_ENABLED_P ())							\
+   ? HEAP_AVAILABLE							\
+   : (ADDRESS_IN_HEAP_P (Free))						\
+   ? ((unsigned long) (heap_end - Free))				\
+   : 0)
+
+#define REQUEST_GC(n_words) do						\
+{									\
+  REQUEST_INTERRUPT (INT_GC);						\
+  gc_space_needed = (n_words);						\
+} while (0)
+
+#define RESET_HEAP_ALLOC_LIMIT() do					\
+{									\
+  heap_alloc_limit = (heap_end - heap_reserved);			\
+  COMPILER_SETUP_INTERRUPT ();						\
+} while (0)
+
+#define ARG_HEAP_RESERVED(n)						\
+  (arg_ulong_index_integer ((n), ((heap_end - heap_start) / 2)))
+
+#define ADDRESS_IN_MEMORY_BLOCK_P(address)				\
+  (((address) >= memory_block_start) && ((address) < memory_block_end))
+
+#define ADDRESS_IN_HEAP_P(address)					\
+  (((address) >= heap_start) && ((address) < heap_end))
+
+#define ADDRESS_IN_STACK_P(address)					\
+  (((address) >= stack_start) && ((address) < stack_end))
+
+#define ADDRESS_IN_CONSTANT_P(address)					\
+  (((address) >= constant_start) && ((address) < constant_end))
+
+/* buffer for impurify, etc. */
+#ifndef CONSTANT_SPACE_FUDGE
+#  define CONSTANT_SPACE_FUDGE 128
 #endif
 
-#ifndef HEAP_FREE
-#  define HEAP_FREE free
-#endif
-
-#ifndef ALLOCATE_REGISTERS
-#  define ALLOCATE_REGISTERS() do { } while (0)
-#endif
-
-#ifndef DEALLOCATE_REGISTERS
-#  define DEALLOCATE_REGISTERS() do { } while (0)
-#endif
+extern bool allocations_ok_p (unsigned long, unsigned long);
+extern void reset_allocator_parameters (unsigned long);
+extern bool object_in_heap_p (SCHEME_OBJECT);
+extern void std_gc_pt1 (void);
+extern void std_gc_pt2 (void);
+extern void stack_death (const char *) NORETURN;
 
 #endif /* SCM_MEMMAG_H */

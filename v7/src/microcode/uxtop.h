@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.h,v 1.7 2007/01/05 21:19:25 cph Exp $
+$Id: uxtop.h,v 1.8 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,6 +30,6 @@ USA.
 
 #include "ostop.h"
 
-extern void EXFUN (UX_dump_core, (void));
+extern void UX_dump_core (void);
 
 #endif /* SCM_UXTOP_H */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.h,v 1.25 2007/01/05 21:19:25 cph Exp $
+$Id: ntscreen.h,v 1.26 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -155,10 +155,10 @@ typedef struct
 
 #define SCREEN_SETATTRIBUTE	(SCREEN_COMMAND_FIRST+3)
   /* attribute = wParam */
-    
+
 #define SCREEN_GETATTRIBUTE	(SCREEN_COMMAND_FIRST+4)
   /* return  attribute = retval */
-    
+
 #define SCREEN_PEEKEVENT	(SCREEN_COMMAND_FIRST+5)
   /* count  = wParam */
   /* buffer = (SCREEN_EVENT*) lParam */
@@ -213,7 +213,7 @@ typedef LRESULT (* COMMAND_HANDLER) (HWND, WORD);
   /* kind = wParam */
   /* kind=0  : whole screen */
   /* kind=1  : to eol */
-    
+
 /* Predefined commands for SCREEN_SETBINDING etc */
 
 #define SCREEN_COMMAND_CHOOSEFONT	0x400

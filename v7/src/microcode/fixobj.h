@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixobj.h,v 9.42 2007/01/05 21:19:25 cph Exp $
+$Id: fixobj.h,v 9.43 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,59 +26,52 @@ USA.
 */
 
 /* Declarations of user offsets into the Fixed Objects Vector.
-   This should correspond to the file "utabmd.scm". */
+   This should correspond to the file "utabmd.scm".  */
 
-#define Non_Object		0x00	/* Used for unassigned variables. */
-#define System_Interrupt_Vector	0x01	/* Handlers for interrupts. */
-#define System_Error_Vector	0x02	/* Handlers for errors. */
-#define OBArray			0x03	/* Array for interning symbols. */
-#define Types_Vector		0x04	/* Type number -> Name map. */
-#define Returns_Vector		0x05	/* Return code -> Name map. */
+#define NON_OBJECT		0x00	/* Used for unassigned variables. */
+#define SYSTEM_INTERRUPT_VECTOR	0x01	/* Handlers for interrupts. */
+#define SYSTEM_ERROR_VECTOR	0x02	/* Handlers for errors. */
+#define OBARRAY			0x03	/* Array for interning symbols. */
+#define TYPES_VECTOR		0x04	/* Type number -> Name map. */
+#define RETURNS_VECTOR		0x05	/* Return code -> Name map. */
 
 /* For each interrupt, an interrupt mask to be set when invoking the
    handler for that interrupt.  */
 #define FIXOBJ_INTERRUPT_MASK_VECTOR	0x06
 
-#define Errors_Vector		0x07	/* Error code -> Name map. */
-#define Identification_Vector	0x08	/* ID Vector index -> name map. */
+#define ERRORS_VECTOR		0x07	/* Error code -> Name map. */
+#define IDENTIFICATION_VECTOR	0x08	/* ID Vector index -> name map. */
 #define FIXOBJ_SYSTEM_CALL_NAMES	0x09	/* System call index -> name */
 #define FIXOBJ_SYSTEM_CALL_ERRORS	0x0A	/* System call error -> name */
-#define GC_Daemon		0x0B	/* Procedure to run after GC. */
-#define Trap_Handler		0x0C	/* Abort after disaster. */
+#define GC_DAEMON		0x0B	/* Procedure to run after GC. */
+#define TRAP_HANDLER		0x0C	/* Abort after disaster. */
 #define FIXOBJ_EDWIN_AUTO_SAVE	0x0D	/* Files to save if fatal error. */
-#define Stepper_State		0x0E	/* UNUSED in CScheme. */
-#define Fixed_Objects_Slots	0x0F	/* Names of these slots. */
+#define STEPPER_STATE		0x0E
+#define FIXED_OBJECTS_SLOTS	0x0F	/* Names of these slots. */
 #define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
 #define State_Space_Tag		0x11	/* Tag for state spaces. */
 #define State_Point_Tag		0x12	/* Tag for state points. */
-#define Dummy_History		0x13	/* Empty history structure. */
+#define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
-#define System_Scheduler	0x15	/* MultiScheme:
-					   Scheduler for touched futures. */
+/* #define UNUSED		0x15 */
 #define Termination_Vector	0x16    /* Names for terminations. */
 #define Termination_Proc_Vector	0x17	/* Handlers for terminations. */
-#define Me_Myself		0x18	/* MultiScheme:
-					   The shared fixed objects vector. */
-#define The_Work_Queue		0x19	/* MultiScheme:
-					   Where work is stored. */
-#define Future_Logger           0x1A    /* MultiScheme: When logging futures,
-					   routine to log touched futures. */
-#define Touched_Futures         0x1B    /* MultiScheme: When logging futures,
-					   vector of touched futures. */
+/* #define UNUSED		0x18 */
+/* #define UNUSED		0x19 */
+/* #define UNUSED		0x1A */
+/* #define UNUSED		0x1B */
 #define Precious_Objects	0x1C	/* Objects that should not be lost! */
 #define Error_Procedure		0x1D	/* User invoked error handler. */
-#define Unsnapped_Link		0x1E    /* UNUSED in CScheme. */
-#define Utilities_Vector	0x1F	/* UNUSED in CScheme. */
-#define Compiler_Err_Procedure  0x20	/* User invoked error handler
-					   from compiled code. */
+/* #define UNUSED		0x1E */
+/* #define UNUSED		0x1F */
+#define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
 #define Lost_Objects_Base 	0x21	/* Free at the end of the "real" gc. */
 #define State_Space_Root	0x22 	/* Root of state space. */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
 
 /* Trampolines for various generic arithmetic operations.
-   These facilitate upwards compatibility and simplify compilation. 
- */
+   These facilitate upwards compatibility and simplify compilation.  */
 
 #define GENERIC_TRAMPOLINE_ZERO_P	0x24
 #define GENERIC_TRAMPOLINE_POSITIVE_P	0x25
@@ -116,21 +109,18 @@ USA.
 #define PC_Sample_Prob_Comp_Table	0x3D /* Sure looked compiled ?! */
 #define PC_Sample_UFO_Table		0x3E /* Invalid ENV at sample time  */
 
-#define COMPILED_CODE_BKPT_HANDLER	0x3F /* Procedure to invoke when
+#define CC_BKPT_PROCEDURE		0x3F /* Procedure to invoke when
 						compiled code hits a
-						breakpoint.
-					      */
+						breakpoint.  */
+/* #F or a vector of 4 elements:
+   - A boolean flag
+   - A vector of objects to find
+   - A vector to fill with references
+   - A boolean flag = do you want a vector of all obj heads returned
+     in this slot. If so, slot 0 will be a boolean flag indicating if
+     there may be more.  */
 
-#define GC_WABBIT_DESCRIPTOR		0x40 /* #F or a vector of 4 elements:
-						- A boolean flag
-						- A vector of objects to find
-						- A vector to fill with
-						  references.
-						- A boolean flag = do you want
-						  a vector of all obj heads
-						  returned in this slot. If so,
-						  slot 0 will be a boolean flag
-						  indicating if there may be more.
-					      */
+#define GC_WABBIT_DESCRIPTOR		0x40
 
-#define NFixed_Objects			0x41
+/* 4 extra slots for expansion and debugging.  */
+#define N_FIXED_OBJECTS			0x45

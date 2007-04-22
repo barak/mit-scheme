@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.h,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: os2.h,v 1.13 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,13 +38,7 @@ USA.
 #define INCL_BASE
 #define INCL_PM
 #include <os2.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <ctype.h>
 #include <setjmp.h>
-#include <limits.h>
 
 #include "os2api.h"
 #include "os2msg.h"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scode.h,v 9.31 2007/01/05 21:19:25 cph Exp $
+$Id: scode.h,v 9.32 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -113,9 +113,9 @@ USA.
 
 /* Selectors */
 
-#define Get_Body_Elambda(Addr)  (FAST_MEMORY_REF (Addr, ELAMBDA_SCODE))
-#define Get_Names_Elambda(Addr) (FAST_MEMORY_REF (Addr, ELAMBDA_NAMES))
-#define Get_Count_Elambda(Addr) (FAST_MEMORY_REF (Addr, ELAMBDA_ARG_COUNT))
+#define Get_Body_Elambda(Addr)  (MEMORY_REF (Addr, ELAMBDA_SCODE))
+#define Get_Names_Elambda(Addr) (MEMORY_REF (Addr, ELAMBDA_NAMES))
+#define Get_Count_Elambda(Addr) (MEMORY_REF (Addr, ELAMBDA_ARG_COUNT))
 #define Elambda_Formals_Count(Addr) \
      ((((long) Addr) & EL_FORMALS_MASK) >> EL_FORMALS_SHIFT)
 #define Elambda_Opts_Count(Addr) \

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: files-core.scm,v 1.6 2007/01/05 21:19:26 cph Exp $
+$Id: files-core.scm,v 1.7 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,20 +29,23 @@ USA.
 
 "artutl"
 "avltree"
+"bkpt"
 "bignum"
 "bigprm"
 "bitstr"
 "boot"
 "char"
-"comutl"
 "daemon"
 "debug"
 "dfloat"
 "error"
 "extern"
+"fasdump"
+"fasl"
 "fasload"
 "fixnum"
 "flonum"
+"gcloop"
 "generic"
 "hooks"
 "hunk"
@@ -52,6 +55,7 @@ USA.
 "list"
 "lookprm"
 "lookup"
+"memmag"
 "missing"
 "obstack"
 "option"
@@ -60,8 +64,8 @@ USA.
 "outf"
 "prim"
 "primutl"
-"prmcon"
 "ptrvec"
+"purify"
 "purutl"
 "regex"
 "rgxprim"
@@ -71,8 +75,8 @@ USA.
 "syntax"
 "sysprim"
 "term"
-"tterm"
 "transact"
+"tterm"
 "utils"
 "vector"
 "wind"

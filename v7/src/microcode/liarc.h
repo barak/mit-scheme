@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.28 2007/04/17 06:02:10 cph Exp $
+$Id: liarc.h,v 1.29 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,62 +25,42 @@ USA.
 
 */
 
-#ifndef LIARC_INCLUDED
-#define LIARC_INCLUDED
+#ifndef SCM_LIARC_H_INCLUDED
+#define SCM_LIARC_H_INCLUDED 1
 
 #ifndef MIT_SCHEME
-#define MIT_SCHEME
+#  define MIT_SCHEME
 #endif
-
-#include <stdio.h>
+
 #include "config.h"
 #include "dstack.h"
-#include "default.h"
+#include "types.h"
+#include "const.h"
 #include "object.h"
 #include "sdata.h"
-#include "types.h"
 #include "errors.h"
-#include "const.h"
+#include "stack.h"
 #include "interp.h"
-#include "prim.h"
-#include "cmpgc.h"
-#include "cmpintmd.h"
-#include "trap.h"
 #include "outf.h"
 #include "extern.h"
+#include "prim.h"
+#include "cmpint.h"
+#include "trap.h"
 
-#ifdef __STDC__
-#  define USE_STDARG
-#  include <stdarg.h>
-#else
-#  include <varargs.h>
-#endif /* __STDC__ */
-
+extern SCHEME_OBJECT * sp_register;
+
 #ifndef COMPILE_FOR_STATIC_LINKING
-#ifndef COMPILE_FOR_DYNAMIC_LOADING
-#define COMPILE_FOR_DYNAMIC_LOADING
-#endif
+#  ifndef COMPILE_FOR_DYNAMIC_LOADING
+#    define COMPILE_FOR_DYNAMIC_LOADING 1
+#  endif
 #endif
 
 #ifdef __GNUC__
 /* Add attributes to avoid warnings from -Wall for unreferenced labels */
 #  define DEFLABEL(name) name : __attribute__((unused))
-#else /* not __GNUC__ */
+#else
 #  define DEFLABEL(name) name :
-#endif /* __GNUC__ */
-
-/* #define USE_GLOBAL_VARIABLES */
-
-#ifdef LIARC_IN_MICROCODE
-#define USE_GLOBAL_VARIABLES
 #endif
-
-#define USE_SHORTCKT_JUMP
-
-extern PTR dstack_position;
-extern SCHEME_OBJECT * Free;
-extern SCHEME_OBJECT * sp_register;
-extern SCHEME_OBJECT Registers [];
 
 union machine_word_u
 {
@@ -93,17 +73,12 @@ union machine_word_u
 };
 
 typedef union machine_word_u machine_word;
-
 typedef unsigned long entry_count_t;
-
-#define ADDRESS_UNITS_PER_OBJECT	(sizeof (SCHEME_OBJECT))
-#define ADDRESS_UNITS_PER_FLOAT		(sizeof (double))
 
-#ifdef HEAP_IN_LOW_MEMORY
-#define CLOSURE_ENTRY_DELTA	ADDRESS_UNITS_PER_OBJECT
-#else /* not HEAP_IN_LOW_MEMORY */
-#define CLOSURE_ENTRY_DELTA	1
-#endif /* HEAP_IN_LOW_MEMORY */
+#define ADDRESS_UNITS_PER_OBJECT SIZEOF_SCHEME_OBJECT
+#define ADDRESS_UNITS_PER_FLOAT (sizeof (double))
+
+#define CLOSURE_ENTRY_DELTA 1
 
 #undef FIXNUM_TO_LONG
 #define FIXNUM_TO_LONG(source)						\
@@ -113,26 +88,32 @@ typedef unsigned long entry_count_t;
 
 #define LONG_TO_ADDRESS(source) (DATUM_TO_ADDRESS (source))
 
-#define C_STRING_TO_SCHEME_STRING(len,str)				\
-  (MEMORY_TO_STRING ((len), (unsigned char *) str))
+#define C_STRING_TO_SCHEME_STRING(len, str)				\
+  (MEMORY_TO_STRING ((len), ((const byte_t *) (str))))
 
-#define C_SYM_INTERN(len,str)						\
-  (MEMORY_TO_SYMBOL ((len), ((CONST char *) str)))
+#define C_SYM_INTERN(len, str)						\
+  (MEMORY_TO_SYMBOL ((len), ((const byte_t *) (str))))
 
-#define MAKE_PRIMITIVE_PROCEDURE(name,arity) (MAKE_PRIMITIVE (name, arity))
+#define MAKE_PRIMITIVE_PROCEDURE(name, arity) (MAKE_PRIMITIVE (name, arity))
 
-#define MAKE_LINKER_HEADER(kind,count)					\
+#define WRITE_LABEL_DESCRIPTOR(entry, code_word, offset)		\
+  ((entry[-1]) = (MAKE_LABEL_DESCRIPTOR ((code_word), (offset))))
+
+#define MAKE_LABEL_DESCRIPTOR(code_word, offset)			\
+  ((insn_t) (((offset) << 17) | (code_word)))
+
+#define MAKE_LINKER_HEADER(kind, count)					\
   (OBJECT_NEW_TYPE (TC_FIXNUM,						\
-		    (MAKE_LINKAGE_SECTION_HEADER ((kind), (count)))))
+		    (make_linkage_section_marker ((kind), (count)))))
 
 #define ALLOCATE_VECTOR(len) (MAKE_VECTOR ((len), SHARP_F, true))
 
 #define ALLOCATE_RECORD(len)						\
   (OBJECT_NEW_TYPE (TC_RECORD, (ALLOCATE_VECTOR (len))))
 
-#define RECORD_SET(rec,off,val)	VECTOR_SET(rec,off,val)
+#define RECORD_SET(rec, off, val) VECTOR_SET ((rec), (off), (val))
 
-#define INLINE_DOUBLE_TO_FLONUM(src,tgt) do				\
+#define INLINE_DOUBLE_TO_FLONUM(src, tgt) do				\
 {									\
   double num = (src);							\
   SCHEME_OBJECT * val;							\
@@ -140,65 +121,50 @@ typedef unsigned long entry_count_t;
   ALIGN_FLOAT (Rhp);							\
   val = Rhp;								\
   Rhp += (1 + (BYTES_TO_WORDS (sizeof (double))));			\
-  * val = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
-			(BYTES_TO_WORDS (sizeof (double)))));		\
+  (*val) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR,				\
+			 (BYTES_TO_WORDS (sizeof (double)))));		\
   (* ((double *) (val + 1))) = num;					\
   (tgt) = (MAKE_POINTER_OBJECT (TC_BIG_FLONUM, (val)));			\
-} while (0)
+} while (false)
 
-#define MAKE_RATIO(num,den)						\
-  (OBJECT_NEW_TYPE (TC_RATNUM, (CONS (num, den))))
+#define MAKE_RATIO(num, den)						\
+  (OBJECT_NEW_TYPE (TC_RATNUM, (CONS ((num), (den)))))
 
-#define MAKE_COMPLEX(real,imag)						\
-  (OBJECT_NEW_TYPE (TC_COMPLEX, (CONS (real, imag))))
+#define MAKE_COMPLEX(real, imag)					\
+  (OBJECT_NEW_TYPE (TC_COMPLEX, (CONS ((real), (imag)))))
 
-#define CC_BLOCK_TO_ENTRY(block,offset)					\
+#define CC_BLOCK_TO_ENTRY(block, offset)				\
   (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY,				\
 			((OBJECT_ADDRESS (block)) + (offset))))
 
-#define INDEX_FIXNUM_P(arg) ((FIXNUM_P(arg)) && (FIXNUM_TO_LONG(arg)>=0))
+#define INDEX_FIXNUM_P(arg) ((FIXNUM_P(arg)) && (FIXNUM_TO_ULONG_P (arg)))
 
-#ifdef USE_GLOBAL_VARIABLES
+#ifdef LIARC_IN_MICROCODE
 
-#define Rvl val_register
+#define Rvl (Registers[REGBLOCK_VAL])
 #define Rhp Free
 #define Rrb Registers
-#define Rsp sp_register
+#define Rsp stack_pointer
 
 #define DECLARE_VARIABLES() int unused_variable_to_keep_C_happy
-#define UNCACHE_VARIABLES() do {} while (0)
-#define CACHE_VARIABLES() do {} while (0)
+#define UNCACHE_VARIABLES() do {} while (false)
+#define CACHE_VARIABLES() do {} while (false)
 
-#else /* not USE_GLOBAL_VARIABLES */
-
-#define REGISTER register
+#else /* !LIARC_IN_MICROCODE */
 
 #define Rrb Registers
-
-#ifdef HEAP_IN_LOW_MEMORY
-
-#define DECLARE_VARIABLES()						\
-REGISTER SCHEME_OBJECT Rvl = val_register;				\
-REGISTER SCHEME_OBJECT * Rhp = Free;					\
-REGISTER SCHEME_OBJECT * Rsp = sp_register
-
-#define DECLARE_VARIABLES_FOR_DATA()
-
-#else
 
 #undef MEMBASE
 #define MEMBASE lcl_membase
 
 #define DECLARE_VARIABLES()						\
-REGISTER SCHEME_OBJECT Rvl = val_register;				\
-REGISTER SCHEME_OBJECT * Rhp = Free;					\
-REGISTER SCHEME_OBJECT * Rsp = sp_register;				\
-REGISTER SCHEME_OBJECT * lcl_membase = memory_base
+  SCHEME_OBJECT Rvl = GET_VAL;						\
+  SCHEME_OBJECT * Rhp = Free;						\
+  SCHEME_OBJECT * Rsp = stack_pointer;					\
+  SCHEME_OBJECT * lcl_membase = memory_base
 
 #define DECLARE_VARIABLES_FOR_DATA()					\
-REGISTER SCHEME_OBJECT * lcl_membase = memory_base
-
-#endif
+  SCHEME_OBJECT * lcl_membase = memory_base
 
 #define DECLARE_VARIABLES_FOR_OBJECT()
 
@@ -206,249 +172,210 @@ REGISTER SCHEME_OBJECT * lcl_membase = memory_base
 
 #define UNCACHE_VARIABLES() do						\
 {									\
-  sp_register = Rsp;							\
+  stack_pointer = Rsp;							\
   Free = Rhp;								\
-  val_register = Rvl;							\
-} while (0)
+  SET_VAL (Rvl);							\
+} while (false)
 
 #define CACHE_VARIABLES() do						\
 {									\
-  Rvl = val_register;							\
+  Rvl = GET_VAL;							\
   Rhp = Free;								\
-  Rsp = sp_register;							\
-} while (0)
+  Rsp = stack_pointer;							\
+} while (false)
 
-#endif /* USE_GLOBAL_VARIABLES */
+#endif /* !LIARC_IN_MICROCODE */
+
+#ifdef ENABLE_DEBUGGING_TOOLS
+
+#define JUMP(destination) do						\
+{									\
+  SCHEME_OBJECT * JUMP_new_pc = (destination);				\
+  assert (JUMP_new_pc != 0);						\
+  Rpc = JUMP_new_pc;							\
+  goto perform_dispatch;						\
+} while (false)
+
+#else
 
 #define JUMP(destination) do						\
 {									\
   Rpc = (destination);							\
   goto perform_dispatch;						\
-} while(0)
+} while (false)
 
-#define JUMP_EXECUTE_CHACHE(label)					\
-  JUMP ((SCHEME_OBJECT *) (current_block[label]))
+#endif
 
 #define POP_RETURN() goto pop_return
-
-#define INVOKE_PRIMITIVE_DECLS						\
-  SCHEME_OBJECT primitive;						\
-  long primitive_nargs;
+
+#define INVOKE_PRIMITIVE_DECLS
+#define INVOKE_PRIMITIVE_TARGET
 
 #define INVOKE_PRIMITIVE(prim, nargs) do				\
 {									\
-  primitive = (prim);							\
-  primitive_nargs = (nargs);						\
-  goto invoke_primitive;						\
-} while (0)
-
-#define INVOKE_PRIMITIVE_TARGET						\
-DEFLABEL (invoke_primitive)						\
-{									\
-  SCHEME_OBJECT * destination;						\
+  SCHEME_OBJECT * IPdest;						\
 									\
   UNCACHE_VARIABLES ();							\
-  PRIMITIVE_APPLY (val_register, primitive);				\
-  POP_PRIMITIVE_FRAME (primitive_nargs);				\
-  destination = (OBJECT_ADDRESS (STACK_POP ()));			\
+  PRIMITIVE_APPLY (prim);						\
+  POP_PRIMITIVE_FRAME (nargs);						\
+  IPdest = (OBJECT_ADDRESS (STACK_POP ()));				\
   CACHE_VARIABLES ();							\
-  JUMP (destination);							\
-}
-
-#define INVOKE_INTERFACE_DECLS						\
-  int utlarg_code;							\
-  long utlarg_1;							\
-  long utlarg_2;							\
-  long utlarg_3;							\
-  long utlarg_4;
+  JUMP (IPdest);							\
+} while (false)
 
-#define INVOKE_INTERFACE_0(code) do					\
-{									\
-  utlarg_code = (code);							\
-  goto invoke_interface_0;						\
-} while (0)
+#define INVOKE_INTERFACE_DECLS
+#define INVOKE_INTERFACE_TARGET_0
+#define INVOKE_INTERFACE_TARGET_1
+#define INVOKE_INTERFACE_TARGET_2
+#define INVOKE_INTERFACE_TARGET_3
+#define INVOKE_INTERFACE_TARGET_4
 
-#define INVOKE_INTERFACE_1(code, one) do				\
-{									\
-  utlarg_code = (code);							\
-  utlarg_1 = ((long) (one));						\
-  goto invoke_interface_1;						\
-} while (0)
+#define INVOKE_INTERFACE_0(code)					\
+  INVOKE_INTERFACE_4 (code, 0, 0, 0, 0)
 
-#define INVOKE_INTERFACE_2(code, one, two) do				\
-{									\
-  utlarg_code = (code);							\
-  utlarg_1 = ((long) (one));						\
-  utlarg_2 = ((long) (two));						\
-  goto invoke_interface_2;						\
-} while (0)
+#define INVOKE_INTERFACE_1(code, one)					\
+  INVOKE_INTERFACE_4 (code, one, 0, 0, 0)
 
-#define INVOKE_INTERFACE_3(code, one, two, three) do			\
-{									\
-  utlarg_code = (code);							\
-  utlarg_1 = ((long) (one));						\
-  utlarg_2 = ((long) (two));						\
-  utlarg_3 = ((long) (three));						\
-  goto invoke_interface_3;						\
-} while (0)
+#define INVOKE_INTERFACE_2(code, one, two)				\
+  INVOKE_INTERFACE_4 (code, one, two, 0, 0)
+
+#define INVOKE_INTERFACE_3(code, one, two, three)			\
+  INVOKE_INTERFACE_4 (code, one, two, three, 0)
 
 #define INVOKE_INTERFACE_4(code, one, two, three, four) do		\
 {									\
-  utlarg_code = (code);							\
-  utlarg_1 = ((long) (one));						\
-  utlarg_2 = ((long) (two));						\
-  utlarg_3 = ((long) (three));						\
-  utlarg_4 = ((long) (four));						\
-  goto invoke_interface_4;						\
-} while (0)
-
-#define INVOKE_INTERFACE_TARGET_0					\
-DEFLABEL (invoke_interface_0)						\
-  utlarg_1 = 0;								\
-  INVOKE_INTERFACE_TARGET_1
-
-#define INVOKE_INTERFACE_TARGET_1					\
-DEFLABEL (invoke_interface_1)						\
-  utlarg_2 = 0;								\
-  INVOKE_INTERFACE_TARGET_2
-
-#define INVOKE_INTERFACE_TARGET_2					\
-DEFLABEL (invoke_interface_2)						\
-  utlarg_3 = 0;								\
-  INVOKE_INTERFACE_TARGET_3
-
-#define INVOKE_INTERFACE_TARGET_3					\
-DEFLABEL (invoke_interface_3)						\
-  utlarg_4 = 0;								\
-  INVOKE_INTERFACE_TARGET_4
-
-#define INVOKE_INTERFACE_TARGET_4					\
-DEFLABEL (invoke_interface_4)						\
-{									\
-  SCHEME_OBJECT * destination;						\
+  SCHEME_OBJECT * IICdest;						\
 									\
   UNCACHE_VARIABLES ();							\
-  destination = (invoke_utility (utlarg_code, utlarg_1, utlarg_2,	\
-				 utlarg_3, utlarg_4));			\
+  IICdest								\
+    = (invoke_utility ((code),						\
+		       ((unsigned long) (one)),				\
+		       ((unsigned long) (two)),				\
+		       ((unsigned long) (three)),			\
+		       ((unsigned long) (four))));			\
   CACHE_VARIABLES ();							\
-  JUMP (destination);							\
-}
+  JUMP (IICdest);							\
+} while (false)
 
 #define MAX_BIT_SHIFT DATUM_LENGTH
 
 #define RIGHT_SHIFT_UNSIGNED(source, number)				\
-(((number) > MAX_BIT_SHIFT)						\
- ? 0									\
- : ((((unsigned long) (source)) & DATUM_MASK)				\
-    >> (number)))
+  (((number) > MAX_BIT_SHIFT)						\
+   ? 0									\
+   : ((((unsigned long) (source)) & DATUM_MASK) >> (number)))
 
 #define RIGHT_SHIFT(source, number)					\
-(((number) > MAX_BIT_SHIFT)						\
- ? 0									\
- : ((source) >> (number)))
+  (((number) > MAX_BIT_SHIFT)						\
+   ? 0									\
+   : ((source) >> (number)))
 
 #define LEFT_SHIFT(source, number)					\
-(((number) > MAX_BIT_SHIFT)						\
- ? 0									\
- : ((source) << (number)))
+  (((number) > MAX_BIT_SHIFT)						\
+   ? 0									\
+   : ((source) << (number)))
 
 #define FIXNUM_LSH(source, number)					\
-(((number) >= 0)							\
- ? (LEFT_SHIFT (source, number))					\
- : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
+  (((number) >= 0)							\
+   ? (LEFT_SHIFT (source, number))					\
+   : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
 
 #define FIXNUM_REMAINDER(source1, source2)				\
-(((source2) > 0)							\
- ? (((source1) >= 0)							\
-    ? ((source1) % (source2))						\
-    : (- ((- (source1)) % (source2))))					\
- : (((source1) >= 0)							\
-    ? ((source1) % (- (source2)))					\
-    : (- ((- (source1)) % (- (source2))))))
+  (((source2) > 0)							\
+   ? (((source1) >= 0)							\
+      ? ((source1) % (source2))						\
+      : (- ((- (source1)) % (source2))))				\
+   : (((source1) >= 0)							\
+      ? ((source1) % (- (source2)))					\
+      : (- ((- (source1)) % (- (source2))))))
 
 #define FIXNUM_QUOTIENT(source1, source2)				\
-(((source2) > 0)							\
- ? (((source1) >= 0)							\
-    ? ((source1) / (source2))						\
-    : (- ((- (source1)) / (source2))))					\
- : (((source1) >= 0)							\
-    ? (- ((source1) / (- (source2))))					\
-    : ((- (source1)) / (- (source2)))))
+  (((source2) > 0)							\
+   ? (((source1) >= 0)							\
+      ? ((source1) / (source2))						\
+      : (- ((- (source1)) / (source2))))				\
+   : (((source1) >= 0)							\
+      ? (- ((source1) / (- (source2))))					\
+      : ((- (source1)) / (- (source2)))))
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\
-  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
-    INVOKE_INTERFACE_1 (code, &current_block[entry_point]);		\
-} while (0)
+  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+    INVOKE_INTERFACE_1 (code, (&current_block[entry_point]));		\
+} while (false)
 
 #define DLINK_INTERRUPT_CHECK(code, entry_point) do			\
 {									\
-  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
-    INVOKE_INTERFACE_2 (code, &current_block[entry_point], Rdl);	\
-} while (0)
-
-#define CLOSURE_HEADER(offset) do					\
-{									\
-  SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) Rpc[1]);			\
-  current_block = (entry - offset);					\
-  *--Rsp = (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, Rpc));		\
-} while (0)
+  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+    INVOKE_INTERFACE_2 (code, (&current_block[entry_point]), Rdl);	\
+} while (false)
 
 #define CLOSURE_INTERRUPT_CHECK(code) do				\
 {									\
-  if (((long) Rhp) >= ((long) (Rrb[REGBLOCK_MEMTOP])))			\
+  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
     INVOKE_INTERFACE_0 (code);						\
-} while (0)
+} while (false)
+
+#define CLOSURE_HEADER(offset) do					\
+{									\
+  SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) (Rpc[1]));			\
+  current_block = (entry - offset);					\
+  (*--Rsp) = (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, Rpc));		\
+} while (false)
 
 /* Linking and initialization */
+
+typedef int liarc_decl_code_t (void);
+typedef int liarc_decl_data_t (void);
+typedef SCHEME_OBJECT * liarc_code_proc_t (SCHEME_OBJECT *, entry_count_t);
+typedef SCHEME_OBJECT * liarc_data_proc_t (entry_count_t);
+typedef SCHEME_OBJECT liarc_object_proc_t (void);
 
 struct liarc_code_S
 {
   const char * name;
   entry_count_t nentries;
-  SCHEME_OBJECT * EXFUN ((* code), (SCHEME_OBJECT *, entry_count_t));
+  liarc_code_proc_t * code;
 };
 
 struct liarc_data_S
 {
   const char * name;
-  SCHEME_OBJECT * EXFUN ((* data), (entry_count_t));
+  liarc_data_proc_t * data;
 };
 
 #define DECLARE_SUBCODE(name, nentries, code) do			\
 {									\
-  int result								\
-    = (declare_compiled_code (name, nentries, NO_SUBBLOCKS, code));	\
+  int result = (declare_compiled_code_ns (name, nentries, code));	\
   if (result != 0)							\
     return (result);							\
-} while (0)
+} while (false)
 
 #define DECLARE_SUBDATA(name, data) do					\
 {									\
-  int result = (declare_compiled_data (name, NO_SUBBLOCKS, data));	\
+  int result = (declare_compiled_data_ns (name, data));			\
   if (result != 0)							\
     return (result);							\
-} while (0)
+} while (false)
 
 #define DECLARE_SUBCODE_MULTIPLE(code_array) do				\
 {									\
-  int result  =								\
-    declare_compiled_code_mult (((sizeof (code_array))			\
-				 / (sizeof (struct liarc_code_S))),	\
-				(& code_array[0]));			\
+  int result								\
+    = (declare_compiled_code_mult					\
+       (((sizeof (code_array)) / (sizeof (struct liarc_code_S))),	\
+	code_array));							\
   if (result != 0)							\
     return (result);							\
-} while (0)
+} while (false)
 
 #define DECLARE_SUBDATA_MULTIPLE(data_array) do				\
 {									\
-  int result =								\
-    declare_compiled_data_mult (((sizeof (data_array))			\
-				 / (sizeof (struct liarc_data_S))),	\
-				(& data_array[0]));			\
+  int result								\
+    = (declare_compiled_data_mult					\
+       (((sizeof (data_array)) / (sizeof (struct liarc_data_S))),	\
+	data_array));							\
   if (result != 0)							\
     return (result);							\
-} while (0)
+} while (false)
 
 #ifndef COMPILE_FOR_DYNAMIC_LOADING
 
@@ -462,115 +389,81 @@ struct liarc_data_S
 #else /* COMPILE_FOR_DYNAMIC_LOADING */
 
 #define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
-int EXFUN (decl_code, (void));						\
-SCHEME_OBJECT * EXFUN (code, (SCHEME_OBJECT *, entry_count_t));		\
+liarc_decl_code_t decl_code;						\
+liarc_code_proc_t code;							\
 static int								\
-DEFUN_VOID (dload_initialize_code)					\
+dload_initialize_code (void)						\
 {									\
   return (declare_compiled_code (name, nentries, decl_code, code));	\
 }
 
 #define DECLARE_COMPILED_DATA(name, decl_data, data)			\
-int EXFUN (decl_data, (void));						\
-SCHEME_OBJECT * EXFUN (data, (entry_count_t));				\
+liarc_decl_data_t decl_data;						\
+liarc_data_proc_t data;							\
 static int								\
-DEFUN_VOID (dload_initialize_data)					\
+dload_initialize_data (void)						\
 {									\
   return (declare_compiled_data (name, decl_data, data));		\
 }
 
 #define DECLARE_COMPILED_DATA_NS(name, data)				\
-SCHEME_OBJECT * EXFUN (data, (entry_count_t));				\
+liarc_data_proc_t data;							\
 static int								\
-DEFUN_VOID (dload_initialize_data)					\
+dload_initialize_data (void)						\
 {									\
   return (declare_compiled_data_ns (name, data));			\
 }
 
 #define DECLARE_DATA_OBJECT(name, data)					\
-SCHEME_OBJECT EXFUN (data, (void));					\
+liarc_object_proc_t data;						\
 static int								\
-DEFUN_VOID (dload_initialize_data)					\
+dload_initialize_data (void)						\
 {									\
   return (declare_data_object (name, data));				\
 }
 
 #define DECLARE_DYNAMIC_INITIALIZATION(name)				\
 char *									\
-DEFUN_VOID (dload_initialize_file)					\
+dload_initialize_file (void)						\
 {									\
-  int result = (dload_initialize_code ());				\
-  if (result != 0)							\
-    return ((char *) NULL);						\
-  result = (dload_initialize_data ());					\
-  if (result != 0)							\
-    return ((char *) NULL);						\
-  else									\
-    return (name);							\
+  return								\
+    ((((dload_initialize_code ()) == 0)					\
+      && ((dload_initialize_data ()) == 0))				\
+     ? name								\
+     : 0);								\
 }
 
 #define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)			\
 char *									\
-DEFUN_VOID (dload_initialize_file)					\
+dload_initialize_file (void)						\
 {									\
-  int result = (dload_initialize_data ());				\
-  if (result != 0)							\
-    return ((char *) NULL);						\
-  else									\
-    return (name);							\
+  return (((dload_initialize_data ()) == 0) ? name : 0);		\
 }
 
 #endif /* COMPILE_FOR_DYNAMIC_LOADING */
 
-#ifdef USE_STDARG
-# define RCONSM_TYPE(frob) SCHEME_OBJECT EXFUN (frob, (int, SCHEME_OBJECT DOTS))
-#else /* not USE_STDARG */
-# define RCONSM_TYPE(frob) SCHEME_OBJECT frob ()
-#endif /* USE_STDARG */
+extern SCHEME_OBJECT initialize_subblock (const char *);
 
-extern RCONSM_TYPE(rconsm);
+extern SCHEME_OBJECT * invoke_utility
+  (unsigned int, unsigned long, unsigned long, unsigned long, unsigned long);
 
-extern int
-  EXFUN (multiply_with_overflow, (long, long, long *)),
-  EXFUN (declare_compiled_code,
-	 (char *,
-	  entry_count_t,
-	  int EXFUN ((*), (void)),
-	  SCHEME_OBJECT * EXFUN ((*), (SCHEME_OBJECT *, entry_count_t)))),
-  EXFUN (declare_compiled_data,
-	 (char *,
-	  int EXFUN ((*), (void)),
-	  SCHEME_OBJECT * EXFUN ((*), (entry_count_t)))),
-  EXFUN (declare_compiled_data_ns,
-	 (char *,
-	  SCHEME_OBJECT * EXFUN ((*), (entry_count_t)))),
-  EXFUN (declare_data_object,
-	 (char *,
-	  SCHEME_OBJECT EXFUN ((*), (void)))),
-  EXFUN (declare_compiled_code_mult, (unsigned, CONST struct liarc_code_S *)),
-  EXFUN (declare_compiled_data_mult, (unsigned, CONST struct liarc_data_S *)),
-  EXFUN (NO_SUBBLOCKS, (void));
+extern int declare_compiled_code
+  (const char *, entry_count_t, liarc_decl_code_t *, liarc_code_proc_t *);
 
-extern SCHEME_OBJECT
-  EXFUN (initialize_subblock, (char *)),
-  * EXFUN (invoke_utility, (int, long, long, long, long)),
-  EXFUN (unstackify,
-	 (unsigned char * prog, unsigned long, entry_count_t dispatch_base));
+extern int declare_compiled_code_ns
+  (const char *, entry_count_t, liarc_code_proc_t *);
 
-extern double
-  EXFUN (acos, (double)),
-  EXFUN (asin, (double)),
-  EXFUN (atan, (double)),
-  EXFUN (ceil, (double)),
-  EXFUN (cos, (double)),
-  EXFUN (exp, (double)),
-  EXFUN (floor, (double)),
-  EXFUN (log, (double)),
-  EXFUN (sin, (double)),
-  EXFUN (sqrt, (double)),
-  EXFUN (tan, (double)),
-  EXFUN (double_truncate, (double)),
-  EXFUN (atan2, (double, double));
+extern int declare_compiled_data
+  (const char *, liarc_decl_data_t *, liarc_data_proc_t *);
+
+extern int declare_compiled_data_ns (const char *, liarc_data_proc_t *);
+extern int declare_data_object (const char *, liarc_object_proc_t *);
+extern int declare_compiled_code_mult (unsigned, const struct liarc_code_S *);
+extern int declare_compiled_data_mult (unsigned, const struct liarc_data_S *);
+
+extern SCHEME_OBJECT unstackify (unsigned char *, size_t, entry_count_t);
+
+extern int multiply_with_overflow (long, long, long *);
 
 #define DOUBLE_ACOS acos
 #define DOUBLE_ASIN asin
@@ -580,96 +473,34 @@ extern double
 #define DOUBLE_EXP exp
 #define DOUBLE_FLOOR floor
 #define DOUBLE_LOG log
-#define DOUBLE_ROUND(dx) (double_truncate ((dx < 0) ? (dx - 0.5) : (dx + 0.5)))
 #define DOUBLE_SIN sin
 #define DOUBLE_SQRT sqrt
 #define DOUBLE_TAN tan
 #define DOUBLE_TRUNCATE double_truncate
+#define DOUBLE_ROUND double_round
 #define DOUBLE_ATAN2 atan2
-
-#ifdef __GNUC__
-# if defined(hp9000s800) || defined(__hp9000s800)
-#  define BUG_GCC_LONG_CALLS
-# endif
-#endif
 
-#ifndef BUG_GCC_LONG_CALLS
-
-extern SCHEME_OBJECT EXFUN (memory_to_string, (unsigned long, CONST void *));
-extern SCHEME_OBJECT EXFUN (memory_to_symbol, (unsigned long, CONST char *));
-extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
-extern SCHEME_OBJECT EXFUN (cons, (SCHEME_OBJECT, SCHEME_OBJECT));
-extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
-extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
-extern SCHEME_OBJECT EXFUN (digit_string_to_integer,
-			    (Boolean, unsigned long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (digit_string_to_bit_string,
-			    (unsigned long, unsigned long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
-extern SCHEME_OBJECT EXFUN (memory_to_uninterned_symbol,
-			    (unsigned long, unsigned char *));
+#define MAKE_PRIMITIVE(str, arity)					\
+  (make_primitive (((const char *) (str)), ((int) (arity))))
 
 #define MEMORY_TO_STRING memory_to_string
-#define MEMORY_TO_SYMBOL(len,str) memory_to_symbol (len, str)
-#define MAKE_VECTOR(len,init,flag) make_vector (((long) len), init, flag)
+#define MEMORY_TO_SYMBOL memory_to_symbol
+#define MAKE_VECTOR make_vector
 #define CONS cons
 #define RCONSM rconsm
 #define DOUBLE_TO_FLONUM double_to_flonum
 #define LONG_TO_INTEGER long_to_integer
-#define DIGIT_STRING_TO_INTEGER(sgn,len,str) \
-   digit_string_to_integer(sgn, ((unsigned long) len), ((unsigned char *) str))
-#define DIGIT_STRING_TO_BIT_STRING(blen,len,str)			\
-   digit_string_to_bit_string(((unsigned long) blen),			\
-			      ((unsigned long) len),			\
-			      ((unsigned char *) str))
-#define MAKE_PRIMITIVE(str,arity)					\
-  make_primitive (((char *) str), ((int) arity))
 #define C_TO_UNINTERNED_SYMBOL memory_to_uninterned_symbol
+#define DIGIT_STRING_TO_INTEGER digit_string_to_integer
+#define DIGIT_STRING_TO_BIT_STRING digit_string_to_bit_string
 
-#else /* GCC on Spectrum has a strange bug so do thing differently .... */
+extern SCHEME_OBJECT rconsm (unsigned int, SCHEME_OBJECT, ...);
+extern SCHEME_OBJECT memory_to_uninterned_symbol (unsigned long, const void *);
 
-extern SCHEME_OBJECT EXFUN ((* (constructor_kludge [11])), ());
+extern SCHEME_OBJECT digit_string_to_integer
+  (bool, unsigned long, const char *);
 
-#define MEMORY_TO_STRING						\
-     ((SCHEME_OBJECT EXFUN ((*), (unsigned long, unsigned char *)))	\
-      (constructor_kludge[0]))
+extern SCHEME_OBJECT digit_string_to_bit_string
+  (unsigned long, unsigned long, const char *);
 
-#define MEMORY_TO_SYMBOL						\
-     ((SCHEME_OBJECT EXFUN ((*), (unsigned long, unsigned char *)))	\
-      (constructor_kludge[1]))
-
-#define MAKE_VECTOR							\
-     ((SCHEME_OBJECT EXFUN ((*), (unsigned long, SCHEME_OBJECT, Boolean))) \
-      (constructor_kludge[2]))
-
-#define CONS								\
-     ((SCHEME_OBJECT EXFUN ((*), (SCHEME_OBJECT, SCHEME_OBJECT)))	\
-      (constructor_kludge[3]))
-
-#define RCONSM								\
-     ((RCONSM_TYPE ((*))) (constructor_kludge[4]))
-
-#define DOUBLE_TO_FLONUM						\
-     ((SCHEME_OBJECT EXFUN ((*), (double))) (constructor_kludge[5]))
-
-#define LONG_TO_INTEGER							\
-     ((SCHEME_OBJECT EXFUN ((*), (long))) (constructor_kludge[6]))
-
-#define DIGIT_STRING_TO_INTEGER						\
-     ((SCHEME_OBJECT EXFUN ((*), (Boolean, unsigned long, char *)))	\
-      (constructor_kludge[7]))
-
-#define DIGIT_STRING_TO_BIT_STRING					\
-     ((SCHEME_OBJECT EXFUN ((*), (unsigned long, unsigned long, char *))) \
-      (constructor_kludge[8]))
-
-#define MAKE_PRIMITIVE							\
-     ((SCHEME_OBJECT EXFUN ((*), (char *, int))) (constructor_kludge[9]))
-
-#define C_TO_UNINTERNED_SYMBOL						\
-     ((SCHEME_OBJECT EXFUN ((*), (unsigned long, char *)))		\
-      (constructor_kludge[10]))
-
-#endif /* BUG_GCC_LONG_CALLS */
-
-#endif /* LIARC_INCLUDED */
+#endif /* !SCM_LIARC_H_INCLUDED */

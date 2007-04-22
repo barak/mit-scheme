@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sgraph.h,v 1.11 2007/01/05 21:19:25 cph Exp $
+$Id: c-config.h,v 1.2 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,30 +25,12 @@ USA.
 
 */
 
-#include <starbase.c.h>
-
-/* Bobcat graphics primitives. Interface to the Starbase package*/
+#ifndef SCM_CMPINTMD_CONFIG_H_INCLUDED
+#define SCM_CMPINTMD_CONFIG_H_INCLUDED 1
 
-#define SINGLE_ECHO             0
-#define NO_ECHO                 0
-#define SMALL_TRACKING_CROSS    3
-#define RUBBER_BAND_LINE        4
-#define RUBBER_BAND_RECTANGLE   5
-#define MAX_NUMBER_OF_CORNERS   512
-#define TWICE_MAX_NUMBER_OF_CORNERS  (2 * MAX_NUMBER_OF_CORNERS)
+#define COMPILER_PROCESSOR_TYPE COMPILER_C_TYPE
+#define CC_IS_C 1
+#define CC_IS_GENERIC 1
+#define NO_HEAP_IN_LOW_MEMORY 1
 
-extern int screen_handle;
-extern long replacement_rule;
-extern float xposition;
-extern float yposition;
-
-extern char * sb_device;
-extern char * sb_driver;
-extern float sb_xmin;
-extern float sb_xmax;
-extern float sb_ymin;
-extern float sb_ymax;
-extern float sb_zmin;
-extern float sb_zmax;
-
-extern void sb_close_device ();
+#endif /* !SCM_CMPINTMD_CONFIG_H_INCLUDED */

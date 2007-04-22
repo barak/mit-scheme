@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmcrypt.c,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: prmcrypt.c,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,13 +32,11 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
+/* If mcrypt.h unavailable, ignore it.  This helps
+   "makegen/makegen.scm" work properly on systems lacking this
+   library.  */
 #ifdef HAVE_MCRYPT_H
 #  include <mcrypt.h>
-#else
-/*
-** Hack:  Dependency suppressed to appease "makegen/makegen.scm".
-**        This is OK since it cannot link w/o the library anyway.
-*/
 #endif
 
 static SCHEME_OBJECT
@@ -142,7 +140,7 @@ DEFINE_PRIMITIVE ("MCRYPT_GENERIC_INIT", Prim_mcrypt_generic_init, 3, 3, 0)
   PRIMITIVE_RETURN
     (long_to_integer
      (mcrypt_generic_init ((arg_context (1)),
-			   (STRING_LOC ((ARG_REF (2)), 0)),
+			   (STRING_POINTER (ARG_REF (2))),
 			   (STRING_LENGTH (ARG_REF (2))),
 			   (STRING_ARG (3)))));
 }
@@ -253,7 +251,7 @@ struct deallocate_list_arg
 };
 
 static void
-DEFUN (deallocate_list, (environment), PTR environment)
+deallocate_list (void * environment)
 {
   struct deallocate_list_arg * a = environment;
   if ((a -> elements) != 0)
@@ -290,7 +288,7 @@ DEFINE_PRIMITIVE ("MCRYPT_LIST_MODES", Prim_mcrypt_list_modes, 0, 0, 0)
   LIST_ITEMS (mcrypt_list_modes)
 
 static void
-DEFUN (deallocate_key_sizes, (environment), PTR environment)
+deallocate_key_sizes (void * environment)
 {
   if (environment != 0)
     mcrypt_free (environment);
@@ -346,7 +344,7 @@ DEFINE_PRIMITIVE ("MCRYPT_MODULE_GET_ALGO_SUPPORTED_KEY_SIZES", Prim_mcrypt_modu
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive
     ("MCRYPT_MODULE_OPEN", Prim_mcrypt_module_open, 2, 2, 0);

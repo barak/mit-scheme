@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.h,v 1.16 2007/01/05 21:19:25 cph Exp $
+$Id: ntio.h,v 1.17 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -100,7 +100,7 @@ extern long NT_channel_n_read (Tchannel);
 #define CNTRL_Z			'\032'
 #define ASCII_DELETE		'\177'
 
-extern BOOL EXFUN (Screen_IsScreenHandle, (HANDLE));
+extern BOOL Screen_IsScreenHandle (HANDLE);
 
 #ifndef GUI
 #  define CONSOLE_HANDLE (STDIN_HANDLE)

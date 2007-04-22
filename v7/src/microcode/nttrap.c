@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.29 2007/01/05 21:19:25 cph Exp $
+$Id: nttrap.c,v 1.30 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,7 +25,6 @@ USA.
 
 */
 
-#include <stdarg.h>
 #include "scheme.h"
 #include "os.h"
 #include "nt.h"
@@ -40,13 +39,13 @@ USA.
 
 #ifdef W32_TRAP_DEBUG
 extern char * AskUser (char *, int);
-extern int EXFUN (TellUser, (char *, ...));
-extern int EXFUN (TellUserEx, (int, char *, ...));
+extern int TellUser (char *, ...);
+extern int TellUserEx (int, char *, ...);
 #endif /* W32_TRAP_DEBUG */
 
-extern void EXFUN (callWinntExceptionTransferHook, (void));
-extern void EXFUN (NT_initialize_traps, (void));
-extern void EXFUN (NT_restore_traps, (void));
+extern void callWinntExceptionTransferHook (void);
+extern void NT_initialize_traps (void);
+extern void NT_restore_traps (void);
 
 extern DWORD
   C_Stack_Pointer,
@@ -60,23 +59,21 @@ static BOOL trap_verbose_p = FALSE;
 {									\
   if (trap_verbose_p)							\
   {									\
-    int result = command;						\
+    int result = (command);						\
     if (result == IDCANCEL)						\
       trap_verbose_p = FALSE;						\
   }									\
 } while (0)
 
-#else /* not W32_TRAP_DEBUG */
-
-#define IFVERBOSE(command)		do { } while (0)
-
-#endif /* W32_TRAP_DEBUG */
+#else
+#  define IFVERBOSE(command) do { } while (0)
+#endif
 
 static char * trap_output = ((char *) NULL);
 static char * trap_output_pointer = ((char *) NULL);
 
 static void
-DEFUN_VOID (trap_noise_start)
+trap_noise_start (void)
 {
   trap_output = ((char *) NULL);
   trap_output_pointer = ((char *) NULL);
@@ -84,12 +81,12 @@ DEFUN_VOID (trap_noise_start)
 }
 
 static void
-DEFUN (trap_noise, (format), char * format DOTS)
+trap_noise (const char * format, ...)
 {
   va_list arg_ptr;
   unsigned long size;
   char * temp;
-  
+
   size = (trap_output_pointer - trap_output);
   temp = ((trap_output == ((char *) NULL))
 	  ? ((char *) (malloc (256)))
@@ -107,7 +104,7 @@ DEFUN (trap_noise, (format), char * format DOTS)
 }
 
 static int
-DEFUN (trap_noise_end, (style), UINT style)
+trap_noise_end (UINT style)
 {
   int value;
 
@@ -125,7 +122,7 @@ DEFUN (trap_noise_end, (style), UINT style)
 }
 
 static BOOL
-DEFUN (isvowel, (c), char c)
+isvowel (char c)
 {
   switch (c)
   {
@@ -252,8 +249,7 @@ find_exception_name (DWORD code)
 }
 
 static void
-DEFUN (describe_trap, (noise, code),
-       char * noise AND DWORD code)
+describe_trap (char * noise, DWORD code)
 {
   char * name;
 
@@ -305,7 +301,7 @@ static enum trap_state saved_trap_state;
 static DWORD saved_trap_code;
 
 enum trap_state
-DEFUN (OS_set_trap_state, (state), enum trap_state state)
+OS_set_trap_state (enum trap_state state)
 {
   enum trap_state old_trap_state = user_trap_state;
 
@@ -315,16 +311,16 @@ DEFUN (OS_set_trap_state, (state), enum trap_state state)
 }
 
 static void
-DEFUN_VOID (trap_normal_termination)
+trap_normal_termination (void)
 {
   trap_state = trap_state_exitting_soft;
   termination_trap ();
 }
 
 static void
-DEFUN_VOID (trap_immediate_termination)
+trap_immediate_termination (void)
 {
-  extern void EXFUN (OS_restore_external_state, (void));
+  extern void OS_restore_external_state (void);
 
   trap_state = trap_state_exitting_hard;
   OS_restore_external_state ();
@@ -332,7 +328,7 @@ DEFUN_VOID (trap_immediate_termination)
 }
 
 void
-DEFUN_VOID (NT_initialize_traps)
+NT_initialize_traps (void)
 {
   trap_state = trap_state_recover;
   user_trap_state = trap_state_recover;
@@ -340,14 +336,13 @@ DEFUN_VOID (NT_initialize_traps)
 }
 
 void
-DEFUN_VOID (NT_restore_traps)
+NT_restore_traps (void)
 {
   return;
 }
 
 static int
-DEFUN (display_exception_information, (info, context, flags),
-       PEXCEPTION_RECORD info AND PCONTEXT context AND int flags)
+display_exception_information (PEXCEPTION_RECORD info, PCONTEXT context, int flags)
 {
   int value;
   char msgbuf[4096];
@@ -357,10 +352,11 @@ DEFUN (display_exception_information, (info, context, flags),
   name = (find_exception_name (info->ExceptionCode));
   flag = ((info->ExceptionFlags == 0) ? "Continuable" : "Non-continuable");
   if (name == ((char *) NULL))
-    bufptr += (sprintf (bufptr, "%s Unknown Exception %d Raised at address 0x%lx",
-			flag, info->ExceptionCode, info->ExceptionAddress));
+    bufptr
+      += (sprintf (bufptr, "%s Unknown Exception %d Raised at address %#lx",
+		   flag, info->ExceptionCode, info->ExceptionAddress));
   else
-    bufptr += (sprintf (bufptr, "%s %s Exception Raised at address 0x%lx",
+    bufptr += (sprintf (bufptr, "%s %s Exception Raised at address %#lx",
 			flag, name, info->ExceptionAddress));
 
 #ifdef W32_TRAP_DEBUG
@@ -380,11 +376,14 @@ DEFUN (display_exception_information, (info, context, flags),
     if ((context->ContextFlags & CONTEXT_FLOATING_POINT) != 0)
       bufptr += (sprintf (bufptr,
 			  "\nContext contains floating-point registers."));
-    bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
-    bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
-    bufptr += (sprintf (bufptr, "\nsp_register         = 0x%lx.", sp_register));
-    bufptr += (sprintf (bufptr, "\nadj (sp_register) = 0x%lx.",
-			(ADDR_TO_SCHEME_ADDR (sp_register))));
+    bufptr
+      += (sprintf (bufptr, "\ncontext->Eip        = %#lx.", context->Eip));
+    bufptr
+      += (sprintf (bufptr, "\ncontext->Esp        = %#lx.", context->Esp));
+    bufptr += (sprintf (bufptr, "\nstack_pointer         = %#lx.",
+			stack_pointer));
+    bufptr += (sprintf (bufptr, "\nadj (stack_pointer) = %#lx.",
+			((unsigned long) stack_pointer)));
   }
 #endif /* W32_TRAP_DEBUG */
 
@@ -433,7 +432,7 @@ WinntExceptionTransferHook (void)
   static int size;
   static SCHEME_OBJECT * temp_stack_ptr, * new_sp;
 
-  temp_stack_ptr = sp_register;
+  temp_stack_ptr = stack_pointer;
   size = (temp_stack_limit - temp_stack_ptr);
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "WinntExceptionTransferHook."));
 
@@ -441,49 +440,46 @@ WinntExceptionTransferHook (void)
     INITIALIZE_STACK ();
   else
   {
-    sp_register = real_stack_pointer;
-    Stack_Guard = real_stack_guard;
+    stack_pointer = real_stack_pointer;
+    stack_guard = real_stack_guard;
   }
-    
+
   new_sp = (real_stack_pointer - size);
   if (new_sp != temp_stack_ptr)
     memcpy (new_sp, temp_stack_ptr, (size * (sizeof (SCHEME_OBJECT))));
-  sp_register = new_sp;
-  SET_INTERRUPT_MASK ((FETCH_INTERRUPT_MASK ()));
+  stack_pointer = new_sp;
+  SET_INTERRUPT_MASK (GET_INT_MASK);
   if (return_by_aborting)
     abort_to_interpreter (PRIM_APPLY);
   return (PRIM_APPLY);
 }
 
-extern unsigned short __cdecl EXFUN (getCS, (void));
-extern unsigned short __cdecl EXFUN (getDS, (void));
+extern unsigned short __cdecl getCS (void);
+extern unsigned short __cdecl getDS (void);
 
-/* Needed because Stack_Check checks for <= instead of < when pushing */
-
-#define MAGIC_BUFFER_SIZE	1
-
 static void
-DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
-       DWORD code
-       AND PCONTEXT context
-       AND struct trap_recovery_info * trinfo
-       AND SCHEME_OBJECT * new_stack_pointer)
+setup_trap_frame (DWORD code,
+       PCONTEXT context,
+       struct trap_recovery_info * trinfo,
+       SCHEME_OBJECT * new_stack_pointer)
 {
   SCHEME_OBJECT trap_name, trap_code;
   SCHEME_OBJECT handler;
   int stack_recovered_p = (new_stack_pointer != 0);
-  long saved_mask = (FETCH_INTERRUPT_MASK ());
+  unsigned long saved_mask = GET_INT_MASK;
   SET_INTERRUPT_MASK (0);	/* To prevent GC for now. */
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL,
-			 "setup_trap_frame (%s, 0x%lx, %s, 0x%lx, 0x%lx).",
+			 "setup_trap_frame (%s, %#lx, %s, %#lx, %#lx).",
 			 (find_exception_name (code)),
 			 context,
 			 trinfo,
 			 new_stack_pointer));
-
-  if ((! (Valid_Fixed_Obj_Vector ()))
-      || ((handler = (Get_Fixed_Obj_Slot (Trap_Handler))) == SHARP_F))
+  handler
+    = ((VECTOR_P (fixed_objects))
+       ? (VECTOR_REF (fixed_objects, TRAP_HANDLER))
+       : SHARP_F);
+  if (!INTERPRETER_APPLICABLE_P (handler))
     {
       trap_noise_start ();
       trap_noise ("There is no trap handler for recovery!\n");
@@ -491,10 +487,10 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
       (void) trap_noise_end (MB_OK | MB_ICONSTOP);
       termination_trap ();
     }
-  if (Free > MemTop)
-    Request_GC (0);
+  if (!FREE_OK_P (Free))
+    REQUEST_GC (0);
 
-  trap_name = ((context == ((PCONTEXT) NULL))
+  trap_name = ((context == 0)
 	       ? SHARP_F
 	       : (char_pointer_to_string (find_exception_name (code))));
   trap_code = (long_to_integer (0));
@@ -504,18 +500,18 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
     if (! stack_recovered_p)
       INITIALIZE_STACK ();
     clear_real_stack = FALSE;
-    real_stack_pointer = sp_register;
-    real_stack_guard = Stack_Guard;
-    temp_stack_limit = sp_register;
+    real_stack_pointer = stack_pointer;
+    real_stack_guard = stack_guard;
+    temp_stack_limit = stack_pointer;
   }
   else
   {
     clear_real_stack = (!stack_recovered_p);
     real_stack_pointer = new_stack_pointer;
-    real_stack_guard = Stack_Guard;
+    real_stack_guard = stack_guard;
     temp_stack_limit = temp_stack_end;
-    sp_register = temp_stack_end;
-    Stack_Guard = temp_stack;
+    stack_pointer = temp_stack_end;
+    stack_guard = temp_stack;
   }
 
  Will_Push (7 + CONTINUATION_SIZE);
@@ -526,20 +522,20 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
   STACK_PUSH (BOOLEAN_TO_OBJECT (stack_recovered_p));
   STACK_PUSH (trap_code);
   STACK_PUSH (trap_name);
-  Store_Return (RC_HARDWARE_TRAP);
-  exp_register = (long_to_integer (code));
-  Save_Cont ();
+  SET_RC (RC_HARDWARE_TRAP);
+  SET_EXP (long_to_integer (code));
+  SAVE_CONT ();
  Pushed ();
   if (stack_recovered_p
       /* This may want to be done in other cases, but this may be enough. */
       && (trinfo->state == STATE_COMPILED_CODE))
-    Stop_History ();
+    stop_history ();
 
-  history_register = (Make_Dummy_History ());
+  history_register = (make_dummy_history ());
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (trap_name);
   STACK_PUSH (handler);
-  STACK_PUSH (STACK_FRAME_HEADER + 1);
+  PUSH_APPLY_FRAME_HEADER (1);
  Pushed ();
   SET_INTERRUPT_MASK (saved_mask);
 
@@ -557,43 +553,34 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
       or execution was in the interpreter;
    3) guess what C global state is still valid; and
    4) set up a recovery frame for the interpreter so that debuggers can
-      display more information. 
+      display more information.
 */
 
-#define SCHEME_ALIGNMENT_MASK		((sizeof (long)) - 1)
+#define SCHEME_ALIGNMENT_MASK		((sizeof (SCHEME_OBJECT)) - 1)
 #define STACK_ALIGNMENT_MASK		SCHEME_ALIGNMENT_MASK
 #define FREE_PARANOIA_MARGIN		0x100
 
-/* PCs must be aligned according to this. */
-
-#define PC_ALIGNMENT_MASK		((1 << PC_ZERO_BITS) - 1)
+#define ALIGNED_P(addr)							\
+  ((((unsigned long) (addr)) & SCHEME_ALIGNMENT_MASK) == 0)
 
 /* But they may have bits that can be masked by this. */
 
 #ifndef PC_VALUE_MASK
-# define PC_VALUE_MASK			(~0)
+#  define PC_VALUE_MASK			(~0)
 #endif
 
 #define C_STACK_SIZE			0x01000000
 
-#ifdef HAS_COMPILER_SUPPORT
-# define ALLOW_ONLY_C 0
-#else
-# define ALLOW_ONLY_C 1
-# define PLAUSIBLE_CC_BLOCK_P(block)	0
-#endif
-
-static SCHEME_OBJECT * EXFUN
-  (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
+static SCHEME_OBJECT * find_block_address
+  (char * pc_value, SCHEME_OBJECT * area_start);
 
 #define IA32_NREGS 12
 
 /* For now */
-#define GET_ETEXT() (Heap_Bottom)
+#define GET_ETEXT() (heap_start)
 
 static void
-DEFUN (continue_from_trap, (code, context),
-       DWORD code AND PCONTEXT context)
+continue_from_trap (DWORD code, PCONTEXT context)
 {
   int pc_in_builtin;
   int builtin_index;
@@ -610,17 +597,15 @@ DEFUN (continue_from_trap, (code, context),
   SCHEME_OBJECT * new_stack_pointer;
   SCHEME_OBJECT * xtra_info;
   struct trap_recovery_info trinfo;
-  extern int EXFUN (pc_to_utility_index, (unsigned long));
-  extern int EXFUN (pc_to_builtin_index, (unsigned long));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL,
-			 "continue_from_trap (%s, 0x%lx).",
+			 "continue_from_trap (%s, %#lx).",
 			 (find_exception_name (code)), context));
-
+
   if (context == ((PCONTEXT) NULL))
   {
-    if (Free < MemTop)
-      Free = MemTop;
+    if (Free < heap_alloc_limit)
+      Free = heap_alloc_limit;
     setup_trap_frame (code, context, (&dummy_recovery_info), 0);
     /*NOTREACHED*/
   }
@@ -630,8 +615,8 @@ DEFUN (continue_from_trap, (code, context),
     IFVERBOSE
       (TellUserEx
        (MB_OKCANCEL,
-	"continue_from_trap: SS = C DS; sp_register = 0x%lx; Esp = 0x%lx.",
-	sp_register, context->Esp));
+	"continue_from_trap: SS = C DS; stack_pointer = %#lx; Esp = %#lx.",
+	stack_pointer, context->Esp));
     scheme_sp = (context->Esp);
   }
   else
@@ -651,7 +636,7 @@ DEFUN (continue_from_trap, (code, context),
     goto pc_in_hyperspace;
   }
 
-  if ((the_pc & PC_ALIGNMENT_MASK) != 0)
+  if (!PC_ALIGNED_P (the_pc))
   {
 pc_in_hyperspace:
     pc_in_builtin = 0;
@@ -667,49 +652,45 @@ pc_in_hyperspace:
     builtin_index = (pc_to_builtin_index (the_pc));
     pc_in_builtin = (builtin_index != -1);
     utility_index = (pc_to_utility_index (the_pc));
-    pc_in_utility = (utility_index != -1);    
+    pc_in_utility = (utility_index != -1);
     pc_in_C = ((the_pc <= ((long) (GET_ETEXT ()))) && (! pc_in_builtin));
     pc_in_heap =
-      ((the_pc < ((long) Heap_Top)) && (the_pc >= ((long) Heap_Bottom)));
+      ((the_pc < ((long) heap_end)) && (the_pc >= ((long) heap_start)));
     pc_in_constant_space =
-      ((the_pc < ((long) Constant_Top)) &&
-       (the_pc >= ((long) Constant_Space)));
+      ((the_pc < ((long) constant_end)) &&
+       (the_pc >= ((long) constant_start)));
     pc_in_scheme = (pc_in_heap || pc_in_constant_space || pc_in_builtin);
     pc_in_hyper_space = ((!pc_in_C) && (!pc_in_scheme));
   }
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 1"));
 
-  scheme_sp_valid =
-    (pc_in_scheme
-     && ((scheme_sp < ((long) Stack_Top)) &&
-	 (scheme_sp >= ((long) Stack_Bottom)) &&
-	 ((scheme_sp & STACK_ALIGNMENT_MASK) == 0)));
+  scheme_sp_valid
+    = (pc_in_scheme
+       && (ADDRESS_IN_STACK_P (scheme_sp))
+       && (ALIGNED_P (scheme_sp)));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 2"));
 
-  new_stack_pointer =
-    (scheme_sp_valid
-     ? ((SCHEME_OBJECT *) scheme_sp)
-     : ((pc_in_C
-	&& (sp_register < Stack_Top)
-	&& (sp_register > Stack_Bottom))
-        ? sp_register
-        : ((SCHEME_OBJECT *) 0)));
-
+  new_stack_pointer
+    = (scheme_sp_valid
+       ? ((SCHEME_OBJECT *) scheme_sp)
+       : ((pc_in_C
+	   && (ADDRESS_IN_STACK_P (stack_pointer)))
+	  ? stack_pointer
+	  : 0));
+
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 3"));
 
-  if (pc_in_hyper_space || (pc_in_scheme && ALLOW_ONLY_C))
+  if (pc_in_hyper_space || pc_in_scheme)
   {
     /* In hyper space. */
     (trinfo . state) = STATE_UNKNOWN;
     (trinfo . pc_info_1) = SHARP_F;
     (trinfo . pc_info_2) = SHARP_F;
     new_stack_pointer = 0;
-    if ((Free < MemTop) ||
-	(Free >= Heap_Top) ||
-	((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-      Free = MemTop;
+    if (! ((ADDRESS_IN_HEAP_P (Free)) && (ALIGNED_P (Free))))
+      Free = heap_alloc_limit;
   }
   else if (pc_in_scheme)
   {
@@ -719,14 +700,15 @@ pc_in_hyperspace:
     block_addr =
       (pc_in_builtin
        ? ((SCHEME_OBJECT *) NULL)
-       : (find_block_address (((PTR) the_pc),
-			      (pc_in_heap ? Heap_Bottom : Constant_Space))));
+       : (find_block_address (((void *) the_pc),
+			      (pc_in_heap
+			       ? heap_start
+			       : constant_start))));
 
     if (block_addr != ((SCHEME_OBJECT *) NULL))
     {
       (trinfo . state) = STATE_COMPILED_CODE;
-      (trinfo . pc_info_1) =
-	(MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block_addr));
+      (trinfo . pc_info_1) = (MAKE_CC_BLOCK (block_addr));
       (trinfo . pc_info_2) =
 	(LONG_TO_UNSIGNED_FIXNUM (the_pc - ((long) block_addr)));
     }
@@ -736,38 +718,38 @@ pc_in_hyperspace:
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (builtin_index));
       (trinfo . pc_info_2) = SHARP_T;
     }
-    else 
+    else
     {
       (trinfo . state) = STATE_PROBABLY_COMPILED;
       (trinfo . pc_info_1) = (LONG_TO_UNSIGNED_FIXNUM (the_pc));
       (trinfo . pc_info_2) = SHARP_F;
     }
 
-    if ((block_addr == ((SCHEME_OBJECT *) NULL)) && (! pc_in_builtin))
+    if ((block_addr == 0) && (!pc_in_builtin))
     {
-      if ((Free < MemTop) ||
-	  (Free >= Heap_Top) ||
-	  ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-	Free = MemTop;
+      if (! ((ADDRESS_IN_HEAP_P (Free))
+	     && (ALIGNED_P (Free))
+	     && (!FREE_OK_P (Free))))
+	Free = heap_alloc_limit;
     }
     else
     {
       maybe_free = ((SCHEME_OBJECT *) context->Edi);
-      if (((((unsigned long) maybe_free) & SCHEME_ALIGNMENT_MASK) == 0)
-	  && (maybe_free >= Heap_Bottom) && (maybe_free < Heap_Top))
+      if ((ADDRESS_IN_HEAP_P (maybe_free)) && (ALIGNED_P (maybe_free)))
 	Free = (maybe_free + FREE_PARANOIA_MARGIN);
       else
-	if ((Free < MemTop) || (Free >= Heap_Top)
-	    || ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0))
-	  Free = MemTop;
+	if (! ((ADDRESS_IN_HEAP_P (Free))
+	       && (ALIGNED_P (Free))
+	       && (!FREE_OK_P (Free))))
+	  Free = heap_alloc_limit;
     }
   }
-
+
   else /* pc_in_C */
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = GET_PRIMITIVE;
 
     if (pc_in_utility)
     {
@@ -786,16 +768,21 @@ pc_in_hyperspace:
     {
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
-      (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
+      (trinfo . pc_info_2) = (ULONG_TO_FIXNUM (GET_LEXPR_ACTUALS));
     }
-    if ((new_stack_pointer == 0)
-	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)
-	|| ((Free < Heap_Bottom) || (Free >= Heap_Top))
-	|| ((Free < MemTop) && ((Free + FREE_PARANOIA_MARGIN) >= MemTop)))
-      Free = MemTop;
-    else if ((Free + FREE_PARANOIA_MARGIN) < MemTop)
-      Free +=  FREE_PARANOIA_MARGIN;
+    if ((new_stack_pointer != 0)
+	&& (ADDRESS_IN_HEAP_P (Free))
+	&& (ALIGNED_P (Free)))
+      {
+	if (FREE_OK_P (Free))
+	  {
+	    Free += FREE_PARANOIA_MARGIN;
+	    if (!FREE_OK_P (Free))
+	      Free = heap_alloc_limit;
+	  }
+      }
+    else
+      Free = heap_alloc_limit;
   }
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 4"));
@@ -849,46 +836,29 @@ pc_in_hyperspace:
    If the pointer is in the heap, it can actually do twice as
    much work, but it is expected to pay off on the average. */
 
-static SCHEME_OBJECT * EXFUN
-  (find_block_address_in_area, (char * pc_value, SCHEME_OBJECT * area_start));
+static SCHEME_OBJECT * find_block_address_in_area
+  (char * pc_value, SCHEME_OBJECT * area_start);
 
 #define MINIMUM_SCAN_RANGE		2048
 
 static SCHEME_OBJECT *
-DEFUN (find_block_address, (pc_value, area_start),
-       char * pc_value AND
-       SCHEME_OBJECT * area_start)
+find_block_address (char * pc_value, SCHEME_OBJECT * area_start)
 {
-  if (area_start == Constant_Space)
-    {
-      extern SCHEME_OBJECT * EXFUN
-	(find_constant_space_block, (SCHEME_OBJECT *));
-      SCHEME_OBJECT * constant_block =
-	(find_constant_space_block
-	 ((SCHEME_OBJECT *)
-	  (((unsigned long) pc_value) &~ SCHEME_ALIGNMENT_MASK)));
-      return
-	((constant_block == 0)
-	 ? 0
-	 : (find_block_address_in_area (pc_value, constant_block)));
-    }
-  {
-    SCHEME_OBJECT * nearest_word =
-      ((SCHEME_OBJECT *)
+  SCHEME_OBJECT * nearest_word
+    = ((SCHEME_OBJECT *)
        (((unsigned long) pc_value) &~ SCHEME_ALIGNMENT_MASK));
-    long maximum_distance = (nearest_word - area_start);
-    long distance = maximum_distance;
-    while ((distance / 2) > MINIMUM_SCAN_RANGE)
-      distance = (distance / 2);
-    while ((distance * 2) < maximum_distance)
-      {
-	SCHEME_OBJECT * block =
-	  (find_block_address_in_area (pc_value, (nearest_word - distance)));
-	if (block != 0)
-	  return (block);
-	distance *= 2;
-      }
-  }
+  long maximum_distance = (nearest_word - area_start);
+  long distance = maximum_distance;
+  while ((distance / 2) > MINIMUM_SCAN_RANGE)
+    distance = (distance / 2);
+  while ((distance * 2) < maximum_distance)
+    {
+      SCHEME_OBJECT * block
+	= (find_block_address_in_area (pc_value, (nearest_word - distance)));
+      if (block != 0)
+	return (block);
+      distance *= 2;
+    }
   return (find_block_address_in_area (pc_value, area_start));
 }
 
@@ -898,8 +868,7 @@ DEFUN (find_block_address, (pc_value, area_start),
   For the time being, skip over manifest closures and linkage sections. */
 
 static SCHEME_OBJECT *
-DEFUN (find_block_address_in_area, (pc_value, area_start),
-       char * pc_value AND
+find_block_address_in_area (char * pc_value,
        SCHEME_OBJECT * area_start)
 {
   SCHEME_OBJECT * first_valid = area_start;
@@ -911,48 +880,31 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	{
 	case TC_LINKAGE_SECTION:
 	  {
-	    switch (READ_LINKAGE_KIND (object))
-	    {
-	      case GLOBAL_OPERATOR_LINKAGE_KIND:
-	      case OPERATOR_LINKAGE_KIND:
-	      {
-		long count = (READ_OPERATOR_LINKAGE_COUNT (object));
-		area = ((END_OPERATOR_LINKAGE_AREA (area, count)) + 1);
-		break;
-	      }
-
-	      default:
-#if FALSE
-	      {
-		gc_death (TERM_EXIT,
-			  "find_block_address: Unknown compiler linkage kind.",
-			  area, NULL);
-		/*NOTREACHED*/
-	      }
-#else
-	      /* Fall through, no reason to crash here. */
-#endif
-	      case ASSIGNMENT_LINKAGE_KIND:
-	      case CLOSURE_PATTERN_LINKAGE_KIND:
-	      case REFERENCE_LINKAGE_KIND:
-	        area += ((READ_CACHE_LINKAGE_COUNT (object)) + 1);
-		break;
-
-	    }
-	    break;
-	  }
-	case TC_MANIFEST_CLOSURE:
-	  {
+	    unsigned long count = (linkage_section_count (object));
 	    area += 1;
-	    {
-	      long count = (MANIFEST_CLOSURE_COUNT (area));
-	      area = (MANIFEST_CLOSURE_END (area, count));
-	    }
-	    break;
+	    switch (linkage_section_type (object))
+	      {
+	      case LINKAGE_SECTION_TYPE_OPERATOR:
+	      case LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR:
+		area += (count * UUO_LINK_SIZE);
+		break;
+
+	      case LINKAGE_SECTION_TYPE_REFERENCE:
+	      case LINKAGE_SECTION_TYPE_ASSIGNMENT:
+	      default:
+		area += count;
+		break;
+	      }
 	  }
+	  break;
+
+	case TC_MANIFEST_CLOSURE:
+	  area = (compiled_closure_objects (area + 1));
+	  break;
+
 	case TC_MANIFEST_NM_VECTOR:
 	  {
-	    long count = (OBJECT_DATUM (object));
+	    unsigned long count = (OBJECT_DATUM (object));
 	    if (((char *) (area + (count + 1))) < pc_value)
 	      {
 		area += (count + 1);
@@ -962,30 +914,28 @@ DEFUN (find_block_address_in_area, (pc_value, area_start),
 	    {
 	      SCHEME_OBJECT * block = (area - 1);
 	      return
-		(((area == first_valid)
-		  || ((OBJECT_TYPE (* block)) != TC_MANIFEST_VECTOR)
-		  || ((OBJECT_DATUM (* block)) < ((unsigned long) (count + 1)))
-		  || (! (PLAUSIBLE_CC_BLOCK_P (block))))
-		 ? 0
-		 : block);
+		(((area > first_valid)
+		  && ((OBJECT_TYPE (*block)) == TC_MANIFEST_VECTOR)
+		  && ((OBJECT_DATUM (*block)) >= (count + 1))
+		  && (plausible_cc_block_p (block)))
+		 ? block
+		 : 0);
 	    }
 	  }
+
 	default:
-	  {
-	    area += 1;
-	    break;
-	  }
+	  area += 1;
+	  break;
 	}
     }
   return (0);
 }
 
 static void
-DEFUN (trap_recover, (code, context),
-       DWORD code AND PCONTEXT context)
+trap_recover (DWORD code, PCONTEXT context)
 {
   IFVERBOSE (TellUserEx (MB_OKCANCEL,
-			 "trap_recover (%s, 0x%lx).",
+			 "trap_recover (%s, %#lx).",
 			 (find_exception_name (code)), context));
 
   if (WITHIN_CRITICAL_SECTION_P ())
@@ -998,15 +948,14 @@ DEFUN (trap_recover, (code, context),
 }
 
 static void
-DEFUN (nt_trap_handler, (code, context),
-       DWORD code AND PCONTEXT context)
+nt_trap_handler (DWORD code, PCONTEXT context)
 {
-  Boolean stack_overflowed_p = (STACK_OVERFLOWED_P ());
+  bool stack_overflowed_p = (STACK_OVERFLOWED_P ());
   enum trap_state old_trap_state = trap_state;
   int flags;
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL,
-			 "nt_trap_handler (%s, 0x%lx).",
+			 "nt_trap_handler (%s, %#lx).",
 			 (find_exception_name (code)), context));
 
   if (old_trap_state == trap_state_exitting_hard)
@@ -1048,7 +997,7 @@ DEFUN (nt_trap_handler, (code, context),
       break;
     }
     else
-    { 
+    {
       (void) trap_noise_end (MB_OK | MB_ICONSTOP);
       trap_immediate_termination ();
     }
@@ -1106,8 +1055,7 @@ DEFUN (nt_trap_handler, (code, context),
 #ifdef W32_TRAP_DEBUG
 
 static void
-DEFUN (parse_response, (buf, addr, len),
-       char * buf AND unsigned long * addr AND int * len)
+parse_response (char * buf, unsigned long * addr, int * len)
 {
   const char * separators = " ,\t;";
   char * token;
@@ -1124,14 +1072,13 @@ DEFUN (parse_response, (buf, addr, len),
 }
 
 static void
-DEFUN (tinyexcpdebug, (code, info),
-       DWORD code AND LPEXCEPTION_POINTERS info)
+tinyexcpdebug (DWORD code, LPEXCEPTION_POINTERS info)
 {
   int count, len;
   char * message;
   unsigned long * addr;
   char responsebuf[256], * response;
- 
+
   if ((MessageBox
        (NULL, "Debug?", "MIT/GNU Scheme Exception Debugger", MB_YESNO))
       != IDYES)
@@ -1144,9 +1091,9 @@ DEFUN (tinyexcpdebug, (code, info),
   while (1)
   {
     trap_noise_start ();
-    trap_noise ("%s 0x%lx.\n", message, ((unsigned long) addr));
+    trap_noise ("%s %#lx.\n", message, ((unsigned long) addr));
     for (count = 0; count < len; count++)
-      trap_noise ("\n*0x%08x\t= 0x%08x\t= %d.",
+      trap_noise ("\n*%#08x\t= %#08x\t= %d.",
 		  (addr + count),
 		  addr[count],
 		  addr[count]);
@@ -1164,15 +1111,15 @@ DEFUN (tinyexcpdebug, (code, info),
 #endif /* W32_TRAP_DEBUG */
 
 #ifndef PAGE_SIZE
-# define PAGE_SIZE 0x1000
+#  define PAGE_SIZE 0x1000
 #endif
 
-static Boolean stack_protected = FALSE;
+static bool stack_protected = false;
 unsigned long protected_stack_base;
 unsigned long protected_stack_end;
 
 void
-DEFUN_VOID (win32_unprotect_stack)
+win32_unprotect_stack (void)
 {
   DWORD old_protection;
 
@@ -1180,51 +1127,44 @@ DEFUN_VOID (win32_unprotect_stack)
       && (VirtualProtect (((LPVOID) protected_stack_base),
 			  PAGE_SIZE,
 			  PAGE_READWRITE,
-			  &old_protection)))
-    stack_protected = FALSE;
-  return;
+			  (&old_protection))))
+    stack_protected = false;
 }
 
 void
-DEFUN_VOID (win32_protect_stack)
+win32_protect_stack (void)
 {
   DWORD old_protection;
 
-  if ((! stack_protected)
+  if ((!stack_protected)
       && (VirtualProtect (((LPVOID) protected_stack_base),
 			  PAGE_SIZE,
 			  (PAGE_GUARD | PAGE_READWRITE),
-			  &old_protection)))
-    stack_protected = TRUE;
- return; 
+			  (&old_protection))))
+    stack_protected = true;
 }
 
 void
-DEFUN_VOID (win32_stack_reset)
+win32_stack_reset (void)
 {
-  unsigned long boundary;
-
-  /* This presumes that the distance between Stack_Bottom and
-     Stack_Guard is at least a page.
-   */
-
-  boundary = ((((unsigned long) Stack_Guard)
-	       & (~ ((unsigned long) (PAGE_SIZE - 1))))
-	      - (2 * PAGE_SIZE));
+  /* This presumes that the distance between stack_end and
+     stack_guard is at least a page.  */
+  unsigned long boundary
+    = ((((unsigned long) stack_guard)
+	& (~ ((unsigned long) (PAGE_SIZE - 1))))
+       - (2 * PAGE_SIZE));
   if (stack_protected && (protected_stack_base == boundary))
     return;
   win32_unprotect_stack ();
   protected_stack_base = boundary;
   protected_stack_end  = (boundary + PAGE_SIZE);
   win32_protect_stack ();
-  return;
 }
 
-#define EXCEPTION_CODE_GUARDED_PAGE_ACCESS	0x80000001L
+#define EXCEPTION_CODE_GUARDED_PAGE_ACCESS 0x80000001L
 
 static LONG
-DEFUN (WinntException, (code, info),
-       DWORD code AND LPEXCEPTION_POINTERS info)
+WinntException (DWORD code, LPEXCEPTION_POINTERS info)
 {
   PCONTEXT context;
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.26 2007/01/05 21:19:25 cph Exp $
+$Id: ntsig.c,v 1.27 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,19 +51,19 @@ extern HANDLE master_tty_window;
  */
 
 void
-DEFUN_VOID (preserve_signal_mask)
+preserve_signal_mask (void)
 {
   return;
 }
 
 void
-DEFUN_VOID (block_signals)
+block_signals (void)
 {
   return;
 }
 
 void
-DEFUN_VOID (unblock_signals)
+unblock_signals (void)
 {
   return;
 }
@@ -99,14 +99,14 @@ unsigned char keyboard_interrupt_table[KB_INT_TABLE_SIZE];
 static unsigned char keyboard_interrupt_enables;
 
 void
-DEFUN (OS_ctty_get_interrupt_enables, (mask), Tinterrupt_enables * mask)
+OS_ctty_get_interrupt_enables (Tinterrupt_enables * mask)
 {
   *mask = ((Tinterrupt_enables) keyboard_interrupt_enables);
   return;
 }
 
 void
-DEFUN (OS_ctty_set_interrupt_enables, (mask), Tinterrupt_enables * mask)
+OS_ctty_set_interrupt_enables (Tinterrupt_enables * mask)
 {
   /* Kludge: ctl-break always enabled. */
   keyboard_interrupt_enables = (((unsigned char) (* mask))
@@ -123,7 +123,7 @@ static cc_t int_handlers[NUM_INT_CHANNELS];
 
 #define SCREEN_COMMAND_INTERRUPT_FIRST (SCREEN_COMMAND_CLOSE+10)
 
-int EXFUN (signal_keyboard_character_interrupt, (int));
+int signal_keyboard_character_interrupt (int);
 
 LRESULT
 master_tty_interrupt (HWND tty, WORD command)
@@ -133,7 +133,7 @@ master_tty_interrupt (HWND tty, WORD command)
 }
 
 static void
-DEFUN_VOID (update_interrupt_characters)
+update_interrupt_characters (void)
 {
   int i;
 
@@ -193,19 +193,19 @@ DEFUN_VOID (update_interrupt_characters)
 }
 
 unsigned int
-DEFUN_VOID (OS_ctty_num_int_chars)
+OS_ctty_num_int_chars (void)
 {
   return (NUM_INT_CHANNELS);
 }
 
 cc_t *
-DEFUN_VOID (OS_ctty_get_int_chars)
+OS_ctty_get_int_chars (void)
 {
   return (&int_chars[0]);
 }
 
 void
-DEFUN (OS_ctty_set_int_chars, (new_int_chars), cc_t * new_int_chars)
+OS_ctty_set_int_chars (cc_t * new_int_chars)
 {
   int i;
 
@@ -216,14 +216,13 @@ DEFUN (OS_ctty_set_int_chars, (new_int_chars), cc_t * new_int_chars)
 }
 
 cc_t *
-DEFUN_VOID (OS_ctty_get_int_char_handlers)
+OS_ctty_get_int_char_handlers (void)
 {
   return (&int_handlers[0]);
 }
 
 void
-DEFUN (OS_ctty_set_int_char_handlers, (new_int_handlers),
-       cc_t * new_int_handlers)
+OS_ctty_set_int_char_handlers (cc_t * new_int_handlers)
 {
   int i;
 
@@ -234,7 +233,7 @@ DEFUN (OS_ctty_set_int_char_handlers, (new_int_handlers),
 }
 
 static void
-DEFUN (console_write_string, (string), unsigned char * string)
+console_write_string (unsigned char * string)
 {
   outf_console ("%s", string);
   outf_flush_console ();
@@ -242,7 +241,7 @@ DEFUN (console_write_string, (string), unsigned char * string)
 }
 
 static void
-DEFUN_VOID (initialize_keyboard_interrupt_table)
+initialize_keyboard_interrupt_table (void)
 {
   /* Set up default interrupt characters */
   int_chars[0] = CONTROL_B;
@@ -270,7 +269,7 @@ static int hard_attn_limit = 2;
 static int hard_attn_counter = 0;
 
 cc_t
-DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
+OS_tty_map_interrupt_char (cc_t int_char)
 {
   /* Scheme got a keyboard interrupt, reset the hard attention counter. */
   hard_attn_counter = 0;
@@ -278,10 +277,9 @@ DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
 }
 
 static void
-DEFUN_VOID (print_interrupt_help)
+print_interrupt_help (void)
 {
-  console_write_string (
-    "\r\nInterrupt choices are:\r\n"
+  console_write_string ("\r\nInterrupt choices are:\r\n"
     "C-G interrupt:   ^G (abort to top level)\r\n"
     "C-X interrupt:   ^x (abort)\r\n"
     "C-B interrupt:   ^B (break)\r\n"
@@ -292,7 +290,7 @@ DEFUN_VOID (print_interrupt_help)
   return;
 }
 
-extern void EXFUN (tty_set_next_interrupt_char, (cc_t));
+extern void tty_set_next_interrupt_char (cc_t);
 
 #define REQUEST_INTERRUPT_IF_ENABLED(mask) do				\
 {									\
@@ -306,7 +304,7 @@ extern void EXFUN (tty_set_next_interrupt_char, (cc_t));
 } while (0)
 
 int
-DEFUN (signal_keyboard_character_interrupt, (c), int c)
+signal_keyboard_character_interrupt (int c)
 {
   if (c == -1)
   {
@@ -375,7 +373,7 @@ interactive_interrupt:
 }
 
 void
-DEFUN_VOID (OS_restartable_exit)
+OS_restartable_exit (void)
 {
   return;
 }
@@ -393,7 +391,7 @@ static void * timer_state = ((void *) NULL);
 extern unsigned long * win32_catatonia_block;
 
 static char *
-DEFUN_VOID (install_timer)
+install_timer (void)
 {
   /* This presumes that the catatonia block is allocated near
      the register block and locked in physical memory with it.
@@ -447,7 +445,7 @@ DEFUN_VOID (install_timer)
 }
 
 static void
-DEFUN_VOID (flush_timer)
+flush_timer (void)
 {
   win32_system_utilities.flush_async_timer (timer_state);
   return;
@@ -458,11 +456,11 @@ DEFUN_VOID (flush_timer)
  */
 
 void
-DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
+NT_initialize_fov (SCHEME_OBJECT fov)
 {
   int ctr, in;
   SCHEME_OBJECT iv, imv, prim;
-  extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
+  extern SCHEME_OBJECT make_primitive (char *, int);
   static int interrupt_numbers[2] =
   {
     Global_GC_Level,
@@ -474,8 +472,8 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
     (INT_Stack_Overflow | INT_Global_GC | INT_GC),
   };
 
-  iv = (FAST_VECTOR_REF (fov, System_Interrupt_Vector));
-  imv = (FAST_VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
+  iv = (VECTOR_REF (fov, SYSTEM_INTERRUPT_VECTOR));
+  imv = (VECTOR_REF (fov, FIXOBJ_INTERRUPT_MASK_VECTOR));
   prim = (make_primitive ("MICROCODE-POLL-INTERRUPT-HANDLER", 2));
 
   for (ctr = 0; ctr < ((sizeof (interrupt_numbers)) / (sizeof (int))); ctr++)
@@ -488,7 +486,7 @@ DEFUN (NT_initialize_fov, (fov), SCHEME_OBJECT fov)
 }
 
 void
-DEFUN_VOID (NT_initialize_signals)
+NT_initialize_signals (void)
 {
   char * timer_error;
 
@@ -499,14 +497,14 @@ DEFUN_VOID (NT_initialize_signals)
     outf_fatal ("install_timer:  %s", timer_error);
     outf_flush_fatal ();
     abort ();
-  }	
+  }
   return;
 }
 
-extern void EXFUN (NT_restore_signals, (void));
+extern void NT_restore_signals (void);
 
 void
-DEFUN_VOID (NT_restore_signals)
+NT_restore_signals (void)
 {
   flush_timer ();
   return;

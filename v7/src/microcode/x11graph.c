@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11graph.c,v 1.45 2007/01/05 21:19:25 cph Exp $
+$Id: x11graph.c,v 1.46 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,8 +30,6 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "x11.h"
-#include "float.h"
-#include <math.h>
 
 #define RESOURCE_NAME "schemeGraphics"
 #define RESOURCE_CLASS "SchemeGraphics"
@@ -91,25 +89,19 @@ struct gw_extra
    : (ROUND_FLOAT ((fabs (XW_Y_SLOPE (xw))) * (virtual_length))))
 
 static int
-DEFUN (arg_x_coordinate, (arg, xw, direction),
-       unsigned int arg AND
-       struct xwindow * xw AND
-       int direction)
+arg_x_coordinate (unsigned int arg, struct xwindow * xw, int direction)
 {
   return (X_COORDINATE (((float) (arg_real_number (arg))), xw, direction));
 }
 
 static int
-DEFUN (arg_y_coordinate, (arg, xw, direction),
-       unsigned int arg AND
-       struct xwindow * xw AND
-       int direction)
+arg_y_coordinate (unsigned int arg, struct xwindow * xw, int direction)
 {
   return (Y_COORDINATE (((float) (arg_real_number (arg))), xw, direction));
 }
 
 static SCHEME_OBJECT
-DEFUN (x_coordinate_map, (xw, x), struct xwindow * xw AND unsigned int x)
+x_coordinate_map (struct xwindow * xw, unsigned int x)
 {
   return
     (FLOAT_TO_FLONUM
@@ -119,7 +111,7 @@ DEFUN (x_coordinate_map, (xw, x), struct xwindow * xw AND unsigned int x)
 }
 
 static SCHEME_OBJECT
-DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
+y_coordinate_map (struct xwindow * xw, unsigned int y)
 {
   return
     (FLOAT_TO_FLONUM
@@ -130,12 +122,11 @@ DEFUN (y_coordinate_map, (xw, y), struct xwindow * xw AND unsigned int y)
 }
 
 static void
-DEFUN (set_clip_rectangle, (xw, x_left, y_bottom, x_right, y_top),
-       struct xwindow * xw AND
-       int x_left AND
-       int y_bottom AND
-       int x_right AND
-       int y_top)
+set_clip_rectangle (struct xwindow * xw,
+		    int x_left,
+		    int y_bottom,
+		    int x_right,
+		    int y_top)
 {
   XRectangle rectangles [1];
   Display * display = (XW_DISPLAY (xw));
@@ -179,14 +170,14 @@ DEFUN (set_clip_rectangle, (xw, x_left, y_bottom, x_right, y_top),
 }
 
 static void
-DEFUN (reset_clip_rectangle, (xw), struct xwindow * xw)
+reset_clip_rectangle (struct xwindow * xw)
 {
   set_clip_rectangle
     (xw, 0, ((XW_Y_SIZE (xw)) - 1), ((XW_X_SIZE (xw)) - 1), 0);
 }
 
 static void
-DEFUN (reset_virtual_device_coordinates, (xw), struct xwindow * xw)
+reset_virtual_device_coordinates (struct xwindow * xw)
 {
   /* Note that the expression ((XW_c_SIZE (xw)) - 1) guarantees that
      both limits of the device coordinates will be inside the window. */
@@ -207,7 +198,8 @@ DEFUN (reset_virtual_device_coordinates, (xw), struct xwindow * xw)
   reset_clip_rectangle (xw);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5,
+DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent,
+		  5, 5,
   "(X-GRAPHICS-SET-VDC-EXTENT WINDOW X-MIN Y-MIN X-MAX Y-MAX)\n\
 Set the virtual device coordinates to the given values.")
 {
@@ -248,7 +240,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE", Prim_x_graphics_set_clip_rectangle, 5, 5,
+DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE",
+		  Prim_x_graphics_set_clip_rectangle, 5, 5,
   "(X-GRAPHICS-SET-CLIP-RECTANGLE WINDOW X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Set the clip rectangle to the given coordinates.")
 {
@@ -266,17 +259,12 @@ Set the clip rectangle to the given coordinates.")
 }
 
 static void
-DEFUN (process_event, (xw, event),
-       struct xwindow * xw AND
-       XEvent * event)
+process_event (struct xwindow * xw, XEvent * event)
 {
 }
 
 static void
-DEFUN (reconfigure, (xw, width, height),
-       struct xwindow * xw AND
-       unsigned int width AND
-       unsigned int height)
+reconfigure (struct xwindow * xw, unsigned int width, unsigned int height)
 {
   unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   unsigned int x_size = ((width < extra) ? 0 : (width - extra));
@@ -300,11 +288,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RECONFIGURE", Prim_x_graphics_reconfigure, 3, 3, 0
 }
 
 static void
-DEFUN (wm_set_size_hint, (xw, geometry_mask, x, y),
-       struct xwindow * xw AND
-       int geometry_mask AND
-       int x AND
-       int y)
+wm_set_size_hint (struct xwindow * xw, int geometry_mask, int x, int y)
 {
   unsigned int extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
   XSizeHints * size_hints = (XAllocSizeHints ());
@@ -343,8 +327,8 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
     struct drawing_attributes attributes;
     struct xwindow_methods methods;
     XSetWindowAttributes wattributes;
-    CONST char * resource_name = RESOURCE_NAME;
-    CONST char * resource_class = RESOURCE_CLASS;
+    const char * resource_name = RESOURCE_NAME;
+    const char * resource_class = RESOURCE_CLASS;
     int map_p;
 
     x_decode_window_map_arg
@@ -513,7 +497,7 @@ If FILL? is true, the arc is filled.")
     /* we assume a virtual coordinate system with X increasing left to
      * right and Y increasing top to bottom.  If we are wrong then we
      * have to flip the axes and adjust the angles */
- 
+
     int x1 = (X_COORDINATE (virtual_device_x - radius_x,  xw, 0));
     int x2 = (X_COORDINATE (virtual_device_x + radius_x,  xw, 0));
     int y1 = (Y_COORDINATE (virtual_device_y + radius_y,  xw, 0));
@@ -587,10 +571,10 @@ If FILL? is true, the arc is filled.")
     (graphics-operation g 'draw-arc x y r r a1 a2 #T)
     (graphics-operation g 'set-foreground-color "black")
     (graphics-operation g 'draw-arc x y r r a1 (+ a2 (if (< a2 0) 10 -10)) #T)
-  
+
     (graphics-operation g 'set-foreground-color "red")
     (graphics-draw-text g x y ".O")
-  
+
     (let ((b1 (min a1 (+ a1 a2)))
 	  (b2 (max a1 (+ a1 a2))))
       (do ((a b1 (+ a 5)))
@@ -672,11 +656,10 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2,
 }
 
 static XPoint *
-DEFUN (floating_vector_point_args, (xw, x_index, y_index, return_n_points),
-       struct xwindow * xw AND
-       unsigned int x_index AND
-       unsigned int y_index AND
-       unsigned int * return_n_points)
+floating_vector_point_args (struct xwindow * xw,
+			    unsigned int x_index,
+			    unsigned int y_index,
+			    unsigned int * return_n_points)
 {
   SCHEME_OBJECT x_vector = (ARG_REF (x_index));
   SCHEME_OBJECT y_vector = (ARG_REF (y_index));
@@ -713,7 +696,7 @@ Draw multiple points.")
 {
   PRIMITIVE_HEADER (3);
   {
-    PTR position = dstack_position;
+    void * position = dstack_position;
     struct xwindow * xw = (x_window_arg (1));
     unsigned int n_points;
     XPoint * points = (floating_vector_point_args (xw, 2, 3, (&n_points)));
@@ -740,7 +723,7 @@ Draw multiple lines.")
 {
   PRIMITIVE_HEADER (3);
   {
-    PTR position = dstack_position;
+    void * position = dstack_position;
     struct xwindow * xw = (x_window_arg (1));
     unsigned int n_points;
     XPoint * points = (floating_vector_point_args (xw, 2, 3, (&n_points)));
@@ -840,9 +823,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 8, 8, 0)
 }
 
 static XPoint *
-DEFUN (x_polygon_vector_arg, (xw, argno),
-       struct xwindow * xw AND
-       unsigned int argno)
+x_polygon_vector_arg (struct xwindow * xw, unsigned int argno)
 {
   SCHEME_OBJECT vector = (VECTOR_ARG (argno));
   unsigned long length = (VECTOR_LENGTH (vector));
@@ -986,7 +967,7 @@ pixel in VECTOR.")
 
 	if ((STRING_LENGTH (vector)) != (width * height))
 	  error_bad_range_arg (1);
-	vscan = (STRING_LOC (vector, 0));
+	vscan = (STRING_BYTE_PTR (vector));
 	for (y = 0; (y < height); y += 1)
 	  for (x = 0; (x < width); x += 1)
 	    XPutPixel (image, x, y, ((unsigned long) (*vscan++)));

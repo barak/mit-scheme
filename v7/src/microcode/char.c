@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: char.c,v 9.37 2007/01/05 21:19:25 cph Exp $
+$Id: char.c,v 9.38 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,11 +32,11 @@ USA.
 #include <ctype.h>
 
 long
-DEFUN (arg_ascii_char, (n), int n)
+arg_ascii_char (int n)
 {
   CHECK_ARG (n, CHARACTER_P);
   {
-    fast SCHEME_OBJECT object = (ARG_REF (n));
+    SCHEME_OBJECT object = (ARG_REF (n));
     if (! (CHAR_TO_ASCII_P (object)))
       error_bad_range_arg (n);
     return (CHAR_TO_ASCII (object));
@@ -44,7 +44,7 @@ DEFUN (arg_ascii_char, (n), int n)
 }
 
 long
-DEFUN (arg_ascii_integer, (n), int n)
+arg_ascii_integer (int n)
 {
   return (arg_index_integer (n, MAX_ASCII));
 }
@@ -93,13 +93,13 @@ DEFINE_PRIMITIVE ("INTEGER->CHAR", Prim_integer_to_char, 1, 1, 0)
 }
 
 long
-DEFUN (char_downcase, (c), fast long c)
+char_downcase (long c)
 {
   return ((isupper (c)) ? ((c - 'A') + 'a') : c);
 }
 
 long
-DEFUN (char_upcase, (c), fast long c)
+char_upcase (long c)
 {
   return ((islower (c)) ? ((c - 'a') + 'A') : c);
 }
@@ -139,7 +139,7 @@ DEFINE_PRIMITIVE ("CHAR-ASCII?", Prim_char_ascii_p, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, CHARACTER_P);
   {
-    fast SCHEME_OBJECT character = ARG_REF (1);
+    SCHEME_OBJECT character = ARG_REF (1);
     PRIMITIVE_RETURN
       (((OBJECT_DATUM (character)) >= MAX_ASCII) ?
        SHARP_F :

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.93 2007/02/04 18:39:05 riastradh Exp $
+$Id: x11base.c,v 1.94 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,8 +36,8 @@ USA.
 #include <X11/Xmd.h>
 #include <X11/keysym.h>
 
-extern void EXFUN (block_signals, (void));
-extern void EXFUN (unblock_signals, (void));
+extern void block_signals (void);
+extern void unblock_signals (void);
 
 #ifndef X_DEFAULT_FONT
 #  define X_DEFAULT_FONT "fixed"
@@ -53,24 +53,24 @@ static const char * x_default_font = 0;
     initialize_once ();							\
 }
 
-static void EXFUN (initialize_once, (void));
+static void initialize_once (void);
 
 static void move_window (struct xwindow *, int, int);
 static void check_expected_move (struct xwindow *);
 
-PTR
-DEFUN (x_malloc, (size), unsigned int size)
+void *
+x_malloc (unsigned int size)
 {
-  PTR result = (UX_malloc (size));
+  void * result = (UX_malloc (size));
   if (result == 0)
     error_external_return ();
   return (result);
 }
 
-PTR
-DEFUN (x_realloc, (ptr, size), PTR ptr AND unsigned int size)
+void *
+x_realloc (void * ptr, unsigned int size)
 {
-  PTR result = (UX_realloc (ptr, size));
+  void * result = (UX_realloc (ptr, size));
   if (result == 0)
     error_external_return ();
   return (result);
@@ -80,7 +80,7 @@ DEFUN (x_realloc, (ptr, size), PTR ptr AND unsigned int size)
 
 struct allocation_table
 {
-  PTR * items;
+  void ** items;
   int length;
 };
 
@@ -91,26 +91,24 @@ static struct allocation_table x_visual_table;
 static struct allocation_table x_colormap_table;
 
 static void
-DEFUN (allocation_table_initialize, (table), struct allocation_table * table)
+allocation_table_initialize (struct allocation_table * table)
 {
   (table -> length) = 0;
 }
 
 static unsigned int
-DEFUN (allocate_table_index, (table, item),
-       struct allocation_table * table AND
-       PTR item)
+allocate_table_index (struct allocation_table * table, void * item)
 {
   unsigned int length = (table -> length);
   unsigned int new_length;
-  PTR * items = (table -> items);
-  PTR * new_items;
-  PTR * scan;
-  PTR * end;
+  void ** items = (table -> items);
+  void ** new_items;
+  void ** scan;
+  void ** end;
   if (length == 0)
     {
       new_length = 4;
-      new_items = (x_malloc ((sizeof (PTR)) * new_length));
+      new_items = (x_malloc ((sizeof (void *)) * new_length));
     }
   else
     {
@@ -123,7 +121,7 @@ DEFUN (allocate_table_index, (table, item),
 	    return (scan - items);
 	  }
       new_length = (length * 2);
-      new_items = (x_realloc (items, ((sizeof (PTR)) * new_length)));
+      new_items = (x_realloc (items, ((sizeof (void *)) * new_length)));
     }
   scan = (new_items + length);
   end = (new_items + new_length);
@@ -135,36 +133,32 @@ DEFUN (allocate_table_index, (table, item),
   return (length);
 }
 
-static PTR
-DEFUN (allocation_item_arg, (arg, table),
-       unsigned int arg AND
-       struct allocation_table * table)
+static void *
+allocation_item_arg (unsigned int arg, struct allocation_table * table)
 {
   unsigned int index = (arg_index_integer (arg, (table -> length)));
-  PTR item = ((table -> items) [index]);
+  void * item = ((table -> items) [index]);
   if (item == 0)
     error_bad_range_arg (arg);
   return (item);
 }
 
 struct xdisplay *
-DEFUN (x_display_arg, (arg), unsigned int arg)
+x_display_arg (unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_display_table)));
 }
 
 struct xwindow *
-DEFUN (x_window_arg, (arg), unsigned int arg)
+x_window_arg (unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_window_table)));
 }
 
 static struct xwindow *
-DEFUN (x_window_to_xw, (display, window),
-       Display * display AND
-       Window window)
+x_window_to_xw (Display * display, Window window)
 {
   struct xwindow ** scan = ((struct xwindow **) (x_window_table . items));
   struct xwindow ** end = (scan + (x_window_table . length));
@@ -180,14 +174,14 @@ DEFUN (x_window_to_xw, (display, window),
 }
 
 struct ximage *
-DEFUN (x_image_arg, (arg), unsigned int arg)
+x_image_arg (unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_image_table)));
 }
 
 unsigned int
-DEFUN (allocate_x_image, (image), XImage * image)
+allocate_x_image (XImage * image)
 {
   struct ximage * xi = (x_malloc (sizeof (struct ximage)));
   unsigned int index = (allocate_table_index ((&x_image_table), xi));
@@ -197,21 +191,21 @@ DEFUN (allocate_x_image, (image), XImage * image)
 }
 
 void
-DEFUN (deallocate_x_image, (xi), struct ximage * xi)
+deallocate_x_image (struct ximage * xi)
 {
   ((x_image_table . items) [XI_ALLOCATION_INDEX (xi)]) = 0;
   free (xi);
 }
 
 struct xvisual *
-DEFUN (x_visual_arg, (arg), unsigned int arg)
+x_visual_arg (unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_visual_table)));
 }
 
 unsigned int
-DEFUN (allocate_x_visual, (visual), Visual * visual)
+allocate_x_visual (Visual * visual)
 {
   struct xvisual * xv = (x_malloc (sizeof (struct xvisual)));
   unsigned int index = (allocate_table_index ((&x_visual_table), xv));
@@ -221,23 +215,21 @@ DEFUN (allocate_x_visual, (visual), Visual * visual)
 }
 
 void
-DEFUN (deallocate_x_visual, (xv), struct xvisual * xv)
+deallocate_x_visual (struct xvisual * xv)
 {
   ((x_visual_table . items) [XV_ALLOCATION_INDEX (xv)]) = 0;
   free (xv);
 }
 
 struct xcolormap *
-DEFUN (x_colormap_arg, (arg), unsigned int arg)
+x_colormap_arg (unsigned int arg)
 {
   INITIALIZE_ONCE ();
   return (allocation_item_arg (arg, (&x_colormap_table)));
 }
 
 unsigned int
-DEFUN (allocate_x_colormap, (colormap, xd),
-       Colormap colormap AND
-       struct xdisplay * xd)
+allocate_x_colormap (Colormap colormap, struct xdisplay * xd)
 {
   struct xcolormap * xcm = (x_malloc (sizeof (struct xcolormap)));
   unsigned int index = (allocate_table_index ((&x_colormap_table), xcm));
@@ -248,7 +240,7 @@ DEFUN (allocate_x_colormap, (colormap, xd),
 }
 
 void
-DEFUN (deallocate_x_colormap, (xcm), struct xcolormap * xcm)
+deallocate_x_colormap (struct xcolormap * xcm)
 {
   ((x_colormap_table . items) [XCM_ALLOCATION_INDEX (xcm)]) = 0;
   free (xcm);
@@ -257,7 +249,7 @@ DEFUN (deallocate_x_colormap, (xcm), struct xcolormap * xcm)
 /* Error Handlers */
 
 static int
-DEFUN (x_io_error_handler, (display), Display * display)
+x_io_error_handler (Display * display)
 {
   fprintf (stderr, "\nX IO Error\n");
   fflush (stderr);
@@ -295,7 +287,7 @@ x_error_handler (Display * display, XErrorEvent * error_event)
 }
 
 static void
-DEFUN (unbind_x_error_info, (storage), PTR storage)
+unbind_x_error_info (void * storage)
 {
   x_error_info = (* ((x_error_info_t *) storage));
 }
@@ -339,11 +331,10 @@ any_x_errors_p (Display * display)
 /* Defaults and Attributes */
 
 static int
-DEFUN (x_decode_color, (display, color_map, color_name, color_return),
-       Display * display AND
-       Colormap color_map AND
-       char * color_name AND
-       unsigned long * color_return)
+x_decode_color (Display * display,
+		Colormap color_map,
+		char * color_name,
+		unsigned long * color_return)
 {
   XColor cdef;
   if ((XParseColor (display, color_map, color_name, (&cdef)))
@@ -356,7 +347,7 @@ DEFUN (x_decode_color, (display, color_map, color_name, color_return),
 }
 
 Colormap
-DEFUN (xw_color_map, (xw), struct xwindow * xw)
+xw_color_map (struct xwindow * xw)
 {
   XWindowAttributes a;
   if (! (XGetWindowAttributes ((XW_DISPLAY (xw)), (XW_WINDOW (xw)), (&a))))
@@ -365,10 +356,7 @@ DEFUN (xw_color_map, (xw), struct xwindow * xw)
 }
 
 static unsigned long
-DEFUN (arg_window_color, (arg, display, xw),
-       unsigned int arg AND
-       Display * display AND
-       struct xwindow * xw)
+arg_window_color (unsigned int arg, Display * display, struct xwindow * xw)
 {
   unsigned long result;
   SCHEME_OBJECT object = (ARG_REF (arg));
@@ -385,13 +373,11 @@ DEFUN (arg_window_color, (arg, display, xw),
 }
 
 static void
-DEFUN (x_set_mouse_colors,
-       (display, color_map, mouse_cursor, mouse_pixel, background_pixel),
-       Display * display AND
-       Colormap color_map AND
-       Cursor mouse_cursor AND
-       unsigned long mouse_pixel AND
-       unsigned long background_pixel)
+x_set_mouse_colors (Display * display,
+		    Colormap color_map,
+		    Cursor mouse_cursor,
+		    unsigned long mouse_pixel,
+		    unsigned long background_pixel)
 {
   XColor mouse_color;
   XColor background_color;
@@ -403,15 +389,12 @@ DEFUN (x_set_mouse_colors,
 }
 
 char *
-DEFUN (x_get_default,
-       (display, resource_name, resource_class,
-	property_name, property_class, sdefault),
-       Display * display AND
-       CONST char * resource_name AND
-       CONST char * resource_class AND
-       CONST char * property_name AND
-       CONST char * property_class AND
-       char * sdefault)
+x_get_default (Display * display,
+	       const char * resource_name,
+	       const char * resource_class,
+	       const char * property_name,
+	       const char * property_class,
+	       char * sdefault)
 {
   char * result = (XGetDefault (display, resource_name, property_name));
   if (result != 0)
@@ -429,15 +412,12 @@ DEFUN (x_get_default,
 }
 
 static unsigned long
-DEFUN (x_default_color,
-       (display, resource_name, resource_class,
-	property_name, property_class, default_color),
-       Display * display AND
-       CONST char * resource_name AND
-       CONST char * resource_class AND
-       CONST char * property_name AND
-       CONST char * property_class AND
-       unsigned long default_color)
+x_default_color (Display * display,
+		 const char * resource_name,
+		 const char * resource_class,
+		 const char * property_name,
+		 const char * property_class,
+		 unsigned long default_color)
 {
   char * color_name =
     (x_get_default
@@ -456,12 +436,10 @@ DEFUN (x_default_color,
 }
 
 void
-DEFUN (x_default_attributes, 
-       (display, resource_name, resource_class, attributes),
-       Display * display AND
-       CONST char * resource_name AND
-       CONST char * resource_class AND
-       struct drawing_attributes * attributes)
+x_default_attributes (Display * display,
+		      const char * resource_name,
+		      const char * resource_class,
+		      struct drawing_attributes * attributes)
 {
   int screen_number = (DefaultScreen (display));
   (attributes -> font) =
@@ -581,14 +559,13 @@ get_wm_decor_geometry (struct xwindow * xw)
 }
 
 struct xwindow *
-DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
-       struct xdisplay * xd AND
-       Window window AND
-       int x_size AND
-       int y_size AND
-       struct drawing_attributes * attributes AND
-       struct xwindow_methods * methods AND
-       unsigned int extra)
+x_make_window (struct xdisplay * xd,
+	       Window window,
+	       int x_size,
+	       int y_size,
+	       struct drawing_attributes * attributes,
+	       struct xwindow_methods * methods,
+	       unsigned int extra)
 {
   GC normal_gc;
   GC reverse_gc;
@@ -638,7 +615,7 @@ DEFUN (x_make_window, (xd, window, x_size, y_size, attributes, methods, extra),
 static jmp_buf x_close_window_jmp_buf;
 
 static int
-DEFUN (x_close_window_io_error, (display), Display * display)
+x_close_window_io_error (Display * display)
 {
   longjmp (x_close_window_jmp_buf, 1);
   /*NOTREACHED*/
@@ -646,7 +623,7 @@ DEFUN (x_close_window_io_error, (display), Display * display)
 }
 
 static void
-DEFUN (x_close_window, (xw), struct xwindow * xw)
+x_close_window (struct xwindow * xw)
 {
   Display * display = (XW_DISPLAY (xw));
   ((x_window_table . items) [XW_ALLOCATION_INDEX (xw)]) = 0;
@@ -684,7 +661,7 @@ DEFUN (x_close_window, (xw), struct xwindow * xw)
    Adapted from GNU Emacs. */
 
 static void
-DEFUN (x_initialize_display_modifier_masks, (xd), struct xdisplay * xd)
+x_initialize_display_modifier_masks (struct xdisplay * xd)
 {
   int min_keycode;
   int max_keycode;
@@ -788,7 +765,7 @@ DEFUN (x_initialize_display_modifier_masks, (xd), struct xdisplay * xd)
 }
 
 static void
-DEFUN (x_close_display, (xd), struct xdisplay * xd)
+x_close_display (struct xdisplay * xd)
 {
   struct xwindow ** scan = ((struct xwindow **) (x_window_table . items));
   struct xwindow ** end = (scan + (x_window_table . length));
@@ -803,7 +780,7 @@ DEFUN (x_close_display, (xd), struct xdisplay * xd)
 }
 
 static void
-DEFUN_VOID (x_close_all_displays)
+x_close_all_displays (void)
 {
   struct xdisplay ** scan = ((struct xdisplay **) (x_display_table . items));
   struct xdisplay ** end = (scan + (x_display_table . length));
@@ -818,10 +795,7 @@ DEFUN_VOID (x_close_all_displays)
 /* Window Manager Properties */
 
 static void
-DEFUN (xw_set_class_hint, (xw, name, class),
-       struct xwindow * xw AND
-       CONST char * name AND
-       CONST char * class)
+xw_set_class_hint (struct xwindow * xw, const char * name, const char * class)
 {
   XClassHint * class_hint = (XAllocClassHint ());
   if (class_hint == 0)
@@ -834,9 +808,7 @@ DEFUN (xw_set_class_hint, (xw, name, class),
 }
 
 void
-DEFUN (xw_set_wm_input_hint, (xw, input_hint),
-       struct xwindow * xw AND
-       int input_hint)
+xw_set_wm_input_hint (struct xwindow * xw, int input_hint)
 {
   XWMHints * hints = (XAllocWMHints ());
   if (hints == 0)
@@ -848,7 +820,7 @@ DEFUN (xw_set_wm_input_hint, (xw, input_hint),
 }
 
 void
-DEFUN (xw_set_wm_name, (xw, name), struct xwindow * xw AND CONST char * name)
+xw_set_wm_name (struct xwindow * xw, const char * name)
 {
   XTextProperty property;
   if ((XStringListToTextProperty (((char **) (&name)), 1, (&property))) == 0)
@@ -857,9 +829,7 @@ DEFUN (xw_set_wm_name, (xw, name), struct xwindow * xw AND CONST char * name)
 }
 
 void
-DEFUN (xw_set_wm_icon_name, (xw, name),
-       struct xwindow * xw AND
-       CONST char * name)
+xw_set_wm_icon_name (struct xwindow * xw, const char * name)
 {
   XTextProperty property;
   if ((XStringListToTextProperty (((char **) (&name)), 1, (&property))) == 0)
@@ -868,12 +838,10 @@ DEFUN (xw_set_wm_icon_name, (xw, name),
 }
 
 void
-DEFUN (x_decode_window_map_arg,
-       (map_arg, resource_name, resource_class, map_p),
-       SCHEME_OBJECT map_arg AND
-       CONST char ** resource_name AND
-       CONST char ** resource_class AND
-       int * map_p)
+x_decode_window_map_arg (SCHEME_OBJECT map_arg,
+			 const char ** resource_name,
+			 const char ** resource_class,
+			 int * map_p)
 {
   (*map_p) = 0;
   if (map_arg == SHARP_F)
@@ -882,10 +850,8 @@ DEFUN (x_decode_window_map_arg,
 	   && (STRING_P (PAIR_CAR (map_arg)))
 	   && (STRING_P (PAIR_CDR (map_arg))))
     {
-      (*resource_name) =
-	((CONST char *) (STRING_LOC ((PAIR_CAR (map_arg)), 0)));
-      (*resource_class) =
-	((CONST char *) (STRING_LOC ((PAIR_CDR (map_arg)), 0)));
+      (*resource_name) = (STRING_POINTER (PAIR_CAR (map_arg)));
+      (*resource_class) = (STRING_POINTER (PAIR_CDR (map_arg)));
       (*map_p) = 1;
     }
   else if ((VECTOR_P (map_arg))
@@ -894,20 +860,17 @@ DEFUN (x_decode_window_map_arg,
 	   && (STRING_P (VECTOR_REF (map_arg, 1)))
 	   && (STRING_P (VECTOR_REF (map_arg, 2))))
     {
-      (*resource_name) =
-	((CONST char *) (STRING_LOC ((VECTOR_REF (map_arg, 1)), 0)));
-      (*resource_class) =
-	((CONST char *) (STRING_LOC ((VECTOR_REF (map_arg, 2)), 0)));
+      (*resource_name) = (STRING_POINTER (VECTOR_REF (map_arg, 1)));
+      (*resource_class) = (STRING_POINTER (VECTOR_REF (map_arg, 2)));
       (*map_p) = (OBJECT_TO_BOOLEAN (VECTOR_REF (map_arg, 0)));
     }
 }
 
 void
-DEFUN (xw_make_window_map, (xw, resource_name, resource_class, map_p),
-       struct xwindow * xw AND
-       CONST char * resource_name AND
-       CONST char * resource_class AND
-       int map_p)
+xw_make_window_map (struct xwindow * xw,
+		    const char * resource_name,
+		    const char * resource_class,
+		    int map_p)
 {
   xw_set_class_hint (xw, resource_name, resource_class);
   if (map_p)
@@ -1116,10 +1079,9 @@ enum event_type
   VECTOR_SET ((event), (slot), (ulong_to_integer (number)))
 
 static SCHEME_OBJECT
-DEFUN (make_event_object, (xw, type, extra),
-       struct xwindow * xw AND
-       enum event_type type AND
-       unsigned int extra)
+make_event_object (struct xwindow * xw,
+		   enum event_type type,
+		   unsigned int extra)
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, (2 + extra), 1));
   VECTOR_SET (result, 0, (LONG_TO_UNSIGNED_FIXNUM ((long) type)));
@@ -1134,9 +1096,7 @@ DEFUN (make_event_object, (xw, type, extra),
    other than Scheme characters to convey key presses. */
 
 static unsigned long
-DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
-       unsigned int mask AND
-       struct xdisplay * xd)
+x_modifier_mask_to_bucky_bits (unsigned int mask, struct xdisplay * xd)
 {
   unsigned long bucky = 0;
   if (X_MODIFIER_MASK_CONTROL_P (mask, xd)) bucky |= CHAR_BITS_CONTROL;
@@ -1149,7 +1109,7 @@ DEFUN (x_modifier_mask_to_bucky_bits, (mask, xd),
 /* I'm not sure why we have a function for this. */
 
 static SCHEME_OBJECT
-DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
+x_key_button_mask_to_scheme (unsigned int x_state)
 {
   unsigned long scheme_state = 0;
   if (x_state & ControlMask) scheme_state |= 0x0001;
@@ -1169,33 +1129,27 @@ DEFUN (x_key_button_mask_to_scheme, (x_state), unsigned int x_state)
 }
 
 static SCHEME_OBJECT
-DEFUN (button_event, (xw, event, type),
-       struct xwindow * xw AND
-       XButtonEvent * event AND
-       enum event_type type)
+button_event (struct xwindow * xw, XButtonEvent * event, enum event_type type)
 {
   SCHEME_OBJECT result = (make_event_object (xw, type, 4));
-  EVENT_INTEGER (result, EVENT_0, (event -> x));
-  EVENT_INTEGER (result, EVENT_1, (event -> y));
+  EVENT_INTEGER (result, EVENT_0, (event->x));
+  EVENT_INTEGER (result, EVENT_1, (event->y));
   VECTOR_SET
     (result, EVENT_2,
-     ((((event -> button) >= 1) && ((event -> button) <= 256))
+     ((((event->button) >= 1) && ((event->button) <= 256))
       ? (ULONG_TO_FIXNUM
-	 (((event -> button) - 1)
-	  | ((x_modifier_mask_to_bucky_bits ((event -> state), (XW_XD (xw))))
+	 (((event->button) - 1)
+	  | ((x_modifier_mask_to_bucky_bits ((event->state), (XW_XD (xw))))
 	     << 8)))
       : SHARP_F));
-  EVENT_ULONG_INTEGER (result, EVENT_3, (event -> time));
+  EVENT_ULONG_INTEGER (result, EVENT_3, (event->time));
   return (result);
 }
 
 static XComposeStatus compose_status;
 
 static SCHEME_OBJECT
-DEFUN (key_event, (xw, event, type),
-       struct xwindow * xw AND
-       XKeyEvent * event AND
-       enum event_type type)
+key_event (struct xwindow * xw, XKeyEvent * event, enum event_type type)
 {
   char copy_buffer [80];
   KeySym keysym;
@@ -1249,7 +1203,7 @@ DEFUN (key_event, (xw, event, type),
   break
 
 static SCHEME_OBJECT
-DEFUN (x_event_to_object, (event), XEvent * event)
+x_event_to_object (XEvent * event)
 {
   struct xwindow * xw
     = (x_window_to_xw (((event -> xany) . display),
@@ -1435,7 +1389,7 @@ DEFUN (x_event_to_object, (event), XEvent * event)
 }
 
 static void
-DEFUN (update_input_mask, (xw), struct xwindow * xw)
+update_input_mask (struct xwindow * xw)
 {
   {
     unsigned long event_mask = 0;
@@ -1481,7 +1435,7 @@ DEFUN (update_input_mask, (xw), struct xwindow * xw)
 }
 
 static void
-DEFUN (ping_server, (xd, arg), struct xdisplay * xd)
+ping_server (struct xdisplay * xd)
 {
   /* Periodically ping the server connection to see if it has died.  */
   (XD_SERVER_PING_TIMER (xd)) += 1;
@@ -1502,10 +1456,7 @@ DEFUN (ping_server, (xd, arg), struct xdisplay * xd)
    cooperate with this strategy.  */
 
 static SCHEME_OBJECT
-DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
-       struct xdisplay * xd AND
-       int non_block_p AND
-       int use_select_p)
+xd_process_events (struct xdisplay * xd, int non_block_p, int use_select_p)
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
@@ -1605,7 +1556,7 @@ DEFUN (xd_process_events, (xd, non_block_p, use_select_p),
 /* Open/Close Primitives */
 
 static void
-DEFUN_VOID (initialize_once)
+initialize_once (void)
 {
   allocation_table_initialize (&x_display_table);
   allocation_table_initialize (&x_window_table);
@@ -1639,7 +1590,7 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   INITIALIZE_ONCE ();
   {
-    struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));    
+    struct xdisplay * xd = (x_malloc (sizeof (struct xdisplay)));
     /* Added 7/95 by Nick in an attempt to fix problem Hal was having
        with SWAT over PPP (i.e. slow connections).  */
     block_signals ();
@@ -1662,7 +1613,8 @@ DEFINE_PRIMITIVE ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0)
       (XInternAtom ((XD_DISPLAY (xd)), "WM_TAKE_FOCUS", False));
     (XD_CACHED_EVENT_P (xd)) = 0;
     x_initialize_display_modifier_masks (xd);
-    XRebindKeysym ((XD_DISPLAY (xd)), XK_BackSpace, 0, 0, "\177", 1);
+    XRebindKeysym ((XD_DISPLAY (xd)), XK_BackSpace, 0, 0,
+		   ((unsigned char *) "\177"), 1);
     PRIMITIVE_RETURN (XD_TO_OBJECT (xd));
   }
 }
@@ -1719,7 +1671,7 @@ DEFINE_PRIMITIVE ("X-SET-DEFAULT-FONT", Prim_x_set_default_font, 2, 2, 0)
       PRIMITIVE_RETURN (SHARP_F);
     XFreeFont (display, font);
     if (x_default_font != 0)
-      OS_free ((PTR) x_default_font);
+      OS_free ((void *) x_default_font);
     {
       char * copy = (OS_malloc ((strlen (name)) + 1));
       const char * s1 = name;
@@ -1895,8 +1847,9 @@ DEFINE_PRIMITIVE ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0)
     char * result =
       (XGetDefault
        ((XD_DISPLAY (x_display_arg (1))), (STRING_ARG (2)), (STRING_ARG (3))));
-    PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
+    PRIMITIVE_RETURN ((result == 0)
+		      ? SHARP_F
+		      : (char_pointer_to_string (result)));
   }
 }
 
@@ -2392,7 +2345,7 @@ check_expected_move (struct xwindow * xw)
      char-struct-words * maximum-number-possible */
 
 static SCHEME_OBJECT
-DEFUN (convert_char_struct, (char_struct), XCharStruct * char_struct)
+convert_char_struct (XCharStruct * char_struct)
 {
   if (((char_struct -> lbearing) == 0)
       && ((char_struct -> rbearing) == 0)
@@ -2412,9 +2365,7 @@ DEFUN (convert_char_struct, (char_struct), XCharStruct * char_struct)
 }
 
 static SCHEME_OBJECT
-DEFUN (convert_font_struct, (font_name, font),
-       SCHEME_OBJECT font_name AND
-       XFontStruct * font)
+convert_font_struct (SCHEME_OBJECT font_name, XFontStruct * font)
 {
   SCHEME_OBJECT result;
   if (font == 0)
@@ -2454,8 +2405,8 @@ DEFUN (convert_font_struct, (font_name, font),
 }
 
 DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
- "(display font)\n\
-  FONT is either a font name or a font ID.")
+		  "(DISPLAY FONT)\n\
+FONT is either a font name or a font ID.")
 {
   PRIMITIVE_HEADER (2);
   Primitive_GC_If_Needed (FONT_STRUCTURE_MAX_CONVERTED_SIZE);
@@ -2463,17 +2414,17 @@ DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
     SCHEME_OBJECT font_name = (ARG_REF (2));
     Display * display = (XD_DISPLAY (x_display_arg (1)));
     XFontStruct * font = 0;
-    Boolean  by_name  =  STRING_P (font_name);
+    bool by_name = STRING_P (font_name);
     SCHEME_OBJECT result;
 
     if (by_name)
-      font = XLoadQueryFont (display, ((char *) (STRING_LOC (font_name, 0))));
+      font = XLoadQueryFont (display, (STRING_POINTER (font_name)));
     else
       font = XQueryFont (display, ((XID) (integer_to_ulong (ARG_REF (2)))));
 
     if (font == 0)
       PRIMITIVE_RETURN (SHARP_F);
-    
+
     result = convert_font_struct (font_name, font);
 
     if (by_name)
@@ -2482,9 +2433,9 @@ DEFINE_PRIMITIVE ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2,
   }
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
- "(x-window)\n\
-  Returns the font-structure for the font currently associated with X-WINDOW")
+DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure,
+		  1, 1, "(X-WINDOW)\n\
+Returns the font-structure for the font currently associated with X-WINDOW.")
 {
   XFontStruct *font;
   PRIMITIVE_HEADER (1);
@@ -2494,9 +2445,9 @@ DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
 }
 
 DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
- "(display pattern limit)\n\
-  LIMIT is an exact non-negative integer or #F for no limit.\n\
-  Returns #F or a vector of at least one string.")
+		  "(DISPLAY PATTERN LIMIT)\n\
+LIMIT is an exact non-negative integer or #F for no limit.\n\
+Returns #F or a vector of at least one string.")
 {
   PRIMITIVE_HEADER (1);
   {
@@ -2515,7 +2466,7 @@ DEFINE_PRIMITIVE ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3,
       unsigned int i;
       for (i = 0; (i < actual_count); i += 1)
 	words += (STRING_LENGTH_TO_GC_LENGTH (strlen (names[i])));
-      if (GC_Check (words))
+      if (GC_NEEDED_P (words))
 	{
 	  /* this causes the primitive to be restarted, so deallocate names */
 	  XFreeFontNames (names);
@@ -2569,9 +2520,7 @@ DEFINE_PRIMITIVE ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0)
 /* Window Properties */
 
 static SCHEME_OBJECT
-DEFUN (char_ptr_to_prop_data_32, (data, nitems),
-       CONST unsigned char * data AND
-       unsigned long nitems)
+char_ptr_to_prop_data_32 (const unsigned char * data, unsigned long nitems)
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
   unsigned long index;
@@ -2581,9 +2530,7 @@ DEFUN (char_ptr_to_prop_data_32, (data, nitems),
 }
 
 static SCHEME_OBJECT
-DEFUN (char_ptr_to_prop_data_16, (data, nitems),
-       CONST unsigned char * data AND
-       unsigned long nitems)
+char_ptr_to_prop_data_16 (const unsigned char * data, unsigned long nitems)
 {
   SCHEME_OBJECT result = (allocate_marked_vector (TC_VECTOR, nitems, 1));
   unsigned long index;
@@ -2593,9 +2540,7 @@ DEFUN (char_ptr_to_prop_data_16, (data, nitems),
 }
 
 static const unsigned char *
-DEFUN (prop_data_32_to_char_ptr, (vector, length_return),
-       SCHEME_OBJECT vector AND
-       unsigned long * length_return)
+prop_data_32_to_char_ptr (SCHEME_OBJECT vector, unsigned long * length_return)
 {
   unsigned long nitems = (VECTOR_LENGTH (vector));
   unsigned long length = (nitems * 4);
@@ -2613,9 +2558,7 @@ DEFUN (prop_data_32_to_char_ptr, (vector, length_return),
 }
 
 static const unsigned char *
-DEFUN (prop_data_16_to_char_ptr, (vector, length_return),
-       SCHEME_OBJECT vector AND
-       unsigned long * length_return)
+prop_data_16_to_char_ptr (SCHEME_OBJECT vector, unsigned long * length_return)
 {
   unsigned long nitems = (VECTOR_LENGTH (vector));
   unsigned long length = (nitems * 2);
@@ -2699,8 +2642,8 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
     Atom type = (arg_ulong_integer (4));
     int format = (arg_nonnegative_integer (5));
     int mode = (arg_index_integer (6, 3));
+    unsigned long dlen = 0;
     const unsigned char * data = 0;
-    unsigned long dlen;
     void * handle;
     unsigned char error_code;
 
@@ -2709,7 +2652,7 @@ DEFINE_PRIMITIVE ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0)
       {
       case 8:
 	CHECK_ARG (7, STRING_P);
-	data = (STRING_LOC ((ARG_REF (7)), 0));
+	data = (STRING_BYTE_PTR (ARG_REF (7)));
 	dlen = (STRING_LENGTH (ARG_REF (7)));
 	break;
       case 16:

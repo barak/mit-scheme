@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2top.c,v 1.25 2007/01/05 21:19:25 cph Exp $
+$Id: os2top.c,v 1.26 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -55,8 +55,8 @@ extern void OS2_initialize_tty (void);
 extern void OS2_initialize_window_primitives (void);
 
 extern void OS2_check_message_length_initializations (void);
-extern void * OS2_malloc_noerror (unsigned int);
-extern void * OS2_realloc_noerror (void *, unsigned int);
+extern void * OS2_malloc_noerror (unsigned long);
+extern void * OS2_realloc_noerror (void *, unsigned long);
 
 extern void OS2_create_msg_queue (void); /* forward reference */
 
@@ -2515,15 +2515,15 @@ static char * syserr_names_table [] =
 };
 
 void
-OS_syserr_names (unsigned int * length, unsigned char *** names)
+OS_syserr_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syserr_names_table);
+  (*names) = syserr_names_table;
 }
 
 void
-OS_syscall_names (unsigned int * length, unsigned char *** names)
+OS_syscall_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syscall_names_table);
+  (*names) = syscall_names_table;
 }

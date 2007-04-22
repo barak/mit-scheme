@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmd5.c,v 1.11 2007/01/05 21:19:25 cph Exp $
+$Id: prmd5.c,v 1.12 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -59,7 +59,7 @@ The digest is returned as a 16-byte string.")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     SCHEME_OBJECT result = (allocate_string (16));
-    unsigned char * scan_result = (STRING_LOC (result, 0));
+    unsigned char * scan_result = (STRING_BYTE_PTR (result));
     MD5_CTX context;
 #ifdef HAVE_LIBCRYPTO
     unsigned char digest [MD5_DIGEST_LENGTH];
@@ -68,7 +68,9 @@ The digest is returned as a 16-byte string.")
     unsigned char * end_digest;
 
     MD5_INIT (&context);
-    MD5_UPDATE ((&context), (STRING_LOC (string, 0)), (STRING_LENGTH (string)));
+    MD5_UPDATE ((&context),
+		(STRING_POINTER (string)),
+		(STRING_LENGTH (string)));
 #ifdef HAVE_LIBCRYPTO
     MD5_FINAL (digest, (&context));
     scan_digest = digest;
@@ -90,18 +92,18 @@ Create and return an MD5 digest context.")
   PRIMITIVE_HEADER (0);
   {
     SCHEME_OBJECT context = (allocate_string (sizeof (MD5_CTX)));
-    MD5_INIT ((MD5_CTX *) (STRING_LOC (context, 0)));
+    MD5_INIT ((MD5_CTX *) (STRING_POINTER (context)));
     PRIMITIVE_RETURN (context);
   }
 }
 
 static MD5_CTX *
-DEFUN (md5_context_arg, (arg), int arg)
+md5_context_arg (int arg)
 {
   CHECK_ARG (arg, STRING_P);
   if ((STRING_LENGTH (ARG_REF (arg))) != (sizeof (MD5_CTX)))
     error_bad_range_arg (arg);
-  return ((MD5_CTX *) (STRING_LOC ((ARG_REF (arg)), 0)));
+  return ((MD5_CTX *) (STRING_POINTER (ARG_REF (arg))));
 }
 
 DEFINE_PRIMITIVE ("MD5-UPDATE", Prim_md5_update, 4, 4,
@@ -137,7 +139,7 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
 #endif
     {
       SCHEME_OBJECT result = (allocate_string (MD5_DIGEST_LENGTH));
-      unsigned char * scan_result = (STRING_LOC (result, 0));
+      unsigned char * scan_result = (STRING_BYTE_PTR (result));
 #ifdef HAVE_LIBCRYPTO
       unsigned char * scan_digest = digest;
 #else
@@ -154,7 +156,7 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive
     ("MD5", Prim_md5, 1, 1,

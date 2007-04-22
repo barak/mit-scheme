@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.105 2007/01/22 08:43:09 riastradh Exp $
+$Id: interp.c,v 9.106 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,23 +28,14 @@ USA.
 /* The interpreter */
 
 #include "scheme.h"
-#include "locks.h"
 #include "trap.h"
 #include "lookup.h"
 #include "winder.h"
 #include "history.h"
-#include "cmpint.h"
-#include "zones.h"
-#include "prmcon.h"
 
-extern PTR EXFUN (obstack_chunk_alloc, (size_t size));
-extern void EXFUN (free, (PTR ptr));
+extern void * obstack_chunk_alloc (size_t);
 #define obstack_chunk_free free
-extern void EXFUN (back_out_of_primitive_internal, (void));
-extern void EXFUN (preserve_signal_mask, (void));
-extern long EXFUN (enter_compiled_expression, (void));
-extern long EXFUN (apply_compiled_procedure, (void));
-extern long EXFUN (return_to_compiled_code, (void));
+extern void preserve_signal_mask (void);
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -64,7 +55,7 @@ extern long EXFUN (return_to_compiled_code, (void));
  * passing style as follows.  At every point where you would
  * call EVAL to handle a sub-form, you put a jump back to
  * do_expression.  Now, if there was code after the call to
- * EVAL you first push a "return code" (using Save_Cont) on
+ * EVAL you first push a "return code" (using SAVE_CONT) on
  * the stack and move the code that used to be after the
  * call down into the part of this file after the tag
  * pop_return.
@@ -86,286 +77,130 @@ extern long EXFUN (return_to_compiled_code, (void));
 
 #define SIGNAL_INTERRUPT(Masked_Code)					\
 {									\
-  Setup_Interrupt (Masked_Code);					\
+  setup_interrupt (Masked_Code);					\
   goto perform_application;						\
 }
 
 #define PREPARE_POP_RETURN_INTERRUPT(Return_Code, Contents_of_Val)	\
 {									\
   SCHEME_OBJECT temp = (Contents_of_Val);				\
-  Store_Return (Return_Code);						\
-  Save_Cont ();								\
-  Store_Return (RC_RESTORE_VALUE);					\
-  exp_register = temp;							\
-  Save_Cont ();								\
+  SET_RC (Return_Code);							\
+  SAVE_CONT ();								\
+  SET_RC (RC_RESTORE_VALUE);						\
+  SET_EXP (temp);							\
+  SAVE_CONT ();								\
 }
 
 #define PREPARE_APPLY_INTERRUPT()					\
 {									\
-  exp_register = SHARP_F;						\
+  SET_EXP (SHARP_F);							\
   PREPARE_POP_RETURN_INTERRUPT						\
-    (RC_INTERNAL_APPLY_VAL, (STACK_REF (STACK_ENV_FUNCTION)));		\
+    (RC_INTERNAL_APPLY_VAL, (APPLY_FRAME_PROCEDURE ()));		\
 }
 
-#define APPLICATION_ERROR(N)						\
+#define APPLICATION_ERROR(code) do					\
 {									\
-  exp_register = SHARP_F;						\
-  Store_Return (RC_INTERNAL_APPLY_VAL);					\
-  val_register = (STACK_REF (STACK_ENV_FUNCTION));			\
-  POP_RETURN_ERROR (N);							\
-}
+  SET_EXP (SHARP_F);							\
+  SET_RC (RC_INTERNAL_APPLY_VAL);					\
+  SAVE_CONT ();								\
+  SET_VAL (APPLY_FRAME_PROCEDURE ());					\
+  Do_Micro_Error (code, true);						\
+  goto internal_apply;							\
+} while (0)
 
 #define IMMEDIATE_GC(N)							\
 {									\
-  Request_GC (N);							\
+  REQUEST_GC (N);							\
   SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());				\
 }
 
 #define EVAL_GC_CHECK(Amount)						\
 {									\
-  if (GC_Check (Amount))						\
+  if (GC_NEEDED_P (Amount))						\
     {									\
       PREPARE_EVAL_REPEAT ();						\
       IMMEDIATE_GC (Amount);						\
     }									\
 }
 
-#define PREPARE_EVAL_REPEAT()						\
+#define PREPARE_EVAL_REPEAT() do					\
 {									\
   Will_Push (CONTINUATION_SIZE + 1);					\
-  STACK_PUSH (env_register);						\
-  Store_Return (RC_EVAL_ERROR);						\
-  Save_Cont ();								\
+  PUSH_ENV ();								\
+  SET_RC (RC_EVAL_ERROR);						\
+  SAVE_CONT ();								\
   Pushed ();								\
-}
+} while (0)
 
-#define EVAL_ERROR(Err)							\
+#define EVAL_ERROR(code) do						\
 {									\
-  Do_Micro_Error (Err, 0);						\
+  Do_Micro_Error (code, false);						\
   goto internal_apply;							\
-}
+} while (0)
 
-#define POP_RETURN_ERROR(Err)						\
+#define POP_RETURN_ERROR(code) do					\
 {									\
-  Do_Micro_Error (Err, 1);						\
+  SAVE_CONT ();								\
+  Do_Micro_Error (code, true);						\
   goto internal_apply;							\
-}
+} while (0)
 
-#define BACK_OUT_AFTER_PRIMITIVE back_out_of_primitive_internal
+#define PROCEED_AFTER_PRIMITIVE() SET_PRIMITIVE (SHARP_F)
 
-#define REDUCES_TO(expression)						\
+#define REDUCES_TO(expression) do					\
 {									\
-  exp_register = (expression);						\
-  New_Reduction (exp_register, env_register);				\
+  SET_EXP (expression);							\
+  NEW_REDUCTION (GET_EXP, GET_ENV);					\
   goto do_expression;							\
-}
+} while (0)
 
-#define REDUCES_TO_NTH(n) REDUCES_TO (FAST_MEMORY_REF (exp_register, (n)))
+#define REDUCES_TO_NTH(n) REDUCES_TO (MEMORY_REF (GET_EXP, (n)))
 
-#define DO_NTH_THEN(Return_Code, n)					\
+#define DO_NTH_THEN(Return_Code, n) do					\
 {									\
-  Store_Return (Return_Code);						\
-  Save_Cont ();								\
-  exp_register = (FAST_MEMORY_REF (exp_register, (n)));			\
-  New_Subproblem (exp_register, env_register);				\
+  SET_RC (Return_Code);							\
+  SAVE_CONT ();								\
+  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
+  NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
   goto do_expression;							\
-}
+} while (0)
 
 #define PUSH_NTH_THEN(Return_Code, n)					\
-{									\
-  Store_Return (Return_Code);						\
-  Save_Cont ();								\
-  exp_register = (FAST_MEMORY_REF (exp_register, (n)));			\
-  New_Subproblem (exp_register, env_register);				\
+  SET_RC (Return_Code);							\
+  SAVE_CONT ();								\
+  SET_EXP (MEMORY_REF (GET_EXP, (n)));					\
+  NEW_SUBPROBLEM (GET_EXP, GET_ENV);					\
   Pushed ();								\
-  goto do_expression;							\
-}
+  goto do_expression
 
-#define DO_ANOTHER_THEN(Return_Code, N)					\
+#define DO_ANOTHER_THEN(Return_Code, N) do				\
 {									\
-  Store_Return (Return_Code);						\
-  Save_Cont ();								\
-  exp_register = (FAST_MEMORY_REF (exp_register, (N)));			\
-  Reuse_Subproblem (exp_register, env_register);			\
+  SET_RC (Return_Code);							\
+  SAVE_CONT ();								\
+  SET_EXP (MEMORY_REF (GET_EXP, (N)));					\
+  REUSE_SUBPROBLEM (GET_EXP, GET_ENV);					\
   goto do_expression;							\
-}
+} while (0)
 
 #ifdef COMPILE_STEPPER
 
 #define FETCH_EVAL_TRAPPER()						\
-  (MEMORY_REF ((Get_Fixed_Obj_Slot (Stepper_State)), HUNK_CXR0))
+  (MEMORY_REF ((VECTOR_REF (fixed_objects, STEPPER_STATE)), HUNK_CXR0))
 
 #define FETCH_APPLY_TRAPPER()						\
-  (MEMORY_REF ((Get_Fixed_Obj_Slot (Stepper_State)), HUNK_CXR1))
+  (MEMORY_REF ((VECTOR_REF (fixed_objects, STEPPER_STATE)), HUNK_CXR1))
 
 #define FETCH_RETURN_TRAPPER()						\
-  (MEMORY_REF ((Get_Fixed_Obj_Slot (Stepper_State)), HUNK_CXR2))
+  (MEMORY_REF ((VECTOR_REF (fixed_objects, STEPPER_STATE)), HUNK_CXR2))
 
 #endif /* COMPILE_STEPPER */
-
-/* Macros for handling FUTUREs */
-
-#ifdef COMPILE_FUTURES
-
-/* ARG_TYPE_ERROR handles the error returns from primitives which type
-   check their arguments and restarts them or suspends if the argument
-   is a future.  */
-
-#define ARG_TYPE_ERROR(Arg_No, Err_No)					\
-{									\
-  SCHEME_OBJECT * Arg							\
-    = (& (STACK_REF ((Arg_No - 1) + STACK_ENV_FIRST_ARG)));		\
-  SCHEME_OBJECT Orig_Arg = (*Arg);					\
-  if (OBJECT_TYPE (*Arg) != TC_FUTURE)					\
-    POP_RETURN_ERROR (Err_No);						\
-  while (((OBJECT_TYPE (*Arg)) == TC_FUTURE)				\
-	 && (Future_Has_Value (*Arg)))					\
-    {									\
-      if (Future_Is_Keep_Slot (*Arg))					\
-	Log_Touch_Of_Future (*Arg);					\
-      (*Arg) = Future_Value (*Arg);					\
-    }									\
-  if ((OBJECT_TYPE (*Arg)) != TC_FUTURE)				\
-    goto Apply_Non_Trapping;						\
-  TOUCH_SETUP (*Arg);							\
-  (*Arg) = Orig_Arg;							\
-  goto Apply_Non_Trapping;						\
-}
-
-/* APPLY_FUTURE_CHECK is called at apply time to guarantee that
-   certain objects (the procedure itself, and its LAMBDA components
-   for user defined procedures) are not futures.  */
-
-#define APPLY_FUTURE_CHECK(Name, Object)				\
-{									\
-  SCHEME_OBJECT * Arg = (& (Object));					\
-  SCHEME_OBJECT Orig_Answer = (*Arg);					\
-  while ((OBJECT_TYPE (*Arg)) == TC_FUTURE)				\
-    {									\
-      if (Future_Has_Value (*Arg))					\
-	{								\
-	  if (Future_Is_Keep_Slot (*Arg))				\
-	    Log_Touch_Of_Future (*Arg);					\
-	  (*Arg) = (Future_Value (*Arg));				\
-	}								\
-      else								\
-	{								\
-	  PREPARE_APPLY_INTERRUPT ();					\
-	  TOUCH_SETUP (*Arg);						\
-	  (*Arg) = Orig_Answer;						\
-	  goto internal_apply;						\
-	}								\
-    }									\
-  Name = (*Arg);							\
-}
-
-/* POP_RETURN_VAL_CHECK suspends the process if the value calculated
-   by a recursive call to EVAL is an undetermined future.  */
-
-#define POP_RETURN_VAL_CHECK()						\
-{									\
-  SCHEME_OBJECT Orig_Val = val_register;				\
-  while ((OBJECT_TYPE (val_register)) == TC_FUTURE)			\
-    {									\
-      if (Future_Has_Value (val_register))				\
-	{								\
-	  if (Future_Is_Keep_Slot (val_register))			\
-	    Log_Touch_Of_Future (val_register);				\
-	  val_register = (Future_Value (val_register));			\
-	}								\
-      else								\
-	{								\
-	  Save_Cont ();							\
-	  Will_Push (CONTINUATION_SIZE + (STACK_ENV_EXTRA_SLOTS + 2));	\
-	  Store_Return (RC_RESTORE_VALUE);				\
-	  exp_register = Orig_Val;					\
-	  Save_Cont ();							\
-	  STACK_PUSH (val_register);					\
-	  STACK_PUSH (Get_Fixed_Obj_Slot (System_Scheduler));		\
-	  STACK_PUSH (STACK_FRAME_HEADER + 1);				\
-	  Pushed ();							\
-	  goto internal_apply;						\
-	}								\
-    }									\
-}
-
-/* This saves stuff unnecessarily in most cases.
-   For example, when dispatch_code is PRIM_APPLY, val_register,
-   env_register, exp_register, and ret_register are undefined.  */
-
-#define LOG_FUTURES()							\
-{									\
-  if (Must_Report_References ())					\
-    {									\
-      Save_Cont ();							\
-      Will_Push (CONTINUATION_SIZE + 2);				\
-      STACK_PUSH (val_register);					\
-      STACK_PUSH (env_register);					\
-      Store_Return (RC_REPEAT_DISPATCH);				\
-      exp_register = (LONG_TO_FIXNUM (CODE_MAP (dispatch_code)));	\
-      Save_Cont ();							\
-      Pushed ();							\
-      Call_Future_Logging ();						\
-    }									\
-}
-
-#else /* not COMPILE_FUTURES */
-
-#define POP_RETURN_VAL_CHECK()
-#define APPLY_FUTURE_CHECK(Name, Object) Name = (Object)
-#define ARG_TYPE_ERROR(Arg_No, Err_No) POP_RETURN_ERROR (Err_No)
-#define LOG_FUTURES()
-
-#endif /* not COMPILE_FUTURES */
-
-/* Notes on repeat_dispatch:
-
-   The codes used (values of dispatch_code) are divided into two
-   groups: those for which the primitive has already backed out, and
-   those for which the back out code has not yet been executed, and is
-   therefore executed below.
-
-   Under most circumstances the distinction is moot, but if there are
-   futures in the system, and future touches must be logged, the code
-   must be set up to "interrupt" the dispatch, and proceed it later.
-   The primitive back out code must be done before the furure is
-   logged, so all of these codes are split into two versions: one set
-   before doing the back out, and another afterwards.  */
-
-/* This is assumed to be larger (in absolute value) than any
-   PRIM_<mumble> and ERR_<mumble>.  */
-#define PRIM_BIAS_AMOUNT 1000
-
-#if (MAX_ERROR >= PRIM_BIAS_AMOUNT)
-#  include "Inconsistency: errors.h and interp.c"
-#endif
-
-#define CODE_MAP(code)							\
-  (((code) < 0)								\
-   ? ((code) - PRIM_BIAS_AMOUNT)					\
-   : ((code) + PRIM_BIAS_AMOUNT))
-
-#define CODE_UNMAP(code)						\
-  (((code) < 0)								\
-   ? ((code) + PRIM_BIAS_AMOUNT)					\
-   : ((code) - PRIM_BIAS_AMOUNT))
-
-#define CODE_MAPPED_P(code)						\
-  (((code) < (-PRIM_BIAS_AMOUNT))					\
-   || ((code) >= PRIM_BIAS_AMOUNT))
-
-#define PROCEED_AFTER_PRIMITIVE()					\
-{									\
-  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;				\
-  LOG_FUTURES ();							\
-}
 
 /* The EVAL/APPLY yin/yang */
 
 interpreter_state_t interpreter_state = NULL_INTERPRETER_STATE;
 
 void
-DEFUN (bind_interpreter_state, (s), interpreter_state_t s)
+bind_interpreter_state (interpreter_state_t s)
 {
   (s -> previous_state) = interpreter_state;
   (s -> nesting_level) =
@@ -377,11 +212,11 @@ DEFUN (bind_interpreter_state, (s), interpreter_state_t s)
 }
 
 void
-DEFUN (unbind_interpreter_state, (s), interpreter_state_t s)
+unbind_interpreter_state (interpreter_state_t s)
 {
   interpreter_state = s;
   {
-    long old_mask = (FETCH_INTERRUPT_MASK ());
+    unsigned long old_mask = GET_INT_MASK;
     SET_INTERRUPT_MASK (0);
     dstack_set_position (s -> dstack_position);
     SET_INTERRUPT_MASK (old_mask);
@@ -390,17 +225,17 @@ DEFUN (unbind_interpreter_state, (s), interpreter_state_t s)
 }
 
 void
-DEFUN (abort_to_interpreter, (argument), int argument)
+abort_to_interpreter (int argument)
 {
   if (interpreter_state == NULL_INTERPRETER_STATE)
   {
     outf_fatal ("abort_to_interpreter: Interpreter not set up.\n");
     termination_init_error ();
   }
-  
+
   interpreter_throw_argument = argument;
   {
-    long old_mask = (FETCH_INTERRUPT_MASK ());
+    unsigned long old_mask = GET_INT_MASK;
     SET_INTERRUPT_MASK (0);
     dstack_set_position (interpreter_catch_dstack_position);
     SET_INTERRUPT_MASK (old_mask);
@@ -411,13 +246,13 @@ DEFUN (abort_to_interpreter, (argument), int argument)
 }
 
 int
-DEFUN_VOID (abort_to_interpreter_argument)
+abort_to_interpreter_argument (void)
 {
   return (interpreter_throw_argument);
 }
 
 void
-DEFUN (Interpret, (pop_return_p), int pop_return_p)
+Interpret (void)
 {
   long dispatch_code;
   struct interpreter_state_s new_state;
@@ -425,7 +260,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
   /* Primitives jump back here for errors, requests to evaluate an
      expression, apply a function, or handle an interrupt request.  On
      errors or interrupts they leave their arguments on the stack, the
-     primitive itself in exp_register.  The code should do a primitive
+     primitive itself in GET_EXP.  The code should do a primitive
      backout in these cases, but not in others (apply, eval, etc.),
      since the primitive itself will have left the state of the
      interpreter ready for operation.  */
@@ -433,122 +268,73 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
   bind_interpreter_state (&new_state);
   dispatch_code = (setjmp (interpreter_catch_env));
   preserve_signal_mask ();
-  Set_Time_Zone (Zone_Working);
 
- repeat_dispatch:
   switch (dispatch_code)
     {
+    case 0:
+      break;
+
     case PRIM_APPLY:
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_APPLY):
       goto internal_apply;
 
     case PRIM_NO_TRAP_APPLY:
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_NO_TRAP_APPLY):
       goto Apply_Non_Trapping;
 
-    case PRIM_DO_EXPRESSION:
-      val_register = exp_register;
+    case PRIM_APPLY_INTERRUPT:
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_DO_EXPRESSION):
-      REDUCES_TO (val_register);
+      PREPARE_APPLY_INTERRUPT ();
+      SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+
+    case PRIM_DO_EXPRESSION:
+      SET_VAL (GET_EXP);
+      PROCEED_AFTER_PRIMITIVE ();
+      REDUCES_TO (GET_VAL);
 
     case PRIM_NO_TRAP_EVAL:
-      val_register = exp_register;
+      SET_VAL (GET_EXP);
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_NO_TRAP_EVAL):
-      New_Reduction (val_register, env_register);
+      NEW_REDUCTION (GET_VAL, GET_ENV);
       goto eval_non_trapping;
-
-    case 0:			/* first time */
-      if (pop_return_p)
-	goto pop_return;
-      else
-	break;			/* fall into eval */
 
     case PRIM_POP_RETURN:
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_POP_RETURN):
       goto pop_return;
 
     case PRIM_NO_TRAP_POP_RETURN:
       PROCEED_AFTER_PRIMITIVE ();
-    case CODE_MAP (PRIM_NO_TRAP_POP_RETURN):
       goto pop_return_non_trapping;
 
-    case PRIM_REENTER:
-      BACK_OUT_AFTER_PRIMITIVE ();
-      LOG_FUTURES ();
-    case CODE_MAP (PRIM_REENTER):
-      goto perform_application;
-
-    case PRIM_TOUCH:
-      {
-	SCHEME_OBJECT temp = val_register;
-	BACK_OUT_AFTER_PRIMITIVE ();
-	val_register = temp;
-	LOG_FUTURES ();
-      }
-      /* fall through */
-    case CODE_MAP (PRIM_TOUCH):
-      TOUCH_SETUP (val_register);
-      goto internal_apply;
-
     case PRIM_INTERRUPT:
-      BACK_OUT_AFTER_PRIMITIVE ();
-      LOG_FUTURES ();
-      /* fall through */
-    case CODE_MAP (PRIM_INTERRUPT):
-      Save_Cont ();
+      back_out_of_primitive ();
       SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
     case ERR_ARG_1_WRONG_TYPE:
-      BACK_OUT_AFTER_PRIMITIVE ();
-      LOG_FUTURES ();
-      /* fall through */
-    case CODE_MAP (ERR_ARG_1_WRONG_TYPE):
-      ARG_TYPE_ERROR (1, ERR_ARG_1_WRONG_TYPE);
+      back_out_of_primitive ();
+      Do_Micro_Error (ERR_ARG_1_WRONG_TYPE, true);
+      goto internal_apply;
 
     case ERR_ARG_2_WRONG_TYPE:
-      BACK_OUT_AFTER_PRIMITIVE ();
-      LOG_FUTURES ();
-      /* fall through */
-    case CODE_MAP (ERR_ARG_2_WRONG_TYPE):
-      ARG_TYPE_ERROR (2, ERR_ARG_2_WRONG_TYPE);
+      back_out_of_primitive ();
+      Do_Micro_Error (ERR_ARG_2_WRONG_TYPE, true);
+      goto internal_apply;
 
     case ERR_ARG_3_WRONG_TYPE:
-      BACK_OUT_AFTER_PRIMITIVE ();
-      LOG_FUTURES ();
-      /* fall through */
-    case CODE_MAP (ERR_ARG_3_WRONG_TYPE):
-      ARG_TYPE_ERROR (3, ERR_ARG_3_WRONG_TYPE);
+      back_out_of_primitive ();
+      Do_Micro_Error (ERR_ARG_3_WRONG_TYPE, true);
+      goto internal_apply;
 
     default:
-      {
-	if (!CODE_MAPPED_P (dispatch_code))
-	  {
-	    BACK_OUT_AFTER_PRIMITIVE ();
-	    LOG_FUTURES ();
-	  }
-	else
-	  dispatch_code = (CODE_UNMAP (dispatch_code));
-	POP_RETURN_ERROR (dispatch_code);
-      }
+      back_out_of_primitive ();
+      Do_Micro_Error (dispatch_code, true);
+      goto internal_apply;
     }
 
  do_expression:
 
-#if 0
-  if (Eval_Debug)
-    {
-      Print_Expression (exp_register, "Eval, expression");
-      outf_console ("\n");
-    }
-#endif
-
-  /* exp_register has an Scode item in it that should be evaluated and
-     the result left in val_register.
+  /* GET_EXP has an Scode item in it that should be evaluated and the
+     result left in GET_VAL.
 
      A "break" after the code for any operation indicates that all
      processing for this operation has been completed, and the next
@@ -561,50 +347,45 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
      macro.  This indicates that the value of the current Scode item
      is the value returned when the new expression is evaluated.
      Therefore no new continuation is created and processing continues
-     at do_expression with the new expression in exp_register.
+     at do_expression with the new expression in GET_EXP.
 
      Finally, an operation can terminate with a DO_NTH_THEN macro.
      This indicates that another expression must be evaluated and them
      some additional processing will be performed before the value of
      this S-Code item available.  Thus a new continuation is created
-     and placed on the stack (using Save_Cont), the new expression is
-     placed in the exp_register, and processing continues at
-     do_expression.  */
+     and placed on the stack (using SAVE_CONT), the new expression is
+     placed in the GET_EXP, and processing continues at do_expression.
+     */
 
   /* Handling of Eval Trapping.
-     
+
      If we are handling traps and there is an Eval Trap set, turn off
      all trapping and then go to internal_apply to call the user
      supplied eval hook with the expression to be evaluated and the
      environment.  */
 
 #ifdef COMPILE_STEPPER
-  if (Trapping
+  if (trapping
       && (!WITHIN_CRITICAL_SECTION_P ())
       && ((FETCH_EVAL_TRAPPER ()) != SHARP_F))
     {
-      Stop_Trapping ();
+      trapping = false;
       Will_Push (4);
-      STACK_PUSH (env_register);
-      STACK_PUSH (exp_register);
+      PUSH_ENV ();
+      PUSH_EXP ();
       STACK_PUSH (FETCH_EVAL_TRAPPER ());
-      STACK_PUSH (STACK_FRAME_HEADER + 2);
+      PUSH_APPLY_FRAME_HEADER (2);
       Pushed ();
       goto Apply_Non_Trapping;
     }
 #endif /* COMPILE_STEPPER */
 
  eval_non_trapping:
-  Eval_Ucode_Hook ();
-  switch (OBJECT_TYPE (exp_register))
-    {
-    default:
-#if 0
-      EVAL_ERROR (ERR_UNDEFINED_USER_TYPE);
-#else
-      /* fall through to self evaluating. */
+#ifdef EVAL_UCODE_HOOK
+  EVAL_UCODE_HOOK ();
 #endif
-
+  switch (OBJECT_TYPE (GET_EXP))
+    {
     case TC_BIG_FIXNUM:         /* The self evaluating items */
     case TC_BIG_FLONUM:
     case TC_CHARACTER_STRING:
@@ -634,7 +415,8 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
     case TC_VECTOR:
     case TC_VECTOR_16B:
     case TC_VECTOR_1B:
-      val_register = exp_register;
+    default:
+      SET_VAL (GET_EXP);
       break;
 
     case TC_ACCESS:
@@ -643,7 +425,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
     case TC_ASSIGNMENT:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_EXECUTE_ASSIGNMENT_FINISH, ASSIGN_VALUE);
 
     case TC_BROKEN_HEART:
@@ -651,33 +433,29 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
     case TC_COMBINATION:
       {
-	long length = ((VECTOR_LENGTH (exp_register)) - 1);
-#ifdef USE_STACKLETS
-	/* Finger */
-        EVAL_GC_CHECK (New_Stacklet_Size (length + 2 + CONTINUATION_SIZE));
-#endif /* USE_STACKLETS */
+	long length = ((VECTOR_LENGTH (GET_EXP)) - 1);
 	Will_Push (length + 2 + CONTINUATION_SIZE);
-	sp_register = (STACK_LOC (-length));
+	stack_pointer = (STACK_LOC (-length));
         STACK_PUSH (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, length));
 	/* The finger: last argument number */
 	Pushed ();
         if (length == 0)
 	  {
-	    STACK_PUSH (STACK_FRAME_HEADER); /* Frame size */
+	    PUSH_APPLY_FRAME_HEADER (0); /* Frame size */
 	    DO_NTH_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
 	  }
-	STACK_PUSH (env_register);
+	PUSH_ENV ();
 	DO_NTH_THEN (RC_COMB_SAVE_VALUE, (length + 1));
       }
 
     case TC_COMBINATION_1:
       Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       DO_NTH_THEN (RC_COMB_1_PROCEDURE, COMB_1_ARG_1);
 
     case TC_COMBINATION_2:
       Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       DO_NTH_THEN (RC_COMB_2_FIRST_OPERAND, COMB_2_ARG_2);
 
     case TC_COMMENT:
@@ -685,61 +463,40 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
     case TC_CONDITIONAL:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_CONDITIONAL_DECIDE, COND_PREDICATE);
 
+#ifdef CC_SUPPORT_P
     case TC_COMPILED_ENTRY:
-      {
-	SCHEME_OBJECT compiled_expression = exp_register;
-	execute_compiled_setup ();
-	exp_register = compiled_expression;
-	dispatch_code = (enter_compiled_expression ());
-	goto return_from_compiled_code;
-      }
+      dispatch_code = (enter_compiled_expression ());
+      goto return_from_compiled_code;
+#endif
 
     case TC_DEFINITION:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_EXECUTE_DEFINITION_FINISH, DEFINE_VALUE);
 
     case TC_DELAY:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
-      val_register = (MAKE_POINTER_OBJECT (TC_DELAYED, Free));
-      (Free[THUNK_ENVIRONMENT]) = env_register;
-      (Free[THUNK_PROCEDURE]) = (FAST_MEMORY_REF (exp_register, DELAY_OBJECT));
+      SET_VAL (MAKE_POINTER_OBJECT (TC_DELAYED, Free));
+      (Free[THUNK_ENVIRONMENT]) = GET_ENV;
+      (Free[THUNK_PROCEDURE]) = (MEMORY_REF (GET_EXP, DELAY_OBJECT));
       Free += 2;
       break;
 
     case TC_DISJUNCTION:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_DISJUNCTION_DECIDE, OR_PREDICATE);
 
     case TC_EXTENDED_LAMBDA:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
-      val_register = (MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free));
-      (Free[PROCEDURE_LAMBDA_EXPR]) = exp_register;
-      (Free[PROCEDURE_ENVIRONMENT]) = env_register;
+      SET_VAL (MAKE_POINTER_OBJECT (TC_EXTENDED_PROCEDURE, Free));
+      (Free[PROCEDURE_LAMBDA_EXPR]) = GET_EXP;
+      (Free[PROCEDURE_ENVIRONMENT]) = GET_ENV;
       Free += 2;
       break;
-
-#ifdef COMPILE_FUTURES
-    case TC_FUTURE:
-      if (Future_Has_Value (exp_register))
-	{
-	  SCHEME_OBJECT Future = exp_register;
-	  if (Future_Is_Keep_Slot (Future))
-	    Log_Touch_Of_Future (Future);
-	  REDUCES_TO_NTH (FUTURE_VALUE);
-	}
-      PREPARE_EVAL_REPEAT ();
-      Will_Push (STACK_ENV_EXTRA_SLOTS+2);
-      STACK_PUSH (exp_register); /* Arg: FUTURE object */
-      STACK_PUSH (Get_Fixed_Obj_Slot (System_Scheduler));
-      STACK_PUSH (STACK_FRAME_HEADER+1);
-      Pushed ();
-      goto internal_apply;
-#endif
 
     case TC_IN_PACKAGE:
       Will_Push (CONTINUATION_SIZE);
@@ -748,14 +505,13 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
     case TC_LAMBDA:
     case TC_LEXPR:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
-      val_register = (MAKE_POINTER_OBJECT (TC_PROCEDURE, Free));
-      (Free[PROCEDURE_LAMBDA_EXPR]) = exp_register;
-      (Free[PROCEDURE_ENVIRONMENT]) = env_register;
+      SET_VAL (MAKE_POINTER_OBJECT (TC_PROCEDURE, Free));
+      (Free[PROCEDURE_LAMBDA_EXPR]) = GET_EXP;
+      (Free[PROCEDURE_ENVIRONMENT]) = GET_ENV;
       Free += 2;
       break;
 
     case TC_MANIFEST_NM_VECTOR:
-    case TC_MANIFEST_SPECIAL_NM_VECTOR:
       EVAL_ERROR (ERR_EXECUTE_MANIFEST_VECTOR);
 
     case TC_PCOMB0:
@@ -763,7 +519,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	 much will be on the stack if we back out of the primitive.  */
       Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
       Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      exp_register = (OBJECT_NEW_TYPE (TC_PRIMITIVE, exp_register));
+      SET_EXP (OBJECT_NEW_TYPE (TC_PRIMITIVE, GET_EXP));
       goto primitive_internal_apply;
 
     case TC_PCOMB1:
@@ -772,53 +528,48 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
     case TC_PCOMB2:
       Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       DO_NTH_THEN (RC_PCOMB2_DO_1, PCOMB2_ARG_2_SLOT);
 
     case TC_PCOMB3:
       Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 3);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       DO_NTH_THEN (RC_PCOMB3_DO_2, PCOMB3_ARG_3_SLOT);
 
     case TC_SCODE_QUOTE:
-      val_register = (FAST_MEMORY_REF (exp_register, SCODE_QUOTE_OBJECT));
+      SET_VAL (MEMORY_REF (GET_EXP, SCODE_QUOTE_OBJECT));
       break;
 
     case TC_SEQUENCE_2:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_SEQ_2_DO_2, SEQUENCE_1);
 
     case TC_SEQUENCE_3:
       Will_Push (CONTINUATION_SIZE + 1);
-      STACK_PUSH (env_register);
+      PUSH_ENV ();
       PUSH_NTH_THEN (RC_SEQ_3_DO_2, SEQUENCE_1);
 
     case TC_THE_ENVIRONMENT:
-      val_register = env_register;
+      SET_VAL (GET_ENV);
       break;
 
     case TC_VARIABLE:
       {
-	long temp;
-
-	Set_Time_Zone (Zone_Lookup);
-	temp = (lookup_variable (env_register, exp_register, (&val_register)));
-	if (temp == PRIM_DONE)
-	  goto pop_return;
-
-	/* Back out of the evaluation. */
-
-	Set_Time_Zone (Zone_Working);
-	if (temp == PRIM_INTERRUPT)
+	SCHEME_OBJECT val = GET_VAL;
+	long temp = (lookup_variable (GET_ENV, GET_EXP, (&val)));
+	if (temp != PRIM_DONE)
 	  {
-	    PREPARE_EVAL_REPEAT ();
-	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	    /* Back out of the evaluation. */
+	    if (temp == PRIM_INTERRUPT)
+	      {
+		PREPARE_EVAL_REPEAT ();
+		SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	      }
+	    EVAL_ERROR (temp);
 	  }
-	EVAL_ERROR (temp);
+	SET_VAL (val);
       }
-
-      SITE_EXPRESSION_DISPATCH_HOOK ();
     }
 
   /* Now restore the continuation saved during an earlier part of the
@@ -827,35 +578,31 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
  pop_return:
 
 #ifdef COMPILE_STEPPER
-  if (Trapping
+  if (trapping
       && (!WITHIN_CRITICAL_SECTION_P ())
       && ((FETCH_RETURN_TRAPPER ()) != SHARP_F))
     {
       Will_Push (3);
-      Stop_Trapping ();
-      STACK_PUSH (val_register);
+      trapping = false;
+      PUSH_VAL ();
       STACK_PUSH (FETCH_RETURN_TRAPPER ());
-      STACK_PUSH (STACK_FRAME_HEADER + 1);
+      PUSH_APPLY_FRAME_HEADER (1);
       Pushed ();
       goto Apply_Non_Trapping;
     }
 #endif /* COMPILE_STEPPER */
 
  pop_return_non_trapping:
-  Pop_Return_Ucode_Hook ();
-  Restore_Cont ();
-  if (Consistency_Check && ((OBJECT_TYPE (ret_register)) != TC_RETURN_CODE))
+#ifdef POP_RETURN_UCODE_HOOK
+  POP_RETURN_UCODE_HOOK ();
+#endif
+  RESTORE_CONT ();
+#ifdef ENABLE_DEBUGGING_TOOLS
+  if (!RETURN_CODE_P (GET_RET))
     {
-      STACK_PUSH (val_register); /* For possible stack trace */
-      Save_Cont ();
+      PUSH_VAL ();		/* For possible stack trace */
+      SAVE_CONT ();
       Microcode_Termination (TERM_BAD_STACK);
-    }
-#if 0
-  if (Eval_Debug)
-    {
-      Print_Return ("pop_return, return code");
-      Print_Expression (val_register, "pop_return, value");
-      outf_console ("\n");
     }
 #endif
 
@@ -864,91 +611,67 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
      common occurrence.
    */
 
-  switch (OBJECT_DATUM (ret_register))
+  switch (OBJECT_DATUM (GET_RET))
     {
     case RC_COMB_1_PROCEDURE:
-      env_register = (STACK_POP ());
-      STACK_PUSH (val_register); /* Arg. 1 */
+      POP_ENV ();
+      PUSH_VAL ();		/* Arg. 1 */
       STACK_PUSH (SHARP_F);	/* Operator */
-      STACK_PUSH (STACK_FRAME_HEADER + 1);
+      PUSH_APPLY_FRAME_HEADER (1);
       Finished_Eventual_Pushing (CONTINUATION_SIZE);
       DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_1_FN);
 
     case RC_COMB_2_FIRST_OPERAND:
-      env_register = (STACK_POP ());
-      STACK_PUSH (val_register);
-      STACK_PUSH (env_register);
+      POP_ENV ();
+      PUSH_VAL ();
+      PUSH_ENV ();
       DO_ANOTHER_THEN (RC_COMB_2_PROCEDURE, COMB_2_ARG_1);
 
     case RC_COMB_2_PROCEDURE:
-      env_register = (STACK_POP ());
-      STACK_PUSH (val_register); /* Arg 1, just calculated */
+      POP_ENV ();
+      PUSH_VAL ();		/* Arg 1, just calculated */
       STACK_PUSH (SHARP_F);	/* Function */
-      STACK_PUSH (STACK_FRAME_HEADER + 2);
+      PUSH_APPLY_FRAME_HEADER (2);
       Finished_Eventual_Pushing (CONTINUATION_SIZE);
       DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_2_FN);
 
     case RC_COMB_APPLY_FUNCTION:
-      End_Subproblem ();
+      END_SUBPROBLEM ();
       goto internal_apply_val;
 
     case RC_COMB_SAVE_VALUE:
       {
 	long Arg_Number;
 
-	env_register = (STACK_POP ());
+	POP_ENV ();
 	Arg_Number = ((OBJECT_DATUM (STACK_REF (STACK_COMB_FINGER))) - 1);
-	(STACK_REF (STACK_COMB_FIRST_ARG + Arg_Number)) = val_register;
+	(STACK_REF (STACK_COMB_FIRST_ARG + Arg_Number)) = GET_VAL;
 	(STACK_REF (STACK_COMB_FINGER))
 	  = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, Arg_Number));
 	/* DO NOT count on the type code being NMVector here, since
 	   the stack parser may create them with #F here! */
 	if (Arg_Number > 0)
 	  {
-	    STACK_PUSH (env_register);
+	    PUSH_ENV ();
 	    DO_ANOTHER_THEN
 	      (RC_COMB_SAVE_VALUE, ((COMB_ARG_1_SLOT - 1) + Arg_Number));
 	  }
 	/* Frame Size */
-	STACK_PUSH (FAST_MEMORY_REF (exp_register, 0));
+	STACK_PUSH (MEMORY_REF (GET_EXP, 0));
 	DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_FN_SLOT);
       }
+
+#ifdef CC_SUPPORT_P
 
 #define DEFINE_COMPILER_RESTART(return_code, entry)			\
     case return_code:							\
       {									\
-	extern long EXFUN (entry, (void));				\
-	compiled_code_restart ();					\
 	dispatch_code = (entry ());					\
 	goto return_from_compiled_code;					\
       }
 
       DEFINE_COMPILER_RESTART
 	(RC_COMP_INTERRUPT_RESTART, comp_interrupt_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_LOOKUP_APPLY_RESTART, comp_lookup_apply_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_REFERENCE_RESTART, comp_reference_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_ACCESS_RESTART, comp_access_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_UNASSIGNED_P_RESTART, comp_unassigned_p_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_UNBOUND_P_RESTART, comp_unbound_p_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_ASSIGNMENT_RESTART, comp_assignment_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_DEFINITION_RESTART, comp_definition_restart);
-
-      DEFINE_COMPILER_RESTART
-	(RC_COMP_SAFE_REFERENCE_RESTART, comp_safe_reference_restart);
 
       DEFINE_COMPILER_RESTART
 	(RC_COMP_LOOKUP_TRAP_RESTART, comp_lookup_trap_restart);
@@ -975,23 +698,22 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	(RC_COMP_ERROR_RESTART, comp_error_restart);
 
     case RC_REENTER_COMPILED_CODE:
-      compiled_code_restart ();
       dispatch_code = (return_to_compiled_code ());
       goto return_from_compiled_code;
 
+#endif
+
     case RC_CONDITIONAL_DECIDE:
-      POP_RETURN_VAL_CHECK ();
-      End_Subproblem ();
-      env_register = (STACK_POP ());
+      END_SUBPROBLEM ();
+      POP_ENV ();
       REDUCES_TO_NTH
-	((val_register == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
+	((GET_VAL == SHARP_F) ? COND_ALTERNATIVE : COND_CONSEQUENT);
 
     case RC_DISJUNCTION_DECIDE:
       /* Return predicate if it isn't #F; else do ALTERNATIVE */
-      POP_RETURN_VAL_CHECK ();
-      End_Subproblem ();
-      env_register = (STACK_POP ());
-      if (val_register != SHARP_F)
+      END_SUBPROBLEM ();
+      POP_ENV ();
+      if (GET_VAL != SHARP_F)
 	goto pop_return;
       REDUCES_TO_NTH (OR_ALTERNATIVE);
 
@@ -1016,114 +738,93 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
     case RC_EVAL_ERROR:
       /* Should be called RC_REDO_EVALUATION. */
-      env_register = (STACK_POP ());
-      REDUCES_TO (exp_register);
+      POP_ENV ();
+      REDUCES_TO (GET_EXP);
 
     case RC_EXECUTE_ACCESS_FINISH:
       {
-	long Result;
-	SCHEME_OBJECT value;
+	SCHEME_OBJECT val;
+	long code;
 
-	POP_RETURN_VAL_CHECK ();
-	value = val_register;
-	if (ENVIRONMENT_P (val_register))
+	if (!ENVIRONMENT_P (GET_VAL))
+	  POP_RETURN_ERROR (ERR_BAD_FRAME);
+	code = (lookup_variable (GET_VAL,
+				 (MEMORY_REF (GET_EXP, ACCESS_NAME)),
+				 (&val)));
+	if (code == PRIM_DONE)
+	  SET_VAL (val);
+	else if (code == PRIM_INTERRUPT)
 	  {
-	    Result
-	      = (lookup_variable
-		 (value,
-		  (FAST_MEMORY_REF (exp_register, ACCESS_NAME)),
-		  (&val_register)));
-	    if (Result == PRIM_DONE)
-	      {
-		End_Subproblem ();
-		break;
-	      }
-	    if (Result != PRIM_INTERRUPT)
-	      {
-		val_register = value;
-		POP_RETURN_ERROR (Result);
-	      }
-	    PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_ACCESS_FINISH, value);
+	    PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_ACCESS_FINISH, GET_VAL);
 	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 	  }
-	val_register = value;
-	POP_RETURN_ERROR (ERR_BAD_FRAME);
+	else
+	  POP_RETURN_ERROR (code);
       }
+      END_SUBPROBLEM ();
+      break;
 
     case RC_EXECUTE_ASSIGNMENT_FINISH:
       {
-	long temp;
-	SCHEME_OBJECT value;
-#ifdef DECLARE_LOCK
-	DECLARE_LOCK (set_serializer);
-#endif
+	SCHEME_OBJECT old_val;
+	long code;
 
-	value = val_register;
-	Set_Time_Zone (Zone_Lookup);
-	env_register = (STACK_POP ());
-	temp
-	  = (assign_variable
-	     (env_register,
-	      (MEMORY_REF (exp_register, ASSIGN_NAME)),
-	      value,
-	      (&val_register)));
-	if (temp == PRIM_DONE)
+	POP_ENV ();
+	code = (assign_variable (GET_ENV,
+				 (MEMORY_REF (GET_EXP, ASSIGN_NAME)),
+				 GET_VAL,
+				 (&old_val)));
+	if (code == PRIM_DONE)
+	  SET_VAL (old_val);
+	else
 	  {
-	    End_Subproblem ();
-	    Set_Time_Zone (Zone_Working);
-	    break;
+	    PUSH_ENV ();
+	    if (code == PRIM_INTERRUPT)
+	      {
+		PREPARE_POP_RETURN_INTERRUPT
+		  (RC_EXECUTE_ASSIGNMENT_FINISH, GET_VAL);
+		SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+	      }
+	    else
+	      POP_RETURN_ERROR (code);
 	  }
-	Set_Time_Zone (Zone_Working);
-	STACK_PUSH (env_register);
-	if (temp != PRIM_INTERRUPT)
-	  {
-	    val_register = value;
-	    POP_RETURN_ERROR (temp);
-	  }
-	PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_ASSIGNMENT_FINISH, value);
-	SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
       }
+      END_SUBPROBLEM ();
+      break;
 
     case RC_EXECUTE_DEFINITION_FINISH:
       {
-	SCHEME_OBJECT name = (FAST_MEMORY_REF (exp_register, DEFINE_NAME));
-	SCHEME_OBJECT value = val_register;
+	SCHEME_OBJECT name = (MEMORY_REF (GET_EXP, DEFINE_NAME));
+	SCHEME_OBJECT value = GET_VAL;
         long result;
 
-        env_register = (STACK_POP ());
-        result = (define_variable (env_register, name, value));
+        POP_ENV ();
+        result = (define_variable (GET_ENV, name, value));
         if (result == PRIM_DONE)
 	  {
-	    End_Subproblem ();
-	    val_register = name;
+	    END_SUBPROBLEM ();
+	    SET_VAL (name);
 	    break;
 	  }
-	STACK_PUSH (env_register);
+	PUSH_ENV ();
 	if (result == PRIM_INTERRUPT)
 	  {
 	    PREPARE_POP_RETURN_INTERRUPT (RC_EXECUTE_DEFINITION_FINISH,
 					  value);
 	    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 	  }
-	val_register = value;
+	SET_VAL (value);
         POP_RETURN_ERROR (result);
       }
 
     case RC_EXECUTE_IN_PACKAGE_CONTINUE:
-      POP_RETURN_VAL_CHECK ();
-      if (ENVIRONMENT_P (val_register))
+      if (ENVIRONMENT_P (GET_VAL))
 	{
-	  End_Subproblem ();
-	  env_register = val_register;
+	  END_SUBPROBLEM ();
+	  SET_ENV (GET_VAL);
 	  REDUCES_TO_NTH (IN_PACKAGE_EXPRESSION);
 	}
       POP_RETURN_ERROR (ERR_BAD_FRAME);
-
-#ifdef COMPILE_FUTURES
-    case RC_FINISH_GLOBAL_INT:
-      val_register = (Global_Int_Part_2 (exp_register, val_register));
-      break;
-#endif
 
     case RC_HALT:
       Microcode_Termination (TERM_TERM_HANDLER);
@@ -1133,9 +834,9 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	/* This just reinvokes the handler */
 	SCHEME_OBJECT info = (STACK_REF (0));
 	SCHEME_OBJECT handler = SHARP_F;
-	Save_Cont ();
-	if (Valid_Fixed_Obj_Vector ())
-	  handler = (Get_Fixed_Obj_Slot (Trap_Handler));
+	SAVE_CONT ();
+	if (VECTOR_P (fixed_objects))
+	  handler = (VECTOR_REF (fixed_objects, TRAP_HANDLER));
 	if (handler == SHARP_F)
 	  {
 	    outf_fatal ("There is no trap handler for recovery!\n");
@@ -1145,22 +846,22 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
 	STACK_PUSH (info);
 	STACK_PUSH (handler);
-	STACK_PUSH (STACK_FRAME_HEADER + 1);
+	PUSH_APPLY_FRAME_HEADER (1);
 	Pushed ();
       }
       goto internal_apply;
 
       /* internal_apply, the core of the application mechanism.
-	 
+
 	 Branch here to perform a function application.
-	 
+
 	 At this point the top of the stack contains an application
 	 frame which consists of the following elements (see sdata.h):
 
 	 - A header specifying the frame length.
 	 - A procedure.
 	 - The actual (evaluated) arguments.
-	 
+
 	 No registers (except the stack pointer) are meaning full at
 	 this point.  Before interrupts or errors are processed, some
 	 registers are cleared to avoid holding onto garbage if a
@@ -1169,178 +870,131 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
     case RC_INTERNAL_APPLY_VAL:
     internal_apply_val:
 
-      STACK_REF (STACK_ENV_FUNCTION) = val_register;
+      (APPLY_FRAME_PROCEDURE ()) = GET_VAL;
 
     case RC_INTERNAL_APPLY:
     internal_apply:
 
 #ifdef COMPILE_STEPPER
-      if (Trapping
+      if (trapping
 	  && (!WITHIN_CRITICAL_SECTION_P ())
 	  && ((FETCH_APPLY_TRAPPER ()) != SHARP_F))
 	{
-	  long Count = (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)));
+	  unsigned long frame_size = (APPLY_FRAME_SIZE ());
 	  (* (STACK_LOC (0))) = (FETCH_APPLY_TRAPPER ());
-	  STACK_PUSH (STACK_FRAME_HEADER + Count);
-	  Stop_Trapping ();
+	  PUSH_APPLY_FRAME_HEADER (frame_size);
+	  trapping = false;
 	}
 #endif /* COMPILE_STEPPER */
 
     Apply_Non_Trapping:
-      if ((PENDING_INTERRUPTS ()) != 0)
+      if (PENDING_INTERRUPTS_P)
 	{
-	  long interrupts = (PENDING_INTERRUPTS ());
+	  unsigned long interrupts = (PENDING_INTERRUPTS ());
 	  PREPARE_APPLY_INTERRUPT ();
 	  SIGNAL_INTERRUPT (interrupts);
 	}
 
     perform_application:
-      Apply_Ucode_Hook ();
+#ifdef APPLY_UCODE_HOOK
+      APPLY_UCODE_HOOK ();
+#endif
       {
-	SCHEME_OBJECT Function;
-	SCHEME_OBJECT orig_proc;
-
-	APPLY_FUTURE_CHECK (Function, (STACK_REF (STACK_ENV_FUNCTION)));
-	orig_proc = Function;
+	SCHEME_OBJECT Function = (APPLY_FRAME_PROCEDURE ());
 
       apply_dispatch:
 	switch (OBJECT_TYPE (Function))
 	  {
 	  case TC_ENTITY:
 	    {
-	      long nargs = (STACK_POP ());
-	      long nactuals = (OBJECT_DATUM (nargs));
+	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
 	      SCHEME_OBJECT data = (MEMORY_REF (Function, ENTITY_DATA));
-
-	      /* Will_Pushed omitted since frame must be contiguous.
-		 combination code must ensure one more slot.  */
-
-	      /* This code assumes that adding 1 to nactuals takes care
-		 of everything, including type code, etc.  */
-
 	      if ((VECTOR_P (data))
-		  && (nactuals < ((long) (VECTOR_LENGTH (data))))
-		  && ((VECTOR_REF (data, nactuals)) != SHARP_F)
+		  && (frame_size < (VECTOR_LENGTH (data)))
+		  && ((VECTOR_REF (data, frame_size)) != SHARP_F)
 		  && ((VECTOR_REF (data, 0))
-		      == (Get_Fixed_Obj_Slot (ARITY_DISPATCHER_TAG))))
+		      == (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
 		{
-		  SCHEME_OBJECT nproc = (VECTOR_REF (data, nactuals));
-		  if ((Function == orig_proc) && (nproc != Function))
-		    {
-		      Function = nproc;
-		      STACK_PUSH (nargs);
-		      STACK_REF (STACK_ENV_FUNCTION) = nproc;
-		      goto apply_dispatch;
-		    }
-		  else
-		    {
-		      Function = orig_proc;
-		      STACK_REF (STACK_ENV_FUNCTION - 1) = orig_proc;
-		    }
+		  Function = (VECTOR_REF (data, frame_size));
+		  (APPLY_FRAME_PROCEDURE ()) = Function;
+		  goto apply_dispatch;
 		}
-	    
-	      STACK_PUSH (FAST_MEMORY_REF (Function, ENTITY_OPERATOR));
-	      STACK_PUSH (nargs + 1);
+
+	      (STACK_REF (0)) = (MEMORY_REF (Function, ENTITY_OPERATOR));
+	      PUSH_APPLY_FRAME_HEADER (frame_size);
 	      /* This must be done to prevent an infinite push loop by
 		 an entity whose handler is the entity itself or some
 		 other such loop.  Of course, it will die if stack overflow
 		 interrupts are disabled.  */
-	      Stack_Check (sp_register);
+	      STACK_CHECK (0);
 	      goto internal_apply;
 	    }
 
 	  case TC_PROCEDURE:
 	    {
-	      long nargs = (OBJECT_DATUM (STACK_POP ()));
-	      Function = (FAST_MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
+	      unsigned long frame_size = (APPLY_FRAME_SIZE ());
+	      Function = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
 	      {
-		SCHEME_OBJECT formals;
+		SCHEME_OBJECT formals
+		  = (MEMORY_REF (Function, LAMBDA_FORMALS));
 
-		APPLY_FUTURE_CHECK
-		  (formals, (FAST_MEMORY_REF (Function, LAMBDA_FORMALS)));
-		if ((nargs != ((long) (VECTOR_LENGTH (formals))))
+		if ((frame_size != (VECTOR_LENGTH (formals)))
 		    && (((OBJECT_TYPE (Function)) != TC_LEXPR)
-			|| (nargs < ((long) (VECTOR_LENGTH (formals))))))
-		  {
-		    STACK_PUSH (STACK_FRAME_HEADER + nargs - 1);
-		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		  }
+			|| (frame_size < (VECTOR_LENGTH (formals)))))
+		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 	      }
-#if 0
-	      if (Eval_Debug)
+	      if (GC_NEEDED_P (frame_size + 1))
 		{
-		  Print_Expression
-		    ((LONG_TO_UNSIGNED_FIXNUM (nargs)),
-		     "APPLY: Number of arguments");
-		  outf_console ("\n");
-		}
-#endif
-	      if (GC_Check (nargs + 1))
-		{
-		  STACK_PUSH (STACK_FRAME_HEADER + nargs - 1);
 		  PREPARE_APPLY_INTERRUPT ();
-		  IMMEDIATE_GC (nargs + 1);
+		  IMMEDIATE_GC (frame_size + 1);
 		}
 	      {
-		SCHEME_OBJECT * scan = Free;
-		SCHEME_OBJECT temp
-		  = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, scan));
-		(*scan++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, nargs));
-		while ((--nargs) >= 0)
-		  (*scan++) = (STACK_POP ());
-		Free = scan;
-		env_register = temp;
-		REDUCES_TO (FAST_MEMORY_REF (Function, LAMBDA_SCODE));
+		SCHEME_OBJECT * end = (Free + 1 + frame_size);
+		SCHEME_OBJECT env
+		  = (MAKE_POINTER_OBJECT (TC_ENVIRONMENT, Free));
+		(*Free++) = (MAKE_OBJECT (TC_MANIFEST_VECTOR, frame_size));
+		(void) STACK_POP ();
+		while (Free < end)
+		  (*Free++) = (STACK_POP ());
+		SET_ENV (env);
+		REDUCES_TO (MEMORY_REF (Function, LAMBDA_SCODE));
 	      }
 	    }
 
 	  case TC_CONTROL_POINT:
-	    if ((OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)))
-		!= STACK_ENV_FIRST_ARG)
+	    if ((APPLY_FRAME_SIZE ()) != 2)
 	      APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-	    val_register = (STACK_REF (STACK_ENV_FIRST_ARG));
-	    Our_Throw (0, Function);
-	    Apply_Stacklet_Backout ();
-	    Our_Throw_Part_2();
+	    SET_VAL (* (APPLY_FRAME_ARGS ()));
+	    unpack_control_point (Function);
+	    RESET_HISTORY ();
 	    goto pop_return;
 
 	    /* After checking the number of arguments, remove the
 	       frame header since primitives do not expect it.
-	      
+
 	       NOTE: This code must match the application code which
 	       follows primitive_internal_apply.  */
 
 	  case TC_PRIMITIVE:
+	    if (!IMPLEMENTED_PRIMITIVE_P (Function))
+	      APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
 	    {
-	      long nargs;
+	      unsigned long n_args = (APPLY_FRAME_N_ARGS ());
 
-	      if (!IMPLEMENTED_PRIMITIVE_P (Function))
-		APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
 
 	      /* Note that the first test below will fail for lexpr
 		 primitives.  */
 
-	      nargs
-		= ((OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER)))
-		   - (STACK_ENV_FIRST_ARG - 1));
-	      if (nargs != (PRIMITIVE_ARITY (Function)))
+	      if (n_args != (PRIMITIVE_ARITY (Function)))
 		{
 		  if ((PRIMITIVE_ARITY (Function)) != LEXPR_PRIMITIVE_ARITY)
 		    APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
-		  (Registers[REGBLOCK_LEXPR_ACTUALS])
-		    = ((SCHEME_OBJECT) nargs);
+		  SET_LEXPR_ACTUALS (n_args);
 		}
-	      sp_register = (STACK_LOC (STACK_ENV_FIRST_ARG));
-	      exp_register = Function;
-	      APPLY_PRIMITIVE_FROM_INTERPRETER (val_register, Function);
-	      POP_PRIMITIVE_FRAME (nargs);
-	      if (Must_Report_References ())
-		{
-		  exp_register = val_register;
-		  Store_Return (RC_RESTORE_VALUE);
-		  Save_Cont ();
-		  Call_Future_Logging ();
-		}
+	      stack_pointer = (APPLY_FRAME_ARGS ());
+	      SET_EXP (Function);
+	      APPLY_PRIMITIVE_FROM_INTERPRETER (Function);
+	      POP_PRIMITIVE_FRAME (n_args);
 	      goto pop_return;
 	    }
 
@@ -1348,32 +1002,21 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	    {
 	      SCHEME_OBJECT lambda;
 	      SCHEME_OBJECT temp;
-	      long nargs;
-	      long nparams;
-	      long formals;
-	      long params;
-	      long auxes;
+	      unsigned long nargs;
+	      unsigned long nparams;
+	      unsigned long formals;
+	      unsigned long params;
+	      unsigned long auxes;
 	      long rest_flag;
 	      long size;
 	      long i;
 	      SCHEME_OBJECT * scan;
 
-	      nargs = ((OBJECT_DATUM (STACK_POP ())) - STACK_FRAME_HEADER);
-#if 0
-	      if (Eval_Debug)
-		{
-		  Print_Expression
-		    ((LONG_TO_UNSIGNED_FIXNUM (nargs + STACK_FRAME_HEADER)),
-		     "APPLY: Number of arguments");
-		  outf_console ("\n");
-		}
-#endif
-
-	      lambda = (FAST_MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
-	      APPLY_FUTURE_CHECK
-		(Function, (FAST_MEMORY_REF (lambda, ELAMBDA_NAMES)));
+	      nargs = (POP_APPLY_FRAME_HEADER ());
+	      lambda = (MEMORY_REF (Function, PROCEDURE_LAMBDA_EXPR));
+	      Function = (MEMORY_REF (lambda, ELAMBDA_NAMES));
 	      nparams = ((VECTOR_LENGTH (Function)) - 1);
-	      APPLY_FUTURE_CHECK (Function, (Get_Count_Elambda (lambda)));
+	      Function = (Get_Count_Elambda (lambda));
 	      formals = (Elambda_Formals_Count (Function));
 	      params = ((Elambda_Opts_Count (Function)) + formals);
 	      rest_flag = (Elambda_Rest_Flag (Function));
@@ -1381,18 +1024,18 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 
 	      if ((nargs < formals) || (!rest_flag && (nargs > params)))
 		{
-		  STACK_PUSH (STACK_FRAME_HEADER + nargs);
+		  PUSH_APPLY_FRAME_HEADER (nargs);
 		  APPLICATION_ERROR (ERR_WRONG_NUMBER_OF_ARGUMENTS);
 		}
 	      /* size includes the procedure slot, but not the header.  */
 	      size = (params + rest_flag + auxes + 1);
-	      if (GC_Check
+	      if (GC_NEEDED_P
 		  (size + 1
 		   + ((nargs > params)
 		      ? (2 * (nargs - params))
 		      : 0)))
 		{
-		  STACK_PUSH (STACK_FRAME_HEADER + nargs);
+		  PUSH_APPLY_FRAME_HEADER (nargs);
 		  PREPARE_APPLY_INTERRUPT ();
 		  IMMEDIATE_GC
 		    (size + 1
@@ -1435,91 +1078,41 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 		}
 
 	      Free = scan;
-	      env_register = temp;
+	      SET_ENV (temp);
 	      REDUCES_TO (Get_Body_Elambda (lambda));
 	    }
 
+#ifdef CC_SUPPORT_P
 	  case TC_COMPILED_ENTRY:
 	    {
-	      apply_compiled_setup
-		(STACK_ENV_EXTRA_SLOTS
-		 + (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER))));
+	      guarantee_cc_return (1 + (APPLY_FRAME_SIZE ()));
 	      dispatch_code = (apply_compiled_procedure ());
 
 	    return_from_compiled_code:
 	      switch (dispatch_code)
 		{
 		case PRIM_DONE:
-		  {
-		    compiled_code_done ();
-		    goto pop_return;
-		  }
+		  goto pop_return;
 
 		case PRIM_APPLY:
-		  {
-		    compiler_apply_procedure
-		      (STACK_ENV_EXTRA_SLOTS
-		       + (OBJECT_DATUM (STACK_REF (STACK_ENV_HEADER))));
-		    goto internal_apply;
-		  }
+		  goto internal_apply;
 
 		case PRIM_INTERRUPT:
-		  {
-		    compiled_error_backout ();
-		    Save_Cont ();
-		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
-		  }
+		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
 		case PRIM_APPLY_INTERRUPT:
-		  {
-		    apply_compiled_backout ();
-		    PREPARE_APPLY_INTERRUPT ();
-		    SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
-		  }
+		  PREPARE_APPLY_INTERRUPT ();
+		  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 
 		case ERR_INAPPLICABLE_OBJECT:
-
-		  /* This error code means that
-		     apply_compiled_procedure was called on an object
-		     which is not a compiled procedure, or it was
-		     called in a system without compiler support.
-		     
-		     Fall through...  */
-
 		case ERR_WRONG_NUMBER_OF_ARGUMENTS:
-		  {
-		    apply_compiled_backout ();
-		    APPLICATION_ERROR (dispatch_code);
-		  }
-
-		case ERR_EXECUTE_MANIFEST_VECTOR:
-		  {
-		    /* This error code means that
-		       enter_compiled_expression was called in a
-		       system without compiler support.  This is a
-		       kludge!  */
-		    execute_compiled_backout ();
-		    val_register
-		      = (OBJECT_NEW_TYPE (TC_COMPILED_ENTRY, exp_register));
-		    POP_RETURN_ERROR (dispatch_code);
-		  }
-
-		case ERR_INAPPLICABLE_CONTINUATION:
-		  {
-		    /* This error code means that
-		       return_to_compiled_code saw a non-continuation
-		       on the stack, or was called in a system without
-		       compiler support.  */
-		    exp_register = SHARP_F;
-		    Store_Return (RC_REENTER_COMPILED_CODE);
-		    POP_RETURN_ERROR (dispatch_code);
-		  }
+		  APPLICATION_ERROR (dispatch_code);
 
 		default:
-		  compiled_error_backout ();
 		  POP_RETURN_ERROR (dispatch_code);
 		}
 	    }
+#endif
 
 	  default:
 	    APPLICATION_ERROR (ERR_INAPPLICABLE_OBJECT);
@@ -1527,7 +1120,7 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
       }
 
     case RC_MOVE_TO_ADJACENT_POINT:
-      /* exp_register contains the space in which we are moving */
+      /* GET_EXP contains the space in which we are moving */
       {
 	long From_Count;
 	SCHEME_OBJECT Thunk;
@@ -1540,16 +1133,16 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	    SCHEME_OBJECT Current = STACK_REF (TRANSLATE_FROM_POINT);
 	    STACK_REF (TRANSLATE_FROM_DISTANCE)
 	      = (LONG_TO_UNSIGNED_FIXNUM (From_Count - 1));
-	    Thunk = (FAST_MEMORY_REF (Current, STATE_POINT_AFTER_THUNK));
+	    Thunk = (MEMORY_REF (Current, STATE_POINT_AFTER_THUNK));
 	    New_Location
-	      = (FAST_MEMORY_REF (Current, STATE_POINT_NEARER_POINT));
+	      = (MEMORY_REF (Current, STATE_POINT_NEARER_POINT));
 	    (STACK_REF (TRANSLATE_FROM_POINT)) = New_Location;
 	    if ((From_Count == 1)
 		&& ((STACK_REF (TRANSLATE_TO_DISTANCE))
 		    == (LONG_TO_UNSIGNED_FIXNUM (0))))
-	      sp_register = (STACK_LOC (4));
+	      stack_pointer = (STACK_LOC (4));
 	    else
-	      Save_Cont ();
+	      SAVE_CONT ();
 	  }
 	else
 	  {
@@ -1563,25 +1156,25 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	    To_Location = (STACK_REF (TRANSLATE_TO_POINT));
 	    for (i = 0; (i < To_Count); i += 1)
 	      To_Location
-		= (FAST_MEMORY_REF (To_Location, STATE_POINT_NEARER_POINT));
-	    Thunk = (FAST_MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK));
+		= (MEMORY_REF (To_Location, STATE_POINT_NEARER_POINT));
+	    Thunk = (MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK));
 	    New_Location = To_Location;
 	    (STACK_REF (TRANSLATE_TO_DISTANCE))
 	      = (LONG_TO_UNSIGNED_FIXNUM (To_Count));
 	    if (To_Count == 0)
-	      sp_register = (STACK_LOC (4));
+	      stack_pointer = (STACK_LOC (4));
 	    else
-	      Save_Cont ();
+	      SAVE_CONT ();
 	  }
-	if (exp_register != SHARP_F)
+	if (GET_EXP != SHARP_F)
 	  {
-	    MEMORY_SET (exp_register, STATE_SPACE_NEAREST_POINT, New_Location);
+	    MEMORY_SET (GET_EXP, STATE_SPACE_NEAREST_POINT, New_Location);
 	  }
 	else
-	  Current_State_Point = New_Location;
+	  current_state_point = New_Location;
 	Will_Push (2);
 	STACK_PUSH (Thunk);
-	STACK_PUSH (STACK_FRAME_HEADER);
+	PUSH_APPLY_FRAME_HEADER (0);
 	Pushed ();
 	goto internal_apply;
       }
@@ -1589,52 +1182,44 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
     case RC_INVOKE_STACK_THREAD:
       /* Used for WITH_THREADED_STACK primitive.  */
       Will_Push (3);
-      STACK_PUSH (val_register); /* Value calculated by thunk.  */
-      STACK_PUSH (exp_register);
-      STACK_PUSH (STACK_FRAME_HEADER+1);
+      PUSH_VAL ();		/* Value calculated by thunk.  */
+      PUSH_EXP ();
+      PUSH_APPLY_FRAME_HEADER (1);
       Pushed ();
       goto internal_apply;
 
     case RC_JOIN_STACKLETS:
-      Our_Throw (1, exp_register);
-      Join_Stacklet_Backout ();
-      Our_Throw_Part_2 ();
+      unpack_control_point (GET_EXP);
       break;
 
     case RC_NORMAL_GC_DONE:
-      val_register = exp_register;
+      SET_VAL (GET_EXP);
       /* Paranoia */
-      if (GC_Space_Needed < 0)
-	GC_Space_Needed = 0;
-      if (GC_Check (GC_Space_Needed))
+      if (GC_NEEDED_P (gc_space_needed))
 	termination_gc_out_of_space ();
-      GC_Space_Needed = 0;
-      EXIT_CRITICAL_SECTION ({ Save_Cont (); });
-      End_GC_Hook ();
+      gc_space_needed = 0;
+      EXIT_CRITICAL_SECTION ({ SAVE_CONT (); });
       break;
 
     case RC_PCOMB1_APPLY:
-      End_Subproblem ();
-      STACK_PUSH (val_register); /* Argument value */
+      END_SUBPROBLEM ();
+      PUSH_VAL ();		/* Argument value */
       Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB1_FN_SLOT));
+      SET_EXP (MEMORY_REF (GET_EXP, PCOMB1_FN_SLOT));
 
     primitive_internal_apply:
 
 #ifdef COMPILE_STEPPER
-      if (Trapping
+      if (trapping
 	  && (!WITHIN_CRITICAL_SECTION_P ())
 	  && ((FETCH_APPLY_TRAPPER ()) != SHARP_F))
 	{
-	  /* Does this work in the stacklet case?
-	     We may have a non-contiguous frame. -- Jinx  */
 	  Will_Push (3);
-	  STACK_PUSH (exp_register);
+	  PUSH_EXP ();
 	  STACK_PUSH (FETCH_APPLY_TRAPPER ());
-	  STACK_PUSH
-	    (STACK_FRAME_HEADER + 1 + (PRIMITIVE_N_PARAMETERS (exp_register)));
+	  PUSH_APPLY_FRAME_HEADER (1 + (PRIMITIVE_N_PARAMETERS (GET_EXP)));
 	  Pushed ();
-	  Stop_Trapping ();
+	  trapping = false;
 	  goto Apply_Non_Trapping;
 	}
 #endif /* COMPILE_STEPPER */
@@ -1647,203 +1232,144 @@ DEFUN (Interpret, (pop_return_p), int pop_return_p)
 	 3) We don't need to worry about unimplemented primitives because
 	 unimplemented primitives will cause an error at invocation.  */
       {
-	SCHEME_OBJECT primitive = exp_register;
-	APPLY_PRIMITIVE_FROM_INTERPRETER (val_register, primitive);
+	SCHEME_OBJECT primitive = GET_EXP;
+	APPLY_PRIMITIVE_FROM_INTERPRETER (primitive);
 	POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
-	if (Must_Report_References ())
-	  {
-	    exp_register = val_register;
-	    Store_Return (RC_RESTORE_VALUE);
-	    Save_Cont ();
-	    Call_Future_Logging ();
-	  }
 	break;
       }
 
     case RC_PCOMB2_APPLY:
-      End_Subproblem ();
-      STACK_PUSH (val_register); /* Value of arg. 1 */
+      END_SUBPROBLEM ();
+      PUSH_VAL ();		/* Value of arg. 1 */
       Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB2_FN_SLOT));
+      SET_EXP (MEMORY_REF (GET_EXP, PCOMB2_FN_SLOT));
       goto primitive_internal_apply;
 
     case RC_PCOMB2_DO_1:
-      env_register = (STACK_POP ());
-      STACK_PUSH (val_register); /* Save value of arg. 2 */
+      POP_ENV ();
+      PUSH_VAL ();		/* Save value of arg. 2 */
       DO_ANOTHER_THEN (RC_PCOMB2_APPLY, PCOMB2_ARG_1_SLOT);
 
     case RC_PCOMB3_APPLY:
-      End_Subproblem ();
-      STACK_PUSH (val_register); /* Save value of arg. 1 */
+      END_SUBPROBLEM ();
+      PUSH_VAL ();		/* Save value of arg. 1 */
       Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      exp_register = (FAST_MEMORY_REF (exp_register, PCOMB3_FN_SLOT));
+      SET_EXP (MEMORY_REF (GET_EXP, PCOMB3_FN_SLOT));
       goto primitive_internal_apply;
 
     case RC_PCOMB3_DO_1:
       {
 	SCHEME_OBJECT Temp = (STACK_POP ()); /* Value of arg. 3 */
-	env_register = (STACK_POP ());
+	POP_ENV ();
 	STACK_PUSH (Temp);	/* Save arg. 3 again */
-	STACK_PUSH (val_register); /* Save arg. 2 */
+	PUSH_VAL ();		/* Save arg. 2 */
 	DO_ANOTHER_THEN (RC_PCOMB3_APPLY, PCOMB3_ARG_1_SLOT);
       }
 
     case RC_PCOMB3_DO_2:
-      env_register = (STACK_REF (0));
-      STACK_PUSH (val_register); /* Save value of arg. 3 */
+      SET_ENV (STACK_REF (0));
+      PUSH_VAL ();		/* Save value of arg. 3 */
       DO_ANOTHER_THEN (RC_PCOMB3_DO_1, PCOMB3_ARG_2_SLOT);
 
     case RC_POP_RETURN_ERROR:
     case RC_RESTORE_VALUE:
-      val_register = exp_register;
+      SET_VAL (GET_EXP);
       break;
-
-    case RC_PRIMITIVE_CONTINUE:
-      val_register = (continue_primitive ());
-      break;
-
-    case RC_REPEAT_DISPATCH:
-      dispatch_code = (FIXNUM_TO_LONG (exp_register));
-      env_register = (STACK_POP ());
-      val_register = (STACK_POP ());
-      Restore_Cont ();
-      goto repeat_dispatch;
 
       /* The following two return codes are both used to restore a
 	 saved history object.  The difference is that the first does
 	 not copy the history object while the second does.  In both
-	 cases, the exp_register contains the history object and the
+	 cases, the GET_EXP contains the history object and the
 	 next item to be popped off the stack contains the offset back
-	 to the previous restore history return code.
-
-	 ASSUMPTION: History objects are never created using futures.  */
+	 to the previous restore history return code.  */
 
     case RC_RESTORE_DONT_COPY_HISTORY:
       {
-	SCHEME_OBJECT Stacklet;
-
-	Prev_Restore_History_Offset = (OBJECT_DATUM (STACK_POP ()));
-	Stacklet = (STACK_POP ());
-	history_register = (OBJECT_ADDRESS (exp_register));
-	if (Prev_Restore_History_Offset == 0)
-	  Prev_Restore_History_Stacklet = 0;
-	else if (Stacklet == SHARP_F)
-	  Prev_Restore_History_Stacklet = 0;
-	else
-	  Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (Stacklet));
+	prev_restore_history_offset = (OBJECT_DATUM (STACK_POP ()));
+	(void) STACK_POP ();
+	history_register = (OBJECT_ADDRESS (GET_EXP));
 	break;
       }
 
     case RC_RESTORE_HISTORY:
       {
-	SCHEME_OBJECT Stacklet;
-
-	if (!Restore_History (exp_register))
+	if (!restore_history (GET_EXP))
 	  {
-	    Save_Cont ();
+	    SAVE_CONT ();
 	    Will_Push (CONTINUATION_SIZE);
-	    exp_register = val_register;
-	    Store_Return (RC_RESTORE_VALUE);
-	    Save_Cont ();
+	    SET_EXP (GET_VAL);
+	    SET_RC (RC_RESTORE_VALUE);
+	    SAVE_CONT ();
 	    Pushed ();
-	    IMMEDIATE_GC ((Free > MemTop) ? 0 : ((MemTop - Free) + 1));
+	    IMMEDIATE_GC (HEAP_AVAILABLE);
 	  }
-	Prev_Restore_History_Offset = (OBJECT_DATUM (STACK_POP ()));
-	Stacklet = (STACK_POP ());
-	if (Prev_Restore_History_Offset == 0)
-	  Prev_Restore_History_Stacklet = 0;
-	else
-	  {
-	    if (Stacklet == SHARP_F)
-	      {
-		Prev_Restore_History_Stacklet = 0;
-		((Get_End_Of_Stacklet ()) [-Prev_Restore_History_Offset])
-		  = (MAKE_OBJECT (TC_RETURN_CODE, RC_RESTORE_HISTORY));
-	      }
-	    else
-	      {
-		Prev_Restore_History_Stacklet = (OBJECT_ADDRESS (Stacklet));
-		(Prev_Restore_History_Stacklet [-Prev_Restore_History_Offset])
-		  = (MAKE_OBJECT (TC_RETURN_CODE, RC_RESTORE_HISTORY));
-	      }
-	  }
+	prev_restore_history_offset = (OBJECT_DATUM (STACK_POP ()));
+	(void) STACK_POP ();
+	if (prev_restore_history_offset > 0)
+	  (STACK_LOCATIVE_REFERENCE (STACK_BOTTOM,
+				     (-prev_restore_history_offset)))
+	    = (MAKE_RETURN_CODE (RC_RESTORE_HISTORY));
 	break;
       }
 
-    case RC_RESTORE_FLUIDS:
-      Fluid_Bindings = exp_register;
-      break;
-
     case RC_RESTORE_INT_MASK:
-      SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (exp_register));
-      if (GC_Check (0))
-        Request_GC (0);
-      if ((PENDING_INTERRUPTS ()) != 0)
+      SET_INTERRUPT_MASK (UNSIGNED_FIXNUM_TO_LONG (GET_EXP));
+      if (GC_NEEDED_P (0))
+        REQUEST_GC (0);
+      if (PENDING_INTERRUPTS_P)
 	{
-	  Store_Return (RC_RESTORE_VALUE);
-	  exp_register = val_register;
-	  Save_Cont ();
+	  SET_RC (RC_RESTORE_VALUE);
+	  SET_EXP (GET_VAL);
+	  SAVE_CONT ();
 	  SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
 	}
       break;
 
     case RC_STACK_MARKER:
       /* Frame consists of the return code followed by two objects.
-	 The first object has already been popped into exp_register,
+	 The first object has already been popped into GET_EXP,
          so just pop the second argument.  */
-      sp_register = (STACK_LOCATIVE_OFFSET (sp_register, 1));
+      stack_pointer = (STACK_LOCATIVE_OFFSET (stack_pointer, 1));
       break;
 
     case RC_RESTORE_TO_STATE_POINT:
       {
-	SCHEME_OBJECT Where_To_Go = exp_register;
+	SCHEME_OBJECT Where_To_Go = GET_EXP;
 	Will_Push (CONTINUATION_SIZE);
-	/* Restore the contents of val_register after moving to point */
-	exp_register = val_register;
-	Store_Return (RC_RESTORE_VALUE);
-	Save_Cont ();
+	/* Restore the contents of GET_VAL after moving to point */
+	SET_EXP (GET_VAL);
+	SET_RC (RC_RESTORE_VALUE);
+	SAVE_CONT ();
 	Pushed ();
 	Translate_To_Point (Where_To_Go);
 	break;			/* We never get here.... */
       }
 
     case RC_SEQ_2_DO_2:
-      End_Subproblem ();
-      env_register = (STACK_POP ());
+      END_SUBPROBLEM ();
+      POP_ENV ();
       REDUCES_TO_NTH (SEQUENCE_2);
 
     case RC_SEQ_3_DO_2:
-      env_register = (STACK_REF (0));
+      SET_ENV (STACK_REF (0));
       DO_ANOTHER_THEN (RC_SEQ_3_DO_3, SEQUENCE_2);
 
     case RC_SEQ_3_DO_3:
-      End_Subproblem ();
-      env_register = (STACK_POP ());
+      END_SUBPROBLEM ();
+      POP_ENV ();
       REDUCES_TO_NTH (SEQUENCE_3);
 
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might
 	 have snapped it already.  */
-      if ((MEMORY_REF (exp_register, THUNK_SNAPPED)) == SHARP_T)
-	val_register = (MEMORY_REF (exp_register, THUNK_VALUE));
+      if ((MEMORY_REF (GET_EXP, THUNK_SNAPPED)) == SHARP_T)
+	SET_VAL (MEMORY_REF (GET_EXP, THUNK_VALUE));
       else
 	{
-	  MEMORY_SET (exp_register, THUNK_SNAPPED, SHARP_T);
-	  MEMORY_SET (exp_register, THUNK_VALUE, val_register);
+	  MEMORY_SET (GET_EXP, THUNK_SNAPPED, SHARP_T);
+	  MEMORY_SET (GET_EXP, THUNK_VALUE, GET_VAL);
 	}
       break;
-
-    case RC_AFTER_MEMORY_UPDATE:
-    case RC_BAD_INTERRUPT_CONTINUE:
-    case RC_COMPLETE_GC_DONE:
-    case RC_RESTARTABLE_EXIT:
-    case RC_RESTART_EXECUTION:
-    case RC_RESTORE_CONTINUATION:
-    case RC_RESTORE_STEPPER:
-    case RC_POP_FROM_COMPILED_CODE:
-      POP_RETURN_ERROR (ERR_INAPPLICABLE_CONTINUATION);
-
-      SITE_RETURN_DISPATCH_HOOK ();
 
     default:
       POP_RETURN_ERROR (ERR_INAPPLICABLE_CONTINUATION);

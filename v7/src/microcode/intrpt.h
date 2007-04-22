@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intrpt.h,v 1.26 2007/01/05 21:19:25 cph Exp $
+$Id: intrpt.h,v 1.27 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,104 +29,95 @@ USA.
 
 /* Interrupt bits -- scanned from LSB (1) to MSB (16) */
 
-#define INT_Stack_Overflow	0x0001	/* Local interrupt */
-#define INT_Global_GC		0x0002
-#define INT_GC			0x0004	/* Local interrupt */
-#define INT_Global_1		0x0008
-#define INT_Character		0x0010	/* Local interrupt */
-#define INT_AFTER_GC		0x0020	/* Local interrupt */
-#define INT_Timer		0x0040	/* Local interrupt */
-#define INT_Global_3		0x0080
-#define INT_Suspend		0x0100	/* Local interrupt */
+#define INT_Stack_Overflow	0x0001UL /* Local interrupt */
+#define INT_Global_GC		0x0002UL
+#define INT_GC			0x0004UL /* Local interrupt */
+#define INT_Global_1		0x0008UL
+#define INT_Character		0x0010UL /* Local interrupt */
+#define INT_AFTER_GC		0x0020UL /* Local interrupt */
+#define INT_Timer		0x0040UL /* Local interrupt */
+#define INT_Global_3		0x0080UL
+#define INT_Suspend		0x0100UL /* Local interrupt */
 
 /* Descartes profiling interrupts */
 
-#define INT_IPPB_Flush		0x0200	/* Local interrupt */
-#define INT_IPPB_Extend		0x0400	/* Local interrupt */
-#define INT_PCBPB_Flush		0x0800	/* Local interrupt */
-#define INT_PCBPB_Extend	0x1000	/* Local interrupt */
-#define INT_HCBPB_Flush		0x2000	/* Local interrupt */
-#define INT_HCBPB_Extend	0x4000	/* Local interrupt */
+#define INT_IPPB_Flush		0x0200UL /* Local interrupt */
+#define INT_IPPB_Extend		0x0400UL /* Local interrupt */
+#define INT_PCBPB_Flush		0x0800UL /* Local interrupt */
+#define INT_PCBPB_Extend	0x1000UL /* Local interrupt */
+#define INT_HCBPB_Flush		0x2000UL /* Local interrupt */
+#define INT_HCBPB_Extend	0x4000UL /* Local interrupt */
 
-#define INT_Step_CC		0x8000
+#define INT_Step_CC		0x8000UL
 
 #define INT_Global_Mask (INT_Global_GC | INT_Global_1 | INT_Global_3)
 
-#define Global_GC_Level		0x1
-#define Global_1_Level		0x3
-#define Global_3_Level		0x7
-#define MAX_INTERRUPT_NUMBER	0xF	/* 2^15 = INT_Step_CC */
+#define Global_GC_Level		0x1UL
+#define Global_1_Level		0x3UL
+#define Global_3_Level		0x7UL
+#define MAX_INTERRUPT_NUMBER	0xFUL	/* 2^15 = INT_Step_CC */
 
-#define INT_Mask		((1 << (MAX_INTERRUPT_NUMBER + 1)) - 1)
+#define INT_Mask		((1UL << (MAX_INTERRUPT_NUMBER + 1)) - 1)
 
 /* Utility macros. */
 
-#define PENDING_INTERRUPTS()						\
-  ((FETCH_INTERRUPT_MASK ()) & (FETCH_INTERRUPT_CODE ()))
-
-#define INTERRUPT_QUEUED_P(mask) (((FETCH_INTERRUPT_CODE ()) & (mask)) != 0)
-
-#define INTERRUPT_ENABLED_P(mask) (((FETCH_INTERRUPT_MASK ()) & (mask)) != 0)
-
+#define PENDING_INTERRUPTS() (GET_INT_MASK & GET_INT_CODE)
+#define PENDING_INTERRUPTS_P ((PENDING_INTERRUPTS ()) != 0)
+#define INTERRUPT_QUEUED_P(mask) ((GET_INT_CODE & (mask)) != 0)
+#define INTERRUPT_ENABLED_P(mask) ((GET_INT_MASK & (mask)) != 0)
 #define INTERRUPT_PENDING_P(mask) (((PENDING_INTERRUPTS ()) & (mask)) != 0)
 
 #define COMPILER_SETUP_INTERRUPT() do					\
 {									\
-  (Registers[REGBLOCK_MEMTOP]) =					\
+  SET_MEMTOP								\
     (((PENDING_INTERRUPTS ()) != 0)					\
-     ? ((SCHEME_OBJECT) -1)						\
-     : (INTERRUPT_ENABLED_P (INT_GC))					\
-     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (MemTop)))			\
-     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Heap_Top))));		\
-  (Registers[REGBLOCK_STACK_GUARD]) =					\
+     ? memory_block_start						\
+     : (GC_ENABLED_P ())						\
+     ? heap_alloc_limit							\
+     : heap_end);							\
+  SET_STACK_GUARD							\
     ((INTERRUPT_ENABLED_P (INT_Stack_Overflow))				\
-     ? ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Guard)))		\
-     : ((SCHEME_OBJECT) (ADDR_TO_SCHEME_ADDR (Stack_Bottom))));		\
+     ? stack_guard							\
+     : STACK_TOP);							\
 } while (0)
 
-#define FETCH_INTERRUPT_MASK() ((long) (Registers[REGBLOCK_INT_MASK]))
-
-#define SET_INTERRUPT_MASK(mask)					\
+#define SET_INTERRUPT_MASK(mask) do					\
 {									\
   GRAB_INTERRUPT_REGISTERS ();						\
-  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) (mask));		\
+  SET_INT_MASK (mask);							\
   COMPILER_SETUP_INTERRUPT ();						\
   RELEASE_INTERRUPT_REGISTERS ();					\
-}
+} while (0)
 
-#define FETCH_INTERRUPT_CODE() ((long) (Registers[REGBLOCK_INT_CODE]))
-
-#define REQUEST_INTERRUPT(code)						\
+#define REQUEST_INTERRUPT(code) do					\
 {									\
   GRAB_INTERRUPT_REGISTERS ();						\
-  (Registers[REGBLOCK_INT_CODE]) =					\
-    ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) | (code)));		\
+  SET_INT_CODE (GET_INT_CODE | (code));					\
   COMPILER_SETUP_INTERRUPT ();						\
   RELEASE_INTERRUPT_REGISTERS ();					\
-}
+} while (0)
 
-#define CLEAR_INTERRUPT_NOLOCK(code)					\
+#define CLEAR_INTERRUPT_NOLOCK(code) do					\
 {									\
-  (Registers[REGBLOCK_INT_CODE]) =					\
-    ((SCHEME_OBJECT) ((FETCH_INTERRUPT_CODE ()) &~ (code)));		\
+  SET_INT_CODE (GET_INT_CODE &~ (code));				\
   COMPILER_SETUP_INTERRUPT ();						\
-}
+} while (0)
 
-#define CLEAR_INTERRUPT(code)						\
+#define CLEAR_INTERRUPT(code) do					\
 {									\
   GRAB_INTERRUPT_REGISTERS ();						\
   CLEAR_INTERRUPT_NOLOCK (code);					\
   RELEASE_INTERRUPT_REGISTERS ();					\
-}
+} while (0)
 
-#define INITIALIZE_INTERRUPTS()						\
+#define INITIALIZE_INTERRUPTS(mask) do					\
 {									\
   GRAB_INTERRUPT_REGISTERS ();						\
-  (Registers[REGBLOCK_INT_MASK]) = ((SCHEME_OBJECT) INT_Mask);		\
-  (Registers[REGBLOCK_INT_CODE]) = ((SCHEME_OBJECT) 0);			\
+  SET_INT_MASK (mask);							\
+  SET_INT_CODE (0);							\
   COMPILER_SETUP_INTERRUPT ();						\
   RELEASE_INTERRUPT_REGISTERS ();					\
-}
+} while (0)
 
 #if defined(__OS2__) || defined(__WIN32__)
    extern void OS_grab_interrupt_registers (void);

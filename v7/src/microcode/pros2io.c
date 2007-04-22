@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2io.c,v 1.15 2007/01/05 21:19:25 cph Exp $
+$Id: pros2io.c,v 1.16 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -90,8 +90,8 @@ DEFINE_PRIMITIVE ("OS2-SELECT-REGISTRY-TEST", Prim_OS2_select_registry_test, 3, 
   if ((STRING_LENGTH (ARG_REF (1))) != (QID_MAX + 1))
     error_bad_range_arg (2);
   {
-    char * registry = (STRING_LOC ((ARG_REF (1)), 0));
-    char * results = (STRING_LOC ((ARG_REF (2)), 0));
+    char * registry = (STRING_POINTER (ARG_REF (1)));
+    char * results = (STRING_POINTER (ARG_REF (2)));
     int blockp = (BOOLEAN_ARG (3));
     int inputp = 0;
     int interruptp = 0;

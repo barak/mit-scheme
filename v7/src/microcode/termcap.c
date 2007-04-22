@@ -1,6 +1,10 @@
 /* Work-alike for termcap, plus extra features.
    Copyright (C) 1985, 1986 Free Software Foundation, Inc.
 
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
+
 		       NO WARRANTY
 
   BECAUSE THIS PROGRAM IS LICENSED FREE OF CHARGE, WE PROVIDE ABSOLUTELY
@@ -134,14 +138,6 @@ int bufsize = 128;
 
 #ifndef emacs
 
-#ifndef PTR
-# ifdef __STDC__
-#  define PTR void *
-# else
-#  define PTR char *
-# endif
-#endif
-
 #ifndef NULL
 #  define NULL 0
 #endif
@@ -153,23 +149,23 @@ memory_out ()
   exit (1);
 }
 
-static PTR
+static void *
 xmalloc (size)
      int size;
 {
-  register PTR tem = malloc (size);
-  if (tem == ((PTR) NULL))
+  void * tem = malloc (size);
+  if (tem == ((void *) NULL))
     memory_out ();
   return tem;
 }
 
-static PTR
+static void *
 xrealloc (ptr, size)
-     PTR ptr;
+     void * ptr;
      int size;
 {
-  register PTR tem = realloc (ptr, size);
-  if (tem == ((PTR) NULL))
+  void * tem = realloc (ptr, size);
+  if (tem == ((void *) NULL))
     memory_out ();
   return tem;
 }
@@ -203,8 +199,7 @@ static char *tgetst1 ();
    an entry for a particular capability */
 
 static char *
-find_capability (bp, cap)
-     register char *bp, *cap;
+find_capability (char * bp, char * cap)
 {
   for (; *bp; bp++)
     if (bp[0] == ':'
@@ -218,7 +213,7 @@ int
 tgetnum (cap)
      char *cap;
 {
-  register char *ptr = find_capability (term_entry, cap);
+  char *ptr = find_capability (term_entry, cap);
   if (!ptr || ptr[-1] != '#')
     return -1;
   return atoi (ptr);
@@ -228,7 +223,7 @@ int
 tgetflag (cap)
      char *cap;
 {
-  register char *ptr = find_capability (term_entry, cap);
+  char *ptr = find_capability (term_entry, cap);
   return 0 != ptr && ptr[-1] == ':';
 }
 
@@ -242,7 +237,7 @@ tgetstr (cap, area)
      char *cap;
      char **area;
 {
-  register char *ptr = find_capability (term_entry, cap);
+  char *ptr = find_capability (term_entry, cap);
   if (!ptr || (ptr[-1] != '=' && ptr[-1] != '~'))
     return 0;
   return tgetst1 (ptr, area);
@@ -268,11 +263,11 @@ tgetst1 (ptr, area)
      char *ptr;
      char **area;
 {
-  register char *p, *r;
-  register int c;
-  register int size;
+  char *p, *r;
+  int c;
+  int size;
   char *ret;
-  register int c1;
+  int c1;
 
   if (!ptr)
     return 0;
@@ -332,11 +327,11 @@ tgetst1 (ptr, area)
 char PC;
 
 tputs (string, nlines, outfun)
-     register char *string;
+     char *string;
      int nlines;
-     register int (*outfun) ();
+     int (*outfun) ();
 {
-  register int padcount = 0;
+  int padcount = 0;
 
   if (string == (char *) 0)
     return;
@@ -429,14 +424,14 @@ int
 tgetent (bp, name)
      char *bp, *name;
 {
-  register char *tem;
-  register int fd;
+  char *tem;
+  int fd;
   struct buffer buf;
-  register char *bp1;
+  char *bp1;
   char *bp2;
   char *term;
   int malloc_size = 0;
-  register int c;
+  int c;
   char *tcenv;			/* TERMCAP value, if it contais :tc=.  */
   char *indirect = 0;		/* Terminal type in :tc= in TERMCAP value.  */
   int filep;
@@ -569,10 +564,10 @@ static int
 scan_file (string, fd, bufp)
      char *string;
      int fd;
-     register struct buffer *bufp;
+     struct buffer *bufp;
 {
-  register char *tem;
-  register char *end;
+  char *tem;
+  char *end;
 
   bufp->ptr = bufp->beg;
   bufp->full = 0;
@@ -607,10 +602,9 @@ scan_file (string, fd, bufp)
    by termcap entry LINE.  */
 
 static int
-name_match (line, name)
-     char *line, *name;
+name_match (char *line, char * name)
 {
-  register char *tem;
+  char *tem;
 
   if (!compare_contin (line, name))
     return 1;
@@ -624,9 +618,9 @@ name_match (line, name)
 
 static int
 compare_contin (str1, str2)
-     register char *str1, *str2;
+     char *str1, *str2;
 {
-  register int c1, c2;
+  int c1, c2;
   while (1)
     {
       c1 = *str1++;
@@ -664,13 +658,13 @@ compare_contin (str1, str2)
 static char *
 gobble_line (fd, bufp, append_end)
      int fd;
-     register struct buffer *bufp;
+     struct buffer *bufp;
      char *append_end;
 {
-  register char *end;
-  register int nread;
-  register char *buf = bufp->beg;
-  register char *tem;
+  char *end;
+  int nread;
+  char *buf = bufp->beg;
+  char *tem;
 
   if (append_end == 0)
     append_end = bufp->ptr;
@@ -743,7 +737,7 @@ tprint (cap)
      char *cap;
 {
   char *x = tgetstr (cap, 0);
-  register char *y;
+  char *y;
 
   printf ("%s: ", cap);
   if (x)

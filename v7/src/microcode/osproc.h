@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osproc.h,v 1.14 2007/01/05 21:19:25 cph Exp $
+$Id: osproc.h,v 1.15 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -79,43 +79,42 @@ extern size_t OS_process_table_size;
 extern enum process_jc_status scheme_jc_status;
 
 /* OS_make_subprocess is obsolete; use OS-specific procedure.  */
-extern Tprocess EXFUN
-  (OS_make_subprocess,
-   (CONST char * filename,
-    CONST char ** argv,
-    CONST char ** env,
-    CONST char * working_directory,
-    enum process_ctty_type ctty_type,
-    char * ctty_name,
-    enum process_channel_type channel_in_type,
-    Tchannel channel_in,
-    enum process_channel_type channel_out_type,
-    Tchannel channel_out,
-    enum process_channel_type channel_err_type,
-    Tchannel channel_err));
-extern void EXFUN (OS_process_deallocate, (Tprocess process));
+extern Tprocess OS_make_subprocess
+  (const char * filename,
+   const char ** argv,
+   const char ** env,
+   const char * working_directory,
+   enum process_ctty_type ctty_type,
+   char * ctty_name,
+   enum process_channel_type channel_in_type,
+   Tchannel channel_in,
+   enum process_channel_type channel_out_type,
+   Tchannel channel_out,
+   enum process_channel_type channel_err_type,
+   Tchannel channel_err);
+extern void OS_process_deallocate (Tprocess process);
 
-extern int EXFUN (OS_process_valid_p, (Tprocess process));
-extern int EXFUN (OS_process_continuable_p, (Tprocess process));
-extern int EXFUN (OS_process_foregroundable_p, (Tprocess process));
+extern int OS_process_valid_p (Tprocess process);
+extern int OS_process_continuable_p (Tprocess process);
+extern int OS_process_foregroundable_p (Tprocess process);
 
-extern pid_t EXFUN (OS_process_id, (Tprocess process));
-extern enum process_jc_status EXFUN (OS_process_jc_status, (Tprocess process));
-extern int EXFUN (OS_process_status_sync, (Tprocess process));
-extern int EXFUN (OS_process_status_sync_all, (void));
-extern int EXFUN (OS_process_any_status_change, (void));
-extern enum process_status EXFUN (OS_process_status, (Tprocess process));
-extern unsigned short EXFUN (OS_process_reason, (Tprocess process));
+extern pid_t OS_process_id (Tprocess process);
+extern enum process_jc_status OS_process_jc_status (Tprocess process);
+extern int OS_process_status_sync (Tprocess process);
+extern int OS_process_status_sync_all (void);
+extern int OS_process_any_status_change (void);
+extern enum process_status OS_process_status (Tprocess process);
+extern unsigned short OS_process_reason (Tprocess process);
 
-extern void EXFUN (OS_process_send_signal, (Tprocess process, int sig));
-extern void EXFUN (OS_process_kill, (Tprocess process));
-extern void EXFUN (OS_process_stop, (Tprocess process));
-extern void EXFUN (OS_process_interrupt, (Tprocess process));
-extern void EXFUN (OS_process_quit, (Tprocess process));
-extern void EXFUN (OS_process_hangup, (Tprocess process));
+extern void OS_process_send_signal (Tprocess process, int sig);
+extern void OS_process_kill (Tprocess process);
+extern void OS_process_stop (Tprocess process);
+extern void OS_process_interrupt (Tprocess process);
+extern void OS_process_quit (Tprocess process);
+extern void OS_process_hangup (Tprocess process);
 
-extern void EXFUN (OS_process_continue_background, (Tprocess process));
-extern void EXFUN (OS_process_continue_foreground, (Tprocess process));
-extern void EXFUN (OS_process_wait, (Tprocess process));
+extern void OS_process_continue_background (Tprocess process);
+extern void OS_process_continue_foreground (Tprocess process);
+extern void OS_process_wait (Tprocess process);
 
 #endif /* SCM_OSPROC_H */

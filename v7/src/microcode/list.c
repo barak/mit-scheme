@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: list.c,v 9.37 2007/01/05 21:19:25 cph Exp $
+$Id: list.c,v 9.38 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,21 +30,20 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1, 
+DEFINE_PRIMITIVE ("PAIR?", Prim_pair, 1, 1,
  "(object)\n\
   Returns #t if object is a pair; otherwise returns #f.\
 ")
 {
-  fast SCHEME_OBJECT object;
+  SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
+  object = (ARG_REF (1));
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (PAIR_P (object)));
 }
 
 SCHEME_OBJECT
-DEFUN (cons, (car, cdr),
-       SCHEME_OBJECT car
-       AND SCHEME_OBJECT cdr)
+cons (SCHEME_OBJECT car,
+       SCHEME_OBJECT cdr)
 {
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
@@ -94,9 +93,8 @@ DEFINE_PRIMITIVE ("SET-CAR!", Prim_set_car, 2, 2,
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, PAIR_P);
   {
-    fast SCHEME_OBJECT pair = (ARG_REF (1));
-    fast SCHEME_OBJECT car = (ARG_REF (2));
-    SIDE_EFFECT_IMPURIFY (pair, car);
+    SCHEME_OBJECT pair = (ARG_REF (1));
+    SCHEME_OBJECT car = (ARG_REF (2));
     SET_PAIR_CAR (pair, car);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -111,9 +109,8 @@ DEFINE_PRIMITIVE ("SET-CDR!", Prim_set_cdr, 2, 2,
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, PAIR_P);
   {
-    fast SCHEME_OBJECT pair = (ARG_REF (1));
-    fast SCHEME_OBJECT cdr = (ARG_REF (2));
-    SIDE_EFFECT_IMPURIFY (pair, cdr);
+    SCHEME_OBJECT pair = (ARG_REF (1));
+    SCHEME_OBJECT cdr = (ARG_REF (2));
     SET_PAIR_CDR (pair, cdr);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -160,11 +157,10 @@ DEFINE_PRIMITIVE ("GENERAL-CAR-CDR", Prim_general_car_cdr, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   {
-    fast SCHEME_OBJECT object = (ARG_REF (1));
-    fast long CAR_CDR_Pattern = (arg_nonnegative_integer (2));
+    SCHEME_OBJECT object = (ARG_REF (1));
+    long CAR_CDR_Pattern = (arg_nonnegative_integer (2));
     while (CAR_CDR_Pattern > 1)
       {
-	TOUCH_IN_PRIMITIVE (object, object);
 	if (! (PAIR_P (object)))
 	  error_wrong_type_arg (1);
 	object =
@@ -182,15 +178,15 @@ DEFINE_PRIMITIVE ("LENGTH", Prim_length, 1, 1,
   Returns the length of LIST.\
  ")
 {
-  fast SCHEME_OBJECT list;
-  fast long i = 0;
+  SCHEME_OBJECT list;
+  long i = 0;
   PRIMITIVE_HEADER (1);
 
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), list);
+  list = (ARG_REF (1));
   while (PAIR_P (list))
     {
       i += 1;
-      TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
+      list = (PAIR_CDR (list));
     }
   if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (1);
@@ -219,18 +215,18 @@ DEFINE_PRIMITIVE ("MEMQ", Prim_memq, 2, 2,
   useful values rather than just `#t' or `#f'.\
  ")
 {
-  fast SCHEME_OBJECT key;
-  fast SCHEME_OBJECT list;
-  fast SCHEME_OBJECT list_key;
+  SCHEME_OBJECT key;
+  SCHEME_OBJECT list;
+  SCHEME_OBJECT list_key;
   PRIMITIVE_HEADER (2);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), key);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), list);
+  key = (ARG_REF (1));
+  list = (ARG_REF (2));
   while (PAIR_P (list))
     {
-      TOUCH_IN_PRIMITIVE ((PAIR_CAR (list)), list_key);
+      list_key = (PAIR_CAR (list));
       if (list_key == key)
 	PRIMITIVE_RETURN (list);
-      TOUCH_IN_PRIMITIVE ((PAIR_CDR (list)), list);
+      list = (PAIR_CDR (list));
     }
   if (!EMPTY_LIST_P (list))
     error_wrong_type_arg (2);
@@ -261,23 +257,23 @@ DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2,
   useful values rather than just `#t' or `#f'.\
  ")
 {
-  fast SCHEME_OBJECT key;
-  fast SCHEME_OBJECT alist;
-  fast SCHEME_OBJECT association;
-  fast SCHEME_OBJECT association_key;
+  SCHEME_OBJECT key;
+  SCHEME_OBJECT alist;
+  SCHEME_OBJECT association;
+  SCHEME_OBJECT association_key;
   PRIMITIVE_HEADER (2);
 
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), key);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), alist);
+  key = (ARG_REF (1));
+  alist = (ARG_REF (2));
   while (PAIR_P (alist))
     {
-      TOUCH_IN_PRIMITIVE ((PAIR_CAR (alist)), association);
+      association = (PAIR_CAR (alist));
       if (! (PAIR_P (association)))
 	error_wrong_type_arg (2);
-      TOUCH_IN_PRIMITIVE ((PAIR_CAR (association)), association_key);
+      association_key = (PAIR_CAR (association));
       if (association_key == key)
 	PRIMITIVE_RETURN (association);
-      TOUCH_IN_PRIMITIVE ((PAIR_CDR (alist)), alist);
+      alist = (PAIR_CDR (alist));
     }
   if (!EMPTY_LIST_P (alist))
     error_wrong_type_arg (2);
@@ -286,17 +282,16 @@ DEFINE_PRIMITIVE ("ASSQ", Prim_assq, 2, 2,
 
 DEFINE_PRIMITIVE ("SYSTEM-PAIR?", Prim_sys_pair, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
+  SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (GC_PAIR_P (object)));
+  object = (ARG_REF (1));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (GC_TYPE_PAIR (object)));
 }
 
 SCHEME_OBJECT
-DEFUN (system_pair_cons, (type, car, cdr),
-       long type
-       AND SCHEME_OBJECT car
-       AND SCHEME_OBJECT cdr)
+system_pair_cons (long type,
+       SCHEME_OBJECT car,
+       SCHEME_OBJECT cdr)
 {
   Primitive_GC_If_Needed (2);
   (*Free++) = car;
@@ -308,8 +303,8 @@ DEFINE_PRIMITIVE ("SYSTEM-PAIR-CONS", Prim_sys_pair_cons, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    long type = (arg_index_integer (1, (MAX_TYPE_CODE + 1)));
-    if ((GC_Type_Code (type)) != GC_Pair)
+    unsigned long type = (arg_ulong_index_integer (1, N_TYPE_CODES));
+    if ((GC_TYPE_CODE (type)) != GC_PAIR)
       error_bad_range_arg (1);
     PRIMITIVE_RETURN (system_pair_cons (type, (ARG_REF (2)), (ARG_REF (3))));
   }
@@ -318,25 +313,24 @@ DEFINE_PRIMITIVE ("SYSTEM-PAIR-CONS", Prim_sys_pair_cons, 3, 3, 0)
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-CAR", Prim_sys_pair_car, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, GC_PAIR_P);
+  CHECK_ARG (1, GC_TYPE_PAIR);
   PRIMITIVE_RETURN (PAIR_CAR (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-CDR", Prim_sys_pair_cdr, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, GC_PAIR_P);
+  CHECK_ARG (1, GC_TYPE_PAIR);
   PRIMITIVE_RETURN (PAIR_CDR (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CAR!", Prim_sys_set_car, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, GC_PAIR_P);
+  CHECK_ARG (1, GC_TYPE_PAIR);
   {
-    fast SCHEME_OBJECT pair = (ARG_REF (1));
-    fast SCHEME_OBJECT car = (ARG_REF (2));
-    SIDE_EFFECT_IMPURIFY (pair, car);
+    SCHEME_OBJECT pair = (ARG_REF (1));
+    SCHEME_OBJECT car = (ARG_REF (2));
     SET_PAIR_CAR (pair, car);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -345,11 +339,10 @@ DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CAR!", Prim_sys_set_car, 2, 2, 0)
 DEFINE_PRIMITIVE ("SYSTEM-PAIR-SET-CDR!", Prim_sys_set_cdr, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, GC_PAIR_P);
+  CHECK_ARG (1, GC_TYPE_PAIR);
   {
-    fast SCHEME_OBJECT pair = (ARG_REF (1));
-    fast SCHEME_OBJECT cdr = (ARG_REF (2));
-    SIDE_EFFECT_IMPURIFY (pair, cdr);
+    SCHEME_OBJECT pair = (ARG_REF (1));
+    SCHEME_OBJECT cdr = (ARG_REF (2));
     SET_PAIR_CDR (pair, cdr);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.39 2007/04/04 05:08:19 riastradh Exp $])
+AC_INIT([MIT/GNU Scheme microcode], [15.0], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.40 2007/04/22 16:31:22 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -189,18 +189,51 @@ LIARC_RULES=/dev/null
 
 dnl Checks for programs.
 AC_PROG_CC
-AC_PROG_GCC_TRADITIONAL
+AC_C_BACKSLASH_A
+AC_C_BIGENDIAN
+AC_C_CONST
+AC_C_RESTRICT
+AC_C_VOLATILE
+AC_C_INLINE
+AC_C_STRINGIZE
+AC_C_PROTOTYPES
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 if test ${GCC} = yes; then
     if test ${enable_debugging} = no; then
-	CFLAGS="-fPIC -O3"
+	CFLAGS="-O3"
     else
-	CFLAGS="-fPIC -O0 -g"
+	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="${CFLAGS} -Wall"
+    if test ${enable_native_code} = c; then
+	CFLAGS="-fPIC ${CFLAGS}"
+    fi
+    CFLAGS="${CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
+    CFLAGS="${CFLAGS} -Wstrict-prototypes -Wnested-externs -Wredundant-decls"
+
+    AC_MSG_CHECKING([for GCC>=4])
+    AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+	    [[
+	    #if __GNUC__ >= 4
+	    ;
+	    #else
+	    #error "gcc too old"
+	    #endif
+	    ]],
+	    [[]]
+	)],
+	[
+	AC_MSG_RESULT([yes])
+        CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
+        CFLAGS="${CFLAGS} -Wold-style-definition"
+	],
+	[AC_MSG_RESULT([no])])
+
+    # other possibilities:
+    # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
 fi
 FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
 if test "x${FOO}" != x; then
@@ -597,6 +630,9 @@ if test "${with_mhash}" != no; then
 	    [
 	    AC_DEFINE([HAVE_LIBMHASH], [1],
 		[Define to 1 if you have the `mhash' library (-lmhash).])
+	    if test ${enable_debugging} != no; then
+	       LIBS="-lmhash ${LIBS}"
+	    fi
 	    MODULE_LIBS="-lmhash ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prmhash"
 	    if test "x${PRMD5_LIBS}" = x; then
@@ -820,8 +856,8 @@ if test ${DO_GCC_TESTS} = yes; then
 fi
 
 AC_MSG_CHECKING([for native-code support])
-OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
-GC_HEAD_FILES="gccode.h cmpgc.h"
+OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
+GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 SCM_ARCH=none
 ECN_WARNP=no
 
@@ -857,6 +893,9 @@ yes)
 c)
     SCM_ARCH=c
     ;;
+svm)
+    SCM_ARCH=svm1
+    ;;
 no|none)
     ;;
 *)
@@ -870,14 +909,16 @@ none)
     ;;
 c)
     AC_MSG_RESULT([yes, using portable C code])
-    AC_DEFINE([NATIVE_CODE_IS_C], [1],
-        [Define that the compiler outputs C code instead of binaries.])
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
     AC_DEFINE([COMPILE_FOR_STATIC_LINKING], [1],
 	[Define to 1 for static compilation of C native code.])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
+    ;;
+svm1)
+    AC_MSG_RESULT([yes, using portable SVM code])
+    OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
     ;;
 *)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
@@ -891,12 +932,11 @@ if test ${ECN_WARNP} = yes; then
     AC_MSG_WARN([illegal --enable-native-code value: ${enable_native_code}])
 fi
 
-if test ${SCM_ARCH} != none; then
-    AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
-	[Define if architecture has native-code compiler support.])
-    AC_CONFIG_LINKS([cmpintmd.h:cmpintmd/${SCM_ARCH}.h])
-    GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
-fi
+AC_CONFIG_LINKS([
+    cmpintmd.h:cmpintmd/${SCM_ARCH}.h
+    cmpintmd.c:cmpintmd/${SCM_ARCH}.c
+    cmpintmd-config.h:cmpintmd/${SCM_ARCH}-config.h
+    ])
 
 for base in ${OPTIONAL_BASES}; do
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: avltree.c,v 1.10 2007/01/05 21:19:25 cph Exp $
+$Id: avltree.c,v 1.11 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,22 +27,17 @@ USA.
 
 /* This file contains the code for a simple AVL tree library.
    It is used by the MIT/GNU Scheme microcode to quickly map
-   names to indices into various tables.
- */
+   names to indices into various tables.  */
 
 #include "avltree.h"
 
-extern int EXFUN (strcmp_ci, (CONST char * s1, CONST char * s2));
-extern PTR EXFUN (malloc, (unsigned long));
-extern void EXFUN (free, (PTR));
+extern int strcmp_ci (const char *, const char *);
 
-CONST char * tree_error_message = 0;
-CONST char * tree_error_noise = 0;
+const char * tree_error_message = 0;
+const char * tree_error_noise = 0;
 
 static void
-DEFUN (tree_error, (message, noise),
-       CONST char * message AND
-       CONST char * noise)
+tree_error (const char * message, const char * noise)
 {
   tree_error_message = message;
   tree_error_noise = noise;
@@ -57,25 +52,23 @@ DEFUN (tree_error, (message, noise),
    With random insertion (or when created as below),
    they are better, approaching log base 2.
 
-   This version does not allow duplicate entries.  */   
+   This version does not allow duplicate entries.  */
 
-#define BRANCH_HEIGHT(tree) (((tree) == 0) ? 0 : (tree)->height)
+#define BRANCH_HEIGHT(tree) (((tree) == 0) ? 0 : ((tree) -> height))
 
 #ifndef MAX
 #  define MAX(a,b) (((a) >= (b)) ? (a) : (b))
 #endif
 
 static void
-DEFUN (update_height, (tree), tree_node tree)
+update_height (tree_node tree)
 {
-  tree->height = (1 + (MAX ((BRANCH_HEIGHT (tree->left)),
+  (tree->height) = (1 + (MAX ((BRANCH_HEIGHT (tree->left)),
 			    (BRANCH_HEIGHT (tree->rite)))));
 }
 
 static tree_node
-DEFUN (leaf_make, (name, value),
-       CONST char * name AND
-       unsigned long value)
+leaf_make (const char * name, unsigned long value)
 {
   tree_node leaf = ((tree_node) (malloc (sizeof (struct tree_node_s))));
   if (leaf == 0)
@@ -83,40 +76,40 @@ DEFUN (leaf_make, (name, value),
       tree_error ("leaf_make: malloc failed.\n", 0);
       return (leaf);
     }
-  leaf->name = name;
-  leaf->value = value;
-  leaf->height = 1;
-  leaf->left = 0;
-  leaf->rite = 0;
+  (leaf->name) = name;
+  (leaf->value) = value;
+  (leaf->height) = 1;
+  (leaf->left) = 0;
+  (leaf->rite) = 0;
   return (leaf);
 }
 
 static tree_node
-DEFUN (rotate_left, (tree), tree_node tree)
+rotate_left (tree_node tree)
 {
-  tree_node rite = tree->rite;
-  tree_node beta = rite->left;
-  tree->rite = beta;
-  rite->left = tree;
+  tree_node rite = (tree->rite);
+  tree_node beta = (rite->left);
+  (tree->rite) = beta;
+  (rite->left) = tree;
   update_height (tree);
   update_height (rite);
   return (rite);
 }
 
 static tree_node
-DEFUN (rotate_rite, (tree), tree_node tree)
+rotate_rite (tree_node tree)
 {
-  tree_node left = tree->left;
-  tree_node beta = left->rite;
-  tree->left = beta;
-  left->rite = tree;
+  tree_node left = (tree->left);
+  tree_node beta = (left->rite);
+  (tree->left) = beta;
+  (left->rite) = tree;
   update_height (tree);
   update_height (left);
   return (left);
 }
 
 static tree_node
-DEFUN (rebalance_left, (tree), tree_node tree)
+rebalance_left (tree_node tree)
 {
   if ((1 + (BRANCH_HEIGHT (tree->rite))) >= (BRANCH_HEIGHT (tree->left)))
     {
@@ -125,15 +118,15 @@ DEFUN (rebalance_left, (tree), tree_node tree)
     }
   else
     {
-      tree_node q = tree->left;
+      tree_node q = (tree->left);
       if ((BRANCH_HEIGHT (q->rite)) > (BRANCH_HEIGHT (q->left)))
-	tree->left = (rotate_left (q));
+	(tree->left) = (rotate_left (q));
       return (rotate_rite (tree));
     }
 }
 
 static tree_node
-DEFUN (rebalance_rite, (tree), tree_node tree)
+rebalance_rite (tree_node tree)
 {
   if ((1 + (BRANCH_HEIGHT (tree->left))) >= (BRANCH_HEIGHT (tree->rite)))
     {
@@ -142,38 +135,33 @@ DEFUN (rebalance_rite, (tree), tree_node tree)
     }
   else
     {
-      tree_node q = tree->rite;
+      tree_node q = (tree->rite);
       if ((BRANCH_HEIGHT (q->left)) > (BRANCH_HEIGHT (q->rite)))
-	tree->rite = (rotate_rite (q));
+	(tree->rite) = (rotate_rite (q));
       return (rotate_left (tree));
     }
 }
 
 tree_node
-DEFUN (tree_insert, (tree, name, value),
-       tree_node tree AND
-       CONST char * name AND
-       unsigned long value)
+tree_insert (tree_node tree, const char * name, unsigned long value)
 {
   if (tree == 0)
     return (leaf_make (name, value));
-  switch (strcmp_ci (name, tree->name))
+  switch (strcmp_ci (name, (tree->name)))
     {
     case 0:
       tree_error ("tree_insert: Duplicate entry %s.\n", name);
       return (tree);
-      
-    case -1:
+
+    case (-1):
       {
-	/* To the left */
-	tree->left = (tree_insert (tree->left, name, value));
+	(tree->left) = (tree_insert ((tree->left), name, value));
 	return (rebalance_left (tree));
       }
 
     case 1:
       {
-	/* To the right */
-	tree->rite = (tree_insert (tree->rite, name, value));
+	(tree->rite) = (tree_insert ((tree->rite), name, value));
 	return (rebalance_rite (tree));
       }
     }
@@ -182,30 +170,27 @@ DEFUN (tree_insert, (tree, name, value),
 }
 
 tree_node
-DEFUN (tree_lookup, (tree, name), tree_node tree AND CONST char * name)
+tree_lookup (tree_node tree, const char * name)
 {
   while (tree != 0)
-    switch (strcmp_ci (name, tree->name))
+    switch (strcmp_ci (name, (tree->name)))
       {
       case 0:
 	return (tree);
 
-      case -1:
-	tree = tree->left;
+      case (-1):
+	tree = (tree->left);
 	break;
 
       case 1:
-	tree = tree->rite;
+	tree = (tree->rite);
 	break;
       }
   return (tree);
 }
 
 tree_node
-DEFUN (tree_build, (high, names, value),
-       unsigned long high AND
-       CONST char ** names AND
-       unsigned long value)
+tree_build (unsigned long high, const char ** names, unsigned long value)
 {
   static long bias = 0;
   if (high > 1)
@@ -220,20 +205,18 @@ DEFUN (tree_build, (high, names, value),
 	  bias = (1 - bias);
 	}
       next = (middle + 1);
-      tree = (leaf_make (names[middle], (value + middle)));
-      tree->left = (tree_build (middle, names, value));
-      tree->rite = (tree_build ((high - next), &names[next], (value + next)));
+      tree = (leaf_make ((names[middle]), (value + middle)));
+      (tree->left) = (tree_build (middle, names, value));
+      (tree->rite)
+	= (tree_build ((high - next), (& (names[next])), (value + next)));
       update_height (tree);
       return (tree);
     }
-  else if (high == 1)
-    return (leaf_make (* names, value));
-  else
-    return (0);
+  return ((high == 1) ? (leaf_make ((*names), value)) : 0);
 }
 
 void
-DEFUN (tree_free, (tree), tree_node tree)
+tree_free (tree_node tree)
 {
   if (tree != 0)
     {

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttop.c,v 1.39 2007/01/05 21:19:25 cph Exp $
+$Id: nttop.c,v 1.40 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,8 +54,8 @@ extern void NT_restore_traps (void);
 
 /* reset_interruptable_extent */
 
-extern CONST char * OS_Name;
-extern CONST char * OS_Variant;
+extern const char * OS_Name;
+extern const char * OS_Variant;
 
 static const char * w32_error_message (DWORD);
 static int syserr_to_unix_error_code (enum syserr_names);
@@ -212,14 +212,10 @@ OS_announcement (void)
 void
 OS_reset (void)
 {
-  /*
-    There should really be a reset for each initialize above,
-    but the rest seem innocuous.
-   */
-
+  /* There should really be a reset for each initialize above, but the
+     rest seem innocuous.  */
   NT_reset_channels ();
   execute_reload_cleanups ();
-  return;
 }
 
 void
@@ -227,7 +223,6 @@ OS_quit (int code, int abnormal_p)
 {
   outf_console ("\nScheme has terminated abnormally!\n");
   OS_restore_external_state ();
-  return;
 }
 
 /* Memory Allocation */
@@ -408,7 +403,7 @@ w32_error_message (DWORD rc)
 		      ((LPTSTR) (&buffer)),
 		      0,
 		      0));
-  
+
   if (length == 0)
     return (0);
   /* Assumes that we're using ANSI rather than Unicode characters.  */
@@ -462,7 +457,6 @@ NT_prim_check_errno (enum syscall_names name)
   if (errno != EINTR)
     NT_error_unix_call (errno, name);
   deliver_pending_interrupts ();
-  return;
 }
 
 void
@@ -471,11 +465,10 @@ OS_restore_external_state (void)
   NT_restore_traps ();
   NT_restore_signals ();
   NT_restore_channels ();
-  return;
 }
 
 #ifndef __OPEN_WATCOM_14__
-void 
+void
 bcopy (const char * s1, char * s2, int n)
 {
   while (n-- > 0)
@@ -483,19 +476,14 @@ bcopy (const char * s1, char * s2, int n)
 }
 #endif
 
-/* This is called during initialization, when the error system is not
-   set up.
-*/
-
 void *
-OS_malloc_init (unsigned int size)
+OS_malloc_init (size_t size)
 {
-  void * result = (malloc (size));
-  return (result);
+  return (malloc (size));
 }
 
 void *
-OS_malloc (unsigned int size)
+OS_malloc (size_t size)
 {
   void * result = (malloc (size));
   if (result == 0)
@@ -504,7 +492,7 @@ OS_malloc (unsigned int size)
 }
 
 void *
-OS_realloc (void * ptr, unsigned int size)
+OS_realloc (void * ptr, size_t size)
 {
   void * result = (realloc (ptr, size));
   if (result == 0)
@@ -519,17 +507,17 @@ OS_free (void * ptr)
 }
 
 void
-OS_syscall_names (unsigned int * length, unsigned char *** names)
+OS_syscall_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syscall_names_table);
+  (*names) = syscall_names_table;
 }
 
 void
-OS_syserr_names (unsigned int * length, unsigned char *** names)
+OS_syserr_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syserr_names_table);
+  (*names) = syserr_names_table;
 }
 
 static CRITICAL_SECTION interrupt_registers_lock;

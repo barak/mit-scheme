@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: vax.h,v 1.13 2007/01/05 21:19:26 cph Exp $
+$Id: vax.h,v 1.14 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,10 +34,8 @@ USA.
  * Specialized for the Vax architecture.
  */
 
-#ifndef CMPNTMD_H_INCLUDED
-#define CMPNTMD_H_INCLUDED
-
-#include "cmptype.h"
+#ifndef SCM_CMPINTMD_H_INCLUDED
+#define SCM_CMPINTMD_H_INCLUDED 1
 
 /* Machine parameters to be set by the user. */
 
@@ -46,7 +44,7 @@ USA.
 
 /* Processor type.  Choose a number from the above list, or allocate your own. */
 
-#define COMPILER_PROCESSOR_TYPE			COMPILER_VAX_TYPE
+#define COMPILER_PROCESSOR_TYPE COMPILER_VAX_TYPE
 
 /* Size (in long words) of the contents of a floating point register if
    different from a double.  Default is fine.
@@ -61,13 +59,6 @@ USA.
  */
 
 typedef unsigned short format_word;
-
-/* PC alignment constraint.
-   Change PC_ZERO_BITS to be how many low order bits of the pc are
-   guaranteed to be 0 always because of PC alignment constraints.
-*/
-
-#define PC_ZERO_BITS                    0
 
 /* The length of the GC recovery code that precedes an entry.
    On the Vax a "movl s^code,r0; jsb b^n(r10)" sequence.
@@ -101,12 +92,12 @@ do {									\
 		 magic_constant));					\
 } while (0)
 
-/* Manifest closure entry block size. 
+/* Manifest closure entry block size.
    Size in bytes of a compiled closure's header excluding the
    TC_MANIFEST_CLOSURE header.
 
    On the Vax, this is the format word and gc offset word and 6 bytes
-   more for the jsb instruction.  
+   more for the jsb instruction.
 */
 
 #define COMPILED_CLOSURE_ENTRY_SIZE					\
@@ -144,7 +135,7 @@ do {									\
    contains the callee's name instead of the jump code.
  */
 
-#define EXECUTE_CACHE_ENTRY_SIZE        2
+#define EXECUTE_CACHE_ENTRY_SIZE 2
 
 /* Execute cache destructuring. */
 
@@ -211,6 +202,7 @@ do {									\
  */
 
 #define COMPILER_REGBLOCK_N_FIXED	16
+#define COMPILER_REGBLOCK_N_TEMPS	256
 
 #define COMPILER_REGBLOCK_N_HOOKS	40
 #define COMPILER_HOOK_SIZE		2	/* jsb @& + pad */
@@ -243,7 +235,7 @@ do {									\
 
 #define SETUP_REGISTER(hook)						\
 {									\
-  extern void EXFUN (hook, (void));					\
+  extern void hook (void);						\
   (* ((unsigned short *) (r10_value + offset))) =			\
     ((unsigned short) 0x9f17);						\
   (* ((unsigned long *)							\
@@ -255,7 +247,7 @@ do {									\
 #endif
 
 void
-DEFUN_VOID (vax_reset_hook)
+vax_reset_hook (void)
 {
   unsigned char * r10_value = ((unsigned char *) (&Registers[0]));
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
@@ -345,7 +337,7 @@ DEFUN_VOID (vax_reset_hook)
 
 #define TRAMPOLINE_STORAGE(tramp_entry)					\
   ((((SCHEME_OBJECT *) tramp_entry) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
-   (2 + TRAMPOLINE_ENTRY_SIZE)) 
+   (2 + TRAMPOLINE_ENTRY_SIZE))
 
 #define STORE_TRAMPOLINE_ENTRY(entry_address, code)			\
 {									\
@@ -377,55 +369,17 @@ DEFUN_VOID (vax_reset_hook)
 #define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
 #define OFFSET_WORD_CONTINUATION_P(word)        (((word) & 1) != 0)
 
-#if (PC_ZERO_BITS == 0)
 /* Instructions aligned on byte boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) << 1)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) >> 1)
-#endif
-
-#if (PC_ZERO_BITS == 1)
-/* Instructions aligned on word (16 bit) boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      (offset)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  (CLEAR_LOW_BIT(offset_word))
-#endif
-
-#if (PC_ZERO_BITS >= 2)
-/* Should be OK for =2, but bets are off for >2 because of problems
-   mentioned earlier!
-*/
-#define SHIFT_AMOUNT                            (PC_ZERO_BITS - 1)
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) >> (SHIFT_AMOUNT))
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) << (SHIFT_AMOUNT))
-#endif
+#define BYTE_OFFSET_TO_OFFSET_WORD(offset) ((offset) << 1)
+#define OFFSET_WORD_TO_BYTE_OFFSET(word) ((CLEAR_LOW_BIT (word)) >> 1)
 
 #define MAKE_OFFSET_WORD(entry, block, continue)                        \
   ((BYTE_OFFSET_TO_OFFSET_WORD(((char *) (entry)) -                     \
                                ((char *) (block)))) |                   \
    ((continue) ? 1 : 0))
 
-#if (EXECUTE_CACHE_ENTRY_SIZE == 2)
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) >> 1)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) << 1)
-#endif
-
-#if (EXECUTE_CACHE_ENTRY_SIZE == 4)
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) >> 2)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) << 2)
-#endif
-
-#if (!defined(EXECUTE_CACHE_COUNT_TO_ENTRIES))
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) / EXECUTE_CACHE_ENTRY_SIZE)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) * EXECUTE_CACHE_ENTRY_SIZE)
-#endif
+#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count) ((count) >> 1)
+#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries) ((entries) << 1)
 
 /* The first entry in a cc block is preceeded by 2 headers (block and nmv),
    a format word and a gc offset word.   See the early part of the
@@ -477,4 +431,4 @@ DEFUN_VOID (vax_reset_hook)
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPNTMD_H_INCLUDED */
+#endif /* !SCM_CMPINTMD_H_INCLUDED */

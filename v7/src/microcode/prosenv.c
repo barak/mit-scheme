@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosenv.c,v 1.22 2007/01/12 03:45:55 cph Exp $
+$Id: prosenv.c,v 1.23 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,7 +31,6 @@ USA.
 #include "prims.h"
 #include "osenv.h"
 #include "ostop.h"
-#include "limits.h"
 
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
@@ -49,19 +48,19 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
     if (! (len >= 10))							\
       error_bad_range_arg (1);						\
     proc (((time_t) (arg_ulong_integer (2))), &ts);			\
-    FAST_VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
-    FAST_VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
-    FAST_VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
-    FAST_VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));		\
-    FAST_VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));		\
-    FAST_VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));		\
-    FAST_VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));	\
-    FAST_VECTOR_SET							\
+    VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
+    VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
+    VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
+    VECTOR_SET (vec, 4, (ulong_to_integer (ts . day)));			\
+    VECTOR_SET (vec, 5, (ulong_to_integer (ts . month)));		\
+    VECTOR_SET (vec, 6, (ulong_to_integer (ts . year)));		\
+    VECTOR_SET (vec, 7, (ulong_to_integer (ts . day_of_week)));		\
+    VECTOR_SET								\
       (vec, 8,								\
        (((ts . daylight_savings_time) < 0)				\
 	? SHARP_F							\
 	: (long_to_integer (ts . daylight_savings_time))));		\
-    FAST_VECTOR_SET							\
+    VECTOR_SET								\
       (vec, 9,								\
        (((ts . time_zone) == INT_MAX)					\
 	? SHARP_F							\
@@ -94,22 +93,22 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   len = (VECTOR_LENGTH (vec));
   if (! (len >= 8))
     error_bad_range_arg (1);
-  (ts . second) = (integer_to_ulong (FAST_VECTOR_REF (vec, 1)));
-  (ts . minute) = (integer_to_ulong (FAST_VECTOR_REF (vec, 2)));
-  (ts . hour) = (integer_to_ulong (FAST_VECTOR_REF (vec, 3)));
-  (ts . day) = (integer_to_ulong (FAST_VECTOR_REF (vec, 4)));
-  (ts . month) = (integer_to_ulong (FAST_VECTOR_REF (vec, 5)));
-  (ts . year) = (integer_to_ulong (FAST_VECTOR_REF (vec, 6)));
-  (ts . day_of_week) = (integer_to_ulong (FAST_VECTOR_REF (vec, 7)));
+  (ts . second) = (integer_to_ulong (VECTOR_REF (vec, 1)));
+  (ts . minute) = (integer_to_ulong (VECTOR_REF (vec, 2)));
+  (ts . hour) = (integer_to_ulong (VECTOR_REF (vec, 3)));
+  (ts . day) = (integer_to_ulong (VECTOR_REF (vec, 4)));
+  (ts . month) = (integer_to_ulong (VECTOR_REF (vec, 5)));
+  (ts . year) = (integer_to_ulong (VECTOR_REF (vec, 6)));
+  (ts . day_of_week) = (integer_to_ulong (VECTOR_REF (vec, 7)));
   (ts . daylight_savings_time)
-    = (((len > 8) && (INTEGER_P (FAST_VECTOR_REF (vec, 8))))
-       ? (integer_to_long (FAST_VECTOR_REF (vec, 8)))
+    = (((len > 8) && (INTEGER_P (VECTOR_REF (vec, 8))))
+       ? (integer_to_long (VECTOR_REF (vec, 8)))
        : (-1));
   (ts . time_zone)
     = (((len > 9)
-	&& (INTEGER_P (FAST_VECTOR_REF (vec, 9)))
-	&& (integer_to_ulong_p (FAST_VECTOR_REF (vec, 9))))
-       ? (integer_to_ulong (FAST_VECTOR_REF (vec, 9)))
+	&& (INTEGER_P (VECTOR_REF (vec, 9)))
+	&& (integer_to_ulong_p (VECTOR_REF (vec, 9))))
+       ? (integer_to_ulong (VECTOR_REF (vec, 9)))
        : INT_MAX);
   PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encode_time (&ts))));
 }
@@ -223,9 +222,10 @@ DEFINE_PRIMITIVE ("SYSTEM-CALL-ERROR-MESSAGE", Prim_system_call_error_message, 1
 {
   PRIMITIVE_HEADER (1);
   {
-    CONST char * message =
-      (OS_error_code_to_message (arg_nonnegative_integer (1)));
-    PRIMITIVE_RETURN
-      ((message == 0) ? SHARP_F : (char_pointer_to_string (message)));
+    const char * message
+      = (OS_error_code_to_message (arg_nonnegative_integer (1)));
+    PRIMITIVE_RETURN ((message == 0)
+		      ? SHARP_F
+		      : (char_pointer_to_string (message)));
   }
 }

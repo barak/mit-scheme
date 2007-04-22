@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.54 2007/01/12 03:45:55 cph Exp $
+$Id: sysprim.c,v 9.55 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,8 +33,8 @@ USA.
 #include "ostty.h"
 #include "ostop.h"
 
-extern long EXFUN (OS_set_trap_state, (long));
-extern double EXFUN (arg_flonum, (int));
+extern long OS_set_trap_state (long);
+extern double arg_flonum (int);
 
 /* Pretty random primitives */
 
@@ -46,7 +46,7 @@ DEFINE_PRIMITIVE ("EXIT", Prim_non_restartable_exit, 0, 0,
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("EXIT-WITH-VALUE", 
+DEFINE_PRIMITIVE ("EXIT-WITH-VALUE",
 		  Prim_non_restartable_exit_with_value, 1, 1,
   "Exit Scheme with no option to restart, returning integer argument\n\
 as exit status.")
@@ -84,13 +84,13 @@ DEFINE_PRIMITIVE ("SET-TRAP-STATE!", Prim_set_trap_state, 1, 1, 0)
   PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (result));
 }
 
-DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1, 
+DEFINE_PRIMITIVE ("HEAP-AVAILABLE?", Prim_heap_available_p, 1, 1,
   "(N-WORDS)\n\
 Tests to see if there are at least N-WORDS words of heap storage available")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT ((Free + (arg_nonnegative_integer (1))) < MemTop));
+    (BOOLEAN_TO_OBJECT (HEAP_AVAILABLE_P (arg_ulong_integer (1))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-GET-FREE", Prim_get_free, 1, 1,
@@ -99,69 +99,40 @@ Return the value of the free pointer tagged with TYPE-CODE")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (MAKE_POINTER_OBJECT ((arg_index_integer (1, (MAX_TYPE_CODE + 1))), Free));
+    (MAKE_POINTER_OBJECT ((arg_ulong_index_integer (1, N_TYPE_CODES)), Free));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-INCREMENT-FREE", Prim_increment_free, 1, 1,
   "(N-WORDS)\n\
-Advance the free pointer by N-WORDS words")
+Advance the free pointer by N-WORDS words.")
 {
   PRIMITIVE_HEADER (1);
-  Free += (arg_nonnegative_integer (1));
+  Free += (arg_ulong_integer (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #define CONVERT_ADDRESS(address)					\
-  (long_to_integer (ADDRESS_TO_DATUM (address)))
+  (ulong_to_integer (ADDRESS_TO_DATUM (address)))
 
 DEFINE_PRIMITIVE ("GC-SPACE-STATUS", Prim_gc_space_status, 0, 0, 0)
 {
-  SCHEME_OBJECT * constant_low;
-  SCHEME_OBJECT * constant_free;
-  SCHEME_OBJECT * constant_high;
-  SCHEME_OBJECT * heap_low;
-  SCHEME_OBJECT * heap_free;
-  SCHEME_OBJECT * heap_limit;
-  SCHEME_OBJECT * heap_high;
-#ifndef USE_STACKLETS
-  SCHEME_OBJECT * stack_low;
-  SCHEME_OBJECT * stack_free;
-  SCHEME_OBJECT * stack_limit;
-  SCHEME_OBJECT * stack_high;
-#endif /* USE_STACKLETS */
-  SCHEME_OBJECT result;
   PRIMITIVE_HEADER (0);
-
-  constant_low = Constant_Space;
-  constant_free = Free_Constant;
-  constant_high = Constant_Top;
-  heap_low = Heap_Bottom;
-  heap_free = Free;
-  heap_limit = MemTop;
-  heap_high = Heap_Top;
-#ifndef USE_STACKLETS
-  stack_low = Stack_Bottom;
-  stack_free = sp_register;
-  stack_limit = Stack_Guard;
-  stack_high = Stack_Top;
-#endif /* USE_STACKLETS */
-
-  result = (make_vector (12, SHARP_F, true));
-  VECTOR_SET (result, 0, (LONG_TO_UNSIGNED_FIXNUM (sizeof (SCHEME_OBJECT))));
-  VECTOR_SET (result, 1, (CONVERT_ADDRESS (constant_low)));
-  VECTOR_SET (result, 2, (CONVERT_ADDRESS (constant_free)));
-  VECTOR_SET (result, 3, (CONVERT_ADDRESS (constant_high)));
-  VECTOR_SET (result, 4, (CONVERT_ADDRESS (heap_low)));
-  VECTOR_SET (result, 5, (CONVERT_ADDRESS (heap_free)));
-  VECTOR_SET (result, 6, (CONVERT_ADDRESS (heap_limit)));
-  VECTOR_SET (result, 7, (CONVERT_ADDRESS (heap_high)));
-#ifndef USE_STACKLETS
-  VECTOR_SET (result, 8, (CONVERT_ADDRESS (stack_low)));
-  VECTOR_SET (result, 9, (CONVERT_ADDRESS (stack_free)));
-  VECTOR_SET (result, 10, (CONVERT_ADDRESS (stack_limit)));
-  VECTOR_SET (result, 11, (CONVERT_ADDRESS (stack_high)));
-#endif /* USE_STACKLETS */
-  PRIMITIVE_RETURN (result);
+  {
+    SCHEME_OBJECT v = (make_vector (12, SHARP_F, true));
+    VECTOR_SET (v, 0, (ULONG_TO_FIXNUM (sizeof (SCHEME_OBJECT))));
+    VECTOR_SET (v, 1, (CONVERT_ADDRESS (constant_start)));
+    VECTOR_SET (v, 2, (CONVERT_ADDRESS (constant_alloc_next)));
+    VECTOR_SET (v, 3, (CONVERT_ADDRESS (constant_end)));
+    VECTOR_SET (v, 4, (CONVERT_ADDRESS (heap_start)));
+    VECTOR_SET (v, 5, (CONVERT_ADDRESS (Free)));
+    VECTOR_SET (v, 6, (CONVERT_ADDRESS (heap_alloc_limit)));
+    VECTOR_SET (v, 7, (CONVERT_ADDRESS (heap_end)));
+    VECTOR_SET (v, 8, (CONVERT_ADDRESS (stack_start)));
+    VECTOR_SET (v, 9, (CONVERT_ADDRESS (stack_pointer)));
+    VECTOR_SET (v, 10, (CONVERT_ADDRESS (stack_guard)));
+    VECTOR_SET (v, 11, (CONVERT_ADDRESS (stack_end)));
+    PRIMITIVE_RETURN (v);
+  }
 }
 
 DEFINE_PRIMITIVE ("SCHEME-PROGRAM-NAME", Prim_scheme_program_name, 0, 0, 0)

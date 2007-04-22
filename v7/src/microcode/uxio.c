@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.56 2007/01/05 21:19:25 cph Exp $
+$Id: uxio.c,v 1.57 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,6 +25,8 @@ USA.
 
 */
 
+#include "scheme.h"
+#include "prims.h"
 #include "ux.h"
 #include "uxio.h"
 #include "uxselect.h"
@@ -41,7 +43,7 @@ static struct timeval zero_timeout;
 #endif
 
 static void
-DEFUN_VOID (UX_channel_close_all)
+UX_channel_close_all (void)
 {
   Tchannel channel;
   for (channel = 0; (channel < OS_channel_table_size); channel += 1)
@@ -49,10 +51,8 @@ DEFUN_VOID (UX_channel_close_all)
       OS_channel_close_noerror (channel);
 }
 
-extern void EXFUN (add_reload_cleanup, (void (*) (void)));
-
 void
-DEFUN_VOID (UX_initialize_channels)
+UX_initialize_channels (void)
 {
   OS_channel_table_size = (UX_SC_OPEN_MAX ());
   channel_table =
@@ -79,7 +79,7 @@ DEFUN_VOID (UX_initialize_channels)
 }
 
 void
-DEFUN_VOID (UX_reset_channels)
+UX_reset_channels (void)
 {
   UX_free (channel_table);
   channel_table = 0;
@@ -87,7 +87,7 @@ DEFUN_VOID (UX_reset_channels)
 }
 
 Tchannel
-DEFUN_VOID (channel_allocate)
+channel_allocate (void)
 {
   Tchannel channel = 0;
   while (1)
@@ -101,19 +101,19 @@ DEFUN_VOID (channel_allocate)
 }
 
 int
-DEFUN (UX_channel_descriptor, (channel), Tchannel channel)
+UX_channel_descriptor (Tchannel channel)
 {
   return (CHANNEL_DESCRIPTOR (channel));
 }
 
 int
-DEFUN (OS_channel_open_p, (channel), Tchannel channel)
+OS_channel_open_p (Tchannel channel)
 {
   return (CHANNEL_OPEN_P (channel));
 }
 
 void
-DEFUN (OS_channel_close, (channel), Tchannel channel)
+OS_channel_close (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
@@ -124,7 +124,7 @@ DEFUN (OS_channel_close, (channel), Tchannel channel)
 }
 
 void
-DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
+OS_channel_close_noerror (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
@@ -134,13 +134,13 @@ DEFUN (OS_channel_close_noerror, (channel), Tchannel channel)
 }
 
 static void
-DEFUN (channel_close_on_abort_1, (cp), PTR cp)
+channel_close_on_abort_1 (void * cp)
 {
   OS_channel_close (* ((Tchannel *) cp));
 }
 
 void
-DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
+OS_channel_close_on_abort (Tchannel channel)
 {
   Tchannel * cp = (dstack_alloc (sizeof (Tchannel)));
   (*cp) = (channel);
@@ -148,16 +148,13 @@ DEFUN (OS_channel_close_on_abort, (channel), Tchannel channel)
 }
 
 enum channel_type
-DEFUN (OS_channel_type, (channel), Tchannel channel)
+OS_channel_type (Tchannel channel)
 {
   return (CHANNEL_TYPE (channel));
 }
 
 long
-DEFUN (OS_channel_read, (channel, buffer, nbytes),
-       Tchannel channel AND
-       PTR buffer AND
-       size_t nbytes)
+OS_channel_read (Tchannel channel, void * buffer, size_t nbytes)
 {
   if (nbytes == 0)
     return (0);
@@ -200,10 +197,7 @@ DEFUN (OS_channel_read, (channel, buffer, nbytes),
 }
 
 long
-DEFUN (OS_channel_write, (channel, buffer, nbytes),
-       Tchannel channel AND
-       CONST PTR buffer AND
-       size_t nbytes)
+OS_channel_write (Tchannel channel, const void * buffer, size_t nbytes)
 {
   if (nbytes == 0)
     return (0);
@@ -226,25 +220,23 @@ DEFUN (OS_channel_write, (channel, buffer, nbytes),
 }
 
 size_t
-DEFUN (OS_channel_read_load_file, (channel, buffer, nbytes),
-       Tchannel channel AND PTR buffer AND size_t nbytes)
+OS_channel_read_load_file (Tchannel channel, void * buffer, size_t nbytes)
 {
   int scr = (UX_read ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
   return ((scr < 0) ? 0 : scr);
 }
 
 size_t
-DEFUN (OS_channel_write_dump_file, (channel, buffer, nbytes),
-       Tchannel channel AND CONST PTR buffer AND size_t nbytes)
+OS_channel_write_dump_file (Tchannel channel,
+			    const void * buffer,
+			    size_t nbytes)
 {
   int scr = (UX_write ((CHANNEL_DESCRIPTOR (channel)), buffer, nbytes));
   return ((scr < 0) ? 0 : scr);
 }
 
 void
-DEFUN (OS_channel_write_string, (channel, string),
-       Tchannel channel AND
-       CONST char * string)
+OS_channel_write_string (Tchannel channel, const char * string)
 {
   unsigned long length = (strlen (string));
   if ((OS_channel_write (channel, string, length)) != length)
@@ -252,9 +244,7 @@ DEFUN (OS_channel_write_string, (channel, string),
 }
 
 void
-DEFUN (OS_make_pipe, (readerp, writerp),
-       Tchannel * readerp AND
-       Tchannel * writerp)
+OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
 {
   int pv [2];
   transaction_begin ();
@@ -268,7 +258,7 @@ DEFUN (OS_make_pipe, (readerp, writerp),
 #ifdef FCNTL_NONBLOCK
 
 static int
-DEFUN (get_flags, (fd), int fd)
+get_flags (int fd)
 {
   int scr;
   STD_UINT_SYSTEM_CALL (syscall_fcntl_GETFL, scr, (UX_fcntl (fd, F_GETFL, 0)));
@@ -276,19 +266,19 @@ DEFUN (get_flags, (fd), int fd)
 }
 
 static void
-DEFUN (set_flags, (fd, flags), int fd AND int flags)
+set_flags (int fd, int flags)
 {
   STD_VOID_SYSTEM_CALL (syscall_fcntl_SETFL, (UX_fcntl (fd, F_SETFL, flags)));
 }
 
 int
-DEFUN (OS_channel_nonblocking_p, (channel), Tchannel channel)
+OS_channel_nonblocking_p (Tchannel channel)
 {
   return (CHANNEL_NONBLOCKING (channel));
 }
 
 void
-DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
+OS_channel_nonblocking (Tchannel channel)
 {
   int fd = (CHANNEL_DESCRIPTOR (channel));
   int flags = (get_flags (fd));
@@ -307,7 +297,7 @@ DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
 }
 
 void
-DEFUN (OS_channel_blocking, (channel), Tchannel channel)
+OS_channel_blocking (Tchannel channel)
 {
   int fd = (CHANNEL_DESCRIPTOR (channel));
   int flags = (get_flags (fd));
@@ -327,19 +317,19 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 #else /* not FCNTL_NONBLOCK */
 
 int
-DEFUN (OS_channel_nonblocking_p, (channel), Tchannel channel)
+OS_channel_nonblocking_p (Tchannel channel)
 {
   return (-1);
 }
 
 void
-DEFUN (OS_channel_nonblocking, (channel), Tchannel channel)
+OS_channel_nonblocking (Tchannel channel)
 {
   error_unimplemented_primitive ();
 }
 
 void
-DEFUN (OS_channel_blocking, (channel), Tchannel channel)
+OS_channel_blocking (Tchannel channel)
 {
 }
 
@@ -347,7 +337,7 @@ DEFUN (OS_channel_blocking, (channel), Tchannel channel)
 
 #ifdef HAVE_POLL
 
-CONST int OS_have_select_p = 1;
+const int OS_have_select_p = 1;
 
 struct select_registry_s
 {
@@ -375,7 +365,7 @@ struct select_registry_s
  | ((((revents) & POLLHUP) != 0) ? SELECT_MODE_HUP : 0))
 
 select_registry_t
-DEFUN_VOID (OS_allocate_select_registry)
+OS_allocate_select_registry (void)
 {
   struct select_registry_s * r
     = (UX_malloc (sizeof (struct select_registry_s)));
@@ -386,7 +376,7 @@ DEFUN_VOID (OS_allocate_select_registry)
 }
 
 void
-DEFUN (OS_deallocate_select_registry, (registry), select_registry_t registry)
+OS_deallocate_select_registry (select_registry_t registry)
 {
   struct select_registry_s * r = registry;
   UX_free (SR_ENTRIES (r));
@@ -394,10 +384,9 @@ DEFUN (OS_deallocate_select_registry, (registry), select_registry_t registry)
 }
 
 void
-DEFUN (OS_add_to_select_registry, (registry, fd, mode),
-       select_registry_t registry AND
-       int fd AND
-       unsigned int mode)
+OS_add_to_select_registry (select_registry_t registry,
+			   int fd,
+			   unsigned int mode)
 {
   struct select_registry_s * r = registry;
   unsigned int i = 0;
@@ -422,10 +411,9 @@ DEFUN (OS_add_to_select_registry, (registry, fd, mode),
 }
 
 void
-DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
-       select_registry_t registry AND
-       int fd AND
-       unsigned int mode)
+OS_remove_from_select_registry (select_registry_t registry,
+				int fd,
+				unsigned int mode)
 {
   struct select_registry_s * r = registry;
   unsigned int i = 0;
@@ -458,19 +446,17 @@ DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
 }
 
 unsigned int
-DEFUN (OS_select_registry_length, (registry),
-       select_registry_t registry)
+OS_select_registry_length (select_registry_t registry)
 {
   struct select_registry_s * r = registry;
   return (SR_N_FDS (r));
 }
 
 void
-DEFUN (OS_select_registry_result, (registry, index),
-       select_registry_t registry AND
-       unsigned int index AND
-       int * fd_r AND
-       unsigned int * mode_r)
+OS_select_registry_result (select_registry_t registry,
+			   unsigned int index,
+			   int * fd_r,
+			   unsigned int * mode_r)
 {
   struct select_registry_s * r = registry;
   (*fd_r) = ((SR_ENTRY (r, index)) -> fd);
@@ -478,9 +464,7 @@ DEFUN (OS_select_registry_result, (registry, index),
 }
 
 int
-DEFUN (OS_test_select_registry, (registry, blockp),
-       select_registry_t registry AND
-       int blockp)
+OS_test_select_registry (select_registry_t registry, int blockp)
 {
   struct select_registry_s * r = registry;
   while (1)
@@ -501,10 +485,7 @@ DEFUN (OS_test_select_registry, (registry, blockp),
 }
 
 int
-DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
-       int fd AND
-       int blockp AND
-       unsigned int mode)
+OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 {
   struct pollfd pfds [1];
   ((pfds [0]) . fd) = fd;
@@ -528,9 +509,9 @@ DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
 #else /* not HAVE_POLL */
 
 #ifdef HAVE_SELECT
-CONST int OS_have_select_p = 1;
+const int OS_have_select_p = 1;
 #else
-CONST int OS_have_select_p = 0;
+const int OS_have_select_p = 0;
 #endif
 
 struct select_registry_s
@@ -557,7 +538,7 @@ struct select_registry_s
  | ((FD_ISSET ((fd), (SR_RWRITERS (r)))) ? SELECT_MODE_WRITE : 0))
 
 select_registry_t
-DEFUN_VOID (OS_allocate_select_registry)
+OS_allocate_select_registry (void)
 {
   struct select_registry_s * r
     = (UX_malloc (sizeof (struct select_registry_s)));
@@ -570,17 +551,16 @@ DEFUN_VOID (OS_allocate_select_registry)
 }
 
 void
-DEFUN (OS_deallocate_select_registry, (registry), select_registry_t registry)
+OS_deallocate_select_registry (select_registry_t registry)
 {
   struct select_registry_s * r = registry;
   UX_free (r);
 }
 
 void
-DEFUN (OS_add_to_select_registry, (registry, fd, mode),
-       select_registry_t registry AND
-       int fd AND
-       unsigned int mode)
+OS_add_to_select_registry (select_registry_t registry,
+			   int fd,
+			   unsigned int mode)
 {
   struct select_registry_s * r = registry;
   int was_set = (SR_FD_ISSET (fd, r));
@@ -593,10 +573,9 @@ DEFUN (OS_add_to_select_registry, (registry, fd, mode),
 }
 
 void
-DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
-       select_registry_t registry AND
-       int fd AND
-       unsigned int mode)
+OS_remove_from_select_registry (select_registry_t registry,
+				int fd,
+				unsigned int mode)
 {
   struct select_registry_s * r = registry;
   int was_set = (SR_FD_ISSET (fd, r));
@@ -609,19 +588,17 @@ DEFUN (OS_remove_from_select_registry, (registry, fd, mode),
 }
 
 unsigned int
-DEFUN (OS_select_registry_length, (registry),
-       select_registry_t registry)
+OS_select_registry_length (select_registry_t registry)
 {
   struct select_registry_s * r = registry;
   return (SR_N_FDS (r));
 }
 
 void
-DEFUN (OS_select_registry_result, (registry, index, fd_r, mode_r),
-       select_registry_t registry AND
-       unsigned int index AND
-       int * fd_r AND
-       unsigned int * mode_r)
+OS_select_registry_result (select_registry_t registry,
+			   unsigned int index,
+			   int * fd_r,
+			   unsigned int * mode_r)
 {
   struct select_registry_s * r = registry;
   unsigned int i = 0;
@@ -644,9 +621,7 @@ DEFUN (OS_select_registry_result, (registry, index, fd_r, mode_r),
 }
 
 int
-DEFUN (OS_test_select_registry, (registry, blockp),
-       select_registry_t registry AND
-       int blockp)
+OS_test_select_registry (select_registry_t registry, int blockp)
 {
 #ifdef HAVE_SELECT
   struct select_registry_s * r = registry;
@@ -681,10 +656,7 @@ DEFUN (OS_test_select_registry, (registry, blockp),
 }
 
 int
-DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
-       int fd AND
-       int blockp AND
-       unsigned int mode)
+OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 {
 #ifdef HAVE_SELECT
   while (1)
@@ -700,7 +672,7 @@ DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
       FD_ZERO (&writeable);
       if ((mode & SELECT_MODE_WRITE) != 0)
 	FD_SET (fd, (&writeable));
-      
+
       INTERRUPTABLE_EXTENT
 	(nfds,
 	 ((OS_process_any_status_change ())
@@ -736,19 +708,19 @@ DEFUN (OS_test_select_descriptor, (fd, blockp, mode),
 /* poll(2) */
 
 unsigned int
-DEFUN_VOID (UX_select_registry_size)
+UX_select_registry_size (void)
 {
   return ((sizeof (struct pollfd)) * OS_channel_table_size);
 }
 
 unsigned int
-DEFUN_VOID (UX_select_registry_lub)
+UX_select_registry_lub (void)
 {
   return (OS_channel_table_size);
 }
 
 void
-DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
+UX_select_registry_clear_all (void * fds)
 {
   struct pollfd * scan = fds;
   struct pollfd * end = (scan + OS_channel_table_size);
@@ -760,7 +732,7 @@ DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
 }
 
 void
-DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_set (void * fds, unsigned int fd)
 {
   struct pollfd * scan = fds;
   struct pollfd * end = (scan + OS_channel_table_size);
@@ -774,7 +746,7 @@ DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
 }
 
 void
-DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_clear (void * fds, unsigned int fd)
 {
   struct pollfd * scan = fds;
   struct pollfd * end = (scan + OS_channel_table_size);
@@ -791,7 +763,7 @@ DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
 }
 
 int
-DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_is_set (void * fds, unsigned int fd)
 {
   struct pollfd * scan = fds;
   struct pollfd * end = (scan + OS_channel_table_size);
@@ -813,11 +785,10 @@ count_select_registry_entries (struct pollfd * pfds)
 }
 
 enum select_input
-DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
-       PTR input_fds AND
-       int blockp AND
-       unsigned int * output_fds AND
-       unsigned int * output_nfds)
+UX_select_registry_test (void * input_fds,
+			 int blockp,
+			 unsigned int * output_fds,
+			 unsigned int * output_nfds)
 {
   struct pollfd * pfds = input_fds;
   unsigned int n_pfds = (count_select_registry_entries (pfds));
@@ -860,9 +831,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 }
 
 enum select_input
-DEFUN (UX_select_descriptor, (fd, blockp),
-       unsigned int fd AND
-       int blockp)
+UX_select_descriptor (unsigned int fd, int blockp)
 {
   struct pollfd pfds [1];
   int nfds;
@@ -885,11 +854,11 @@ DEFUN (UX_select_descriptor, (fd, blockp),
 	return (select_input_process_status);
       if (pending_interrupts_p ())
 	return (select_input_interrupt);
-    }  
+    }
 }
 
 enum select_input
-DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
+UX_select_input (int fd, int blockp)
 {
   return (UX_select_descriptor (fd, blockp));
 }
@@ -899,54 +868,53 @@ DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
 /* select(2) */
 
 unsigned int
-DEFUN_VOID (UX_select_registry_size)
+UX_select_registry_size (void)
 {
   return (sizeof (SELECT_TYPE));
 }
 
 unsigned int
-DEFUN_VOID (UX_select_registry_lub)
+UX_select_registry_lub (void)
 {
   return (FD_SETSIZE);
 }
 
 void
-DEFUN (UX_select_registry_clear_all, (fds), PTR fds)
+UX_select_registry_clear_all (void * fds)
 {
   FD_ZERO ((SELECT_TYPE *) fds);
 }
 
 void
-DEFUN (UX_select_registry_set, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_set (void * fds, unsigned int fd)
 {
   FD_SET (fd, ((SELECT_TYPE *) fds));
 }
 
 void
-DEFUN (UX_select_registry_clear, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_clear (void * fds, unsigned int fd)
 {
   FD_CLR (fd, ((SELECT_TYPE *) fds));
 }
 
 int
-DEFUN (UX_select_registry_is_set, (fds, fd), PTR fds AND unsigned int fd)
+UX_select_registry_is_set (void * fds, unsigned int fd)
 {
   return (FD_ISSET (fd, ((SELECT_TYPE *) fds)));
 }
 
 enum select_input
-DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
-       PTR input_fds AND
-       int blockp AND
-       unsigned int * output_fds AND
-       unsigned int * output_nfds)
+UX_select_registry_test (void * input_fds,
+			 int blockp,
+			 unsigned int * output_fds,
+			 unsigned int * output_nfds)
 {
 #ifdef HAVE_SELECT
   while (1)
     {
       SELECT_TYPE readable;
       int nfds;
-  
+
       readable = (* ((SELECT_TYPE *) input_fds));
       INTERRUPTABLE_EXTENT
 	(nfds,
@@ -996,9 +964,7 @@ DEFUN (UX_select_registry_test, (input_fds, blockp, output_fds, output_nfds),
 }
 
 enum select_input
-DEFUN (UX_select_descriptor, (fd, blockp),
-       unsigned int fd AND
-       int blockp)
+UX_select_descriptor (unsigned int fd, int blockp)
 {
 #ifdef HAVE_SELECT
   SELECT_TYPE readable;
@@ -1013,7 +979,7 @@ DEFUN (UX_select_descriptor, (fd, blockp),
 }
 
 enum select_input
-DEFUN (UX_select_input, (fd, blockp), int fd AND int blockp)
+UX_select_input (int fd, int blockp)
 {
   SELECT_TYPE readable;
   unsigned int fds [FD_SETSIZE];

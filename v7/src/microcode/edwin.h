@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: edwin.h,v 1.14 2007/04/01 17:33:07 riastradh Exp $
+$Id: edwin.h,v 1.15 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,19 +29,14 @@ USA.
    This MUST match the definitions in the Edwin source code. */
 
 #define GROUP_P VECTOR_P
-#define GROUP_TEXT(group) (VECTOR_REF ((group), 1))
 
-#define GROUP_TEXT_LOC(group, offset)					\
-  (((unsigned char *) (integer_to_ulong (GROUP_TEXT (group)))) + (offset))
+#define GROUP_TEXT(group, len_r)					\
+  (lookup_external_string ((VECTOR_REF ((group), 1)), (len_r)))
 
-#define GROUP_GAP_START(group)						\
-  (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((group), 2)))
-
-#define GROUP_GAP_LENGTH(group)						\
-  (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((group), 3)))
-
-#define GROUP_GAP_END(group)						\
-  (UNSIGNED_FIXNUM_TO_LONG (VECTOR_REF ((group), 4)))
+#define GROUP_TEXT_LOC(group, offset) ((GROUP_TEXT ((group), 0)) + (offset))
+#define GROUP_GAP_START(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 2)))
+#define GROUP_GAP_LENGTH(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 3)))
+#define GROUP_GAP_END(group) (FIXNUM_TO_ULONG (VECTOR_REF ((group), 4)))
 
 #define GROUP_START_MARK(group) (VECTOR_REF ((group), 6))
 #define GROUP_END_MARK(group) (VECTOR_REF ((group), 7))

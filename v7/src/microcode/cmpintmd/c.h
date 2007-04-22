@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.12 2007/01/05 21:19:26 cph Exp $
+$Id: c.h,v 1.13 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,199 +25,127 @@ USA.
 
 */
 
-#ifndef CMPINTMD_H_INCLUDED
-#define CMPINTMD_H_INCLUDED
+/* Compiled code interface macros for C "native" code. */
 
-#include "limits.h"
-#include "cmptype.h"
+#ifndef SCM_CMPINTMD_H_INCLUDED
+#define SCM_CMPINTMD_H_INCLUDED 1
+
+/*
+
+Structure of code block (prior to link):
+
++-----+-------------------------+
+| MV  |		length		|
++-----+-------------------------+
+| NMV |		  2N		|
++-----+-------------------------+
+|	 format/offset1		|
++-------------------------------+
+|	     index1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	 format/offsetN		|
++-------------------------------+
+|	     indexN		|
++-----+---------+---------------+
+| FIX |   UUO	|      2M	|  (not TC_LINKAGE_SECTION)
++-----+---------+---------------+
+|	      name1		|
++-------------------------------+
+|	     nargs1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	      nameM		|
++-------------------------------+
+|	     nargsM		|
++-----+---------+---------------+
+| FIX |  REFS	|	L	|  (not TC_LINKAGE_SECTION)
++-----+---------+---------------+
+|	      name1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	      nameL		|
++-----+---------+---------------+
+| FIX |  ASNS	|	K	|  (not TC_LINKAGE_SECTION)
++-----+---------+---------------+
+|	      name1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	      nameK		|
++-----+---------+---------------+
+| FIX |  GUUO	|      2J	|  (not TC_LINKAGE_SECTION)
++-----+---------+---------------+
+|	      name1		|
++-------------------------------+
+|	     nargs1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	      nameJ		|
++-------------------------------+
+|	     nargsJ		|
++-------------------------------+
+|	     const1		|
++-------------------------------+
+.				.
+.				.
++-------------------------------+
+|	     constI		|
++-------------------------------+
+
+length = 2N + 2M + L + K + 2J + I + p(M) + p(L) + p(K) + p(J) + 1
+   where p(x) = ((x > 0) ? 1 : 0)
+
+format/offset is raw integer, of which only LS 32 bits are used:
+
+     3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+     1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+    +-----------------------------+-+---------------+---------------+
+    |          offset             |C|    fmthigh    |    fmtlow     |
+    +-----------------------------+-+---------------+---------------+
+
+offset field is in insn_t units.
+
+The indexes refer to entries in the compiled_entries array.
+
+*/
 
-#define COMPILER_PROCESSOR_TYPE			COMPILER_LOSING_C_TYPE
+#define ASM_RESET_HOOK initialize_C_interface
 
-#ifndef NATIVE_CODE_IS_C
-#define NATIVE_CODE_IS_C
-#endif
+typedef SCHEME_OBJECT insn_t;
 
-#define WRITE_LABEL_DESCRIPTOR(entry,kind,offset) do			\
-{									\
-  SCHEME_OBJECT * _ent = ((SCHEME_OBJECT *) (entry));			\
-									\
-  COMPILED_ENTRY_FORMAT_WORD (_ent) = (kind);				\
-  COMPILED_ENTRY_OFFSET_WORD (_ent) =					\
-    (WORD_OFFSET_TO_OFFSET_WORD (offset));				\
-} while (0)
+/* Number of insn_t units preceding entry address in which header
+   (type and offset info) is stored.  */
+#define CC_ENTRY_HEADER_SIZE 1
 
-#define CC_BLOCK_DISTANCE(block,entry)					\
-  (((SCHEME_OBJECT *) (entry)) - ((SCHEME_OBJECT *) (block)))
+/* Number of insn_t units preceding entry header in which GC trap
+   instructions are stored.  */
+#define CC_ENTRY_GC_TRAP_SIZE 0
 
-typedef unsigned short format_word;
+/* Size of execution cache in SCHEME_OBJECTS.  */
+#define UUO_LINK_SIZE 2
+#define READ_UUO_TARGET(a, r) read_uuo_target (a)
 
-extern int pc_zero_bits;
+#undef CMPINT_USE_STRUCS
 
-#define PC_ZERO_BITS pc_zero_bits
+#define EMBEDDED_CLOSURE_ADDRS_P 1
+#define READ_COMPILED_CLOSURE_TARGET(a, r) (read_compiled_closure_target (a))
 
-/* arbitrary */
-#define ENTRY_PREFIX_LENGTH		2
+extern void initialize_C_interface (void);
+extern insn_t * read_uuo_target (SCHEME_OBJECT *);
+extern insn_t * read_compiled_closure_target (insn_t *);
 
-#define ADJUST_CLOSURE_AT_CALL(entry_point, location) do { } while (0)
+extern unsigned long c_code_table_export_length (unsigned long *);
+extern void export_c_code_table (SCHEME_OBJECT *);
+extern bool import_c_code_table (SCHEME_OBJECT *, unsigned long);
 
-#define COMPILED_CLOSURE_ENTRY_SIZE	((sizeof (SCHEME_OBJECT)) * 3)
-
-#define EXTRACT_CLOSURE_ENTRY_ADDRESS(output,location) do		\
-{									\
-  (output) = (((SCHEME_OBJECT *) (location))[1]);			\
-} while (0)
-
-#define STORE_CLOSURE_ENTRY_ADDRESS(input,location) do			\
-{									\
-  ((SCHEME_OBJECT *) (location))[1] = ((SCHEME_OBJECT) (input));	\
-} while (0)
-
-#define MANIFEST_CLOSURE_COUNT(scan)					\
-(((COMPILED_ENTRY_OFFSET_WORD (((SCHEME_OBJECT *) (scan)) + 1)) == 0)	\
- ? (COMPILED_ENTRY_FORMAT_WORD (((SCHEME_OBJECT *) (scan)) + 1))	\
- : 1)
-
-#define FIRST_MANIFEST_CLOSURE_ENTRY(scan)				\
-(((COMPILED_ENTRY_OFFSET_WORD (((SCHEME_OBJECT *) (scan)) + 1)) == 0)	\
- ? ((char *) (((SCHEME_OBJECT *) (scan)) + 2))				\
- : ((char *) (((SCHEME_OBJECT *) (scan)) + 1)))
-
-/* Trampolines are implemented as tiny compiled code blocks that
-   invoke the constant C procedure indexed by the number 0.
- */
-
-#define TRAMPOLINE_ENTRY_SIZE		2	/* Words */
-
-#define TRAMPOLINE_BLOCK_TO_ENTRY	3
-
-#define TRAMPOLINE_ENTRY_POINT(tramp_block)				\
-  (((SCHEME_OBJECT *) (tramp_block)) + TRAMPOLINE_BLOCK_TO_ENTRY)
-
-#define TRAMPOLINE_STORAGE(tramp_entry)					\
-  ((((SCHEME_OBJECT *) (tramp_entry)) - TRAMPOLINE_BLOCK_TO_ENTRY) +	\
-   (2 + TRAMPOLINE_ENTRY_SIZE)) 
-
-/* This depends on knowledge that the trampoline block is the first
-   compiled code block.
- */
-
-#define STORE_TRAMPOLINE_ENTRY(entry_address, index) do			\
-{									\
-  ((SCHEME_OBJECT *) (entry_address))[0] = ((SCHEME_OBJECT) (index));	\
-} while (0)
-
-/* An execute cache contains a compiled entry for the callee,
-   and a number of arguments (+ 1).
- */
-
-#define EXECUTE_CACHE_ENTRY_SIZE        2
-
-#define EXTRACT_EXECUTE_CACHE_ARITY(target, address) do			\
-{									\
-  (target) = ((long) (((SCHEME_OBJECT *) (address))[1]));		\
-} while (0)
-
-#define EXTRACT_EXECUTE_CACHE_SYMBOL(target, address) do		\
-{									\
-  (target) = (((SCHEME_OBJECT *) (address))[0]);			\
-} while (0)
-
-#define EXTRACT_EXECUTE_CACHE_ADDRESS(target, address) do		\
-{									\
-  (target) = (((SCHEME_OBJECT *) (address)) [0]);			\
-} while (0)
-
-#define STORE_EXECUTE_CACHE_ADDRESS(address, entry) do			\
-{									\
-  ((SCHEME_OBJECT *) (address))[0] = ((SCHEME_OBJECT) (entry));		\
-} while (0)
-
-#define STORE_EXECUTE_CACHE_CODE(address) do { } while (0)
-
-extern void EXFUN (interface_initialize, (void));
-
-#define ASM_RESET_HOOK() interface_initialize ()
-
-/* Derived parameters and macros.
-
-   These macros expect the above definitions to be meaningful.
-   If they are not, the macros below may have to be changed as well.
- */
-
-#define COMPILED_ENTRY_OFFSET_WORD(entry) (((format_word *) (entry)) [-1])
-#define COMPILED_ENTRY_FORMAT_WORD(entry) (((format_word *) (entry)) [-2])
-
-/* The next one assumes 2's complement integers....*/
-#define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
-#define OFFSET_WORD_CONTINUATION_P(word)        (((word) & 1) != 0)
-
-#define WORD_OFFSET_TO_OFFSET_WORD(words)	((words) << 1)
-
-#define BYTE_OFFSET_TO_OFFSET_WORD(bytes)				\
-  WORD_OFFSET_TO_OFFSET_WORD ((bytes) / (sizeof (SCHEME_OBJECT)))
-
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)				\
-  ((sizeof (SCHEME_OBJECT)) * ((CLEAR_LOW_BIT (offset_word)) >> 1))
-
-#define MAKE_OFFSET_WORD(entry, block, continue)                        \
-  ((BYTE_OFFSET_TO_OFFSET_WORD(((char *) (entry)) -                     \
-                               ((char *) (block)))) |                   \
-   ((continue) ? 1 : 0))
-
-#define EXECUTE_CACHE_COUNT_TO_ENTRIES(count)                           \
-  ((count) >> 1)
-#define EXECUTE_CACHE_ENTRIES_TO_COUNT(entries)				\
-  ((entries) << 1)
-
-/* The first entry in a cc block is preceeded by 2 headers (block and nmv),
-   a format word and a gc offset word.   See the early part of the
-   TRAMPOLINE picture, above.
- */
-
-#define CC_BLOCK_FIRST_ENTRY_OFFSET                                     \
-  (2 * ((sizeof(SCHEME_OBJECT)) + (sizeof(format_word))))
-
-/* Format words */
-
-#define FORMAT_BYTE_EXPR                0xFF
-#define FORMAT_BYTE_COMPLR              0xFE
-#define FORMAT_BYTE_CMPINT              0xFD
-#define FORMAT_BYTE_DLINK               0xFC
-#define FORMAT_BYTE_RETURN              0xFB
-
-#define FORMAT_WORD_EXPR        (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_EXPR))
-#define FORMAT_WORD_CMPINT      (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_CMPINT))
-#define FORMAT_WORD_RETURN      (MAKE_FORMAT_WORD(0xFF, FORMAT_BYTE_RETURN))
-
-/* This assumes that a format word is at least 16 bits,
-   and the low order field is always 8 bits.
- */
-
-#define MAKE_FORMAT_WORD(field1, field2)                                \
-  (((field1) << 8) | ((field2) & 0xff))
-
-#define SIGN_EXTEND_FIELD(field, size)                                  \
-  (((field) & ((1 << (size)) - 1)) |                                    \
-   ((((field) & (1 << ((size) - 1))) == 0) ? 0 :                        \
-    ((-1) << (size))))
-
-#define FORMAT_WORD_LOW_BYTE(word)                                      \
-  (SIGN_EXTEND_FIELD ((((unsigned long) (word)) & 0xff), 8))
-
-#define FORMAT_WORD_HIGH_BYTE(word)					\
-  (SIGN_EXTEND_FIELD							\
-   ((((unsigned long) (word)) >> 8),					\
-    (((sizeof (format_word)) * CHAR_BIT) - 8)))
-
-#define COMPILED_ENTRY_FORMAT_HIGH(addr)                                \
-  (FORMAT_WORD_HIGH_BYTE (COMPILED_ENTRY_FORMAT_WORD (addr)))
-
-#define COMPILED_ENTRY_FORMAT_LOW(addr)                                 \
-  (FORMAT_WORD_LOW_BYTE (COMPILED_ENTRY_FORMAT_WORD (addr)))
-
-#define FORMAT_BYTE_FRAMEMAX            0x7f
-
-#define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
-#define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
-
-#endif /* CMPINTMD_H_INCLUDED */
+#endif /* !SCM_CMPINTMD_H_INCLUDED */

@@ -1,6 +1,6 @@
-#| -*-Scheme-*-
+/* -*-C-*-
 
-$Id: files-gc-bch.scm,v 1.6 2007/01/05 21:19:26 cph Exp $
+$Id: svm1-config.h,v 1.2 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -23,12 +23,13 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-|#
+*/
 
-;;;; C files for one-heap garbage-collector.
+#ifndef SCM_CMPINTMD_CONFIG_H_INCLUDED
+#define SCM_CMPINTMD_CONFIG_H_INCLUDED 1
 
-"bchdmp"
-"bchgcl"
-"bchmmg"
-"bchpur"
-"bchutl"
+#define COMPILER_PROCESSOR_TYPE COMPILER_SVM_TYPE
+#define CC_IS_SVM 1
+#define CC_IS_GENERIC 1
+
+#endif /* !SCM_CMPINTMD_CONFIG_H_INCLUDED */

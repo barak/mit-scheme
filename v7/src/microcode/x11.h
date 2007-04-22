@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11.h,v 1.23 2007/01/05 21:19:25 cph Exp $
+$Id: x11.h,v 1.24 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,6 @@ USA.
 #include <X11/keysym.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
-#include "ansidecl.h"
 
 struct xdisplay
 {
@@ -103,7 +102,7 @@ struct xdisplay
 #define X_MODIFIER_MASK_HYPER_P(modifier_mask, xd) \
   ((modifier_mask) & (XD_MODIFIER_MASK_HYPER (xd)))
 
-extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
+extern struct xdisplay * x_display_arg (unsigned int arg);
 
 struct drawing_attributes
 {
@@ -122,17 +121,15 @@ struct drawing_attributes
   unsigned long mouse_pixel;
 };
 
-#ifdef HAVE_STDC
 /* This incomplete type definition is needed because the scope of the
    implicit definition in the following typedefs is incorrect.  */
 struct xwindow;
-#endif
 
-typedef void EXFUN ((*x_deallocator_t), (struct xwindow *));
-typedef void EXFUN ((*x_event_processor_t), (struct xwindow *, XEvent *));
-typedef SCHEME_OBJECT EXFUN
-  ((*x_coordinate_map_t), (struct xwindow *, unsigned int));
-typedef void EXFUN ((*x_update_normal_hints_t), (struct xwindow *));
+typedef void (*x_deallocator_t) (struct xwindow *);
+typedef void (*x_event_processor_t) (struct xwindow *, XEvent *);
+typedef SCHEME_OBJECT (*x_coordinate_map_t)
+  (struct xwindow *, unsigned int);
+typedef void (*x_update_normal_hints_t) (struct xwindow *);
 
 struct xwindow_methods
 {
@@ -202,9 +199,9 @@ struct xwindow
   int move_offset_y;
 
 #ifdef __GNUC__
-  PTR extra [0];
+  void * extra [0];
 #else
-  PTR extra [1];
+  void * extra [1];
 #endif
 };
 
@@ -255,7 +252,7 @@ struct xwindow
 #define FONT_HEIGHT(f) (((f) -> ascent) + ((f) -> descent))
 #define FONT_BASE(f) ((f) -> ascent)
 
-extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
+extern struct xwindow * x_window_arg (unsigned int arg);
 
 struct ximage
 {
@@ -268,9 +265,9 @@ struct ximage
 #define X_IMAGE_TO_OBJECT(image)					\
   (LONG_TO_UNSIGNED_FIXNUM (allocate_x_image (image)))
 
-extern struct ximage * EXFUN (x_image_arg, (unsigned int arg));
-extern unsigned int EXFUN (allocate_x_image, (XImage * image));
-extern void EXFUN (deallocate_x_image, (struct ximage * xi));
+extern struct ximage * x_image_arg (unsigned int arg);
+extern unsigned int allocate_x_image (XImage * image);
+extern void deallocate_x_image (struct ximage * xi);
 
 struct xvisual
 {
@@ -283,9 +280,9 @@ struct xvisual
 #define X_VISUAL_TO_OBJECT(visual)					\
   (LONG_TO_UNSIGNED_FIXNUM (allocate_x_visual (visual)))
 
-extern struct xvisual * EXFUN (x_visual_arg, (unsigned int arg));
-extern unsigned int EXFUN (allocate_x_visual, (Visual * visual));
-extern void EXFUN (deallocate_x_visual, (struct xvisual * xv));
+extern struct xvisual * x_visual_arg (unsigned int arg);
+extern unsigned int allocate_x_visual (Visual * visual);
+extern void deallocate_x_visual (struct xvisual * xv);
 
 struct xcolormap
 {
@@ -301,61 +298,51 @@ struct xcolormap
   (LONG_TO_UNSIGNED_FIXNUM (allocate_x_colormap ((colormap), (xd))))
 #define XCM_DISPLAY(xcm) (XD_DISPLAY (XCM_XD (xcm)))
 
-extern struct xcolormap * EXFUN (x_colormap_arg, (unsigned int arg));
-extern unsigned int EXFUN
-  (allocate_x_colormap, (Colormap colormap, struct xdisplay * xd));
-extern void EXFUN (deallocate_x_colormap, (struct xcolormap * xcm));
+extern struct xcolormap * x_colormap_arg (unsigned int arg);
+extern unsigned int allocate_x_colormap
+  (Colormap colormap, struct xdisplay * xd);
+extern void deallocate_x_colormap (struct xcolormap * xcm);
 
 extern int x_debug;
 
-extern PTR EXFUN (x_malloc, (unsigned int size));
-extern PTR EXFUN (x_realloc, (PTR ptr, unsigned int size));
+extern void * x_malloc (unsigned int size);
+extern void * x_realloc (void * ptr, unsigned int size);
 
-extern char * EXFUN
-  (x_get_default,
-   (Display * display,
-    CONST char * resource_name,
-    CONST char * resource_class,
-    CONST char * property_name,
-    CONST char * property_class,
-    char * sdefault));
+extern char * x_get_default
+  (Display * display,
+   const char * resource_name,
+   const char * resource_class,
+   const char * property_name,
+   const char * property_class,
+   char * sdefault);
 
-extern void EXFUN
-  (x_default_attributes,
-   (Display * display,
-    CONST char * resource_name,
-    CONST char * resource_class,
-    struct drawing_attributes * attributes));
+extern void x_default_attributes
+  (Display * display,
+   const char * resource_name,
+   const char * resource_class,
+   struct drawing_attributes * attributes);
 
-extern struct xwindow * EXFUN
-  (x_make_window,
-   (struct xdisplay * xd,
-    Window window,
-    int x_size,
-    int y_size,
-    struct drawing_attributes * attributes,
-    struct xwindow_methods * methods,
-    unsigned int extra));
+extern struct xwindow * x_make_window
+  (struct xdisplay * xd,
+   Window window,
+   int x_size,
+   int y_size,
+   struct drawing_attributes * attributes,
+   struct xwindow_methods * methods,
+   unsigned int extra);
 
-extern void EXFUN
-  (xw_set_wm_input_hint, (struct xwindow * xw, int input_hint));
+extern void xw_set_wm_input_hint (struct xwindow * xw, int input_hint);
+extern void xw_set_wm_name (struct xwindow * xw, const char * name);
+extern void xw_set_wm_icon_name (struct xwindow * xw, const char * name);
 
-extern void EXFUN
-  (xw_set_wm_name, (struct xwindow * xw, CONST char * name));
+extern void x_decode_window_map_arg
+  (SCHEME_OBJECT map_arg,
+   const char ** resource_class,
+   const char ** resource_name,
+   int * map_p);
 
-extern void EXFUN
-  (xw_set_wm_icon_name, (struct xwindow * xw, CONST char * name));
-
-extern void EXFUN
-  (x_decode_window_map_arg,
-   (SCHEME_OBJECT map_arg,
-    CONST char ** resource_class,
-    CONST char ** resource_name,
-    int * map_p));
-
-extern void EXFUN
-  (xw_make_window_map,
-   (struct xwindow * xw,
-    CONST char * resource_name,
-    CONST char * resource_class,
-    int map_p));
+extern void xw_make_window_map
+  (struct xwindow * xw,
+   const char * resource_name,
+   const char * resource_class,
+   int map_p);

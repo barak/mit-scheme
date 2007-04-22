@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prospty.c,v 1.9 2007/01/12 03:45:55 cph Exp $
+$Id: prospty.c,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,12 +29,13 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "osscheme.h"
 #include "osterm.h"
 #include "osio.h"
 #include "ospty.h"
 
 static Tchannel
-DEFUN (arg_pty_master, (arg), unsigned int arg)
+arg_pty_master (unsigned int arg)
 {
   Tchannel channel = (arg_channel (1));
   if ((OS_channel_type (channel)) != channel_type_unix_pty_master)
@@ -49,8 +50,8 @@ Returns a vector #(CHANNEL MASTER-NAME SLAVE-NAME).")
   PRIMITIVE_HEADER (0);
   {
     Tchannel channel;
-    CONST char * master_name;
-    CONST char * slave_name =
+    const char * master_name;
+    const char * slave_name =
       (OS_open_pty_master ((&channel), (&master_name)));
     transaction_begin ();
     OS_channel_close_on_abort (channel);

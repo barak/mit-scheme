@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hppacach.c,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: hppacach.c,v 1.18 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -314,7 +314,7 @@ print_tlb (info, name)
   printf ("\toff_count\t%ld\n", info->off_count);
   printf ("\tloop\t\t%ld association%s per entry.",
 	  info->loop, ((info->loop == 1) ? "" : "s"));
-  
+
   print_cst ((info->conf.bits.cst));
   print_sel ((info->conf.bits.psel), "p-sel", "P%sTLB", "purge");
 
@@ -327,7 +327,7 @@ print_tlb (info, name)
 	  info->off_base, info->off_stride, info->off_count,
 	  info->loop);
 
-  return;  
+  return;
 }
 
 void

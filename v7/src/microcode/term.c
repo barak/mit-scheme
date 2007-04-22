@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: term.c,v 1.23 2007/04/01 17:33:07 riastradh Exp $
+$Id: term.c,v 1.24 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,24 +32,20 @@ USA.
 #include "osfile.h"
 #include "edwin.h"
 #include "option.h"
-#include "prims.h"
 
 extern long death_blow;
-extern char * Term_Messages [];
-extern void EXFUN (get_band_parameters, (long * heap_size, long * const_size));
-extern void EXFUN (Reset_Memory, (void));
+extern void get_band_parameters (unsigned long *, unsigned long *);
 
 #ifdef __WIN32__
 #  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
-   extern void win32_deallocate_registers (void);
 #endif
 
 #ifdef __OS2__
 #  define USING_MESSAGE_BOX_FOR_FATAL_OUTPUT
 #endif
 
-static void EXFUN (edwin_auto_save, (void));
-static void EXFUN (delete_temp_files, (void));
+static void edwin_auto_save (void);
+static void delete_temp_files (void);
 
 #define BYTES_TO_BLOCKS(n) (((n) + 1023) / 1024)
 #define MIN_HEAP_DELTA	50
@@ -63,7 +59,7 @@ EXIT_SCHEME_DECLARATIONS;
 #endif
 
 void
-DEFUN_VOID (init_exit_scheme)
+init_exit_scheme (void)
 {
 #ifdef INIT_EXIT_SCHEME
   INIT_EXIT_SCHEME ();
@@ -71,15 +67,16 @@ DEFUN_VOID (init_exit_scheme)
 }
 
 static void
-DEFUN (attempt_termination_backout, (code), int code)
+attempt_termination_backout (int code)
 {
   outf_flush_error(); /* NOT flush_fatal */
   if ((WITHIN_CRITICAL_SECTION_P ())
       || (code == TERM_HALT)
-      || (! (Valid_Fixed_Obj_Vector ())))
+      || (! (VECTOR_P (fixed_objects))))
     return;
   {
-    SCHEME_OBJECT Term_Vector = (Get_Fixed_Obj_Slot (Termination_Proc_Vector));
+    SCHEME_OBJECT Term_Vector
+      = (VECTOR_REF (fixed_objects, Termination_Proc_Vector));
     if ((! (VECTOR_P (Term_Vector)))
 	|| (((long) (VECTOR_LENGTH (Term_Vector))) <= code))
       return;
@@ -90,17 +87,16 @@ DEFUN (attempt_termination_backout, (code), int code)
      Will_Push (CONTINUATION_SIZE
 		+ STACK_ENV_EXTRA_SLOTS
 		+ ((code == TERM_NO_ERROR_HANDLER) ? 5 : 4));
-      Store_Return (RC_HALT);
-      exp_register = (LONG_TO_UNSIGNED_FIXNUM (code));
-      Save_Cont ();
+      SET_RC (RC_HALT);
+      SET_EXP (LONG_TO_UNSIGNED_FIXNUM (code));
+      SAVE_CONT ();
       if (code == TERM_NO_ERROR_HANDLER)
 	STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (death_blow));
-      STACK_PUSH (val_register); /* Arg 3 */
-      STACK_PUSH (env_register); /* Arg 2 */
-      STACK_PUSH (exp_register); /* Arg 1 */
+      PUSH_VAL ();		/* Arg 3 */
+      PUSH_ENV ();		/* Arg 2 */
+      PUSH_EXP ();		/* Arg 1 */
       STACK_PUSH (Handler);	/* The handler function */
-      STACK_PUSH (STACK_FRAME_HEADER
-		  + ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3));
+      PUSH_APPLY_FRAME_HEADER ((code == TERM_NO_ERROR_HANDLER) ? 4 : 3);
      Pushed ();
       abort_to_interpreter (PRIM_NO_TRAP_APPLY);
     }
@@ -108,7 +104,7 @@ DEFUN (attempt_termination_backout, (code), int code)
 }
 
 static void
-DEFUN (termination_prefix, (code), int code)
+termination_prefix (int code)
 {
   attempt_termination_backout (code);
   OS_restore_external_state ();
@@ -118,7 +114,7 @@ DEFUN (termination_prefix, (code), int code)
     {
       if (!option_batch_mode)
 	{
-	  outf_console ("\n%s.\n", (Term_Messages [code]));
+	  outf_console ("\n%s.\n", (term_messages[code]));
 	  outf_flush_console ();
 	}
     }
@@ -128,10 +124,15 @@ DEFUN (termination_prefix, (code), int code)
       outf_fatal ("Reason for termination:");
 #endif
       outf_fatal ("\n");
-      if ((code < 0) || (code > MAX_TERMINATION))
-	outf_fatal ("Unknown termination code 0x%x", code);
-      else
-	outf_fatal ("%s", (Term_Messages [code]));
+      {
+	const char * msg = 0;
+	if ((code >= 0) && (code <= MAX_TERMINATION))
+	  msg = (term_messages[code]);
+	if (msg == 0)
+	  outf_fatal ("Unknown termination code %#x", code);
+	else
+	  outf_fatal ("%s", msg);
+      }
       if (WITHIN_CRITICAL_SECTION_P ())
 	outf_fatal (" within critical section \"%s\"",
 		    (CRITICAL_SECTION_NAME ()));
@@ -142,9 +143,11 @@ DEFUN (termination_prefix, (code), int code)
     }
 }
 
+static void termination_suffix (int, int, bool) NORETURN;
+static void termination_suffix_trace (int) NORETURN;
+
 static void
-DEFUN (termination_suffix, (code, value, abnormal_p),
-       int code AND int value AND int abnormal_p)
+termination_suffix (int code, int value, bool abnormal_p)
 {
 #ifdef EXIT_HOOK
   EXIT_HOOK (code, value, abnormal_p);
@@ -156,103 +159,101 @@ DEFUN (termination_suffix, (code, value, abnormal_p),
   if (code != TERM_HALT)
 #endif
     outf_flush_fatal();
-#ifdef __WIN32__
-  win32_deallocate_registers();
-#endif
-  Reset_Memory ();
+  reset_memory ();
   EXIT_SCHEME (value);
 }
 
 static void
-DEFUN (termination_suffix_trace, (code), int code)
+termination_suffix_trace (int code)
 {
   if (Trace_On_Error)
     {
       outf_error ("\n\n**** Stack trace ****\n\n");
-      Back_Trace (error_output);
+      Back_Trace (ERROR_OUTPUT);
     }
-  termination_suffix (code, 1, 1);
+  termination_suffix (code, 1, true);
 }
 
 void
-DEFUN (Microcode_Termination, (code), int code)
+Microcode_Termination (int code)
 {
   termination_prefix (code);
   termination_suffix_trace (code);
 }
 
 void
-DEFUN (termination_normal, (value), CONST int value)
+termination_normal (const int value)
 {
   termination_prefix (TERM_HALT);
-  termination_suffix (TERM_HALT, value, 0);
+  termination_suffix (TERM_HALT, value, false);
 }
 
 void
-DEFUN_VOID (termination_init_error)
+termination_init_error (void)
 {
   termination_prefix (TERM_EXIT);
-  termination_suffix (TERM_EXIT, 1, 1);
+  termination_suffix (TERM_EXIT, 1, true);
 }
 
 void
-DEFUN_VOID (termination_end_of_computation)
+termination_end_of_computation (void)
 {
   termination_prefix (TERM_END_OF_COMPUTATION);
-  Print_Expression (val_register, "Final result");
+  Print_Expression (GET_VAL, "Final result");
   outf_console("\n");
-  termination_suffix (TERM_END_OF_COMPUTATION, 0, 0);
+  termination_suffix (TERM_END_OF_COMPUTATION, 0, false);
 }
 
 void
-DEFUN_VOID (termination_trap)
+termination_trap (void)
 {
   /* This claims not to be abnormal so that the user will
      not be asked a second time about dumping core. */
   termination_prefix (TERM_TRAP);
-  termination_suffix (TERM_TRAP, 1, 0);
+  termination_suffix (TERM_TRAP, 1, false);
 }
 
 void
-DEFUN_VOID (termination_no_error_handler)
+termination_no_error_handler (void)
 {
   /* This does not print a back trace because the caller printed one. */
   termination_prefix (TERM_NO_ERROR_HANDLER);
   if (death_blow == ERR_FASL_FILE_TOO_BIG)
     {
-      long heap_size;
-      long const_size;
-      get_band_parameters (&heap_size, &const_size);
+      unsigned long heap_size;
+      unsigned long const_size;
+      get_band_parameters ((&heap_size), (&const_size));
       outf_fatal ("Try again with values at least as large as\n");
-      outf_fatal ("  -heap %d (%d + %d)\n",
-	       (MIN_HEAP_DELTA + (BYTES_TO_BLOCKS (heap_size))),
-	       (BYTES_TO_BLOCKS (heap_size)),
-	       MIN_HEAP_DELTA);
-      outf_fatal ("  -constant %d\n", (BYTES_TO_BLOCKS (const_size)));
+      outf_fatal ("  --heap %lu\n",
+		  (MIN_HEAP_DELTA + (BYTES_TO_BLOCKS (heap_size))));
+      outf_fatal ("  --constant %lu\n", (BYTES_TO_BLOCKS (const_size)));
     }
-  termination_suffix (TERM_NO_ERROR_HANDLER, 1, 1);
+  termination_suffix (TERM_NO_ERROR_HANDLER, 1, true);
 }
 
 void
-DEFUN_VOID (termination_gc_out_of_space)
+termination_gc_out_of_space (void)
 {
   termination_prefix (TERM_GC_OUT_OF_SPACE);
-  outf_fatal ("You are out of space at the end of a Garbage Collection!\n");
-  outf_fatal ("Free = 0x%lx; MemTop = 0x%lx; Heap_Top = 0x%lx\n",
-	      Free, MemTop, Heap_Top);
-  outf_fatal ("Words required = %ld; Words available = %ld\n",
-	      (MemTop - Free), GC_Space_Needed);
+  outf_fatal ("You are out of space at the end of a garbage collection!\n");
+  outf_fatal
+    ("Free = %#lx; heap_alloc_limit = %#lx; heap_end = %#lx\n",
+     ((unsigned long) Free),
+     ((unsigned long) heap_alloc_limit),
+     ((unsigned long) heap_end));
+  outf_fatal ("# words needed = %lu; # words available = %lu\n",
+	      gc_space_needed, HEAP_AVAILABLE);
   termination_suffix_trace (TERM_GC_OUT_OF_SPACE);
 }
 
 void
-DEFUN_VOID (termination_eof)
+termination_eof (void)
 {
   Microcode_Termination (TERM_EOF);
 }
 
 void
-DEFUN (termination_signal, (signal_name), CONST char * signal_name)
+termination_signal (const char * signal_name)
 {
   if (signal_name != 0)
     {
@@ -265,14 +266,14 @@ DEFUN (termination_signal, (signal_name), CONST char * signal_name)
 }
 
 static void
-DEFUN_VOID (edwin_auto_save)
+edwin_auto_save (void)
 {
   static SCHEME_OBJECT position;
   static struct interpreter_state_s new_state;
 
   position =
-    ((Valid_Fixed_Obj_Vector ())
-     ? (Get_Fixed_Obj_Slot (FIXOBJ_EDWIN_AUTO_SAVE))
+    ((VECTOR_P (fixed_objects))
+     ? (VECTOR_REF (fixed_objects, FIXOBJ_EDWIN_AUTO_SAVE))
      : EMPTY_LIST);
   while (PAIR_P (position))
     {
@@ -284,10 +285,9 @@ DEFUN_VOID (edwin_auto_save)
 	  && ((GROUP_MODIFIED_P (PAIR_CAR (entry))) == SHARP_T))
 	{
 	  SCHEME_OBJECT group = (PAIR_CAR (entry));
-	  char * namestring = ((char *) (STRING_LOC ((PAIR_CDR (entry)), 0)));
-	  SCHEME_OBJECT text = (GROUP_TEXT (group));
+	  char * namestring = (STRING_POINTER (PAIR_CDR (entry)));
 	  unsigned long length;
-	  unsigned char * start = (lookup_external_string (text, (&length)));
+	  unsigned char * start = (GROUP_TEXT (group, (&length)));
 	  unsigned char * end = (start + length);
 	  unsigned char * gap_start = (start + (GROUP_GAP_START (group)));
 	  unsigned char * gap_end = (start + (GROUP_GAP_END (group)));
@@ -313,14 +313,14 @@ DEFUN_VOID (edwin_auto_save)
 }
 
 static void
-DEFUN_VOID (delete_temp_files)
+delete_temp_files (void)
 {
   static SCHEME_OBJECT position;
   static struct interpreter_state_s new_state;
 
   position =
-    ((Valid_Fixed_Obj_Vector ())
-     ? (Get_Fixed_Obj_Slot (FIXOBJ_FILES_TO_DELETE))
+    ((VECTOR_P (fixed_objects))
+     ? (VECTOR_REF (fixed_objects, FIXOBJ_FILES_TO_DELETE))
      : EMPTY_LIST);
   while (PAIR_P (position))
     {
@@ -330,7 +330,7 @@ DEFUN_VOID (delete_temp_files)
 	{
 	  bind_interpreter_state (&new_state);
 	  if ((setjmp (interpreter_catch_env)) == 0)
-	    OS_file_remove ((char *) (STRING_LOC (entry, 0)));
+	    OS_file_remove (STRING_POINTER (entry));
 	  unbind_interpreter_state (&new_state);
 	}
     }

@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Id: comlin.h,v 1.12 2007/04/22 16:31:22 cph Exp $
+
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007 Massachusetts Institute of Technology
@@ -23,16 +25,10 @@ USA.
 
 */
 
-/* $Id: comlin.h,v 1.11 2007/01/05 21:19:25 cph Exp $
- *
- * This file contains definitions for the scheme command parser.
- *
- */
+/* The scheme command parser.  */
 
 #ifndef COMLIN_H_INCLUDED
 #define COMLIN_H_INCLUDED
-
-#include "ansidecl.h"
 
 #ifndef boolean
 #  define boolean	int
@@ -63,32 +59,24 @@ struct keyword_struct
 {
   int		type_tag;
   string	keyword;
-  long		*data;
+  void		*data;
   string	format;
   boolean	*supplied_p;
 };
 
-#define KEYWORD(str, var, type, format, sup)				\
-{									\
-  type,									\
-  ((string) str),							\
-  ((long *) var),							\
-  format,								\
-  sup									\
-}
+#define KEYWORD(str, var, type, format, sup) { type, str, var, format, sup }
 
-#define END_KEYWORD()	KEYWORD("", NULL, LAST_KYWRD, NULL, NULL)
+#define END_KEYWORD() KEYWORD ("", 0, LAST_KYWRD, 0, 0)
 
 /* Fake boolean and string formats */
 
-#define BFRMT	((string) NULL)
-#define SFRMT	((string) NULL)
+#define BFRMT (0)
+#define SFRMT (0)
 
 /* Exports */
 
-extern char *program_name;
+extern char * program_name;
 
-extern void EXFUN (parse_keywords,
-		   (int, char **, struct keyword_struct *, boolean));
+extern void parse_keywords (int, char **, struct keyword_struct *, boolean);
 
 #endif /* COMLIN_H_INCLUDED */

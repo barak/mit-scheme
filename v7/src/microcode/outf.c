@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.16 2007/01/05 21:19:25 cph Exp $
+$Id: outf.c,v 1.17 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -24,146 +24,201 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
-
-/*
-  OUTF system
-    
-  outf_channel i/o is a substitute for <stdio.h>.  On text based unix-like
-  systems it is implmented in terms of stdio.  On windowing systems, however,
-  we have to be able to report problems withou having an obvious text output.
-  
-  There are three channels for output:
-    
-    console_output - for normal output to the user
-    error_output   - for output of exceptional things
-    fatal_output   - for details of an impending crash
-      
-  Use outf where you would normally think of using fprintf and outf_flush
-  where you would normally use fflush.
-    
-  outf_flush(fatal_output) is special.  It causes the buffered fatal_output
-  data to be displayed.  On windowing systems this may cause a window to be
-  created to display the information, or allow the window containging the
-  information to stay visible `after' the termination of Scheme.
-*/
 
-#include <stdio.h>
-#include "scheme.h"
+/* OUTF system
 
-#ifdef STDC_HEADERS
-#  include <string.h>
-#  include <stdarg.h>
-#  define VA_START(args, lastarg) va_start(args, lastarg)
-#  define VA_DCL
-#else
-#  include <varargs.h>
-#  define VA_START(args, lastarg) va_start(args)
-#  define VA_DCL va_dcl
-#endif
+   outf_channel I/O is a substitute for <stdio.h>.  On text-based
+   systems it is implemented in terms of stdio.  On windowing systems,
+   however, we have to be able to report problems without having an
+   obvious text output.
+
+   There are three channels for output:
+
+   CONSOLE_OUTPUT - for normal output to the user
+   ERROR_OUTPUT   - for output of exceptional things
+   FATAL_OUTPUT   - for details of an impending crash
+
+   Use outf where you would normally think of using fprintf and
+   outf_flush where you would normally use fflush.  */
+
+#include "config.h"
+#include "outf.h"
 
 #ifdef __WIN32__
 #  include <windows.h>
 #  include "ntscreen.h"
+   extern HANDLE master_tty_window;
 #endif
 
-/* forward reference */
-extern void EXFUN
-  (voutf, (CONST outf_channel chan, CONST char * format, va_list ap));
+#ifdef __OS2__
+   extern char * OS2_thread_fatal_error_buffer (void);
+   extern void OS2_message_box (const char *, const char *, int);
+   extern void OS2_console_write (const char *, size_t);
+#endif
 
-#define make_outf_variants(outputter,flusher,chan)			\
-void									\
-DEFUN (outputter, (format, va_alist), CONST char *format DOTS)		\
-     VA_DCL								\
-{									\
-    va_list args;							\
-    VA_START(args, format);						\
-    voutf((chan), format, args);					\
-}									\
-void									\
-DEFUN_VOID (flusher)							\
-{									\
-    outf_flush (chan);							\
-}
-
-make_outf_variants(outf_console, outf_flush_console, console_output)
-make_outf_variants(outf_error,   outf_flush_error,   error_output)
-make_outf_variants(outf_fatal,   outf_flush_fatal,   fatal_output)
-
 void
-DEFUN (outf, (chan, format, va_alist),
-       outf_channel chan AND
-       CONST char *format DOTS)
-     VA_DCL
+outf (outf_channel chan, const char * format, ...)
 {
     va_list ap;
-    VA_START(ap, format);
-    voutf(chan, format, ap);
+    va_start (ap, format);
+    voutf (chan, format, ap);
+    va_end (ap);
 }
 
-static FILE *
-DEFUN (outf_channel_to_FILE, (chan), outf_channel chan)
+void
+voutf (outf_channel chan, const char * format, va_list ap)
 {
-    if (chan==fatal_output)   return  stderr;
-    if (chan==error_output)   return  stderr;
-    if (chan==console_output) return  stdout;
-    return  (FILE*)chan;
+  switch (chan)
+    {
+    case CONSOLE_OUTPUT: voutf_console (format, ap); break;
+    case ERROR_OUTPUT: voutf_error (format, ap); break;
+    case FATAL_OUTPUT: voutf_fatal (format, ap); break;
+    }
+}
+
+void
+outf_flush (outf_channel chan)
+{
+  switch (chan)
+    {
+    case CONSOLE_OUTPUT: outf_flush_console (); break;
+    case ERROR_OUTPUT: outf_flush_error (); break;
+    case FATAL_OUTPUT: outf_flush_fatal (); break;
+    }
+}
+
+void
+outf_console (const char * format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  voutf_console (format, args);
+  va_end (args);
+}
+
+void
+outf_error (const char * format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  voutf_error (format, args);
+  va_end (args);
+}
+
+void
+outf_fatal (const char * format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  voutf_fatal (format, args);
+  va_end (args);
 }
 
 #ifdef __WIN32__
 
-#define USE_WINDOWED_OUTPUT
+#define OUTF_VARIANTS_DEFINED 1
 #define MAX_FATAL_BUF 1000
-static char fatal_buf[MAX_FATAL_BUF + 1] = {0};
+static char fatal_buf [MAX_FATAL_BUF + 1] = { '\0' };
 
 #ifdef CL386
-#  define VSNPRINTF(buffer,length,format,args)				\
+#  define VSNPRINTF(buffer, length, format, args)			\
      _vsnprintf ((buffer), (length), (format), (args))
 #else
 #  ifdef __WATCOMC__
-#    define VSNPRINTF(buffer,length,format,args)			\
+#    define VSNPRINTF(buffer, length, format, args)			\
        vsprintf ((buffer), (format), (args))
 #  endif
 #endif
 
-void
-DEFUN (voutf_fatal, (format, args), CONST char *format AND va_list args)
+static void
+voutf_master_tty (const char * format, va_list args)
 {
-    int end = strlen(fatal_buf);
-    VSNPRINTF (&fatal_buf[end], MAX_FATAL_BUF - end, format, args);
+  char buf [1000];
+  VSNPRINTF (buf, 1000, format, args);
+  Screen_WriteText (master_tty_window, buf);
+  return (true);
 }
 
 void
-DEFUN_VOID (popup_outf_flush_fatal)
+voutf_console (const char * format, va_list args)
 {
-    fprintf(stderr,"%s", fatal_buf); fflush(stderr);
-    MessageBox(0,fatal_buf,"MIT-Scheme terminating", MB_OK|MB_TASKMODAL);
-    fatal_buf[0] = 0;
+  if (master_tty_window != 0)
+    voutf_master_tty (format, args);
+  else
+    vfprintf (stdout, format, args);
 }
 
 void
-DEFUN (voutf_master_tty, (chan, format, args),
-       outf_channel chan  AND  CONST char *format  AND  va_list args)
+outf_flush_console (void)
 {
-    extern HANDLE master_tty_window;
-    char buf[1000];
-
-    if (master_tty_window) {
-      VSNPRINTF (buf, 1000, format, args);
-      Screen_WriteText (master_tty_window, buf);
-    } else {
-      vfprintf (outf_channel_to_FILE(chan), format, args);
-    }
+  if (master_tty_window == 0)
+    fflush (stdout);
 }
 
-#else /* not __WIN32__ */
+void
+voutf_error (const char * format, va_list args)
+{
+  if (master_tty_window != 0)
+    voutf_master_tty (format, args);
+  else
+    vfprintf (stderr, format, args);
+}
+
+void
+outf_flush_error (void)
+{
+  if (master_tty_window == 0)
+    fflush (stderr);
+}
+
+void
+voutf_fatal (const char * format, va_list args)
+{
+  unsigned int end = (strlen (fatal_buf));
+  VSNPRINTF ((& (fatal_buf[end])), (MAX_FATAL_BUF - end), format, args);
+}
+
+void
+outf_flush_fatal (void)
+{
+  fprintf (stderr, "%s", fatal_buf);
+  fflush (stderr);
+  MessageBox
+    (0, fatal_buf, "MIT/GNU Scheme terminating", (MB_OK | MB_TASKMODAL));
+  (fatal_buf[0]) = '\0';
+}
+
+#endif /* __WIN32__ */
+
 #ifdef __OS2__
 
-extern char * OS2_thread_fatal_error_buffer (void);
-extern void OS2_message_box (const char *, const char *, int);
+#define OUTF_VARIANTS_DEFINED 1
 
-#define USE_WINDOWED_OUTPUT
+void
+voutf_console (const char * format, va_list args)
+{
+  char buffer [4096];
+  vsprintf (buffer, format, args);
+  OS2_console_write (buffer, (strlen (buffer)));
+}
 
-static void
+void
+outf_flush_console (void)
+{
+}
+
+void
+voutf_error (const char * format, va_list args)
+{
+  voutf_console (format, args);
+}
+
+void
+outf_flush_error (void)
+{
+}
+
+void
 voutf_fatal (const char * format, va_list args)
 {
   char * buffer = (OS2_thread_fatal_error_buffer ());
@@ -171,50 +226,52 @@ voutf_fatal (const char * format, va_list args)
   vsprintf ((& (buffer [end])), format, args);
 }
 
-static void
-popup_outf_flush_fatal (void)
+void
+outf_flush_fatal (void)
 {
   char * buffer = (OS2_thread_fatal_error_buffer ());
-  OS2_message_box ("Scheme Terminating", buffer, 1);
+  OS2_message_box ("MIT/GNU Scheme terminating", buffer, 1);
   (buffer[0]) = '\0';
 }
 
-static void
-voutf_master_tty (const outf_channel chan, const char * format, va_list args)
-{
-  extern void OS2_console_write (const char *, size_t);
-  char buffer [4096];
-  vsprintf (buffer, format, args);
-  OS2_console_write (buffer, (strlen (buffer)));
-}
-
 #endif /* __OS2__ */
-#endif /* not __WIN32__ */
 
-void
-DEFUN (voutf, (chan, format, ap),
-       CONST outf_channel chan AND
-       CONST char * format AND
-       va_list ap)
-{
-#ifdef USE_WINDOWED_OUTPUT
+#ifndef OUTF_VARIANTS_DEFINED
 
-  if (chan == fatal_output)
-    voutf_fatal (format, ap);
-  else if ((chan == console_output) || (chan == error_output))
-    voutf_master_tty (chan, format, ap);
-  else
-#endif
-    vfprintf ((outf_channel_to_FILE (chan)), format, ap);
+void
+voutf_console (const char * format, va_list args)
+{
+  vfprintf (stdout, format, args);
 }
 
 void
-DEFUN (outf_flush, (chan), outf_channel chan)
+outf_flush_console (void)
 {
-#ifdef USE_WINDOWED_OUTPUT
-  if (chan == fatal_output)
-    popup_outf_flush_fatal ();
-  else
-#endif
-    fflush (outf_channel_to_FILE (chan));
+  fflush (stdout);
 }
+
+void
+voutf_error (const char * format, va_list args)
+{
+  vfprintf (stderr, format, args);
+}
+
+void
+outf_flush_error (void)
+{
+  fflush (stderr);
+}
+
+void
+voutf_fatal (const char * format, va_list args)
+{
+  vfprintf (stderr, format, args);
+}
+
+void
+outf_flush_fatal (void)
+{
+  fflush (stderr);
+}
+
+#endif /* not OUTF_VARIANTS_DEFINED */

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: locks.h,v 9.30 2007/01/05 21:19:25 cph Exp $
+$Id: none.c,v 1.2 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,16 +25,4 @@ USA.
 
 */
 
-/* Contains everything needed to lock and unlock parts of
-   the heap, pure/constant space and the like.
-   It also contains intercommunication stuff as well. */
-
-typedef long *Lock_Handle;		/* Address of lock word */
-#define CONTENTION_DELAY	10	/* For "slow" locks, back off */
-#define Lock_Cell(Cell)		NULL	/* Start lock */
-#define Unlock_Cell(Cell)		/* End lock */
-#define Initialize_Heap_Locks()		/* Clear at start up */
-#define Do_Store_No_Lock(To, F)	*(To) = F
-#define Sleep(How_Long)		{ }	/* Delay for locks, etc. */
-
-#define LOCK_FIRST(cell1, cell2)	(cell1 < cell2)
+/* Compiled code interface stub.  */

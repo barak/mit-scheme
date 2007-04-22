@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttterm.c,v 1.9 2007/01/12 03:45:55 cph Exp $
+$Id: nttterm.c,v 1.10 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,9 +31,9 @@ USA.
 #include "prims.h"
 #include "osterm.h"
 
-extern char * EXFUN (tparam, (char *, char*, int, int, ...));
-extern char * EXFUN (tgoto, (char *, int, int));
-extern int EXFUN (tputs, (char *, int, void (*) (int)));
+extern char * tparam (char *, char*, int, int, ...);
+extern char * tgoto (char *, int, int);
+extern int tputs (char *, int, void (*) (int));
 extern char * BC;
 extern char * UP;
 extern char PC;
@@ -47,7 +47,7 @@ static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
 static void
-DEFUN (tputs_write_char, (c), int c)
+tputs_write_char (int c)
 {
   (*tputs_output_scan++) = c;
   return;
@@ -76,10 +76,9 @@ DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
     BC = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
     PRIMITIVE_RETURN
-      (char_pointer_to_string
-       (tgoto ((STRING_ARG (1)),
-	       (arg_nonnegative_integer (2)),
-	       (arg_nonnegative_integer (3)))));
+      (char_pointer_to_string (tgoto ((STRING_ARG (1)),
+				      (arg_nonnegative_integer (2)),
+				      (arg_nonnegative_integer (3)))));
   }
 }
 

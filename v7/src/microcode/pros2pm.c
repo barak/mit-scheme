@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pros2pm.c,v 1.26 2007/01/12 03:45:55 cph Exp $
+$Id: pros2pm.c,v 1.27 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -725,7 +725,7 @@ DEFINE_PRIMITIVE ("OS2PS-GET-BITMAP-PARAMETERS", Prim_OS2_ps_get_bitmap_paramete
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT s = (allocate_string (sizeof (BITMAPINFOHEADER)));
-    PBITMAPINFOHEADER params = ((PBITMAPINFOHEADER) (STRING_LOC (s, 0)));
+    PBITMAPINFOHEADER params = ((PBITMAPINFOHEADER) (STRING_POINTER (s)));
     (params -> cbFix) = (sizeof (BITMAPINFOHEADER));
     OS2_get_bitmap_parameters ((bid_argument (1)), params);
     PRIMITIVE_RETURN (s);

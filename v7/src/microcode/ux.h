@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.82 2007/01/05 21:19:25 cph Exp $
+$Id: ux.h,v 1.83 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -69,7 +69,7 @@ USA.
 #endif
 
 #if defined(__netbsd__) || defined(__NetBSD__)
-#  define SYSTEM_VARIANT "NETBSD"
+#  define SYSTEM_VARIANT "NetBSD"
 #endif
 
 #ifdef _NEXTOS
@@ -102,7 +102,6 @@ USA.
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
-#include <stdio.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/times.h>
@@ -121,22 +120,6 @@ USA.
   extern char ** environ;
 #endif
 
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#  include <string.h>
-#else
-#  ifndef HAVE_STRCHR
-#    define strchr index
-#    define strrchr rindex
-#  endif
-   extern char * strchr ();
-   extern char * strrchr ();
-#  ifndef HAVE_MEMCPY
-#    define memcpy(d, s, n) bcopy ((s), (d), (n))
-#    define memmove(d, s, n) bcopy ((s), (d), (n))
-#  endif
-#endif
-
 #ifdef HAVE_SYS_FILE_H
 #  include <sys/file.h>
 #endif
@@ -144,17 +127,13 @@ USA.
 #ifdef HAVE_SYS_IOCTL_H
 #  include <sys/ioctl.h>
 #else
-   extern int EXFUN (ioctl, (int, unsigned long, ...));
+   extern int ioctl (int, unsigned long, ...);
 #endif
 
 #ifdef HAVE_FCNTL_H
 #  include <fcntl.h>
 #else
-   extern int EXFUN (open, (CONST char *, int, ...));
-#endif
-
-#ifdef HAVE_LIMITS_H
-#  include <limits.h>
+   extern int open (const char *, int, ...);
 #endif
 
 #ifdef HAVE_SYS_WAIT_H
@@ -179,12 +158,12 @@ USA.
 #  ifndef WSTOPSIG
 #    define WSTOPSIG(_X) (((_X) & 0xFF00) >> 8)
 #  endif
-   extern pid_t EXFUN (wait, (int *));
+   extern pid_t wait (int *);
 #  ifdef HAVE_WAITPID
-     extern pid_t EXFUN (waitpid, (pid_t, int *, int));
+     extern pid_t waitpid (pid_t, int *, int);
 #  endif
 #  ifdef HAVE_WAIT3
-     extern pid_t EXFUN (wait3, (int *, int, struct rusage *));
+     extern pid_t wait3 (int *, int, struct rusage *);
 #  endif
 #endif
 
@@ -229,7 +208,7 @@ USA.
      time_t actime;
      time_t modtime;
    };
-   extern int EXFUN (utime, (CONST char *, struct utimbuf *)); 
+   extern int utime (const char *, struct utimbuf *);
 #endif
 
 #ifdef HAVE_TERMIOS_H
@@ -283,7 +262,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef _POSIX_REALTIME_SIGNALS
    typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
 #else
-   typedef RETSIGTYPE EXFUN ((*Tsignal_handler), (int));
+   typedef RETSIGTYPE (*Tsignal_handler) (int);
 #endif
 
 #ifdef VOID_SIGNAL_HANDLERS
@@ -390,7 +369,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  define MAXPATHLEN 1024
 #endif
 
-#ifdef HAVE_STDC
+#ifdef HAVE_C_BACKSLASH_A
 #  define ALERT_CHAR '\a'
 #  define ALERT_STRING "\a"
 #else
@@ -442,16 +421,16 @@ typedef RETSIGTYPE Tsignal_handler_result;
 
 #ifdef HAVE_GETLOGIN
 #  ifndef HAVE_UNISTD_H
-     extern char * EXFUN (getlogin, (void));
+     extern char * getlogin (void);
 #  endif
 #endif
 
 #ifndef STDC_HEADERS
 #  ifndef HAVE_MALLOC_H
-     extern PTR EXFUN (malloc, (size_t));
-     extern PTR EXFUN (realloc, (PTR, size_t));
+     extern void * malloc (size_t);
+     extern void * realloc (void *, size_t);
 #  endif
-   extern char * EXFUN (getenv, (CONST char *));
+   extern char * getenv (const char *);
 #endif
 
 #define UX_abort abort
@@ -528,7 +507,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  define UX_dup2 dup2
 #else
 #  ifdef HAVE_FCNTL
-   extern int EXFUN (UX_dup2, (int, int));
+   extern int UX_dup2 (int, int);
 #  define EMULATE_DUP2
 #  define HAVE_DUP2
 #  endif
@@ -537,7 +516,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_GETCWD
 #  define UX_getcwd getcwd
 #else
-   extern char * EXFUN (UX_getcwd, (char *, size_t));
+   extern char * UX_getcwd (char *, size_t);
 #  define EMULATE_GETCWD
 #  define HAVE_GETCWD
 #endif
@@ -545,7 +524,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_MKDIR
 #  define UX_mkdir mkdir
 #else
-   extern int EXFUN (UX_mkdir, (CONST char *, mode_t));
+   extern int UX_mkdir (const char *, mode_t);
 #  define EMULATE_MKDIR
 #  define HAVE_MKDIR
 #endif
@@ -553,7 +532,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_RENAME
 #  define UX_rename rename
 #else
-   extern int EXFUN (UX_rename, (CONST char *, CONST char *));
+   extern int UX_rename (const char *, const char *);
 #  define EMULATE_RENAME
 #  define HAVE_RENAME
 #endif
@@ -562,7 +541,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  define UX_waitpid waitpid
 #else
 #  ifdef HAVE_WAIT3
-   extern int EXFUN (UX_waitpid, (pid_t, int *, int));
+   extern int UX_waitpid (pid_t, int *, int);
 #  define EMULATE_WAITPID
 #  define HAVE_WAITPID
 #  endif
@@ -571,28 +550,27 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #ifdef HAVE_CTERMID
 #  define UX_ctermid ctermid
 #else
-   extern char * EXFUN (UX_ctermid, (char * s));
+   extern char * UX_ctermid (char * s);
 #  define EMULATE_CTERMID
 #endif
 
 #ifdef HAVE_KILL
 #  define UX_kill kill
 #else
-   extern int EXFUN (UX_kill, (pid_t pid, int sig));
+   extern int UX_kill (pid_t pid, int sig);
 #  define EMULATE_KILL
 #endif
 
 #ifdef HAVE_GETPAGESIZE
 #  define UX_getpagesize getpagesize
 #else
-   extern unsigned long EXFUN (UX_getpagesize, (void));
+   extern unsigned long UX_getpagesize (void);
 #  define EMULATE_GETPAGESIZE
 #endif
 
+/* poll is somewhat busted on Mac OSX 10.4 (Tiger), so use select.  */
 #ifdef __APPLE__
-/* poll is somewhat busted on Mac OSX 10.4 (Tiger).  Force the use of select */
-
-#undef HAVE_POLL
+#  undef HAVE_POLL
 #endif
 
 #ifdef HAVE_POLL
@@ -632,7 +610,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
    /* Must push various STREAMS modules onto the slave side of a PTY
       when it is opened.  */
 #  define SLAVE_PTY_P(filename) ((strncmp ((filename), "/dev/pts/", 9)) == 0)
-   extern int EXFUN (UX_setup_slave_pty, (int));
+   extern int UX_setup_slave_pty (int);
 #  define SETUP_SLAVE_PTY UX_setup_slave_pty
 #endif
 
@@ -663,8 +641,8 @@ typedef struct
 
 #else /* not HAVE_TERMIOS_H */
 
-extern int EXFUN (UX_tcdrain, (int));
-extern int EXFUN (UX_tcflush, (int, int));
+extern int UX_tcdrain (int);
+extern int UX_tcflush (int, int);
 /* These values chosen to match the ioctl TCFLSH argument for termio. */
 #define TCIFLUSH 0
 #define TCOFLUSH 1
@@ -697,8 +675,8 @@ typedef struct
 #endif /* not HAVE_TERMIO_H */
 #endif /* not HAVE_TERMIOS_H */
 
-extern int EXFUN (UX_terminal_get_state, (int, Ttty_state *));
-extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
+extern int UX_terminal_get_state (int, Ttty_state *);
+extern int UX_terminal_set_state (int, Ttty_state *);
 
 #ifdef _POSIX_VERSION
 #  define UX_getpgrp getpgrp
@@ -711,13 +689,13 @@ extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
 #    ifdef GETPGRP_VOID
 #      define UX_getpgrp getpgrp
 #    else
-       extern pid_t EXFUN (UX_getpgrp, (void));
+       extern pid_t UX_getpgrp (void);
 #      define EMULATE_GETPGRP
 #    endif
 #    ifdef SETPGRP_VOID
 #      define UX_setsid setpgrp
 #    else
-         extern pid_t EXFUN (UX_setsid, (void));
+         extern pid_t UX_setsid (void);
 #        define EMULATE_SETSID
 #    endif
 #    ifdef HAVE_SETPGRP2
@@ -731,9 +709,9 @@ extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
 #      endif
 #    endif
 #  endif
-   extern pid_t EXFUN (UX_tcgetpgrp, (int));
+   extern pid_t UX_tcgetpgrp (int);
 #  define EMULATE_TCGETPGRP
-   extern int EXFUN (UX_tcsetpgrp, (int, pid_t));
+   extern int UX_tcsetpgrp (int, pid_t);
 #  define EMULATE_TCSETPGRP
 #endif
 
@@ -759,11 +737,11 @@ extern int EXFUN (UX_terminal_set_state, (int, Ttty_state *));
 #else /* not HAVE_SIGACTION */
 
 typedef long sigset_t;
-extern int EXFUN (UX_sigemptyset, (sigset_t *));
-extern int EXFUN (UX_sigfillset, (sigset_t *));
-extern int EXFUN (UX_sigaddset, (sigset_t *, int));
-extern int EXFUN (UX_sigdelset, (sigset_t *, int));
-extern int EXFUN (UX_sigismember, (CONST sigset_t *, int));
+extern int UX_sigemptyset (sigset_t *);
+extern int UX_sigfillset (sigset_t *);
+extern int UX_sigaddset (sigset_t *, int);
+extern int UX_sigdelset (sigset_t *, int);
+extern int UX_sigismember (const sigset_t *, int);
 
 #ifdef HAVE_SIGVEC
 #  define UX_sigvec sigvec
@@ -783,10 +761,9 @@ struct sigaction
   int sa_flags;
 };
 
-extern int EXFUN
-  (UX_sigaction, (int, CONST struct sigaction *, struct sigaction *));
-extern int EXFUN (UX_sigprocmask, (int, CONST sigset_t *, sigset_t *));
-extern int EXFUN (UX_sigsuspend, (CONST sigset_t *));
+extern int UX_sigaction (int, const struct sigaction *, struct sigaction *);
+extern int UX_sigprocmask (int, const sigset_t *, sigset_t *);
+extern int UX_sigsuspend (const sigset_t *);
 #define SIG_BLOCK 0
 #define SIG_UNBLOCK 1
 #define SIG_SETMASK 2
@@ -807,17 +784,17 @@ extern int EXFUN (UX_sigsuspend, (CONST sigset_t *));
 #ifdef _POSIX_VERSION
 
 #  ifndef HAVE_FPATHCONF
-     extern long EXFUN (fpathconf, (int, int));
+     extern long fpathconf (int, int);
 #    define EMULATE_FPATHCONF
 #  endif
 
 #  ifndef HAVE_SYSCONF
-     extern long EXFUN (sysconf, (int));
+     extern long sysconf (int);
 #    define EMULATE_SYSCONF
 #  endif
 
-   extern cc_t EXFUN (UX_PC_VDISABLE, (int fildes));
-   extern clock_t EXFUN (UX_SC_CLK_TCK, (void));
+   extern cc_t UX_PC_VDISABLE (int fildes);
+   extern clock_t UX_SC_CLK_TCK (void);
 #  define UX_SC_OPEN_MAX() ((size_t) (sysconf (_SC_OPEN_MAX)))
 #  define UX_SC_CHILD_MAX() ((size_t) (sysconf (_SC_CHILD_MAX)))
 
@@ -865,7 +842,7 @@ extern int EXFUN (UX_sigsuspend, (CONST sigset_t *));
 
 #endif /* not _POSIX_VERSION */
 
-extern void EXFUN (UX_prim_check_errno, (enum syscall_names name));
+extern void UX_prim_check_errno (enum syscall_names name);
 
 #define STD_VOID_SYSTEM_CALL(name, expression)				\
 {									\

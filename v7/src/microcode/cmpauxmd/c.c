@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.21 2007/01/12 06:17:31 cph Exp $
+$Id: c.c,v 1.22 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,7 +25,6 @@ USA.
 
 */
 
-#include <string.h>
 #define LIARC_IN_MICROCODE
 #include "liarc.h"
 #include "prims.h"
@@ -33,771 +32,596 @@ USA.
 #include "bitstr.h"
 #include "avltree.h"
 
-#ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-#else
-   extern PTR EXFUN (malloc, (unsigned long));
-   extern PTR EXFUN (realloc, (PTR, unsigned long));
-#endif
+extern int initialize_compiled_code_blocks (void);
 
 #ifdef BUG_GCC_LONG_CALLS
 
-extern SCHEME_OBJECT EXFUN (memory_to_string, (unsigned long, CONST void *));
-extern SCHEME_OBJECT EXFUN (memory_to_symbol, (long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (make_vector, (long, SCHEME_OBJECT, Boolean));
-extern SCHEME_OBJECT EXFUN (cons, (SCHEME_OBJECT, SCHEME_OBJECT));
-extern SCHEME_OBJECT EXFUN (double_to_flonum, (double));
-extern SCHEME_OBJECT EXFUN (long_to_integer, (long));
-extern SCHEME_OBJECT EXFUN (digit_string_to_integer,
-			    (Boolean, unsigned long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (digit_string_to_bit_string,
-			    (unsigned long, unsigned long, unsigned char *));
-extern SCHEME_OBJECT EXFUN (make_primitive, (char *, int));
-extern SCHEME_OBJECT EXFUN (memory_to_uninterned_symbol,
-			    (unsigned long, unsigned char *));
+extern SCHEME_OBJECT memory_to_string (unsigned long, const void *);
+extern SCHEME_OBJECT memory_to_symbol (long, const void *);
+extern SCHEME_OBJECT make_vector (long, SCHEME_OBJECT, bool);
+extern SCHEME_OBJECT cons (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT double_to_flonum (double);
+extern SCHEME_OBJECT long_to_integer (long);
+extern SCHEME_OBJECT digit_string_to_integer
+  (bool, unsigned long, const char *);
+extern SCHEME_OBJECT digit_string_to_bit_string
+  (unsigned long, unsigned long, const char *);
+extern SCHEME_OBJECT make_primitive (char *, int);
+extern SCHEME_OBJECT memory_to_uninterned_symbol (unsigned long, const void *);
 
-SCHEME_OBJECT EXFUN ((* (constructor_kludge [11])), ()) =
+SCHEME_OBJECT (* (constructor_kludge [11])) () =
 {
-  ((SCHEME_OBJECT EXFUN ((*), ())) memory_to_string),
-  ((SCHEME_OBJECT EXFUN ((*), ())) memory_to_symbol),
-  ((SCHEME_OBJECT EXFUN ((*), ())) make_vector),
-  ((SCHEME_OBJECT EXFUN ((*), ())) cons),
-  ((SCHEME_OBJECT EXFUN ((*), ())) rconsm),
-  ((SCHEME_OBJECT EXFUN ((*), ())) double_to_flonum),
-  ((SCHEME_OBJECT EXFUN ((*), ())) long_to_integer),
-  ((SCHEME_OBJECT EXFUN ((*), ())) digit_string_to_integer),
-  ((SCHEME_OBJECT EXFUN ((*), ())) digit_string_to_bit_string),
-  ((SCHEME_OBJECT EXFUN ((*), ())) make_primitive),
-  ((SCHEME_OBJECT EXFUN ((*), ())) memory_to_uninterned_symbol),
+  ((SCHEME_OBJECT (*) ()) memory_to_string),
+  ((SCHEME_OBJECT (*) ()) memory_to_symbol),
+  ((SCHEME_OBJECT (*) ()) make_vector),
+  ((SCHEME_OBJECT (*) ()) cons),
+  ((SCHEME_OBJECT (*) ()) rconsm),
+  ((SCHEME_OBJECT (*) ()) double_to_flonum),
+  ((SCHEME_OBJECT (*) ()) long_to_integer),
+  ((SCHEME_OBJECT (*) ()) digit_string_to_integer),
+  ((SCHEME_OBJECT (*) ()) digit_string_to_bit_string),
+  ((SCHEME_OBJECT (*) ()) make_primitive),
+  ((SCHEME_OBJECT (*) ()) memory_to_uninterned_symbol),
 };
 
 #endif /* BUG_GCC_LONG_CALLS */
 
-extern char * interface_to_C_hook;
-extern long C_return_value, MAX_TRAMPOLINE;
-extern void EXFUN (C_to_interface, (PTR));
-extern void EXFUN (interface_initialize, (void));
-extern SCHEME_OBJECT EXFUN (initialize_C_compiled_block, (int, char *));
-extern int EXFUN (initialize_compiled_code_blocks, (void));
-extern void * scheme_hooks_low, * scheme_hooks_high;
+static SCHEME_OBJECT dummy_entry = ((SCHEME_OBJECT) -1L);
+utility_result_t interface_to_C_hook = ((utility_result_t) (&dummy_entry));
 
 #define TRAMPOLINE_FUDGE 20
 
-typedef SCHEME_OBJECT * EXFUN ((* code_block),
-			       (SCHEME_OBJECT *, entry_count_t));
-
-typedef SCHEME_OBJECT * EXFUN ((* data_block), (entry_count_t));
-
-typedef SCHEME_OBJECT EXFUN ((* data_generator), (void));
-
-typedef void EXFUN ((* uninit_data), (void));
-
-struct compiled_entry_s
+typedef struct
 {
-  code_block code;		/* C handler for this entry point */
-  entry_count_t dispatch;	/* Internal dispatch tag */
-};
+  const char * name;
+  liarc_code_proc_t * code_proc; /* C handler for this entry point */
+  void * data_proc;		/* Data handler for this compiled block */
+  entry_count_t first_entry;	/* Base of dispatch for this block */
+  entry_count_t n_entries;	/* Number of entry points in this block */
+  unsigned int flags;
+} compiled_block_t;
 
-#define COMPILED_BLOCK_FLAG_DATA_ONLY		1
+static entry_count_t n_compiled_blocks = 0;
+static entry_count_t compiled_blocks_table_size = 0;
+static compiled_block_t * compiled_blocks = 0;
+static tree_node compiled_blocks_tree = 0;
 
-struct compiled_block_s
-{
-  char * name;
-  union
-  {
-    uninit_data errgen;		/* When not initialized yet */
-    data_block constructor;	/* Data handler for this compiled block */
-    data_generator builder;	/* Data generator for data-only cc blocks */
-  } data;
-  entry_count_t nentries;	/* Number of entry points in this block */
-  entry_count_t dispatch;	/* Base of dispatch for this block */
-  unsigned flags;
-};
+static long initial_entry_number = (-1);
+static entry_count_t n_compiled_entries = 0;
+static entry_count_t compiled_entries_size = 0;
+static compiled_block_t ** compiled_entries = 0;
+
+#define COMPILED_BLOCK_NAME(block) ((block) -> name)
+#define COMPILED_BLOCK_CODE_PROC(block) ((block) -> code_proc)
+#define _COMPILED_BLOCK_DATA_PROC(block) ((block) -> data_proc)
+#define COMPILED_BLOCK_FIRST_ENTRY(block) ((block) -> first_entry)
+#define COMPILED_BLOCK_N_ENTRIES(block) ((block) -> n_entries)
+#define COMPILED_BLOCK_FLAGS(block) ((block) -> flags)
+
+#define COMPILED_BLOCK_DATA_PROC(block)					\
+  ((liarc_data_proc_t *) (_COMPILED_BLOCK_DATA_PROC (block)))
+
+#define SET_COMPILED_BLOCK_DATA_PROC(block, proc) do			\
+{									\
+  _CBFS (block, _CBF_DATA_INIT);					\
+  _CBFC (block, _CBF_DATA_ONLY);					\
+  (_COMPILED_BLOCK_DATA_PROC (block)) = (proc);				\
+} while (false)
+
+#define COMPILED_BLOCK_OBJECT_PROC(block)				\
+  ((liarc_object_proc_t *) (_COMPILED_BLOCK_DATA_PROC (block)))
+
+#define SET_COMPILED_BLOCK_OBJECT_PROC(block, proc) do			\
+{									\
+  _CBFS (block, (_CBF_DATA_INIT | _CBF_DATA_ONLY));			\
+  (_COMPILED_BLOCK_DATA_PROC (block)) = (proc);				\
+} while (false)
+
+#define _CBFT(block, flag) (((COMPILED_BLOCK_FLAGS (block)) & (flag)) != 0)
+#define _CBFS(block, flag) ((COMPILED_BLOCK_FLAGS (block)) |= (flag))
+#define _CBFC(block, flag) ((COMPILED_BLOCK_FLAGS (block)) &=~ (flag))
+
+#define _CBF_DATA_ONLY 0x01
+#define _CBF_DATA_INIT 0x02
+
+#define COMPILED_BLOCK_DATA_ONLY_P(block) (_CBFT (block, _CBF_DATA_ONLY))
+#define COMPILED_BLOCK_DATA_INIT_P(block) (_CBFT (block, _CBF_DATA_INIT))
+
+static bool grow_compiled_blocks (void);
+static bool grow_compiled_entries (entry_count_t);
+static int declare_trampoline_block (entry_count_t);
+static SCHEME_OBJECT * trampoline_procedure (SCHEME_OBJECT *, entry_count_t);
+static compiled_block_t * find_compiled_block (const char *);
+static SCHEME_OBJECT * unspecified_code (SCHEME_OBJECT *, entry_count_t);
+static void * lrealloc (void *, size_t);
+static unsigned int digit_string_producer (void *);
+static unsigned int hex_digit_to_int (char);
 
-int pc_zero_bits;
-static SCHEME_OBJECT
-  dummy_entry = ((SCHEME_OBJECT) -1L);
-char *
-  interface_to_C_hook = ((char *) & dummy_entry);
-void
-  * scheme_hooks_low = NULL,
-  * scheme_hooks_high = NULL;
+long C_return_value;
 
-#define PSEUDO_STATIC
+long
+C_to_interface (SCHEME_OBJECT * entry)
+{
+  while (entry != 0)
+    {
+      entry_count_t index = ((entry_count_t) (*entry));
+      compiled_block_t * block;
 
-PSEUDO_STATIC long
-  initial_entry_number = -1;
-PSEUDO_STATIC entry_count_t
-  max_compiled_entries = 0,
-  compiled_entries_size = 0;
-PSEUDO_STATIC struct compiled_entry_s *
-  compiled_entries = ((struct compiled_entry_s *) NULL);
-
-PSEUDO_STATIC entry_count_t
-  max_compiled_blocks = 0,
-  compiled_blocks_table_size = 0;
-PSEUDO_STATIC struct compiled_block_s *
-  compiled_blocks_table = ((struct compiled_block_s *) NULL);
-PSEUDO_STATIC tree_node
-  compiled_blocks_tree = ((tree_node) NULL);
+      if (index >= n_compiled_entries)
+	{
+	  SET_EXP ((SCHEME_OBJECT) entry);
+	  return (ERR_EXECUTE_MANIFEST_VECTOR);
+	}
+      block = (compiled_entries[index]);
+      entry = ((* (COMPILED_BLOCK_CODE_PROC (block)))
+	       (entry, (COMPILED_BLOCK_FIRST_ENTRY (block))));
+    }
+  return (C_return_value);
+}
 
 SCHEME_OBJECT *
-DEFUN (trampoline_procedure, (trampoline, dispatch),
-       SCHEME_OBJECT * trampoline AND entry_count_t dispatch)
+invoke_utility (unsigned int code,
+		unsigned long arg1, unsigned long arg2,
+		unsigned long arg3, unsigned long arg4)
 {
-  return (invoke_utility (((int) (* ((unsigned long *) trampoline))),
-			  ((long) (TRAMPOLINE_STORAGE (trampoline))),
-			  0, 0, 0));
+  SCHEME_OBJECT * res;
+  (* (utility_table[code])) ((&res), arg1, arg2, arg3, arg4);
+  return (res);
+}
+
+void
+initialize_C_interface (void)
+{
+  if (initial_entry_number == (-1))
+    /* TRAMPOLINE_FUDGE allows for future growth of max_trampoline.  */
+    initial_entry_number = (max_trampoline + TRAMPOLINE_FUDGE);
+
+  if (! (((declare_trampoline_block (initial_entry_number)) == 0)
+	 && ((initialize_compiled_code_blocks ()) == 0)))
+    {
+      if (GET_PRIMITIVE != SHARP_F)
+	signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
+      outf_fatal ("error initializing compiled code.\n");
+      Microcode_Termination (TERM_EXIT);
+    }
+}
+
+SCHEME_OBJECT
+initialize_C_compiled_block (int argno, const char * name)
+{
+  compiled_block_t * block = (find_compiled_block (name));
+  return
+    ((block == 0)
+     ? SHARP_F
+     : (COMPILED_BLOCK_DATA_ONLY_P (block))
+     ? ((* (COMPILED_BLOCK_OBJECT_PROC (block))) ())
+     : (MAKE_CC_ENTRY ((* (COMPILED_BLOCK_DATA_PROC (block)))
+		       (COMPILED_BLOCK_FIRST_ENTRY (block)))));
+}
+
+SCHEME_OBJECT
+initialize_subblock (const char * name)
+{
+  compiled_block_t * block = (find_compiled_block (name));
+  if ((block == 0) || (COMPILED_BLOCK_DATA_ONLY_P (block)))
+    error_external_return ();
+
+  return
+    (MAKE_CC_BLOCK
+     (cc_entry_address_to_block_address
+      ((* (COMPILED_BLOCK_DATA_PROC (block)))
+       (COMPILED_BLOCK_FIRST_ENTRY (block)))));
+}
+
+unsigned long
+c_code_table_export_length (unsigned long * n_blocks_r)
+{
+  compiled_block_t * block = compiled_blocks;
+  compiled_block_t * end = (block + n_compiled_blocks);
+  unsigned long n = 1;
+
+  while (block < end)
+    {
+      n += (1 + (BYTES_TO_WORDS ((strlen (COMPILED_BLOCK_NAME (block))) + 1)));
+      block += 1;
+    }
+  (*n_blocks_r) = n_compiled_blocks;
+  return (n);
+}
+
+void
+export_c_code_table (SCHEME_OBJECT * start)
+{
+  compiled_block_t * block = compiled_blocks;
+  compiled_block_t * end = (block + n_compiled_blocks);
+
+  (*start++) = (LONG_TO_FIXNUM (initial_entry_number));
+  while (block < end)
+    {
+      (*start++) = (LONG_TO_UNSIGNED_FIXNUM (COMPILED_BLOCK_N_ENTRIES (block)));
+      strcpy (((char *) start), (COMPILED_BLOCK_NAME (block)));
+      start += (BYTES_TO_WORDS ((strlen (COMPILED_BLOCK_NAME (block))) + 1));
+      block += 1;
+    }
+}
+
+bool
+import_c_code_table (SCHEME_OBJECT * table, unsigned long n_blocks)
+{
+  long dumped_initial_entry_number = (FIXNUM_TO_LONG (*table++));
+  unsigned long count;
+
+  if (dumped_initial_entry_number < max_trampoline)
+    return (false);
+  initial_entry_number = dumped_initial_entry_number;
+
+  if (compiled_entries != 0)
+    free (compiled_entries);
+  if (compiled_blocks != 0)
+    free (compiled_blocks);
+  if (compiled_blocks_tree != 0)
+    tree_free (compiled_blocks_tree);
+  
+  n_compiled_blocks = 0;
+  compiled_blocks_table_size = 0;
+  compiled_blocks = 0;
+  compiled_blocks_tree = 0;
+
+  n_compiled_entries = 0;
+  compiled_entries_size = 0;
+  compiled_entries = 0;
+
+  if ((declare_trampoline_block (initial_entry_number)) != 0)
+    return (false);
+
+  for (count = 0; (count < n_blocks); count += 1)
+    {
+      unsigned long n_entries = (FIXNUM_TO_ULONG (*table++));
+      size_t nb = ((strlen ((const char *) table)) + 1);
+      char * ncopy = (malloc (nb));
+
+      if (ncopy == 0)
+	return (false);
+      strcpy (ncopy, ((const char *) table));
+      if ((declare_compiled_code_ns (ncopy, n_entries, unspecified_code)) != 0)
+	return (false);
+      table += (BYTES_TO_WORDS (nb));
+    }
+
+  return (true);
+}
+
+int
+declare_compiled_code_ns (const char * name,
+			  entry_count_t n_block_entries,
+			  liarc_code_proc_t * code_proc)
+{
+  compiled_block_t * block = (find_compiled_block (name));
+  if (block == 0)
+    {
+      entry_count_t entries_start = n_compiled_entries;
+      entry_count_t entries_end = (entries_start + n_block_entries);
+      tree_node new_tree;
+
+      if (! ((entries_start <= entries_end)
+	     && ((n_compiled_blocks < compiled_blocks_table_size)
+		 || (grow_compiled_blocks ()))
+	     && ((entries_end < compiled_entries_size)
+		 || (grow_compiled_entries (entries_end)))))
+	return (-1);
+
+      tree_error_message = 0;
+      new_tree = (tree_insert (compiled_blocks_tree, name, n_compiled_blocks));
+      if (tree_error_message != 0)
+	return (-1);
+      compiled_blocks_tree = new_tree;
+
+      block = (compiled_blocks + (n_compiled_blocks++));
+      (COMPILED_BLOCK_NAME (block)) = name;
+      (COMPILED_BLOCK_CODE_PROC (block)) = code_proc;
+      (_COMPILED_BLOCK_DATA_PROC (block)) = 0;
+      (COMPILED_BLOCK_FIRST_ENTRY (block)) = entries_start;
+      (COMPILED_BLOCK_N_ENTRIES (block)) = n_block_entries;
+      (COMPILED_BLOCK_FLAGS (block)) = 0;
+
+      while (n_compiled_entries < entries_end)
+	(compiled_entries[n_compiled_entries++]) = block;
+      return (0);
+    }
+  else if ((((COMPILED_BLOCK_CODE_PROC (block)) == unspecified_code)
+	    || ((COMPILED_BLOCK_CODE_PROC (block)) == code_proc)
+	    || (code_proc == unspecified_code))
+	   && ((COMPILED_BLOCK_N_ENTRIES (block)) == n_block_entries))
+    {
+      (COMPILED_BLOCK_CODE_PROC (block)) = code_proc;
+      return (0);
+    }
+  else
+    return (-1);
+}
+
+static bool
+grow_compiled_blocks (void)
+{
+  entry_count_t new_blocks_size
+    = ((compiled_blocks_table_size == 0)
+       ? 16
+       : (compiled_blocks_table_size * 2));
+  compiled_block_t * new_blocks
+    = (lrealloc (compiled_blocks,
+		 (new_blocks_size * (sizeof (compiled_block_t)))));
+  if (new_blocks == 0)
+    return (false);
+  if (new_blocks != compiled_blocks)
+    {
+      compiled_block_t ** scan = compiled_entries;
+      compiled_block_t ** end = (scan + n_compiled_entries);
+      while (scan < end)
+	{
+	  (*scan) = (((*scan) - compiled_blocks) + new_blocks);
+	  scan += 1;
+	}
+    }
+  compiled_blocks_table_size = new_blocks_size;
+  compiled_blocks = new_blocks;
+  return (true);
+}
+
+static bool
+grow_compiled_entries (entry_count_t entries_end)
+{
+  entry_count_t new_entries_size
+    = ((compiled_entries_size == 0)
+       ? 128
+       : compiled_entries_size);
+  compiled_block_t ** new_entries;
+
+  while (new_entries_size <= entries_end)
+    new_entries_size *= 2;
+  new_entries
+    = (lrealloc (compiled_entries,
+		 (new_entries_size * (sizeof (compiled_block_t *)))));
+  if (new_entries == 0)
+    return (false);
+  compiled_entries_size = new_entries_size;
+  compiled_entries = new_entries;
+  return (true);
 }
 
 int
-DEFUN_VOID (NO_SUBBLOCKS)
+declare_compiled_code (const char * name,
+		       entry_count_t n_block_entries,
+		       liarc_decl_code_t * decl_code,
+		       liarc_code_proc_t * code_proc)
 {
+  int rc = (declare_compiled_code_ns (name, n_block_entries, code_proc));
+  return ((rc == 0) ? ((*decl_code) ()) : rc);
+}
+
+int
+declare_compiled_data_ns (const char * name, liarc_data_proc_t * data_proc)
+{
+  compiled_block_t * block = (find_compiled_block (name));
+  if ((block == 0)
+      || ((COMPILED_BLOCK_DATA_INIT_P (block))
+	  && ((COMPILED_BLOCK_DATA_PROC (block)) != data_proc)))
+    return (-1);
+  SET_COMPILED_BLOCK_DATA_PROC (block, data_proc);
   return (0);
 }
 
-SCHEME_OBJECT *
-DEFUN (no_data, (base_dispatch), entry_count_t base_dispatch)
-{
-  return ((SCHEME_OBJECT *) NULL);
-}
-
-void
-DEFUN_VOID (uninitialized_data)
-{
-  /* Not yet assigned.  Cannot construct data. */
-  error_external_return ();
-  /*NOTREACHED*/
-}
-
-SCHEME_OBJECT *
-DEFUN (unspecified_code, (entry, dispatch),
-       SCHEME_OBJECT * entry AND entry_count_t dispatch)
-{
-  exp_register = ((SCHEME_OBJECT) entry);
-  C_return_value = (ERR_EXECUTE_MANIFEST_VECTOR);
-  return (&dummy_entry);
-}
-
-PTR
-DEFUN (lrealloc, (ptr, size), PTR ptr AND unsigned long size)
-{
-  if (ptr == ((PTR) NULL))
-    return (malloc (size));
-  else
-    return (realloc (ptr, size));
-}
-
 int
-DEFUN (declare_trampoline_block, (nentries), entry_count_t nentries)
-{
-  int result;
-
-  result = (declare_compiled_code ("#trampoline_code_block",
-				   nentries,
-				   NO_SUBBLOCKS,
-				   trampoline_procedure));
-#if 0
-  /* trampoline block is special. */
-
-  if (result != 0)
-    return (result);
-
-  result = (declare_compiled_data ("#trampoline_code_block",
-				   NO_SUBBLOCKS,
-				   no_data));
-#endif
-  return (result);
-}
-
-void
-DEFUN_VOID (interface_initialize)
-{
-  int i, pow, del;
-  
-  for (i = 0, pow = 1, del = ((sizeof (SCHEME_OBJECT)) / (sizeof (char)));
-       pow < del; i+= 1)
-    pow = (pow << 1);
-  
-  if (pow != del)
-  {
-    /* Not a power of two -- ill-defined pc_zero_bits. */
-    outf_fatal ("interface_initialize: bad (sizeof (SCHEME_OBJECT)).\n");
-    Microcode_Termination (TERM_EXIT);
-  }
-  pc_zero_bits = i;  
-
-  if (initial_entry_number == -1)
-    initial_entry_number = (MAX_TRAMPOLINE + TRAMPOLINE_FUDGE);
-
-  if (((declare_trampoline_block (initial_entry_number)) != 0)
-      || (initialize_compiled_code_blocks ()) != 0)
-  {
-    if (Registers[REGBLOCK_PRIMITIVE] != SHARP_F)
-      signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
-    else
-    {
-      outf_fatal ("interface_initialize: error initializing compiled code.\n");
-      Microcode_Termination (TERM_EXIT);
-    }
-  }
-  return;
-}
-
-entry_count_t
-DEFUN (find_compiled_block, (name), char * name)
-{
-  tree_node node = (tree_lookup (compiled_blocks_tree, name));
-
-  if (node == ((tree_node) NULL))
-    return (max_compiled_blocks);
-  else
-    return (node->value);
-}
-
-int
-DEFUN (declare_compiled_data_ns, (name, data_proc),
-       char * name
-       AND SCHEME_OBJECT * EXFUN ((* data_proc), (entry_count_t)))
-{
-  entry_count_t slot = (find_compiled_block (name));
-  if ((slot == max_compiled_blocks)
-      || ((compiled_blocks_table[slot].data.errgen != uninitialized_data)
-	  && (compiled_blocks_table[slot].data.constructor != data_proc)))
-    return (-1);
-  compiled_blocks_table[slot].flags &= (~ COMPILED_BLOCK_FLAG_DATA_ONLY);
-  compiled_blocks_table[slot].data.constructor = data_proc;
-  return (0);  
-}
-
-int
-DEFUN (declare_compiled_data, (name, decl_data, data_proc),
-       char * name
-       AND int EXFUN ((* decl_data), (void))
-       AND SCHEME_OBJECT * EXFUN ((* data_proc), (entry_count_t)))
+declare_compiled_data (const char * name,
+		       liarc_decl_data_t * decl_data,
+		       liarc_data_proc_t * data_proc)
 {
   int rc = (declare_compiled_data_ns (name, data_proc));
   return ((rc == 0) ? ((*decl_data) ()) : rc);
 }
 
-SCHEME_OBJECT
-DEFUN (initialize_subblock, (name), char * name)
-{
-  SCHEME_OBJECT * ep, * block;
-  entry_count_t slot = (find_compiled_block (name));
-
-  if ((slot == max_compiled_blocks)
-      || ((compiled_blocks_table[slot].flags & COMPILED_BLOCK_FLAG_DATA_ONLY)
-	  != 0))
-    error_external_return ();
-
-  ep = ((* compiled_blocks_table[slot].data.constructor)
-	(compiled_blocks_table[slot].dispatch));
-  Get_Compiled_Block (block, ep);
-  return (MAKE_POINTER_OBJECT (TC_COMPILED_CODE_BLOCK, block));
-}
-
-SCHEME_OBJECT
-DEFUN (initialize_C_compiled_block, (argno, name), int argno AND char * name)
-{
-  SCHEME_OBJECT val;
-  entry_count_t slot;
-
-  slot = (find_compiled_block (name));
-  if (slot == max_compiled_blocks)
-    return (SHARP_F);
-
-  if ((compiled_blocks_table[slot].flags & COMPILED_BLOCK_FLAG_DATA_ONLY) != 0)
-    val = ((* compiled_blocks_table[slot].data.builder) ());
-  else
-  {
-    SCHEME_OBJECT * block;
-
-    block = ((* compiled_blocks_table[slot].data.constructor)
-	     (compiled_blocks_table[slot].dispatch));
-    val =  (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, block));
-  }
-  return (val);
-}
-
 int
-DEFUN (declare_compiled_code,
-       (name, nentries, decl_code, code_proc),
-       char * name
-       AND entry_count_t nentries
-       AND int EXFUN ((* decl_code), (void))
-       AND code_block code_proc)
+declare_data_object (const char * name, liarc_object_proc_t * object_proc)
 {
-  entry_count_t slot = (find_compiled_block (name));
-
-  if (slot != max_compiled_blocks)
-  {
-    code_block old_code;
-
-    old_code = (compiled_entries[compiled_blocks_table[slot].dispatch].code);
-    if (((old_code != unspecified_code)
-	 && (old_code != code_proc)
-	 && (code_proc != unspecified_code))
-	|| (compiled_blocks_table[slot].nentries != nentries))
-      return (-1);
-    if (old_code == unspecified_code)
+  compiled_block_t * block = (find_compiled_block (name));
+  if (block == 0)
     {
-      entry_count_t counter, limit;
-
-      counter = compiled_blocks_table[slot].dispatch;
-      limit = (counter + nentries);
-      while (counter < limit)
-	compiled_entries[counter++].code = code_proc;
-    }
-  }
-  else
-  {
-    entry_count_t dispatch = max_compiled_entries;
-    entry_count_t n_dispatch = (dispatch + nentries);
-    entry_count_t block_index = max_compiled_blocks;
-
-    if (n_dispatch < dispatch)
-      /* Wrap around */
-      return (-1);
-    
-    if (n_dispatch >= compiled_entries_size)
-    {
-      struct compiled_entry_s * new_entries;
-      entry_count_t new_entries_size = ((compiled_entries_size == 0)
-					? 100
-					: ((compiled_entries_size * 3) / 2));
-      if (new_entries_size <= n_dispatch)
-	new_entries_size = (n_dispatch + 1);
-
-      new_entries = ((struct compiled_entry_s *)
-		     (lrealloc (compiled_entries,
-				(new_entries_size
-				 * (sizeof (struct compiled_entry_s))))));
-      if (new_entries == ((struct compiled_entry_s *) NULL))
+      declare_compiled_code_ns (name, 0, unspecified_code);
+      block = (find_compiled_block (name));
+      if (block == 0)
 	return (-1);
-      compiled_entries_size = new_entries_size;
-      compiled_entries = new_entries;
     }
-
-    if (block_index >= compiled_blocks_table_size)
-    {
-      struct compiled_block_s * new_blocks;
-      entry_count_t new_blocks_size
-	= ((compiled_blocks_table_size == 0)
-	   ? 10
-	   : ((compiled_blocks_table_size * 3) / 2));
-      new_blocks = ((struct compiled_block_s *)
-		    (lrealloc (compiled_blocks_table,
-			       (new_blocks_size
-				* (sizeof (struct compiled_block_s))))));
-      if (new_blocks == ((struct compiled_block_s *) NULL))
-	return (-1);
-      compiled_blocks_table_size = new_blocks_size;
-      compiled_blocks_table = new_blocks;
-    }
-
-    {
-      tree_node new_tree;
-
-      tree_error_message = ((char *) NULL);
-      new_tree = (tree_insert (compiled_blocks_tree, name, block_index));
-      if (tree_error_message != ((char *) NULL))
-	return (-1);
-      compiled_blocks_tree = new_tree;
-    }
-
-    max_compiled_entries = n_dispatch;
-    max_compiled_blocks = (block_index + 1);
   
-    compiled_blocks_table[block_index].name = name;
-    compiled_blocks_table[block_index].flags = 0;
-    compiled_blocks_table[block_index].data.errgen = uninitialized_data;
-    compiled_blocks_table[block_index].nentries = nentries;
-    compiled_blocks_table[block_index].dispatch = dispatch;
-
-    for (block_index = dispatch; block_index < n_dispatch; block_index++)
-    {
-      compiled_entries[block_index].code = code_proc;
-      compiled_entries[block_index].dispatch = dispatch;
-    }
-  }
-  return (* decl_code) ();
-}
-
-int
-DEFUN (declare_data_object,
-       (name, data_proc),
-       char * name
-       AND SCHEME_OBJECT EXFUN ((* data_proc), (void)))
-{
-  entry_count_t slot;
-
-  slot = (find_compiled_block (name));
-  if (slot == max_compiled_blocks)
-  {
-    declare_compiled_code (name, 0, NO_SUBBLOCKS, unspecified_code);
-    slot = (find_compiled_block (name));
-    if (slot == max_compiled_blocks)
-      return (-1);
-  }
-  
-  if ((compiled_blocks_table[slot].data.errgen != uninitialized_data)
-      && (compiled_blocks_table[slot].data.builder != data_proc))
+  if ((COMPILED_BLOCK_DATA_INIT_P (block))
+      && ((COMPILED_BLOCK_OBJECT_PROC (block)) != object_proc))
     return (-1);
 
-  compiled_blocks_table[slot].flags |= (COMPILED_BLOCK_FLAG_DATA_ONLY);
-  compiled_blocks_table[slot].data.builder = data_proc;
-
+  SET_COMPILED_BLOCK_OBJECT_PROC (block, object_proc);
   return (0);
 }
 
 int
-DEFUN (declare_compiled_code_mult, (nslots, slots),
-       unsigned nslots AND CONST struct liarc_code_S * slots)
+declare_compiled_code_mult (unsigned int nslots,
+			    const struct liarc_code_S * slots)
 {
-  unsigned i;
-  int res = 0;
-
-  for (i = 0; (i < nslots); i++)
-  {
-    res = (declare_compiled_code (((char *) (slots[i].name)),
-				  (slots[i].nentries),
-				  NO_SUBBLOCKS,
-				  (slots[i].code)));
-    if (res != 0)
-      break;
-  }
-  return (res);
+  unsigned int i = 0;
+  while (i < nslots)
+    {
+      int res = (declare_compiled_code_ns (((char *) ((slots[i]) . name)),
+					   ((slots[i]) . nentries),
+					   ((slots[i]) . code)));
+      if (res != 0)
+	return (res);
+      i += 1;
+    }
+  return (0);
 }
 
 int
-DEFUN (declare_compiled_data_mult, (nslots, slots),
-       unsigned nslots AND CONST struct liarc_data_S * slots)
+declare_compiled_data_mult (unsigned int nslots,
+			    const struct liarc_data_S * slots)
 {
-  unsigned i;
-  int res = 0;
-
-  for (i = 0; (i < nslots); i++)
-  {
-    res = (declare_compiled_data (((char *) (slots[i].name)),
-				  NO_SUBBLOCKS,
-				  (slots[i].data)));
-    if (res != 0)
-      break;
-  }
-  return (res);
+  unsigned int i = 0;
+  while (i < nslots)
+    {
+      int res = (declare_compiled_data_ns (((char *) ((slots[i]) . name)),
+					   ((slots[i]) . data)));
+      if (res != 0)
+	return (res);
+      i += 1;
+    }
+  return (0);
 }
 
-/* For now */
+static int
+declare_trampoline_block (entry_count_t n_block_entries)
+{
+  return (declare_compiled_code_ns ("#trampoline_code_block",
+				    n_block_entries,
+				    trampoline_procedure));
+}
 
-extern SCHEME_OBJECT
-  * EXFUN (cons_c_code_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *));
-
-extern Boolean
-  EXFUN (install_c_code_table, (SCHEME_OBJECT *, long));
+bool
+store_trampoline_insns (insn_t * entry, byte_t code)
+{
+  /* Trampoline entries are stored in the lowest part of the
+     compiled_entries table.  That's why we reserve those above.  */
+  (*entry) = code;
+  return (false);
+}
 
 static SCHEME_OBJECT *
-DEFUN (copy_c_code_block_information, (index, start, limit),
-       long index AND SCHEME_OBJECT * start AND SCHEME_OBJECT * limit)
+trampoline_procedure (SCHEME_OBJECT * trampoline, entry_count_t dispatch)
 {
-  long char_count;
-  char * src, * dest;
-
-  if (start < limit)
-    *start++
-      = (LONG_TO_UNSIGNED_FIXNUM (compiled_blocks_table[index].nentries));
-  
-  src = compiled_blocks_table[index].name;
-  dest = ((char *) start);
-
-  while ((dest < ((char *) limit)) && ((*dest++ = *src++) != '\0'))
-    ;
-  if (dest >= ((char *) limit))
-    while (*src++ != '\0')
-      dest += 1;
-  
-  char_count = (dest - ((char *) start));
-  return (start + (BYTES_TO_WORDS (dest - ((char *) start))));
-}
-
-SCHEME_OBJECT *
-DEFUN (cons_c_code_table, (start, limit, length),
-       SCHEME_OBJECT * start AND SCHEME_OBJECT * limit AND long * length)
-{
-  long count;
-
-  * length = max_compiled_blocks;
-
-  if (start < limit)
-    *start++ = (LONG_TO_FIXNUM (initial_entry_number));
-
-  for (count = 0; ((count < max_compiled_blocks) && (start < limit)); count++)
-    start = (copy_c_code_block_information (count, start, limit));
-
-  return (start);
+  return (invoke_utility (((unsigned int) (* ((insn_t *) trampoline))),
+			  ((unsigned long)
+			   (trampoline_storage
+			    (cc_entry_address_to_block_address
+			     ((insn_t *) trampoline)))),
+			  0, 0, 0));
 }
 
-Boolean
-DEFUN (install_c_code_table, (table, length),
-       SCHEME_OBJECT * table AND long length)
+static compiled_block_t *
+find_compiled_block (const char * name)
 {
-  SCHEME_OBJECT the_fixnum;
-  long count, dumped_initial_entry_number;
-
-  the_fixnum = *table++;
-  dumped_initial_entry_number = (FIXNUM_TO_LONG (the_fixnum));
-  if (dumped_initial_entry_number < MAX_TRAMPOLINE)
-    return (false);
-  initial_entry_number = dumped_initial_entry_number;
-
-  if (compiled_entries != ((struct compiled_entry_s *) NULL))
-    free (compiled_entries);
-  if (compiled_blocks_table != ((struct compiled_block_s *) NULL))
-    free (compiled_blocks_table);
-  if (compiled_blocks_tree != ((tree_node) NULL))
-    tree_free (compiled_blocks_tree);
-  
-  max_compiled_entries = 0;
-  compiled_entries_size = 0;
-  compiled_entries = ((struct compiled_entry_s *) NULL);
-  max_compiled_blocks = 0;
-  compiled_blocks_table_size = 0;
-  compiled_blocks_table = ((struct compiled_block_s *) NULL);
-  compiled_blocks_tree = ((tree_node) NULL);
-  
-  if ((declare_trampoline_block (initial_entry_number)) != 0)
-    return (false);
-
-  for (count = 0; count < length; count++)
-  {
-    long nentries = (UNSIGNED_FIXNUM_TO_LONG (* table++));
-    int nlen = (strlen ((char *) table));
-    char * ncopy = ((char *) (malloc (nlen + 1)));
-
-    if (ncopy == ((char *) NULL))
-      return (false);
-    strcpy (ncopy, ((char *) table));
-    if ((declare_compiled_code (ncopy,
-				nentries,
-				NO_SUBBLOCKS,
-				unspecified_code))
-	!= 0)
-      return (false);
-    table += (BYTES_TO_WORDS (nlen + 1));
-  }
-
-  return (true);
-}
-
-#define C_COUNT_TRANSFERS
-unsigned long c_to_interface_transfers = 0;
-
-void
-DEFUN (C_to_interface, (in_entry), PTR in_entry)
-{
-  SCHEME_OBJECT * entry = ((SCHEME_OBJECT *) in_entry);
-
-  while (1)
-  {
-    unsigned long entry_index = (* ((unsigned long *) entry));
-
-#ifdef C_COUNT_TRANSFERS
-    c_to_interface_transfers += 1;
-#endif /* C_COUNT_TRANSFERS */
-
-    if (entry_index < ((unsigned long) max_compiled_entries))
-      entry = ((* (compiled_entries[entry_index].code))
-	       (entry, compiled_entries[entry_index].dispatch));
-    else
-    {
-      if (entry != &dummy_entry)
-      {
-	exp_register = ((SCHEME_OBJECT) entry);
-	C_return_value = (ERR_EXECUTE_MANIFEST_VECTOR);
-      }
-      return;
-    }
-  }
+  tree_node node = (tree_lookup (compiled_blocks_tree, name));
+  return ((node == 0) ? 0 : (compiled_blocks + (node->value)));
 }
 
-DEFINE_PRIMITIVE ("SWAP-C-COUNTER!", Prim_swap_c_counter, 1, 1,
-		  "(new-value)\n\
-Set the C transfer counter to new-value.  Return the old value.")
+static SCHEME_OBJECT *
+unspecified_code (SCHEME_OBJECT * entry, entry_count_t dispatch)
 {
-  unsigned long new_counter, old_counter;
-  PRIMITIVE_HEADER (1);
-
-  new_counter = (arg_integer (1));
-  old_counter = c_to_interface_transfers;
-  c_to_interface_transfers = new_counter;
-  PRIMITIVE_RETURN (ulong_to_integer (old_counter));
+  SET_EXP ((SCHEME_OBJECT) entry);
+  C_return_value = ERR_EXECUTE_MANIFEST_VECTOR;
+  return (0);
 }
 
-typedef SCHEME_OBJECT * utility_result;
-
-typedef void EXFUN
-  ((* utility_table_entry), (utility_result *, long, long, long, long));
-
-extern utility_table_entry utility_table[];
-
-SCHEME_OBJECT *
-DEFUN (invoke_utility, (code, arg1, arg2, arg3, arg4),
-       int code AND long arg1 AND long arg2 AND long arg3 AND long arg4)
+static void *
+lrealloc (void * ptr, size_t size)
 {
-  utility_result res;
-
-  (* utility_table[code]) ((& res), arg1, arg2, arg3, arg4);
-
-  return ((SCHEME_OBJECT *) res);
+  return ((ptr == 0) ? (malloc (size)) : (realloc (ptr, size)));
 }
 
 int
-DEFUN (multiply_with_overflow, (x, y, res), long x AND long y AND long * res)
+multiply_with_overflow (long x, long y, long * res)
 {
-  extern SCHEME_OBJECT EXFUN (Mul, (SCHEME_OBJECT, SCHEME_OBJECT));
-  SCHEME_OBJECT ans;
-  
-  ans = (Mul ((LONG_TO_FIXNUM (x)), (LONG_TO_FIXNUM (y))));
+  SCHEME_OBJECT ans = (Mul ((LONG_TO_FIXNUM (x)), (LONG_TO_FIXNUM (y))));
   if (ans == SHARP_F)
-  {
-    /* Bogus... */
-    (* res) = (x * y);
-    return (1);
-  }
+    {
+      /* Bogus... */
+      (*res) = (x * y);
+      return (1);
+    }
   else
-  {
-    (* res) = (FIXNUM_TO_LONG (ans));
-    return (0);
-  }
-}
-
-static unsigned int
-DEFUN (hex_digit_to_int, (h_digit), unsigned char h_digit)
-{
-  unsigned int digit = ((unsigned int) h_digit);
-
-  return (((digit >= '0') && (digit <= '9'))
-	  ? (digit - '0')
-	  : (((digit >= 'A') && (digit <= 'F'))
-	     ? ((digit - 'A') + 10)
-	     : ((digit - 'a') + 10)));
+    {
+      (*res) = (FIXNUM_TO_LONG (ans));
+      return (0);
+    }
 }
 
 SCHEME_OBJECT
-DEFUN (digit_string_to_bit_string, (n_bits, n_digits, digits),
-       unsigned long n_bits
-       AND unsigned long n_digits
-       AND unsigned char * digits)
-{
-  extern void EXFUN (clear_bit_string, (SCHEME_OBJECT));
-  extern SCHEME_OBJECT EXFUN (allocate_bit_string, (long));
-  extern void EXFUN (bit_string_set, (SCHEME_OBJECT, long, int));
-  SCHEME_OBJECT result = (allocate_bit_string ((long) n_bits));
-  unsigned int digit, mask;
-  long i, posn;
-  int j;
-
-  posn = 0;
-  clear_bit_string (result);
-
-  for (i = 0; i < ((long) n_digits); i++)
-  {
-    digit = (hex_digit_to_int (*digits++));
-    for (j = 0, mask = 1;
-	 j < 4;
-	 j++, mask = (mask << 1), posn++)
-      if ((digit & mask) != 0)
-	bit_string_set (result, posn, 1);
-  }
-  return (result);
-}
-
-/* This avoids consing the string and symbol if it already exists. */
-
-SCHEME_OBJECT
-DEFUN (memory_to_uninterned_symbol, (length, string),
-       unsigned long length AND unsigned char * string)
+memory_to_uninterned_symbol (unsigned long length, const void * string)
 {
   SCHEME_OBJECT name = (memory_to_string (length, string));
   SCHEME_OBJECT res = (CONS (name, UNBOUND_OBJECT));
   return (OBJECT_NEW_TYPE (TC_UNINTERNED_SYMBOL, res));
 }
 
-static unsigned int
-DEFUN (digit_string_producer, (digit_ptr), PTR v_digit_ptr)
-{
-  char ** digit_ptr = ((char **) v_digit_ptr);
-  char digit = ** digit_ptr;
-  * digit_ptr = ((* digit_ptr) + 1);
-  return (hex_digit_to_int (digit));
-}
-
 SCHEME_OBJECT
-DEFUN (digit_string_to_integer, (negative_p, n_digits, digits),
-       Boolean negative_p
-       AND unsigned long n_digits
-       AND unsigned char * digits)
+rconsm (unsigned int nargs, SCHEME_OBJECT tail, ...)
 {
-  SCHEME_OBJECT bignum;
-  unsigned char * digit = digits;
-  extern SCHEME_OBJECT EXFUN (bignum_to_integer, (SCHEME_OBJECT));
-
-  bignum = (digit_stream_to_bignum (((int) n_digits),
-				    digit_string_producer,
-				    ((PTR) & digit),
-				    16,
-				    ((int) negative_p)));
-
-  return (bignum_to_integer (bignum));
-}
-
-#ifdef USE_STDARG
-
-SCHEME_OBJECT
-DEFUN (rconsm, (nargs, tail DOTS),
-       int nargs AND SCHEME_OBJECT tail DOTS)
-{
+  SCHEME_OBJECT result;
+  unsigned int i;
   va_list arg_ptr;
   va_start (arg_ptr, tail);
 
-  {
-    int i;
-    SCHEME_OBJECT result = tail;
+  result = tail;
+  for (i = 1; (i < nargs); i += 1)
+    result
+      = (cons ((va_arg (arg_ptr, SCHEME_OBJECT)),
+	       result));
 
-    for (i = 1; i < nargs; i++)
-      result = (cons ((va_arg (arg_ptr, SCHEME_OBJECT)),
-		      result));
-
-    va_end (arg_ptr);
-    return (result);
-  }
+  va_end (arg_ptr);
+  return (result);
 }
+
+SCHEME_OBJECT
+digit_string_to_bit_string (unsigned long n_bits,
+			    unsigned long n_digits,
+			    const char * digits)
+{
+  SCHEME_OBJECT result = (allocate_bit_string (n_bits));
+  unsigned long posn = 0;
+  unsigned long i;
 
-#else /* not USE_STDARG */
+  clear_bit_string (result);
+  for (i = 0; (i < n_digits); i += 1)
+    {
+      unsigned int digit = (hex_digit_to_int (*digits++));
+      unsigned int j = 0;
+      unsigned int mask = 1;
+      while (j < 4)
+	{
+	  if ((digit & mask) != 0)
+	    bit_string_set (result, posn, 1);
+	  j += 1;
+	  mask <<= 1;
+	  posn += 1;
+	}
+    }
+  return (result);
+}
 
 SCHEME_OBJECT
-rconsm (va_alist)
-va_dcl
+digit_string_to_integer (bool negative_p,
+			 unsigned long n_digits,
+			 const char * digits)
 {
-  va_list arg_ptr;
-  int nargs;
-  SCHEME_OBJECT tail;
+  SCHEME_OBJECT bignum
+    = (digit_stream_to_bignum (((int) n_digits),
+			       digit_string_producer,
+			       ((void *) (&digits)),
+			       16,
+			       ((int) negative_p)));
 
-  va_start (arg_ptr);
-  nargs = (va_arg (arg_ptr, int));
-  tail = (va_arg (arg_ptr, SCHEME_OBJECT));
-  
-  {
-    int i;
-    SCHEME_OBJECT result = tail;
-
-    for (i = 1; i < nargs; i++)
-      result = (cons ((va_arg (arg_ptr, SCHEME_OBJECT)),
-		      result));
-
-    va_end (arg_ptr);
-    return (result);
-  }
+  return (bignum_to_integer (bignum));
 }
 
-#endif /* USE_STDARG */
+static unsigned int
+digit_string_producer (void * v_digit_ptr)
+{
+  const char ** digit_ptr = v_digit_ptr;
+  char digit = (**digit_ptr);
+  (*digit_ptr) = ((*digit_ptr) + 1);
+  return (hex_digit_to_int (digit));
+}
+
+static unsigned int
+hex_digit_to_int (char h_digit)
+{
+  unsigned int digit = ((unsigned int) h_digit);
+  return (((digit >= '0') && (digit <= '9'))
+	  ? (digit - '0')
+	  : (((digit >= 'A') && (digit <= 'F'))
+	     ? ((digit - 'A') + 10)
+	     : ((digit - 'a') + 10)));
+}

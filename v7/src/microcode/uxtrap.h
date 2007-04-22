@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.38 2007/02/23 23:45:28 riastradh Exp $
+$Id: uxtrap.h,v 1.39 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -209,7 +209,7 @@ struct full_sigcontext
 
 #define DECLARE_SIGCONTEXT(scp, arg)					\
   SIGCONTEXT_T scp [1];							\
-  static void EXFUN (sun3_save_regs, (int *));				\
+  static void sun3_save_regs, (int *);					\
   sun3_save_regs (& ((((scp) [0]) . fs_regs) [0]));			\
   (((scp) [0]) . fs_original) = (arg)
 
@@ -235,12 +235,12 @@ struct full_sigcontext
 /* r0 has to be kludged. */
 #define DECLARE_SIGCONTEXT(partial, full)				\
   SIGCONTEXT_T scp [1];							\
-  static int EXFUN (vax_get_r0, (void));				\
-  static int * EXFUN (vax_save_start, (int *, int));			\
-  static void EXFUN							\
-    (vax_save_finish, (int *,						\
+  static int vax_get_r0 (void);						\
+  static int * vax_save_start (int *, int);				\
+  static void vax_save_finish						\
+    (int *,								\
 		       struct sigcontext *,				\
-		       struct full_sigcontext *));			\
+		       struct full_sigcontext *);			\
   vax_save_finish ((vax_save_start ((& ((((full) [0]) . fs_regs) [0])),	\
 				    (vax_get_r0 ()))),			\
 		   (partial),						\
@@ -501,11 +501,9 @@ typedef struct
 #endif /* not _POSIX_REALTIME_SIGNALS */
 
 #endif /* __linux__ */
-
+ 
 #ifdef __FreeBSD__
-
-#include <ucontext.h>
-
+#  include <ucontext.h>
 #endif
 
 #ifdef _MACH_UNIX
@@ -611,7 +609,7 @@ typedef struct
 #endif
 
 #ifndef SIGCONTEXT_RFREE
-#  define SIGCONTEXT_RFREE ((unsigned long) MemTop)
+#  define SIGCONTEXT_RFREE ((unsigned long) heap_alloc_limit)
 #endif
 
 #ifndef SIGCONTEXT_SCHSP
@@ -620,14 +618,6 @@ typedef struct
 
 #ifndef INITIALIZE_UX_SIGNAL_CODES
 #  define INITIALIZE_UX_SIGNAL_CODES()
-#endif
-
-/* PCs must be aligned according to this. */
-
-#define PC_ALIGNMENT_MASK ((1 << PC_ZERO_BITS) - 1)
-
-#ifndef HAS_COMPILER_SUPPORT
-#  define PLAUSIBLE_CC_BLOCK_P(block) 0
 #endif
 
 #ifdef _AIX
@@ -663,13 +653,15 @@ enum trap_state
   trap_state_exitting_hard
 };
 
-extern void EXFUN (UX_initialize_trap_recovery, (void));
-extern enum trap_state EXFUN (OS_set_trap_state, (enum trap_state state));
-extern void EXFUN (hard_reset, (SIGCONTEXT_T * scp));
-extern void EXFUN (soft_reset, (void));
-extern void EXFUN
-  (trap_handler, (CONST char *, int, SIGINFO_T, SIGCONTEXT_T *));
-extern SCHEME_OBJECT find_ccblock (unsigned long);
+extern void UX_initialize_trap_recovery (void);
+extern enum trap_state OS_set_trap_state (enum trap_state state);
+extern void hard_reset (SIGCONTEXT_T * scp);
+extern void soft_reset (void);
+extern void trap_handler
+  (const char *, int, SIGINFO_T, SIGCONTEXT_T *);
+#ifdef CC_SUPPORT_P
+   extern SCHEME_OBJECT find_ccblock (unsigned long);
+#endif
 
 #define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))
 #define STATE_PRIMITIVE		(LONG_TO_UNSIGNED_FIXNUM (1))

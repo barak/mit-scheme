@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.66 2007/01/12 03:45:55 cph Exp $
+$Id: intern.c,v 9.67 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,126 +30,105 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "trap.h"
-
-#ifdef STDC_HEADERS
-#  include <string.h>
-#else
-   extern int EXFUN (strlen, (const char *));
-#endif
 
-/* Hashing strings */
-
 /* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
 
-static unsigned int
-DEFUN (string_hash, (length, string),
-       unsigned long length AND
-       CONST char * string)
+static uint32_t
+string_hash (uint32_t length, const char * string)
 {
-  CONST unsigned char * scan = ((unsigned char *) string);
-  CONST unsigned char * end = (scan + length);
-  unsigned int result = 0x811c9dc5;
+  const unsigned char * scan = ((const unsigned char *) string);
+  const unsigned char * end = (scan + length);
+  uint32_t result = 2166136261U;
   while (scan < end)
-    result = ((result * 0x1000193) + (*scan++));
-  return (result & ((unsigned int) BIGGEST_FIXNUM));
+    result = ((result * 16777619U) + (*scan++));
+#if (BIGGEST_FIXNUM >= 0xFFFFFFFF)
+  return (result);
+#else
+  return (result & ((uint32_t) BIGGEST_FIXNUM));
+#endif
 }
 
 static SCHEME_OBJECT *
-DEFUN (find_symbol_internal, (length, string),
-       unsigned long length AND
-       CONST char * string)
+find_symbol_internal (unsigned long length, const char * string)
 {
-  SCHEME_OBJECT obarray = (Get_Fixed_Obj_Slot (OBArray));
+  SCHEME_OBJECT obarray = (VECTOR_REF (fixed_objects, OBARRAY));
   SCHEME_OBJECT * bucket
-    = (MEMORY_LOC (obarray,
-		   (((string_hash (length, string))
-		     % (VECTOR_LENGTH (obarray)))
-		    + 1)));
-  while (!EMPTY_LIST_P (*bucket))
+    = (VECTOR_LOC (obarray,
+		   ((string_hash (length, string))
+		    % (VECTOR_LENGTH (obarray)))));
+  while (true)
     {
-      SCHEME_OBJECT symbol = (PAIR_CAR (*bucket));
-      SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
-      if (((STRING_LENGTH (name)) == length)
-	  && ((memcmp ((STRING_LOC (name, 0)), string, length)) == 0))
-	return (PAIR_CAR_LOC (*bucket));
-      bucket = (PAIR_CDR_LOC (*bucket));
+      SCHEME_OBJECT list = (*bucket);
+      if (PAIR_P (list))
+	{
+	  SCHEME_OBJECT symbol = (PAIR_CAR (list));
+	  SCHEME_OBJECT name = (MEMORY_REF (symbol, SYMBOL_NAME));
+	  if (((STRING_LENGTH (name)) == length)
+	      && ((memcmp ((STRING_POINTER (name)), string, length)) == 0))
+	    return (PAIR_CAR_LOC (list));
+	}
+      else
+	return (bucket);
+      bucket = (PAIR_CDR_LOC (list));
     }
-  return (bucket);
-}
-
-CONST char *
-DEFUN (arg_symbol, (n), int n)
-{
-  CHECK_ARG (n, SYMBOL_P);
-  return (STRING_POINTER (FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
-}
-
-CONST char *
-DEFUN (arg_interned_symbol, (n), int n)
-{
-  CHECK_ARG (n, SYMBOL_P);
-  return (STRING_POINTER (FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
-}
-
-SCHEME_OBJECT
-DEFUN (find_symbol, (length, string),
-       unsigned long length AND
-       CONST char * string)
-{
-  SCHEME_OBJECT result = (* (find_symbol_internal (length, string)));
-  return ((EMPTY_LIST_P (result)) ? SHARP_F : result);
 }
 
 static SCHEME_OBJECT
-DEFUN (make_symbol, (string, cell),
-       SCHEME_OBJECT string AND
-       SCHEME_OBJECT * cell)
+make_symbol (SCHEME_OBJECT string, SCHEME_OBJECT * cell)
 {
   Primitive_GC_If_Needed (4);
   {
     SCHEME_OBJECT symbol = (MAKE_POINTER_OBJECT (TC_INTERNED_SYMBOL, Free));
-    (Free[SYMBOL_NAME]) = string;
-    (Free[SYMBOL_GLOBAL_VALUE]) = UNBOUND_OBJECT;
     Free += 2;
+    MEMORY_SET (symbol, SYMBOL_NAME, string);
+    MEMORY_SET (symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
     (*cell) = (cons (symbol, EMPTY_LIST));
     return (symbol);
   }
 }
 
 SCHEME_OBJECT
-DEFUN (memory_to_symbol, (length, string),
-       unsigned long length AND
-       CONST char * string)
+find_symbol (unsigned long length, const char * string)
+{
+  SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
+  return ((INTERNED_SYMBOL_P (*cell)) ? (*cell) : SHARP_F);
+}
+
+SCHEME_OBJECT
+memory_to_symbol (unsigned long length, const void * string)
 {
   SCHEME_OBJECT * cell = (find_symbol_internal (length, string));
   return
-    ((EMPTY_LIST_P (*cell))
-     ? (make_symbol ((memory_to_string (length, string)), cell))
-     : (*cell));
+    ((INTERNED_SYMBOL_P (*cell))
+     ? (*cell)
+     : (make_symbol ((memory_to_string (length, string)), cell)));
 }
 
 SCHEME_OBJECT
-DEFUN (char_pointer_to_symbol, (string), CONST char * string)
+char_pointer_to_symbol (const char * string)
 {
   return (memory_to_symbol ((strlen (string)), string));
 }
 
 SCHEME_OBJECT
-DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
+string_to_symbol (SCHEME_OBJECT string)
 {
   SCHEME_OBJECT * cell
     = (find_symbol_internal ((STRING_LENGTH (string)),
 			     (STRING_POINTER (string))));
-  return ((EMPTY_LIST_P (*cell)) ? (make_symbol (string, cell)) : (*cell));
+  return ((INTERNED_SYMBOL_P (*cell))
+	  ? (*cell)
+	  : (make_symbol (string, cell)));
 }
 
 SCHEME_OBJECT
-DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
+intern_symbol (SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
+  SCHEME_OBJECT name = (MEMORY_REF (symbol, SYMBOL_NAME));
   SCHEME_OBJECT * cell
-    = (find_symbol_internal ((STRING_LENGTH (name)), (STRING_POINTER (name))));
-  if (!EMPTY_LIST_P (*cell))
+    = (find_symbol_internal ((STRING_LENGTH (name)),
+			     (STRING_POINTER (name))));
+  if (INTERNED_SYMBOL_P (*cell))
     return (*cell);
   else
     {
@@ -158,23 +137,38 @@ DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
       return (result);
     }
 }
+
+const char *
+arg_symbol (int n)
+{
+  CHECK_ARG (n, SYMBOL_P);
+  return (STRING_POINTER (MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
+}
+
+const char *
+arg_interned_symbol (int n)
+{
+  CHECK_ARG (n, SYMBOL_P);
+  return (STRING_POINTER (MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
+}
 
 DEFINE_PRIMITIVE ("FIND-SYMBOL", Prim_find_symbol, 1, 1,
-  "(FIND-SYMBOL STRING)\n\
-Returns the symbol whose name is STRING, or #F if no such symbol exists.")
+  "(STRING)\n\
+Returns the symbol named STRING, or #F if no such symbol exists.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (1));
-    PRIMITIVE_RETURN
-      (find_symbol ((STRING_LENGTH (string)), (STRING_POINTER (string))));
+    PRIMITIVE_RETURN (find_symbol ((STRING_LENGTH (string)),
+				   (STRING_POINTER (string))));
   }
 }
 
 DEFINE_PRIMITIVE ("STRING->SYMBOL", Prim_string_to_symbol, 1, 1,
-  "(STRING->SYMBOL STRING)\n\
-Returns the symbol whose name is STRING, constructing a new symbol if needed.")
+  "(STRING)\n\
+Returns the interned symbol named STRING, constructing a new symbol\n\
+if needed.")
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
@@ -182,23 +176,23 @@ Returns the symbol whose name is STRING, constructing a new symbol if needed.")
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH", Prim_string_hash, 1, 1,
-  "(STRING-HASH STRING)\n\
-Return a hash value for a string.  This uses the hashing\n\
-algorithm for interning symbols.  It is intended for use by\n\
-the reader in creating interned symbols.")
+  "(STRING)\n\
+Returns the hash value for STRING, using the hashing algorithm for\n\
+interning symbols.")
+
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (LONG_TO_UNSIGNED_FIXNUM (string_hash ((STRING_LENGTH (string)),
-					     (STRING_POINTER (string)))));
+      (ULONG_TO_FIXNUM (string_hash ((STRING_LENGTH (string)),
+				     (STRING_POINTER (string)))));
   }
 }
 
 DEFINE_PRIMITIVE ("STRING-HASH-MOD", Prim_string_hash_mod, 2, 2,
-  "(STRING-HASH-MOD STRING DENOMINATOR)\n\
+  "(STRING DENOMINATOR)\n\
 DENOMINATOR must be a nonnegative integer.\n\
 Equivalent to (MODULO (STRING-HASH STRING) DENOMINATOR).")
 {
@@ -207,9 +201,8 @@ Equivalent to (MODULO (STRING-HASH STRING) DENOMINATOR).")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (LONG_TO_UNSIGNED_FIXNUM
-       ((string_hash ((STRING_LENGTH (string)),
-		      (STRING_POINTER (string))))
-	% (arg_ulong_integer (2))));
+      (ULONG_TO_FIXNUM ((string_hash ((STRING_LENGTH (string)),
+				      (STRING_POINTER (string))))
+			% (arg_ulong_integer (2))));
   }
 }

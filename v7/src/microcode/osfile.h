@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osfile.h,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: osfile.h,v 1.9 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,15 +30,15 @@ USA.
 
 #include "os.h"
 
-extern Tchannel EXFUN (OS_open_input_file, (CONST char * filename));
-extern Tchannel EXFUN (OS_open_output_file, (CONST char * filename));
-extern Tchannel EXFUN (OS_open_io_file, (CONST char * filename));
-extern Tchannel EXFUN (OS_open_append_file, (CONST char * filename));
-extern Tchannel EXFUN (OS_open_load_file, (CONST char * filename));
-extern Tchannel EXFUN (OS_open_dump_file, (CONST char * filename));
-extern off_t EXFUN (OS_file_length, (Tchannel channel));
-extern off_t EXFUN (OS_file_position, (Tchannel channel));
-extern void EXFUN (OS_file_set_position, (Tchannel channel, off_t position));
-extern void EXFUN (OS_file_truncate, (Tchannel channel, off_t length));
+extern Tchannel OS_open_input_file (const char * filename);
+extern Tchannel OS_open_output_file (const char * filename);
+extern Tchannel OS_open_io_file (const char * filename);
+extern Tchannel OS_open_append_file (const char * filename);
+extern Tchannel OS_open_load_file (const char * filename);
+extern Tchannel OS_open_dump_file (const char * filename);
+extern off_t OS_file_length (Tchannel channel);
+extern off_t OS_file_position (Tchannel channel);
+extern void OS_file_set_position (Tchannel channel, off_t position);
+extern void OS_file_truncate (Tchannel channel, off_t length);
 
 #endif /* SCM_OSFILE_H */

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabmd.scm,v 9.91 2007/01/05 21:19:25 cph Exp $
+$Id: utabmd.scm,v 9.92 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -73,12 +73,12 @@ USA.
 	       THE-WORK-QUEUE				;19
 	       FUTURE-READS-LOGGER			;1A
 	       TOUCHED-FUTURES-VECTOR			;1B
-	       PRECIOUS-OBJECTS				;1C
+	       #F #| PRECIOUS-OBJECTS |#		;1C
 	       ERROR-PROCEDURE				;1D
 	       #F #| UNSNAPPED-LINK |#	                ;1E
 	       #F #| MICROCODE-UTILITIES-VECTOR |#	;1F
 	       COMPILER-ERROR-PROCEDURE			;20
-	       LOST-OBJECT-BASE				;21
+	       #F #| LOST-OBJECT-BASE |#		;21
 	       STATE-SPACE-ROOT				;22
 	       PRIMITIVE-PROFILING-TABLE		;23
 	       GENERIC-TRAMPOLINE-ZERO?			;24
@@ -159,10 +159,10 @@ USA.
 	       COMPILED-ENTRY				;28
 	       LEXPR					;29
 	       PRIMITIVE-COMBINATION-3		       	;2A
-	       MANIFEST-SPECIAL-NM-VECTOR	  	;2B
+	       #F				  	;2B
 	       VARIABLE					;2C
 	       THE-ENVIRONMENT	      			;2D
-	       FUTURE					;2E
+	       #F					;2E
 	       VECTOR-1B	          		;2F
 	       PRIMITIVE-COMBINATION-0	       	       	;30
 	       VECTOR-16B		       		;31
@@ -500,12 +500,12 @@ USA.
 	       BAD-RANGE-ARGUMENT-1			;11
 	       BAD-RANGE-ARGUMENT-2			;12
 	       MACRO-BINDING				;13
-	       #F					;14
+	       FASDUMP-OBJECT-TOO-LARGE			;14
 	       BAD-INTERRUPT-CODE			;15
 	       #F					;16
 	       FASL-FILE-TOO-BIG			;17
 	       FASL-FILE-BAD-DATA			;18
-	       IMPURIFY-OBJECT-TOO-LARGE		;19
+	       #F					;19
 	       WRITE-INTO-PURE-SPACE                    ;1A
 	       #F		                        ;1B
 	       #F					;1C
@@ -613,4 +613,4 @@ USA.
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.91 2007/01/05 21:19:25 cph Exp $"
+"$Id: utabmd.scm,v 9.92 2007/04/22 16:31:23 cph Exp $"

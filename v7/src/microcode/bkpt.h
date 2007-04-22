@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.h,v 9.38 2007/01/05 21:19:25 cph Exp $
+$Id: bkpt.h,v 9.39 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,11 +25,9 @@ USA.
 
 */
 
-/* This file contains breakpoint utilities.
-   Disabled when not debugging the interpreter.
-   It "shadows" definitions in default.h */
+/* This file contains breakpoint utility definitions.  */
 
-#ifdef ENABLE_DEBUGGING_FLAGS
+#ifdef ENABLE_DEBUGGING_TOOLS
 
 struct sp_record
 {
@@ -38,28 +36,23 @@ struct sp_record
 };
 
 typedef struct sp_record * sp_record_list;
+extern sp_record_list SP_List;
 
-#define debug_maxslots 100
+#define DEBUG_MAXSLOTS 100
 
-#define Eval_Ucode_Hook()						\
+#define EVAL_UCODE_HOOK() do						\
 {									\
-  (local_circle [local_slotno++]) = exp_register;			\
-  if (local_slotno >= debug_maxslots)					\
+  (local_circle [local_slotno++]) = GET_EXP;				\
+  if (local_slotno >= DEBUG_MAXSLOTS)					\
     local_slotno = 0;							\
-  if (local_nslots < debug_maxslots)					\
+  if (local_nslots < DEBUG_MAXSLOTS)					\
     local_nslots += 1;							\
-}
+} while (0)
 
-#define Pop_Return_Ucode_Hook()						\
+#define POP_RETURN_UCODE_HOOK() do					\
 {									\
   if (SP_List != 0)							\
-  {									\
     Pop_Return_Break_Point ();						\
-  }									\
-}
+} while (0)
 
-/* Not implemented yet */
-
-#define Apply_Ucode_Hook()
-
-#endif /* ENABLE_DEBUGGING_FLAGS */
+#endif /* ENABLE_DEBUGGING_TOOLS */

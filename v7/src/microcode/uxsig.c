@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsig.c,v 1.48 2007/01/05 21:19:25 cph Exp $
+$Id: uxsig.c,v 1.49 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,7 +25,8 @@ USA.
 
 */
 
-#include "config.h"
+#include "scheme.h"
+#include "option.h"
 #include "ux.h"
 #include "ossig.h"
 #include "osctty.h"
@@ -36,12 +37,12 @@ USA.
 #include "uxutil.h"
 #include "critsec.h"
 
-extern cc_t EXFUN (OS_ctty_quit_char, (void));
-extern cc_t EXFUN (OS_ctty_int_char, (void));
-extern cc_t EXFUN (OS_ctty_tstp_char, (void));
-extern cc_t EXFUN (OS_ctty_disabled_char, (void));
-extern void EXFUN (tty_set_next_interrupt_char, (cc_t c));
-extern void EXFUN (UX_reinitialize_tty, (void));
+extern cc_t OS_ctty_quit_char (void);
+extern cc_t OS_ctty_int_char (void);
+extern cc_t OS_ctty_tstp_char (void);
+extern cc_t OS_ctty_disabled_char (void);
+extern void tty_set_next_interrupt_char (cc_t c);
+extern void UX_reinitialize_tty (void);
 
 /* Signal Manipulation */
 
@@ -56,40 +57,36 @@ extern void EXFUN (UX_reinitialize_tty, (void));
 #  endif
 #endif
 
+#ifndef __APPLE__
+#  define HAVE_SIGFPE
+#endif
+
 static Tsignal_handler
-DEFUN (current_handler, (signo), int signo)
+current_handler (int signo)
 {
   struct sigaction act;
   UX_sigaction (signo, 0, (&act));
   return (SIGACT_HANDLER (&act));
 }
 
-/* Work-around for 64-bit environment bug on Mac OSX */
-
-#if defined(__APPLE__) && defined(__LP64__)
-#define SA_SIGINFO_EXTRA SA_64REGSET
-#endif
-
-#ifndef SA_SIGINFO_EXTRA
-#define SA_SIGINFO_EXTRA 0
-#endif
-
 void
-DEFUN (INSTALL_HANDLER, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
+INSTALL_HANDLER (int signo, Tsignal_handler handler)
 {
   struct sigaction act;
   if ((handler == ((Tsignal_handler) SIG_IGN))
       || (handler == ((Tsignal_handler) SIG_DFL)))
     {
-      (act . sa_handler) = ((PTR) handler);
+      (act . sa_handler) = ((void *) handler);
       (act . sa_flags) = 0;
     }
   else
     {
       (SIGACT_HANDLER (&act)) = handler;
-      (act . sa_flags) = (SA_SIGINFO | SA_SIGINFO_EXTRA);
+      (act . sa_flags) = SA_SIGINFO;
+      /* Work-around for 64-bit environment bug on Mac OSX */
+#if defined(__APPLE__) && defined(__LP64__)
+      (act . sa_flags) |= SA_64REGSET;
+#endif
     }
   UX_sigemptyset (& (act . sa_mask));
   UX_sigaddset ((& (act . sa_mask)), signo);
@@ -100,7 +97,7 @@ DEFUN (INSTALL_HANDLER, (signo, handler),
 #ifdef HAVE_SIGHOLD
 
 static Tsignal_handler
-DEFUN (current_handler, (signo), int signo)
+current_handler (int signo)
 {
   Tsignal_handler result = (UX_sigset (signo, SIG_HOLD));
   if (result != SIG_HOLD)
@@ -111,7 +108,7 @@ DEFUN (current_handler, (signo), int signo)
 #else /* not HAVE_SIGHOLD */
 
 static Tsignal_handler
-DEFUN (current_handler, (signo), int signo)
+current_handler (int signo)
 {
   Tsignal_handler result = (UX_signal (signo, SIG_IGN));
   if (result != SIG_IGN)
@@ -125,7 +122,7 @@ DEFUN (current_handler, (signo), int signo)
 #ifdef NEED_HANDLER_TRANSACTION
 
 void
-DEFUN (ta_abort_handler, (ap), PTR ap)
+ta_abort_handler (void * ap)
 {
   ABORT_HANDLER ((((struct handler_record *) ap) -> signo),
 		 (((struct handler_record *) ap) -> handler));
@@ -136,19 +133,19 @@ DEFUN (ta_abort_handler, (ap), PTR ap)
 #ifdef HAVE_POSIX_SIGNALS
 
 static void
-DEFUN (restore_signal_mask, (environment), PTR environment)
+restore_signal_mask (void * environment)
 {
   UX_sigprocmask (SIG_SETMASK, ((sigset_t *) environment), 0);
 }
 
 static void
-DEFUN (save_signal_mask, (environment), PTR environment)
+save_signal_mask (void * environment)
 {
   UX_sigprocmask (SIG_SETMASK, 0, ((sigset_t *) environment));
 }
 
 void
-DEFUN_VOID (preserve_signal_mask)
+preserve_signal_mask (void)
 {
   dstack_alloc_and_protect
     ((sizeof (sigset_t)), save_signal_mask, restore_signal_mask);
@@ -157,7 +154,7 @@ DEFUN_VOID (preserve_signal_mask)
 static sigset_t blocked_signals;
 
 void
-DEFUN_VOID (block_signals)
+block_signals (void)
 {
   sigset_t all_signals;
   UX_sigfillset (&all_signals);
@@ -165,7 +162,7 @@ DEFUN_VOID (block_signals)
 }
 
 void
-DEFUN_VOID (unblock_signals)
+unblock_signals (void)
 {
   UX_sigprocmask (SIG_SETMASK, (&blocked_signals), 0);
 }
@@ -173,32 +170,30 @@ DEFUN_VOID (unblock_signals)
 #else /* not HAVE_POSIX_SIGNALS */
 
 void
-DEFUN_VOID (preserve_signal_mask)
+preserve_signal_mask (void)
 {
 }
 
 void
-DEFUN_VOID (block_signals)
+block_signals (void)
 {
 }
 
 void
-DEFUN_VOID (unblock_signals)
+unblock_signals (void)
 {
 }
 
 #endif /* not HAVE_POSIX_SIGNALS */
 
 void
-DEFUN (deactivate_handler, (signo), int signo)
+deactivate_handler (int signo)
 {
   INSTALL_HANDLER (signo, ((Tsignal_handler) SIG_IGN));
 }
 
 void
-DEFUN (activate_handler, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
+activate_handler (int signo, Tsignal_handler handler)
 {
   INSTALL_HANDLER (signo, handler);
 }
@@ -211,7 +206,7 @@ int signal_history [256];
 int * signal_history_pointer;
 
 static void
-DEFUN_VOID (initialize_signal_debugging)
+initialize_signal_debugging (void)
 {
   int * scan = (&signal_history[0]);
   int * end = (scan + (sizeof (signal_history)));
@@ -221,7 +216,7 @@ DEFUN_VOID (initialize_signal_debugging)
 }
 
 static void
-DEFUN (record_signal_delivery, (signo), int signo)
+record_signal_delivery (int signo)
 {
   block_signals ();
   (*signal_history_pointer++) = signo;
@@ -243,7 +238,7 @@ enum dfl_action { dfl_terminate, dfl_ignore, dfl_stop };
 struct signal_descriptor
 {
   int signo;
-  CONST char * name;
+  const char * name;
   enum dfl_action action;
   int flags;
 };
@@ -259,11 +254,7 @@ static unsigned int signal_descriptors_length;
 static unsigned int signal_descriptors_limit;
 
 static void
-DEFUN (defsignal, (signo, name, action, flags),
-       int signo AND
-       CONST char * name AND
-       enum dfl_action action AND
-       int flags)
+defsignal (int signo, const char * name, enum dfl_action action, int flags)
 {
   if (signo == 0)
     return;
@@ -292,7 +283,7 @@ DEFUN (defsignal, (signo, name, action, flags),
 }
 
 static struct signal_descriptor *
-DEFUN (find_signal_descriptor, (signo), int signo)
+find_signal_descriptor (int signo)
 {
   struct signal_descriptor * scan = signal_descriptors;
   struct signal_descriptor * end = (scan + signal_descriptors_length);
@@ -302,15 +293,15 @@ DEFUN (find_signal_descriptor, (signo), int signo)
   return (0);
 }
 
-CONST char *
-DEFUN (find_signal_name, (signo), int signo)
+const char *
+find_signal_name (int signo)
 {
   static char buffer [32];
   struct signal_descriptor * descriptor = (find_signal_descriptor (signo));
   if (descriptor != 0)
     return (descriptor -> name);
   sprintf (buffer, "unknown signal %d", signo);
-  return ((CONST char *) buffer);
+  return ((const char *) buffer);
 }
 
 #if (SIGABRT == SIGIOT)
@@ -319,7 +310,7 @@ DEFUN (find_signal_name, (signo), int signo)
 #endif
 
 static void
-DEFUN_VOID (initialize_signal_descriptors)
+initialize_signal_descriptors (void)
 {
   signal_descriptors_length = 0;
   signal_descriptors_limit = 32;
@@ -339,9 +330,9 @@ DEFUN_VOID (initialize_signal_descriptors)
   defsignal (SIGTRAP, "SIGTRAP",	dfl_terminate,	CORE_DUMP);
   defsignal (SIGIOT, "SIGIOT",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGEMT, "SIGEMT",		dfl_terminate,	CORE_DUMP);
-#ifndef __APPLE__
+#ifdef HAVE_SIGFPE
   defsignal (SIGFPE, "SIGFPE",		dfl_terminate,	CORE_DUMP);
-#endif /* __APPLE__ */
+#endif
   defsignal (SIGKILL, "SIGKILL",	dfl_terminate,	(NOIGNORE | NOBLOCK | NOCATCH));
   defsignal (SIGBUS, "SIGBUS",		dfl_terminate,	CORE_DUMP);
   defsignal (SIGSEGV, "SIGSEGV",	dfl_terminate,	CORE_DUMP);
@@ -376,7 +367,7 @@ DEFUN_VOID (initialize_signal_descriptors)
 #define CONTROL_X_INTERRUPT_CHAR 'X'
 
 static void
-DEFUN (echo_keyboard_interrupt, (c, dc), cc_t c AND cc_t dc)
+echo_keyboard_interrupt (cc_t c, cc_t dc)
 {
   if (c == (OS_ctty_disabled_char ()))
     c = dc;
@@ -420,14 +411,14 @@ DEFUN_STD_HANDLER (sighnd_control_b,
   tty_set_next_interrupt_char (CONTROL_B_INTERRUPT_CHAR);
 })
 
-static void EXFUN (interactive_interrupt_handler, (SIGCONTEXT_T * scp));
+static void interactive_interrupt_handler (SIGCONTEXT_T * scp);
 
 static
 DEFUN_STD_HANDLER (sighnd_interactive,
   (interactive_interrupt_handler (scp)))
 
 void
-DEFUN (stop_signal_default, (signo), int signo)
+stop_signal_default (int signo)
 {
 #ifdef HAVE_POSIX_SIGNALS
   if ((isatty (STDIN_FILENO))
@@ -465,7 +456,7 @@ DEFUN (stop_signal_default, (signo), int signo)
 #endif /* HAVE_POSIX_SIGNALS */
 }
 
-void EXFUN ((*stop_signal_hook), (int signo));
+void (*stop_signal_hook) (int signo);
 
 #ifdef HAVE_POSIX_SIGNALS
 #  define IF_POSIX_SIGNALS(code) do code while (0)
@@ -503,7 +494,7 @@ DEFUN_STD_HANDLER (sighnd_stop,
 }))
 
 void
-DEFUN_VOID (OS_restartable_exit)
+OS_restartable_exit (void)
 {
   stop_signal_default (SIGTSTP);
 }
@@ -530,7 +521,7 @@ DEFUN_STD_HANDLER (sighnd_timer,
 
 #else /* not HAVE_SETITIMER */
 
-extern void EXFUN (reschedule_alarm, (void));
+extern void reschedule_alarm (void);
 
 static
 DEFUN_STD_HANDLER (sighnd_timer,
@@ -552,20 +543,11 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     ? (find_signal_name (signo))
     : 0)))
 
-#ifdef HAS_COMPILER_SUPPORT
-#  include "cmpintmd.h"
-#  if (COMPILER_PROCESSOR_TYPE == COMPILER_IA32_TYPE)
-
-extern void EXFUN (i386_interface_initialize, (void));
-#define FPE_RESET_TRAPS i386_interface_initialize
-
-#  endif
-#endif
-
 #ifndef FPE_RESET_TRAPS
 #  define FPE_RESET_TRAPS()
 #endif
 
+#ifdef HAVE_SIGFPE
 static
 DEFUN_STD_HANDLER (sighnd_fpe,
 {
@@ -574,6 +556,7 @@ DEFUN_STD_HANDLER (sighnd_fpe,
   FPE_RESET_TRAPS ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
+#endif
 
 static
 DEFUN_STD_HANDLER (sighnd_hardware_trap,
@@ -615,14 +598,14 @@ DEFUN_STD_HANDLER (sighnd_renice,
    case we just hope that child terminations don't happen too close to
    one another to cause problems. */
 
-void EXFUN ((*subprocess_death_hook), (pid_t pid, int * status));
+void (*subprocess_death_hook) (pid_t pid, int * status);
 
 #ifdef HAVE_WAITPID
-#define WAITPID(status) (UX_waitpid ((-1), (status), (WNOHANG | WUNTRACED)))
-#define BREAK
+#  define WAITPID(status) (UX_waitpid ((-1), (status), (WNOHANG | WUNTRACED)))
+#  define BREAK
 #else
-#define WAITPID(status) (UX_wait (status))
-#define BREAK break
+#  define WAITPID(status) (UX_wait (status))
+#  define BREAK break
 #endif
 
 static
@@ -643,16 +626,14 @@ DEFUN_STD_HANDLER (sighnd_dead_subprocess,
 /* Signal Bindings */
 
 static void
-DEFUN (bind_handler, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
+bind_handler (int signo, Tsignal_handler handler)
 {
   Tsignal_handler old_handler
     = ((signo == 0)
        ? ((Tsignal_handler) SIG_DFL)
        : (current_handler (signo)));
 
-  if ((signo != 0) 
+  if ((signo != 0)
       && ((old_handler == ((Tsignal_handler) SIG_DFL))
 	  || ((old_handler == ((Tsignal_handler) SIG_IGN))
 	      && (signo == SIGCHLD)))
@@ -662,7 +643,7 @@ DEFUN (bind_handler, (signo, handler),
 }
 
 static void
-DEFUN_VOID (unblock_all_signals)
+unblock_all_signals (void)
 {
   /* Force the signal mask to be empty. */
 #ifdef HAVE_POSIX_SIGNALS
@@ -682,16 +663,16 @@ DEFUN_VOID (unblock_all_signals)
 }
 
 void
-DEFUN_VOID (UX_initialize_signals)
+UX_initialize_signals (void)
 {
   stop_signal_hook = 0;
   subprocess_death_hook = 0;
   initialize_signal_descriptors ();
   initialize_signal_debugging ();
   bind_handler (SIGINT,		sighnd_control_g);
-#ifndef __APPLE__
+#ifdef HAVE_SIGFPE
   bind_handler (SIGFPE,		sighnd_fpe);
-#endif /* __APPLE__ */
+#endif
   bind_handler (SIGALRM,	sighnd_timer);
   bind_handler (SIGVTALRM,	sighnd_timer);
   bind_handler (SIGUSR1,	sighnd_save_then_terminate);
@@ -755,7 +736,7 @@ DEFUN_VOID (UX_initialize_signals)
 /* Initialize the signals in a child subprocess.  */
 
 void
-DEFUN_VOID (UX_initialize_child_signals)
+UX_initialize_child_signals (void)
 {
   unblock_all_signals ();
   /* SIGPIPE was ignored above; we must set it back to the default
@@ -769,16 +750,16 @@ DEFUN_VOID (UX_initialize_child_signals)
    taken.
  */
 cc_t
-DEFUN (OS_tty_map_interrupt_char, (int_char), cc_t int_char)
+OS_tty_map_interrupt_char (cc_t int_char)
 {
   return int_char;
 }
 
-static void EXFUN (print_interactive_help, (void));
-static void EXFUN (print_interrupt_chars, (void));
-static void EXFUN (examine_memory, (void));
-static void EXFUN (reset_query, (SIGCONTEXT_T * scp));
-static void EXFUN (interactive_back_trace, (void));
+static void print_interactive_help (void);
+static void print_interrupt_chars (void);
+static void examine_memory (void);
+static void reset_query (SIGCONTEXT_T * scp);
+static void interactive_back_trace (void);
 
 #define INTERACTIVE_NEWLINE()						\
 {									\
@@ -790,7 +771,7 @@ static void EXFUN (interactive_back_trace, (void));
 }
 
 static void
-DEFUN (interactive_interrupt_handler, (scp), SIGCONTEXT_T * scp)
+interactive_interrupt_handler (SIGCONTEXT_T * scp)
 {
   if (!option_emacs_subprocess)
     {
@@ -893,7 +874,7 @@ DEFUN (interactive_interrupt_handler, (scp), SIGCONTEXT_T * scp)
 }
 
 static enum interrupt_handler
-DEFUN (encode_interrupt_handler, (handler), Tsignal_handler handler)
+encode_interrupt_handler (Tsignal_handler handler)
 {
   return
     ((handler == ((Tsignal_handler) sighnd_control_g))
@@ -912,7 +893,7 @@ DEFUN (encode_interrupt_handler, (handler), Tsignal_handler handler)
 }
 
 static Tsignal_handler
-DEFUN (decode_interrupt_handler, (encoding), enum interrupt_handler encoding)
+decode_interrupt_handler (enum interrupt_handler encoding)
 {
   return
     ((encoding == interrupt_handler_control_g)
@@ -931,19 +912,19 @@ DEFUN (decode_interrupt_handler, (encoding), enum interrupt_handler encoding)
 }
 
 enum interrupt_handler
-DEFUN_VOID (OS_signal_quit_handler)
+OS_signal_quit_handler (void)
 {
   return (encode_interrupt_handler (current_handler (SIGQUIT)));
 }
 
 enum interrupt_handler
-DEFUN_VOID (OS_signal_int_handler)
+OS_signal_int_handler (void)
 {
   return (encode_interrupt_handler (current_handler (SIGINT)));
 }
 
 enum interrupt_handler
-DEFUN_VOID (OS_signal_tstp_handler)
+OS_signal_tstp_handler (void)
 {
   return
     ((UX_SC_JOB_CONTROL ())
@@ -952,11 +933,9 @@ DEFUN_VOID (OS_signal_tstp_handler)
 }
 
 void
-DEFUN (OS_signal_set_interrupt_handlers,
-       (quit_handler, int_handler, tstp_handler),
-       enum interrupt_handler quit_handler AND
-       enum interrupt_handler int_handler AND
-       enum interrupt_handler tstp_handler)
+OS_signal_set_interrupt_handlers (enum interrupt_handler quit_handler,
+				  enum interrupt_handler int_handler,
+				  enum interrupt_handler tstp_handler)
 {
   {
     Tsignal_handler handler = (decode_interrupt_handler (quit_handler));
@@ -977,7 +956,7 @@ DEFUN (OS_signal_set_interrupt_handlers,
 }
 
 static void
-DEFUN (describe_sighnd, (signo, c), int signo AND unsigned char c)
+describe_sighnd (int signo, unsigned char c)
 {
   switch (encode_interrupt_handler (current_handler (signo)))
     {
@@ -1024,7 +1003,7 @@ DEFUN (describe_sighnd, (signo, c), int signo AND unsigned char c)
 }
 
 static void
-DEFUN_VOID (print_interrupt_chars)
+print_interrupt_chars (void)
 {
   {
     unsigned char quit_char = (OS_ctty_quit_char ());
@@ -1050,7 +1029,7 @@ DEFUN_VOID (print_interrupt_chars)
 }
 
 static void
-DEFUN_VOID (print_interactive_help)
+print_interactive_help (void)
 {
   fputs ("\n\n", stdout);
   fputs ("^B: Enter a breakpoint loop.\n", stdout);
@@ -1071,20 +1050,20 @@ DEFUN_VOID (print_interactive_help)
 }
 
 static void
-DEFUN (invoke_soft_reset, (name), char * name)
+invoke_soft_reset (const char * name)
 {
   soft_reset ();
   /*NOTREACHED*/
 }
 
 static void
-DEFUN (reset_query, (scp), SIGCONTEXT_T * scp)
+reset_query (SIGCONTEXT_T * scp)
 {
   putc ('\n', stdout);
   fflush (stdout);
   if (WITHIN_CRITICAL_SECTION_P ())
     {
-      static CONST char * reset_choices [] =
+      static const char * reset_choices [] =
 	{
 	  "D = delay reset until the end of the critical section",
 	  "N = attempt reset now",
@@ -1126,7 +1105,7 @@ DEFUN (reset_query, (scp), SIGCONTEXT_T * scp)
 #define USERIO_READ_LINE_INPUT_FAILED	2
 
 static int
-DEFUN (userio_read_line, (line, size), char * line AND int size)
+userio_read_line (char * line, int size)
 {
   int result = USERIO_READ_LINE_TOO_LONG;
   transaction_begin ();
@@ -1159,7 +1138,7 @@ DEFUN (userio_read_line, (line, size), char * line AND int size)
 }
 
 static void
-DEFUN_VOID (examine_memory)
+examine_memory (void)
 {
   char input_string [256];
   fputs ("Enter location to examine (0x prefix for hex): ", stdout);
@@ -1183,14 +1162,14 @@ DEFUN_VOID (examine_memory)
 }
 
 void
-DEFUN (eta_fclose, (stream), PTR stream)
+eta_fclose (void * stream)
 {
   (void) (fclose ((FILE *) stream));
   return;
 }
 
 static void
-DEFUN_VOID (interactive_back_trace)
+interactive_back_trace (void)
 {
   char input_string [256];
   fputs ("Enter the stack trace filename (default: terminal): ", stdout);
@@ -1203,7 +1182,7 @@ DEFUN_VOID (interactive_back_trace)
   }
   INTERACTIVE_NEWLINE ();
   if ((strlen (&input_string[0])) == 0)
-    debug_back_trace (console_output);
+    debug_back_trace (CONSOLE_OUTPUT);
   else
   {
     transaction_begin ();
@@ -1217,7 +1196,7 @@ DEFUN_VOID (interactive_back_trace)
       }
       transaction_record_action (tat_always,
 				 eta_fclose,
-				 ((PTR) to_dump));
+				 ((void *) to_dump));
       outf_console ("Writing the stack trace to file \"%s\" -- ",
                     &input_string[0]);
       outf_flush_console ();
@@ -1245,7 +1224,7 @@ DEFUN_VOID (interactive_back_trace)
    The magic constant of 276 was found by poking with adb. */
 
 static void
-DEFUN (sun3_save_regs, (regs), int * regs)
+sun3_save_regs (int * regs)
 {
   asm ("\n\
 	movel	a6@(8),a0\n\
@@ -1275,14 +1254,14 @@ DEFUN (sun3_save_regs, (regs), int * regs)
 #ifdef vax
 
 static int
-DEFUN_VOID (vax_get_r0)
+vax_get_r0 (void)
 {
   /* This is a kludge. It relies on r0 being the return value register. */
   asm ("ret");
 }
 
 static int *
-DEFUN (vax_save_start, (regs, r0), int * regs AND int r0)
+vax_save_start (int * regs, int r0)
 {
   asm ("movl	fp,-(sp)");
   asm ("movl	4(ap),fp");
@@ -1304,10 +1283,9 @@ DEFUN (vax_save_start, (regs, r0), int * regs AND int r0)
 }
 
 static void
-DEFUN (vax_save_finish, (fp, pscp, scp),
-       int * fp AND
-       struct sigcontext * pscp AND
-       struct full_sigcontext * scp)
+vax_save_finish (int * fp,
+		 struct sigcontext * pscp,
+		 struct full_sigcontext * scp)
 {
   (scp -> fs_original) = pscp;
 #ifndef _ULTRIX
@@ -1355,9 +1333,7 @@ DEFUN (vax_save_finish, (fp, pscp, scp),
    this file.  */
 
 Tsignal_handler
-DEFUN (signal, (signo, handler),
-       int signo AND
-       Tsignal_handler handler)
+signal (int signo, Tsignal_handler handler)
 {
   struct sigaction act;
   struct sigaction oact;
@@ -1377,13 +1353,13 @@ DEFUN (signal, (signo, handler),
    called because that guarantees that the flags are correct.  */
 
 void
-DEFUN_VOID (sony_block_sigchld)
+sony_block_sigchld (void)
 {
   sighold (SIGCHLD);
 }
 
 void
-DEFUN_VOID (sony_unblock_sigchld)
+sony_unblock_sigchld (void)
 {
   INSTALL_HANDLER (SIGCHLD, sighnd_dead_subprocess);
   sigrelse (SIGCHLD);

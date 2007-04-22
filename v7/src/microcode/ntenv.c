@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntenv.c,v 1.23 2007/01/05 21:19:25 cph Exp $
+$Id: ntenv.c,v 1.24 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,8 +29,6 @@ USA.
 #include "nt.h"
 #include "osenv.h"
 #include "ntscreen.h"
-#include <stdlib.h>
-#include <string.h>
 
 extern unsigned long file_time_to_unix_time (FILETIME *);
 extern void unix_time_to_file_time (unsigned long, FILETIME *);
@@ -54,7 +52,7 @@ unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
 #endif
 
 time_t
-DEFUN_VOID (OS_encoded_time)
+OS_encoded_time (void)
 {
   SYSTEMTIME t;
   GetSystemTime (&t);
@@ -172,7 +170,7 @@ OS_encode_time (struct time_structure * buffer)
   (((4294967296.0 * (double)  ft.dwHighDateTime) + ft.dwLowDateTime)*100e-6)
 
 double
-DEFUN_VOID (OS_process_clock)
+OS_process_clock (void)
 {
   /* This must not signal an error in normal use. */
   /* Return answer in milliseconds, was in 1/100th seconds */
@@ -187,7 +185,7 @@ DEFUN_VOID (OS_process_clock)
 }
 
 double
-DEFUN_VOID (OS_real_time_clock)
+OS_real_time_clock (void)
 {
   return ((((double) (clock ())) * 1000.0) / ((double) CLOCKS_PER_SEC));
 }
@@ -230,7 +228,7 @@ struct timer_state_s scheme_timers[3] =
 extern HANDLE master_tty_window;
 
 static void
-DEFUN (clear_timer, (timer_id), int timer_id)
+clear_timer (int timer_id)
 {
   struct timer_state_s * timer = &scheme_timers[timer_id - TIMER_ID_BASE];
   if (timer->global_id != 0)
@@ -240,13 +238,12 @@ DEFUN (clear_timer, (timer_id), int timer_id)
   return;
 }
 
-extern VOID /* CALLBACK */ EXFUN (TimerProc, (HWND, UINT, UINT, DWORD));
+extern VOID /* CALLBACK */ TimerProc (HWND, UINT, UINT, DWORD);
 
 #define THE_TIMER_PROC ((TIMERPROC) NULL) /* TimerProc */
 
 VOID /* CALLBACK */
-DEFUN (TimerProc, (hwnd, umsg, timer_id, dwtime),
-       HWND hwnd AND UINT umsg AND UINT timer_id AND DWORD dwtime)
+TimerProc (HWND hwnd, UINT umsg, UINT timer_id, DWORD dwtime)
 {
   if (hwnd == master_tty_window)
   {
@@ -264,13 +261,13 @@ DEFUN (TimerProc, (hwnd, umsg, timer_id, dwtime),
 				    THE_TIMER_PROC));
       timer->next = timer_next_normal;
       break;
-      
+
     case timer_next_normal:
       break;
 
     case timer_next_none:
     case timer_next_disable:
-    default:      
+    default:
       clear_timer (timer_id);
       break;
     }
@@ -279,8 +276,7 @@ DEFUN (TimerProc, (hwnd, umsg, timer_id, dwtime),
 }
 
 static void
-DEFUN (set_timer, (timer_id, first, interval),
-       int timer_id AND clock_t first AND clock_t interval)
+set_timer (int timer_id, clock_t first, clock_t interval)
 {
   struct timer_state_s * timer = &scheme_timers[timer_id - TIMER_ID_BASE];
   if (timer->global_id != 0)
@@ -288,7 +284,7 @@ DEFUN (set_timer, (timer_id, first, interval),
     KillTimer (master_tty_window, timer->global_id);
     timer->global_id = 0;
   }
-  
+
   timer->period = interval;
   if ((first == 0) || (interval == first))
     timer->next = timer_next_normal;
@@ -320,10 +316,10 @@ struct timer_state_s
 
 struct timer_state_s scheme_timers[3] = { { 0, 0, }, { 0, 0, }, { 0, 0, } };
 
-extern void EXFUN (low_level_timer_tick, (void));
+extern void low_level_timer_tick (void);
 
 void
-DEFUN_VOID (low_level_timer_tick)
+low_level_timer_tick (void)
 {
   int i;
   int number_signalled = 0;
@@ -345,19 +341,18 @@ DEFUN_VOID (low_level_timer_tick)
 }
 
 static void
-DEFUN (set_timer, (timer_id, first, interval),
-       int timer_id AND clock_t first AND clock_t interval)
+set_timer (int timer_id, clock_t first, clock_t interval)
 {
   struct timer_state_s * timer = &scheme_timers[timer_id];
 
-  /* Round up. */ 
+  /* Round up. */
   timer->counter = ((first + 49) / 50);
   timer->reload = ((interval + 49) / 50);
   return;
 }
 
 static void
-DEFUN (clear_timer, (timer_id), int timer_id)
+clear_timer (int timer_id)
 {
   struct timer_state_s * timer = &scheme_timers[timer_id];
 
@@ -369,45 +364,42 @@ DEFUN (clear_timer, (timer_id), int timer_id)
 #endif /* USE_WM_TIMER */
 
 void
-DEFUN (OS_process_timer_set, (first, interval),
-       clock_t first AND clock_t interval)
+OS_process_timer_set (clock_t first, clock_t interval)
 {
   set_timer (TIMER_ID_PROCESS, first, interval);
   return;
 }
 
 void
-DEFUN_VOID (OS_process_timer_clear)
+OS_process_timer_clear (void)
 {
   clear_timer (TIMER_ID_PROCESS);
   return;
 }
 
 void
-DEFUN (OS_profile_timer_set, (first, interval),
-       clock_t first AND clock_t interval)
+OS_profile_timer_set (clock_t first, clock_t interval)
 {
   set_timer (TIMER_ID_PROFILE, first, interval);
   return;
 }
 
 void
-DEFUN_VOID (OS_profile_timer_clear)
+OS_profile_timer_clear (void)
 {
   clear_timer (TIMER_ID_PROFILE);
   return;
 }
 
 void
-DEFUN (OS_real_timer_set, (first, interval),
-       clock_t first AND clock_t interval)
+OS_real_timer_set (clock_t first, clock_t interval)
 {
   set_timer (TIMER_ID_REAL, first, interval);
   return;
 }
 
 void
-DEFUN_VOID (OS_real_timer_clear)
+OS_real_timer_clear (void)
 {
   clear_timer (TIMER_ID_REAL);
   return;
@@ -416,8 +408,8 @@ DEFUN_VOID (OS_real_timer_clear)
 static size_t current_dir_path_size = 0;
 static char * current_dir_path = 0;
 
-CONST char *
-DEFUN_VOID (OS_working_dir_pathname)
+const char *
+OS_working_dir_pathname (void)
 {
   if (current_dir_path) {
     return (current_dir_path);
@@ -448,10 +440,10 @@ DEFUN_VOID (OS_working_dir_pathname)
 }
 
 void
-DEFUN (OS_set_working_dir_pathname, (name), CONST char * name)
+OS_set_working_dir_pathname (const char * name)
 {
   size_t name_size = (strlen (name));
-  CONST char * filename = name;
+  const char * filename = name;
 
   STD_BOOL_API_CALL (SetCurrentDirectory, (filename));
 

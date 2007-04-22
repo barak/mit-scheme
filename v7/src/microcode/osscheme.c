@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osscheme.c,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: osscheme.c,v 1.18 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,53 +29,50 @@ USA.
 #include "prims.h"
 #include "osscheme.h"
 
-extern void
-  EXFUN (signal_error_from_primitive, (long error_code));
-
 void
-DEFUN_VOID (error_out_of_channels)
+error_out_of_channels (void)
 {
   signal_error_from_primitive (ERR_OUT_OF_FILE_HANDLES);
 }
 
 void
-DEFUN_VOID (error_out_of_processes)
+error_out_of_processes (void)
 {
   signal_error_from_primitive (ERR_OUT_OF_FILE_HANDLES);
 }
 
 void
-DEFUN_VOID (error_unimplemented_primitive)
+error_unimplemented_primitive (void)
 {
   signal_error_from_primitive (ERR_UNDEFINED_PRIMITIVE);
 }
 
 void
-DEFUN_VOID (error_floating_point_exception)
+error_floating_point_exception (void)
 {
   signal_error_from_primitive (ERR_FLOATING_OVERFLOW);
 }
 
 int
-DEFUN_VOID (executing_scheme_primitive_p)
+executing_scheme_primitive_p (void)
 {
-  return (PRIMITIVE_P (Registers[REGBLOCK_PRIMITIVE]));
+  return (PRIMITIVE_P (GET_PRIMITIVE));
 }
 
 #ifdef __OS2__
 
 void
-DEFUN_VOID (request_attention_interrupt)
+request_attention_interrupt (void)
 {
   REQUEST_INTERRUPT (INT_Global_1);
 }
 
 int
-DEFUN_VOID (test_and_clear_attention_interrupt)
+test_and_clear_attention_interrupt (void)
 {
-  long code;
+  unsigned long code;
   GRAB_INTERRUPT_REGISTERS ();
-  code = (FETCH_INTERRUPT_CODE ());
+  code = GET_INT_CODE;
   CLEAR_INTERRUPT_NOLOCK (INT_Global_1);
   RELEASE_INTERRUPT_REGISTERS ();
   return ((code & INT_Global_1) != 0);
@@ -84,72 +81,65 @@ DEFUN_VOID (test_and_clear_attention_interrupt)
 #endif /* __OS2__ */
 
 void
-DEFUN_VOID (request_console_resize_interrupt)
+request_console_resize_interrupt (void)
 {
   REQUEST_INTERRUPT (INT_Global_3);
 }
 
 void
-DEFUN_VOID (request_character_interrupt)
+request_character_interrupt (void)
 {
   REQUEST_INTERRUPT (INT_Character);
 }
 
 void
-DEFUN_VOID (request_timer_interrupt)
+request_timer_interrupt (void)
 {
   REQUEST_INTERRUPT (INT_Timer);
 }
 
 void
-DEFUN_VOID (request_suspend_interrupt)
+request_suspend_interrupt (void)
 {
   REQUEST_INTERRUPT (INT_Suspend);
-  return;
 }
 
 int
-DEFUN_VOID (pending_interrupts_p)
+pending_interrupts_p (void)
 {
   return (INTERRUPT_PENDING_P (INT_Mask));
 }
 
 void
-DEFUN_VOID (deliver_pending_interrupts)
+deliver_pending_interrupts (void)
 {
   if (INTERRUPT_PENDING_P (INT_Mask))
     signal_interrupt_from_primitive ();
-  return;
 }
 
-long
-DEFUN_VOID (get_interrupt_mask)
+unsigned long
+get_interrupt_mask (void)
 {
-  return (FETCH_INTERRUPT_MASK ());
+  return (GET_INT_MASK);
 }
 
 void
-DEFUN (set_interrupt_mask, (mask), long mask)
+set_interrupt_mask (unsigned long mask)
 {
   SET_INTERRUPT_MASK (mask & INT_Mask);
-  return;
 }
 
 void
-DEFUN (debug_back_trace, (stream), outf_channel stream)
+debug_back_trace (outf_channel stream)
 {
   outf (stream, "*** Scheme Microcode Back Trace: ***\n");
   Back_Trace (stream);
   outf (stream, "*** End of Back Trace ***\n");
   outf_flush (stream);
-  return;
 }
 
 void
-DEFUN (debug_examine_memory, (address, label),
-       long address AND
-       CONST char * label)
+debug_examine_memory (long address, const char * label)
 {
   Print_Expression ((* ((SCHEME_OBJECT *) address)), ((char *) label));
-  return;
 }

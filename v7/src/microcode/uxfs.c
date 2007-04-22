@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.29 2007/01/05 21:19:25 cph Exp $
+$Id: uxfs.c,v 1.30 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -124,9 +124,7 @@ USA.
 #endif
 
 int
-DEFUN (UX_read_file_status, (filename, s),
-       CONST char * filename AND
-       struct stat * s)
+UX_read_file_status (const char * filename, struct stat * s)
 {
   while ((UX_lstat (filename, s)) < 0)
     {
@@ -140,9 +138,7 @@ DEFUN (UX_read_file_status, (filename, s),
 }
 
 int
-DEFUN (UX_read_file_status_indirect, (filename, s),
-       CONST char * filename AND
-       struct stat * s)
+UX_read_file_status_indirect (const char * filename, struct stat * s)
 {
   while ((UX_stat (filename, s)) < 0)
     {
@@ -156,7 +152,7 @@ DEFUN (UX_read_file_status_indirect, (filename, s),
 }
 
 enum file_existence
-DEFUN (OS_file_existence_test, (name), CONST char * name)
+OS_file_existence_test (const char * name)
 {
   struct stat s;
   if (!UX_read_file_status (name, (&s)))
@@ -174,7 +170,7 @@ DEFUN (OS_file_existence_test, (name), CONST char * name)
 }
 
 enum file_existence
-DEFUN (OS_file_existence_test_direct, (name), CONST char * name)
+OS_file_existence_test_direct (const char * name)
 {
   struct stat s;
   if (!UX_read_file_status (name, (&s)))
@@ -232,15 +228,15 @@ DEFUN (OS_file_existence_test_direct, (name), CONST char * name)
 }
 
 enum file_type
-DEFUN (OS_file_type_direct, (name), CONST char * name)
-COMPUTE_FILE_TYPE (UX_read_file_status, name)
+OS_file_type_direct (const char * name)
+  COMPUTE_FILE_TYPE (UX_read_file_status, name)
 
 enum file_type
-DEFUN (OS_file_type_indirect, (name), CONST char * name)
-COMPUTE_FILE_TYPE (UX_read_file_status_indirect, name)
+OS_file_type_indirect (const char * name)
+  COMPUTE_FILE_TYPE (UX_read_file_status_indirect, name)
 
-CONST char *
-DEFUN (UX_file_system_type, (name), CONST char * name)
+const char *
+UX_file_system_type (const char * name)
 {
 #ifdef HAVE_STATFS
   struct statfs s;
@@ -292,7 +288,7 @@ DEFUN (UX_file_system_type, (name), CONST char * name)
 }
 
 int
-DEFUN (OS_file_directory_p, (name), CONST char * name)
+OS_file_directory_p (const char * name)
 {
   struct stat s;
   return
@@ -300,8 +296,8 @@ DEFUN (OS_file_directory_p, (name), CONST char * name)
      && (((s . st_mode) & S_IFMT) == S_IFDIR));
 }
 
-CONST char *
-DEFUN (OS_file_soft_link_p, (name), CONST char * name)
+const char *
+OS_file_soft_link_p (const char * name)
 {
 #ifdef HAVE_SYMLINK
   struct stat s;
@@ -326,7 +322,7 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 	  error_system_call (ENOMEM, syscall_realloc);
       }
     (buffer[scr]) = '\0';
-    return ((CONST char *) buffer);
+    return ((const char *) buffer);
   }
 #else
   return (0);
@@ -334,19 +330,19 @@ DEFUN (OS_file_soft_link_p, (name), CONST char * name)
 }
 
 int
-DEFUN (OS_file_access, (name, mode), CONST char * name AND unsigned int mode)
+OS_file_access (const char * name, unsigned int mode)
 {
   return ((UX_access (name, mode)) == 0);
 }
 
 void
-DEFUN (OS_file_remove, (name), CONST char * name)
+OS_file_remove (const char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_unlink, (UX_unlink (name)));
 }
 
 void
-DEFUN (OS_file_remove_link, (name), CONST char * name)
+OS_file_remove_link (const char * name)
 {
   struct stat s;
   if ((UX_read_file_status (name, (&s)))
@@ -359,17 +355,13 @@ DEFUN (OS_file_remove_link, (name), CONST char * name)
 }
 
 void
-DEFUN (OS_file_link_hard, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
+OS_file_link_hard (const char * from_name, const char * to_name)
 {
   STD_VOID_SYSTEM_CALL (syscall_link, (UX_link (from_name, to_name)));
 }
 
 void
-DEFUN (OS_file_link_soft, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
+OS_file_link_soft (const char * from_name, const char * to_name)
 {
 #ifdef HAVE_SYMLINK
   STD_VOID_SYSTEM_CALL (syscall_symlink, (UX_symlink (from_name, to_name)));
@@ -379,9 +371,7 @@ DEFUN (OS_file_link_soft, (from_name, to_name),
 }
 
 void
-DEFUN (OS_file_rename, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
+OS_file_rename (const char * from_name, const char * to_name)
 {
   STD_VOID_SYSTEM_CALL (syscall_rename, (UX_rename (from_name, to_name)));
 }
@@ -391,9 +381,7 @@ DEFUN (OS_file_rename, (from_name, to_name),
 #endif
 
 void
-DEFUN (OS_file_copy, (from_name, to_name),
-       CONST char * from_name AND
-       CONST char * to_name)
+OS_file_copy (const char * from_name, const char * to_name)
 {
   Tchannel src, dst;
   off_t src_len, len;
@@ -427,21 +415,21 @@ DEFUN (OS_file_copy, (from_name, to_name),
 }
 
 void
-DEFUN (OS_directory_make, (name), CONST char * name)
+OS_directory_make (const char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_mkdir, (UX_mkdir (name, MODE_DIR)));
 }
 
 void
-DEFUN (OS_directory_delete, (name), CONST char * name)
+OS_directory_delete (const char * name)
 {
   STD_VOID_SYSTEM_CALL (syscall_rmdir, (UX_rmdir (name)));
 }
 
-static void EXFUN (protect_fd, (int fd));
+static void protect_fd (int fd);
 
 int
-DEFUN (OS_file_touch, (filename), CONST char * filename)
+OS_file_touch (const char * filename)
 {
   int fd;
   transaction_begin ();
@@ -516,13 +504,13 @@ DEFUN (OS_file_touch, (filename), CONST char * filename)
 }
 
 static void
-DEFUN (protect_fd_close, (ap), PTR ap)
+protect_fd_close (void * ap)
 {
   UX_close (* ((int *) ap));
 }
 
 static void
-DEFUN (protect_fd, (fd), int fd)
+protect_fd (int fd)
 {
   int * p = (dstack_alloc (sizeof (int)));
   (*p) = fd;
@@ -533,7 +521,7 @@ static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
 
 void
-DEFUN_VOID (UX_initialize_directory_reader)
+UX_initialize_directory_reader (void)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
@@ -541,7 +529,7 @@ DEFUN_VOID (UX_initialize_directory_reader)
 }
 
 static unsigned int
-DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
+allocate_directory_pointer (DIR * pointer)
 {
   if (n_directory_pointers == 0)
     {
@@ -574,7 +562,7 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
     unsigned int n_pointers = (2 * n_directory_pointers);
     DIR ** pointers =
       ((DIR **)
-       (UX_realloc (((PTR) directory_pointers),
+       (UX_realloc (((void *) directory_pointers),
 		    ((sizeof (DIR *)) * n_pointers))));
     if (pointers == 0)
       error_system_call (ENOMEM, syscall_realloc);
@@ -595,35 +583,31 @@ DEFUN (allocate_directory_pointer, (pointer), DIR * pointer)
 #define DEALLOCATE_DIRECTORY(index) ((directory_pointers[(index)]) = 0)
 
 int
-DEFUN (OS_directory_valid_p, (index), long index)
+OS_directory_valid_p (unsigned int index)
 {
   return
-    ((0 <= index)
-     && (index < n_directory_pointers)
+    ((index < n_directory_pointers)
      && ((REFERENCE_DIRECTORY (index)) != 0));
 }
 
 unsigned int
-DEFUN (OS_directory_open, (name), CONST char * name)
+OS_directory_open (const char * name)
 {
-  /* Cast `name' to non-const because hp-ux 7.0 declaration incorrect. */
-  DIR * pointer = (opendir ((char *) name));
+  DIR * pointer = (opendir (name));
   if (pointer == 0)
     error_system_call (errno, syscall_opendir);
   return (allocate_directory_pointer (pointer));
 }
 
-CONST char *
-DEFUN (OS_directory_read, (index), unsigned int index)
+const char *
+OS_directory_read (unsigned int index)
 {
   struct dirent * entry = (readdir (REFERENCE_DIRECTORY (index)));
   return ((entry == 0) ? 0 : (entry -> d_name));
 }
 
-CONST char *
-DEFUN (OS_directory_read_matching, (index, prefix), 
-       unsigned int index AND
-       CONST char * prefix)
+const char *
+OS_directory_read_matching (unsigned int index, const char * prefix)
 {
   DIR * pointer = (REFERENCE_DIRECTORY (index));
   unsigned int n = (strlen (prefix));
@@ -638,7 +622,7 @@ DEFUN (OS_directory_read_matching, (index, prefix),
 }
 
 void
-DEFUN (OS_directory_close, (index), unsigned int index)
+OS_directory_close (unsigned int index)
 {
   closedir (REFERENCE_DIRECTORY (index));
   DEALLOCATE_DIRECTORY (index);

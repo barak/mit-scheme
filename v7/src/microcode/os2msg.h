@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.h,v 1.20 2007/01/05 21:19:25 cph Exp $
+$Id: os2msg.h,v 1.21 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,7 +54,7 @@ typedef enum
   /* This is a timer interrupt event.  It is generated automatically
      by the timer thread when the timer is active.  */
   mt_timer_event,
-  
+
   /* This event signals the termination of a child process.  It is
      generated automatically by the thread that monitors child
      processes.  */

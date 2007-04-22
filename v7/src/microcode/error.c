@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: error.c,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: error.c,v 1.13 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,33 +25,18 @@ USA.
 
 */
 
-#include <stdio.h>
+#include "config.h"
 #include "outf.h"
 #include "dstack.h"
+#include "os.h"
 
-static PTR
-DEFUN (xmalloc, (length), unsigned int length)
-{
-#if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
-#else
-  extern PTR EXFUN (malloc, (unsigned int length));
-#endif
-
-  PTR result = (malloc (length));
-  if (result == 0)
-    {
-      outf_fatal ("malloc: memory allocation failed\n");
-      outf_flush_fatal ();
-      abort ();
-    }
-  return (result);
-}
+static Tptrvec generalizations_union (Tptrvec);
 
 struct handler_record
 {
   struct handler_record * next;
   Tcondition_type type;
-  void EXFUN ((*handler), (Tcondition));
+  void (*handler) (Tcondition);
 };
 
 struct restart_record
@@ -65,7 +50,7 @@ static struct handler_record * current_handler_record;
 static struct restart_record * current_restart_record;
 
 void
-DEFUN_VOID (initialize_condition_system)
+initialize_condition_system (void)
 {
   next_condition_type_index = 0;
   current_handler_record = 0;
@@ -73,13 +58,11 @@ DEFUN_VOID (initialize_condition_system)
 }
 
 Tcondition_type
-DEFUN (condition_type_allocate, (name, generalizations, reporter),
-       PTR name AND
-       Tptrvec generalizations AND
-       void EXFUN ((*reporter), (Tcondition condition)))
+condition_type_allocate (void * name,
+       Tptrvec generalizations,
+       void (*reporter) (Tcondition condition))
 {
-  Tptrvec EXFUN (generalizations_union, (Tptrvec generalizations));
-  Tcondition_type type = (xmalloc (sizeof (struct condition_type)));
+  Tcondition_type type = (OS_malloc (sizeof (struct condition_type)));
   Tptrvec g = (generalizations_union (generalizations));
   ptrvec_adjoin (g, type);
   (CONDITION_TYPE_INDEX (type)) = (next_condition_type_index++);
@@ -90,42 +73,41 @@ DEFUN (condition_type_allocate, (name, generalizations, reporter),
 }
 
 void
-DEFUN (condition_type_deallocate, (type), Tcondition_type type)
+condition_type_deallocate (Tcondition_type type)
 {
   ptrvec_deallocate (CONDITION_TYPE_GENERALIZATIONS (type));
   free (type);
 }
 
 Tcondition
-DEFUN (condition_allocate, (type, irritants),
-       Tcondition_type type AND
+condition_allocate (Tcondition_type type,
        Tptrvec irritants)
 {
-  Tcondition condition = (xmalloc (sizeof (struct condition)));
+  Tcondition condition = (OS_malloc (sizeof (struct condition)));
   (CONDITION_TYPE (condition)) = type;
   (CONDITION_IRRITANTS (condition)) = irritants;
   return (condition);
 }
 
 void
-DEFUN (condition_deallocate, (condition), Tcondition condition)
+condition_deallocate (Tcondition condition)
 {
   ptrvec_deallocate (CONDITION_IRRITANTS (condition));
   free (condition);
 }
 
 static Tptrvec
-DEFUN (generalizations_union_2, (x, y), Tptrvec x AND Tptrvec y)
+generalizations_union_2 (Tptrvec x, Tptrvec y)
 {
-  PTR * scan_x = (PTRVEC_START (x));
-  PTR * end_x = (scan_x + (PTRVEC_LENGTH (x)));
-  PTR * scan_y = (PTRVEC_START (y));
-  PTR * end_y = (scan_y + (PTRVEC_LENGTH (y)));
+  void ** scan_x = (PTRVEC_START (x));
+  void ** end_x = (scan_x + (PTRVEC_LENGTH (x)));
+  void ** scan_y = (PTRVEC_START (y));
+  void ** end_y = (scan_y + (PTRVEC_LENGTH (y)));
   Tptrvec_length length = 0;
   unsigned long ix;
   unsigned long iy;
   Tptrvec result;
-  PTR * scan_result;
+  void ** scan_result;
   while (1)
     {
       if (scan_x == end_x)
@@ -172,7 +154,7 @@ DEFUN (generalizations_union_2, (x, y), Tptrvec x AND Tptrvec y)
 }
 
 Tptrvec
-DEFUN (generalizations_union, (generalizations), Tptrvec generalizations)
+generalizations_union (Tptrvec generalizations)
 {
   Tptrvec_length length = (PTRVEC_LENGTH (generalizations));
   if (length == 0)
@@ -180,8 +162,8 @@ DEFUN (generalizations_union, (generalizations), Tptrvec generalizations)
   if (length == 1)
     return (ptrvec_copy (PTRVEC_REF (generalizations, 0)));
   {
-    PTR * scan = (PTRVEC_START (generalizations));
-    PTR * end = (scan + length);
+    void ** scan = (PTRVEC_START (generalizations));
+    void ** end = (scan + length);
     Tptrvec result = ((Tptrvec) (*scan++));
     result = (generalizations_union_2 (result, ((Tptrvec) (*scan++))));
     while (scan < end)
@@ -195,9 +177,8 @@ DEFUN (generalizations_union, (generalizations), Tptrvec generalizations)
 }
 
 void
-DEFUN (condition_handler_bind, (type, handler),
-       Tcondition_type type AND
-       void EXFUN ((*handler), (Tcondition condition)))
+condition_handler_bind (Tcondition_type type,
+       void (*handler) (Tcondition condition))
 {
   struct handler_record * record =
     (dstack_alloc (sizeof (struct handler_record)));
@@ -211,7 +192,7 @@ DEFUN (condition_handler_bind, (type, handler),
   (CONDITION_TYPE_GENERALIZATIONS (CONDITION_TYPE (condition)))
 
 void
-DEFUN (condition_signal, (condition), Tcondition condition)
+condition_signal (Tcondition condition)
 {
   Tptrvec generalizations = (GENERALIZATIONS (condition));
   struct handler_record * record = current_handler_record;
@@ -220,7 +201,7 @@ DEFUN (condition_signal, (condition), Tcondition condition)
       Tcondition_type type = (record -> type);
       if ((type == 0) || (ptrvec_memq (generalizations, type)))
 	{
-	  PTR position = dstack_position;
+	  void * position = dstack_position;
 	  dstack_bind ((&current_handler_record), (record -> next));
 	  (* (record -> handler)) (condition);
 	  dstack_set_position (position);
@@ -230,10 +211,9 @@ DEFUN (condition_signal, (condition), Tcondition condition)
 }
 
 void
-DEFUN (condition_restart_bind, (name, type, procedure),
-       PTR name AND
-       Tcondition_type type AND
-       void EXFUN ((*procedure), (PTR argument)))
+condition_restart_bind (void * name,
+       Tcondition_type type,
+       void (*procedure) (void * argument))
 {
   struct restart_record * record =
     (dstack_alloc (sizeof (struct restart_record)));
@@ -245,8 +225,7 @@ DEFUN (condition_restart_bind, (name, type, procedure),
 }
 
 Tcondition_restart
-DEFUN (condition_restart_find, (name, condition),
-       PTR name AND
+condition_restart_find (void * name,
        Tcondition condition)
 {
   struct restart_record * record = current_restart_record;
@@ -272,13 +251,13 @@ DEFUN (condition_restart_find, (name, condition),
 }
 
 Tptrvec
-DEFUN (condition_restarts, (condition), Tcondition condition)
+condition_restarts (Tcondition condition)
 {
   struct restart_record * record = current_restart_record;
   Tptrvec_length length = 0;
   Tptrvec generalizations = 0;
   Tptrvec result;
-  PTR * scan_result;
+  void ** scan_result;
   if (condition == 0)
     while (record != 0)
       {

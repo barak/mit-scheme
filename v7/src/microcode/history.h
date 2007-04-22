@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: history.h,v 9.36 2007/01/05 21:19:25 cph Exp $
+$Id: history.h,v 9.37 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,109 +52,42 @@ USA.
 #define HISTORY_UNMARK(object) (object) &=~ HISTORY_MARK_MASK
 #define HISTORY_MARKED_P(object) (((object) & HISTORY_MARK_MASK) != 0)
 
-/* Save_History places a restore history frame on the stack. Such a
-   frame consists of a normal continuation frame plus a pointer to the
-   stacklet on which the last restore history is located and the
-   offset within that stacklet.  If the last restore history is in
-   this stacklet then the history pointer is #F to signify this.  If
-   there is no previous restore history then the history pointer is #F
-   and the offset is 0. */
+#define READ_DUMMY_HISTORY() VECTOR_REF (fixed_objects, DUMMY_HISTORY)
 
-#define Save_History(Return_Code)					\
-{									\
-  STACK_PUSH								\
-    ((Prev_Restore_History_Stacklet == NULL)				\
-     ? SHARP_F								\
-     : (MAKE_POINTER_OBJECT						\
-	(TC_CONTROL_POINT, Prev_Restore_History_Stacklet)));		\
-  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (Prev_Restore_History_Offset));	\
-  exp_register								\
-    = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));	\
-  Store_Return (Return_Code);						\
-  Save_Cont ();								\
-  history_register							\
-    = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));		\
-}
-
-/* History manipulation in the interpreter. */
+#define SAVE_HISTORY_LENGTH (2 + CONTINUATION_SIZE)
+#define SAVE_HISTORY save_history
+#define RESET_HISTORY reset_history
 
 #ifndef DISABLE_HISTORY
+#  define NEW_SUBPROBLEM new_subproblem
+#  define REUSE_SUBPROBLEM reuse_subproblem
+#  define NEW_REDUCTION new_reduction
+#  define END_SUBPROBLEM end_subproblem
+#  define COMPILER_NEW_SUBPROBLEM compiler_new_subproblem
+#  define COMPILER_NEW_REDUCTION compiler_new_reduction
+#  define COMPILER_END_SUBPROBLEM end_subproblem
+#else
+#  define NEW_SUBPROBLEM(exp, env) do {} while (false)
+#  define REUSE_SUBPROBLEM(exp, env) do {} while (false)
+#  define NEW_REDUCTION(exp, env) do {} while (false)
+#  define END_SUBPROBLEM() do {} while (false)
+#  define COMPILER_NEW_REDUCTION() do {} while (false)
+#  define COMPILER_NEW_SUBPROBLEM() do {} while (false)
+#  define COMPILER_END_SUBPROBLEM() do {} while (false)
+#endif
 
-#define New_Subproblem(expression, environment)				\
-{									\
-  history_register							\
-    = (OBJECT_ADDRESS (history_register [HIST_NEXT_SUBPROBLEM]));	\
-  HISTORY_MARK (history_register [HIST_MARK]);				\
-  {									\
-    SCHEME_OBJECT * Rib							\
-      = (OBJECT_ADDRESS (history_register [HIST_RIB]));			\
-    HISTORY_MARK (Rib [RIB_MARK]);					\
-    (Rib [RIB_ENV]) = (environment);					\
-    (Rib [RIB_EXP]) = (expression);					\
-  }									\
-}
+extern SCHEME_OBJECT * history_register;
+extern unsigned long prev_restore_history_offset;
 
-#define Reuse_Subproblem(expression, environment)			\
-{									\
-  SCHEME_OBJECT * Rib = (OBJECT_ADDRESS (history_register [HIST_RIB]));	\
-  HISTORY_MARK (Rib [RIB_MARK]);					\
-  (Rib [RIB_ENV]) = (environment);					\
-  (Rib [RIB_EXP]) = (expression);					\
-}
+extern void reset_history (void);
+extern SCHEME_OBJECT * make_dummy_history (void);
+extern void save_history (unsigned long);
+extern bool restore_history (SCHEME_OBJECT);
+extern void stop_history (void);
+extern void new_subproblem (SCHEME_OBJECT, SCHEME_OBJECT);
+extern void reuse_subproblem (SCHEME_OBJECT, SCHEME_OBJECT);
+extern void new_reduction (SCHEME_OBJECT, SCHEME_OBJECT);
+extern void end_subproblem (void);
+extern void compiler_new_subproblem (void);
+extern void compiler_new_reduction (void);
 
-#define New_Reduction(expression, environment)				\
-{									\
-  fast SCHEME_OBJECT * Rib =						\
-    (OBJECT_ADDRESS							\
-     (FAST_MEMORY_REF ((history_register [HIST_RIB]),			\
-		       RIB_NEXT_REDUCTION)));				\
-  (history_register [HIST_RIB]) =					\
-    (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, Rib));			\
-  (Rib [RIB_ENV]) = (environment);					\
-  (Rib [RIB_EXP]) = (expression);					\
-  HISTORY_UNMARK (Rib [RIB_MARK]);					\
-}
-
-#define End_Subproblem()						\
-{									\
-  HISTORY_UNMARK (history_register [HIST_MARK]);			\
-  history_register							\
-    = (OBJECT_ADDRESS (history_register [HIST_PREV_SUBPROBLEM]));	\
-}
-
-#else /* DISABLE_HISTORY */
-
-#define New_Subproblem(Expr, Env) {}
-#define Reuse_Subproblem(Expr, Env) {}
-#define New_Reduction(Expr, Env) {}
-#define End_Subproblem() {}
-
-#endif /* DISABLE_HISTORY */
-
-/* History manipulation for the compiled code interface. */
-
-#ifndef DISABLE_HISTORY
-
-#define Compiler_New_Reduction()					\
-{									\
-  New_Reduction								\
-    (SHARP_F,								\
-     (MAKE_OBJECT (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE)));	\
-}
-
-#define Compiler_New_Subproblem()					\
-{									\
-  New_Subproblem							\
-    (SHARP_F,								\
-     (MAKE_OBJECT (TC_RETURN_CODE, RC_POP_FROM_COMPILED_CODE)));	\
-}
-
-#define Compiler_End_Subproblem End_Subproblem
-
-#else /* DISABLE_HISTORY */
-
-#define Compiler_New_Reduction()
-#define Compiler_New_Subproblem()
-#define Compiler_End_Subproblem()
-
-#endif /* DISABLE_HISTORY */

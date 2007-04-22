@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.c,v 9.43 2007/01/12 03:45:55 cph Exp $
+$Id: extern.c,v 9.44 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -70,8 +70,8 @@ a machine ADDRESS and a TYPE-CODE (either return code or primitive\n\
 procedure), it finds the number for the external representation for\n\
 the internal address.")
 {
-  fast SCHEME_OBJECT tc;
-  fast SCHEME_OBJECT address;
+  SCHEME_OBJECT tc;
+  SCHEME_OBJECT address;
   PRIMITIVE_HEADER (2);
   tc = (arg_nonnegative_integer (1));
   address = (ARG_REF (2));
@@ -81,7 +81,7 @@ the internal address.")
     {
     case TC_RETURN_CODE:
       {
-	fast long number = (OBJECT_DATUM (address));
+	long number = (OBJECT_DATUM (address));
 	if (number > MAX_RETURN_CODE)
 	  error_bad_range_arg (2);
 	PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (number));
@@ -103,7 +103,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-ARITY", Prim_primitive_procedure_arity, 1
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, PRIMITIVE_P);
   {
-    fast SCHEME_OBJECT primitive = (ARG_REF (1));
+    SCHEME_OBJECT primitive = (ARG_REF (1));
     if ((PRIMITIVE_NUMBER (primitive))
 	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
       error_bad_range_arg (1);
@@ -123,7 +123,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PROCEDURE-DOCUMENTATION",
 	> ((unsigned long) (NUMBER_OF_PRIMITIVES ())))
       error_bad_range_arg (1);
     {
-      CONST char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
+      const char * answer = (PRIMITIVE_DOCUMENTATION (primitive));
       PRIMITIVE_RETURN
 	((answer == 0)
 	 ? SHARP_F
@@ -148,11 +148,11 @@ DEFINE_PRIMITIVE ("GET-PRIMITIVE-NAME", Prim_get_primitive_name, 1, 1,
 {
   PRIMITIVE_HEADER (1);
   {
-    fast SCHEME_OBJECT primitive = (ARG_REF (1));
+    SCHEME_OBJECT primitive = (ARG_REF (1));
     if (! ((PRIMITIVE_P (primitive)) || (FIXNUM_P (primitive))))
       error_wrong_type_arg (1);
     {
-      fast long number = (PRIMITIVE_NUMBER (primitive));
+      long number = (PRIMITIVE_NUMBER (primitive));
       if ((number < 0) || (number > (NUMBER_OF_PRIMITIVES ())))
 	error_bad_range_arg (1);
       PRIMITIVE_RETURN (char_pointer_to_string (PRIMITIVE_NAME (primitive)));
@@ -168,16 +168,14 @@ even if the name already exists.\n\
 If ARITY is an integer, a primitive object will always be returned,\n\
 whether the corresponding primitive is implemented or not.")
 {
-  fast SCHEME_OBJECT name;
-  fast SCHEME_OBJECT arity_arg;
-  extern SCHEME_OBJECT EXFUN
-    (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int));
-  Boolean intern_p, allow_p;
+  SCHEME_OBJECT name;
+  SCHEME_OBJECT arity_arg;
+  bool intern_p, allow_p;
   long arity;
   PRIMITIVE_HEADER (2);
   CHECK_ARG (1, SYMBOL_P);
   name = (ARG_REF (1));
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), arity_arg);
+  arity_arg = (ARG_REF (2));
   if (arity_arg == SHARP_F)
     {
       allow_p = false;
@@ -199,5 +197,5 @@ whether the corresponding primitive is implemented or not.")
     }
   PRIMITIVE_RETURN
     (find_primitive
-     ((FAST_MEMORY_REF (name, SYMBOL_NAME)), intern_p, allow_p, arity));
+     ((MEMORY_REF (name, SYMBOL_NAME)), intern_p, allow_p, arity));
 }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.7 2007/02/11 05:55:00 riastradh Exp $
+$Id: prdb4.c,v 1.8 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -217,7 +217,7 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
 }
 
 static SCHEME_OBJECT
-DEFUN (convert_dbtype, (type), DBTYPE type)
+convert_dbtype (DBTYPE type)
 {
   switch (type)
     {
@@ -230,7 +230,7 @@ DEFUN (convert_dbtype, (type), DBTYPE type)
 }
 
 static DBTYPE
-DEFUN (arg_dbtype, (n), int n)
+arg_dbtype (int n)
 {
   const char * s = (arg_interned_symbol (n));
   if ((strcmp (s, "btree")) == 0)
@@ -389,14 +389,14 @@ DEFINE_PRIMITIVE ("DB4:SIZEOF-DBT", Prim_db4_sizeof_dbt, 0, 0, 0)
 }
 
 static DBT *
-DEFUN (arg_dbt, (n), int n)
+arg_dbt (int n)
 {
   SCHEME_OBJECT s = (ARG_REF (n));
   if (!STRING_P (s))
     error_wrong_type_arg (n);
   if ((STRING_LENGTH (s)) != (sizeof (DBT)))
     error_bad_range_arg (n);
-  return ((DBT *) (STRING_LOC (s, 0)));
+  return ((DBT *) (STRING_POINTER (s)));
 }
 
 DEFINE_PRIMITIVE ("DB4:DB-GET-PAGESIZE", Prim_db4_db_get_pagesize, 2, 2, 0)
@@ -423,7 +423,7 @@ DEFINE_PRIMITIVE ("DB4:INIT-DBT", Prim_db4_init_dbt, 4, 4, 0)
     SCHEME_OBJECT s = (ARG_REF (2));
     u_int32_t ulen = (STRING_LENGTH (s));
     memset (dbt, 0, (sizeof (*dbt)));
-    (dbt -> data) = (STRING_LOC (s, 0));
+    (dbt -> data) = (STRING_POINTER (s));
     (dbt -> size) = ulen;
     (dbt -> ulen) = ulen;
     (dbt -> flags) = DB_DBT_USERMEM;
@@ -553,14 +553,14 @@ DEFINE_PRIMITIVE ("DB4:SIZEOF-DB-LOCK", Prim_db4_sizeof_db_lock, 0, 0, 0)
 }
 
 static DB_LOCK *
-DEFUN (arg_db_lock, (n), int n)
+arg_db_lock (int n)
 {
   SCHEME_OBJECT s = (ARG_REF (n));
   if (!STRING_P (s))
     error_wrong_type_arg (n);
   if ((STRING_LENGTH (s)) != (sizeof (DB_LOCK)))
     error_bad_range_arg (n);
-  return ((DB_LOCK *) (STRING_LOC (s, 0)));
+  return ((DB_LOCK *) (STRING_POINTER (s)));
 }
 
 DEFINE_PRIMITIVE ("DB4:DB-ENV-LOCK-ID", Prim_db4_db_env_lock_id, 2, 2, 0)

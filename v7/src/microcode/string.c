@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.53 2007/04/01 17:33:07 riastradh Exp $
+$Id: string.c,v 9.54 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,96 +29,71 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-
-#ifndef STDC_HEADERS
-#  ifdef HAVE_MALLOC_H
-#    include <malloc.h>
-#  else
-     extern PTR EXFUN (malloc, (size_t));
-     extern PTR EXFUN (realloc, (PTR, size_t));
-#  endif
-#endif
 
 SCHEME_OBJECT
-DEFUN (allocate_string, (nbytes), unsigned long nbytes)
+allocate_string (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector
-       (TC_CHARACTER_STRING,
-	(STRING_LENGTH_TO_GC_LENGTH (nbytes)),
-	1));
+    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
+				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+				   true));
   SET_STRING_LENGTH (result, nbytes);
   return (result);
 }
 
 SCHEME_OBJECT
-DEFUN (allocate_string_no_gc, (nbytes), unsigned long nbytes)
+allocate_string_no_gc (unsigned long nbytes)
 {
   SCHEME_OBJECT result
-    = (allocate_non_marked_vector
-       (TC_CHARACTER_STRING,
-	(STRING_LENGTH_TO_GC_LENGTH (nbytes)),
-	0));
+    = (allocate_non_marked_vector (TC_CHARACTER_STRING,
+				   (STRING_LENGTH_TO_GC_LENGTH (nbytes)),
+				   false));
   SET_STRING_LENGTH (result, nbytes);
   return (result);
 }
 
 SCHEME_OBJECT
-DEFUN (memory_to_string, (nbytes, data),
-       unsigned long nbytes AND
-       CONST void * data)
+memory_to_string (unsigned long n_bytes, const void * vp)
 {
-  SCHEME_OBJECT result = (allocate_string (nbytes));
-  unsigned char * scan_result = (STRING_LOC (result, 0));
-  unsigned char * end_result = (scan_result + nbytes);
-  CONST unsigned char * scan_data = data;
-  while (scan_result < end_result)
-    (*scan_result++) = (*scan_data++);
+  SCHEME_OBJECT result = (allocate_string (n_bytes));
+  memcpy ((STRING_POINTER (result)), vp, n_bytes);
   return (result);
 }
 
 SCHEME_OBJECT
-DEFUN (memory_to_string_no_gc, (nbytes, data),
-       unsigned long nbytes AND
-       CONST void * data)
+memory_to_string_no_gc (unsigned long n_bytes, const void * vp)
 {
-  SCHEME_OBJECT result = (allocate_string_no_gc (nbytes));
-  unsigned char * scan_result = (STRING_LOC (result, 0));
-  unsigned char * end_result = (scan_result + nbytes);
-  CONST unsigned char * scan_data = data;
-  while (scan_result < end_result)
-    (*scan_result++) = (*scan_data++);
+  SCHEME_OBJECT result = (allocate_string_no_gc (n_bytes));
+  memcpy ((STRING_POINTER (result)), vp, n_bytes);
   return (result);
 }
 
 SCHEME_OBJECT
-DEFUN (char_pointer_to_string, (char_pointer),
-       CONST char * char_pointer)
+char_pointer_to_string (const char * cp)
 {
-  CONST char * scan = char_pointer;
+  const char * scan = cp;
   if (scan == 0)
     scan += 1;
   else
     while ((*scan++) != '\0')
       ;
-  return (memory_to_string (((scan - 1) - char_pointer), char_pointer));
+  return (memory_to_string (((scan - 1) - cp), cp));
 }
 
 SCHEME_OBJECT
-DEFUN (char_pointer_to_string_no_gc, (char_pointer),
-       CONST char * char_pointer)
+char_pointer_to_string_no_gc (const char * cp)
 {
-  CONST char * scan = char_pointer;
+  const char * scan = cp;
   if (scan == 0)
     scan += 1;
   else
     while ((*scan++) != '\0')
       ;
-  return (memory_to_string_no_gc (((scan - 1) - char_pointer), char_pointer));
+  return (memory_to_string_no_gc (((scan - 1) - cp), cp));
 }
 
 /* Currently the strings used in symbols have type codes in the length
-   field.  They should be changed to have just longwords there. */
+   field.  They should be changed to have just longwords there.  */
 
 DEFINE_PRIMITIVE ("STRING-ALLOCATE", Prim_string_allocate, 1, 1, 0)
 {
@@ -464,11 +439,10 @@ DEFINE_PRIMITIVE ("SUBSTRING<?", Prim_substring_less, 6, 6, 0)
 }
 
 static long
-DEFUN (substring_length_min, (start1, end1, start2, end2),
-       long start1
-       AND long end1
-       AND long start2
-       AND long end2)
+substring_length_min (long start1,
+       long end1,
+       long start2,
+       long end2)
 {
   long length1 = (end1 - start1);
   long length2 = (end2 - start2);
@@ -549,7 +523,7 @@ struct ht_record_s
   unsigned long n_bytes;
 };
 
-#define HT_RECORD_PTR(record) ((PTR) ((record) + 1))
+#define HT_RECORD_PTR(record) ((void *) ((record) + 1))
 #define HT_RECORD_KEY(record) ((unsigned long) ((record) + 1))
 #define HT_RECORD_NEXT(record) ((record) -> next)
 #define HT_RECORD_N_BYTES(record) ((record) -> n_bytes)
@@ -568,13 +542,13 @@ typedef struct
 #define HT_BUCKET_REF(table, index) ((HT_BUCKETS (table)) [(index)])
 #define HT_SHRINK_POINT(table) ((((HT_N_BUCKETS (table)) + 1) / 2) - 1)
 
-static hash_table_t * EXFUN (make_hash_table, (void));
-static void EXFUN (ht_resize, (hash_table_t *, unsigned long));
-static void EXFUN (zero_ht_buckets, (hash_table_t *));
-static ht_record_t * EXFUN (ht_records_list, (hash_table_t *));
-static ht_record_t * EXFUN (ht_lookup, (hash_table_t *, unsigned long));
-static unsigned long EXFUN (ht_insert, (hash_table_t *, ht_record_t *));
-static ht_record_t * EXFUN (ht_delete, (hash_table_t *, unsigned long));
+static hash_table_t * make_hash_table (void);
+static void ht_resize (hash_table_t *, unsigned long);
+static void zero_ht_buckets (hash_table_t *);
+static ht_record_t * ht_records_list (hash_table_t *);
+static ht_record_t * ht_lookup (hash_table_t *, unsigned long);
+static unsigned long ht_insert (hash_table_t *, ht_record_t *);
+static ht_record_t * ht_delete (hash_table_t *, unsigned long);
 
 static hash_table_t * external_strings = 0;
 
@@ -639,38 +613,36 @@ DEFINE_PRIMITIVE ("EXTENDED-STRING-LENGTH", Prim_extended_string_length, 1, 1, 0
   }
 }
 
-PTR
-DEFUN (lookup_external_string, (descriptor, lp),
-       SCHEME_OBJECT descriptor AND
-       unsigned long * lp)
+unsigned char *
+lookup_external_string (SCHEME_OBJECT descriptor, unsigned long * lp)
 {
   ht_record_t * record;
   if (external_strings == 0)
     external_strings = (make_hash_table ());
   record = (ht_lookup (external_strings, (integer_to_ulong (descriptor))));
   if (record == 0)
-    return NULL;
+    return (0);
   if (lp != 0)
     (*lp) = (HT_RECORD_N_BYTES (record));
   return (HT_RECORD_PTR (record));
 }
 
-PTR
-DEFUN (arg_extended_string, (n, lp), unsigned int n AND unsigned long * lp)
+unsigned char *
+arg_extended_string (unsigned int n, unsigned long * lp)
 {
   SCHEME_OBJECT object = (ARG_REF (n));
   if (STRING_P (object))
     {
       if (lp != 0)
 	(*lp) = (STRING_LENGTH (object));
-      return (STRING_LOC (object, 0));
+      return ((unsigned char *) (STRING_POINTER (object)));
     }
   else if ((INTEGER_P (object)) && (integer_to_ulong_p (object)))
     {
-      PTR result = (lookup_external_string (object, lp));
-      if (result == NULL)
+      unsigned char * result = (lookup_external_string (object, lp));
+      if (result == 0)
 	error_wrong_type_arg (n);
-      return result;
+      return (result);
     }
   else
     {
@@ -685,7 +657,7 @@ DEFUN (arg_extended_string, (n, lp), unsigned int n AND unsigned long * lp)
 #define EXPT_TO_N(e) ((1 << (e)) - 1)
 
 static hash_table_t *
-DEFUN_VOID (make_hash_table)
+make_hash_table (void)
 {
   unsigned long n = (EXPT_TO_N (HT_MIN_EXPT));
   hash_table_t * table = (malloc (sizeof (hash_table_t)));
@@ -701,8 +673,7 @@ DEFUN_VOID (make_hash_table)
 }
 
 static void
-DEFUN (ht_resize, (table, new_n_buckets),
-       hash_table_t * table AND
+ht_resize (hash_table_t * table,
        unsigned long new_n_buckets)
 {
   ht_record_t ** new_buckets
@@ -724,7 +695,7 @@ DEFUN (ht_resize, (table, new_n_buckets),
 }
 
 static void
-DEFUN (zero_ht_buckets, (table), hash_table_t * table)
+zero_ht_buckets (hash_table_t * table)
 {
   ht_record_t ** scan = (HT_BUCKETS (table));
   ht_record_t ** end = (scan + (HT_N_BUCKETS (table)));
@@ -733,7 +704,7 @@ DEFUN (zero_ht_buckets, (table), hash_table_t * table)
 }
 
 static ht_record_t *
-DEFUN (ht_records_list, (table), hash_table_t * table)
+ht_records_list (hash_table_t * table)
 {
   ht_record_t ** scan_buckets = (HT_BUCKETS (table));
   ht_record_t ** end_buckets = (scan_buckets + (HT_N_BUCKETS (table)));
@@ -754,8 +725,7 @@ DEFUN (ht_records_list, (table), hash_table_t * table)
 }
 
 static ht_record_t *
-DEFUN (ht_lookup, (table, key),
-       hash_table_t * table AND
+ht_lookup (hash_table_t * table,
        unsigned long key)
 {
   unsigned long index = (HT_BUCKET_INDEX (table, key));
@@ -770,8 +740,7 @@ DEFUN (ht_lookup, (table, key),
 }
 
 static unsigned long
-DEFUN (ht_insert, (table, record),
-       hash_table_t * table AND
+ht_insert (hash_table_t * table,
        ht_record_t * record)
 {
   unsigned long index = (HT_BUCKET_INDEX (table, (HT_RECORD_KEY (record))));
@@ -805,8 +774,7 @@ DEFUN (ht_insert, (table, record),
 }
 
 static ht_record_t *
-DEFUN (ht_delete, (table, key),
-       hash_table_t * table AND
+ht_delete (hash_table_t * table,
        unsigned long key)
 {
   unsigned long index = (HT_BUCKET_INDEX (table, key));

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prgdbm.c,v 1.10 2007/02/11 05:55:00 riastradh Exp $
+$Id: prgdbm.c,v 1.11 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,31 +39,29 @@ USA.
 
 struct allocation_table
 {
-  PTR * items;
+  void ** items;
   int length;
 };
 
 static void
-DEFUN (allocation_table_initialize, (table), struct allocation_table * table)
+allocation_table_initialize (struct allocation_table * table)
 {
   (table -> length) = 0;
 }
 
 static unsigned int
-DEFUN (allocate_table_index, (table, item),
-       struct allocation_table * table AND
-       PTR item)
+allocate_table_index (struct allocation_table * table, void * item)
 {
   unsigned int length = (table -> length);
   unsigned int new_length;
-  PTR * items = (table -> items);
-  PTR * new_items;
-  PTR * scan;
-  PTR * end;
+  void ** items = (table -> items);
+  void ** new_items;
+  void ** scan;
+  void ** end;
   if (length == 0)
     {
       new_length = 4;
-      new_items = (OS_malloc ((sizeof (PTR)) * new_length));
+      new_items = (OS_malloc ((sizeof (void *)) * new_length));
     }
   else
     {
@@ -76,7 +74,7 @@ DEFUN (allocate_table_index, (table, item),
 	    return (scan - items);
 	  }
       new_length = (length * 2);
-      new_items = (OS_realloc (items, ((sizeof (PTR)) * new_length)));
+      new_items = (OS_realloc (items, ((sizeof (void *)) * new_length)));
     }
   scan = (new_items + length);
   end = (new_items + new_length);
@@ -88,13 +86,11 @@ DEFUN (allocate_table_index, (table, item),
   return (length);
 }
 
-static PTR
-DEFUN (allocation_item_arg, (arg, table),
-       unsigned int arg AND
-       struct allocation_table * table)
+static void *
+allocation_item_arg (unsigned int arg, struct allocation_table * table)
 {
   unsigned int index = (arg_ulong_index_integer (arg, (table -> length)));
-  PTR item = ((table -> items) [index]);
+  void * item = ((table -> items) [index]);
   if (item == 0)
     error_bad_range_arg (arg);
   return (item);
@@ -103,7 +99,7 @@ DEFUN (allocation_item_arg, (arg, table),
 static struct allocation_table dbf_table;
 
 #define DBF_VAL(dbf)							\
-  (ulong_to_integer (allocate_table_index ((&dbf_table), ((PTR) (dbf)))))
+  (ulong_to_integer (allocate_table_index ((&dbf_table), ((void *) (dbf)))))
 
 #define DBF_ARG(arg)							\
   ((GDBM_FILE) (allocation_item_arg ((arg), (&dbf_table))))
@@ -115,26 +111,26 @@ static struct allocation_table dbf_table;
   (((expression) == 0) ? SHARP_F : (GDBM_ERROR_VAL ()))
 
 static datum
-DEFUN (arg_datum, (arg), int arg)
+arg_datum (int arg)
 {
   datum d;
   CHECK_ARG (arg, STRING_P);
-  (d . dptr) = ((char *) (STRING_LOC ((ARG_REF (arg)), 0)));
+  (d . dptr) = (STRING_POINTER (ARG_REF (arg)));
   (d . dsize) = (STRING_LENGTH (ARG_REF (arg)));
   return (d);
 }
 
 static SCHEME_OBJECT
-DEFUN (datum_to_object, (d), datum d)
+datum_to_object (datum d)
 {
   if (d . dptr)
     {
       SCHEME_OBJECT result = (allocate_string (d . dsize));
-      CONST char * scan_d = (d . dptr);
-      CONST char * end_d = (scan_d + (d . dsize));
-      unsigned char * scan_result = (STRING_LOC (result, 0));
+      const char * scan_d = (d . dptr);
+      const char * end_d = (scan_d + (d . dsize));
+      char * scan_result = (STRING_POINTER (result));
       while (scan_d < end_d)
-	(*scan_result++) = ((unsigned char) (*scan_d++));
+	(*scan_result++) = (*scan_d++);
       free (d . dptr);
       return (result);
     }
@@ -143,7 +139,7 @@ DEFUN (datum_to_object, (d), datum d)
 }
 
 static void
-DEFUN (gdbm_fatal_error, (msg), char * msg)
+gdbm_fatal_error (char * msg)
 {
   outf_error ("\ngdbm: %s\n", msg);
   outf_flush_error ();
@@ -262,7 +258,7 @@ DEFINE_PRIMITIVE ("GDBM-SETOPT", Prim_gdbm_setopt, 3, 3, 0)
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive ("GDBM-OPEN", Prim_gdbm_open, 4, 4, 0);
   declare_primitive ("GDBM-CLOSE", Prim_gdbm_close, 1, 1, 0);

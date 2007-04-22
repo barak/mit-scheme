@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.22 2007/01/12 03:45:55 cph Exp $
+$Id: pruxdld.c,v 1.23 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,7 +38,7 @@ USA.
 #include <dlfcn.h>
 
 static unsigned long
-DEFUN (dld_load, (path), CONST char * path)
+dld_load (const char * path)
 {
   void * handle = (dlopen (path, (RTLD_LAZY | RTLD_GLOBAL)));
   if (handle == 0)
@@ -53,11 +53,11 @@ DEFUN (dld_load, (path), CONST char * path)
 }
 
 static unsigned long
-DEFUN (dld_lookup, (handle, symbol), unsigned long handle AND char * symbol)
+dld_lookup (unsigned long handle, char * symbol)
 {
-  CONST char * old_error = (dlerror ());
+  const char * old_error = (dlerror ());
   void * address = (dlsym (((void *) handle), symbol));
-  CONST char * new_error = (dlerror ());
+  const char * new_error = (dlerror ());
   if ((address == 0) && (new_error != old_error))
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
@@ -102,7 +102,7 @@ long.  Invoke it, and return the corresponding Scheme integer.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     (ulong_to_integer
-     ((* ((unsigned long EXFUN ((*), (void))) (arg_ulong_integer (1))))
+     ((* ((unsigned long (*) (void)) (arg_ulong_integer (1))))
       ()));
 }
 
