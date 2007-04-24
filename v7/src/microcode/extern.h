@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.69 2007/04/22 16:31:22 cph Exp $
+$Id: extern.h,v 9.70 2007/04/24 05:31:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,7 +34,12 @@ USA.
 
 /* The register block */
 
-extern SCHEME_OBJECT Registers [];
+#ifdef __WIN32__
+   extern SCHEME_OBJECT * RegistersPtr;
+#  define Registers RegistersPtr
+#else
+   extern SCHEME_OBJECT Registers [];
+#endif
 
 #define GET_REG_O(i) (Registers[REGBLOCK_##i])
 #define GET_REG_P(i) ((SCHEME_OBJECT *) (Registers[REGBLOCK_##i]))

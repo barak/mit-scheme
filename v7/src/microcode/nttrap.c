@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.30 2007/04/22 16:31:22 cph Exp $
+$Id: nttrap.c,v 1.31 2007/04/24 05:31:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,6 +26,7 @@ USA.
 */
 
 #include "scheme.h"
+#include "history.h"
 #include "os.h"
 #include "nt.h"
 #include "nttrap.h"

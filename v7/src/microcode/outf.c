@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: outf.c,v 1.17 2007/04/22 16:31:23 cph Exp $
+$Id: outf.c,v 1.18 2007/04/24 05:31:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -136,7 +136,6 @@ voutf_master_tty (const char * format, va_list args)
   char buf [1000];
   VSNPRINTF (buf, 1000, format, args);
   Screen_WriteText (master_tty_window, buf);
-  return (true);
 }
 
 void

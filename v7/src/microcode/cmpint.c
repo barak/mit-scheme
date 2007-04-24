@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.109 2007/04/22 16:31:22 cph Exp $
+$Id: cmpint.c,v 1.110 2007/04/24 05:31:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -171,32 +171,6 @@ static long make_redirection_trampoline
   (SCHEME_OBJECT *, trampoline_type_t, SCHEME_OBJECT);
 static long make_apply_trampoline
   (SCHEME_OBJECT *, trampoline_type_t, SCHEME_OBJECT, unsigned long);
-
-/* ASM_ENTRY_POINT is for OS/2, but it could also be used for any
-   compiler that supports multiple calling conventions, such as GCC.
-
-   The IBM C Set++/2 compiler has several different external calling
-   conventions.  The default calling convention is called _Optlink,
-   uses a combination of registers and the stack, and is complicated.
-   The calling convention used for operating system interface
-   procedures is called _System, uses only the stack, and is very
-   similar to the calling conventions used with our DOS compilers.
-   So, in order to simplify the changes to the assembly language, we
-   use _System conventions for calling C procedures from the assembly
-   language file.
-
-   Since _Optlink is the default, we must somehow cause the relevant
-   procedures to be compiled using _System.  The easiest way to do
-   this is to force the use of _System everywhere, but that's
-   undesirable since _Optlink is generally more efficient.  Instead,
-   we use the ASM_ENTRY_POINT wrapper to cause each of the relevant
-   procedures to be tagged with the compiler's _System keyword.  The
-   relevant procedures are all of the SCHEME_UTILITY procedures,
-   C_to_interface, interface_to_C, and interface_to_scheme.  */
-
-#ifndef ASM_ENTRY_POINT
-#  define ASM_ENTRY_POINT(name) name
-#endif
 
 #ifndef UTILITY_RESULT_DEFINED
 #ifdef CMPINT_USE_STRUCS
@@ -2833,6 +2807,7 @@ typedef struct register_storage
   SCHEME_OBJECT Registers [REGBLOCK_LENGTH];
 } REGMEM;
 
+SCHEME_OBJECT * RegistersPtr = 0;
 unsigned long * win32_catatonia_block = 0;
 static REGMEM regmem;
 

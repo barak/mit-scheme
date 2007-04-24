@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntsig.c,v 1.27 2007/04/22 16:31:22 cph Exp $
+$Id: ntsig.c,v 1.28 2007/04/24 05:31:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -460,7 +460,6 @@ NT_initialize_fov (SCHEME_OBJECT fov)
 {
   int ctr, in;
   SCHEME_OBJECT iv, imv, prim;
-  extern SCHEME_OBJECT make_primitive (char *, int);
   static int interrupt_numbers[2] =
   {
     Global_GC_Level,

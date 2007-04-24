@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntgui.c,v 1.34 2007/04/22 16:31:22 cph Exp $
+$Id: ntgui.c,v 1.35 2007/04/24 05:31:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -224,11 +224,10 @@ DEFINE_PRIMITIVE ("MICROCODE-POLL-INTERRUPT-HANDLER", Prim_microcode_poll_interr
 
 DEFINE_PRIMITIVE ("NT-DEFAULT-POLL-GUI", Prim_nt_default_poll_gui, 2, 2, 0)
 {
-  PRIMITIVE_HEADER(2)
-  {
-    nt_gui_default_poll ();
-    PRIMITIVE_RETURN (UNSPECIFIC);
-  }
+  PRIMITIVE_HEADER (2);
+
+  nt_gui_default_poll ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 extern void NT_gui_init (void);
