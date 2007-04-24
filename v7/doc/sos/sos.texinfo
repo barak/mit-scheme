@@ -1,10 +1,10 @@
 \input texinfo @c -*-Texinfo-*-
-@comment $Id: sos.texinfo,v 2.22 2007/01/05 21:21:08 cph Exp $
+@comment $Id: sos.texinfo,v 2.23 2007/04/24 14:46:00 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-sos
-@set EDITION 2.11
+@set EDITION 2.12
 @set VERSION 1.9
-@set UPDATED 2006-05-16
+@set UPDATED 2007-04-24
 @settitle SOS @value{VERSION}
 @comment %**end of header
 @setchapternewpage on
@@ -384,7 +384,7 @@ respectively for the accessor, modifier, and initpred.  For example,
 
 @lisp
 @group
-(define-class foo
+(define-class foo ()
   (bar define accessor))
 @end group
 @end lisp
@@ -394,7 +394,7 @@ defines an accessor called @code{foo-bar}, but
 
 @lisp
 @group
-(define-class foo
+(define-class foo ()
   (bar define accessor accessor foo/bar))
 @end group
 @end lisp
@@ -404,7 +404,7 @@ instead defines an accessor called @code{foo/bar}.  Finally,
 
 @lisp
 @group
-(define-class foo
+(define-class foo ()
   (bar accessor foo/bar))
 @end group
 @end lisp
