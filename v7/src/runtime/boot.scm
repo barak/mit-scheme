@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.25 2007/01/05 21:19:28 cph Exp $
+$Id: boot.scm,v 14.26 2007/04/25 14:06:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -127,9 +127,13 @@ USA.
     procedure))
 
 (define-primitives
-  (object-pure? pure?)
-  (object-constant? constant?)
   gc-space-status)
+
+(define (pure? object)
+  #f)
+
+(define (constant? object)
+  #t)
 
 (define-integrable (default-object? object)
   (eq? object (default-object)))
