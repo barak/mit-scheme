@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.41 2007/04/22 18:04:52 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.42 2007/04/28 01:58:14 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -163,6 +163,11 @@ AC_ARG_WITH([libpq],
     AS_HELP_STRING([--with-libpq],
 	[Use PostgreSQL libpq library if available [[yes]]]))
 : ${with_libpq='yes'}
+
+if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
+    AC_MSG_ERROR(
+	[--enable-native-code=c incompatible with --enable-static-libs])
+fi
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
@@ -770,7 +775,13 @@ if test "${enable_static_libs}" = no; then
 		[Define to 1 if you have the `dl' library (-ldl).])
 	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
 	    ],
-	    [enable_static_libs=yes])
+	    [
+	    if test ${enable_native_code} = c; then
+		AC_MSG_ERROR(
+		    [--enable-native-code=c requires dynamic loader support])
+	    fi
+	    enable_static_libs=yes
+	    ])
 	])
 fi
 if test ${enable_static_libs} != no; then
