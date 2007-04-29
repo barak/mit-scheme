@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.12 2007/01/05 21:19:20 cph Exp $
+$Id: decls.scm,v 1.13 2007/04/29 18:39:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -198,11 +198,10 @@ USA.
 	      (and binary (< source binary) binary))))
      (set-source-node/modification-time! node modification-time)
      (if (not modification-time)
-	 (begin
-	   (fresh-line)
-	   (write-string "Source file newer than binary: ")
-	   (write (source-node/filename node))
-	   (newline)))))
+	 (write-notification-line
+	  (lambda (port)
+	    (write-string "Source file newer than binary: " port)
+	    (write (source-node/filename node) port))))))
    source-nodes)
   (if compiler:enable-integration-declarations?
       (begin
@@ -218,13 +217,14 @@ USA.
 				   (or (not time*)
 				       (> time* time)))))
 			    (if newer?
-				(begin
-				  (fresh-line)
-				  (write-string "Binary file ")
-				  (write (source-node/filename node))
-				  (write-string " newer than dependency ")
-				  (write (source-node/filename node*))
-				  (newline)))
+				(write-notification-line
+				 (lambda (port)
+				   (write-string "Binary file " port)
+				   (write (source-node/filename node) port)
+				   (write-string " newer than dependency "
+						 port)
+				   (write (source-node/filename node*)
+					  port))))
 			    newer?))))
 		 (set-source-node/modification-time! node #f))))
 	 source-nodes)
@@ -233,13 +233,12 @@ USA.
 	   (if (not (source-node/modification-time node))
 	       (for-each (lambda (node*)
 			   (if (source-node/modification-time node*)
-			       (begin
-				 (fresh-line)
-				 (write-string "Binary file ")
-				 (write (source-node/filename node*))
-				 (write-string " depends on ")
-				 (write (source-node/filename node))
-				 (newline)))
+			       (write-notification-line
+				(lambda (port)
+				  (write-string "Binary file " port)
+				  (write (source-node/filename node*) port)
+				  (write-string " depends on " port)
+				  (write (source-node/filename node) port))))
 			   (set-source-node/modification-time! node* #f))
 			 (source-node/forward-closure node))))
 	 source-nodes)))
@@ -248,10 +247,9 @@ USA.
 		  (pathname-delete!
 		   (pathname-new-type (source-node/pathname node) "ext"))))
 	    source-nodes/by-rank)
-  (fresh-line)
-  (newline)
-  (write-string "Begin pass 1:")
-  (newline)
+  (write-notification-line
+   (lambda (port)
+     (write-string "Begin pass 1:" port)))
   (for-each (lambda (node)
 	      (if (not (source-node/modification-time node))
 		  (source-node/syntax! node)))
@@ -261,10 +259,9 @@ USA.
 	  (and (not (source-node/modification-time node))
 	       (source-node/circular? node))))
       (begin
-	(fresh-line)
-	(newline)
-	(write-string "Begin pass 2:")
-	(newline)
+	(write-notification-line
+	 (lambda (port)
+	   (write-string "Begin pass 2:" port)))
 	(for-each (lambda (node)
 		    (if (not (source-node/modification-time node))
 			(if (source-node/circular? node)
@@ -273,31 +270,29 @@ USA.
 		  source-nodes/by-rank))))
 
 (define (source-node/touch! node)
-  (with-values
-      (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" #f))
-    (lambda (input-pathname bin-pathname spec-pathname)
-      input-pathname
-      (pathname-touch! bin-pathname)
-      (pathname-touch! (pathname-new-type bin-pathname "ext"))
-      (if spec-pathname (pathname-touch! spec-pathname)))))
+  (receive (input-pathname bin-pathname spec-pathname)
+      (sf/pathname-defaulting (source-node/pathname node) "" #f)
+    input-pathname
+    (pathname-touch! bin-pathname)
+    (pathname-touch! (pathname-new-type bin-pathname "ext"))
+    (if spec-pathname (pathname-touch! spec-pathname))))
 
 (define (pathname-touch! pathname)
   (if (file-exists? pathname)
       (begin
-	(fresh-line)
-	(write-string "Touch file: ")
-	(write (enough-namestring pathname))
-	(newline)
+	(write-notification-line
+	 (lambda (port)
+	   (write-string "Touch file: " port)
+	   (write (enough-namestring pathname) port)))
 	(file-touch pathname))))
 
 (define (pathname-delete! pathname)
   (if (file-exists? pathname)
       (begin
-	(fresh-line)
-	(write-string "Delete file: ")
-	(write (enough-namestring pathname))
-	(newline)
+	(write-notification-line
+	 (lambda (port)
+	   (write-string "Delete file: " port)
+	   (write (enough-namestring pathname) port)))
 	(delete-file pathname))))
 
 (define (sc filename)
@@ -305,21 +300,19 @@ USA.
   (source-node/syntax! (filename->source-node filename)))
 
 (define (source-node/syntax! node)
-  (with-values
-      (lambda ()
-	(sf/pathname-defaulting (source-node/pathname node) "" #f))
-    (lambda (input-pathname bin-pathname spec-pathname)
-      (sf/internal
-       input-pathname bin-pathname spec-pathname
-       (source-node/syntax-table node)
-       ((if compiler:enable-integration-declarations?
-	    identity-procedure
-	    (lambda (declarations)
-	      (list-transform-negative declarations
-		integration-declaration?)))
-	(source-node/declarations node))))))
+  (receive (input-pathname bin-pathname spec-pathname)
+      (sf/pathname-defaulting (source-node/pathname node) "" #f)
+    (sf/internal
+     input-pathname bin-pathname spec-pathname
+     (source-node/syntax-table node)
+     ((if compiler:enable-integration-declarations?
+	  identity-procedure
+	  (lambda (declarations)
+	    (list-transform-negative declarations
+	      integration-declaration?)))
+      (source-node/declarations node)))))
 
-(define-integrable (modification-time node type)
+(define (modification-time node type)
   (file-modification-time
    (pathname-new-type (source-node/pathname node) type)))
 
@@ -419,7 +412,7 @@ USA.
 			    "rulfix" "rulflo"
 			    "cout" "traditional" "stackify" "stackops"
 			    ))))
-    
+
     (define (file-dependency/integration/join filenames dependencies)
       (for-each (lambda (filename)
 		  (file-dependency/integration/make filename dependencies))
@@ -581,5 +574,5 @@ USA.
 	       (merge-pathnames pathname default)))
 	   integration-dependencies)))
 
-(define-integrable (integration-declaration? declaration)
+(define (integration-declaration? declaration)
   (eq? (car declaration) 'INTEGRATE-EXTERNAL))
