@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.17 2007/04/29 18:39:00 cph Exp $
+$Id: decls.scm,v 1.18 2007/04/29 20:19:57 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -441,7 +441,6 @@ USA.
     (define-integration-dependencies "machines/i386" "machin" "back" "asutl")
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
-    (define-integration-dependencies "base" "utils" "base" "scode")
     (define-integration-dependencies "base" "cfg1" "base" "object")
     (define-integration-dependencies "base" "cfg2" "base"
       "cfg1" "cfg3" "object")
@@ -453,7 +452,7 @@ USA.
     (define-integration-dependencies "base" "lvalue" "base"
       "blocks" "object" "proced" "rvalue" "utils")
     (define-integration-dependencies "base" "blocks" "base"
-      "enumer" "lvalue" "object" "proced" "rvalue" "scode")
+      "enumer" "lvalue" "object" "proced" "rvalue")
     (define-integration-dependencies "base" "proced" "base"
       "blocks" "cfg1" "cfg2" "cfg3" "contin" "enumer" "lvalue" "object"
       "rvalue" "utils")
@@ -487,7 +486,6 @@ USA.
     (define-integration-dependencies "rtlbase" "rtlreg" "rtlbase"
       "rgraph" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtlty1" "rtlbase" "rtlcfg")
-    (define-integration-dependencies "rtlbase" "rtlty2" "base" "scode")
     (define-integration-dependencies "rtlbase" "rtlty2" "machines/i386"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
