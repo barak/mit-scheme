@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.17 2007/04/04 05:08:19 riastradh Exp $
+# $Id: Clean.sh,v 1.18 2007/04/29 17:56:15 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -45,21 +45,15 @@ else
     exit 1
 fi
 
-FULL="no"
 DIST="no"
 MAINTAINER="no"
 case "${COMMAND}" in
-mostlyclean)
-    ;;
-clean)
-    FULL="yes"
+mostlyclean | clean)
     ;;
 distclean | c-clean)
-    FULL="yes"
     DIST="yes"
     ;;
 maintainer-clean)
-    FULL="yes"
     DIST="yes"
     MAINTAINER="yes"
     ;;
