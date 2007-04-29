@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.56 2007/04/03 04:11:33 cph Exp $
+$Id: uerror.scm,v 14.57 2007/04/29 19:25:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,7 +39,6 @@ USA.
 (define condition-type:fasload-band)
 (define condition-type:fasload-error)
 (define condition-type:hardware-trap)
-(define condition-type:impurify-object-too-large)
 (define condition-type:inapplicable-object)
 (define condition-type:out-of-file-handles)
 (define condition-type:primitive-io-error)
@@ -930,39 +929,6 @@ USA.
 	    (signal continuation
 		    (apply-frame/operator frame)
 		    (apply-frame/operands frame)))))))
-
-(define-error-handler 'WRITE-INTO-PURE-SPACE
-  (lambda (continuation)
-    (let ((frame (continuation/first-subproblem continuation)))
-      (if (apply-frame? frame)
-	  (let ((object (apply-frame/operand frame 0)))
-	    (let ((port (notification-output-port)))
-	      (fresh-line port)
-	      (write-string ";Automagically impurifying an object..." port))
-	    (impurify object)
-	    (continuation object))))))
-
-(set! condition-type:impurify-object-too-large
-  (make-condition-type 'IMPURIFY-OBJECT-TOO-LARGE
-      condition-type:bad-range-argument
-      '()
-    (lambda (condition port)
-      (write-string "Object is too large to be impurified: " port)
-      (write (access-condition condition 'DATUM) port))))
-
-(define-error-handler 'IMPURIFY-OBJECT-TOO-LARGE
-  (let ((signal
-	 (condition-signaller condition-type:impurify-object-too-large
-			      '(DATUM OPERATOR OPERAND))))
-    (lambda (continuation)
-      (let ((frame (continuation/first-subproblem continuation)))
-	(if (apply-frame? frame)
-	    (let ((operator (apply-frame/operator frame)))
-	      (if (eq? (ucode-primitive primitive-impurify) operator)
-		  (signal continuation
-			  (apply-frame/operand frame 0)
-			  operator
-			  0))))))))
 
 (set! condition-type:fasdump-environment
   (make-condition-type 'FASDUMP-ENVIRONMENT condition-type:bad-range-argument

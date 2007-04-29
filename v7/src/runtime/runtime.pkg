@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.615 2007/04/14 03:52:59 cph Exp $
+$Id: runtime.pkg,v 14.616 2007/04/29 19:25:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2450,7 +2450,6 @@ USA.
 	  condition-type:fasload-band
 	  condition-type:fasload-error
 	  condition-type:hardware-trap
-	  condition-type:impurify-object-too-large
 	  condition-type:inapplicable-object
 	  condition-type:out-of-file-handles
 	  condition-type:primitive-io-error
