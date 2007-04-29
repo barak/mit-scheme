@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simapp.scm,v 4.13 2007/01/05 21:19:20 cph Exp $
+$Id: simapp.scm,v 4.14 2007/04/29 20:16:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,7 +51,7 @@ USA.
   (make-method-table rvalue-types
 		     (lambda (old operator apply-operator)
 		       old apply-operator
-		       (warn "Possible inapplicable operator" operator)
+		       #|(warn "Possible inapplicable operator" operator)|#
 		       operator)))
 
 (let ((processor
@@ -110,15 +110,16 @@ USA.
 			    ((scode/procedure? value)
 			     (procedure-arity-valid? value argument-count))
 			    (else
+			     #|
 			     (if (not (unassigned-reference-trap? value))
 				 (warn "Possible inapplicable operator" value))
+			     |#
 			     true)))
-		     (warn
-		      "Procedure called with wrong number of arguments"
-		      value
-		      number-supplied))))
+		     (warn "Procedure called with wrong number of arguments"
+			   value
+			   number-supplied))))
 	      (else
-	       (warn "Possible inapplicable operator" operator)))))))
+	       #|(warn "Possible inapplicable operator" operator)|#))))))
 
 (define (initialize-lvalue-cache! lvalue)
   (set-lvalue-values-cache! lvalue (lvalue-values lvalue)))
