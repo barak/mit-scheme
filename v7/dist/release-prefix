@@ -1,7 +1,9 @@
 
-# $Id: release-prefix,v 1.9 2005/12/13 06:41:05 cph Exp $
+# $Id: release-prefix,v 1.10 2007/04/29 15:44:00 cph Exp $
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +24,7 @@ get_release ()
 {
     fgrep Release /scheme/v7/src/runtime/version.scm \
 	| awk 'BEGIN { OFS = "." }
+	       NF == 4 { print $3, $4 }
 	       NF == 5 { print $3, $4, $5 }
 	       NF == 6 { print $3, $4, $5, $6 }
 	       NF == 7 { print $3, $4, $5, $6, $7 }' \
