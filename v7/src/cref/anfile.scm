@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: anfile.scm,v 1.11 2007/01/05 21:19:23 cph Exp $
+$Id: anfile.scm,v 1.12 2007/04/29 18:24:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,19 +30,18 @@ USA.
 (declare (usual-integrations))
 
 (define (analyze-file pathname)
-  (analyze/top-level (fasload pathname)))
+  (analyze/top-level (fasload pathname #t)))
 
 (define (analyze/top-level expression)
-  (with-values (lambda () (sort-expressions (process-top-level expression)))
-    (lambda (definitions others)
-      (let ((definition-analysis
-	      (map analyze/top-level/definition definitions)))
-	(if (not (null? others))
-	    (cons (vector false
-			  'EXPRESSION
-			  (analyze-and-compress (make-sequence others)))
-		  definition-analysis)
-	    definition-analysis)))))
+  (receive (definitions others)
+      (sort-expressions (process-top-level expression))
+    (let ((definition-analysis (map analyze/top-level/definition definitions)))
+      (if (pair? others)
+	  (cons (vector false
+			'EXPRESSION
+			(analyze-and-compress (make-sequence others)))
+		definition-analysis)
+	  definition-analysis))))
 
 (define (sort-expressions expressions)
   (if (null? expressions)
@@ -50,11 +49,10 @@ USA.
       (let ((rest (lambda () (sort-expressions (cdr expressions)))))
 	(if (block-declaration? (car expressions))
 	    (rest)
-	    (with-values rest
-	      (lambda (definitions others)
-		(if (definition? (car expressions))
-		    (values (cons (car expressions) definitions) others)
-		    (values definitions (cons (car expressions) others)))))))))
+	    (receive (definitions others) (rest)
+	      (if (definition? (car expressions))
+		  (values (cons (car expressions) definitions) others)
+		  (values definitions (cons (car expressions) others))))))))
 
 (define (process-top-level expression)
   (cond ((comment? expression)

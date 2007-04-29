@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.30 2007/01/05 21:19:23 cph Exp $
+$Id: redpkg.scm,v 1.31 2007/04/29 18:24:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,34 +32,32 @@ USA.
 
 (define (read-package-model filename os-type)
   (let ((model-pathname (merge-pathnames filename)))
-    (with-values
-	(lambda ()
-	  (sort-descriptions (read-and-parse-model model-pathname os-type)))
-      (lambda (packages extensions loads globals)
-	(descriptions->pmodel
-	 packages
-	 extensions
-	 loads
-	 (map (lambda (pathname)
-		(cons
-		 (->namestring pathname)
-		 (let ((pathname
-			(package-set-pathname
-			 (merge-pathnames pathname model-pathname)
-			 os-type)))
-		   (if (file-exists? pathname)
-		       (let ((contents (fasload pathname)))
-			 (if (package-file? contents)
-			     contents
-			     (begin
-			       (warn "Malformed package-description file:"
-				     pathname)
-			       #f)))
-		       (begin
-			 (warn "Can't find package-description file:" pathname)
-			 #f)))))
-	      globals)
-	 model-pathname)))))
+    (receive (packages extensions loads globals)
+	(sort-descriptions (read-and-parse-model model-pathname os-type))
+      (descriptions->pmodel
+       packages
+       extensions
+       loads
+       (map (lambda (pathname)
+	      (cons
+	       (->namestring pathname)
+	       (let ((pathname
+		      (package-set-pathname
+		       (merge-pathnames pathname model-pathname)
+		       os-type)))
+		 (if (file-exists? pathname)
+		     (let ((contents (fasload pathname #f)))
+		       (if (package-file? contents)
+			   contents
+			   (begin
+			     (warn "Malformed package-description file:"
+				   pathname)
+			     #f)))
+		     (begin
+		       (warn "Can't find package-description file:" pathname)
+		       #f)))))
+	    globals)
+       model-pathname))))
 
 (define (sort-descriptions descriptions)
   (letrec
@@ -92,24 +90,22 @@ USA.
 			 loads
 			 (append! (reverse (cdr description)) globals)))
 		  ((NESTED-DESCRIPTIONS)
-		   (call-with-values
-		       (lambda ()
-			 (loop (cdr description)
-			       packages
-			       extensions
-			       loads
-			       globals))
-		     (lambda (packages extensions loads globals)
-		       (loop descriptions packages extensions loads globals))))
+		   (receive (packages extensions loads globals)
+		       (loop (cdr description)
+			     packages
+			     extensions
+			     loads
+			     globals)
+		     (loop descriptions packages extensions loads globals)))
 		  (else
 		   (error "Unknown description keyword:" (car description)))))
 	      (values packages extensions loads globals)))))
-    (call-with-values (lambda () (loop descriptions '() '() '() '()))
-      (lambda (packages extensions loads globals)
-	(values (reverse! packages)
-		(reverse! extensions)
-		(reverse! loads)
-		(reverse! globals))))))
+    (receive (packages extensions loads globals)
+	(loop descriptions '() '() '() '())
+      (values (reverse! packages)
+	      (reverse! extensions)
+	      (reverse! loads)
+	      (reverse! globals)))))
 
 (define (interesting-package-to-load? description)
   (or (pair? (package-description/file-cases description))
@@ -117,15 +113,14 @@ USA.
       (pair? (package-description/finalizations description))))
 
 (define (read-file-analyses! pmodel os-type)
-  (call-with-values (lambda () (cache-file-analyses! pmodel os-type))
-    (lambda (analyses changes?)
-      (for-each (lambda (p&c)
-		  (record-file-analysis! pmodel
-					 (car p&c)
-					 (analysis-cache/pathname (cdr p&c))
-					 (analysis-cache/data (cdr p&c))))
-		analyses)
-      changes?)))
+  (receive (analyses changes?) (cache-file-analyses! pmodel os-type)
+    (for-each (lambda (p&c)
+		(record-file-analysis! pmodel
+				       (car p&c)
+				       (analysis-cache/pathname (cdr p&c))
+				       (analysis-cache/data (cdr p&c))))
+	      analyses)
+    changes?))
 
 (define-structure (analysis-cache
 		   (type vector)
@@ -142,7 +137,8 @@ USA.
 			    "fre"))
 	(changes? (list #f)))
     (let ((result
-	   (let ((caches (if (file-exists? pathname) (fasload pathname) '())))
+	   (let ((caches
+		  (if (file-exists? pathname) (fasload pathname #f) '())))
 	     (let ((cache-packages
 		    (lambda (packages)
 		      (append-map!
@@ -158,7 +154,7 @@ USA.
 	       (append! (cache-packages (pmodel/packages pmodel))
 			(cache-packages (pmodel/extra-packages pmodel)))))))
       (if (car changes?)
-	  (fasdump (map cdr result) pathname))
+	  (fasdump (map cdr result) pathname #t))
       (values result (car changes?)))))
 
 (define (cache-file-analysis! pmodel caches pathname changes?)
@@ -307,22 +303,20 @@ USA.
 
 (define (parse-package-definition name options)
   (check-package-options options)
-  (call-with-values
-      (lambda ()
-	(let ((option (assq 'PARENT options)))
-	  (if option
-	      (let ((options (delq option options)))
-		(if (not (and (pair? (cdr option))
-			      (null? (cddr option))))
-		    (error "Ill-formed PARENT option:" option))
-		(if (assq 'PARENT options)
-		    (error "Multiple PARENT options."))
-		(values (parse-name (cadr option)) options))
-	      (values 'NONE options))))
-    (lambda (parent options)
-      (let ((package (make-package-description name parent)))
-	(process-package-options package options)
-	package))))
+  (receive (parent options)
+      (let ((option (assq 'PARENT options)))
+	(if option
+	    (let ((options (delq option options)))
+	      (if (not (and (pair? (cdr option))
+			    (null? (cddr option))))
+		  (error "Ill-formed PARENT option:" option))
+	      (if (assq 'PARENT options)
+		  (error "Multiple PARENT options."))
+	      (values (parse-name (cadr option)) options))
+	    (values 'NONE options)))
+    (let ((package (make-package-description name parent)))
+      (process-package-options package options)
+      package)))
 
 (define (parse-package-extension name options)
   (check-package-options options)
