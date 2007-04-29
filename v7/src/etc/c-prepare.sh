@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.1 2007/04/04 05:08:19 riastradh Exp $
+# $Id: c-prepare.sh,v 1.2 2007/04/29 20:46:43 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -33,7 +33,7 @@ else
 fi
 
 if [ -z "${SCHEME_LARGE}" ]; then
-    SCHEME_LARGE="scheme --heap 3000"
+    SCHEME_LARGE="scheme --heap 6000"
 fi
 
 ${SCHEME_LARGE} --band boot-compiler.com < "${DIR}/etc/c-prepare.scm"
