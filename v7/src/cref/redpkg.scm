@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: redpkg.scm,v 1.31 2007/04/29 18:24:35 cph Exp $
+$Id: redpkg.scm,v 1.32 2007/04/29 19:48:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,7 +46,7 @@ USA.
 		       (merge-pathnames pathname model-pathname)
 		       os-type)))
 		 (if (file-exists? pathname)
-		     (let ((contents (fasload pathname #f)))
+		     (let ((contents (fasload pathname #t)))
 		       (if (package-file? contents)
 			   contents
 			   (begin
@@ -138,7 +138,7 @@ USA.
 	(changes? (list #f)))
     (let ((result
 	   (let ((caches
-		  (if (file-exists? pathname) (fasload pathname #f) '())))
+		  (if (file-exists? pathname) (fasload pathname #t) '())))
 	     (let ((cache-packages
 		    (lambda (packages)
 		      (append-map!
