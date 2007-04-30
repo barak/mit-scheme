@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.48 2007/04/22 16:41:01 cph Exp $
+# $Id: Makefile.in.in,v 1.49 2007/04/30 07:08:54 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -64,7 +64,8 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** Tool configuration ****
 
-AUXDIR = $(libdir)/mit-scheme
+SYSTEM_BASE_NAME = @SYSTEM_BASE_NAME@
+AUXDIR = $(libdir)/$(SYSTEM_BASE_NAME)
 
 CC = @CC@
 M4 = $(srcdir)/makegen/m4.sh
@@ -117,8 +118,6 @@ MODULE_LIBS = -lc
 
 # **** Program definitions ****
 
-bin_PROGRAMS = scheme
-aux_PROGRAMS =
 aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim
@@ -135,7 +134,7 @@ findprim_DEPENDENCIES =
 findprim_LDFLAGS = 
 findprim_LIBS = $(LIBS)
 
-ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_PROGRAMS = scheme
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
@@ -238,30 +237,9 @@ c-clean:
 	-rm -f $(C_CLEAN_FILES)
 	-rm -rf autom4te.cache
 
-install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
-	install-auxDATA $(LIARC_INSTALL)
-
-install-binPROGRAMS: $(bin_PROGRAMS)
+install: install-auxLIBS install-auxDATA $(LIARC_INSTALL)
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
-	@list='$(bin_PROGRAMS)'; \
-	for p in $$list; do \
-	    if test -f $$p; then \
-		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
-		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
-	    fi; \
-	done
-	-rm -f $(DESTDIR)$(bindir)/bchscheme
-	ln -s scheme $(DESTDIR)$(bindir)/bchscheme
-
-install-auxPROGRAMS: $(aux_PROGRAMS)
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	@list='$(aux_PROGRAMS)'; \
-	for p in $$list; do \
-	    if test -f $$p; then \
-		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
-		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
-	    fi; \
-	done
+	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(SYSTEM_BASE_NAME)
 
 install-auxLIBS: $(aux_LIBS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
@@ -285,7 +263,7 @@ install-auxDATA: $(aux_DATA)
 
 .PHONY: default-target
 .PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean c-clean
-.PHONY: install install-binPROGRAMS install-auxPROGRAMS install-auxDATA
+.PHONY: install install-auxLIBS install-auxDATA
 
 # **** File dependencies ****
 

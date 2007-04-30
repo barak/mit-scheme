@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.43 2007/04/29 18:38:26 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.44 2007/04/30 07:08:49 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -195,6 +195,7 @@ MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
 MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
+SYSTEM_BASE_NAME=mit-scheme
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -930,10 +931,12 @@ c)
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
+    SYSTEM_BASE_NAME=mit-scheme-c
     ;;
 svm1)
     AC_MSG_RESULT([yes, using portable SVM code])
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
+    SYSTEM_BASE_NAME=mit-scheme-svm
     ;;
 *)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
@@ -987,6 +990,7 @@ AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
+AC_SUBST([SYSTEM_BASE_NAME])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

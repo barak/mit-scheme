@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.8 2007/04/29 18:01:44 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.9 2007/04/30 07:08:43 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -42,17 +42,19 @@ c)
     COMPILE_SCRIPT=c-compile.sh
     BUILD_BANDS_SCRIPT=c-build-bands.sh
     INSTALL_COM=:
+    SYSTEM_BASE_NAME=mit-scheme-c
     ;;
 *)
     COMPILE_SCRIPT=compile.sh
     BUILD_BANDS_SCRIPT=build-bands.sh
     INSTALL_COM='$(INSTALL_DATA)'
+    SYSTEM_BASE_NAME=mit-scheme
     ;;
 esac
 
-AC_SUBST(COMPILE_SCRIPT)
-AC_SUBST(BUILD_BANDS_SCRIPT)
-AC_SUBST(INSTALL_COM)
+AC_SUBST([COMPILE_SCRIPT])
+AC_SUBST([BUILD_BANDS_SCRIPT])
+AC_SUBST([INSTALL_COM])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -61,8 +63,8 @@ then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 
-AUXDIR=${libdir}/mit-scheme
-AC_SUBST(AUXDIR)
+AUXDIR='$(libdir)'/${SYSTEM_BASE_NAME}
+AC_SUBST([AUXDIR])
 
 AC_CONFIG_SUBDIRS([microcode compiler])
 AC_CONFIG_FILES([
