@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.18 2007/04/14 03:54:58 cph Exp $
+$Id: makegen.scm,v 1.19 2007/04/30 01:35:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -157,6 +157,16 @@ USA.
 			    (files+suffix files ".o")
 			    output)
 		(newline output)
+		(let ((s
+		       (string-append "$(SHELL) ../etc/c-bundle.sh library "
+				      (car bundle)
+				      "-init ")))
+		  (write-char #\tab output)
+		  (write-string s output)
+		  (write-items (files+suffix files ".c")
+			       (+ 8 (string-length s))
+			       output))
+		(newline output)
 		(let ((write-command
 		       (lambda (prefix suffix)
 			 (write-char #\tab output)
@@ -164,8 +174,6 @@ USA.
 			 (write-string (car bundle) output)
 			 (write-string suffix output)
 			 (newline output))))
-		  (write-command "$(SHELL) ../etc/c-bundle.sh library "
-				 "-init $(^:.o=.c)")
 		  (write-command "$(COMPILE_MODULE) -c " "-init.c")
 		  (write-command "$(LINK_MODULE) " "-init.o $^")
 		  (write-command "rm -f " "-init.h")
@@ -264,9 +272,9 @@ USA.
 	  (let ((new-column (+ column delta)))
 	    (if (>= new-column 78)
 		(begin
-		  (write-string "\\\n\t" port)
+		  (write-string "\\\n\t  " port)
 		  (write-string (car items*) port)
-		  (loop (cdr items*) (+ 8 delta)))
+		  (loop (cdr items*) (+ 10 delta)))
 		(begin
 		  (write-string (car items*) port)
 		  (loop (cdr items*) new-column)))))
