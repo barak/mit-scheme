@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-build-bands.sh,v 1.2 2007/04/05 17:49:54 cph Exp $
+# $Id: c-build-bands.sh,v 1.3 2007/04/30 01:42:54 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -26,13 +26,8 @@ set -e
 sh etc/c-initial-bands.sh
 
 microcode/scheme --library lib --compiler <<EOF
-(load "microcode/edwin.so")
 (load-option 'EDWIN)
 (disk-save "lib/all.com")
 EOF
 
-microcode/scheme --library lib --large <<EOF
-(load "microcode/edwin.so")
-(load-option 'EDWIN)
-(disk-save "lib/edwin.com")
-EOF
+rm -f lib/compiler.com
