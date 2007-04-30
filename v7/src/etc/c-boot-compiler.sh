@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.2 2007/04/07 04:03:37 cph Exp $
+# $Id: c-boot-compiler.sh,v 1.3 2007/04/30 01:49:30 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -24,7 +24,7 @@
 set -e
 
 if [ -z "${SCHEME_LARGE}" ]; then
-    SCHEME_LARGE="scheme --heap 3000"
+    SCHEME_LARGE="scheme --heap 6000"
 fi
 
 if [ -z "${SCHEME_COMPILER}" ]; then
