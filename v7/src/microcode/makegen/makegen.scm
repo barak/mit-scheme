@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.20 2007/05/01 04:55:17 cph Exp $
+$Id: makegen.scm,v 1.21 2007/05/01 14:09:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -47,7 +47,7 @@ USA.
 	(call-with-output-file "Makefile.in"
 	  (lambda (output)
 	    (write-header output)
-	    (let loop ((column 0))
+	    (let loop ()
 	      (let ((char (read-char input)))
 		(if (not (eof-object? char))
 		    (if (and (char=? #\@ char)
@@ -56,14 +56,11 @@ USA.
 			  (if (eqv? #\@ (peek-char input))
 			      (read-char input)
 			      (error "Missing @ at end of command:" command))
-			  (loop (interpret-command command column file-lists
-						   output)))
+			  (interpret-command command file-lists output)
+			  (loop))
 			(begin
 			  (write-char char output)
-			  (loop
-			   (if (char=? #\newline char)
-			       0
-			       (+ column 1))))))))))))))
+			  (loop))))))))))))
 
 (define (write-header output)
   (write-string "# This file automatically generated at " output)
@@ -86,97 +83,84 @@ USA.
 		  (cddr (generate-rule "liarc-gendeps.c"))
 		  output)
       (newline output)
-      (newline output)
-      (write-rule "LIARC_BOOT_BUNDLES" "="
-		  (map (lambda (name)
-			 (string-append name ".so"))
-		       '("sf" "compiler" "star-parser" "cref"))
+      (let ((files (liarc-static-files)))
+	(write-rule "LIARC_SOURCES" "=" (files+suffix files ".c") output)
+	(newline output)
+	(write-rule "LIARC_OBJECTS" "=" (files+suffix files ".o") output)
+	(newline output))
+      (write-rule "LIARC_BOOT_BUNDLES"
+		  "="
+		  (files+suffix '("sf" "compiler" "star-parser" "cref") ".so")
 		  output)
-      (newline output)
-      (generate-liarc-static-variables output)
-      (generate-liarc-dynamic-variables output))))
-
+      (let ((bundles (liarc-bundles)))
+	(write-rule "LIARC_BUNDLES"
+		    "="
+		    (bundles+suffix bundles ".so")
+		    output)
+	(write-rule "LIARC_BUNDLE_CLEAN_FILES"
+		    "="
+		    (cons "$(LIARC_BUNDLES)"
+			  (append (bundles+suffix bundles "-init.h")
+				  (bundles+suffix bundles "-init.c")
+				  (bundles+suffix bundles "-init.o")))
+		    output)))))
+
 (define (generate-liarc-rules)
   (call-with-output-file "liarc-rules"
     (lambda (output)
       (write-header output)
-      (generate-liarc-static-rules output)
-      (generate-liarc-dynamic-rules output))))
+      (call-with-input-file "makegen/liarc-base-rules"
+	(lambda (input)
+	  (let loop ()
+	    (let ((char (read-char input)))
+	      (if (not (eof-object? char))
+		  (begin (write-char char output)
+			 (loop)))))))
+      (for-each (lambda (bundle)
+		  (newline output)
+		  (let ((files
+			 (append (append-map package-description-files
+					     (cadr bundle))
+				 (enumerate-directories (cddr bundle))))
+			(init-root (string-append (car bundle) "-init")))
+		    (write-rule (string-append (car bundle) ".so")
+				":"
+				(files+suffix files ".o")
+				output)
+		    (write-command output
+				   "$(SHELL)"
+				   "../etc/c-bundle.sh"
+				   "library"
+				   init-root
+				   (files+suffix files ".c"))
+		    (write-command output
+				   "$(COMPILE_MODULE)"
+				   "-c"
+				   (string-append init-root ".c"))
+		    (write-command output
+				   "$(LINK_MODULE)"
+				   (string-append init-root ".o")
+				   "$^")
+		    (write-command output
+				   "rm"
+				   "-f"
+				   (map (lambda (suffix)
+					  (string-append init-root suffix))
+					'(".h" ".c" ".o")))))
+		(liarc-bundles)))))
 
-(define (generate-liarc-static-variables output)
-  (let ((files (liarc-static-files)))
-    (write-rule "LIARC_SOURCES" "=" (files+suffix files ".c") output)
-    (newline output)
-    (newline output)
-    (write-rule "LIARC_OBJECTS" "=" (files+suffix files ".o") output)
-    (newline output)
-    (newline output)))
+(define (write-command port program . args)
+  (write-char #\tab port)
+  (write-string program port)
+  (write-items (flatten-items args) port)
+  (newline port))
 
-(define (generate-liarc-static-rules output)
-  (call-with-input-file "makegen/liarc-base-rules"
-    (lambda (input)
-      (let loop ()
-	(let ((char (read-char input)))
-	  (if (not (eof-object? char))
-	      (begin (write-char char output)
-		     (loop)))))))
-  (newline output))
-
-(define (generate-liarc-dynamic-variables output)
-  (let ((bundles (liarc-dynamic-bundles)))
-    (write-rule "LIARC_BUNDLE_CLEAN_FILES"
-		"="
-		(cons "$(LIARC_BUNDLES)"
-		      (append-map (lambda (bundle)
-				    (map (lambda (suffix)
-					   (string-append (car bundle) suffix))
-					 '("-init.h" "-init.c" "-init.o")))
-				  bundles))
-		output)
-    (newline output)
-    (write-rule "LIARC_BUNDLES"
-		"="
-		(map (lambda (bundle)
-		       (string-append (car bundle) ".so"))
-		     bundles)
-		output)
-    (newline output)))
-
-(define (generate-liarc-dynamic-rules output)
-  (for-each (lambda (bundle)
-	      (let ((files
-		     (append (append-map package-description-files
-					 (cadr bundle))
-			     (enumerate-directories (cddr bundle)))))
-		(write-rule (string-append (car bundle) ".so")
-			    ":"
-			    (files+suffix files ".o")
-			    output)
-		(newline output)
-		(let ((s
-		       (string-append "$(SHELL) ../etc/c-bundle.sh library "
-				      (car bundle)
-				      "-init ")))
-		  (write-char #\tab output)
-		  (write-string s output)
-		  (write-items (files+suffix files ".c")
-			       (+ 8 (string-length s))
-			       output))
-		(newline output)
-		(let ((write-command
-		       (lambda (prefix suffix)
-			 (write-char #\tab output)
-			 (write-string prefix output)
-			 (write-string (car bundle) output)
-			 (write-string suffix output)
-			 (newline output))))
-		  (write-command "$(COMPILE_MODULE) -c " "-init.c")
-		  (write-command "$(LINK_MODULE) " "-init.o $^")
-		  (write-command "rm -f " "-init.h")
-		  (write-command "rm -f " "-init.c")
-		  (write-command "rm -f " "-init.o"))
-		(newline output)))
-	    (liarc-dynamic-bundles)))
+(define (flatten-items items)
+  (append-map (lambda (item)
+		(if (list? item)
+		    (flatten-items item)
+		    (list item)))
+	      items))
 
 (define (liarc-static-files)
   (append '("utabmd")
@@ -184,7 +168,7 @@ USA.
 		      (read-file "makegen/pkds-liarc.scm"))
 	  (enumerate-directories (read-file "makegen/dirs-liarc.scm"))))
 
-(define (liarc-dynamic-bundles)
+(define (liarc-bundles)
   (read-file "makegen/bundles-liarc.scm"))
 
 (define (enumerate-directories specs)
@@ -213,7 +197,7 @@ USA.
 	   (string-append filename "-" suffix))
 	 suffixes)))
 
-(define (interpret-command command column file-lists output)
+(define (interpret-command command file-lists output)
   (let ((malformed (lambda () (error "Malformed command:" command))))
     (if (not (and (pair? command)
 		  (symbol? (car command))
@@ -229,9 +213,11 @@ USA.
 	       (let ((entry (assoc (cadr command) file-lists)))
 		 (if (not entry)
 		     (malformed))
-		 (write-items (files+suffix (cdr entry) suffix)
-			      column
-			      output)))))
+		 (let ((files (files+suffix (cdr entry) suffix)))
+		   (if (pair? files)
+		       (begin
+			 (write-string (car files) output)
+			 (write-items (cdr files) output))))))))
       (case (car command)
 	((WRITE-SOURCES)
 	 (write-suffixed ".c"))
@@ -248,33 +234,28 @@ USA.
 	 (string-append file suffix))
        files))
 
+(define (bundles+suffix bundles suffix)
+  (files+suffix (map car bundles) suffix))
+
 (define (write-rule lhs op rhs port)
   (write-string lhs port)
   (write-string " " port)
   (write-string op port)
-  (write-string " " port)
-  (write-items rhs (+ (string-length lhs) (string-length op) 2) port))
+  (write-items rhs port)
+  (newline port))
 
-(define (write-items items start-column port)
-  (let loop ((items* items) (column start-column))
-    (if (pair? items*)
-	(let ((column
-	       (if (eq? items* items)
-		   column
-		   (begin
-		     (write-string " " port)
-		     (+ column 1))))
-	      (delta (string-length (car items*))))
-	  (let ((new-column (+ column delta)))
-	    (if (>= new-column 78)
-		(begin
-		  (write-string "\\\n\t  " port)
-		  (write-string (car items*) port)
-		  (loop (cdr items*) (+ 10 delta)))
-		(begin
-		  (write-string (car items*) port)
-		  (loop (cdr items*) new-column)))))
-	column)))
+(define (write-items items port)
+  (for-each (lambda (item)
+	      (write-string " " port)
+	      (write-item item port))
+	    items))
+
+(define (write-item item port)
+  (if (>= (+ (output-port/column port)
+	     (string-length item))
+	  78)
+      (write-string "\\\n\t  " port))
+  (write-string item port))
 
 (define (write-dependencies file-lists deps-filename output)
   (maybe-update-dependencies
@@ -303,15 +284,9 @@ USA.
       (let ((rules (map generate-rule source-files)))
 	(call-with-output-file deps-filename
 	  (lambda (output)
-	    (let loop ((rules rules))
-	      (if (pair? rules)
-		  (begin
-		    (write-rule (caar rules) ":" (cdar rules) output)
-		    (if (pair? (cdr rules))
-			(begin
-			  (newline output)
-			  (loop (cdr rules)))))))
-	    (newline output))))))
+	    (for-each (lambda (rule)
+			(write-rule (caar rules) ":" (cdr rule) output))
+		      rules))))))
 
 (define (generate-rule filename)
   (parse-rule
