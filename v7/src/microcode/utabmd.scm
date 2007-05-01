@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabmd.scm,v 9.93 2007/04/29 19:23:33 cph Exp $
+$Id: utabmd.scm,v 9.94 2007/05/01 19:52:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -609,8 +609,9 @@ USA.
 	       OS-VARIANT-STRING		;09
 	       STACK-TYPE-STRING		;0A
 	       MACHINE-TYPE-STRING		;0B
+	       CC-ARCH-STRING			;0C
 	       ))
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.93 2007/04/29 19:23:33 cph Exp $"
+"$Id: utabmd.scm,v 9.94 2007/05/01 19:52:32 cph Exp $"
