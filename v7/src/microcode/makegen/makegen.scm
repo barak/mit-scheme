@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: makegen.scm,v 1.19 2007/04/30 01:35:41 cph Exp $
+$Id: makegen.scm,v 1.20 2007/05/01 04:55:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -93,8 +93,6 @@ USA.
 		       '("sf" "compiler" "star-parser" "cref"))
 		  output)
       (newline output)
-      (write-rule "LIARC_INSTALL" "=" '("install-liarc-bundles") output)
-      (newline output)
       (generate-liarc-static-variables output)
       (generate-liarc-dynamic-variables output))))
 
@@ -128,23 +126,21 @@ USA.
   (let ((bundles (liarc-dynamic-bundles)))
     (write-rule "LIARC_BUNDLE_CLEAN_FILES"
 		"="
-		(append-map (lambda (bundle)
-			      (map (lambda (suffix)
-				     (string-append (car bundle) suffix))
-				   '("-init.h" "-init.c" "-init.o" ".so")))
-			    bundles)
+		(cons "$(LIARC_BUNDLES)"
+		      (append-map (lambda (bundle)
+				    (map (lambda (suffix)
+					   (string-append (car bundle) suffix))
+					 '("-init.h" "-init.c" "-init.o")))
+				  bundles))
 		output)
     (newline output)
     (write-rule "LIARC_BUNDLES"
 		"="
-		;; Adding "all" to this list is a kludge for debugging
-		;; info.  Exactly what this kludge accomplishes I have
-		;; totally forgotten.
-		(cons "all"
-		      (map (lambda (bundle)
-			     (string-append (car bundle) ".so"))
-			   (liarc-dynamic-bundles)))
-		output)))
+		(map (lambda (bundle)
+		       (string-append (car bundle) ".so"))
+		     bundles)
+		output)
+    (newline output)))
 
 (define (generate-liarc-dynamic-rules output)
   (for-each (lambda (bundle)

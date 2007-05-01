@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.53 2007/04/14 03:52:51 cph Exp $
+$Id: option.scm,v 14.54 2007/05/01 04:55:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -148,10 +148,10 @@ USA.
 	   (fluid-let ((load/suppress-loading-message? #t))
 	     (load
 	      (merge-pathnames shared-library
-			       (library-directory-pathname "shared")))))))))
+			       (library-directory-pathname "lib")))))))))
 
 (define (force* value)
-  (cond	((procedure? value) (force* (value)))
+  (cond ((procedure? value) (force* (value)))
 	((promise? value) (force* (force value)))
 	(else value)))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.18 2007/04/04 05:08:19 riastradh Exp $
+$Id: optiondb.scm,v 1.19 2007/05/01 04:55:02 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -57,7 +57,7 @@ USA.
 	     (lambda ()
 	       (load (merge-pathnames
 		      place
-		      (system-library-directory-pathname "shared")))))
+		      (system-library-directory-pathname "lib")))))
 	    (let dir-loop ((dirs dirs))
 	      (if (pair? dirs)
 		  (let ((directory
