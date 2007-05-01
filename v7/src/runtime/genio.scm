@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.51 2007/03/30 08:17:18 riastradh Exp $
+$Id: genio.scm,v 1.52 2007/05/01 14:12:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1009,41 +1009,15 @@ USA.
   (set-output-buffer-denormalize! ob (name->denormalizer name)))
 
 (define (write-substring:string ob string start end)
-  (if (output-buffer-in-8-bit-mode? ob)
-      (let ((bv (output-buffer-bytes ob))
-	    (be (output-buffer-end ob))
-	    (ok
-	     (lambda (n)
-	       (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n))
-	       n)))
-	(let loop ((i start) (bi (output-buffer-start ob)))
-	  (if (fix:< i end)
-	      (if (fix:< bi be)
-		  (begin
-		    (string-set! bv bi (string-ref string i))
-		    (loop (fix:+ i 1) (fix:+ bi 1)))
-		  (begin
-		    (set-output-buffer-start! ob be)
-		    (let ((n (drain-output-buffer ob)))
-		      (cond ((not n)
-			     (and (fix:> i start)
-				  (ok (fix:- i start))))
-			    ((fix:> n 0)
-			     (loop i (output-buffer-start ob)))
-			    (else
-			     (ok (fix:- i start)))))))
-	      (begin
-		(set-output-buffer-start! ob bi)
-		(ok (fix:- end start))))))
-      (let loop ((i start))
-	(if (fix:< i end)
-	    (if (write-next-char ob (string-ref string i))
-		(loop (fix:+ i 1))
-		(let ((n (drain-output-buffer ob)))
-		  (cond ((not n) (and (fix:> i start) (fix:- i start)))
-			((fix:> n 0) (loop i))
-			(else (fix:- i start)))))
-	    (fix:- end start)))))
+  (let loop ((i start))
+    (if (fix:< i end)
+	(if (write-next-char ob (string-ref string i))
+	    (loop (fix:+ i 1))
+	    (let ((n (drain-output-buffer ob)))
+	      (cond ((not n) (and (fix:> i start) (fix:- i start)))
+		    ((fix:> n 0) (loop i))
+		    (else (fix:- i start)))))
+	(fix:- end start))))
 
 (define (write-substring:wide-string ob string start end)
   (let ((v (wide-string-contents string)))
