@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.19 2007/05/01 04:55:02 cph Exp $
+$Id: optiondb.scm,v 1.20 2007/05/02 13:51:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -83,7 +83,11 @@ USA.
 
 (define-load-option 'COMPILER
   (lambda () (load-option 'SF))
-  (guarded-system-loader '(compiler) "compiler"))
+  (guarded-system-loader '(compiler)
+			 "compiler"
+			 (if (eq? microcode-id/compiled-code-type 'C)
+			     "machines/C/make"
+			     "make")))
 
 (define-load-option 'CREF
   (guarded-system-loader '(cross-reference) "cref"))
