@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.2 2007/04/15 08:16:34 riastradh Exp $
+# $Id: c-compile.sh,v 1.3 2007/05/02 13:50:04 cph Exp $
 #
-# Copyright 2007 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -23,22 +25,16 @@
 
 set -e
 
-if [ $# -ge 1 ]; then
-  DIR="${1}"
-elif [ -r "./etc/c-compile.scm" ]; then
-  DIR="."
+if [ ${#} -ge 1 ]; then
+    cd "${1}"
+elif [ -r etc/c-compile.scm ]; then
+    :
 else
-  echo "usage: ${0} DIRECTORY"
-  exit 1
+    echo "usage: ${0} DIRECTORY"
+    exit 1
 fi
 
-if [ -z "${SCHEME_COMPILER}" ]; then
-    (
-	cd "${DIR}"
-	sh etc/c-initial-bands.sh
-    )
-    SCHEME_COMPILER="${DIR}/microcode/scheme --library ${DIR}/lib"
-    SCHEME_COMPILER="${SCHEME_COMPILER} --compiler --heap 3000 --stack 200"
-fi
+sh etc/c-initial-bands.sh
 
-${SCHEME_COMPILER} < "${DIR}/etc/c-compile.scm"
+exec microcode/scheme --library lib --compiler --heap 6000 --stack 200 \
+    < etc/c-compile.scm
