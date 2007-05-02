@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.12 2007/04/29 18:01:33 cph Exp $
+# $Id: Clean.sh,v 1.13 2007/05/02 03:58:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,47 +26,55 @@
 # Utility for cleaning up MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
 
-if [ $# -le 1 ]; then
-    echo "usage: $0 <command> <directory> ..."
+set -e
+
+if [ ${#} -le 1 ]; then
+    echo "usage: ${0} <command> <directory> ..."
     exit 1
 fi
 
-COMMAND=$1
+COMMAND=${1}
 shift
-SUBDIRS="$@"
+SUBDIRS=${@}
 
 FULL=no
+C=no
 DIST=no
 MAINTAINER=no
-case "${COMMAND}" in
+case ${COMMAND} in
 mostlyclean)
     ;;
 clean)
     FULL=yes
     ;;
-distclean | c-clean)
+c-clean)
+    FULL=yes
+    C=yes
+    ;;
+distclean)
     FULL=yes
     DIST=yes
     ;;
 maintainer-clean)
     FULL=yes
+    C=yes
     DIST=yes
     MAINTAINER=yes
     ;;
 *)
-    echo "$0: Unknown command ${COMMAND}"
+    echo "${0}: Unknown command ${COMMAND}"
     exit 1
     ;;
 esac
 
-if [ "${COMMAND}" != c-clean ]; then
-    echo "rm -f liarc.stamp"
-    rm -f liarc.stamp
-fi
-
 if [ ${FULL} = yes ]; then
     echo "rm -f lib/*.com"
     rm -f lib/*.com
+fi
+
+if [ ${C} = yes ]; then
+    echo "rm -f liarc.stamp"
+    rm -f liarc.stamp
 fi
 
 if [ ${DIST} = yes ]; then
@@ -82,6 +90,6 @@ fi
 for SUBDIR in ${SUBDIRS}; do
     if test -x ${SUBDIR}/Clean.sh; then
 	echo "making ${COMMAND} in ${SUBDIR}"
-	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
+	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} )
     fi
 done

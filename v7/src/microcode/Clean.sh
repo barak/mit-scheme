@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.7 2007/04/04 05:08:19 riastradh Exp $
+# $Id: Clean.sh,v 1.8 2007/05/02 03:59:13 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,12 +26,14 @@
 # Utility for cleaning up the MIT/GNU Scheme microcode directory.
 # The working directory must be the microcode directory.
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
+set -e
+
+if [ ${#} -ne 1 ]; then
+    echo "usage: ${0} <command>"
     exit 1
 fi
 
-case "${1}" in
+case ${1} in
 mostlyclean | clean | distclean | c-clean)
     ;;
 maintainer-clean)
@@ -40,13 +42,11 @@ maintainer-clean)
     fi
     ;;
 *)
-    echo "$0: Unknown command ${1}"
+    echo "${0}: Unknown command ${1}"
     exit 1
     ;;
 esac
 
 if [ -f Makefile ]; then
-    make ${1}
+    make "${1}"
 fi
-
-exit 0

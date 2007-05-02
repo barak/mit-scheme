@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.20 2007/05/01 04:54:52 cph Exp $
+# $Id: Setup.sh,v 1.21 2007/05/02 03:58:43 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,6 +25,8 @@
 
 # Utility to set up the MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
+
+set -e
 
 if [ ! -x configure ]; then
     echo "autoconf"
@@ -58,5 +60,5 @@ for SUBDIR in 6001 compiler cref edwin imail rcs runtime \
               sf sos ssp star-parser win32 xdoc xml microcode; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    ( cd ${SUBDIR} && ./Setup.sh "$@" ) || exit 1
+    ( cd ${SUBDIR} && ./Setup.sh "$@" )
 done

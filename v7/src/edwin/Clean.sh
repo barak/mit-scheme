@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.13 2007/04/04 05:08:19 riastradh Exp $
+# $Id: Clean.sh,v 1.14 2007/05/02 03:58:58 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,8 +26,10 @@
 # Utility for cleaning up the MIT/GNU Scheme edwin directory.
 # The working directory must be the edwin directory.
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 <command>"
+set -e
+
+if [ ${#} -ne 1 ]; then
+    echo "usage: ${0} <command>"
     exit 1
 fi
 
@@ -35,14 +37,9 @@ fi
 
 echo "rm -rf edwin.bld"
 rm -f edwin.bld
-
 echo "rm -f edwin-unx.crf edwin-w32.crf edwin-os2.crf"
 rm -f edwin-unx.crf edwin-w32.crf edwin-os2.crf
-
 echo "rm -f edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd"
 rm -f edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd
-
 echo "rm -f edwin-unx.fre edwin-w32.fre edwin-os2.fre"
 rm -f edwin-unx.fre edwin-w32.fre edwin-os2.fre
-
-exit 0

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: Setup.sh,v 1.11 2007/01/05 21:19:25 cph Exp $
+# $Id: Setup.sh,v 1.12 2007/05/02 03:59:18 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,6 +26,8 @@
 # Program to set up MIT/GNU Scheme microcode from CVS for distribution.
 # Requires `gcc' and `scheme'.
 
+set -e
+
 if [ ! -f config.h.in ]; then
     echo "autoheader"
     autoheader
@@ -34,7 +36,7 @@ if [ ! -x configure ]; then
     echo "autoconf"
     autoconf
 fi
-( cd cmpauxmd && make )
+( cd cmpauxmd && make "${@}" )
 if [ ! -f Makefile.in ]; then
-    makegen/makeinit.sh "$@"
+    makegen/makeinit.sh "${@}"
 fi

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.16 2007/04/14 03:55:26 cph Exp $
+# $Id: Clean.sh,v 1.17 2007/05/02 03:58:48 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,7 +26,9 @@
 # Utility for cleaning up the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
-if [ $# -ne 1 ]; then
+set -e
+
+if [ ${#} -ne 1 ]; then
     echo "usage: ${0} <command>"
     exit 1
 fi
@@ -34,44 +36,23 @@ fi
 TOPDIR=${TOPDIR:-`pwd`/..}
 export TOPDIR
 CLEANSH=${TOPDIR}/etc/Clean.sh
-"${CLEANSH}" "${1}" rm-pkg
-
-case "${1}" in
-c-clean)
-    SUBDIR_CMDS="rm-bin rm-com-sans-c"
-    ;;
-*)
-    SUBDIR_CMDS="rm-bin rm-com"
-    ;;
-esac
+"${CLEANSH}" "${1}"
 
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
     if [ -d "${SUBDIR}" ]; then
 	echo "making ${1} in ${SUBDIR}"
-	(cd "${SUBDIR}" && "${CLEANSH}" "${1}" "${SUBDIR_CMDS}")
+	(cd "${SUBDIR}" && "${CLEANSH}" "${1}")
     fi
 done
 
-case "${1}" in
-distclean | maintainer-clean | c-clean)
+case ${1} in
+distclean | maintainer-clean)
     rm -f machine compiler.cbf compiler.pkg compiler.sf
-    "${CLEANSH}" "${1}" "${SUBDIR_CMDS}"
     ;;
 esac
 
-rm -f compiler-unx.o
-case "${1}" in
-c-clean)
-    ;;
-*)
-    rm -f compiler-unx.c
-    ;;
-esac
-
-case "${1}" in
+case ${1} in
 maintainer-clean)
     rm -f machines/vax/dinstr[123].scm
     ;;
 esac
-
-exit 0
