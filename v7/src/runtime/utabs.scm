@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.24 2007/04/15 15:50:42 cph Exp $
+$Id: utabs.scm,v 14.25 2007/05/02 00:11:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -75,14 +75,7 @@ USA.
   (set! system-call-names-slot (fixed-object/name->code 'SYSTEM-CALL-NAMES))
   (set! system-call-errors-slot (fixed-object/name->code 'SYSTEM-CALL-ERRORS))
   (set! microcode-version-string
-	(let ((version (microcode-identification-item 'MICROCODE-VERSION)))
-	  (if (string? version)
-	      version
-	      (string-append
-	       (number->string version)
-	       "."
-	       (number->string
-		(microcode-identification-item 'MICROCODE-MODIFICATION))))))
+	(microcode-identification-item 'MICROCODE-VERSION))
   (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
@@ -99,9 +92,11 @@ USA.
 		((not string) 'STANDARD)
 		(else (error "Illegal stack type:" string)))))
   (set! microcode-id/machine-type
-	(if (microcode-table-search identifications-slot 'MACHINE-TYPE-STRING)
-	    (microcode-identification-item 'MACHINE-TYPE-STRING)
+	(or (microcode-identification-item 'MACHINE-TYPE-STRING #f)
 	    "unknown-machine"))
+  (set! microcode-id/compiled-code-type
+	(intern (or (microcode-identification-item 'CC-ARCH-STRING #f)
+		    "unknown")))
   (set! microcode-id/tty-x-size
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
@@ -135,6 +130,7 @@ USA.
 (define microcode-id/operating-system-variant)
 (define microcode-id/stack-type)
 (define microcode-id/machine-type)
+(define microcode-id/compiled-code-type)
 
 (define-integrable fixed-objects-slot 15)
 (define non-object-slot)
@@ -234,13 +230,16 @@ USA.
 (define identifications-slot)
 (define identification-vector)
 
-(define (microcode-identification-vector-slot name)
-  (or (microcode-table-search identifications-slot name)
-      (error:bad-range-argument name 'MICROCODE-IDENTIFICATION-VECTOR-SLOT)))
+(define (microcode-identification-vector-slot name #!optional error?)
+  (let ((v (microcode-table-search identifications-slot name)))
+    (if (and (not v) (if (default-object? error?) #t error?))
+	(error:bad-range-argument name 'MICROCODE-IDENTIFICATION-VECTOR-SLOT))
+    v))
 
-(define (microcode-identification-item name)
-  (vector-ref identification-vector
-	      (microcode-identification-vector-slot name)))
+(define (microcode-identification-item name #!optional error?)
+  (let ((slot (microcode-identification-vector-slot name error?)))
+    (and slot
+	 (vector-ref identification-vector slot))))
 
 (define system-call-names-slot)
 

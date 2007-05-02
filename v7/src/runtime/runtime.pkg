@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.616 2007/04/29 19:25:27 cph Exp $
+$Id: runtime.pkg,v 14.617 2007/05/02 00:11:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2477,6 +2477,7 @@ USA.
 	  microcode-error/code->name
 	  microcode-error/code-limit
 	  microcode-error/name->code
+	  microcode-id/compiled-code-type
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
 	  microcode-id/machine-type
