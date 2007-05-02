@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: string.c,v 9.54 2007/04/22 16:31:23 cph Exp $
+$Id: string.c,v 9.55 2007/05/02 00:07:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -71,13 +71,7 @@ memory_to_string_no_gc (unsigned long n_bytes, const void * vp)
 SCHEME_OBJECT
 char_pointer_to_string (const char * cp)
 {
-  const char * scan = cp;
-  if (scan == 0)
-    scan += 1;
-  else
-    while ((*scan++) != '\0')
-      ;
-  return (memory_to_string (((scan - 1) - cp), cp));
+  return (memory_to_string (((cp == 0) ? 0 : (strlen (cp))), cp));
 }
 
 SCHEME_OBJECT
