@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.128 2007/05/01 19:52:31 cph Exp $
+$Id: boot.c,v 9.129 2007/05/02 00:09:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -321,7 +321,7 @@ Re_Enter_Interpreter (void)
 #define IDENTITY_LENGTH 	20	/* Plenty of room */
 #define ID_RELEASE		0	/* System release (string) */
 #define ID_MICRO_VERSION	1	/* Microcode version (fixnum) */
-#define ID_MICRO_MOD		2	/* Microcode modification (fixnum) */
+/* 2 unused */
 #define ID_PRINTER_WIDTH	3	/* TTY width (# chars) */
 #define ID_PRINTER_LENGTH	4	/* TTY height (# chars) */
 #define ID_NEW_LINE_CHARACTER	5	/* #\Newline */
@@ -341,19 +341,20 @@ DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
   v = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
   VECTOR_SET (v, ID_RELEASE, SHARP_F);
   VECTOR_SET (v, ID_MICRO_VERSION, (char_pointer_to_string (PACKAGE_VERSION)));
-  VECTOR_SET (v, ID_MICRO_MOD, SHARP_F);
-  VECTOR_SET
-    (v, ID_PRINTER_WIDTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_x_size ())));
-  VECTOR_SET
-    (v, ID_PRINTER_LENGTH, (LONG_TO_UNSIGNED_FIXNUM (OS_tty_y_size ())));
+  VECTOR_SET (v, ID_PRINTER_WIDTH, (ULONG_TO_FIXNUM (OS_tty_x_size ())));
+  VECTOR_SET (v, ID_PRINTER_LENGTH, (ULONG_TO_FIXNUM (OS_tty_y_size ())));
   VECTOR_SET (v, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
-  VECTOR_SET (v, ID_FLONUM_PRECISION, (LONG_TO_UNSIGNED_FIXNUM (DBL_MANT_DIG)));
+  VECTOR_SET (v, ID_FLONUM_PRECISION, (ULONG_TO_FIXNUM (DBL_MANT_DIG)));
   VECTOR_SET (v, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
   VECTOR_SET (v, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
   VECTOR_SET (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
   VECTOR_SET (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
   VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
-  VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (cc_arch_name ())));
+  {
+    const char * name = (cc_arch_name ());
+    if (name != 0)
+      VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (name)));
+  }
   PRIMITIVE_RETURN (v);
 }
 
@@ -363,19 +364,16 @@ cc_arch_name (void)
   switch (compiler_processor_type)
     {
     case COMPILER_NONE_TYPE: return ("none");
-    case COMPILER_MC68020_TYPE: return ("mc68020");
+    case COMPILER_MC68020_TYPE: return ("mc68k");
     case COMPILER_VAX_TYPE: return ("vax");
-    case COMPILER_SPECTRUM_TYPE: return ("spectrum");
-    case COMPILER_OLD_MIPS_TYPE: return ("old-mips");
-    case COMPILER_MC68040_TYPE: return ("mc68040");
+    case COMPILER_SPECTRUM_TYPE: return ("hppa");
+    case COMPILER_MC68040_TYPE: return ("mc68k");
     case COMPILER_SPARC_TYPE: return ("sparc");
-    case COMPILER_RS6000_TYPE: return ("rs6000");
-    case COMPILER_MC88K_TYPE: return ("mc88k");
-    case COMPILER_IA32_TYPE: return ("ia32");
+    case COMPILER_IA32_TYPE: return ("i386");
     case COMPILER_ALPHA_TYPE: return ("alpha");
     case COMPILER_MIPS_TYPE: return ("mips");
     case COMPILER_C_TYPE: return ("c");
-    case COMPILER_SVM_TYPE: return ("svm");
+    case COMPILER_SVM_TYPE: return ("svm1");
     default: return (0);
     }
 }
