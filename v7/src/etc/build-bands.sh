@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.9 2007/05/02 13:49:02 cph Exp $
+# $Id: build-bands.sh,v 1.10 2007/05/03 03:45:51 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -23,15 +23,14 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-(
-    cd runtime
-    ../microcode/scheme --library ../lib --fasl make.com <<EOF
-(disk-save "../lib/runtime.com")
-EOF
-)
+set -e
 
-microcode/scheme --library lib --heap 3000 <<EOF
-(load-option 'COMPILER)
-(load-option 'EDWIN)
-(disk-save "lib/all.com")
+etc/build-runtime.sh
+
+echo "microcode/scheme --library lib --heap 3000"
+exec microcode/scheme --library lib --heap 3000 <<EOF
+(begin
+  (load-option (quote COMPILER))
+  (load-option (quote EDWIN))
+  (disk-save "lib/all.com"))
 EOF

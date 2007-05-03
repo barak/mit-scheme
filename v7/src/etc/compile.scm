@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.13 2007/04/05 17:42:19 cph Exp $
+$Id: compile.scm,v 1.14 2007/05/03 03:45:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,23 +30,80 @@ USA.
 ;;; This compiles the part of the system written in Scheme.
 ;;; The part written in C is compiled using "make".
 
-(begin
-  (with-working-directory-pathname "cref"
+(define boot-dirs
+  '("cref" "runtime" "sf" "compiler" "star-parser"))
+
+(define non-boot-dirs
+  '("win32" "sos" "xml" "edwin" "imail" "6001" "ssp" "xdoc"))
+
+(define (compile-dir name)
+  (with-working-directory-pathname name
     (lambda ()
-      (load "cref.sf")
-      (load "cref.cbf")
-      (if (not (name->package '(CROSS-REFERENCE)))
-	  (load "make"))))
-  (for-each (lambda (name)
-	      (with-working-directory-pathname name
-		(lambda ()
-		  (load (pathname-new-type name "sf"))
-		  (load (pathname-new-type name "cbf")))))
-	    '("runtime" "win32" "sf" "compiler" "edwin" "6001"))
-  (with-working-directory-pathname "cref"
+      (if (file-exists? (pathname-new-type name "sf"))
+	  (begin
+	    (load (pathname-new-type name "sf"))
+	    (load (pathname-new-type name "cbf")))
+	  (load "compile")))))
+
+(define (load-dir name)
+  (with-working-directory-pathname name
     (lambda ()
-      (if (not (file-exists? "cref.con"))
-	  (load "cref.sf"))))
-  (for-each (lambda (name)
-	      (load (merge-pathnames "compile" (pathname-as-directory name))))
-	    '("sos" "star-parser" "imail" "xml" "ssp" "xdoc")))
+      (cond ((and (string=? name "compiler")
+		  (eq? microcode-id/compiled-code-type 'C))
+	     (load "machines/C/make"))
+	    ((file-exists? (pathname-new-type name "sf"))
+	     (load "make"))
+	    (else
+	     (load "load"))))))
+
+(define (compile-everything)
+  (compile-dir "cref")
+  (if (not (name->package '(cross-reference)))
+      (load-dir "cref"))
+  (for-each compile-dir boot-dirs)
+  (for-each compile-dir non-boot-dirs))
+
+(define (compile-bootstrap-1)
+  (compile-dir "cref")
+  (if (not (name->package '(cross-reference)))
+      (load-dir "cref"))
+  (compile-dir "sf"))
+
+(define (compile-bootstrap-2)
+  (load-dir "cref")
+  (load-dir "sf")
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.sf"))))
+
+(define (compile-bootstrap-3)
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.cbf"))))
+
+(define (compile-bootstrap-4)
+  (load-dir "cref")
+  (load-dir "sf")
+  (load-dir "compiler"))
+
+(define (c-compile-dir name)
+  (compile-dir name)
+  (liarc-compile-pkgs name))
+
+(define (c-compile-pkgs name)
+  (with-working-directory-pathname name
+    (lambda ()
+      (cbf (string-append name "-unx.pkd"))
+      (if (not (string=? name "compiler")) ;kludge
+	  (begin
+	    (cbf (string-append name "-w32.pkd"))
+	    (cbf (string-append name "-os2.pkd")))))))
+
+(define (c-prepare)
+  (fluid-let ((compiler:invoke-c-compiler? #f))
+    (for-each liarc-compile-dir boot-dirs)))
+
+(define (c-compile)
+  (fluid-let ((compiler:invoke-c-compiler? #f))
+    (for-each liarc-compile-dir boot-dirs)
+    (for-each liarc-compile-dir non-boot-dirs)))

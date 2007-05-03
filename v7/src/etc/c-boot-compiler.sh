@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.3 2007/04/30 01:49:30 cph Exp $
+# $Id: c-boot-compiler.sh,v 1.4 2007/05/03 03:45:51 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -24,7 +24,7 @@
 set -e
 
 if [ -z "${SCHEME_LARGE}" ]; then
-    SCHEME_LARGE="scheme --heap 6000"
+    SCHEME_LARGE="mit-scheme --heap 6000"
 fi
 
 if [ -z "${SCHEME_COMPILER}" ]; then
@@ -35,59 +35,41 @@ fi
 # independently of the compiler.  (There is no standard band that
 # loads them independently.)
 
+echo "${SCHEME_COMPILER}"
 ${SCHEME_COMPILER} <<EOF
 (begin
-  (with-working-directory-pathname "cref"
-    (lambda ()
-      (load "cref.sf")
-      (load "cref.cbf")
-      (if (not (name->package '(CROSS-REFERENCE)))
-	  (load "make"))))
-  (with-working-directory-pathname "sf"
-    (lambda ()
-      (load "sf.sf")
-      (load "sf.cbf"))))
+  (load "etc/compile.scm")
+  (compile-bootstrap-1))
 EOF
 
 # Step 2: Load CREF and SF, and syntax the compiler configured with
 # the C back end.
 
-# (There *must* be a better way to write this...)
-
-LOAD_SF_CREF='
-(for-each (lambda (subdirectory)
-            (with-working-directory-pathname subdirectory
-              (lambda ()
-                (load "make"))))
-          (quote ("cref" "sf")))
-'
-
+echo "${SCHEME_LARGE}"
 ${SCHEME_LARGE} <<EOF
 (begin
-  ${LOAD_SF_CREF}
-  (with-working-directory-pathname "compiler"
-    (lambda ()
-      (load "compiler.sf"))))
+  (load "etc/compile.scm")
+  (compile-bootstrap-2))
 EOF
 
 # Step 3: Now that the compiler with the C back end is syntaxed and
 # packaged, use the native compiler to compile the bootstrap C
 # compiler natively.
 
+echo "${SCHEME_COMPILER}"
 ${SCHEME_COMPILER} <<EOF
-(with-working-directory-pathname "compiler"
-  (lambda ()
-    (load "compiler.cbf")))
+(begin
+  (load "etc/compile.scm")
+  (compile-bootstrap-3))
 EOF
 
 # Step 4: Load up the natively compiled compiler with the C back end,
 # and save a band.
 
+echo "${SCHEME_LARGE}"
 ${SCHEME_LARGE} <<EOF
 (begin
-  ${LOAD_SF_CREF}
-  (with-working-directory-pathname "compiler"
-    (lambda ()
-      (load "machines/C/make")))
+  (load "etc/compile.scm")
+  (compile-bootstrap-4)
   (disk-save "boot-compiler.com"))
 EOF

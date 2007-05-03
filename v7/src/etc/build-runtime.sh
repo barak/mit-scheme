@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: c-build-bands.sh,v 1.3 2007/04/30 01:42:54 cph Exp $
+# $Id: build-runtime.sh,v 1.1 2007/05/03 03:45:51 cph Exp $
 #
-# Copyright 2007 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -18,16 +20,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 set -e
 
-sh etc/c-initial-bands.sh
+echo "cd runtime"
+cd runtime
 
-microcode/scheme --library lib --compiler <<EOF
-(load-option 'EDWIN)
-(disk-save "lib/all.com")
+if [ -f make.o ]; then
+    FASL=
+elif [ -f make.com ]; then
+    FASL=make.com
+else
+    echo "Can't find argument for --fasl."
+    exit 1
+fi
+
+echo "../microcode/scheme --library ../lib --fasl ${FASL}"
+exec ../microcode/scheme --library ../lib --fasl ${FASL} <<EOF
+(disk-save "../lib/runtime.com")
 EOF
-
-rm -f lib/compiler.com

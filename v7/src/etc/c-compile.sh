@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.3 2007/05/02 13:50:04 cph Exp $
+# $Id: c-compile.sh,v 1.4 2007/05/03 03:45:51 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,15 +26,23 @@
 set -e
 
 if [ ${#} -ge 1 ]; then
+    echo "cd ${1}"
     cd "${1}"
-elif [ -r etc/c-compile.scm ]; then
+elif [ -r etc/compile.scm ]; then
     :
 else
     echo "usage: ${0} DIRECTORY"
     exit 1
 fi
 
-sh etc/c-initial-bands.sh
+etc/build-runtime.sh
 
-exec microcode/scheme --library lib --compiler --heap 6000 --stack 200 \
-    < etc/c-compile.scm
+echo "microcode/scheme --library lib --heap 6000 --stack 200"
+exec microcode/scheme --library lib --heap 6000 --stack 200 <<EOF
+(begin
+  (load-option (quote COMPILER))
+  (load-option (quote *PARSER))
+  (load-option (quote CREF))
+  (load "etc/compile.scm")
+  (c-compile))
+EOF
