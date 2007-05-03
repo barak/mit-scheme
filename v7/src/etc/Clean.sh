@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.19 2007/05/02 03:59:03 cph Exp $
+# $Id: Clean.sh,v 1.20 2007/05/03 03:40:22 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -67,9 +67,8 @@ TOPDIR=${TOPDIR:-..}
 . "${TOPDIR}/etc/functions.sh"
 
 if [ ${DIST} = yes ]; then
-    if [ -f Makefile.in ] && [ -f Makefile ]; then
-	echo "rm Makefile"
-	rm Makefile
+    if [ -f Makefile.in ]; then
+	maybe_rm Makefile
     fi
 fi
 
@@ -84,24 +83,18 @@ fi
 for KEYWORD in ${KEYWORDS}; do
     case ${KEYWORD} in
     rm-bin)
-	echo "rm -f *.bin *.ext"
-	rm -f *.bin *.ext
+	maybe_rm *.bin *.ext
 	;;
     rm-com)
-	echo "rm -f *.com *.bci *.o *.so *.sl *.dylib"
-	rm -f *.com *.bci *.o *.so *.sl *.dylib
+	maybe_rm *.com *.bci *.o *.so *.sl *.dylib
 	;;
     rm-pkg)
-	echo "rm -f *-unx.crf *-unx.fre *-unx.pkd"
-	rm -f *-unx.crf *-unx.fre *-unx.pkd
-	echo "rm -f *-w32.crf *-w32.fre *-w32.pkd"
-	rm -f *-w32.crf *-w32.fre *-w32.pkd
-	echo "rm -f *-os2.crf *-os2.fre *-os2.pkd"
-	rm -f *-os2.crf *-os2.fre *-os2.pkd
+	maybe_rm *-unx.crf *-unx.fre *-unx.pkd
+	maybe_rm *-w32.crf *-w32.fre *-w32.pkd
+	maybe_rm *-os2.crf *-os2.fre *-os2.pkd
 	;;
     rm-c)
-	echo "rm -f *.c"
-	rm -f *.c
+	maybe_rm *.c
         ;;
     esac
 done

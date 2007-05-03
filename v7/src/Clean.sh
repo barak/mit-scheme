@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.13 2007/05/02 03:58:38 cph Exp $
+# $Id: Clean.sh,v 1.14 2007/05/03 03:40:02 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -67,24 +67,24 @@ maintainer-clean)
     ;;
 esac
 
+. etc/functions.sh
+
+maybe_rm boot-compiler.com
+
 if [ ${FULL} = yes ]; then
-    echo "rm -f lib/*.com"
-    rm -f lib/*.com
+    maybe_rm lib/*.com
 fi
 
 if [ ${C} = yes ]; then
-    echo "rm -f liarc.stamp"
-    rm -f liarc.stamp
+    maybe_rm liarc.stamp
 fi
 
 if [ ${DIST} = yes ]; then
-    echo "rm -f Makefile config.cache config.log config.status"
-    rm -f Makefile config.cache config.log config.status
+    maybe_rm Makefile config.cache config.log config.status
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    echo "rm -rf configure lib autom4te.cache"
-    rm -rf configure lib autom4te.cache
+    maybe_rm configure lib autom4te.cache
 fi
 
 for SUBDIR in ${SUBDIRS}; do

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.17 2007/05/02 03:58:48 cph Exp $
+# $Id: Clean.sh,v 1.18 2007/05/03 03:40:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -38,6 +38,8 @@ export TOPDIR
 CLEANSH=${TOPDIR}/etc/Clean.sh
 "${CLEANSH}" "${1}"
 
+. "${TOPDIR}/etc/functions.sh"
+
 for SUBDIR in back base fggen fgopt machine rtlbase rtlgen rtlopt; do
     if [ -d "${SUBDIR}" ]; then
 	echo "making ${1} in ${SUBDIR}"
@@ -47,12 +49,15 @@ done
 
 case ${1} in
 distclean | maintainer-clean)
-    rm -f machine compiler.cbf compiler.pkg compiler.sf
+    echo "rm -f machine compiler.cbf compiler.pkg compiler.sf make.com make.so"
+    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com make.so
     ;;
 esac
 
 case ${1} in
 maintainer-clean)
-    rm -f machines/vax/dinstr[123].scm
+    for N in 1 2 3; do
+	maybe_unlink machines/vax/dinstr${N}.scm instr${N}.scm
+    done
     ;;
 esac

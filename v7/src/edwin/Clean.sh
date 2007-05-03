@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.14 2007/05/02 03:58:58 cph Exp $
+# $Id: Clean.sh,v 1.15 2007/05/03 03:40:17 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -34,12 +34,9 @@ if [ ${#} -ne 1 ]; then
 fi
 
 ../etc/Clean.sh "${1}"
+. ../etc/functions.sh
 
-echo "rm -rf edwin.bld"
-rm -f edwin.bld
-echo "rm -f edwin-unx.crf edwin-w32.crf edwin-os2.crf"
-rm -f edwin-unx.crf edwin-w32.crf edwin-os2.crf
-echo "rm -f edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd"
-rm -f edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd
-echo "rm -f edwin-unx.fre edwin-w32.fre edwin-os2.fre"
-rm -f edwin-unx.fre edwin-w32.fre edwin-os2.fre
+maybe_rm edwin.bld
+maybe_rm edwin-unx.crf edwin-w32.crf edwin-os2.crf
+maybe_rm edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd
+maybe_rm edwin-unx.fre edwin-w32.fre edwin-os2.fre

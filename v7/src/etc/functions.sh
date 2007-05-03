@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: functions.sh,v 1.6 2007/01/05 21:19:25 cph Exp $
+# $Id: functions.sh,v 1.7 2007/05/03 03:40:27 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -46,5 +46,28 @@ maybe_unlink ()
     if [ -L "${1}" ] && [ "${1}" -ef "${2}" ]; then
 	echo "rm ${1}"
 	rm "${1}"
+    fi
+}
+
+maybe_rm ()
+{
+    FNS=
+    DIRS=
+    for FN in "${@}"; do
+	if [ ! -L "${FN}" ]; then
+	    if [ -f "${FN}" ]; then
+		FNS="${FNS} ${FN}"
+	    elif [ -d "${FN}" ]; then
+		DIRS="${DIRS} ${FN}"
+	    fi
+	fi
+    done
+    if [ "${FNS}" ]; then
+	echo "rm -f ${FNS}"
+	rm -f ${FNS}
+    fi
+    if [ "${DIRS}" ]; then
+	echo "rm -rf ${DIRS}"
+	rm -rf ${DIRS}
     fi
 }
