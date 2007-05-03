@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.15 2007/05/03 12:49:12 cph Exp $
+$Id: compile.scm,v 1.16 2007/05/03 18:53:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -104,7 +104,8 @@ USA.
 
 (define (c-prepare)
   (fluid-let ((compiler:invoke-c-compiler? #f))
-    (for-each c-compile-dir boot-dirs)))
+    (for-each c-compile-dir boot-dirs)
+    (cf "microcode/utabmd")))
 
 (define (c-compile)
   (fluid-let ((compiler:invoke-c-compiler? #f))
