@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.14 2007/05/03 03:45:52 cph Exp $
+$Id: compile.scm,v 1.15 2007/05/03 12:49:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -88,22 +88,25 @@ USA.
 
 (define (c-compile-dir name)
   (compile-dir name)
-  (liarc-compile-pkgs name))
+  (c-compile-pkgs name))
 
 (define (c-compile-pkgs name)
   (with-working-directory-pathname name
     (lambda ()
-      (cbf (string-append name "-unx.pkd"))
-      (if (not (string=? name "compiler")) ;kludge
-	  (begin
-	    (cbf (string-append name "-w32.pkd"))
-	    (cbf (string-append name "-os2.pkd")))))))
+      (let ((compile-pkg
+	     (lambda (os)
+	       (let ((name (string-append name "-" os ".pkd")))
+		 (if (file-exists? name)
+		     (cbf name))))))
+	(compile-pkg "unx")
+	(compile-pkg "w32")
+	(compile-pkg "os2")))))
 
 (define (c-prepare)
   (fluid-let ((compiler:invoke-c-compiler? #f))
-    (for-each liarc-compile-dir boot-dirs)))
+    (for-each c-compile-dir boot-dirs)))
 
 (define (c-compile)
   (fluid-let ((compiler:invoke-c-compiler? #f))
-    (for-each liarc-compile-dir boot-dirs)
-    (for-each liarc-compile-dir non-boot-dirs)))
+    (for-each c-compile-dir boot-dirs)
+    (for-each c-compile-dir non-boot-dirs)))
