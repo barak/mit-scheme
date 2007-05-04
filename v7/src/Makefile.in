@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.33 2007/05/03 03:40:07 cph Exp $
+# $Id: Makefile.in,v 1.34 2007/05/04 01:27:30 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -69,13 +69,12 @@ AUXDIR = @AUXDIR@
 EDETC = $(AUXDIR)/edwin/etc
 
 COMPILE_SCRIPT = @COMPILE_SCRIPT@
-BUILD_BANDS_SCRIPT = @BUILD_BANDS_SCRIPT@
 
 all:
 	( cd microcode && $(MAKE) all )
 	$(srcdir)/etc/$(COMPILE_SCRIPT) $(srcdir)
 	( cd microcode && $(MAKE) liarc-bundles )
-	$(srcdir)/etc/$(BUILD_BANDS_SCRIPT)
+	$(srcdir)/etc/build-bands.sh
 
 c: boot-compiler.com
 	$(srcdir)/etc/c-prepare.sh
