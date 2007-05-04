@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.3 2007/05/03 03:45:52 cph Exp $
+# $Id: c-prepare.sh,v 1.4 2007/05/04 19:35:37 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -18,8 +18,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 set -e
 
