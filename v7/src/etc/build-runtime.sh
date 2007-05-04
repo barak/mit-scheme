@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-runtime.sh,v 1.1 2007/05/03 03:45:51 cph Exp $
+# $Id: build-runtime.sh,v 1.2 2007/05/04 01:26:10 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -29,7 +29,7 @@ echo "cd runtime"
 cd runtime
 
 if [ -f make.o ]; then
-    FASL=
+    FASL=runtime_make.so
 elif [ -f make.com ]; then
     FASL=make.com
 else
