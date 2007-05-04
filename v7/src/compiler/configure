@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: configure,v 1.16 2007/05/03 12:48:41 cph Exp $
+# $Id: configure,v 1.17 2007/05/04 01:24:31 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -81,6 +81,8 @@ if test ${MACHINE} = none; then
     exit 0
 fi
 
+echo "rm -f machine"
+rm -f machine
 echo "ln -s machines/${MACHINE} machine"
 ln -s machines/${MACHINE} machine
 
@@ -90,6 +92,6 @@ if test "${MACHINE}" = C; then
 fi
 
 for FN in ${LINKS}; do
-    echo "ln -s machine/${FN} ${FN}"
-    ln -s machine/${FN} ${FN}
+    echo "ln -s machine/${FN} ."
+    ln -s machine/${FN} .
 done
