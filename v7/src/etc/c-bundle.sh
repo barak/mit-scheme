@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-bundle.sh,v 1.2 2007/04/07 04:03:56 cph Exp $
+# $Id: c-bundle.sh,v 1.3 2007/05/04 18:51:56 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -53,26 +53,6 @@ cat <<EOF > "${SYSTEM}.c"
 
 #define LIARC_IN_MICROCODE
 #include "liarc.h"
-EOF
-
-# pre-v15 microcode doesn't have "ansidecl.h".
-if [ -e ansidecl.h ]; then
-    cat <<EOF >> "${SYSTEM}.c"
-
-typedef int EXFUN (liarc_decl_code_t, (void));
-typedef int EXFUN (liarc_decl_data_t, (void));
-typedef SCHEME_OBJECT * EXFUN (liarc_code_proc_t, (SCHEME_OBJECT *, entry_count_t));
-typedef SCHEME_OBJECT * EXFUN (liarc_data_proc_t, (entry_count_t));
-typedef SCHEME_OBJECT EXFUN (liarc_object_proc_t, (void));
-EOF
-else
-    cat <<EOF >> "${SYSTEM}.c"
-
-#define DEFUN_VOID(name) name (void)
-EOF
-fi
-
-cat <<EOF >> "${SYSTEM}.c"
 
 #undef DECLARE_COMPILED_CODE
 #undef DECLARE_COMPILED_DATA
@@ -122,7 +102,7 @@ library)
     return (0);
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
 #include "${SYSTEM}.h"
   return (0);
@@ -153,7 +133,7 @@ static)
     return (result);
 
 int
-DEFUN_VOID (initialize_compiled_code_blocks)
+initialize_compiled_code_blocks (void)
 {
   int result;
 #include "${SYSTEM}.h"
