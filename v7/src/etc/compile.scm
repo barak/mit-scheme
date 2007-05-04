@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.16 2007/05/03 18:53:22 cph Exp $
+$Id: compile.scm,v 1.17 2007/05/04 01:26:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,11 +30,22 @@ USA.
 ;;; This compiles the part of the system written in Scheme.
 ;;; The part written in C is compiled using "make".
 
-(define boot-dirs
-  '("cref" "runtime" "sf" "compiler" "star-parser"))
+(define (compile-everything)
+  (compile-all-dirs compile-dir))
 
-(define non-boot-dirs
-  '("win32" "sos" "xml" "edwin" "imail" "6001" "ssp" "xdoc"))
+(define (compile-all-dirs compile-dir)
+  (compile-boot-dirs compile-dir)
+  (for-each compile-dir
+	    '("win32" "sos" "xml" "edwin" "imail" "6001" "ssp" "xdoc")))
+
+(define (compile-boot-dirs compile-dir)
+  (compile-cref compile-dir)
+  (for-each compile-dir '("runtime" "sf" "compiler" "star-parser")))
+
+(define (compile-cref compile-dir)
+  (compile-dir "cref")
+  (if (not (name->package '(cross-reference)))
+      (load-dir "cref")))
 
 (define (compile-dir name)
   (with-working-directory-pathname name
@@ -55,18 +66,9 @@ USA.
 	     (load "make"))
 	    (else
 	     (load "load"))))))
-
-(define (compile-everything)
-  (compile-dir "cref")
-  (if (not (name->package '(cross-reference)))
-      (load-dir "cref"))
-  (for-each compile-dir boot-dirs)
-  (for-each compile-dir non-boot-dirs))
-
+
 (define (compile-bootstrap-1)
-  (compile-dir "cref")
-  (if (not (name->package '(cross-reference)))
-      (load-dir "cref"))
+  (compile-cref compile-dir)
   (compile-dir "sf"))
 
 (define (compile-bootstrap-2)
@@ -86,28 +88,31 @@ USA.
   (load-dir "sf")
   (load-dir "compiler"))
 
+(define (c-prepare)
+  (fluid-let ((compiler:invoke-c-compiler? #f))
+    (compile-boot-dirs c-compile-dir)
+    (cf "microcode/utabmd")))
+
+(define (c-compile)
+  (fluid-let ((compiler:invoke-c-compiler? #f))
+    (compile-all-dirs c-compile-dir)))
+
 (define (c-compile-dir name)
   (compile-dir name)
   (c-compile-pkgs name))
 
 (define (c-compile-pkgs name)
-  (with-working-directory-pathname name
-    (lambda ()
-      (let ((compile-pkg
-	     (lambda (os)
-	       (let ((name (string-append name "-" os ".pkd")))
-		 (if (file-exists? name)
-		     (cbf name))))))
-	(compile-pkg "unx")
-	(compile-pkg "w32")
-	(compile-pkg "os2")))))
-
-(define (c-prepare)
-  (fluid-let ((compiler:invoke-c-compiler? #f))
-    (for-each c-compile-dir boot-dirs)
-    (cf "microcode/utabmd")))
-
-(define (c-compile)
-  (fluid-let ((compiler:invoke-c-compiler? #f))
-    (for-each c-compile-dir boot-dirs)
-    (for-each c-compile-dir non-boot-dirs)))
+  (let ((root
+	 (if (string=? name "star-parser")
+	     "parser"
+	     name)))
+    (with-working-directory-pathname name
+      (lambda ()
+	(let ((compile-pkg
+	       (lambda (os)
+		 (let ((name (string-append root "-" os ".pkd")))
+		   (if (file-exists? name)
+		       (cbf name))))))
+	  (compile-pkg "unx")
+	  (compile-pkg "w32")
+	  (compile-pkg "os2"))))))
