@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.44 2007/04/30 07:08:49 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.45 2007/05/06 04:43:01 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -196,6 +196,7 @@ MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 SYSTEM_BASE_NAME=mit-scheme
+INSTALL_INCLUDE=
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -932,6 +933,7 @@ c)
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
     SYSTEM_BASE_NAME=mit-scheme-c
+    INSTALL_INCLUDE=install-include
     ;;
 svm1)
     AC_MSG_RESULT([yes, using portable SVM code])
@@ -991,6 +993,7 @@ AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([SYSTEM_BASE_NAME])
+AC_SUBST([INSTALL_INCLUDE])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
