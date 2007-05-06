@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.21 2007/05/02 03:58:43 cph Exp $
+# $Id: Setup.sh,v 1.22 2007/05/06 04:45:18 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -42,6 +42,7 @@ maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/options ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
+maybe_link lib/include ../microcode
 
 # lib/edwin
 maybe_mkdir lib/edwin
