@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.5 2007/05/04 19:34:03 cph Exp $
+# $Id: c-compile.sh,v 1.6 2007/05/06 14:16:59 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -24,16 +24,6 @@
 # 02110-1301, USA.
 
 set -e
-
-if [ ${#} -ge 1 ]; then
-    echo "cd ${1}"
-    cd "${1}"
-elif [ -r etc/compile.scm ]; then
-    :
-else
-    echo "usage: ${0} DIRECTORY"
-    exit 1
-fi
 
 etc/build-runtime.sh
 

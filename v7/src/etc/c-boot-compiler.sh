@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.4 2007/05/03 03:45:51 cph Exp $
+# $Id: c-boot-compiler.sh,v 1.5 2007/05/06 14:16:54 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -18,58 +18,48 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with MIT/GNU Scheme; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-# 02111-1307, USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
 set -e
 
-if [ -z "${SCHEME_LARGE}" ]; then
-    SCHEME_LARGE="mit-scheme --heap 6000"
+if [ ${#} -eq 2 ]; then
+    EXE=${1}
+    OUT=${2}
+else
+    echo "usage: ${0} <executable> <output-file>"
+    exit 1
 fi
+CMD="${EXE} --heap 6000"
 
-if [ -z "${SCHEME_COMPILER}" ]; then
-    SCHEME_COMPILER="${SCHEME_LARGE} --compiler"
-fi
+# Step 1: Load CREF and SF, and syntax the compiler configured with
+# the C back end.
 
-# Step 1: Compile CREF and SF natively, so that we can load them
-# independently of the compiler.  (There is no standard band that
-# loads them independently.)
-
-echo "${SCHEME_COMPILER}"
-${SCHEME_COMPILER} <<EOF
+echo "${CMD}"
+${CMD} <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-1))
 EOF
 
-# Step 2: Load CREF and SF, and syntax the compiler configured with
-# the C back end.
+# Step 2: Now that the compiler with the C back end is syntaxed and
+# packaged, use the native compiler to compile the bootstrap C
+# compiler natively.
 
-echo "${SCHEME_LARGE}"
-${SCHEME_LARGE} <<EOF
+echo "${CMD} --compiler"
+${CMD} --compiler <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-2))
 EOF
 
-# Step 3: Now that the compiler with the C back end is syntaxed and
-# packaged, use the native compiler to compile the bootstrap C
-# compiler natively.
-
-echo "${SCHEME_COMPILER}"
-${SCHEME_COMPILER} <<EOF
-(begin
-  (load "etc/compile.scm")
-  (compile-bootstrap-3))
-EOF
-
-# Step 4: Load up the natively compiled compiler with the C back end,
+# Step 3: Load up the natively compiled compiler with the C back end,
 # and save a band.
 
-echo "${SCHEME_LARGE}"
-${SCHEME_LARGE} <<EOF
+echo "${CMD}"
+${CMD} <<EOF
 (begin
   (load "etc/compile.scm")
-  (compile-bootstrap-4)
-  (disk-save "boot-compiler.com"))
+  (compile-bootstrap-3)
+  (disk-save "${OUT}.com"))
 EOF

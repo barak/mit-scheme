@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.14 2007/05/03 03:40:02 cph Exp $
+# $Id: Clean.sh,v 1.15 2007/05/06 14:16:44 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -69,7 +69,7 @@ esac
 
 . etc/functions.sh
 
-maybe_rm boot-compiler.com
+maybe_rm c-boot-compiler.com native-boot-compiler.com
 
 if [ ${FULL} = yes ]; then
     maybe_rm lib/*.com

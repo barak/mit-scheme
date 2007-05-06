@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.11 2007/05/03 03:45:52 cph Exp $
+# $Id: compile.sh,v 1.12 2007/05/06 14:17:10 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,19 +25,18 @@
 
 set -e
 
-if [ ${#} -ge 1 ]; then
-    echo "cd ${1}"
-    cd "${1}"
-elif [ -r etc/compile.scm ]; then
-    :
+if [ ${#} -eq 0 ]; then
+    SCHEME_COMPILER="mit-scheme --compiler"
 else
-    echo "usage: ${0} DIRECTORY"
-    exit 1
+    SCHEME_COMPILER=${1}
+    shift
+    while [ ${#} -gt 0 ]; do
+	SCHEME_COMPILER="${SCHEME_COMPILER} ${1}"
+	shift
+    done
 fi
 
-if [ -z "${SCHEME_COMPILER}" ]; then
-    SCHEME_COMPILER="mit-scheme --compiler --heap 6000 --stack 200"
-fi
+SCHEME_COMPILER="${SCHEME_COMPILER} --heap 6000 --stack 200"
 
 echo "${SCHEME_COMPILER}"
 exec ${SCHEME_COMPILER} <<EOF

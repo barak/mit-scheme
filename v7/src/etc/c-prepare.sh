@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.4 2007/05/04 19:35:37 cph Exp $
+# $Id: c-prepare.sh,v 1.5 2007/05/06 14:17:14 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -23,20 +23,11 @@
 
 set -e
 
-if [ ${#} -ge 1 ]; then
-    cd "${1}"
-elif [ -r etc/compile.scm ]; then
-    :
-else
-    echo "usage: ${0} DIRECTORY"
-    exit 1
-fi
-
 if [ -z "${SCHEME_LARGE}" ]; then
     SCHEME_LARGE="mit-scheme --heap 6000"
 fi
 
-${SCHEME_LARGE} --band boot-compiler.com <<EOF
+${SCHEME_LARGE} --band c-boot-compiler.com <<EOF
 (begin
   (load "etc/compile.scm")
   (c-prepare))

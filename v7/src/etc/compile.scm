@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.17 2007/05/04 01:26:59 cph Exp $
+$Id: compile.scm,v 1.18 2007/05/06 14:17:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,7 @@ USA.
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
-  (for-each compile-dir '("runtime" "sf" "compiler" "star-parser")))
+  (for-each compile-dir '("runtime" "cref" "sf" "compiler" "star-parser")))
 
 (define (compile-cref compile-dir)
   (compile-dir "cref")
@@ -68,24 +68,24 @@ USA.
 	     (load "load"))))))
 
 (define (compile-bootstrap-1)
-  (compile-cref compile-dir)
-  (compile-dir "sf"))
-
-(define (compile-bootstrap-2)
-  (load-dir "cref")
-  (load-dir "sf")
+  (load-option 'SF)
   (with-working-directory-pathname "compiler"
     (lambda ()
       (load "compiler.sf"))))
 
-(define (compile-bootstrap-3)
-  (with-working-directory-pathname "compiler"
-    (lambda ()
-      (load "compiler.cbf"))))
+(define (compile-bootstrap-2)
+  (if (eq? microcode-id/compiled-code-type 'C)
+      (fluid-let ((compiler:invoke-c-compiler? #f))
+	(with-working-directory-pathname "compiler"
+	  (lambda ()
+	    (load "compiler.cbf")))
+	(c-compile-pkgs "compiler"))
+      (with-working-directory-pathname "compiler"
+	(lambda ()
+	  (load "compiler.cbf")))))
 
-(define (compile-bootstrap-4)
-  (load-dir "cref")
-  (load-dir "sf")
+(define (compile-bootstrap-3)
+  (load-option 'SF)
   (load-dir "compiler"))
 
 (define (c-prepare)
