@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.32 2007/01/17 15:58:44 cph Exp $
+$Id: unicode.scm,v 1.33 2007/05/07 05:32:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -205,18 +205,19 @@ USA.
 		       ((fix:< (vector-ref high2 index) pt)
 			(loop (fix:+ index 1) upper))
 		       (else #t))))))))
-
+
 (define (well-formed-code-point-list? items)
   (if (pair? items)
       (and (well-formed-item? (car items))
 	   (let loop ((a (car items)) (items (cdr items)))
-	     (or (not (pair? items))
+	     (if (pair? items)
 		 (let ((b (car items))
 		       (items (cdr items)))
 		   (and (well-formed-item? b)
 			(fix:< (if (pair? a) (cdr a) a)
 			       (if (pair? b) (car b) b))
-			(loop b items))))))
+			(loop b items)))
+		 (null? items))))
       (null? items)))
 
 (define (well-formed-item? item)
@@ -227,13 +228,14 @@ USA.
       (%unicode-code-point? item)))
 
 (define-guarantee well-formed-code-point-list "a Unicode code-point list")
-
+
 (define (code-points->alphabet items)
   (guarantee-well-formed-code-point-list items 'CODE-POINTS->ALPHABET)
   (%code-points->alphabet items))
 
 (define (%code-points->alphabet items)
-  (receive (low-items high-items) (split-list items #x800)
+  (receive (low-items high-items)
+      (split-list (canonicalize-code-point-list items) #x800)
     (let ((low (make-alphabet-low)))
       (for-each (lambda (item)
 		  (if (pair? item)
@@ -257,6 +259,25 @@ USA.
 		  (vector-set! high2 i (car items)))))
 	  (make-alphabet low high1 high2))))))
 
+(define (canonicalize-code-point-list items)
+  (if (pair? items)
+      (let ((a (car items)))
+	(let loop
+	    ((al (if (pair? a) (car a) a))
+	     (ah (if (pair? a) (cdr a) a))
+	     (items (cdr items)))
+	  (if (pair? items)
+	      (let ((b (car items))
+		    (items (cdr items)))
+		(let ((bl (if (pair? b) (car b) b))
+		      (bh (if (pair? b) (cdr b) b)))
+		  (if (fix:= (fix:+ ah 1) bl)
+		      (loop al bh items)
+		      (cons (if (fix:= al ah) al (cons al ah))
+			    (loop bl bh items)))))
+	      (list (if (fix:= al ah) al (cons al ah))))))
+      '()))
+
 (define (split-list items limit)
   (let loop ((items items) (low '()))
     (if (pair? items)
@@ -270,7 +291,7 @@ USA.
 		((fix:<= limit (car item))
 		 (values low items))
 		(else
-		 (values (cons (cons (car item) (- limit 1)) low)
+		 (values (cons (cons (car item) (fix:- limit 1)) low)
 			 (cons (cons limit (cdr item)) items)))))
 	(values low '()))))
 
