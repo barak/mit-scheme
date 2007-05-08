@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.5 2007/05/06 14:16:54 cph Exp $
+# $Id: c-boot-compiler.sh,v 1.6 2007/05/08 12:54:52 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -61,5 +61,5 @@ ${CMD} <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-3)
-  (disk-save "${OUT}.com"))
+  (disk-save "${OUT}"))
 EOF

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.10 2007/05/04 01:27:24 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.11 2007/05/08 12:54:52 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -39,18 +39,18 @@ fi
 
 case ${enable_native_code} in
 c)
-    COMPILE_SCRIPT=c-compile.sh
+    ALL_TARGET=all-c
     INSTALL_COM=:
     SYSTEM_BASE_NAME=mit-scheme-c
     ;;
 *)
-    COMPILE_SCRIPT=compile.sh
+    ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     SYSTEM_BASE_NAME=mit-scheme
     ;;
 esac
 
-AC_SUBST([COMPILE_SCRIPT])
+AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
 
 AC_PROG_INSTALL

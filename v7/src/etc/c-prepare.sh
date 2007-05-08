@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.5 2007/05/06 14:17:14 cph Exp $
+# $Id: c-prepare.sh,v 1.6 2007/05/08 12:54:52 cph Exp $
 #
 # Copyright 2007 Massachusetts Institute of Technology
 #
@@ -23,11 +23,21 @@
 
 set -e
 
-if [ -z "${SCHEME_LARGE}" ]; then
-    SCHEME_LARGE="mit-scheme --heap 6000"
+if [ ${#} -eq 0 ]; then
+    SCHEME_COMPILER="mit-scheme-c --compiler"
+else
+    SCHEME_COMPILER=${1}
+    shift
+    while [ ${#} -gt 0 ]; do
+	SCHEME_COMPILER="${SCHEME_COMPILER} ${1}"
+	shift
+    done
 fi
 
-${SCHEME_LARGE} --band c-boot-compiler.com <<EOF
+SCHEME_COMPILER="${SCHEME_COMPILER} --heap 6000"
+
+echo "${SCHEME_COMPILER}"
+${SCHEME_COMPILER} <<EOF
 (begin
   (load "etc/compile.scm")
   (c-prepare))

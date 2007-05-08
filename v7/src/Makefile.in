@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.35 2007/05/06 14:16:49 cph Exp $
+# $Id: Makefile.in,v 1.36 2007/05/08 12:54:52 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -68,27 +68,34 @@ INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos ssp star-parser \
 AUXDIR = @AUXDIR@
 EDETC = $(AUXDIR)/edwin/etc
 
-COMPILE_SCRIPT = @COMPILE_SCRIPT@
+all: all-microcode @ALL_TARGET@ all-bands
 
-all:
+all-microcode:
 	( cd microcode && $(MAKE) all )
-	$(srcdir)/etc/$(COMPILE_SCRIPT)
+
+all-native:
+	$(srcdir)/etc/compile.sh
+
+all-c:
+	$(srcdir)/etc/c-compile.sh
 	( cd microcode && $(MAKE) liarc-bundles )
+
+all-bands:
 	$(srcdir)/etc/build-bands.sh
 
 c: c-boot-compiler.com
-	$(srcdir)/etc/c-prepare.sh
+	$(srcdir)/etc/c-prepare.sh mit-scheme --band $<
 	-rm -f liarc.stamp
 	echo "done" > liarc.stamp
 
 native: native-boot-compiler.com
-	$(srcdir)/etc/compile.sh mit-scheme-c --band native-boot-compiler.com
+	$(srcdir)/etc/compile.sh mit-scheme-c --band $<
 
 c-boot-compiler.com:
-	$(srcdir)/etc/c-boot-compiler.sh mit-scheme c-boot-compiler
+	$(srcdir)/etc/c-boot-compiler.sh mit-scheme $@
 
 native-boot-compiler.com:
-	$(srcdir)/etc/c-boot-compiler.sh mit-scheme-c native-boot-compiler
+	$(srcdir)/etc/c-boot-compiler.sh mit-scheme-c $@
 
 mostlyclean clean distclean maintainer-clean c-clean:
 	$(srcdir)/Clean.sh $@ $(SUBDIRS)
@@ -109,5 +116,5 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(EDETC)
 	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
 
-.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
-.PHONY: c c-clean
+.PHONY: all all-microcode all-native all-c all-bands c native install
+.PHONY: mostlyclean clean distclean maintainer-clean c-clean tags TAGS
