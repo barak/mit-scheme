@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.28 2007/05/09 01:55:47 cph Exp $
+$Id: toplev.scm,v 1.29 2007/05/09 01:56:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -101,9 +101,9 @@ USA.
     (if (or changes?
 	    (file-modification-time<? cref-pathname
 				      (pathname-default-type pathname "pkg")))
-	(with-output-to-file cref-pathname
-	  (lambda ()
-	    (format-packages pmodel))))))
+	(call-with-output-file cref-pathname
+	  (lambda (port)
+	    (format-packages pmodel port))))))
 
 (define (write-cref-unusual pathname pmodel changes? os-type)
   (let ((cref-pathname
@@ -111,6 +111,6 @@ USA.
     (if (or changes?
 	    (file-modification-time<? cref-pathname
 				      (pathname-default-type pathname "pkg")))
-	(with-output-to-file cref-pathname
-	  (lambda ()
-	    (format-packages-unusual pmodel))))))
+	(call-with-output-file cref-pathname
+	  (lambda (port)
+	    (format-packages-unusual pmodel port))))))
