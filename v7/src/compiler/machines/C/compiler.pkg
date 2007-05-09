@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.25 2007/04/15 18:02:15 cph Exp $
+$Id: compiler.pkg,v 1.26 2007/05/09 02:05:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,10 +244,6 @@ USA.
 	  compile-file:sf-only?
 	  compile-procedure
 	  compile-scode
-	  compiler:c-compiler-name
-	  compiler:c-compiler-switches
-	  compiler:c-linker-name
-	  compiler:c-linker-switches
 	  compiler:invoke-c-compiler?
 	  compiler:reset!
 	  ;; cross-compile-bin-file

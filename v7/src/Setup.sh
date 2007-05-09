@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.22 2007/05/06 04:45:18 cph Exp $
+# $Id: Setup.sh,v 1.23 2007/05/09 02:05:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -37,6 +37,7 @@ fi
 
 # lib
 maybe_mkdir lib
+maybe_mkdir lib/lib
 maybe_link lib/SRC ..
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
@@ -50,12 +51,6 @@ maybe_mkdir lib/edwin/etc
 maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
 maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
-
-# lib/lib
-maybe_mkdir lib/lib
-for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
-    maybe_link "lib/lib/${BUNDLE}.so" "../../microcode/${BUNDLE}.so"
-done
 
 for SUBDIR in 6001 compiler cref edwin imail rcs runtime \
               sf sos ssp star-parser win32 xdoc xml microcode; do

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.26 2007/04/15 17:36:30 cph Exp $
+$Id: ctop.scm,v 1.27 2007/05/09 02:05:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,10 +35,6 @@ USA.
 (define compiled-output-extension "c")
 (define compiler:invoke-c-compiler? #t)
 (define compiler:invoke-verbose? #t)
-(define compiler:c-compiler-name #f)
-(define compiler:c-compiler-switches #f)
-(define compiler:c-linker-name #f)
-(define compiler:c-linker-switches #f)
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
@@ -108,185 +104,40 @@ USA.
 		       ))))))
 
 (define (c-compile pathname)
-  (let ((source (enough-namestring pathname))
-	(object (enough-namestring (pathname-new-type pathname "o")))
-	(run
-	 (lambda items
-	   (let ((command-line
-		  (decorated-string-append "" " " ""
-					   (let flatten ((items items))
-					     (append-map! (lambda (item)
-							    (if (list? item)
-								(flatten item)
-								(list item)))
-							  items)))))
+  (let ((run
+	 (lambda tokens
+	   (let ((command
+		  (decorated-string-append
+		   "" " " ""
+		   (map (lambda (token)
+			  (let ((s
+				 (if (pathname? token)
+				     (enough-namestring token)
+				     token)))
+			    (if (string-find-next-char s #\space)
+				(string-append "\"" s "\"")
+				s)))
+			tokens))))
 	     (maybe-with-notification compiler:invoke-verbose?
 				      (lambda (port)
 					(write-string "Executing " port)
-					(write command-line port))
+					(write command port))
 	       (lambda ()
-		 (run-shell-command command-line)))))))
-    (maybe-with-notification compiler:noisy?
-			     (lambda (port)
-			       (write-string "Compiling " port)
-			       (write-string source port))
-      (lambda ()
-	(run (c-compiler-name)
-	     (c-compiler-switches)
-	     "-DCOMPILE_FOR_DYNAMIC_LOADING"
-	     "-o"
-	     object
-	     source)))
-    (maybe-with-notification compiler:noisy?
-			     (lambda (port)
-			       (write-string "Linking " port)
-			       (write-string object port))
-      (lambda ()
-	(run (c-linker-name)
-	     "-o"
-	     (enough-namestring
-	      (pathname-new-type pathname (c-output-extension)))
-	     (c-linker-switches)
-	     object)))
-    (delete-file object)))
+		 (run-shell-command command)))))))
+    (run (system-library-pathname "liarc-cc")
+	 (pathname-new-type pathname "o")
+	 pathname)
+    (run (system-library-pathname "liarc-ld")
+	 (pathname-new-type pathname (c-output-extension))
+	 (pathname-new-type pathname "o"))))
 
 (define (maybe-with-notification flag message thunk)
   (if flag
       (with-notification message thunk)
       (thunk)))
-
-(define c-compiler-switch-table
-  `(
-    ;; 32-bit PowerPC MacOSX
-    ("MacOSX"				; "MacOSX-PowerPC-32"
-     "dylib"
-     ("-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-dylib" "-flat_namespace" "-undefined" "suppress")
-     "cc"
-     "ld")
-    ;; 64-bit PowerPC MacOSX
-    ("MacOSX-PowerPC-64"
-     "dylib"
-     ("-m64" "-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-m64" "-dylib" "-flat_namespace" "-undefined" "suppress")
-     "gcc-4.0"
-     "ld")
-    ;; 32-bit i386 Linux
-    ("GNU/Linux"			; "GNU/Linux-IA-32"
-     "so"
-     ("-m32" "-g" "-O2" "-fPIC" "-c")
-     ("-m32" "-shared")
-     "cc"
-     "ld")
-    ;; 64-bit x86_64 Linux
-    ("GNU/Linux-x86-64"
-     "so"
-     ("-m64" "-g" "-O2" "-fPIC" "-c")
-     ("-m64" "-shared")
-     "cc"
-     "ld")
-    ("GNU/Linux-ia64"
-     "so"
-     ("-g" "-O2" "-fPIC" "-c")
-     ("-shared")
-     "cc"
-     "ld")
-    ("NETBSD-x86-64"
-     "so"
-     ("-g" "-O2" "-fPIC" "-c")
-     ("-shared")
-     "cc"
-     "ld")
-    #|
-    ;; All the following are old stuff that probably no longer works
-    ("AIX"
-     "so"
-     ("-c" "-O" "-D_AIX")
-     ,(lambda (dir)
-	(list "-bM:SRE"
-	      (string-append "-bE:"
-			     (->namestring (merge-pathnames dir "liarc.exp")))
-	      (string-append "-bI:"
-			     (->namestring (merge-pathnames dir "scheme.imp")))
-	      "-edload_initialize_file"))
-     
-     "cc"
-     "cc")
-    ("HP-UX"
-     "sl"
-     ("-c" "+z" "-O" "-Ae" "-D_HPUX")
-     ("-b")
-     "cc"
-     "ld")
-    ("OSF"
-     "so"
-     ("-c" "-std1" "-O")
-     ("-shared" "-expect_unresolved" "'*'")
-     "cc"
-     "ld")
-    ("SunOS"
-     "so"
-     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
-     ()
-     "cc"
-     "ld")
-    |#
-    ))
 
-(define (find-switches fail-name)
-  (or (assoc (string-append microcode-id/operating-system-variant
-			    "-"
-			    microcode-id/machine-type)
-	     c-compiler-switch-table)
-      (assoc microcode-id/operating-system-variant
-	     c-compiler-switch-table)
-      (and fail-name
-	   (error fail-name "Unknown OS/machine"))))
-
 (define (c-output-extension)
-  ;; Always use .so -- this simplifies logic for built-in objects.
-  ;;(list-ref (find-switches 'c-output-extension) 1)
   "so")
-
-(define (c-compiler-name)
-  (or compiler:c-compiler-name
-      (let ((p (find-switches #f)))
-	(if p
-	    (list-ref p 4)
-	    "cc"))))
-
-(define (c-compiler-switches)
-  (or compiler:c-compiler-switches
-      (let ((p (find-switches 'c-compiler-switches))
-	    (dir (system-library-directory-pathname "include")))
-	(if (not dir)
-	    (error 'c-compiler-switches
-		   "Cannot find \"include\" directory"))
-	(append (list-ref p 2)
-		(list
-		 (string-append
-		  "-I"
-		  (->namestring (directory-pathname-as-file dir))))))))
-
-(define (c-linker-name)
-  (or compiler:c-linker-name
-      (let ((p (find-switches #f)))
-	(if p
-	    (list-ref p 5)
-	    "ld"))))
-
-(define (c-linker-switches)
-  (or compiler:c-linker-switches
-      (let ((p (find-switches 'c-linker-switches)))
-	(let ((switches (list-ref p 3)))
-	  (if (not (procedure? switches))
-	      switches
-	      (let ((dir (system-library-directory-pathname
-			  "include")))
-		(if (not dir)
-		    (error 'c-linker-switches
-			   "Cannot find \"include\" directory"))
-		(switches dir)))))))
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.45 2007/05/06 04:43:01 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.46 2007/05/09 02:05:56 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -185,13 +185,13 @@ STATIC_PREFIX=
 STATIC_SUFFIX=
 PRBFISH_LIBS=
 PRMD5_LIBS=
-SCHEME_DEFS=
+SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
 MODULE_BASES=
 MODULE_LIBS=
 MODULE_TARGETS=
 MODULE_RULES=/dev/null
-MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
+MODULE_CFLAGS=
 MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
@@ -250,6 +250,7 @@ FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
 if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
+CCLD=${CC}
 
 dnl Checks for libraries.
 AC_CHECK_LIB([m], [exp])
@@ -927,6 +928,8 @@ none)
 c)
     AC_MSG_RESULT([yes, using portable C code])
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
+    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
+    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
     AC_DEFINE([COMPILE_FOR_STATIC_LINKING], [1],
 	[Define to 1 for static compilation of C native code.])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
@@ -994,6 +997,7 @@ AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([SYSTEM_BASE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
+AC_SUBST([CCLD])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
