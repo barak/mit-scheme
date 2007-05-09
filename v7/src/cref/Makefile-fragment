@@ -1,0 +1,7 @@
+TARGET_DIR = $(AUXDIR)/cref
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
+	$(INSTALL_COM)  *.com $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) cref-unx.pkd $(DESTDIR)$(TARGET_DIR)/.

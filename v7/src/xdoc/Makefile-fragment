@@ -1,0 +1,8 @@
+XDOC_DIR = $(AUXDIR)/xdoc
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(XDOC_DIR)
+	$(INSTALL_COM)  *.com $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) xdoc-unx.pkd $(DESTDIR)$(XDOC_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(XDOC_DIR)/.

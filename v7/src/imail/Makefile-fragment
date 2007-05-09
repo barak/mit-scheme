@@ -1,0 +1,8 @@
+IMAIL_DIR = $(AUXDIR)/imail
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(IMAIL_DIR)
+	$(INSTALL_COM)  *.com $(DESTDIR)$(IMAIL_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(IMAIL_DIR)/.
+	$(INSTALL_DATA) imail-unx.pkd $(DESTDIR)$(IMAIL_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(IMAIL_DIR)/.

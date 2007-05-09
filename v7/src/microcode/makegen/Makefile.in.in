@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.54 2007/05/09 02:06:22 cph Exp $
+# $Id: Makefile.in.in,v 1.55 2007/05/09 20:01:37 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -50,7 +50,7 @@ includedir = @includedir@
 oldincludedir = /usr/include
 
 DESTDIR =
-top_builddir = .
+top_builddir = @top_builddir@
 
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -145,7 +145,7 @@ CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
-	cmpintmd-config.h cmpintmd.c
+	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS

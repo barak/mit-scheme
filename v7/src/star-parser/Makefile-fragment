@@ -1,0 +1,8 @@
+PARSER_DIR = $(AUXDIR)/star-parser
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(PARSER_DIR)
+	$(INSTALL_COM)  *.com $(DESTDIR)$(PARSER_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(PARSER_DIR)/.
+	$(INSTALL_DATA) parser-unx.pkd $(DESTDIR)$(PARSER_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(PARSER_DIR)/.

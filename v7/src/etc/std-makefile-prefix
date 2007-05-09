@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.8 2007/04/04 05:08:19 riastradh Exp $
+# $Id: std-makefile-prefix,v 1.1 2007/05/09 20:01:37 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -53,7 +53,7 @@ includedir = @includedir@
 oldincludedir = /usr/include
 
 DESTDIR =
-top_builddir = .
+top_builddir = @top_builddir@
 
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -68,7 +68,6 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 # **** END BOILERPLATE ****
 
 AUXDIR = @AUXDIR@
-PARSER_DIR = $(AUXDIR)/star-parser
 
 all:
 	echo "No ALL action"
@@ -79,14 +78,21 @@ mostlyclean clean distclean maintainer-clean:
 tags TAGS:
 	./Tags.sh
 
-install:
-	$(mkinstalldirs) $(DESTDIR)$(PARSER_DIR)
-	@for F in *.com; do \
-	    echo "$(INSTALL_COM) $${F} $(DESTDIR)$(PARSER_DIR)/.";\
-	    $(INSTALL_COM) $${F} $(DESTDIR)$(PARSER_DIR)/.;\
-	done
-	$(INSTALL_DATA) *.bci $(DESTDIR)$(PARSER_DIR)/.
-	$(INSTALL_DATA) parser-unx.pkd $(DESTDIR)$(PARSER_DIR)/.
-	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(PARSER_DIR)/.
+stage1:
+	./Stage.sh make 1
 
-.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
+unstage1:
+	./Stage.sh unmake 1
+
+stage2:
+	./Stage.sh make 2
+
+unstage2:
+	./Stage.sh unmake 2
+
+stage3:
+	./Stage.sh make 3
+
+unstage3:
+	./Stage.sh unmake 3
+

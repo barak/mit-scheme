@@ -1,0 +1,19 @@
+RODIR = $(AUXDIR)/options
+RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint optiondb \
+	  ordvec pgsql process rbtree regexp rexp rgxcmp syncproc wttree ystep
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/runtime
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
+
+	rm -rf $(DESTDIR)$(RODIR)
+	$(mkinstalldirs) $(DESTDIR)$(RODIR)
+	@for F in $(RUNOPTS); do \
+	    echo "$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
+	    $(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.;\
+	done
+	@for F in $(RUNOPTS); do \
+	    REL="../SRC/runtime/$${F}.bci";\
+	    echo "( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . )";\
+	    ( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . );\
+	done

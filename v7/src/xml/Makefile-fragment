@@ -1,0 +1,8 @@
+TARGET_DIR = $(AUXDIR)/xml
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
+	$(INSTALL_COM)  *.com $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) xml-unx.pkd $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(TARGET_DIR)/.

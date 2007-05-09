@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.23 2007/05/09 02:05:38 cph Exp $
+# $Id: Setup.sh,v 1.24 2007/05/09 20:01:36 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -55,6 +55,12 @@ maybe_link lib/edwin/autoload ../../edwin
 for SUBDIR in 6001 compiler cref edwin imail rcs runtime \
               sf sos ssp star-parser win32 xdoc xml microcode; do
     echo "setting up ${SUBDIR}"
+    if [ -f ${SUBDIR}/Makefile-fragment ]; then
+	rm -f ${SUBDIR}/Makefile.in
+	cat etc/std-makefile-prefix \
+	    ${SUBDIR}/Makefile-fragment \
+	    etc/std-makefile-suffix > ${SUBDIR}/Makefile.in
+    fi
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     ( cd ${SUBDIR} && ./Setup.sh "$@" )
 done

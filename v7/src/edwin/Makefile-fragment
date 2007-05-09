@@ -1,0 +1,22 @@
+EDDIR = $(AUXDIR)/edwin
+EODIR = $(EDDIR)/autoload
+EDOPTS = debian-changelog eystep lisppaste manual midas nntp paredit pasmod \
+	 print pwedit pwparse snr sort techinfo telnet tximod verilog vhdl \
+	 webster
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
+	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
+
+	rm -rf $(DESTDIR)$(EODIR)
+	$(mkinstalldirs) $(DESTDIR)$(EODIR)
+	@for F in $(EDOPTS); do \
+	    echo "$(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.";\
+	    $(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.;\
+	done
+	@for F in $(EDOPTS); do \
+	    REL="../../SRC/edwin/$${F}.bci";\
+	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . )";\
+	    ( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . );\
+	done
