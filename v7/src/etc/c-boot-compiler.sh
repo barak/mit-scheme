@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler.sh,v 1.6 2007/05/08 12:54:52 cph Exp $
+# $Id: c-boot-compiler.sh,v 1.7 2007/05/10 16:44:11 cph Exp $
 #
-# Copyright 2007 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
