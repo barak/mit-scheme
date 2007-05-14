@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.24 2007/05/09 20:01:36 cph Exp $
+# $Id: Setup.sh,v 1.25 2007/05/14 16:50:34 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -43,7 +43,6 @@ maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/options ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
-maybe_link lib/include ../microcode
 
 # lib/edwin
 maybe_mkdir lib/edwin
@@ -52,15 +51,30 @@ maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
 maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
 maybe_link lib/edwin/autoload ../../edwin
 
-for SUBDIR in 6001 compiler cref edwin imail rcs runtime \
-              sf sos ssp star-parser win32 xdoc xml microcode; do
+BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
+
+for SUBDIR in ${BUNDLES} runtime win32 microcode; do
     echo "setting up ${SUBDIR}"
-    if [ -f ${SUBDIR}/Makefile-fragment ]; then
-	rm -f ${SUBDIR}/Makefile.in
-	cat etc/std-makefile-prefix \
-	    ${SUBDIR}/Makefile-fragment \
-	    etc/std-makefile-suffix > ${SUBDIR}/Makefile.in
-    fi
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    ( cd ${SUBDIR} && ./Setup.sh "$@" )
+    (cd ${SUBDIR} && ./Setup.sh "$@")
+done
+
+maybe_link compiler/compiler.pkg machines/C/compiler.pkg
+mit-scheme --heap 4000 <<EOF
+(begin
+  (load "etc/utilities")
+  (generate-c-bundles (quote (${BUNDLES}))))
+EOF
+rm -f compiler/compiler.pkg
+
+for SUBDIR in ${BUNDLES} runtime win32; do
+    echo "creating ${SUBDIR}/Makefile.in"
+    rm -f ${SUBDIR}/Makefile.in
+    cat etc/std-makefile-prefix > ${SUBDIR}/Makefile.in
+    cat ${SUBDIR}/Makefile-fragment >> ${SUBDIR}/Makefile.in
+    if [ -f ${SUBDIR}/Makefile-bundle ]; then
+	cat ${SUBDIR}/Makefile-bundle >> ${SUBDIR}/Makefile.in
+	rm -f ${SUBDIR}/Makefile-bundle
+    fi
+    cat etc/std-makefile-suffix >> ${SUBDIR}/Makefile.in
 done

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.22 2007/05/13 12:22:47 cph Exp $
+# $Id: Clean.sh,v 1.23 2007/05/14 16:50:44 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -66,6 +66,8 @@ esac
 TOPDIR=${TOPDIR:-..}
 . "${TOPDIR}/etc/functions.sh"
 
+maybe_rm *-init.c *-init.h *-init.o
+
 if [ ${DIST} = yes ]; then
     if [ -f Makefile.in ]; then
 	maybe_rm Makefile
@@ -73,13 +75,13 @@ if [ ${DIST} = yes ]; then
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    maybe_unlink Makefile "${TOPDIR}/Makefile.std"
     maybe_unlink .edwin-ffi ed-ffi.scm
     for FN in Clean.sh Setup.sh Stage.sh Tags.sh; do
 	maybe_unlink "${FN}" "${TOPDIR}/etc/${FN}"
     done
     if [ -f Makefile-fragment ]; then
 	maybe_rm Makefile.in
+	maybe_rm Makefile-bundle
     fi
 fi
 

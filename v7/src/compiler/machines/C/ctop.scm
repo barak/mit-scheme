@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.27 2007/05/09 02:05:50 cph Exp $
+$Id: ctop.scm,v 1.28 2007/05/14 16:50:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -126,7 +126,8 @@ USA.
 		 (run-shell-command command)))))))
     (run (system-library-pathname "liarc-cc")
 	 (pathname-new-type pathname "o")
-	 pathname)
+	 pathname
+	 "-DENABLE_LIARC_FILE_INIT")
     (run (system-library-pathname "liarc-ld")
 	 (pathname-new-type pathname (c-output-extension))
 	 (pathname-new-type pathname "o"))))

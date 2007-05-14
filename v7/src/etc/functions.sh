@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: functions.sh,v 1.7 2007/05/03 03:40:27 cph Exp $
+# $Id: functions.sh,v 1.8 2007/05/14 16:50:46 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,28 +25,40 @@
 
 # Functions for shell scripts.
 
+run_setup_cmd ()
+{
+    echo "${1}"
+    eval "${1}"
+}
+
 maybe_mkdir ()
 {
     if [ ! -e "${1}" ]; then
-	echo "mkdir ${1}"
-	mkdir "${1}"
+	run_setup_cmd "mkdir ${1}"
     fi
 }
 
 maybe_link ()
 {
     if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
-	echo "ln -s ${2} ${1}"
-	ln -s "${2}" "${1}"
+	run_setup_cmd "ln -s ${2} ${1}"
     fi
 }
 
 maybe_unlink ()
 {
-    if [ -L "${1}" ] && [ "${1}" -ef "${2}" ]; then
-	echo "rm ${1}"
-	rm "${1}"
+    if maybe_unlink_p "${1}" "${2}"; then
+	run_setup_cmd "rm ${1}"
     fi
+}
+
+maybe_unlink_p ()
+{
+    (
+    cd `dirname "${1}"`
+    BN=`basename "${1}"`
+    [ -L "${BN}" ] && [ "${BN}" -ef "${2}" ]
+    )
 }
 
 maybe_rm ()
@@ -63,11 +75,9 @@ maybe_rm ()
 	fi
     done
     if [ "${FNS}" ]; then
-	echo "rm -f ${FNS}"
-	rm -f ${FNS}
+	run_setup_cmd "rm -f ${FNS}"
     fi
     if [ "${DIRS}" ]; then
-	echo "rm -rf ${DIRS}"
-	rm -rf ${DIRS}
+	run_setup_cmd "rm -rf ${DIRS}"
     fi
 }

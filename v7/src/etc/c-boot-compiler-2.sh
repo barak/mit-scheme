@@ -1,6 +1,6 @@
-# -*- Makefile -*-
+#!/bin/sh
 #
-# $Id: liarc-base-rules,v 1.4 2007/05/14 16:50:55 cph Exp $
+# $Id: c-boot-compiler-2.sh,v 1.1 2007/05/14 16:50:41 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -23,13 +23,22 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Makefile rules for C back end
+set -e
 
-$(LIARC_OBJECTS): $(LIARC_HEAD_FILES)
-cmpauxmd.o: cmpauxmd.c $(LIARC_HEAD_FILES) prims.h bignum.h bitstr.h avltree.h
-compinit.o: compinit.c compinit.h $(LIARC_HEAD_FILES)
-unstackify.o: unstackify.c stackops.h $(LIARC_HEAD_FILES)
+if [ ${#} -eq 2 ]; then
+    LIB=${1}
+    BAND=${2}
+else
+    echo "usage: ${0} <library-dir> <band>"
+    exit 1
+fi
 
-compinit.c compinit.h: $(LIARC_SOURCES) Makefile
-	rm -f $@
-	$(srcdir)/../etc/c-bundle.sh static compinit $(LIARC_SOURCES)
+CMD="microcode/scheme --library ${LIB} --fasl runtime_make.so --heap 6000"
+echo "${CMD}"
+eval "${CMD}" <<EOF
+(begin
+  (load-option (quote compiler))
+  (load-option (quote cref))
+  (load-option (quote *parser))
+  (disk-save "${BAND}"))
+EOF

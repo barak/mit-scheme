@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.29 2007/04/22 16:31:22 cph Exp $
+$Id: liarc.h,v 1.30 2007/05/14 16:50:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -49,12 +49,6 @@ USA.
 
 extern SCHEME_OBJECT * sp_register;
 
-#ifndef COMPILE_FOR_STATIC_LINKING
-#  ifndef COMPILE_FOR_DYNAMIC_LOADING
-#    define COMPILE_FOR_DYNAMIC_LOADING 1
-#  endif
-#endif
-
 #ifdef __GNUC__
 /* Add attributes to avoid warnings from -Wall for unreferenced labels */
 #  define DEFLABEL(name) name : __attribute__((unused))
@@ -377,20 +371,9 @@ struct liarc_data_S
     return (result);							\
 } while (false)
 
-#ifndef COMPILE_FOR_DYNAMIC_LOADING
-
-#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)
-#define DECLARE_COMPILED_DATA(name, decl_data, data)
-#define DECLARE_COMPILED_DATA_NS(name, data)
-#define DECLARE_DATA_OBJECT(name, data)
-#define DECLARE_DYNAMIC_INITIALIZATION(name)
-#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)
-
-#else /* COMPILE_FOR_DYNAMIC_LOADING */
+#ifdef ENABLE_LIARC_FILE_INIT
 
 #define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\
-liarc_decl_code_t decl_code;						\
-liarc_code_proc_t code;							\
 static int								\
 dload_initialize_code (void)						\
 {									\
@@ -398,8 +381,6 @@ dload_initialize_code (void)						\
 }
 
 #define DECLARE_COMPILED_DATA(name, decl_data, data)			\
-liarc_decl_data_t decl_data;						\
-liarc_data_proc_t data;							\
 static int								\
 dload_initialize_data (void)						\
 {									\
@@ -407,7 +388,6 @@ dload_initialize_data (void)						\
 }
 
 #define DECLARE_COMPILED_DATA_NS(name, data)				\
-liarc_data_proc_t data;							\
 static int								\
 dload_initialize_data (void)						\
 {									\
@@ -415,7 +395,6 @@ dload_initialize_data (void)						\
 }
 
 #define DECLARE_DATA_OBJECT(name, data)					\
-liarc_object_proc_t data;						\
 static int								\
 dload_initialize_data (void)						\
 {									\
@@ -440,7 +419,16 @@ dload_initialize_file (void)						\
   return (((dload_initialize_data ()) == 0) ? name : 0);		\
 }
 
-#endif /* COMPILE_FOR_DYNAMIC_LOADING */
+#else /* !ENABLE_LIARC_FILE_INIT */
+
+#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)
+#define DECLARE_COMPILED_DATA(name, decl_data, data)
+#define DECLARE_COMPILED_DATA_NS(name, data)
+#define DECLARE_DATA_OBJECT(name, data)
+#define DECLARE_DYNAMIC_INITIALIZATION(name)
+#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)
+
+#endif /* !ENABLE_LIARC_FILE_INIT */
 
 extern SCHEME_OBJECT initialize_subblock (const char *);
 

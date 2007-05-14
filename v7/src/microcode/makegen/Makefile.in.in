@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.55 2007/05/09 20:01:37 cph Exp $
+# $Id: Makefile.in.in,v 1.56 2007/05/14 16:50:56 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -139,7 +139,7 @@ ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
 MOSTLYCLEAN_FILES = *.o usrdef.c compinit.c compinit.h cmpauxmd.s \
-	$(LIARC_OBJECTS) $(LIARC_BUNDLE_CLEAN_FILES)
+	$(LIARC_OBJECTS)
 
 CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
@@ -170,9 +170,7 @@ C_CLEAN_FILES = utabmd.c utabmd.bci
 
 default-target: $(ALL_PROGRAMS) $(ALL_LIBS)
 
-all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(LIARC_BOOT_BUNDLES)
-
-liarc-bundles: all $(LIARC_BUNDLES)
+all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
 scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	-rm -f $@
@@ -239,9 +237,9 @@ install: install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
 	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(SYSTEM_BASE_NAME)
 	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(SYSTEM_BASE_NAME)
 
-install-auxLIBS: $(aux_LIBS) $(LIARC_BUNDLES)
+install-auxLIBS: $(aux_LIBS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
-	@list='$(aux_LIBS) $(LIARC_BUNDLES)'; \
+	@list='$(aux_LIBS)'; \
 	for p in $$list; do \
 	    if test -f $$p; then \
 		echo "$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \

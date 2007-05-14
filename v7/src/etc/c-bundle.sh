@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-bundle.sh,v 1.4 2007/05/04 19:35:36 cph Exp $
+# $Id: c-bundle.sh,v 1.5 2007/05/14 16:50:42 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,24 +25,20 @@
 
 set -e
 
-if [ ! $# -gt 2 ]; then
-  echo "usage: ${0} TYPE SYSTEM FILES ..."
-  exit 1
+usage ()
+{
+    echo "usage: ${0} TYPE SYSTEM FILES ..."
+    echo "  TYPE must be \`library' or \`static'."
+    exit 1
+}
+
+if [ ! ${#} -gt 2 ]; then
+    usage
 fi
 
 TYPE=${1}
 SYSTEM=${2}
 shift 2
-
-case "${TYPE}" in
-library | static)
-    ;;
-*)
-    echo "usage: ${0} TYPE SYSTEM FILES ..."
-    echo "  TYPE must be \`library' or \`static'."
-    exit 1
-    ;;
-esac
 
 (grep '^DECLARE_COMPILED_CODE' "${@}" && \
  grep '^DECLARE_COMPILED_DATA' "${@}" && \
@@ -82,33 +78,6 @@ extern liarc_object_proc_t data;
 EOF
 
 case "${TYPE}" in
-library)
-    cat <<EOF >> "${SYSTEM}.c"
-
-#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\\
-  if (0 != (declare_compiled_code (name, nentries, decl_code, code)))	\\
-    return (0);
-
-#define DECLARE_COMPILED_DATA(name, decl_data, data)			\\
-  if (0 != (declare_compiled_code (name, decl_data, data)))		\\
-    return (0);
-
-#define DECLARE_COMPILED_DATA_NS(name, data)				\\
-  if (0 != (declare_compiled_data_ns (name, data)))			\\
-    return (0);
-
-#define DECLARE_DATA_OBJECT(name, data)					\\
-  if (0 != (declare_data_object (name, data)))				\\
-    return (0);
-
-char *
-dload_initialize_file (void)
-{
-#include "${SYSTEM}.h"
-  return (0);
-}
-EOF
-    ;;
 static)
     cat <<EOF >> "${SYSTEM}.c"
 
@@ -140,5 +109,35 @@ initialize_compiled_code_blocks (void)
   return (0);
 }
 EOF
+    ;;
+library)
+    cat <<EOF >> "${SYSTEM}.c"
+
+#define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\\
+  if (0 != (declare_compiled_code (name, nentries, decl_code, code)))	\\
+    return (0);
+
+#define DECLARE_COMPILED_DATA(name, decl_data, data)			\\
+  if (0 != (declare_compiled_code (name, decl_data, data)))		\\
+    return (0);
+
+#define DECLARE_COMPILED_DATA_NS(name, data)				\\
+  if (0 != (declare_compiled_data_ns (name, data)))			\\
+    return (0);
+
+#define DECLARE_DATA_OBJECT(name, data)					\\
+  if (0 != (declare_data_object (name, data)))				\\
+    return (0);
+
+char *
+dload_initialize_file (void)
+{
+#include "${SYSTEM}.h"
+  return (0);
+}
+EOF
+    ;;
+*)
+    usage
     ;;
 esac

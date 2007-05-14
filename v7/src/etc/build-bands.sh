@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.10 2007/05/03 03:45:51 cph Exp $
+# $Id: build-bands.sh,v 1.11 2007/05/14 16:50:40 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,10 +25,29 @@
 
 set -e
 
-etc/build-runtime.sh
+(
+echo "cd runtime"
+cd runtime
 
-echo "microcode/scheme --library lib --heap 3000"
-exec microcode/scheme --library lib --heap 3000 <<EOF
+if [ -f make.o ]; then
+    FASL=runtime_make.so
+elif [ -f make.com ]; then
+    FASL=make.com
+else
+    echo "Can't find argument for --fasl."
+    exit 1
+fi
+
+CMD="../microcode/scheme --library ../lib --fasl ${FASL}"
+echo "${CMD}"
+eval "${CMD}" <<EOF
+(disk-save "../lib/runtime.com")
+EOF
+)
+
+CMD="microcode/scheme --library lib --heap 3000"
+echo "${CMD}"
+eval "${CMD}" <<EOF
 (begin
   (load-option (quote COMPILER))
   (load-option (quote EDWIN))

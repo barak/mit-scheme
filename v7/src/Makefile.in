@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.37 2007/05/09 20:01:36 cph Exp $
+# $Id: Makefile.in,v 1.38 2007/05/14 16:50:33 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -61,47 +61,89 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-SUBDIRS = 6001 compiler rcs sf win32 $(INSTALLED_SUBDIRS)
-INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos ssp star-parser \
-	 xdoc xml
+SUBDIRS_1 = cref sf star-parser
+SUBDIRS_2 = edwin imail sos ssp xml
+
+SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
+INSTALLED_SUBDIRS = microcode runtime $(SUBDIRS_1) $(SUBDIRS_2)
+
+LIARC_BOOT_BUNDLES = $(SUBDIRS_1) compiler
+LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) $(SUBDIRS_2)
 
 AUXDIR = @AUXDIR@
 EDETC = $(AUXDIR)/edwin/etc
 
-all: all-microcode @ALL_TARGET@ all-bands
+all: compile-microcode @ALL_TARGET@ build-bands
 
-all-microcode:
-	( cd microcode && $(MAKE) all )
+compile-microcode:
+	(cd microcode && $(MAKE) all)
+
+build-bands:
+	@$(top_srcdir)/etc/build-bands.sh
 
 all-native:
-	$(srcdir)/etc/compile.sh
+	@$(top_srcdir)/etc/compile.sh
 
-all-c:
-	$(srcdir)/etc/c-compile.sh
-	( cd microcode && $(MAKE) liarc-bundles )
 
-all-bands:
-	$(srcdir)/etc/build-bands.sh
-
-c: c-boot-compiler.com
-	$(srcdir)/etc/c-prepare.sh mit-scheme --band $<
-	-rm -f liarc.stamp
-	echo "done" > liarc.stamp
-
-native: native-boot-compiler.com
-	$(srcdir)/etc/compile.sh mit-scheme-c --band $<
+liarc-dist: liarc-stamp distclean
 
 c-boot-compiler.com:
-	$(srcdir)/etc/c-boot-compiler.sh mit-scheme $@
+	@$(top_srcdir)/etc/c-boot-compiler.sh mit-scheme $@
+
+liarc-stamp: c-boot-compiler.com
+	@$(top_srcdir)/etc/c-prepare.sh mit-scheme --band $<
+	echo "done" > liarc.stamp
+
+
+all-c: liarc-compile-scheme
+	$(MAKE) compile-microcode
+	$(MAKE) compile-liarc-bundles
+	rm -rf boot-lib
+
+liarc-compile-scheme: boot-lib/compiler.com c-clean
+	@$(top_srcdir)/etc/c-compile.sh boot-lib/scheme --library boot-lib \
+	    --band boot-lib/compiler.com
+
+boot-lib/compiler.com: compile-microcode compile-liarc-boot-bundles
+	$(mkinstalldirs) boot-lib boot-lib/include boot-lib/lib
+	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm boot-lib/.
+	$(INSTALL_PROGRAM) microcode/scheme boot-lib/.
+	$(INSTALL_PROGRAM) microcode/liarc-cc boot-lib/.
+	$(INSTALL_PROGRAM) microcode/liarc-ld boot-lib/.
+	$(INSTALL_DATA) microcode/*.h boot-lib/include/.
+	@for BN in $(LIARC_BOOT_BUNDLES); do \
+	    CMD="$(INSTALL_DATA) $${BN}/$${BN}.so boot-lib/lib/.";\
+	    echo "$${CMD}"; eval "$${CMD}";\
+	done
+	@$(top_srcdir)/etc/c-boot-compiler-2.sh boot-lib boot-lib/compiler.com
+
+compile-liarc-boot-bundles:
+	@for BN in $(LIARC_BOOT_BUNDLES); do \
+	    CMD="(cd $${BN} && $(MAKE) liarc-bundle)";\
+	    echo "$${CMD}"; eval "$${CMD}";\
+	done
+
+compile-liarc-bundles:
+	@for BN in $(LIARC_BUNDLES); do \
+	    CMD="(cd $${BN} && $(MAKE) liarc-bundle)";\
+	    echo "$${CMD}"; eval "$${CMD}";\
+	done
+
+
+
+native: native-boot-compiler.com
+	@$(top_srcdir)/etc/compile.sh mit-scheme-c --band $<
 
 native-boot-compiler.com:
-	$(srcdir)/etc/c-boot-compiler.sh mit-scheme-c $@
+	@$(top_srcdir)/etc/c-boot-compiler.sh mit-scheme-c $@
+
+
 
 mostlyclean clean distclean maintainer-clean c-clean:
-	$(srcdir)/Clean.sh $@ $(SUBDIRS)
+	$(top_srcdir)/Clean.sh $@ $(SUBDIRS)
 
 tags TAGS:
-	$(srcdir)/Tags.sh $(SUBDIRS)
+	$(top_srcdir)/Tags.sh $(SUBDIRS)
 
 install:
 	@for SUBDIR in $(INSTALLED_SUBDIRS); do \
@@ -110,11 +152,14 @@ install:
 	done
 
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_DATA) $(srcdir)/lib/optiondb.scm $(DESTDIR)$(AUXDIR)/.
-	$(INSTALL_DATA) $(srcdir)/lib/*.com $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
 	$(mkinstalldirs) $(DESTDIR)$(EDETC)
-	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
+	$(INSTALL_DATA) $(top_srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
 
-.PHONY: all all-microcode all-native all-c all-bands c native install
-.PHONY: mostlyclean clean distclean maintainer-clean c-clean tags TAGS
+.PHONY: all compile-microcode build-bands all-native
+.PHONY: liarc-dist all-c liarc-compile-scheme compile-liarc-boot-bundles
+.PHONY: compile-liarc-bundles native
+.PHONY: mostlyclean clean distclean maintainer-clean c-clean
+.PHONY: tags TAGS install

@@ -9,11 +9,8 @@ install:
 	rm -rf $(DESTDIR)$(RODIR)
 	$(mkinstalldirs) $(DESTDIR)$(RODIR)
 	@for F in $(RUNOPTS); do \
-	    echo "$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
-	    $(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.;\
-	done
-	@for F in $(RUNOPTS); do \
-	    REL="../SRC/runtime/$${F}.bci";\
-	    echo "( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . )";\
-	    ( cd $(DESTDIR)$(RODIR); $(LN_S) $${REL} . );\
+	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
+	    echo "${CMD}"; eval "${CMD}";\
+	    CMD="(cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${F}.bci .)";\
+	    echo "${CMD}"; eval "${CMD}";\
 	done

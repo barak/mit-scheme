@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.18 2007/05/06 14:17:04 cph Exp $
+$Id: compile.scm,v 1.19 2007/05/14 16:50:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,8 +35,7 @@ USA.
 
 (define (compile-all-dirs compile-dir)
   (compile-boot-dirs compile-dir)
-  (for-each compile-dir
-	    '("win32" "sos" "xml" "edwin" "imail" "6001" "ssp" "xdoc")))
+  (for-each compile-dir '("sos" "xml" "win32" "edwin" "imail" "ssp")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
@@ -95,7 +94,9 @@ USA.
 
 (define (c-compile)
   (fluid-let ((compiler:invoke-c-compiler? #f))
-    (compile-all-dirs c-compile-dir)))
+    (compile-all-dirs c-compile-dir)
+    (cf "microcode/utabmd")
+    (cbf "edwin/edwin.bld")))
 
 (define (c-compile-dir name)
   (compile-dir name)

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.12 2007/05/09 02:05:32 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.13 2007/05/14 16:50:32 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -65,13 +65,17 @@ fi
 AC_CONFIG_SUBDIRS([microcode compiler])
 AC_CONFIG_FILES([
 Makefile
+6001/Makefile
+compiler/Makefile
 cref/Makefile
 edwin/Makefile
 imail/Makefile
 runtime/Makefile
+sf/Makefile
 sos/Makefile
 ssp/Makefile
 star-parser/Makefile
+win32/Makefile
 xdoc/Makefile
 xml/Makefile
 ])
@@ -79,11 +83,11 @@ AC_OUTPUT
 
 if test x${enable_native_code} = xc; then
     BN=liarcc-cc
-    (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} ${BN})
+    (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     BN=liarcc-ld
-    (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} ${BN})
-    for BUNDLE in compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
-    	BN=${BUNDLE}.so
-	(cd lib/lib; rm -f ${BN}; ${LN_S} ../../microcode/${BN} ${BN})
+    (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
+    for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
+    	SO=${BUNDLE}.so
+	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)
     done
 fi

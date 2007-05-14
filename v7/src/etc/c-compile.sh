@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.6 2007/05/06 14:16:59 cph Exp $
+# $Id: c-compile.sh,v 1.7 2007/05/14 16:50:43 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,14 +25,10 @@
 
 set -e
 
-etc/build-runtime.sh
-
-echo "microcode/scheme --library lib --heap 6000 --stack 200"
-exec microcode/scheme --library lib --heap 6000 --stack 200 <<EOF
+SCHEME_COMPILER="${@}"" --heap 6000 --stack 200"
+echo "${SCHEME_COMPILER}"
+eval "${SCHEME_COMPILER}" <<EOF
 (begin
-  (load-option (quote COMPILER))
-  (load-option (quote *PARSER))
-  (load-option (quote CREF))
   (load "etc/compile.scm")
   (c-compile))
 EOF

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.46 2007/05/09 02:05:56 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.47 2007/05/14 16:50:51 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -217,9 +217,6 @@ if test ${GCC} = yes; then
     else
 	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS"
 	LDFLAGS="${LDFLAGS} -g"
-    fi
-    if test ${enable_native_code} = c; then
-	CFLAGS="-fPIC ${CFLAGS}"
     fi
     CFLAGS="${CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
     CFLAGS="${CFLAGS} -Wstrict-prototypes -Wnested-externs -Wredundant-decls"
@@ -854,7 +851,7 @@ if test ${DO_GCC_TESTS} = yes; then
     fi
     SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM(
@@ -930,8 +927,6 @@ c)
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
     AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
     AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
-    AC_DEFINE([COMPILE_FOR_STATIC_LINKING], [1],
-	[Define to 1 for static compilation of C native code.])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules

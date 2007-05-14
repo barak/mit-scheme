@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.15 2007/05/06 14:16:44 cph Exp $
+# $Id: Clean.sh,v 1.16 2007/05/14 16:50:31 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -38,18 +38,13 @@ shift
 SUBDIRS=${@}
 
 FULL=no
-C=no
 DIST=no
 MAINTAINER=no
 case ${COMMAND} in
 mostlyclean)
     ;;
-clean)
+clean | c-clean)
     FULL=yes
-    ;;
-c-clean)
-    FULL=yes
-    C=yes
     ;;
 distclean)
     FULL=yes
@@ -57,7 +52,6 @@ distclean)
     ;;
 maintainer-clean)
     FULL=yes
-    C=yes
     DIST=yes
     MAINTAINER=yes
     ;;
@@ -75,16 +69,12 @@ if [ ${FULL} = yes ]; then
     maybe_rm lib/*.com
 fi
 
-if [ ${C} = yes ]; then
-    maybe_rm liarc.stamp
-fi
-
 if [ ${DIST} = yes ]; then
-    maybe_rm Makefile config.cache config.log config.status
+    maybe_rm Makefile boot-lib config.cache config.log config.status
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    maybe_rm configure lib autom4te.cache
+    maybe_rm autom4te.cache configure liarc.stamp lib
 fi
 
 for SUBDIR in ${SUBDIRS}; do

@@ -1,4 +1,4 @@
-# $Id: std-makefile-prefix,v 1.1 2007/05/09 20:01:37 cph Exp $
+# $Id: std-makefile-prefix,v 1.2 2007/05/14 16:50:48 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -68,6 +68,10 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 # **** END BOILERPLATE ****
 
 AUXDIR = @AUXDIR@
+
+.c.o:
+	@$(top_builddir)/microcode/liarc-cc $*.o $*.c \
+	    -I$(top_builddir)/microcode
 
 all:
 	echo "No ALL action"

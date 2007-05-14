@@ -12,11 +12,8 @@ install:
 	rm -rf $(DESTDIR)$(EODIR)
 	$(mkinstalldirs) $(DESTDIR)$(EODIR)
 	@for F in $(EDOPTS); do \
-	    echo "$(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.";\
-	    $(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.;\
-	done
-	@for F in $(EDOPTS); do \
-	    REL="../../SRC/edwin/$${F}.bci";\
-	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . )";\
-	    ( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . );\
+	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.";\
+	    echo "${CMD}"; eval "${CMD}";\
+	    CMD="(cd $(DESTDIR)$(EODIR);$(LN_S) ../../SRC/edwin/$${F}.bci .)";\
+	    echo "${CMD}"; eval "${CMD}";\
 	done

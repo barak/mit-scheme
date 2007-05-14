@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.15 2007/05/03 03:40:17 cph Exp $
+# $Id: Clean.sh,v 1.16 2007/05/14 16:50:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -37,6 +37,3 @@ fi
 . ../etc/functions.sh
 
 maybe_rm edwin.bld
-maybe_rm edwin-unx.crf edwin-w32.crf edwin-os2.crf
-maybe_rm edwin-unx.pkd edwin-w32.pkd edwin-os2.pkd
-maybe_rm edwin-unx.fre edwin-w32.fre edwin-os2.fre
