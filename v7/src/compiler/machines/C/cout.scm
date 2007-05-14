@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.39 2007/04/17 06:02:06 cph Exp $
+$Id: cout.scm,v 1.40 2007/05/14 16:49:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -50,7 +50,6 @@ USA.
 
 (define *use-stackify?* #t)
 (define *disable-nonces?* #f)
-(define *C-procedure-name* 'DEFAULT)
 
 (define *subblocks*)			;referenced by stackify
 
@@ -116,40 +115,29 @@ USA.
   ;; returns <code-name data-name ntags symbol-table code proxy>
   (let ((top-level? (string-null? suffix)))
 
-    (define (canonicalize-name name full?)
-      (if full?
-	  (canonicalize-label-name name)
-	  (C-quotify-string name)))
-
     (define (gen-code-name nonce)
-      (choose-name #t "code" "" nonce))
+      (choose-name #f "code" "" nonce))
 
     (define (gen-data-name nonce)
-      (choose-name #t "data" "_data" nonce))
+      (choose-name #f "data" "_data" nonce))
 
     (define (gen-handle-name nonce)
-      (choose-name #f "" "" nonce))
+      (choose-name #t "" "" nonce))
 
-    (define (choose-name full? default midfix nonce)
-      (cond ((not *C-procedure-name*)
-	     (string-append default suffix "_" nonce))
-	    ((not (eq? *C-procedure-name* 'DEFAULT))
-	     (string-append *C-procedure-name*
-			    midfix
-			    suffix))
-	    ((not info-output-pathname)
-	     (string-append default suffix "_" nonce))
-	    ((or top-level? *disable-nonces?*)
-	     (string-append (canonicalize-name (default-file-handle) full?)
-			    midfix
-			    suffix))
-	    (else
-	     (string-append (canonicalize-name (default-file-handle) full?)
-			    "_"
-			    default
-			    suffix
-			    "_"
-			    nonce))))
+    (define (choose-name handle? default midfix nonce)
+      (let ((nsuffix
+	     (if (or *disable-nonces?* (and handle? top-level?))
+		 ""
+		 (string-append "_" nonce))))
+	(if info-output-pathname
+	    (string-append (let ((name (default-file-handle)))
+			     (if handle?
+				 (C-quotify-string name)
+				 (canonicalize-label-name name)))
+			   (if top-level?
+			       (string-append midfix nsuffix)
+			       (string-append "_" default suffix)))
+	    (string-append default suffix nsuffix))))
 
     (define (subroutine-information)
       (let*/mv (((decls-1 code-1) (subroutine-information-1))
