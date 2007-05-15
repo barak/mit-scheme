@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.38 2007/05/14 16:50:33 cph Exp $
+# $Id: Makefile.in,v 1.39 2007/05/15 05:02:08 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -95,7 +95,7 @@ liarc-stamp: c-boot-compiler.com
 	echo "done" > liarc.stamp
 
 
-all-c: liarc-compile-scheme
+all-liarc: liarc-compile-scheme
 	$(MAKE) compile-microcode
 	$(MAKE) compile-liarc-bundles
 	rm -rf boot-lib
@@ -119,13 +119,19 @@ boot-lib/compiler.com: compile-microcode compile-liarc-boot-bundles
 
 compile-liarc-boot-bundles:
 	@for BN in $(LIARC_BOOT_BUNDLES); do \
-	    CMD="(cd $${BN} && $(MAKE) liarc-bundle)";\
+	    CMD="(cd $${BN} && $(MAKE) compile-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
 
 compile-liarc-bundles:
 	@for BN in $(LIARC_BUNDLES); do \
-	    CMD="(cd $${BN} && $(MAKE) liarc-bundle)";\
+	    CMD="(cd $${BN} && $(MAKE) compile-liarc-bundle)";\
+	    echo "$${CMD}"; eval "$${CMD}";\
+	done
+
+install-liarc-bundles:
+	@for BN in $(LIARC_BUNDLES); do \
+	    CMD="(cd $${BN} && $(MAKE) install-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
 
@@ -145,10 +151,12 @@ mostlyclean clean distclean maintainer-clean c-clean:
 tags TAGS:
 	$(top_srcdir)/Tags.sh $(SUBDIRS)
 
-install:
+install: install-standard @INSTALL_LIARC_BUNDLES@
+
+install-standard:
 	@for SUBDIR in $(INSTALLED_SUBDIRS); do \
 	    echo "Making $@ in $${SUBDIR}";\
-	    ( cd $${SUBDIR}; $(MAKE) $@ ) || exit 1;\
+	    (cd $${SUBDIR}; $(MAKE) install) || exit 1;\
 	done
 
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
@@ -162,4 +170,4 @@ install:
 .PHONY: liarc-dist all-c liarc-compile-scheme compile-liarc-boot-bundles
 .PHONY: compile-liarc-bundles native
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean
-.PHONY: tags TAGS install
+.PHONY: tags TAGS install install-standard

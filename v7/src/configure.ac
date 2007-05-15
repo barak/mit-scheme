@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.13 2007/05/14 16:50:32 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.14 2007/05/15 05:02:02 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -39,13 +39,15 @@ fi
 
 case ${enable_native_code} in
 c)
-    ALL_TARGET=all-c
+    ALL_TARGET=all-liarc
     INSTALL_COM=:
+    INSTALL_LIARC_BUNDLES=install-liarc-bundles
     SYSTEM_BASE_NAME=mit-scheme-c
     ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
+    INSTALL_LIARC_BUNDLES=
     SYSTEM_BASE_NAME=mit-scheme
     ;;
 esac
@@ -53,6 +55,7 @@ AUXDIR='$(libdir)'/${SYSTEM_BASE_NAME}
 
 AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
+AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([AUXDIR])
 
 AC_PROG_INSTALL

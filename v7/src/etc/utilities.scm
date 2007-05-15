@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.1 2007/05/14 16:50:50 cph Exp $
+$Id: utilities.scm,v 1.2 2007/05/15 05:02:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,14 +38,13 @@ USA.
 			  (write-string "Generating bundle rule for " port)
 			  (write-string bundle port))
        (lambda ()
-	 (let ((names (bundle-files bundle)))
+	 (let ((names (bundle-files bundle))
+	       (so-file (string-append bundle ".so")))
 	   (call-with-output-file (string-append bundle "/Makefile-bundle")
 	     (lambda (port)
 	       (newline port)
 	       (let ((init-root (string-append bundle "-init")))
-		 (write-rule port "liarc-bundle" (string-append bundle ".so"))
-		 (newline port)
-		 (write-rule port ".PHONY" "liarc-bundle")
+		 (write-rule port "compile-liarc-bundle" so-file)
 		 (newline port)
 		 (write-rule port
 			     (string-append bundle ".so")
@@ -64,6 +63,17 @@ USA.
 				"library"
 				init-root
 				"$^")
+		 (newline port)
+		 (write-rule port "install-liarc-bundle" so-file)
+		 (write-command port
+				"$(INSTALL_DATA)"
+				"$^"
+				"$(DESTDIR)$(AUXDIR)/lib/.")
+		 (newline port)
+		 (write-rule port
+			     ".PHONY"
+			     "compile-liarc-bundle"
+			     "install-liarc-bundle")
 		 )))))))
    (map write-to-string bundles)))
 
