@@ -10,7 +10,7 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(RODIR)
 	@for F in $(RUNOPTS); do \
 	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
-	    echo "${CMD}"; eval "${CMD}";\
+	    echo "$${CMD}"; eval "$${CMD}";\
 	    CMD="(cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${F}.bci .)";\
-	    echo "${CMD}"; eval "${CMD}";\
+	    echo "$${CMD}"; eval "$${CMD}";\
 	done

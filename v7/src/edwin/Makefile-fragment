@@ -13,7 +13,7 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(EODIR)
 	@for F in $(EDOPTS); do \
 	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.";\
-	    echo "${CMD}"; eval "${CMD}";\
+	    echo "$${CMD}"; eval "$${CMD}";\
 	    CMD="(cd $(DESTDIR)$(EODIR);$(LN_S) ../../SRC/edwin/$${F}.bci .)";\
-	    echo "${CMD}"; eval "${CMD}";\
+	    echo "$${CMD}"; eval "$${CMD}";\
 	done
