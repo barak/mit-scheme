@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.56 2007/05/14 16:50:56 cph Exp $
+# $Id: Makefile.in.in,v 1.57 2007/05/15 05:15:50 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -258,6 +258,8 @@ install-auxDATA: $(aux_DATA)
 	done
 
 install-include:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(INSTALL_PROGRAM) liarc-cc liarc-ld $(DESTDIR)$(AUXDIR)/.
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/include
 	$(INSTALL_DATA) *.h $(DESTDIR)$(AUXDIR)/include/.
 
