@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.2 2007/05/15 05:02:14 cph Exp $
+$Id: utilities.scm,v 1.3 2007/05/15 05:23:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -98,7 +98,8 @@ USA.
 				"base/make"
 				names))
 			((string=? bundle "edwin")
-			 (cons* "edwin"
+			 (cons* "make"
+				"edwin"
 				"rename"
 				names))
 			(else names)))
