@@ -2,7 +2,7 @@ SSP_DIR = $(AUXDIR)/ssp
 
 install:
 	$(mkinstalldirs) $(DESTDIR)$(SSP_DIR)
-	$(INSTALL_COM)  *.com $(DESTDIR)$(SSP_DIR)/.
+	$(INSTALL_COM) *.com $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) ssp-unx.pkd $(DESTDIR)$(SSP_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(SSP_DIR)/.

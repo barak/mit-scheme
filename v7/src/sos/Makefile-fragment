@@ -2,7 +2,7 @@ TARGET_DIR = $(AUXDIR)/sos
 
 install:
 	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
-	$(INSTALL_COM)  *.com $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_COM) *.com $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) sos-unx.pkd $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) $(srcdir)/load.scm $(DESTDIR)$(TARGET_DIR)/.
