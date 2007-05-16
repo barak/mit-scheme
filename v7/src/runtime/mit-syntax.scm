@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.30 2007/01/26 02:38:22 riastradh Exp $
+$Id: mit-syntax.scm,v 14.31 2007/05/16 19:24:08 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -337,16 +337,17 @@ USA.
 (define supported-srfi-features
   '(MIT
     MIT/GNU
-    SRFI-0
-    SRFI-1
-    SRFI-2
-    SRFI-6
-    SRFI-8
-    SRFI-9
-    SRFI-23
-    SRFI-27
-    SRFI-30
-    SRFI-69))
+    SRFI-0                              ;COND-EXPAND
+    SRFI-1                              ;List Library
+    SRFI-2                              ;AND-LET*
+    SRFI-6                              ;Basic String Ports
+    SRFI-8                              ;RECEIVE
+    SRFI-9                              ;DEFINE-RECORD-TYPE
+    SRFI-23                             ;ERROR
+    SRFI-27                             ;Sources of Random Bits
+    SRFI-30                             ;Nested Multi-Line Comments (#| ... |#)
+    SRFI-62                             ;S-expression comments
+    SRFI-69))                           ;Basic Hash Tables
 
 (define-er-macro-transformer 'RECEIVE system-global-environment
   (lambda (form rename compare)
