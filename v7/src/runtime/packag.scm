@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.53 2007/04/14 03:52:55 cph Exp $
+$Id: packag.scm,v 14.54 2007/05/20 01:52:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -173,9 +173,7 @@ USA.
 		 (if (default-object? options) '() options))))
       (with-working-directory-pathname dir
 	(lambda ()
-	  (let ((file
-		 (or (built-in-object-file pkg)
-		     (fasload pkg))))
+	  (let ((file (fasload pkg)))
 	    (if (not (package-file? file))
 		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
