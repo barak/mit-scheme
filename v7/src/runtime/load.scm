@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.93 2007/04/15 17:50:37 cph Exp $
+$Id: load.scm,v 14.94 2007/05/20 01:55:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -313,11 +313,9 @@ USA.
 
 (define (wrapper/fasload/built-in value)
   (lambda (pathname suppress-loading-message?)
-    (with-loading-message pathname
-      (lambda ()
-	(fasload/update-debugging-info! value pathname)
-	value)
-      suppress-loading-message?)))
+    (fasload/update-debugging-info! value pathname)
+    (write-init-message pathname suppress-loading-message?)
+    value))
 
 (define (load-object-file pathname environment purify? load-noisily?)
   load-noisily?		; ignored
@@ -329,10 +327,10 @@ USA.
 (define (wrapper/load/built-in scode)
   (lambda (pathname environment purify? load-noisily?)
     load-noisily?			; ignored
-    (with-loading-message pathname
-      (lambda ()
-	(fasload/update-debugging-info! scode pathname)
-	(load-scode-end scode environment purify?)))))
+    (fasload/update-debugging-info! scode pathname)
+    (let ((value (load-scode-end scode environment purify?)))
+      (write-init-message pathname)
+      value)))
 
 (define (load-scode-end scode environment purify?)
   (if purify? (purify (load/purification-root scode)))
@@ -385,6 +383,15 @@ USA.
 			   (write-string "Loading " port)
 			   (write (enough-namestring pathname) port))
 	thunk)))
+
+(define (write-init-message pathname #!optional suppress-message?)
+  (if (not (if (default-object? suppress-message?)
+	       load/suppress-loading-message?
+	       suppress-message?))
+      (write-notification-line
+       (lambda (port)
+	 (write-string "Initialized " port)
+	 (write (enough-namestring pathname) port)))))
 
 (define *purification-root-marker*)
 
