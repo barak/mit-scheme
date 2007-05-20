@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.28 2007/05/14 16:50:37 cph Exp $
+$Id: ctop.scm,v 1.29 2007/05/20 01:51:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -104,38 +104,47 @@ USA.
 		       ))))))
 
 (define (c-compile pathname)
-  (let ((run
-	 (lambda tokens
-	   (let ((command
-		  (decorated-string-append
-		   "" " " ""
-		   (map (lambda (token)
-			  (let ((s
-				 (if (pathname? token)
-				     (enough-namestring token)
-				     token)))
-			    (if (string-find-next-char s #\space)
-				(string-append "\"" s "\"")
-				s)))
-			tokens))))
-	     (maybe-with-notification compiler:invoke-verbose?
-				      (lambda (port)
-					(write-string "Executing " port)
-					(write command port))
-	       (lambda ()
-		 (run-shell-command command)))))))
-    (run (system-library-pathname "liarc-cc")
-	 (pathname-new-type pathname "o")
-	 pathname
-	 "-DENABLE_LIARC_FILE_INIT")
-    (run (system-library-pathname "liarc-ld")
-	 (pathname-new-type pathname (c-output-extension))
-	 (pathname-new-type pathname "o"))))
+  (run-compiler (system-library-pathname "liarc-cc")
+		(pathname-new-type pathname "o")
+		pathname
+		"-DENABLE_LIARC_FILE_INIT"
+		(string-append
+		 "-I"
+		 (->namestring
+		  (directory-pathname-as-file
+		   (or (system-library-directory-pathname "include")
+		       (error "Unable to find C include directory."))))))
+  (run-compiler (system-library-pathname "liarc-ld")
+		(pathname-new-type pathname (c-output-extension))
+		(pathname-new-type pathname "o")))
 
-(define (maybe-with-notification flag message thunk)
-  (if flag
-      (with-notification message thunk)
-      (thunk)))
+(define (run-compiler program . arguments)
+  (let ((port (open-output-string)))
+    (let ((rc
+	   (run-synchronous-subprocess
+	    program
+	    (map (lambda (arg)
+		   (cond ((pathname? arg) (->namestring arg))
+			 ((string? arg) arg)
+			 (else (error "Unknown argument:" arg))))
+		 arguments)
+	    'OUTPUT port))
+	  (copy
+	   (lambda ()
+	     (let ((port (open-input-string (get-output-string! port))))
+	       (let loop ()
+		 (let ((line (read-line port)))
+		   (if (not (eof-object? line))
+		       (begin
+			 (write-notification-line
+			  (lambda (port)
+			    (write-string line port)))
+			 (loop)))))))))
+      (cond ((not (= rc 0))
+	     (copy)
+	     (error "C compiler returned non-zero exit code:" rc))
+	    (compiler:invoke-verbose?
+	     (copy))))))
 
 (define (c-output-extension)
   "so")
