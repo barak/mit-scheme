@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.23 2007/04/22 16:31:23 cph Exp $
+$Id: pruxdld.c,v 1.24 2007/05/20 02:02:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -71,12 +71,29 @@ dld_lookup (unsigned long handle, char * symbol)
 
 #endif /* HAVE_DLFCN_H */
 
+static const char * lof_name = 0;
+
+const char *
+load_object_file_name (void)
+{
+  return (lof_name);
+}
+
 DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,
 		  "(FILENAME)\n\
 Load the shared library FILENAME and return a handle for it.")
 {
+  const char * name;
+  void * p;
+  unsigned long handle;
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (ulong_to_integer (dld_load (STRING_ARG (1))));
+
+  name = (STRING_ARG (1));
+  p = dstack_position;
+  dstack_bind ((&lof_name), ((void *) name));
+  handle = (dld_load (name));
+  dstack_set_position (p);
+  PRIMITIVE_RETURN (ulong_to_integer (handle));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
