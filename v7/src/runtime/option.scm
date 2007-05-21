@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.54 2007/05/01 04:55:22 cph Exp $
+$Id: option.scm,v 14.55 2007/05/21 17:33:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -50,8 +50,7 @@ USA.
 	    (fluid-let ((*options* '())
 			(*parent* #f))
 	      (fluid-let ((load/suppress-loading-message? #t))
-		(load-latest (merge-pathnames file
-					      (library-directory-pathname ""))
+		(load-latest (system-library-pathname file #f)
 			     (make-load-environment)
 			     'DEFAULT
 			     #f))
@@ -94,7 +93,8 @@ USA.
 
 (define (library-file? library-internal-path)
   (confirm-pathname
-   (merge-pathnames library-internal-path (library-directory-pathname ""))))
+   (merge-pathnames library-internal-path
+		    (system-library-directory-pathname))))
 
 (define (confirm-pathname pathname)
   (receive (pathname* loader)
@@ -122,7 +122,8 @@ USA.
 		       (purify obj)
 		       (scode-eval obj environment)))
 		 (else
-		  (let* ((options (library-directory-pathname "options"))
+		  (let* ((options
+			  (system-library-directory-pathname "options" #t))
 			 (pathname (merge-pathnames file options)))
 		    (with-directory-rewriting-rule options runtime
 		      (lambda ()
@@ -138,29 +139,17 @@ USA.
       (eval init-expression environment))))
 
 (define (declare-shared-library shared-library thunk)
-  (let ((thunk-valid?
-	 (lambda (thunk)
-	   (not (condition? (ignore-errors thunk))))))
-    (add-event-receiver!
-     event:after-restore
-     (lambda ()
-       (if (not (thunk-valid? thunk))
-	   (fluid-let ((load/suppress-loading-message? #t))
-	     (load
-	      (merge-pathnames shared-library
-			       (library-directory-pathname "lib")))))))))
+  (add-event-receiver!
+   event:after-restore
+   (lambda ()
+     (if (condition? (ignore-errors thunk))
+	 (fluid-let ((load/suppress-loading-message? #t))
+	   (load
+	    (merge-pathnames
+	     shared-library
+	     (system-library-directory-pathname "lib" #t))))))))
 
 (define (force* value)
   (cond ((procedure? value) (force* (value)))
 	((promise? value) (force* (force value)))
 	(else value)))
-
-(define (library-directory-pathname name)
-  (or (system-library-directory-pathname name)
-      (library-directory-pathname
-       (error:file-operation name
-			     "find"
-			     "directory"
-			     "no such directory in system library path"
-			     library-directory-pathname
-			     (list name)))))

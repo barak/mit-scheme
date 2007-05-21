@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.51 2007/01/05 21:19:28 cph Exp $
+$Id: pathnm.scm,v 14.52 2007/05/21 17:33:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -591,45 +591,43 @@ these rules:
 	     local-host)))
     ((host-type/operation/init-file-pathname (host/type host)) host)))
 
-(define (system-library-pathname pathname)
-  (let ((try-directory
-	 (lambda (directory)
-	   (let ((pathname (merge-pathnames pathname directory)))
-	     (and (file-exists? pathname)
-		  pathname))))
-	(loser
-	 (lambda ()
-	   (system-library-pathname
-	    (->pathname
-	     (error:file-operation pathname
-				   "find"
-				   "file"
-				   "no such file in system library path"
-				   system-library-pathname
-				   (list pathname)))))))
-    (if (pathname-absolute? pathname)
-	(if (file-exists? pathname) pathname (loser))
-	(let loop ((directories library-directory-path))
-	  (if (null? directories)
-	      (loser)
-	      (or (try-directory (car directories))
-		  (loop (cdr directories))))))))
+(define (system-library-pathname pathname #!optional required?)
+  (let ((pathname* (merge-pathnames pathname (%find-library-directory)))
+	(required? (if (default-object? required?) #t required?)))
+    (if (and required? (not (file-exists? pathname*)))
+	(system-library-pathname
+	 (error:file-operation pathname*
+			       "find"
+			       "file"
+			       "no such file in system library path"
+			       system-library-pathname
+			       (list pathname required?)))
+	pathname*)))
+
+(define (system-library-directory-pathname #!optional pathname required?)
+  (if (if (default-object? pathname) #f pathname)
+      (let ((dir (system-library-pathname pathname #f)))
+	(cond ((file-directory? dir)
+	       (pathname-as-directory dir))
+	      ((if (default-object? required?) #f required?)
+	       (system-library-directory-pathname
+		(error:file-operation
+		 pathname
+		 "find"
+		 "directory"
+		 "no such directory in system library path"
+		 system-library-directory-pathname
+		 (list pathname required?))
+		required?))
+	      (else #f)))
+      (%find-library-directory)))
+
+(define (%find-library-directory)
+  (pathname-as-directory
+   (or (find-matching-item library-directory-path file-directory?)
+       (error "Can't find library directory."))))
 
 (define library-directory-path)
-
-(define (system-library-directory-pathname pathname)
-  (if (not pathname)
-      (let ((pathname
-	     (list-search-positive library-directory-path file-directory?)))
-	(if (not pathname)
-	    (error "can't find system library directory"))
-	(pathname-as-directory pathname))
-      (let loop ((directories library-directory-path))
-	(and (not (null? directories))
-	     (let ((pathname (merge-pathnames pathname (car directories))))
-	       (if (file-directory? pathname)
-		   (pathname-as-directory pathname)
-		   (loop (cdr directories))))))))
 
 (define known-host-types
   '((0 UNIX)
