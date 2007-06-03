@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boole.scm,v 14.8 2007/01/05 21:19:28 cph Exp $
+$Id: boole.scm,v 14.9 2007/06/03 03:49:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,7 +29,7 @@ USA.
 ;;; package: (runtime boolean)
 
 (declare (usual-integrations))
-
+
 (define-primitives not (false? not))
 
 (define false #f)
@@ -59,16 +59,23 @@ USA.
 	#t)))
 
 (define (there-exists? items predicate)
-  (let loop ((items items))
-    (if (pair? items)
-	(or (predicate (car items))
-	    (loop (cdr items)))
-	#f)))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    #t
+	    (loop (cdr items*)))
+	(begin
+	  (if (not (null? items*))
+	      (error:not-list items 'THERE-EXISTS?))
+	  #f))))
 
 (define (for-all? items predicate)
-  (let loop ((items items))
-    (if (pair? items)
-	(if (predicate (car items))
-	    (loop (cdr items))
+  (let loop ((items* items))
+    (if (pair? items*)
+	(if (predicate (car items*))
+	    (loop (cdr items*))
 	    #f)
-	#t)))
+	(begin
+	  (if (not (null? items*))
+	      (error:not-list items 'FOR-ALL?))
+	  #t))))
