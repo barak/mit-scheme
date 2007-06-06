@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: utils.c,v 9.90 2007/04/22 16:31:23 cph Exp $
+$Id: utils.c,v 9.91 2007/06/06 19:29:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -339,7 +339,13 @@ void
 error_with_argument (SCHEME_OBJECT argument)
 {
   error_argument = argument;
-  signal_error_from_primitive (ERR_WITH_ARGUMENT);
+  signal_error_from_primitive
+    (((VECTOR_P (argument))
+      && ((VECTOR_LENGTH (argument)) > 0)
+      && ((VECTOR_REF (argument, 0))
+	  == (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL))))
+     ? ERR_IN_SYSTEM_CALL
+     : ERR_WITH_ARGUMENT);
   /*NOTREACHED*/
 }
 
