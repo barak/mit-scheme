@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.54 2007/05/20 01:52:37 cph Exp $
+$Id: packag.scm,v 14.55 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -177,33 +177,27 @@ USA.
 	    (if (not (package-file? file))
 		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
-	    (fluid-let
-		((load/default-types
-		  (if (and system-loader/enable-query?
-			   (prompt-for-confirmation "Load interpreted"))
-		      (list (assoc "bin" load/default-types)
-			    (assoc "scm" load/default-types))
-		      load/default-types)))
-	      (let ((alternate-loader
-		     (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
-		    (load-component
-		     (lambda (name environment)
-		       (let ((value (filename->compiled-object dir name)))
-			 (if value
-			     (begin
-			       (purify (load/purification-root value))
-			       (scode-eval value environment))
-			     (load name environment 'DEFAULT #t))))))
-		(if alternate-loader
-		    (alternate-loader load-component options)
-		    (begin
-		      (load-packages-from-file file options load-component)
-		      (initialize-packages-from-file file))))))))))
+	    (let ((alternate-loader
+		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		  (load-component
+		   (lambda (name environment)
+		     (let ((value (filename->compiled-object dir name)))
+		       (if value
+			   (begin
+			     (purify (load/purification-root value))
+			     (scode-eval value environment))
+			   (load name environment 'DEFAULT #t))))))
+	      (if alternate-loader
+		  (alternate-loader load-component options)
+		  (begin
+		    (load-packages-from-file file options load-component)
+		    (initialize-packages-from-file file)))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
 
+;; Obsolete and ignored:
 (define system-loader/enable-query? #f)
 
 (define (package-set-pathname pathname #!optional os-type)

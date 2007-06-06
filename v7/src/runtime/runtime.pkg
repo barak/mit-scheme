@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.617 2007/05/02 00:11:05 cph Exp $
+$Id: runtime.pkg,v 14.618 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1095,7 +1095,8 @@ USA.
   (export (runtime load)
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
-	  fasload/update-debugging-info!)
+	  fasload/update-debugging-info!
+	  with-directory-rewriting-rule)
   (export (runtime program-copier)
 	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
@@ -1139,8 +1140,6 @@ USA.
 	  uncompress-internal)
   (export (runtime options)
 	  with-directory-rewriting-rule)
-  (export (runtime continuation-parser)
-	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)
@@ -2071,6 +2070,7 @@ USA.
 	  read
 	  read-char
 	  read-char-no-hang
+	  read-file
 	  read-line
 	  read-string
 	  read-string!
@@ -2406,6 +2406,8 @@ USA.
   (files "load")
   (parent (runtime))
   (export ()
+	  (load-latest load)
+	  (load-noisily load)
 	  argument-command-line-parser
 	  built-in-object-file
 	  condition-type:not-loading
@@ -2413,28 +2415,21 @@ USA.
 	  current-load-pathname
 	  fasl-file?
 	  fasload
-	  fasload-latest
-	  fasload-liarc-object-file
-	  fasload/default-types
-	  liarc-object-pathname->handle
+	  file-fasloadable?
+	  file-loadable?
 	  load
-	  load-latest
 	  load-library-object-file
-	  load-noisily
 	  load-noisily?
-	  load/default-find-pathname-with-type
-	  load/default-types
 	  load/loading?
 	  load/purification-root
 	  load/push-hook!
 	  load/suppress-loading-message?
-	  read-file
 	  set-command-line-parser!
 	  simple-command-line-parser
-	  with-loading-message
-	  with-eval-unit)
-  (export (runtime options)
-	  search-types-in-order)
+	  system-library-uri
+	  system-uri
+	  with-eval-unit
+	  with-loader-base-uri)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2650,7 +2645,6 @@ USA.
   (parent (runtime))
   (export ()
 	  *initial-options-file*
-	  declare-shared-library
 	  define-load-option
 	  dummy-option-loader
 	  further-load-options
@@ -2817,6 +2811,7 @@ USA.
   (files "io") 
   (parent (runtime))
   (export ()
+	  all-dld-handles
 	  all-open-channels
 	  channel-blocking
 	  channel-blocking?
@@ -2849,10 +2844,26 @@ USA.
 	  directory-channel-read
 	  directory-channel-read-matching
 	  directory-channel?
+	  dld-get-scheme-handle
+	  dld-handle-pathname
+	  dld-handle-valid?
+	  dld-handle?
+	  dld-load-file
+	  dld-loaded-file?
+	  dld-lookup-symbol
+	  dld-unload-file
+	  error:not-channel
+	  error:not-directory-channel
+	  error:not-dld-handle
 	  file-open-append-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
+	  find-dld-handle
+	  guarantee-channel
+	  guarantee-directory-channel
+	  guarantee-dld-handle
+	  guarantee-valid-dld-handle
 	  make-pipe
 	  open-pty-master
 	  pty-master-continue

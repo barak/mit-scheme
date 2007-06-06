@@ -1,6 +1,6 @@
 #!/bin/sh
-
-# $Id: configure,v 1.18 2007/06/06 19:42:38 cph Exp $
+#
+# $Id: compile-boot-compiler.sh,v 1.1 2007/06/06 19:42:39 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,38 +25,24 @@
 
 set -e
 
-MACHINE=
-while test $# -gt 0; do
-    case "${1}" in
-    --enable-native-code=*)
-	MACHINE=`echo "${1}" | sed -e 's/--enable-native-code=//'`
-	shift
-	;;
-    --disable-native-code)
-	MACHINE=no
-	shift
-	;;
-    *)
-	shift
-	;;
-    esac
-done
-MACHINE=`./choose-machine.sh "${MACHINE}"`
-
-CMD="rm -f machine"
-echo "${CMD}"; eval "${CMD}"
-
-CMD="ln -s machines/${MACHINE} machine"
-echo "${CMD}"; eval "${CMD}"
-
-LINKS="compiler.cbf compiler.pkg compiler.sf make.com"
-if test "${MACHINE}" = C; then
-    LINKS="${LINKS} make.so"
+if [ ${#} -eq 1 ]; then
+    EXE=${1}
+else
+    echo "usage: ${0} <executable>"
+    exit 1
 fi
+CMD="${EXE} --heap 6000"
 
-for FN in ${LINKS}; do
-    if [ ! -e ${FN} ]; then
-	CMD="ln -s machine/${FN} ."
-	echo "${CMD}"; eval "${CMD}"
-    fi
-done
+echo "${CMD}"
+${CMD} <<EOF
+(begin
+  (load "etc/compile.scm")
+  (compile-bootstrap-1))
+EOF
+
+echo "${CMD} --compiler"
+${CMD} --compiler <<EOF
+(begin
+  (load "etc/compile.scm")
+  (compile-bootstrap-2))
+EOF

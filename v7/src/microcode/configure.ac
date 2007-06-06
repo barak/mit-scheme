@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.47 2007/05/14 16:50:51 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.48 2007/06/06 19:42:40 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -195,6 +195,7 @@ MODULE_CFLAGS=
 MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
+AUX_PROGRAMS=
 SYSTEM_BASE_NAME=mit-scheme
 INSTALL_INCLUDE=
 
@@ -793,6 +794,8 @@ if test ${enable_static_libs} != no; then
 else
     STATIC_LIBS=
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+    AC_DEFINE([UX_DLD_ENABLED], [1],
+	[Define to 1 if unix dynamic loading support is enabled.])
 fi
 
 if test ${enable_valgrind_mode} != no; then
@@ -930,6 +933,7 @@ c)
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
+    AUX_PROGRAMS="gen-nonce extract-liarc-decls"
     SYSTEM_BASE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include
     ;;
@@ -990,6 +994,7 @@ AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
+AC_SUBST([AUX_PROGRAMS])
 AC_SUBST([SYSTEM_BASE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])

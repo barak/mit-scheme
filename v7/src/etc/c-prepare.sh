@@ -1,8 +1,10 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.6 2007/05/08 12:54:52 cph Exp $
+# $Id: c-prepare.sh,v 1.7 2007/06/06 19:42:39 cph Exp $
 #
-# Copyright 2007 Massachusetts Institute of Technology
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -23,22 +25,18 @@
 
 set -e
 
-if [ ${#} -eq 0 ]; then
-    SCHEME_COMPILER="mit-scheme-c --compiler"
+if [ ${#} -eq 1 ]; then
+    EXE=${1}
 else
-    SCHEME_COMPILER=${1}
-    shift
-    while [ ${#} -gt 0 ]; do
-	SCHEME_COMPILER="${SCHEME_COMPILER} ${1}"
-	shift
-    done
+    echo "usage: ${0} <executable>"
+    exit 1
 fi
+CMD="${EXE} --heap 6000"
 
-SCHEME_COMPILER="${SCHEME_COMPILER} --heap 6000"
-
-echo "${SCHEME_COMPILER}"
-${SCHEME_COMPILER} <<EOF
+echo "${CMD}"
+${CMD} <<EOF
 (begin
   (load "etc/compile.scm")
+  (compile-bootstrap-3)
   (c-prepare))
 EOF

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.19 2007/05/14 16:50:45 cph Exp $
+$Id: compile.scm,v 1.20 2007/06/06 19:42:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,7 +44,9 @@ USA.
 (define (compile-cref compile-dir)
   (compile-dir "cref")
   (if (not (name->package '(cross-reference)))
-      (load-dir "cref")))
+      (with-working-directory-pathname "cref"
+	(lambda ()
+	  (load "make")))))
 
 (define (compile-dir name)
   (with-working-directory-pathname name
@@ -54,17 +56,6 @@ USA.
 	    (load (pathname-new-type name "sf"))
 	    (load (pathname-new-type name "cbf")))
 	  (load "compile")))))
-
-(define (load-dir name)
-  (with-working-directory-pathname name
-    (lambda ()
-      (cond ((and (string=? name "compiler")
-		  (eq? microcode-id/compiled-code-type 'C))
-	     (load "machines/C/make"))
-	    ((file-exists? (pathname-new-type name "sf"))
-	     (load "make"))
-	    (else
-	     (load "load"))))))
 
 (define (compile-bootstrap-1)
   (load-option 'SF)
@@ -73,31 +64,49 @@ USA.
       (load "compiler.sf"))))
 
 (define (compile-bootstrap-2)
-  (if (eq? microcode-id/compiled-code-type 'C)
-      (fluid-let ((compiler:invoke-c-compiler? #f))
-	(with-working-directory-pathname "compiler"
-	  (lambda ()
-	    (load "compiler.cbf")))
-	(c-compile-pkgs "compiler"))
-      (with-working-directory-pathname "compiler"
-	(lambda ()
-	  (load "compiler.cbf")))))
+  (let ((action
+	 (lambda ()
+	   (with-working-directory-pathname "compiler"
+	     (lambda ()
+	       (load "compiler.cbf")))
+	   (c-compile-pkgs "compiler"))))
+    (if (eq? microcode-id/compiled-code-type 'C)
+	(in-liarc action)
+	(action))))
 
 (define (compile-bootstrap-3)
   (load-option 'SF)
-  (load-dir "compiler"))
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (if (and (eq? microcode-id/compiled-code-type 'C)
+	       (file-exists? "compiler.so"))
+	  (load "compiler.so"))
+      (load
+       (string-append (or (file-symbolic-link? "machine")
+			  (error "Missing compiler/machine link."))
+		      "/make")))))
 
 (define (c-prepare)
-  (fluid-let ((compiler:invoke-c-compiler? #f))
-    (compile-boot-dirs c-compile-dir)
-    (cf "microcode/utabmd")))
+  (in-liarc
+   (lambda ()
+     (compile-boot-dirs c-compile-dir)
+     (cf "microcode/utabmd"))))
+
+(define (native-prepare)
+  (compile-boot-dirs compile-dir)
+  (sf "microcode/utabmd"))
 
 (define (c-compile)
-  (fluid-let ((compiler:invoke-c-compiler? #f))
-    (compile-all-dirs c-compile-dir)
-    (cf "microcode/utabmd")
-    (cbf "edwin/edwin.bld")))
+  (in-liarc
+   (lambda ()
+     (compile-all-dirs c-compile-dir)
+     (cf "microcode/utabmd")
+     (cbf "edwin/edwin.bld"))))
 
+(define (in-liarc thunk)
+  (fluid-let ((compiler:invoke-c-compiler? #f))
+    (thunk)))
+  
 (define (c-compile-dir name)
   (compile-dir name)
   (c-compile-pkgs name))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.110 2007/04/15 15:50:38 cph Exp $
+$Id: make.scm,v 14.111 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -242,8 +242,11 @@ USA.
 	  (and (file-exists? bin-file)
 	       bin-file)))))
 
-(define (file->object filename purify? optional?)
-  (let* ((block-name (string-append "runtime_" filename ".so"))
+(define runtime-prefix
+  "http://www.gnu.org/software/mit-scheme/lib/runtime/")
+
+(define (file->object filename purify? required?)
+  (let* ((block-name (string-append runtime-prefix filename ".so"))
 	 (value (initialize-c-compiled-block block-name)))
     (cond (value
 	   (tty-write-string newline-string)
@@ -253,10 +256,8 @@ USA.
 	  ((map-filename filename)
 	   => (lambda (mapped)
 		(fasload mapped purify?)))
-	  ((not optional?)
-	   (fatal-error (string-append "Could not find " filename)))
-	  (else
-	   #f))))
+	  (required? (fatal-error (string-append "Could not find " filename)))
+	  (else #f))))
 
 (define (eval object environment)
   (let ((value (scode-eval object environment)))
@@ -314,7 +315,7 @@ USA.
 
 ;; Construct the package structure.
 ;; Lotta hair here to load the package code before its package is built.
-(eval (file->object "packag" #t #f) environment-for-package)
+(eval (file->object "packag" #t #t) environment-for-package)
 ((lexical-reference environment-for-package 'INITIALIZE-PACKAGE!))
 (let ((export
        (lambda (name)
@@ -347,7 +348,7 @@ USA.
 			      ((eq? os-name 'UNIX) "unx")
 			      (else "unk"))
 			".pkd")))
-    (or (initialize-c-compiled-block (string-append "runtime_" name))
+    (or (initialize-c-compiled-block (string-append runtime-prefix name))
 	(fasload name #f))))
 
 ((lexical-reference environment-for-package 'CONSTRUCT-PACKAGES-FROM-FILE)
@@ -379,7 +380,7 @@ USA.
        (lambda (files)
 	 (do ((files files (cdr files)))
 	     ((null? files))
-	   (eval (file->object (car (car files)) #t #f)
+	   (eval (file->object (car (car files)) #t #t)
 		 (package-reference (cdr (car files))))))))
   (load-files files1)
   (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! #t)
@@ -418,7 +419,7 @@ USA.
 		    (string=? filename "packag")
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
-	   (eval (file->object filename #t #f)
+	   (eval (file->object filename #t #t)
 		 environment))
        unspecific))))
 
@@ -529,7 +530,7 @@ USA.
 (if (eq? os-name 'NT)
     (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))
 
-(let ((obj (file->object "site" #t #t)))
+(let ((obj (file->object "site" #t #f)))
   (if obj
       (eval obj system-global-environment)))
 

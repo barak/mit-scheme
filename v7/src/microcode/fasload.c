@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.102 2007/04/22 16:40:08 cph Exp $
+$Id: fasload.c,v 9.103 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -382,12 +382,16 @@ load_file (fasl_file_handle_t handle)
       (raw_prim_table, (FASLHDR_N_PRIMITIVES (fh)), new_prim_table);
   }
 #ifdef CC_IS_C
-  if ((FASLHDR_BAND_P (fh)) && ((FASLHDR_C_CODE_TABLE_SIZE (fh)) > 0))
+  if (FASLHDR_BAND_P (fh))
     {
-      SCHEME_OBJECT * raw_table = (Free + (FASLHDR_N_PRIMITIVES (fh)));
-      read_from_file (raw_table, (FASLHDR_C_CODE_TABLE_SIZE (fh)), handle);
-      if (!import_c_code_table (raw_table, (FASLHDR_N_C_CODE_BLOCKS (fh))))
-	signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
+      reset_c_code_table ();
+      if ((FASLHDR_C_CODE_TABLE_SIZE (fh)) > 0)
+	{
+	  SCHEME_OBJECT * raw_table = (Free + (FASLHDR_N_PRIMITIVES (fh)));
+	  read_from_file (raw_table, (FASLHDR_C_CODE_TABLE_SIZE (fh)), handle);
+	  if (!import_c_code_table (raw_table, (FASLHDR_N_C_CODE_BLOCKS (fh))))
+	    signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
+	}
     }
 #endif
 

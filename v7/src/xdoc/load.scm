@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.6 2007/04/04 05:08:19 riastradh Exp $
+$Id: load.scm,v 1.7 2007/06/06 19:42:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -47,6 +47,5 @@ USA.
     (export 'xml-comment 'comment)))
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (declare-shared-library "xdoc" (lambda () #t))
     (load-package-set "xdoc")))
 (add-subsystem-identification! "XDOC" '(0 3))

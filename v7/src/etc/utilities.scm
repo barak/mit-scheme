@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.3 2007/05/15 05:23:22 cph Exp $
+$Id: utilities.scm,v 1.4 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,52 +31,81 @@ USA.
 
 (load-option (quote CREF))
 
-(define (generate-c-bundles bundles)
-  (for-each
-   (lambda (bundle)
-     (with-notification (lambda (port)
-			  (write-string "Generating bundle rule for " port)
-			  (write-string bundle port))
-       (lambda ()
-	 (let ((names (bundle-files bundle))
-	       (so-file (string-append bundle ".so")))
-	   (call-with-output-file (string-append bundle "/Makefile-bundle")
-	     (lambda (port)
-	       (newline port)
-	       (let ((init-root (string-append bundle "-init")))
-		 (write-rule port "compile-liarc-bundle" so-file)
-		 (newline port)
-		 (write-rule port
-			     (string-append bundle ".so")
-			     (string-append init-root ".o")
-			     (files+suffix names ".o"))
-		 (write-command port
-				"@$(top_builddir)/microcode/liarc-ld"
-				"$@"
-				"$^")
-		 (newline port)
-		 (write-rule port
-			     (string-append init-root ".c")
-			     (files+suffix names ".c"))
-		 (write-command port
-				"$(top_srcdir)/etc/c-bundle.sh"
-				"library"
-				init-root
-				"$^")
-		 (newline port)
-		 (write-rule port "install-liarc-bundle" so-file)
-		 (write-command port
-				"$(INSTALL_DATA)"
-				"$^"
-				"$(DESTDIR)$(AUXDIR)/lib/.")
-		 (newline port)
-		 (write-rule port
-			     ".PHONY"
-			     "compile-liarc-bundle"
-			     "install-liarc-bundle")
-		 )))))))
-   (map write-to-string bundles)))
+(define (generate-c-bundles bundles cc-arch)
+  (for-each (lambda (bundle)
+	      (generate-c-bundle bundle cc-arch))
+	    (map write-to-string bundles)))
 
+(define (generate-c-bundle bundle cc-arch)
+  (with-notification (lambda (port)
+		       (write-string "Generating bundle rule for " port)
+		       (write-string bundle port))
+    (lambda ()
+      (let ((names (bundle-files bundle))
+	    (so-file (string-append bundle ".so")))
+	(receive (script-dir include-dir)
+	    (cond ((string=? cc-arch "C")
+		   (values "$(top_builddir)/microcode"
+			   "$(top_builddir)/microcode"))
+		  ((eq? microcode-id/compiled-code-type 'C)
+		   (let ((dir
+			  (lambda (name)
+			    (->namestring
+			     (directory-pathname-as-file
+			      (system-library-directory-pathname name))))))
+		     (values (dir "")
+			     (dir "include"))))
+		  (else
+		   (values #f #f)))
+	  (call-with-output-file (string-append bundle "/Makefile-bundle")
+	    (lambda (port)
+	      (if script-dir
+		  (begin
+		    (newline port)
+		    (write-rule port ".c.o")
+		    (write-command port
+				   (string-append "@" script-dir "/liarc-cc")
+				   "$*.o"
+				   "$*.c"
+				   (string-append "-I" include-dir))
+		    (newline port)
+		    (let ((init-root (string-append bundle "-init")))
+		      (write-rule port "compile-liarc-bundle" so-file)
+		      (newline port)
+		      (write-rule port
+				  (string-append bundle ".so")
+				  (string-append init-root ".o")
+				  (files+suffix names ".o"))
+		      (write-command port
+				     (string-append "@" script-dir "/liarc-ld")
+				     "$@"
+				     "$^")
+		      (newline port)
+		      (write-rule port
+				  (string-append init-root ".c")
+				  (files+suffix names ".c"))
+		      (write-command port
+				     "$(top_srcdir)/etc/c-bundle.sh"
+				     script-dir
+				     "library"
+				     init-root
+				     "$^")
+		      (newline port)
+		      (write-rule port "install-liarc-bundle" so-file)
+		      (let ((dir
+			     (string-append "$(DESTDIR)$(AUXDIR)/" bundle)))
+			(write-command port "$(mkinstalldirs)" dir)
+			(write-command port
+				       "$(INSTALL_DATA)"
+				       "$^"
+				       (string-append dir "/.")))
+		      (newline port)
+		      (write-rule port
+				  ".PHONY"
+				  "compile-liarc-bundle"
+				  "install-liarc-bundle")
+		      ))))))))))
+
 (define (bundle-files bundle)
   (let ((pkg-name (if (string=? bundle "star-parser") "parser" bundle)))
     (cons (string-append pkg-name "-unx")
@@ -94,7 +123,10 @@ USA.
 			     (string=? bundle "sf"))
 			 (cons "make" names))
 			((string=? bundle "compiler")
-			 (cons* "machines/C/make"
+			 (cons* (string-append
+				 (or (file-symbolic-link? "compiler/machine")
+				     (error "Missing compiler/machine link."))
+				 "/make")
 				"base/make"
 				names))
 			((string=? bundle "edwin")

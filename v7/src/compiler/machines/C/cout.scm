@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.40 2007/05/14 16:49:16 cph Exp $
+$Id: cout.scm,v 1.41 2007/06/06 19:42:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -103,13 +103,12 @@ USA.
 	   (declare-dynamic-object-initialization handle)))
 
 (define (default-file-handle)
-  (or (liarc-object-pathname->handle
-       (pathname-new-type *compiler-output-pathname*
-			  (let ((t (pathname-type *compiler-input-pathname*)))
-			    (if (equal? t "bin")
-				(c-output-extension)
-				t))))
-      "handle"))
+  (file-namestring
+   (pathname-new-type *compiler-output-pathname*
+		      (let ((t (pathname-type *compiler-input-pathname*)))
+			(if (equal? t "bin")
+			    (c-output-extension)
+			    t)))))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>
@@ -508,10 +507,14 @@ USA.
   (c:line (c:call "DECLARE_DATA_OBJECT" (c:string handle) proc)))
 
 (define (declare-dynamic-initialization handle)
-  (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION" (c:string handle))))
+  (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION"
+		  (c:string handle)
+		  (vector-8b->hexadecimal (random-byte-vector 8)))))
 
 (define (declare-dynamic-object-initialization handle)
-  (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION" (c:string handle))))
+  (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION"
+		  (c:string handle)
+		  (vector-8b->hexadecimal (random-byte-vector 8)))))
 
 (define (declare-subcodes decl-name blocks)
   (if (and (pair? blocks)

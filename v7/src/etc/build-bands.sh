@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.11 2007/05/14 16:50:40 cph Exp $
+# $Id: build-bands.sh,v 1.12 2007/06/06 19:42:39 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -30,7 +30,7 @@ echo "cd runtime"
 cd runtime
 
 if [ -f make.o ]; then
-    FASL=runtime_make.so
+    FASL=http://www.gnu.org/software/mit-scheme/lib/runtime/make.so
 elif [ -f make.com ]; then
     FASL=make.com
 else

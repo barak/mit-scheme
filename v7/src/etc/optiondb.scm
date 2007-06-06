@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.20 2007/05/02 13:51:03 cph Exp $
+$Id: optiondb.scm,v 1.21 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,47 +36,50 @@ USA.
 	     ,@(let ((d (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
 		 (if d
 		     (list d)
-		     '()))
-	     "/usr/local/scheme/linux"
-	     "/scheme/v7/linux")))
+		     '())))))
 	(files
 	 (if (default-object? filename)
 	     (list "make" "load")
-	     (list filename)))
-	(test
-	 (lambda (name)
-	   (or (file-exists? name)
-	       (there-exists? load/default-types
-		 (lambda (type)
-		   (file-exists?
-		    (pathname-new-type name (car type)))))))))
-    (lambda ()
-      (if (not (name->package package-name))
-	  (begin
-	    (ignore-errors
-	     (lambda ()
-	       (load (merge-pathnames
-		      place
-		      (system-library-directory-pathname "lib")))))
-	    (let dir-loop ((dirs dirs))
-	      (if (pair? dirs)
-		  (let ((directory
-			 (merge-pathnames place
-					  (pathname-as-directory (car dirs)))))
-		    (if (file-directory? directory)
-			(let file-loop ((files files))
-			  (if (pair? files)
-			      (if (test
-				   (merge-pathnames
-				    (car files)
-				    (pathname-as-directory directory)))
-				  (with-working-directory-pathname directory
-				    (lambda ()
-				      (load (car files) '(RUNTIME))))
-				  (file-loop (cdr files)))
-			      (dir-loop (cdr dirs))))
-			(dir-loop (cdr dirs))))
-		  (error "Unable to find package directory:" place))))))))
+	     (list filename))))
+    (let ((try-dir
+	   (lambda (base-dir)
+	     (let ((dir 
+		    (pathname-as-directory
+		     (merge-pathnames place
+				      (pathname-as-directory base-dir)))))
+	       (let file-loop ((files files))
+		 (if (pair? files)
+		     (let ((pathname (merge-pathnames (car files) dir)))
+		       (if (file-loadable? pathname)
+			   (values dir pathname)
+			   (file-loop (cdr files))))
+		     (values #f #f))))))
+	  (finish
+	   (lambda (dir pathname)
+	     (with-working-directory-pathname dir
+	       (lambda ()
+		 (load pathname '(RUNTIME))))))
+	  (lose (lambda () (error "Unable to find package directory:" place))))
+      (lambda ()
+	(if (not (name->package package-name))
+	    (if (condition?
+		 (ignore-errors
+		  (lambda ()
+		    (load (merge-pathnames
+			   place
+			   (system-library-directory-pathname "lib"))))))
+		(let dir-loop ((dirs dirs))
+		  (if (not (pair? dirs))
+		      (lose))
+		  (receive (dir pathname) (try-dir (car dirs))
+		    (if dir
+			(finish dir pathname)
+			(dir-loop (cdr dirs)))))
+		(receive (dir pathname)
+		    (try-dir (system-library-directory-pathname))
+		  (if (not dir)
+		      (lose))
+		  (finish dir pathname))))))))
 
 (define-load-option 'EDWIN
   (guarded-system-loader '(edwin) "edwin"))

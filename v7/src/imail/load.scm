@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.48 2007/04/04 05:08:19 riastradh Exp $
+$Id: load.scm,v 1.49 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,6 @@ USA.
 (load-option 'WT-TREE)
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (declare-shared-library "imail" (lambda () #t))
     (fluid-let ((*allow-package-redefinition?* #t))
       (load-package-set "imail"))))
 (add-subsystem-identification! "IMAIL" '(1 21))

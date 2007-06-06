@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.31 2007/04/14 03:54:46 cph Exp $
+$Id: make.scm,v 1.32 2007/06/06 19:42:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,6 @@ USA.
 (declare (usual-integrations))
 
 (load-option 'RB-TREE)
-(declare-shared-library "cref" (lambda () #t))
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     ((access with-directory-rewriting-rule

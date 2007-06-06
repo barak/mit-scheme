@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.29 2007/05/20 01:51:27 cph Exp $
+$Id: ctop.scm,v 1.30 2007/06/06 19:42:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -55,7 +55,7 @@ USA.
      (load shared-library-pathname environment))))
 
 (define (compiler-output->compiled-expression compiler-output)
-  (finish-c-compilation compiler-output fasload-liarc-object-file))
+  (finish-c-compilation compiler-output fasload-object-file))
 
 (define (compile-scode/internal/hook action)
   (if (not (eq? *info-output-filename* 'KEEP))

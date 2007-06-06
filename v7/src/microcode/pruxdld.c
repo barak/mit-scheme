@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxdld.c,v 1.24 2007/05/20 02:02:34 cph Exp $
+$Id: pruxdld.c,v 1.25 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,82 +32,56 @@ USA.
 #include "usrdef.h"
 #include "syscall.h"
 #include "os.h"
-
-#ifdef HAVE_DLFCN_H
-
 #include <dlfcn.h>
 
-static unsigned long
-dld_load (const char * path)
-{
-  void * handle = (dlopen (path, (RTLD_LAZY | RTLD_GLOBAL)));
-  if (handle == 0)
-    {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
-      VECTOR_SET (v, 2, (char_pointer_to_string (dlerror ())));
-      error_with_argument (v);
-    }
-  return ((unsigned long) handle);
-}
 
-static unsigned long
-dld_lookup (unsigned long handle, char * symbol)
-{
-  const char * old_error = (dlerror ());
-  void * address = (dlsym (((void *) handle), symbol));
-  const char * new_error = (dlerror ());
-  if ((address == 0) && (new_error != old_error))
-    {
-      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
-      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlsym")));
-      VECTOR_SET (v, 2, (char_pointer_to_string (new_error)));
-      error_with_argument (v);
-    }
-  return ((unsigned long) address);
-}
+static bool cleanup_registered_p = false;
+static unsigned int loaded_handles_size = 0;
+static unsigned int n_loaded_handles = 0;
+static void ** loaded_handles = 0;
 
-#endif /* HAVE_DLFCN_H */
+static void * dld_load (const char *);
+static void dld_unload (void *);
+static void dld_unload_all (void);
+static void * dld_lookup (void *, const char *);
+
+#define ARG_HANDLE(n) ((void *) (arg_ulong_integer (n)))
 
-static const char * lof_name = 0;
-
-const char *
-load_object_file_name (void)
+DEFINE_PRIMITIVE ("DLD-LOAD-FILE", Prim_dld_load_file, 2, 2,
+		  "(FILENAME WEAK-PAIR)\n\
+Load the shared library FILENAME and store its handle\n\
+in the cdr of WEAK-PAIR.")
 {
-  return (lof_name);
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (2, WEAK_PAIR_P);
+  SET_PAIR_CDR ((ARG_REF (2)),
+		(ulong_to_integer
+		 ((unsigned long)
+		  (dld_load (((ARG_REF (1)) == SHARP_F)
+			     ? 0
+			     : (STRING_ARG (1)))))));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("LOAD-OBJECT-FILE", Prim_load_object_file, 1, 1,
-		  "(FILENAME)\n\
-Load the shared library FILENAME and return a handle for it.")
+DEFINE_PRIMITIVE ("DLD-LOOKUP-SYMBOL", Prim_dld_lookup_symbol, 2, 2,
+		  "(HANDLE STRING)\n\
+Look up the symbol named STRING in the shared library specified by HANDLE.\n\
+Return the symbol's address, or #F if no such symbol.")
 {
-  const char * name;
-  void * p;
-  unsigned long handle;
-  PRIMITIVE_HEADER (1);
-
-  name = (STRING_ARG (1));
-  p = dstack_position;
-  dstack_bind ((&lof_name), ((void *) name));
-  handle = (dld_load (name));
-  dstack_set_position (p);
-  PRIMITIVE_RETURN (ulong_to_integer (handle));
-}
-
-DEFINE_PRIMITIVE ("OBJECT-LOOKUP-SYMBOL", Prim_object_lookup_symbol, 3, 3,
-		  "(HANDLE SYMBOL TYPE)\n\
-Look up SYMBOL, a Scheme string, in the dynamically-loaded file\n\
-referenced by HANDLE.  TYPE is obsolete and must be specified as zero.\n\
-Returns the symbol's address, or signals an error if no such symbol.")
-{
-  PRIMITIVE_HEADER (3);
-  if ((ARG_REF (3)) != FIXNUM_ZERO)
-    error_wrong_type_arg (3);
+  PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
     (ulong_to_integer
-     (dld_lookup ((arg_ulong_integer (1)), (STRING_ARG (2)))));
+     ((unsigned long) (dld_lookup ((ARG_HANDLE (1)), (STRING_ARG (2))))));
+}
+
+DEFINE_PRIMITIVE ("DLD-UNLOAD-FILE", Prim_dld_unload_file, 1, 1,
+		  "(HANDLE)\n\
+Unload the shared library specified by HANDLE.\n\
+The file is unmapped from memory, and its symbols become unbound.")
+{
+  PRIMITIVE_HEADER (1);
+  dld_unload (ARG_HANDLE (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("INVOKE-C-THUNK", Prim_invoke_C_thunk, 1, 1,
@@ -131,4 +105,105 @@ contents.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (char_pointer_to_string ((char *) (arg_ulong_integer (1))));
+}
+
+static void *
+dld_load (const char * path)
+{
+  void * handle;
+
+  if (!cleanup_registered_p)
+    {
+      add_reload_cleanup (dld_unload_all);
+      cleanup_registered_p = true;
+    }
+
+  handle = (dlopen (path, (RTLD_LAZY | RTLD_GLOBAL)));
+  if (handle == 0)
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
+      VECTOR_SET (v, 2, (char_pointer_to_string (dlerror ())));
+      error_with_argument (v);
+    }
+  if (n_loaded_handles == loaded_handles_size)
+    {
+      if (loaded_handles_size == 0)
+	{
+	  loaded_handles_size = 16;
+	  loaded_handles
+	    = (OS_malloc (loaded_handles_size * (sizeof (void *))));
+	}
+      else
+	{
+	  loaded_handles_size *= 2;
+	  loaded_handles
+	    = (OS_realloc (loaded_handles,
+			   (loaded_handles_size * (sizeof (void *)))));
+	}
+    }
+  (loaded_handles[n_loaded_handles++]) = handle;
+  return (handle);
+}
+
+static void
+dld_unload (void * handle)
+{
+  if ((dlclose (handle)) != 0)
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      VECTOR_SET (v, 1, (char_pointer_to_string ("dlclose")));
+      VECTOR_SET (v, 2, (char_pointer_to_string (dlerror ())));
+      error_with_argument (v);
+    }
+  {
+    void ** scan = loaded_handles;
+    void ** end = (scan + n_loaded_handles);
+    for (; (scan < end); scan += 1)
+      if ((*scan) == handle)
+	{
+	  (*scan) = (* (end - 1));
+	  n_loaded_handles -= 1;
+	  break;
+	}
+  }
+}
+
+static void
+dld_unload_all (void)
+{
+  if (loaded_handles_size > 0)
+    {
+      void ** scan = loaded_handles;
+      void ** end = (scan + n_loaded_handles);
+      while (scan < end)
+	dlclose (*scan++);
+
+      OS_free (loaded_handles);
+      loaded_handles_size = 0;
+      n_loaded_handles = 0;
+      loaded_handles = 0;
+    }
+}
+
+static void *
+dld_lookup (void * handle, const char * symbol)
+{
+  void * address;
+  const char * error_string;
+
+  dlerror ();			/* discard any outstanding errors */
+  address = (dlsym (handle, symbol));
+  error_string = (dlerror ());
+  if (error_string != 0)
+    {
+      SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
+      VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
+      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
+      VECTOR_SET (v, 2, (char_pointer_to_string (error_string)));
+      error_with_argument (v);
+    }
+  return (address);
 }

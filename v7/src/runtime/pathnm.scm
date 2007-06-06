@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.52 2007/05/21 17:33:32 cph Exp $
+$Id: pathnm.scm,v 14.53 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -623,7 +623,7 @@ these rules:
       (%find-library-directory)))
 
 (define (%find-library-directory)
-  (pathname-as-directory
+  (pathname-simplify
    (or (find-matching-item library-directory-path file-directory?)
        (error "Can't find library directory."))))
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.10 2007/04/14 03:54:42 cph Exp $
+$Id: make.scm,v 1.11 2007/06/06 19:42:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,7 +31,6 @@ USA.
 
 (load-option 'SYNCHRONOUS-SUBPROCESS)
 
-(declare-shared-library "compiler" (lambda () #t))
 (let ((value ((load "base/make")
 	      (string-append "C/" microcode-id/machine-type))))
   (set! (access compiler:compress-top-level?

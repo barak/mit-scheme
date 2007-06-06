@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.13 2007/04/22 16:31:24 cph Exp $
+$Id: c.h,v 1.14 2007/06/06 19:42:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -141,11 +141,13 @@ typedef SCHEME_OBJECT insn_t;
 #define READ_COMPILED_CLOSURE_TARGET(a, r) (read_compiled_closure_target (a))
 
 extern void initialize_C_interface (void);
+extern SCHEME_OBJECT initialize_C_compiled_block (const char *);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern insn_t * read_compiled_closure_target (insn_t *);
 
 extern unsigned long c_code_table_export_length (unsigned long *);
 extern void export_c_code_table (SCHEME_OBJECT *);
+extern void reset_c_code_table (void);
 extern bool import_c_code_table (SCHEME_OBJECT *, unsigned long);
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */

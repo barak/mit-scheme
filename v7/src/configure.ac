@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.14 2007/05/15 05:02:02 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.15 2007/06/06 19:42:38 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -64,6 +64,8 @@ if test "`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`"
 then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
+
+etc/create-makefiles.sh "${enable_native_code}"
 
 AC_CONFIG_SUBDIRS([microcode compiler])
 AC_CONFIG_FILES([

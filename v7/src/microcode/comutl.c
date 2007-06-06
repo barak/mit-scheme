@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.38 2007/04/22 16:31:22 cph Exp $
+$Id: comutl.c,v 1.39 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,7 +28,14 @@ USA.
 /* Compiled Code Utilities */
 
 #include "scheme.h"
+#include "osscheme.h"
 #include "prims.h"
+
+#ifdef CC_IS_C
+extern unsigned long liarc_n_compiled_blocks (void);
+extern void get_liarc_compiled_block_data
+  (unsigned long, const char **, void **, void **, void **);
+#endif
 
 DEFINE_PRIMITIVE ("COMPILED-CODE-ADDRESS->BLOCK", Prim_comp_code_address_block,
 		  1, 1, "(ADDRESS)\n\
@@ -188,21 +195,46 @@ DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1, 0)
   }
 }
 
-#ifdef CC_IS_C
-   extern SCHEME_OBJECT initialize_C_compiled_block (int, const char *);
-#endif
-
 DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK",
 		  Prim_initialize_C_compiled_block, 1, 1,
   "Given the tag of a compiled object, return the object.")
 {
   PRIMITIVE_HEADER (1);
 #ifdef CC_IS_C
-  PRIMITIVE_RETURN (initialize_C_compiled_block (1, (STRING_ARG (1))));
+  PRIMITIVE_RETURN (initialize_C_compiled_block (STRING_ARG (1)));
 #else
   PRIMITIVE_RETURN (SHARP_F);
 #endif
 }
+
+typedef unsigned long thunk_t (void);
+static const char * ilof_prefix = 0;
+
+DEFINE_PRIMITIVE ("INITIALIZE-LIARC-OBJECT-FILE", Prim_initialize_liarc_object_file, 2, 2,
+		  "(ADDRESS PREFIX)\n\
+Run the object-file initialization thunk specified by ADDRESS,\n\
+using PREFIX as the rewriting prefix for the subparts.")
+{
+  PRIMITIVE_HEADER (2);
+  {
+    thunk_t * thunk = ((thunk_t *) (arg_ulong_integer (1)));
+    const char * prefix = (STRING_ARG (2));
+    void * p = dstack_position;
+    dstack_bind ((&ilof_prefix), ((void *) prefix));
+    {
+      unsigned long value = ((*thunk) ());
+      dstack_set_position (p);
+      PRIMITIVE_RETURN (ulong_to_integer (value));
+    }
+  }
+}
+
+const char *
+liarc_object_file_prefix (void)
+{
+  return (ilof_prefix);
+}
+
 
 DEFINE_PRIMITIVE ("DECLARE-COMPILED-CODE-BLOCK",
 		  Prim_declare_compiled_code_block, 1, 1,
@@ -216,6 +248,52 @@ DEFINE_PRIMITIVE ("DECLARE-COMPILED-CODE-BLOCK",
     declare_compiled_code_block (new_cc_block);
     PRIMITIVE_RETURN (SHARP_T);
   }
+}
+
+DEFINE_PRIMITIVE ("LIARC-COMPILED-BLOCKS", Prim_liarc_compiled_code_blocks,
+		  0, 0,
+  "Return a vector containing the names of registered compiled-code blocks.")
+{
+  PRIMITIVE_HEADER (0);
+#ifdef CC_IS_C
+  {
+    unsigned long n = (liarc_n_compiled_blocks ());
+    SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, n, true));
+    unsigned long i;
+    const char * name;
+    void * code_proc;
+    void * data_proc;
+    void * object_proc;
+
+    for (i = 0; (i < n); i += 1)
+      VECTOR_SET (v, i, (allocate_marked_vector (TC_VECTOR, 4, true)));
+
+    for (i = 0; (i < n); i += 1)
+      {
+	SCHEME_OBJECT vi = (VECTOR_REF (v, i));
+	get_liarc_compiled_block_data
+	  (i, (&name), (&code_proc), (&data_proc), (&object_proc));
+	VECTOR_SET (vi, 0, (char_pointer_to_string (name)));
+	VECTOR_SET (vi, 1,
+		    ((code_proc == 0)
+		     ? SHARP_F
+		     : (ulong_to_integer ((unsigned long) code_proc))));
+	VECTOR_SET (vi, 2,
+		    ((data_proc == 0)
+		     ? SHARP_F
+		     : (ulong_to_integer ((unsigned long) data_proc))));
+	VECTOR_SET (vi, 3,
+		    ((object_proc == 0)
+		     ? SHARP_F
+		     : (ulong_to_integer ((unsigned long) object_proc))));
+      }
+
+    PRIMITIVE_RETURN (v);
+  }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
 }
 
 DEFINE_PRIMITIVE ("BKPT/INSTALL", Prim_install_bkpt, 1, 1,

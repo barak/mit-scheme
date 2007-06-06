@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.57 2007/05/15 05:15:50 cph Exp $
+# $Id: Makefile.in.in,v 1.58 2007/06/06 19:42:41 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -118,6 +118,7 @@ MODULE_LIBS = -lc
 
 # **** Program definitions ****
 
+aux_PROGRAMS = @AUX_PROGRAMS@
 aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim
@@ -134,7 +135,7 @@ findprim_DEPENDENCIES =
 findprim_LDFLAGS = 
 findprim_LIBS = $(LIBS)
 
-ALL_PROGRAMS = scheme
+ALL_PROGRAMS = $(aux_PROGRAMS) scheme
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
@@ -184,6 +185,12 @@ findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
 
+gen-nonce: gen-nonce.o
+	$(LINK) $^
+
+extract-liarc-decls: extract-liarc-decls.o
+	$(LINK) $^
+
 utabmd.bin: utabmd.scm
 	./utabmd.sh
 
@@ -232,10 +239,20 @@ maintainer-clean: c-clean distclean
 c-clean: clean
 	-rm -f $(C_CLEAN_FILES)
 
-install: install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
+install: install-auxPROGRAMS install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
 	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(SYSTEM_BASE_NAME)
 	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(SYSTEM_BASE_NAME)
+
+install-auxPROGRAMS: $(aux_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	@list='$(aux_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
 
 install-auxLIBS: $(aux_LIBS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
@@ -265,7 +282,8 @@ install-include:
 
 .PHONY: default-target
 .PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean c-clean
-.PHONY: install install-auxLIBS install-auxDATA install-include
+.PHONY: install install-auxPROGRAMS install-auxLIBS install-auxDATA
+.PHONY: install-include
 
 # **** File dependencies ****
 

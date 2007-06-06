@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.86 2007/01/05 21:19:28 cph Exp $
+$Id: io.scm,v 14.87 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,7 +44,9 @@ USA.
 			   directory-channel?
 			   directory-channel/descriptor
 			   set-directory-channel/descriptor!))
-  (initialize-select-registry!))
+  (initialize-select-registry!)
+  (set! dld-handles '())
+  unspecific)
 
 (define-structure (channel (constructor %make-channel))
   ;; This structure serves two purposes.  First, because a descriptor
@@ -54,6 +56,8 @@ USA.
   descriptor
   (type #f read-only #t)
   port)
+
+(define-guarantee channel "I/O channel")
 
 (define (make-channel d)
   (open-channel (lambda (p) (system-pair-set-cdr! p d))))
@@ -419,6 +423,8 @@ USA.
 (define-structure (directory-channel (conc-name directory-channel/))
   descriptor)
 
+(define-guarantee directory-channel "directory channel")
+
 (define (directory-channel-open name)
   (without-interrupts
    (lambda ()
@@ -635,3 +641,90 @@ USA.
 	  (set! select-registry-result-vectors
 		(cons (cons vfd vmode) select-registry-result-vectors))))
     (set-interrupt-enables! interrupt-mask)))
+
+;;;; Interface to dynamic loader
+
+(define-structure dld-handle
+  (pathname #f read-only #t)
+  address)
+
+(define-guarantee dld-handle "dynamic-loader handle")
+
+(define (dld-handle-valid? handle)
+  (guarantee-dld-handle handle 'DLD-HANDLE-VALID?)
+  (if (dld-handle-address handle) #t #f))
+
+(define (guarantee-valid-dld-handle object #!optional caller)
+  (guarantee-dld-handle object caller)
+  (if (not (dld-handle-address object))
+      (error:bad-range-argument object
+				(if (default-object? caller) #f caller))))
+
+(define (dld-get-scheme-handle)
+  (dld-load-file #f))
+
+(define (dld-load-file pathname)
+  (let ((p (weak-cons #f #f)))
+    (dynamic-wind
+     (lambda () unspecific)
+     (lambda ()
+       ((ucode-primitive dld-load-file 2)
+	(and pathname (->namestring pathname))
+	p)
+       (let ((handle (make-dld-handle pathname (weak-cdr p))))
+	 (without-interrupts
+	  (lambda ()
+	    (set! dld-handles (cons handle dld-handles))
+	    (weak-set-car! p #t)
+	    unspecific))
+	 handle))
+     (lambda ()
+       (if (and (not (weak-pair/car? p)) (weak-cdr p))
+	   (begin
+	     ((ucode-primitive dld-unload-file 1) (weak-cdr p))
+	     (weak-set-cdr! p #f)))))))
+
+(define dld-handles)
+
+(define (dld-unload-file handle)
+  (guarantee-dld-handle handle 'DLD-UNLOAD-FILE)
+  (without-interrupts
+   (lambda ()
+     (%dld-unload-file handle)
+     (set! dld-handles (delq! handle dld-handles))
+     unspecific)))
+
+(define (%dld-unload-file handle)
+  (let ((address (dld-handle-address handle)))
+    (if address
+	(begin
+	  ((ucode-primitive dld-unload-file 1) address)
+	  (set-dld-handle-address! handle #f)))))
+
+(define (dld-lookup-symbol handle name)
+  (guarantee-dld-handle handle 'DLD-LOOKUP-SYMBOL)
+  (guarantee-string name 'DLD-LOOKUP-SYMBOL)
+  ((ucode-primitive dld-lookup-symbol 2) (dld-handle-address handle) name))
+
+(define (dld-loaded-file? pathname)
+  (find-dld-handle
+   (lambda (handle)
+     (let ((pathname* (dld-handle-pathname handle)))
+       (and pathname*
+	    (pathname=? pathname* pathname))))))
+
+(define (find-dld-handle predicate)
+  (find-matching-item dld-handles predicate))
+
+(define (all-dld-handles)
+  (list-copy dld-handles))
+
+(define (unload-all-dld-object-files)
+  (without-interrupts
+   (lambda ()
+     (let loop ()
+       (if (pair? dld-handles)
+	   (let ((handle (car dld-handles)))
+	     (set! dld-handles (cdr dld-handles))
+	     (%dld-unload-file handle)
+	     (loop)))))))

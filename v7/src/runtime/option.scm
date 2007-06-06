@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.55 2007/05/21 17:33:31 cph Exp $
+$Id: option.scm,v 14.56 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,16 +44,13 @@ USA.
       (set! loaded-options (cons name loaded-options))
       name)
 
-    (define (search-parent file)
+    (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
 	    (fluid-let ((*options* '())
 			(*parent* #f))
 	      (fluid-let ((load/suppress-loading-message? #t))
-		(load-latest (system-library-pathname file #f)
-			     (make-load-environment)
-			     'DEFAULT
-			     #f))
+		(load pathname (make-load-environment)))
 	      (values *options* *parent*)))
 	find-option))
 
@@ -92,15 +89,11 @@ USA.
       "optiondb"))
 
 (define (library-file? library-internal-path)
-  (confirm-pathname
-   (merge-pathnames library-internal-path
-		    (system-library-directory-pathname))))
+  (confirm-pathname (system-library-pathname library-internal-path #f)))
 
 (define (confirm-pathname pathname)
-  (receive (pathname* loader)
-      (search-types-in-order pathname load/default-types)
-    pathname*
-    (and loader pathname)))
+  (and (file-loadable? pathname)
+       pathname))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
@@ -137,17 +130,6 @@ USA.
        files)
       (flush-purification-queue!)
       (eval init-expression environment))))
-
-(define (declare-shared-library shared-library thunk)
-  (add-event-receiver!
-   event:after-restore
-   (lambda ()
-     (if (condition? (ignore-errors thunk))
-	 (fluid-let ((load/suppress-loading-message? #t))
-	   (load
-	    (merge-pathnames
-	     shared-library
-	     (system-library-directory-pathname "lib" #t))))))))
 
 (define (force* value)
   (cond ((procedure? value) (force* (value)))

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-boot-compiler-2.sh,v 1.1 2007/05/14 16:50:41 cph Exp $
+# $Id: build-boot-compiler.sh,v 1.1 2007/06/06 19:42:39 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -29,16 +29,27 @@ if [ ${#} -eq 2 ]; then
     LIB=${1}
     BAND=${2}
 else
-    echo "usage: ${0} <library-dir> <band>"
+    echo "usage: ${0} <lib-dir> <band>"
     exit 1
 fi
 
-CMD="microcode/scheme --library ${LIB} --fasl runtime_make.so --heap 6000"
+cd runtime
+
+if [ -f make.o ]; then
+    FASL=http://www.gnu.org/software/mit-scheme/lib/runtime/make.so
+elif [ -f make.com ]; then
+    FASL=make.com
+else
+    echo "Can't find argument for --fasl."
+    exit 1
+fi
+
+CMD="../microcode/scheme --library ../${LIB} --fasl ${FASL} --heap 6000"
 echo "${CMD}"
 eval "${CMD}" <<EOF
 (begin
   (load-option (quote compiler))
   (load-option (quote cref))
   (load-option (quote *parser))
-  (disk-save "${BAND}"))
+  (disk-save "../${LIB}/${BAND}"))
 EOF

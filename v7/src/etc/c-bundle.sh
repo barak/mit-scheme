@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-bundle.sh,v 1.5 2007/05/14 16:50:42 cph Exp $
+# $Id: c-bundle.sh,v 1.6 2007/06/06 19:42:39 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -27,23 +27,24 @@ set -e
 
 usage ()
 {
-    echo "usage: ${0} TYPE SYSTEM FILES ..."
+    echo "usage: ${0} AUXDIR TYPE SYSTEM FILES ..."
     echo "  TYPE must be \`library' or \`static'."
     exit 1
 }
 
-if [ ! ${#} -gt 2 ]; then
+if [ ${#} -lt 4 ]; then
     usage
 fi
 
-TYPE=${1}
-SYSTEM=${2}
-shift 2
+AUXDIR=${1}
+TYPE=${2}
+SYSTEM=${3}
+shift 3
 
-(grep '^DECLARE_COMPILED_CODE' "${@}" && \
- grep '^DECLARE_COMPILED_DATA' "${@}" && \
- grep '^DECLARE_DATA_OBJECT'   "${@}") \
-| sed -e 's/.*:/  /' > "${SYSTEM}.h"
+GEN_NONCE=${AUXDIR}/gen-nonce
+EXTRACT_DECLS=${AUXDIR}/extract-liarc-decls
+
+"${EXTRACT_DECLS}" "${@}" > "${SYSTEM}.h"
 
 cat <<EOF > "${SYSTEM}.c"
 
@@ -111,6 +112,7 @@ initialize_compiled_code_blocks (void)
 EOF
     ;;
 library)
+    NONCE=`"${GEN_NONCE}" 8`
     cat <<EOF >> "${SYSTEM}.c"
 
 #define DECLARE_COMPILED_CODE(name, nentries, decl_code, code)		\\
@@ -135,6 +137,8 @@ dload_initialize_file (void)
 #include "${SYSTEM}.h"
   return (0);
 }
+
+const char dload_nonce [] = "${NONCE}";
 EOF
     ;;
 *)

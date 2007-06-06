@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.30 2007/05/14 16:50:53 cph Exp $
+$Id: liarc.h,v 1.31 2007/06/06 19:42:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -401,7 +401,9 @@ dload_initialize_data (void)						\
   return (declare_data_object (name, data));				\
 }
 
-#define DECLARE_DYNAMIC_INITIALIZATION(name)				\
+#define DECLARE_DYNAMIC_INITIALIZATION(name, nonce)			\
+const char dload_nonce [] = nonce;					\
+									\
 char *									\
 dload_initialize_file (void)						\
 {									\
@@ -412,7 +414,9 @@ dload_initialize_file (void)						\
      : 0);								\
 }
 
-#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)			\
+#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name, nonce)		\
+const char dload_nonce [] = nonce;					\
+									\
 char *									\
 dload_initialize_file (void)						\
 {									\
@@ -425,8 +429,8 @@ dload_initialize_file (void)						\
 #define DECLARE_COMPILED_DATA(name, decl_data, data)
 #define DECLARE_COMPILED_DATA_NS(name, data)
 #define DECLARE_DATA_OBJECT(name, data)
-#define DECLARE_DYNAMIC_INITIALIZATION(name)
-#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name)
+#define DECLARE_DYNAMIC_INITIALIZATION(name, nonce)
+#define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name, nonce)
 
 #endif /* !ENABLE_LIARC_FILE_INIT */
 
