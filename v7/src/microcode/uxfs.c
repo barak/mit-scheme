@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.30 2007/04/22 16:31:23 cph Exp $
+$Id: uxfs.c,v 1.31 2007/06/06 19:41:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,6 +25,7 @@ USA.
 
 */
 
+#include "scheme.h"
 #include "ux.h"
 #include "osfs.h"
 #include "osfile.h"
@@ -520,12 +521,30 @@ protect_fd (int fd)
 static DIR ** directory_pointers;
 static unsigned int n_directory_pointers;
 
+static void
+close_all_directories (void)
+{
+  DIR ** scan = directory_pointers;
+  DIR ** end = (scan + n_directory_pointers);
+  while (scan < end)
+    {
+      if ((*scan) != 0)
+	{
+	  closedir (*scan);
+	  (*scan) = 0;
+	}
+      scan += 1;
+    }
+  directory_pointers = 0;
+  n_directory_pointers = 0;
+}
+
 void
 UX_initialize_directory_reader (void)
 {
   directory_pointers = 0;
   n_directory_pointers = 0;
-  return;
+  add_reload_cleanup (close_all_directories);
 }
 
 static unsigned int
