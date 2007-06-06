@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 15.40 2007/01/05 21:19:20 cph Exp $
+$Id: make.scm,v 15.41 2007/06/06 20:03:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,17 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(with-working-directory-pathname (directory-pathname (current-load-pathname))
+(with-loader-base-uri (system-library-uri "6001/")
   (lambda ()
-    ((access with-directory-rewriting-rule
-	     (->environment '(RUNTIME COMPILER-INFO)))
-     (working-directory-pathname)
-     (pathname-as-directory "6001")
-     (lambda ()
-       (load-package-set "6001")
-       (if (and (eq? 'UNIX microcode-id/operating-system)
-		(string-ci=? "HP-UX" microcode-id/operating-system-variant))
-	   (load "floppy" (->environment '(EDWIN))))))))
+    (load-package-set "6001")
+    (if (and (eq? 'UNIX microcode-id/operating-system)
+	     (string-ci=? "HP-UX" microcode-id/operating-system-variant))
+	(load "floppy" (->environment '(EDWIN))))))
 (add-subsystem-identification! "6.001" '(15 31))
 
 ;;; Customize the runtime system:
