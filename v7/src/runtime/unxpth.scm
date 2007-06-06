@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxpth.scm,v 14.33 2007/04/15 17:43:08 cph Exp $
+$Id: unxpth.scm,v 14.34 2007/06/06 19:39:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -318,28 +318,31 @@ USA.
 	 pathname)))
 
 (define (unix/pathname-simplify pathname)
-  (or (and (implemented-primitive-procedure? (ucode-primitive file-eq? 2))
-	   (let ((directory (pathname-directory pathname)))
-	     (and (pair? directory)
-		  (let ((directory*
-			 (cons (car directory)
-			       (reverse!
-				(let loop
-				    ((elements (reverse (cdr directory))))
-				  (if (pair? elements)
-				      (let ((head (car elements))
-					    (tail (loop (cdr elements))))
-					(if (and (eq? head 'UP)
-						 (pair? tail)
-						 (not (eq? (car tail) 'UP)))
-					    (cdr tail)
-					    (cons head tail)))
-				      '()))))))
-		    (and (not (equal? directory directory*))
-			 (let ((pathname*
-				(pathname-new-directory pathname directory*)))
-			   (and ((ucode-primitive file-eq? 2)
-				 (->namestring pathname)
-				 (->namestring pathname*))
-				pathname*)))))))
+  (if (pair? (pathname-directory pathname))
+      (let loop ((pathname pathname) (np 1))
+	(let ((directory (pathname-directory pathname)))
+	  (let scan ((p (list-tail directory np)) (np np))
+	    (if (pair? p)
+		(if (and (not (eq? (car p) 'UP))
+			 (pair? (cdr p))
+			 (eq? (cadr p) 'UP))
+		    (let ((pathname*
+			   (pathname-new-directory pathname
+						   (delete-up directory p))))
+		      (if (file-eq? (directory-pathname pathname)
+				    (directory-pathname pathname*))
+			  (loop pathname* np)
+			  (scan (cddr p) (+ np 2))))
+		    (scan (cdr p) (+ np 1)))
+		pathname))))
       pathname))
+
+(define (delete-up directory p)
+  (let loop ((p* directory))
+    (if (eq? p* p)
+	(cddr p*)
+	(cons (car p*) (loop (cdr p*))))))
+
+(define (file-eq? p1 p2)
+  ((ucode-primitive file-eq? 2) (->namestring (merge-pathnames p1))
+				(->namestring (merge-pathnames p2))))
