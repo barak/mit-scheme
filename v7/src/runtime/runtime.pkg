@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.618 2007/06/06 19:42:42 cph Exp $
+$Id: runtime.pkg,v 14.619 2007/06/07 15:12:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1684,15 +1684,10 @@ USA.
   (export ()
 	  add-gc-daemon!
 	  add-gc-daemon!/no-restore
+	  add-primitive-gc-daemon!
 	  add-secondary-gc-daemon!
 	  gc-clean
 	  trigger-secondary-gc-daemons!)
-  (export (runtime hash)
-	  add-primitive-gc-daemon!)
-  (export (runtime hash-table)
-	  add-primitive-gc-daemon!)
-  (export (runtime generic-procedure eqht)
-	  add-primitive-gc-daemon!)
   (export (runtime interrupt-handler)
 	  trigger-gc-daemons!)
   (initialization (initialize-package!)))
