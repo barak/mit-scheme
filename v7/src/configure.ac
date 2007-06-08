@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.15 2007/06/06 19:42:38 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.16 2007/06/08 06:03:26 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -31,11 +31,7 @@ USA.
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
-if test -f liarc.stamp; then
-    : ${enable_native_code='c'}
-else
-    : ${enable_native_code='yes'}
-fi
+: ${enable_native_code='yes'}
 
 case ${enable_native_code} in
 c)
@@ -91,6 +87,9 @@ if test x${enable_native_code} = xc; then
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     BN=liarcc-ld
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
+    for BN in sos star-parser; do
+        (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
+    done
     for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)

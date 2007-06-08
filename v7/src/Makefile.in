@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.40 2007/06/06 19:42:38 cph Exp $
+# $Id: Makefile.in,v 1.41 2007/06/08 06:03:32 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -61,20 +61,23 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-SUBDIRS_1 = cref sf star-parser
-SUBDIRS_2 = edwin imail sos ssp xml
+LIARC_BOOT_BUNDLES = compiler cref sf sos star-parser
+LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin imail ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
-INSTALLED_SUBDIRS = microcode runtime $(SUBDIRS_1) $(SUBDIRS_2)
-
-LIARC_BOOT_BUNDLES = $(SUBDIRS_1) compiler
-LIARC_INSTALLED_BUNDLES = $(SUBDIRS_1) $(SUBDIRS_2)
-LIARC_BUNDLES = $(LIARC_INSTALLED_BUNDLES) compiler
+INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 
 AUXDIR = @AUXDIR@
 EDETC = $(AUXDIR)/edwin/etc
 
-all: compile-microcode @ALL_TARGET@ build-bands
+all: @ALL_TARGET@
+
+all-native: compile-microcode
+	@$(top_srcdir)/etc/compile.sh
+	$(MAKE) build-bands
+
+all-liarc:
+	@echo "Use etc/make-liarc.sh script."
 
 compile-microcode:
 	(cd microcode && $(MAKE) all)
@@ -82,63 +85,57 @@ compile-microcode:
 build-bands:
 	@$(top_srcdir)/etc/build-bands.sh
 
-all-native:
-	@$(top_srcdir)/etc/compile.sh
-
-
-liarc-dist: liarc-stamp distclean
-
-liarc-stamp:
+liarc-dist:
 	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme
 	@$(top_srcdir)/etc/c-prepare.sh mit-scheme
-	echo "done" > liarc.stamp
+	$(MAKE) distclean
 
-all-liarc: liarc-compile-scheme
-	$(MAKE) compile-microcode
-	$(MAKE) compile-liarc-bundles
-	rm -rf boot-lib
+stamp_install-liarc-microcode: compile-microcode
+	(cd microcode; $(MAKE) install)
+	echo "done" > $@
 
-liarc-compile-scheme: boot-lib/liarc-compiler.com c-clean
-	@$(top_srcdir)/etc/c-compile.sh boot-lib/scheme --library boot-lib \
-	    --band boot-lib/liarc-compiler.com
-
-boot-lib/liarc-compiler.com: boot-lib/scheme compile-liarc-boot-bundles
-	$(INSTALL_PROGRAM) microcode/liarc-cc boot-lib/.
-	$(INSTALL_PROGRAM) microcode/liarc-ld boot-lib/.
-	$(mkinstalldirs) boot-lib/include
-	$(INSTALL_DATA) microcode/*.h boot-lib/include/.
-	@for BN in $(LIARC_BOOT_BUNDLES); do \
-	    CMD="$(INSTALL_DATA) $${BN}/$${BN}.so boot-lib/lib/.";\
-	    echo "$${CMD}"; eval "$${CMD}";\
-	done
-	@$(top_srcdir)/etc/build-boot-compiler.sh boot-lib liarc-compiler.com
-
-boot-lib/scheme: compile-microcode
-	$(mkinstalldirs) boot-lib boot-lib/lib
-	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm boot-lib/.
-	$(INSTALL_PROGRAM) microcode/scheme boot-lib/.
-	$(INSTALL_PROGRAM) microcode/gen-nonce boot-lib/.
-	$(INSTALL_DATA) microcode/*.so boot-lib/lib/.
-	rm -f boot-lib/star-parser; ln -s ../star-parser boot-lib/.
-	rm -f boot-lib/options; ln -s ../runtime boot-lib/options
-
-compile-liarc-boot-bundles:
+stamp_compile-liarc-boot-bundles: stamp_install-liarc-microcode
 	@for BN in $(LIARC_BOOT_BUNDLES); do \
 	    CMD="(cd $${BN} && $(MAKE) compile-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
+	echo "done" > $@
 
-compile-liarc-bundles:
+stamp_install-liarc-boot-bundles: stamp_compile-liarc-boot-bundles
+	@for BN in $(LIARC_BOOT_BUNDLES); do \
+	    CMD="(cd $${BN} && $(MAKE) install-liarc-bundle)";\
+	    echo "$${CMD}"; eval "$${CMD}";\
+	done
+	echo "done" > $@
+
+stamp_build-liarc-boot-compiler: stamp_install-liarc-boot-bundles
+	@$(top_srcdir)/etc/build-boot-compiler.sh
+	echo "done" > $@
+
+stamp_install-liarc-boot-compiler: stamp_build-liarc-boot-compiler
+	$(MAKE) install-auxdir-top
+	echo "done" > $@
+
+stamp_liarc-compile-scheme:
+	@$(top_srcdir)/etc/c-compile.sh boot-root/bin/scheme \
+	    --band boot-compiler.com
+	echo "done" > $@
+
+stamp_compile-liarc-bundles: stamp_liarc-compile-scheme compile-microcode
 	@for BN in $(LIARC_BUNDLES); do \
 	    CMD="(cd $${BN} && $(MAKE) compile-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
+	echo "done" > $@
 
-install-liarc-bundles:
-	@for BN in $(LIARC_INSTALLED_BUNDLES); do \
+install-liarc-bundles: stamp_compile-liarc-bundles
+	@for BN in $(LIARC_BUNDLES); do \
 	    CMD="(cd $${BN} && $(MAKE) install-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
+
+
+
 
 native-from-liarc: boot-lib/native-compiler.com clean
 	$(MAKE) compile-microcode
@@ -147,7 +144,7 @@ native-from-liarc: boot-lib/native-compiler.com clean
 	rm -rf boot-lib
 
 boot-lib/native-compiler.com: boot-lib/scheme native-prepare
-	@$(top_srcdir)/etc/build-boot-compiler.sh boot-lib native-compiler.com
+	@$(top_srcdir)/etc/build-boot-compiler.sh native-compiler.com
 
 native-prepare:
 	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme-c
@@ -164,21 +161,22 @@ tags TAGS:
 
 install: install-standard @INSTALL_LIARC_BUNDLES@
 
-install-standard:
+install-standard: install-auxdir-top
 	@for SUBDIR in $(INSTALLED_SUBDIRS); do \
 	    echo "Making $@ in $${SUBDIR}";\
 	    (cd $${SUBDIR}; $(MAKE) install) || exit 1;\
 	done
 
+	$(mkinstalldirs) $(DESTDIR)$(EDETC)
+	$(INSTALL_DATA) $(top_srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
+
+install-auxdir-top:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
-	$(mkinstalldirs) $(DESTDIR)$(EDETC)
-	$(INSTALL_DATA) $(top_srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
-
 .PHONY: all compile-microcode build-bands all-native
-.PHONY: liarc-dist all-c liarc-compile-scheme compile-liarc-boot-bundles
-.PHONY: compile-liarc-bundles native
+.PHONY: liarc-dist install-liarc-bundles
+.PHONY: native
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean
-.PHONY: tags TAGS install install-standard
+.PHONY: tags TAGS install install-standard install-auxdir-top

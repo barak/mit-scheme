@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.48 2007/06/06 19:42:40 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.49 2007/06/08 06:04:15 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -132,11 +132,7 @@ AC_ARG_ENABLE([debugging],
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
-if test -f ../liarc.stamp; then
-    : ${enable_native_code='c'}
-else
-    : ${enable_native_code='yes'}
-fi
+: ${enable_native_code='yes'}
 
 AC_ARG_WITH([openssl],
     AS_HELP_STRING([--with-openssl],

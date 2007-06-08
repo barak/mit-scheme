@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.20 2007/06/06 19:42:39 cph Exp $
+$Id: compile.scm,v 1.21 2007/06/08 06:03:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,7 +35,11 @@ USA.
 
 (define (compile-all-dirs compile-dir)
   (compile-boot-dirs compile-dir)
-  (for-each compile-dir '("sos" "xml" "win32" "edwin" "imail" "ssp")))
+  (compile-dir "sos")
+  (with-working-directory-pathname "sos"
+    (lambda ()
+      (load "load")))
+  (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
@@ -81,10 +85,7 @@ USA.
       (if (and (eq? microcode-id/compiled-code-type 'C)
 	       (file-exists? "compiler.so"))
 	  (load "compiler.so"))
-      (load
-       (string-append (or (file-symbolic-link? "machine")
-			  (error "Missing compiler/machine link."))
-		      "/make")))))
+      (load "make"))))
 
 (define (c-prepare)
   (in-liarc

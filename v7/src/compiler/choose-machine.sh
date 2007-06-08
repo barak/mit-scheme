@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: choose-machine.sh,v 1.1 2007/06/06 19:42:38 cph Exp $
+# $Id: choose-machine.sh,v 1.2 2007/06/08 06:03:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -59,8 +59,6 @@ no)
 *)
     chosen "${MACHINE}"
 esac
-
-[ -f ../liarc.stamp ] && chosen C
 
 case `${DIR}/config.guess` in
 alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.4 2007/06/06 19:42:40 cph Exp $
+$Id: utilities.scm,v 1.5 2007/06/08 06:04:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -92,13 +92,13 @@ USA.
 				     "$^")
 		      (newline port)
 		      (write-rule port "install-liarc-bundle" so-file)
-		      (let ((dir
-			     (string-append "$(DESTDIR)$(AUXDIR)/" bundle)))
-			(write-command port "$(mkinstalldirs)" dir)
-			(write-command port
-				       "$(INSTALL_DATA)"
-				       "$^"
-				       (string-append dir "/.")))
+		      (write-command port
+				     "$(mkinstalldirs)"
+				     "$(DESTDIR)$(AUXDIR)/lib")
+		      (write-command port
+				     "$(INSTALL_DATA)"
+				     "$^"
+				     "$(DESTDIR)$(AUXDIR)/lib/.")
 		      (newline port)
 		      (write-rule port
 				  ".PHONY"
