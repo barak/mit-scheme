@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.128 2007/06/06 20:03:24 cph Exp $
+$Id: make.scm,v 4.129 2007/06/08 05:58:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,7 +33,10 @@ USA.
   architecture-name
   (load-option 'COMPRESS)
   (load-option 'RB-TREE)
-  (with-loader-base-uri (system-library-uri "compiler/")
+  ((access with-directory-rewriting-rule
+	   (->environment '(RUNTIME COMPILER-INFO)))
+   (working-directory-pathname)
+   (pathname-as-directory "compiler")
    (lambda ()
      (load-package-set "compiler")))
   (add-subsystem-identification! "LIAR" '(4 118)))
