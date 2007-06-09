@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.8 2007/06/09 01:19:14 cph Exp $
+# $Id: c-prepare.sh,v 1.9 2007/06/09 02:38:00 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -37,6 +37,5 @@ echo "${CMD}"
 ${CMD} <<EOF
 (begin
   (load "etc/compile.scm")
-  (compile-bootstrap-3)
   (c-prepare))
 EOF

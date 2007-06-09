@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.22 2007/06/09 01:19:57 cph Exp $
+$Id: compile.scm,v 1.23 2007/06/09 02:37:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -78,22 +78,22 @@ USA.
 	(in-liarc action)
 	(action))))
 
-(define (compile-bootstrap-3)
+(define (c-prepare)
   (load-option 'SF)
   (with-working-directory-pathname "compiler"
     (lambda ()
-      (if (and (eq? microcode-id/compiled-code-type 'C)
-	       (file-exists? "compiler.so"))
-	  (load "compiler.so"))
-      (load "make"))))
-
-(define (c-prepare)
+      (load "make")))
   (in-liarc
    (lambda ()
      (compile-boot-dirs c-compile-dir)
      (cf "microcode/utabmd"))))
 
 (define (native-prepare)
+  (load-option 'SF)
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.so")
+      (load "machines/i386/make")))
   (compile-boot-dirs compile-dir)
   (sf "microcode/utabmd"))
 
