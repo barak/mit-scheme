@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.7 2007/06/06 19:42:39 cph Exp $
+# $Id: c-prepare.sh,v 1.8 2007/06/09 01:19:14 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -31,7 +31,7 @@ else
     echo "usage: ${0} <executable>"
     exit 1
 fi
-CMD="${EXE} --heap 6000"
+CMD="${EXE} --heap 6000 --stack 200"
 
 echo "${CMD}"
 ${CMD} <<EOF
