@@ -1,19 +1,13 @@
 EDDIR = $(AUXDIR)/edwin
-EODIR = $(EDDIR)/autoload
 EDOPTS = debian-changelog eystep lisppaste manual midas nntp paredit pasmod \
 	 print pwedit pwparse snr sort techinfo telnet tximod verilog vhdl \
 	 webster
 
 install:
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
+	rm -rf $(DESTDIR)$(EDDIR)
 	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
-	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
-
-	rm -rf $(DESTDIR)$(EODIR)
-	$(mkinstalldirs) $(DESTDIR)$(EODIR)
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(EDDIR)/.
 	@for F in $(EDOPTS); do \
-	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(EODIR)/.";\
-	    echo "$${CMD}"; eval "$${CMD}";\
-	    CMD="(cd $(DESTDIR)$(EODIR);$(LN_S) ../../SRC/edwin/$${F}.bci .)";\
+	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(EDDIR)/.";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done

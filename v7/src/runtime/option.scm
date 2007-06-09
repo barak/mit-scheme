@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.56 2007/06/06 19:42:42 cph Exp $
+$Id: option.scm,v 14.57 2007/06/09 01:22:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -83,10 +83,8 @@ USA.
       (standard-load-options)))
 
 (define (standard-load-options)
-  (or (library-file? "runtime/optiondb") ; for C back end
-      (library-file? "options/optiondb")
-      (error "Cannot locate a load-option database")
-      "optiondb"))
+  (or (library-file? "runtime/optiondb")
+      (error "Cannot locate a load-option database.")))
 
 (define (library-file? library-internal-path)
   (confirm-pathname (system-library-pathname library-internal-path #f)))
@@ -106,7 +104,8 @@ USA.
 (define (standard-option-loader package-name init-expression . files)
   (lambda ()
     (let ((environment (package/environment (find-package package-name)))
-	  (runtime (pathname-as-directory "runtime")))
+	  (runtime (pathname-as-directory "runtime"))
+	  (rundir (system-library-directory-pathname "runtime" #t)))
       (for-each
        (lambda (file)
 	 (let ((file (force* file)))
@@ -115,10 +114,8 @@ USA.
 		       (purify obj)
 		       (scode-eval obj environment)))
 		 (else
-		  (let* ((options
-			  (system-library-directory-pathname "options" #t))
-			 (pathname (merge-pathnames file options)))
-		    (with-directory-rewriting-rule options runtime
+		  (let ((pathname (merge-pathnames file rundir)))
+		    (with-directory-rewriting-rule rundir runtime
 		      (lambda ()
 			(with-working-directory-pathname
 			    (directory-pathname pathname)

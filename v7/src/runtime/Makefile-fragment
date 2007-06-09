@@ -1,16 +1,12 @@
-RODIR = $(AUXDIR)/options
+RUNDIR = $(AUXDIR)/runtime
 RUNOPTS = chrsyn cpress format gdbm hashtb krypt mime-codec numint optiondb \
 	  ordvec pgsql process rbtree regexp rexp rgxcmp syncproc wttree ystep
 
 install:
-	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/runtime
-	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/runtime/.
-
-	rm -rf $(DESTDIR)$(RODIR)
-	$(mkinstalldirs) $(DESTDIR)$(RODIR)
+	rm -rf $(DESTDIR)$(RUNDIR)
+	$(mkinstalldirs) $(DESTDIR)$(RUNDIR)
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(RUNDIR)/.
 	@for F in $(RUNOPTS); do \
-	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(RODIR)/.";\
-	    echo "$${CMD}"; eval "$${CMD}";\
-	    CMD="(cd $(DESTDIR)$(RODIR); $(LN_S) ../SRC/runtime/$${F}.bci .)";\
+	    CMD="$(INSTALL_COM) $${F}.com $(DESTDIR)$(RUNDIR)/.";\
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done

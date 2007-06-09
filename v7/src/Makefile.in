@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.41 2007/06/08 06:03:32 cph Exp $
+# $Id: Makefile.in,v 1.42 2007/06/09 01:22:11 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -68,7 +68,7 @@ SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 
 AUXDIR = @AUXDIR@
-EDETC = $(AUXDIR)/edwin/etc
+EDDIR = $(AUXDIR)/edwin
 
 all: @ALL_TARGET@
 
@@ -166,9 +166,8 @@ install-standard: install-auxdir-top
 	    echo "Making $@ in $${SUBDIR}";\
 	    (cd $${SUBDIR}; $(MAKE) install) || exit 1;\
 	done
-
-	$(mkinstalldirs) $(DESTDIR)$(EDETC)
-	$(INSTALL_DATA) $(top_srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
+	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
+	$(INSTALL_DATA) $(top_srcdir)/etc/TUTORIAL $(DESTDIR)$(EDDIR)/.
 
 install-auxdir-top:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

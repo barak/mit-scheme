@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.26 2007/06/06 19:42:38 cph Exp $
+# $Id: Setup.sh,v 1.27 2007/06/09 01:22:18 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -41,18 +41,11 @@ OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
 # lib
 maybe_mkdir lib
 maybe_mkdir lib/lib
-maybe_link lib/SRC ..
+maybe_link lib/edwin ../edwin
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
-maybe_link lib/options ../runtime
+maybe_link lib/runtime ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
-
-# lib/edwin
-maybe_mkdir lib/edwin
-maybe_mkdir lib/edwin/etc
-maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
-maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
-maybe_link lib/edwin/autoload ../../edwin
 
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
