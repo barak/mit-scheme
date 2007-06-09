@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.5 2007/06/08 06:04:09 cph Exp $
+$Id: utilities.scm,v 1.6 2007/06/09 02:42:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -123,10 +123,7 @@ USA.
 			     (string=? bundle "sf"))
 			 (cons "make" names))
 			((string=? bundle "compiler")
-			 (cons* (string-append
-				 (or (file-symbolic-link? "compiler/machine")
-				     (error "Missing compiler/machine link."))
-				 "/make")
+			 (cons* (compiler-make-file)
 				"base/make"
 				names))
 			((string=? bundle "edwin")
@@ -136,6 +133,12 @@ USA.
 				names))
 			(else names)))
 		string<?))))
+
+(define (compiler-make-file)
+  (string-append
+   (or (file-symbolic-link? "compiler/machine")
+       (error "Missing compiler/machine link."))
+   "/make"))
 
 (define (write-header output)
   (write-string "# This file automatically generated at " output)

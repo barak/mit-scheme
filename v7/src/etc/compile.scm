@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.23 2007/06/09 02:37:54 cph Exp $
+$Id: compile.scm,v 1.24 2007/06/09 02:42:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -90,10 +90,11 @@ USA.
 
 (define (native-prepare)
   (load-option 'SF)
-  (with-working-directory-pathname "compiler"
-    (lambda ()
-      (load "compiler.so")
-      (load "machines/i386/make")))
+  (let ((make-file (compiler-make-file)))
+    (with-working-directory-pathname "compiler"
+      (lambda ()
+	(load "compiler.so")
+	(load make-file))))
   (compile-boot-dirs compile-dir)
   (sf "microcode/utabmd"))
 
