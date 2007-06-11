@@ -1,10 +1,10 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.110 2007/02/10 22:18:19 riastradh Exp $
+@comment $Id: user.texinfo,v 1.111 2007/06/11 17:49:35 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
-@set EDITION 1.91
+@set EDITION 1.92
 @set VERSION 7.7.90+
-@set UPDATED 2006-02-10
+@set UPDATED 2007-05-30
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -1758,23 +1758,6 @@ value of each expression in the file as it is evaluated.  Otherwise,
 nothing is printed except for the value of the last expression in the
 file.  (Note: the noisy loading feature is implemented for source-code
 files only.)
-@end defvr
-
-@defvr {variable+} load/default-types
-When load is given a pathname without a type, it uses the value of this
-variable to determine what pathname types to look for and how to load
-the file.  @code{load/default-types} is a list of associations that maps
-pathname types (strings) to loader procedures.  @code{load} tries the
-pathname types in the order that they appear in the list.  The initial
-value of this variable has pathname types in this order:
-
-@example
-"com" "so" "sl" "bin" "scm"
-@end example
-
-This means that, for example, @samp{(load "foo")} will try to load
-@file{foo.com} first, and @file{foo.scm} only after looking for and
-failing to find the other pathname types.
 @end defvr
 
 @cindex working directory
