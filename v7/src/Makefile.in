@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.42 2007/06/09 01:22:11 cph Exp $
+# $Id: Makefile.in,v 1.43 2007/06/13 13:36:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -61,8 +61,8 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-LIARC_BOOT_BUNDLES = compiler cref sf sos star-parser
-LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin imail ssp xml
+LIARC_BOOT_BUNDLES = compiler cref sf star-parser
+LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin imail sos ssp xml
 
 SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)

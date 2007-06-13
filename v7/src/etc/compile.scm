@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.24 2007/06/09 02:42:29 cph Exp $
+$Id: compile.scm,v 1.25 2007/06/13 13:37:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,6 +35,7 @@ USA.
 
 (define (compile-all-dirs compile-dir)
   (compile-boot-dirs compile-dir)
+  (compile-dir "sos")
   (with-working-directory-pathname "sos"
     (lambda ()
       (load "load")))
@@ -42,8 +43,7 @@ USA.
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
-  (for-each compile-dir
-	    '("runtime" "cref" "sf" "compiler" "star-parser" "sos")))
+  (for-each compile-dir '("runtime" "cref" "sf" "compiler" "star-parser")))
 
 (define (compile-cref compile-dir)
   (compile-dir "cref")
@@ -90,13 +90,21 @@ USA.
 
 (define (native-prepare)
   (load-option 'SF)
+  (load-option 'CREF)
   (let ((make-file (compiler-make-file)))
     (with-working-directory-pathname "compiler"
       (lambda ()
 	(load "compiler.so")
 	(load make-file))))
-  (compile-boot-dirs compile-dir)
-  (sf "microcode/utabmd"))
+  (fluid-let ((compiler:cross-compiling? #t))
+    (compile-boot-dirs compile-dir)
+    (sf "microcode/utabmd")))
+
+(define (compiler-make-file)
+  (string-append
+   (or (file-symbolic-link? "compiler/machine")
+       (error "Missing compiler/machine link."))
+   "/make"))
 
 (define (c-compile)
   (in-liarc
