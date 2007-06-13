@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.19 2007/04/14 05:58:59 cph Exp $
+$Id: asstop.scm,v 1.20 2007/06/13 13:33:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,8 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define compiled-output-extension "com")
+(define (compiler:compiled-code-pathname-type)
+  (if compiler:cross-compiling? "moc" "com"))
 
 (define (compiler-file-output object pathname)
   (fasdump object pathname #t))

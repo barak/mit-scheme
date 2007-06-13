@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.74 2007/06/06 19:14:55 cph Exp $
+$Id: toplev.scm,v 4.75 2007/06/13 13:33:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,8 +40,9 @@ USA.
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
       (bin-pathname (lambda (path) (pathname-new-type path "bin")))
       (ext-pathname (lambda (path) (pathname-new-type path "ext")))
-      (com-pathname (lambda (path)
-		      (pathname-new-type path compiled-output-extension))))
+      (com-pathname
+       (lambda (path)
+	 (pathname-new-type path (compiler:compiled-code-pathname-type)))))
 
   (define (process-file input-file output-file dependencies processor)
     (let ((doit (lambda () (processor input-file output-file dependencies))))
@@ -128,41 +129,37 @@ USA.
   (apply compile-bin-file input rest))
 
 (define (compile-bin-file input-string #!optional output-string)
-  (if compiler:cross-compiling?
-      (apply cross-compile-bin-file
-	     (cons input-string (if (default-object? output-string)
-				    '()
-				    (list output-string))))
-      (begin
-	(compiler-pathnames
-	 input-string
-	 (and (not (default-object? output-string)) output-string)
-	 (make-pathname #f #f #f #f "bin" 'NEWEST)
-	 (lambda (input-pathname output-pathname)
-	   (fluid-let ((*compiler-input-pathname*
-			(merge-pathnames input-pathname))
-		       (*compiler-output-pathname*
-			(merge-pathnames output-pathname)))
-	     (let ((scode (compiler-fasload input-pathname)))
-	       (if (and (scode/constant? scode)
-			(not compiler:compile-data-files-as-expressions?))
-		   (compile-data-from-file scode output-pathname)
-		   (maybe-open-file
-		    compiler:generate-rtl-files?
-		    (pathname-new-type output-pathname "rtl")
-		    (lambda (rtl-output-port)
-		      (maybe-open-file
-		       compiler:generate-lap-files?
-		       (pathname-new-type output-pathname "lap")
-		       (lambda (lap-output-port)
-			 (fluid-let ((*debugging-key*
-				      (random-byte-vector 32)))
-			   (compile-scode/internal
-			    scode
-			    (pathname-new-type output-pathname "inf")
-			    rtl-output-port
-			    lap-output-port)))))))))))
-	unspecific)))
+  (compiler-pathnames
+   input-string
+   (and (not (default-object? output-string)) output-string)
+   (make-pathname #f #f #f #f "bin" 'NEWEST)
+   (lambda (input-pathname output-pathname)
+     (fluid-let ((*compiler-input-pathname*
+		  (merge-pathnames input-pathname))
+		 (*compiler-output-pathname*
+		  (merge-pathnames output-pathname)))
+       (let ((scode (compiler-fasload input-pathname)))
+	 (if (and (scode/constant? scode)
+		  (not compiler:compile-data-files-as-expressions?))
+	     (compile-data-from-file scode output-pathname)
+	     (maybe-open-file
+	      compiler:generate-rtl-files?
+	      (pathname-new-type output-pathname "rtl")
+	      (lambda (rtl-output-port)
+		(maybe-open-file
+		 compiler:generate-lap-files?
+		 (pathname-new-type output-pathname "lap")
+		 (lambda (lap-output-port)
+		   (fluid-let ((*debugging-key*
+				(random-byte-vector 32)))
+		     (compile-scode/internal
+		      scode
+		      (pathname-new-type
+		       output-pathname
+		       (compiler:compiled-inf-pathname-type))
+		      rtl-output-port
+		      lap-output-port)))))))))))
+  unspecific)
 
 (define *debugging-key*)
 (define *compiler-input-pathname*)
@@ -172,6 +169,9 @@ USA.
   (if open?
       (call-with-output-file pathname receiver)
       (receiver #f)))
+
+(define (compiler:compiled-inf-pathname-type)
+  (if compiler:cross-compiling? "fni" "inf"))
 
 (define (compiler-pathnames input-string output-string default transform)
   (let* ((core
@@ -179,8 +179,9 @@ USA.
 	    (let ((input-pathname (merge-pathnames input-string default)))
 	      (let ((output-pathname
 		     (let ((output-pathname
-			    (pathname-new-type input-pathname
-					       compiled-output-extension)))
+			    (pathname-new-type
+			     input-pathname
+			     (compiler:compiled-code-pathname-type))))
 		       (if output-string
 			   (merge-pathnames output-string output-pathname)
 			   output-pathname))))
@@ -536,7 +537,11 @@ USA.
 	(lap-output-port
 	 (if (default-object? lap-output-port) #f lap-output-port))
 	(wrapper
-	 (if (default-object? wrapper) in-compiler wrapper)))
+	 (if (default-object? wrapper)
+	     (if compiler:cross-compiling?
+		 in-cross-compiler
+		 in-compiler)
+	     wrapper)))
     (fluid-let ((*info-output-filename*
 		 (if (pathname? info-output-pathname)
 		     info-output-pathname
@@ -557,19 +562,16 @@ USA.
 	 (phase/fg-generation)
 	 (phase/fg-optimization)
 	 (phase/rtl-generation)
-	 #|
-	 ;; Current info-generation keeps state in-core.
-	 (if info-output-pathname
-	     (phase/info-generation-1 info-output-pathname))
-	 |#
 	 (phase/rtl-optimization)
 	 (if rtl-output-port
-	     (phase/rtl-file-output scode rtl-output-port))
+	     (phase/rtl-file-output rtl-output-port))
 	 (phase/lap-generation)
 	 (phase/lap-linearization)
 	 (if lap-output-port
-	     (phase/lap-file-output scode lap-output-port))
-	 (assemble&link info-output-pathname))))))
+	     (phase/lap-file-output lap-output-port))
+	 (if compiler:cross-compiling?
+	     (cross-assemble&link info-output-pathname)
+	     (assemble&link info-output-pathname)))))))
 
 (define (compiler-phase name thunk)
   (if compiler:show-phases?

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.28 2007/06/06 19:42:38 cph Exp $
+$Id: compiler.pkg,v 1.29 2007/06/13 13:33:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,12 +244,9 @@ USA.
 	  compile-file:sf-only?
 	  compile-procedure
 	  compile-scode
+	  compiler:compiled-code-pathname-type
 	  compiler:invoke-c-compiler?
-	  compiler:reset!
-	  ;; cross-compile-bin-file
-	  ;; cross-compile-bin-file-end
-	  ;; lap->code
-	  )
+	  compiler:reset!)
   (export (compiler)
 	  *compiler-input-pathname*
 	  *compiler-output-pathname*

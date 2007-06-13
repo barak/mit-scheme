@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.30 2007/06/06 19:42:38 cph Exp $
+$Id: ctop.scm,v 1.31 2007/06/13 13:33:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,7 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define compiled-output-extension "c")
+(define (compiler:compiled-code-pathname-type) "c")
 (define compiler:invoke-c-compiler? #t)
 (define compiler:invoke-verbose? #t)
 
@@ -64,10 +64,6 @@ USA.
 		   (pathname-new-type (compiler-temporary-file-pathname)
 				      "inf")))
 	(action))))
-
-(define (cross-compile-bin-file input . more)
-  input more				; ignored
-  (error "cross-compile-bin-file: Meaningless"))
 
 (define (optimize-linear-lap lap-program)
   lap-program)
