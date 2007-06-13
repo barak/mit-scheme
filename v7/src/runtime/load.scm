@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.95 2007/06/06 19:42:42 cph Exp $
+$Id: load.scm,v 14.96 2007/06/13 13:34:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -325,10 +325,11 @@ USA.
      (object-file-prefix uri)))))
 
 (define (object-file-prefix uri)
-  (let ((pathname (uri->pathname uri #f)))
-    (if pathname
-	(directory-namestring pathname)
-	(uri->string
+  (uri->string
+   (let ((pathname (uri->pathname uri #f)))
+     (if pathname
+	 (pathname->uri
+	  (directory-pathname pathname))
 	 ;; This kludge has far too much knowledge of the URI
 	 ;; argument.  It's an expedient to work around the lack of
 	 ;; URI comparison operations.
