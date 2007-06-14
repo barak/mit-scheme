@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crstop.scm,v 1.18 2007/06/13 13:33:37 cph Exp $
+$Id: crstop.scm,v 1.19 2007/06/14 17:41:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,12 +25,10 @@ USA.
 
 |#
 
-;;;; Cross Compiler Top Level.
-;;; This code shares and should be merged with "toplev.scm".
-;;; Many of the procedures only differ in the default extensions.
+;;;; Cross compiler
 
 (declare (usual-integrations))
-
+
 (define (in-cross-compiler thunk)
   (fluid-let ((compiler:compile-by-procedures? #f)
 	      (compiler:dump-info-file compiler:dump-inf-file))
@@ -42,21 +40,6 @@ USA.
       (cross-compiler-phase/info-generation-2 info-output-pathname))
   (cross-compiler-phase/link)
   *result*)
-
-(define (cross-compile-bin-file-end input-string #!optional output-string)
-  (compiler-pathnames
-   input-string
-   (and (not (default-object? output-string)) output-string)
-   (make-pathname #f #f #f #f "moc" 'NEWEST)
-   (lambda (input-pathname output-pathname)
-     output-pathname			; ignored
-     (cross-compile-scode-end (compiler-fasload input-pathname)))))
-
-(define (cross-compile-scode-end cross-compilation)
-  (in-compiler
-   (lambda ()
-     (cross-link-end cross-compilation)
-     *result*)))
 
 (define (cross-compiler-phase/info-generation-2 pathname)
   (info-generation-2 pathname set-cc-code-block/debugging-info!))
