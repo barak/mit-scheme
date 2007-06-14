@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.44 2007/04/22 16:31:22 cph Exp $
+$Id: fasl.h,v 9.45 2007/06/14 13:31:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,6 +34,7 @@ USA.
 #define SCM_FASL_H 1
 
 #include "object.h"
+#include "cmpint.h"
 
 #if (SIZEOF_UNSIGNED_LONG == 4)
 #  define FASL_FILE_MARKER 0xFAFAFAFAUL
@@ -199,6 +200,11 @@ extern bool open_fasl_input_file (const char *, fasl_file_handle_t *);
 extern bool close_fasl_input_file (fasl_file_handle_t);
 extern bool read_fasl_header (fasl_header_t *, fasl_file_handle_t);
 extern bool read_from_fasl_file (void *, size_t, fasl_file_handle_t);
+extern SCHEME_OBJECT * fasl_object_address (SCHEME_OBJECT, fasl_header_t *);
+extern insn_t * fasl_cc_address (SCHEME_OBJECT, fasl_header_t *);
+extern SCHEME_OBJECT fasl_raw_address_to_object
+  (unsigned int, SCHEME_OBJECT *, fasl_header_t *);
+extern SCHEME_OBJECT fasl_raw_address_to_cc_entry (insn_t *, fasl_header_t *);
 extern SCHEME_OBJECT * faslhdr_utilities_end (fasl_header_t *);
 extern fasl_read_status_t check_fasl_version (fasl_header_t *);
 extern fasl_read_status_t check_fasl_cc_version

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.103 2007/06/06 19:42:40 cph Exp $
+$Id: fasload.c,v 9.104 2007/06/14 13:31:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -79,10 +79,8 @@ static gc_handler_t handle_primitive;
 static gc_tuple_handler_t fasload_tuple;
 static gc_vector_handler_t fasload_vector;
 static gc_object_handler_t fasload_cc_entry;
-#ifndef HEAP_IN_LOW_MEMORY
 static gc_raw_address_to_object_t fasload_raw_address_to_object;
 static gc_raw_address_to_cc_entry_t fasload_raw_address_to_cc_entry;
-#endif
 static void * relocate_address (void *);
 
 static gc_table_t * intern_block_table (void);
@@ -146,10 +144,10 @@ init_fasl_file (const char * file_name, bool band_p,
     {
       outf_error ("\nBad version in FASL File: %s\n", file_name);
       outf_error
-	("File has: Version %4u Architecture %4u.\n",
+	("File has: version %u architecture %u.\n",
 	 (FASLHDR_VERSION (fh)), (FASLHDR_ARCH (fh)));
       outf_error
-	("Expected:  Version between %4u and %4u Architecture %4u.\n",
+	("Expected: version between %u and %u architecture %u.\n",
 	 OLDEST_INPUT_FASL_VERSION,
 	 NEWEST_INPUT_FASL_VERSION,
 	 CURRENT_FASL_ARCH);
@@ -165,10 +163,10 @@ init_fasl_file (const char * file_name, bool band_p,
     {
       outf_error ("\nBad compiled-code version in FASL File: %s\n", file_name);
       outf_error
-	("File has: compiled-code interface %4u; architecture %4u.\n",
+	("File has: compiled-code interface %u; architecture %u.\n",
 	 (FASLHDR_CC_VERSION (fh)), (FASLHDR_CC_ARCH (fh)));
       outf_error
-	("Expected:  compiled code interface %4u; architecture %4u.\n",
+	("Expected: compiled-code interface %u; architecture %u.\n",
 	 compiler_interface_version, compiler_processor_type);
       signal_error_from_primitive (ERR_FASLOAD_COMPILED_MISMATCH);
     }
@@ -472,10 +470,8 @@ relocate_block_table (void)
       (GCT_TUPLE (&table)) = fasload_tuple;
       (GCT_VECTOR (&table)) = fasload_vector;
       (GCT_CC_ENTRY (&table)) = fasload_cc_entry;
-#ifndef HEAP_IN_LOW_MEMORY
       (GCT_RAW_ADDRESS_TO_OBJECT (&table)) = fasload_raw_address_to_object;
       (GCT_RAW_ADDRESS_TO_CC_ENTRY (&table)) = fasload_raw_address_to_cc_entry;
-#endif
 
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
@@ -499,33 +495,20 @@ DEFINE_GC_HANDLER (handle_primitive)
   return (scan + 1);
 }
 
-#ifdef HEAP_IN_LOW_MEMORY
-
-#define OLD_ADDRESS OBJECT_ADDRESS
-#define OLD_CC_ADDRESS CC_ENTRY_ADDRESS
-
-#else
-
-#define OLD_ADDRESS(object)						\
-  ((FASLHDR_MEMORY_BASE (fh)) + (OBJECT_DATUM (object)))
-
-#define OLD_CC_ADDRESS(object)						\
-  (((insn_t *) (FASLHDR_MEMORY_BASE (fh))) + (OBJECT_DATUM (object)))
+#define OLD_ADDRESS(object) (fasl_object_address ((object), (fh)))
+#define OLD_CC_ADDRESS(object) (fasl_cc_address ((object), (fh)))
 
 static SCHEME_OBJECT
 fasload_raw_address_to_object (unsigned int type, SCHEME_OBJECT * address)
 {
-  return (MAKE_OBJECT (type, (address - (FASLHDR_MEMORY_BASE (fh)))));
+  return (fasl_raw_address_to_object (type, address, fh));
 }
 
-SCHEME_OBJECT
+static SCHEME_OBJECT
 fasload_raw_address_to_cc_entry (insn_t * address)
 {
-  return (MAKE_OBJECT (TC_COMPILED_ENTRY,
-		       (address - ((insn_t *) (FASLHDR_MEMORY_BASE (fh))))));
+  return (fasl_raw_address_to_cc_entry (address, fh));
 }
-
-#endif /* !HEAP_IN_LOW_MEMORY */
 
 #define RELOCATE_OBJECT(object)						\
   (OBJECT_NEW_ADDRESS ((object),					\
