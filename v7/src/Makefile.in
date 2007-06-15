@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.43 2007/06/13 13:36:38 cph Exp $
+# $Id: Makefile.in,v 1.44 2007/06/15 03:41:35 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -82,19 +82,23 @@ all-liarc:
 compile-microcode:
 	(cd microcode && $(MAKE) all)
 
+stamp_install-microcode: compile-microcode
+	(cd microcode; $(MAKE) install)
+	echo "done" > $@
+
 build-bands:
 	@$(top_srcdir)/etc/build-bands.sh
+
+# **** Make liarc distribution from native ****
 
 liarc-dist:
 	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme
 	@$(top_srcdir)/etc/c-prepare.sh mit-scheme
 	$(MAKE) distclean
 
-stamp_install-liarc-microcode: compile-microcode
-	(cd microcode; $(MAKE) install)
-	echo "done" > $@
+# **** Build liarc from distribution ****
 
-stamp_compile-liarc-boot-bundles: stamp_install-liarc-microcode
+stamp_compile-liarc-boot-bundles: stamp_install-microcode
 	@for BN in $(LIARC_BOOT_BUNDLES); do \
 	    CMD="(cd $${BN} && $(MAKE) compile-liarc-bundle)";\
 	    echo "$${CMD}"; eval "$${CMD}";\
@@ -134,23 +138,20 @@ install-liarc-bundles: stamp_compile-liarc-bundles
 	    echo "$${CMD}"; eval "$${CMD}";\
 	done
 
+# **** Build native from liarc ****
 
+stamp_build-native-boot-compiler: stamp_install-microcode
+	@$(top_srcdir)/etc/build-boot-compiler.sh
+	echo "done" > $@
 
+stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
+	$(MAKE) install-auxdir-top
+	echo "done" > $@
 
-native-from-liarc: boot-lib/native-compiler.com clean
-	$(MAKE) compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-lib/scheme --library boot-lib \
-	    --band boot-lib/native-compiler.com
-	rm -rf boot-lib
-
-boot-lib/native-compiler.com: boot-lib/scheme native-prepare
-	@$(top_srcdir)/etc/build-boot-compiler.sh native-compiler.com
-
-native-prepare:
-	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme-c
-	(cd compiler && $(MAKE) compile-liarc-bundle)
-	@$(top_srcdir)/etc/native-prepare.sh mit-scheme-c
-
+stamp_native-compile-scheme: compile-microcode
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/scheme \
+	    --band boot-compiler.com
+	echo "done" > $@
 
 
 mostlyclean clean distclean maintainer-clean c-clean:
