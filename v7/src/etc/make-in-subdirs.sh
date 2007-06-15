@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-native.sh,v 1.2 2007/06/15 18:09:15 cph Exp $
+# $Id: make-in-subdirs.sh,v 1.1 2007/06/15 18:09:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -27,34 +27,8 @@ set -e
 
 . etc/functions.sh
 
-FASTP=no
-for ARG in "${@}"; do
-    case ${ARG} in
-    --help|--help=*|--version)
-	FASTP=yes
-	;;
-    esac
+TARGET=${1}
+shift
+for SUBDIR in "${@}"; do
+    run_cmd_in_dir "${SUBDIR}" make "${TARGET}"
 done
-
-if [ ${FASTP} = yes ]; then
-    exec ./configure "${@}"
-fi
-
-run_cmd ./Setup.sh
-run_configure --prefix=`pwd`/boot-root
-run_cmd etc/compile-boot-compiler.sh mit-scheme-c
-run_cmd_in_dir compiler run_make compile-liarc-bundle
-run_cmd etc/native-prepare.sh mit-scheme-c
-run_make compile-microcode
-
-run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
-    --fasl make.bin --heap 6000 <<EOF
-(begin
-  (load "../compiler/base/crsend")
-  (finish-cross-compilation:directory ".."))
-EOF
-
-run_make stamp_install-native-boot-compiler c-clean distclean
-
-run_configure "${@}"
-run_make stamp_native-compile-scheme build-bands clean-boot-root

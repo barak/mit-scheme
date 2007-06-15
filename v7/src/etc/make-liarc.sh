@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-liarc.sh,v 1.2 2007/06/15 03:40:20 cph Exp $
+# $Id: make-liarc.sh,v 1.3 2007/06/15 18:09:14 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -41,9 +41,7 @@ if [ ${FASTP} = yes ]; then
 fi
 
 run_configure --prefix=`pwd`/boot-root --enable-native-code=c
-run_make stamp_install-liarc-boot-compiler
-run_make c-clean distclean
+run_make stamp_install-liarc-boot-compiler c-clean distclean
 
 run_configure --enable-native-code=c "${@}"
-run_make stamp_compile-liarc-bundles
-run_make build-bands
+run_make stamp_compile-liarc-bundles build-bands clean-boot-root

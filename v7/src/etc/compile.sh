@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.13 2007/06/15 03:40:14 cph Exp $
+# $Id: compile.sh,v 1.14 2007/06/15 18:09:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,10 +26,6 @@
 set -e
 
 . etc/functions.sh
-
-if [ ${#} -eq 0 ]; then
-    set mit-scheme --compiler
-fi
 
 run_cmd "${@}" --heap 6000 --stack 200 <<EOF
 (begin
