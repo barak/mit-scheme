@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.6 2007/06/09 02:42:35 cph Exp $
+$Id: utilities.scm,v 1.7 2007/06/15 18:07:28 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,10 +44,7 @@ USA.
       (let ((names (bundle-files bundle))
 	    (so-file (string-append bundle ".so")))
 	(receive (script-dir include-dir)
-	    (cond ((string=? cc-arch "C")
-		   (values "$(top_builddir)/microcode"
-			   "$(top_builddir)/microcode"))
-		  ((eq? microcode-id/compiled-code-type 'C)
+	    (cond ((eq? microcode-id/compiled-code-type 'C)
 		   (let ((dir
 			  (lambda (name)
 			    (->namestring
@@ -55,6 +52,9 @@ USA.
 			      (system-library-directory-pathname name))))))
 		     (values (dir "")
 			     (dir "include"))))
+		  ((string=? cc-arch "C")
+		   (values "$(top_builddir)/microcode"
+			   "$(top_builddir)/microcode"))
 		  (else
 		   (values #f #f)))
 	  (call-with-output-file (string-append bundle "/Makefile-bundle")
@@ -73,7 +73,7 @@ USA.
 		      (write-rule port "compile-liarc-bundle" so-file)
 		      (newline port)
 		      (write-rule port
-				  (string-append bundle ".so")
+				  so-file
 				  (string-append init-root ".o")
 				  (files+suffix names ".o"))
 		      (write-command port
