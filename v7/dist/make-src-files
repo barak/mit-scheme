@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-src-files,v 1.27 2007/04/04 05:33:47 riastradh Exp $
+# $Id: make-src-files,v 1.28 2007/06/15 19:24:57 cph Exp $
 #
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -22,9 +22,9 @@
 . /scheme/v7/dist/release-prefix
 
 if [ $# -eq 1 ]; then
-    VERSION="${1}"
+    VERSION=${1}
 else
-    echo "usage: $0 VERSION"
+    echo "usage: ${0} VERSION"
     echo "  VERSION may be 'snapshot' to specify today's date"
     echo "  or 'standard' to specify standard release"
     exit 1
@@ -37,18 +37,21 @@ INSTALL_DATA="${INSTALL} -m 644"
 
 if [ "${VERSION}" = "snapshot" ]; then
     SNAPSHOT_P=true
-    PREFIX="$(get_release_prefix $(date +%Y%m%d))"
-    TAG_FLAG="-D"
+    RELEASE=$(date +%Y%m%d)
+    TAG_FLAG=-D
     TAG=now
 else
     if [ "${VERSION}" = "standard" ]; then
-	VERSION="$(get_release)"
+	VERSION=$(get_release)
     fi
     SNAPSHOT_P=
-    PREFIX="$(get_release_prefix "${VERSION}")"
-    TAG_FLAG="-r"
-    TAG="$(get_release_tag "${VERSION}")"
+    RELEASE=${VERSION}
+    TAG_FLAG=-r
+    TAG=$(get_release_tag "${VERSION}")
 fi
+
+PREFIX=mit-scheme-${RELEASE}
+LIARC_PREFIX=mit-scheme-c-${RELEASE}
 
 CVS="cvs -d ${USER}@cvs.savannah.gnu.org:/sources/mit-scheme"
 
@@ -58,7 +61,7 @@ mkdir "${PREFIX}"
 if [ -z "${SNAPSHOT_P}" ]; then
     (
 	cd /scheme/v7/src/runtime
-	TAG_STATUS="$(${CVS} status -v version.scm | fgrep ${TAG})"
+	TAG_STATUS=$(${CVS} status -v version.scm | fgrep ${TAG})
 	if [ -z "${TAG_STATUS}" ]; then
 	    ${CVS} rtag "${TAG}" mit-scheme/v7/doc mit-scheme/v7/src \
 		mit-scheme/etc/xscheme.el
@@ -76,31 +79,42 @@ fi
 )
 
 find "${PREFIX}" -type d -name autom4te.cache | xargs rm -rf
-find "${PREFIX}" -type f -print | xargs chmod g-w
-find "${PREFIX}" -type d -print | xargs chmod g-w
+find "${PREFIX}" -print -exec chmod go-w '{}' \;
 
 ${INSTALL_DATA} /scheme/v7/src/ChangeLog changelog.txt
-${INSTALL_DATA} /scheme/v7/src/ChangeLog "${PREFIX}/src/."
-${INSTALL_DATA} /scheme/v7/doc/ChangeLog "${PREFIX}/doc/."
-${INSTALL_DATA} /scheme/v7/dist/Makefile "${PREFIX}/."
+${INSTALL_DATA} /scheme/v7/src/ChangeLog "${PREFIX}"/src/.
+${INSTALL_DATA} /scheme/v7/doc/ChangeLog "${PREFIX}"/doc/.
+${INSTALL_DATA} /scheme/v7/dist/Makefile "${PREFIX}"/.
 
-tarfile="${PREFIX}.tar.gz"
-zipfile="${PREFIX}.zip"
-ucfile="${PREFIX}-ucode.tar.gz"
+rm -rf "${LIARC_PREFIX}"
+cp -a "${PREFIX}" "${LIARC_PREFIX}"
 
-rm -f "${tarfile}"
-rm -f "${zipfile}"
-rm -f "${ucfile}"
+(
+    cd "${LIARC_PREFIX}"/src
+    umask 022
+    etc/make-liarc-dist.sh
+)
 
-tar cvzf "${tarfile}" "${PREFIX}"
-tar cvzf "${ucfile}" "${PREFIX}/src/COPYING" "${PREFIX}/src/microcode"
-chmod -w changelog.txt "${tarfile}" "${ucfile}"
+TAR_FILE=${PREFIX}.tar.gz
+LIARC_FILE=${LIARC_PREFIX}.tar.gz
+ZIP_FILE=${PREFIX}.zip
+UCODE_FILE=${PREFIX}-ucode.tar.gz
 
-rm -rf "${PREFIX}/src/lib"
-for S in $(find ${PREFIX} -type l); do
+rm -f "${TAR_FILE}"
+rm -f "${LIARC_FILE}"
+rm -f "${ZIP_FILE}"
+rm -f "${UCODE_FILE}"
+
+tar cvzf "${TAR_FILE}" "${PREFIX}"
+tar cvzf "${LIARC_FILE}" "${LIARC_PREFIX}"
+tar cvzf "${UCODE_FILE}" "${PREFIX}"/src/COPYING "${PREFIX}"/src/microcode
+chmod -w changelog.txt "${TAR_FILE}" "${LIARC_FILE}" "${UCODE_FILE}"
+
+rm -rf "${PREFIX}"/src/lib
+for S in $(find "${PREFIX}" -type l); do
     [ ! -r "${S}" ] && rm -f "${S}"
 done
-zip -rl "${zipfile}" "${PREFIX}"
-chmod -w "${zipfile}"
+zip -rl "${ZIP_FILE}" "${PREFIX}"
+chmod -w "${ZIP_FILE}"
 
-rm -rf "${PREFIX}"
+rm -rf "${PREFIX}" "${LIARC_PREFIX}"
