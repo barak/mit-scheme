@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-compile.sh,v 1.7 2007/05/14 16:50:43 cph Exp $
+# $Id: c-compile.sh,v 1.8 2007/06/15 03:40:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,9 +25,9 @@
 
 set -e
 
-SCHEME_COMPILER="${@}"" --heap 6000 --stack 200"
-echo "${SCHEME_COMPILER}"
-eval "${SCHEME_COMPILER}" <<EOF
+. etc/functions.sh
+
+run_cmd "${@}" --heap 6000 --stack 200 <<EOF
 (begin
   (load "etc/compile.scm")
   (c-compile))

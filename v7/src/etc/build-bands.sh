@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.12 2007/06/06 19:42:39 cph Exp $
+# $Id: build-bands.sh,v 1.13 2007/06/15 03:40:10 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,31 +25,15 @@
 
 set -e
 
-(
-echo "cd runtime"
-cd runtime
+. etc/functions.sh
 
-if [ -f make.o ]; then
-    FASL=http://www.gnu.org/software/mit-scheme/lib/runtime/make.so
-elif [ -f make.com ]; then
-    FASL=make.com
-else
-    echo "Can't find argument for --fasl."
-    exit 1
-fi
+FASL=`get_fasl_file`
 
-CMD="../microcode/scheme --library ../lib --fasl ${FASL}"
-echo "${CMD}"
-eval "${CMD}" <<EOF
-(disk-save "../lib/runtime.com")
-EOF
-)
-
-CMD="microcode/scheme --library lib --heap 3000"
-echo "${CMD}"
-eval "${CMD}" <<EOF
+run_cmd_in_dir runtime ../microcode/scheme --library ../lib --heap 6000 \
+    --fasl "${FASL}" <<EOF
 (begin
-  (load-option (quote COMPILER))
-  (load-option (quote EDWIN))
-  (disk-save "lib/all.com"))
+  (disk-save "../lib/runtime.com")
+  (load-option (quote compiler))
+  (load-option (quote edwin))
+  (disk-save "../lib/all.com"))
 EOF

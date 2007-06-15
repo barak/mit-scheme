@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: create-makefiles.sh,v 1.1 2007/06/06 19:42:39 cph Exp $
+# $Id: create-makefiles.sh,v 1.2 2007/06/15 03:40:16 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,6 +25,8 @@
 
 set -e
 
+. etc/functions.sh
+
 if [ ${#} -eq 1 ]; then
     NATIVE_CODE=${1}
 else
@@ -34,21 +36,14 @@ fi
 
 MDIR=`compiler/choose-machine.sh "${NATIVE_CODE}"`
 
-CMD="rm -f compiler/machine"
-echo "${CMD}"; eval "${CMD}"
-
-CMD="ln -s machines/${MDIR} compiler/machine"
-echo "${CMD}"; eval "${CMD}"
-
-CMD="rm -f compiler/compiler.pkg"
-echo "${CMD}"; eval "${CMD}"
-
-CMD="ln -s machine/compiler.pkg compiler/."
-echo "${CMD}"; eval "${CMD}"
+run_cmd rm -f compiler/machine
+run_cmd ln -s machines/"${MDIR}" compiler/machine
+run_cmd rm -f compiler/compiler.pkg
+run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
 
-mit-scheme --heap 4000 <<EOF
+run_cmd mit-scheme --heap 4000 <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))

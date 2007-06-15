@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-liarc.sh,v 1.1 2007/06/08 06:03:57 cph Exp $
+# $Id: make-liarc.sh,v 1.2 2007/06/15 03:40:20 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,6 +25,8 @@
 
 set -e
 
+. etc/functions.sh
+
 FASTP=no
 for ARG in "${@}"; do
     case ${ARG} in
@@ -38,10 +40,10 @@ if [ ${FASTP} = yes ]; then
     exec ./configure "${@}"
 fi
 
-./configure --prefix=`pwd`/boot-root --enable-native-code=c
-make stamp_install-liarc-boot-compiler
-make c-clean distclean
+run_configure --prefix=`pwd`/boot-root --enable-native-code=c
+run_make stamp_install-liarc-boot-compiler
+run_make c-clean distclean
 
-./configure --enable-native-code=c "${@}"
-make stamp_compile-liarc-bundles
-make build-bands
+run_configure --enable-native-code=c "${@}"
+run_make stamp_compile-liarc-bundles
+run_make build-bands

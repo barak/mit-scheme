@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.9 2007/06/09 02:38:00 cph Exp $
+# $Id: c-prepare.sh,v 1.10 2007/06/15 03:40:15 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,16 +25,16 @@
 
 set -e
 
+. etc/functions.sh
+
 if [ ${#} -eq 1 ]; then
     EXE=${1}
 else
     echo "usage: ${0} <executable>"
     exit 1
 fi
-CMD="${EXE} --heap 6000 --stack 200"
 
-echo "${CMD}"
-${CMD} <<EOF
+run_cmd "${EXE}" --heap 6000 --stack 200 <<EOF
 (begin
   (load "etc/compile.scm")
   (c-prepare))

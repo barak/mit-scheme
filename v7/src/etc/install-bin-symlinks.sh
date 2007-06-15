@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: install-bin-symlinks.sh,v 1.1 2007/05/02 13:51:50 cph Exp $
+# $Id: install-bin-symlinks.sh,v 1.2 2007/06/15 03:40:18 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -27,6 +27,8 @@
 
 set -e
 
+. `dirname "${0}"`/functions.sh
+
 if [ ${#} -eq 2 ]; then
     DIR=${1}
     EXE=${2}
@@ -36,15 +38,10 @@ else
 fi
 
 if [ "${EXE}" != mit-scheme ] && [ ! -e "${DIR}/mit-scheme" ]; then
-    echo "rm -f ${DIR}/mit-scheme"
-    rm -f "${DIR}/mit-scheme"
-    echo "ln -s ${EXE} ${DIR}/mit-scheme"
-    ln -s "${EXE}" "${DIR}/mit-scheme"
+    run_cmd rm -f "${DIR}"/mit-scheme
+    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme
 fi
 
-echo "rm -f ${DIR}/scheme ${DIR}/bchscheme"
-rm -f "${DIR}/scheme" "${DIR}/bchscheme"
-echo "ln -s mit-scheme ${DIR}/scheme"
-ln -s mit-scheme "${DIR}/scheme"
-echo "ln -s mit-scheme ${DIR}/bchscheme"
-ln -s mit-scheme "${DIR}/bchscheme"
+run_cmd rm -f "${DIR}"/scheme "${DIR}"/bchscheme
+run_cmd ln -s mit-scheme "${DIR}"/scheme
+run_cmd ln -s mit-scheme "${DIR}"/bchscheme

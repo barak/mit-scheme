@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile-boot-compiler.sh,v 1.1 2007/06/06 19:42:39 cph Exp $
+# $Id: compile-boot-compiler.sh,v 1.2 2007/06/15 03:40:13 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,23 +25,22 @@
 
 set -e
 
+. etc/functions.sh
+
 if [ ${#} -eq 1 ]; then
     EXE=${1}
 else
     echo "usage: ${0} <executable>"
     exit 1
 fi
-CMD="${EXE} --heap 6000"
 
-echo "${CMD}"
-${CMD} <<EOF
+run_cmd "${EXE}" --heap 6000 <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-1))
 EOF
 
-echo "${CMD} --compiler"
-${CMD} --compiler <<EOF
+run_cmd "${EXE}" --heap 6000 --compiler <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-2))

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.12 2007/05/06 14:17:10 cph Exp $
+# $Id: compile.sh,v 1.13 2007/06/15 03:40:14 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,21 +25,13 @@
 
 set -e
 
+. etc/functions.sh
+
 if [ ${#} -eq 0 ]; then
-    SCHEME_COMPILER="mit-scheme --compiler"
-else
-    SCHEME_COMPILER=${1}
-    shift
-    while [ ${#} -gt 0 ]; do
-	SCHEME_COMPILER="${SCHEME_COMPILER} ${1}"
-	shift
-    done
+    set mit-scheme --compiler
 fi
 
-SCHEME_COMPILER="${SCHEME_COMPILER} --heap 6000 --stack 200"
-
-echo "${SCHEME_COMPILER}"
-exec ${SCHEME_COMPILER} <<EOF
+run_cmd "${@}" --heap 6000 --stack 200 <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-everything))

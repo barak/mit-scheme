@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-liarc-dist.sh,v 1.1 2007/06/10 18:29:55 cph Exp $
+# $Id: make-liarc-dist.sh,v 1.2 2007/06/15 03:40:19 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,6 +25,8 @@
 
 set -e
 
-./Setup.sh
-./configure --enable-native-code=c "${@}"
-make liarc-dist
+. etc/functions.sh
+
+run_cmd ./Setup.sh
+run_configure --enable-native-code=c "${@}"
+run_make liarc-dist

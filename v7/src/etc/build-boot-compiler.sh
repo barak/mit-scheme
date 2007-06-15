@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-boot-compiler.sh,v 1.2 2007/06/08 06:03:44 cph Exp $
+# $Id: build-boot-compiler.sh,v 1.3 2007/06/15 03:40:11 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,20 +25,12 @@
 
 set -e
 
-cd runtime
+. etc/functions.sh
 
-if [ -f make.o ]; then
-    FASL=http://www.gnu.org/software/mit-scheme/lib/runtime/make.so
-elif [ -f make.com ]; then
-    FASL=make.com
-else
-    echo "Can't find argument for --fasl."
-    exit 1
-fi
+FASL=`get_fasl_file`
 
-CMD="../microcode/scheme --library ../lib --fasl ${FASL} --heap 6000"
-echo "${CMD}"
-eval "${CMD}" <<EOF
+run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
+    --fasl "${FASL}" --heap 6000 <<EOF
 (begin
   (load-option (quote compiler))
   (load-option (quote cref))
