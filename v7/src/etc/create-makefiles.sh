@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: create-makefiles.sh,v 1.2 2007/06/15 03:40:16 cph Exp $
+# $Id: create-makefiles.sh,v 1.3 2007/06/16 02:14:44 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -36,9 +36,16 @@ fi
 
 MDIR=`compiler/choose-machine.sh "${NATIVE_CODE}"`
 
-run_cmd rm -f compiler/machine
+if test -f makefiles_created; then
+    CODE_TYPE=`cat makefiles_created`
+    if test "${CODE_TYPE}" = "${MDIR}"; then
+	echo "Makefiles already created."
+	exit 0
+    fi
+fi
+
+run_cmd rm -f compiler/machine compiler/compiler.pkg
 run_cmd ln -s machines/"${MDIR}" compiler/machine
-run_cmd rm -f compiler/compiler.pkg
 run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
@@ -48,6 +55,8 @@ run_cmd mit-scheme --heap 4000 <<EOF
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))
 EOF
+
+run_cmd rm -f compiler/machine compiler/compiler.pkg
 
 for SUBDIR in ${BUNDLES} runtime win32; do
     echo "creating ${SUBDIR}/Makefile.in"
@@ -60,3 +69,7 @@ for SUBDIR in ${BUNDLES} runtime win32; do
     fi
     cat etc/std-makefile-suffix >> ${SUBDIR}/Makefile.in
 done
+
+run_cmd rm -f makefiles_created
+echo "echo ${MDIR} > makefiles_created"
+echo "${MDIR}" > makefiles_created
