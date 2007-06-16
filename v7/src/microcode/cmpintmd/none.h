@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: none.h,v 1.2 2007/04/22 16:31:24 cph Exp $
+$Id: none.h,v 1.3 2007/06/16 02:32:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,17 +31,5 @@ USA.
 #define SCM_CMPINTMD_H_INCLUDED 1
 
 typedef byte_t insn_t;
-
-#define compiler_interface_version (0UL)
-#define compiler_processor_type COMPILER_PROCESSOR_TYPE
-#define compiler_utilities SHARP_F
-
-#define return_to_interpreter SHARP_F
-#define reflect_to_interface SHARP_F
-
-#define compiler_initialize(faslp) do {} while (false)
-#define guarantee_interp_return() do {} while (false)
-
-#define CC_ENTRY_P(object) (false)
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */
