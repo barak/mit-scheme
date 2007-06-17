@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.17 2007/06/08 06:03:20 cph Exp $
+# $Id: Clean.sh,v 1.18 2007/06/17 18:45:13 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -74,7 +74,7 @@ if [ ${DIST} = yes ]; then
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    maybe_rm autom4te.cache configure lib stamp_* boot-root
+    maybe_rm autom4te.cache configure lib stamp_* boot-root makefiles_created
 fi
 
 for SUBDIR in ${SUBDIRS}; do
