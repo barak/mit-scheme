@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.8 2007/01/05 21:19:20 cph Exp $
+$Id: make.scm,v 1.9 2007/06/17 16:54:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,7 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(let ((value ((load "base/make") "Alpha")))
-  (set! (access compiler:compress-top-level? (->environment '(compiler)))
-        true)
+(let ((value ((load "base/make") "alpha")))
+  (set! (access compiler:compress-top-level? (->environment '(compiler))) #t)
   value)

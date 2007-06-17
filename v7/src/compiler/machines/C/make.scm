@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 1.11 2007/06/06 19:42:38 cph Exp $
+$Id: make.scm,v 1.12 2007/06/17 16:54:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,15 +31,14 @@ USA.
 
 (load-option 'SYNCHRONOUS-SUBPROCESS)
 
-(let ((value ((load "base/make")
-	      (string-append "C/" microcode-id/machine-type))))
+(let ((value ((load "base/make") "C")))
   (set! (access compiler:compress-top-level?
 		(->environment '(compiler)))
 	#t)
   (set! (access compiler:compile-data-files-as-expressions?
 		(->environment '(compiler top-level)))
-	false)
+	#f)
   (set! (access compiler:fggen-unmap-reference-traps-early?
 		(->environment '(compiler fg-generator)))
-	false)
+	#f)
   value)
