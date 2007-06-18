@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.25 2007/06/13 13:37:03 cph Exp $
+$Id: compile.scm,v 1.26 2007/06/18 23:58:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -86,7 +86,7 @@ USA.
   (in-liarc
    (lambda ()
      (compile-boot-dirs c-compile-dir)
-     (cf "microcode/utabmd"))))
+     (cf-conditionally "microcode/utabmd"))))
 
 (define (native-prepare)
   (load-option 'SF)
@@ -98,7 +98,7 @@ USA.
 	(load make-file))))
   (fluid-let ((compiler:cross-compiling? #t))
     (compile-boot-dirs compile-dir)
-    (sf "microcode/utabmd")))
+    (sf-conditionally "microcode/utabmd")))
 
 (define (compiler-make-file)
   (string-append
@@ -110,13 +110,16 @@ USA.
   (in-liarc
    (lambda ()
      (compile-all-dirs c-compile-dir)
-     (cf "microcode/utabmd")
-     (cbf "edwin/edwin.bld"))))
+     (cf-conditionally "microcode/utabmd")
+     (cbf-conditionally "edwin/edwin.bld"))))
 
 (define (in-liarc thunk)
-  (fluid-let ((compiler:invoke-c-compiler? #f))
+  (fluid-let ((compiler:invoke-c-compiler? #f)
+	      (in-liarc? #t))
     (thunk)))
-  
+
+(define in-liarc? #f)
+
 (define (c-compile-dir name)
   (compile-dir name)
   (c-compile-pkgs name))
@@ -130,9 +133,22 @@ USA.
       (lambda ()
 	(let ((compile-pkg
 	       (lambda (os)
-		 (let ((name (string-append root "-" os ".pkd")))
-		   (if (file-exists? name)
-		       (cbf name))))))
+		 (cbf-conditionally (string-append root "-" os ".pkd")))))
 	  (compile-pkg "unx")
 	  (compile-pkg "w32")
 	  (compile-pkg "os2"))))))
+
+(define (cbf-conditionally pathname)
+  (let ((input (pathname-default-type pathname "bin")))
+    (if (file-modification-time<? (compiler-output-pathname pathname)
+				  input)
+	(cbf input output))))
+
+(define (cf-conditionally pathname)
+  (let ((input (pathname-default-type pathname "scm")))
+    (if (file-modification-time<? (compiler-output-pathname pathname)
+				  input)
+	(cf input))))
+
+(define (compiler-output-pathname pathname)
+  (pathname-new-type pathname (if in-liarc? "c" "com")))
