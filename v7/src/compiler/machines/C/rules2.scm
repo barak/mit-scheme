@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules2.scm,v 1.9 2007/01/05 21:19:20 cph Exp $
+$Id: rules2.scm,v 1.10 2007/06/18 17:31:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,9 +77,8 @@ USA.
 
 (define-rule predicate
   ;; Branch if virtual register contains a legal index fixnum
-  (PRED-1-ARG INDEX-FIXNUM?
-	      (REGISTER (? source)))
-  (let ((source (standard-source! source 'ULONG)))
+  (PRED-1-ARG INDEX-FIXNUM? (REGISTER (? source)))
+  (let ((source (standard-source! source 'SCHEME_OBJECT)))
     (branch-on-expr (c:ecall "INDEX_FIXNUM_P" source))))
 
 (define (eq-test/constant constant source)

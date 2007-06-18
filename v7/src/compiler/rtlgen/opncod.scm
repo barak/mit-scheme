@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.80 2007/04/14 22:00:09 riastradh Exp $
+$Id: opncod.scm,v 4.81 2007/06/18 17:31:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -479,9 +479,7 @@ USA.
 	    (make-true-pcfg)
 	    (make-false-pcfg)))
       (pcfg/prefer-consequent!
-       (rtl:make-pred-1-arg
-	'INDEX-FIXNUM?
-	(rtl:make-object->fixnum expression)))))
+       (rtl:make-pred-1-arg 'INDEX-FIXNUM? expression))))
 
 ;;;; Indexed Memory References
 
