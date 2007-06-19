@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.26 2007/06/18 23:58:40 cph Exp $
+$Id: compile.scm,v 1.27 2007/06/19 00:11:57 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,7 +142,7 @@ USA.
   (let ((input (pathname-default-type pathname "bin")))
     (if (file-modification-time<? (compiler-output-pathname pathname)
 				  input)
-	(cbf input output))))
+	(cbf input))))
 
 (define (cf-conditionally pathname)
   (let ((input (pathname-default-type pathname "scm")))
