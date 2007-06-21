@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.49 2007/06/08 06:04:15 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.50 2007/06/21 06:17:16 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -825,7 +825,7 @@ freebsd*)
     ;;
 darwin*)
     SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -dynamiclib -flat_namespace -undefined suppress"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
