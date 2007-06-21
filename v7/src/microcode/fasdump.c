@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.71 2007/04/22 16:31:22 cph Exp $
+$Id: fasdump.c,v 9.72 2007/06/21 16:55:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -557,8 +557,6 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   else
     {
       const char * filename = (STRING_POINTER (ARG_REF (2)));
-      SCHEME_OBJECT * faligned_heap = heap_start;
-      SCHEME_OBJECT * faligned_constant = constant_start;
       fasl_file_handle_t handle;
 
       export_primitive_table (prim_table_start);
@@ -566,15 +564,9 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
       export_c_code_table (c_code_table_start);
 #endif
 
-      while (!FLOATING_ALIGNED_P (faligned_heap))
-	faligned_heap += 1;
-
-      while (!FLOATING_ALIGNED_P (faligned_constant))
-	faligned_constant += 1;
-
-      (FASLHDR_HEAP_START (fh)) = faligned_heap;
+      (FASLHDR_HEAP_START (fh)) = heap_start;
       (FASLHDR_HEAP_END (fh)) = prim_table_start;
-      (FASLHDR_CONSTANT_START (fh)) = faligned_constant;
+      (FASLHDR_CONSTANT_START (fh)) = constant_start;
       (FASLHDR_CONSTANT_END (fh)) = constant_alloc_next;
 
       OS_file_remove_link (filename);
