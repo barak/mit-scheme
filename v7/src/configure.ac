@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.17 2007/06/15 18:05:34 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.18 2007/06/21 22:39:21 cph Exp $])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_PROG_MAKE_SET
 
@@ -83,9 +83,9 @@ xml/Makefile
 AC_OUTPUT
 
 if test x${enable_native_code} = xc; then
-    BN=liarcc-cc
+    BN=liarc-cc
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
-    BN=liarcc-ld
+    BN=liarc-ld
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
