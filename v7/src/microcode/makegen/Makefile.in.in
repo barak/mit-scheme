@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.58 2007/06/06 19:42:41 cph Exp $
+# $Id: Makefile.in.in,v 1.59 2007/06/22 02:31:22 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -120,7 +120,7 @@ MODULE_LIBS = -lc
 
 aux_PROGRAMS = @AUX_PROGRAMS@
 aux_LIBS = $(MODULE_TARGETS)
-aux_DATA = utabmd.bin
+aux_DATA = @AUX_DATA@
 EXTRA_PROGRAMS = findprim
 
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
@@ -142,7 +142,8 @@ ALL_DATA = $(aux_DATA)
 MOSTLYCLEAN_FILES = *.o usrdef.c compinit.c compinit.h cmpauxmd.s \
 	$(LIARC_OBJECTS)
 
-CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS) \
+	utabmd.bin
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
@@ -186,34 +187,34 @@ findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
 
 gen-nonce: gen-nonce.o
-	$(LINK) $^
+	$(LINK) gen-nonce.o
 
 extract-liarc-decls: extract-liarc-decls.o
-	$(LINK) $^
+	$(LINK) extract-liarc-decls.o
 
 utabmd.bin: utabmd.scm
 	./utabmd.sh
 
 prbfish.so: prbfish.o
-	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
+	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
 prmd5.so: prmd5.o
-	$(LINK_MODULE) $^ $(PRMD5_LIBS) $(MODULE_LIBS)
+	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
 prmhash.so: prmhash.o
-	$(LINK_MODULE) $^ -lmhash $(MODULE_LIBS)
+	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o
-	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
+	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
 
 prgdbm.so: prgdbm.o
-	$(LINK_MODULE) $^ -lgdbm $(MODULE_LIBS)
+	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
 prdb4.so: prdb4.o
-	$(LINK_MODULE) $^ -ldb-4 $(MODULE_LIBS)
+	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
 prpgsql.so: prpgsql.o
-	$(LINK_MODULE) $^ -lpq $(MODULE_LIBS)
+	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
 
 @MODULE_RULES@
 

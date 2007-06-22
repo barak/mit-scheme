@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.50 2007/06/21 06:17:16 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.51 2007/06/22 02:31:20 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -192,6 +192,7 @@ MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
+AUX_DATA=utabmd.bin
 SYSTEM_BASE_NAME=mit-scheme
 INSTALL_INCLUDE=
 
@@ -930,6 +931,7 @@ c)
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
+    AUX_DATA=
     SYSTEM_BASE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include
     ;;
@@ -991,6 +993,7 @@ AC_SUBST([MODULE_LDFLAGS])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
+AC_SUBST([AUX_DATA])
 AC_SUBST([SYSTEM_BASE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utilities.scm,v 1.7 2007/06/15 18:07:28 cph Exp $
+$Id: utilities.scm,v 1.8 2007/06/22 02:31:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -72,24 +72,25 @@ USA.
 		    (let ((init-root (string-append bundle "-init")))
 		      (write-rule port "compile-liarc-bundle" so-file)
 		      (newline port)
-		      (write-rule port
-				  so-file
-				  (string-append init-root ".o")
-				  (files+suffix names ".o"))
-		      (write-command port
-				     (string-append "@" script-dir "/liarc-ld")
-				     "$@"
-				     "$^")
+		      (let ((prereqs
+			     (cons (string-append init-root ".o")
+				   (files+suffix names ".o"))))
+			(write-rule port so-file prereqs)
+			(write-command port
+				       (string-append "@" script-dir "/liarc-ld")
+				       "$@"
+				       prereqs))
 		      (newline port)
-		      (write-rule port
-				  (string-append init-root ".c")
-				  (files+suffix names ".c"))
-		      (write-command port
-				     "$(top_srcdir)/etc/c-bundle.sh"
-				     script-dir
-				     "library"
-				     init-root
-				     "$^")
+		      (let ((prereqs (files+suffix names ".c")))
+			(write-rule port
+				    (string-append init-root ".c")
+				    prereqs)
+			(write-command port
+				       "$(top_srcdir)/etc/c-bundle.sh"
+				       script-dir
+				       "library"
+				       init-root
+				       prereqs))
 		      (newline port)
 		      (write-rule port "install-liarc-bundle" so-file)
 		      (write-command port
@@ -97,7 +98,7 @@ USA.
 				     "$(DESTDIR)$(AUXDIR)/lib")
 		      (write-command port
 				     "$(INSTALL_DATA)"
-				     "$^"
+				     so-file
 				     "$(DESTDIR)$(AUXDIR)/lib/.")
 		      (newline port)
 		      (write-rule port
