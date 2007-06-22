@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crsend.scm,v 1.18 2007/06/14 17:39:26 cph Exp $
+$Id: crsend.scm,v 1.19 2007/06/22 02:27:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -109,14 +109,16 @@ USA.
 	   (map (lambda (label)
 		  (cons
 		   label
-		   (with-absolutely-no-interrupts
-		     (lambda ()
-		       ((ucode-primitive primitive-object-set-type)
-			(ucode-type compiled-entry)
-			(make-non-pointer-object
-			 (+ (cdr (or (assq label label-bindings)
-				     (error "Missing entry point" label)))
-			    (object-datum code-vector))))))))
+		   (let ((offset
+			  (cdr (or (assq label label-bindings)
+				   (error "Missing entry point" label)))))
+		     (with-absolutely-no-interrupts
+		       (lambda ()
+			 ((ucode-primitive primitive-object-set-type)
+			  (ucode-type compiled-entry)
+			  (make-non-pointer-object
+			   (+ offset
+			      (object-datum code-vector)))))))))
 		(cc-vector/entry-points cc-vector)))))
     (let ((label->expression
 	   (lambda (label)
