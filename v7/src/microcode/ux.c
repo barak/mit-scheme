@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.32 2007/04/22 16:31:23 cph Exp $
+$Id: ux.c,v 1.33 2007/06/22 20:18:58 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -661,17 +661,8 @@ UX_getpagesize (void)
 #  define MAP_FAILED ((void *) (-1))
 #endif
 
-typedef enum
-  {
-    fsa_no_proc,
-    fsa_no_address,
-    fsa_good_address
-  } fsa_status_t;
-
-static void * mmap_heap_malloc_1 (unsigned long, unsigned long, int);
-static fsa_status_t find_suitable_address
-  (unsigned long, unsigned long, unsigned long, unsigned long *);
-static int discard_line (FILE *);
+static void * mmap_heap_malloc_search
+  (unsigned long, unsigned long, unsigned long);
 
 void *
 mmap_heap_malloc (unsigned long requested_length)
@@ -679,39 +670,15 @@ mmap_heap_malloc (unsigned long requested_length)
   unsigned long min_result = MMAP_BASE_ADDRESS;
   unsigned long max_result = (1UL << DATUM_LENGTH);
   unsigned long request;
-  unsigned long search_result;
   void * result;
 
   {
     unsigned long ps = (UX_getpagesize ());
     request = (((requested_length + (ps - 1)) / ps) * ps);
   }
-#ifdef __APPLE__
-  /* On OS X, we reserved the __PAGEZERO segment up to 0x4000000 by a */
-  /* magic linker command, but it works only if we request MAP_FIXED. */
-  /* (The third argument to `mmap_heap_malloc_1' specifies this.)     */
-  /* Since OS X does no address space randomization and has no /proc/ */
-  /* directory, there's no need to try `find_suitable_address'.       */
-  result = (mmap_heap_malloc_1 (min_result, request, true));
-#else
-  switch (find_suitable_address (request,
-				 min_result,
-				 max_result,
-				 (&search_result)))
-    {
-    case fsa_good_address:
-      result = (mmap_heap_malloc_1 (search_result, request, true));
-      break;
 
-    case fsa_no_address:
-      result = 0;
-      break;
+  result = (mmap_heap_malloc_search (request, min_result, max_result));
 
-    default:
-      result = (mmap_heap_malloc_1 (min_result, request, false));
-      break;
-    }
-#endif
   if (result != 0)
     {
       if ((((unsigned long) result) >= min_result)
@@ -728,7 +695,7 @@ mmap_heap_malloc (unsigned long requested_length)
 }
 
 static void *
-mmap_heap_malloc_1 (unsigned long address, unsigned long request, int fixedp)
+mmap_heap_malloc_try (unsigned long address, unsigned long request, int fixedp)
 {
   void * addr
     = (mmap (((void *) address),
@@ -741,47 +708,21 @@ mmap_heap_malloc_1 (unsigned long address, unsigned long request, int fixedp)
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
-static fsa_status_t
-find_suitable_address (unsigned long n_bytes,
-		       unsigned long lower_limit,
-		       unsigned long upper_limit,
-		       unsigned long * addr_r)
+#ifndef __linux__
+
+static void *
+mmap_heap_malloc_search (unsigned long request,
+                         unsigned long min_result,
+                         unsigned long max_result)
 {
-  char fn [64];
-  FILE * s;
-  unsigned long start = lower_limit;
-
-  sprintf (fn, "/proc/%d/maps", (getpid ()));
-  s = (fopen (fn, "r"));
-  if (s == 0)
-    return (fsa_no_proc);
-
-  while ((start + n_bytes) <= upper_limit)
-    {
-      unsigned long end;
-      unsigned long next_start;
-      int rc = (fscanf (s, "%lx-%lx ", (&end), (&next_start)));
-      if (rc == EOF)
-	{
-	  fclose (s);
-	  return (fsa_no_address);
-	}
-      if (! ((rc == 2) && (end <= next_start) && (discard_line (s))))
-	{
-	  fclose (s);
-	  return (fsa_no_proc);
-	}
-      if ((start + n_bytes) <= end)
-	{
-	  (*addr_r) = start;
-	  fclose (s);
-	  return (fsa_good_address);
-	}
-      start = next_start;
-    }
-  fclose (s);
-  return (fsa_no_address);
+  return
+    ((mmap_heap_malloc_try (min_result, request, true))
+     || (mmap_heap_malloc_try (min_result, request, false)));
 }
+
+#else /* defined (__linux__) */
+
+/* Grovel through this process's memory maps to appease SELinux. */
 
 static int
 discard_line (FILE * s)
@@ -795,5 +736,49 @@ discard_line (FILE * s)
 	return (1);
     }
 }
+
+static void *
+mmap_heap_malloc_search (unsigned long request,
+                         unsigned long min_result,
+                         unsigned long max_result)
+{
+  char fn [64];
+  FILE * s;
+  unsigned long start = min_result;
+
+  snprintf (fn, 64, "/proc/%d/maps", (getpid ()));
+  s = (fopen (fn, "r"));
+  if (s == 0)
+    goto no_address;
+
+  while ((start + request) <= max_result)
+    {
+      unsigned long end;
+      unsigned long next_start;
+      int rc = (fscanf (s, "%lx-%lx ", (&end), (&next_start)));
+      if (rc == EOF)
+        {
+          fclose (s);
+          return 0;
+        }
+      if (! ((rc == 2) && (end <= next_start) && (discard_line (s))))
+        {
+          fclose (s);
+          goto no_address;
+        }
+      if ((start + request) <= end)
+        {
+          fclose (s);
+          return (mmap_heap_malloc_try (start, request, true));
+        }
+      start = next_start;
+    }
+
+  fclose (s);
+ no_address:
+  return (mmap_heap_malloc_try (min_result, request, false));
+}
+
+#endif
 
 #endif /* USE_MMAP_HEAP_MALLOC && HEAP_IN_LOW_MEMORY */
