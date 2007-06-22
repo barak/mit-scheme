@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: create-makefiles.sh,v 1.3 2007/06/16 02:14:44 cph Exp $
+# $Id: create-makefiles.sh,v 1.4 2007/06/22 02:29:23 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -36,7 +36,7 @@ fi
 
 MDIR=`compiler/choose-machine.sh "${NATIVE_CODE}"`
 
-if test -f makefiles_created; then
+if [ -f makefiles_created ]; then
     CODE_TYPE=`cat makefiles_created`
     if test "${CODE_TYPE}" = "${MDIR}"; then
 	echo "Makefiles already created."
@@ -50,7 +50,9 @@ run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
 
-run_cmd mit-scheme --heap 4000 <<EOF
+: ${MIT_SCHEME_EXE='mit-scheme'}
+
+run_cmd ${MIT_SCHEME_EXE} --heap 4000 <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))

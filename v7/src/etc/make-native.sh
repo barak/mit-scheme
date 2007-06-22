@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: make-native.sh,v 1.2 2007/06/15 18:09:15 cph Exp $
+# $Id: make-native.sh,v 1.3 2007/06/22 02:29:24 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -41,7 +41,7 @@ if [ ${FASTP} = yes ]; then
 fi
 
 run_cmd ./Setup.sh
-run_configure --prefix=`pwd`/boot-root
+MIT_SCHEME_EXE=mit-scheme-c run_configure --prefix=`pwd`/boot-root
 run_cmd etc/compile-boot-compiler.sh mit-scheme-c
 run_cmd_in_dir compiler run_make compile-liarc-bundle
 run_cmd etc/native-prepare.sh mit-scheme-c
