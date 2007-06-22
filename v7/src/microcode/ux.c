@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.33 2007/06/22 20:18:58 riastradh Exp $
+$Id: ux.c,v 1.34 2007/06/22 21:25:55 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -715,9 +715,10 @@ mmap_heap_malloc_search (unsigned long request,
                          unsigned long min_result,
                          unsigned long max_result)
 {
-  return
-    ((mmap_heap_malloc_try (min_result, request, true))
-     || (mmap_heap_malloc_try (min_result, request, false)));
+  void * addr = (mmap_heap_malloc_try (min_result, request, true));
+  if (addr == 0)
+    addr = (mmap_heap_malloc_try (min_result, request, false));
+  return addr;
 }
 
 #else /* defined (__linux__) */
