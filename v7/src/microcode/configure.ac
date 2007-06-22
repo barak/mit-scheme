@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.52 2007/06/22 08:09:25 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.53 2007/06/22 18:46:53 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -838,7 +838,7 @@ netbsd*)
     ;;
 openbsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    DO_GCC_TEST=yes
+    DO_GCC_TESTS=yes
     ;;
 solaris*)
     if test ${GCC} = yes; then
