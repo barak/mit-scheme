@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.45 2007/06/15 18:09:11 cph Exp $
+# $Id: Makefile.in,v 1.46 2007/06/22 05:18:41 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -116,8 +116,8 @@ stamp_install-liarc-boot-compiler: stamp_build-liarc-boot-compiler
 	echo "done" > $@
 
 stamp_liarc-compile-scheme:
-	@$(top_srcdir)/etc/c-compile.sh boot-root/bin/scheme \
-	    --band boot-compiler.com
+	@$(top_srcdir)/etc/c-compile.sh boot-root/bin/mit-scheme-c \
+	    --library boot-root/lib/mit-scheme-c --band boot-compiler.com
 	echo "done" > $@
 
 stamp_compile-liarc-bundles: stamp_liarc-compile-scheme compile-liarc-bundles
@@ -140,8 +140,8 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	echo "done" > $@
 
 stamp_native-compile-scheme: compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-root/bin/scheme \
-	    --band boot-compiler.com
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme \
+	    --library boot-root/lib/mit-scheme --band boot-compiler.com
 	echo "done" > $@
 
 
