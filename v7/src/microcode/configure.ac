@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.53 2007/06/22 18:46:53 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.54 2007/06/23 05:47:43 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -193,7 +193,8 @@ LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
 AUX_DATA=utabmd.bin
-SYSTEM_BASE_NAME=mit-scheme
+AUXDIR_NAME=mit-scheme
+EXE_NAME=mit-scheme-native
 INSTALL_INCLUDE=
 
 dnl Checks for programs.
@@ -936,13 +937,15 @@ c)
     LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
     AUX_DATA=
-    SYSTEM_BASE_NAME=mit-scheme-c
+    AUXDIR_NAME=mit-scheme-c
+    EXE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include
     ;;
 svm1)
     AC_MSG_RESULT([yes, using portable SVM code])
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
-    SYSTEM_BASE_NAME=mit-scheme-svm
+    AUXDIR_NAME=mit-scheme-svm
+    EXE_NAME=mit-scheme-svm
     ;;
 *)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
@@ -998,7 +1001,8 @@ AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])
 AC_SUBST([AUX_DATA])
-AC_SUBST([SYSTEM_BASE_NAME])
+AC_SUBST([AUXDIR_NAME])
+AC_SUBST([EXE_NAME])
 AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])
 
