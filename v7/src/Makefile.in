@@ -1,4 +1,4 @@
-# $Id: Makefile.in,v 1.46 2007/06/22 05:18:41 cph Exp $
+# $Id: Makefile.in,v 1.47 2007/06/23 05:56:04 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -73,7 +73,7 @@ EDDIR = $(AUXDIR)/edwin
 all: @ALL_TARGET@
 
 all-native: compile-microcode
-	@$(top_srcdir)/etc/compile.sh mit-scheme --compiler
+	@$(top_srcdir)/etc/compile.sh mit-scheme-native --compiler
 	$(MAKE) build-bands
 
 all-liarc:
@@ -93,8 +93,8 @@ build-bands:
 # **** Make liarc distribution from native ****
 
 liarc-dist:
-	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme
-	@$(top_srcdir)/etc/c-prepare.sh mit-scheme
+	@$(top_srcdir)/etc/compile-boot-compiler.sh mit-scheme-native
+	@$(top_srcdir)/etc/c-prepare.sh mit-scheme-native
 	$(MAKE) distclean
 
 # **** Build liarc from distribution ****
@@ -140,7 +140,7 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	echo "done" > $@
 
 stamp_native-compile-scheme: compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme \
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme-native \
 	    --library boot-root/lib/mit-scheme --band boot-compiler.com
 	echo "done" > $@
 
