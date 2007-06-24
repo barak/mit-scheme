@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.208 2007/01/05 21:19:25 cph Exp $
+$Id: imail-imap.scm,v 1.212 2007/04/05 03:23:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -355,43 +355,73 @@ USA.
       ((urls
 	(run-list-command
 	 url
-	 (string-append (imap-mailbox/url->server url prefix) "%")))
+	 ;; Some IMAP servers don't like a mailbox of `/%' in LIST
+	 ;; commands, and others simply returna uselessly empty
+         ;; result, so we have a special case for the root mailbox.
+	 (if (string=? prefix "/")
+	     "%"
+	     (string-append (imap-mailbox/url->server url prefix) "%"))))
        (results '()))
     (if (pair? urls)
 	(loop (cdr urls)
 	      (cond ((imap-folder-url-selectable? (car urls))
 		     (cons (car urls) results))
 		    ((imap-folder-url-corresponding-container (car urls))
-		     => (lambda (url) (cons url results)))
+		     => (lambda (container-url)
+			  ;; Some IMAP servers will return the
+			  ;; container URL as an answer to the LIST
+			  ;; command, but it is uninteresting here, so
+			  ;; we filter it out.  (Should this filtering
+                          ;; be done by RUN-LIST-COMMAND?)
+			  (if (eq? container-url url)
+			      results
+			      (cons container-url results))))
 		    (else results)))
 	(reverse! results))))
 
 (define (run-list-command url mailbox)
   (let ((t (get-universal-time)))
-    (map (lambda (response)
-	   (let ((mailbox
-		  (let ((delimiter (imap:response:list-delimiter response))
-			(mailbox
-			 (imap:decode-mailbox-name
-			  (imap:response:list-mailbox response))))
-		    (if delimiter
-			(string-replace mailbox (string-ref delimiter 0) #\/)
-			mailbox)))
-		 (flags (imap:response:list-flags response)))
-	     (let ((url (imap-url-new-mailbox url mailbox)))
-	       (set-imap-folder-url-list-time! url t)
-	       (set-imap-folder-url-exists?! url #t)
-	       (set-imap-folder-url-selectable?!
-		url
-		(not (memq '\\NOSELECT flags)))
-	       (set-imap-folder-url-corresponding-container!
-		url
-		(and (not (memq '\\NOINFERIORS flags))
-		     (imap-url-new-mailbox url (string-append mailbox "/"))))
-	       url)))
-	 (with-open-imap-connection url
-	   (lambda (connection)
-	     (imap:command:list connection "" mailbox))))))
+    (append-map (lambda (response)
+		  (cond ((list-command-response-folder-url response url t)
+			 => list)
+			(else '())))
+		(with-open-imap-connection url
+		  (lambda (connection)
+		    (imap:command:list connection "" mailbox))))))
+
+(define (list-command-response-folder-url response url t)
+  (let ((mailbox
+	 (let ((delimiter (imap:response:list-delimiter response))
+	       (mailbox
+		(imap:decode-mailbox-name
+		 (imap:response:list-mailbox response))))
+	   (if delimiter
+	       (string-replace mailbox (string-ref delimiter 0) #\/)
+	       mailbox)))
+	(flags (imap:response:list-flags response)))
+    (let ((url (imap-url-new-mailbox url mailbox))
+	  (noselect? (memq '\\NOSELECT flags))
+	  (noinferiors? (memq '\\NOINFERIORS flags)))
+      (if (and noselect? noinferiors?)
+	  #f				;Completely uninteresting.
+	  (receive (folder-url container-url)
+	      (cond ((imap-folder-url? url)
+		     (values url
+			     (and (not noinferiors?)
+				  (imap-url-new-mailbox url
+							(string-append mailbox
+								       "/")))))
+		    ((imap-container-url? url)
+		     (values (imap-container-url-corresponding-folder url)
+			     (and (not noinferiors?) url)))
+		    (else
+		     (error "Bad IMAP URL returned by LIST:" url)))
+	    (set-imap-folder-url-list-time! folder-url t)
+	    (set-imap-folder-url-exists?! folder-url #t)
+	    (set-imap-folder-url-selectable?! folder-url (not noselect?))
+	    (set-imap-folder-url-corresponding-container! folder-url
+							  container-url)
+	    folder-url)))))
 
 ;;;; URL->server delimiter conversion
 
@@ -869,25 +899,27 @@ USA.
 				   start #f '(UID FLAGS))))))
 
 (define (remove-imap-folder-message folder index)
-  (delete-cached-message (%get-message folder index))
-  (without-interrupts
-   (lambda ()
-     (let ((v (imap-folder-messages folder))
-	   (n (fix:- (folder-length folder) 1)))
-       (detach-message! (vector-ref v index))
-       (do ((i index (fix:+ i 1)))
-	   ((fix:= i n))
-	 (let ((m (vector-ref v (fix:+ i 1))))
-	   (set-message-index! m i)
-	   (vector-set! v i m)))
-       (vector-set! v n #f)
-       (set-imap-folder-length! folder n)
-       (set-imap-folder-unseen! folder #f)
-       (let ((new-length (compute-messages-length v n)))
-	 (if new-length
-	     (set-imap-folder-messages! folder
-					(vector-head v new-length))))
-       (object-modified! folder 'EXPUNGE index)))))
+  (let* ((message (%get-message folder index))
+         (key (message-order-key message)))
+    (delete-cached-message message)
+    (without-interrupts
+     (lambda ()
+       (let ((v (imap-folder-messages folder))
+             (n (fix:- (folder-length folder) 1)))
+         (detach-message! (vector-ref v index))
+         (do ((i index (fix:+ i 1)))
+             ((fix:= i n))
+           (let ((m (vector-ref v (fix:+ i 1))))
+             (set-message-index! m i)
+             (vector-set! v i m)))
+         (vector-set! v n #f)
+         (set-imap-folder-length! folder n)
+         (set-imap-folder-unseen! folder #f)
+         (let ((new-length (compute-messages-length v n)))
+           (if new-length
+               (set-imap-folder-messages! folder
+                                          (vector-head v new-length))))
+         (object-modified! folder 'EXPUNGE index key))))))
 
 (define (initial-messages)
   (make-vector 64 #f))
@@ -1517,7 +1549,7 @@ USA.
 			(assq keyword alist))
 		      (lambda (keyword item)
 			(set-cdr! (assq keyword alist) (list item)))))))
-	    `(FETCH ,(+ (message-index message) 1) ,@alist)))
+	    `(FETCH ,(+ (%message-index message) 1) ,@alist)))
 	(lambda ()
 	  (fetch-message-items-1 message keywords suffix)))))
 
@@ -1885,7 +1917,7 @@ USA.
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (imap:command:expunge (guarantee-imap-folder-open folder)))
 
-(define-method search-folder ((folder <imap-folder>) criteria)
+(define-method %search-folder ((folder <imap-folder>) criteria)
   (map (lambda (index) (- index 1))
        (imap:response:search-indices
 	(let ((connection (guarantee-imap-folder-open folder)))

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: dstack.h,v 1.15 2007/01/05 21:19:25 cph Exp $
+$Id: dstack.h,v 1.16 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,61 +29,53 @@ USA.
 #define __DSTACK_H__
 
 #include "config.h"
-#include "ansidecl.h"
 #include <setjmp.h>
 
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#endif
-
-extern void EXFUN (dstack_initialize, (void));
+extern void dstack_initialize (void);
 /* Call this once to initialize the stack. */
 
-extern void EXFUN (dstack_reset, (void));
+extern void dstack_reset (void);
 /* Call this once to reset the stack. */
 
-extern PTR EXFUN (dstack_alloc, (unsigned int length));
+extern void * dstack_alloc (unsigned int length);
 /* Allocate a chunk of `length' bytes of space on the stack and return
    a pointer to it. */
 
-extern void EXFUN
-  (dstack_protect,
-   (void EXFUN ((*protector), (PTR environment)), PTR environment));
+extern void dstack_protect
+  (void (*protector) (void * environment), void * environment);
 /* Create an unwind protection frame that invokes `protector' when
    the stack is unwound.  `environment' is passed to `protector' as
    its sole argument when it is invoked. */
 
-extern void EXFUN
-  (dstack_alloc_and_protect,
-   (unsigned int length,
-    void EXFUN ((*initializer), (PTR environment)),
-    void EXFUN ((*protector), (PTR environment))));
+extern void dstack_alloc_and_protect
+  (unsigned int length,
+    void (*initializer) (void * environment),
+    void (*protector) (void * environment));
 /* Allocate a chunk of `length' bytes of space, call `initializer' to
    initialize that space, and create an unwind protection frame that
    invokes `protector' when the stack is unwound.  */
 
-extern PTR dstack_position;
+extern void * dstack_position;
 /* The current stack pointer. */
 
-extern void EXFUN (dstack_set_position, (PTR position));
+extern void dstack_set_position (void * position);
 /* Unwind the stack to `position', which must be a previous value of
    `dstack_position'. */
 
-extern void EXFUN (dstack_bind, (PTR location, PTR value));
+extern void dstack_bind (void * location, void * value);
 /* Dynamically bind `location' to `value'.  `location' is treated as
-   `PTR*' -- it is declared `PTR' for programming convenience. */
+   `void **' -- it is declared `void *' for programming convenience. */
 
 enum transaction_action_type { tat_abort, tat_commit, tat_always };
 
-extern void EXFUN (transaction_initialize, (void));
-extern void EXFUN (transaction_begin, (void));
-extern void EXFUN (transaction_abort, (void));
-extern void EXFUN (transaction_commit, (void));
-extern void EXFUN
-  (transaction_record_action,
-   (enum transaction_action_type type,
-    void EXFUN ((*procedure), (PTR environment)),
-    PTR environment));
+extern void transaction_initialize (void);
+extern void transaction_begin (void);
+extern void transaction_abort (void);
+extern void transaction_commit (void);
+extern void transaction_record_action
+  (enum transaction_action_type type,
+    void (*procedure) (void * environment),
+    void * environment);
 
 typedef unsigned long Tptrvec_index;
 typedef unsigned long Tptrvec_length;
@@ -91,7 +83,7 @@ typedef unsigned long Tptrvec_length;
 struct struct_ptrvec
 {
   Tptrvec_length length;
-  PTR * elements;
+  void ** elements;
 };
 typedef struct struct_ptrvec * Tptrvec;
 
@@ -101,20 +93,18 @@ typedef struct struct_ptrvec * Tptrvec;
 #define PTRVEC_START(ptrvec) (PTRVEC_LOC ((ptrvec), 0))
 #define PTRVEC_END(ptrvec) (PTRVEC_LOC ((ptrvec), (PTRVEC_LENGTH (ptrvec))))
 
-extern Tptrvec EXFUN (ptrvec_allocate, (Tptrvec_length length));
-extern void EXFUN (ptrvec_deallocate, (Tptrvec ptrvec));
-extern void EXFUN (ptrvec_set_length, (Tptrvec ptrvec, Tptrvec_length length));
-extern Tptrvec EXFUN (ptrvec_copy, (Tptrvec ptrvec));
-extern void EXFUN (ptrvec_adjoin, (Tptrvec ptrvec, PTR element));
-extern int EXFUN (ptrvec_memq, (Tptrvec ptrvec, PTR element));
-extern void EXFUN
-  (ptrvec_move_left,
-   (Tptrvec source, Tptrvec_index source_start, Tptrvec_index source_end,
-    Tptrvec target, Tptrvec_index target_start));
-extern void EXFUN
-  (ptrvec_move_right,
-   (Tptrvec source, Tptrvec_index source_start, Tptrvec_index source_end,
-    Tptrvec target, Tptrvec_index target_start));
+extern Tptrvec ptrvec_allocate (Tptrvec_length length);
+extern void ptrvec_deallocate (Tptrvec ptrvec);
+extern void ptrvec_set_length (Tptrvec ptrvec, Tptrvec_length length);
+extern Tptrvec ptrvec_copy (Tptrvec ptrvec);
+extern void ptrvec_adjoin (Tptrvec ptrvec, void * element);
+extern int ptrvec_memq (Tptrvec ptrvec, void * element);
+extern void ptrvec_move_left
+  (Tptrvec source, Tptrvec_index source_start, Tptrvec_index source_end,
+    Tptrvec target, Tptrvec_index target_start);
+extern void ptrvec_move_right
+  (Tptrvec source, Tptrvec_index source_start, Tptrvec_index source_end,
+    Tptrvec target, Tptrvec_index target_start);
 
 typedef struct condition_type * Tcondition_type;
 typedef struct condition * Tcondition;
@@ -123,9 +113,9 @@ typedef struct condition_restart * Tcondition_restart;
 struct condition_type
 {
   unsigned long index;
-  PTR name;
+  void * name;
   Tptrvec generalizations;
-  void EXFUN ((*reporter), (Tcondition));
+  void (*reporter) (Tcondition);
 };
 #define CONDITION_TYPE_INDEX(type) ((type) -> index)
 #define CONDITION_TYPE_NAME(type) ((type) -> name)
@@ -142,55 +132,52 @@ struct condition
 
 struct condition_restart
 {
-  PTR name;
+  void * name;
   Tcondition_type type;
-  void EXFUN ((*procedure), (PTR));
+  void (*procedure) (void *);
 };
 #define CONDITION_RESTART_NAME(restart) ((restart) -> name)
 #define CONDITION_RESTART_TYPE(restart) ((restart) -> type)
 #define CONDITION_RESTART_PROCEDURE(restart) ((restart) -> procedure)
 
 /* Allocate and return a new condition type object. */
-extern Tcondition_type EXFUN
-  (condition_type_allocate,
-   (PTR name,
+extern Tcondition_type condition_type_allocate
+  (void * name,
     Tptrvec generalizations,
-    void EXFUN ((*reporter), (Tcondition condition))));
+    void (*reporter) (Tcondition condition));
 
 /* Deallocate the condition type object `type'. */
-extern void EXFUN (condition_type_deallocate, (Tcondition_type type));
+extern void condition_type_deallocate (Tcondition_type type);
 
 /* Allocate and return a new condition object. */
-extern Tcondition EXFUN
-  (condition_allocate, (Tcondition_type type, Tptrvec irritants));
+extern Tcondition condition_allocate
+  (Tcondition_type type, Tptrvec irritants);
 
 /* Deallocate the condition object `condition'. */
-extern void EXFUN (condition_deallocate, (Tcondition condition));
+extern void condition_deallocate (Tcondition condition);
 
 /* Bind a handler for the condition type object `type'. */
-extern void EXFUN
-  (condition_handler_bind,
-   (Tcondition_type type, void EXFUN ((*handler), (Tcondition condition))));
+extern void condition_handler_bind
+  (Tcondition_type type, void (*handler) (Tcondition condition));
 
 /* Signal `condition'. */
-extern void EXFUN (condition_signal, (Tcondition condition));
+extern void condition_signal (Tcondition condition);
 
 /* Bind a restart called `name' for the condition type object `type'.
    Invoking the restart causes `restart_procedure' to be executed. */
-extern void EXFUN
-  (condition_restart_bind,
-   (PTR name,
+extern void condition_restart_bind
+  (void * name,
     Tcondition_type type,
-    void EXFUN ((*procedure), (PTR argument))));
+    void (*procedure) (void * argument));
 
 /* Find a restart called `name' that matches `condition'.
    If `condition' is 0, any restart called `name' will do.
    If no such restart exists, 0 is returned. */
-extern Tcondition_restart EXFUN
-  (condition_restart_find, (PTR name, Tcondition condition));
+extern Tcondition_restart condition_restart_find
+  (void * name, Tcondition condition);
 
 /* Return a ptrvec of the restarts that match `condition'.
    If `condition' is 0, all restarts are returned. */
-extern Tptrvec EXFUN (condition_restarts, (Tcondition condition));
+extern Tptrvec condition_restarts (Tcondition condition);
 
 #endif /* __DSTACK_H__ */

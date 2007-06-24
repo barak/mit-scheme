@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utabmd.scm,v 9.91 2007/01/05 21:19:25 cph Exp $
+$Id: utabmd.scm,v 9.94 2007/05/01 19:52:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -67,18 +67,18 @@ USA.
 	       DUMMY-HISTORY				;13
                BIGNUM-ONE				;14
 	       SCHEDULER				;15
-	       MICROCODE-TERMINATIONS-VECTOR            ;16
-	       MICROCODE-TERMINATIONS-PROCEDURES        ;17
+	       MICROCODE-TERMINATIONS-VECTOR		;16
+	       MICROCODE-TERMINATIONS-PROCEDURES	;17
 	       FIXED-OBJECTS-VECTOR			;18
 	       THE-WORK-QUEUE				;19
 	       FUTURE-READS-LOGGER			;1A
 	       TOUCHED-FUTURES-VECTOR			;1B
-	       PRECIOUS-OBJECTS				;1C
+	       #F #| PRECIOUS-OBJECTS |#		;1C
 	       ERROR-PROCEDURE				;1D
-	       #F #| UNSNAPPED-LINK |#	                ;1E
+	       #F #| UNSNAPPED-LINK |#			;1E
 	       #F #| MICROCODE-UTILITIES-VECTOR |#	;1F
 	       COMPILER-ERROR-PROCEDURE			;20
-	       LOST-OBJECT-BASE				;21
+	       #F #| LOST-OBJECT-BASE |#		;21
 	       STATE-SPACE-ROOT				;22
 	       PRIMITIVE-PROFILING-TABLE		;23
 	       GENERIC-TRAMPOLINE-ZERO?			;24
@@ -120,7 +120,7 @@ USA.
 	       (PAIR LIST)				;01
 	       CHARACTER		       		;02
 	       QUOTATION				;03
-	       PRIMITIVE-COMBINATION-2 	                ;04
+	       PRIMITIVE-COMBINATION-2			;04
 	       UNINTERNED-SYMBOL			;05
 	       (FLONUM BIG-FLONUM)			;06
 	       COMBINATION-1				;07
@@ -159,10 +159,10 @@ USA.
 	       COMPILED-ENTRY				;28
 	       LEXPR					;29
 	       PRIMITIVE-COMBINATION-3		       	;2A
-	       MANIFEST-SPECIAL-NM-VECTOR	  	;2B
+	       #F				  	;2B
 	       VARIABLE					;2C
 	       THE-ENVIRONMENT	      			;2D
-	       FUTURE					;2E
+	       #F					;2E
 	       VECTOR-1B	          		;2F
 	       PRIMITIVE-COMBINATION-0	       	       	;30
 	       VECTOR-16B		       		;31
@@ -234,7 +234,7 @@ USA.
 	       #F					;73
 	       #F					;74
 	       #F					;75
-	       #F                                       ;76
+	       #F					;76
 	       #F					;77
 	       #F                			;78
 	       #F					;79
@@ -250,7 +250,7 @@ USA.
 	       #F					;83
 	       #F					;84
 	       #F					;85
-	       #F                                       ;86
+	       #F					;86
 	       #F					;87
 	       #F                			;88
 	       #F					;89
@@ -266,7 +266,7 @@ USA.
 	       #F					;93
 	       #F					;94
 	       #F					;95
-	       #F                                       ;96
+	       #F					;96
 	       #F					;97
 	       #F                			;98
 	       #F					;99
@@ -282,7 +282,7 @@ USA.
 	       #F					;A3
 	       #F					;A4
 	       #F					;A5
-	       #F                                       ;A6
+	       #F					;A6
 	       #F					;A7
 	       #F                			;A8
 	       #F					;A9
@@ -298,7 +298,7 @@ USA.
 	       #F					;B3
 	       #F					;B4
 	       #F					;B5
-	       #F                                       ;B6
+	       #F					;B6
 	       #F					;B7
 	       #F                			;B8
 	       #F					;B9
@@ -314,7 +314,7 @@ USA.
 	       #F					;C3
 	       #F					;C4
 	       #F					;C5
-	       #F                                       ;C6
+	       #F					;C6
 	       #F					;C7
 	       #F                			;C8
 	       #F					;C9
@@ -330,7 +330,7 @@ USA.
 	       #F					;D3
 	       #F					;D4
 	       #F					;D5
-	       #F                                       ;D6
+	       #F					;D6
 	       #F					;D7
 	       #F                			;D8
 	       #F					;D9
@@ -346,7 +346,7 @@ USA.
 	       #F					;E3
 	       #F					;E4
 	       #F					;E5
-	       #F                                       ;E6
+	       #F					;E6
 	       #F					;E7
 	       #F                			;E8
 	       #F					;E9
@@ -362,7 +362,7 @@ USA.
 	       #F					;F3
 	       #F					;F4
 	       #F					;F5
-	       #F                                       ;F6
+	       #F					;F6
 	       #F					;F7
 	       #F                			;F8
 	       #F					;F9
@@ -500,18 +500,18 @@ USA.
 	       BAD-RANGE-ARGUMENT-1			;11
 	       BAD-RANGE-ARGUMENT-2			;12
 	       MACRO-BINDING				;13
-	       #F					;14
+	       FASDUMP-OBJECT-TOO-LARGE			;14
 	       BAD-INTERRUPT-CODE			;15
 	       #F					;16
 	       FASL-FILE-TOO-BIG			;17
 	       FASL-FILE-BAD-DATA			;18
-	       IMPURIFY-OBJECT-TOO-LARGE		;19
-	       WRITE-INTO-PURE-SPACE                    ;1A
-	       #F		                        ;1B
+	       #F					;19
+	       #F					;1A
+	       #F					;1B
 	       #F					;1C
 	       BAD-ASSIGNMENT				;1D
-	       FAILED-ARG-1-COERCION                    ;1E
-	       FAILED-ARG-2-COERCION                    ;1F
+	       FAILED-ARG-1-COERCION			;1E
+	       FAILED-ARG-2-COERCION			;1F
 	       OUT-OF-FILE-HANDLES			;20
 	       #F					;21
 	       BAD-RANGE-ARGUMENT-3			;22
@@ -549,24 +549,24 @@ USA.
 
 (vector-set! (get-fixed-objects-vector)
 	     22 ;(fixed-objects-vector-slot 'MICROCODE-TERMINATIONS-VECTOR)
-	     #(HALT                             ;00
-	       DISK-RESTORE                     ;01
-	       BROKEN-HEART                     ;02
-	       NON-POINTER-RELOCATION           ;03
-	       BAD-ROOT                         ;04
-	       NON-EXISTENT-CONTINUATION        ;05
-	       BAD-STACK                        ;06
-	       STACK-OVERFLOW                   ;07
-	       STACK-ALLOCATION-FAILED          ;08
-	       NO-ERROR-HANDLER                 ;09
-	       NO-INTERRUPT-HANDLER             ;0A
-	       UNIMPLEMENTED-CONTINUATION       ;0B
-	       EXIT                             ;0C
-	       BAD-PRIMITIVE-DURING-ERROR       ;0D
-	       EOF                              ;0E
-	       BAD-PRIMITIVE                    ;0F
+	     #(HALT				;00
+	       DISK-RESTORE			;01
+	       BROKEN-HEART			;02
+	       NON-POINTER-RELOCATION		;03
+	       BAD-ROOT				;04
+	       NON-EXISTENT-CONTINUATION	;05
+	       BAD-STACK			;06
+	       STACK-OVERFLOW			;07
+	       STACK-ALLOCATION-FAILED		;08
+	       NO-ERROR-HANDLER			;09
+	       NO-INTERRUPT-HANDLER		;0A
+	       UNIMPLEMENTED-CONTINUATION	;0B
+	       EXIT				;0C
+	       BAD-PRIMITIVE-DURING-ERROR	;0D
+	       EOF				;0E
+	       BAD-PRIMITIVE			;0F
 	       TERMINATION-HANDLER		;10
-	       END-OF-CONTINUATION              ;11
+	       END-OF-CONTINUATION		;11
 	       INVALID-TYPE-CODE		;12
 	       COMPILER-DEATH			;13
 	       GC-OUT-OF-SPACE			;14
@@ -609,8 +609,9 @@ USA.
 	       OS-VARIANT-STRING		;09
 	       STACK-TYPE-STRING		;0A
 	       MACHINE-TYPE-STRING		;0B
+	       CC-ARCH-STRING			;0C
 	       ))
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.91 2007/01/05 21:19:25 cph Exp $"
+"$Id: utabmd.scm,v 9.94 2007/05/01 19:52:32 cph Exp $"

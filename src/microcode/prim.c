@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prim.c,v 9.48 2007/01/05 21:19:25 cph Exp $
+$Id: prim.c,v 9.49 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,13 +31,13 @@ USA.
 #include "prims.h"
 
 static unsigned long
-DEFUN (arg_type, (arg), int arg)
+arg_type (int arg)
 {
   return (arg_ulong_index_integer (arg, (1L << TYPE_CODE_LENGTH)));
 }
 
 static unsigned long
-DEFUN (arg_datum, (arg), int arg)
+arg_datum (int arg)
 {
   return (arg_ulong_index_integer (arg, (1L << DATUM_LENGTH)));
 }
@@ -48,14 +48,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE", Prim_prim_obj_type, 1, 1,
   "Return the type code of OBJECT as an unsigned integer.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (OBJECT_TYPE (ARG_REF (1))));
-}
-
-DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-GC-TYPE", Prim_prim_obj_gc_type, 1, 1,
-  "Return an unsigned integer indicating the GC type of the object.")
-{
-  PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (LONG_TO_FIXNUM (GC_Type_Map [OBJECT_TYPE (ARG_REF (1))]));
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (OBJECT_TYPE (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2, 2,
@@ -63,9 +56,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-TYPE?", Prim_prim_obj_type_p, 2, 2,
 {
   PRIMITIVE_HEADER (2);
   PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT
-     (((long) (OBJECT_TYPE (ARG_REF (2))))
-      == (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
+    (BOOLEAN_TO_OBJECT ((OBJECT_TYPE (ARG_REF (2))) == (arg_type (1))));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-DATUM", Prim_prim_obj_datum, 1, 1,
@@ -109,7 +100,7 @@ Convert the unsigned integer DATUM into a fixnum.\n\
 Assert: (= (OBJECT-DATUM (MAKE-NON-POINTER-OBJECT X)) X).")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (arg_datum (1)));
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (arg_datum (1)));
 }
 
 DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET-TYPE", Prim_prim_obj_set_type, 2, 2,
@@ -178,69 +169,53 @@ DEFINE_PRIMITIVE ("PRIMITIVE-OBJECT-SET!", Prim_prim_obj_set, 3, 3, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-/* Safe versions of the object manipulators.
-   These touch their arguments, and provide GC safety tests.  */
+/* Safe versions of the object manipulators.  */
 
 DEFINE_PRIMITIVE ("OBJECT-TYPE", Prim_object_type, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (LONG_TO_UNSIGNED_FIXNUM (OBJECT_TYPE (object)));
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (OBJECT_TYPE (ARG_REF (1))));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-GC-TYPE", Prim_object_gc_type, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (LONG_TO_FIXNUM (GC_Type (object)));
+  PRIMITIVE_RETURN (LONG_TO_FIXNUM (GC_TYPE_TO_INT (GC_TYPE (ARG_REF (1)))));
 }
 
 DEFINE_PRIMITIVE ("TYPE->GC-TYPE", Prim_type_to_gc_type, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
-    (LONG_TO_FIXNUM
-     (GC_Type_Map [arg_ulong_index_integer (1, (MAX_TYPE_CODE + 1))]));
+    (LONG_TO_FIXNUM (GC_TYPE_TO_INT (GC_TYPE_CODE (arg_type (1)))));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-TYPE?", Prim_object_type_p, 2, 2, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), object);
   PRIMITIVE_RETURN
-    (BOOLEAN_TO_OBJECT
-     (((long) (OBJECT_TYPE (object)))
-      == (arg_index_integer (1, (MAX_TYPE_CODE + 1)))));
+    (BOOLEAN_TO_OBJECT ((OBJECT_TYPE (ARG_REF (2))) == (arg_type (1))));
 }
 
 DEFINE_PRIMITIVE ("OBJECT-DATUM", Prim_object_datum, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (long_to_integer (OBJECT_DATUM (object)));
+  PRIMITIVE_RETURN (long_to_integer (OBJECT_DATUM (ARG_REF (1))));
 }
-
+
 DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2, 2, 0)
 {
-  fast long type_code;
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
-  type_code = (arg_index_integer (1, (MAX_TYPE_CODE + 1)));
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), object);
   {
-    fast long gc_type_code;
-
-    gc_type_code = (GC_Type_Map [type_code]);
-    if ((gc_type_code == GC_Undefined) ||
-	(! ((gc_type_code == GC_Non_Pointer) ||
-	    (gc_type_code == (GC_Type (object))))))
+    unsigned long type_code = (arg_type (1));
+    SCHEME_OBJECT object = (ARG_REF (2));
+    gc_type_t gc_type = (GC_TYPE_CODE (type_code));
+    if ((gc_type == GC_UNDEFINED)
+	|| ((gc_type != GC_NON_POINTER)
+	    && (gc_type != (GC_TYPE (object)))))
       error_bad_range_arg (1);
+    PRIMITIVE_RETURN (OBJECT_NEW_TYPE (type_code, object));
   }
-  PRIMITIVE_RETURN (OBJECT_NEW_TYPE (type_code, object));
 }
 
 /* (EQ? OBJECT-1 OBJECT-2)
@@ -250,12 +225,8 @@ DEFINE_PRIMITIVE ("OBJECT-SET-TYPE", Prim_object_set_type, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2, 2, 0)
 {
-  fast SCHEME_OBJECT object_1;
-  fast SCHEME_OBJECT object_2;
   PRIMITIVE_HEADER (2);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object_1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (2)), object_2);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (object_1 == object_2));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((ARG_REF (1)) == (ARG_REF (2))));
 }
 
 /* (NOT OBJECT)
@@ -265,10 +236,8 @@ DEFINE_PRIMITIVE ("EQ?", Prim_eq, 2, 2, 0)
 
 DEFINE_PRIMITIVE ("NOT", Prim_not, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (object == SHARP_F));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((ARG_REF (1)) == SHARP_F));
 }
 
 /* (NULL? OBJECT)
@@ -277,10 +246,8 @@ DEFINE_PRIMITIVE ("NOT", Prim_not, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("NULL?", Prim_null_p, 1, 1, 0)
 {
-  fast SCHEME_OBJECT object;
   PRIMITIVE_HEADER (1);
-  TOUCH_IN_PRIMITIVE ((ARG_REF (1)), object);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (EMPTY_LIST_P (object)));
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (EMPTY_LIST_P (ARG_REF (1))));
 }
 
 /* Cells */
@@ -320,12 +287,11 @@ DEFINE_PRIMITIVE ("CELL-CONTENTS", Prim_cell_contents, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("SET-CELL-CONTENTS!", Prim_set_cell_contents, 2, 2, 0)
 {
-  fast SCHEME_OBJECT cell;
-  fast SCHEME_OBJECT object;
+  SCHEME_OBJECT cell;
+  SCHEME_OBJECT object;
   PRIMITIVE_HEADER (2);
   cell = (CELL_ARG (1));
   object = (ARG_REF (2));
-  SIDE_EFFECT_IMPURIFY (cell, object);
   MEMORY_SET (cell, CELL_CONTENTS, object);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

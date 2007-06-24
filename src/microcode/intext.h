@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: intext.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: intext.h,v 1.10 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,23 +28,21 @@ USA.
 #ifndef SCM_INTEXT_H
 #define SCM_INTEXT_H
 
-#include "ansidecl.h"
 #include "dstack.h"
 
 struct interruptable_extent
 {
-  PTR position;
+  void * position;
   jmp_buf control_point;
   int interrupted;
 };
 
 extern struct interruptable_extent * current_interruptable_extent;
-extern void EXFUN (initialize_interruptable_extent, (void));
-extern void EXFUN (reset_interruptable_extent, (void));
-extern struct interruptable_extent * EXFUN
-  (enter_interruptable_extent, (void));
-extern int EXFUN (enter_interruption_extent, (void));
-extern void EXFUN (exit_interruption_extent, (void));
+extern void initialize_interruptable_extent (void);
+extern void reset_interruptable_extent (void);
+extern struct interruptable_extent * enter_interruptable_extent (void);
+extern int enter_interruption_extent (void);
+extern void exit_interruption_extent (void);
 
 #define INTERRUPTABLE_EXTENT(result, expression)			\
 {									\

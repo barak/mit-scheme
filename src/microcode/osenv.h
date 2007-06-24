@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osenv.h,v 1.14 2007/01/05 21:19:25 cph Exp $
+$Id: osenv.h,v 1.15 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,19 +43,19 @@ struct time_structure
   int time_zone;
 };
 
-extern time_t EXFUN (OS_encoded_time, (void));
-extern void EXFUN (OS_decode_time, (time_t, struct time_structure *));
-extern void EXFUN (OS_decode_utc, (time_t, struct time_structure *));
-extern time_t EXFUN (OS_encode_time, (struct time_structure *));
-extern double EXFUN (OS_process_clock, (void));
-extern double EXFUN (OS_real_time_clock, (void));
-extern void EXFUN (OS_process_timer_set, (clock_t, clock_t));
-extern void EXFUN (OS_process_timer_clear, (void));
-extern void EXFUN (OS_profile_timer_set, (clock_t, clock_t));
-extern void EXFUN (OS_profile_timer_clear, (void));
-extern void EXFUN (OS_real_timer_set, (clock_t, clock_t));
-extern void EXFUN (OS_real_timer_clear, (void));
-extern CONST char * EXFUN (OS_working_dir_pathname, (void));
-extern void EXFUN (OS_set_working_dir_pathname, (CONST char *));
+extern time_t OS_encoded_time (void);
+extern void OS_decode_time (time_t, struct time_structure *);
+extern void OS_decode_utc (time_t, struct time_structure *);
+extern time_t OS_encode_time (struct time_structure *);
+extern double OS_process_clock (void);
+extern double OS_real_time_clock (void);
+extern void OS_process_timer_set (clock_t, clock_t);
+extern void OS_process_timer_clear (void);
+extern void OS_profile_timer_set (clock_t, clock_t);
+extern void OS_profile_timer_clear (void);
+extern void OS_real_timer_set (clock_t, clock_t);
+extern void OS_real_timer_clear (void);
+extern const char * OS_working_dir_pathname (void);
+extern void OS_set_working_dir_pathname (const char *);
 
 #endif /* SCM_OSENV_H */

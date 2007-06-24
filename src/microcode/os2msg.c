@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2msg.c,v 1.19 2007/01/05 21:19:25 cph Exp $
+$Id: os2msg.c,v 1.20 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,8 +29,8 @@ USA.
 
 #include "os2.h"
 
-extern void EXFUN (tty_set_next_interrupt_char, (cc_t c));
-extern void * OS2_malloc_noerror (unsigned int);
+extern void tty_set_next_interrupt_char (cc_t c);
+extern void * OS2_malloc_noerror (unsigned long);
 
 static qid_t allocate_qid (void);
 static void OS2_initialize_message_lengths (void);
@@ -753,7 +753,7 @@ read_scm_tqueue (tqueue_t * tqueue, int blockp)
      last read and the second clear -- and since we cleared the bit no
      one else is going to look at the queue until another event comes
      along.
-     
+
      This code serves two purposes.  First, this is the only way to
      reliably clear the interrupt bit to avoid having an event stuck
      in the queue and the Scheme thread not bothering to look.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dirs-liarc.scm,v 1.2 2007/01/12 02:57:10 cph Exp $
+$Id: dirs-liarc.scm,v 1.3 2007/04/04 05:08:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,15 +31,3 @@ USA.
 ;;; exclusions in the cdr.
 
 ("../runtime")
-("../sf")
-("../cref")
-("../compiler")
-("../compiler/back")
-("../compiler/base")
-("../compiler/fggen")
-("../compiler/fgopt")
-("../compiler/machines/C")
-("../compiler/rtlbase")
-("../compiler/rtlgen")
-("../compiler/rtlopt")
-("../star-parser" "compile" "ed-ffi" "load" "test-parser")

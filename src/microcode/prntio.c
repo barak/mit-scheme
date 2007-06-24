@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prntio.c,v 1.17 2007/01/05 21:19:25 cph Exp $
+$Id: prntio.c,v 1.18 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,7 +39,7 @@ USA.
 #include "ostty.h"
 
 extern HANDLE master_tty_window;
-extern Tchannel EXFUN (arg_to_channel, (SCHEME_OBJECT, int));
+extern Tchannel arg_to_channel (SCHEME_OBJECT, int);
 
 static Tchannel * object_to_channel_vector
   (SCHEME_OBJECT, int, unsigned long *, long *);
@@ -246,10 +246,10 @@ OPTIONS is a vector of options.")
 {
   PRIMITIVE_HEADER (8);
   {
-    CONST char * filename = (STRING_ARG (1));
-    CONST char * command_line = (STRING_ARG (2));
-    CONST char * env = (((ARG_REF (3)) == SHARP_F) ? 0 : (STRING_ARG (3)));
-    CONST char * working_directory
+    const char * filename = (STRING_ARG (1));
+    const char * command_line = (STRING_ARG (2));
+    const char * env = (((ARG_REF (3)) == SHARP_F) ? 0 : (STRING_ARG (3)));
+    const char * working_directory
       = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     enum process_channel_type channel_in_type;
     Tchannel channel_in;

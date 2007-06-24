@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.74 2007/01/05 21:19:25 cph Exp $
+$Id: lookup.c,v 9.75 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,21 +30,6 @@ USA.
 #include "scheme.h"
 #include "trap.h"
 #include "lookup.h"
-
-extern long make_uuo_link
-  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
-extern long make_fake_uuo_link
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
-extern SCHEME_OBJECT extract_uuo_link
-  (SCHEME_OBJECT, unsigned long);
-
-extern SCHEME_OBJECT extract_variable_cache
-  (SCHEME_OBJECT, unsigned long);
-extern void store_variable_cache
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
-
-extern SCHEME_OBJECT compiled_block_environment
-  (SCHEME_OBJECT);
 
 /* Hopefully a conservative guesstimate. */
 #ifndef SPACE_PER_UUO_LINK	/* So it can be overriden from config.h */
@@ -76,9 +61,9 @@ extern SCHEME_OBJECT compiled_block_environment
 
 #define GC_CHECK(n)							\
 {									\
-  if (GC_Check (n))							\
+  if (GC_NEEDED_P (n))							\
     {									\
-      Request_GC (n);							\
+      REQUEST_GC (n);							\
       return (PRIM_INTERRUPT);						\
     }									\
 }
@@ -93,7 +78,8 @@ extern SCHEME_OBJECT compiled_block_environment
    ? EXTERNAL_UNASSIGNED_OBJECT						\
    : (value))
 
-#define EXTERNAL_UNASSIGNED_OBJECT (Get_Fixed_Obj_Slot (Non_Object))
+#define EXTERNAL_UNASSIGNED_OBJECT					\
+  (VECTOR_REF (fixed_objects, NON_OBJECT))
 
 #define WALK_REFERENCES(refs_pointer, ref_var, body)			\
 {									\
@@ -129,36 +115,18 @@ static long assign_variable_end
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT *, int);
 static long assign_variable_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *, int);
-static long update_uuo_links
-  (SCHEME_OBJECT, SCHEME_OBJECT);
 static long guarantee_extension_space
   (SCHEME_OBJECT);
 static long allocate_frame_extension
   (unsigned long, SCHEME_OBJECT, SCHEME_OBJECT *);
-static void move_all_references
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int);
 static long unbind_cached_variable
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
 static void unbind_variable_1
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
-static long add_cache_reference
-  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
-static void add_reference
-  (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
-static void install_cache
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
-static void install_operator_cache
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
 static unsigned long update_cache_refs_space
   (SCHEME_OBJECT, SCHEME_OBJECT);
 static long update_cache_references
   (SCHEME_OBJECT, SCHEME_OBJECT *, SCHEME_OBJECT);
-static unsigned long ref_pairs_to_move
-  (SCHEME_OBJECT *, SCHEME_OBJECT, unsigned long *);
-static void move_ref_pairs
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int, SCHEME_OBJECT);
-static int move_ref_pair_p
-  (SCHEME_OBJECT, SCHEME_OBJECT);
 static SCHEME_OBJECT * find_binding_cell
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 static SCHEME_OBJECT * scan_frame
@@ -167,8 +135,6 @@ static SCHEME_OBJECT * scan_procedure_bindings
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, int);
 static unsigned long count_references
   (SCHEME_OBJECT *);
-static SCHEME_OBJECT * find_references_named
-  (SCHEME_OBJECT *, SCHEME_OBJECT);
 static void update_assignment_references
   (SCHEME_OBJECT);
 static long guarantee_cache
@@ -177,8 +143,33 @@ static void update_clone
   (SCHEME_OBJECT);
 static long make_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
+
+#ifdef CC_SUPPORT_P
+
+static long update_uuo_links
+  (SCHEME_OBJECT, SCHEME_OBJECT);
+static void move_all_references
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int);
+static long add_cache_reference
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
+static void add_reference
+  (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
+static void install_cache
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long, unsigned int);
+static void install_operator_cache
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
+static unsigned long ref_pairs_to_move
+  (SCHEME_OBJECT *, SCHEME_OBJECT, unsigned long *);
+static void move_ref_pairs
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int, SCHEME_OBJECT);
+static int move_ref_pair_p
+  (SCHEME_OBJECT, SCHEME_OBJECT);
+static SCHEME_OBJECT * find_references_named
+  (SCHEME_OBJECT *, SCHEME_OBJECT);
 static long make_cache_reference
   (SCHEME_OBJECT, unsigned long, SCHEME_OBJECT *);
+
+#endif
 
 /***** Basic environment manipulation (lookup, assign, define).  *****/
 
@@ -411,12 +402,15 @@ assign_variable_cache (SCHEME_OBJECT cache, SCHEME_OBJECT value,
   (*value_ret) = (MAP_FROM_UNASSIGNED (old_value));
   /* Perform the assignment.  If there are any operator references to
      this variable, update their links.  */
+#ifdef CC_SUPPORT_P
   if (PAIR_P (* (GET_CACHE_OPERATOR_REFERENCES (cache))))
     return (update_uuo_links (cache, (MAP_TO_UNASSIGNED (value))));
+#endif
   SET_CACHE_VALUE (cache, (MAP_TO_UNASSIGNED (value)));
   return (PRIM_DONE);
 }
 
+#ifdef CC_SUPPORT_P
 static long
 update_uuo_links (SCHEME_OBJECT cache, SCHEME_OBJECT new_value)
 {
@@ -436,6 +430,7 @@ update_uuo_links (SCHEME_OBJECT cache, SCHEME_OBJECT new_value)
      });
   return (PRIM_DONE);
 }
+#endif
 
 long
 define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
@@ -553,7 +548,7 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   SCHEME_OBJECT * source_cell;
   trap_kind_t source_kind;
   SCHEME_OBJECT * target_cell;
-  
+
   if (! ((ENVIRONMENT_P (target_environment))
 	 && (ENVIRONMENT_P (source_environment))))
     return (ERR_BAD_FRAME);
@@ -585,12 +580,14 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
 	      * SPACE_PER_UUO_LINK)
 	     + (2 * SPACE_PER_CACHE));
 	  SET_CACHE_VALUE (target_cache, (GET_CACHE_VALUE (source_cache)));
+#ifdef CC_SUPPORT_P
 	  move_all_references
 	    (source_cache, target_cache, CACHE_REFERENCES_LOOKUP);
 	  move_all_references
 	    (source_cache, target_cache, CACHE_REFERENCES_ASSIGNMENT);
 	  move_all_references
 	    (source_cache, target_cache, CACHE_REFERENCES_OPERATOR);
+#endif
 	  update_clone (source_cache);
 	  update_clone (target_cache);
 	}
@@ -604,6 +601,7 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   return (define_variable (target_environment, target_symbol, (*source_cell)));
 }
 
+#ifdef CC_SUPPORT_P
 static void
 move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
 		     unsigned int reference_kind)
@@ -624,6 +622,7 @@ move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
 		      reference_kind);
      });
 }
+#endif
 
 long
 unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
@@ -652,7 +651,7 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 	  case TRAP_UNBOUND:
 	    (*value_ret) = SHARP_F;
 	    return (PRIM_DONE);
-	    
+
 	  case NON_TRAP_KIND:
 	  case TRAP_UNASSIGNED:
 	  case TRAP_MACRO:
@@ -722,12 +721,14 @@ unbind_variable_1 (SCHEME_OBJECT * cell,
 
 /***** Interface to compiled code.  *****/
 
+#ifdef CC_SUPPORT_P
+
 long
 compiler_cache_lookup (SCHEME_OBJECT name, SCHEME_OBJECT block,
 		       unsigned long offset)
 {
   return
-    (add_cache_reference ((compiled_block_environment (block)),
+    (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
 			  CACHE_REFERENCES_LOOKUP));
 }
@@ -737,7 +738,7 @@ compiler_cache_assignment (SCHEME_OBJECT name, SCHEME_OBJECT block,
 			   unsigned long offset)
 {
   return
-    (add_cache_reference ((compiled_block_environment (block)),
+    (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
 			  CACHE_REFERENCES_ASSIGNMENT));
 }
@@ -747,7 +748,7 @@ compiler_cache_operator (SCHEME_OBJECT name, SCHEME_OBJECT block,
 			 unsigned long offset)
 {
   return
-    (add_cache_reference ((compiled_block_environment (block)),
+    (add_cache_reference ((cc_block_environment (block)),
 			  name, block, offset,
 			  CACHE_REFERENCES_OPERATOR));
 }
@@ -951,11 +952,11 @@ install_cache (SCHEME_OBJECT cache, SCHEME_OBJECT block, unsigned long offset,
   switch (reference_kind)
     {
     case CACHE_REFERENCES_LOOKUP:
-      store_variable_cache (cache, block, offset);
+      write_variable_cache (cache, block, offset);
       break;
 
     case CACHE_REFERENCES_ASSIGNMENT:
-      store_variable_cache
+      write_variable_cache
 	((((GET_CACHE_CLONE (cache)) != SHARP_F)
 	  ? (GET_CACHE_CLONE (cache))
 	  : cache),
@@ -978,15 +979,15 @@ install_operator_cache (SCHEME_OBJECT cache,
 			SCHEME_OBJECT block, unsigned long offset)
 {
   SCHEME_OBJECT value = (GET_CACHE_VALUE (cache));
-  DIE_IF_ERROR
-    ((REFERENCE_TRAP_P (value))
-     ? (make_fake_uuo_link (cache, block, offset))
-     : (make_uuo_link (value, cache, block, offset)));
+  DIE_IF_ERROR (make_uuo_link (value, cache, block, offset));
 }
+
+#endif /* CC_SUPPORT_P */
 
 static unsigned long
 update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment)
 {
+#ifdef CC_SUPPORT_P
   unsigned long n_names = 0;
   unsigned long n_lookups
     = (ref_pairs_to_move ((GET_CACHE_LOOKUP_REFERENCES (from_cache)),
@@ -999,13 +1000,14 @@ update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment)
 			  environment, (&n_names)));
 
   /* No references need to be updated.  */
-  if ((n_lookups == 0) && (n_assignments == 0) && (n_operators == 0))
-    return (PRIM_DONE);
+  if (! ((n_lookups == 0) && (n_assignments == 0) && (n_operators == 0)))
+    return
+      ((n_operators * SPACE_PER_UUO_LINK)
+       + (n_names * 4)
+       + (3 * SPACE_PER_CACHE));
+#endif
 
-  return
-    ((n_operators * SPACE_PER_UUO_LINK)
-     + (n_names * 4)
-     + (3 * SPACE_PER_CACHE));
+  return (PRIM_DONE);
 }
 
 static long
@@ -1015,17 +1017,21 @@ update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
   DIE_IF_ERROR (guarantee_cache (to_cell));
   {
     SCHEME_OBJECT to_cache = (GET_TRAP_CACHE (*to_cell));
+#ifdef CC_SUPPORT_P
     move_ref_pairs
       (from_cache, to_cache, CACHE_REFERENCES_LOOKUP, environment);
     move_ref_pairs
       (from_cache, to_cache, CACHE_REFERENCES_ASSIGNMENT, environment);
     move_ref_pairs
       (from_cache, to_cache, CACHE_REFERENCES_OPERATOR, environment);
+#endif
     update_clone (to_cache);
   }
   update_clone (from_cache);
   return (PRIM_DONE);
 }
+
+#ifdef CC_SUPPORT_P
 
 static unsigned long
 ref_pairs_to_move (SCHEME_OBJECT * palist, SCHEME_OBJECT environment,
@@ -1103,7 +1109,7 @@ static int
 move_ref_pair_p (SCHEME_OBJECT ref_pair, SCHEME_OBJECT ancestor)
 {
   SCHEME_OBJECT descendant
-    = (compiled_block_environment
+    = (cc_block_environment
        (GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (ref_pair))));
   while (PROCEDURE_FRAME_P (descendant))
     {
@@ -1113,6 +1119,8 @@ move_ref_pair_p (SCHEME_OBJECT ref_pair, SCHEME_OBJECT ancestor)
     }
   return (descendant == ancestor);
 }
+
+#endif /* CC_SUPPORT_P */
 
 /***** Utilities *****/
 
@@ -1208,6 +1216,7 @@ count_references (SCHEME_OBJECT * palist)
   return (n_references);
 }
 
+#ifdef CC_SUPPORT_P
 static SCHEME_OBJECT *
 find_references_named (SCHEME_OBJECT * palist, SCHEME_OBJECT symbol)
 {
@@ -1219,10 +1228,12 @@ find_references_named (SCHEME_OBJECT * palist, SCHEME_OBJECT symbol)
     }
   return (0);
 }
+#endif
 
 static void
 update_assignment_references (SCHEME_OBJECT cache)
 {
+#ifdef CC_SUPPORT_P
   SCHEME_OBJECT reference_cache
     = (((GET_CACHE_CLONE (cache)) != SHARP_F)
        ? (GET_CACHE_CLONE (cache))
@@ -1231,11 +1242,12 @@ update_assignment_references (SCHEME_OBJECT cache)
     ((GET_CACHE_ASSIGNMENT_REFERENCES (cache)),
      reference,
      {
-       store_variable_cache
+       write_variable_cache
 	 (reference_cache,
 	  (GET_CACHE_REFERENCE_BLOCK (reference)),
 	  (GET_CACHE_REFERENCE_OFFSET (reference)));
      });
+#endif
 }
 
 static long
@@ -1302,6 +1314,7 @@ make_cache (SCHEME_OBJECT value, SCHEME_OBJECT clone, SCHEME_OBJECT references,
   return (PRIM_DONE);
 }
 
+#ifdef CC_SUPPORT_P
 static long
 make_cache_reference (SCHEME_OBJECT block, unsigned long offset,
 		      SCHEME_OBJECT * ref_ret)
@@ -1312,3 +1325,4 @@ make_cache_reference (SCHEME_OBJECT block, unsigned long offset,
   (*ref_ret) = (MAKE_POINTER_OBJECT (TC_WEAK_CONS, (Free - 2)));
   return (PRIM_DONE);
 }
+#endif

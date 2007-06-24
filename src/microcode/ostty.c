@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ostty.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: ostty.c,v 1.9 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,11 +27,12 @@ USA.
 
 #include "ostty.h"
 #include "osscheme.h"
+#include "prims.h"
 
 static cc_t next_interrupt_char;
 
 void
-DEFUN (tty_set_next_interrupt_char, (c), cc_t c)
+tty_set_next_interrupt_char (cc_t c)
 {
   if (next_interrupt_char == '\0')
     {
@@ -41,7 +42,7 @@ DEFUN (tty_set_next_interrupt_char, (c), cc_t c)
 }
 
 cc_t
-DEFUN_VOID (OS_tty_next_interrupt_char)
+OS_tty_next_interrupt_char (void)
 {
   if (next_interrupt_char == '\0')
     error_external_return ();

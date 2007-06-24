@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.27 2007/01/12 03:45:55 cph Exp $
+$Id: prosio.c,v 1.28 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,8 +36,7 @@ USA.
 #endif
 
 Tchannel
-DEFUN (arg_to_channel, (argument, arg_number),
-       SCHEME_OBJECT argument AND
+arg_to_channel (SCHEME_OBJECT argument,
        int arg_number)
 {
   if (! ((INTEGER_P (argument)) && (integer_to_ulong_p (argument))))
@@ -51,7 +50,7 @@ DEFUN (arg_to_channel, (argument, arg_number),
 }
 
 Tchannel
-DEFUN (arg_channel, (arg_number), int arg_number)
+arg_channel (int arg_number)
 {
   Tchannel channel = (arg_to_channel ((ARG_REF (arg_number)), arg_number));
   if (!OS_channel_open_p (channel))
@@ -64,7 +63,7 @@ DEFINE_PRIMITIVE ("CHANNEL-CLOSE", Prim_channel_close, 1, 1,
 {
   PRIMITIVE_HEADER (1);
   {
-    fast Tchannel channel = (arg_to_channel ((ARG_REF (1)), 1));
+    Tchannel channel = (arg_to_channel ((ARG_REF (1)), 1));
     if (OS_channel_open_p (channel))
       {
 	CLOSE_CHANNEL_HOOK (channel);
@@ -158,7 +157,7 @@ Return the number of characters actually read from CHANNEL.")
   PRIMITIVE_HEADER (4);
   {
     unsigned long length;
-    char * buffer = (arg_extended_string (2, (&length)));
+    unsigned char * buffer = (arg_extended_string (2, (&length)));
     unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
     unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     long nread =
@@ -176,7 +175,7 @@ Third and fourth args START and END specify the substring to use.")
   PRIMITIVE_HEADER (4);
   {
     unsigned long length;
-    CONST char * buffer = (arg_extended_string (2, (&length)));
+    const unsigned char * buffer = (arg_extended_string (2, (&length)));
     unsigned long end = (arg_ulong_index_integer (4, (length + 1)));
     unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     long nwritten =
@@ -237,13 +236,13 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
 /* Select registry */
 
 static select_registry_t
-DEFUN (arg_select_registry, (arg_number), int arg_number)
+arg_select_registry (int arg_number)
 {
   return ((select_registry_t) (arg_ulong_integer (arg_number)));
 }
 
 static unsigned int
-DEFUN (arg_sr_mode, (arg_number), int arg_number)
+arg_sr_mode (int arg_number)
 {
   unsigned long n = (arg_ulong_integer (arg_number));
   if (! ((n >= 1) && (n <= 3)))

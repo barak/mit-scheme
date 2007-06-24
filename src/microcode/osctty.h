@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osctty.h,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: osctty.h,v 1.9 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,16 +32,16 @@ USA.
 
 /* If this procedure returns 0, the interrupt control procedures will
    not work correctly. */
-extern int EXFUN (OS_ctty_interrupt_control, (void));
+extern int OS_ctty_interrupt_control (void);
 
 typedef unsigned int Tinterrupt_enables;
-extern void EXFUN (OS_ctty_get_interrupt_enables, (Tinterrupt_enables * mask));
-extern void EXFUN (OS_ctty_set_interrupt_enables, (Tinterrupt_enables * mask));
+extern void OS_ctty_get_interrupt_enables (Tinterrupt_enables * mask);
+extern void OS_ctty_set_interrupt_enables (Tinterrupt_enables * mask);
 
-extern unsigned int EXFUN (OS_ctty_num_int_chars, (void));
-extern cc_t * EXFUN (OS_ctty_get_int_chars, (void));
-extern cc_t * EXFUN (OS_ctty_get_int_char_handlers, (void));
-extern void EXFUN (OS_ctty_set_int_chars, (cc_t *));
-extern void EXFUN (OS_ctty_set_int_char_handlers, (cc_t *));
+extern unsigned int OS_ctty_num_int_chars (void);
+extern cc_t * OS_ctty_get_int_chars (void);
+extern cc_t * OS_ctty_get_int_char_handlers (void);
+extern void OS_ctty_set_int_chars (cc_t *);
+extern void OS_ctty_set_int_char_handlers (cc_t *);
 
 #endif /* SCM_OSCTTY_H */

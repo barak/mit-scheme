@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.50 2007/01/05 21:19:28 cph Exp $
+$Id: packag.scm,v 14.55 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -163,90 +163,66 @@ USA.
 		    package-name-tag
 		    system-global-package))
 
-(define system-loader/enable-query? #f)
-
-(define (quasi-fasload pathname)
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1))
-	(path (merge-pathnames pathname)))
-    (or (and (implemented-primitive-procedure? prim)
-	     (prim (string-append (car (last-pair (pathname-directory path)))
-				  "_"
-				  (pathname-name path))))
-	(fasload pathname))))
-
 (define (load-package-set filename #!optional options)
-  (let ((os-type microcode-id/operating-system))
-    (let ((pathname (package-set-pathname filename os-type))
+  (let ((pathname (merge-pathnames filename))
+	(os-type microcode-id/operating-system))
+    (let ((dir (directory-pathname pathname))
+	  (pkg (package-set-pathname pathname os-type))
 	  (options
 	   (cons (cons 'OS-TYPE os-type)
 		 (if (default-object? options) '() options))))
-      (with-working-directory-pathname (directory-pathname pathname)
+      (with-working-directory-pathname dir
 	(lambda ()
-	  (let ((file (quasi-fasload pathname)))
+	  (let ((file (fasload pkg)))
 	    (if (not (package-file? file))
-		(error "Malformed package-description file:" pathname))
+		(error "Malformed package-description file:" pkg))
 	    (construct-packages-from-file file)
-	    (fluid-let
-		((load/default-types
-		  (if (and system-loader/enable-query?
-			   (prompt-for-confirmation "Load interpreted"))
-		      (list (assoc "bin" load/default-types)
-			    (assoc "scm" load/default-types))
-		      load/default-types)))
-	      (let ((alternate-loader
-		     (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
-		    (load-component
-		     (lambda (component environment)
-		       (let ((value
-			      (filename->compiled-object filename component)))
-			 (if value
-			     (begin
-			       (purify (load/purification-root value))
-			       (scode-eval value environment))
-			     (load component environment 'DEFAULT #t))))))
-		(if alternate-loader
-		    (alternate-loader load-component options)
-		    (begin
-		      (load-packages-from-file file options load-component)
-		      (initialize-packages-from-file file))))))))))
+	    (let ((alternate-loader
+		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
+		  (load-component
+		   (lambda (name environment)
+		     (let ((value (filename->compiled-object dir name)))
+		       (if value
+			   (begin
+			     (purify (load/purification-root value))
+			     (scode-eval value environment))
+			   (load name environment 'DEFAULT #t))))))
+	      (if alternate-loader
+		  (alternate-loader load-component options)
+		  (begin
+		    (load-packages-from-file file options load-component)
+		    (initialize-packages-from-file file)))))))))
   ;; Make sure that everything we just loaded is purified.  If the
   ;; program runs before it gets purified, some of its run-time state
   ;; can end up being purified also.
   (flush-purification-queue!))
 
-(define (package-set-pathname pathname #!optional os-type)
-  (make-pathname (pathname-host pathname)
-		 (pathname-device pathname)
-		 (pathname-directory pathname)
-		 (string-append (pathname-name pathname)
-				(case (if (default-object? os-type)
-					  microcode-id/operating-system
-					  os-type)
-				  ((NT) "-w32")
-				  ((OS/2) "-os2")
-				  ((UNIX) "-unx")
-				  (else "-unk")))
-		 "pkd"
-		 (pathname-version pathname)))
+;; Obsolete and ignored:
+(define system-loader/enable-query? #f)
 
-(define (filename->compiled-object system component)
-  (let ((prim (ucode-primitive initialize-c-compiled-block 1)))
-    (and (implemented-primitive-procedure? prim)
-	 (let* ((name
-		 (let* ((p (->pathname component))
-			(d (pathname-directory p)))
-		   (string-append
-		    (if (pair? d) (car (last-pair d)) system)
-		    "_"
-		    (pathname-name p))))
-		(value (prim name)))
-	   (if (or (not value) load/suppress-loading-message?)
-	       value
-	       (let ((port (notification-output-port)))
-		 (fresh-line port)
-		 (write-string ";Initialized " port)
-		 (write name port)
-		 value))))))
+(define (package-set-pathname pathname #!optional os-type)
+  (pathname-new-type
+   (pathname-new-name pathname
+		      (string-append (pathname-name pathname)
+				     "-"
+				     (case (if (default-object? os-type)
+					       microcode-id/operating-system
+					       os-type)
+				       ((NT) "w32")
+				       ((OS/2) "os2")
+				       ((UNIX) "unx")
+				       (else "unk"))))
+   "pkd"))
+
+(define (filename->compiled-object directory name)
+  (let ((pathname (merge-pathnames name directory)))
+    (let ((value (built-in-object-file pathname)))
+      (if (and value (not load/suppress-loading-message?))
+	  (write-notification-line
+	   (lambda (port)
+	     (write-string "Initialized " port)
+	     (write (enough-namestring pathname) port))))
+      value)))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))
@@ -524,16 +500,13 @@ USA.
     (lambda (description)
       (let ((expressions (selector description)))
 	(if (fix:> (vector-length expressions) 0)
-	    (let ((name (load-description/name description))
-		  (port (notification-output-port)))
-	      (fresh-line port)
-	      (write-string ";" port)
-	      (write-string verb port)
-	      (write-string " package " port)
-	      (write name port)
-	      (for-each-vector-element expressions
-		(let ((environment (find-package-environment name)))
-		  (lambda (expression)
-		    (eval expression environment))))
-	      (write-string " -- done" port)
-	      (newline port)))))))
+	    (let ((name (load-description/name description)))
+	      (with-notification (lambda (port)
+				   (write-string verb port)
+				   (write-string " package " port)
+				   (write name port))
+		(lambda ()
+		  (for-each-vector-element expressions
+		    (let ((environment (find-package-environment name)))
+		      (lambda (expression)
+			(eval expression environment))))))))))))

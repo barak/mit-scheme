@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prbfish.c,v 1.16 2007/01/05 21:19:25 cph Exp $
+$Id: prbfish.c,v 1.17 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -55,28 +55,28 @@ For text-string keys, use MD5 on the text, and pass the digest here.")
   if ((STRING_LENGTH (string)) > 72)
     error_bad_range_arg (1);
   result = (allocate_string (sizeof (BF_KEY)));
-  BF_set_key (((BF_KEY *) (STRING_LOC (result, 0))),
+  BF_set_key (((BF_KEY *) (STRING_POINTER (result))),
 	      (STRING_LENGTH (string)),
-	      (STRING_LOC (string, 0)));
+	      (STRING_BYTE_PTR (string)));
   PRIMITIVE_RETURN (result);
 }
 
 static BF_KEY *
-DEFUN (key_arg, (arg), unsigned int arg)
+key_arg (unsigned int arg)
 {
   CHECK_ARG (arg, STRING_P);
   if ((STRING_LENGTH (ARG_REF (arg))) != (sizeof (BF_KEY)))
     error_bad_range_arg (arg);
-  return ((BF_KEY *) (STRING_LOC ((ARG_REF (arg)), 0)));
+  return ((BF_KEY *) (STRING_BYTE_PTR (ARG_REF (arg))));
 }
 
 static unsigned char *
-DEFUN (init_vector_arg, (arg), unsigned int arg)
+init_vector_arg (unsigned int arg)
 {
   CHECK_ARG (arg, STRING_P);
   if ((STRING_LENGTH (ARG_REF (arg))) != 8)
     error_bad_range_arg (arg);
-  return (STRING_LOC ((ARG_REF (arg)), 0));
+  return (STRING_BYTE_PTR (ARG_REF (arg)));
 }
 
 DEFINE_PRIMITIVE ("BLOWFISH-ECB", Prim_blowfish_ecb, 4, 4,
@@ -99,8 +99,8 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
   output_text = (ARG_REF (2));
   if ((STRING_LENGTH (output_text)) != 8)
     error_bad_range_arg (2);
-  BF_ecb_encrypt ((STRING_LOC (input_text, 0)),
-		  (STRING_LOC (output_text, 0)),
+  BF_ecb_encrypt ((STRING_BYTE_PTR (input_text)),
+		  (STRING_BYTE_PTR (output_text)),
 		  (key_arg (3)),
 		  ((BOOLEAN_ARG (4)) ? BF_ENCRYPT : BF_DECRYPT));
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -129,8 +129,8 @@ ENCRYPT? says whether to encrypt (#T) or decrypt (#F).")
   if ((output_text == input_text)
       || ((STRING_LENGTH (output_text)) != (STRING_LENGTH (input_text))))
     error_bad_range_arg (2);
-  BF_cbc_encrypt ((STRING_LOC (input_text, 0)),
-		  (STRING_LOC (output_text, 0)),
+  BF_cbc_encrypt ((STRING_BYTE_PTR (input_text)),
+		  (STRING_BYTE_PTR (output_text)),
 		  (STRING_LENGTH (input_text)),
 		  (key_arg (3)),
 		  (init_vector_arg (4)),
@@ -178,8 +178,8 @@ Returned value is the new value of NUM.")
       && (istart < (ostart + ilen)))
     error_bad_range_arg (4);
   num = (arg_index_integer (8, 8));
-  BF_cfb64_encrypt ((STRING_LOC (input_text, istart)),
-		    (STRING_LOC (output_text, ostart)),
+  BF_cfb64_encrypt ((STRING_BYTE_PTR (input_text)),
+		    (STRING_BYTE_PTR (output_text)),
 		    ilen,
 		    (key_arg (6)),
 		    (init_vector_arg (7)),
@@ -239,7 +239,7 @@ Returned value is the new value of NUM.")
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive
     ("BLOWFISH-SET-KEY", Prim_blowfish_set_key, 1, 1,

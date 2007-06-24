@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: primutl.c,v 9.83 2007/01/05 21:19:25 cph Exp $
+$Id: primutl.c,v 9.84 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,7 +25,7 @@ USA.
 
 */
 
-/* 
+/*
  * This file contains the support routines for mapping primitive names
  * to numbers within the microcode.  Primitives are written in C
  * and available in Scheme, but not always present in all versions of
@@ -44,18 +44,6 @@ USA.
 #include "cmpgc.h"
 #include <ctype.h>
 
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#  include <string.h>
-#else
-   extern PTR EXFUN (malloc, (size_t));
-   extern PTR EXFUN (realloc, (PTR, size_t));
-   extern PTR EXFUN (memcpy, (PTR, CONST PTR, size_t));
-   extern char * EXFUN (strcpy, (char *, CONST char *));
-#endif
-
-extern SCHEME_OBJECT * load_renumber_table;
-
 #ifndef UPDATE_PRIMITIVE_TABLE_HOOK
 #  define UPDATE_PRIMITIVE_TABLE_HOOK(low, high) do { } while (0)
 #endif
@@ -63,10 +51,14 @@ extern SCHEME_OBJECT * load_renumber_table;
 #ifndef GROW_PRIMITIVE_TABLE_HOOK
 #  define GROW_PRIMITIVE_TABLE_HOOK(size) true
 #endif
-
-/*
-  Exported variables:
- */
+
+static prim_renumber_t * make_prim_renumber_1 (unsigned long);
+static void free_prim_renumber (void *);
+static SCHEME_OBJECT * make_table_entry (unsigned long, SCHEME_OBJECT *);
+static unsigned long table_entry_length (unsigned long);
+
+
+/* Exported variables: */
 
 unsigned long MAX_PRIMITIVE = 0;
 
@@ -76,58 +68,38 @@ int * Primitive_Arity_Table = 0;
 
 int * Primitive_Count_Table = 0;
 
-CONST char ** Primitive_Name_Table = 0;
+const char ** Primitive_Name_Table = 0;
 
-CONST char ** Primitive_Documentation_Table = 0;
+const char ** Primitive_Documentation_Table = 0;
 
 SCHEME_OBJECT * load_renumber_table = 0;
-
-/*
-  Exported utilities:
- */
-
-extern void
-  EXFUN (initialize_primitives, (void)),
-  EXFUN (install_primitive_table, (SCHEME_OBJECT *, long));
-
-extern SCHEME_OBJECT
-  EXFUN (make_primitive, (char *, int)),
-  EXFUN (find_primitive, (SCHEME_OBJECT, Boolean, Boolean, int)),
-  EXFUN (dump_renumber_primitive, (SCHEME_OBJECT)),
-  * EXFUN (initialize_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *)),
-  * EXFUN (cons_primitive_table, (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
-  * EXFUN (cons_whole_primitive_table,
-	   (SCHEME_OBJECT *, SCHEME_OBJECT *, long *)),
-  EXFUN (Prim_unimplemented, (void));
-
-extern int
-  EXFUN (strcmp_ci, (char *, char *));
 
 /* Common utilities. */
 
 int
-DEFUN (strcmp_ci, (s1, s2), char * s1 AND char * s2)
+strcmp_ci (const char * s1, const char * s2)
 {
   const unsigned char * p1 = ((unsigned char *) s1);
   const unsigned char * p2 = ((unsigned char *) s2);
-  int diff;
-
-  while ((*p1 != '\0') && (*p2 != '\0'))
+  while (true)
     {
       int c1 = (*p1++);
       int c2 = (*p2++);
+      if (c1 == '\0')
+	return ((c2 == '\0') ? 0 : (-1));
+      if (c2 == '\0')
+	return (1);
       c1 = (toupper (c1));
       c2 = (toupper (c2));
-      diff = (c1 - c2);
-      if (diff != 0)
-	return ((diff > 0) ? 1 : -1);
+      if (c1 < c2)
+	return (-1);
+      if (c1 > c2)
+	return (1);
     }
-  diff = (((int) (*p1)) - ((int) (*p2)));
-  return ((diff == 0) ? 0 : (diff > 0) ? 1 : (-1));
 }
 
 SCHEME_OBJECT
-DEFUN_VOID (Prim_unimplemented)
+Prim_unimplemented (void)
 {
   PRIMITIVE_HEADER (-1);
 
@@ -137,7 +109,7 @@ DEFUN_VOID (Prim_unimplemented)
 }
 
 static void
-DEFUN (initialization_error, (reason, item), char * reason AND char * item)
+initialization_error (char * reason, char * item)
 {
   outf_fatal ("initialize_primitives: Error %s %s.\n", reason, item);
   termination_init_error ();
@@ -164,7 +136,7 @@ static unsigned long prim_table_size = 0;
 } while (0)
 
 static void
-DEFUN_VOID (grow_primitive_tables)
+grow_primitive_tables (void)
 {
   unsigned long new_size = (MAX_PRIMITIVE + (MAX_PRIMITIVE / 10));
   COPY_TABLE (Primitive_Arity_Table, Static_Primitive_Arity_Table, int, int);
@@ -172,11 +144,11 @@ DEFUN_VOID (grow_primitive_tables)
   COPY_TABLE (Primitive_Name_Table,
 	      Static_Primitive_Name_Table,
 	      char *,
-	      CONST char *);
+	      const char *);
   COPY_TABLE (Primitive_Documentation_Table,
 	      Static_Primitive_Documentation_Table,
 	      char *,
-	      CONST char *);
+	      const char *);
   COPY_TABLE (Primitive_Procedure_Table,
 	      Static_Primitive_Procedure_Table,
 	      primitive_procedure_t,
@@ -188,7 +160,7 @@ DEFUN_VOID (grow_primitive_tables)
 static tree_node prim_procedure_tree = ((tree_node) NULL);
 
 void
-DEFUN_VOID (initialize_primitives)
+initialize_primitives (void)
 {
   unsigned long counter;
 
@@ -218,7 +190,7 @@ DEFUN_VOID (initialize_primitives)
     {
       SCHEME_OBJECT old = (make_primitive (primitive_aliases[counter].name,
 					   UNKNOWN_PRIMITIVE_ARITY));
-      
+
       if (old == SHARP_F)
       {
 	outf_fatal ("Error declaring unknown primitive %s.\n",
@@ -242,19 +214,17 @@ DEFUN_VOID (initialize_primitives)
 }
 
 static SCHEME_OBJECT
-DEFUN (declare_primitive_internal,
-       (override_p, name, code, nargs_lo, nargs_hi, docstr),
-       Boolean override_p
-       AND CONST char * name
-       AND primitive_procedure_t code
-       AND int nargs_lo
-       AND int nargs_hi
-       AND CONST char * docstr)
+declare_primitive_internal (bool override_p,
+       const char * name,
+       primitive_procedure_t code,
+       int nargs_lo,
+       int nargs_hi,
+       const char * docstr)
 /* nargs_lo ignored, for now */
 {
   unsigned long index;
   SCHEME_OBJECT primitive;
-  CONST char * ndocstr = docstr;
+  const char * ndocstr = docstr;
   tree_node prim = (tree_lookup (prim_procedure_tree, name));
 
   if (prim != ((tree_node) NULL))
@@ -310,12 +280,11 @@ DEFUN (declare_primitive_internal,
  */
 
 SCHEME_OBJECT
-DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
-       CONST char * name
-       AND primitive_procedure_t code
-       AND int nargs_lo
-       AND int nargs_hi
-       AND CONST char * docstr)
+declare_primitive (const char * name,
+		   primitive_procedure_t code,
+		   int nargs_lo,
+		   int nargs_hi,
+		   const char * docstr)
 {
   return (declare_primitive_internal (false, name, code,
 				      nargs_lo, nargs_hi, docstr));
@@ -328,277 +297,226 @@ DEFUN (declare_primitive, (name, code, nargs_lo, nargs_hi, docstr),
  */
 
 SCHEME_OBJECT
-DEFUN (install_primitive, (name, code, nargs_lo, nargs_hi, docstr),
-       CONST char * name
-       AND primitive_procedure_t code
-       AND int nargs_lo
-       AND int nargs_hi
-       AND CONST char * docstr)
+install_primitive (const char * name,
+		   primitive_procedure_t code,
+		   int nargs_lo,
+		   int nargs_hi,
+		   const char * docstr)
 {
   return (declare_primitive_internal (true, name, code,
 				      nargs_lo, nargs_hi, docstr));
 }
 
-/*
-  make_primitive returns a primitive object,
-  constructing one if necessary.
- */
-
 SCHEME_OBJECT
-DEFUN (make_primitive, (name, arity), char * name AND int arity)
+make_primitive (const char * name, int arity)
 {
-  /* This copies the name (and probes twice) because unstackify'd
-     primitive name strings are ephemeral.
-  */
-
+  tree_node prim;
+  char * cname;
   SCHEME_OBJECT result;
-  char * name_to_insert;
-  tree_node prim = (tree_lookup (prim_procedure_tree, name));
-				 
-  if (prim != ((tree_node) NULL))
-    name_to_insert = ((char *) (prim->name));
-  else
-  {
-    name_to_insert = ((char *) (malloc (1 + (strlen (name)))));
-    if (name_to_insert == ((char *) NULL))
-      error_in_system_call (syserr_not_enough_space, syscall_malloc);
-    strcpy (name_to_insert, name);
-  }
 
-  result = (declare_primitive (name_to_insert,
-			       Prim_unimplemented,
-			       arity,
-			       arity,
-			       ((char *) NULL)));
-  return ((result == SHARP_F)
-	  ? SHARP_F
-	  : (OBJECT_NEW_TYPE (TC_PRIMITIVE, result)));
+  /* Make sure to copy the name if we will be keeping it.  */
+  prim = (tree_lookup (prim_procedure_tree, name));
+  if (prim != 0)
+    cname = ((char *) (prim->name));
+  else
+    {
+      cname = (OS_malloc ((strlen (name)) + 1));
+      strcpy (cname, name);
+    }
+  result = (declare_primitive (cname, Prim_unimplemented, arity, arity, 0));
+  return
+    ((result == SHARP_F)
+     ? SHARP_F
+     : (OBJECT_NEW_TYPE (TC_PRIMITIVE, result)));
 }
 
-/* This returns all sorts of different things that the runtime
-   system decodes.
- */
-
 SCHEME_OBJECT
-DEFUN (find_primitive, (sname, intern_p, allow_p, arity),
-       SCHEME_OBJECT sname AND Boolean intern_p
-       AND Boolean allow_p AND int arity)
+find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
 {
-  tree_node prim = (tree_lookup (prim_procedure_tree,
-				 ((char *) (STRING_LOC (sname, 0)))));
-
-  if (prim != ((tree_node) NULL))
-  {
-    SCHEME_OBJECT primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
-
-    if ((! allow_p) && (! (IMPLEMENTED_PRIMITIVE_P (primitive))))
-      return (SHARP_F);
-    
-    if ((arity == UNKNOWN_PRIMITIVE_ARITY)
-	|| (arity == (PRIMITIVE_ARITY (primitive))))
-      return (primitive);
-    else if ((PRIMITIVE_ARITY (primitive)) == UNKNOWN_PRIMITIVE_ARITY)
+  tree_node prim
+    = (tree_lookup (prim_procedure_tree, (STRING_POINTER (sname))));
+  if (prim != 0)
     {
-      /* We've just learned the arity of the primitive. */
-      Primitive_Arity_Table[PRIMITIVE_NUMBER (primitive)] = arity;
-      return (primitive);
-    }
-    else
+      SCHEME_OBJECT primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
+
+      if ((!allow_p) && (!IMPLEMENTED_PRIMITIVE_P (primitive)))
+	return (SHARP_F);
+
+      if ((arity == UNKNOWN_PRIMITIVE_ARITY)
+	  || (arity == (PRIMITIVE_ARITY (primitive))))
+	return (primitive);
+
+      if ((PRIMITIVE_ARITY (primitive)) == UNKNOWN_PRIMITIVE_ARITY)
+	{
+	  /* We've just learned the arity of the primitive. */
+	  (Primitive_Arity_Table[PRIMITIVE_NUMBER (primitive)]) = arity;
+	  return (primitive);
+	}
+
       /* Arity mismatch, notify the runtime system. */
       return (LONG_TO_FIXNUM (PRIMITIVE_ARITY (primitive)));
-  }
-  else if (! intern_p)
-    return (SHARP_F);
-  else
-  {
-    SCHEME_OBJECT primitive;
-    char * cname = ((char *) (malloc (1 + (STRING_LENGTH (sname)))));
+    }
 
-    if (cname == ((char *) NULL))
-      error_in_system_call (syserr_not_enough_space, syscall_malloc);
-    strcpy (cname, ((char *) (STRING_LOC (sname, 0))));
-    primitive =
-      (declare_primitive (cname,
-			  Prim_unimplemented,
-			  ((arity < 0) ? 0 : arity),
-			  arity,
-			  ((char *) NULL)));
-    if (primitive == SHARP_F)
-      error_in_system_call (syserr_not_enough_space, syscall_malloc);
-    return (primitive);
+  if (!intern_p)
+    return (SHARP_F);
+
+  {
+    size_t n_bytes = ((STRING_LENGTH (sname)) + 1);
+    char * cname = (OS_malloc (n_bytes));
+    memcpy (cname, (STRING_POINTER (sname)), n_bytes);
+    {
+      SCHEME_OBJECT primitive
+	= (declare_primitive (cname,
+			      Prim_unimplemented,
+			      ((arity < 0) ? 0 : arity),
+			      arity,
+			      0));
+      if (primitive == SHARP_F)
+	error_in_system_call (syserr_not_enough_space, syscall_malloc);
+      return (primitive);
+    }
   }
 }
 
 /* These are used by fasdump to renumber primitives on the way out.
    Only those primitives actually referenced by the object being
-   dumped are described in the output.  The primitives being
-   dumped are renumbered in the output to a contiguous range
-   starting at 0.
- */
+   dumped are described in the output.  The primitives being dumped
+   are renumbered in the output to a contiguous range starting at 0.  */
 
-static SCHEME_OBJECT * internal_renumber_table;
-static SCHEME_OBJECT * external_renumber_table;
-static long next_primitive_renumber;
-
-/* This is called during fasdump setup. */
-
-SCHEME_OBJECT *
-DEFUN (initialize_primitive_table, (where, end),
-       fast SCHEME_OBJECT * where AND SCHEME_OBJECT * end)
+prim_renumber_t *
+make_prim_renumber (void)
 {
-  SCHEME_OBJECT * top;
-  fast long number_of_primitives;
-
-  top = &where[2 * MAX_PRIMITIVE];
-  if (top < end)
-  {
-    internal_renumber_table = where;
-    external_renumber_table = &where[MAX_PRIMITIVE];
-    next_primitive_renumber = 0;
-
-    for (number_of_primitives = MAX_PRIMITIVE;
-	 (--number_of_primitives >= 0);)
-      (*where++) = SHARP_F;
-  }
-  return (top);
+  return (make_prim_renumber_1 (MAX_PRIMITIVE));
 }
 
-/* This is called every time fasdump meets a primitive to be renumbered.
-   It is called on objects with tag TC_PRIMITIVE or TC_PCOMB0,
-   so it preserves the tag of its argument.
- */
+static prim_renumber_t *
+make_prim_renumber_1 (unsigned long n_entries)
+{
+  prim_renumber_t * pr = (OS_malloc (sizeof (prim_renumber_t)));
+  (pr->internal) = (OS_malloc (n_entries * (sizeof (unsigned long))));
+  (pr->external) = (OS_malloc (n_entries * (sizeof (unsigned long))));
+  (pr->next_code) = 0;
+  {
+    unsigned long i;
+    for (i = 0; (i < n_entries); i += 1)
+      {
+	((pr->internal) [i]) = ULONG_MAX;
+	((pr->external) [i]) = ULONG_MAX;
+      }
+  }
+  transaction_record_action (tat_always, free_prim_renumber, pr);
+  return (pr);
+}
+
+static void
+free_prim_renumber (void * vpr)
+{
+  prim_renumber_t * pr = vpr;
+  OS_free (pr->internal);
+  OS_free (pr->external);
+  OS_free (pr);
+}
 
 SCHEME_OBJECT
-DEFUN (dump_renumber_primitive, (primitive), fast SCHEME_OBJECT primitive)
+renumber_primitive (SCHEME_OBJECT primitive, prim_renumber_t * pr)
 {
-  fast long number;
-  fast SCHEME_OBJECT result;
-
-  number = (PRIMITIVE_NUMBER (primitive));
-  result = internal_renumber_table[number];
-  if (result != SHARP_F)
-    return (MAKE_OBJECT_FROM_OBJECTS (primitive, result));
-  else
-  {
-    result = (OBJECT_NEW_DATUM (primitive, next_primitive_renumber));
-    internal_renumber_table[number] = result;
-    external_renumber_table[next_primitive_renumber] = primitive;
-    next_primitive_renumber += 1;
-    return (result);
-  }
-}
-
-/* Utility for fasdump and dump-band */
-
-static SCHEME_OBJECT *
-DEFUN (copy_primitive_information, (code, start, end),
-       long code AND fast SCHEME_OBJECT * start AND fast SCHEME_OBJECT * end)
-{
-  static char null_string [] = "\0";
-  CONST char * source;
-  char * dest;
-  char * limit;
-  long char_count, word_count;
-  SCHEME_OBJECT * saved;
-
-  if (start < end)
-    (*start++) = (LONG_TO_FIXNUM (Primitive_Arity_Table [code]));
-
-  source = (Primitive_Name_Table [code]);
-  saved = start;
-  start += STRING_CHARS;
-  dest = ((char *) start);
-  limit = ((char *) end);
-  if (source == ((char *) 0))
-    source = ((char *) (& (null_string [0])));
-  while ((dest < limit) && (((*dest++) = (*source++)) != '\0'))
-    ;
-  if (dest >= limit)
-    while ((*source++) != '\0')
-      dest += 1;
-  char_count = ((dest - 1) - ((char *) start));
-  word_count = (STRING_LENGTH_TO_GC_LENGTH (char_count));
-  start = (saved + 1 + word_count);
-  if (start < end)
-  {
-    (saved [STRING_HEADER]) =
-      (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, word_count));
-    (saved [STRING_LENGTH_INDEX]) = ((SCHEME_OBJECT) char_count);
-  }
-  return (start);
+  unsigned long old = (OBJECT_DATUM (primitive));
+  unsigned long new = ((pr->internal) [old]);
+  if (new == ULONG_MAX)
+    {
+      new = ((pr->next_code)++);
+      ((pr->internal) [old]) = new;
+      ((pr->external) [new]) = old;
+    }
+  return (OBJECT_NEW_DATUM (primitive, new));
 }
 
-/* This is called at the end of the relocation step to
-   allocate the actual table to dump on the output file.
- */
-
-SCHEME_OBJECT *
-DEFUN (cons_primitive_table, (start, end, length),
-       SCHEME_OBJECT * start AND SCHEME_OBJECT * end AND long * length)
-
+unsigned long
+renumbered_primitives_export_length (prim_renumber_t * pr)
 {
-  SCHEME_OBJECT * saved;
-  long count, code;
+  unsigned long result = 0;
+  unsigned long i;
 
-  saved = start;
-  * length = next_primitive_renumber;
-
-  for (count = 0;
-       ((count < next_primitive_renumber) && (start < end));
-       count += 1)
-  {
-    code = (PRIMITIVE_NUMBER (external_renumber_table[count]));
-    start = (copy_primitive_information (code, start, end));
-  }
-  return (start);
+  for (i = 0; (i < (pr->next_code)); i += 1)
+    result += (table_entry_length ((pr->external) [i]));
+  return (result);
 }
-
-/* This is called when a band is dumped.
-   All the primitives are dumped unceremoniously.
- */
-
-SCHEME_OBJECT *
-DEFUN (cons_whole_primitive_table, (start, end, length),
-       SCHEME_OBJECT * start AND SCHEME_OBJECT * end AND long * length)
-{
-  SCHEME_OBJECT * saved;
-  long count;
-
-  saved = start;
-  * length = MAX_PRIMITIVE;
-
-  for (count = 0;
-       ((count < MAX_PRIMITIVE) && (start < end));
-       count += 1)
-    start = (copy_primitive_information (count, start, end));
-
-  return (start);
-}
-
-/* This is called from fasload and load-band */
 
 void
-DEFUN (install_primitive_table, (table, length),
-       fast SCHEME_OBJECT * table
-       AND fast long length)
+export_renumbered_primitives (SCHEME_OBJECT * start, prim_renumber_t * pr)
 {
-  fast SCHEME_OBJECT * translation_table;
-  SCHEME_OBJECT result;
-  long arity;
+  unsigned long i;
+  for (i = 0; (i < (pr->next_code)); i += 1)
+    start = (make_table_entry (((pr->external) [i]), start));
+}
 
-  translation_table = load_renumber_table;
-  while (--length >= 0)
-  {
-    arity = (FIXNUM_TO_LONG (* table));
-    table += 1;
-    result =
-      (find_primitive ((MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, table)),
-		       true, true, arity));
-    if ((OBJECT_TYPE (result)) != TC_PRIMITIVE)
-      signal_error_from_primitive (ERR_WRONG_ARITY_PRIMITIVES);
+/* Like above, but export the whole table.  */
 
-    *translation_table++ = result;
-    table += (1 + (OBJECT_DATUM (* table)));
-  }
-  return;
+unsigned long
+primitive_table_export_length (void)
+{
+  unsigned long result = 0;
+  unsigned long i;
+
+  for (i = 0; (i < MAX_PRIMITIVE); i += 1)
+    result += (table_entry_length (i));
+  return (result);
+}
+
+void
+export_primitive_table (SCHEME_OBJECT * start)
+{
+  unsigned long i;
+  for (i = 0; (i < MAX_PRIMITIVE); i += 1)
+    start = (make_table_entry (i, start));
+}
+
+static SCHEME_OBJECT *
+make_table_entry (unsigned long code, SCHEME_OBJECT * start)
+{
+  static const char * null_string = "\0";
+  const char * source
+    = (((Primitive_Name_Table[code]) == 0)
+       ? null_string
+       : (Primitive_Name_Table[code]));
+  unsigned long n_chars = (strlen (source));
+  unsigned long n_words = (STRING_LENGTH_TO_GC_LENGTH (n_chars));
+
+  (*start++) = (LONG_TO_FIXNUM (Primitive_Arity_Table[code]));
+  (*start++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, n_words));
+  (*start) = (MAKE_OBJECT (0, n_chars));
+  memcpy ((start + 1), source, (n_chars + 1));
+  return (start + n_words);
+}
+
+static unsigned long
+table_entry_length (unsigned long code)
+{
+  return
+    ((STRING_LENGTH_TO_GC_LENGTH (((Primitive_Name_Table[code]) == 0)
+				  ? 0
+				  : (strlen (Primitive_Name_Table[code]))))
+     + 2);
+}
+
+void
+import_primitive_table (SCHEME_OBJECT * entries,
+			unsigned long n_entries,
+			SCHEME_OBJECT * primitives)
+{
+  unsigned long i;
+  for (i = 0; (i < n_entries); i += 1)
+    {
+      long arity = (FIXNUM_TO_LONG (*entries++));
+      SCHEME_OBJECT prim
+	= (find_primitive
+	   ((MAKE_POINTER_OBJECT (TC_CHARACTER_STRING, entries)),
+	    true, true, arity));
+
+      if (!PRIMITIVE_P (prim))
+	signal_error_from_primitive (ERR_WRONG_ARITY_PRIMITIVES);
+
+      (*primitives++) = prim;
+      entries += (1 + (OBJECT_DATUM (*entries)));
+    }
 }

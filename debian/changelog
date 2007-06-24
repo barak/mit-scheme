@@ -1,3 +1,20 @@
+mit-scheme (7.7.90+20070623-1) unstable; urgency=low
+
+  * New upstream.
+  * debian/rules, debian/mit-scheme.install,
+    debian/mit-scheme-dbg.install: adjust for changes to upstream
+    directory organization.
+  * debian/mit-scheme.prerm, debian/mit-scheme.manpages,
+    debian/mit-scheme-native.1, debian/mit-scheme.menu,
+    debian/mit-scheme.desktop, debian/mit-scheme.postinst: name of
+    executable has changed to "mit-scheme-native", and "mit-scheme" is now
+    managed as an alternative.  This is to simplify coexistence with the
+    mit-scheme-c package.
+  * debian/bchscheme.1: removed since bchscheme executable no longer in
+    upstream.
+
+ -- Chris Hanson <cph@debian.org>  Sun, 24 Jun 2007 00:10:57 -0400
+
 mit-scheme (7.7.90+20070205-1) unstable; urgency=low
 
   * New upstream.

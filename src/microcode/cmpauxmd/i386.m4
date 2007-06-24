@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.66 2007/01/05 21:19:26 cph Exp $
+### $Id: i386.m4,v 1.67 2007/04/22 16:31:24 cph Exp $
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -330,7 +330,7 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
-use_external_data(EVR(sp_register))
+use_external_data(EVR(stack_pointer))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
@@ -542,7 +542,7 @@ define_debugging_label(scheme_to_interface)
 
 # These two moves must happen _before_ the ffree instructions below.
 # Otherwise recovery from SIGFPE there will fail.
-	OP(mov,l)	TW(REG(esp),EVR(sp_register))
+	OP(mov,l)	TW(REG(esp),EVR(stack_pointer))
 	OP(mov,l)	TW(rfree,EVR(Free))
 
 IF387(`
@@ -602,7 +602,7 @@ interface_to_scheme_proceed:
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
-	OP(mov,l)	TW(EVR(sp_register),REG(esp))
+	OP(mov,l)	TW(EVR(stack_pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))

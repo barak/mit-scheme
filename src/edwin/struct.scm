@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: struct.scm,v 1.103 2007/01/05 21:19:24 cph Exp $
+$Id: struct.scm,v 1.104 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,10 +74,10 @@ USA.
 		   (named)
 		   (constructor %make-group (buffer)))
   ;; The microcode file "edwin.h" depends on this structure being a
-  ;; named vector, and knows the indexes of the fields TEXT,
+  ;; named vector, and knows the indexes of the fields TEXT-DESCRIPTOR,
   ;; GAP-START, GAP-LENGTH, GAP-END, START-MARK, END-MARK, and
   ;; MODIFIED?.
-  (text (string-allocate 0))
+  text-descriptor
   (gap-start 0)
   (gap-length 0)
   (gap-end 0)
@@ -97,12 +97,14 @@ USA.
   buffer
   (shrink-length 0)
   (text-properties #f)
-  (%hash-number #f))
+  (%hash-number #f)
+  %text)
 
 (define-integrable group-point group-%point)
 
 (define (make-group buffer)
   (let ((group (%make-group buffer)))
+    (set-group-text! group (allocate-buffer-storage 0))
     (let ((start (make-permanent-mark group 0 #f)))
       (set-group-start-mark! group start)
       (set-group-display-start! group start))
@@ -112,8 +114,17 @@ USA.
     (set-group-%point! group (make-permanent-mark group 0 #t))
     group))
 
+(define (set-group-text! group text)
+  (without-interrupts
+   (lambda ()
+     (set-group-%text! group text)
+     (set-group-text-descriptor! group (external-string-descriptor text)))))
+
+(define-integrable (group-text group)
+  (group-%text group))
+
 (define (group-length group)
-  (fix:- (string-length (group-text group)) (group-gap-length group)))
+  (fix:- (xstring-length (group-text group)) (group-gap-length group)))
 
 (define-integrable (group-start-index group)
   (mark-index (group-start-mark group)))

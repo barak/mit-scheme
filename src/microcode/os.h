@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os.h,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: os.h,v 1.13 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,18 +32,11 @@ USA.
 
 typedef unsigned int Tchannel;
 
-extern PTR EXFUN (OS_malloc_init, (unsigned int));
-extern PTR EXFUN (OS_malloc, (unsigned int));
-extern PTR EXFUN (OS_realloc, (PTR, unsigned int));
-extern void EXFUN (OS_free, (PTR));
+extern void * OS_malloc_init (size_t);
+extern void * OS_malloc (size_t);
+extern void * OS_realloc (void *, size_t);
+extern void OS_free (void *);
 
-#define FASTCOPY(from, to, n)						\
-{									\
-  const char * FASTCOPY_scan_src = (from);				\
-  const char * FASTCOPY_end_src = (FASTCOPY_scan_src + (n));		\
-  char * FASTCOPY_scan_dst = (to);					\
-  while (FASTCOPY_scan_src < FASTCOPY_end_src)				\
-    (*FASTCOPY_scan_dst++) = (*FASTCOPY_scan_src++);			\
-}
+#define FASTCOPY(from, to, n) (memcpy ((to), (from), (n)))
 
 #endif /* SCM_OS_H */

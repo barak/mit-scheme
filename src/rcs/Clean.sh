@@ -1,1 +1,0 @@
-../etc/Clean.sh

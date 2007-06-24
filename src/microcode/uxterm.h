@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxterm.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: uxterm.h,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,11 @@ USA.
 
 #include "osterm.h"
 
-extern int EXFUN (terminal_state_buffered_p, (Ttty_state * s));
-extern void EXFUN
-  (terminal_state_buffered, (Ttty_state * s, Tchannel channel));
-extern void EXFUN
-  (terminal_state_nonbuffered, (Ttty_state * s, int fd, int polling));
-extern void EXFUN (terminal_state_raw, (Ttty_state * s, int fd));
-extern void EXFUN (get_terminal_state, (Tchannel channel, Ttty_state * s));
-extern void EXFUN (set_terminal_state, (Tchannel channel, Ttty_state * s));
+extern int terminal_state_buffered_p (Ttty_state * s);
+extern void terminal_state_buffered (Ttty_state * s, Tchannel channel);
+extern void terminal_state_nonbuffered (Ttty_state * s, int fd, int polling);
+extern void terminal_state_raw (Ttty_state * s, int fd);
+extern void get_terminal_state (Tchannel channel, Ttty_state * s);
+extern void set_terminal_state (Tchannel channel, Ttty_state * s);
 
 #endif /* SCM_UXTERM_H */

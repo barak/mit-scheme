@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nttrap.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: nttrap.h,v 1.10 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,7 +27,7 @@ USA.
 
 #ifndef SCM_NTTRAP_H
 #define SCM_NTTRAP_H
-
+
 enum trap_state
 {
   trap_state_trapped,
@@ -39,6 +39,6 @@ enum trap_state
   trap_state_exitting_hard
 };
 
-extern enum trap_state EXFUN (OS_set_trap_state, (enum trap_state state));
+extern enum trap_state OS_set_trap_state (enum trap_state state);
 
 #endif /* SCM_NTTRAP_H */

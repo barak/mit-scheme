@@ -3,4 +3,4 @@
   section="Apps/Programming"\
   title="MIT/GNU Scheme"\
   icon="/usr/share/pixmaps/mit-scheme/lambda2.xpm" \
-  command="/usr/bin/mit-scheme --edit"
+  command="/usr/bin/mit-scheme-native --edit"

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: step.c,v 9.41 2007/01/05 21:19:25 cph Exp $
+$Id: step.c,v 9.42 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,38 +29,26 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-
-                 /**********************************/
-                 /* Support of stepping primitives */
-                 /**********************************/
 
 /* UGLY ... this knows (a) that it is called with the primitive frame
-   already popped off the stack; and (b) the order in which Save_Cont
-   stores things on the stack.
-*/
+   already popped off the stack; and (b) the order in which SAVE_CONT
+   stores things on the stack.  */
 
 static void
-DEFUN (Install_Traps, (Hunk3), SCHEME_OBJECT Hunk3)
+install_traps (SCHEME_OBJECT state)
 {
-  SCHEME_OBJECT Eval_Hook, Apply_Hook, Return_Hook;
-
-  Stop_Trapping();
-  Eval_Hook = MEMORY_REF (Hunk3, HUNK_CXR0);
-  Apply_Hook = MEMORY_REF (Hunk3, HUNK_CXR1);
-  Return_Hook = MEMORY_REF (Hunk3, HUNK_CXR2);
-  Set_Fixed_Obj_Slot(Stepper_State, Hunk3);
-  Trapping = ((Eval_Hook != SHARP_F) |
-	      (Apply_Hook != SHARP_F) |
-	      (Return_Hook != SHARP_F));
-  return;
+  VECTOR_SET (fixed_objects, STEPPER_STATE, state);
+  trapping
+    = ((OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR0)))
+       || (OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR1)))
+       || (OBJECT_TO_BOOLEAN (MEMORY_REF (state, HUNK_CXR2))));
 }
-
+
 /* (PRIMITIVE-EVAL-STEP EXPRESSION ENV HUNK3)
    Evaluates EXPRESSION in ENV and intalls the eval-trap,
    apply-trap, and return-trap from HUNK3.  If any
    trap is #F, it is a null trap that does a normal EVAL,
-   APPLY or return.
-*/
+   APPLY or return.  */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 {
@@ -70,17 +58,17 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
     SCHEME_OBJECT expression = (ARG_REF (1));
     SCHEME_OBJECT environment = (ARG_REF (2));
     SCHEME_OBJECT hooks = (ARG_REF (3));
-    PRIMITIVE_CANONICALIZE_CONTEXT ();
+    canonicalize_primitive_context ();
     POP_PRIMITIVE_FRAME (3);
-    Install_Traps (hooks);
-    exp_register = expression;
-    env_register = environment;
+    install_traps (hooks);
+    SET_EXP (expression);
+    SET_ENV (environment);
   }
   PRIMITIVE_ABORT (PRIM_NO_TRAP_EVAL);
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 /* (PRIMITIVE-APPLY-STEP OPERATOR OPERANDS HUNK3)
    Applies OPERATOR to OPERANDS and intalls the eval-trap,
    apply-trap, and return-trap from HUNK3.  If any
@@ -93,41 +81,41 @@ DEFINE_PRIMITIVE ("PRIMITIVE-EVAL-STEP", Prim_eval_step, 3, 3, 0)
 DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
-  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  canonicalize_primitive_context ();
   CHECK_ARG (3, HUNK3_P);
   {
     SCHEME_OBJECT hooks = (ARG_REF (3));
-    fast long number_of_args = 0;
+    long number_of_args = 0;
     {
       SCHEME_OBJECT procedure = (ARG_REF (1));
       SCHEME_OBJECT argument_list = (ARG_REF (2));
       {
-	fast SCHEME_OBJECT scan_list;
-	TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+	SCHEME_OBJECT scan_list;
+	scan_list = argument_list;
 	while (PAIR_P (scan_list))
 	  {
 	    number_of_args += 1;
-	    TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	    scan_list = (PAIR_CDR (scan_list));
 	  }
 	if (!EMPTY_LIST_P (scan_list))
 	  error_wrong_type_arg (2);
       }
       POP_PRIMITIVE_FRAME (3);
-      Install_Traps (hooks);
+      install_traps (hooks);
       {
-	fast SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
-	fast SCHEME_OBJECT scan_list;
-	fast long i;
+	SCHEME_OBJECT * scan_stack = (STACK_LOC (- number_of_args));
+	SCHEME_OBJECT scan_list;
+	long i;
 	Will_Push (number_of_args + STACK_ENV_EXTRA_SLOTS + 1);
-	sp_register = scan_stack;
-	TOUCH_IN_PRIMITIVE (argument_list, scan_list);
+	stack_pointer = scan_stack;
+	scan_list = argument_list;
 	for (i = number_of_args; (i > 0); i -= 1)
 	  {
 	    (*scan_stack++) = (PAIR_CAR (scan_list));
-	    TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
+	    scan_list = (PAIR_CDR (scan_list));
 	  }
 	STACK_PUSH (procedure);
-	STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
+	PUSH_APPLY_FRAME_HEADER (number_of_args);
 	Pushed ();
       }
     }
@@ -136,7 +124,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
   /*NOTREACHED*/
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 /* (PRIMITIVE-RETURN-STEP VALUE HUNK3)
    Returns VALUE and intalls the eval-trap, apply-trap, and
    return-trap from HUNK3.  If any trap is #F, it is a null trap
@@ -146,15 +134,15 @@ DEFINE_PRIMITIVE ("PRIMITIVE-APPLY-STEP", Prim_apply_step, 3, 3, 0)
 DEFINE_PRIMITIVE ("PRIMITIVE-RETURN-STEP", Prim_return_step, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_CANONICALIZE_CONTEXT ();
+  canonicalize_primitive_context ();
   CHECK_ARG (2, HUNK3_P);
   {
     SCHEME_OBJECT value = (ARG_REF (1));
     SCHEME_OBJECT hooks = (ARG_REF (2));
 
-    POP_PRIMITIVE_FRAME (2); 
-    Install_Traps (hooks);
-    val_register = value;
+    POP_PRIMITIVE_FRAME (2);
+    install_traps (hooks);
+    SET_VAL (value);
     PRIMITIVE_ABORT (PRIM_NO_TRAP_POP_RETURN);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }

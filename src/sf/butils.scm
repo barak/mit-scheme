@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: butils.scm,v 4.16 2007/01/05 21:19:29 cph Exp $
+$Id: butils.scm,v 4.17 2007/06/13 13:34:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -70,12 +70,7 @@ USA.
   (directory-processor
    "bin"
    (lambda ()
-     (if (environment-lookup (->environment '(compiler))
-			     'compiler:cross-compiling?)
-	 "moc"
-	 (environment-lookup (->environment '(compiler top-level))
-						 
-			     'compiled-output-extension)))
+     (compiler:compiled-code-pathname-type))
    (lambda (pathname output-directory)
      (compile-bin-file pathname output-directory))))
 
@@ -93,18 +88,16 @@ USA.
 (define (sf-conditionally filename #!optional echo-up-to-date?)
   (let ((kernel
 	 (lambda (filename)
-	   (call-with-values
-	       (lambda () (sf/pathname-defaulting filename #f #f))
-	     (lambda (input output spec)
-	       spec
-	       (cond ((not (file-modification-time<=? input output))
-		      (sf filename))
-		     ((and (not (default-object? echo-up-to-date?))
-			   echo-up-to-date?)
-		      (newline)
-		      (write-string "Syntax file: ")
-		      (write filename)
-		      (write-string " is up to date"))))))))
+	   (receive (input output spec) (sf/pathname-defaulting filename #f #f)
+	     spec
+	     (cond ((not (file-modification-time<=? input output))
+		    (sf filename))
+		   ((and (not (default-object? echo-up-to-date?))
+			 echo-up-to-date?)
+		    (newline)
+		    (write-string "Syntax file: ")
+		    (write filename)
+		    (write-string " is up to date")))))))
     (if (pair? filename)
 	(for-each kernel filename)
 	(kernel filename))))

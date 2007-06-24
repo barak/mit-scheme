@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ptrvec.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: ptrvec.c,v 1.9 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,86 +25,55 @@ USA.
 
 */
 
+#include "config.h"
 #include "outf.h"
 #include "dstack.h"
-
-#if defined(__linux__) || defined(__APPLE__) || defined(__netbsd__)
-#else
-extern PTR EXFUN (malloc, (unsigned int length));
-extern PTR EXFUN (realloc, (PTR ptr, unsigned int length));
-#endif
-
-static PTR
-DEFUN (xmalloc, (length), unsigned int length)
-{
-  PTR result = (malloc (length));
-  if (result == 0)
-    {
-      outf_fatal ("malloc: memory allocation failed\n");
-      outf_flush_fatal ();
-      abort ();
-    }
-  return (result);
-}
-
-static PTR
-DEFUN (xrealloc, (ptr, length), PTR ptr AND unsigned int length)
-{
-  PTR result = (realloc (ptr, length));
-  if (result == 0)
-    {
-      outf_fatal ("realloc: memory allocation failed\n");
-      outf_flush_fatal ();
-      abort ();
-    }
-  return (result);
-}
+#include "os.h"
 
 Tptrvec
-DEFUN (ptrvec_allocate, (length), Tptrvec_length length)
+ptrvec_allocate (Tptrvec_length length)
 {
-  Tptrvec ptrvec = (xmalloc (sizeof (struct struct_ptrvec)));
+  Tptrvec ptrvec = (OS_malloc (sizeof (struct struct_ptrvec)));
   (ptrvec -> length) = length;
-  (ptrvec -> elements) =
-    ((length > 0) ? (xmalloc (length * (sizeof (PTR)))) : 0);
+  (ptrvec -> elements)
+    = ((length > 0) ? (OS_malloc (length * (sizeof (void *)))) : 0);
   return (ptrvec);
 }
 
 void
-DEFUN (ptrvec_deallocate, (ptrvec), Tptrvec ptrvec)
+ptrvec_deallocate (Tptrvec ptrvec)
 {
   if ((ptrvec -> length) > 0)
-    free (ptrvec -> elements);
-  free (ptrvec);
+    OS_free (ptrvec -> elements);
+  OS_free (ptrvec);
 }
 
 void
-DEFUN (ptrvec_set_length, (ptrvec, length),
-       Tptrvec ptrvec AND
+ptrvec_set_length (Tptrvec ptrvec,
        Tptrvec_length length)
 {
   (ptrvec -> length) = length;
-  (ptrvec -> elements) =
-    ((length > 0)
-     ? (xrealloc ((ptrvec -> elements), (length * (sizeof (PTR)))))
-     : 0);
+  (ptrvec -> elements)
+    = ((length > 0)
+       ? (OS_realloc ((ptrvec -> elements), (length * (sizeof (void *)))))
+       : 0);
 }
 
 Tptrvec
-DEFUN (ptrvec_copy, (ptrvec), Tptrvec ptrvec)
+ptrvec_copy (Tptrvec ptrvec)
 {
   Tptrvec_length length = (PTRVEC_LENGTH (ptrvec));
   Tptrvec result = (ptrvec_allocate (length));
-  PTR * scan_source = (PTRVEC_START (ptrvec));
-  PTR * end_source = (scan_source + length);
-  PTR * scan_result = (PTRVEC_START (result));
+  void ** scan_source = (PTRVEC_START (ptrvec));
+  void ** end_source = (scan_source + length);
+  void ** scan_result = (PTRVEC_START (result));
   while (scan_source < end_source)
     (*scan_result++) = (*scan_source++);
   return (result);
 }
 
 void
-DEFUN (ptrvec_adjoin, (ptrvec, element), Tptrvec ptrvec AND PTR element)
+ptrvec_adjoin (Tptrvec ptrvec, void * element)
 {
   Tptrvec_length length = (PTRVEC_LENGTH (ptrvec));
   ptrvec_set_length (ptrvec, (length + 1));
@@ -112,10 +81,10 @@ DEFUN (ptrvec_adjoin, (ptrvec, element), Tptrvec ptrvec AND PTR element)
 }
 
 int
-DEFUN (ptrvec_memq, (ptrvec, element), Tptrvec ptrvec AND PTR element)
+ptrvec_memq (Tptrvec ptrvec, void * element)
 {
-  PTR * scan = (PTRVEC_START (ptrvec));
-  PTR * end = (scan + (PTRVEC_LENGTH (ptrvec)));
+  void ** scan = (PTRVEC_START (ptrvec));
+  void ** end = (scan + (PTRVEC_LENGTH (ptrvec)));
   while (scan < end)
     if (element == (*scan++))
       return (1);
@@ -123,34 +92,30 @@ DEFUN (ptrvec_memq, (ptrvec, element), Tptrvec ptrvec AND PTR element)
 }
 
 void
-DEFUN (ptrvec_move_left,
-       (source, source_start, source_end, target, target_start),
-       Tptrvec source AND
-       Tptrvec_index source_start AND
-       Tptrvec_index source_end AND
-       Tptrvec target AND
-       Tptrvec_index target_start)
+ptrvec_move_left (Tptrvec source,
+		  Tptrvec_index source_start,
+		  Tptrvec_index source_end,
+		  Tptrvec target,
+		  Tptrvec_index target_start)
 {
-  PTR * scan_source = (PTRVEC_LOC (source, source_start));
-  PTR * end_source = (PTRVEC_LOC (source, source_end));
-  PTR * scan_target = (PTRVEC_LOC (target, target_start));
+  void ** scan_source = (PTRVEC_LOC (source, source_start));
+  void ** end_source = (PTRVEC_LOC (source, source_end));
+  void ** scan_target = (PTRVEC_LOC (target, target_start));
   while (scan_source < end_source)
     (*scan_target++) = (*scan_source++);
 }
 
 void
-DEFUN (ptrvec_move_right,
-       (source, source_start, source_end, target, target_start),
-       Tptrvec source AND
-       Tptrvec_index source_start AND
-       Tptrvec_index source_end AND
-       Tptrvec target AND
-       Tptrvec_index target_start)
+ptrvec_move_right (Tptrvec source,
+		   Tptrvec_index source_start,
+		   Tptrvec_index source_end,
+		   Tptrvec target,
+		   Tptrvec_index target_start)
 {
-  PTR * end_source = (PTRVEC_LOC (source, source_start));
-  PTR * scan_source = (PTRVEC_LOC (source, source_end));
-  PTR * scan_target =
-    (PTRVEC_LOC (target, (target_start + (source_end - source_start))));
+  void ** end_source = (PTRVEC_LOC (source, source_start));
+  void ** scan_source = (PTRVEC_LOC (source, source_end));
+  void ** scan_target
+    = (PTRVEC_LOC (target, (target_start + (source_end - source_start))));
   while (scan_source > end_source)
     (*--scan_target) = (*--scan_source);
 }

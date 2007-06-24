@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osfs.h,v 1.14 2007/01/05 21:19:25 cph Exp $
+$Id: osfs.h,v 1.15 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -47,30 +47,27 @@ enum file_type
   file_type_unknown = 0xFFFF
 };
 
-extern enum file_existence EXFUN (OS_file_existence_test, (CONST char * name));
-extern enum file_existence EXFUN
-  (OS_file_existence_test_direct, (CONST char * name));
-extern enum file_type EXFUN (OS_file_type_direct, (CONST char *));
-extern enum file_type EXFUN (OS_file_type_indirect, (CONST char *));
-extern int EXFUN (OS_file_access, (CONST char * name, unsigned int mode));
-extern int EXFUN (OS_file_directory_p, (CONST char * name));
-extern CONST char * EXFUN (OS_file_soft_link_p, (CONST char * name));
-extern void EXFUN (OS_file_remove, (CONST char * name));
-extern void EXFUN (OS_file_remove_link, (CONST char * name));
-extern void EXFUN
-  (OS_file_rename, (CONST char * from_name, CONST char * to_name));
-extern void EXFUN
-  (OS_file_link_hard, (CONST char * from_name, CONST char * to_name));
-extern void EXFUN
-  (OS_file_link_soft, (CONST char * from_name, CONST char * to_name));
-extern void EXFUN (OS_directory_make, (CONST char * name));
-extern void EXFUN (OS_directory_delete, (CONST char * name));
-extern int EXFUN (OS_file_touch, (CONST char *));
-extern unsigned int EXFUN (OS_directory_open, (CONST char * name));
-extern int EXFUN (OS_directory_valid_p, (long index));
-extern void EXFUN (OS_directory_close, (unsigned int index));
-extern CONST char * EXFUN (OS_directory_read, (unsigned int index));
-extern CONST char * EXFUN
-  (OS_directory_read_matching, (unsigned int index, CONST char * prefix));
+extern enum file_existence OS_file_existence_test (const char *);
+extern enum file_existence OS_file_existence_test_direct (const char *);
+extern enum file_type OS_file_type_direct (const char *);
+extern enum file_type OS_file_type_indirect (const char *);
+extern int OS_file_access (const char *, unsigned int);
+extern int OS_file_directory_p (const char *);
+extern const char * OS_file_soft_link_p (const char *);
+extern void OS_file_remove (const char *);
+extern void OS_file_remove_link (const char *);
+extern void OS_file_rename (const char *, const char *);
+extern void OS_file_link_hard (const char *, const char *);
+extern void OS_file_link_soft (const char *, const char *);
+extern void OS_directory_make (const char *);
+extern void OS_directory_delete (const char *);
+extern int OS_file_touch (const char *);
+extern unsigned int OS_directory_open (const char *);
+extern int OS_directory_valid_p (unsigned int);
+extern void OS_directory_close (unsigned int);
+extern const char * OS_directory_read (unsigned int);
+extern const char * OS_directory_read_matching (unsigned int, const char *);
+extern int OS_channel_copy (off_t, Tchannel, Tchannel);
+extern void OS_file_copy (const char *, const char *);
 
 #endif /* SCM_OSFS_H */

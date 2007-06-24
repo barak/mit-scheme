@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2tty.c,v 1.6 2007/01/05 21:19:25 cph Exp $
+$Id: os2tty.c,v 1.7 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,7 +37,7 @@ static Tchannel output_channel;
 void
 OS2_initialize_tty (void)
 {
-  extern Tchannel EXFUN (OS_open_fd, (int fd));
+  extern Tchannel OS_open_fd (int fd);
   input_channel = (OS2_make_channel (0, CHANNEL_READ));
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = (OS2_make_channel (1, CHANNEL_WRITE));

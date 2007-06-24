@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: class.scm,v 1.19 2007/01/05 21:19:29 cph Exp $
+$Id: class.scm,v 1.20 2007/05/15 01:27:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -292,7 +292,7 @@ USA.
 (define-primitive-class <symbol> <object>)
 (define-primitive-class <vector> <object>)
 
-(define-primitive-class <number>)
+(define-primitive-class <number> <object>)
 (define-primitive-class <complex> <number>)
 (define-primitive-class <real> <complex>)
 (define-primitive-class <rational> <real>)

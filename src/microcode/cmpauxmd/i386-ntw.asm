@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.66 2007/01/05 21:19:26 cph Exp $
+;;; $Id: i386.m4,v 1.67 2007/04/22 16:31:24 cph Exp $
 ;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -131,7 +131,7 @@
 	.data
 	align 2
 	extrn _Free:dword
-	extrn _sp_register:dword
+	extrn _stack_pointer:dword
 	extrn _utility_table:dword
 	extrn _RegistersPtr:dword
 	public _i387_presence
@@ -293,7 +293,7 @@ asm_scheme_to_interface_:
 scheme_to_interface:
 ; These two moves must happen _before_ the ffree instructions below.
 ; Otherwise recovery from SIGFPE there will fail.
-	mov	_sp_register,esp
+	mov	_stack_pointer,esp
 	mov	_Free,edi
 	cmp	dword ptr _i387_presence,0
 	je	scheme_to_interface_proceed
@@ -342,7 +342,7 @@ interface_to_scheme_proceed:
 	mov	edi,_Free		; Free pointer = %edi
 	mov	eax,dword ptr 8[esi] ; Value/dynamic link
 	mov	ebp,67108863	; = %ebp
-	mov	esp,_sp_register
+	mov	esp,_stack_pointer
 	mov	ecx,eax		; Preserve if used
 	and	ecx,ebp		; Restore potential dynamic link
 	mov	dword ptr 16[esi],ecx

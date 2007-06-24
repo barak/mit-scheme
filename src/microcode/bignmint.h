@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignmint.h,v 1.10 2007/01/05 21:19:25 cph Exp $
+$Id: bignmint.h,v 1.11 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,8 +32,8 @@ USA.
 
 /* The memory model is based on the following definitions, and on the
    definition of the type `bignum_type'.  The only other special
-   definition is `CHAR_BIT', which is defined in the Ansi C header
-   file "limits.h". */
+   definition is `CHAR_BIT', which is defined in the header file
+   "limits.h".  */
 
 typedef long bignum_digit_type;
 typedef long bignum_length_type;
@@ -66,7 +66,7 @@ typedef long bignum_length_type;
 
 /* BIGNUM_DEALLOCATE is called when disposing of bignums which are
    created as intermediate temporaries; Scheme doesn't need this. */
-#define BIGNUM_DEALLOCATE(bignum)
+#define BIGNUM_DEALLOCATE(bignum) do {} while (0)
 
 /* If BIGNUM_FORCE_NEW_RESULTS is defined, all bignum-valued operations
    return freshly-allocated results.  This is useful for some kinds of
@@ -85,18 +85,17 @@ typedef long bignum_length_type;
 #define BIGNUM_DEALLOCATE free
 #define BIGNUM_FORCE_NEW_RESULTS
 #define BIGNUM_EXCEPTION abort
-#define fast register
 extern void free ();
 extern void abort ();
 
-#endif /* MIT_SCHEME */
+#endif /* not MIT_SCHEME */
 
 #define BIGNUM_DIGIT_LENGTH (((sizeof (bignum_digit_type)) * CHAR_BIT) - 2)
 #define BIGNUM_HALF_DIGIT_LENGTH (BIGNUM_DIGIT_LENGTH / 2)
-#define BIGNUM_RADIX (((unsigned long) 1) << BIGNUM_DIGIT_LENGTH)
-#define BIGNUM_RADIX_ROOT (((unsigned long) 1) << BIGNUM_HALF_DIGIT_LENGTH)
-#define BIGNUM_DIGIT_MASK	 (BIGNUM_RADIX - 1)
-#define BIGNUM_HALF_DIGIT_MASK	 (BIGNUM_RADIX_ROOT - 1)
+#define BIGNUM_RADIX		(1UL << BIGNUM_DIGIT_LENGTH)
+#define BIGNUM_RADIX_ROOT	(1UL << BIGNUM_HALF_DIGIT_LENGTH)
+#define BIGNUM_DIGIT_MASK	(BIGNUM_RADIX - 1UL)
+#define BIGNUM_HALF_DIGIT_MASK	(BIGNUM_RADIX_ROOT - 1UL)
 
 #define BIGNUM_START_PTR(bignum)					\
   ((BIGNUM_TO_POINTER (bignum)) + 1)

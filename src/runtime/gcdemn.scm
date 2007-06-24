@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcdemn.scm,v 14.12 2007/01/05 21:19:28 cph Exp $
+$Id: gcdemn.scm,v 14.13 2007/06/07 15:11:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -63,7 +63,7 @@ USA.
   (add-gc-daemon!
    (lambda ()
      (if (not *within-restore-window?*)
-	 (daemon)))))  
+	 (daemon)))))
 
 ;;; SECONDARY-GC-DAEMONS are executed rarely.  Their purpose is to
 ;;; reclaim storage that is either unlikely to be reclaimed or

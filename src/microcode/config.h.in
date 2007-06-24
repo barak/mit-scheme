@@ -28,14 +28,8 @@ USA.
 #ifndef SCM_CONFIG_H
 #define SCM_CONFIG_H
 
-/* Define to 1 for static compilation of C native code. */
-#undef COMPILE_FOR_STATIC_LINKING
-
 /* Define to 1 if the `getpgrp' function requires zero arguments. */
 #undef GETPGRP_VOID
-
-/* Define if architecture has native-code compiler support. */
-#undef HAS_COMPILER_SUPPORT
 
 /* Define to 1 if you have the <assert.h> header file. */
 #undef HAVE_ASSERT_H
@@ -48,6 +42,9 @@ USA.
 
 /* Define to 1 if you have the <curses.h> header file. */
 #undef HAVE_CURSES_H
+
+/* Define if backslash-a works in C strings. */
+#undef HAVE_C_BACKSLASH_A
 
 /* Define to 1 if you have the <db.h> header file. */
 #undef HAVE_DB_H
@@ -282,6 +279,9 @@ USA.
 /* Define to 1 if you have the `strerror' function. */
 #undef HAVE_STRERROR
 
+/* Define to 1 if cpp supports the ANSI # stringizing operator. */
+#undef HAVE_STRINGIZE
+
 /* Define to 1 if you have the <strings.h> header file. */
 #undef HAVE_STRINGS_H
 
@@ -440,9 +440,6 @@ USA.
 /* Define if ncurses library defines `tparam'. */
 #undef LIBNCURSES_DEFINES_TPARAM
 
-/* Define that the compiler outputs C code instead of binaries. */
-#undef NATIVE_CODE_IS_C
-
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -478,11 +475,17 @@ USA.
 /* The size of a `int', as computed by sizeof. */
 #undef SIZEOF_INT
 
+/* The size of a `intptr_t', as computed by sizeof. */
+#undef SIZEOF_INTPTR_T
+
 /* The size of a `long', as computed by sizeof. */
 #undef SIZEOF_LONG
 
 /* The size of a `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
+
+/* The size of a `uintptr_t', as computed by sizeof. */
+#undef SIZEOF_UINTPTR_T
 
 /* The size of a `unsigned char', as computed by sizeof. */
 #undef SIZEOF_UNSIGNED_CHAR
@@ -513,6 +516,9 @@ USA.
 
 /* Define to 1 if your <sys/time.h> declares `struct tm'. */
 #undef TM_IN_SYS_TIME
+
+/* Define to 1 if unix dynamic loading support is enabled. */
+#undef UX_DLD_ENABLED
 
 /* Define if RETSIGTYPE is `void'. */
 #undef VOID_SIGNAL_HANDLERS
@@ -547,6 +553,24 @@ USA.
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef gid_t
 
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
+#undef inline
+#endif
+
+/* Define replacement if no <stdint.h>. */
+#undef int16_t
+
+/* Define replacement if no <stdint.h>. */
+#undef int32_t
+
+/* Define replacement if no <stdint.h>. */
+#undef int8_t
+
+/* Define replacement if no <stdint.h>. */
+#undef intptr_t
+
 /* Define to `int' if <sys/types.h> does not define. */
 #undef mode_t
 
@@ -558,6 +582,10 @@ USA.
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef pid_t
+
+/* Define to equivalent of C99 restrict keyword, or to nothing if this is not
+   supported. Do not define if restrict is supported directly. */
+#undef restrict
 
 /* Define to `unsigned' if <sys/types.h> does not define. */
 #undef size_t
@@ -574,8 +602,24 @@ USA.
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef uid_t
 
+/* Define replacement if no <stdint.h>. */
+#undef uint16_t
+
+/* Define replacement if no <stdint.h>. */
+#undef uint32_t
+
+/* Define replacement if no <stdint.h>. */
+#undef uint8_t
+
+/* Define replacement if no <stdint.h>. */
+#undef uintptr_t
+
 /* Define as `fork' if `vfork' does not work. */
 #undef vfork
+
+/* Define to empty if the keyword `volatile' does not work. Warning: valid
+   code using `volatile' can become incorrect without. Disable with care. */
+#undef volatile
 
 #ifndef __unix__
 #  define __unix__

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.48 2007/01/05 21:19:25 cph Exp $
+$Id: imail-util.scm,v 1.49 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -477,11 +477,6 @@ USA.
 		(set-istate-buffer-end! state end)
 		(xsubstring-move! xstring start end buffer 0)))
 	     #t)))))
-
-(define (xsubstring xstring start end)
-  (let ((buffer (make-string (- end start))))
-    (xsubstring-move! xstring start end buffer 0)
-    buffer))
 
 (define (xstring-input-port/discard-chars port delimiters)
   (let ((state (port/state port)))

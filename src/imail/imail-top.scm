@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.296 2007/01/05 21:19:25 cph Exp $
+$Id: imail-top.scm,v 1.301 2007/04/05 22:42:35 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -180,6 +180,13 @@ Likewise, a text/plain entity is always shown inline.
 Note that this variable does not affect subparts of multipart/alternative."
   '(HTML ENRICHED)
   list-of-strings?)
+
+(define-variable imail-inline-mime-text-limit
+  "Size limit in octets for showing MIME text message parts in-line.
+MIME text message parts less than this size are shown in-line by default.
+This variable can also be #F; then all parts will be shown in-line."
+  65536
+  (lambda (x) (or (boolean? x) (exact-nonnegative-integer? x))))
 
 (define-variable imail-mime-attachment-directory
   "Default directory in which to store MIME attachments.
@@ -953,7 +960,9 @@ With prefix argument, prompt even when point is on an attachment."
 	  (message (selected-message)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
-	(set-mime-info-expanded?! info (not (mime-info-expanded? info)))
+	(set-mime-info-expanded?!
+	 info mark message
+	 (not (mime-info-expanded? info mark message)))
 	(re-render-mime-entity info mark message)))))
 
 (define-command imail-toggle-wrap-entity
@@ -1560,10 +1569,7 @@ With prefix argument, sort them in reverse order."
 	"")))
 
 (define (sort-selected-folder < message-key)
-  (set-folder-order! (selected-folder)
-		     (make-folder-order
-		      (lambda (a b)
-			(< (message-key a) (message-key b))))))
+  (set-folder-order! (selected-folder) (make-folder-order < message-key)))
 
 ;;;; Miscellany
 
@@ -2489,7 +2495,10 @@ Negative argument means search in reverse."
 					    mark))
 		       "\\'")
 	(mime-body-parameter body 'CHARSET "us-ascii")
-	#t)))
+	#t)
+       (let ((limit (ref-variable imail-inline-mime-text-limit mark)))
+         (or (not limit)
+             (< (mime-body-one-part-n-octets body) limit)))))
 
 (define-method walk-mime-message-part
     (message (body <mime-body-multipart>) selector context mark)
@@ -2530,7 +2539,7 @@ Negative argument means search in reverse."
 
 (define (insert-mime-message-inline message body selector context mark)
   (maybe-insert-mime-boundary context mark)
-  (insert-mime-info (make-mime-info #t #t body selector context)
+  (insert-mime-info (make-mime-info #t body selector context)
 		    message
 		    mark))
 
@@ -2538,7 +2547,7 @@ Negative argument means search in reverse."
   (if (not (walk-mime-context-inline-only? context))
       (begin
 	(maybe-insert-mime-boundary context mark)
-	(insert-mime-info (make-mime-info #f #f body selector context)
+	(insert-mime-info (make-mime-info #f body selector context)
 			  message
 			  mark))))
 
@@ -2546,7 +2555,7 @@ Negative argument means search in reverse."
   (let ((start (mark-right-inserting-copy mark))
 	(body (mime-info-body info))
 	(context (mime-info-context info)))
-    (if (mime-info-expanded? info)
+    (if (mime-info-expanded? info mark message)
 	(insert-mime-message-inline* message
 				     body
 				     (mime-info-selector info)
@@ -2702,10 +2711,34 @@ Negative argument means search in reverse."
 
 (define-structure mime-info
   (inline? #f)
-  (expanded? #f)
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
+
+(define (mime-info-expanded? info mark message)
+  (let ((expansions (buffer-get (->buffer mark) 'IMAIL-MIME-EXPANSIONS #f))
+	(key (cons message (mime-info-selector info)))
+	(inline? (mime-info-inline? info)))
+    (if expansions
+	(hash-table/get expansions key inline?)
+	inline?)))
+
+(define (set-mime-info-expanded?! info mark message expanded?)
+  (let ((buffer (->buffer mark))
+	(key (cons message (mime-info-selector info))))
+    (if (if (mime-info-inline? info) expanded? (not expanded?))
+	(cond ((buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
+	       => (lambda (expansions)
+		    (hash-table/remove! expansions key)
+		    (if (zero? (hash-table/count expansions))
+			(buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)))))
+	(hash-table/put!
+	 (or (buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
+	     (let ((expansions (make-equal-hash-table)))
+	       (buffer-put! buffer 'IMAIL-MIME-EXPANSIONS expansions)
+	       expansions))
+	 key
+         expanded?))))
 
 ;;;; Automatic wrap/fill
 

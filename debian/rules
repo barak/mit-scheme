@@ -53,7 +53,7 @@ build-stamp:
 clean:
 	dh_testdir
 	dh_testroot
-	-$(MAKE) distclean
+	[ ! -f src/Makefile ] || $(MAKE) distclean
 	rm -f build-stamp configure-stamp
 	dh_clean
 
@@ -63,17 +63,15 @@ install: build
 	dh_clean -k
 	dh_installdirs --package=mit-scheme --tmpdir=debian/tmp
 	cd src;$(MAKE) install DESTDIR=$(DESTDIR)
-	mv $(DESTDIR)$(PREFIX)/bin/scheme $(DESTDIR)$(PREFIX)/bin/mit-scheme
-	for FILE in 6001.com compiler.com edwin.com runtime.com gcdrone; do \
-	    rm -f $(DESTDIR)$(LIBDIR)/$${FILE}; \
-	done
+	rm -f $(DESTDIR)$(PREFIX)/bin/scheme
+	rm -f $(DESTDIR)$(PREFIX)/bin/bchscheme
+	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme
+	rm -f $(DESTDIR)$(LIBDIR)/runtime.com
 	$(INSTALL) -m 644 debian/mit-scheme.desktop \
 	    $(DESTDIR)$(PREFIX)/share/applications/.
 	$(INSTALL) -m 644 etc/*.el $(DESTDIR)$(EMACSDIR)/.
 	$(INSTALL) -m 644 icons/* \
 	    $(DESTDIR)$(PREFIX)/share/pixmaps/mit-scheme/.
-	rm -f $(DESTDIR)$(LIBDIR)/edwin/etc/mime.types
-	ln -s /etc/mime.types $(DESTDIR)$(LIBDIR)/edwin/etc/.
 	dh_install --sourcedir=debian/tmp
 
 # Build architecture-independent files here.

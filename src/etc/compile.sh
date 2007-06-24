@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile.sh,v 1.10 2007/01/05 21:19:25 cph Exp $
+# $Id: compile.sh,v 1.14 2007/06/15 18:09:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -23,15 +23,12 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-if [ $# -ge 1 ]; then
-  DIR="${1}"
-elif [ -r "./etc/compile.scm" ]; then
-  DIR="."
-else
-  echo "usage: ${0} DIRECTORY"
-  exit 1
-fi
-if [ -z "${SCHEME_COMPILER}" ]; then
-    SCHEME_COMPILER="scheme --compiler --heap 3000"
-fi
-${SCHEME_COMPILER} < "${DIR}/etc/compile.scm"
+set -e
+
+. etc/functions.sh
+
+run_cmd "${@}" --heap 6000 --stack 200 <<EOF
+(begin
+  (load "etc/compile.scm")
+  (compile-everything))
+EOF

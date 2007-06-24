@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-output.scm,v 14.13 2007/01/05 21:19:28 cph Exp $
+$Id: syntax-output.scm,v 14.14 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -200,11 +200,17 @@ USA.
 				  (cdr declaration)
 				  (selector/add-cdr selector))))))
 	  ;; The names in USUAL-INTEGRATIONS are always global.
-	  '(USUAL-INTEGRATIONS
+	  '(
+	    USUAL-INTEGRATIONS
 	    INTEGRATE
 	    INTEGRATE-OPERATOR
 	    INTEGRATE-SAFELY
-	    IGNORE))
+	    IGNORE
+	    TYPE-CHECKS
+	    NO-TYPE-CHECKS
+	    RANGE-CHECKS
+	    NO-RANGE-CHECKS
+	    ))
 
 (define-declaration 'INTEGRATE-EXTERNAL
   `(* ,(lambda (object)

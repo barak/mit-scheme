@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: linear.scm,v 4.21 2007/01/05 21:19:20 cph Exp $
+$Id: linear.scm,v 4.22 2007/04/29 20:16:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -123,7 +123,7 @@ USA.
 			      ,@(lap:make-label-statement jlabel)
 			      ,@(linearize-next cn))))))))))
 	(cond ((eq? cn an)
-	       (warn "bblock-linearize-lap: Identical branches" pblock)
+	       ;;(warn "bblock-linearize-lap: Identical branches" pblock)
 	       (unspecial))
 	      ((sblock? cn)
 	       (let ((cnn (find-next (snode-next cn))))

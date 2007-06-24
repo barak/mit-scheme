@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: storage.c,v 9.62 2007/01/05 21:19:25 cph Exp $
+$Id: storage.c,v 9.63 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,126 +25,103 @@ USA.
 
 */
 
-/* This file defines the storage for the interpreter's global variables. */
+/* Global-variable storage */
 
 #include "scheme.h"
-#include "gctype.c"
 
-                         /*************/
-                         /* REGISTERS */
-                         /*************/
+#ifndef CC_SUPPORT_P
+   SCHEME_OBJECT Registers [REGBLOCK_MINIMUM_LENGTH];
+#endif
 
-SCHEME_OBJECT
-  * MemTop,		/* Top of free space available */
-  * Free,		/* Next free word in heap */
-  * Heap_Top,		/* Top of current heap */
-  * Heap_Bottom,	/* Bottom of current heap */
-  * Unused_Heap_Top,	/* Top of unused heap */
-  * Unused_Heap_Bottom,	/* Bottom of unused heap */
-  * Stack_Guard,	/* Guard area at end of stack */
-  * sp_register,	/* Next available slot in control stack */
-  * Stack_Bottom,	/* Bottom of control stack */
-  * Stack_Top,		/* Top of control stack */
-  * Free_Constant,	/* Next free word in constant space */
-  * Constant_Space,	/* Bottom of constant+pure space */
-  * Constant_Top,	/* Top of constant+pure space */
-  * Local_Heap_Base,	/* Per-processor CONSing area */
-  * Free_Stacklets,	/* Free list of stacklets */
-  * history_register,	/* History register */
-  Current_State_Point,	/* Dynamic state point */
-  Fluid_Bindings,	/* Fluid bindings AList */
-  * last_return_code;	/* Address of the most recent return code in the stack.
-			   This is only meaningful while in compiled code.
-			   *** This must be changed when stacklets are used. */
+/* next free word in heap */
+SCHEME_OBJECT * Free;
 
-long
-  temp_long,		/* temporary for sign extension */
-  GC_Reserve,		/* Scheme pointer overflow space in heap */
-  GC_Space_Needed;	/* Amount of space needed when GC triggered */
+/* strict limit for Free */
+SCHEME_OBJECT * heap_alloc_limit;
 
-Declare_Fixed_Objects ();
+/* limits of active heap */
+SCHEME_OBJECT * heap_start;
+SCHEME_OBJECT * heap_end;
 
-Boolean Trapping;
+/* pointer to most-recently pushed item */
+SCHEME_OBJECT * stack_pointer;
 
-SCHEME_OBJECT Old_Return_Code;
-SCHEME_OBJECT * Return_Hook_Address;
+/*-strict limit for stack_pointer */
+SCHEME_OBJECT * stack_guard;
 
-SCHEME_OBJECT * Prev_Restore_History_Stacklet;
-long Prev_Restore_History_Offset;
+/* limits of stack */
+SCHEME_OBJECT * stack_start;
+SCHEME_OBJECT * stack_end;
 
-long Heap_Size;
-long Constant_Size;
-long Stack_Size;
-SCHEME_OBJECT * Lowest_Allocated_Address, * Highest_Allocated_Address;
+/* next free word in constant space */
+SCHEME_OBJECT * constant_alloc_next;
+
+/* limits of constant space */
+SCHEME_OBJECT * constant_start;
+SCHEME_OBJECT * constant_end;
+
+/* dynamic state point */
+SCHEME_OBJECT current_state_point;
+
+/* Address of the most recent return code in the stack.
+   This is only meaningful while in compiled code.  */
+SCHEME_OBJECT * last_return_code;
+
+SCHEME_OBJECT fixed_objects;
+
+bool trapping;
+
+unsigned long n_heap_blocks;
+unsigned long n_constant_blocks;
+unsigned long n_stack_blocks;
+SCHEME_OBJECT * memory_block_start;
+SCHEME_OBJECT * memory_block_end;
+
+unsigned long heap_reserved;
+
+/* Amount of space needed when GC requested */
+unsigned long gc_space_needed;
+
 #ifndef HEAP_IN_LOW_MEMORY
-SCHEME_OBJECT * memory_base;
+   SCHEME_OBJECT * memory_base;
 #endif
 
-                    /**********************/
-                    /* DEBUGGING SWITCHES */
-                    /**********************/
+#ifdef ENABLE_DEBUGGING_TOOLS
+   bool Eval_Debug = false;
+   bool Hex_Input_Debug = false;
+   bool File_Load_Debug = false;
+   bool Reloc_Debug = false;
+   bool Intern_Debug = false;
+   bool Cont_Debug = false;
+   bool Primitive_Debug = false;
+   bool Lookup_Debug = false;
+   bool Define_Debug = false;
+   bool GC_Debug = false;
+   bool Upgrade_Debug = false;
+   bool Dump_Debug = false;
+   bool Trace_On_Error = false;
+   bool Bignum_Debug = false;
+   bool Per_File = false;
+   unsigned int debug_slotno = 0;
+   unsigned int debug_nslots = 0;
+   unsigned int local_slotno = 0;
+   unsigned int local_nslots = 0;
+   unsigned int debug_circle [100];
+   unsigned int local_circle [100];
+#endif
 
-#ifdef ENABLE_DEBUGGING_FLAGS
+char * CONT_PRINT_RETURN_MESSAGE =   "SAVE_CONT, return code";
+char * CONT_PRINT_EXPR_MESSAGE   =   "SAVE_CONT, expression";
+char * RESTORE_CONT_RETURN_MESSAGE = "RESTORE_CONT, return code";
+char * RESTORE_CONT_EXPR_MESSAGE =   "RESTORE_CONT, expression";
 
-Boolean Eval_Debug	= false;
-Boolean Hex_Input_Debug	= false;
-Boolean File_Load_Debug	= false;
-Boolean Reloc_Debug	= false;
-Boolean Intern_Debug	= false;
-Boolean Cont_Debug	= false;
-Boolean Primitive_Debug	= false;
-Boolean Lookup_Debug	= false;
-Boolean Define_Debug	= false;
-Boolean GC_Debug	= false;
-Boolean Upgrade_Debug	= false;
-Boolean Dump_Debug	= false;
-Boolean Trace_On_Error	= false;
-Boolean Bignum_Debug    = false;
-Boolean Per_File	= false;
-Boolean Fluids_Debug	= false;
-More_Debug_Flag_Allocs();
-
-int debug_slotno = 0;
-int debug_nslots = 0;
-int local_slotno = 0;
-int local_nslots = 0;
-
-#if FALSE /* MHWU */
-int debug_circle[debug_maxslots];
-int local_circle[debug_maxslots];
-#endif /* false */
-
-int debug_circle[100];
-int local_circle[100];
-#endif /* ENABLE_DEBUGGING_FLAGS */
-
-		/****************************/
-		/* Debugging Macro Messages */
-		/****************************/
-
-char *CONT_PRINT_RETURN_MESSAGE =   "Save_Cont, return code";
-char *CONT_PRINT_EXPR_MESSAGE   =   "Save_Cont, expression";
-char *RESTORE_CONT_RETURN_MESSAGE = "Restore_Cont, return code";
-char *RESTORE_CONT_EXPR_MESSAGE =   "Restore_Cont, expression";
-
 /* Interpreter code name and message tables */
 
-long MAX_RETURN = MAX_RETURN_CODE;
+unsigned long MAX_RETURN = MAX_RETURN_CODE;
 
-extern char *Return_Names[];
-char *Return_Names[] = RETURN_NAME_TABLE;	/* in returns.h */
-
-extern char *Type_Names[];
-char *Type_Names[] = TYPE_NAME_TABLE;		/* in types.h */
-
-extern char *Abort_Names[];
-char *Abort_Names[] = ABORT_NAME_TABLE;		/* in const.h */
-
-extern char *Error_Names[];
-char *Error_Names[] = ERROR_NAME_TABLE;		/* in errors.h */
-
-extern char *Term_Names[];
-char *Term_Names[] = TERM_NAME_TABLE;		/* in errors.h */
-
-extern char *Term_Messages[];
-char *Term_Messages[] = TERM_MESSAGE_TABLE;	/* in errors.h */
+const char * Return_Names [] = RETURN_NAME_TABLE;	/* in returns.h */
+const char * type_names [] = TYPE_NAME_TABLE;		/* in types.h */
+const char * Abort_Names [] = ABORT_NAME_TABLE;		/* in const.h */
+const char * Error_Names [] = ERROR_NAME_TABLE;		/* in errors.h */
+const char * Term_Names [] = TERM_NAME_TABLE;		/* in errors.h */
+const char * term_messages [] = TERM_MESSAGE_TABLE;	/* in errors.h */

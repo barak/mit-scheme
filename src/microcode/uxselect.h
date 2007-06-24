@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxselect.h,v 1.10 2007/01/05 21:19:25 cph Exp $
+$Id: uxselect.h,v 1.11 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,18 +37,17 @@ enum select_input
   select_input_interrupt
 };
 
-extern enum select_input EXFUN (UX_select_input, (int fd, int blockp));
-extern unsigned int EXFUN (UX_select_registry_size, (void));
-extern unsigned int EXFUN (UX_select_registry_lub, (void));
-extern void EXFUN (UX_select_registry_clear_all, (PTR fds));
-extern void EXFUN (UX_select_registry_set, (PTR fds, unsigned int fd));
-extern void EXFUN (UX_select_registry_clear, (PTR fds, unsigned int fd));
-extern int EXFUN (UX_select_registry_is_set, (PTR fds, unsigned int fd));
-extern enum select_input EXFUN
-  (UX_select_registry_test,
-   (PTR input_fds, int blockp,
-    unsigned int * output_fds, unsigned int * output_nfds));
-extern enum select_input EXFUN
-  (UX_select_descriptor, (unsigned int fd, int blockp));
+extern enum select_input UX_select_input (int fd, int blockp);
+extern unsigned int UX_select_registry_size (void);
+extern unsigned int UX_select_registry_lub (void);
+extern void UX_select_registry_clear_all (void * fds);
+extern void UX_select_registry_set (void * fds, unsigned int fd);
+extern void UX_select_registry_clear (void * fds, unsigned int fd);
+extern int UX_select_registry_is_set (void * fds, unsigned int fd);
+extern enum select_input UX_select_registry_test
+  (void * input_fds, int blockp,
+    unsigned int * output_fds, unsigned int * output_nfds);
+extern enum select_input UX_select_descriptor
+  (unsigned int fd, int blockp);
 
 #endif /* SCM_UXSELECT_H */

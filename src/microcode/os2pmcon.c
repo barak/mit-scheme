@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2pmcon.c,v 1.33 2007/01/05 21:19:25 cph Exp $
+$Id: os2pmcon.c,v 1.34 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -103,7 +103,7 @@ static short console_point_x;
 static short console_point_y;
 
 static const char * console_font_specs [] =
-  { "8.Courier", "10.Courier", "12.Courier", 
+  { "8.Courier", "10.Courier", "12.Courier",
     "4.System VIO", "10.System Monospaced" };
 
 #define CHAR_WIDTH (FONT_METRICS_WIDTH (console_metrics))

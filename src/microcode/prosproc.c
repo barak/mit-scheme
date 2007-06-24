@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.24 2007/01/12 03:45:55 cph Exp $
+$Id: prosproc.c,v 1.25 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,29 +36,29 @@ USA.
    extern char ** environ;
 #endif
 
-extern Tchannel EXFUN (arg_channel, (int));
+extern Tchannel arg_channel (int);
 
 static Tprocess
-DEFUN (arg_process, (argument_number), int argument_number)
+arg_process (int argument_number)
 {
-  Tprocess process =
-    (arg_index_integer (argument_number, OS_process_table_size));
+  Tprocess process
+    = (arg_index_integer (argument_number, OS_process_table_size));
   if (! (OS_process_valid_p (process)))
     error_bad_range_arg (argument_number);
   return (process);
 }
-
+
 DEFINE_PRIMITIVE ("SCHEME-ENVIRONMENT", Prim_scheme_environment, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   {
     char ** scan_environ = environ;
     char ** end_environ = scan_environ;
-    while ((*end_environ++) != 0) ;
-    end_environ -= 1;
+    while ((*end_environ) != 0)
+      end_environ += 1;
     {
-      SCHEME_OBJECT result =
-	(allocate_marked_vector (TC_VECTOR, (end_environ - environ), 1));
+      SCHEME_OBJECT result
+	= (allocate_marked_vector (TC_VECTOR, (end_environ - environ), true));
       SCHEME_OBJECT * scan_result = (VECTOR_LOC (result, 0));
       while (scan_environ < end_environ)
 	(*scan_result++) = (char_pointer_to_string (*scan_environ++));
@@ -105,14 +105,14 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
   }
 }
 
-DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1, 
+DEFINE_PRIMITIVE ("PROCESS-ID", Prim_process_id, 1, 1,
   "Return the process ID of process PROCESS-NUMBER.")
 {
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN (ulong_to_integer (OS_process_id (arg_process (1))));
 }
 
-DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1, 
+DEFINE_PRIMITIVE ("PROCESS-JOB-CONTROL-STATUS", Prim_process_jc_status, 1, 1,
   "Returns the job-control status of process PROCESS-NUMBER:\n\
   0 means this system doesn't support job control.\n\
   1 means the process doesn't have the same controlling terminal as Scheme.\n\
@@ -173,7 +173,7 @@ The value is from the last synchronization.")
     }
 }
 
-DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1, 
+DEFINE_PRIMITIVE ("PROCESS-REASON", Prim_process_reason, 1, 1,
   "Return the termination reason of process PROCESS-NUMBER.\n\
 This is a nonnegative integer, which depends on the process's status:\n\
   running => zero;\n\
@@ -259,8 +259,8 @@ The process must have the same controlling terminal as Scheme.")
 
 /* This primitive is obsolete.  */
 
-static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
-static CONST char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
+static int string_vector_p (SCHEME_OBJECT vector);
+static const char ** convert_string_vector (SCHEME_OBJECT vector);
 
 #define PROCESS_CHANNEL_ARG(arg, type, channel)				\
 {									\
@@ -304,12 +304,12 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
   PRIMITIVE_HEADER (7);
   CHECK_ARG (2, string_vector_p);
   {
-    PTR position = dstack_position;
-    CONST char * filename = (STRING_ARG (1));
-    CONST char ** argv = (convert_string_vector (ARG_REF (2)));
+    void * position = dstack_position;
+    const char * filename = (STRING_ARG (1));
+    const char ** argv = (convert_string_vector (ARG_REF (2)));
     SCHEME_OBJECT env_object = (ARG_REF (3));
-    CONST char ** env = 0;
-    CONST char * working_directory = 0;
+    const char ** env = 0;
+    const char * working_directory = 0;
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
     enum process_channel_type channel_in_type;
@@ -321,8 +321,7 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
 
     if ((PAIR_P (env_object)) && (STRING_P (PAIR_CDR (env_object))))
       {
-	working_directory =
-	  ((CONST char *) (STRING_LOC ((PAIR_CDR (env_object)), 0)));
+	working_directory = (STRING_POINTER (PAIR_CDR (env_object)));
 	env_object = (PAIR_CAR (env_object));
       }
     if (env_object != SHARP_F)
@@ -360,7 +359,7 @@ Seventh arg STDERR is the error channel for the subprocess.\n\
 }
 
 static int
-DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
+string_vector_p (SCHEME_OBJECT vector)
 {
   if (! (VECTOR_P (vector)))
     return (0);
@@ -375,8 +374,8 @@ DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
   return (1);
 }
 
-static CONST char **
-DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
+static const char **
+convert_string_vector (SCHEME_OBJECT vector)
 {
   unsigned long length = (VECTOR_LENGTH (vector));
   char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
@@ -384,7 +383,7 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
   SCHEME_OBJECT * end = (scan + length);
   char ** scan_result = result;
   while (scan < end)
-    (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
+    (*scan_result++) = (STRING_POINTER (*scan++));
   (*scan_result) = 0;
-  return ((CONST char **) result);
+  return ((const char **) result);
 }

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.52 2007/01/05 21:19:28 cph Exp $
+$Id: option.scm,v 14.57 2007/06/09 01:22:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,17 +44,13 @@ USA.
       (set! loaded-options (cons name loaded-options))
       name)
 
-    (define (search-parent file)
+    (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
 	    (fluid-let ((*options* '())
 			(*parent* #f))
 	      (fluid-let ((load/suppress-loading-message? #t))
-		(load-latest (merge-pathnames file
-					      (library-directory-pathname ""))
-			     (make-load-environment)
-			     'DEFAULT
-			     #f))
+		(load pathname (make-load-environment)))
 	      (values *options* *parent*)))
 	find-option))
 
@@ -87,20 +83,15 @@ USA.
       (standard-load-options)))
 
 (define (standard-load-options)
-  (or (library-file? "runtime/optiondb") ; for C back end
-      (library-file? "options/optiondb")
-      (error "Cannot locate a load-option database")
-      "optiondb"))
+  (or (library-file? "runtime/optiondb")
+      (error "Cannot locate a load-option database.")))
 
 (define (library-file? library-internal-path)
-  (confirm-pathname
-   (merge-pathnames library-internal-path (library-directory-pathname ""))))
+  (confirm-pathname (system-library-pathname library-internal-path #f)))
 
 (define (confirm-pathname pathname)
-  (receive (pathname* loader)
-      (search-types-in-order pathname load/default-types)
-    pathname*
-    (and loader pathname)))
+  (and (file-loadable? pathname)
+       pathname))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
@@ -113,55 +104,31 @@ USA.
 (define (standard-option-loader package-name init-expression . files)
   (lambda ()
     (let ((environment (package/environment (find-package package-name)))
-	  (runtime (pathname-as-directory "runtime")))
-      (for-each (lambda (file)
-		  (let ((file (force* file)))
-		    (cond 
-		     (((ucode-primitive initialize-c-compiled-block 1)
-		       (string-append "runtime_" file))
-		      => (lambda (obj)
-			   (purify obj)
-			   (scode-eval obj environment)))
-		     (else
-		      (let* ((options (library-directory-pathname "options"))
-			     (pathname (merge-pathnames file options)))
-			(with-directory-rewriting-rule options runtime
+	  (runtime (pathname-as-directory "runtime"))
+	  (rundir (system-library-directory-pathname "runtime" #t)))
+      (for-each
+       (lambda (file)
+	 (let ((file (force* file)))
+	   (cond ((built-in-object-file (merge-pathnames file runtime))
+		  => (lambda (obj)
+		       (purify obj)
+		       (scode-eval obj environment)))
+		 (else
+		  (let ((pathname (merge-pathnames file rundir)))
+		    (with-directory-rewriting-rule rundir runtime
+		      (lambda ()
+			(with-working-directory-pathname
+			    (directory-pathname pathname)
 			  (lambda ()
-			    (with-working-directory-pathname
-				(directory-pathname pathname)
-			      (lambda ()
-				(load pathname
-				      environment
-				      'DEFAULT
-				      #t))))))))))
-		files)
+			    (load pathname
+				  environment
+				  'DEFAULT
+				  #t))))))))))
+       files)
       (flush-purification-queue!)
       (eval init-expression environment))))
 
-(define (declare-shared-library shared-library thunk)
-  (let ((thunk-valid?
-	 (lambda (thunk)
-	   (not (condition? (ignore-errors thunk))))))
-    (add-event-receiver!
-     event:after-restore
-     (lambda ()
-       (if (not (thunk-valid? thunk))
-	   (fluid-let ((load/suppress-loading-message? #t))
-	     (load
-	      (merge-pathnames shared-library
-			       (library-directory-pathname "shared")))))))))
-
 (define (force* value)
-  (cond	((procedure? value) (force* (value)))
+  (cond ((procedure? value) (force* (value)))
 	((promise? value) (force* (force value)))
 	(else value)))
-
-(define (library-directory-pathname name)
-  (or (system-library-directory-pathname name)
-      (library-directory-pathname
-       (error:file-operation name
-			     "find"
-			     "directory"
-			     "no such directory in system library path"
-			     library-directory-pathname
-			     (list name)))))

@@ -1,5 +1,5 @@
 @echo off
-rem $Id: wconfig.bat,v 1.5 2007/01/05 21:19:26 cph Exp $
+rem $Id: wconfig.bat,v 1.6 2007/04/24 05:32:01 cph Exp $
 rem
 rem Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 rem     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -24,14 +24,19 @@ rem 02110-1301, USA.
 rem
 rem Microcode configuration script for Win32 / Watcom C
 rem
-copy cmpintmd\i386.h cmpintmd.h
 copy cmpauxmd\i386-ntw.asm cmpauxmd.asm
+copy cmpintmd\i386.c cmpintmd.c
+copy cmpintmd\i386-config.h cmpintmd-config.h
+copy cmpintmd\i386.h cmpintmd.h
 copy ntutl\makefile.wcc makefile
-copy ntutl\*.h .
-copy ntutl\*.c .
-copy ntutl\*.lbc .
-copy ntutl\*.lnk .
-copy ntutl\*.dlg .
+copy ntutl\config.h .
+copy ntutl\float.h .
+copy ntutl\limits.h .
+copy ntutl\ntdialog.h .
+copy ntutl\scheme32.c .
+copy ntutl\scheme32.lbc .
+copy ntutl\scheme32.lnk .
+copy ntutl\ntdialog.dlg .
 copy ntutl\*.ico .
-copy ntutl\*.rc .
-copy ntutl\*.cur .
+copy ntutl\ntgui.rc .
+copy ntutl\gc.cur .

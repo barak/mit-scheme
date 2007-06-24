@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgxcmp.scm,v 1.127 2007/01/05 21:19:28 cph Exp $
+$Id: rgxcmp.scm,v 1.128 2007/02/20 16:29:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -786,26 +786,16 @@ USA.
 
 ;;;; Compiled Pattern Disassembler
 
-(define (hack-fastmap pattern)
-  (let ((compiled-pattern (re-compile-pattern pattern #f))
-	(cs (char-set)))
-    ((ucode-primitive re-compile-fastmap)
-     compiled-pattern
-     (re-translation-table #f)
-     (get-char-syntax standard-char-syntax-table)
-     cs)
-    (char-set-members cs)))
-
 (define (re-disassemble-pattern compiled-pattern)
-  (let ((n (string-length compiled-pattern)))
+  (let* ((bytes (compiled-regexp/byte-stream compiled-pattern))
+	 (n (string-length bytes)))
     (let loop ((i 0))
       (newline)
       (write i)
       (write-string " (")
       (if (< i n)
 	  (case (let ((re-code-name
-		       (vector-ref re-codes
-				   (vector-8b-ref compiled-pattern i))))
+		       (vector-ref re-codes (vector-8b-ref bytes i))))
 		  (write re-code-name)
 		  re-code-name)
 	    ((UNUSED LINE-START LINE-END ANY-CHAR BUFFER-START BUFFER-END
@@ -816,33 +806,33 @@ USA.
 	    ((EXACT-1)
 	     (write-string " ")
 	     (let ((end (+ i 2)))
-	       (write (substring compiled-pattern (1+ i) end))
+	       (write (substring bytes (1+ i) end))
 	       (write-string ")")
 	       (loop end)))
 	    ((EXACT-N)
 	     (write-string " ")
 	     (let ((start (+ i 2))
-		   (n (vector-8b-ref compiled-pattern (1+ i))))
+		   (n (vector-8b-ref bytes (1+ i))))
 	       (let ((end (+ start n)))
-		 (write (substring compiled-pattern start end))
+		 (write (substring bytes start end))
 		 (write-string ")")
 		 (loop end))))
 	    ((JUMP ON-FAILURE-JUMP MAYBE-FINALIZE-JUMP DUMMY-FAILURE-JUMP)
 	     (write-string " ")
 	     (let ((end (+ i 3))
 		   (offset
-		    (+ (* 256 (vector-8b-ref compiled-pattern (+ i 2)))
-		       (vector-8b-ref compiled-pattern (1+ i)))))
+		    (+ (* 256 (vector-8b-ref bytes (+ i 2)))
+		       (vector-8b-ref bytes (1+ i)))))
 	       (write (+ end (if (< offset #x8000) offset (- offset #x10000))))
 	       (write-string ")")
 	       (loop end)))
 	    ((CHAR-SET NOT-CHAR-SET)
-	     (let ((end (+ (+ i 2) (vector-8b-ref compiled-pattern (1+ i)))))
+	     (let ((end (+ (+ i 2) (vector-8b-ref bytes (1+ i)))))
 	       (let spit ((i (+ i 2)))
 		 (if (< i end)
 		     (begin
 		       (write-string " ")
-		       (let ((n (vector-8b-ref compiled-pattern i)))
+		       (let ((n (vector-8b-ref bytes i)))
 			 (if (< n 16) (write-char #\0))
 			 (write-string (number->string n 16)))
 		       (spit (1+ i)))
@@ -851,13 +841,13 @@ USA.
 		       (loop i))))))
 	    ((START-MEMORY STOP-MEMORY DUPLICATE)
 	     (write-string " ")
-	     (write (vector-8b-ref compiled-pattern (1+ i)))
+	     (write (vector-8b-ref bytes (1+ i)))
 	     (write-string ")")
 	     (loop (+ i 2)))
 	    ((SYNTAX-SPEC NOT-SYNTAX-SPEC)
 	     (write-string " ")
 	     (write (string-ref " .w_()'\"$\\/<>"
-				(vector-8b-ref compiled-pattern (1+ i))))
+				(vector-8b-ref bytes (1+ i))))
 	     (write-string ")")
 	     (loop (+ i 2))))
 	  (begin

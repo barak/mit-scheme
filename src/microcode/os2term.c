@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2term.c,v 1.8 2007/01/05 21:19:25 cph Exp $
+$Id: os2term.c,v 1.9 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -75,12 +75,12 @@ OS_terminal_state_size (void)
 }
 
 void
-OS_terminal_get_state (Tchannel channel, PTR statep)
+OS_terminal_get_state (Tchannel channel, void * statep)
 {
 }
 
 void
-OS_terminal_set_state (Tchannel channel, PTR statep)
+OS_terminal_set_state (Tchannel channel, void * statep)
 {
 }
 

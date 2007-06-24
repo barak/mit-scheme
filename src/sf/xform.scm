@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 4.15 2007/01/05 21:19:29 cph Exp $
+$Id: xform.scm,v 4.16 2007/04/11 19:32:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -62,7 +62,7 @@ USA.
 		(lambda () (open-block-components expression values))
 	      (lambda (auxiliary declarations body)
 		(if (not (assq 'USUAL-INTEGRATIONS declarations))
-		    (write-string ui-warning (notification-output-port)))
+		    (ui-warning))
 		(transform/open-block* expression
 				       block
 				       environment
@@ -71,13 +71,17 @@ USA.
 				       body))))
 	  (transform/expression block environment expression)))))
 
-(define ui-warning
-  ";This program does not have a USUAL-INTEGRATIONS declaration.
-;Without this declaration, the compiler will be unable to perform
-;many optimizations, and as a result the compiled program will be
-;slower and perhaps larger than it could be.  Please read the MIT
-;Scheme User's Guide for more information about USUAL-INTEGRATIONS.
-")
+(define (ui-warning)
+  (for-each
+   (lambda (line)
+     (write-notification-line
+      (lambda (port)
+	(write-string line port))))
+   '("This program does not have a USUAL-INTEGRATIONS declaration."
+     "Without this declaration, the compiler will be unable to perform"
+     "many optimizations, and as a result the compiled program will be"
+     "slower and perhaps larger than it could be.  Please read the MIT"
+     "Scheme User's Guide for more information about USUAL-INTEGRATIONS.")))
 
 (define (transform/expressions block environment expressions)
   (map (lambda (expression)

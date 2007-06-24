@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.54 2007/01/05 21:19:28 cph Exp $
+$Id: list.scm,v 14.55 2007/03/21 15:06:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -716,6 +716,9 @@ USA.
 	(if (not (null? list))
 	    (error:not-list list 'REDUCE))
 	initial)))
+
+(define (reduce-left procedure initial list)
+  (reduce (lambda (a b) (procedure b a)) initial list))
 
 (define (reduce-right procedure initial list)
   (if (pair? list)

@@ -25,9 +25,13 @@ set -e
 case "${1}" in
 (configure)
     update-alternatives \
-	--install /usr/bin/scheme scheme /usr/bin/mit-scheme 20 \
+	--install /usr/bin/mit-scheme mit-scheme /usr/bin/mit-scheme-native 20 \
+	--slave /usr/share/man/man1/mit-scheme.1.gz mit-scheme.1.gz \
+	    /usr/share/man/man1/mit-scheme-native.1.gz
+    update-alternatives \
+	--install /usr/bin/scheme scheme /usr/bin/mit-scheme-native 20 \
 	--slave /usr/share/man/man1/scheme.1.gz scheme.1.gz \
-	    /usr/share/man/man1/mit-scheme.1.gz
+	    /usr/share/man/man1/mit-scheme-native.1.gz
     ;;
 (abort-upgrade|abort-remove|abort-deconfigure)
     ;;

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.9 2007/01/05 21:19:20 cph Exp $
+# $Id: Setup.sh,v 1.10 2007/05/02 03:58:53 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,12 +26,12 @@
 # Utility to set up the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
+set -e
+
 . ../etc/functions.sh
 
-../etc/Setup.sh "$@"
+../etc/Setup.sh "${@}"
 
 for N in 1 2 3; do
     maybe_link machines/vax/dinstr${N}.scm instr${N}.scm
 done
-
-exit 0

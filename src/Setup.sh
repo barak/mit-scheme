@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.16 2007/01/05 21:19:20 cph Exp $
+# $Id: Setup.sh,v 1.27 2007/06/09 01:22:18 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,6 +26,8 @@
 # Utility to set up the MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
 
+set -e
+
 if [ ! -x configure ]; then
     echo "autoconf"
     autoconf
@@ -33,24 +35,20 @@ fi
 
 . etc/functions.sh
 
+INSTALLED_SUBDIRS="cref edwin imail sf sos ssp star-parser xml"
+OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
+
 # lib
 maybe_mkdir lib
-maybe_link lib/SRC ..
+maybe_mkdir lib/lib
+maybe_link lib/edwin ../edwin
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
-maybe_link lib/options ../runtime
+maybe_link lib/runtime ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
 
-# lib/edwin
-maybe_mkdir lib/edwin
-maybe_mkdir lib/edwin/etc
-maybe_link lib/edwin/etc/TUTORIAL ../../../etc/TUTORIAL
-maybe_link lib/edwin/etc/mime.types ../../../etc/mime.types
-maybe_link lib/edwin/autoload ../../edwin
-
-for SUBDIR in 6001 compiler cref edwin imail rcs runtime runtime-check \
-              sf sos ssp star-parser win32 xdoc xml microcode; do
+for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    ( cd ${SUBDIR} && ./Setup.sh "$@" ) || exit 1
+    (cd ${SUBDIR} && ./Setup.sh "$@")
 done

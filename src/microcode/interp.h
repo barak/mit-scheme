@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.52 2007/01/05 21:19:25 cph Exp $
+$Id: interp.h,v 9.53 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,40 +26,54 @@ USA.
 */
 
 /* Definitions used by the interpreter and some utilities. */
+
+#ifndef SCM_INTERP_H
+#define SCM_INTERP_H 1
+
+#include "object.h"
+#include "stack.h"
 
-#define env_register (Registers[REGBLOCK_ENV])
-#define val_register (Registers[REGBLOCK_VAL])
-#define exp_register (Registers[REGBLOCK_EXPR])
-#define ret_register (Registers[REGBLOCK_RETURN])
+/* Note: SAVE_CONT must match the definitions in sdata.h */
 
-#define Store_Return(P) ret_register = (MAKE_OBJECT (TC_RETURN_CODE, (P)))
-
-/* Note: Save_Cont must match the definitions in sdata.h */
-
-#define Save_Cont()							\
+#define SAVE_CONT() do							\
 {									\
-  STACK_PUSH (exp_register);						\
-  STACK_PUSH (ret_register);						\
-}
+  PUSH_EXP ();								\
+  PUSH_RET ();								\
+} while (0)
 
-#define Restore_Cont()							\
+#define RESTORE_CONT() do						\
 {									\
-  ret_register = (STACK_POP ());					\
-  exp_register = (STACK_POP ());					\
-}
+  POP_RET ();								\
+  POP_EXP ();								\
+} while (0)
 
-#define Stop_Trapping() Trapping = 0
+#define CONT_RC(offset) (OBJECT_DATUM (CONT_RET (offset)))
+#define CONT_RET(offset) (STACK_REF ((offset) + CONTINUATION_RETURN_CODE))
+#define CONT_EXP(offset) (STACK_REF ((offset) + CONTINUATION_EXPRESSION))
+
+#define PUSH_APPLY_FRAME_HEADER(n_args)					\
+  STACK_PUSH (MAKE_OBJECT (0, ((n_args) + 1)))
+
+#define POP_APPLY_FRAME_HEADER() APPLY_FRAME_HEADER_N_ARGS (STACK_POP ())
+#define APPLY_FRAME_HEADER_N_ARGS(header) ((OBJECT_DATUM (header)) - 1)
+#define APPLY_FRAME_SIZE() (OBJECT_DATUM (STACK_REF (0)))
+#define APPLY_FRAME_N_ARGS() (APPLY_FRAME_HEADER_N_ARGS (STACK_REF (0)))
+#define APPLY_FRAME_PROCEDURE() (STACK_REF (1))
+#define APPLY_FRAME_ARGS(sp) (STACK_LOC (2))
+#define APPLY_FRAME_END(sp) (STACK_LOC (1 + (APPLY_FRAME_SIZE ())))
+
+#define CHECK_RETURN_CODE(code, offset)					\
+  ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
 
 /* Saving history is required for C_call_scheme to work correctly
-   because the recursive call to Interpret() can rotate the history.
-   */
+   because the recursive call to Interpret() can rotate the history.  */
 
-#define APPLY_PRIMITIVE_FROM_INTERPRETER(location, primitive)		\
+#define APPLY_PRIMITIVE_FROM_INTERPRETER(primitive) do			\
 {									\
   SCHEME_OBJECT * APFI_saved_history = history_register;		\
-  PRIMITIVE_APPLY ((location), (primitive));				\
+  PRIMITIVE_APPLY (primitive);						\
   history_register = APFI_saved_history;				\
-}
+} while (0)
 
 /* Stack manipulation */
 
@@ -69,11 +83,11 @@ USA.
 {									\
   SCHEME_OBJECT * Will_Push_Limit;					\
 									\
-  Internal_Will_Push ((N));						\
+  STACK_CHECK (N);							\
   Will_Push_Limit = (STACK_LOC (- (N)))
 
 #define Pushed()							\
-  if (sp_register < Will_Push_Limit)					\
+  if (STACK_LOCATIVE_LESS_P (stack_pointer, Will_Push_Limit))		\
     {									\
       Stack_Death ();							\
     }									\
@@ -81,7 +95,7 @@ USA.
 
 #else
 
-#define Will_Push Internal_Will_Push
+#define Will_Push(N) STACK_CHECK (N)
 #define Pushed()
 
 #endif
@@ -91,50 +105,25 @@ USA.
    may use less.  M in Finished_Eventual_Pushing is the amount not yet
    pushed.  */
 
-#define Will_Eventually_Push Internal_Will_Push
+#define Will_Eventually_Push(N) STACK_CHECK (N)
 #define Finished_Eventual_Pushing(M)
-
-/* Primitive stack operations:
-   These operations hide the direction of stack growth.
-   `Throw' in "stack.h", `Allocate_New_Stacklet' in "utils.c",
-   `apply', `cwcc' and friends in "hooks.c", and possibly other stuff,
-   depend on the direction in which the stack grows. */
-
-#define STACK_LOCATIVE_DECREMENT(locative) (-- (locative))
-#define STACK_LOCATIVE_INCREMENT(locative) ((locative) ++)
-#define STACK_LOCATIVE_OFFSET(locative, offset) ((locative) + (offset))
-#define STACK_LOCATIVE_REFERENCE(locative, offset) ((locative) [(offset)])
-#define STACK_LOCATIVE_DIFFERENCE(x, y) ((x) - (y))
-
-#define STACK_LOCATIVE_PUSH(locative) (* (STACK_LOCATIVE_DECREMENT (locative)))
-#define STACK_LOCATIVE_POP(locative) (* (STACK_LOCATIVE_INCREMENT (locative)))
-
-#define STACK_PUSH(object) (STACK_LOCATIVE_PUSH (sp_register)) = (object)
-#define STACK_POP() (STACK_LOCATIVE_POP (sp_register))
-#define STACK_LOC(offset) (STACK_LOCATIVE_OFFSET (sp_register, (offset)))
-#define STACK_REF(offset) (STACK_LOCATIVE_REFERENCE (sp_register, (offset)))
 
 /* Primitive utility macros */
 
 #ifndef ENABLE_DEBUGGING_TOOLS
-
-#define PRIMITIVE_APPLY PRIMITIVE_APPLY_INTERNAL
-
+#  define PRIMITIVE_APPLY PRIMITIVE_APPLY_INTERNAL
 #else
-
-#define PRIMITIVE_APPLY(loc, primitive)					\
-  (loc) = (primitive_apply_internal (primitive))
-extern SCHEME_OBJECT EXFUN (primitive_apply_internal, (SCHEME_OBJECT));
-
+   extern void primitive_apply_internal (SCHEME_OBJECT);
+#  define PRIMITIVE_APPLY primitive_apply_internal
 #endif
 
-#define PRIMITIVE_APPLY_INTERNAL(loc, primitive)			\
+#define PRIMITIVE_APPLY_INTERNAL(primitive) do				\
 {									\
-  PTR PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
-  (Registers[REGBLOCK_PRIMITIVE]) = (primitive);			\
-  (loc)									\
-    = ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
-       ());								\
+  void * PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
+  SET_PRIMITIVE (primitive);						\
+  SET_VAL								\
+    ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
+     ());								\
   /* If the primitive failed to unwind the dynamic stack, lose. */	\
   if (PRIMITIVE_APPLY_INTERNAL_position != dstack_position)		\
     {									\
@@ -142,10 +131,10 @@ extern SCHEME_OBJECT EXFUN (primitive_apply_internal, (SCHEME_OBJECT));
 		  (PRIMITIVE_NAME (primitive)));			\
       Microcode_Termination (TERM_EXIT);				\
     }									\
-  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;				\
-}
+  SET_PRIMITIVE (SHARP_F);						\
+} while (0)
 
-#define POP_PRIMITIVE_FRAME(arity) sp_register = (STACK_LOC (arity))
+#define POP_PRIMITIVE_FRAME(arity) (stack_pointer = (STACK_LOC (arity)))
 
 typedef struct interpreter_state_s * interpreter_state_t;
 
@@ -153,7 +142,7 @@ struct interpreter_state_s
 {
   interpreter_state_t previous_state;
   unsigned int nesting_level;
-  PTR dstack_position;
+  void * dstack_position;
   jmp_buf catch_env;
   int throw_argument;
 };
@@ -161,11 +150,13 @@ struct interpreter_state_s
 #define interpreter_catch_dstack_position interpreter_state->dstack_position
 #define interpreter_catch_env interpreter_state->catch_env
 #define interpreter_throw_argument interpreter_state->throw_argument
-#define NULL_INTERPRETER_STATE ((interpreter_state_t) NULL)
+#define NULL_INTERPRETER_STATE ((interpreter_state_t) 0)
 
-extern void EXFUN (abort_to_interpreter, (int argument));
-extern int EXFUN (abort_to_interpreter_argument, (void));
+extern void abort_to_interpreter (int) NORETURN;
+extern int abort_to_interpreter_argument (void);
 
 extern interpreter_state_t interpreter_state;
-extern void EXFUN (bind_interpreter_state, (interpreter_state_t));
-extern void EXFUN (unbind_interpreter_state, (interpreter_state_t));
+extern void bind_interpreter_state (interpreter_state_t);
+extern void unbind_interpreter_state (interpreter_state_t);
+
+#endif /* not SCM_INTERP_H */

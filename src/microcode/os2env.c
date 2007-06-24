@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.18 2007/01/05 21:19:25 cph Exp $
+$Id: os2env.c,v 1.19 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -100,7 +100,7 @@ OS_decode_time (time_t t, struct time_structure * buffer)
     int wday = (ts -> tm_wday);
     (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
   }
-}  
+}
 
 void
 OS_decode_utc (time_t t, struct time_structure * buffer)
@@ -121,7 +121,7 @@ OS_decode_utc (time_t t, struct time_structure * buffer)
     int wday = (ts -> tm_wday);
     (buffer -> day_of_week) = ((wday == 0) ? 6 : (wday - 1));
   }
-}  
+}
 
 time_t
 OS_encode_time (struct time_structure * buffer)

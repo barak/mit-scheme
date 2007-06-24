@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.34 2007/01/09 06:16:45 cph Exp $
+$Id: input.scm,v 14.35 2007/06/06 19:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -185,6 +185,19 @@ USA.
 
 (define (read #!optional port environment)
   (parse-object (optional-input-port port 'READ) environment))
+
+(define (read-file pathname #!optional environment)
+  (call-with-input-file (pathname-default-version pathname 'NEWEST)
+    (lambda (port)
+      (let ((environment
+	     (if (default-object? environment)
+		 (nearest-repl/environment)
+		 environment)))
+	(let loop ((sexps '()))
+	  (let ((sexp (read port environment)))
+	    (if (eof-object? sexp)
+		(reverse! sexps)
+		(loop (cons sexp sexps)))))))))
 
 (define (read-line #!optional port)
   (input-port/read-line (optional-input-port port 'READ-LINE)))
