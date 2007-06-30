@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.22 2007/01/05 21:19:28 cph Exp $
+$Id: numpar.scm,v 14.23 2007/06/30 23:16:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -124,7 +124,7 @@ USA.
 				      (or exactness 'IMPLICIT-INEXACT) sign)))
 	       ((i? char)
 		(and (fix:= start end)
-		     (if (eq? #\- sign) -i +i)))
+		     (make-rectangular 0 (if (eq? #\- sign) -1 1))))
 	       (else #f)))))
 
 (define (parse-integer string start end integer exactness radix sign)
