@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ntprm.scm,v 1.49 2007/01/05 21:19:28 cph Exp $
+$Id: ntprm.scm,v 1.50 2007/07/07 17:21:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -669,22 +669,21 @@ USA.
      path)))
 
 (define (os/parse-path-string string)
-  (let ((end (string-length string))
-	(substring
-	 (let ((cs (char-set-invert (char-set #\"))))
-	   (lambda (string start end)
-	     (pathname-as-directory (string-trim (substring string start end)
-						 cs))))))
-    (let loop ((start 0))
-      (if (< start end)
-	  (let ((index (substring-find-next-char string start end #\;)))
-	    (if index
-		(if (= index start)
-		    (loop (+ index 1))
-		    (cons (substring string start index)
-			  (loop (+ index 1))))
-		(list (substring string start end))))
-	  '()))))
+  (map (lambda (string)
+	 (let ((input (open-input-string string))
+	       (output (open-output-string)))
+	   (let loop ()
+	     (let ((char (read-char input)))
+	       (cond ((eof-object? char)
+		      (pathname-as-directory (get-output-string! output)))
+		     ((or (char=? char #\")
+			  (and (char=? char #\\)
+			       (eqv? (peek-char input) #\\)))
+		      (loop))
+		     (else
+		      (write-char char output)
+		      (loop)))))))
+       (burst-string string #\; #t)))
 
 (define (nt/scheme-executable-pathname)
   (let ((env (->environment '(win32))))
