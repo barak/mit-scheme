@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-rmail.scm,v 1.75 2007/01/05 21:19:25 cph Exp $
+$Id: imail-rmail.scm,v 1.76 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -365,7 +365,7 @@ USA.
      (if (eqv? rmail-message:end-char (peek-char port))
 	 (begin
 	   (read-char port)		;discard
-	   (make-eof-object port))
+	   (eof-object))
 	 (read-required-line port)))))
 
 (define (read-to-eom port)

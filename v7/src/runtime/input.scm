@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.35 2007/06/06 19:42:42 cph Exp $
+$Id: input.scm,v 14.36 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -132,6 +132,9 @@ USA.
 
 (define (make-eof-object port)
   port
+  (eof-object))
+
+(define (eof-object)
   (object-new-type (ucode-type constant) 6))
 
 (define (eof-object? object)
@@ -178,7 +181,7 @@ USA.
 	(let ((eof? (port/operation port 'EOF?)))
 	  (and eof?
 	       (eof? port)
-	       (make-eof-object port))))))
+	       (eof-object))))))
 
 (define (read-string delimiters #!optional port)
   (input-port/read-string (optional-input-port port 'READ-STRING) delimiters))

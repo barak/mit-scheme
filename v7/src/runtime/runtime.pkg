@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.619 2007/06/07 15:12:17 cph Exp $
+$Id: runtime.pkg,v 14.620 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2046,6 +2046,7 @@ USA.
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
 	  char-ready?
+	  eof-object
 	  eof-object?
 	  input-port/char-ready?
 	  input-port/discard-chars

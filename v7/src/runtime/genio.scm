@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.52 2007/05/01 14:12:52 cph Exp $
+$Id: genio.scm,v 1.53 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -189,7 +189,7 @@ USA.
 	    (case r
 	      ((OK) (loop))
 	      ((WOULD-BLOCK) #f)
-	      ((EOF) (make-eof-object port))
+	      ((EOF) (eof-object))
 	      (else (error "Unknown result:" r))))))))
 
 (define (generic-io/read-substring port string start end)
