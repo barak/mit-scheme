@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.57 2007/04/22 16:31:22 cph Exp $
+$Id: bignum.c,v 9.58 2007/07/08 22:21:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -61,30 +61,38 @@ bignum_realloc (bignum_type bignum, bignum_length_type length)
 
 /* Forward references */
 static int bignum_equal_p_unsigned (bignum_type, bignum_type);
-static enum bignum_comparison bignum_compare_unsigned (bignum_type, bignum_type);
+static enum bignum_comparison bignum_compare_unsigned
+  (bignum_type, bignum_type);
 static bignum_type bignum_add_unsigned (bignum_type, bignum_type, int);
 static bignum_type bignum_subtract_unsigned (bignum_type, bignum_type);
 static bignum_type bignum_multiply_unsigned (bignum_type, bignum_type, int);
-static bignum_type bignum_multiply_unsigned_small_factor (bignum_type, bignum_digit_type, int);
+static bignum_type bignum_multiply_unsigned_small_factor
+  (bignum_type, bignum_digit_type, int);
 static void bignum_destructive_scale_up (bignum_type, bignum_digit_type);
 static void bignum_destructive_add (bignum_type, bignum_digit_type);
-static void bignum_divide_unsigned_large_denominator (bignum_type, bignum_type, bignum_type *, bignum_type *,
-		    int, int);
+static void bignum_divide_unsigned_large_denominator
+  (bignum_type, bignum_type, bignum_type *, bignum_type *, int, int);
 static void bignum_destructive_normalization (bignum_type, bignum_type, int);
 static void bignum_destructive_unnormalization (bignum_type, int);
-static void bignum_divide_unsigned_normalized (bignum_type, bignum_type, bignum_type);
-static bignum_digit_type bignum_divide_subtract (bignum_digit_type *, bignum_digit_type *,
-				 bignum_digit_type, bignum_digit_type *);
-static void bignum_divide_unsigned_medium_denominator (bignum_type, bignum_digit_type, bignum_type *,
-		    bignum_type *, int, int);
-static bignum_digit_type bignum_digit_divide (bignum_digit_type, bignum_digit_type,
-				 bignum_digit_type, bignum_digit_type *);
-static bignum_digit_type bignum_digit_divide_subtract (bignum_digit_type, bignum_digit_type,
-				 bignum_digit_type, bignum_digit_type *);
-static void bignum_divide_unsigned_small_denominator (bignum_type, bignum_digit_type, bignum_type *,
-		    bignum_type *, int, int);
-static bignum_digit_type bignum_destructive_scale_down (bignum_type, bignum_digit_type);
-static bignum_type bignum_remainder_unsigned_small_denominator (bignum_type, bignum_digit_type, int);
+static void bignum_divide_unsigned_normalized
+  (bignum_type, bignum_type, bignum_type);
+static bignum_digit_type bignum_divide_subtract
+  (bignum_digit_type *, bignum_digit_type *,
+   bignum_digit_type, bignum_digit_type *);
+static void bignum_divide_unsigned_medium_denominator
+  (bignum_type, bignum_digit_type, bignum_type *, bignum_type *, int, int);
+static bignum_digit_type bignum_digit_divide
+  (bignum_digit_type, bignum_digit_type,
+   bignum_digit_type, bignum_digit_type *);
+static bignum_digit_type bignum_digit_divide_subtract
+  (bignum_digit_type, bignum_digit_type,
+   bignum_digit_type, bignum_digit_type *);
+static void bignum_divide_unsigned_small_denominator
+  (bignum_type, bignum_digit_type, bignum_type *, bignum_type *, int, int);
+static bignum_digit_type bignum_destructive_scale_down
+  (bignum_type, bignum_digit_type);
+static bignum_type bignum_remainder_unsigned_small_denominator
+  (bignum_type, bignum_digit_type, int);
 static bignum_type bignum_digit_to_bignum (bignum_digit_type, int);
 static bignum_type bignum_allocate (bignum_length_type, int);
 static bignum_type bignum_allocate_zeroed (bignum_length_type, int);
@@ -95,12 +103,12 @@ static bignum_type bignum_new_sign (bignum_type, int);
 static bignum_type bignum_maybe_new_sign (bignum_type, int);
 static void bignum_destructive_copy (bignum_type, bignum_type);
 
-#define ULONG_LENGTH_IN_BITS(digit, len)		\
-do {							\
-  unsigned long w = digit;				\
-  len = 0;						\
-  while (w > 0xff) { len += 8; w >>= 8; }		\
-  while (w > 0)    { len += 1; w >>= 1; }		\
+#define ULONG_LENGTH_IN_BITS(digit, len) do				\
+{									\
+  unsigned long w = digit;						\
+  len = 0;								\
+  while (w > 0xff) { len += 8; w >>= 8; }				\
+  while (w > 0)    { len += 1; w >>= 1; }				\
 } while (0)
 
 /* Exports */
@@ -247,8 +255,8 @@ bignum_multiply (bignum_type x, bignum_type y)
 }
 
 int
-bignum_divide (bignum_type numerator, bignum_type denominator
-      , bignum_type * quotient, bignum_type * remainder)
+bignum_divide (bignum_type numerator, bignum_type denominator,
+	       bignum_type * quotient, bignum_type * remainder)
 {
   if (BIGNUM_ZERO_P (denominator))
     return (1);
@@ -610,7 +618,7 @@ bignum_to_double (bignum_type bignum)
 #if (FLT_RADIX == 2)
     int bits_to_get = DBL_MANT_DIG; /* includes implicit 1 */
 #else
-#include "error: must have FLT_RADIX==2"
+#  include "error: must have FLT_RADIX==2"
 #endif
     double value = 0;
     bignum_digit_type mask = 0;
@@ -1182,7 +1190,8 @@ bignum_multiply_unsigned (bignum_type x, bignum_type y, int negative_p)
 }
 
 static bignum_type
-bignum_multiply_unsigned_small_factor (bignum_type x, bignum_digit_type y, int negative_p)
+bignum_multiply_unsigned_small_factor (bignum_type x, bignum_digit_type y,
+				       int negative_p)
 {
   bignum_length_type length_x = (BIGNUM_LENGTH (x));
   bignum_type p = (bignum_allocate ((length_x + 1), negative_p));
@@ -1380,9 +1389,9 @@ bignum_divide_unsigned_normalized (bignum_type u, bignum_type v, bignum_type q)
 
 static bignum_digit_type
 bignum_divide_subtract (bignum_digit_type * v_start,
-       bignum_digit_type * v_end,
-       bignum_digit_type guess,
-       bignum_digit_type * u_start)
+			bignum_digit_type * v_end,
+			bignum_digit_type guess,
+			bignum_digit_type * u_start)
 {
   bignum_digit_type * v_scan = v_start;
   bignum_digit_type * u_scan = u_start;
@@ -1459,11 +1468,11 @@ bignum_divide_subtract (bignum_digit_type * v_start,
 
 static void
 bignum_divide_unsigned_medium_denominator (bignum_type numerator,
-       bignum_digit_type denominator,
-       bignum_type * quotient,
-       bignum_type * remainder,
-       int q_negative_p,
-       int r_negative_p)
+					   bignum_digit_type denominator,
+					   bignum_type * quotient,
+					   bignum_type * remainder,
+					   int q_negative_p,
+					   int r_negative_p)
 {
   bignum_length_type length_n = (BIGNUM_LENGTH (numerator));
   bignum_length_type length_q;
@@ -1518,7 +1527,8 @@ bignum_divide_unsigned_medium_denominator (bignum_type numerator,
 }
 
 static void
-bignum_destructive_normalization (bignum_type source, bignum_type target, int shift_left)
+bignum_destructive_normalization (bignum_type source, bignum_type target,
+				  int shift_left)
 {
   bignum_digit_type digit;
   bignum_digit_type * scan_source = (BIGNUM_START_PTR (source));
@@ -1557,7 +1567,6 @@ bignum_destructive_unnormalization (bignum_type bignum, int shift_right)
       carry = ((digit & mask) << shift_left);
     }
   BIGNUM_ASSERT (carry == 0);
-  return;
 }
 
 /* This is a reduced version of the division algorithm, applied to the
@@ -1590,7 +1599,7 @@ bignum_destructive_unnormalization (bignum_type bignum, int shift_right)
 
 static bignum_digit_type
 bignum_digit_divide (bignum_digit_type uh, bignum_digit_type ul,
-       bignum_digit_type v, bignum_digit_type * q) /* return value */
+		     bignum_digit_type v, bignum_digit_type * q)
 {
   bignum_digit_type guess;
   bignum_digit_type comparand;
@@ -1661,7 +1670,7 @@ bignum_digit_divide (bignum_digit_type uh, bignum_digit_type ul,
 
 static bignum_digit_type
 bignum_digit_divide_subtract (bignum_digit_type v1, bignum_digit_type v2,
-       bignum_digit_type guess, bignum_digit_type * u)
+			      bignum_digit_type guess, bignum_digit_type * u)
 {
   {
     bignum_digit_type product;
@@ -1715,7 +1724,8 @@ bignum_divide_unsigned_small_denominator (bignum_type numerator,
    that all digits are < BIGNUM_RADIX. */
 
 static bignum_digit_type
-bignum_destructive_scale_down (bignum_type bignum, bignum_digit_type denominator)
+bignum_destructive_scale_down (bignum_type bignum,
+			       bignum_digit_type denominator)
 {
   bignum_digit_type numerator;
   bignum_digit_type remainder = 0;
@@ -1738,7 +1748,9 @@ bignum_destructive_scale_down (bignum_type bignum, bignum_digit_type denominator
 }
 
 static bignum_type
-bignum_remainder_unsigned_small_denominator (bignum_type n, bignum_digit_type d, int negative_p)
+bignum_remainder_unsigned_small_denominator (bignum_type n,
+					     bignum_digit_type d,
+					     int negative_p)
 {
   bignum_digit_type two_digits;
   bignum_digit_type * start = (BIGNUM_START_PTR (n));
@@ -1857,7 +1869,7 @@ bignum_maybe_new_sign (bignum_type bignum, int negative_p)
   if ((BIGNUM_NEGATIVE_P (bignum)) ? negative_p : (! negative_p))
     return (bignum);
   else
-#endif /* not BIGNUM_FORCE_NEW_RESULTS */
+#endif
     {
       bignum_type result =
 	(bignum_allocate ((BIGNUM_LENGTH (bignum)), negative_p));
