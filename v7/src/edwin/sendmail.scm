@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.90 2007/01/05 21:19:24 cph Exp $
+$Id: sendmail.scm,v 1.91 2007/07/08 06:37:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1118,7 +1118,11 @@ the user from the mailer."
 			(mark-index b-start)
 			(mark-index b-end)
 	    (lambda (string start end)
-	      (encode-quoted-printable:update context string start end)))
+	      (encode-quoted-printable:update
+               context
+               (xsubstring string 0 (xstring-length string))
+               start
+               end)))
 	  (encode-quoted-printable:finalize context)))
       (begin
 	(if (not (and subpart? (ref-variable mail-abbreviate-mime b-start)))
