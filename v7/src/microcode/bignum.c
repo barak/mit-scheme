@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.58 2007/07/08 22:21:54 cph Exp $
+$Id: bignum.c,v 9.59 2007/07/09 00:46:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -529,7 +529,7 @@ bignum_to_ulong (bignum_type bignum)
 
 #define DTB_WRITE_DIGIT(n_bits) do					\
 {									\
-  significand *= (1L << (n_bits));					\
+  significand *= (1UL << (n_bits));					\
   digit = ((bignum_digit_type) significand);				\
   (*--scan) = digit;							\
   significand -= ((double) digit);					\
@@ -568,11 +568,11 @@ double_to_bignum (double x)
 	  DTB_WRITE_DIGIT (BIGNUM_DIGIT_LENGTH);
 	else
 	  {
-	    significand *= (1L << BIGNUM_DIGIT_LENGTH);
+	    significand *= (1UL << BIGNUM_DIGIT_LENGTH);
 	    digit = ((bignum_digit_type) significand);
 	    (*--scan)
 	      = (digit
-		 & (((1L << n_valid_bits) - 1)
+		 & (((1UL << n_valid_bits) - 1UL)
 		    << (BIGNUM_DIGIT_LENGTH - n_valid_bits)));
 	    significand = 0.0;
 	    n_valid_bits = 0;
@@ -627,12 +627,12 @@ bignum_to_double (bignum_type bignum)
     int current_digit_bit_count = 0;
 
     ULONG_LENGTH_IN_BITS (msd, current_digit_bit_count);
-    mask = (1 << (current_digit_bit_count)) - 1;
+    mask = ((1UL << current_digit_bit_count) - 1UL);
 
     while (1) {
       if (current_digit_bit_count > bits_to_get) {
-	guard_bit_mask = (1 << (current_digit_bit_count - bits_to_get - 1));
-	mask &= ~((guard_bit_mask << 1) - 1);
+	guard_bit_mask = (1UL << (current_digit_bit_count - bits_to_get - 1));
+	mask &= ~((guard_bit_mask << 1) - 1UL);
 	current_digit_bit_count = bits_to_get;
 	bits_to_get = 0;
       } else {
@@ -672,7 +672,7 @@ bignum_to_double (bignum_type bignum)
 
     /* cases 110000 and 1101xx: test "odd?", i.e. round-to-even rounds up */
     if ((guard_bit_mask << 1) == BIGNUM_RADIX) {
-      if (((BIGNUM_REF (bignum, index+1)) & 1) != 0)  /* "odd?" */
+      if (((BIGNUM_REF (bignum, index+1)) & 1UL) != 0)  /* "odd?" */
 	goto round_up;
     } else {
       if (((BIGNUM_REF (bignum, index)) & (guard_bit_mask << 1)) != 0)
@@ -761,7 +761,7 @@ bignum_fits_in_word_p (bignum_type bignum, long word_length,
     {
       bignum_digit_type msd = (BIGNUM_REF (bignum, (length - 1)));
       bignum_digit_type max
-	= (1L << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH)));
+	= (1UL << (n_bits - ((length - 1) * BIGNUM_DIGIT_LENGTH)));
       return
 	(((msd < max)
 	  || (twos_complement_p
@@ -1537,7 +1537,7 @@ bignum_destructive_normalization (bignum_type source, bignum_type target,
   bignum_digit_type * end_source = (scan_source + (BIGNUM_LENGTH (source)));
   bignum_digit_type * end_target = (scan_target + (BIGNUM_LENGTH (target)));
   int shift_right = (BIGNUM_DIGIT_LENGTH - shift_left);
-  bignum_digit_type mask = ((1L << shift_right) - 1);
+  bignum_digit_type mask = ((1UL << shift_right) - 1UL);
   while (scan_source < end_source)
     {
       digit = (*scan_source++);
@@ -1559,7 +1559,7 @@ bignum_destructive_unnormalization (bignum_type bignum, int shift_right)
   bignum_digit_type digit;
   bignum_digit_type carry = 0;
   int shift_left = (BIGNUM_DIGIT_LENGTH - shift_right);
-  bignum_digit_type mask = ((1L << shift_right) - 1);
+  bignum_digit_type mask = ((1UL << shift_right) - 1UL);
   while (start < scan)
     {
       digit = (*--scan);
