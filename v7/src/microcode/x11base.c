@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.94 2007/04/22 16:31:23 cph Exp $
+$Id: x11base.c,v 1.95 2007/07/15 21:40:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1169,6 +1169,8 @@ key_event (struct xwindow * xw, XKeyEvent * event, enum event_type type)
 		    (sizeof (copy_buffer)),
 		    (&keysym),
 		    (&compose_status)));
+  if (keysym == NoSymbol)
+    return (SHARP_F);
   /* If the BackSpace keysym is received, and XLookupString has
      translated it into ASCII backspace, substitute ASCII rubout
      instead.  */
