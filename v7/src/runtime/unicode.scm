@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.34 2007/07/07 17:22:19 cph Exp $
+$Id: unicode.scm,v 1.35 2007/07/23 01:39:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -141,7 +141,7 @@ USA.
 
 (define (unicode-code-point? object)
   (and (%unicode-code-point? object)
-       (not (non-character? object))))
+       (not (illegal? object))))
 
 (define (%unicode-code-point? object)
   (and (index-fixnum? object)
@@ -151,15 +151,26 @@ USA.
 
 (define-integrable (legal-code-32? pt)
   (and (fix:< pt char-code-limit)
-       (not (non-character? pt))))
+       (not (illegal? pt))))
 
 (define-integrable (legal-code-16? pt)
-  (not (non-character? pt)))
+  (not (illegal? pt)))
+
+(define-integrable (illegal? pt)
+  (or (and (fix:>= pt #xD800) (fix:< pt #xDFFF))
+      (fix:= pt #xFFFE)
+      (fix:= pt #xFFFF)))
+
+#|
+
+Not used at the moment.
 
 (define-integrable (non-character? pt)
   (or (and (fix:>= pt #xD800) (fix:< pt #xDFFF))
       (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
       (fix:= #x00FFFE (fix:and #x00FFFE pt))))
+
+|#
 
 ;;;; Alphabets
 
@@ -816,7 +827,7 @@ USA.
 		    (error "Illegal UTF-16 subsequent digit:" d1))
 		(combine-surrogates d0 d1))
 	      (begin
-		(if (non-character? d0)
+		(if (illegal? d0)
 		    (error:not-unicode-code-point d0 caller))
 		d0))))))
 
@@ -992,7 +1003,7 @@ USA.
 		 (let ((b1 (get-next)))
 		   (%vc3 b0 b1)
 		   (let ((pt (%cp3 b0 b1 (get-next))))
-		     (if (non-character? pt)
+		     (if (illegal? pt)
 			 (error:not-unicode-code-point pt caller))
 		     pt)))
 		((fix:< b0 #xF8)
