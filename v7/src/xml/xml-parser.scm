@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.76 2007/07/23 02:46:09 cph Exp $
+$Id: xml-parser.scm,v 1.77 2007/07/23 04:12:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -386,8 +386,7 @@ USA.
 	(if (there-exists? (cdr attrs)
 	      (lambda (attr)
 		(xml-name=? (xml-attribute-name attr) name)))
-	    (perror p "Attributes with same name"
-		    (xml-name-qname name)))))))
+	    (perror p "Attributes with same name" (xml-name-qname name)))))))
 
 (define (parse-element-content b p name)
   (let ((vc (parse-content b)))
@@ -535,21 +534,26 @@ USA.
   (*parser
    (with-pointer p
      (map (lambda (s) (cons (make-xml-qname s) p))
-	  (match match-name)))))
+	  (match match-qname)))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
-    (*parser (require-success m (map make-xml-qname (match match-name))))))
+    (*parser (require-success m (map make-xml-qname (match match-ncname))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
 (define parse-pi-name (simple-name-parser "processing-instructions"))
 (define parse-notation-name (simple-name-parser "notation"))
 
-(define (match-name buffer)
-  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
+(define match-qname
+  (*matcher
+   (seq match-ncname
+	(? (seq ":" match-ncname)))))
+
+(define (match-ncname buffer)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:ncname-initial)
        (let loop ()
 	 (if (match-parser-buffer-char-in-alphabet buffer
-						   alphabet:name-subsequent)
+						   alphabet:ncname-subsequent)
 	     (loop)
 	     #t))))
 
@@ -580,25 +584,24 @@ USA.
 		  (let ((forbidden-uri
 			 (lambda ()
 			   (perror p "Forbidden namespace URI" value))))
-		    (let ((guarantee-legal-uri
-			   (lambda ()
-			     (if (or (string=? value xml-uri-string)
-				     (string=? value xmlns-uri-string))
-				 (forbidden-uri)))))
-		      (cond ((xml-name=? qname 'xmlns)
-			     (string->uri value) ;signals error if not URI
-			     (guarantee-legal-uri)
-			     (cons (cons (null-xml-name-prefix) value) tail))
-			    ((xml-name-prefix=? qname 'xmlns)
-			     (if (xml-name=? qname 'xmlns:xmlns)
-				 (perror p "Illegal namespace prefix" qname))
-			     (string->uri value) ;signals error if not URI
-			     (if (xml-name=? qname 'xmlns:xml)
-				 (if (not (string=? value xml-uri-string))
-				     (forbidden-uri))
-				 (guarantee-legal-uri))
-			     (cons (cons (xml-name-local qname) value) tail))
-			    (else tail))))))
+		    (cond ((xml-name=? qname 'xmlns)
+			   (string->uri value) ;signals error if not URI
+			   (if (or (string=? value xml-uri-string)
+				   (string=? value xmlns-uri-string))
+			       (forbidden-uri))
+			   (cons (cons (null-xml-name-prefix) value) tail))
+			  ((xml-name-prefix=? qname 'xmlns)
+			   (if (xml-name=? qname 'xmlns:xmlns)
+			       (perror p "Illegal namespace prefix" qname))
+			   (string->uri value) ;signals error if not URI
+			   (if (if (xml-name=? qname 'xmlns:xml)
+				   (not (string=? value xml-uri-string))
+				   (or (string-null? value)
+				       (string=? value xml-uri-string)
+				       (string=? value xmlns-uri-string)))
+			       (forbidden-uri))
+			   (cons (cons (xml-name-local qname) value) tail))
+			  (else tail)))))
 	      *prefix-bindings*)))
   unspecific)
 
@@ -726,7 +729,7 @@ USA.
 	 (alt (seq "#"
 		   (alt match-decimal
 			(seq "x" match-hexadecimal)))
-	      match-name)
+	      match-qname)
 	 ";"))))
 
 (define parse-entity-reference-name	;[68]
@@ -735,7 +738,7 @@ USA.
      parse-entity-name)))
 
 (define parse-entity-reference-deferred
-  (*parser (match (seq "&" match-name ";"))))
+  (*parser (match (seq "&" match-qname ";"))))
 
 (define parse-parameter-entity-reference-name ;[69]
   (*parser
@@ -785,7 +788,7 @@ USA.
 			 (lambda (a) (car a))))
 
 (define parse-declaration-attributes
-  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))
+  (attribute-list-parser (*parser (map make-xml-qname (match match-qname)))
 			 (lambda (a) a)))
 
 (define (attribute-value-parser alphabet parse-reference)

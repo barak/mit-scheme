@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.17 2007/07/23 02:46:07 cph Exp $
+$Id: xml-names.scm,v 1.18 2007/07/23 04:12:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -41,16 +41,10 @@ USA.
     (if (string-null? uri-string)
 	qname
 	(begin
-	  (if (not (let ((s (symbol-name qname)))
-		     (let ((c (find-prefix-separator s)))
-		       (case c
-			 ((#f) #t)
-			 ((ILLEGAL) #f)
-			 (else
-			  (case (utf8-string->symbol (string-head s c))
-			    ((xml) (string=? uri-string xml-uri-string))
-			    ((xmlns) (string=? uri-string xmlns-uri-string))
-			    (else #t)))))))
+	  (if (not (case (xml-qname-prefix qname)
+		     ((xml) (string=? uri-string xml-uri-string))
+		     ((xmlns) (string=? uri-string xmlns-uri-string))
+		     (else #t)))
 	      (error:bad-range-argument uri-string 'MAKE-XML-NAME))
 	  (%make-xml-name qname uri-string)))))
 
@@ -76,12 +70,7 @@ USA.
   (or (xml-qname? object)
       (combo-name? object)))
 
-(define (guarantee-xml-name object caller)
-  (if (not (xml-name? object))
-      (error:not-xml-name object caller)))
-
-(define (error:not-xml-name object caller)
-  (error:wrong-type-argument object "an XML Name" caller))
+(define-guarantee xml-name "an XML Name")
 
 (define (null-xml-namespace-uri? object)
   (and (uri? object)
@@ -110,22 +99,26 @@ USA.
   (and (symbol? object)
        (string-is-xml-nmtoken? (symbol-name object))))
 
-(define (guarantee-xml-nmtoken object caller)
-  (if (not (xml-nmtoken? object))
-      (error:not-xml-nmtoken object caller)))
-
-(define (error:not-xml-nmtoken object caller)
-  (error:wrong-type-argument object "an XML name token" caller))
+(define-guarantee xml-nmtoken "an XML name token")
 
 (define (xml-nmtoken-string nmtoken)
   (guarantee-xml-nmtoken nmtoken 'XML-NMTOKEN-STRING)
   (symbol-name nmtoken))
 
-(define (string-is-xml-name? string)
-  (eq? (string-is-xml-nmtoken? string) 'NAME))
+(define (string-is-xml-qname? string)
+  (let ((end (string-length string)))
+    (let ((c (substring-find-next-char string 0 end #\:)))
+      (if c
+	  (and (not (substring-find-next-char string (fix:+ c 1) end #\:))
+	       (string-is-xml-name? string 0 c)
+	       (string-is-xml-name? string (fix:+ c 1) end))
+	  (string-is-xml-name? string 0 end)))))
 
-(define (string-is-xml-nmtoken? string)
-  (let ((buffer (utf8-string->parser-buffer string)))
+(define (string-is-xml-name? string #!optional start end)
+  (eq? (string-is-xml-nmtoken? string start end) 'NAME))
+
+(define (string-is-xml-nmtoken? string #!optional start end)
+  (let ((buffer (utf8-string->parser-buffer string start end)))
     (letrec
 	((match-tail
 	  (lambda ()
@@ -218,7 +211,7 @@ USA.
 (define (make-xml-qname object)
   (if (string? object)
       (begin
-	(if (not (string-is-xml-name? object))
+	(if (not (string-is-xml-qname? object))
 	    (error:bad-range-argument object 'MAKE-XML-QNAME))
 	(utf8-string->symbol object))
       (begin
@@ -227,48 +220,29 @@ USA.
 
 (define (xml-qname? object)
   (and (interned-symbol? object)
-       (string-is-xml-name? (symbol-name object))))
+       (string-is-xml-qname? (symbol-name object))))
 
-(define (guarantee-xml-qname object caller)
-  (if (not (xml-qname? object))
-      (error:not-xml-qname object caller)))
-
-(define (error:not-xml-qname object caller)
-  (error:wrong-type-argument object "an XML QName" caller))
+(define-guarantee xml-qname "an XML QName")
 
 (define (xml-qname-string qname)
   (guarantee-xml-qname qname 'XML-QNAME-STRING)
   (symbol->utf8-string qname))
 
 (define (xml-qname-local qname)
+  (guarantee-xml-qname qname 'XML-QNAME-LOCAL)
   (let ((s (symbol-name qname)))
-    (let ((c (find-prefix-separator s)))
-      (if (or (not c) (eq? c 'ILLEGAL))
-	  qname
-	  (utf8-string->symbol (string-tail s (fix:+ c 1)))))))
+    (let ((c (string-find-next-char s #\:)))
+      (if c
+	  (utf8-string->symbol (string-tail s (fix:+ c 1)))
+	  qname))))
 
 (define (xml-qname-prefix qname)
+  (guarantee-xml-qname qname 'XML-QNAME-PREFIX)
   (let ((s (symbol-name qname)))
-    (let ((c (find-prefix-separator s)))
-      (if (or (not c) (eq? c 'ILLEGAL))
-	  (null-xml-name-prefix)
-	  (utf8-string->symbol (string-head s c))))))
-
-(define (find-prefix-separator s)
-  (let ((c (string-find-next-char s #\:)))
-    (if (or (not c)
-	    (let ((i (fix:+ c 1))
-		  (e (string-length s)))
-	      (and (let ((char
-			  (let ((port (open-input-string s i e)))
-			    (port/set-coding port 'UTF-8)
-			    (read-char port))))
-		     (and (not (eof-object? char))
-			  (not (char=? char #\:))
-			  (char-in-alphabet? char alphabet:name-initial)))
-		   (not (substring-find-next-char s i e #\:)))))
-	c
-	'ILLEGAL)))
+    (let ((c (string-find-next-char s #\:)))
+      (if c
+	  (utf8-string->symbol (string-head s c))
+	  (null-xml-name-prefix)))))
 
 (define-record-type <combo-name>
     (make-combo-name qname expanded)

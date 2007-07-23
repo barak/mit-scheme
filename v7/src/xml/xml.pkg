@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.92 2007/07/23 02:46:07 cph Exp $
+$Id: xml.pkg,v 1.93 2007/07/23 04:12:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -291,6 +291,8 @@ USA.
   (export (runtime xml)
 	  alphabet:name-initial
 	  alphabet:name-subsequent
+	  alphabet:ncname-initial
+	  alphabet:ncname-subsequent
 	  coding-requires-bom?
 	  normalize-coding))
 
