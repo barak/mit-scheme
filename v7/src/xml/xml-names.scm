@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.15 2007/01/17 03:43:04 cph Exp $
+$Id: xml-names.scm,v 1.16 2007/07/23 01:43:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,17 +39,16 @@ USA.
 	  (%make-xml-name qname uri)))))
 
 (define (check-prefix+uri qname uri)
-  (if (not (and (uri-absolute? uri)
-		(let ((s (symbol-name qname)))
-		  (let ((c (find-prefix-separator s)))
-		    (case c
-		      ((#f) #t)
-		      ((ILLEGAL) #f)
-		      (else
-		       (case (utf8-string->symbol (string-head s c))
-			 ((xml) (uri=? uri xml-uri))
-			 ((xmlns) (uri=? uri xmlns-uri))
-			 (else #t))))))))
+  (if (not (let ((s (symbol-name qname)))
+	     (let ((c (find-prefix-separator s)))
+	       (case c
+		 ((#f) #t)
+		 ((ILLEGAL) #f)
+		 (else
+		  (case (utf8-string->symbol (string-head s c))
+		    ((xml) (uri=? uri xml-uri))
+		    ((xmlns) (uri=? uri xmlns-uri))
+		    (else #t)))))))
       (error:bad-range-argument uri 'MAKE-XML-NAME)))
 
 (define (%make-xml-name qname uri)

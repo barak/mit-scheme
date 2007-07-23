@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.74 2007/07/23 00:34:02 cph Exp $
+$Id: xml-parser.scm,v 1.75 2007/07/23 01:43:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -573,7 +573,7 @@ USA.
 			 (lambda ()
 			   (if (string-null? value)
 			       (null-xml-namespace-uri)
-			       (string->absolute-uri value))))
+			       (string->uri value))))
 			(forbidden-uri
 			 (lambda (uri)
 			   (perror p "Forbidden namespace URI"
