@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.96 2007/06/13 13:34:47 cph Exp $
+$Id: load.scm,v 14.97 2007/07/23 04:52:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -375,9 +375,29 @@ USA.
   (let ((directory (directory-pathname (current-load-pathname))))
     (with-working-directory-pathname directory
       (lambda ()
-	(with-directory-rewriting-rule directory 
-	  (pathname-as-directory (last (uri-path uri)))
-	 thunk)))))
+	(let ((path
+	       (let ((lib (system-library-uri))
+		     (trim-path
+		      (lambda (uri)
+			(reverse! (let ((rp (reverse (uri-path uri))))
+				    (if (and (pair? rp)
+					     (string-null? (car rp)))
+					(cdr rp)
+					rp))))))
+		 (and (eq? (uri-scheme uri) (uri-scheme lib))
+		      (uri-authority=? (uri-authority uri) (uri-authority lib))
+		      (equal? (uri-query uri) (uri-query lib))
+		      (equal? (uri-fragment uri) (uri-fragment lib))
+		      (let loop ((pu (trim-path uri)) (pl (trim-path lib)))
+			(if (pair? pl)
+			    (and (pair? pu)
+				 (string=? (car pu) (car pl))
+				 (loop (cdr pu) (cdr pl)))
+			    (make-pathname #f #f (cons 'RELATIVE pu)
+					   #f #f #f)))))))
+	  (if path
+	      (with-directory-rewriting-rule directory path thunk)
+	      (thunk)))))))
 
 (define (pathname->standard-uri pathname)
   (let ((uri
