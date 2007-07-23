@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.57 2007/01/05 21:19:29 cph Exp $
+$Id: xml-struct.scm,v 1.58 2007/07/23 02:46:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -452,16 +452,16 @@ USA.
 			    (symbol-append 'xmlns: prefix))
 			elt)))
     (and value
-	 (if (string-null? value)
-	     (null-xml-namespace-uri)
-	     (->absolute-uri value)))))
+	 (begin
+	   (string->uri value)		;signals error if not URI
+	   value))))
 
-(define (xml-element-namespace-prefix elt uri)
+(define (xml-element-namespace-prefix elt uri-string)
   (let ((attr
 	 (find-matching-item (xml-element-attributes elt)
 	   (lambda (attr)
 	     (and (xml-attribute-namespace-decl? attr)
-		  (uri=? (->uri (xml-attribute-value attr)) uri))))))
+		  (string=? (xml-attribute-value attr) uri-string))))))
     (and attr
 	 (let ((name (xml-attribute-name attr)))
 	   (if (xml-name=? name 'xmlns)

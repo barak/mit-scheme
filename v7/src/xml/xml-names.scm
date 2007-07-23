@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.16 2007/07/23 01:43:39 cph Exp $
+$Id: xml-names.scm,v 1.17 2007/07/23 02:46:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,35 +31,38 @@ USA.
 
 (define (make-xml-name qname uri)
   (let ((qname (make-xml-qname qname))
-	(uri (->uri uri)))
-    (if (null-xml-namespace-uri? uri)
+	(uri-string
+	 (cond ((string? uri) uri)
+	       ((wide-string? uri) (wide-string->utf8-string uri))
+	       ((symbol? uri) (symbol-name uri))
+	       ((uri? uri) (uri->string uri))
+	       (else (error:not-uri uri 'MAKE-XML-NAME)))))
+    (string->uri uri-string)		;signals error if not URI
+    (if (string-null? uri-string)
 	qname
 	(begin
-	  (check-prefix+uri qname uri)
-	  (%make-xml-name qname uri)))))
+	  (if (not (let ((s (symbol-name qname)))
+		     (let ((c (find-prefix-separator s)))
+		       (case c
+			 ((#f) #t)
+			 ((ILLEGAL) #f)
+			 (else
+			  (case (utf8-string->symbol (string-head s c))
+			    ((xml) (string=? uri-string xml-uri-string))
+			    ((xmlns) (string=? uri-string xmlns-uri-string))
+			    (else #t)))))))
+	      (error:bad-range-argument uri-string 'MAKE-XML-NAME))
+	  (%make-xml-name qname uri-string)))))
 
-(define (check-prefix+uri qname uri)
-  (if (not (let ((s (symbol-name qname)))
-	     (let ((c (find-prefix-separator s)))
-	       (case c
-		 ((#f) #t)
-		 ((ILLEGAL) #f)
-		 (else
-		  (case (utf8-string->symbol (string-head s c))
-		    ((xml) (uri=? uri xml-uri))
-		    ((xmlns) (uri=? uri xmlns-uri))
-		    (else #t)))))))
-      (error:bad-range-argument uri 'MAKE-XML-NAME)))
-
-(define (%make-xml-name qname uri)
+(define (%make-xml-name qname uri-string)
   (let ((uname
 	 (let ((local (xml-qname-local qname)))
 	   (hash-table/intern! (hash-table/intern! expanded-names
-						   uri
+						   uri-string
 						   make-eq-hash-table)
 			       local
 			       (lambda ()
-				 (make-expanded-name uri
+				 (make-expanded-name uri-string
 						     local
 						     (make-eq-hash-table)))))))
     (hash-table/intern! (expanded-name-combos uname)
@@ -67,7 +70,7 @@ USA.
 			(lambda () (make-combo-name qname uname)))))
 
 (define expanded-names
-  (make-eq-hash-table))
+  (make-string-hash-table))
 
 (define (xml-name? object)
   (or (xml-qname? object)
@@ -87,9 +90,11 @@ USA.
 (define (null-xml-namespace-uri)
   null-namespace-uri)
 
-(define null-namespace-uri (->relative-uri ""))
-(define xml-uri (->absolute-uri "http://www.w3.org/XML/1998/namespace"))
-(define xmlns-uri (->absolute-uri "http://www.w3.org/2000/xmlns/"))
+(define null-namespace-uri (->uri ""))
+(define xml-uri-string "http://www.w3.org/XML/1998/namespace")
+(define xml-uri (->uri xml-uri-string))
+(define xmlns-uri-string "http://www.w3.org/2000/xmlns/")
+(define xmlns-uri (->uri xmlns-uri-string))
 
 (define (make-xml-nmtoken object)
   (if (string? object)
@@ -159,7 +164,7 @@ USA.
   (eq? (xml-name-qname name) qname))
 
 (define (xml-name-uri name)
-  (cond ((xml-qname? name) (null-xml-namespace-uri))
+  (cond ((xml-qname? name) "")
 	((combo-name? name) (expanded-name-uri (combo-name-expanded name)))
 	(else (error:not-xml-name name 'XML-NAME-URI))))
 

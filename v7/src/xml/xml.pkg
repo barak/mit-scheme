@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.91 2007/01/17 03:43:00 cph Exp $
+$Id: xml.pkg,v 1.92 2007/07/23 02:46:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -73,7 +73,9 @@ USA.
 	  xml-qname-string
 	  xml-qname?
 	  xml-uri
-	  xmlns-uri)
+	  xml-uri-string
+	  xmlns-uri
+	  xmlns-uri-string)
   (export (runtime xml)
 	  %make-xml-name
 	  string-composed-of?

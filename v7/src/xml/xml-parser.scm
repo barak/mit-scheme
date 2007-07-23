@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.75 2007/07/23 01:43:41 cph Exp $
+$Id: xml-parser.scm,v 1.76 2007/07/23 02:46:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -379,7 +379,15 @@ USA.
 		(set-xml-attribute-name! attr
 					 (expand-attribute-name
 					  (xml-attribute-name attr))))
-	      attrs)))
+	      attrs)
+    (do ((attrs attrs (cdr attrs)))
+	((not (pair? attrs)) unspecific)
+      (let ((name (xml-attribute-name (car attrs))))
+	(if (there-exists? (cdr attrs)
+	      (lambda (attr)
+		(xml-name=? (xml-attribute-name attr) name)))
+	    (perror p "Attributes with same name"
+		    (xml-name-qname name)))))))
 
 (define (parse-element-content b p name)
   (let ((vc (parse-content b)))
@@ -569,33 +577,27 @@ USA.
 		    (tail (loop (cdr attrs))))
 		(let ((qname (car uname))
 		      (p (cdr uname)))
-		  (let ((get-uri
+		  (let ((forbidden-uri
 			 (lambda ()
-			   (if (string-null? value)
-			       (null-xml-namespace-uri)
-			       (string->uri value))))
-			(forbidden-uri
-			 (lambda (uri)
-			   (perror p "Forbidden namespace URI"
-				   (uri->string uri)))))
+			   (perror p "Forbidden namespace URI" value))))
 		    (let ((guarantee-legal-uri
-			   (lambda (uri)
-			     (if (or (uri=? uri xml-uri)
-				     (uri=? uri xmlns-uri))
-				 (forbidden-uri uri)))))
+			   (lambda ()
+			     (if (or (string=? value xml-uri-string)
+				     (string=? value xmlns-uri-string))
+				 (forbidden-uri)))))
 		      (cond ((xml-name=? qname 'xmlns)
-			     (let ((uri (get-uri)))
-			       (guarantee-legal-uri uri)
-			       (cons (cons (null-xml-name-prefix) uri) tail)))
+			     (string->uri value) ;signals error if not URI
+			     (guarantee-legal-uri)
+			     (cons (cons (null-xml-name-prefix) value) tail))
 			    ((xml-name-prefix=? qname 'xmlns)
 			     (if (xml-name=? qname 'xmlns:xmlns)
 				 (perror p "Illegal namespace prefix" qname))
-			     (let ((uri (get-uri)))
-			       (if (xml-name=? qname 'xmlns:xml)
-				   (if (not (uri=? uri xml-uri))
-				       (forbidden-uri uri))
-				   (guarantee-legal-uri uri))
-			       (cons (cons (xml-name-local qname) uri) tail)))
+			     (string->uri value) ;signals error if not URI
+			     (if (xml-name=? qname 'xmlns:xml)
+				 (if (not (string=? value xml-uri-string))
+				     (forbidden-uri))
+				 (guarantee-legal-uri))
+			     (cons (cons (xml-name-local qname) value) tail))
 			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
@@ -608,20 +610,20 @@ USA.
 	(p (cdr uname)))
     (if *in-dtd?*
 	qname
-	(let ((uri (lookup-namespace-prefix qname p attribute-name?)))
-	  (if (null-xml-namespace-uri? uri)
+	(let ((string (lookup-namespace-prefix qname p attribute-name?)))
+	  (if (string-null? string)
 	      qname
-	      (%make-xml-name qname uri))))))
+	      (%make-xml-name qname string))))))
 
 (define (lookup-namespace-prefix qname p attribute-name?)
   (let ((prefix (xml-qname-prefix qname)))
     (cond ((eq? prefix 'xmlns)
-	   xmlns-uri)
+	   xmlns-uri-string)
 	  ((eq? prefix 'xml)
-	   xml-uri)
+	   xml-uri-string)
 	  ((and attribute-name?
 		(null-xml-name-prefix? prefix))
-	   (null-xml-namespace-uri))
+	   "")
 	  (else
 	   (let ((entry (assq prefix *prefix-bindings*)))
 	     (if entry
@@ -629,7 +631,7 @@ USA.
 		 (begin
 		   (if (not (null-xml-name-prefix? prefix))
 		       (perror p "Undeclared XML prefix" prefix))
-		   (null-xml-namespace-uri))))))))
+		   "")))))))
 
 ;;;; Processing instructions
 
