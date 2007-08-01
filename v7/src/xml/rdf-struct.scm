@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.28 2007/08/01 00:13:35 cph Exp $
+$Id: rdf-struct.scm,v 1.29 2007/08/01 00:15:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -158,37 +158,6 @@ USA.
 (define (rdf-literal=? l1 l2)
   (and (string=? (rdf-literal-text l1) (rdf-literal-text l2))
        (eq? (%rdf-literal-type l1) (%rdf-literal-type l2))))
-
-;;;; Triples index (deprecated)
-
-(define-record-type <rdf-index>
-    (%make-rdf-index subjects predicates objects)
-    rdf-index?
-  (subjects rdf-index-subjects)
-  (predicates rdf-index-predicates)
-  (objects rdf-index-objects))
-
-(define-guarantee rdf-index "RDF index")
-
-(define (make-rdf-index)
-  (%make-rdf-index (make-eq-hash-table)
-		   (make-eq-hash-table)
-		   (make-eq-hash-table)))
-
-(define (add-to-rdf-index triple index)
-  (let ((add
-	 (lambda (key index)
-	   (hash-table/put! index
-			    key
-			    (cons triple
-				  (hash-table/get index
-						  key
-						  '()))))))
-    (add (rdf-triple-subject triple) (rdf-index-subjects index))
-    (add (rdf-triple-predicate triple) (rdf-index-predicates index))
-    (let ((o (rdf-triple-object triple)))
-      (if (not (rdf-literal? o))
-	  (add o (rdf-index-objects index))))))
 
 ;;;; Qnames
 

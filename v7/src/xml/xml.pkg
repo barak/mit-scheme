@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.94 2007/08/01 00:13:37 cph Exp $
+$Id: xml.pkg,v 1.95 2007/08/01 00:15:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -536,32 +536,27 @@ USA.
   (export ()
 	  *default-rdf-prefix-registry*
 	  <rdf-bnode>
-	  <rdf-index>
 	  <rdf-literal>
 	  <rdf-prefix-registry>
 	  <rdf-triple>
-	  add-to-rdf-index
 	  canonicalize-rdf-object
 	  canonicalize-rdf-predicate
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
 	  error:not-rdf-bnode
-	  error:not-rdf-index
 	  error:not-rdf-literal
 	  error:not-rdf-prefix
 	  error:not-rdf-prefix-registry
 	  error:not-rdf-qname
 	  error:not-rdf-triple
 	  guarantee-rdf-bnode
-	  guarantee-rdf-index
 	  guarantee-rdf-literal
 	  guarantee-rdf-prefix
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
 	  make-rdf-bnode
-	  make-rdf-index
 	  make-rdf-literal
 	  make-rdf-qname
 	  make-rdf-triple
@@ -571,10 +566,6 @@ USA.
 	  port/set-rdf-prefix-registry
 	  rdf-bnode-name
 	  rdf-bnode?
-	  rdf-index-objects
-	  rdf-index-predicates
-	  rdf-index-subjects
-	  rdf-index?
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
