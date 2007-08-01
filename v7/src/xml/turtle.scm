@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.23 2007/02/22 18:41:18 cph Exp $
+$Id: turtle.scm,v 1.24 2007/08/01 00:13:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,13 +36,15 @@ USA.
     (call-with-input-file pathname
       (lambda (port)
 	(port/set-coding port 'UTF-8)
-	(fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
-	  (post-process-parser-output
-	   (parse-turtle-doc (input-port->parser-buffer port))
-	   (if (default-object? base-uri)
-	       (pathname->uri (merge-pathnames pathname))
-	       (merge-uris (file-namestring pathname)
-			   (->absolute-uri base-uri 'READ-TURTLE-FILE)))))))))
+	(with-rdf-input-port port
+	  (lambda ()
+	    (post-process-parser-output
+	     (parse-turtle-doc (input-port->parser-buffer port))
+	     (if (default-object? base-uri)
+		 (pathname->uri (merge-pathnames pathname))
+		 (merge-uris
+		  (file-namestring pathname)
+		  (->absolute-uri base-uri 'READ-RDF/TURTLE-FILE))))))))))
 
 (define (parse-turtle-doc buffer)
   (parse:ws* buffer)

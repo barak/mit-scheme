@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.27 2007/01/17 21:00:48 cph Exp $
+$Id: rdf-struct.scm,v 1.28 2007/08/01 00:13:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -101,20 +101,15 @@ USA.
 	       (match (+ (char-set digits))))
 	  (noise (end-of-input))))))
 
-(define (make-rdf-bnode-registry)
-  (make-string-hash-table))
+(define (with-rdf-input-port port thunk)
+  (fluid-let ((*rdf-bnode-registry*
+	       (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
+		   (let ((table (make-string-hash-table)))
+		     (port/set-property! port 'RDF-BNODE-REGISTRY table)
+		     table))))
+    (thunk)))
 
-(define *rdf-bnode-registry*
-  (make-rdf-bnode-registry))
-
-(define (port/rdf-bnode-registry port)
-  (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
-      (let ((table (make-rdf-bnode-registry)))
-	(port/set-property! port 'RDF-BNODE-REGISTRY table)
-	table)))
-
-(define (port/drop-rdf-bnode-registry port)
-  (port/remove-property! port 'RDF-BNODE-REGISTRY))
+(define *rdf-bnode-registry*)
 
 ;;;; Literals
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.93 2007/07/23 04:12:41 cph Exp $
+$Id: xml.pkg,v 1.94 2007/08/01 00:13:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -535,7 +535,6 @@ USA.
   (parent (runtime rdf))
   (export ()
 	  *default-rdf-prefix-registry*
-	  *rdf-bnode-registry*
 	  <rdf-bnode>
 	  <rdf-index>
 	  <rdf-literal>
@@ -561,7 +560,6 @@ USA.
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
-	  make-rdf-bnode-registry
 	  make-rdf-bnode
 	  make-rdf-index
 	  make-rdf-literal
@@ -569,8 +567,6 @@ USA.
 	  make-rdf-triple
 	  merge-rdf-prefix-registry!
 	  new-rdf-prefix-registry
-	  port/drop-rdf-bnode-registry
-	  port/rdf-bnode-registry
 	  port/rdf-prefix-registry
 	  port/set-rdf-prefix-registry
 	  rdf-bnode-name
@@ -599,9 +595,9 @@ USA.
 	  register-rdf-prefix
 	  split-rdf-qname
 	  uri->rdf-prefix
-	  uri->rdf-qname)
+	  uri->rdf-qname
+	  with-rdf-input-port)
   (export (runtime rdf)
-	  %make-rdf-literal
 	  match-language))
 
 (define-package (runtime rdf nt)

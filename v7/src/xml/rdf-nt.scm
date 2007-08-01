@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.12 2007/01/05 21:19:29 cph Exp $
+$Id: rdf-nt.scm,v 1.13 2007/08/01 00:13:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,40 +32,31 @@ USA.
 ;;;; Decoder
 
 (define (read-rdf/nt-file pathname)
-  (fluid-let ((*rdf-bnode-registry* (make-rdf-bnode-registry)))
-    (call-with-input-file pathname
-      (lambda (port)
-	(let loop ((triples '()))
-	  (let ((triple (%read-rdf/nt port)))
-	    (if (eof-object? triple)
-		triples
-		(loop (cons triple triples)))))))))
+  (call-with-input-file pathname
+    (lambda (port)
+      (let loop ((triples '()))
+	(let ((triple (read-rdf/nt port)))
+	  (if (eof-object? triple)
+	      triples
+	      (loop (cons triple triples))))))))
 
 (define (rdf/nt-file->source pathname)
-  (let ((port (open-input-file pathname))
-	(registry (make-rdf-bnode-registry)))
+  (let ((port (open-input-file pathname)))
     (lambda ()
-      (let ((triple
-	     (fluid-let ((*rdf-bnode-registry* registry))
-	       (%read-rdf/nt port))))
+      (let ((triple (read-rdf/nt port)))
 	(if (eof-object? triple)
 	    #f
 	    triple)))))
 
 (define (read-rdf/nt port)
-  (fluid-let ((*rdf-bnode-registry* (port/rdf-bnode-registry port)))
-    (let ((triple (%read-rdf/nt port)))
-      (if (eof-object? triple)
-	  (port/drop-rdf-bnode-registry port))
-      triple)))
-
-(define (%read-rdf/nt port)
   (let loop ()
     (let ((line (read-line port)))
       (if (eof-object? line)
 	  line
 	  (let ((v
-		 (or (parse-one-line (string->parser-buffer line))
+		 (or (with-rdf-input-port port
+		       (lambda ()
+			 (parse-one-line (string->parser-buffer line))))
 		     (error "Failed to parse RDF/NT line:" line))))
 	    (if (fix:= (vector-length v) 0)
 		(loop)
@@ -118,7 +109,7 @@ USA.
 (define parse-literal
   (*parser
    (encapsulate (lambda (v)
-		  (%make-rdf-literal (vector-ref v 0) (vector-ref v 1)))
+		  (make-rdf-literal (vector-ref v 0) (vector-ref v 1)))
      (seq #\"
 	  parse-string
 	  #\"
