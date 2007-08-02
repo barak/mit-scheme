@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.24 2007/08/01 00:13:36 cph Exp $
+$Id: turtle.scm,v 1.25 2007/08/02 04:44:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,16 +51,20 @@ USA.
   (discard-parser-buffer-head! buffer)
   (let loop ((items '()))
     (if (peek-parser-buffer-char buffer)
-	(let ((v
-	       (or (parse:directive buffer)
-		   (parse:triples buffer)
-		   (parser-buffer-error buffer "Expected subject"))))
+	(let ((item (parse-turtle-item buffer)))
 	  (parse:ws* buffer)
-	  (if (not (match-parser-buffer-char buffer #\.))
-	      (parser-buffer-error buffer "Expected dot"))
-	  (parse:ws* buffer)
-	  (loop (cons (vector-ref v 0) items)))
+	  (loop (cons item items)))
 	(reverse! items))))
+
+(define (parse-turtle-item buffer)
+  (let ((v
+	 (or (parse:directive buffer)
+	     (parse:triples buffer)
+	     (parser-buffer-error buffer "Expected subject"))))
+    (parse:ws* buffer)
+    (if (not (match-parser-buffer-char buffer #\.))
+	(parser-buffer-error buffer "Expected dot"))
+    (vector-ref v 0)))
 
 (define parse:directive
   (*parser
@@ -94,9 +98,7 @@ USA.
 
 (define parse:predicate-object-list-1
   (*parser
-   (encapsulate (lambda (v)
-		  (cons (vector-ref v 0)
-			(vector-ref v 1)))
+   (encapsulate (lambda (v) (cons (vector-ref v 0) (vector-ref v 1)))
      (seq (alt parse:resource
 	       (map (lambda (v) v rdf:type)
 		    (match "a")))
@@ -107,7 +109,7 @@ USA.
 		 (* (seq parse:ws* "," parse:ws* parse:object-required))))))))
 
 (define parse:subject
-  (*parser (alt parse:resource parse:blank)))
+  (*parser (alt parse:resource parse:blank parse:graph)))
 
 (define parse:object-required
   (*parser
@@ -115,7 +117,7 @@ USA.
 	(error #f "Expected object"))))
 
 (define parse:object
-  (*parser (alt parse:resource parse:blank parse:literal)))
+  (*parser (alt parse:resource parse:blank parse:graph parse:literal)))
 
 (define parse:resource
   (*parser
@@ -149,6 +151,15 @@ USA.
 				   parse:object))
 			   parse:ws*
 			   (alt ")" (error p "Malformed list"))))))))))
+
+(define parse:graph
+  (*parser
+   (encapsulate (lambda (v) (cons 'GRAPH (vector->list v)))
+     (seq "{"
+	  parse:ws*
+	  (* (seq parse-turtle-item
+		  parse:ws*))
+	  "}"))))
 
 (define parse:name
   (*parser (match match:name)))
@@ -418,7 +429,7 @@ USA.
 			   ">"
 			   alphabet:ucharacter
 			   parse:ucharacter-escape))
-
+
 ;;;; Whitespace
 
 (define parse:ws*
@@ -442,7 +453,7 @@ USA.
 			     (not (char=? char #\newline))))
 		      (loop)))
 		#t)))))
-
+
 ;;;; Post-processing
 
 ;;; This code does prefix expansion and URI merging.
@@ -450,26 +461,27 @@ USA.
 (define (post-process-parser-output stmts base-uri)
   (let ((registry (new-rdf-prefix-registry)))
     (values
-     (let ((prefixes
-	    (map (lambda (p)
-		   (let ((prefix (cadr p))
-			 (v (uri->string (merge-uris (caddr p) base-uri))))
-		     (if prefix
-			 (register-rdf-prefix (symbol prefix ':) v registry))
-		     (cons prefix v)))
-		 (keep-matching-items stmts
-		   (lambda (stmt)
-		     (eq? (car stmt) 'PREFIX))))))
-       (append-map! (lambda (stmt)
-		      (case (car stmt)
-			((triples)
-			 (post-process-triples (cadr stmt)
-					       (cddr stmt)
-					       prefixes
-					       base-uri))
-			((prefix) '())
-			(else (error "Unknown statement:" stmt))))
-		    stmts))
+     (make-rdf-graph
+      (let ((prefixes
+	     (map (lambda (p)
+		    (let ((prefix (cadr p))
+			  (v (uri->string (merge-uris (caddr p) base-uri))))
+		      (if prefix
+			  (register-rdf-prefix (symbol prefix ':) v registry))
+		      (cons prefix v)))
+		  (keep-matching-items stmts
+		    (lambda (stmt)
+		      (eq? (car stmt) 'PREFIX))))))
+	(append-map! (lambda (stmt)
+		       (case (car stmt)
+			 ((triples)
+			  (post-process-triples (cadr stmt)
+						(cddr stmt)
+						prefixes
+						base-uri))
+			 ((prefix) '())
+			 (else (error "Unknown statement:" stmt))))
+		     stmts)))
      registry)))
 
 (define (post-process-triples subject pols prefixes base-uri)
@@ -515,6 +527,19 @@ USA.
 	    (let ((s (make-rdf-bnode)))
 	      (values s
 		      (post-process-pols s (cdr resource) prefixes base-uri))))
+	   ((graph)
+	    (values (make-rdf-graph
+		     (append-map! (lambda (stmt)
+				    (case (car stmt)
+				      ((triples)
+				       (post-process-triples (cadr stmt)
+							     (cddr stmt)
+							     prefixes
+							     base-uri))
+				      (else
+				       (error "Illegal statement:" stmt))))
+				  (cdr resource)))
+		    '()))
 	   ((typed-literal)
 	    (receive (uri triples)
 		(post-process-resource (caddr resource) prefixes base-uri)
@@ -556,18 +581,18 @@ USA.
 
 ;;;; Encoder
 
-(define (write-rdf/turtle-file triples registry pathname)
+(define (write-rdf/turtle-file graph registry pathname)
   (call-with-output-file pathname
     (lambda (port)
       (port/set-coding port 'UTF-8)
       (port/set-rdf-prefix-registry port registry)
-      (write-rdf/turtle triples port))))
+      (write-rdf/turtle graph port))))
 
-(define (write-rdf/turtle triples port)
-  (write-rdf/turtle-prefixes triples port)
-  (write-rdf/turtle-triples triples port))
+(define (write-rdf/turtle graph port)
+  (write-prefixes graph port)
+  (write-rdf/turtle-triples graph port))
 
-(define (write-rdf/turtle-prefixes triples port)
+(define (write-prefixes graph port)
   (let ((table (make-eq-hash-table)))
     (let ((check-obj
 	   (lambda (o)
@@ -580,7 +605,7 @@ USA.
 		  (check-obj (rdf-triple-subject t))
 		  (check-obj (rdf-triple-predicate t))
 		  (check-obj (rdf-triple-object t)))
-		triples))
+		(rdf-graph-triples graph)))
     (for-each (lambda (p)
 		(write-rdf/turtle-prefix (car p) (cdr p) port))
 	      (sort (hash-table->alist table)
@@ -598,58 +623,51 @@ USA.
   (write-string "> ." port)
   (newline port))
 
-(define (write-rdf/turtle-triples triples port)
-  (let ((triples (eliminate-unused-bnodes triples)))
-    (receive (uris in-line out-of-line)
-	(classify-list triples
-		       3
-		       (lambda (t)
-			 (let ((s (rdf-triple-subject t)))
-			   (cond ((uri? s) 0)
-				 ((= (count-matching-items triples
-				       (lambda (t)
-					 (eq? (rdf-triple-object t) s)))
-				     1)
-				  1)
-				 (else 2)))))
-      (let ((inline-bnode
-	     (let ((in-line (group-triples-by-subject in-line)))
-	       (lambda (bnode)
-		 (find-matching-item in-line
-		   (lambda (ts)
-		     (eq? (rdf-triple-subject (car ts)) bnode)))))))
-	(for-each (lambda (ts)
-		    (write-top-level ts inline-bnode port))
-		  (group-triples-by-subject uris))
-	(for-each (lambda (ts)
-		    (write-top-level ts inline-bnode port))
-		  (group-triples-by-subject out-of-line))))))
+;;; **** Analysis of bnodes must now take graphs into account.  This
+;;; seems a little tricky.  For now we'll ignore the case where a
+;;; bnode is referred to in more than one graph.
 
-(define (eliminate-unused-bnodes triples)
-  (let ((t
-	 (find-matching-item triples
-	   (lambda (t)
-	     (let ((s (rdf-triple-subject t)))
-	       (and (rdf-bnode? s)
-		    (not (find-matching-item triples
-			   (lambda (t)
-			     (eq? (rdf-triple-object t) s))))))))))
-    (if t
-	(eliminate-unused-bnodes
-	 (let ((s (rdf-triple-subject t)))
-	   (delete-matching-items triples
-	     (lambda (t)
-	       (eq? (rdf-triple-subject t) s)))))
-	triples)))
+(define (write-rdf/turtle-triples graph port)
+  (write-triples (rdf-graph-triples graph)
+		 (indent+ 0)
+		 port))
+
+(define (write-triples triples indentation port)
+  (receive (uris in-line out-of-line)
+      (classify-list triples
+		     3
+		     (lambda (t)
+		       (let ((s (rdf-triple-subject t)))
+			 (cond ((uri? s) 0)
+			       ((= (count-matching-items triples
+				     (lambda (t)
+				       (eq? (rdf-triple-object t) s)))
+				   1)
+				1)
+			       (else 2)))))
+    (let ((inline-bnode
+	   (let ((in-line (group-triples-by-subject in-line)))
+	     (lambda (bnode)
+	       (find-matching-item in-line
+		 (lambda (ts)
+		   (eq? (rdf-triple-subject (car ts)) bnode)))))))
+      (for-each (lambda (ts)
+		  (write-top-level ts indentation inline-bnode port))
+		(group-triples-by-subject uris))
+      (for-each (lambda (ts)
+		  (write-top-level ts indentation inline-bnode port))
+		(group-triples-by-subject out-of-line)))))
 
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
 
-(define (write-top-level ts inline-bnode port)
+(define (write-top-level ts indentation inline-bnode port)
   (newline port)
-  (let ((groups (group-triples ts rdf-triple-predicate))
-	(indentation (indent+ 0)))
-    (write-rdf/turtle-subject (rdf-triple-subject (caar groups)) port)
+  (let ((groups (group-triples ts rdf-triple-predicate)))
+    (write-subject (rdf-triple-subject (caar groups))
+		   indentation
+		   inline-bnode
+		   port)
     (let ((writer
 	   (and (eq? (rdf-triple-predicate (caar groups)) rdf:type)
 		(null? (cdar groups))
@@ -658,7 +676,7 @@ USA.
       (if writer
 	  (begin
 	    (space port)
-	    (write-rdf/turtle-predicate rdf:type port)
+	    (write-predicate rdf:type port)
 	    (space port)
 	    (writer port)
 	    (write-pgroups-tail groups indentation inline-bnode port))
@@ -689,6 +707,10 @@ USA.
 	((uri? o)
 	 (lambda (port)
 	   (write-rdf/turtle-uri o port)))
+	((rdf-graph? o)
+	 (and (null? (rdf-graph-triples o))
+	      (lambda (port)
+		(write-string "{}" port))))
 	((rdf-literal? o)
 	 (lambda (port)
 	   (write-rdf/turtle-literal o port)))
@@ -709,7 +731,7 @@ USA.
   (write-indentation indentation port)
   (let ((p (rdf-triple-predicate (car ts)))
 	(os (map rdf-triple-object ts)))
-    (write-rdf/turtle-predicate p port)
+    (write-predicate p port)
     (let ((writer
 	   (and (null? (cdr os))
 		(linear-object-writer (car os) inline-bnode))))
@@ -729,6 +751,8 @@ USA.
   (cond ((linear-object-writer o inline-bnode)
 	 => (lambda (writer)
 	      (writer port)))
+	((rdf-graph? o)
+	 (write-graph o indentation inline-bnode port))
 	((rdf-list->list o inline-bnode)
 	 => (lambda (os)
 	      (write-string "(" port)
@@ -746,12 +770,22 @@ USA.
 	   (write-indentation indentation port)
 	   (write-string "]" port)))))
 
-(define (write-rdf/turtle-subject s port)
+(define (write-subject s indentation inline-bnode port)
   (cond ((uri? s) (write-rdf/turtle-uri s port))
 	((rdf-bnode? s) (write-rdf/nt-bnode s port))
+	((rdf-graph? s) (write-graph s indentation inline-bnode port))
 	(else (error "Unknown RDF subject:" s))))
 
-(define (write-rdf/turtle-predicate p port)
+(define (write-graph graph indentation inline-bnode port)
+  (write-string "{" port)
+  (write-top-level (rdf-graph-triples graph)
+		   (indent+ indentation)
+		   inline-bnode
+		   port)
+  (write-indentation indentation port)
+  (write-string "}" port))
+
+(define (write-predicate p port)
   (if (eq? p rdf:type)
       (write-string "a" port)
       (write-rdf/turtle-uri p port)))
