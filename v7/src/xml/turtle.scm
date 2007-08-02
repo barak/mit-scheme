@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.26 2007/08/02 16:54:42 cph Exp $
+$Id: turtle.scm,v 1.27 2007/08/02 17:20:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -632,7 +632,7 @@ USA.
 
 (define (write-rdf/turtle-triples graph port)
   (write-triples (rdf-graph-triples graph)
-		 (indent+ 0)
+		 0
 		 port))
 
 (define (write-triples triples indentation port)
@@ -654,19 +654,22 @@ USA.
 	       (find-matching-item in-line
 		 (lambda (ts)
 		   (eq? (rdf-triple-subject (car ts)) bnode)))))))
-      (for-each (lambda (ts)
-		  (write-top-level ts indentation inline-bnode port))
-		(group-triples-by-subject uris))
-      (for-each (lambda (ts)
-		  (write-top-level ts indentation inline-bnode port))
-		(group-triples-by-subject out-of-line)))))
+      (write-top-level uris indentation inline-bnode port)
+      (write-top-level out-of-line indentation inline-bnode port))))
 
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
 
 (define (write-top-level ts indentation inline-bnode port)
-  (newline port)
-  (let ((groups (group-triples ts rdf-triple-predicate)))
+  (if (pair? ts)
+      (for-each (lambda (group)
+		  (write-top-level-group group indentation inline-bnode port))
+		(group-triples-by-subject ts))))
+
+(define (write-top-level-group ts indentation inline-bnode port)
+  (write-indentation indentation port)
+  (let ((groups (group-triples ts rdf-triple-predicate))
+	(indentation (indent+ indentation)))
     (write-subject (rdf-triple-subject (caar groups))
 		   indentation
 		   inline-bnode
@@ -684,7 +687,6 @@ USA.
 	    (writer port)
 	    (write-pgroups-tail groups indentation inline-bnode port))
 	  (write-pgroups groups indentation inline-bnode port))))
-  (newline port)
   (write-string "." port)
   (newline port))
 
@@ -776,7 +778,10 @@ USA.
 (define (write-subject s indentation inline-bnode port)
   (cond ((uri? s) (write-rdf/turtle-uri s port))
 	((rdf-bnode? s) (write-rdf/nt-bnode s port))
-	((rdf-graph? s) (write-graph s indentation inline-bnode port))
+	((rdf-graph? s)
+	 (if (null? (rdf-graph-triples s))
+	     (write-string "{}" port)
+	     (write-graph s indentation inline-bnode port)))
 	(else (error "Unknown RDF subject:" s))))
 
 (define (write-graph graph indentation inline-bnode port)
