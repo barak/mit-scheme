@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.25 2007/08/02 04:44:19 cph Exp $
+$Id: turtle.scm,v 1.26 2007/08/02 16:54:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,20 +51,23 @@ USA.
   (discard-parser-buffer-head! buffer)
   (let loop ((items '()))
     (if (peek-parser-buffer-char buffer)
-	(let ((item (parse-turtle-item buffer)))
+	(let ((v (parse-turtle-item buffer)))
+	  (if (not v)
+	      (parser-buffer-error buffer "Expected subject"))
 	  (parse:ws* buffer)
-	  (loop (cons item items)))
+	  (loop (cons (vector-ref v 0) items)))
 	(reverse! items))))
 
 (define (parse-turtle-item buffer)
   (let ((v
 	 (or (parse:directive buffer)
-	     (parse:triples buffer)
-	     (parser-buffer-error buffer "Expected subject"))))
-    (parse:ws* buffer)
-    (if (not (match-parser-buffer-char buffer #\.))
-	(parser-buffer-error buffer "Expected dot"))
-    (vector-ref v 0)))
+	     (parse:triples buffer))))
+    (and v
+	 (begin
+	   (parse:ws* buffer)
+	   (if (not (match-parser-buffer-char buffer #\.))
+	       (parser-buffer-error buffer "Expected dot"))
+	   v))))
 
 (define parse:directive
   (*parser
