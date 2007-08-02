@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: test-turtle.scm,v 1.3 2007/01/05 21:19:29 cph Exp $
+$Id: test-turtle.scm,v 1.4 2007/08/02 04:37:58 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,7 +44,7 @@ USA.
 	       (let ((c
 		      (ignore-errors
 		       (lambda ()
-			 (read-turtle-file pathname base-uri)))))
+			 (read-rdf/turtle-file pathname base-uri)))))
 		 (if (condition? c)
 		     (write-condition-report c (current-output-port))
 		     (begin
