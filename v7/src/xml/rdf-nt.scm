@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.13 2007/08/01 00:13:33 cph Exp $
+$Id: rdf-nt.scm,v 1.14 2007/08/02 04:37:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -253,8 +253,12 @@ USA.
 	      (cond ((fix:= n #x9) (write-char #\t port))
 		    ((fix:= n #xA) (write-char #\n port))
 		    ((fix:= n #xD) (write-char #\r port))
-		    ((fix:< n #x10000) (write-hex n 4 port))
-		    (else (write-hex n 8 port))))))))
+		    ((fix:< n #x10000)
+		     (write-char #\u port)
+		     (write-hex n 4 port))
+		    (else
+		     (write-char #\U port)
+		     (write-hex n 8 port))))))))
 
 (define (write-hex n digits port)
   (let loop ((n n) (m (expt 16 digits)))
