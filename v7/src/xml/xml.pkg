@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.95 2007/08/01 00:15:44 cph Exp $
+$Id: xml.pkg,v 1.96 2007/08/02 04:40:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -536,6 +536,7 @@ USA.
   (export ()
 	  *default-rdf-prefix-registry*
 	  <rdf-bnode>
+	  <rdf-graph>
 	  <rdf-literal>
 	  <rdf-prefix-registry>
 	  <rdf-triple>
@@ -545,18 +546,23 @@ USA.
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
 	  error:not-rdf-bnode
+	  error:not-rdf-graph
 	  error:not-rdf-literal
 	  error:not-rdf-prefix
 	  error:not-rdf-prefix-registry
 	  error:not-rdf-qname
 	  error:not-rdf-triple
+	  event:new-rdf-triple
+	  for-each-rdf-triple
 	  guarantee-rdf-bnode
+	  guarantee-rdf-graph
 	  guarantee-rdf-literal
 	  guarantee-rdf-prefix
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
 	  guarantee-rdf-triple
 	  make-rdf-bnode
+	  make-rdf-graph
 	  make-rdf-literal
 	  make-rdf-qname
 	  make-rdf-triple
@@ -566,10 +572,11 @@ USA.
 	  port/set-rdf-prefix-registry
 	  rdf-bnode-name
 	  rdf-bnode?
+	  rdf-graph-triples
+	  rdf-graph?
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
-	  rdf-literal=?
 	  rdf-literal?
 	  rdf-prefix-expansion
 	  rdf-prefix-registry->alist
@@ -615,10 +622,7 @@ USA.
 	  write-rdf/turtle
 	  write-rdf/turtle-file
 	  write-rdf/turtle-literal
-	  write-rdf/turtle-predicate
 	  write-rdf/turtle-prefix
-	  write-rdf/turtle-prefixes
-	  write-rdf/turtle-subject
 	  write-rdf/turtle-triples
 	  write-rdf/turtle-uri)
   (export (runtime rdf)

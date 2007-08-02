@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.29 2007/08/01 00:15:42 cph Exp $
+$Id: rdf-struct.scm,v 1.30 2007/08/02 04:40:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,24 +27,50 @@ USA.
 
 ;;;; RDF data structures
 
+;;; Interning mechanisms used here hold onto the interned objects
+;;; strongly.  They should be changed to hold them weakly.
+
 (declare (usual-integrations))
 
+;;;; Triples
+
 (define-record-type <rdf-triple>
-    (%make-rdf-triple subject predicate object)
+    (%make-rdf-triple subject predicate object index)
     rdf-triple?
   (subject rdf-triple-subject)
   (predicate rdf-triple-predicate)
-  (object rdf-triple-object))
+  (object rdf-triple-object)
+  (index rdf-triple-index))
 
 (define-guarantee rdf-triple "RDF triple")
 
 (define (make-rdf-triple subject predicate object)
-  (%make-rdf-triple (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE)
-		    (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE)
-		    (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
+  (let ((subject (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE))
+	(predicate (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE))
+	(object (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
+    (hash-table/intern! rdf-triples (vector subject predicate object)
+      (lambda ()
+	(let ((triple
+	       (%make-rdf-triple subject predicate object (next-index))))
+	  (event-distributor/invoke! event:new-rdf-triple triple)
+	  triple)))))
+
+(define (for-each-rdf-triple procedure)
+  (for-each procedure
+	    (hash-table/datum-list rdf-triples)))
+
+(define next-index
+  (let ((counter 0))
+    (lambda ()
+      (let ((index counter))
+	(set! counter (+ counter 1))
+	index))))
+
+(define rdf-triples (make-equal-hash-table))
+(define event:new-rdf-triple (make-event-distributor))
 
 (define (canonicalize-rdf-subject subject #!optional caller)
-  (cond ((rdf-bnode? subject) subject)
+  (cond ((or (rdf-bnode? subject) (rdf-graph? subject)) subject)
 	((%decode-bnode-uri subject))
 	(else (canonicalize-rdf-uri subject caller))))
 
@@ -60,6 +86,43 @@ USA.
   (if (rdf-qname? uri)
       (rdf-qname->uri uri)
       (->absolute-uri uri caller)))
+
+;;;; Graphs
+
+(define-record-type <rdf-graph>
+    (%make-rdf-graph triples)
+    rdf-graph?
+  (triples rdf-graph-triples))
+
+(define-guarantee rdf-graph "RDF graph")
+
+(define (make-rdf-graph triples)
+  (guarantee-list-of-type triples rdf-triple? "list of RDF triples"
+			  'MAKE-RDF-GRAPH)
+  (let ((triples
+	 (if (pair? triples)
+	     (let ((head
+		    (cons 'DUMMY
+			  (sort triples
+			    (lambda (t1 t2)
+			      (< (rdf-triple-index t1)
+				 (rdf-triple-index t2)))))))
+	       (let loop ((this (cdr head)) (prev head))
+		 (let ((next (cdr this)))
+		   (if (pair? next)
+		       (if (eq? (car this) (car next))
+			   (begin
+			     (set-cdr! prev next)
+			     (loop next prev))
+			   (loop next this)))))
+	       (cdr head))
+	     '())))
+    (hash-table/intern! rdf-graphs triples
+      (lambda ()
+	(%make-rdf-graph triples)))))
+
+(define rdf-graphs
+  (make-equal-hash-table))
 
 ;;;; Blank nodes
 
@@ -121,29 +184,19 @@ USA.
 
 (define-guarantee rdf-literal "RDF literal")
 
-(set-record-type-unparser-method! <rdf-literal>
-  (standard-unparser-method 'RDF-LITERAL
-    (lambda (literal port)
-      (write-char #\space port)
-      (write-rdf/nt-literal literal port))))
-
 (define (make-rdf-literal text type)
-  (guarantee-utf8-string text 'RDF-LITERAL)
-  (%make-rdf-literal text
-		     (if (or (not type)
-			     (and (interned-symbol? type)
-				  (*match-symbol match-language type)))
-			 type
-			 (->absolute-uri type 'RDF-LITERAL))))
+  (guarantee-utf8-string text 'MAKE-RDF-LITERAL)
+  (let ((type
+	 (if (or (not type)
+		 (language? type))
+	     type
+	     (->absolute-uri type 'MAKE-RDF-LITERAL))))
+    (hash-table/intern! rdf-literals (cons text type)
+      (lambda ()
+	(%make-rdf-literal text type)))))
 
-(define match-language
-  (let* ((language-head (ascii-range->char-set #x61 #x7B))
-	 (language-tail
-	  (char-set-union language-head
-			  (ascii-range->char-set #x30 #x3A))))
-    (*matcher
-     (seq (+ (char-set language-head))
-	  (* (seq #\- (+ (char-set language-tail))))))))
+(define rdf-literals
+  (make-equal-hash-table))
 
 (define (rdf-literal-type literal)
   (let ((type (%rdf-literal-type literal)))
@@ -155,9 +208,27 @@ USA.
     (and (not (absolute-uri? type))
 	 type)))
 
+(set-record-type-unparser-method! <rdf-literal>
+  (standard-unparser-method 'RDF-LITERAL
+    (lambda (literal port)
+      (write-char #\space port)
+      (write-rdf/nt-literal literal port))))
+
 (define (rdf-literal=? l1 l2)
-  (and (string=? (rdf-literal-text l1) (rdf-literal-text l2))
-       (eq? (%rdf-literal-type l1) (%rdf-literal-type l2))))
+  (eq? l1 l2))
+
+(define (language? object)
+  (and (interned-symbol? object)
+       (*match-symbol match-language object)))
+
+(define match-language
+  (let* ((language-head (ascii-range->char-set #x61 #x7B))
+	 (language-tail
+	  (char-set-union language-head
+			  (ascii-range->char-set #x30 #x3A))))
+    (*matcher
+     (seq (+ (char-set language-head))
+	  (* (seq #\- (+ (char-set language-tail))))))))
 
 ;;;; Qnames
 
