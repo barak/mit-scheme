@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.212 2007/04/05 03:23:22 riastradh Exp $
+$Id: imail-imap.scm,v 1.213 2007/08/05 23:57:30 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1253,11 +1253,13 @@ USA.
 (define-method write-mime-message-body-part
     ((message <imap-message>) selector cache? port)
   (let ((section
-	 (map (lambda (x)
-		(if (exact-nonnegative-integer? x)
-		    (+ x 1)
-		    x))
-	      selector)))
+	 (if (pair? selector)
+	     (map (lambda (x)
+		    (if (exact-nonnegative-integer? x)
+			(+ x 1)
+			x))
+		  selector)
+	     '(TEXT))))
     (let ((entry
 	   (list-search-positive (imap-message-body-parts message)
 	     (lambda (entry)
