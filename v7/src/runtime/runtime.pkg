@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.623 2007/08/10 18:08:37 cph Exp $
+$Id: runtime.pkg,v 14.624 2007/08/10 18:09:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -510,7 +510,6 @@ USA.
 	  symbol->string
 	  symbol->utf8-string
 	  symbol->wide-string
-	  symbol-append
 	  symbol-hash
 	  symbol-hash-mod
 	  symbol-name
