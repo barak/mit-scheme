@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.64 2007/04/01 17:51:33 riastradh Exp $
+$Id: string.scm,v 14.65 2007/08/10 18:06:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -157,25 +157,56 @@ USA.
   (guarantee-string-index start 'STRING-TAIL)
   (%substring string start (string-length string)))
 
+(define (string-copy string)
+  (guarantee-string string 'STRING-COPY)
+  (%string-copy string))
+
+(define (%string-copy string)
+  (let ((size (string-length string)))
+    (let ((result (string-allocate size)))
+      (%substring-move! string 0 size result 0)
+      result)))
+
+(define (string . objects)
+  (%string-append (map ->string objects)))
+
+(define (utf8-string . objects)
+  (%string-append (map ->utf8-string objects)))
+
+(define (->string object)
+  (cond ((symbol? object) (symbol->string object))
+	((string? object) object)
+	((wide-string? object) (wide-string->string object))
+	((8-bit-char? object) (make-string 1 object))
+	(else (%->string object 'STRING))))
+
+(define (->utf8-string object)
+  (cond ((symbol? object) (symbol-name object))
+	((string? object) (string->utf8-string object))
+	((wide-string? object) (wide-string->utf8-string object))
+	((wide-char? object) (wide-string->utf8-string (wide-string object)))
+	(else (%->string object 'UTF8-STRING))))
+
+(define (%->string object caller)
+  (cond ((number? object) (number->string object))
+	((not object) "")
+	(else (error:wrong-type-argument object "string component" caller))))
+
+(define (char->string char)
+  (guarantee-8-bit-char char 'CHAR->STRING)
+  (make-string 1 char))
+
 (define (list->string chars)
   ;; LENGTH will signal an error if CHARS is not a proper list.
   (let ((result (string-allocate (length chars))))
     (let loop ((chars chars) (index 0))
       (if (pair? chars)
 	  (begin
-	    (if (not (char? (car chars)))
-		(error:wrong-type-datum (car chars) "character"))
-	    (if (not (fix:< (char->integer (car chars)) #x100))
-		(error:not-8-bit-char (car chars)))
+	    (guarantee-8-bit-char (car chars))
 	    (string-set! result index (car chars))
 	    (loop (cdr chars) (fix:+ index 1)))
 	  result))))
 
-(define (string . chars)
-  (list->string chars))
-
-(define char->string string)
-
 (define (string->list string)
   (guarantee-string string 'STRING->LIST)
   (%substring->list string 0 (string-length string)))
@@ -191,16 +222,6 @@ USA.
 	(if (fix:= start index)
 	    (cons (string-ref string index) chars)
 	    (loop (fix:- index 1) (cons (string-ref string index) chars))))))
-
-(define (string-copy string)
-  (guarantee-string string 'STRING-COPY)
-  (%string-copy string))
-
-(define (%string-copy string)
-  (let ((size (string-length string)))
-    (let ((result (string-allocate size)))
-      (%substring-move! string 0 size result 0)
-      result)))
 
 (define (string-move! string1 string2 start2)
   (guarantee-string string1 'STRING-MOVE!)

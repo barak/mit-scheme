@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.621 2007/08/10 17:57:27 cph Exp $
+$Id: runtime.pkg,v 14.622 2007/08/10 18:06:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -884,6 +884,7 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
+	  utf8-string
 	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
