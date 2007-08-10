@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.30 2007/08/02 04:40:16 cph Exp $
+$Id: rdf-struct.scm,v 1.31 2007/08/10 19:26:02 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -119,10 +119,12 @@ USA.
 	     '())))
     (hash-table/intern! rdf-graphs triples
       (lambda ()
-	(%make-rdf-graph triples)))))
+	(let ((graph (%make-rdf-graph triples)))
+	  (event-distributor/invoke! event:new-rdf-graph graph)
+	  graph)))))
 
-(define rdf-graphs
-  (make-equal-hash-table))
+(define rdf-graphs (make-equal-hash-table))
+(define event:new-rdf-graph (make-event-distributor))
 
 ;;;; Blank nodes
 
