@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.51 2007/01/17 21:01:59 cph Exp $
+$Id: url.scm,v 1.52 2007/08/10 19:07:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -389,6 +389,12 @@ USA.
 	     (vector-ref v 2)
 	     (vector-ref v 3)
 	     (vector-ref v 4)))
+
+(define (uri-prefix prefix)
+  (guarantee-utf8-string prefix 'URI-PREFIX)
+  (lambda (suffix)
+    (guarantee-utf8-string suffix 'URI-PREFIX)
+    (string->absolute-uri (string-append prefix suffix))))
 
 (define parser:uri
   (*parser
