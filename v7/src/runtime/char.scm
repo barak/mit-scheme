@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.31 2007/08/10 17:57:25 cph Exp $
+$Id: char.scm,v 14.32 2007/08/10 18:09:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -91,7 +91,7 @@ USA.
 
 (define (8-bit-char? object)
   (and (char? object)
-       (fix:< (char->integer char) 256)))
+       (fix:< (char->integer object) 256)))
 
 (define (guarantee-8-bit-char object #!optional caller)
   caller
