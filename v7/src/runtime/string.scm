@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.65 2007/08/10 18:06:20 cph Exp $
+$Id: string.scm,v 14.66 2007/08/10 19:08:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -174,22 +174,23 @@ USA.
   (%string-append (map ->utf8-string objects)))
 
 (define (->string object)
-  (cond ((symbol? object) (symbol->string object))
-	((string? object) object)
+  (cond ((string? object) object)
+	((symbol? object) (symbol->string object))
 	((wide-string? object) (wide-string->string object))
 	((8-bit-char? object) (make-string 1 object))
 	(else (%->string object 'STRING))))
 
 (define (->utf8-string object)
-  (cond ((symbol? object) (symbol-name object))
-	((string? object) (string->utf8-string object))
+  (cond ((string? object) (string->utf8-string object))
+	((symbol? object) (symbol-name object))
 	((wide-string? object) (wide-string->utf8-string object))
 	((wide-char? object) (wide-string->utf8-string (wide-string object)))
 	(else (%->string object 'UTF8-STRING))))
 
 (define (%->string object caller)
-  (cond ((number? object) (number->string object))
-	((not object) "")
+  (cond ((not object) "")
+	((number? object) (number->string object))
+	((uri? object) (uri->string object))
 	(else (error:wrong-type-argument object "string component" caller))))
 
 (define (char->string char)
