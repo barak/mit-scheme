@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.620 2007/07/07 17:22:19 cph Exp $
+$Id: runtime.pkg,v 14.621 2007/08/10 17:57:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -976,6 +976,7 @@ USA.
   (files "char")
   (parent (runtime))
   (export ()
+	  8-bit-char?
 	  ascii->char
 	  char->ascii
 	  char->digit
@@ -1012,6 +1013,7 @@ USA.
 	  digit->char
 	  error:not-char
 	  error:not-radix
+	  guarantee-8-bit-char
 	  guarantee-char
 	  guarantee-radix
 	  integer->char
@@ -1919,7 +1921,6 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
-	  guarantee-8-bit-char
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port

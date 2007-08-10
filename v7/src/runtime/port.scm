@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.50 2007/01/09 06:16:53 cph Exp $
+$Id: port.scm,v 1.51 2007/08/10 17:57:26 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -758,10 +758,6 @@ USA.
 
 (define (error:not-i/o-port port caller)
   (error:wrong-type-argument port "I/O port" caller))
-
-(define-integrable (guarantee-8-bit-char char)
-  (if (fix:>= (char->integer char) #x100)
-      (error:not-8-bit-char char)))
 
 (define (port/supports-coding? port)
   (let ((operation (port/operation port 'SUPPORTS-CODING?)))

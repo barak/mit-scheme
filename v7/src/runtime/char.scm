@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.30 2007/01/05 21:19:28 cph Exp $
+$Id: char.scm,v 14.31 2007/08/10 17:57:25 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -88,6 +88,14 @@ USA.
   (guarantee-char char 'CLEAR-CHAR-BITS)
   (%make-char (%char-code char)
 	      (fix:andc (%char-bits char) bits)))
+
+(define (8-bit-char? object)
+  (and (char? object)
+       (fix:< (char->integer char) 256)))
+
+(define (guarantee-8-bit-char object #!optional caller)
+  caller
+  (error:not-8-bit-char object))
 
 (define (char-ascii? char)
   (guarantee-char char 'CHAR-ASCII?)
@@ -96,11 +104,8 @@ USA.
 	 n)))
 
 (define (char->ascii char)
-  (guarantee-char char 'CHAR->ASCII)
-  (let ((n (char->integer char)))
-    (if (not (fix:< n 256))
-	(error:bad-range-argument char 'CHAR->ASCII))
-    n))
+  (guarantee-8-bit-char char 'CHAR->ASCII)
+  (char->integer char))
 
 (define (ascii->char code)
   (guarantee-limited-index-fixnum code 256 'ASCII->CHAR)
