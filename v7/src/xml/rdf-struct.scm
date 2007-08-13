@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.31 2007/08/10 19:26:02 cph Exp $
+$Id: rdf-struct.scm,v 1.32 2007/08/13 17:17:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -68,6 +68,24 @@ USA.
 
 (define rdf-triples (make-equal-hash-table))
 (define event:new-rdf-triple (make-event-distributor))
+
+(define (rdf-subject? thing)
+  (or (absolute-uri? thing)
+      (rdf-bnode? thing)
+      (rdf-graph? thing)))
+
+(define (rdf-predicate? thing)
+  (absolute-uri? thing))
+
+(define (rdf-object? thing)
+  (or (absolute-uri? thing)
+      (rdf-bnode? thing)
+      (rdf-graph? thing)
+      (rdf-literal? thing)))
+
+(define-guarantee rdf-subject "RDF subject")
+(define-guarantee rdf-predicate "RDF predicate")
+(define-guarantee rdf-object "RDF object")
 
 (define (canonicalize-rdf-subject subject #!optional caller)
   (cond ((or (rdf-bnode? subject) (rdf-graph? subject)) subject)
