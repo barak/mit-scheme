@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.29 2007/08/14 02:18:54 cph Exp $
+$Id: turtle.scm,v 1.30 2007/08/14 02:57:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -65,8 +65,7 @@ USA.
 	  (alt (seq "prefix"
 		    parse:ws+)
 	       (error #f "Unknown directive name"))
-	  (alt (seq parse:prefix-name
-		    ":"
+	  (alt (seq parse:prefix
 		    parse:ws+)
 	       (error #f "Expected prefix name"))
 	  (alt parse:uriref
@@ -116,8 +115,7 @@ USA.
   (*parser
    (alt (map string->uri parse:uriref)
 	(encapsulate (lambda (v) (cons 'QNAME (vector->list v)))
-	  (seq parse:prefix-name
-	       ":"
+	  (seq parse:prefix
 	       (alt parse:name (values #f)))))))
 
 (define parse:blank
@@ -151,13 +149,9 @@ USA.
      (seq "{"
 	  parse:ws*
 	  (? (seq parse:triples
-		  parse:ws*
-		  (* (seq "."
-			  parse:ws*
-			  parse:triples
-			  parse:ws*))
-		  (? (seq "."
-			  parse:ws*))))
+		  (* (seq parse:ws* "." parse:ws* parse:triples))
+		  (? (seq parse:ws* "."))
+		  parse:ws*))
 	  "}"))))
 
 (define parse:name
@@ -168,8 +162,10 @@ USA.
    (seq (alphabet alphabet:name-start-char)
 	(* (alphabet alphabet:name-char)))))
 
-(define parse:prefix-name
-  (*parser (match match:prefix-name)))
+(define parse:prefix
+  (*parser
+   (seq (match match:prefix-name)
+	":")))
 
 (define match:prefix-name
   (*matcher
@@ -690,36 +686,42 @@ USA.
 
 (define (write-top-level ts indentation inline-bnode port)
   (for-each (lambda (group)
-	      (if (not (let ((t
-			      (inline-bnode (rdf-triple-subject (car group)))))
-			 (and t
-			      (= (car t) 1))))
-		  (write-top-level-group group indentation inline-bnode port)))
-	    (group-triples-by-subject ts)))
+	      (write-group group indentation inline-bnode port)
+	      (write-string "." port)
+	      (newline port))
+	    (groups-to-write ts inline-bnode)))
 
-(define (write-top-level-group ts indentation inline-bnode port)
+(define (groups-to-write ts inline-bnode)
+  (delete-matching-items (group-triples-by-subject ts)
+    (lambda (group)
+      (let ((t (inline-bnode (rdf-triple-subject (car group)))))
+	(and t
+	     (= (car t) 1))))))
+
+(define (write-group ts indentation inline-bnode port)
   (write-indentation indentation port)
   (let ((groups (group-triples ts rdf-triple-predicate))
 	(indentation (indent+ indentation)))
-    (write-subject (rdf-triple-subject (caar groups))
-		   indentation
-		   inline-bnode
-		   port)
-    (let ((writer
-	   (and (eq? (rdf-triple-predicate (caar groups)) rdf:type)
-		(null? (cdar groups))
-		(linear-object-writer (rdf-triple-object (caar groups))
-				      inline-bnode))))
-      (if writer
-	  (begin
-	    (space port)
-	    (write-predicate rdf:type port)
-	    (space port)
-	    (writer port)
-	    (write-pgroups-tail groups indentation inline-bnode port))
-	  (write-pgroups groups indentation inline-bnode port))))
-  (write-string "." port)
-  (newline port))
+    (let ((subject-inline?
+	   (write-subject (rdf-triple-subject (caar groups))
+			  indentation
+			  inline-bnode
+			  port)))
+      (let ((writer
+	     (and subject-inline?
+		  (or (eq? (rdf-triple-predicate (caar groups)) rdf:type)
+		      (null? (cdr groups)))
+		  (null? (cdar groups))
+		  (linear-object-writer (rdf-triple-object (caar groups))
+					inline-bnode))))
+	(if writer
+	    (begin
+	      (space port)
+	      (write-predicate (rdf-triple-predicate (caar groups)) port)
+	      (space port)
+	      (writer port)
+	      (write-pgroups-tail groups indentation inline-bnode port))
+	    (write-pgroups groups indentation inline-bnode port))))))
 
 (define (linear-object-writer o inline-bnode)
   (cond ((rdf-list->list o inline-bnode)
@@ -812,24 +814,35 @@ USA.
     (write-string "]" port)))
 
 (define (write-subject s indentation inline-bnode port)
-  (cond ((uri? s) (write-rdf/turtle-uri s port))
+  (cond ((uri? s)
+	 (write-rdf/turtle-uri s port)
+	 #t)
 	((rdf-bnode? s)
 	 (let ((ts (inline-bnode s)))
 	   (if (and ts (= (car ts) 0))
 	       (write-string "[]" port)
-	       (write-rdf/nt-bnode s port))))
+	       (write-rdf/nt-bnode s port)))
+	 #t)
 	((rdf-graph? s)
 	 (if (null? (rdf-graph-triples s))
-	     (write-string "{}" port)
-	     (write-graph s indentation inline-bnode port)))
-	(else (error "Unknown RDF subject:" s))))
+	     (begin
+	       (write-string "{}" port)
+	       #t)
+	     (begin
+	       (write-graph s indentation inline-bnode port)
+	       #f)))
+	(else
+	 (error "Unknown RDF subject:" s))))
 
 (define (write-graph graph indentation inline-bnode port)
   (write-string "{" port)
-  (write-top-level (rdf-graph-triples graph)
-		   (indent+ indentation)
-		   inline-bnode
-		   port)
+  (let ((indentation (indent+ indentation)))
+    (do ((groups (groups-to-write (rdf-graph-triples graph) inline-bnode)
+		 (cdr groups)))
+	((not (pair? groups)))
+      (write-group (car groups) indentation inline-bnode port)
+      (if (pair? (cdr groups))
+	  (write-string "." port))))
   (write-indentation indentation port)
   (write-string "}" port))
 
@@ -837,7 +850,7 @@ USA.
   (if (eq? p rdf:type)
       (write-string "a" port)
       (write-rdf/turtle-uri p port)))
-
+
 (define (write-rdf/turtle-literal literal port)
   (let ((text (rdf-literal-text literal)))
     (if (let ((type (rdf-literal-type literal)))
