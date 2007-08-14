@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.27 2007/08/02 17:20:21 cph Exp $
+$Id: turtle.scm,v 1.28 2007/08/14 01:05:02 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,28 +46,17 @@ USA.
 		  (file-namestring pathname)
 		  (->absolute-uri base-uri 'READ-RDF/TURTLE-FILE))))))))))
 
-(define (parse-turtle-doc buffer)
-  (parse:ws* buffer)
-  (discard-parser-buffer-head! buffer)
-  (let loop ((items '()))
-    (if (peek-parser-buffer-char buffer)
-	(let ((v (parse-turtle-item buffer)))
-	  (if (not v)
-	      (parser-buffer-error buffer "Expected subject"))
-	  (parse:ws* buffer)
-	  (loop (cons (vector-ref v 0) items)))
-	(reverse! items))))
-
-(define (parse-turtle-item buffer)
-  (let ((v
-	 (or (parse:directive buffer)
-	     (parse:triples buffer))))
-    (and v
-	 (begin
-	   (parse:ws* buffer)
-	   (if (not (match-parser-buffer-char buffer #\.))
-	       (parser-buffer-error buffer "Expected dot"))
-	   v))))
+(define parse-turtle-doc
+  (*parser
+   (seq parse:ws*
+	(encapsulate vector->list
+	  (* (seq (alt parse:directive
+		       parse:triples)
+		  parse:ws*
+		  "."
+		  parse:ws*)))
+	(alt (noise (end-of-input))
+	     (error #f "Unable to parse")))))
 
 (define parse:directive
   (*parser
@@ -160,8 +149,14 @@ USA.
    (encapsulate (lambda (v) (cons 'GRAPH (vector->list v)))
      (seq "{"
 	  parse:ws*
-	  (* (seq parse-turtle-item
-		  parse:ws*))
+	  (? (seq parse:triples
+		  parse:ws*
+		  (* (seq "."
+			  parse:ws*
+			  parse:triples
+			  parse:ws*))
+		  (? (seq "."
+			  parse:ws*))))
 	  "}"))))
 
 (define parse:name
@@ -461,8 +456,9 @@ USA.
 
 ;;; This code does prefix expansion and URI merging.
 
-(define (post-process-parser-output stmts base-uri)
-  (let ((registry (new-rdf-prefix-registry)))
+(define (post-process-parser-output v base-uri)
+  (let ((stmts (vector-ref v 0))
+	(registry (new-rdf-prefix-registry)))
     (values
      (make-rdf-graph
       (let ((prefixes
