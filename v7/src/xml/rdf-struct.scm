@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.32 2007/08/13 17:17:45 cph Exp $
+$Id: rdf-struct.scm,v 1.33 2007/08/14 02:18:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -368,7 +368,7 @@ USA.
 (define-guarantee rdf-prefix "RDF prefix")
 
 (define match-prefix
-  (*matcher (seq (? match:prefix-name) ":")))
+  (*matcher (seq match:prefix-name ":")))
 
 (define-record-type <rdf-prefix-registry>
     (make-rdf-prefix-registry bindings)
