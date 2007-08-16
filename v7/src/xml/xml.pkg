@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.98 2007/08/13 17:17:47 cph Exp $
+$Id: xml.pkg,v 1.99 2007/08/16 14:42:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -633,6 +633,7 @@ USA.
 	  write-rdf/turtle-file
 	  write-rdf/turtle-literal
 	  write-rdf/turtle-prefix
+	  write-rdf/turtle-triple
 	  write-rdf/turtle-triples
 	  write-rdf/turtle-uri)
   (export (runtime rdf)

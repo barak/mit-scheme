@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.30 2007/08/14 02:57:34 cph Exp $
+$Id: turtle.scm,v 1.31 2007/08/16 14:42:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -620,12 +620,13 @@ USA.
   (write-string expansion port)
   (write-string "> ." port)
   (newline port))
-
-(define (write-rdf/turtle-triples graph port)
-  (write-triples (rdf-graph-triples graph)
-		 0
-		 port))
 
+(define (write-rdf/turtle-triples graph port)
+  (write-triples (rdf-graph-triples graph) 0 port))
+
+(define (write-rdf/turtle-triple triple port)
+  (write-triples (list triple) 0 port))
+
 (define (write-triples triples indentation port)
   (write-top-level triples
 		   indentation
