@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.33 2007/08/14 02:18:52 cph Exp $
+$Id: rdf-struct.scm,v 1.34 2007/08/17 03:41:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -264,7 +264,8 @@ USA.
   (guarantee-rdf-prefix-registry from-registry 'MERGE-RDF-PREFIX-REGISTRY!)
   (let ((to-registry (check-registry to-registry 'MERGE-RDF-PREFIX-REGISTRY!)))
     (for-each (lambda (p1)
-		(%register-rdf-prefix (car p1) (cdr p1) to-registry))
+		(if (not (eq? (car p1) ':))
+		    (%register-rdf-prefix (car p1) (cdr p1) to-registry)))
 	      (registry-bindings from-registry))))
 
 (define (%register-rdf-prefix prefix expansion registry)
