@@ -1,3 +1,12 @@
+mit-scheme (7.7.90+20070820-1) unstable; urgency=low
+
+  * New upstream.
+  * Fix lintian warnings:
+      W: mit-scheme: desktop-entry-invalid-category
+      W: mit-scheme: menu-item-uses-apps-section
+
+ -- Chris Hanson <cph@debian.org>  Tue, 21 Aug 2007 14:16:58 -0400
+
 mit-scheme (7.7.90+20070623-1) unstable; urgency=low
 
   * New upstream.

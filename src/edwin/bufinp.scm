@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufinp.scm,v 1.15 2007/01/05 21:19:23 cph Exp $
+$Id: bufinp.scm,v 1.16 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -89,7 +89,7 @@ USA.
 		 (let ((char (group-right-char (bstate-group state) start)))
 		   (set-bstate-start! state (fix:+ start 1))
 		   char)
-		 (make-eof-object port))))))
+		 (eof-object))))))
      (WRITE-SELF
       ,(lambda (port output)
 	 (write-string " from buffer at " output)

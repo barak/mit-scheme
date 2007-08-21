@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fixnum.c,v 9.49 2007/04/22 16:31:22 cph Exp $
+$Id: fixnum.c,v 9.50 2007/07/29 16:20:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,86 +37,82 @@ static long
 arg_fixnum (int n)
 {
   SCHEME_OBJECT argument = (ARG_REF (n));
-  if (! (FIXNUM_P (argument)))
+  if (!FIXNUM_P (argument))
     error_wrong_type_arg (n);
   return (FIXNUM_TO_LONG (argument));
 }
 
-static long
+static unsigned long
 arg_unsigned_fixnum (int n)
 {
   SCHEME_OBJECT argument = (ARG_REF (n));
-  if (! (FIXNUM_P (argument)))
+  if (!FIXNUM_P (argument))
     error_wrong_type_arg (n);
-  return (UNSIGNED_FIXNUM_TO_LONG (argument));
+  return (OBJECT_DATUM (argument));
 }
 
 /* Predicates */
 
+#define BOOLEAN_RESULT(expr)						\
+  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (expr))
+
 DEFINE_PRIMITIVE ("FIXNUM?", Prim_zero_fixnum_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    SCHEME_OBJECT argument = (ARG_REF (1));
-    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FIXNUM_P (argument)));
-  }
+  BOOLEAN_RESULT (FIXNUM_P (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("INDEX-FIXNUM?", Prim_index_fixnum_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  {
-    SCHEME_OBJECT argument = (ARG_REF (1));
-    PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (FIXNUM_P (argument) &&
-					 FIXNUM_TO_LONG(argument) >= 0));
-  }
+  BOOLEAN_RESULT (UNSIGNED_FIXNUM_P (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("ZERO-FIXNUM?", Prim_zero_fixnum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) == 0));
+  BOOLEAN_RESULT ((arg_fixnum (1)) == 0);
 }
 
 DEFINE_PRIMITIVE ("NEGATIVE-FIXNUM?", Prim_negative_fixnum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) < 0));
+  BOOLEAN_RESULT ((arg_fixnum (1)) < 0);
 }
 
 DEFINE_PRIMITIVE ("POSITIVE-FIXNUM?", Prim_positive_fixnum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) > 0));
+  BOOLEAN_RESULT ((arg_fixnum (1)) > 0);
 }
 
 DEFINE_PRIMITIVE ("EQUAL-FIXNUM?", Prim_equal_fixnum, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) == (arg_fixnum (2))));
+  BOOLEAN_RESULT ((arg_fixnum (1)) == (arg_fixnum (2)));
 }
 
 DEFINE_PRIMITIVE ("LESS-THAN-FIXNUM?", Prim_less_fixnum, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) < (arg_fixnum (2))));
+  BOOLEAN_RESULT ((arg_fixnum (1)) < (arg_fixnum (2)));
 }
 
 DEFINE_PRIMITIVE ("GREATER-THAN-FIXNUM?", Prim_greater_fixnum, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((arg_fixnum (1)) > (arg_fixnum (2))));
+  BOOLEAN_RESULT ((arg_fixnum (1)) > (arg_fixnum (2)));
 }
 
 /* Operators */
 
-#define FIXNUM_RESULT(fixnum)						\
+#define FIXNUM_RESULT(fixnum) do					\
 {									\
   long result = (fixnum);						\
-  if (! (LONG_TO_FIXNUM_P (result)))					\
+  if (!LONG_TO_FIXNUM_P (result))					\
     error_bad_range_arg (1);						\
   PRIMITIVE_RETURN (LONG_TO_FIXNUM (result));				\
-}
+} while (false)
 
 DEFINE_PRIMITIVE ("ONE-PLUS-FIXNUM", Prim_one_plus_fixnum, 1, 1, 0)
 {
@@ -201,7 +197,7 @@ DEFINE_PRIMITIVE ("DIVIDE-FIXNUM", Prim_divide_fixnum, 2, 2, 0)
 	quotient = (numerator / denominator);
       remainder = (numerator % denominator);
     }
-  if (! (LONG_TO_FIXNUM_P (quotient)))
+  if (!LONG_TO_FIXNUM_P (quotient))
     error_bad_range_arg (1);
   PRIMITIVE_RETURN
     (cons ((LONG_TO_FIXNUM (quotient)), (LONG_TO_FIXNUM (remainder))));
@@ -213,7 +209,7 @@ DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    long quotient =
+    FIXNUM_RESULT
       ((denominator > 0)
        ? ((numerator < 0)
 	  ? (- ((- numerator) / denominator))
@@ -223,9 +219,6 @@ DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
 	  ? ((- numerator) / (- denominator))
 	  : (- (numerator / (- denominator))))
        : (error_bad_range_arg (2), 0));
-    if (! (LONG_TO_FIXNUM_P (quotient)))
-      error_bad_range_arg (1);
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM (quotient));
   }
 }
 
@@ -235,120 +228,87 @@ DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    PRIMITIVE_RETURN
-      (LONG_TO_FIXNUM
-       ((denominator > 0)
-	? ((numerator < 0)
-	   ? (- ((- numerator) % denominator))
-	   : (numerator % denominator))
-	: (denominator < 0)
-	? ((numerator < 0)
-	   ? (- ((- numerator) % (- denominator)))
-	   : (numerator % (- denominator)))
-	: (error_bad_range_arg (2), 0)));
+    FIXNUM_RESULT
+      ((denominator > 0)
+       ? ((numerator < 0)
+	  ? (- ((- numerator) % denominator))
+	  : (numerator % denominator))
+       : (denominator < 0)
+       ? ((numerator < 0)
+	  ? (- ((- numerator) % (- denominator)))
+	  : (numerator % (- denominator)))
+       : (error_bad_range_arg (2), 0));
   }
 }
 
 DEFINE_PRIMITIVE ("GCD-FIXNUM", Prim_gcd_fixnum, 2, 2, 0)
 {
-  long x;
-  long y;
-  long z;
   PRIMITIVE_HEADER (2);
-  x = (arg_fixnum (1));
-  y = (arg_fixnum (2));
-  if (x < 0) x = (-x);
-  if (y < 0) y = (-y);
-  while (y != 0)
-    {
-      z = x;
-      x = y;
-      y = (z % y);
-    }
-  PRIMITIVE_RETURN (LONG_TO_FIXNUM (x));
+  {
+    long x = (arg_fixnum (1));
+    long y = (arg_fixnum (2));
+    if (x < 0) x = (-x);
+    if (y < 0) y = (-y);
+    while (y != 0)
+      {
+	long z = x;
+	x = y;
+	y = (z % y);
+      }
+    PRIMITIVE_RETURN (LONG_TO_FIXNUM (x));
+  }
 }
 
 /* Bitwise operations */
 
-#define FIXNUM_BOOLEAN_BODY(operation)					\
-do									\
-{									\
-  unsigned long x, y, z;						\
-									\
-  PRIMITIVE_HEADER (2);							\
-									\
-  x = (arg_unsigned_fixnum (1));					\
-  y = (arg_unsigned_fixnum (2));					\
-									\
-  z = (x operation y);							\
-  return (LONG_TO_FIXNUM (z));						\
-} while (0)
+#define LOGICAL_RESULT(fixnum)						\
+  PRIMITIVE_RETURN (MAKE_OBJECT (TC_FIXNUM, ((fixnum) & DATUM_MASK)))
 
+#define BINARY_LOGICAL_OP(operation)					\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  LOGICAL_RESULT							\
+    ((arg_unsigned_fixnum (1)) operation (arg_unsigned_fixnum (2)));	\
+}
 
 DEFINE_PRIMITIVE ("FIXNUM-ANDC", Prim_fixnum_andc, 2, 2, 0)
-{
-  FIXNUM_BOOLEAN_BODY(& ~);
-}
-
+  BINARY_LOGICAL_OP (&~)
 
 DEFINE_PRIMITIVE ("FIXNUM-AND", Prim_fixnum_and, 2, 2, 0)
-{
-  FIXNUM_BOOLEAN_BODY(&);
-}
-
+  BINARY_LOGICAL_OP (&)
 
 DEFINE_PRIMITIVE ("FIXNUM-OR", Prim_fixnum_or, 2, 2, 0)
-{
-  FIXNUM_BOOLEAN_BODY(|);
-}
-
+  BINARY_LOGICAL_OP (|)
 
 DEFINE_PRIMITIVE ("FIXNUM-XOR", Prim_fixnum_xor, 2, 2, 0)
-{
-  FIXNUM_BOOLEAN_BODY(^);
-}
-
+  BINARY_LOGICAL_OP (^)
 
 DEFINE_PRIMITIVE ("FIXNUM-NOT", Prim_fixnum_not, 1, 1, 0)
 {
-  unsigned long x, z;
-
   PRIMITIVE_HEADER (1);
-
-  x = (arg_unsigned_fixnum (1));
-
-  z = (~ (x));
-  return (LONG_TO_FIXNUM (z));
+  LOGICAL_RESULT (~ (arg_unsigned_fixnum (1)));
 }
 
 DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
 {
-  unsigned long x, z;
-  long y;
-
   PRIMITIVE_HEADER (2);
-
-  x = (arg_unsigned_fixnum (1));
-  y = (arg_fixnum (2));
-
-  if (y < 0)
   {
-    z = ((y < (- FIXNUM_LENGTH)) ? 0 : (x >> (- y)));
+    unsigned long x = (arg_unsigned_fixnum (1));
+    long y = (arg_fixnum (2));
+    unsigned long z;
+
+    if (y < 0)
+      z = (((-y) > ((long) DATUM_LENGTH)) ? 0 : (x >> (-y)));
+    else
+      z = ((y > ((long) DATUM_LENGTH)) ? 0 : (x << y));
+    LOGICAL_RESULT (z);
   }
-  else
-  {
-    z = ((y > FIXNUM_LENGTH) ? 0 : (x << y));
-  }
-  return (LONG_TO_FIXNUM (z));
 }
 
-
 DEFINE_PRIMITIVE ("FIXNUM->FLONUM", Prim_fixnum_to_flonum, 1, 1,
-"(FIXNUM)\n\
+		  "(FIXNUM)\n\
 Equivalent to (INTEGER->FLONUM FIXNUM 2)")
 {
   PRIMITIVE_HEADER (1);
-  {
-    PRIMITIVE_RETURN (double_to_flonum ((double) (arg_fixnum (1))));
-  }
+  PRIMITIVE_RETURN (double_to_flonum ((double) (arg_fixnum (1))));
 }

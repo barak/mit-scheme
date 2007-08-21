@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.73 2007/01/17 03:43:09 cph Exp $
+$Id: xml-parser.scm,v 1.77 2007/07/23 04:12:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -379,7 +379,14 @@ USA.
 		(set-xml-attribute-name! attr
 					 (expand-attribute-name
 					  (xml-attribute-name attr))))
-	      attrs)))
+	      attrs)
+    (do ((attrs attrs (cdr attrs)))
+	((not (pair? attrs)) unspecific)
+      (let ((name (xml-attribute-name (car attrs))))
+	(if (there-exists? (cdr attrs)
+	      (lambda (attr)
+		(xml-name=? (xml-attribute-name attr) name)))
+	    (perror p "Attributes with same name" (xml-name-qname name)))))))
 
 (define (parse-element-content b p name)
   (let ((vc (parse-content b)))
@@ -390,7 +397,8 @@ USA.
 	  (if (peek-parser-buffer-char b)
 	      (perror (get-parser-buffer-pointer b) "Unknown content")
 	      (perror p "Unterminated start tag" name)))
-      (if (not (xml-name=? (vector-ref ve 0) name))
+      (if (not (eq? (xml-name-qname (vector-ref ve 0))
+		    (xml-name-qname name)))
 	  (perror p "Mismatched start tag" (vector-ref ve 0) name))
       (let ((content (coalesce-strings! (vector->list vc))))
 	(if (null? content)
@@ -526,21 +534,26 @@ USA.
   (*parser
    (with-pointer p
      (map (lambda (s) (cons (make-xml-qname s) p))
-	  (match match-name)))))
+	  (match match-qname)))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
-    (*parser (require-success m (map make-xml-qname (match match-name))))))
+    (*parser (require-success m (map make-xml-qname (match match-ncname))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
 (define parse-pi-name (simple-name-parser "processing-instructions"))
 (define parse-notation-name (simple-name-parser "notation"))
 
-(define (match-name buffer)
-  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-initial)
+(define match-qname
+  (*matcher
+   (seq match-ncname
+	(? (seq ":" match-ncname)))))
+
+(define (match-ncname buffer)
+  (and (match-parser-buffer-char-in-alphabet buffer alphabet:ncname-initial)
        (let loop ()
 	 (if (match-parser-buffer-char-in-alphabet buffer
-						   alphabet:name-subsequent)
+						   alphabet:ncname-subsequent)
 	     (loop)
 	     #t))))
 
@@ -568,34 +581,27 @@ USA.
 		    (tail (loop (cdr attrs))))
 		(let ((qname (car uname))
 		      (p (cdr uname)))
-		  (let ((get-uri
+		  (let ((forbidden-uri
 			 (lambda ()
-			   (if (string-null? value)
-			       (null-xml-namespace-uri)
-			       (string->absolute-uri value))))
-			(forbidden-uri
-			 (lambda (uri)
-			   (perror p "Forbidden namespace URI"
-				   (uri->string uri)))))
-		    (let ((guarantee-legal-uri
-			   (lambda (uri)
-			     (if (or (uri=? uri xml-uri)
-				     (uri=? uri xmlns-uri))
-				 (forbidden-uri uri)))))
-		      (cond ((xml-name=? qname 'xmlns)
-			     (let ((uri (get-uri)))
-			       (guarantee-legal-uri uri)
-			       (cons (cons (null-xml-name-prefix) uri) tail)))
-			    ((xml-name-prefix=? qname 'xmlns)
-			     (if (xml-name=? qname 'xmlns:xmlns)
-				 (perror p "Illegal namespace prefix" qname))
-			     (let ((uri (get-uri)))
-			       (if (xml-name=? qname 'xmlns:xml)
-				   (if (not (uri=? uri xml-uri))
-				       (forbidden-uri uri))
-				   (guarantee-legal-uri uri))
-			       (cons (cons (xml-name-local qname) uri) tail)))
-			    (else tail))))))
+			   (perror p "Forbidden namespace URI" value))))
+		    (cond ((xml-name=? qname 'xmlns)
+			   (string->uri value) ;signals error if not URI
+			   (if (or (string=? value xml-uri-string)
+				   (string=? value xmlns-uri-string))
+			       (forbidden-uri))
+			   (cons (cons (null-xml-name-prefix) value) tail))
+			  ((xml-name-prefix=? qname 'xmlns)
+			   (if (xml-name=? qname 'xmlns:xmlns)
+			       (perror p "Illegal namespace prefix" qname))
+			   (string->uri value) ;signals error if not URI
+			   (if (if (xml-name=? qname 'xmlns:xml)
+				   (not (string=? value xml-uri-string))
+				   (or (string-null? value)
+				       (string=? value xml-uri-string)
+				       (string=? value xmlns-uri-string)))
+			       (forbidden-uri))
+			   (cons (cons (xml-name-local qname) value) tail))
+			  (else tail)))))
 	      *prefix-bindings*)))
   unspecific)
 
@@ -607,20 +613,20 @@ USA.
 	(p (cdr uname)))
     (if *in-dtd?*
 	qname
-	(let ((uri (lookup-namespace-prefix qname p attribute-name?)))
-	  (if (null-xml-namespace-uri? uri)
+	(let ((string (lookup-namespace-prefix qname p attribute-name?)))
+	  (if (string-null? string)
 	      qname
-	      (%make-xml-name qname uri))))))
+	      (%make-xml-name qname string))))))
 
 (define (lookup-namespace-prefix qname p attribute-name?)
   (let ((prefix (xml-qname-prefix qname)))
     (cond ((eq? prefix 'xmlns)
-	   xmlns-uri)
+	   xmlns-uri-string)
 	  ((eq? prefix 'xml)
-	   xml-uri)
+	   xml-uri-string)
 	  ((and attribute-name?
 		(null-xml-name-prefix? prefix))
-	   (null-xml-namespace-uri))
+	   "")
 	  (else
 	   (let ((entry (assq prefix *prefix-bindings*)))
 	     (if entry
@@ -628,7 +634,7 @@ USA.
 		 (begin
 		   (if (not (null-xml-name-prefix? prefix))
 		       (perror p "Undeclared XML prefix" prefix))
-		   (null-xml-namespace-uri))))))))
+		   "")))))))
 
 ;;;; Processing instructions
 
@@ -723,7 +729,7 @@ USA.
 	 (alt (seq "#"
 		   (alt match-decimal
 			(seq "x" match-hexadecimal)))
-	      match-name)
+	      match-qname)
 	 ";"))))
 
 (define parse-entity-reference-name	;[68]
@@ -732,7 +738,7 @@ USA.
      parse-entity-name)))
 
 (define parse-entity-reference-deferred
-  (*parser (match (seq "&" match-name ";"))))
+  (*parser (match (seq "&" match-qname ";"))))
 
 (define parse-parameter-entity-reference-name ;[69]
   (*parser
@@ -782,7 +788,7 @@ USA.
 			 (lambda (a) (car a))))
 
 (define parse-declaration-attributes
-  (attribute-list-parser (*parser (map make-xml-qname (match match-name)))
+  (attribute-list-parser (*parser (map make-xml-qname (match match-qname)))
 			 (lambda (a) a)))
 
 (define (attribute-value-parser alphabet parse-reference)

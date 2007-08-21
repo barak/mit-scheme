@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.619 2007/06/07 15:12:17 cph Exp $
+$Id: runtime.pkg,v 14.625 2007/08/10 19:07:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -491,6 +491,7 @@ USA.
   (files "symbol")
   (parent (runtime))
   (export ()
+	  (symbol-append symbol)
 	  error:not-interned-symbol
 	  error:not-symbol
 	  error:not-uninterned-symbol
@@ -509,7 +510,6 @@ USA.
 	  symbol->string
 	  symbol->utf8-string
 	  symbol->wide-string
-	  symbol-append
 	  symbol-hash
 	  symbol-hash-mod
 	  symbol-name
@@ -884,6 +884,7 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
+	  utf8-string
 	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
@@ -976,6 +977,7 @@ USA.
   (files "char")
   (parent (runtime))
   (export ()
+	  8-bit-char?
 	  ascii->char
 	  char->ascii
 	  char->digit
@@ -1012,6 +1014,7 @@ USA.
 	  digit->char
 	  error:not-char
 	  error:not-radix
+	  guarantee-8-bit-char
 	  guarantee-char
 	  guarantee-radix
 	  integer->char
@@ -1919,7 +1922,6 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
-	  guarantee-8-bit-char
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -2046,6 +2048,7 @@ USA.
 	  (discard-char read-char)
 	  (input-port/discard-char input-port/read-char)
 	  char-ready?
+	  eof-object
 	  eof-object?
 	  input-port/char-ready?
 	  input-port/discard-chars
@@ -5035,6 +5038,7 @@ USA.
 	  uri-path-relative?
 	  uri-path?
 	  uri-port?
+	  uri-prefix
 	  uri-query
 	  uri-relative?
 	  uri-rexp:absolute-uri

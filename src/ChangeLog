@@ -1,3 +1,349 @@
+2007-08-16 23:42  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.32):
+
+	Eliminate spurious newlines and indentation from
+	WRITE-RDF/TURTLE-TRIPLE.
+
+2007-08-16 23:41  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-struct.scm (1.34):
+
+	When merging prefix registries, ignore ":" prefixes.
+
+2007-08-16 22:34  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/intmod.scm (1.127):
+
+	Implement BYTES-WRITTEN operation for REPL buffer ports.
+
+2007-08-16 10:42  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.31), xml.pkg (1.99):
+
+	Implement WRITE-RDF/TURTLE-TRIPLE.
+
+2007-08-13 22:57  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.30):
+
+	Don't inline the first part of a pgroup unless the subject is inline
+	(which it might not be if it's a graph).  Do inline if there's only
+	one pgroup and the object is linear.  Suppress final dot in subgraph,
+	and don't add extra blank lines between triple groups.
+
+2007-08-13 22:18  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.33), turtle.scm (1.29):
+
+	When parsing, record null prefix in prefix registry.  Fix several
+	problems in Turtle output, caused by introduction of subgraphs.
+
+2007-08-13 21:05  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.28):
+
+	In sub-graph notation, final dot is optional.
+
+2007-08-13 13:17  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.32), xml.pkg (1.98):
+
+	Add predicates and guarantees to validate components of a triple.
+
+2007-08-11 23:30  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/interp.c (9.107):
+
+	Do _not_ do SAVE_CONT after returning from compiled code.  Assume that
+	the compiled-code interface has left the stack in the correct state.
+
+2007-08-10 15:26  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.31), xml.pkg (1.97):
+
+	Add EVENT:NEW-RDF-GRAPH.
+
+2007-08-10 15:08  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/string.scm (14.66):
+
+	Allow URIs to be given to STRING and UTF8-STRING.
+
+2007-08-10 15:07  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.625), url.scm (1.52):
+
+	Implement URI-PREFIX.
+
+2007-08-10 15:01  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/char.scm (14.33):
+
+	Fix thinko in GUARANTEE-8-BIT-CHAR.
+
+2007-08-10 14:09  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/char.scm (14.32):
+
+	Fix typo.
+
+2007-08-10 14:09  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/runtime.pkg (14.624):
+
+	Oops... remove old binding of SYMBOL-APPEND.
+
+2007-08-10 14:08  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.623), symbol.scm (1.24):
+
+	Change SYMBOL to use UTF8-STRING.  Change SYMBOL-APPEND to be an alias
+	for SYMBOL.
+
+2007-08-10 14:06  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.622), string.scm (14.65):
+
+	Extend STRING to accept a large class of objects, each of which it
+	converts to a string.  Implement UTF8-STRING to do the same thing for
+	the UTF-8 encoding.
+
+2007-08-10 13:57  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: char.scm (14.31), port.scm (1.51), runtime.pkg
+	  (14.621):
+
+	Implement 8-BIT-CHAR?.  Move GUARANTEE-8-BIT-CHAR to "char.scm".
+
+2007-08-05 19:57  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-imap.scm (1.213):
+
+	Handle an empty selector in WRITE-MIME-MESSAGE-BODY-PART on IMAP
+	messages by interpreting it as a selector of (TEXT).  This lets IMAIL
+	save MIME entities that the whole message comprises, such as S/MIME
+	application/pkcs7-mime messages.
+
+2007-08-05 04:26  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-mime.scm (1.6):
+
+	Clarify the method of WRITE-MIME-MESSAGE-BODY-PART specialized on
+	<MESSAGE> instances, and fix two bugs in it:
+
+	1. Message part selectors may be empty lists, in which case the whole
+	   message body is meant; this may arise, for instance, when a MIME
+	   message is sent with a wholly unrecognize Content-Type (like
+	   application/pkcs7-mime), and the user tries to save the MIME entity
+	   that represents the whole message to a file.
+
+	2. WRITE-HEADER-FIELDS takes a list of header field strings, not a
+	   message.  How this never arose, I don't know.
+
+2007-08-05 04:08  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/mime-codec.scm (14.19):
+
+	Escape the backslash within `#\=' in the error message `Misplaced #\=
+	in BASE64 input.'  Perhaps the message should use quote marks, rather
+	than Scheme's #\ notation.
+
+2007-08-02 13:20  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.27):
+
+	Fix various problems with output of subgraphs.  Eliminate whitespace
+	preceding trailing ".".
+
+2007-08-02 12:54  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.26):
+
+	Fix some thinkos in graph parsing.
+
+2007-08-02 00:44  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.25):
+
+	Add support for subject/object graphs using N3's {} notation.
+
+2007-08-02 00:40  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.30), xml.pkg (1.96):
+
+	Implement RDF graph type.  Hash cons all structures, including triples
+	and literals.  Add event distributor EVENT:NEW-RDF-TRIPLE that is
+	called whenever a new triple is allocated; this is a hook for
+	indexing.
+
+2007-08-02 00:37  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/test-turtle.scm (1.4):
+
+	Update for new name READ-RDF/TURTLE-FILE.
+
+2007-08-02 00:37  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/rdf-nt.scm (1.14):
+
+	Fix bug: hex-encoded string escapes were missing leading u/U.
+
+2007-07-31 20:15  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-struct.scm (1.29), xml.pkg (1.95):
+
+	Eliminate obsolete RDF index.
+
+2007-07-31 20:13  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: rdf-nt.scm (1.13), rdf-struct.scm (1.28), turtle.scm
+	  (1.24), xml.pkg (1.94):
+
+	Simplify bnode-registry mechanism to use a single procedure.
+
+2007-07-29 12:20  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fixnum.c (9.50):
+
+	Fix type-coercion bug in FIXNUM-LSH.  Eliminate abstraction-breaking
+	uses of UNSIGNED_FIXNUM_TO_LONG and LONG_TO_FIXNUM in logical
+	operations.  Tweak for style.
+
+2007-07-23 00:52  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.97):
+
+	Fix WITH-LOADER-BASE-URI so that it correctly recognizes system
+	library URIs and generates relative references to them.
+
+2007-07-23 00:12  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: xml.pkg (1.93), xml-chars.scm (1.10), xml-names.scm (1.18),
+	  xml-parser.scm (1.77):
+
+	Require all names to conform to XML namespace specification; this is a
+	consequence of conforming to the specification.
+
+2007-07-22 22:46  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: xml-names.scm (1.17), xml.pkg (1.92), xml-parser.scm
+	  (1.76), xml-struct.scm (1.58):
+
+	Change XML name type to represent namespace URI as a string, and to
+	compare namespace URIs using string comparison.
+
+2007-07-22 21:43  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: xml-names.scm (1.16), xml-parser.scm (1.75):
+
+	Allow relative URIs as namespace names.
+
+2007-07-22 21:39  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unicode.scm (1.35):
+
+	Allow representation of characters in class "Cs".
+
+2007-07-22 20:34  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/xml-parser.scm (1.74):
+
+	Compare XML names as strings rather than as expanded names.
+
+2007-07-17 00:40  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: liarc.h (1.32), cmpauxmd/c.c (1.24):
+
+	Fix bug in liarc object initialization: dload_initialize_file must
+	return the complete object name with the prefix in order for it to be
+	properly loaded.  Formerly it was returning only the name without the
+	prefix, so the run-time system thought that the load failed, even
+	though it registered the object by its full URI, and so the top-level
+	forms would not be executed until the file was loaded a second time.
+
+2007-07-15 18:03  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/x11base.c (1.96):
+
+	Various style tweaks, mostly spacing and indentation.
+
+2007-07-15 17:40  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/x11base.c (1.95):
+
+	Ignore key events with unknown keysyms.
+
+2007-07-08 20:46  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/bignum.c (9.59):
+
+	Make sure left-shifted constants are always cast to unsigned long.
+
+2007-07-08 18:21  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/bignum.c (9.58):
+
+	Fix some indentation problems.
+
+2007-07-08 12:49  Taylor R. Campbell <net/mumble/campbell>
+
+	* compiler/machines/C/cout.scm (1.42):
+
+	Fix bug in dynamic initialization code: the nonce must be quoted.
+	Otherwise the C compiler will choke on any file compiled for dynamic
+	loading.  Was this ever tested??
+
+	This same change could be effected in liarc.h by changing
+	DECLARE_DYNAMIC_INITIALIZATION & DECLARE_DYNAMIC_OBJECT_INITIALIZATION
+	so that they generate the line
+
+	  const char dload_nonce [] = #nonce;
+
+	rather than
+
+	  const char dload_nonce [] = nonce;
+
+2007-07-08 02:37  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/sendmail.scm (1.91):
+
+	Work around bug lurking after change to store buffer contents in
+	external strings: %GROUP-WRITE, called in WRITE-MIME-MESSAGE-BODY-1,
+	passes along an external string to the writer procedure, but
+	ENCODE-QUOTED-PRINTABLE:UPDATE expects an internal string.  Copy the
+	string into the heap for now with XSUBSTRING, rather than fixing the
+	MIME encoder to accept external strings.
+
+2007-07-07 13:22  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/bufinp.scm (1.16), imail/imail-rmail.scm (1.76),
+	  imail/imail-util.scm (1.50), runtime/genio.scm (1.53),
+	  runtime/input.scm (14.36), runtime/parse.scm (14.67),
+	  runtime/runtime.pkg (14.620), runtime/unicode.scm (1.34):
+
+	Implement and use EOF-OBJECT procedure.
+
+2007-07-07 13:21  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/ntprm.scm (1.50):
+
+	Rewrite OS/PARSE-PATH-STRING to treat multiple adjacent backslashes as
+	equivalent to a single backslash.  (Thanks to Matthew Halfant for
+	noticing this.)
+
+2007-07-07 13:20  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/paths.scm (1.22):
+
+	Eliminate unbound-variable reference.
+
+2007-06-30 19:16  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/numpar.scm (14.23):
+
+	Don't depend on -i and +i syntax in number parser.
+
 2007-06-23 01:56  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.47):

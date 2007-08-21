@@ -7,4 +7,4 @@ TryExec=mit-scheme-native
 Terminal=false
 Type=Application
 Icon=/usr/share/pixmaps/mit-scheme/lambda2.png
-Categories=Application;Development;IDE
+Categories=Development;IDE;TextEditor

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.23 2007/01/05 21:19:28 cph Exp $
+$Id: symbol.scm,v 1.24 2007/08/10 18:08:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -81,17 +81,7 @@ USA.
   (substring->symbol string start (string-length string)))
 
 (define (symbol . objects)
-  ((ucode-primitive string->symbol)
-   (apply string-append (map ->utf8-string objects))))
-
-(define (->utf8-string object)
-  (cond ((symbol? object) (symbol-name object))
-	((string? object) (string->utf8-string object))
-	((wide-string? object) (wide-string->utf8-string object))
-	((wide-char? object) (wide-string->utf8-string (wide-string object)))
-	((number? object) (number->string object))
-	((not object) "")
-	(else (error:wrong-type-argument object "symbol component" 'SYMBOL))))
+  ((ucode-primitive string->symbol) (apply utf8-string objects)))
 
 (define (intern string)
   ((ucode-primitive string->symbol)
@@ -135,14 +125,6 @@ USA.
 (define (symbol-name symbol)
   (guarantee-symbol symbol 'SYMBOL-NAME)
   (system-pair-car symbol))
-
-(define (symbol-append . symbols)
-  ((ucode-primitive string->symbol)
-   (apply string-append
-	  (map (lambda (symbol)
-		 (guarantee-symbol symbol 'SYMBOL-APPEND)
-		 (system-pair-car symbol))
-	       symbols))))
 
 (define (symbol-hash symbol)
   (string-hash (symbol-name symbol)))

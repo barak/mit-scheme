@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.91 2007/01/17 03:43:00 cph Exp $
+$Id: xml.pkg,v 1.99 2007/08/16 14:42:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -73,7 +73,9 @@ USA.
 	  xml-qname-string
 	  xml-qname?
 	  xml-uri
-	  xmlns-uri)
+	  xml-uri-string
+	  xmlns-uri
+	  xmlns-uri-string)
   (export (runtime xml)
 	  %make-xml-name
 	  string-composed-of?
@@ -289,6 +291,8 @@ USA.
   (export (runtime xml)
 	  alphabet:name-initial
 	  alphabet:name-subsequent
+	  alphabet:ncname-initial
+	  alphabet:ncname-subsequent
 	  coding-requires-bom?
 	  normalize-coding))
 
@@ -531,55 +535,58 @@ USA.
   (parent (runtime rdf))
   (export ()
 	  *default-rdf-prefix-registry*
-	  *rdf-bnode-registry*
 	  <rdf-bnode>
-	  <rdf-index>
+	  <rdf-graph>
 	  <rdf-literal>
 	  <rdf-prefix-registry>
 	  <rdf-triple>
-	  add-to-rdf-index
 	  canonicalize-rdf-object
 	  canonicalize-rdf-predicate
 	  canonicalize-rdf-subject
 	  canonicalize-rdf-uri
 	  copy-rdf-prefix-registry
 	  error:not-rdf-bnode
-	  error:not-rdf-index
+	  error:not-rdf-graph
 	  error:not-rdf-literal
+	  error:not-rdf-object
+	  error:not-rdf-predicate
 	  error:not-rdf-prefix
 	  error:not-rdf-prefix-registry
 	  error:not-rdf-qname
+	  error:not-rdf-subject
 	  error:not-rdf-triple
+	  event:new-rdf-graph
+	  event:new-rdf-triple
+	  for-each-rdf-triple
 	  guarantee-rdf-bnode
-	  guarantee-rdf-index
+	  guarantee-rdf-graph
 	  guarantee-rdf-literal
+	  guarantee-rdf-object
+	  guarantee-rdf-predicate
 	  guarantee-rdf-prefix
 	  guarantee-rdf-prefix-registry
 	  guarantee-rdf-qname
+	  guarantee-rdf-subject
 	  guarantee-rdf-triple
-	  make-rdf-bnode-registry
 	  make-rdf-bnode
-	  make-rdf-index
+	  make-rdf-graph
 	  make-rdf-literal
 	  make-rdf-qname
 	  make-rdf-triple
 	  merge-rdf-prefix-registry!
 	  new-rdf-prefix-registry
-	  port/drop-rdf-bnode-registry
-	  port/rdf-bnode-registry
 	  port/rdf-prefix-registry
 	  port/set-rdf-prefix-registry
 	  rdf-bnode-name
 	  rdf-bnode?
-	  rdf-index-objects
-	  rdf-index-predicates
-	  rdf-index-subjects
-	  rdf-index?
+	  rdf-graph-triples
+	  rdf-graph?
 	  rdf-literal-language
 	  rdf-literal-text
 	  rdf-literal-type
-	  rdf-literal=?
 	  rdf-literal?
+	  rdf-object?
+	  rdf-predicate?
 	  rdf-prefix-expansion
 	  rdf-prefix-registry->alist
 	  rdf-prefix-registry?
@@ -588,6 +595,7 @@ USA.
 	  rdf-qname-local
 	  rdf-qname-prefix
 	  rdf-qname?
+	  rdf-subject?
 	  rdf-triple-object
 	  rdf-triple-predicate
 	  rdf-triple-subject
@@ -595,9 +603,9 @@ USA.
 	  register-rdf-prefix
 	  split-rdf-qname
 	  uri->rdf-prefix
-	  uri->rdf-qname)
+	  uri->rdf-qname
+	  with-rdf-input-port)
   (export (runtime rdf)
-	  %make-rdf-literal
 	  match-language))
 
 (define-package (runtime rdf nt)
@@ -624,10 +632,8 @@ USA.
 	  write-rdf/turtle
 	  write-rdf/turtle-file
 	  write-rdf/turtle-literal
-	  write-rdf/turtle-predicate
 	  write-rdf/turtle-prefix
-	  write-rdf/turtle-prefixes
-	  write-rdf/turtle-subject
+	  write-rdf/turtle-triple
 	  write-rdf/turtle-triples
 	  write-rdf/turtle-uri)
   (export (runtime rdf)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: c.c,v 1.23 2007/06/06 19:42:41 cph Exp $
+$Id: c.c,v 1.24 2007/07/17 04:40:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -131,7 +131,6 @@ static compiled_block_t ** compiled_entries = 0;
 
 static int declare_compiled_code_ns_1
   (const char *, entry_count_t, liarc_code_proc_t *);
-static const char * compute_full_name (const char *);
 static bool grow_compiled_blocks (void);
 static bool grow_compiled_entries (entry_count_t);
 static int declare_trampoline_block (entry_count_t);
@@ -317,7 +316,7 @@ declare_compiled_code_ns (const char * name,
 {
   void * p = dstack_position;
   int rc
-    = (declare_compiled_code_ns_1 ((compute_full_name (name)),
+    = (declare_compiled_code_ns_1 ((liarc_object_file_name (name)),
 				   n_block_entries,
 				   code_proc));
   dstack_set_position (p);
@@ -380,8 +379,8 @@ declare_compiled_code_ns_1 (const char * name,
     return (-1);
 }
 
-static const char *
-compute_full_name (const char * name)
+const char *
+liarc_object_file_name (const char * name)
 {
   const char * prefix;
   char * full;
@@ -456,7 +455,7 @@ int
 declare_compiled_data_ns (const char * name, liarc_data_proc_t * data_proc)
 {
   void * p = dstack_position;
-  const char * full = (compute_full_name (name));
+  const char * full = (liarc_object_file_name (name));
   compiled_block_t * block = (find_compiled_block (full));
   dstack_set_position (p);
   if (! ((block != 0)
@@ -471,7 +470,7 @@ int
 declare_data_object (const char * name, liarc_object_proc_t * object_proc)
 {
   void * p = dstack_position;
-  const char * full = (compute_full_name (name));
+  const char * full = (liarc_object_file_name (name));
   compiled_block_t * block = (find_compiled_block (full));
   if (block == 0)
     {

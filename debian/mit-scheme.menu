@@ -1,6 +1,6 @@
 ?package(mit-scheme):\
   needs="X11"\
-  section="Apps/Programming"\
+  section="Applications/Programming"\
   title="MIT/GNU Scheme"\
   icon="/usr/share/pixmaps/mit-scheme/lambda2.xpm" \
   command="/usr/bin/mit-scheme-native --edit"

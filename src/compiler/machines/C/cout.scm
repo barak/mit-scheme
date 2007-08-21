@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.41 2007/06/06 19:42:38 cph Exp $
+$Id: cout.scm,v 1.42 2007/07/08 16:49:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -509,12 +509,12 @@ USA.
 (define (declare-dynamic-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_INITIALIZATION"
 		  (c:string handle)
-		  (vector-8b->hexadecimal (random-byte-vector 8)))))
+		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
 
 (define (declare-dynamic-object-initialization handle)
   (c:line (c:call "DECLARE_DYNAMIC_OBJECT_INITIALIZATION"
 		  (c:string handle)
-		  (vector-8b->hexadecimal (random-byte-vector 8)))))
+		  (c:string (vector-8b->hexadecimal (random-byte-vector 8))))))
 
 (define (declare-subcodes decl-name blocks)
   (if (and (pair? blocks)

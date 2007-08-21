@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.66 2007/01/09 06:16:49 cph Exp $
+$Id: parse.scm,v 14.67 2007/07/07 17:22:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -529,7 +529,7 @@ USA.
 	  ((string-ci=? name "rest") lambda-rest-tag)
 	  ((string-ci=? name "key") lambda-key-tag)
 	  ((string-ci=? name "aux") lambda-aux-tag)
-	  ((string-ci=? name "eof") (make-eof-object #f))
+	  ((string-ci=? name "eof") (eof-object))
 	  ((string-ci=? name "default") (default-object))
 	  ((string-ci=? name "unspecific") unspecific)
 	  (else (error:illegal-named-constant name)))))
