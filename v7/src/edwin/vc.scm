@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.98 2007/01/14 01:58:12 cph Exp $
+$Id: vc.scm,v 1.99 2007/08/22 17:26:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -91,12 +91,16 @@ This can be overriden by giving a prefix argument to \\[vc-register]."
   "An event distributor that is invoked after a checkin is done."
   (make-event-distributor))
 
+(define (user-is-root?)
+  (and (eq? microcode-id/operating-system 'unix)
+       (= (unix/current-uid) 0)))
+
 (define-variable vc-checkout-carefully
   "True means be extra-careful in checkout.
 Verify that the file really is not locked
 and that its contents match what the master file says."
   ;; Default is to be extra careful for super-user.
-  (lambda () (= (unix/current-uid) 0))
+  user-is-root?
   (lambda (object)
     (or (boolean? object)
 	(and (procedure? object)
@@ -359,7 +363,7 @@ Otherwise, VC will compare the file to the copy in the repository."
 		     ;; even though we can (because root can write
 		     ;; anything).  This way, even root cannot modify a file
 		     ;; that isn't locked.
-		     (and (= 0 (unix/current-uid))
+		     (and (user-is-root?)
 			  (fix:= 0
 				 (fix:and #o200
 					  (file-modes
