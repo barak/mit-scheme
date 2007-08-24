@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.54 2007/06/23 05:47:43 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.55 2007/08/24 13:19:24 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -822,6 +822,10 @@ linux-gnu)
     DO_GCC_TESTS=yes
     ;;
 freebsd*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
+    ;;
+dragonfly*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
     DO_GCC_TESTS=yes
     ;;

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.39 2007/04/22 16:31:23 cph Exp $
+$Id: uxtrap.h,v 1.40 2007/08/24 13:19:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -502,7 +502,7 @@ typedef struct
 
 #endif /* __linux__ */
  
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <ucontext.h>
 #endif
 
