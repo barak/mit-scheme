@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.85 2007/08/24 13:19:24 riastradh Exp $
+$Id: ux.h,v 1.86 2007/09/04 03:35:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -90,6 +90,10 @@ USA.
 
 #ifdef _PIXEL
 #  define SYSTEM_VARIANT "Pixel"
+#endif
+
+#if defined(__sparc) && defined(__svr4__)
+#  define SYSTEM_VARIANT "Solaris"
 #endif
 
 #if defined(_SUNOS) || defined(_SUNOS3) || defined(_SUNOS4)

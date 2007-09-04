@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: install-bin-symlinks.sh,v 1.2 2007/06/15 03:40:18 cph Exp $
+# $Id: install-bin-symlinks.sh,v 1.3 2007/09/04 03:35:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -37,7 +37,7 @@ else
     exit 1
 fi
 
-if [ "${EXE}" != mit-scheme ] && [ ! -e "${DIR}/mit-scheme" ]; then
+if [ "${EXE}" != mit-scheme ] && [ ! -f "${DIR}/mit-scheme" ]; then
     run_cmd rm -f "${DIR}"/mit-scheme
     run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme
 fi

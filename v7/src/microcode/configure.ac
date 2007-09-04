@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.55 2007/08/24 13:19:24 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.56 2007/09/04 03:35:19 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -197,6 +197,8 @@ AUXDIR_NAME=mit-scheme
 EXE_NAME=mit-scheme-native
 INSTALL_INCLUDE=
 
+AC_CANONICAL_HOST
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_C_BACKSLASH_A
@@ -247,6 +249,83 @@ if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 CCLD=${CC}
+
+dnl Add OS-dependent customizations.  This must happen before checking
+dnl any headers or library routines, because it may add CFLAGS or
+dnl LDFLAGS that the subsequent checks require.
+
+DO_GCC_TESTS=no
+GNU_LD=no
+case ${host_os} in
+linux-gnu)
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
+freebsd*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
+dragonfly*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
+darwin*)
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
+    ;;
+netbsd*)
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    dnl NetBSD, by default, has programs find non-base libraries via RPATH
+    if test "x${x_libraries}" != x; then
+	FOO=-Wl,-rpath,`echo ${x_libraries} | sed -e "s/:/ -Wl,-rpath,/g"`
+	LDFLAGS="${LDFLAGS} ${FOO}"
+    fi
+    ;;
+openbsd*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
+    GNU_LD=yes
+    ;;
+solaris*)
+    # How do we tell whether we're using GNU ld or Solaris ld?
+    if test ${GCC} = yes; then
+	DO_GCC_TESTS=yes
+	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    fi
+    LDFLAGS="${LDFLAGS} -lsocket -lnsl"
+    ;;
+esac
+
+if test "${DO_GCC_TESTS}" = yes; then
+    if test "x${STATIC_LIBS}" != x; then
+	STATIC_PREFIX="-Xlinker -Bstatic"
+	STATIC_SUFFIX="-Xlinker -Bdynamic"
+    fi
+    if test "${GNU_LD}" = yes; then
+	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
+    fi
+    MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
+    AC_MSG_CHECKING([for ELF binaries])
+    AC_RUN_IFELSE(
+	[AC_LANG_PROGRAM(
+	    [[]],
+	    [[
+	    #ifdef __ELF__
+	    return 0;
+	    #endif
+	    return 1;
+	    ]]
+	)],
+	[
+	AC_MSG_RESULT([yes])
+	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+	],
+	[AC_MSG_RESULT([no])])
+fi
 
 dnl Checks for libraries.
 AC_CHECK_LIB([m], [exp])
@@ -547,7 +626,6 @@ if test ${ac_cv_type_signal} = void; then
 fi
 
 dnl Checks for system characteristics.
-AC_CANONICAL_HOST
 AC_PATH_X
 AC_SYS_LARGEFILE
 AC_SYS_LONG_FILE_NAMES
@@ -813,70 +891,6 @@ if test "${no_x}" != yes; then
     fi
     LIBS="${LIBS} -lX11"
     OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
-fi
-
-dnl Add OS-dependent customizations.
-DO_GCC_TESTS=no
-case ${host_os} in
-linux-gnu)
-    DO_GCC_TESTS=yes
-    ;;
-freebsd*)
-    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    DO_GCC_TESTS=yes
-    ;;
-dragonfly*)
-    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    DO_GCC_TESTS=yes
-    ;;
-darwin*)
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
-    ;;
-netbsd*)
-    DO_GCC_TESTS=yes
-    dnl NetBSD, by default, has programs find non-base libraries via RPATH
-    if test "x${x_libraries}" != x; then
-	FOO=-Wl,-rpath,`echo ${x_libraries} | sed -e "s/:/ -Wl,-rpath,/g"`
-	LDFLAGS="${LDFLAGS} ${FOO}"
-    fi
-    ;;
-openbsd*)
-    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    DO_GCC_TESTS=yes
-    ;;
-solaris*)
-    if test ${GCC} = yes; then
-	DO_GCC_TESTS=yes
-	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-    fi
-    ;;
-esac
-
-if test ${DO_GCC_TESTS} = yes; then
-    if test "x${STATIC_LIBS}" != x; then
-	STATIC_PREFIX="-Xlinker -Bstatic"
-	STATIC_SUFFIX="-Xlinker -Bdynamic"
-    fi
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
-    MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
-    AC_MSG_CHECKING([for ELF binaries])
-    AC_RUN_IFELSE(
-	[AC_LANG_PROGRAM(
-	    [[]],
-	    [[
-	    #ifdef __ELF__
-	    return 0;
-	    #endif
-	    return 1;
-	    ]]
-	)],
-	[
-	AC_MSG_RESULT([yes])
-	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
-	],
-	[AC_MSG_RESULT([no])])
 fi
 
 AC_MSG_CHECKING([for native-code support])

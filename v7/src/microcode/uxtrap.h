@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.40 2007/08/24 13:19:24 riastradh Exp $
+$Id: uxtrap.h,v 1.41 2007/09/04 03:35:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -563,6 +563,81 @@ typedef struct
 }
 
 #endif /* __alpha */
+
+#ifdef __sparc
+
+#ifdef __svr4__
+/* SPARC Solaris */
+
+/* This is adapted from the MIPS SysV4 code above,
+   adjusted for the SPARC. */
+
+#include <siginfo.h>
+#include <ucontext.h>
+
+#define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
+
+/* SIGINFO_T, SIGINFO_VALID_P, SIGINFO_CODE, SIGINFO_ARG_T, and SIGCONTEXT_T
+   are all defined by the conditional for _POSIX_REALTIME_SIGNALS below. */
+
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_NREGS NGREG
+#define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, 0)))
+
+#define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, REG_SP))
+#define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, REG_PC))
+
+/* I don't think that either of these actually matters for liarc, which
+   is all that we support on the SPARC at the moment. */
+
+#define SIGCONTEXT_RFREE(scp) 0
+#define SIGCONTEXT_SCHSP(scp) 0
+
+#define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTDIV, "integer divide by 0 trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV, "floating-point divide by 0 trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF, "floating-point overflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND, "floating-point underflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTRES, "floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTSUB, "subscript-range trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTINV, "invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPC, "illegal opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPN, "illegal operand trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLADR, "illegal addressing mode trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLTRP, "illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVOPC, "privileged opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVREG, "privileged register trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_COPROC, "co-processor trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
+}
+
+/* Solaris's siginfo(3HEAD) man page lists many more signal codes, but
+   so does Linux's sigaction(2) man page, and this is the same list as
+   in the Linux section.  Unless this is used for anything other than
+   documentative purposes during trap recovery, then I can't imagine
+   why these lists aren't populated more completely. */
+
+#endif /* __svr4__ */
+
+#endif /* __sparc */
 
 #ifdef _POSIX_REALTIME_SIGNALS
 #  define SIGINFO_T siginfo_t *
