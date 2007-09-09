@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imap-response.scm,v 1.50 2007/01/05 21:19:25 cph Exp $
+$Id: imap-response.scm,v 1.51 2007/09/09 18:48:46 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -535,13 +535,15 @@ USA.
 
 (define (read-char-internal port)
   (let ((char (read-char port)))
-    (if imap-transcript-port
+    (if (and (not (eof-object? char))
+             imap-transcript-port)
 	(write-char char imap-transcript-port))
     char))
 
 (define (read-string-internal delimiters port)
   (let ((s (read-string delimiters port)))
-    (if imap-transcript-port
+    (if (and (not (eof-object? s))
+             imap-transcript-port)
 	(write-string s imap-transcript-port))
     s))
 
