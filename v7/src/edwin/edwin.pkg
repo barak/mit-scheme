@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.302 2007/01/05 21:19:23 cph Exp $
+$Id: edwin.pkg,v 1.303 2007/09/09 16:51:52 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1534,6 +1534,7 @@ USA.
 	  edwin-variable$mail-mode-hook
 	  edwin-variable$mail-organization
 	  edwin-variable$mail-relay-host
+	  edwin-variable$mail-relay-service
 	  edwin-variable$mail-reply-buffer
 	  edwin-variable$mail-self-blind
 	  edwin-variable$mail-setup-hook
