@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.6 2007/08/05 08:26:00 riastradh Exp $
+$Id: imail-mime.scm,v 1.7 2007/09/10 16:21:59 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -389,7 +389,11 @@ USA.
          (mime:parse-body-structure
           (let ((start (car part))
                 (end (cdr part)))
-            (cond ((substring-search-forward "\n\n" body start end)
+            (cond ((char=? #\newline (string-ref body start))
+                   ;; If it starts with a blank line, there are no
+                   ;; headers.
+                   (make-message-part-message '() body (+ start 1) end))
+                  ((substring-search-forward "\n\n" body start end)
                    => (lambda (header-end)
                         (make-message-part-message
                          (lines->header-fields
@@ -401,8 +405,8 @@ USA.
                          (+ header-end 2)
                          end)))
                   (else
-                   ;; Grossly assume that this means there are no
-                   ;; headers.
+                   ;; Grossly assume that the absence of a blank line
+                   ;; means there are no headers.
                    (make-message-part-message '() body start end))))))
        parts))
 
