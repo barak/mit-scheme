@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.91 2007/03/11 22:38:55 riastradh Exp $
+$Id: imail-file.scm,v 1.92 2007/09/10 16:27:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -400,7 +400,7 @@ USA.
 
 (define-method save-resource ((folder <file-folder>))
   (and (let ((status (folder-sync-status folder)))
-	 (or (memq status '(FOLDER-MODIFIED PERSISTENT-DELETED))
+	 (or (memq status '(CACHE-MODIFIED PERSISTENT-DELETED))
 	     (and (eq? status 'BOTH-MODIFIED)
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
