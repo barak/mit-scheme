@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.8 2007/09/10 17:18:24 riastradh Exp $
+$Id: imail-mime.scm,v 1.9 2007/09/10 17:19:32 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -153,7 +153,7 @@ USA.
                                       (cdr sub-level)
                                       (error-irritant/noise " with")
                                       parser)
-                                (set-cdr! top-level parser)))
+                                (set-cdr! sub-level parser)))
                           (else
                            (set-cdr! (cdr top-level)
                                      (cons (cons subtype parser)
