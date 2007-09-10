@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.9 2007/09/10 17:19:32 riastradh Exp $
+$Id: imail-mime.scm,v 1.10 2007/09/10 19:19:04 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -180,10 +180,6 @@ USA.
   (start  define accessor)
   (end    define accessor))
 
-(define-method message-length ((message <message-part>))
-  (- (message-part-end message)
-     (message-part-start message)))
-
 (define-method message-body ((message <message-part>))
   (values (message-part-string message)
           (message-part-start  message)
@@ -219,7 +215,7 @@ USA.
        (mime:get-content-id message)
        (mime:get-content-description message)
        (mime-encoding/name encoding)
-       (- end start)
+       (message-length message)
        (ignore-errors (lambda () (md5-substring string start end))
                       (lambda (condition) condition #f))
        (mime:get-content-disposition message)
@@ -273,13 +269,12 @@ USA.
       (mime:parse-multipart message subtype parameters encoding))))
 
 (define (mime:parse-multipart message subtype parameters encoding)
-  (let* ((parts (mime:parse-multipart-subparts message parameters
-                                               encoding))
-         (enclosure (make-mime-body-multipart
-                     subtype parameters
-                     parts
-                     (mime:get-content-disposition message)
-                     (mime:get-content-language message))))
+  (let* ((parts
+          (mime:parse-multipart-subparts message parameters encoding))
+         (enclosure
+          (make-mime-body-multipart subtype parameters parts
+                                    (mime:get-content-disposition message)
+                                    (mime:get-content-language message))))
     (for-each (lambda (part)
                 (set-mime-body-enclosure! part enclosure))
               parts)
@@ -287,22 +282,21 @@ USA.
 
 (define (mime:parse-multipart-subparts message parameters encoding)
   (let ((boundary (mime:get-boundary parameters message)))
-    (let ((do-it (lambda (body start end)
-                   (mime:parse-parts
-                    body
-                    (mime:multipart-message-parts body start end
-                                                  boundary)))))
-      (if (mime-encoding/identity? message)
-          (call-with-values (lambda () (message-body message))
-            do-it)
-          (let ((body
-                 (call-with-output-string
-                   (lambda (output-port)
-                     (call-with-mime-decoding-output-port
-                         encoding output-port #t
-                       (lambda (output-port)
-                         (write-message-body message output-port)))))))
-            (do-it body 0 (string-length body)))))))
+    (define (parse-body body start end)
+      (mime:parse-parts
+       body
+       (mime:multipart-message-parts body start end boundary)))
+    (if (mime-encoding/identity? message)
+        (call-with-values (lambda () (message-body message))
+          parse-body)
+        ((lambda (body)
+           (parse-body body 0 (string-length body)))
+         (call-with-output-string
+           (lambda (output-port)
+             (call-with-mime-decoding-output-port
+               encoding output-port #t
+               (lambda (output-port)
+                 (write-message-body message output-port)))))))))
 
 (define (mime:get-boundary parameters message)
   (cond ((assq 'BOUNDARY parameters)
@@ -316,18 +310,14 @@ USA.
   (let ((boundary-length (string-length boundary)))
 
     (define (loop part-start search-start parts)
-      (cond ((substring-search-forward boundary string
-                                       search-start end)
+      (cond ((substring-search-forward boundary string search-start end)
              => (lambda (boundary-start)
-                  (let ((boundary-end
-                         (+ boundary-start boundary-length)))
-                    (if (or (zero? boundary-start)
-                            (char=? (string-ref string
-                                                (- boundary-start 1))
-                                    #\newline))
+                  (let ((boundary-end (+ boundary-start boundary-length)))
+                    (if (boundary-start? boundary-start)
                         (continue part-start
-                                  (if (zero? boundary-start)
-                                      0
+                                  ;; Slurp in the preceding newline.
+                                  (if (= boundary-start start)
+                                      start
                                       (- boundary-start 1))
                                   boundary-end
                                   parts)
@@ -335,9 +325,7 @@ USA.
             (else (lose parts))))
 
     (define (continue part-start part-end boundary-end parts)
-      (cond ((and (>= end (+ boundary-end 2))
-                  (char=? #\- (string-ref string boundary-end))
-                  (char=? #\- (string-ref string (+ boundary-end 1))))
+      (cond ((last-boundary-end? boundary-end)
              (win (cons (cons part-start part-end) parts)))
             ((skip-lwsp-until-newline string boundary-end end)
              => (lambda (next-line-start)
@@ -347,11 +335,24 @@ USA.
             (else
              (loop part-start boundary-end parts))))
 
+    (define (boundary-start? boundary-start)
+      ;; It's not a boundary start unless it is the start of a line.
+      (or (= boundary-start start)
+          (char=? (string-ref string (- boundary-start 1)) #\newline)))
+
+    (define (last-boundary-end? boundary-end)
+      (and (>= end (+ boundary-end 2))
+           (char=? #\- (string-ref string boundary-end))
+           (char=? #\- (string-ref string (+ boundary-end 1)))))
+
     (define (win parts)
       (cdr (reverse! parts)))
 
     (define (lose parts)
-      (cdr (reverse! parts)))
+      ;; (error "Malformed MIME multipart:" ...)
+      (if (pair? parts)
+          (cdr (reverse! parts))
+          '()))
 
     (loop start start '())))
 
@@ -359,45 +360,43 @@ USA.
 
 (define-class (<message-part-message>
                (constructor make-message-part-message
-                            (header-fields string start end)))
+                            (header-fields length string start end)))
     ;** Do not rearrange this!  The MESSAGE-BODY method on
     ;** <MESSAGE-PART> must be more given precedence over that on
     ;** <MESSAGE>!
-    (<message-part> <message>))
+    (<message-part> <message>)
+  (length accessor message-length))
 
-(define (mime:parse-part string header-start header-end body-end)
+(define (mime:parse-part string start header-end end)
   (mime:parse-body-structure
-   (make-message-part-message (lines->header-fields
-                               (substring->lines string header-start
-                                                 header-end))
-                              string
-                              (+ header-end 1)
-                              body-end)))
+   (make-message-part-message
+    (lines->header-fields (substring->lines string start header-end))
+    (- end start)
+    string
+    (+ header-end 1)                    ;Exclude the blank line.
+    end)))
+
+(define (mime:parse-headerless-part string start content-start end)
+  (mime:parse-body-structure
+   (make-message-part-message '() (- end start) string content-start end)))
 
 (define (mime:parse-parts body parts)
   (map (lambda (part)
-         (mime:parse-body-structure
-          (let ((start (car part))
-                (end (cdr part)))
-            (cond ((char=? #\newline (string-ref body start))
-                   ;; If it starts with a blank line, there are no
-                   ;; headers.
-                   (make-message-part-message '() body (+ start 1) end))
-                  ((substring-search-forward "\n\n" body start end)
-                   => (lambda (header-end)
-                        (make-message-part-message
-                         (lines->header-fields
-                          (substring->lines body start
-                                            ;; Add trailing newline.
-                                            (+ header-end 1)))
-                         body
-                         ;; Skip the two newlines.
-                         (+ header-end 2)
-                         end)))
-                  (else
-                   ;; Grossly assume that the absence of a blank line
-                   ;; means there are no headers.
-                   (make-message-part-message '() body start end))))))
+         (let ((start (car part))
+               (end (cdr part)))
+           (cond ((char=? #\newline (string-ref body start))
+                  ;; If the body begins with a newline, then there are
+                  ;; no header fields, so the header end is the same
+                  ;; as the content start.
+                  (mime:parse-headerless-part body start (+ start 1) end))
+                 ((substring-search-forward "\n\n" body start end)
+                  => (lambda (header-end)
+                       ;; End the header between the two newlines.
+                       (mime:parse-part body start (+ header-end 1) end)))
+                 (else
+                  ;; Assume that the absence of a blank line means no
+                  ;; header fields at all.
+                  (mime:parse-headerless-part body start start end)))))
        parts))
 
 ;;;; Content-Type Header Fields
