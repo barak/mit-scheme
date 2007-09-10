@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.7 2007/09/10 16:21:59 riastradh Exp $
+$Id: imail-mime.scm,v 1.8 2007/09/10 17:18:24 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -219,7 +219,7 @@ USA.
        (mime:get-content-id message)
        (mime:get-content-description message)
        (mime-encoding/name encoding)
-       (message-length message)
+       (- end start)
        (ignore-errors (lambda () (md5-substring string start end))
                       (lambda (condition) condition #f))
        (mime:get-content-disposition message)
@@ -246,28 +246,18 @@ USA.
   (lambda (message type subtype parameters encoding)
     type                                ;ignore
     (receive (string start end) (message-body message)
-      (receive (octets lines) (count-octets&lines string start end)
-        (make-mime-body-text-part
-         string start end
-         subtype parameters
-         (mime:get-content-id message)
-         (mime:get-content-description message)
-         (mime-encoding/name encoding)
-         octets lines
-         (ignore-errors (lambda () (md5-substring string start end))
-                        (lambda (condition) condition #f))
-         (mime:get-content-disposition message)
-         (mime:get-content-language message))))))
-
-(define (count-octets&lines string start end)
-  (let loop ((i start) (octets 0) (lines 0))
-    (if (fix:= i end)
-        (values octets lines)
-        (loop (fix:+ i 1)
-              (fix:+ octets 1)
-              (if (char=? (string-ref string i) #\newline)
-                  (fix:+ lines 1)
-                  lines)))))
+      (make-mime-body-text-part
+       string start end
+       subtype parameters
+       (mime:get-content-id message)
+       (mime:get-content-description message)
+       (mime-encoding/name encoding)
+       (- end start)                             ;Octets
+       (substring-n-newlines string start end)   ;Lines
+       (ignore-errors (lambda () (md5-substring string start end))
+                      (lambda (condition) condition #f))
+       (mime:get-content-disposition message)
+       (mime:get-content-language message)))))
 
 ;;;; Multipart Media
 
