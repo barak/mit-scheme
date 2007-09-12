@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.53 2007/07/07 17:22:19 cph Exp $
+$Id: genio.scm,v 1.54 2007/09/12 23:32:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -742,20 +742,20 @@ USA.
 
 (define (buffer-has-input? ib)
   (let ((bs (input-buffer-start ib)))
-    (if (read-next-char ib)
-	(begin
-	  (set-input-buffer-start! ib bs)
-	  #t)
-	(and (not (input-buffer-at-eof? ib))
-	     ((source/has-input? (input-buffer-source ib)))
-	     (begin
-	       (justify-input-buffer ib)
-	       (read-bytes ib)
-	       (let ((bs (input-buffer-start ib)))
-		 (and (read-next-char ib)
-		      (begin
-			(set-input-buffer-start! ib bs)
-			#t))))))))
+    (cond ((read-next-char ib)
+	   (set-input-buffer-start! ib bs)
+	   #t)
+	  ((input-buffer-at-eof? ib) #t)
+	  (else
+	   (and ((source/has-input? (input-buffer-source ib)))
+		(begin
+		  (justify-input-buffer ib)
+		  (read-bytes ib)
+		  (let ((bs (input-buffer-start ib)))
+		    (and (read-next-char ib)
+			 (begin
+			   (set-input-buffer-start! ib bs)
+			   #t)))))))))
 
 (define (justify-input-buffer ib)
   (let ((bs (input-buffer-start ib))
