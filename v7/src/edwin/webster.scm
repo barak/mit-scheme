@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: webster.scm,v 1.10 2007/01/05 21:19:24 cph Exp $
+$Id: webster.scm,v 1.11 2007/09/12 23:36:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -87,9 +87,6 @@ USA.
 	(global-window-modeline-event!
 	 (lambda (window) window 'WEBSTER-CONNECTION-STATUS)))))
 
-(define (input-port/eof? port)
-  ((port/operation port 'EOF?) port))
-
 (define (close-webster-server-port)
   (let ((port webster-server-port))
     (set! webster-server-port #f)

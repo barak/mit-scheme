@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.34 2007/01/05 21:19:23 cph Exp $
+$Id: nntp.scm,v 1.35 2007/09/12 23:36:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1786,9 +1786,6 @@ USA.
   (input-port/discard-char port))
 
 (define char-set:newline (char-set #\newline))
-
-(define (input-port/eof? port)
-  ((port/operation port 'EOF?) port))
 
 (define (write-init-file-atomically pathname procedure)
   (guarantee-init-file-directory pathname)
