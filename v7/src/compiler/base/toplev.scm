@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.75 2007/06/13 13:33:43 cph Exp $
+$Id: toplev.scm,v 4.76 2007/09/13 12:49:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -564,11 +564,11 @@ USA.
 	 (phase/rtl-generation)
 	 (phase/rtl-optimization)
 	 (if rtl-output-port
-	     (phase/rtl-file-output rtl-output-port))
+	     (phase/rtl-file-output scode rtl-output-port))
 	 (phase/lap-generation)
 	 (phase/lap-linearization)
 	 (if lap-output-port
-	     (phase/lap-file-output lap-output-port))
+	     (phase/lap-file-output scode lap-output-port))
 	 (if compiler:cross-compiling?
 	     (cross-assemble&link info-output-pathname)
 	     (assemble&link info-output-pathname)))))))
