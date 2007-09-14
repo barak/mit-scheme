@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.37 2007/09/04 03:35:20 riastradh Exp $
+$Id: uxtop.c,v 1.38 2007/09/14 15:52:40 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -192,15 +192,30 @@ OS_error_code_to_syserr (int code)
 #ifdef EADDRINUSE
     case EADDRINUSE:	return (syserr_address_in_use);
 #endif
+#ifdef EADDRNOTAVAIL
+    case EADDRNOTAVAIL:	return (syserr_address_not_available);
+#endif
+#ifdef EAFNOSUPPORT
+    case EAFNOSUPPORT:	return (syserr_address_family_not_supported);
+#endif
     case EAGAIN:	return (syserr_resource_temporarily_unavailable);
     case EBADF:		return (syserr_bad_file_descriptor);
     case EBUSY:		return (syserr_resource_busy);
     case ECHILD:	return (syserr_no_child_processes);
+#ifdef ECONNREFUSED
+    case ECONNREFUSED:	return (syserr_connection_refused);
+#endif
+#ifdef ECONNRESET
+    case ECONNRESET:	return (syserr_connection_reset);
+#endif
     case EDEADLK:	return (syserr_resource_deadlock_avoided);
     case EDOM:		return (syserr_domain_error);
     case EEXIST:	return (syserr_file_exists);
     case EFAULT:	return (syserr_bad_address);
     case EFBIG:		return (syserr_file_too_large);
+#ifdef EHOSTUNREACH
+    case EHOSTUNREACH:	return (syserr_host_is_unreachable);
+#endif
     case EINTR:		return (syserr_interrupted_function_call);
     case EINVAL:	return (syserr_invalid_argument);
     case EIO:		return (syserr_io_error);
@@ -242,13 +257,25 @@ syserr_to_error_code (enum syserr_names syserr)
 {
   switch (syserr)
     {
+#ifdef EAFNOSUPPORT
+    case syserr_address_family_not_supported:		return (EAFNOSUPPORT);
+#endif
 #ifdef EADDRINUSE
     case syserr_address_in_use:				return (EADDRINUSE);
+#endif
+#ifdef EADDRNOTAVAIL
+    case syserr_address_not_available:			return (EADDRNOTAVAIL);
 #endif
     case syserr_arg_list_too_long:			return (E2BIG);
     case syserr_bad_address:				return (EFAULT);
     case syserr_bad_file_descriptor:			return (EBADF);
     case syserr_broken_pipe:				return (EPIPE);
+#ifdef ECONNREFUSED
+    case syserr_connection_refused:			return (ECONNREFUSED);
+#endif
+#ifdef ECONNRESET
+    case syserr_connection_reset:			return (ECONNRESET);
+#endif
 #ifdef ENOTEMPTY
     case syserr_directory_not_empty:			return (ENOTEMPTY);
 #endif
@@ -260,6 +287,9 @@ syserr_to_error_code (enum syserr_names syserr)
     case syserr_filename_too_long:			return (ENAMETOOLONG);
 #endif
     case syserr_function_not_implemented:		return (ENOSYS);
+#ifdef EHOSTUNREACH
+    case syserr_host_is_unreachable:			return (EHOSTUNREACH);
+#endif
     case syserr_improper_link:				return (EXDEV);
     case syserr_inappropriate_io_control_operation:	return (ENOTTY);
     case syserr_interrupted_function_call:		return (EINTR);
@@ -399,11 +429,15 @@ OS_syscall_names (unsigned long * length, const char *** names)
 static const char * syserr_names_table [] =
 {
   "unknown",
+  "address-family-not-supported",
   "address-in-use",
+  "address-not-available",
   "arg-list-too-long",
   "bad-address",
   "bad-file-descriptor",
   "broken-pipe",
+  "connection-refused",
+  "connection-reset",
   "directory-not-empty",
   "domain-error",
   "exec-format-error",
@@ -411,6 +445,7 @@ static const char * syserr_names_table [] =
   "file-too-large",
   "filename-too-long",
   "function-not-implemented",
+  "host-is-unreachable",
   "improper-link",
   "inappropriate-io-control-operation",
   "interrupted-function-call",

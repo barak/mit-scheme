@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.21 2007/04/22 16:31:23 cph Exp $
+$Id: syscall.h,v 1.22 2007/09/14 15:52:40 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -114,11 +114,15 @@ enum syscall_names
 enum syserr_names
 {
   syserr_unknown,
+  syserr_address_family_not_supported,
   syserr_address_in_use,
+  syserr_address_not_available,
   syserr_arg_list_too_long,
   syserr_bad_address,
   syserr_bad_file_descriptor,
   syserr_broken_pipe,
+  syserr_connection_refused,
+  syserr_connection_reset,
   syserr_directory_not_empty,
   syserr_domain_error,
   syserr_exec_format_error,
@@ -126,6 +130,7 @@ enum syserr_names
   syserr_file_too_large,
   syserr_filename_too_long,
   syserr_function_not_implemented,
+  syserr_host_is_unreachable,
   syserr_improper_link,
   syserr_inappropriate_io_control_operation,
   syserr_interrupted_function_call,
