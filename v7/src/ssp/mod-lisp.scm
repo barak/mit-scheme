@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.35 2007/02/08 03:36:18 cph Exp $
+$Id: mod-lisp.scm,v 1.36 2007/09/17 05:07:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -744,7 +744,7 @@ USA.
 			  (assq name (cdar bindings))
 			  (or (not binding)
 			      (fix:> (string-length (caar bindings))
-				     (string-length binding))))
+				     (string-length (car binding)))))
 		     (car bindings)
 		     binding)))
 	  (binding
