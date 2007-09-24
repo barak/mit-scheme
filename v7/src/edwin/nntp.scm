@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.35 2007/09/12 23:36:08 cph Exp $
+$Id: nntp.scm,v 1.36 2007/09/24 05:22:29 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1128,7 +1128,7 @@ USA.
       (let ((end* (fix:+ start n)))
 	(if (and (fix:<= end* end)
 		 (substring-ci=? text start end* key 0 n))
-	    (substring-skip-leading-space string end* end)
+	    (substring-skip-leading-space text end* end)
 	    (let ((nl (find-next-newline text start end)))
 	      (and nl
 		   (loop (fix:+ nl 1)))))))))
