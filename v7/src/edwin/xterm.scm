@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.80 2007/01/05 21:19:24 cph Exp $
+$Id: xterm.scm,v 1.81 2007/09/26 00:25:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -598,7 +598,12 @@ USA.
   (cond ((and signal-interrupts?
 	      (vector? event)
 	      (fix:= event-type:key-press (vector-ref event 0))
-	      (string-find-next-char (vector-ref event 2) #\BEL))
+	      (let ((string (vector-ref event 2)))
+		(if (fix:= 1 (string-length string))
+		    (char=? #\BEL
+			    (merge-bucky-bits (string-ref string 0)
+					      (vector-ref event 3)))
+		    (string-find-next-char string #\BEL))))
 	 (clean-event-queue x-display-events)
 	 (signal-interrupt!))
 	((and (vector? event)
