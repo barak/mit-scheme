@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: unstackify.c,v 11.5 2007/04/22 16:31:23 cph Exp $
+$Id: unstackify.c,v 11.6 2007/09/04 03:35:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,9 +25,11 @@ USA.
 
 */
 
+#include "config.h"
+
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
+
 #define LIARC_IN_MICROCODE
 #include "liarc.h"
 #include "stackops.h"

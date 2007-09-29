@@ -1,3 +1,9 @@
+mit-scheme (7.7.90+20070909-1) unstable; urgency=low
+
+  * New upstream.
+
+ -- Chris Hanson <cph@debian.org>  Fri, 28 Sep 2007 22:11:46 -0400
+
 mit-scheme (7.7.90+20070820-1) unstable; urgency=low
 
   * New upstream.

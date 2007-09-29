@@ -1,4 +1,4 @@
-# This file automatically generated at 2007-08-20T11:54:36-0400.
+# This file automatically generated at 2007-09-09T13:39:23-0400.
 
 LIARC_HEAD_FILES = cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h dstack.h errors.h extern.h interp.h liarc.h \

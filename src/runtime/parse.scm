@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.67 2007/07/07 17:22:19 cph Exp $
+$Id: parse.scm,v 14.68 2007/09/09 03:09:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -343,12 +343,12 @@ USA.
 	      ignore-extra-list-closes)
 	 continue-parsing)
 	(else
-	 (error:illegal-char char))))
+	 (error:unbalanced-close char))))
 
 (define (handler:close-bracket port db ctx char)
   port db
   (if (not (eq? ctx 'CLOSE-BRACKET-OK))
-      (error:illegal-char char))
+      (error:unbalanced-close char))
   close-bracket)
 
 (define close-parenthesis (list 'CLOSE-PARENTHESIS))
@@ -691,6 +691,7 @@ USA.
 (define condition-type:premature-eof)
 (define condition-type:re-shared-object)
 (define condition-type:non-shared-object)
+(define condition-type:unbalanced-close)
 (define error:illegal-bit-string)
 (define error:illegal-boolean)
 (define error:illegal-char)
@@ -704,6 +705,7 @@ USA.
 (define error:premature-eof)
 (define error:re-shared-object)
 (define error:non-shared-object)
+(define error:unbalanced-close)
 
 (define (initialize-condition-types!)
   (set! condition-type:parse-error
@@ -773,4 +775,8 @@ USA.
       (write-string "Reference to non-shared object: #" port)
       (write n port)
       (write-string "#" port)))
+  (define-parse-error (unbalanced-close char)
+    (lambda (char port)
+      (write-string "Unbalanced close parenthesis: " port)
+      (write char port)))
   unspecific)

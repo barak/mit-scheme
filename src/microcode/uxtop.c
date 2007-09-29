@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.36 2007/04/22 16:31:23 cph Exp $
+$Id: uxtop.c,v 1.37 2007/09/04 03:35:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -98,7 +98,7 @@ OS_initialize (void)
   OS_Name = SYSTEM_NAME;
   OS_Variant = SYSTEM_VARIANT;
 #if defined(_SUNOS) || defined(_SUNOS3) || defined(_SUNOS4)
-  vadvise (VA_ANOM);		/* Anomolous paging, don't try to guess. */
+  vadvise (VA_ANOM);		/* Anomalous paging, don't try to guess. */
 #endif
 }
 

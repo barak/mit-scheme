@@ -1,3 +1,65 @@
+2007-09-08 23:09  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/parse.scm (14.68):
+
+	Change error message generated when an unmatched close parenthesis or
+	bracket is encountered.
+
+2007-09-03 23:35  Taylor R. Campbell <net/mumble/campbell>
+
+	* compiler/configure (1.19), etc/Setup.sh (1.15), etc/functions.sh
+	  (1.10), etc/install-bin-symlinks.sh (1.3), microcode/configure.ac
+	  (1.56), microcode/confshared.h (11.13), microcode/unstackify.c
+	  (11.6), microcode/ux.h (1.86), microcode/uxtop.c (1.37),
+	  microcode/uxtrap.h (1.41):
+
+	Revive SPARC Solaris support:
+
+	- Do canonical host checking earlier in `microcode/configure.ac', so
+	  that OS-dependent customization can insert options to `LDFLAGS' for
+	  the configuration tests.  Add `-lsocket -lnsl' to `LDFLAGS' in
+	  Solaris; this is necessary to get at sockets, `gethostbyname', &c.
+
+	- Introduce a temporary variable `GNU_LD' in `microcode/configure.ac',
+	  set among the OS-dependent customization, which determines whether or
+	  not the GNU-specific `-export-dynamic' option should be passed to the
+	  C linker.  Solaris's `ld' will see that option as `-e' with an
+	  argument of `xport-dynamic', and fail; it is safe to omit the option
+	  altogether, however, because the default (`-z record') is the
+	  behaviour we want.
+
+	- Use `-f' and `-d' instead of `-e' in `test' in shell scripts.  `test'
+	  in Solaris's `sh' does not recognize `-e'.
+
+	- Use a horrid, horrid, hack to imitate the non-standard `-ef' in
+	  `test'.  If there is a better (preferably standard, but widely
+	  supported is good enough) way to do this than grovelling through the
+	  output of `ls -l', please tell me!
+
+	- Fix the emulation of <stdbool.h> in "confshared.h".  Solaris needs
+	  this because if `-std=c99' is not passed to GCC, there is no
+	  <stdbool.h>, but if `-std=c99' is passed to GCC, <ucontext.h>
+	  elsewhere makes GCC choke.
+
+	- Use "config.h" in `unstackify.c', not <stdbool.h>.
+
+	- Use the `__sparc' cpp macro throughout the microcode to test for the
+	  SPARC, not `sparc'.
+
+	- Update "uxtrap.h" to include support for SPARC Solaris.
+
+2007-08-24 09:19  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: configure.ac (1.55), ux.h (1.85), uxtrap.h (1.40):
+
+	Implement preliminary support for Dragonfly BSD, thanks to Francis Gudin.
+
+2007-08-22 13:26  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/vc.scm (1.99):
+
+	Don't call UNIX/CURRENT-UID on non-unix systems.
+
 2007-08-16 23:42  Chris Hanson <edu/mit/csail/cph>
 
 	* xml/turtle.scm (1.32):
