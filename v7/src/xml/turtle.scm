@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.32 2007/08/17 03:42:49 cph Exp $
+$Id: turtle.scm,v 1.33 2007/10/05 20:13:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -624,8 +624,8 @@ USA.
 (define (write-rdf/turtle-triples graph port)
   (write-triples (rdf-graph-triples graph) 0 port))
 
-(define (write-rdf/turtle-triple triple indentation port)
-  (write-group (list triple) indentation (lambda (s) s #f) port)
+(define (write-rdf/turtle-triple triple port)
+  (write-group (list triple) 0 (lambda (s) s #f) port)
   (write-string "." port))
 
 (define (write-triples triples indentation port)
@@ -702,13 +702,13 @@ USA.
 	     (= (car t) 1))))))
 
 (define (write-group ts indentation inline-bnode port)
-  (let ((groups (group-triples ts rdf-triple-predicate))
-	(indentation (indent+ indentation)))
+  (let ((groups (group-triples ts rdf-triple-predicate)))
     (let ((subject-inline?
 	   (write-subject (rdf-triple-subject (caar groups))
 			  indentation
 			  inline-bnode
-			  port)))
+			  port))
+	(indentation (indent+ indentation)))
       (let ((writer
 	     (and subject-inline?
 		  (or (eq? (rdf-triple-predicate (caar groups)) rdf:type)
