@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.33 2007/10/05 20:13:50 cph Exp $
+$Id: turtle.scm,v 1.34 2007/10/08 03:05:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -579,9 +579,10 @@ USA.
       (port/set-rdf-prefix-registry port registry)
       (write-rdf/turtle graph port))))
 
-(define (write-rdf/turtle graph port)
-  (write-prefixes graph port)
-  (write-rdf/turtle-triples graph port))
+(define (write-rdf/turtle graph #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-prefixes graph port)
+    (write-rdf/turtle-triples graph port)))
 
 (define (write-prefixes graph port)
   (let ((table (make-eq-hash-table)))
@@ -613,20 +614,24 @@ USA.
 		    (substring<? a 0 (fix:- (string-length a) 1)
 				 b 0 (fix:- (string-length b) 1))))))))
 
-(define (write-rdf/turtle-prefix prefix expansion port)
-  (write-string "@prefix " port)
-  (write-symbol prefix port)
-  (write-string " <" port)
-  (write-string expansion port)
-  (write-string "> ." port)
-  (newline port))
+(define (write-rdf/turtle-prefix prefix expansion #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-string "@prefix " port)
+    (write-symbol prefix port)
+    (write-string " <" port)
+    (write-string expansion port)
+    (write-string "> ." port)
+    (newline port)))
 
-(define (write-rdf/turtle-triples graph port)
-  (write-triples (rdf-graph-triples graph) 0 port))
+(define (write-rdf/turtle-triples graph #!optional port)
+  (write-triples (rdf-graph-triples graph)
+		 0
+		 (if (default-object? port) (current-output-port) port)))
 
-(define (write-rdf/turtle-triple triple port)
-  (write-group (list triple) 0 (lambda (s) s #f) port)
-  (write-string "." port))
+(define (write-rdf/turtle-triple triple #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-group (list triple) 0 (lambda (s) s #f) port)
+    (write-string "." port)))
 
 (define (write-triples triples indentation port)
   (write-top-level triples
@@ -854,8 +859,9 @@ USA.
       (write-string "a" port)
       (write-rdf/turtle-uri p port)))
 
-(define (write-rdf/turtle-literal literal port)
-  (let ((text (rdf-literal-text literal)))
+(define (write-rdf/turtle-literal literal #!optional port)
+  (let ((text (rdf-literal-text literal))
+	(port (if (default-object? port) (current-output-port) port)))
     (if (let ((type (rdf-literal-type literal)))
 	  (or (eq? type xsd:boolean)
 	      (eq? type xsd:decimal)
@@ -889,19 +895,20 @@ USA.
 	(write-string "\"\"\"" port))
       (write-rdf/nt-literal-text text port)))
 
-(define (write-rdf/turtle-uri uri port)
-  (let* ((s (uri->string uri))
-	 (end (string-length s)))
-    (receive (prefix expansion)
-	(uri->rdf-prefix uri (port/rdf-prefix-registry port) #f)
-      (if prefix
-	  (let ((start (string-length expansion)))
-	    (if (*match-string match:name s start end)
-		(begin
-		  (write-string (symbol-name prefix) port)
-		  (write-substring s start end port))
-		(write-rdf/nt-uri uri port)))
-	  (write-rdf/nt-uri uri port)))))
+(define (write-rdf/turtle-uri uri #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (let* ((s (uri->string uri))
+	   (end (string-length s)))
+      (receive (prefix expansion)
+	  (uri->rdf-prefix uri (port/rdf-prefix-registry port) #f)
+	(if prefix
+	    (let ((start (string-length expansion)))
+	      (if (*match-string match:name s start end)
+		  (begin
+		    (write-string (symbol-name prefix) port)
+		    (write-substring s start end port))
+		  (write-rdf/nt-uri uri port)))
+	    (write-rdf/nt-uri uri port))))))
 
 (define (sort-triples triples)
   (sort triples
