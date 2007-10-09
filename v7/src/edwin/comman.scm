@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comman.scm,v 1.90 2007/01/05 21:19:23 cph Exp $
+$Id: comman.scm,v 1.91 2007/10/09 04:14:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -147,14 +147,14 @@ USA.
     (set-variable-initial-value! variable value)
     (set-variable-%default-value! variable value)
     (set-variable-assignment-daemons! variable '())
-    ;; Next two are written strangely because DEFAULT-OBJECT?
-    ;; expansion contains (THE-ENVIRONMENT), which can't be inlined.
-    (if (default-object? test)
-	(set-variable-value-validity-test! variable #f)
-	(set-variable-value-validity-test! variable test))
-    (if (default-object? normalization)
-	(set-variable-value-normalization! variable #f)
-	(set-variable-value-normalization! variable normalization))
+    (set-variable-value-validity-test! variable
+				       (if (default-object? test)
+					   #f
+					   test))
+    (set-variable-value-normalization! variable
+				       (if (default-object? normalization)
+					   #f
+					   normalization))
     variable))
 
 (define (make-variable-buffer-local! variable)
