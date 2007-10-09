@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.80 2007/01/05 21:19:23 cph Exp $
+$Id: macros.scm,v 1.81 2007/10/09 04:14:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -132,7 +132,7 @@ USA.
 	,(variable-name->scheme-name (list-ref form 1))
 	(,(close-syntax 'MAKE-VARIABLE environment)
 	 ',(list-ref form 1)
-	 ,(list-ref form 2)
+	 ,(if (> (length form) 2) (list-ref form 2) '#F)
 	 ,(if (> (length form) 3) (list-ref form 3) '#F)
 	 ,buffer-local?
 	 ,(if (> (length form) 4) (list-ref form 4) '#F)
