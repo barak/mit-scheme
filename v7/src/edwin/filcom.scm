@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: filcom.scm,v 1.228 2007/01/05 21:19:23 cph Exp $
+$Id: filcom.scm,v 1.229 2007/10/09 04:20:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,12 +244,7 @@ procedures are called."
 					       car
 					       name)))))))
       (if entry
-	  (begin
-	    (local-set-variable! scheme-environment (cadr entry) buffer)
-	    (if (and (eq? 'DEFAULT (ref-variable scheme-environment buffer))
-		     (not (eq? 'DEFAULT (cadr entry))))
-		(message "Ignoring bad evaluation environment: "
-			 (cadr entry))))))))
+	  (local-set-variable! scheme-environment (cadr entry) buffer)))))
 
 (define (find-file-revert buffer)
   (if (verify-visited-file-modification-time? buffer)
