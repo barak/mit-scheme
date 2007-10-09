@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.76 2007/01/05 21:19:24 cph Exp $
+$Id: schmod.scm,v 1.77 2007/10/09 04:41:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -207,6 +207,7 @@ The following commands evaluate Scheme expressions:
 
 (define scheme-mode:indent-regexps
   `(SCHEME-MODE:INDENT-REGEXPS
+    ("DEFAULT" . #F)
     ("DEF" . DEFINITION)
     ("WITH-" . 1)))
 
