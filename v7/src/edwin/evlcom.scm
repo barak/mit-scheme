@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.74 2007/01/18 02:03:39 riastradh Exp $
+$Id: evlcom.scm,v 1.75 2007/10/09 04:43:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,13 +38,16 @@ If 'DEFAULT, use the default (REP loop) environment."
   'DEFAULT
   #f
   (lambda (object)
-    (if (or (eq? 'DEFAULT object) (list-of-type? object symbol?))
+    (if (or (eq? 'DEFAULT object)
+	    (list-of-type? object symbol?)
+	    (procedure-of-arity? object 1))
 	object
 	(call-with-current-continuation
 	 (lambda (k)
 	   (bind-condition-handler (list condition-type:error)
 	       (lambda (condition)
 		 condition
+		 (message "Ignoring bad evaluation environment: " object)
 		 (k 'DEFAULT))
 	     (lambda ()
 	       (->environment object))))))))
@@ -347,34 +350,32 @@ Has no effect if evaluate-in-inferior-repl is false."
 		(cons expression (loop)))))))))
 
 (define (evaluation-environment #!optional buffer global-ok?)
-  (let ((buffer
-	 (if (default-object? buffer)
-	     (current-buffer)
-	     (->buffer buffer)))
-	(non-default
-	 (lambda (object)
-	   (if (environment? object)
-	       object
-	       (let ((package (name->package object)))
-		 (cond (package
-			(package/environment package))
-		       ((if (default-object? global-ok?) #t global-ok?)
-			system-global-environment)
-		       (else
-			(editor-error "Package not loaded: " object))))))))
+  (let ((buffer (->buffer buffer)))
+    (evaluation-environment-no-repl
+     buffer
+     (let ((repl-buffer
+	    (and (ref-variable evaluate-in-inferior-repl buffer)
+		 (current-repl-buffer* buffer))))
+       (if (and repl-buffer
+		(not (eq? repl-buffer buffer)))
+	   (evaluation-environment-no-repl repl-buffer)
+	   #!default))
+     global-ok?)))
+
+(define (evaluation-environment-no-repl #!optional buffer default global-ok?)
+  (let ((buffer (->buffer buffer))
+	(default
+	  (if (default-object? default)
+	      (nearest-repl/environment)
+	      default))
+	(global-ok? (if (default-object? global-ok?) #t global-ok?)))
     (let ((environment (ref-variable scheme-environment buffer)))
-      (if (eq? 'DEFAULT environment)
-	  (let ((repl-buffer
-		 (and (ref-variable evaluate-in-inferior-repl buffer)
-		      (current-repl-buffer* buffer))))
-	    (if repl-buffer
-		(let ((environment
-		       (ref-variable scheme-environment repl-buffer)))
-		  (if (eq? 'DEFAULT environment)
-		      (nearest-repl/environment)
-		      (non-default environment)))
-		(nearest-repl/environment)))
-	  (non-default environment)))))
+      (cond ((eq? 'DEFAULT environment) default)
+	    ((environment? environment) environment)
+	    ((procedure? environment) (environment default))
+	    ((name->package environment) => package/environment)
+	    (global-ok? system-global-environment)
+	    (else (editor-error "Package not loaded: " environment))))))
 
 (define-variable run-light
   "Scheme run light.  Not intended to be modified by users.

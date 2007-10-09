@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: artdebug.scm,v 1.37 2007/01/05 21:19:23 cph Exp $
+$Id: artdebug.scm,v 1.38 2007/10/09 04:43:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1284,10 +1284,7 @@ Prefix argument means do not kill the debugger buffer."
     (if (and (pair? environment-list)
 	     (environment? (car environment-list)))
 	(car environment-list)
-	(let ((environment (ref-variable scheme-environment)))
-	  (if (eq? 'DEFAULT environment)
-	      (nearest-repl/environment)
-	      (->environment environment))))))
+	(evaluation-environment-no-repl))))
 
 ;;;; Interface Port
 
