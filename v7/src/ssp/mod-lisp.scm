@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.36 2007/09/17 05:07:13 cph Exp $
+$Id: mod-lisp.scm,v 1.37 2007/10/12 19:08:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -109,6 +109,7 @@ USA.
 		      ,@(map (lambda (p)
 			       (list (car p) (cdr p)))
 			     (http-message-headers request)))))
+    (maybe-parse-post-variables request)
     (let ((expand
 	   (lambda (default-type handler)
 	     (set-status-header response 200)
@@ -126,13 +127,11 @@ USA.
       (receive (handler default-type) (http-message-handler request)
 	(if handler
 	    (expand default-type handler)
-	    (begin
-	      (maybe-parse-post-variables request)
-	      (let ((type
-		     (or (file-content-type pathname)
-			 "application/octet-stream")))
-		(expand type
-			(get-mime-handler type)))))))
+	    (let ((type
+		   (or (file-content-type pathname)
+		       "application/octet-stream")))
+	      (expand type
+		      (get-mime-handler type))))))
     response))
 
 (define (mod-lisp-expander request response pathname expander)
