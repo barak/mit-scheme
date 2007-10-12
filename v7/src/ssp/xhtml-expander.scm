@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.13 2007/01/05 21:19:29 cph Exp $
+$Id: xhtml-expander.scm,v 1.14 2007/10/12 02:13:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,25 +74,22 @@ USA.
       "utf-8"))
 
 (define (read/expand-xml-file pathname environment)
-  (with-working-directory-pathname (directory-pathname pathname)
-    (lambda ()
-      (fluid-let ((*sabbr-table* (make-eq-hash-table)))
-	(read-xml-file pathname
-		       `((scheme ,(pi-expander environment))
-			 (svar ,svar-expander)
-			 (sabbr ,sabbr-expander)))))))
+  (let ((pathname (merge-pathnames pathname)))
+    (with-eval-unit (pathname->uri pathname)
+      (lambda ()
+	(with-load-environment environment
+	  (lambda ()
+	    (fluid-let ((*sabbr-table* (make-eq-hash-table)))
+	      (read-xml-file pathname
+			     `((scheme ,(pi-expander environment))
+			       (svar ,svar-expander)
+			       (sabbr ,sabbr-expander))))))))))
 
 (define (make-expansion-environment pathname)
-  (let ((pathname (merge-pathnames pathname))
-	(environment (extend-top-level-environment expander-environment)))
-    (environment-define environment 'document-pathname pathname)
-    (environment-define environment 'load
-			(let ((directory (directory-pathname pathname)))
-			  (lambda (pathname #!optional target)
-			    (load (merge-pathnames pathname directory)
-				  (if (default-object? target)
-				      environment
-				      target)))))
+  (let ((environment (extend-top-level-environment expander-environment)))
+    (environment-define environment
+			'document-pathname
+			(merge-pathnames pathname))
     environment))
 
 (define ((pi-expander environment) text)
