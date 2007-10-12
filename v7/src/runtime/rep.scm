@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rep.scm,v 14.69 2007/10/12 01:08:02 cph Exp $
+$Id: rep.scm,v 14.70 2007/10/12 02:12:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -780,7 +780,7 @@ USA.
 (define (ge environment)
   (let ((environment (->environment environment 'GE)))
     (set-repl/environment! (nearest-repl) environment)
-    (set-current-load-environment! environment)
+    (set-load-environment! environment)
     environment))
 
 (define (->environment object #!optional caller)

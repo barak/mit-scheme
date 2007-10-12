@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.99 2007/10/12 02:00:22 cph Exp $
+$Id: load.scm,v 14.100 2007/10/12 02:12:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -122,10 +122,11 @@ USA.
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
     (lambda ()
-      (fluid-let ((*current-load-environment* environment))
-	(with-eval-unit (pathname->uri pathname)
-	  (lambda ()
-	    (loader environment purify?)))))))
+      (with-load-environment environment
+	(lambda ()
+	  (with-eval-unit (pathname->uri pathname)
+	    (lambda ()
+	      (loader environment purify?))))))))
 
 (define (fasload pathname #!optional suppress-notifications?)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
@@ -249,8 +250,13 @@ USA.
     (thunk)))
 
 (define (with-eval-unit uri thunk)
-  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
-    (thunk)))
+  (let ((uri (->absolute-uri uri 'WITH-EVAL-UNIT)))
+    (fluid-let ((*eval-unit* uri))
+      (let ((pathname (uri->pathname uri #f)))
+	(if pathname
+	    (with-working-directory-pathname (directory-pathname pathname)
+	      thunk)
+	    (thunk))))))
 
 (define (current-eval-unit #!optional error?)
   (let ((unit *eval-unit*))
@@ -269,16 +275,17 @@ USA.
 	(nearest-repl/environment)
 	env)))
 
-(define (with-current-load-environment environment thunk)
-  (guarantee-environment environment 'WITH-CURRENT-LOAD-ENVIRONMENT)
-  (fluid-let ((*current-load-environment* environment))
-    (thunk)))
-
-(define (set-current-load-environment! env)
+(define (set-load-environment! environment)
+  (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
   (if (not (eq? *current-load-environment* 'NONE))
       (begin
-	(set! *current-load-environment* env)
+	(set! *current-load-environment* environment)
 	unspecific)))
+
+(define (with-load-environment environment thunk)
+  (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
+  (fluid-let ((*current-load-environment* environment))
+    (thunk)))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
