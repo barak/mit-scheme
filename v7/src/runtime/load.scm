@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.98 2007/10/12 01:08:01 cph Exp $
+$Id: load.scm,v 14.99 2007/10/12 02:00:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -268,6 +268,11 @@ USA.
     (if (eq? env 'NONE)
 	(nearest-repl/environment)
 	env)))
+
+(define (with-current-load-environment environment thunk)
+  (guarantee-environment environment 'WITH-CURRENT-LOAD-ENVIRONMENT)
+  (fluid-let ((*current-load-environment* environment))
+    (thunk)))
 
 (define (set-current-load-environment! env)
   (if (not (eq? *current-load-environment* 'NONE))
