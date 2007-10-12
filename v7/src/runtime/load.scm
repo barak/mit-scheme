@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.97 2007/07/23 04:52:48 cph Exp $
+$Id: load.scm,v 14.98 2007/10/12 01:08:01 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -56,9 +56,7 @@ USA.
   syntax-table				;ignored
   (let ((environment
 	 (if (default-object? environment)
-	     (if (eq? *current-load-environment* 'NONE)
-		 (nearest-repl/environment)
-		 *current-load-environment*)
+	     (current-load-environment)
 	     (->environment environment)))
 	(purify?
 	 (if (default-object? purify?)
@@ -264,6 +262,18 @@ USA.
 (define (current-load-pathname)
   (or (uri->pathname (current-eval-unit) #f)
       (error condition-type:not-loading)))
+
+(define (current-load-environment)
+  (let ((env *current-load-environment*))
+    (if (eq? env 'NONE)
+	(nearest-repl/environment)
+	env)))
+
+(define (set-current-load-environment! env)
+  (if (not (eq? *current-load-environment* 'NONE))
+      (begin
+	(set! *current-load-environment* env)
+	unspecific)))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.626 2007/09/12 23:35:01 cph Exp $
+$Id: runtime.pkg,v 14.627 2007/10/12 01:08:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2411,6 +2411,7 @@ USA.
 	  built-in-object-file
 	  condition-type:not-loading
 	  current-eval-unit
+	  current-load-environment
 	  current-load-pathname
 	  fasl-file?
 	  fasload
@@ -2429,6 +2430,8 @@ USA.
 	  system-uri
 	  with-eval-unit
 	  with-loader-base-uri)
+  (export (runtime rep)
+	  set-current-load-environment!)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
