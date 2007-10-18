@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.100 2007/10/17 18:50:22 cph Exp $
+$Id: vc.scm,v 1.101 2007/10/18 15:57:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2522,6 +2522,59 @@ the value of vc-log-mode-hook."
 	      ((pair? (cdr path)) (loop (except-last-pair path)))
 	      (else #f))))))
 
+(define (bzr-workfile-versioned? workfile)
+  (%bzr-ls-test workfile "--versioned"))
+
+(define (bzr-workfile-ignored? workfile)
+  (%bzr-ls-test workfile "--ignored"))
+
+(define (bzr-workfile-unknown? workfile)
+  (%bzr-ls-test workfile "--unknown"))
+
+(define (%bzr-ls-test workfile type)
+  (let ((result (%bzr-run-command workfile "ls" type ".")))
+    (and result
+	 (re-string-search-forward (string-append "^\\./"
+						  (file-namestring workfile)
+						  "$")
+				   result))))
+
+(define (%bzr-run-command workfile command . args)
+  (let ((entry
+	 (hash-table/intern! %bzr-command-cache (->namestring workfile)
+	   (lambda ()
+	     (list -1))))
+	(t (file-modification-time workfile))
+	(key (cons command args)))
+    (if (= t (car entry))
+	(let ((p (assoc key (cdr entry))))
+	  (if p
+	      (cdr p)
+	      (let ((result (%bzr-run-command-1 workfile command args)))
+		(set-cdr! entry (cons (cons key result) (cdr entry)))
+		result)))
+	(let ((result (%bzr-run-command-1 workfile command args)))
+	  (set-cdr! entry (list (cons key result)))
+	  (set-car! entry t)
+	  result))))
+
+(define %bzr-command-cache
+  (make-string-hash-table))
+
+(define (%bzr-run-command-1 workfile command args)
+  (let ((directory (directory-pathname workfile)))
+    (let ((program (os/find-program "bzr" directory #!default #f)))
+      (and program
+	   (let ((port (open-output-string)))
+	     (let ((status
+		    (run-synchronous-subprocess
+		     program
+		     (cons command args)
+		     'output port
+		     'working-directory directory)))
+	       (and (eqv? status 0)
+		    (get-output-string port))))))))
+
 (define (get-bzr-status workfile #!optional required?)
   (let ((workfile
 	 (if (vc-master? workfile)
@@ -2540,53 +2593,8 @@ the value of vc-log-mode-hook."
 			  workfile))
 	       #f)))))
 
-(define (bzr-workfile-versioned? workfile)
-  (%bzr-ls-test workfile "--versioned"))
-
-(define (bzr-workfile-ignored? workfile)
-  (%bzr-ls-test workfile "--ignored"))
-
-(define (bzr-workfile-unknown? workfile)
-  (%bzr-ls-test workfile "--unknown"))
-
-(define (%bzr-ls-test workfile type)
-  (let ((result (%bzr-run-command workfile "ls" type ".")))
-    (and result
-	 (re-string-search-forward (string-append "^\\./"
-						  (file-namestring workfile)
-						  "$")
-				   result))))
-
 (define (%get-bzr-status workfile)
   (%bzr-run-command workfile "status" "--short" (file-namestring workfile)))
-
-(define (%bzr-run-command workfile command . args)
-  (let ((alist (1d-table/get %bzr-command-cache workfile '()))
-	(key (cons command args)))
-    (let ((p (assoc key alist)))
-      (if p
-	  (cdr p)
-	  (let ((result (%bzr-run-command-1 workfile command args)))
-	    (1d-table/put! %bzr-command-cache
-			   workfile
-			   (cons (cons key result) alist))
-	    result)))))
-
-(define %bzr-command-cache (make-1d-table))
-
-(define (%bzr-run-command-1 workfile command args)
-  (let ((directory (directory-pathname workfile)))
-    (let ((program (os/find-program "bzr" directory #!default #f)))
-      (and program
-	   (let ((port (open-output-string)))
-	     (let ((status
-		    (run-synchronous-subprocess
-		     program
-		     (cons command args)
-		     'output port
-		     'working-directory directory)))
-	       (and (eqv? status 0)
-		    (get-output-string port))))))))
 
 (define (parse-bzr-status status)
   (and status
