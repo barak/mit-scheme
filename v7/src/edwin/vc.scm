@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.101 2007/10/18 15:57:40 cph Exp $
+$Id: vc.scm,v 1.102 2007/10/19 17:28:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2336,43 +2336,47 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'FIND-MASTER vc-type:bzr
   (lambda (workfile)
-    (and (bzr-directory workfile)
-	 (bzr-workfile-versioned? workfile)
-	 (make-vc-master vc-type:bzr
-			 (merge-pathnames "README" (bzr-directory workfile))
-			 workfile))))
+    (let ((dir (bzr-directory workfile)))
+      (and dir
+	   (%bzr-workfile-versioned? workfile)
+	   (make-vc-master vc-type:bzr
+			   (merge-pathnames "README" dir)
+			   workfile)))))
 
 (define-vc-type-operation 'VALID? vc-type:bzr
   (lambda (master)
-    (bzr-workfile-versioned? (vc-master-workfile master))))
+    (%bzr-workfile-cache master
+			 'WORKFILE-VERSIONED?
+			 %bzr-workfile-versioned?)))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:bzr
   (lambda (master error?)
-    (or (%bzr-run-command (vc-master-workfile master) "revno")
+    (or (%bzr-cached-command master 'DEFAULT-REVISION "revno")
 	(and error?
 	     (error "Unable to determine default Bazaar revision.")))))
 
 (define-vc-type-operation 'WORKFILE-REVISION vc-type:bzr
   (lambda (master)
-    (bzr-workfile-revision (vc-master-workfile master))))
+    (bzr-workfile-revision master)))
 
 (define-vc-type-operation 'LOCKING-USER vc-type:bzr
   (lambda (master revision)
     ;; The workfile is "locked" if it is modified.
     ;; We consider the workfile's owner to be the locker.
-    (let ((workfile (vc-master-workfile master)))
-      (let ((status (get-bzr-status workfile)))
-	(and status
-	     (or (not revision)
-		 (equal? revision (bzr-workfile-revision workfile)))
-	     (bzr-status-modified? status)
-	     (unix/uid->string
-	      (file-attributes/uid (file-attributes workfile))))))))
+    (let ((status (get-bzr-status master)))
+      (and status
+	   (or (not revision)
+	       (equal? revision (bzr-workfile-revision master)))
+	   (bzr-status-modified? status)
+	   (unix/uid->string
+	    (file-attributes/uid
+	     (file-attributes (vc-master-workfile master))))))))
 
-(define (bzr-workfile-revision workfile)
+(define (bzr-workfile-revision master)
   (let ((result
-	 (%bzr-run-command workfile "log" "--limit=1" "--line"
-			   (file-namestring workfile))))
+	 (%bzr-cached-command master 'WORKFILE-REVISION
+			      "log" "--limit=1" "--line"
+			      (file-namestring (vc-master-workfile master)))))
     (and result
 	 (let ((regs (re-string-match "\\([0-9]+\\): \\([^ ]+\\) " result)))
 	   (and regs
@@ -2522,46 +2526,26 @@ the value of vc-log-mode-hook."
 	      ((pair? (cdr path)) (loop (except-last-pair path)))
 	      (else #f))))))
 
-(define (bzr-workfile-versioned? workfile)
+(define (%bzr-workfile-versioned? workfile)
   (%bzr-ls-test workfile "--versioned"))
 
-(define (bzr-workfile-ignored? workfile)
+(define (%bzr-workfile-ignored? workfile)
   (%bzr-ls-test workfile "--ignored"))
 
-(define (bzr-workfile-unknown? workfile)
-  (%bzr-ls-test workfile "--unknown"))
-
-(define (%bzr-ls-test workfile type)
-  (let ((result (%bzr-run-command workfile "ls" type ".")))
+(define (%bzr-ls-test workfile option)
+  (let ((result (%bzr-run-command workfile "ls" option ".")))
     (and result
 	 (re-string-search-forward (string-append "^\\./"
 						  (file-namestring workfile)
 						  "$")
 				   result))))
 
+(define (%bzr-cached-command master key command . args)
+  (%bzr-workfile-cache master key
+    (lambda (workfile)
+      (apply %bzr-run-command workfile command args))))
+
 (define (%bzr-run-command workfile command . args)
-  (let ((entry
-	 (hash-table/intern! %bzr-command-cache (->namestring workfile)
-	   (lambda ()
-	     (list -1))))
-	(t (file-modification-time workfile))
-	(key (cons command args)))
-    (if (= t (car entry))
-	(let ((p (assoc key (cdr entry))))
-	  (if p
-	      (cdr p)
-	      (let ((result (%bzr-run-command-1 workfile command args)))
-		(set-cdr! entry (cons (cons key result) (cdr entry)))
-		result)))
-	(let ((result (%bzr-run-command-1 workfile command args)))
-	  (set-cdr! entry (list (cons key result)))
-	  (set-car! entry t)
-	  result))))
-
-(define %bzr-command-cache
-  (make-string-hash-table))
-
-(define (%bzr-run-command-1 workfile command args)
   (let ((directory (directory-pathname workfile)))
     (let ((program (os/find-program "bzr" directory #!default #f)))
       (and program
@@ -2574,27 +2558,29 @@ the value of vc-log-mode-hook."
 		     'working-directory directory)))
 	       (and (eqv? status 0)
 		    (get-output-string port))))))))
-
-(define (get-bzr-status workfile #!optional required?)
-  (let ((workfile
-	 (if (vc-master? workfile)
-	     (vc-master-workfile workfile)
-	     workfile)))
-    (or (parse-bzr-status (%get-bzr-status workfile))
-	(cond ((bzr-workfile-versioned? workfile)
-	       (make-bzr-status 'VERSIONED 'UNMODIFIED #f))
-	      ((bzr-workfile-ignored? workfile)
-	       (make-bzr-status 'UNVERSIONED 'UNMODIFIED #f))
-	      ((bzr-workfile-unknown? workfile)
-	       (make-bzr-status 'UNKNOWN 'UNMODIFIED #f))
-	      (else
-	       (if (if (default-object? required?) #f required?)
-		   (error "Unable to determine Bazaar status of file:"
-			  workfile))
-	       #f)))))
 
-(define (%get-bzr-status workfile)
-  (%bzr-run-command workfile "status" "--short" (file-namestring workfile)))
+(define (%bzr-workfile-cache master key procedure)
+  (let ((workfile (vc-master-workfile master)))
+    (read-cached-value-1 master key workfile
+      (lambda (time)
+	time
+	(procedure workfile)))))
+
+(define (get-bzr-status master #!optional required?)
+  (%bzr-workfile-cache master 'GET-STATUS
+    (lambda (workfile)
+      (or (parse-bzr-status
+	   (%bzr-run-command workfile "status" "--short"
+			     (file-namestring workfile)))
+	  (cond ((%bzr-workfile-versioned? workfile)
+		 (make-bzr-status 'VERSIONED 'UNMODIFIED #f))
+		((%bzr-workfile-ignored? workfile)
+		 (make-bzr-status 'UNVERSIONED 'UNMODIFIED #f))
+		(else
+		 (if (if (default-object? required?) #f required?)
+		     (error "Unable to determine Bazaar status of file:"
+			    workfile))
+		 #f))))))
 
 (define (parse-bzr-status status)
   (and status
