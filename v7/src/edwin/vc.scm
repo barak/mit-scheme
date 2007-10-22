@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.102 2007/10/19 17:28:07 cph Exp $
+$Id: vc.scm,v 1.103 2007/10/22 04:13:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -333,7 +333,7 @@ Otherwise, VC will compare the file to the copy in the repository."
     (let ((buffer (or buffer workfile-buffer))
 	  (revision
 	   (or (vc-backend-workfile-revision master)
-	       (vc-backend-default-revision master #f))))
+	       (vc-backend-default-revision master))))
       (let ((locker (vc-backend-locking-user master revision))
 	    (user-name (current-user-name)))
 	(set-variable!
@@ -843,7 +843,7 @@ If `F.~REV~' already exists, it is used instead of being re-created."
 	   (revision
 	    (or (vc-normalize-revision revision)
 		(vc-backend-workfile-revision master)
-		(vc-backend-default-revision master #f)))
+		(vc-backend-default-revision master)))
 	   (workfile
 	    (string-append (vc-workfile-string master) ".~" revision "~")))
       (if (not (file-exists? workfile))
@@ -1195,13 +1195,11 @@ the value of vc-log-mode-hook."
   ;; The return value is a boolean indicating that MASTER is valid.
   (vc-call 'VALID? master))
 
-(define (vc-backend-default-revision master error?)
+(define (vc-backend-default-revision master)
   ;; MASTER is a valid VC-MASTER object.
-  ;; ERROR? is a boolean.
   ;; The default revision (usually the head of the trunk) is returned.
-  ;; If there is no such revision, then if ERROR? is true, an error is
-  ;; signalled.  Otherwise #F is returned.
-  (vc-call 'DEFAULT-REVISION master error?))
+  ;; If there is no such revision, #F is returned.
+  (vc-call 'DEFAULT-REVISION master))
 
 (define (vc-backend-workfile-revision master)
   ;; MASTER is a valid VC-MASTER object.
@@ -1422,8 +1420,8 @@ the value of vc-log-mode-hook."
     (file-exists? (vc-master-pathname master))))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:rcs
-  (lambda (master error?)
-    (let ((delta (rcs-find-delta (get-rcs-admin master) #f error?)))
+  (lambda (master)
+    (let ((delta (rcs-find-delta (get-rcs-admin master) #f #f)))
       (and delta
 	   (rcs-delta/number delta)))))
 
@@ -1783,11 +1781,8 @@ the value of vc-log-mode-hook."
     (get-cvs-workfile-revision master #f)))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:cvs
-  (lambda (master error?)
-    (or (cvs-default-revision master)
-	(and error?
-	     (error "Unable to determine default CVS version:"
-		    (vc-master-workfile master))))))
+  (lambda (master)
+    (cvs-default-revision master)))
 
 (define-vc-type-operation 'WORKFILE-REVISION vc-type:cvs
   (lambda (master)
@@ -2027,9 +2022,9 @@ the value of vc-log-mode-hook."
 	   (svn-status-working-revision status)))))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:svn
-  (lambda (master error?)
+  (lambda (master)
     (let ((workfile (vc-master-workfile master)))
-      (let ((status (get-svn-status workfile error?)))
+      (let ((status (get-svn-status workfile #f)))
 	(and status
 	     (svn-status-working-revision status))))))
 
@@ -2350,10 +2345,9 @@ the value of vc-log-mode-hook."
 			 %bzr-workfile-versioned?)))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:bzr
-  (lambda (master error?)
-    (or (%bzr-cached-command master 'DEFAULT-REVISION "revno")
-	(and error?
-	     (error "Unable to determine default Bazaar revision.")))))
+  (lambda (master)
+    master
+    #f))
 
 (define-vc-type-operation 'WORKFILE-REVISION vc-type:bzr
   (lambda (master)
