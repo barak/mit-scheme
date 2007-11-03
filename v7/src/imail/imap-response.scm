@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imap-response.scm,v 1.51 2007/09/09 18:48:46 riastradh Exp $
+$Id: imap-response.scm,v 1.52 2007/11/03 02:57:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -81,7 +81,10 @@ USA.
 
 (define (read-flags-response port)
   (discard-known-char #\space port)
-  (read-list port read-flag))
+  ;; Work around bug in Gmail IMAP server: FLAGS response improperly
+  ;; contains the \* flag.
+  ;;(read-list port read-flag)
+  (delq! '|\\*| (read-list port read-pflag)))
 
 (define (read-list-response port)
   (discard-known-char #\space port)
