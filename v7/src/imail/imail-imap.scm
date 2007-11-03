@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.213 2007/08/05 23:57:30 riastradh Exp $
+$Id: imail-imap.scm,v 1.214 2007/11/03 04:00:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -441,20 +441,17 @@ USA.
 
 (define (imap-mailbox-delimiter url mailbox)
   (let* ((slash (string-find-next-char mailbox #\/))
-	 (root (if slash (string-head mailbox slash) mailbox)))
-    (let ((delimiter (hash-table/get imap-delimiters-table root 'UNKNOWN)))
-      (if (eq? delimiter 'UNKNOWN)
-	  (let ((delimiter
-		 (imap:response:list-delimiter
-		  (with-open-imap-connection url
-		    (lambda (connection)
-		      (imap:command:get-delimiter connection root))))))
-	    (let ((delimiter
-		   (and delimiter
-			(string-ref delimiter 0))))
-	      (hash-table/put! imap-delimiters-table root delimiter)
-	      delimiter))
-	  delimiter))))
+	 (root (if slash (string-head mailbox slash) mailbox))
+	 (key (make-imap-url-string url root)))
+    (hash-table/intern! imap-delimiters-table key
+      (lambda ()
+	(let ((delimiter
+	       (imap:response:list-delimiter
+		(with-open-imap-connection url
+		  (lambda (connection)
+		    (imap:command:get-delimiter connection root))))))
+	  (and delimiter
+	       (string-ref delimiter 0)))))))
 
 (define imap-delimiters-table
   (make-equal-hash-table))
