@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.56 2007/09/04 03:35:19 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.57 2007/11/25 05:24:42 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -272,8 +272,16 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
+    MACOSX_SYSROOT=/Developer/SDKs/MacOSX10.4u.sdk
+    if test -d ${MACOSX_SYSROOT}; then
+	MACOSX_CFLAGS="-mmacosx-version-min=10.4 -isysroot ${MACOSX_SYSROOT}"
+	MACOSX_LDFLAGS="${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
+	CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
+	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} ${MACOSX_LDFLAGS}"
+	MODULE_CFLAGS="${MODULE_CFLAGS} ${MACOSX_CFLAGS}"
+	MODULE_LDFLAGS="${MODULE_LDFLAGS} ${MACOSX_LDFLAGS}"
+    fi
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader scheme"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
@@ -997,6 +1005,14 @@ if test "x${MODULE_BASES}" != x; then
 	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
 	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
     done
+fi
+
+if test ${SCM_ARCH} = i386; then
+    case ${host_os} in
+    darwin*)
+        SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
+	;;
+    esac
 fi
 
 AC_SUBST([AS_FLAGS])
