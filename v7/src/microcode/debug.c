@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: debug.c,v 9.61 2007/04/22 16:31:22 cph Exp $
+$Id: debug.c,v 9.62 2007/11/26 04:00:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -301,7 +301,8 @@ print_objects (SCHEME_OBJECT * objects, int n)
   end = (objects + n);
   while (scan < end)
     {
-      outf_error ("%4x: ", (((char *) scan) - ((char *) objects)));
+      outf_error
+	("%4lx: ", ((unsigned long) (((char *) scan) - ((char *) objects))));
       do_printing (ERROR_OUTPUT, (*scan++), true);
       outf_error ("\n");
     }
