@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.57 2007/11/25 05:24:42 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.58 2007/11/26 05:19:33 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -212,11 +212,20 @@ AC_C_PROTOTYPES
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+
+CFLAGS=${EXTRA_CFLAGS}
+LDFLAGS=${EXTRA_LDFLAGS}
+
+if test x${MAC_ARCH} != x; then
+    CFLAGS="${CFLAGS} -arch ${MAC_ARCH}"
+    LDFLAGS="${LDFLAGS} -arch ${MAC_ARCH}"
+fi
+
 if test ${GCC} = yes; then
     if test ${enable_debugging} = no; then
-	CFLAGS="-O3"
+	CFLAGS="${CFLAGS} -O3"
     else
-	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS"
+	CFLAGS="${CFLAGS} -O0 -g -DENABLE_DEBUGGING_TOOLS"
 	LDFLAGS="${LDFLAGS} -g"
     fi
     CFLAGS="${CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
@@ -272,16 +281,15 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
+    MACOSX=yes
     MACOSX_SYSROOT=/Developer/SDKs/MacOSX10.4u.sdk
     if test -d ${MACOSX_SYSROOT}; then
 	MACOSX_CFLAGS="-mmacosx-version-min=10.4 -isysroot ${MACOSX_SYSROOT}"
 	MACOSX_LDFLAGS="${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
 	CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
-	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} ${MACOSX_LDFLAGS}"
-	MODULE_CFLAGS="${MODULE_CFLAGS} ${MACOSX_CFLAGS}"
-	MODULE_LDFLAGS="${MODULE_LDFLAGS} ${MACOSX_LDFLAGS}"
+	LDFLAGS="${LDFLAGS} ${MACOSX_LDFLAGS}"
     fi
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader scheme"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
@@ -1007,12 +1015,8 @@ if test "x${MODULE_BASES}" != x; then
     done
 fi
 
-if test ${SCM_ARCH} = i386; then
-    case ${host_os} in
-    darwin*)
-        SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-	;;
-    esac
+if test x${MACOSX} = xyes && test ${SCM_ARCH} = i386; then
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
 fi
 
 AC_SUBST([AS_FLAGS])
