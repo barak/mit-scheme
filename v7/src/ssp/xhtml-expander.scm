@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.14 2007/10/12 02:13:17 cph Exp $
+$Id: xhtml-expander.scm,v 1.15 2007/11/26 05:15:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,13 +77,15 @@ USA.
   (let ((pathname (merge-pathnames pathname)))
     (with-eval-unit (pathname->uri pathname)
       (lambda ()
-	(with-load-environment environment
+	(with-working-directory-pathname (directory-pathname pathname)
 	  (lambda ()
-	    (fluid-let ((*sabbr-table* (make-eq-hash-table)))
-	      (read-xml-file pathname
-			     `((scheme ,(pi-expander environment))
-			       (svar ,svar-expander)
-			       (sabbr ,sabbr-expander))))))))))
+	    (with-load-environment environment
+	      (lambda ()
+		(fluid-let ((*sabbr-table* (make-eq-hash-table)))
+		  (read-xml-file pathname
+				 `((scheme ,(pi-expander environment))
+				   (svar ,svar-expander)
+				   (sabbr ,sabbr-expander))))))))))))
 
 (define (make-expansion-environment pathname)
   (let ((environment (extend-top-level-environment expander-environment)))

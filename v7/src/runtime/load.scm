@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.100 2007/10/12 02:12:11 cph Exp $
+$Id: load.scm,v 14.101 2007/11/26 05:15:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -250,13 +250,8 @@ USA.
     (thunk)))
 
 (define (with-eval-unit uri thunk)
-  (let ((uri (->absolute-uri uri 'WITH-EVAL-UNIT)))
-    (fluid-let ((*eval-unit* uri))
-      (let ((pathname (uri->pathname uri #f)))
-	(if pathname
-	    (with-working-directory-pathname (directory-pathname pathname)
-	      thunk)
-	    (thunk))))))
+  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
+    (thunk)))
 
 (define (current-eval-unit #!optional error?)
   (let ((unit *eval-unit*))
