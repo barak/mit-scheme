@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.103 2007/10/22 04:13:45 cph Exp $
+$Id: vc.scm,v 1.104 2007/12/04 05:21:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1185,10 +1185,17 @@ the value of vc-log-mode-hook."
 	release)))
 
 (define (vc-backend-find-master workfile)
-  (let loop ((types vc-types))
-    (and (pair? types)
-	 (or ((vc-type-operation (car types) 'FIND-MASTER) workfile)
-	     (loop (cdr types))))))
+  (let loop ((types vc-types) (deferrals '()))
+    (if (pair? types)
+	(let ((m ((vc-type-operation (car types) 'FIND-MASTER) workfile)))
+	  (if (vc-master? m)
+	      m
+	      (loop (cdr types)
+		    (if m (cons m deferrals) deferrals))))
+	(let loop ((deferrals deferrals))
+	  (and (pair? deferrals)
+	       (or ((car deferrals))
+		   (loop (cdr deferrals))))))))
 
 (define (vc-backend-master-valid? master)
   ;; MASTER is a VC-MASTER object.
@@ -2331,12 +2338,19 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'FIND-MASTER vc-type:bzr
   (lambda (workfile)
-    (let ((dir (bzr-directory workfile)))
-      (and dir
-	   (%bzr-workfile-versioned? workfile)
-	   (make-vc-master vc-type:bzr
-			   (merge-pathnames "README" dir)
-			   workfile)))))
+    (let ((make-master
+	    (lambda ()
+	      (make-vc-master vc-type:bzr
+			      (merge-pathnames "README" dir)
+			      workfile))))
+      (if (and (file-directory? (subdirectory-pathname workfile ".bzr"))
+	       (%bzr-workfile-versioned? workfile))
+	  (make-master)
+	  (lambda ()
+	    (let ((dir (bzr-directory workfile)))
+	      (and dir
+		   (%bzr-workfile-versioned? workfile)
+		   (make-master))))))))
 
 (define-vc-type-operation 'VALID? vc-type:bzr
   (lambda (master)
