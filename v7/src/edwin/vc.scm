@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.104 2007/12/04 05:21:51 cph Exp $
+$Id: vc.scm,v 1.105 2007/12/04 05:24:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2339,18 +2339,19 @@ the value of vc-log-mode-hook."
 (define-vc-type-operation 'FIND-MASTER vc-type:bzr
   (lambda (workfile)
     (let ((make-master
-	    (lambda ()
+	    (lambda (dir)
 	      (make-vc-master vc-type:bzr
 			      (merge-pathnames "README" dir)
-			      workfile))))
-      (if (and (file-directory? (subdirectory-pathname workfile ".bzr"))
+			      workfile)))
+	  (dir (subdirectory-pathname workfile ".bzr")))
+      (if (and (file-directory? dir)
 	       (%bzr-workfile-versioned? workfile))
-	  (make-master)
+	  (make-master dir)
 	  (lambda ()
 	    (let ((dir (bzr-directory workfile)))
 	      (and dir
 		   (%bzr-workfile-versioned? workfile)
-		   (make-master))))))))
+		   (make-master dir))))))))
 
 (define-vc-type-operation 'VALID? vc-type:bzr
   (lambda (master)
