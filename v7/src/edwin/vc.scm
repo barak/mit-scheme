@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.105 2007/12/04 05:24:29 cph Exp $
+$Id: vc.scm,v 1.106 2007/12/05 02:47:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1185,17 +1185,37 @@ the value of vc-log-mode-hook."
 	release)))
 
 (define (vc-backend-find-master workfile)
-  (let loop ((types vc-types) (deferrals '()))
-    (if (pair? types)
-	(let ((m ((vc-type-operation (car types) 'FIND-MASTER) workfile)))
-	  (if (vc-master? m)
-	      m
-	      (loop (cdr types)
-		    (if m (cons m deferrals) deferrals))))
-	(let loop ((deferrals deferrals))
-	  (and (pair? deferrals)
-	       (or ((car deferrals))
-		   (loop (cdr deferrals))))))))
+  (let loop ((ps (vc-control-directories workfile)))
+    (and (pair? ps)
+	 (or ((vc-type-operation (caar ps) 'FIND-MASTER) workfile (cdar ps))
+	     (loop (cdr ps))))))
+
+(define (vc-control-directories workfile)
+  (let ((start (merge-pathnames (directory-pathname workfile))))
+    (let loop ((path (pathname-directory start)) (types vc-types))
+      (let ((directory (pathname-new-directory start path)))
+	(let per-dir ((types types) (good '()) (maybe '()))
+	  (cond ((pair? types)
+		 (let ((control-dir
+			((vc-type-operation (car types) 'CONTROL-DIRECTORY)
+			 directory)))
+		   (cond ((not control-dir)
+			  (per-dir (cdr types)
+				   good
+				   maybe))
+			 ((eq? control-dir 'SEARCH-PARENT)
+			  (per-dir (cdr types)
+				   good
+				   (cons (car types) maybe)))
+			 (else
+			  (per-dir (cdr types)
+				   (cons (cons (car types) control-dir) good)
+				   maybe)))))
+		((pair? good) good)
+		((and (pair? (cdr path))
+		      (pair? maybe))
+		 (loop (except-last-pair path) maybe))
+		(else '())))))))
 
 (define (vc-backend-master-valid? master)
   ;; MASTER is a VC-MASTER object.
@@ -1213,7 +1233,7 @@ the value of vc-log-mode-hook."
   ;; The last checked-in revision of the file is returned.
   ;; If this can't be determined, #F is returned.
   (vc-call 'WORKFILE-REVISION master))
-
+
 (define (vc-backend-locking-user master revision)
   ;; MASTER is a valid VC-MASTER object.
   ;; REVISION is a revision string or #F.
@@ -1234,7 +1254,7 @@ the value of vc-log-mode-hook."
 
 (define (vc-backend-workfile-status-string master)
   (vc-call 'WORKFILE-STATUS-STRING master))
-
+
 (define (vc-backend-register workfile revision comment keep?)
   ;; WORKFILE is an absolute pathname to an existing file.
   ;; REVISION is either a revision string or #F.
@@ -1248,11 +1268,7 @@ the value of vc-log-mode-hook."
     (if (and (pair? vc-types)
 	     (null? (cdr vc-types)))
 	(car vc-types)
-	(let ((likely-types
-	       (list-transform-positive vc-types
-		 (lambda (type)
-		   ((vc-type-operation type 'LIKELY-CONTROL-TYPE?)
-		    workfile)))))
+	(let ((likely-types (map car (vc-control-directories workfile))))
 	  (if (and (pair? likely-types)
 		   (null? (cdr likely-types)))
 	      (car likely-types)
@@ -1296,7 +1312,6 @@ the value of vc-log-mode-hook."
   ;; COMMENT is a comment string.
   ;; KEEP? is a boolean specifying that the workfile should be kept
   ;;   after checking in.  If #F, the workfile is deleted.
-  ;; The workfile is checked in.
   (vc-call 'CHECKIN master revision comment keep?))
 
 (define (vc-backend-revert master)
@@ -1404,22 +1419,21 @@ the value of vc-log-mode-hook."
 	 (extract-string (re-match-start 1) (re-match-end 1)))))
 
 (define-vc-type-operation 'FIND-MASTER vc-type:rcs
-  (lambda (workfile)
+  (lambda (workfile control-dir)
     (let ((try
 	   (lambda (transform)
 	     (let ((master-file (transform workfile)))
 	       (and (file-exists? master-file)
 		    (make-vc-master vc-type:rcs master-file workfile)))))
-	  (in-rcs-directory
+	  (in-control-dir
 	   (lambda (pathname)
-	     (merge-pathnames (file-pathname pathname)
-			      (rcs-directory pathname))))
+	     (merge-pathnames (file-pathname pathname) control-dir)))
 	  (rcs-file
 	   (lambda (pathname)
 	     (merge-pathnames (string-append (file-namestring pathname) ",v")
 			      (directory-pathname pathname)))))
-      (or (try (lambda (workfile) (rcs-file (in-rcs-directory workfile))))
-	  (try in-rcs-directory)
+      (or (try (lambda (workfile) (rcs-file (in-control-dir workfile))))
+	  (try in-control-dir)
 	  (try rcs-file)))))
 
 (define-vc-type-operation 'VALID? vc-type:rcs
@@ -1522,9 +1536,11 @@ the value of vc-log-mode-hook."
 			(caar locks)
 			(loop (cdr locks))))))))))
 
-(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:rcs
-  (lambda (workfile)
-    (file-directory? (rcs-directory workfile))))
+(define-vc-type-operation 'CONTROL-DIRECTORY vc-type:rcs
+  (lambda (directory)
+    (let ((cd (rcs-directory directory)))
+      (and (file-directory? cd)
+	   cd))))
 
 (define-vc-type-operation 'REGISTER vc-type:rcs
   (lambda (workfile revision comment keep?)
@@ -1636,11 +1652,6 @@ the value of vc-log-mode-hook."
 
 (define (cvs-master? master)
   (eq? vc-type:cvs (vc-master-type master)))
-
-(define (find-cvs-master workfile)
-  (let ((entries-file (merge-pathnames "Entries" (cvs-directory workfile))))
-    (and (%find-cvs-entry entries-file workfile)
-	 (make-vc-master vc-type:cvs entries-file workfile))))
 
 (define (cvs-directory workfile)
   (subdirectory-pathname workfile "CVS"))
@@ -1780,8 +1791,10 @@ the value of vc-log-mode-hook."
 	 (extract-string (re-match-start 1) (re-match-end 1)))))
 
 (define-vc-type-operation 'FIND-MASTER vc-type:cvs
-  (lambda (workfile)
-    (find-cvs-master workfile)))
+  (lambda (workfile control-dir)
+    (let ((entries-file (merge-pathnames "Entries" control-dir)))
+      (and (%find-cvs-entry entries-file workfile)
+	   (make-vc-master vc-type:cvs entries-file workfile)))))
 
 (define-vc-type-operation 'VALID? vc-type:cvs
   (lambda (master)
@@ -1857,9 +1870,11 @@ the value of vc-log-mode-hook."
       ((UNRESOLVED-CONFLICT) "conflict")
       (else #f))))
 
-(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:cvs
-  (lambda (workfile)
-    (file-directory? (cvs-directory workfile))))
+(define-vc-type-operation 'CONTROL-DIRECTORY vc-type:cvs
+  (lambda (directory)
+    (let ((cd (cvs-directory directory)))
+      (and (file-directory? cd)
+	   cd))))
 
 (define-vc-type-operation 'STEAL vc-type:cvs
   (lambda (master revision)
@@ -2003,20 +2018,21 @@ the value of vc-log-mode-hook."
 			    (buffer-start (get-vc-command-buffer)))
 	 (extract-string (re-match-start 1) (re-match-end 1)))))
 
-(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:svn
-  (lambda (workfile)
-    (file-directory? (svn-directory workfile))))
+(define-vc-type-operation 'CONTROL-DIRECTORY vc-type:svn
+  (lambda (directory)
+    (let ((cd (svn-directory directory)))
+      (and (file-directory? cd)
+	   cd))))
 
 (define-vc-type-operation 'FIND-MASTER vc-type:svn
-  (lambda (workfile)
-    (and (file-directory? (svn-directory workfile))
-	 (not (let ((output (%get-svn-status workfile)))
+  (lambda (workfile control-dir)
+    (and (not (let ((output (%get-svn-status workfile)))
 		(or (not output)
 		    (string-null? output)
 		    (string-prefix? "?" output)
 		    (string-prefix? "I" output))))
 	 (make-vc-master vc-type:svn
-			 (merge-pathnames "entries" (svn-directory workfile))
+			 (merge-pathnames "entries" control-dir)
 			 workfile))))
 
 (define (svn-directory workfile)
@@ -2332,26 +2348,19 @@ the value of vc-log-mode-hook."
 			     (line-end m 0)))
 	 (extract-string (re-match-start 1) (re-match-end 1)))))
 
-(define-vc-type-operation 'LIKELY-CONTROL-TYPE? vc-type:bzr
-  (lambda (workfile)
-    (bzr-directory workfile)))
+(define-vc-type-operation 'CONTROL-DIRECTORY vc-type:bzr
+  (lambda (directory)
+    (let ((cd (subdirectory-pathname directory ".bzr")))
+      (if (file-directory? cd)
+	  cd
+	  'SEARCH-PARENT))))
 
 (define-vc-type-operation 'FIND-MASTER vc-type:bzr
-  (lambda (workfile)
-    (let ((make-master
-	    (lambda (dir)
-	      (make-vc-master vc-type:bzr
-			      (merge-pathnames "README" dir)
-			      workfile)))
-	  (dir (subdirectory-pathname workfile ".bzr")))
-      (if (and (file-directory? dir)
-	       (%bzr-workfile-versioned? workfile))
-	  (make-master dir)
-	  (lambda ()
-	    (let ((dir (bzr-directory workfile)))
-	      (and dir
-		   (%bzr-workfile-versioned? workfile)
-		   (make-master dir))))))))
+  (lambda (workfile control-dir)
+    (and (%bzr-workfile-versioned? workfile)
+	 (make-vc-master vc-type:bzr
+			 (merge-pathnames "README" control-dir)
+			 workfile))))
 
 (define-vc-type-operation 'VALID? vc-type:bzr
   (lambda (master)
