@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.58 2007/11/26 05:19:33 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.59 2007/12/08 18:19:14 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -199,6 +199,10 @@ INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
 
+dnl Save these prior to running AC_PROG_CC.
+SAVED_CFLAGS=${CFLAGS}
+SAVED_LDFLAGS=${LDFLAGS}
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_C_BACKSLASH_A
@@ -213,15 +217,12 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 
-CFLAGS=${EXTRA_CFLAGS}
-LDFLAGS=${EXTRA_LDFLAGS}
-
-if test x${MAC_ARCH} != x; then
-    CFLAGS="${CFLAGS} -arch ${MAC_ARCH}"
-    LDFLAGS="${LDFLAGS} -arch ${MAC_ARCH}"
-fi
-
 if test ${GCC} = yes; then
+
+    dnl Discard flags computed by AC_PROG_CC; we'll use our own.
+    CFLAGS=${SAVED_CFLAGS}
+    LDFLAGS=${SAVED_LDFLAGS}
+
     if test ${enable_debugging} = no; then
 	CFLAGS="${CFLAGS} -O3"
     else
