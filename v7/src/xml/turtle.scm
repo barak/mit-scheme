@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.39 2007/12/09 05:09:27 cph Exp $
+$Id: turtle.scm,v 1.40 2007/12/09 05:53:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -808,7 +808,7 @@ USA.
 	  (begin
 	    (space port)
 	    (writer port))
-	  (let ((indentation (indent+ indentation)))
+	  (begin
 	    (write-object (car os) indentation inline-bnode port)
 	    (for-each (lambda (o)
 			(write-string "," port)
@@ -816,7 +816,7 @@ USA.
 		      (cdr os)))))))
 
 (define (write-object o indentation inline-bnode port)
-  (write-indentation indentation port)
+  (maybe-break indentation port)
   (cond ((linear-object-writer o inline-bnode)
 	 => (lambda (writer)
 	      (writer port)))
@@ -827,6 +827,7 @@ USA.
 	      (write-parens "(" ")" indentation port
 		(lambda (indentation)
 		  (for-each (lambda (o)
+			      (maybe-break indentation port)
 			      (write-object o indentation inline-bnode port))
 			    os)))))
 	((inline-bnode o)
@@ -841,7 +842,14 @@ USA.
       (write-pgroups (group-triples ts rdf-triple-predicate)
 		     indentation
 		     inline-bnode
-		     port))))
+		     port)
+      (write-string ";" port))))
+
+(define (maybe-break indentation port)
+  (if (> (or (output-port/column port) 0)
+	 (- (output-port/x-size port) 10))
+      (write-indentation (indent+ indentation) port)
+      (space port)))
 
 (define (write-subject s indentation inline-bnode port)
   (cond ((uri? s)
@@ -867,13 +875,11 @@ USA.
 (define (write-graph graph indentation inline-bnode port)
   (write-parens "{" "}" indentation port
     (lambda (indentation)
-      (do ((groups (groups-to-write (rdf-graph-triples graph) inline-bnode)
-		   (cdr groups)))
-	  ((not (pair? groups)))
-	(write-indentation indentation port)
-	(write-group (car groups) indentation inline-bnode port)
-	(if (pair? (cdr groups))
-	    (write-string "." port))))))
+      (for-each (lambda (group)
+		  (write-indentation indentation port)
+		  (write-group group indentation inline-bnode port)
+		  (write-string "." port))
+		(groups-to-write (rdf-graph-triples graph) inline-bnode)))))
 
 (define (write-predicate p port)
   (if (eq? p rdf:type)
@@ -888,7 +894,9 @@ USA.
 	      (eq? type xsd:decimal)
 	      (eq? type xsd:double)
 	      (eq? type xsd:integer)))
-	(write-string text port)
+	(begin
+	  (write-string text port)
+	  (space port))
 	(begin
 	  (write-literal-text text port)
 	  (cond ((rdf-literal-type literal)
@@ -1010,7 +1018,7 @@ USA.
 	   (loop (- indentation 1))))))
 
 (define (indent+ indentation)
-  (+ indentation 2))
+  (+ indentation 4))
 
 (define (classify-list items n-classes classifier)
   (let ((classes (make-vector n-classes '())))
