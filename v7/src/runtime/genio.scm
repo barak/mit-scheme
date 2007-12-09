@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.54 2007/09/12 23:32:53 cph Exp $
+$Id: genio.scm,v 1.55 2007/12/09 05:45:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -908,13 +908,7 @@ USA.
 			(line-ending ((sink/get-channel sink))
 				     normalizer-name
 				     #t))
-		       (and (column-tracking-coder? coder-name) 0)))
-
-(define (column-tracking-coder? coder-name)
-  (or (eq? coder-name 'TEXT)
-      (eq? coder-name 'US-ASCII)
-      (eq? coder-name 'ASCII)
-      (string-prefix-ci? "ISO-8859-" (symbol-name coder-name))))
+		       0))
 
 (define (output-buffer-open? ob)
   (and (%output-buffer-open? ob)
@@ -975,14 +969,16 @@ USA.
   (and (fix:< (output-buffer-start ob) page-size)
        (begin
 	 ((output-buffer-denormalize ob) ob char)
-	 (let ((column (output-buffer-column ob)))
-	   (if column
-	       (set-output-buffer-column!
-		ob
-		(case char
-		  ((#\newline) 0)
-		  ((#\tab) (fix:+ column (fix:- 8 (fix:remainder column 8))))
-		  (else (fix:+ column 1))))))
+	 (if (char=? char #\newline)
+	     (set-output-buffer-column! ob 0)
+	     (let ((column (output-buffer-column ob)))
+	       (if column
+		   (set-output-buffer-column!
+		    ob
+		    (cond ((char=? char #\tab)
+			   (fix:+ column (fix:- 8 (fix:remainder column 8))))
+			  ((char-graphic? char) (fix:+ column 1))
+			  (else #f))))))
 	 #t)))
 
 (define (output-buffer-in-8-bit-mode? ob)
@@ -998,12 +994,7 @@ USA.
     (set-output-buffer-total! ob (fix:+ (output-buffer-total ob) n-bytes))))
 
 (define (set-output-buffer-coding! ob coding)
-  (set-output-buffer-encode! ob (name->encoder coding))
-  (if (column-tracking-coder? coding)
-      (if (not (output-buffer-column ob))
-	  (set-output-buffer-column! ob 0))
-      (set-output-buffer-column! ob #f))
-  unspecific)
+  (set-output-buffer-encode! ob (name->encoder coding)))
 
 (define (set-output-buffer-line-ending! ob name)
   (set-output-buffer-denormalize! ob (name->denormalizer name)))
