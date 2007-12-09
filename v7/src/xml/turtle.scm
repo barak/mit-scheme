@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.38 2007/12/09 05:02:51 cph Exp $
+$Id: turtle.scm,v 1.39 2007/12/09 05:09:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -638,10 +638,21 @@ USA.
 		 port)
     (write-string "." port)))
 
+(define (write-rdf/turtle-subgraph graph #!optional port)
+  (let ((port (if (default-object? port) (current-output-port) port)))
+    (write-parens "{" "}" (or (output-port/column port) 0) port
+      (lambda (indentation)
+	(write-triples graph indentation port)))))
+
 (define (write-rdf/turtle-triples graph #!optional port)
-  (let ((triples (rdf-graph-triples graph))
-	(port (if (default-object? port) (current-output-port) port)))
+  (write-triples graph
+		 (or (output-port/column port) 0)
+		 (if (default-object? port) (current-output-port) port)))
+
+(define (write-triples graph indentation port)
+  (let ((triples (rdf-graph-triples graph)))
     (write-top-level triples
+		     indentation
 		     (let ((groups
 			    (inline-bnode-triples (all-triples triples))))
 		       (lambda (subject)
@@ -698,14 +709,13 @@ USA.
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
 
-(define (write-top-level ts inline-bnode port)
+(define (write-top-level ts indentation inline-bnode port)
   (let ((groups (groups-to-write ts inline-bnode)))
     (if (pair? groups)
-	(let* ((indentation (or (output-port/column port) 0))
-	       (write-one
-		(lambda (group)
-		  (write-group group indentation inline-bnode port)
-		  (write-string "." port))))
+	(let ((write-one
+	       (lambda (group)
+		 (write-group group indentation inline-bnode port)
+		 (write-string "." port))))
 	  (write-one (car groups))
 	  (for-each (lambda (group)
 		      (newline port)
