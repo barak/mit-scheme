@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.40 2007/12/09 05:53:04 cph Exp $
+$Id: turtle.scm,v 1.41 2007/12/09 06:09:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -738,51 +738,52 @@ USA.
 			  inline-bnode
 			  port))
 	  (indentation (indent+ indentation)))
-      (let ((writer
+      (let ((s
 	     (and subject-inline?
 		  (or (eq? (rdf-triple-predicate (caar groups)) rdf:type)
 		      (null? (cdr groups)))
 		  (null? (cdar groups))
-		  (linear-object-writer (rdf-triple-object (caar groups))
-					inline-bnode))))
-	(if writer
+		  (linear-object-string (rdf-triple-object (caar groups))
+					inline-bnode
+					port))))
+	(if s
 	    (begin
 	      (space port)
 	      (write-predicate (rdf-triple-predicate (caar groups)) port)
 	      (space port)
-	      (writer port)
+	      (write-string s port)
 	      (write-pgroups-tail groups indentation inline-bnode port))
 	    (write-pgroups groups indentation inline-bnode port))))))
 
-(define (linear-object-writer o inline-bnode)
+(define (linear-object-string o inline-bnode port)
   (cond ((rdf-list->list o inline-bnode)
 	 => (lambda (objects)
 	      (cond ((null? objects)
-		     (lambda (port)
-		       (write-string "()" port)))
+		     "()")
 		    ((and (pair? objects)
 			  (null? (cdr objects))
-			  (linear-object-writer (car objects) inline-bnode))
-		     => (lambda (write-elt)
-			  (lambda (port)
-			    (write-string "(" port)
-			    (write-elt port)
-			    (write-string ")" port))))
+			  (linear-object-string (car objects)
+						inline-bnode
+						port))
+		     => (lambda (elt)
+			  (string-append "(" elt ")")))
 		    (else #f))))
 	((rdf-bnode? o)
 	 (and (not (inline-bnode o))
-	      (lambda (port)
-		(write-rdf/nt-bnode o port))))
+	      (call-with-output-string
+		(lambda (port)
+		  (write-rdf/nt-bnode o port)))))
 	((uri? o)
-	 (lambda (port)
-	   (write-rdf/turtle-uri o port)))
+	 (call-with-output-string
+	   (lambda (port*)
+	     (write-uri o (port/rdf-prefix-registry port) port*))))
 	((rdf-graph? o)
 	 (and (null? (rdf-graph-triples o))
-	      (lambda (port)
-		(write-string "{}" port))))
+	      "{}"))
 	((rdf-literal? o)
-	 (lambda (port)
-	   (write-rdf/turtle-literal o port)))
+	 (call-with-output-string
+	   (lambda (port)
+	     (write-rdf/turtle-literal o port))))
 	(else
 	 (error "Unknown RDF object:" o))))
 
@@ -801,13 +802,13 @@ USA.
   (let ((p (rdf-triple-predicate (car ts)))
 	(os (map rdf-triple-object ts)))
     (write-predicate p port)
-    (let ((writer
+    (let ((s
 	   (and (null? (cdr os))
-		(linear-object-writer (car os) inline-bnode))))
-      (if writer
+		(linear-object-string (car os) inline-bnode port))))
+      (if s
 	  (begin
 	    (space port)
-	    (writer port))
+	    (write-string s port))
 	  (begin
 	    (write-object (car os) indentation inline-bnode port)
 	    (for-each (lambda (o)
@@ -816,22 +817,25 @@ USA.
 		      (cdr os)))))))
 
 (define (write-object o indentation inline-bnode port)
-  (maybe-break indentation port)
-  (cond ((linear-object-writer o inline-bnode)
-	 => (lambda (writer)
-	      (writer port)))
+  (cond ((linear-object-string o inline-bnode port)
+	 => (lambda (s)
+	      (maybe-break (string-length s) indentation port)
+	      (write-string s port)))
 	((rdf-graph? o)
+	 (space port)
 	 (write-graph o indentation inline-bnode port))
 	((rdf-list->list o inline-bnode)
 	 => (lambda (os)
+	      (space port)
 	      (write-parens "(" ")" indentation port
 		(lambda (indentation)
 		  (for-each (lambda (o)
-			      (maybe-break indentation port)
+			      (write-indentation indentation port)
 			      (write-object o indentation inline-bnode port))
 			    os)))))
 	((inline-bnode o)
 	 => (lambda (ts)
+	      (space port)
 	      (write-inline-bnode (cdr ts) indentation inline-bnode port)))
 	(else
 	 (error "Not an inline bnode:" o))))
@@ -845,9 +849,11 @@ USA.
 		     port)
       (write-string ";" port))))
 
-(define (maybe-break indentation port)
-  (if (> (or (output-port/column port) 0)
-	 (- (output-port/x-size port) 10))
+(define (maybe-break needed indentation port)
+  (if (let ((column (output-port/column port)))
+	(and column
+	     (>= (+ column needed 1)
+		 (output-port/x-size port))))
       (write-indentation (indent+ indentation) port)
       (space port)))
 
@@ -926,18 +932,20 @@ USA.
 
 (define (write-rdf/turtle-uri uri #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
-    (let* ((s (uri->string uri))
-	   (end (string-length s)))
-      (receive (prefix expansion)
-	  (uri->rdf-prefix uri (port/rdf-prefix-registry port) #f)
-	(if prefix
-	    (let ((start (string-length expansion)))
-	      (if (*match-string match:name s start end)
-		  (begin
-		    (write-string (symbol-name prefix) port)
-		    (write-substring s start end port))
-		  (write-rdf/nt-uri uri port)))
-	    (write-rdf/nt-uri uri port))))))
+    (write-uri uri (port/rdf-prefix-registry port) port)))
+
+(define (write-uri uri registry port)
+  (let* ((s (uri->string uri))
+	 (end (string-length s)))
+    (receive (prefix expansion) (uri->rdf-prefix uri registry #f)
+      (if prefix
+	  (let ((start (string-length expansion)))
+	    (if (*match-string match:name s start end)
+		(begin
+		  (write-string (symbol-name prefix) port)
+		  (write-substring s start end port))
+		(write-rdf/nt-uri uri port)))
+	  (write-rdf/nt-uri uri port)))))
 
 (define (sort-triples triples)
   (sort triples
