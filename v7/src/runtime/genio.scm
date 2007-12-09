@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.55 2007/12/09 05:45:39 cph Exp $
+$Id: genio.scm,v 1.56 2007/12/09 06:12:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -977,7 +977,8 @@ USA.
 		    ob
 		    (cond ((char=? char #\tab)
 			   (fix:+ column (fix:- 8 (fix:remainder column 8))))
-			  ((char-graphic? char) (fix:+ column 1))
+			  ((<= #x20 (char->integer char) #x7E)
+			   (fix:+ column 1))
 			  (else #f))))))
 	 #t)))
 
