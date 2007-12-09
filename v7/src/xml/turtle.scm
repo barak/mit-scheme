@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.35 2007/10/12 01:24:33 cph Exp $
+$Id: turtle.scm,v 1.36 2007/12/09 04:42:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -469,9 +469,9 @@ USA.
 			  (v (uri->string (merge-uris (caddr p) base-uri))))
 		      (register-rdf-prefix (symbol prefix ':) v registry)
 		      (cons prefix v)))
-		  (keep-matching-items stmts
-		    (lambda (stmt)
-		      (eq? (car stmt) 'PREFIX))))))
+		  (filter (lambda (stmt)
+			    (eq? (car stmt) 'PREFIX))
+			  stmts))))
 	(append-map! (lambda (stmt)
 		       (case (car stmt)
 			 ((triples)
@@ -555,9 +555,9 @@ USA.
 (define (post-process-qname prefix local prefixes)
   (string->uri
    (string-append (cdr
-		   (or (find-matching-item prefixes
-			 (lambda (p)
-			   (string=? (car p) prefix)))
+		   (or (find (lambda (p)
+			       (string=? (car p) prefix))
+			     prefixes)
 		       (error "Unknown prefix:" prefix)))
 		  (or local ""))))
 
@@ -643,10 +643,10 @@ USA.
 		   indentation
 		   (let ((groups (inline-bnode-triples (all-triples triples))))
 		     (lambda (subject)
-		       (find-matching-item groups
-			 (lambda (ts)
-			   (eq? (rdf-triple-subject (cadr ts))
-				subject)))))
+		       (find (lambda (group)
+			       (eq? (rdf-triple-subject (cadr group))
+				    subject))
+			     groups)))
 		   port))
 
 (define (inline-bnode-triples triples)
@@ -657,9 +657,9 @@ USA.
 		       (let ((s (rdf-triple-subject t)))
 			 (and (rdf-bnode? s)
 			      (let ((n
-				     (count-matching-items triples
-				       (lambda (t)
-					 (eq? (rdf-triple-object t) s)))))
+				     (count (lambda (t)
+					      (eq? (rdf-triple-object t) s))
+					    triples)))
 				(and (<= n 1)
 				     n))))))
     (append! (map (lambda (ts) (cons 0 ts))
@@ -684,11 +684,11 @@ USA.
 
   (define (check-elt elt q all)
     (if (rdf-graph? elt)
-	(append! (delete-matching-items (rdf-graph-triples elt)
-		   (lambda (t)
-		     (or (memq t q)
-			 (memq t all))))
-		 q)
+	(append (remove (lambda (t)
+			  (or (memq t q)
+			      (memq t all)))
+			(rdf-graph-triples elt))
+		q)
 	q))
 
   (run-queue triples '()))
@@ -705,11 +705,11 @@ USA.
 	    (groups-to-write ts inline-bnode)))
 
 (define (groups-to-write ts inline-bnode)
-  (delete-matching-items (group-triples-by-subject ts)
-    (lambda (group)
-      (let ((t (inline-bnode (rdf-triple-subject (car group)))))
-	(and t
-	     (= (car t) 1))))))
+  (remove (lambda (group)
+	    (let ((t (inline-bnode (rdf-triple-subject (car group)))))
+	      (and t
+		   (= (car t) 1))))
+	  (group-triples-by-subject ts)))
 
 (define (write-group ts indentation inline-bnode port)
   (let ((groups (group-triples ts rdf-triple-predicate)))
