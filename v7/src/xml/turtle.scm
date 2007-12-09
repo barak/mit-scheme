@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.37 2007/12/09 04:50:54 cph Exp $
+$Id: turtle.scm,v 1.38 2007/12/09 05:02:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -587,7 +587,9 @@ USA.
 (define (write-rdf/turtle graph #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
     (write-prefixes graph port)
-    (write-rdf/turtle-triples graph port)))
+    (newline port)
+    (write-rdf/turtle-triples graph port)
+    (newline port)))
 
 (define (write-prefixes graph port)
   (let ((table (make-eq-hash-table)))
@@ -625,29 +627,29 @@ USA.
     (write-symbol prefix port)
     (write-string " <" port)
     (write-string expansion port)
-    (write-string "> ." port)
+    (write-string ">." port)
     (newline port)))
-
-(define (write-rdf/turtle-triples graph #!optional port)
-  (write-triples (rdf-graph-triples graph)
-		 0
-		 (if (default-object? port) (current-output-port) port)))
 
 (define (write-rdf/turtle-triple triple #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
-    (write-group (list triple) 0 (lambda (s) s #f) port)
+    (write-group (list triple)
+		 (or (output-port/column port) 0)
+		 (lambda (s) s #f)
+		 port)
     (write-string "." port)))
 
-(define (write-triples triples indentation port)
-  (write-top-level triples
-		   indentation
-		   (let ((groups (inline-bnode-triples (all-triples triples))))
-		     (lambda (subject)
-		       (find (lambda (group)
-			       (eq? (rdf-triple-subject (cadr group))
-				    subject))
-			     groups)))
-		   port))
+(define (write-rdf/turtle-triples graph #!optional port)
+  (let ((triples (rdf-graph-triples graph))
+	(port (if (default-object? port) (current-output-port) port)))
+    (write-top-level triples
+		     (let ((groups
+			    (inline-bnode-triples (all-triples triples))))
+		       (lambda (subject)
+			 (find (lambda (group)
+				 (eq? (rdf-triple-subject (cadr group))
+				      subject))
+			       groups)))
+		     port)))
 
 (define (inline-bnode-triples triples)
   (receive (no-refs one-ref)
@@ -696,13 +698,20 @@ USA.
 (define (group-triples-by-subject ts)
   (group-triples (sort-triples ts) rdf-triple-subject))
 
-(define (write-top-level ts indentation inline-bnode port)
-  (for-each (lambda (group)
-	      (write-indentation indentation port)
-	      (write-group group indentation inline-bnode port)
-	      (write-string "." port)
-	      (newline port))
-	    (groups-to-write ts inline-bnode)))
+(define (write-top-level ts inline-bnode port)
+  (let ((groups (groups-to-write ts inline-bnode)))
+    (if (pair? groups)
+	(let* ((indentation (or (output-port/column port) 0))
+	       (write-one
+		(lambda (group)
+		  (write-group group indentation inline-bnode port)
+		  (write-string "." port))))
+	  (write-one (car groups))
+	  (for-each (lambda (group)
+		      (newline port)
+		      (write-indentation indentation port)
+		      (write-one group))
+		    (cdr groups))))))
 
 (define (groups-to-write ts inline-bnode)
   (remove (lambda (group)
