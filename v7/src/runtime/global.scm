@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.79 2007/04/29 19:25:21 cph Exp $
+$Id: global.scm,v 14.80 2007/12/10 04:24:57 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -198,15 +198,16 @@ USA.
 	     (process-time (- process-end process-start))
 	     (process-time/nogc
 	      (round->exact (* 1000 (- process-end/nogc process-start/nogc)))))
-	(write-string "process time: ")
-	(write process-time)
-	(write-string " (")
-	(write process-time/nogc)
-	(write-string " RUN + ")
-	(write (- process-time process-time/nogc))
-	(write-string " GC); real time: ")
-	(write (- real-end real-start))
-	(newline))
+	(write-notification-line
+	 (lambda (port)
+	   (write-string "process time: " port)
+	   (write process-time port)
+	   (write-string " (" port)
+	   (write process-time/nogc port)
+	   (write-string " RUN + " port)
+	   (write (- process-time process-time/nogc) port)
+	   (write-string " GC); real time: " port)
+	   (write (- real-end real-start) port))))
       value)))
 
 (define (wait-interval ticks)
