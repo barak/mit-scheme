@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.107 2007/12/16 01:10:38 cph Exp $
+$Id: vc.scm,v 1.108 2007/12/18 03:59:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2551,10 +2551,11 @@ the value of vc-log-mode-hook."
   (%bzr-ls-test workfile "--ignored"))
 
 (define (%bzr-ls-test workfile option)
-  (let ((result (%bzr-run-command workfile "ls" "--non-recursive" option ".")))
+  (let ((result (%bzr-run-command workfile "ls" "--non-recursive" option)))
     (and result
-	 (re-string-search-forward (string-append "^\\./"
-						  (file-namestring workfile)
+	 (re-string-search-forward (string-append "^"
+						  (re-quote-string
+						   (file-namestring workfile))
 						  "$")
 				   result))))
 
