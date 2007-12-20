@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.108 2007/12/18 03:59:33 cph Exp $
+$Id: vc.scm,v 1.109 2007/12/20 01:24:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -175,9 +175,12 @@ Otherwise, VC will compare the file to the copy in the repository."
 (define (define-vc-type-operation name type procedure)
   (1d-table/put! (vc-type-operations type) name procedure))
 
-(define (vc-type-operation type name)
+(define (vc-type-operation type name #!optional error?)
   (or (1d-table/get (vc-type-operations type) name #f)
-      (error:bad-range-argument name 'VC-TYPE-OPERATION)))
+      (begin
+	(if error?
+	    (error:bad-range-argument name 'VC-TYPE-OPERATION))
+	#f)))
 
 (define (vc-call name master . arguments)
   (apply (vc-type-operation (vc-master-type master) name) master arguments))
@@ -330,45 +333,28 @@ Otherwise, VC will compare the file to the copy in the repository."
 
 (define (vc-mode-line master buffer)
   (let ((workfile-buffer (vc-workfile-buffer master #f)))
-    (let ((buffer (or buffer workfile-buffer))
-	  (revision
-	   (or (vc-backend-workfile-revision master)
-	       (vc-backend-default-revision master))))
-      (let ((locker (vc-backend-locking-user master revision))
-	    (user-name (current-user-name)))
-	(set-variable!
-	 vc-mode-line-status
-	 (string-append
-	  " "
-	  (vc-type-display-name (vc-master-type master))
-	  (if (ref-variable vc-display-status buffer)
-	      (if revision
-		  (string-append
-		   (cond ((not locker) "-")
-			 ((string=? locker user-name) ":")
-			 (else (string-append ":" locker ":")))
-		   revision)
-		  " @@")
-	      ""))
-	 buffer)
-	(buffer-modeline-event! buffer 'VC-MODE-LINE-STATUS)
-	(if (and (buffer-writeable? buffer)
-		 (eq? buffer workfile-buffer)
-		 ;; If the file is locked by some other user, make the
-		 ;; buffer read-only.  Like this, even root cannot modify a
-		 ;; file that someone else has locked.
-		 (or (and locker (not (string=? locker user-name)))
-		     ;; If the user is root, and the file is not
-		     ;; owner-writeable, then pretend that we can't write it
-		     ;; even though we can (because root can write
-		     ;; anything).  This way, even root cannot modify a file
-		     ;; that isn't locked.
-		     (and (user-is-root?)
-			  (fix:= 0
-				 (fix:and #o200
-					  (file-modes
-					   (vc-master-workfile master)))))))
-	    (set-buffer-read-only! buffer))))))
+    (let ((buffer (or buffer workfile-buffer)))
+      (set-variable!
+       vc-mode-line-status
+       (string-append
+	" "
+	(vc-type-display-name (vc-master-type master))
+	(if (vc-backend-display-status? master buffer)
+	    (let ((revision
+		   (or (vc-backend-workfile-revision master)
+		       (vc-backend-default-revision master))))
+	      (let ((locker (vc-backend-locking-user master revision))
+		    (user-name (current-user-name)))
+		(if revision
+		    (string-append
+		     (cond ((not locker) "-")
+			   ((string=? locker user-name) ":")
+			   (else (string-append ":" locker ":")))
+		     revision)
+		    " @@")))
+	    ""))
+       buffer)
+      (buffer-modeline-event! buffer 'VC-MODE-LINE-STATUS))))
 
 ;;;; VC-MASTER association
 
@@ -1221,6 +1207,13 @@ the value of vc-log-mode-hook."
   ;; MASTER is a VC-MASTER object.
   ;; The return value is a boolean indicating that MASTER is valid.
   (vc-call 'VALID? master))
+
+(define (vc-backend-display-status? master buffer)
+  (let ((operation
+	 (vc-type-operation (vc-master-type master) 'DISPLAY-STATUS? #f)))
+    (if operation
+	(operation buffer)
+	(ref-variable vc-display-status buffer))))
 
 (define (vc-backend-default-revision master)
   ;; MASTER is a valid VC-MASTER object.
@@ -2357,16 +2350,24 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'FIND-MASTER vc-type:bzr
   (lambda (workfile control-dir)
-    (and (%bzr-workfile-versioned? workfile)
-	 (make-vc-master vc-type:bzr
-			 (merge-pathnames "README" control-dir)
-			 workfile))))
+    (let ((master
+	   (make-vc-master vc-type:bzr
+			   (merge-pathnames "README" control-dir)
+			   workfile)))
+      (and (%bzr-master-valid? master)
+	   master))))
 
 (define-vc-type-operation 'VALID? vc-type:bzr
   (lambda (master)
-    (%bzr-workfile-cache master
-			 'WORKFILE-VERSIONED?
-			 %bzr-workfile-versioned?)))
+    (%bzr-master-valid? master)))
+
+(define (%bzr-master-valid? master)
+  (%bzr-workfile-cache master 'WORKFILE-VERSIONED? %bzr-workfile-versioned?))
+
+(define-vc-type-operation 'DISPLAY-STATUS? vc-type:bzr
+  (lambda (buffer)
+    buffer
+    #f))
 
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:bzr
   (lambda (master)
@@ -2379,12 +2380,11 @@ the value of vc-log-mode-hook."
 
 (define-vc-type-operation 'LOCKING-USER vc-type:bzr
   (lambda (master revision)
+    revision				;ignore
     ;; The workfile is "locked" if it is modified.
     ;; We consider the workfile's owner to be the locker.
     (let ((status (get-bzr-status master)))
       (and status
-	   (or (not revision)
-	       (equal? revision (bzr-workfile-revision master)))
 	   (bzr-status-modified? status)
 	   (unix/uid->string
 	    (file-attributes/uid
@@ -2591,10 +2591,8 @@ the value of vc-log-mode-hook."
       (or (parse-bzr-status
 	   (%bzr-run-command workfile "status" "--short"
 			     (file-namestring workfile)))
-	  (cond ((%bzr-workfile-versioned? workfile)
+	  (cond ((%bzr-master-valid? master)
 		 (make-bzr-status 'VERSIONED 'UNMODIFIED #f))
-		((%bzr-workfile-ignored? workfile)
-		 (make-bzr-status 'UNVERSIONED 'UNMODIFIED #f))
 		(else
 		 (if (if (default-object? required?) #f required?)
 		     (error "Unable to determine Bazaar status of file:"
