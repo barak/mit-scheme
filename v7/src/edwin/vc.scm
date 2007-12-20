@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.109 2007/12/20 01:24:29 cph Exp $
+$Id: vc.scm,v 1.110 2007/12/20 02:49:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -328,33 +328,34 @@ Otherwise, VC will compare the file to the copy in the repository."
 	  (vc-mode-line master buffer)
 	  (if (not (ref-variable vc-make-backup-files buffer))
 	      (local-set-variable! make-backup-files #f buffer))))))
-
+
 ;;;; Mode line
 
 (define (vc-mode-line master buffer)
-  (let ((workfile-buffer (vc-workfile-buffer master #f)))
-    (let ((buffer (or buffer workfile-buffer)))
-      (set-variable!
-       vc-mode-line-status
-       (string-append
-	" "
-	(vc-type-display-name (vc-master-type master))
-	(if (vc-backend-display-status? master buffer)
-	    (let ((revision
-		   (or (vc-backend-workfile-revision master)
-		       (vc-backend-default-revision master))))
-	      (let ((locker (vc-backend-locking-user master revision))
-		    (user-name (current-user-name)))
-		(if revision
-		    (string-append
-		     (cond ((not locker) "-")
-			   ((string=? locker user-name) ":")
-			   (else (string-append ":" locker ":")))
-		     revision)
-		    " @@")))
-	    ""))
-       buffer)
-      (buffer-modeline-event! buffer 'VC-MODE-LINE-STATUS))))
+  (let ((buffer (or buffer (vc-workfile-buffer master #f))))
+    (set-variable! vc-mode-line-status
+		   (vc-backend-mode-line-status master buffer)
+		   buffer)
+    (buffer-modeline-event! buffer 'VC-MODE-LINE-STATUS)))
+
+(define (%default-mode-line-status master buffer)
+  (string-append
+   " "
+   (vc-type-display-name (vc-master-type master))
+   (if (ref-variable vc-display-status buffer)
+       (let ((revision
+	      (or (vc-backend-workfile-revision master)
+		  (vc-backend-default-revision master))))
+	 (let ((locker (vc-backend-locking-user master revision))
+	       (user-name (current-user-name)))
+	   (if revision
+	       (string-append
+		(cond ((not locker) "-")
+		      ((string=? locker user-name) ":")
+		      (else (string-append ":" locker ":")))
+		revision)
+	       " @@")))
+       "")))
 
 ;;;; VC-MASTER association
 
@@ -1208,13 +1209,6 @@ the value of vc-log-mode-hook."
   ;; The return value is a boolean indicating that MASTER is valid.
   (vc-call 'VALID? master))
 
-(define (vc-backend-display-status? master buffer)
-  (let ((operation
-	 (vc-type-operation (vc-master-type master) 'DISPLAY-STATUS? #f)))
-    (if operation
-	(operation buffer)
-	(ref-variable vc-display-status buffer))))
-
 (define (vc-backend-default-revision master)
   ;; MASTER is a valid VC-MASTER object.
   ;; The default revision (usually the head of the trunk) is returned.
@@ -1369,6 +1363,13 @@ the value of vc-log-mode-hook."
   ;; appropriate revision-control header strings.  Returns #t iff the
   ;; header strings are present.
   (vc-call 'CHECK-HEADERS master buffer))
+
+(define (vc-backend-mode-line-status master buffer)
+  (let ((operation
+	 (vc-type-operation (vc-master-type master) 'MODE-LINE-STATUS #f)))
+    (if operation
+	(operation master buffer)
+	(%default-mode-line-status master buffer))))
 
 ;;;; RCS Commands
 
@@ -2364,11 +2365,6 @@ the value of vc-log-mode-hook."
 (define (%bzr-master-valid? master)
   (%bzr-workfile-cache master 'WORKFILE-VERSIONED? %bzr-workfile-versioned?))
 
-(define-vc-type-operation 'DISPLAY-STATUS? vc-type:bzr
-  (lambda (buffer)
-    buffer
-    #f))
-
 (define-vc-type-operation 'DEFAULT-REVISION vc-type:bzr
   (lambda (master)
     master
@@ -2530,6 +2526,13 @@ the value of vc-log-mode-hook."
   (lambda (master buffer)
     master buffer
     #f))
+
+(define-vc-type-operation 'MODE-LINE-STATUS vc-type:bzr
+  (lambda (master buffer)
+    buffer
+    (if (vc-backend-workfile-modified? master)
+	" bzr **"
+	" bzr --")))
 
 (define (bzr-rev-switch revision)
   (and revision
