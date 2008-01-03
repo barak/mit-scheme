@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosproc.c,v 1.25 2007/04/22 16:31:23 cph Exp $
+$Id: prosproc.c,v 1.26 2008/01/03 00:30:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -41,9 +41,8 @@ extern Tchannel arg_channel (int);
 static Tprocess
 arg_process (int argument_number)
 {
-  Tprocess process
-    = (arg_index_integer (argument_number, OS_process_table_size));
-  if (! (OS_process_valid_p (process)))
+  Tprocess process = (arg_ulong_integer (argument_number));
+  if (!OS_process_valid_p (process))
     error_bad_range_arg (argument_number);
   return (process);
 }
@@ -86,15 +85,15 @@ DEFINE_PRIMITIVE ("PROCESS-TABLE", Prim_process_table, 0, 0,
 	obstack_grow ((&scratch_obstack), (&process), (sizeof (Tprocess)));
   }
   {
-    unsigned int n_processes =
-      ((obstack_object_size ((&scratch_obstack))) / (sizeof (Tprocess)));
+    unsigned int n_processes
+      = ((obstack_object_size ((&scratch_obstack))) / (sizeof (Tprocess)));
     if (n_processes == 0)
       PRIMITIVE_RETURN (SHARP_F);
     {
       Tprocess * processes = (obstack_finish (&scratch_obstack));
       Tprocess * scan_processes = processes;
-      SCHEME_OBJECT vector =
-	(allocate_marked_vector (TC_VECTOR, n_processes, 1));
+      SCHEME_OBJECT vector
+	= (allocate_marked_vector (TC_VECTOR, n_processes, 1));
       SCHEME_OBJECT * scan_vector = (VECTOR_LOC (vector, 0));
       SCHEME_OBJECT * end_vector = (scan_vector + n_processes);
       while (scan_vector < end_vector)

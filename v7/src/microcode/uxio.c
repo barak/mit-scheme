@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.57 2007/04/22 16:31:23 cph Exp $
+$Id: uxio.c,v 1.58 2008/01/03 00:30:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,9 +54,9 @@ UX_channel_close_all (void)
 void
 UX_initialize_channels (void)
 {
-  OS_channel_table_size = (UX_SC_OPEN_MAX ());
-  channel_table =
-    (UX_malloc (OS_channel_table_size * (sizeof (struct channel))));
+  OS_channel_table_size = 64;
+  channel_table
+    = (UX_malloc (OS_channel_table_size * (sizeof (struct channel))));
   if (channel_table == 0)
     {
       fprintf (stderr, "\nUnable to allocate channel table.\n");
@@ -89,15 +89,26 @@ UX_reset_channels (void)
 Tchannel
 channel_allocate (void)
 {
-  Tchannel channel = 0;
-  while (1)
-    {
-      if (channel == OS_channel_table_size)
+  Tchannel channel;
+  for (channel = 0; (channel < OS_channel_table_size); channel += 1)
+    if (CHANNEL_CLOSED_P (channel))
+      return (channel);
+  {
+    size_t old_size = OS_channel_table_size;
+    size_t new_size = ((old_size * 5) / 4);
+    struct channel * new_table
+      = (UX_realloc (channel_table, (new_size * (sizeof (struct channel)))));
+    if (new_table == 0)
+      {
 	error_out_of_channels ();
-      if (CHANNEL_CLOSED_P (channel))
-	return (channel);
-      channel += 1;
-    }
+	return (NO_CHANNEL);
+      }
+    OS_channel_table_size = new_size;
+    channel_table = new_table;
+    for (channel = old_size; (channel < new_size); channel += 1)
+      MARK_CHANNEL_CLOSED (channel);
+    return (old_size);
+  }
 }
 
 int

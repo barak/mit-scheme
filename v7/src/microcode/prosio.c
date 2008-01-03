@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.28 2007/04/22 16:31:23 cph Exp $
+$Id: prosio.c,v 1.29 2008/01/03 00:30:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,17 +36,12 @@ USA.
 #endif
 
 Tchannel
-arg_to_channel (SCHEME_OBJECT argument,
-       int arg_number)
+arg_to_channel (SCHEME_OBJECT argument, int arg_number)
 {
-  if (! ((INTEGER_P (argument)) && (integer_to_ulong_p (argument))))
+  unsigned long channel = (arg_ulong_integer (arg_number));
+  if (! (channel < OS_channel_table_size))
     error_wrong_type_arg (arg_number);
-  {
-    unsigned long channel = (integer_to_ulong (argument));
-    if (! (channel < OS_channel_table_size))
-      error_wrong_type_arg (arg_number);
-    return (channel);
-  }
+  return (channel);
 }
 
 Tchannel

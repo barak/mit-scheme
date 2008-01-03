@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.86 2007/09/04 03:35:19 riastradh Exp $
+$Id: ux.h,v 1.87 2008/01/03 00:30:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -808,7 +808,6 @@ extern int UX_sigsuspend (const sigset_t *);
    extern cc_t UX_PC_VDISABLE (int fildes);
    extern clock_t UX_SC_CLK_TCK (void);
 #  define UX_SC_OPEN_MAX() ((size_t) (sysconf (_SC_OPEN_MAX)))
-#  define UX_SC_CHILD_MAX() ((size_t) (sysconf (_SC_CHILD_MAX)))
 
 #  ifdef _POSIX_JOB_CONTROL
 #    define UX_SC_JOB_CONTROL() 1
@@ -828,12 +827,6 @@ extern int UX_sigsuspend (const sigset_t *);
 #    else
 #      define UX_SC_OPEN_MAX() 16
 #    endif
-#  endif
-
-#  ifdef CHILD_MAX
-#    define UX_SC_CHILD_MAX() CHILD_MAX
-#  else
-#    define UX_SC_CHILD_MAX() 6
 #  endif
 
 #  ifdef CLK_TCK

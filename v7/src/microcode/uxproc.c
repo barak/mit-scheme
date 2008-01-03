@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.35 2007/04/22 16:31:23 cph Exp $
+$Id: uxproc.c,v 1.36 2008/01/03 00:30:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -151,9 +151,9 @@ block_sigchld (void)
 void
 UX_initialize_processes (void)
 {
-  OS_process_table_size = (UX_SC_CHILD_MAX ());
-  process_table =
-    (UX_malloc (OS_process_table_size * (sizeof (struct process))));
+  OS_process_table_size = 64;
+  process_table
+    = (UX_malloc (OS_process_table_size * (sizeof (struct process))));
   if (process_table == 0)
     {
       fprintf (stderr, "\nUnable to allocate process table.\n");
@@ -210,14 +210,32 @@ process_allocate (void)
   for (process = 0; (process < OS_process_table_size); process += 1)
     if ((PROCESS_RAW_STATUS (process)) == process_status_free)
       {
-	Tprocess * pp = (dstack_alloc (sizeof (Tprocess)));
-	(*pp) = process;
-	transaction_record_action (tat_abort, process_allocate_abort, pp);
 	(PROCESS_RAW_STATUS (process)) = process_status_allocated;
-	return (process);
+	break;
       }
-  error_out_of_processes ();
-  return (NO_PROCESS);
+  if (process == OS_process_table_size)
+    {
+      size_t old_size = OS_process_table_size;
+      size_t new_size = ((old_size * 5) / 4);
+      struct process * new_table
+	= (UX_realloc (process_table, (new_size * (sizeof (struct process)))));
+      if (new_table == 0)
+	{
+	  error_out_of_processes ();
+	  return (NO_PROCESS);
+	}
+      OS_process_table_size = new_size;
+      process_table = new_table;
+      for (process = old_size; (process < new_size); process += 1)
+	OS_process_deallocate (process);
+      process = old_size;
+    }
+  {
+    Tprocess * pp = (dstack_alloc (sizeof (Tprocess)));
+    (*pp) = process;
+    transaction_record_action (tat_abort, process_allocate_abort, pp);
+  }
+  return (process);
 }
 
 void
@@ -386,20 +404,17 @@ OS_make_subprocess (const char * filename,
   }
   {
     /* Close all other file descriptors. */
-    int fd = 0;
     int open_max = (UX_SC_OPEN_MAX ());
-    while (fd < open_max)
-      {
-	if ((fd == STDIN_FILENO)
-	    ? (channel_in_type == process_channel_type_none)
-	    : (fd == STDOUT_FILENO)
-	    ? (channel_out_type == process_channel_type_none)
-	    : (fd == STDERR_FILENO)
-	    ? (channel_err_type == process_channel_type_none)
-	    : 1)
-	  UX_close (fd);
-	fd += 1;
-      }
+    int fd;
+    for (fd = 0; (fd < open_max); fd += 1)
+      if ((fd == STDIN_FILENO)
+	  ? (channel_in_type == process_channel_type_none)
+	  : (fd == STDOUT_FILENO)
+	  ? (channel_out_type == process_channel_type_none)
+	  : (fd == STDERR_FILENO)
+	  ? (channel_err_type == process_channel_type_none)
+	  : 1)
+	UX_close (fd);
   }
 
   /* Put the signal mask and handlers in a normal state.  */
@@ -427,6 +442,8 @@ DEFUN_PROCESS_ACCESSOR
 int
 OS_process_valid_p (Tprocess process)
 {
+  if (process > OS_process_table_size)
+    return (0);
   switch (PROCESS_RAW_STATUS (process))
     {
     case process_status_exited:

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxterm.c,v 1.34 2007/04/22 16:31:23 cph Exp $
+$Id: uxterm.c,v 1.35 2008/01/03 00:30:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -59,6 +59,7 @@ struct terminal_state
   Ttty_state state;
 };
 
+static size_t terminal_table_size;
 static struct terminal_state * terminal_table;
 #define TERMINAL_BUFFER(channel) ((terminal_table[(channel)]) . buffer)
 #define TERMINAL_ORIGINAL_STATE(channel) ((terminal_table[(channel)]) . state)
@@ -66,8 +67,9 @@ static struct terminal_state * terminal_table;
 void
 UX_initialize_terminals (void)
 {
-  terminal_table =
-    (UX_malloc (OS_channel_table_size * (sizeof (struct terminal_state))));
+  terminal_table_size = OS_channel_table_size;
+  terminal_table
+    = (UX_malloc (terminal_table_size * (sizeof (struct terminal_state))));
   if (terminal_table == 0)
     {
       fprintf (stderr, "\nUnable to allocate terminal table.\n");
@@ -81,12 +83,21 @@ UX_reset_terminals (void)
 {
   UX_free (terminal_table);
   terminal_table = 0;
+  terminal_table_size = 0;
 }
 
 /* This is called from the file-opening code. */
 void
 terminal_open (Tchannel channel)
 {
+  if (terminal_table_size != OS_channel_table_size)
+    {
+      terminal_table_size = OS_channel_table_size;
+      terminal_table
+	= (OS_realloc (terminal_table,
+		       (terminal_table_size
+			* (sizeof (struct terminal_state)))));
+    }
   (TERMINAL_BUFFER (channel)) = (-1);
   get_terminal_state (channel, (& (TERMINAL_ORIGINAL_STATE (channel))));
 }
