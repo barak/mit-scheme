@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: evlcom.scm,v 1.75 2007/10/09 04:43:49 cph Exp $
+$Id: evlcom.scm,v 1.76 2008/01/07 14:31:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -62,18 +62,44 @@ If 'DEFAULT, use the default (REP loop) environment."
     (if buffer (normal-buffer-evaluation-mode buffer))))
 
 (define (normal-buffer-evaluation-mode buffer)
-  (let ((environment (ref-variable-object scheme-environment))
-	(evaluate-inferior (ref-variable-object evaluate-in-inferior-repl))
+  (let ((env (ref-variable-object scheme-environment))
+	(inf-repl (ref-variable-object evaluate-in-inferior-repl))
 	(run-light (ref-variable-object run-light)))
-    (if (and (not (repl-buffer? buffer))
-	     (not (variable-local-value? buffer evaluate-inferior))
-	     (and (variable-local-value? buffer environment)
-		  (not (eq? 'DEFAULT
-			    (variable-local-value buffer environment)))))
-	(begin
-	  (define-variable-local-value! buffer evaluate-inferior #f)
-	  (if (not (variable-local-value? buffer run-light))
-	      (define-variable-local-value! buffer run-light #f))))))
+    (if (not (repl-buffer? buffer))
+	(let ((value
+	       (if (variable-local-value? buffer env)
+		   (variable-local-value buffer env)
+		   'DEFAULT)))
+	  (cond ((eq? 'DEFAULT value)
+		 (undefine-variable-local-value! buffer inf-repl)
+		 (undefine-variable-local-value! buffer run-light))
+		((procedure? value)
+		 (define-variable-local-value! buffer inf-repl
+		   (lambda (buffer) buffer (eq? 'DEFAULT (value 'DEFAULT))))
+		 ;; Force run-light to be set:
+		 (evaluate-in-inferior-repl? buffer))
+		(else
+		 (define-variable-local-value! buffer inf-repl #f)
+		 (define-variable-local-value! buffer run-light #f)))))))
+
+(define (evaluate-in-inferior-repl? buffer)
+  (if buffer
+      (let ((buffer (->buffer buffer))
+	    (var (ref-variable-object evaluate-in-inferior-repl)))
+	(let ((value (variable-local-value buffer var)))
+	  (if (procedure? value)
+	      (let ((value (value buffer)))
+		(let ((run-light (ref-variable-object run-light)))
+		  (if value
+		      (undefine-variable-local-value! buffer run-light)
+		      (define-variable-local-value! buffer run-light #f)))
+		(invoke-variable-assignment-daemons! buffer var)
+		value)
+	      value)))
+      (let ((value (ref-variable evaluate-in-inferior-repl #f)))
+	(if (procedure? value)
+	    (value #f)
+	    value))))
 
 (define-variable debug-on-evaluation-error
   "True means enter debugger if an evaluation error is signalled.
@@ -110,7 +136,7 @@ and the output, if non-null, is shown in a pop-up buffer."
 Also, the inferior REPL's run light appears in all Scheme mode buffers.
 Otherwise, expressions are evaluated directly by the commands."
   #t
-  boolean?)
+  (lambda (object) (or (boolean? object) (procedure-of-arity? object 1))))
 
 (define-variable transcript-buffer-name
   "Name of evaluation transcript buffer.
@@ -181,7 +207,7 @@ With an argument, prompts for the evaluation environment."
     (let ((buffer (mark-buffer (region-start region))))
       (cond ((ref-variable disable-evaluation-commands buffer)
 	     (editor-error "Evaluation commands disabled in this buffer."))
-	    ((ref-variable evaluate-in-inferior-repl buffer)
+	    ((evaluate-in-inferior-repl? buffer)
 	     (inferior-repl-eval-region (current-repl-buffer buffer) region))
 	    (else
 	     (evaluate-region region (evaluation-environment buffer #f)))))))
@@ -199,7 +225,7 @@ The values are printed in the typein window."
     (let ((buffer (current-buffer)))
       (cond ((ref-variable disable-evaluation-commands buffer)
 	     (editor-error "Evaluation commands disabled in this buffer."))
-	    ((and (ref-variable evaluate-in-inferior-repl buffer)
+	    ((and (evaluate-in-inferior-repl? buffer)
 		  (current-repl-buffer* buffer))
 	     => (lambda (buffer)
 		  (inferior-repl-eval-expression buffer expression)))
@@ -220,10 +246,9 @@ The values are printed in the typein window."
 Has no effect if evaluate-in-inferior-repl is false."
   ()
   (lambda ()
-    (let ((buffer (current-buffer)))
-      (if (ref-variable evaluate-in-inferior-repl buffer)
-	  ((ref-command inferior-cmdl-abort-top-level))
-	  (editor-error "Nothing to abort.")))))
+    (if (evaluate-in-inferior-repl? (current-buffer))
+	((ref-command inferior-cmdl-abort-top-level))
+	(editor-error "Nothing to abort."))))
 
 (define-command set-environment
   "Make ENVIRONMENT the current evaluation environment."
@@ -354,7 +379,7 @@ Has no effect if evaluate-in-inferior-repl is false."
     (evaluation-environment-no-repl
      buffer
      (let ((repl-buffer
-	    (and (ref-variable evaluate-in-inferior-repl buffer)
+	    (and (evaluate-in-inferior-repl? buffer)
 		 (current-repl-buffer* buffer))))
        (if (and repl-buffer
 		(not (eq? repl-buffer buffer)))
