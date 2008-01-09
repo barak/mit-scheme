@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.110 2007/12/20 02:49:18 cph Exp $
+$Id: vc.scm,v 1.111 2008/01/09 19:23:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1177,33 +1177,6 @@ the value of vc-log-mode-hook."
 	 (or ((vc-type-operation (caar ps) 'FIND-MASTER) workfile (cdar ps))
 	     (loop (cdr ps))))))
 
-(define (vc-control-directories workfile)
-  (let ((start (merge-pathnames (directory-pathname workfile))))
-    (let loop ((path (pathname-directory start)) (types vc-types))
-      (let ((directory (pathname-new-directory start path)))
-	(let per-dir ((types types) (good '()) (maybe '()))
-	  (cond ((pair? types)
-		 (let ((control-dir
-			((vc-type-operation (car types) 'CONTROL-DIRECTORY)
-			 directory)))
-		   (cond ((not control-dir)
-			  (per-dir (cdr types)
-				   good
-				   maybe))
-			 ((eq? control-dir 'SEARCH-PARENT)
-			  (per-dir (cdr types)
-				   good
-				   (cons (car types) maybe)))
-			 (else
-			  (per-dir (cdr types)
-				   (cons (cons (car types) control-dir) good)
-				   maybe)))))
-		((pair? good) good)
-		((and (pair? (cdr path))
-		      (pair? maybe))
-		 (loop (except-last-pair path) maybe))
-		(else '())))))))
-
 (define (vc-backend-master-valid? master)
   ;; MASTER is a VC-MASTER object.
   ;; The return value is a boolean indicating that MASTER is valid.
@@ -1220,7 +1193,7 @@ the value of vc-log-mode-hook."
   ;; The last checked-in revision of the file is returned.
   ;; If this can't be determined, #F is returned.
   (vc-call 'WORKFILE-REVISION master))
-
+
 (define (vc-backend-locking-user master revision)
   ;; MASTER is a valid VC-MASTER object.
   ;; REVISION is a revision string or #F.
@@ -1363,13 +1336,51 @@ the value of vc-log-mode-hook."
   ;; appropriate revision-control header strings.  Returns #t iff the
   ;; header strings are present.
   (vc-call 'CHECK-HEADERS master buffer))
-
+
 (define (vc-backend-mode-line-status master buffer)
   (let ((operation
 	 (vc-type-operation (vc-master-type master) 'MODE-LINE-STATUS #f)))
     (if operation
 	(operation master buffer)
 	(%default-mode-line-status master buffer))))
+
+(define (vc-control-directories workfile)
+  (let ((start (merge-pathnames (directory-pathname workfile))))
+    (let loop ((path (pathname-directory start)) (possible vc-types))
+      (let ((directory (pathname-new-directory start path)))
+	(receive (good maybe) (local-control-directories directory)
+	  (or (let ((good*
+		     (filter (lambda (p) (memq (car p) possible))
+			     good)))
+		(and (pair? good*)
+		     good*))
+	      (if (and (null? good)
+		       (pair? (cdr path)))
+		  (let ((maybe (lset-intersection eqv? maybe possible)))
+		    (if (pair? maybe)
+			(loop (except-last-pair path) maybe)
+			'()))
+		  '())))))))
+
+(define (local-control-directories directory)
+  (let loop ((types vc-types) (good '()) (maybe '()))
+    (if (pair? types)
+	(let ((control-dir
+	       ((vc-type-operation (car types) 'CONTROL-DIRECTORY)
+		directory)))
+	  (cond ((not control-dir)
+		 (loop (cdr types)
+		       good
+		       maybe))
+		((eq? control-dir 'SEARCH-PARENT)
+		 (loop (cdr types)
+		       good
+		       (cons (car types) maybe)))
+		(else
+		 (loop (cdr types)
+		       (cons (cons (car types) control-dir) good)
+		       maybe))))
+	(values good maybe))))
 
 ;;;; RCS Commands
 
