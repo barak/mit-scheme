@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.42 2007/01/05 21:19:28 cph Exp $
+$Id: thread.scm,v 1.43 2008/01/14 03:14:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -89,7 +89,7 @@ USA.
 (define thread-population)
 (define first-running-thread)
 (define last-running-thread)
-(define thread-timer-running?)
+(define next-scheduled-timeout)
 (define root-continuation-default)
 
 (define (initialize-package!)
@@ -97,7 +97,7 @@ USA.
   (set! thread-population (make-population))
   (set! first-running-thread #f)
   (set! last-running-thread #f)
-  (set! thread-timer-running? #f)
+  (set! next-scheduled-timeout #f)
   (set! timer-records #f)
   (set! timer-interval 100)
   (initialize-io-blocking)
@@ -217,7 +217,6 @@ USA.
       (run-thread first-running-thread)
       (begin
 	(set! last-running-thread #f)
-	(%maybe-toggle-thread-timer)
 	(wait-for-io))))
 
 (define (run-thread thread)
@@ -284,6 +283,7 @@ USA.
   (set-thread/execution-state! (current-thread) 'RUNNING))
 
 (define (thread-timer-interrupt-handler)
+  (set! next-scheduled-timeout #f)
   (set-interrupt-enables! interrupt-mask/gc-ok)
   (deliver-timer-events)
   (maybe-signal-io-thread-events)
@@ -419,6 +419,7 @@ USA.
       (signal-select-result (test-select-registry io-registry #f))))
 
 (define (wait-for-io)
+  (%maybe-toggle-thread-timer #f)
   (let ((catch-errors
 	 (lambda (thunk)
 	   (let ((thread (console-thread)))
@@ -897,10 +898,8 @@ USA.
   timer-interval)
 
 (define (set-thread-timer-interval! interval)
-  (if (not (or (false? interval)
-	       (and (exact-integer? interval)
-		    (> interval 0))))
-      (error:wrong-type-argument interval #f 'SET-THREAD-TIMER-INTERVAL!))
+  (if interval
+      (guarantee-exact-positive-integer interval 'SET-THREAD-TIMER-INTERVAL!))
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)
@@ -915,47 +914,33 @@ USA.
 (define (with-thread-timer-stopped thunk)
   (dynamic-wind %stop-thread-timer thunk %maybe-toggle-thread-timer))
 
-(define (%maybe-toggle-thread-timer)
-  (cond ((and timer-interval
-	      (or io-registrations
-		  (let ((current-thread first-running-thread))
-		    (and current-thread
-			 (thread/next current-thread)))))
-	 (%start-thread-timer timer-interval #t))
-	(timer-records
-	 (let ((next-event-time (timer-record/time timer-records)))
-	   (let ((next-event-interval (- next-event-time (real-time-clock))))
-	     (if (or (not timer-interval)
-		     (> next-event-interval timer-interval))
-		 (%start-thread-timer next-event-interval next-event-time)
-		 (%start-thread-timer timer-interval #t)))))
-	(else
-	 (%stop-thread-timer))))
-
-(define (%start-thread-timer interval time)
-  ;; If TIME is #T, that means interval is TIMER-INTERVAL.  Otherwise,
-  ;; INTERVAL is longer than TIMER-INTERVAL, and TIME is when INTERVAL
-  ;; ends.  The cases are as follows:
-  ;; 1. Timer not running: start it.
-  ;; 2. Timer running TIMER-INTERVAL: do nothing.
-  ;; 3. Timer running long interval, request sooner: restart it.
-  ;; 4. Otherwise: do nothing.
-  (if (or (not thread-timer-running?)
-	  (and (not (eq? #t thread-timer-running?))
-	       (< (if (eq? #t time)
-		      (+ (real-time-clock) interval)
-		      time)
-		  thread-timer-running?)))
-      (begin
-	((ucode-primitive real-timer-set) interval interval)
-	(set! thread-timer-running? time)
-	unspecific)))
+(define (%maybe-toggle-thread-timer #!optional consider-non-timers?)
+  (let ((now (real-time-clock)))
+    (let ((start
+	   (lambda (time)
+	     (set! next-scheduled-timeout time)
+	     ((ucode-primitive real-timer-set) (- time now) 0))))
+      (cond (timer-records
+	     (start
+	      (let ((next-event-time (timer-record/time timer-records)))
+		(if timer-interval
+		    (min next-event-time (+ now timer-interval))
+		    next-event-time))))
+	    ((and consider-non-timers?
+		  timer-interval
+		  (or io-registrations
+		      (let ((current-thread first-running-thread))
+			(and current-thread
+			     (thread/next current-thread)))))
+	     (start (+ now timer-interval)))
+	    (else
+	     (%stop-thread-timer))))))
 
 (define (%stop-thread-timer)
-  (if thread-timer-running?
+  (if next-scheduled-timeout
       (begin
 	((ucode-primitive real-timer-clear))
-	(set! thread-timer-running? #f)
+	(set! next-scheduled-timeout #f)
 	((ucode-primitive clear-interrupts!) interrupt-bit/timer))))
 
 ;;;; Mutexes
