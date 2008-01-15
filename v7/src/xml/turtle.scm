@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.41 2007/12/09 06:09:32 cph Exp $
+$Id: turtle.scm,v 1.42 2008/01/15 04:39:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,11 +37,12 @@ USA.
       (lambda (port)
 	(read-rdf/turtle
 	 port
-	 (if (default-object? base-uri)
-	     (pathname->uri (merge-pathnames pathname))
-	     (merge-uris
-	      (file-namestring pathname)
-	      (->absolute-uri base-uri 'READ-RDF/TURTLE-FILE))))))))
+	 (let ((pathname (pathname-new-type pathname #f)))
+	   (if (default-object? base-uri)
+	       (pathname->uri (merge-pathnames pathname))
+	       (merge-uris
+		(file-namestring pathname)
+		(->absolute-uri base-uri 'READ-RDF/TURTLE-FILE)))))))))
 
 (define (read-rdf/turtle port base-uri)
   (port/set-coding port 'UTF-8)
