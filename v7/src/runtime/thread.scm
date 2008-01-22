@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.43 2008/01/14 03:14:10 cph Exp $
+$Id: thread.scm,v 1.44 2008/01/22 22:46:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -921,11 +921,18 @@ USA.
 	     (set! next-scheduled-timeout time)
 	     ((ucode-primitive real-timer-set) (- time now) 0))))
       (cond (timer-records
-	     (start
-	      (let ((next-event-time (timer-record/time timer-records)))
-		(if timer-interval
-		    (min next-event-time (+ now timer-interval))
-		    next-event-time))))
+	     (let ((next-event-time (timer-record/time timer-records)))
+	       (if (<= next-event-time now)
+		   ;; Don't set the timer to non-positive values.
+		   ;; Instead signal the interrupt now.  This is ugly
+		   ;; but much simpler than refactoring the scheduler
+		   ;; so that we can do the right thing here.
+		   ((ucode-primitive request-interrupts! 1)
+		    interrupt-bit/timer)
+		   (start
+		    (if timer-interval
+			(min next-event-time (+ now timer-interval))
+			next-event-time)))))
 	    ((and consider-non-timers?
 		  timer-interval
 		  (or io-registrations
