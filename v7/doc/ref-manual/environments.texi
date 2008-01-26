@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: environments.texi,v 1.2 2007/01/05 21:48:31 cph Exp $
+@c $Id: environments.texi,v 1.3 2008/01/26 00:20:07 cph Exp $
 
 @c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 @c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -280,11 +280,14 @@ returns @code{#f}.
 @end deffn
 
 @deffn procedure extend-top-level-environment environment [names [values]]
+@deffnx procedure make-top-level-environment [names [values]]
 @deffnx procedure make-root-top-level-environment [names [values]]
 Returns a newly allocated top-level environment.
 @code{extend-top-level-environment} creates an environment that has
-parent @var{environment}, while @code{make-root-top-level-environment}
-creates an environment that has no parent.
+parent @var{environment}, @code{make-top-level-environment} creates an
+environment that has parent @code{system-global-environment}, and
+@code{make-root-top-level-environment} creates an environment that has
+no parent.
 
 The optional arguments @var{names} and @var{values} are used to specify
 initial bindings in the new environment.  If specified, @var{names} must
