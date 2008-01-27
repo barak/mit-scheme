@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.171 2007/04/01 17:33:07 riastradh Exp $
+$Id: fileio.scm,v 1.172 2008/01/27 02:25:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -458,7 +458,14 @@ after you find a file.  If you explicitly request such a scan with
 		(else
 		 (editor-error "Missing colon in local variables entry")))))
 
-      (loop start))))
+      (call-with-current-continuation
+       (lambda (k)
+	 (bind-condition-handler (list condition-type:editor-error)
+	     (lambda (condition)
+	       (editor-failure (condition/report-string condition))
+	       (k unspecific))
+	   (lambda ()
+	     (loop start))))))))
 
 (define (evaluate sexp)
   (eval sexp edwin-environment))
