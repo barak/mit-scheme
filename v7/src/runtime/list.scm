@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.55 2007/03/21 15:06:09 cph Exp $
+$Id: list.scm,v 14.56 2008/01/28 04:26:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -348,26 +348,28 @@ USA.
   (system-pair-set-cdr! weak-pair object))
 
 (define (weak-list->list items)
-  (let loop ((items* items))
+  (let loop ((items* items) (result '()))
     (if (weak-pair? items*)
-	(let ((car (system-pair-car items*)))
-	  (if (not car)
-	      (loop (system-pair-cdr items*))
-	      (cons (if (eq? car weak-pair/false) #f car)
-		    (loop (system-pair-cdr items*)))))
+	(loop (system-pair-cdr items*)
+	      (let ((item (system-pair-car items*)))
+		(if (not item)
+		    result
+		    (cons (if (eq? item weak-pair/false) #f item)
+			  result))))
 	(begin
 	  (if (not (null? items*))
 	      (error:not-weak-list items 'WEAK-LIST->LIST))
-	  '()))))
+	  (reverse! result)))))
 
 (define (list->weak-list items)
-  (let loop ((items* items))
+  (let loop ((items* (reverse items)) (result '()))
     (if (pair? items*)
-	(weak-cons (car items*) (loop (cdr items*)))
+	(loop (cdr items*)
+	      (weak-cons (car items*) result))
 	(begin
 	  (if (not (null? items*))
 	      (error:not-list items 'LIST->WEAK-LIST))
-	  '()))))
+	  result))))
 
 (define weak-pair/false
   "weak-pair/false")
