@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.15 2008/01/29 02:21:46 cph Exp $
+$Id: confshared.h,v 11.16 2008/01/29 02:26:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -107,7 +107,7 @@ USA.
 #  ifdef __GNUC__
      /* Old versions of GCC have an incompatible <stdbool.h>.
 	This declaration should prevent them from overriding our defs.  */
-#    define _STDBOOL_H
+#    define __STDBOOL_H__ 1
 #  endif
 #endif
 
