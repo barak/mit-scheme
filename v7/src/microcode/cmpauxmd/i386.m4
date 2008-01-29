@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.67 2007/04/22 16:31:24 cph Exp $
+### $Id: i386.m4,v 1.68 2008/01/29 03:12:25 cph Exp $
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -871,33 +871,12 @@ define_hook_label(generic_$1)
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	OP(cmp,b)	TW(REG(al),REG(cl))
+	jne	asm_generic_$1_fail
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
 	je	asm_generic_$1_fix
 	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
-	jne	asm_generic_$1_fail
-	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
-	je	asm_generic_$1_flo_flo
-	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
-	jne	asm_generic_$1_fail
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
-	OP(and,l)	TW(rmask,REG(edx))
-	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ebx))
-	OP(fld,l)	DOF(4,REG(edx))			# fldd
-	OP(mov,l)	TW(REG(ebx),IND(rfree))
-	OP($5,l)	IND(rfree)				# fisubl
-	jmp	asm_generic_flonum_result
-
-asm_generic_$1_fix:
-	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
-	je	asm_generic_$1_fix_flo
-	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
-	jne	asm_generic_$1_fail
-	OP(mov,l)	TW(REG(edx),REG(eax))
-	OP(mov,l)	TW(REG(ebx),REG(ecx))
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
-	OP($3,l)	TW(REG(ecx),REG(eax))		# subl
-	jno	asm_generic_fixnum_result
+	je	asm_generic_$1_flo
 
 asm_generic_$1_fail:
 	OP(push,l)	REG(ebx)
@@ -905,20 +884,20 @@ asm_generic_$1_fail:
 	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface
 
-asm_generic_$1_flo_flo:
+asm_generic_$1_fix:
+	OP(mov,l)	TW(REG(edx),REG(eax))
+	OP(mov,l)	TW(REG(ebx),REG(ecx))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	OP($3,l)	TW(REG(ecx),REG(eax))		# subl
+	jo	asm_generic_$1_fail
+	jmp	asm_generic_fixnum_result
+
+asm_generic_$1_flo:
 	OP(and,l)	TW(rmask,REG(edx))
 	OP(and,l)	TW(rmask,REG(ebx))
 	OP(fld,l)	DOF(4,REG(edx))			# fldd
-	OP($6,l)	DOF(4,REG(ebx))			# fsubl
-	jmp	asm_generic_flonum_result	
-
-asm_generic_$1_fix_flo:
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
-	OP(and,l)	TW(rmask,REG(ebx))
-	OP(sar,l)	TW(IMM(TC_LENGTH),REG(edx))
-	OP(fld,l)	DOF(4,REG(ebx))			# fldd
-	OP(mov,l)	TW(REG(edx),IND(rfree))
-	OP($4,l)	IND(rfree)			# fisubrl
+	OP($4,l)	DOF(4,REG(ebx))			# fsubl
 	jmp	asm_generic_flonum_result')
 
 IF387(`declare_alignment(2)
@@ -1055,13 +1034,13 @@ define_unary_predicate(negative,2a,jl,jb)
 define_unary_predicate(positive,2c,jg,ja)
 define_unary_predicate(zero,2d,je,je)
 
-# define_binary_operation(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
-# define_binary_operation(  $1,   $2,     $3,     $4,     $5,     $6)
-define_binary_operation(add,2b,add,fiadd,fiadd,fadd)
-define_binary_operation(subtract,28,sub,fisubr,fisub,fsub)
-define_binary_operation(multiply,29,imul,fimul,fimul,fmul)
+# define_binary_operation(name,index,fix*fix,flo*flo)
+# define_binary_operation(  $1,   $2,     $3,     $4)
+define_binary_operation(add,2b,add,fadd)
+define_binary_operation(subtract,28,sub,fsub)
+define_binary_operation(multiply,29,imul,fmul)
 # Divide needs to check for 0, so we cant really use the following
-# define_binary_operation(divide,23,NONE,fidivr,fidiv,fdiv)
+# define_binary_operation(divide,23,NONE,fdiv)
 
 # define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
 define_binary_predicate(equal,24,je,je,je,je)
