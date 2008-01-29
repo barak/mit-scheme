@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.53 2007/04/22 16:31:22 cph Exp $
+$Id: interp.h,v 9.54 2008/01/29 02:01:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -59,8 +59,7 @@ USA.
 #define APPLY_FRAME_SIZE() (OBJECT_DATUM (STACK_REF (0)))
 #define APPLY_FRAME_N_ARGS() (APPLY_FRAME_HEADER_N_ARGS (STACK_REF (0)))
 #define APPLY_FRAME_PROCEDURE() (STACK_REF (1))
-#define APPLY_FRAME_ARGS(sp) (STACK_LOC (2))
-#define APPLY_FRAME_END(sp) (STACK_LOC (1 + (APPLY_FRAME_SIZE ())))
+#define APPLY_FRAME_ARGS() (STACK_LOC (2))
 
 #define CHECK_RETURN_CODE(code, offset)					\
   ((CONT_RET (offset)) == (MAKE_RETURN_CODE (code)))
