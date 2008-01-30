@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.44 2008/01/22 22:46:08 cph Exp $
+$Id: thread.scm,v 1.45 2008/01/30 07:45:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,7 +244,8 @@ USA.
 	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
 	  (set-thread/block-events?! thread block-events?)
-	  (if (not any-events?)
+	  (if any-events?
+	      (%maybe-toggle-thread-timer)
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
@@ -454,7 +455,8 @@ USA.
 	  (let ((thread first-running-thread))
 	    (if thread
 		(if (thread/continuation thread)
-		    (run-thread thread))
+		    (run-thread thread)
+		    (%maybe-toggle-thread-timer))
 		(wait-for-io)))))))
 
 (define (signal-select-result result)
@@ -495,27 +497,30 @@ USA.
 		     (set! result 'PROCESS-STATUS-CHANGE)
 		     unspecific)
 		   #f #t)))
-	  unspecific)
+	  (%maybe-toggle-thread-timer))
 	(lambda ()
 	  (%suspend-current-thread)
 	  result)
 	(lambda ()
 	  (%deregister-io-thread-event registration-2)
-	  (%deregister-io-thread-event registration-1)))))))
+	  (%deregister-io-thread-event registration-1)
+	  (%maybe-toggle-thread-timer)))))))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (guarantee-select-mode mode 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
   (guarantee-thread thread 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
-     (%register-io-thread-event descriptor mode thread event #t #f))))
+     (%register-io-thread-event descriptor mode thread event #t #f)
+     (%maybe-toggle-thread-timer))))
 
 (define (register-io-thread-event descriptor mode thread event)
   (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
   (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
   (without-interrupts
    (lambda ()
-     (%register-io-thread-event descriptor mode thread event #f #f))))
+     (%register-io-thread-event descriptor mode thread event #f #f)
+     (%maybe-toggle-thread-timer))))
 
 (define (deregister-io-thread-event tentry)
   (if (not (tentry? tentry))
@@ -545,7 +550,8 @@ USA.
 		(if next
 		    (set-dentry/prev! next prev))))
 	     (else
-	      (loop (dentry/next dentry))))))))
+	      (loop (dentry/next dentry)))))
+     (%maybe-toggle-thread-timer))))
 
 (define (%register-io-thread-event descriptor mode thread event permanent?
 				   front?)
@@ -583,7 +589,6 @@ USA.
 		   (set-tentry/next! prev tentry))))
 	    (else
 	     (loop (dentry/next dentry)))))
-    (%maybe-toggle-thread-timer)
     tentry))
 
 (define (%deregister-io-thread-event tentry)
@@ -801,7 +806,8 @@ USA.
 	     (set-thread/block-events?! thread block-events?))
 	   (begin
 	     (deliver-timer-events)
-	     (maybe-signal-io-thread-events)))))))
+	     (maybe-signal-io-thread-events))))
+     (%maybe-toggle-thread-timer))))
 
 ;;;; Timer Events
 
@@ -844,13 +850,13 @@ USA.
   (let ((time (real-time-clock)))
     (do ((record timer-records (timer-record/next record)))
 	((or (not record) (< time (timer-record/time record)))
-	 (set! timer-records record))
+	 (set! timer-records record)
+	 unspecific)
       (let ((thread (timer-record/thread record))
 	    (event (timer-record/event record)))
 	(set-timer-record/thread! record #f)
 	(set-timer-record/event! record #f)
-	(%signal-thread-event thread event))))
-  unspecific)
+	(%signal-thread-event thread event)))))
 
 (define (deregister-timer-event registration)
   (if (not (timer-record? registration))
@@ -880,6 +886,7 @@ USA.
       (%deregister-io-thread-events thread #f)
       (%discard-thread-timer-records thread)
       (set-thread/block-events?! thread block-events?))
+    (%maybe-toggle-thread-timer)
     (set-interrupt-enables! interrupt-mask/all)))
 
 (define (%discard-thread-timer-records thread)
