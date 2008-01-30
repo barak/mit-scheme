@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.264 2007/01/05 21:19:23 cph Exp $
+$Id: editor.scm,v 1.265 2008/01/30 07:50:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -600,10 +600,12 @@ TRANSCRIPT    messages appear in transcript buffer, if it is enabled;
 (define (inferior-thread-output! flags)
   (without-interrupts (lambda () (inferior-thread-output!/unsafe flags))))
 
-(define-integrable (inferior-thread-output!/unsafe flags)
+(define (inferior-thread-output!/unsafe flags)
   (set-car! flags #t)
-  (set! inferior-thread-changes? #t)
-  (signal-thread-event editor-thread #f))
+  (if (not inferior-thread-changes?)
+      (begin
+	(set! inferior-thread-changes? #t)
+	(signal-thread-event editor-thread #f))))
 
 (define (accept-thread-output)
   (with-interrupt-mask interrupt-mask/gc-ok
