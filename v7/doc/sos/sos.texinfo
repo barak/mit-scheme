@@ -1,5 +1,5 @@
 \input texinfo @c -*-Texinfo-*-
-@comment $Id: sos.texinfo,v 2.23 2007/04/24 14:46:00 cph Exp $
+@comment $Id: sos.texinfo,v 2.24 2008/01/30 20:06:12 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-sos
 @set EDITION 2.12
@@ -20,7 +20,7 @@ This manual documents @acronym{SOS} @value{VERSION}.
 
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-    2005, 2006, 2007 Massachusetts Institute of Technology
+    2005, 2006, 2007, 2008 Massachusetts Institute of Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
