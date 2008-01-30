@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.45 2008/01/30 07:45:17 cph Exp $
+$Id: thread.scm,v 1.46 2008/01/30 08:02:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -415,10 +415,6 @@ USA.
   (set! io-registrations #f)
   unspecific)
 
-(define (maybe-signal-io-thread-events)
-  (if io-registrations
-      (signal-select-result (test-select-registry io-registry #f))))
-
 (define (wait-for-io)
   (%maybe-toggle-thread-timer #f)
   (let ((catch-errors
@@ -458,7 +454,7 @@ USA.
 		    (run-thread thread)
 		    (%maybe-toggle-thread-timer))
 		(wait-for-io)))))))
-
+
 (define (signal-select-result result)
   (cond ((vector? result)
 	 (signal-io-thread-events (vector-ref result 0)
@@ -468,7 +464,11 @@ USA.
 	 (signal-io-thread-events 1
 				  '#(PROCESS-STATUS-CHANGE)
 				  '#(READ)))))
-
+
+(define (maybe-signal-io-thread-events)
+  (if io-registrations
+      (signal-select-result (test-select-registry io-registry #f))))
+
 (define (block-on-io-descriptor descriptor mode)
   (without-interrupts
    (lambda ()
@@ -505,22 +505,26 @@ USA.
 	  (%deregister-io-thread-event registration-2)
 	  (%deregister-io-thread-event registration-1)
 	  (%maybe-toggle-thread-timer)))))))
-
+
 (define (permanently-register-io-thread-event descriptor mode thread event)
-  (guarantee-select-mode mode 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
-  (guarantee-thread thread 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
-  (without-interrupts
-   (lambda ()
-     (%register-io-thread-event descriptor mode thread event #t #f)
-     (%maybe-toggle-thread-timer))))
+  (register-io-thread-event-1 descriptor mode thread event
+			      #t 'PERMANENTLY-REGISTER-IO-THREAD-EVENT))
 
 (define (register-io-thread-event descriptor mode thread event)
-  (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
-  (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
+  (register-io-thread-event-1 descriptor mode thread event
+			      #f 'REGISTER-IO-THREAD-EVENT))
+
+(define (register-io-thread-event-1 descriptor mode thread event
+				    permanent? caller)
+  (guarantee-select-mode mode caller)
+  (guarantee-thread thread caller)
   (without-interrupts
    (lambda ()
-     (%register-io-thread-event descriptor mode thread event #f #f)
-     (%maybe-toggle-thread-timer))))
+     (let ((registration
+	    (%register-io-thread-event descriptor mode thread event
+				       permanent? #f)))
+       (%maybe-toggle-thread-timer)
+       registration))))
 
 (define (deregister-io-thread-event tentry)
   (if (not (tentry? tentry))
