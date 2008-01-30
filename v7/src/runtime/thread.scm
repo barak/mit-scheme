@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.46 2008/01/30 08:02:20 cph Exp $
+$Id: thread.scm,v 1.47 2008/01/30 14:33:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -764,7 +764,7 @@ USA.
   (let ((self first-running-thread))
     (if (eq? thread self)
 	(let ((block-events? (block-thread-events)))
-	  (ring/enqueue (thread/pending-events thread) event)
+	  (%add-pending-event thread event)
 	  (if (not block-events?)
 	      (unblock-thread-events)))
 	(without-interrupts
@@ -778,10 +778,24 @@ USA.
 	       (%maybe-toggle-thread-timer)))))))
 
 (define (%signal-thread-event thread event)
-  (ring/enqueue (thread/pending-events thread) event)
+  (%add-pending-event thread event)
   (if (and (not (thread/block-events? thread))
 	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
+
+(define (%add-pending-event thread event)
+  ;; PENDING-EVENTS has three states: (1) empty; (2) one #F event; or
+  ;; (3) any number of non-#F events.  This optimizes #F events away
+  ;; when they aren't needed.
+  (let ((ring (thread/pending-events thread)))
+    (let ((count (ring/count-max-2 ring)))
+      (if event
+	  (if (and (fix:= count 1)
+		   (not (ring/first-item ring)))
+	      (ring/set-first-item! ring event)
+	      (ring/enqueue ring event))
+	  (if (fix:= count 0)
+	      (ring/enqueue ring event))))))
 
 (define (handle-thread-events thread)
   (let loop ((any-events? #f))
@@ -1106,6 +1120,18 @@ USA.
 	      (set-link/next! prev next)
 	      (set-link/prev! next prev))
 	    (loop (link/next link))))))
+
+(define (ring/count-max-2 ring)
+  (let ((link (link/next ring)))
+    (cond ((eq? link ring) 0)
+	  ((eq? (link/next link) ring) 1)
+	  (else 2))))
+
+(define (ring/first-item ring)
+  (link/item (link/next ring)))
+
+(define (ring/set-first-item! ring item)
+  (set-link/item! (link/next ring) item))
 
 ;;;; Error Conditions
 
