@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: version.scm,v 14.224 2008/01/30 20:02:37 cph Exp $
+$Id: version.scm,v 14.225 2008/01/31 03:49:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,7 +34,7 @@ USA.
 
 (define (initialize-package!)
   (set! copyright-years
-	(let ((now 2007)
+	(let ((now 2008)
 	      (then 1986))
 	  (iota (+ (- now then) 1) then)))
   (add-subsystem-identification! "Release" '(7 7 90 "+"))
