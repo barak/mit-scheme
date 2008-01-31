@@ -14,7 +14,9 @@ File: dir	Node: Top	This is the top of the INFO tree
 
 * Menu: The list of major topics begins on the next line.
 
-* Scheme: (mit-scheme-ref).		The UnCommon Lisp
-* Scheme user: (mit-scheme-user).	Scheme User's Guide
-* SOS: (mit-scheme-sos).		Scheme Object System
-* IMAIL: (mit-scheme-imail).		The IMAIL IMAP mail reader
+* IMAIL: (mit-scheme-imail).		IMAP/MIME mail reader for MIT/GNU
+					Scheme
+* MIT/GNU Scheme Ref: (mit-scheme-ref). MIT/GNU Scheme Reference Manual
+* MIT/GNU Scheme User: (mit-scheme-user).
+					MIT/GNU Scheme User's Manual
+* SOS: (mit-scheme-sos).		MIT/GNU Scheme Object System
