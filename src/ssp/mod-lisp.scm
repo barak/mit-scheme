@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.35 2007/02/08 03:36:18 cph Exp $
+$Id: mod-lisp.scm,v 1.38 2008/01/30 20:02:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -109,6 +109,7 @@ USA.
 		      ,@(map (lambda (p)
 			       (list (car p) (cdr p)))
 			     (http-message-headers request)))))
+    (maybe-parse-post-variables request)
     (let ((expand
 	   (lambda (default-type handler)
 	     (set-status-header response 200)
@@ -126,13 +127,11 @@ USA.
       (receive (handler default-type) (http-message-handler request)
 	(if handler
 	    (expand default-type handler)
-	    (begin
-	      (maybe-parse-post-variables request)
-	      (let ((type
-		     (or (file-content-type pathname)
-			 "application/octet-stream")))
-		(expand type
-			(get-mime-handler type)))))))
+	    (let ((type
+		   (or (file-content-type pathname)
+		       "application/octet-stream")))
+	      (expand type
+		      (get-mime-handler type))))))
     response))
 
 (define (mod-lisp-expander request response pathname expander)
@@ -744,7 +743,7 @@ USA.
 			  (assq name (cdar bindings))
 			  (or (not binding)
 			      (fix:> (string-length (caar bindings))
-				     (string-length binding))))
+				     (string-length (car binding)))))
 		     (car bindings)
 		     binding)))
 	  (binding

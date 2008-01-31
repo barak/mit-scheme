@@ -1,11 +1,12 @@
  ### -*- Midas -*-
  ### 
- ### $Id: alpha.m4,v 1.3 2007/01/05 21:19:26 cph Exp $
+ ### $Id: alpha.m4,v 1.4 2008/01/30 20:02:23 cph Exp $
  ### 
  ### Copyright (C) 1992 Digital Equipment Corporation (D.E.C.)
  ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
  ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
- ###     2004, 2005, 2006, 2007 Massachusetts Institute of Technology
+ ###     2004, 2005, 2006, 2007, 2008 Massachusetts Institute of
+ ###     Technology
  ### 
  ### This software was developed at the Digital Equipment Corporation
  ### Cambridge Research Laboratory.  Permission to copy this software, to

@@ -1,13 +1,10 @@
 .TH "mit\-scheme" "1" "7.7.90" "MIT/GNU Scheme Team" ""
 .SH "NAME"
-.LP 
-MIT/GNU Scheme \- Scheme development environment
+.LP
+mit-scheme \- Scheme development environment
 .SH "SYNOPSIS"
 .LP 
 .B mit\-scheme
-.RI [ OPTIONS ]
-.br 
-.B bchscheme
 .RI [ OPTIONS ]
 .br 
 .SH "DESCRIPTION"
@@ -17,35 +14,15 @@ language, providing an interpreter, compiler, source\-code debugger,
 integrated Emacs\-like editor, and a large runtime library.  MIT/GNU
 Scheme is best suited to programming large applications with a rapid
 development cycle.
-.LP 
-There are two executable programs.  The programs are functionally
-identical, but use different garbage collectors.
-The
-.B mit\-scheme
-program uses a standard two\-space copying garbage collector.  This
-optimizes performance but uses a lot of memory.  The
-.B bchscheme
-program uses a special two\-space copying garbage collector with one
-heap in memory and the other on the disk.  This makes garbage
-collection slower but uses less memory.
 .SH "OPTIONS"
 .LP 
 These are some of the more common command\-line options.  For full
 information about available options, see the Texinfo documentation.
 .TP 
-\-\-compiler
-.br 
-Load the native\-code compiler.
-.TP 
-\-\-edwin
-.br 
-Load the Emacs\-like text editor.
-.TP 
 .RI \-\-heap " NBLOCKS"
 .br 
 Specify the size of the heap in 1024\-word blocks.
-The default heap size is 1000 blocks if either \-\-compiler or \-\-edwin
-is specified, and 250 blocks otherwise.
+The default heap size is 1000 blocks.
 .TP 
 .RI \-\-stack " NBLOCKS"
 .br 
@@ -64,8 +41,7 @@ Don't load the user's init file.
 .TP 
 \-\-edit
 .br 
-Start the text editor automatically.  Meaningful only when combined
-with the \-\-edwin option.
+Start the text editor automatically.
 .TP 
 .RI \-\-eval " EXPRESSION" ...
 .br 
@@ -87,19 +63,14 @@ MIT/GNU Scheme refers to a large number of environment variables.  See
 the Texinfo documentation for details.
 .SH "EXAMPLES"
 .LP 
-To use the interpreter without any frills, type:
+To use the evaluator in a command-line interface, type:
 .LP 
 .B mit\-scheme
 .LP 
-To also load the compiler, type:
+To start the editor and use it as a front-end to the evaluator, type:
 .LP 
 .B mit\-scheme
-\-\-compiler
-.LP 
-To load the compiler and editor, type:
-.LP 
-.B mit\-scheme
-\-\-compiler \-\-edwin \-\-edit
+\-\-edit
 .SH "AUTHORS"
 .LP 
 MIT/GNU Scheme Team <bug\-mit\-scheme@gnu.org>

@@ -2,7 +2,7 @@
 Version=1.0
 Encoding=UTF-8
 Name=MIT/GNU Scheme
-Exec=/usr/bin/mit-scheme-native --edit
+Exec=/usr/bin/mit-scheme-native --heap 4096 --edit
 TryExec=mit-scheme-native
 Terminal=false
 Type=Application

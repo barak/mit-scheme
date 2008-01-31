@@ -1,3 +1,15 @@
+mit-scheme (7.7.90+20080130-1) unstable; urgency=low
+
+  * New upstream.  (closes: Bug#458700, Bug#375858)
+  * debian/control: Bump standards-version to 3.7.3 (no changes).
+  * debian/copyright: Update copyright dates.
+  * debian/copyright: Add build-dep on libdb-dev.
+  * debian/mit-scheme.desktop: Add --heap arg to Exec field.
+  * debian/mit-scheme-native.1: Fix lintian error:
+    manpage-has-bad-whatis-entry
+
+ -- Chris Hanson <cph@debian.org>  Wed, 30 Jan 2008 21:22:48 -0500
+
 mit-scheme (7.7.90+20070909-1) unstable; urgency=low
 
   * New upstream.

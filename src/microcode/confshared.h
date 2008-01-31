@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.13 2007/09/04 03:35:19 riastradh Exp $
+$Id: confshared.h,v 11.18 2008/01/30 20:02:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -93,7 +93,7 @@ USA.
 #ifdef HAVE_STDBOOL_H
 #  include <stdbool.h>
 #else
-#  if !HAVE__BOOL
+#  ifndef HAVE__BOOL
 #    ifdef __cplusplus
        typedef bool _Bool;
 #    else
@@ -104,6 +104,11 @@ USA.
 #  define false 0
 #  define true 1
 #  define __bool_true_false_are_defined 1
+#  if ((defined (__GNUC__)) && (__GNUC__ < 3))
+     /* Old versions of GCC have an incompatible <stdbool.h>.
+	This declaration should prevent them from overriding our defs.  */
+#    define __STDBOOL_H__ 1
+#  endif
 #endif
 
 #ifdef HAVE_STDINT_H

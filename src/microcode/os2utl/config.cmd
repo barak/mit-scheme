@@ -1,9 +1,10 @@
 @echo off
-rem $Id: config.cmd,v 1.6 2007/01/05 21:19:26 cph Exp $
+rem $Id: config.cmd,v 1.7 2008/01/30 20:02:26 cph Exp $
 rem
 rem Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 rem     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-rem     2004, 2005, 2006, 2007 Massachusetts Institute of Technology
+rem     2004, 2005, 2006, 2007, 2008 Massachusetts Institute of
+rem     Technology
 rem
 rem This file is part of MIT/GNU Scheme.
 rem

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.42 2007/01/05 21:19:28 cph Exp $
+$Id: thread.scm,v 1.48 2008/01/30 20:02:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -89,7 +89,7 @@ USA.
 (define thread-population)
 (define first-running-thread)
 (define last-running-thread)
-(define thread-timer-running?)
+(define next-scheduled-timeout)
 (define root-continuation-default)
 
 (define (initialize-package!)
@@ -97,7 +97,7 @@ USA.
   (set! thread-population (make-population))
   (set! first-running-thread #f)
   (set! last-running-thread #f)
-  (set! thread-timer-running? #f)
+  (set! next-scheduled-timeout #f)
   (set! timer-records #f)
   (set! timer-interval 100)
   (initialize-io-blocking)
@@ -217,7 +217,6 @@ USA.
       (run-thread first-running-thread)
       (begin
 	(set! last-running-thread #f)
-	(%maybe-toggle-thread-timer)
 	(wait-for-io))))
 
 (define (run-thread thread)
@@ -245,7 +244,8 @@ USA.
 	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
 	  (set-thread/block-events?! thread block-events?)
-	  (if (not any-events?)
+	  (if any-events?
+	      (%maybe-toggle-thread-timer)
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
@@ -284,6 +284,7 @@ USA.
   (set-thread/execution-state! (current-thread) 'RUNNING))
 
 (define (thread-timer-interrupt-handler)
+  (set! next-scheduled-timeout #f)
   (set-interrupt-enables! interrupt-mask/gc-ok)
   (deliver-timer-events)
   (maybe-signal-io-thread-events)
@@ -414,11 +415,8 @@ USA.
   (set! io-registrations #f)
   unspecific)
 
-(define (maybe-signal-io-thread-events)
-  (if io-registrations
-      (signal-select-result (test-select-registry io-registry #f))))
-
 (define (wait-for-io)
+  (%maybe-toggle-thread-timer #f)
   (let ((catch-errors
 	 (lambda (thunk)
 	   (let ((thread (console-thread)))
@@ -453,9 +451,10 @@ USA.
 	  (let ((thread first-running-thread))
 	    (if thread
 		(if (thread/continuation thread)
-		    (run-thread thread))
+		    (run-thread thread)
+		    (%maybe-toggle-thread-timer))
 		(wait-for-io)))))))
-
+
 (define (signal-select-result result)
   (cond ((vector? result)
 	 (signal-io-thread-events (vector-ref result 0)
@@ -465,7 +464,11 @@ USA.
 	 (signal-io-thread-events 1
 				  '#(PROCESS-STATUS-CHANGE)
 				  '#(READ)))))
-
+
+(define (maybe-signal-io-thread-events)
+  (if io-registrations
+      (signal-select-result (test-select-registry io-registry #f))))
+
 (define (block-on-io-descriptor descriptor mode)
   (without-interrupts
    (lambda ()
@@ -494,27 +497,34 @@ USA.
 		     (set! result 'PROCESS-STATUS-CHANGE)
 		     unspecific)
 		   #f #t)))
-	  unspecific)
+	  (%maybe-toggle-thread-timer))
 	(lambda ()
 	  (%suspend-current-thread)
 	  result)
 	(lambda ()
 	  (%deregister-io-thread-event registration-2)
-	  (%deregister-io-thread-event registration-1)))))))
-
+	  (%deregister-io-thread-event registration-1)
+	  (%maybe-toggle-thread-timer)))))))
+
 (define (permanently-register-io-thread-event descriptor mode thread event)
-  (guarantee-select-mode mode 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
-  (guarantee-thread thread 'PERMANENTLY-REGISTER-IO-THREAD-EVENT)
-  (without-interrupts
-   (lambda ()
-     (%register-io-thread-event descriptor mode thread event #t #f))))
+  (register-io-thread-event-1 descriptor mode thread event
+			      #t 'PERMANENTLY-REGISTER-IO-THREAD-EVENT))
 
 (define (register-io-thread-event descriptor mode thread event)
-  (guarantee-select-mode mode 'REGISTER-IO-THREAD-EVENT)
-  (guarantee-thread thread 'REGISTER-IO-THREAD-EVENT)
+  (register-io-thread-event-1 descriptor mode thread event
+			      #f 'REGISTER-IO-THREAD-EVENT))
+
+(define (register-io-thread-event-1 descriptor mode thread event
+				    permanent? caller)
+  (guarantee-select-mode mode caller)
+  (guarantee-thread thread caller)
   (without-interrupts
    (lambda ()
-     (%register-io-thread-event descriptor mode thread event #f #f))))
+     (let ((registration
+	    (%register-io-thread-event descriptor mode thread event
+				       permanent? #f)))
+       (%maybe-toggle-thread-timer)
+       registration))))
 
 (define (deregister-io-thread-event tentry)
   (if (not (tentry? tentry))
@@ -544,7 +554,8 @@ USA.
 		(if next
 		    (set-dentry/prev! next prev))))
 	     (else
-	      (loop (dentry/next dentry))))))))
+	      (loop (dentry/next dentry)))))
+     (%maybe-toggle-thread-timer))))
 
 (define (%register-io-thread-event descriptor mode thread event permanent?
 				   front?)
@@ -582,7 +593,6 @@ USA.
 		   (set-tentry/next! prev tentry))))
 	    (else
 	     (loop (dentry/next dentry)))))
-    (%maybe-toggle-thread-timer)
     tentry))
 
 (define (%deregister-io-thread-event tentry)
@@ -754,7 +764,7 @@ USA.
   (let ((self first-running-thread))
     (if (eq? thread self)
 	(let ((block-events? (block-thread-events)))
-	  (ring/enqueue (thread/pending-events thread) event)
+	  (%add-pending-event thread event)
 	  (if (not block-events?)
 	      (unblock-thread-events)))
 	(without-interrupts
@@ -768,10 +778,24 @@ USA.
 	       (%maybe-toggle-thread-timer)))))))
 
 (define (%signal-thread-event thread event)
-  (ring/enqueue (thread/pending-events thread) event)
+  (%add-pending-event thread event)
   (if (and (not (thread/block-events? thread))
 	   (eq? 'WAITING (thread/execution-state thread)))
       (%thread-running thread)))
+
+(define (%add-pending-event thread event)
+  ;; PENDING-EVENTS has three states: (1) empty; (2) one #F event; or
+  ;; (3) any number of non-#F events.  This optimizes #F events away
+  ;; when they aren't needed.
+  (let ((ring (thread/pending-events thread)))
+    (let ((count (ring/count-max-2 ring)))
+      (if event
+	  (if (and (fix:= count 1)
+		   (not (ring/first-item ring)))
+	      (ring/set-first-item! ring event)
+	      (ring/enqueue ring event))
+	  (if (fix:= count 0)
+	      (ring/enqueue ring event))))))
 
 (define (handle-thread-events thread)
   (let loop ((any-events? #f))
@@ -800,7 +824,8 @@ USA.
 	     (set-thread/block-events?! thread block-events?))
 	   (begin
 	     (deliver-timer-events)
-	     (maybe-signal-io-thread-events)))))))
+	     (maybe-signal-io-thread-events))))
+     (%maybe-toggle-thread-timer))))
 
 ;;;; Timer Events
 
@@ -843,13 +868,13 @@ USA.
   (let ((time (real-time-clock)))
     (do ((record timer-records (timer-record/next record)))
 	((or (not record) (< time (timer-record/time record)))
-	 (set! timer-records record))
+	 (set! timer-records record)
+	 unspecific)
       (let ((thread (timer-record/thread record))
 	    (event (timer-record/event record)))
 	(set-timer-record/thread! record #f)
 	(set-timer-record/event! record #f)
-	(%signal-thread-event thread event))))
-  unspecific)
+	(%signal-thread-event thread event)))))
 
 (define (deregister-timer-event registration)
   (if (not (timer-record? registration))
@@ -879,6 +904,7 @@ USA.
       (%deregister-io-thread-events thread #f)
       (%discard-thread-timer-records thread)
       (set-thread/block-events?! thread block-events?))
+    (%maybe-toggle-thread-timer)
     (set-interrupt-enables! interrupt-mask/all)))
 
 (define (%discard-thread-timer-records thread)
@@ -897,10 +923,8 @@ USA.
   timer-interval)
 
 (define (set-thread-timer-interval! interval)
-  (if (not (or (false? interval)
-	       (and (exact-integer? interval)
-		    (> interval 0))))
-      (error:wrong-type-argument interval #f 'SET-THREAD-TIMER-INTERVAL!))
+  (if interval
+      (guarantee-exact-positive-integer interval 'SET-THREAD-TIMER-INTERVAL!))
   (without-interrupts
     (lambda ()
       (set! timer-interval interval)
@@ -915,47 +939,40 @@ USA.
 (define (with-thread-timer-stopped thunk)
   (dynamic-wind %stop-thread-timer thunk %maybe-toggle-thread-timer))
 
-(define (%maybe-toggle-thread-timer)
-  (cond ((and timer-interval
-	      (or io-registrations
-		  (let ((current-thread first-running-thread))
-		    (and current-thread
-			 (thread/next current-thread)))))
-	 (%start-thread-timer timer-interval #t))
-	(timer-records
-	 (let ((next-event-time (timer-record/time timer-records)))
-	   (let ((next-event-interval (- next-event-time (real-time-clock))))
-	     (if (or (not timer-interval)
-		     (> next-event-interval timer-interval))
-		 (%start-thread-timer next-event-interval next-event-time)
-		 (%start-thread-timer timer-interval #t)))))
-	(else
-	 (%stop-thread-timer))))
-
-(define (%start-thread-timer interval time)
-  ;; If TIME is #T, that means interval is TIMER-INTERVAL.  Otherwise,
-  ;; INTERVAL is longer than TIMER-INTERVAL, and TIME is when INTERVAL
-  ;; ends.  The cases are as follows:
-  ;; 1. Timer not running: start it.
-  ;; 2. Timer running TIMER-INTERVAL: do nothing.
-  ;; 3. Timer running long interval, request sooner: restart it.
-  ;; 4. Otherwise: do nothing.
-  (if (or (not thread-timer-running?)
-	  (and (not (eq? #t thread-timer-running?))
-	       (< (if (eq? #t time)
-		      (+ (real-time-clock) interval)
-		      time)
-		  thread-timer-running?)))
-      (begin
-	((ucode-primitive real-timer-set) interval interval)
-	(set! thread-timer-running? time)
-	unspecific)))
+(define (%maybe-toggle-thread-timer #!optional consider-non-timers?)
+  (let ((now (real-time-clock)))
+    (let ((start
+	   (lambda (time)
+	     (set! next-scheduled-timeout time)
+	     ((ucode-primitive real-timer-set) (- time now) 0))))
+      (cond (timer-records
+	     (let ((next-event-time (timer-record/time timer-records)))
+	       (if (<= next-event-time now)
+		   ;; Don't set the timer to non-positive values.
+		   ;; Instead signal the interrupt now.  This is ugly
+		   ;; but much simpler than refactoring the scheduler
+		   ;; so that we can do the right thing here.
+		   ((ucode-primitive request-interrupts! 1)
+		    interrupt-bit/timer)
+		   (start
+		    (if timer-interval
+			(min next-event-time (+ now timer-interval))
+			next-event-time)))))
+	    ((and consider-non-timers?
+		  timer-interval
+		  (or io-registrations
+		      (let ((current-thread first-running-thread))
+			(and current-thread
+			     (thread/next current-thread)))))
+	     (start (+ now timer-interval)))
+	    (else
+	     (%stop-thread-timer))))))
 
 (define (%stop-thread-timer)
-  (if thread-timer-running?
+  (if next-scheduled-timeout
       (begin
 	((ucode-primitive real-timer-clear))
-	(set! thread-timer-running? #f)
+	(set! next-scheduled-timeout #f)
 	((ucode-primitive clear-interrupts!) interrupt-bit/timer))))
 
 ;;;; Mutexes
@@ -1103,6 +1120,18 @@ USA.
 	      (set-link/next! prev next)
 	      (set-link/prev! next prev))
 	    (loop (link/next link))))))
+
+(define (ring/count-max-2 ring)
+  (let ((link (link/next ring)))
+    (cond ((eq? link ring) 0)
+	  ((eq? (link/next link) ring) 1)
+	  (else 2))))
+
+(define (ring/first-item ring)
+  (link/item (link/next ring)))
+
+(define (ring/set-first-item! ring item)
+  (set-link/item! (link/next ring) item))
 
 ;;;; Error Conditions
 

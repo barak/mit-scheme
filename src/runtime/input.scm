@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.36 2007/07/07 17:22:19 cph Exp $
+$Id: input.scm,v 14.39 2008/01/30 20:02:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -139,6 +139,11 @@ USA.
 
 (define (eof-object? object)
   (eq? object (object-new-type (ucode-type constant) 6)))
+
+(define (input-port/eof? port)
+  (let ((eof? (port/operation port 'EOF?)))
+    (and eof?
+	 (eof? port))))
 
 ;;;; High level
 
@@ -176,12 +181,10 @@ USA.
 
 (define (read-char-no-hang #!optional port)
   (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))
-    (if (input-port/char-ready? port)
-	(input-port/read-char port)
-	(let ((eof? (port/operation port 'EOF?)))
-	  (and eof?
-	       (eof? port)
-	       (eof-object))))))
+    (and (input-port/char-ready? port)
+	 (if (input-port/eof? port)
+	     (eof-object)
+	     (input-port/read-char port)))))
 
 (define (read-string delimiters #!optional port)
   (input-port/read-string (optional-input-port port 'READ-STRING) delimiters))
