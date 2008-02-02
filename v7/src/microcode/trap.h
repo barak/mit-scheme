@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: trap.h,v 9.55 2008/01/30 20:02:21 cph Exp $
+$Id: trap.h,v 9.56 2008/02/02 17:26:28 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,6 +42,7 @@ typedef unsigned long trap_kind_t;
 /* The following are immediate traps: */
 #define TRAP_UNASSIGNED				0
 #define TRAP_UNBOUND				2
+#define TRAP_LINKED				4
 #define TRAP_EXPENSIVE				6
 /* TRAP_MAX_IMMEDIATE is defined in object.h */
 
@@ -62,6 +63,10 @@ typedef unsigned long trap_kind_t;
      * A cache that is not stored in an environment.  This is caused
        by referring to an unbound variable in an environment that does
        not inherit from the global environment.
+   TRAP_LINKED can only appear in a cache.  It is left behind when two
+     caches are linked, so that references to the "old" cache can be
+     updated.  In that case, the "new" cache is in the CACHE_CLONE
+     field.
    TRAP_EXPENSIVE can only appear in a "clone" cache.  This causes
      assignments to this cache to trap out to the microcode, where the
      updating of the variable's associated UUO links can be performed.
@@ -87,11 +92,13 @@ typedef unsigned long trap_kind_t;
 #  if (TYPE_CODE_LENGTH == 8)
 #    define UNASSIGNED_OBJECT	0x32000000
 #    define UNBOUND_OBJECT	0x32000002
+#    define LINKED_OBJECT	0x32000004
 #    define EXPENSIVE_OBJECT	0x32000006
 #  endif
 #  if (TYPE_CODE_LENGTH == 6)
 #    define UNASSIGNED_OBJECT	0xc8000000
 #    define UNBOUND_OBJECT	0xc8000002
+#    define LINKED_OBJECT	0xc8000004
 #    define EXPENSIVE_OBJECT	0xc8000006
 #  endif
 #  if (TC_REFERENCE_TRAP != 0x32)
@@ -102,6 +109,7 @@ typedef unsigned long trap_kind_t;
 #ifndef UNASSIGNED_OBJECT	/* Safe version */
 #  define UNASSIGNED_OBJECT (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_UNASSIGNED))
 #  define UNBOUND_OBJECT    (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_UNBOUND))
+#  define LINKED_OBJECT     (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_LINKED))
 #  define EXPENSIVE_OBJECT  (MAKE_OBJECT (TC_REFERENCE_TRAP, TRAP_EXPENSIVE))
 #endif
 
