@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.28 2008/01/30 20:02:37 cph Exp $
+$Id: usrint.scm,v 1.29 2008/02/02 05:35:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -292,46 +292,102 @@ USA.
 
 ;;;; Activity notification
 
-(define *notification-depth* 0)
+(define (with-notification message #!optional thunk)
+  (if (or (default-object? thunk) (not thunk))
+      (message (wrapped-notification-port))
+      (let ((done? #f)
+	    (port)
+	    (n))
+	(dynamic-wind
+	 (lambda ()
+	   (set! port (wrapped-notification-port))
+	   (message port)
+	   (write-string "... " port)
+	   (set! n (output-port/bytes-written port))
+	   unspecific)
+	 (lambda ()
+	   (let ((v
+		  (fluid-let ((*notification-depth*
+			       (+ *notification-depth* 1)))
+		    (thunk))))
+	     (set! done? #t)
+	     v))
+	 (lambda ()
+	   (if done?
+	       (begin
+		 (if (if n
+			 (> (output-port/bytes-written port) n)
+			 (output-port/line-start? port))
+		     (begin
+		       (newline port)
+		       (write-string "... " port)))
+		 (write-string "done" port)
+		 (newline port)))
+	   (set! port)
+	   (set! n)
+	   unspecific)))))
 
-(define (with-notification message thunk)
-  (let ((port (notification-output-port))
-	(done? #f)
-	(n))
-    (dynamic-wind
-     (lambda ()
-       (start-notification-line)
-       (message port)
-       (write-string "... " port)
-       (set! n (output-port/bytes-written port))
-       unspecific)
-     (lambda ()
-       (let ((v
-	      (fluid-let ((*notification-depth* (+ *notification-depth* 1)))
-		(thunk))))
-	 (set! done? #t)
-	 v))
-     (lambda ()
-       (if done?
-	   (begin
-	     (if (if n
-		     (> (output-port/bytes-written port) n)
-		     (output-port/line-start? port))
-		 (begin
-		   (start-notification-line)
-		   (write-string "... " port)))
-	     (set! n)
-	     (write-string "done" port)
-	     (newline port)))))))
-
-(define (write-notification-line message)
-  (start-notification-line)
-  (message (notification-output-port)))
-
-(define (start-notification-line)
+(define (wrapped-notification-port)
   (let ((port (notification-output-port)))
     (fresh-line port)
-    (write-string ";" port)
-    (do ((i 0 (+ i 1)))
-	((not (< i *notification-depth*)))
-      (write-string "  " port))))
+    (write-notification-prefix port)
+    (make-port wrapped-notification-port-type port)))
+
+(define (make-wrapped-notification-port-type)
+  (make-port-type `((WRITE-CHAR ,operation/write-char)
+		    (X-SIZE ,operation/x-size)
+		    (COLUMN ,operation/column)
+		    (BYTES-WRITTEN ,operation/bytes-written))
+		  #f))
+
+(define (operation/write-char port char)
+  (let ((port* (port/state port)))
+    (let ((n (output-port/write-char port* char)))
+      (if (char=? char #\newline)
+	  (write-notification-prefix port*))
+      n)))
+
+(define (operation/x-size port)
+  (let ((port* (port/state port)))
+    (let ((op (port/operation port* 'X-SIZE)))
+      (and op
+	   (let ((n (op port*)))
+	     (and n
+		  (max (- n (notification-prefix-length))
+		       0)))))))
+
+(define (operation/column port)
+  (let ((port* (port/state port)))
+    (let ((op (port/operation port* 'COLUMN)))
+      (and op
+	   (let ((n (op port*)))
+	     (and n
+		  (max (- n (notification-prefix-length))
+		       0)))))))
+
+(define (operation/bytes-written port)
+  (let ((port* (port/state port)))
+    (let ((op (port/operation port* 'BYTES-WRITTEN)))
+      (and op
+	   (op port*)))))
+
+(define (write-notification-prefix port)
+  (write-string ";" port)
+  (do ((i 0 (+ i 1)))
+      ((not (< i *notification-depth*)))
+    (write-string indentation-atom port)))
+
+(define (notification-prefix-length)
+  (+ 1
+     (* (string-length indentation-atom)
+	*notification-depth*)))
+
+(define *notification-depth*)
+(define indentation-atom)
+(define wrapped-notification-port-type)
+
+(define (initialize-package!)
+  (set! *notification-depth* 0)
+  (set! indentation-atom "  ")
+  (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
+  unspecific)
