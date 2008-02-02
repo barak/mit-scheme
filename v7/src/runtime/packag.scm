@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.56 2008/01/30 20:02:33 cph Exp $
+$Id: packag.scm,v 14.57 2008/02/02 06:54:01 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -381,36 +381,46 @@ USA.
 			      source-environment source-name))))))))
 
 (define (extend-package-environment environment . name-sources)
-  (let ((n
-	 (let loop ((name-sources name-sources) (n 1))
-	   (if (pair? name-sources)
-	       (loop (cdr name-sources)
-		     (fix:+ n (vector-length (car (car name-sources)))))
-	       n))))
-    (let ((vn ((ucode-primitive vector-cons) n #f))
-	  (vv
-	   ((ucode-primitive vector-cons)
-	    n
-	    (make-unmapped-unassigned-reference-trap))))
-      (let loop ((name-sources name-sources) (i 1))
-	(if (pair? name-sources)
-	    (let ((v (car (car name-sources)))
-		  (p (cdr (car name-sources))))
-	      (let ((n (vector-length v)))
-		(let do-source ((j 0) (i i))
-		  (if (fix:< j n)
-		      (begin
-			(vector-set! vn i (p (vector-ref v j)))
-			(do-source (fix:+ j 1) (fix:+ i 1)))
-		      (loop (cdr name-sources) i)))))))
-      (vector-set! vn 0 'DUMMY-PROCEDURE)
-      (vector-set! vv 0
-		   (system-pair-cons (ucode-type procedure)
-				     (system-pair-cons (ucode-type lambda)
-						       #f
-						       vn)
-				     environment))
-      (object-new-type (ucode-type environment) vv))))
+  (let ((names
+	 (do ((name-sources name-sources (cdr name-sources))
+	      (names '()
+		     (let ((v (car (car name-sources)))
+			   (p (cdr (car name-sources))))
+		       (let ((end (vector-length v)))
+			 (do ((j 0 (fix:+ j 1))
+			      (names names
+				     (let ((name (p (vector-ref v j))))
+				       (if (let find ((names names))
+					     (if (pair? names)
+						 (if (eq? (car names) name)
+						     #t
+						     (find (cdr names)))
+						 #f))
+					   names
+					   (cons name names)))))
+			     ((not (fix:< j end)) names))))))
+	     ((not (pair? name-sources)) names))))
+    (let ((n
+	   (do ((names names (cdr names))
+		(n 1 (fix:+ n 1)))
+	       ((not (pair? names)) n))))
+      (let ((vn ((ucode-primitive vector-cons) n #f))
+	    (vv
+	     ((ucode-primitive vector-cons)
+	      n
+	      (make-unmapped-unassigned-reference-trap))))
+	(vector-set! vn 0 'DUMMY-PROCEDURE)
+	(do ((names names (cdr names))
+	     (j 1 (fix:+ j 1)))
+	    ((not (pair? names)))
+	  (vector-set! vn j (car names)))
+	(vector-set! vv 0
+		     (system-pair-cons (ucode-type procedure)
+				       (system-pair-cons (ucode-type lambda)
+							 #f
+							 vn)
+				       environment))
+	(object-new-type (ucode-type environment) vv)))))
 
 (define null-environment
   (object-new-type (object-type #f)
