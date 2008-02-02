@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.30 2008/02/02 01:48:56 cph Exp $
+$Id: strout.scm,v 14.31 2008/02/02 02:02:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,15 +31,17 @@ USA.
 (declare (usual-integrations))
 
 (define (open-output-string)
-  (make-port accumulator-output-port-type
-	     (receive (sink extract extract! position) (make-accumulator-sink)
-	       (make-gstate #f
-			    sink
-			    'ISO-8859-1
-			    'NEWLINE
-			    extract
-			    extract!
-			    position))))
+  (let ((port
+	 (receive (sink extract extract! position) (make-accumulator-sink)
+	   (make-generic-i/o-port #f
+				  sink
+				  accumulator-output-port-type
+				  extract
+				  extract!
+				  position))))
+    (port/set-coding port 'ISO-8859-1)
+    (port/set-line-ending port 'NEWLINE)
+    port))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))

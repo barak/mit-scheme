@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.22 2008/02/02 01:48:54 cph Exp $
+$Id: strnin.scm,v 14.23 2008/02/02 02:02:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,20 +35,23 @@ USA.
 
 (define (open-input-string string #!optional start end)
   (guarantee-string string 'OPEN-INPUT-STRING)
-  (let* ((end
-	  (if (or (default-object? end) (not end))
-	      (string-length string)
-	      (guarantee-substring-end-index end (string-length string)
-					     'OPEN-INPUT-STRING)))
-	 (start
-	  (if (or (default-object? start) (not start))
-	      0
-	      (guarantee-substring-start-index start end 'OPEN-INPUT-STRING))))
-    (make-port input-string-port-type
-	       (make-gstate (make-string-source string start end)
-			    #f
-			    'ISO-8859-1
-			    'NEWLINE))))
+  (let ((port
+	 (let* ((end
+		 (if (or (default-object? end) (not end))
+		     (string-length string)
+		     (guarantee-substring-end-index end (string-length string)
+						    'OPEN-INPUT-STRING)))
+		(start
+		 (if (or (default-object? start) (not start))
+		     0
+		     (guarantee-substring-start-index start end
+						      'OPEN-INPUT-STRING))))
+	   (make-generic-i/o-port (make-string-source string start end)
+				  #f
+				  input-string-port-type))))
+    (port/set-coding port 'ISO-8859-1)
+    (port/set-line-ending port 'NEWLINE)
+    port))
 
 (define (call-with-input-string string procedure)
   (let ((port (open-input-string string)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.58 2008/02/02 01:48:51 cph Exp $
+$Id: genio.scm,v 1.59 2008/02/02 02:02:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-generic-i/o-port source sink #!optional type)
+(define (make-generic-i/o-port source sink #!optional type . extra-state)
   (if (not (or source sink))
       (error "Missing arguments."))
   (let ((port
@@ -38,7 +38,7 @@ USA.
 			(generic-i/o-port-type (source-type source)
 					       (sink-type sink))
 			type)
-		    (make-gstate source sink 'TEXT 'TEXT))))
+		    (apply make-gstate source sink 'TEXT 'TEXT extra-state))))
     (let ((ib (port-input-buffer port)))
       (if ib
 	  ((source/set-port (input-buffer-source ib)) port)))

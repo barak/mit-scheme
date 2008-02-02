@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.19 2008/02/02 01:48:55 cph Exp $
+$Id: strott.scm,v 14.20 2008/02/02 02:02:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,15 +34,14 @@ USA.
   (call-with-current-continuation
    (lambda (k)
      (let ((port
-	    (make-port output-string-port-type
-		       (receive (sink extract extract!)
-			   (make-accumulator-sink limit k)
-			 (make-gstate #f
-				      sink
-				      'ISO-8859-1
-				      'NEWLINE
-				      extract
-				      extract!)))))
+	    (receive (sink extract extract!) (make-accumulator-sink limit k)
+	      (make-generic-i/o-port #f
+				     sink
+				     output-string-port-type
+				     extract
+				     extract!))))
+       (port/set-coding port 'ISO-8859-1)
+       (port/set-line-ending port 'NEWLINE)
        (generator port)
        (cons #f (get-output-string port))))))
 
