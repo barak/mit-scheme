@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.638 2008/02/02 06:00:14 cph Exp $
+$Id: runtime.pkg,v 14.639 2008/02/02 06:01:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4291,7 +4291,7 @@ USA.
   (files "usrint")
   (parent (runtime))
   (export ()
-	  (with-notification write-notification-line)
+	  (write-notification-line with-notification)
 	  prompt-for-command-char
 	  prompt-for-command-expression
 	  prompt-for-confirmation
