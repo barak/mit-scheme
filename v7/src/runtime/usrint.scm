@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.31 2008/02/02 06:53:37 cph Exp $
+$Id: usrint.scm,v 1.32 2008/02/02 17:59:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -294,7 +294,10 @@ USA.
 
 (define (with-notification message #!optional thunk)
   (if (or (default-object? thunk) (not thunk))
-      (write-notification-line message)
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-notification-prefix port)
+	(message (wrap-notification-port port)))
       (let ((done? #f)
 	    (n))
 	(dynamic-wind
@@ -326,12 +329,6 @@ USA.
 		 (set! n)
 		 (write-string "done" port)
 		 (newline port))))))))
-
-(define (write-notification-line message)
-  (let ((port (notification-output-port)))
-    (fresh-line port)
-    (write-notification-prefix port)
-    (message (wrap-notification-port port))))
 
 (define (wrap-notification-port port)
   (make-port wrapped-notification-port-type port))
