@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.18 2008/01/30 20:02:35 cph Exp $
+$Id: strott.scm,v 14.19 2008/02/02 01:48:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -112,7 +112,7 @@ USA.
 	(set! index 0)
 	(k (cons #t s))))
 
-    (values (make-non-channel-sink
+    (values (make-non-channel-port-sink
 	     (lambda (string start end)
 	       (without-interrupts
 		(lambda ()

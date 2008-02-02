@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.57 2008/01/30 20:02:31 cph Exp $
+$Id: genio.scm,v 1.58 2008/02/02 01:48:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -613,7 +613,7 @@ USA.
 		(lambda (string start end)
 		  (channel-read channel string start end))))
 
-(define (make-non-channel-source has-input? read-substring)
+(define (make-non-channel-port-source has-input? read-substring)
   (let ((port #f)
 	(open? #t))
     (make-gsource (lambda () #f)
@@ -650,7 +650,7 @@ USA.
 	      (lambda (string start end)
 		(channel-write channel string start end))))
 
-(define (make-non-channel-sink write-substring)
+(define (make-non-channel-port-sink write-substring)
   (let ((port #f)
 	(open? #t))
     (make-gsink (lambda () #f)

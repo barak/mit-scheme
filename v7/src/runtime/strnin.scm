@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.21 2008/01/30 20:02:35 cph Exp $
+$Id: strnin.scm,v 14.22 2008/02/02 01:48:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -58,7 +58,7 @@ USA.
 
 (define (make-string-source string start end)
   (let ((index start))
-    (make-non-channel-source
+    (make-non-channel-port-source
      (lambda ()
        (fix:< index end))
      (lambda (string* start* end*)
