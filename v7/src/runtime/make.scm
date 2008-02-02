@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.113 2008/02/02 05:35:30 cph Exp $
+$Id: make.scm,v 14.114 2008/02/02 18:20:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -189,23 +189,27 @@ USA.
 	    (loop (cdr name)))))
     (tty-write-string ")"))
 
-  (let ((env (package-reference package-name)))
-    (cond ((not (lexical-unreferenceable? env procedure-name))
-	   (print-name "initialize:")
-	   (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
-	       (begin
-		 (tty-write-string " [")
-		 (tty-write-string (system-pair-car procedure-name))
-		 (tty-write-string "]")))
-	   ((lexical-reference env procedure-name)))
-	  ((not mandatory?)
-	   (print-name "* skipping:"))
-	  (else
-	   ;; Missing mandatory package! Report it and die.
-	   (print-name "Package")
-	   (tty-write-string " is missing initialization procedure ")
-	   (tty-write-string (system-pair-car procedure-name))
-	   (fatal-error "Could not initialize a required package.")))))
+  (cond ((let ((package (find-package package-name #f)))
+	   (and package
+		(let ((env (package/environment package)))
+		  (and (not (lexical-unreferenceable? env procedure-name))
+		       (lexical-reference env procedure-name)))))
+	 => (lambda (procedure)
+	      (print-name "initialize:")
+	      (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+		  (begin
+		    (tty-write-string " [")
+		    (tty-write-string (system-pair-car procedure-name))
+		    (tty-write-string "]")))
+	      (procedure)))
+	((not mandatory?)
+	 (print-name "* skipping:"))
+	(else
+	 ;; Missing mandatory package! Report it and die.
+	 (print-name "Package")
+	 (tty-write-string " is missing initialization procedure ")
+	 (tty-write-string (system-pair-car procedure-name))
+	 (fatal-error "Could not initialize a required package."))))
 
 (define (package-reference name)
   (package/environment (find-package name)))
@@ -526,10 +530,8 @@ USA.
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
    (RUNTIME URI)
-   (RUNTIME HTTP-CLIENT)))
-
-(if (eq? os-name 'NT)
-    (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))
+   (RUNTIME HTTP-CLIENT)
+   (RUNTIME WIN32-REGISTRY)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
