@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.59 2008/02/02 02:02:48 cph Exp $
+$Id: genio.scm,v 1.60 2008/02/02 02:08:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -76,8 +76,8 @@ USA.
        (else generic-type11)))))
 
 (define-structure (gstate (type vector) (constructor #f))
-  ;; Changes to this structure must be copied to "fileio.scm" and
-  ;; "ttyio.scm", "strnin.scm", "strout.scm", and "strott.scm".
+  ;; Changes to this structure must be copied to "fileio.scm",
+  ;; "ttyio.scm", "strout.scm", and "strott.scm".
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
