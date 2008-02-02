@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.35 2008/01/30 20:02:30 cph Exp $
+$Id: fileio.scm,v 1.36 2008/02/02 02:07:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -117,9 +117,7 @@ USA.
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port
-	  (make-port input-file-type
-		     (make-gstate channel #f 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -131,9 +129,7 @@ USA.
 	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
-	 (port
-	  (make-port output-file-type
-		     (make-gstate #f channel 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -141,9 +137,7 @@ USA.
 (define (open-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port
-	  (make-port i/o-file-type
-		     (make-gstate channel channel 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -151,10 +145,10 @@ USA.
 (define (open-binary-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port
-	  (make-port input-file-type
-		     (make-gstate channel #f 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define (open-binary-output-file filename #!optional append?)
@@ -164,19 +158,19 @@ USA.
 	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
-	 (port
-	  (make-port output-file-type
-		     (make-gstate #f channel 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define (open-binary-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port
-	  (make-port i/o-file-type
-		     (make-gstate channel channel 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define ((make-call-with-file open) input-specifier receiver)
