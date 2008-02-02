@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.29 2008/02/02 05:35:33 cph Exp $
+$Id: usrint.scm,v 1.30 2008/02/02 05:48:57 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -294,17 +294,21 @@ USA.
 
 (define (with-notification message #!optional thunk)
   (if (or (default-object? thunk) (not thunk))
-      (message (wrapped-notification-port))
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-notification-prefix port)
+	(message (wrap-notification-port port)))
       (let ((done? #f)
-	    (port)
 	    (n))
 	(dynamic-wind
 	 (lambda ()
-	   (set! port (wrapped-notification-port))
-	   (message port)
-	   (write-string "... " port)
-	   (set! n (output-port/bytes-written port))
-	   unspecific)
+	   (let ((port (notification-output-port)))
+	     (fresh-line port)
+	     (write-notification-prefix port)
+	     (message (wrap-notification-port port))
+	     (write-string "... " port)
+	     (set! n (output-port/bytes-written port))
+	     unspecific))
 	 (lambda ()
 	   (let ((v
 		  (fluid-let ((*notification-depth*
@@ -314,30 +318,25 @@ USA.
 	     v))
 	 (lambda ()
 	   (if done?
-	       (begin
+	       (let ((port (notification-output-port)))
 		 (if (if n
 			 (> (output-port/bytes-written port) n)
 			 (output-port/line-start? port))
 		     (begin
-		       (newline port)
+		       (fresh-line port)
+		       (write-notification-prefix port)
 		       (write-string "... " port)))
+		 (set! n)
 		 (write-string "done" port)
-		 (newline port)))
-	   (set! port)
-	   (set! n)
-	   unspecific)))))
-
-(define (wrapped-notification-port)
-  (let ((port (notification-output-port)))
-    (fresh-line port)
-    (write-notification-prefix port)
-    (make-port wrapped-notification-port-type port)))
+		 (newline port))))))))
 
+(define (wrap-notification-port port)
+  (make-port wrapped-notification-port-type port))
+
 (define (make-wrapped-notification-port-type)
   (make-port-type `((WRITE-CHAR ,operation/write-char)
 		    (X-SIZE ,operation/x-size)
-		    (COLUMN ,operation/column)
-		    (BYTES-WRITTEN ,operation/bytes-written))
+		    (COLUMN ,operation/column))
 		  #f))
 
 (define (operation/write-char port char)
@@ -364,12 +363,6 @@ USA.
 	     (and n
 		  (max (- n (notification-prefix-length))
 		       0)))))))
-
-(define (operation/bytes-written port)
-  (let ((port* (port/state port)))
-    (let ((op (port/operation port* 'BYTES-WRITTEN)))
-      (and op
-	   (op port*)))))
 
 (define (write-notification-prefix port)
   (write-string ";" port)
