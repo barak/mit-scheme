@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.36 2008/02/02 02:07:56 cph Exp $
+$Id: fileio.scm,v 1.37 2008/02/02 04:28:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,12 +31,13 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! operation/pathname (generic-i/o-port-accessor 0))
   (let ((other-operations
 	 `((LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
 	   (POSITION ,operation/position)
 	   (SET-POSITION! ,operation/set-position!)
-	   (TRUENAME ,operation/truename)
+	   (TRUENAME ,operation/pathname)
 	   (WRITE-SELF ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
@@ -50,29 +51,16 @@ USA.
 (define input-file-type)
 (define output-file-type)
 (define i/o-file-type)
-
-(define-structure (fstate (type vector)
-			  (initial-offset 4) ;must match "genio.scm"
-			  (constructor #f))
-  (pathname #f read-only #t))
+(define operation/pathname)
 
 (define (operation/length port)
   (channel-file-length
    (or (port/input-channel port)
        (port/output-channel port))))
 
-(define (operation/pathname port)
-  (fstate-pathname (port/state port)))
-
-(define operation/truename
-  ;; This works for unix because truename and pathname are the same.
-  ;; On operating system where they differ, there must be support to
-  ;; determine the truename.
-  operation/pathname)
-
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
-  (write (->namestring (operation/truename port)) output-port))
+  (write (->namestring (operation/pathname port)) output-port))
 
 (define (operation/position port)
   (guarantee-positionable-port port 'OPERATION/POSITION)

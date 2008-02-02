@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.31 2008/02/02 02:02:53 cph Exp $
+$Id: strout.scm,v 14.32 2008/02/02 04:28:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -59,29 +59,29 @@ USA.
     (lambda (port)
       (with-output-to-port port thunk))))
 
-(define-structure (astate (type vector)
-			  (initial-offset 4) ;must match "genio.scm"
-			  (constructor #f))
-  extract
-  extract!
-  position)
-
+(define port/extract)
+(define port/extract!)
+(define port/position)
 (define accumulator-output-port-type)
+
 (define (initialize-package!)
+  (set! port/extract (generic-i/o-port-accessor 0))
+  (set! port/extract! (generic-i/o-port-accessor 1))
+  (set! port/position (generic-i/o-port-accessor 2))
   (set! accumulator-output-port-type
 	(make-port-type
 	 `((EXTRACT-OUTPUT
 	    ,(lambda (port)
 	       (output-port/flush-output port)
-	       ((astate-extract (port/state port)))))
+	       ((port/extract port))))
 	   (EXTRACT-OUTPUT!
 	    ,(lambda (port)
 	       (output-port/flush-output port)
-	       ((astate-extract! (port/state port)))))
+	       ((port/extract! port))))
 	   (POSITION
 	    ,(lambda (port)
 	       (output-port/flush-output port)
-	       ((astate-position (port/state port)))))
+	       ((port/position port))))
 	   (WRITE-SELF
 	    ,(lambda (port output-port)
 	       port

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.60 2008/02/02 02:08:48 cph Exp $
+$Id: genio.scm,v 1.61 2008/02/02 04:28:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,34 +74,48 @@ USA.
        ((#F) generic-type10)
        ((CHANNEL) generic-type12)
        (else generic-type11)))))
-
-(define-structure (gstate (type vector) (constructor #f))
-  ;; Changes to this structure must be copied to "fileio.scm",
-  ;; "ttyio.scm", "strout.scm", and "strott.scm".
+
+(define-structure (gstate (constructor %make-gstate))
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
-  line-ending)
+  line-ending
+  (extra #f read-only #t))
 
 (define (make-gstate source sink coder-name normalizer-name . extra)
-  (list->vector
-   (cons* (and source
-	       (make-input-buffer (->source source 'MAKE-GSTATE)
-				  coder-name
-				  normalizer-name))
-	  (and sink
-	       (make-output-buffer (->sink sink 'MAKE-GSTATE)
-				   coder-name
-				   normalizer-name))
-	  coder-name
-	  normalizer-name
-	  extra)))
+  (%make-gstate (and source
+		     (make-input-buffer (->source source 'MAKE-GSTATE)
+					coder-name
+					normalizer-name))
+		(and sink
+		     (make-output-buffer (->sink sink 'MAKE-GSTATE)
+					 coder-name
+					 normalizer-name))
+		coder-name
+		normalizer-name
+		(list->vector extra)))
 
 (define-integrable (port-input-buffer port)
   (gstate-input-buffer (port/state port)))
 
 (define-integrable (port-output-buffer port)
   (gstate-output-buffer (port/state port)))
+
+(define (generic-i/o-port-accessor index)
+  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-ACCESSOR)
+  (lambda (port)
+    (let ((extra (gstate-extra (port/state port))))
+      (if (not (fix:< index (vector-length extra)))
+	  (error "Accessor index out of range:" index))
+      (vector-ref extra index))))
+
+(define (generic-i/o-port-modifier index)
+  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-MODIFIER)
+  (lambda (port object)
+    (let ((extra (gstate-extra (port/state port))))
+      (if (not (fix:< index (vector-length extra)))
+	  (error "Accessor index out of range:" index))
+      (vector-set! extra index object))))
 
 (define (initialize-package!)
   (let ((ops:in1
