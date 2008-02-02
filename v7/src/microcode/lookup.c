@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.77 2008/02/02 17:26:25 cph Exp $
+$Id: lookup.c,v 9.78 2008/02/02 17:57:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -133,8 +133,6 @@ static SCHEME_OBJECT * scan_frame
   (SCHEME_OBJECT, SCHEME_OBJECT, int);
 static SCHEME_OBJECT * scan_procedure_bindings
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT, int);
-static SCHEME_OBJECT get_cell_cache
-  (SCHEME_OBJECT *);
 static unsigned long count_references
   (SCHEME_OBJECT *);
 static void update_assignment_references
@@ -212,7 +210,7 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
       return (ERR_MACRO_BINDING);
 
     case TRAP_COMPILER_CACHED:
-      return (lookup_variable_cache ((get_cell_cache (cell)), value_ret));
+      return (lookup_variable_cache ((GET_TRAP_CACHE (value)), value_ret));
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -367,7 +365,7 @@ assign_variable_end (SCHEME_OBJECT * cell, SCHEME_OBJECT value,
     case TRAP_COMPILER_CACHED:
       return
 	(assign_variable_cache
-	 ((get_cell_cache (cell)), value, value_ret, force_p));
+	 ((GET_TRAP_CACHE (old_value)), value, value_ret, force_p));
 
     default:
       return (ERR_ILLEGAL_REFERENCE_TRAP);
@@ -464,7 +462,7 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     SCHEME_OBJECT old_cache
       = (((shadowed_cell != 0)
 	  && ((get_trap_kind (*shadowed_cell)) == TRAP_COMPILER_CACHED))
-	 ? (get_cell_cache (shadowed_cell))
+	 ? (GET_TRAP_CACHE (*shadowed_cell))
 	 : SHARP_F);
     unsigned long length = (GET_EXTENDED_FRAME_LENGTH (environment));
     SCHEME_OBJECT pair;
@@ -570,10 +568,10 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   if ((target_cell != 0)
       && ((get_trap_kind (*target_cell)) == TRAP_COMPILER_CACHED))
     {
-      SCHEME_OBJECT target_cache = (get_cell_cache (target_cell));
+      SCHEME_OBJECT target_cache = (GET_TRAP_CACHE (*target_cell));
       if (source_kind == TRAP_COMPILER_CACHED)
 	{
-	  SCHEME_OBJECT source_cache = (get_cell_cache (source_cell));
+	  SCHEME_OBJECT source_cache = (GET_TRAP_CACHE (*source_cell));
 	  if (source_cache == target_cache)
 	    /* Already linked.  */
 	    return (PRIM_DONE);
@@ -593,10 +591,8 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
 	  update_clone (source_cache);
 	  update_clone (target_cache);
 
-	  /* Leave a pointer behind so that other references to
-	     source_cache are able to find the new cache.  */
-	  SET_CACHE_VALUE (source_cache, LINKED_OBJECT);
-	  SET_CACHE_CLONE (source_cache, target_cache);
+	  /* Make sure both traps share the same cache: */
+	  SET_TRAP_CACHE ((*source_cell), target_cache);
 	}
       else
 	SET_CACHE_VALUE (target_cache, (*source_cell));
@@ -654,7 +650,7 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 
     case TRAP_COMPILER_CACHED:
       {
-	SCHEME_OBJECT cache = (get_cell_cache (cell));
+	SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
 	switch (get_trap_kind (GET_CACHE_VALUE (cache)))
 	  {
 	  case TRAP_UNBOUND:
@@ -690,7 +686,7 @@ static long
 unbind_cached_variable (SCHEME_OBJECT * cell, SCHEME_OBJECT frame,
 			SCHEME_OBJECT symbol)
 {
-  SCHEME_OBJECT cache = (get_cell_cache (cell));
+  SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
   SCHEME_OBJECT * shadowed_cell
     = (find_binding_cell ((GET_FRAME_PARENT (frame)), symbol, 0));
   SCHEME_OBJECT dummy_cell = UNBOUND_OBJECT;
@@ -905,7 +901,7 @@ add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
   GC_CHECK ((2 * SPACE_PER_CACHE) + SPACE_PER_REFERENCE + SPACE_PER_UUO_LINK);
   DIE_IF_ERROR (guarantee_cache (cell));
   {
-    SCHEME_OBJECT cache = (get_cell_cache (cell));
+    SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
     add_reference
       ((GET_CACHE_REFERENCES (cache, reference_kind)), symbol, block, offset);
     update_clone (cache);
@@ -1025,7 +1021,7 @@ update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
 {
   DIE_IF_ERROR (guarantee_cache (to_cell));
   {
-    SCHEME_OBJECT to_cache = (get_cell_cache (to_cell));
+    SCHEME_OBJECT to_cache = (GET_TRAP_CACHE (*to_cell));
 #ifdef CC_SUPPORT_P
     move_ref_pairs
       (from_cache, to_cache, CACHE_REFERENCES_LOOKUP, environment);
@@ -1215,18 +1211,6 @@ get_trap_kind (SCHEME_OBJECT object)
     }
   else
     return (NON_TRAP_KIND);
-}
-
-static SCHEME_OBJECT
-get_cell_cache (SCHEME_OBJECT * cell)
-{
-  SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
-  while ((GET_CACHE_VALUE (cache)) == LINKED_OBJECT)
-    {
-      cache = (GET_CACHE_CLONE (cache));
-      SET_TRAP_CACHE ((*cell), cache);
-    }
-  return (cache);
 }
 
 static unsigned long
