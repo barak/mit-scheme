@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.57 2008/02/02 06:54:01 cph Exp $
+$Id: packag.scm,v 14.58 2008/02/02 18:20:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -118,13 +118,15 @@ USA.
 (define-integrable package-name-tag
   ((ucode-primitive string->symbol) "#[(package)package-name-tag]"))
 
-(define (find-package name)
+(define (find-package name #!optional error?)
   (let loop ((path name) (package system-global-package))
     (if (pair? path)
 	(loop (cdr path)
-	      (or (package/child package (car path))
-		  (error "Unable to find package:"
-			 (list-difference name (cdr path)))))
+	      (let ((child (package/child package (car path))))
+		(if (and (not child) error?)
+		    (error "Unable to find package:"
+			   (list-difference name (cdr path))))
+		child))
 	package)))
 
 (define (list-difference list tail)
