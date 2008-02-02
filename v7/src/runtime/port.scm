@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.52 2008/01/30 20:02:33 cph Exp $
+$Id: port.scm,v 1.53 2008/02/02 01:19:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,6 +35,7 @@ USA.
 (define-structure (port-type (type-descriptor <port-type>)
 			     (conc-name port-type/)
 			     (constructor %make-port-type))
+  (parent #f read-only #t)
   standard-operations
   custom-operations
   ;; input operations:
@@ -120,7 +121,7 @@ USA.
 
 ;;;; Constructors
 
-(define (make-port-type operations type)
+(define (make-port-type operations parent-type)
   (if (not (list-of-type? operations
 	     (lambda (elt)
 	       (and (pair? elt)
@@ -129,8 +130,10 @@ USA.
 		    (procedure? (cadr elt))
 		    (null? (cddr elt))))))
       (error:wrong-type-argument operations "operations list" 'MAKE-PORT-TYPE))
+  (if parent-type
+      (guarantee-port-type parent-type 'MAKE-PORT-TYPE))
   (receive (standard-operations custom-operations)
-      (parse-operations-list operations type)
+      (parse-operations-list operations parent-type)
     (let ((op
 	   (let ((input? (assq 'READ-CHAR standard-operations))
 		 (output? (assq 'WRITE-CHAR standard-operations))
@@ -147,7 +150,8 @@ USA.
 		   (let ((p (assq name standard-operations)))
 		     (and p
 			  (cdr p)))))))))))
-      (%make-port-type standard-operations
+      (%make-port-type parent-type
+		       standard-operations
 		       custom-operations
 		       (op 'CHAR-READY?)
 		       (op 'READ-CHAR)
@@ -165,11 +169,11 @@ USA.
 		       (op 'FLUSH-OUTPUT)
 		       (op 'DISCRETIONARY-FLUSH-OUTPUT)))))
 
-(define (parse-operations-list operations type)
+(define (parse-operations-list operations parent-type)
   (parse-operations-list-1
-   (if type
+   (if parent-type
        (append operations
-	       (delete-matching-items (port-type/operations type)
+	       (delete-matching-items (port-type/operations parent-type)
 		 (let ((excluded
 			(append
 			 (if (assq 'READ-CHAR operations)
