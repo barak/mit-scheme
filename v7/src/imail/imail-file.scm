@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.93 2008/01/30 20:02:09 cph Exp $
+$Id: imail-file.scm,v 1.94 2008/02/09 10:29:03 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -404,9 +404,21 @@ USA.
 	     (and (eq? status 'BOTH-MODIFIED)
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
-       (begin
-	 (synchronize-file-folder-write folder write-file-folder)
-	 #t)))
+       (call-with-current-continuation
+	 (lambda (k)
+	   (bind-condition-handler (list condition-type:error)
+	       (lambda (condition)
+		 ;; Can this be done in a pop-up buffer?  It doesn't
+		 ;; work just to use IMAIL-UI:PRESENT-USER-ALERT
+		 ;; because that futzes with the kill-buffer hooks.
+		 (imail-ui:message
+		  (call-with-output-string
+		    (lambda (output-port)
+		      (write-condition-report condition output-port))))
+		 (k #f))
+	     (lambda ()
+	       (synchronize-file-folder-write folder write-file-folder)
+	       #t))))))
 
 (define-generic write-file-folder (folder pathname))
 
