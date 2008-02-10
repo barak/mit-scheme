@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gentag.scm,v 1.9 2008/01/30 20:02:31 cph Exp $
+$Id: gentag.scm,v 1.10 2008/02/10 06:14:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,7 +36,7 @@ USA.
 
 (define (make-dispatch-tag contents)
   (let ((tag
-	 (object-new-type
+	 ((ucode-primitive object-set-type)
 	  (ucode-type record)
 	  ((ucode-primitive vector-cons) dispatch-tag-index-end #f))))
     (%record-set! tag 0 dispatch-tag-marker)
@@ -55,8 +55,12 @@ USA.
 
 (define-integrable dispatch-tag-index-start 2)
 (define-integrable dispatch-tag-index-end 10)
-(define-integrable dispatch-tag-ref %record-ref)
-(define-integrable dispatch-tag-set! %record-set!)
+
+(define-integrable (dispatch-tag-ref t i)
+  (%record-ref t i))
+
+(define-integrable (dispatch-tag-set! t i x)
+  (%record-set! t i x))
 
 (define (dispatch-tag-contents tag)
   (guarantee-dispatch-tag tag 'DISPATCH-TAG-CONTENTS)

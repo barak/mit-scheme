@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.29 2008/01/30 20:02:28 cph Exp $
+$Id: boot.scm,v 14.30 2008/02/10 06:14:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -111,10 +111,11 @@ USA.
 (define-integrable interrupt-mask/all      #xFFFF)
 
 (define (with-absolutely-no-interrupts thunk)
-  (with-interrupt-mask interrupt-mask/none
-    (lambda (interrupt-mask)
-      interrupt-mask
-      (thunk))))
+  ((ucode-primitive with-interrupt-mask)
+   interrupt-mask/none
+   (lambda (interrupt-mask)
+     interrupt-mask
+     (thunk))))
 
 (define (without-interrupts thunk)
   (with-limited-interrupts interrupt-mask/gc-ok
@@ -123,12 +124,15 @@ USA.
       (thunk))))
 
 (define (with-limited-interrupts limit-mask procedure)
-  (with-interrupt-mask (fix:and limit-mask (get-interrupt-enables))
-    procedure))
+  ((ucode-primitive with-interrupt-mask)
+   (fix:and limit-mask (get-interrupt-enables))
+   procedure))
 
-(define-primitives
-  (object-constant? constant?)
-  gc-space-status)
+(define (object-constant? object)
+  ((ucode-primitive constant?) object))
+
+(define (gc-space-status)
+  ((ucode-primitive gc-space-status)))
 
 (define (object-pure? object)
   object
@@ -138,4 +142,4 @@ USA.
   (eq? object (default-object)))
 
 (define-integrable (default-object)
-  (object-new-type (ucode-type constant) 7))
+  ((ucode-primitive object-set-type) (ucode-type constant) 7))

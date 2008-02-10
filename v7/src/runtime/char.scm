@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.34 2008/01/30 20:02:28 cph Exp $
+$Id: char.scm,v 14.35 2008/02/10 06:14:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,10 +30,14 @@ USA.
 
 (declare (usual-integrations))
 
-(define-primitives
-  (char? 1)
-  char->integer
-  integer->char)
+(define-integrable (char? object)
+  ((ucode-primitive char?) object))
+
+(define-integrable (char->integer char)
+  ((ucode-primitive char->integer) char))
+
+(define-integrable (integer->char int)
+  ((ucode-primitive integer->char) int))
 
 (define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)

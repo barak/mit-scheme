@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boole.scm,v 14.10 2008/01/30 20:02:28 cph Exp $
+$Id: boole.scm,v 14.11 2008/02/10 06:14:02 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define-primitives not (false? not))
+(define-integrable (not object)
+  ((ucode-primitive not) object))
 
 (define false #f)
 (define true #t)

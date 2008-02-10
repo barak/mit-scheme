@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.28 2008/01/30 20:02:37 cph Exp $
+$Id: vector.scm,v 14.29 2008/02/10 06:14:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,10 +30,35 @@ USA.
 
 (declare (usual-integrations))
 
-(define-primitives
-  vector? vector-length vector-ref vector-set!
-  list->vector vector subvector->list
-  subvector-move-right! subvector-move-left! subvector-fill!)
+(define-integrable vector
+  (ucode-primitive vector))
+
+(define-integrable (vector? object)
+  ((ucode-primitive vector?) object))
+
+(define-integrable (vector-length v)
+  ((ucode-primitive vector-length) v))
+
+(define-integrable (vector-ref v i)
+  ((ucode-primitive vector-ref) v i))
+
+(define-integrable (vector-set! v i x)
+  ((ucode-primitive vector-set!) v i x))
+
+(define-integrable (list->vector list)
+  ((ucode-primitive list->vector) list))
+
+(define-integrable (subvector->list v s e)
+  ((ucode-primitive subvector->list) v s e))
+
+(define-integrable (subvector-fill! v s e x)
+  ((ucode-primitive subvector-fill!) v s e x))
+
+(define-integrable (subvector-move-left! v1 s1 e1 v2 s2)
+  ((ucode-primitive subvector-move-left!) v1 s1 e1 v2 s2))
+
+(define-integrable (subvector-move-right! v1 s1 e1 v2 s2)
+  ((ucode-primitive subvector-move-right!) v1 s1 e1 v2 s2))
 
 (define-integrable (guarantee-vector object procedure)
   (if (not (vector? object))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.17 2008/01/30 20:02:36 cph Exp $
+$Id: sysmac.scm,v 14.18 2008/02/10 06:14:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,6 +46,24 @@ USA.
 			      (else
 			       (primitive-definition (car name) (cdr name)))))
 		      (cdr form)))))))
+
+(define-syntax define-unary-primitive
+  (sc-macro-transformer
+   (lambda (form env)
+     env
+     (if (syntax-match? '(SYMBOL SYMBOL) (cdr form))
+	 `(DEFINE-INTEGRABLE (,(cadr form) X)
+	    ((ucode-primitive ,(caddr form)) X))
+	 (ill-formed-syntax form)))))
+
+(define-syntax define-binary-primitive
+  (sc-macro-transformer
+   (lambda (form env)
+     env
+     (if (syntax-match? '(SYMBOL SYMBOL) (cdr form))
+	 `(DEFINE-INTEGRABLE (,(cadr form) X Y)
+	    ((ucode-primitive ,(caddr form)) X Y))
+	 (ill-formed-syntax form)))))
 
 (define-syntax ucode-type
   (sc-macro-transformer

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.67 2008/01/30 20:02:35 cph Exp $
+$Id: string.scm,v 14.68 2008/02/10 06:14:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,23 +43,41 @@ USA.
 
 ;;;; Primitives
 
-(define-primitives
-  read-byte-from-memory
-  set-string-length!
-  set-string-maximum-length!
-  string-allocate
-  string-hash-mod
-  string-length
-  string-maximum-length
-  string-ref
-  string-set!
-  string?
-  substring-move-left!
-  substring-move-right!
-  vector-8b-ref
-  vector-8b-set!
-  write-byte-to-memory
-  )
+(define-integrable (string-allocate n)
+  ((ucode-primitive string-allocate) n))
+
+(define-integrable (string? object)
+  ((ucode-primitive string?) object))
+
+(define-integrable (string-length string)
+  ((ucode-primitive string-length) string))
+
+(define-integrable (string-maximum-length string)
+  ((ucode-primitive string-maximum-length) string))
+
+(define-integrable (set-string-length! string length)
+  ((ucode-primitive set-string-length!) string length))
+
+(define-integrable (set-string-maximum-length! string length)
+  ((ucode-primitive set-string-maximum-length!) string length))
+
+(define-integrable (string-ref string index)
+  ((ucode-primitive string-ref) string index))
+
+(define-integrable (string-set! string index char)
+  ((ucode-primitive string-set!) string index char))
+
+(define-integrable (substring-move-left! string1 start1 end1 string2 start2)
+  ((ucode-primitive substring-move-left!) string1 start1 end1 string2 start2))
+
+(define-integrable (substring-move-right! string1 start1 end1 string2 start2)
+  ((ucode-primitive substring-move-right!) string1 start1 end1 string2 start2))
+
+(define-integrable (vector-8b-ref vector-8b index)
+  ((ucode-primitive vector-8b-ref) vector-8b index))
+
+(define-integrable (vector-8b-set! vector-8b index byte)
+  ((ucode-primitive vector-8b-set!) vector-8b index byte))
 
 (define-integrable (vector-8b-fill! string start end ascii)
   (substring-fill! string start end (ascii->char ascii)))
@@ -80,6 +98,9 @@ USA.
   (if (default-object? modulus)
       ((ucode-primitive string-hash) key)
       ((ucode-primitive string-hash-mod) key modulus)))
+
+(define (string-hash-mod key modulus)
+  ((ucode-primitive string-hash-mod) key modulus))
 
 (define (string-ci-hash key #!optional modulus)
   (string-hash (string-downcase key) modulus))
@@ -1445,7 +1466,7 @@ USA.
 (define (xstring-ref xstring index)
   (cond ((external-string? xstring)
 	 (ascii->char
-	  (read-byte-from-memory
+	  ((ucode-primitive read-byte-from-memory)
 	   (+ (external-string-descriptor xstring) index))))
 	((string? xstring)
 	 (string-ref xstring index))
@@ -1454,7 +1475,7 @@ USA.
 
 (define (xstring-set! xstring index char)
   (cond ((external-string? xstring)
-	 (write-byte-to-memory
+	 ((ucode-primitive write-byte-to-memory)
 	  (char->ascii char)
 	  (+ (external-string-descriptor xstring) index)))
 	((string? xstring)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.114 2008/02/02 18:20:59 cph Exp $
+$Id: make.scm,v 14.115 2008/02/10 06:14:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,13 @@ USA.
 
 (declare (usual-integrations))
 
-(set-interrupt-enables! 0)
+((ucode-primitive set-interrupt-enables!) 0)
 
 ;; This must be defined as follows so that it is no part of a multi-define
 ;; itself.  It must also precede any other top-level definitions in this file
 ;; that are not performed directly using LOCAL-ASSIGNMENT.
 
-(local-assignment
+((ucode-primitive local-assignment)
  #f ;global environment
  'DEFINE-MULTIPLE
  (lambda (env names values)
@@ -48,9 +48,9 @@ USA.
      (let loop ((i 0) (val unspecific))
        (if (fix:< i len)
 	   (loop (fix:+ i 1)
-		 (local-assignment env
-				   (vector-ref names i)
-				   (vector-ref values i)))
+		 ((ucode-primitive local-assignment) env
+						     (vector-ref names i)
+						     (vector-ref values i)))
 	   val)))))
 
 (define system-global-environment #f)
@@ -60,36 +60,19 @@ USA.
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (let-syntax
-      ((ucode-type
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (microcode-type (cadr form))))))
-    (system-list->vector
-     (ucode-type environment)
-     (cons (system-pair-cons (ucode-type procedure)
-			     (system-pair-cons (ucode-type lambda)
-					       unspecific
-					       names)
-			     parent)
-	   values))))
+  ((ucode-primitive system-list-to-vector)
+   (ucode-type environment)
+   (cons ((ucode-primitive system-pair-cons)
+	  (ucode-type procedure)
+	  ((ucode-primitive system-pair-cons) (ucode-type lambda)
+					      unspecific
+					      names)
+	  parent)
+	 values)))
 
 (let ((environment-for-package
        (*make-environment system-global-environment
 			  (vector lambda-tag:unnamed))))
-
-(define-syntax ucode-primitive
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (apply make-primitive-procedure (cdr form)))))
-
-(define-syntax ucode-type
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (microcode-type (cadr form)))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))
@@ -300,7 +283,8 @@ USA.
 
 (define (implemented-primitive-procedure? primitive)
   ((ucode-primitive get-primitive-address)
-   (intern ((ucode-primitive get-primitive-name) (object-datum primitive)))
+   (intern ((ucode-primitive get-primitive-name)
+	    ((ucode-primitive object-datum) primitive)))
    #f))
 
 (define initialize-c-compiled-block

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.22 2008/01/30 20:02:37 cph Exp $
+$Id: uproc.scm,v 1.23 2008/02/10 06:14:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -92,7 +92,7 @@ USA.
 (define (procedure-arity procedure)
   (let loop ((p procedure) (e 0))
     (cond ((%primitive-procedure? p)
-	   (let ((arity (primitive-procedure-arity p)))
+	   (let ((arity ((ucode-primitive primitive-procedure-arity) p)))
 	     (cond ((fix:< arity 0)
 		    (cons 0 #f))
 		   ((fix:<= e arity)

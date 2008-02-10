@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: random.scm,v 14.41 2008/01/30 20:02:34 cph Exp $
+$Id: random.scm,v 14.42 2008/02/10 06:14:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,7 +54,7 @@ USA.
 (define-integrable b. 4294967291. #|(exact->inexact b)|#)
 
 (define (flo:random-element state)
-  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+  (let ((mask ((ucode-primitive set-interrupt-enables!) interrupt-mask/gc-ok)))
     (let ((index (random-state-index state))
 	  (vector (random-state-vector state)))
       (let ((element (flo:vector-ref vector index)))
@@ -76,7 +76,7 @@ USA.
 				   (if (fix:= (fix:+ index 1) r)
 				       0
 				       (fix:+ index 1))))
-	(set-interrupt-enables! mask)
+	((ucode-primitive set-interrupt-enables!) mask)
 	element))))
 
 (define-integrable (int:random-element state)

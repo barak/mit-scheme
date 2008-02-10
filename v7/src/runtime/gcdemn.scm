@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gcdemn.scm,v 14.14 2008/01/30 20:02:30 cph Exp $
+$Id: gcdemn.scm,v 14.15 2008/02/10 06:14:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,7 @@ USA.
   (set! secondary-gc-daemons (make-queue))
   (set! trigger-secondary-gc-daemons! (make-trigger secondary-gc-daemons))
   (set! add-secondary-gc-daemon! (make-adder secondary-gc-daemons))
-  (let ((fixed-objects (get-fixed-objects-vector)))
+  (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
     (vector-set! fixed-objects #x0B trigger-primitive-gc-daemons!)
     ((ucode-primitive set-fixed-objects-vector!) fixed-objects)))
 

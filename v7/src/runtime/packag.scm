@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.58 2008/02/02 18:20:19 cph Exp $
+$Id: packag.scm,v 14.59 2008/02/10 06:14:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -422,11 +422,12 @@ USA.
 							 #f
 							 vn)
 				       environment))
-	(object-new-type (ucode-type environment) vv)))))
+	((ucode-primitive object-set-type) (ucode-type environment) vv)))))
 
 (define null-environment
-  (object-new-type (object-type #f)
-		   (fix:xor (object-datum #F) 1)))
+  ((ucode-primitive object-set-type)
+   ((ucode-primitive object-type) #f)
+   (fix:xor ((ucode-primitive object-datum) #F) 1)))
 
 (define (find-package-environment name)
   (package/environment (find-package name)))
@@ -441,7 +442,9 @@ USA.
   (primitive-object-set-type (ucode-type reference-trap) 0))
 
 (define-primitives
+  lexical-reference
   lexical-unbound?
+  lexical-unreferenceable?
   link-variables
   local-assignment
   primitive-object-set-type)

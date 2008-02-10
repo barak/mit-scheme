@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.81 2008/01/30 20:02:31 cph Exp $
+$Id: global.scm,v 14.82 2008/02/10 06:14:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,42 +34,92 @@ USA.
 
 (define-primitives
   error-procedure
-  get-interrupt-enables set-interrupt-enables! with-interrupt-mask
+  set-interrupt-enables! with-interrupt-mask
   get-fixed-objects-vector with-history-disabled
-  (primitive-procedure-arity 1)
-  (primitive-procedure-documentation 1)
+  primitive-procedure-arity primitive-procedure-documentation
 
   ;; Environment
   lexical-reference lexical-assignment local-assignment
   lexical-unassigned? lexical-unbound? lexical-unreferenceable?
 
   ;; Pointers
-  (object-type 1)
-  (object-datum 1)
-  (object-type? 2)
-  (object-new-type object-set-type 2)
+  object-datum
+  (object-new-type object-set-type)
   make-non-pointer-object
-  eq?
 
   ;; Cells
   make-cell cell? cell-contents set-cell-contents!
 
-  ;; System Compound Datatypes
-  system-pair-cons system-pair?
-  system-pair-car system-pair-set-car!
-  system-pair-cdr system-pair-set-cdr!
+  )
 
-  hunk3-cons
-  system-hunk3-cxr0 system-hunk3-set-cxr0!
-  system-hunk3-cxr1 system-hunk3-set-cxr1!
-  system-hunk3-cxr2 system-hunk3-set-cxr2!
+(define-integrable (eq? x y)
+  ((ucode-primitive eq?) x y))
 
-  (system-list->vector system-list-to-vector)
-  (system-subvector->list system-subvector-to-list)
-  system-vector?
-  (system-vector-length system-vector-size)
-  system-vector-ref
-  system-vector-set!)
+(define-integrable (get-interrupt-enables)
+  ((ucode-primitive get-interrupt-enables)))
+
+(define-integrable (object-type object)
+  ((ucode-primitive object-type) object))
+
+(define-integrable (object-type? type object)
+  ((ucode-primitive object-type?) type object))
+
+(define-integrable (system-pair? object)
+  ((ucode-primitive system-pair?) object))
+
+(define-integrable (system-pair-cons type a b)
+  ((ucode-primitive system-pair-cons) type a b))
+
+(define-integrable (system-pair-car p)
+  ((ucode-primitive system-pair-car) p))
+
+(define-integrable (system-pair-cdr p)
+  ((ucode-primitive system-pair-cdr) p))
+
+(define-integrable (system-pair-set-car! p o)
+  ((ucode-primitive system-pair-set-car!) p o))
+
+(define-integrable (system-pair-set-cdr! p o)
+  ((ucode-primitive system-pair-set-cdr!) p o))
+
+(define-integrable (system-vector? object)
+  ((ucode-primitive system-vector?) object))
+
+(define-integrable (system-vector-ref v i)
+  ((ucode-primitive system-vector-ref) v i))
+
+(define-integrable (system-vector-set! v i x)
+  ((ucode-primitive system-vector-set!) v i x))
+
+(define-integrable (system-vector-length v)
+  ((ucode-primitive system-vector-size) v))
+
+(define-integrable (system-list->vector type list)
+  ((ucode-primitive system-list-to-vector) type list))
+
+(define-integrable (system-subvector->list v s e)
+  ((ucode-primitive system-subvector-to-list) v s e))
+
+(define-integrable (hunk3-cons x0 x1 x2)
+  ((ucode-primitive hunk3-cons) x0 x1 x2))
+
+(define-integrable (system-hunk3-cxr0 h3)
+  ((ucode-primitive system-hunk3-cxr0) h3))
+
+(define-integrable (system-hunk3-cxr1 h3)
+  ((ucode-primitive system-hunk3-cxr1) h3))
+
+(define-integrable (system-hunk3-cxr2 h3)
+  ((ucode-primitive system-hunk3-cxr2) h3))
+
+(define-integrable (system-hunk3-set-cxr0! h3 o)
+  ((ucode-primitive system-hunk3-set-cxr0!) h3 o))
+
+(define-integrable (system-hunk3-set-cxr1! h3 o)
+  ((ucode-primitive system-hunk3-set-cxr1!) h3 o))
+
+(define-integrable (system-hunk3-set-cxr2! h3 o)
+  ((ucode-primitive system-hunk3-set-cxr2!) h3 o))
 
 (define (host-big-endian?)
   host-big-endian?-saved)
