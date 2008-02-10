@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.38 2008/02/10 04:42:40 cph Exp $
+$Id: gconst.scm,v 4.39 2008/02/10 05:02:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,6 +77,7 @@ USA.
     (FIX:REMAINDER FIXNUM-REMAINDER)
     (FIX:XOR FIXNUM-XOR)
     (FIX:ZERO? ZERO-FIXNUM?)
+    (FIXNUM? FIXNUM?)
     (FLO:* FLONUM-MULTIPLY)
     (FLO:+ FLONUM-ADD)
     (FLO:- FLONUM-SUBTRACT)
