@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.74 2008/01/30 20:02:31 cph Exp $
+$Id: infutl.scm,v 1.75 2008/02/10 21:35:46 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -752,11 +752,14 @@ USA.
        (cond ((null? entries)
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
-		   (cddar entries)
-		   (or (file-exists? (cadar entries))
-		       (begin
-			 (set-cdr! (cdar entries) #f)
-			 #f)))
+		   ;; Avoid a subtle race condition with the GC daemon.
+		   (let ((time (cddar entries)))
+		     (set-cdr! (cdar entries) (real-time-clock))
+		     (and time
+			  (or (file-exists? (cadar entries))
+			      (begin
+				(set-cdr! (cdar entries) #f)
+				#f)))))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda ()
