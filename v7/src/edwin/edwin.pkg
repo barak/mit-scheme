@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.305 2008/02/10 10:06:51 riastradh Exp $
+$Id: edwin.pkg,v 1.306 2008/02/10 10:44:13 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1525,6 +1525,7 @@ USA.
 	  edwin-variable$file-type-to-mime-type
 	  edwin-variable$mail-abbreviate-mime
 	  edwin-variable$mail-archive-file-name
+	  edwin-variable$mail-authentication
 	  edwin-variable$mail-default-reply-to
 	  edwin-variable$mail-from-style
 	  edwin-variable$mail-full-name
@@ -1544,8 +1545,10 @@ USA.
 	  edwin-variable$mime-attachments-mode-hook
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  edwin-variable$smtp-greeting-hostname
 	  edwin-variable$smtp-require-valid-recipients
 	  edwin-variable$smtp-trace
+	  edwin-variable$smtp-user-name
 	  edwin-variable$user-mail-address
 	  enable-buffer-mime-processing!
 	  finish-preparing-mail-buffer
