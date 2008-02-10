@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.39 2008/02/10 05:02:21 cph Exp $
+$Id: gconst.scm,v 4.40 2008/02/10 06:11:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,6 +36,7 @@ USA.
     CHAR-INTEGER-LIMIT
     CHAR:NEWLINE
     FALSE
+    LAMBDA-TAG:UNNAMED			;needed for cold load
     THE-EMPTY-STREAM
     TRUE
     UNDEFINED-CONDITIONAL-BRANCH

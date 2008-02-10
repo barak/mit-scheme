@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usicon.scm,v 4.12 2008/02/10 04:42:43 cph Exp $
+$Id: usicon.scm,v 4.13 2008/02/10 06:12:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,9 +52,11 @@ USA.
 				  FALSE
 				  FIXNUM
 				  FLONUM
+				  INTERNED-SYMBOL
 				  RATNUM
 				  RECNUM
-				  TRUE)))
+				  TRUE
+				  UNINTERNED-SYMBOL)))
 		     (error "USUAL-INTEGRATIONS: not a constant" name))
 		 (constant->integration-info object)))
 	     usual-integrations/constant-names))
