@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usicon.scm,v 4.11 2008/01/30 20:02:38 cph Exp $
+$Id: usicon.scm,v 4.12 2008/02/10 04:42:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,14 +30,13 @@ USA.
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
-
+
 (define usual-integrations/constant-names)
 (define usual-integrations/constant-values)
 (define usual-integrations/constant-alist)
-
-(define (usual-integrations/delete-constant! name)
-  (set! global-constant-objects (delq! name global-constant-objects))
-  (usual-integrations/cache!))
+(define usual-integrations/primitive-names)
+(define usual-integrations/primitive-values)
+(define usual-integrations/primitive-alist)
 
 (define (usual-integrations/cache!)
   (set! usual-integrations/constant-names
@@ -53,20 +52,9 @@ USA.
 				  FALSE
 				  FIXNUM
 				  FLONUM
-				  INTERNED-SYMBOL
-				  PAIR
-				  PRIMITIVE
-				  QUAD
 				  RATNUM
 				  RECNUM
-				  RETURN-CODE
-				  STRING
-				  TRIPLE
-				  TRUE
-				  UNINTERNED-SYMBOL
-				  VECTOR
-				  VECTOR-16B
-				  VECTOR-1B)))
+				  TRUE)))
 		     (error "USUAL-INTEGRATIONS: not a constant" name))
 		 (constant->integration-info object)))
 	     usual-integrations/constant-names))
@@ -77,4 +65,16 @@ USA.
 		      #f
 		      (environment-lookup system-global-environment name))))
 	     usual-integrations/constant-names))
+  (set! usual-integrations/primitive-names
+	(map car global-primitives))
+  (set! usual-integrations/primitive-values
+	(map (lambda (p)
+	       (constant->integration-info
+		(make-primitive-procedure (cadr p))))
+	     global-primitives))
+  (set! usual-integrations/primitive-alist
+	(map (lambda (p)
+	       (cons (car p)
+		     (constant/make #f (make-primitive-procedure (cadr p)))))
+	     global-primitives))
   unspecific)

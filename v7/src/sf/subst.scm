@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.23 2008/01/30 20:02:38 cph Exp $
+$Id: subst.scm,v 4.24 2008/02/10 04:42:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -663,7 +663,8 @@ you ask for.
 	   => (lambda (operands*)
 		(integrate/combination expression operations environment
 				       block (car operands*) (cdr operands*))))
-	  ((assq name usual-integrations/constant-alist)
+	  ((or (assq name usual-integrations/constant-alist)
+	       (assq name usual-integrations/primitive-alist))
 	   => (lambda (entry)
 		(integrate/combination expression operations environment
 				       block (cdr entry) operands)))
