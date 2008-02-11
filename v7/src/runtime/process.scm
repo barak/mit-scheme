@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.35 2008/01/30 20:02:33 cph Exp $
+$Id: process.scm,v 1.36 2008/02/11 07:23:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -104,12 +104,15 @@ USA.
     (and (output-port? port)
 	 port)))
 
-(define (close-subprocess-i/o process)
-  (without-interrupts (lambda () (%close-subprocess-i/o process))))
+(define (close-subprocess-i/o process #!optional close-port-too?)
+  (without-interrupts
+   (lambda ()
+     (%close-subprocess-i/o process close-port-too?))))
 
-(define (%close-subprocess-i/o process)
+(define (%close-subprocess-i/o process close-port-too?)
   ;; Assumes that interrupts are locked.
-  (cond ((subprocess-%i/o-port process)
+  (cond ((and close-port-too?
+	      (subprocess-%i/o-port process))
 	 => (lambda (port)
 	      (set-subprocess-%i/o-port! process #f)
 	      (set-subprocess-input-channel! process #f)
@@ -189,7 +192,7 @@ USA.
      (if (subprocess-index process)
 	 (begin
 	   (remove-from-gc-finalizer! subprocess-finalizer process)
-	   (%close-subprocess-i/o process))))))
+	   (%close-subprocess-i/o process #t))))))
 
 (define (subprocess-status process)
   (convert-subprocess-status (%subprocess-status process)))
@@ -261,11 +264,10 @@ USA.
       (else (error "Illegal process job-control status:" n)))))
 
 (define (handle-subprocess-status-change)
-  (if (eq? 'NT microcode-id/operating-system)
-      (for-each (lambda (process)
-		  (if (memq (subprocess-status process) '(EXITED SIGNALLED))
-		      (close-subprocess-i/o process)))
-		(subprocess-list))))
+  (for-each (lambda (process)
+	      (if (memq (subprocess-status process) '(EXITED SIGNALLED))
+		  (close-subprocess-i/o process #f)))
+	    (subprocess-list)))
 
 (define-integrable subprocess-job-control-available?
   (ucode-primitive os-job-control? 0))
