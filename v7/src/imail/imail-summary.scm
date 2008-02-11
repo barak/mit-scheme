@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.56 2008/01/30 20:02:10 cph Exp $
+$Id: imail-summary.scm,v 1.57 2008/02/11 22:49:10 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -318,9 +318,15 @@ SUBJECT is a string of regexps separated by commas."
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
 		      mark)
 	(insert-newline mark)
-	(for-each (lambda (message)
-		    (write-imail-summary-line! message index-digits mark))
-		  messages)
+	((imail-ui:message-wrapper "Generating summary buffer")
+	 (lambda ()
+	   (do ((total (length messages))
+		(messages messages (cdr messages))
+		(index 0 (+ index 1)))
+	       ((not (pair? messages)))
+	     (if (zero? (remainder index 10))
+		 (imail-ui:progress-meter index total))
+	     (write-imail-summary-line! (car messages) index-digits mark))))
 	(mark-temporary! mark))
       (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES (list->vector messages)))))
 
