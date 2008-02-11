@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.17 2008/01/30 20:02:11 cph Exp $
+$Id: cmpint.h,v 10.18 2008/02/11 21:07:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -388,7 +388,7 @@ extern void guarantee_interp_return (void);
 extern long apply_compiled_procedure (void);
 extern long return_to_compiled_code (void);
 
-extern long apply_compiled_from_primitive (unsigned long, SCHEME_OBJECT);
+extern void apply_compiled_from_primitive (unsigned long, SCHEME_OBJECT);
 extern void compiled_with_interrupt_mask
   (unsigned long, SCHEME_OBJECT, unsigned long);
 extern void compiled_with_stack_marker (SCHEME_OBJECT);

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.70 2008/01/30 20:02:13 cph Exp $
+$Id: hooks.c,v 9.71 2008/02/11 21:07:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -101,9 +101,7 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 #ifdef CC_SUPPORT_P
     if (CC_ENTRY_P (STACK_REF (n_args)))
       {
-	long code = (apply_compiled_from_primitive (n_args, procedure));
-	if (code != PRIM_DONE)
-	  PRIMITIVE_ABORT (code);
+	apply_compiled_from_primitive (n_args, procedure);
 	UN_POP_PRIMITIVE_FRAME (2);
 	PRIMITIVE_RETURN (UNSPECIFIC);
       }

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.111 2008/01/30 20:02:11 cph Exp $
+$Id: cmpint.c,v 1.112 2008/02/11 21:07:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,6 +142,8 @@ static SCHEME_OBJECT make_compiler_utilities (void);
 static void open_stack_gap (unsigned long, unsigned long);
 static void close_stack_gap (unsigned long, unsigned long);
 static void recover_from_apply_error (SCHEME_OBJECT, unsigned long);
+static void setup_compiled_invocation_from_primitive 
+  (SCHEME_OBJECT, unsigned long);
 static long link_remaining_sections (link_cc_state_t *);
 static void start_linking_cc_block (void);
 static void end_linking_cc_block (link_cc_state_t *);
@@ -543,14 +545,7 @@ compiled_with_interrupt_mask (unsigned long old_mask,
   STACK_PUSH (ULONG_TO_FIXNUM (old_mask));
   PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
   STACK_PUSH (ULONG_TO_FIXNUM (new_mask));
-  {
-    long code = (setup_compiled_invocation (receiver, 1));
-    if (code != PRIM_DONE)
-      {
-	PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	PRIMITIVE_ABORT (code);
-      }
-  }
+  setup_compiled_invocation_from_primitive (receiver, 1);
   /* Pun: receiver is being invoked as a return address.  */
   STACK_PUSH (receiver);
 }
@@ -559,25 +554,22 @@ void
 compiled_with_stack_marker (SCHEME_OBJECT thunk)
 {
   PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
-  {
-    long code = (setup_compiled_invocation (thunk, 0));
-    switch (code)
-      {
-      case PRIM_DONE:
-	/* Pun: thunk is being invoked as a return address.  */
-	STACK_PUSH (thunk);
-	break;
+  setup_compiled_invocation_from_primitive (thunk, 0);
+  /* Pun: thunk is being invoked as a return address.  */
+  STACK_PUSH (thunk);
+}
 
-      case PRIM_APPLY_INTERRUPT:
-	PRIMITIVE_ABORT (code);
-	break;
-
-      default:
+static void
+setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
+					  unsigned long n_args)
+{
+  long code = (setup_compiled_invocation (procedure, n_args));
+  if (code != PRIM_DONE)
+    {
+      if (code != PRIM_APPLY_INTERRUPT)
 	PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	PRIMITIVE_ABORT (code);
-	break;
-      }
-  }
+      PRIMITIVE_ABORT (code);
+    }
 }
 
 /* SCHEME_UTILITY procedures
@@ -1410,7 +1402,7 @@ DEFINE_SCHEME_ENTRY (comp_error_restart)
   JUMP_TO_CC_ENTRY (STACK_POP ());
 }
 
-long
+void
 apply_compiled_from_primitive (unsigned long n_args,
 			       SCHEME_OBJECT procedure)
 {
@@ -1443,20 +1435,15 @@ apply_compiled_from_primitive (unsigned long n_args,
 
   if (CC_ENTRY_P (procedure))
     {
-      long code = (setup_compiled_invocation (procedure, n_args));
-      if (code != PRIM_DONE)
-	{
-	  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	  return (code);
-	}
+      setup_compiled_invocation_from_primitive (procedure, n_args);
       STACK_PUSH (procedure);
-      return (PRIM_DONE);
     }
-
-  STACK_PUSH (procedure);
-  PUSH_APPLY_FRAME_HEADER (n_args);
-  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-  return (PRIM_DONE);
+  else
+    {
+      STACK_PUSH (procedure);
+      PUSH_APPLY_FRAME_HEADER (n_args);
+      PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
+    }
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
