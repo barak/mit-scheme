@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.166 2008/01/30 20:02:09 cph Exp $
+$Id: imail-core.scm,v 1.167 2008/02/11 22:48:02 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -735,10 +735,22 @@ USA.
 
 (define-structure (folder-order
 		   (type-descriptor <folder-order>)
-		   (constructor make-folder-order (predicate selector)))
+		   (constructor %make-folder-order (predicate selector cache)))
   (predicate #f read-only #t)
   (selector #f read-only #t)
+  (cache #f read-only #t)
   (tree #f))
+
+(define (make-folder-order predicate selector #!optional cache?)
+  (%make-folder-order predicate
+		      selector
+		      (and (or (default-object? cache?) cache?)
+			   (make-integer-hash-table))))
+
+(define (reset-folder-order! order)
+  (set-folder-order-tree! order #f)
+  (let ((cache (folder-order-cache order)))
+    (if cache (hash-table/clear! cache))))
 
 (define (map-folder-index folder index)
   (let ((order (folder-order folder)))
@@ -757,19 +769,31 @@ USA.
 	(begin
 	  (memoize-folder-order order folder)
           (or (wt-tree/rank (folder-order-tree order)
-                            (cons ((folder-order-selector order)
-                                   (%get-message folder index))
-                                  index))
+                            (index-order-key folder order index))
               index))
 	index)))
 
-(define (make-wt-message-tree key<?)
+(define (make-message-wt-tree key<?)
   (make-wt-tree
    (make-wt-tree-type
     (lambda (a b)
       (or (key<? (car a) (car b))
           (and (not (key<? (car b) (car a)))
                (< (cdr a) (cdr b))))))))
+
+(define make-integer-hash-table
+  (strong-hash-table/constructor int:remainder int:=))
+
+(define (%message-order-key message order index)
+  (let ((compute-key
+	 (lambda () (cons ((folder-order-selector order) message) index)))
+	(cache (folder-order-cache order)))
+    (if cache
+	(hash-table/intern! cache index compute-key)
+	(compute-key))))
+
+(define (index-order-key folder order index)
+  (%message-order-key (%get-message folder index) order index))
 
 (define (message-order-key message)
   (let ((folder (message-folder message)))
@@ -778,37 +802,44 @@ USA.
     (let ((order (folder-order folder)))
       (if (not order)
           #f
-          (cons ((folder-order-selector order) message)
-                (%message-index message))))))
+          (let ((index (%message-index message)))
+	    (cons (%message-order-key message order index) index))))))
 
 (define (memoize-folder-order order folder)
   (let loop ((modification-count (object-modification-count folder)))
     (if (not (folder-order-tree order))
-        (begin
-          (set-folder-order-tree!
-           order
-           (build-folder-order-tree order folder))
-          (let ((modification-count* (object-modification-count folder)))
-            (if (not (= modification-count modification-count*))
-                (begin
-                  (imail-ui:message "Folder changed; resorting")
-                  (loop modification-count*))))))))
+	(begin
+	  (set-folder-order-tree!
+	   order
+	   (build-folder-order-tree order folder))
+	  (let ((modification-count* (object-modification-count folder)))
+	    (if (not (= modification-count modification-count*))
+		(begin
+		  (imail-ui:message "Folder changed; re-sorting")
+		  (reset-folder-order! order)
+		  (loop modification-count*))))))))
 
 (define (build-folder-order-tree order folder)
   (preload-folder-outlines folder)
   ((imail-ui:message-wrapper "Sorting folder")
    (lambda ()
      (let ((length (folder-length folder))
-           (selector (folder-order-selector order))
-           (tree (make-wt-message-tree (folder-order-predicate order))))
-       (do ((index 0 (+ index 1)))
-           ((= index length))
-         (if (zero? (remainder index 100))
-             (imail-ui:progress-meter index #f))
-         (let ((message (%get-message folder index)))
-           (wt-tree/add! tree
-                         (cons (selector message) index)
-                         message)))
+	   (tree (make-message-wt-tree (folder-order-predicate order)))
+	   (selector (folder-order-selector order))
+	   (cache (folder-order-cache order)))
+       (let ((compute-key
+	      (if cache
+		  (lambda (message index)
+		    (hash-table/intern! cache index
+		      (lambda () (cons (selector message) index))))
+		  (lambda (message index)
+		    (cons (selector message) index)))))
+	 (do ((index 0 (+ index 1)))
+	     ((= index length))
+	   (if (zero? (remainder index 10))
+	       (imail-ui:progress-meter index length))
+	   (let ((message (%get-message folder index)))
+	     (wt-tree/add! tree (compute-key message index) message))))
        tree))))
 
 (define (update-folder-order folder modification-type arguments)
@@ -816,26 +847,29 @@ USA.
    (lambda ()
      (let ((order (folder-order folder)))
        (if order
-           (case modification-type
-             ((SET-LENGTH)
-              (set-folder-order-tree! order #f))
-             ((INCREASE-LENGTH)
-              (let ((tree (folder-order-tree order)))
-                (if tree
-                    (let ((index (car arguments))
-                          (count (cadr arguments))
-                          (selector (folder-order-selector order)))
-                      (do ((index index (+ index 1)))
-                          ((= index count))
-                        (let ((message (%get-message folder index)))
-                          (wt-tree/add! tree
-                                        (cons (selector message) index)
-                                        message)))))))
-             ((EXPUNGE)
-              (let ((tree (folder-order-tree order)))
-                (if tree
-                    (let ((key (cadr arguments)))
-                      (wt-tree/delete! tree key)))))))))))
+	   (case modification-type
+	     ((SET-LENGTH)
+	      (reset-folder-order! order))
+	     ((INCREASE-LENGTH)
+	      (let ((tree (folder-order-tree order)))
+		(if tree
+		    (let ((index (car arguments))
+			  (count (cadr arguments)))
+		      (do ((index index (+ index 1)))
+			  ((= index count))
+			(let ((message (%get-message folder index)))
+			  (wt-tree/add!
+			   tree
+			   (%message-order-key message order index)
+			   message)))))))
+	     ((EXPUNGE)
+	      (let ((tree (folder-order-tree order)))
+		(if tree
+		    (let ((index (car arguments))
+			  (key (cadr arguments)))
+		      (let ((cache (folder-order-cache order)))
+			(if cache (hash-table/remove! cache index)))
+		      (wt-tree/delete! tree key)))))))))))
 
 ;;;; Message flags
 
