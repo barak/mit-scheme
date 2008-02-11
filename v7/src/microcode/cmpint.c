@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.112 2008/02/11 21:07:21 riastradh Exp $
+$Id: cmpint.c,v 1.113 2008/02/11 23:59:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1435,8 +1435,11 @@ apply_compiled_from_primitive (unsigned long n_args,
 
   if (CC_ENTRY_P (procedure))
     {
-      setup_compiled_invocation_from_primitive (procedure, n_args);
-      STACK_PUSH (procedure);
+      long code = (setup_compiled_invocation (procedure, n_args));
+      if (code == PRIM_DONE)
+        STACK_PUSH (procedure);
+      else if (code != PRIM_APPLY_INTERRUPT)
+        PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
     }
   else
     {
