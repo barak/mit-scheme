@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.215 2008/01/30 20:02:09 cph Exp $
+$Id: imail-imap.scm,v 1.216 2008/02/11 22:45:43 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1086,13 +1086,7 @@ USA.
        '("seen" "answered" "flagged" "deleted" "draft" "recent")))
 
 (define-method message-internal-time ((message <imap-message>))
-  (imap:response:fetch-attribute
-   (fetch-message-items message
-			'(INTERNALDATE)
-			(string-append
-			 " internal date for message "
-			 (number->string (+ (%message-index message) 1))))
-   'INTERNALDATE))
+  (fetch-one-message-item message 'INTERNALDATE "internal date"))
 
 (define-method message-length ((message <imap-message>))
   (with-imap-message-open message
@@ -1145,82 +1139,102 @@ USA.
 	    (error (string-append "Unable to obtain" suffix))))))
 
 (let ((reflector
-       (lambda (generic-procedure slot-name guarantee)
-	 (let ((initpred (slot-initpred <imap-message> slot-name)))
-	   (define-method generic-procedure ((message <imap-message>))
-	     (guarantee message initpred)
-	     (call-next-method message))))))
-  (reflector message-header-fields 'HEADER-FIELDS
-    (lambda (message initpred)
-      (guarantee-slot-initialized message initpred "header" '(RFC822.HEADER))))
-  (reflector message-flags 'FLAGS
-    (lambda (message initpred)
-      (guarantee-slot-initialized message initpred "flags" '(FLAGS)))))
-
-(let ((reflector
-       (lambda (generic-procedure slot-name guarantee)
+       (lambda (generic-procedure slot-name noun keywords)
 	 (let ((accessor (slot-accessor <imap-message> slot-name))
 	       (initpred (slot-initpred <imap-message> slot-name)))
 	   (define-method generic-procedure ((message <imap-message>))
-	     (guarantee message initpred)
+	     (guarantee-slot-initialized message initpred noun keywords)
 	     (accessor message))))))
-  (reflector imap-message-length 'LENGTH
-    (lambda (message initpred)
-      (guarantee-slot-initialized message initpred "length" '(RFC822.SIZE))))
-  (reflector imap-message-envelope 'ENVELOPE
-    (lambda (message initpred)
-      (guarantee-slot-initialized message initpred "envelope" '(ENVELOPE))))
-  (reflector imap-message-bodystructure 'BODYSTRUCTURE
-    (lambda (message initpred)
-      (guarantee-slot-initialized message initpred "MIME structure"
-				  '(BODYSTRUCTURE)))))
+  (reflector message-flags 'FLAGS "flags" '(FLAGS))
+  (reflector imap-message-length 'LENGTH "length" '(RFC822.SIZE))
+  (reflector imap-message-bodystructure 'BODYSTRUCTURE "MIME structure"
+	     '(BODYSTRUCTURE)))
 
+;;; Some hair to keep weak references to header fields and envelopes,
+;;; which we don't really care to keep around longer than we must.
+
+(let ((reflector
+       (lambda (generic-procedure slot-name noun keyword constructor)
+	 (let ((accessor (slot-accessor <imap-message> slot-name))
+	       (initpred (slot-initpred <imap-message> slot-name))
+	       (modifier (slot-modifier <imap-message> slot-name)))
+	   (define (fetch message store)
+	     ((lambda (value)
+		(store value)
+		value)
+	      (constructor (fetch-one-message-item message keyword noun))))
+	   (define-method generic-procedure ((message <imap-message>))
+	     (if (initpred message)
+		 (let* ((pair (accessor message))
+			(value (weak-car pair)))
+		   (if (weak-pair/car? pair)
+		       value
+		       (fetch message
+			      (lambda (value) (weak-set-car! pair value)))))
+		 (fetch message
+			(lambda (value)
+			  (modifier message (weak-cons value '()))))))))))
+  (reflector message-header-fields 'HEADER-FIELDS "header" 'RFC822.HEADER
+    string->header-fields)
+  (reflector imap-message-envelope 'ENVELOPE "envelope" 'ENVELOPE
+    (lambda (envelope)
+      (parse-mime-envelope envelope))))
+
+(define (fetch-one-message-item message keyword noun)
+  (imap:response:fetch-attribute
+   (fetch-message-items message
+			(list keyword)
+			(string-append
+			 " " noun " for message "
+			 (number->string (+ (%message-index message) 1))))
+   keyword))
+
+;;;; Preloading Folder Outlines
+
+;;; This really wants to have an extra argument passed describing what
+;;; parts of the message we expect to use heavily soon; right now the
+;;; code is too much about how to preload the outlines.  But I haven't
+;;; thought of a good way to express the `what' part, and I don't
+;;; really have time.
+
 (define-method preload-folder-outlines ((folder <imap-folder>))
-  (for-each-message folder
-    (lambda (message)
-      (with-folder-locked (message-folder message)
-	(lambda ()
-	  (if (not (imap-message-header-fields-initialized? message))
-	      (preload-cached-message-item message 'RFC822.HEADER))
-	  (if (not (imap-message-length-initialized? message))
-	      (preload-cached-message-item message 'RFC822.SIZE))))))
-  (let* ((connection (guarantee-imap-folder-open folder))
-	 (messages
-	  (messages-satisfying folder
-	    (lambda (message)
-	      (not (and (imap-message-header-fields-initialized? message)
-			(imap-message-length-initialized? message)))))))
+  (let ((messages '()) (total-length (folder-length folder)))
+    (with-folder-locked folder
+      (lambda ()
+	((imail-ui:message-wrapper "Scanning message cache")
+	 (lambda ()
+	   (for-each-message folder
+	     (lambda (index message)
+	       (if (zero? (remainder index 10))
+		   (imail-ui:progress-meter index total-length))
+	       (if (not (message-outline-cached? message))
+		   (set! messages (cons message messages)))))))))
     (if (pair? messages)
-	(let ((keywords '(RFC822.HEADER RFC822.SIZE)))
-	  (cache-preload-responses folder keywords
-	    ((imail-ui:message-wrapper "Reading message headers")
-	     (lambda ()
-	       (imap:command:fetch-set connection
-				       (message-list->set messages)
-				       keywords))))))))
+	(let ((keywords imap-outline-cache-keywords)
+	      (connection (guarantee-imap-folder-open folder)))
+	  ((imail-ui:message-wrapper "Reading message headers")
+	   (lambda ()
+	     (let ((current 0) (total (length messages)))
+	       (imap:command:fetch-set/for-each
+		(lambda (response)
+		  (if (zero? (remainder current 10))
+		      (imail-ui:progress-meter current total))
+		  (set! current (+ current 1))
+		  (cache-preload-response folder keywords response))
+		connection
+		(message-list->set (reverse! messages))
+		keywords))))))))
 
-(define imap-message-header-fields-initialized?
-  (slot-initpred <imap-message> 'HEADER-FIELDS))
+(define imap-outline-cache-keywords '(RFC822.HEADER))
 
-(define imap-message-length-initialized?
-  (slot-initpred <imap-message> 'LENGTH))
-
-(define (messages-satisfying folder predicate)
-  (let ((n (folder-length folder)))
-    (let loop ((i 0) (messages '()))
-      (if (< i n)
-	  (loop (+ i 1)
-		(let ((message (get-message folder i)))
-		  (if (predicate message)
-		      (cons message messages)
-		      messages)))
-	  (reverse! messages)))))
+(define (message-outline-cached? message)
+  (file-exists? (message-item-pathname message 'RFC822.HEADER)))
 
 (define (for-each-message folder procedure)
   (let ((n (folder-length folder)))
     (do ((i 0 (+ i 1)))
 	((= i n))
-      (procedure (get-message folder i)))))
+      (procedure i (%get-message folder i)))))
 
 (define (message-list->set messages)
   (let loop ((indexes (map %message-index messages)) (groups '()))
@@ -1640,23 +1654,16 @@ USA.
 		       section))
 		 "]"))
 
-(define (preload-cached-message-item message keyword)
-  (let ((pathname (message-item-pathname message keyword)))
-    (if (file-exists? pathname)
-	(read-cached-message-item message keyword pathname))))
-
-(define (cache-preload-responses folder keywords responses)
-  (for-each (lambda (response)
-	      (let ((message
-		     (%get-message folder
-				   (- (imap:response:fetch-index response)
-				      1))))
-		(with-folder-locked (message-folder message)
-		  (lambda ()
-		    (cache-fetch-response message response
-		      (lambda (keyword) (memq keyword keywords))
-		      (lambda (keyword item) keyword item unspecific))))))
-	    responses))
+(define (cache-preload-response folder keywords response)
+  (with-folder-locked folder
+    (lambda ()
+      (let ((message
+	     (%get-message folder
+			   (- (imap:response:fetch-index response)
+			      1))))
+	(cache-fetch-response message response
+	  (lambda (keyword) (memq keyword keywords))
+	  (lambda (keyword item) keyword item unspecific))))))
 
 (define (delete-cached-message message)
   (with-folder-locked (message-folder message)
@@ -2035,15 +2042,26 @@ USA.
 	(error "Malformed response from IMAP server:" responses))))
 
 (define (imap:command:fetch-range connection start end items)
-  (imap:command:fetch-set connection
-			  (string-append (number->string (+ start 1))
-					 ":"
-					 (if end (number->string end) "*"))
-			  items))
+  (imap:command:fetch-set connection (imap-range->set start end) items))
+
+(define (imap:command:fetch-range/for-each procedure
+					   connection start end items)
+  (imap:command:fetch-set/for-each procedure
+				   connection
+				   (imap-range->set start end)
+				   items))
+
+(define (imap-range->set start end)
+  (string-append (number->string (+ start 1))
+		 ":"
+		 (if end (number->string end) "*")))
 
 (define (imap:command:fetch-set connection set items)
   (imap:command:multiple-response imap:response:fetch? connection
 				  'FETCH `',set items))
+
+(define (imap:command:fetch-set/for-each procedure connection set items)
+  (imap:command:for-each-response procedure connection 'FETCH `',set items))
 
 (define (imap:command:uid-store-flags connection uid flags)
   (imap:command:no-response connection 'UID 'STORE uid 'FLAGS flags))
@@ -2118,6 +2136,13 @@ USA.
 	(cdr responses)
 	(error "Malformed response from IMAP server:" responses))))
 
+(define (imap:command:for-each-response procedure
+					connection command . arguments)
+  (apply imap:command*
+	 (lambda (response) (procedure response) #f)
+	 connection command arguments)
+  unspecific)
+
 (define condition-type:imap-server-error
   (make-condition-type 'IMAP-SERVER-ERROR condition-type:error '(RESPONSE)
     (lambda (condition port)
@@ -2137,8 +2162,8 @@ USA.
 
 (define imap:server-error:response
   (condition-accessor condition-type:imap-server-error 'RESPONSE))
-
-(define (imap:command connection command . arguments)
+
+(define (imap:command* filter connection command . arguments)
   (bind-condition-handler '()
       (lambda (condition)
 	(if (not (eq? (condition/type condition)
@@ -2152,9 +2177,13 @@ USA.
       (imap:wait-for-tagged-response
        connection
        (imap:send-command connection command arguments)
-       (if (eq? command 'UID)
-	   (car arguments)
-	   command)))))
+       (if (eq? command 'UID) (car arguments) command)
+       filter))))
+
+(define (imap:command connection command . arguments)
+  (apply imap:command*
+	 (lambda (response) response #t)
+	 connection command arguments))
 
 (define (start-imap-trace pathname)
   (stop-imap-trace)
@@ -2245,7 +2274,7 @@ USA.
 	       (enqueue-imap-response connection response)
 	       (loop)))))))
 
-(define (imap:wait-for-tagged-response connection tag command)
+(define (imap:wait-for-tagged-response connection tag command filter)
   (let ((port (imap-connection-port connection)))
     (let loop ()
       (let ((response (imap:read-server-response-1 port)))
@@ -2262,7 +2291,8 @@ USA.
 			(loop)
 			(error "Out-of-sequence tag:" tag* tag))))
 	      (begin
-		(enqueue-imap-response connection response)
+		(if (filter response)
+		    (enqueue-imap-response connection response))
 		(loop))))))))
 
 (define (imap:read-server-response-1 port)
@@ -2429,32 +2459,18 @@ USA.
 (define (process-fetch-attribute message keyword datum)
   (case keyword
     ((BODYSTRUCTURE)
-     (%set-imap-message-bodystructure! message (parse-mime-body datum))
-     #t)
-    ((ENVELOPE)
-     (%set-imap-message-envelope! message datum)
-     #t)
+     (%set-imap-message-bodystructure! message (parse-mime-body datum)))
     ((FLAGS)
-     (%set-message-flags! message (map imap-flag->imail-flag datum))
-     #t)
-    ((RFC822.HEADER)
-     (%set-message-header-fields! message (string->header-fields datum))
-     #t)
+     (%set-message-flags! message (map imap-flag->imail-flag datum)))
     ((RFC822.SIZE)
-     (%set-imap-message-length! message datum)
-     #t)
+     (%set-imap-message-length! message datum))
     ((UID)
-     (%set-imap-message-uid! message datum)
-     #t)
-    (else #f)))
+     (%set-imap-message-uid! message datum))))
 
 (define (with-imap-connection-folder connection receiver)
   (let ((folder (imap-connection-folder connection)))
     (if folder
 	(receiver folder))))
-
-(define %set-message-header-fields!
-  (slot-modifier <imap-message> 'HEADER-FIELDS))
 
 (define %message-flags-initialized?
   (slot-initpred <imap-message> 'FLAGS))
@@ -2464,9 +2480,6 @@ USA.
 
 (define %set-imap-message-length!
   (slot-modifier <imap-message> 'LENGTH))
-
-(define %set-imap-message-envelope!
-  (slot-modifier <imap-message> 'ENVELOPE))
 
 (define %set-imap-message-bodystructure!
   (slot-modifier <imap-message> 'BODYSTRUCTURE))
