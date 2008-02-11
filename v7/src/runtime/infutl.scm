@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.75 2008/02/10 21:35:46 riastradh Exp $
+$Id: infutl.scm,v 1.76 2008/02/11 07:52:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -759,7 +759,8 @@ USA.
 			  (or (file-exists? (cadar entries))
 			      (begin
 				(set-cdr! (cdar entries) #f)
-				#f)))))
+				#f))
+			  (cddar entries))))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda ()
@@ -809,6 +810,7 @@ USA.
 		  (loop (cdr entries) entries)
 		  (begin
 		    (set-cdr! prev (cdr entries))
+		    (set-cdr! (cdar entries) #f)
 		    (deallocate-temporary-file (cadar entries))
 		    (loop (cdr entries) prev))))))))
 
