@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.113 2008/02/11 23:59:24 riastradh Exp $
+$Id: cmpint.c,v 1.114 2008/02/12 00:16:57 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,7 +142,7 @@ static SCHEME_OBJECT make_compiler_utilities (void);
 static void open_stack_gap (unsigned long, unsigned long);
 static void close_stack_gap (unsigned long, unsigned long);
 static void recover_from_apply_error (SCHEME_OBJECT, unsigned long);
-static void setup_compiled_invocation_from_primitive 
+static bool setup_compiled_invocation_from_primitive 
   (SCHEME_OBJECT, unsigned long);
 static long link_remaining_sections (link_cc_state_t *);
 static void start_linking_cc_block (void);
@@ -545,31 +545,30 @@ compiled_with_interrupt_mask (unsigned long old_mask,
   STACK_PUSH (ULONG_TO_FIXNUM (old_mask));
   PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
   STACK_PUSH (ULONG_TO_FIXNUM (new_mask));
-  setup_compiled_invocation_from_primitive (receiver, 1);
-  /* Pun: receiver is being invoked as a return address.  */
-  STACK_PUSH (receiver);
+  if (setup_compiled_invocation_from_primitive (receiver, 1))
+    /* Pun: receiver is being invoked as a return address.  */
+    STACK_PUSH (receiver);
 }
 
 void
 compiled_with_stack_marker (SCHEME_OBJECT thunk)
 {
   PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
-  setup_compiled_invocation_from_primitive (thunk, 0);
-  /* Pun: thunk is being invoked as a return address.  */
-  STACK_PUSH (thunk);
+  if (setup_compiled_invocation_from_primitive (thunk, 0))
+    /* Pun: thunk is being invoked as a return address.  */
+    STACK_PUSH (thunk);
 }
 
-static void
+static bool
 setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
 					  unsigned long n_args)
 {
   long code = (setup_compiled_invocation (procedure, n_args));
-  if (code != PRIM_DONE)
-    {
-      if (code != PRIM_APPLY_INTERRUPT)
-	PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-      PRIMITIVE_ABORT (code);
-    }
+  if (code == PRIM_DONE)
+    return (true);
+  else if (code != PRIM_APPLY_INTERRUPT)
+    PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
+  return (false);
 }
 
 /* SCHEME_UTILITY procedures
@@ -1435,11 +1434,8 @@ apply_compiled_from_primitive (unsigned long n_args,
 
   if (CC_ENTRY_P (procedure))
     {
-      long code = (setup_compiled_invocation (procedure, n_args));
-      if (code == PRIM_DONE)
+      if (setup_compiled_invocation_from_primitive (procedure, n_args))
         STACK_PUSH (procedure);
-      else if (code != PRIM_APPLY_INTERRUPT)
-        PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
     }
   else
     {
