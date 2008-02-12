@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.115 2008/02/12 19:09:44 cph Exp $
+$Id: cmpint.c,v 1.116 2008/02/12 19:10:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1433,8 +1433,8 @@ apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 
   if (CC_ENTRY_P (procedure))
     {
-      if (setup_compiled_invocation_from_primitive (procedure, n_args))
-        STACK_PUSH (procedure);
+      setup_compiled_invocation_from_primitive (procedure, n_args);
+      STACK_PUSH (procedure);
     }
   else
     {
