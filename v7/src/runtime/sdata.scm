@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sdata.scm,v 14.8 2008/01/30 20:02:35 cph Exp $
+$Id: sdata.scm,v 14.9 2008/02/13 14:25:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,57 +31,69 @@ USA.
 (declare (usual-integrations))
 
 (define (&typed-singleton-cons type element)
-  (system-pair-cons type (unmap-reference-trap element) '()))
+  ((ucode-primitive system-pair-cons) type (unmap-reference-trap element) '()))
 
 (define (&singleton-element singleton)
-  (map-reference-trap (lambda () (system-pair-car singleton))))
+  (map-reference-trap
+   (lambda ()
+     ((ucode-primitive system-pair-car) singleton))))
 
 (define (&singleton-set-element! singleton new-element)
-  (system-pair-set-car! singleton (unmap-reference-trap new-element)))
+  ((ucode-primitive system-pair-set-car!)
+   singleton
+   (unmap-reference-trap new-element)))
 
 (define (&typed-pair-cons type car cdr)
-  (system-pair-cons type
-		    (unmap-reference-trap car)
-		    (unmap-reference-trap cdr)))
+  ((ucode-primitive system-pair-cons)
+   type
+   (unmap-reference-trap car)
+   (unmap-reference-trap cdr)))
 
 (define (&pair-car pair)
-  (map-reference-trap (lambda () (system-pair-car pair))))
+  (map-reference-trap (lambda () ((ucode-primitive system-pair-car) pair))))
 
 (define (&pair-set-car! pair new-car)
-  (system-pair-set-car! pair (unmap-reference-trap new-car)))
+  ((ucode-primitive system-pair-set-car!) pair (unmap-reference-trap new-car)))
 
 (define (&pair-cdr pair)
-  (map-reference-trap (lambda () (system-pair-cdr pair))))
+  (map-reference-trap (lambda () ((ucode-primitive system-pair-cdr) pair))))
 
 (define (&pair-set-cdr! pair new-cdr)
-  (system-pair-set-cdr! pair (unmap-reference-trap new-cdr)))
+  ((ucode-primitive system-pair-set-cdr!) pair (unmap-reference-trap new-cdr)))
 
 (define (&typed-triple-cons type first second third)
   (object-new-type type
-		   (hunk3-cons (unmap-reference-trap first)
-			       (unmap-reference-trap second)
-			       (unmap-reference-trap third))))
+		   ((ucode-primitive hunk3-cons)
+		    (unmap-reference-trap first)
+		    (unmap-reference-trap second)
+		    (unmap-reference-trap third))))
 
 (define (&triple-first triple)
-  (map-reference-trap (lambda () (system-hunk3-cxr0 triple))))
+  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr0) triple))))
 
 (define (&triple-set-first! triple new-first)
-  (system-hunk3-set-cxr0! triple (unmap-reference-trap new-first)))
+  ((ucode-primitive system-hunk3-set-cxr0!)
+   triple
+   (unmap-reference-trap new-first)))
 
 (define (&triple-second triple)
-  (map-reference-trap (lambda () (system-hunk3-cxr1 triple))))
+  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr1) triple))))
 
 (define (&triple-set-second! triple new-second)
-  (system-hunk3-set-cxr1! triple (unmap-reference-trap new-second)))
+  ((ucode-primitive system-hunk3-set-cxr1!)
+   triple
+   (unmap-reference-trap new-second)))
 
 (define (&triple-third triple)
-  (map-reference-trap (lambda () (system-hunk3-cxr2 triple))))
+  (map-reference-trap (lambda () ((ucode-primitive system-hunk3-cxr2) triple))))
 
 (define (&triple-set-third! triple new-third)
-  (system-hunk3-set-cxr2! triple (unmap-reference-trap new-third)))
+  ((ucode-primitive system-hunk3-set-cxr2!)
+   triple
+   (unmap-reference-trap new-third)))
 
 (define (&typed-vector-cons type elements)
-  (system-list->vector
+  ((ucode-primitive system-list-to-vector)
    type
    (let loop ((elements elements))
      (if (null? elements)
@@ -90,13 +102,17 @@ USA.
 	       (loop (cdr elements)))))))
 
 (define (&vector-length vector)
-  (system-vector-length vector))
+  ((ucode-primitive system-vector-size) vector))
 
 (define (&vector-ref vector index)
-  (map-reference-trap (lambda () (system-vector-ref vector index))))
+  (map-reference-trap
+   (lambda ()
+     ((ucode-primitive system-vector-ref) vector index))))
 
 (define (&subvector->list vector start stop)
-  (let loop ((sublist (system-subvector->list vector start stop)))
+  (let loop
+      ((sublist
+	((ucode-primitive system-subvector-to-list) vector start stop)))
     (if (null? sublist)
 	'()
 	(cons (map-reference-trap (lambda () (car sublist)))

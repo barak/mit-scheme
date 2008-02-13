@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: advice.scm,v 14.24 2008/01/30 20:02:28 cph Exp $
+$Id: advice.scm,v 14.25 2008/02/13 14:25:30 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -65,7 +65,8 @@ USA.
 (define (make-advice-hook)
   ;; This inserts the actual procedure in a constant list.
   (make-combination
-   (make-combination car (list (list hook/advised-procedure-wrapper)))
+   (make-combination (ucode-primitive car)
+		     (list (list hook/advised-procedure-wrapper)))
    (list (make-the-environment))))
 
 (define (hook/advised-procedure-wrapper environment)
