@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: module.scm,v 1.9 2008/01/30 20:02:41 cph Exp $
+$Id: module.scm,v 1.10 2008/02/13 23:36:15 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -153,7 +153,9 @@ USA.
 
 (define ((entry-without-procedure entry) . ?)
   ?
-  ((access error ()) "Called dll entry without procedure:" entry))
+  ((access error system-global-environment)
+   "Called dll entry without procedure:"
+   entry))
 
 (define-integrable (module-entry/machine-address entry)
   (or (module-entry/address entry)
@@ -180,13 +182,13 @@ USA.
 
 
 (define (module-entry/error/bad-entry entry)
-  ((access error ())
+  ((access error system-global-environment)
    "Cant find"
    entry 'for (module-entry/name entry)
    'in (module-entry/module entry)))
     
 (define (module-entry/error/bad-module entry)
-  ((access error ())
+  ((access error system-global-environment)
    "Cant load"
    (module-entry/module entry)
    'for 'procedure (module-entry/name entry)))
