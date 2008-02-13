@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.116 2008/02/12 19:10:13 cph Exp $
+$Id: cmpint.c,v 1.117 2008/02/13 04:28:25 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,8 +142,6 @@ static SCHEME_OBJECT make_compiler_utilities (void);
 static void open_stack_gap (unsigned long, unsigned long);
 static void close_stack_gap (unsigned long, unsigned long);
 static void recover_from_apply_error (SCHEME_OBJECT, unsigned long);
-static void setup_compiled_invocation_from_primitive 
-  (SCHEME_OBJECT, unsigned long);
 static long link_remaining_sections (link_cc_state_t *);
 static void start_linking_cc_block (void);
 static void end_linking_cc_block (link_cc_state_t *);
@@ -535,40 +533,6 @@ recover_from_apply_error (SCHEME_OBJECT procedure, unsigned long n_args)
   STACK_PUSH (procedure);
   PUSH_APPLY_FRAME_HEADER (n_args);
   guarantee_interp_return ();
-}
-
-void
-compiled_with_interrupt_mask (unsigned long old_mask,
-			      SCHEME_OBJECT receiver,
-			      unsigned long new_mask)
-{
-  STACK_PUSH (ULONG_TO_FIXNUM (old_mask));
-  PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
-  STACK_PUSH (ULONG_TO_FIXNUM (new_mask));
-  setup_compiled_invocation_from_primitive (receiver, 1);
-  /* Pun: receiver is being invoked as a return address.  */
-  STACK_PUSH (receiver);
-}
-
-void
-compiled_with_stack_marker (SCHEME_OBJECT thunk)
-{
-  PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
-  setup_compiled_invocation_from_primitive (thunk, 0);
-  /* Pun: thunk is being invoked as a return address.  */
-  STACK_PUSH (thunk);
-}
-
-static void
-setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
-					  unsigned long n_args)
-{
-  long code = (setup_compiled_invocation (procedure, n_args));
-  if (code == PRIM_DONE)
-    return;
-  if (code != PRIM_APPLY_INTERRUPT)
-    PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-  PRIMITIVE_ABORT (code);
 }
 
 /* SCHEME_UTILITY procedures
@@ -1399,49 +1363,6 @@ DEFINE_SCHEME_ENTRY (comp_error_restart)
   RESTORE_LAST_RETURN_CODE ();
   (void) STACK_POP ();		/* primitive */
   JUMP_TO_CC_ENTRY (STACK_POP ());
-}
-
-void
-apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
-{
-  while ((OBJECT_TYPE (procedure)) == TC_ENTITY)
-    {
-      {
-	unsigned long frame_size = (n_args + 1);
-	SCHEME_OBJECT data = (MEMORY_REF (procedure, ENTITY_DATA));
-	if ((VECTOR_P (data))
-	    && (frame_size < (VECTOR_LENGTH (data)))
-	    && (CC_ENTRY_P (VECTOR_REF (data, frame_size)))
-	    && ((VECTOR_REF (data, 0))
-		== (VECTOR_REF (fixed_objects, ARITY_DISPATCHER_TAG))))
-	  {
-	    procedure = (VECTOR_REF (data, frame_size));
-	    continue;
-	  }
-      }
-      {
-	SCHEME_OBJECT operator = (MEMORY_REF (procedure, ENTITY_OPERATOR));
-	if (CC_ENTRY_P (operator))
-	  {
-	    STACK_PUSH (procedure);
-	    n_args += 1;
-	    procedure = operator;
-	  }
-      }
-      break;
-    }
-
-  if (CC_ENTRY_P (procedure))
-    {
-      setup_compiled_invocation_from_primitive (procedure, n_args);
-      STACK_PUSH (procedure);
-    }
-  else
-    {
-      STACK_PUSH (procedure);
-      PUSH_APPLY_FRAME_HEADER (n_args);
-      PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-    }
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns
