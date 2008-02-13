@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.28 2008/01/30 20:02:35 cph Exp $
+$Id: scomb.scm,v 14.29 2008/02/13 14:26:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,6 +244,11 @@ USA.
       (object-type? (ucode-type primitive-combination-3) object)))
 
 (define (make-combination operator operands)
+  (if (and (procedure? operator)
+	   (not (primitive-procedure? operator)))
+      (error:wrong-type-argument operator
+				 "operator expression"
+				 'MAKE-COMBINATION))
   (if (and (memq operator combination/constant-folding-operators)
 	   (let loop ((operands operands))
 	     (or (null? operands)
