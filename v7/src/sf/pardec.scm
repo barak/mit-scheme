@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.20 2008/02/10 04:42:41 cph Exp $
+$Id: pardec.scm,v 4.21 2008/02/13 06:21:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -216,13 +216,7 @@ USA.
 			  usual-integrations/constant-values)
 	  (for-each (constructor 'INTEGRATE)
 		    constant-names
-		    constant-values))
-	(receive (primitive-names primitive-values)
-	    (do-deletions usual-integrations/primitive-names
-			  usual-integrations/primitive-values)
-	  (for-each (constructor 'INTEGRATE-OPERATOR)
-		    primitive-names
-		    primitive-values)))
+		    constant-values)))
       (map* declarations
 	    (let ((top-level-block
 		   (let loop ((block block))
