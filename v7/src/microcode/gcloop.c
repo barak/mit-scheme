@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.55 2008/01/30 20:02:13 cph Exp $
+$Id: gcloop.c,v 9.56 2008/02/13 23:26:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -205,6 +205,14 @@ save_tospace (gc_walk_proc_t * proc, void * ctx)
   ok = (proc (tospace_start, tospace_next, ctx));
   CLOSE_TOSPACE ();
   return (ok);
+}
+
+void
+discard_tospace (void)
+{
+  GUARANTEE_TOSPACE_OPEN ();
+  CHECK_NEWSPACE_SYNC ();
+  CLOSE_TOSPACE ();
 }
 
 bool

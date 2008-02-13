@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasdump.c,v 9.73 2008/01/30 20:02:12 cph Exp $
+$Id: fasdump.c,v 9.74 2008/02/13 23:26:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -72,6 +72,7 @@ typedef struct
 } fasl_file_info_t;
 
 static void close_fasl_file (void *);
+static void abort_fasdump (void *);
 static gc_walk_proc_t save_tospace_write;
 
 static fasl_header_t fasl_header;
@@ -139,6 +140,8 @@ at by compiled code are ignored (and discarded).")
   transaction_record_action (tat_always, close_fasl_file, (&ff_info));
 
   open_tospace (heap_start);
+  /* This must be _before_ the call to initialize_fixups(): */
+  transaction_record_action (tat_abort, abort_fasdump, 0);
   initialize_fixups ();
 
   new_heap_start = (get_newspace_ptr ());
@@ -191,6 +194,12 @@ close_fasl_file (void * p)
   fasl_file_info_t * ff_info = p;
   if (!close_fasl_output_file (ff_info->handle))
     OS_file_remove (ff_info->filename);
+}
+
+static void
+abort_fasdump (void * p)
+{
+  discard_tospace ();
 }
 
 static bool
