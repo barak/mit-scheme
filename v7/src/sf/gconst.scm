@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.40 2008/02/10 06:11:59 cph Exp $
+$Id: gconst.scm,v 4.41 2008/02/13 23:30:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,6 +37,7 @@ USA.
     CHAR:NEWLINE
     FALSE
     LAMBDA-TAG:UNNAMED			;needed for cold load
+    SYSTEM-GLOBAL-ENVIRONMENT		;suppresses warnings about (access ...)
     THE-EMPTY-STREAM
     TRUE
     UNDEFINED-CONDITIONAL-BRANCH
