@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.21 2008/02/13 14:25:33 cph Exp $
+$Id: urtrap.scm,v 14.22 2008/02/14 02:11:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -160,7 +160,7 @@ USA.
 	      (fix:= 15 (primitive-object-ref (getter) 0))))))
 
 (define (make-macro-reference-trap-expression transformer)
-  (make-combination primitive-object-set-type
+  (make-combination (ucode-primitive primitive-object-set-type)
 		    (list (ucode-type reference-trap)
 			  (make-combination (ucode-primitive cons)
 					    (list 15 transformer)))))

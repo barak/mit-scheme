@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.44 2008/01/30 20:01:44 cph Exp $
+$Id: fggen.scm,v 4.45 2008/02/14 02:12:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -589,7 +589,9 @@ USA.
 		(if (= n 1)
 		    expression
 		    (loop (scode/make-combination
-			   (if (= (remainder n 2) 1) car cdr)
+			   (if (= (remainder n 2) 1)
+			       (ucode-primitive car)
+			       (ucode-primitive cdr))
 			   (list expression))
 			  (quotient n 2))))))
 	    (else

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xform.scm,v 1.18 2008/01/30 20:02:07 cph Exp $
+$Id: xform.scm,v 1.19 2008/02/14 02:11:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -64,7 +64,8 @@ USA.
   (let ((entry (assq (scode-variable-name variable) transforms)))
     (if (not entry)
 	variable
-	(make-combination vector-ref (list name-of-self (cdr entry))))))
+	(make-combination (ucode-primitive vector-ref)
+			  (list name-of-self (cdr entry))))))
 
 (define (transform-assignment transforms assignment)
   (assignment-components assignment
@@ -73,7 +74,7 @@ USA.
 	    (value (transform-expression transforms value)))
 	(if (not entry)
 	    (make-assignment name value)
-	    (make-combination vector-set!
+	    (make-combination (ucode-primitive vector-set!)
 			      (list name-of-self
 				    (cdr entry)
 				    value)))))))

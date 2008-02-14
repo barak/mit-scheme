@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syerly.scm,v 1.17 2008/01/30 20:01:42 cph Exp $
+$Id: syerly.scm,v 1.18 2008/02/14 02:12:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -53,7 +53,7 @@ USA.
 			       ENTRY-POINT LABEL BLOCK-OFFSET))
 		(if-expanded
 		 (scode/make-combination
-		  (scode/make-variable  'DIRECTIVE->INSTRUCTION-SEQUENCE)
+		  (scode/make-variable 'DIRECTIVE->INSTRUCTION-SEQUENCE)
 		  operands)))
 	       (else
 		(let ((place (assq (car instruction) early-instructions)))
@@ -167,7 +167,9 @@ USA.
 		     (if (not (null? (scode/constant-value (cadr operands))))
 			 (error "CONS-SYNTAX-EXPANDER: bad tail"
 				(cadr operands)))
-		     (if-expanded (scode/make-combination cons operands)))))))
+		     (if-expanded
+		      (scode/make-combination (ucode-primitive cons)
+					      operands)))))))
        (if (and (scode/constant? (car operands))
 		(bit-string? (scode/constant-value (car operands)))
 		(scode/combination? (cadr operands)))
@@ -181,7 +183,7 @@ USA.
 		   (if-expanded
 		    (scode/make-combination
 		     (if (scode/constant? (cadr inner-operands))
-			 cons
+			 (ucode-primitive cons)
 			 operator)
 		     (cons (instruction-append
 			    (scode/constant-value (car operands))
@@ -233,6 +235,6 @@ USA.
 		     (list (car binding))
 		     (list (cdr binding))
 		     (scode/make-combination
-		      cons
+		      (ucode-primitive cons)
 		      (list rest
 			    (scode/make-variable (car binding))))))))))))))

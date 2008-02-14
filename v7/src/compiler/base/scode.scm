@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.19 2008/01/30 20:01:43 cph Exp $
+$Id: scode.scm,v 4.20 2008/02/14 02:12:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -123,5 +123,6 @@ USA.
   (scode/make-absolute-combination
    'ERROR-PROCEDURE
    (list message
-	 (scode/make-combination cons (list operand '()))
+	 (scode/make-combination (ucode-primitive cons)
+				 (list operand '()))
 	 (scode/make-the-environment))))
