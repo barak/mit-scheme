@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.112 2008/01/30 20:06:12 cph Exp $
+@comment $Id: user.texinfo,v 1.113 2008/02/14 06:48:45 cph Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.92
@@ -2570,9 +2570,9 @@ Replacements:
 @example
 @group
 (apply @var{f} @var{x} @var{y} @var{z} @var{w})
-   @expansion{} ((access apply ()) @var{f} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))))
+   @expansion{} ((access apply #f) @var{f} (cons @var{x} (cons @var{y} (cons @var{z} @var{w}))))
 (apply @var{f} @var{x} @var{y})
-   @expansion{} ((access apply ()) @var{f} (cons @var{x} @var{y}))
+   @expansion{} ((access apply #f) @var{f} (cons @var{x} @var{y}))
 (apply @var{f} @var{x}) @expansion{} (apply @var{f} @var{x})
 (apply @var{f}) @expansion{} (apply @var{f})
 (apply) @expansion{} (apply)
