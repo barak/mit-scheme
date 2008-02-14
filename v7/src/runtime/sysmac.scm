@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.18 2008/02/10 06:14:17 cph Exp $
+$Id: sysmac.scm,v 14.19 2008/02/14 02:35:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,8 +36,18 @@ USA.
      environment
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
-	      `(DEFINE-INTEGRABLE ,variable-name
-		 ,(apply make-primitive-procedure primitive-args)))))
+	      (let ((primitive
+		     (apply make-primitive-procedure primitive-args)))
+		(let ((arity (procedure-arity primitive)))
+		  (if (eqv? (procedure-arity-min arity)
+			    (procedure-arity-max arity))
+		      (let ((names
+			     (map (lambda (n) (symbol 'a n))
+				  (iota (procedure-arity-min arity) 1))))
+			`(DEFINE-INTEGRABLE (,variable-name ,@names)
+			   (,primitive ,@names)))
+		      `(DEFINE-INTEGRABLE ,variable-name
+			 ,primitive)))))))
        `(BEGIN ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
@@ -46,24 +56,6 @@ USA.
 			      (else
 			       (primitive-definition (car name) (cdr name)))))
 		      (cdr form)))))))
-
-(define-syntax define-unary-primitive
-  (sc-macro-transformer
-   (lambda (form env)
-     env
-     (if (syntax-match? '(SYMBOL SYMBOL) (cdr form))
-	 `(DEFINE-INTEGRABLE (,(cadr form) X)
-	    ((ucode-primitive ,(caddr form)) X))
-	 (ill-formed-syntax form)))))
-
-(define-syntax define-binary-primitive
-  (sc-macro-transformer
-   (lambda (form env)
-     env
-     (if (syntax-match? '(SYMBOL SYMBOL) (cdr form))
-	 `(DEFINE-INTEGRABLE (,(cadr form) X Y)
-	    ((ucode-primitive ,(caddr form)) X Y))
-	 (ill-formed-syntax form)))))
 
 (define-syntax ucode-type
   (sc-macro-transformer
