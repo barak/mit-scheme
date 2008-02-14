@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dassm3.scm,v 4.14 2008/01/30 20:01:48 cph Exp $
+$Id: dassm3.scm,v 4.15 2008/02/14 00:45:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -398,7 +398,7 @@ USA.
 (define (%Bcc/%BSR)
   (let ((cc (decode-cc (extract *ir 8 12)))
 	(displacement (extract+ *ir 0 8)))
-    ((access append ())
+    ((access append system-global-environment)
      (cond ((eq? cc 'T) '(BRA))
 	   ((eq? cc 'F) '(BSR))
 	   (else `(B , cc)))
@@ -642,7 +642,7 @@ USA.
 	  ((= (extract *ir 7 9) #b01)
 	   (let ((float-cc (decode-float-cc (extract *ir 0 6)))
 		 (size (extract *ir 6 7)))
-	     ((access append ())
+	     ((access append system-global-environment)
 	      `(FB ,float-cc)
 	      (if (= size 0)
 		  `(W ,(make-pc-relative (lambda () (fetch-immediate 'W))))

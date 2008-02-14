@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 1.22 2008/01/30 20:02:39 cph Exp $
+$Id: macros.scm,v 1.23 2008/02/14 00:45:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -189,7 +189,7 @@ USA.
 	`(,(close-syntax 'LAMBDA environment) ,bvl ,@body))))
 
 (define (absolute name environment)
-  (close-syntax `(ACCESS ,name #F) environment))
+  (close-syntax `(ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT) environment))
 
 (define (extract-generic-definitions! slot-arguments name separator environment
 				      lose)
