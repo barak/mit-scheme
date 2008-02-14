@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.108 2008/01/30 20:02:13 cph Exp $
+$Id: interp.c,v 9.109 2008/02/14 06:47:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -250,6 +250,8 @@ abort_to_interpreter_argument (void)
 {
   return (interpreter_throw_argument);
 }
+
+long prim_apply_error_code;
 
 void
 Interpret (void)
@@ -286,6 +288,11 @@ Interpret (void)
       PROCEED_AFTER_PRIMITIVE ();
       PREPARE_APPLY_INTERRUPT ();
       SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+
+    case PRIM_APPLY_ERROR:
+      PROCEED_AFTER_PRIMITIVE ();
+      Do_Micro_Error (prim_apply_error_code, true);
+      goto internal_apply;
 
     case PRIM_DO_EXPRESSION:
       SET_VAL (GET_EXP);

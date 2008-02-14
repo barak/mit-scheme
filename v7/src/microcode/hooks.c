@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.72 2008/02/13 04:28:27 cph Exp $
+$Id: hooks.c,v 9.73 2008/02/14 06:47:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -97,6 +97,15 @@ Invokes PROCEDURE on the arguments in ARG-LIST.")
 	}
       stack_pointer = sp;
     }
+
+#ifdef CC_SUPPORT_P
+    if (CC_ENTRY_P (STACK_REF (n_args)))
+      {
+	apply_compiled_from_primitive (n_args, procedure);
+	UN_POP_PRIMITIVE_FRAME (2);
+	PRIMITIVE_RETURN (UNSPECIFIC);
+      }
+#endif
 
     STACK_PUSH (procedure);
     PUSH_APPLY_FRAME_HEADER (n_args);
@@ -629,19 +638,30 @@ and MARKER2 is data identifying the marker instance.")
   PRIMITIVE_HEADER (3);
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
-    canonicalize_primitive_context ();
-    (void) STACK_POP ();
-    STACK_PUSH (MAKE_RETURN_CODE (RC_STACK_MARKER));
-    Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
-    STACK_PUSH (thunk);
-    PUSH_APPLY_FRAME_HEADER (0);
-    Pushed ();
-    PRIMITIVE_ABORT (PRIM_APPLY);
-    /*NOTREACHED*/
+#ifdef CC_SUPPORT_P
+    if ((CC_ENTRY_P (STACK_REF (3))) && (CC_ENTRY_P (thunk)))
+      {
+	(void) STACK_POP ();
+	compiled_with_stack_marker (thunk);
+	UN_POP_PRIMITIVE_FRAME (3);
+      }
+    else
+#endif
+      {
+	canonicalize_primitive_context ();
+	(void) STACK_POP ();
+	STACK_PUSH (MAKE_RETURN_CODE (RC_STACK_MARKER));
+	Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
+	STACK_PUSH (thunk);
+	PUSH_APPLY_FRAME_HEADER (0);
+	Pushed ();
+	PRIMITIVE_ABORT (PRIM_APPLY);
+	/*NOTREACHED*/
+      }
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("WITH-INTERRUPT-MASK", Prim_with_interrupt_mask, 2, 2,
 		  "(MASK RECEIVER)\n\
 Set the interrupt mask to MASK for the duration of the call to RECEIVER.\n\
@@ -670,16 +690,30 @@ static void
 with_new_interrupt_mask (unsigned long new_mask)
 {
   SCHEME_OBJECT receiver = (ARG_REF (2));
-  canonicalize_primitive_context ();
-  POP_PRIMITIVE_FRAME (2);
-  preserve_interrupt_mask ();
-  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
-  STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_MASK));
-  STACK_PUSH (receiver);
-  PUSH_APPLY_FRAME_HEADER (1);
-  Pushed ();
-  SET_INTERRUPT_MASK (new_mask);
-  PRIMITIVE_ABORT (PRIM_APPLY);
+
+#ifdef CC_SUPPORT_P
+  if ((CC_ENTRY_P (STACK_REF (2))) && (CC_ENTRY_P (receiver)))
+    {
+      unsigned long current_mask = GET_INT_MASK;
+      POP_PRIMITIVE_FRAME (2);
+      compiled_with_interrupt_mask (current_mask, receiver, new_mask);
+      UN_POP_PRIMITIVE_FRAME (2);
+      SET_INTERRUPT_MASK (new_mask);
+    }
+  else
+#endif
+    {
+      canonicalize_primitive_context ();
+      POP_PRIMITIVE_FRAME (2);
+      preserve_interrupt_mask ();
+      Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
+      STACK_PUSH (ULONG_TO_FIXNUM (GET_INT_MASK));
+      STACK_PUSH (receiver);
+      PUSH_APPLY_FRAME_HEADER (1);
+      Pushed ();
+      SET_INTERRUPT_MASK (new_mask);
+      PRIMITIVE_ABORT (PRIM_APPLY);
+    }
 }
 
 /* History */

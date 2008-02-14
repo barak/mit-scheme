@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.h,v 9.55 2008/01/30 20:02:13 cph Exp $
+$Id: interp.h,v 9.56 2008/02/14 06:47:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -155,6 +155,7 @@ extern void abort_to_interpreter (int) NORETURN;
 extern int abort_to_interpreter_argument (void);
 
 extern interpreter_state_t interpreter_state;
+extern long prim_apply_error_code;
 extern void bind_interpreter_state (interpreter_state_t);
 extern void unbind_interpreter_state (interpreter_state_t);
 

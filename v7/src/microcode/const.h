@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: const.h,v 9.57 2008/01/30 20:02:11 cph Exp $
+$Id: const.h,v 9.58 2008/02/14 06:47:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -69,7 +69,7 @@ USA.
 #define PRIM_POP_RETURN			-7
 #define PRIM_TOUCH			-8
 #define PRIM_APPLY_INTERRUPT		-9
-/* #define PRIM_REENTER			-10 */
+#define PRIM_APPLY_ERROR		-10
 #define PRIM_NO_TRAP_POP_RETURN		-11
 
 #define ABORT_NAME_TABLE						\
