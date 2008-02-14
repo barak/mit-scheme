@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.118 2008/02/14 06:47:32 cph Exp $
+$Id: cmpint.c,v 1.119 2008/02/14 08:20:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1434,7 +1434,6 @@ setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
     {
       if (code != PRIM_APPLY_INTERRUPT)
 	{
-	  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
 	  prim_apply_error_code = code;
 	  code = PRIM_APPLY_ERROR;
 	}
