@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.61 2008/01/30 20:02:37 cph Exp $
+$Id: x11graph.scm,v 1.62 2008/02/14 03:34:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -208,7 +208,8 @@ USA.
   (initialize-colormap-datatype))
 
 (define (x-graphics/available?)
-  (implemented-primitive-procedure? x-graphics-open-window))
+  (implemented-primitive-procedure?
+   (ucode-primitive x-graphics-open-window 3)))
 
 (define x-graphics-device-type)
 

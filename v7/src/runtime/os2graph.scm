@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.28 2008/01/30 20:02:33 cph Exp $
+$Id: os2graph.scm,v 1.29 2008/02/14 03:34:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -207,7 +207,7 @@ USA.
 ;;;; Standard Operations
 
 (define (os2-graphics/available?)
-  (implemented-primitive-procedure? os2win-open))
+  (implemented-primitive-procedure? (ucode-primitive os2win-open 2)))
 
 (define (os2-graphics/open descriptor->device #!optional width height)
   (if (not event-descriptor)

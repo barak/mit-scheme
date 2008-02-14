@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bios.scm,v 1.10 2008/01/30 20:01:58 cph Exp $
+$Id: bios.scm,v 1.11 2008/02/14 03:34:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -57,7 +57,8 @@ USA.
 		 y-size)))
 
 (define (bios-available?)
-  (and (implemented-primitive-procedure? bios:can-use-bios?)
+  (and (implemented-primitive-procedure?
+	(ucode-primitive bios:can-use-bios? 0))
        (bios:can-use-bios?)
        (let ((term (get-environment-variable "TERM")))
 	 (and term

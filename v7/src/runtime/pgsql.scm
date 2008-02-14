@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.14 2008/01/30 20:02:33 cph Exp $
+$Id: pgsql.scm,v 1.15 2008/02/14 03:34:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -148,7 +148,7 @@ USA.
 
 (define (pgsql-available?)
   (load-library-object-file "prpgsql" #f)
-  (and (implemented-primitive-procedure? pq-connect-db)
+  (and (implemented-primitive-procedure? (ucode-primitive pq-connect-db 2))
        (begin
 	 (if (not pgsql-initialized?)
 	     (begin

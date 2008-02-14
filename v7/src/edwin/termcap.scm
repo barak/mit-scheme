@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: termcap.scm,v 1.12 2008/01/30 20:02:06 cph Exp $
+$Id: termcap.scm,v 1.13 2008/02/14 03:34:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -131,7 +131,8 @@ USA.
       (let ((x-size (output-port/x-size console-output-port))
 	    (y-size (output-port/y-size console-output-port)))
 	(make-ansi-terminal-description x-size y-size))
-      (and (implemented-primitive-procedure? termcap-initialize)
+      (and (implemented-primitive-procedure?
+	    (ucode-primitive termcap-initialize 1))
 	   (termcap-initialize terminal-type-name)
 	   (let ((supdup? (string=? terminal-type-name "supdup"))
 		 (tn-standout-marker-width (termcap-get-number "sg"))
