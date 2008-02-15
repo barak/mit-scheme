@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.645 2008/02/14 09:51:36 riastradh Exp $
+$Id: runtime.pkg,v 14.646 2008/02/15 05:06:01 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4187,8 +4187,6 @@ USA.
 	  define-guarantee)
   (export (runtime)
 	  define-primitives
-	  define-unary-primitive
-	  define-binary-primitive
 	  ucode-primitive
 	  ucode-return-address
 	  ucode-type))
