@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.48 2008/01/30 20:02:36 cph Exp $
+$Id: thread.scm,v 1.49 2008/02/15 04:19:00 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -955,7 +955,7 @@ USA.
 		   ((ucode-primitive request-interrupts! 1)
 		    interrupt-bit/timer)
 		   (start
-		    (if timer-interval
+		    (if (and consider-non-timers? timer-interval)
 			(min next-event-time (+ now timer-interval))
 			next-event-time)))))
 	    ((and consider-non-timers?
