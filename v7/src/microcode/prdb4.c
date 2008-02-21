@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prdb4.c,v 1.10 2008/01/30 20:02:18 cph Exp $
+$Id: prdb4.c,v 1.11 2008/02/21 03:54:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,25 +77,25 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
 	   Make no changes here!  */
 
 	RC_TO_NAME_CASE (DB_ALREADY_ABORTED, "db_already_aborted");
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_BUFFER_SMALL, "db_buffer_small");
 #endif
 	RC_TO_NAME_CASE (DB_DELETED, "db_deleted");
 	RC_TO_NAME_CASE (DB_DONOTINDEX, "db_donotindex");
-#if (UNIFIED_VERSION >= 040600)
+#if (UNIFIED_VERSION >= 0x040600)
 	RC_TO_NAME_CASE (DB_EVENT_NOT_HANDLED, "db_event_not_handled");
 #endif
-#if (UNIFIED_VERSION < 040300)
+#if (UNIFIED_VERSION < 0x040300)
 	RC_TO_NAME_CASE (DB_FILEOPEN, "db_fileopen");
 #endif
 	RC_TO_NAME_CASE (DB_KEYEMPTY, "db_keyempty");
 	RC_TO_NAME_CASE (DB_KEYEXIST, "db_keyexist");
 	RC_TO_NAME_CASE (DB_LOCK_DEADLOCK, "db_lock_deadlock");
-#if (UNIFIED_VERSION < 040400)
+#if (UNIFIED_VERSION < 0x040400)
 	RC_TO_NAME_CASE (DB_LOCK_NOTEXIST, "db_lock_notexist");
 #endif
 	RC_TO_NAME_CASE (DB_LOCK_NOTGRANTED, "db_lock_notgranted");
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_LOG_BUFFER_FULL, "db_log_buffer_full");
 #endif
 	RC_TO_NAME_CASE (DB_NEEDSPLIT, "db_needsplit");
@@ -105,41 +105,41 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
 	RC_TO_NAME_CASE (DB_NOTFOUND, "db_notfound");
 	RC_TO_NAME_CASE (DB_OLD_VERSION, "db_old_version");
 	RC_TO_NAME_CASE (DB_PAGE_NOTFOUND, "db_page_notfound");
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
 	RC_TO_NAME_CASE (DB_REP_BULKOVF, "db_rep_bulkovf");
 #endif
 	RC_TO_NAME_CASE (DB_REP_DUPMASTER, "db_rep_dupmaster");
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_REP_EGENCHG, "db_rep_egenchg");
 #endif
 	RC_TO_NAME_CASE (DB_REP_HANDLE_DEAD, "db_rep_handle_dead");
 	RC_TO_NAME_CASE (DB_REP_HOLDELECTION, "db_rep_holdelection");
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
 	RC_TO_NAME_CASE (DB_REP_IGNORE, "db_rep_ignore");
 #endif
 	RC_TO_NAME_CASE (DB_REP_ISPERM, "db_rep_isperm");
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
 	RC_TO_NAME_CASE (DB_REP_JOIN_FAILURE, "db_rep_join_failure");
 #endif
-#if (UNIFIED_VERSION >= 040600)
+#if (UNIFIED_VERSION >= 0x040600)
 	RC_TO_NAME_CASE (DB_REP_LEASE_EXPIRED, "db_rep_lease_expired");
 #endif
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
 	RC_TO_NAME_CASE (DB_REP_LOCKOUT, "db_rep_lockout");
 #endif
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_REP_LOGREADY, "db_rep_logready");
 #endif
 	RC_TO_NAME_CASE (DB_REP_NEWMASTER, "db_rep_newmaster");
 	RC_TO_NAME_CASE (DB_REP_NEWSITE, "db_rep_newsite");
 	RC_TO_NAME_CASE (DB_REP_NOTPERM, "db_rep_notperm");
-#if (UNIFIED_VERSION < 040300)
+#if (UNIFIED_VERSION < 0x040300)
 	RC_TO_NAME_CASE (DB_REP_OUTDATED, "db_rep_outdated");
 #endif
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_REP_PAGEDONE, "db_rep_pagedone");
 #endif
-#if (UNIFIED_VERSION >= 040300) && (UNIFIED_VERSION < 040500)
+#if (UNIFIED_VERSION >= 0x040300) && (UNIFIED_VERSION < 0x040500)
 	RC_TO_NAME_CASE (DB_REP_STARTUPDONE, "db_rep_startupdone");
 #endif
 	RC_TO_NAME_CASE (DB_REP_UNAVAIL, "db_rep_unavail");
@@ -151,7 +151,7 @@ DEFINE_PRIMITIVE ("DB4:RC->NAME", Prim_db4_rc_to_name, 1, 1, 0)
 	RC_TO_NAME_CASE (DB_TXN_CKP, "db_txn_ckp");
 	RC_TO_NAME_CASE (DB_VERIFY_BAD, "db_verify_bad");
 	RC_TO_NAME_CASE (DB_VERIFY_FATAL, "db_verify_fatal");
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
 	RC_TO_NAME_CASE (DB_VERSION_MISMATCH, "db_version_mismatch");
 #endif
       }
@@ -180,25 +180,25 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
        Make no changes here!  */
 
     NAME_TO_RC_CASE ("db_already_aborted", DB_ALREADY_ABORTED);
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_buffer_small", DB_BUFFER_SMALL);
 #endif
     NAME_TO_RC_CASE ("db_deleted", DB_DELETED);
     NAME_TO_RC_CASE ("db_donotindex", DB_DONOTINDEX);
-#if (UNIFIED_VERSION >= 040600)
+#if (UNIFIED_VERSION >= 0x040600)
     NAME_TO_RC_CASE ("db_event_not_handled", DB_EVENT_NOT_HANDLED);
 #endif
-#if (UNIFIED_VERSION < 040300)
+#if (UNIFIED_VERSION < 0x040300)
     NAME_TO_RC_CASE ("db_fileopen", DB_FILEOPEN);
 #endif
     NAME_TO_RC_CASE ("db_keyempty", DB_KEYEMPTY);
     NAME_TO_RC_CASE ("db_keyexist", DB_KEYEXIST);
     NAME_TO_RC_CASE ("db_lock_deadlock", DB_LOCK_DEADLOCK);
-#if (UNIFIED_VERSION < 040400)
+#if (UNIFIED_VERSION < 0x040400)
     NAME_TO_RC_CASE ("db_lock_notexist", DB_LOCK_NOTEXIST);
 #endif
     NAME_TO_RC_CASE ("db_lock_notgranted", DB_LOCK_NOTGRANTED);
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_log_buffer_full", DB_LOG_BUFFER_FULL);
 #endif
     NAME_TO_RC_CASE ("db_needsplit", DB_NEEDSPLIT);
@@ -208,41 +208,41 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
     NAME_TO_RC_CASE ("db_notfound", DB_NOTFOUND);
     NAME_TO_RC_CASE ("db_old_version", DB_OLD_VERSION);
     NAME_TO_RC_CASE ("db_page_notfound", DB_PAGE_NOTFOUND);
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
     NAME_TO_RC_CASE ("db_rep_bulkovf", DB_REP_BULKOVF);
 #endif
     NAME_TO_RC_CASE ("db_rep_dupmaster", DB_REP_DUPMASTER);
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_rep_egenchg", DB_REP_EGENCHG);
 #endif
     NAME_TO_RC_CASE ("db_rep_handle_dead", DB_REP_HANDLE_DEAD);
     NAME_TO_RC_CASE ("db_rep_holdelection", DB_REP_HOLDELECTION);
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
     NAME_TO_RC_CASE ("db_rep_ignore", DB_REP_IGNORE);
 #endif
     NAME_TO_RC_CASE ("db_rep_isperm", DB_REP_ISPERM);
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
     NAME_TO_RC_CASE ("db_rep_join_failure", DB_REP_JOIN_FAILURE);
 #endif
-#if (UNIFIED_VERSION >= 040600)
+#if (UNIFIED_VERSION >= 0x040600)
     NAME_TO_RC_CASE ("db_rep_lease_expired", DB_REP_LEASE_EXPIRED);
 #endif
-#if (UNIFIED_VERSION >= 040400)
+#if (UNIFIED_VERSION >= 0x040400)
     NAME_TO_RC_CASE ("db_rep_lockout", DB_REP_LOCKOUT);
 #endif
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_rep_logready", DB_REP_LOGREADY);
 #endif
     NAME_TO_RC_CASE ("db_rep_newmaster", DB_REP_NEWMASTER);
     NAME_TO_RC_CASE ("db_rep_newsite", DB_REP_NEWSITE);
     NAME_TO_RC_CASE ("db_rep_notperm", DB_REP_NOTPERM);
-#if (UNIFIED_VERSION < 040300)
+#if (UNIFIED_VERSION < 0x040300)
     NAME_TO_RC_CASE ("db_rep_outdated", DB_REP_OUTDATED);
 #endif
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_rep_pagedone", DB_REP_PAGEDONE);
 #endif
-#if (UNIFIED_VERSION >= 040300) && (UNIFIED_VERSION < 040500)
+#if (UNIFIED_VERSION >= 0x040300) && (UNIFIED_VERSION < 0x040500)
     NAME_TO_RC_CASE ("db_rep_startupdone", DB_REP_STARTUPDONE);
 #endif
     NAME_TO_RC_CASE ("db_rep_unavail", DB_REP_UNAVAIL);
@@ -254,7 +254,7 @@ DEFINE_PRIMITIVE ("DB4:NAME->RC", Prim_db4_name_to_rc, 1, 1, 0)
     NAME_TO_RC_CASE ("db_txn_ckp", DB_TXN_CKP);
     NAME_TO_RC_CASE ("db_verify_bad", DB_VERIFY_BAD);
     NAME_TO_RC_CASE ("db_verify_fatal", DB_VERIFY_FATAL);
-#if (UNIFIED_VERSION >= 040300)
+#if (UNIFIED_VERSION >= 0x040300)
     NAME_TO_RC_CASE ("db_version_mismatch", DB_VERSION_MISMATCH);
 #endif
   }
