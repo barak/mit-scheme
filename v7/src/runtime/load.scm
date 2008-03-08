@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.102 2008/01/30 20:02:32 cph Exp $
+$Id: load.scm,v 14.103 2008/03/08 17:43:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -147,8 +147,8 @@ USA.
 		  (try-object-file pathname))
 	      (or (try-fasl-file pathname)
 		  (try-fasl-file (pathname-new-type pathname "com"))
-		  (try-fasl-file (pathname-new-type pathname "bin"))
-		  (try-object-file (pathname-new-type pathname "so"))))))
+		  (try-object-file (pathname-new-type pathname "so"))
+		  (try-fasl-file (pathname-new-type pathname "bin"))))))
     (if thunk
 	(receive (pathname loader notifier) (thunk)
 	  (values pathname
