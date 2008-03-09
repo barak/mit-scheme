@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2proc.c,v 1.13 2008/01/30 20:02:17 cph Exp $
+$Id: os2proc.c,v 1.14 2008/03/09 20:24:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -70,7 +70,7 @@ static void allocate_process_abort (void *);
 static void child_wait_thread (void *);
 static Tprocess find_process (PID);
 
-size_t OS_process_table_size;
+Tprocess OS_process_table_size;
 enum process_jc_status scheme_jc_status;
 
 static HMTX process_lock;

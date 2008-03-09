@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.14 2008/01/30 20:02:16 cph Exp $
+$Id: os2io.c,v 1.15 2008/03/09 20:24:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,7 +35,7 @@ extern void OS2_initialize_pipe_channel (Tchannel);
 static enum channel_type handle_channel_type (LHANDLE);
 static void handle_noinherit (LHANDLE);
 
-size_t OS_channel_table_size;
+Tchannel OS_channel_table_size;
 struct channel * OS2_channel_table;
 Tchannel * OS2_channel_pointer_table;
 const int OS_have_select_p = 1;
