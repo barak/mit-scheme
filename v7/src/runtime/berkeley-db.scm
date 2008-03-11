@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: berkeley-db.scm,v 1.8 2008/02/14 03:34:07 cph Exp $
+$Id: berkeley-db.scm,v 1.9 2008/03/11 04:00:30 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -210,7 +210,7 @@ USA.
 
 (define (guarantee-bdb-available)
   (if (not (bdb-available?))
-      (error "No Berkeley DB support in this sytem.")))
+      (error "This Scheme system was built without Berkeley DB support.")))
 
 (define (create-bdb env flags)
   (guarantee-bdb-available)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: crypto.scm,v 14.21 2008/01/30 20:02:29 cph Exp $
+$Id: crypto.scm,v 14.22 2008/03/11 03:59:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -302,7 +302,7 @@ USA.
 	((%md5-available?)
 	 (%md5-file filename))
 	(else
-	 (error "No MD5 support available."))))
+	 (error "This Scheme system was built without MD5 support."))))
 
 (define (%md5-file filename)
   (call-with-binary-input-file filename
@@ -332,7 +332,7 @@ USA.
 	((%md5-available?)
 	 (%md5-substring string start end))
 	(else
-	 (error "No MD5 support available."))))
+	 (error "This Scheme system was built without MD5 support."))))
 
 (define (%md5-substring string start end)
   (let ((context ((ucode-primitive md5-init 0))))

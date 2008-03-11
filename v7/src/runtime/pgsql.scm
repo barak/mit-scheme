@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pgsql.scm,v 1.15 2008/02/14 03:34:09 cph Exp $
+$Id: pgsql.scm,v 1.16 2008/03/11 03:57:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -167,7 +167,7 @@ USA.
 
 (define (guarantee-pgsql-available)
   (if (not (pgsql-available?))
-      (error "No PostgreSQL support in this sytem.")))
+      (error "This Scheme system was built without PostgreSQL support.")))
 
 (define condition-type:pgsql-error
   (make-condition-type 'PGSQL-ERROR condition-type:error '()
