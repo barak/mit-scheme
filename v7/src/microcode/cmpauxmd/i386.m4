@@ -1,6 +1,6 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.69 2008/01/30 20:02:23 cph Exp $
+### $Id: i386.m4,v 1.70 2008/04/25 01:19:04 cph Exp $
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -970,56 +970,15 @@ define_hook_label(generic_$1)
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(eax))
 	OP(shr,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	OP(cmp,b)	TW(REG(al),REG(cl))
+	jne	asm_generic_$1_fail
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
-	je	asm_generic_$1_fix
-	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
-	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
-	je	asm_generic_$1_flo_flo
-	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
-	jne	asm_generic_$1_fail
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
-	OP(and,l)	TW(rmask,REG(edx))
-	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ebx))
-	OP(fld,l)	DOF(4,REG(edx))			# fldd
-	OP(mov,l)	TW(REG(ebx),IND(rfree))
-	OP(ficomp,l)	IND(rfree)
-	fstsw	REG(ax)
-	sahf
-	$5	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
 
-asm_generic_$1_fix:
-	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
-	je	asm_generic_$1_fix_flo
-	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
-	jne	asm_generic_$1_fail
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ebx))
 	OP(cmp,l)	TW(REG(ebx),REG(edx))
 	$3	asm_generic_return_sharp_t	
-	jmp	asm_generic_return_sharp_f
-
-asm_generic_$1_flo_flo:
-	OP(and,l)	TW(rmask,REG(edx))
-	OP(and,l)	TW(rmask,REG(ebx))
-	OP(fld,l)	DOF(4,REG(edx))			# fldd
-	OP(fcomp,l)	DOF(4,REG(ebx))
-	fstsw	REG(ax)
-	sahf
-	$6	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-
-asm_generic_$1_fix_flo:
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(edx))
-	OP(and,l)	TW(rmask,REG(ebx))
-	OP(sar,l)	TW(IMM(TC_LENGTH),REG(edx))
-	OP(mov,l)	TW(REG(edx),IND(rfree))
-	OP(fild,l)	IND(rfree)
-	OP(fcomp,l)	DOF(4,REG(ebx))
-	fstsw	REG(ax)
-	sahf
-	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fail:
@@ -1043,10 +1002,10 @@ define_binary_operation(multiply,29,imul,fmul)
 # Divide needs to check for 0, so we cant really use the following
 # define_binary_operation(divide,23,NONE,fdiv)
 
-# define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
-define_binary_predicate(equal,24,je,je,je,je)
-define_binary_predicate(greater,25,jg,ja,ja,ja)
-define_binary_predicate(less,27,jl,jb,jb,jb)')
+# define_binary_predicate(name,index,fix*fix,flo*flo)
+define_binary_predicate(equal,24,je,je)
+define_binary_predicate(greater,25,jg,ja)
+define_binary_predicate(less,27,jl,jb)')
 
 IFN387(`define_jump_indirection(generic_decrement,22)
 define_jump_indirection(generic_divide,23)
