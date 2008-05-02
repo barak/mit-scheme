@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.53 2008/02/02 01:19:10 cph Exp $
+$Id: port.scm,v 1.54 2008/05/02 03:20:36 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -885,12 +885,16 @@ USA.
     (if (and read-mode write-mode (read-mode port))
 	(let ((outside-mode))
 	  (dynamic-wind (lambda ()
-			  (set! outside-mode (read-mode port))
-			  (write-mode port mode))
+			  (if (port/open? port)
+			      (begin
+				(set! outside-mode (read-mode port))
+				(write-mode port mode))))
 			thunk
 			(lambda ()
-			  (set! mode (read-mode port))
-			  (write-mode port outside-mode))))
+			  (if (port/open? port)
+			      (begin
+				(set! mode (read-mode port))
+				(write-mode port outside-mode))))))
 	(thunk))))
 
 ;;;; Standard Ports
