@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.94 2008/02/10 10:44:13 riastradh Exp $
+$Id: sendmail.scm,v 1.95 2008/05/05 04:42:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -177,6 +177,12 @@ The headers are delimited by a string found in mail-header-separator."
 		"^in-reply-to:"
 		"^return-path:")
   string?)
+
+(define-variable mail-yank-prefix
+  "Prefix to insert on lines of yanked message being replied to.
+#F means use indentation."
+  #f
+  string-or-false?)
 
 (define-variable mail-interactive
   "True means when sending a message wait for and display errors.
@@ -590,20 +596,32 @@ Here are commands that move to a header field (and create it if there isn't):
   (insert-string value (mail-new-field! header-start header-end field)))
 
 (define-command mail-yank-original
-  "Insert the message being replied to, if any (in rmail).
+  "Insert the message being replied to, if any (in rmail or imail).
 Puts point after the text and mark before.
-Indents each nonblank line ARG spaces (default 3).
-Just \\[universal-argument] as argument means don't indent
+Normally, indents each nonblank line ARG spaces (default 3).
+However, if `mail-yank-prefix' is a string, insert that prefix on each line.
+Just \\[universal-argument] as argument means don't indent, insert no prefix,
 and don't delete any header fields."
   "P"
   (lambda (argument)
-    (let ((mail-reply-buffer (ref-variable mail-reply-buffer))
-	  (left-margin
-	   (if (command-argument-multiplier-only? argument)
-	       0
-	       (or (command-argument-value argument) 3))))
+    (let ((mail-reply-buffer (ref-variable mail-reply-buffer)))
       (if mail-reply-buffer
-	  (begin
+	  (receive (prefix left-margin)
+	      (cond ((command-argument-multiplier-only? argument)
+		     (values #f 0))
+		    ((command-argument-value argument)
+		     => (lambda (v)
+			  (values #f (max 0 v))))
+		    ((ref-variable mail-yank-prefix)
+		     => (lambda (prefix)
+			  (values prefix
+				  (string-columns
+				   prefix
+				   0
+				   (ref-variable tab-width)
+				   default-char-image-strings))))
+		    (else
+		     (values #f 3)))
 	    (for-each (lambda (window)
 			(if (not (window-has-no-neighbors? window))
 			    (window-delete! window)))
@@ -624,12 +642,16 @@ and don't delete any header fields."
 		(if (not (command-argument-multiplier-only? argument))
 		    (begin
 		      (mail-yank-clear-headers start end)
-		      (indent-rigidly start end left-margin)))
+		      (if prefix
+			  (for-each-line-in-region start end
+			    (lambda (mark)
+			      (insert-string prefix mark)))
+			  (indent-rigidly start end left-margin))))
 		(mark-temporary! start)
 		(mark-temporary! end)
 		(push-current-mark! start)
 		(set-current-point! end))))))))
-
+
 (define (mail-yank-clear-headers start end)
   (let ((start (mark-left-inserting-copy start))
 	(end
@@ -664,7 +686,7 @@ Numeric argument means justify as well."
 				  (ref-variable fill-column)
 				  justify?
 				  #t))))
-
+
 (define-command mail-send-and-exit
   "Send message like mail-send, then, if no errors, exit from mail buffer.
 Prefix arg means don't delete this window."
