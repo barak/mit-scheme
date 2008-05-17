@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: snr.scm,v 1.70 2008/01/30 20:02:05 cph Exp $
+$Id: snr.scm,v 1.71 2008/05/17 02:18:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,7 +54,8 @@ This has three possible values:
   "Alist mapping news servers to associated proxies.
 Each entry in the list is a pair of strings:
  the car of the entry is the FQDN of a news server;
- the cdr of the entry is the FQDN of a proxy for that server."
+ the cdr of the entry is the FQDN of a proxy for that server,
+ optionally followed by a colon and a service number."
   '()
   (lambda (object)
     (list-of-type? object
@@ -473,12 +474,25 @@ Only one News reader may be open per server; if a previous News reader
   (nntp-connection:close (news-server-buffer:connection buffer)))
 
 (define (make-nntp-connection-1 server buffer)
-  (make-nntp-connection
-   server
-   (let ((entry (assoc server (ref-variable news-server-proxy-alist buffer))))
-     (and entry
-	  (cdr entry)))
-   update-nntp-connection-modeline!))
+  (let ((entry (assoc server (ref-variable news-server-proxy-alist buffer))))
+    (if entry
+	(receive (proxy service) (parse-proxy-name (cdr entry))
+	  (make-nntp-connection server
+				proxy
+				update-nntp-connection-modeline!
+				service))
+	(make-nntp-connection server #f update-nntp-connection-modeline!))))
+
+(define (parse-proxy-name string)
+  (let ((parts (burst-string string (char-set #\:) #f)))
+    (cond ((and (pair? parts) (null? (cdr parts)))
+	   (values (car parts) #!default))
+	  ((and (pair? parts) (pair? (cdr parts)) (null? (cddr parts)))
+	   (values (car parts)
+                   (or (string->number (cadr parts) #d10)
+                       (cadr parts))))
+	  (else
+	   (error "Malformed NNTP proxy name:" string)))))
 
 (define (news-server-buffer:save-groups buffer)
   (write-groups-init-file buffer)
@@ -501,7 +515,7 @@ Only one News reader may be open per server; if a previous News reader
 	    (insert-news-group-line group mark)
 	    (set-news-group:index! group #f))))
     (mark-temporary! mark)))
-
+
 (define (news-server-buffer:show-group? buffer group)
   (and (or (ref-variable news-show-unsubscribed-groups buffer)
 	   (news-group:subscribed? group))
