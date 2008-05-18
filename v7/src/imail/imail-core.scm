@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.168 2008/02/12 00:37:54 riastradh Exp $
+$Id: imail-core.scm,v 1.169 2008/05/18 23:58:37 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -595,6 +595,26 @@ USA.
 ;; enhancement.
 
 (define-generic preload-folder-outlines (folder))
+
+(define-method preload-folder-outlines ((folder <folder>))
+  folder                                ;ignore
+  unspecific)
+
+;; -------------------------------------------------------------------
+;; Cache the entire contents of the folder locally, including the
+;; outline and body text.  For messages that have MIME body
+;; structures, CACHE-FOLDER-CONTENTS passes the message, its body
+;; structure and a procedure to WALK-MIME-BODY, which should apply the
+;; procedure to each section of the message that should be cached.
+;;
+;; This is like PRELOAD-FOLDER-OUTLINES, and also need not be
+;; implemented.
+
+(define-generic cache-folder-contents (folder walk-mime-body))
+
+(define-method cache-folder-contents ((folder <folder>) walk-mime-body)
+  folder walk-mime-body                 ;ignore
+  unspecific)
 
 ;;;; Message type
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.303 2008/02/10 10:06:51 riastradh Exp $
+$Id: imail-top.scm,v 1.304 2008/05/18 23:58:37 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -429,7 +429,9 @@ Instead, these commands are available:
 	  create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder and all its messages.
 \\[imail-rename-folder]	Rename a folder.
-\\[imail-copy-folder]	Copy all messages from one folder to another.")
+\\[imail-copy-folder]	Copy all messages from one folder to another.
+
+\\[imail-cache]	Fill any local cache associated with the selected folder.")
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -1748,6 +1750,36 @@ Negative argument means search in reverse."
 	      (select-message folder index)
 	      (message msg "done"))
 	    (editor-failure "Search failed: " pattern))))))
+
+(define-command imail-cache
+  "Fill any local cache associated with the selected folder.
+By default, fetch only parts that would ordinarily be displayed by
+  default in-line.
+With a prefix argument, fetch every part of every message, whether or
+  not it would ordinarily be displayed in-line.
+WARNING: With a prefix argument, this command may take a very long
+  time to complete if there are many immense attachments in the
+  folder."
+  "P"
+  (lambda (argument)
+    (cache-folder-contents
+     (selected-folder)
+     (let ((buffer (selected-buffer)))
+       (lambda (message body-structure cache-procedure)
+         (define (cache message body selector context buffer)
+           message body context buffer
+           (cache-procedure selector))
+         (define (ignore message body selector context buffer)
+           message body selector context buffer
+           unspecific)
+         (walk-mime-message-part
+          message
+          body-structure
+          '()
+          (make-walk-mime-context #f 0 #f '())
+          buffer
+          cache
+          (if argument cache ignore)))))))
 
 ;;;; URLs
 
@@ -2324,7 +2356,9 @@ Negative argument means search in reverse."
    body-structure
    '()
    (make-walk-mime-context inline-only? left-margin #f '())
-   mark))
+   mark
+   insert-mime-message-inline
+   insert-mime-message-outline))
 
 (define-structure walk-mime-context
   (inline-only? #f read-only #t)
@@ -2386,14 +2420,13 @@ Negative argument means search in reverse."
 	encoding
 	(mime-body-one-part-encoding body))))
 
-(define-generic walk-mime-message-part (message body selector context mark))
+(define-generic walk-mime-message-part
+  (message body selector context mark if-inline if-outline))
 (define-generic inline-message-part? (body context mark))
 
 (define-method walk-mime-message-part
-    (message (body <mime-body>) selector context mark)
-  ((if (inline-message-part? body context mark)
-       insert-mime-message-inline
-       insert-mime-message-outline)
+    (message (body <mime-body>) selector context mark if-inline if-outline)
+  ((if (inline-message-part? body context mark) if-inline if-outline)
    message body selector context mark))
 
 (define-method inline-message-part? ((body <mime-body>) context mark)
@@ -2429,7 +2462,8 @@ Negative argument means search in reverse."
              (< (mime-body-one-part-n-octets body) limit)))))
 
 (define-method walk-mime-message-part
-    (message (body <mime-body-multipart>) selector context mark)
+    (message (body <mime-body-multipart>) selector context
+             mark if-inline if-outline)
   (let ((context
 	 (make-walk-mime-subcontext
 	  context
@@ -2446,16 +2480,16 @@ Negative argument means search in reverse."
 				      (car parts)
 				      `(,@selector 0)
 				      context
-				      mark)
+				      mark if-inline if-outline)
 	      (if (ref-variable imail-mime-show-alternatives mark)
 		  (do ((parts (cdr parts) (cdr parts))
 		       (i 1 (fix:+ i 1)))
 		      ((null? parts))
-		    (insert-mime-message-outline message
-						 (car parts)
-						 `(,@selector ,i)
-						 context
-						 mark)))))
+		    (if-outline message
+                                (car parts)
+                                `(,@selector ,i)
+                                context
+                                mark)))))
 	(do ((parts parts (cdr parts))
 	     (i 0 (fix:+ i 1)))
 	    ((null? parts))
@@ -2463,7 +2497,7 @@ Negative argument means search in reverse."
 				  (car parts)
 				  `(,@selector ,i)
 				  context
-				  mark)))))
+				  mark if-inline if-outline)))))
 
 (define (insert-mime-message-inline message body selector context mark)
   (maybe-insert-mime-boundary context mark)
@@ -2555,7 +2589,9 @@ Negative argument means search in reverse."
 			  (mime-body-message-body body)
 			  selector
 			  (make-walk-mime-subcontext context body #f)
-			  mark))
+			  mark
+                          insert-mime-message-inline
+                          insert-mime-message-outline))
 
 (define-generic compute-mime-message-outline (body name context))
 

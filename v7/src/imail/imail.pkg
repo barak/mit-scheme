@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail.pkg,v 1.104 2008/01/30 20:02:10 cph Exp $
+$Id: imail.pkg,v 1.105 2008/05/18 23:58:38 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -184,6 +184,7 @@ USA.
 	  edwin-command$imail
 	  edwin-command$imail-add-flag
 	  edwin-command$imail-bury
+	  edwin-command$imail-cache
 	  edwin-command$imail-continue
 	  edwin-command$imail-copy-folder
 	  edwin-command$imail-create-folder

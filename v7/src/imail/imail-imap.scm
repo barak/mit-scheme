@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.216 2008/02/11 22:45:43 riastradh Exp $
+$Id: imail-imap.scm,v 1.217 2008/05/18 23:58:37 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1189,52 +1189,61 @@ USA.
 			 (number->string (+ (%message-index message) 1))))
    keyword))
 
-;;;; Preloading Folder Outlines
+;;;; Preloading Folder Outlines & Caching Folder Contents
 
-;;; This really wants to have an extra argument passed describing what
-;;; parts of the message we expect to use heavily soon; right now the
-;;; code is too much about how to preload the outlines.  But I haven't
-;;; thought of a good way to express the `what' part, and I don't
-;;; really have time.
+(define outline-keywords
+  '(FLAGS INTERNALDATE RFC822.HEADER RFC822.SIZE))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
-  (let ((messages '()) (total-length (folder-length folder)))
-    (with-folder-locked folder
-      (lambda ()
-	((imail-ui:message-wrapper "Scanning message cache")
-	 (lambda ()
-	   (for-each-message folder
-	     (lambda (index message)
-	       (if (zero? (remainder index 10))
-		   (imail-ui:progress-meter index total-length))
-	       (if (not (message-outline-cached? message))
-		   (set! messages (cons message messages)))))))))
-    (if (pair? messages)
-	(let ((keywords imap-outline-cache-keywords)
-	      (connection (guarantee-imap-folder-open folder)))
-	  ((imail-ui:message-wrapper "Reading message headers")
-	   (lambda ()
-	     (let ((current 0) (total (length messages)))
-	       (imap:command:fetch-set/for-each
-		(lambda (response)
-		  (if (zero? (remainder current 10))
-		      (imail-ui:progress-meter current total))
-		  (set! current (+ current 1))
-		  (cache-preload-response folder keywords response))
-		connection
-		(message-list->set (reverse! messages))
-		keywords))))))))
+  (fill-imap-message-cache folder outline-keywords))
 
-(define imap-outline-cache-keywords '(RFC822.HEADER))
+(define content-keywords
+  ;; I am not sure who, if anyone, uses the envelope, but the body
+  ;; structure is necessary in order to decide what parts to fetch.
+  ;; Omitting the envelope does not noticeably expedite the process.
+  (append '(BODYSTRUCTURE ENVELOPE) outline-keywords))
 
-(define (message-outline-cached? message)
-  (file-exists? (message-item-pathname message 'RFC822.HEADER)))
+(define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
+  (fill-imap-message-cache folder content-keywords)
+  (let ((length (folder-length folder)))
+    (for-each-message folder
+      (lambda (index message)
+	(if (zero? (remainder index 10))
+	    (imail-ui:progress-meter index length))
+	(cond ((imap-message-bodystructure message)
+	       => (lambda (body-structure)
+		    (walk-mime-body message body-structure
+		      (lambda (selector)
+			(fetch-message-body-part-to-cache
+			 message
+			 (mime-selector->imap-section selector))))))
+	      (else
+	       (fetch-message-body-part-to-cache message '(TEXT))))))))
 
 (define (for-each-message folder procedure)
   (let ((n (folder-length folder)))
     (do ((i 0 (+ i 1)))
 	((= i n))
       (procedure i (%get-message folder i)))))
+
+(define (fill-imap-message-cache folder keywords)
+  (receive (message-sets total-count) (scan-imap-message-cache folder keywords)
+    (if (positive? total-count)
+	(let ((connection (guarantee-imap-folder-open folder))
+	      (count 0))
+	  ((imail-ui:message-wrapper "Reading message data")
+	   (lambda ()
+	     (hash-table/for-each message-sets
+	       (lambda (keywords messages)
+		 (imap:command:fetch-set/for-each
+		  (lambda (response)
+		    (if (zero? (remainder count 10))
+			(imail-ui:progress-meter count total-count))
+		    (set! count (+ count 1))
+		    (cache-preload-response folder keywords response))
+		  connection
+		  (message-list->set (reverse! messages))
+		  keywords)))))))))
 
 (define (message-list->set messages)
   (let loop ((indexes (map %message-index messages)) (groups '()))
@@ -1251,6 +1260,31 @@ USA.
 					       (number->string (+ this 1))))
 			    groups)))))
 	(decorated-string-append "" "," "" (reverse! groups)))))
+
+(define (scan-imap-message-cache folder keywords)
+  (let ((message-sets (make-equal-hash-table))
+	(length (folder-length folder))
+	(count 0))
+    (with-folder-locked folder
+      (lambda ()
+	((imail-ui:message-wrapper "Scanning message cache")
+	 (lambda ()
+	   (for-each-message folder
+	     (lambda (index message)
+	       (if (zero? (remainder index 10))
+		   (imail-ui:progress-meter index length))
+	       (let ((keywords (message-uncached-keywords message keywords)))
+		 (if (pair? keywords)
+		     (begin
+		       (hash-table/modify! message-sets keywords
+			 (lambda (messages) (cons message messages))
+			 '())
+		       (set! count (+ count 1)))))))))))
+    (values message-sets count)))
+
+(define (message-uncached-keywords message keywords)
+  (delete-matching-items keywords
+    (lambda (keyword) (file-exists? (message-item-pathname message keyword)))))
 
 ;;;; MIME support
 
@@ -1261,16 +1295,18 @@ USA.
   (write-mime-message-body-part
    message '(TEXT) (imap-message-length message) port))
 
+(define (mime-selector->imap-section selector)
+  (if (pair? selector)
+      (map (lambda (x)
+	     (if (exact-nonnegative-integer? x)
+		 (+ x 1)
+		 x))
+	   selector)
+      '(TEXT)))
+
 (define-method write-mime-message-body-part
     ((message <imap-message>) selector cache? port)
-  (let ((section
-	 (if (pair? selector)
-	     (map (lambda (x)
-		    (if (exact-nonnegative-integer? x)
-			(+ x 1)
-			x))
-		  selector)
-	     '(TEXT))))
+  (let ((section (mime-selector->imap-section selector)))
     (let ((entry
 	   (list-search-positive (imap-message-body-parts message)
 	     (lambda (entry)
@@ -1592,6 +1628,22 @@ USA.
 				     (imap-message-uid message)
 				     keywords))))))))
 
+(define (fetch-message-body-part-to-cache message section)
+  (let ((keyword (imap-body-section->keyword section)))
+    (with-folder-locked (message-folder message)
+      (lambda ()
+	(let ((pathname (message-item-pathname message keyword)))
+	  (if (not (file-exists? pathname))
+	      (begin
+		(guarantee-init-file-directory pathname)
+		(call-with-output-file pathname
+		  (lambda (output-port)
+		    (imap:bind-fetch-body-part-port output-port
+		      (lambda ()
+			(fetch-message-body-part-1 message
+						   section
+						   keyword))))))))))))
+
 (define (fetch-message-body-part-to-port message section port)
   (let ((keyword (imap-body-section->keyword section)))
     (let ((fetch-to-port
