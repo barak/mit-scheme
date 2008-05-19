@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.95 2008/05/05 04:42:08 cph Exp $
+$Id: sendmail.scm,v 1.96 2008/05/19 05:18:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -973,10 +973,10 @@ the user from the mailer."
 	 (and (ref-variable smtp-trace lookup-context)
 	      (temporary-buffer "*SMTP-trace*"))))
     (let ((responses
-	   (transct-smtp recipients
-			 message-pathname
-			 trace-buffer
-			 lookup-context)))
+	   (transact-smtp recipients
+                          message-pathname
+                          trace-buffer
+                          lookup-context)))
       (cond ((not (for-all? responses smtp-response-valid?))
 	     (pop-up-temporary-buffer "*SMTP-invalid*"
 				      '(READ-ONLY FLUSH-ON-SPACE)
@@ -1001,7 +1001,7 @@ the user from the mailer."
 		   "done"
 		   "aborted")))))
 
-(define (transct-smtp recipients message-pathname trace-buffer lookup-context)
+(define (transact-smtp recipients message-pathname trace-buffer lookup-context)
   (call-with-smtp-socket (ref-variable mail-relay-host lookup-context)
 			 (ref-variable mail-relay-service lookup-context)
 			 trace-buffer
