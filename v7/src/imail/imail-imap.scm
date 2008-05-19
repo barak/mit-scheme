@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.218 2008/05/19 05:06:26 riastradh Exp $
+$Id: imail-imap.scm,v 1.219 2008/05/19 05:21:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1627,10 +1627,11 @@ USA.
 				     keywords))))))))
 
 (define (fetch-message-body-part-to-cache message section)
-  (let ((keyword (imap-body-section->keyword section)))
+  (let ((cache-keyword (imap-body-section->keyword section))
+        (imap-keyword (imap-body-section->keyword/peek section)))
     (with-folder-locked (message-folder message)
       (lambda ()
-	(let ((pathname (message-item-pathname message keyword)))
+	(let ((pathname (message-item-pathname message cache-keyword)))
 	  (if (not (file-exists? pathname))
 	      (begin
 		(guarantee-init-file-directory pathname)
@@ -1640,7 +1641,7 @@ USA.
 		      (lambda ()
 			(fetch-message-body-part-1 message
 						   section
-						   keyword))))))))))))
+						   imap-keyword))))))))))))
 
 (define (fetch-message-body-part-to-port message section port)
   (let ((keyword (imap-body-section->keyword section)))
@@ -1673,7 +1674,7 @@ USA.
 		part))))
       (lambda ()
 	(fetch-message-body-part-1 message section keyword)))))
-
+
 (define (fetch-message-body-part-1 message section keyword)
   (imap:response:fetch-body-part
    (let ((suffix 
@@ -1694,7 +1695,14 @@ USA.
    #f))
 
 (define (imap-body-section->keyword section)
-  (string-append "body["
+  (%imap-body-section->keyword section "body"))
+
+(define (imap-body-section->keyword/peek section)
+  (%imap-body-section->keyword section "body.peek"))
+
+(define (%imap-body-section->keyword section prefix)
+  (string-append prefix
+                 "["
 		 (decorated-string-append
 		  "" "." ""
 		  (map (lambda (x)
