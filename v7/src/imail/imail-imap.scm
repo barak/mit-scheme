@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.217 2008/05/18 23:58:37 riastradh Exp $
+$Id: imail-imap.scm,v 1.218 2008/05/19 05:06:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1198,10 +1198,8 @@ USA.
   (fill-imap-message-cache folder outline-keywords))
 
 (define content-keywords
-  ;; I am not sure who, if anyone, uses the envelope, but the body
-  ;; structure is necessary in order to decide what parts to fetch.
-  ;; Omitting the envelope does not noticeably expedite the process.
-  (append '(BODYSTRUCTURE ENVELOPE) outline-keywords))
+  ;; What other keywords would be useful here?
+  (append '(BODYSTRUCTURE) outline-keywords))
 
 (define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
   (fill-imap-message-cache folder content-keywords)
