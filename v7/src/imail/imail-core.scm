@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.169 2008/05/18 23:58:37 riastradh Exp $
+$Id: imail-core.scm,v 1.170 2008/05/19 00:00:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -608,7 +608,9 @@ USA.
 ;; procedure to each section of the message that should be cached.
 ;;
 ;; This is like PRELOAD-FOLDER-OUTLINES, and also need not be
-;; implemented.
+;; implemented.  CACHE-FOLDER-CONTENTS should fetch at least what
+;; PRELOAD-FOLDER-OUTLINES fetches, so that subsequent calls to
+;; PRELOAD-FOLDER-OUTLINES will be fast.
 
 (define-generic cache-folder-contents (folder walk-mime-body))
 
