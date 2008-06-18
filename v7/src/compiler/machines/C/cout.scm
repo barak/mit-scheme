@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.43 2008/01/30 20:01:45 cph Exp $
+$Id: cout.scm,v 1.44 2008/06/18 06:31:49 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -421,7 +421,7 @@ USA.
 	   (c:line (c:comment "generated "
 			      (get-decoded-time)
 			      " by Liar version "
-			      (or (get-subsystem-version-string "liar")
+			      (or (get-subsystem-version-string "liar/c")
 				  "UNKNOWN")
 			      "."))
 	   (c:line)
