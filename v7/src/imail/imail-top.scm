@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.304 2008/05/18 23:58:37 riastradh Exp $
+$Id: imail-top.scm,v 1.305 2008/06/20 02:32:11 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2646,11 +2646,25 @@ WARNING: With a prefix argument, this command may take a very long
 				      selector))))))))
 
 (define (attach-mime-info start end info)
-  (region-put! start end 'IMAIL-MIME-INFO info #t))
+  ;; Scan forward for each change in the IMAIL-MIME-INFO property, and
+  ;; for any region in which it is not set (between inferior MIME
+  ;; entities) we set it.  What we really want is some way to layer
+  ;; text properties `under' existing ones, but the text property
+  ;; facility doesn't support that.
+  (define (attach start end)
+    (if (not (region-get start 'IMAIL-MIME-INFO #f))
+	(region-put! start end 'IMAIL-MIME-INFO info #t)))
+  (let loop ((mark start))
+    (cond ((find-next-specific-property-change mark end 'IMAIL-MIME-INFO)
+	   => (lambda (mark*)
+		(attach mark mark*)
+		(loop mark*)))
+	  (else
+	   (attach mark end)))))
 
 (define (mark-mime-info mark)
   (region-get mark 'IMAIL-MIME-INFO #f))
-
+
 (define (buffer-mime-info buffer)
   (let ((end (buffer-end buffer)))
     (let loop ((start (buffer-start buffer)) (attachments '()))
