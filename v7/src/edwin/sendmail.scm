@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.96 2008/05/19 05:18:21 riastradh Exp $
+$Id: sendmail.scm,v 1.97 2008/06/20 06:10:13 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1054,6 +1054,8 @@ the user from the mailer."
 
 (define (smtp-read-line port)
   (let ((line (read-line (smtp-port-port port))))
+    (if (eof-object? line)
+	(editor-error "Premature end of input from SMTP server: " port))
     (smtp-trace-write-string line port)
     (smtp-trace-newline port)
     line))
