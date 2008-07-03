@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.170 2008/05/19 00:00:12 riastradh Exp $
+$Id: imail-core.scm,v 1.171 2008/07/03 20:08:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -940,33 +940,17 @@ USA.
   '("answered" "deleted" "filed" "forwarded" "resent" "seen"))
 
 (define (message-flags->header-field flags)
-  (make-header-field message-flags:name
-		     (decorated-string-append "" " " "" flags)))
+  (make-internal-header-field "FLAGS"
+			      (decorated-string-append "" " " "" flags)))
 
-(define (header-field->message-flags header)
-  (and (string-ci=? message-flags:name (header-field-name header))
-       ;; Extra pair needed to distinguish #F from ().
-       (cons #f
-	     (burst-string (header-field-value header)
-			   char-set:whitespace
-			   #t))))
-
-(define message-flags:name "X-IMAIL-FLAGS")
-
-(define (parse-imail-header-fields headers)
-  (let loop ((headers headers) (headers* '()) (flags '()))
-    (cond ((not (pair? headers))
-	   (values (reverse! headers*)
-		   (remove-duplicates! (reverse! flags) string-ci=?)))
-	  ((header-field->message-flags (car headers))
-	   => (lambda (flags*)
-		(loop (cdr headers)
-		      headers*
-		      (append! (reverse! (cdr flags*)) flags))))
-	  (else
-	   (loop (cdr headers)
-		 (cons (car headers) headers*)
-		 flags)))))
+(define (header-fields->message-flags headers)
+  (delete-duplicates! (map (lambda (header)
+			     (burst-string (header-field-value header)
+					   char-set:whitespace
+					   #t))
+			   (filter (internal-header-field-predicate "FLAGS")
+				   headers))
+		      string-ci=?))
 
 (define (message-deleted? msg) (message-flagged? msg "deleted"))
 (define (message-undeleted? msg) (not (message-flagged? msg "deleted")))
@@ -1189,6 +1173,28 @@ USA.
   (let ((colon (string-find-next-char line #\:)))
     (and colon
 	 (rfc822:header-field-name? line 0 colon))))
+
+(define (internal-header-field? header)
+  (string-prefix-ci? internal-header-field-prefix (header-field-name header)))
+
+(define (make-internal-header-field name value)
+  (make-header-field (string-append internal-header-field-prefix name)
+		     value))
+
+(define (internal-header-field-name header)
+  (string-tail (header-field-name header)
+	       internal-header-field-prefix-length))
+
+(define (internal-header-field-predicate name)
+  (lambda (header)
+    (and (internal-header-field? header)
+	 (string-ci=? (internal-header-field-name header) name))))
+
+(define internal-header-field-prefix
+  "X-IMAIL-")
+
+(define internal-header-field-prefix-length
+  (string-length internal-header-field-prefix))
 
 ;;;; MIME structure
 

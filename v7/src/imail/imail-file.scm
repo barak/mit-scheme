@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.94 2008/02/09 10:29:03 riastradh Exp $
+$Id: imail-file.scm,v 1.95 2008/07/03 20:08:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -530,7 +530,8 @@ USA.
 (define-file-external-message-method message-header-fields
   <file-message>
   'HEADER-FIELDS
-  string->header-fields)
+  (lambda (s)
+    (remove! internal-header-field? (string->header-fields s))))
 
 (define-generic file-message-body (message))
 
@@ -599,22 +600,9 @@ USA.
 	     (file-time->universal-time t)))
       (get-universal-time)))
 
-(define (file-folder-strip-internal-headers folder ref)
-  (call-with-input-xstring (file-folder-xstring folder)
-			   (file-external-ref/start ref)
-    (lambda (port)
-      (let loop ((header-lines '()))
-	(let ((line (read-line port))
-	      (finish
-	       (lambda (offset)
-		 (values (make-file-external-ref
-			  (- (xstring-port/position port)
-			     offset)
-			  (file-external-ref/end ref))
-			 (lines->header-fields (reverse! header-lines))))))
-	  (cond ((eof-object? line)
-		 (finish 0))
-		((re-string-match "X-IMAIL-[^:]+:\\|[ \t]" line)
-		 (loop (cons line header-lines)))
-		(else
-		 (finish (+ (string-length line) 1)))))))))
+(define (file-folder-internal-headers folder ref)
+  (filter! internal-header-field?
+	   (string->header-fields
+	    (xsubstring (file-folder-xstring folder)
+			(file-external-ref/start ref)
+			(file-external-ref/end ref)))))

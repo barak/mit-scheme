@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-rmail.scm,v 1.77 2008/01/30 20:02:09 cph Exp $
+$Id: imail-rmail.scm,v 1.78 2008/07/03 20:08:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -143,25 +143,20 @@ USA.
 	   (error "Malformed RMAIL file:" port)))))
 
 (define (read-rmail-message-1 folder port)
-  (call-with-values (lambda () (read-rmail-attributes-line port))
-    (lambda (formatted? flags)
-      (let* ((headers (read-rmail-alternate-headers port))
-	     (displayed-headers (read-rmail-displayed-headers port))
-	     (body (read-rmail-body port))
-	     (finish
-	      (lambda (headers displayed-headers)
-		(call-with-values
-		    (lambda ()
-		      (parse-rmail-internal-time-header folder headers))
-		  (lambda (headers time)
-		    (make-rmail-message headers
-					body
-					flags
-					displayed-headers
-					time))))))
-	(if formatted?
-	    (finish headers displayed-headers)
-	    (finish displayed-headers 'UNDEFINED))))))
+  (receive (formatted? flags) (read-rmail-attributes-line port)
+    (let* ((headers (read-rmail-alternate-headers port))
+	   (displayed-headers (read-rmail-displayed-headers port))
+	   (body (read-rmail-body port))
+	   (finish
+	    (lambda (headers displayed-headers)
+	      (make-rmail-message headers
+				  body
+				  flags
+				  displayed-headers
+				  (rmail-internal-time folder headers)))))
+      (if formatted?
+	  (finish headers displayed-headers)
+	  (finish displayed-headers 'UNDEFINED)))))
 
 (define (read-rmail-attributes-line port)
   (let ((line (read-required-line port)))
@@ -229,17 +224,12 @@ USA.
     (input-port/discard-char port)
     (make-file-external-ref start (- (xstring-port/position port) 1))))
 
-(define (parse-rmail-internal-time-header folder headers)
-  (call-with-values
-      (lambda () (file-folder-strip-internal-headers folder headers))
-    (lambda (headers internal-headers)
-      (values headers
-	      (let ((v
-		     (get-first-header-field internal-headers
-					     "X-IMAIL-INTERNAL-TIME"
-					     #f)))
-		(and v
-		     (parse-header-field-date v)))))))
+(define (rmail-internal-time folder ref)
+  (let ((v
+	 (find (internal-header-field-predicate "INTERNAL-TIME")
+	       (file-folder-internal-headers folder ref))))
+    (and v
+	 (parse-header-field-date v))))
 
 ;;;; Write RMAIL file
 
@@ -270,9 +260,11 @@ USA.
 	 (let ((headers (message-header-fields message))
 	       (time (message-internal-time message)))
 	   (if time
-	       (cons (make-header-field "X-IMAIL-INTERNAL-TIME"
-					(universal-time->string time))
-		     headers)
+	       (append headers
+		       (list
+			(make-internal-header-field
+			 "INTERNAL-TIME"
+			 (universal-time->string time))))
 	       headers)))
 	(displayed-headers (rmail-message-displayed-header-fields message)))
     (let ((formatted? (not (eq? 'UNDEFINED displayed-headers))))
