@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.305 2008/06/20 02:32:11 riastradh Exp $
+$Id: imail-top.scm,v 1.306 2008/07/07 01:35:44 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -125,13 +125,6 @@ if none is otherwise specified.
 May be overridden by an explicit mailbox in imail-primary-folder."
   "inbox"
   string?)
-
-(define-variable imail-pass-phrase-retention-time
-  "The amount of time, in minutes, that IMAIL retains pass phrases.
-The pass phrase is deleted if unused for this long.
-Set this to zero if you don't want pass-phrase retention."
-  30
-  exact-nonnegative-integer?)
 
 (define-variable imail-update-interval
   "How often to update a folder's contents, in seconds.
