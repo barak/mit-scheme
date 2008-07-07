@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail.pkg,v 1.105 2008/05/18 23:58:38 riastradh Exp $
+$Id: imail.pkg,v 1.106 2008/07/07 01:36:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -252,7 +252,6 @@ USA.
 	  edwin-variable$imail-mime-show-alternatives
 	  edwin-variable$imail-mode-hook
 	  edwin-variable$imail-output-default
-	  edwin-variable$imail-pass-phrase-retention-time
 	  edwin-variable$imail-primary-folder
 	  edwin-variable$imail-reply-with-re
 	  edwin-variable$imail-update-interval)
