@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.61 2008/02/02 04:28:44 cph Exp $
+$Id: genio.scm,v 1.62 2008/07/08 10:36:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -748,11 +748,10 @@ USA.
       'EOF
       (begin
 	(justify-input-buffer ib)
-	(let loop ()
-	  (let ((n (read-bytes ib)))
-	    (cond ((not n) 'WOULD-BLOCK)
-		  ((fix:> n 0) 'OK)
-		  (else 'EOF)))))))
+	(let ((n (read-bytes ib)))
+	  (cond ((not n) 'WOULD-BLOCK)
+		((fix:> n 0) 'OK)
+		(else 'EOF))))))
 
 (define (buffer-has-input? ib)
   (let ((bs (input-buffer-start ib)))
@@ -1081,7 +1080,7 @@ USA.
 (define-encoder-alias 'TEXT 'ISO-8859-1)
 (define-sizer-alias 'TEXT 'ISO-8859-1)
 (define-decoder-alias 'US-ASCII 'ISO-8859-1)
-(define-encoder-alias 'ASCII 'ISO-8859-1)
+(define-encoder-alias 'US-ASCII 'ISO-8859-1)
 (define-sizer-alias 'US-ASCII 'ISO-8859-1)
 
 (define-syntax define-8-bit-codecs
