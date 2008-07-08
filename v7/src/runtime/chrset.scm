@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.23 2008/01/30 20:02:28 cph Exp $
+$Id: chrset.scm,v 14.24 2008/07/08 06:14:26 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -171,6 +171,11 @@ USA.
 (define char-set:not-alphanumeric)
 (define char-set:not-standard)
 
+;;; Used in RFCs:
+(define char-set:ascii)
+(define char-set:ctls)
+(define char-set:wsp)
+
 (define (initialize-package!)
   (set! char-set:upper-case
 	(char-set-union (ascii-range->char-set #x41 #x5B)
@@ -194,6 +199,7 @@ USA.
   (set! char-set:standard
 	(char-set-union char-set:graphic (char-set #\newline)))
   (set! char-set:newline (char-set #\newline))
+
   (set! char-set:not-upper-case   (char-set-invert char-set:upper-case))
   (set! char-set:not-lower-case   (char-set-invert char-set:lower-case))
   (set! char-set:not-numeric      (char-set-invert char-set:numeric))
@@ -202,6 +208,12 @@ USA.
   (set! char-set:not-alphabetic   (char-set-invert char-set:alphabetic))
   (set! char-set:not-alphanumeric (char-set-invert char-set:alphanumeric))
   (set! char-set:not-standard     (char-set-invert char-set:standard))
+
+  (set! char-set:ascii (ascii-range->char-set #x00 #x80))
+  (set! char-set:ctls
+	(char-set-union (ascii-range->char-set #x00 #x20)
+			(ascii-range->char-set #x7F #x80)))
+  (set! char-set:wsp (char-set #\space #\tab))
   unspecific)
 
 (define (char-upper-case? char)
