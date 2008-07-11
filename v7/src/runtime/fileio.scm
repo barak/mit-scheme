@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.37 2008/02/02 04:28:43 cph Exp $
+$Id: fileio.scm,v 1.38 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -69,11 +69,7 @@ USA.
   (if (input-port? port)
       (let ((input-buffer (port-input-buffer port)))
 	(- (channel-file-position (port/input-channel port))
-	   (input-buffer-free-bytes input-buffer)
-	   (let ((unread-char (port/unread port)))
-	     (if unread-char
-		 (input-buffer-encoded-character-size input-buffer unread-char)
-		 0))))
+	   (input-buffer-free-bytes input-buffer)))
       (channel-file-position (port/output-channel port))))
 
 (define (operation/set-position! port position)

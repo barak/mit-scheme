@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.62 2008/07/08 10:36:17 cph Exp $
+$Id: genio.scm,v 1.63 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -123,10 +123,12 @@ USA.
 	   (CLOSE-INPUT ,generic-io/close-input)
 	   (EOF? ,generic-io/eof?)
 	   (INPUT-OPEN? ,generic-io/input-open?)
+	   (PEEK-CHAR ,generic-io/peek-char)
 	   (READ-CHAR ,generic-io/read-char)
 	   (READ-EXTERNAL-SUBSTRING ,generic-io/read-external-substring)
 	   (READ-SUBSTRING ,generic-io/read-substring)
-	   (READ-WIDE-SUBSTRING ,generic-io/read-wide-substring)))
+	   (READ-WIDE-SUBSTRING ,generic-io/read-wide-substring)
+	   (UNREAD-CHAR ,generic-io/unread-char)))
 	(ops:in2
 	 `((INPUT-BLOCKING-MODE ,generic-io/input-blocking-mode)
 	   (INPUT-CHANNEL ,generic-io/input-channel)
@@ -195,16 +197,34 @@ USA.
 (define (generic-io/char-ready? port)
   (buffer-has-input? (port-input-buffer port)))
 
-(define (generic-io/read-char port)
+(define (generic-io/peek-char port) (peek-or-read port #t))
+(define (generic-io/read-char port) (peek-or-read port #f))
+
+(define (peek-or-read port peek?)
   (let ((ib (port-input-buffer port)))
     (let loop ()
-      (or (read-next-char ib)
-	  (let ((r (fill-input-buffer ib)))
-	    (case r
-	      ((OK) (loop))
-	      ((WOULD-BLOCK) #f)
-	      ((EOF) (eof-object))
-	      (else (error "Unknown result:" r))))))))
+      (let* ((bs (input-buffer-start ib))
+	     (char (read-next-char ib)))
+	(if char
+	    (begin
+	      (if peek?
+		  (set-input-buffer-start! ib bs)
+		  (set-input-buffer-prev! ib bs))
+	      char)
+	    (let ((r (fill-input-buffer ib)))
+	      (case r
+		((OK) (loop))
+		((WOULD-BLOCK) #f)
+		((EOF) (eof-object))
+		(else (error "Unknown result:" r)))))))))
+
+(define (generic-io/unread-char port char)
+  char					;ignored
+  (let ((ib (port-input-buffer port)))
+    (let ((bp (input-buffer-prev ib)))
+      (if (not (fix:< bp (input-buffer-start ib)))
+	  (error "No char to unread:" port))
+      (set-input-buffer-start! ib bp))))
 
 (define (generic-io/read-substring port string start end)
   (read-substring:string (port-input-buffer port) string start end))
@@ -214,8 +234,8 @@ USA.
 
 (define (generic-io/read-external-substring port string start end)
   (read-substring:external-string (port-input-buffer port) string start end))
-
-(define-integrable (generic-io/eof? port)
+
+(define (generic-io/eof? port)
   (input-buffer-at-eof? (port-input-buffer port)))
 
 (define (generic-io/input-channel port)
@@ -681,11 +701,12 @@ USA.
 
 (define-integrable byte-buffer-length
   (fix:+ page-size
-	 (fix:- (fix:* max-char-bytes 2) 1)))
+	 (fix:- (fix:* max-char-bytes 4) 1)))
 
 (define-structure (input-buffer (constructor %make-input-buffer))
   (source #f read-only #t)
   (bytes #f read-only #t)
+  prev
   start
   end
   decode
@@ -695,6 +716,7 @@ USA.
 (define (make-input-buffer source coder-name normalizer-name)
   (%make-input-buffer source
 		      (make-string byte-buffer-length)
+		      byte-buffer-length
 		      byte-buffer-length
 		      byte-buffer-length
 		      (name->decoder coder-name)
@@ -712,24 +734,25 @@ USA.
   (fix:>= (input-buffer-end ib) 0))
 
 (define (clear-input-buffer ib)
+  (set-input-buffer-prev! ib byte-buffer-length)
   (set-input-buffer-start! ib byte-buffer-length)
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
+  (set-input-buffer-prev! ib -1)
   (set-input-buffer-start! ib -1)
   (set-input-buffer-end! ib -1))
-
+
 (define (input-buffer-channel ib)
   ((source/get-channel (input-buffer-source ib))))
 
 (define (input-buffer-port ib)
   ((source/get-port (input-buffer-source ib))))
 
-(define-integrable (input-buffer-at-eof? ib)
-  (fix:<= (input-buffer-end ib) 0))
-
-(define-integrable (input-buffer-byte-count ib)
-  (fix:- (input-buffer-end ib) (input-buffer-start ib)))
+(define (input-buffer-at-eof? ib)
+  (or (fix:<= (input-buffer-end ib) 0)
+      (and (fix:= (input-buffer-prev ib) 0)
+	   (fix:= (input-buffer-start ib) (input-buffer-end ib)))))
 
 (define (input-buffer-encoded-character-size ib char)
   ((input-buffer-compute-encoded-character-size ib) ib char))
@@ -742,65 +765,20 @@ USA.
        (let ((cp ((input-buffer-decode ib) ib)))
 	 (and cp
 	      (integer->char cp)))))
-
-(define (fill-input-buffer ib)
-  (if (input-buffer-at-eof? ib)
-      'EOF
-      (begin
-	(justify-input-buffer ib)
-	(let ((n (read-bytes ib)))
-	  (cond ((not n) 'WOULD-BLOCK)
-		((fix:> n 0) 'OK)
-		(else 'EOF))))))
 
-(define (buffer-has-input? ib)
-  (let ((bs (input-buffer-start ib)))
-    (cond ((read-next-char ib)
-	   (set-input-buffer-start! ib bs)
-	   #t)
-	  ((input-buffer-at-eof? ib) #t)
-	  (else
-	   (and ((source/has-input? (input-buffer-source ib)))
-		(begin
-		  (justify-input-buffer ib)
-		  (read-bytes ib)
-		  (let ((bs (input-buffer-start ib)))
-		    (and (read-next-char ib)
-			 (begin
-			   (set-input-buffer-start! ib bs)
-			   #t)))))))))
-
-(define (justify-input-buffer ib)
-  (let ((bs (input-buffer-start ib))
-	(be (input-buffer-end ib)))
-    (if (and (fix:< 0 bs) (fix:< bs be))
-	(let ((bv (input-buffer-bytes ib)))
-	  (do ((i bs (fix:+ i 1))
-	       (j 0 (fix:+ j 1)))
-	      ((not (fix:< i be))
-	       (set-input-buffer-start! ib 0)
-	       (set-input-buffer-end! ib j)
-	       j)
-	    (string-set! bv j (string-ref bv i)))))))
-
-(define (read-bytes ib)
-  (let ((available (input-buffer-byte-count ib)))
-    (let ((n
-	   ((source/read (input-buffer-source ib))
-	    (input-buffer-bytes ib)
-	    available
-	    (fix:+ available page-size))))
-      (if n
-	  (begin
-	    (set-input-buffer-start! ib 0)
-	    (set-input-buffer-end! ib (fix:+ available n))))
-      n)))
+(define (reset-prev-char ib)
+  (set-input-buffer-prev! ib (input-buffer-start ib)))
 
 (define (set-input-buffer-coding! ib coding)
+  (reset-prev-char ib)
   (set-input-buffer-decode! ib (name->decoder coding)))
 
 (define (set-input-buffer-line-ending! ib name)
+  (reset-prev-char ib)
   (set-input-buffer-normalize! ib (name->normalizer name)))
+
+(define (input-buffer-using-binary-normalizer? ib)
+  (eq? (input-buffer-normalize ib) binary-normalizer))
 
 (define (input-buffer-contents ib)
   (substring (input-buffer-bytes ib)
@@ -812,17 +790,75 @@ USA.
   (let ((bv (input-buffer-bytes ib)))
     (let ((n (fix:min (string-length contents) (string-length bv))))
       (substring-move! contents 0 n bv 0)
+      (set-input-buffer-prev! ib 0)
       (set-input-buffer-start! ib 0)
       (set-input-buffer-end! ib n))))
 
 (define (input-buffer-free-bytes ib)
   (fix:- (input-buffer-end ib)
 	 (input-buffer-start ib)))
+
+(define (fill-input-buffer ib)
+  (if (input-buffer-at-eof? ib)
+      'EOF
+      (let ((n (read-bytes ib)))
+	(cond ((not n) 'WOULD-BLOCK)
+	      ((fix:> n 0) 'OK)
+	      (else 'EOF)))))
 
-(define (input-buffer-using-binary-normalizer? ib)
-  (eq? (input-buffer-normalize ib) binary-normalizer))
+(define (buffer-has-input? ib)
+  (or (next-char-ready? ib)
+      (input-buffer-at-eof? ib)
+      (and ((source/has-input? (input-buffer-source ib)))
+	   (begin
+	     (read-bytes ib)
+	     (next-char-ready? ib)))))
+
+(define (next-char-ready? ib)
+  (let ((bs (input-buffer-start ib)))
+    (and (read-next-char ib)
+	 (begin
+	   (set-input-buffer-start! ib bs)
+	   #t))))
+
+(define (read-bytes ib)
+  ;; assumption: (not (input-buffer-at-eof? ib))
+  (let ((bv (input-buffer-bytes ib)))
+    (let ((do-read
+	   (lambda (be)
+	     (let ((be* (fix:+ be page-size)))
+	       (if (not (fix:<= be* (vector-8b-length bv)))
+		   (error "Input buffer overflow:" ib))
+	       ((source/read (input-buffer-source ib)) bv be be*)))))
+      (let ((bp (input-buffer-prev ib))
+	    (be (input-buffer-end ib)))
+	(if (fix:< bp be)
+	    (begin
+	      (if (fix:> bp 0)
+		  (do ((i bp (fix:+ i 1))
+		       (j 0 (fix:+ j 1)))
+		      ((not (fix:< i be))
+		       (set-input-buffer-prev! ib 0)
+		       (set-input-buffer-start! ib
+						(fix:- (input-buffer-start ib)
+						       bp))
+		       (set-input-buffer-end! ib j))
+		    (string-set! bv j (string-ref bv i))))
+	      (let ((be (input-buffer-end ib)))
+		(let ((n (do-read be)))
+		  (if n
+		      (set-input-buffer-end! ib (fix:+ be n)))
+		  n)))
+	    (let ((n (do-read 0)))
+	      (if n
+		  (begin
+		    (set-input-buffer-prev! ib 0)
+		    (set-input-buffer-start! ib 0)
+		    (set-input-buffer-end! ib n)))
+	      n))))))
 
 (define (read-substring:wide-string ib string start end)
+  (reset-prev-char ib)
   (let ((v (wide-string-contents string)))
     (let loop ((i start))
       (cond ((not (fix:< i end))
@@ -842,6 +878,7 @@ USA.
 		 (else (error "Unknown result:" r)))))))))
 
 (define (read-substring:string ib string start end)
+  (reset-prev-char ib)
   (if (input-buffer-in-8-bit-mode? ib)
       (let ((bv (input-buffer-bytes ib))
 	    (bs (input-buffer-start ib))
@@ -850,12 +887,14 @@ USA.
 	    (let ((n (fix:min (fix:- be bs) (fix:- end start))))
 	      (let ((be (fix:+ bs n)))
 		(%substring-move! bv bs be string start)
+		(set-input-buffer-prev! ib be)
 		(set-input-buffer-start! ib be)
 		n))
 	    ((source/read (input-buffer-source ib)) string start end)))
       (read-to-8-bit ib string start end)))
 
 (define (read-substring:external-string ib string start end)
+  (reset-prev-char ib)
   (if (input-buffer-in-8-bit-mode? ib)
       (let ((bv (input-buffer-bytes ib))
 	    (bs (input-buffer-start ib))
@@ -864,6 +903,7 @@ USA.
 	    (let ((n (min (fix:- be bs) (- end start))))
 	      (let ((be (fix:+ bs n)))
 		(xsubstring-move! bv bs be string start)
+		(set-input-buffer-prev! ib be)
 		(set-input-buffer-start! ib be)
 		n))
 	    ((source/read (input-buffer-source ib)) string start end)))
@@ -873,7 +913,7 @@ USA.
 	  (if (and n (fix:> n 0))
 	      (xsubstring-move! bounce 0 n string start))
 	  n))))
-
+
 (define (input-buffer-in-8-bit-mode? ib)
   (and (eq? (input-buffer-decode ib) binary-decoder)
        (eq? (input-buffer-normalize ib) binary-normalizer)))

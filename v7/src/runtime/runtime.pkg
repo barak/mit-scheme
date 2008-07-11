@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.647 2008/07/08 06:14:43 cph Exp $
+$Id: runtime.pkg,v 14.648 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1758,7 +1758,9 @@ USA.
 	  generic-io/close-input
 	  generic-io/close-output
 	  generic-io/flush-output
+	  generic-io/peek-char
 	  generic-io/read-char
+	  generic-io/unread-char
 	  make-generic-i/o-port
 	  make-non-channel-port-sink
 	  make-non-channel-port-source)
@@ -2008,8 +2010,6 @@ USA.
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
-  (export (runtime file-i/o-port)
-	  port/unread)
   (export (runtime input-port)
 	  port/operation/char-ready?
 	  port/operation/peek-char

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ttyio.scm,v 1.29 2008/02/02 04:28:49 cph Exp $
+$Id: ttyio.scm,v 1.30 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -41,8 +41,10 @@ USA.
 	      (CLEAR ,operation/clear)
 	      (DISCRETIONARY-WRITE-CHAR ,operation/discretionary-write-char)
 	      (DISCRETIONARY-FLUSH-OUTPUT ,generic-io/flush-output)
+	      (PEEK-CHAR ,generic-io/peek-char)
 	      (READ-CHAR ,operation/read-char)
 	      (READ-FINISH ,operation/read-finish)
+	      (UNREAD-CHAR ,generic-io/unread-char)
 	      (WRITE-SELF ,operation/write-self)
 	      (X-SIZE ,operation/x-size)
 	      (Y-SIZE ,operation/y-size))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.51 2008/01/30 20:02:10 cph Exp $
+$Id: imail-util.scm,v 1.52 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -527,10 +527,19 @@ USA.
 			  (loop p)
 			  p)))))))
 	(eof-object))))
-
+
 (define xstring-input-type
   (make-port-type
-   `((READ-CHAR
+   `((PEEK-CHAR
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (let ((position (istate-position state)))
+	     (if (or (< position (istate-buffer-end state))
+		     (read-xstring-buffer state))
+		 (string-ref (istate-buffer state)
+			     (- position (istate-buffer-start state)))
+		 (eof-object))))))
+     (READ-CHAR
       ,(lambda (port)
 	 (let ((state (port/state port)))
 	   (let ((position (istate-position state)))
@@ -542,6 +551,13 @@ USA.
 		   (set-istate-position! state (+ position 1))
 		   char)
 		 (eof-object))))))
+     (UNREAD-CHAR
+      ,(lambda (port char)
+	 char
+	 (let ((state (port/state port)))
+	   (let ((position (istate-position state)))
+	     (if (> position (istate-buffer-start state))
+		 (set-istate-position! state (- position 1)))))))
      (EOF?
       ,(lambda (port)
 	 (let ((state (port/state port)))

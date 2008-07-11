@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufinp.scm,v 1.17 2008/01/30 20:01:58 cph Exp $
+$Id: bufinp.scm,v 1.18 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -81,6 +81,13 @@ USA.
 	 (let ((state (port/state port)))
 	   (fix:< (bstate-start state)
 		  (bstate-end state)))))
+     (PEEK-CHAR
+      ,(lambda (port)
+	 (let ((state (port/state port)))
+	   (let ((start (bstate-start state)))
+	     (if (fix:< start (bstate-end state))
+		 (group-right-char (bstate-group state) start)
+		 (eof-object))))))
      (READ-CHAR
       ,(lambda (port)
 	 (let ((state (port/state port)))

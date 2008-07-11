@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.54 2008/05/02 03:20:36 riastradh Exp $
+$Id: port.scm,v 1.55 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -199,10 +199,12 @@ USA.
 
 (define standard-input-operation-names
   '(CHAR-READY?
+    PEEK-CHAR
     READ-CHAR
     READ-SUBSTRING
     READ-WIDE-SUBSTRING
-    READ-EXTERNAL-SUBSTRING))
+    READ-EXTERNAL-SUBSTRING
+    UNREAD-CHAR))
 
 (define standard-output-operation-names
   '(WRITE-CHAR
@@ -217,7 +219,16 @@ USA.
 (define (provide-default-input-operations op)
   (let ((char-ready? (or (op 'CHAR-READY?) (lambda (port) port #t)))
 	(read-char (op 'READ-CHAR)))
-    (let ((read-substring
+    (let ((peek-char
+	   (or (op 'PEEK-CHAR)
+	       (let ((unread-char (op 'UNREAD-CHAR)))
+		 (and unread-char
+		      (lambda (port)
+			(let ((char (read-char port)))
+			  (if (char? char)
+			      (unread-char port char))
+			  char))))))
+	  (read-substring
 	   (or (op 'READ-SUBSTRING)
 	       (lambda (port string start end)
 		 (let ((char (read-char port)))
@@ -270,7 +281,7 @@ USA.
 	(lambda (name)
 	  (case name
 	    ((CHAR-READY?) char-ready?)
-	    ((READ-CHAR) read-char)
+	    ((PEEK-CHAR) peek-char)
 	    ((READ-SUBSTRING) read-substring)
 	    ((READ-WIDE-SUBSTRING) read-wide-substring)
 	    ((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -336,87 +347,37 @@ USA.
 ;;;; Input features
 
 (define (provide-input-features op)
-  (let ((char-ready?
-	 (let ((defer (op 'CHAR-READY?)))
-	   (lambda (port)
-	     (if (port/unread port)
-		 #t
-		 (defer port)))))
-	(read-char
+  (let ((read-char
 	 (let ((defer (op 'READ-CHAR)))
 	   (lambda (port)
-	     (let ((char (port/unread port)))
-	       (if char
-		   (begin
-		     (set-port/unread! port #f)
-		     char)
-		   (let ((char (defer port)))
-		     (if (char? char)
-			 (transcribe-char char port))
-		     char))))))
-	(unread-char
-	 (lambda (port char)
-	   (if (port/unread port)
-	       (error "Can't unread second character:" char port))
-	   (set-port/unread! port char)
-	   unspecific))
-	(peek-char
-	 (let ((defer (op 'READ-CHAR)))
-	   (lambda (port)
-	     (or (port/unread port)
-		 (let ((char (defer port)))
-		   (if (char? char)
-		       (begin
-			 (set-port/unread! port char)
-			 (transcribe-char char port)))
-		   char)))))
+	     (let ((char (defer port)))
+	       (if (char? char)
+		   (transcribe-char char port))
+	       char))))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
-	     (if (port/unread port)
-		 (begin
-		   (guarantee-8-bit-char (port/unread port))
-		   (string-set! string start (port/unread port))
-		   (set-port/unread! port #f)
-		   1)
-		 (let ((n (defer port string start end)))
-		   (if (and n (fix:> n 0))
-		       (transcribe-substring string start (fix:+ start n)
-					     port))
-		   n)))))
+	     (let ((n (defer port string start end)))
+	       (if (and n (fix:> n 0))
+		   (transcribe-substring string start (fix:+ start n) port))
+	       n))))
 	(read-wide-substring
 	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
 	   (lambda (port string start end)
-	     (if (port/unread port)
-		 (begin
-		   (wide-string-set! string start (port/unread port))
-		   (set-port/unread! port #f)
-		   1)
-		 (let ((n (defer port string start end)))
-		   (if (and n (fix:> n 0))
-		       (transcribe-substring string start (fix:+ start n)
-					     port))
-		   n)))))
+	     (let ((n (defer port string start end)))
+	       (if (and n (fix:> n 0))
+		   (transcribe-substring string start (fix:+ start n) port))
+	       n))))
 	(read-external-substring
 	 (let ((defer (op 'READ-EXTERNAL-SUBSTRING)))
 	   (lambda (port string start end)
-	     (if (port/unread port)
-		 (begin
-		   (guarantee-8-bit-char (port/unread port))
-		   (xsubstring-move! (make-string 1 (port/unread port)) 0 1
-				     string start)
-		   (set-port/unread! port #f)
-		   1)
-		 (let ((n (defer port string start end)))
-		   (if (and n (fix:> n 0))
-		       (transcribe-substring string start (+ start n) port))
-		   n))))))
+	     (let ((n (defer port string start end)))
+	       (if (and n (fix:> n 0))
+		   (transcribe-substring string start (+ start n) port))
+	       n)))))
     (lambda (name)
       (case name
-	((CHAR-READY?) char-ready?)
 	((READ-CHAR) read-char)
-	((UNREAD-CHAR) unread-char)
-	((PEEK-CHAR) peek-char)
 	((READ-SUBSTRING) read-substring)
 	((READ-WIDE-SUBSTRING) read-wide-substring)
 	((READ-EXTERNAL-SUBSTRING) read-external-substring)
@@ -506,7 +467,6 @@ USA.
   %type
   %state
   (%thread-mutex (make-thread-mutex))
-  (unread #f)
   (previous #f)
   (properties '()))
 

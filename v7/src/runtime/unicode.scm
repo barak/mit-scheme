@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.36 2008/01/30 20:02:36 cph Exp $
+$Id: unicode.scm,v 1.37 2008/07/11 05:26:43 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1250,10 +1250,17 @@ Not used at the moment.
   (set! open-wide-input-string
 	(let ((type
 	       (make-port-type
-		`((READ-CHAR
+		`((PEEK-CHAR
 		   ,(lambda (port)
-		      (or ((port/state port))
+		      (or ((port/state port) 'PEEK)
 			  (eof-object))))
+		  (READ-CHAR
+		   ,(lambda (port)
+		      (or ((port/state port) 'READ)
+			  (eof-object))))
+		  (UNREAD-CHAR
+		   ,(lambda (port)
+		      ((port/state port) 'UNREAD)))
 		  (WRITE-SELF
 		   ,(lambda (port output-port)
 		      port
@@ -1267,7 +1274,7 @@ Not used at the moment.
 						 end
 						 'OPEN-WIDE-INPUT-STRING)))))
   unspecific)
-
+
 (define (call-with-wide-output-string generator)
   (let ((port (open-wide-output-string)))
     (generator port)
@@ -1292,7 +1299,7 @@ Not used at the moment.
     (call-with-output-byte-buffer
      (lambda (sink)
        (let loop ()
-	 (let ((char (source)))
+	 (let ((char (source 'READ)))
 	   (if char
 	       (begin
 		 (sink-char char sink)
@@ -1412,13 +1419,25 @@ Not used at the moment.
 	  (if (if (default-object? start) #f start)
 	      (guarantee-limited-index start end caller)
 	      0)))
-    (lambda ()
+    (lambda (operation)
       (without-interrupts
        (lambda ()
-	 (and (fix:< index end)
-	      (let ((object (vector-ref objects index)))
-		(set! index (fix:+ index 1))
-		object)))))))
+	 (case operation
+	   ((PEEK)
+	    (and (fix:< index end)
+		 (vector-ref objects index)))
+	   ((READ)
+	    (and (fix:< index end)
+		 (let ((object (vector-ref objects index)))
+		   (set! index (fix:+ index 1))
+		   object)))
+	   ((UNREAD)
+	    (if (not (fix:< start index))
+		(error "No char to unread."))
+	    (set! index (fix:- index 1))
+	    unspecific)
+	   (else
+	    (error "Unknown operation:" operation))))))))
 
 (define (guarantee-limited-index index limit caller)
   (guarantee-index-fixnum index caller)
