@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.63 2008/07/11 05:26:42 cph Exp $
+$Id: genio.scm,v 1.64 2008/07/14 08:23:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -619,13 +619,15 @@ USA.
 (define binary-normalizer)
 (define binary-denormalizer)
 
+;;;; Byte sources
+
 (define-structure (source (constructor make-gsource) (conc-name source/))
   (get-channel #f read-only #t)
   (get-port #f read-only #t)
   (set-port #f read-only #t)
   (open? #f read-only #t)
   (close #f read-only #t)
-  (has-input? #f read-only #t)
+  (has-bytes? #f read-only #t)
   (read #f read-only #t))
 
 (define-guarantee source "byte source")
@@ -647,7 +649,7 @@ USA.
 		(lambda (string start end)
 		  (channel-read channel string start end))))
 
-(define (make-non-channel-port-source has-input? read-substring)
+(define (make-non-channel-port-source has-bytes? read-bytes)
   (let ((port #f)
 	(open? #t))
     (make-gsource (lambda () #f)
@@ -655,8 +657,10 @@ USA.
 		  (lambda (port*) (set! port port*) unspecific)
 		  (lambda () open?)
 		  (lambda () (set! open? #f) unspecific)
-		  has-input?
-		  read-substring)))
+		  has-bytes?
+		  read-bytes)))
+
+;;;; Byte Sinks
 
 (define-structure (sink (constructor make-gsink) (conc-name sink/))
   (get-channel #f read-only #t)
@@ -684,7 +688,7 @@ USA.
 	      (lambda (string start end)
 		(channel-write channel string start end))))
 
-(define (make-non-channel-port-sink write-substring)
+(define (make-non-channel-port-sink write-bytes)
   (let ((port #f)
 	(open? #t))
     (make-gsink (lambda () #f)
@@ -692,7 +696,7 @@ USA.
 		(lambda (port*) (set! port port*) unspecific)
 		(lambda () open?)
 		(lambda () (set! open? #f) unspecific)
-		write-substring)))
+		write-bytes)))
 
 ;;;; Input buffer
 
@@ -809,7 +813,7 @@ USA.
 (define (buffer-has-input? ib)
   (or (next-char-ready? ib)
       (input-buffer-at-eof? ib)
-      (and ((source/has-input? (input-buffer-source ib)))
+      (and ((source/has-bytes? (input-buffer-source ib)))
 	   (begin
 	     (read-bytes ib)
 	     (next-char-ready? ib)))))
