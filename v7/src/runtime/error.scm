@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.74 2008/01/30 20:02:30 cph Exp $
+$Id: error.scm,v 14.75 2008/07/18 10:18:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -67,7 +67,7 @@ USA.
 	   (lambda (n-fields field-indexes)
 	     (%make-condition-type
 	      (cond ((string? name) (string-copy name))
-		    ((symbol? name) (symbol->string name))
+		    ((symbol? name) (symbol->utf8-string name))
 		    ((not name) "(anonymous)")
 		    (else
 		     (error:wrong-type-argument name "condition-type name"
