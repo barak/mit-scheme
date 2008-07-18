@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.55 2008/07/11 05:26:42 cph Exp $
+$Id: port.scm,v 1.56 2008/07/18 10:16:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -730,56 +730,44 @@ USA.
 	#f)))
 
 (define (port/coding port)
-  (let ((operation (port/operation port 'CODING)))
-    (if operation
-	(operation port)
-	'TEXT)))
+  ((or (port/operation port 'CODING)
+       (error:bad-range-argument port 'PORT/CODING))
+   port))
 
 (define (port/set-coding port name)
-  (let ((operation (port/operation port 'SET-CODING)))
-    (if operation
-	(operation port name))))
+  ((or (port/operation port 'SET-CODING)
+       (error:bad-range-argument port 'PORT/SET-CODING))
+   port name))
 
 (define (port/known-coding? port name)
-  (let ((operation (port/operation port 'KNOWN-CODING?)))
-    (if operation
-	(operation port name)
-	(memq name default-codings))))
+  ((or (port/operation port 'KNOWN-CODING?)
+       (error:bad-range-argument port 'PORT/KNOWN-CODING?))
+   port name))
 
 (define (port/known-codings port)
-  (let ((operation (port/operation port 'KNOWN-CODINGS)))
-    (if operation
-	(operation port)
-	(list-copy default-codings))))
-
-(define default-codings
-  '(TEXT BINARY))
+  ((or (port/operation port 'KNOWN-CODINGS)
+       (error:bad-range-argument port 'PORT/KNOWN-CODINGS))
+   port))
 
 (define (port/line-ending port)
-  (let ((operation (port/operation port 'LINE-ENDING)))
-    (if operation
-	(operation port)
-	'TEXT)))
+  ((or (port/operation port 'LINE-ENDING)
+       (error:bad-range-argument port 'PORT/LINE-ENDING))
+   port))
 
 (define (port/set-line-ending port name)
-  (let ((operation (port/operation port 'SET-LINE-ENDING)))
-    (if operation
-	(operation port name))))
+  ((or (port/operation port 'SET-LINE-ENDING)
+       (error:bad-range-argument port 'PORT/SET-LINE-ENDING))
+   port name))
 
 (define (port/known-line-ending? port name)
-  (let ((operation (port/operation port 'KNOWN-LINE-ENDING?)))
-    (if operation
-	(operation port name)
-	(memq name default-line-endings))))
+  ((or (port/operation port 'KNOWN-LINE-ENDING?)
+       (error:bad-range-argument port 'PORT/KNOWN-LINE-ENDING?))
+   port name))
 
 (define (port/known-line-endings port)
-  (let ((operation (port/operation port 'KNOWN-LINE-ENDINGS)))
-    (if operation
-	(operation port)
-	(list-copy default-line-endings))))
-
-(define default-line-endings
-  '(TEXT BINARY NEWLINE))
+  ((or (port/operation port 'KNOWN-LINE-ENDINGS)
+       (error:bad-range-argument port 'PORT/KNOWN-LINE-ENDINGS))
+   port))
 
 ;;;; Special Operations
 
