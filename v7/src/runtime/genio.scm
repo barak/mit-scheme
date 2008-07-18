@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.64 2008/07/14 08:23:04 cph Exp $
+$Id: genio.scm,v 1.65 2008/07/18 10:20:30 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -197,26 +197,24 @@ USA.
 (define (generic-io/char-ready? port)
   (buffer-has-input? (port-input-buffer port)))
 
-(define (generic-io/peek-char port) (peek-or-read port #t))
-(define (generic-io/read-char port) (peek-or-read port #f))
+(define (generic-io/peek-char port)
+  (let ((char (generic-io/read-char port)))
+    (if (char? char)
+	(let ((ib (port-input-buffer port)))
+	  (set-input-buffer-start! ib (input-buffer-prev ib))))
+    char))
 
-(define (peek-or-read port peek?)
+(define (generic-io/read-char port)
   (let ((ib (port-input-buffer port)))
+    (reset-prev-char ib)
     (let loop ()
-      (let* ((bs (input-buffer-start ib))
-	     (char (read-next-char ib)))
-	(if char
-	    (begin
-	      (if peek?
-		  (set-input-buffer-start! ib bs)
-		  (set-input-buffer-prev! ib bs))
-	      char)
-	    (let ((r (fill-input-buffer ib)))
-	      (case r
-		((OK) (loop))
-		((WOULD-BLOCK) #f)
-		((EOF) (eof-object))
-		(else (error "Unknown result:" r)))))))))
+      (or (read-next-char ib)
+	  (let ((r (fill-input-buffer ib)))
+	    (case r
+	      ((OK) (loop))
+	      ((WOULD-BLOCK) #f)
+	      ((EOF) (eof-object))
+	      (else (error "Unknown result:" r))))))))
 
 (define (generic-io/unread-char port char)
   char					;ignored
@@ -827,6 +825,7 @@ USA.
 
 (define (read-bytes ib)
   ;; assumption: (not (input-buffer-at-eof? ib))
+  (reset-prev-char ib)
   (let ((bv (input-buffer-bytes ib)))
     (let ((do-read
 	   (lambda (be)
@@ -834,18 +833,16 @@ USA.
 	       (if (not (fix:<= be* (vector-8b-length bv)))
 		   (error "Input buffer overflow:" ib))
 	       ((source/read (input-buffer-source ib)) bv be be*)))))
-      (let ((bp (input-buffer-prev ib))
+      (let ((bs (input-buffer-start ib))
 	    (be (input-buffer-end ib)))
-	(if (fix:< bp be)
+	(if (fix:< bs be)
 	    (begin
-	      (if (fix:> bp 0)
-		  (do ((i bp (fix:+ i 1))
+	      (if (fix:> bs 0)
+		  (do ((i bs (fix:+ i 1))
 		       (j 0 (fix:+ j 1)))
 		      ((not (fix:< i be))
 		       (set-input-buffer-prev! ib 0)
-		       (set-input-buffer-start! ib
-						(fix:- (input-buffer-start ib)
-						       bp))
+		       (set-input-buffer-start! ib 0)
 		       (set-input-buffer-end! ib j))
 		    (string-set! bv j (string-ref bv i))))
 	      (let ((be (input-buffer-end ib)))
