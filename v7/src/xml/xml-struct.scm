@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.59 2008/01/30 20:02:42 cph Exp $
+$Id: xml-struct.scm,v 1.60 2008/07/19 01:41:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -169,9 +169,8 @@ USA.
 
 (define (canonicalize-char-data object)
   (cond ((wide-char? object)
-	 (call-with-output-string
+	 (call-with-utf8-output-string
 	   (lambda (port)
-	     (port/set-coding port 'UTF-8)
 	     (write-char object port))))
 	((wide-string? object)
 	 (wide-string->utf8-string object))
@@ -485,7 +484,7 @@ USA.
 (define (xml-stylesheet . items)
   (make-xml-processing-instructions
    'xml-stylesheet
-   (call-with-output-string
+   (call-with-utf8-output-string
      (lambda (port)
        (for-each (lambda (attr)
 		   (write-char #\space port)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xmlrpc.scm,v 1.16 2008/01/30 20:02:40 cph Exp $
+$Id: xmlrpc.scm,v 1.17 2008/07/19 01:41:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,7 +33,7 @@ USA.
   (if (eq? (http-request-method) 'post)
       (let ((entity (http-request-entity)))
 	(if entity
-	    (let ((document (read-xml (open-input-string entity))))
+	    (let ((document (read-xml (open-input-bytes entity))))
 	      (if document
 		  (write-xml (process-xmlrpc-request document pathname) port)
 		  (http-status-response 400 "Ill-formed XML entity")))

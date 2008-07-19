@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.38 2008/01/30 20:02:40 cph Exp $
+$Id: mod-lisp.scm,v 1.39 2008/07/19 01:41:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -385,7 +385,7 @@ USA.
   (set-status-header response code)
   (set-content-type-header response 'text/html)
   (set-entity response
-	      (call-with-output-string
+	      (call-with-output-bytes
 		(lambda (port)
 		  (write-xml
 		   (let ((message (status-message code)))

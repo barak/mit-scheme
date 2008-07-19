@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.43 2008/01/30 20:02:42 cph Exp $
+$Id: xml-output.scm,v 1.44 2008/07/19 01:41:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,7 @@ USA.
       (write-xml-1 xml port options))))
 
 (define (xml->string xml . options)
-  (call-with-output-string
+  (call-with-output-bytes
     (lambda (port)
       (set-coding xml port)
       (write-xml-1 xml port options))))
@@ -501,8 +501,7 @@ USA.
 	     (emit-char char ctx))))))
 
 (define (for-each-wide-char string procedure)
-  (let ((port (open-input-string string)))
-    (port/set-coding port 'UTF-8)
+  (let ((port (open-utf8-input-string string)))
     (let loop ()
       (let ((char (read-char port)))
 	(if (not (eof-object? char))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xpath.scm,v 1.7 2008/01/30 20:02:43 cph Exp $
+$Id: xpath.scm,v 1.8 2008/07/19 01:41:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -181,7 +181,7 @@ USA.
   (xml-element-name (node-item node)))
 
 (define-method node-string ((node <element-node>))
-  (call-with-output-string
+  (call-with-utf8-output-string
     (lambda (port)
       (let loop ((node node))
 	(stream-for-each (lambda (child)

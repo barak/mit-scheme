@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.40 2008/01/30 20:02:30 cph Exp $
+$Id: ed-ffi.scm,v 1.41 2008/07/19 01:41:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -141,9 +141,7 @@ USA.
     ("starbase"	(runtime starbase-graphics))
     ("stream"	(runtime stream))
     ("string"	(runtime string))
-    ("strnin"	(runtime string-input))
-    ("strott"	(runtime truncated-string-output))
-    ("strout"	(runtime string-output))
+    ("stringio"	(runtime string-i/o-port))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntactic-closures" (runtime syntactic-closures))

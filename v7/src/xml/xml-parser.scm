@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.78 2008/01/30 20:02:42 cph Exp $
+$Id: xml-parser.scm,v 1.79 2008/07/19 01:41:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -694,9 +694,8 @@ USA.
 	     (let ((char (integer->char n)))
 	       (if (not (char-in-alphabet? char alphabet:xml-char))
 		   (perror p "Disallowed Unicode character" char))
-	       (call-with-output-string
+	       (call-with-utf8-output-string
 		 (lambda (port)
-		   (port/set-coding port 'UTF-8)
 		   (write-char char port))))))))
     (*parser
      (with-pointer p
@@ -841,7 +840,7 @@ USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value string)
-  (call-with-output-string
+  (call-with-utf8-output-string
     (lambda (port)
       (let normalize-string ((string string))
 	(let ((b (utf8-string->parser-buffer (normalize-line-endings string))))
@@ -875,7 +874,7 @@ USA.
 		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
-  (call-with-output-string
+  (call-with-utf8-output-string
    (lambda (port)
      (let ((string (string-trim string)))
        (let ((end (string-length string)))

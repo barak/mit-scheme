@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symbol.scm,v 1.25 2008/01/30 20:02:35 cph Exp $
+$Id: symbol.scm,v 1.26 2008/07/19 01:41:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -101,12 +101,10 @@ USA.
   (if (ascii-string? string)
       ;; Needed during cold load.
       (string-downcase string)
-      (call-with-input-string string
+      (call-with-utf8-input-string string
 	(lambda (input)
-	  (port/set-coding input 'utf-8)
-	  (call-with-output-string
+	  (call-with-utf8-output-string
 	    (lambda (output)
-	      (port/set-coding output 'utf-8)
 	      (let loop ()
 		(let ((c (read-char input)))
 		  (if (not (eof-object? c))
