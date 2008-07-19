@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufinp.scm,v 1.18 2008/07/11 05:26:42 cph Exp $
+$Id: bufinp.scm,v 1.19 2008/07/19 00:56:06 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,18 +54,20 @@ USA.
   (make-port buffer-input-port-type
 	     (make-bstate (mark-group start)
 			  (mark-index start)
-			  (mark-index end))))
+			  (mark-index end)
+			  (mark-index start))))
 
 (define (input-port/mark port)
   (let ((operation (port/operation port 'BUFFER-MARK)))
     (if (not operation)
 	(error:bad-range-argument port 'INPUT-PORT/MARK))
     (operation port)))
-
+
 (define-structure bstate
   (group #f read-only #t)
-  (start #f)
-  (end #f read-only #t))
+  (start #f read-only #t)
+  (end #f read-only #t)
+  (index #f))
 
 (define buffer-input-port-type
   (make-port-type
@@ -73,30 +75,38 @@ USA.
       ,(lambda (port)
 	(let ((state (port/state port)))
 	  (make-mark (bstate-group state)
-		     (if (port/unread port)
-			 (- (bstate-start state) 1)
-			 (bstate-start state))))))
+		     (bstate-index state)))))
      (CHAR-READY?
       ,(lambda (port)
 	 (let ((state (port/state port)))
-	   (fix:< (bstate-start state)
+	   (fix:< (bstate-index state)
 		  (bstate-end state)))))
      (PEEK-CHAR
       ,(lambda (port)
 	 (let ((state (port/state port)))
-	   (let ((start (bstate-start state)))
-	     (if (fix:< start (bstate-end state))
-		 (group-right-char (bstate-group state) start)
+	   (let ((index (bstate-index state)))
+	     (if (fix:< index (bstate-end state))
+		 (group-right-char (bstate-group state) index)
 		 (eof-object))))))
      (READ-CHAR
       ,(lambda (port)
 	 (let ((state (port/state port)))
-	   (let ((start (bstate-start state)))
-	     (if (fix:< start (bstate-end state))
-		 (let ((char (group-right-char (bstate-group state) start)))
-		   (set-bstate-start! state (fix:+ start 1))
+	   (let ((index (bstate-index state)))
+	     (if (fix:< index (bstate-end state))
+		 (let ((char (group-right-char (bstate-group state) index)))
+		   (set-bstate-index! state (fix:+ index 1))
 		   char)
 		 (eof-object))))))
+     (UNREAD-CHAR
+      ,(lambda (port char)
+	 (let ((state (port/state port)))
+	   (let ((index (bstate-index state)))
+	     (if (fix:<= index (bstate-start state))
+		 (error "No character to unread:" port))
+	     (if (not (char=? (group-left-char (bstate-group state) index)
+			      char))
+		 (error "Incorrect char being unread:" char))
+	     (set-bstate-index! state (fix:- index 1))))))
      (WRITE-SELF
       ,(lambda (port output)
 	 (write-string " from buffer at " output)
