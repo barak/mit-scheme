@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.173 2008/01/30 20:02:01 cph Exp $
+$Id: fileio.scm,v 1.174 2008/07/23 11:12:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -232,11 +232,7 @@ of the predicates is satisfied, the file is written in the usual way."
 		     (end (fix:+ start length)))
 		 (let loop ((i start))
 		   (if (fix:< i end)
-		       (let ((n
-			      (input-port/read-external-substring! port
-								   text
-								   i
-								   end)))
+		       (let ((n (input-port/read-substring! port text i end)))
 			 (if (fix:> n 0)
 			     (loop (fix:+ i n))
 			     (fix:- i start)))
@@ -707,10 +703,9 @@ Otherwise, a message is written both before and after long file writes."
       (group-write-to-port group start end port))))
 
 (define (group-write-to-port group start end port)
-  (%group-write
-   group start end
-   (lambda (string start end)
-     (output-port/write-external-substring port string start end))))
+  (%group-write group start end
+		(lambda (string start end)
+		  (output-port/write-substring port string start end))))
 
 (define (%group-write group start end writer)
   (let ((text (group-text group))

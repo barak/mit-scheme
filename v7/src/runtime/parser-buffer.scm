@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.21 2008/01/30 20:02:33 cph Exp $
+$Id: parser-buffer.scm,v 1.22 2008/07/23 11:12:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -422,8 +422,8 @@ USA.
 	       (let loop ((end end))
 		 (if (fix:< end min-end)
 		     (let ((n-read
-			    (input-port/read-wide-substring!
-			     port string end min-end)))
+			    (input-port/read-substring! port
+							string end min-end)))
 		       (if (fix:> n-read 0)
 			   (let ((end (fix:+ end n-read)))
 			     (set-parser-buffer-end! buffer end)

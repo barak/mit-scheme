@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.14 2008/01/30 20:02:35 cph Exp $
+$Id: syncproc.scm,v 1.15 2008/07/23 11:12:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -209,12 +209,10 @@ USA.
 		   (port/with-input-blocking-mode process-input 'BLOCKING
 		     (lambda ()
 		       (let ((n
-			      (input-port/read-wide-string! process-input
-							    buffer)))
+			      (input-port/read-string! process-input buffer)))
 			 (if n
 			     (if (fix:> n 0)
-				 (output-port/write-wide-substring port
-								   buffer 0 n)
+				 (output-port/write-substring port buffer 0 n)
 				 (output-port/close port)))
 			 n))))))))
 	  (begin
@@ -246,13 +244,13 @@ USA.
 	  (let ((buffer (make-wide-string bsize)))
 	    (let ((copy-output
 		   (lambda ()
-		     (let ((n (input-port/read-wide-string! port buffer)))
+		     (let ((n (input-port/read-string! port buffer)))
 		       (if (and n (fix:> n 0))
 			   (port/with-output-blocking-mode process-output
 							   'BLOCKING
 			     (lambda ()
-			       (output-port/write-wide-substring
-				process-output buffer 0 n))))
+			       (output-port/write-substring process-output
+							    buffer 0 n))))
 		       n))))
 	      (if nonblock? (port/set-input-blocking-mode port 'NONBLOCKING))
 	      (let ((status (receiver copy-output)))
