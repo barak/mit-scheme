@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.43 2008/01/30 20:02:35 cph Exp $
+$Id: sfile.scm,v 14.44 2008/07/26 22:51:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -344,9 +344,10 @@ USA.
   (and (string? object)
        (string-is-mime-type? object)))
 
-(define (string-is-mime-type? string)
-  (let ((end (string-length string)))
-    (let ((i (check-mime-token-syntax string 0 end)))
+(define (string-is-mime-type? string #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (string-length string) end)))
+    (let ((i (check-mime-token-syntax string start end)))
       (and (fix:> i 0)
 	   (fix:< i end)
 	   (char=? (string-ref string i) #\/)
@@ -362,9 +363,10 @@ USA.
   (and (string? object)
        (string-is-mime-token? object)))
 
-(define (string-is-mime-token? string)
-  (let ((end (string-length string)))
-    (fix:= end (check-mime-token-syntax string 0 end))))
+(define (string-is-mime-token? string #!optional start end)
+  (let ((start (if (default-object? start) 0 start))
+	(end (if (default-object? end) (string-length string) end)))
+    (fix:= end (check-mime-token-syntax string start end))))
 
 (define (check-mime-token-syntax string start end)
   (let loop ((i start))
