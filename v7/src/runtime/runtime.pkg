@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.653 2008/07/26 22:51:15 cph Exp $
+$Id: runtime.pkg,v 14.654 2008/07/26 22:53:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -431,6 +431,7 @@ USA.
 	  associate-pathname-type-with-mime-type
 	  call-with-temporary-file-pathname
 	  call-with-temporary-filename
+	  char-set:mime-token
 	  current-file-time
 	  deallocate-temporary-file
 	  delete-directory
