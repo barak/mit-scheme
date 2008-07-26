@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.57 2008/07/24 06:58:08 cph Exp $
+$Id: port.scm,v 1.58 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,13 +44,9 @@ USA.
   (unread-char #f read-only #t)
   (peek-char #f read-only #t)
   (read-substring #f read-only #t)
-  (read-wide-substring #f read-only #t)
-  (read-external-substring #f read-only #t)
   ;; output operations:
   (write-char #f read-only #t)
   (write-substring #f read-only #t)
-  (write-wide-substring #f read-only #t)
-  (write-external-substring #f read-only #t)
   (fresh-line #f read-only #t)
   (line-start? #f read-only #t)
   (flush-output #f read-only #t)
@@ -158,12 +154,8 @@ USA.
 		       (op 'UNREAD-CHAR)
 		       (op 'PEEK-CHAR)
 		       (op 'READ-SUBSTRING)
-		       (op 'READ-WIDE-SUBSTRING)
-		       (op 'READ-EXTERNAL-SUBSTRING)
 		       (op 'WRITE-CHAR)
 		       (op 'WRITE-SUBSTRING)
-		       (op 'WRITE-WIDE-SUBSTRING)
-		       (op 'WRITE-EXTERNAL-SUBSTRING)
 		       (op 'FRESH-LINE)
 		       (op 'LINE-START?)
 		       (op 'FLUSH-OUTPUT)
@@ -202,147 +194,89 @@ USA.
     PEEK-CHAR
     READ-CHAR
     READ-SUBSTRING
-    READ-WIDE-SUBSTRING
-    READ-EXTERNAL-SUBSTRING
     UNREAD-CHAR))
 
 (define standard-output-operation-names
   '(WRITE-CHAR
     WRITE-SUBSTRING
-    WRITE-WIDE-SUBSTRING
-    WRITE-EXTERNAL-SUBSTRING
     FLUSH-OUTPUT
     DISCRETIONARY-FLUSH-OUTPUT))
 
-;;;; Default input operations
+;;;; Default I/O operations
+
+(define (required-operation op name)
+  (if (not (op name))
+      (error "Missing required operation:" name)))
 
 (define (provide-default-input-operations op)
-  (let ((char-ready? (or (op 'CHAR-READY?) (lambda (port) port #t)))
-	(read-char (op 'READ-CHAR)))
-    (let ((peek-char
-	   (or (op 'PEEK-CHAR)
-	       (let ((unread-char (op 'UNREAD-CHAR)))
-		 (and unread-char
-		      (lambda (port)
-			(let ((char (read-char port)))
-			  (if (char? char)
-			      (unread-char port char))
-			  char))))))
-	  (read-substring
-	   (or (op 'READ-SUBSTRING)
-	       (lambda (port string start end)
-		 (let ((char (read-char port)))
-		   (cond ((not char) #f)
-			 ((eof-object? char) 0)
-			 (else
-			  (guarantee-8-bit-char char)
-			  (string-set! string start char)
-			  (let loop ((index (fix:+ start 1)))
-			    (if (and (fix:< index end)
-				     (char-ready? port))
-				(let ((char (read-char port)))
-				  (cond ((or (not char)
-					     (eof-object? char))
-					 (fix:- index start))
-					(else
-					 (guarantee-8-bit-char char)
-					 (string-set! string index char)
-					 (loop (fix:+ index 1)))))
-				(fix:- index start)))))))))
-	  (read-wide-substring
-	   (or (op 'READ-WIDE-SUBSTRING)
-	       (lambda (port string start end)
-		 (let ((char (read-char port)))
-		   (cond ((not char) #f)
-			 ((eof-object? char) 0)
-			 (else
-			  (wide-string-set! string start char)
-			  (let loop ((index (fix:+ start 1)))
-			    (if (and (fix:< index end)
-				     (char-ready? port))
-				(let ((char (read-char port)))
-				  (if (or (not char) (eof-object? char))
-				      (fix:- index start)
-				      (begin
-					(wide-string-set! string
-							  index
-							  char)
-					(loop (fix:+ index 1)))))
-				(fix:- index start))))))))))
-      (let ((read-external-substring
-	     (or (op 'READ-EXTERNAL-SUBSTRING)
-		 (lambda (port string start end)
-		   (let ((l (min (- end start) #x1000)))
-		     (let ((bounce (make-string l)))
-		       (let ((n (read-substring port bounce 0 l)))
-			 (if (and n (fix:> n 0))
-			     (xsubstring-move! bounce 0 n string start))
-			 n)))))))
-	(lambda (name)
-	  (case name
-	    ((CHAR-READY?) char-ready?)
-	    ((PEEK-CHAR) peek-char)
-	    ((READ-SUBSTRING) read-substring)
-	    ((READ-WIDE-SUBSTRING) read-wide-substring)
-	    ((READ-EXTERNAL-SUBSTRING) read-external-substring)
-	    (else (op name))))))))
-
-;;;; Default output operations
+  (required-operation op 'READ-CHAR)
+  (if (and (or (op 'UNREAD-CHAR)
+	       (op 'PEEK-CHAR))
+	   (not (and (op 'UNREAD-CHAR)
+		     (op 'PEEK-CHAR))))
+      (error "Must provide both UNREAD-CHAR and PEEK-CHAR operations."))
+  (let ((char-ready?
+	 (or (op 'CHAR-READY?)
+	     (lambda (port) port #t)))
+	(read-substring
+	 (or (op 'READ-SUBSTRING)
+	     generic-port-operation:read-substring)))
+    (lambda (name)
+      (case name
+	((CHAR-READY?) char-ready?)
+	((READ-SUBSTRING) read-substring)
+	(else (op name))))))
+
+(define (generic-port-operation:read-substring port string start end)
+  (let ((char-ready? (port/operation/char-ready? port))
+	(read-char (port/operation/read-char port)))
+    (let ((char (read-char port)))
+      (cond ((not char) #f)
+	    ((eof-object? char) 0)
+	    (else
+	     (xstring-set! string start char)
+	     (let loop ((index (+ start 1)))
+	       (if (and (< index end)
+			(char-ready? port))
+		   (let ((char (read-char port)))
+		     (if (or (not char) (eof-object? char))
+			 (- index start)
+			 (begin
+			   (xstring-set! string index char)
+			   (loop (+ index 1)))))
+		   (- index start))))))))
 
 (define (provide-default-output-operations op)
-  (let ((write-char (op 'WRITE-CHAR))
-	(no-flush (lambda (port) port unspecific)))
-    (let ((write-substring
-	   (or (op 'WRITE-SUBSTRING)
-	       (lambda (port string start end)
-		 (let loop ((i start))
-		   (if (fix:< i end)
-		       (let ((n (write-char port (string-ref string i))))
-			 (cond ((not n)
-				(and (fix:> i start)
-				     (fix:- i start)))
-			       ((fix:> n 0) (loop (fix:+ i 1)))
-			       (else (fix:- i start))))
-		       (fix:- i start))))))
-	  (write-wide-substring
-	   (or (op 'WRITE-WIDE-SUBSTRING)
-	       (lambda (port string start end)
-		 (let loop ((i start))
-		   (if (fix:< i end)
-		       (let ((n
-			      (write-char port
-					  (wide-string-ref string i))))
-			 (cond ((not n)
-				(and (fix:> i start)
-				     (fix:- i start)))
-			       ((fix:> n 0) (loop (fix:+ i 1)))
-			       (else (fix:- i start))))
-		       (fix:- i start))))))
-	  (flush-output (or (op 'FLUSH-OUTPUT) no-flush))
-	  (discretionary-flush-output
-	   (or (op 'DISCRETIONARY-FLUSH-OUTPUT) no-flush)))
-      (let ((write-external-substring
-	     (or (op 'WRITE-EXTERNAL-SUBSTRING)
-		 (lambda (port string start end)
-		   (let ((bounce (make-string #x1000)))
-		     (let loop ((i start))
-		       (if (< i end)
-			   (let ((m (min (- end i) #x1000)))
-			     (xsubstring-move! string i (+ i m) bounce 0)
-			     (let ((n (write-substring port bounce 0 m)))
-			       (cond ((not n) (and (> i start) (- i start)))
-				     ((fix:> n 0) (loop (+ i n)))
-				     (else (- i start)))))
-			   (- end start))))))))
-	(lambda (name)
-	  (case name
-	    ((WRITE-CHAR) write-char)
-	    ((WRITE-SUBSTRING) write-substring)
-	    ((WRITE-WIDE-SUBSTRING) write-wide-substring)
-	    ((WRITE-EXTERNAL-SUBSTRING) write-external-substring)
-	    ((FLUSH-OUTPUT) flush-output)
-	    ((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
-	    (else (op name))))))))
+  (required-operation op 'WRITE-CHAR)
+  (let ((write-substring
+	 (or (op 'WRITE-SUBSTRING)
+	     generic-port-operation:write-substring))
+	(flush-output
+	 (or (op 'FLUSH-OUTPUT)
+	     no-flush))
+	(discretionary-flush-output
+	 (or (op 'DISCRETIONARY-FLUSH-OUTPUT)
+	     no-flush)))
+    (lambda (name)
+      (case name
+	((WRITE-SUBSTRING) write-substring)
+	((FLUSH-OUTPUT) flush-output)
+	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	(else (op name))))))
+
+(define (no-flush port)
+  port
+  unspecific)
+
+(define (generic-port-operation:write-substring port string start end)
+  (let ((write-char (port/operation/write-char port)))
+    (let loop ((i start))
+      (if (< i end)
+	  (let ((n (write-char port (xstring-ref string i))))
+	    (cond ((not n) (and (> i start) (- i start)))
+		  ((> n 0) (loop (+ i 1)))
+		  (else (- i start))))
+	  (- i start)))))
 
 ;;;; Input features
 
@@ -372,20 +306,6 @@ USA.
 	     (let ((n (defer port string start end)))
 	       (transcribe-input-substring string start n port)
 	       (set-port/unread?! port #f)
-	       n))))
-	(read-wide-substring
-	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
-	   (lambda (port string start end)
-	     (let ((n (defer port string start end)))
-	       (transcribe-input-substring string start n port)
-	       (set-port/unread?! port #f)
-	       n))))
-	(read-external-substring
-	 (let ((defer (op 'READ-EXTERNAL-SUBSTRING)))
-	   (lambda (port string start end)
-	     (let ((n (defer port string start end)))
-	       (transcribe-input-substring string start n port)
-	       (set-port/unread?! port #f)
 	       n)))))
     (lambda (name)
       (case name
@@ -393,8 +313,6 @@ USA.
 	((UNREAD-CHAR) unread-char)
 	((PEEK-CHAR) peek-char)
 	((READ-SUBSTRING) read-substring)
-	((READ-WIDE-SUBSTRING) read-wide-substring)
-	((READ-EXTERNAL-SUBSTRING) read-external-substring)
 	(else (op name))))))
 
 (define (transcribe-input-char char port)
@@ -425,34 +343,10 @@ USA.
 	 (let ((defer (op 'WRITE-SUBSTRING)))
 	   (lambda (port string start end)
 	     (let ((n (defer port string start end)))
-	       (if (and n (fix:> n 0))
-		   (begin
-		     (set-port/previous!
-		      port
-		      (string-ref string (fix:+ start (fix:- n 1))))
-		     (transcribe-substring string start (fix:+ start n) port)))
-	       n))))
-	(write-wide-substring
-	 (let ((defer (op 'WRITE-WIDE-SUBSTRING)))
-	   (lambda (port string start end)
-	     (let ((n (defer port string start end)))
-	       (if (and n (fix:> n 0))
-		   (begin
-		     (set-port/previous!
-		      port
-		      (wide-string-ref string (fix:+ start (fix:- n 1))))
-		     (transcribe-substring string start (fix:+ start n) port)))
-	       n))))
-	(write-external-substring
-	 (let ((defer (op 'WRITE-EXTERNAL-SUBSTRING)))
-	   (lambda (port string start end)
-	     (let ((n (defer port string start end)))
 	       (if (and n (> n 0))
-		   (let ((i (+ start n))
-			 (bounce (make-string 1)))
-		     (xsubstring-move! string (- i 1) i bounce 0)
-		     (set-port/previous! port (string-ref bounce 0))
-		     (transcribe-substring string start i port)))
+		   (let ((end (+ start n)))
+		     (set-port/previous! port (xstring-ref string (- end 1)))
+		     (transcribe-substring string start end port)))
 	       n))))
 	(flush-output
 	 (let ((defer (op 'FLUSH-OUTPUT)))
@@ -463,27 +357,27 @@ USA.
 	 (let ((defer (op 'DISCRETIONARY-FLUSH-OUTPUT)))
 	   (lambda (port)
 	     (defer port)
-	     (discretionary-flush-transcript port)))))
-    (lambda (name)
-      (case name
-	((WRITE-CHAR) write-char)
-	((WRITE-SUBSTRING) write-substring)
-	((WRITE-WIDE-SUBSTRING) write-wide-substring)
-	((WRITE-EXTERNAL-SUBSTRING) write-external-substring)
-	((FRESH-LINE)
-	 (lambda (port)
-	   (if (and (port/previous port)
-		    (not (char=? (port/previous port) #\newline)))
-	       (write-char port #\newline)
-	       0)))
-	((LINE-START?)
+	     (discretionary-flush-transcript port))))
+	(line-start?
 	 (lambda (port)
 	   (if (port/previous port)
 	       (char=? (port/previous port) #\newline)
-	       'UNKNOWN)))
-	((FLUSH-OUTPUT) flush-output)
-	((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
-	(else (op name))))))
+	       'UNKNOWN))))
+    (let ((fresh-line
+	   (lambda (port)
+	     (if (and (port/previous port)
+		      (not (char=? (port/previous port) #\newline)))
+		 (write-char port #\newline)
+		 0))))
+      (lambda (name)
+	(case name
+	  ((WRITE-CHAR) write-char)
+	  ((WRITE-SUBSTRING) write-substring)
+	  ((FRESH-LINE) fresh-line)
+	  ((LINE-START?) line-start?)
+	  ((FLUSH-OUTPUT) flush-output)
+	  ((DISCRETIONARY-FLUSH-OUTPUT) discretionary-flush-output)
+	  (else (op name)))))))
 
 ;;;; Port object
 
@@ -535,29 +429,25 @@ USA.
 (define (port/operation port name)
   (port-type/operation (port/type port) name))
 
-(let-syntax
-    ((define-port-operation
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((name (cadr form)))
-	    `(DEFINE (,(symbol-append 'PORT/OPERATION/ name) PORT)
-	       (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
-		(PORT/TYPE PORT))))))))
-  (define-port-operation char-ready?)
-  (define-port-operation read-char)
-  (define-port-operation unread-char)
-  (define-port-operation peek-char)
-  (define-port-operation read-substring)
-  (define-port-operation read-wide-substring)
-  (define-port-operation read-external-substring)
-  (define-port-operation write-char)
-  (define-port-operation write-substring)
-  (define-port-operation write-wide-substring)
-  (define-port-operation write-external-substring)
-  (define-port-operation fresh-line)
-  (define-port-operation line-start?)
-  (define-port-operation flush-output)
-  (define-port-operation discretionary-flush-output))
+(define-syntax define-port-operation
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE (,(symbol-append 'PORT/OPERATION/ name) PORT)
+	  (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
+	   (PORT/TYPE PORT)))))))
+
+(define-port-operation char-ready?)
+(define-port-operation read-char)
+(define-port-operation unread-char)
+(define-port-operation peek-char)
+(define-port-operation read-substring)
+(define-port-operation write-char)
+(define-port-operation write-substring)
+(define-port-operation fresh-line)
+(define-port-operation line-start?)
+(define-port-operation flush-output)
+(define-port-operation discretionary-flush-output)
 
 (define (port-position port)
   ((port/operation port 'POSITION) port))

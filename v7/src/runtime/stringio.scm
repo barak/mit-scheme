@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stringio.scm,v 14.1 2008/07/19 01:41:16 cph Exp $
+$Id: stringio.scm,v 14.2 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -86,9 +86,7 @@ USA.
 		    (EOF? ,internal-in/eof?)
 		    (PEEK-CHAR ,peek-char)
 		    (READ-CHAR ,read-char)
-		    (READ-EXTERNAL-SUBSTRING ,internal-in/read-substring)
 		    (READ-SUBSTRING ,internal-in/read-substring)
-		    (READ-WIDE-SUBSTRING ,internal-in/read-substring)
 		    (UNREAD-CHAR ,unread-char)
 		    (WRITE-SELF ,string-in/write-self))
 		  #f))
@@ -181,9 +179,7 @@ USA.
      (EOF? ,external-in/eof?)
      (PEEK-CHAR ,external-in/peek-char)
      (READ-CHAR ,external-in/read-char)
-     (READ-EXTERNAL-SUBSTRING ,external-in/read-substring)
      (READ-SUBSTRING ,external-in/read-substring)
-     (READ-WIDE-SUBSTRING ,external-in/read-substring)
      (UNREAD-CHAR ,external-in/unread-char)
      (WRITE-SELF ,string-in/write-self))
    #f))
@@ -237,8 +233,8 @@ USA.
 	     (source->sink! (string-source string start end)
 			    (wide-string-sink string* start* end*)))
 	    (else
-	     (xsubstring-move! string start end string* start*))))
-    n))
+	     (xsubstring-move! string start end string* start*)
+	     n)))))
 
 (define (source->sink! source sink)
   (let loop ((n 0))
@@ -462,9 +458,7 @@ USA.
 
 (define (make-string-out-type write-char extract-output extract-output!)
   (make-port-type `((WRITE-CHAR ,write-char)
-		    (WRITE-EXTERNAL-SUBSTRING ,string-out/write-substring)
 		    (WRITE-SUBSTRING ,string-out/write-substring)
-		    (WRITE-WIDE-SUBSTRING ,string-out/write-substring)
 		    (EXTRACT-OUTPUT ,extract-output)
 		    (EXTRACT-OUTPUT! ,extract-output!)
 		    (OUTPUT-COLUMN ,string-out/output-column)

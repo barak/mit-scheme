@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.650 2008/07/23 11:12:34 cph Exp $
+$Id: runtime.pkg,v 14.651 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1923,6 +1923,8 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
+	  generic-port-operation:read-substring
+	  generic-port-operation:write-substring
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -1950,14 +1952,10 @@ USA.
 	  port-type/parent
 	  port-type/peek-char
 	  port-type/read-char
-	  port-type/read-external-substring
 	  port-type/read-substring
-	  port-type/read-wide-substring
 	  port-type/unread-char
 	  port-type/write-char
-	  port-type/write-external-substring
 	  port-type/write-substring
-	  port-type/write-wide-substring
 	  port-type?
 	  port/coding
 	  port/copy
@@ -2014,9 +2012,7 @@ USA.
 	  port/operation/char-ready?
 	  port/operation/peek-char
 	  port/operation/read-char
-	  port/operation/read-external-substring
 	  port/operation/read-substring
-	  port/operation/read-wide-substring
 	  port/operation/unread-char)
   (export (runtime output-port)
 	  port/operation/discretionary-flush-output
@@ -2024,9 +2020,7 @@ USA.
 	  port/operation/fresh-line
 	  port/operation/line-start?
 	  port/operation/write-char
-	  port/operation/write-external-substring
-	  port/operation/write-substring
-	  port/operation/write-wide-substring)
+	  port/operation/write-substring)
   (export (runtime transcript)
 	  port/transcript
 	  set-port/transcript!)

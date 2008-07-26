@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.40 2008/07/23 11:12:34 cph Exp $
+$Id: input.scm,v 14.41 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -49,15 +49,7 @@ USA.
 
 (define (input-port/read-substring! port string start end)
   (if (< start end)
-      ((cond ((string? string)
-	      (port/operation/read-substring port))
-	     ((wide-string? string)
-	      (port/operation/read-wide-substring port))
-	     ((external-string? string)
-	      (port/operation/read-external-substring port))
-	     (else
-	      (error:not-string string 'INPUT-PORT/READ-SUBSTRING!)))
-       port string start end)
+      ((port/operation/read-substring port) port string start end)
       0))
 
 (define (input-port/read-line port)

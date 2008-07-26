@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bufout.scm,v 1.20 2008/01/30 20:01:58 cph Exp $
+$Id: bufout.scm,v 1.21 2008/07/26 05:12:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -79,8 +79,11 @@ USA.
   1)
 
 (define (operation/write-substring port string start end)
-  (region-insert-substring! (port/mark port) string start end)
-  (fix:- end start))
+  (if (string? string)
+      (begin
+	(region-insert-substring! (port/mark port) string start end)
+	(fix:- end start))
+      (generic-port-operation:write-substring port string start end)))
 
 (define (operation/close port)
   (mark-temporary! (port/mark port)))

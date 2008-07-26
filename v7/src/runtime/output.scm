@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.42 2008/07/23 11:12:34 cph Exp $
+$Id: output.scm,v 14.43 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,12 +39,7 @@ USA.
   (output-port/write-substring port string 0 (xstring-length string)))
 
 (define (output-port/write-substring port string start end)
-  ((cond ((string? string) (port/operation/write-substring port))
-	 ((wide-string? string) (port/operation/write-wide-substring port))
-	 ((external-string? string)
-	  (port/operation/write-external-substring port))
-	 (else (error:not-string string 'OUTPUT-PORT/WRITE-SUBSTRING)))
-   port string start end))
+  ((port/operation/write-substring port) port string start end))
 
 (define (output-port/fresh-line port)
   ((port/operation/fresh-line port) port))

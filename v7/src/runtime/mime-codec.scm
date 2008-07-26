@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mime-codec.scm,v 14.20 2008/01/30 20:02:32 cph Exp $
+$Id: mime-codec.scm,v 14.21 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,19 +30,23 @@ USA.
 (declare (usual-integrations))
 
 (define (make-decoding-port-type update finalize)
-  (make-port-type `((WRITE-CHAR
-		     ,(lambda (port char)
-			(guarantee-8-bit-char char)
-			(update (port/state port) (string char) 0 1)
-			1))
-		    (WRITE-SUBSTRING
-		     ,(lambda (port string start end)
-			(update (port/state port) string start end)
-			(fix:- end start)))
-		    (CLOSE-OUTPUT
-		     ,(lambda (port)
-			(finalize (port/state port)))))
-		  #f))
+  (make-port-type
+   `((WRITE-CHAR
+      ,(lambda (port char)
+	 (guarantee-8-bit-char char)
+	 (update (port/state port) (string char) 0 1)
+	 1))
+     (WRITE-SUBSTRING
+      ,(lambda (port string start end)
+	 (if (string? string)
+	     (begin
+	       (update (port/state port) string start end)
+	       (fix:- end start))
+	     (generic-port-operation:write-substring port string start end))))
+     (CLOSE-OUTPUT
+      ,(lambda (port)
+	 (finalize (port/state port)))))
+   #f))
 
 ;;;; Encode quoted-printable
 
