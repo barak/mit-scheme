@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stringio.scm,v 14.3 2008/07/26 05:45:36 cph Exp $
+$Id: stringio.scm,v 14.4 2008/07/26 07:02:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -393,9 +393,9 @@ USA.
     (get-output-string port)))
 
 (define (call-with-truncated-output-string limit generator)
-  (call-with-narrow-output-string
-    (lambda (port)
-      (call-with-truncated-output-port limit port generator))))
+  (let ((port (open-narrow-output-string)))
+    (let ((truncated? (call-with-truncated-output-port limit port generator)))
+      (cons truncated? (get-output-string port)))))
 
 (define (with-output-to-string thunk)
   (call-with-narrow-output-string
