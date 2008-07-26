@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.18 2008/01/30 20:02:34 cph Exp $
+$Id: regexp.scm,v 1.19 2008/07/26 07:10:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -79,9 +79,11 @@ USA.
 		  (lambda () (set-re-registers! registers*)))))
 
 (define (re-match-extract string regs i)
-  (substring string
-	     (re-match-start-index i regs)
-	     (re-match-end-index i regs)))
+  (let ((start (re-match-start-index i regs))
+	(end (re-match-end-index i regs)))
+    (if (not (and start end))
+	(error:bad-range-argument i 'RE-MATCH-EXTRACT))
+    (substring string start end)))
 
 (define (make-substring-operation primitive)
   (lambda (regexp string start end #!optional case-fold? syntax-table)
