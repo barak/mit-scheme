@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.66 2008/07/26 05:12:19 cph Exp $
+$Id: genio.scm,v 1.67 2008/07/26 20:35:25 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1873,11 +1873,6 @@ USA.
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer-alias 'LF 'NEWLINE)
-(define-denormalizer-alias 'LF 'NEWLINE)
-(define-normalizer-alias 'BINARY 'NEWLINE)
-(define-denormalizer-alias 'BINARY 'NEWLINE)
-
 (define-normalizer 'CR
   (lambda (ib)
     (let ((c0 (decode-char ib)))
@@ -1953,6 +1948,13 @@ USA.
 	      #\U+000A))))
 	((#\U+0085 #\U+2028) #\U+000A)
 	(else c0)))))
+
+(define-normalizer-alias 'LF 'NEWLINE)
+(define-denormalizer-alias 'LF 'NEWLINE)
+(define-normalizer-alias 'BINARY 'NEWLINE)
+(define-denormalizer-alias 'BINARY 'NEWLINE)
+(define-normalizer-alias 'HTTP 'XML-1.0)
+(define-denormalizer-alias 'HTTP 'CRLF)
 
 ;;;; Conditions
 
