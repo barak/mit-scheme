@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.43 2008/07/26 05:12:20 cph Exp $
+$Id: output.scm,v 14.44 2008/07/26 07:01:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -283,7 +283,7 @@ USA.
   (call-with-current-continuation
    (lambda (k)
      (let ((port (make-port truncated-output-type
-			    (make-tstate limit port k 0))))
+			    (make-tstate port limit k 0))))
        (generator port)
        #f))))
 
