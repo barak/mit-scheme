@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.38 2008/07/19 01:41:17 cph Exp $
+$Id: unicode.scm,v 1.39 2008/07/26 05:45:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -125,14 +125,14 @@ USA.
 
 (define (coded-input-opener coding)
   (lambda (string #!optional start end)
-    (let ((port (open-input-bytes string start end)))
+    (let ((port (open-input-octets string start end)))
       (port/set-coding port coding)
       (port/set-line-ending port 'NEWLINE)
       port)))
 
 (define (coded-output-opener coding)
   (lambda ()
-    (let ((port (open-output-bytes)))
+    (let ((port (open-output-octets)))
       (port/set-coding port coding)
       (port/set-line-ending port 'NEWLINE)
       port)))
@@ -750,11 +750,11 @@ Not used at the moment.
       (utf32-le-string-length string start end)))
 
 (define (utf32-be-string-length string #!optional start end)
-  (%utf32-string-length string start end "32BE" utf32-be-bytes->code-point
+  (%utf32-string-length string start end "32BE" utf32-be-octets->code-point
 			'UTF32-BE-STRING-LENGTH))
 
 (define (utf32-le-string-length string #!optional start end)
-  (%utf32-string-length string start end "32LE" utf32-le-bytes->code-point
+  (%utf32-string-length string start end "32LE" utf32-le-octets->code-point
 			'UTF32-LE-STRING-LENGTH))
 
 (define (%utf32-string-length string start end type combiner caller)
@@ -769,11 +769,11 @@ Not used at the moment.
       (utf32-le-string-valid? string start end)))
 
 (define (utf32-be-string-valid? string #!optional start end)
-  (%utf32-string-valid? string start end utf32-be-bytes->code-point
+  (%utf32-string-valid? string start end utf32-be-octets->code-point
 			'UTF32-BE-STRING-VALID?))
 
 (define (utf32-le-string-valid? string #!optional start end)
-  (%utf32-string-valid? string start end utf32-le-bytes->code-point
+  (%utf32-string-valid? string start end utf32-le-octets->code-point
 			'UTF32-LE-STRING-VALID?))
 
 (define (%utf32-string-valid? string start end combiner caller)
@@ -782,13 +782,13 @@ Not used at the moment.
       (lambda (string start end)
 	(validate-utf32-char string start end combiner)))))
 
-(define-integrable (utf32-be-bytes->code-point b0 b1 b2 b3)
+(define-integrable (utf32-be-octets->code-point b0 b1 b2 b3)
   (+ (* b0 #x01000000)
      (fix:lsh b1 16)
      (fix:lsh b2 8)
      b3))
 
-(define-integrable (utf32-le-bytes->code-point b0 b1 b2 b3)
+(define-integrable (utf32-le-octets->code-point b0 b1 b2 b3)
   (+ (* b3 #x01000000)
      (fix:lsh b2 16)
      (fix:lsh b1 8)
@@ -897,11 +897,11 @@ Not used at the moment.
       (utf16-le-string-length string start end)))
 
 (define (utf16-be-string-length string #!optional start end)
-  (%utf16-string-length string start end "16BE" be-bytes->digit16
+  (%utf16-string-length string start end "16BE" be-octets->digit16
 			'UTF16-BE-STRING-LENGTH))
 
 (define (utf16-le-string-length string #!optional start end)
-  (%utf16-string-length string start end "16LE" le-bytes->digit16
+  (%utf16-string-length string start end "16LE" le-octets->digit16
 			'UTF16-LE-STRING-LENGTH))
 
 (define (%utf16-string-length string start end type combiner caller)
@@ -916,11 +916,11 @@ Not used at the moment.
       (utf16-le-string-valid? string start end)))
 
 (define (utf16-be-string-valid? string #!optional start end)
-  (%utf16-string-valid? string start end be-bytes->digit16
+  (%utf16-string-valid? string start end be-octets->digit16
 			'UTF16-BE-STRING-VALID?))
 
 (define (utf16-le-string-valid? string #!optional start end)
-  (%utf16-string-valid? string start end le-bytes->digit16
+  (%utf16-string-valid? string start end le-octets->digit16
 			'UTF16-LE-STRING-VALID?))
 
 (define (%utf16-string-valid? string start end combiner caller)
@@ -945,10 +945,10 @@ Not used at the moment.
 		      (fix:+ start 2)))))
       start))
 
-(define (be-bytes->digit16 b0 b1)
+(define (be-octets->digit16 b0 b1)
   (fix:or (fix:lsh b0 8) b1))
 
-(define (le-bytes->digit16 b0 b1)
+(define (le-octets->digit16 b0 b1)
   (fix:or (fix:lsh b1 8) b0))
 
 (define-integrable (high-surrogate? n)

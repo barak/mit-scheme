@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.39 2008/07/19 01:41:17 cph Exp $
+$Id: mod-lisp.scm,v 1.40 2008/07/26 05:45:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -385,26 +385,26 @@ USA.
   (set-status-header response code)
   (set-content-type-header response 'text/html)
   (set-entity response
-	      (call-with-output-bytes
-		(lambda (port)
-		  (write-xml
-		   (let ((message (status-message code)))
-		     (html:html #f
-				"\n"
-				(html:head #f
-					   "\n"
-					   (html:title #f code " " message)
-					   "\n")
-				"\n"
-				(html:body #f
-					   "\n"
-					   (html:h1 #f message)
-					   "\n"
-					   extra
-					   "\n")
-				"\n"))
-		   port)
-		  (newline port)))))
+	      (call-with-output-octets
+	       (lambda (port)
+		 (write-xml
+		  (let ((message (status-message code)))
+		    (html:html #f
+			       "\n"
+			       (html:head #f
+					  "\n"
+					  (html:title #f code " " message)
+					  "\n")
+			       "\n"
+			       (html:body #f
+					  "\n"
+					  (html:h1 #f message)
+					  "\n"
+					  extra
+					  "\n")
+			       "\n"))
+		  port)
+		 (newline port)))))
 
 (define (set-status-header message code)
   (set-header message

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.651 2008/07/26 05:12:20 cph Exp $
+$Id: runtime.pkg,v 14.652 2008/07/26 05:45:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4100,18 +4100,18 @@ USA.
 	  (open-wide-input-string open-input-string)
 	  (string->input-port open-input-string)
 	  (with-string-output-port call-with-narrow-output-string)
-	  call-with-input-bytes
+	  call-with-input-octets
 	  call-with-input-string
 	  call-with-narrow-output-string
-	  call-with-output-bytes
+	  call-with-output-octets
 	  call-with-truncated-output-string
 	  call-with-wide-output-string
 	  get-output-string
 	  get-output-string!
-	  open-input-bytes
+	  open-input-octets
 	  open-input-string
 	  open-narrow-output-string
-	  open-output-bytes
+	  open-output-octets
 	  open-wide-output-string
 	  with-input-from-string
 	  with-output-to-string

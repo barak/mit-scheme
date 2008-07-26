@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.44 2008/07/19 01:41:17 cph Exp $
+$Id: xml-output.scm,v 1.45 2008/07/26 05:45:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,10 +40,10 @@ USA.
       (write-xml-1 xml port options))))
 
 (define (xml->string xml . options)
-  (call-with-output-bytes
-    (lambda (port)
-      (set-coding xml port)
-      (write-xml-1 xml port options))))
+  (call-with-output-octets
+   (lambda (port)
+     (set-coding xml port)
+     (write-xml-1 xml port options))))
 
 (define (xml->wide-string xml . options)
   (call-with-wide-output-string

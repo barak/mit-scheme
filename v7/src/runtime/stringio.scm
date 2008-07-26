@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stringio.scm,v 14.2 2008/07/26 05:12:20 cph Exp $
+$Id: stringio.scm,v 14.3 2008/07/26 05:45:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -331,25 +331,25 @@ USA.
 
 ;;;; Input as byte vector
 
-(define (call-with-input-bytes bytes procedure)
-  (let ((port (open-input-bytes bytes)))
+(define (call-with-input-octets octets procedure)
+  (let ((port (open-input-octets octets)))
     (let ((value (procedure port)))
       (close-input-port port)
       value)))
 
-(define (open-input-bytes bytes #!optional start end)
-  (guarantee-xstring bytes 'OPEN-INPUT-BYTES)
+(define (open-input-octets octets #!optional start end)
+  (guarantee-xstring octets 'OPEN-INPUT-OCTETS)
   (receive (start end)
-      (check-index-limits start end (xstring-length bytes) 'OPEN-INPUT-BYTES)
+      (check-index-limits start end (xstring-length octets) 'OPEN-INPUT-OCTETS)
     (let ((port
-	   (make-generic-i/o-port (make-bytes-source bytes start end)
+	   (make-generic-i/o-port (make-octets-source octets start end)
 				  #f
-				  bytes-input-type)))
+				  octets-input-type)))
       (port/set-coding port 'ISO-8859-1)
       (port/set-line-ending port 'NEWLINE)
       port)))
 
-(define (make-bytes-source string start end)
+(define (make-octets-source string start end)
   (let ((index start))
     (make-non-channel-port-source
      (lambda ()
@@ -361,7 +361,7 @@ USA.
 	   (set! index limit))
 	 n)))))
 
-(define (make-bytes-input-type)
+(define (make-octets-input-type)
   (make-port-type `((WRITE-SELF
 		     ,(lambda (port output-port)
 			port
@@ -552,26 +552,26 @@ USA.
 		   (loop index)))))
       (xsubstring-find-previous-char string start end #\newline)))
 
-;;;; Output as bytes
+;;;; Output as octets
 
-(define (call-with-output-bytes generator)
-  (let ((port (open-output-bytes)))
+(define (call-with-output-octets generator)
+  (let ((port (open-output-octets)))
     (generator port)
     (get-output-string port)))
 
-(define (open-output-bytes)
+(define (open-output-octets)
   (let ((port
 	 (let ((os (make-ostate (make-vector-8b 16) 0 #f)))
 	   (make-generic-i/o-port #f
 				  (make-byte-sink os)
-				  bytes-output-type
+				  octets-output-type
 				  os))))
     (port/set-line-ending port 'NEWLINE)
     port))
 
 (define (make-byte-sink os)
   (make-non-channel-port-sink
-   (lambda (bytes start end)
+   (lambda (octets start end)
      (let ((index (ostate-index os)))
        (let ((n (fix:+ index (fix:- end start))))
 	 (let ((buffer (ostate-buffer os)))
@@ -586,55 +586,55 @@ USA.
 			      (loop (fix:+ m m)))))))
 		  (substring-move! buffer 0 index new 0)
 		  new))))
-	 (substring-move! bytes start end (ostate-buffer os) index)
+	 (substring-move! octets start end (ostate-buffer os) index)
 	 (set-ostate-index! os n)
 	 (fix:- end start))))))
 
-(define (make-bytes-output-type)
-  (make-port-type `((EXTRACT-OUTPUT ,bytes-out/extract-output)
-		    (EXTRACT-OUTPUT! ,bytes-out/extract-output!)
-		    (POSITION ,bytes-out/position)
-		    (WRITE-SELF ,bytes-out/write-self))
+(define (make-octets-output-type)
+  (make-port-type `((EXTRACT-OUTPUT ,octets-out/extract-output)
+		    (EXTRACT-OUTPUT! ,octets-out/extract-output!)
+		    (POSITION ,octets-out/position)
+		    (WRITE-SELF ,octets-out/write-self))
 		  (generic-i/o-port-type #f #t)))
 
-(define (bytes-out/extract-output port)
+(define (octets-out/extract-output port)
   (output-port/flush-output port)
-  (let ((os (output-bytes-port/os port)))
+  (let ((os (output-octets-port/os port)))
     (string-head (ostate-buffer os) (ostate-index os))))
 
-(define (bytes-out/extract-output! port)
+(define (octets-out/extract-output! port)
   (output-port/flush-output port)
-  (let ((os (output-bytes-port/os port)))
-    (let ((bytes (ostate-buffer os)))
-      (set-string-maximum-length! bytes (ostate-index os))
+  (let ((os (output-octets-port/os port)))
+    (let ((octets (ostate-buffer os)))
+      (set-string-maximum-length! octets (ostate-index os))
       (set-ostate-buffer! os (make-vector-8b 16))
       (set-ostate-index! os 0)
-      bytes)))
+      octets)))
 
-(define (bytes-out/position port)
+(define (octets-out/position port)
   (output-port/flush-output port)
-  (ostate-index (output-bytes-port/os port)))
+  (ostate-index (output-octets-port/os port)))
 
-(define (bytes-out/write-self port output-port)
+(define (octets-out/write-self port output-port)
   port
   (write-string " to byte vector" output-port))
 
 (define narrow-input-type)
 (define wide-input-type)
 (define external-input-type)
-(define bytes-input-type)
+(define octets-input-type)
 (define narrow-output-type)
 (define wide-output-type)
-(define bytes-output-type)
-(define output-bytes-port/os)
+(define octets-output-type)
+(define output-octets-port/os)
 
 (define (initialize-package!)
   (set! narrow-input-type (make-narrow-input-type))
   (set! wide-input-type (make-wide-input-type))
   (set! external-input-type (make-external-input-type))
-  (set! bytes-input-type (make-bytes-input-type))
+  (set! octets-input-type (make-octets-input-type))
   (set! narrow-output-type (make-narrow-output-type))
   (set! wide-output-type (make-wide-output-type))
-  (set! bytes-output-type (make-bytes-output-type))
-  (set! output-bytes-port/os (generic-i/o-port-accessor 0))
+  (set! octets-output-type (make-octets-output-type))
+  (set! output-octets-port/os (generic-i/o-port-accessor 0))
   unspecific)
