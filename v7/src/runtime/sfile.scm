@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.44 2008/07/26 22:51:29 cph Exp $
+$Id: sfile.scm,v 14.45 2008/07/27 04:24:26 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -334,26 +334,17 @@ USA.
 		 "/"
 		 (symbol-name (mime-type/subtype mime-type))))
 
-(define (string->mime-type string)
-  (guarantee-mime-type-string string 'STRING->MIME-TYPE)
-  (let ((slash (string-find-next-char string #\/)))
-    (%make-mime-type (intern (string-head string slash))
-		     (intern (string-tail string (fix:+ slash 1))))))
+(define (string->mime-type string #!optional start end)
+  (vector-ref (or (*parse-string parser:mime-type string start end)
+		  (error:not-mime-type-string string 'STRING->MIME-TYPE))
+	      0))
 
 (define (mime-type-string? object)
   (and (string? object)
        (string-is-mime-type? object)))
 
 (define (string-is-mime-type? string #!optional start end)
-  (let ((start (if (default-object? start) 0 start))
-	(end (if (default-object? end) (string-length string) end)))
-    (let ((i (check-mime-token-syntax string start end)))
-      (and (fix:> i 0)
-	   (fix:< i end)
-	   (char=? (string-ref string i) #\/)
-	   (fix:< (fix:+ i 1) end)
-	   (fix:= end (check-mime-token-syntax string (fix:+ i 1) end))
-	   i))))
+  (*match-string matcher:mime-type string start end))
 
 (define (mime-token? object)
   (and (interned-symbol? object)
@@ -364,17 +355,23 @@ USA.
        (string-is-mime-token? object)))
 
 (define (string-is-mime-token? string #!optional start end)
-  (let ((start (if (default-object? start) 0 start))
-	(end (if (default-object? end) (string-length string) end)))
-    (fix:= end (check-mime-token-syntax string start end))))
+  (*match-string matcher:mime-token string start end))
 
-(define (check-mime-token-syntax string start end)
-  (let loop ((i start))
-    (if (fix:< i end)
-	(if (char-set-member? char-set:mime-token (string-ref string i))
-	    (loop (fix:+ i 1))
-	    i)
-	end)))
+(define parser:mime-type
+  (*parser
+   (encapsulate (lambda (v)
+		  (%make-mime-type (vector-ref v 0)
+				   (vector-ref v 1)))
+     (seq parser:mime-token "/" parser:mime-token))))
+
+(define matcher:mime-type
+  (*matcher (seq matcher:mime-token "/" matcher:mime-token)))
+
+(define parser:mime-token
+  (*parser (map intern (match matcher:mime-token))))
+
+(define matcher:mime-token
+  (*matcher (* (char-set char-set:mime-token))))
 
 (define-guarantee mime-type "MIME type")
 (define-guarantee mime-type-string "MIME type string")
