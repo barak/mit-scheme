@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.39 2008/07/26 05:45:36 cph Exp $
+$Id: unicode.scm,v 1.40 2008/07/31 05:22:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1056,18 +1056,6 @@ Not used at the moment.
 	      (else #f)))
       start))
 
-(define-integrable (%vc2 b0)
-  (if (not (%vs2 b0))
-      (error "Illegal UTF-8 sequence:" b0)))
-
-(define-integrable (%vc3 b0 b1)
-  (if (not (%vs3 b0 b1))
-      (error "Illegal UTF-8 sequence:" b0 b1)))
-
-(define-integrable (%vc4 b0 b1)
-  (if (not (%vs4 b0 b1))
-      (error "Illegal UTF-8 sequence:" b0 b1)))
-
 (define-integrable (%vs2 b0)
   (fix:> b0 #xC1))
 
@@ -1077,20 +1065,10 @@ Not used at the moment.
 (define-integrable (%vs4 b0 b1)
   (or (fix:> b0 #xF0) (fix:> b1 #x8F)))
 
-(define-integrable (%cp2 b0 b1)
-  (fix:or (fix:lsh (fix:and b0 #x1F) 6)
-	  (fix:and b1 #x3F)))
-
 (define-integrable (%cp3 b0 b1 b2)
   (fix:or (fix:lsh (fix:and b0 #x0F) 12)
 	  (fix:or (fix:lsh (fix:and b1 #x3F) 6)
 		  (fix:and b2 #x3F))))
-
-(define-integrable (%cp4 b0 b1 b2 b3)
-  (fix:or (fix:lsh (fix:and b0 #x07) 18)
-	  (fix:or (fix:lsh (fix:and b1 #x3F) 12)
-		  (fix:or (fix:lsh (fix:and b2 #x3F) 6)
-			  (fix:and b3 #x3F)))))
 
 (define-integrable (%valid-trailer? n)
   (fix:= #x80 (fix:and #xC0 n)))
