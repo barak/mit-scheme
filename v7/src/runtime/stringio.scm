@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stringio.scm,v 14.4 2008/07/26 07:02:12 cph Exp $
+$Id: stringio.scm,v 14.5 2008/07/31 05:23:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,10 +36,7 @@ USA.
   (with-input-from-port (open-input-string string) thunk))
 
 (define (call-with-input-string string procedure)
-  (let ((port (open-input-string string)))
-    (let ((value (procedure port)))
-      (close-input-port port)
-      value)))
+  (procedure (open-input-string string)))
 
 (define (open-input-string string #!optional start end)
   (cond ((string? string)
@@ -332,10 +329,7 @@ USA.
 ;;;; Input as byte vector
 
 (define (call-with-input-octets octets procedure)
-  (let ((port (open-input-octets octets)))
-    (let ((value (procedure port)))
-      (close-input-port port)
-      value)))
+  (procedure (open-input-octets octets)))
 
 (define (open-input-octets octets #!optional start end)
   (guarantee-xstring octets 'OPEN-INPUT-OCTETS)
