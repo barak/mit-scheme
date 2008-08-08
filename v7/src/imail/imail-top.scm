@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.306 2008/07/07 01:35:44 riastradh Exp $
+$Id: imail-top.scm,v 1.307 2008/08/08 03:40:49 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -830,8 +830,9 @@ With prefix argument N, removes FLAG from next N messages,
 	 (remove-duplicates (append standard-message-flags
 				    (folder-flags (selected-folder)))
 			    string=?)))
-   'DEFAULT-TYPE 'INSERTED-DEFAULT
+   'DEFAULT-TYPE 'VISIBLE-DEFAULT
    'HISTORY 'IMAIL-READ-FLAG
+   'HISTORY-INDEX 0
    'REQUIRE-MATCH? require-match?))
 
 ;;;; Message I/O
