@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.307 2008/08/08 03:40:49 riastradh Exp $
+$Id: imail-top.scm,v 1.308 2008/08/11 17:53:51 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -787,6 +787,7 @@ With prefix argument N, undeletes backward N messages,
     (lambda (buffer window)
       window
       (local-set-variable! truncate-lines #t buffer)
+      (preload-folder-outlines folder)
       (let ((mark (mark-left-inserting-copy (buffer-point buffer)))
 	    (n (folder-length folder)))
 	(let ((index-digits (exact-nonnegative-integer-digits (- n 1))))
