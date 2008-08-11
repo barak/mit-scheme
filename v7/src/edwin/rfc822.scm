@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rfc822.scm,v 3.10 2008/01/30 20:02:05 cph Exp $
+$Id: rfc822.scm,v 3.11 2008/08/11 22:48:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -76,27 +76,27 @@ USA.
   (decorated-string-append "" ", " "" addresses))
 
 (define (rfc822:string->addresses string)
-  (let ((address-list
-	 (rfc822:strip-quoted-names
-          (rfc822:string->non-ignored-tokens string))))
-    (if (and address-list (null? (cdr address-list)))
-	(car address-list)
-	(map (lambda (string)
-	       (let ((string (string-trim string)))
-		 (let ((end (string-length string)))
-		   (let loop ((start 0))
-		     (let ((index
-			    (substring-find-next-char-in-set
-			     string start end char-set:whitespace)))
-		       (if index
-			   (begin
-			     (string-set! string index #\space)
-			     (loop (fix:+ index 1)))))))
-		 string))
-	     (burst-string string #\, #f)))))
+  (let ((tokens (rfc822:string->non-ignored-tokens string)))
+    (let ((address-list (rfc822:strip-quoted-names tokens)))
+      (if (and address-list (null? (cdr address-list)))
+	  (car address-list)
+	  (rfc822:split-address-tokens tokens)))))
+
+(define (rfc822:string->named-addresses string)
+  (rfc822:split-address-tokens (rfc822:string->tokens string)))
+
+(define (rfc822:split-address-tokens tokens)
+  (let recur ((tokens tokens))
+    (receive (tokens tokens*)
+	(span (lambda (token) (not (eqv? token #\,))) tokens)
+      (cons (rfc822:tokens->string tokens)
+	    (if (pair? tokens*) (recur (cdr tokens*)) '())))))
 
 (define (rfc822:canonicalize-address-string string)
   (rfc822:addresses->string (rfc822:string->addresses string)))
+
+(define (rfc822:canonicalize-named-address-string string)
+  (rfc822:addresses->string (rfc822:string->named-addresses string)))
 
 ;;;; Parsers
 

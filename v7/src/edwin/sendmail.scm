@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.97 2008/06/20 06:10:13 riastradh Exp $
+$Id: sendmail.scm,v 1.98 2008/08/11 22:48:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -306,12 +306,7 @@ is inserted."
 			      (ref-mode-object mail)))
   (local-set-variable! mail-reply-buffer reply-buffer buffer)
   (let ((headers (add-standard-headers headers buffer))
-	(point (mark-left-inserting-copy (buffer-start buffer)))
-	(fill
-	 (lambda (start end)
-	   (fill-region-as-paragraph start end
-				     "\t" (ref-variable fill-column buffer)
-				     #f))))
+	(point (mark-left-inserting-copy (buffer-start buffer))))
     (let ((start (mark-right-inserting-copy point)))
       (for-each
        (lambda (header)
@@ -343,7 +338,7 @@ is inserted."
 			      (or (string-ci=? key "to")
 				  (string-ci=? key "cc"))
 			      (caddr header)))
-		     (fill start point))
+		     (fill-mail-addresses start point))
 		 (insert-newline point)))))
        headers)
       (mark-temporary! start))
@@ -374,6 +369,27 @@ is inserted."
 	  (buffer-not-modified! buffer))))
   (event-distributor/invoke! (ref-variable mail-setup-hook buffer) buffer))
 
+(define (fill-mail-addresses start end)
+  ;; This totally loses on quoted or commented names, which it
+  ;; probably shouldn't split up.
+  (let ((column (ref-variable fill-column start))
+	(mark (char-search-forward #\, start end)))
+    (if mark
+	(let loop ((start start) (mark mark))
+	  (let ((mark* (char-search-forward #\, mark end)))
+	    (if mark*
+		(if (< (mark-column mark*) column)
+		    (loop start mark*)
+		    (let ((mark
+			   (mark-permanent-copy
+			    ;; Skip addresses that are too long.
+			    (if (mark= mark start) mark* mark))))
+		      (delete-horizontal-space mark)
+		      (insert-newline mark)
+		      (insert-char #\tab mark)
+		      (mark-temporary! mark)
+		      (loop mark mark)))))))))
+
 (define (add-standard-headers headers buffer)
   (let ((add
 	 (lambda (key value)

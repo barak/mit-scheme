@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.308 2008/07/19 00:56:19 cph Exp $
+$Id: edwin.pkg,v 1.309 2008/08/11 22:48:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1681,6 +1681,7 @@ USA.
   (export (edwin)
 	  rfc822:addresses->string
 	  rfc822:canonicalize-address-string
+	  rfc822:canonicalize-named-address-string
 	  rfc822:first-address
 	  rfc822:header-field-name?
 	  rfc822:parse-addr-spec
@@ -1689,11 +1690,12 @@ USA.
 	  rfc822:parse-msg-id
 	  rfc822:parse-word
 	  rfc822:quote-string
-          rfc822:unquote-string
+	  rfc822:unquote-string
 	  rfc822:received-header-components
 	  rfc822:string->addresses
+	  rfc822:string->named-addresses
 	  rfc822:string->tokens
-          rfc822:string-tokenizer
+	  rfc822:string-tokenizer
 	  rfc822:strip-comments
 	  rfc822:strip-quoted-names
 	  rfc822:tokens->string))

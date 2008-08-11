@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.308 2008/08/11 17:53:51 riastradh Exp $
+$Id: imail-top.scm,v 1.309 2008/08/11 22:48:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1278,7 +1278,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	   (and (pair? strings)
 		(decorated-string-append "" ", " "" strings)))))
     `(("To"
-       ,(rfc822:canonicalize-address-string
+       ,(rfc822:canonicalize-named-address-string
 	 (or resent-reply-to
 	     (concat (get-all-header-field-values message "reply-to"))
 	     from)))
@@ -1299,7 +1299,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 		 (and cc
 		      (let ((addresses
 			     (imail-dont-reply-to
-			      (rfc822:string->addresses cc))))
+			      (rfc822:string->named-addresses cc))))
 			(and (pair? addresses)
 			     (rfc822:addresses->string addresses))))))))
       ("In-reply-to"
@@ -1334,7 +1334,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	  #t)))
     (let loop ((addresses addresses))
       (if (pair? addresses)
-	  (if (re-string-match pattern (car addresses))
+	  (if (re-string-match pattern
+			       (rfc822:canonicalize-address-string
+				(car addresses)))
 	      (loop (cdr addresses))
 	      (cons (car addresses) (loop (cdr addresses))))
 	  '()))))
