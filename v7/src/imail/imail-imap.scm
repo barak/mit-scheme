@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.220 2008/08/11 17:44:50 riastradh Exp $
+$Id: imail-imap.scm,v 1.221 2008/08/11 17:51:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1042,7 +1042,8 @@ USA.
   (length)
   (envelope)
   (bodystructure)
-  (body-parts define standard initial-value '()))
+  (body-parts define standard initial-value '())
+  (cached-keywords define standard initial-value '()))
 
 (define-generic imap-message-uid (message))
 (define-generic imap-message-length (message))
@@ -1272,7 +1273,7 @@ USA.
 	     (lambda (index message)
 	       (if (zero? (remainder index 10))
 		   (imail-ui:progress-meter index length))
-	       (let ((keywords (message-uncached-keywords message keywords)))
+	       (let ((keywords (select-uncached-keywords message keywords)))
 		 (if (pair? keywords)
 		     (begin
 		       (hash-table/modify! message-sets keywords
@@ -1281,9 +1282,20 @@ USA.
 		       (set! count (+ count 1)))))))))))
     (values message-sets count)))
 
-(define (message-uncached-keywords message keywords)
+(define (imap-message-keyword-cached? message keyword)
+  (let ((cached-keywords (imap-message-cached-keywords message)))
+    (or (memq keyword cached-keywords)
+	(and (file-exists? (message-item-pathname message keyword))
+	     (begin
+	       (set-imap-message-cached-keywords!
+		message
+		(cons keyword cached-keywords))
+	       #t)))))
+
+(define (select-uncached-keywords message keywords)
   (delete-matching-items keywords
-    (lambda (keyword) (file-exists? (message-item-pathname message keyword)))))
+    (lambda (keyword)
+      (imap-message-keyword-cached? message keyword))))
 
 ;;;; MIME support
 
@@ -1610,6 +1622,11 @@ USA.
 		    (if (memq keyword message-items-cached-as-string)
 			(string->file item pathname)
 			(simple-write-file item pathname))
+		    (let ((keywords (imap-message-cached-keywords message)))
+		      (if (not (memq keyword keywords))
+			  (set-imap-message-cached-keywords!
+			   message
+			   (cons keyword keywords))))
 		    (save-item keyword item))))
 	    (imap:response:fetch-attribute-keywords response)))
 
