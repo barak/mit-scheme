@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.219 2008/05/19 05:21:19 riastradh Exp $
+$Id: imail-imap.scm,v 1.220 2008/08/11 17:44:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -845,7 +845,8 @@ USA.
   (let ((connection (guarantee-imap-folder-connection folder))
 	(url (resource-locator folder)))
     (if (or (guarantee-imap-connection-open connection)
-	    (not (eq? (imap-connection-url connection) url)))
+	    (not (eq? (imap-connection-url connection) url))
+	    (not (imap-folder-messages-synchronized? folder)))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
 	  (let ((selected? #f))
