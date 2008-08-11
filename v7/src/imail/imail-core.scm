@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.171 2008/07/03 20:08:07 cph Exp $
+$Id: imail-core.scm,v 1.172 2008/08/11 22:27:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -944,13 +944,14 @@ USA.
 			      (decorated-string-append "" " " "" flags)))
 
 (define (header-fields->message-flags headers)
-  (delete-duplicates! (map (lambda (header)
-			     (burst-string (header-field-value header)
-					   char-set:whitespace
-					   #t))
-			   (filter (internal-header-field-predicate "FLAGS")
-				   headers))
-		      string-ci=?))
+  (delete-duplicates
+   (append-map (lambda (header)
+                 (burst-string (header-field-value header)
+                               char-set:whitespace
+                               #t))
+               (filter (internal-header-field-predicate "FLAGS")
+                       headers))
+   string-ci=?))
 
 (define (message-deleted? msg) (message-flagged? msg "deleted"))
 (define (message-undeleted? msg) (not (message-flagged? msg "deleted")))
