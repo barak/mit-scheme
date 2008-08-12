@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.223 2008/08/12 01:36:52 riastradh Exp $
+$Id: imail-imap.scm,v 1.224 2008/08/12 01:46:53 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1524,21 +1524,29 @@ USA.
 ;; Under each folder directory, there is a file called "uidvalidity"
 ;; that contains the UIDVALIDITY number, as a text string.  For each
 ;; message in the folder, there is a subdirectory whose name is the
-;; UID of the message.
+;; UID of the message.  There is also a temporary directory where
+;; files are written before being moved into the other directories,
+;; and which has no important internal structure.  Files older than
+;; thirty-six hours are deleted from it occasionally.
 ;;
 ;; Under each message directory, there is a file called
 ;; "rfc822.header" that contains the header information.  There may
 ;; also be files called "envelope", "bodystructure", "rfc822.size",
 ;; "internaldate", "text", and "body[...]", all corresponding to the
 ;; IMAP FETCH keys.
-
+
 (define (clean-cache-directory folder)
-  (let ((directory (imap-folder-cache-pathname folder))
+  (let ((temporary-directory (imap-folder-temporary-directory-pathname folder))
+	(directory (imap-folder-cache-pathname folder))
 	(uidvalidity (imap-folder-uidvalidity folder)))
+    (clean-temporary-directory temporary-directory)
     (if uidvalidity
 	(with-folder-locked folder
 	  (lambda ()
 	    (let ((up (merge-pathnames "uidvalidity" directory)))
+	      (define (write-uidvalidity)
+		(guarantee-init-file-directory temporary-directory)
+		(simple-write-file uidvalidity up temporary-directory))
 	      (if (file-directory? directory)
 		  (let ((uidvalidity* (simple-read-file up)))
 		    (if (and (file-regular? up)
@@ -1546,11 +1554,30 @@ USA.
 			(remove-expunged-messages folder directory)
 			(begin
 			  (delete-directory-contents directory)
-			  (simple-write-file uidvalidity up))))
+			  (write-uidvalidity))))
 		  (begin
 		    (delete-file-no-errors directory)
 		    (guarantee-init-file-directory directory)
-		    (simple-write-file uidvalidity up)))))))))
+		    (write-uidvalidity)))))))))
+
+(define temporary-file-expiration-time
+  (* 60 60 36))
+
+(define (clean-temporary-directory directory)
+  (if (file-directory? directory)
+      (for-each
+       (let* ((now (get-universal-time))
+	      (then (- now temporary-file-expiration-time)))
+	 (lambda (pathname)
+	   (catch-file-errors (lambda (condition) condition #f)
+	     (lambda ()
+	       (let ((ns (file-namestring pathname)))
+		 (if (not (or (string=? ns ".")
+			      (string=? ns "..")
+			      (let ((t (file-modification-time pathname)))
+				(and t (> t then)))))
+		     (delete-file pathname)))))))
+       (directory-read directory #f))))
 
 (define (remove-expunged-messages folder directory)
   (for-each (lambda (pathname)
@@ -1615,11 +1642,14 @@ USA.
   (for-each (lambda (keyword)
 	      (if (keyword-predicate keyword)
 		  (let ((item (imap:response:fetch-attribute response keyword))
-			(pathname (message-item-pathname message keyword)))
+			(pathname (message-item-pathname message keyword))
+			(temporary-directory
+			 (imap-message-temporary-directory-pathname message)))
 		    (guarantee-init-file-directory pathname)
+		    (guarantee-init-file-directory temporary-directory)
 		    (if (memq keyword message-items-cached-as-string)
-			(string->file item pathname)
-			(simple-write-file item pathname))
+			(string->file item pathname temporary-directory)
+			(simple-write-file item pathname temporary-directory))
 		    (let ((keywords (imap-message-cached-keywords message)))
 		      (if (not (memq keyword keywords))
 			  (set-imap-message-cached-keywords!
@@ -1649,9 +1679,11 @@ USA.
       (lambda ()
 	(let ((pathname (message-item-pathname message cache-keyword)))
 	  (if (not (file-exists? pathname))
-	      (begin
+	      (let ((temporary-directory
+		     (imap-message-temporary-directory-pathname message)))
 		(guarantee-init-file-directory pathname)
-		(call-with-output-file pathname
+		(guarantee-init-file-directory temporary-directory)
+		(call-with-temporary-output-file pathname temporary-directory
 		  (lambda (output-port)
 		    (imap:bind-fetch-body-part-port output-port
 		      (lambda ()
@@ -1670,9 +1702,12 @@ USA.
 	(lambda ()
 	  (let ((pathname (message-item-pathname message keyword)))
 	    (if (not (file-exists? pathname))
-		(begin
+		(let ((temporary-directory
+		       (imap-message-temporary-directory-pathname message)))
 		  (guarantee-init-file-directory pathname)
-		  (call-with-output-file pathname fetch-to-port)))
+		  (guarantee-init-file-directory temporary-directory)
+		  (call-with-temporary-output-file pathname temporary-directory
+		    fetch-to-port)))
 	    (file->port pathname port)))
 	(lambda ()
 	  (fetch-to-port port))))))
@@ -1684,9 +1719,12 @@ USA.
 	(let ((pathname (message-item-pathname message keyword)))
 	  (if (file-exists? pathname)
 	      (file->string pathname)
-	      (let ((part (fetch-message-body-part-1 message section keyword)))
+	      (let ((part (fetch-message-body-part-1 message section keyword))
+		    (temporary-directory
+		     (imap-message-temporary-directory-pathname message)))
 		(guarantee-init-file-directory pathname)
-		(string->file part pathname)
+		(guarantee-init-file-directory temporary-directory)
+		(string->file part pathname temporary-directory)
 		part))))
       (lambda ()
 	(fetch-message-body-part-1 message section keyword)))))
@@ -1795,6 +1833,13 @@ USA.
   `(,@(imap-folder-cache-specifier (message-folder message))
     ,(write-to-string (imap-message-uid message))))
 
+(define (imap-message-temporary-directory-pathname message)
+  (imap-folder-temporary-directory-pathname (message-folder message)))
+
+(define (imap-folder-temporary-directory-pathname folder)
+  (merge-pathnames (pathname-as-directory "temporary")
+		   (imap-folder-cache-pathname folder)))
+
 (define (imap-folder-lock-pathname folder)
   (let ((spec (imap-folder-cache-specifier folder)))
     (let ((p (last-pair spec)))
@@ -1847,16 +1892,34 @@ USA.
 (define (simple-read-file pathname)
   (call-with-input-file pathname read))
 
-(define (simple-write-file object pathname)
-  (call-with-output-file pathname
+(define (simple-write-file object pathname #!optional temporary-directory)
+  (call-with-temporary-output-file pathname temporary-directory
     (lambda (port)
       (write object port)
       (newline port))))
 
-(define (string->file string pathname)
-  (call-with-output-file pathname
+(define (string->file string pathname #!optional temporary-directory)
+  (call-with-temporary-output-file pathname temporary-directory
     (lambda (port)
       (write-string string port))))
+
+(define (call-with-temporary-output-file pathname temporary-directory receiver)
+  (if (or (not temporary-directory)
+	  (default-object? temporary-directory))
+      (call-with-output-file temporary-directory receiver)
+      (let ((temporary-pathname (temporary-file-pathname temporary-directory))
+	    (done? #f))
+	(dynamic-wind
+	 (lambda ()
+	   (if done?
+	       (error "Re-entry prohibited into temporary file creation.")))
+	 (lambda ()
+	   (let ((result (call-with-output-file temporary-pathname receiver)))
+	     (rename-file temporary-pathname pathname)
+	     result))
+	 (lambda ()
+	   (set! done? #t)
+	   (deallocate-temporary-file temporary-pathname))))))
 
 (define (file->string pathname)
   (call-with-output-string
