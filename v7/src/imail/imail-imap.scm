@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.221 2008/08/11 17:51:12 riastradh Exp $
+$Id: imail-imap.scm,v 1.222 2008/08/12 00:49:03 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1208,8 +1208,6 @@ USA.
   (let ((length (folder-length folder)))
     (for-each-message folder
       (lambda (index message)
-	(if (zero? (remainder index 10))
-	    (imail-ui:progress-meter index length))
 	(cond ((imap-message-bodystructure message)
 	       => (lambda (body-structure)
 		    (walk-mime-body message body-structure
