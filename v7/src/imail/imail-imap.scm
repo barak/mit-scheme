@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.222 2008/08/12 00:49:03 riastradh Exp $
+$Id: imail-imap.scm,v 1.223 2008/08/12 01:36:52 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1205,18 +1205,18 @@ USA.
 
 (define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
   (fill-imap-message-cache folder content-keywords)
-  (let ((length (folder-length folder)))
-    (for-each-message folder
-      (lambda (index message)
-	(cond ((imap-message-bodystructure message)
-	       => (lambda (body-structure)
-		    (walk-mime-body message body-structure
-		      (lambda (selector)
-			(fetch-message-body-part-to-cache
-			 message
-			 (mime-selector->imap-section selector))))))
-	      (else
-	       (fetch-message-body-part-to-cache message '(TEXT))))))))
+  (for-each-message folder
+    (lambda (index message)
+      index                             ;ignore
+      (cond ((imap-message-bodystructure message)
+	     => (lambda (body-structure)
+		  (walk-mime-body message body-structure
+		    (lambda (selector)
+		      (fetch-message-body-part-to-cache
+		       message
+		       (mime-selector->imap-section selector))))))
+	    (else
+	     (fetch-message-body-part-to-cache message '(TEXT)))))))
 
 (define (for-each-message folder procedure)
   (let ((n (folder-length folder)))
