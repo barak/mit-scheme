@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.310 2008/08/15 17:08:10 riastradh Exp $
+$Id: imail-top.scm,v 1.311 2008/08/15 22:46:42 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1133,11 +1133,10 @@ While composing the message, use \\[mail-yank-original] to yank the
 original message into it."
   ()
   (lambda ()
-    (make-mail-buffer '(("To" "") ("Subject" ""))
-		      (chase-imail-buffer (selected-buffer))
-		      (lambda (mail-buffer)
-			(initialize-imail-mail-buffer mail-buffer)
-			(select-buffer-other-window mail-buffer)))))
+    (make-initialized-mail-buffer '(("To" "") ("Subject" ""))
+				  (chase-imail-buffer (selected-buffer))
+				  initialize-imail-mail-buffer
+				  select-buffer-other-window)))
 
 (define-command imail-reply
   "Reply to the current message.
@@ -1148,12 +1147,13 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "P"
   (lambda (just-sender?)
     (let ((message (selected-message)))
-      (make-mail-buffer (imail-reply-headers message (not just-sender?))
-			(chase-imail-buffer (selected-buffer))
-			(lambda (mail-buffer)
-			  (initialize-imail-mail-buffer mail-buffer)
-			  (message-answered message)
-			  (select-buffer-other-window mail-buffer))))))
+      (make-initialized-mail-buffer
+       (imail-reply-headers message (not just-sender?))
+       (chase-imail-buffer (selected-buffer))
+       (lambda (mail-buffer)
+	 (initialize-imail-mail-buffer mail-buffer)
+	 (message-answered message))
+       select-buffer-other-window))))
 
 (define-command imail-continue
   "Continue composing outgoing message previously being composed."
@@ -1189,7 +1189,7 @@ With negative argument, forward the message with all headers;
 
 (define (imail-forward argument)
   (let ((message (selected-message)))
-    (make-mail-buffer
+    (make-initialized-mail-buffer
      `(("To" "")
        ("Subject"
 	,(string-append
@@ -1234,10 +1234,10 @@ With negative argument, forward the message with all headers;
 		   (insert-header-fields message raw? mark)
 		   (insert-message-body message mark)))
 	       (mark-temporary! mark))))
-       (if (window-has-no-neighbors? (current-window))
-	   (select-buffer mail-buffer)
-	   (select-buffer-other-window mail-buffer))
-       (message-forwarded message)))))
+       (message-forwarded message))
+     (if (window-has-no-neighbors? (current-window))
+	 select-buffer
+	 select-buffer-other-window))))
 
 (define-command imail-resend
   "Resend current message to ADDRESSES.
@@ -1246,7 +1246,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
   (lambda (addresses)
     (let ((buffer (selected-buffer))
 	  (message (selected-message)))
-      (make-mail-buffer
+      (make-initialized-mail-buffer
        `(("Resent-From" ,(mail-from-string buffer))
 	 ("Resent-Date" ,(universal-time->string (get-universal-time)))
 	 ("Resent-To" ,addresses)
@@ -1264,10 +1264,10 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	   (lambda ()
 	     (insert-message-body message (buffer-end mail-buffer))))
 	 (disable-buffer-mime-processing! mail-buffer)
-	 (if (window-has-no-neighbors? (current-window))
-	     (select-buffer mail-buffer)
-	     (select-buffer-other-window mail-buffer))
-	 (message-resent message))))))
+	 (message-resent message))
+       (if (window-has-no-neighbors? (current-window))
+	   select-buffer
+	   select-buffer-other-window)))))
 
 (define (imail-reply-headers message cc?)
   (let ((resent-reply-to
