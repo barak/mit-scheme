@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.98 2008/08/11 22:48:50 riastradh Exp $
+$Id: sendmail.scm,v 1.99 2008/08/15 20:46:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -258,6 +258,13 @@ is inserted."
 
 (define (make-mail-buffer headers reply-buffer #!optional
 			  selector handle-previous buffer-name mode)
+  (make-initialized-mail-buffer headers reply-buffer
+				(lambda (buffer) buffer unspecific)
+				selector handle-previous buffer-name mode))
+
+(define (make-initialized-mail-buffer headers reply-buffer initializer
+				      #!optional selector handle-previous
+				      buffer-name mode)
   (let ((selector (if (default-object? selector) #f selector))
 	(handle-previous
 	 (if (default-object? handle-previous)
@@ -277,6 +284,7 @@ is inserted."
 					      (default-homedir-pathname))
 	       (setup-buffer-auto-save! buffer)
 	       (mail-setup buffer headers reply-buffer mode)
+	       (initializer buffer)
 	       (if (and select? selector) (selector buffer))
 	       buffer))))
       (cond ((not buffer)
