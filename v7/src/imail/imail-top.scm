@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.309 2008/08/11 22:48:50 riastradh Exp $
+$Id: imail-top.scm,v 1.310 2008/08/15 17:08:10 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2597,11 +2597,16 @@ WARNING: With a prefix argument, this command may take a very long
   (list (and name (cons "name" name))
 	(cons "type" (mime-body-type-string body))
 	(and (eq? (mime-body-type body) 'TEXT)
-	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))
-	(let ((encoding (mime-body-one-part-encoding body)))
-	  (and (not (known-mime-encoding? encoding))
-	       (cons "encoding" encoding)))
-	(cons "length" (mime-body-one-part-n-octets body))))
+	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))))
+
+(define-method compute-mime-message-outline
+    ((body <mime-body-one-part>) name context)
+  context
+  (append (call-next-method body name context)
+	  (list (let ((encoding (mime-body-one-part-encoding body)))
+		  (and (not (known-mime-encoding? encoding))
+		       (cons "encoding" encoding)))
+		(cons "length" (mime-body-one-part-n-octets body)))))
 
 (define-method compute-mime-message-outline
     ((body <mime-body-message>) name context)
