@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.10 2007/09/10 19:19:04 riastradh Exp $
+$Id: imail-mime.scm,v 1.11 2008/08/15 15:44:37 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -362,12 +362,27 @@ USA.
                (constructor make-message-part-message
                             (header-fields length string start end)))
     ;** Do not rearrange this!  The MESSAGE-BODY method on
-    ;** <MESSAGE-PART> must be more given precedence over that on
+    ;** <MESSAGE-PART> must be given precedence over that on
     ;** <MESSAGE>!
     (<message-part> <message>)
   (length accessor message-length))
 
-(define (mime:parse-part string start header-end end)
+(define (mime:parse-part body start end)
+  (cond ((char=? #\newline (string-ref body start))
+         ;; If the body begins with a newline, then there are
+         ;; no header fields, so the header end is the same
+         ;; as the content start.
+         (mime:parse-part/no-header body start (+ start 1) end))
+        ((substring-search-forward "\n\n" body start end)
+         => (lambda (header-end)
+              ;; End the header between the two newlines.
+              (mime:parse-part/header body start (+ header-end 1) end)))
+        (else
+         ;; Assume that the absence of a blank line means no
+         ;; header fields at all.
+         (mime:parse-part/no-header body start start end))))
+
+(define (mime:parse-part/header string start header-end end)
   (mime:parse-body-structure
    (make-message-part-message
     (lines->header-fields (substring->lines string start header-end))
@@ -376,27 +391,13 @@ USA.
     (+ header-end 1)                    ;Exclude the blank line.
     end)))
 
-(define (mime:parse-headerless-part string start content-start end)
+(define (mime:parse-part/no-header string start content-start end)
   (mime:parse-body-structure
    (make-message-part-message '() (- end start) string content-start end)))
 
 (define (mime:parse-parts body parts)
   (map (lambda (part)
-         (let ((start (car part))
-               (end (cdr part)))
-           (cond ((char=? #\newline (string-ref body start))
-                  ;; If the body begins with a newline, then there are
-                  ;; no header fields, so the header end is the same
-                  ;; as the content start.
-                  (mime:parse-headerless-part body start (+ start 1) end))
-                 ((substring-search-forward "\n\n" body start end)
-                  => (lambda (header-end)
-                       ;; End the header between the two newlines.
-                       (mime:parse-part body start (+ header-end 1) end)))
-                 (else
-                  ;; Assume that the absence of a blank line means no
-                  ;; header fields at all.
-                  (mime:parse-headerless-part body start start end)))))
+         (mime:parse-part body (car part) (cdr part)))
        parts))
 
 ;;;; Content-Type Header Fields
