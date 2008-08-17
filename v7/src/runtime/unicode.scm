@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.40 2008/07/31 05:22:03 cph Exp $
+$Id: unicode.scm,v 1.41 2008/08/17 09:42:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -188,7 +188,7 @@ USA.
   (not (illegal? pt)))
 
 (define-integrable (illegal? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xDFFF))
+  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
       (fix:= pt #xFFFE)
       (fix:= pt #xFFFF)))
 
@@ -197,7 +197,7 @@ USA.
 Not used at the moment.
 
 (define-integrable (non-character? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xDFFF))
+  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
       (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
       (fix:= #x00FFFE (fix:and #x00FFFE pt))))
 
