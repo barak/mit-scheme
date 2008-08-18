@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.41 2008/08/17 09:42:29 cph Exp $
+$Id: unicode.scm,v 1.42 2008/08/18 00:12:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -937,9 +937,9 @@ Not used at the moment.
   (if (fix:< start end)
       (and (fix:<= (fix:+ start 2) end)
 	   (let ((d0 (combiner (n 0) (n 1))))
-	     (if (high-surrogate? d0)
+	     (if (utf16-high-surrogate? d0)
 		 (and (fix:<= (fix:+ start 4) end)
-		      (low-surrogate? (combiner (n 2) (n 3)))
+		      (utf16-low-surrogate? (combiner (n 2) (n 3)))
 		      (fix:+ start 4))
 		 (and (legal-code-16? d0)
 		      (fix:+ start 2)))))
@@ -951,16 +951,18 @@ Not used at the moment.
 (define (le-octets->digit16 b0 b1)
   (fix:or (fix:lsh b1 8) b0))
 
-(define-integrable (high-surrogate? n)
-  (fix:= #xD800 (fix:and #xFC00 n)))
-
-(define-integrable (low-surrogate? n)
-  (fix:= #xDC00 (fix:and #xFC00 n)))
-
-(define-integrable (combine-surrogates n0 n1)
-  (fix:+ (fix:+ (fix:lsh (fix:and n0 #x3FF) 10)
-		(fix:and n1 #x3FF))
+(define (combine-utf16-surrogates h l)
+  (guarantee-utf16-high-surrogate h 'combine-utf16-surrogates)
+  (guarantee-utf16-low-surrogate l 'combine-utf16-surrogates)
+  (fix:+ (fix:+ (fix:lsh (fix:and h #x3FF) 10)
+		(fix:and l #x3FF))
 	 #x10000))
+
+(define (split-into-utf16-surrogates n)
+  (guarantee-unicode-code-point n 'split-into-utf16-surrogates)
+  (let ((n (fix:- n #x10000)))
+    (values (fix:or (fix:and (fix:lsh n -10) #x03FF) #xD800)
+	    (fix:or (fix:and n #x03FF) #xDC00))))
 
 (define (utf16-string? object)
   (and (string? object)
@@ -974,9 +976,19 @@ Not used at the moment.
   (and (string? object)
        (utf16-le-string-valid? object)))
 
+(define (utf16-high-surrogate? n)
+  (and (index-fixnum? n)
+       (fix:= #xD800 (fix:and #xFC00 n))))
+
+(define (utf16-low-surrogate? n)
+  (and (index-fixnum? n)
+       (fix:= #xDC00 (fix:and #xFC00 n))))
+
 (define-guarantee utf16-string "UTF-16 string")
 (define-guarantee utf16-be-string "UTF-16BE string")
 (define-guarantee utf16-le-string "UTF-16LE string")
+(define-guarantee utf16-high-surrogate "UTF-16 high surrogate")
+(define-guarantee utf16-low-surrogate "UTF-16 low surrogate")
 
 ;;;; UTF-8 representation
 

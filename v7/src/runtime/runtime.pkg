@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.655 2008/07/27 04:24:13 cph Exp $
+$Id: runtime.pkg,v 14.656 2008/08/18 00:12:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4880,11 +4880,14 @@ USA.
 	  char-in-alphabet?
 	  char-set->alphabet
 	  code-points->alphabet
+	  combine-utf16-surrogates
 	  error:not-8-bit-alphabet
 	  error:not-alphabet
 	  error:not-unicode-code-point
 	  error:not-utf16-be-string
+	  error:not-utf16-high-surrogate
 	  error:not-utf16-le-string
+	  error:not-utf16-low-surrogate
 	  error:not-utf16-string
 	  error:not-utf32-be-string
 	  error:not-utf32-le-string
@@ -4899,7 +4902,9 @@ USA.
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
 	  guarantee-utf16-be-string
+	  guarantee-utf16-high-surrogate
 	  guarantee-utf16-le-string
+	  guarantee-utf16-low-surrogate
 	  guarantee-utf16-string
 	  guarantee-utf32-be-string
 	  guarantee-utf32-le-string
@@ -4925,6 +4930,7 @@ USA.
 	  open-utf32-output-string
 	  open-utf8-input-string
 	  open-utf8-output-string
+	  split-into-utf16-surrogates
 	  string->alphabet
 	  string->utf16-be-string
 	  string->utf16-le-string
@@ -4940,10 +4946,12 @@ USA.
 	  utf16-be-string-length
 	  utf16-be-string-valid?
 	  utf16-be-string?
+	  utf16-high-surrogate?
 	  utf16-le-string->wide-string
 	  utf16-le-string-length
 	  utf16-le-string-valid?
 	  utf16-le-string?
+	  utf16-low-surrogate?
 	  utf16-string->wide-string
 	  utf16-string-length
 	  utf16-string-valid?
