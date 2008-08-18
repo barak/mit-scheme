@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.58 2008/07/26 05:12:20 cph Exp $
+$Id: port.scm,v 1.59 2008/08/18 06:40:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -290,16 +290,18 @@ USA.
 	       char))))
 	(unread-char
 	 (let ((defer (op 'UNREAD-CHAR)))
-	   (lambda (port char)
-	     (defer port char)
-	     (set-port/unread?! port #t))))
+	   (and defer
+		(lambda (port char)
+		  (defer port char)
+		  (set-port/unread?! port #t)))))
 	(peek-char
 	 (let ((defer (op 'PEEK-CHAR)))
-	   (lambda (port)
-	     (let ((char (defer port)))
-	       (transcribe-input-char char port)
-	       (set-port/unread?! port #t)
-	       char))))
+	   (and defer
+		(lambda (port)
+		  (let ((char (defer port)))
+		    (transcribe-input-char char port)
+		    (set-port/unread?! port #t)
+		    char)))))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
