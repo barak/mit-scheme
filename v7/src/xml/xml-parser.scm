@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.79 2008/07/19 01:41:18 cph Exp $
+$Id: xml-parser.scm,v 1.80 2008/08/18 00:19:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -120,12 +120,6 @@ USA.
 (define (determine-coding port)
   (port/set-coding port 'ISO-8859-1)
   (port/set-line-ending port 'XML-1.0)
-  (receive (coding name char) (determine-coding-1 port)
-    (if coding (port/set-coding port coding))
-    (if char (unread-char char port))
-    name))
-
-(define (determine-coding-1 port)
   (let ((rc
 	 (lambda ()
 	   (let ((c (read-char port)))
@@ -141,39 +135,52 @@ USA.
 	 (let* ((c1 (rc))
 		(c2 (rc))
 		(c3 (rc)))
-	   (if (and (char=? c1 #\U+00)
-		    (char=? c2 #\U+FE)
-		    (char=? c3 #\U+FF))
-	       (values 'UTF-32BE 'UTF-32 #f)
-	       (lose c0 c1 c2 c3))))
+	   (if (not (and (char=? c1 #\U+00)
+			 (char=? c2 #\U+FE)
+			 (char=? c3 #\U+FF)))
+	       (lose c0 c1 c2 c3)))
+	 (port/set-coding port 'UTF-32BE)
+	 'UTF-32)
 	((#\U+EF)
 	 (let* ((c1 (rc))
 		(c2 (rc)))
-	   (if (and (char=? c1 #\U+BB) (char=? c2 #\U+BF))
-	       (values 'UTF-8 'UTF-8 #f)
-	       (lose c0 c1 c2))))
+	   (if (not (and (char=? c1 #\U+BB)
+			 (char=? c2 #\U+BF)))
+	       (lose c0 c1 c2)))
+	 (port/set-coding port 'UTF-8)
+	 'UTF-8)
 	((#\U+FE)
 	 (let ((c1 (rc)))
-	   (if (char=? c1 #\U+FF)
-	       (values 'UTF-16BE 'UTF-16 #f)
-	       (lose c0 c1))))
+	   (if (not (char=? c1 #\U+FF))
+	       (lose c0 c1)))
+	 (port/set-coding port 'UTF-16BE)
+	 'UTF-16)
 	((#\U+FF)
 	 (let* ((c1 (rc))
 		(c2 (rc))
 		(c3 (rc)))
-	   (if (char=? c1 #\U+FE)
-	       (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
-		   (values 'UTF-32LE 'UTF-32 #f)
-		   (values 'UTF-16LE
-			   'UTF-16
-			   (wide-string-ref
-			    (utf16-le-string->wide-string (string c2 c3))
-			    0)))
-	       (lose c0 c1 c2 c3))))
+	   (if (not (char=? c1 #\U+FE))
+	       (lose c0 c1 c2 c3))
+	   (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
+	       (begin
+		 (port/set-coding port 'UTF-32LE)
+		 'UTF-32)
+	       (begin
+		 (port/set-coding port 'UTF-16LE)
+		 ;; **** This won't work: most ports won't accept
+		 ;; UNREAD-CHAR after PORT/SET-CODING.
+		 (unread-char
+		  (wide-string-ref
+		   (utf16-le-string->wide-string (string c2 c3))
+		   0))
+		 'UTF-16))))
 	((#\U+3C)
-	 (values #f 'NO-BOM #\<))
+	 (unread-char c0 port)
+	 'NO-BOM)
 	(else
-	 (values 'UTF-8 'UTF-8 c0))))))
+	 (port/set-coding port 'UTF-8)
+	 (unread-char c0 port)
+	  'UTF-8)))))
 
 (define (finish-coding buffer coding declaration)
   (let ((port (parser-buffer-port buffer)))
