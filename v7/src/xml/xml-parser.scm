@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.80 2008/08/18 00:19:46 cph Exp $
+$Id: xml-parser.scm,v 1.81 2008/08/18 06:59:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -83,8 +83,8 @@ USA.
       (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
 
 (define (read-xml port #!optional pi-handlers)
-  (let ((coding (determine-coding port)))
-    (parse-xml (input-port->parser-buffer port)
+  (receive (coding prefix) (determine-coding port)
+    (parse-xml (input-port->parser-buffer port prefix)
 	       coding
 	       (guarantee-pi-handlers pi-handlers 'READ-XML))))
 
@@ -118,69 +118,63 @@ USA.
 ;;;; Character coding
 
 (define (determine-coding port)
-  (port/set-coding port 'ISO-8859-1)
-  (port/set-line-ending port 'XML-1.0)
-  (let ((rc
+  (port/set-coding port 'BINARY)
+  (port/set-line-ending port 'BINARY)
+  (receive (coding name prefix) (determine-coding-1 port)
+    (port/set-coding port coding)
+    (port/set-line-ending port 'XML-1.0)
+    (values name prefix)))
+
+(define (determine-coding-1 port)
+  (let ((rb
 	 (lambda ()
 	   (let ((c (read-char port)))
 	     (if (eof-object? c)
 		 (error "EOF while determining char coding."))
-	     c)))
+	     (char->integer c))))
+	(prefix
+	 (lambda (n)
+	   (wide-string (integer->char n))))
 	(lose
-	 (lambda chars
-	   (error "Illegal starting bytes:" (map char->integer chars)))))
-    (let ((c0 (rc)))
-      (case c0
-	((#\U+00)
-	 (let* ((c1 (rc))
-		(c2 (rc))
-		(c3 (rc)))
-	   (if (not (and (char=? c1 #\U+00)
-			 (char=? c2 #\U+FE)
-			 (char=? c3 #\U+FF)))
-	       (lose c0 c1 c2 c3)))
-	 (port/set-coding port 'UTF-32BE)
-	 'UTF-32)
-	((#\U+EF)
-	 (let* ((c1 (rc))
-		(c2 (rc)))
-	   (if (not (and (char=? c1 #\U+BB)
-			 (char=? c2 #\U+BF)))
-	       (lose c0 c1 c2)))
-	 (port/set-coding port 'UTF-8)
-	 'UTF-8)
-	((#\U+FE)
-	 (let ((c1 (rc)))
-	   (if (not (char=? c1 #\U+FF))
-	       (lose c0 c1)))
-	 (port/set-coding port 'UTF-16BE)
-	 'UTF-16)
-	((#\U+FF)
-	 (let* ((c1 (rc))
-		(c2 (rc))
-		(c3 (rc)))
-	   (if (not (char=? c1 #\U+FE))
-	       (lose c0 c1 c2 c3))
-	   (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
-	       (begin
-		 (port/set-coding port 'UTF-32LE)
-		 'UTF-32)
-	       (begin
-		 (port/set-coding port 'UTF-16LE)
-		 ;; **** This won't work: most ports won't accept
-		 ;; UNREAD-CHAR after PORT/SET-CODING.
-		 (unread-char
-		  (wide-string-ref
-		   (utf16-le-string->wide-string (string c2 c3))
-		   0))
-		 'UTF-16))))
-	((#\U+3C)
-	 (unread-char c0 port)
-	 'NO-BOM)
+	 (lambda bytes
+	   (error "Illegal starting bytes:" bytes))))
+    (let ((b0 (rb)))
+      (case b0
+	((#x00)
+	 (let* ((b1 (rb))
+		(b2 (rb))
+		(b3 (rb)))
+	   (if (not (and (fix:= b1 #x00)
+			 (fix:= b2 #xFE)
+			 (fix:= b3 #xFF)))
+	       (lose b0 b1 b2 b3)))
+	 (values 'UTF-32BE 'UTF-32 #f))
+	((#xEF)
+	 (let* ((b1 (rb))
+		(b2 (rb)))
+	   (if (not (and (fix:= b1 #xBB)
+			 (fix:= b2 #xBF)))
+	       (lose b0 b1 b2)))
+	 (values 'UTF-8 'UTF-8 #f))
+	((#xFE)
+	 (let ((b1 (rb)))
+	   (if (not (fix:= b1 #xFF))
+	       (lose b0 b1)))
+	 (values 'UTF-16BE 'UTF-16 #f))
+	((#xFF)
+	 (let* ((b1 (rb))
+		(b2 (rb))
+		(b3 (rb)))
+	   (if (not (fix:= b1 #xFE))
+	       (lose b0 b1 b2 b3))
+	   (if (and (fix:= b2 #x00) (fix:= b3 #x00))
+	       (values 'UTF-32LE 'UTF-32 #f)
+	       (values 'UTF-16LE 'UTF-16
+		       (prefix (fix:or (fix:lsh b3 8) b2))))))
 	(else
-	 (port/set-coding port 'UTF-8)
-	 (unread-char c0 port)
-	  'UTF-8)))))
+	 (values 'UTF-8
+		 (if (fix:= b0 #x3C) 'NO-BOM 'UTF-8)
+		 (prefix b0)))))))
 
 (define (finish-coding buffer coding declaration)
   (let ((port (parser-buffer-port buffer)))
