@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.67 2008/07/26 20:35:25 cph Exp $
+$Id: genio.scm,v 1.68 2008/08/18 00:15:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1734,13 +1734,13 @@ USA.
 	 (let ((d0
 		(combine (get-byte bv bs 0)
 			 (get-byte bv bs 1))))
-	   (if (high-surrogate? d0)
+	   (if (utf16-high-surrogate? d0)
 	       (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
 		    (let ((d1
 			   (combine (get-byte bv bs 2)
 				    (get-byte bv bs 3))))
-		      (if (low-surrogate? d1)
-			  (done (combine-surrogates d0 d1) (fix:+ bs 4))
+		      (if (utf16-low-surrogate? d1)
+			  (done (combine-utf16-surrogates d0 d1) (fix:+ bs 4))
 			  (error:char-decoding ib))))
 	       (if (illegal-low? d0)
 		   (error:char-decoding ib)
@@ -1762,8 +1762,7 @@ USA.
 	   (put-byte bv bs 1 (second-byte cp))
 	   2)
 	  ((fix:< cp #x110000)
-	   (let ((h (fix:or (fix:lsh (fix:- cp #x10000) -10) #xD800))
-		 (l (fix:or (fix:and (fix:- cp #x10000) #x3FF) #xDC00)))
+	   (receive (h l) (split-into-utf16-surrogates cp)
 	     (put-byte bv bs 0 (first-byte h))
 	     (put-byte bv bs 1 (second-byte h))
 	     (put-byte bv bs 2 (first-byte l))
@@ -1784,13 +1783,6 @@ USA.
 (define-integrable (le-bytes->digit16 b0 b1) (fix:or b0 (fix:lsh b1 8)))
 (define-integrable (high-byte d) (fix:lsh d -8))
 (define-integrable (low-byte d) (fix:and d #xFF))
-(define-integrable (high-surrogate? n) (fix:= (fix:and #xFC00 n) #xD800))
-(define-integrable (low-surrogate? n) (fix:= (fix:and #xFC00 n) #xDC00))
-
-(define-integrable (combine-surrogates n0 n1)
-  (fix:+ (fix:or (extract n0 #x3FF 10)
-		 (extract n1 #x3FF 0))
-	 #x10000))
 
 (let ((alias
        (lambda ()
