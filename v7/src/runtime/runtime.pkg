@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.656 2008/08/18 00:12:49 cph Exp $
+$Id: runtime.pkg,v 14.657 2008/08/18 06:56:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4983,11 +4983,6 @@ USA.
 	  wide-string-set!
 	  wide-string?
 	  wide-substring)
-  (export (runtime parser-buffer)
-	  %wide-string-length
-	  %wide-string-ref
-	  %wide-substring
-	  wide-string-contents)
   (export (runtime generic-i/o-port)
 	  wide-string-contents)
   (export (runtime input-port)
