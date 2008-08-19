@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.68 2008/08/18 00:15:17 cph Exp $
+$Id: genio.scm,v 1.69 2008/08/19 05:03:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -456,10 +456,9 @@ USA.
 
 (define (line-ending channel name for-output?)
   (guarantee-symbol name #f)
-  (if (or (eq? name 'TEXT)
-	  (and for-output?
-	       (known-input-line-ending? name)
-	       (not (known-output-line-ending? name))))
+  (if (and for-output?
+	   (known-input-line-ending? name)
+	   (not (known-output-line-ending? name)))
       (if (and channel (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
 	  'CRLF
 	  (default-line-ending))
@@ -1941,6 +1940,7 @@ USA.
 	((#\U+0085 #\U+2028) #\U+000A)
 	(else c0)))))
 
+(define-normalizer-alias 'TEXT 'XML-1.0)
 (define-normalizer-alias 'LF 'NEWLINE)
 (define-denormalizer-alias 'LF 'NEWLINE)
 (define-normalizer-alias 'BINARY 'NEWLINE)
