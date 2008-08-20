@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.657 2008/08/18 06:56:14 cph Exp $
+$Id: runtime.pkg,v 14.658 2008/08/20 09:01:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1874,6 +1874,7 @@ USA.
 	  hash-table/rehash-threshold
 	  hash-table/remove!
 	  hash-table/size
+	  hash-table/type
 	  hash-table?
 	  make-eq-hash-table
 	  make-equal-hash-table

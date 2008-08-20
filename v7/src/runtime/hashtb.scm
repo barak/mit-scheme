@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.38 2008/01/30 20:02:31 cph Exp $
+$Id: hashtb.scm,v 1.39 2008/08/20 09:01:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -110,6 +110,10 @@ USA.
       (if (table-type-rehash-after-gc? type)
 	  (set! address-hash-tables (weak-cons table address-hash-tables)))
       table)))
+
+(define (hash-table/type table)
+  (guarantee-hash-table table 'HASH-TABLE/TYPE)
+  (table-type table))
 
 (define (hash-table/key-hash table)
   (guarantee-hash-table table 'HASH-TABLE/KEY-HASH)
