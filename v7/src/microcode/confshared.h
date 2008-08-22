@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.18 2008/01/30 20:02:11 cph Exp $
+$Id: confshared.h,v 11.19 2008/08/22 22:07:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -587,6 +587,14 @@ extern void win32_stack_reset (void);
 #define FLONUM_MANTISSA_BITS   53
 #define FLONUM_EXPT_SIZE       10
 #define MAX_FLONUM_EXPONENT    1023
+#endif
+
+#ifdef __powerpc__
+#  define __ppc__ 1
+#endif
+
+#ifdef __powerpc64__
+#  define __ppc64__
 #endif
 
 #ifdef __ppc__
