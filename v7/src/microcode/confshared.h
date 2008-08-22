@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.19 2008/08/22 22:07:19 riastradh Exp $
+$Id: confshared.h,v 11.20 2008/08/22 22:08:23 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -594,7 +594,7 @@ extern void win32_stack_reset (void);
 #endif
 
 #ifdef __powerpc64__
-#  define __ppc64__
+#  define __ppc64__ 1
 #endif
 
 #ifdef __ppc__
