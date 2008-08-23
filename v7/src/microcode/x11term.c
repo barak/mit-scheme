@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11term.c,v 1.36 2008/01/30 20:02:23 cph Exp $
+$Id: x11term.c,v 1.37 2008/08/23 21:08:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -580,6 +580,9 @@ DEFINE_PRIMITIVE ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   xw = (x_window_arg (1));
   extra = (2 * (XW_INTERNAL_BORDER_WIDTH (xw)));
+#ifdef __APPLE__
+  extra += 1;
+#endif
   font = (XW_FONT (xw));
   XResizeWindow
     ((XW_DISPLAY (xw)),
