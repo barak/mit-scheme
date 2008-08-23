@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rfc822.scm,v 3.11 2008/08/11 22:48:50 riastradh Exp $
+$Id: rfc822.scm,v 3.12 2008/08/23 17:44:54 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -89,7 +89,7 @@ USA.
   (let recur ((tokens tokens))
     (receive (tokens tokens*)
 	(span (lambda (token) (not (eqv? token #\,))) tokens)
-      (cons (rfc822:tokens->string tokens)
+      (cons (string-trim (rfc822:tokens->string tokens))
 	    (if (pair? tokens*) (recur (cdr tokens*)) '())))))
 
 (define (rfc822:canonicalize-address-string string)
