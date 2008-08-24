@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.116 2008/07/19 01:41:16 cph Exp $
+$Id: make.scm,v 14.117 2008/08/24 07:20:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -512,7 +512,10 @@ USA.
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
    (RUNTIME URI)
+   (RUNTIME RFC2822-HEADERS)
+   (RUNTIME HTTP-I/O)
    (RUNTIME HTTP-CLIENT)
+   (RUNTIME HTML-FORM-CODEC)
    (RUNTIME WIN32-REGISTRY)))
 
 (let ((obj (file->object "site" #t #f)))

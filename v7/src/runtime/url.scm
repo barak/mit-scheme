@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.54 2008/07/19 01:41:17 cph Exp $
+$Id: url.scm,v 1.55 2008/08/24 07:20:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -231,6 +231,12 @@ USA.
       ,@(if (%uri-fragment uri)
 	    `((fragment ,(%uri-fragment uri)))
 	    '()))))
+
+(define (uri-prefix prefix)
+  (guarantee-utf8-string prefix 'URI-PREFIX)
+  (lambda (suffix)
+    (guarantee-utf8-string suffix 'URI-PREFIX)
+    (string->absolute-uri (string-append prefix suffix))))
 
 ;;;; Merging
 
@@ -390,11 +396,11 @@ USA.
 	     (vector-ref v 3)
 	     (vector-ref v 4)))
 
-(define (uri-prefix prefix)
-  (guarantee-utf8-string prefix 'URI-PREFIX)
-  (lambda (suffix)
-    (guarantee-utf8-string suffix 'URI-PREFIX)
-    (string->absolute-uri (string-append prefix suffix))))
+(define parse-uri-no-authority
+  (*parser
+   (encapsulate encapsulate-uri
+     (seq (values #f #f)
+	  parser:path-only))))
 
 (define parser:uri
   (*parser
@@ -430,9 +436,13 @@ USA.
 (define parser:relative-part
   (*parser
    (alt (seq "//" parser:authority parser:path-abempty)
-	(seq (values #f) parser:path-absolute)
-	(seq (values #f) parser:path-noscheme)
-	(seq (values #f) parser:path-empty))))
+	(seq (values #f) parser:path-only))))
+
+(define parser:path-only
+  (*parser
+   (alt parser:path-absolute
+	parser:path-noscheme
+	parser:path-empty)))
 
 (define parser:scheme
   (*parser

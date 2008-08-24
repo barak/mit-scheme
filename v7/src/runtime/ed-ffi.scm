@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.41 2008/07/19 01:41:16 cph Exp $
+$Id: ed-ffi.scm,v 1.42 2008/08/24 07:20:01 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -81,6 +81,9 @@ USA.
     ("hash"	(runtime hash))
     ("hashtb"	(runtime hash-table))
     ("histry"	(runtime history))
+    ("html-form-codec" (runtime html-form-codec))
+    ("http-client" (runtime http-client))
+    ("httpio"	(runtime http-i/o))
     ("illdef"	(runtime illegal-definitions))
     ("infstr"	(runtime compiler-info))
     ("infutl"	(runtime compiler-info))
@@ -130,6 +133,7 @@ USA.
     ("regexp"	(runtime regular-expression))
     ("rep"	(runtime rep))
     ("rexp"	(runtime rexp))
+    ("rfc2822-headers" (runtime rfc2822-headers))
     ("rgxcmp"	(runtime regular-expression-compiler))
     ("savres"	(runtime save/restore))
     ("scan"	(runtime scode-scan))

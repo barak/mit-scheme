@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.659 2008/08/21 01:00:46 cph Exp $
+$Id: runtime.pkg,v 14.660 2008/08/24 07:20:11 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1784,6 +1784,8 @@ USA.
 	  output-buffer-using-binary-denormalizer?
 	  port-input-buffer
 	  port-output-buffer)
+  (export (runtime http-i/o)
+	  known-input-coding?)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -5045,6 +5047,7 @@ USA.
 	  parse-partial-uri
 	  parse-relative-uri
 	  parse-uri
+	  parse-uri-no-authority
 	  partial-uri->string
 	  partial-uri-authority
 	  partial-uri-extra
@@ -5122,50 +5125,124 @@ USA.
 	  write-uri)
   (initialization (initialize-package!)))
 
+(define-package (runtime rfc2822-headers)
+  (files "rfc2822-headers")
+  (parent (runtime))
+  (export ()
+	  all-rfc2822-headers
+	  char-set:rfc2822-name
+	  char-set:rfc2822-qtext
+	  char-set:rfc2822-text
+	  condition-type:rfc2822-parse-error
+	  error:not-rfc2822-header
+	  first-rfc2822-header
+	  guarantee-rfc2822-header
+	  make-rfc2822-header
+	  parser:rfc2822-quoted-string
+	  quote-rfc2822-text
+	  read-rfc2822-headers
+	  rfc2822-header-name
+	  rfc2822-header-value
+	  rfc2822-header?
+	  rfc2822-headers->string
+	  string->rfc2822-headers
+	  write-rfc2822-headers)
+  (initialization (initialize-package!)))
+
+(define-package (runtime http-i/o)
+  (files "httpio")
+  (parent (runtime))
+  (export ()
+	  all-http-headers
+	  error:not-http-entity
+	  error:not-http-header
+	  error:not-http-request
+	  error:not-http-response
+	  error:not-http-status
+	  error:not-http-text
+	  error:not-http-token
+	  error:not-http-uri
+	  error:not-http-version
+	  error:not-simple-http-request
+	  error:not-simple-http-response
+	  error:not-simple-http-uri
+	  first-http-header
+	  guarantee-http-entity
+	  guarantee-http-header
+	  guarantee-http-request
+	  guarantee-http-response
+	  guarantee-http-status
+	  guarantee-http-text
+	  guarantee-http-token
+	  guarantee-http-uri
+	  guarantee-http-version
+	  guarantee-simple-http-request
+	  guarantee-simple-http-response
+	  guarantee-simple-http-uri
+	  http-content-length
+	  http-content-type
+	  http-entity-body
+	  http-entity-body-port
+	  http-entity-headers
+	  http-entity?
+	  http-header?
+	  http-request-body
+	  http-request-headers
+	  http-request-method
+	  http-request-uri
+	  http-request-version
+	  http-request?
+	  http-response-body
+	  http-response-headers
+	  http-response-reason
+	  http-response-status
+	  http-response-version
+	  http-response?
+	  http-status-description
+	  http-status?
+	  http-text?
+	  http-token?
+	  http-uri?
+	  http-version-major
+	  http-version-minor
+	  http-version:1.0
+	  http-version:1.1
+	  http-version<?
+	  http-version=?
+	  http-version?
+	  make-http-request
+	  make-http-response
+	  make-http-version
+	  make-simple-http-request
+	  make-simple-http-response
+	  parser:http-content-type
+	  read-http-request
+	  read-http-response
+	  read-simple-http-request
+	  read-simple-http-response
+	  simple-http-request?
+	  simple-http-response?
+	  simple-http-uri?
+	  write-http-request
+	  write-http-response)
+  (initialization (initialize-package!)))
+
 (define-package (runtime http-client)
   (files "http-client")
   (parent (runtime))
   (export ()
-	  adjoin-http-header-fields
-	  call-with-http-connection
-	  call-with-http-response:entity-request
-	  call-with-http-response:get
-	  call-with-http-response:post
-	  close-http-connection
-	  guarantee-http-version
-	  http-connection?
-	  http-connection/host
-	  http-connection/host-string
-	  http-connection/port
-	  http-connection/socket
-	  http-connection-open?
 	  http-get
 	  http-head
-	  http-post
-	  http-parser:status-code
-	  http-parser:status-line
-	  http-parser:version
-	  http-response?
-	  http-response/first-header-field
-	  http-response/all-header-fields
-	  http-response/header-fields
-	  http-response/reason
-	  http-response/status-code
-	  http-response/status-type
-	  http-response/version
-	  http-version
-	  http-version?
-	  http-version=?
-	  http-version<?
-	  make-http-version
-	  open-http-connection
-	  read-http-entity
-	  read-http-response
-	  receive-http-response
-	  send-http-request
-	  valid-http-header-field?
-	  write-http-request
-	  ))
+	  http-post)
+  (initialization (initialize-package!)))
+
+(define-package (runtime html-form-codec)
+  (files "html-form-codec")
+  (parent (runtime))
+  (export ()
+	  decode-www-form-urlencoded
+	  encode-www-form-urlencoded)
+  (initialization (initialize-package!)))
 
 (define-package (runtime postgresql)
   (file-case options
