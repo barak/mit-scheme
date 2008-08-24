@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.224 2008/08/12 01:46:53 riastradh Exp $
+$Id: imail-imap.scm,v 1.225 2008/08/24 21:27:05 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1205,18 +1205,20 @@ USA.
 
 (define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
   (fill-imap-message-cache folder content-keywords)
-  (for-each-message folder
-    (lambda (index message)
-      index                             ;ignore
-      (cond ((imap-message-bodystructure message)
-	     => (lambda (body-structure)
-		  (walk-mime-body message body-structure
-		    (lambda (selector)
-		      (fetch-message-body-part-to-cache
-		       message
-		       (mime-selector->imap-section selector))))))
-	    (else
-	     (fetch-message-body-part-to-cache message '(TEXT)))))))
+  ((imail-ui:message-wrapper "Caching folder contents")
+   (lambda ()
+     (for-each-message folder
+       (lambda (index message)
+	 index				;ignore
+	 (cond ((imap-message-bodystructure message)
+		=> (lambda (body-structure)
+		     (walk-mime-body message body-structure
+		       (lambda (selector)
+			 (fetch-message-body-part-to-cache
+			  message
+			  (mime-selector->imap-section selector))))))
+	       (else
+		(fetch-message-body-part-to-cache message '(TEXT)))))))))
 
 (define (for-each-message folder procedure)
   (let ((n (folder-length folder)))
@@ -1524,10 +1526,10 @@ USA.
 ;; Under each folder directory, there is a file called "uidvalidity"
 ;; that contains the UIDVALIDITY number, as a text string.  For each
 ;; message in the folder, there is a subdirectory whose name is the
-;; UID of the message.  There is also a temporary directory where
-;; files are written before being moved into the other directories,
-;; and which has no important internal structure.  Files older than
-;; thirty-six hours are deleted from it occasionally.
+;; UID of the message.  There is also a temporary directory called
+;; "temporary" where files are written before being moved into the
+;; other directories, and which has no important internal structure.
+;; Files older than thirty-six hours are deleted from it occasionally.
 ;;
 ;; Under each message directory, there is a file called
 ;; "rfc822.header" that contains the header information.  There may
@@ -1548,7 +1550,8 @@ USA.
 		(guarantee-init-file-directory temporary-directory)
 		(simple-write-file uidvalidity up temporary-directory))
 	      (if (file-directory? directory)
-		  (let ((uidvalidity* (simple-read-file up)))
+		  (let ((uidvalidity*
+			 (ignore-errors (lambda () (simple-read-file up)))))
 		    (if (and (file-regular? up)
 			     (eqv? uidvalidity* uidvalidity))
 			(remove-expunged-messages folder directory)
@@ -1585,6 +1588,7 @@ USA.
 		(if (not (or (string=? ns ".")
 			     (string=? ns "..")
 			     (string=? ns "uidvalidity")
+			     (string=? ns "temporary")
 			     (let ((uid (string->number ns 10)))
 			       (and uid
 				    (get-imap-message-by-uid folder uid)
