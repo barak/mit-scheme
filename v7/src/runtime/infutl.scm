@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.76 2008/02/11 07:52:06 riastradh Exp $
+$Id: infutl.scm,v 1.77 2008/08/24 23:31:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -232,7 +232,7 @@ USA.
       (let ((wrapper
 	     (compiled-code-block/debugging-wrapper (vector-ref blocks i))))
 	(if (and wrapper
-		 (pathname? (debugging-wrapper/pathname wrapper))
+		 (debug-info-pathname? (debugging-wrapper/pathname wrapper))
 		 (pathname=? (debugging-wrapper/pathname wrapper) pathname))
 	    (set-debugging-wrapper/pathname! wrapper pathname*))))))
 
