@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.59 2008/02/10 06:14:12 cph Exp $
+$Id: packag.scm,v 14.60 2008/08/24 23:34:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -183,12 +183,7 @@ USA.
 		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
 		  (load-component
 		   (lambda (name environment)
-		     (let ((value (filename->compiled-object dir name)))
-		       (if value
-			   (begin
-			     (purify (load/purification-root value))
-			     (scode-eval value environment))
-			   (load name environment 'DEFAULT #t))))))
+		     (load name environment 'DEFAULT #t))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin
@@ -215,16 +210,6 @@ USA.
 				       ((UNIX) "unx")
 				       (else "unk"))))
    "pkd"))
-
-(define (filename->compiled-object directory name)
-  (let ((pathname (merge-pathnames name directory)))
-    (let ((value (built-in-object-file pathname)))
-      (if (and value (not load/suppress-loading-message?))
-	  (write-notification-line
-	   (lambda (port)
-	     (write-string "Initialized " port)
-	     (write (enough-namestring pathname) port))))
-      value)))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))
