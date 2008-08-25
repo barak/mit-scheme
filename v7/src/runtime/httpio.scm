@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.1 2008/08/24 07:20:08 cph Exp $
+$Id: httpio.scm,v 14.2 2008/08/25 08:23:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -166,13 +166,13 @@ USA.
 
 (define (http-version? object)
   (and (pair? object)
-       (exact-positive-integer? (car object))
+       (exact-nonnegative-integer? (car object))
        (exact-nonnegative-integer? (cdr object))))
 
 (define-guarantee http-version "HTTP version")
 
 (define (make-http-version major minor)
-  (guarantee-exact-positive-integer major 'MAKE-HTTP-VERSION)
+  (guarantee-exact-nonnegative-integer major 'MAKE-HTTP-VERSION)
   (guarantee-exact-nonnegative-integer minor 'MAKE-HTTP-VERSION)
   (cons major minor))
 
@@ -349,11 +349,10 @@ USA.
 				     (vector-ref v 1)))
      (seq "HTTP/"
 	  (map string->number
-	       (match (seq (char-set char-set:non-zero-digit)
-			   (* (char-set char-set:digit)))))
+	       (match (+ (char-set char-set:digit))))
 	  "."
 	  (map string->number
-	       (match (* (char-set char-set:digit))))))))
+	       (match (+ (char-set char-set:digit))))))))
 
 (define parse-status-code
   (*parser
@@ -426,7 +425,6 @@ USA.
 (define char-set:text)
 (define char-set:token)
 (define char-set:digit)
-(define char-set:non-zero-digit)
 (define char-set:status-major)
 (define http-version:1.0)
 (define http-version:1.1)
@@ -439,8 +437,6 @@ USA.
 			     (string->char-set "()<>@,;:\\\"/[]?={} \t")))
   (set! char-set:digit
 	(string->char-set "0123456789"))
-  (set! char-set:non-zero-digit
-	(string->char-set "123456789"))
   (set! char-set:status-major
 	(string->char-set "12345"))
   (set! http-version:1.0 (make-http-version 1 0))
