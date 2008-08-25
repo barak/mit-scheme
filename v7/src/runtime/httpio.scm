@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.2 2008/08/25 08:23:32 cph Exp $
+$Id: httpio.scm,v 14.3 2008/08/25 08:48:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -128,21 +128,21 @@ USA.
   (guarantee-string body 'MAKE-SIMPLE-HTTP-RESPONSE)
   (%make-http-response #f 200 (http-status-description 200) '() body))
 
-(define (http-entity? object)
+(define (http-message? object)
   (or (http-request? object)
       (http-response? object)))
 
-(define-guarantee http-entity "HTTP entity")
+(define-guarantee http-message "HTTP message")
 
-(define (http-entity-headers entity)
-  (cond ((http-request? entity) (http-request-headers entity))
-	((http-response? entity) (http-response-headers entity))
-	(else (error:not-http-entity entity 'HTTP-ENTITY-HEADERS))))
+(define (http-message-headers message)
+  (cond ((http-request? message) (http-request-headers message))
+	((http-response? message) (http-response-headers message))
+	(else (error:not-http-message message 'HTTP-MESSAGE-HEADERS))))
 
-(define (http-entity-body entity)
-  (cond ((http-request? entity) (http-request-body entity))
-	((http-response? entity) (http-response-body entity))
-	(else (error:not-http-entity entity 'HTTP-ENTITY-BODY))))
+(define (http-message-body message)
+  (cond ((http-request? message) (http-request-body message))
+	((http-response? message) (http-response-body message))
+	(else (error:not-http-message message 'HTTP-MESSAGE-BODY))))
 
 (define (http-token? object)
   (and (interned-symbol? object)
@@ -388,7 +388,7 @@ USA.
 		  (if (> n 0)
 		      (let ((m (read-string! buffer port)))
 			(if (= m 0)
-			    (error "Premature EOF in HTTP entity body."))
+			    (error "Premature EOF in HTTP message body."))
 			(write-substring buffer 0 m output)
 			(loop (- n m))))))))))))
 
@@ -410,7 +410,7 @@ USA.
        (%read-all port)))
 
 (define (%no-read-body)
-  (error "Unable to determine HTTP entity body length."))
+  (error "Unable to determine HTTP message body length."))
 
 ;;;; Syntax
 
@@ -504,9 +504,9 @@ USA.
       (= status 204)
       (= status 304)))
 
-(define (http-entity-body-port entity)
-  (let ((port (open-input-octets (http-entity-body entity))))
-    (receive (type coding) (http-content-type entity)
+(define (http-message-body-port message)
+  (let ((port (open-input-octets (http-message-body message))))
+    (receive (type coding) (http-content-type message)
       (cond ((eq? (mime-type/top-level type) 'TEXT)
 	     (port/set-coding port (or coding 'TEXT))
 	     (port/set-line-ending port 'TEXT))
@@ -524,8 +524,8 @@ USA.
 	     (port/set-line-ending port 'BINARY))))
     port))
 
-(define (http-content-type entity)
-  (let ((h (first-http-header 'CONTENT-TYPE entity)))
+(define (http-content-type message)
+  (let ((h (first-http-header 'CONTENT-TYPE message)))
     (if h
 	(let ((s (rfc2822-header-value h)))
 	  (let ((v (*parse-string parser:http-content-type s)))
@@ -557,11 +557,11 @@ USA.
 	  (encapsulate vector->list
 		       (* parse-parameter))))))
 
-(define (http-content-length entity)
-  (%get-content-length (http-entity-headers entity)))
+(define (http-content-length message)
+  (%get-content-length (http-message-headers message)))
 
-(define (first-http-header name entity)
-  (first-rfc2822-header name (http-entity-headers entity)))
+(define (first-http-header name message)
+  (first-rfc2822-header name (http-message-headers message)))
 
-(define (all-http-headers name entity)
-  (all-rfc2822-headers name (http-entity-headers entity)))
+(define (all-http-headers name message)
+  (all-rfc2822-headers name (http-message-headers message)))

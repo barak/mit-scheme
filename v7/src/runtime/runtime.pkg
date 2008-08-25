@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.661 2008/08/25 08:37:35 cph Exp $
+$Id: runtime.pkg,v 14.662 2008/08/25 08:48:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5159,7 +5159,7 @@ USA.
   (parent (runtime))
   (export ()
 	  all-http-headers
-	  error:not-http-entity
+	  error:not-http-message
 	  error:not-http-header
 	  error:not-http-request
 	  error:not-http-response
@@ -5172,7 +5172,7 @@ USA.
 	  error:not-simple-http-response
 	  error:not-simple-http-uri
 	  first-http-header
-	  guarantee-http-entity
+	  guarantee-http-message
 	  guarantee-http-header
 	  guarantee-http-request
 	  guarantee-http-response
@@ -5186,10 +5186,10 @@ USA.
 	  guarantee-simple-http-uri
 	  http-content-length
 	  http-content-type
-	  http-entity-body
-	  http-entity-body-port
-	  http-entity-headers
-	  http-entity?
+	  http-message-body
+	  http-message-body-port
+	  http-message-headers
+	  http-message?
 	  http-header?
 	  http-request-body
 	  http-request-headers
