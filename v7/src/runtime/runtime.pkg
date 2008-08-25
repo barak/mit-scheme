@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.660 2008/08/24 07:20:11 cph Exp $
+$Id: runtime.pkg,v 14.661 2008/08/25 08:37:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1254,6 +1254,7 @@ USA.
 	  day-of-week/short-string
 	  decode-universal-time
 	  decoded-time->ctime-string
+	  decoded-time->http-string
 	  decoded-time->iso8601-string
 	  decoded-time->string
 	  decoded-time->universal-time
@@ -1274,6 +1275,7 @@ USA.
 	  file-time->global-ctime-string
 	  file-time->global-iso8601-string
 	  file-time->global-time-string
+	  file-time->http-string
 	  file-time->local-ctime-string
 	  file-time->local-iso8601-string
 	  file-time->local-time-string
@@ -1281,6 +1283,7 @@ USA.
 	  get-decoded-time
 	  get-universal-time
 	  global-decoded-time
+	  iso8601-separate-with-t?
 	  iso8601-string->decoded-time
 	  iso8601-string->file-time
 	  iso8601-string->universal-time
@@ -1289,6 +1292,7 @@ USA.
 	  month/long-string
 	  month/max-days
 	  month/short-string
+	  parser:iso8601-date/time
 	  string->day-of-week
 	  string->decoded-time
 	  string->file-time
@@ -1301,6 +1305,7 @@ USA.
 	  universal-time->global-decoded-time
 	  universal-time->global-iso8601-string
 	  universal-time->global-time-string
+	  universal-time->http-string
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
 	  universal-time->local-iso8601-string

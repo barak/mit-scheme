@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.44 2008/01/30 20:02:29 cph Exp $
+$Id: datime.scm,v 14.45 2008/08/25 08:37:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -198,13 +198,22 @@ USA.
 (define (universal-time->global-time-string time)
   (decoded-time->string (universal-time->global-decoded-time time)))
 
+(define (universal-time->http-string time)
+  (decoded-time->http-string (universal-time->global-decoded-time time)))
+
 (define (file-time->local-time-string time)
   (decoded-time->string (file-time->local-decoded-time time)))
 
 (define (file-time->global-time-string time)
   (decoded-time->string (file-time->global-decoded-time time)))
 
-(define (decoded-time->string dt)
+(define (file-time->http-string time)
+  (decoded-time->http-string (file-time->global-decoded-time time)))
+
+(define (decoded-time->string dt) (%decoded-time->string dt #f))
+(define (decoded-time->http-string dt) (%decoded-time->string dt #t))
+
+(define (%decoded-time->string dt http?)
   ;; The returned string is in the format specified by RFC 822,
   ;; "Standard for the Format of ARPA Internet Text Messages",
   ;; provided that time-zone information is available from the C
@@ -224,15 +233,17 @@ USA.
 		 (d2 (decoded-time/minute dt))
 		 ":"
 		 (d2 (decoded-time/second dt))
-		 (let ((zone (decoded-time/zone dt)))
-		   (if zone
-		       (string-append
-			" "
-			(time-zone->string
-			 (if (decoded-time/daylight-savings-time? dt)
-			     (- zone 1)
-			     zone)))
-		       ""))))
+		 (if http?
+		     " GMT"
+		     (let ((zone (decoded-time/zone dt)))
+		       (if zone
+			   (string-append
+			    " "
+			    (time-zone->string
+			     (if (decoded-time/daylight-savings-time? dt)
+				 (- zone 1)
+				 zone)))
+			   "")))))
 
 (define (string->decoded-time string)
   ;; STRING must be in RFC-822 format.
@@ -397,8 +408,8 @@ USA.
 ;;; support either truncation or expansion.  On output, it uses a
 ;;; single format.
 
-(define (iso8601-string->decoded-time string)
-  (let ((v (parse-8601-date/time (string->parser-buffer string))))
+(define (iso8601-string->decoded-time string #!optional start end)
+  (let ((v (*parse-string parser:iso8601-date/time string start end)))
     (if (not v)
 	(error:bad-range-argument string 'ISO8601-STRING->DECODED-TIME))
     (vector-ref v 0)))
@@ -409,7 +420,7 @@ USA.
 		 (d2 (decoded-time/month dt))
 		 "-"
 		 (d2 (decoded-time/day dt))
-		 "T"
+		 (if iso8601-separate-with-t? "T" " ")
 		 (d2 (decoded-time/hour dt))
 		 ":"
 		 (d2 (decoded-time/minute dt))
@@ -422,6 +433,8 @@ USA.
 			    (- zone 1)
 			    zone))
 		       ""))))
+
+(define iso8601-separate-with-t? #t)
 
 (define (universal-time->local-iso8601-string time)
   (decoded-time->iso8601-string (universal-time->local-decoded-time time)))
@@ -441,7 +454,7 @@ USA.
 (define (iso8601-string->file-time string)
   (decoded-time->file-time (iso8601-string->decoded-time string)))
 
-(define parse-8601-date/time
+(define parser:iso8601-date/time
   (*parser
    (encapsulate
        (lambda (v)
