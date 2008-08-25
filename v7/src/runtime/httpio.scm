@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.3 2008/08/25 08:48:16 cph Exp $
+$Id: httpio.scm,v 14.4 2008/08/25 20:53:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -147,7 +147,7 @@ USA.
 (define (http-token? object)
   (and (interned-symbol? object)
        (not (eq? object '||))
-       (string-in-char-set? (symbol-name object) char-set:token)))
+       (string-in-char-set? (symbol-name object) char-set:http-token)))
 
 (define-guarantee http-token "HTTP token")
 
@@ -214,7 +214,7 @@ USA.
 
 (define (http-text? object)
   (and (string? object)
-       (string-in-char-set? object char-set:text)))
+       (string-in-char-set? object char-set:http-text)))
 
 (define-guarantee http-text "HTTP text")
 
@@ -328,7 +328,7 @@ USA.
 (define parse-request-line
   (*parser
    (seq (map string->symbol
-	     (match (+ (char-set char-set:token))))
+	     (match (+ (char-set char-set:http-token))))
 	(noise match-wsp)
 	parse-uri-no-authority
 	(noise match-wsp)
@@ -340,7 +340,7 @@ USA.
 	(noise match-wsp)
 	parse-status-code
 	(noise match-wsp)
-	(match (* (char-set char-set:text))))))
+	(match (* (char-set char-set:http-text))))))
 
 (define parse-version
   (*parser
@@ -422,18 +422,18 @@ USA.
 	       (loop (fix:+ i 1)))
 	  #t))))
 
-(define char-set:text)
-(define char-set:token)
+(define char-set:http-text)
+(define char-set:http-token)
 (define char-set:digit)
 (define char-set:status-major)
 (define http-version:1.0)
 (define http-version:1.1)
 
 (define (initialize-package!)
-  (set! char-set:text
+  (set! char-set:http-text
 	(char-set-difference char-set:ascii char-set:ctls))
-  (set! char-set:token
-	(char-set-difference char-set:text
+  (set! char-set:http-token
+	(char-set-difference char-set:http-text
 			     (string->char-set "()<>@,;:\\\"/[]?={} \t")))
   (set! char-set:digit
 	(string->char-set "0123456789"))
