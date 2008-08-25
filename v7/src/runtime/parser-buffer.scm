@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser-buffer.scm,v 1.23 2008/08/18 06:56:10 cph Exp $
+$Id: parser-buffer.scm,v 1.24 2008/08/25 21:11:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,15 +77,16 @@ USA.
 
 (define (input-port->parser-buffer port #!optional prefix)
   (guarantee-input-port port 'INPUT-PORT->PARSER-BUFFER)
-  (let ((prefix
-	 (if (or (default-object? prefix) (not prefix))
-	     (make-wide-string 0)
-	     (begin
-	       (guarantee-wide-string prefix 'INPUT-PORT->PARSER-BUFFER)
-	       prefix))))
-    (let ((n (wide-string-length prefix)))
-      (make-parser-buffer (%grow-buffer prefix n (max min-length n))
-			  0 n 0 0 port #f 0))))
+  (if (or (default-object? prefix)
+	  (not prefix)
+	  (and (wide-string? prefix)
+	       (zero? (wide-string-length prefix))))
+      (make-parser-buffer (make-wide-string min-length) 0 0 0 0 port #f 0)
+      (begin
+	(guarantee-wide-string prefix 'INPUT-PORT->PARSER-BUFFER)
+	(let ((n (wide-string-length prefix)))
+	  (make-parser-buffer (%grow-buffer prefix n (max min-length n))
+			      0 n 0 0 port #f 0)))))
 
 (define-integrable min-length 256)
 
