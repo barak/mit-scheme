@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.225 2008/08/24 21:27:05 riastradh Exp $
+$Id: imail-imap.scm,v 1.226 2008/08/25 01:29:02 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -955,7 +955,9 @@ USA.
 ;;; set with empty messages, read in the UIDs for the new messages,
 ;;; then match up the old messages with the new.  Any old message that
 ;;; matches a new one replaces it in the folder, thus preserving
-;;; message pointers where possible.
+;;; message pointers where possible.  However, we stop if we find a
+;;; message whose UID is not known, in case a previous attempt to read
+;;; the UIDs was aborted in the middle.
 
 ;;; The reason for this complexity in the second case is that we can't
 ;;; be guaranteed that we will complete reading the UIDs for the new
@@ -1014,10 +1016,12 @@ USA.
 	      (let ((v* (imap-folder-messages folder))
 		    (n* (folder-length folder)))
 		(let loop ((i 0) (i* 0))
-		  (if (and (fix:< i n) (fix:< i* n*))
+		  (if (and (fix:< i n)
+			   (fix:< i* n*)
+			   (%imap-message-uid-initialized? (vector-ref v i)))
 		      (let ((m (vector-ref v i))
 			    (m* (vector-ref v* i*)))
-			(if (= (imap-message-uid m) (imap-message-uid m*))
+			(if (= (%imap-message-uid m) (%imap-message-uid m*))
 			    (begin
 			      ;; Flags might have been updated while
 			      ;; reading the UIDs.
@@ -1106,30 +1110,31 @@ USA.
 ;;; filled in by READ-MESSAGE-HEADERS!, but it's possible for
 ;;; READ-MESSAGE-HEADERS! to be interrupted, leaving unfilled slots.
 
-(let ((accessor (slot-accessor <imap-message> 'UID))
-      (initpred (slot-initpred <imap-message> 'UID)))
-  (define-method imap-message-uid ((message <imap-message>))
-    (if (not (initpred message))
-	(with-imap-message-open message
-	  (lambda (connection)
-	    (let ((index (%message-index message)))
-	      (let ((suffix
-		     (string-append " UID for message "
-				    (number->string (+ index 1)))))
-		((imail-ui:message-wrapper "Reading" suffix)
-		 (lambda ()
-		   (imap:command:fetch connection index '(UID))
-		   (if (not (initpred message))
-		       (begin
-			 ;; Still don't have the goods.  Send a NOOP, in
-			 ;; case the server is holding it back because it
-			 ;; also needs to send an EXPUNGE.
-			 (imap:command:noop connection)
-			 (if (not (initpred message))
-			     (error
-			      (string-append "Unable to obtain"
-					     suffix))))))))))))
-    (accessor message)))
+(define %imap-message-uid (slot-accessor <imap-message> 'UID))
+(define %imap-message-uid-initialized? (slot-initpred <imap-message> 'UID))
+
+(define-method imap-message-uid ((message <imap-message>))
+  (if (not (%imap-message-uid-initialized? message))
+      (with-imap-message-open message
+	(lambda (connection)
+	  (let ((index (%message-index message)))
+	    (let ((suffix
+		   (string-append " UID for message "
+				  (number->string (+ index 1)))))
+	      ((imail-ui:message-wrapper "Reading" suffix)
+	       (lambda ()
+		 (imap:command:fetch connection index '(UID))
+		 (if (not (%imap-message-uid message))
+		     (begin
+		       ;; Still don't have the goods.  Send a NOOP, in
+		       ;; case the server is holding it back because it
+		       ;; also needs to send an EXPUNGE.
+		       (imap:command:noop connection)
+		       (if (not (%imap-message-uid-initialized? message))
+			   (error
+			    (string-append "Unable to obtain"
+					   suffix))))))))))))
+  (%imap-message-uid message))
 
 (define (guarantee-slot-initialized message initpred noun keywords)
   (if (not (initpred message))
