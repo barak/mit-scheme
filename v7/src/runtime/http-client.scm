@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.4 2008/08/24 07:20:08 cph Exp $
+$Id: http-client.scm,v 14.5 2008/08/25 08:44:26 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -80,6 +80,6 @@ USA.
 
 (define (initialize-package!)
   (set! default-user-agent
-	(string-append "MIT_GNU_Scheme/"
+	(string-append "MIT-GNU-Scheme/"
 		       (get-subsystem-version-string "release")))
   unspecific)
