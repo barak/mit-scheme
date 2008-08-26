@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.45 2008/08/25 08:37:32 cph Exp $
+$Id: datime.scm,v 14.46 2008/08/26 05:57:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -55,12 +55,14 @@ USA.
   (daylight-savings-time #f read-only #t)
   (zone #f))
 
+(define-guarantee decoded-time "decoded time")
+
 (define (make-decoded-time second minute hour day month year #!optional zone)
   (check-decoded-time-args second minute hour day month year
 			   'MAKE-DECODED-TIME)
   (let ((zone (if (default-object? zone) #f zone)))
-    (if (and zone (not (time-zone? zone)))
-	(error:wrong-type-argument zone "time zone" 'MAKE-DECODED-TIME))
+    (if zone
+	(guarantee-time-zone zone 'MAKE-DECODED-TIME))
     (if zone
 	(%make-decoded-time second minute hour day month year
 			    (compute-day-of-week day month year)
@@ -162,6 +164,8 @@ USA.
        (exact? object)
        (<= -24 object 24)
        (integer? (* 3600 object))))
+
+(define-guarantee time-zone "time zone")
 
 (define (decoded-time/daylight-savings-time? dt)
   (> (decoded-time/daylight-savings-time dt) 0))
@@ -293,8 +297,7 @@ USA.
   (decoded-time->file-time (string->decoded-time string)))
 
 (define (time-zone->string tz)
-  (if (not (time-zone? tz))
-      (error:wrong-type-argument tz "time zone" 'TIME-ZONE->STRING))
+  (guarantee-time-zone tz 'TIME-ZONE->STRING)
   (let ((minutes (round (* 60 (- tz)))))
     (let ((qr (integer-divide (abs minutes) 60)))
       (string-append (if (< minutes 0) "-" "+")
@@ -303,9 +306,9 @@ USA.
 
 (define (string->time-zone string)
   (let ((entry
-	 (list-search-positive named-time-zones
-	   (lambda (zone)
-	     (string-ci=? string (car zone))))))
+	 (find (lambda (zone)
+		 (string-ci=? (car zone) string))
+	       named-time-zones)))
     (if entry
 	(cadr entry)
 	(let ((n (string->number string)))
@@ -354,9 +357,8 @@ USA.
 (define (ctime-string->decoded-time string #!optional zone)
   (let ((zone (if (default-object? zone) #f zone))
 	(lose (lambda () (error "Ill-formed ctime() string:" string))))
-    (if (not (or (not zone) (time-zone? zone)))
-	(error:wrong-type-argument zone "time zone"
-				   'CTIME-STRING->DECODED-TIME))
+    (if zone
+	(guarantee-time-zone zone 'CTIME-STRING->DECODED-TIME))
     (let ((tokens (burst-string string #\space #t)))
       (if (not (fix:= 5 (length tokens)))
 	  (lose))
@@ -682,10 +684,3 @@ USA.
 
 (define (d2 n)
   (string-pad-left (number->string n) 2 #\0))
-
-;; Upwards compatibility
-(define decode-universal-time universal-time->local-decoded-time)
-(define encode-universal-time decoded-time->universal-time)
-(define get-decoded-time local-decoded-time)
-(define universal-time->string universal-time->local-time-string)
-(define file-time->string file-time->local-time-string)

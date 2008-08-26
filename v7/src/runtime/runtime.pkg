@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.663 2008/08/25 20:53:33 cph Exp $
+$Id: runtime.pkg,v 14.664 2008/08/26 05:57:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1247,12 +1247,16 @@ USA.
   (files "datime")
   (parent (runtime))
   (export ()
+	  (decode-universal-time universal-time->local-decoded-time)
+	  (encode-universal-time decoded-time->universal-time)
+	  (file-time->string file-time->local-time-string)
+	  (get-decoded-time local-decoded-time)
+	  (universal-time->string universal-time->local-time-string)
 	  ctime-string->decoded-time
 	  ctime-string->file-time
 	  ctime-string->universal-time
 	  day-of-week/long-string
 	  day-of-week/short-string
-	  decode-universal-time
 	  decoded-time->ctime-string
 	  decoded-time->http-string
 	  decoded-time->iso8601-string
@@ -1270,8 +1274,9 @@ USA.
 	  decoded-time/year
 	  decoded-time/zone
 	  decoded-time?
-	  encode-universal-time
 	  epoch
+	  error:not-decoded-time
+	  error:not-time-zone
 	  file-time->global-ctime-string
 	  file-time->global-iso8601-string
 	  file-time->global-time-string
@@ -1279,10 +1284,10 @@ USA.
 	  file-time->local-ctime-string
 	  file-time->local-iso8601-string
 	  file-time->local-time-string
-	  file-time->string
-	  get-decoded-time
 	  get-universal-time
 	  global-decoded-time
+	  guarantee-decoded-time
+	  guarantee-time-zone
 	  iso8601-separate-with-t?
 	  iso8601-string->decoded-time
 	  iso8601-string->file-time
@@ -1309,8 +1314,7 @@ USA.
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
 	  universal-time->local-iso8601-string
-	  universal-time->local-time-string
-	  universal-time->string))
+	  universal-time->local-time-string))
 
 (define-package (runtime debugger)
   (files "debug")
