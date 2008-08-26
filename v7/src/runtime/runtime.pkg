@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.664 2008/08/26 05:57:18 cph Exp $
+$Id: runtime.pkg,v 14.665 2008/08/26 08:33:35 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1248,10 +1248,16 @@ USA.
   (parent (runtime))
   (export ()
 	  (decode-universal-time universal-time->local-decoded-time)
+	  (decoded-time->string decoded-time->rfc2822-string)
 	  (encode-universal-time decoded-time->universal-time)
-	  (file-time->string file-time->local-time-string)
+	  (file-time->global-time-string file-time->global-rfc2822-string)
+	  (file-time->local-time-string file-time->local-rfc2822-string)
+	  (file-time->string file-time->local-rfc2822-string)
 	  (get-decoded-time local-decoded-time)
-	  (universal-time->string universal-time->local-time-string)
+	  (string->decoded-time rfc2822-string->decoded-time)
+	  (universal-time->global-time-string universal-time->global-rfc2822-string)
+	  (universal-time->local-time-string universal-time->local-rfc2822-string)
+	  (universal-time->string universal-time->local-rfc2822-string)
 	  ctime-string->decoded-time
 	  ctime-string->file-time
 	  ctime-string->universal-time
@@ -1260,7 +1266,7 @@ USA.
 	  decoded-time->ctime-string
 	  decoded-time->http-string
 	  decoded-time->iso8601-string
-	  decoded-time->string
+	  decoded-time->rfc2822-string
 	  decoded-time->universal-time
 	  decoded-time/date-string
 	  decoded-time/day
@@ -1279,11 +1285,11 @@ USA.
 	  error:not-time-zone
 	  file-time->global-ctime-string
 	  file-time->global-iso8601-string
-	  file-time->global-time-string
+	  file-time->global-rfc2822-string
 	  file-time->http-string
 	  file-time->local-ctime-string
 	  file-time->local-iso8601-string
-	  file-time->local-time-string
+	  file-time->local-rfc2822-string
 	  get-universal-time
 	  global-decoded-time
 	  guarantee-decoded-time
@@ -1297,9 +1303,15 @@ USA.
 	  month/long-string
 	  month/max-days
 	  month/short-string
+	  parser:ctime
 	  parser:iso8601-date/time
+	  parser:military-time-zone
+	  parser:named-time-zone
+	  parser:numeric-time-zone
+	  parser:rfc2822-time
+	  parser:time-zone
+	  rfc2822-string->decoded-time
 	  string->day-of-week
-	  string->decoded-time
 	  string->file-time
 	  string->month
 	  string->time-zone
@@ -1309,12 +1321,12 @@ USA.
 	  universal-time->global-ctime-string
 	  universal-time->global-decoded-time
 	  universal-time->global-iso8601-string
-	  universal-time->global-time-string
+	  universal-time->global-rfc2822-string
 	  universal-time->http-string
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
 	  universal-time->local-iso8601-string
-	  universal-time->local-time-string))
+	  universal-time->local-rfc2822-string))
 
 (define-package (runtime debugger)
   (files "debug")
