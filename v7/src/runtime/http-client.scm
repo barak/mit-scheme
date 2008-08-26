@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.5 2008/08/25 08:44:26 cph Exp $
+$Id: http-client.scm,v 14.6 2008/08/26 04:21:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -80,6 +80,18 @@ USA.
 
 (define (initialize-package!)
   (set! default-user-agent
-	(string-append "MIT-GNU-Scheme/"
-		       (get-subsystem-version-string "release")))
+	(call-with-output-string
+	  (lambda (output)
+	    (write-string "MIT-GNU-Scheme/" output)
+	    (let ((input
+		   (open-input-string
+		    (get-subsystem-version-string "release"))))
+	      (let loop ()
+		(let ((char (read-char input)))
+		  (if (not (eof-object? char))
+		      (begin
+			(if (char-set-member? char-set:http-token char)
+			    (write-char char output)
+			    (write-char #\_ output))
+			(loop)))))))))
   unspecific)
