@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.6 2006/02/02 03:46:46 cph Exp $
+# $Id: make-scmutils,v 1.7 2008/08/27 14:16:36 riastradh Exp $
 #
 # Copyright 2001,2002,2004,2006 Massachusetts Institute of Technology
 #
@@ -65,7 +65,7 @@ BINDIR="${IMAGE_DIR}/bin"
 AUXDIR="${IMAGE_DIR}/scmutils"
 MBINDIR="${AUXDIR}/mit-scheme/bin"
 MAUXDIR="${AUXDIR}/mit-scheme/lib"
-BCIDIR="${MAUXDIR}/SRC"
+BCIDIR="${MAUXDIR}"
 
 STAMP_UNPACK="${TL_DIR}/stamp-unpack"
 STAMP_BUILD="${TL_DIR}/stamp-build"
