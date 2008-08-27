@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.4 2008/08/25 20:53:31 cph Exp $
+$Id: httpio.scm,v 14.5 2008/08/27 03:59:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -200,8 +200,7 @@ USA.
 
 (define (http-status? object)
   (and (exact-nonnegative-integer? object)
-       (>= object 100)
-       (< object 600)))
+       (< object 1000)))
 
 (define-guarantee http-status "HTTP status code")
 
@@ -349,17 +348,17 @@ USA.
 				     (vector-ref v 1)))
      (seq "HTTP/"
 	  (map string->number
-	       (match (+ (char-set char-set:digit))))
+	       (match (+ (char-set char-set:numeric))))
 	  "."
 	  (map string->number
-	       (match (+ (char-set char-set:digit))))))))
+	       (match (+ (char-set char-set:numeric))))))))
 
 (define parse-status-code
   (*parser
    (map string->number
-	(match (seq (char-set char-set:status-major)
-		    (char-set char-set:digit)
-		    (char-set char-set:digit))))))
+	(match (seq (char-set char-set:numeric)
+		    (char-set char-set:numeric)
+		    (char-set char-set:numeric))))))
 
 (define match-wsp
   (*matcher (+ (char-set char-set:wsp))))
@@ -424,8 +423,6 @@ USA.
 
 (define char-set:http-text)
 (define char-set:http-token)
-(define char-set:digit)
-(define char-set:status-major)
 (define http-version:1.0)
 (define http-version:1.1)
 
@@ -435,10 +432,6 @@ USA.
   (set! char-set:http-token
 	(char-set-difference char-set:http-text
 			     (string->char-set "()<>@,;:\\\"/[]?={} \t")))
-  (set! char-set:digit
-	(string->char-set "0123456789"))
-  (set! char-set:status-major
-	(string->char-set "12345"))
   (set! http-version:1.0 (make-http-version 1 0))
   (set! http-version:1.1 (make-http-version 1 1))
   unspecific)
