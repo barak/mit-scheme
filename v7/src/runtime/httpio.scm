@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.5 2008/08/27 03:59:47 cph Exp $
+$Id: httpio.scm,v 14.6 2008/08/27 04:58:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,7 +46,7 @@ USA.
 
 (define (make-http-request method uri version headers body)
   (guarantee-http-token method 'MAKE-HTTP-REQUEST)
-  (guarantee-http-uri uri 'MAKE-HTTP-REQUEST)
+  (guarantee-http-request-uri uri 'MAKE-HTTP-REQUEST)
   (guarantee-http-version version 'MAKE-HTTP-REQUEST)
   (receive (headers body)
       (guarantee-headers&body headers body 'MAKE-HTTP-REQUEST)
@@ -115,7 +115,7 @@ USA.
 (define-guarantee simple-http-request "simple HTTP request")
 
 (define (make-simple-http-request uri)
-  (guarantee-simple-http-uri uri 'MAKE-HTTP-REQUEST)
+  (guarantee-simple-http-request-uri uri 'MAKE-HTTP-REQUEST)
   (%make-http-request '|GET| uri #f '() ""))
 
 (define (simple-http-response? object)
@@ -151,18 +151,22 @@ USA.
 
 (define-guarantee http-token "HTTP token")
 
-(define (http-uri? object)
-  (or (absolute-uri? object)
-      (simple-http-uri? object)))
+(define (http-request-uri? object)
+  (or (simple-http-request-uri? object)
+      (absolute-uri? object)
+      (and (string? object)
+	   (string=? object "*"))
+      (uri-authority? object)))
 
-(define-guarantee http-uri "HTTP URI")
+(define-guarantee http-request-uri "HTTP URI")
 
-(define (simple-http-uri? object)
-  (and (relative-uri? object)
+(define (simple-http-request-uri? object)
+  (and (uri? object)
+       (not (uri-scheme object))
        (not (uri-authority object))
        (uri-path-absolute? (uri-path object))))
 
-(define-guarantee simple-http-uri "simple HTTP URI")
+(define-guarantee simple-http-request-uri "simple HTTP URI")
 
 (define (http-version? object)
   (and (pair? object)
@@ -322,16 +326,22 @@ USA.
   (*parser
    (seq "GET"
 	(noise match-wsp)
-	parse-uri-no-authority)))
+	parse-uri-path-absolute)))
 
 (define parse-request-line
   (*parser
    (seq (map string->symbol
-	     (match (+ (char-set char-set:http-token))))
+	     parse-http-token)
 	(noise match-wsp)
-	parse-uri-no-authority
+	(alt (match "*")
+	     parse-absolute-uri
+	     parse-uri-path-absolute
+	     parse-uri-authority)
 	(noise match-wsp)
 	parse-version)))
+
+(define parse-http-token
+  (*parser (match (+ (char-set char-set:http-token)))))
 
 (define parse-response-line
   (*parser

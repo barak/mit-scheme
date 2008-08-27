@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.55 2008/08/24 07:20:12 cph Exp $
+$Id: url.scm,v 1.56 2008/08/27 04:58:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -396,11 +396,11 @@ USA.
 	     (vector-ref v 3)
 	     (vector-ref v 4)))
 
-(define parse-uri-no-authority
+(define parse-uri-path-absolute
   (*parser
    (encapsulate encapsulate-uri
      (seq (values #f #f)
-	  parser:path-only))))
+	  parser:path-absolute))))
 
 (define parser:uri
   (*parser
@@ -414,10 +414,11 @@ USA.
 
 (define parser:hier-part
   (*parser
-   (alt (seq "//" parser:authority parser:path-abempty)
-	(seq (values #f) parser:path-absolute)
-	(seq (values #f) parser:path-rootless)
-	(seq (values #f) parser:path-empty))))
+   (alt (seq "//" parse-uri-authority parser:path-abempty)
+	(seq (values #f)
+	     (alt parser:path-absolute
+		  parser:path-rootless
+		  parser:path-empty)))))
 
 (define parser:uri-reference
   (*parser
@@ -435,14 +436,11 @@ USA.
 
 (define parser:relative-part
   (*parser
-   (alt (seq "//" parser:authority parser:path-abempty)
-	(seq (values #f) parser:path-only))))
-
-(define parser:path-only
-  (*parser
-   (alt parser:path-absolute
-	parser:path-noscheme
-	parser:path-empty)))
+   (alt (seq "//" parse-uri-authority parser:path-abempty)
+	(seq (values #f)
+	     (alt parser:path-absolute
+		  parser:path-noscheme
+		  parser:path-empty)))))
 
 (define parser:scheme
   (*parser
@@ -453,7 +451,7 @@ USA.
    (seq (char-set char-set:uri-alpha)
 	(* (char-set char-set:uri-scheme)))))
 
-(define parser:authority
+(define parse-uri-authority
   (*parser
    (encapsulate (lambda (v)
 		  (%make-uri-authority (vector-ref v 0)
