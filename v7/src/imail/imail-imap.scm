@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.226 2008/08/25 01:29:02 riastradh Exp $
+$Id: imail-imap.scm,v 1.227 2008/08/27 14:22:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -609,8 +609,10 @@ USA.
       #f
       (let ((url (imap-connection-url connection)))
 	(let ((port
-	       (open-tcp-stream-socket (imap-url-host url)
-				       (or (imap-url-port url) "imap2"))))
+	       ((imail-ui:message-wrapper "Connecting to " (imap-url-host url))
+		(lambda ()
+		  (open-tcp-stream-socket (imap-url-host url)
+					  (or (imap-url-port url) "imap2"))))))
 	  (port/set-line-ending port 'NEWLINE)
 	  (let ((response
 		 (imap:catch-no-response #f
@@ -1012,7 +1014,7 @@ USA.
 		       (lambda ()
 			 (imap:command:fetch-range
 			  (imap-folder-connection folder)
-			  0 #f '(UID)))))))
+			  0 #f '(UID FLAGS)))))))
 	      (let ((v* (imap-folder-messages folder))
 		    (n* (folder-length folder)))
 		(let loop ((i 0) (i* 0))
@@ -1198,32 +1200,43 @@ USA.
 
 ;;;; Preloading Folder Outlines & Caching Folder Contents
 
-(define outline-keywords
+;;; Keywords for summary buffers' message outlines.
+
+(define imap-outline-keywords
   '(FLAGS INTERNALDATE RFC822.HEADER RFC822.SIZE))
 
-(define-method preload-folder-outlines ((folder <imap-folder>))
-  (fill-imap-message-cache folder outline-keywords))
+;;; Keywords for displaying message content.
 
-(define content-keywords
+(define imap-content-keywords
   ;; What other keywords would be useful here?
-  (append '(BODYSTRUCTURE) outline-keywords))
+  (append '(BODYSTRUCTURE) imap-outline-keywords))
+
+;;; Keywords that are not to be written into the disk cache.
+
+(define imap-ephemeral-keywords
+  '(FLAGS))
+
+(define-method preload-folder-outlines ((folder <imap-folder>))
+  (fill-imap-message-cache folder imap-outline-keywords))
 
 (define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
-  (fill-imap-message-cache folder content-keywords)
-  ((imail-ui:message-wrapper "Caching folder contents")
-   (lambda ()
-     (for-each-message folder
-       (lambda (index message)
-	 index				;ignore
-	 (cond ((imap-message-bodystructure message)
-		=> (lambda (body-structure)
-		     (walk-mime-body message body-structure
-		       (lambda (selector)
-			 (fetch-message-body-part-to-cache
-			  message
-			  (mime-selector->imap-section selector))))))
-	       (else
-		(fetch-message-body-part-to-cache message '(TEXT)))))))))
+  (fill-imap-message-cache folder imap-content-keywords)
+  (let ((length (folder-length folder)))
+    ((imail-ui:message-wrapper "Caching folder contents")
+     (lambda ()
+       (for-each-message folder
+	 (lambda (index message)
+	   (if (zero? (remainder index 10))
+	       (imail-ui:progress-meter index length))
+	   (cond ((imap-message-bodystructure message)
+		  => (lambda (body-structure)
+		       (walk-mime-body message body-structure
+			 (lambda (selector)
+			   (fetch-message-body-part-to-cache
+			    message
+			    (mime-selector->imap-section selector))))))
+		 (else
+		  (fetch-message-body-part-to-cache message '(TEXT))))))))))
 
 (define (for-each-message folder procedure)
   (let ((n (folder-length folder)))
@@ -1290,6 +1303,7 @@ USA.
 (define (imap-message-keyword-cached? message keyword)
   (let ((cached-keywords (imap-message-cached-keywords message)))
     (or (memq keyword cached-keywords)
+	(memq keyword imap-ephemeral-keywords)
 	(and (file-exists? (message-item-pathname message keyword))
 	     (begin
 	       (set-imap-message-cached-keywords!
@@ -1613,21 +1627,24 @@ USA.
 	#f)))
 
 (define (fetch-message-items message keywords suffix)
-  (if (equal? keywords '(FLAGS))
+  (if (lset= eq? keywords imap-ephemeral-keywords)
       (fetch-message-items-1 message keywords suffix)
       (with-folder-locked (message-folder message)
 	(lambda ()
 	  (let ((alist
 		 (map (lambda (keyword)
 			(cons keyword
-			      (let ((pathname
-				     (message-item-pathname message keyword)))
-				(if (file-exists? pathname)
-				    (list
-				     (read-cached-message-item message
-							       keyword
-							       pathname))
-				    '()))))
+			      (if (memq keyword imap-ephemeral-keywords)
+				  '()
+                                  (let ((pathname
+                                         (message-item-pathname message
+								keyword)))
+                                    (if (file-exists? pathname)
+                                        (list
+                                         (read-cached-message-item message
+                                                                   keyword
+                                                                   pathname))
+                                        '())))))
 		      keywords)))
 	    (let ((uncached
 		   (list-transform-positive alist
@@ -1649,7 +1666,8 @@ USA.
 
 (define (cache-fetch-response message response keyword-predicate save-item)
   (for-each (lambda (keyword)
-	      (if (keyword-predicate keyword)
+	      (if (and (not (memq keyword imap-ephemeral-keywords))
+		       (keyword-predicate keyword))
 		  (let ((item (imap:response:fetch-attribute response keyword))
 			(pathname (message-item-pathname message keyword))
 			(temporary-directory
