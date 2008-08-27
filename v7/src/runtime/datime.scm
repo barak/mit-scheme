@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.47 2008/08/26 08:33:31 cph Exp $
+$Id: datime.scm,v 14.48 2008/08/27 05:31:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -486,30 +486,6 @@ USA.
 	  " "
 	  parse-ctime-year))))
 
-(define parse-short-day-of-week
-  (*parser
-   (transform (lambda (v)
-		(let ((n
-		       (string-ci->index days-of-week/short-strings
-					 (vector-ref v 0))))
-		  (and n
-		       (vector n))))
-     (match (seq (char-set char-set:alphabetic)
-		 (char-set char-set:alphabetic)
-		 (char-set char-set:alphabetic))))))
-
-(define parse-short-month
-  (*parser
-   (transform (lambda (v)
-		(let ((n
-		       (string-ci->index month/short-strings
-					 (vector-ref v 0))))
-		  (and n
-		       (vector (+ n 1)))))
-     (match (seq (char-set char-set:alphabetic)
-		 (char-set char-set:alphabetic)
-		 (char-set char-set:alphabetic))))))
-
 (define parse-ctime-hour (number-parser 2 2 0 23))
 (define parse-ctime-minute (number-parser 2 2 0 59))
 (define parse-ctime-second (number-parser 2 2 0 59))
@@ -690,6 +666,38 @@ USA.
    (alt (map (lambda (v) v 1) (match "+"))
 	(map (lambda (v) v -1) (match "-")))))
 
+;;;; RFC 850 times (for HTTP only)
+
+(define parser:rfc850-time
+  (*parser
+   (encapsulate (lambda (v)
+		  (make-decoded-time (vector-ref v 6)
+				     (vector-ref v 5)
+				     (vector-ref v 4)
+				     (vector-ref v 1)
+				     (vector-ref v 2)
+				     (vector-ref v 3)
+				     0))
+     (seq parse-long-day-of-week
+	  ","
+	  parse-rfc850-day
+	  " "
+	  parse-short-month
+	  " "
+	  parse-rfc2822-obs-year
+	  " "
+	  parse-rfc850-hour
+	  ":"
+	  parse-rfc850-minute
+	  ":"
+	  parse-rfc850-second
+	  " GMT"))))
+
+(define parse-rfc850-day (number-parser 2 2 1 31))
+(define parse-rfc850-hour (number-parser 2 2 0 23))
+(define parse-rfc850-minute (number-parser 2 2 0 59))
+(define parse-rfc850-second (number-parser 2 2 0 59))
+
 ;;;; Utilities
 
 (define (month/max-days month)
@@ -716,13 +724,6 @@ USA.
 	     (string-ci->index month/long-strings string)
 	     (error "Unknown month designation:" string))))
 
-(define month/short-strings
-  '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
-
-(define month/long-strings
-  '#("January" "February" "March" "April" "May" "June" "July" "August"
-	       "September" "October" "November" "December"))
-
 (define (day-of-week/short-string day)
   (guarantee-day-of-week day 'DAY-OF-WEEK/SHORT-STRING)
   (vector-ref days-of-week/short-strings day))
@@ -742,12 +743,6 @@ USA.
       (string-ci->index days-of-week/long-strings string)
       (error "Unknown day-of-week designation:" string)))
 
-(define days-of-week/short-strings
-  '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
-
-(define days-of-week/long-strings
-  '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"))
-
 (define (string-ci->index string-vector string)
   (let ((end (vector-length string-vector)))
     (let loop ((index 0))
@@ -765,3 +760,37 @@ USA.
 
 (define (d2 n)
   (string-pad-left (number->string n) 2 #\0))
+
+(define month/short-strings
+  '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
+
+(define month/long-strings
+  '#("January" "February" "March" "April" "May" "June" "July" "August"
+	       "September" "October" "November" "December"))
+
+(define days-of-week/short-strings
+  '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun"))
+
+(define days-of-week/long-strings
+  '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"))
+
+(define (string-vector-parser v)
+  (let ((n (vector-length v)))
+    (lambda (b)
+      (let loop ((i 0))
+	(and (< i n)
+	     (if (match-parser-buffer-string b (vector-ref v i))
+		 (vector i)
+		 (loop (+ i 1))))))))
+
+(define parse-short-month
+  (string-vector-parser month/short-strings))
+
+(define parse-long-month
+  (string-vector-parser month/long-strings))
+
+(define parse-short-day-of-week
+  (string-vector-parser days-of-week/short-strings))
+
+(define parse-long-day-of-week
+  (string-vector-parser days-of-week/long-strings))

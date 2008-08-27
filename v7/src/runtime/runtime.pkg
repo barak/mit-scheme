@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.666 2008/08/27 04:58:09 cph Exp $
+$Id: runtime.pkg,v 14.667 2008/08/27 05:31:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1309,6 +1309,7 @@ USA.
 	  parser:named-time-zone
 	  parser:numeric-time-zone
 	  parser:rfc2822-time
+	  parser:rfc850-time
 	  parser:time-zone
 	  rfc2822-string->decoded-time
 	  string->day-of-week
