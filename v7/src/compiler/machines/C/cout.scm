@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.44 2008/06/18 06:31:49 riastradh Exp $
+$Id: cout.scm,v 1.45 2008/08/28 19:28:29 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -66,7 +66,6 @@ USA.
 	   (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (stackify-output->data-decl 'prog str)
 	      (c:line)
@@ -76,7 +75,9 @@ USA.
 		(c:return (c:ecall 'unstackify
 				   (c:cast 'uchar* (c:aptr 'prog 0))
 				   (c:ecall 'sizeof 'prog)
-				   0)))))))
+				   0))))
+	     (c:line)
+	     (declare-data-object handle data-name))))
 
 (define (stringify-data/traditional object output-pathname)
   (let*/mv (((vars prefix suffix) (handle-top-level-data/traditional object))
@@ -86,7 +87,6 @@ USA.
 	      (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (c:fn #f 'sobj data-name '()
 		(c:decl 'sobj 'top_level_object)
@@ -95,7 +95,9 @@ USA.
 		(c:line)
 		(c:group* prefix)
 		(c:group* suffix)
-		(c:return 'top_level_object))))))
+		(c:return 'top_level_object)))
+	     (c:line)
+	     (declare-data-object handle data-name))))
 
 (define (declare-data-object handle proc)
   (c:group (c:data-section (declare-object handle proc))
