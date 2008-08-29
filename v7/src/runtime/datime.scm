@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.48 2008/08/27 05:31:08 cph Exp $
+$Id: datime.scm,v 14.49 2008/08/29 23:20:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -774,23 +774,23 @@ USA.
 (define days-of-week/long-strings
   '#("Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"))
 
-(define (string-vector-parser v)
+(define (string-vector-parser v offset)
   (let ((n (vector-length v)))
     (lambda (b)
       (let loop ((i 0))
 	(and (< i n)
 	     (if (match-parser-buffer-string b (vector-ref v i))
-		 (vector i)
+		 (vector (+ i offset))
 		 (loop (+ i 1))))))))
 
 (define parse-short-month
-  (string-vector-parser month/short-strings))
+  (string-vector-parser month/short-strings 1))
 
 (define parse-long-month
-  (string-vector-parser month/long-strings))
+  (string-vector-parser month/long-strings 1))
 
 (define parse-short-day-of-week
-  (string-vector-parser days-of-week/short-strings))
+  (string-vector-parser days-of-week/short-strings 0))
 
 (define parse-long-day-of-week
-  (string-vector-parser days-of-week/long-strings))
+  (string-vector-parser days-of-week/long-strings 0))
