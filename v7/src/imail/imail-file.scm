@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.95 2008/07/03 20:08:09 cph Exp $
+$Id: imail-file.scm,v 1.96 2008/08/29 20:14:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -349,9 +349,11 @@ USA.
 		       (let ((m (vector-ref messages i)))
 			 (if (message-deleted? m)
 			     (begin
-			       (let ((key (message-order-key m)))
-                                 (detach-message! m)
-                                 (object-modified! folder 'EXPUNGE i* key))
+			       (let ((index (message-index m))
+                                     (key (message-order-key m)))
+				 (detach-message! m)
+				 (object-modified! folder 'EXPUNGE
+						   m i* index key))
 			       (loop (fix:+ i 1) i*))
 			     (begin
 			       (set-message-index! m i*)

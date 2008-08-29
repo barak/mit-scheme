@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.172 2008/08/11 22:27:26 riastradh Exp $
+$Id: imail-core.scm,v 1.173 2008/08/29 20:14:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -886,10 +886,13 @@ USA.
 	     ((EXPUNGE)
 	      (let ((tree (folder-order-tree order)))
 		(if tree
-		    (let ((index (car arguments))
-			  (key (cadr arguments)))
+		    (let ((message (car arguments))
+			  (%index (cadr arguments))
+			  (index (caddr arguments))
+			  (key (cadddr arguments)))
+		      message index	;ignore
 		      (let ((cache (folder-order-cache order)))
-			(if cache (hash-table/remove! cache index)))
+			(if cache (hash-table/remove! cache %index)))
 		      (wt-tree/delete! tree key)))))))))))
 
 ;;;; Message flags

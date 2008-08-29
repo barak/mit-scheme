@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.227 2008/08/27 14:22:09 riastradh Exp $
+$Id: imail-imap.scm,v 1.228 2008/08/29 20:14:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -899,27 +899,29 @@ USA.
 				   start #f '(UID FLAGS))))))
 
 (define (remove-imap-folder-message folder index)
-  (let* ((message (%get-message folder index))
-         (key (message-order-key message)))
-    (delete-cached-message message)
-    (without-interrupts
-     (lambda ()
-       (let ((v (imap-folder-messages folder))
-             (n (fix:- (folder-length folder) 1)))
-         (detach-message! (vector-ref v index))
-         (do ((i index (fix:+ i 1)))
-             ((fix:= i n))
-           (let ((m (vector-ref v (fix:+ i 1))))
-             (set-message-index! m i)
-             (vector-set! v i m)))
-         (vector-set! v n #f)
-         (set-imap-folder-length! folder n)
-         (set-imap-folder-unseen! folder #f)
-         (let ((new-length (compute-messages-length v n)))
-           (if new-length
-               (set-imap-folder-messages! folder
-                                          (vector-head v new-length))))
-         (object-modified! folder 'EXPUNGE index key))))))
+  (let ((message (%get-message folder index)))
+    (let ((unmapped-index (message-index message))
+	  (key (message-order-key message)))
+      (delete-cached-message message)
+      (without-interrupts
+       (lambda ()
+	 (let ((v (imap-folder-messages folder))
+	       (n (fix:- (folder-length folder) 1)))
+	   (detach-message! (vector-ref v index))
+	   (do ((i index (fix:+ i 1)))
+	       ((fix:= i n))
+	     (let ((m (vector-ref v (fix:+ i 1))))
+	       (set-message-index! m i)
+	       (vector-set! v i m)))
+	   (vector-set! v n #f)
+	   (set-imap-folder-length! folder n)
+	   (set-imap-folder-unseen! folder #f)
+	   (let ((new-length (compute-messages-length v n)))
+	     (if new-length
+		 (set-imap-folder-messages! folder
+					    (vector-head v new-length))))
+	   (object-modified! folder 'EXPUNGE
+			     message index unmapped-index key)))))))
 
 (define (initial-messages)
   (make-vector 64 #f))
