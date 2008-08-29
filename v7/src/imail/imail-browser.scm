@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-browser.scm,v 1.15 2008/01/30 20:02:09 cph Exp $
+$Id: imail-browser.scm,v 1.16 2008/08/29 20:03:45 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -360,22 +360,22 @@ this command visits it as a folder."
 
 (define-command imail-browser-view-container
   "Browse the container of the resource being viewed in this buffer.
-With prefix arg, prompt for the container to browse."
+With prefix arg, or if no resource is being viewed, prompt for the
+  container to browse."
   (lambda ()
-    (list
-     (and (command-argument)
-	  (prompt-for-container "Browse IMAIL container" #f
-				'HISTORY 'IMAIL-BROWSER-VIEW-CONTAINER
-				'REQUIRE-MATCH? #t))))
+    (list (and (command-argument) (prompt-for-browser-container))))
   (lambda (url-string)
     (imail-browse-container
      (or (and url-string (imail-parse-partial-url url-string))
-	 (let ((resource
-		(or (selected-container #f)
-		    (selected-folder #f))))
-	   (if resource
-	       (container-url-for-prompt resource)
-	       (editor-error "This is not an IMAIL buffer.")))))))
+         (container-url-for-prompt
+          (or (selected-container #f)
+              (selected-folder #f)
+              (prompt-for-browser-container)))))))
+
+(define (prompt-for-browser-container)
+  (prompt-for-container "Browse IMAIL container" #f
+                        'HISTORY 'IMAIL-BROWSER-VIEW-CONTAINER
+                        'REQUIRE-MATCH? #t))
 
 (define-command imail-browser-mouse-toggle-container
   "Show the contents of the container pointed at.
