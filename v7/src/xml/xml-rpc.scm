@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.13 2008/08/25 08:48:33 cph Exp $
+$Id: xml-rpc.scm,v 1.14 2008/08/30 19:48:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -33,7 +33,7 @@ USA.
   (let ((response
 	 (http-post uri
 		    `(,@(if (default-object? headers) '() headers)
-		      (CONTENT-TYPE "text/xml"))
+		      ,(make-rfc2822-header 'CONTENT-TYPE "text/xml"))
 		    (xml->octets (->request request 'XML-RPC)))))
     (if (not (= 200 (http-response-status response)))
 	(error "HTTP error:" (http-response-reason response)))
