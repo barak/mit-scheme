@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.51 2008/08/30 19:54:37 riastradh Exp $
+$Id: usiexp.scm,v 4.52 2008/08/30 19:55:59 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -359,14 +359,11 @@ USA.
   (if-expanded
    (let ((block (block/make block #t '())))
      (let ((variables
-	    (map (lambda (operand position)
-		   operand
-		   (variable/make&bind! block
-					(string->uninterned-symbol
-					 (string-append
-					  "value-"
-					  (number->string position)))))
-		 operands
+	    (map (lambda (position)
+		   (variable/make&bind!
+                    block
+                    (string->uninterned-symbol
+                     (string-append "value-" (number->string position)))))
 		 (iota (length operands)))))
        (combination/make
 	(and expr (object/scode expr))
