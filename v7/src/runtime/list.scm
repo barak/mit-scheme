@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.58 2008/02/10 06:14:10 cph Exp $
+$Id: list.scm,v 14.59 2008/08/30 19:33:25 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -148,10 +148,7 @@ USA.
 	     (begin
 	       (guarantee-number step 'IOTA)
 	       step))))
-    (let loop ((count count) (value start))
-      (if (fix:> count 0)
-	  (cons value (loop (fix:- count 1) (+ value step)))
-	  '()))))
+    (make-initialized-list count (lambda (index) (+ start (* index step))))))
 
 (define (list? object)
   (let loop ((l1 object) (l2 object))
