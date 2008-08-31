@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.58 2008/08/27 14:55:48 riastradh Exp $
+$Id: imail-summary.scm,v 1.59 2008/08/31 19:32:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -421,7 +421,7 @@ SUBJECT is a string of regexps separated by commas."
 	  ;; Chris VanHaren (Athena User Consultant) <vanharen>
 	  ((re-string-search-forward "[ \t\"]*\\<\\(.*\\)\\>.*(.*).*<.*>.*" s)
 	   => (field 1))
-	  ((re-string-search-forward ".*(\\(.*\\))" s)
+	  ((re-string-search-forward ".*(\\(.+\\))" s)
 	   => (field 1))
 	  ((re-string-search-forward ".*<\\(.*\\)>.*" s)
 	   => (field 1))
