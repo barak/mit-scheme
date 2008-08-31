@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.30 2008/02/10 06:14:03 cph Exp $
+$Id: boot.scm,v 14.31 2008/08/31 07:27:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -143,3 +143,26 @@ USA.
 
 (define-integrable (default-object)
   ((ucode-primitive object-set-type) (ucode-type constant) 7))
+
+(define (init-boot-inits!)
+  (set! boot-inits '())
+  unspecific)
+
+(define (add-boot-init! thunk)
+  (set! boot-inits (cons thunk boot-inits))
+  unspecific)
+
+(define (save-boot-inits! environment)
+  (let ((inits (reverse! boot-inits)))
+    (set! boot-inits)
+    ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
+
+(define (run-boot-inits! environment)
+  (let ((inits
+	 ((ucode-primitive lexical-reference) environment saved-boot-inits)))
+    ((ucode-primitive unbind-variable) environment saved-boot-inits)
+    (for-each (lambda (init) (init))
+	      inits)))
+
+(define boot-inits)
+(define saved-boot-inits '|#[saved-boot-inits]|)

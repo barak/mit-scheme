@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.117 2008/08/24 07:20:09 cph Exp $
+$Id: make.scm,v 14.118 2008/08/31 07:28:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -401,14 +401,19 @@ USA.
 	    (let loop ((files files))
 	      (and (pair? files)
 		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files))))))))
+		       (loop (cdr files)))))))
+	 (boot-defs
+	  (package/environment (name->package '(RUNTIME BOOT-DEFINITIONS)))))
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
-	   (eval (file->object filename #t #t)
-		 environment))
+	   (begin
+	     ((access init-boot-inits! boot-defs))
+	     (eval (file->object filename #t #t)
+		   environment)
+	     ((access save-boot-inits! boot-defs) environment)))
        unspecific))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.

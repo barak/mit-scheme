@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.32 2008/01/30 20:02:32 cph Exp $
+$Id: mit-syntax.scm,v 14.33 2008/08/31 07:27:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -225,18 +225,26 @@ USA.
 			     variable-binding-theory)))))
     (lambda (form rename compare)
       compare				;ignore
-      (cond ((syntax-match? '((IDENTIFIER . MIT-BVL) + FORM) (cdr form))
-	     `(,(car form) ,(caadr form)
-			   (,(rename 'NAMED-LAMBDA) ,@(cdr form))))
-	    ((syntax-match? '((DATUM . MIT-BVL) + FORM) (cdr form))
-	     `(,(car form) ,(caadr form)
-			   (,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form))))
-	    ((syntax-match? '(IDENTIFIER) (cdr form))
-	     `(,keyword ,(cadr form) ,(unassigned-expression)))
-	    ((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
-	     `(,keyword ,(cadr form) ,(caddr form)))
-	    (else
-	     (ill-formed-syntax form))))))
+      (receive (name value) (parse-define-form form rename)
+	`(,keyword ,name ,value)))))
+
+(define (parse-define-form form rename)
+  (cond ((syntax-match? '((IDENTIFIER . MIT-BVL) + FORM) (cdr form))
+	 (parse-define-form
+	  `(,(car form) ,(caadr form)
+			(,(rename 'NAMED-LAMBDA) ,@(cdr form)))
+	  rename))
+	((syntax-match? '((DATUM . MIT-BVL) + FORM) (cdr form))
+	 (parse-define-form
+	  `(,(car form) ,(caadr form)
+			(,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form)))
+	  rename))
+	((syntax-match? '(IDENTIFIER) (cdr form))
+	 (values (cadr form) (unassigned-expression)))
+	((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
+	 (values (cadr form) (caddr form)))
+	(else
+	 (ill-formed-syntax form))))
 
 (define-classifier 'DEFINE-SYNTAX system-global-environment
   (lambda (form environment definition-environment history)
