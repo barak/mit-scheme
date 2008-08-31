@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.45 2008/07/27 04:24:26 cph Exp $
+$Id: sfile.scm,v 14.46 2008/08/31 07:36:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -329,10 +329,15 @@ USA.
   unspecific)
 
 (define (mime-type->string mime-type)
-  (guarantee-mime-type mime-type 'MIME-TYPE->STRING)
-  (string-append (symbol-name (mime-type/top-level mime-type))
-		 "/"
-		 (symbol-name (mime-type/subtype mime-type))))
+  (call-with-output-string
+    (lambda (port)
+      (write-mime-type mime-type port))))
+
+(define (write-mime-type mime-type port)
+  (guarantee-mime-type mime-type 'WRITE-MIME-TYPE)
+  (write-string (symbol-name (mime-type/top-level mime-type)) port)
+  (write-string "/" port)
+  (write-string (symbol-name (mime-type/subtype mime-type)) port))
 
 (define (string->mime-type string #!optional start end)
   (vector-ref (or (*parse-string parser:mime-type string start end)
