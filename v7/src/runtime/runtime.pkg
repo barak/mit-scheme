@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.667 2008/08/27 05:31:16 cph Exp $
+$Id: runtime.pkg,v 14.668 2008/08/31 07:33:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -163,7 +163,10 @@ USA.
 	  unparser/standard-method
 	  with-absolutely-no-interrupts
 	  with-limited-interrupts
-	  without-interrupts))
+	  without-interrupts)
+  (export (runtime)
+	  add-boot-init!
+	  run-boot-inits!))
 
 (define-package (runtime equality)
   (files "equals")
@@ -4201,6 +4204,8 @@ USA.
 	  syntax-match?
 	  synthetic-identifier?
 	  )
+  (export (runtime)
+	  parse-define-form)
   (export (runtime defstruct)
 	  define-expander
 	  parse-mit-lambda-list))
@@ -4218,6 +4223,7 @@ USA.
   (export ()
 	  define-guarantee)
   (export (runtime)
+	  define-deferred
 	  define-primitives
 	  ucode-primitive
 	  ucode-return-address
