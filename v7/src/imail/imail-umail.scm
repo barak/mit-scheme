@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-umail.scm,v 1.58 2008/07/03 20:08:15 cph Exp $
+$Id: imail-umail.scm,v 1.59 2008/08/31 23:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,7 +74,7 @@ USA.
   folder
   (make-umail-message (message-header-fields message)
 		      (file-message-body message)
-		      (list-copy (message-flags message))
+		      (list-copy (message-permanent-flags message))
 		      (umail-message-from-line message)))
 
 (define-method message-internal-time ((message <umail-message>))
@@ -160,12 +160,15 @@ USA.
 (define (write-umail-message message output-flags? port)
   (write-string (umail-message-from-line message) port)
   (newline port)
-  (write-header-fields (if output-flags?
-			   (append (message-header-fields message)
-				   (list (message-flags->header-field
-					  (message-flags message))))
-			   (message-header-fields message))
-		       port)
+  (write-header-fields
+   (if output-flags?
+       (append (message-header-fields message)
+	       (let ((flags (message-permanent-flags message)))
+		 (if (pair? flags)
+		     (list (message-flags->header-field flags))
+		     '())))
+       (message-header-fields message))
+   port)
   (for-each (lambda (line)
 	      (if (string-prefix-ci? "From " line)
 		  (write-string ">" port))

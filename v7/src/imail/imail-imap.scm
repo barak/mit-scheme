@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.228 2008/08/29 20:14:50 riastradh Exp $
+$Id: imail-imap.scm,v 1.229 2008/08/31 23:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1074,6 +1074,13 @@ USA.
 		      (lambda (flag)
 			(flags-member? flag allowed-flags)))))))))))
 
+(define-method message-permanent-flags ((message <imap-message>))
+  ;; Perhaps this should intersect the flags with the folder's list of
+  ;; permanent flags, if the folder does not allow permanent
+  ;; user-defined flags, in order to preserve only those flags that
+  ;; the IMAP folder would consider permanent.
+  (flags-delete "recent" (message-flags message)))
+
 (define (imap-flag->imail-flag flag)
   (let ((entry (assq flag standard-imap-flags)))
     (if entry
@@ -2041,9 +2048,7 @@ USA.
 		(imap:command:append connection
 				     (imap-url-server-mailbox url)
 				     (map imail-flag->imap-flag
-					  (flags-delete
-					   "recent"
-					   (message-flags message)))
+					  (message-permanent-flags message))
 				     (message-internal-time message)
 				     (message->string message)))))))))
 

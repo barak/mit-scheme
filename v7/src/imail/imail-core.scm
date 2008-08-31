@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.173 2008/08/29 20:14:50 riastradh Exp $
+$Id: imail-core.scm,v 1.174 2008/08/31 23:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -659,7 +659,7 @@ USA.
     (if folder
 	(unmap-folder-index folder index)
 	index)))
-
+
 (define %set-message-flags!
   (let ((modifier (slot-modifier <message> 'FLAGS)))
     (lambda (message flags)
@@ -667,6 +667,11 @@ USA.
       (let ((folder (message-folder message)))
 	(if folder
 	    (object-modified! folder 'FLAGS message))))))
+
+(define-generic message-permanent-flags (message))
+
+(define-method message-permanent-flags ((message <message>))
+  (message-flags message))
 
 (define (message-attached? message #!optional folder)
   (let ((folder (if (default-object? folder) #f folder)))

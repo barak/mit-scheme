@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-rmail.scm,v 1.78 2008/07/03 20:08:12 cph Exp $
+$Id: imail-rmail.scm,v 1.79 2008/08/31 23:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -98,7 +98,7 @@ USA.
   folder
   (make-rmail-message (message-header-fields message)
 		      (file-message-body message)
-		      (list-copy (message-flags message))
+		      (list-copy (message-permanent-flags message))
 		      (rmail-message-displayed-header-fields message)
 		      (message-internal-time message)))
 
