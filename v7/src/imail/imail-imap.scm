@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.230 2008/09/01 00:31:15 riastradh Exp $
+$Id: imail-imap.scm,v 1.231 2008/09/01 01:24:47 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1059,14 +1059,13 @@ USA.
 	    interrupt-mask
 	    (read-message-headers! folder 0))))
     (set-imap-folder-messages-synchronized?! folder 'FLAGS)
-    (object-modified! folder
-		      (synchronize-imap-folder-messages! folder n v)
-		      n
-		      count)))
+    (let ((event (synchronize-imap-folder-messages! folder n v)))
+      (if event
+	  (object-modified! folder event n count)))))
 
 ;;; SYNCHRONIZE-IMAP-FOLDER-MESSAGES! returns the event that just
-;;; occurred -- either SET-LENGTH or INCREASE-LENGTH.  It would be
-;;; nice to avoid SET-LENGTH events altogether if a small number of
+;;; occurred -- either SET-LENGTH, INCREASE-LENGTH, or #F.  It would
+;;; be nice to avoid SET-LENGTH events altogether if a small number of
 ;;; messages have been expunged, and just to signal EXPUNGE events for
 ;;; each message missing from the server.  However, this is sketchy
 ;;; for two reasons: 
@@ -1113,7 +1112,9 @@ USA.
 			 (imap-message-uid m*))
 		      (error "Message inserted into folder:" m*))
 		  (loop (fix:+ i 1) i* #f))))
-	  (if synchronized? 'INCREASE-LENGTH 'SET-LENGTH)))))
+	  (if synchronized?
+	      (and (< n n*) 'INCREASE-LENGTH)
+	      'SET-LENGTH)))))
 
 ;;;; Message datatype
 
