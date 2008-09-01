@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.229 2008/08/31 23:02:17 riastradh Exp $
+$Id: imail-imap.scm,v 1.230 2008/09/01 00:31:15 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -233,7 +233,7 @@ USA.
 			  (imap-url-mailbox default-url))))
 	    (values #f #f #f #f))))))
 
-;;;; Container heirarchy
+;;;; Container hierarchy
 
 (define (imap-container-url url)
   (imap-url-new-mailbox url
@@ -799,7 +799,28 @@ USA.
   (uidnext define standard)
   (uidvalidity define standard)
   (unseen define standard)
-  (messages-synchronized? define standard)
+  ;; MESSAGES-SYNC-STATUS is the status of synchronization between our
+  ;; folder and the server.  This can be
+  ;;   #F,      meaning that we have lost all synchrony;
+  ;;   LENGTH,  meaning that the folder's length agrees with the most
+  ;;              recent EXISTS response from the server;
+  ;;   UID,     meaning that our folder agrees with the server on the
+  ;;              messages' UIDs, as of the last response from the
+  ;;              server; or
+  ;;   FLAGS,   meaning that our folder agrees with the esrver on the
+  ;;              messages' flags, as of the last response from the
+  ;;              server.
+  ;; Each case implies all preceding cases, so that, for example, if
+  ;; we agree on the flags, then we certainly agree on the length.
+  ;; When updating the length as new messages are added, we may leave
+  ;; the folder in a suboptimal state claiming that the length is
+  ;; synchronized but the flags are not, while in fact all the
+  ;; messages except the new ones have their flags synchronized.  This
+  ;; approximation is much simpler to understand, however, and less
+  ;; likely to fail in the case of user interrupts and other aborts.
+  ;; If uninterrupted, UPDATE-IMAP-FOLDER-LENGTH! will return the
+  ;; synchronization status to the most optimal value it can.
+  (messages-sync-status define standard)
   (length accessor folder-length
 	  define modifier
 	  initial-value 0)
@@ -828,9 +849,21 @@ USA.
      (set-imap-folder-uidnext! folder #f)
      (set-imap-folder-uidvalidity! folder #f)
      (set-imap-folder-unseen! folder #f)
-     (set-imap-folder-messages-synchronized?! folder #f)
+     (set-imap-folder-messages-sync-status! folder #f)
      (set-imap-folder-length! folder 0)
      (set-imap-folder-messages! folder (initial-messages)))))
+
+(define (set-imap-folder-messages-synchronized?! folder status)
+  (if (not (memq status '(#F LENGTH UID FLAGS)))
+      (error:bad-range-argument status
+				'SET-IMAP-FOLDER-MESSAGES-SYNCHRONIZED?!))
+  (set-imap-folder-messages-sync-status! folder status))
+
+(define (imap-folder-messages-synchronized? folder status)
+  (let ((list (memq status '(#F LENGTH UID FLAGS))))
+    (if (not list)
+	(error:bad-range-argument status 'IMAP-FOLDER-MESSAGES-SYNCHRONIZED?))
+    (and (memq (imap-folder-messages-sync-status folder) list))))
 
 (define (guarantee-imap-folder-connection folder)
   (without-interrupts
@@ -848,7 +881,7 @@ USA.
 	(url (resource-locator folder)))
     (if (or (guarantee-imap-connection-open connection)
 	    (not (eq? (imap-connection-url connection) url))
-	    (not (imap-folder-messages-synchronized? folder)))
+	    (not (imap-folder-messages-synchronized? folder 'LENGTH)))
 	(begin
 	  (set-imap-folder-messages-synchronized?! folder #f)
 	  (let ((selected? #f))
@@ -870,10 +903,15 @@ USA.
    (lambda ()
      (detach-all-messages! folder)
      (fill-messages-vector! folder 0)
+     ;; Downgrade the synchronization status to LENGTH.  Don't upgrade
+     ;; it if we didn't have the length anyway, however.
+     (if (imap-folder-messages-synchronized? folder 'LENGTH)
+	 (set-imap-folder-messages-synchronized?! folder 'LENGTH))
      (if (imap-folder-uidvalidity folder)
 	 (set-imap-folder-unseen! folder #f))
      (set-imap-folder-uidvalidity! folder uidvalidity)))
   (read-message-headers! folder 0)
+  (set-imap-folder-messages-synchronized?! folder 'FLAGS)
   (clean-cache-directory folder))
 
 (define (detach-all-messages! folder)
@@ -897,7 +935,7 @@ USA.
        (lambda ()
 	 (imap:command:fetch-range (imap-folder-connection folder)
 				   start #f '(UID FLAGS))))))
-
+
 (define (remove-imap-folder-message folder index)
   (let ((message (%get-message folder index)))
     (let ((unmapped-index (message-index message))
@@ -922,7 +960,7 @@ USA.
 					    (vector-head v new-length))))
 	   (object-modified! folder 'EXPUNGE
 			     message index unmapped-index key)))))))
-
+
 (define (initial-messages)
   (make-vector 64 #f))
 
@@ -973,75 +1011,109 @@ USA.
 (define (update-imap-folder-length! folder count)
   (with-interrupt-mask interrupt-mask/gc-ok
     (lambda (interrupt-mask)
-      (if (or (imap-folder-messages-synchronized? folder)
-	      (= 0 (folder-length folder)))
-	  (let ((v (imap-folder-messages folder))
-		(n (folder-length folder)))
-	    (cond ((> count n)
-		   (let ((new-length (compute-messages-length v count)))
-		     (if new-length
-			 (set-imap-folder-messages!
-			  folder
-			  (vector-grow v new-length #f))))
-		   (set-imap-folder-length! folder count)
-		   (fill-messages-vector! folder n)
-		   (set-imap-folder-messages-synchronized?! folder #t)
-		   (with-interrupt-mask interrupt-mask
-		     (lambda (interrupt-mask)
-		       interrupt-mask
-		       (read-message-headers! folder n)))
-		   (object-modified! folder 'INCREASE-LENGTH n count))
-		  ((= count n)
-		   (set-imap-folder-messages-synchronized?! folder #t))
-		  (else
-		   (error "EXISTS response decreased folder length:"
-			  folder))))
-	  (begin
-	    (detach-all-messages! folder)
-	    (let ((v (imap-folder-messages folder))
-		  (n (folder-length folder)))
-	      (set-imap-folder-length! folder count)
-	      (set-imap-folder-messages!
-	       folder
-	       (make-vector (or (compute-messages-length v count)
-				(vector-length v))
-			    #f))
-	      (fill-messages-vector! folder 0)
-	      (set-imap-folder-messages-synchronized?! folder #t)
-	      (if (> count 0)
-		  (with-interrupt-mask interrupt-mask
-		    (lambda (interrupt-mask)
-		      interrupt-mask
-		      ((imail-ui:message-wrapper "Reading message UIDs")
-		       (lambda ()
-			 (imap:command:fetch-range
-			  (imap-folder-connection folder)
-			  0 #f '(UID FLAGS)))))))
-	      (let ((v* (imap-folder-messages folder))
-		    (n* (folder-length folder)))
-		(let loop ((i 0) (i* 0))
-		  (if (and (fix:< i n)
-			   (fix:< i* n*)
-			   (%imap-message-uid-initialized? (vector-ref v i)))
-		      (let ((m (vector-ref v i))
-			    (m* (vector-ref v* i*)))
-			(if (= (%imap-message-uid m) (%imap-message-uid m*))
-			    (begin
-			      ;; Flags might have been updated while
-			      ;; reading the UIDs.
-			      (if (%message-flags-initialized? m*)
-				  (%set-message-flags! m (message-flags m*)))
-			      (detach-message! m*)
-			      (attach-message! m folder i*)
-			      (vector-set! v* i* m)
-			      (loop (fix:+ i 1) (fix:+ i* 1)))
-			    (begin
-			      (if (> (imap-message-uid m)
-				     (imap-message-uid m*))
-				  (error "Message inserted into folder:" m*))
-			      (loop (fix:+ i 1) i*)))))))
-	      (object-modified! folder 'SET-LENGTH n count))))))
+      (cond ((or (imap-folder-messages-synchronized? folder 'FLAGS)
+		 (zero? (folder-length folder)))
+	     (increase-imap-folder-length! folder count interrupt-mask))
+	    (else
+	     (synchronize-imap-folder-length! folder count interrupt-mask)))))
   (clean-cache-directory folder))
+
+(define (increase-imap-folder-length! folder count interrupt-mask)
+  (let ((v (imap-folder-messages folder))
+	(n (folder-length folder)))
+    (cond ((> count n)
+	   (let ((new-length (compute-messages-length v count)))
+	     (if new-length
+		 (set-imap-folder-messages!
+		  folder
+		  (vector-grow v new-length #f))))
+	   (set-imap-folder-length! folder count)
+	   (fill-messages-vector! folder n)
+	   (set-imap-folder-messages-synchronized?! folder 'LENGTH)
+	   (with-interrupt-mask interrupt-mask
+	     (lambda (interrupt-mask)
+	       interrupt-mask
+	       (read-message-headers! folder n)))
+	   (set-imap-folder-messages-synchronized?! folder 'FLAGS)
+	   (object-modified! folder 'INCREASE-LENGTH n count))
+	  ((= count n)
+	   (set-imap-folder-messages-synchronized?! folder 'FLAGS))
+	  (else
+	   (error "EXISTS response decreased folder length:" folder)))))
+
+(define (synchronize-imap-folder-length! folder count interrupt-mask)
+  (detach-all-messages! folder)
+  (let ((v (imap-folder-messages folder))
+	(n (folder-length folder)))
+    (set-imap-folder-length! folder count)
+    (set-imap-folder-messages!
+     folder
+     (make-vector (or (compute-messages-length v count)
+		      (vector-length v))
+		  #f))
+    (fill-messages-vector! folder 0)
+    (set-imap-folder-messages-synchronized?! folder 'LENGTH)
+    (if (> count 0)
+	(with-interrupt-mask interrupt-mask
+	  (lambda (interrupt-mask)
+	    interrupt-mask
+	    (read-message-headers! folder 0))))
+    (set-imap-folder-messages-synchronized?! folder 'FLAGS)
+    (object-modified! folder
+		      (synchronize-imap-folder-messages! folder n v)
+		      n
+		      count)))
+
+;;; SYNCHRONIZE-IMAP-FOLDER-MESSAGES! returns the event that just
+;;; occurred -- either SET-LENGTH or INCREASE-LENGTH.  It would be
+;;; nice to avoid SET-LENGTH events altogether if a small number of
+;;; messages have been expunged, and just to signal EXPUNGE events for
+;;; each message missing from the server.  However, this is sketchy
+;;; for two reasons: 
+;;;
+;;; 1. The EXPUNGE events would need to take a collection of messages,
+;;;    rather than a single one, so that we can buffer them up and
+;;;    avoid quadratic-time algorithms.  This is not hard, but it's
+;;;    not clear at what point it is better just to signal a
+;;;    SET-LENGTH event than to signal a lot of messages expunged.
+;;;
+;;; 2. EXPUNGE events include the message's original index and order
+;;;    key, which is necessary for the ordering code to delete them
+;;;    from the order tree.  If we had not previously determined the
+;;;    message's order key, however, and if we don't have it cached on
+;;;    disk (which is something we ought never to rely on), then we
+;;;    might end up asking the server for it -- which won't work,
+;;;    because the message has been expunged.
+;;;
+;;; So for now all we concern ourselves with is whether messages have
+;;; been only added to the folder, which is the common case for a
+;;; single client when it reconnects to the server for new mail.
+
+(define (synchronize-imap-folder-messages! folder n v)
+  (let ((v* (imap-folder-messages folder))
+	(n* (folder-length folder)))
+    (let loop ((i 0) (i* 0) (synchronized? #t))
+      (if (and (fix:< i n)
+	       (fix:< i* n*)
+	       (%imap-message-uid-initialized? (vector-ref v i)))
+	  (let ((m (vector-ref v i))
+		(m* (vector-ref v* i*)))
+	    (if (= (%imap-message-uid m) (%imap-message-uid m*))
+		(begin
+		  ;; Flags might have been updated while
+		  ;; reading the UIDs.
+		  (if (%message-flags-initialized? m*)
+		      (%set-message-flags! m (message-flags m*)))
+		  (detach-message! m*)
+		  (attach-message! m folder i*)
+		  (vector-set! v* i* m)
+		  (loop (fix:+ i 1) (fix:+ i* 1) synchronized?))
+		(begin
+		  (if (> (imap-message-uid m)
+			 (imap-message-uid m*))
+		      (error "Message inserted into folder:" m*))
+		  (loop (fix:+ i 1) i* #f))))
+	  (if synchronized? 'INCREASE-LENGTH 'SET-LENGTH)))))
 
 ;;;; Message datatype
 
@@ -1611,18 +1683,19 @@ USA.
        (directory-read directory #f))))
 
 (define (remove-expunged-messages folder directory)
-  (for-each (lambda (pathname)
-	      (let ((ns (file-namestring pathname)))
-		(if (not (or (string=? ns ".")
-			     (string=? ns "..")
-			     (string=? ns "uidvalidity")
-			     (string=? ns "temporary")
-			     (let ((uid (string->number ns 10)))
-			       (and uid
-				    (get-imap-message-by-uid folder uid)
-				    (file-directory? pathname)))))
-		    (delete-file-recursively pathname))))
-	    (directory-read directory #f)))
+  (if (imap-folder-messages-synchronized? folder 'UID)
+      (for-each (lambda (pathname)
+		  (let ((ns (file-namestring pathname)))
+		    (if (not (or (string=? ns ".")
+				 (string=? ns "..")
+				 (string=? ns "uidvalidity")
+				 (string=? ns "temporary")
+				 (let ((uid (string->number ns 10)))
+				   (and uid
+					(get-imap-message-by-uid folder uid)
+					(file-directory? pathname)))))
+			(delete-file-recursively pathname))))
+		(directory-read directory #f))))
 
 (define (get-imap-message-by-uid folder uid)
   (let loop ((low 0) (high (folder-length folder)))
