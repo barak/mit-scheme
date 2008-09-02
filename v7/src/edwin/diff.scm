@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: diff.scm,v 1.2 2006/06/16 18:33:21 riastradh Exp $
+$Id: diff.scm,v 1.3 2008/09/02 21:31:59 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -80,15 +80,13 @@ Domain.  All warranties are disclaimed.
 
 (define (diff-buffer buffer pathname receiver)
   (select-buffer
-   (if (buffer-modified? buffer)
-       (call-with-temporary-file-pathname
-        (lambda (temporary-pathname)
-          (write-region (buffer-region buffer)
-                        temporary-pathname
-                        #f              ;No message
-                        #f)             ;No line ending translation
-          (receiver temporary-pathname)))
-       (receiver pathname))))
+   (call-with-temporary-file-pathname
+     (lambda (temporary-pathname)
+       (write-region (buffer-region buffer)
+                     temporary-pathname
+                     #f                 ;No message
+                     #f)                ;No line ending translation
+       (receiver temporary-pathname)))))
 
 (define (diff-to-buffer old-filename new-filename #!optional buffer)
   (let ((buffer (diff-to-buffer-argument buffer)))
