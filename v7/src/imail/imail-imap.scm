@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.231 2008/09/01 01:24:47 riastradh Exp $
+$Id: imail-imap.scm,v 1.232 2008/09/02 17:19:10 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1295,7 +1295,7 @@ USA.
 
 ;;; Keywords that are not to be written into the disk cache.
 
-(define imap-ephemeral-keywords
+(define imap-dynamic-keywords
   '(FLAGS))
 
 (define-method preload-folder-outlines ((folder <imap-folder>))
@@ -1385,7 +1385,7 @@ USA.
 (define (imap-message-keyword-cached? message keyword)
   (let ((cached-keywords (imap-message-cached-keywords message)))
     (or (memq keyword cached-keywords)
-	(memq keyword imap-ephemeral-keywords)
+	(memq keyword imap-dynamic-keywords)
 	(and (file-exists? (message-item-pathname message keyword))
 	     (begin
 	       (set-imap-message-cached-keywords!
@@ -1710,14 +1710,14 @@ USA.
 	#f)))
 
 (define (fetch-message-items message keywords suffix)
-  (if (lset= eq? keywords imap-ephemeral-keywords)
+  (if (lset= eq? keywords imap-dynamic-keywords)
       (fetch-message-items-1 message keywords suffix)
       (with-folder-locked (message-folder message)
 	(lambda ()
 	  (let ((alist
 		 (map (lambda (keyword)
 			(cons keyword
-			      (if (memq keyword imap-ephemeral-keywords)
+			      (if (memq keyword imap-dynamic-keywords)
 				  '()
                                   (let ((pathname
                                          (message-item-pathname message
@@ -1749,7 +1749,7 @@ USA.
 
 (define (cache-fetch-response message response keyword-predicate save-item)
   (for-each (lambda (keyword)
-	      (if (and (not (memq keyword imap-ephemeral-keywords))
+	      (if (and (not (memq keyword imap-dynamic-keywords))
 		       (keyword-predicate keyword))
 		  (let ((item (imap:response:fetch-attribute response keyword))
 			(pathname (message-item-pathname message keyword))
