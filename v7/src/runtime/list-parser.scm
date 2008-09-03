@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list-parser.scm,v 1.1 2008/09/03 02:49:06 cph Exp $
+$Id: list-parser.scm,v 1.2 2008/09/03 05:53:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -96,6 +96,16 @@ USA.
       `(IF ,(make-test items)
 	   ,(make-body items lose)
 	   (,lose)))))
+
+(define (wrap-list-parser parser)
+  (lambda (items)
+    (parser items
+	    (lambda (items vals lose)
+	      (if (null? items)
+		  (list-parser-vals->list vals)
+		  (lose)))
+	    (lambda ()
+	      #f))))
 
 (define-pattern-compiler '(MATCH-NULL)
   (lambda (pattern env items win lose)
@@ -151,6 +161,21 @@ USA.
 			 ',datum))))
 	      (lambda (items lose)
 		`(,win (CDR ,items) ,(null-vals) ,lose)))))
+
+(define-pattern-compiler '(VALUES * EXPRESSION)
+  (lambda (pattern env items win lose)
+    `(,win ,items
+	   ,(let ((vals
+		   (map (lambda (expr)
+			  (single-val (close-syntax expr env)))
+			(cdr pattern))))
+	      (if (pair? vals)
+		  (let loop ((vals vals))
+		    (if (pair? (cdr vals))
+			(join-vals (car vals) (loop (cdr vals)))
+			(car vals)))
+		  (null-vals)))
+	   ,lose)))
 
 (define-pattern-compiler '(LIST * FORM)
   (lambda (pattern env items win lose)
@@ -169,7 +194,7 @@ USA.
 					     (,win (CDR ,items) ,vals ,lose)
 					     (,lose))))))
 				 lose)))))
-
+
 (define-pattern-compiler '(SEXP EXPRESSION)
   (lambda (pattern env items win lose)
     `(,(close-syntax (cadr pattern) env) ,items ,win ,lose)))
@@ -184,7 +209,7 @@ USA.
 			vals
 			`(,win ,items ,(null-vals) ,lose)))
 		     lose)))
-
+
 (define-pattern-compiler '(? * FORM)
   (lambda (pattern env items win lose)
     (compile-pattern `(SEQ ,@(cdr pattern))

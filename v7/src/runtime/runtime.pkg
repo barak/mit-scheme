@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.670 2008/09/03 02:49:09 cph Exp $
+$Id: runtime.pkg,v 14.671 2008/09/03 05:53:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5281,7 +5281,8 @@ USA.
   (parent (runtime))
   (export ()
 	  list-parser
-	  list-parser-vals->list))
+	  list-parser-vals->list
+	  wrap-list-parser))
 
 (define-package (runtime postgresql)
   (file-case options
