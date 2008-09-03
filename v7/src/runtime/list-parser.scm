@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list-parser.scm,v 1.3 2008/09/03 06:08:16 cph Exp $
+$Id: list-parser.scm,v 1.4 2008/09/03 07:00:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -284,8 +284,9 @@ USA.
 		     (make-winner
 		      (lambda (items vals lose)
 			`(,win ,items
-			       (map ,(close-syntax (cadr pattern) env)
-				    (LIST-PARSER-VALS->LIST ,vals))
+			       (MAP-LIST-PARSER-VALS
+				,(close-syntax (cadr pattern) env)
+				,vals)
 			       ,lose)))
 		     lose)))
 
@@ -310,10 +311,17 @@ USA.
 		     items
 		     (make-winner
 		      (lambda (items vals lose)
-			`(,win ,items
-			       (APPLY ,(close-syntax (cadr pattern) env)
-				      (LIST-PARSER-VALS->LIST ,vals))
-			       ,lose)))
+			(make-let '(VALS)
+				  `(APPLY ,(close-syntax (cadr pattern) env)
+					  (LIST-PARSER-VALS->LIST ,vals))
+			  (lambda (vals)
+			    (fork-loser lose
+			      (lambda (lose)
+				`(IF ,vals
+				     (,win ,items
+					   (LIST->LIST-PARSER-VALS ,vals)
+					   ,lose)
+				     (,lose))))))))
 		     lose)))
 
 (define (make-winner procedure)
@@ -372,17 +380,35 @@ USA.
 
 ;; Needed at runtime by parsers:
 (define (list-parser-vals->list vals)
-  (let loop ((vals vals) (items '()) (k reverse!))
-    (if (pair? vals)
+  (if (pair? vals)
+      (let loop ((vals vals) (tail '()))
 	(if (eq? (car vals) single-val-marker)
-	    (k (cons (cdr vals) items))
+	    (cons (cdr vals) tail)
 	    (loop (car vals)
-		  items
-		  (lambda (items)
-		    (loop (cdr vals)
-			  items
-			  k))))
-	(k items))))
+		  (loop (cdr vals)
+			tail))))
+      '()))
+
+;; Needed at runtime by parsers:
+(define (list->list-parser-vals items)
+  (if (pair? items)
+      (let loop ((items items))
+	(if (pair? (cdr items))
+	    (cons (cons single-val-marker (car items))
+		  (loop (cdr items)))
+	    (cons single-val-marker (car items))))
+      '()))
+
+;; Needed at runtime by parsers:
+(define (map-list-parser-vals procedure vals)
+  (if (pair? vals)
+      (let loop ((vals vals))
+	(if (eq? (car vals) single-val-marker)
+	    (cons single-val-marker
+		  (procedure (cdr vals)))
+	    (cons (loop (car vals))
+		  (loop (cdr vals)))))
+      vals))
 
 (define (list-parser-vals-length vals)
   (if (pair? vals)
