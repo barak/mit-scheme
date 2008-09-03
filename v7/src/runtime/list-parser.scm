@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list-parser.scm,v 1.2 2008/09/03 05:53:44 cph Exp $
+$Id: list-parser.scm,v 1.3 2008/09/03 06:08:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -360,7 +360,7 @@ USA.
 	      names)))
 
 (define name-counters)
-
+
 (define (join-vals vals1 vals2)
   `(CONS ,vals1 ,vals2))
 
@@ -383,6 +383,32 @@ USA.
 			  items
 			  k))))
 	(k items))))
+
+(define (list-parser-vals-length vals)
+  (if (pair? vals)
+      (let loop ((vals vals))
+	(if (eq? (car vals) single-val-marker)
+	    1
+	    (+ (loop (car vals))
+	       (loop (cdr vals)))))
+      0))
+
+(define (list-parser-vals-ref vals index)
+  (if (not (pair? vals))
+      (error:bad-range-argument index 'LIST-PARSER-VALS-REF))
+  (let loop ((vals vals) (i 0) (stack '()))
+    (if (eq? (car vals) single-val-marker)
+	(if (< i index)
+	    (begin
+	      (if (not (pair? stack))
+		  (error:bad-range-argument index 'LIST-PARSER-VALS-REF))
+	      (loop (car stack)
+		    (+ i 1)
+		    (cdr stack)))
+	    (cdr vals))
+	(loop (car vals)
+	      i
+	      (cons (cdr vals) stack)))))
 
 (define single-val-marker
   '|#[(runtime list-parser)single-val-marker]|)
