@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.42 2008/08/24 07:20:01 cph Exp $
+$Id: ed-ffi.scm,v 1.43 2008/09/03 02:49:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -95,6 +95,7 @@ USA.
     ("lambda"	(runtime lambda-abstraction))
     ("lambdx"	(runtime alternative-lambda))
     ("list"	(runtime list))
+    ("list-parser" (runtime list-parser))
     ("load"	(runtime load))
     ("mime-codec" (runtime mime-codec))
     ("mit-syntax" (runtime syntactic-closures))
