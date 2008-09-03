@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list-parser.scm,v 1.5 2008/09/03 09:14:17 cph Exp $
+$Id: list-parser.scm,v 1.6 2008/09/03 15:33:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -320,7 +320,7 @@ USA.
 				 (,lose))))))
 		     lose)))
 
-(define-pattern-compiler '(FILTER EXPRESSION FORM)
+(define-pattern-compiler '(QUALIFY EXPRESSION FORM)
   (lambda (pattern env items win lose)
     (compile-pattern (caddr pattern)
 		     env
