@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.77 2008/08/24 23:31:07 riastradh Exp $
+$Id: infutl.scm,v 1.78 2008/09/03 19:36:59 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -677,6 +677,7 @@ USA.
   (call-with-current-continuation
     (lambda (if-fail)
       (bind-condition-handler (list condition-type:fasload-error
+				    condition-type:file-error
 				    condition-type:bad-range-argument)
 	  (lambda (condition) condition (if-fail #f))
         (lambda () (fasload filename #t))))))
@@ -752,15 +753,11 @@ USA.
        (cond ((null? entries)
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
-		   ;; Avoid a subtle race condition with the GC daemon.
-		   (let ((time (cddar entries)))
-		     (set-cdr! (cdar entries) (real-time-clock))
-		     (and time
-			  (or (file-exists? (cadar entries))
-			      (begin
-				(set-cdr! (cdar entries) #f)
-				#f))
-			  (cddar entries))))
+                   (cddar entries)
+                   (or (file-exists? (cadar entries))
+                       (begin
+                         (set-cdr! (cdar entries) #f)
+                         #f)))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda ()
@@ -784,11 +781,12 @@ USA.
       (dynamic-wind
        (lambda () unspecific)
        (lambda ()
-	 (without-interrupts
-	  (lambda ()
-	    (set-cdr! uncompressed-files
-		      (cons entry (cdr uncompressed-files)))))
-	 (receiver temporary-file))
+	 (let ((value (receiver temporary-file)))
+	   (without-interrupts
+	    (lambda ()
+	      (set-cdr! uncompressed-files
+			(cons entry (cdr uncompressed-files)))))
+	   value))
        (lambda ()
 	 (set-cdr! (cdr entry) (real-time-clock)))))))
 
