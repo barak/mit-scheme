@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list-parser.scm,v 1.4 2008/09/03 07:00:22 cph Exp $
+$Id: list-parser.scm,v 1.5 2008/09/03 09:14:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -298,9 +298,7 @@ USA.
 		     (make-winner
 		      (lambda (items vals lose)
 			`(,win ,items
-			       ,(single-val
-				 `(APPLY ,(close-syntax (cadr pattern) env)
-					 (LIST-PARSER-VALS->LIST ,vals)))
+			       ,(single-val (call-out (cadr pattern) env vals))
 			       ,lose)))
 		     lose)))
 
@@ -311,18 +309,35 @@ USA.
 		     items
 		     (make-winner
 		      (lambda (items vals lose)
-			(make-let '(VALS)
-				  `(APPLY ,(close-syntax (cadr pattern) env)
-					  (LIST-PARSER-VALS->LIST ,vals))
-			  (lambda (vals)
-			    (fork-loser lose
-			      (lambda (lose)
-				`(IF ,vals
-				     (,win ,items
-					   (LIST->LIST-PARSER-VALS ,vals)
-					   ,lose)
-				     (,lose))))))))
+			(make-let '(VALS LOSE)
+				  (list (call-out (cadr pattern) env vals)
+					lose)
+			  (lambda (vals lose)
+			    `(IF ,vals
+				 (,win ,items
+				       (LIST->LIST-PARSER-VALS ,vals)
+				       ,lose)
+				 (,lose))))))
 		     lose)))
+
+(define-pattern-compiler '(FILTER EXPRESSION FORM)
+  (lambda (pattern env items win lose)
+    (compile-pattern (caddr pattern)
+		     env
+		     items
+		     (make-winner
+		      (lambda (items vals lose)
+			(make-let '(VALS LOSE)
+				  (list vals lose)
+			  (lambda (vals lose)
+			    `(IF ,(call-out (cadr pattern) env vals)
+				 (,win ,items ,vals ,lose)
+				 (,lose))))))
+		     lose)))
+
+(define (call-out procedure env vals)
+  `(APPLY ,(close-syntax procedure env)
+	  (LIST-PARSER-VALS->LIST ,vals)))
 
 (define (make-winner procedure)
   (make-lambda '(ITEMS VALS LOSE) procedure))
