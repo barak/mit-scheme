@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.673 2008/09/03 07:00:25 cph Exp $
+$Id: runtime.pkg,v 14.674 2008/09/07 04:33:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5276,17 +5276,24 @@ USA.
 	  encode-www-form-urlencoded)
   (initialization (initialize-package!)))
 
-(define-package (runtime list-parser)
-  (files "list-parser")
+(define-package (runtime structure-parser)
+  (files "structure-parser")
   (parent (runtime))
   (export ()
-	  list->list-parser-vals
+	  apply-list-parser
+	  apply-object-parser
+	  apply-vector-parser
+	  error:not-structure-parser-values
+	  guarantee-structure-parser-values
+	  list->structure-parser-values
 	  list-parser
-	  list-parser-vals->list
-	  list-parser-vals-length
-	  list-parser-vals-ref
-	  map-list-parser-vals
-	  wrap-list-parser))
+	  map-structure-parser-values
+	  object-parser
+	  structure-parser-values->list
+	  structure-parser-values-length
+	  structure-parser-values-ref
+	  structure-parser-values?
+	  vector-parser))
 
 (define-package (runtime postgresql)
   (file-case options

@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.43 2008/09/03 02:49:03 cph Exp $
+$Id: ed-ffi.scm,v 1.44 2008/09/07 04:33:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -95,7 +95,6 @@ USA.
     ("lambda"	(runtime lambda-abstraction))
     ("lambdx"	(runtime alternative-lambda))
     ("list"	(runtime list))
-    ("list-parser" (runtime list-parser))
     ("load"	(runtime load))
     ("mime-codec" (runtime mime-codec))
     ("mit-syntax" (runtime syntactic-closures))
@@ -147,6 +146,7 @@ USA.
     ("stream"	(runtime stream))
     ("string"	(runtime string))
     ("stringio"	(runtime string-i/o-port))
+    ("structure-parser" (runtime structure-parser))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntactic-closures" (runtime syntactic-closures))
