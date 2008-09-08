@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail.pkg,v 1.106 2008/07/07 01:36:24 riastradh Exp $
+$Id: imail.pkg,v 1.107 2008/09/08 03:55:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,21 +34,9 @@ USA.
 
 (define-package (edwin imail)
   (files "imail-util"
+	 "imail-mime"
 	 "imail-core")
   (parent (edwin)))
-
-(define-package (edwin imail mime)
-  (files "imail-mime")
-  (parent (edwin imail))
-  (export (edwin imail)
-          define-mime-media-parser
-          mime:basic-media-parser
-          mime:parse-multipart
-          mime:default-content-type
-          <message-part>
-          message-part-string
-          message-part-start
-          message-part-end))
 
 (define-package (edwin imail file-folder)
   (files "imail-file")
@@ -203,7 +191,7 @@ USA.
 	  edwin-command$imail-kill-flag
 	  edwin-command$imail-last-message
 	  edwin-command$imail-mail
-	  edwin-command$imail-mouse-save-mime-entity
+	  edwin-command$imail-mouse-save-mime-body
 	  edwin-command$imail-next-flagged-message
 	  edwin-command$imail-next-message
 	  edwin-command$imail-next-same-subject
@@ -219,12 +207,12 @@ USA.
 	  edwin-command$imail-resend
 	  edwin-command$imail-save-attachment
 	  edwin-command$imail-save-folder
-	  edwin-command$imail-save-mime-entity
+	  edwin-command$imail-save-mime-body
 	  edwin-command$imail-search
 	  edwin-command$imail-select-message
 	  edwin-command$imail-toggle-header
 	  edwin-command$imail-toggle-message
-	  edwin-command$imail-toggle-mime-entity
+	  edwin-command$imail-toggle-mime-body
 	  edwin-command$imail-undelete-backward
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
@@ -250,6 +238,7 @@ USA.
 	  edwin-variable$imail-mime-boundary-style
 	  edwin-variable$imail-mime-collapse-digest
 	  edwin-variable$imail-mime-show-alternatives
+	  edwin-variable$imail-mime-show-headers
 	  edwin-variable$imail-mode-hook
 	  edwin-variable$imail-output-default
 	  edwin-variable$imail-primary-folder

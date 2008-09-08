@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.232 2008/09/02 17:19:10 riastradh Exp $
+$Id: imail-imap.scm,v 1.233 2008/09/08 03:55:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -357,7 +357,7 @@ USA.
 	 url
 	 ;; Some IMAP servers don't like a mailbox of `/%' in LIST
 	 ;; commands, and others simply returna uselessly empty
-         ;; result, so we have a special case for the root mailbox.
+	 ;; result, so we have a special case for the root mailbox.
 	 (if (string=? prefix "/")
 	     "%"
 	     (string-append (imap-mailbox/url->server url prefix) "%"))))
@@ -372,7 +372,7 @@ USA.
 			  ;; container URL as an answer to the LIST
 			  ;; command, but it is uninteresting here, so
 			  ;; we filter it out.  (Should this filtering
-                          ;; be done by RUN-LIST-COMMAND?)
+			  ;; be done by RUN-LIST-COMMAND?)
 			  (if (eq? container-url url)
 			      results
 			      (cons container-url results))))
@@ -1123,13 +1123,11 @@ USA.
   (length)
   (envelope)
   (bodystructure)
-  (body-parts define standard initial-value '())
+  (body-parts define standard initializer (lambda () (weak-cons #f '())))
   (cached-keywords define standard initial-value '()))
 
 (define-generic imap-message-uid (message))
-(define-generic imap-message-length (message))
 (define-generic imap-message-envelope (message))
-(define-generic imap-message-bodystructure (message))
 
 (define-method set-message-flags! ((message <imap-message>) flags)
   (with-imap-message-open message
@@ -1177,12 +1175,6 @@ USA.
 
 (define-method message-internal-time ((message <imap-message>))
   (fetch-one-message-item message 'INTERNALDATE "internal date"))
-
-(define-method message-length ((message <imap-message>))
-  (with-imap-message-open message
-    (lambda (connection)
-      connection
-      (imap-message-length message))))
 
 (define (with-imap-message-open message receiver)
   (let ((folder (message-folder message)))
@@ -1237,8 +1229,8 @@ USA.
 	     (guarantee-slot-initialized message initpred noun keywords)
 	     (accessor message))))))
   (reflector message-flags 'FLAGS "flags" '(FLAGS))
-  (reflector imap-message-length 'LENGTH "length" '(RFC822.SIZE))
-  (reflector imap-message-bodystructure 'BODYSTRUCTURE "MIME structure"
+  (reflector message-length 'LENGTH "length" '(RFC822.SIZE))
+  (reflector mime-entity-body-structure 'BODYSTRUCTURE "MIME structure"
 	     '(BODYSTRUCTURE)))
 
 ;;; Some hair to keep weak references to header fields and envelopes,
@@ -1310,13 +1302,13 @@ USA.
 	 (lambda (index message)
 	   (if (zero? (remainder index 10))
 	       (imail-ui:progress-meter index length))
-	   (cond ((imap-message-bodystructure message)
+	   (cond ((mime-entity-body-structure message)
 		  => (lambda (body-structure)
 		       (walk-mime-body message body-structure
-			 (lambda (selector)
+			 (lambda (body-part)
 			   (fetch-message-body-part-to-cache
 			    message
-			    (mime-selector->imap-section selector))))))
+			    (imap-mime-body-section-text body-part))))))
 		 (else
 		  (fetch-message-body-part-to-cache message '(TEXT))))))))))
 
@@ -1400,59 +1392,184 @@ USA.
 
 ;;;; MIME support
 
-(define-method mime-message-body-structure ((message <imap-message>))
-  (imap-message-bodystructure message))
+(define-class <imap-mime-body> ()
+  (message define accessor)
+  (section define accessor)
+  (header-fields))
 
-(define-method write-message-body ((message <imap-message>) port)
-  (write-mime-message-body-part
-   message '(TEXT) (imap-message-length message) port))
+(let ((accessor (slot-accessor <imap-mime-body> 'HEADER-FIELDS))
+      (modifier (slot-modifier <imap-mime-body> 'HEADER-FIELDS))
+      (initpred (slot-initpred <imap-mime-body> 'HEADER-FIELDS)))
+  (define (fetch body store)
+    (let ((value
+	   (lines->header-fields
+	    (string->lines
+	     (fetch-message-body-part
+	      (imap-mime-body-message body)
+	      `(,@(imap-mime-body-section body) MIME))))))
+      (store value)
+      value))
+  (define-method mime-body-header-fields ((body <imap-mime-body>))
+    (if (initpred body)
+	(let* ((pair (accessor body))
+	       (header-fields (weak-car pair)))
+	  (if (weak-pair/car? pair)
+	      header-fields
+	      (fetch body
+		     (lambda (header-fields)
+		       (weak-set-car! pair header-fields)))))
+	(fetch body
+	       (lambda (header-fields)
+		 (modifier body (weak-cons header-fields '())))))))
 
-(define (mime-selector->imap-section selector)
-  (if (pair? selector)
-      (map (lambda (x)
-	     (if (exact-nonnegative-integer? x)
-		 (+ x 1)
-		 x))
-	   selector)
-      '(TEXT)))
+(define-class (<imap-mime-body-basic>
+	       (constructor (message
+			     section
+			     type subtype parameters id description encoding
+			     n-octets
+			     md5 disposition language)))
+    (<mime-body-basic> <imap-mime-body>))
 
-(define-method write-mime-message-body-part
-    ((message <imap-message>) selector cache? port)
-  (let ((section (mime-selector->imap-section selector)))
-    (let ((entry
-	   (list-search-positive (imap-message-body-parts message)
-	     (lambda (entry)
-	       (equal? (car entry) section)))))
-      (cond (entry
-	     (write-string (cdr entry) port))
-	    ((and cache?
-		  (let ((limit (imail-ui:body-cache-limit message)))
-		    (and limit
-			 (if (and (exact-nonnegative-integer? cache?)
-				  (exact-nonnegative-integer? limit))
-			     (< cache? limit)
-			     #t))))
-	     (let ((part (fetch-message-body-part message section)))
-	       (set-imap-message-body-parts!
-		message
-		(cons (cons section part)
-		      (imap-message-body-parts message)))
-	       (write-string part port)))
-	    (else
-	     (fetch-message-body-part-to-port message section port))))))
+(define-class (<imap-mime-body-text>
+	       (constructor (message
+			     section
+			     subtype parameters id description encoding
+			     n-octets n-lines md5 disposition language)))
+    (<mime-body-text> <imap-mime-body>))
+
+(define-class (<imap-mime-body-message>
+	       (constructor (message
+			     section
+			     parameters id description encoding n-octets
+			     envelope body n-lines md5 disposition language)))
+    (<mime-body-message> <imap-mime-body>))
+
+(define-class (<imap-mime-body-multipart>
+	       (constructor (message
+			     section
+			     subtype parameters parts disposition language)))
+    (<mime-body-multipart> <imap-mime-body>))
 
-(define (parse-mime-body body)
-  (cond ((not (and (pair? body) (list? body))) (parse-mime-body:lose body))
-	((string? (car body)) (parse-mime-body:one-part body))
-	((pair? (car body)) (parse-mime-body:multi-part body))
-	(else (parse-mime-body:lose body))))
+(define-method write-message-body ((message <imap-message>) port)
+  (write-imap-message-section message '(TEXT) (message-length message) port))
 
-(define (parse-mime-body:one-part body)
+(define-method write-mime-body ((body <imap-mime-body>) port)
+  (write-imap-message-section
+   (imap-mime-body-message body)
+   (imap-mime-body-section-text body)
+   ;++ Kludge.  The IMAP includes the length in octets only for
+   ;++ one-part bodies.
+   (and (mime-body-one-part? body)
+	(mime-body-one-part-n-octets body))
+   port))
+
+(define (imap-mime-body-section-text body)
+  `(,@(imap-mime-body-section body)
+    ,@(if (let ((enclosure (mime-body-enclosure body)))
+	    (or (not enclosure)
+		(mime-body-message? enclosure)))
+	  '(TEXT)
+	  '())))
+
+(define-method mime-body-message-header-fields ((body <mime-body-message>))
+  (lines->header-fields
+   (string->lines
+    (call-with-output-string
+      (lambda (port)
+	(write-imap-message-section (imap-mime-body-message body)
+				    `(,@(imap-mime-body-section body) HEADER)
+				    #f
+				    port))))))
+
+(define (write-imap-message-section message section length port)
+  (cond ((search-imap-message-body-parts message section)
+	 => (lambda (entry)
+	      (write-string (cdr entry) port)))
+	((and length
+	      (let ((limit (imail-ui:body-cache-limit message)))
+		(and limit
+		     (if (and (exact-nonnegative-integer? length)
+			      (exact-nonnegative-integer? limit))
+			 (< length limit)
+			 #t))))
+	 (let ((part (fetch-message-body-part message section)))
+	   (cache-imap-message-body-part message section part)
+	   (write-string part port)))
+	(else
+	 (fetch-message-body-part-to-port message section port))))
+
+(define (search-imap-message-body-parts message section)
+  (define (scan-positive body-parts previous)
+    (and (weak-pair? body-parts)
+	 (let ((entry (weak-car body-parts)))
+	   (if entry
+	       (if (equal? section (car entry))
+		   entry
+		   (scan-positive (weak-cdr body-parts) body-parts))
+	       (scan-negative (weak-cdr body-parts) previous)))))
+  (define (scan-negative body-parts previous)
+    (if (weak-pair? body-parts)
+	(let ((entry (weak-car body-parts)))
+	  (if entry
+	      (begin
+		(weak-set-cdr! previous body-parts)
+		(if (equal? section (car entry))
+		    entry
+		    (scan-positive (weak-cdr body-parts) body-parts)))
+	      (scan-negative (weak-cdr body-parts) previous)))
+	(begin
+	  (weak-set-cdr! previous '())
+	  #f)))
+  (let ((initial (imap-message-body-parts message)))
+    (scan-positive (weak-cdr initial) initial)))
+
+(define (cache-imap-message-body-part message section part)
+  (let ((pair (imap-message-body-parts message)))
+    (weak-set-cdr! pair (weak-cons (cons section part) (weak-cdr pair)))))
+
+(define (parse-mime-body body message section)
+  (cond ((not (and (pair? body) (list? body)))
+	 (parse-mime-body:lose body message section))
+	((string? (car body))
+	 (parse-mime-body:one-part body message section))
+	((pair? (car body))
+	 (parse-mime-body:multi-part body message section))
+	(else
+	 (parse-mime-body:lose body message section))))
+
+(define (parse-mime-body:multi-part body message section)
+  (let loop ((tail body) (index 0))
+    (if (not (pair? tail))
+	(parse-mime-body:lose body))
+    (if (string? (car tail))
+	(let ((enclosed
+	       (map (lambda (body index)
+		      (parse-mime-body body message `(,@section ,index)))
+		    (sublist body 0 index)
+		    (iota index 1)))
+	      (extensions
+	       (parse-mime-body:extensions (cdr tail))))
+	  (let ((enclosure
+		 (make-imap-mime-body-multipart message
+						section
+						(intern (car tail))
+						(parse-mime-parameters
+						 (car extensions))
+						enclosed
+						(cadr extensions)
+						(caddr extensions))))
+	    (for-each (lambda (enclosed)
+			(set-mime-body-enclosure! enclosed enclosure))
+		      enclosed)
+	    enclosure))
+	(loop (cdr tail) (fix:+ index 1)))))
+
+(define (parse-mime-body:one-part body message section)
   (let ((n (length body)))
     (cond ((string-ci=? "text" (car body))
 	   (if (not (fix:>= n 8))
-	       (parse-mime-body:lose body))
-	   (apply make-mime-body-text
+	       (parse-mime-body:lose body message section))
+	   (apply make-imap-mime-body-text message section
 		  (intern (list-ref body 1))
 		  (parse-mime-parameters (list-ref body 2))
 		  (list-ref body 3)
@@ -1464,10 +1581,11 @@ USA.
 	  ((and (string-ci=? "message" (car body))
 		(string-ci=? "rfc822" (cadr body)))
 	   (if (not (fix:>= n 10))
-	       (parse-mime-body:lose body))
-	   (let* ((enclosed (parse-mime-body (list-ref body 8)))
+	       (parse-mime-body:lose body message section))
+	   (let* ((enclosed
+		   (parse-mime-body (list-ref body 8) message section))
 		  (enclosure
-		   (apply make-mime-body-message
+		   (apply make-imap-mime-body-message message section
 			  (parse-mime-parameters (list-ref body 2))
 			  (list-ref body 3)
 			  (list-ref body 4)
@@ -1481,8 +1599,8 @@ USA.
 	     enclosure))
 	  (else
 	   (if (not (fix:>= n 7))
-	       (parse-mime-body:lose body))
-	   (apply make-mime-body-basic
+	       (parse-mime-body:lose body message section))
+	   (apply make-imap-mime-body-basic message section
 		  (intern (list-ref body 0))
 		  (intern (list-ref body 1))
 		  (parse-mime-parameters (list-ref body 2))
@@ -1491,26 +1609,6 @@ USA.
 		  (intern (list-ref body 5))
 		  (list-ref body 6)
 		  (parse-mime-body:extensions (list-tail body 7)))))))
-
-(define (parse-mime-body:multi-part body)
-  (let loop ((tail body) (index 0))
-    (if (not (pair? tail))
-	(parse-mime-body:lose body))
-    (if (string? (car tail))
-	(let ((enclosed (map parse-mime-body (sublist body 0 index)))
-	      (extensions (parse-mime-body:extensions (cdr tail))))
-	  (let ((enclosure
-		 (make-mime-body-multipart (intern (car tail))
-					   (parse-mime-parameters
-					    (car extensions))
-					   enclosed
-					   (cadr extensions)
-					   (caddr extensions))))
-	    (for-each (lambda (enclosed)
-			(set-mime-body-enclosure! enclosed enclosure))
-		      enclosed)
-	    enclosure))
-	(loop (cdr tail) (fix:+ index 1)))))
 
 (define (parse-mime-body:extensions tail)
   (if (pair? tail)
@@ -1522,8 +1620,8 @@ USA.
 	  (list (car tail) #f #f))
       (list #f #f #f)))
 
-(define (parse-mime-body:lose body)
-  (error "Unrecognized MIME bodystructure:" body))
+(define (parse-mime-body:lose body message section)
+  (error "Unrecognized MIME bodystructure:" body message section))
 
 (define (parse-mime-parameters parameters)
   (if parameters
@@ -1719,15 +1817,15 @@ USA.
 			(cons keyword
 			      (if (memq keyword imap-dynamic-keywords)
 				  '()
-                                  (let ((pathname
-                                         (message-item-pathname message
+				  (let ((pathname
+					 (message-item-pathname message
 								keyword)))
-                                    (if (file-exists? pathname)
-                                        (list
-                                         (read-cached-message-item message
-                                                                   keyword
-                                                                   pathname))
-                                        '())))))
+				    (if (file-exists? pathname)
+					(list
+					 (read-cached-message-item message
+								   keyword
+								   pathname))
+					'())))))
 		      keywords)))
 	    (let ((uncached
 		   (list-transform-positive alist
@@ -1784,7 +1882,7 @@ USA.
 
 (define (fetch-message-body-part-to-cache message section)
   (let ((cache-keyword (imap-body-section->keyword section))
-        (imap-keyword (imap-body-section->keyword/peek section)))
+	(imap-keyword (imap-body-section->keyword/peek section)))
     (with-folder-locked (message-folder message)
       (lambda ()
 	(let ((pathname (message-item-pathname message cache-keyword)))
@@ -1866,7 +1964,7 @@ USA.
 
 (define (%imap-body-section->keyword section prefix)
   (string-append prefix
-                 "["
+		 "["
 		 (decorated-string-append
 		  "" "." ""
 		  (map (lambda (x)
@@ -2704,7 +2802,8 @@ USA.
 (define (process-fetch-attribute message keyword datum)
   (case keyword
     ((BODYSTRUCTURE)
-     (%set-imap-message-bodystructure! message (parse-mime-body datum)))
+     (%set-imap-message-bodystructure! message
+				       (parse-mime-body datum message '())))
     ((FLAGS)
      (%set-message-flags! message (map imap-flag->imail-flag datum)))
     ((RFC822.SIZE)

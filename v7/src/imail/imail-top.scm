@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.311 2008/08/15 22:46:42 riastradh Exp $
+$Id: imail-top.scm,v 1.312 2008/09/08 03:55:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -167,17 +167,17 @@ Text messages using these character sets are displayed inline;
 (define-variable imail-inline-mime-text-subtypes
   "List of MIME text subtypes that should be shown inline.
 The value of this variable is a list of symbols.
-A text entity that appears at the top level of a message
+A text body that appears at the top level of a message
  is always shown inline, regardless of its subtype.
-Likewise, a text/plain entity is always shown inline.
+Likewise, a text/plain body is always shown inline.
 Note that this variable does not affect subparts of multipart/alternative."
   '(HTML ENRICHED)
   list-of-strings?)
 
 (define-variable imail-inline-mime-text-limit
-  "Size limit in octets for showing MIME text message parts in-line.
+  "Size limit in octets for showing MIME text message parts inline.
 MIME text message parts less than this size are shown in-line by default.
-This variable can also be #F; then all parts will be shown in-line."
+This variable can also be #F; then all parts will be shown inline."
   65536
   (lambda (x) (or (boolean? x) (exact-nonnegative-integer? x))))
 
@@ -206,6 +206,13 @@ Otherwise, only one of the parts is shown."
 'ORIGINAL means use the original MIME boundary strings."
   'SIMPLE
   (lambda (x) (memq x '(SIMPLE SGML ORIGINAL))))
+
+(define-variable imail-mime-show-headers
+  "If true, show MIME headers in expanded body parts.
+Headers are shown only for parts that are displayed out-of-line by
+  default."
+  #f
+  boolean?)
 
 (define-variable imail-global-mail-notification
   "If true, all buffer modelines say if there is unseen mail.
@@ -397,7 +404,7 @@ Instead, these commands are available:
 \\[imail-file-message]	Append this message to a specified file.
 	  (The message is written in a human-readable format.)
 \\[imail-save-attachment]	Save a MIME attachment to a file.
-\\[imail-save-mime-entity]	Save an arbitrary MIME entity to a file.
+\\[imail-save-mime-body]	Save an arbitrary MIME body to a file.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove flag from message.
@@ -415,7 +422,7 @@ Instead, these commands are available:
 \\[imail-summary-by-regexp]	Like \\[imail-summary] only just messages matching regular expression.
 
 \\[imail-toggle-header]		Toggle between full headers and reduced headers.
-\\[imail-toggle-mime-entity]	Toggle MIME entity between expanded and collapsed formats.
+\\[imail-toggle-mime-body]	Toggle MIME body between expanded and collapsed formats.
 \\[imail-toggle-message]	Toggle between standard and raw message formats.
 
 \\[imail-create-folder]	Create a new folder.  (Normally not needed as output commands
@@ -447,6 +454,7 @@ Instead, these commands are available:
 	     (error "Unknown folder-sync status:" status))))
 	(begin
 	  (discard-folder-cache folder)
+	  (buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)
 	  (select-message
 	   folder
 	   (or (selected-message #f buffer)
@@ -487,7 +495,7 @@ Instead, these commands are available:
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
-(define-key 'imail #\w		'imail-save-mime-entity)
+(define-key 'imail #\w		'imail-save-mime-body)
 (define-key 'imail #\x		'imail-expunge)
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\<		'imail-first-message)
@@ -504,10 +512,10 @@ Instead, these commands are available:
 (define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
 (define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
 (define-key 'imail '(#\c-c #\c-s #\c-v)	'imail-sort-by-arrival)
-(define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)
+(define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-body)
 (define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
 (define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
-(define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-entity)
+(define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-body)
 (define-key 'imail #\M-o	'imail-file-message)
 
 ;; Putting these after the group above exploits behavior in the comtab
@@ -525,7 +533,7 @@ Instead, these commands are available:
 (define-key 'imail #\D		'imail-delete-folder)
 (define-key 'imail #\R		'imail-rename-folder)
 (define-key 'imail #\+		'imail-create-folder)
-(define-key 'imail button3-down 'imail-mouse-save-mime-entity)
+(define-key 'imail button3-down 'imail-mouse-save-mime-body)
 
 ;; These commands not yet implemented.
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
@@ -917,20 +925,20 @@ With prefix argument, prompt even when point is on an attachment."
   "P"
   (lambda (always-prompt?)
     (let ((buffer (imail-folder->buffer (selected-folder) #t)))
-      (save-mime-entity (car (maybe-prompt-for-mime-info "Save attachment"
-							 (buffer-point buffer)
-							 always-prompt?
-							 mime-attachment?))
-			buffer))))
+      (save-mime-body (car (maybe-prompt-for-mime-info "Save attachment"
+						       (buffer-point buffer)
+						       always-prompt?
+						       mime-attachment?))
+		      buffer))))
 
-(define-command imail-mouse-save-mime-entity
-  "Save the MIME entity that mouse is on."
+(define-command imail-mouse-save-mime-body
+  "Save the MIME body that mouse is on."
   ()
   (lambda ()
     (let ((button-event (current-button-event)))
       (let ((window (button-event/window button-event)))
 	(let ((buffer (window-buffer window)))
-	  (save-mime-entity
+	  (save-mime-body
 	   (let ((info
 		  (mark-mime-info
 		   (or (window-coordinates->mark
@@ -939,40 +947,38 @@ With prefix argument, prompt even when point is on an attachment."
 			(button-event/y button-event))
 		       (buffer-end buffer)))))
 	     (if (not info)
-		 (editor-error "Mouse not on a MIME entity."))
+		 (editor-error "Mouse not on a MIME body."))
 	     info)
 	   buffer))))))
 
-(define-command imail-save-mime-entity
-  "Save the MIME entity at point."
+(define-command imail-save-mime-body
+  "Save the MIME body at point."
   ()
   (lambda ()
-    (save-mime-entity (car (current-mime-entity)) (selected-buffer))))
+    (save-mime-body (car (current-mime-body)) (selected-buffer))))
 
-(define-command imail-toggle-mime-entity
-  "Expand or collapse the MIME entity at point."
+(define-command imail-toggle-mime-body
+  "Expand or collapse the MIME body at point."
   ()
   (lambda ()
-    (let ((i.m (current-mime-entity))
-	  (message (selected-message)))
+    (let ((i.m (current-mime-body)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
-	(set-mime-info-expanded?!
-	 info mark message
-	 (not (mime-info-expanded? info mark message)))
-	(re-render-mime-entity info mark message)))))
+	(set-mime-info-expanded?! info
+				  mark
+				  (not (mime-info-expanded? info mark)))
+	(re-render-mime-body info mark)))))
 
-(define-command imail-toggle-wrap-entity
-  "Toggle auto-wrap on or off for the MIME entity at point."
+(define-command imail-toggle-wrap-body
+  "Toggle auto-wrap on or off for the MIME body at point."
   ()
   (lambda ()
-    (let ((i.m (current-mime-entity))
-	  (message (selected-message)))
+    (let ((i.m (current-mime-body)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
 	(mime-body-wrapped! (mime-info-body info)
 			    (not (mime-body-wrapped? (mime-info-body info))))
-	(re-render-mime-entity info mark message)))))
+	(re-render-mime-body info mark)))))
 
 (define (mime-body-wrapped? body)
   (get-property body 'WRAP? #t))
@@ -982,17 +988,17 @@ With prefix argument, prompt even when point is on an attachment."
       (remove-property! body 'WRAP?)
       (store-property! body 'WRAP? value)))
 
-(define (re-render-mime-entity info mark message)
-  (let ((region (mime-entity-region mark))
+(define (re-render-mime-body info mark)
+  (let ((region (mime-body-region mark))
 	(buffer (mark-buffer mark)))
     (if (not region)
-	(error "No MIME entity at mark:" mark))
+	(error "No MIME body at mark:" mark))
     (let ((point (mark-right-inserting-copy (buffer-point buffer))))
       (with-read-only-defeated mark
 	(lambda ()
 	  (region-delete! region)
 	  (let ((mark (mark-left-inserting-copy (region-start region))))
-	    (insert-mime-info info message mark)
+	    (insert-mime-info info mark)
 	    (mark-temporary! mark))))
       (mark-temporary! point)
       (set-buffer-point! buffer point))
@@ -1043,24 +1049,22 @@ With prefix argument, prompt even when point is on an attachment."
 		    converted))
 	(reverse! converted))))
 
-(define (current-mime-entity)
+(define (current-mime-body)
   (let ((point (current-point)))
     (let ((info (mark-mime-info point)))
       (if (not info)
-	  (editor-error "Point not on a MIME entity."))
+	  (editor-error "Point not on a MIME body."))
       (cons info point))))
 
-(define (save-mime-entity info buffer)
-  (let ((body (mime-info-body info))
-	(selector (mime-info-selector info))
-	(message (selected-message #t buffer)))
+(define (save-mime-body info buffer)
+  (let ((body (mime-info-body info)))
     (let ((filename
 	   (let ((history 'IMAIL-SAVE-ATTACHMENT))
 	     (prompt-for-file
 	      (string-append "Save "
 			     (if (mime-attachment? info)
 				 "attachment"
-				 "MIME entity")
+				 "MIME body")
 			     " as")
 	      (let ((filename
 		     (let ((filename (mime-body-disposition-filename body)))
@@ -1099,7 +1103,7 @@ With prefix argument, prompt even when point is on an attachment."
 	      port
 	      text?
 	      (lambda (port)
-		(write-mime-message-body-part message selector #f port)))))))))
+		(write-mime-body body port)))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -1763,20 +1767,19 @@ WARNING: With a prefix argument, this command may take a very long
      (selected-folder)
      (let ((buffer (selected-buffer)))
        (lambda (message body-structure cache-procedure)
-         (define (cache message body selector context buffer)
-           message body context buffer
-           (cache-procedure selector))
-         (define (ignore message body selector context buffer)
-           message body selector context buffer
-           unspecific)
-         (walk-mime-message-part
-          message
-          body-structure
-          '()
-          (make-walk-mime-context #f 0 #f '())
-          buffer
-          cache
-          (if argument cache ignore)))))))
+	 (define (cache entity body selector context buffer)
+	   entity selector context buffer
+	   (cache-procedure body))
+	 (define (ignore entity body selector context buffer)
+	   entity body selector context buffer
+	   unspecific)
+	 (walk-mime-body message
+			 body-structure
+			 '()
+			 (make-walk-mime-context #f 0 #f '())
+			 buffer
+			 cache
+			 (if argument cache ignore)))))))
 
 ;;;; URLs
 
@@ -2210,10 +2213,11 @@ WARNING: With a prefix argument, this command may take a very long
     (if (and count (= (cdr count) mod-count))
 	(car count)
 	(let ((n (folder-length folder)))
-	  (do ((i 0 (+ i 1))
+	  (do ((i (first-unseen-message-index folder) (+ i 1))
 	       (unseen 0
 		       (if (let loop
-			       ((flags (message-flags (get-message folder i))))
+			       ((flags
+				 (message-flags (%get-message folder i))))
 			     (and (pair? flags)
 				  (or (string-ci=? "seen" (car flags))
 				      (string-ci=? "deleted" (car flags))
@@ -2271,10 +2275,10 @@ WARNING: With a prefix argument, this command may take a very long
     (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
     (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
-	  ((mime-message-body-structure message)
+	  ((mime-entity-body-structure message)
 	   => (lambda (body-structure)
-                (insert-mime-message-body message body-structure
-                                          mark inline-only? left-margin)))
+		(insert-mime-body message body-structure
+				  mark inline-only? left-margin)))
 	  (else
 	   (call-with-auto-wrapped-output-mark mark left-margin message
 	     (lambda (port)
@@ -2346,16 +2350,15 @@ WARNING: With a prefix argument, this command may take a very long
 
 ;;;; MIME message formatting
 
-(define (insert-mime-message-body message body-structure
-                                  mark inline-only? left-margin)
-  (walk-mime-message-part
+(define (insert-mime-body message body-structure mark inline-only? left-margin)
+  (walk-mime-body
    message
    body-structure
    '()
    (make-walk-mime-context inline-only? left-margin #f '())
    mark
-   insert-mime-message-inline
-   insert-mime-message-outline))
+   insert-mime-body-inline
+   insert-mime-body-outline))
 
 (define-structure walk-mime-context
   (inline-only? #f read-only #t)
@@ -2370,16 +2373,18 @@ WARNING: With a prefix argument, this command may take a very long
 			  (cons (cons boundary (not boundary))
 				(walk-mime-context-boundaries context))))
 
-(define (mime-enclosure-type? context type subtype)
+(define (mime-enclosure-type? context type #!optional subtype)
   (let ((enclosure (walk-mime-context-enclosure context)))
     (and enclosure
 	 (mime-type? enclosure type subtype))))
 
-(define (mime-type? body type subtype)
+(define (mime-type? body type #!optional subtype)
   (and (eq? (mime-body-type body) type)
-       (eq? (mime-body-subtype body) subtype)))
+       (or (default-object? subtype)
+	   (not subtype)
+	   (eq? (mime-body-subtype body) subtype))))
 
-(define (maybe-insert-mime-boundary context mark)
+(define (maybe-insert-mime-boundary context selector mark)
   (let ((boundary
 	 (let loop ((boundaries (walk-mime-context-boundaries context)))
 	   (and (pair? boundaries)
@@ -2394,7 +2399,11 @@ WARNING: With a prefix argument, this command may take a very long
 	    (loop (cdr boundaries)))))
     (if boundary
 	(begin
-	  (insert-newline mark)
+	  (if (not (and (mime-enclosure-type? context 'MULTIPART)
+			(mime-type? (walk-mime-context-enclosure context)
+				    'MULTIPART)
+			(zero? (last selector))))
+	      (insert-newline mark))
 	  (cond ((string? boundary)
 		 (insert-string "--" mark)
 		 (insert-string boundary mark))
@@ -2417,25 +2426,25 @@ WARNING: With a prefix argument, this command may take a very long
 	encoding
 	(mime-body-one-part-encoding body))))
 
-(define-generic walk-mime-message-part
-  (message body selector context mark if-inline if-outline))
-(define-generic inline-message-part? (body context mark))
+(define-generic walk-mime-body
+  (entity body selector context mark if-inline if-outline))
+(define-generic inline-mime-part? (body context mark))
 
-(define-method walk-mime-message-part
-    (message (body <mime-body>) selector context mark if-inline if-outline)
-  ((if (inline-message-part? body context mark) if-inline if-outline)
-   message body selector context mark))
+(define-method walk-mime-body
+    (entity (body <mime-body>) selector context mark if-inline if-outline)
+  ((if (inline-mime-part? body context mark) if-inline if-outline)
+   entity body selector context mark))
 
-(define-method inline-message-part? ((body <mime-body>) context mark)
+(define-method inline-mime-part? ((body <mime-body>) context mark)
   context mark
   (mime-type? body 'MESSAGE 'DELIVERY-STATUS))
 
-(define-method inline-message-part? ((body <mime-body-message>) context mark)
+(define-method inline-mime-part? ((body <mime-body-message>) context mark)
   body
   (not (and (mime-enclosure-type? context 'MULTIPART 'DIGEST)
 	    (ref-variable imail-mime-collapse-digest mark))))
 
-(define-method inline-message-part? ((body <mime-body-text>) context mark)
+(define-method inline-mime-part? ((body <mime-body-text>) context mark)
   (and (let ((disposition (mime-body-disposition body)))
 	 (if disposition
 	     (eq? (car disposition) 'INLINE)
@@ -2455,12 +2464,12 @@ WARNING: With a prefix argument, this command may take a very long
 	(mime-body-parameter body 'CHARSET "us-ascii")
 	#t)
        (let ((limit (ref-variable imail-inline-mime-text-limit mark)))
-         (or (not limit)
-             (< (mime-body-one-part-n-octets body) limit)))))
+	 (or (not limit)
+	     (< (mime-body-one-part-n-octets body) limit)))))
 
-(define-method walk-mime-message-part
-    (message (body <mime-body-multipart>) selector context
-             mark if-inline if-outline)
+(define-method walk-mime-body
+    (entity (body <mime-body-multipart>) selector context mark
+	    if-inline if-outline)
   (let ((context
 	 (make-walk-mime-subcontext
 	  context
@@ -2473,58 +2482,50 @@ WARNING: With a prefix argument, this command may take a very long
     (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
 	(if (pair? parts)
 	    (begin
-	      (walk-mime-message-part message
-				      (car parts)
-				      `(,@selector 0)
-				      context
-				      mark if-inline if-outline)
+	      (walk-mime-body entity (car parts) `(,@selector 0)
+			      context mark if-inline if-outline)
 	      (if (ref-variable imail-mime-show-alternatives mark)
 		  (do ((parts (cdr parts) (cdr parts))
 		       (i 1 (fix:+ i 1)))
 		      ((null? parts))
-		    (if-outline message
-                                (car parts)
-                                `(,@selector ,i)
-                                context
-                                mark)))))
+		    (if-outline entity (car parts) `(,@selector ,i) context
+				mark)))))
 	(do ((parts parts (cdr parts))
 	     (i 0 (fix:+ i 1)))
 	    ((null? parts))
-	  (walk-mime-message-part message
-				  (car parts)
-				  `(,@selector ,i)
-				  context
-				  mark if-inline if-outline)))))
+	  (walk-mime-body entity (car parts) `(,@selector ,i)
+			  context mark if-inline if-outline)))))
 
-(define (insert-mime-message-inline message body selector context mark)
-  (maybe-insert-mime-boundary context mark)
-  (insert-mime-info (make-mime-info #t body selector context)
-		    message
-		    mark))
+(define (insert-mime-body-inline entity body selector context mark)
+  (maybe-insert-mime-boundary context selector mark)
+  (insert-mime-info (make-mime-info #t entity body selector context) mark))
 
-(define (insert-mime-message-outline message body selector context mark)
+(define (insert-mime-body-outline entity body selector context mark)
   (if (not (walk-mime-context-inline-only? context))
       (begin
-	(maybe-insert-mime-boundary context mark)
-	(insert-mime-info (make-mime-info #f body selector context)
-			  message
+	(maybe-insert-mime-boundary context selector mark)
+	(insert-mime-info (make-mime-info #f entity body selector context)
 			  mark))))
 
-(define (insert-mime-info info message mark)
+(define (insert-mime-info info mark)
   (let ((start (mark-right-inserting-copy mark))
+	(entity (mime-info-entity info))
 	(body (mime-info-body info))
+	(selector (mime-info-selector info))
 	(context (mime-info-context info)))
-    (if (mime-info-expanded? info mark message)
-	(insert-mime-message-inline* message
-				     body
-				     (mime-info-selector info)
-				     context
-				     mark)
+    (if (mime-info-expanded? info mark)
+	(begin
+	  (if (and (ref-variable imail-mime-show-headers mark)
+		   (not (inline-mime-part? body context mark))
+		   (mime-enclosure-type? context 'MULTIPART))
+	      (insert-header-fields (mime-body-header-fields body) #t mark))
+	  (insert-mime-body-inline* entity body selector context mark))
 	(insert-mime-outline
-	 (compute-mime-message-outline body
-				       (mime-attachment-name info #f)
-				       context)
+	 (compute-mime-body-outline body
+				    (mime-attachment-name info #f)
+				    context)
 	 mark))
+    (insert-newline mark)
     (attach-mime-info start mark info)
     (mark-temporary! start)))
 
@@ -2546,13 +2547,23 @@ WARNING: With a prefix argument, this command may take a very long
 		      (insert-newline mark))))
 	      parameters)
     (insert-string indentation mark)
-    (insert-string "/>" mark)
-    (insert-newline mark)))
+    (insert-string "/>" mark)))
 
-(define-generic insert-mime-message-inline* (msg body selector context mark))
+(define-generic insert-mime-body-inline* (entity body selector context mark))
 
-(define-method insert-mime-message-inline*
-    (message (body <mime-body>) selector context mark)
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body>) selector context mark)
+  entity body selector context		;ignore
+  (call-with-auto-wrapped-output-mark
+   mark
+   (walk-mime-context-left-margin context)
+   body
+   (lambda (port)
+     (write-mime-body body port))))
+
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-one-part>) selector context mark)
+  entity selector			;ignore
   (call-with-auto-wrapped-output-mark
    mark
    (walk-mime-context-left-margin context)
@@ -2563,43 +2574,35 @@ WARNING: With a prefix argument, this command may take a very long
       port
       #t
       (lambda (port)
-	(write-mime-message-body-part
-	 message
-	 (if (or (not (walk-mime-context-enclosure context))
-		 (mime-enclosure-type? context 'MESSAGE 'RFC822))
-	     `(,@selector TEXT)
-	     selector)
-	 (mime-body-one-part-n-octets body)
-	 port))))))
+	(write-mime-body body port))))))
 
-(define-method insert-mime-message-inline*
-    (message (body <mime-body-message>) selector context mark)
-  (insert-header-fields (call-with-output-string
-			 (lambda (port)
-			   (write-mime-message-body-part message
-							 `(,@selector HEADER)
-							 #t
-							 port)))
-			#f
-			mark)
-  (walk-mime-message-part message
-			  (mime-body-message-body body)
-			  selector
-			  (make-walk-mime-subcontext context body #f)
-			  mark
-                          insert-mime-message-inline
-                          insert-mime-message-outline))
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-message>) selector context mark)
+  (insert-header-fields (mime-body-message-header-fields body) #f mark)
+  (walk-mime-body entity
+		  (mime-body-message-body body)
+		  selector
+		  (make-walk-mime-subcontext context body #f)
+		  mark
+		  insert-mime-body-inline
+		  insert-mime-body-outline))
 
-(define-generic compute-mime-message-outline (body name context))
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-multipart>) selector context mark)
+  (walk-mime-body entity body selector context mark
+		  insert-mime-body-inline
+		  insert-mime-body-outline))
+
+(define-generic compute-mime-body-outline (body name context))
 
-(define-method compute-mime-message-outline ((body <mime-body>) name context)
+(define-method compute-mime-body-outline ((body <mime-body>) name context)
   context
   (list (and name (cons "name" name))
 	(cons "type" (mime-body-type-string body))
 	(and (eq? (mime-body-type body) 'TEXT)
 	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))))
 
-(define-method compute-mime-message-outline
+(define-method compute-mime-body-outline
     ((body <mime-body-one-part>) name context)
   context
   (append (call-next-method body name context)
@@ -2608,7 +2611,7 @@ WARNING: With a prefix argument, this command may take a very long
 		       (cons "encoding" encoding)))
 		(cons "length" (mime-body-one-part-n-octets body)))))
 
-(define-method compute-mime-message-outline
+(define-method compute-mime-body-outline
     ((body <mime-body-message>) name context)
   name
   (let ((envelope (mime-body-message-envelope body)))
@@ -2626,15 +2629,10 @@ WARNING: With a prefix argument, this command may take a very long
 	    (and subject
 		 (cons "subject" subject)))
 	  (cons "length" (mime-body-one-part-n-octets body)))))
-
-(define (known-mime-encoding? encoding)
-  (memq encoding
-	'(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64
-	       ;; Microsoft sometimes uses these non-standard values:
-	       7-BIT 8-BIT)))
 
 (define (mime-attachment-name info provide-default?)
   (or (mime-body-parameter (mime-info-body info) 'NAME #f)
+      (mime-body-disposition-filename (mime-info-body info))
       (and provide-default?
 	   (string-append (if (mime-info-inline? info)
 			      "inline-"
@@ -2681,7 +2679,7 @@ WARNING: With a prefix argument, this command may take a very long
 	    (loop mark attachments)
 	    (reverse! attachments))))))
 
-(define (mime-entity-region mark)
+(define (mime-body-region mark)
   (specific-property-region mark 'IMAIL-MIME-INFO
     (lambda (i1 i2)
       (mime-body-enclosed? (mime-info-body i1) (mime-info-body i2)))))
@@ -2691,21 +2689,22 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define-structure mime-info
   (inline? #f)
+  (entity #f read-only #t)
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
 
-(define (mime-info-expanded? info mark message)
+(define (mime-info-expanded? info mark)
   (let ((expansions (buffer-get (->buffer mark) 'IMAIL-MIME-EXPANSIONS #f))
-	(key (cons message (mime-info-selector info)))
+	(key (cons (mime-info-entity info) (mime-info-selector info)))
 	(inline? (mime-info-inline? info)))
     (if expansions
 	(hash-table/get expansions key inline?)
 	inline?)))
 
-(define (set-mime-info-expanded?! info mark message expanded?)
+(define (set-mime-info-expanded?! info mark expanded?)
   (let ((buffer (->buffer mark))
-	(key (cons message (mime-info-selector info))))
+	(key (cons (mime-info-entity info) (mime-info-selector info))))
     (if (if (mime-info-inline? info) expanded? (not expanded?))
 	(cond ((buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	       => (lambda (expansions)
@@ -2718,7 +2717,7 @@ WARNING: With a prefix argument, this command may take a very long
 	       (buffer-put! buffer 'IMAIL-MIME-EXPANSIONS expansions)
 	       expansions))
 	 key
-         expanded?))))
+	 expanded?))))
 
 ;;;; Automatic wrap/fill
 

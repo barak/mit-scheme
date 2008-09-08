@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-util.scm,v 1.52 2008/07/11 05:26:42 cph Exp $
+$Id: imail-util.scm,v 1.53 2008/09/08 03:55:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -573,3 +573,79 @@ USA.
 	      (set-istate-buffer-start! state 0)
 	      (set-istate-buffer-end! state 0)))))))
    #f))
+
+;;;; Properties
+
+(define-class <property-mixin> ()
+  (alist define (accessor modifier)
+	 accessor object-properties
+	 modifier set-object-properties!
+	 initial-value '()))
+
+(define (get-property object key default)
+  (let ((entry (assq key (object-properties object))))
+    (if entry
+	(cdr entry)
+	default)))
+
+(define (store-property! object key datum)
+  (let ((alist (object-properties object)))
+    (let ((entry (assq key alist)))
+      (if entry
+	  (set-cdr! entry datum)
+	  (set-object-properties! object (cons (cons key datum) alist))))))
+
+(define (remove-property! object key)
+  (set-object-properties! object (del-assq! key (object-properties object))))
+
+;;;; Modification events
+
+(define-class <modification-event-mixin> ()
+  (modification-count define (accessor modifier)
+		      accessor object-modification-count
+		      modifier set-object-modification-count!
+		      initial-value 0)
+  (modification-event define accessor
+		      accessor object-modification-event
+		      initializer make-event-distributor))
+
+(define (receive-modification-events object procedure)
+  (add-event-receiver! (object-modification-event object) procedure))
+
+(define (ignore-modification-events object procedure)
+  (remove-event-receiver! (object-modification-event object) procedure))
+
+(define (object-modified! object type . arguments)
+  (without-interrupts
+   (lambda ()
+     (set-object-modification-count!
+      object
+      (+ (object-modification-count object) 1))))
+  (apply signal-modification-event object type arguments))
+
+(define (signal-modification-event object type . arguments)
+  (if *deferred-modification-events*
+      (set-cdr! *deferred-modification-events*
+		(cons (cons* object type arguments)
+		      (cdr *deferred-modification-events*)))
+      (begin
+	(if imap-trace-port
+	    (begin
+	      (write-line (cons* 'OBJECT-EVENT object type arguments)
+			  imap-trace-port)
+	      (flush-output imap-trace-port)))
+	(event-distributor/invoke! (object-modification-event object)
+				   object
+				   type
+				   arguments))))
+
+(define (with-modification-events-deferred thunk)
+  (let ((events (list 'EVENTS)))
+    (let ((v
+	   (fluid-let ((*deferred-modification-events* events))
+	     (thunk))))
+      (for-each (lambda (event) (apply signal-modification-event event))
+		(reverse! (cdr events)))
+      v)))
+
+(define *deferred-modification-events* #f)
