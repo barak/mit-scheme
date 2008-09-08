@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.2 2008/09/08 04:44:45 cph Exp $
+$Id: structure-parser.scm,v 14.3 2008/09/08 18:19:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -426,6 +426,16 @@ USA.
      (lambda (make-win vals lose)
        `(IF ,(call-out (close-syntax (cadr pattern) env)
 		       vals)
+	    ,(make-win vals lose)
+	    (,lose))))))
+
+(define-pattern-compiler '(DISQUALIFY EXPRESSION FORM) 'ANY
+  (lambda (pattern context env)
+    ((get-context-method 'TRANSFORM-VALS context)
+     (compile-pattern (caddr pattern) context env)
+     (lambda (make-win vals lose)
+       `(IF (NOT ,(call-out (close-syntax (cadr pattern) env)
+			    vals))
 	    ,(make-win vals lose)
 	    (,lose))))))
 
