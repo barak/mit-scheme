@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.1 2008/09/07 04:33:13 cph Exp $
+$Id: structure-parser.scm,v 14.2 2008/09/08 04:44:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -217,23 +217,34 @@ USA.
 	    (,win ,(null-vals) ,lose)
 	    (,lose))))))
 
+(define-pattern-compiler '(MATCH DATUM) 'OBJECT
+  (lambda (pattern env)
+    env
+    (make-object-parser
+     (lambda (item win lose)
+       `(IF ,(equality-predicate item (cadr pattern))
+	    (,win ,(single-val item) ,lose)
+	    (,lose))))))
+
 (define-pattern-compiler '(QUOTE DATUM) 'OBJECT
   (lambda (pattern env)
     env
-    (let ((datum (cadr pattern)))
-      (make-object-parser
-       (lambda (item win lose)
-	 `(IF (,(cond ((or (symbol? datum)
-			   (char? datum)
-			   (boolean? datum)
-			   (null? datum))
-		       'EQ?)
-		      ((number? datum) 'EQV?)
-		      (else 'EQUAL?))
-	       ,item
-	       ',datum)
-	      (,win ,(null-vals) ,lose)
-	      (,lose)))))))
+    (make-object-parser
+     (lambda (item win lose)
+       `(IF ,(equality-predicate item (cadr pattern))
+	    (,win ,(null-vals) ,lose)
+	    (,lose))))))
+
+(define (equality-predicate item datum)
+  `(,(cond ((or (symbol? datum)
+		(char? datum)
+		(boolean? datum)
+		(null? datum))
+	    'EQ?)
+	   ((number? datum) 'EQV?)
+	   (else 'EQUAL?))
+    ,item
+    ',datum))
 
 (define-context-method 'VALUES 'OBJECT
   (lambda (vals)
