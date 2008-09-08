@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.312 2008/09/08 03:55:18 riastradh Exp $
+$Id: imail-top.scm,v 1.313 2008/09/08 20:40:59 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2403,7 +2403,9 @@ WARNING: With a prefix argument, this command may take a very long
 			(mime-type? (walk-mime-context-enclosure context)
 				    'MULTIPART)
 			(zero? (last selector))))
-	      (insert-newline mark))
+	      (begin
+		(insert-newline mark)
+		(insert-newline mark)))
 	  (cond ((string? boundary)
 		 (insert-string "--" mark)
 		 (insert-string boundary mark))
@@ -2525,7 +2527,6 @@ WARNING: With a prefix argument, this command may take a very long
 				    (mime-attachment-name info #f)
 				    context)
 	 mark))
-    (insert-newline mark)
     (attach-mime-info start mark info)
     (mark-temporary! start)))
 
