@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.313 2008/09/08 20:40:59 riastradh Exp $
+$Id: imail-top.scm,v 1.314 2008/09/08 22:27:02 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -2582,7 +2582,7 @@ WARNING: With a prefix argument, this command may take a very long
   (insert-header-fields (mime-body-message-header-fields body) #f mark)
   (walk-mime-body entity
 		  (mime-body-message-body body)
-		  selector
+		  `(,@selector BODY)
 		  (make-walk-mime-subcontext context body #f)
 		  mark
 		  insert-mime-body-inline
