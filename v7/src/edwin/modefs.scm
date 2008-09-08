@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: modefs.scm,v 1.170 2008/01/30 20:02:03 cph Exp $
+$Id: modefs.scm,v 1.171 2008/09/08 00:09:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -152,9 +152,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-= 'count-lines-region)
 (define-key 'fundamental #\m-> 'end-of-buffer)
 (define-key 'fundamental #\m-@ 'mark-word)
-(define-key 'fundamental #\m-\[ 'backward-paragraph)
 (define-key 'fundamental #\m-\\ 'delete-horizontal-space)
-(define-key 'fundamental #\m-\] 'forward-paragraph)
 (define-key 'fundamental #\m-\( 'insert-parentheses)
 (define-key 'fundamental #\m-\) 'move-past-close-and-reindent)
 (define-key 'fundamental #\m-^ 'delete-indentation)
@@ -173,9 +171,6 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-m 'back-to-indentation)
 (define-key 'fundamental #\m-q 'fill-paragraph)
 (define-key 'fundamental #\m-r 'move-to-window-line)
-;; This should only be bound in NT/Windows, and only when running with
-;; I/O through the scheme window as a terminal (rather than a proper screen).
-(define-key 'fundamental #\m-S 'resize-screen)
 (define-key 'fundamental #\m-t 'transpose-words)
 (define-key 'fundamental #\m-u 'upcase-word)
 (define-key 'fundamental #\m-v 'scroll-down)
@@ -183,7 +178,9 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\m-x 'execute-extended-command)
 (define-key 'fundamental #\m-y 'yank-pop)
 (define-key 'fundamental #\m-z 'zap-to-char)
+(define-key 'fundamental #\m-\{ 'backward-paragraph)
 (define-key 'fundamental #\m-\| 'shell-command-on-region)
+(define-key 'fundamental #\m-\} 'forward-paragraph)
 (define-key 'fundamental #\m-~ 'not-modified)
 (define-key 'fundamental #\m-rubout 'backward-kill-word)
 
