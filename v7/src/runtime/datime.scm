@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.52 2008/09/09 16:28:10 cph Exp $
+$Id: datime.scm,v 14.53 2008/09/09 16:30:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -445,6 +445,7 @@ USA.
     (if (< day 10)
 	(write-char #\space port))
     (write day port))
+  (write-char #\space port)
   (write-d2 (decoded-time/hour dt) port)
   (write-char #\: port)
   (write-d2 (decoded-time/minute dt) port)
