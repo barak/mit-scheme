@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.56 2008/08/27 04:58:09 cph Exp $
+$Id: url.scm,v 1.57 2008/09/09 07:23:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -465,10 +465,8 @@ USA.
   (*parser
    (seq (map uri-string-downcase (match matcher:host))
 	(alt (seq ":"
-		  (map (lambda (s)
-			 (and (fix:> (string-length s) 0)
-			      (string->number s)))
-		       (match (* (char-set char-set:uri-digit)))))
+		  (map string->number
+		       (match (+ (char-set char-set:uri-digit)))))
 	     (values #f)))))
 
 ;; This is a kludge to work around fact that STRING-DOWNCASE only
