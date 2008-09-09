@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.60 2008/09/04 21:55:20 riastradh Exp $
+$Id: imail-summary.scm,v 1.61 2008/09/09 15:37:03 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -156,7 +156,11 @@ SUBJECT is a string of regexps separated by commas."
 
 (define-command imail-search-summary
   "Display a summary of the search results for a string of text."
-  "sSearch string"
+  (lambda ()
+    (list (prompt-for-string "IMAIL search" #f
+                             'DEFAULT-TYPE 'INSERTED-DEFAULT
+                             'HISTORY 'IMAIL-SEARCH
+                             'HISTORY-INDEX 0)))
   (lambda (pattern)
     (imail-summary
      (string-append "Search: " pattern)
