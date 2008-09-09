@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.49 2008/08/29 23:20:04 cph Exp $
+$Id: datime.scm,v 14.50 2008/09/09 04:33:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -679,7 +679,7 @@ USA.
 				     (vector-ref v 3)
 				     0))
      (seq parse-long-day-of-week
-	  ","
+	  ", "
 	  parse-rfc850-day
 	  " "
 	  parse-short-month
