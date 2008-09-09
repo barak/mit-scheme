@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.51 2008/09/09 05:23:49 cph Exp $
+$Id: datime.scm,v 14.52 2008/09/09 16:28:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -184,7 +184,7 @@ USA.
 (define (decoded-time/daylight-savings-time? dt)
   (> (decoded-time/daylight-savings-time dt) 0))
 
-(define (decoded-time->gmt dt)
+(define (decoded-time->utc dt)
   (if (let ((zone (decoded-time/zone dt)))
 	(or (not zone)
 	    (= zone 0)))
@@ -250,7 +250,7 @@ USA.
 			   port)))))
 
 (define (write-decoded-time-as-http dt port)
-  (%write-decoded-time-1 (decoded-time->gmt dt) port)
+  (%write-decoded-time-1 (decoded-time->utc dt) port)
   (write-string " GMT" port))
 
 (define (%write-decoded-time-1 dt port)

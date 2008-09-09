@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.677 2008/09/09 06:36:20 cph Exp $
+$Id: runtime.pkg,v 14.678 2008/09/09 16:28:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1268,7 +1268,7 @@ USA.
 	  day-of-week/long-string
 	  day-of-week/short-string
 	  decoded-time->ctime-string
-	  decoded-time->gmt
+	  decoded-time->utc
 	  decoded-time->iso8601-string
 	  decoded-time->rfc2822-string
 	  decoded-time->universal-time
