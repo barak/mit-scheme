@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.32 2008/02/02 17:59:59 cph Exp $
+$Id: usrint.scm,v 1.33 2008/09/09 18:30:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -336,7 +336,10 @@ USA.
 (define (make-wrapped-notification-port-type)
   (make-port-type `((WRITE-CHAR ,operation/write-char)
 		    (X-SIZE ,operation/x-size)
-		    (COLUMN ,operation/column))
+		    (COLUMN ,operation/column)
+		    (FLUSH-OUTPUT ,operation/flush-output)
+		    (DISCRETIONARY-FLUSH-OUTPUT
+		     ,operation/discretionary-flush-output))
 		  #f))
 
 (define (operation/write-char port char)
@@ -363,6 +366,12 @@ USA.
 	     (and n
 		  (max (- n (notification-prefix-length))
 		       0)))))))
+
+(define (operation/flush-output port)
+  (output-port/flush-output (port/state port)))
+
+(define (operation/discretionary-flush-output port)
+  (output-port/discretionary-flush (port/state port)))
 
 (define (write-notification-prefix port)
   (write-string ";" port)
