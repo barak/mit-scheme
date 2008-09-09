@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.50 2008/09/09 04:33:56 cph Exp $
+$Id: datime.scm,v 14.51 2008/09/09 05:23:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -183,6 +183,14 @@ USA.
 
 (define (decoded-time/daylight-savings-time? dt)
   (> (decoded-time/daylight-savings-time dt) 0))
+
+(define (decoded-time->gmt dt)
+  (if (let ((zone (decoded-time/zone dt)))
+	(or (not zone)
+	    (= zone 0)))
+      dt
+      (universal-time->global-decoded-time
+       (decoded-time->universal-time dt))))
 
 (define (decoded-time/date-string time)
   (string-append (let ((day (decoded-time/day-of-week time)))
@@ -216,51 +224,52 @@ USA.
 (define (universal-time->global-rfc2822-string time)
   (decoded-time->string (universal-time->global-decoded-time time)))
 
-(define (universal-time->http-string time)
-  (decoded-time->http-string (universal-time->global-decoded-time time)))
-
 (define (file-time->local-rfc2822-string time)
   (decoded-time->string (file-time->local-decoded-time time)))
 
 (define (file-time->global-rfc2822-string time)
   (decoded-time->string (file-time->global-decoded-time time)))
-
-(define (file-time->http-string time)
-  (decoded-time->http-string (file-time->global-decoded-time time)))
-
-(define (decoded-time->rfc2822-string dt) (%decoded-time->string dt #f))
-(define (decoded-time->http-string dt) (%decoded-time->string dt #t))
-
-(define (%decoded-time->string dt http?)
+
+(define (decoded-time->rfc2822-string dt)
   ;; The returned string is in the format specified by RFC 2822,
   ;; provided that time-zone information is available from the C
-  ;; library (or HTTP? is true).
-  (string-append (let ((day (decoded-time/day-of-week dt)))
-		   (if day
-		       (string-append (day-of-week/short-string day) ", ")
-		       ""))
-		 (number->string (decoded-time/day dt))
-		 " "
-		 (month/short-string (decoded-time/month dt))
-		 " "
-		 (number->string (decoded-time/year dt))
-		 " "
-		 (d2 (decoded-time/hour dt))
-		 ":"
-		 (d2 (decoded-time/minute dt))
-		 ":"
-		 (d2 (decoded-time/second dt))
-		 (if http?
-		     " GMT"
-		     (let ((zone (decoded-time/zone dt)))
-		       (if zone
-			   (string-append
-			    " "
-			    (time-zone->string
-			     (if (decoded-time/daylight-savings-time? dt)
-				 (- zone 1)
-				 zone)))
-			   "")))))
+  ;; library.
+  (call-with-output-string
+    (lambda (port)
+      (write-decoded-time-as-rfc2822 dt port))))
+
+(define (write-decoded-time-as-rfc2822 dt port)
+  (%write-decoded-time-1 dt port)
+  (let ((zone (decoded-time/zone dt)))
+    (if zone
+	(begin
+	  (write-char #\space port)
+	  (write-time-zone (if (decoded-time/daylight-savings-time? dt)
+			       (- zone 1)
+			       zone)
+			   port)))))
+
+(define (write-decoded-time-as-http dt port)
+  (%write-decoded-time-1 (decoded-time->gmt dt) port)
+  (write-string " GMT" port))
+
+(define (%write-decoded-time-1 dt port)
+  (let ((day-of-week (decoded-time/day-of-week dt)))
+    (if day-of-week
+	(begin
+	  (write-string (day-of-week/short-string day-of-week) port)
+	  (write-string ", " port))))
+  (write (decoded-time/day dt) port)
+  (write-char #\space port)
+  (write-string (month/short-string (decoded-time/month dt)) port)
+  (write-char #\space port)
+  (write (decoded-time/year dt) port)
+  (write-char #\space port)
+  (write-d2 (decoded-time/hour dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/minute dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/second dt) port))
 
 (define (rfc2822-string->decoded-time string)
   (let ((v (*parse-string parser:rfc2822-time string)))
@@ -336,12 +345,17 @@ USA.
   (*matcher (* (char-set char-set:wsp))))
 
 (define (time-zone->string tz)
-  (guarantee-time-zone tz 'TIME-ZONE->STRING)
+  (call-with-output-string
+    (lambda (port)
+      (write-time-zone tz port))))
+
+(define (write-time-zone tz port)
+  (guarantee-time-zone tz 'WRITE-TIME-ZONE)
   (let ((minutes (round (* 60 (- tz)))))
     (let ((qr (integer-divide (abs minutes) 60)))
-      (string-append (if (< minutes 0) "-" "+")
-		     (d2 (integer-divide-quotient qr))
-		     (d2 (integer-divide-remainder qr))))))
+      (write-char (if (< minutes 0) #\- #\+) port)
+      (write-d2 (integer-divide-quotient qr) port)
+      (write-d2 (integer-divide-remainder qr) port))))
 
 (define (string->time-zone string)
   (let ((v (*parse-string parser:time-zone string)))
@@ -370,7 +384,7 @@ USA.
 
 (define parse-time-zone-hour (number-parser 2 2 0 24))
 (define parse-time-zone-minute (number-parser 2 2 0 59))
-
+
 (define parser:named-time-zone
   (*parser
    (transform (lambda (v)
@@ -418,20 +432,26 @@ USA.
 ;;;; ISO C ctime() strings
 
 (define (decoded-time->ctime-string dt)
-  (string-append
-   (day-of-week/short-string (decoded-time/day-of-week dt))
-   " "
-   (month/short-string (decoded-time/month dt))
-   " "
-   (string-pad-left (number->string (decoded-time/day dt)) 2)
-   " "
-   (string-pad-left (number->string (decoded-time/hour dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/minute dt)) 2 #\0)
-   ":"
-   (string-pad-left (number->string (decoded-time/second dt)) 2 #\0)
-   " "
-   (number->string (decoded-time/year dt))))
+  (call-with-output-string
+    (lambda (port)
+      (write-decoded-time-as-ctime dt port))))
+
+(define (write-decoded-time-as-ctime dt port)
+  (write-string (day-of-week/short-string (decoded-time/day-of-week dt)) port)
+  (write-char #\space port)
+  (write-string (month/short-string (decoded-time/month dt)) port)
+  (write-char #\space port)
+  (let ((day (decoded-time/day dt)))
+    (if (< day 10)
+	(write-char #\space port))
+    (write day port))
+  (write-d2 (decoded-time/hour dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/minute dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/second dt) port)
+  (write-char #\space port)
+  (write (decoded-time/year dt) port))
 
 (define (ctime-string->decoded-time string #!optional zone)
   (let ((v
@@ -507,24 +527,28 @@ USA.
     (vector-ref v 0)))
 
 (define (decoded-time->iso8601-string dt)
-  (string-append (number->string (decoded-time/year dt))
-		 "-"
-		 (d2 (decoded-time/month dt))
-		 "-"
-		 (d2 (decoded-time/day dt))
-		 (if iso8601-separate-with-t? "T" " ")
-		 (d2 (decoded-time/hour dt))
-		 ":"
-		 (d2 (decoded-time/minute dt))
-		 ":"
-		 (d2 (decoded-time/second dt))
-		 (let ((zone (decoded-time/zone dt)))
-		   (if zone
-		       (time-zone->string
-			(if (decoded-time/daylight-savings-time? dt)
-			    (- zone 1)
-			    zone))
-		       ""))))
+  (call-with-output-string
+    (lambda (port)
+      (write-decoded-time-as-iso8601 dt port))))
+
+(define (write-decoded-time-as-iso8601 dt port)
+  (write (decoded-time/year dt) port)
+  (write-char #\- port)
+  (write-d2 (decoded-time/month dt) port)
+  (write-char #\- port)
+  (write-d2 (decoded-time/day dt) port)
+  (write-char (if iso8601-separate-with-t? #\T #\space) port)
+  (write-d2 (decoded-time/hour dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/minute dt) port)
+  (write-char #\: port)
+  (write-d2 (decoded-time/second dt) port)
+  (let ((zone (decoded-time/zone dt)))
+    (if zone
+	(write-time-zone (if (decoded-time/daylight-savings-time? dt)
+			     (- zone 1)
+			     zone)
+			 port))))
 
 (define iso8601-separate-with-t? #t)
 
@@ -760,6 +784,11 @@ USA.
 
 (define (d2 n)
   (string-pad-left (number->string n) 2 #\0))
+
+(define (write-d2 n port)
+  (if (< n 10)
+      (write-char #\0 port))
+  (write n port))
 
 (define month/short-strings
   '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"))
