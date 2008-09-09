@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mime-codec.scm,v 14.21 2008/07/26 05:12:20 cph Exp $
+$Id: mime-codec.scm,v 14.22 2008/09/09 06:36:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -479,7 +479,7 @@ USA.
 
 (define (decode-base64:finalize context)
   (if (fix:> (base64-decoding-context/input-index context) 0)
-      (error "BASE64 input length is not a multiple of 4."))
+      (error:decode-base64 "BASE64 input length is not a multiple of 4."))
   (if (base64-decoding-context/pending-return? context)
       (write-char #\return (base64-decoding-context/port context))))
 
@@ -582,11 +582,11 @@ USA.
 	  (else
 	   (vector-8b-set! output 0 (fix:+ (fix:lsh d1 2) (fix:lsh d2 -4)))
 	   1))))
-
+
 (define (decode-base64-char input index)
   (let ((digit (vector-8b-ref base64-char-table (vector-8b-ref input index))))
     (if (fix:> digit #x40)
-	(error "Misplaced #\\= in BASE64 input."))
+	(error:decode-base64 "Misplaced #\\= in BASE64 input."))
     digit))
 
 (define base64-char-table)
@@ -608,6 +608,17 @@ USA.
   (set! base64-char-table char-table)
   (set! base64-digit-table digit-table)
   unspecific)
+
+(define condition-type:decode-base64
+  (make-condition-type 'DECODE-BASE64 condition-type:simple-error '() #f))
+
+(define error:decode-base64
+  (let ((signal
+	 (condition-signaller condition-type:decode-base64
+			      '(MESSAGE IRRITANTS)
+			      standard-error-handler)))
+    (lambda (message . irritants)
+      (signal message irritants))))
 
 ;;;; Decode BinHex 4.0
 

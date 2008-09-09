@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.676 2008/09/09 05:23:53 cph Exp $
+$Id: runtime.pkg,v 14.677 2008/09/09 06:36:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -4800,6 +4800,7 @@ USA.
 	  call-with-decode-binhex40-output-port
 	  call-with-decode-quoted-printable-output-port
 	  call-with-decode-uue-output-port
+	  condition-type:decode-base64
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update
