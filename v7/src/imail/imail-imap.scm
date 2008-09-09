@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.233 2008/09/08 03:55:18 riastradh Exp $
+$Id: imail-imap.scm,v 1.234 2008/09/09 06:13:43 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1308,7 +1308,7 @@ USA.
 			 (lambda (body-part)
 			   (fetch-message-body-part-to-cache
 			    message
-			    (imap-mime-body-section-text body-part))))))
+			    (imap-mime-body-section body-part))))))
 		 (else
 		  (fetch-message-body-part-to-cache message '(TEXT))))))))))
 
@@ -1406,7 +1406,7 @@ USA.
 	    (string->lines
 	     (fetch-message-body-part
 	      (imap-mime-body-message body)
-	      `(,@(imap-mime-body-section body) MIME))))))
+	      (imap-mime-body-section/mime-header body))))))
       (store value)
       value))
   (define-method mime-body-header-fields ((body <imap-mime-body>))
@@ -1456,31 +1456,34 @@ USA.
 (define-method write-mime-body ((body <imap-mime-body>) port)
   (write-imap-message-section
    (imap-mime-body-message body)
-   (imap-mime-body-section-text body)
+   (imap-mime-body-section body)
    ;++ Kludge.  The IMAP includes the length in octets only for
    ;++ one-part bodies.
    (and (mime-body-one-part? body)
 	(mime-body-one-part-n-octets body))
    port))
 
-(define (imap-mime-body-section-text body)
-  `(,@(imap-mime-body-section body)
-    ,@(if (let ((enclosure (mime-body-enclosure body)))
-	    (or (not enclosure)
-		(mime-body-message? enclosure)))
-	  '(TEXT)
-	  '())))
-
 (define-method mime-body-message-header-fields ((body <mime-body-message>))
   (lines->header-fields
    (string->lines
     (call-with-output-string
       (lambda (port)
-	(write-imap-message-section (imap-mime-body-message body)
-				    `(,@(imap-mime-body-section body) HEADER)
-				    #f
-				    port))))))
+	(write-imap-message-section
+	 (imap-mime-body-message body)
+	 (imap-mime-body-section/message-header body)
+	 #f
+	 port))))))
 
+(define (imap-mime-body-section/mime-header body)
+  (let ((section (imap-mime-body-section body)))
+    (if (pair? section)
+	`(,@section MIME)
+	'(HEADER))))
+
+(define (imap-mime-body-section/message-header body)
+  (let ((section (imap-mime-body-section body)))
+    `(,@section HEADER)))
+
 (define (write-imap-message-section message section length port)
   (cond ((search-imap-message-body-parts message section)
 	 => (lambda (entry)
@@ -1531,11 +1534,25 @@ USA.
   (cond ((not (and (pair? body) (list? body)))
 	 (parse-mime-body:lose body message section))
 	((string? (car body))
-	 (parse-mime-body:one-part body message section))
+	 ;; The IMAP's indexing scheme treats every message body as
+	 ;; multipart, so a `one-part' body is treated as part 1 of a
+	 ;; multipart body.
+	 (parse-mime-body:one-part body message `(,@section 1)))
 	((pair? (car body))
 	 (parse-mime-body:multi-part body message section))
 	(else
 	 (parse-mime-body:lose body message section))))
+
+(define (parse-mime-body-part body message section index)
+  (let ((section `(,@section ,index)))
+    (cond ((not (and (pair? body) (list? body)))
+	   (parse-mime-body:lose body message section))
+	  ((string? (car body))
+	   (parse-mime-body:one-part body message section))
+	  ((pair? (car body))
+	   (parse-mime-body:multi-part body message section))
+	  (else
+	   (parse-mime-body:lose body message section)))))
 
 (define (parse-mime-body:multi-part body message section)
   (let loop ((tail body) (index 0))
@@ -1543,10 +1560,11 @@ USA.
 	(parse-mime-body:lose body))
     (if (string? (car tail))
 	(let ((enclosed
-	       (map (lambda (body index)
-		      (parse-mime-body body message `(,@section ,index)))
-		    (sublist body 0 index)
-		    (iota index 1)))
+	       (map
+		(lambda (body index)
+		  (parse-mime-body-part body message section index))
+		(sublist body 0 index)
+		(iota index 1)))
 	      (extensions
 	       (parse-mime-body:extensions (cdr tail))))
 	  (let ((enclosure
