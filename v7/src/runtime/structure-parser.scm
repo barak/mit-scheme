@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.3 2008/09/08 18:19:54 cph Exp $
+$Id: structure-parser.scm,v 14.4 2008/09/09 04:43:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -660,6 +660,9 @@ USA.
 	(if (not (null? items))
 	    (error:not-list items 'LIST->STRUCTURE-PARSER-VALUES))
 	'())))
+
+(define (structure-parser-values . items)
+  (list->structure-parser-values items))
 
 (define (map-structure-parser-values procedure vals)
   (if (null? vals)
