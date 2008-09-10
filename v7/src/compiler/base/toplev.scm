@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.77 2008/01/30 20:01:43 cph Exp $
+$Id: toplev.scm,v 4.78 2008/09/10 15:12:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -152,13 +152,17 @@ USA.
 		 (lambda (lap-output-port)
 		   (fluid-let ((*debugging-key*
 				(random-byte-vector 32)))
-		     (compile-scode/internal
-		      scode
-		      (pathname-new-type
-		       output-pathname
-		       (compiler:compiled-inf-pathname-type))
-		      rtl-output-port
-		      lap-output-port)))))))))))
+		     (compile-scode/file/hook
+		      input-pathname
+		      output-pathname
+		      (lambda ()
+			(compile-scode/internal
+			 scode
+			 (pathname-new-type
+			  output-pathname
+			  (compiler:compiled-inf-pathname-type))
+			 rtl-output-port
+			 lap-output-port)))))))))))))
   unspecific)
 
 (define *debugging-key*)
@@ -252,7 +256,7 @@ USA.
 (define (compile-scode/no-file scode keep-debugging-info?)
   (fluid-let ((compiler:noisy? #f)
 	      (*info-output-filename* keep-debugging-info?))
-    (compile-scode/internal/hook
+    (compile-scode/no-file/hook
      (lambda ()
        (compile-scode/internal scode keep-debugging-info?)))))
 
@@ -319,15 +323,17 @@ USA.
 	   (fluid-let ((*recursive-compilation-number* my-number)
 		       (compiler:package-optimization-level 'NONE)
 		       (*procedure-result?* procedure-result?))
-	     (compile-scode/internal
-	      scode
-	      (and *info-output-filename*
-		   (if (eq? *info-output-filename* 'KEEP)
-		       'KEEP
-		       'RECURSIVE))
-	      *rtl-output-port*
-	      *lap-output-port*
-	      bind-compiler-variables)))))
+	     (compile-scode/recursive/hook
+	      (lambda ()
+		(compile-scode/internal
+		 scode
+		 (and *info-output-filename*
+		      (if (eq? *info-output-filename* 'KEEP)
+			  'KEEP
+			  'RECURSIVE))
+		 *rtl-output-port*
+		 *lap-output-port*
+		 bind-compiler-variables)))))))
     (if procedure-result?
 	(let ((do-it
 	       (lambda ()

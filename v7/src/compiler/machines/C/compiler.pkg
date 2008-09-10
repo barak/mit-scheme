@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compiler.pkg,v 1.30 2008/01/30 20:01:45 cph Exp $
+$Id: compiler.pkg,v 1.31 2008/09/10 15:12:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -262,16 +262,17 @@ USA.
 	  *rtl-procedures*)
   (export (compiler lap-syntaxer)
 	  *block-label*
+	  default-file-handle
 	  *disambiguator*
 	  *external-labels*
-	  *shared-namestring*
-	  *special-labels*
 	  label->object
 	  *invoke-interface*
+	  *purification-root-object*
+	  *shared-namestring*
+	  *special-labels*
 	  *used-invoke-primitive*
 	  *use-jump-execute-chache*
-	  *use-pop-return*
-	  *purification-root-object*)
+	  *use-pop-return*)
   (export (compiler debug)
 	  *root-expression*
 	  *rtl-procedures*

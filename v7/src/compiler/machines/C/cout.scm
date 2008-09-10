@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.45 2008/08/28 19:28:29 riastradh Exp $
+$Id: cout.scm,v 1.46 2008/09/10 15:12:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -103,14 +103,6 @@ USA.
   (c:group (c:data-section (declare-object handle proc))
 	   (c:line)
 	   (declare-dynamic-object-initialization handle)))
-
-(define (default-file-handle)
-  (file-namestring
-   (pathname-new-type *compiler-output-pathname*
-		      (let ((t (pathname-type *compiler-input-pathname*)))
-			(if (equal? t "bin")
-			    (c-output-extension)
-			    t)))))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>

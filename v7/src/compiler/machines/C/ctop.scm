@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.32 2008/01/30 20:01:46 cph Exp $
+$Id: ctop.scm,v 1.33 2008/09/10 15:12:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,73 +36,83 @@ USA.
 (define compiler:invoke-c-compiler? #t)
 (define compiler:invoke-verbose? #t)
 
-(define (compiler-file-output object pathname)
-  (let ((pair (vector-ref object 1)))
+(define (compiler-file-output compiler-output pathname)
+  (let ((code (cdr (vector-ref compiler-output 1))))
     (call-with-output-file pathname
       (lambda (port)
-	(c:write-group (cdr pair) port)))
-    (if compiler:invoke-c-compiler? (c-compile pathname))))
+	(c:write-group code port)))
+    (if compiler:invoke-c-compiler?
+	(c-compile pathname
+		   (pathname-new-type pathname "o")
+		   (pathname-new-type pathname (c-output-extension))))))
 
-(define (compile-data-from-file obj pathname)
-  (let ((res (stringify-data obj (merge-pathnames pathname))))
+(define (compile-data-from-file object pathname)
+  (let ((result (stringify-data object (merge-pathnames pathname))))
     ;; Make output palatable to compiler-file-output
-    (vector #f (cons #f res))))
+    (vector #f (cons #f result))))
 
 (define (compiler-output->procedure compiler-output environment)
   (finish-c-compilation
    compiler-output
-   (lambda (shared-library-pathname)
-     (load shared-library-pathname environment))))
+   (lambda (output-pathname)
+     (load output-pathname environment))))
 
 (define (compiler-output->compiled-expression compiler-output)
   (finish-c-compilation compiler-output fasload-object-file))
 
-(define (compile-scode/internal/hook action)
-  (if (not (eq? *info-output-filename* 'KEEP))
-      (action)
-      (fluid-let ((*info-output-filename*
-		   (pathname-new-type (compiler-temporary-file-pathname)
-				      "inf")))
-	(action))))
+(define (compile-scode/file/hook input-pathname output-pathname action)
+  (fluid-let ((*compiler-file-handle*
+	       (file-namestring
+		(pathname-new-type output-pathname
+				   (let ((t (pathname-type input-pathname)))
+				     (if (equal? t "bin")
+					 (c-output-extension)
+					 t))))))
+    (action)))
+
+(define (compile-scode/no-file/hook action)
+  (fluid-let ((*compiler-file-handle*
+	       (string-append
+		"(anonymous scode "
+		(vector-8b->hexadecimal (random-byte-vector 8))
+		")")))
+    (action)))
+
+(define (compile-scode/recursive/hook action)
+  (compile-scode/no-file/hook action))
 
 (define (optimize-linear-lap lap-program)
   lap-program)
 
-(define (compiler-temporary-file-pathname)
-  (let ((pathname (temporary-file-pathname)))
-    (if (file-exists? pathname)
-	(delete-file pathname))
-    (if (pathname-type pathname)
-	(pathname-new-name
-	 (pathname-new-type pathname #f)
-	 (string-append (pathname-name pathname)
-			"_"
-			(pathname-type pathname)))
-	pathname)))
+(define *compiler-file-handle*)
+
+(define (default-file-handle)
+  *compiler-file-handle*)
 
 (define (finish-c-compilation compiler-output action)
-  (let* ((file (compiler-temporary-file-pathname))
-	 (filec (pathname-new-type file "c")))
-    (dynamic-wind
-     (lambda () #f)
-     (lambda ()
-       (fluid-let ((compiler:invoke-c-compiler? #t))
-	 (compiler-file-output compiler-output filec)
-	 (action (pathname-new-type file (c-output-extension)))))
-     (lambda ()
-       (for-each (lambda (type)
-		   (let ((f (pathname-new-type file type)))
-		     (if (file-exists? f)
-			 (delete-file f))))
-		 (list "c" "o"
-		       ;; Can't delete this because it is mapped...
-		       ;; (c-output-extension)
-		       ))))))
+  (let ((typifier
+	 (lambda (type)
+	   (lambda (pathname) (pathname-new-type pathname type)))))
+    (let ((c-pathname (temporary-file-pathname #f (typifier "c")))
+	  (o-pathname (temporary-file-pathname #f (typifier "o")))
+	  (output-pathname
+	   (temporary-file-pathname #f (typifier (c-output-extension)))))
+      (dynamic-wind
+       (lambda () unspecific)
+       (lambda ()
+	 (fluid-let ((compiler:invoke-c-compiler? #f))
+	   (compiler-file-output compiler-output c-pathname))
+	 (c-compile c-pathname o-pathname output-pathname)
+	 (action output-pathname))
+       (lambda ()
+	 (deallocate-temporary-file c-pathname)
+	 (deallocate-temporary-file o-pathname)
+	 (deallocate-temporary-file output-pathname))))))
 
-(define (c-compile pathname)
+(define (c-compile c-pathname o-pathname output-pathname)
   (run-compiler (system-library-pathname "liarc-cc")
-		(pathname-new-type pathname "o")
-		pathname
+		o-pathname
+		c-pathname
 		"-DENABLE_LIARC_FILE_INIT"
 		(string-append
 		 "-I"
@@ -111,8 +121,8 @@ USA.
 		   (or (system-library-directory-pathname "include")
 		       (error "Unable to find C include directory."))))))
   (run-compiler (system-library-pathname "liarc-ld")
-		(pathname-new-type pathname (c-output-extension))
-		(pathname-new-type pathname "o")))
+		output-pathname
+		o-pathname))
 
 (define (run-compiler program . arguments)
   (let ((port (open-output-string)))
@@ -310,9 +320,7 @@ USA.
 		   (cons *info-output-filename*
 			 *recursive-compilation-number*))
 		  ((eq? pathname 'KEEP)
-		   (if (zero? *recursive-compilation-number*)
-		       "foo.bar"
-		       (cons "foo.bar" *recursive-compilation-number*)))
+		   #f)
 		  (else
 		   pathname))))
        (lambda (code-name data-name ntags labels code proxy)
@@ -347,7 +355,7 @@ USA.
 					       *C-code-name* ; tag
 					       *C-code-name* ; c-proc
 					       *C-data-name* ; d-proc
-					       *code* 	     ; c-code
+					       *code* ; c-code
 					       index
 					       *ntags*
 					       *proxy*))
@@ -386,7 +394,8 @@ USA.
 	      labels
 	      (last-reference *external-labels*))))
 	(cond ((eq? pathname 'KEEP)	; for dynamic execution
-	       info)
+	       ;; (warn "C back end cannot keep debugging info in memory")
+	       unspecific)
 	      ((eq? pathname 'RECURSIVE) ; recursive compilation
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
@@ -403,8 +412,7 @@ USA.
 		       (cons info
 			     (map (lambda (other) (vector-ref other 1))
 				  others)))))
-		pathname)
-	       *info-output-filename*))))))
+		pathname)))))))
 
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
