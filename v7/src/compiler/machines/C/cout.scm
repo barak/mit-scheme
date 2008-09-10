@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.46 2008/09/10 15:12:07 riastradh Exp $
+$Id: cout.scm,v 1.47 2008/09/10 19:32:48 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -53,12 +53,12 @@ USA.
 
 (define *subblocks*)			;referenced by stackify
 
-(define (stringify-data object output-pathname)
+(define (stringify-data object)
   (if (not *use-stackify?*)
-      (stringify-data/traditional object output-pathname)
-      (stringify-data/stackify object output-pathname)))
+      (stringify-data/traditional object)
+      (stringify-data/stackify object)))
 
-(define (stringify-data/stackify object output-pathname)
+(define (stringify-data/stackify object)
   (let* ((str (stackify 0 object))
 	 (handle (default-file-handle))
 	 (data-name
