@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.34 2008/09/10 19:32:48 riastradh Exp $
+$Id: ctop.scm,v 1.35 2008/09/11 01:15:28 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -47,11 +47,12 @@ USA.
 		   (pathname-new-type pathname (c-output-extension))))))
 
 (define (compile-data-from-file object pathname)
+  pathname				;ignore
   (let ((result
-         (fluid-let ((*compiler-file-handle*
-                      (file-namestring
-                       (pathname-new-type pathname (c-output-extension)))))
-           (stringify-data object))))
+	 (compile-scode/file/hook *compiler-input-pathname*
+				  *compiler-output-pathname*
+	   (lambda ()
+	     (stringify-data object)))))
     ;; Make output palatable to compiler-file-output
     (vector #f (cons #f result))))
 
