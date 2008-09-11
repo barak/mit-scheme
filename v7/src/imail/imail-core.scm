@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.175 2008/09/08 03:55:17 riastradh Exp $
+$Id: imail-core.scm,v 1.176 2008/09/11 17:49:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -818,16 +818,11 @@ USA.
 			   (%message-order-key message order index)
 			   message)))))))
 	     ((EXPUNGE)
-	      (let ((tree (folder-order-tree order)))
-		(if tree
-		    (let ((message (car arguments))
-			  (%index (cadr arguments))
-			  (index (caddr arguments))
-			  (key (cadddr arguments)))
-		      message index	;ignore
-		      (let ((cache (folder-order-cache order)))
-			(if cache (hash-table/remove! cache %index)))
-		      (wt-tree/delete! tree key)))))))))))
+	      ;; Expunging a message may change the indices of
+	      ;; existing messages, which invalidates our data
+	      ;; structures, which were designed with UIDs, not
+	      ;; sequence numbers, in mind.
+	      (reset-folder-order! order))))))))
 
 ;;;; Message flags
 
