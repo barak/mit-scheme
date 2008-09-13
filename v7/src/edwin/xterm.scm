@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.83 2008/02/14 03:34:06 cph Exp $
+$Id: xterm.scm,v 1.84 2008/09/13 09:31:36 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,7 +26,7 @@ USA.
 |#
 
 ;;;; X Terminal
-;;; Package: (edwin x-screen)
+;;; Package: (edwin screen x-screen)
 
 (declare (usual-integrations))
 
