@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.33 2008/09/09 18:30:21 riastradh Exp $
+$Id: usrint.scm,v 1.34 2008/09/13 09:50:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,6 +42,7 @@ USA.
       (if operation
 	  (operation port environment prompt level)
 	  (begin
+	    (guarantee-i/o-port port 'PROMPT-FOR-COMMAND-EXPRESSION)
 	    (write-command-prompt port prompt level)
 	    (port/with-input-terminal-mode port 'COOKED
 	      (lambda ()
@@ -51,21 +52,27 @@ USA.
   (%prompt-for-expression
    (optional-port port 'PROMPT-FOR-EXPRESSION)
    (optional-environment environment 'PROMPT-FOR-EXPRESSION)
-   prompt))
+   prompt
+   'PROMPT-FOR-EXPRESSION))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
   (let ((environment
 	 (optional-environment environment 'PROMPT-FOR-EVALUATED-EXPRESSION))
 	(port (optional-port port 'PROMPT-FOR-EVALUATED-EXPRESSION)))
-    (repl-eval (%prompt-for-expression port environment prompt)
-	       environment)))
+    (repl-eval
+     (%prompt-for-expression port
+			     environment
+			     prompt
+			     'PROMPT-FOR-EVALUATED-EXPRESSION)
+     environment)))
 
-(define (%prompt-for-expression port environment prompt)
+(define (%prompt-for-expression port environment prompt caller)
   (let ((prompt (canonicalize-prompt prompt ": ")))
     (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
       (if operation
 	  (operation port environment prompt)
 	  (begin
+	    (guarantee-i/o-port port caller)
 	    (port/with-output-terminal-mode port 'COOKED
 	      (lambda ()
 		(fresh-line port)
@@ -80,7 +87,7 @@ USA.
   (if (default-object? port)
       (interaction-i/o-port)
       (begin
-	(guarantee-i/o-port port caller)
+	(guarantee-port port caller)
 	port)))
 
 (define (optional-environment environment caller)
