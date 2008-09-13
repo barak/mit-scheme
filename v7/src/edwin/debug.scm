@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: debug.scm,v 1.73 2008/01/30 20:02:00 cph Exp $
+$Id: debug.scm,v 1.74 2008/09/13 09:48:15 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -485,7 +485,8 @@ USA.
    `((WRITE-CHAR
       ,(lambda (port char)
 	 (guarantee-8-bit-char char)
-	 (region-insert-char! (port/state port) char)))
+	 (region-insert-char! (port/state port) char)
+	 1))
      (PROMPT-FOR-CONFIRMATION
       ,(lambda (port prompt) port (prompt-for-confirmation? prompt)))
      (PROMPT-FOR-EXPRESSION
