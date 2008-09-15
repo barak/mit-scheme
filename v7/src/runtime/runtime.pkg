@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.680 2008/09/15 05:18:41 cph Exp $
+$Id: runtime.pkg,v 14.681 2008/09/15 07:07:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1046,6 +1046,7 @@ USA.
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
+	  char-ctl?
 	  char-graphic?
 	  char-lower-case?
 	  char-numeric?
@@ -1081,6 +1082,7 @@ USA.
 	  char-standard?
 	  char-upper-case?
 	  char-whitespace?
+	  char-wsp?
 	  chars->char-set
 	  guarantee-char-set
 	  predicate->char-set

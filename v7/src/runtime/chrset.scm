@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: chrset.scm,v 14.24 2008/07/08 06:14:26 cph Exp $
+$Id: chrset.scm,v 14.25 2008/09/15 07:07:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -271,3 +271,11 @@ USA.
 
 (define-integrable (%char-standard? char)
   (%char-set-member? char-set:standard char))
+
+(define (char-ctl? char)
+  (guarantee-char char 'CHAR-CTL?)
+  (%char-set-member? char-set:ctl char))
+
+(define (char-wsp? char)
+  (guarantee-char char 'CHAR-WSP?)
+  (%char-set-member? char-set:wsp char))

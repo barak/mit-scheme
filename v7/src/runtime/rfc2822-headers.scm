@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rfc2822-headers.scm,v 14.1 2008/08/24 07:20:09 cph Exp $
+$Id: rfc2822-headers.scm,v 14.2 2008/09/15 07:07:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -191,9 +191,6 @@ USA.
 	       (substring string start* end*))))
       (guarantee-header-value string)
       string)))
-
-(define (char-wsp? char)
-  (char-set-member? char-set:wsp char))
 
 ;;;; Quotation
 
