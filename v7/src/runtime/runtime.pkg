@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.678 2008/09/09 16:28:19 cph Exp $
+$Id: runtime.pkg,v 14.679 2008/09/15 05:15:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5183,45 +5183,75 @@ USA.
 	  write-rfc2822-headers)
   (initialization (initialize-package!)))
 
-(define-package (runtime http-i/o)
-  (files "httpio")
+(define-package (runtime http-syntax)
+  (files "http-syntax")
   (parent (runtime))
   (export ()
-	  all-http-headers
+	  <http-header>
 	  char-set:http-text
 	  char-set:http-token
-	  error:not-http-message
+	  convert-http-headers
+	  default-http-user-agent
 	  error:not-http-header
-	  error:not-http-request
-	  error:not-http-request-uri
-	  error:not-http-response
 	  error:not-http-status
 	  error:not-http-text
 	  error:not-http-token
 	  error:not-http-version
-	  error:not-simple-http-request
-	  error:not-simple-http-request-uri
-	  error:not-simple-http-response
-	  first-http-header
-	  guarantee-http-message
 	  guarantee-http-header
-	  guarantee-http-request
-	  guarantee-http-request-uri
-	  guarantee-http-response
+	  guarantee-http-headers
 	  guarantee-http-status
 	  guarantee-http-text
 	  guarantee-http-token
 	  guarantee-http-version
+	  http-header
+	  http-header-name
+	  http-header-value
+	  http-header?
+	  http-status?
+	  http-text?
+	  http-token?
+	  http-version-major
+	  http-version-minor
+	  http-version:1.0
+	  http-version:1.1
+	  http-version<?
+	  http-version=?
+	  http-version?
+	  make-http-header
+	  make-http-version
+	  parse-http-status
+	  parse-http-token
+	  parse-http-version
+	  read-http-headers
+	  write-http-status
+	  write-http-token
+	  write-http-version
+	  write-http-headers)
+  (initialization (initialize-package!)))
+
+(define-package (runtime http-i/o)
+  (files "httpio")
+  (parent (runtime))
+  (export ()
+	  error:not-http-message
+	  error:not-http-request
+	  error:not-http-request-uri
+	  error:not-http-response
+	  error:not-simple-http-request
+	  error:not-simple-http-request-uri
+	  error:not-simple-http-response
+	  guarantee-http-message
+	  guarantee-http-request
+	  guarantee-http-request-uri
+	  guarantee-http-response
 	  guarantee-simple-http-request
 	  guarantee-simple-http-request-uri
 	  guarantee-simple-http-response
-	  http-content-length
-	  http-content-type
 	  http-message-body
 	  http-message-body-port
+	  http-message-header
 	  http-message-headers
 	  http-message?
-	  http-header?
 	  http-request-body
 	  http-request-headers
 	  http-request-method
@@ -5235,23 +5265,10 @@ USA.
 	  http-response-version
 	  http-response?
 	  http-status-description
-	  http-status?
-	  http-text?
-	  http-token?
-	  http-request-uri?
-	  http-version-major
-	  http-version-minor
-	  http-version:1.0
-	  http-version:1.1
-	  http-version<?
-	  http-version=?
-	  http-version?
 	  make-http-request
 	  make-http-response
-	  make-http-version
 	  make-simple-http-request
 	  make-simple-http-response
-	  parser:http-content-type
 	  read-http-request
 	  read-http-response
 	  read-simple-http-request

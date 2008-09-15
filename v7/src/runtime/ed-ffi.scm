@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.44 2008/09/07 04:33:12 cph Exp $
+$Id: ed-ffi.scm,v 1.45 2008/09/15 05:15:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -83,6 +83,7 @@ USA.
     ("histry"	(runtime history))
     ("html-form-codec" (runtime html-form-codec))
     ("http-client" (runtime http-client))
+    ("http-syntax" (runtime http-syntax))
     ("httpio"	(runtime http-i/o))
     ("illdef"	(runtime illegal-definitions))
     ("infstr"	(runtime compiler-info))

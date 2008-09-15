@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.6 2008/08/26 04:21:54 cph Exp $
+$Id: http-client.scm,v 14.7 2008/09/15 05:15:08 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -53,21 +53,20 @@ USA.
 					(uri-query uri)
 					(uri-fragment uri))
 			      http-version:1.0
-			      (cons (make-rfc2822-header
-				     'host
-				     (host-string authority))
-				    (if (first-rfc2822-header 'user-agent
-							      headers)
-					headers
-					(cons (make-rfc2822-header
-					       'user-agent
-					       default-user-agent)
-					      headers)))
+			      (add-default-headers headers authority)
 			      body)))
       (write-http-request request port)
       (let ((response (read-http-response request port)))
 	(close-port port)
 	response))))
+
+(define (add-default-headers headers authority)
+  (let ((headers (convert-http-headers headers)))
+    (cons (make-http-header 'HOST (host-string authority))
+	  (if (http-header 'USER-AGENT headers #f)
+	      headers
+	      (cons (make-http-header 'USER-AGENT default-http-user-agent)
+		    headers)))))
 
 (define (host-string authority)
   (let ((host (uri-authority-host authority))
@@ -75,23 +74,3 @@ USA.
     (if port
 	(string-append host ":" (number->string port))
 	host)))
-
-(define default-user-agent)
-
-(define (initialize-package!)
-  (set! default-user-agent
-	(call-with-output-string
-	  (lambda (output)
-	    (write-string "MIT-GNU-Scheme/" output)
-	    (let ((input
-		   (open-input-string
-		    (get-subsystem-version-string "release"))))
-	      (let loop ()
-		(let ((char (read-char input)))
-		  (if (not (eof-object? char))
-		      (begin
-			(if (char-set-member? char-set:http-token char)
-			    (write-char char output)
-			    (write-char #\_ output))
-			(loop)))))))))
-  unspecific)

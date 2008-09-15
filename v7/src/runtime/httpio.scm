@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.6 2008/08/27 04:58:09 cph Exp $
+$Id: httpio.scm,v 14.7 2008/09/15 05:15:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -72,41 +72,22 @@ USA.
     (%make-http-response version status reason headers body)))
 
 (define (guarantee-headers&body headers body caller)
-  (let ((headers (convert-http-headers headers caller)))
-    (if body
-	(begin
-	  (guarantee-string body caller)
-	  (let ((n (%get-content-length headers))
-		(m (vector-8b-length body)))
-	    (if n
-		(begin
-		  (if (not (= n m))
-		      (error:bad-range-argument body caller))
-		  (values headers body))
-		(values (cons (make-rfc2822-header 'CONTENT-LENGTH
-						   (number->string m))
-			      headers)
-			body))))
-	(values headers ""))))
-
-(define (convert-http-headers headers caller)
-  (guarantee-list headers caller)
-  (map (lambda (header)
-	 (cond ((http-header? header)
-		header)
-	       ((and (pair? header)
-		     (http-token? (car header))
-		     (http-text? (cdr header)))
-		(make-rfc2822-header (car header) (cdr header)))
-	       ((and (pair? header)
-		     (http-token? (car header))
-		     (pair? (cdr header))
-		     (http-text? (cadr header))
-		     (null? (cddr header)))
-		(make-rfc2822-header (car header) (cadr header)))
-	       (else
-		(error:not-http-header header caller))))
-       headers))
+  (guarantee-http-headers headers caller)
+  (if body
+      (begin
+	(guarantee-string body caller)
+	(let ((n (%get-content-length headers))
+	      (m (vector-8b-length body)))
+	  (if n
+	      (begin
+		(if (not (= n m))
+		    (error:bad-range-argument body caller))
+		(values headers body))
+	      (values (cons (make-http-header 'CONTENT-LENGTH
+					      (number->string m))
+			    headers)
+		      body))))
+      (values headers "")))
 
 (define (simple-http-request? object)
   (and (http-request? object)
@@ -144,13 +125,6 @@ USA.
 	((http-response? message) (http-response-body message))
 	(else (error:not-http-message message 'HTTP-MESSAGE-BODY))))
 
-(define (http-token? object)
-  (and (interned-symbol? object)
-       (not (eq? object '||))
-       (string-in-char-set? (symbol-name object) char-set:http-token)))
-
-(define-guarantee http-token "HTTP token")
-
 (define (http-request-uri? object)
   (or (simple-http-request-uri? object)
       (absolute-uri? object)
@@ -168,63 +142,10 @@ USA.
 
 (define-guarantee simple-http-request-uri "simple HTTP URI")
 
-(define (http-version? object)
-  (and (pair? object)
-       (exact-nonnegative-integer? (car object))
-       (exact-nonnegative-integer? (cdr object))))
-
-(define-guarantee http-version "HTTP version")
-
-(define (make-http-version major minor)
-  (guarantee-exact-nonnegative-integer major 'MAKE-HTTP-VERSION)
-  (guarantee-exact-nonnegative-integer minor 'MAKE-HTTP-VERSION)
-  (cons major minor))
-
-(define (http-version-major v)
-  (guarantee-http-version v 'HTTP-VERSION-MAJOR)
-  (car v))
-
-(define (http-version-minor v)
-  (guarantee-http-version v 'HTTP-VERSION-MINOR)
-  (cdr v))
-
-(define (http-version=? v1 v2)
-  (guarantee-http-version v1 'HTTP-VERSION=?)
-  (guarantee-http-version v2 'HTTP-VERSION=?)
-  (and (= (car v1) (car v2))
-       (= (cdr v1) (cdr v2))))
-
-(define (http-version<? v1 v2)
-  (guarantee-http-version v1 'HTTP-VERSION<?)
-  (guarantee-http-version v2 'HTTP-VERSION<?)
-  (if (< (car v1) (car v2))
-      #t
-      (and (= (car v1) (car v2))
-	   (< (cdr v1) (cdr v2)))))
-
-(define (http-status? object)
-  (and (exact-nonnegative-integer? object)
-       (< object 1000)))
-
-(define-guarantee http-status "HTTP status code")
-
-(define (http-header? object)
-  (and (rfc2822-header? object)
-       (http-token? (rfc2822-header-name object))
-       (http-text? (rfc2822-header-value object))))
-
-(define-guarantee http-header "HTTP header field")
-
-(define (http-text? object)
-  (and (string? object)
-       (string-in-char-set? object char-set:http-text)))
-
-(define-guarantee http-text "HTTP text")
-
 ;;;; Output
 
 (define (%text-mode port)
-  (port/set-coding port 'US-ASCII)
+  (port/set-coding port 'ISO-8859-1)
   (port/set-line-ending port 'CRLF))
 
 (define (%binary-mode port)
@@ -233,15 +154,15 @@ USA.
 
 (define (write-http-request request port)
   (%text-mode port)
-  (write-token (http-request-method request) port)
+  (write-http-token (http-request-method request) port)
   (write-string " " port)
   (write-uri (http-request-uri request) port)
   (if (http-request-version request)
       (begin
 	(write-string " " port)
-	(write-version (http-request-version request) port)
+	(write-http-version (http-request-version request) port)
 	(newline port)
-	(write-rfc2822-headers (http-request-headers request) port)
+	(write-http-headers (http-request-headers request) port)
 	(%binary-mode port)
 	(write-string (http-request-body request) port))
       (begin
@@ -252,25 +173,16 @@ USA.
   (if (http-response-version response)
       (begin
 	(%text-mode port)
-	(write-version (http-response-version response) port)
+	(write-http-version (http-response-version response) port)
 	(write-string " " port)
 	(write (http-response-status response) port)
 	(write-string " " port)
 	(write-string (http-response-reason response) port)
 	(newline port)
-	(write-rfc2822-headers (http-response-headers response) port)))
+	(write-http-headers (http-response-headers response) port)))
   (%binary-mode port)
   (write-string (http-response-body response) port)
   (flush-output port))
-
-(define (write-token token port)
-  (write-string (string-upcase (symbol->string token)) port))
-
-(define (write-version version port)
-  (write-string "HTTP/" port)
-  (write (car version) port)
-  (write-string "." port)
-  (write (cdr version) port))
 
 ;;;; Input
 
@@ -292,7 +204,7 @@ USA.
 	line
 	(receive (method uri version)
 	    (parse-line parse-request-line line "HTTP request line")
-	  (let ((headers (read-rfc2822-headers port)))
+	  (let ((headers (read-http-headers port)))
 	    (make-http-request method uri version headers
 			       (or (%read-delimited-body headers port)
 				   (%no-read-body))))))))
@@ -304,7 +216,7 @@ USA.
 	#f
 	(receive (version status reason)
 	    (parse-line parse-response-line line "HTTP response line")
-	  (let ((headers (read-rfc2822-headers port)))
+	  (let ((headers (read-http-headers port)))
 	    (make-http-response version status reason headers
 				(if (or (non-body-status? status)
 					(eq? (http-request-method request)
@@ -314,65 +226,6 @@ USA.
 					(%read-terminal-body headers port)
 					(%no-read-body)))))))))
 
-(define (parse-line parser line description)
-  (let ((v (*parse-string parser line)))
-    (if (not v)
-	(error (string-append "Malformed " description ":") line))
-    (if (fix:= (vector-length v) 1)
-	(vector-ref v 0)
-	(apply values (vector->list v)))))
-
-(define parse-simple-request
-  (*parser
-   (seq "GET"
-	(noise match-wsp)
-	parse-uri-path-absolute)))
-
-(define parse-request-line
-  (*parser
-   (seq (map string->symbol
-	     parse-http-token)
-	(noise match-wsp)
-	(alt (match "*")
-	     parse-absolute-uri
-	     parse-uri-path-absolute
-	     parse-uri-authority)
-	(noise match-wsp)
-	parse-version)))
-
-(define parse-http-token
-  (*parser (match (+ (char-set char-set:http-token)))))
-
-(define parse-response-line
-  (*parser
-   (seq parse-version
-	(noise match-wsp)
-	parse-status-code
-	(noise match-wsp)
-	(match (* (char-set char-set:http-text))))))
-
-(define parse-version
-  (*parser
-   (encapsulate (lambda (v)
-		  (make-http-version (vector-ref v 0)
-				     (vector-ref v 1)))
-     (seq "HTTP/"
-	  (map string->number
-	       (match (+ (char-set char-set:numeric))))
-	  "."
-	  (map string->number
-	       (match (+ (char-set char-set:numeric))))))))
-
-(define parse-status-code
-  (*parser
-   (map string->number
-	(match (seq (char-set char-set:numeric)
-		    (char-set char-set:numeric)
-		    (char-set char-set:numeric))))))
-
-(define match-wsp
-  (*matcher (+ (char-set char-set:wsp))))
-
 (define (%read-all port)
   (%binary-mode port)
   (call-with-output-octets
@@ -401,50 +254,52 @@ USA.
 			(write-substring buffer 0 m output)
 			(loop (- n m))))))))))))
 
-(define (%get-content-length headers)
-  (let ((h (first-rfc2822-header 'CONTENT-LENGTH headers)))
-    (and h
-	 (let ((s (rfc2822-header-value h)))
-	   (let ((n (string->number s)))
-	     (if (not (exact-nonnegative-integer? n))
-		 (error "Malformed content-length value:" s))
-	     n)))))
-
 (define (%read-terminal-body headers port)
-  (and (let ((h (first-rfc2822-header 'CONNECTION headers)))
+  (and (let ((h (http-header 'CONNECTION headers #f)))
 	 (and h
 	      (any (lambda (token)
 		     (string-ci=? token "close"))
-		   (burst-string (rfc2822-header-value h) char-set:wsp #t))))
+		   (burst-string (http-header-value h) char-set:wsp #t))))
        (%read-all port)))
 
 (define (%no-read-body)
   (error "Unable to determine HTTP message body length."))
 
-;;;; Syntax
+;;;; Request and response lines
 
-(define (string-in-char-set? string char-set)
-  (let ((end (string-length string)))
-    (let loop ((i 0))
-      (if (fix:< i end)
-	  (and (char-set-member? char-set (string-ref string i))
-	       (loop (fix:+ i 1)))
-	  #t))))
+(define parse-request-line
+  (*parser
+   (seq (map string->symbol
+	     (match (+ (char-set char-set:http-token))))
+	" "
+	(alt (match "*")
+	     parse-absolute-uri
+	     parse-uri-path-absolute
+	     parse-uri-authority)
+	" "
+	parse-http-version)))
 
-(define char-set:http-text)
-(define char-set:http-token)
-(define http-version:1.0)
-(define http-version:1.1)
+(define parse-response-line
+  (*parser
+   (seq parse-http-version
+	" "
+	parse-http-status
+	" "
+	(match (* (char-set char-set:http-text))))))
 
-(define (initialize-package!)
-  (set! char-set:http-text
-	(char-set-difference char-set:ascii char-set:ctls))
-  (set! char-set:http-token
-	(char-set-difference char-set:http-text
-			     (string->char-set "()<>@,;:\\\"/[]?={} \t")))
-  (set! http-version:1.0 (make-http-version 1 0))
-  (set! http-version:1.1 (make-http-version 1 1))
-  unspecific)
+(define parse-simple-request
+  (*parser
+   (seq (map string->symbol (match "GET"))
+	" "
+	parse-uri-path-absolute)))
+
+(define (parse-line parser line description)
+  (let ((v (*parse-string parser line)))
+    (if (not v)
+	(error (string-append "Malformed " description ":") line))
+    (if (fix:= (vector-length v) 1)
+	(vector-ref v 0)
+	(apply values (vector->list v)))))
 
 ;;;; Status descriptions
 
@@ -509,7 +364,7 @@ USA.
 
 (define (http-message-body-port message)
   (let ((port (open-input-octets (http-message-body message))))
-    (receive (type coding) (http-content-type message)
+    (receive (type coding) (%get-content-type message)
       (cond ((eq? (mime-type/top-level type) 'TEXT)
 	     (port/set-coding port (or coding 'TEXT))
 	     (port/set-line-ending port 'TEXT))
@@ -527,8 +382,8 @@ USA.
 	     (port/set-line-ending port 'BINARY))))
     port))
 
-(define (http-content-type message)
-  (let ((h (first-http-header 'CONTENT-TYPE message)))
+(define (%get-content-type message)
+  (let ((h (http-message-header 'CONTENT-TYPE message #f)))
     (if h
 	(let ((s (rfc2822-header-value h)))
 	  (let ((v (*parse-string parser:http-content-type s)))
@@ -543,28 +398,29 @@ USA.
 	(values (make-mime-type 'APPLICATION 'OCTET-STREAM)
 		#f))))
 
+(define (%get-content-length headers)
+  (let ((h (http-header 'CONTENT-LENGTH headers #f)))
+    (and h
+	 (let ((s (http-header-value h)))
+	   (let ((n (string->number s)))
+	     (if (not (exact-nonnegative-integer? n))
+		 (error "Malformed content-length value:" s))
+	     n)))))
+
 (define parser:http-content-type
   (let ((parse-parameter
 	 (*parser
-	  (encapsulate (lambda (v)
-			 (cons (vector-ref v 0)
-			       (vector-ref v 1)))
-		       (seq ";"
-			    (noise (* (char-set char-set:wsp)))
-			    parser:mime-token
-			    "="
-			    (alt (match matcher:mime-token)
-				 parser:rfc2822-quoted-string))))))
+	  (encapsulate* cons
+	    (seq ";"
+		 (noise (* (char-set char-set:wsp)))
+		 parser:mime-token
+		 "="
+		 (alt (match matcher:mime-token)
+		      parser:rfc2822-quoted-string))))))
     (*parser
      (seq parser:mime-type
 	  (encapsulate vector->list
 		       (* parse-parameter))))))
 
-(define (http-content-length message)
-  (%get-content-length (http-message-headers message)))
-
-(define (first-http-header name message)
-  (first-rfc2822-header name (http-message-headers message)))
-
-(define (all-http-headers name message)
-  (all-rfc2822-headers name (http-message-headers message)))
+(define (http-message-header name message error?)
+  (http-header name (http-message-headers message) error?))
