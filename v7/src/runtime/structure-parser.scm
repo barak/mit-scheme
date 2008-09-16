@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.5 2008/09/16 05:50:03 cph Exp $
+$Id: structure-parser.scm,v 14.6 2008/09/16 20:03:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -790,9 +790,10 @@ USA.
 ;;; copy expressions.
 
 (define (optimize-result expr)
-  (if enable-optimizer?
-      (peephole-optimizer (optimize-lets expr))
-      expr))
+  (fixup-lambdas
+   (if enable-optimizer?
+       (peephole-optimizer (optimize-lets expr))
+       expr)))
 
 (define enable-optimizer? #t)
 
@@ -874,6 +875,22 @@ USA.
 		       (cdr p)
 		       expr))))
 	     rewrite-lambda
+	     rewrite-loop
+	     rewrite-combination))
+
+(define (fixup-lambdas expr)
+  (walk-expr expr
+	     rewrite-constant
+	     rewrite-quote
+	     rewrite-reference
+	     (lambda (expr loop)
+	       (let ((names (cadr expr))
+		     (body (loop (caddr expr))))
+		 `(LAMBDA ,names
+		    ,@(filter (lambda (name)
+				(= (count-refs-in name body) 0))
+			      names)
+		    ,body)))
 	     rewrite-loop
 	     rewrite-combination))
 
