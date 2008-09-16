@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.57 2008/09/09 07:23:49 cph Exp $
+$Id: url.scm,v 1.58 2008/09/16 05:36:53 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -149,7 +149,7 @@ USA.
 		      (lambda (authority)
 			(list (call-with-output-string
 				(lambda (port)
-				  (write-authority authority port))))))))
+				  (write-uri-authority authority port))))))))
   (userinfo #f read-only #t)
   (host #f read-only #t)
   (port #f read-only #t))
@@ -601,7 +601,7 @@ USA.
 	(write scheme port)
 	(write-char #\: port)))
   (if authority
-      (write-authority authority port))
+      (write-uri-authority authority port))
   (if (pair? path)
       (begin
 	(if scheme
@@ -620,7 +620,7 @@ USA.
 	(write-char #\# port)
 	(write-encoded fragment char-set:uri-fragment port))))
 
-(define (write-authority authority port)
+(define (write-uri-authority authority port)
   (%write-authority (%uri-authority-userinfo authority)
 		    (%uri-authority-host authority)
 		    (%uri-authority-port authority)

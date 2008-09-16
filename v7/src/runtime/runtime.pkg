@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.681 2008/09/15 07:07:31 cph Exp $
+$Id: runtime.pkg,v 14.682 2008/09/16 05:36:49 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5158,7 +5158,8 @@ USA.
 	  url:char-set:unreserved
 	  url:encode-string
 	  write-partial-uri
-	  write-uri)
+	  write-uri
+	  write-uri-authority)
   (initialization (initialize-package!)))
 
 (define-package (runtime rfc2822-headers)
