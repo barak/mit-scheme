@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.35 2008/09/11 01:15:28 riastradh Exp $
+$Id: ctop.scm,v 1.36 2008/09/16 20:13:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -84,7 +84,7 @@ USA.
     (action)))
 
 (define (compile-scode/recursive/hook action)
-  (compile-scode/no-file/hook action))
+  (action))
 
 (define (optimize-linear-lap lap-program)
   lap-program)
@@ -96,8 +96,16 @@ USA.
 
 (define (finish-c-compilation compiler-output action)
   (let ((typifier
-	 (lambda (type)
-	   (lambda (pathname) (pathname-new-type pathname type)))))
+	 ;; Guarantee unique temporary files for liarc.  We could
+	 ;; instead change how the files are loaded.
+	 (let ((suffix (vector-8b->hexadecimal (random-byte-vector #x10))))
+	   (lambda (type)
+	     (lambda (pathname)
+	       (pathname-new-type
+		(pathname-new-name
+		 pathname
+		 (string-append (pathname-name pathname) "-" suffix))
+		type))))))
     (let ((c-pathname (temporary-file-pathname #f (typifier "c")))
 	  (o-pathname (temporary-file-pathname #f (typifier "o")))
 	  (output-pathname
