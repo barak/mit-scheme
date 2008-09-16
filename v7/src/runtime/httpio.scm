@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.7 2008/09/15 05:15:17 cph Exp $
+$Id: httpio.scm,v 14.8 2008/09/16 05:39:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -128,8 +128,7 @@ USA.
 (define (http-request-uri? object)
   (or (simple-http-request-uri? object)
       (absolute-uri? object)
-      (and (string? object)
-	   (string=? object "*"))
+      (eq? object '*)
       (uri-authority? object)))
 
 (define-guarantee http-request-uri "HTTP URI")
@@ -156,7 +155,15 @@ USA.
   (%text-mode port)
   (write-http-token (http-request-method request) port)
   (write-string " " port)
-  (write-uri (http-request-uri request) port)
+  (let ((uri (http-request-uri request)))
+    (cond ((uri? uri)
+	   (write-uri uri port))
+	  ((uri-authority? uri)
+	   (write-uri-authority uri port))
+	  ((eq? uri '*)
+	   (write-char #\* port))
+	  (else
+	   (error "Ill-formed HTTP request:" request))))
   (if (http-request-version request)
       (begin
 	(write-string " " port)
@@ -272,7 +279,7 @@ USA.
    (seq (map string->symbol
 	     (match (+ (char-set char-set:http-token))))
 	" "
-	(alt (match "*")
+	(alt (map intern (match "*"))
 	     parse-absolute-uri
 	     parse-uri-path-absolute
 	     parse-uri-authority)
