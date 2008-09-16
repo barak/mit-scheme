@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.4 2008/09/09 04:43:48 cph Exp $
+$Id: structure-parser.scm,v 14.5 2008/09/16 05:50:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -395,7 +395,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (cadr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        vals
        (make-win (null-vals) lose)))))
 
@@ -403,7 +403,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (caddr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        (make-win `(MAP-STRUCTURE-PARSER-VALUES
 		   ,(close-syntax (cadr pattern) env)
 		   ,vals)
@@ -413,7 +413,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (caddr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        (make-win (single-val
 		  (call-out (close-syntax (cadr pattern) env)
 			    vals))
@@ -423,7 +423,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (caddr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        `(IF ,(call-out (close-syntax (cadr pattern) env)
 		       vals)
 	    ,(make-win vals lose)
@@ -433,7 +433,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (caddr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        `(IF (NOT ,(call-out (close-syntax (cadr pattern) env)
 			    vals))
 	    ,(make-win vals lose)
@@ -443,7 +443,7 @@ USA.
   (lambda (pattern context env)
     ((get-context-method 'TRANSFORM-VALS context)
      (compile-pattern (caddr pattern) context env)
-     (lambda (make-win vals lose)
+     (lambda (vals lose make-win)
        (make-let `((VALS
 		    ,(call-out (close-syntax (cadr pattern) env)
 			       vals)))
