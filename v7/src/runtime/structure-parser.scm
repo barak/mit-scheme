@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: structure-parser.scm,v 14.6 2008/09/16 20:03:47 cph Exp $
+$Id: structure-parser.scm,v 14.7 2008/09/17 03:38:02 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -360,7 +360,7 @@ USA.
 			`(,loop ,location
 				,(join-vals vals vals*)
 				,lose))
-		      (make-termination location vals lose))))))))
+		      (make-loser (make-termination location vals lose)))))))))
 
 (define-pattern-compiler '(SEQ * FORM) '(LIST VECTOR)
   (lambda (pattern context env)
@@ -617,10 +617,10 @@ USA.
 ;;;; Values abstraction
 
 (define (join-vals . valss)
-  (reduce (lambda (vals1 vals2)
-	    `(CONS ,vals1 ,vals2))
-	  (null-vals)
-	  valss))
+  (reduce-right (lambda (vals1 vals2)
+		  `(CONS ,vals1 ,vals2))
+		(null-vals)
+		valss))
 
 (define (single-val val)
   `(CONS ',single-val-marker ,val))
@@ -634,52 +634,45 @@ USA.
 ;;; The next three procedures are used by object parsers at runtime.
 
 (define (structure-parser-values->list vals)
-  (if (null? vals)
-      '()
-      (let loop ((vals* vals) (tail '()))
-	(if (not (pair? vals*))
-	    (error:not-structure-parser-values vals
-					       'STRUCTURE-PARSER-VALUES->LIST))
-	(if (eq? (car vals*) single-val-marker)
-	    (cons (cdr vals*) tail)
-	    (loop (car vals*)
-		  (loop (cdr vals*)
-			tail))))))
+  (let loop ((vals* vals) (tail '()))
+    (cond ((null? vals*)
+	   tail)
+	  ((pair? vals*)
+	   (if (eq? (car vals*) single-val-marker)
+	       (cons (cdr vals*) tail)
+	       (loop (car vals*)
+		     (loop (cdr vals*)
+			   tail))))
+	  (else
+	   (error:not-structure-parser-values
+	    vals
+	    'STRUCTURE-PARSER-VALUES->LIST)))))
 
 (define (list->structure-parser-values items)
-  (if (pair? items)
-      (let loop ((items items))
-	(if (pair? (cdr items))
-	    (cons (cons single-val-marker (car items))
-		  (loop (cdr items)))
-	    (begin
-	      (if (not (null? items))
-		  (error:not-list items 'LIST->STRUCTURE-PARSER-VALUES))
-	      (cons single-val-marker (car items)))))
-      (begin
-	(if (not (null? items))
-	    (error:not-list items 'LIST->STRUCTURE-PARSER-VALUES))
-	'())))
+  (map (lambda (item)
+	 (cons single-val-marker item))
+       items))
 
 (define (structure-parser-values . items)
   (list->structure-parser-values items))
 
 (define (map-structure-parser-values procedure vals)
-  (if (null? vals)
-      vals
-      (let loop ((vals* vals))
-	(if (not (pair? vals*))
-	    (error:not-structure-parser-values vals
-					       'MAP-STRUCTURE-PARSER-VALUES))
-	(if (eq? (car vals*) single-val-marker)
-	    (cons single-val-marker
-		  (procedure (cdr vals*)))
-	    (cons (loop (car vals*))
-		  (loop (cdr vals*)))))))
+  (let loop ((vals* vals))
+    (cond ((null? vals*)
+	   vals*)
+	  ((pair? vals*)
+	   (if (eq? (car vals*) single-val-marker)
+	       (cons single-val-marker
+		     (procedure (cdr vals*)))
+	       (cons (loop (car vals*))
+		     (loop (cdr vals*)))))
+	  (else
+	   (error:not-structure-parser-values vals
+					      'MAP-STRUCTURE-PARSER-VALUES)))))
 
 (define (structure-parser-values? object)
-  (or (null? object)
-      (let loop ((object object))
+  (let loop ((object object))
+    (or (null? object)
 	(and (pair? object)
 	     (or (eq? (car object) single-val-marker)
 		 (and (loop (car object))
@@ -688,38 +681,47 @@ USA.
 (define-guarantee structure-parser-values "object-parser values")
 
 (define (structure-parser-values-length vals)
-  (if (null? vals)
-      0
-      (let loop ((vals* vals))
-	(if (not (pair? vals*))
-	    (error:not-structure-parser-values
-	     vals
-	     'STRUCTURE-PARSER-VALUES-LENGTH))
-	(if (eq? (car vals*) single-val-marker)
-	    1
-	    (+ (loop (car vals*))
-	       (loop (cdr vals*)))))))
+  (let loop ((vals* vals))
+    (cond ((null? vals*)
+	   0)
+	  ((pair? vals*)
+	   (if (eq? (car vals*) single-val-marker)
+	       1
+	       (+ (loop (car vals*))
+		  (loop (cdr vals*)))))
+	  (else
+	   (error:not-structure-parser-values
+	    vals
+	    'STRUCTURE-PARSER-VALUES-LENGTH)))))
 
 (define (structure-parser-values-ref vals index)
-  (let* ((caller 'STRUCTURE-PARSER-VALUES-REF)
-	 (bad-range (lambda () (error:bad-range-argument index caller))))
-    (if (null? vals)
-	(bad-range))
-    (let loop ((vals* vals) (i 0) (stack '()))
-      (if (not (pair? vals*))
-	  (error:not-structure-parser-values vals caller))
-      (if (eq? (car vals*) single-val-marker)
-	  (if (< i index)
-	      (begin
-		(if (not (pair? stack))
-		    (bad-range))
-		(loop (car stack)
-		      (+ i 1)
-		      (cdr stack)))
-	      (cdr vals*))
-	  (loop (car vals*)
-		i
-		(cons (cdr vals*) stack))))))
+  (let ((caller 'STRUCTURE-PARSER-VALUES-REF))
+
+    (define (loop vals* i stack)
+      (cond ((null? vals*)
+	     (pop i stack))
+	    ((pair? vals*)
+	     (if (eq? (car vals*) single-val-marker)
+		 (if (< i index)
+		     (pop (+ i 1) stack)
+		     (cdr vals*))
+		 (push vals* i stack)))
+	    (else
+	     (error:not-structure-parser-values vals caller))))
+
+    (define (push vals* i stack)
+      (loop (car vals*)
+	    i
+	    (cons (cdr vals*) stack)))
+
+    (define (pop i stack)
+      (if (not (pair? stack))
+	  (error:bad-range-argument index caller))
+      (loop (car stack)
+	    i
+	    (cdr stack)))
+
+    (loop vals 0 '())))
 
 ;;;; Helpers for code generation
 
