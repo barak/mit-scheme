@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.31 2008/08/31 07:27:00 cph Exp $
+$Id: boot.scm,v 14.32 2008/09/17 03:36:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -149,12 +149,14 @@ USA.
   unspecific)
 
 (define (add-boot-init! thunk)
-  (set! boot-inits (cons thunk boot-inits))
+  (if boot-inits
+      (set! boot-inits (cons thunk boot-inits))
+      (thunk))
   unspecific)
 
 (define (save-boot-inits! environment)
   (let ((inits (reverse! boot-inits)))
-    (set! boot-inits)
+    (set! boot-inits #f)
     ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
 
 (define (run-boot-inits! environment)
@@ -164,5 +166,5 @@ USA.
     (for-each (lambda (init) (init))
 	      inits)))
 
-(define boot-inits)
+(define boot-inits #f)
 (define saved-boot-inits '|#[saved-boot-inits]|)
