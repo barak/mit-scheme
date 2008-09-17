@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.47 2008/09/10 19:32:48 riastradh Exp $
+$Id: cout.scm,v 1.48 2008/09/17 06:41:43 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -122,15 +122,17 @@ USA.
 	     (if (or *disable-nonces?* (and handle? top-level?))
 		 ""
 		 (string-append "_" nonce))))
-	(if info-output-pathname
-	    (string-append (let ((name (default-file-handle)))
-			     (if handle?
-				 (C-quotify-string name)
-				 (canonicalize-label-name name)))
-			   (if top-level?
-			       (string-append midfix nsuffix)
-			       (string-append "_" default suffix)))
-	    (string-append default suffix nsuffix))))
+	(string-append
+	 (let ((name (default-file-handle)))
+	   (if handle?
+	       (C-quotify-string name)
+	       (canonicalize-label-name name)))
+	 (cond ((not info-output-pathname)
+		(string-append default suffix nsuffix))
+	       (top-level?
+		(string-append midfix nsuffix))
+	       (else
+		(string-append "_" default suffix))))))
 
     (define (subroutine-information)
       (let*/mv (((decls-1 code-1) (subroutine-information-1))
