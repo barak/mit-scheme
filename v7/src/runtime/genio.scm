@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.69 2008/08/19 05:03:29 cph Exp $
+$Id: genio.scm,v 1.70 2008/09/17 06:24:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -414,15 +414,15 @@ USA.
     (set-gstate-coding! state name)))
 
 (define (generic-io/known-coding? port coding)
-  (and (if (input-port? port) (known-input-coding? coding) #t)
-       (if (output-port? port) (known-output-coding? coding) #t)))
+  (and (if (input-port? port) (known-input-port-coding? coding) #t)
+       (if (output-port? port) (known-output-port-coding? coding) #t)))
 
 (define (generic-io/known-codings port)
   (cond ((i/o-port? port)
-	 (eq-intersection (known-input-codings)
-			  (known-output-codings)))
-	((input-port? port) (known-input-codings))
-	((output-port? port) (known-output-codings))
+	 (eq-intersection (known-input-port-codings)
+			  (known-output-port-codings)))
+	((input-port? port) (known-input-port-codings))
+	((output-port? port) (known-output-port-codings))
 	(else '())))
 
 (define (generic-io/line-ending port)
@@ -516,19 +516,19 @@ USA.
 (define-name-map normalizer)
 (define-name-map denormalizer)
 
-(define (known-input-coding? name)
+(define (known-input-port-coding? name)
   (or (hash-table/get decoder-aliases name #f)
       (hash-table/get decoders name #f)))
 
-(define (known-input-codings)
+(define (known-input-port-codings)
   (append (hash-table/key-list decoder-aliases)
 	  (hash-table/key-list decoders)))
 
-(define (known-output-coding? name)
+(define (known-output-port-coding? name)
   (or (hash-table/get encoder-aliases name #f)
       (hash-table/get encoders name #f)))
 
-(define (known-output-codings)
+(define (known-output-port-codings)
   (append (hash-table/key-list encoder-aliases)
 	  (hash-table/key-list encoders)))
 
@@ -599,6 +599,19 @@ USA.
 (define binary-sizer)
 (define binary-normalizer)
 (define binary-denormalizer)
+
+(define (define-coding-aliases name aliases)
+  (for-each (lambda (alias)
+	      (define-decoder-alias alias name)
+	      (define-encoder-alias alias name)
+	      (define-sizer-alias alias name))
+	    aliases))
+
+(define (primary-input-port-codings)
+  (cons 'US-ASCII (hash-table/key-list decoders)))
+
+(define (primary-output-port-codings)
+  (cons 'US-ASCII (hash-table/key-list encoders)))
 
 ;;;; Byte sources
 
@@ -1097,15 +1110,16 @@ USA.
     ib cp
     1))
 
-(define-decoder-alias 'BINARY 'ISO-8859-1)
-(define-encoder-alias 'BINARY 'ISO-8859-1)
-(define-sizer-alias 'BINARY 'ISO-8859-1)
-(define-decoder-alias 'TEXT 'ISO-8859-1)
-(define-encoder-alias 'TEXT 'ISO-8859-1)
-(define-sizer-alias 'TEXT 'ISO-8859-1)
-(define-decoder-alias 'US-ASCII 'ISO-8859-1)
-(define-encoder-alias 'US-ASCII 'ISO-8859-1)
-(define-sizer-alias 'US-ASCII 'ISO-8859-1)
+(define-coding-aliases 'ISO-8859-1
+  '(ISO_8859-1:1987 ISO-IR-100 ISO_8859-1 LATIN1 L1 IBM819 CP819 CSISOLATIN1))
+
+(define-coding-aliases 'ISO-8859-1
+  '(BINARY TEXT))
+
+(define-coding-aliases 'ISO-8859-1
+  ;; Treat US-ASCII like ISO-8859-1.
+  '(US-ASCII ANSI_X3.4-1968 ISO-IR-6 ANSI_X3.4-1986 ISO_646.IRV:1991 ASCII
+	     ISO646-US US IBM367 CP367 CSASCII))
 
 (define-syntax define-8-bit-codecs
   (sc-macro-transformer
@@ -1193,6 +1207,9 @@ USA.
   #x0144 #x0148 #x00F3 #x00F4 #x0151 #x00F6 #x00F7 #x0159
   #x016F #x00FA #x0171 #x00FC #x00FD #x0163 #x02D9)
 
+(define-coding-aliases 'ISO-8859-2
+  '(ISO_8859-2:1987 ISO-IR-101 ISO_8859-2 LATIN2 L2 CSISOLATIN2))
+
 (define-8-bit-codecs iso-8859-3 #xA1
   #x0126 #x02D8 #x00A3 #x00A4 #f     #x0124 #x00A7 #x00A8
   #x0130 #x015E #x011E #x0134 #x00AD #f     #x017B #x00B0
@@ -1206,6 +1223,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f    
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
+
+(define-coding-aliases 'ISO-8859-3
+  '(ISO_8859-3:1988 ISO-IR-109 ISO_8859-3 LATIN3 L3 CSISOLATIN3))
 
 (define-8-bit-codecs iso-8859-4 #xA1
   #x0104 #x0138 #x0156 #x00A4 #x0128 #x013B #x00A7 #x00A8
@@ -1221,6 +1241,9 @@ USA.
   #x0146 #x014D #x0137 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x0169 #x016B #x02D9)
 
+(define-coding-aliases 'ISO-8859-4
+  '(ISO_8859-4:1988 ISO-IR-110 ISO_8859-4 LATIN4 L4 CSISOLATIN4))
+
 (define-8-bit-codecs iso-8859-5 #xA1
   #x0401 #x0402 #x0403 #x0404 #x0405 #x0406 #x0407 #x0408
   #x0409 #x040A #x040B #x040C #x00AD #x040E #x040F #x0410
@@ -1235,6 +1258,9 @@ USA.
   #x0451 #x0452 #x0453 #x0454 #x0455 #x0456 #x0457 #x0458
   #x0459 #x045A #x045B #x045C #x00A7 #x045E #x045F)
 
+(define-coding-aliases 'ISO-8859-5
+  '(ISO_8859-5:1988 ISO-IR-144 ISO_8859-5 CYRILLIC CSISOLATINCYRILLIC))
+
 (define-8-bit-codecs iso-8859-6 #xA1
   #f     #f     #f     #x00A4 #f     #f     #f     #f    
   #f     #f     #f     #x060C #x00AD #f     #f     #f    
@@ -1248,7 +1274,11 @@ USA.
   #x0649 #x064A #x064B #x064C #x064D #x064E #x064F #x0650
   #x0651 #x0652 #f     #f     #f     #f     #f     #f    
   #f     #f     #f     #f     #f     #f     #f)
-
+
+(define-coding-aliases 'ISO-8859-6
+  '(ISO_8859-6:1987 ISO-IR-127 ISO_8859-6 ECMA-114 ASMO-708 ARABIC
+		    CSISOLATINARABIC))
+
 (define-8-bit-codecs iso-8859-7 #xA1
   #x2018 #x2019 #x00A3 #f     #f     #x00A6 #x00A7 #x00A8
   #x00A9 #f     #x00AB #x00AC #x00AD #f     #x2015 #x00B0
@@ -1262,6 +1292,10 @@ USA.
   #x03B9 #x03BA #x03BB #x03BC #x03BD #x03BE #x03BF #x03C0
   #x03C1 #x03C2 #x03C3 #x03C4 #x03C5 #x03C6 #x03C7 #x03C8
   #x03C9 #x03CA #x03CB #x03CC #x03CD #x03CE #f)
+
+(define-coding-aliases 'ISO-8859-7
+  '(ISO_8859-7:1987 ISO-IR-126 ISO_8859-7 ELOT_928 ECMA-118 GREEK GREEK8
+		    CSISOLATINGREEK))
 
 (define-8-bit-codecs iso-8859-8 #xA1
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
@@ -1277,6 +1311,9 @@ USA.
   #x05E1 #x05E2 #x05E3 #x05E4 #x05E5 #x05E6 #x05E7 #x05E8
   #x05E9 #x05EA #f     #f     #x200E #x200F #f)
 
+(define-coding-aliases 'ISO-8859-8
+  '(ISO_8859-8:1988 ISO-IR-138 ISO_8859-8 HEBREW CSISOLATINHEBREW))
+
 (define-8-bit-codecs iso-8859-9 #xA1
   #x00A1 #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00AA #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
@@ -1290,6 +1327,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x011F
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x0131 #x015F #x00FF)
+
+(define-coding-aliases 'ISO-8859-9
+  '(ISO_8859-9:1989 ISO-IR-148 ISO_8859-9 LATIN5 L5 CSISOLATIN5))
 
 (define-8-bit-codecs iso-8859-10 #xA1
   #x0104 #x0112 #x0122 #x012A #x0128 #x0136 #x00A7 #x013B
@@ -1305,6 +1345,9 @@ USA.
   #x0146 #x014D #x00F3 #x00F4 #x00F5 #x00F6 #x0169 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x00FD #x00FE #x0138)
 
+(define-coding-aliases 'ISO-8859-10
+  '(ISO-IR-157 L6 ISO_8859-10:1992 CSISOLATIN6 LATIN6))
+
 (define-8-bit-codecs iso-8859-11 #xA1
   #x0E01 #x0E02 #x0E03 #x0E04 #x0E05 #x0E06 #x0E07 #x0E08
   #x0E09 #x0E0A #x0E0B #x0E0C #x0E0D #x0E0E #x0E0F #x0E10
@@ -1318,7 +1361,7 @@ USA.
   #x0E49 #x0E4A #x0E4B #x0E4C #x0E4D #x0E4E #x0E4F #x0E50
   #x0E51 #x0E52 #x0E53 #x0E54 #x0E55 #x0E56 #x0E57 #x0E58
   #x0E59 #x0E5A #x0E5B #f     #f     #f     #f)
-
+
 (define-8-bit-codecs iso-8859-13 #xA1
   #x201D #x00A2 #x00A3 #x00A4 #x201E #x00A6 #x00A7 #x00D8
   #x00A9 #x0156 #x00AB #x00AC #x00AD #x00AE #x00C6 #x00B0
@@ -1332,7 +1375,7 @@ USA.
   #x00E9 #x017A #x0117 #x0123 #x0137 #x012B #x013C #x0161
   #x0144 #x0146 #x00F3 #x014D #x00F5 #x00F6 #x00F7 #x0173
   #x0142 #x015B #x016B #x00FC #x017C #x017E #x2019)
-
+
 (define-8-bit-codecs iso-8859-14 #xA1
   #x1E02 #x1E03 #x00A3 #x010A #x010B #x1E0A #x00A7 #x1E80
   #x00A9 #x1E82 #x1E0B #x1EF2 #x00AD #x00AE #x0178 #x1E1E
@@ -1346,6 +1389,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x0175
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x1E6B #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x0177 #x00FF)
+
+(define-coding-aliases 'ISO-8859-14
+  '(ISO-IR-199 ISO_8859-14:1998 ISO_8859-14 LATIN8 ISO-CELTIC L8))
 
 (define-8-bit-codecs iso-8859-15 #xA1
   #x00A1 #x00A2 #x00A3 #x20AC #x00A5 #x0160 #x00A7 #x0161
@@ -1361,6 +1407,9 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x00FE #x00FF)
 
+(define-coding-aliases 'ISO-8859-15
+  '(ISO_8859-15 LATIN-9))
+
 (define-8-bit-codecs iso-8859-16 #xA1
   #x0104 #x0105 #x0141 #x20AC #x201E #x0160 #x00A7 #x0161
   #x00A9 #x0218 #x00AB #x0179 #x00AD #x017A #x017B #x00B0
@@ -1374,6 +1423,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x0111
   #x0144 #x00F2 #x00F3 #x00F4 #x0151 #x00F6 #x015B #x0171
   #x00F9 #x00FA #x00FB #x00FC #x0119 #x021B #x00FF)
+
+(define-coding-aliases 'ISO-8859-16
+  '(ISO-IR-226 ISO_8859-16:2001 ISO_8859-16 LATIN10 L10))
 
 (define-8-bit-codecs windows-1250 #x80
   #x20ac #f     #x201a #f     #x201e #x2026 #x2020 #x2021
