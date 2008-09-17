@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.682 2008/09/16 05:36:49 cph Exp $
+$Id: runtime.pkg,v 14.683 2008/09/17 06:31:54 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1799,9 +1799,15 @@ USA.
 	  generic-io/peek-char
 	  generic-io/read-char
 	  generic-io/unread-char
+	  known-input-port-coding?
+	  known-input-port-codings
+	  known-output-port-coding?
+	  known-output-port-codings
 	  make-generic-i/o-port
 	  make-non-channel-port-sink
-	  make-non-channel-port-source)
+	  make-non-channel-port-source
+	  primary-input-port-codings
+	  primary-output-port-codings)
   (export (runtime console-i/o-port)
 	  input-buffer-contents
 	  make-gstate
@@ -1815,8 +1821,6 @@ USA.
 	  output-buffer-using-binary-denormalizer?
 	  port-input-buffer
 	  port-output-buffer)
-  (export (runtime http-i/o)
-	  known-input-coding?)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -5199,19 +5203,23 @@ USA.
 	  error:not-http-status
 	  error:not-http-text
 	  error:not-http-token
+	  error:not-http-token-string
 	  error:not-http-version
 	  guarantee-http-header
 	  guarantee-http-headers
 	  guarantee-http-status
 	  guarantee-http-text
 	  guarantee-http-token
+	  guarantee-http-token-string
 	  guarantee-http-version
 	  http-header
 	  http-header-name
+	  http-header-parsed-value
 	  http-header-value
 	  http-header?
 	  http-status?
 	  http-text?
+	  http-token-string?
 	  http-token?
 	  http-version-major
 	  http-version-minor
@@ -5288,6 +5296,8 @@ USA.
   (files "http-client")
   (parent (runtime))
   (export ()
+	  http-client-exchange
+	  http-client-request
 	  http-get
 	  http-head
 	  http-post)

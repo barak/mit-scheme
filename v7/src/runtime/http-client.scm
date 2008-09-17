@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.7 2008/09/15 05:15:08 cph Exp $
+$Id: http-client.scm,v 14.8 2008/09/17 06:31:45 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,46 +31,57 @@ USA.
 (declare (usual-integrations))
 
 (define (http-get uri headers)
-  (run-client-method '|GET| uri headers ""))
+  (http-client-exchange "GET" uri headers ""))
 
 (define (http-head uri headers)
-  (run-client-method '|HEAD| uri headers ""))
+  (http-client-exchange "HEAD" uri headers ""))
 
 (define (http-post uri headers body)
-  (run-client-method '|POST| uri headers body))
+  (http-client-exchange "POST" uri headers body))
 
-(define (run-client-method method uri headers body)
-  (guarantee-absolute-uri uri)
-  (let* ((authority (uri-authority uri))
-	 (port
-	  (open-tcp-stream-socket (uri-authority-host authority)
-				  (or (uri-authority-port authority) 80))))
-    (let ((request
-	   (make-http-request method
-			      (make-uri #f
-					#f
-					(uri-path uri)
-					(uri-query uri)
-					(uri-fragment uri))
-			      http-version:1.0
-			      (add-default-headers headers authority)
-			      body)))
+(define (http-client-exchange method uri headers body)
+  (let ((request (http-client-request method uri headers body)))
+    (let ((port
+	   (let ((authority (uri-authority uri)))
+	     (open-tcp-stream-socket (uri-authority-host authority)
+				     (or (uri-authority-port authority) 80)))))
       (write-http-request request port)
       (let ((response (read-http-response request port)))
 	(close-port port)
 	response))))
 
+(define (http-client-request method uri headers body)
+  (guarantee-absolute-uri uri)
+  (make-http-request method
+		     (make-uri #f
+			       #f
+			       (uri-path uri)
+			       (uri-query uri)
+			       (uri-fragment uri))
+		     http-version:1.0
+		     (add-default-headers headers (uri-authority uri))
+		     body))
+
 (define (add-default-headers headers authority)
   (let ((headers (convert-http-headers headers)))
-    (cons (make-http-header 'HOST (host-string authority))
-	  (if (http-header 'USER-AGENT headers #f)
-	      headers
-	      (cons (make-http-header 'USER-AGENT default-http-user-agent)
-		    headers)))))
-
-(define (host-string authority)
-  (let ((host (uri-authority-host authority))
-	(port (uri-authority-port authority)))
-    (if port
-	(string-append host ":" (number->string port))
-	host)))
+    (let ((optional
+	   (lambda (name value)
+	     (if (http-header name headers #f)
+		 '()
+		 (list (make-http-header name value))))))
+      `(,(make-http-header 'DATE
+			   (universal-time->global-decoded-time
+			    (get-universal-time)))
+	,@(optional 'ACCEPT
+		    `((,(make-mime-type 'APPLICATION 'XHTML+XML))
+		      (,(make-mime-type 'TEXT 'XHTML) (Q . "0.9"))
+		      (,(make-mime-type 'TEXT 'PLAIN) (Q . "0.5"))
+		      (TEXT (Q . "0.1"))))
+	,@(optional 'ACCEPT-CHARSET '((US-ASCII) (ISO-8859-1) (UTF-8)))
+	,@(optional 'ACCEPT-ENCODING '((IDENTITY)))
+	,@(optional 'ACCEPT-LANGUAGE `((EN-US) (EN (Q . "0.9"))))
+	,(make-http-header 'HOST
+			   (cons (uri-authority-host authority)
+				 (uri-authority-port authority)))
+	,@(optional 'USER-AGENT default-http-user-agent)
+	,@headers))))

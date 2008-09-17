@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.8 2008/09/16 05:39:00 cph Exp $
+$Id: httpio.scm,v 14.9 2008/09/17 06:31:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -45,7 +45,7 @@ USA.
 (define-guarantee http-request "HTTP request")
 
 (define (make-http-request method uri version headers body)
-  (guarantee-http-token method 'MAKE-HTTP-REQUEST)
+  (guarantee-http-token-string method 'MAKE-HTTP-REQUEST)
   (guarantee-http-request-uri uri 'MAKE-HTTP-REQUEST)
   (guarantee-http-version version 'MAKE-HTTP-REQUEST)
   (receive (headers body)
@@ -153,7 +153,7 @@ USA.
 
 (define (write-http-request request port)
   (%text-mode port)
-  (write-http-token (http-request-method request) port)
+  (write-string (http-request-method request) port)
   (write-string " " port)
   (let ((uri (http-request-uri request)))
     (cond ((uri? uri)
@@ -226,8 +226,8 @@ USA.
 	  (let ((headers (read-http-headers port)))
 	    (make-http-response version status reason headers
 				(if (or (non-body-status? status)
-					(eq? (http-request-method request)
-					     '|HEAD|))
+					(string=? (http-request-method request)
+						  "HEAD"))
 				    #f
 				    (or (%read-delimited-body headers port)
 					(%read-terminal-body headers port)
@@ -264,9 +264,9 @@ USA.
 (define (%read-terminal-body headers port)
   (and (let ((h (http-header 'CONNECTION headers #f)))
 	 (and h
-	      (any (lambda (token)
-		     (string-ci=? token "close"))
-		   (burst-string (http-header-value h) char-set:wsp #t))))
+	      (let ((v (http-header-parsed-value h)))
+		(and (not (default-object? v))
+		     (memq 'CLOSE v)))))
        (%read-all port)))
 
 (define (%no-read-body)
@@ -390,44 +390,30 @@ USA.
     port))
 
 (define (%get-content-type message)
-  (let ((h (http-message-header 'CONTENT-TYPE message #f)))
-    (if h
-	(let ((s (rfc2822-header-value h)))
-	  (let ((v (*parse-string parser:http-content-type s)))
-	    (if (not v)
-		(error "Malformed content-type value:" s))
-	    (values (vector-ref v 0)
-		    (let ((p (assq 'CHARSET (vector-ref v 1))))
-		      (and p
-			   (let ((coding (intern (cdr p))))
-			     (and (known-input-coding? coding)
-				  coding)))))))
-	(values (make-mime-type 'APPLICATION 'OCTET-STREAM)
-		#f))))
+  (optional-header (http-message-header 'CONTENT-TYPE message #f)
+		   (lambda (v)
+		     (values (car v)
+			     (let ((p (assq 'CHARSET (cdr v))))
+			       (and p
+				    (let ((coding (intern (cdr p))))
+				      (and (known-input-port-coding? coding)
+					   coding))))))
+		   (lambda ()
+		     (values (make-mime-type 'APPLICATION 'OCTET-STREAM)
+			     #f))))
 
 (define (%get-content-length headers)
-  (let ((h (http-header 'CONTENT-LENGTH headers #f)))
-    (and h
-	 (let ((s (http-header-value h)))
-	   (let ((n (string->number s)))
-	     (if (not (exact-nonnegative-integer? n))
-		 (error "Malformed content-length value:" s))
-	     n)))))
+  (optional-header (http-header 'CONTENT-LENGTH headers #f)
+		   (lambda (n) n)
+		   (lambda () #f)))
 
-(define parser:http-content-type
-  (let ((parse-parameter
-	 (*parser
-	  (encapsulate* cons
-	    (seq ";"
-		 (noise (* (char-set char-set:wsp)))
-		 parser:mime-token
-		 "="
-		 (alt (match matcher:mime-token)
-		      parser:rfc2822-quoted-string))))))
-    (*parser
-     (seq parser:mime-type
-	  (encapsulate vector->list
-		       (* parse-parameter))))))
+(define (optional-header h win lose)
+  (if h
+      (let ((v (http-header-parsed-value h)))
+	(if (default-object? v)
+	    (lose)
+	    (win v)))
+      (lose)))
 
 (define (http-message-header name message error?)
   (http-header name (http-message-headers message) error?))
