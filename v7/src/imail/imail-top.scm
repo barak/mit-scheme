@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.314 2008/09/08 22:27:02 riastradh Exp $
+$Id: imail-top.scm,v 1.315 2008/09/20 20:41:16 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1695,7 +1695,7 @@ A prefix argument says to prompt for a URL and append all messages
 	((ref-command imail-input-from-folder) url-string)
 	(let* ((folder (selected-folder))
 	       (count (object-modification-count folder)))
-	  (probe-folder folder)
+	  (probe-folder-noisily folder)
 	  (cond ((navigator/first-unseen-message folder)
 		 => (lambda (unseen) (select-message folder unseen)))
 		((<= (object-modification-count folder) count)
@@ -2253,8 +2253,10 @@ WARNING: With a prefix argument, this command may take a very long
 	 (if (and (imail-folder->buffer folder #f)
 		  (eq? (folder-connection-status folder) 'ONLINE))
 	     (begin
-	       (probe-folder folder)
-	       #t)
+	       (override-next-command!
+		(lambda ()
+		  (probe-folder-noisily folder)))
+	       'FORCE-RETURN)
 	     (begin
 	       (stop-probe-folder-thread folder)
 	       #f)))))
@@ -2267,6 +2269,12 @@ WARNING: With a prefix argument, this command may take a very long
 	   (begin
 	     (stop-standard-polling-thread holder)
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
+
+(define (probe-folder-noisily folder)
+  (message "Probing folder "
+	   (url-presentation-name (resource-locator folder))
+	   "...")
+  (probe-folder folder))
 
 ;;;; Message insertion procedures
 
