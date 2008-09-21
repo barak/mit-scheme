@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.683 2008/09/17 06:31:54 cph Exp $
+$Id: runtime.pkg,v 14.684 2008/09/21 07:35:15 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5181,6 +5181,7 @@ USA.
 	  make-rfc2822-header
 	  parser:rfc2822-quoted-string
 	  quote-rfc2822-text
+	  read-rfc2822-folded-line
 	  read-rfc2822-headers
 	  rfc2822-header-name
 	  rfc2822-header-value
@@ -5230,6 +5231,7 @@ USA.
 	  http-version?
 	  make-http-header
 	  make-http-version
+	  parse-http-chunk-leader
 	  parse-http-status
 	  parse-http-token
 	  parse-http-version

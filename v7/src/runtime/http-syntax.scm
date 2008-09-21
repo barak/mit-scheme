@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.2 2008/09/17 06:31:48 cph Exp $
+$Id: http-syntax.scm,v 1.3 2008/09/21 07:35:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -220,24 +220,10 @@ USA.
 
 (define (read-http-headers port)
   (let loop ((headers '()))
-    (let ((string (%read-http-header port)))
+    (let ((string (read-rfc2822-folded-line port)))
       (if string
 	  (loop (cons (parse-header string) headers))
 	  (reverse! headers)))))
-
-(define (%read-http-header port)
-  (let ((line (read-line port)))
-    (if (eof-object? line)
-	(error "Premature EOF reading header."))
-    (if (string-null? line)
-	#f
-	(let loop ((lines (list (string-trim-right line))))
-	  (cond ((char-wsp? (peek-char port))
-		 (loop (cons (string-trim (read-line port)) lines)))
-		((null? (cdr lines))
-		 (car lines))
-		(else
-		 (decorated-string-append "" " " "" (reverse! lines))))))))
 
 (define parse-header
   (let ((parser
@@ -996,17 +982,23 @@ USA.
 
 (define-header "Transfer-Encoding"
   (tokenized-parser
-   (list-parser
-    (encapsulate cons
-      (seq lp:token
-	   lp:parameter*))))
+   (lp:comma-list 1
+     (list-parser
+      (encapsulate cons
+	(seq lp:token
+	     lp:parameter*)))))
   (lambda (value)
-    (pair-of-type? value
-		   http-token?
-		   http-parameters?))
+    (list-of-type? value
+      (lambda (elt)
+	(pair-of-type? elt
+		       http-token?
+		       http-parameters?))))
   (lambda (value port)
-    (write-http-token (car value) port)
-    (write-parameter* (cdr value) port)))
+    (write-comma-list (lambda (elt port)
+			(write-http-token (car elt) port)
+			(write-parameter* (cdr elt) port))
+		      value
+		      port)))
 
 (define-header "Upgrade"
   (tokenized-parser (lp:comma-list 1 lp:product))
@@ -1549,6 +1541,29 @@ USA.
   (direct-parser parser:http-date)
   http-date?
   write-http-date)
+
+;;;; Chunked encoding
+
+(define (parse-http-chunk-leader string)
+  (lp:chunk-leader (string->tokens string)
+		   (lambda (tokens vals lose)
+		     (if (null? tokens)
+			 (structure-parser-values-ref vals 0)
+			 (lose)))
+		   (lambda ()
+		     #f)))
+
+(define lp:chunk-leader
+  (list-parser
+   (encapsulate cons
+     (seq (transform (lambda (s)
+		       (let ((n (string->number s 16 #f)))
+			 (and n
+			      (list n))))
+	    lp:token-string)
+	  (encapsulate list
+	    (* lp:semicolon
+	       lp:parameter%))))))
 
 ;;;; Utilities
 

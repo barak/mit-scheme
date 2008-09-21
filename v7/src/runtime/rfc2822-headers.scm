@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rfc2822-headers.scm,v 14.2 2008/09/15 07:07:51 cph Exp $
+$Id: rfc2822-headers.scm,v 14.3 2008/09/21 07:35:13 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -139,58 +139,65 @@ USA.
 
 (define (read-rfc2822-headers port)
   (let loop ((headers '()))
-    (let ((line (read-line port)))
-      (if (eof-object? line)
-	  (parse-error port "Premature EOF reading header fields."))
-      (let ((end (string-length line)))
-	(cond ((fix:= end 0)
-	       (map (lambda (p)
-		      (make-rfc2822-header (car p) (cdr p)))
-		    (reverse! headers)))
-	      ((char-wsp? (string-ref line 0))
-	       (if (not (pair? headers))
-		   (parse-error port
-				"Unmatched header continuation in request:"
-				line))
-	       (let ((h (car headers)))
-		 (set-cdr! h
-			   (string-append (cdr h)
-					  " "
-					  (trim-wsp line 0 end))))
-	       (loop headers))
-	      (else
-	       (loop
-		(cons (let ((colon (string-find-next-char line #\:)))
-			(if (not colon)
-			    (parse-error port
-					 "Missing colon in header field:"
-					 line))
-			(let ((name (intern (string-head line colon))))
-			  (guarantee-header-name name)
-			  (cons name
-				(trim-wsp line (fix:+ colon 1) end))))
-		      headers))))))))
+    (let ((header (read-rfc2822-header port)))
+      (if header
+	  (loop (cons header headers))
+	  (reverse! headers)))))
 
-(define (trim-wsp string start end)
-  (let* ((start*
-	  (let loop ((i start))
-	    (if (and (fix:< i end)
-		     (char-wsp? (string-ref string i)))
-		(loop (fix:+ i 1))
-		i)))
-	 (end*
-	  (let loop ((i end))
-	    (if (and (fix:> i start*)
-		     (char-wsp? (string-ref string (fix:- i 1))))
-		(loop (fix:- i 1))
-		i))))
-    (let ((string
-	   (if (and (fix:= start* 0)
-		    (fix:= end* (string-length string)))
-	       string
-	       (substring string start* end*))))
-      (guarantee-header-value string)
-      string)))
+(define (read-rfc2822-header port)
+  (let ((line (read-rfc2822-folded-line port)))
+    (and line
+	 (let ((colon (string-find-next-char line #\:)))
+	   (if (not colon)
+	       (parse-error port "Missing colon in header field:" line))
+	   (make-rfc2822-header (intern (string-head line colon))
+				(let ((end (string-length line)))
+				  (substring line
+					     (skip-wsp-left line
+							    (fix:+ colon 1)
+							    end)
+					     end)))))))
+
+(define (read-rfc2822-folded-line port)
+  (let ((line (read-line port)))
+    (cond ((string-null? line)
+	   #f)
+	  ((char-wsp? (string-ref line 0))
+	   (parse-error port
+			"Unmatched continuation line:"
+			'READ-RFC2822-FOLDED-LINE))
+	  (else
+	   (call-with-output-string
+	     (lambda (out)
+	       (let loop ((line line))
+		 (let ((end (skip-wsp-right line 0 (string-length line))))
+		   (write-substring line
+				    (skip-wsp-left line 0 end)
+				    end
+				    out))
+		 (if (let ((char (peek-char port)))
+		       (if (eof-object? char)
+			   (parse-error port
+					"Premature EOF:"
+					'READ-RFC2822-FOLDED-LINE))
+		       (char-wsp? char))
+		     (begin
+		       (write-char #\space out)
+		       (loop (read-line port)))))))))))
+
+(define (skip-wsp-left string start end)
+  (let loop ((i start))
+    (if (and (fix:< i end)
+	     (char-wsp? (string-ref string i)))
+	(loop (fix:+ i 1))
+	i)))
+
+(define (skip-wsp-right string start end)
+  (let loop ((i end))
+    (if (and (fix:> i start)
+	     (char-wsp? (string-ref string (fix:- i 1))))
+	(loop (fix:- i 1))
+	i)))
 
 ;;;; Quotation
 

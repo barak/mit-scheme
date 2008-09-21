@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.9 2008/09/17 06:31:50 cph Exp $
+$Id: httpio.scm,v 14.10 2008/09/21 07:35:06 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -212,9 +212,13 @@ USA.
 	(receive (method uri version)
 	    (parse-line parse-request-line line "HTTP request line")
 	  (let ((headers (read-http-headers port)))
-	    (make-http-request method uri version headers
-			       (or (%read-delimited-body headers port)
-				   (%no-read-body))))))))
+	    (let ((b.t
+		   (or (%read-chunked-body headers port)
+		       (%read-delimited-body headers port)
+		       (%no-read-body))))
+	      (make-http-request method uri version
+				 (append! headers (cdr b.t))
+				 (car b.t))))))))
 
 (define (read-http-response request port)
   (%text-mode port)
@@ -224,14 +228,75 @@ USA.
 	(receive (version status reason)
 	    (parse-line parse-response-line line "HTTP response line")
 	  (let ((headers (read-http-headers port)))
-	    (make-http-response version status reason headers
-				(if (or (non-body-status? status)
-					(string=? (http-request-method request)
-						  "HEAD"))
-				    #f
-				    (or (%read-delimited-body headers port)
-					(%read-terminal-body headers port)
-					(%no-read-body)))))))))
+	    (let ((b.t
+		   (if (or (non-body-status? status)
+			   (string=? (http-request-method request) "HEAD"))
+		       (list #f)
+		       (or (%read-chunked-body headers port)
+			   (%read-delimited-body headers port)
+			   (%read-terminal-body headers port)
+			   (%no-read-body)))))
+	      (make-http-response version status reason
+				  (append! headers (cdr b.t))
+				  (car b.t))))))))
+
+(define (%read-chunked-body headers port)
+  (let ((h (http-header 'TRANSFER-ENCODING headers #f)))
+    (and h
+	 (let ((v (http-header-parsed-value h)))
+	   (and (not (default-object? v))
+		(assq 'CHUNKED v)))
+	 (let ((output (open-output-octets))
+	       (buffer (make-vector-8b #x1000)))
+	   (let loop ()
+	     (let ((n (%read-chunk-leader port)))
+	       (if (> n 0)
+		   (begin
+		     (%read-chunk n buffer port output)
+		     (%text-mode port)
+		     (let ((line (read-line port)))
+		       (if (not (string-null? line))
+			   (error "Missing CRLF after chunk data.")))
+		     (loop)))))
+	   (cons (get-output-string! output)
+		 (read-http-headers port))))))
+
+(define (%read-chunk-leader port)
+  (%text-mode port)
+  (let ((line (read-line port)))
+    (if (eof-object? line)
+	(error "Premature EOF in HTTP message body."))
+    (let ((v (parse-http-chunk-leader line)))
+      (if (not v)
+	  (error "Ill-formed chunk in HTTP message body."))
+      (car v))))
+
+(define (%read-chunk n buffer port output)
+  (%binary-mode port)
+  (let ((len (vector-8b-length buffer)))
+    (let loop ((n n))
+      (if (> n 0)
+	  (let ((m (read-substring! buffer 0 (min n len) port)))
+	    (if (= m 0)
+		(error "Premature EOF in HTTP message body."))
+	    (write-substring buffer 0 m output)
+	    (loop (- n m)))))))
+
+(define (%read-delimited-body headers port)
+  (let ((n (%get-content-length headers)))
+    (and n
+	 (list
+	  (call-with-output-octets
+	   (lambda (output)
+	     (%read-chunk n (make-vector-8b #x1000) port output)))))))
+
+(define (%read-terminal-body headers port)
+  (and (let ((h (http-header 'CONNECTION headers #f)))
+	 (and h
+	      (let ((v (http-header-parsed-value h)))
+		(and (not (default-object? v))
+		     (memq 'CLOSE v)))))
+       (list (%read-all port))))
 
 (define (%read-all port)
   (%binary-mode port)
@@ -244,30 +309,6 @@ USA.
 	       (begin
 		 (write-substring buffer 0 n output)
 		 (loop)))))))))
-
-(define (%read-delimited-body headers port)
-  (let ((n (%get-content-length headers)))
-    (and n
-	 (begin
-	   (%binary-mode port)
-	   (call-with-output-octets
-	    (lambda (output)
-	      (let ((buffer (make-vector-8b #x1000)))
-		(let loop ((n n))
-		  (if (> n 0)
-		      (let ((m (read-string! buffer port)))
-			(if (= m 0)
-			    (error "Premature EOF in HTTP message body."))
-			(write-substring buffer 0 m output)
-			(loop (- n m))))))))))))
-
-(define (%read-terminal-body headers port)
-  (and (let ((h (http-header 'CONNECTION headers #f)))
-	 (and h
-	      (let ((v (http-header-parsed-value h)))
-		(and (not (default-object? v))
-		     (memq 'CLOSE v)))))
-       (%read-all port)))
 
 (define (%no-read-body)
   (error "Unable to determine HTTP message body length."))
