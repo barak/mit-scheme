@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.3 2008/09/21 07:35:03 cph Exp $
+$Id: http-syntax.scm,v 1.4 2008/09/21 22:20:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -102,6 +102,11 @@ USA.
   (parsed-value http-header-parsed-value))
 
 (define-guarantee http-header "HTTP header field")
+
+(set-record-type-unparser-method! <http-header>
+  (simple-unparser-method 'HTTP-HEADER
+    (lambda (header)
+      (list (http-header-name header)))))
 
 (define (make-http-header name value)
   (guarantee-http-token name 'MAKE-HTTP-HEADER)

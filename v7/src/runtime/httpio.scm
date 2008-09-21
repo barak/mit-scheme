@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.10 2008/09/21 07:35:06 cph Exp $
+$Id: httpio.scm,v 14.11 2008/09/21 22:20:18 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,6 +52,12 @@ USA.
       (guarantee-headers&body headers body 'MAKE-HTTP-REQUEST)
     (%make-http-request method uri version headers body)))
 
+(set-record-type-unparser-method! <http-request>
+  (simple-unparser-method 'HTTP-REQUEST
+    (lambda (request)
+      (list (http-request-method request)
+	    (http-request-uri request)))))
+
 (define-record-type <http-response>
     (%make-http-response version status reason headers body)
     http-response?
@@ -70,6 +76,11 @@ USA.
   (receive (headers body)
       (guarantee-headers&body headers body 'MAKE-HTTP-RESPONSE)
     (%make-http-response version status reason headers body)))
+
+(set-record-type-unparser-method! <http-response>
+  (simple-unparser-method 'HTTP-RESPONSE
+    (lambda (response)
+      (list (http-response-status response)))))
 
 (define (guarantee-headers&body headers body caller)
   (guarantee-http-headers headers caller)
