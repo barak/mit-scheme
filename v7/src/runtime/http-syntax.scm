@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.4 2008/09/21 22:20:14 cph Exp $
+$Id: http-syntax.scm,v 1.5 2008/09/21 23:20:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -121,7 +121,7 @@ USA.
 	    (begin
 	      (guarantee-http-text value 'MAKE-HTTP-HEADER)
 	      (%make-header name value
-			    (%call-parser (hvdefn-parser defn) value))))
+			    (%call-parser (hvdefn-parser defn) value #t))))
 	(begin
 	  (guarantee-http-text value 'MAKE-HTTP-HEADER)
 	  (%make-header name value (%unparsed-value))))))
@@ -247,15 +247,17 @@ USA.
 			value
 			(let ((defn (header-value-defn name)))
 			  (if defn
-			      (%call-parser (hvdefn-parser defn) value)
+			      (%call-parser (hvdefn-parser defn) value #f)
 			      (%unparsed-value)))))))))
 
-(define (%call-parser parser value)
+(define (%call-parser parser value error?)
   (parser value
 	  (lambda (parsed-value)
 	    parsed-value)
 	  (lambda ()
-	    (warn "Ill-formed HTTP header value:" value)
+	    (if error?
+		(error "Ill-formed HTTP header value:" value)
+		(warn "Ill-formed HTTP header value:" value))
 	    (%unparsed-value))))
 
 (define (%unparsed-value)
@@ -303,9 +305,6 @@ USA.
 (define lp:token
   (list-parser (map intern lp:token-string)))
 
-(define lp:token-cs
-  (list-parser (map string->symbol lp:token-string)))
-
 (define lp:token-string
   (list-parser (map token-token->string (match-if token-token?))))
 
@@ -315,9 +314,6 @@ USA.
 (define (token+? object)
   (and (pair? object)
        (token*? object)))
-
-(define lp:token-cs*
-  (lp:comma-list 0 lp:token-cs))
 
 (define (token*? object)
   (list-of-type? object http-token?))
@@ -1037,16 +1033,19 @@ USA.
 		     (or (hostport? received-by)
 			 (http-token? received-by)))))
   (lambda (value port)
-    (let ((received-protocol (car value)))
-      (if (car received-protocol)
-	  (begin
-	    (write-http-token (car received-protocol) port)
-	    (write-char #\/ port)))
-      (write-http-token (cdr received-protocol) port))
-    (let ((received-by (cdr value)))
-      (if (hostport? received-by)
-	  (write-hostport received-by port)
-	  (write-http-token received-by port)))))
+    (write-comma-list (lambda (elt port)
+			(let ((received-protocol (car elt)))
+			  (if (car received-protocol)
+			      (begin
+				(write-http-token (car received-protocol) port)
+				(write-char #\/ port)))
+			  (write-http-token (cdr received-protocol) port))
+			(let ((received-by (cdr elt)))
+			  (if (hostport? received-by)
+			      (write-hostport received-by port)
+			      (write-http-token received-by port))))
+		      value
+		      port)))
 
 (define-header "Warning"
   (tokenized-parser
@@ -1081,21 +1080,25 @@ USA.
 			(or (not dt)
 			    (decoded-time? dt)))))
   (lambda (value port)
-    (receive (code agent text date) (vector->values value)
-      (write-string (string-pad-left (number->string code) 3 #\0) port)
-      (write-char #\space port)
-      (if (hostport? agent)
-	  (write-hostport agent port)
-	  (write-http-token agent port))
-      (write-char #\space port)
-      (write-quoted-string text port)
-      (if date
-	  (begin
-	    (write-char #\space port)
-	    (write-quoted-string (call-with-output-string
-				   (lambda (port)
-				     (write-http-date date port)))
-				 port))))))
+    (write-comma-list
+     (lambda (elt port)
+       (receive (code agent text date) (vector->values value)
+	 (write-string (string-pad-left (number->string code) 3 #\0) port)
+	 (write-char #\space port)
+	 (if (hostport? agent)
+	     (write-hostport agent port)
+	     (write-http-token agent port))
+	 (write-char #\space port)
+	 (write-quoted-string text port)
+	 (if date
+	     (begin
+	       (write-char #\space port)
+	       (write-quoted-string (call-with-output-string
+				      (lambda (port)
+					(write-http-date date port)))
+				    port)))))
+     value
+     port)))
 
 ;;;; Request headers
 
@@ -1346,8 +1349,11 @@ USA.
 		   http-token?
 		   accept-params?))
   (lambda (value port)
-    (write-http-token (car value) port)
-    (write-parameter* (cdr value) port)))
+    (write-comma-list (lambda (elt port)
+			(write-http-token (car elt) port)
+			(write-parameter* (cdr elt) port))
+		      value
+		      port)))
 
 (define-header "User-Agent"
   (tokenized-parser lp:product/comment-list)
@@ -1362,8 +1368,7 @@ USA.
     (alt (encapsulate (lambda (none) none '())
 	   (qualify (token= 'NONE) lp:token))
 	 lp:token+)))
-  (lambda (value)
-    (list+-of-type? value http-token?))
+  token*?
   (lambda (value port)
     (if (null? value)
 	(write-http-token 'NONE port)
@@ -1432,7 +1437,11 @@ USA.
 ;;;; Entity headers
 
 (define-header "Allow"
-  (tokenized-parser lp:token-cs*)
+  (tokenized-parser
+   (lp:comma-list 0
+     (list-parser
+      (map string->symbol
+	   lp:token-string))))
   token*?
   write-token*)
 
