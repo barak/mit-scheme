@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.8 2008/09/17 06:31:45 cph Exp $
+$Id: http-client.scm,v 14.9 2008/09/21 07:35:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -58,7 +58,7 @@ USA.
 			       (uri-path uri)
 			       (uri-query uri)
 			       (uri-fragment uri))
-		     http-version:1.0
+		     http-version:1.1
 		     (add-default-headers headers (uri-authority uri))
 		     body))
 
