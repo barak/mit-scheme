@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-client.scm,v 14.9 2008/09/21 07:35:48 cph Exp $
+$Id: http-client.scm,v 14.10 2008/09/21 23:50:28 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -41,14 +41,19 @@ USA.
 
 (define (http-client-exchange method uri headers body)
   (let ((request (http-client-request method uri headers body)))
-    (let ((port
-	   (let ((authority (uri-authority uri)))
-	     (open-tcp-stream-socket (uri-authority-host authority)
-				     (or (uri-authority-port authority) 80)))))
-      (write-http-request request port)
-      (let ((response (read-http-response request port)))
-	(close-port port)
-	response))))
+    (call-with-http-client-socket uri
+      (lambda (port)
+	(write-http-request request port)
+	(read-http-response request port)))))
+
+(define (call-with-http-client-socket uri callee)
+  (let ((port
+	 (let ((authority (uri-authority uri)))
+	   (open-tcp-stream-socket (uri-authority-host authority)
+				   (or (uri-authority-port authority) 80)))))
+    (let ((value (callee port)))
+      (close-port port)
+      value)))
 
 (define (http-client-request method uri headers body)
   (guarantee-absolute-uri uri)
@@ -59,29 +64,83 @@ USA.
 			       (uri-query uri)
 			       (uri-fragment uri))
 		     http-version:1.1
-		     (add-default-headers headers (uri-authority uri))
+		     (add-default-headers method uri headers)
 		     body))
 
-(define (add-default-headers headers authority)
-  (let ((headers (convert-http-headers headers)))
-    (let ((optional
-	   (lambda (name value)
-	     (if (http-header name headers #f)
-		 '()
-		 (list (make-http-header name value))))))
-      `(,(make-http-header 'DATE
-			   (universal-time->global-decoded-time
-			    (get-universal-time)))
-	,@(optional 'ACCEPT
-		    `((,(make-mime-type 'APPLICATION 'XHTML+XML))
-		      (,(make-mime-type 'TEXT 'XHTML) (Q . "0.9"))
-		      (,(make-mime-type 'TEXT 'PLAIN) (Q . "0.5"))
-		      (TEXT (Q . "0.1"))))
-	,@(optional 'ACCEPT-CHARSET '((US-ASCII) (ISO-8859-1) (UTF-8)))
-	,@(optional 'ACCEPT-ENCODING '((IDENTITY)))
-	,@(optional 'ACCEPT-LANGUAGE `((EN-US) (EN (Q . "0.9"))))
-	,(make-http-header 'HOST
-			   (cons (uri-authority-host authority)
-				 (uri-authority-port authority)))
-	,@(optional 'USER-AGENT default-http-user-agent)
-	,@headers))))
+(define (add-default-headers method uri headers)
+  (let loop
+      ((ops default-header-ops)
+       (headers (convert-http-headers headers)))
+    (if (pair? ops)
+	(loop (cdr ops)
+	      ((car ops) method uri headers))
+	headers)))
+
+(define default-header-ops
+  (let ()
+
+    (define ((add name make-value) method uri headers)
+      method uri
+      (if (http-header name headers #f)
+	  headers
+	  (cons (make-http-header name (make-value))
+		headers)))
+
+    (define ((modify name modifier init-value) method uri headers)
+      method uri
+      (let ((h (http-header name headers #f)))
+	(if h
+	    (modifier (http-header-parsed-value h)
+		      (lambda (value)
+			(replace h
+				 (make-http-header name value)
+				 headers))
+		      (lambda () headers))
+	    (modifier init-value
+		      (lambda (value)
+			(cons (make-http-header name value) headers))
+		      (lambda () headers)))))
+
+    (define (replace h h* headers)
+      (let loop ((headers headers))
+	(if (pair? headers)
+	    (if (eq? (car headers) h)
+		(cons h* headers)
+		(cons (car headers) (loop (cdr headers))))
+	    '())))
+
+    (list (add 'ACCEPT
+	       (lambda ()
+		 `((,(make-mime-type 'APPLICATION 'XHTML+XML))
+		   (,(make-mime-type 'TEXT 'XHTML) (Q . "0.9"))
+		   (,(make-mime-type 'TEXT 'PLAIN) (Q . "0.5"))
+		   (TEXT (Q . "0.1")))))
+	  (add 'ACCEPT-CHARSET (lambda () '((US-ASCII) (ISO-8859-1) (UTF-8))))
+	  (add 'ACCEPT-ENCODING (lambda () '((IDENTITY))))
+	  (add 'ACCEPT-LANGUAGE (lambda () `((EN-US) (EN (Q . "0.9")))))
+	  (modify 'CONNECTION
+		  (lambda (value change no-change)
+		    (if (memq 'TE value)
+			(no-change)
+			(change (cons 'TE value))))
+		  '())
+	  (add 'DATE
+	       (lambda ()
+		 (universal-time->global-decoded-time (get-universal-time))))
+	  (lambda (method uri headers)
+	    method
+	    (if (http-header 'HOST headers #f)
+		headers
+		(cons (make-http-header
+		       'HOST
+		       (let ((authority (uri-authority uri)))
+			 (cons (uri-authority-host authority)
+			       (uri-authority-port authority))))
+		      headers)))
+	  (modify 'TE
+		  (lambda (value change no-change)
+		    (if (assq 'TRAILERS value)
+			(no-change)
+			(change (cons (list 'TRAILERS) value))))
+		  '())
+	  (add 'USER-AGENT (lambda () default-http-user-agent)))))

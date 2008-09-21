@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.684 2008/09/21 07:35:15 cph Exp $
+$Id: runtime.pkg,v 14.685 2008/09/21 23:50:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -5298,6 +5298,7 @@ USA.
   (files "http-client")
   (parent (runtime))
   (export ()
+	  call-with-http-client-socket
 	  http-client-exchange
 	  http-client-request
 	  http-get
