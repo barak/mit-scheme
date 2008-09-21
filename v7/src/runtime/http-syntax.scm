@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.5 2008/09/21 23:20:00 cph Exp $
+$Id: http-syntax.scm,v 1.6 2008/09/21 23:49:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -989,7 +989,7 @@ USA.
 	(seq lp:token
 	     lp:parameter*)))))
   (lambda (value)
-    (list-of-type? value
+    (list+-of-type? value
       (lambda (elt)
 	(pair-of-type? elt
 		       http-token?
@@ -1022,16 +1022,18 @@ USA.
 			    lp:comment
 			    (? lp:lws)))))))))
   (lambda (value)
-    (pair-of-type? value
-		   (lambda (received-protocol)
-		     (pair-of-type? received-protocol
-				    (lambda (name)
-				      (or (not name)
-					  (http-token? name)))
-				    http-token?))
-		   (lambda (received-by)
-		     (or (hostport? received-by)
-			 (http-token? received-by)))))
+    (list+-of-type? value
+      (lambda (elt)
+	(pair-of-type? elt
+		       (lambda (received-protocol)
+			 (pair-of-type? received-protocol
+					(lambda (name)
+					  (or (not name)
+					      (http-token? name)))
+					http-token?))
+		       (lambda (received-by)
+			 (or (hostport? received-by)
+			     (http-token? received-by)))))))
   (lambda (value port)
     (write-comma-list (lambda (elt port)
 			(let ((received-protocol (car elt)))
@@ -1068,17 +1070,19 @@ USA.
 			 lp:quoted-string))
 		  (values #f)))))))
   (lambda (value)
-    (vector-of-types? value
-		      (lambda (n)
-			(and (exact-nonnegative-integer? n)
-			     (< n 1000)))
-		      (lambda (h)
-			(or (hostport? h)
-			    (http-token? h)))
-		      http-text?
-		      (lambda (dt)
-			(or (not dt)
-			    (decoded-time? dt)))))
+    (list+-of-type? value
+      (lambda (elt)
+	(vector-of-types? elt
+			  (lambda (n)
+			    (and (exact-nonnegative-integer? n)
+				 (< n 1000)))
+			  (lambda (h)
+			    (or (hostport? h)
+				(http-token? h)))
+			  http-text?
+			  (lambda (dt)
+			    (or (not dt)
+				(decoded-time? dt)))))))
   (lambda (value port)
     (write-comma-list
      (lambda (elt port)
@@ -1345,9 +1349,11 @@ USA.
 	(seq lp:token
 	     lp:accept-params)))))
   (lambda (value)
-    (pair-of-type? value
-		   http-token?
-		   accept-params?))
+    (list-of-type? value
+      (lambda (elt)
+	(pair-of-type? elt
+		       http-token?
+		       accept-params?))))
   (lambda (value port)
     (write-comma-list (lambda (elt port)
 			(write-http-token (car elt) port)
@@ -1644,4 +1650,5 @@ USA.
 
 ;;; Edwin Variables:
 ;;; lisp-indent/lp:comma-list: 1
+;;; lisp-indent/list+-of-type?: 1
 ;;; End:
