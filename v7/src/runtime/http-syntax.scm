@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.6 2008/09/21 23:49:46 cph Exp $
+$Id: http-syntax.scm,v 1.7 2008/09/22 08:16:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,6 +29,137 @@ USA.
 ;;; package: (runtime http-syntax)
 
 (declare (usual-integrations))
+
+;;;; Utility combinators
+
+(define (lp:comma-list parse-item)
+  (let ((ugh (list-parser (* (alt #\, lp:lws)))))
+    (list-parser
+     (encapsulate list
+       (alt ugh
+	    (? parse-item
+	       ugh
+	       (* #\,
+		  (? lp:lws)
+		  parse-item
+		  ugh)))))))
+
+(define (lp:comma-list+ parse-item)
+  (let ((parser (lp:comma-list parse-item)))
+    (list-parser
+     (qualify pair?
+       parser))))
+
+(define ((token-predicate . data) object)
+  (any (lambda (datum) (eq? object datum))
+       data))
+
+(define ((pair-predicate car-pred cdr-pred) object)
+  (and (pair? object)
+       (car-pred (car object))
+       (cdr-pred (cdr object))))
+
+(define ((list-predicate elt-pred) object)
+  (list-of-type? object elt-pred))
+
+(define ((list+-predicate elt-pred) object)
+  (and (pair? object)
+       (list-of-type? object elt-pred)))
+
+(define (vector-predicate . preds)
+  (let ((n (length preds)))
+    (lambda (object)
+      (and (vector? object)
+	   (= (vector-length object) n)
+	   (let loop ((preds preds) (i 0))
+	     (if (pair? preds)
+		 (and ((car preds) (vector-ref object i))
+		      (loop (cdr preds) (+ i 1)))
+		 #t))))))
+
+(define ((opt-predicate pred) object)
+  (or (not object)
+      (pred object)))
+
+(define ((alt-predicate . preds) object)
+  (any (lambda (pred) (pred object))
+       preds))
+
+(define ((joined-predicate . preds) object)
+  (every (lambda (pred) (pred object))
+	 preds))
+
+(define ((sep-list-writer sep write-elt) value port)
+  (if (pair? value)
+      (begin
+	  (write-elt (car value) port)
+	  (for-each (lambda (elt)
+		      (display sep port)
+		      (write-elt elt port))
+		    (cdr value)))))
+
+(define (comma-list-writer write-elt)
+  (sep-list-writer ", " write-elt))
+
+(define ((pair-writer write-car sep write-cdr) value port)
+  (let ((write-car
+	 (if (opt-writer? write-car)
+	     (and (car value)
+		  (cdr write-car))
+	     write-car))
+	(write-cdr
+	 (if (opt-writer? write-cdr)
+	     (and (cdr value)
+		  (cdr write-cdr))
+	     write-cdr)))
+    (if write-car
+	(write-car (car value) port))
+    (if (and sep write-car write-cdr)
+	(display sep port))
+    (if write-cdr
+	(write-cdr (cdr value) port))))
+
+(define (vector-writer writer0 . args)
+  (if (not (let loop ((args args))
+	     (if (pair? args)
+		 (and (or (not (car args))
+			  (char? (car args))
+			  (string? (car args)))
+		      (pair? (cdr args))
+		      (or (procedure? (cadr args))
+			  (opt-writer? (cadr args)))
+		      (loop (cddr args)))
+		 (null? args))))
+      (error "Ill-formed VECTOR-WRITER args:" (cons writer0 args)))
+  (lambda (value port)
+    (writer0 (vector-ref value 0) port)
+    (let loop ((args args) (i 1))
+      (if (pair? args)
+	  (let ((sep (car args))
+		(writer
+		 (if (opt-writer? (cadr args))
+		     (and (vector-ref value i)
+			  (cdr (cadr args)))
+		     (cadr args))))
+	    (if writer
+		(begin
+		  (if sep (display sep port))
+		  (writer (vector-ref value i) port)))
+	    (loop (cddr args) (+ i 1)))))))
+
+(define (opt-writer elt-writer)
+  (cons 'OPT-WRITER elt-writer))
+
+(define (opt-writer? object)
+  (and (pair? object)
+       (eq? (car object) 'OPT-WRITER)))
+
+(define ((alt-writer predicate consequent alternative) value port)
+  ((if (predicate value) consequent alternative) value port))
+
+(define ((token-writer token) value port)
+  value
+  (write-http-token token port))
 
 ;;;; Versions
 
@@ -188,20 +319,10 @@ USA.
 
 (define-guarantee http-text "HTTP text")
 
-(define (write-text string port)
-  (if (string-is-http-token? string)
-      (write-string string port)
-      (write-quoted-string string port)))
-
 (define (write-quoted-string string port)
   (write-char #\" port)
   (%write-with-quotations string char-set:http-qdtext port)
   (write-char #\" port))
-
-(define (write-comment string port)
-  (write-char #\( port)
-  (%write-with-quotations string char-set:http-text port)
-  (write-char #\) port))
 
 (define (%write-with-quotations string unquoted port)
   (let ((n (string-length string)))
@@ -212,6 +333,11 @@ USA.
 	    (write-char #\\ port))
 	(write-char char port)))))
 
+(define write-text
+  (alt-writer string-is-http-token?
+	      write-string
+	      write-quoted-string))
+
 (define (comment? string)
   (let ((port (open-input-string string)))
     (let loop ((level 0))
@@ -220,6 +346,11 @@ USA.
 	      ((char=? char #\() (loop (+ level 1)))
 	      ((char=? char #\)) (loop (- level 1)))
 	      (else (loop level)))))))
+
+(define (write-comment string port)
+  (write-char #\( port)
+  (%write-with-quotations string char-set:http-text port)
+  (write-char #\) port))
 
 ;;;; Header I/O
 
@@ -279,29 +410,6 @@ USA.
 
 ;;;; Header element types
 
-(define (lp:comma-list min-length parse-item)
-  (let ((ugh (list-parser (* (alt #\, lp:lws)))))
-    (list-parser
-     (qualify (lambda (items)
-		(>= (length items) min-length))
-       (encapsulate list
-	 (alt ugh
-	      (? parse-item
-		 ugh
-		 (* #\,
-		    (? lp:lws)
-		    parse-item
-		    ugh))))))))
-
-(define (write-comma-list write-elt elts port)
-  (if (pair? elts)
-      (begin
-	(write-elt (car elts) port)
-	(for-each (lambda (elt)
-		    (write-string ", " port)
-		    (write-elt elt port))
-		  (cdr elts)))))
-
 (define lp:token
   (list-parser (map intern lp:token-string)))
 
@@ -309,17 +417,10 @@ USA.
   (list-parser (map token-token->string (match-if token-token?))))
 
 (define lp:token+
-  (lp:comma-list 1 lp:token))
+  (lp:comma-list+ lp:token))
 
-(define (token+? object)
-  (and (pair? object)
-       (token*? object)))
-
-(define (token*? object)
-  (list-of-type? object http-token?))
-
-(define (write-token* tokens port)
-  (write-comma-list write-http-token tokens port))
+(define write-tokens
+  (comma-list-writer write-http-token))
 
 (define lp:text
   (list-parser
@@ -340,19 +441,24 @@ USA.
   (list-parser (noise-if lws-token?)))
 
 (define lp:*
-  (list-parser (qualify (token= '*) lp:token)))
+  (list-parser (qualify *? lp:token)))
 
-(define-integrable (token= token)
-  (lambda (token*)
-    (eq? token* token)))
+(define *?
+  (token-predicate '*))
+
+(define write-*
+  (token-writer '*))
 
 ;;;; Parameters
 
-(define lp:parameter*
+(define lp:parameters
   (list-parser
    (encapsulate list
      (* lp:semicolon
 	lp:parameter))))
+
+(define parameter?
+  (pair-predicate http-token? http-text?))
 
 (define lp:parameter
   (list-parser
@@ -361,12 +467,6 @@ USA.
 	  #\=
 	  lp:text))))
 
-(define lp:parameter%*
-  (list-parser
-   (encapsulate list
-     (* lp:semicolon
-	lp:parameter%))))
-
 (define lp:parameter%
   (list-parser
    (encapsulate cons
@@ -374,71 +474,62 @@ USA.
 	  (alt (seq #\= lp:text)
 	       (values #f))))))
 
+(define parameter%?
+  (pair-predicate http-token? (opt-predicate http-text?)))
+
+(define write-parameter
+  (pair-writer write-http-token
+	       #\=
+	       (opt-writer write-text)))
+
 (define lp:semicolon
   (list-parser
    (seq (? lp:lws)
 	#\;
 	(? lp:lws))))
 
-(define (write-semicolon-sep port)
-  (write-char #\; port)
-  (write-char #\space port))
+(define http-parameters?
+  (list-predicate parameter?))
 
-(define (http-parameters? object)
-  (list-of-type? object parameter?))
+(define write-parameters
+  (sep-list-writer "; " write-parameter))
 
-(define (parameter? object)
-  (pair-of-type? object
-		 http-token?
-		 http-text?))
+(define (value+params-predicate pred)
+  (pair-predicate pred http-parameters?))
 
-(define (parameter%*? object)
-  (list-of-type? object parameter%?))
+(define (value+params-writer writer)
+  (pair-writer writer "; " write-parameters))
 
-(define (parameter%+? object)
-  (list+-of-type? object parameter%?))
-
-(define (parameter%? object)
-  (pair-of-type? object
-		 http-token?
-		 (lambda (value)
-		   (or (not value)
-		       (http-text? value)))))
-
-(define (write-parameter* parameters port)
-  (for-each (lambda (param)
-	      (write-semicolon-sep port)
-	      (write-parameter param port))
-	    parameters))
-
-(define (write-parameter param port)
-  (write-http-token (car param) port)
-  (if (cdr param)
-      (begin
-	(write-char #\= port)
-	(write-text (cdr param) port))))
-
-(define lp:qparam
+(define lp:token+params
   (list-parser
-   (qualify (lambda (p)
-	      (eq? (car p) 'Q))
-     lp:parameter)))
+   (encapsulate cons
+     (seq lp:token
+	  lp:parameters))))
 
+(define token+params?
+  (value+params-predicate http-token?))
+
+(define write-token+params
+  (value+params-writer write-http-token))
+
 (define (qparam? object)
   (and (parameter? object)
        (eq? (car object) 'Q)))
 
-(define lp:opt-qparam
+(define lp:token+qparam
   (list-parser
    (encapsulate list
-     (? (seq lp:semicolon
-	     lp:qparam)))))
+     (seq lp:token
+	  (? lp:semicolon
+	     (qualify qparam? lp:parameter))))))
 
-(define (opt-qparam? object)
-  (or (null? object)
-      (and (pair? object)
-	   (qparam? (car object))
-	   (null? (cdr object)))))
+(define token+qparam?
+  (pair-predicate http-token?
+		  (lambda (object)
+		    (or (null? object)
+			(and (pair? object)
+			     (qparam? (car object))
+			     (null? (cdr object)))))))
 
 ;;; Slight misnomer here.  This "accept-params" represents the pattern
 ;;;     *( ";" parameter ) [accept-params]
@@ -446,10 +537,10 @@ USA.
 (define lp:accept-params
   (list-parser
    (encapsulate list
-     (seq (* (seq lp:semicolon
-		  (disqualify qparam? lp:parameter)))
+     (seq (* lp:semicolon
+	     (disqualify qparam? lp:parameter))
 	  (? lp:semicolon
-	     lp:qparam
+	     (qualify qparam? lp:parameter)
 	     (* lp:semicolon
 		lp:parameter%))))))
 
@@ -467,14 +558,28 @@ USA.
   (and (pair? object)
        (or (cdar object)
 	   (null? (cdr object)))))
+
+(define range?
+  (pair-predicate exact-nonnegative-integer?
+		  exact-nonnegative-integer?))
+
+(define write-range
+  (pair-writer write #\- write))
 
-(define lp:nonnegative-integer
+(define (lp:numeric-token radix)
   (list-parser
-   (map string->number
-	(qualify (lambda (string)
-		   (*match-string (*matcher (+ (char-set char-set:numeric)))
-				  string))
-		 lp:token-string))))
+   (transform (lambda (string)
+		(let ((n (string->number string radix #f)))
+		  (and n
+		       (list n))))
+     lp:token-string)))
+
+(define lp:decimal (lp:numeric-token 10))
+(define lp:hexadecimal (lp:numeric-token 16))
+
+(define (write-opt-decimal n port)
+  (if n
+      (write n port)))
 
 (define lp:mime-type
   (list-parser
@@ -500,11 +605,14 @@ USA.
 
 (define lp:hostport
   (list-parser
-   (encapsulate (lambda (host port)
-		  (*parse-string parse-hostport
-				 (if port
-				     (string-append host ":" port)
-				     host)))
+   (transform (lambda (host port)
+		(let ((v
+		       (*parse-string parse-hostport
+				      (if port
+					  (string-append host ":" port)
+					  host))))
+		  (and v
+		       (list (vector-ref v 0)))))
      (seq lp:token-string
 	  (alt (seq #\: lp:token-string)
 	       (values #f))))))
@@ -512,128 +620,114 @@ USA.
 (define parse-hostport
   (*parser (encapsulate* cons url:parse:hostport)))
 
-(define (hostport? value)
-  (pair-of-type? value
-		 string?
-		 (lambda (port)
-		   (or (not port)
-		       (exact-nonnegative-integer? port)))))
+(define hostport?
+  (pair-predicate string?
+		  (opt-predicate exact-nonnegative-integer?)))
 
-(define (write-hostport value port)
-  (write-string (car value) port)
-  (if (cdr value)
-      (begin
-	(write-char #\: port)
-	(write (cdr value) port))))
+(define write-hostport
+  (pair-writer write-string
+	       #\:
+	       (opt-writer write)))
+
+(define lp:hostport/token
+  (list-parser (alt lp:hostport lp:token)))
+
+(define hostport/token?
+  (alt-predicate hostport? http-token?))
+
+(define write-hostport/token
+  (alt-writer hostport? write-hostport write-http-token))
 
-(define (language-range? object)
-  (and (http-token? object)
-       (token-is-language-range? object)))
-
-(define (token-is-language-range? token)
-  (or (eq? token '*)
-      (token-is-language-tag? token)))
-
-(define lp:language-tag
-  (list-parser (qualify token-is-language-tag? lp:token)))
-
 (define (language-tag? object)
   (and (http-token? object)
-       (token-is-language-tag? object)))
-
-(define (token-is-language-tag? token)
-  (*match-string (let ((segment
+       (*match-string (let ((segment
+			     (*matcher
+			      (n*m 1 8 (char-set char-set:alpha)))))
 			(*matcher
-			 (n*m 1 8 (char-set char-set:alpha)))))
-		   (*matcher
-		    (seq segment
-			 (* (seq #\- segment)))))
-		 (symbol-name token)))
+			 (seq segment
+			      (* (seq #\- segment)))))
+		      (symbol-name object))))
+
+(define language-range?
+  (alt-predicate *? language-tag?))
 
 (define lp:entity-tag
   (list-parser
    (encapsulate cons
-     (seq (alt (encapsulate (lambda () 'WEAK)
-		 (seq (qualify (lambda (s)
-				 (string=? s "W"))
-			lp:token-string)
-		      #\/))
-	       (values 'STRONG))
+     (seq (alt (map (lambda (s) s #t)
+		    (seq (qualify (lambda (s) (string=? s "W"))
+			   lp:token-string)
+			 #\/))
+	       (values #f))
 	  lp:quoted-string))))
 
-(define (entity-tag? value)
-  (pair-of-type? value
-		 (lambda (type)
-		   (or (eq? type 'WEAK)
-		       (eq? type 'STRONG)))
-		 http-text?))
+(define entity-tag?
+  (pair-predicate boolean? http-text?))
 
-(define (write-entity-tag value port)
-  (if (eq? (car value) 'WEAK)
-      (write-string "W/" port))
-  (write-quoted-string (cdr value) port))
+(define write-entity-tag
+  (pair-writer (lambda (weak? port)
+		 (if weak?
+		     (write-string "W/" port)))
+	       #f
+	       write-quoted-string))
 
-(define lp:entity-tag+
-  (lp:comma-list 1 lp:entity-tag))
+(define lp:entity-tags
+  (let ((lp:tags (lp:comma-list+ lp:entity-tag)))
+    (list-parser
+     (alt lp:*
+	  lp:tags))))
 
-(define (entity-tag+? value)
-  (list+-of-type? value entity-tag?))
+(define entity-tags?
+  (alt-predicate *?
+		 (list+-predicate entity-tag?)))
 
-(define (write-entity-tag+ value port)
-  (write-comma-list write-entity-tag value port))
+(define write-entity-tags
+  (alt-writer *?
+	      write-*
+	      (comma-list-writer write-entity-tag)))
 
 (define lp:bytes-unit
-  (list-parser (qualify (token= 'BYTES) lp:token)))
+  (list-parser (qualify bytes-unit? lp:token)))
 
-(define (bytes-unit? value)
-  (eq? value 'BYTES))
+(define bytes-unit?
+  (token-predicate 'BYTES))
+
+(define write-bytes-unit
+  (token-writer 'BYTES))
+
+(define byte-range-spec?
+  (joined-predicate (pair-predicate (opt-predicate exact-nonnegative-integer?)
+				    (opt-predicate exact-nonnegative-integer?))
+		    (lambda (p)
+		      (and (or (car p) (cdr p))
+			   (if (and (car p) (cdr p))
+			       (<= (car p) (cdr p))
+			       #t)))))
 
 (define lp:byte-range-set
-  (lp:comma-list 1
-    (list-parser
-     (transform (lambda (string)
-		  (let ((v
-			 (*parse-string
-			  (let ((match-num
-				 (*matcher (+ (char-set char-set:numeric)))))
-			    (*parser
-			     (encapsulate* cons
-			       (alt (seq (match match-num)
-					 #\-
-					 (alt (match match-num)
-					      (values #f)))
-				    (seq (values #f)
-					 #\-
-					 (match match-num))))))
-			  string)))
-		    (and v
-			 (list (vector-ref v 0)))))
-       lp:token-string))))
+  (lp:comma-list+
+   (list-parser
+    (qualify byte-range-spec?
+      (transform (*parser-transform
+		  (let ((match-num
+			 (*matcher (+ (char-set char-set:numeric)))))
+		    (*parser
+		     (encapsulate* cons
+		       (seq (alt (match match-num)
+				 (values #f))
+			    #\-
+			    (alt (match match-num)
+				 (values #f)))))))
+	lp:token-string)))))
 
-(define (byte-range-set? value)
-  (list+-of-type? value
-    (lambda (p)
-      (and (pair? p)
-	   (or (and (exact-nonnegative-integer? (car p))
-		    (exact-nonnegative-integer? (cdr p)))
-	       (and (exact-nonnegative-integer? (car p))
-		    (not (cdr p)))
-	       (and (not (car p))
-		    (exact-nonnegative-integer? (cdr p))))))))
+(define byte-range-set?
+  (list+-predicate byte-range-spec?))
 
-(define (write-byte-range-set value port)
-  (write-comma-list (lambda (p port)
-		      (if (car p)
-			  (begin
-			    (write (car p) port)
-			    (write-char #\- port)
-			    (if (cdr p)
-				(write (cdr p) port)))
-			  (begin
-			    (write-char #\- port)
-			    (write (cdr p) port))))
-		    value
-		    port))
+(define write-byte-range-set
+  (comma-list-writer
+   (pair-writer write-opt-decimal
+		#\-
+		write-opt-decimal)))
 
 (define lp:product
   (list-parser
@@ -643,41 +737,29 @@ USA.
 		    lp:token-string)
 	       (values #f))))))
 
-(define (product? value)
-  (pair-of-type? value
-		 http-token-string?
-		 (lambda (x)
-		   (or (not x)
-		       (http-token-string? x)))))
+(define product?
+  (pair-predicate http-token-string?
+		  (opt-predicate http-token-string?)))
 
-(define (write-product value port)
-  (write-string (car value) port)
-  (if (cdr value)
-      (begin
-	(write-char #\/ port)
-	(write-string (cdr value) port))))
+(define write-product
+  (pair-writer write-string
+	       #\/
+	       (opt-writer write-string)))
 
 (define lp:product/comment-list
   (list-parser
    (encapsulate list
      (seq (alt lp:product
 	       lp:comment)
-	  (* (seq (? lp:lws)
-		  (alt lp:product
-		       lp:comment)))))))
+	  (* (? lp:lws)
+	     (alt lp:product
+		  lp:comment))))))
 
-(define (product/comment-list? value)
-  (list-of-type? value
-    (lambda (elt)
-      (or (product? elt)
-	  (comment? elt)))))
+(define product/comment-list?
+  (list-predicate (alt-predicate product? comment?)))
 
 (define (write-product/comment-list value port)
-  (let ((write-elt
-	 (lambda (elt port)
-	   (if (product? elt)
-	       (write-product elt port)
-	       (write-comment elt port)))))
+  (let ((write-elt (alt-writer product? write-product write-comment)))
     (if (pair? value)
 	(begin
 	  (write-elt (car value) port)
@@ -748,18 +830,16 @@ USA.
 (define (token-token->string token)
   token)
 
-(define (quoted-string-token? object)
-  (pair-of-type? object
-		 (lambda (tag) (eq? tag 'QUOTED-STRING))
-		 string?))
+(define quoted-string-token?
+  (pair-predicate (token-predicate 'QUOTED-STRING)
+		  string?))
 
 (define (quoted-string-token->string token)
   (cdr token))
 
-(define (comment-token? object)
-  (pair-of-type? object
-		 (lambda (tag) (eq? tag 'COMMENT))
-		 string?))
+(define comment-token?
+  (pair-predicate (token-predicate 'COMMENT)
+		  string?))
 
 (define (comment-token->string token)
   (cdr token))
@@ -896,42 +976,34 @@ USA.
 
 ;;;; Header definitions
 
-(define-syntax define-header
-  (sc-macro-transformer
-   (lambda (form env)
-     (if (syntax-match? '(+ EXPRESSION) (cdr form))
-	 `(ADD-BOOT-INIT!
-	   (LAMBDA ()
-	     (DEFINE-HEADER-1
-	       ,@(map (lambda (expr)
-			(close-syntax expr env))
-		      (cdr form)))))
-	 (ill-formed-syntax form)))))
-
-(define (define-header-1 name parser predicate writer)
-  (let ((key (intern name))
-	(defn (make-hvdefn name parser predicate writer)))
-    (let ((p (assq key header-value-defns)))
-      (if p
-	  (set-cdr! p defn)
-	  (begin
-	    (set! header-value-defns
-		  (cons (cons key defn)
-			header-value-defns))
-	    unspecific)))))
+(define (define-header name parser predicate writer)
+  (hash-table-set! header-value-defns
+		   (intern name)
+		   (make-hvdefn name parser predicate writer)))
 
 (define (header-value-defn name)
-  (let ((p (assq name header-value-defns)))
-    (and p
-	 (cdr p))))
+  (hash-table-ref/default header-value-defns name #f))
 
-(define header-value-defns '())
+(define-deferred header-value-defns
+  (make-eq-hash-table))
 
 (define-structure hvdefn
   (name #f read-only #t)
   (parser #f read-only #t)
   (predicate #f read-only #t)
   (writer #f read-only #t))
+
+(define (define-comma-list-header name parser predicate writer)
+  (define-header name
+    (tokenized-parser (lp:comma-list parser))
+    (list-predicate predicate)
+    (comma-list-writer writer)))
+
+(define (define-comma-list+-header name parser predicate writer)
+  (define-header name
+    (tokenized-parser (lp:comma-list+ parser))
+    (list+-predicate predicate)
+    (comma-list-writer writer)))
 
 (define ((tokenized-parser parser) string win lose)
   (parser (string->tokens string)
@@ -953,279 +1025,155 @@ USA.
 	      (error "Wrong number of values from HTTP header parser."))
 	  (win (vector-ref v 0)))
 	(lose))))
+
+;; Header definitions are deferred at cold load...
+(add-boot-init! (lambda ()
 
 ;;;; General headers
 
-(define-header "Cache-Control"
-  (tokenized-parser (lp:comma-list 1 lp:parameter%))
-  parameter%+?
-  (lambda (value port) (write-comma-list write-parameter value port)))
+(define-comma-list+-header "Cache-Control"
+  lp:parameter%
+  parameter%?
+  write-parameter)
 
-(define-header "Connection"
-  (tokenized-parser lp:token+)
-  token+?
-  write-token*)
+(define-comma-list+-header "Connection"
+  lp:token
+  http-token?
+  write-http-token)
 
 (define-header "Date"
   (direct-parser parser:http-date)
   http-date?
   write-http-date)
 
-(define-header "Pragma"
-  (tokenized-parser (lp:comma-list 1 lp:parameter%))
-  parameter%+?
-  (lambda (value port) (write-comma-list write-parameter value port)))
+(define-comma-list+-header "Pragma"
+  lp:parameter%
+  parameter%?
+  write-parameter)
 
-(define-header "Trailer"
-  (tokenized-parser lp:token+)
-  token+?
-  write-token*)
+(define-comma-list+-header "Trailer"
+  lp:token
+  http-token?
+  write-http-token)
 
-(define-header "Transfer-Encoding"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate cons
-	(seq lp:token
-	     lp:parameter*)))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       http-token?
-		       http-parameters?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(write-http-token (car elt) port)
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
+(define-comma-list+-header "Transfer-Encoding"
+  lp:token+params
+  token+params?
+  write-token+params)
 
-(define-header "Upgrade"
-  (tokenized-parser (lp:comma-list 1 lp:product))
-  (lambda (value) (list+-of-type? value product?))
-  (lambda (value port) (write-comma-list write-product value port)))
+(define-comma-list+-header "Upgrade"
+  lp:product
+  product?
+  write-product)
 
-(define-header "Via"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate cons
-	(seq (encapsulate cons
-	       (seq (alt (seq lp:token #\/)
-			 (values #f))
-		    lp:token))
-	     lp:lws
-	     (alt lp:hostport
-		  lp:token)
-	     (? (noise (seq (? lp:lws)
-			    lp:comment
-			    (? lp:lws)))))))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       (lambda (received-protocol)
-			 (pair-of-type? received-protocol
-					(lambda (name)
-					  (or (not name)
-					      (http-token? name)))
-					http-token?))
-		       (lambda (received-by)
-			 (or (hostport? received-by)
-			     (http-token? received-by)))))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(let ((received-protocol (car elt)))
-			  (if (car received-protocol)
-			      (begin
-				(write-http-token (car received-protocol) port)
-				(write-char #\/ port)))
-			  (write-http-token (cdr received-protocol) port))
-			(let ((received-by (cdr elt)))
-			  (if (hostport? received-by)
-			      (write-hostport received-by port)
-			      (write-http-token received-by port))))
-		      value
-		      port)))
-
-(define-header "Warning"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate vector
-	(seq (qualify (lambda (n) (< n 1000)) lp:nonnegative-integer)
-	     #\space
-	     (alt lp:hostport
-		  lp:token)
-	     #\space
-	     lp:quoted-string
-	     (alt (seq #\space
-		       (transform (lambda (string)
-				    (let ((dt
-					   (*parse-string parser:http-date
-							  string)))
-				      (and dt
-					   (list dt))))
-			 lp:quoted-string))
-		  (values #f)))))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(vector-of-types? elt
-			  (lambda (n)
-			    (and (exact-nonnegative-integer? n)
-				 (< n 1000)))
-			  (lambda (h)
-			    (or (hostport? h)
-				(http-token? h)))
-			  http-text?
-			  (lambda (dt)
-			    (or (not dt)
-				(decoded-time? dt)))))))
-  (lambda (value port)
-    (write-comma-list
-     (lambda (elt port)
-       (receive (code agent text date) (vector->values value)
-	 (write-string (string-pad-left (number->string code) 3 #\0) port)
-	 (write-char #\space port)
-	 (if (hostport? agent)
-	     (write-hostport agent port)
-	     (write-http-token agent port))
-	 (write-char #\space port)
-	 (write-quoted-string text port)
-	 (if date
-	     (begin
-	       (write-char #\space port)
-	       (write-quoted-string (call-with-output-string
-				      (lambda (port)
-					(write-http-date date port)))
-				    port)))))
-     value
-     port)))
+(define-comma-list+-header "Via"
+  (list-parser
+   (encapsulate vector
+     (seq (encapsulate cons
+	    (seq (alt (seq lp:token #\/)
+		      (values #f))
+		 lp:token))
+	  lp:lws
+	  lp:hostport/token
+	  (alt (seq (? lp:lws) lp:comment)
+	       (values #f)))))
+  (vector-predicate (pair-predicate (opt-predicate http-token?)
+				    http-token?)
+		    hostport/token?
+		    (opt-predicate comment?))
+  (vector-writer (pair-writer (opt-writer write-http-token)
+			      #\/
+			      write-http-token)
+		 #\space
+		 write-hostport/token
+		 #\space
+		 (opt-writer write-comment)))
+
+(define-comma-list+-header "Warning"
+  (list-parser
+   (encapsulate vector
+     (seq (qualify http-status? lp:decimal)
+	  #\space
+	  (alt lp:hostport
+	       lp:token)
+	  #\space
+	  lp:quoted-string
+	  (alt (seq #\space
+		    (transform (*parser-transform parser:http-date)
+		      lp:quoted-string))
+	       (values #f)))))
+  (vector-predicate http-status?
+		    hostport/token?
+		    http-text?
+		    (opt-predicate decoded-time?))
+  (vector-writer write-http-status
+		 #\space
+		 write-hostport/token
+		 #\space
+		 write-quoted-string
+		 #\space
+		 (opt-writer
+		  (lambda (date port)
+		    (write-quoted-string
+		     (call-with-output-string
+		       (lambda (port)
+			 (write-http-date date port)))
+		     port)))))
 
 ;;;; Request headers
 
-(define-header "Accept"
-  (tokenized-parser
-   (lp:comma-list 0
-     (list-parser
-      (encapsulate cons
-	(seq (encapsulate (lambda (t1 t2)
-			    (if (eq? t2 '*)
-				(if (eq? t1 '*)
-				    #t
-				    t1)
-				(make-mime-type t1 t2)))
-	       (seq lp:token
-		    #\/
-		    lp:token))
-	     lp:accept-params)))))
-  (lambda (value)
-    (list-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       (lambda (mt)
-			 (or (mime-type? mt)
-			     (http-token? mt)
-			     (eq? mt #t)))
-		       accept-params?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(let ((mt (car elt)))
-			  (cond ((mime-type? mt)
-				 (write-mime-type mt port))
-				((http-token? mt)
-				 (write-http-token mt port)
-				 (write-string "/*" port))
-				(else
-				 (write-string "*/*" port))))
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
+(define-comma-list-header "Accept"
+  (list-parser
+   (encapsulate cons
+     (seq (encapsulate (lambda (t1 t2)
+			 (if (*? t2)
+			     t1
+			     (make-mime-type t1 t2)))
+	    (seq lp:token
+		 #\/
+		 lp:token))
+	  lp:accept-params)))
+  (pair-predicate (alt-predicate mime-type? http-token?)
+		  accept-params?)
+  (value+params-writer
+   (alt-writer mime-type?
+	       write-mime-type
+	       (lambda (value port)
+		 (write-http-token value port)
+		 (write-string "/*" port)))))
 
-(define-header "Accept-Charset"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate cons
-	(seq lp:token
-	     lp:opt-qparam)))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       http-token?
-		       opt-qparam?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(write-http-token (car elt) port)
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
-
-(define-header "Accept-Encoding"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate cons
-	(seq lp:token
-	     lp:opt-qparam)))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       http-token?
-		       opt-qparam?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(write-http-token (car elt) port)
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
+(define-comma-list+-header "Accept-Charset"
+  lp:token+qparam
+  token+qparam?
+  write-token+params)
 
-(define-header "Accept-Language"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (encapsulate cons
-	(seq (qualify token-is-language-range? lp:token)
-	     lp:opt-qparam)))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       language-range?
-		       opt-qparam?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(write-http-token (car elt) port)
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
+(define-comma-list+-header "Accept-Encoding"
+  lp:token+qparam
+  token+qparam?
+  write-token+params)
+
+(let ((qualifier (lambda (p) (language-range? (car p)))))
+  (define-comma-list+-header "Accept-Language"
+    (list-parser (qualify qualifier lp:token+qparam))
+    (joined-predicate token+qparam? qualifier)
+    write-token+params))
 #;
 (define-header "Authorization"
   (tokenized-parser
    ...)
   (lambda (value))
   (lambda (value port)))
+
+(define-comma-list+-header "Expect"
+  (list-parser
+   (qualify params-are-expectation?
+     (encapsulate list
+       (* lp:semicolon
+	  lp:parameter%))))
+  (joined-predicate (list-predicate parameter%?)
+		    params-are-expectation?)
+  write-parameters)
 
-(define-header "Expect"
-  (tokenized-parser
-   (lp:comma-list 1
-     (list-parser
-      (qualify params-are-expectation?
-	lp:parameter%*))))
-  (lambda (value)
-    (list+-of-type? value
-      (lambda (expectation)
-	(and (parameter%*? expectation)
-	     (params-are-expectation? expectation)))))
-  (lambda (value port)
-    (write-comma-list (lambda (expectation)
-			(write-parameter* expectation port))
-		      value
-		      port)))
 #; 
 (define-header "From"
   ;; parser is completely different -- it's a mail address.
@@ -1235,49 +1183,23 @@ USA.
 
 (define-header "Host"
   (direct-parser parse-hostport)
-  (lambda (value)
-    (pair-of-type? value
-		   string?
-		   (lambda (port)
-		     (or (not port)
-			 (exact-nonnegative-integer? port)))))
-  (lambda (value port)
-    (write-string (car value) port)
-    (if (cdr value)
-	(begin
-	  (write-char #\: port)
-	  (write (cdr value) port)))))
+  hostport?
+  write-hostport)
 
 (define-header "If-Match"
-  (tokenized-parser
-   (list-parser
-    (alt (qualify (token= '*) lp:token)
-	 lp:entity-tag+)))
-  (lambda (value)
-    (or (eq? value '*)
-	(entity-tag+? value)))
-  (lambda (value port)
-    (if (eq? value '*)
-	(write-http-token value port)
-	(write-entity-tag+ value port))))
-
+  (tokenized-parser lp:entity-tags)
+  entity-tags?
+  write-entity-tags)
+
 (define-header "If-Modified-Since"
   (direct-parser parser:http-date)
   http-date?
   write-http-date)
 
 (define-header "If-None-Match"
-  (tokenized-parser
-   (list-parser
-    (alt (qualify (token= '*) lp:token)
-	 lp:entity-tag+)))
-  (lambda (value)
-    (or (eq? value '*)
-	(entity-tag+? value)))
-  (lambda (value port)
-    (if (eq? value '*)
-	(write-http-token value port)
-	(write-entity-tag+ value port))))
+  (tokenized-parser lp:entity-tags)
+  entity-tags?
+  write-entity-tags)
 
 (define-header "If-Range"
   (let ((pe (tokenized-parser lp:entity-tag))
@@ -1287,13 +1209,8 @@ USA.
 	  win
 	  (lambda ()
 	    (pd string win lose)))))
-  (lambda (value)
-    (or (entity-tag? value)
-	(http-date? value)))
-  (lambda (value port)
-    (if (entity-tag? value)
-	(write-entity-tag value port)
-	(write-http-date value port))))
+  (alt-predicate entity-tag? http-date?)
+  (alt-writer entity-tag? write-entity-tag write-http-date))
 
 (define-header "If-Unmodified-Since"
   (direct-parser parser:http-date)
@@ -1301,16 +1218,17 @@ USA.
   write-http-date)
 
 (define-header "Max-Forwards"
-  (tokenized-parser lp:nonnegative-integer)
+  (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
   write)
+
 #;
 (define-header "Proxy-Authorization"
   (tokenized-parser
    ...)
   (lambda (value))
   (lambda (value port)))
-
+
 (define-header "Range"
   (tokenized-parser
    (list-parser
@@ -1318,14 +1236,10 @@ USA.
       (seq lp:bytes-unit
 	   #\=
 	   lp:byte-range-set))))
-  (lambda (value)
-    (pair-of-type? value
-		   bytes-unit?
-		   byte-range-set?))
-  (lambda (value port)
-    (write-http-token (car value) port)
-    (write-char #\= port)
-    (write-byte-range-set (cdr value) port)))
+  (pair-predicate bytes-unit? byte-range-set?)
+  (pair-writer write-bytes-unit
+	       #\=
+	       write-byte-range-set))
 
 (define-header "Referer"
   (direct-parser
@@ -1341,25 +1255,14 @@ USA.
 	 (not (uri-fragment value))))
   write-uri)
 
-(define-header "TE"
-  (tokenized-parser
-   (lp:comma-list 0
-     (list-parser
-      (encapsulate cons
-	(seq lp:token
-	     lp:accept-params)))))
-  (lambda (value)
-    (list-of-type? value
-      (lambda (elt)
-	(pair-of-type? elt
-		       http-token?
-		       accept-params?))))
-  (lambda (value port)
-    (write-comma-list (lambda (elt port)
-			(write-http-token (car elt) port)
-			(write-parameter* (cdr elt) port))
-		      value
-		      port)))
+(define-comma-list-header "TE"
+  (list-parser
+   (encapsulate cons
+     (seq lp:token
+	  lp:accept-params)))
+  (pair-predicate http-token?
+		  accept-params?)
+  write-token+params)
 
 (define-header "User-Agent"
   (tokenized-parser lp:product/comment-list)
@@ -1370,19 +1273,18 @@ USA.
 
 (define-header "Accept-Ranges"
   (tokenized-parser
-   (list-parser
-    (alt (encapsulate (lambda (none) none '())
-	   (qualify (token= 'NONE) lp:token))
-	 lp:token+)))
-  token*?
-  (lambda (value port)
-    (if (null? value)
-	(write-http-token 'NONE port)
-	(write-token* value port))))
+   (let ((none? (token-predicate 'NONE)))
+     (list-parser
+      (alt (encapsulate (lambda (none) none '())
+	     (qualify none? lp:token))
+	   lp:token+))))
+  (list-predicate http-token?)
+  (alt-writer null?
+	      (token-writer 'NONE)
+	      write-tokens))
 
 (define-header "Age"
-  (tokenized-parser
-   lp:nonnegative-integer)
+  (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
   write)
 
@@ -1406,15 +1308,9 @@ USA.
   (direct-parser
    (*parser
     (alt parser:http-date
-	 (map string->number
-	      (match (+ (char-set char-set:numeric)))))))
-  (lambda (value)
-    (or (http-date? value)
-	(exact-nonnegative-integer? value)))
-  (lambda (value port)
-    (if (exact-nonnegative-integer? value)
-	(write value port)
-	(write-http-date value port))))
+	 lp:decimal)))
+  (alt-predicate http-date? exact-nonnegative-integer?)
+  (alt-writer http-date? write-http-date write))
 
 (define-header "Server"
   (tokenized-parser lp:product/comment-list)
@@ -1424,15 +1320,10 @@ USA.
 (define-header "Vary"
   (tokenized-parser
    (list-parser
-    (alt (qualify (token= '*) lp:token)
+    (alt lp:*
 	 lp:token+)))
-  (lambda (value)
-    (or (eq? value '*)
-	(token+? value)))
-  (lambda (value port)
-    (if (eq? value '*)
-	(write-http-token value port)
-	(write-token* value port))))
+  (alt-predicate *? (list+-predicate http-token?))
+  (alt-writer *? write-* write-tokens))
 #;
 (define-header "WWW-Authenticate"
   (tokenized-parser
@@ -1442,27 +1333,23 @@ USA.
 
 ;;;; Entity headers
 
-(define-header "Allow"
-  (tokenized-parser
-   (lp:comma-list 0
-     (list-parser
-      (map string->symbol
-	   lp:token-string))))
-  token*?
-  write-token*)
+(define-comma-list-header "Allow"
+  lp:token-string
+  http-token-string?
+  write-string)
 
-(define-header "Content-Encoding"
-  (tokenized-parser lp:token+)
-  token+?
-  write-token*)
+(define-comma-list+-header "Content-Encoding"
+  lp:token
+  http-token?
+  write-http-token)
 
-(define-header "Content-Language"
-  (tokenized-parser (lp:comma-list 1 lp:language-tag))
-  (lambda (value) (list+-of-type? value language-tag?))
-  write-token*)
+(define-comma-list+-header "Content-Language"
+  (list-parser (qualify language-tag? lp:token))
+  language-tag?
+  write-http-token)
 
 (define-header "Content-Length"
-  (tokenized-parser lp:nonnegative-integer)
+  (tokenized-parser lp:decimal)
   exact-nonnegative-integer?
   write)
 
@@ -1496,94 +1383,51 @@ USA.
       (seq lp:bytes-unit
 	   #\space
 	   (alt (encapsulate cons
-		  (seq lp:nonnegative-integer
+		  (seq lp:decimal
 		       #\-
-		       lp:nonnegative-integer))
+		       lp:decimal))
 		lp:*)
 	   #\/
-	   (alt lp:nonnegative-integer
+	   (alt lp:decimal
 		lp:*)))))
-  (lambda (value)
-    (vector-of-types? value
-		      bytes-unit?
-		      (lambda (rs)
-			(or (eq? rs '*)
-			    (pair-of-type? rs
-					   exact-nonnegative-integer?
-					   exact-nonnegative-integer?)))
-		      (lambda (il)
-			(or (eq? il '*)
-			    (exact-nonnegative-integer? il)))))
-  (lambda (value port)
-    (receive (unit rs il) (vector->values value)
-      (write-http-token unit port)
-      (write-char #\space port)
-      (if (eq? rs '*)
-	  (write-char #\* port)
-	  (begin
-	    (write (car rs) port)
-	    (write-char #\= port)
-	    (write (cdr rs) port)))
-      (write-char #\/ port)
-      (if (eq? il '*)
-	  (write-char #\* port)
-	  (write il port)))))
+  (vector-predicate bytes-unit?
+		    (alt-predicate range? *?)
+		    (alt-predicate exact-nonnegative-integer? *?))
+  (vector-writer write-bytes-unit
+		 #\space
+		 (alt-predicate range? write-range write-*)
+		 #\/
+		 (alt-predicate exact-nonnegative-integer? write write-*)))
 
 (define-header "Content-Type"
   (tokenized-parser
    (list-parser
     (encapsulate cons
       (seq lp:mime-type
-	   lp:parameter*))))
-  (lambda (value)
-    (pair-of-type? value
-		   mime-type?
-		   http-parameters?))
-  (lambda (value port)
-    (write-mime-type (car value) port)
-    (write-parameter* (cdr value) port)))
+	   lp:parameters))))
+  (value+params-predicate mime-type?)
+  (value+params-writer write-mime-type))
 
 (define-header "Expires"
   (direct-parser
    (*parser
     (alt parser:http-date
-	 (map (lambda (s) s #f)
-	      (match (* (char-set char-set:http-text)))))))
-  (lambda (value)
-    (or (not value)
-	(http-date? value)))
-  (lambda (value port)
-    (if (not value)
-	(write-string "0" port)
-	(write-http-date value port))))
+	 (encapsulate (lambda (v) v #f)
+	   (noise (+ (char-set char-set:http-text)))))))
+  (opt-predicate http-date?)
+  (alt-writer http-date?
+	      write-http-date
+	      (lambda (value port)
+		value
+		(write-string "-1" port))))
 
 (define-header "Last-Modified"
   (direct-parser parser:http-date)
   http-date?
   write-http-date)
-
-;;;; Chunked encoding
 
-(define (parse-http-chunk-leader string)
-  (lp:chunk-leader (string->tokens string)
-		   (lambda (tokens vals lose)
-		     (if (null? tokens)
-			 (structure-parser-values-ref vals 0)
-			 (lose)))
-		   (lambda ()
-		     #f)))
-
-(define lp:chunk-leader
-  (list-parser
-   (encapsulate cons
-     (seq (transform (lambda (s)
-		       (let ((n (string->number s 16 #f)))
-			 (and n
-			      (list n))))
-	    lp:token-string)
-	  (encapsulate list
-	    (* lp:semicolon
-	       lp:parameter%))))))
+;; End of ADD-BOOT-INIT! wrapper.
+))
 
 ;;;; Utilities
 
@@ -1591,6 +1435,20 @@ USA.
   (let ((environment (the-environment)))
     (lambda ()
       (run-boot-inits! environment))))
+
+(define (parse-http-chunk-leader string)
+  ((list-parser
+    (encapsulate list
+      (seq lp:hexadecimal
+	   (* lp:semicolon
+	      lp:parameter%))))
+   (string->tokens string)
+   (lambda (items vals lose)
+     (if (null? items)
+	 (structure-parser-values-ref vals 0)
+	 (lose)))
+   (lambda ()
+     #f)))
 
 (define-deferred default-http-user-agent
   (list
@@ -1604,26 +1462,14 @@ USA.
 		   (string-set! s i #\_))))
 	   s))))
 
-(define (pair-of-type? object car-pred cdr-pred)
-  (and (pair? object)
-       (car-pred (car object))
-       (cdr-pred (cdr object))))
-
-(define (list+-of-type? object predicate)
-  (and (pair? object)
-       (list-of-type? object predicate)))
-
-(define (vector-of-types? object . predicates)
-  (and (vector? object)
-       (= (vector-length object) (length predicates))
-       (let loop ((predicates predicates) (i 0))
-	 (if (pair? predicates)
-	     (and ((car predicates) (vector-ref object i))
-		  (loop (cdr predicates) (+ i 1)))
-	     #t))))
-
 (define (vector->values vector)
   (apply values (vector->list vector)))
+
+(define (*parser-transform parser)
+  (lambda (string)
+    (let ((v (*parse-string parser string)))
+      (and v
+	   (list (vector-ref v 0))))))
 
 (define (encode-base64-octets octets)
   (call-with-output-string
@@ -1647,8 +1493,3 @@ USA.
 	     (let ((ctx (decode-base64:initialize port #f)))
 	       (decode-base64:update ctx string 0 (string-length string))
 	       (decode-base64:finalize ctx)))))))))
-
-;;; Edwin Variables:
-;;; lisp-indent/lp:comma-list: 1
-;;; lisp-indent/list+-of-type?: 1
-;;; End:
