@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.69 2008/07/23 11:10:56 cph Exp $
+$Id: string.scm,v 14.70 2008/09/23 23:59:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -653,6 +653,44 @@ USA.
 	(begin
 	  (%substring-upcase! string index (fix:+ index 1))
 	  (%substring-downcase! string (fix:+ index 1) end)))))
+
+;;;; CamelCase support
+
+(define (camel-case-string->lisp string)
+  (call-with-input-string string
+    (lambda (input)
+      (call-with-narrow-output-string
+	(lambda (output)
+	  (let loop ((prev #f))
+	    (let ((c (read-char input)))
+	      (if (not (eof-object? c))
+		  (begin
+		    (if (and prev (char-upper-case? c))
+			(write-char #\- output))
+		    (write-char (char-downcase c) output)
+		    (loop c))))))))))
+
+(define (lisp-string->camel-case string #!optional upcase-initial?)
+  (call-with-input-string string
+    (lambda (input)
+      (call-with-narrow-output-string
+	(lambda (output)
+	  (let loop
+	      ((upcase?
+		(if (default-object? upcase-initial?)
+		    #t
+		    upcase-initial?)))
+	    (let ((c (read-char input)))
+	      (if (not (eof-object? c))
+		  (if (char-alphabetic? c)
+		      (begin
+			(write-char (if upcase? (char-upcase c) c) output)
+			(loop #f))
+		      (begin
+			(if (or (char-numeric? c)
+				(eq? c #\_))
+			    (write-char c output))
+			(loop #t)))))))))))
 
 ;;;; Replace
 
