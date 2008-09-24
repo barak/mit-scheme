@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.60 2008/07/19 01:41:18 cph Exp $
+$Id: xml-struct.scm,v 1.61 2008/09/24 00:07:04 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -441,8 +441,8 @@ USA.
 	(xml-name-prefix=? name 'xmlns))))
 
 (define (xml-element-namespace-decls elt)
-  (keep-matching-items (xml-element-attributes elt)
-    xml-attribute-namespace-decl?))
+  (filter xml-attribute-namespace-decl?
+	  (xml-element-attributes elt)))
 
 (define (xml-element-namespace-uri elt prefix)
   (let ((value
@@ -457,10 +457,10 @@ USA.
 
 (define (xml-element-namespace-prefix elt uri-string)
   (let ((attr
-	 (find-matching-item (xml-element-attributes elt)
-	   (lambda (attr)
-	     (and (xml-attribute-namespace-decl? attr)
-		  (string=? (xml-attribute-value attr) uri-string))))))
+	 (find (lambda (attr)
+		 (and (xml-attribute-namespace-decl? attr)
+		      (string=? (xml-attribute-value attr) uri-string)))
+	       (xml-element-attributes elt))))
     (and attr
 	 (let ((name (xml-attribute-name attr)))
 	   (if (xml-name=? name 'xmlns)
@@ -515,9 +515,9 @@ USA.
 (define (xml-attrs . items)
   (let ((flush
 	 (lambda (name attrs)
-	   (delete-matching-items! attrs
-	     (lambda (attr)
-	       (eq? (xml-attribute-name attr) name))))))
+	   (remove! (lambda (attr)
+		      (eq? (xml-attribute-name attr) name))
+		    attrs))))
     (let ((accum
 	   (lambda (attr attrs)
 	     (cons attr (flush (xml-attribute-name attr) attrs)))))
@@ -525,18 +525,23 @@ USA.
 	(if (pair? items)
 	    (let ((item (car items))
 		  (items (cdr items)))
-	      (cond ((and (xml-name? item)
+	      (cond ((and (or (xml-name? item)
+			      (string? item))
 			  (pair? items))
-		     (let ((value (car items))
+		     (let ((name
+			    (if (string? item)
+				(make-xml-name item)
+				item))
+			   (value (car items))
 			   (attrs (loop (cdr items))))
 		       (if value
 			   (accum (make-xml-attribute
-				   item
+				   name
 				   (if (eq? value #t)
-				       (symbol-name item)
+				       (xml-name-string name)
 				       (convert-xml-string-value value)))
 				  attrs)
-			   (flush item attrs))))
+			   (flush name attrs))))
 		    ((xml-attribute? item)
 		     (accum item (loop items)))
 		    ((list-of-type? item xml-attribute?)
