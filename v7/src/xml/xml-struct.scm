@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.61 2008/09/24 00:07:04 cph Exp $
+$Id: xml-struct.scm,v 1.62 2008/09/24 00:26:39 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -553,19 +553,24 @@ USA.
 	    '())))))
 
 (define (find-xml-attr name elt)
-  (guarantee-xml-name name 'FIND-XML-ATTR)
-  (let loop
-      ((attrs
-	(if (xml-element? elt)
-	    (xml-element-attributes elt)
-	    (begin
-	      (guarantee-list-of-type elt xml-attribute? "XML attributes"
-				      'FIND-XML-ATTR)
-	      elt))))
-    (and (pair? attrs)
-	 (if (xml-name=? (xml-attribute-name (car attrs)) name)
-	     (xml-attribute-value (car attrs))
-	     (loop (cdr attrs))))))
+  (let ((name
+	 (if (string? name)
+	     (make-xml-name name)
+	     (begin
+	       (guarantee-xml-name name 'FIND-XML-ATTR)
+	       name))))
+    (let loop
+	((attrs
+	  (if (xml-element? elt)
+	      (xml-element-attributes elt)
+	      (begin
+		(guarantee-list-of-type elt xml-attribute? "XML attributes"
+					'FIND-XML-ATTR)
+		elt))))
+      (and (pair? attrs)
+	   (if (xml-name=? (xml-attribute-name (car attrs)) name)
+	       (xml-attribute-value (car attrs))
+	       (loop (cdr attrs)))))))
 
 (define (flatten-xml-element-content item)
   (letrec
