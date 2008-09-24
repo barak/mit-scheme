@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.63 2008/09/24 00:40:36 cph Exp $
+$Id: xml-struct.scm,v 1.64 2008/09/24 00:44:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -244,12 +244,16 @@ USA.
 	      (error:wrong-type-datum content "an XML content")))))
     (search content)))
 
-(define (xml-element-child name elt)
-  (let ((name (xml-name-arg name 'XML-ELEMENT-CHILD)))
-    (find (lambda (item)
-	    (and (xml-element? item)
-		 (xml-name=? (xml-element-name item) name)))
-	  (xml-element-content elt))))
+(define (xml-element-child name elt #!optional error?)
+  (let ((child
+	 (let ((name (xml-name-arg name 'XML-ELEMENT-CHILD)))
+	   (find (lambda (item)
+		   (and (xml-element? item)
+			(xml-name=? (xml-element-name item) name)))
+		 (xml-element-content elt)))))
+    (if (and (not child) (if (default-object? error?) #f error?))
+	(error:bad-range-argument name 'XML-ELEMENT-CHILD))
+    child))
 
 (define (xml-element-children name elt)
   (let ((name (xml-name-arg name 'XML-ELEMENT-CHILDREN)))
@@ -258,7 +262,7 @@ USA.
 		   (xml-name=? (xml-element-name item) name)))
 	    (xml-element-content elt))))
 
-(define (find-xml-attr name elt)
+(define (find-xml-attr name elt #!optional error?)
   (let ((attr
 	 (find (let ((name (xml-name-arg name 'FIND-XML-ATTR)))
 		 (lambda (attr)
@@ -268,6 +272,8 @@ USA.
 		   (begin
 		     (guarantee-xml-attribute-list elt 'FIND-XML-ATTR)
 		     elt)))))
+    (if (and (not attr) (if (default-object? error?) #f error?))
+	(error:bad-range-argument name 'FIND-XML-ATTR))
     (and attr
 	 (xml-attribute-value attr))))
 
