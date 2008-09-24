@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.62 2008/09/24 00:26:39 cph Exp $
+$Id: xml-struct.scm,v 1.63 2008/09/24 00:40:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -200,6 +200,8 @@ USA.
 		  (loop (cdr attrs)))
 	     #t))))
 
+(define-guarantee xml-attribute-list "XML attribute list")
+
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
 
@@ -241,6 +243,40 @@ USA.
 		       (xml-processing-instructions? item)))
 	      (error:wrong-type-datum content "an XML content")))))
     (search content)))
+
+(define (xml-element-child name elt)
+  (let ((name (xml-name-arg name 'XML-ELEMENT-CHILD)))
+    (find (lambda (item)
+	    (and (xml-element? item)
+		 (xml-name=? (xml-element-name item) name)))
+	  (xml-element-content elt))))
+
+(define (xml-element-children name elt)
+  (let ((name (xml-name-arg name 'XML-ELEMENT-CHILDREN)))
+    (filter (lambda (item)
+	      (and (xml-element? item)
+		   (xml-name=? (xml-element-name item) name)))
+	    (xml-element-content elt))))
+
+(define (find-xml-attr name elt)
+  (let ((attr
+	 (find (let ((name (xml-name-arg name 'FIND-XML-ATTR)))
+		 (lambda (attr)
+		   (xml-name=? (xml-attribute-name attr) name)))
+	       (if (xml-element? elt)
+		   (xml-element-attributes elt)
+		   (begin
+		     (guarantee-xml-attribute-list elt 'FIND-XML-ATTR)
+		     elt)))))
+    (and attr
+	 (xml-attribute-value attr))))
+
+(define (xml-name-arg arg caller)
+  (if (string? arg)
+      (make-xml-name arg)
+      (begin
+	(guarantee-xml-name arg caller)
+	arg)))
 
 (define-xml-type comment
   (text canonicalize canonicalize-char-data))
@@ -551,26 +587,6 @@ USA.
 		    (else
 		     (error "Unknown item passed to xml-attrs:" item))))
 	    '())))))
-
-(define (find-xml-attr name elt)
-  (let ((name
-	 (if (string? name)
-	     (make-xml-name name)
-	     (begin
-	       (guarantee-xml-name name 'FIND-XML-ATTR)
-	       name))))
-    (let loop
-	((attrs
-	  (if (xml-element? elt)
-	      (xml-element-attributes elt)
-	      (begin
-		(guarantee-list-of-type elt xml-attribute? "XML attributes"
-					'FIND-XML-ATTR)
-		elt))))
-      (and (pair? attrs)
-	   (if (xml-name=? (xml-attribute-name (car attrs)) name)
-	       (xml-attribute-value (car attrs))
-	       (loop (cdr attrs)))))))
 
 (define (flatten-xml-element-content item)
   (letrec

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.103 2008/08/24 06:27:16 cph Exp $
+$Id: xml.pkg,v 1.104 2008/09/24 00:40:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -109,6 +109,7 @@ USA.
 	  error:not-xml-!entity
 	  error:not-xml-!notation
 	  error:not-xml-attribute
+	  error:not-xml-attribute-list
 	  error:not-xml-comment
 	  error:not-xml-declaration
 	  error:not-xml-document
@@ -127,6 +128,7 @@ USA.
 	  guarantee-xml-!entity
 	  guarantee-xml-!notation
 	  guarantee-xml-attribute
+	  guarantee-xml-attribute-list
 	  guarantee-xml-comment
 	  guarantee-xml-declaration
 	  guarantee-xml-document
@@ -233,6 +235,8 @@ USA.
 	  xml-dtd-root
 	  xml-dtd?
 	  xml-element-attributes
+	  xml-element-child
+	  xml-element-children
 	  xml-element-content
 	  xml-element-name
 	  xml-element-namespace-decls
