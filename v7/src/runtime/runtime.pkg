@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.686 2008/09/23 23:59:19 cph Exp $
+$Id: runtime.pkg,v 14.687 2008/09/24 05:57:00 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1301,7 +1301,6 @@ USA.
 	  global-decoded-time
 	  guarantee-decoded-time
 	  guarantee-time-zone
-	  iso8601-separate-with-t?
 	  iso8601-string->decoded-time
 	  iso8601-string->file-time
 	  iso8601-string->universal-time

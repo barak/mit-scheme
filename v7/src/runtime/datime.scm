@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.53 2008/09/09 16:30:47 cph Exp $
+$Id: datime.scm,v 14.54 2008/09/24 05:56:56 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -538,7 +538,7 @@ USA.
   (write-d2 (decoded-time/month dt) port)
   (write-char #\- port)
   (write-d2 (decoded-time/day dt) port)
-  (write-char (if iso8601-separate-with-t? #\T #\space) port)
+  (write-char #\T port)
   (write-d2 (decoded-time/hour dt) port)
   (write-char #\: port)
   (write-d2 (decoded-time/minute dt) port)
@@ -550,8 +550,6 @@ USA.
 			     (- zone 1)
 			     zone)
 			 port))))
-
-(define iso8601-separate-with-t? #t)
 
 (define (universal-time->local-iso8601-string time)
   (decoded-time->iso8601-string (universal-time->local-decoded-time time)))
