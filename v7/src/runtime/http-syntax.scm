@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.7 2008/09/22 08:16:44 cph Exp $
+$Id: http-syntax.scm,v 1.8 2008/09/24 22:56:15 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -365,6 +365,7 @@ USA.
   (let ((parser
 	 (*parser
 	  (seq (match (+ (char-set char-set:http-token)))
+	       (noise (* (char-set char-set:wsp)))
 	       #\:
 	       (noise (* (char-set char-set:wsp)))
 	       (match (* (char-set char-set:http-text)))))))
@@ -464,15 +465,21 @@ USA.
   (list-parser
    (encapsulate cons
      (seq lp:token
-	  #\=
+	  lp:=
 	  lp:text))))
 
 (define lp:parameter%
   (list-parser
    (encapsulate cons
      (seq lp:token
-	  (alt (seq #\= lp:text)
+	  (alt (seq lp:= lp:text)
 	       (values #f))))))
+
+(define lp:=
+  (list-parser
+   (seq (? lp:lws)
+	#\=
+	(? lp:lws))))
 
 (define parameter%?
   (pair-predicate http-token? (opt-predicate http-text?)))
@@ -733,9 +740,15 @@ USA.
   (list-parser
    (encapsulate cons
      (seq lp:token-string
-	  (alt (seq #\/
+	  (alt (seq lp:solidus
 		    lp:token-string)
 	       (values #f))))))
+
+(define lp:solidus
+  (list-parser
+   (seq (? lp:lws)
+	#\/
+	(? lp:lws))))
 
 (define product?
   (pair-predicate http-token-string?
@@ -1070,7 +1083,7 @@ USA.
   (list-parser
    (encapsulate vector
      (seq (encapsulate cons
-	    (seq (alt (seq lp:token #\/)
+	    (seq (alt (seq lp:token lp:solidus)
 		      (values #f))
 		 lp:token))
 	  lp:lws
@@ -1234,7 +1247,7 @@ USA.
    (list-parser
     (encapsulate cons
       (seq lp:bytes-unit
-	   #\=
+	   lp:=
 	   lp:byte-range-set))))
   (pair-predicate bytes-unit? byte-range-set?)
   (pair-writer write-bytes-unit
@@ -1387,7 +1400,7 @@ USA.
 		       #\-
 		       lp:decimal))
 		lp:*)
-	   #\/
+	   lp:solidus
 	   (alt lp:decimal
 		lp:*)))))
   (vector-predicate bytes-unit?
