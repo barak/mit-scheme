@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: httpio.scm,v 14.12 2008/09/21 23:49:05 cph Exp $
+$Id: httpio.scm,v 14.13 2008/09/25 05:04:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -376,6 +376,7 @@ USA.
 (define known-status-codes
   '#((100 . "Continue")
      (101 . "Switching Protocols")
+     (102 . "Processing")
      (200 . "OK")
      (201 . "Created")
      (202 . "Accepted")
@@ -383,13 +384,15 @@ USA.
      (204 . "No Content")
      (205 . "Reset Content")
      (206 . "Partial Content")
+     (207 . "Multi-Status")
+     (226 . "IM Used")
      (300 . "Multiple Choices")
      (301 . "Moved Permanently")
      (302 . "Found")
      (303 . "See Other")
      (304 . "Not Modified")
      (305 . "Use Proxy")
-     (306 . "(Unused)")
+     (306 . "Switch Proxy")
      (307 . "Temporary Redirect")
      (400 . "Bad Request")
      (401 . "Unauthorized")
@@ -409,12 +412,23 @@ USA.
      (415 . "Unsupported Media Type")
      (416 . "Requested Range Not Satisfiable")
      (417 . "Expectation Failed")
+     (418 . "I'm a Teapot")
+     (422 . "Unprocessable Entity")
+     (423 . "Locked")
+     (424 . "Failed Dependency")
+     (425 . "Unordered Collection")
+     (426 . "Upgrade Required")
+     (449 . "Retry With")
      (500 . "Internal Server Error")
      (501 . "Not Implemented")
      (502 . "Bad Gateway")
      (503 . "Service Unavailable")
      (504 . "Gateway Timeout")
-     (505 . "HTTP Version Not Supported")))
+     (505 . "HTTP Version Not Supported")
+     (506 . "Variant Also Negotiates")
+     (507 . "Insufficient Storage")
+     (509 . "Bandwidth Limit Exceeded")
+     (510 . "Not Extended")))
 
 (define (non-body-status? status)
   (or (<= 100 status 199)
