@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.96 2008/08/29 20:14:50 riastradh Exp $
+$Id: imail-file.scm,v 1.97 2008/09/25 14:58:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -478,8 +478,9 @@ USA.
   folder
   unspecific)
 
-(define-method preload-folder-outlines ((folder <file-folder>))
-  folder
+(define-method preload-folder-outlines
+    ((folder <file-folder>) #!optional messages)
+  folder messages
   unspecific)
 
 (define-method first-unseen-message-index ((folder <file-folder>))

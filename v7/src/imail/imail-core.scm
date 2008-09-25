@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.176 2008/09/11 17:49:09 riastradh Exp $
+$Id: imail-core.scm,v 1.177 2008/09/25 14:58:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -516,12 +516,14 @@ USA.
 ;; Normally used prior to generating a folder summary, to accelerate
 ;; the downloading of this information from the server.  This
 ;; operation need not be implemented, as it is just a performance
-;; enhancement.
+;; enhancement.  With an optional list of messages, it preloads
+;; outlines only for those messages.
 
-(define-generic preload-folder-outlines (folder))
+(define-generic preload-folder-outlines (folder #!optional messages))
 
-(define-method preload-folder-outlines ((folder <folder>))
-  folder                                ;ignore
+(define-method preload-folder-outlines
+    ((folder <folder>) #!optional messages)
+  folder messages			;ignore
   unspecific)
 
 ;; -------------------------------------------------------------------

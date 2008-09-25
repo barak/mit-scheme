@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.315 2008/09/20 20:41:16 riastradh Exp $
+$Id: imail-top.scm,v 1.316 2008/09/25 14:58:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -748,16 +748,16 @@ With prefix argument N, undeletes backward N messages,
   ()
   (lambda ()
     (let ((folder (selected-folder)))
-      (let ((n (count-messages folder message-deleted?)))
-	(cond ((= n 0)
+      (let ((messages (list-deleted-messages folder)))
+	(cond ((not (pair? messages))
 	       (message "No messages to expunge"))
 	      ((let ((confirmation (ref-variable imail-expunge-confirmation)))
 		 (or (null? confirmation)
 		     (let ((prompt
 			    (string-append "Expunge "
-					   (number->string n)
+					   (number->string (length messages))
 					   " message"
-					   (if (> n 1) "s" "")
+					   (if (pair? (cdr messages)) "s" "")
 					   " marked for deletion")))
 		       (let ((do-prompt
 			      (lambda ()
@@ -769,7 +769,7 @@ With prefix argument N, undeletes backward N messages,
 			 (if (memq 'SHOW-MESSAGES confirmation)
 			     (cleanup-pop-up-buffers
 			      (lambda ()
-				(imail-expunge-pop-up-messages folder)
+				(imail-expunge-pop-up-messages folder messages)
 				(do-prompt)))
 			     (do-prompt))))))
 	       (let ((message (selected-message)))
@@ -784,26 +784,33 @@ With prefix argument N, undeletes backward N messages,
 	      (else
 	       (message "Messages not expunged")))))))
 
-(define (count-messages folder predicate)
-  (let ((n (folder-length folder)))
-    (do ((i 0 (+ i 1))
-	 (k 0 (if (predicate (get-message folder i)) (+ k 1) k)))
-	((= i n) k))))
-
-(define (imail-expunge-pop-up-messages folder)
+(define (imail-expunge-pop-up-messages folder messages)
   (pop-up-temporary-buffer " *imail-message*" '(READ-ONLY SHRINK-WINDOW)
     (lambda (buffer window)
       window
       (local-set-variable! truncate-lines #t buffer)
-      (preload-folder-outlines folder)
+      (preload-folder-outlines folder messages)
       (let ((mark (mark-left-inserting-copy (buffer-point buffer)))
-	    (n (folder-length folder)))
-	(let ((index-digits (exact-nonnegative-integer-digits (- n 1))))
-	  (do ((i 0 (+ i 1)))
-	      ((= i n))
-	    (let ((m (get-message folder i)))
-	      (if (message-deleted? m)
-		  (write-imail-summary-line! m index-digits mark)))))))))
+	    (index-digits
+	     (exact-nonnegative-integer-digits
+	      (- (folder-length folder) 1))))
+	(for-each (lambda (m)
+		    (if (message-deleted? m)
+			(write-imail-summary-line! m index-digits mark)))
+		  messages)))))
+
+(define (list-deleted-messages folder)
+  (list-messages folder message-deleted?))
+
+(define (list-messages folder predicate)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1))
+	 (messages '()
+		   (let ((m (get-message folder i)))
+		     (if (predicate m)
+			 (cons m messages)
+			 messages))))
+	((= i n) messages))))
 
 ;;;; Message flags
 
@@ -2271,9 +2278,9 @@ WARNING: With a prefix argument, this command may take a very long
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
 
 (define (probe-folder-noisily folder)
-  (message "Probing folder "
-	   (url-presentation-name (resource-locator folder))
-	   "...")
+  (temporary-message "Probing folder "
+		     (url-presentation-name (resource-locator folder))
+		     "...")
   (probe-folder folder))
 
 ;;;; Message insertion procedures
