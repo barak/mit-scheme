@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.234 2008/09/09 06:13:43 riastradh Exp $
+$Id: imail-imap.scm,v 1.235 2008/09/25 15:00:35 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1290,8 +1290,9 @@ USA.
 (define imap-dynamic-keywords
   '(FLAGS))
 
-(define-method preload-folder-outlines ((folder <imap-folder>))
-  (fill-imap-message-cache folder imap-outline-keywords))
+(define-method preload-folder-outlines
+    ((folder <imap-folder>) #!optional messages)
+  (fill-imap-message-cache folder imap-outline-keywords messages))
 
 (define-method cache-folder-contents ((folder <imap-folder>) walk-mime-body)
   (fill-imap-message-cache folder imap-content-keywords)
@@ -1318,8 +1319,9 @@ USA.
 	((= i n))
       (procedure i (%get-message folder i)))))
 
-(define (fill-imap-message-cache folder keywords)
-  (receive (message-sets total-count) (scan-imap-message-cache folder keywords)
+(define (fill-imap-message-cache folder keywords #!optional messages)
+  (receive (message-sets total-count)
+      (scan-imap-message-cache folder keywords messages)
     (if (positive? total-count)
 	(let ((connection (guarantee-imap-folder-open folder))
 	      (count 0))
@@ -1353,25 +1355,28 @@ USA.
 			    groups)))))
 	(decorated-string-append "" "," "" (reverse! groups)))))
 
-(define (scan-imap-message-cache folder keywords)
+(define (scan-imap-message-cache folder keywords #!optional messages)
   (let ((message-sets (make-equal-hash-table))
-	(length (folder-length folder))
+	(n (folder-length folder))
 	(count 0))
     (with-folder-locked folder
       (lambda ()
 	((imail-ui:message-wrapper "Scanning message cache")
 	 (lambda ()
-	   (for-each-message folder
-	     (lambda (index message)
-	       (if (zero? (remainder index 10))
-		   (imail-ui:progress-meter index length))
-	       (let ((keywords (select-uncached-keywords message keywords)))
-		 (if (pair? keywords)
-		     (begin
-		       (hash-table/modify! message-sets keywords
-			 (lambda (messages) (cons message messages))
-			 '())
-		       (set! count (+ count 1)))))))))))
+	   ((lambda (procedure)
+	      (if (default-object? messages)
+		  (for-each-message folder procedure)
+		  (for-each procedure (iota (length messages)) messages)))
+	    (lambda (index message)
+	      (if (zero? (remainder index 10))
+		  (imail-ui:progress-meter index n))
+	      (let ((keywords (select-uncached-keywords message keywords)))
+		(if (pair? keywords)
+		    (begin
+		      (hash-table/modify! message-sets keywords
+			(lambda (messages) (cons message messages))
+			'())
+		      (set! count (+ count 1)))))))))))
     (values message-sets count)))
 
 (define (imap-message-keyword-cached? message keyword)
