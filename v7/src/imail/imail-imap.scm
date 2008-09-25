@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.235 2008/09/25 15:00:35 riastradh Exp $
+$Id: imail-imap.scm,v 1.236 2008/09/25 15:16:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1145,7 +1145,7 @@ USA.
 		      (lambda (flag)
 			(flags-member? flag allowed-flags)))))))))))
 
-(define-method message-permanent-flags ((message <imap-message>))
+(define-method %message-permanent-flags ((message <imap-message>))
   ;; Perhaps this should intersect the flags with the folder's list of
   ;; permanent flags, if the folder does not allow permanent
   ;; user-defined flags, in order to preserve only those flags that
