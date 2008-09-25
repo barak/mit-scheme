@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.61 2008/09/09 15:37:03 riastradh Exp $
+$Id: imail-summary.scm,v 1.62 2008/09/25 15:00:01 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -158,20 +158,23 @@ SUBJECT is a string of regexps separated by commas."
   "Display a summary of the search results for a string of text."
   (lambda ()
     (list (prompt-for-string "IMAIL search" #f
-                             'DEFAULT-TYPE 'INSERTED-DEFAULT
-                             'HISTORY 'IMAIL-SEARCH
-                             'HISTORY-INDEX 0)))
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'IMAIL-SEARCH
+			     'HISTORY-INDEX 0)))
   (lambda (pattern)
     (imail-summary
      (string-append "Search: " pattern)
      (lambda (folder start end)
        ((imail-ui:message-wrapper "Searching for " pattern)
 	(lambda ()
-	  (filter-map (lambda (index)
-			(and (<= start index)
-			     (< index end)
-			     (%get-message folder index)))
-		      (%search-folder folder pattern))))))))
+	  (sort
+	   (filter-map (lambda (index)
+			 (and (<= start index)
+			      (< index end)
+			      (%get-message folder index)))
+		       (%search-folder folder pattern))
+	   (lambda (a b)
+	     (< (message-index a) (message-index b))))))))))
 
 (define (imail-summary description procedure)
   (let* ((folder (selected-folder))
