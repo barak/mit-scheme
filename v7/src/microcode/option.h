@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.20 2008/01/30 20:02:16 cph Exp $
+$Id: option.h,v 1.21 2008/09/26 08:30:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,6 @@ extern bool option_emacs_subprocess;
 extern bool option_force_interactive;
 extern bool option_disable_core_dump;
 extern bool option_batch_mode;
-extern bool option_band_specified;
 
 /* String options */
 extern const char ** option_library_path;
