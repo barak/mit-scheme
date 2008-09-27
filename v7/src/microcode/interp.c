@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.110 2008/02/14 08:20:22 riastradh Exp $
+$Id: interp.c,v 9.111 2008/09/27 03:59:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,6 +36,7 @@ USA.
 extern void * obstack_chunk_alloc (size_t);
 #define obstack_chunk_free free
 extern void preserve_signal_mask (void);
+extern void fixup_float_rounding_mode (void);
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -270,6 +271,7 @@ Interpret (void)
   bind_interpreter_state (&new_state);
   dispatch_code = (setjmp (interpreter_catch_env));
   preserve_signal_mask ();
+  fixup_float_rounding_mode ();
 
   switch (dispatch_code)
     {
