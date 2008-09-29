@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fixart.scm,v 1.20 2008/02/14 02:35:02 cph Exp $
+$Id: fixart.scm,v 1.21 2008/09/29 05:41:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -153,3 +153,56 @@ USA.
 (define (->flonum x)
   (guarantee-real x '->FLONUM)
   (exact->inexact (real-part x)))
+
+(define-primitives
+  (float-rounding-modes 0)
+  (get-float-rounding-mode 0)
+  (set-float-rounding-mode 1))
+
+(define float-rounding-mode-names
+  '#(TO-NEAREST TOWARD-ZERO DOWNWARD UPWARD))
+
+(define (flo:rounding-modes)
+  (let ((n (vector-length float-rounding-mode-names))
+	(m (float-rounding-modes)))
+    (let loop ((i 0) (names '()))
+      (if (fix:< i n)
+	  (loop (fix:+ i 1)
+		(if (fix:= (fix:and (fix:lsh 1 i) m) 0)
+		    names
+		    (cons (vector-ref float-rounding-mode-names i) names)))
+	  names))))
+
+(define (flo:rounding-mode)
+  (let ((m (get-float-rounding-mode)))
+    (if (not (fix:< m (vector-length float-rounding-mode-names)))
+	(error "Unknown float rounding mode:" m))
+    (vector-ref float-rounding-mode-names m)))
+
+(define (flo:set-rounding-mode! mode)
+  (set-float-rounding-mode (%mode-name->number mode 'FLO:SET-ROUNDING-MODE!)))
+
+(define (flo:with-rounding-mode mode thunk)
+  (let ((inside-mode (%mode-name->number mode 'FLO:WITH-ROUNDING-MODE))
+	(outside-mode))
+    (shallow-fluid-bind (lambda ()
+			  (set! outside-mode (get-float-rounding-mode))
+			  (set-float-rounding-mode inside-mode)
+			  (set! inside-mode)
+			  unspecific)
+			thunk
+			(lambda ()
+			  (set! inside-mode (get-float-rounding-mode))
+			  (set-float-rounding-mode outside-mode)
+			  (set! outside-mode)
+			  unspecific))))
+
+(define (%mode-name->number mode caller)
+  (guarantee-interned-symbol mode caller)
+  (let ((n (vector-length float-rounding-mode-names)))
+    (let loop ((i 0))
+      (if (not (fix:< i n))
+	  (error:bad-range-argument mode caller))
+      (if (eq? mode (vector-ref float-rounding-mode-names i))
+	  i
+	  (loop (fix:+ i 1))))))

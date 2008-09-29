@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.687 2008/09/24 05:57:00 cph Exp $
+$Id: runtime.pkg,v 14.688 2008/09/29 05:41:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -239,6 +239,9 @@ USA.
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
+	  flo:rounding-mode
+	  flo:rounding-modes
+	  flo:set-rounding-mode!
 	  flo:sin
 	  flo:sqrt
 	  flo:tan
@@ -248,6 +251,7 @@ USA.
 	  flo:vector-length
 	  flo:vector-ref
 	  flo:vector-set!
+	  flo:with-rounding-mode
 	  flo:zero?
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
