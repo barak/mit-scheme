@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: c-prepare.sh,v 1.11 2008/01/30 20:02:08 cph Exp $
+# $Id: c-prepare.sh,v 1.12 2008/10/08 07:14:09 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -34,7 +34,7 @@ else
     exit 1
 fi
 
-run_cmd "${EXE}" --heap 6000 --stack 200 <<EOF
+run_cmd "${EXE}" --band runtime.com --heap 6000 --stack 200 <<EOF
 (begin
   (load "etc/compile.scm")
   (c-prepare))
