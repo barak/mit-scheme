@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: modefs.scm,v 1.171 2008/09/08 00:09:50 cph Exp $
+$Id: modefs.scm,v 1.172 2008/10/11 02:46:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -216,7 +216,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental #\c-m-n 'forward-list)
 (define-key 'fundamental #\c-m-o 'split-line)
 (define-key 'fundamental #\c-m-p 'backward-list)
-(define-key 'fundamental #\c-m-r 'align-defun)
+(define-key 'fundamental #\c-m-r 'isearch-backward-regexp)
 (define-key 'fundamental #\c-m-s 'isearch-forward-regexp)
 (define-key 'fundamental #\c-m-t 'transpose-sexps)
 (define-key 'fundamental #\c-m-u 'backward-up-list)
