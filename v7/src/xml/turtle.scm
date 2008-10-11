@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.44 2008/07/19 01:41:17 cph Exp $
+$Id: turtle.scm,v 1.45 2008/10/11 00:31:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -510,11 +510,10 @@ USA.
 	       pols))
 
 (define (post-process-resource resource prefixes base-uri)
-  (cond ((or (absolute-uri? resource)
-	     (rdf-bnode? resource)
+  (cond ((or (rdf-bnode? resource)
 	     (rdf-literal? resource))
 	 (values resource '()))
-	((relative-uri? resource)
+	((uri? resource)
 	 (values (merge-uris resource base-uri) '()))
 	((pair? resource)
 	 (case (car resource)
