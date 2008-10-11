@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.59 2008/10/11 00:38:51 cph Exp $
+$Id: url.scm,v 1.60 2008/10/11 06:45:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -65,7 +65,7 @@ USA.
     (%make-uri scheme authority path query fragment)))
 
 (define (%make-uri scheme authority path query fragment)
-  (let* ((path (if scheme (remove-dot-segments path) path))
+  (let* ((path (remove-dot-segments path))
 	 (string
 	  (call-with-output-string
 	    (lambda (port)
@@ -314,7 +314,9 @@ USA.
 	  (if (pair? input)
 	      (some-output input output)
 	      (cons "" output)))))
-    (reverse! (no-output path))))
+    (if (path-absolute? path)
+	(reverse! (no-output path))
+	path)))
 
 ;;;; Parser
 
