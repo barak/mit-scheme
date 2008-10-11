@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.58 2008/09/16 05:36:53 cph Exp $
+$Id: url.scm,v 1.59 2008/10/11 00:38:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -62,17 +62,14 @@ USA.
     (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
 	(error:bad-range-argument path 'MAKE-URI))
-    (%make-uri scheme
-	       authority
-	       (if scheme (remove-dot-segments path) path)
-	       query
-	       fragment)))
+    (%make-uri scheme authority path query fragment)))
 
 (define (%make-uri scheme authority path query fragment)
-  (let ((string
-	 (call-with-output-string
-	   (lambda (port)
-	     (%write-uri scheme authority path query fragment port)))))
+  (let* ((path (if scheme (remove-dot-segments path) path))
+	 (string
+	  (call-with-output-string
+	    (lambda (port)
+	      (%write-uri scheme authority path query fragment port)))))
     (hash-table/intern! interned-uris string
       (lambda ()
 	(%%make-uri scheme authority path query fragment string)))))
@@ -244,15 +241,11 @@ USA.
   (let ((uri (->uri uri 'MERGE-URIS))
 	(base-uri (->absolute-uri base-uri 'MERGE-URIS)))
     (cond ((%uri-scheme uri)
-	   (%make-uri (%uri-scheme uri)
-		      (%uri-authority uri)
-		      (remove-dot-segments (%uri-path uri))
-		      (%uri-query uri)
-		      (%uri-fragment uri)))
+	   uri)
 	  ((%uri-authority uri)
 	   (%make-uri (%uri-scheme base-uri)
 		      (%uri-authority uri)
-		      (remove-dot-segments (%uri-path uri))
+		      (%uri-path uri)
 		      (%uri-query uri)
 		      (%uri-fragment uri)))
 	  ((null? (%uri-path uri))
@@ -264,8 +257,7 @@ USA.
 	  (else
 	   (%make-uri (%uri-scheme base-uri)
 		      (%uri-authority base-uri)
-		      (remove-dot-segments
-		       (merge-paths (%uri-path uri) base-uri))
+		      (merge-paths (%uri-path uri) base-uri)
 		      (%uri-query uri)
 		      (%uri-fragment uri))))))
 
