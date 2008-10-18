@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lisppaste.scm,v 1.1 2006/11/04 20:25:17 riastradh Exp $
+$Id: lisppaste.scm,v 1.2 2008/10/18 21:20:25 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.
@@ -41,7 +41,7 @@ With a prefix argument, also show a header describing the annotation."
   lisppaste-insert-paste)
 
 (define (lisppaste-create channel nickname title content)
-  (message (lisppaste:new-paste channel nickname title content)))
+  (message-or-pop-up (lisppaste:new-paste channel nickname title content)))
 
 (define-command lisppaste-buffer
   "Create a new paste of the current buffer."
@@ -66,12 +66,13 @@ With a prefix argument, also show a header describing the annotation."
       (list channel nickname title))))
 
 (define (lisppaste-annotate number nickname title content)
-  (message (lisppaste:new-paste
-            (lisppaste-entry/channel (lisppaste:paste-header number))
-            nickname
-            title
-            content
-            number)))
+  (message-or-pop-up
+   (lisppaste:new-paste
+    (lisppaste-entry/channel (lisppaste:paste-header number))
+    nickname
+    title
+    content
+    number)))
 
 (define-command lisppaste-annotate-with-buffer
   "Annotate an existing paste with the current buffer."
@@ -103,13 +104,13 @@ With a prefix argument, also show a header describing the annotation."
   ()
   (lambda ()
     (call-with-output-to-temporary-buffer " *lisppaste channels*"
-      '(SHRINK-WINDOW FLUSH-ON-SPACE)
+      '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE)
       (lambda (port)
         (write-strings-densely (lisppaste:list-channels) port)))))
 
 (define (lisppaste-list-pastes entries)
   (call-with-output-to-temporary-buffer " *lisppastes*"
-    '(SHRINK-WINDOW FLUSH-ON-SPACE)
+    '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE)
     (lambda (port)
       (for-each (lambda (entry)
                   (show-lisppaste entry port))
@@ -250,7 +251,7 @@ With a prefix argument, list pastes starting at a certain number."
 ;;;; Lisppaste RPC
 
 ;;; This could be used outside of Edwin if it made no reference to the
-;;; Edwin variable LISPPASTE-RPC-URI.
+;;; Edwin variable LISPPASTE-RPC-URI or the procedure EDITOR-ERROR.
 
 (define (lisppaste-rpc method-name required-arguments optional-argument)
   (let ((result
@@ -260,7 +261,7 @@ With a prefix argument, list pastes starting at a certain number."
                                      optional-argument))))
     (if (and (string? result)
              (string-prefix? "Error" result))
-        (error result)
+        (editor-error result)
         result)))
 
 (define (lisppaste-request method-name required-arguments optional-argument)
@@ -324,7 +325,7 @@ With a prefix argument, list pastes starting at a certain number."
           (lisppaste-entry/annotations entry)
           (lisppaste-entry/content entry)))
 
-;;;; Random Utility
+;;;; Random Utilities
 
 (define (prompt-for-lazy-string-table-name prompt
                                            default-string
@@ -348,3 +349,14 @@ With a prefix argument, list pastes starting at a certain number."
                                          (lambda (index) index default))
                        default))))
          options))
+
+(define (message-or-pop-up string)
+  (if (and (not (string-find-next-char string #\newline))
+           (let ((tab-width (ref-variable tab-width #f))
+                 (char-image-strings (ref-variable char-image-strings #f)))
+             (< (string-columns string 0 tab-width char-image-strings)
+                (window-x-size (typein-window)))))
+      (message string)
+      (string->temporary-buffer string
+                                " *lisppaste-error*"
+                                '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE))))
