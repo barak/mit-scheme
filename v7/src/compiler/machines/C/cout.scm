@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.48 2008/09/17 06:41:43 riastradh Exp $
+$Id: cout.scm,v 1.49 2008/10/19 01:56:01 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -79,7 +79,7 @@ USA.
 	     (c:line)
 	     (declare-data-object handle data-name))))
 
-(define (stringify-data/traditional object output-pathname)
+(define (stringify-data/traditional object)
   (let*/mv (((vars prefix suffix) (handle-top-level-data/traditional object))
 	    (handle (default-file-handle))
 	    (data-name
