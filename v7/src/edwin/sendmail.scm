@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.99 2008/08/15 20:46:12 riastradh Exp $
+$Id: sendmail.scm,v 1.100 2008/10/23 19:07:03 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1804,8 +1804,25 @@ Otherwise, the MIME type is determined from the file's suffix;
 			      (else (editor-beep) (loop))))))))))))
     (values mime-type
 	    (if (eq? (mime-type/top-level mime-type) 'TEXT)
-		'((CHARSET "iso-8859-1"))
+		(let ((charset
+		       (ref-variable default-mime-text-charset buffer)))
+		  (if (not charset)
+		      '()
+		      `((CHARSET
+			 ,(if (eq? charset 'PROMPT)
+			      (prompt-for-string "Charset:" "ISO-8859-1")
+			      charset)))))
 		'()))))
+
+(define-variable default-mime-text-charset
+  "Default charset for MIME text/plain entities, as a string.
+If #F, no charset is included.
+If the symbol PROMPT, prompt for a charset."
+  "ISO-8859-1"
+  (lambda (object)
+    (or (string? object)
+	(eq? object 'PROMPT)
+	(eq? object #f))))
 
 (define-variable file-type-to-mime-type
   "Specifies the MIME type/subtype for files with a given type.
