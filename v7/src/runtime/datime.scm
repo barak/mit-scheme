@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.55 2008/09/24 08:50:48 cph Exp $
+$Id: datime.scm,v 14.56 2008/10/26 20:14:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -580,18 +580,18 @@ USA.
   (decoded-time->file-time (iso8601-string->decoded-time string)))
 
 (define parser:iso8601-date/time
-  ;; Use of the space separator isn't allowed, but we used to
-  ;; generate strings with it, so don't barf if we see it.
+  ;; The ISO spec says that a date/time must be either entirely in
+  ;; basic format or entirely in extended format.  But the XML-RPC
+  ;; "spec" has usage that's a mix between the formats.  Hence we
+  ;; accept any combination of the two formats.  Use of the space
+  ;; separator isn't allowed, but we used to generate strings with it,
+  ;; so don't barf if we see it.
   (*parser
    (encapsulate convert-8601-date/time
-     (alt (seq parse-basic-8601-date
-	       (alt "T" " ")
-	       parse-basic-8601-time
-	       parse-basic-8601-zone)
-	  (seq parse-extended-8601-date
-	       (alt "T" " ")
-	       parse-extended-8601-time
-	       parse-extended-8601-zone)))))
+     (seq (alt parse-basic-8601-date parse-extended-8601-date)
+	  (alt "T" " ")
+	  (alt parse-basic-8601-time parse-extended-8601-time)
+	  (alt parse-basic-8601-zone parse-extended-8601-zone)))))
 
 (define (convert-8601-date/time v)
   (let ((year (vector-ref v 0))
