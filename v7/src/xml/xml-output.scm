@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.46 2008/08/24 06:27:20 cph Exp $
+$Id: xml-output.scm,v 1.47 2008/10/26 23:35:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,15 +51,16 @@ USA.
      (write-xml-1 xml port options))))
 
 (define (set-coding xml port)
-  (let ((coding
-	 (or (normalize-coding port
-			       (and (xml-document? xml)
-				    (xml-document-declaration xml)))
-	     'UTF-8)))
-    (port/set-coding port coding)
-    (port/set-line-ending port 'TEXT)
-    (if (coding-requires-bom? coding)
-	(write-char #\U+FEFF port))))
+  (if (port/supports-coding? port)
+      (let ((coding
+	     (or (normalize-coding port
+				   (and (xml-document? xml)
+					(xml-document-declaration xml)))
+		 'UTF-8)))
+	(port/set-coding port coding)
+	(port/set-line-ending port 'TEXT)
+	(if (coding-requires-bom? coding)
+	    (write-char #\U+FEFF port)))))
 
 (define (write-xml-1 xml port options)
   (%write-xml xml

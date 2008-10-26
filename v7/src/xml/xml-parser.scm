@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.81 2008/08/18 06:59:42 cph Exp $
+$Id: xml-parser.scm,v 1.82 2008/10/26 23:35:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -118,12 +118,15 @@ USA.
 ;;;; Character coding
 
 (define (determine-coding port)
-  (port/set-coding port 'BINARY)
-  (port/set-line-ending port 'BINARY)
-  (receive (coding name prefix) (determine-coding-1 port)
-    (port/set-coding port coding)
-    (port/set-line-ending port 'XML-1.0)
-    (values name prefix)))
+  (if (port/supports-coding? port)
+      (begin
+	(port/set-coding port 'BINARY)
+	(port/set-line-ending port 'BINARY)
+	(receive (coding name prefix) (determine-coding-1 port)
+	  (port/set-coding port coding)
+	  (port/set-line-ending port 'XML-1.0)
+	  (values name prefix)))
+      (values #f #f)))
 
 (define (determine-coding-1 port)
   (let ((rb
@@ -177,25 +180,26 @@ USA.
 		 (prefix b0)))))))
 
 (define (finish-coding buffer coding declaration)
-  (let ((port (parser-buffer-port buffer)))
-    (if port
-	(let* ((declared (normalize-coding port declaration))
-	       (lose
-		(lambda ()
-		  (error "Incorrect encoding declaration:" declared))))
-	  (case coding
-	    ((UTF-8 UTF-16)
-	     (if (not (or (not declared) (eq? declared coding)))
-		 (lose)))
-	    ((UTF-32)
-	     (if (not (eq? declared coding))
-		 (lose)))
-	    ((NO-BOM)
-	     (if (coding-requires-bom? declared)
-		 (lose))
-	     (port/set-coding port (or declared 'UTF-8)))
-	    ((ANY) unspecific)
-	    (else (error:bad-range-argument coding #f)))))))
+  (if coding
+      (let ((port (parser-buffer-port buffer)))
+	(if port
+	    (let* ((declared (normalize-coding port declaration))
+		   (lose
+		    (lambda ()
+		      (error "Incorrect encoding declaration:" declared))))
+	      (case coding
+		((UTF-8 UTF-16)
+		 (if (not (or (not declared) (eq? declared coding)))
+		     (lose)))
+		((UTF-32)
+		 (if (not (eq? declared coding))
+		     (lose)))
+		((NO-BOM)
+		 (if (coding-requires-bom? declared)
+		     (lose))
+		 (port/set-coding port (or declared 'UTF-8)))
+		((ANY) unspecific)
+		(else (error:bad-range-argument coding #f))))))))
 
 (define (normalize-coding port declaration)
   (let ((coding
@@ -204,8 +208,7 @@ USA.
 		(and coding
 		     (intern coding))))))
     (if (and coding
-	     (not (port/known-coding? port coding))
-	     (port/supports-coding? port))
+	     (not (port/known-coding? port coding)))
 	(error:bad-range-argument coding #f))
     coding))
 
