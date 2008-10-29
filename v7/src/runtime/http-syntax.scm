@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.9 2008/10/11 02:48:03 cph Exp $
+$Id: http-syntax.scm,v 1.10 2008/10/29 02:19:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -110,6 +110,7 @@ USA.
 	(write-cdr
 	 (if (opt-writer? write-cdr)
 	     (and (cdr value)
+		  (not (null? (cdr value)))
 		  (cdr write-cdr))
 	     write-cdr)))
     (if write-car
@@ -502,8 +503,10 @@ USA.
 (define (value+params-predicate pred)
   (pair-predicate pred http-parameters?))
 
-(define (value+params-writer writer)
-  (pair-writer writer "; " write-parameters))
+(define (value+params-writer writer separator)
+  (pair-writer writer
+	       separator
+	       (opt-writer (sep-list-writer separator write-parameter))))
 
 (define lp:token+params
   (list-parser
@@ -515,7 +518,7 @@ USA.
   (value+params-predicate http-token?))
 
 (define write-token+params
-  (value+params-writer write-http-token))
+  (value+params-writer write-http-token ";"))
 
 (define (qparam? object)
   (and (parameter? object)
@@ -535,6 +538,9 @@ USA.
 			(and (pair? object)
 			     (qparam? (car object))
 			     (null? (cdr object)))))))
+
+(define write-token+qparam
+  (value+params-writer write-http-token ";"))
 
 ;;; Slight misnomer here.  This "accept-params" represents the pattern
 ;;;     *( ";" parameter ) [accept-params]
@@ -1146,28 +1152,28 @@ USA.
 	  lp:accept-params)))
   (pair-predicate (alt-predicate mime-type? http-token?)
 		  accept-params?)
-  (value+params-writer
-   (alt-writer mime-type?
-	       write-mime-type
-	       (lambda (value port)
-		 (write-http-token value port)
-		 (write-string "/*" port)))))
+  (value+params-writer (alt-writer mime-type?
+				   write-mime-type
+				   (lambda (value port)
+				     (write-http-token value port)
+				     (write-string "/*" port)))
+		       ";"))
 
 (define-comma-list+-header "Accept-Charset"
   lp:token+qparam
   token+qparam?
-  write-token+params)
+  write-token+qparam)
 
 (define-comma-list+-header "Accept-Encoding"
   lp:token+qparam
   token+qparam?
-  write-token+params)
+  write-token+qparam)
 
 (let ((qualifier (lambda (p) (language-range? (car p)))))
   (define-comma-list+-header "Accept-Language"
     (list-parser (qualify qualifier lp:token+qparam))
     (joined-predicate token+qparam? qualifier)
-    write-token+params))
+    write-token+qparam))
 #;
 (define-header "Authorization"
   (tokenized-parser
@@ -1417,7 +1423,7 @@ USA.
       (seq lp:mime-type
 	   lp:parameters))))
   (value+params-predicate mime-type?)
-  (value+params-writer write-mime-type))
+  (value+params-writer write-mime-type "; "))
 
 (define-header "Expires"
   (direct-parser
