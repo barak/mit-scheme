@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.236 2008/09/25 15:16:09 riastradh Exp $
+$Id: imail-imap.scm,v 1.237 2008/12/02 22:19:34 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1135,21 +1135,21 @@ USA.
       (imap:command:uid-store-flags
        connection
        (imap-message-uid message)
-       (map imail-flag->imap-flag
-	    (let ((flags (flags-delete "recent" flags))
-		  (folder (message-folder message)))
-	      (if (imap-folder-permanent-keywords? folder)
-		  flags
-		  (list-transform-positive flags
-		    (let ((allowed-flags (imap-folder-allowed-flags folder)))
-		      (lambda (flag)
-			(flags-member? flag allowed-flags)))))))))))
+       ;; In the past, this also removed flags absent from the
+       ;; folder's PERMANENTFLAGS list.  However, the RFC 3501 states
+       ;; that `If the client attempts to STORE a flag that is not in
+       ;; the PERMANENTFLAGS list, the server will either ignore the
+       ;; change or store the state change for the remainder of the
+       ;; current session only.'  So there is no harm in storing flags
+       ;; other than \Recent.
+       (map imail-flag->imap-flag (flags-delete "recent" flags))))))
 
 (define-method %message-permanent-flags ((message <imap-message>))
-  ;; Perhaps this should intersect the flags with the folder's list of
-  ;; permanent flags, if the folder does not allow permanent
-  ;; user-defined flags, in order to preserve only those flags that
-  ;; the IMAP folder would consider permanent.
+  ;; This does not yield strictly the flags that would be permanently
+  ;; set in an IMAP folder.  Only those in the folder's PERMANENTFLAGS
+  ;; list will do that.  However, if a user flags a message, and then
+  ;; files it, probably the intent was to leave the flag there (except
+  ;; if the flag is `deleted' or `recent').
   (flags-delete "recent" (message-flags message)))
 
 (define (imap-flag->imail-flag flag)
@@ -2243,7 +2243,9 @@ USA.
 		(imap:command:append connection
 				     (imap-url-server-mailbox url)
 				     (map imail-flag->imap-flag
-					  (message-permanent-flags message))
+					  (flags-delete
+					   "recent"
+					   (message-permanent-flags message)))
 				     (message-internal-time message)
 				     (message->string message)))))))))
 
