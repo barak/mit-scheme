@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntactic-closures.scm,v 14.19 2008/01/30 20:02:35 cph Exp $
+$Id: syntactic-closures.scm,v 14.20 2008/12/06 19:42:15 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -771,7 +771,7 @@ USA.
   (make-keyword-type "keyword-value-item" '(ITEM EXPRESSION)))
 
 (define make-keyword-value-item
-  (keyword-constructor <keyword-value-item> '(ITEM EXPRESSION)))
+  (item-constructor <keyword-value-item> '(ITEM EXPRESSION)))
 
 (define keyword-value-item?
   (item-predicate <keyword-value-item>))
@@ -783,7 +783,7 @@ USA.
   (item-accessor <keyword-value-item> 'EXPRESSION))
 
 (define (make-keyword-ref-item item identifier history)
-  (make-keyword-value-item item
+  (make-keyword-value-item history item
     (make-expression-item history
       (let ((name (identifier->symbol identifier)))
 	(lambda ()
