@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.33 2008/08/31 07:27:34 cph Exp $
+$Id: mit-syntax.scm,v 14.34 2008/12/06 23:00:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -52,6 +52,7 @@ USA.
 					transformer->expander-name
 					transformer->expander)
   (make-keyword-value-item
+   history
    (transformer->expander
     (transformer-eval (compile-item/expression item)
 		      (syntactic-environment->environment environment))
