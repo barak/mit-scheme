@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.237 2008/12/02 22:19:34 riastradh Exp $
+$Id: imail-imap.scm,v 1.238 2008/12/24 01:40:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1961,23 +1961,30 @@ USA.
 	(fetch-message-body-part-1 message section keyword)))))
 
 (define (fetch-message-body-part-1 message section keyword)
-  (imap:response:fetch-body-part
-   (let ((suffix 
-	  (string-append " body"
-			 (if (equal? section '(TEXT)) "" " part")
-			 " for message "
-			 (number->string (+ (%message-index message) 1)))))
-     ((imail-ui:message-wrapper "Reading" suffix)
-      (lambda ()
-	(imap:read-literal-progress-hook imail-ui:progress-meter
+  (or (imap:response:fetch-body-part
+       (let ((suffix 
+	      (string-append " body"
+			     (if (equal? section '(TEXT)) "" " part")
+			     " for message "
+			     (number->string (+ (%message-index message) 1)))))
+	 ((imail-ui:message-wrapper "Reading" suffix)
 	  (lambda ()
-	    (with-imap-message-open message
-	      (lambda (connection)
-		(imap:command:uid-fetch connection
-					(imap-message-uid message)
-					`(',keyword)))))))))
-   section
-   #f))
+	    (imap:read-literal-progress-hook imail-ui:progress-meter
+	      (lambda ()
+		(with-imap-message-open message
+		  (lambda (connection)
+		    (imap:command:uid-fetch connection
+					    (imap-message-uid message)
+					    `(',keyword)))))))))
+       section
+       #f)
+      ;; If the message is malformed, the IMAP server may report a
+      ;; body structure -- derived from the message's header -- which
+      ;; is not reflected in the body of the message, and return NIL
+      ;; for the body parts.  In this case, we shall just treat it as
+      ;; an empty string, which is how it would be treated if we were
+      ;; fetching to a port as in FETCH-MESSAGE-BODY-PART-TO-PORT.
+      ""))
 
 (define (imap-body-section->keyword section)
   (%imap-body-section->keyword section "body"))
