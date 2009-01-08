@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: compile-boot-compiler.sh,v 1.3 2008/01/30 20:02:08 cph Exp $
+# $Id: compile-boot-compiler.sh,v 1.4 2008/10/08 07:14:12 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -34,13 +34,13 @@ else
     exit 1
 fi
 
-run_cmd "${EXE}" --heap 6000 <<EOF
+run_cmd "${EXE}" --band runtime.com --heap 6000 <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-1))
 EOF
 
-run_cmd "${EXE}" --heap 6000 --compiler <<EOF
+run_cmd "${EXE}" --band all.com --heap 6000 <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-bootstrap-2))

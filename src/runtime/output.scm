@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.40 2008/01/30 20:02:33 cph Exp $
+$Id: output.scm,v 14.44 2008/07/26 07:01:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,23 +36,10 @@ USA.
   ((port/operation/write-char port) port char))
 
 (define (output-port/write-string port string)
-  (output-port/write-substring port string 0 (string-length string)))
+  (output-port/write-substring port string 0 (xstring-length string)))
 
 (define (output-port/write-substring port string start end)
   ((port/operation/write-substring port) port string start end))
-
-(define (output-port/write-wide-string port string)
-  (output-port/write-wide-substring port string 0 (wide-string-length string)))
-
-(define (output-port/write-wide-substring port string start end)
-  ((port/operation/write-wide-substring port) port string start end))
-
-(define (output-port/write-external-string port string)
-  (output-port/write-external-substring port string 0
-					(external-string-length string)))
-
-(define (output-port/write-external-substring port string start end)
-  ((port/operation/write-external-substring port) port string start end))
 
 (define (output-port/fresh-line port)
   ((port/operation/fresh-line port) port))
@@ -101,33 +88,14 @@ USA.
 
 (define (write-string string #!optional port)
   (let ((port (optional-output-port port 'WRITE-STRING)))
-    (if (let ((n
-	       (cond ((string? string)
-		      (output-port/write-string port string))
-		     ((wide-string? string)
-		      (output-port/write-wide-string port string))
-		     ((external-string? string)
-		      (output-port/write-external-string port string))
-		     (else
-		      (error:wrong-type-argument string "string"
-						 'WRITE-STRING)))))
+    (if (let ((n (output-port/write-string port string)))
 	  (and n
 	       (> n 0)))
 	(output-port/discretionary-flush port))))
 
 (define (write-substring string start end #!optional port)
   (let ((port (optional-output-port port 'WRITE-SUBSTRING)))
-    (if (let ((n
-	       (cond ((string? string)
-		      (output-port/write-substring port string start end))
-		     ((wide-string? string)
-		      (output-port/write-wide-substring port string start end))
-		     ((external-string? string)
-		      (output-port/write-external-substring port
-							    string start end))
-		     (else
-		      (error:wrong-type-argument string "string"
-						 'WRITE-SUBSTRING)))))
+    (if (let ((n (output-port/write-substring port string start end)))
 	  (and n
 	       (> n 0)))
 	(output-port/discretionary-flush port))))
@@ -308,3 +276,43 @@ USA.
 	    (write-spaces (- n 1)))))
 
     (if row-major? (do-row-major) (do-col-major))))
+
+;;;; Output truncation
+
+(define (call-with-truncated-output-port limit port generator)
+  (call-with-current-continuation
+   (lambda (k)
+     (let ((port (make-port truncated-output-type
+			    (make-tstate port limit k 0))))
+       (generator port)
+       #f))))
+
+(define-structure tstate
+  (port #f read-only #t)
+  (limit #f read-only #t)
+  (continuation #f read-only #t)
+  count)
+
+(define (trunc-out/write-char port char)
+  (let ((ts (port/state port)))
+    (if (< (tstate-count ts) (tstate-limit ts))
+	(begin
+	  (set-tstate-count! ts (+ (tstate-count ts) 1))
+	  (output-port/write-char (tstate-port ts) char))
+	((tstate-continuation ts) #t))))
+
+(define (trunc-out/flush-output port)
+  (output-port/flush-output (tstate-port (port/state port))))
+
+(define (trunc-out/discretionary-flush-output port)
+  (output-port/discretionary-flush (tstate-port (port/state port))))
+
+(define truncated-output-type)
+(define (initialize-package!)
+  (set! truncated-output-type
+	(make-port-type `((WRITE-CHAR ,trunc-out/write-char)
+			  (FLUSH-OUTPUT ,trunc-out/flush-output)
+			  (DISCRETIONARY-FLUSH-OUTPUT
+			   ,trunc-out/discretionary-flush-output))
+			#f))
+  unspecific)

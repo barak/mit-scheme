@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.67 2008/01/30 20:02:35 cph Exp $
+$Id: string.scm,v 14.70 2008/09/23 23:59:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,23 +43,41 @@ USA.
 
 ;;;; Primitives
 
-(define-primitives
-  read-byte-from-memory
-  set-string-length!
-  set-string-maximum-length!
-  string-allocate
-  string-hash-mod
-  string-length
-  string-maximum-length
-  string-ref
-  string-set!
-  string?
-  substring-move-left!
-  substring-move-right!
-  vector-8b-ref
-  vector-8b-set!
-  write-byte-to-memory
-  )
+(define-integrable (string-allocate n)
+  ((ucode-primitive string-allocate) n))
+
+(define-integrable (string? object)
+  ((ucode-primitive string?) object))
+
+(define-integrable (string-length string)
+  ((ucode-primitive string-length) string))
+
+(define-integrable (string-maximum-length string)
+  ((ucode-primitive string-maximum-length) string))
+
+(define-integrable (set-string-length! string length)
+  ((ucode-primitive set-string-length!) string length))
+
+(define-integrable (set-string-maximum-length! string length)
+  ((ucode-primitive set-string-maximum-length!) string length))
+
+(define-integrable (string-ref string index)
+  ((ucode-primitive string-ref) string index))
+
+(define-integrable (string-set! string index char)
+  ((ucode-primitive string-set!) string index char))
+
+(define-integrable (substring-move-left! string1 start1 end1 string2 start2)
+  ((ucode-primitive substring-move-left!) string1 start1 end1 string2 start2))
+
+(define-integrable (substring-move-right! string1 start1 end1 string2 start2)
+  ((ucode-primitive substring-move-right!) string1 start1 end1 string2 start2))
+
+(define-integrable (vector-8b-ref vector-8b index)
+  ((ucode-primitive vector-8b-ref) vector-8b index))
+
+(define-integrable (vector-8b-set! vector-8b index byte)
+  ((ucode-primitive vector-8b-set!) vector-8b index byte))
 
 (define-integrable (vector-8b-fill! string start end ascii)
   (substring-fill! string start end (ascii->char ascii)))
@@ -80,6 +98,9 @@ USA.
   (if (default-object? modulus)
       ((ucode-primitive string-hash) key)
       ((ucode-primitive string-hash-mod) key modulus)))
+
+(define (string-hash-mod key modulus)
+  ((ucode-primitive string-hash-mod) key modulus))
 
 (define (string-ci-hash key #!optional modulus)
   (string-hash (string-downcase key) modulus))
@@ -632,6 +653,44 @@ USA.
 	(begin
 	  (%substring-upcase! string index (fix:+ index 1))
 	  (%substring-downcase! string (fix:+ index 1) end)))))
+
+;;;; CamelCase support
+
+(define (camel-case-string->lisp string)
+  (call-with-input-string string
+    (lambda (input)
+      (call-with-narrow-output-string
+	(lambda (output)
+	  (let loop ((prev #f))
+	    (let ((c (read-char input)))
+	      (if (not (eof-object? c))
+		  (begin
+		    (if (and prev (char-upper-case? c))
+			(write-char #\- output))
+		    (write-char (char-downcase c) output)
+		    (loop c))))))))))
+
+(define (lisp-string->camel-case string #!optional upcase-initial?)
+  (call-with-input-string string
+    (lambda (input)
+      (call-with-narrow-output-string
+	(lambda (output)
+	  (let loop
+	      ((upcase?
+		(if (default-object? upcase-initial?)
+		    #t
+		    upcase-initial?)))
+	    (let ((c (read-char input)))
+	      (if (not (eof-object? c))
+		  (if (char-alphabetic? c)
+		      (begin
+			(write-char (if upcase? (char-upcase c) c) output)
+			(loop #f))
+		      (begin
+			(if (or (char-numeric? c)
+				(eq? c #\_))
+			    (write-char c output))
+			(loop #t)))))))))))
 
 ;;;; Replace
 
@@ -1430,37 +1489,44 @@ USA.
        ((ucode-primitive allocate-external-string) n-bytes)
        n-bytes)))))
 
+(define (external-string-ref string index)
+  (ascii->char
+   ((ucode-primitive read-byte-from-memory)
+    (+ (external-string-descriptor string) index))))
+
+(define (external-string-set! string index char)
+  ((ucode-primitive write-byte-to-memory)
+   (char->ascii char)
+   (+ (external-string-descriptor string) index)))
+
+(define-integrable (external-substring-fill! string start end char)
+  ((ucode-primitive VECTOR-8B-FILL!) (external-string-descriptor string)
+				     start
+				     end
+				     (char->ascii char)))
+
 (define (xstring? object)
   (or (string? object)
+      (wide-string? object)
       (external-string? object)))
 
-(define (xstring-length xstring)
-  (cond ((string? xstring)
-	 (string-length xstring))
-	((external-string? xstring)
-	 (external-string-length xstring))
-	(else
-	 (error:wrong-type-argument xstring "xstring" 'XSTRING-LENGTH))))
+(define (xstring-length string)
+  (cond ((string? string) (string-length string))
+	((wide-string? string) (wide-string-length string))
+	((external-string? string) (external-string-length string))
+	(else (error:not-xstring string 'XSTRING-LENGTH))))
 
-(define (xstring-ref xstring index)
-  (cond ((external-string? xstring)
-	 (ascii->char
-	  (read-byte-from-memory
-	   (+ (external-string-descriptor xstring) index))))
-	((string? xstring)
-	 (string-ref xstring index))
-	(else
-	 (error:wrong-type-argument xstring "xstring" 'XSTRING-REF))))
+(define (xstring-ref string index)
+  (cond ((string? string) (string-ref string index))
+	((wide-string? string) (wide-string-ref string index))
+	((external-string? string) (external-string-ref string index))
+	(else (error:not-xstring string 'XSTRING-REF))))
 
-(define (xstring-set! xstring index char)
-  (cond ((external-string? xstring)
-	 (write-byte-to-memory
-	  (char->ascii char)
-	  (+ (external-string-descriptor xstring) index)))
-	((string? xstring)
-	 (string-set! xstring index char))
-	(else
-	 (error:wrong-type-argument xstring "xstring" 'XSTRING-SET!))))
+(define (xstring-set! string index char)
+  (cond ((string? string) (string-set! string index char))
+	((wide-string? string) (wide-string-set! string index char))
+	((external-string? string) (external-string-set! string index char))
+	(else (error:not-xstring string 'XSTRING-SET!))))
 
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
@@ -1485,38 +1551,32 @@ USA.
     string))
 
 (define (xstring-fill! xstring char)
-  (cond ((external-string? xstring)
-	 (external-substring-fill! (external-string-descriptor xstring)
+  (cond ((string? xstring)
+	 (string-fill! xstring char))
+	((external-string? xstring)
+	 (external-substring-fill! xstring
 				   0
 				   (external-string-length xstring)
 				   char))
-	((string? xstring)
-	 (string-fill! xstring char))
 	(else
-	 (error:wrong-type-argument xstring "xstring" 'XSTRING-FILL!))))
+	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define (xsubstring-fill! xstring start end char)
-  (cond ((external-string? xstring)
-	 (external-substring-fill! (external-string-descriptor xstring)
-				   start
-				   end
-				   char))
-	((string? xstring)
+  (cond ((string? xstring)
 	 (substring-fill! xstring start end char))
+	((external-string? xstring)
+	 (external-substring-fill! xstring start end char))
 	(else
-	 (error:wrong-type-argument xstring "xstring" 'XSTRING-FILL!))))
-
-(define-integrable (external-substring-fill! descriptor start end char)
-  ((ucode-primitive VECTOR-8B-FILL!) descriptor start end (char->ascii char)))
+	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define-integrable (xsubstring-find-char xstring start end datum finder caller)
   (guarantee-xsubstring xstring start end caller)
-  (cond ((external-string? xstring)
-	 (finder (external-string-descriptor xstring) start end datum))
-	((string? xstring)
+  (cond ((string? xstring)
 	 (finder xstring start end datum))
+	((external-string? xstring)
+	 (finder (external-string-descriptor xstring) start end datum))
 	(else
-	 (error:wrong-type-argument xstring "xstring" caller))))
+	 (error:not-xstring xstring caller))))
 
 (define (xsubstring-find-next-char xstring start end char)
   (guarantee-char char 'XSUBSTRING-FIND-NEXT-CHAR)

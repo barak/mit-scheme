@@ -1,6 +1,6 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.69 2008/01/30 20:02:23 cph Exp $
+;;; $Id: i386.m4,v 1.70 2008/04/25 01:19:04 cph Exp $
 ;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
@@ -946,7 +946,7 @@ asm_generic_multiply_flo:
 	jmp	asm_generic_flonum_result
 ; Divide needs to check for 0, so we cant really use the following
 ; define_binary_operation(divide,23,NONE,fdiv)
-; define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
+; define_binary_predicate(name,index,fix*fix,flo*flo)
 	align 2
 	public asm_generic_equal_
 asm_generic_equal_:
@@ -956,53 +956,14 @@ asm_generic_equal_:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_equal_fail
 	cmp	al,26
-	je	asm_generic_equal_fix
-	cmp	al,6
-	jne	asm_generic_equal_fail
-	cmp	cl,6
-	je	asm_generic_equal_flo_flo
-	cmp	cl,26
-	jne	asm_generic_equal_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	ficomp	dword ptr [edi]
-	fstsw	ax
-	sahf
-	je	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_equal_fix:
-	cmp	cl,6
-	je	asm_generic_equal_fix_flo
-	cmp	cl,26
 	jne	asm_generic_equal_fail
 	shl	edx,6
 	shl	ebx,6
 	cmp	edx,ebx
 	je	asm_generic_return_sharp_t	
-	jmp	asm_generic_return_sharp_f
-asm_generic_equal_flo_flo:
-	and	edx,ebp
-	and	ebx,ebp
-	fld	qword ptr 4[edx]			; fldd
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	je	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_equal_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	mov	dword ptr [edi],edx
-	fild	dword ptr [edi]
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	je	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 asm_generic_equal_fail:
 	push	ebx
@@ -1018,53 +979,14 @@ asm_generic_greater_:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_greater_fail
 	cmp	al,26
-	je	asm_generic_greater_fix
-	cmp	al,6
-	jne	asm_generic_greater_fail
-	cmp	cl,6
-	je	asm_generic_greater_flo_flo
-	cmp	cl,26
-	jne	asm_generic_greater_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	ficomp	dword ptr [edi]
-	fstsw	ax
-	sahf
-	ja	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_greater_fix:
-	cmp	cl,6
-	je	asm_generic_greater_fix_flo
-	cmp	cl,26
 	jne	asm_generic_greater_fail
 	shl	edx,6
 	shl	ebx,6
 	cmp	edx,ebx
 	jg	asm_generic_return_sharp_t	
-	jmp	asm_generic_return_sharp_f
-asm_generic_greater_flo_flo:
-	and	edx,ebp
-	and	ebx,ebp
-	fld	qword ptr 4[edx]			; fldd
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	ja	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_greater_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	mov	dword ptr [edi],edx
-	fild	dword ptr [edi]
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	ja	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 asm_generic_greater_fail:
 	push	ebx
@@ -1080,53 +1002,14 @@ asm_generic_less_:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_less_fail
 	cmp	al,26
-	je	asm_generic_less_fix
-	cmp	al,6
-	jne	asm_generic_less_fail
-	cmp	cl,6
-	je	asm_generic_less_flo_flo
-	cmp	cl,26
-	jne	asm_generic_less_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	ficomp	dword ptr [edi]
-	fstsw	ax
-	sahf
-	jb	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_less_fix:
-	cmp	cl,6
-	je	asm_generic_less_fix_flo
-	cmp	cl,26
 	jne	asm_generic_less_fail
 	shl	edx,6
 	shl	ebx,6
 	cmp	edx,ebx
 	jl	asm_generic_return_sharp_t	
-	jmp	asm_generic_return_sharp_f
-asm_generic_less_flo_flo:
-	and	edx,ebp
-	and	ebx,ebp
-	fld	qword ptr 4[edx]			; fldd
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	jb	asm_generic_return_sharp_t
-	jmp	asm_generic_return_sharp_f
-asm_generic_less_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	mov	dword ptr [edi],edx
-	fild	dword ptr [edi]
-	fcomp	qword ptr 4[ebx]
-	fstsw	ax
-	sahf
-	jb	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 asm_generic_less_fail:
 	push	ebx

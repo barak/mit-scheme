@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: list.scm,v 14.57 2008/01/30 20:02:32 cph Exp $
+$Id: list.scm,v 14.59 2008/08/30 19:33:25 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -59,8 +59,29 @@ USA.
 
 (declare (usual-integrations))
 
-(define-primitives
-  cons pair? null? car cdr set-car! set-cdr! general-car-cdr)
+(define-integrable (cons a b)
+  ((ucode-primitive cons) a b))
+
+(define-integrable (pair? object)
+  ((ucode-primitive pair?) object))
+
+(define-integrable (null? object)
+  ((ucode-primitive null?) object))
+
+(define-integrable (car p)
+  ((ucode-primitive car) p))
+
+(define-integrable (cdr p)
+  ((ucode-primitive cdr) p))
+
+(define-integrable (set-car! p v)
+  ((ucode-primitive set-car!) p v))
+
+(define-integrable (set-cdr! p v)
+  ((ucode-primitive set-cdr!) p v))
+
+(define-integrable (general-car-cdr p i)
+  ((ucode-primitive general-car-cdr) p i))
 
 (define (list . items)
   items)
@@ -112,7 +133,7 @@ USA.
 
 (define (xcons d a)
   (cons a d))
-
+
 (define (iota count #!optional start step)
   (guarantee-index-fixnum count 'IOTA)
   (let ((start
@@ -127,11 +148,8 @@ USA.
 	     (begin
 	       (guarantee-number step 'IOTA)
 	       step))))
-    (let loop ((count count) (value start))
-      (if (fix:> count 0)
-	  (cons value (loop (fix:- count 1) (+ value step)))
-	  '()))))
-
+    (make-initialized-list count (lambda (index) (+ start (* index step))))))
+
 (define (list? object)
   (let loop ((l1 object) (l2 object))
     (if (pair? l1)

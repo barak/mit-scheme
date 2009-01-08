@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-umail.scm,v 1.57 2008/01/30 20:02:10 cph Exp $
+$Id: imail-umail.scm,v 1.59 2008/08/31 23:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,7 +74,7 @@ USA.
   folder
   (make-umail-message (message-header-fields message)
 		      (file-message-body message)
-		      (list-copy (message-flags message))
+		      (list-copy (message-permanent-flags message))
 		      (umail-message-from-line message)))
 
 (define-method message-internal-time ((message <umail-message>))
@@ -133,15 +133,11 @@ USA.
 		   (loop)))))))))
 
 (define (read-umail-message-1 folder from-line headers body)
-  (call-with-values
-      (lambda () (file-folder-strip-internal-headers folder headers))
-    (lambda (headers internal-headers)
-      (call-with-values
-	  (lambda ()
-	    (parse-imail-header-fields internal-headers))
-	(lambda (internal-headers flags)
-	  internal-headers
-	  (make-umail-message headers body flags from-line))))))
+  (make-umail-message headers
+		      body
+		      (header-fields->message-flags
+		       (file-folder-internal-headers folder headers))
+		      from-line))
 
 (define (umail-delimiter? line)
   (re-string-match unix-mail-delimiter line))
@@ -164,10 +160,15 @@ USA.
 (define (write-umail-message message output-flags? port)
   (write-string (umail-message-from-line message) port)
   (newline port)
-  (if output-flags?
-      (write-header-field (message-flags->header-field (message-flags message))
-			  port))
-  (write-header-fields (message-header-fields message) port)
+  (write-header-fields
+   (if output-flags?
+       (append (message-header-fields message)
+	       (let ((flags (message-permanent-flags message)))
+		 (if (pair? flags)
+		     (list (message-flags->header-field flags))
+		     '())))
+       (message-header-fields message))
+   port)
   (for-each (lambda (line)
 	      (if (string-prefix-ci? "From " line)
 		  (write-string ">" port))

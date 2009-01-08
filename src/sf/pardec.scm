@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pardec.scm,v 4.19 2008/01/30 20:02:38 cph Exp $
+$Id: pardec.scm,v 4.21 2008/02/13 06:21:03 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -205,22 +205,18 @@ USA.
 			     (cons (vector operation name value)
 				   remaining))))
 		 unspecific))))
-	(call-with-values
-	    (lambda ()
-	      (do-deletions usual-integrations/expansion-names
-			    usual-integrations/expansion-values))
-	  (lambda (expansion-names expansion-values)
-	    (for-each (constructor 'EXPAND)
-		      expansion-names
-		      expansion-values)))
-	(call-with-values
-	    (lambda ()
-	      (do-deletions usual-integrations/constant-names
-			    usual-integrations/constant-values))
-	  (lambda (constant-names constant-values)
-	    (for-each (constructor 'INTEGRATE)
-		      constant-names
-		      constant-values))))
+	(receive (expansion-names expansion-values)
+	    (do-deletions usual-integrations/expansion-names
+			  usual-integrations/expansion-values)
+	  (for-each (constructor 'EXPAND)
+		    expansion-names
+		    expansion-values))
+	(receive (constant-names constant-values)
+	    (do-deletions usual-integrations/constant-names
+			  usual-integrations/constant-values)
+	  (for-each (constructor 'INTEGRATE)
+		    constant-names
+		    constant-values)))
       (map* declarations
 	    (let ((top-level-block
 		   (let loop ((block block))

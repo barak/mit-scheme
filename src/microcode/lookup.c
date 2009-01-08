@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.76 2008/01/30 20:02:14 cph Exp $
+$Id: lookup.c,v 9.78 2008/02/02 17:57:36 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -590,6 +590,9 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
 #endif
 	  update_clone (source_cache);
 	  update_clone (target_cache);
+
+	  /* Make sure both traps share the same cache: */
+	  SET_TRAP_CACHE ((*source_cell), target_cache);
 	}
       else
 	SET_CACHE_VALUE (target_cache, (*source_cell));
@@ -606,14 +609,11 @@ static void
 move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
 		     unsigned int reference_kind)
 {
-  SCHEME_OBJECT * palist = (GET_CACHE_REFERENCES (to_cache, reference_kind));
-  {
-    SCHEME_OBJECT * pf = (GET_CACHE_REFERENCES (from_cache, reference_kind));
-    (*palist) = (*pf);
-    (*pf) = EMPTY_LIST;
-  }
+  SCHEME_OBJECT * pfrom = (GET_CACHE_REFERENCES (from_cache, reference_kind));
+  SCHEME_OBJECT * pto = (GET_CACHE_REFERENCES (to_cache, reference_kind));
+
   WALK_REFERENCES
-    (palist,
+    (pfrom,
      reference,
      {
        install_cache (to_cache,
@@ -621,6 +621,11 @@ move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
 		      (GET_CACHE_REFERENCE_OFFSET (reference)),
 		      reference_kind);
      });
+
+  while (PAIR_P (*pto))
+    pto = (PAIR_CDR_LOC (*pto));
+  (*pto) = (*pfrom);
+  (*pfrom) = EMPTY_LIST;
 }
 #endif
 

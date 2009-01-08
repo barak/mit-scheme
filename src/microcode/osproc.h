@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osproc.h,v 1.17 2008/01/30 20:02:17 cph Exp $
+$Id: osproc.h,v 1.18 2008/03/09 20:24:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -74,8 +74,8 @@ enum process_channel_type
   process_channel_type_explicit
 };
 
-extern size_t OS_process_table_size;
-#define NO_PROCESS ((size_t) -1)
+extern Tprocess OS_process_table_size;
+#define NO_PROCESS ((Tprocess) -1)
 extern enum process_jc_status scheme_jc_status;
 
 /* OS_make_subprocess is obsolete; use OS-specific procedure.  */

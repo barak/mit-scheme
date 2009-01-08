@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.111 2008/01/30 20:02:11 cph Exp $
+$Id: cmpint.c,v 1.119 2008/02/14 08:20:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -153,6 +153,8 @@ static bool link_section_handler
   (linkage_section_type_t, cache_handler_t **, bool *);
 static void back_out_of_link_section (link_cc_state_t *);
 static void restore_link_cc_state (link_cc_state_t *);
+static void setup_compiled_invocation_from_primitive
+  (SCHEME_OBJECT, unsigned long);
 static long setup_compiled_invocation (SCHEME_OBJECT, unsigned long);
 static long setup_lexpr_invocation
   (SCHEME_OBJECT, unsigned long, unsigned long);
@@ -533,51 +535,6 @@ recover_from_apply_error (SCHEME_OBJECT procedure, unsigned long n_args)
   STACK_PUSH (procedure);
   PUSH_APPLY_FRAME_HEADER (n_args);
   guarantee_interp_return ();
-}
-
-void
-compiled_with_interrupt_mask (unsigned long old_mask,
-			      SCHEME_OBJECT receiver,
-			      unsigned long new_mask)
-{
-  STACK_PUSH (ULONG_TO_FIXNUM (old_mask));
-  PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
-  STACK_PUSH (ULONG_TO_FIXNUM (new_mask));
-  {
-    long code = (setup_compiled_invocation (receiver, 1));
-    if (code != PRIM_DONE)
-      {
-	PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	PRIMITIVE_ABORT (code);
-      }
-  }
-  /* Pun: receiver is being invoked as a return address.  */
-  STACK_PUSH (receiver);
-}
-
-void
-compiled_with_stack_marker (SCHEME_OBJECT thunk)
-{
-  PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
-  {
-    long code = (setup_compiled_invocation (thunk, 0));
-    switch (code)
-      {
-      case PRIM_DONE:
-	/* Pun: thunk is being invoked as a return address.  */
-	STACK_PUSH (thunk);
-	break;
-
-      case PRIM_APPLY_INTERRUPT:
-	PRIMITIVE_ABORT (code);
-	break;
-
-      default:
-	PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	PRIMITIVE_ABORT (code);
-	break;
-      }
-  }
 }
 
 /* SCHEME_UTILITY procedures
@@ -1410,9 +1367,8 @@ DEFINE_SCHEME_ENTRY (comp_error_restart)
   JUMP_TO_CC_ENTRY (STACK_POP ());
 }
 
-long
-apply_compiled_from_primitive (unsigned long n_args,
-			       SCHEME_OBJECT procedure)
+void
+apply_compiled_from_primitive (unsigned long n_args, SCHEME_OBJECT procedure)
 {
   while ((OBJECT_TYPE (procedure)) == TC_ENTITY)
     {
@@ -1442,21 +1398,50 @@ apply_compiled_from_primitive (unsigned long n_args,
     }
 
   if (CC_ENTRY_P (procedure))
+    setup_compiled_invocation_from_primitive (procedure, n_args);
+  else
     {
-      long code = (setup_compiled_invocation (procedure, n_args));
-      if (code != PRIM_DONE)
-	{
-	  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-	  return (code);
-	}
       STACK_PUSH (procedure);
-      return (PRIM_DONE);
+      PUSH_APPLY_FRAME_HEADER (n_args);
+      PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
     }
+}
 
+void
+compiled_with_interrupt_mask (unsigned long old_mask,
+			      SCHEME_OBJECT receiver,
+			      unsigned long new_mask)
+{
+  STACK_PUSH (ULONG_TO_FIXNUM (old_mask));
+  PUSH_REFLECTION (REFLECT_CODE_RESTORE_INTERRUPT_MASK);
+  STACK_PUSH (ULONG_TO_FIXNUM (new_mask));
+  setup_compiled_invocation_from_primitive (receiver, 1);
+}
+
+void
+compiled_with_stack_marker (SCHEME_OBJECT thunk)
+{
+  PUSH_REFLECTION (REFLECT_CODE_STACK_MARKER);
+  setup_compiled_invocation_from_primitive (thunk, 0);
+}
+
+static void
+setup_compiled_invocation_from_primitive (SCHEME_OBJECT procedure,
+					  unsigned long n_args)
+{
+  long code = (setup_compiled_invocation (procedure, n_args));
+  if (code != PRIM_DONE)
+    {
+      if (code != PRIM_APPLY_INTERRUPT)
+	{
+	  prim_apply_error_code = code;
+	  code = PRIM_APPLY_ERROR;
+	}
+      PRIMITIVE_ABORT (code);
+    }
+  /* Pun: procedure is being invoked as a return address.  Assumes
+     that the primitive is being called from compiled code.  */
   STACK_PUSH (procedure);
-  PUSH_APPLY_FRAME_HEADER (n_args);
-  PUSH_REFLECTION (REFLECT_CODE_INTERNAL_APPLY);
-  return (PRIM_DONE);
 }
 
 /* Adjust the stack frame for applying a compiled procedure.  Returns

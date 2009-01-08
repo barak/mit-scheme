@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.37 2008/01/30 20:02:22 cph Exp $
+$Id: uxproc.c,v 1.38 2008/03/09 20:24:33 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -49,7 +49,7 @@ static void get_terminal_back (void);
 static void process_wait (Tprocess process);
 static int child_setup_tty (int fd);
 
-size_t OS_process_table_size;
+Tprocess OS_process_table_size;
 struct process * process_table;
 enum process_jc_status scheme_jc_status;
 

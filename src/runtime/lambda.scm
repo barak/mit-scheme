@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lambda.scm,v 14.22 2008/01/30 20:02:32 cph Exp $
+$Id: lambda.scm,v 14.23 2008/02/14 02:11:34 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -250,11 +250,12 @@ USA.
 				       (make-unassigned auxiliary))))
 		(list (let ((environment (make-the-environment)))
 			(make-combination
-			 system-subvector->list
+			 (ucode-primitive system-subvector-to-list)
 			 (list environment
 			       (+ (length required) 3)
-			       (make-combination system-vector-length
-						 (list environment)))))))))
+			       (make-combination
+				(ucode-primitive system-vector-size)
+				(list environment)))))))))
 
 (define (clexpr-components clexpr receiver)
   (slexpr-components clexpr

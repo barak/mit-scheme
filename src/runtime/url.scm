@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.53 2008/01/30 20:02:37 cph Exp $
+$Id: url.scm,v 1.60 2008/10/11 06:45:59 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -62,17 +62,14 @@ USA.
     (if fragment (guarantee-utf8-string fragment 'MAKE-URI))
     (if (and authority (pair? path) (path-relative? path))
 	(error:bad-range-argument path 'MAKE-URI))
-    (%make-uri scheme
-	       authority
-	       (if scheme (remove-dot-segments path) path)
-	       query
-	       fragment)))
+    (%make-uri scheme authority path query fragment)))
 
 (define (%make-uri scheme authority path query fragment)
-  (let ((string
-	 (call-with-output-string
-	   (lambda (port)
-	     (%write-uri scheme authority path query fragment port)))))
+  (let* ((path (remove-dot-segments path))
+	 (string
+	  (call-with-output-string
+	    (lambda (port)
+	      (%write-uri scheme authority path query fragment port)))))
     (hash-table/intern! interned-uris string
       (lambda ()
 	(%%make-uri scheme authority path query fragment string)))))
@@ -149,7 +146,7 @@ USA.
 		      (lambda (authority)
 			(list (call-with-output-string
 				(lambda (port)
-				  (write-authority authority port))))))))
+				  (write-uri-authority authority port))))))))
   (userinfo #f read-only #t)
   (host #f read-only #t)
   (port #f read-only #t))
@@ -231,6 +228,12 @@ USA.
       ,@(if (%uri-fragment uri)
 	    `((fragment ,(%uri-fragment uri)))
 	    '()))))
+
+(define (uri-prefix prefix)
+  (guarantee-utf8-string prefix 'URI-PREFIX)
+  (lambda (suffix)
+    (guarantee-utf8-string suffix 'URI-PREFIX)
+    (string->absolute-uri (string-append prefix suffix))))
 
 ;;;; Merging
 
@@ -238,15 +241,11 @@ USA.
   (let ((uri (->uri uri 'MERGE-URIS))
 	(base-uri (->absolute-uri base-uri 'MERGE-URIS)))
     (cond ((%uri-scheme uri)
-	   (%make-uri (%uri-scheme uri)
-		      (%uri-authority uri)
-		      (remove-dot-segments (%uri-path uri))
-		      (%uri-query uri)
-		      (%uri-fragment uri)))
+	   uri)
 	  ((%uri-authority uri)
 	   (%make-uri (%uri-scheme base-uri)
 		      (%uri-authority uri)
-		      (remove-dot-segments (%uri-path uri))
+		      (%uri-path uri)
 		      (%uri-query uri)
 		      (%uri-fragment uri)))
 	  ((null? (%uri-path uri))
@@ -258,8 +257,7 @@ USA.
 	  (else
 	   (%make-uri (%uri-scheme base-uri)
 		      (%uri-authority base-uri)
-		      (remove-dot-segments
-		       (merge-paths (%uri-path uri) base-uri))
+		      (merge-paths (%uri-path uri) base-uri)
 		      (%uri-query uri)
 		      (%uri-fragment uri))))))
 
@@ -316,7 +314,9 @@ USA.
 	  (if (pair? input)
 	      (some-output input output)
 	      (cons "" output)))))
-    (reverse! (no-output path))))
+    (if (path-absolute? path)
+	(reverse! (no-output path))
+	path)))
 
 ;;;; Parser
 
@@ -390,11 +390,11 @@ USA.
 	     (vector-ref v 3)
 	     (vector-ref v 4)))
 
-(define (uri-prefix prefix)
-  (guarantee-utf8-string prefix 'URI-PREFIX)
-  (lambda (suffix)
-    (guarantee-utf8-string suffix 'URI-PREFIX)
-    (string->absolute-uri (string-append prefix suffix))))
+(define parse-uri-path-absolute
+  (*parser
+   (encapsulate encapsulate-uri
+     (seq (values #f #f)
+	  parser:path-absolute))))
 
 (define parser:uri
   (*parser
@@ -408,10 +408,11 @@ USA.
 
 (define parser:hier-part
   (*parser
-   (alt (seq "//" parser:authority parser:path-abempty)
-	(seq (values #f) parser:path-absolute)
-	(seq (values #f) parser:path-rootless)
-	(seq (values #f) parser:path-empty))))
+   (alt (seq "//" parse-uri-authority parser:path-abempty)
+	(seq (values #f)
+	     (alt parser:path-absolute
+		  parser:path-rootless
+		  parser:path-empty)))))
 
 (define parser:uri-reference
   (*parser
@@ -429,10 +430,11 @@ USA.
 
 (define parser:relative-part
   (*parser
-   (alt (seq "//" parser:authority parser:path-abempty)
-	(seq (values #f) parser:path-absolute)
-	(seq (values #f) parser:path-noscheme)
-	(seq (values #f) parser:path-empty))))
+   (alt (seq "//" parse-uri-authority parser:path-abempty)
+	(seq (values #f)
+	     (alt parser:path-absolute
+		  parser:path-noscheme
+		  parser:path-empty)))))
 
 (define parser:scheme
   (*parser
@@ -443,7 +445,7 @@ USA.
    (seq (char-set char-set:uri-alpha)
 	(* (char-set char-set:uri-scheme)))))
 
-(define parser:authority
+(define parse-uri-authority
   (*parser
    (encapsulate (lambda (v)
 		  (%make-uri-authority (vector-ref v 0)
@@ -457,21 +459,17 @@ USA.
   (*parser
    (seq (map uri-string-downcase (match matcher:host))
 	(alt (seq ":"
-		  (map (lambda (s)
-			 (and (fix:> (string-length s) 0)
-			      (string->number s)))
-		       (match (* (char-set char-set:uri-digit)))))
+		  (map string->number
+		       (match (+ (char-set char-set:uri-digit)))))
 	     (values #f)))))
 
 ;; This is a kludge to work around fact that STRING-DOWNCASE only
 ;; works on ISO 8859-1 strings, and we are using UTF-8 strings.
 
 (define (uri-string-downcase string)
-  (call-with-output-string
+  (call-with-utf8-output-string
    (lambda (output)
-     (port/set-coding output 'UTF-8)
-     (let ((input (open-input-string string)))
-       (port/set-coding input 'UTF-8)
+     (let ((input (open-utf8-input-string string)))
        (let loop ()
 	 (let ((char (read-char input)))
 	   (if (not (eof-object? char))
@@ -597,7 +595,7 @@ USA.
 	(write scheme port)
 	(write-char #\: port)))
   (if authority
-      (write-authority authority port))
+      (write-uri-authority authority port))
   (if (pair? path)
       (begin
 	(if scheme
@@ -616,7 +614,7 @@ USA.
 	(write-char #\# port)
 	(write-encoded fragment char-set:uri-fragment port))))
 
-(define (write-authority authority port)
+(define (write-uri-authority authority port)
   (%write-authority (%uri-authority-userinfo authority)
 		    (%uri-authority-host authority)
 		    (%uri-authority-port authority)

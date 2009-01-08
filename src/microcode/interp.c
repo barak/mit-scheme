@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: interp.c,v 9.108 2008/01/30 20:02:13 cph Exp $
+$Id: interp.c,v 9.111 2008/09/27 03:59:09 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,6 +36,7 @@ USA.
 extern void * obstack_chunk_alloc (size_t);
 #define obstack_chunk_free free
 extern void preserve_signal_mask (void);
+extern void fixup_float_rounding_mode (void);
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -250,6 +251,8 @@ abort_to_interpreter_argument (void)
 {
   return (interpreter_throw_argument);
 }
+
+long prim_apply_error_code;
 
 void
 Interpret (void)
@@ -268,6 +271,7 @@ Interpret (void)
   bind_interpreter_state (&new_state);
   dispatch_code = (setjmp (interpreter_catch_env));
   preserve_signal_mask ();
+  fixup_float_rounding_mode ();
 
   switch (dispatch_code)
     {
@@ -286,6 +290,10 @@ Interpret (void)
       PROCEED_AFTER_PRIMITIVE ();
       PREPARE_APPLY_INTERRUPT ();
       SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+
+    case PRIM_APPLY_ERROR:
+      PROCEED_AFTER_PRIMITIVE ();
+      APPLICATION_ERROR (prim_apply_error_code);
 
     case PRIM_DO_EXPRESSION:
       SET_VAL (GET_EXP);

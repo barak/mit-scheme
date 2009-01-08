@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.78 2008/01/30 20:02:42 cph Exp $
+$Id: xml-parser.scm,v 1.82 2008/10/26 23:35:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -83,8 +83,8 @@ USA.
       (read-xml port (if (default-object? pi-handlers) '() pi-handlers)))))
 
 (define (read-xml port #!optional pi-handlers)
-  (let ((coding (determine-coding port)))
-    (parse-xml (input-port->parser-buffer port)
+  (receive (coding prefix) (determine-coding port)
+    (parse-xml (input-port->parser-buffer port prefix)
 	       coding
 	       (guarantee-pi-handlers pi-handlers 'READ-XML))))
 
@@ -118,83 +118,88 @@ USA.
 ;;;; Character coding
 
 (define (determine-coding port)
-  (port/set-coding port 'ISO-8859-1)
-  (port/set-line-ending port 'XML-1.0)
-  (receive (coding name char) (determine-coding-1 port)
-    (if coding (port/set-coding port coding))
-    (if char (unread-char char port))
-    name))
+  (if (port/supports-coding? port)
+      (begin
+	(port/set-coding port 'BINARY)
+	(port/set-line-ending port 'BINARY)
+	(receive (coding name prefix) (determine-coding-1 port)
+	  (port/set-coding port coding)
+	  (port/set-line-ending port 'XML-1.0)
+	  (values name prefix)))
+      (values #f #f)))
 
 (define (determine-coding-1 port)
-  (let ((rc
+  (let ((rb
 	 (lambda ()
 	   (let ((c (read-char port)))
 	     (if (eof-object? c)
 		 (error "EOF while determining char coding."))
-	     c)))
+	     (char->integer c))))
+	(prefix
+	 (lambda (n)
+	   (wide-string (integer->char n))))
 	(lose
-	 (lambda chars
-	   (error "Illegal starting bytes:" (map char->integer chars)))))
-    (let ((c0 (rc)))
-      (case c0
-	((#\U+00)
-	 (let* ((c1 (rc))
-		(c2 (rc))
-		(c3 (rc)))
-	   (if (and (char=? c1 #\U+00)
-		    (char=? c2 #\U+FE)
-		    (char=? c3 #\U+FF))
-	       (values 'UTF-32BE 'UTF-32 #f)
-	       (lose c0 c1 c2 c3))))
-	((#\U+EF)
-	 (let* ((c1 (rc))
-		(c2 (rc)))
-	   (if (and (char=? c1 #\U+BB) (char=? c2 #\U+BF))
-	       (values 'UTF-8 'UTF-8 #f)
-	       (lose c0 c1 c2))))
-	((#\U+FE)
-	 (let ((c1 (rc)))
-	   (if (char=? c1 #\U+FF)
-	       (values 'UTF-16BE 'UTF-16 #f)
-	       (lose c0 c1))))
-	((#\U+FF)
-	 (let* ((c1 (rc))
-		(c2 (rc))
-		(c3 (rc)))
-	   (if (char=? c1 #\U+FE)
-	       (if (and (char=? c2 #\U+00) (char=? c3 #\U+00))
-		   (values 'UTF-32LE 'UTF-32 #f)
-		   (values 'UTF-16LE
-			   'UTF-16
-			   (wide-string-ref
-			    (utf16-le-string->wide-string (string c2 c3))
-			    0)))
-	       (lose c0 c1 c2 c3))))
-	((#\U+3C)
-	 (values #f 'NO-BOM #\<))
+	 (lambda bytes
+	   (error "Illegal starting bytes:" bytes))))
+    (let ((b0 (rb)))
+      (case b0
+	((#x00)
+	 (let* ((b1 (rb))
+		(b2 (rb))
+		(b3 (rb)))
+	   (if (not (and (fix:= b1 #x00)
+			 (fix:= b2 #xFE)
+			 (fix:= b3 #xFF)))
+	       (lose b0 b1 b2 b3)))
+	 (values 'UTF-32BE 'UTF-32 #f))
+	((#xEF)
+	 (let* ((b1 (rb))
+		(b2 (rb)))
+	   (if (not (and (fix:= b1 #xBB)
+			 (fix:= b2 #xBF)))
+	       (lose b0 b1 b2)))
+	 (values 'UTF-8 'UTF-8 #f))
+	((#xFE)
+	 (let ((b1 (rb)))
+	   (if (not (fix:= b1 #xFF))
+	       (lose b0 b1)))
+	 (values 'UTF-16BE 'UTF-16 #f))
+	((#xFF)
+	 (let* ((b1 (rb))
+		(b2 (rb))
+		(b3 (rb)))
+	   (if (not (fix:= b1 #xFE))
+	       (lose b0 b1 b2 b3))
+	   (if (and (fix:= b2 #x00) (fix:= b3 #x00))
+	       (values 'UTF-32LE 'UTF-32 #f)
+	       (values 'UTF-16LE 'UTF-16
+		       (prefix (fix:or (fix:lsh b3 8) b2))))))
 	(else
-	 (values 'UTF-8 'UTF-8 c0))))))
+	 (values 'UTF-8
+		 (if (fix:= b0 #x3C) 'NO-BOM 'UTF-8)
+		 (prefix b0)))))))
 
 (define (finish-coding buffer coding declaration)
-  (let ((port (parser-buffer-port buffer)))
-    (if port
-	(let* ((declared (normalize-coding port declaration))
-	       (lose
-		(lambda ()
-		  (error "Incorrect encoding declaration:" declared))))
-	  (case coding
-	    ((UTF-8 UTF-16)
-	     (if (not (or (not declared) (eq? declared coding)))
-		 (lose)))
-	    ((UTF-32)
-	     (if (not (eq? declared coding))
-		 (lose)))
-	    ((NO-BOM)
-	     (if (coding-requires-bom? declared)
-		 (lose))
-	     (port/set-coding port (or declared 'UTF-8)))
-	    ((ANY) unspecific)
-	    (else (error:bad-range-argument coding #f)))))))
+  (if coding
+      (let ((port (parser-buffer-port buffer)))
+	(if port
+	    (let* ((declared (normalize-coding port declaration))
+		   (lose
+		    (lambda ()
+		      (error "Incorrect encoding declaration:" declared))))
+	      (case coding
+		((UTF-8 UTF-16)
+		 (if (not (or (not declared) (eq? declared coding)))
+		     (lose)))
+		((UTF-32)
+		 (if (not (eq? declared coding))
+		     (lose)))
+		((NO-BOM)
+		 (if (coding-requires-bom? declared)
+		     (lose))
+		 (port/set-coding port (or declared 'UTF-8)))
+		((ANY) unspecific)
+		(else (error:bad-range-argument coding #f))))))))
 
 (define (normalize-coding port declaration)
   (let ((coding
@@ -203,8 +208,7 @@ USA.
 		(and coding
 		     (intern coding))))))
     (if (and coding
-	     (not (port/known-coding? port coding))
-	     (port/supports-coding? port))
+	     (not (port/known-coding? port coding)))
 	(error:bad-range-argument coding #f))
     coding))
 
@@ -694,9 +698,8 @@ USA.
 	     (let ((char (integer->char n)))
 	       (if (not (char-in-alphabet? char alphabet:xml-char))
 		   (perror p "Disallowed Unicode character" char))
-	       (call-with-output-string
+	       (call-with-utf8-output-string
 		 (lambda (port)
-		   (port/set-coding port 'UTF-8)
 		   (write-char char port))))))))
     (*parser
      (with-pointer p
@@ -841,7 +844,7 @@ USA.
 ;;;; Normalization
 
 (define (normalize-attribute-value string)
-  (call-with-output-string
+  (call-with-utf8-output-string
     (lambda (port)
       (let normalize-string ((string string))
 	(let ((b (utf8-string->parser-buffer (normalize-line-endings string))))
@@ -875,7 +878,7 @@ USA.
 		 (loop))))))))))
 
 (define (trim-attribute-whitespace string)
-  (call-with-output-string
+  (call-with-utf8-output-string
    (lambda (port)
      (let ((string (string-trim string)))
        (let ((end (string-length string)))

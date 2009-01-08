@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.630 2008/01/30 20:02:34 cph Exp $
+$Id: runtime.pkg,v 14.688 2008/09/29 05:41:51 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -121,12 +121,12 @@ USA.
   (files "boole")
   (parent (runtime))
   (export ()
+	  (false? not)
 	  boolean/and
 	  boolean/or
 	  boolean=?
 	  boolean?
 	  false
-	  false?
 	  for-all?
 	  not
 	  there-exists?
@@ -163,7 +163,10 @@ USA.
 	  unparser/standard-method
 	  with-absolutely-no-interrupts
 	  with-limited-interrupts
-	  without-interrupts))
+	  without-interrupts)
+  (export (runtime)
+	  add-boot-init!
+	  run-boot-inits!))
 
 (define-package (runtime equality)
   (files "equals")
@@ -236,6 +239,9 @@ USA.
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
+	  flo:rounding-mode
+	  flo:rounding-modes
+	  flo:set-rounding-mode!
 	  flo:sin
 	  flo:sqrt
 	  flo:tan
@@ -245,6 +251,7 @@ USA.
 	  flo:vector-length
 	  flo:vector-ref
 	  flo:vector-set!
+	  flo:with-rounding-mode
 	  flo:zero?
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
@@ -431,6 +438,7 @@ USA.
 	  associate-pathname-type-with-mime-type
 	  call-with-temporary-file-pathname
 	  call-with-temporary-filename
+	  char-set:mime-token
 	  current-file-time
 	  deallocate-temporary-file
 	  delete-directory
@@ -471,6 +479,8 @@ USA.
 	  init-file-specifier?
 	  make-directory
 	  make-mime-type
+	  matcher:mime-token
+	  matcher:mime-type
 	  mime-token-string?
 	  mime-token?
 	  mime-type->string
@@ -480,11 +490,16 @@ USA.
 	  mime-type?
 	  open-input-init-file
 	  open-output-init-file
+	  parser:mime-token
+	  parser:mime-type
 	  pathname-mime-type
 	  pathname-type->mime-type
 	  rename-file
 	  soft-link-file
-	  string->mime-type)
+	  string->mime-type
+	  string-is-mime-token?
+	  string-is-mime-type?
+	  write-mime-type)
   (initialization (initialize-package!)))
 
 (define-package (runtime symbol)
@@ -762,6 +777,7 @@ USA.
 	  (vector-8b? string?)
 	  allocate-external-string
 	  burst-string
+	  camel-case-string->lisp
 	  char->string
 	  decorated-string-append
 	  error:not-string
@@ -776,6 +792,7 @@ USA.
 	  guarantee-substring-start-index
 	  guarantee-xstring
 	  hexadecimal->vector-8b
+	  lisp-string->camel-case
 	  list->string
 	  make-string
 	  make-vector-8b
@@ -1035,6 +1052,7 @@ USA.
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
+	  char-ctl?
 	  char-graphic?
 	  char-lower-case?
 	  char-numeric?
@@ -1047,6 +1065,8 @@ USA.
 	  char-set-union
 	  char-set:alphabetic
 	  char-set:alphanumeric
+	  char-set:ascii
+	  char-set:ctls
 	  char-set:graphic
 	  char-set:lower-case
 	  char-set:newline
@@ -1062,11 +1082,13 @@ USA.
 	  char-set:standard
 	  char-set:upper-case
 	  char-set:whitespace
+	  char-set:wsp
 	  char-set=?
 	  char-set?
 	  char-standard?
 	  char-upper-case?
 	  char-whitespace?
+	  char-wsp?
 	  chars->char-set
 	  guarantee-char-set
 	  predicate->char-set
@@ -1237,15 +1259,26 @@ USA.
   (files "datime")
   (parent (runtime))
   (export ()
+	  (decode-universal-time universal-time->local-decoded-time)
+	  (decoded-time->string decoded-time->rfc2822-string)
+	  (encode-universal-time decoded-time->universal-time)
+	  (file-time->global-time-string file-time->global-rfc2822-string)
+	  (file-time->local-time-string file-time->local-rfc2822-string)
+	  (file-time->string file-time->local-rfc2822-string)
+	  (get-decoded-time local-decoded-time)
+	  (string->decoded-time rfc2822-string->decoded-time)
+	  (universal-time->global-time-string universal-time->global-rfc2822-string)
+	  (universal-time->local-time-string universal-time->local-rfc2822-string)
+	  (universal-time->string universal-time->local-rfc2822-string)
 	  ctime-string->decoded-time
 	  ctime-string->file-time
 	  ctime-string->universal-time
 	  day-of-week/long-string
 	  day-of-week/short-string
-	  decode-universal-time
 	  decoded-time->ctime-string
+	  decoded-time->utc
 	  decoded-time->iso8601-string
-	  decoded-time->string
+	  decoded-time->rfc2822-string
 	  decoded-time->universal-time
 	  decoded-time/date-string
 	  decoded-time/day
@@ -1259,18 +1292,19 @@ USA.
 	  decoded-time/year
 	  decoded-time/zone
 	  decoded-time?
-	  encode-universal-time
 	  epoch
+	  error:not-decoded-time
+	  error:not-time-zone
 	  file-time->global-ctime-string
 	  file-time->global-iso8601-string
-	  file-time->global-time-string
+	  file-time->global-rfc2822-string
 	  file-time->local-ctime-string
 	  file-time->local-iso8601-string
-	  file-time->local-time-string
-	  file-time->string
-	  get-decoded-time
+	  file-time->local-rfc2822-string
 	  get-universal-time
 	  global-decoded-time
+	  guarantee-decoded-time
+	  guarantee-time-zone
 	  iso8601-string->decoded-time
 	  iso8601-string->file-time
 	  iso8601-string->universal-time
@@ -1279,8 +1313,16 @@ USA.
 	  month/long-string
 	  month/max-days
 	  month/short-string
+	  parser:ctime
+	  parser:iso8601-date/time
+	  parser:military-time-zone
+	  parser:named-time-zone
+	  parser:numeric-time-zone
+	  parser:rfc2822-time
+	  parser:rfc850-time
+	  parser:time-zone
+	  rfc2822-string->decoded-time
 	  string->day-of-week
-	  string->decoded-time
 	  string->file-time
 	  string->month
 	  string->time-zone
@@ -1290,12 +1332,16 @@ USA.
 	  universal-time->global-ctime-string
 	  universal-time->global-decoded-time
 	  universal-time->global-iso8601-string
-	  universal-time->global-time-string
+	  universal-time->global-rfc2822-string
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
 	  universal-time->local-iso8601-string
-	  universal-time->local-time-string
-	  universal-time->string))
+	  universal-time->local-rfc2822-string
+	  write-decoded-time-as-ctime
+	  write-decoded-time-as-http
+	  write-decoded-time-as-iso8601
+	  write-decoded-time-as-rfc2822
+	  write-time-zone))
 
 (define-package (runtime debugger)
   (files "debug")
@@ -1396,12 +1442,14 @@ USA.
 	  error:not-primitive-procedure
 	  error:not-procedure
 	  error:not-procedure-arity
+	  error:not-thunk
 	  guarantee-compiled-procedure
 	  guarantee-compound-procedure
 	  guarantee-primitive-procedure
 	  guarantee-procedure
 	  guarantee-procedure-arity
 	  guarantee-procedure-of-arity
+	  guarantee-thunk
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
@@ -1746,13 +1794,25 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
+	  generic-i/o-port-accessor
+	  generic-i/o-port-modifier
 	  generic-i/o-port-type
 	  generic-io/char-ready?
 	  generic-io/close-input
 	  generic-io/close-output
 	  generic-io/flush-output
+	  generic-io/peek-char
 	  generic-io/read-char
-	  make-generic-i/o-port)
+	  generic-io/unread-char
+	  known-input-port-coding?
+	  known-input-port-codings
+	  known-output-port-coding?
+	  known-output-port-codings
+	  make-generic-i/o-port
+	  make-non-channel-port-sink
+	  make-non-channel-port-source
+	  primary-input-port-codings
+	  primary-output-port-codings)
   (export (runtime console-i/o-port)
 	  input-buffer-contents
 	  make-gstate
@@ -1763,19 +1823,9 @@ USA.
 	  input-buffer-encoded-character-size
 	  input-buffer-free-bytes
 	  input-buffer-using-binary-normalizer?
-	  make-gstate
 	  output-buffer-using-binary-denormalizer?
 	  port-input-buffer
 	  port-output-buffer)
-  (export (runtime string-input)
-	  make-gstate
-	  make-non-channel-source)
-  (export (runtime string-output)
-	  make-gstate
-	  make-non-channel-sink)
-  (export (runtime truncated-string-output)
-	  make-gstate
-	  make-non-channel-sink)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -1833,14 +1883,15 @@ USA.
 	  alist->hash-table
 	  eq-hash
 	  eq-hash-mod
+	  eq-hash-table-type
 	  equal-hash
 	  equal-hash-mod
+	  equal-hash-table-type
 	  eqv-hash
 	  eqv-hash-mod
+	  eqv-hash-table-type
 	  error:not-hash-table
 	  guarantee-hash-table
-	  ;name conflict:
-	  ;hash
 	  hash-by-identity
 	  hash-table->alist
 	  hash-table-copy
@@ -1866,6 +1917,7 @@ USA.
 	  hash-table/rehash-threshold
 	  hash-table/remove!
 	  hash-table/size
+	  hash-table/type
 	  hash-table?
 	  make-eq-hash-table
 	  make-equal-hash-table
@@ -1878,6 +1930,9 @@ USA.
 	  make-symbol-hash-table
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
+	  string-hash-table-type
+	  strong-eq-hash-table-type
+	  strong-eqv-hash-table-type
 	  strong-hash-table/constructor
 	  weak-hash-table/constructor)
   (initialization (initialize-package!)))
@@ -1922,6 +1977,8 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
+	  generic-port-operation:read-substring
+	  generic-port-operation:write-substring
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -1946,16 +2003,13 @@ USA.
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
+	  port-type/parent
 	  port-type/peek-char
 	  port-type/read-char
-	  port-type/read-external-substring
 	  port-type/read-substring
-	  port-type/read-wide-substring
 	  port-type/unread-char
 	  port-type/write-char
-	  port-type/write-external-substring
 	  port-type/write-substring
-	  port-type/write-wide-substring
 	  port-type?
 	  port/coding
 	  port/copy
@@ -2008,15 +2062,11 @@ USA.
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
-  (export (runtime file-i/o-port)
-	  port/unread)
   (export (runtime input-port)
 	  port/operation/char-ready?
 	  port/operation/peek-char
 	  port/operation/read-char
-	  port/operation/read-external-substring
 	  port/operation/read-substring
-	  port/operation/read-wide-substring
 	  port/operation/unread-char)
   (export (runtime output-port)
 	  port/operation/discretionary-flush-output
@@ -2024,9 +2074,7 @@ USA.
 	  port/operation/fresh-line
 	  port/operation/line-start?
 	  port/operation/write-char
-	  port/operation/write-external-substring
-	  port/operation/write-substring
-	  port/operation/write-wide-substring)
+	  port/operation/write-substring)
   (export (runtime transcript)
 	  port/transcript
 	  set-port/transcript!)
@@ -2055,14 +2103,10 @@ USA.
 	  input-port/eof?
 	  input-port/peek-char
 	  input-port/read-char
-	  input-port/read-external-string!
-	  input-port/read-external-substring!
 	  input-port/read-line
 	  input-port/read-string
 	  input-port/read-string!
 	  input-port/read-substring!
-	  input-port/read-wide-string!
-	  input-port/read-wide-substring!
 	  input-port/unread-char
 	  make-eof-object
 	  peek-char
@@ -2081,6 +2125,7 @@ USA.
   (parent (runtime))
   (export ()
 	  beep
+	  call-with-truncated-output-port
 	  clear
 	  display
 	  flush-output
@@ -2094,12 +2139,8 @@ USA.
 	  output-port/line-start?
 	  output-port/write-char
 	  output-port/write-object
-	  output-port/write-external-string
-	  output-port/write-external-substring
 	  output-port/write-string
 	  output-port/write-substring
-	  output-port/write-wide-string
-	  output-port/write-wide-substring
 	  output-port/x-size
 	  output-port/y-size
 	  write
@@ -2107,7 +2148,8 @@ USA.
 	  write-line
 	  write-string
 	  write-strings-in-columns
-	  write-substring))
+	  write-substring)
+  (initialization (initialize-package!)))
 
 (define-package (runtime interrupt-handler)
   (files "intrpt")
@@ -2454,7 +2496,6 @@ USA.
 	  condition-type:system-call-error
 	  condition-type:unimplemented-primitive
 	  condition-type:unimplemented-primitive-for-os
-	  condition-type:unlinkable-variable
 	  condition-type:user-microcode-reset
 	  condition-type:wrong-arity-primitives)
   (initialization (initialize-package!)))
@@ -3467,9 +3508,6 @@ USA.
 	  make-graphics-device
 	  make-graphics-device-type)
   (export (runtime x-graphics)
-	  make-image-type)
-  (export (runtime os2-graphics)
-	  graphics-device/buffer?
 	  make-image-type))
 
 (define-package (runtime x-graphics)
@@ -3606,443 +3644,449 @@ USA.
 	  starbase-graphics-device-type)
   (initialization (initialize-package!)))
 
-(define-package (runtime os2-graphics)
-  (file-case os-type
-    ((os/2) "os2graph" "os2ctype")
-    (else))
-  (parent (runtime))
-  (export ()
-	  os2-console/color?
-	  os2-console/get-font-metrics
-	  os2-console/get-frame-position
-	  os2-console/get-frame-size
-	  os2-console/get-pel-size
-	  os2-console/get-size
-	  os2-console/set-colors!
-	  os2-console/set-font!
-	  os2-console/set-frame-position!
-	  os2-console/set-pel-size!
-	  os2-console/set-size!
-	  os2-graphics-device-type
-	  os2-image/set-colormap
-	  os2/define-color
-	  os2/find-color)
-  (initialization (initialize-package!)))
+(os-type-case
+ ((os/2)
+  (define-package (runtime os2-graphics)
+    (file-case os-type
+      ((os/2) "os2graph" "os2ctype")
+      (else))
+    (parent (runtime))
+    (import (runtime graphics)
+	    graphics-device/buffer?
+	    make-image-type)
+    (export ()
+	    os2-console/color?
+	    os2-console/get-font-metrics
+	    os2-console/get-frame-position
+	    os2-console/get-frame-size
+	    os2-console/get-pel-size
+	    os2-console/get-size
+	    os2-console/set-colors!
+	    os2-console/set-font!
+	    os2-console/set-frame-position!
+	    os2-console/set-pel-size!
+	    os2-console/set-size!
+	    os2-graphics-device-type
+	    os2-image/set-colormap
+	    os2/define-color
+	    os2/find-color)
+    (initialization (initialize-package!)))
 
-(define-package (runtime os2-window-primitives)
-  (file-case os-type
-    ((os/2) "os2winp")
-    (else))
-  (parent (runtime))
-  (export (runtime os2-graphics)
-	  bbo_and
-	  bbo_ignore
-	  bbo_no_color_info
-	  bbo_or
-	  bbo_pal_colors
-	  button-event-type:click
-	  button-event-type:double-click
-	  button-event-type:down
-	  button-event-type:up
-	  button-event/flags
-	  button-event/number
-	  button-event/type
-	  button-event/x
-	  button-event/y
-	  caps_additional_graphics
-	  caps_background_mix_support
-	  caps_bitmap_formats
-	  caps_bm_and
-	  caps_bm_desttransparent
-	  caps_bm_general_boolean
-	  caps_bm_leavealone
-	  caps_bm_or
-	  caps_bm_overpaint
-	  caps_bm_srctransparent
-	  caps_bm_xor
-	  caps_byte_align_not_required
-	  caps_byte_align_recommended
-	  caps_byte_align_required
-	  caps_char_height
-	  caps_char_width
-	  caps_clip_fills
-	  caps_color_bitcount
-	  caps_color_cursor_support
-	  caps_color_index
-	  caps_color_planes
-	  caps_color_table_support
-	  caps_colors
-	  caps_coltabl_realize
-	  caps_coltabl_rgb_8
-	  caps_coltabl_rgb_8_plus
-	  caps_coltabl_true_mix
-	  caps_cosmetic_wideline_support
-	  caps_dev_windowing_support
-	  caps_device_font_sim
-	  caps_device_fonts
-	  caps_device_polyset_points
-	  caps_device_windowing
-	  caps_direct_fill
-	  caps_driver_version
-	  caps_enhanced_fontmetrics
-	  caps_family
-	  caps_fm_and
-	  caps_fm_general_boolean
-	  caps_fm_leavealone
-	  caps_fm_or
-	  caps_fm_overpaint
-	  caps_fm_xor
-	  caps_font_image_default
-	  caps_font_outline_default
-	  caps_foreground_mix_support
-	  caps_graphics_char_height
-	  caps_graphics_char_width
-	  caps_graphics_kerning_support
-	  caps_graphics_subset
-	  caps_graphics_vector_subset
-	  caps_graphics_version
-	  caps_height			;pels
-	  caps_height_in_chars
-	  caps_horizontal_font_res
-	  caps_horizontal_resolution
-	  caps_io_caps
-	  caps_io_dummy
-	  caps_io_supports_io
-	  caps_io_supports_ip
-	  caps_io_supports_op
-	  caps_linewidth_thick
-	  caps_marker_height
-	  caps_marker_width
-	  caps_mouse_buttons
-	  caps_palette_manager
-	  caps_phys_colors
-	  caps_raster_banding
-	  caps_raster_bitblt
-	  caps_raster_bitblt_scaling
-	  caps_raster_caps
-	  caps_raster_flood_fill
-	  caps_raster_fonts
-	  caps_raster_set_pel
-	  caps_rebuild_fills
-	  caps_scaled_default_markers
-	  caps_small_char_height
-	  caps_small_char_width
-	  caps_tech_postscript
-	  caps_tech_raster_camera
-	  caps_tech_raster_display
-	  caps_tech_raster_printer
-	  caps_tech_unknown
-	  caps_tech_vector_plotter
-	  caps_technology
-	  caps_transform_support
-	  caps_vdd_ddb_transfer
-	  caps_vertical_font_res
-	  caps_vertical_resolution
-	  caps_vio_loadable_fonts
-	  caps_width			;pels
-	  caps_width_in_chars
-	  caps_window_byte_alignment
-	  command-event/code
-	  cursor_flash
-	  cursor_frame
-	  cursor_halftone
-	  cursor_solid
-	  event-type
-	  event-type:button
-	  event-type:close
-	  event-type:command
-	  event-type:focus
-	  event-type:help
-	  event-type:key
-	  event-type:paint
-	  event-type:resize
-	  event-type:visibility
-	  event-wid
-	  fcf_acceltable
-	  fcf_autoicon
-	  fcf_border
-	  fcf_dlgborder
-	  fcf_hidebutton
-	  fcf_hidemax
-	  fcf_horzscroll
-	  fcf_icon
-	  fcf_maxbutton
-	  fcf_menu
-	  fcf_minbutton
-	  fcf_minmax
-	  fcf_mousealign
-	  fcf_nobytealign
-	  fcf_nomovewithowner
-	  fcf_screenalign
-	  fcf_shellposition
-	  fcf_sizeborder
-	  fcf_standard
-	  fcf_sysmenu
-	  fcf_sysmodal
-	  fcf_tasklist
-	  fcf_titlebar
-	  fcf_vertscroll
-	  fid_client
-	  fid_horzscroll
-	  fid_menu
-	  fid_minmax
-	  fid_sysmenu
-	  fid_titlebar
-	  fid_vertscroll
-	  fm_and
-	  fm_default
-	  fm_invert
-	  fm_leavealone
-	  fm_masksrcnot
-	  fm_mergenotsrc
-	  fm_mergesrcnot
-	  fm_notcopysrc
-	  fm_notmasksrc
-	  fm_notmergesrc
-	  fm_notxorsrc
-	  fm_one
-	  fm_or
-	  fm_overpaint
-	  fm_subtract
-	  fm_xor
-	  fm_zero
-	  focus-event/gained?
-	  font-metrics/descender
-	  font-metrics/height
-	  font-metrics/width
-	  help-event/code
-	  hwnd_desktop
-	  idi_graphics
-	  kc_alt
-	  kc_char
-	  kc_composite
-	  kc_ctrl
-	  kc_deadkey
-	  kc_invalidchar
-	  kc_invalidcomp
-	  kc_keyup
-	  kc_lonekey
-	  kc_none
-	  kc_prevdown
-	  kc_scancode
-	  kc_shift
-	  kc_toggle
-	  kc_virtualkey
-	  key-event/code
-	  key-event/flags
-	  key-event/repeat
-	  linetype_alternate
-	  linetype_dashdot
-	  linetype_dashdoubledot
-	  linetype_default
-	  linetype_dot
-	  linetype_doubledot
-	  linetype_invisible
-	  linetype_longdash
-	  linetype_shortdash
-	  linetype_solid
-	  mia_checked
-	  mia_disabled
-	  mia_framed
-	  mia_hilited
-	  mia_nodismiss
-	  mis_bitmap
-	  mis_break
-	  mis_breakseparator
-	  mis_buttonseparator
-	  mis_group
-	  mis_help
-	  mis_multmenu
-	  mis_ownerdraw
-	  mis_separator
-	  mis_single
-	  mis_static
-	  mis_submenu
-	  mis_syscommand
-	  mis_text
-	  mit_end
-	  mit_error
-	  mit_first
-	  mit_last
-	  mit_memerror
-	  mit_none
-	  ms_actionbar
-	  ms_conditionalcascade
-	  ms_titlebutton
-	  ms_verticalflip
-	  nullhandle
-	  number-of-event-types
-	  os2menu-create
-	  os2menu-destroy
-	  os2menu-get-item-attributes
-	  os2menu-insert-item
-	  os2menu-n-items
-	  os2menu-nth-item
-	  os2menu-remove-item
-	  os2menu-set-item-attributes
-	  os2pm-synchronize
-	  os2ps-bitblt
-	  os2ps-clear
-	  os2ps-create-bitmap
-	  os2ps-create-memory-ps
-	  os2ps-destroy-bitmap
-	  os2ps-destroy-memory-ps
-	  os2ps-draw-point
-	  os2ps-get-bitmap
-	  os2ps-get-bitmap-bits
-	  os2ps-get-bitmap-parameters
-	  os2ps-get-font-metrics
-	  os2ps-line
-	  os2ps-move-graphics-cursor
-	  os2ps-poly-line
-	  os2ps-poly-line-disjoint
-	  os2ps-query-capabilities
-	  os2ps-query-capability
-	  os2ps-reset-clip-rectangle
-	  os2ps-set-bitmap
-	  os2ps-set-bitmap-bits
-	  os2ps-set-clip-rectangle
-	  os2ps-set-colors
-	  os2ps-set-font
-	  os2ps-set-line-type
-	  os2ps-set-mix
-	  os2ps-text-width
-	  os2ps-write
-	  os2win-activate
-	  os2win-beep
-	  os2win-close
-	  os2win-close-event-qid
-	  os2win-console-wid
-	  os2win-desktop-height
-	  os2win-desktop-width
-	  os2win-destroy-pointer
-	  os2win-event-ready?
-	  os2win-focus?
-	  os2win-frame-handle
-	  os2win-get-event
-	  os2win-get-frame-size
-	  os2win-get-pos
-	  os2win-get-size
-	  os2win-invalidate
-	  os2win-load-pointer
-	  os2win-move-cursor
-	  os2win-open
-	  os2win-open-event-qid
-	  os2win-ps
-	  os2win-scroll
-	  os2win-set-grid
-	  os2win-set-icon
-	  os2win-set-pos
-	  os2win-set-size
-	  os2win-set-state
-	  os2win-set-title
-	  os2win-shape-cursor
-	  os2win-show
-	  os2win-show-cursor
-	  os2win-update-frame
-	  paint-event/xh
-	  paint-event/xl
-	  paint-event/yh
-	  paint-event/yl
-	  resize-event/height
-	  resize-event/width
-	  rop_dstinvert
-	  rop_mergecopy
-	  rop_mergepaint
-	  rop_notsrccopy
-	  rop_notsrcerase
-	  rop_one
-	  rop_patcopy
-	  rop_patinvert
-	  rop_patpaint
-	  rop_srcand
-	  rop_srccopy
-	  rop_srcerase
-	  rop_srcinvert
-	  rop_srcpaint
-	  rop_zero
-	  set-event-wid!
-	  virtual-key-supremum
-	  visibility-event/shown?
-	  vk_alt
-	  vk_altgraf
-	  vk_backspace
-	  vk_backtab
-	  vk_break
-	  vk_button1
-	  vk_button2
-	  vk_button3
-	  vk_capslock
-	  vk_clear
-	  vk_ctrl
-	  vk_delete
-	  vk_down
-	  vk_end
-	  vk_enddrag
-	  vk_enter
-	  vk_ereof
-	  vk_esc
-	  vk_f1
-	  vk_f10
-	  vk_f11
-	  vk_f12
-	  vk_f13
-	  vk_f14
-	  vk_f15
-	  vk_f16
-	  vk_f17
-	  vk_f18
-	  vk_f19
-	  vk_f2
-	  vk_f20
-	  vk_f21
-	  vk_f22
-	  vk_f23
-	  vk_f24
-	  vk_f3
-	  vk_f4
-	  vk_f5
-	  vk_f6
-	  vk_f7
-	  vk_f8
-	  vk_f9
-	  vk_home
-	  vk_insert
-	  vk_left
-	  vk_newline
-	  vk_numlock
-	  vk_pa1
-	  vk_pagedown
-	  vk_pageup
-	  vk_pause
-	  vk_printscrn
-	  vk_right
-	  vk_scrllock
-	  vk_shift
-	  vk_space
-	  vk_sysrq
-	  vk_tab
-	  vk_up
-	  window-state:activate
-	  window-state:bottom
-	  window-state:deactivate
-	  window-state:hide
-	  window-state:maximize
-	  window-state:minimize
-	  window-state:restore
-	  window-state:show
-	  window-state:top
-	  ws_animate
-	  ws_clipchildren
-	  ws_clipsiblings
-	  ws_disabled
-	  ws_maximized
-	  ws_minimized
-	  ws_parentclip
-	  ws_savebits
-	  ws_syncpaint
-	  ws_visible
-	  ))
+  (define-package (runtime os2-window-primitives)
+    (file-case os-type
+      ((os/2) "os2winp")
+      (else))
+    (parent (runtime))
+    (export (runtime os2-graphics)
+	    bbo_and
+	    bbo_ignore
+	    bbo_no_color_info
+	    bbo_or
+	    bbo_pal_colors
+	    button-event-type:click
+	    button-event-type:double-click
+	    button-event-type:down
+	    button-event-type:up
+	    button-event/flags
+	    button-event/number
+	    button-event/type
+	    button-event/x
+	    button-event/y
+	    caps_additional_graphics
+	    caps_background_mix_support
+	    caps_bitmap_formats
+	    caps_bm_and
+	    caps_bm_desttransparent
+	    caps_bm_general_boolean
+	    caps_bm_leavealone
+	    caps_bm_or
+	    caps_bm_overpaint
+	    caps_bm_srctransparent
+	    caps_bm_xor
+	    caps_byte_align_not_required
+	    caps_byte_align_recommended
+	    caps_byte_align_required
+	    caps_char_height
+	    caps_char_width
+	    caps_clip_fills
+	    caps_color_bitcount
+	    caps_color_cursor_support
+	    caps_color_index
+	    caps_color_planes
+	    caps_color_table_support
+	    caps_colors
+	    caps_coltabl_realize
+	    caps_coltabl_rgb_8
+	    caps_coltabl_rgb_8_plus
+	    caps_coltabl_true_mix
+	    caps_cosmetic_wideline_support
+	    caps_dev_windowing_support
+	    caps_device_font_sim
+	    caps_device_fonts
+	    caps_device_polyset_points
+	    caps_device_windowing
+	    caps_direct_fill
+	    caps_driver_version
+	    caps_enhanced_fontmetrics
+	    caps_family
+	    caps_fm_and
+	    caps_fm_general_boolean
+	    caps_fm_leavealone
+	    caps_fm_or
+	    caps_fm_overpaint
+	    caps_fm_xor
+	    caps_font_image_default
+	    caps_font_outline_default
+	    caps_foreground_mix_support
+	    caps_graphics_char_height
+	    caps_graphics_char_width
+	    caps_graphics_kerning_support
+	    caps_graphics_subset
+	    caps_graphics_vector_subset
+	    caps_graphics_version
+	    caps_height			;pels
+	    caps_height_in_chars
+	    caps_horizontal_font_res
+	    caps_horizontal_resolution
+	    caps_io_caps
+	    caps_io_dummy
+	    caps_io_supports_io
+	    caps_io_supports_ip
+	    caps_io_supports_op
+	    caps_linewidth_thick
+	    caps_marker_height
+	    caps_marker_width
+	    caps_mouse_buttons
+	    caps_palette_manager
+	    caps_phys_colors
+	    caps_raster_banding
+	    caps_raster_bitblt
+	    caps_raster_bitblt_scaling
+	    caps_raster_caps
+	    caps_raster_flood_fill
+	    caps_raster_fonts
+	    caps_raster_set_pel
+	    caps_rebuild_fills
+	    caps_scaled_default_markers
+	    caps_small_char_height
+	    caps_small_char_width
+	    caps_tech_postscript
+	    caps_tech_raster_camera
+	    caps_tech_raster_display
+	    caps_tech_raster_printer
+	    caps_tech_unknown
+	    caps_tech_vector_plotter
+	    caps_technology
+	    caps_transform_support
+	    caps_vdd_ddb_transfer
+	    caps_vertical_font_res
+	    caps_vertical_resolution
+	    caps_vio_loadable_fonts
+	    caps_width			;pels
+	    caps_width_in_chars
+	    caps_window_byte_alignment
+	    command-event/code
+	    cursor_flash
+	    cursor_frame
+	    cursor_halftone
+	    cursor_solid
+	    event-type
+	    event-type:button
+	    event-type:close
+	    event-type:command
+	    event-type:focus
+	    event-type:help
+	    event-type:key
+	    event-type:paint
+	    event-type:resize
+	    event-type:visibility
+	    event-wid
+	    fcf_acceltable
+	    fcf_autoicon
+	    fcf_border
+	    fcf_dlgborder
+	    fcf_hidebutton
+	    fcf_hidemax
+	    fcf_horzscroll
+	    fcf_icon
+	    fcf_maxbutton
+	    fcf_menu
+	    fcf_minbutton
+	    fcf_minmax
+	    fcf_mousealign
+	    fcf_nobytealign
+	    fcf_nomovewithowner
+	    fcf_screenalign
+	    fcf_shellposition
+	    fcf_sizeborder
+	    fcf_standard
+	    fcf_sysmenu
+	    fcf_sysmodal
+	    fcf_tasklist
+	    fcf_titlebar
+	    fcf_vertscroll
+	    fid_client
+	    fid_horzscroll
+	    fid_menu
+	    fid_minmax
+	    fid_sysmenu
+	    fid_titlebar
+	    fid_vertscroll
+	    fm_and
+	    fm_default
+	    fm_invert
+	    fm_leavealone
+	    fm_masksrcnot
+	    fm_mergenotsrc
+	    fm_mergesrcnot
+	    fm_notcopysrc
+	    fm_notmasksrc
+	    fm_notmergesrc
+	    fm_notxorsrc
+	    fm_one
+	    fm_or
+	    fm_overpaint
+	    fm_subtract
+	    fm_xor
+	    fm_zero
+	    focus-event/gained?
+	    font-metrics/descender
+	    font-metrics/height
+	    font-metrics/width
+	    help-event/code
+	    hwnd_desktop
+	    idi_graphics
+	    kc_alt
+	    kc_char
+	    kc_composite
+	    kc_ctrl
+	    kc_deadkey
+	    kc_invalidchar
+	    kc_invalidcomp
+	    kc_keyup
+	    kc_lonekey
+	    kc_none
+	    kc_prevdown
+	    kc_scancode
+	    kc_shift
+	    kc_toggle
+	    kc_virtualkey
+	    key-event/code
+	    key-event/flags
+	    key-event/repeat
+	    linetype_alternate
+	    linetype_dashdot
+	    linetype_dashdoubledot
+	    linetype_default
+	    linetype_dot
+	    linetype_doubledot
+	    linetype_invisible
+	    linetype_longdash
+	    linetype_shortdash
+	    linetype_solid
+	    mia_checked
+	    mia_disabled
+	    mia_framed
+	    mia_hilited
+	    mia_nodismiss
+	    mis_bitmap
+	    mis_break
+	    mis_breakseparator
+	    mis_buttonseparator
+	    mis_group
+	    mis_help
+	    mis_multmenu
+	    mis_ownerdraw
+	    mis_separator
+	    mis_single
+	    mis_static
+	    mis_submenu
+	    mis_syscommand
+	    mis_text
+	    mit_end
+	    mit_error
+	    mit_first
+	    mit_last
+	    mit_memerror
+	    mit_none
+	    ms_actionbar
+	    ms_conditionalcascade
+	    ms_titlebutton
+	    ms_verticalflip
+	    nullhandle
+	    number-of-event-types
+	    os2menu-create
+	    os2menu-destroy
+	    os2menu-get-item-attributes
+	    os2menu-insert-item
+	    os2menu-n-items
+	    os2menu-nth-item
+	    os2menu-remove-item
+	    os2menu-set-item-attributes
+	    os2pm-synchronize
+	    os2ps-bitblt
+	    os2ps-clear
+	    os2ps-create-bitmap
+	    os2ps-create-memory-ps
+	    os2ps-destroy-bitmap
+	    os2ps-destroy-memory-ps
+	    os2ps-draw-point
+	    os2ps-get-bitmap
+	    os2ps-get-bitmap-bits
+	    os2ps-get-bitmap-parameters
+	    os2ps-get-font-metrics
+	    os2ps-line
+	    os2ps-move-graphics-cursor
+	    os2ps-poly-line
+	    os2ps-poly-line-disjoint
+	    os2ps-query-capabilities
+	    os2ps-query-capability
+	    os2ps-reset-clip-rectangle
+	    os2ps-set-bitmap
+	    os2ps-set-bitmap-bits
+	    os2ps-set-clip-rectangle
+	    os2ps-set-colors
+	    os2ps-set-font
+	    os2ps-set-line-type
+	    os2ps-set-mix
+	    os2ps-text-width
+	    os2ps-write
+	    os2win-activate
+	    os2win-beep
+	    os2win-close
+	    os2win-close-event-qid
+	    os2win-console-wid
+	    os2win-desktop-height
+	    os2win-desktop-width
+	    os2win-destroy-pointer
+	    os2win-event-ready?
+	    os2win-focus?
+	    os2win-frame-handle
+	    os2win-get-event
+	    os2win-get-frame-size
+	    os2win-get-pos
+	    os2win-get-size
+	    os2win-invalidate
+	    os2win-load-pointer
+	    os2win-move-cursor
+	    os2win-open
+	    os2win-open-event-qid
+	    os2win-ps
+	    os2win-scroll
+	    os2win-set-grid
+	    os2win-set-icon
+	    os2win-set-pos
+	    os2win-set-size
+	    os2win-set-state
+	    os2win-set-title
+	    os2win-shape-cursor
+	    os2win-show
+	    os2win-show-cursor
+	    os2win-update-frame
+	    paint-event/xh
+	    paint-event/xl
+	    paint-event/yh
+	    paint-event/yl
+	    resize-event/height
+	    resize-event/width
+	    rop_dstinvert
+	    rop_mergecopy
+	    rop_mergepaint
+	    rop_notsrccopy
+	    rop_notsrcerase
+	    rop_one
+	    rop_patcopy
+	    rop_patinvert
+	    rop_patpaint
+	    rop_srcand
+	    rop_srccopy
+	    rop_srcerase
+	    rop_srcinvert
+	    rop_srcpaint
+	    rop_zero
+	    set-event-wid!
+	    virtual-key-supremum
+	    visibility-event/shown?
+	    vk_alt
+	    vk_altgraf
+	    vk_backspace
+	    vk_backtab
+	    vk_break
+	    vk_button1
+	    vk_button2
+	    vk_button3
+	    vk_capslock
+	    vk_clear
+	    vk_ctrl
+	    vk_delete
+	    vk_down
+	    vk_end
+	    vk_enddrag
+	    vk_enter
+	    vk_ereof
+	    vk_esc
+	    vk_f1
+	    vk_f10
+	    vk_f11
+	    vk_f12
+	    vk_f13
+	    vk_f14
+	    vk_f15
+	    vk_f16
+	    vk_f17
+	    vk_f18
+	    vk_f19
+	    vk_f2
+	    vk_f20
+	    vk_f21
+	    vk_f22
+	    vk_f23
+	    vk_f24
+	    vk_f3
+	    vk_f4
+	    vk_f5
+	    vk_f6
+	    vk_f7
+	    vk_f8
+	    vk_f9
+	    vk_home
+	    vk_insert
+	    vk_left
+	    vk_newline
+	    vk_numlock
+	    vk_pa1
+	    vk_pagedown
+	    vk_pageup
+	    vk_pause
+	    vk_printscrn
+	    vk_right
+	    vk_scrllock
+	    vk_shift
+	    vk_space
+	    vk_sysrq
+	    vk_tab
+	    vk_up
+	    window-state:activate
+	    window-state:bottom
+	    window-state:deactivate
+	    window-state:hide
+	    window-state:maximize
+	    window-state:minimize
+	    window-state:restore
+	    window-state:show
+	    window-state:top
+	    ws_animate
+	    ws_clipchildren
+	    ws_clipsiblings
+	    ws_disabled
+	    ws_maximized
+	    ws_minimized
+	    ws_parentclip
+	    ws_savebits
+	    ws_syncpaint
+	    ws_visible
+	    ))
+  ))
 
 (define-package (runtime state-space)
   (files "wind")
@@ -4099,28 +4143,33 @@ USA.
 	  the-empty-stream)
   (initialization (initialize-package!)))
 
-(define-package (runtime string-input)
-  (files "strnin")
+(define-package (runtime string-i/o-port)
+  (files "stringio")
   (parent (runtime))
   (export ()
-	  call-with-input-string
-	  open-input-string
-	  (string->input-port open-input-string)
-	  with-input-from-string)
-  (initialization (initialize-package!)))
-
-(define-package (runtime string-output)
-  (files "strout")
-  (parent (runtime))
-  (export ()
-	  call-with-output-string
+	  (call-with-output-string call-with-narrow-output-string)
 	  (get-output-from-accumulator get-output-string!)
+	  (make-accumulator-output-port open-narrow-output-string)
+	  (open-output-string open-narrow-output-string)
+	  (open-wide-input-string open-input-string)
+	  (string->input-port open-input-string)
+	  (with-string-output-port call-with-narrow-output-string)
+	  call-with-input-octets
+	  call-with-input-string
+	  call-with-narrow-output-string
+	  call-with-output-octets
+	  call-with-truncated-output-string
+	  call-with-wide-output-string
 	  get-output-string
 	  get-output-string!
-	  (make-accumulator-output-port open-output-string)
-	  open-output-string
-	  (with-string-output-port call-with-output-string)
-	  with-output-to-string)
+	  open-input-octets
+	  open-input-string
+	  open-narrow-output-string
+	  open-output-octets
+	  open-wide-output-string
+	  with-input-from-string
+	  with-output-to-string
+	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime syntactic-closures)
@@ -4170,6 +4219,8 @@ USA.
 	  syntax-match?
 	  synthetic-identifier?
 	  )
+  (export (runtime)
+	  parse-define-form)
   (export (runtime defstruct)
 	  define-expander
 	  parse-mit-lambda-list))
@@ -4187,6 +4238,7 @@ USA.
   (export ()
 	  define-guarantee)
   (export (runtime)
+	  define-deferred
 	  define-primitives
 	  ucode-primitive
 	  ucode-return-address
@@ -4217,14 +4269,6 @@ USA.
 	  with-timings)
   (export (runtime gc-statistics)
 	  increment-non-runtime!)
-  (initialization (initialize-package!)))
-
-(define-package (runtime truncated-string-output)
-  (files "strott")
-  (parent (runtime))
-  (export ()
-	  call-with-truncated-output-string
-	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 
 (define-package (runtime unparser)
@@ -4294,13 +4338,13 @@ USA.
   (files "usrint")
   (parent (runtime))
   (export ()
+	  (write-notification-line with-notification)
 	  prompt-for-command-char
 	  prompt-for-command-expression
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
 	  prompt-for-expression
-	  with-notification
-	  write-notification-line)
+	  with-notification)
   (export (runtime rep)
 	  port/set-default-environment
 	  port/write-result)
@@ -4315,7 +4359,8 @@ USA.
 	  port/gc-start)
   (export (runtime emacs-interface)
 	  port/read-finish
-	  port/read-start))
+	  port/read-start)
+  (initialization (initialize-package!)))
 
 (define-package (runtime thread)
   (files "thread")
@@ -4641,6 +4686,7 @@ USA.
 	  mhash-get-block-size
 	  mhash-hmac-end
 	  mhash-hmac-init
+	  mhash-hmac-update
 	  mhash-init
 	  mhash-keygen
 	  mhash-keygen-max-key-size
@@ -4765,6 +4811,7 @@ USA.
 	  call-with-decode-binhex40-output-port
 	  call-with-decode-quoted-printable-output-port
 	  call-with-decode-uue-output-port
+	  condition-type:decode-base64
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update
@@ -4849,6 +4896,13 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
+	  (wide-string->utf16-be-string string->utf16-be-string)
+	  (wide-string->utf16-le-string string->utf16-le-string)
+	  (wide-string->utf16-string string->utf16-string)
+	  (wide-string->utf32-be-string string->utf32-be-string)
+	  (wide-string->utf32-le-string string->utf32-le-string)
+	  (wide-string->utf32-string string->utf32-string)
+	  (wide-string->utf8-string string->utf8-string)
 	  8-bit-alphabet?
 	  <alphabet>
 	  <wide-string>
@@ -4860,15 +4914,31 @@ USA.
 	  alphabet->string
 	  alphabet-predicate
 	  alphabet?
-	  call-with-wide-output-string
+	  call-with-utf16-be-input-string
+	  call-with-utf16-be-output-string
+	  call-with-utf16-input-string
+	  call-with-utf16-le-input-string
+	  call-with-utf16-le-output-string
+	  call-with-utf16-output-string
+	  call-with-utf32-be-input-string
+	  call-with-utf32-be-output-string
+	  call-with-utf32-input-string
+	  call-with-utf32-le-input-string
+	  call-with-utf32-le-output-string
+	  call-with-utf32-output-string
+	  call-with-utf8-input-string
+	  call-with-utf8-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
 	  code-points->alphabet
+	  combine-utf16-surrogates
 	  error:not-8-bit-alphabet
 	  error:not-alphabet
 	  error:not-unicode-code-point
 	  error:not-utf16-be-string
+	  error:not-utf16-high-surrogate
 	  error:not-utf16-le-string
+	  error:not-utf16-low-surrogate
 	  error:not-utf16-string
 	  error:not-utf32-be-string
 	  error:not-utf32-le-string
@@ -4883,7 +4953,9 @@ USA.
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
 	  guarantee-utf16-be-string
+	  guarantee-utf16-high-surrogate
 	  guarantee-utf16-le-string
+	  guarantee-utf16-low-surrogate
 	  guarantee-utf16-string
 	  guarantee-utf32-be-string
 	  guarantee-utf32-le-string
@@ -4895,9 +4967,29 @@ USA.
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
 	  make-wide-string
-	  open-wide-input-string
-	  open-wide-output-string
+	  open-utf16-be-input-string
+	  open-utf16-be-output-string
+	  open-utf16-input-string
+	  open-utf16-le-input-string
+	  open-utf16-le-output-string
+	  open-utf16-output-string
+	  open-utf32-be-input-string
+	  open-utf32-be-output-string
+	  open-utf32-input-string
+	  open-utf32-le-input-string
+	  open-utf32-le-output-string
+	  open-utf32-output-string
+	  open-utf8-input-string
+	  open-utf8-output-string
+	  split-into-utf16-surrogates
 	  string->alphabet
+	  string->utf16-be-string
+	  string->utf16-le-string
+	  string->utf16-string
+	  string->utf32-be-string
+	  string->utf32-le-string
+	  string->utf32-string
+	  string->utf8-string
 	  string->utf8-string
 	  string->wide-string
 	  unicode-code-point?
@@ -4905,10 +4997,12 @@ USA.
 	  utf16-be-string-length
 	  utf16-be-string-valid?
 	  utf16-be-string?
+	  utf16-high-surrogate?
 	  utf16-le-string->wide-string
 	  utf16-le-string-length
 	  utf16-le-string-valid?
 	  utf16-le-string?
+	  utf16-low-surrogate?
 	  utf16-string->wide-string
 	  utf16-string-length
 	  utf16-string-valid?
@@ -4934,29 +5028,16 @@ USA.
 	  wide-char?
 	  wide-string
 	  wide-string->string
-	  wide-string->utf16-be-string
-	  wide-string->utf16-le-string
-	  wide-string->utf16-string
-	  wide-string->utf32-be-string
-	  wide-string->utf32-le-string
-	  wide-string->utf32-string
-	  wide-string->utf8-string
 	  wide-string-index?
 	  wide-string-length
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
 	  wide-substring)
-  (export (runtime parser-buffer)
-	  %wide-string-length
-	  %wide-string-ref
-	  %wide-substring
-	  wide-string-contents)
   (export (runtime generic-i/o-port)
 	  wide-string-contents)
   (export (runtime input-port)
-	  wide-string-contents)
-  (initialization (initialize-package!)))
+	  wide-string-contents))
 
 (define-package (runtime uri)
   (files "url")
@@ -5010,6 +5091,8 @@ USA.
 	  parse-partial-uri
 	  parse-relative-uri
 	  parse-uri
+	  parse-uri-authority
+	  parse-uri-path-absolute
 	  partial-uri->string
 	  partial-uri-authority
 	  partial-uri-extra
@@ -5084,53 +5167,177 @@ USA.
 	  url:char-set:unreserved
 	  url:encode-string
 	  write-partial-uri
-	  write-uri)
+	  write-uri
+	  write-uri-authority)
+  (initialization (initialize-package!)))
+
+(define-package (runtime rfc2822-headers)
+  (files "rfc2822-headers")
+  (parent (runtime))
+  (export ()
+	  all-rfc2822-headers
+	  char-set:rfc2822-name
+	  char-set:rfc2822-qtext
+	  char-set:rfc2822-text
+	  condition-type:rfc2822-parse-error
+	  error:not-rfc2822-header
+	  first-rfc2822-header
+	  guarantee-rfc2822-header
+	  make-rfc2822-header
+	  parser:rfc2822-quoted-string
+	  quote-rfc2822-text
+	  read-rfc2822-folded-line
+	  read-rfc2822-headers
+	  rfc2822-header-name
+	  rfc2822-header-value
+	  rfc2822-header?
+	  rfc2822-headers->string
+	  string->rfc2822-headers
+	  write-rfc2822-headers)
+  (initialization (initialize-package!)))
+
+(define-package (runtime http-syntax)
+  (files "http-syntax")
+  (parent (runtime))
+  (export ()
+	  <http-header>
+	  char-set:http-text
+	  char-set:http-token
+	  convert-http-headers
+	  default-http-user-agent
+	  error:not-http-header
+	  error:not-http-status
+	  error:not-http-text
+	  error:not-http-token
+	  error:not-http-token-string
+	  error:not-http-version
+	  guarantee-http-header
+	  guarantee-http-headers
+	  guarantee-http-status
+	  guarantee-http-text
+	  guarantee-http-token
+	  guarantee-http-token-string
+	  guarantee-http-version
+	  http-header
+	  http-header-name
+	  http-header-parsed-value
+	  http-header-value
+	  http-header?
+	  http-status?
+	  http-text?
+	  http-token-string?
+	  http-token?
+	  http-version-major
+	  http-version-minor
+	  http-version:1.0
+	  http-version:1.1
+	  http-version<?
+	  http-version=?
+	  http-version?
+	  make-http-header
+	  make-http-version
+	  parse-http-chunk-leader
+	  parse-http-status
+	  parse-http-token
+	  parse-http-version
+	  read-http-headers
+	  write-http-status
+	  write-http-token
+	  write-http-version
+	  write-http-headers)
+  (initialization (initialize-package!)))
+
+(define-package (runtime http-i/o)
+  (files "httpio")
+  (parent (runtime))
+  (export ()
+	  error:not-http-message
+	  error:not-http-request
+	  error:not-http-request-uri
+	  error:not-http-response
+	  error:not-simple-http-request
+	  error:not-simple-http-request-uri
+	  error:not-simple-http-response
+	  guarantee-http-message
+	  guarantee-http-request
+	  guarantee-http-request-uri
+	  guarantee-http-response
+	  guarantee-simple-http-request
+	  guarantee-simple-http-request-uri
+	  guarantee-simple-http-response
+	  http-message-body
+	  http-message-body-port
+	  http-message-header
+	  http-message-headers
+	  http-message?
+	  http-request-body
+	  http-request-headers
+	  http-request-method
+	  http-request-uri
+	  http-request-uri?
+	  http-request-version
+	  http-request?
+	  http-response-body
+	  http-response-headers
+	  http-response-reason
+	  http-response-status
+	  http-response-version
+	  http-response?
+	  http-status-description
+	  make-http-request
+	  make-http-response
+	  make-simple-http-request
+	  make-simple-http-response
+	  read-http-request
+	  read-http-response
+	  read-simple-http-request
+	  read-simple-http-response
+	  simple-http-request-uri?
+	  simple-http-request?
+	  simple-http-response?
+	  write-http-request
+	  write-http-response)
   (initialization (initialize-package!)))
 
 (define-package (runtime http-client)
   (files "http-client")
   (parent (runtime))
   (export ()
-	  adjoin-http-header-fields
-	  call-with-http-connection
-	  call-with-http-response:entity-request
-	  call-with-http-response:get
-	  call-with-http-response:post
-	  close-http-connection
-	  guarantee-http-version
-	  http-connection?
-	  http-connection/host
-	  http-connection/host-string
-	  http-connection/port
-	  http-connection/socket
-	  http-connection-open?
+	  call-with-http-client-socket
+	  http-client-exchange
+	  http-client-request
 	  http-get
 	  http-head
-	  http-post
-	  http-parser:status-code
-	  http-parser:status-line
-	  http-parser:version
-	  http-response?
-	  http-response/first-header-field
-	  http-response/all-header-fields
-	  http-response/header-fields
-	  http-response/reason
-	  http-response/status-code
-	  http-response/status-type
-	  http-response/version
-	  http-version
-	  http-version?
-	  http-version=?
-	  http-version<?
-	  make-http-version
-	  open-http-connection
-	  read-http-entity
-	  read-http-response
-	  receive-http-response
-	  send-http-request
-	  valid-http-header-field?
-	  write-http-request
-	  ))
+	  http-post)
+  (initialization (initialize-package!)))
+
+(define-package (runtime html-form-codec)
+  (files "html-form-codec")
+  (parent (runtime))
+  (export ()
+	  decode-www-form-urlencoded
+	  encode-www-form-urlencoded)
+  (initialization (initialize-package!)))
+
+(define-package (runtime structure-parser)
+  (files "structure-parser")
+  (parent (runtime))
+  (export ()
+	  apply-list-parser
+	  apply-object-parser
+	  apply-vector-parser
+	  error:not-structure-parser-values
+	  guarantee-structure-parser-values
+	  list->structure-parser-values
+	  list-parser
+	  map-structure-parser-values
+	  object-parser
+	  structure-parser-values
+	  structure-parser-values->list
+	  structure-parser-values-length
+	  structure-parser-values-ref
+	  structure-parser-values?
+	  vector-parser))
 
 (define-package (runtime postgresql)
   (file-case options

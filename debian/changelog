@@ -1,3 +1,12 @@
+mit-scheme (7.7.90+20090107-1) unstable; urgency=low
+
+  * New upstream.
+  * debian/control: Bump standards-version to 3.8.0 (no changes).
+  * debian/control: Add homepage field.
+  * debian/copyright: Update copyright dates.
+
+ -- Chris Hanson <cph@debian.org>  Wed, 07 Jan 2009 23:12:52 -0800
+
 mit-scheme (7.7.90+20080130-1) unstable; urgency=low
 
   * New upstream.  (closes: Bug#458700, Bug#375858)

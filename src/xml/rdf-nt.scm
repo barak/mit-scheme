@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-nt.scm,v 1.15 2008/01/30 20:02:42 cph Exp $
+$Id: rdf-nt.scm,v 1.16 2008/07/19 01:41:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -121,7 +121,7 @@ USA.
   (*parser (map intern (match match-language))))
 
 (define (parse-string b)
-  (let ((port (open-output-string)))
+  (let ((port (open-utf8-output-string)))
 
     (define (loop)
       (let ((p (get-parser-buffer-pointer b)))
@@ -164,7 +164,6 @@ USA.
 		 (loop (fix:+ i 1)))
 	    #t)))
 
-    (port/set-coding port 'UTF-8)
     (loop)))
 
 (define match-ws*
@@ -230,8 +229,7 @@ USA.
 	      (write-string (symbol-name lang) port)))))
 
 (define (write-rdf/nt-literal-text text port)
-  (let ((text (open-input-string text)))
-    (port/set-coding text 'UTF-8)
+  (let ((text (open-utf8-input-string text)))
     (write-string "\"" port)
     (let loop ()
       (let ((char (read-char text)))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: vc.scm,v 1.112 2008/01/30 20:02:07 cph Exp $
+$Id: vc.scm,v 1.113 2008/08/28 19:39:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -790,7 +790,8 @@ and two version designators specifying which versions to compare."
 	(vc-diff (file-vc-master workfile #t) rev1 rev2))))
 
 (define (vc-diff master rev1 rev2)
-  (vc-save-workfile-buffer (vc-master-workfile master))
+  (if (not (and rev1 rev2))
+      (vc-save-workfile-buffer (vc-master-workfile master)))
   (let ((rev1 (vc-normalize-revision rev1))
 	(rev2 (vc-normalize-revision rev2)))
     (if (and (or rev1 rev2 (vc-backend-workfile-modified? master))
@@ -1825,9 +1826,9 @@ the value of vc-log-mode-hook."
 		(and t1 t2
 		     (string=? (file-time->global-ctime-string t1) t2))))
 	     (cvs-file-edited? master))
-	 (unix/uid->string
-	  (file-attributes/uid
-	   (file-attributes (vc-master-workfile master)))))))
+         (let ((attributes (file-attributes (vc-master-workfile master))))
+           (and attributes
+                (unix/uid->string (file-attributes/uid attributes)))))))
 
 (define-vc-type-operation 'WORKFILE-MODIFIED? vc-type:cvs
   (lambda (master)

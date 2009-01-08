@@ -301,8 +301,8 @@ syntax.o: syntax.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 sysprim.o: sysprim.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h os.h \
-	  ostop.h ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h \
-	  sdata.h stack.h types.h
+	  osscheme.h ostop.h ostty.h outf.h prim.h prims.h returns.h scheme.h \
+	  scode.h sdata.h stack.h types.h
 term.o: term.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h edwin.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h \

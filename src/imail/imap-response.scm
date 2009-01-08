@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imap-response.scm,v 1.53 2008/01/30 20:02:10 cph Exp $
+$Id: imap-response.scm,v 1.54 2008/05/18 22:46:36 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -302,7 +302,7 @@ USA.
 	       (write-char char output)
 	       (loop))
 	      ((char=? #\\ char)
-	       (let ((char (read-char-no-eof char)))
+	       (let ((char (read-char-no-eof input)))
 		 (if (imap:quoted-special? char)
 		     (begin
 		       (write-char char output)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.35 2008/01/30 20:02:36 cph Exp $
+$Id: unsyn.scm,v 14.37 2008/02/29 16:06:34 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -275,7 +275,7 @@ USA.
 	 `(IF ,(unsyntax-object predicate)
 	      ,(unsyntax-object consequent)))
 	((eq? consequent undefined-conditional-branch)
-	 `(IF (,not ,(unsyntax-object predicate))
+	 `(IF (,(ucode-primitive not) ,(unsyntax-object predicate))
 	      ,(unsyntax-object alternative)))
 	((and (conditional? alternative)
 	      (not (has-substitution? alternative)))
@@ -394,7 +394,7 @@ USA.
 	 (cond ((or (not (eq? #t unsyntaxer:macroize?))
 		    (has-substitution? operator))
 		(ordinary-combination))
-	       ((and (or (eq? operator cons)
+	       ((and (or (eq? operator (ucode-primitive cons))
 			 (absolute-reference-to? operator 'CONS))
 		     (= (length operands) 2)
 		     (delay? (cadr operands))

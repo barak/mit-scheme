@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.30 2008/01/30 20:01:50 cph Exp $
+$Id: rulflo.scm,v 1.31 2008/06/09 01:39:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -264,8 +264,9 @@ USA.
 			   (FSTP (ST ,',(1+ target)))))))))))))
   (define-flonum-operation FLONUM-NEGATE FCHS)
   (define-flonum-operation FLONUM-ABS FABS)
-  (define-flonum-operation FLONUM-SIN FSIN)
-  (define-flonum-operation FLONUM-COS FCOS)
+  ;; Disabled: FSIN and FCOS limited to pi * 2^62.
+  ;;(define-flonum-operation FLONUM-SIN FSIN)
+  ;;(define-flonum-operation FLONUM-COS FCOS)
   (define-flonum-operation FLONUM-SQRT FSQRT)
   (define-flonum-operation FLONUM-ROUND FRNDINT))
 
@@ -316,58 +317,41 @@ USA.
 (define-arithmetic-method 'FLONUM-LOG flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLDLN2)
-	  (FLD (ST ,(1+ source)))
-	  (FYL2X)
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FLDLN2)
 	  (FXCH (ST 0) (ST 1))
 	  (FYL2X)))))
 
+#|
+;; Disabled: F2XM1 is limited to -1 <= X <= +1.
 (define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLD (ST ,source))
-	  (FLDL2E)
-	  (FMULP (ST 1) (ST 0))
-	  (F2XM1)
-	  (FLD1)
-	  (FADDP (ST 1) (ST 0))
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FLDL2E)
 	  (FMULP (ST 1) (ST 0))
 	  (F2XM1)
 	  (FLD1)
 	  (FADDP (ST 1) (ST 0))))))
+|#
 
+#|
+;; Disabled: FPTAN limited to pi * 2^62.
 (define-arithmetic-method 'FLONUM-TAN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLD (ST ,source))
-	  (FPTAN)
-	  (FSTP (ST 0))			; FPOP
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FPTAN)
 	  (FSTP (ST 0))			; FPOP
 	  ))))
+|#
 
 (define-arithmetic-method 'FLONUM-ATAN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLD (ST ,source))
-	  (FLD1)
-	  (FPATAN)
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FLD1)
 	  (FPATAN)))))
+
+#|
+;; Disabled: these aren't used due to broken rewriting rules.  See
+;; rulrew.scm for details.
 
 ;; For now, these preserve values in memory
 ;; in order to avoid flushing a stack location.
@@ -375,16 +359,6 @@ USA.
 (define-arithmetic-method 'FLONUM-ACOS flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLD (ST ,source))
-	  (FMUL (ST 0) (ST 0))
-	  (FLD1)
-	  (F%SUBP (ST 1) (ST 0))
-	  (FSQRT)
-	  (FLD (ST ,(1+ source)))
-	  (FPATAN)
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FST D (@R ,regnum:free-pointer))
 	  (FMUL (ST 0) (ST 0))
 	  (FLD1)
@@ -396,17 +370,6 @@ USA.
 (define-arithmetic-method 'FLONUM-ASIN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     #|
-     (LAP (FLD (ST ,source))
-	  (FMUL (ST 0) (ST 0))
-	  (FLD1)
-	  (F%SUBP (ST 1) (ST 0))
-	  (FSQRT)
-	  (FLD (ST ,(1+ source)))
-	  (FXCH (ST 0) (ST 1))
-	  (FPATAN)
-	  (FSTP (ST ,(1+ target))))
-     |#
      (LAP (FST D (@R ,regnum:free-pointer))
 	  (FMUL (ST 0) (ST 0))
 	  (FLD1)
@@ -415,6 +378,7 @@ USA.
 	  (FLD D (@R ,regnum:free-pointer))
 	  (FXCH (ST 0) (ST 1))
 	  (FPATAN)))))
+|#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

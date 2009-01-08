@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax-output.scm,v 14.15 2008/01/30 20:02:36 cph Exp $
+$Id: syntax-output.scm,v 14.16 2008/02/14 02:11:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -139,7 +139,8 @@ USA.
   (make-access environment name))
 
 (define (output/access-assignment name environment value)
-  (make-combination lexical-assignment (list environment name value)))
+  (make-combination (ucode-primitive lexical-assignment)
+		    (list environment name value)))
 
 (define (output/local-declare declarations body)
   (make-declaration declarations body))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.21 2008/01/30 20:01:42 cph Exp $
+$Id: asstop.scm,v 1.22 2008/09/10 15:12:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -44,7 +44,14 @@ USA.
 (define (compiler-output->compiled-expression cexp)
   cexp)
 
-(define (compile-scode/internal/hook action)
+(define (compile-scode/file/hook input-pathname output-pathname action)
+  input-pathname output-pathname
+  (action))
+
+(define (compile-scode/no-file/hook action)
+  (action))
+
+(define (compile-scode/recursive/hook action)
   (action))
 
 ;;; Global variables for the assembler and linker

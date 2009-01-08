@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.59 2008/01/30 20:02:42 cph Exp $
+$Id: xml-struct.scm,v 1.64 2008/09/24 00:44:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -169,9 +169,8 @@ USA.
 
 (define (canonicalize-char-data object)
   (cond ((wide-char? object)
-	 (call-with-output-string
+	 (call-with-utf8-output-string
 	   (lambda (port)
-	     (port/set-coding port 'UTF-8)
 	     (write-char object port))))
 	((wide-string? object)
 	 (wide-string->utf8-string object))
@@ -200,6 +199,8 @@ USA.
 			     (xml-name=? (xml-attribute-name attr) name)))))
 		  (loop (cdr attrs)))
 	     #t))))
+
+(define-guarantee xml-attribute-list "XML attribute list")
 
 (define (xml-content? object)
   (list-of-type? object xml-content-item?))
@@ -242,6 +243,46 @@ USA.
 		       (xml-processing-instructions? item)))
 	      (error:wrong-type-datum content "an XML content")))))
     (search content)))
+
+(define (xml-element-child name elt #!optional error?)
+  (let ((child
+	 (let ((name (xml-name-arg name 'XML-ELEMENT-CHILD)))
+	   (find (lambda (item)
+		   (and (xml-element? item)
+			(xml-name=? (xml-element-name item) name)))
+		 (xml-element-content elt)))))
+    (if (and (not child) (if (default-object? error?) #f error?))
+	(error:bad-range-argument name 'XML-ELEMENT-CHILD))
+    child))
+
+(define (xml-element-children name elt)
+  (let ((name (xml-name-arg name 'XML-ELEMENT-CHILDREN)))
+    (filter (lambda (item)
+	      (and (xml-element? item)
+		   (xml-name=? (xml-element-name item) name)))
+	    (xml-element-content elt))))
+
+(define (find-xml-attr name elt #!optional error?)
+  (let ((attr
+	 (find (let ((name (xml-name-arg name 'FIND-XML-ATTR)))
+		 (lambda (attr)
+		   (xml-name=? (xml-attribute-name attr) name)))
+	       (if (xml-element? elt)
+		   (xml-element-attributes elt)
+		   (begin
+		     (guarantee-xml-attribute-list elt 'FIND-XML-ATTR)
+		     elt)))))
+    (if (and (not attr) (if (default-object? error?) #f error?))
+	(error:bad-range-argument name 'FIND-XML-ATTR))
+    (and attr
+	 (xml-attribute-value attr))))
+
+(define (xml-name-arg arg caller)
+  (if (string? arg)
+      (make-xml-name arg)
+      (begin
+	(guarantee-xml-name arg caller)
+	arg)))
 
 (define-xml-type comment
   (text canonicalize canonicalize-char-data))
@@ -442,8 +483,8 @@ USA.
 	(xml-name-prefix=? name 'xmlns))))
 
 (define (xml-element-namespace-decls elt)
-  (keep-matching-items (xml-element-attributes elt)
-    xml-attribute-namespace-decl?))
+  (filter xml-attribute-namespace-decl?
+	  (xml-element-attributes elt)))
 
 (define (xml-element-namespace-uri elt prefix)
   (let ((value
@@ -458,10 +499,10 @@ USA.
 
 (define (xml-element-namespace-prefix elt uri-string)
   (let ((attr
-	 (find-matching-item (xml-element-attributes elt)
-	   (lambda (attr)
-	     (and (xml-attribute-namespace-decl? attr)
-		  (string=? (xml-attribute-value attr) uri-string))))))
+	 (find (lambda (attr)
+		 (and (xml-attribute-namespace-decl? attr)
+		      (string=? (xml-attribute-value attr) uri-string)))
+	       (xml-element-attributes elt))))
     (and attr
 	 (let ((name (xml-attribute-name attr)))
 	   (if (xml-name=? name 'xmlns)
@@ -485,7 +526,7 @@ USA.
 (define (xml-stylesheet . items)
   (make-xml-processing-instructions
    'xml-stylesheet
-   (call-with-output-string
+   (call-with-utf8-output-string
      (lambda (port)
        (for-each (lambda (attr)
 		   (write-char #\space port)
@@ -516,9 +557,9 @@ USA.
 (define (xml-attrs . items)
   (let ((flush
 	 (lambda (name attrs)
-	   (delete-matching-items! attrs
-	     (lambda (attr)
-	       (eq? (xml-attribute-name attr) name))))))
+	   (remove! (lambda (attr)
+		      (eq? (xml-attribute-name attr) name))
+		    attrs))))
     (let ((accum
 	   (lambda (attr attrs)
 	     (cons attr (flush (xml-attribute-name attr) attrs)))))
@@ -526,18 +567,23 @@ USA.
 	(if (pair? items)
 	    (let ((item (car items))
 		  (items (cdr items)))
-	      (cond ((and (xml-name? item)
+	      (cond ((and (or (xml-name? item)
+			      (string? item))
 			  (pair? items))
-		     (let ((value (car items))
+		     (let ((name
+			    (if (string? item)
+				(make-xml-name item)
+				item))
+			   (value (car items))
 			   (attrs (loop (cdr items))))
 		       (if value
 			   (accum (make-xml-attribute
-				   item
+				   name
 				   (if (eq? value #t)
-				       (symbol-name item)
+				       (xml-name-string name)
 				       (convert-xml-string-value value)))
 				  attrs)
-			   (flush item attrs))))
+			   (flush name attrs))))
 		    ((xml-attribute? item)
 		     (accum item (loop items)))
 		    ((list-of-type? item xml-attribute?)
@@ -547,21 +593,6 @@ USA.
 		    (else
 		     (error "Unknown item passed to xml-attrs:" item))))
 	    '())))))
-
-(define (find-xml-attr name elt)
-  (guarantee-xml-name name 'FIND-XML-ATTR)
-  (let loop
-      ((attrs
-	(if (xml-element? elt)
-	    (xml-element-attributes elt)
-	    (begin
-	      (guarantee-list-of-type elt xml-attribute? "XML attributes"
-				      'FIND-XML-ATTR)
-	      elt))))
-    (and (pair? attrs)
-	 (if (xml-name=? (xml-attribute-name (car attrs)) name)
-	     (xml-attribute-value (car attrs))
-	     (loop (cdr attrs))))))
 
 (define (flatten-xml-element-content item)
   (letrec

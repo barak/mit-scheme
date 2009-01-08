@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.37 2008/01/30 20:02:04 cph Exp $
+$Id: nntp.scm,v 1.38 2008/05/17 02:18:27 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -46,9 +46,10 @@ USA.
 (define-structure (nntp-connection
 		   (conc-name nntp-connection:)
 		   (constructor make-nntp-connection
-				(server proxy change-hook)))
+				(server proxy change-hook #!optional service)))
   (server #f read-only #t)
   (proxy #f read-only #t)
+  (service "nntp" read-only #t)
   (change-hook #f read-only #t)
   (port #f)
   (banner #f)
@@ -65,7 +66,7 @@ USA.
     (let ((port
 	   (open-tcp-stream-socket (or (nntp-connection:proxy connection)
 				       (nntp-connection:server connection))
-				   "nntp")))
+				   (nntp-connection:service connection))))
       (set-nntp-connection:port! connection port)
       (set-nntp-connection:banner! connection (input-port/read-line port)))
     (set-nntp-connection:current-group! connection #f)

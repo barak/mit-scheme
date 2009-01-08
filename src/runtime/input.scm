@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.39 2008/01/30 20:02:31 cph Exp $
+$Id: input.scm,v 14.41 2008/07/26 05:12:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -45,31 +45,11 @@ USA.
   ((port/operation/peek-char port) port))
 
 (define (input-port/read-string! port string)
-  (input-port/read-substring! port string 0 (string-length string)))
+  (input-port/read-substring! port string 0 (xstring-length string)))
 
 (define (input-port/read-substring! port string start end)
-  (if (fix:< start end)
-      ((port/operation/read-substring port) port string start end)
-      0))
-
-(define (input-port/read-wide-string! port string)
-  (input-port/read-wide-substring! port string 0 (wide-string-length string)))
-
-(define (input-port/read-wide-substring! port string start end)
-  (if (fix:< start end)
-      ((port/operation/read-wide-substring port) port string start end)
-      0))
-
-(define (input-port/read-external-string! port string)
-  (input-port/read-external-substring!
-   port
-   string
-   0
-   (external-string-length string)))
-
-(define (input-port/read-external-substring! port string start end)
   (if (< start end)
-      ((port/operation/read-external-substring port) port string start end)
+      ((port/operation/read-substring port) port string start end)
       0))
 
 (define (input-port/read-line port)
@@ -209,26 +189,11 @@ USA.
   (input-port/read-line (optional-input-port port 'READ-LINE)))
 
 (define (read-string! string #!optional port)
-  (let ((port (optional-input-port port 'READ-STRING!)))
-    (cond ((string? string)
-	   (input-port/read-string! port string))
-	  ((wide-string? string)
-	   (input-port/read-wide-string! port string))
-	  ((external-string? string)
-	   (input-port/read-external-string! port string))
-	  (else
-	   (error:wrong-type-argument string "string" 'READ-STRING!)))))
+  (input-port/read-string! (optional-input-port port 'READ-STRING!) string))
 
 (define (read-substring! string start end #!optional port)
-  (let ((port (optional-input-port port 'READ-STRING!)))
-    (cond ((string? string)
-	   (input-port/read-substring! port string start end))
-	  ((wide-string? string)
-	   (input-port/read-wide-substring! port string start end))
-	  ((external-string? string)
-	   (input-port/read-external-substring! port string start end))
-	  (else
-	   (error:wrong-type-argument string "string" 'READ-SUBSTRING!)))))
+  (input-port/read-substring! (optional-input-port port 'READ-SUBSTRING!)
+			      string start end))
 
 (define (optional-input-port port caller)
   (if (default-object? port)

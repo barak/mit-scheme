@@ -1,4 +1,4 @@
-# This file automatically generated at 2008-01-30T21:23:14-0500.
+# This file automatically generated at 2009-01-07T15:49:12-05.
 
 LIARC_HEAD_FILES = cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h dstack.h errors.h extern.h interp.h liarc.h \
@@ -24,42 +24,44 @@ LIARC_SOURCES = utabmd.c ../runtime/runtime-unx.c ../runtime/runtime-w32.c \
 	  ../runtime/genio.c ../runtime/genmult.c ../runtime/gensym.c \
 	  ../runtime/gentag.c ../runtime/global.c ../runtime/graphics.c \
 	  ../runtime/hash.c ../runtime/hashtb.c ../runtime/histry.c \
-	  ../runtime/http-client.c ../runtime/infstr.c ../runtime/infutl.c \
-	  ../runtime/input.c ../runtime/intrpt.c ../runtime/io.c \
-	  ../runtime/krypt.c ../runtime/kryptdum.c ../runtime/lambda.c \
-	  ../runtime/lambdx.c ../runtime/list.c ../runtime/load.c \
-	  ../runtime/make.c ../runtime/mime-codec.c ../runtime/mit-syntax.c \
-	  ../runtime/msort.c ../runtime/ntdir.c ../runtime/ntprm.c \
-	  ../runtime/numint.c ../runtime/numpar.c ../runtime/option.c \
-	  ../runtime/optiondb.c ../runtime/ordvec.c ../runtime/os2ctype.c \
-	  ../runtime/os2dir.c ../runtime/os2graph.c ../runtime/os2prm.c \
-	  ../runtime/os2winp.c ../runtime/output.c ../runtime/packag.c \
-	  ../runtime/parse.c ../runtime/parser-buffer.c ../runtime/partab.c \
-	  ../runtime/pathnm.c ../runtime/pgsql.c ../runtime/poplat.c \
-	  ../runtime/port.c ../runtime/pp.c ../runtime/prgcop.c \
-	  ../runtime/process.c ../runtime/prop1d.c ../runtime/prop2d.c \
-	  ../runtime/qsort.c ../runtime/queue.c ../runtime/random.c \
-	  ../runtime/rbtree.c ../runtime/record.c ../runtime/recslot.c \
-	  ../runtime/regexp.c ../runtime/rep.c ../runtime/rexp.c \
-	  ../runtime/rgxcmp.c ../runtime/savres.c ../runtime/scan.c \
-	  ../runtime/scode.c ../runtime/scomb.c ../runtime/sdata.c \
-	  ../runtime/sfile.c ../runtime/socket.c ../runtime/srfi-1.c \
-	  ../runtime/starbase.c ../runtime/stream.c ../runtime/string.c \
-	  ../runtime/strnin.c ../runtime/strott.c ../runtime/strout.c \
-	  ../runtime/symbol.c ../runtime/syncproc.c \
-	  ../runtime/syntactic-closures.c ../runtime/syntax-check.c \
-	  ../runtime/syntax-output.c ../runtime/syntax-rules.c \
-	  ../runtime/syntax-transforms.c ../runtime/sysclk.c \
-	  ../runtime/sysmac.c ../runtime/system.c ../runtime/thread.c \
-	  ../runtime/tscript.c ../runtime/ttyio.c ../runtime/tvector.c \
-	  ../runtime/udata.c ../runtime/uenvir.c ../runtime/uerror.c \
-	  ../runtime/unicode.c ../runtime/unpars.c ../runtime/unsyn.c \
-	  ../runtime/unxdir.c ../runtime/unxprm.c ../runtime/unxpth.c \
-	  ../runtime/uproc.c ../runtime/url.c ../runtime/urtrap.c \
-	  ../runtime/usrint.c ../runtime/utabs.c ../runtime/vector.c \
-	  ../runtime/version.c ../runtime/where.c ../runtime/win32-registry.c \
-	  ../runtime/wind.c ../runtime/wrkdir.c ../runtime/wttree.c \
-	  ../runtime/x11graph.c ../runtime/xeval.c ../runtime/ystep.c
+	  ../runtime/html-form-codec.c ../runtime/http-client.c \
+	  ../runtime/http-syntax.c ../runtime/httpio.c ../runtime/infstr.c \
+	  ../runtime/infutl.c ../runtime/input.c ../runtime/intrpt.c \
+	  ../runtime/io.c ../runtime/krypt.c ../runtime/kryptdum.c \
+	  ../runtime/lambda.c ../runtime/lambdx.c ../runtime/list.c \
+	  ../runtime/load.c ../runtime/make.c ../runtime/mime-codec.c \
+	  ../runtime/mit-syntax.c ../runtime/msort.c ../runtime/ntdir.c \
+	  ../runtime/ntprm.c ../runtime/numint.c ../runtime/numpar.c \
+	  ../runtime/option.c ../runtime/optiondb.c ../runtime/ordvec.c \
+	  ../runtime/os2ctype.c ../runtime/os2dir.c ../runtime/os2graph.c \
+	  ../runtime/os2prm.c ../runtime/os2winp.c ../runtime/output.c \
+	  ../runtime/packag.c ../runtime/parse.c ../runtime/parser-buffer.c \
+	  ../runtime/partab.c ../runtime/pathnm.c ../runtime/pgsql.c \
+	  ../runtime/poplat.c ../runtime/port.c ../runtime/pp.c \
+	  ../runtime/prgcop.c ../runtime/process.c ../runtime/prop1d.c \
+	  ../runtime/prop2d.c ../runtime/qsort.c ../runtime/queue.c \
+	  ../runtime/random.c ../runtime/rbtree.c ../runtime/record.c \
+	  ../runtime/recslot.c ../runtime/regexp.c ../runtime/rep.c \
+	  ../runtime/rexp.c ../runtime/rfc2822-headers.c ../runtime/rgxcmp.c \
+	  ../runtime/savres.c ../runtime/scan.c ../runtime/scode.c \
+	  ../runtime/scomb.c ../runtime/sdata.c ../runtime/sfile.c \
+	  ../runtime/socket.c ../runtime/srfi-1.c ../runtime/starbase.c \
+	  ../runtime/stream.c ../runtime/string.c ../runtime/stringio.c \
+	  ../runtime/structure-parser.c ../runtime/symbol.c \
+	  ../runtime/syncproc.c ../runtime/syntactic-closures.c \
+	  ../runtime/syntax-check.c ../runtime/syntax-output.c \
+	  ../runtime/syntax-rules.c ../runtime/syntax-transforms.c \
+	  ../runtime/sysclk.c ../runtime/sysmac.c ../runtime/system.c \
+	  ../runtime/thread.c ../runtime/tscript.c ../runtime/ttyio.c \
+	  ../runtime/tvector.c ../runtime/udata.c ../runtime/uenvir.c \
+	  ../runtime/uerror.c ../runtime/unicode.c ../runtime/unpars.c \
+	  ../runtime/unsyn.c ../runtime/unxdir.c ../runtime/unxprm.c \
+	  ../runtime/unxpth.c ../runtime/uproc.c ../runtime/url.c \
+	  ../runtime/urtrap.c ../runtime/usrint.c ../runtime/utabs.c \
+	  ../runtime/vector.c ../runtime/version.c ../runtime/where.c \
+	  ../runtime/win32-registry.c ../runtime/wind.c ../runtime/wrkdir.c \
+	  ../runtime/wttree.c ../runtime/x11graph.c ../runtime/xeval.c \
+	  ../runtime/ystep.c
 
 LIARC_OBJECTS = utabmd.o ../runtime/runtime-unx.o ../runtime/runtime-w32.o \
 	  ../runtime/runtime-os2.o ../runtime/advice.o ../runtime/apply.o \
@@ -81,42 +83,44 @@ LIARC_OBJECTS = utabmd.o ../runtime/runtime-unx.o ../runtime/runtime-w32.o \
 	  ../runtime/genio.o ../runtime/genmult.o ../runtime/gensym.o \
 	  ../runtime/gentag.o ../runtime/global.o ../runtime/graphics.o \
 	  ../runtime/hash.o ../runtime/hashtb.o ../runtime/histry.o \
-	  ../runtime/http-client.o ../runtime/infstr.o ../runtime/infutl.o \
-	  ../runtime/input.o ../runtime/intrpt.o ../runtime/io.o \
-	  ../runtime/krypt.o ../runtime/kryptdum.o ../runtime/lambda.o \
-	  ../runtime/lambdx.o ../runtime/list.o ../runtime/load.o \
-	  ../runtime/make.o ../runtime/mime-codec.o ../runtime/mit-syntax.o \
-	  ../runtime/msort.o ../runtime/ntdir.o ../runtime/ntprm.o \
-	  ../runtime/numint.o ../runtime/numpar.o ../runtime/option.o \
-	  ../runtime/optiondb.o ../runtime/ordvec.o ../runtime/os2ctype.o \
-	  ../runtime/os2dir.o ../runtime/os2graph.o ../runtime/os2prm.o \
-	  ../runtime/os2winp.o ../runtime/output.o ../runtime/packag.o \
-	  ../runtime/parse.o ../runtime/parser-buffer.o ../runtime/partab.o \
-	  ../runtime/pathnm.o ../runtime/pgsql.o ../runtime/poplat.o \
-	  ../runtime/port.o ../runtime/pp.o ../runtime/prgcop.o \
-	  ../runtime/process.o ../runtime/prop1d.o ../runtime/prop2d.o \
-	  ../runtime/qsort.o ../runtime/queue.o ../runtime/random.o \
-	  ../runtime/rbtree.o ../runtime/record.o ../runtime/recslot.o \
-	  ../runtime/regexp.o ../runtime/rep.o ../runtime/rexp.o \
-	  ../runtime/rgxcmp.o ../runtime/savres.o ../runtime/scan.o \
-	  ../runtime/scode.o ../runtime/scomb.o ../runtime/sdata.o \
-	  ../runtime/sfile.o ../runtime/socket.o ../runtime/srfi-1.o \
-	  ../runtime/starbase.o ../runtime/stream.o ../runtime/string.o \
-	  ../runtime/strnin.o ../runtime/strott.o ../runtime/strout.o \
-	  ../runtime/symbol.o ../runtime/syncproc.o \
-	  ../runtime/syntactic-closures.o ../runtime/syntax-check.o \
-	  ../runtime/syntax-output.o ../runtime/syntax-rules.o \
-	  ../runtime/syntax-transforms.o ../runtime/sysclk.o \
-	  ../runtime/sysmac.o ../runtime/system.o ../runtime/thread.o \
-	  ../runtime/tscript.o ../runtime/ttyio.o ../runtime/tvector.o \
-	  ../runtime/udata.o ../runtime/uenvir.o ../runtime/uerror.o \
-	  ../runtime/unicode.o ../runtime/unpars.o ../runtime/unsyn.o \
-	  ../runtime/unxdir.o ../runtime/unxprm.o ../runtime/unxpth.o \
-	  ../runtime/uproc.o ../runtime/url.o ../runtime/urtrap.o \
-	  ../runtime/usrint.o ../runtime/utabs.o ../runtime/vector.o \
-	  ../runtime/version.o ../runtime/where.o ../runtime/win32-registry.o \
-	  ../runtime/wind.o ../runtime/wrkdir.o ../runtime/wttree.o \
-	  ../runtime/x11graph.o ../runtime/xeval.o ../runtime/ystep.o
+	  ../runtime/html-form-codec.o ../runtime/http-client.o \
+	  ../runtime/http-syntax.o ../runtime/httpio.o ../runtime/infstr.o \
+	  ../runtime/infutl.o ../runtime/input.o ../runtime/intrpt.o \
+	  ../runtime/io.o ../runtime/krypt.o ../runtime/kryptdum.o \
+	  ../runtime/lambda.o ../runtime/lambdx.o ../runtime/list.o \
+	  ../runtime/load.o ../runtime/make.o ../runtime/mime-codec.o \
+	  ../runtime/mit-syntax.o ../runtime/msort.o ../runtime/ntdir.o \
+	  ../runtime/ntprm.o ../runtime/numint.o ../runtime/numpar.o \
+	  ../runtime/option.o ../runtime/optiondb.o ../runtime/ordvec.o \
+	  ../runtime/os2ctype.o ../runtime/os2dir.o ../runtime/os2graph.o \
+	  ../runtime/os2prm.o ../runtime/os2winp.o ../runtime/output.o \
+	  ../runtime/packag.o ../runtime/parse.o ../runtime/parser-buffer.o \
+	  ../runtime/partab.o ../runtime/pathnm.o ../runtime/pgsql.o \
+	  ../runtime/poplat.o ../runtime/port.o ../runtime/pp.o \
+	  ../runtime/prgcop.o ../runtime/process.o ../runtime/prop1d.o \
+	  ../runtime/prop2d.o ../runtime/qsort.o ../runtime/queue.o \
+	  ../runtime/random.o ../runtime/rbtree.o ../runtime/record.o \
+	  ../runtime/recslot.o ../runtime/regexp.o ../runtime/rep.o \
+	  ../runtime/rexp.o ../runtime/rfc2822-headers.o ../runtime/rgxcmp.o \
+	  ../runtime/savres.o ../runtime/scan.o ../runtime/scode.o \
+	  ../runtime/scomb.o ../runtime/sdata.o ../runtime/sfile.o \
+	  ../runtime/socket.o ../runtime/srfi-1.o ../runtime/starbase.o \
+	  ../runtime/stream.o ../runtime/string.o ../runtime/stringio.o \
+	  ../runtime/structure-parser.o ../runtime/symbol.o \
+	  ../runtime/syncproc.o ../runtime/syntactic-closures.o \
+	  ../runtime/syntax-check.o ../runtime/syntax-output.o \
+	  ../runtime/syntax-rules.o ../runtime/syntax-transforms.o \
+	  ../runtime/sysclk.o ../runtime/sysmac.o ../runtime/system.o \
+	  ../runtime/thread.o ../runtime/tscript.o ../runtime/ttyio.o \
+	  ../runtime/tvector.o ../runtime/udata.o ../runtime/uenvir.o \
+	  ../runtime/uerror.o ../runtime/unicode.o ../runtime/unpars.o \
+	  ../runtime/unsyn.o ../runtime/unxdir.o ../runtime/unxprm.o \
+	  ../runtime/unxpth.o ../runtime/uproc.o ../runtime/url.o \
+	  ../runtime/urtrap.o ../runtime/usrint.o ../runtime/utabs.o \
+	  ../runtime/vector.o ../runtime/version.o ../runtime/where.o \
+	  ../runtime/win32-registry.o ../runtime/wind.o ../runtime/wrkdir.o \
+	  ../runtime/wttree.o ../runtime/x11graph.o ../runtime/xeval.o \
+	  ../runtime/ystep.o
 
 LIARC_BOOT_BUNDLES = sf.so compiler.so star-parser.so cref.so
 LIARC_BUNDLES = 6001.so compiler.so cref.so edwin.so imail.so sf.so sos.so \

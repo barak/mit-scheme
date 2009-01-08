@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.48 2008/01/30 20:02:36 cph Exp $
+$Id: thread.scm,v 1.50 2008/09/12 10:26:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -643,17 +643,19 @@ USA.
 		      ((READ/WRITE) (lambda (mode) mode))
 		      ((ERROR HANGUP) (lambda (mode) mode #t))
 		      (else (error "Illegal mode:" mode))))))
-	      (let ((tentry (dentry/first-tentry dentry)))
-		(let ((events
-		       (cons (cons (tentry/thread tentry)
-				   (let ((e (tentry/event tentry)))
-				     (and e
-					  (lambda () (e mode)))))
-			     events)))
-		  (if (tentry/permanent? tentry)
-		      (move-tentry-to-back! tentry)
-		      (delete-tentry! tentry))
-		  (loop (fix:+ i 1) events)))))
+	      (if (not dentry)
+		  (loop (fix:+ i 1) events)
+		  (let ((tentry (dentry/first-tentry dentry)))
+		    (let ((events
+			   (cons (cons (tentry/thread tentry)
+				       (let ((e (tentry/event tentry)))
+					 (and e
+					      (lambda () (e mode)))))
+				 events)))
+		      (if (tentry/permanent? tentry)
+			  (move-tentry-to-back! tentry)
+			  (delete-tentry! tentry))
+		      (loop (fix:+ i 1) events))))))
 	  (do ((events events (cdr events)))
 	      ((not (pair? events)))
 	    (%signal-thread-event (caar events) (cdar events)))))))
@@ -955,7 +957,7 @@ USA.
 		   ((ucode-primitive request-interrupts! 1)
 		    interrupt-bit/timer)
 		   (start
-		    (if timer-interval
+		    (if (and consider-non-timers? timer-interval)
 			(min next-event-time (+ now timer-interval))
 			next-event-time)))))
 	    ((and consider-non-timers?

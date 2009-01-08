@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-names.scm,v 1.19 2008/01/30 20:02:42 cph Exp $
+$Id: xml-names.scm,v 1.20 2008/09/24 00:05:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,10 +29,11 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-xml-name qname uri)
+(define (make-xml-name qname #!optional uri)
   (let ((qname (make-xml-qname qname))
 	(uri-string
-	 (cond ((string? uri) uri)
+	 (cond ((default-object? uri) (null-xml-namespace-uri))
+	       ((string? uri) uri)
 	       ((wide-string? uri) (wide-string->utf8-string uri))
 	       ((symbol? uri) (symbol-name uri))
 	       ((uri? uri) (uri->string uri))

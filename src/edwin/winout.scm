@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: winout.scm,v 1.21 2008/01/30 20:02:07 cph Exp $
+$Id: winout.scm,v 1.22 2008/07/26 05:12:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -67,27 +67,29 @@ USA.
 	  (region-insert-char! point char)))))
 
 (define (operation/write-substring port string start end)
-  (let ((window (port/state port)))
-    (let ((buffer (window-buffer window))
-	  (point (window-point window)))
-      (if (and (null? (cdr (buffer-windows buffer)))
-	       (line-end? point)
-	       (buffer-auto-save-modified? buffer)
-	       (or (not (window-needs-redisplay? window))
-		   (window-direct-update! window #f))
-	       (let loop ((i (- end 1)))
-		 (or (< i start)
-		     (let ((char (string-ref string i)))
-		       (and (not (char=? char #\newline))
-			    (not (char=? char #\tab))
-			    (let ((image (window-char->image window char)))
-			      (and (= (string-length image) 1)
-				   (char=? (string-ref image 0) char)
-				   (loop (- i 1))))))))
-	       (< (+ (- end start) (window-point-x window))
-		  (window-x-size window)))
-	  (window-direct-output-insert-substring! window string start end)
-	  (region-insert-substring! point string start end)))))
+  (if (string? string)
+      (let ((window (port/state port)))
+	(let ((buffer (window-buffer window))
+	      (point (window-point window)))
+	  (if (and (null? (cdr (buffer-windows buffer)))
+		   (line-end? point)
+		   (buffer-auto-save-modified? buffer)
+		   (or (not (window-needs-redisplay? window))
+		       (window-direct-update! window #f))
+		   (let loop ((i (- end 1)))
+		     (or (< i start)
+			 (let ((char (string-ref string i)))
+			   (and (not (char=? char #\newline))
+				(not (char=? char #\tab))
+				(let ((image (window-char->image window char)))
+				  (and (= (string-length image) 1)
+				       (char=? (string-ref image 0) char)
+				       (loop (- i 1))))))))
+		   (< (+ (- end start) (window-point-x window))
+		      (window-x-size window)))
+	      (window-direct-output-insert-substring! window string start end)
+	      (region-insert-substring! point string start end))))
+      (generic-port-operation:write-substring port string start end)))
 
 (define (operation/flush-output port)
   (let ((window (port/state port)))

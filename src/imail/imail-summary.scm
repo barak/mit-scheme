@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-summary.scm,v 1.56 2008/01/30 20:02:10 cph Exp $
+$Id: imail-summary.scm,v 1.62 2008/09/25 15:00:01 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -84,7 +84,8 @@ Once selected, selecting another buffer causes the window configuration
 (define-command imail-summary
   "Display a summary of the selected folder, one line per message."
   ()
-  (lambda () (imail-summary "All" #f)))
+  (lambda ()
+    (imail-summary-by-predicate "All" (lambda (m) m #t))))
 
 (define-command imail-summary-by-flags
   "Display a summary of all messages with one or more FLAGS.
@@ -92,12 +93,13 @@ FLAGS is a string containing the desired labels, separated by commas."
   (lambda ()
     (list (imail-prompt-for-flags "Flags to summarize by")))
   (lambda (flags-string)
-    (imail-summary (string-append "Flags " flags-string)
-		   (let ((flags (burst-comma-list-string flags-string)))
-		     (lambda (m)
-		       (there-exists? (message-flags m)
-			 (lambda (flag)
-			   (flags-member? flag flags))))))))
+    (imail-summary-by-predicate
+     (string-append "Flags " flags-string)
+     (let ((flags (burst-comma-list-string flags-string)))
+       (lambda (m)
+	 (there-exists? (message-flags m)
+	   (lambda (flag)
+	     (flags-member? flag flags))))))))
 
 (define-command imail-summary-by-recipients
   "Display a summary of all messages with the given RECIPIENTS.
@@ -106,7 +108,7 @@ but if prefix arg is given, only look in the To and From fields.
 RECIPIENTS is a string of regexps separated by commas."
   "sRecipients to summarize by\nP"
   (lambda (recipients-string primary-only?)
-    (imail-summary
+    (imail-summary-by-predicate
      (string-append "Recipients " recipients-string)
      (let ((regexp
 	    (apply regexp-group (burst-comma-list-string recipients-string))))
@@ -119,7 +121,7 @@ RECIPIENTS is a string of regexps separated by commas."
 	       (try (get-first-header-field-value m "to" #f))
 	       (and (not primary-only?)
 		    (try (get-first-header-field-value m "cc" #f))))))))))
-
+
 (define-command imail-summary-by-regexp
   "Display a summary of all messages according to regexp REGEXP.
 If the regular expression is found in the header of the message
@@ -127,7 +129,7 @@ If the regular expression is found in the header of the message
 Edwin will list the header line in the summary."
   "sRegexp to summarize by"
   (lambda (regexp)
-    (imail-summary
+    (imail-summary-by-predicate
      (string-append "Regular expression " regexp)
      (let ((case-fold? (ref-variable case-fold-search)))
        (lambda (m)
@@ -142,7 +144,7 @@ Checks the Subject field of headers.
 SUBJECT is a string of regexps separated by commas."
   "sTopics to summarize by"
   (lambda (regexps-string)
-    (imail-summary
+    (imail-summary-by-predicate
      (string-append "About " regexps-string)
      (let ((regexp
 	    (apply regexp-group (burst-comma-list-string regexps-string)))
@@ -151,8 +153,30 @@ SUBJECT is a string of regexps separated by commas."
 	 (let ((s (get-first-header-field-value m "subject" #f)))
 	   (and s
 		(re-string-search-forward regexp s case-fold?))))))))
+
+(define-command imail-search-summary
+  "Display a summary of the search results for a string of text."
+  (lambda ()
+    (list (prompt-for-string "IMAIL search" #f
+			     'DEFAULT-TYPE 'INSERTED-DEFAULT
+			     'HISTORY 'IMAIL-SEARCH
+			     'HISTORY-INDEX 0)))
+  (lambda (pattern)
+    (imail-summary
+     (string-append "Search: " pattern)
+     (lambda (folder start end)
+       ((imail-ui:message-wrapper "Searching for " pattern)
+	(lambda ()
+	  (sort
+	   (filter-map (lambda (index)
+			 (and (<= start index)
+			      (< index end)
+			      (%get-message folder index)))
+		       (%search-folder folder pattern))
+	   (lambda (a b)
+	     (< (message-index a) (message-index b))))))))))
 
-(define (imail-summary description predicate)
+(define (imail-summary description procedure)
   (let* ((folder (selected-folder))
 	 (folder-buffer (imail-folder->buffer folder #t))
 	 (buffer
@@ -182,15 +206,27 @@ SUBJECT is a string of regexps separated by commas."
 					       (list buffer folder-buffer)))))
 		  buffer)))))
     (buffer-put! buffer 'IMAIL-SUMMARY-DESCRIPTION description)
-    (buffer-put! buffer 'IMAIL-SUMMARY-PREDICATE predicate)
+    (buffer-put! buffer 'IMAIL-SUMMARY-PROCEDURE procedure)
     (if (not (selected-buffer? buffer))
 	(let ((windows (buffer-windows buffer)))
 	  (if (pair? windows)
 	      (select-window (car windows))
 	      (select-buffer buffer))))
-    (preload-folder-outlines folder)
     (rebuild-imail-summary-buffer buffer)))
 
+(define (imail-summary-by-predicate description predicate)
+  (imail-summary
+   description
+   (lambda (folder start end)
+     (let loop ((i start) (messages '()))
+       (if (< i end)
+	   (loop (+ i 1)
+		 (let ((message (get-message folder i)))
+		   (if (predicate message)
+		       (cons message messages)
+		       messages)))
+	   (reverse! messages))))))
+
 (define (imail-summary-detach buffer)
   (let ((folder-buffer (buffer-get buffer 'IMAIL-FOLDER-BUFFER #f)))
     (if folder-buffer
@@ -223,31 +259,40 @@ SUBJECT is a string of regexps separated by commas."
     (let ((w (window-split-vertically! window (imail-summary-height window))))
       (if w
 	  (select-buffer folder-buffer w)))))
-
+
 (define (imail-summary-modification-event folder type parameters)
   (let ((buffer (imail-folder->summary-buffer folder #f)))
     (if buffer
 	(case type
+	  ((STATUS)
+	   (maybe-add-command-suffix! buffer-modeline-event!
+				      buffer
+				      'PROCESS-STATUS))
 	  ((FLAGS)
 	   (let ((message (car parameters)))
-	     (call-with-values
-		 (lambda () (imail-summary-find-message buffer message))
-	       (lambda (mark approximate?)
-		 (if (and mark (not approximate?))
-		     (begin
-		       (let ((mark (mark+ mark 1 'ERROR)))
-			 (with-read-only-defeated mark
-			   (lambda ()
-			     (group-replace-string!
-			      (mark-group mark)
-			      (mark-index mark)
-			      (message-flag-markers message)))))
-		       (buffer-not-modified! buffer)))))))
+	     (maybe-add-command-suffix! adjust-imail-summary-flags
+					buffer
+					message)))
 	  ((SELECT-MESSAGE)
 	   (let ((message (car parameters)))
 	     (if message
-		 (imail-summary-select-message buffer message))))
-	  ((EXPUNGE INCREASE-LENGTH SET-LENGTH REORDERED)
+		 (maybe-add-command-suffix! imail-summary-select-message
+					    buffer
+					    message))))
+	  ((INCREASE-LENGTH)
+	   (let ((index (car parameters))
+		 (count (cadr parameters))
+		 (procedure (buffer-get buffer 'IMAIL-SUMMARY-PROCEDURE)))
+	     (expand-imail-summary-buffer buffer
+					  (procedure folder index count))))
+	  ((EXPUNGE)
+	   (let ((message (car parameters))
+		 (%index (cadr parameters))
+		 (index (caddr parameters))
+		 (key (cadddr parameters)))
+	     %index key			;ignore
+	     (expunge-from-imail-summary-buffer buffer message index)))
+	  ((SET-LENGTH REORDERED)
 	   (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))))))
 
 ;;;; Summary content generation
@@ -255,8 +300,9 @@ SUBJECT is a string of regexps separated by commas."
 (define (rebuild-imail-summary-buffer buffer)
   (let ((folder (selected-folder #f buffer)))
     (if folder
-	(let ((msg "Generating summary buffer..."))
-	  (message msg)
+	(let ((msg "Generating summary buffer"))
+	  (preload-folder-outlines folder)
+	  (message msg "...")
 	  (buffer-widen! buffer)
 	  (with-read-only-defeated (buffer-start buffer)
 	    (lambda ()
@@ -264,12 +310,13 @@ SUBJECT is a string of regexps separated by commas."
 	      (fill-imail-summary-buffer! buffer
 					  folder
 					  (buffer-get buffer
-						      'IMAIL-SUMMARY-PREDICATE
-						      #f))))
+						      'IMAIL-SUMMARY-PROCEDURE
+						      #f)
+					  msg)))
 	  (set-buffer-major-mode! buffer (ref-mode-object imail-summary))
 	  (buffer-not-modified! buffer)
 	  (set-buffer-point! buffer (imail-summary-first-line buffer))
-	  (message msg "done")
+	  (message msg "...done")
 	  (let ((message
 		 (selected-message #f
 				   (buffer-get buffer
@@ -277,21 +324,13 @@ SUBJECT is a string of regexps separated by commas."
 	    (if message
 		(imail-summary-select-message buffer message)))))))
 
-(define (fill-imail-summary-buffer! buffer folder predicate)
+(define (fill-imail-summary-buffer! buffer folder procedure msg)
   (buffer-remove! buffer 'IMAIL-SUMMARY-MESSAGES)
   (let ((end (folder-length folder)))
-    (let ((messages
-	   (let loop ((i 0) (messages '()))
-	     (if (< i end)
-		 (loop (+ i 1)
-		       (let ((message (get-message folder i)))
-			 (if (or (not predicate)
-				 (predicate message))
-			     (cons message messages)
-			     messages)))
-		 (reverse! messages))))
+    (let ((messages (procedure folder 0 end))
 	  (index-digits (exact-nonnegative-integer-digits end))
 	  (show-date? (ref-variable imail-summary-show-date buffer)))
+      (buffer-put! buffer 'IMAIL-SUMMARY-INDEX-DIGITS index-digits)
       (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
 	(insert-string " Flags" mark)
 	(insert-string " " mark)
@@ -318,18 +357,160 @@ SUBJECT is a string of regexps separated by commas."
 		      (max 4 (- (mark-x-size mark) (+ (mark-column mark) 1)))
 		      mark)
 	(insert-newline mark)
-	(for-each (lambda (message)
-		    (write-imail-summary-line! message index-digits mark))
-		  messages)
+	((imail-ui:message-wrapper msg)
+	 (lambda ()
+	   (do ((total (length messages))
+		(messages messages (cdr messages))
+		(index 0 (+ index 1)))
+	       ((not (pair? messages)))
+	     (if (zero? (remainder index 10))
+		 (imail-ui:progress-meter index total))
+	     (write-imail-summary-line! (car messages) index-digits mark))))
 	(mark-temporary! mark))
       (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES (list->vector messages)))))
+
+(define (expand-imail-summary-buffer buffer new-messages)
+  (let ((old-messages (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES #f))
+	(index-digits (buffer-get buffer 'IMAIL-SUMMARY-INDEX-DIGITS #f))
+	(folder (imail-summary-buffer->folder buffer #t))
+	(msg "Expanding IMAIL summary buffer"))
+    (define (lose)
+      (message msg "...failed")
+      (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))
+    (define (win messages)
+      (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES
+		   (list->vector (reverse! messages)))
+      (message msg "...done"))
+    (define (insert new-message mark)
+      (message msg "...message " (number->string (message-index new-message)))
+      (with-read-only-defeated buffer
+	(lambda ()
+	  (write-imail-summary-line! new-message index-digits mark))))
+    (define (merge new-messages old-messages mark messages)
+      (cond ((not (pair? new-messages))
+	     (win (append-reverse old-messages messages)))
+	    ((not (pair? old-messages))
+	     (let ((mark (mark-permanent-copy mark)))
+	       (for-each (lambda (new-message)
+			   (insert new-message mark))
+			 new-messages))
+	     (win (append-reverse new-messages messages)))
+	    (else
+	     (let ((new-message (car new-messages))
+		   (old-message (car old-messages)))
+	       (cond ((< (message-index new-message)
+			 (message-index old-message))
+		      (let ((mark* (mark-permanent-copy mark)))
+			(insert new-message mark*)
+			(mark-temporary! mark*)
+			(merge (cdr new-messages)
+			       old-messages
+			       mark*
+			       (cons new-message messages))))
+		     ((eqv? (imail-summary-selected-message-index mark)
+			    (message-index old-message))
+		      (merge new-messages
+			     (cdr old-messages)
+			     (line-start mark 1)
+			     (cons old-message messages)))
+		     (else
+		      (lose)))))))
+    (message msg "...")
+    (preload-folder-outlines folder)
+    (if (and old-messages
+	     (positive? (vector-length old-messages))
+	     (eqv? index-digits
+		   (exact-nonnegative-integer-digits (folder-length folder))))
+	(receive (mark approximate?)
+	    (imail-summary-find-message buffer (vector-ref old-messages 0) #f)
+	  (if (or (not mark) approximate?)
+	      (lose)
+	      (merge new-messages
+		     (vector->list old-messages)
+		     mark
+		     '())))
+	(lose))))
+
+(define (expunge-from-imail-summary-buffer buffer expunged-message index)
+  (let ((messages (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES #f))
+	(msg
+	 (string-append "Expunging message "
+			(number->string index)
+			" from IMAIL summary buffer")))
+    (define (lose)
+      (message msg "...failed")
+      (maybe-add-command-suffix! rebuild-imail-summary-buffer buffer))
+    (define (win index)
+      (let* ((end (vector-length messages))
+	     (copy (make-vector (- end 1))))
+	(subvector-move-right! messages 0 index copy 0)
+	(subvector-move-right! messages (+ index 1) end copy index)
+	(buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES copy))
+      (message msg "...done"))
+    (message msg "...")
+    (if messages
+	(let ((summary-index
+	       (vector-find-next-element messages expunged-message)))
+	  (if summary-index
+	      (let ((mark
+		     (line-start (imail-summary-first-line buffer)
+				 summary-index
+				 #f)))
+		(if (and mark
+			 (eqv? (imail-summary-selected-message-index mark)
+			       index))
+		    (begin
+		      (with-read-only-defeated buffer
+			(lambda ()
+			  (delete-string mark (line-start mark 1 'LIMIT))))
+		      (if (maybe-decrement-imail-summary-indices buffer index)
+			  (win summary-index)
+			  (lose)))
+		    (lose)))
+	      (lose)))
+	(lose))))
+
+(define (maybe-decrement-imail-summary-indices buffer index)
+  (let ((index-digits (buffer-get buffer 'IMAIL-SUMMARY-INDEX-DIGITS #f)))
+    (and index-digits
+	 (let loop ((mark (imail-summary-first-line buffer)))
+	   (or (group-end? mark)
+	       ;; One space, five flags, and one more space: seven columns.
+	       (let* ((mark (mark+ mark 7))
+		      (mark* (mark+ mark index-digits))
+		      (index*
+		       (string->number
+			(string-trim (extract-string mark mark*)))))
+		 (and index*
+		      (begin
+			(if (> index* index)
+			    (let ((mark (mark-permanent-copy mark)))
+			      (with-read-only-defeated buffer
+				(lambda ()
+				  (delete-string mark mark*)
+				  (insert-message-index (- index* 1)
+							index-digits
+							mark)))
+			      (mark-temporary! mark)))
+			(loop (line-start mark 1 'LIMIT))))))))))
+
+(define (adjust-imail-summary-flags buffer message)
+  (receive (mark approximate?) (imail-summary-find-message buffer message #f)
+    (if (and mark (not approximate?))
+	(begin
+	  (let ((mark (mark+ mark 1 'ERROR)))
+	    (with-read-only-defeated mark
+	      (lambda ()
+		(group-replace-string! (mark-group mark)
+				       (mark-index mark)
+				       (message-flag-markers message))))
+	    (buffer-not-modified! buffer))))))
 
 (define (write-imail-summary-line! message index-digits mark)
   (insert-char #\space mark)
   (insert-string (message-flag-markers message) mark)
   (insert-char #\space mark)
-  (insert-string-pad-left (number->string (+ (message-index message) 1))
-			  index-digits #\space mark)
+  (insert-message-index (+ (message-index message) 1) index-digits mark)
   (insert-string "  " mark)
   (insert-string (message-summary-length-string message) mark)
   (if (ref-variable imail-summary-show-date mark)
@@ -347,6 +528,9 @@ SUBJECT is a string of regexps separated by commas."
   (insert-string "  " mark)
   (insert-string (message-summary-from-string message) mark)
   (insert-newline mark))
+
+(define (insert-message-index index index-digits mark)
+  (insert-string-pad-left (number->string index) index-digits #\space mark))
 
 (define (imail-summary-subject-width mark)
   (max (let ((w (ref-variable imail-summary-subject-width mark)))
@@ -383,6 +567,10 @@ SUBJECT is a string of regexps separated by commas."
 	   (month/short-string (decoded-time/month dt))))
 	(make-string 6 #\space))))
 
+;++ When the RFC (2)822 parser works better so that we can rely on it
+;++ in all folders, we'll use the message's MIME envelope rather than
+;++ this pile of cruft.
+
 (define (message-summary-from-string message)
   (let* ((s
 	  (decorated-string-append
@@ -396,7 +584,7 @@ SUBJECT is a string of regexps separated by commas."
 	  ;; Chris VanHaren (Athena User Consultant) <vanharen>
 	  ((re-string-search-forward "[ \t\"]*\\<\\(.*\\)\\>.*(.*).*<.*>.*" s)
 	   => (field 1))
-	  ((re-string-search-forward ".*(\\(.*\\))" s)
+	  ((re-string-search-forward ".*(\\(.+\\))" s)
 	   => (field 1))
 	  ((re-string-search-forward ".*<\\(.*\\)>.*" s)
 	   => (field 1))
@@ -421,11 +609,16 @@ SUBJECT is a string of regexps separated by commas."
 (define (imail-summary-navigators buffer)
 
   (define (first-unseen-message folder)
-    (let loop ((message (first-message folder)))
-      (and message
-	   (if (message-unseen? message)
-	       message
-	       (loop (next-message message #f))))))
+    folder				;ignore
+    (let ((messages (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES #f)))
+      (and messages
+	   (let ((length (vector-length messages)))
+	     (let loop ((index 0))
+	       (and (< index length)
+		    (let ((message (vector-ref messages index)))
+		      (if (message-unseen? message)
+			  message
+			  (loop (+ index 1))))))))))
 
   (define (first-message folder)
     (imail-summary-navigator/edge buffer folder
@@ -462,15 +655,14 @@ SUBJECT is a string of regexps separated by commas."
 	 (eq? folder (imail-summary-buffer->folder buffer #f))
 	 (let loop
 	     ((m
-	       (call-with-values
-		   (lambda () (imail-summary-find-message buffer message))
-		 (lambda (m approximate?)
-		   (if (and approximate?
-			    ((if (< delta 0) < >)
-			     (imail-summary-selected-message-index m)
-			     (message-index message)))
-		       m
-		       (and m (line-start m delta #f)))))))
+	       (receive (m approximate?)
+		   (imail-summary-find-message buffer message #t)
+		 (if (and approximate?
+			  ((if (< delta 0) < >)
+			   (imail-summary-selected-message-index m)
+			   (message-index message)))
+		     m
+		     (and m (line-start m delta #f))))))
 	   (and m
 		(let ((index (imail-summary-selected-message-index m)))
 		  (and index
@@ -515,22 +707,21 @@ SUBJECT is a string of regexps separated by commas."
 
 (define (imail-summary-select-message buffer message)
   (highlight-region (buffer-unclipped-region buffer) #f)
-  (call-with-values (lambda () (imail-summary-find-message buffer message))
-    (lambda (mark approximate?)
-      (if mark
-	  (begin
-	    (set-buffer-point! buffer mark)
-	    (if (and (not approximate?)
-		     (ref-variable imail-summary-highlight-message buffer))
-		(begin
-		  (highlight-region
-		   (make-region (if (imail-summary-match-line mark)
-				    (or (re-match-start 3)
-					(re-match-end 0))
-				    mark)
-				(line-end mark 0))
-		   #t)
-		  (buffer-not-modified! buffer)))))))
+  (receive (mark approximate?) (imail-summary-find-message buffer message #t)
+    (if mark
+	(begin
+	  (set-buffer-point! buffer mark)
+	  (if (and (not approximate?)
+		   (ref-variable imail-summary-highlight-message buffer))
+	      (begin
+		(highlight-region
+		 (make-region (if (imail-summary-match-line mark)
+				  (or (re-match-start 3)
+				      (re-match-end 0))
+				  mark)
+			      (line-end mark 0))
+		 #t)
+		(buffer-not-modified! buffer))))))
   (if (ref-variable imail-summary-pop-up-message buffer)
       (imail-summary-pop-up-message-buffer buffer)))
 
@@ -549,7 +740,7 @@ SUBJECT is a string of regexps separated by commas."
 	height
 	(round->exact (* (window-y-size window) height)))))
 
-(define (imail-summary-find-message buffer message)
+(define (imail-summary-find-message buffer message approximate?)
   (let ((mark
 	 (let ((index
 		(let ((mv (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES)))
@@ -562,7 +753,7 @@ SUBJECT is a string of regexps separated by commas."
 		   (message-index message)))
 	(values mark #f)
 	(let ((index (message-index message)))
-	  (if index
+	  (if (and index approximate?)
 	      (let ((m (imail-summary-first-line buffer)))
 		(let ((index* (imail-summary-selected-message-index m)))
 		   (cond ((not index*)

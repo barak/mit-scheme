@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rfc822.scm,v 3.10 2008/01/30 20:02:05 cph Exp $
+$Id: rfc822.scm,v 3.13 2008/09/02 22:22:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,26 +77,33 @@ USA.
 
 (define (rfc822:string->addresses string)
   (let ((address-list
-	 (rfc822:strip-quoted-names
+         (rfc822:strip-quoted-names
           (rfc822:string->non-ignored-tokens string))))
-    (if (and address-list (null? (cdr address-list)))
-	(car address-list)
-	(map (lambda (string)
-	       (let ((string (string-trim string)))
-		 (let ((end (string-length string)))
-		   (let loop ((start 0))
-		     (let ((index
-			    (substring-find-next-char-in-set
-			     string start end char-set:whitespace)))
-		       (if index
-			   (begin
-			     (string-set! string index #\space)
-			     (loop (fix:+ index 1)))))))
-		 string))
-	     (burst-string string #\, #f)))))
+    (if (and address-list
+             (for-all? (cdr address-list)
+               (lambda (token) (eqv? token #\,))))
+        (car address-list)
+        (rfc822:split-address-tokens (rfc822:string->tokens string)))))
+
+(define (rfc822:string->named-addresses string)
+  (rfc822:split-address-tokens (rfc822:string->tokens string)))
+
+(define (rfc822:split-address-tokens tokens)
+  (let recur ((tokens tokens))
+    (receive (address-tokens tokens)
+	(span (lambda (token) (not (eqv? token #\,))) tokens)
+      (let ((name (string-trim (rfc822:tokens->string address-tokens)))
+            (tokens (drop-while (lambda (token) (eqv? token #\,)) tokens)))
+        (let ((continue (lambda () (if (pair? tokens) (recur tokens) '()))))
+          (if (string-null? name)
+              (continue)
+              (cons name (continue))))))))
 
 (define (rfc822:canonicalize-address-string string)
   (rfc822:addresses->string (rfc822:string->addresses string)))
+
+(define (rfc822:canonicalize-named-address-string string)
+  (rfc822:addresses->string (rfc822:string->named-addresses string)))
 
 ;;;; Parsers
 
@@ -316,39 +323,52 @@ USA.
 (define (rfc822:strip-quoted-names tokens)
   (rfc822:parse-list tokens #\,
     (lambda (tokens)
-      (or (rfc822:parse-addr-spec tokens)
-	  (let ((tokens
-		 (let loop
-		     ((tokens
-		       (let ((word (rfc822:parse-word tokens)))
-			 (if word
-			     (cdr word)
-			     tokens))))
-		   (let ((word (rfc822:parse-word tokens)))
-		     (if word
-			 (loop (cdr word))
-			 tokens)))))
-	    (and (pair? tokens)
-		 (eqv? #\< (car tokens))
-		 (let ((addr-spec
-			(rfc822:parse-addr-spec
-			 (let ((domains
-				(rfc822:parse-list (cdr tokens) #\,
-				  (lambda (tokens)
-				    (and (pair? tokens)
-					 (eqv? #\@ (car tokens))
-					 (rfc822:parse-domain
-					  (cdr tokens)))))))
-			   (if (and domains
-				    (pair? (cdr domains))
-				    (eqv? #\: (cadr domains)))
-			       (cddr domains)
-			       (cdr tokens))))))
-		   (and addr-spec
-			(pair? (cdr addr-spec))
-			(eqv? #\> (cadr addr-spec))
-			(cons (car addr-spec)
-			      (cddr addr-spec))))))))))
+      ((lambda (result)
+         (and (pair? result)
+              (cons (car result) (rfc822:skip-commas (cdr result)))))
+       (or (rfc822:parse-addr-spec tokens)
+           (let ((tokens
+                  (let loop
+                      ((tokens
+                        (let ((word (rfc822:parse-word tokens)))
+                          (if word
+                              (cdr word)
+                              tokens))))
+                    (let ((word (rfc822:parse-word tokens)))
+                      (if word
+                          (loop (cdr word))
+                          tokens)))))
+             (and (pair? tokens)
+                  (eqv? #\< (car tokens))
+                  (let ((addr-spec
+                         (rfc822:parse-addr-spec
+                          (let ((domains
+                                 (rfc822:parse-list (cdr tokens) #\,
+                                   (lambda (tokens)
+                                     (and (pair? tokens)
+                                          (eqv? #\@ (car tokens))
+                                          (rfc822:parse-domain
+                                           (cdr tokens)))))))
+                            (if (and domains
+                                     (pair? (cdr domains))
+                                     (eqv? #\: (cadr domains)))
+                                (cddr domains)
+                                (cdr tokens))))))
+                    (and addr-spec
+                         (pair? (cdr addr-spec))
+                         (eqv? #\> (cadr addr-spec))
+                         (cons (car addr-spec) (cddr addr-spec)))))))))))
+
+(define (rfc822:skip-commas tokens)
+  (if (and (pair? tokens)
+           (eqv? #\, (car tokens)))
+      (let loop ((tokens tokens))
+        (let ((tokens* (cdr tokens)))
+          (if (and (pair? tokens*)
+                   (eqv? #\, (car tokens*)))
+              (loop tokens*)
+              tokens)))
+      tokens))
 
 (define (rfc822:strip-comments tokens)
   (list-transform-negative tokens

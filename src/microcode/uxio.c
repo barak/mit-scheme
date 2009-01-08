@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.59 2008/01/30 20:02:22 cph Exp $
+$Id: uxio.c,v 1.60 2008/03/09 20:24:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,7 @@ USA.
 #include "uxselect.h"
 #include "uxproc.h"
 
-size_t OS_channel_table_size;
+Tchannel OS_channel_table_size;
 struct channel * channel_table;
 
 #ifndef HAVE_POLL

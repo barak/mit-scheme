@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.27 2008/01/30 20:02:30 cph Exp $
+$Id: gc.scm,v 14.28 2008/02/10 06:14:06 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,7 @@ USA.
   (set! constant-space-queue (list 'CONSTANT-SPACE-QUEUE))
   (set! hook/gc-start default/gc-start)
   (set! hook/gc-finish default/gc-finish)
-  (let ((fixed-objects (get-fixed-objects-vector)))
+  (let ((fixed-objects ((ucode-primitive get-fixed-objects-vector))))
     (let ((interrupt-vector (vector-ref fixed-objects 1)))
       (vector-set! interrupt-vector 0 condition-handler/stack-overflow)
       (vector-set! interrupt-vector 2 condition-handler/gc))

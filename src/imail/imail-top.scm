@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.302 2008/01/30 20:02:10 cph Exp $
+$Id: imail-top.scm,v 1.316 2008/09/25 14:58:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -126,13 +126,6 @@ May be overridden by an explicit mailbox in imail-primary-folder."
   "inbox"
   string?)
 
-(define-variable imail-pass-phrase-retention-time
-  "The amount of time, in minutes, that IMAIL retains pass phrases.
-The pass phrase is deleted if unused for this long.
-Set this to zero if you don't want pass-phrase retention."
-  30
-  exact-nonnegative-integer?)
-
 (define-variable imail-update-interval
   "How often to update a folder's contents, in seconds.
 IMAIL will periodically poll the mail server for changes at this interval.
@@ -174,17 +167,17 @@ Text messages using these character sets are displayed inline;
 (define-variable imail-inline-mime-text-subtypes
   "List of MIME text subtypes that should be shown inline.
 The value of this variable is a list of symbols.
-A text entity that appears at the top level of a message
+A text body that appears at the top level of a message
  is always shown inline, regardless of its subtype.
-Likewise, a text/plain entity is always shown inline.
+Likewise, a text/plain body is always shown inline.
 Note that this variable does not affect subparts of multipart/alternative."
   '(HTML ENRICHED)
   list-of-strings?)
 
 (define-variable imail-inline-mime-text-limit
-  "Size limit in octets for showing MIME text message parts in-line.
+  "Size limit in octets for showing MIME text message parts inline.
 MIME text message parts less than this size are shown in-line by default.
-This variable can also be #F; then all parts will be shown in-line."
+This variable can also be #F; then all parts will be shown inline."
   65536
   (lambda (x) (or (boolean? x) (exact-nonnegative-integer? x))))
 
@@ -213,6 +206,13 @@ Otherwise, only one of the parts is shown."
 'ORIGINAL means use the original MIME boundary strings."
   'SIMPLE
   (lambda (x) (memq x '(SIMPLE SGML ORIGINAL))))
+
+(define-variable imail-mime-show-headers
+  "If true, show MIME headers in expanded body parts.
+Headers are shown only for parts that are displayed out-of-line by
+  default."
+  #f
+  boolean?)
 
 (define-variable imail-global-mail-notification
   "If true, all buffer modelines say if there is unseen mail.
@@ -404,7 +404,7 @@ Instead, these commands are available:
 \\[imail-file-message]	Append this message to a specified file.
 	  (The message is written in a human-readable format.)
 \\[imail-save-attachment]	Save a MIME attachment to a file.
-\\[imail-save-mime-entity]	Save an arbitrary MIME entity to a file.
+\\[imail-save-mime-body]	Save an arbitrary MIME body to a file.
 
 \\[imail-add-flag]	Add flag to message.  It will be displayed in the mode line.
 \\[imail-kill-flag]	Remove flag from message.
@@ -422,14 +422,16 @@ Instead, these commands are available:
 \\[imail-summary-by-regexp]	Like \\[imail-summary] only just messages matching regular expression.
 
 \\[imail-toggle-header]		Toggle between full headers and reduced headers.
-\\[imail-toggle-mime-entity]	Toggle MIME entity between expanded and collapsed formats.
+\\[imail-toggle-mime-body]	Toggle MIME body between expanded and collapsed formats.
 \\[imail-toggle-message]	Toggle between standard and raw message formats.
 
 \\[imail-create-folder]	Create a new folder.  (Normally not needed as output commands
 	  create folders automatically.)
 \\[imail-delete-folder]	Delete an existing folder and all its messages.
 \\[imail-rename-folder]	Rename a folder.
-\\[imail-copy-folder]	Copy all messages from one folder to another.")
+\\[imail-copy-folder]	Copy all messages from one folder to another.
+
+\\[imail-cache]	Fill any local cache associated with the selected folder.")
 
 (define (imail-revert-buffer buffer dont-use-auto-save? dont-confirm?)
   dont-use-auto-save?
@@ -452,6 +454,7 @@ Instead, these commands are available:
 	     (error "Unknown folder-sync status:" status))))
 	(begin
 	  (discard-folder-cache folder)
+	  (buffer-remove! buffer 'IMAIL-MIME-EXPANSIONS)
 	  (select-message
 	   folder
 	   (or (selected-message #f buffer)
@@ -492,7 +495,7 @@ Instead, these commands are available:
 (define-key 'imail #\m-s	'imail-search)
 (define-key 'imail #\u		'imail-undelete-previous-message)
 (define-key 'imail #\m-u	'imail-first-unseen-message)
-(define-key 'imail #\w		'imail-save-mime-entity)
+(define-key 'imail #\w		'imail-save-mime-body)
 (define-key 'imail #\x		'imail-expunge)
 (define-key 'imail #\.		'beginning-of-buffer)
 (define-key 'imail #\<		'imail-first-message)
@@ -509,10 +512,10 @@ Instead, these commands are available:
 (define-key 'imail '(#\c-c #\c-s #\c-r)	'imail-sort-by-recipient)
 (define-key 'imail '(#\c-c #\c-s #\c-s)	'imail-sort-by-subject)
 (define-key 'imail '(#\c-c #\c-s #\c-v)	'imail-sort-by-arrival)
-(define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-entity)
+(define-key 'imail '(#\c-c #\c-t #\c-e)	'imail-toggle-mime-body)
 (define-key 'imail '(#\c-c #\c-t #\c-h)	'imail-toggle-header)
 (define-key 'imail '(#\c-c #\c-t #\c-m)	'imail-toggle-message)
-(define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-entity)
+(define-key 'imail '(#\c-c #\c-t #\c-w)	'imail-toggle-wrap-body)
 (define-key 'imail #\M-o	'imail-file-message)
 
 ;; Putting these after the group above exploits behavior in the comtab
@@ -530,7 +533,7 @@ Instead, these commands are available:
 (define-key 'imail #\D		'imail-delete-folder)
 (define-key 'imail #\R		'imail-rename-folder)
 (define-key 'imail #\+		'imail-create-folder)
-(define-key 'imail button3-down 'imail-mouse-save-mime-entity)
+(define-key 'imail button3-down 'imail-mouse-save-mime-body)
 
 ;; These commands not yet implemented.
 ;;(define-key 'imail #\m-m	'imail-retry-failure)
@@ -745,16 +748,16 @@ With prefix argument N, undeletes backward N messages,
   ()
   (lambda ()
     (let ((folder (selected-folder)))
-      (let ((n (count-messages folder message-deleted?)))
-	(cond ((= n 0)
+      (let ((messages (list-deleted-messages folder)))
+	(cond ((not (pair? messages))
 	       (message "No messages to expunge"))
 	      ((let ((confirmation (ref-variable imail-expunge-confirmation)))
 		 (or (null? confirmation)
 		     (let ((prompt
 			    (string-append "Expunge "
-					   (number->string n)
+					   (number->string (length messages))
 					   " message"
-					   (if (> n 1) "s" "")
+					   (if (pair? (cdr messages)) "s" "")
 					   " marked for deletion")))
 		       (let ((do-prompt
 			      (lambda ()
@@ -766,7 +769,7 @@ With prefix argument N, undeletes backward N messages,
 			 (if (memq 'SHOW-MESSAGES confirmation)
 			     (cleanup-pop-up-buffers
 			      (lambda ()
-				(imail-expunge-pop-up-messages folder)
+				(imail-expunge-pop-up-messages folder messages)
 				(do-prompt)))
 			     (do-prompt))))))
 	       (let ((message (selected-message)))
@@ -781,25 +784,33 @@ With prefix argument N, undeletes backward N messages,
 	      (else
 	       (message "Messages not expunged")))))))
 
-(define (count-messages folder predicate)
-  (let ((n (folder-length folder)))
-    (do ((i 0 (+ i 1))
-	 (k 0 (if (predicate (get-message folder i)) (+ k 1) k)))
-	((= i n) k))))
-
-(define (imail-expunge-pop-up-messages folder)
+(define (imail-expunge-pop-up-messages folder messages)
   (pop-up-temporary-buffer " *imail-message*" '(READ-ONLY SHRINK-WINDOW)
     (lambda (buffer window)
       window
       (local-set-variable! truncate-lines #t buffer)
+      (preload-folder-outlines folder messages)
       (let ((mark (mark-left-inserting-copy (buffer-point buffer)))
-	    (n (folder-length folder)))
-	(let ((index-digits (exact-nonnegative-integer-digits (- n 1))))
-	  (do ((i 0 (+ i 1)))
-	      ((= i n))
-	    (let ((m (get-message folder i)))
-	      (if (message-deleted? m)
-		  (write-imail-summary-line! m index-digits mark)))))))))
+	    (index-digits
+	     (exact-nonnegative-integer-digits
+	      (- (folder-length folder) 1))))
+	(for-each (lambda (m)
+		    (if (message-deleted? m)
+			(write-imail-summary-line! m index-digits mark)))
+		  messages)))))
+
+(define (list-deleted-messages folder)
+  (list-messages folder message-deleted?))
+
+(define (list-messages folder predicate)
+  (let ((n (folder-length folder)))
+    (do ((i 0 (+ i 1))
+	 (messages '()
+		   (let ((m (get-message folder i)))
+		     (if (predicate m)
+			 (cons m messages)
+			 messages))))
+	((= i n) messages))))
 
 ;;;; Message flags
 
@@ -835,8 +846,9 @@ With prefix argument N, removes FLAG from next N messages,
 	 (remove-duplicates (append standard-message-flags
 				    (folder-flags (selected-folder)))
 			    string=?)))
-   'DEFAULT-TYPE 'INSERTED-DEFAULT
+   'DEFAULT-TYPE 'VISIBLE-DEFAULT
    'HISTORY 'IMAIL-READ-FLAG
+   'HISTORY-INDEX 0
    'REQUIRE-MATCH? require-match?))
 
 ;;;; Message I/O
@@ -920,20 +932,20 @@ With prefix argument, prompt even when point is on an attachment."
   "P"
   (lambda (always-prompt?)
     (let ((buffer (imail-folder->buffer (selected-folder) #t)))
-      (save-mime-entity (car (maybe-prompt-for-mime-info "Save attachment"
-							 (buffer-point buffer)
-							 always-prompt?
-							 mime-attachment?))
-			buffer))))
+      (save-mime-body (car (maybe-prompt-for-mime-info "Save attachment"
+						       (buffer-point buffer)
+						       always-prompt?
+						       mime-attachment?))
+		      buffer))))
 
-(define-command imail-mouse-save-mime-entity
-  "Save the MIME entity that mouse is on."
+(define-command imail-mouse-save-mime-body
+  "Save the MIME body that mouse is on."
   ()
   (lambda ()
     (let ((button-event (current-button-event)))
       (let ((window (button-event/window button-event)))
 	(let ((buffer (window-buffer window)))
-	  (save-mime-entity
+	  (save-mime-body
 	   (let ((info
 		  (mark-mime-info
 		   (or (window-coordinates->mark
@@ -942,40 +954,38 @@ With prefix argument, prompt even when point is on an attachment."
 			(button-event/y button-event))
 		       (buffer-end buffer)))))
 	     (if (not info)
-		 (editor-error "Mouse not on a MIME entity."))
+		 (editor-error "Mouse not on a MIME body."))
 	     info)
 	   buffer))))))
 
-(define-command imail-save-mime-entity
-  "Save the MIME entity at point."
+(define-command imail-save-mime-body
+  "Save the MIME body at point."
   ()
   (lambda ()
-    (save-mime-entity (car (current-mime-entity)) (selected-buffer))))
+    (save-mime-body (car (current-mime-body)) (selected-buffer))))
 
-(define-command imail-toggle-mime-entity
-  "Expand or collapse the MIME entity at point."
+(define-command imail-toggle-mime-body
+  "Expand or collapse the MIME body at point."
   ()
   (lambda ()
-    (let ((i.m (current-mime-entity))
-	  (message (selected-message)))
+    (let ((i.m (current-mime-body)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
-	(set-mime-info-expanded?!
-	 info mark message
-	 (not (mime-info-expanded? info mark message)))
-	(re-render-mime-entity info mark message)))))
+	(set-mime-info-expanded?! info
+				  mark
+				  (not (mime-info-expanded? info mark)))
+	(re-render-mime-body info mark)))))
 
-(define-command imail-toggle-wrap-entity
-  "Toggle auto-wrap on or off for the MIME entity at point."
+(define-command imail-toggle-wrap-body
+  "Toggle auto-wrap on or off for the MIME body at point."
   ()
   (lambda ()
-    (let ((i.m (current-mime-entity))
-	  (message (selected-message)))
+    (let ((i.m (current-mime-body)))
       (let ((info (car i.m))
 	    (mark (cdr i.m)))
 	(mime-body-wrapped! (mime-info-body info)
 			    (not (mime-body-wrapped? (mime-info-body info))))
-	(re-render-mime-entity info mark message)))))
+	(re-render-mime-body info mark)))))
 
 (define (mime-body-wrapped? body)
   (get-property body 'WRAP? #t))
@@ -985,17 +995,17 @@ With prefix argument, prompt even when point is on an attachment."
       (remove-property! body 'WRAP?)
       (store-property! body 'WRAP? value)))
 
-(define (re-render-mime-entity info mark message)
-  (let ((region (mime-entity-region mark))
+(define (re-render-mime-body info mark)
+  (let ((region (mime-body-region mark))
 	(buffer (mark-buffer mark)))
     (if (not region)
-	(error "No MIME entity at mark:" mark))
+	(error "No MIME body at mark:" mark))
     (let ((point (mark-right-inserting-copy (buffer-point buffer))))
       (with-read-only-defeated mark
 	(lambda ()
 	  (region-delete! region)
 	  (let ((mark (mark-left-inserting-copy (region-start region))))
-	    (insert-mime-info info message mark)
+	    (insert-mime-info info mark)
 	    (mark-temporary! mark))))
       (mark-temporary! point)
       (set-buffer-point! buffer point))
@@ -1046,24 +1056,22 @@ With prefix argument, prompt even when point is on an attachment."
 		    converted))
 	(reverse! converted))))
 
-(define (current-mime-entity)
+(define (current-mime-body)
   (let ((point (current-point)))
     (let ((info (mark-mime-info point)))
       (if (not info)
-	  (editor-error "Point not on a MIME entity."))
+	  (editor-error "Point not on a MIME body."))
       (cons info point))))
 
-(define (save-mime-entity info buffer)
-  (let ((body (mime-info-body info))
-	(selector (mime-info-selector info))
-	(message (selected-message #t buffer)))
+(define (save-mime-body info buffer)
+  (let ((body (mime-info-body info)))
     (let ((filename
 	   (let ((history 'IMAIL-SAVE-ATTACHMENT))
 	     (prompt-for-file
 	      (string-append "Save "
 			     (if (mime-attachment? info)
 				 "attachment"
-				 "MIME entity")
+				 "MIME body")
 			     " as")
 	      (let ((filename
 		     (let ((filename (mime-body-disposition-filename body)))
@@ -1102,7 +1110,7 @@ With prefix argument, prompt even when point is on an attachment."
 	      port
 	      text?
 	      (lambda (port)
-		(write-mime-message-body-part message selector #f port)))))))))
+		(write-mime-body body port)))))))))
 
 (define (filter-mime-attachment-filename filename)
   (let ((filename
@@ -1136,11 +1144,10 @@ While composing the message, use \\[mail-yank-original] to yank the
 original message into it."
   ()
   (lambda ()
-    (make-mail-buffer '(("To" "") ("Subject" ""))
-		      (chase-imail-buffer (selected-buffer))
-		      (lambda (mail-buffer)
-			(initialize-imail-mail-buffer mail-buffer)
-			(select-buffer-other-window mail-buffer)))))
+    (make-initialized-mail-buffer '(("To" "") ("Subject" ""))
+				  (chase-imail-buffer (selected-buffer))
+				  initialize-imail-mail-buffer
+				  select-buffer-other-window)))
 
 (define-command imail-reply
   "Reply to the current message.
@@ -1151,12 +1158,13 @@ While composing the reply, use \\[mail-yank-original] to yank the
   "P"
   (lambda (just-sender?)
     (let ((message (selected-message)))
-      (make-mail-buffer (imail-reply-headers message (not just-sender?))
-			(chase-imail-buffer (selected-buffer))
-			(lambda (mail-buffer)
-			  (initialize-imail-mail-buffer mail-buffer)
-			  (message-answered message)
-			  (select-buffer-other-window mail-buffer))))))
+      (make-initialized-mail-buffer
+       (imail-reply-headers message (not just-sender?))
+       (chase-imail-buffer (selected-buffer))
+       (lambda (mail-buffer)
+	 (initialize-imail-mail-buffer mail-buffer)
+	 (message-answered message))
+       select-buffer-other-window))))
 
 (define-command imail-continue
   "Continue composing outgoing message previously being composed."
@@ -1192,7 +1200,7 @@ With negative argument, forward the message with all headers;
 
 (define (imail-forward argument)
   (let ((message (selected-message)))
-    (make-mail-buffer
+    (make-initialized-mail-buffer
      `(("To" "")
        ("Subject"
 	,(string-append
@@ -1237,10 +1245,10 @@ With negative argument, forward the message with all headers;
 		   (insert-header-fields message raw? mark)
 		   (insert-message-body message mark)))
 	       (mark-temporary! mark))))
-       (if (window-has-no-neighbors? (current-window))
-	   (select-buffer mail-buffer)
-	   (select-buffer-other-window mail-buffer))
-       (message-forwarded message)))))
+       (message-forwarded message))
+     (if (window-has-no-neighbors? (current-window))
+	 select-buffer
+	 select-buffer-other-window))))
 
 (define-command imail-resend
   "Resend current message to ADDRESSES.
@@ -1249,7 +1257,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
   (lambda (addresses)
     (let ((buffer (selected-buffer))
 	  (message (selected-message)))
-      (make-mail-buffer
+      (make-initialized-mail-buffer
        `(("Resent-From" ,(mail-from-string buffer))
 	 ("Resent-Date" ,(universal-time->string (get-universal-time)))
 	 ("Resent-To" ,addresses)
@@ -1267,10 +1275,10 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	   (lambda ()
 	     (insert-message-body message (buffer-end mail-buffer))))
 	 (disable-buffer-mime-processing! mail-buffer)
-	 (if (window-has-no-neighbors? (current-window))
-	     (select-buffer mail-buffer)
-	     (select-buffer-other-window mail-buffer))
-	 (message-resent message))))))
+	 (message-resent message))
+       (if (window-has-no-neighbors? (current-window))
+	   select-buffer
+	   select-buffer-other-window)))))
 
 (define (imail-reply-headers message cc?)
   (let ((resent-reply-to
@@ -1281,7 +1289,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	   (and (pair? strings)
 		(decorated-string-append "" ", " "" strings)))))
     `(("To"
-       ,(rfc822:canonicalize-address-string
+       ,(rfc822:canonicalize-named-address-string
 	 (or resent-reply-to
 	     (concat (get-all-header-field-values message "reply-to"))
 	     from)))
@@ -1302,7 +1310,7 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 		 (and cc
 		      (let ((addresses
 			     (imail-dont-reply-to
-			      (rfc822:string->addresses cc))))
+			      (rfc822:string->named-addresses cc))))
 			(and (pair? addresses)
 			     (rfc822:addresses->string addresses))))))))
       ("In-reply-to"
@@ -1337,7 +1345,9 @@ ADDRESSES is a string consisting of several addresses separated by commas."
 	  #t)))
     (let loop ((addresses addresses))
       (if (pair? addresses)
-	  (if (re-string-match pattern (car addresses))
+	  (if (re-string-match pattern
+			       (rfc822:canonicalize-address-string
+				(car addresses)))
 	      (loop (cdr addresses))
 	      (cons (car addresses) (loop (cdr addresses))))
 	  '()))))
@@ -1692,7 +1702,7 @@ A prefix argument says to prompt for a URL and append all messages
 	((ref-command imail-input-from-folder) url-string)
 	(let* ((folder (selected-folder))
 	       (count (object-modification-count folder)))
-	  (probe-folder folder)
+	  (probe-folder-noisily folder)
 	  (cond ((navigator/first-unseen-message folder)
 		 => (lambda (unseen) (select-message folder unseen)))
 		((<= (object-modification-count folder) count)
@@ -1748,6 +1758,35 @@ Negative argument means search in reverse."
 	      (select-message folder index)
 	      (message msg "done"))
 	    (editor-failure "Search failed: " pattern))))))
+
+(define-command imail-cache
+  "Fill any local cache associated with the selected folder.
+By default, fetch only parts that would ordinarily be displayed by
+  default in-line.
+With a prefix argument, fetch every part of every message, whether or
+  not it would ordinarily be displayed in-line.
+WARNING: With a prefix argument, this command may take a very long
+  time to complete if there are many immense attachments in the
+  folder."
+  "P"
+  (lambda (argument)
+    (cache-folder-contents
+     (selected-folder)
+     (let ((buffer (selected-buffer)))
+       (lambda (message body-structure cache-procedure)
+	 (define (cache entity body selector context buffer)
+	   entity selector context buffer
+	   (cache-procedure body))
+	 (define (ignore entity body selector context buffer)
+	   entity body selector context buffer
+	   unspecific)
+	 (walk-mime-body message
+			 body-structure
+			 '()
+			 (make-walk-mime-context #f 0 #f '())
+			 buffer
+			 cache
+			 (if argument cache ignore)))))))
 
 ;;;; URLs
 
@@ -1910,84 +1949,12 @@ Negative argument means search in reverse."
 		(let ((folder (message-folder message)))
 		  (and folder
 		       (imail-folder->buffer folder #f)))))
-
+
 (define (imail-ui:call-with-pass-phrase url receiver)
-  (let ((key (url-pass-phrase-key url))
-	(retention-time (ref-variable imail-pass-phrase-retention-time #f)))
-    (let ((entry (hash-table/get memoized-pass-phrases key #f)))
-      (if entry
-	  (begin
-	    (without-interrupts
-	     (lambda ()
-	       (deregister-timer-event (vector-ref entry 1))
-	       (set-up-pass-phrase-timer! entry key retention-time)))
-	    (call-with-unobscured-pass-phrase (vector-ref entry 0) receiver))
-	  (call-with-pass-phrase
-	   (string-append "Pass phrase for " key)
-	   (lambda (pass-phrase)
-	     (if (> retention-time 0)
-		 (hash-table/put!
-		  memoized-pass-phrases
-		  key
-		  (let ((entry
-			 (vector (obscure-pass-phrase pass-phrase) #f #f)))
-		    (set-up-pass-phrase-timer! entry key retention-time)
-		    entry)))
-	     (receiver pass-phrase)))))))
+  (call-with-stored-pass-phrase (url-pass-phrase-key url) receiver))
 
 (define (imail-ui:delete-stored-pass-phrase url)
-  (hash-table/remove! memoized-pass-phrases (url-pass-phrase-key url)))
-
-(define (set-up-pass-phrase-timer! entry key retention-time)
-  ;; A race condition can occur when the timer event is re-registered.
-  ;; If the previous timer event is queued but not executed before
-  ;; being deregistered, then it will run after the re-registration
-  ;; and try to delete the record.  By matching on ID, the previous
-  ;; event sees that it has been superseded and does nothing.
-  (let ((id (list 'ID)))
-    (vector-set! entry 2 id)
-    (vector-set! entry 1
-      (register-timer-event (* retention-time 60000)
-	(lambda ()
-	  (without-interrupts
-	   (lambda ()
-	     (let ((entry (hash-table/get memoized-pass-phrases key #f)))
-	       (if (and entry (eq? (vector-ref entry 2) id))
-		   (hash-table/remove! memoized-pass-phrases key))))))))))
-
-(define memoized-pass-phrases
-  (make-string-hash-table))
-
-(define (obscure-pass-phrase clear-text)
-  (let ((n (string-length clear-text)))
-    (let ((noise (random-byte-vector n)))
-      (let ((obscured-text (make-string (* 2 n))))
-	(string-move! noise obscured-text 0)
-	(do ((i 0 (fix:+ i 1)))
-	    ((fix:= i n))
-	  (vector-8b-set! obscured-text (fix:+ i n)
-			  (fix:xor (vector-8b-ref clear-text i)
-				   (vector-8b-ref noise i))))
-	obscured-text))))
-
-(define (call-with-unobscured-pass-phrase obscured-text receiver)
-  (let ((n (quotient (string-length obscured-text) 2))
-	(clear-text))
-    (dynamic-wind
-     (lambda ()
-       (set! clear-text (make-string n))
-       unspecific)
-     (lambda ()
-       (do ((i 0 (fix:+ i 1)))
-	   ((fix:= i n))
-	 (vector-8b-set! clear-text i
-			 (fix:xor (vector-8b-ref obscured-text i)
-				  (vector-8b-ref obscured-text (fix:+ i n)))))
-       (receiver clear-text))
-     (lambda ()
-       (string-fill! clear-text #\NUL)
-       (set! clear-text)
-       unspecific))))
+  (delete-stored-pass-phrase (url-pass-phrase-key url)))
 
 ;;;; Navigation aids
 
@@ -2253,10 +2220,11 @@ Negative argument means search in reverse."
     (if (and count (= (cdr count) mod-count))
 	(car count)
 	(let ((n (folder-length folder)))
-	  (do ((i 0 (+ i 1))
+	  (do ((i (first-unseen-message-index folder) (+ i 1))
 	       (unseen 0
 		       (if (let loop
-			       ((flags (message-flags (get-message folder i))))
+			       ((flags
+				 (message-flags (%get-message folder i))))
 			     (and (pair? flags)
 				  (or (string-ci=? "seen" (car flags))
 				      (string-ci=? "deleted" (car flags))
@@ -2292,8 +2260,10 @@ Negative argument means search in reverse."
 	 (if (and (imail-folder->buffer folder #f)
 		  (eq? (folder-connection-status folder) 'ONLINE))
 	     (begin
-	       (probe-folder folder)
-	       #t)
+	       (override-next-command!
+		(lambda ()
+		  (probe-folder-noisily folder)))
+	       'FORCE-RETURN)
 	     (begin
 	       (stop-probe-folder-thread folder)
 	       #f)))))
@@ -2306,6 +2276,12 @@ Negative argument means search in reverse."
 	   (begin
 	     (stop-standard-polling-thread holder)
 	     (remove-property! folder 'PROBE-REGISTRATION)))))))
+
+(define (probe-folder-noisily folder)
+  (temporary-message "Probing folder "
+		     (url-presentation-name (resource-locator folder))
+		     "...")
+  (probe-folder folder))
 
 ;;;; Message insertion procedures
 
@@ -2314,10 +2290,10 @@ Negative argument means search in reverse."
     (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
     (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
-	  ((mime-message-body-structure message)
+	  ((mime-entity-body-structure message)
 	   => (lambda (body-structure)
-                (insert-mime-message-body message body-structure
-                                          mark inline-only? left-margin)))
+		(insert-mime-body message body-structure
+				  mark inline-only? left-margin)))
 	  (else
 	   (call-with-auto-wrapped-output-mark mark left-margin message
 	     (lambda (port)
@@ -2389,14 +2365,15 @@ Negative argument means search in reverse."
 
 ;;;; MIME message formatting
 
-(define (insert-mime-message-body message body-structure
-                                  mark inline-only? left-margin)
-  (walk-mime-message-part
+(define (insert-mime-body message body-structure mark inline-only? left-margin)
+  (walk-mime-body
    message
    body-structure
    '()
    (make-walk-mime-context inline-only? left-margin #f '())
-   mark))
+   mark
+   insert-mime-body-inline
+   insert-mime-body-outline))
 
 (define-structure walk-mime-context
   (inline-only? #f read-only #t)
@@ -2411,16 +2388,18 @@ Negative argument means search in reverse."
 			  (cons (cons boundary (not boundary))
 				(walk-mime-context-boundaries context))))
 
-(define (mime-enclosure-type? context type subtype)
+(define (mime-enclosure-type? context type #!optional subtype)
   (let ((enclosure (walk-mime-context-enclosure context)))
     (and enclosure
 	 (mime-type? enclosure type subtype))))
 
-(define (mime-type? body type subtype)
+(define (mime-type? body type #!optional subtype)
   (and (eq? (mime-body-type body) type)
-       (eq? (mime-body-subtype body) subtype)))
+       (or (default-object? subtype)
+	   (not subtype)
+	   (eq? (mime-body-subtype body) subtype))))
 
-(define (maybe-insert-mime-boundary context mark)
+(define (maybe-insert-mime-boundary context selector mark)
   (let ((boundary
 	 (let loop ((boundaries (walk-mime-context-boundaries context)))
 	   (and (pair? boundaries)
@@ -2435,7 +2414,13 @@ Negative argument means search in reverse."
 	    (loop (cdr boundaries)))))
     (if boundary
 	(begin
-	  (insert-newline mark)
+	  (if (not (and (mime-enclosure-type? context 'MULTIPART)
+			(mime-type? (walk-mime-context-enclosure context)
+				    'MULTIPART)
+			(zero? (last selector))))
+	      (begin
+		(insert-newline mark)
+		(insert-newline mark)))
 	  (cond ((string? boundary)
 		 (insert-string "--" mark)
 		 (insert-string boundary mark))
@@ -2458,26 +2443,25 @@ Negative argument means search in reverse."
 	encoding
 	(mime-body-one-part-encoding body))))
 
-(define-generic walk-mime-message-part (message body selector context mark))
-(define-generic inline-message-part? (body context mark))
+(define-generic walk-mime-body
+  (entity body selector context mark if-inline if-outline))
+(define-generic inline-mime-part? (body context mark))
 
-(define-method walk-mime-message-part
-    (message (body <mime-body>) selector context mark)
-  ((if (inline-message-part? body context mark)
-       insert-mime-message-inline
-       insert-mime-message-outline)
-   message body selector context mark))
+(define-method walk-mime-body
+    (entity (body <mime-body>) selector context mark if-inline if-outline)
+  ((if (inline-mime-part? body context mark) if-inline if-outline)
+   entity body selector context mark))
 
-(define-method inline-message-part? ((body <mime-body>) context mark)
+(define-method inline-mime-part? ((body <mime-body>) context mark)
   context mark
   (mime-type? body 'MESSAGE 'DELIVERY-STATUS))
 
-(define-method inline-message-part? ((body <mime-body-message>) context mark)
+(define-method inline-mime-part? ((body <mime-body-message>) context mark)
   body
   (not (and (mime-enclosure-type? context 'MULTIPART 'DIGEST)
 	    (ref-variable imail-mime-collapse-digest mark))))
 
-(define-method inline-message-part? ((body <mime-body-text>) context mark)
+(define-method inline-mime-part? ((body <mime-body-text>) context mark)
   (and (let ((disposition (mime-body-disposition body)))
 	 (if disposition
 	     (eq? (car disposition) 'INLINE)
@@ -2497,11 +2481,12 @@ Negative argument means search in reverse."
 	(mime-body-parameter body 'CHARSET "us-ascii")
 	#t)
        (let ((limit (ref-variable imail-inline-mime-text-limit mark)))
-         (or (not limit)
-             (< (mime-body-one-part-n-octets body) limit)))))
+	 (or (not limit)
+	     (< (mime-body-one-part-n-octets body) limit)))))
 
-(define-method walk-mime-message-part
-    (message (body <mime-body-multipart>) selector context mark)
+(define-method walk-mime-body
+    (entity (body <mime-body-multipart>) selector context mark
+	    if-inline if-outline)
   (let ((context
 	 (make-walk-mime-subcontext
 	  context
@@ -2514,57 +2499,48 @@ Negative argument means search in reverse."
     (if (eq? (mime-body-subtype body) 'ALTERNATIVE)
 	(if (pair? parts)
 	    (begin
-	      (walk-mime-message-part message
-				      (car parts)
-				      `(,@selector 0)
-				      context
-				      mark)
+	      (walk-mime-body entity (car parts) `(,@selector 0)
+			      context mark if-inline if-outline)
 	      (if (ref-variable imail-mime-show-alternatives mark)
 		  (do ((parts (cdr parts) (cdr parts))
 		       (i 1 (fix:+ i 1)))
 		      ((null? parts))
-		    (insert-mime-message-outline message
-						 (car parts)
-						 `(,@selector ,i)
-						 context
-						 mark)))))
+		    (if-outline entity (car parts) `(,@selector ,i) context
+				mark)))))
 	(do ((parts parts (cdr parts))
 	     (i 0 (fix:+ i 1)))
 	    ((null? parts))
-	  (walk-mime-message-part message
-				  (car parts)
-				  `(,@selector ,i)
-				  context
-				  mark)))))
+	  (walk-mime-body entity (car parts) `(,@selector ,i)
+			  context mark if-inline if-outline)))))
 
-(define (insert-mime-message-inline message body selector context mark)
-  (maybe-insert-mime-boundary context mark)
-  (insert-mime-info (make-mime-info #t body selector context)
-		    message
-		    mark))
+(define (insert-mime-body-inline entity body selector context mark)
+  (maybe-insert-mime-boundary context selector mark)
+  (insert-mime-info (make-mime-info #t entity body selector context) mark))
 
-(define (insert-mime-message-outline message body selector context mark)
+(define (insert-mime-body-outline entity body selector context mark)
   (if (not (walk-mime-context-inline-only? context))
       (begin
-	(maybe-insert-mime-boundary context mark)
-	(insert-mime-info (make-mime-info #f body selector context)
-			  message
+	(maybe-insert-mime-boundary context selector mark)
+	(insert-mime-info (make-mime-info #f entity body selector context)
 			  mark))))
 
-(define (insert-mime-info info message mark)
+(define (insert-mime-info info mark)
   (let ((start (mark-right-inserting-copy mark))
+	(entity (mime-info-entity info))
 	(body (mime-info-body info))
+	(selector (mime-info-selector info))
 	(context (mime-info-context info)))
-    (if (mime-info-expanded? info mark message)
-	(insert-mime-message-inline* message
-				     body
-				     (mime-info-selector info)
-				     context
-				     mark)
+    (if (mime-info-expanded? info mark)
+	(begin
+	  (if (and (ref-variable imail-mime-show-headers mark)
+		   (not (inline-mime-part? body context mark))
+		   (mime-enclosure-type? context 'MULTIPART))
+	      (insert-header-fields (mime-body-header-fields body) #t mark))
+	  (insert-mime-body-inline* entity body selector context mark))
 	(insert-mime-outline
-	 (compute-mime-message-outline body
-				       (mime-attachment-name info #f)
-				       context)
+	 (compute-mime-body-outline body
+				    (mime-attachment-name info #f)
+				    context)
 	 mark))
     (attach-mime-info start mark info)
     (mark-temporary! start)))
@@ -2587,13 +2563,23 @@ Negative argument means search in reverse."
 		      (insert-newline mark))))
 	      parameters)
     (insert-string indentation mark)
-    (insert-string "/>" mark)
-    (insert-newline mark)))
+    (insert-string "/>" mark)))
 
-(define-generic insert-mime-message-inline* (msg body selector context mark))
+(define-generic insert-mime-body-inline* (entity body selector context mark))
 
-(define-method insert-mime-message-inline*
-    (message (body <mime-body>) selector context mark)
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body>) selector context mark)
+  entity body selector context		;ignore
+  (call-with-auto-wrapped-output-mark
+   mark
+   (walk-mime-context-left-margin context)
+   body
+   (lambda (port)
+     (write-mime-body body port))))
+
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-one-part>) selector context mark)
+  entity selector			;ignore
   (call-with-auto-wrapped-output-mark
    mark
    (walk-mime-context-left-margin context)
@@ -2604,45 +2590,44 @@ Negative argument means search in reverse."
       port
       #t
       (lambda (port)
-	(write-mime-message-body-part
-	 message
-	 (if (or (not (walk-mime-context-enclosure context))
-		 (mime-enclosure-type? context 'MESSAGE 'RFC822))
-	     `(,@selector TEXT)
-	     selector)
-	 (mime-body-one-part-n-octets body)
-	 port))))))
+	(write-mime-body body port))))))
 
-(define-method insert-mime-message-inline*
-    (message (body <mime-body-message>) selector context mark)
-  (insert-header-fields (call-with-output-string
-			 (lambda (port)
-			   (write-mime-message-body-part message
-							 `(,@selector HEADER)
-							 #t
-							 port)))
-			#f
-			mark)
-  (walk-mime-message-part message
-			  (mime-body-message-body body)
-			  selector
-			  (make-walk-mime-subcontext context body #f)
-			  mark))
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-message>) selector context mark)
+  (insert-header-fields (mime-body-message-header-fields body) #f mark)
+  (walk-mime-body entity
+		  (mime-body-message-body body)
+		  `(,@selector BODY)
+		  (make-walk-mime-subcontext context body #f)
+		  mark
+		  insert-mime-body-inline
+		  insert-mime-body-outline))
 
-(define-generic compute-mime-message-outline (body name context))
+(define-method insert-mime-body-inline*
+    (entity (body <mime-body-multipart>) selector context mark)
+  (walk-mime-body entity body selector context mark
+		  insert-mime-body-inline
+		  insert-mime-body-outline))
+
+(define-generic compute-mime-body-outline (body name context))
 
-(define-method compute-mime-message-outline ((body <mime-body>) name context)
+(define-method compute-mime-body-outline ((body <mime-body>) name context)
   context
   (list (and name (cons "name" name))
 	(cons "type" (mime-body-type-string body))
 	(and (eq? (mime-body-type body) 'TEXT)
-	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))
-	(let ((encoding (mime-body-one-part-encoding body)))
-	  (and (not (known-mime-encoding? encoding))
-	       (cons "encoding" encoding)))
-	(cons "length" (mime-body-one-part-n-octets body))))
+	     (cons "charset" (mime-body-parameter body 'CHARSET "us-ascii")))))
 
-(define-method compute-mime-message-outline
+(define-method compute-mime-body-outline
+    ((body <mime-body-one-part>) name context)
+  context
+  (append (call-next-method body name context)
+	  (list (let ((encoding (mime-body-one-part-encoding body)))
+		  (and (not (known-mime-encoding? encoding))
+		       (cons "encoding" encoding)))
+		(cons "length" (mime-body-one-part-n-octets body)))))
+
+(define-method compute-mime-body-outline
     ((body <mime-body-message>) name context)
   name
   (let ((envelope (mime-body-message-envelope body)))
@@ -2660,15 +2645,10 @@ Negative argument means search in reverse."
 	    (and subject
 		 (cons "subject" subject)))
 	  (cons "length" (mime-body-one-part-n-octets body)))))
-
-(define (known-mime-encoding? encoding)
-  (memq encoding
-	'(7BIT 8BIT BINARY QUOTED-PRINTABLE BASE64
-	       ;; Microsoft sometimes uses these non-standard values:
-	       7-BIT 8-BIT)))
 
 (define (mime-attachment-name info provide-default?)
   (or (mime-body-parameter (mime-info-body info) 'NAME #f)
+      (mime-body-disposition-filename (mime-info-body info))
       (and provide-default?
 	   (string-append (if (mime-info-inline? info)
 			      "inline-"
@@ -2682,11 +2662,25 @@ Negative argument means search in reverse."
 				      selector))))))))
 
 (define (attach-mime-info start end info)
-  (region-put! start end 'IMAIL-MIME-INFO info #t))
+  ;; Scan forward for each change in the IMAIL-MIME-INFO property, and
+  ;; for any region in which it is not set (between inferior MIME
+  ;; entities) we set it.  What we really want is some way to layer
+  ;; text properties `under' existing ones, but the text property
+  ;; facility doesn't support that.
+  (define (attach start end)
+    (if (not (region-get start 'IMAIL-MIME-INFO #f))
+	(region-put! start end 'IMAIL-MIME-INFO info #t)))
+  (let loop ((mark start))
+    (cond ((find-next-specific-property-change mark end 'IMAIL-MIME-INFO)
+	   => (lambda (mark*)
+		(attach mark mark*)
+		(loop mark*)))
+	  (else
+	   (attach mark end)))))
 
 (define (mark-mime-info mark)
   (region-get mark 'IMAIL-MIME-INFO #f))
-
+
 (define (buffer-mime-info buffer)
   (let ((end (buffer-end buffer)))
     (let loop ((start (buffer-start buffer)) (attachments '()))
@@ -2701,7 +2695,7 @@ Negative argument means search in reverse."
 	    (loop mark attachments)
 	    (reverse! attachments))))))
 
-(define (mime-entity-region mark)
+(define (mime-body-region mark)
   (specific-property-region mark 'IMAIL-MIME-INFO
     (lambda (i1 i2)
       (mime-body-enclosed? (mime-info-body i1) (mime-info-body i2)))))
@@ -2711,21 +2705,22 @@ Negative argument means search in reverse."
 
 (define-structure mime-info
   (inline? #f)
+  (entity #f read-only #t)
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
 
-(define (mime-info-expanded? info mark message)
+(define (mime-info-expanded? info mark)
   (let ((expansions (buffer-get (->buffer mark) 'IMAIL-MIME-EXPANSIONS #f))
-	(key (cons message (mime-info-selector info)))
+	(key (cons (mime-info-entity info) (mime-info-selector info)))
 	(inline? (mime-info-inline? info)))
     (if expansions
 	(hash-table/get expansions key inline?)
 	inline?)))
 
-(define (set-mime-info-expanded?! info mark message expanded?)
+(define (set-mime-info-expanded?! info mark expanded?)
   (let ((buffer (->buffer mark))
-	(key (cons message (mime-info-selector info))))
+	(key (cons (mime-info-entity info) (mime-info-selector info))))
     (if (if (mime-info-inline? info) expanded? (not expanded?))
 	(cond ((buffer-get buffer 'IMAIL-MIME-EXPANSIONS #f)
 	       => (lambda (expansions)
@@ -2738,7 +2733,7 @@ Negative argument means search in reverse."
 	       (buffer-put! buffer 'IMAIL-MIME-EXPANSIONS expansions)
 	       expansions))
 	 key
-         expanded?))))
+	 expanded?))))
 
 ;;;; Automatic wrap/fill
 
