@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.100 2008/10/23 19:07:03 riastradh Exp $
+$Id: sendmail.scm,v 1.101 2009/01/15 16:32:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -219,6 +219,11 @@ Specifically, Content-Type and Content-Transfer-Encoding headers
 If false, sent mail contains full MIME headers."
   #t
   boolean?)
+
+(define-variable-per-buffer mail-charset
+  "Name of charset for sending mail, as a string."
+  "us-ascii"
+  string?)
 
 (define-command mail
   "Edit a message to be sent.  Argument means resume editing (don't erase).
@@ -1133,7 +1138,7 @@ the user from the mailer."
 	(let ((line (read-line input)))
 	  (if (not (eof-object? line))
 	      (begin
-		(if (and (fix:> 0 (string-length line))
+		(if (and (fix:> (string-length line) 0)
 			 (char=? #\. (string-ref line 0)))
 		    (smtp-write-line port "." line)
 		    (smtp-write-line port line))
@@ -1324,10 +1329,12 @@ the user from the mailer."
 
 (define (write-mime-message-body-1 b-start b-end subpart? port)
   (if (not (and subpart? (ref-variable mail-abbreviate-mime b-start)))
-      (write-message-header-field "Content-Type"
-				  "text/plain; charset=us-ascii"
-				  port))
-  (if (or (any-non-us-ascii-chars? b-start b-end)
+      (write-message-header-field
+       "Content-Type"
+       (string-append "text/plain; charset="
+                      (ref-variable mail-charset b-start))
+       port))
+  (if (or (any-non-printable-7bit-chars? b-start b-end)
 	  (any-lines-too-long? b-start b-end 76))
       (begin
 	(write-message-header-field "Content-Transfer-Encoding"
@@ -1353,11 +1360,11 @@ the user from the mailer."
 	(newline port)
 	(write-region-to-port b-start b-end port))))
 
-(define (any-non-us-ascii-chars? start end)
+(define (any-non-printable-7bit-chars? start end)
   (group-find-next-char-in-set (mark-group start)
 			       (mark-index start)
 			       (mark-index end)
-			       char-set:non-us-ascii))
+			       char-set:non-printable-7bit))
 
 (define (any-lines-too-long? start end n)
   (let loop ((ls (line-start start 0)))
@@ -1368,14 +1375,15 @@ the user from the mailer."
 		 (mark< ls end)
 		 (loop ls)))))))
 
-(define char-set:us-ascii
-  (char-set-union char-set:graphic (char-set #\tab #\page #\linefeed)))
+(define char-set:printable-7bit
+  (char-set-union (ascii-range->char-set #x20 #x7F)
+                  (char-set #\tab #\page #\linefeed)))
 
-(define char-set:non-us-ascii
-  (char-set-invert char-set:us-ascii))
+(define char-set:non-printable-7bit
+  (char-set-invert char-set:printable-7bit))
 
-(define regexp:non-us-ascii
-  (char-set->regexp char-set:non-us-ascii))
+(define regexp:non-printable-7bit
+  (char-set->regexp char-set:non-printable-7bit))
 
 (define (write-mime-message-body-with-attachments b-start b-end attachments
 						  port)
@@ -1543,9 +1551,9 @@ the user from the mailer."
 		 (mime-parameters->string (cdr disposition))))
 
 (define (guarantee-mime-compliant-headers h-start h-end)
-  (if (any-non-us-ascii-chars? h-start h-end)
+  (if (any-non-printable-7bit-chars? h-start h-end)
       (begin
-	(pop-up-occur-buffer h-start h-end regexp:non-us-ascii #f)
+	(pop-up-occur-buffer h-start h-end regexp:non-printable-7bit #f)
 	(editor-error "Message contains illegal characters in header.")))
   (if (any-lines-too-long? h-start h-end 998)
       (editor-error "Message contains over-long line in header.")))
