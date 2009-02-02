@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.37 2008/02/29 16:06:34 riastradh Exp $
+$Id: unsyn.scm,v 14.38 2009/02/02 20:09:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -509,7 +509,7 @@ USA.
 	    ((combination? value)
 	     (combination-components value
 	       (lambda (operator operands)
-		 (cond ((eq? operator lexical-assignment)
+		 (cond ((eq? operator (ucode-primitive lexical-assignment))
 			`(ACCESS ,(cadr operands)
 				 ,@(unexpand-access (car operands))))
 		       (else

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.21 2009/02/02 19:42:46 riastradh Exp $
+$Id: scode.scm,v 4.22 2009/02/02 20:09:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -96,7 +96,8 @@ USA.
 
 (define (scode/error-combination? object)
   (or (and (scode/combination? object)
-	   (eq? (scode/combination-operator object) error-procedure))
+	   (eq? (scode/combination-operator object)
+		(ucode-primitive error-procedure)))
       (and (scode/absolute-combination? object)
 	   (eq? (scode/absolute-combination-name object) 'ERROR-PROCEDURE))))
 

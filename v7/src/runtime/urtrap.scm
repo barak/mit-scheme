@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: urtrap.scm,v 14.22 2008/02/14 02:11:39 cph Exp $
+$Id: urtrap.scm,v 14.23 2009/02/02 20:09:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -167,7 +167,8 @@ USA.
 
 (define (macro-reference-trap-expression? expression)
   (and (combination? expression)
-       (eq? (combination-operator expression) primitive-object-set-type)
+       (eq? (combination-operator expression)
+	    (ucode-primitive primitive-object-set-type))
        (let ((operands (combination-operands expression)))
 	 (and (pair? operands)
 	      (eqv? (car operands) (ucode-type reference-trap))
