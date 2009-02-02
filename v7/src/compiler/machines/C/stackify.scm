@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stackify.scm,v 1.4 2008/01/30 20:01:46 cph Exp $
+$Id: stackify.scm,v 1.5 2009/02/02 20:06:33 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -135,7 +135,7 @@ USA.
       (symbol? obj)
       (string? obj)
       (bit-string? obj)
-      (primitive-procedure? obj)
+      (scode/primitive-procedure? obj)
       ;; The runtime system needs the following
       (interpreter-return-address? obj)))
 
@@ -508,7 +508,7 @@ USA.
 			 (bit-string->unsigned-integer obj)
 			 16))
 		       (build/push-nat (bit-string-length obj) prog)))
-	((primitive-procedure? obj)
+	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
 	       (name (symbol-name (primitive-procedure-name obj))))
 	   (cond ((fix:< arity 0)

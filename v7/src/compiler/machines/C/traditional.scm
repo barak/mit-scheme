@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: traditional.scm,v 1.7 2008/01/30 20:01:46 cph Exp $
+$Id: traditional.scm,v 1.8 2009/02/02 20:06:33 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -225,7 +225,7 @@ USA.
 	((eq? #t object) "SHARP_T")
 	((null? object) "EMPTY_LIST")
 	((eq? object unspecific) "UNSPECIFIC")
-	((primitive-procedure? object)
+	((scode/primitive-procedure? object)
 	 (let ((arity (primitive-procedure-arity object)))
 	   (if (< arity -1)
 	       (error "->simple-C-object: Unknown arity primitive:" object))

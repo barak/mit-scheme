@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blocks.scm,v 4.21 2008/01/30 20:01:42 cph Exp $
+$Id: blocks.scm,v 4.22 2009/02/02 20:06:32 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -159,7 +159,7 @@ from the continuation, and then "glued" into place afterwards.
     (if (boolean? checks)
 	checks
 	(let ((primitive
-	       (if (primitive-procedure? primitive)
+	       (if (scode/primitive-procedure? primitive)
 		   (primitive-procedure-name primitive)
 		   primitive))
 	      (default (car checks))
