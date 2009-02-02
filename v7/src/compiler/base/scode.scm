@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.20 2008/02/14 02:12:27 cph Exp $
+$Id: scode.scm,v 4.21 2009/02/02 19:42:46 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -112,7 +112,8 @@ USA.
 		     (eq? (scode/absolute-combination-name irritants) 'LIST))
 		(scode/absolute-combination-operands irritants))
 	       ((and (scode/combination? irritants)
-		     (eq? (scode/combination-operator irritants) cons))
+		     (eq? (scode/combination-operator irritants)
+			  (ucode-primitive cons)))
 		(let ((operands (scode/combination-operands irritants)))
 		  (cons (car operands)
 			(loop (cadr operands)))))
