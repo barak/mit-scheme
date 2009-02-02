@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgcomb.scm,v 4.26 2008/01/30 20:01:56 cph Exp $
+$Id: rgcomb.scm,v 4.27 2009/02/02 16:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -157,10 +157,8 @@ USA.
   model					; ignored
   (scfg*scfg->scfg!
    (prefix frame-size 0)
-   (let* ((primitive (constant-value (rvalue-known-value operator)))
-	  (arity (primitive-procedure-arity primitive)))
-     (if (not (or (= arity -1)
-		  (= arity frame-size)))
+   (let ((primitive (constant-value (rvalue-known-value operator))))
+     (if (not (primitive-arity-correct? primitive frame-size))
 	 (error "Primitive called with incorrect number of arguments."
 		primitive
 		arity

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.46 2009/02/02 15:33:38 riastradh Exp $
+$Id: fggen.scm,v 4.47 2009/02/02 16:02:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -951,7 +951,7 @@ USA.
 					 'LIST))
 			       (and (scode/combination? irritants)
 				    (eq? (scode/combination-operator irritants)
-					 cons)))))
+					 (ucode-primitive cons))))))
 		    (generate/error-combination block continuation
 						context expression))
 		   (else
