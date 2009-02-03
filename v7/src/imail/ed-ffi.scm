@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.27 2008/09/08 03:55:14 riastradh Exp $
+$Id: ed-ffi.scm,v 1.28 2009/02/03 01:33:16 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,7 @@ USA.
     ("imail-core"	(edwin imail))
     ("imail-file"	(edwin imail file-folder))
     ("imail-imap"	(edwin imail imap-folder))
-    ("imail-mime"	(edwin imail mime))
+    ("imail-mime"	(edwin imail))
     ("imail-rmail"	(edwin imail file-folder rmail-folder))
     ("imail-summary"	(edwin imail front-end summary))
     ("imail-top"	(edwin imail front-end))
