@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.13 2009/02/03 01:16:52 riastradh Exp $
+$Id: imail-mime.scm,v 1.14 2009/02/03 01:42:10 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -520,34 +520,37 @@ USA.
 
 (define-mime-media-parser 'MULTIPART #f
   (lambda (header-fields string start end type subtype parameters)
-    type                                ;ignore
-    (mime:parse-multipart header-fields string start end subtype parameters)))
+    (mime:parse-multipart header-fields string start end
+                          type subtype parameters)))
 
 (define-mime-media-parser 'MULTIPART 'DIGEST
   (lambda (header-fields string start end type subtype parameters)
-    type                                ;ignore
     (fluid-let ((mime:default-content-type '(MESSAGE RFC822)))
       (mime:parse-multipart header-fields string start end
-                            subtype parameters))))
+                            type subtype parameters))))
 
 (define (mime:parse-multipart header-fields string start end
-                              subtype parameters)
-  (let ((boundary (mime:get-boundary parameters)))
-    (and boundary
-         (let ((parts
-                (mime:parse-multipart-parts header-fields string start end
-                                            boundary)))
-           (and parts
-                (let* ((enclosure
-                        (make-mime-body-multipart-substring
-                         header-fields string start end
-			 subtype parameters parts
-                         (mime:get-content-disposition header-fields)
-                         (mime:get-content-language header-fields))))
-                  (for-each (lambda (part)
-                              (set-mime-body-enclosure! part enclosure))
-                            parts)
-                  enclosure))))))
+                              type subtype parameters)
+  (or (let ((boundary (mime:get-boundary parameters)))
+        (and boundary
+             (let ((parts
+                    (mime:parse-multipart-parts header-fields string start end
+                                                boundary)))
+               (and parts
+                    (let* ((enclosure
+                            (make-mime-body-multipart-substring
+                             header-fields string start end
+                             subtype parameters parts
+                             (mime:get-content-disposition header-fields)
+                             (mime:get-content-language header-fields))))
+                      (for-each (lambda (part)
+                                  (set-mime-body-enclosure! part enclosure))
+                                parts)
+                      enclosure)))))
+      ;++ This is not quite right, but at least it will preserve the
+      ;++ octets in the malformed part and not crash IMAIL.
+      (mime:basic-media-parser header-fields string start end
+                               type subtype parameters)))
 
 (define (mime:parse-multipart-parts header-fields string start end boundary)
   (let ((encoding
