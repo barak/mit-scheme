@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgcomb.scm,v 4.27 2009/02/02 16:02:17 riastradh Exp $
+$Id: rgcomb.scm,v 4.28 2009/02/03 03:33:44 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -161,7 +161,6 @@ USA.
      (if (not (primitive-arity-correct? primitive frame-size))
 	 (error "Primitive called with incorrect number of arguments."
 		primitive
-		arity
 		frame-size))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)
