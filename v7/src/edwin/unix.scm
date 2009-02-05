@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.124 2008/01/30 20:02:06 cph Exp $
+$Id: unix.scm,v 1.125 2009/02/05 02:09:14 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -323,7 +323,7 @@ Includes the new backup.  Must be > 0."
 	   (string-suffix? extension filename)))))
 
 (define (os/completion-ignored-extensions)
-  (append (list ".bin" ".com" ".ext"
+  (append (list ".bin" ".com" ".ext" ".so"
 		".inf" ".bif" ".bsm" ".bci" ".bcs"
 		".psb" ".moc" ".fni"
 		".bco" ".bld" ".bad" ".glo" ".fre"
