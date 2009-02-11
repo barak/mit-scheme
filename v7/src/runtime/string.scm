@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.70 2008/09/23 23:59:23 cph Exp $
+$Id: string.scm,v 14.71 2009/02/11 02:42:38 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1546,7 +1546,7 @@ USA.
 
 (define (xsubstring xstring start end)
   (guarantee-xsubstring xstring start end 'XSUBSTRING)
-  (let ((string (make-string (fix:- end start))))
+  (let ((string (make-string (- end start))))
     (xsubstring-move! xstring start end string 0)
     string))
 
@@ -1570,10 +1570,11 @@ USA.
 	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define-integrable (xsubstring-find-char xstring start end datum finder caller)
-  (guarantee-xsubstring xstring start end caller)
   (cond ((string? xstring)
+	 (guarantee-substring xstring start end caller)
 	 (finder xstring start end datum))
 	((external-string? xstring)
+	 (guarantee-xsubstring xstring start end caller)
 	 (finder (external-string-descriptor xstring) start end datum))
 	(else
 	 (error:not-xstring xstring caller))))
@@ -1639,6 +1640,10 @@ USA.
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "string index" caller)))
 
+(define-integrable (guarantee-xstring-index object caller)
+  (if (not (exact-nonnegative-integer? object))
+      (error:wrong-type-argument object "xstring index" caller)))
+
 (define-integrable (guarantee-substring string start end caller)
   (if (not (and (string? string)
 		(index-fixnum? start)
@@ -1651,19 +1656,19 @@ USA.
   (guarantee-string string caller)
   (guarantee-substring-end-index end (string-length string) caller)
   (guarantee-substring-start-index start end caller))
-
+
 (define-integrable (guarantee-xsubstring xstring start end caller)
   (if (not (and (xstring? xstring)
-		(index-fixnum? start)
-		(index-fixnum? end)
-		(fix:<= start end)
-		(Fix:<= end (xstring-length xstring))))
+		(exact-nonnegative-integer? start)
+		(exact-nonnegative-integer? end)
+		(<= start end)
+		(<= end (xstring-length xstring))))
       (guarantee-xsubstring/fail xstring start end caller)))
 
 (define (guarantee-xsubstring/fail xstring start end caller)
   (guarantee-xstring xstring caller)
-  (guarantee-substring-end-index end (xstring-length xstring) caller)
-  (guarantee-substring-start-index start end caller))
+  (guarantee-xsubstring-end-index end (xstring-length xstring) caller)
+  (guarantee-xsubstring-start-index start end caller))
 
 (define-integrable (guarantee-substring-end-index end length caller)
   (guarantee-string-index end caller)
@@ -1674,6 +1679,18 @@ USA.
 (define-integrable (guarantee-substring-start-index start end caller)
   (guarantee-string-index start caller)
   (if (not (fix:<= start end))
+      (error:bad-range-argument start caller))
+  start)
+
+(define-integrable (guarantee-xsubstring-end-index end length caller)
+  (guarantee-xstring-index end caller)
+  (if (not (<= end length))
+      (error:bad-range-argument end caller))
+  end)
+
+(define-integrable (guarantee-xsubstring-start-index start end caller)
+  (guarantee-xstring-index start caller)
+  (if (not (<= start end))
       (error:bad-range-argument start caller))
   start)
 
