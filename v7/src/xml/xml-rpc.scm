@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-rpc.scm,v 1.15 2008/10/02 17:58:05 riastradh Exp $
+$Id: xml-rpc.scm,v 1.16 2009/02/18 07:57:41 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -223,7 +223,7 @@ USA.
     ((nil)
      #!default)
     ((|dateTime.iso8601|)
-     (safe-call iso8601-string->decoded-time (content-string elt)))
+     (safe-call xml-rpc-iso8601-string->decoded-time (content-string elt)))
     ((double)
      (let ((x (string->number (content-string elt))))
        (require (and x (flo:flonum? x)))
@@ -294,7 +294,7 @@ USA.
 	   ((symbol? object)
 	    (encode-string (symbol->utf8-string object)))
 	   ((decoded-time? object)
-	    (rpc-elt:date-time (decoded-time->iso8601-string object)))
+	    (rpc-elt:date-time (decoded-time->xml-rpc-iso8601-string object)))
 	   ((and (pair? object)
 		 (list-of-type? object
 		   (lambda (item)

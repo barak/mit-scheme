@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: datime.scm,v 14.56 2008/10/26 20:14:34 cph Exp $
+$Id: datime.scm,v 14.57 2009/02/18 07:57:41 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -519,7 +519,8 @@ USA.
 ;;; This implements a subset of the ISO 8601 specification.  It
 ;;; accepts only complete date+time representations.  It does not
 ;;; support either truncation or expansion.  On output, it uses a
-;;; single format.
+;;; single format.  The XML-RPC `specification' uses a bastard hybrid
+;;; of the basic and extended formats -- maybe.
 
 (define (iso8601-string->decoded-time string #!optional start end)
   (let ((v (*parse-string parser:iso8601-date/time string start end)))
@@ -527,23 +528,65 @@ USA.
 	(error:bad-range-argument string 'ISO8601-STRING->DECODED-TIME))
     (vector-ref v 0)))
 
+(define (xml-rpc-iso8601-string->decoded-time string #!optional start end)
+  (let ((v (*parse-string parser:xml-rpc-iso8601-date/time string start end)))
+    (if (not v)
+	(error:bad-range-argument string
+				  'XML-RPC-ISO8601-STRING->DECODED-TIME))
+    (vector-ref v 0)))
+
 (define (decoded-time->iso8601-string dt)
   (call-with-output-string
     (lambda (port)
-      (write-decoded-time-as-iso8601 dt port))))
+      (write-decoded-time-as-iso8601-extended dt port))))
 
-(define (write-decoded-time-as-iso8601 dt port)
+(define (decoded-time->xml-rpc-iso8601-string dt)
+  (call-with-output-string
+    (lambda (port)
+      (write-decoded-time-as-xml-rpc-iso8601 dt port))))
+
+(define (write-decoded-time-as-iso8601-basic dt port)
+  (write-decoded-time-iso8601-basic-date dt port)
+  (write-char #\T port)
+  (write-decoded-time-iso8601-basic-time dt port)
+  (write-decoded-time-iso8601-zone dt port))
+
+(define (write-decoded-time-as-iso8601-extended dt port)
+  (write-decoded-time-iso8601-extended-date dt port)
+  (write-char #\T port)
+  (write-decoded-time-iso8601-extended-time dt port)
+  (write-decoded-time-iso8601-zone dt port))
+
+(define (write-decoded-time-as-xml-rpc-iso8601 dt port)
+  (write-decoded-time-iso8601-basic-date dt port)
+  (write-char #\T port)
+  (write-decoded-time-iso8601-extended-time dt port))
+
+(define (write-decoded-time-iso8601-basic-date dt port)
+  (write (decoded-time/year dt) port)
+  (write-d2 (decoded-time/month dt) port)
+  (write-d2 (decoded-time/day dt) port))
+
+(define (write-decoded-time-iso8601-extended-date dt port)
   (write (decoded-time/year dt) port)
   (write-char #\- port)
   (write-d2 (decoded-time/month dt) port)
   (write-char #\- port)
-  (write-d2 (decoded-time/day dt) port)
-  (write-char #\T port)
+  (write-d2 (decoded-time/day dt) port))
+
+(define (write-decoded-time-iso8601-basic-time dt port)
+  (write-d2 (decoded-time/hour dt) port)
+  (write-d2 (decoded-time/minute dt) port)
+  (write-d2 (decoded-time/second dt) port))
+
+(define (write-decoded-time-iso8601-extended-time dt port)
   (write-d2 (decoded-time/hour dt) port)
   (write-char #\: port)
   (write-d2 (decoded-time/minute dt) port)
   (write-char #\: port)
-  (write-d2 (decoded-time/second dt) port)
+  (write-d2 (decoded-time/second dt) port))
+
+(define (write-decoded-time-iso8601-zone dt port)
   (let ((zone (decoded-time/zone dt)))
     (if zone
 	(let ((minutes
@@ -580,18 +623,33 @@ USA.
   (decoded-time->file-time (iso8601-string->decoded-time string)))
 
 (define parser:iso8601-date/time
-  ;; The ISO spec says that a date/time must be either entirely in
-  ;; basic format or entirely in extended format.  But the XML-RPC
-  ;; "spec" has usage that's a mix between the formats.  Hence we
-  ;; accept any combination of the two formats.  Use of the space
-  ;; separator isn't allowed, but we used to generate strings with it,
-  ;; so don't barf if we see it.
+  ;; Use of the space separator isn't allowed, but we used to generate
+  ;; strings with it, so don't barf if we see it.
   (*parser
    (encapsulate convert-8601-date/time
-     (seq (alt parse-basic-8601-date parse-extended-8601-date)
-	  (alt "T" " ")
-	  (alt parse-basic-8601-time parse-extended-8601-time)
-	  (alt parse-basic-8601-zone parse-extended-8601-zone)))))
+     (alt (seq parse-basic-8601-date
+	       (alt "T" " ")
+	       parse-basic-8601-time
+	       parse-basic-8601-zone)
+	  (seq parse-extended-8601-date
+	       (alt "T" " ")
+	       parse-extended-8601-time
+	       parse-extended-8601-zone)))))
+
+;;; A literal interpretation of the XML-RPC `specification' at
+;;; <http://www.xmlrpc.com/spec> might suggest that the only valid
+;;; date/time string is `19980717T14:08:55', which is the solitary
+;;; example given for the `dateTime.iso8601' element.  Who knows what
+;;; bizarre beasts pretending to be ISO 8601 strings might turn up in
+;;; the wild?
+
+(define parser:xml-rpc-iso8601-date/time
+  (*parser
+   (encapsulate convert-8601-date/time
+     (seq (alt parse-extended-8601-date parse-basic-8601-date)
+	  "T"
+	  (alt parse-extended-8601-time parse-basic-8601-time)
+	  (alt parse-extended-8601-zone parse-basic-8601-zone)))))
 
 (define (convert-8601-date/time v)
   (let ((year (vector-ref v 0))

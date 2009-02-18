@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.688 2008/09/29 05:41:51 cph Exp $
+$Id: runtime.pkg,v 14.689 2009/02/18 07:57:41 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1280,6 +1280,7 @@ USA.
 	  decoded-time->iso8601-string
 	  decoded-time->rfc2822-string
 	  decoded-time->universal-time
+	  decoded-time->xml-rpc-iso8601-string
 	  decoded-time/date-string
 	  decoded-time/day
 	  decoded-time/day-of-week
@@ -1339,9 +1340,12 @@ USA.
 	  universal-time->local-rfc2822-string
 	  write-decoded-time-as-ctime
 	  write-decoded-time-as-http
-	  write-decoded-time-as-iso8601
+	  (write-decoded-time-as-iso8601
+	   write-decoded-time-as-iso8601-extended)
 	  write-decoded-time-as-rfc2822
-	  write-time-zone))
+	  write-decoded-time-as-xml-rpc-iso8601
+	  write-time-zone
+	  xml-rpc-iso8601-string->decoded-time))
 
 (define-package (runtime debugger)
   (files "debug")
