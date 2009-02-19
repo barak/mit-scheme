@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 14.25 2008/01/30 20:02:34 cph Exp $
+$Id: scode.scm,v 14.26 2009/02/19 05:27:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,11 +29,11 @@ USA.
 ;;; package: (runtime scode)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! scode-constant/type-vector (make-scode-constant/type-vector))
   unspecific)
-
+
 ;;;; Constant
 
 (define scode-constant/type-vector)
@@ -82,67 +82,81 @@ USA.
 
 ;;;; Quotation
 
-(define-integrable (make-quotation expression)
+(define (make-quotation expression)
   (&typed-singleton-cons (ucode-type quotation) expression))
 
-(define-integrable (quotation? object)
+(define (quotation? object)
   (object-type? (ucode-type quotation) object))
 
-(define-integrable (quotation-expression quotation)
+(define-guarantee quotation "SCode quotation")
+
+(define (quotation-expression quotation)
+  (guarantee-quotation quotation 'QUOTATION-EXPRESSION)
   (&singleton-element quotation))
 
 ;;;; Variable
 
-(define-integrable (make-variable name)
+(define (make-variable name)
   (system-hunk3-cons (ucode-type variable) name #t '()))
 
-(define-integrable (variable? object)
+(define (variable? object)
   (object-type? (ucode-type variable) object))
 
-(define-integrable (variable-name variable)
+(define-guarantee variable "SCode variable")
+
+(define (variable-name variable)
+  (guarantee-variable variable 'VARIABLE-NAME)
   (system-hunk3-cxr0 variable))
 
-(define-integrable (variable-components variable receiver)
+(define (variable-components variable receiver)
   (receiver (variable-name variable)))
 
 ;;;; Definition/Assignment
 
-(define-integrable (make-definition name value)
+(define (make-definition name value)
   (&typed-pair-cons (ucode-type definition) name value))
 
-(define-integrable (definition? object)
+(define (definition? object)
   (object-type? (ucode-type definition) object))
 
-(define-integrable (definition-name definition)
+(define-guarantee definition "SCode definition")
+
+(define (definition-name definition)
+  (guarantee-definition definition 'DEFINITION-NAME)
   (system-pair-car definition))
 
-(define-integrable (definition-value definition)
+(define (definition-value definition)
+  (guarantee-definition definition 'DEFINITION-VALUE)
   (&pair-cdr definition))
 
 (define (definition-components definition receiver)
   (receiver (definition-name definition)
 	    (definition-value definition)))
 
-(define-integrable (assignment? object)
+(define (assignment? object)
   (object-type? (ucode-type assignment) object))
 
-(define-integrable (make-assignment-from-variable variable value)
+(define-guarantee assignment "SCode assignment")
+
+(define (make-assignment-from-variable variable value)
   (&typed-pair-cons (ucode-type assignment) variable value))
 
-(define-integrable (assignment-variable assignment)
+(define (assignment-variable assignment)
+  (guarantee-assignment assignment 'ASSIGNMENT-VARIABLE)
   (system-pair-car assignment))
 
-(define-integrable (assignment-value assignment)
+(define (assignment-value assignment)
+  (guarantee-assignment assignment 'ASSIGNMENT-VALUE)
   (&pair-cdr assignment))
 
 (define (assignment-components-with-variable assignment receiver)
   (receiver (assignment-variable assignment)
 	    (assignment-value assignment)))
 
-(define-integrable (make-assignment name value)
+(define (make-assignment name value)
   (make-assignment-from-variable (make-variable name) value))
 
-(define-integrable (assignment-name assignment)
+(define (assignment-name assignment)
   (variable-name (assignment-variable assignment)))
 
 (define (assignment-components assignment receiver)
@@ -151,22 +165,28 @@ USA.
 
 ;;;; Comment
 
-(define-integrable (make-comment text expression)
+(define (make-comment text expression)
   (&typed-pair-cons (ucode-type comment) expression text))
 
-(define-integrable (comment? object)
+(define (comment? object)
   (object-type? (ucode-type comment) object))
 
-(define-integrable (comment-text comment)
+(define-guarantee comment "SCode comment")
+
+(define (comment-text comment)
+  (guarantee-comment comment 'COMMENT-TEXT)
   (system-pair-cdr comment))
 
-(define-integrable (set-comment-text! comment text)
+(define (set-comment-text! comment text)
+  (guarantee-comment comment 'SET-COMMENT-TEXT!)
   (system-pair-set-cdr! comment text))
 
-(define-integrable (comment-expression comment)
+(define (comment-expression comment)
+  (guarantee-comment comment 'COMMENT-EXPRESSION)
   (&pair-car comment))
 
-(define-integrable (set-comment-expression! comment expression)
+(define (set-comment-expression! comment expression)
+  (guarantee-comment comment 'SET-COMMENT-EXPRESSION!)
   (&pair-set-car! comment expression))
 
 (define (comment-components comment receiver)
@@ -175,7 +195,7 @@ USA.
 
 ;;;; Declaration
 
-(define-integrable (make-declaration text expression)
+(define (make-declaration text expression)
   (make-comment (cons declaration-tag text) expression))
 
 (define (declaration? object)
@@ -184,19 +204,25 @@ USA.
 	 (and (pair? text)
 	      (eq? (car text) declaration-tag)))))
 
-(define-integrable declaration-tag
+(define declaration-tag
   ((ucode-primitive string->symbol) "#[declaration]"))
 
-(define-integrable (declaration-text declaration)
+(define-guarantee declaration "SCode declaration")
+
+(define (declaration-text declaration)
+  (guarantee-declaration declaration 'DECLARATION-TEXT)
   (cdr (comment-text declaration)))
 
-(define-integrable (set-declaration-text! declaration text)
+(define (set-declaration-text! declaration text)
+  (guarantee-declaration declaration 'SET-DECLARATION-TEXT!)
   (set-cdr! (comment-text declaration) text))
 
-(define-integrable (declaration-expression declaration)
+(define (declaration-expression declaration)
+  (guarantee-declaration declaration 'DECLARATION-EXPRESSION)
   (comment-expression declaration))
 
-(define-integrable (set-declaration-expression! declaration expression)
+(define (set-declaration-expression! declaration expression)
+  (guarantee-declaration declaration 'SET-DECLARATION-EXPRESSION!)
   (set-comment-expression! declaration expression))
 
 (define (declaration-components declaration receiver)
@@ -205,24 +231,28 @@ USA.
 
 ;;;; The-Environment
 
-(define-integrable (make-the-environment)
+(define (make-the-environment)
   (object-new-type (ucode-type the-environment) 0))
 
-(define-integrable (the-environment? object)
+(define (the-environment? object)
   (object-type? (ucode-type the-environment) object))
 
 ;;;; Access
 
-(define-integrable (make-access environment name)
+(define (make-access environment name)
   (&typed-pair-cons (ucode-type access) environment name))
 
-(define-integrable (access? object)
+(define (access? object)
   (object-type? (ucode-type access) object))
 
+(define-guarantee access "SCode access")
+
 (define (access-environment expression)
+  (guarantee-access expression 'ACCESS-ENVIRONMENT)
   (&pair-car expression))
 
-(define-integrable (access-name expression)
+(define (access-name expression)
+  (guarantee-access expression 'ACCESS-NAME)
   (system-pair-cdr expression))
 
 (define (access-components expression receiver)
@@ -242,7 +272,10 @@ USA.
   (and (access? object)
        (system-global-environment? (access-environment object))))
 
-(define-integrable (absolute-reference-name reference)
+(define-guarantee absolute-reference "SCode absolute reference")
+
+(define (absolute-reference-name reference)
+  (guarantee-absolute-reference reference 'ABSOLUTE-REFERENCE-NAME)
   (access-name reference))
 
 (define (absolute-reference-to? object name)
@@ -251,14 +284,17 @@ USA.
 
 ;;;; Delay
 
-(define-integrable (make-delay expression)
+(define (make-delay expression)
   (&typed-singleton-cons (ucode-type delay) expression))
 
-(define-integrable (delay? object)
+(define (delay? object)
   (object-type? (ucode-type delay) object))
 
-(define-integrable (delay-expression expression)
+(define-guarantee delay "SCode delay")
+
+(define (delay-expression expression)
+  (guarantee-delay expression 'DELAY-EXPRESSION)
   (&singleton-element expression))
 
-(define-integrable (delay-components expression receiver)
+(define (delay-components expression receiver)
   (receiver (delay-expression expression)))

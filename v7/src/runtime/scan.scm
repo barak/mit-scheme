@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scan.scm,v 14.12 2008/01/30 20:02:34 cph Exp $
+$Id: scan.scm,v 14.13 2009/02/19 05:27:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -190,7 +190,10 @@ USA.
        (vector? (&triple-first object))
        (eq? (vector-ref (&triple-first object) 0) open-block-tag)))
 
+(define-guarantee open-block "SCode open-block")
+
 (define (open-block-components open-block receiver)
+  (guarantee-open-block open-block 'OPEN-BLOCK-COMPONENTS)
   (receiver (vector-ref (&triple-first open-block) 1)
 	    (vector-ref (&triple-first open-block) 2)
 	    (&triple-third open-block)))

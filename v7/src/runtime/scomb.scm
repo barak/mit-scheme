@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.29 2008/02/13 14:26:47 cph Exp $
+$Id: scomb.scm,v 14.30 2009/02/19 05:27:40 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -145,6 +145,8 @@ USA.
   (or (object-type? (ucode-type sequence-2) object)
       (object-type? (ucode-type sequence-3) object)))
 
+(define-guarantee sequence "SCode sequence")
+
 (define (sequence-actions expression)
   (cond ((object-type? (ucode-type sequence-2) expression)
 	 (append! (sequence-actions (&pair-car expression))
@@ -165,10 +167,9 @@ USA.
 	       (&triple-second expression)
 	       (&triple-third expression)))
 	(else
-	 (error:wrong-type-argument expression "SCode sequence"
-				    'SEQUENCE-IMMEDIATE-ACTIONS))))
+	 (error:not-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS))))
 
-(define-integrable (sequence-components expression receiver)
+(define (sequence-components expression receiver)
   (receiver (sequence-actions expression)))
 
 ;;;; Conditional
@@ -187,15 +188,20 @@ USA.
 (define (conditional? object)
   (object-type? (ucode-type conditional) object))
 
+(define-guarantee conditional "SCode conditional")
+
 (define undefined-conditional-branch unspecific)
 
-(define-integrable (conditional-predicate conditional)
+(define (conditional-predicate conditional)
+  (guarantee-conditional conditional 'CONDITIONAL-PREDICATE)
   (&triple-first conditional))
 
-(define-integrable (conditional-consequent conditional)
+(define (conditional-consequent conditional)
+  (guarantee-conditional conditional 'CONDITIONAL-CONSEQUENT)
   (&triple-second conditional))
 
-(define-integrable (conditional-alternative conditional)
+(define (conditional-alternative conditional)
+  (guarantee-conditional conditional 'CONDITIONAL-ALTERNATIVE)
   (&triple-third conditional))
 
 (define (conditional-components conditional receiver)
@@ -216,13 +222,17 @@ USA.
 			true)
       (&typed-pair-cons (ucode-type disjunction) predicate alternative)))
 
-(define-integrable (disjunction? object)
+(define (disjunction? object)
   (object-type? (ucode-type disjunction) object))
 
-(define-integrable (disjunction-predicate disjunction)
+(define-guarantee disjunction "SCode disjunction")
+
+(define (disjunction-predicate disjunction)
+  (guarantee-disjunction disjunction 'DISJUNCTION-PREDICATE)
   (&pair-car disjunction))
 
-(define-integrable (disjunction-alternative disjunction)
+(define (disjunction-alternative disjunction)
+  (guarantee-disjunction disjunction 'DISJUNCTION-ALTERNATIVE)
   (&pair-cdr disjunction))
 
 (define (disjunction-components disjunction receiver)
@@ -242,6 +252,8 @@ USA.
       (object-type? (ucode-type primitive-combination-1) object)
       (object-type? (ucode-type primitive-combination-2) object)
       (object-type? (ucode-type primitive-combination-3) object)))
+
+(define-guarantee combination "SCode combination")
 
 (define (make-combination operator operands)
   (if (and (procedure? operator)
@@ -317,8 +329,7 @@ USA.
 				 ,combination))
 	       ,case-n)
 	      (ELSE
-	       (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
-					  ',name)))))))
+	       (ERROR:NOT-COMBINATION ,combination ',name)))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination
@@ -351,7 +362,7 @@ USA.
 
 (define (combination-subexpressions expression)
   (combination-components expression cons))
-
+
 ;;;; Unassigned?
 
 (define (make-unassigned? name)
@@ -366,8 +377,11 @@ USA.
 	 (and (the-environment? (car operands))
 	      (symbol? (cadr operands))))))
 
-(define-integrable (unassigned?-name expression)
+(define-guarantee unassigned? "SCode unassigned test")
+
+(define (unassigned?-name expression)
+  (guarantee-unassigned? expression 'UNASSIGNED?-NAME)
   (cadr (combination-operands expression)))
 
-(define-integrable (unassigned?-components expression receiver)
+(define (unassigned?-components expression receiver)
   (receiver (unassigned?-name expression)))
