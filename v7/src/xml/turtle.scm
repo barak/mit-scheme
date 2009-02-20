@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.46 2008/10/12 06:31:05 cph Exp $
+$Id: turtle.scm,v 1.47 2009/02/20 13:34:17 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -129,12 +129,8 @@ USA.
    (with-pointer p
      (alt (map make-rdf-bnode
 	       (seq "_:" parse:name))
-	  ;; This notation should probably accept whitespace between the
-	  ;; brackets, but the spec is written like this:
 	  (encapsulate (lambda (v) v (make-rdf-bnode))
-	    (seq "["
-		 parse:ws*
-		 (alt "]" (error p "Malformed blank node"))))
+	    (seq "[" parse:ws* "]"))
 	  (map (lambda (pols) (cons 'BLANK-NODE pols))
 	       (seq "["
 		    parse:ws*
