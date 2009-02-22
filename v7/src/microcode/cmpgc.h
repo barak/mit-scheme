@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpgc.h,v 1.38 2008/01/30 20:02:11 cph Exp $
+$Id: cmpgc.h,v 1.39 2009/02/22 09:00:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -51,6 +51,9 @@ USA.
 #endif
 #ifndef START_OPERATOR_RELOCATION
 #  define START_OPERATOR_RELOCATION(scan, reference) do {} while (false)
+#endif
+#ifndef OPERATOR_RELOCATION_OFFSET
+#  define OPERATOR_RELOCATION_OFFSET 0
 #endif
 
 #ifdef CC_SUPPORT_P

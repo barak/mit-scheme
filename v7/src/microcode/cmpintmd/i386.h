@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.42 2008/01/30 20:02:24 cph Exp $
+$Id: i386.h,v 1.43 2009/02/22 09:00:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -232,6 +232,8 @@ typedef struct
   start_operator_relocation ((scan), (&ref));				\
   (scan) += 1;								\
 } while (false)
+
+#define OPERATOR_RELOCATION_OFFSET 1
 
 #define READ_COMPILED_CLOSURE_TARGET(a, r)				\
   read_compiled_closure_target ((a), (&r))

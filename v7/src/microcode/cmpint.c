@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.119 2008/02/14 08:20:22 riastradh Exp $
+$Id: cmpint.c,v 1.120 2009/02/22 09:00:47 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -153,12 +153,18 @@ static bool link_section_handler
   (linkage_section_type_t, cache_handler_t **, bool *);
 static void back_out_of_link_section (link_cc_state_t *);
 static void restore_link_cc_state (link_cc_state_t *);
+static void count_linkage_sections
+  (SCHEME_OBJECT *, SCHEME_OBJECT *, unsigned long *, unsigned long *);
+static SCHEME_OBJECT read_linkage_sections
+  (SCHEME_OBJECT *, SCHEME_OBJECT *, unsigned long, unsigned long);
+static bool section_execute_p (SCHEME_OBJECT);
 static void setup_compiled_invocation_from_primitive
   (SCHEME_OBJECT, unsigned long);
 static long setup_compiled_invocation (SCHEME_OBJECT, unsigned long);
 static long setup_lexpr_invocation
   (SCHEME_OBJECT, unsigned long, unsigned long);
 static bool open_gap (unsigned long, unsigned long);
+static bool unlinked_section_start_p (SCHEME_OBJECT *, SCHEME_OBJECT *);
 static bool cc_block_address_closure_p (SCHEME_OBJECT *);
 static void write_uuo_link (SCHEME_OBJECT, SCHEME_OBJECT *);
 static long make_fake_uuo_link (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
@@ -1011,6 +1017,91 @@ restore_link_cc_state (link_cc_state_t * s)
   (s->type) = (linkage_section_type (* (s->scan0)));
 }
 
+SCHEME_OBJECT
+cc_block_linkage_info (SCHEME_OBJECT block)
+{
+  SCHEME_OBJECT * const_addr
+    = (VECTOR_LOC (block, (1 + (VECTOR_LENGTH (MAKE_POINTER_OBJECT (TC_VECTOR, (VECTOR_LOC (block, 0))))))));
+  SCHEME_OBJECT * block_end = (CC_BLOCK_END (block));
+  unsigned long n_sections;
+  unsigned long n_words;
+
+  count_linkage_sections (const_addr, block_end, (&n_sections), (&n_words));
+  Primitive_GC_If_Needed (n_words);
+  return (read_linkage_sections (const_addr, block_end, n_sections, n_words));
+}
+
+static void
+count_linkage_sections (SCHEME_OBJECT * const_addr,
+			SCHEME_OBJECT * block_end,
+			unsigned long * n_sections,
+			unsigned long * n_words)
+{
+  SCHEME_OBJECT * scan = const_addr;
+  (*n_sections) = 0;
+  (*n_words) = 1;
+  while (unlinked_section_start_p (scan, block_end))
+    {
+      SCHEME_OBJECT h = (*scan++);
+      unsigned long count = (linkage_section_count (h));
+      (*n_sections) += 1;
+      /* One word for sections vector, one word for vector header,
+	 one word for type, rest for names.  */
+      (*n_words) += (3 + count);
+      scan +=
+	((section_execute_p (h))
+	 ? (OPERATOR_RELOCATION_OFFSET + (count * UUO_LINK_SIZE))
+	 : count);
+    }
+}
+
+static SCHEME_OBJECT
+read_linkage_sections (SCHEME_OBJECT * const_addr,
+		       SCHEME_OBJECT * block_end,
+		       unsigned long n_sections,
+		       unsigned long n_words)
+{
+  SCHEME_OBJECT * scan = const_addr;
+  SCHEME_OBJECT sections = (make_vector (n_sections, SHARP_F, false));
+  SCHEME_OBJECT * sp = (VECTOR_LOC (sections, 0));
+  SCHEME_OBJECT * spe = (VECTOR_LOC (sections, (VECTOR_LENGTH (sections))));
+  while (sp < spe)
+    {
+      SCHEME_OBJECT h = (*scan++);
+      SCHEME_OBJECT section
+	= (make_vector ((1 + (linkage_section_count (h))), SHARP_F, false));
+      SCHEME_OBJECT * p = (VECTOR_LOC (section, 0));
+      SCHEME_OBJECT * pe = (VECTOR_LOC (section, (VECTOR_LENGTH (section))));
+
+      (*p++) = (ULONG_TO_FIXNUM ((unsigned long) (linkage_section_type (h))));
+      if (section_execute_p (h))
+	{
+	  scan += OPERATOR_RELOCATION_OFFSET;
+	  while (p < pe)
+	    {
+	      (*p++) = (read_uuo_symbol (scan));
+	      scan += UUO_LINK_SIZE;
+	    }
+	}
+      else
+	while (p < pe)
+	  (*p++) = (*scan++);
+
+      (*sp++) = section;
+    }
+
+  return (sections);
+}
+
+static bool
+section_execute_p (SCHEME_OBJECT h)
+{
+  linkage_section_type_t type = (linkage_section_type (h));
+  return
+    ((type == LINKAGE_SECTION_TYPE_OPERATOR)
+     || (type == LINKAGE_SECTION_TYPE_GLOBAL_OPERATOR));
+}
+
 /* Interrupt/GC from Scheme
 
    These procedures are called from compiled code at the start
@@ -1646,6 +1737,16 @@ plausible_cc_block_p (SCHEME_OBJECT * block)
 	    && (ADDRESS_IN_CONSTANT_P (block_end))))
        && (ENVIRONMENT_P (*block_end)));
   }
+}
+
+static bool
+unlinked_section_start_p (SCHEME_OBJECT * mp, SCHEME_OBJECT * end)
+{
+  SCHEME_OBJECT marker = (*mp);
+  return
+    ((FIXNUM_P (marker))
+     && (((OBJECT_DATUM (marker)) >> 16) < N_LINKAGE_SECTION_TYPES)
+     && ((mp + 1 + ((OBJECT_DATUM (marker)) & 0xFFFFUL)) < end));
 }
 
 linkage_section_type_t
