@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.39 2008/01/30 20:01:50 cph Exp $
+$Id: rulfix.scm,v 1.40 2009/02/23 22:40:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -492,14 +492,22 @@ USA.
 	   (let ((with-target
 		   (lambda (target)
 		     (let ((jlabel (generate-label 'SHIFT-JOIN))
-			   (slabel (generate-label 'SHIFT-NEGATIVE)))
+			   (slabel (generate-label 'SHIFT-NEGATIVE))
+			   (zlabel (generate-label 'SHIFT-ZERO)))
 		       (LAP (MOV W (R ,ecx) ,source2)
 			    (SAR W (R ,ecx) (& ,scheme-type-width))
 			    (JS B (@PCR ,slabel))
+			    (CMP W (R ,ecx) (& ,scheme-datum-width))
+			    (JGE B (@PCR ,zlabel))
 			    (SHL W ,target (R ,ecx))
+			    (JMP B (@PCR ,jlabel))
+			    (LABEL ,zlabel)
+			    (XOR W ,target ,target)
 			    (JMP B (@PCR ,jlabel))
 			    (LABEL ,slabel)
 			    (NEG W (R ,ecx))
+			    (CMP W (R ,ecx) (& ,scheme-datum-width))
+			    (JGE W (@PCR ,zlabel))
 			    (SHR W ,target (R ,ecx))
 			    ,@(word->fixnum target)
 			    (LABEL ,jlabel))))))
