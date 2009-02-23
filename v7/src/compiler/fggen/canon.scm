@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: canon.scm,v 1.28 2008/01/30 20:01:44 cph Exp $
+$Id: canon.scm,v 1.29 2009/02/23 02:02:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -91,11 +91,13 @@ ARBITRARY:	The expression may be executed more than once.  It
   splice?)				; top level can be moved
 
 (define *top-level-declarations*)
+(define *top-level-definitions*)
 
 (define (canonicalize/top-level expression)
   (if (eq? compiler:package-optimization-level 'NONE)
-      expression
-      (fluid-let ((*top-level-declarations* '()))
+      (values expression #f)
+      (fluid-let ((*top-level-declarations* '())
+		  (*top-level-definitions* '()))
 	(let ((result
 	       (canonicalize/expression
 		expression '()
@@ -103,11 +105,13 @@ ARBITRARY:	The expression may be executed more than once.  It
 			 (not (eq? compiler:package-optimization-level 'LOW)))
 		    'TOP-LEVEL
 		    'FIRST-CLASS))))
-	  (if (canout-needs? result)
-	      (canonicalize/bind-environment (canout-expr result)
-					     (scode/make-the-environment)
-					     expression)
-	      (canout-expr result))))))
+	  (values
+	   (if (canout-needs? result)
+	       (canonicalize/bind-environment (canout-expr result)
+					      (scode/make-the-environment)
+					      expression)
+	       (canout-expr result))
+	   *top-level-definitions*)))))
 
 (define (canonicalize/optimization-low? context)
   (or (eq? context 'FIRST-CLASS)
@@ -302,7 +306,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 	(if (memq context '(ONCE-ONLY ARBITRARY))
 	    (error "canonicalize/definition: unscanned definition"
 		   expression))
-	(single-definition name value)))))
+	(single-definition name value context)))))
 
 (define (canonicalize/the-environment expr bound context)
   expr bound context ;; ignored
@@ -370,7 +374,10 @@ ARBITRARY:	The expression may be executed more than once.  It
 	 name
 	 (canout-expr value))))
 
-(define (single-definition name value)
+(define (single-definition name value context)
+  (if (and (eq? context 'TOP-LEVEL)
+	   (not (memq name *top-level-definitions*)))
+      (set! *top-level-definitions* (cons name *top-level-definitions*)))
   (make-canout (%single-definition name value)
 	       (canout-safe? value)
 	       true
@@ -379,7 +386,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 ;; To reduce code space, split into two blocks, one with constants,
 ;; the other with expressions to be evaluated.
 
-(define (multi-definition names* values*)
+(define (multi-definition names* values* context)
   (define (collect names values wrapper)
     (if (null? (cdr values))
 	(%single-definition (car names) (car values))
@@ -405,6 +412,9 @@ ARBITRARY:	The expression may be executed more than once.  It
 	       (scode/comment-directive? (scode/comment-text value)
 					 'COMPILE-PROCEDURE)))))
 
+  (if (eq? context 'TOP-LEVEL)
+      (set! *top-level-definitions*
+	    (lset-union eq? names* *top-level-definitions*)))
   (let loop ((names names*) (values values*) (last 'NONE)
 	     (knames '()) (kvals '()) (vnames '()) (vvals '()))
     (cond ((null? names)
@@ -460,12 +470,14 @@ ARBITRARY:	The expression may be executed more than once.  It
 		 ((null? (cdr group))
 		  (let ((element (car group)))
 		    (cons (single-definition (car element)
-					     (cadr element))
+					     (cadr element)
+					     context)
 			  groups)))
 		 (else
 		  (let ((group (reverse group)))
 		    (cons (multi-definition (map car group)
-					    (map cadr group))
+					    (map cadr group)
+					    context)
 			  groups)))))
 
 	 (define (collect actions groups group)
@@ -500,7 +512,8 @@ ARBITRARY:	The expression may be executed more than once.  It
 						group)))
 				(else
 				 (collect (cdr actions)
-					  (cons (single-definition name value*)
+					  (cons (single-definition name value*
+								   context)
 						(add-group group groups))
 					  '()))))))))))
 

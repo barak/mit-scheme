@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infstr.scm,v 1.21 2008/01/30 20:02:31 cph Exp $
+$Id: infstr.scm,v 1.22 2009/02/23 02:02:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,19 +30,61 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (make-dbg-info-vector info-vector)
-  (cons dbg-info-vector-tag info-vector))
+(define-structure (dbg-info-vector
+		   (type vector)
+		   (named
+		    ((ucode-primitive string->symbol)
+		     "#[(runtime compiler-info)dbg-info-vector]"))
+		   (conc-name dbg-info-vector/))
+  (compilation-type #f read-only #t)
+  (root-block #f read-only #t)
+  (other-blocks #f read-only #t)
+  (tl-bound #f read-only #t)
+  (tl-free #f read-only #t))
 
-(define (dbg-info-vector? object)
-  (and (pair? object) (eq? (car object) dbg-info-vector-tag)))
+(define (old-dbg-info-vector? object)
+  (and (pair? object)
+       (eq? (car object)
+	    '|#[(runtime compiler-info)dbg-info-vector-tag]|)))
 
-(define-integrable (dbg-info-vector/items info-vector)
-  (cdr info-vector))
+(define (dbg-info-vector/blocks-vector info)
+  (let ((lose
+	 (lambda ()
+	   (error:wrong-type-argument info "dbg-info-vector"
+				      'DBG-INFO-VECTOR/BLOCKS-VECTOR))))
+    (cond ((dbg-info-vector? info)
+	   (vector-append (vector (dbg-info-vector/root-block info))
+			  (dbg-info-vector/other-blocks info)))
+	  ((old-dbg-info-vector? info)
+	   (let ((items (cdr info)))
+	     (cond ((vector? items) items)
+		   ((%compound-items? items) (cadr items))
+		   (else (lose)))))
+	  (else (lose)))))
 
-(define-integrable dbg-info-vector-tag
-  ((ucode-primitive string->symbol)
-   "#[(runtime compiler-info)dbg-info-vector-tag]"))
+(define (dbg-info-vector/purification-root info)
+  (let ((lose
+	 (lambda ()
+	   (error:wrong-type-argument info "dbg-info-vector"
+				      'DBG-INFO-VECTOR/PURIFICATION-ROOT))))
+    (cond ((dbg-info-vector? info)
+	   (dbg-info-vector/other-blocks info))
+	  ((old-dbg-info-vector? info)
+	   (let ((items (cdr info)))
+	     (cond ((vector? items) #f)
+		   ((%compound-items? items) (caddr items))
+		   (else (lose)))))
+	  (else (lose)))))
 
+(define (%compound-items? items)
+  (and (pair? items)
+       (eq? (car items) 'COMPILED-BY-PROCEDURES)
+       (pair? (cdr items))
+       (vector? (cadr items))
+       (pair? (cddr items))
+       (vector? (caddr items))
+       (null? (cdddr items))))
+
 (define-structure (dbg-info
 		   (type vector)
 		   (named

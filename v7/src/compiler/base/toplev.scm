@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.78 2008/09/10 15:12:07 riastradh Exp $
+$Id: toplev.scm,v 4.79 2009/02/23 02:02:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -382,6 +382,11 @@ USA.
 (define *root-expression*)
 (define *root-procedure*)
 
+;; First set: phase/fg-generation
+;; Last used: [end]
+(define *tl-bound*)
+(define *tl-free*)
+
 ;; First set: phase/rtl-generation
 ;; Last used: phase/lap-linearization
 (define *rtl-expression*)
@@ -415,30 +420,38 @@ USA.
 	 (lambda ()
 	   (let ((value
 		  (let ((expression (thunk)))
-		    (let ((others
-			   (map (lambda (other) (vector-ref other 2))
-				(recursive-compilation-results))))
-		      (cond ((not (compiled-code-address? expression))
-			     (vector compiler:compile-by-procedures?
-				     expression
-				     others))
-			    ((null? others)
-			     expression)
-			    (else
-			     (scode/make-comment
-			      (make-dbg-info-vector
-			       (let ((all-blocks
-				      (list->vector
-				       (cons
-					(compiled-code-address->block
-					 expression)
-					others))))
-				 (if compiler:compile-by-procedures?
-				     (list 'COMPILED-BY-PROCEDURES
-					   all-blocks
-					   (list->vector others))
-				     all-blocks)))
-			      expression)))))))
+		    (let ((others (recursive-compilation-results)))
+		      (if (compiled-code-address? expression)
+			  (scode/make-comment
+			   (make-dbg-info-vector
+			    (if compiler:compile-by-procedures?
+				'COMPILED-BY-PROCEDURES
+				'COMPILED-AS-UNIT)
+			    (compiled-code-address->block expression)
+			    (list->vector
+			     (map (lambda (other)
+				    (vector-ref other 2))
+				  others))
+			    (list->vector
+			     (apply lset-union
+				    equal?
+				    *tl-bound*
+				    (map (lambda (other)
+					   (vector-ref other 3))
+					 others)))
+			    (list->vector
+			     (apply lset-union
+				    equal?
+				    *tl-free*
+				    (map (lambda (other)
+					   (vector-ref other 4))
+					 others))))
+			   expression)
+			  (vector compiler:compile-by-procedures?
+				  expression
+				  (map (lambda (other)
+					 (vector-ref other 2))
+				       others)))))))
 	     (if compiler:show-time-reports?
 		 (compiler-time-report "Total compilation time"
 				       *process-time*
@@ -478,6 +491,8 @@ USA.
 		(*root-expression*)
 		(*root-procedure*)
 		(*root-block*)
+		(*tl-bound*)
+		(*tl-free*)
 		(*rtl-expression*)
 		(*rtl-procedures*)
 		(*rtl-continuations*)
@@ -515,6 +530,8 @@ USA.
   (set! *root-expression*)
   (set! *root-procedure*)
   (set! *root-block*)
+  (set! *tl-bound*)
+  (set! *tl-free*)
   (set! *rtl-expression*)
   (set! *rtl-procedures*)
   (set! *rtl-continuations*)
@@ -649,8 +666,11 @@ USA.
 (define (phase/canonicalize-scode)
   (compiler-subphase "Scode Canonicalization"
     (lambda ()
-      (set! *scode* (canonicalize/top-level (last-reference *input-scode*)))
-      unspecific)))
+      (receive (scode bound)
+	  (canonicalize/top-level (last-reference *input-scode*))
+	(set! *scode* scode)
+	(set! *tl-bound* bound)
+	unspecific))))
 
 (define (phase/translate-scode)
   (compiler-subphase "Translation of Scode into Flow Graph"
@@ -674,6 +694,11 @@ USA.
 		  (error "Value of procedure compilation not procedure" node))
 	      (set! *root-procedure* operand))))
       (set! *root-block* (expression-block *root-expression*))
+      (if (not *tl-bound*)
+	  (set! *tl-bound*
+		(map variable-name (block-bound-variables *root-block*))))
+      (set! *tl-free*
+	    (map variable-name (block-free-variables *root-block*)))
       (if (or (null? *expressions*)
 	      (not (null? (cdr *expressions*))))
 	  (error "Multiple expressions"))

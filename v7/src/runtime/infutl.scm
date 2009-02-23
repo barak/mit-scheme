@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.78 2008/09/03 19:36:59 riastradh Exp $
+$Id: infutl.scm,v 1.79 2009/02/23 02:02:44 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -163,25 +163,6 @@ USA.
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
-
-(define (dbg-info-vector/blocks-vector info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) items)
-	  ((and (pair? items)
-		(pair? (cdr items))
-		(vector? (cadr items)))
-	   (cadr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
-
-(define (dbg-info-vector/purification-root info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) #f)
-	  ((and (pair? items)
-		(eq? (car items) 'COMPILED-BY-PROCEDURES)
-		(pair? (cdr items))
-		(pair? (cddr items)))
-	   (caddr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
 
 (define (fasload/update-debugging-info! value com-pathname)
   (cond ((compiled-code-address? value)
