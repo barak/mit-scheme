@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulflo.scm,v 1.31 2008/06/09 01:39:29 cph Exp $
+$Id: rulflo.scm,v 1.32 2009/02/24 23:09:56 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -321,18 +321,47 @@ USA.
 	  (FXCH (ST 0) (ST 1))
 	  (FYL2X)))))
 
-#|
-;; Disabled: F2XM1 is limited to -1 <= X <= +1.
 (define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
-     (LAP (FLDL2E)
-	  (FMULP (ST 1) (ST 0))
-	  (F2XM1)
-	  (FLD1)
-	  (FADDP (ST 1) (ST 0))))))
-|#
-
+     ;; Hair to avoid arithmetic for non-finite inputs: exp(-inf) = 0,
+     ;; but exp(x) = x for any other non-finite x.  We use the first
+     ;; free slot (1) to pick apart the double format to check for
+     ;; non-finite inputs, and (2) to avoid using two stack slots.
+     (let ((temp (temporary-register-reference))
+	   (infinity-or-nan (generate-label 'INFINITY-OR-NAN))
+	   (join (generate-label 'JOIN))
+	   (temp-pointer regnum:free-pointer))
+       (LAP (FST D (@R ,temp-pointer))
+	    (MOV W ,temp (@RO W ,temp-pointer 4))
+	    (AND W ,temp (&U #x7FFFFFFF))
+	    (CMP W ,temp (&U #x7FF00000))
+	    (JAE B (@PCR ,infinity-or-nan))
+	    ;; Compute 2^(x log_2 e) with F2XM1 and FSCALE.
+	    (FLDL2E)			;st0 = lg e, st1 = x
+	    (FMULP (ST 1) (ST 0))	;st0 = x lg e
+	    (FLD (ST 0))		;st0 = x lg e, st1 = x lg e
+	    (FRNDINT)			;st0 = I(x lg e), st1 = x lg e
+	    (FSUB (ST 1) (ST 0))	;st0 = I(x lg e), st1 = F(x lg e)
+	    (FSTP D (@R ,temp-pointer)) ;st0 = F(x lg e), save I(x lg e)
+	    (F2XM1)			;st0 = 2^F(x lg e) - 1
+	    (FLD1)			;st0 = 1, st1 = 2^F(x lg e) - 1
+	    (FADD)			;st0 = 2^F(x lg e)
+	    (FLD D (@R ,temp-pointer))	;st0 = I(x lg e), st1 = 2^F(x lg e)
+	    (FXCH (ST 0) (ST 1))	;st0 = 2^F(x lg e), st1 = I(x lg e)
+	    (FSCALE)			;st0 = 2^F(x lg e) * 2^I(x lg e),
+					;st1 = I(x lg e)
+	    (FSTP (ST 1))		;Drop st1, leaving in st0 the value
+	    (JMP B (@PCR ,join))	; 2^(F(x lg e) + I(x lg e)) = e^x.
+	  (LABEL ,infinity-or-nan)
+	    (CMP W (@RO W ,temp-pointer 4) (&U #xFFF00000))
+	    (JNE B (@PCR ,join))
+	    (CMP W (@RO W ,temp-pointer 0) (& 0))
+	    (JNE B (@PCR ,join))
+	    (FSTP (ST 0))		;Pop argument.
+	    (FLDZ)			;Return zero.
+	  (LABEL ,join))))))
+
 #|
 ;; Disabled: FPTAN limited to pi * 2^62.
 (define-arithmetic-method 'FLONUM-TAN flonum-methods/1-arg
@@ -342,16 +371,12 @@ USA.
 	  (FSTP (ST 0))			; FPOP
 	  ))))
 |#
-
+
 (define-arithmetic-method 'FLONUM-ATAN flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
      (LAP (FLD1)
 	  (FPATAN)))))
-
-#|
-;; Disabled: these aren't used due to broken rewriting rules.  See
-;; rulrew.scm for details.
 
 ;; For now, these preserve values in memory
 ;; in order to avoid flushing a stack location.
@@ -378,7 +403,6 @@ USA.
 	  (FLD D (@R ,regnum:free-pointer))
 	  (FXCH (ST 0) (ST 1))
 	  (FPATAN)))))
-|#
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
