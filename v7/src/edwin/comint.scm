@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comint.scm,v 1.35 2008/01/30 20:01:59 cph Exp $
+$Id: comint.scm,v 1.36 2009/03/05 20:09:21 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -56,7 +56,7 @@ USA.
 				    "TERMCAP=emacs:co#"
 				    (number->string
 				     (screen-x-size (selected-screen)))
-				    ":tc=unknown")
+				    ":tc=unknown:")
 				   "TERM=emacs"
 				   "EMACS=t")
 	 program
