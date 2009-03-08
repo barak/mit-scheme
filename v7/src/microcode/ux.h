@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.88 2008/01/30 20:02:21 cph Exp $
+$Id: ux.h,v 1.89 2009/03/08 00:02:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -852,22 +852,31 @@ extern void UX_prim_check_errno (enum syscall_names name);
 #define STD_VOID_SYSTEM_CALL(name, expression)				\
 {									\
   while ((expression) < 0)						\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
+    {									\
+      if (errno != EINTR)						\
+	error_system_call (errno, (name));				\
+      deliver_pending_interrupts ();					\
+    }									\
 }
 
 #define STD_UINT_SYSTEM_CALL(name, result, expression)			\
 {									\
   while (((result) = (expression)) < 0)					\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
+    {									\
+      if (errno != EINTR)						\
+	error_system_call (errno, (name));				\
+      deliver_pending_interrupts ();					\
+    }									\
 }
 
 #define STD_PTR_SYSTEM_CALL(name, result, expression)			\
 {									\
   while (((result) = (expression)) == 0)				\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
+    {									\
+      if (errno != EINTR)						\
+	error_system_call (errno, (name));				\
+      deliver_pending_interrupts ();					\
+    }									\
 }
 
 #endif /* SCM_UX_H */
