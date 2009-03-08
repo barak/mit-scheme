@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.79 2009/02/23 02:02:44 cph Exp $
+$Id: infutl.scm,v 1.80 2009/03/08 02:25:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -38,7 +38,6 @@ USA.
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
-  (set! wrappers-with-memoized-debugging-info (make-population))
   (add-secondary-gc-daemon! discard-debugging-info!)
   (initialize-uncompressed-files!)
   (add-event-receiver! event:after-restore initialize-uncompressed-files!)
@@ -91,18 +90,22 @@ USA.
   (without-interrupts
    (lambda ()
      (set-debugging-wrapper/info! wrapper info)
+     (if (not wrappers-with-memoized-debugging-info)
+	 (set! wrappers-with-memoized-debugging-info (make-population)))
      (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
 (define (discard-debugging-info!)
   (without-interrupts
    (lambda ()
-     (map-over-population! wrappers-with-memoized-debugging-info
-       (lambda (wrapper)
-	 (set-debugging-wrapper/info! wrapper #f)))
-     (set! wrappers-with-memoized-debugging-info (make-population))
+     (if wrappers-with-memoized-debugging-info
+	 (begin
+	   (map-over-population! wrappers-with-memoized-debugging-info
+	     (lambda (wrapper)
+	       (set-debugging-wrapper/info! wrapper #f)))
+	   (set! wrappers-with-memoized-debugging-info #f)))
      unspecific)))
 
-(define wrappers-with-memoized-debugging-info)
+(define wrappers-with-memoized-debugging-info #f)
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -661,7 +664,7 @@ USA.
 				    condition-type:file-error
 				    condition-type:bad-range-argument)
 	  (lambda (condition) condition (if-fail #f))
-        (lambda () (fasload filename #t))))))
+	(lambda () (fasload filename #t))))))
 
 (define (compressed-loader uncompressed-type)
   (lambda (compressed-file)
@@ -734,11 +737,11 @@ USA.
        (cond ((null? entries)
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
-                   (cddar entries)
-                   (or (file-exists? (cadar entries))
-                       (begin
-                         (set-cdr! (cdar entries) #f)
-                         #f)))
+		   (cddar entries)
+		   (or (file-exists? (cadar entries))
+		       (begin
+			 (set-cdr! (cdar entries) #f)
+			 #f)))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda ()
