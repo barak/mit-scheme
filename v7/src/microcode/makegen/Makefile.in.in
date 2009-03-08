@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.65 2008/09/17 16:36:28 riastradh Exp $
+# $Id: Makefile.in.in,v 1.66 2009/03/08 21:47:00 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -162,13 +162,13 @@ C_CLEAN_FILES = utabmd.c utabmd.bci
 .SUFFIXES: .c .o .s .m4
 
 .c.o:
-	$(COMPILE) -o $*.o -c $*.c
+	$(COMPILE) -o $@ -c $<
 
 .m4.s:
-	$(EXPAND) $*.m4 > $*.s
+	$(EXPAND) $< > $@
 
 .s.o:
-	$(ASSEMBLE) -o $*.o $*.s
+	$(ASSEMBLE) -o $@ $<
 
 # **** Main rules ****
 
