@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.103 2008/03/08 17:43:12 cph Exp $
+$Id: load.scm,v 14.104 2009/03/09 03:46:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -624,7 +624,8 @@ USA.
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
-	 (load arg (repl/environment repl))))))
+	 (fluid-let ((load/suppress-loading-message? (cmdl/batch-mode? repl)))
+	   (load arg (repl/environment repl)))))))
   (argument-command-line-parser "eval" #t
     (lambda (arg)
       (run-in-nearest-repl
