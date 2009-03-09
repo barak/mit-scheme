@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxenv.c,v 1.27 2008/01/30 20:02:21 cph Exp $
+$Id: uxenv.c,v 1.28 2009/03/09 21:35:52 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -158,7 +158,12 @@ static void
 initialize_process_clock (void)
 {
   struct tms buffer;
-  UX_times (&buffer);
+  while ((UX_times (&buffer)) == (-1))
+    if (errno != EINTR)
+      {
+	initial_process_clock = 0;
+	return;
+      }
   initial_process_clock = (PROCESS_TIME (buffer));
 }
 
@@ -167,13 +172,22 @@ OS_process_clock (void)
 {
   double ct = ((double) (UX_SC_CLK_TCK ()));
   struct tms buffer;
+  clock_t t;
   /* Was STD_VOID_SYSTEM_CALL, but at least one version of Ultrix
-     returns negative numbers other than -1 when there are no errors.  */
+     returns negative numbers other than -1 when there are no errors.
+     Furthermore, this should not signal an error for any reason. */
   while ((UX_times (&buffer)) == (-1))
-    if (errno != EINTR)
-      error_system_call (errno, syscall_times);
+    if (errno == EINTR)
+      deliver_pending_interrupts ();
+    else
+      {
+	t = initial_process_clock;
+	goto finish;
+      }
+  t = (PROCESS_TIME (buffer));
+ finish:
   return
-    (((((double) ((PROCESS_TIME (buffer)) - initial_process_clock)) * 2000.0)
+    (((((double) (t - initial_process_clock)) * 2000.0)
       + ct)
      / (2.0 * ct));
 }
@@ -202,7 +216,13 @@ static void
 initialize_real_time_clock (void)
 {
   struct timezone tz;
-  UX_gettimeofday ((&initial_rtc), (&tz));
+  while ((UX_gettimeofday ((&initial_rtc), (&tz))) == (-1))
+    if (errno != EINTR)
+      {
+	(initial_rtc . tv_sec) = 0;
+	(initial_rtc . tv_usec) = 0;
+	break;
+      }
 }
 
 double
@@ -210,14 +230,20 @@ OS_real_time_clock (void)
 {
   struct timeval rtc;
   struct timezone tz;
-  STD_VOID_SYSTEM_CALL
-    (syscall_gettimeofday, (UX_gettimeofday ((&rtc), (&tz))));
+  while ((UX_gettimeofday ((&rtc), (&tz))) == (-1))
+    if (errno == EINTR)
+      deliver_pending_interrupts ();
+    else
+      {
+	rtc = initial_rtc;
+	break;
+      }
   return
     ((((double) ((rtc . tv_sec) - (initial_rtc . tv_sec))) * 1000.0) +
      ((((double) ((rtc . tv_usec) - (initial_rtc . tv_usec))) + 500.0)
       / 1000.0));
 }
-
+
 #else /* not HAVE_GETTIMEOFDAY */
 #ifdef HAVE_TIMES
 
@@ -227,7 +253,12 @@ static void
 initialize_real_time_clock (void)
 {
   struct tms buffer;
-  initial_rtc = (UX_times (&buffer));
+  while ((initial_rtc = (UX_times (&buffer))) == (-1))
+    if (errno != EINTR)
+      {
+	initial_rtc = 0;
+	break;
+      }
 }
 
 double
@@ -237,13 +268,19 @@ OS_real_time_clock (void)
   struct tms buffer;
   clock_t t;
   /* Was STD_UINT_SYSTEM_CALL, but at least one version of Ultrix
-     returns negative numbers other than -1 when there are no errors.  */
+     returns negative numbers other than -1 when there are no errors.
+     Furthermore, this should not signal an error for any reason. */
   while ((t = (UX_times (&buffer))) == (-1))
-    if (errno != EINTR)
-      error_system_call (errno, syscall_times);
+    if (errno == EINTR)
+      deliver_pending_interrupts ();
+    else
+      {
+	t = initial_rtc;
+	break;
+      }
   return (((((double) (t - initial_rtc)) * 2000.0) + ct) / (2.0 * ct));
 }
-
+
 #else /* not HAVE_TIMES */
 
 static time_t initial_rtc;
@@ -251,14 +288,26 @@ static time_t initial_rtc;
 static void
 initialize_real_time_clock (void)
 {
-  initial_rtc = (time (0));
+  while ((initial_rtc = (UX_time (0))) == (-1))
+    if (errno != EINTR)
+      {
+	initial_rtc = 0;
+	break;
+      }
 }
 
 double
 OS_real_time_clock (void)
 {
   time_t t;
-  STD_UINT_SYSTEM_CALL (syscall_time, t, (UX_time (0)));
+  while ((t = (UX_time (0))) == (-1))
+    if (errno == EINTR)
+      deliver_pending_interrupts ();
+    else
+      {
+	t = initial_rtc;
+	break;
+      }
   return (((double) (t - initial_rtc)) * 1000.0);
 }
 
