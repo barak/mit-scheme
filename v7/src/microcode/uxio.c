@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.61 2009/03/21 07:09:09 riastradh Exp $
+$Id: uxio.c,v 1.62 2009/03/21 19:34:27 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -157,24 +157,54 @@ OS_channel_close_on_abort (Tchannel channel)
   (*cp) = (channel);
   transaction_record_action (tat_abort, channel_close_on_abort_1, cp);
 }
-
+
 /* This pile of kludgerosity makes the best effort it can to truly
    force everything out to disk on Linux, NetBSD, and Darwin. */
+
+static bool
+fsync_check_errno (enum syscall_names syscall_name)
+{
+  switch (errno)
+    {
+    case EINTR:
+      deliver_pending_interrupts ();
+      return (false);
+
+      /* If the channel doesn't support synchronization, make it a
+	 no-op, rather than an error. */
+    case EBADF:
+    case EINVAL:
+    case ENOSYS:
+    case ENOTTY:
+    case EROFS:
+      return (true);
+
+    default:
+      error_system_call (errno, syscall_name);
+    }
+}
+
+#define FSYNC_SYSTEM_CALL(name, expression)	\
+  do {						\
+    while ((expression) < 0)			\
+      if (fsync_check_errno (name))		\
+	break;					\
+  } while (0)
 
 void
 OS_channel_synchronize (Tchannel channel)
 {
   int fd = (CHANNEL_DESCRIPTOR (channel));
 #ifdef HAVE_FDATASYNC
-  STD_VOID_SYSTEM_CALL (syscall_fdatasync, (UX_fdatasync (fd)));
+  FSYNC_SYSTEM_CALL (syscall_fdatasync, (UX_fdatasync (fd)));
 #endif /* HAVE_FDATASYNC */
 #ifdef HAVE_FSYNC_RANGE
-  STD_VOID_SYSTEM_CALL
+  FSYNC_SYSTEM_CALL
     (syscall_fsync_range,
      (UX_fsync_range (fd, (FFILESYNC | FDISKSYNC), 0, 0)));
 #endif /* HAVE_FSYNC_RANGE */
 #ifdef HAVE_SYNC_FILE_RANGE
-  STD_VOID_SYSTEM_CALL
+  FSYNC_SYSTEM_CALL
     (syscall_sync_file_range,
      (UX_sync_file_range
       (fd, 0, 0,
@@ -183,13 +213,15 @@ OS_channel_synchronize (Tchannel channel)
 	| SYNC_FILE_RANGE_WAIT_AFTER))));
 #endif /* HAVE_SYNC_FILE_RANGE */
 #ifdef HAVE_FSYNC
-  STD_VOID_SYSTEM_CALL (syscall_fsync, (UX_fsync (fd)));
+  FSYNC_SYSTEM_CALL (syscall_fsync, (UX_fsync (fd)));
 #endif /* HAVE_FSYNC */
 #ifdef F_FULLFSYNC
-  STD_VOID_SYSTEM_CALL
+  FSYNC_SYSTEM_CALL
     (syscall_fcntl_FULLFSYNC, (UX_fcntl (fd, F_FULLFSYNC, 0)));
 #endif /* F_FULLFSYNC */
 }
+
+#undef FSYNC_SYSTEM_CALL
 
 enum channel_type
 OS_channel_type (Tchannel channel)
