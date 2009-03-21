@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.78 2008/01/30 20:02:14 cph Exp $
+$Id: memmag.c,v 9.79 2009/03/21 06:27:27 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -224,7 +224,7 @@ object_in_heap_p (SCHEME_OBJECT object)
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1,
 		  "(SAFETY-MARGIN)\n\
 Performs a garbage collection and returns the number of words\n\
-available for further allocation.  Also sets the "safety margin",\n\
+available for further allocation.  Also sets the \"safety margin\",\n\
 which is the number of reserved words at the top of the heap, to\n\
 SAFETY-MARGIN, which must be a non-negative integer.  Finally, runs\n\
 the primitive GC daemons before returning.")
@@ -244,7 +244,11 @@ the primitive GC daemons before returning.")
       Microcode_Termination (TERM_NO_SPACE);
     }
 
-  heap_reserved = (ARG_HEAP_RESERVED (1));
+  if ((ARG_HEAP_RESERVED (1)) < (heap_end - heap_start))
+    {
+      heap_reserved = (ARG_HEAP_RESERVED (1));
+      heap_alloc_limit = (heap_end - heap_reserved);
+    }
   POP_PRIMITIVE_FRAME (1);
 
   ENTER_CRITICAL_SECTION ("garbage collector");
