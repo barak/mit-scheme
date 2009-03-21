@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtty.c,v 1.17 2008/01/30 20:02:22 cph Exp $
+$Id: uxtty.c,v 1.18 2009/03/21 07:34:36 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,10 +43,14 @@ extern void tputs (const char *, int, void (*) (char));
 
 static Tchannel input_channel;
 static Tchannel output_channel;
+
 static int tty_x_size;
 static int tty_y_size;
 static const char * tty_command_beep;
 static const char * tty_command_clear;
+
+static bool tty_synchronized_p;
+static void UX_synchronize_tty (void);
 
 Tchannel
 OS_tty_input_channel (void)
@@ -63,24 +67,28 @@ OS_tty_output_channel (void)
 unsigned int
 OS_tty_x_size (void)
 {
+  UX_synchronize_tty ();
   return (tty_x_size);
 }
 
 unsigned int
 OS_tty_y_size (void)
 {
+  UX_synchronize_tty ();
   return (tty_y_size);
 }
 
 const char *
 OS_tty_command_beep (void)
 {
+  UX_synchronize_tty ();
   return (tty_command_beep);
 }
 
 const char *
 OS_tty_command_clear (void)
 {
+  UX_synchronize_tty ();
   return (tty_command_clear);
 }
 
@@ -116,75 +124,85 @@ tputs_write_char (char c)
   (*tputs_output_scan++) = c;
 }
 
+static void
+UX_synchronize_tty (void)
+{
+  if (!tty_synchronized_p)
+    {
+      tty_x_size = (-1);
+      tty_y_size = (-1);
+      tty_command_beep = ALERT_STRING;
+      tty_command_clear = 0;
+      /* Figure out the size of the terminal.  First ask the operating
+	 system, if it has an appropriate system call.  Then try the
+	 environment variables COLUMNS and LINES.  Then try termcap.
+	 Finally, use the default.  */
+#ifdef TIOCGWINSZ
+      {
+	struct winsize size;
+	if ((UX_ioctl (STDOUT_FILENO, TIOCGWINSZ, (&size))) >= 0)
+	  {
+	    tty_x_size = (size . ws_col);
+	    tty_y_size = (size . ws_row);
+	  }
+      }
+#endif /* TIOCGWINSZ */
+      if ((tty_x_size <= 0) || (tty_y_size <= 0))
+	{
+	  const char * columns = (UX_getenv ("COLUMNS"));
+	  const char * lines = (UX_getenv ("LINES"));
+	  if ((columns != 0) && (lines != 0))
+	    {
+	      int x = (atoi (columns));
+	      int y = (atoi (lines));
+	      if ((x > 0) && (y > 0))
+		{
+		  tty_x_size = x;
+		  tty_y_size = y;
+		}
+	    }
+	}
+      tputs_output_scan = tputs_output;
+      {
+	static char tgetstr_buffer [TERMCAP_BUFFER_SIZE];
+	char termcap_buffer [TERMCAP_BUFFER_SIZE];
+	char * tbp = tgetstr_buffer;
+	const char * term;
+	if ((isatty (STDOUT_FILENO))
+	    && (!option_emacs_subprocess)
+	    && ((term = (getenv ("TERM"))) != 0)
+	    && ((tgetent (termcap_buffer, term)) > 0))
+	  {
+	    if ((tty_x_size <= 0) || (tty_y_size <= 0))
+	      {
+		tty_x_size = (tgetnum ("co"));
+		tty_y_size = (tgetnum ("li"));
+	      }
+	    tty_command_clear = (tgetstr ("cl", (&tbp)));
+	  }
+      }
+      if ((tty_x_size <= 0) || (tty_y_size <= 0))
+	{
+	  tty_x_size = DEFAULT_TTY_X_SIZE;
+	  tty_y_size = DEFAULT_TTY_Y_SIZE;
+	}
+      if (tty_command_clear == 0)
+	tty_command_clear = "\f";
+      else
+	{
+	  char * command = tputs_output_scan;
+	  tputs (tty_command_clear, tty_y_size, tputs_write_char);
+	  (*tputs_output_scan++) = '\0';
+	  tty_command_clear = command;
+	}
+      tty_synchronized_p = true;
+    }
+}
+
 void
 UX_reinitialize_tty (void)
 {
-  tty_x_size = (-1);
-  tty_y_size = (-1);
-  tty_command_beep = ALERT_STRING;
-  tty_command_clear = 0;
-  /* Figure out the size of the terminal.  First ask the operating
-     system, if it has an appropriate system call.  Then try the
-     environment variables COLUMNS and LINES.  Then try termcap.
-     Finally, use the default.  */
-#ifdef TIOCGWINSZ
-  {
-    struct winsize size;
-    if ((UX_ioctl (STDOUT_FILENO, TIOCGWINSZ, (&size))) >= 0)
-      {
-	tty_x_size = (size . ws_col);
-	tty_y_size = (size . ws_row);
-      }
-  }
-#endif /* TIOCGWINSZ */
-  if ((tty_x_size <= 0) || (tty_y_size <= 0))
-    {
-      const char * columns = (UX_getenv ("COLUMNS"));
-      const char * lines = (UX_getenv ("LINES"));
-      if ((columns != 0) && (lines != 0))
-	{
-	  int x = (atoi (columns));
-	  int y = (atoi (lines));
-	  if ((x > 0) && (y > 0))
-	    {
-	      tty_x_size = x;
-	      tty_y_size = y;
-	    }
-	}
-    }
-  tputs_output_scan = tputs_output;
-  {
-    static char tgetstr_buffer [TERMCAP_BUFFER_SIZE];
-    char termcap_buffer [TERMCAP_BUFFER_SIZE];
-    char * tbp = tgetstr_buffer;
-    const char * term;
-    if ((isatty (STDOUT_FILENO))
-	&& (!option_emacs_subprocess)
-	&& ((term = (getenv ("TERM"))) != 0)
-	&& ((tgetent (termcap_buffer, term)) > 0))
-      {
-	if ((tty_x_size <= 0) || (tty_y_size <= 0))
-	  {
-	    tty_x_size = (tgetnum ("co"));
-	    tty_y_size = (tgetnum ("li"));
-	  }
-	tty_command_clear = (tgetstr ("cl", (&tbp)));
-      }
-  }
-  if ((tty_x_size <= 0) || (tty_y_size <= 0))
-    {
-      tty_x_size = DEFAULT_TTY_X_SIZE;
-      tty_y_size = DEFAULT_TTY_Y_SIZE;
-    }
-  if (tty_command_clear == 0)
-    tty_command_clear = "\f";
-  else
-    {
-      char * command = tputs_output_scan;
-      tputs (tty_command_clear, tty_y_size, tputs_write_char);
-      (*tputs_output_scan++) = '\0';
-      tty_command_clear = command;
-    }
+  tty_synchronized_p = false;
 }
 
 void
@@ -194,5 +212,6 @@ UX_initialize_tty (void)
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = (OS_open_fd (STDOUT_FILENO));
   (CHANNEL_INTERNAL (output_channel)) = 1;
-  UX_reinitialize_tty ();
+  tty_synchronized_p = false;
+  UX_synchronize_tty ();
 }
