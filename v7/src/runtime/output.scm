@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.44 2008/07/26 07:01:34 cph Exp $
+$Id: output.scm,v 14.45 2009/03/21 16:50:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -76,6 +76,11 @@ USA.
   (let ((operation (port/operation port 'BYTES-WRITTEN)))
     (and operation
 	 (operation port))))
+
+(define (output-port/synchronize-output port)
+  (let ((operation (port/operation port 'SYNCHRONIZE-OUTPUT)))
+    (if operation
+	(operation port))))
 
 ;;;; High level
 

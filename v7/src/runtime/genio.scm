@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.70 2008/09/17 06:24:32 cph Exp $
+$Id: genio.scm,v 1.71 2009/03/21 16:50:26 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -147,7 +147,8 @@ USA.
 	   (OUTPUT-CHANNEL ,generic-io/output-channel)
 	   (OUTPUT-TERMINAL-MODE ,generic-io/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,generic-io/set-output-blocking-mode)
-	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)))
+	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)
+	   (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
 	(other-operations
 	 `((CLOSE ,generic-io/close)
 	   (CODING ,generic-io/coding)
@@ -316,6 +317,11 @@ USA.
 	  ((RAW) (terminal-raw-output channel))
 	  ((#F) unspecific)
 	  (else (error:wrong-type-datum mode "terminal mode"))))))
+
+(define (generic-io/synchronize-output port)
+  (let ((channel (generic-io/output-channel port)))
+    (if channel
+	(channel-synchronize channel))))
 
 (define (generic-io/buffered-output-bytes port)
   (output-buffer-start (port-output-buffer port)))
