@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfs.c,v 1.32 2008/01/30 20:02:22 cph Exp $
+$Id: uxfs.c,v 1.33 2009/03/21 22:10:28 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -124,31 +124,29 @@ USA.
 #  define FILE_TOUCH_OPEN_TRIES 5
 #endif
 
+#define STAT_SYSTEM_CALL(name, expression, if_failure)	\
+  do {							\
+    while ((expression) < 0)				\
+      {							\
+	if ((errno == ENOENT) || (errno == ENOTDIR))	\
+	  if_failure;					\
+	if (errno != EINTR)				\
+	  error_system_call (errno, name);		\
+	deliver_pending_interrupts ();			\
+      }							\
+  } while (0)
+
 int
 UX_read_file_status (const char * filename, struct stat * s)
 {
-  while ((UX_lstat (filename, s)) < 0)
-    {
-      if (errno == EINTR)
-	continue;
-      if ((errno == ENOENT) || (errno == ENOTDIR))
-	return (0);
-      error_system_call (errno, syscall_lstat);
-    }
+  STAT_SYSTEM_CALL (syscall_lstat, (UX_lstat (filename, s)), return (0));
   return (1);
 }
 
 int
 UX_read_file_status_indirect (const char * filename, struct stat * s)
 {
-  while ((UX_stat (filename, s)) < 0)
-    {
-      if (errno == EINTR)
-	continue;
-      if ((errno == ENOENT) || (errno == ENOTDIR))
-	return (0);
-      error_system_call (errno, syscall_stat);
-    }
+  STAT_SYSTEM_CALL (syscall_stat, (UX_stat (filename, s)), return (0));
   return (1);
 }
 
@@ -241,13 +239,7 @@ UX_file_system_type (const char * name)
 {
 #ifdef HAVE_STATFS
   struct statfs s;
-  while ((UX_statfs (name, (&s))) < 0)
-    {
-      if ((errno == ENOENT) || (errno == ENOTDIR))
-	return (0);
-      if (errno != EINTR)
-	error_system_call (errno, syscall_statfs);
-    }
+  STAT_SYSTEM_CALL (syscall_statfs, (UX_statfs (name, (&s))), return (0));
 
 #ifdef __linux__
   switch (s . f_type)
