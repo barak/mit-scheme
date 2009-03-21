@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.40 2009/03/21 07:13:43 riastradh Exp $
+$Id: fileio.scm,v 1.41 2009/03/21 07:14:23 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -159,7 +159,7 @@ USA.
 (define (open-exclusive-binary-output-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
-	 (port (make-generic-i/o-port channel #f output-file-type pathname)))
+	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-coding port 'BINARY)
     (port/set-line-ending port 'BINARY)
