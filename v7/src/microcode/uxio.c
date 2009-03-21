@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.62 2009/03/21 19:34:27 riastradh Exp $
+$Id: uxio.c,v 1.63 2009/03/21 21:23:22 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -199,9 +199,18 @@ OS_channel_synchronize (Tchannel channel)
   FSYNC_SYSTEM_CALL (syscall_fdatasync, (UX_fdatasync (fd)));
 #endif /* HAVE_FDATASYNC */
 #ifdef HAVE_FSYNC_RANGE
-  FSYNC_SYSTEM_CALL
-    (syscall_fsync_range,
-     (UX_fsync_range (fd, (FFILESYNC | FDISKSYNC), 0, 0)));
+  {
+    int how;
+# if (defined (__NetBSD__))
+    how = FFILESYNC;
+#  ifdef FDISKSYNC
+    how |= FDISKSYNC;
+#  endif
+# elif (defined (_AIX))
+    how = O_DSYNC;
+# endif
+    FSYNC_SYSTEM_CALL (syscall_fsync_range, (UX_fsync_range (fd, how, 0, 0)));
+  }
 #endif /* HAVE_FSYNC_RANGE */
 #ifdef HAVE_SYNC_FILE_RANGE
   FSYNC_SYSTEM_CALL
