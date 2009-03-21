@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.59 2008/08/18 06:40:18 cph Exp $
+$Id: port.scm,v 1.60 2009/03/21 16:28:35 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -452,10 +452,14 @@ USA.
 (define-port-operation discretionary-flush-output)
 
 (define (port-position port)
-  ((port/operation port 'POSITION) port))
+  ((or (port/operation port 'POSITION)
+       (error:bad-range-argument port 'PORT-POSITION))
+   port))
 
 (define (set-port-position! port position)
-  ((port/operation port 'SET-POSITION!) port position))
+  ((or (port/operation port 'SET-POSITION!)
+       (error:bad-range-argument port 'SET-PORT-POSITION!))
+   port position))
 
 (set-record-type-unparser-method! <port>
   (lambda (state port)
