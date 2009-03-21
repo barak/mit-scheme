@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osio.h,v 1.25 2008/03/09 20:24:30 cph Exp $
+$Id: osio.h,v 1.26 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -58,6 +58,7 @@ extern int OS_channel_open_p (Tchannel channel);
 extern void OS_channel_close (Tchannel channel);
 extern void OS_channel_close_noerror (Tchannel channel);
 extern void OS_channel_close_on_abort (Tchannel channel);
+extern void OS_channel_synchronize (Tchannel channel);
 extern enum channel_type OS_channel_type (Tchannel channel);
 extern size_t OS_channel_read_load_file
   (Tchannel channel, void * buffer, size_t nbytes);

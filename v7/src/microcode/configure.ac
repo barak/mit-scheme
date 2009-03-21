@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.61 2008/09/27 03:59:05 cph Exp $])
+AC_REVISION([$Id: configure.ac,v 1.62 2009/03/21 07:09:08 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -621,7 +621,8 @@ AC_FUNC_VPRINTF
 AC_FUNC_WAIT3
 AC_CHECK_FUNCS([ctermid])
 AC_CHECK_FUNCS([dup2])
-AC_CHECK_FUNCS([fcntl fegetround fesetround floor fpathconf frexp ftruncate])
+AC_CHECK_FUNCS([fcntl fdatasync fegetround fesetround floor fpathconf frexp])
+AC_CHECK_FUNCS([fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
@@ -632,7 +633,7 @@ AC_CHECK_FUNCS([poll prealloc])
 AC_CHECK_FUNCS([rename rmdir])
 AC_CHECK_FUNCS([select setitimer setpgrp setpgrp2 shmat sigaction])
 AC_CHECK_FUNCS([sighold socket statfs strchr strerror strstr strtol])
-AC_CHECK_FUNCS([strtoul symlink sysconf])
+AC_CHECK_FUNCS([strtoul symlink sync_file_range sysconf])
 AC_CHECK_FUNCS([times truncate])
 AC_CHECK_FUNCS([uname utime])
 AC_CHECK_FUNCS([waitpid])

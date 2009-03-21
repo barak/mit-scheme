@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.89 2009/03/08 00:02:09 riastradh Exp $
+$Id: ux.h,v 1.90 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -457,9 +457,12 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_ctime ctime
 #define UX_dup dup
 #define UX_fcntl fcntl
+#define UX_fdatasync fdatasync
 #define UX_free free
 #define UX_fstat fstat
 #define UX_fstatfs fstatfs
+#define UX_fsync fsync
+#define UX_fsync_range fsync_range
 #define UX_ftruncate ftruncate
 #define UX_getegid getegid
 #define UX_getenv getenv
@@ -499,6 +502,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_stat stat
 #define UX_statfs statfs
 #define UX_symlink symlink
+#define UX_sync_file_range sync_file_range
 #define UX_system system
 #define UX_time time
 #define UX_times times

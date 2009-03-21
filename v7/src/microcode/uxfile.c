@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfile.c,v 1.17 2008/01/30 20:02:22 cph Exp $
+$Id: uxfile.c,v 1.18 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -95,6 +95,7 @@ name (const char * filename)						\
 
 DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY)
 DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC))
+DEFUN_OPEN_FILE (OS_open_exclusive_output_file, (O_WRONLY | O_CREAT | O_EXCL))
 DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
 
 #ifdef O_APPEND

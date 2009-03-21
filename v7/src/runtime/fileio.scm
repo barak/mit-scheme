@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.38 2008/07/11 05:26:42 cph Exp $
+$Id: fileio.scm,v 1.39 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -118,6 +118,14 @@ USA.
     (port/set-line-ending port (file-line-ending pathname))
     port))
 
+(define (open-exclusive-output-file filename)
+  (let* ((pathname (merge-pathnames filename))
+	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
+	 (port (make-generic-i/o-port channel #f output-file-type pathname)))
+    (set-channel-port! channel port)
+    (port/set-line-ending port (file-line-ending pathname))
+    port))
+
 (define (open-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
@@ -148,6 +156,15 @@ USA.
     (port/set-line-ending port 'BINARY)
     port))
 
+(define (open-exclusive-binary-output-file filename)
+  (let* ((pathname (merge-pathnames filename))
+	 (channel (file-open-exclusive-output-channel (->namestring pathname)))
+	 (port (make-generic-i/o-port channel #f output-file-type pathname)))
+    (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
+    port))
+
 (define (open-binary-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
@@ -172,8 +189,14 @@ USA.
 (define call-with-output-file
   (make-call-with-file open-output-file))
 
+(define call-with-exclusive-output-file
+  (make-call-with-file open-exclusive-output-file))
+
 (define call-with-binary-output-file
   (make-call-with-file open-binary-output-file))
+
+(define call-with-exclusive-binary-output-file
+  (make-call-with-file open-exclusive-binary-output-file))
 
 (define call-with-append-file
   (make-call-with-file (lambda (filename) (open-output-file filename #t))))
@@ -201,5 +224,11 @@ USA.
 (define with-output-to-file
   (make-with-output-to-file call-with-output-file))
 
+(define with-output-to-exclusive-file
+  (make-with-output-to-file call-with-exclusive-output-file))
+
 (define with-output-to-binary-file
   (make-with-output-to-file call-with-binary-output-file))
+
+(define with-output-to-exclusive-binary-file
+  (make-with-output-to-file call-with-exclusive-binary-output-file))

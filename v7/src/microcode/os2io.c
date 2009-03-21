@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2io.c,v 1.15 2008/03/09 20:24:27 cph Exp $
+$Id: os2io.c,v 1.16 2009/03/21 07:09:08 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -341,6 +341,11 @@ void
 OS_channel_blocking (Tchannel channel)
 {
   (CHANNEL_NONBLOCKING (channel)) = 0;
+}
+
+void
+OS_channel_synchronize (Tchannel channel)
+{
 }
 
 size_t

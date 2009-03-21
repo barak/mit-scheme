@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: osfile.h,v 1.10 2008/01/30 20:02:17 cph Exp $
+$Id: osfile.h,v 1.11 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,6 +32,7 @@ USA.
 
 extern Tchannel OS_open_input_file (const char * filename);
 extern Tchannel OS_open_output_file (const char * filename);
+extern Tchannel OS_open_exclusive_output_file (const char * filename);
 extern Tchannel OS_open_io_file (const char * filename);
 extern Tchannel OS_open_append_file (const char * filename);
 extern Tchannel OS_open_load_file (const char * filename);

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.689 2009/02/18 07:57:41 riastradh Exp $
+$Id: runtime.pkg,v 14.690 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1686,17 +1686,23 @@ USA.
 	  call-with-binary-append-file
 	  call-with-binary-input-file
 	  call-with-binary-output-file
+	  call-with-exclusive-binary-output-file
+	  call-with-exclusive-output-file
 	  call-with-input-file
 	  call-with-output-file
 	  open-binary-i/o-file
 	  open-binary-input-file
 	  open-binary-output-file
+	  open-exclusive-binary-output-file
+	  open-exclusive-output-file
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
 	  with-input-from-binary-file
 	  with-input-from-file
 	  with-output-to-binary-file
+	  with-output-to-exclusive-binary-file
+	  with-output-to-exclusive-file
 	  with-output-to-file)
   (initialization (initialize-package!)))
 
@@ -2875,6 +2881,7 @@ USA.
 	  channel-port
 	  channel-read
 	  channel-read-block
+	  channel-synchronize
 	  channel-table
 	  channel-type
 	  channel-type=directory?
@@ -2903,6 +2910,7 @@ USA.
 	  error:not-directory-channel
 	  error:not-dld-handle
 	  file-open-append-channel
+	  file-open-exclusive-output-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel

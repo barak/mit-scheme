@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosfile.c,v 1.16 2008/01/30 20:02:19 cph Exp $
+$Id: prosfile.c,v 1.17 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -62,6 +62,17 @@ The channel number is saved in the cdr of WEAK-PAIR.\n\
 If the file exists, it is rewritten.")
   NEW_OPEN_FILE_PRIMITIVE (OS_open_output_file)
 
+/* Really this should just return #F or something, I think, since the
+   possibility of the file's existence is so common a case to worry
+   about.  Doing so requires more changes to the runtime, though. */
+
+DEFINE_PRIMITIVE ("NEW-FILE-OPEN-EXCLUSIVE-OUTPUT-CHANNEL",
+                  Prim_new_file_open_exclusive_output_channel, 2, 2,
+  "Open an output file called FILENAME.\n\
+The channel number is saved in the cdr of WEAK-PAPIR.\n\
+If the file exists, an error is signalled.")
+  NEW_OPEN_FILE_PRIMITIVE (OS_open_exclusive_output_file)
+
 DEFINE_PRIMITIVE ("NEW-FILE-OPEN-IO-CHANNEL", Prim_new_file_open_io_channel,
 		  2, 2,
   "Open a file called FILENAME.\n\
@@ -97,6 +108,12 @@ DEFINE_PRIMITIVE ("FILE-OPEN-OUTPUT-CHANNEL", Prim_file_open_output_channel,
   "Open an output file called FILENAME, returning a channel number.\n\
 If the file exists, it is rewritten.")
   OPEN_FILE_PRIMITIVE (OS_open_output_file)
+
+DEFINE_PRIMITIVE ("FILE-OPEN-EXCLUSIVE-OUTPUT-CHANNEL",
+                  Prim_file_open_exclusive_output_channel, 2, 2,
+  "Open an output file called FILENAME, returning a channel number.\n\
+If the file exists, an error is signalled.")
+  OPEN_FILE_PRIMITIVE (OS_open_exclusive_output_file)
 
 DEFINE_PRIMITIVE ("FILE-OPEN-IO-CHANNEL", Prim_file_open_io_channel, 1, 1,
   "Open a file called FILENAME, returning a channel number.\n\

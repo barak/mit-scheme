@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.30 2008/01/30 20:02:19 cph Exp $
+$Id: prosio.c,v 1.31 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -65,6 +65,16 @@ DEFINE_PRIMITIVE ("CHANNEL-CLOSE", Prim_channel_close, 1, 1,
 	OS_channel_close (channel);
       }
   }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-SYNCHRONIZE", Prim_channel_synchronize, 1, 1,
+  "(CHANNEL)\n\
+Synchronize CHANNEL with any permanent storage associated with it,\n\
+forcing any buffered data to be written permanently.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_channel_synchronize (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 

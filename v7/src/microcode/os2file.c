@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2file.c,v 1.8 2008/01/30 20:02:16 cph Exp $
+$Id: os2file.c,v 1.9 2009/03/21 07:09:08 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -92,6 +92,13 @@ OS_open_append_file (const char * filename)
   (void) set_file_pointer (channel, FILE_END, 0);
   transaction_commit ();
   return (channel);
+}
+
+Tchannel
+OS_open_exclusive_output_file (const char * filename)
+{
+  error_unimplemented_primitive ();
+  return (0);
 }
 
 static Tchannel

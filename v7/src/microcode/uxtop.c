@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.39 2008/01/30 20:02:22 cph Exp $
+$Id: uxtop.c,v 1.40 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -362,9 +362,14 @@ static const char * syscall_names_table [] =
   "close",
   "connect",
   "fcntl-getfl",
+  "fcntl-fullfsync",
   "fcntl-setfl",
+  "fdatasync",
   "fork",
   "fstat",
+  "fstatfs",
+  "fsync",
+  "fsync_range",
   "ftruncate",
   "getcwd",
   "gethostname",
@@ -377,8 +382,10 @@ static const char * syscall_names_table [] =
   "listen",
   "localtime",
   "lseek",
+  "lstat",
   "malloc",
   "mkdir",
+  "mktime",
   "open",
   "opendir",
   "pause",
@@ -391,13 +398,17 @@ static const char * syscall_names_table [] =
   "select",
   "setitimer",
   "setpgid",
+  "setsockopt",
   "shutdown",
   "sighold",
   "sigprocmask",
   "sigsuspend",
   "sleep",
   "socket",
+  "stat",
+  "statfs",
   "symlink",
+  "sync_file_range",
   "tcdrain",
   "tcflush",
   "tcgetpgrp",
@@ -410,13 +421,6 @@ static const char * syscall_names_table [] =
   "utime",
   "vfork",
   "write",
-  "stat",
-  "lstat",
-  "mktime",
-  "dynamic-load",
-  "statfs",
-  "fstatfs",
-  "setsockopt"
 };
 
 void

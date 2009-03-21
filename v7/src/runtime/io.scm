@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.88 2008/01/30 20:02:31 cph Exp $
+$Id: io.scm,v 14.89 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,6 +142,7 @@ USA.
 	(ucode-primitive channel-descriptor 1)
 	(ucode-primitive channel-nonblocking 1)
 	(ucode-primitive channel-read 4)
+	(ucode-primitive channel-synchronize 1)
 	(ucode-primitive channel-write 4)
 	(ucode-primitive file-length-new 1)
 	(ucode-primitive file-position 1)
@@ -279,29 +280,54 @@ USA.
 			  (or (descriptor->channel descriptor)
 			      (make-channel descriptor)))
 			descriptors))))))
+
+(define (channel-synchronize channel)
+  ((ucode-primitive channel-synchronize 1) (channel-descriptor channel)))
 
 ;;;; File Primitives
 
-(define (file-open primitive filename)
+(define (file-open primitive operator filename)
   (let ((channel (open-channel (lambda (p) (primitive filename p)))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(begin
 	  (channel-close channel)
-	  (error:bad-range-argument filename primitive)))
-    channel))
+	  (file-open primitive
+		     operator
+		     (error:file-operation filename
+					   "open"
+					   "file"
+					   (if (channel-type=directory? channel)
+					       "Is a directory"
+					       "Unknown file type")
+					   operator
+					   (list filename))))
+	channel)))
 
 (define (file-open-input-channel filename)
-  (file-open (ucode-primitive new-file-open-input-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-input-channel 2)
+	     file-open-input-channel
+	     filename))
 
 (define (file-open-output-channel filename)
-  (file-open (ucode-primitive new-file-open-output-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-output-channel 2)
+	     file-open-output-channel
+	     filename))
+
+(define (file-open-exclusive-output-channel filename)
+  (file-open (ucode-primitive new-file-open-exclusive-output-channel 2)
+	     file-open-exclusive-output-channel
+	     filename))
 
 (define (file-open-io-channel filename)
-  (file-open (ucode-primitive new-file-open-io-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-io-channel 2)
+	     file-open-io-channel
+	     filename))
 
 (define (file-open-append-channel filename)
-  (file-open (ucode-primitive new-file-open-append-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-append-channel 2)
+	     file-open-append-channel
+	     filename))
 
 (define (channel-file-length channel)
   ((ucode-primitive file-length-new 1) (channel-descriptor channel)))

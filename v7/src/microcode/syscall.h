@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: syscall.h,v 1.23 2008/01/30 20:02:21 cph Exp $
+$Id: syscall.h,v 1.24 2009/03/21 07:09:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,9 +54,14 @@ enum syscall_names
   syscall_close,
   syscall_connect,
   syscall_fcntl_GETFL,
+  syscall_fcntl_FULLFSYNC,
   syscall_fcntl_SETFL,
+  syscall_fdatasync,
   syscall_fork,
   syscall_fstat,
+  syscall_fstatfs,
+  syscall_fsync,
+  syscall_fsync_range,
   syscall_ftruncate,
   syscall_getcwd,
   syscall_gethostname,
@@ -69,8 +74,10 @@ enum syscall_names
   syscall_listen,
   syscall_localtime,
   syscall_lseek,
+  syscall_lstat,
   syscall_malloc,
   syscall_mkdir,
+  syscall_mktime,
   syscall_open,
   syscall_opendir,
   syscall_pause,
@@ -83,13 +90,17 @@ enum syscall_names
   syscall_select,
   syscall_setitimer,
   syscall_setpgid,
+  syscall_setsockopt,
   syscall_shutdown,
   syscall_sighold,
   syscall_sigprocmask,
   syscall_sigsuspend,
   syscall_sleep,
   syscall_socket,
+  syscall_stat,
+  syscall_statfs,
   syscall_symlink,
+  syscall_sync_file_range,
   syscall_tcdrain,
   syscall_tcflush,
   syscall_tcgetpgrp,
@@ -102,13 +113,6 @@ enum syscall_names
   syscall_utime,
   syscall_vfork,
   syscall_write,
-  syscall_stat,
-  syscall_lstat,
-  syscall_mktime,
-  syscall_dld,
-  syscall_statfs,
-  syscall_fstatfs,
-  syscall_setsockopt
 };
 
 enum syserr_names
