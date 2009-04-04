@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.36 2008/09/16 20:13:50 riastradh Exp $
+$Id: ctop.scm,v 1.37 2009/04/04 18:41:23 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,7 +34,6 @@ USA.
 
 (define (compiler:compiled-code-pathname-type) "c")
 (define compiler:invoke-c-compiler? #t)
-(define compiler:invoke-verbose? #t)
 
 (define (compiler-file-output compiler-output pathname)
   (let ((code (cdr (vector-ref compiler-output 1))))
@@ -162,7 +161,7 @@ USA.
       (cond ((not (= rc 0))
 	     (copy)
 	     (error "C compiler returned non-zero exit code:" rc))
-	    (compiler:invoke-verbose?
+	    (compiler:noisy?
 	     (copy))))))
 
 (define (c-output-extension)
