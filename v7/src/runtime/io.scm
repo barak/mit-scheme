@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.89 2009/03/21 07:09:09 riastradh Exp $
+$Id: io.scm,v 14.90 2009/04/15 19:30:53 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -343,11 +343,17 @@ USA.
   ((ucode-primitive file-truncate 2) (channel-descriptor channel) length))
 
 (define (make-pipe)
-  (without-interrupts
-   (lambda ()
-     (let ((pipe ((ucode-primitive make-pipe 0))))
-       (values (make-channel (car pipe))
-	       (make-channel (cdr pipe)))))))
+  (let* ((writer)
+	 (reader
+	  (open-channel
+	   (lambda (reader-pair)
+	     (set! writer
+		   (open-channel
+		    (lambda (writer-pair)
+		      ((ucode-primitive new-make-pipe 2)
+		       reader-pair
+		       writer-pair))))))))
+    (values reader writer)))
 
 ;;;; Terminal Primitives
 
