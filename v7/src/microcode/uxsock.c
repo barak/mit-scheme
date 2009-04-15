@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.37 2008/01/30 20:02:22 cph Exp $
+$Id: uxsock.c,v 1.38 2009/04/15 13:00:32 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,7 +43,7 @@ OS_open_tcp_stream_socket (void * host, unsigned int port)
   Tchannel channel;
 
   transaction_begin ();
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_tcp_stream_socket, channel =);
   OS_channel_close_on_abort (channel);
@@ -229,7 +229,7 @@ OS_open_unix_stream_socket (const char * filename)
   Tchannel channel;
 
   transaction_begin ();
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_unix_stream_socket, channel =);
   OS_channel_close_on_abort (channel);
@@ -248,7 +248,7 @@ Tchannel
 OS_create_tcp_server_socket (void)
 {
   int s;
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_tcp_server_socket, return);
 }

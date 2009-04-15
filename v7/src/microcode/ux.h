@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.90 2009/03/21 07:09:09 riastradh Exp $
+$Id: ux.h,v 1.91 2009/04/15 13:00:24 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -852,35 +852,30 @@ extern int UX_sigsuspend (const sigset_t *);
 #endif /* not _POSIX_VERSION */
 
 extern void UX_prim_check_errno (enum syscall_names name);
+extern void UX_prim_check_fd_errno (enum syscall_names name);
 
-#define STD_VOID_SYSTEM_CALL(name, expression)				\
-{									\
-  while ((expression) < 0)						\
-    {									\
-      if (errno != EINTR)						\
-	error_system_call (errno, (name));				\
-      deliver_pending_interrupts ();					\
-    }									\
-}
+#define STD_VOID_SYSTEM_CALL(name, expression)	\
+  do {						\
+    while ((expression) < 0)			\
+      UX_prim_check_errno (name);		\
+  } while (0)
 
-#define STD_UINT_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) < 0)					\
-    {									\
-      if (errno != EINTR)						\
-	error_system_call (errno, (name));				\
-      deliver_pending_interrupts ();					\
-    }									\
-}
+#define STD_UINT_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) < 0)		\
+      UX_prim_check_errno (name);			\
+  } while (0)
 
-#define STD_PTR_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) == 0)				\
-    {									\
-      if (errno != EINTR)						\
-	error_system_call (errno, (name));				\
-      deliver_pending_interrupts ();					\
-    }									\
-}
+#define STD_PTR_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) == 0)		\
+      UX_prim_check_errno (name);			\
+  } while (0)
+
+#define STD_FD_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) < 0)		\
+      UX_prim_check_fd_errno (name);			\
+  } while (0)
 
 #endif /* SCM_UX_H */

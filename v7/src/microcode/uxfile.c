@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxfile.c,v 1.19 2009/04/15 03:02:48 riastradh Exp $
+$Id: uxfile.c,v 1.20 2009/04/15 13:00:29 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -68,35 +68,12 @@ OS_open_fd (int fd)
     terminal_open (channel);
   return (channel);
 }
-
+
 static Tchannel
 open_file (const char * filename, int oflag)
 {
-  static bool out_of_files_p = false;
   int fd;
-  while ((fd = (UX_open (filename, oflag, MODE_REG))) < 0)
-    {
-      switch (errno)
-        {
-        case EINTR:
-          deliver_pending_interrupts ();
-          break;
-
-        case EMFILE:
-        case ENFILE:
-          if (!out_of_files_p)
-            {
-              out_of_files_p = true;
-              REQUEST_GC (0);
-              signal_interrupt_from_primitive ();
-            }
-          /* Fall through. */
-
-        default:
-          error_system_call (errno, syscall_open);
-        }
-    }
-  out_of_files_p = false;
+  STD_FD_SYSTEM_CALL (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
 #ifdef SLAVE_PTY_P
   if ((SLAVE_PTY_P (filename)) && (!UX_setup_slave_pty (fd)))
     {

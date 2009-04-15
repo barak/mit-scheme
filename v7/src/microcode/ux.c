@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.36 2008/05/04 07:13:37 cph Exp $
+$Id: ux.c,v 1.37 2009/04/15 13:00:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,6 +40,31 @@ UX_prim_check_errno (enum syscall_names name)
   deliver_pending_interrupts ();
 }
 
+void
+UX_prim_check_fd_errno (enum syscall_names name)
+{
+  static bool out_of_files_p = false;
+  switch (errno)
+    {
+    case EINTR:
+      deliver_pending_interrupts ();
+      break;
+
+    case EMFILE:
+    case ENFILE:
+      if (!out_of_files_p)
+        {
+          out_of_files_p = true;
+          REQUEST_GC (0);
+          deliver_pending_interrupts ();
+        }
+      /* Fall through */
+
+    default:
+      error_system_call (errno, name);
+    }
+}
+
 #ifdef HAVE_TERMIOS_H
 
 int
