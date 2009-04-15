@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.91 2009/04/15 13:00:24 riastradh Exp $
+$Id: ux.h,v 1.92 2009/04/15 13:09:20 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -853,6 +853,7 @@ extern int UX_sigsuspend (const sigset_t *);
 
 extern void UX_prim_check_errno (enum syscall_names name);
 extern void UX_prim_check_fd_errno (enum syscall_names name);
+extern bool UX_out_of_files_p;
 
 #define STD_VOID_SYSTEM_CALL(name, expression)	\
   do {						\
@@ -876,6 +877,7 @@ extern void UX_prim_check_fd_errno (enum syscall_names name);
   do {							\
     while (((result) = (expression)) < 0)		\
       UX_prim_check_fd_errno (name);			\
+    UX_out_of_files_p = false;                          \
   } while (0)
 
 #endif /* SCM_UX_H */
