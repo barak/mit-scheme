@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxio.c,v 1.64 2009/04/15 13:00:32 riastradh Exp $
+$Id: uxio.c,v 1.65 2009/04/15 13:33:41 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -333,8 +333,7 @@ OS_make_pipe (Tchannel * readerp, Tchannel * writerp)
 {
   int pv [2];
   transaction_begin ();
-  while ((UX_pipe (pv)) < 0)
-    UX_prim_check_fd_errno (syscall_pipe);
+  STD_FD_VOID_SYSTEM_CALL (syscall_pipe, (UX_pipe (pv)));
   MAKE_CHANNEL ((pv[0]), channel_type_unix_pipe, (*readerp) =);
   OS_channel_close_on_abort (*readerp);
   MAKE_CHANNEL ((pv[1]), channel_type_unix_pipe, (*writerp) =);
