@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.93 2009/04/15 13:33:40 riastradh Exp $
+$Id: ux.h,v 1.94 2009/04/16 13:06:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -711,17 +711,17 @@ extern int UX_terminal_set_state (int, Ttty_state *);
 #    ifdef SETPGRP_VOID
 #      define UX_setsid setpgrp
 #    else
-         extern pid_t UX_setsid (void);
-#        define EMULATE_SETSID
+	 extern pid_t UX_setsid (void);
+#	 define EMULATE_SETSID
 #    endif
 #    ifdef HAVE_SETPGRP2
 #      define UX_setpgid setpgrp2
 #    else
 #      ifdef SETPGRP_VOID
-         extern int UX_setpgid (pid_t, pid_t);
-#        define EMULATE_SETPGID
+	 extern int UX_setpgid (pid_t, pid_t);
+#	 define EMULATE_SETPGID
 #      else
-#        define UX_setpgid setpgrp
+#	define UX_setpgid setpgrp
 #      endif
 #    endif
 #  endif
@@ -877,14 +877,14 @@ extern bool UX_out_of_files_p;
   do {							\
     while (((result) = (expression)) < 0)		\
       UX_prim_check_fd_errno (name);			\
-    UX_out_of_files_p = false;                          \
+    UX_out_of_files_p = false;				\
   } while (0)
 
-#define STD_FD_VOID_SYSTEM_CALL(name, expression)       \
-  do {                                                  \
-    while ((expression) < 0)                            \
-      UX_prim_check_fd_errno (name);                    \
-    UX_out_of_files_p = false;                          \
+#define STD_FD_VOID_SYSTEM_CALL(name, expression)	\
+  do {							\
+    while ((expression) < 0)				\
+      UX_prim_check_fd_errno (name);			\
+    UX_out_of_files_p = false;				\
   } while (0)
 
 #endif /* SCM_UX_H */
