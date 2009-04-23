@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.38 2009/04/15 13:09:20 riastradh Exp $
+$Id: ux.c,v 1.39 2009/04/23 23:49:41 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -54,11 +54,11 @@ UX_prim_check_fd_errno (enum syscall_names name)
     case EMFILE:
     case ENFILE:
       if (!UX_out_of_files_p)
-        {
-          UX_out_of_files_p = true;
-          REQUEST_GC (0);
-          deliver_pending_interrupts ();
-        }
+	{
+	  UX_out_of_files_p = true;
+	  REQUEST_GC (0);
+	  deliver_pending_interrupts ();
+	}
       /* Fall through */
 
     default:
