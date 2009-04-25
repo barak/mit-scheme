@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.107 2009/04/25 23:43:31 riastradh Exp $
+$Id: load.scm,v 14.108 2009/04/25 23:47:08 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -580,12 +580,11 @@ USA.
 	       (not (car description-lines)))
 	  ""
 	  (begin
-	    (for-each (lambda (string)
-			(guarantee-string string caller))
+	    (for-each (lambda (description-line)
+			(guarantee-string description-line caller))
 		      description-lines)
-	    (string-append
-	     keyword-line
-	     (decorated-string-append "\n  " "" "" description-lines))))
+	    (decorated-string-append "" "\n  " ""
+				     (cons keyword-line description-lines))))
       (string-append keyword-line "\n  (No description.)")))
 
 (define (simple-command-line-parser keyword thunk . description-lines)
