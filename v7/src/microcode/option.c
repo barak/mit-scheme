@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.67 2008/09/26 08:30:20 cph Exp $
+$Id: option.c,v 1.68 2009/04/25 03:35:45 mhb Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -96,6 +96,8 @@ bool option_emacs_subprocess;
 bool option_force_interactive;
 bool option_disable_core_dump;
 bool option_batch_mode;
+bool option_show_version;
+bool option_show_help;
 
 /* String options */
 const char ** option_library_path = 0;
@@ -108,75 +110,92 @@ unsigned long option_heap_size;
 unsigned long option_constant_size;
 unsigned long option_stack_size;
 
-/*
-
-Scheme accepts the following command-line options.  The options may
-appear in any order, but they must all appear before any other
-arguments on the command line.
-
---library PATH
-  Sets the library search path to PATH.  This is a colon-separated
-  list of directories that is searched to find various library files,
-  such as bands.  If this option is not given, the value of the
-  environment variable MITSCHEME_LIBRARY_PATH is used; it that isn't
-  defined, "/usr/local/lib/mit-scheme" is used.
-
---band FILENAME
-  Specifies the initial band to be loaded.  Searches for FILENAME in
-  the working directory and the library directories, returning the
-  full pathname of the first readable file of that name.  If this
-  option isn't given, the filename is the value of the environment
-  variable MITSCHEME_BAND, or if that isn't defined, "runtime.com"; in
-  these cases the library directories are searched, but not the
-  working directory.
-
---fasl FILENAME
-  Specifies that a cold load should be performed, using FILENAME as
-  the initial file to be loaded.  If this option isn't given, a normal
-  load is performed instead.  This option may not be used together
-  with the "--band" option.
-
---utabmd FILENAME
-  Specifies the name of the microcode tables file.  The file is
-  searched for in the working directory and the library directories.
-  If this option isn't given, the filename is the value of the
-  environment variable MITSCHEME_UTABMD_FILE, or if that isn't
-  defined, "utabmd.bin"; in these cases the library directories are
-  searched, but not the working directory.
-
---heap BLOCKS
-  Specifies the size of the heap in 1024-word blocks.  Overrides any
-  default.  Normally two such heaps are allocated; `bchscheme'
-  allocates only one.
-
---constant BLOCKS
-  Specifies the size of constant space in 1024-word blocks.  Overrides
-  any default.
-
---stack BLOCKS
-  Specifies the size of the stack in 1024-word blocks.  Overrides any
-  default.
-
---option-summary
-  Causes Scheme to write option information to standard error.
-
---emacs
-  Specifies that Scheme is running as a subprocess of GNU Emacs.
-  This option is automatically supplied by GNU Emacs, and should not
-  be given under other circumstances.
-
---interactive
-  If this option isn't specified, and Scheme's standard I/O is not a
-  terminal, Scheme will detach itself from its controlling terminal.
-  This will prevent it from getting signals sent to the process group
-  of that terminal.  If this option is specified, Scheme will not
-  detach itself from the controlling terminal.
-
---nocore
-  Specifies that Scheme should not generate a core dump under any
-  circumstances.
-
-*/
+void
+print_help (void)
+{
+  outf_fatal ("Usage: mit-scheme --OPTION ARG ... --OPTION ARG ...\n\
+\n\
+This machine accepts the following command-line options.  The options\n\
+may appear in any order, but they must all appear before any options\n\
+for the band.\n\
+\n\
+--library PATH\n\
+  Sets the library search path to PATH.  This is a colon-separated\n\
+  list of directories that is searched to find various library files,\n\
+  such as bands.  If this option is not given, the value of the\n\
+  environment variable MITSCHEME_LIBRARY_PATH is used; it that isn't\n\
+  defined, \"/usr/local/lib/mit-scheme\" is used.\n\
+\n\
+--band FILENAME\n\
+  Specifies the initial band to be loaded.  Searches for FILENAME in\n\
+  the working directory and the library directories, returning the\n\
+  full pathname of the first readable file of that name.  If this\n\
+  option isn't given, the filename is the value of the environment\n\
+  variable MITSCHEME_BAND, or if that isn't defined, \"runtime.com\"; in\n\
+  these cases the library directories are searched, but not the\n\
+  working directory.\n\
+\n\
+--fasl FILENAME\n\
+  Specifies that a cold load should be performed, using FILENAME as\n\
+  the initial file to be loaded.  If this option isn't given, a normal\n\
+  load is performed instead.  This option may not be used together\n\
+  with the \"--band\" option.\n\
+\n\
+--utabmd FILENAME\n\
+  Specifies the name of the microcode tables file.  The file is\n\
+  searched for in the working directory and the library directories.\n\
+  If this option isn't given, the filename is the value of the\n\
+  environment variable MITSCHEME_UTABMD_FILE, or if that isn't\n\
+  defined, \"utabmd.bin\"; in these cases the library directories are\n\
+  searched, but not the working directory.\n\
+\n\
+--heap BLOCKS\n\
+  Specifies the size of the heap in 1024-word blocks.  Overrides any\n\
+  default.  Normally two such heaps are allocated; `bchscheme'\n\
+  allocates only one.\n\
+\n\
+--constant BLOCKS\n\
+  Specifies the size of constant space in 1024-word blocks.  Overrides\n\
+  any default.\n\
+\n\
+--stack BLOCKS\n\
+  Specifies the size of the stack in 1024-word blocks.  Overrides any\n\
+  default.\n\
+\n\
+--option-summary\n\
+  Causes Scheme to write option values to standard error.\n\
+\n\
+--help\n\
+  Causes Scheme to report the available command line options.\n\
+\n\
+--version\n\
+  Causes Scheme to report versions and copyrights, then exit.\n\
+\n\
+--batch-mode, --quiet, --silent\n\
+  Suppresses the startup report of versions and copyrights, and the\n\
+  valediction.\n\
+\n\
+--emacs\n\
+  Specifies that Scheme is running as a subprocess of GNU Emacs.\n\
+  This option is automatically supplied by GNU Emacs, and should not\n\
+  be given under other circumstances.\n\
+\n\
+--interactive\n\
+  If this option isn't specified, and Scheme's standard I/O is not a\n\
+  terminal, Scheme will detach itself from its controlling terminal.\n\
+  This will prevent it from getting signals sent to the process group\n\
+  of that terminal.  If this option is specified, Scheme will not\n\
+  detach itself from the controlling terminal.\n\
+\n\
+--nocore\n\
+  Specifies that Scheme should not generate a core dump under any\n\
+  circumstances.\n\
+\n\
+Please report bugs to %s.\n\
+\n\
+Additional options may be supported by the band (and described below).\n\
+\n", PACKAGE_BUGREPORT);
+}
 
 #ifndef LIBRARY_PATH_VARIABLE
 #  define LIBRARY_PATH_VARIABLE "MITSCHEME_LIBRARY_PATH"
@@ -361,6 +380,12 @@ parse_options (int argc, const char ** argv)
 	}
     }
   obstack_free ((&scratch_obstack), descriptors);
+  /* Pass --version and --help through to the band, sort of. */
+  if (strncmp ("--version", scan_argv[-1], 9) == 0)
+    scan_argv--;
+  if (strncmp ("--help", scan_argv[-1], 6) == 0)
+    scan_argv--;
+
   option_saved_argc = argc;
   option_saved_argv = argv;
   option_unused_argc = (end_argv - scan_argv);
@@ -376,12 +401,16 @@ parse_standard_options (int argc, const char ** argv)
   option_argument ("emacs", false, (&option_emacs_subprocess));
   option_argument ("fasl", true, (&option_fasl_file));
   option_argument ("heap", true, (&option_raw_heap));
+  option_argument ("help", false, (&option_show_help));
   option_argument ("interactive", false, (&option_force_interactive));
   option_argument ("library", true, (&option_raw_library));
   option_argument ("nocore", false, (&option_disable_core_dump));
   option_argument ("option-summary", false, (&option_summary));
+  option_argument ("quiet", false, (&option_batch_mode));
+  option_argument ("silent", false, (&option_batch_mode));
   option_argument ("stack", true, (&option_raw_stack));
   option_argument ("utabmd", true, (&option_raw_utabmd));
+  option_argument ("version", false, (&option_show_version));
 
   /* These are deprecated: */
   option_argument ("compiler", false, 0);
@@ -867,6 +896,10 @@ read_command_line_options (int argc, const char ** argv)
 #endif
 				 ));
 
+  if (option_show_version)
+    outf_console ("MIT/GNU Scheme %s\n", PACKAGE_VERSION);
+  if (option_show_help)
+    print_help ();
   if (option_summary)
     describe_options ();
 }
