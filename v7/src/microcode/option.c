@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.68 2009/04/25 03:35:45 mhb Exp $
+$Id: option.c,v 1.69 2009/04/25 23:17:04 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -123,7 +123,7 @@ for the band.\n\
   Sets the library search path to PATH.  This is a colon-separated\n\
   list of directories that is searched to find various library files,\n\
   such as bands.  If this option is not given, the value of the\n\
-  environment variable MITSCHEME_LIBRARY_PATH is used; it that isn't\n\
+  environment variable MITSCHEME_LIBRARY_PATH is used; if that isn't\n\
   defined, \"/usr/local/lib/mit-scheme\" is used.\n\
 \n\
 --band FILENAME\n\
@@ -151,8 +151,7 @@ for the band.\n\
 \n\
 --heap BLOCKS\n\
   Specifies the size of the heap in 1024-word blocks.  Overrides any\n\
-  default.  Normally two such heaps are allocated; `bchscheme'\n\
-  allocates only one.\n\
+  default.\n\
 \n\
 --constant BLOCKS\n\
   Specifies the size of constant space in 1024-word blocks.  Overrides\n\
@@ -897,7 +896,7 @@ read_command_line_options (int argc, const char ** argv)
 				 ));
 
   if (option_show_version)
-    outf_console ("MIT/GNU Scheme %s\n", PACKAGE_VERSION);
+    outf_console ("%s", PACKAGE_STRING);
   if (option_show_help)
     print_help ();
   if (option_summary)
