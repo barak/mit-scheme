@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.105 2009/04/25 03:35:02 mhb Exp $
+$Id: load.scm,v 14.106 2009/04/25 23:40:00 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -574,24 +574,35 @@ USA.
 	    (else
 	     (substring keyword start end))))))
 
-(define (simple-command-line-parser keyword thunk #!optional description)
-  (guarantee-string keyword 'simple-command-line-parser)
+(define (command-line-option-description keyword-line description-lines caller)
+  (if (pair? description-lines)
+      (if (and (null? (cdr description-lines))
+	       (not (car description-lines)))
+	  ""
+	  (begin
+	    (for-each (lambda (string)
+			(guarantee-string string caller))
+		      description-lines)
+	    (string-append
+	     keyword-line
+	     (decorated-string-append "\n  " "" "" description-lines))))
+      (string-append keyword-line "\n  (No description.)")))
+
+(define (simple-command-line-parser keyword thunk . description-lines)
+  (guarantee-string keyword 'SIMPLE-COMMAND-LINE-PARSER)
   (set-command-line-parser! keyword
     (lambda (command-line)
       (values (cdr command-line) thunk))
-    (cond ((default-object? description)
-	   (string-append "--"keyword"\n  (No description.)"))
-	  ((string-null? description)
-	   "")
-	  (else
-	   (guarantee-string description 'simple-command-line-parser)
-	   (string-append "--"keyword"\n  "description)))))
+    (command-line-option-description
+     (string-append "--" keyword)
+     description-lines
+     'SIMPLE-COMMAND-LINE-PARSER)))
 
 ;; Upwards compatibility.
 (define simple-option-parser simple-command-line-parser)
 
 (define (argument-command-line-parser keyword multiple? procedure
-				      #!optional description)
+				      . description-lines)
   (set-command-line-parser! keyword
     (if multiple?
 	(lambda (command-line)
@@ -604,15 +615,10 @@ USA.
 		      (lambda ()
 			(warn "Missing argument to command-line option:"
 			      (string-append "--" keyword)))))))
-    (cond ((default-object? description)
-	   (string-append "--"keyword" ARG"(if multiple? " ..." "")"\n"
-			  "  (No description.)"))
-	  ((string-null? description)
-	   "")
-	  (else
-	   (guarantee-string description 'argument-command-line-parser)
-	   (string-append "--"keyword" ARG"(if multiple? " ..." "")"\n"
-			  "  "description)))))
+    (command-line-option-description
+     (string-append "--" keyword " ARG" (if multiple? " ..." ""))
+     description-lines
+     'ARGUMENT-COMMAND-LINE-PARSER)))
 
 (define (for-each-non-keyword command-line processor)
   (let ((end
@@ -652,25 +658,29 @@ ADDITIONAL OPTIONS supported by this band:\n")
     (lambda ()
       (set! *load-init-file?* #f)
       unspecific)
-    "Ignore the .scheme.init file.")
+    "Inhibits automatic loading of the ~/.scheme.init file.")
   (set! generate-suspend-file? #f)
   (simple-command-line-parser "suspend-file"
     (lambda ()
       (set! generate-suspend-file? #t)
       unspecific)
-    "Write a world image (unavailable on some operating systems).")
+    "If specified, Scheme saves a band to ~/scheme_suspend on reception"
+    "of some signals.  This is unavailable on some operating systems."
+    "Under Unix, this is triggered by SIGUSR1 and SIGPWR, and also, if"
+    "Scheme is not running under Emacs, SIGHUP.")
   (simple-command-line-parser "no-suspend-file"
     (lambda ()
       (set! generate-suspend-file? #f)
       unspecific)
-    "Do NOT write a world image (available on all operating systems :0).")
+    "Inhibits automatic saving of bands to ~/scheme_suspend.")
   (argument-command-line-parser "load" #t
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
 	 (fluid-let ((load/suppress-loading-message? (cmdl/batch-mode? repl)))
 	   (load arg (repl/environment repl))))))
-    "Load the argument files.")
+    "Loads the argument files as if in the REPL."
+    "In batch mode, loading messages are suppressed.")
   (argument-command-line-parser "eval" #t
     (lambda (arg)
       (run-in-nearest-repl
@@ -680,6 +690,6 @@ ADDITIONAL OPTIONS supported by this band:\n")
 				  environment)
 			    environment
 			    repl)))))
-    "Evaluate the argument.")
-  (simple-command-line-parser "help" show-command-line-options "")
-  (simple-command-line-parser "version" (lambda () (%exit 0)) ""))
+    "Evaluates the argument expressions as if in the REPL.")
+  (simple-command-line-parser "help" show-command-line-options #f)
+  (simple-command-line-parser "version" (lambda () (%exit 0)) #f))
