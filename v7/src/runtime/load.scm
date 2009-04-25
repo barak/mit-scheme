@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.106 2009/04/25 23:40:00 riastradh Exp $
+$Id: load.scm,v 14.107 2009/04/25 23:43:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -651,7 +651,7 @@ ADDITIONAL OPTIONS supported by this band:\n")
 	    (write-string description)
 	    (newline)))))
   (%exit 0))
-
+
 (define (initialize-command-line-parsers)
   (set! *command-line-parsers* '())
   (simple-command-line-parser "no-init-file"
