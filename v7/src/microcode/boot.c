@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: boot.c,v 9.130 2008/01/30 20:02:11 cph Exp $
+$Id: boot.c,v 9.131 2009/04/25 03:37:52 mhb Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -230,7 +230,7 @@ start_scheme (void)
 {
   SCHEME_OBJECT expr;
 
-  if (!option_batch_mode)
+  if (!option_batch_mode && !option_show_version && !option_show_help)
     {
       outf_console ("MIT/GNU Scheme running under %s\n", OS_Variant);
       OS_announcement ();
