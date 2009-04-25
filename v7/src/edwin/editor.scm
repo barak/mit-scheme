@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.266 2008/01/30 20:02:00 cph Exp $
+$Id: editor.scm,v 1.267 2009/04/25 03:38:12 mhb Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -89,7 +89,8 @@ USA.
 	      message))))))))
 
 (define (edwin . args) (apply edit args))
-(simple-command-line-parser "edit" edit)
+(simple-command-line-parser "edit" edit
+			    "Causes Edwin to start immediately after Scheme.")
 
 (define edwin-editor #f)
 (define editor-abort)
