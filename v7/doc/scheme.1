@@ -7,9 +7,6 @@ MIT/GNU Scheme \- Scheme development environment
 .B scheme
 .RI [ OPTIONS ]
 .br 
-.B bchscheme
-.RI [ OPTIONS ]
-.br 
 .SH "DESCRIPTION"
 .LP 
 MIT/GNU Scheme is an implementation of the Scheme programming
@@ -17,40 +14,25 @@ language, providing an interpreter, compiler, source\-code debugger,
 integrated Emacs\-like editor, and a large runtime library.  MIT/GNU
 Scheme is best suited to programming large applications with a rapid
 development cycle.
-.LP 
-There are two executable programs.  The programs are functionally
-identical, but use different garbage collectors.
-The
-.B scheme
-program uses a standard two\-space copying garbage collector.  This
-optimizes performance but uses a lot of memory.  The
-.B bchscheme
-program uses a special two\-space copying garbage collector with one
-heap in memory and the other on the disk.  This makes garbage
-collection slower but uses less memory.
 .SH "OPTIONS"
 .LP 
 These are some of the more common command\-line options.  For full
 information about available options, see the Texinfo documentation.
+Additional options may also be supported by the band.  Use the
+\-\-help option (last) to see descriptions of all available
+command\-line options.
 .TP 
-\-\-compiler
+.RI \-\-version
 .br 
-Load the native\-code compiler.
-.TP 
-\-\-edwin
-.br 
-Load the Emacs\-like text editor.
+Report various version numbers, then exit.
 .TP 
 .RI \-\-heap " NBLOCKS"
 .br 
 Specify the size of the heap in 1024\-word blocks.
-The default heap size is 1000 blocks if either \-\-compiler or \-\-edwin
-is specified, and 250 blocks otherwise.
 .TP 
 .RI \-\-stack " NBLOCKS"
 .br 
 Specify the size of the stack in 1024\-word blocks.
-The default stack size is 100 blocks.
 .TP 
 .RI \-\-library " PATH"
 .br 
@@ -58,14 +40,17 @@ Specify where to look for Scheme's binary files.
 .I PATH
 should be a colon\-separated list of directory names.
 .TP 
+\-\-option\-summary
+.br 
+Print the actual values of the machine parameters (like those above).
+.TP 
 \-\-no\-init\-file
 .br 
-Don't load the user's init file.
+Don't load the user's init file (~/.scheme.init or scheme.ini).
 .TP 
 \-\-edit
 .br 
-Start the text editor automatically.  Meaningful only when combined
-with the \-\-edwin option.
+Start the text editor after starting Scheme.
 .TP 
 .RI \-\-eval " EXPRESSION" ...
 .br 
@@ -74,10 +59,6 @@ Evaluate the specified expressions after starting Scheme.
 .RI \-\-load " FILENAME" ...
 .br 
 Load the specified files after starting Scheme.
-.TP 
-\-\-option\-summary
-.br 
-Print a summary of the command\-line options, including default values.
 .SH "FILES"
 .LP 
 \fI/usr/local/lib/mit\-scheme\fP 
@@ -85,21 +66,6 @@ Print a summary of the command\-line options, including default values.
 .LP 
 MIT/GNU Scheme refers to a large number of environment variables.  See
 the Texinfo documentation for details.
-.SH "EXAMPLES"
-.LP 
-To use the interpreter without any frills, type:
-.LP 
-.B scheme
-.LP 
-To also load the compiler, type:
-.LP 
-.B scheme
-\-\-compiler
-.LP 
-To load the compiler and editor, type:
-.LP 
-.B scheme
-\-\-compiler \-\-edwin \-\-edit
 .SH "AUTHORS"
 .LP 
 MIT/GNU Scheme Team <bug\-mit\-scheme@gnu.org>
