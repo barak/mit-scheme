@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.104 2009/03/09 03:46:22 riastradh Exp $
+$Id: load.scm,v 14.105 2009/04/25 03:35:02 mhb Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -509,7 +509,7 @@ USA.
 (define (find-keyword-parser keyword)
   (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
     (and entry
-	 (cdr entry))))
+	 (cddr entry))))
 
 (define (option-keyword? argument)
   (and (fix:> (string-length argument) 1)
@@ -542,17 +542,24 @@ USA.
 ;; with the init file loaded between the end of parsing and the
 ;; delayed actions.
 
-(define (set-command-line-parser! keyword proc)
+(define (set-command-line-parser! keyword proc #!optional description)
   (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
-  (let ((keyword (strip-leading-hyphens keyword)))
+  (let ((keyword (strip-leading-hyphens keyword))
+	(desc (if (default-object? description)
+		  ""
+		  (begin
+		    (guarantee-string description 'SET-COMMAND-LINE-PARSER!)
+		    description))))
     (if (string-null? keyword)
 	(error:bad-range-argument keyword 'SET-COMMAND-LINE-PARSER!))
     (let ((place (assoc keyword *command-line-parsers*)))
       (if place
-	  (set-cdr! place proc)
+	  (begin
+	    (set-car! (cdr place) desc)
+	    (set-cdr! (cdr place) proc))
 	  (begin
 	    (set! *command-line-parsers*
-		  (cons (cons keyword proc)
+		  (cons (cons* keyword desc proc)
 			*command-line-parsers*))
 	    unspecific)))))
 
@@ -567,15 +574,24 @@ USA.
 	    (else
 	     (substring keyword start end))))))
 
-(define (simple-command-line-parser keyword thunk)
+(define (simple-command-line-parser keyword thunk #!optional description)
+  (guarantee-string keyword 'simple-command-line-parser)
   (set-command-line-parser! keyword
     (lambda (command-line)
-      (values (cdr command-line) thunk))))
+      (values (cdr command-line) thunk))
+    (cond ((default-object? description)
+	   (string-append "--"keyword"\n  (No description.)"))
+	  ((string-null? description)
+	   "")
+	  (else
+	   (guarantee-string description 'simple-command-line-parser)
+	   (string-append "--"keyword"\n  "description)))))
 
 ;; Upwards compatibility.
 (define simple-option-parser simple-command-line-parser)
 
-(define (argument-command-line-parser keyword multiple? procedure)
+(define (argument-command-line-parser keyword multiple? procedure
+				      #!optional description)
   (set-command-line-parser! keyword
     (if multiple?
 	(lambda (command-line)
@@ -587,7 +603,16 @@ USA.
 	      (values '()
 		      (lambda ()
 			(warn "Missing argument to command-line option:"
-			      (string-append "--" keyword)))))))))
+			      (string-append "--" keyword)))))))
+    (cond ((default-object? description)
+	   (string-append "--"keyword" ARG"(if multiple? " ..." "")"\n"
+			  "  (No description.)"))
+	  ((string-null? description)
+	   "")
+	  (else
+	   (guarantee-string description 'argument-command-line-parser)
+	   (string-append "--"keyword" ARG"(if multiple? " ..." "")"\n"
+			  "  "description)))))
 
 (define (for-each-non-keyword command-line processor)
   (let ((end
@@ -605,27 +630,47 @@ USA.
 		(loop (cdr command-line) (cons next accum))))
 	  (end '() accum)))))
 
+(define (show-command-line-options)
+  (write-string "
+
+ADDITIONAL OPTIONS supported by this band:\n")
+  (do ((parsers (sort *command-line-parsers*
+		      (lambda (a b) (string<? (car a) (car b))))
+		(cdr parsers)))
+      ((null? parsers))
+    (let ((description (cadar parsers)))
+      (if (not (string-null? description))
+	  (begin
+	    (newline)
+	    (write-string description)
+	    (newline)))))
+  (%exit 0))
+
 (define (initialize-command-line-parsers)
   (set! *command-line-parsers* '())
   (simple-command-line-parser "no-init-file"
     (lambda ()
       (set! *load-init-file?* #f)
-      unspecific))
+      unspecific)
+    "Ignore the .scheme.init file.")
   (set! generate-suspend-file? #f)
   (simple-command-line-parser "suspend-file"
     (lambda ()
       (set! generate-suspend-file? #t)
-      unspecific))
+      unspecific)
+    "Write a world image (unavailable on some operating systems).")
   (simple-command-line-parser "no-suspend-file"
     (lambda ()
       (set! generate-suspend-file? #f)
-      unspecific))
+      unspecific)
+    "Do NOT write a world image (available on all operating systems :0).")
   (argument-command-line-parser "load" #t
     (lambda (arg)
       (run-in-nearest-repl
        (lambda (repl)
 	 (fluid-let ((load/suppress-loading-message? (cmdl/batch-mode? repl)))
-	   (load arg (repl/environment repl)))))))
+	   (load arg (repl/environment repl))))))
+    "Load the argument files.")
   (argument-command-line-parser "eval" #t
     (lambda (arg)
       (run-in-nearest-repl
@@ -634,4 +679,7 @@ USA.
 	   (repl-eval/write (read (open-input-string arg)
 				  environment)
 			    environment
-			    repl)))))))
+			    repl)))))
+    "Evaluate the argument.")
+  (simple-command-line-parser "help" show-command-line-options "")
+  (simple-command-line-parser "version" (lambda () (%exit 0)) ""))
