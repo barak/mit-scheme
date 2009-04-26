@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-imap.scm,v 1.238 2008/12/24 01:40:12 riastradh Exp $
+$Id: imail-imap.scm,v 1.239 2009/04/26 00:28:49 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -792,6 +792,8 @@ USA.
 (define-class <imap-folder> (<folder>)
   (connection define standard
 	      initial-value #f)
+  (cache-lock-state define standard
+		    initial-value 'UNKNOWN)
   (read-only? define standard)
   (allowed-flags define standard)
   (permanent-flags define standard)
@@ -1736,13 +1738,13 @@ USA.
 ;;
 ;; There is a root directory for the cache.  Under this directory,
 ;; there is one subdirectory for each server.  The server directory
-;; name is a variant of the server information from the URL
+;; name is a variant of the server information from the URL.
 ;;
 ;; Under each server directory, there is one subdirectory for each
 ;; folder on that server.  The folder directory name is formed by
 ;; taking the folder's mailbox name and mapping the characters into a
 ;; safe subset.  The safe subset preserves all alphanumeric
-;; characters, hypens, and underscores, converts "/" to ".", and
+;; characters, hyphens, and underscores, converts "/" to "#", and
 ;; converts everything else to "=XX" form.
 ;;
 ;; Under each folder directory, there is a file called "uidvalidity"
@@ -2021,39 +2023,44 @@ USA.
       (delete-file-recursively (imap-message-cache-pathname message)))))
 
 (define (with-folder-locked folder if-locked #!optional if-not-locked)
-  (let ((if-not-locked (if (default-object? if-not-locked) #f if-not-locked))
-	(pathname (imap-folder-lock-pathname folder))
-	(locked? #f))
-    (guarantee-init-file-directory pathname)
-    (dynamic-wind
-     (lambda () unspecific)
-     (lambda ()
-       (let loop ((i 0))
-	 (without-interrupts
+  (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
+      (if-locked)
+      (let ((if-not-locked
+	     (if (default-object? if-not-locked) #f if-not-locked))
+	    (pathname
+	     (imap-folder-lock-pathname folder)))
+	(guarantee-init-file-directory pathname)
+	(dynamic-wind
+	  (lambda () unspecific)
 	  (lambda ()
-	    (set! locked? (allocate-temporary-file pathname))
-	    unspecific))
-	 (cond (locked?
-		(if (> i 0)
-		    (imail-ui:clear-message))
-		(remove-property! folder 'IMAP-CACHE-LOCK-FAILURE)
-		(if-locked))
-	       ((get-property folder 'IMAP-CACHE-LOCK-FAILURE #f)
-		(if if-not-locked (if-not-locked)))
-	       ((= i 2)
-		(imail-ui:clear-message)
-		(store-property! folder 'IMAP-CACHE-LOCK-FAILURE #t)
-		(if if-not-locked (if-not-locked)))
-	       (else
-		(imail-ui:message "Waiting for folder lock..." i)
-		(imail-ui:sit-for 1000)
-		(loop (+ i 1))))))
-     (lambda ()
-       (if locked?
-	   (deallocate-temporary-file pathname))))))
+	    (let loop ((i 0))
+	      (without-interrupts
+	       (lambda ()
+		 (if (allocate-temporary-file pathname)
+		     (set-imap-folder-cache-lock-state! folder 'LOCKED))
+		 unspecific))
+	      (cond ((eq? 'LOCKED (imap-folder-cache-lock-state folder))
+		     (if (> i 0)
+			 (imail-ui:clear-message))
+		     (if-locked))
+		    ((eq? 'FAILED (imap-folder-cache-lock-state folder))
+		     (if if-not-locked (if-not-locked)))
+		    ((= i 2)
+		     (imail-ui:clear-message)
+		     (set-imap-folder-cache-lock-state! folder 'FAILED)
+		     (if if-not-locked (if-not-locked)))
+		    (else
+		     (imail-ui:message "Waiting for folder lock..." i)
+		     (imail-ui:sit-for 1000)
+		     (loop (+ i 1))))))
+	  (lambda ()
+	    (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
+		(begin
+		  (deallocate-temporary-file pathname)
+		  (set-imap-folder-cache-lock-state! folder 'UNLOCKED))))))))
 
 (define (clear-lock-state-on-folder-close folder)
-  (remove-property! folder 'IMAP-CACHE-LOCK-FAILURE))
+  (set-imap-folder-cache-lock-state! folder 'UNKNOWN))
 
 (define (message-item-pathname message keyword)
   (init-file-specifier->pathname
