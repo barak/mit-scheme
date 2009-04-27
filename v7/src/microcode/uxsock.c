@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.38 2009/04/15 13:00:32 riastradh Exp $
+$Id: uxsock.c,v 1.39 2009/04/27 23:40:57 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -288,7 +288,7 @@ OS_listen_tcp_server_socket (Tchannel channel)
     (syscall_listen,
      (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
 }
-
+
 Tchannel
 OS_server_connection_accept (Tchannel channel,
 			     void * peer_host,
@@ -304,20 +304,17 @@ OS_server_connection_accept (Tchannel channel,
 		      (&address_length)));
       if (s >= 0)
 	break;
-      if (errno != EINTR)
-	{
 #ifdef EAGAIN
-	  if (errno == EAGAIN)
-	    return (NO_CHANNEL);
+      if (errno == EAGAIN)
+	return (NO_CHANNEL);
 #endif
 #ifdef EWOULDBLOCK
-	  if (errno == EWOULDBLOCK)
-	    return (NO_CHANNEL);
+      if (errno == EWOULDBLOCK)
+	return (NO_CHANNEL);
 #endif
-	  error_system_call (errno, syscall_accept);
-	}
-      deliver_pending_interrupts ();
+      UX_prim_check_fd_errno (syscall_accept);
     }
+  UX_out_of_files_p = false;
   if (peer_host != 0)
     memcpy (peer_host,
 	    (& (address . sin_addr)),
