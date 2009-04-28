@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.113 2008/02/14 06:48:45 cph Exp $
+@comment $Id: user.texinfo,v 1.114 2009/04/28 22:10:26 mhb Exp $
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.92
@@ -935,17 +935,21 @@ argument @var{keyword} defines the option that will be recognized on the
 command line.  The @var{keyword} must be a string containing at least
 one character; do not include the leading hyphens.
 
-@deffn {procedure+} simple-command-line-parser keyword thunk
+@deffn {procedure+} simple-command-line-parser keyword thunk [help]
 Defines @var{keyword} to be a simple command-line option.  When this
 keyword is seen on the command line, it causes @var{thunk} to be
-executed.
+executed.  @var{Help}, when provided, should be a string describing
+the option in the @command{--help} output.
 @end deffn
 
-@deffn {procedure+} argument-command-line-parser keyword multiple? procedure
+@deffn {procedure+} argument-command-line-parser keyword multiple? procedure [help]
 Defines @var{keyword} to be a command-line option that is followed by
 one or more command-line arguments.  @var{Procedure} is a procedure that
 accepts one argument; when @var{keyword} is seen, it is called once for
-each argument.
+each argument.  @var{Help}, when provided, should be a string
+describing the option.  It is included in the @command{--help} output.
+When not provided, @command{--help} will say something lame about your
+command line option.
 
 @var{Multiple?}, if true, says that @var{keyword} may be followed by
 more than one argument on the command line.  In this case, procedure is
