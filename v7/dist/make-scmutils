@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: make-scmutils,v 1.7 2008/08/27 14:16:36 riastradh Exp $
+# $Id: make-scmutils,v 1.8 2009/04/29 23:00:02 riastradh Exp $
 #
 # Copyright 2001,2002,2004,2006 Massachusetts Institute of Technology
 #
@@ -159,7 +159,7 @@ if [ ! -f "${STAMP_IMAGE}" ];then
 		    rm -f "${TFILE}"
 		    cat "${DIST_DIR}/copyright.${SUFFIX}" "${FILE}" \
 			> "${TFILE}"
-		    chtime "${FILE}" "${TFILE}" 2> /dev/null
+		    touch -r "${FILE}" "${TFILE}" 2> /dev/null
 		fi
 	    done
 	done
