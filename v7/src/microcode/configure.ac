@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.64 2009/04/30 17:52:36 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.65 2009/04/30 18:00:51 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -170,7 +170,6 @@ if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
 fi
 
 dnl Substitution variables to be filled in below.
-AS_FLAGS=
 GC_HEAD_FILES=
 M4_FLAGS=
 OPTIONAL_BASES=
