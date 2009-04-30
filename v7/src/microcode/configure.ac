@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.63 2009/04/30 17:48:45 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.64 2009/04/30 17:52:36 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -955,6 +955,11 @@ svm)
 no|none)
     ;;
 *)
+    dnl This is not quite right, because the compiler and microcode
+    dnl disagree abou what some architectures should be called, such as
+    dnl bobcat vs mc68k or spectrum versus hppa.  I don't know what the
+    dnl state of Scheme on these architectures is, however, so at least
+    dnl this will flag an error if you try to use them.
     if test -f "cmpauxmd/${enable_native_code}.m4"; then
 	SCM_ARGH="${enable_native_code}"
     else
