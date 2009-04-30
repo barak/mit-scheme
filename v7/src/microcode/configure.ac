@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.62 2009/03/21 07:09:08 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.63 2009/04/30 17:48:45 riastradh Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -915,7 +915,7 @@ AC_MSG_CHECKING([for native-code support])
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
 GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 SCM_ARCH=none
-ECN_WARNP=no
+ENC_WARNP=no
 
 case ${enable_native_code} in
 yes)
@@ -955,7 +955,11 @@ svm)
 no|none)
     ;;
 *)
-    ECN_WARNP=yes
+    if test -f "cmpauxmd/${enable_native_code}.m4"; then
+	SCM_ARGH="${enable_native_code}"
+    else
+	ENC_WARNP=yes
+    fi
     ;;
 esac
 
@@ -991,7 +995,7 @@ svm1)
     ;;
 esac
 
-if test ${ECN_WARNP} = yes; then
+if test ${ENC_WARNP} = yes; then
     AC_MSG_WARN([illegal --enable-native-code value: ${enable_native_code}])
 fi
 
