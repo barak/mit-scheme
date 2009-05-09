@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.14 2009/02/03 01:42:10 riastradh Exp $
+$Id: imail-mime.scm,v 1.15 2009/05/06 03:11:42 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -581,8 +581,8 @@ USA.
                     (if (boundary-start? boundary-start)
                         (continue part-start
                                   ;; Slurp in the preceding newline.
-                                  (if (= boundary-start start)
-                                      start
+                                  (if (= boundary-start part-start)
+                                      part-start
                                       (- boundary-start 1))
                                   boundary-end
                                   parts)
