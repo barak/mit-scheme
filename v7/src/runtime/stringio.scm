@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: stringio.scm,v 14.6 2009/02/04 16:00:45 savannah-arthur Exp $
+$Id: stringio.scm,v 14.7 2009/05/06 08:35:46 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -111,8 +111,11 @@ USA.
 
 (define (internal-in/read-substring port string start end)
   (let ((ss (port/state port)))
-    (move-chars! (iistate-string ss) (iistate-next ss) (iistate-end ss)
-		 string start end)))
+    (let ((n
+	   (move-chars! (iistate-string ss) (iistate-next ss) (iistate-end ss)
+			string start end)))
+      (set-iistate-next! ss (fix:+ (iistate-next ss) n))
+      n)))
 
 (define (make-narrow-input-type)
   (make-string-in-type narrow-in/peek-char
