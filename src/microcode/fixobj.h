@@ -122,5 +122,7 @@ USA.
 
 #define GC_WABBIT_DESCRIPTOR		0x40
 
-/* 4 extra slots for expansion and debugging.  */
+#define CALLBACK_HANDLER		0x41
+
+/* 3 extra slots for expansion and debugging.  */
 #define N_FIXED_OBJECTS			0x45

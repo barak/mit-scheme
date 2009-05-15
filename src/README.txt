@@ -12,7 +12,7 @@ functional subsystems.
 The core subsystem consists of these directories:
 
 * "microcode" contains the C code that is used to build the executable
-  programs "scheme" and "bchscheme".
+  program "scheme".
 
 * "runtime" contains the bulk of the run-time library, including
   almost everything documented in the reference manual.
@@ -32,6 +32,9 @@ The core subsystem consists of these directories:
   specific to the Microsoft Windows platform.
 
 * "xml" contains support for XML and XHTML I/O.
+
+* "ffi" provides syntax for calling foreign (C) functions and
+  manipulating alien (C) data.
 
 The compiler subsystem consists of these three directories:
 
@@ -725,7 +728,6 @@ That being said, ...
    tar xzf mit-scheme-7.7.1-ix86-gnu-linux.tar.gz  # If not already
 
    cp -fp      scheme-7.7.1/src/microcode/scheme    bin/.
-   cp -fp      scheme-7.7.1/src/microcode/bchscheme bin/.
 
    Clobbering/replacing the copies of the binary release microcode
    file(s) shouldn't disturb you since, presumably, the main reason

@@ -66,7 +66,7 @@ pdfdir = @pdfdir@
 psdir = @psdir@
 INST_TARGETS = @INST_TARGETS@
 
-SUBDIRS = imail ref-manual sos user-manual
+SUBDIRS = ffi imail ref-manual sos user-manual
 DISTCLEAN_FILES = Makefile make-common config.log config.status
 
 all:
@@ -108,8 +108,8 @@ install: install-info-gz install-man $(INST_TARGETS)
 
 install-info-gz install-info:
 	$(mkinstalldirs) $(DESTDIR)$(infodir)
-	test ! -e $(DESTDIR)$(infodir)/dir \
-	    && $(INSTALL_DATA) info-dir $(DESTDIR)$(infodir)/dir
+	if [ ! -e $(DESTDIR)$(infodir)/dir ]; then \
+	    $(INSTALL_DATA) info-dir $(DESTDIR)$(infodir)/dir; fi
 	@for D in $(SUBDIRS); do \
 	    echo "making $@ in $${D}";\
 	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\

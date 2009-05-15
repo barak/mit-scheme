@@ -283,6 +283,13 @@ USA.
 (define (allow-preempt-current-thread)
   (set-thread/execution-state! (current-thread) 'RUNNING))
 
+(define (without-timer-interrupts thunk)
+  (let* ((old-mask
+	  ((ucode-primitive disable-interrupts! 1) interrupt-bit/timer))
+	 (value (thunk)))
+    (set-interrupt-enables! old-mask)
+    value))
+
 (define (thread-timer-interrupt-handler)
   (set! next-scheduled-timeout #f)
   (set-interrupt-enables! interrupt-mask/gc-ok)

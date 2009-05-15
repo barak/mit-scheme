@@ -81,6 +81,7 @@ AC_SUBST([INST_TARGETS])
 AC_CONFIG_FILES([
 	Makefile
 	make-common
+	ffi/Makefile
 	imail/Makefile
 	ref-manual/Makefile
 	sos/Makefile

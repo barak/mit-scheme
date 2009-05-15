@@ -521,7 +521,8 @@ USA.
    (RUNTIME HTTP-SYNTAX)
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
-   (RUNTIME WIN32-REGISTRY)))
+   (RUNTIME WIN32-REGISTRY)
+   (RUNTIME FFI)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj

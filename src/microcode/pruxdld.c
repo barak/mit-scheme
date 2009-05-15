@@ -201,7 +201,7 @@ dld_lookup (void * handle, const char * symbol)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
       VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
+      VECTOR_SET (v, 1, (char_pointer_to_string ("dlsym")));
       VECTOR_SET (v, 2, (char_pointer_to_string (error_string)));
       error_with_argument (v);
     }

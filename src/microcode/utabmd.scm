@@ -110,6 +110,7 @@ USA.
 	       PC-Sample/UFO-Table			;3E
 	       COMPILED-CODE-BKPT-HANDLER		;3F
 	       GC-WABBIT-DESCWIPTOR			;40
+	       CALLBACK-HANDLER				;41
 	       ))
 
 ;;; [] Types

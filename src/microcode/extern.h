@@ -179,6 +179,7 @@ extern const char * scheme_program_name;
 extern const char * OS_Name;
 extern const char * OS_Variant;
 extern struct obstack scratch_obstack;
+extern struct obstack ffi_obstack;
 
 extern unsigned long n_heap_blocks;
 extern unsigned long n_constant_blocks;
@@ -305,6 +306,7 @@ extern void import_primitive_table
 
 extern void initialize_primitives (void);
 extern SCHEME_OBJECT make_primitive (const char *, int);
+extern SCHEME_OBJECT find_primitive_cname (char *, bool, bool, int);
 extern SCHEME_OBJECT find_primitive (SCHEME_OBJECT, bool, bool, int);
 
 /* Interpreter utilities */
@@ -324,7 +326,7 @@ extern void preserve_interrupt_mask (void);
 extern void canonicalize_primitive_context (void);
 extern void back_out_of_primitive (void);
 
-extern void Interpret (void);
+extern void Interpret (int pop_return_p);
 extern void Do_Micro_Error (long, bool);
 extern void Translate_To_Point (SCHEME_OBJECT);
 extern void Stack_Death (void) NORETURN;

@@ -58,6 +58,7 @@ USA.
     ("equals"	(runtime equality))
     ("error"	(runtime error-handler))
     ("events"	(runtime event-distributor))
+    ("ffi"	(runtime ffi))
     ("fileio"	(runtime file-i/o-port))
     ("fixart"	(runtime fixnum-arithmetic))
     ("format"	(runtime format))

@@ -276,6 +276,7 @@ install-auxDATA: $(aux_DATA)
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
+	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

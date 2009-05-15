@@ -48,11 +48,11 @@ run_cmd rm -f compiler/machine compiler/compiler.pkg
 run_cmd ln -s machines/"${MDIR}" compiler/machine
 run_cmd ln -s machine/compiler.pkg compiler/.
 
-BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
+BUNDLES="6001 compiler cref edwin ffi imail sf sos ssp star-parser xdoc xml"
 
 : ${MIT_SCHEME_EXE='mit-scheme'}
 
-run_cmd ${MIT_SCHEME_EXE} --heap 4000 <<EOF
+run_cmd ${MIT_SCHEME_EXE} --heap 4000 --batch-mode <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))
@@ -63,8 +63,8 @@ run_cmd rm -f compiler/machine compiler/compiler.pkg
 for SUBDIR in ${BUNDLES} runtime win32; do
     echo "creating ${SUBDIR}/Makefile.in"
     rm -f ${SUBDIR}/Makefile.in
-    cat etc/std-makefile-prefix > ${SUBDIR}/Makefile.in
-    cat ${SUBDIR}/Makefile-fragment >> ${SUBDIR}/Makefile.in
+    cat etc/std-makefile-prefix ${SUBDIR}/Makefile-fragment	\
+	> ${SUBDIR}/Makefile.in
     if test -f ${SUBDIR}/Makefile-bundle; then
 	cat ${SUBDIR}/Makefile-bundle >> ${SUBDIR}/Makefile.in
 	rm -f ${SUBDIR}/Makefile-bundle

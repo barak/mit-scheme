@@ -35,7 +35,7 @@ fi
 
 . etc/functions.sh
 
-INSTALLED_SUBDIRS="cref edwin imail sf sos ssp star-parser xml"
+INSTALLED_SUBDIRS="cref edwin ffi imail sf sos ssp star-parser xml"
 OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 
 # lib
@@ -46,6 +46,8 @@ maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
 maybe_link lib/utabmd.bin ../microcode/utabmd.bin
+maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
+maybe_link lib/ffi ../ffi
 
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"

@@ -892,7 +892,7 @@ if test ${enable_static_libs} != no; then
     STATIC_LIBS=${MODULE_LIBS}${STATIC_LIBS}
 else
     STATIC_LIBS=
-    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld pruxffi"
     AC_DEFINE([UX_DLD_ENABLED], [1],
 	[Define to 1 if unix dynamic loading support is enabled.])
 fi

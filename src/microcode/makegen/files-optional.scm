@@ -36,6 +36,7 @@ USA.
 "prmhash"
 "prpgsql"
 "pruxdld"
+"pruxffi"
 "svm1-interp"
 "termcap"
 "terminfo"
