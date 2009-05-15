@@ -281,7 +281,7 @@ USA.
      (if (alien-function? arg)
 	 (alien-function-cache! arg)))
    args)
-  (without-timer-interrupts
+  (without-interrupts
    (lambda ()
      (call-alien* alien-function args))))
 
@@ -301,10 +301,10 @@ USA.
 
 ;;; Malloc/Free
 
-;; Weak alist of: ( malloc alien X copy for the finalizer )...
+;; Weak alist of: ( malloc alien X copy for c-free )...
 (define malloced-aliens '())
 
-(define (finalize-malloced-aliens)
+(define (free-malloced-aliens)
   (let loop ((aliens malloced-aliens)
 	     (prev #f))
     (if (pair? aliens)
@@ -332,10 +332,13 @@ USA.
   (set! malloced-aliens '()))
 
 (define (malloc size ctype)
-  ;; Add copy to finalizer BEFORE calling malloc.
+  ;; Add copy to malloced-aliens BEFORE calling malloc.
   (let ((alien (make-alien ctype))
 	(copy (make-alien ctype)))
-    (set! malloced-aliens (cons (weak-cons alien copy) malloced-aliens))
+    (let ((entry (weak-cons alien copy)))
+      (without-interrupts
+       (lambda ()
+	 (set! malloced-aliens (cons entry malloced-aliens)))))
     ((ucode-primitive c-malloc 2) copy size)
     ;; Even an interrupt here will not leak a byte.
     (copy-alien-address! alien copy)
@@ -350,11 +353,11 @@ USA.
 	    (let ((copy (weak-cdr weak)))
 	      (without-interrupts
 	       (lambda ()
-		 (if (not (alien-null? copy))
+		 (if (not (alien-null? alien))
 		     (begin
-		       (alien-null! copy)
+		       (alien-null! alien)
 		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! alien))))))))))
+		       (alien-null! copy))))))))))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
@@ -416,8 +419,8 @@ USA.
 
 (define (callback-handler id args)
   ;; Installed in the fixed-objects-vector, this procedure is called
-  ;; by a callback trampoline, which ensures that timer interrupts are
-  ;; masked until the interpreter returns a value.
+  ;; by a callback trampoline.  The callout should have already masked
+  ;; all but the GC interrupts.
 
   (if (not (< id (vector-length registered-callbacks)))
       (error:bad-range-argument id 'apply-callback))
@@ -471,25 +474,26 @@ USA.
 
 (define calloutback-stack '())
 
-(define tracing? #f)
+(define trace? #f)
 
 (define (reset-package!)
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
-  (set! tracing? #f)
+  (set! trace? #f)
   (set! calloutback-stack '()))
 
 (define (initialize-package!)
   (reset-package!)
   (initialize-callbacks!)
   (add-event-receiver! event:after-restore reset-package!)
+  (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
 (define-syntax if-tracing
   (syntax-rules ()
     ((_ . BODY)
-     (if tracing? ((lambda () . BODY))))))
+     (if trace? ((lambda () . BODY))))))
 
 (define-syntax assert
   (syntax-rules ()
@@ -499,7 +503,7 @@ USA.
 (define-syntax trace
   (syntax-rules ()
     ((_ . MSG)
-     (if tracing? ((lambda () (outf-console . MSG)))))))
+     (if trace? ((lambda () (outf-console . MSG)))))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))

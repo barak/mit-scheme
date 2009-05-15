@@ -740,8 +740,6 @@ callback_run_kernel (int callback_id, CallbackKernel kernel)
      frames on the Scheme stack and seal the CStack.  Then call
      Interpret().  Cannot abort. */
 
-  long int_mask;
-
   if (run_callback == SHARP_F)
     {
       run_callback = find_primitive_cname ("RUN-CALLBACK", false, false, 0);
@@ -778,13 +776,7 @@ callback_run_kernel (int callback_id, CallbackKernel kernel)
   STACK_PUSH (run_callback);
   PUSH_APPLY_FRAME_HEADER (0);
   SAVE_CONT();
-
-  /* Turn off thread switching. */
-  int_mask = GET_INT_MASK;
-  SET_INTERRUPT_MASK (int_mask & ~INT_Timer);
   Interpret (1);
-  SET_INTERRUPT_MASK (int_mask);
-
   cstack_depth -= 1;
 }
 
@@ -864,8 +856,8 @@ static SCM valid_callback_id (int id);
 void
 callback_run_handler (int callback_id, SCM arglist)
 {
-  /* Similar to setup_interrupt [utils.c].  Used by callback kernels,
-     inside the interpreter.  Thus it MAY GC abort.
+  /* Used by callback kernels, inside the interpreter.  Thus it MAY GC
+     abort.
 
      Push a Scheme callback handler apply frame.  This leaves the
      interpreter ready to tail-call the Scheme procedure.  (The
@@ -878,12 +870,6 @@ callback_run_handler (int callback_id, SCM arglist)
   fixnum_id = valid_callback_id (callback_id);
 
   stop_history ();
-  /* preserve_interrupt_mask ();
-
-     The above statement appears in setup_interrupt.  In this case,
-     something similar is done in callback_run_kernel, BEFORE
-     re-entering the interpreter.  (The "BEFORE" part is
-     important!) */
 
   Will_Push (STACK_ENV_EXTRA_SLOTS + 3);
     STACK_PUSH (arglist);
@@ -891,11 +877,6 @@ callback_run_handler (int callback_id, SCM arglist)
     STACK_PUSH (handler);
     PUSH_APPLY_FRAME_HEADER (2);
   Pushed ();
-  /* Turn off interrupts: */
-  /* SET_INTERRUPT_MASK (interrupt_mask);
-
-     The above statement (from setup_interrupt) must move to
-     callback_run_kernel. */
 }
 
 static SCM

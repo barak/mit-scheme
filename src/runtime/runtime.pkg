@@ -3012,8 +3012,6 @@ USA.
 	  register-c-callback
 	  de-register-c-callback
 	  outf-console)
-  (import (runtime thread)
-	  without-timer-interrupts)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
