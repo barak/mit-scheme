@@ -60,6 +60,9 @@ USA.
 (define-package (runtime)
   (files "version")
   (parent ())
+  (export ()
+	  write-mit-scheme-copyright
+	  write-mit-scheme-license)
   (initialization (initialize-package!)))
 
 (define-package (runtime bit-string)

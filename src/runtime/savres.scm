@@ -124,34 +124,9 @@ USA.
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port 'IDENTIFY-WORLD))))
-    (let ((strings
-	   `("Copyright (C)"
-	     ,@(let loop ((ys copyright-years))
-		 (if (pair? (cdr ys))
-		     (cons (string-append (number->string (car ys)) ",")
-			   (loop (cdr ys)))
-		     (list (number->string (car ys)))))
-	     "Massachusetts"
-	     "Institute"
-	     "of"
-	     "Technology")))
-      (write-string (car strings) port)
-      (let loop
-	  ((strings (cdr strings))
-	   (col (string-length (car strings))))
-	(if (pair? strings)
-	    (let ((col* (+ col 1 (string-length (car strings)))))
-	      (if (<= col* 70)
-		  (begin
-		    (write-string " " port)
-		    (write-string (car strings) port)
-		    (loop (cdr strings) col*))
-		  (begin
-		    (newline port)
-		    (write-string "   " port)
-		    (loop strings 0)))))))
+    (write-mit-scheme-copyright port)
     (newline port)
-    (write-string license-statement port)
+    (write-mit-scheme-license port "" #t)
     (newline port)
     (newline port)
     (if time-world-saved
@@ -170,7 +145,3 @@ USA.
 			      "  "
 			      " || "
 			      "")))
-
-(define license-statement
-  "This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
