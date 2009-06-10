@@ -281,7 +281,8 @@ For more information type the HELP key while entering the name."
   (cond ((not (null? strings)) (apply message strings))
 	(*defining-keyboard-macro?* (clear-message)))
   (editor-beep)
-  (keyboard-macro-disable))
+  (keyboard-macro-disable)
+  (abort-keyboard-macro))
 
 (define-variable beeping-allowed?
   "False if Edwin must never beep."
