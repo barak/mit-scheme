@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: fasl.h,v 9.38 1999/01/02 06:11:34 cph Exp $
+$Id$
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

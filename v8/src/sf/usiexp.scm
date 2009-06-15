@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 1.17 1999/01/02 06:19:10 cph Exp $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

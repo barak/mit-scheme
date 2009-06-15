@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: envconv.scm,v 1.17 1999/01/02 06:06:43 cph Exp $
+$Id$
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

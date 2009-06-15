@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.43 1999/10/23 03:08:03 cph Exp $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

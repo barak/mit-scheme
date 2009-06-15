@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 4.35 1999/01/03 05:20:20 cph Exp $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

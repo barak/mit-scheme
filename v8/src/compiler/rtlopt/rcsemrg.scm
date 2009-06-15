@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rcsemrg.scm,v 1.2 1999/01/02 06:11:34 cph Exp $
+$Id$
 
 Copyright (c) 1994, 1999 Massachusetts Institute of Technology
 

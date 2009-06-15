@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: simplify.scm,v 1.22 1999/05/15 03:14:36 cph Exp $
+$Id$
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

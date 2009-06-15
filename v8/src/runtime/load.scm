@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.56 1999/05/11 20:35:10 cph Exp $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

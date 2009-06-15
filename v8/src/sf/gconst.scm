@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 1.6 1999/01/02 06:19:10 cph Exp $
+$Id$
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

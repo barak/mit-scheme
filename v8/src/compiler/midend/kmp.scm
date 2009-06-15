@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: kmp.scm,v 1.3 1999/05/15 03:15:06 cph Exp $
+$Id$
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 

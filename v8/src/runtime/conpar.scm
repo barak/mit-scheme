@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: conpar.scm,v 14.41 1999/02/24 21:23:31 cph Exp $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

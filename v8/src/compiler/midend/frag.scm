@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: frag.scm,v 1.7 1999/05/15 03:14:50 cph Exp $
+$Id$
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 

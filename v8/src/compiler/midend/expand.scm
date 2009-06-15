@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: expand.scm,v 1.11 1999/05/15 03:15:11 cph Exp $
+$Id$
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

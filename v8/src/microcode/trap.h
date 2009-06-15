@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* $Id: trap.h,v 9.45 1999/01/02 06:11:34 cph Exp $ */
+/* $Id$ */
 
 /* Kinds of traps:
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ea2.scm,v 1.6 1999/05/15 03:15:14 cph Exp $
+$Id$
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 

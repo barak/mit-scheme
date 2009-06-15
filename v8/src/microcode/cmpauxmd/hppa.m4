@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;; $Id: hppa.m4,v 1.45 1999/01/02 06:11:34 cph Exp $
+;;; $Id$
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;

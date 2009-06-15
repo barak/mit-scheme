@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fakeprim.scm,v 1.32 1999/05/15 03:14:42 cph Exp $
+$Id$
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: typedb.scm,v 1.17 1999/01/02 06:06:43 cph Exp $
+$Id$
 
 Copyright (c) 1996-1999 Massachusetts Institute of Technology
 

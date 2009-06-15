@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: synutl.scm,v 1.4 1999/05/15 03:14:46 cph Exp $
+$Id$
 
 Copyright (c) 1994, 1999 Massachusetts Institute of Technology
 
