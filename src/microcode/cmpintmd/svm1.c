@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: svm1.c,v 1.3 2008/01/30 20:02:24 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -186,8 +186,8 @@ cc_entry_reference_offset (insn_t * address)
 {
   cc_entry_type_t cet;
 #ifdef ENABLE_DEBUGGING_TOOLS
-  bool ok_p = (read_cc_entry_type ((&cet), address));
-  assert (ok_p);
+  bool fail_p = (read_cc_entry_type ((&cet), address));
+  assert (!fail_p);
 #else
   read_cc_entry_type ((&cet), address);
 #endif
