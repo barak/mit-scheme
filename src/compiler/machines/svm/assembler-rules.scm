@@ -282,6 +282,10 @@ USA.
   offset)
 
 (define-code-sequence instruction
+  (enter-closure (_ index unsigned-16))
+  index)
+
+(define-code-sequence instruction
   (conditional-jump (_ condition word-condition-1)
 		    (_ source1 word-register)
 		    (_ source2 word-register)

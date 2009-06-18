@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: svm1-interp.c,v 11.2 2008/01/30 20:02:20 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -627,11 +627,17 @@ DEFINE_INST (ijump_u32)
 }
 
 static void
-push_icall_entry (void * entry)
+push_object (SCHEME_OBJECT object)
 {
   stack_pointer = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
-  STACK_PUSH (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, entry));
+  STACK_PUSH (object);
   WREG_SET (SVM1_REG_STACK_POINTER, ((SCHEME_OBJECT) stack_pointer));
+}
+
+static void
+push_icall_entry (void * entry)
+{
+  push_object (MAKE_CC_BLOCK (entry));
 }
 
 DEFINE_INST (icall_u8)
@@ -653,6 +659,23 @@ DEFINE_INST (icall_u32)
   DECODE_SVM1_INST_ICALL_U32 (offset);
   push_icall_entry (PC - 5);
   IJUMP (offset);
+}
+
+DEFINE_INST (enter_closure)
+{
+  DECODE_SVM1_INST_ENTER_CLOSURE (index);
+  {
+    byte_t * block = (PC - (((index + 1) * 3) + 2));
+    unsigned int count
+      = ((((unsigned int) (block[1])) << 8)
+	 | ((unsigned int) (block[0])));
+    SCHEME_OBJECT * targets
+      = (((SCHEME_OBJECT *) block)
+	 + (((2 + (count * 3)) + ((sizeof (SCHEME_OBJECT)) - 1))
+	    / (sizeof (SCHEME_OBJECT))));
+    push_object (MAKE_CC_BLOCK (((SCHEME_OBJECT *) block) - 1));
+    NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
+  }
 }
 
 /* Conditional jumps */

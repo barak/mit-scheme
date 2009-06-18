@@ -32,14 +32,20 @@ USA.
 #include "errors.h"
 #include "svm1-defns.h"
 
-static unsigned int cc_entry_reference_offset (insn_t *);
+static unsigned int read_u16 (insn_t *);
+static void write_u16 (unsigned int, insn_t *);
 
 bool
 read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
-  unsigned int n
-    = ((((unsigned int) (address[-3])) << 8)
-       | ((unsigned int) (address[-4])));
+  unsigned int n;
+
+  if ((*address) == SVM1_INST_ENTER_CLOSURE)
+    {
+      make_cc_entry_type (cet, CET_CLOSURE);
+      return (false);
+    }
+  n = (read_u16 (address - 4));
   if (n < 0x8000)
     make_compiled_procedure_type
       (cet,
@@ -51,28 +57,24 @@ read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
   else
     switch (n - 0xFFF8)
       {
-      case 7:
+      case 6:
 	make_cc_entry_type (cet, CET_EXPRESSION);
 	break;
 
-      case 6:
+      case 5:
 	make_cc_entry_type (cet, CET_INTERNAL_PROCEDURE);
 	break;
 
-      case 5:
+      case 4:
 	make_cc_entry_type (cet, CET_INTERNAL_CONTINUATION);
 	break;
 
-      case 4:
+      case 3:
 	make_cc_entry_type (cet, CET_TRAMPOLINE);
 	break;
 
-      case 3:
-	make_cc_entry_type (cet, CET_RETURN_TO_INTERPRETER);
-	break;
-
       case 2:
-	make_cc_entry_type (cet, CET_CLOSURE);
+	make_cc_entry_type (cet, CET_RETURN_TO_INTERPRETER);
 	break;
 
       default:
@@ -81,6 +83,8 @@ read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
   return (false);
 }
 
+/* This is used only for creating trampolines.  */
+
 bool
 write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 {
@@ -104,69 +108,84 @@ write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
       break;
 
     case CET_EXPRESSION:
-      n = (0xFFF8 + 7);
-      break;
-
-    case CET_INTERNAL_PROCEDURE:
       n = (0xFFF8 + 6);
       break;
 
-    case CET_INTERNAL_CONTINUATION:
+    case CET_INTERNAL_PROCEDURE:
       n = (0xFFF8 + 5);
       break;
 
-    case CET_TRAMPOLINE:
+    case CET_INTERNAL_CONTINUATION:
       n = (0xFFF8 + 4);
       break;
 
-    case CET_RETURN_TO_INTERPRETER:
+    case CET_TRAMPOLINE:
       n = (0xFFF8 + 3);
       break;
 
-    case CET_CLOSURE:
+    case CET_RETURN_TO_INTERPRETER:
       n = (0xFFF8 + 2);
       break;
+
+    case CET_CLOSURE:
+      return ((*address) != SVM1_INST_ENTER_CLOSURE);
 
     default:
       return (true);
     }
-  (address[-4]) = (n & 0x00FF);
-  (address[-3]) = (n >> 8);
+  write_u16 (n, (address - 4));
   return (false);
 }
 
 /* The offset is encoded as two bytes.  It's relative to its own
-   address, _not_ relative to the entry address.  In the case of a
-   closure, the offset points to the start of the first entry in the
-   block.  For other entry types, it points to the first non-marked
-   word in the block.  */
+   address, _not_ relative to the entry address, and points to the
+   first non-marked word in the block.  */
+
+#define CC_ENTRY_REFERENCE_OFFSET					\
+  (CC_ENTRY_OFFSET_SIZE + (2 * (sizeof (SCHEME_OBJECT))))
 
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  unsigned int n
-    = ((((unsigned int) (address[-1])) << 8)
-       | ((unsigned int) (address[-2])));
-  if (n < 0x8000)
+  if ((*address) == SVM1_INST_ENTER_CLOSURE)
     {
-      (ceo->offset) = (n + (cc_entry_reference_offset (address)));
+      unsigned int index = (read_u16 (address + 1));
+      (ceo->offset)
+	= ((sizeof (SCHEME_OBJECT))
+	   + CLOSURE_COUNT_SIZE
+	   + (index * CLOSURE_ENTRY_SIZE));
       (ceo->continued_p) = false;
     }
   else
     {
-      (ceo->offset) = (n - 0x8000);
-      (ceo->continued_p) = true;
+      unsigned int n = (read_u16 (address - 2));
+      if (n < 0x8000)
+	{
+	  (ceo->offset) = (n + CC_ENTRY_REFERENCE_OFFSET);
+	  (ceo->continued_p) = false;
+	}
+      else
+	{
+	  (ceo->offset) = (n - 0x8000);
+	  (ceo->continued_p) = true;
+	}
     }
   return (false);
 }
 
+/* This is used only for creating trampolines.  */
+
 bool
 write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  unsigned long offset = (ceo->offset);
+  unsigned long offset;
+
+  if ((*address) == SVM1_INST_ENTER_CLOSURE)
+    return (true);			/* not supported */
+  offset = (ceo->offset);
   if (ceo->continued_p)
     {
-      offset -= (cc_entry_reference_offset (address));
+      offset -= CC_ENTRY_REFERENCE_OFFSET;
       if (! (offset < 0x8000))
 	return (true);
     }
@@ -176,52 +195,52 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 	return (true);
       offset += 0x8000;
     }
-  (address[-2]) = (offset & 0x00FF);
-  (address[-1]) = (offset >> 8);
+  write_u16 (offset, (address - 2));
   return (false);
 }
 
 static unsigned int
-cc_entry_reference_offset (insn_t * address)
+read_u16 (insn_t * address)
 {
-  cc_entry_type_t cet;
-#ifdef ENABLE_DEBUGGING_TOOLS
-  bool fail_p = (read_cc_entry_type ((&cet), address));
-  assert (!fail_p);
-#else
-  read_cc_entry_type ((&cet), address);
-#endif
   return
-    (CC_ENTRY_OFFSET_SIZE
-     + (((cet.marker) == CET_CLOSURE)
-	? ((sizeof (SCHEME_OBJECT)) + 2)
-	: (2 * (sizeof (SCHEME_OBJECT)))));
+    ((((unsigned int) (address[1])) << 8)
+     | ((unsigned int) (address[0])));
+}
+
+static void
+write_u16 (unsigned int n, insn_t * address)
+{
+  (address[0]) = (n & 0x00FF);
+  (address[1]) = (n >> 8);
 }
 
 /* Compiled closures
 
    A compiled-closure block starts with a single GC header
-   (TC_MANIFEST_CLOSURE), followed by a 2-byte positive count,
-   followed by the closure entries (as specified by the count).  For
-   example, on a 32-bit machine with count == 2 and 4 value cells:
+   (TC_MANIFEST_CLOSURE), followed by a 2-byte count, followed by the
+   closure entries (as specified by the count).  The closure entries
+   refer to their targets indirectly: the targets appear in sequence
+   after all of the entries and are stored as Scheme objects.
 
-   0x00    TC_MANIFEST_CLOSURE | n_words == 10
-   0x04    (count - 1) == 1
+   For example, on a 32-bit machine with count == 3 and 4 value cells:
 
-   0x06    type == CET_CLOSURE
-   0x08    (offset - 6) == 2
-   0x0A    SVM1_INST_ICALL_U8
-   0x0B    offset == 8
+   0x00    TC_MANIFEST_CLOSURE | n_words == 11
+   0x04    count == 3
 
-   0x0C    type == CET_CLOSURE
-   0x0E    (offset - 6) == 8
-   0x10    SVM1_INST_ICALL_U8
-   0x11    offset == 6
+   0x06    SVM1_INST_ENTER_CLOSURE
+   0x07    index == 0
 
-   0x12    2 padding bytes
+   0x09    SVM1_INST_ENTER_CLOSURE
+   0x0A    index == 1
 
-   0x14    code entry 0
-   0x18    code entry 1
+   0x0C    SVM1_INST_ENTER_CLOSURE
+   0x0D    index == 2
+
+   0x0F    1 padding byte
+
+   0x10    target 0
+   0x14    target 1
+   0x18    target 2
 
    0x1C    value cell 0
    0x20    value cell 1
@@ -233,37 +252,25 @@ cc_entry_reference_offset (insn_t * address)
 unsigned long
 compiled_closure_count (SCHEME_OBJECT * block)
 {
-  return
-    (((((unsigned long) (((byte_t *) block) [1])) << 8)
-      | ((unsigned long) (((byte_t *) block) [0])))
-     + 1);
+  return (read_u16 ((insn_t *) block));
 }
 
 insn_t *
 compiled_closure_start (SCHEME_OBJECT * block)
 {
-  return (((insn_t *) block) + 2);
+  return (((insn_t *) block) + CLOSURE_COUNT_SIZE);
 }
 
 insn_t *
 compiled_closure_entry (insn_t * start)
 {
-  return (start + CC_ENTRY_HEADER_SIZE);
+  return start;
 }
 
 insn_t *
 compiled_closure_next (insn_t * start)
 {
-  insn_t * entry = (compiled_closure_entry (start));
-  switch (*entry)
-    {
-    case SVM1_INST_ICALL_U8: return (entry + 2);
-    case SVM1_INST_ICALL_U16: return (entry + 3);
-    case SVM1_INST_ICALL_U32: return (entry + 5);
-    default:
-      Microcode_Termination (TERM_COMPILER_DEATH);
-      return (0);
-    }
+  return (start + CLOSURE_ENTRY_SIZE);
 }
 
 SCHEME_OBJECT *
@@ -278,34 +285,14 @@ skip_compiled_closure_padding (insn_t * start)
 SCHEME_OBJECT
 compiled_closure_entry_to_target (insn_t * entry)
 {
-  unsigned long offset;
-  switch (entry[0])
-    {
-    case SVM1_INST_ICALL_U8:
-      offset = (((unsigned long) (entry[1])) + 2);
-      break;
-
-    case SVM1_INST_ICALL_U16:
-      offset
-	= (((((unsigned long) (entry[2])) << 8)
-	    | ((unsigned long) (entry[1])))
-	   + 3);
-      break;
-
-    case SVM1_INST_ICALL_U32:
-      offset
-	= (((((unsigned long) (entry[4])) << 24)
-	    | (((unsigned long) (entry[3])) << 16)
-	    | (((unsigned long) (entry[2])) << 8)
-	    | ((unsigned long) (entry[1])))
-	   + 5);
-      break;
-
-    default:
-      Microcode_Termination (TERM_COMPILER_DEATH);
-      return (0);
-    }
-  return (* ((SCHEME_OBJECT *) (entry + offset)));
+  unsigned int index = (read_u16 (entry + 1));
+  insn_t * block
+    = (entry + ((index * CLOSURE_ENTRY_SIZE) + CLOSURE_COUNT_SIZE));
+  unsigned int count = (read_u16 (block));
+  SCHEME_OBJECT * targets
+    = (skip_compiled_closure_padding
+       (block + CLOSURE_COUNT_SIZE + (count * CLOSURE_ENTRY_SIZE)));
+  return (targets[index]);
 }
 
 /* Execution caches (UUO links)
@@ -345,10 +332,13 @@ compiled_closure_entry_to_target (insn_t * entry)
 unsigned int
 read_uuo_frame_size (SCHEME_OBJECT * saddr)
 {
-  insn_t * address = ((insn_t *) saddr);
-  return
-    ((((unsigned int) (address[1])) << 8)
-     | ((unsigned int) (address[0])));
+  return (read_u16 ((insn_t *) saddr));
+}
+
+SCHEME_OBJECT
+read_uuo_symbol (SCHEME_OBJECT * saddr)
+{
+  return (saddr[1]);
 }
 
 insn_t *
@@ -362,7 +352,7 @@ read_uuo_target (SCHEME_OBJECT * saddr)
     {
       eaddr |= (*--addr);
       if (addr == end)
-	return (eaddr);
+	return ((insn_t *) eaddr);
       eaddr <<= 8;
     }
 }
