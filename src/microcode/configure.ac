@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.67 2009/05/01 20:04:45 riastradh Exp $])
+AC_REVISION([$Id$])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -699,18 +699,22 @@ if test "${with_openssl}" != no; then
 	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
 	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
     fi
+    FOUND=
     AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h],
 	[
 	AC_CHECK_LIB([crypto], [BF_set_key],
 	    [
 	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
 		[Define to 1 if you have the `crypto' library (-lcrypto).])
-	    MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
-	    MODULE_BASES="${MODULE_BASES} prbfish prmd5"
-	    PRBFISH_LIBS="-lcrypto"
-	    PRMD5_LIBS="-lcrypto"
+	    FOUND=yes
 	    ])
 	])
+    if test -n "${FOUND}"; then
+	MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
+	MODULE_BASES="${MODULE_BASES} prbfish prmd5"
+	PRBFISH_LIBS="-lcrypto"
+	PRMD5_LIBS="-lcrypto"
+    fi
 fi
 
 dnl These libraries might not be installed, so take care generating
