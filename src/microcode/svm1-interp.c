@@ -665,14 +665,15 @@ DEFINE_INST (enter_closure)
 {
   DECODE_SVM1_INST_ENTER_CLOSURE (index);
   {
-    byte_t * block = (PC - (((index + 1) * 3) + 2));
+    byte_t * block = (PC - (SIZEOF_SCHEME_OBJECT + ((index + 1) * 3)));
     unsigned int count
       = ((((unsigned int) (block[1])) << 8)
 	 | ((unsigned int) (block[0])));
     SCHEME_OBJECT * targets
       = (((SCHEME_OBJECT *) block)
-	 + (((2 + (count * 3)) + ((sizeof (SCHEME_OBJECT)) - 1))
-	    / (sizeof (SCHEME_OBJECT))));
+	 + (1
+	    + (((count * 3) + (SIZEOF_SCHEME_OBJECT - 1))
+	       / SIZEOF_SCHEME_OBJECT)));
     push_object (MAKE_CC_BLOCK (((SCHEME_OBJECT *) block) - 1));
     NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
   }
