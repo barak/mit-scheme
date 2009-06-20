@@ -287,11 +287,11 @@ compiled_closure_entry_to_target (insn_t * entry)
 {
   unsigned int index = (read_u16 (entry + 1));
   insn_t * block
-    = (entry + ((index * CLOSURE_ENTRY_SIZE) + CLOSURE_COUNT_SIZE));
+    = (entry - (CLOSURE_COUNT_SIZE + (index * CLOSURE_ENTRY_SIZE)));
   unsigned int count = (read_u16 (block));
   SCHEME_OBJECT * targets
     = (skip_compiled_closure_padding
-       (block + CLOSURE_COUNT_SIZE + (count * CLOSURE_ENTRY_SIZE)));
+       (block + (CLOSURE_COUNT_SIZE + (count * CLOSURE_ENTRY_SIZE))));
   return (targets[index]);
 }
 
