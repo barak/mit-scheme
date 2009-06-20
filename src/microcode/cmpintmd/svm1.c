@@ -224,28 +224,30 @@ write_u16 (unsigned int n, insn_t * address)
 
    For example, on a 32-bit machine with count == 3 and 4 value cells:
 
-   0x00    TC_MANIFEST_CLOSURE | n_words == 11
+   0x00    TC_MANIFEST_CLOSURE | n_words == 12
+
    0x04    count == 3
+   0x06    2 padding bytes (next address must be word-aligned)
 
-   0x06    SVM1_INST_ENTER_CLOSURE
-   0x07    index == 0
+   0x08    SVM1_INST_ENTER_CLOSURE
+   0x09    index == 0
 
-   0x09    SVM1_INST_ENTER_CLOSURE
-   0x0A    index == 1
+   0x0B    SVM1_INST_ENTER_CLOSURE
+   0x0C    index == 1
 
-   0x0C    SVM1_INST_ENTER_CLOSURE
-   0x0D    index == 2
+   0x0E    SVM1_INST_ENTER_CLOSURE
+   0x0F    index == 2
 
-   0x0F    1 padding byte
+   0x11    3 padding bytes (next address must be word-aligned)
 
-   0x10    target 0
-   0x14    target 1
-   0x18    target 2
+   0x14    target 0
+   0x18    target 1
+   0x1C    target 2
 
-   0x1C    value cell 0
-   0x20    value cell 1
-   0x24    value cell 2
-   0x28    value cell 3
+   0x20    value cell 0
+   0x24    value cell 1
+   0x28    value cell 2
+   0x2C    value cell 3
 
    */
 

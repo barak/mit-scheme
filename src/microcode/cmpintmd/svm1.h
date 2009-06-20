@@ -46,8 +46,10 @@ typedef byte_t insn_t;
    instructions are stored.  */
 #define CC_ENTRY_GC_TRAP_SIZE 0
 
-/* Size of closure count in insn_t units.  */
-#define CLOSURE_COUNT_SIZE 2
+/* Size of closure count in insn_t units.  Only first two bytes
+   contain the count, but we must add padding to move the first entry
+   to a word boundary.  */
+#define CLOSURE_COUNT_SIZE SIZEOF_SCHEME_OBJECT
 
 /* Size of closure entry in insn_t units.  */
 #define CLOSURE_ENTRY_SIZE 3

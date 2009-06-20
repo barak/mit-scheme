@@ -147,16 +147,16 @@ USA.
 ;; See microcode/cmpintmd/svm1.c for a description of the layout.
 
 ;; Offset of the first object in the closure from the address of the
-;; first closure entry point, in words.
+;; first closure entry point, in words.  In order to make this work,
+;; we add padding to the closure-count field so that the first entry
+;; is aligned on an object boundary.
 
 (define (closure-first-offset count entry)
   entry
   (if (= count 0)
       1
-      ;; This returns the offset in bytes, it isn't necessarily in words.
-      (receive (entries entries-size padding-size) (make-closure-entries count)
-	entries-size padding-size
-	(+ 2 (car (car entries))))))
+      (+ (integer-ceiling (* count 3) address-units-per-object)
+	 count)))
 
 ;; Offset of the first object in the closure from the address of the
 ;; manifest-closure header word, in words.
@@ -164,71 +164,15 @@ USA.
 (define (closure-object-first-offset count)
   (if (= count 0)
       1
-      (receive (entries entries-size padding-size) (make-closure-entries count)
-	entries
-	(quotient (+ 2 entries-size padding-size)
-		  address-units-per-object))))
+      (+ 2 (closure-first-offset count 0))))
 
 ;; Increment from one closure entry address to another, in bytes.
 
 (define (closure-entry-distance count entry entry*)
-  (* 10 (- entry* entry)))
+  (* 3 (- entry* entry)))
 
 ;; Increment from a given closure address to the first closure
 ;; address, in bytes.  Usually negative.
 
 (define (closure-environment-adjustment count entry)
   (closure-entry-distance count entry 0))
-
-
-;; This could get stuck toggling between two states.  It's probably
-;; not worth running the ITERATION loop more than a couple of times.
-(define (make-closure-entries count)
-  (let ((last (- count 1))
-	(initial-padding (padding-size (* count 9))))
-    (let ((entries
-	   (reverse!
-	    (make-initialized-list count
-	      (lambda (i)
-		(cons (+ (* (- last i) 9)
-			 initial-padding
-			 (* i 4))
-		      9))))))
-      (let iteration ((padding initial-padding))
-	(let loop ((entries entries))
-	  (if (pair? entries)
-	      (let ((entry (car entries))
-		    (entries (cdr entries)))
-		(let ((size* (offset->entry-size (car entry)))
-		      (size (cdr entry)))
-		  (if (not (= size* size))
-		      (begin
-			(set-cdr! entry size*)
-			(adjust-entries! entries (- size size*)))))
-		(loop entries))))
-	(let ((entries-size (entries-size entries)))
-	  (let ((padding* (padding-size entries-size)))
-	    (if (not (= padding* padding))
-		(begin
-		  (adjust-entries! entries (- padding padding*))
-		  (iteration padding*))
-		(values (map car (reverse! entries))
-			entries-size
-			padding))))))))
-
-(define (entries-size entries)
-  (reduce + 0 (map cdr entries)))
-
-(define (padding-size entries-size)
-  (let ((entries-size (+ entries-size 2)))
-    (- (* (integer-ceiling entries-size 4) 4) entries-size)))
-
-(define (offset->entry-size offset)
-  (cond ((< offset #x100) 6)
-	((< offset #x10000) 7)
-	(else 9)))
-
-(define (adjust-entries! entries delta)
-  (for-each (lambda (entry)
-	      (set-car! entry (- (car entry) delta)))
-	    entries))
