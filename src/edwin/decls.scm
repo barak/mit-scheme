@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.83 2008/01/30 20:02:00 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,15 +42,14 @@ USA.
 			  (list (scm-file source))
 			  '())
 		      (map bin-file
-			   (list-transform-positive dependencies
-			     (if source-time
-				 (lambda (dependency)
-				   (let ((bin-time (bin-time dependency)))
-				     (or (not bin-time)
-					 (< source-time bin-time))))
-				 (lambda (dependency)
-				   dependency ;ignore
-				   true))))))))
+			   (if source-time
+			       (filter (lambda (dependency)
+					 (let ((bin-time
+						(bin-time dependency)))
+					   (or (not bin-time)
+					       (< source-time bin-time))))
+				       dependencies)
+			       dependencies))))))
 	      (if (not (null? reasons))
 		  (begin
 		    #|
@@ -226,6 +225,10 @@ USA.
 		"undo"
 		"unix"
 		"vc"
+		"vc-rcs"
+		"vc-cvs"
+		"vc-svn"
+		"vc-bzr"
 		"verilog"
 		"vhdl"
 		"webster"
