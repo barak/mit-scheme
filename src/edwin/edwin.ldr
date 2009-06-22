@@ -258,6 +258,7 @@ USA.
 	(load "vc-cvs" (->environment '(EDWIN VC)))
 	(load "vc-svn" (->environment '(EDWIN VC)))
 	(load "vc-bzr" (->environment '(EDWIN VC)))
+	(load "vc-git" (->environment '(EDWIN VC)))
 	(load "wincom" environment)
 	(load "scrcom" environment)
 	(load "modefs" environment)

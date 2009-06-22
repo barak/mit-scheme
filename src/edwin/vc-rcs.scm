@@ -190,6 +190,9 @@ USA.
   (lambda (directory)
     (let ((cd (rcs-directory directory)))
       (and (file-directory? cd)
+	   (any (lambda (pathname)
+		  (string-suffix? ",v" (file-namestring pathname)))
+		(directory-read cd))
 	   cd))))
 
 (define-vc-type-operation 'REGISTER vc-type:rcs

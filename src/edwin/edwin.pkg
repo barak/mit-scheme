@@ -1441,7 +1441,8 @@ USA.
 	 "vc-rcs"
 	 "vc-cvs"
 	 "vc-svn"
-	 "vc-bzr")
+	 "vc-bzr"
+	 "vc-git")
   (parent (edwin))
   (export (edwin)
 	  edwin-command$vc-diff
@@ -1457,6 +1458,7 @@ USA.
 	  edwin-command$vc-version-diff
 	  edwin-command$vc-version-other-window
 	  edwin-mode$vc-log
+	  edwin-variable$git-diff-switches
 	  edwin-variable$vc-checkin-hooks
 	  edwin-variable$vc-checkout-carefully
 	  edwin-variable$vc-command-messages

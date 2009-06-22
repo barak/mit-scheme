@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.59 2008/01/30 20:02:00 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -177,6 +177,11 @@ USA.
     ("utils"	(edwin))
     ("utlwin"	(edwin window))
     ("vc"	(edwin vc))
+    ("vc-bzr"	(edwin vc))
+    ("vc-cvs"	(edwin vc))
+    ("vc-git"	(edwin vc))
+    ("vc-rcs"	(edwin vc))
+    ("vc-svn"	(edwin vc))
     ("verilog"	(edwin verilog))
     ("vhdl"	(edwin vhdl))
     ("webster"	(edwin))
