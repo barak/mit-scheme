@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.71 2009/02/11 02:42:38 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -212,6 +212,7 @@ USA.
   (cond ((not object) "")
 	((number? object) (number->string object))
 	((uri? object) (uri->string object))
+	((pathname? object) (->namestring object))
 	(else (error:wrong-type-argument object "string component" caller))))
 
 (define (char->string char)
