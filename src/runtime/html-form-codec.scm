@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: html-form-codec.scm,v 14.1 2008/08/24 07:20:03 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -129,7 +129,7 @@ USA.
   (let ((end (string-length string)))
     (do ((i 0 (fix:+ i 1)))
 	((not (fix:< i end)))
-      (encode-octet (string-ref string 0) port))))
+      (encode-octet (string-ref string i) port))))
 
 (define (encode-octet char port)
   (cond ((char-unreserved? char)
