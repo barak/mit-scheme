@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.39 2009/04/27 23:40:57 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -49,6 +49,7 @@ OS_open_tcp_stream_socket (void * host, unsigned int port)
   OS_channel_close_on_abort (channel);
   {
     struct sockaddr_in address;
+    memset((&address), 0, (sizeof (address)));
     (address . sin_family) = AF_INET;
     memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
     (address . sin_port) = port;
@@ -235,6 +236,7 @@ OS_open_unix_stream_socket (const char * filename)
   OS_channel_close_on_abort (channel);
   {
     struct sockaddr_un address;
+    memset((&address), 0, (sizeof (address)));
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
     do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
@@ -259,6 +261,7 @@ OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
   struct sockaddr_in address;
   int one = 1;
 
+  memset((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
@@ -297,6 +300,7 @@ OS_server_connection_accept (Tchannel channel,
   static struct sockaddr_in address;
   socklen_t address_length = (sizeof (struct sockaddr_in));
   int s;
+  memset((&address), 0, (sizeof (address)));
   while (1)
     {
       s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
