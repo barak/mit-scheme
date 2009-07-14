@@ -277,8 +277,7 @@ USA.
 (define-method close-resource ((folder <file-folder>) no-defer?)
   no-defer?
   (save-resource folder)
-  (discard-file-folder-messages folder)
-  (discard-file-folder-xstring folder))
+  (discard-folder-cache folder))
 
 (define (discard-file-folder-messages folder)
   (without-interrupts
@@ -452,7 +451,8 @@ USA.
       (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
-  (close-resource folder #f))
+  (discard-file-folder-messages folder)
+  (discard-file-folder-xstring folder))
 
 (define-method probe-folder ((folder <file-folder>))
   folder
