@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.97 2008/09/25 14:58:06 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -309,14 +309,14 @@ USA.
 	  (let ((message (make-message-copy message folder)))
 	    (without-interrupts
 	     (lambda ()
-	       (set-file-folder-messages!
-		folder
-		(let ((messages (file-folder-messages folder)))
-		  (let ((n (vector-length messages)))
-		    (let ((messages (vector-grow messages (fix:+ n 1))))
-		      (attach-message! message folder n)
-		      (vector-set! messages n message)
-		      messages)))))))
+	       (let* ((messages (file-folder-messages folder))
+		      (n (vector-length messages))
+		      (n* (fix:+ n 1))
+		      (messages* (vector-grow messages n*)))
+		 (attach-message! message folder n)
+		 (vector-set! messages* n message)
+		 (set-file-folder-messages! folder messages*)
+		 (object-modified! folder 'INCREASE-LENGTH n n*)))))
 	  (let ((type
 		 (if exists?
 		     (url-file-folder-type url)
