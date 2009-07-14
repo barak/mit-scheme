@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-umail.scm,v 1.59 2008/08/31 23:02:17 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -149,7 +149,8 @@ USA.
     (lambda (port)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
-	  (write-umail-message message #t port))))))
+	  (write-umail-message message #t port)))
+      (output-port/synchronize-output port))))
 
 (define-method append-message-to-file (message url (type <umail-folder-type>))
   type
