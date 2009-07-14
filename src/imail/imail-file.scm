@@ -406,21 +406,9 @@ USA.
 	     (and (eq? status 'BOTH-MODIFIED)
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
-       (call-with-current-continuation
-	 (lambda (k)
-	   (bind-condition-handler (list condition-type:error)
-	       (lambda (condition)
-		 ;; Can this be done in a pop-up buffer?  It doesn't
-		 ;; work just to use IMAIL-UI:PRESENT-USER-ALERT
-		 ;; because that futzes with the kill-buffer hooks.
-		 (imail-ui:message
-		  (call-with-output-string
-		    (lambda (output-port)
-		      (write-condition-report condition output-port))))
-		 (k #f))
-	     (lambda ()
-	       (synchronize-file-folder-write folder write-file-folder)
-	       #t))))))
+       (begin
+	 (synchronize-file-folder-write folder write-file-folder)
+	 #t)))
 
 (define-generic write-file-folder (folder pathname))
 
