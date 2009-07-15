@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-rmail.scm,v 1.80 2009/05/01 12:47:08 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -239,7 +239,8 @@ USA.
       (write-rmail-file-header (rmail-folder-header-fields folder) port)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
-	  (write-rmail-message message port))))))
+	  (write-rmail-message message port)))
+      (output-port/synchronize-output port))))
 
 (define-method append-message-to-file (message url (type <rmail-folder-type>))
   type

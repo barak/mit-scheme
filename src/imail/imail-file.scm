@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.97 2008/09/25 14:58:06 riastradh Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -277,8 +277,7 @@ USA.
 (define-method close-resource ((folder <file-folder>) no-defer?)
   no-defer?
   (save-resource folder)
-  (discard-file-folder-messages folder)
-  (discard-file-folder-xstring folder))
+  (discard-folder-cache folder))
 
 (define (discard-file-folder-messages folder)
   (without-interrupts
@@ -309,14 +308,14 @@ USA.
 	  (let ((message (make-message-copy message folder)))
 	    (without-interrupts
 	     (lambda ()
-	       (set-file-folder-messages!
-		folder
-		(let ((messages (file-folder-messages folder)))
-		  (let ((n (vector-length messages)))
-		    (let ((messages (vector-grow messages (fix:+ n 1))))
-		      (attach-message! message folder n)
-		      (vector-set! messages n message)
-		      messages)))))))
+	       (let* ((messages (file-folder-messages folder))
+		      (n (vector-length messages))
+		      (n* (fix:+ n 1))
+		      (messages* (vector-grow messages n*)))
+		 (attach-message! message folder n)
+		 (vector-set! messages* n message)
+		 (set-file-folder-messages! folder messages*)
+		 (object-modified! folder 'INCREASE-LENGTH n n*)))))
 	  (let ((type
 		 (if exists?
 		     (url-file-folder-type url)
@@ -406,21 +405,9 @@ USA.
 	     (and (eq? status 'BOTH-MODIFIED)
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
-       (call-with-current-continuation
-	 (lambda (k)
-	   (bind-condition-handler (list condition-type:error)
-	       (lambda (condition)
-		 ;; Can this be done in a pop-up buffer?  It doesn't
-		 ;; work just to use IMAIL-UI:PRESENT-USER-ALERT
-		 ;; because that futzes with the kill-buffer hooks.
-		 (imail-ui:message
-		  (call-with-output-string
-		    (lambda (output-port)
-		      (write-condition-report condition output-port))))
-		 (k #f))
-	     (lambda ()
-	       (synchronize-file-folder-write folder write-file-folder)
-	       #t))))))
+       (begin
+	 (synchronize-file-folder-write folder write-file-folder)
+	 #t)))
 
 (define-generic write-file-folder (folder pathname))
 
@@ -464,7 +451,8 @@ USA.
       (call-with-input-xstring (file-folder-xstring folder) 0 reader)))))
 
 (define-method discard-folder-cache ((folder <file-folder>))
-  (close-resource folder #f))
+  (discard-file-folder-messages folder)
+  (discard-file-folder-xstring folder))
 
 (define-method probe-folder ((folder <file-folder>))
   folder
