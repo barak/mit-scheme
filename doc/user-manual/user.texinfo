@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: user.texinfo,v 1.114 2009/04/28 22:10:26 mhb Exp $
+@comment $Id$
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.92
@@ -1363,7 +1363,7 @@ line.
 
 There are several ways that you can leave Scheme: there are two Scheme
 procedures that you can call; there are several Edwin commands that you
-can execute; and there are are graphical-interface buttons (and their
+can execute; and there are graphical-interface buttons (and their
 associated keyboard accelerators) that you can activate.
 
 @itemize @bullet
