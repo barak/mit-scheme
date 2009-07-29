@@ -20,6 +20,7 @@
 *.pdf
 *.ps
 /make-common
+/ffi/mit-scheme-ffi/
 /imail/mit-scheme-imail/
 /ref-manual/mit-scheme-ref/
 /sos/mit-scheme-sos/
