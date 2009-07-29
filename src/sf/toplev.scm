@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.33 2008/01/30 20:02:38 cph Exp $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -47,6 +47,43 @@ USA.
 
 (define (integrate/scode scode receiver)
   (integrate/simple identity-procedure scode receiver))
+
+(define (sf-with-dependencies sources dependencies #!optional syntax-env)
+  (let ((env (if (default-object? syntax-env)
+		 sf/default-syntax-table
+		 syntax-env))
+	(deps (map (lambda (dep) (pathname-default-type dep "bin"))
+		   dependencies)))
+    (define (file-reasons file)
+      (append
+       (if (not (file-processed? file "scm" "bin"))
+	   (list (pathname-default-type file "scm"))
+	   '())
+       (let* ((bin-file (pathname-new-type file "bin"))
+	      (bin-time (file-modification-time bin-file)))
+	 (if (not bin-time)
+	     '()
+	     (list-transform-positive deps
+	       (lambda (dep)
+		 (let ((dep-time (file-modification-time dep)))
+		   (or (not dep-time) (< bin-time dep-time)))))))))
+    (for-each
+     (lambda (file)
+       (let ((reasons (file-reasons file)))
+	 (if (not (null? reasons))
+	     (begin
+	       (if (eq? sf:noisy? #t)
+		   (begin
+		     (write-string ";Processing ")
+		     (write (enough-namestring file))
+		     (write-string " because of:")
+		     (for-each (lambda (reason)
+				 (write-char #\space)
+				 (write (enough-namestring reason)))
+			       reasons)))
+	       (fluid-let ((sf/default-syntax-table env))
+		 (sf file))))))
+     (if (pair? sources) sources (list sources)))))
 
 (define (sf input-string #!optional bin-string spec-string)
   (syntax-file input-string
