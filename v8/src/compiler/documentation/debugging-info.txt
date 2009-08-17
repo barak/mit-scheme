@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Id: debugging-info.txt,v 1.1 1995/08/28 13:22:19 adams Exp $
+$Id: 428915d8bd3b6d1b78918636524ef7b307e44e4e $
 
 
 NOTES ON DEBUGGING INFO GENERATION IN LIAR 5.0

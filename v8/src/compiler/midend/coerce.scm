@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.8 1999/05/15 03:15:22 cph Exp $
+$Id: 2afa625217dfbd1c5d28780a85e033a9d0ddf2f4 $
 
 Copyright (c) 1995, 1999 Massachusetts Institute of Technology
 

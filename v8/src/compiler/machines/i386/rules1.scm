@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: 2f2aca846ab7434482d0347ab53efe52bc1e16ed $
 
 Copyright (c) 1992-1999 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infnew.scm,v 1.9 1999/01/02 06:06:43 cph Exp $
+$Id: f623c027bdf875a26b973ae11daa4d4c4001a037 $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

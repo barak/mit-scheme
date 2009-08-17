@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulrew.scm,v 1.7 2008/01/30 20:01:53 cph Exp $
+$Id: cbfd87fc0b75eb04acdbf4b498f5ad7fdf6b5856 $
 $MC68020-Header: rulrew.scm,v 1.1 90/01/18 22:48:52 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

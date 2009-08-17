@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: compat.scm,v 1.16 1999/01/02 06:06:43 cph Exp $
+$Id: 849f82cc50e39e008c0119361d60dcf8403008f8 $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

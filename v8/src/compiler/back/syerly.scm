@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syerly.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 0da4238e95a3d330b1ce368ab99c96eae36d3713 $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

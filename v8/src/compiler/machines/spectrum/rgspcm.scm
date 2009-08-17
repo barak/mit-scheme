@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rgspcm.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: e2b825af8fd71c40e3b1f9c254f37570e34a1afe $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

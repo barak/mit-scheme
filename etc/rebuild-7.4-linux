@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-7.4-linux,v 1.3 1997/07/07 23:27:44 cph Exp $
+# $Id: 2b5cc9fb37fc533451e4c7fd910a66698e9309ef $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

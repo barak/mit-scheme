@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: syntax.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 9213f90342c7f1de09bc870720f66a6c3ae8e2db $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

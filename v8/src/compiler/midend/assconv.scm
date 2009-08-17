@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assconv.scm,v 1.16 1999/01/02 06:06:43 cph Exp $
+$Id: 21fede7bce7413deb5fece75a9e44a201250c01d $
 
 Copyright (c) 1994-1999 Massachusetts Institute of Technology
 

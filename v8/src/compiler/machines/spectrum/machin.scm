@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: 2d5dbf17a7996bc96b15812dbdc39b23913e40cb $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

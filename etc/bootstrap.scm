@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bootstrap.scm,v 1.4 1994/01/08 21:23:00 gjr Exp $
+$Id: 28a4e5c69713f202b40c631b830b1d12188bc67b $
 
 Copyright (c) 1991-1994 Massachusetts Institute of Technology
 

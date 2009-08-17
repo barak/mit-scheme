@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: coerce.scm,v 1.7 2008/01/30 20:01:50 cph Exp $
+$Id: e428899eea002680958f87e999025549422aa412 $
 $MC68020-Header: coerce.scm,v 1.10 88/08/31 05:56:37 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

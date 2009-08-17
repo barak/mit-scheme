@@ -1,5 +1,5 @@
 ;;;; -*-Scheme-*-
-;;; $Id: scc-macros.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
+;;; $Id: fce8a4d35d206ee17ded690dc1574d06edc96829 $
 
 (define-syntax define-constant
   define-integrable)

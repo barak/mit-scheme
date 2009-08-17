@@ -1,4 +1,4 @@
-$Id: imap-response.txt,v 1.6 2000/06/01 04:56:42 cph Exp $
+$Id: 6decfbacb8dd2e22ad3b15813238a93eb2b291ad $
 
 Notes on IMAP server responses
 

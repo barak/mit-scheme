@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: comcmp.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: a3f1d0c8b8b9e295bab1633eee90a23343e3a90b $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.6 1999/01/02 06:06:43 cph Exp $
+$Id: d3bae7b39bb455947139b348116dbcf280e467f6 $
 
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 

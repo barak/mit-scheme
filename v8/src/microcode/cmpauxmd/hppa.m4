@@ -1,6 +1,6 @@
 changecom(`;');;; -*-Midas-*-
 ;;;
-;;; $Id$
+;;; $Id: 467c9457f60a3eaab7dcd8fd2bbd65d5877f7537 $
 ;;;
 ;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
 ;;;

@@ -2,7 +2,7 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
+;;; $Id: 176122d83dac5f63f875dbd9de6d6b624dd2a24c $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
@@ -22,7 +22,7 @@
 ;;	- Document dependencies
 ;;	- [SCREWS] see last page
 
-;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
+;;; $Id: 176122d83dac5f63f875dbd9de6d6b624dd2a24c $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;

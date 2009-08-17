@@ -28,7 +28,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Id: scheme.el,v 1.10 2000/03/21 17:32:59 cph Exp $
+;;; $Id: d98f616f24e075563213723d97948706b17ac927 $
 
 ;;; Code:
 

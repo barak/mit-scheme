@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.10 2008/01/30 20:02:24 cph Exp $
+$Id: 9801ab9a95d8cec80edcb186295f47101dbe2e91 $
 
 Copyright (C) 1992, 1993 Digital Equipment Corporation (D.E.C.)
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

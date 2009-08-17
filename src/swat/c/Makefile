@@ -1,5 +1,5 @@
 ##
-## $Id: Makefile,v 1.2 2000/03/21 04:40:45 cph Exp $
+## $Id: 1efd96f95fe9557fe8dd2a7ded08af8dfd932216 $
 ##
 ## WARNING: This makefile is designed to be used only from the master
 ## makefile in the parent directory.

@@ -1,6 +1,6 @@
 /* -*- C -*- */
 
-/* $Id: test-c.c,v 1.4 2000/03/21 04:29:53 cph Exp $ */
+/* $Id: 8cbc079ab8c9a01b3849884117faf7f69fb49943 $ */
 
 #include <stdio.h>
 

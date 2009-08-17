@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgn1.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: 7102f3e87eea1915526746078e1167efe2dfe143 $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

@@ -1,5 +1,5 @@
 #!/bin/sh
 # Script to generate standard runtime band from binaries.
-# $Id: make_runtime,v 1.5 2000/03/21 17:32:59 cph Exp $
+# $Id: b50b1e2f5852873b34fd70082996c8813017e2f5 $
 cd runtime
 exec ../microcode/scheme -library ../lib -large -fasl make.bin < ../etc/mkband.scm

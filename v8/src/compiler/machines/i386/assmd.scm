@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: assmd.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: b9e813cbf1efd789090d60de17dd52847c1ced8f $
 $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 
 Copyright (c) 1992, 1999 Massachusetts Institute of Technology

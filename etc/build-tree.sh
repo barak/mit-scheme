@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-tree.sh,v 1.6 2000/08/18 20:03:08 cph Exp $
+# $Id: f49fea598cc065818873409c1d8942b2e9bc046d $
 #
 # Program to finish setting up the Scheme source tree after it is
 # checked out.  Adds required links, builds TAGS files, etc.

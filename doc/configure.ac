@@ -4,7 +4,7 @@ AC_INIT([MIT/GNU Scheme documentation],
 	[7.7.91],
 	[bug-mit-scheme@gnu.org],
 	[mit-scheme-doc])
-AC_REVISION([$Id: configure.ac,v 1.7 2008/01/30 20:06:10 cph Exp $])
+AC_REVISION([$Id: a68863b6a8da0c3334b9a9f4114ec4979500d3b5 $])
 AC_CONFIG_SRCDIR([ref-manual/scheme.texinfo])
 
 AC_COPYRIGHT(

@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: rebuild-8.0,v 1.4 1995/11/05 13:16:41 adams Exp $
+# $Id: 04219ce7cdec29a5abf7669d77d9b00bdec07616 $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

@@ -1,5 +1,5 @@
 ;; -*- Scheme -*-
-;; $Id: update-rcs-log.in,v 1.10 1999/06/03 02:48:27 cph Exp $
+;; $Id: 2285c7cf9a1af9b7fe9fbc37474063111f61e690 $
 
 (begin
   (load-option 'RCS)

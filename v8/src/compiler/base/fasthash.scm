@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fasthash.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: bb176e1142e1ccdb56560a1c4f198f2a1bdb6125 $
 
 Copyright (c) 1995-1999 Massachusetts Institute of Technology
 

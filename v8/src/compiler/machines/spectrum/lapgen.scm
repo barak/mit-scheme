@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.8 1999/01/02 06:06:43 cph Exp $
+$Id: a2f79ff7c28bdc84a29a56d8aa8b0fd34fa168f8 $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

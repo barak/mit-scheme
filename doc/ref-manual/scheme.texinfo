@@ -1,5 +1,5 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: scheme.texinfo,v 1.137 2008/01/30 20:06:12 cph Exp $
+@comment $Id: 5f6d727adfed13442fb32dc00f558780b3afaee5 $
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.103

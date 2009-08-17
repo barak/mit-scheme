@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rules1.scm,v 4.13 2008/01/30 20:01:55 cph Exp $
+$Id: 5be8c8916ad70c5e8c3b70bff5395dc7fdf8ca3d $
 $MC68020-Header: rules1.scm,v 4.34 1991/01/23 21:34:30 jinx Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

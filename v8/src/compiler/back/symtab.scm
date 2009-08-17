@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: symtab.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 7c64e5d9e23f1d95505c8b7bf286cbd06a8930b9 $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

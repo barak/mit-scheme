@@ -1,4 +1,4 @@
-;; $Id: r2bs.scm,v 1.1 1996/12/06 17:14:56 adams Exp $
+;; $Id: cf092b89d448e21b68361263372c0141820919aa $
 
 (define (real->bit-string x)
   ;; Allocate a 64-bit result to hold the double-precision number.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: bitutl.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 594d77b3491578c0c46ecbd1515edc87d063afd3 $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

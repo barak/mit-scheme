@@ -1,6 +1,6 @@
 @echo off
 rem Copyright (c) 1993 Massachusetts Institute of Technology
-rem $Id: mkopt.bat,v 1.1 1993/08/22 17:52:59 gjr Exp $
+rem $Id: e193784853cc109945b6f1ae594234c507e83af3 $
 copy \scheme\runtime\numint.com \scheme\lib\options\numint.com
 copy \scheme\runtime\numint.bci \scheme\lib\options\numint.bci
 copy \scheme\runtime\cpress.com \scheme\lib\options\cpress.com

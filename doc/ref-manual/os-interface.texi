@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: os-interface.texi,v 1.4 2008/01/30 20:06:11 cph Exp $
+@c $Id: 1aa6b60f42e08984e9de13bc730d284b2b780f4e $
 
 @c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 @c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,

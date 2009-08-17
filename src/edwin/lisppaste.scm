@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: lisppaste.scm,v 1.3 2009/02/18 07:46:59 riastradh Exp $
+$Id: 6ae1da5d6e59e5c2fcbfb59691df81316d02a951 $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.

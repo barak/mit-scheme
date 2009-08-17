@@ -1,6 +1,6 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id$
+;;; $Id: a33337b0923b9f48cd94253d1030e91551e0a775 $
 ;;;
 ;;; Copyright (c) 1987-1999 Massachusetts Institute of Technology
 ;;;
@@ -744,4 +744,4 @@
 
 ;;; This identification string is saved by the system.
 
-"$Id$"
+"$Id: a33337b0923b9f48cd94253d1030e91551e0a775 $"

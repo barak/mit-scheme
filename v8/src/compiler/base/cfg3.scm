@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cfg3.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 1d761a24f8bef31a561c1ffdef2334cdeba84d47 $
 
 Copyright (c) 1987, 1989, 1999 Massachusetts Institute of Technology
 

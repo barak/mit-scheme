@@ -27,7 +27,7 @@
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
 ;;;
-;;; $Id: techinfo.scm,v 1.11 2008/01/30 20:02:06 cph Exp $
+;;; $Id: 6b6c72f0bf4f931f966b0d4481e7e1087ee7e80f $
 ;;;
 
 (declare (usual-integrations))

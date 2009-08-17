@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: 3de33812e022c74848a21641a4a70aa21f8720de $
 
 Copyright (c) 1988, 1989, 1999 Massachusetts Institute of Technology
 

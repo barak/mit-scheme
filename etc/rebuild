@@ -5,7 +5,7 @@ echo ""
 exit 1
 ________________________________________________________________________
 #!/bin/csh -f
-# $Id: rebuild,v 1.14 1995/07/31 18:27:07 adams Exp $
+# $Id: c14461167e25f8e6fc2e95b24c5c917d55695fe5 $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

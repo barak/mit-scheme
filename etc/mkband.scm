@@ -1,5 +1,5 @@
 ;;; -*- Scheme -*-
-;;; $Id: mkband.scm,v 1.6 2000/03/21 17:32:59 cph Exp $
+;;; $Id: 97c1f5cf44a8f360de143f78a145a2175fc78059 $
 ;;; Input file to build standard bands.
 
 (set-working-directory-pathname! "../sf")

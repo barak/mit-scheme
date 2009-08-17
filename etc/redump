@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: redump,v 1.1 1993/08/28 23:36:17 gjr Exp $
+# $Id: acfa3e8c59f41254ce07944d3f8abe8d84263ae7 $
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

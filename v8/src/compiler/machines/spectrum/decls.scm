@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.10 1999/01/02 06:06:43 cph Exp $
+$Id: ca694345cee1131d914ff34e1cbd5a09eae841dc $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

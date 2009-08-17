@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: linear.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+$Id: db8d529e82a72e70580289a5d567c4ca8f2aed48 $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

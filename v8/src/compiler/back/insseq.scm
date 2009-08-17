@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: insseq.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: e5af6cdcec07994f9fb6015b04ffacbf2f6a289e $
 
 Copyright (c) 1987, 1988, 1990, 1999 Massachusetts Institute of Technology
 

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.5 1999/01/02 06:06:43 cph Exp $
+$Id: cdb94ca2c639e5e2950eb0e97066fe543086382d $
 
 Copyright (c) 1987-1999 Massachusetts Institute of Technology
 

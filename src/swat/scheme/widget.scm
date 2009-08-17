@@ -1,5 +1,5 @@
 ;;;;; -*- Scheme -*-
-;;;;; $Id: widget.scm,v 1.1 1995/08/02 21:26:49 adams Exp $
+;;;;; $Id: 1837739630baebbe4f22437ea0bc5376789759dd $
 ;;;;; derived from button.sc,v 1.2 1993/02/26 00:49:36 jmiller Exp $
 
 ;;;;;;;;;;  Widget Definitions

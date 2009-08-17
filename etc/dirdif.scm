@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dirdif.scm,v 1.2 2000/03/21 17:32:59 cph Exp $
+$Id: 359809112a88b811afdcb84725708d8999cb6d92 $
 
 Copyright (c) 1992, 2000 Massachusetts Institute of Technology
 

@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* $Id$ */
+/* $Id: 519399dabbba3c12abc0321d781a0847bae76598 $ */
 
 /* Kinds of traps:
 
