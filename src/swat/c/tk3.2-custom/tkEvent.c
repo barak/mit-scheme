@@ -18,7 +18,7 @@
 /* ADDED tk_GetIntervalToNextEvent */
 
 #ifndef lint
-static char rcsid[] = "$Id: 7ecec70252c49bdd362616b02a6381e133a3d4ac $ SPRITE (Berkeley)";
+static char rcsid[] = "$Id$ SPRITE (Berkeley)";
 #endif
 
 #include "tkConfig.h"

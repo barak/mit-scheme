@@ -31,7 +31,7 @@
  */
 
 #ifndef lint
-static char rcsid[] = "$Id: 555dae9d3eb2367fccde07260a29b333a9e740f2 $ SPRITE (Berkeley)";
+static char rcsid[] = "$Id$ SPRITE (Berkeley)";
 #endif
 
 #include "tkConfig.h"

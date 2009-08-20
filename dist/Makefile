@@ -1,4 +1,4 @@
-# $Id: 4a219f0ed37f49755187f827e94f9780f5027ca4 $
+# $Id$
 #
 # Copyright (c) 2001 Massachusetts Institute of Technology
 #

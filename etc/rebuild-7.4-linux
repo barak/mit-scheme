@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# $Id: 2b5cc9fb37fc533451e4c7fd910a66698e9309ef $
+# $Id$
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

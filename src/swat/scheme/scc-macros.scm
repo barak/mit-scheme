@@ -1,5 +1,5 @@
 ;;;; -*-Scheme-*-
-;;; $Id: fce8a4d35d206ee17ded690dc1574d06edc96829 $
+;;; $Id$
 
 (define-syntax define-constant
   define-integrable)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: e7bf8ff3e4a3af8cecbdf1e527a08a6dd6c08c30 $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

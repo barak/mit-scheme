@@ -1,6 +1,6 @@
 @echo off
 rem Copyright (c) 1993 Massachusetts Institute of Technology
-rem $Id: ae7e459739cfd79ce2d8153ce327b445a51ffeb5 $
+rem $Id$
 copy \scheme\edwin\midas.com \scheme\lib\edwin\autoload\midas.com
 copy \scheme\edwin\midas.bci \scheme\lib\edwin\autoload\midas.bci
 copy \scheme\edwin\pasmod.com \scheme\lib\edwin\autoload\pasmod.com

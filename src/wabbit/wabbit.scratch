@@ -2,7 +2,7 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id: c3507a5ff9594eaadafc25e36857ce3422bcb61a $
+;;; $Id$
 
 ;;
 ;; Serious monkey-ing around with the Wabbit hunting / Headhunting facility...

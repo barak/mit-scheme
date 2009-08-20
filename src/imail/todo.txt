@@ -1,5 +1,5 @@
 IMAIL To-Do List
-$Id: 2043d0b06b2670a4e08ad426c6019454be793268 $
+$Id$
 
 Bug fixes
 ---------

@@ -1,6 +1,6 @@
 ;; -*-Scheme-*-
 ;;
-;;  $Id: a90286d177ce9ae49c639765c6569443ebd18d03 $
+;;  $Id$
 ;;
 ;;  Copyright (c) 1993-1994 Stephen Adams
 ;;

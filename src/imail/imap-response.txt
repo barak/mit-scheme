@@ -1,4 +1,4 @@
-$Id: 6decfbacb8dd2e22ad3b15813238a93eb2b291ad $
+$Id$
 
 Notes on IMAP server responses
 

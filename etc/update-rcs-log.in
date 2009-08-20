@@ -1,5 +1,5 @@
 ;; -*- Scheme -*-
-;; $Id: 2285c7cf9a1af9b7fe9fbc37474063111f61e690 $
+;; $Id$
 
 (begin
   (load-option 'RCS)

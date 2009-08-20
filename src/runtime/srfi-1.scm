@@ -9,7 +9,7 @@ ai.mit.edu.
 This implementation heavily modified by John Kraemer and Chris
 Hanson for inclusion in MIT/GNU Scheme.
 
-$Id: 77265d2a4e14daa45d252cd2d3f34253f4fe4918 $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,

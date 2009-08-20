@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: 46443bf9106fc5b01f9750f8d59193f2a722c22e $
+$Id$
 $MC68020-Header: rules2.scm,v 4.12 90/01/18 22:44:04 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

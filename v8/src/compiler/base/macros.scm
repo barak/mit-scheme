@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: e67668dd64889043cb87918c85263ae787b7625e $
+$Id$
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology
 

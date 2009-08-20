@@ -1,6 +1,6 @@
  ### -*- Midas -*-
  ### 
- ### $Id: 4c7bd5344123a88f65a39a156242a729c0653b80 $
+ ### $Id$
  ### 
  ### Copyright (C) 1992 Digital Equipment Corporation (D.E.C.)
  ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,

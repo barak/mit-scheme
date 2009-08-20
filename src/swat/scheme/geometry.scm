@@ -1,6 +1,6 @@
 ;;;;; -*- Scheme -*-
 ;;;;;
-;;;;; $Id: 720b7c907068f18fccedc7e794255f040f376802 $
+;;;;; $Id$
 ;;;;; derived from geometry.sc,v 1.1 1993/02/16 14:04:09 jmiller Exp $
 
 ;; The box makers - one for horizontal, one for vertical

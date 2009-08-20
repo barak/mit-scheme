@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: dbca90829377a64d042eb7e5828322f5852263bd $
+$Id$
 $MC68020-Header: dassm3.scm,v 4.6 88/08/29 22:40:41 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

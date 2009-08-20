@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cb2cd24ffafe8a2daa1d4628d8ad080b95b1b202 $
+$Id$
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.

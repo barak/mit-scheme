@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ab06d3f0794b13366f09a8fe71aaa8dc17291f4e $
+$Id$
 $MC68020-Header: inerly.scm,v 1.6 88/08/31 06:00:59 GMT cph Exp $
 
 Copyright (c) 1988, 1989, 1990, 1999 Massachusetts Institute of Technology

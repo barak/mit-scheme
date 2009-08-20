@@ -1,7 +1,7 @@
 ;;;;; -*- Scheme -*-
 ;;;;;
 ;;;;; derived from uitk.scm at MIT on April 24, 1993
-;;;;; $Id: bfb86181216dd2d6f0107ec41a34c600b4160647 $
+;;;;; $Id$
 
 ;;;; Commonly used structure definitions.  They are here so that the
 ;;;; macro versions can be loaded to improve performance.

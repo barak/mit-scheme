@@ -28,7 +28,7 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Id: d98f616f24e075563213723d97948706b17ac927 $
+;;; $Id$
 
 ;;; Code:
 

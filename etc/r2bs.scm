@@ -1,4 +1,4 @@
-;; $Id: cf092b89d448e21b68361263372c0141820919aa $
+;; $Id$
 
 (define (real->bit-string x)
   ;; Allocate a 64-bit result to hold the double-precision number.

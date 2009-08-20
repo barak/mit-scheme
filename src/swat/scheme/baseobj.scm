@@ -2,7 +2,7 @@
 ;;;;; Basic objects for the Scheme User Interface Tool Kit
 ;;;; MIT/GNU Scheme Version derived from Scheme-To-C version 1.2
 
-;;;; $Id: 9601c4aa42c00c4a8823fe3f6669c198952bb188 $
+;;;; $Id$
 
 ;;;; Application objects
 

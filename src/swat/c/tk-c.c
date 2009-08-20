@@ -1,6 +1,6 @@
 /* -*- C -*-
 /* tk-c.c - Support routines for Tk Widgets called from Scheme */
-/* $Id: af982d399fc24958e03921239b6284053d7b1cd4 $ */
+/* $Id$ */
 
 /**********************************************************************
  This file contains the C code shared between MIT CScheme and DEC

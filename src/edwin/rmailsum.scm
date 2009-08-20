@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: a84fccf537aef0c72e6e81d4ad99596405c6b962 $
+$Id$
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,7 +31,7 @@ USA.
 
 (define-variable rmailsum-rcs-header
   "The RCS header of the rmailsum.scm file."
-  "$Id: a84fccf537aef0c72e6e81d4ad99596405c6b962 $"
+  "$Id$"
   string?)
 
 (define-variable-per-buffer rmail-buffer

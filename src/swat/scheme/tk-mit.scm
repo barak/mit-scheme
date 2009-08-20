@@ -1,7 +1,7 @@
 ; -*- Scheme -*-
 ;;;;; C external interfaces to Tk procedures not associated with
 ;;;;; a particular widget.
-;;;; $Id: acffbd7fd1c919c2aa820be20aa1f73c0fde2fcb $
+;;;; $Id$
 
 ;;;; This is the lowest level Scheme interface to general TK/TCL data
 ;;;; structures.  Primitives are defined in tk-mit.c and tk.c

@@ -1,6 +1,6 @@
 -*- Text -*-
 
-$Id: e4bd8d8ec86d57dd81d38cc157f224352ad01ae0 $
+$Id$
 
 		COMPILER SAFETY INFORMATION 
 		Liar versions 4.77 and later

@@ -5,7 +5,7 @@ echo ""
 exit 1
 ________________________________________________________________________
 #!/bin/csh -f
-# $Id: c14461167e25f8e6fc2e95b24c5c917d55695fe5 $
+# $Id$
 
 # Arguments: runtimeversion compilerversion edwinversion 6001version
 

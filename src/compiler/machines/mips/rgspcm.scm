@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: 5afc73778dff9961f4f6478e50a43cccf81f0deb $
+$Id$
 $MC68020-Header: rgspcm.scm,v 4.1 87/12/30 07:05:38 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

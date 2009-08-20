@@ -1,5 +1,5 @@
 ##
-## $Id: 1efd96f95fe9557fe8dd2a7ded08af8dfd932216 $
+## $Id$
 ##
 ## WARNING: This makefile is designed to be used only from the master
 ## makefile in the parent directory.

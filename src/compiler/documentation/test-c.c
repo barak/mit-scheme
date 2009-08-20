@@ -1,6 +1,6 @@
 /* -*- C -*- */
 
-/* $Id: 8cbc079ab8c9a01b3849884117faf7f69fb49943 $ */
+/* $Id$ */
 
 #include <stdio.h>
 

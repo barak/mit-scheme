@@ -1,6 +1,6 @@
 ; -*- Scheme -*-
 ;;;;; Tk interface code for a button
-;;; $Id: 1aa3a45ba96f715efc6d4b9dd6f4bf40cd663f52 $
+;;; $Id$
 
 ;;; Lowest-level makers for various kinds of TK widgets.  These call C
 ;;; primitives in widget-c-mit.c, and are called by the higher-level

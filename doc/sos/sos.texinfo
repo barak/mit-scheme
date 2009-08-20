@@ -1,5 +1,5 @@
 \input texinfo @c -*-Texinfo-*-
-@comment $Id: 327335fb89f1ddf33bdb3b6ebac6798da09f5d9f $
+@comment $Id$
 @comment %**start of header
 @setfilename mit-scheme-sos
 @set EDITION 2.12

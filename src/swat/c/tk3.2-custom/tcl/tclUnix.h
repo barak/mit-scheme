@@ -20,7 +20,7 @@
  * software for any purpose.  It is provided "as is" without
  * express or implied warranty.
  *
- * $Id: acf50d0baa553dfc8d6fda28ab71c076be10efee $ SPRITE (Berkeley)
+ * $Id$ SPRITE (Berkeley)
  */
 
 #ifndef _TCLUNIX
