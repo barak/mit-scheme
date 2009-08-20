@@ -404,6 +404,19 @@ USA.
       (not (%window-saved-screen window))
       (screen-needs-update? (%window-saved-screen window))))
 
+(define (buffer-window/direct-output-cursor! window)
+  (if (%window-debug-trace window)
+      ((%window-debug-trace window) 'window window 'direct-output-cursor!))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
+	  (y-start (inferior-y-start (%window-cursor-inferior window))))
+      (screen-direct-output-move-cursor
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start)))
+    (set-interrupt-enables! mask)
+    unspecific))
+
 (define (buffer-window/direct-output-forward-char! window)
   (if (%window-debug-trace window)
       ((%window-debug-trace window) 'window window

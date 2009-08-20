@@ -232,6 +232,9 @@ USA.
 (define-integrable (window-char->image frame char)
   (%window-char->image (frame-text-inferior frame) char))
 
+(define-integrable (window-direct-output-cursor! frame)
+  (buffer-window/direct-output-cursor! (frame-text-inferior frame)))
+
 (define-integrable (window-direct-output-forward-char! frame)
   (buffer-window/direct-output-forward-char! (frame-text-inferior frame)))
 

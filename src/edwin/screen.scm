@@ -134,6 +134,9 @@ USA.
   (editor-frame-select-window! (screen-root-window screen) window)
   (screen-modeline-event! screen window 'SELECT-WINDOW))
 
+(define-integrable (screen-cursor-window screen)
+  (editor-frame-cursor-window (screen-root-window screen)))
+
 (define-integrable (screen-select-cursor! screen window)
   (editor-frame-select-cursor! (screen-root-window screen) window))
 

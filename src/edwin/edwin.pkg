@@ -349,6 +349,7 @@ USA.
 	  window-direct-output-insert-char!
 	  window-direct-output-insert-newline!
 	  window-direct-output-insert-substring!
+	  window-direct-output-cursor!
 	  window-direct-update!
 	  window-home-cursor!
 	  window-mark->coordinates
@@ -377,6 +378,7 @@ USA.
   (export (edwin screen)
 	  editor-frame-screen
 	  editor-frame-select-cursor!
+	  editor-frame-cursor-window
 	  editor-frame-select-window!
 	  editor-frame-selected-window
 	  editor-frame-typein-window

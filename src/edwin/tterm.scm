@@ -514,6 +514,7 @@ USA.
 (define (console-wrap-update! screen thunk)
   screen
   (let ((finished? (thunk)))
+    (window-direct-output-cursor! (screen-cursor-window screen))
     (output-port/flush-output console-i/o-port)
     finished?))
 
@@ -1039,7 +1040,7 @@ USA.
 		     (if scroll-region
 			 (cdr scroll-region)
 			 (tn-y-size (screen-description screen))))
-		   (screen-cursor-y screen))))
+		   (or (screen-cursor-y screen) 0))))
 
 (define-integrable (output-1 screen command)
   (output-n screen command 1))
