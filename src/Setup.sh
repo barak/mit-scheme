@@ -34,7 +34,7 @@ fi
 . etc/functions.sh
 
 INSTALLED_SUBDIRS="cref edwin imail sf sos ssp star-parser xml"
-OTHER_SUBDIRS="6001 compiler runtime win32 xdoc microcode"
+OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 
 # lib
 maybe_mkdir lib

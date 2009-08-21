@@ -12,6 +12,7 @@
 *.crf
 *.fre
 TAGS
+!/src/TAGS
 *.o
 *.lo
 *.la
