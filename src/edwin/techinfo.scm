@@ -26,9 +26,6 @@
 ;;; requires ability to "attach" Athena filesystems
 ;;;
 ;;; Author: Brian A. LaMacchia -- bal@zurich.ai.mit.edu
-;;;
-;;; $Id$
-;;;
 
 (declare (usual-integrations))
 

@@ -1,7 +1,5 @@
 Structure and construction of the MIT/GNU Scheme source tree
 
-$Id$
-
 Directories
 ===========
 

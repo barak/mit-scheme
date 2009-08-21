@@ -1,7 +1,5 @@
 ;;; -*-Scheme-*-
 ;;;
-;;; $Id$
-;;;
 ;;; Copyright (c) 1987-1999 Massachusetts Institute of Technology
 ;;;
 ;;; This program is free software; you can redistribute it and/or
@@ -741,7 +739,3 @@
 	       OS-VARIANT-STRING		;09
 	       STACK-TYPE-STRING		;0A
 	       ))
-
-;;; This identification string is saved by the system.
-
-"$Id$"

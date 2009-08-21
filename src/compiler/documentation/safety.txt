@@ -1,7 +1,5 @@
 -*- Text -*-
 
-$Id$
-
 		COMPILER SAFETY INFORMATION 
 		Liar versions 4.77 and later
 

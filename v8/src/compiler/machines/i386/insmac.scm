@@ -1,6 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
 $Vax-Header: insmac.scm,v 1.12 89/05/17 20:29:15 GMT jinx Exp $
 
 Copyright (c) 1992, 1999 Massachusetts Institute of Technology

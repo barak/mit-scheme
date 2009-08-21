@@ -1,5 +1,4 @@
 ;;;; -*-Scheme-*-
-;;; $Id$
 ;;; derived from macros.sc,v 1.1 1993/02/16 14:04:09 jmiller Exp $
 ;;; Primitive X toolkit for Scheme->C.
 ;;; RHH, September, 1989.

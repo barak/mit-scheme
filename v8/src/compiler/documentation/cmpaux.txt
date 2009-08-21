@@ -1,7 +1,5 @@
 -*- Text -*-
 
-$Id $
-
 THIS FILE NEEDS UPDATING TO LIAR 5.0
 
 

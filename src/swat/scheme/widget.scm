@@ -1,5 +1,4 @@
 ;;;;; -*- Scheme -*-
-;;;;; $Id$
 ;;;;; derived from button.sc,v 1.2 1993/02/26 00:49:36 jmiller Exp $
 
 ;;;;;;;;;;  Widget Definitions

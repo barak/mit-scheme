@@ -1,6 +1,3 @@
-##
-## $Id$
-##
 ## WARNING: This makefile is designed to be used only from the master
 ## makefile in the parent directory.
 

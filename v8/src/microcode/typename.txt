@@ -1,7 +1,5 @@
 -*- Fundamental -*-
 
-$Id$
-
 8 bit  6 bit  Name                        8 bit  6 bit  Name
 =====  ====   ==========================  =====  ====   =======================
 00     00     NULL                        1F     7C     ACCESS

@@ -28,8 +28,6 @@
 ;; of special forms.  Probably the code should be merged at some point 
 ;; so that there is sharing between both libraries.
 
-;;; $Id$
-
 ;;; Code:
 
 (defvar scheme-mode-syntax-table nil "")

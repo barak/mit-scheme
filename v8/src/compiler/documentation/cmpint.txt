@@ -1,7 +1,5 @@
 -*- Text -*-
 
-$Id $
-
 THIS FILE NEEDS UPDATING TO LIAR 5.0
 
 Copyright (c) 1991-1992 Massachusetts Institute of Technology

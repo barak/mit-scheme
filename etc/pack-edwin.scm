@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
-
 Copyright (c) 1992-1993 Massachusetts Institute of Technology
 
 This material was developed by the Scheme project at the Massachusetts

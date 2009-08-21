@@ -1,6 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
 $MC68020-Header: assmd.scm,v 1.36 89/08/28 18:33:33 GMT cph Exp $
 
 Copyright (c) 1988-1999 Massachusetts Institute of Technology

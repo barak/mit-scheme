@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
-
 Copyright (c) 1987, 1988, 1990, 1999 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify

@@ -1,7 +1,5 @@
 #!/bin/sh
 #
-# $Id$
-#
 # Program to finish setting up the Scheme source tree after it is
 # checked out.  Adds required links, builds TAGS files, etc.
 #

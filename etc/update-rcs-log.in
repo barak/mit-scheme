@@ -1,5 +1,4 @@
 ;; -*- Scheme -*-
-;; $Id$
 
 (begin
   (load-option 'RCS)

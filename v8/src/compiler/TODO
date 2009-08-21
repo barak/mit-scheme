@@ -1,5 +1,3 @@
-$Id$
-
 Problems:
 
 [] Stackopt is requires too much storage.  Investigate.

@@ -1,6 +1,4 @@
 #
-# $Id$
-#
 # Makefile for Scheme compiler
 # This makefile supports some utilities for the compiler.
 # The compiler provides its own tools for rebuilding itself,

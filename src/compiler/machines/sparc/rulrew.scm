@@ -1,6 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
 $MC68020-Header: rulrew.scm,v 1.1 90/01/18 22:48:52 GMT cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,

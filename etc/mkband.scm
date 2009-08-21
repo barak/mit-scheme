@@ -1,5 +1,5 @@
 ;;; -*- Scheme -*-
-;;; $Id$
+;;; 
 ;;; Input file to build standard bands.
 
 (set-working-directory-pathname! "../sf")

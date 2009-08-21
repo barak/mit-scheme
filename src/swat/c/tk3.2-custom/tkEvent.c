@@ -17,10 +17,6 @@
 
 /* ADDED tk_GetIntervalToNextEvent */
 
-#ifndef lint
-static char rcsid[] = "$Id$ SPRITE (Berkeley)";
-#endif
-
 #include "tkConfig.h"
 #include "tkInt.h"
 #include <errno.h>

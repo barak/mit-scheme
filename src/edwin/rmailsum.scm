@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008 Massachusetts Institute of Technology
@@ -29,11 +27,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-variable rmailsum-rcs-header
-  "The RCS header of the rmailsum.scm file."
-  "$Id$"
-  string?)
-
 (define-variable-per-buffer rmail-buffer
   "Corresponding RMAIL buffer for a summary buffer.
 FALSE means buffer is not a summary buffer."

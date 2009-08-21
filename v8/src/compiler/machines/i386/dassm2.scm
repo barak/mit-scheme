@@ -1,6 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
 $MC68020-Header: /scheme/compiler/bobcat/RCS/dassm2.scm,v 4.18 1991/05/07 13:46:04 jinx Exp $
 
 Copyright (c) 1992, 1999 Massachusetts Institute of Technology

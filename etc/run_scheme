@@ -1,6 +1,5 @@
 #!/bin/csh -f
-# $Id$
-#
+# 
 # This file is a script to allow Scheme to be run out of a
 # non-standard directory without recompiling the microcode.  After
 # editing the following line to indicate where Scheme directories are,

@@ -1,7 +1,5 @@
 -*- Text -*-
 
-$Id$
-
 
 NOTES ON DEBUGGING INFO GENERATION IN LIAR 5.0
 

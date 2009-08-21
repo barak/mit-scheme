@@ -1,6 +1,5 @@
 @echo off
 rem Copyright (c) 1993 Massachusetts Institute of Technology
-rem $Id$
 copy \scheme\runtime\numint.com \scheme\lib\options\numint.com
 copy \scheme\runtime\numint.bci \scheme\lib\options\numint.bci
 copy \scheme\runtime\cpress.com \scheme\lib\options\cpress.com

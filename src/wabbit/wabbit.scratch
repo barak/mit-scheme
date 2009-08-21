@@ -2,8 +2,6 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id$
-
 ;;
 ;; Serious monkey-ing around with the Wabbit hunting / Headhunting facility...
 ;;

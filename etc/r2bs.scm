@@ -1,5 +1,3 @@
-;; $Id$
-
 (define (real->bit-string x)
   ;; Allocate a 64-bit result to hold the double-precision number.
   (let ((result (bit-string-allocate 64)))

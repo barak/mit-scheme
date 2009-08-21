@@ -30,10 +30,6 @@
  * express or implied warranty.
  */
 
-#ifndef lint
-static char rcsid[] = "$Id$ SPRITE (Berkeley)";
-#endif
-
 #include "tkConfig.h"
 #include "tkInt.h"
 

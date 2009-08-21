@@ -1,6 +1,5 @@
 /* -*- C -*-
 /* Uses tk-c.c - Support routines for Tk Widgets called from Scheme */
-/* $Id$ */
 
 #include "scheme.h"
 #include "prims.h"

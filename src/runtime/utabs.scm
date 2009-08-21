@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007, 2008 Massachusetts Institute of Technology
@@ -54,15 +52,14 @@ USA.
 	    unspecific)))))
 
 (define (read-microcode-tables! #!optional filename)
-  (set! microcode-tables-identification
-	(scode-eval
-	 (or ((ucode-primitive initialize-c-compiled-block 1)
-	      "http://www.gnu.org/software/mit-scheme/lib/microcode/utabmd.so")
-	     ((ucode-primitive binary-fasload)
-	      (if (default-object? filename)
-		  ((ucode-primitive microcode-tables-filename))
-		  filename)))
-	 system-global-environment))
+  (scode-eval
+   (or ((ucode-primitive initialize-c-compiled-block 1)
+	"http://www.gnu.org/software/mit-scheme/lib/microcode/utabmd.so")
+       ((ucode-primitive binary-fasload)
+	(if (default-object? filename)
+	    ((ucode-primitive microcode-tables-filename))
+	    filename)))
+   system-global-environment)
   (set! identification-vector ((ucode-primitive microcode-identify)))
   (set! errors-slot (fixed-object/name->code 'MICROCODE-ERRORS-VECTOR))
   (set! identifications-slot
@@ -118,7 +115,6 @@ USA.
   (map (lambda (s) (or (string->number s) s))
        (burst-string microcode-version-string #\. #f)))
 
-(define microcode-tables-identification)
 (define microcode-version-string)
 (define char:newline)
 (define microcode-id/tty-x-size)

@@ -1,5 +1,3 @@
-$Id$
-
 Notes on IMAP server responses
 
 + <resp-text>			;continuation response

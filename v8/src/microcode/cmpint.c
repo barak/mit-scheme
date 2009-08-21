@@ -1,7 +1,5 @@
 /* -*-C-*-
 
-$Id$
-
 Copyright (c) 1989-1999 Massachusetts Institute of Technology
 
 This program is free software; you can redistribute it and/or modify

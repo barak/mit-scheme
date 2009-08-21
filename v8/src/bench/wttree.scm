@@ -1,7 +1,5 @@
 ;; -*-Scheme-*-
 ;;
-;;  $Id$
-;;
 ;;  Copyright (c) 1993-1994 Stephen Adams
 ;;
 ;;  References:

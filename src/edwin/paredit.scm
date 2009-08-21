@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id$
-
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
 

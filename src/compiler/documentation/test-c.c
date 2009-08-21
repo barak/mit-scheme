@@ -1,7 +1,5 @@
 /* -*- C -*- */
 
-/* $Id$ */
-
 #include <stdio.h>
 
 extern long external_long;
