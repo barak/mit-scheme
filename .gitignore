@@ -18,3 +18,12 @@ TAGS
 *.la
 *~
 #*
+doc/Makefile
+doc/config.log
+doc/config.status
+doc/configure
+doc/imail/Makefile
+doc/make-common
+doc/ref-manual/Makefile
+doc/sos/Makefile
+doc/user-manual/Makefile
