@@ -159,6 +159,27 @@ bignum_to_flonum (SCHEME_OBJECT bignum)
 }
 
 bool
+finite_flonum_p (SCHEME_OBJECT x)
+{
+  return ((FLONUM_P (x)) && (flonum_is_finite_p (x)));
+}
+
+bool
+flonum_is_finite_p (SCHEME_OBJECT x)
+{
+  return double_is_finite_p (FLONUM_TO_DOUBLE (x));
+}
+
+bool
+double_is_finite_p (double x)
+{
+  return
+    (((x > 1.0) || (x < -1.0))
+     ? (x != (x / 2.0))
+     : ((x <= 1.0) && (x >= -1.0)));
+}
+
+bool
 flonum_integer_p (SCHEME_OBJECT x)
 {
   double iptr;

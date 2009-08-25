@@ -208,6 +208,8 @@ extern double double_round (double);
 extern SCHEME_OBJECT bignum_to_fixnum (SCHEME_OBJECT);
 extern SCHEME_OBJECT bignum_to_integer (SCHEME_OBJECT);
 extern SCHEME_OBJECT bignum_to_flonum (SCHEME_OBJECT);
+extern bool finite_flonum_p (SCHEME_OBJECT);
+extern bool flonum_is_finite_p (SCHEME_OBJECT);
 extern bool flonum_integer_p (SCHEME_OBJECT);
 extern SCHEME_OBJECT flonum_floor (SCHEME_OBJECT);
 extern SCHEME_OBJECT flonum_ceiling (SCHEME_OBJECT);
@@ -232,6 +234,7 @@ extern SCHEME_OBJECT integer_remainder (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_length_in_bits (SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
 
+extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);
 extern bool real_number_to_double_p (SCHEME_OBJECT);
 extern double real_number_to_double (SCHEME_OBJECT);

@@ -440,7 +440,12 @@ arg_ulong_integer_in_range (int arg_number,
 bool
 real_number_to_double_p (SCHEME_OBJECT x)
 {
-  return ((! (BIGNUM_P (x))) || (BIGNUM_TO_DOUBLE_P (x)));
+  return
+    ((BIGNUM_P (x))
+     ? (BIGNUM_TO_DOUBLE_P (x))
+     : (FLONUM_P (x))
+     ? (flonum_is_finite_p (x))
+     : true);
 }
 
 double

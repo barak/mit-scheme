@@ -146,7 +146,7 @@ DEFINE_PRIMITIVE ("BIGNUM->FIXNUM", Prim_bignum_to_fixnum, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM->BIGNUM", Prim_flonum_to_bignum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, finite_flonum_p);
   PRIMITIVE_RETURN (FLONUM_TO_BIGNUM (ARG_REF (1)));
 }
 

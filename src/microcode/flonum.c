@@ -33,7 +33,7 @@ double
 arg_flonum (int arg_number)
 {
   SCHEME_OBJECT argument = (ARG_REF (arg_number));
-  if (! (FLONUM_P (argument)))
+  if (!FLONUM_P (argument))
     error_wrong_type_arg (arg_number);
   return (FLONUM_TO_DOUBLE (argument));
 }
@@ -194,14 +194,20 @@ DEFINE_PRIMITIVE ("FLONUM-INTEGER?", Prim_flonum_integer_p, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, FLONUM_P);
-  PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (flonum_integer_p (ARG_REF (1))));
+  PRIMITIVE_RETURN
+    ((flonum_is_finite_p (ARG_REF (1)))
+     ? (BOOLEAN_TO_OBJECT (flonum_integer_p (ARG_REF (1))))
+     : false);
 }
 
 #define FLONUM_CONVERSION(converter)					\
 {									\
   PRIMITIVE_HEADER (1);							\
   CHECK_ARG (1, FLONUM_P);						\
-  PRIMITIVE_RETURN (converter (ARG_REF (1)));				\
+  PRIMITIVE_RETURN							\
+    ((flonum_is_finite_p (ARG_REF (1)))					\
+     ? (converter (ARG_REF (1)))					\
+     : (ARG_REF (1)));							\
 }
 
 DEFINE_PRIMITIVE ("FLONUM-FLOOR", Prim_flonum_floor, 1, 1, 0)
@@ -216,14 +222,14 @@ DEFINE_PRIMITIVE ("FLONUM-ROUND", Prim_flonum_round, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-TRUNCATE->EXACT", Prim_flonum_truncate_to_exact, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, finite_flonum_p);
   PRIMITIVE_RETURN (FLONUM_TO_INTEGER (ARG_REF (1)));
 }
 
 #define FLONUM_EXACT_CONVERSION(converter)				\
 {									\
   PRIMITIVE_HEADER (1);							\
-  CHECK_ARG (1, FLONUM_P);						\
+  CHECK_ARG (1, finite_flonum_p);					\
   PRIMITIVE_RETURN (FLONUM_TO_INTEGER (converter (ARG_REF (1))));	\
 }
 DEFINE_PRIMITIVE ("FLONUM-FLOOR->EXACT", Prim_flonum_floor_to_exact, 1, 1, 0)
@@ -236,14 +242,14 @@ DEFINE_PRIMITIVE ("FLONUM-ROUND->EXACT", Prim_flonum_round_to_exact, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-NORMALIZE", Prim_flonum_normalize, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, finite_flonum_p);
   PRIMITIVE_RETURN (flonum_normalize (ARG_REF (1)));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, finite_flonum_p);
   CHECK_ARG (2, INTEGER_P);
   PRIMITIVE_RETURN (flonum_denormalize ((ARG_REF (1)), (ARG_REF (2))));
 }
