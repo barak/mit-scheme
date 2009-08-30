@@ -152,7 +152,7 @@ USA.
   (value canonicalize canonicalize-char-data))
 
 (define (xml-char-data? object)
-  (or (wide-char? object)
+  (or (unicode-char? object)
       (and (or (wide-string? object)
                (and (string? object)
                     (utf8-string-valid? object)))
@@ -166,7 +166,7 @@ USA.
                             'UTF-8))
 
 (define (canonicalize-char-data object)
-  (cond ((wide-char? object)
+  (cond ((unicode-char? object)
 	 (call-with-utf8-output-string
 	   (lambda (port)
 	     (write-char object port))))

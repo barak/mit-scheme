@@ -1857,7 +1857,7 @@ USA.
 		     (* (get-byte bv bs 1) #x10000)
 		     (* (get-byte bv bs 2) #x100)
 		     (get-byte bv bs 3))))
-	     (if (unicode-code-point? cp)
+	     (if (unicode-scalar-value? cp)
 		 (begin
 		   (set-input-buffer-start! ib (fix:+ bs 4))
 		   cp)
@@ -1873,7 +1873,7 @@ USA.
 		     (* (get-byte bv bs 2) #x10000)
 		     (* (get-byte bv bs 1) #x100)
 		     (get-byte bv bs 0))))
-	     (if (unicode-code-point? cp)
+	     (if (unicode-scalar-value? cp)
 		 (begin
 		   (set-input-buffer-start! ib (fix:+ bs 4))
 		   cp)

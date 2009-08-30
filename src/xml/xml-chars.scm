@@ -28,7 +28,7 @@ USA.
 (declare (usual-integrations))
 
 (define alphabet:xml-base-char
-  (code-points->alphabet
+  (scalar-values->alphabet
    '((#x0041 . #x005A)
      (#x0061 . #x007A)
      (#x00C0 . #x00D6)
@@ -233,13 +233,13 @@ USA.
      (#xAC00 . #xD7A3))))
 
 (define alphabet:xml-ideographic
-  (code-points->alphabet
+  (scalar-values->alphabet
    '(#x3007
      (#x3021 . #x3029)
      (#x4E00 . #x9FA5))))
 
 (define alphabet:xml-combining-char
-  (code-points->alphabet
+  (scalar-values->alphabet
    '((#x0300 . #x0345)
      (#x0360 . #x0361)
      (#x0483 . #x0486)
@@ -337,7 +337,7 @@ USA.
      #x309A)))
 
 (define alphabet:xml-digit
-  (code-points->alphabet
+  (scalar-values->alphabet
    '((#x0030 . #x0039)
      (#x0660 . #x0669)
      (#x06F0 . #x06F9)
@@ -355,7 +355,7 @@ USA.
      (#x0F20 . #x0F29))))
 
 (define alphabet:xml-extender
-  (code-points->alphabet
+  (scalar-values->alphabet
    '(#x00B7
      #x02D0
      #x02D1
@@ -369,7 +369,7 @@ USA.
      (#x30FC . #x30FE))))
 
 (define alphabet:xml-char
-  (code-points->alphabet
+  (scalar-values->alphabet
    '(#x0009
      #x000A
      #x000D

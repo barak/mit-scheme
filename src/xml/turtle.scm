@@ -278,7 +278,7 @@ USA.
 		  char-set:turtle-digit))
 
 (define alphabet:name-start-char
-  (code-points->alphabet
+  (scalar-values->alphabet
    '((#x0041 . #x005A)
      #x005F
      (#x0061 . #x007A)
@@ -297,7 +297,7 @@ USA.
 
 (define alphabet:name-char
   (alphabet+ alphabet:name-start-char
-	     (code-points->alphabet
+	     (scalar-values->alphabet
 	      '(#x002D
 		(#x0030 . #x0039)
 		#x00B7
@@ -308,7 +308,7 @@ USA.
   (alphabet- alphabet:name-start-char (alphabet #\_)))
 
 (define alphabet:character
-  (code-points->alphabet '((#x20 . #x5B) (#x5D . #x10FFFF))))
+  (scalar-values->alphabet '((#x20 . #x5B) (#x5D . #x10FFFF))))
 
 (define alphabet:ucharacter
   (alphabet- alphabet:character (alphabet #\>)))

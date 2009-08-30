@@ -90,7 +90,7 @@ USA.
 
 (define (emit-string string ctx)
   (let ((port (ctx-port ctx)))
-    (for-each-wide-char string
+    (for-each-unicode-char string
       (lambda (char)
 	(write-char char port)))))
 
@@ -413,7 +413,7 @@ USA.
 
 (define (xml-string-columns string)
   (let ((n 0))
-    (for-each-wide-char string
+    (for-each-unicode-char string
       (lambda (char)
 	(set! n
 	      (fix:+ n
@@ -486,7 +486,7 @@ USA.
       (emit-char #\space ctx)))
 
 (define (write-escaped-string string escapes ctx)
-  (for-each-wide-char string
+  (for-each-unicode-char string
     (lambda (char)
       (cond ((assq char escapes)
 	     => (lambda (e)
@@ -499,7 +499,7 @@ USA.
 	    (else
 	     (emit-char char ctx))))))
 
-(define (for-each-wide-char string procedure)
+(define (for-each-unicode-char string procedure)
   (let ((port (open-utf8-input-string string)))
     (let loop ()
       (let ((char (read-char port)))

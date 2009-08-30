@@ -691,7 +691,7 @@ USA.
   (let ((make-ref
 	 (lambda (s r p)
 	   (let ((n (string->number s r)))
-	     (if (not (unicode-code-point? n))
+	     (if (not (unicode-scalar-value? n))
 		 (perror p "Invalid code point" n))
 	     (let ((char (integer->char n)))
 	       (if (not (char-in-alphabet? char alphabet:xml-char))

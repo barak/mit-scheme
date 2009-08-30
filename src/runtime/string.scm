@@ -203,7 +203,8 @@ USA.
   (cond ((string? object) (string->utf8-string object))
 	((symbol? object) (symbol-name object))
 	((wide-string? object) (wide-string->utf8-string object))
-	((wide-char? object) (wide-string->utf8-string (wide-string object)))
+	((unicode-char? object)
+	 (wide-string->utf8-string (wide-string object)))
 	(else (%->string object 'UTF8-STRING))))
 
 (define (%->string object caller)

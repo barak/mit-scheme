@@ -54,9 +54,9 @@ quote them.
 
 @findex #\U+
 In addition to the standard character syntax, MIT Scheme also supports a
-general syntax that denotes any Unicode character by its code point.
-This notation is @code{#\U+@var{code-point}}, where @var{code-point} is
-a sequence of hexadecimal digits for a valid code point.  So the above
+general syntax that denotes any Unicode character by its scalar value.
+This notation is @code{#\U+@var{scalar-value}}, where @var{scalar-value} is
+a sequence of hexadecimal digits for a valid scalar value.  So the above
 examples could also be written like this:
 
 @example
@@ -331,9 +331,9 @@ In fact, the Control bucky bit is completely orthogonal to the
 @code{#\C-SOH}.}
 
 MIT/GNU Scheme uses a 21-bit character code with 4 bucky bits.  The
-character code contains the Unicode code point for the character.  This
+character code contains the Unicode scalar value for the character.  This
 is a change from earlier versions of the system, which used the
-@acronym{ISO-8859-1} code point, but it is upwards compatible with
+@acronym{ISO-8859-1} scalar value, but it is upwards compatible with
 previous usage, since @acronym{ISO-8859-1} is a proper subset of
 Unicode.
 
@@ -395,7 +395,7 @@ example,
 @end example
 
 Note that in MIT/GNU Scheme, the value of @code{char-code} is the
-Unicode code point for @var{char}.
+Unicode scalar value for @var{char}.
 @end deffn
 
 @defvr variable char-code-limit
@@ -463,7 +463,7 @@ procedures is as follows:
 
 This implies that @code{char->integer} and @code{char-code} produce
 identical results for characters that have no bucky bits set, and that
-characters are ordered according to their Unicode code points.
+characters are ordered according to their Unicode scalar values.
 
 Note: If the argument to @code{char->integer} or @code{integer->char} is
 a constant, the compiler will constant-fold the call, replacing it with
@@ -475,7 +475,7 @@ character constants or @acronym{ASCII} codes.
 The range of @code{char->integer} is defined to be the exact
 non-negative integers that are less than the value of this variable
 (exclusive).  Note, however, that there are some holes in this range,
-because the character code must be a valid Unicode code point.
+because the character code must be a valid Unicode scalar value.
 @end defvr
 
 @node ISO-8859-1 Characters, Character Sets, Internal Representation of Characters, Characters
@@ -691,24 +691,24 @@ parser (@pxref{XML Support}) implementation.  @acronym{XML} uses
 Unicode as its base character set, and any @acronym{XML}
 implementation @emph{must} support Unicode.
 
-@cindex Code point, Unicode
-@cindex Wide character
-@cindex Character, wide
-The basic unit in a Unicode implementation is the @dfn{code point}.  The
-character equivalent of a code point is a @dfn{wide character}.
+@cindex Scalar value, Unicode
+@cindex Unicode character
+@cindex Character, Unicode
+The basic unit in a Unicode implementation is the @dfn{scalar value}.  The
+character equivalent of a scalar value is a @dfn{Unicode character}.
 
-@deffn procedure unicode-code-point? object
-Returns @code{#t} if @var{object} is a Unicode code point.  Code points
-are implemented as exact non-negative integers.  They are further
+@deffn procedure unicode-scalar-value? object
+Returns @code{#t} if @var{object} is a Unicode scalar value.  Scalar
+values are implemented as exact non-negative integers.  They are further
 limited, by the Unicode standard, to be strictly less than
 @code{#x110000}, with the values @code{#xD800} through @code{#xDFFF},
 @code{#xFFFE}, and @code{#xFFFF} excluded.
 @end deffn
 
-@deffn procedure wide-char? object
-Returns @code{#t} if @var{object} is a wide character, specifically if
-@var{object} is a character with no bucky bits and whose code satisfies
-@code{unicode-code-point?}.
+@deffn procedure unicode-char? object
+Returns @code{#t} if @var{object} is a Unicode character, specifically
+if @var{object} is a character with no bucky bits and whose code
+satisfies @code{unicode-scalar-value?}.
 @end deffn
 
 The Unicode implementation consists of three parts:
@@ -725,7 +725,7 @@ several external representations, specifically @acronym{UTF-8},
 
 @item
 An @dfn{alphabet} abstraction, which is an efficient implementation of
-sets of Unicode code points (similar to the @code{char-set}
+sets of Unicode scalar values (similar to the @code{char-set}
 abstraction).
 @end itemize
 
@@ -749,13 +749,13 @@ constant-time access to each character in the string.
 Returns @code{#t} if @var{object} is a wide string.
 @end deffn
 
-@deffn procedure make-wide-string k [wide-char]
+@deffn procedure make-wide-string k [unicode-char]
 Returns a newly allocated wide string of length @var{k}.  If @var{char}
 is specified, all elements of the returned string are initialized to
 @var{char}; otherwise the contents of the string are unspecified.
 @end deffn
 
-@deffn procedure wide-string wide-char @dots{}
+@deffn procedure wide-string unicode-char @dots{}
 Returns a newly allocated wide string consisting of the specified
 characters.
 @end deffn
@@ -770,7 +770,7 @@ Returns character @var{k} of @var{wide-string}.  @var{K} must be a valid
 index of @var{string}.
 @end deffn
 
-@deffn procedure wide-string-set! wide-string k wide-char
+@deffn procedure wide-string-set! wide-string k unicode-char
 Stores @var{char} in element @var{k} of @var{wide-string} and returns an
 unspecified value.  @var{K} must be a valid index of @var{wide-string}.
 @end deffn
@@ -804,7 +804,7 @@ be used to specify that the port delivers characters from a substring of
 @end deffn
 
 @deffn procedure open-wide-output-string
-Returns an output port that accepts wide characters and strings and
+Returns an output port that accepts Unicode characters and strings and
 accumulates them in a buffer.  Call @code{get-output-string} on the
 returned port to get a wide string containing the accumulated
 characters.
@@ -915,37 +915,38 @@ and @var{string}'s length, respectively.
 Applications often need to manipulate sets of characters, such as the
 set of alphabetic characters or the set of whitespace characters.  The
 @dfn{alphabet} abstraction provides an efficient implementation of
-sets of Unicode code points.
+sets of Unicode scalar values.
 
 @deffn procedure alphabet? object
 Returns @code{#t} if @var{object} is a Unicode alphabet, otherwise
 returns @code{#f}.
 @end deffn
 
-@deffn procedure alphabet wide-char @dots{}
-Returns a Unicode alphabet containing the wide characters passed as
+@deffn procedure alphabet unicode-char @dots{}
+Returns a Unicode alphabet containing the Unicode characters passed as
 arguments.
 @end deffn
 
-@deffn procedure code-points->alphabet items
-Returns a Unicode alphabet containing the code points described by
+@deffn procedure scalar-values->alphabet items
+Returns a Unicode alphabet containing the scalar values described by
 @var{items}.  @var{Items} must satisfy
-@code{well-formed-code-points-list?}.
+@code{well-formed-scalar-values-list?}.
 @end deffn
 
-@deffn procedure alphabet->code-points alphabet
-Returns a well-formed code-points list that describes the code points
+@deffn procedure alphabet->scalar-values alphabet
+Returns a well-formed scalar-values list that describes the scalar values
 represented by @var{alphabet}.
 @end deffn
 
-@deffn procedure well-formed-code-points-list? object
-Returns @code{#t} if @var{object} is a well-formed code-points list,
-otherwise returns @code{#f}.  A well-formed code-points list is a
-proper list, each element of which is either a code point or a pair of
-code points.  A pair of code points represents a contiguous range of
-code points.  The @sc{car} of the pair is the lower limit, and the
-@sc{cdr} is the upper limit.  Both limits are inclusive, and the lower
-limit must be strictly less than the upper limit.
+@deffn procedure well-formed-scalar-values-list? object
+Returns @code{#t} if @var{object} is a well-formed scalar-values list,
+otherwise returns @code{#f}.  A well-formed scalar-values list is a
+proper list, each element of which is either a unicode scalar value or a
+pair of unicode scalar values.  A pair of scalar values represents a
+contiguous range of scalar values.  The @sc{car} of the pair is the
+lower limit, and the @sc{cdr} is the upper limit.  Both limits are
+inclusive, and the lower limit must be less than or equal to the upper
+limit.
 @end deffn
 
 @deffn procedure char-in-alphabet? char alphabet
@@ -954,23 +955,23 @@ otherwise returns @code{#f}.
 @end deffn
 
 Character sets and alphabets can be converted to one another, provided
-that the alphabet contains only 8-bit code points.  This is true
-because 8-bit code points in Unicode map directly to
+that the alphabet contains only 8-bit scalar values.  This is true
+because 8-bit scalar values in Unicode map directly to
 @acronym{ISO-8859-1} characters, which is what character sets contain.
 
 @deffn procedure char-set->alphabet char-set
-Returns a Unicode alphabet containing the code points that correspond
+Returns a Unicode alphabet containing the scalar values that correspond
 to characters that are members of @var{char-set}.
 @end deffn
 
 @deffn procedure alphabet->char-set alphabet
 Returns a character set containing the characters that correspond to
-8-bit code points that are members of @var{alphabet}.  (Code points
+8-bit scalar values that are members of @var{alphabet}.  (Scalar values
 outside the 8-bit range are ignored.)
 @end deffn
 
 @deffn procedure string->alphabet string
-Returns a Unicode alphabet containing the code points corresponding to
+Returns a Unicode alphabet containing the scalar values corresponding to
 the characters in @var{string}.  Equivalent to
 
 @example
@@ -979,22 +980,22 @@ the characters in @var{string}.  Equivalent to
 @end deffn
 
 @deffn procedure alphabet->string alphabet
-Returns a newly-allocated string containing the characters
-corresponding to the 8-bit code points in @var{alphabet}.  (Code
-points outside the 8-bit range are ignored.)
+Returns a newly-allocated string containing the characters corresponding
+to the 8-bit scalar values in @var{alphabet}.  (Scalar values outside
+the 8-bit range are ignored.)
 @end deffn
 
 @deffn procedure 8-bit-alphabet? alphabet
-Returns @code{#t} if @var{alphabet} contains only 8-bit code points,
+Returns @code{#t} if @var{alphabet} contains only 8-bit scalar values,
 otherwise returns @code{#f}.
 @end deffn
 
 @deffn procedure alphabet+ alphabet @dots{}
-Returns a Unicode alphabet that contains each code point that is a
+Returns a Unicode alphabet that contains each scalar value that is a
 member of any of the @var{alphabet} arguments.
 @end deffn
 
 @deffn procedure alphabet- alphabet1 alphabet2
-Returns a Unicode alphabet that contains each code point that is a
+Returns a Unicode alphabet that contains each scalar value that is a
 member of @var{alphabet1} and is not a member of @var{alphabet2}.
 @end deffn

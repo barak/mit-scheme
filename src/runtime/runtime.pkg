@@ -4910,6 +4910,9 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
+	  (error:not-wide-char error:not-unicode-char)
+	  (guarantee-wide-char guarantee-unicode-char)
+	  (wide-char? unicode-char?)
 	  (wide-string->utf16-be-string string->utf16-be-string)
 	  (wide-string->utf16-le-string string->utf16-le-string)
 	  (wide-string->utf16-string string->utf16-string)
@@ -4924,7 +4927,7 @@ USA.
 	  alphabet+
 	  alphabet-
 	  alphabet->char-set
-	  alphabet->code-points
+	  alphabet->scalar-values
 	  alphabet->string
 	  alphabet-predicate
 	  alphabet?
@@ -4944,11 +4947,11 @@ USA.
 	  call-with-utf8-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
-	  code-points->alphabet
 	  combine-utf16-surrogates
 	  error:not-8-bit-alphabet
 	  error:not-alphabet
-	  error:not-unicode-code-point
+	  error:not-unicode-char
+	  error:not-unicode-scalar-value
 	  error:not-utf16-be-string
 	  error:not-utf16-high-surrogate
 	  error:not-utf16-le-string
@@ -4958,14 +4961,14 @@ USA.
 	  error:not-utf32-le-string
 	  error:not-utf32-string
 	  error:not-utf8-string
-	  error:not-well-formed-code-point-list
-	  error:not-wide-char
+	  error:not-well-formed-scalar-value-list
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
 	  guarantee-8-bit-alphabet
 	  guarantee-alphabet
-	  guarantee-unicode-code-point
+	  guarantee-unicode-char
+	  guarantee-unicode-scalar-value
 	  guarantee-utf16-be-string
 	  guarantee-utf16-high-surrogate
 	  guarantee-utf16-le-string
@@ -4975,8 +4978,7 @@ USA.
 	  guarantee-utf32-le-string
 	  guarantee-utf32-string
 	  guarantee-utf8-string
-	  guarantee-well-formed-code-point-list
-	  guarantee-wide-char
+	  guarantee-well-formed-scalar-value-list
 	  guarantee-wide-string
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
@@ -4995,6 +4997,7 @@ USA.
 	  open-utf32-output-string
 	  open-utf8-input-string
 	  open-utf8-output-string
+	  scalar-values->alphabet
 	  split-into-utf16-surrogates
 	  string->alphabet
 	  string->utf16-be-string
@@ -5006,7 +5009,8 @@ USA.
 	  string->utf8-string
 	  string->utf8-string
 	  string->wide-string
-	  unicode-code-point?
+	  unicode-char?
+	  unicode-scalar-value?
 	  utf16-be-string->wide-string
 	  utf16-be-string-length
 	  utf16-be-string-valid?
@@ -5038,8 +5042,7 @@ USA.
 	  utf8-string-length
 	  utf8-string-valid?
 	  utf8-string?
-	  well-formed-code-point-list?
-	  wide-char?
+	  well-formed-scalar-value-list?
 	  wide-string
 	  wide-string->string
 	  wide-string-index?
