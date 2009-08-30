@@ -511,24 +511,27 @@ USA.
 		    (set-package/parent! package parent)
 		    (loop parent (cdr ancestors)))
 		  (set-package/parent! package #f))))
-	(let ((expression (make-expression package namestring #f)))
+	(let ((new-expression
+	       (lambda () (make-expression package namestring #f))))
 	  ;; Unlinked internal names.
 	  (for-each-vector-element (vector-ref desc 2)
 	    (lambda (name)
-	      (bind! package name expression #f)))
+	      (bind! package name (new-expression) #f)))
 	  ;; Exported bindings.
-	  (for-each-vector-element (vector-ref desc 3)
-	    (lambda (entry)
-	      (let ((name (vector-ref entry 0))
-		    (external-package (get-package (vector-ref entry 1) #t))
-		    (external-name
-		     (if (fix:= (vector-length entry) 2)
-			 (vector-ref entry 0)
-			 (vector-ref entry 2))))
-		(bind! package name expression #f)
-		(link! package name
-		       external-package external-name
-		       package #f))))
+	  (for-each-exported-name (vector-ref desc 3)
+	    (lambda (name exports)
+	      (bind! package name (new-expression) #f)
+	      (for-each
+		(lambda (entry)
+		  (let ((external-package (get-package (vector-ref entry 1) #t))
+			(external-name
+			 (if (fix:= (vector-length entry) 2)
+			     (vector-ref entry 0)
+			     (vector-ref entry 2))))
+		    (link! package name
+			   external-package external-name
+			   package #f)))
+		exports)))
 	  ;; Imported bindings.
 	  (for-each-vector-element (vector-ref desc 4)
 	    (lambda (entry)
@@ -537,10 +540,27 @@ USA.
 		     (if (fix:= (vector-length entry) 2)
 			 (vector-ref entry 0)
 			 (vector-ref entry 2))))
-		(bind! external-package external-name expression #f)
 		(link! external-package external-name
 		       package (vector-ref entry 0)
 		       package #f)))))))))
+
+(define (for-each-exported-name exports receiver)
+  (for-each
+    (lambda (name.exports)
+      (receiver (car name.exports) (cdr name.exports)))
+    (let ((len (vector-length exports)))
+      (let loop ((i 0)
+		 (names.exports '()))
+	(if (fix:< i len)
+	    (let* ((export (vector-ref exports i))
+		   (name (vector-ref export 0))
+		   (entry (assq name names.exports)))
+	      (if entry
+		  (begin
+		    (set-cdr! entry (cons export (cdr entry)))
+		    (loop (fix:1+ i) names.exports))
+		  (loop (fix:1+ i) (cons (list name export) names.exports))))
+	    names.exports)))))
 
 (define (package-lookup package name)
   (let package-loop ((package package))
@@ -592,10 +612,9 @@ USA.
 (define (bind! package name expression new?)
   (let ((value-cell (binding/value-cell (intern-binding! package name new?))))
     (set-expression/value-cell! expression value-cell)
-    (let ((expressions (value-cell/expressions value-cell)))
-      (if (not (memq expression expressions))
-	  (set-value-cell/expressions! value-cell
-				       (cons expression expressions))))))
+    (set-value-cell/expressions! value-cell
+				 (cons expression
+				       (value-cell/expressions value-cell)))))
 
 (define (link! source-package source-name
 	       destination-package destination-name
