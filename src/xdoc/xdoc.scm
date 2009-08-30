@@ -375,7 +375,7 @@ USA.
   (hash-table/get html-generators (xdoc-element-name item) #f))
 
 (define html-generators
-  (make-xml-name-hash-table))
+  (make-eq-hash-table))
 
 (define (generate-container-items items extra-content?)
   (generate-container-groups

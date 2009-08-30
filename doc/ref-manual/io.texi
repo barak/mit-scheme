@@ -3054,8 +3054,8 @@ Returns @code{#t} if @var{object} is an @acronym{XML} name, and
 @code{#f} otherwise.
 @end deffn
 
-@deffn procedure xml-name-qname xml-name
-Returns the @dfn{qname} of @var{xml-name} as a symbol.
+@deffn procedure xml-name->symbol xml-name
+Returns the symbol part of @var{xml-name}.
 @end deffn
 
 @deffn procedure xml-name-uri xml-name
@@ -3067,7 +3067,7 @@ Returns the @dfn{URI} of @var{xml-name}.  The result always satisfies
 Returns the @dfn{qname} of @var{xml-name} as a string.  Equivalent to
 
 @example
-(symbol-name (xml-name-qname @var{xml-name}))
+(symbol-name (xml-name->symbol @var{xml-name}))
 @end example
 @end deffn
 
@@ -3116,11 +3116,6 @@ corresponding to @var{string} (the symbol whose name is @var{string}).
 @deffn procedure xml-qname? object
 Returns @code{#t} if @var{object} is a qname, otherwise returns
 @code{#f}.
-@end deffn
-
-@deffn procedure xml-qname-string qname
-Returns a newly allocated string that is a copy of @var{qname}'s string.
-Roughly equivalent to @code{symbol->utf8-string}.
 @end deffn
 
 @deffn procedure xml-qname-prefix qname
@@ -3180,9 +3175,6 @@ with the @samp{xmlns} prefix.
 @deffn procedure xml-nmtoken? object
 @end deffn
 
-@deffn procedure xml-nmtoken-string xml-nmtoken
-@end deffn
-
 
 @deffn procedure string-is-xml-name? string
 @end deffn
@@ -3190,12 +3182,6 @@ with the @samp{xmlns} prefix.
 @deffn procedure string-is-xml-nmtoken? string
 @end deffn
 
-
-@deffn procedure make-xml-name-hash-table [initial-size]
-@end deffn
-
-@deffn procedure xml-name-hash xml-name modulus
-@end deffn
 
 
 @node XML Structure,  , XML Names, XML Support

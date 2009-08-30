@@ -432,7 +432,7 @@ USA.
   (utf8-string-length (xml-name-string name)))
 
 (define (write-xml-nmtoken nmtoken ctx)
-  (emit-string (xml-nmtoken-string nmtoken) ctx))
+  (emit-string (symbol-name nmtoken) ctx))
 
 (define (write-entity-value value col ctx)
   (if (xml-external-id? value)

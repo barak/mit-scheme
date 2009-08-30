@@ -388,7 +388,7 @@ USA.
 	(if (there-exists? (cdr attrs)
 	      (lambda (attr)
 		(xml-name=? (xml-attribute-name attr) name)))
-	    (perror p "Attributes with same name" (xml-name-qname name)))))))
+	    (perror p "Attributes with same name" (xml-name->symbol name)))))))
 
 (define (parse-element-content b p name)
   (let ((vc (parse-content b)))
@@ -399,8 +399,8 @@ USA.
 	  (if (peek-parser-buffer-char b)
 	      (perror (get-parser-buffer-pointer b) "Unknown content")
 	      (perror p "Unterminated start tag" name)))
-      (if (not (eq? (xml-name-qname (vector-ref ve 0))
-		    (xml-name-qname name)))
+      (if (not (eq? (xml-name->symbol (vector-ref ve 0))
+		    (xml-name->symbol name)))
 	  (perror p "Mismatched start tag" (vector-ref ve 0) name))
       (let ((content (coalesce-strings! (vector->list vc))))
 	(if (null? content)
@@ -429,12 +429,12 @@ USA.
 
 ;;;; Attribute defaulting
 
-(define (process-attr-decls qname attrs p)
+(define (process-attr-decls name attrs p)
   (let ((decl
 	 (and (or *standalone?* *internal-dtd?*)
 	      (find-matching-item *att-decls*
 		(lambda (decl)
-		  (xml-name=? (xml-!attlist-name decl) qname))))))
+		  (xml-name=? (xml-!attlist-name decl) name))))))
     (if decl
 	(do ((defns (xml-!attlist-definitions decl) (cdr defns))
 	     (attrs attrs (process-attr-defn (car defns) attrs p)))
@@ -442,27 +442,27 @@ USA.
 	attrs)))
 
 (define (process-attr-defn defn attrs p)
-  (let ((qname (car defn))
+  (let ((name (car defn))
 	(type (cadr defn))
 	(default (caddr defn)))
     (let ((attr
 	   (find-matching-item attrs
 	     (lambda (attr)
-	       (xml-name=? (car (xml-attribute-name attr)) qname)))))
+	       (xml-name=? (car (xml-attribute-name attr)) name)))))
       (if attr
 	  (let ((av (xml-attribute-value attr)))
 	    (if (and (pair? default)
 		     (eq? (car default) '|#FIXED|)
 		     (not (string=? av (cdr default))))
-		(perror (cdar attr) "Incorrect attribute value" qname))
+		(perror (cdar attr) "Incorrect attribute value" name))
 	    (if (not (eq? type '|CDATA|))
 		(set-xml-attribute-value! attr (trim-attribute-whitespace av)))
 	    attrs)
 	  (begin
 	    (if (eq? default '|#REQUIRED|)
-		(perror p "Missing required attribute value" qname))
+		(perror p "Missing required attribute value" name))
 	    (if (pair? default)
-		(cons (%make-xml-attribute (cons qname p) (cdr default)) attrs)
+		(cons (%make-xml-attribute (cons name p) (cdr default)) attrs)
 		attrs))))))
 
 ;;;; Other markup
@@ -535,42 +535,21 @@ USA.
 (define parse-unexpanded-name		;[5]
   (*parser
    (with-pointer p
-     (map (lambda (s) (cons (make-xml-qname s) p))
-	  (match match-qname)))))
+     (map (lambda (s) (cons (make-xml-name s) p))
+	  (match match:xml-name)))))
 
 (define (simple-name-parser type)
   (let ((m (string-append "Malformed " type " name")))
-    (*parser (require-success m (map make-xml-qname (match match-ncname))))))
+    (*parser (require-success m (map make-xml-name (match match:xml-name))))))
 
 (define parse-entity-name (simple-name-parser "entity"))
 (define parse-pi-name (simple-name-parser "processing-instructions"))
 (define parse-notation-name (simple-name-parser "notation"))
 
-(define match-qname
-  (*matcher
-   (seq match-ncname
-	(? (seq ":" match-ncname)))))
-
-(define (match-ncname buffer)
-  (and (match-parser-buffer-char-in-alphabet buffer alphabet:ncname-initial)
-       (let loop ()
-	 (if (match-parser-buffer-char-in-alphabet buffer
-						   alphabet:ncname-subsequent)
-	     (loop)
-	     #t))))
-
-(define parse-required-name-token	;[7]
+(define parse-required-nmtoken		;[7]
   (*parser
    (require-success "Malformed XML name token"
-     (map make-xml-nmtoken (match match-name-token)))))
-
-(define (match-name-token buffer)
-  (and (match-parser-buffer-char-in-alphabet buffer alphabet:name-subsequent)
-       (let loop ()
-	 (if (match-parser-buffer-char-in-alphabet buffer
-						   alphabet:name-subsequent)
-	     (loop)
-	     #t))))
+     (map make-xml-nmtoken (match match:xml-nmtoken)))))
 
 ;;;; Namespaces
 
@@ -581,28 +560,30 @@ USA.
 	      (let ((uname (xml-attribute-name (car attrs)))
 		    (value (xml-attribute-value (car attrs)))
 		    (tail (loop (cdr attrs))))
-		(let ((qname (car uname))
+		(let ((name (car uname))
 		      (p (cdr uname)))
 		  (let ((forbidden-uri
 			 (lambda ()
 			   (perror p "Forbidden namespace URI" value))))
-		    (cond ((xml-name=? qname 'xmlns)
+		    (cond ((xml-name=? name 'xmlns)
+			   (let ((uri (string->absolute-uri value)))
+			     (if (or (uri=? value xml-uri)
+				     (uri=? value xmlns-uri))
+				 (forbidden-uri))
+			     (cons (cons (null-xml-name-prefix) uri)
+				   tail)))
+			  ((and (xml-qname? name)
+				(xml-name-prefix=? name 'xmlns))
+			   (if (xml-name=? name 'xmlns:xmlns)
+			       (perror p "Illegal namespace prefix" name))
 			   (string->uri value) ;signals error if not URI
-			   (if (or (string=? value xml-uri-string)
-				   (string=? value xmlns-uri-string))
-			       (forbidden-uri))
-			   (cons (cons (null-xml-name-prefix) value) tail))
-			  ((xml-name-prefix=? qname 'xmlns)
-			   (if (xml-name=? qname 'xmlns:xmlns)
-			       (perror p "Illegal namespace prefix" qname))
-			   (string->uri value) ;signals error if not URI
-			   (if (if (xml-name=? qname 'xmlns:xml)
+			   (if (if (xml-name=? name 'xmlns:xml)
 				   (not (string=? value xml-uri-string))
 				   (or (string-null? value)
 				       (string=? value xml-uri-string)
 				       (string=? value xmlns-uri-string)))
 			       (forbidden-uri))
-			   (cons (cons (xml-name-local qname) value) tail))
+			   (cons (cons (xml-name-local name) value) tail))
 			  (else tail)))))
 	      *prefix-bindings*)))
   unspecific)
@@ -611,24 +592,25 @@ USA.
 (define (expand-attribute-name uname) (expand-name uname #t))
 
 (define (expand-name uname attribute-name?)
-  (let ((qname (car uname))
+  (let ((name (car uname))
 	(p (cdr uname)))
-    (if *in-dtd?*
-	qname
-	(let ((string (lookup-namespace-prefix qname p attribute-name?)))
-	  (if (string-null? string)
-	      qname
-	      (%make-xml-name qname string))))))
+    (if (or *in-dtd?*
+	    (not (xml-qname? name)))
+	name
+	(let ((uri (lookup-namespace-prefix name p attribute-name?)))
+	  (if (null-xml-namespace-uri? uri)
+	      name
+	      (%make-xml-name name uri))))))
 
 (define (lookup-namespace-prefix qname p attribute-name?)
   (let ((prefix (xml-qname-prefix qname)))
     (cond ((eq? prefix 'xmlns)
-	   xmlns-uri-string)
+	   xmlns-uri)
 	  ((eq? prefix 'xml)
-	   xml-uri-string)
+	   xml-uri)
 	  ((and attribute-name?
 		(null-xml-name-prefix? prefix))
-	   "")
+	   (null-xml-namespace-uri))
 	  (else
 	   (let ((entry (assq prefix *prefix-bindings*)))
 	     (if entry
@@ -636,7 +618,7 @@ USA.
 		 (begin
 		   (if (not (null-xml-name-prefix? prefix))
 		       (perror p "Undeclared XML prefix" prefix))
-		   "")))))))
+		   (null-xml-namespace-uri))))))))
 
 ;;;; Processing instructions
 
@@ -730,7 +712,7 @@ USA.
 	 (alt (seq "#"
 		   (alt match-decimal
 			(seq "x" match-hexadecimal)))
-	      match-qname)
+	      match:xml-name)
 	 ";"))))
 
 (define parse-entity-reference-name	;[68]
@@ -739,7 +721,7 @@ USA.
      parse-entity-name)))
 
 (define parse-entity-reference-deferred
-  (*parser (match (seq "&" match-qname ";"))))
+  (*parser (match (seq "&" match:xml-name ";"))))
 
 (define parse-parameter-entity-reference-name ;[69]
   (*parser
@@ -789,7 +771,7 @@ USA.
 			 (lambda (a) (car a))))
 
 (define parse-declaration-attributes
-  (attribute-list-parser (*parser (map make-xml-qname (match match-qname)))
+  (attribute-list-parser (*parser (map make-xml-name (match match:xml-name)))
 			 (lambda (a) a)))
 
 (define (attribute-value-parser alphabet parse-reference)
@@ -1146,8 +1128,8 @@ USA.
 	 parse-required-element-name
 	 S
 	 ;;[46]
-	 (alt (map make-xml-qname (match "EMPTY"))
-	      (map make-xml-qname (match "ANY"))
+	 (alt (map make-xml-name (match "EMPTY"))
+	      (map make-xml-name (match "ANY"))
 	      ;;[51]
 	      (encapsulate vector->list
 		(with-pointer p
@@ -1197,14 +1179,14 @@ USA.
 
 (define parse-!attlist-type		;[54,57]
   (*parser
-   (alt (map make-xml-qname
+   (alt (map make-xml-name
 	     ;;[55,56]
 	     (match (alt "CDATA" "IDREFS" "IDREF" "ID"
 			 "ENTITY" "ENTITIES" "NMTOKENS" "NMTOKEN")))
 	;;[58]
 	(encapsulate vector->list
 	  (bracket "notation type"
-	      (seq (map make-xml-qname (match "NOTATION"))
+	      (seq (map make-xml-name (match "NOTATION"))
 		   S
 		   "(")
 	      ")"
@@ -1216,8 +1198,8 @@ USA.
 	(encapsulate (lambda (v) (cons 'enumerated (vector->list v)))
 	  (sbracket "enumerated type" "(" ")"
 	    S?
-	    parse-required-name-token
-	    (* (seq S? "|" S? parse-required-name-token))
+	    parse-required-nmtoken
+	    (* (seq S? "|" S? parse-required-nmtoken))
 	    S?)))))
 
 (define parse-!attlist-default		;[60]

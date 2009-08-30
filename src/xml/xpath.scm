@@ -206,7 +206,7 @@ USA.
 
 (define-method node-name ((node <namespace-node>))
   (let ((name (xml-attribute-name (node-item node))))
-    (if (xml-name-qname=? name 'xmlns)
+    (if (eq? (xml-name->symbol name) 'xmlns)
 	(null-xml-name-prefix)
 	(xml-name-local name))))
 
@@ -317,12 +317,12 @@ USA.
     (let per-decl ((decls (node-ns-decls node)) (seen seen))
       (if (pair? decls)
 	  (let ((decl (car decls)))
-	    (let ((qname (xml-name-qname (xml-attribute-name decl))))
-	      (if (memq qname seen)
+	    (let ((aname (xml-name->symbol (xml-attribute-name decl))))
+	      (if (memq aname seen)
 		  (per-decl (force (cdr decls)) seen)
 		  (cons-stream decl
 			       (per-decl (force (cdr decls))
-					 (cons qname seen))))))
+					 (cons aname seen))))))
 	  (let ((parent (parent-node node)))
 	    (if parent
 		(per-node parent seen)

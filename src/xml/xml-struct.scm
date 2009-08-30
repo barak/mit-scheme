@@ -121,6 +121,16 @@ USA.
 (define (xml-whitespace-string? object)
   (string-composed-of? object char-set:xml-whitespace))
 
+(define (string-composed-of? string char-set)
+  (and (string? string)
+       (substring-composed-of? string 0 (string-length string) char-set)))
+
+(define (substring-composed-of? string start end char-set)
+  (let loop ((index start))
+    (or (fix:= index end)
+	(and (char-set-member? char-set (string-ref string index))
+	     (loop (fix:+ index 1))))))
+
 (define-xml-type declaration
   (version xml-version?)
   (encoding xml-encoding?)
@@ -288,12 +298,12 @@ USA.
 (define-xml-type processing-instructions
   (name
    (lambda (object)
-     (and (xml-qname? object)
+     (and (xml-name-symbol? object)
 	  (not (xml-name=? object 'xml)))))
   (text canonicalize canonicalize-char-data))
 
 (define-xml-type dtd
-  (root xml-qname?)
+  (root xml-name-symbol?)
   (external (lambda (object)
 	      (or (not object)
 		  (xml-external-id? object))))
@@ -326,14 +336,14 @@ USA.
 		  (string->char-set " \r\n-'()+,./:=?;!*#@$_%")))
 
 (define-xml-type !element
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (content-type
    (lambda (object)
      (or (eq? object '|EMPTY|)
 	 (eq? object '|ANY|)
 	 (and (pair? object)
 	      (eq? '|#PCDATA| (car object))
-	      (list-of-type? (cdr object) xml-qname?))
+	      (list-of-type? (cdr object) xml-name-symbol?))
 	 (letrec
 	     ((children?
 	       (lambda (object)
@@ -345,7 +355,7 @@ USA.
 			  (list-of-type? (cdr object) cp?))))))
 	      (cp?
 	       (lambda (object)
-		 (or (maybe-wrapped object xml-qname?)
+		 (or (maybe-wrapped object xml-name-symbol?)
 		     (children? object))))
 	      (maybe-wrapped
 	       (lambda (object pred)
@@ -360,13 +370,13 @@ USA.
 	   (children? object))))))
 
 (define-xml-type !attlist
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (definitions canonicalize
     (lambda (object)
       (if (not (list-of-type? object
 		 (lambda (item)
 		   (and (pair? item)
-			(xml-qname? (car item))
+			(xml-name-symbol? (car item))
 			(pair? (cdr item))
 			(!attlist-type? (cadr item))
 			(pair? (cddr item))
@@ -393,7 +403,7 @@ USA.
       (eq? object '|NMTOKEN|)
       (and (pair? object)
 	   (or (and (eq? (car object) '|NOTATION|)
-		    (list-of-type? (cdr object) xml-qname?))
+		    (list-of-type? (cdr object) xml-name-symbol?))
 	       (and (eq? (car object) 'enumerated)
 		    (list-of-type? (cdr object) xml-nmtoken?))))))
 
@@ -406,16 +416,16 @@ USA.
 	   (xml-char-data? (cdr object)))))
 
 (define-xml-type !entity
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (value canonicalize canonicalize-entity-value))
 
 (define-xml-type unparsed-!entity
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (id xml-external-id?)
-  (notation xml-qname?))
+  (notation xml-name-symbol?))
 
 (define-xml-type parameter-!entity
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (value canonicalize canonicalize-entity-value))
 
 (define (canonicalize-entity-value object)
@@ -432,14 +442,14 @@ USA.
 	(canonicalize-content object))))
 
 (define-xml-type !notation
-  (name xml-qname?)
+  (name xml-name-symbol?)
   (id xml-external-id?))
 
 (define-xml-type entity-ref
-  (name xml-qname?))
+  (name xml-name-symbol?))
 
 (define-xml-type parameter-entity-ref
-  (name xml-qname?))
+  (name xml-name-symbol?))
 
 (define-syntax define-xml-printer
   (sc-macro-transformer
@@ -468,7 +478,7 @@ USA.
 
 (define-xml-printer element
   (lambda (elt)
-    (xml-name-qname (xml-element-name elt))))
+    (xml-name->symbol (xml-element-name elt))))
 
 (define-xml-printer external-id
   (lambda (dtd)

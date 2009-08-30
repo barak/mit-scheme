@@ -32,52 +32,69 @@ USA.
 (define-package (runtime xml)
   (parent (runtime)))
 
+(define-package (runtime xml chars)
+  (files "xml-chars")
+  (parent (runtime xml))
+  (export ()
+	  alphabet:xml-char
+	  char-set:xml-whitespace)
+  (export (runtime xml)
+	  alphabet:char-data
+	  alphabet:name-initial
+	  alphabet:name-subsequent
+	  alphabet:ncname-initial
+	  alphabet:ncname-subsequent))
+
 (define-package (runtime xml names)
   (files "xml-names")
   (parent (runtime xml))
   (export ()
 	  error:not-xml-name
+	  error:not-xml-name-symbol
+	  error:not-xml-namespace-conformant-name
 	  error:not-xml-nmtoken
 	  error:not-xml-qname
 	  guarantee-xml-name
+	  guarantee-xml-name-symbol
+	  guarantee-xml-namespace-conformant-name
 	  guarantee-xml-nmtoken
 	  guarantee-xml-qname
 	  make-xml-name
-	  make-xml-name-hash-table
+	  make-xml-name-symbol
 	  make-xml-nmtoken
 	  make-xml-qname
+	  match:xml-name
+	  match:xml-nmtoken
+	  match:xml-qname
 	  null-xml-name-prefix
 	  null-xml-name-prefix?
 	  null-xml-namespace-uri
 	  null-xml-namespace-uri?
 	  string-is-xml-name?
 	  string-is-xml-nmtoken?
-	  xml-name-hash
+	  string-is-xml-qname?
+	  xml-name->symbol
 	  xml-name-local
 	  xml-name-local=?
 	  xml-name-prefix
 	  xml-name-prefix=?
-	  xml-name-qname
-	  xml-name-qname=?
 	  xml-name-string
+	  xml-name-symbol?
 	  xml-name-uri
 	  xml-name-uri=?
 	  xml-name=?
 	  xml-name?
-	  xml-nmtoken-string
+	  xml-namespace-conformant-name?
 	  xml-nmtoken?
 	  xml-qname-local
 	  xml-qname-prefix
-	  xml-qname-string
 	  xml-qname?
 	  xml-uri
 	  xml-uri-string
 	  xmlns-uri
 	  xmlns-uri-string)
   (export (runtime xml)
-	  %make-xml-name
-	  string-composed-of?
-	  substring-composed-of?))
+	  %make-xml-name))
 
 (define-package (runtime xml structure)
   (files "xml-struct")
@@ -280,21 +297,15 @@ USA.
 	  string-of-xml-chars?))
 
 (define-package (runtime xml parser)
-  (files "xml-chars" "xml-parser")
+  (files "xml-parser")
   (parent (runtime xml))
   (export ()
-	  alphabet:xml-char
-	  char-set:xml-whitespace
 	  read-xml
 	  read-xml-file
 	  string->xml
 	  utf8-string->xml
 	  xml-processing-instructions-handlers)
   (export (runtime xml)
-	  alphabet:name-initial
-	  alphabet:name-subsequent
-	  alphabet:ncname-initial
-	  alphabet:ncname-subsequent
 	  coding-requires-bom?
 	  normalize-coding))
 
