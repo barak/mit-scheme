@@ -163,13 +163,20 @@ AC_ARG_WITH([libpq],
 	[Use PostgreSQL libpq library if available [[yes]]]))
 : ${with_libpq='yes'}
 
+dnl For reasons I don't understand, it is necessary to use
+dnl quadigraphs here instead of [[ ... ]].
+AC_ARG_WITH([macosx-version],
+    AS_HELP_STRING([--with-macosx-version],
+	[MacOSX version to compile for @<:@host's version@:>@]))
+
 if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
     AC_MSG_ERROR(
 	[--enable-native-code=c incompatible with --enable-static-libs])
 fi
 
 dnl Substitution variables to be filled in below.
-GC_HEAD_FILES=
+AS_FLAGS=
+GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 M4_FLAGS=
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
@@ -211,6 +218,9 @@ AC_C_VOLATILE
 AC_C_INLINE
 AC_C_STRINGIZE
 AC_C_PROTOTYPES
+AC_PROG_EGREP
+AC_PROG_FGREP
+AC_PROG_GREP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -244,19 +254,86 @@ if test ${GCC} = yes; then
 	)],
 	[
 	AC_MSG_RESULT([yes])
-        CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
-        CFLAGS="${CFLAGS} -Wold-style-definition"
+	CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
+	CFLAGS="${CFLAGS} -Wold-style-definition"
 	],
 	[AC_MSG_RESULT([no])])
 
     # other possibilities:
     # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
 fi
-FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
+FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 CCLD=${CC}
+
+AC_MSG_CHECKING([for native-code support])
+SCM_ARCH=none
+case ${enable_native_code} in
+yes)
+    case ${host_cpu} in
+    alpha*)
+	SCM_ARCH=alpha
+	;;
+    hppa*)
+	SCM_ARCH=hppa
+	GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
+	;;
+    i?86)
+	SCM_ARCH=i386
+	;;
+    # x86_64)
+    #     SCM_ARCH=i386
+    #     CFLAGS="${CFLAGS} -m32"
+    #     LDFLAGS="${LDFLAGS} -m32"
+    #     ;;
+    m68k|m680?0)
+	SCM_ARCH=mc68k
+	;;
+    mips*)
+	SCM_ARCH=mips
+	;;
+    vax)
+	SCM_ARCH=vax
+	;;
+    esac
+    ;;
+c)
+    SCM_ARCH=c
+    ;;
+svm)
+    SCM_ARCH=svm1
+    ;;
+no|none)
+    ;;
+*)
+    dnl This is not quite right, because the compiler and microcode
+    dnl disagree about what some architectures should be called, such as
+    dnl bobcat vs mc68k or spectrum versus hppa.  I don't know what the
+    dnl state of Scheme on these architectures is, however, so at least
+    dnl this will flag an error if you try to use them.
+    if test -f "cmpauxmd/${enable_native_code}.m4"; then
+	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
+    fi
+    SCM_ARCH=${enable_native_code}
+    ;;
+esac
+
+case ${SCM_ARCH} in
+none)
+    AC_MSG_RESULT([no])
+    ;;
+c)
+    AC_MSG_RESULT([yes, using portable C code])
+    ;;
+svm1)
+    AC_MSG_RESULT([yes, using portable SVM code])
+    ;;
+*)
+    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
+    ;;
+esac
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -280,14 +357,34 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    MACOSX=yes
-    MACOSX_SYSROOT=/Developer/SDKs/MacOSX10.4u.sdk
-    if test -d ${MACOSX_SYSROOT}; then
-	MACOSX_CFLAGS="-mmacosx-version-min=10.4 -isysroot ${MACOSX_SYSROOT}"
-	MACOSX_LDFLAGS="${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
-	CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
-	LDFLAGS="${LDFLAGS} ${MACOSX_LDFLAGS}"
+    if test -n "${with_macosx_version}"; then
+	MACOSX=${with_macosx_version}
+	MACOSX_CFLAGS="-mmacosx-version-min=${MACOSX}"
+    else
+	MACOSX=`sw_vers | ${GREP} ^ProductVersion: \
+	    | ${EGREP} -o '[[0-9]+\.[0-9]+]'`
+	if test -z "${MACOSX}"; then
+	    AC_MSG_ERROR([Unable to determine MacOSX version])
+	fi
+	MACOSX_CFLAGS=
     fi
+    if test "${MACOSX}" = 10.4; then
+	SDK=MacOSX${MACOSX}u
+    else
+	SDK=MacOSX${MACOSX}
+    fi
+    MACOSX_SYSROOT=/Developer/SDKs/${SDK}.sdk
+    if ! test -d "${MACOSX_SYSROOT}"; then
+	AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+    fi
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
+    AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
+    if test "${SCM_ARCH}" = i386; then
+	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
+	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
+    fi
+    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
+    LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
     ;;
 netbsd*)
@@ -488,7 +585,7 @@ AC_CHECK_TYPE([clock_t],
 	[Define to `unsigned long' if <time.h> doesn't define.])],
     [SCM_INC_TIME])
 
-AC_CHECK_TYPE([time_t], 
+AC_CHECK_TYPE([time_t],
     [],
     [AC_DEFINE([time_t], [long],
 	[Define to `long' if <time.h> doesn't define.])],
@@ -814,7 +911,7 @@ if test "${with_db_4}" != no; then
 		[[db_create (0, 0, 0)]])],
 	    [
 	    AC_MSG_RESULT([yes])
-	    AC_DEFINE([HAVE_LIBDB_4], [1], 
+	    AC_DEFINE([HAVE_LIBDB_4], [1],
 		[Define to 1 if you have the `db-4' library (-ldb-4).])
 	    MODULE_LIBS="-ldb-4 ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prdb4"
@@ -879,7 +976,7 @@ if test "${enable_static_libs}" = no; then
 	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
 	    ],
 	    [
-	    if test ${enable_native_code} = c; then
+	    if test ${SCM_ARCH} = c; then
 		AC_MSG_ERROR(
 		    [--enable-native-code=c requires dynamic loader support])
 	    fi
@@ -915,69 +1012,12 @@ if test "${no_x}" != yes; then
     OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
 fi
 
-AC_MSG_CHECKING([for native-code support])
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
-GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
-SCM_ARCH=none
-ENC_WARNP=no
-
-case ${enable_native_code} in
-yes)
-    case ${host_cpu} in
-    alpha*)
-	SCM_ARCH=alpha
-	;;
-    hppa*)
-	SCM_ARCH=hppa
-	GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-	;;
-    i?86)
-	SCM_ARCH=i386
-	;;
-    # x86_64)
-    #     SCM_ARCH=i386
-    #     CFLAGS="${CFLAGS} -m32"
-    #     LDFLAGS="${LDFLAGS} -m32"
-    #     ;;
-    m68k|m680?0)
-	SCM_ARCH=mc68k
-	;;
-    mips*)
-	SCM_ARCH=mips
-	;;
-    vax)
-	SCM_ARCH=vax
-	;;
-    esac
-    ;;
-c)
-    SCM_ARCH=c
-    ;;
-svm)
-    SCM_ARCH=svm1
-    ;;
-no|none)
-    ;;
-*)
-    dnl This is not quite right, because the compiler and microcode
-    dnl disagree abou what some architectures should be called, such as
-    dnl bobcat vs mc68k or spectrum versus hppa.  I don't know what the
-    dnl state of Scheme on these architectures is, however, so at least
-    dnl this will flag an error if you try to use them.
-    if test -f "cmpauxmd/${enable_native_code}.m4"; then
-	SCM_ARCH="${enable_native_code}"
-    else
-	ENC_WARNP=yes
-    fi
-    ;;
-esac
 
 case ${SCM_ARCH} in
 none)
-    AC_MSG_RESULT([no])
     ;;
 c)
-    AC_MSG_RESULT([yes, using portable C code])
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
     AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
     AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
@@ -991,22 +1031,16 @@ c)
     INSTALL_INCLUDE=install-include
     ;;
 svm1)
-    AC_MSG_RESULT([yes, using portable SVM code])
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
     AUXDIR_NAME=mit-scheme-svm
     EXE_NAME=mit-scheme-svm
     ;;
 *)
-    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
     AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${SCM_ARCH}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
 esac
-
-if test ${ENC_WARNP} = yes; then
-    AC_MSG_WARN([illegal --enable-native-code value: ${enable_native_code}])
-fi
 
 AC_CONFIG_LINKS([
     cmpintmd.h:cmpintmd/${SCM_ARCH}.h
@@ -1028,10 +1062,6 @@ if test "x${MODULE_BASES}" != x; then
 	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
 	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
     done
-fi
-
-if test x${MACOSX} = xyes && test ${SCM_ARCH} = i386; then
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
 fi
 
 AC_SUBST([AS_FLAGS])
