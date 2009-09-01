@@ -381,6 +381,7 @@ darwin*)
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
     if test "${SCM_ARCH}" = i386; then
 	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
+	AS_FLAGS="-arch i386 ${AS_FLAGS}"
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
     fi
     CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
