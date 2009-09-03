@@ -224,24 +224,27 @@ USA.
 			     variable-binding-theory)))))
     (lambda (form rename compare)
       compare				;ignore
-      (receive (name value) (parse-define-form form rename)
-	`(,keyword ,name ,value)))))
+      (parse-define-form form rename
+	(lambda (name value)
+	  `(,keyword ,name ,value))))))
 
-(define (parse-define-form form rename)
+(define (parse-define-form form rename receiver)
   (cond ((syntax-match? '((IDENTIFIER . MIT-BVL) + FORM) (cdr form))
 	 (parse-define-form
 	  `(,(car form) ,(caadr form)
 			(,(rename 'NAMED-LAMBDA) ,@(cdr form)))
-	  rename))
+	  rename
+	  receiver))
 	((syntax-match? '((DATUM . MIT-BVL) + FORM) (cdr form))
 	 (parse-define-form
 	  `(,(car form) ,(caadr form)
 			(,(rename 'LAMBDA) ,(cdadr form) ,@(cddr form)))
-	  rename))
+	  rename
+	  receiver))
 	((syntax-match? '(IDENTIFIER) (cdr form))
-	 (values (cadr form) (unassigned-expression)))
+	 (receiver (cadr form) (unassigned-expression)))
 	((syntax-match? '(IDENTIFIER EXPRESSION) (cdr form))
-	 (values (cadr form) (caddr form)))
+	 (receiver (cadr form) (caddr form)))
 	(else
 	 (ill-formed-syntax form))))
 
