@@ -1140,6 +1140,7 @@ USA.
 
 (define-integrable (%assoc key alist = caller)
   (let ((lose (lambda () (error:not-alist alist caller))))
+    (declare (no-type-checks))
     (let loop ((alist alist))
       (if (pair? alist)
 	  (begin
