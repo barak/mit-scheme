@@ -28,8 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (not object)
-  ((ucode-primitive not) object))
+(define-integrable not (ucode-primitive not))
 
 (define false #f)
 (define true #t)

@@ -33,24 +33,14 @@ USA.
 
 (define-primitives
   (%record -1)
+  (%record? 1)
+  (%record-length 1)
+  (%record-ref 2)
+  (%record-set! 3)
   (primitive-object-ref 2)
   (primitive-object-set! 3)
-  (primitive-object-set-type 2))
-
-(define-integrable (%record? object)
-  ((ucode-primitive %record?) object))
-
-(define-integrable (%record-length record)
-  ((ucode-primitive %record-length) record))
-
-(define-integrable (%record-ref record index)
-  ((ucode-primitive %record-ref) record index))
-
-(define-integrable (%record-set! record index value)
-  ((ucode-primitive %record-set!) record index value))
-
-(define-integrable (vector-cons length object)
-  ((ucode-primitive vector-cons) length object))
+  (primitive-object-set-type 2)
+  (vector-cons 2))
 
 (define-integrable (%make-record length object)
   ((ucode-primitive object-set-type) (ucode-type record)

@@ -41,64 +41,30 @@ USA.
 
 ;;;; Primitives
 
-(define-integrable (string-allocate n)
-  ((ucode-primitive string-allocate) n))
-
-(define-integrable (string? object)
-  ((ucode-primitive string?) object))
-
-(define-integrable (string-length string)
-  ((ucode-primitive string-length) string))
-
-(define-integrable (string-maximum-length string)
-  ((ucode-primitive string-maximum-length) string))
-
-(define-integrable (set-string-length! string length)
-  ((ucode-primitive set-string-length!) string length))
-
-(define-integrable (set-string-maximum-length! string length)
-  ((ucode-primitive set-string-maximum-length!) string length))
-
-(define-integrable (string-ref string index)
-  ((ucode-primitive string-ref) string index))
-
-(define-integrable (string-set! string index char)
-  ((ucode-primitive string-set!) string index char))
-
-(define-integrable (substring-move-left! string1 start1 end1 string2 start2)
-  ((ucode-primitive substring-move-left!) string1 start1 end1 string2 start2))
-
-(define-integrable (substring-move-right! string1 start1 end1 string2 start2)
-  ((ucode-primitive substring-move-right!) string1 start1 end1 string2 start2))
-
-(define-integrable (vector-8b-ref vector-8b index)
-  ((ucode-primitive vector-8b-ref) vector-8b index))
-
-(define-integrable (vector-8b-set! vector-8b index byte)
-  ((ucode-primitive vector-8b-set!) vector-8b index byte))
-
-(define-integrable (vector-8b-fill! string start end ascii)
-  (substring-fill! string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-next-char string start end ascii)
-  (substring-find-next-char string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-previous-char string start end ascii)
-  (substring-find-previous-char string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-next-char-ci string start end ascii)
-  (substring-find-next-char-ci string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-previous-char-ci string start end ascii)
-  (substring-find-previous-char-ci string start end (ascii->char ascii)))
+(define-primitives
+  (set-string-length! 2)
+  (set-string-maximum-length! 2)
+  (string-allocate 1)
+  (string-hash-mod 2)
+  (string-length 1)
+  (string-maximum-length 1)
+  (string-ref 2)
+  (string-set! 3)
+  (string? 1)
+  substring-move-left!
+  substring-move-right!
+  vector-8b-fill!
+  vector-8b-find-next-char
+  vector-8b-find-next-char-ci
+  vector-8b-find-previous-char
+  vector-8b-find-previous-char-ci
+  (vector-8b-ref 2)
+  (vector-8b-set! 3))
 
 (define (string-hash key #!optional modulus)
   (if (default-object? modulus)
       ((ucode-primitive string-hash) key)
       ((ucode-primitive string-hash-mod) key modulus)))
-
-(define (string-hash-mod key modulus)
-  ((ucode-primitive string-hash-mod) key modulus))
 
 (define (string-ci-hash key #!optional modulus)
   (string-hash (string-downcase key) modulus))

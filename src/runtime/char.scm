@@ -28,14 +28,10 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (char? object)
-  ((ucode-primitive char?) object))
-
-(define-integrable (char->integer char)
-  ((ucode-primitive char->integer) char))
-
-(define-integrable (integer->char int)
-  ((ucode-primitive integer->char) int))
+(define-primitives
+  (char? 1)
+  (char->integer 1)
+  (integer->char 1))
 
 (define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)

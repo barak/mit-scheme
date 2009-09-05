@@ -65,29 +65,15 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (cons a b)
-  ((ucode-primitive cons) a b))
-
-(define-integrable (pair? object)
-  ((ucode-primitive pair?) object))
-
-(define-integrable (null? object)
-  ((ucode-primitive null?) object))
-
-(define-integrable (car p)
-  ((ucode-primitive car) p))
-
-(define-integrable (cdr p)
-  ((ucode-primitive cdr) p))
-
-(define-integrable (set-car! p v)
-  ((ucode-primitive set-car!) p v))
-
-(define-integrable (set-cdr! p v)
-  ((ucode-primitive set-cdr!) p v))
-
-(define-integrable (general-car-cdr p i)
-  ((ucode-primitive general-car-cdr) p i))
+(define-primitives
+  (car 1)
+  (cdr 1)
+  (cons 2)
+  (general-car-cdr 2)
+  (null? 1)
+  (pair? 1)
+  (set-car! 2)
+  (set-cdr! 2))
 
 (define (list . items)
   items)

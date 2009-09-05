@@ -54,11 +54,9 @@ USA.
 (define-integrable dispatch-tag-index-start 2)
 (define-integrable dispatch-tag-index-end 10)
 
-(define-integrable (dispatch-tag-ref t i)
-  (%record-ref t i))
+(define-integrable dispatch-tag-ref (ucode-primitive %record-ref))
 
-(define-integrable (dispatch-tag-set! t i x)
-  (%record-set! t i x))
+(define-integrable dispatch-tag-set! (ucode-primitive %record-set!))
 
 (define (dispatch-tag-contents tag)
   (guarantee-dispatch-tag tag 'DISPATCH-TAG-CONTENTS)
