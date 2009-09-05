@@ -34,9 +34,18 @@ USA.
      environment
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
-	      `(DEFINE-INTEGRABLE ,variable-name 
-		 ,(apply make-primitive-procedure primitive-args))
-	      )))
+	      (let ((primitive
+		     (apply make-primitive-procedure primitive-args)))
+		(let ((arity (procedure-arity primitive)))
+		  (if (eqv? (procedure-arity-min arity)
+			    (procedure-arity-max arity))
+		      (let ((names
+			     (map (lambda (n) (symbol 'a n))
+				  (iota (procedure-arity-min arity) 1))))
+			`(DEFINE-INTEGRABLE (,variable-name ,@names)
+			   (,primitive ,@names)))
+		      `(DEFINE-INTEGRABLE ,variable-name
+			 ,primitive)))))))
        `(BEGIN ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
