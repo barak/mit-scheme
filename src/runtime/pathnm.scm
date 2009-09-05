@@ -590,21 +590,21 @@ these rules:
     ((host-type/operation/init-file-pathname (host/type host)) host)))
 
 (define (system-library-pathname pathname #!optional required?)
-  (let ((pathname* (merge-pathnames pathname (%find-library-directory)))
-	(required? (if (default-object? required?) #t required?)))
-    (if (and required? (not (file-exists? pathname*)))
-	(system-library-pathname
-	 (error:file-operation pathname*
-			       "find"
-			       "file"
-			       "no such file in system library path"
-			       system-library-pathname
-			       (list pathname required?)))
-	pathname*)))
+  (if (if (default-object? required?) #t required?)
+      (or (%find-library-file pathname)
+	  (system-library-pathname
+	   (error:file-operation pathname*
+				 "find"
+				 "file"
+				 "no such file in system library path"
+				 system-library-pathname
+				 (list pathname required?))
+	   required?))
+      (merge-pathnames pathname (%find-library-directory))))
 
 (define (system-library-directory-pathname #!optional pathname required?)
   (if (if (default-object? pathname) #f pathname)
-      (let ((dir (system-library-pathname pathname #f)))
+      (let ((dir (%find-library-file pathname)))
 	(cond ((file-directory? dir)
 	       (pathname-as-directory dir))
 	      ((if (default-object? required?) #f required?)
@@ -624,6 +624,14 @@ these rules:
   (pathname-simplify
    (or (find-matching-item library-directory-path file-directory?)
        (error "Can't find library directory."))))
+
+(define (%find-library-file pathname)
+  (let loop ((path library-directory-path))
+    (and (pair? path)
+	 (let ((p (merge-pathnames pathname (car path))))
+	   (if (file-exists? p)
+	       p
+	       (loop (cdr path)))))))
 
 (define library-directory-path)
 

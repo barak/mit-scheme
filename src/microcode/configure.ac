@@ -378,6 +378,7 @@ darwin*)
 	AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
     if test "${SCM_ARCH}" = i386; then
 	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
@@ -386,7 +387,9 @@ darwin*)
     fi
     CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
+    LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
+    AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes

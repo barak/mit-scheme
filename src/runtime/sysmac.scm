@@ -89,10 +89,11 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      compare
-      (receive (name value) (parse-define-form form rename)
-	`(,(rename 'BEGIN)
-	  (,(rename 'DEFINE) ,name)
-	  (,(rename 'ADD-BOOT-INIT!)
-	   (,(rename 'LAMBDA) ()
-			      (,(rename 'SET!) ,name ,value)
-			      ,(rename 'UNSPECIFIC))))))))
+     (parse-define-form form rename
+       (lambda (name value)
+	 `(,(rename 'BEGIN)
+	    (,(rename 'DEFINE) ,name)
+	    (,(rename 'ADD-BOOT-INIT!)
+	     (,(rename 'LAMBDA) ()
+	       (,(rename 'SET!) ,name ,value)
+	       ,(rename 'UNSPECIFIC)))))))))
