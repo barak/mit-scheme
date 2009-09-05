@@ -298,9 +298,12 @@ USA.
 
 (define (escape-pgsql-string string)
   (guarantee-pgsql-available)
-  (let ((escaped (make-string (fix:* 2 (string-length string)))))
-    (set-string-maximum-length! escaped (pq-escape-string string escaped))
-    escaped))
+  (let* ((escaped (make-string (fix:* 2 (string-length string))))
+	 (length  (pq-escape-string string escaped)))
+    (set-string-maximum-length! escaped length)
+    (if (fix:= (string-maximum-length escaped) length)
+	escaped
+	(substring escaped 0 length))))
 
 (define (encode-pgsql-bytea bytes)
   (guarantee-pgsql-available)

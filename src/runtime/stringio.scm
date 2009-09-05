@@ -422,11 +422,14 @@ USA.
     (string-head (ostate-buffer os) (ostate-index os))))
 
 (define (narrow-out/extract-output! port)
-  (let ((os (port/state port)))
-    (let ((string (ostate-buffer os)))
-      (set-string-maximum-length! string (ostate-index os))
-      (reset-buffer! os)
-      string)))
+  (let* ((os (port/state port))
+	 (string (ostate-buffer os))
+	 (length (ostate-index os)))
+    (set-string-maximum-length! string length)
+    (reset-buffer! os)
+    (if (fix:= (string-maximum-length string) length)
+	string
+	(substring string 0 length))))
 
 (define (make-wide-output-type)
   (make-string-out-type wide-out/write-char
@@ -603,12 +606,15 @@ USA.
 
 (define (octets-out/extract-output! port)
   (output-port/flush-output port)
-  (let ((os (output-octets-port/os port)))
-    (let ((octets (ostate-buffer os)))
-      (set-string-maximum-length! octets (ostate-index os))
+  (let* ((os (output-octets-port/os port))
+	 (octets (ostate-buffer os))
+	 (length (ostate-index os)))
+      (set-string-maximum-length! octets length)
       (set-ostate-buffer! os (make-vector-8b 16))
       (set-ostate-index! os 0)
-      octets)))
+      (if (fix:= (string-maximum-length octets) length)
+	  octets
+	  (substring octets 0 length))))
 
 (define (octets-out/position port)
   (output-port/flush-output port)
