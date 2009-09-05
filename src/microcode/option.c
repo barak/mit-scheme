@@ -73,6 +73,10 @@ USA.
 #endif
 
 #define FILE_READABLE(filename) (OS_file_access ((filename), 4))
+
+#ifdef __APPLE__
+   extern const char * macosx_main_bundle_dir (void);
+#endif
 
 static bool option_summary;
 
@@ -493,10 +497,9 @@ parse_path_string (const char * path)
 {
   const char * start = path;
   /* It is important that this get_wd be called here to make sure that
-     the the unix getcwd is called now, before it allocates heap space
+     the unix getcwd is called now, before it allocates heap space.
      This is because getcwd forks off a new process and we want to do
-     that before the scheme process gets too big
-  */
+     that before the scheme process gets too big.  */
   const char * wd = (get_wd ());
   unsigned int lwd = (strlen (wd));
   while (1)
@@ -791,15 +794,32 @@ read_command_line_options (int argc, const char ** argv)
   bool band_sizes_valid = false;
   unsigned long band_constant_size = 0;
   unsigned long band_heap_size = 0;
+  const char * default_library_path = DEFAULT_LIBRARY_PATH;
 
   parse_standard_options (argc, argv);
   if (option_library_path != 0)
     free_parsed_path (option_library_path);
+#ifdef __APPLE__
+  const char * main_bundle_path = (macosx_main_bundle_dir ());
+  if (main_bundle_path != 0)
+    {
+      unsigned int n_chars =
+	((strlen (main_bundle_path))
+	 + (strlen (default_library_path))
+	 + 2);
+      char * new_path = (OS_malloc (n_chars));
+      strcpy (new_path, main_bundle_path);
+      strcat (new_path, ":");
+      strcat (new_path, default_library_path);
+      xfree (main_bundle_path);
+      default_library_path = new_path;
+    }
+#endif
   option_library_path
     = (parse_path_string
        (standard_string_option (option_raw_library,
 				LIBRARY_PATH_VARIABLE,
-				DEFAULT_LIBRARY_PATH)));
+				default_library_path)));
 
   if (option_band_file != 0)
     {

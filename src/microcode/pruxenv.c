@@ -36,6 +36,10 @@ extern const char * OS_current_user_home_directory (void);
 #ifdef HAVE_SOCKETS
 #  include "uxsock.h"
 #endif
+
+#ifdef __APPLE__
+#  include <CoreServices/CoreServices.h>
+#endif
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   "Convert a file system time stamp into a date/time string.")
@@ -230,6 +234,76 @@ DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
 	pc = ((unsigned long) (CC_ENTRY_ADDRESS (object)));
       }
     PRIMITIVE_RETURN (find_ccblock (pc));
+  }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+#ifdef __APPLE__
+const char *
+macosx_main_bundle_dir (void)
+{
+  CFBundleRef bundle;
+  CFURLRef url;
+  UInt8 buffer [4096];
+  char * bp;
+  char * result;
+
+  bundle = (CFBundleGetMainBundle());
+  if (bundle == 0)
+    return (0);
+
+  url = (CFBundleCopyResourceURL
+	 (bundle, (CFSTR ("utabmd")), (CFSTR ("bin")), 0));
+  if (url == 0)
+    return (0);
+
+  if (!CFURLGetFileSystemRepresentation (url, true, buffer, (sizeof (buffer))))
+    {
+      CFRelease (url);
+      return (0);
+    }
+  CFRelease (url);
+  bp = ((char *) buffer);
+
+  /* Discard everything after the final slash.  */
+  {
+    char * slash = (strrchr (bp, '/'));
+    if (slash != 0)
+      (*slash) = '\0';
+  }
+
+  result = (UX_malloc ((strlen (bp)) + 1));
+  if (result != 0)
+    strcpy (result, bp);
+
+  return (result);
+}
+#endif
+
+DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
+		  Prim_macosx_main_bundle_dir, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#ifdef __APPLE__
+  {
+    const char * path = (macosx_main_bundle_dir ());
+    unsigned int n_words;
+    SCHEME_OBJECT result;
+
+    if (path == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    n_words = (1 + (STRING_LENGTH_TO_GC_LENGTH (strlen (path))));
+    if (GC_NEEDED_P (n_words))
+      {
+	UX_free ((void *) path);
+	Primitive_GC (n_words);
+      }
+    result = (char_pointer_to_string_no_gc (path));
+    UX_free ((void *) path);
+    PRIMITIVE_RETURN (result);
   }
 #else
   error_unimplemented_primitive ();
