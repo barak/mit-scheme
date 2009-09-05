@@ -193,6 +193,9 @@ gen-nonce: gen-nonce.o
 extract-liarc-decls: extract-liarc-decls.o
 	$(LINK) extract-liarc-decls.o
 
+macosx-starter: macosx-starter.o
+	$(LINK) macosx-starter.o
+
 utabmd.bin: utabmd.scm
 	./utabmd.sh
 

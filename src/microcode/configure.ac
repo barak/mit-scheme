@@ -389,6 +389,7 @@ darwin*)
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
+    AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
