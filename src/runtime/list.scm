@@ -55,6 +55,14 @@ USA.
 ;;;
 ;;; -- Yael & Stephen
 
+;;; Note:  In this file, CAR and CDR refer to the ucode primitives,
+;;; but composite operations, like CAAR, CDAR, CDADR, etc., refer to
+;;; `safe' procedures that check the type of their arguments.
+;;; Procedures such as %ASSOC, which are written with explicit type
+;;; checks, use chains of CAR and CDR operations rather than the
+;;; more concise versions in order to avoid unnecessary duplication
+;;; of type checks and out-of-line calls. -- jrm
+
 (declare (usual-integrations))
 
 (define-integrable (cons a b)
@@ -283,7 +291,7 @@ USA.
 
   (if (and (pair? lists)
 	   (pair? (cdr lists)))
-      (n-ary (car lists) (cadr lists) (cddr lists))
+      (n-ary (car lists) (car (cdr lists)) (cdr (cdr lists)))
       #t))
 
 (define (list-ref list index)
@@ -635,8 +643,8 @@ USA.
 	  (if (pair? lists)
 	      (if (pair? (car lists))
 		  (split (cdr lists)
-			 (cons (caar lists) cars)
-			 (cons (cdar lists) cdrs))
+			 (cons (car (car lists)) cars)
+			 (cons (cdr (car lists)) cdrs))
 		  (if (not (null? (car lists)))
 		      (bad-end)))
 	      (let ((new (cons (apply procedure (reverse! cars)) '())))
@@ -702,8 +710,8 @@ USA.
 			(IF (PAIR? LISTS)
 			    (IF (PAIR? (CAR LISTS))
 				(SPLIT (CDR LISTS)
-				       (CONS (CAAR LISTS) CARS)
-				       (CONS (CDAR LISTS) CDRS))
+				       (CONS (CAR (CAR LISTS)) CARS)
+				       (CONS (CDR (CAR LISTS)) CDRS))
 				(BEGIN
 				  (IF (NOT (NULL? (CAR LISTS)))
 				      (BAD-END))
@@ -759,8 +767,8 @@ USA.
 	  (if (pair? lists)
 	      (if (pair? (car lists))
 		  (split (cdr lists)
-			 (cons (caar lists) cars)
-			 (cons (cdar lists) cdrs))
+			 (cons (car (car lists)) cars)
+			 (cons (cdr (car lists)) cdrs))
 		  (begin
 		    (if (not (null? (car lists)))
 			(mapper-error (cons first rest) 'FOLD))
@@ -789,8 +797,8 @@ USA.
 	  (if (pair? lists)
 	      (if (pair? (car lists))
 		  (split (cdr lists)
-			 (cons (caar lists) cars)
-			 (cons (cdar lists) cdrs))
+			 (cons (car (car lists)) cars)
+			 (cons (cdr (car lists)) cdrs))
 		  (begin
 		    (if (not (null? (car lists)))
 			(mapper-error (cons first rest) 'FOLD-RIGHT))
@@ -1080,7 +1088,7 @@ USA.
 
 (define-guarantee alist "association list")
 
-(define (alist-cons key datum alist)
+(define-integrable (alist-cons key datum alist)
   (cons (cons key datum) alist))
 
 (define (alist-copy alist)
@@ -1092,8 +1100,9 @@ USA.
 		   (cond ((pair? alist)
 			  (if (pair? (car alist))
 			      (let ((new
-				     (cons (cons (caar alist) (cdar alist))
-					   '())))
+				     (alist-cons (car (car alist))
+						 (cdr (car alist))
+						 '())))
 				(set-cdr! previous new)
 				(loop (cdr alist) new))
 			      (lose)))
@@ -1131,12 +1140,13 @@ USA.
 
 (define-integrable (%assoc key alist = caller)
   (let ((lose (lambda () (error:not-alist alist caller))))
+    (declare (no-type-checks))
     (let loop ((alist alist))
       (if (pair? alist)
 	  (begin
 	    (if (not (pair? (car alist)))
 		(lose))
-	    (if (= (caar alist) key)
+	    (if (= (car (car alist)) key)
 		(car alist)
 		(loop (cdr alist))))
 	  (begin
@@ -1168,14 +1178,14 @@ USA.
 	      (cond ((pair? alist)
 		     (if (not (pair? (car alist)))
 			 (lose))
-		     (if (= (caar alist) key)
+		     (if (= (car (car alist)) key)
 			 (loop (cdr alist) previous)
 			 (let ((new (cons (car alist) '())))
 			   (set-cdr! previous new)
 			   (loop (cdr alist) new))))
 		    ((not (null? alist))
 		     (lose))))
-	    (if (= (caar alist) key)
+	    (if (= (car (car alist)) key)
 		(cdr head)
 		head)))
 	(begin
@@ -1204,7 +1214,7 @@ USA.
 	      (begin
 		(if (not (pair? (car items)))
 		    (lose))
-		(if (= (caar items) item)
+		(if (= (car (car items)) item)
 		    (trim-initial-segment (cdr items))
 		    (begin
 		      (locate-initial-segment items (cdr items))
@@ -1218,7 +1228,7 @@ USA.
 	  (cond ((pair? this)
 		 (if (not (pair? (car this)))
 		     (lose))
-		 (if (= (caar this) item)
+		 (if (= (car (car this)) item)
 		     (set-cdr!
 		      last
 		      (trim-initial-segment (cdr this)))
@@ -1281,8 +1291,8 @@ USA.
 	    (if (not (pair? (cdr klist)))
 		(lose))
 	    (if (eq? (car klist) key)
-		(cadr klist)
-		(loop (cddr klist))))
+		(car (cdr klist))
+		(loop (cdr (cdr klist)))))
 	  (begin
 	    (if (not (null? klist))
 		(lose))
@@ -1291,15 +1301,15 @@ USA.
 (define (keyword-list->alist klist)
   (let loop ((klist klist))
     (if (pair? klist)
-	(cons (cons (car klist) (cadr klist))
-	      (loop (cddr klist)))
+	(alist-cons (car klist) (car (cdr klist))
+		    (loop (cdr (cdr klist))))
 	'())))
 
 (define (alist->keyword-list alist)
   (let loop ((alist alist))
     (if (pair? alist)
-	(cons (caar alist)
-	      (cons (cdar alist)
+	(cons (car (car alist))
+	      (cons (cdr (car alist))
 		    (loop (cdr alist))))
 	'())))
 
