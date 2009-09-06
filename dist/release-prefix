@@ -1,7 +1,9 @@
-
+# -*- shell-script -*-
+#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
+#     Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +22,13 @@
 
 get_release ()
 {
-    fgrep Release /scheme/v7/src/runtime/version.scm \
+    local prefix
+    if [[ -n ${1} ]]; then
+	prefix=${1}/
+    else
+	prefix=
+    fi
+    fgrep Release "${prefix}"src/runtime/version.scm \
 	| awk 'BEGIN { OFS = "." }
 	       NF == 4 { print $3, $4 }
 	       NF == 5 { print $3, $4, $5 }
