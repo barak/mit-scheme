@@ -103,11 +103,7 @@ USA.
 
 (define-integrable (accum->string a)
   (set-string-maximum-length! (car a) (cdr a))
-  ;; jrm's port cannot resize strings, so if the
-  ;; resize didn't work, just take the substring.
-  (if (fix:= (string-maximum-length (car a)) (cdr a))
-      (car a)
-      (substring (car a) 0 (cdr a))))
+  (car a))
 
 (define-integrable (accum-count a)
   (cdr a))
