@@ -39,6 +39,7 @@ SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
 
 static SCHEME_OBJECT copy_history (SCHEME_OBJECT);
+static void error_death (long, char *) NORETURN;
 
 /* Helper procedures for setup_interrupt, which follows. */
 

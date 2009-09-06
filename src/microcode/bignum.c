@@ -611,7 +611,7 @@ bignum_to_double (bignum_type bignum)
   {
     bignum_length_type length = (BIGNUM_LENGTH (bignum));
     bignum_length_type index = length - 1;
-    bignum_length_type scale_words = length - 1;
+    bignum_length_type scale_words;
     bignum_digit_type msd = (BIGNUM_REF (bignum, (index)));
 #if (FLT_RADIX == 2)
     int bits_to_get = DBL_MANT_DIG; /* includes implicit 1 */
@@ -1601,8 +1601,8 @@ bignum_digit_divide (bignum_digit_type uh, bignum_digit_type ul,
 {
   bignum_digit_type guess;
   bignum_digit_type comparand;
-  bignum_digit_type v1 = (HD_HIGH (v));
-  bignum_digit_type v2 = (HD_LOW (v));
+  bignum_digit_type v1;
+  bignum_digit_type v2;
   bignum_digit_type uj;
   bignum_digit_type uj_uj1;
   bignum_digit_type q1;

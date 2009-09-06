@@ -2311,7 +2311,6 @@ make_uuo_link (SCHEME_OBJECT procedure,
 {
   SCHEME_OBJECT * cache_address = (MEMORY_LOC (block, offset));
   unsigned long frame_size = (read_uuo_frame_size (cache_address));
-  SCHEME_OBJECT orig_proc;
   trampoline_type_t kind;
   long result;
   SCHEME_OBJECT trampoline;
@@ -2319,7 +2318,6 @@ make_uuo_link (SCHEME_OBJECT procedure,
   if (REFERENCE_TRAP_P (procedure))
     return (make_fake_uuo_link (cache, block, offset));
 
-  orig_proc = procedure;
  loop:
   switch (OBJECT_TYPE (procedure))
     {
