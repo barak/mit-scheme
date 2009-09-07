@@ -43,7 +43,6 @@ USA.
 
 (define-primitives
   (set-string-length! 2)
-  (set-string-maximum-length! 2)
   (string-allocate 1)
   (string-hash-mod 2)
   (string-length 1)
@@ -135,7 +134,53 @@ USA.
 (define (string-head string end)
   (guarantee-string string 'STRING-HEAD)
   (guarantee-string-index end 'STRING-HEAD)
+  (%string-head string end))
+
+(declare (integrate-operator %string-head))
+(define (%string-head string end)
   (%substring string 0 end))
+
+(define (%truncate-string! string end)
+  (let-syntax ((chars-to-words-shift
+		(sc-macro-transformer
+		 (lambda (form environment)
+		   form environment
+		   ;; This is written as a macro so that the shift will be a constant
+		   ;; in the compiled code.
+		   ;; It does not work when cross-compiled!
+		   (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+		     (case chars-per-word
+		       ((4) -2)
+		       ((8) -3)
+		       (else (error "Can't support this word size:" chars-per-word))))))))
+
+    (if (not (and (fix:>= end 0)
+		  (fix:< end
+			 (fix:lsh (fix:- (system-vector-length string) 1)
+				  (fix:- 0 (chars-to-words-shift))))))
+	(error:bad-range-argument end 'STRING-HEAD!))
+    (let ((mask (set-interrupt-enables! interrupt-mask/none)))
+      ((ucode-primitive primitive-object-set! 3)
+       string
+       0
+       ((ucode-primitive primitive-object-set-type 2)
+	(ucode-type manifest-nm-vector)
+	(fix:+ 1 (chars->words (fix:+ end 1)))))
+      (set-string-length! string (fix:+ end 1))
+      (string-set! string end #\nul)
+      (set-string-length! string end)
+      (set-interrupt-enables! mask)
+      string)))
+
+(define %string-head!
+  (if (compiled-procedure? %truncate-string!)
+      %truncate-string!
+      %string-head))
+
+(define (string-head! string end)
+  (guarantee-string string 'STRING-HEAD!)
+  (guarantee-string-index end 'STRING-HEAD!)
+  (%string-head! string end))
 
 (define (string-tail string start)
   (guarantee-string string 'STRING-TAIL)
