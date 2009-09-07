@@ -18,8 +18,6 @@ then
   echo "mkdir psb/lib"
   mkdir psb/lib
 fi
-echo "Bintopsb lib/utabmd.bin"
-./microcode/Bintopsb < microcode/utabmd.bin > psb/lib/utabmd.bin
 
 for i in runtime sf cref
 do

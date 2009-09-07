@@ -107,8 +107,7 @@ USA.
 		    (loop))))))))))
 
 (define (liarc-static-files)
-  (append '("utabmd")
-	  (append-map package-description-files
+  (append (append-map package-description-files
 		      (read-file "makegen/pkds-liarc.scm"))
 	  (enumerate-directories (read-file "makegen/dirs-liarc.scm"))))
 

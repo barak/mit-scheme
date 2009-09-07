@@ -801,19 +801,10 @@ USA.
       (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
       (compiler-frame 'REENTER-COMPILED-CODE 2)
 
-      (compiler-subproblem 'COMPILER-ACCESS-RESTART 4)
-      (compiler-subproblem 'COMPILER-ASSIGNMENT-RESTART 5)
       (compiler-subproblem 'COMPILER-ASSIGNMENT-TRAP-RESTART 5)
-      (compiler-subproblem 'COMPILER-DEFINITION-RESTART 5)
-      (compiler-subproblem 'COMPILER-LOOKUP-APPLY-RESTART
-			   (length/application-frame 4 1))
-      (compiler-subproblem 'COMPILER-REFERENCE-RESTART 4)
       (compiler-subproblem 'COMPILER-REFERENCE-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-SAFE-REFERENCE-RESTART 4)
       (compiler-subproblem 'COMPILER-SAFE-REFERENCE-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-UNASSIGNED?-RESTART 4)
       (compiler-subproblem 'COMPILER-UNASSIGNED?-TRAP-RESTART 4)
-      (compiler-subproblem 'COMPILER-UNBOUND?-RESTART 4)
 
       (compiler-subproblem 'COMPILER-ERROR-RESTART 3))
 

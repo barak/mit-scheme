@@ -45,7 +45,6 @@ extern bool option_show_version;
 extern const char ** option_library_path;
 extern const char * option_band_file;
 extern const char * option_fasl_file;
-extern const char * option_utabmd_file;
 
 /* Numeric options */
 extern unsigned long option_heap_size;

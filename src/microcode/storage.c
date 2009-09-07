@@ -123,3 +123,4 @@ const char * Abort_Names [] = ABORT_NAME_TABLE;		/* in const.h */
 const char * Error_Names [] = ERROR_NAME_TABLE;		/* in errors.h */
 const char * Term_Names [] = TERM_NAME_TABLE;		/* in errors.h */
 const char * term_messages [] = TERM_MESSAGE_TABLE;	/* in errors.h */
+const char * fixed_objects_names [] = FIXED_OBJECTS_NAMES; /* in fixobj.h */

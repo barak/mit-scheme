@@ -83,8 +83,7 @@ USA.
       (load "make")))
   (in-liarc
    (lambda ()
-     (compile-boot-dirs c-compile-dir)
-     (cf-conditionally "microcode/utabmd"))))
+     (compile-boot-dirs c-compile-dir))))
 
 (define (native-prepare)
   (load-option 'SF)
@@ -95,8 +94,7 @@ USA.
 	(load "compiler.so")
 	(load make-file))))
   (fluid-let ((compiler:cross-compiling? #t))
-    (compile-boot-dirs compile-dir)
-    (sf-conditionally "microcode/utabmd")))
+    (compile-boot-dirs compile-dir)))
 
 (define (compiler-make-file)
   (string-append
@@ -108,7 +106,6 @@ USA.
   (in-liarc
    (lambda ()
      (compile-all-dirs c-compile-dir)
-     (cf-conditionally "microcode/utabmd")
      (cbf-conditionally "edwin/edwin.bld"))))
 
 (define (in-liarc thunk)

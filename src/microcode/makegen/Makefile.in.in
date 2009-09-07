@@ -143,8 +143,7 @@ ALL_DATA = $(aux_DATA)
 MOSTLYCLEAN_FILES = *.o usrdef.c compinit.c compinit.h cmpauxmd.s \
 	$(LIARC_OBJECTS)
 
-CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS) \
-	utabmd.bin
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
@@ -152,8 +151,6 @@ DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS
-
-C_CLEAN_FILES = utabmd.c utabmd.bci
 
 # **** Implicit rules ****
 
@@ -170,8 +167,6 @@ C_CLEAN_FILES = utabmd.c utabmd.bci
 	$(ASSEMBLE) -o $@ $<
 
 # **** Main rules ****
-
-default-target: $(ALL_PROGRAMS) $(ALL_LIBS)
 
 all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
 
@@ -195,9 +190,6 @@ extract-liarc-decls: extract-liarc-decls.o
 
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
-
-utabmd.bin: utabmd.scm
-	./utabmd.sh
 
 prbfish.so: prbfish.o scheme
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)

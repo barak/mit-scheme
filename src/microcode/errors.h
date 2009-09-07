@@ -96,76 +96,75 @@ USA.
 #define ERR_STACK_HAS_SLIPPED			0x3D
 #define ERR_CANNOT_RECURSE			0x3E
 
-/* If you add any error codes here, add them to the table below and to
-   utabmd.scm as well.  */
+/* If you add any error codes here, add them to the table below.  */
 
 #define MAX_ERROR				0x3E
 
 #define ERROR_NAME_TABLE						\
 {									\
-/* 0x00 */		"BAD-ERROR-CODE",				\
-/* 0x01 */		"UNBOUND-VARIABLE",				\
-/* 0x02 */		"UNASSIGNED-VARIABLE",				\
-/* 0x03 */		"INAPPLICABLE-OBJECT",				\
-/* 0x04 */		"ERROR-IN-SYSTEM-CALL",				\
-/* 0x05 */		"ERROR-WITH-ARGUMENT",				\
-/* 0x06 */		"BAD-FRAME",					\
-/* 0x07 */		"BROKEN-COMPILED-VARIABLE",			\
-/* 0x08 */		"UNDEFINED-USER-TYPE",				\
-/* 0x09 */		"UNDEFINED-PRIMITIVE",				\
-/* 0x0A */		"EXTERNAL-RETURN",				\
-/* 0x0B */		"EXECUTE-MANIFEST-VECTOR",			\
-/* 0x0C */		"WRONG-NUMBER-OF-ARGUMENTS",			\
-/* 0x0D */		"ARG-1-WRONG-TYPE",				\
-/* 0x0E */		"ARG-2-WRONG-TYPE",				\
-/* 0x0F */		"ARG-3-WRONG-TYPE",				\
-/* 0x10 */		"ARG-1-BAD-RANGE",				\
-/* 0x11 */		"ARG-2-BAD-RANGE",				\
-/* 0x12 */		"ARG-3-BAD-RANGE",				\
-/* 0x13 */		"MACRO-BINDING",				\
-/* 0x14 */		"FASDUMP-OBJECT-TOO-LARGE",			\
+/* 0x00 */		"bad-error-code",				\
+/* 0x01 */		"unbound-variable",				\
+/* 0x02 */		"unassigned-variable",				\
+/* 0x03 */		"undefined-procedure",				\
+/* 0x04 */		"system-call",					\
+/* 0x05 */		"error-with-argument",				\
+/* 0x06 */		"bad-frame",					\
+/* 0x07 */		"broken-compiled-variable",			\
+/* 0x08 */		"undefined-user-type",				\
+/* 0x09 */		"undefined-primitive-operation",		\
+/* 0x0a */		"external-return",				\
+/* 0x0b */		"execute-manifest-vector",			\
+/* 0x0c */		"wrong-number-of-arguments",			\
+/* 0x0d */		"wrong-type-argument-0",			\
+/* 0x0e */		"wrong-type-argument-1",			\
+/* 0x0f */		"wrong-type-argument-2",			\
+/* 0x10 */		"bad-range-argument-0",				\
+/* 0x11 */		"bad-range-argument-1",				\
+/* 0x12 */		"bad-range-argument-2",				\
+/* 0x13 */		"macro-binding",				\
+/* 0x14 */		"fasdump-object-too-large",			\
 /* 0x15 */		0,						\
 /* 0x16 */		0,						\
-/* 0x17 */		"FASL-FILE-TOO-BIG",				\
-/* 0x18 */		"FASL-FILE-BAD-DATA",				\
+/* 0x17 */		"fasl-file-too-big",				\
+/* 0x18 */		"fasl-file-bad-data",				\
 /* 0x19 */		0,						\
-/* 0x1A */		"WRITE-INTO-PURE-SPACE",			\
-/* 0x1B */		0,						\
-/* 0x1C */		0,						\
-/* 0x1D */		"BAD-SET",					\
-/* 0x1E */		"ARG-1-FAILED-COERCION",			\
-/* 0x1F */		"ARG-2-FAILED-COERCION",			\
-/* 0x20 */		"OUT-OF-FILE-HANDLES",				\
+/* 0x1a */		0,						\
+/* 0x1b */		0,						\
+/* 0x1c */		0,						\
+/* 0x1d */		"bad-assignment",				\
+/* 0x1e */		"failed-arg-1-coercion",			\
+/* 0x1f */		"failed-arg-2-coercion",			\
+/* 0x20 */		"out-of-file-handles",				\
 /* 0x21 */		0,						\
-/* 0x22 */		"ARG-4-BAD-RANGE",				\
-/* 0x23 */		"ARG-5-BAD-RANGE",				\
-/* 0x24 */		"ARG-6-BAD-RANGE",				\
-/* 0x25 */		"ARG-7-BAD-RANGE",				\
-/* 0x26 */		"ARG-8-BAD-RANGE",				\
-/* 0x27 */		"ARG-9-BAD-RANGE",				\
-/* 0x28 */		"ARG-10-BAD-RANGE",				\
-/* 0x29 */		"ARG-4-WRONG-TYPE",				\
-/* 0x2A */		"ARG-5-WRONG-TYPE",				\
-/* 0x2B */		"ARG-6-WRONG-TYPE",				\
-/* 0x2C */		"ARG-7-WRONG-TYPE",				\
-/* 0x2D */		"ARG-8-WRONG-TYPE",				\
-/* 0x2E */		"ARG-9-WRONG-TYPE",				\
-/* 0x2F */		"ARG-10-WRONG-TYPE",				\
-/* 0x30 */		"INAPPLICABLE-CONTINUATION",			\
-/* 0x31 */		"COMPILED-CODE-ERROR",				\
-/* 0x32 */		"FLOATING-OVERFLOW",				\
-/* 0x33 */		"UNIMPLEMENTED-PRIMITIVE",			\
-/* 0x34 */		"ILLEGAL-REFERENCE-TRAP",			\
-/* 0x35 */		"BROKEN-VARIABLE-CACHE",			\
-/* 0x36 */		"WRONG-ARITY-PRIMITIVES",			\
-/* 0x37 */		"IO-ERROR",					\
-/* 0x38 */		"FASDUMP-ENVIRONMENT",				\
-/* 0x39 */		"FASLOAD-BAND",					\
-/* 0x3A */		"FASLOAD-COMPILED-MISMATCH",			\
-/* 0x3B */		"UNKNOWN-PRIMITIVE-CONTINUATION",		\
-/* 0x3C */		"ILLEGAL-CONTINUATION",				\
-/* 0x3D */		"STACK-HAS-SLIPPED",				\
-/* 0x3E */		"CANNOT-RECURSE"				\
+/* 0x22 */		"bad-range-argument-3",				\
+/* 0x23 */		"bad-range-argument-4",				\
+/* 0x24 */		"bad-range-argument-5",				\
+/* 0x25 */		"bad-range-argument-6",				\
+/* 0x26 */		"bad-range-argument-7",				\
+/* 0x27 */		"bad-range-argument-8",				\
+/* 0x28 */		"bad-range-argument-9",				\
+/* 0x29 */		"wrong-type-argument-3",			\
+/* 0x2a */		"wrong-type-argument-4",			\
+/* 0x2b */		"wrong-type-argument-5",			\
+/* 0x2c */		"wrong-type-argument-6",			\
+/* 0x2d */		"wrong-type-argument-7",			\
+/* 0x2e */		"wrong-type-argument-8",			\
+/* 0x2f */		"wrong-type-argument-9",			\
+/* 0x30 */		"inapplicable-continuation",			\
+/* 0x31 */		"compiled-code-error",				\
+/* 0x32 */		"floating-overflow",				\
+/* 0x33 */		"unimplemented-primitive",			\
+/* 0x34 */		"illegal-reference-trap",			\
+/* 0x35 */		"broken-variable-cache",			\
+/* 0x36 */		"wrong-arity-primitives",			\
+/* 0x37 */		"io-error",					\
+/* 0x38 */		"fasdump-environment",				\
+/* 0x39 */		"fasload-band",					\
+/* 0x3a */		"fasload-compiled-mismatch",			\
+/* 0x3b */		"unknown-primitive-continuation",		\
+/* 0x3c */		"illegal-continuation",				\
+/* 0x3d */		"stack-has-slipped",				\
+/* 0x3e */		"cannot-recurse"				\
 }
 
 /* Termination codes: the interpreter halts on these */
@@ -207,33 +206,33 @@ USA.
 
 #define TERM_NAME_TABLE							\
 {									\
-/* 0x00 */		"HALT",						\
-/* 0x01 */		"DISK-RESTORE",					\
-/* 0x02 */		"BROKEN-HEART",					\
-/* 0x03 */		"NON-POINTER-RELOCATION",			\
-/* 0x04 */		"BAD-ROOT",					\
-/* 0x05 */		"NON-EXISTENT-CONTINUATION",			\
-/* 0x06 */		"BAD-STACK",					\
-/* 0x07 */		"STACK-OVERFLOW",				\
-/* 0x08 */		"STACK-ALLOCATION-FAILED",			\
-/* 0x09 */		"NO-ERROR-HANDLER",				\
-/* 0x0A */		"NO-INTERRUPT-HANDLER",				\
-/* 0x0B */		"UNIMPLEMENTED-CONTINUATION",			\
-/* 0x0C */		"EXIT",						\
-/* 0x0D */		"BAD-PRIMITIVE-DURING-ERROR",			\
-/* 0x0E */		"EOF",						\
-/* 0x0F */		"BAD-PRIMITIVE",				\
-/* 0x10 */		"HANDLER",					\
-/* 0x11 */		"END-OF-COMPUTATION",				\
-/* 0x12 */		"INVALID-TYPE-CODE",				\
-/* 0x13 */		"COMPILER-DEATH",				\
-/* 0x14 */		"GC-OUT-OF-SPACE",				\
-/* 0x15 */		"NO-SPACE",					\
-/* 0x16 */		"SIGNAL",					\
-/* 0x17 */		"TOUCH",					\
-/* 0x18 */		"SAVE-AND-EXIT",				\
-/* 0x19 */		"TERM_TRAP",					\
-/* 0x1a */		"BAD_BACK_OUT"					\
+/* 0x00 */		"halt",						\
+/* 0x01 */		"disk-restore",					\
+/* 0x02 */		"broken-heart",					\
+/* 0x03 */		"non-pointer-relocation",			\
+/* 0x04 */		"bad-root",					\
+/* 0x05 */		"non-existent-continuation",			\
+/* 0x06 */		"bad-stack",					\
+/* 0x07 */		"stack-overflow",				\
+/* 0x08 */		"stack-allocation-failed",			\
+/* 0x09 */		"no-error-handler",				\
+/* 0x0a */		"no-interrupt-handler",				\
+/* 0x0b */		"unimplemented-continuation",			\
+/* 0x0c */		"exit",						\
+/* 0x0d */		"bad-primitive-during-error",			\
+/* 0x0e */		"eof",						\
+/* 0x0f */		"bad-primitive",				\
+/* 0x10 */		"termination-handler",				\
+/* 0x11 */		"end-of-computation",				\
+/* 0x12 */		"invalid-type-code",				\
+/* 0x13 */		"compiler-death",				\
+/* 0x14 */		"gc-out-of-space",				\
+/* 0x15 */		"no-space",					\
+/* 0x16 */		"signal",					\
+/* 0x17 */		0,						\
+/* 0x18 */		"save-and-exit",				\
+/* 0x19 */		"trap",						\
+/* 0x1a */		"bad-back-out"					\
 }
 
 #define TERM_MESSAGE_TABLE						\

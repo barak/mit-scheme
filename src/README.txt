@@ -226,8 +226,7 @@ The Rub
 In a nutshell, both the "./Setup.sh" command and the "make" invocation
 prescribed earlier require the availability of:  1) _some_ executable
 MIT/GNU Scheme ``microcode'' file (usually named "scheme"), as well as
-2) the base companion MIT/GNU Scheme microcode table ("utabmd.bin")
-and run-time band for that microcode release. (named "runtime.com").
+2) the run-time band for that microcode release. (named "runtime.com").
 
 Moreover, in the case of the "make" invocation, we also require an
 MIT/GNU Scheme run-time compiler band ("compiler.com" or "all.com")
@@ -289,8 +288,8 @@ We're optimistic that way.
      The first step is to obtain the base "runtime.com" and "all.com"
      run-time bands, the "scheme" executable (``microcode'') that
      corresponds to the release we wish to build from the CVS sources,
-     and the microcode table ("utabmd.bin") and sundry other MIT/GNU
-     Scheme library support files (in `lib/mit-scheme/').
+     and sundry other MIT/GNU Scheme library support files (in
+     `lib/mit-scheme/').
 
      For instance, if the CVS sources are for the Scheme release 7.7.1
      branch, then you require `mit-scheme-7.7.1-<cpu>-<ostype>.tar.gz'
@@ -513,8 +512,7 @@ CVS build's bootstrapping process.  The adventure continues!
      the underlying microcode versions atop which they run but the
      run-time bands do not link directly into the microcode file (nor
      vice versa) so they are functionally coupled but not bit-wise
-     coupled nor directly linked at the object code level.  This is
-     the purpose of the "utabmd.bin" file in `lib/'.
+     coupled nor directly linked at the object code level.
 
      Together, these tell the build scripts where the new CVS "scheme"
      microcode file will be made, how to invoke it with a very large
@@ -628,8 +626,6 @@ Question:  What can you do when the "scheme" microcode from a binary
            and OS configuration from the ``ucode'' source distribution
            and it will still work with the pre-compiled binary release
            of the matching runtime library from the binary releases.
-           (By the way, this flexible linkage is accomplished courtesy
-           of the "utabmd.bin" file in `lib/'.  Thank you, "utabmd"!)
 
  Details:  Following is a bit more context and detail followed by the
            instructions for building just the MIT/GNU Scheme microcode

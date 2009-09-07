@@ -197,7 +197,7 @@ MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
-AUX_DATA=utabmd.bin
+AUX_DATA=
 AUXDIR_NAME=mit-scheme
 EXE_NAME=mit-scheme-native
 INSTALL_INCLUDE=
@@ -1029,7 +1029,6 @@ c)
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
-    AUX_DATA=
     AUXDIR_NAME=mit-scheme-c
     EXE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include

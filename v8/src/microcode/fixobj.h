@@ -17,8 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-/* Declarations of user offsets into the Fixed Objects Vector.
-   This should correspond to the file "utabmd.scm". */
+/* Declarations of user offsets into the Fixed Objects Vector. */
 
 #define Non_Object		0x00	/* Used for unassigned variables. */
 #define System_Interrupt_Vector	0x01	/* Handlers for interrupts. */
