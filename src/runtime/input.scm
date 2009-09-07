@@ -102,8 +102,7 @@ USA.
   a)
 
 (define-integrable (accum->string a)
-  (set-string-maximum-length! (car a) (cdr a))
-  (car a))
+  (string-head! (car a) (cdr a)))
 
 (define-integrable (accum-count a)
   (cdr a))
