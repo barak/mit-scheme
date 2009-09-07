@@ -772,7 +772,6 @@ USA.
   (export ()
 	  (guarantee-vector-8b guarantee-string)
 	  (set-vector-8b-length! set-string-length!)
-	  (set-vector-8b-maximum-length! set-string-maximum-length!)
 	  (vector-8b-length string-length)
 	  (vector-8b-maximum-length string-maximum-length)
 	  (vector-8b? string?)
@@ -802,7 +801,6 @@ USA.
 	  reverse-substring
 	  reverse-substring!
 	  set-string-length!
-	  set-string-maximum-length!
 	  string
 	  string->list
 	  string-allocate
@@ -831,6 +829,7 @@ USA.
 	  string-hash
 	  string-hash-mod
 	  string-head
+	  string-head!
 	  string-length
 	  string-lower-case?
 	  string-match-backward

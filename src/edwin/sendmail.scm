@@ -1582,18 +1582,15 @@ the user from the mailer."
 	 (plen (string-length prefix)))
     (if (not (<= 1 length (- 70 plen)))
 	(error:bad-range-argument length 'RANDOM-MIME-BOUNDARY-STRING))
-    (let ((s
-	   (call-with-output-string
-	    (lambda (port)
-	      (write-string prefix port)
-	      (let ((context (encode-base64:initialize port #f)))
-		(let ((n (* (integer-ceiling (- length 2) 4) 3)))
-		  (encode-base64:update context (random-byte-vector n) 0 n))
-		(encode-base64:finalize context)))))
-	  (n (+ plen length)))
-      (if (fix:> (string-length s) n)
-	  (set-string-maximum-length! s n))
-      s)))
+    (string-head! (call-with-output-string
+		    (lambda (port)
+		      (write-string prefix port)
+		      (let ((context (encode-base64:initialize port #f)))
+			(let ((n (* (integer-ceiling (- length 2) 4) 3)))
+			  (encode-base64:update context
+						(random-byte-vector n) 0 n))
+			(encode-base64:finalize context))))
+		  (+ plen length))))
 
 ;;;; Attachment browser
 
