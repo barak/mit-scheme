@@ -27,39 +27,8 @@ USA.
 ;;; package: (runtime microcode-tables)
 
 (declare (usual-integrations))
-
-(define (re-read-microcode-tables!)
-  (let ((file-name ((ucode-primitive microcode-tables-filename))))
-    (if (file-exists? file-name)
-	(read-microcode-tables! file-name)
-	(let ((new-identification ((ucode-primitive microcode-identify))))
-	  (let ((new-vector (vector-copy new-identification))
-		(old-vector (vector-copy identification-vector)))
-	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
-	      (if (pair? fields)
-		  (let ((slot
-			 (microcode-identification-vector-slot (car fields))))
-		    (vector-set! old-vector slot #f)
-		    (vector-set! new-vector slot #f)
-		    (loop (cdr fields)))))
-	    (if (not (equal? new-vector old-vector))
-		(error "Missing microcode description:" file-name))
-	    (set! identification-vector new-identification)
-	    (set! microcode-id/tty-x-size
-		  (microcode-identification-item 'CONSOLE-WIDTH))
-	    (set! microcode-id/tty-y-size
-		  (microcode-identification-item 'CONSOLE-HEIGHT))
-	    unspecific)))))
 
-(define (read-microcode-tables! #!optional filename)
-  (scode-eval
-   (or ((ucode-primitive initialize-c-compiled-block 1)
-	"http://www.gnu.org/software/mit-scheme/lib/microcode/utabmd.so")
-       ((ucode-primitive binary-fasload)
-	(if (default-object? filename)
-	    ((ucode-primitive microcode-tables-filename))
-	    filename)))
-   system-global-environment)
+(define (read-microcode-tables!)
   (set! identification-vector ((ucode-primitive microcode-identify)))
   (set! errors-slot (fixed-object/name->code 'MICROCODE-ERRORS-VECTOR))
   (set! identifications-slot
@@ -94,6 +63,14 @@ USA.
   (set! microcode-id/compiled-code-type
 	(intern (or (microcode-identification-item 'CC-ARCH-STRING #f)
 		    "unknown")))
+  (set! microcode-id/tty-x-size
+	(microcode-identification-item 'CONSOLE-WIDTH))
+  (set! microcode-id/tty-y-size
+	(microcode-identification-item 'CONSOLE-HEIGHT))
+  unspecific)
+
+(define (re-read-microcode-tables!)
+  (set! identification-vector ((ucode-primitive microcode-identify)))
   (set! microcode-id/tty-x-size
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
@@ -206,23 +183,6 @@ USA.
 (define (microcode-termination/code-limit)
   (vector-length (vector-ref (get-fixed-objects-vector) terminations-slot)))
 
-(define types-slot)
-
-(define (microcode-type/name->code name)
-  (microcode-table-search types-slot name))
-
-(define (microcode-type/code->name code)
-  (microcode-table-ref types-slot code))
-
-(define (microcode-type/code->names code)
-  (let ((entry (microcode-table-entry types-slot code)))
-    (cond ((not entry) '())
-	  ((list? entry) entry)
-	  (else (list entry)))))
-
-(define (microcode-type/code-limit)
-  (vector-length (vector-ref (get-fixed-objects-vector) types-slot)))
-
 (define identifications-slot)
 (define identification-vector)
 
@@ -252,3 +212,43 @@ USA.
 
 (define (microcode-system-call-error/code->name code)
   (microcode-table-ref system-call-errors-slot code))
+
+(define types-slot)
+
+(define (microcode-type/name->code name)
+  (microcode-table-search types-slot
+			  (let ((p
+				 (find (lambda (p)
+					 (memq name (cdr p)))
+				       type-aliases)))
+			    (if p
+				(car p)
+				name))))
+
+(define (microcode-type/code->name code)
+  (microcode-table-ref types-slot code))
+
+(define (microcode-type/code->names code)
+  (let ((name (microcode-table-entry types-slot code)))
+    (if name
+	(or (assq name type-aliases)
+	    (list name))
+	'())))
+
+(define (microcode-type/code-limit)
+  (vector-length (vector-ref (get-fixed-objects-vector) types-slot)))
+
+(define type-aliases
+  '((FALSE MANIFEST-VECTOR GLOBAL-ENVIRONMENT)
+    (PAIR LIST)
+    (FLONUM BIG-FLONUM)
+    (CONSTANT TRUE)
+    (RETURN-CODE RETURN-ADDRESS)
+    (BIGNUM BIG-FIXNUM)
+    (PROMISE DELAYED)
+    (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM)
+    (STRING CHARACTER-STRING VECTOR-8B)
+    (HUNK3-A UNMARKED-HISTORY)
+    (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)
+    (REFERENCE-TRAP UNASSIGNED)
+    (RECNUM COMPLEX)))

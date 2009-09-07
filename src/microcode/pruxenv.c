@@ -255,8 +255,7 @@ macosx_main_bundle_dir (void)
   if (bundle == 0)
     return (0);
 
-  url = (CFBundleCopyResourceURL
-	 (bundle, (CFSTR ("utabmd")), (CFSTR ("bin")), 0));
+  url = (CFBundleCopyResourceURL (bundle, (CFSTR ("all")), (CFSTR ("com")), 0));
   if (url == 0)
     return (0);
 

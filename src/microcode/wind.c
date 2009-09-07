@@ -34,6 +34,8 @@ USA.
 extern void block_signals (void);
 extern void unblock_signals (void);
 
+static void error (const char *, const char *) NORETURN;
+
 static void
 error (const char * procedure_name, const char * message)
 {

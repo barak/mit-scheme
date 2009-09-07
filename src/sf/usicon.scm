@@ -44,13 +44,13 @@ USA.
 				 (object-type object))
 				'(BIGNUM
 				  CHARACTER
+				  CONSTANT
 				  FALSE
 				  FIXNUM
 				  FLONUM
 				  INTERNED-SYMBOL
 				  RATNUM
 				  RECNUM
-				  TRUE
 				  UNINTERNED-SYMBOL)))
 		     (error "USUAL-INTEGRATIONS: not a constant" name))
 		 (constant->integration-info object)))

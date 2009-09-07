@@ -23,8 +23,7 @@ USA.
 
 */
 
-/* Declarations of user offsets into the Fixed Objects Vector.
-   This should correspond to the file "utabmd.scm".  */
+/* Declarations of user offsets into the Fixed Objects Vector.  */
 
 #define NON_OBJECT		0x00	/* Used for unassigned variables. */
 #define SYSTEM_INTERRUPT_VECTOR	0x01	/* Handlers for interrupts. */
@@ -58,12 +57,12 @@ USA.
 /* #define UNUSED		0x19 */
 /* #define UNUSED		0x1A */
 /* #define UNUSED		0x1B */
-#define Precious_Objects	0x1C	/* Objects that should not be lost! */
+/* #define UNUSED		0x1C */
 #define Error_Procedure		0x1D	/* User invoked error handler. */
 /* #define UNUSED		0x1E */
 /* #define UNUSED		0x1F */
 #define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
-#define Lost_Objects_Base 	0x21	/* Free at the end of the "real" gc. */
+/* #define UNUSED	 	0x21 */
 #define State_Space_Root	0x22 	/* Root of state space. */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
@@ -122,3 +121,77 @@ USA.
 
 /* 4 extra slots for expansion and debugging.  */
 #define N_FIXED_OBJECTS			0x45
+
+#define FIXED_OBJECTS_NAMES						\
+{									\
+  /* 0x00 */	"non-object",						\
+  /* 0x01 */	"system-interrupt-vector",				\
+  /* 0x02 */	"system-error-vector",					\
+  /* 0x03 */	"obarray",						\
+  /* 0x04 */	"microcode-types-vector",				\
+  /* 0x05 */	"microcode-returns-vector",				\
+  /* 0x06 */	"interrupt-mask-vector",				\
+  /* 0x07 */	"microcode-errors-vector",				\
+  /* 0x08 */	"microcode-identification-vector",			\
+  /* 0x09 */	"system-call-names",					\
+  /* 0x0A */	"system-call-errors",					\
+  /* 0x0B */	"gc-daemon",						\
+  /* 0x0C */	"trap-handler",						\
+  /* 0x0D */	"edwin-auto-save",					\
+  /* 0x0E */	"stepper-state",					\
+  /* 0x0F */	"microcode-fixed-objects-slots",			\
+  /* 0x10 */	"files-to-delete",					\
+  /* 0x11 */	"state-space-tag",					\
+  /* 0x12 */	"state-point-tag",					\
+  /* 0x13 */	"dummy-history",					\
+  /* 0x14 */	"bignum-one",						\
+  /* 0x15 */	0,							\
+  /* 0x16 */	"microcode-terminations-vector",			\
+  /* 0x17 */	"microcode-terminations-procedures",			\
+  /* 0x18 */	0,							\
+  /* 0x19 */	0,							\
+  /* 0x1A */	0,							\
+  /* 0x1B */	0,							\
+  /* 0x1C */	0,							\
+  /* 0x1D */	"error-procedure",					\
+  /* 0x1E */	0,							\
+  /* 0x1F */	0,							\
+  /* 0x20 */	"compiler-error-procedure",				\
+  /* 0x21 */	0,							\
+  /* 0x22 */	"state-space-root",					\
+  /* 0x23 */	"primitive-profiling-table",				\
+  /* 0x24 */	"generic-trampoline-zero?",				\
+  /* 0x25 */	"generic-trampoline-positive?",				\
+  /* 0x26 */	"generic-trampoline-negative?",				\
+  /* 0x27 */	"generic-trampoline-add-1",				\
+  /* 0x28 */	"generic-trampoline-subtract-1",			\
+  /* 0x29 */	"generic-trampoline-equal?",				\
+  /* 0x2A */	"generic-trampoline-less?",				\
+  /* 0x2B */	"generic-trampoline-greater?",				\
+  /* 0x2C */	"generic-trampoline-add",				\
+  /* 0x2D */	"generic-trampoline-subtract",				\
+  /* 0x2E */	"generic-trampoline-multiply",				\
+  /* 0x2F */	"generic-trampoline-divide",				\
+  /* 0x30 */	"generic-trampoline-quotient",				\
+  /* 0x31 */	"generic-trampoline-remainder",				\
+  /* 0x32 */	"generic-trampoline-modulo",				\
+  /* 0x33 */	"arity-dispatcher-tag",					\
+  /* 0x34 */	"pc-sample/builtin-table"				\
+  /* 0x35 */	"pc-sample/utility-table",				\
+  /* 0x36 */	"pc-sample/primitive-table",				\
+  /* 0x37 */	"pc-sample/code-block-table",				\
+  /* 0x38 */	"pc-sample/purified-code-block-block-buffer",		\
+  /* 0x39 */	"pc-sample/purified-code-block-offset-buffer",		\
+  /* 0x3A */	"pc-sample/heathen-code-block-block-buffer",		\
+  /* 0x3B */	"pc-sample/heathen-code-block-offset-buffer",		\
+  /* 0x3C */	"pc-sample/interp-proc-buffer",				\
+  /* 0x3D */	"pc-sample/prob-comp-table",				\
+  /* 0x3E */	"pc-sample/ufo-table",					\
+  /* 0x3F */	"compiled-code-bkpt-handler",				\
+  /* 0x40 */	"gc-wabbit-descwiptor",					\
+  /* 0x41 */	0,							\
+  /* 0x42 */	0,							\
+  /* 0x43 */	0,							\
+  /* 0x44 */	0,							\
+  /* 0x45 */	0							\
+}

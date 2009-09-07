@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
@@ -17,102 +17,113 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-. /scheme/v7/dist/release-prefix
+set -e
+umask 022
 
-if [ $# -eq 1 ]; then
-    VERSION=${1}
-else
-    echo "usage: ${0} VERSION"
-    echo "  VERSION may be 'snapshot' to specify today's date"
-    echo "  or 'standard' to specify standard release"
+PROJECT_NAME=mit-scheme
+PROGRAM=${0}
+
+usage ()
+{
+    echo "usage: ${PROGRAM} TYPE" >&2
+    echo "  TYPE must be 'snapshot' to specify today's date" >&2
+    echo "    or 'standard' to specify standard release" >&2
     exit 1
-fi
+}
 
-INSTALL="install"
-FOO=$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)
-[ -n "${FOO}" ] && INSTALL="${INSTALL} --preserve-timestamps"
-INSTALL_DATA="${INSTALL} -m 644"
+(( ${#} == 1 )) || usage
+TYPE=${1}
 
-if [ "${VERSION}" = "snapshot" ]; then
-    SNAPSHOT_P=true
-    RELEASE=$(date +%Y%m%d)
-    TAG_FLAG=-D
-    TAG=now
-else
-    if [ "${VERSION}" = "standard" ]; then
-	VERSION=$(get_release)
-    fi
-    SNAPSHOT_P=
-    RELEASE=${VERSION}
-    TAG_FLAG=-r
-    TAG=$(get_release_tag "${VERSION}")
-fi
+# We assume that there's a git working tree here that's in the right state.
+[[ -d ${PROJECT_NAME} ]] || usage
 
-PREFIX=mit-scheme-${RELEASE}
-LIARC_PREFIX=mit-scheme-c-${RELEASE}
+# Make sure there's a change log for us to publish.
+(cd "${PROJECT_NAME}"; etc/make-git-log)
 
-CVS="cvs -d ${USER}@cvs.savannah.gnu.org:/sources/mit-scheme"
+# Determine the appropriate release and tag info.
+source "$(dirname "${PROGRAM}")"/release-prefix
+case ${TYPE} in
+    snapshot)
+	RELEASE=$(date +%Y%m%d)
+	TAG=snapshot-${RELEASE}
+	;;
+    standard)
+	RELEASE=$(get_release "${PROJECT_NAME}")
+	TAG=$(get_release_tag "${RELEASE}")
+	;;
+    *)
+	usage
+	;;
+esac
 
-rm -rf "${PREFIX}"
-mkdir "${PREFIX}"
+DIST_DIR=mit-scheme-${RELEASE}
+LIARC_DIST_DIR=mit-scheme-c-${RELEASE}
+OUTPUT_DIR=.out
 
-if [ -z "${SNAPSHOT_P}" ]; then
-    (
-	cd /scheme/v7/src/runtime
-	TAG_STATUS=$(${CVS} status -v version.scm | fgrep ${TAG})
-	if [ -z "${TAG_STATUS}" ]; then
-	    ${CVS} rtag "${TAG}" mit-scheme/v7/doc mit-scheme/v7/src \
-		mit-scheme/etc/xscheme.el
-	fi
-    )
-fi
+# Set up trap to clean up any temporary files.
+CLEANUP_BASE=$(pwd)
+cleanup ()
+{
+    cd "${CLEANUP_BASE}"
+    rm -rf "${DIST_DIR}" "${LIARC_DIST_DIR}"
+}
+trap cleanup EXIT SIGINT SIGQUIT SIGTERM
+cleanup
 
-(
-    cd "${PREFIX}"
-    ${CVS} export "${TAG_FLAG}" "${TAG}" -d src mit-scheme/v7/src
-    (cd src; ./Setup.sh)
-    ${CVS} export "${TAG_FLAG}" "${TAG}" -d doc mit-scheme/v7/doc
-    (cd doc; autoconf)
-    ${CVS} export "${TAG_FLAG}" "${TAG}" -d etc mit-scheme/etc/xscheme.el
-)
+rm -rf "${OUTPUT_DIR}"
+mkdir "${OUTPUT_DIR}"
 
-find "${PREFIX}" -type d -name autom4te.cache | xargs rm -rf
-find "${PREFIX}" -print -exec chmod go-w '{}' \;
-
-${INSTALL_DATA} /scheme/v7/src/ChangeLog changelog.txt
-${INSTALL_DATA} /scheme/v7/src/ChangeLog "${PREFIX}"/src/.
-${INSTALL_DATA} /scheme/v7/doc/ChangeLog "${PREFIX}"/doc/.
-${INSTALL_DATA} /scheme/v7/dist/Makefile "${PREFIX}"/.
-
-rm -rf "${LIARC_PREFIX}"
-cp -a "${PREFIX}" "${LIARC_PREFIX}"
-
-(
-    cd "${LIARC_PREFIX}"/src
-    umask 022
-    etc/make-liarc-dist.sh
-)
-
-TAR_FILE=${PREFIX}.tar.gz
-LIARC_FILE=${LIARC_PREFIX}.tar.gz
-ZIP_FILE=${PREFIX}.zip
-UCODE_FILE=${PREFIX}-ucode.tar.gz
-
-rm -f "${TAR_FILE}"
-rm -f "${LIARC_FILE}"
-rm -f "${ZIP_FILE}"
-rm -f "${UCODE_FILE}"
-
-tar cvzf "${TAR_FILE}" "${PREFIX}"
-tar cvzf "${LIARC_FILE}" "${LIARC_PREFIX}"
-tar cvzf "${UCODE_FILE}" "${PREFIX}"/src/COPYING "${PREFIX}"/src/microcode
-chmod -w changelog.txt "${TAR_FILE}" "${LIARC_FILE}" "${UCODE_FILE}"
-
-rm -rf "${PREFIX}"/src/lib
-for S in $(find "${PREFIX}" -type l); do
-    [ ! -r "${S}" ] && rm -f "${S}"
+# Create the dist directory, a subset of the repo.
+echo "Creating the distribution directory"
+mkdir "${DIST_DIR}" "${DIST_DIR}"/etc
+for FILE in src doc LOG dist/Makefile; do
+    cp -pR "${PROJECT_NAME}"/"${FILE}" "${DIST_DIR}"/.
 done
-zip -rl "${ZIP_FILE}" "${PREFIX}"
-chmod -w "${ZIP_FILE}"
+cp -pR "${PROJECT_NAME}"/etc/xscheme.el "${DIST_DIR}"/etc/.
 
-rm -rf "${PREFIX}" "${LIARC_PREFIX}"
+# Configure the dist directory.
+echo "Configuring the distribution directory"
+(cd "${DIST_DIR}"/src; ./Setup.sh) > "${OUTPUT_DIR}"/src-config 2>&1
+(cd "${DIST_DIR}"/doc; autoconf) > "${OUTPUT_DIR}"/doc-config 2>&1
+
+# Clean up after autoconf.
+find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
+
+# Make sure permissions are reasonable.
+find "${DIST_DIR}" -exec chmod go-w '{}' \;
+
+# Now make the liarc dist directory.
+echo "Creating the liarc distribution directory"
+cp -pR "${DIST_DIR}" "${LIARC_DIST_DIR}"
+
+# The liarc dist requires additional setup.
+echo "Compiling the liarc bootstrap files"
+(cd "${LIARC_DIST_DIR}"/src; etc/make-liarc-dist.sh) \
+    > "${OUTPUT_DIR}"/liarc-compile 2>&1
+
+# OK, we've built the directories, time to build the output files.
+echo "Building distribution archive files"
+TAR_FILE=${DIST_DIR}.tar.gz
+LIARC_FILE=${LIARC_DIST_DIR}.tar.gz
+ZIP_FILE=${DIST_DIR}.zip
+UCODE_FILE=${DIST_DIR}-ucode.tar.gz
+CHANGELOG=changelog.txt
+OUTPUTS=("${TAR_FILE}" "${LIARC_FILE}" "${ZIP_FILE}" "${UCODE_FILE}" \
+    "${CHANGELOG}")
+
+rm -f "${OUTPUTS[@]}"
+
+tar czf "${TAR_FILE}" "${DIST_DIR}"
+tar czf "${LIARC_FILE}" "${LIARC_DIST_DIR}"
+tar czf "${UCODE_FILE}" "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/microcode
+cp -p "${DIST_DIR}"/LOG "${CHANGELOG}"
+
+rm -rf "${DIST_DIR}"/src/lib
+# zip will complain if we have any dangling symlinks.
+for S in $(find "${DIST_DIR}" -type l); do
+    [[ ! -r ${S} ]] && rm -f "${S}"
+done
+zip -rlq "${ZIP_FILE}" "${DIST_DIR}"
+
+chmod -w "${OUTPUTS[@]}"
+echo "Success!"

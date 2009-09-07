@@ -593,7 +593,7 @@ these rules:
   (if (if (default-object? required?) #t required?)
       (or (%find-library-file pathname)
 	  (system-library-pathname
-	   (error:file-operation pathname*
+	   (error:file-operation pathname
 				 "find"
 				 "file"
 				 "no such file in system library path"

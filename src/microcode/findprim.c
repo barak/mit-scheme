@@ -417,7 +417,7 @@ scan (void)
 		  else
 		    {
 		      ungetc (c, input);
-		      (*scan_buffer++) = '\0';
+		      (*scan_buffer) = '\0';
 		      break;
 		    }
 		}
@@ -519,11 +519,8 @@ print_procedure (FILE * output,
 void
 print_primitives (FILE * output, int limit)
 {
-  int last;
   int count;
   char * table_entry;
-
-  last = (limit - 1);
 
   /* Print the procedure table. */
   fprintf

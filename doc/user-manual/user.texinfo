@@ -743,22 +743,6 @@ default value is @file{/usr/local/lib/mit-scheme}.  On PCs, the elements
 of the list are separated by semicolons, and the default value is
 @file{c:\scheme\lib}.
 
-@item --utabmd @var{filename}
-@opindex --utabmd
-@opindex --utab
-@nvindex MITSCHEME_UTABMD_FILE
-Specifies that @var{filename} contains the microcode tables (the
-microcode tables are information that informs the runtime system about
-the microcode's structure).  @var{Filename} is searched for in the
-working directory and the library directories.  If this option isn't
-given, the filename is the value of the environment variable
-@env{MITSCHEME_UTABMD_FILE}, or if that isn't defined,
-@file{utabmd.bin}; in these cases the library directories are searched,
-but not the working directory.
-
-@option{--utab} is an alternate name for the @option{--utabmd} option;
-at most one of these options may be given.
-
 @item --fasl @var{filename}
 @opindex --fasl
 Specifies that a @dfn{cold load} should be performed, using
@@ -1069,11 +1053,6 @@ given.  Overridden by @option{--heap}, @option{--large},
 The size of the stack, in 1024-word blocks, if the size options are not
 given.  Overridden by @option{--stack}, @option{--large},
 @option{--compiler}, or @option{--edwin}.
-
-@item @env{MITSCHEME_UTABMD_FILE} (default: @file{utabmd.bin} in the library path)
-@nvindex MITSCHEME_UTABMD_FILE
-The file containing the microcode tables.  Overridden by
-@option{--utabmd} and @option{--utab}.
 @end table
 
 @node Bchscheme Environment Variables, Runtime Environment Variables, Microcode Environment Variables, Environment Variables

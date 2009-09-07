@@ -27,6 +27,8 @@ USA.
 #include "outf.h"
 #include "dstack.h"
 
+static void error (const char *, const char *) NORETURN;
+
 static void
 error (const char * procedure_name, const char * message)
 {

@@ -81,7 +81,6 @@ USA.
 static bool option_summary;
 
 static const char * option_raw_library;
-static const char * option_raw_utabmd;
 static const char * option_raw_band;
 static const char * option_raw_heap;
 static const char * option_raw_constant;
@@ -105,7 +104,6 @@ bool option_show_help;
 const char ** option_library_path = 0;
 const char * option_band_file = 0;
 const char * option_fasl_file = 0;
-const char * option_utabmd_file = 0;
 
 /* Numeric options */
 unsigned long option_heap_size;
@@ -142,14 +140,6 @@ for the band.\n\
   the initial file to be loaded.  If this option isn't given, a normal\n\
   load is performed instead.  This option may not be used together\n\
   with the \"--band\" option.\n\
-\n\
---utabmd FILENAME\n\
-  Specifies the name of the microcode tables file.  The file is\n\
-  searched for in the working directory and the library directories.\n\
-  If this option isn't given, the filename is the value of the\n\
-  environment variable MITSCHEME_UTABMD_FILE, or if that isn't\n\
-  defined, \"utabmd.bin\"; in these cases the library directories are\n\
-  searched, but not the working directory.\n\
 \n\
 --heap BLOCKS\n\
   Specifies the size of the heap in 1024-word blocks.  Overrides any\n\
@@ -216,14 +206,6 @@ Additional options may be supported by the band (and described below).\n\
 
 #ifndef DEFAULT_STD_BAND
 #  define DEFAULT_STD_BAND "all.com"
-#endif
-
-#ifndef UTABMD_FILE_VARIABLE
-#  define UTABMD_FILE_VARIABLE "MITSCHEME_UTABMD_FILE"
-#endif
-
-#ifndef DEFAULT_UTABMD_FILE
-#  define DEFAULT_UTABMD_FILE "utabmd.bin"
 #endif
 
 #ifndef DEFAULT_HEAP_SIZE
@@ -410,14 +392,14 @@ parse_standard_options (int argc, const char ** argv)
   option_argument ("quiet", false, (&option_batch_mode));
   option_argument ("silent", false, (&option_batch_mode));
   option_argument ("stack", true, (&option_raw_stack));
-  option_argument ("utabmd", true, (&option_raw_utabmd));
   option_argument ("version", false, (&option_show_version));
 
   /* These are deprecated: */
   option_argument ("compiler", false, 0);
   option_argument ("edwin", false, 0);
   option_argument ("large", false, 0);
-  option_argument ("utab", true, (&option_raw_utabmd));
+  option_argument ("utab", true, 0);
+  option_argument ("utabmd", true, 0);
 
   parse_options (argc, argv);
 }
@@ -770,7 +752,6 @@ describe_options (void)
     describe_string_option ("FASL file", option_fasl_file);
   else
     describe_string_option ("band", option_band_file);
-  describe_string_option ("microcode tables", option_utabmd_file);
   describe_boolean_option ("emacs subprocess", option_emacs_subprocess);
   describe_boolean_option ("force interactive", option_force_interactive);
   describe_boolean_option ("disable core dump", option_disable_core_dump);
@@ -893,26 +874,6 @@ read_command_line_options (int argc, const char ** argv)
 				option_raw_stack,
 				STACK_SIZE_VARIABLE,
 				DEFAULT_STACK_SIZE));
-  if (option_utabmd_file != 0)
-    {
-      xfree (option_utabmd_file);
-      option_utabmd_file = 0;
-    }
-  option_utabmd_file
-    = (standard_filename_option ("utabmd",
-				 option_raw_utabmd,
-				 UTABMD_FILE_VARIABLE,
-				 DEFAULT_UTABMD_FILE,
-#ifdef CC_IS_C
-				 /* FIXME: This should check if we
-				    have "microcode_utabmd"
-				    compiled */
-				 false
-#else
-				 (option_fasl_file != 0)
-#endif
-				 ));
-
   if (option_show_version)
     outf_console ("%s", PACKAGE_STRING);
   if (option_show_help)

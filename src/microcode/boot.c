@@ -29,16 +29,12 @@ USA.
 #include "prims.h"
 #include "option.h"
 #include "ostop.h"
-#include "ostty.h"
 
 extern void init_exit_scheme (void);
 extern void OS_announcement (void);
-extern void OS_syscall_names (unsigned long *, const char ***);
-extern void OS_syserr_names (unsigned long *, const char ***);
-extern SCHEME_OBJECT initialize_history (void);
-extern SCHEME_OBJECT initialize_interrupt_handler_vector (void);
-extern SCHEME_OBJECT initialize_interrupt_mask_vector (void);
+extern void initialize_fixed_objects_vector (void);
 extern SCHEME_OBJECT Re_Enter_Interpreter (void);
+extern SCHEME_OBJECT make_microcode_identification_vector (void);
 
 #ifdef __WIN32__
    extern void NT_initialize_win32_system_utilities (void);
@@ -59,7 +55,6 @@ extern SCHEME_OBJECT Re_Enter_Interpreter (void);
 
 static void start_scheme (void);
 static void Enter_Interpreter (void);
-static const char * cc_arch_name (void);
 
 const char * scheme_program_name;
 const char * OS_Name;
@@ -128,93 +123,6 @@ main_name (int argc, const char ** argv)
   start_scheme ();
   termination_init_error ();
   return (0);
-}
-
-static SCHEME_OBJECT
-names_to_vector (unsigned long length, const char ** names)
-{
-  SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, length, true));
-  unsigned long i;
-  for (i = 0; (i < length); i += 1)
-    VECTOR_SET (v, i, (char_pointer_to_symbol (names[i])));
-  return (v);
-}
-
-static SCHEME_OBJECT
-fixed_objects_syscall_names (void)
-{
-  unsigned long length;
-  const char ** names;
-  OS_syscall_names ((&length), (&names));
-  return (names_to_vector (length, names));
-}
-
-static SCHEME_OBJECT
-fixed_objects_syserr_names (void)
-{
-  unsigned long length;
-  const char ** names;
-  OS_syserr_names ((&length), (&names));
-  return (names_to_vector (length, names));
-}
-
-void
-initialize_fixed_objects_vector (void)
-{
-  fixed_objects = (make_vector (N_FIXED_OBJECTS, SHARP_F, false));
-  VECTOR_SET (fixed_objects, NON_OBJECT, (MAKE_OBJECT (TC_CONSTANT, 2)));
-  VECTOR_SET (fixed_objects, SYSTEM_INTERRUPT_VECTOR,
-	      (initialize_interrupt_handler_vector ()));
-  VECTOR_SET (fixed_objects, FIXOBJ_INTERRUPT_MASK_VECTOR,
-	      (initialize_interrupt_mask_vector ()));
-  /* Error vector is not needed at boot time */
-  VECTOR_SET (fixed_objects, SYSTEM_ERROR_VECTOR, SHARP_F);
-  VECTOR_SET (fixed_objects, OBARRAY,
-	      (make_vector (OBARRAY_SIZE, EMPTY_LIST, false)));
-  VECTOR_SET (fixed_objects, DUMMY_HISTORY, (initialize_history ()));
-  VECTOR_SET (fixed_objects, State_Space_Tag, SHARP_T);
-  VECTOR_SET (fixed_objects, Bignum_One, (long_to_bignum (1)));
-  VECTOR_SET (fixed_objects, FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
-  VECTOR_SET (fixed_objects, FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);
-  VECTOR_SET (fixed_objects, FIXOBJ_SYSTEM_CALL_NAMES,
-	      (fixed_objects_syscall_names ()));
-  VECTOR_SET (fixed_objects, FIXOBJ_SYSTEM_CALL_ERRORS,
-	      (fixed_objects_syserr_names ()));
-
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_ZERO_P,
-	      (make_primitive ("INTEGER-ZERO?", 1)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_POSITIVE_P,
-	      (make_primitive ("INTEGER-POSITIVE?", 1)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_NEGATIVE_P,
-	      (make_primitive ("INTEGER-NEGATIVE?", 1)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_SUCCESSOR,
-	      (make_primitive ("INTEGER-ADD-1", 1)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_PREDECESSOR,
-	      (make_primitive ("INTEGER-SUBTRACT-1", 1)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_EQUAL_P,
-	      (make_primitive ("INTEGER-EQUAL?", 2)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_LESS_P,
-	      (make_primitive ("INTEGER-LESS?", 2)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_GREATER_P,
-	      (make_primitive ("INTEGER-GREATER?", 2)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_ADD,
-	      (make_primitive ("INTEGER-ADD", 2)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_SUBTRACT,
-	      (make_primitive ("INTEGER-SUBTRACT", 2)));
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_MULTIPLY,
-	      (make_primitive ("INTEGER-MULTIPLY", 2)));
-
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_DIVIDE, SHARP_F);
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_QUOTIENT, SHARP_F);
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_REMAINDER, SHARP_F);
-  VECTOR_SET (fixed_objects, GENERIC_TRAMPOLINE_MODULO, SHARP_F);
-
-  VECTOR_SET (fixed_objects, ARITY_DISPATCHER_TAG,
-	      (char_pointer_to_symbol ("#[(microcode)arity-dispatcher-tag]")));
-
-#ifdef __WIN32__
-  NT_initialize_fov (fixed_objects);
-#endif
 }
 
 /* Boot Scheme */
@@ -316,82 +224,10 @@ Re_Enter_Interpreter (void)
 
 /* Utility primitives. */
 
-#define IDENTITY_LENGTH 	20	/* Plenty of room */
-#define ID_RELEASE		0	/* System release (string) */
-#define ID_MICRO_VERSION	1	/* Microcode version (fixnum) */
-/* 2 unused */
-#define ID_PRINTER_WIDTH	3	/* TTY width (# chars) */
-#define ID_PRINTER_LENGTH	4	/* TTY height (# chars) */
-#define ID_NEW_LINE_CHARACTER	5	/* #\Newline */
-#define ID_FLONUM_PRECISION	6	/* Flonum mantissa (# bits) */
-#define ID_FLONUM_EPSILON	7	/* Flonum epsilon (flonum) */
-#define ID_OS_NAME		8	/* OS name (string) */
-#define ID_OS_VARIANT		9	/* OS variant (string) */
-#define ID_STACK_TYPE		10	/* Scheme stack type (string) */
-#define ID_MACHINE_TYPE		11	/* Machine type (string) */
-#define ID_CC_ARCH		12	/* Compiled-code support (string) */
-
 DEFINE_PRIMITIVE ("MICROCODE-IDENTIFY", Prim_microcode_identify, 0, 0, 0)
 {
-  SCHEME_OBJECT v;
   PRIMITIVE_HEADER (0);
-
-  v = (make_vector (IDENTITY_LENGTH, SHARP_F, true));
-  VECTOR_SET (v, ID_RELEASE, SHARP_F);
-  VECTOR_SET (v, ID_MICRO_VERSION, (char_pointer_to_string (PACKAGE_VERSION)));
-  VECTOR_SET (v, ID_PRINTER_WIDTH, (ULONG_TO_FIXNUM (OS_tty_x_size ())));
-  VECTOR_SET (v, ID_PRINTER_LENGTH, (ULONG_TO_FIXNUM (OS_tty_y_size ())));
-  VECTOR_SET (v, ID_NEW_LINE_CHARACTER, (ASCII_TO_CHAR ('\n')));
-  VECTOR_SET (v, ID_FLONUM_PRECISION, (ULONG_TO_FIXNUM (DBL_MANT_DIG)));
-  VECTOR_SET (v, ID_FLONUM_EPSILON, (double_to_flonum ((double) DBL_EPSILON)));
-  VECTOR_SET (v, ID_OS_NAME, (char_pointer_to_string (OS_Name)));
-  VECTOR_SET (v, ID_OS_VARIANT, (char_pointer_to_string (OS_Variant)));
-  VECTOR_SET (v, ID_STACK_TYPE, (char_pointer_to_string ("standard")));
-  VECTOR_SET (v, ID_MACHINE_TYPE, (char_pointer_to_string (MACHINE_TYPE)));
-  {
-    const char * name = (cc_arch_name ());
-    if (name != 0)
-      VECTOR_SET (v, ID_CC_ARCH, (char_pointer_to_string (name)));
-  }
-  PRIMITIVE_RETURN (v);
-}
-
-static const char *
-cc_arch_name (void)
-{
-  switch (compiler_processor_type)
-    {
-    case COMPILER_NONE_TYPE: return ("none");
-    case COMPILER_MC68020_TYPE: return ("mc68k");
-    case COMPILER_VAX_TYPE: return ("vax");
-    case COMPILER_SPECTRUM_TYPE: return ("hppa");
-    case COMPILER_MC68040_TYPE: return ("mc68k");
-    case COMPILER_SPARC_TYPE: return ("sparc");
-    case COMPILER_IA32_TYPE: return ("i386");
-    case COMPILER_ALPHA_TYPE: return ("alpha");
-    case COMPILER_MIPS_TYPE: return ("mips");
-    case COMPILER_C_TYPE: return ("c");
-    case COMPILER_SVM_TYPE: return ("svm1");
-    default: return (0);
-    }
-}
-
-DEFINE_PRIMITIVE ("MICROCODE-SYSTEM-CALL-NAMES", Prim_microcode_syscall_names, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (fixed_objects_syscall_names ());
-}
-
-DEFINE_PRIMITIVE ("MICROCODE-SYSTEM-ERROR-NAMES", Prim_microcode_syserr_names, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (fixed_objects_syserr_names ());
-}
-
-DEFINE_PRIMITIVE ("MICROCODE-TABLES-FILENAME", Prim_microcode_tables_filename, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN (char_pointer_to_string (option_utabmd_file));
+  PRIMITIVE_RETURN (make_microcode_identification_vector ());
 }
 
 DEFINE_PRIMITIVE ("MICROCODE-LIBRARY-PATH", Prim_microcode_library_path, 0, 0, 0)

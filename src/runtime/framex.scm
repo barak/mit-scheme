@@ -152,17 +152,6 @@ USA.
 	  undefined-environment
 	  undefined-expression))
 
-(define ((method/compiler-reference scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 3))
-	  (stack-frame/ref frame 2)
-	  undefined-expression))
-
-(define ((method/compiler-assignment scode-maker) frame)
-  (values (scode-maker (stack-frame/ref frame 3)
-		       (make-evaluated-object (stack-frame/ref frame 4)))
-	  (stack-frame/ref frame 2)
-	  undefined-expression))
-
 (define ((method/compiler-reference-trap scode-maker) frame)
   (values (scode-maker (stack-frame/ref frame 2))
 	  (stack-frame/ref frame 3)
@@ -172,12 +161,6 @@ USA.
   (values (scode-maker (stack-frame/ref frame 2)
 		       (make-evaluated-object (stack-frame/ref frame 4)))
 	  (stack-frame/ref frame 3)
-	  undefined-expression))
-
-(define (method/compiler-lookup-apply-restart frame)
-  (values (%make-combination (stack-frame/ref frame 3)
-			     (stack-frame-list frame 5))
-	  undefined-environment
 	  undefined-expression))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
@@ -329,22 +312,6 @@ USA.
   (let ((method (method/application-frame 3)))
     (record-method 'INTERNAL-APPLY method)
     (record-method 'INTERNAL-APPLY-VAL method))
-  (let ((method (method/compiler-reference identity-procedure)))
-    (record-method 'COMPILER-REFERENCE-RESTART method)
-    (record-method 'COMPILER-SAFE-REFERENCE-RESTART method))
-  (record-method 'COMPILER-ACCESS-RESTART
-		 (method/compiler-reference make-variable))
-  (record-method 'COMPILER-UNASSIGNED?-RESTART
-		 (method/compiler-reference make-unassigned?))
-  (record-method 'COMPILER-UNBOUND?-RESTART
-		 (method/compiler-reference
-		  (lambda (name)
-		    (%make-combination (ucode-primitive lexical-unbound?)
-				       (list (make-the-environment) name)))))
-  (record-method 'COMPILER-ASSIGNMENT-RESTART
-		 (method/compiler-assignment make-assignment-from-variable))
-  (record-method 'COMPILER-DEFINITION-RESTART
-		 (method/compiler-assignment make-definition))
   (let ((method (method/compiler-reference-trap make-variable)))
     (record-method 'COMPILER-REFERENCE-TRAP-RESTART method)
     (record-method 'COMPILER-SAFE-REFERENCE-TRAP-RESTART method))
@@ -352,8 +319,6 @@ USA.
 		 (method/compiler-reference-trap make-unassigned?))
   (record-method 'COMPILER-ASSIGNMENT-TRAP-RESTART
 		 (method/compiler-assignment-trap make-assignment))
-  (record-method 'COMPILER-LOOKUP-APPLY-RESTART
-		 method/compiler-lookup-apply-restart)
   (record-method 'COMPILER-LOOKUP-APPLY-TRAP-RESTART
 		 method/compiler-lookup-apply-trap-restart)
   (record-method 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART

@@ -119,8 +119,8 @@ static SCHEME_OBJECT * weak_chain;
 
 static void run_gc_loop (SCHEME_OBJECT * , SCHEME_OBJECT **);
 static SCHEME_OBJECT gc_transport_weak_pair (SCHEME_OBJECT);
-static void tospace_closed (void);
-static void tospace_open (void);
+static void tospace_closed (void) NORETURN;
+static void tospace_open (void) NORETURN;
 
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
 #  ifndef GC_SCAN_HISTORY_SIZE

@@ -170,6 +170,7 @@ extern const char * Abort_Names [];
 extern const char * Error_Names [];
 extern const char * Term_Names [];
 extern const char * term_messages [];
+extern const char * fixed_objects_names [];
 
 extern bool trapping;
 

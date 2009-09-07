@@ -44,7 +44,6 @@ maybe_link lib/edwin ../edwin
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
-maybe_link lib/utabmd.bin ../microcode/utabmd.bin
 
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
