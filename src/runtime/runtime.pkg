@@ -4717,6 +4717,18 @@ USA.
 	  mhash-update)
   (initialization (initialize-package!)))
 
+(define-package (runtime regular-sexpression)
+  (files "regsexp")
+  (parent (runtime))
+  (export ()
+	  <compiled-regsexp>
+	  compile-regsexp
+	  compiled-regsexp?
+	  error:not-compiled-regsexp
+	  guarantee-compiled-regsexp
+	  regsexp-match-input-port
+	  regsexp-match-string))
+
 (define-package (runtime regular-expression)
   (file-case options
     ((load) "regexp")
@@ -5260,8 +5272,7 @@ USA.
 	  write-http-status
 	  write-http-token
 	  write-http-version
-	  write-http-headers)
-  (initialization (initialize-package!)))
+	  write-http-headers))
 
 (define-package (runtime http-i/o)
   (files "httpio")

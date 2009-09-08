@@ -616,6 +616,7 @@ differences:
 		     ,(close (structure/type-descriptor structure) context)
 		     ',name))
 		 `(DEFINE-INTEGRABLE (,accessor-name STRUCTURE)
+		    (DECLARE (NO-TYPE-CHECKS))
 		    (,(absolute (case (structure/physical-type structure)
 				  ((RECORD) '%RECORD-REF)
 				  ((VECTOR) 'VECTOR-REF)
@@ -644,6 +645,7 @@ differences:
 		     ,(close (structure/type-descriptor structure) context)
 		     ',name))
 		 `(DEFINE-INTEGRABLE (,modifier-name STRUCTURE VALUE)
+		    (DECLARE (NO-TYPE-CHECKS))
 		    ,(case (structure/physical-type structure)
 		       ((RECORD)
 			`(,(absolute '%RECORD-SET! context) STRUCTURE

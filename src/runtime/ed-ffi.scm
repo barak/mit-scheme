@@ -130,6 +130,7 @@ USA.
     ("record"	(runtime record))
     ("recslot"	(runtime record-slot-access))
     ("regexp"	(runtime regular-expression))
+    ("regsexp"	(runtime regular-sexpression))
     ("rep"	(runtime rep))
     ("rexp"	(runtime rexp))
     ("rfc2822-headers" (runtime rfc2822-headers))

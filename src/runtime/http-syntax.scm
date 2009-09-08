@@ -1446,11 +1446,6 @@ USA.
 
 ;;;; Utilities
 
-(define initialize-package!
-  (let ((environment (the-environment)))
-    (lambda ()
-      (run-boot-inits! environment))))
-
 (define (parse-http-chunk-leader string)
   ((list-parser
     (encapsulate list
