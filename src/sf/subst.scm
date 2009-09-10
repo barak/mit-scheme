@@ -436,7 +436,7 @@ you ask for.
 				       block operator operands))
 	((and (access? operator)
 	      (constant/system-global-environment?
-	       (access/environment operator)))
+	       (integrate/expression operations environment (access/environment operator))))
 	 (integrate/access-operator expression operations environment
 				    block operator operands))
 	((and (constant? operator)
@@ -614,19 +614,16 @@ you ask for.
 
 (define-method/integrate 'ACCESS
   (lambda (operations environment expression)
-    (let ((environment* (access/environment expression))
+    (let ((environment* (integrate/expression operations environment
+					      (access/environment expression)))
 	  (name (access/name expression)))
-      (if (constant/system-global-environment? environment*)
-	  (let ((entry (assq name usual-integrations/constant-alist)))
-	    (if entry
-		(constant/make (access/scode expression)
-			       (constant/value (cdr entry)))
-		(access/make (access/scode expression)
-			     environment* name)))
-	  (access/make (access/scode expression)
-		       (integrate/expression operations environment
-					     environment*)
-		       name)))))
+      (cond ((and (constant/system-global-environment? environment*)
+		  (assq name usual-integrations/constant-alist))
+	     => (lambda (entry)
+		  (constant/make (access/scode expression)
+				 (constant/value (cdr entry)))))
+	    (else (access/make (access/scode expression)
+			       environment* name))))))
 
 (define (constant/system-global-environment? expression)
   (and (constant? expression)
@@ -654,8 +651,11 @@ you ask for.
   (let ((name (access/name operator))
 	(dont-integrate
 	 (lambda ()
-	   (combination/make (and expression (object/scode expression))
-			     block operator operands))))
+	   (combination/make
+	    (and expression (object/scode expression))
+	    block
+	    (integrate/expression operations environment operator)
+	    (integrate/expressions operations environment operands)))))
     (cond ((and (eq? name 'APPLY)
 		(integrate/hack-apply? operands))
 	   => (lambda (operands*)
