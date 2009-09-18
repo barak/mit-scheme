@@ -315,6 +315,9 @@ USA.
 	     ((and (pair? (car tokens))
 		   (eq? 'ILLEGAL (caar tokens)))
 	      (write-char (cdar tokens) port))
+	     ((and (pair? (car tokens))
+		   (eq? 'UNTERMINATED (caar tokens)))
+	      (write-string (cdar tokens) port))
 	     (else
 	      (error "Malformed RFC-822 token stream:" tokens)))))))
 
