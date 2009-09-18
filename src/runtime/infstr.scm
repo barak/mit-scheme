@@ -33,12 +33,17 @@ USA.
 		   (named
 		    ((ucode-primitive string->symbol)
 		     "#[(runtime compiler-info)dbg-info-vector]"))
+		   (predicate new-dbg-info-vector?)
 		   (conc-name dbg-info-vector/))
   (compilation-type #f read-only #t)
   (root-block #f read-only #t)
   (other-blocks #f read-only #t)
   (tl-bound #f read-only #t)
   (tl-free #f read-only #t))
+
+(define (dbg-info-vector? object)
+  (or (new-dbg-info-vector? object)
+      (old-dbg-info-vector? object)))
 
 (define (old-dbg-info-vector? object)
   (and (pair? object)
@@ -50,7 +55,7 @@ USA.
 	 (lambda ()
 	   (error:wrong-type-argument info "dbg-info-vector"
 				      'DBG-INFO-VECTOR/BLOCKS-VECTOR))))
-    (cond ((dbg-info-vector? info)
+    (cond ((new-dbg-info-vector? info)
 	   (vector-append (vector (dbg-info-vector/root-block info))
 			  (dbg-info-vector/other-blocks info)))
 	  ((old-dbg-info-vector? info)
@@ -65,7 +70,7 @@ USA.
 	 (lambda ()
 	   (error:wrong-type-argument info "dbg-info-vector"
 				      'DBG-INFO-VECTOR/PURIFICATION-ROOT))))
-    (cond ((dbg-info-vector? info)
+    (cond ((new-dbg-info-vector? info)
 	   (dbg-info-vector/other-blocks info))
 	  ((old-dbg-info-vector? info)
 	   (let ((items (cdr info)))
