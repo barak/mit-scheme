@@ -162,15 +162,17 @@ USA.
   (let ((reuse
 	 (lambda (string end)
 	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
+	     (declare (no-type-checks) (no-range-checks))
+	     (if (fix:< end (string-length string))
+		 (begin
+		   (string-set! string end #\nul)
+		   (set-string-length! string end)))
 	     ((ucode-primitive primitive-object-set! 3)
 	      string
 	      0
 	      ((ucode-primitive primitive-object-set-type 2)
 	       (ucode-type manifest-nm-vector)
 	       (fix:+ 1 (%octets->words (fix:+ end 1)))))
-	     (set-string-length! string (fix:+ end 1))
-	     (string-set! string end #\nul)
-	     (set-string-length! string end)
 	     (set-interrupt-enables! mask)
 	     string))))
     (if (compiled-procedure? reuse)
@@ -185,11 +187,13 @@ USA.
   (fix:- (%octets-maximum-length string) 1))
 
 (define-integrable (%octets-maximum-length octets)
-  (fix:lsh (fix:- (system-vector-length octets) 1)
-	   %words->octets-shift))
+  (%words->octets (fix:- (system-vector-length octets) 1)))
+
+(define-integrable (%words->octets n-words)
+  (fix:lsh n-words %words->octets-shift))
 
 (define-integrable (%octets->words n-octets)
-  (fix:lsh (fix:+ n-octets (fix:not (fix:lsh -1 %words->octets-shift)))
+  (fix:lsh (fix:+ n-octets (fix:- (fix:lsh 1 %words->octets-shift) 1))
 	   %octets->words-shift))
 
 (define-integrable %octets->words-shift
