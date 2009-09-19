@@ -154,6 +154,7 @@ USA.
       result)))
 
 (define (string-head! string end)
+  (declare (no-type-checks) (no-range-checks))
   (guarantee-string string 'STRING-HEAD!)
   (guarantee-substring-end-index end (string-length string) 'STRING-HEAD!)
   (%string-head! string end))
@@ -161,8 +162,8 @@ USA.
 (define %string-head!
   (let ((reuse
 	 (lambda (string end)
+	   (declare (no-type-checks) (no-range-checks))
 	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
-	     (declare (no-type-checks) (no-range-checks))
 	     (if (fix:< end (string-length string))
 		 (begin
 		   (string-set! string end #\nul)
@@ -172,7 +173,7 @@ USA.
 	      0
 	      ((ucode-primitive primitive-object-set-type 2)
 	       (ucode-type manifest-nm-vector)
-	       (fix:+ 1 (%octets->words (fix:+ end 1)))))
+	       (fix:+ 2 (fix:lsh end %octets->words-shift))))
 	     (set-interrupt-enables! mask)
 	     string))))
     (if (compiled-procedure? reuse)
@@ -181,20 +182,9 @@ USA.
 
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
-  (%string-maximum-length string))
-
-(define-integrable (%string-maximum-length string)
-  (fix:- (%octets-maximum-length string) 1))
-
-(define-integrable (%octets-maximum-length octets)
-  (%words->octets (fix:- (system-vector-length octets) 1)))
-
-(define-integrable (%words->octets n-words)
-  (fix:lsh n-words %words->octets-shift))
-
-(define-integrable (%octets->words n-octets)
-  (fix:lsh (fix:+ n-octets (fix:- (fix:lsh 1 %words->octets-shift) 1))
-	   %octets->words-shift))
+  (fix:- (fix:lsh (fix:- (system-vector-length string) 1)
+		  (fix:- 0 %octets->words-shift))
+	 1))
 
 (define-integrable %octets->words-shift
   ((sc-macro-transformer
@@ -208,9 +198,6 @@ USA.
 	  ((4) -2)
 	  ((8) -3)
 	  (else (error "Can't support this word size:" chars-per-word))))))))
-
-(define-integrable %words->octets-shift
-  (fix:- 0 %octets->words-shift))
 
 (define (string . objects)
   (%string-append (map ->string objects)))
