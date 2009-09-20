@@ -28,6 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
+(declare (integrate-operator symbol?))
 (define (symbol? object)
   (or (interned-symbol? object)
       (uninterned-symbol? object)))
