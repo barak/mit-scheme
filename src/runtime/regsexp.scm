@@ -57,25 +57,19 @@ USA.
 
 (define (%compile-char-set items)
   (scalar-values->alphabet
-   (map (lambda (item)
-	  (cond ((or (unicode-scalar-value? item)
-		     (and (pair? item)
-			  (pair? (cdr item))
-			  (null? (cddr item))
-			  (unicode-scalar-value? (car item))
-			  (unicode-scalar-value? (cadr item))
-			  (< (car item) (cadr item))))
-		 (list item))
-		((unicode-char? item)
-		 (list (char->integer item)))
-		((alphabet? item)
-		 (alphabet->scalar-values item))
-		((string? item)
-		 (map char->integer (string->list item)))
-		(else
-		 (error:wrong-type-argument item "char-set item"
-					    'COMPILE-REGSEXP))))
-	items)))
+   (append-map (lambda (item)
+		 (cond ((well-formed-scalar-value-range? item)
+			(list item))
+		       ((unicode-char? item)
+			(list (char->integer item)))
+		       ((alphabet? item)
+			(alphabet->scalar-values item))
+		       ((string? item)
+			(map char->integer (string->list item)))
+		       (else
+			(error:wrong-type-argument item "char-set item"
+						   'COMPILE-REGSEXP))))
+	       items)))
 
 (define (%compile-group-key key)
   (if (not (or (fix:fixnum? key)
