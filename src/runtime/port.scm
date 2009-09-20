@@ -389,7 +389,8 @@ USA.
   (%thread-mutex (make-thread-mutex))
   (unread? #f)
   (previous #f)
-  (properties '()))
+  (properties '())
+  (transcript #f))
 
 (define (make-port type state)
   (guarantee-port-type type 'MAKE-PORT)
@@ -566,14 +567,6 @@ USA.
 (define (port/remove-property! port name)
   (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
   (set-port/properties! port (del-assq! name (port/properties port))))
-
-(define (port/transcript port)
-  (port/get-property port 'TRANSCRIPT #f))
-
-(define (set-port/transcript! port tport)
-  (if tport
-      (port/set-property! port 'TRANSCRIPT tport)
-      (port/remove-property! port 'TRANSCRIPT)))
 
 (define (transcribe-char char port)
   (let ((tport (port/transcript port)))
