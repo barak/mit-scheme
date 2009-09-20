@@ -196,13 +196,13 @@ USA.
   (er-macro-transformer
    (lambda (form rename compare)
      rename compare			;ignore
-     (expand/let* form keyword:let))))
+     (expand/let* form (rename 'LET)))))
 
 (define-syntax :let*-syntax
   (er-macro-transformer
    (lambda (form rename compare)
      rename compare			;ignore
-     (expand/let* form keyword:let-syntax))))
+     (expand/let* form (rename 'LET-SYNTAX)))))
 
 (define (expand/let* form let-keyword)
   (syntax-check '(KEYWORD (* DATUM) + FORM) form)
