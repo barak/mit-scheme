@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
+#     Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# Script to run a three-stage build.  Must be run from the top-level
+# directory of an MIT/GNU clone.  By default, starts the build using
+# the current binaries in the "linux" or "macosx" subdirectory,
+# depending on the system.  Can be overridden by unpacking a binary
+# dist into a "stage0" subdirectory.
+#
+# Creates new "stage1", "stage2", and "stage3" directories, compiling
+# from one to the next.  If all three stages build correctly, then the
+# compiler is reasonably functional.
+#
+# This script requires bash; don't try it with other shells.
+
+set -e
+
+if ! [[ -d .git && -d src && -d etc ]]; then
+    echo "This doesn't appear to be an MIT/GNU Scheme top-level directory." >&2
+    exit 1
+fi
+
+# Hack for cph
+if which cpx > /dev/null; then
+    : ${COPY:="cpx -sq"}
+fi
+
+case $(uname -s) in
+    Darwin)
+	DEFAULT_STAGE0=macosx
+	: ${COPY:="cp -pR"}
+	;;
+    Linux)
+	DEFAULT_STAGE0=linux
+	: ${COPY:="cp -a"}
+	;;
+    *)
+	echo "Unknown system type: $(uname -s)" >&2
+	exit 1
+	;;
+esac
+
+run_stage ()
+{
+    local N=${1}
+    local STAGE=stage${N}
+
+    echo "**************** ${STAGE} ****************"
+    export MIT_SCHEME_EXE=$(find_stage stage$((N-1)))
+    rm -rf "${STAGE}"
+    ${COPY} src "${STAGE}"
+    (set -e; cd "${STAGE}"; ./Setup.sh; ./configure; make)
+    if ! [[ -f ${STAGE}/lib/all.com ]]; then
+	echo "${STAGE} failed"
+	exit 1
+    fi
+}
+
+find_stage ()
+{
+    find_build_stage "${1}" && return 0
+    if [[ ${1} == stage0 ]]; then
+	find_dist_stage "${1}" && return 0
+	find_build_stage "${DEFAULT_STAGE0}" && return 0
+    fi
+    echo "Unable to find ${1} executable" >&2
+    exit 1
+}
+
+find_build_stage ()
+{
+    local STAGE=$(pwd)/${1}
+    if [[ -x ${STAGE}/microcode/scheme && ${STAGE}/lib/all.com ]]; then
+	echo "${STAGE}/microcode/scheme --library ${STAGE}/lib"
+	return 0
+    else
+	return 1
+    fi
+}
+
+find_dist_stage ()
+{
+    local STAGE=$(pwd)/${1}
+    if [[ -x ${STAGE}/bin/scheme && -f ${STAGE}/lib/mit-scheme/all.com ]]; then
+	echo "${STAGE}/bin/scheme --library ${STAGE}/lib/mit-scheme"
+	return 0
+    else
+	return 1
+    fi
+}
+
+rm -rf stage[123]
+run_stage 1
+run_stage 2
+run_stage 3
