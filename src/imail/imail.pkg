@@ -236,6 +236,7 @@ USA.
 	  edwin-variable$imail-forward-using-mime
 	  edwin-variable$imail-global-mail-notification
 	  edwin-variable$imail-ignored-headers
+	  edwin-variable$imail-inline-mime-text-limit
 	  edwin-variable$imail-inline-mime-text-subtypes
 	  edwin-variable$imail-kept-headers
 	  edwin-variable$imail-known-mime-charsets
