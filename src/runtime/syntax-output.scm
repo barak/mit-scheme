@@ -27,12 +27,8 @@ USA.
 
 (declare (usual-integrations))
 
-(define (syntax-error history . rest)
-  history				;ignore
-  (apply error rest))
-
-(define (transformer-eval expression environment)
-  (eval expression environment))
+(define (transformer-eval output environment)
+  (eval output (syntactic-environment->environment environment)))
 
 (define (output/variable name)
   (make-variable name))
@@ -140,201 +136,17 @@ USA.
   (make-combination (ucode-primitive lexical-assignment)
 		    (list environment name value)))
 
+(define (output/runtime-reference name)
+  (output/access-reference name system-global-environment))
+
 (define (output/local-declare declarations body)
   (make-declaration declarations body))
 
-(define lambda-tag:unnamed
-  ((ucode-primitive string->symbol) "#[unnamed-procedure]"))
-
-(define lambda-tag:let
-  ((ucode-primitive string->symbol) "#[let-procedure]"))
-
-(define lambda-tag:fluid-let
-  ((ucode-primitive string->symbol) "#[fluid-let-procedure]"))
+(define lambda-tag:unnamed '|#[unnamed-procedure]|)
+(define lambda-tag:let '|#[let-procedure]|)
+(define lambda-tag:fluid-let '|#[fluid-let-procedure]|)
 
-;;;; Declarations
-
-(define (define-declaration name pattern mapper)
-  (let ((entry (assq name known-declarations)))
-    (if entry
-	(set-cdr! entry (cons pattern mapper))
-	(begin
-	  (set! known-declarations
-		(cons (cons name (cons pattern mapper))
-		      known-declarations))
-	  unspecific))))
-
-(define (process-declaration declaration
-			     selector
-			     map-identifier
-			     ill-formed-declaration)
-  (if (pair? declaration)
-      (let ((entry (assq (car declaration) known-declarations)))
-	(if (and entry (syntax-match? (cadr entry) (cdr declaration)))
-	    ((cddr entry) declaration selector map-identifier)
-	    (begin
-	      (warn "Unknown declaration:" declaration)
-	      declaration)))
-      (ill-formed-declaration declaration selector)))
-
-(define known-declarations '())
-
-(for-each (lambda (keyword)
-	    (define-declaration keyword '()
-	      (lambda (declaration selector map-identifier)
-		selector map-identifier
-		declaration)))
-	  '(AUTOMAGIC-INTEGRATIONS
-	    NO-AUTOMAGIC-INTEGRATIONS
-	    ETA-SUBSTITUTION
-	    NO-ETA-SUBSTITUTION
-	    OPEN-BLOCK-OPTIMIZATIONS
-	    NO-OPEN-BLOCK-OPTIMIZATIONS))
-
-(for-each (lambda (keyword)
-	    (define-declaration keyword '(* IDENTIFIER)
-	      (lambda (declaration selector map-identifier)
-		(cons (car declaration)
-		      (select-map map-identifier
-				  (cdr declaration)
-				  (selector/add-cdr selector))))))
-	  ;; The names in USUAL-INTEGRATIONS are always global.
-	  '(
-	    USUAL-INTEGRATIONS
-	    INTEGRATE
-	    INTEGRATE-OPERATOR
-	    INTEGRATE-SAFELY
-	    IGNORE
-	    TYPE-CHECKS
-	    NO-TYPE-CHECKS
-	    RANGE-CHECKS
-	    NO-RANGE-CHECKS
-	    ))
-
-(define-declaration 'INTEGRATE-EXTERNAL
-  `(* ,(lambda (object)
-	 (or (string? object)
-	     (pathname? object))))
-  (lambda (declaration selector map-identifier)
-    selector map-identifier
-    declaration))
-
-(for-each
- (lambda (keyword)
-   (define-declaration keyword '(DATUM)
-     (lambda (declaration selector map-identifier)
-       (list (car declaration)
-	     (let loop
-		 ((varset (cadr declaration))
-		  (selector (selector/add-cadr selector)))
-	       (cond ((syntax-match? '('SET * IDENTIFIER) varset)
-		      (cons (car varset)
-			    (select-map map-identifier
-					(cdr varset)
-					(selector/add-cdr selector))))
-		     ((or (syntax-match? '('UNION * DATUM) varset)
-			  (syntax-match? '('INTERSECTION * DATUM) varset)
-			  (syntax-match? '('DIFFERENCE DATUM DATUM) varset))
-		      (cons (car varset)
-			    (select-map loop
-					(cdr varset)
-					(selector/add-cdr selector))))
-		     (else varset)))))))
- '(CONSTANT
-   IGNORE-ASSIGNMENT-TRAPS
-   IGNORE-REFERENCE-TRAPS
-   PURE-FUNCTION
-   SIDE-EFFECT-FREE
-   USUAL-DEFINITION
-   UUO-LINK))
-
-(define-declaration 'REPLACE-OPERATOR '(* (IDENTIFIER * (DATUM DATUM)))
-  (lambda (declaration selector map-identifier)
-    (cons (car declaration)
-	  (select-map
-	   (lambda (rule selector)
-	     (cons (map-identifier (car rule) (selector/add-car selector))
-		   (select-map
-		    (lambda (clause selector)
-		      (list (car clause)
-			    (if (identifier? (cadr clause))
-				(map-identifier (cadr clause)
-						(selector/add-cadr selector))
-				(cadr clause))))
-		    (cdr rule)
-		    (selector/add-cdr selector))))
-	   (cdr declaration)
-	   (selector/add-cdr selector)))))
-
-(define-declaration 'REDUCE-OPERATOR '(* (IDENTIFIER DATUM * DATUM))
-  (lambda (declaration selector map-identifier)
-    (cons (car declaration)
-	  (select-map
-	   (lambda (rule selector)
-	     (cons* (map-identifier (car rule) (selector/add-car selector))
-		    (if (identifier? (cadr rule))
-			(map-identifier (cadr rule)
-					(selector/add-cadr selector))
-			(cadr rule))
-		    (select-map
-		     (lambda (clause selector)
-		       (if (or (syntax-match? '('NULL-VALUE IDENTIFIER DATUM)
-					      clause)
-			       (syntax-match? '('SINGLETON IDENTIFIER)
-					      clause)
-			       (syntax-match? '('WRAPPER IDENTIFIER ? DATUM)
-					      clause))
-			   (cons* (car clause)
-				  (map-identifier (cadr clause)
-						  (selector/add-cadr selector))
-				  (cddr clause))
-			   clause))
-		     (cddr rule)
-		     (selector/add-cddr selector))))
-	   (cdr declaration)
-	   (selector/add-cdr selector)))))
-
-;;;; Identifiers
-
-(define *rename-database*)
-
-(define-structure (rename-database (constructor initial-rename-database ())
-				   (conc-name rename-database/))
-  (frame-number 0)
-  (mapping-table (make-equal-hash-table) read-only #t)
-  (unmapping-table (make-eq-hash-table) read-only #t)
-  (id-table (make-eq-hash-table) read-only #t))
-
-(define (make-rename-id)
-  (delay
-    (let ((n (+ (rename-database/frame-number *rename-database*) 1)))
-      (set-rename-database/frame-number! *rename-database* n)
-      n)))
-
-(define (rename-identifier identifier rename-id)
-  (let ((key (cons identifier rename-id))
-	(mapping-table (rename-database/mapping-table *rename-database*)))
-    (or (hash-table/get mapping-table key #f)
-	(let ((mapped-identifier
-	       (string->uninterned-symbol
-		(symbol-name (identifier->symbol identifier)))))
-	  (hash-table/put! mapping-table key mapped-identifier)
-	  (hash-table/put! (rename-database/unmapping-table *rename-database*)
-			   mapped-identifier
-			   key)
-	  mapped-identifier))))
-
-(define (rename-top-level-identifier identifier)
-  (if (symbol? identifier)
-      identifier
-      (rename-identifier identifier (delay 0))))
-
-(define (make-name-generator)
-  (let ((id (make-rename-id)))
-    (lambda (identifier)
-      (rename-identifier identifier id))))
-
-;;; Post processing
+;;;; Post processing
 
 (define (output/post-process-expression expression)
   (let ((unmapping (empty-unmapping)))
@@ -350,76 +162,6 @@ USA.
 (define ((unmapping->substitution unmapping) identifier)
   (or (hash-table/get unmapping identifier #f)
       (finalize-mapped-identifier identifier)))
-
-(define (unmap-identifier identifier)
-  (let ((entry
-	 (hash-table/get (rename-database/unmapping-table *rename-database*)
-			 identifier
-			 #f)))
-    (if entry
-	(identifier->symbol (car entry))
-	(begin
-	  (if (not (symbol? identifier))
-	      (error:bad-range-argument identifier 'UNMAP-IDENTIFIER))
-	  identifier))))
-
-(define (finalize-mapped-identifier identifier)
-  (let ((entry
-	 (hash-table/get (rename-database/unmapping-table *rename-database*)
-			 identifier
-			 #f)))
-    (if entry
-	(let ((identifier (car entry))
-	      (frame-number (force (cdr entry))))
-	  (if (interned-symbol? identifier)
-	      (map-interned-symbol identifier frame-number)
-	      (map-uninterned-identifier identifier frame-number)))
-	(begin
-	  (if (not (symbol? identifier))
-	      (error:bad-range-argument identifier
-					'FINALIZE-MAPPED-IDENTIFIER))
-	  identifier))))
-
-(define (map-interned-symbol symbol frame-number)
-  (string->symbol
-   (string-append "."
-		  (symbol-name symbol)
-		  "."
-		  (number->string frame-number))))
-
-(define (map-uninterned-identifier identifier frame-number)
-  (let ((table (rename-database/id-table *rename-database*))
-	(symbol (identifier->symbol identifier)))
-    (let ((alist (hash-table/get table symbol '())))
-      (let ((entry (assv frame-number alist)))
-	(if entry
-	    (let ((entry* (assq identifier (cdr entry))))
-	      (if entry*
-		  (cdr entry*)
-		  (let ((mapped-symbol
-			 (map-indexed-symbol symbol
-					     frame-number
-					     (length (cdr entry)))))
-		    (set-cdr! entry
-			      (cons (cons identifier mapped-symbol)
-				    (cdr entry)))
-		    mapped-symbol)))
-	    (let ((mapped-symbol (map-indexed-symbol symbol frame-number 0)))
-	      (hash-table/put! table
-			       symbol
-			       (cons (list frame-number
-					   (cons identifier mapped-symbol))
-				     alist))
-	      mapped-symbol))))))
-
-(define (map-indexed-symbol symbol frame-number index-number)
-  (string->symbol
-   (string-append "."
-		  (symbol-name symbol)
-		  "."
-		  (number->string frame-number)
-		  "-"
-		  (number->string index-number))))
 
 ;;;; Compute substitution
 
@@ -469,37 +211,6 @@ USA.
 					unmapping))
 	    (loop (cdr identifiers) (cdr unmapped)))))
     free-references))
-
-;;; Reference Set
-
-(define (null-reference-set)
-  '())
-
-(define (singleton-reference-set identifier)
-  (list (cons identifier (unmap-identifier identifier))))
-
-(define (reference-set-union s1 s2)
-  (if (pair? s1)
-      (if (assq (caar s1) s2)
-	  (reference-set-union (cdr s1) s2)
-	  (cons (car s1) (reference-set-union (cdr s1) s2)))
-      s2))
-
-(define (add-to-reference-set identifier reference-set)
-  (if (assq identifier reference-set)
-      reference-set
-      (cons (cons identifier (unmap-identifier identifier)) reference-set)))
-
-(define (remove-from-reference-set identifiers reference-set)
-  (delete-matching-items reference-set
-    (lambda (item)
-      (memq (car item) identifiers))))
-
-(define (unmapping-collision? identifier unmapped-identifier reference-set)
-  (find-matching-item reference-set
-    (lambda (item)
-      (and (eq? unmapped-identifier (cdr item))
-	   (not (eq? identifier (car item)))))))
 
 (define (compute-substitution/subexpression get-subexpression)
   (lambda (expression unmapping)
@@ -599,14 +310,7 @@ USA.
 
 (define (substitute-in-declarations substitution declarations)
   (map (lambda (declaration)
-	 (process-declaration declaration select-object
-			      (lambda (identifier selector)
-				selector
-				(substitution identifier))
-			      (lambda (declaration selector)
-				selector
-				(error "Ill-formed declaration:"
-				       declaration))))
+	 (map-declaration-identifiers substitution declaration))
        declarations))
 
 (define (alpha-substitute/default substitution expression)
@@ -686,3 +390,134 @@ USA.
 		       (SEQUENCE ,alpha-substitute/sequence)
 		       (UNASSIGNED? ,alpha-substitute/unassigned?)
 		       (VARIABLE ,alpha-substitute/variable))))
+
+;;;; Identifiers
+
+(define *rename-database*)
+
+(define-structure (rename-database (constructor initial-rename-database ())
+				   (conc-name rename-database/))
+  (frame-number 0)
+  (mapping-table (make-equal-hash-table) read-only #t)
+  (unmapping-table (make-eq-hash-table) read-only #t)
+  (id-table (make-eq-hash-table) read-only #t))
+
+(define (make-rename-id)
+  (delay
+    (let ((n (+ (rename-database/frame-number *rename-database*) 1)))
+      (set-rename-database/frame-number! *rename-database* n)
+      n)))
+
+(define (rename-identifier identifier rename-id)
+  (let ((key (cons identifier rename-id))
+	(mapping-table (rename-database/mapping-table *rename-database*)))
+    (or (hash-table/get mapping-table key #f)
+	(let ((mapped-identifier
+	       (utf8-string->uninterned-symbol
+		(symbol-name (identifier->symbol identifier)))))
+	  (hash-table/put! mapping-table key mapped-identifier)
+	  (hash-table/put! (rename-database/unmapping-table *rename-database*)
+			   mapped-identifier
+			   key)
+	  mapped-identifier))))
+
+(define (rename-top-level-identifier identifier)
+  (if (symbol? identifier)
+      identifier
+      (rename-identifier identifier (delay 0))))
+
+(define (make-name-generator)
+  (let ((id (make-rename-id)))
+    (lambda (identifier)
+      (rename-identifier identifier id))))
+
+(define (unmap-identifier identifier)
+  (let ((entry
+	 (hash-table/get (rename-database/unmapping-table *rename-database*)
+			 identifier
+			 #f)))
+    (if entry
+	(identifier->symbol (car entry))
+	(begin
+	  (if (not (symbol? identifier))
+	      (error:bad-range-argument identifier 'UNMAP-IDENTIFIER))
+	  identifier))))
+
+(define (finalize-mapped-identifier identifier)
+  (let ((entry
+	 (hash-table/get (rename-database/unmapping-table *rename-database*)
+			 identifier
+			 #f)))
+    (if entry
+	(let ((identifier (car entry))
+	      (frame-number (force (cdr entry))))
+	  (if (interned-symbol? identifier)
+	      (map-interned-symbol identifier frame-number)
+	      (map-uninterned-identifier identifier frame-number)))
+	(begin
+	  (if (not (symbol? identifier))
+	      (error:bad-range-argument identifier
+					'FINALIZE-MAPPED-IDENTIFIER))
+	  identifier))))
+
+(define (map-interned-symbol symbol-to-map frame-number)
+  (symbol "." symbol-to-map "." frame-number))
+
+(define (map-uninterned-identifier identifier frame-number)
+  (let ((table (rename-database/id-table *rename-database*))
+	(symbol (identifier->symbol identifier)))
+    (let ((alist (hash-table/get table symbol '())))
+      (let ((entry (assv frame-number alist)))
+	(if entry
+	    (let ((entry* (assq identifier (cdr entry))))
+	      (if entry*
+		  (cdr entry*)
+		  (let ((mapped-symbol
+			 (map-indexed-symbol symbol
+					     frame-number
+					     (length (cdr entry)))))
+		    (set-cdr! entry
+			      (cons (cons identifier mapped-symbol)
+				    (cdr entry)))
+		    mapped-symbol)))
+	    (let ((mapped-symbol (map-indexed-symbol symbol frame-number 0)))
+	      (hash-table/put! table
+			       symbol
+			       (cons (list frame-number
+					   (cons identifier mapped-symbol))
+				     alist))
+	      mapped-symbol))))))
+
+(define (map-indexed-symbol symbol-to-map frame-number index-number)
+  (symbol "." symbol-to-map "." frame-number "-" index-number))
+
+;;;; Reference Set
+
+(define (null-reference-set)
+  '())
+
+(define (singleton-reference-set identifier)
+  (list (cons identifier (unmap-identifier identifier))))
+
+(define (reference-set-union s1 s2)
+  (if (pair? s1)
+      (if (assq (caar s1) s2)
+	  (reference-set-union (cdr s1) s2)
+	  (cons (car s1) (reference-set-union (cdr s1) s2)))
+      s2))
+
+(define (add-to-reference-set identifier reference-set)
+  (if (assq identifier reference-set)
+      reference-set
+      (cons (cons identifier (unmap-identifier identifier)) reference-set)))
+
+(define (remove-from-reference-set identifiers reference-set)
+  (delete-matching-items reference-set
+    (lambda (item)
+      (memq (car item) identifiers))))
+
+(define (unmapping-collision? identifier unmapped-identifier reference-set)
+  (find-matching-item reference-set
+    (lambda (item)
+      (and (eq? unmapped-identifier (cdr item))
+	   (not (eq? identifier (car item)))))))

@@ -423,10 +423,9 @@ USA.
 
 (define (narrow-out/extract-output! port)
   (let* ((os (port/state port))
-	 (string (ostate-buffer os))
-	 (length (ostate-index os)))
+	 (output (string-head! (ostate-buffer os) (ostate-index os))))
     (reset-buffer! os)
-    (string-head! string length)))
+    output))
 
 (define (make-wide-output-type)
   (make-string-out-type wide-out/write-char
@@ -604,11 +603,10 @@ USA.
 (define (octets-out/extract-output! port)
   (output-port/flush-output port)
   (let* ((os (output-octets-port/os port))
-	 (octets (ostate-buffer os))
-	 (length (ostate-index os)))
+	 (output (string-head! (ostate-buffer os) (ostate-index os))))
     (set-ostate-buffer! os (make-vector-8b 16))
     (set-ostate-index! os 0)
-    (string-head! octets length)))
+    output))
 
 (define (octets-out/position port)
   (output-port/flush-output port)

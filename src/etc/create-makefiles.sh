@@ -49,7 +49,8 @@ run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
 
-: ${MIT_SCHEME_EXE='mit-scheme'}
+: ${MIT_SCHEME_EXE:=mit-scheme}
+export MIT_SCHEME_EXE
 
 run_cmd ${MIT_SCHEME_EXE} --heap 4000 <<EOF
 (begin

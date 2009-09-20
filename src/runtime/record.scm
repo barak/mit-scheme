@@ -459,16 +459,9 @@ USA.
 					error?))))))
 
 (define (->type-name object)
-  (let* ((string
-	  (cond ((string? object) object)
-		((symbol? object) (symbol-name object))
-		(else (error:wrong-type-argument object "type name" #f))))
-	 (n (string-length string)))
-    (if (and (fix:> n 2)
-	     (char=? (string-ref string 0) #\<)
-	     (char=? (string-ref string (fix:- n 1)) #\>))
-	(substring string 1 (fix:- n 1))
-	string)))
+  (cond ((string? object) object)
+	((symbol? object) (symbol-name object))
+	(else (error:wrong-type-argument object "type name" #f))))
 
 (define (list-of-unique-symbols? object)
   (and (list-of-type? object symbol?)

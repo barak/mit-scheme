@@ -2388,6 +2388,21 @@ USA.
 	  weak-set-cdr!
 	  xcons))
 
+(define-package (runtime lambda-list)
+  (files "lambda-list")
+  (parent (runtime))
+  (export ()
+	  lambda-tag:aux
+	  lambda-tag:key
+	  lambda-tag:optional
+	  lambda-tag:rest
+	  map-mit-lambda-list
+	  map-r4rs-lambda-list
+	  mit-lambda-list?
+	  parse-mit-lambda-list
+	  parse-r4rs-lambda-list
+	  r4rs-lambda-list?))
+
 (define-package (runtime srfi-1)
   (files "srfi-1")
   (parent (runtime))
@@ -2726,21 +2741,10 @@ USA.
 	  (*parser-table* runtime-parser-table))
   (export (runtime character)
 	  char-set/atom-delimiters)
-  (export (runtime syntactic-closures)
-	  lambda-optional-tag
-	  lambda-rest-tag)
   (export (runtime unparser)
 	  char-set/atom-delimiters
 	  char-set/number-leaders
-	  char-set/symbol-quotes
-	  lambda-aux-tag
-	  lambda-key-tag
-	  lambda-optional-tag
-	  lambda-rest-tag)
-  (export (runtime unsyntaxer)
-	  lambda-aux-tag
-	  lambda-optional-tag
-	  lambda-rest-tag)
+	  char-set/symbol-quotes)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser-table)
@@ -3087,7 +3091,7 @@ USA.
 	  unmapped-macro-reference-trap?
 	  unmapped-unassigned-reference-trap?
 	  unmapped-unbound-reference-trap?)
-  (export (runtime syntactic-closures)
+  (export (runtime syntax)
 	  make-macro-reference-trap-expression)
   (export (runtime unsyntaxer)
 	  macro-reference-trap-expression-transformer
@@ -4185,65 +4189,271 @@ USA.
 	  with-output-to-truncated-string)
   (initialization (initialize-package!)))
 
-(define-package (runtime syntactic-closures)
-  (files "syntactic-closures"
-	 "syntax-output"
-	 "syntax-transforms"
-	 "mit-syntax"
-	 "syntax-rules"
-	 "syntax-check")
-  (parent (runtime))
+(define-package (runtime syntax)
+  (files)
+  (parent (runtime)))
+
+(define-package (runtime syntax top-level)
+  (files "syntax")
+  (parent (runtime syntax))
   (export ()
 	  <syntactic-closure>
-	  call-with-syntax-error-procedure
 	  capture-syntactic-environment
 	  close-syntax
-	  er-macro-transformer->expander
-	  guarantee-syntactic-environment
+	  error:not-identifier
+	  error:not-syntactic-closure
+	  error:not-synthetic-identifier
+	  guarantee-identifier
+	  guarantee-syntactic-closure
+	  guarantee-synthetic-identifier
 	  identifier->symbol
 	  identifier=?
 	  identifier?
-	  ill-formed-syntax
-	  lambda-tag:fluid-let
-	  lambda-tag:let
-	  lambda-tag:unnamed
 	  make-syntactic-closure
 	  make-synthetic-identifier
-	  mit-lambda-list?
-	  non-hygienic-macro-transformer->expander
-	  parse-mit-lambda-list
-	  r4rs-lambda-list?
 	  reverse-syntactic-environments
-	  rsc-macro-transformer->expander
-	  sc-macro-transformer->expander
 	  strip-syntactic-closures
-	  supported-srfi-features
 	  syntactic-closure/environment
 	  syntactic-closure/form
 	  syntactic-closure/free-names
 	  syntactic-closure?
-	  syntactic-environment->environment
-	  syntactic-environment/lookup
-	  syntactic-environment/top-level?
-	  syntactic-environment?
-	  syntactic-keyword->item
 	  syntax
 	  syntax*
-	  syntax-match?
-	  synthetic-identifier?
-	  )
-  (export (runtime)
-	  parse-define-form)
-  (export (runtime defstruct)
-	  define-expander
-	  parse-mit-lambda-list))
+	  syntax-error
+	  synthetic-identifier?)
+  (export (runtime syntax)
+	  classifier->keyword
+	  compile/expression
+	  compiler->keyword
+	  lookup-identifier))
 
-(define-package (runtime defstruct)
-  (files "defstr")
+(define-package (runtime syntax items)
+  (files "syntax-items")
+  (parent (runtime syntax))
+  (export (runtime syntax)
+	  <binding-item>
+	  <body-item>
+	  <classifier-item>
+	  <compiler-item>
+	  <declaration-item>
+	  <expander-item>
+	  <expression-item>
+	  <keyword-value-item>
+	  <null-binding-item>
+	  <reserved-name-item>
+	  <variable-item>
+	  binding-item/name
+	  binding-item/value
+	  binding-item?
+	  body-item/components
+	  classifier-item/classifier
+	  classifier-item?
+	  compiler-item/compiler
+	  compiler-item?
+	  declaration-item/text
+	  declaration-item?
+	  expander-item/expander
+	  expander-item?
+	  expression-item/compiler
+	  flatten-body-items
+	  item->list
+	  keyword-item?
+	  keyword-value-item/expression
+	  keyword-value-item/item
+	  keyword-value-item?
+	  make-binding-item
+	  make-body-item
+	  make-classifier-item
+	  make-compiler-item
+	  make-declaration-item
+	  make-expander-item
+	  make-expression-item
+	  make-keyword-value-item
+	  make-null-binding-item
+	  make-reserved-name-item
+	  make-variable-item
+	  null-binding-item?
+	  reserved-name-item?
+	  variable-item/name
+	  variable-item?))
+
+(define-package (runtime syntax environment)
+  (files "syntax-environment")
+  (parent (runtime syntax))
+  (export ()
+	  error:not-syntactic-environment
+	  guarantee-syntactic-environment
+	  syntactic-environment?)
+  (export (runtime syntax)
+	  bind-variable!
+	  make-internal-syntactic-environment
+	  make-partial-syntactic-environment
+	  make-top-level-syntactic-environment
+	  null-syntactic-environment
+	  syntactic-environment->environment
+	  syntactic-environment/define
+	  syntactic-environment/lookup
+	  syntactic-environment/top-level?
+	  syntactic-environment?))
+
+(define-package (runtime syntax check)
+  (files "syntax-check")
+  (parent (runtime syntax))
+  (export ()
+	  ill-formed-syntax
+	  syntax-check
+	  syntax-match?
+	  syntax-match?*))
+
+(define-package (runtime syntax classify)
+  (files "syntax-classify")
+  (parent (runtime syntax))
+  (export (runtime syntax)
+	  classify/body
+	  classify/expression
+	  classify/form
+	  extract-declarations-from-body))
+
+(define-package (runtime syntax compile)
+  (files "syntax-compile")
+  (parent (runtime syntax))
+  (export (runtime syntax)
+	  compile-body-item/top-level
+	  compile-body-items
+	  compile-item/expression
+	  compile-item/expression
+	  define-item-compiler))
+
+(define-package (runtime syntax output)
+  (files "syntax-output")
+  (parent (runtime syntax))
+  (export ()
+	  lambda-tag:fluid-let
+	  lambda-tag:let
+	  lambda-tag:unnamed)
+  (export (runtime syntax)
+	  *rename-database*
+	  initial-rename-database
+	  make-name-generator
+	  make-rename-id
+	  output/access-assignment
+	  output/access-reference
+	  output/assignment
+	  output/body
+	  output/combination
+	  output/conditional
+	  output/constant
+	  output/definition
+	  output/delay
+	  output/disjunction
+	  output/lambda
+	  output/let
+	  output/letrec
+	  output/local-declare
+	  output/named-lambda
+	  output/post-process-expression
+	  output/runtime-reference
+	  output/sequence
+	  output/the-environment
+	  output/top-level-definition
+	  output/top-level-sequence
+	  output/top-level-syntax-definition
+	  output/unassigned
+	  output/unassigned-test
+	  output/unspecific
+	  output/variable
+	  rename-identifier
+	  rename-top-level-identifier
+	  transformer-eval))
+
+(define-package (runtime syntax declaration)
+  (files "syntax-declaration")
+  (parent (runtime syntax))
+  (export (runtime syntax)
+	  map-declaration-identifiers))
+
+(define-package (runtime syntax transforms)
+  (files "syntax-transforms")
+  (parent (runtime syntax))
+  (export ()
+	  er-macro-transformer->expander
+	  non-hygienic-macro-transformer->expander
+	  rsc-macro-transformer->expander
+	  sc-macro-transformer->expander
+	  syntactic-keyword->item))
+
+(define-package (runtime syntax mit)
+  (files "mit-syntax")
+  (parent (runtime syntax))
+  (export (runtime syntax definitions)
+	  classifier:begin
+	  classifier:declare
+	  classifier:define-syntax
+	  classifier:er-macro-transformer
+	  classifier:let-syntax
+	  classifier:letrec
+	  classifier:letrec-syntax
+	  classifier:local-declare
+	  classifier:non-hygienic-macro-transformer
+	  classifier:rsc-macro-transformer
+	  classifier:sc-macro-transformer
+	  compiler:delay
+	  compiler:if
+	  compiler:lambda
+	  compiler:named-lambda
+	  compiler:or
+	  compiler:quote
+	  compiler:set!
+	  compiler:the-environment)
+  (export (runtime mit-macros)
+	  keyword:access
+	  keyword:define
+	  keyword:let
+	  keyword:let-syntax
+	  keyword:unassigned
+	  keyword:unspecific))
+
+(define-package (runtime mit-macros)
+  (files "mit-macros")
   (parent (runtime))
   (export ()
-	  ;;define-structure
-	  ))
+	  (access :access)
+	  (and :and)
+	  (and-let* :and-let*)
+	  (case :case)
+	  (cond :cond)
+	  (cond-expand :cond-expand)
+	  (cons-stream :cons-stream)
+	  (define :define)
+	  (define-integrable :define-integrable)
+	  (define-record-type :define-record-type)
+	  (do :do)
+	  (fluid-let :fluid-let)
+	  (let :let)
+	  (let* :let*)
+	  (let*-syntax :let*-syntax)
+	  (quasiquote :quasiquote)
+	  (receive :receive)
+	  supported-srfi-features)
+  (export (runtime)
+	  parse-define-form))
+
+(define-package (runtime syntax syntax-rules)
+  (files "syntax-rules")
+  (parent (runtime syntax))
+  (export (runtime syntax definitions)
+	  er-macro-transformer:syntax-rules))
+
+(define-package (runtime syntax defstruct)
+  (files "defstr")
+  (parent (runtime syntax))
+  (export ()
+	  define-structure))
+
+(define-package (runtime syntax definitions)
+  (files "syntax-definitions")
+  (parent (runtime syntax))
+  (initialization (initialize-package!)))
 
 (define-package (runtime system-macros)
   (files "sysmac")
@@ -4717,6 +4927,18 @@ USA.
 	  mhash-update)
   (initialization (initialize-package!)))
 
+(define-package (runtime regular-sexpression)
+  (files "regsexp")
+  (parent (runtime))
+  (export ()
+	  <compiled-regsexp>
+	  compile-regsexp
+	  compiled-regsexp?
+	  error:not-compiled-regsexp
+	  guarantee-compiled-regsexp
+	  regsexp-match-input-port
+	  regsexp-match-string))
+
 (define-package (runtime regular-expression)
   (file-case options
     ((load) "regexp")
@@ -4961,6 +5183,7 @@ USA.
 	  error:not-utf32-string
 	  error:not-utf8-string
 	  error:not-well-formed-scalar-value-list
+	  error:not-well-formed-scalar-value-range
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
@@ -4978,6 +5201,7 @@ USA.
 	  guarantee-utf32-string
 	  guarantee-utf8-string
 	  guarantee-well-formed-scalar-value-list
+	  guarantee-well-formed-scalar-value-range
 	  guarantee-wide-string
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
@@ -5042,6 +5266,7 @@ USA.
 	  utf8-string-valid?
 	  utf8-string?
 	  well-formed-scalar-value-list?
+	  well-formed-scalar-value-range?
 	  wide-string
 	  wide-string->string
 	  wide-string-index?
@@ -5260,8 +5485,7 @@ USA.
 	  write-http-status
 	  write-http-token
 	  write-http-version
-	  write-http-headers)
-  (initialization (initialize-package!)))
+	  write-http-headers))
 
 (define-package (runtime http-i/o)
   (files "httpio")

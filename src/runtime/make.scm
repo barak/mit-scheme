@@ -173,11 +173,14 @@ USA.
   (cond ((let ((package (find-package package-name #f)))
 	   (and package
 		(let ((env (package/environment package)))
-		  (and (not (lexical-unreferenceable? env procedure-name))
-		       (lexical-reference env procedure-name)))))
+		  (if (not procedure-name)
+		      (lambda () ((access run-boot-inits! boot-defs) env))
+		      (and (not (lexical-unreferenceable? env procedure-name))
+			   (lexical-reference env procedure-name))))))
 	 => (lambda (procedure)
 	      (print-name "initialize:")
-	      (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+	      (if (not (or (not procedure-name)
+			   (eq? procedure-name 'INITIALIZE-PACKAGE!)))
 		  (begin
 		    (tty-write-string " [")
 		    (tty-write-string (system-pair-car procedure-name))
@@ -189,7 +192,8 @@ USA.
 	 ;; Missing mandatory package! Report it and die.
 	 (print-name "Package")
 	 (tty-write-string " is missing initialization procedure ")
-	 (tty-write-string (system-pair-car procedure-name))
+	 (if procedure-name
+	     (tty-write-string (system-pair-car procedure-name)))
 	 (fatal-error "Could not initialize a required package."))))
 
 (define (package-reference name)
@@ -341,6 +345,7 @@ USA.
  packages-file)
 
 ;;; Global databases.  Load, then initialize.
+(define boot-defs)
 (let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
 	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
@@ -354,10 +359,11 @@ USA.
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))
-	 ("syntax-transforms" . (RUNTIME SYNTACTIC-CLOSURES))))
+	 ("record" . (RUNTIME RECORD))))
       (files2
-       '(("prop1d" . (RUNTIME 1D-PROPERTY))
+       '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
+	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
+	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
 	 ("gcfinal" . (RUNTIME GC-FINALIZER))
@@ -376,9 +382,6 @@ USA.
 		      #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
-  (package-initialize '(RUNTIME SYNTACTIC-CLOSURES)
-		      'INITIALIZE-SYNTAX-TRANSFORMS!
-		      #t)
   (load-files files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! #t)
@@ -387,6 +390,9 @@ USA.
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME STRING) 'INITIALIZE-PACKAGE! #t)
+
+  (set! boot-defs
+	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
@@ -399,9 +405,7 @@ USA.
 	    (let loop ((files files))
 	      (and (pair? files)
 		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files)))))))
-	 (boot-defs
-	  (package/environment (name->package '(RUNTIME BOOT-DEFINITIONS)))))
+		       (loop (cdr files))))))))
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
@@ -435,6 +439,7 @@ USA.
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH-TABLE)
+   ((RUNTIME REGULAR-SEXPRESSION) #f #f)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -489,6 +494,7 @@ USA.
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
+   (RUNTIME SYNTAX DEFINITIONS)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)
@@ -516,7 +522,7 @@ USA.
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
    (RUNTIME URI)
    (RUNTIME RFC2822-HEADERS)
-   (RUNTIME HTTP-SYNTAX)
+   ((RUNTIME HTTP-SYNTAX) #f #f)
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
    (RUNTIME WIN32-REGISTRY)))

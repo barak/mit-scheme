@@ -214,9 +214,7 @@ USA.
 	  make-rvalue
 	  make-snode
 	  package
-	  rule-matcher)
-  (import (runtime syntactic-closures)
-	  syntax-match?))
+	  rule-matcher))
 
 (define-package (compiler declarations)
   (files "machines/i386/decls")

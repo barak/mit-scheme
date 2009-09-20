@@ -244,9 +244,9 @@ Not used at the moment.
 		       (else #t))))))))
 
 (define (well-formed-scalar-value-list? items)
-  (list-of-type? items well-formed-item?))
+  (list-of-type? items well-formed-scalar-value-range?))
 
-(define (well-formed-item? item)
+(define (well-formed-scalar-value-range? item)
   (if (pair? item)
       (and (unicode-scalar-value? (car item))
 	   (unicode-scalar-value? (cdr item))
@@ -254,6 +254,7 @@ Not used at the moment.
       (unicode-scalar-value? item)))
 
 (define-guarantee well-formed-scalar-value-list "a Unicode scalar-value list")
+(define-guarantee well-formed-scalar-value-range "a Unicode scalar-value range")
 
 (define (scalar-values->alphabet items)
   (guarantee-well-formed-scalar-value-list items 'SCALAR-VALUES->ALPHABET)

@@ -523,19 +523,14 @@ USA.
     (cond ((string-ci=? name "null") '())
 	  ((string-ci=? name "false") #f)
 	  ((string-ci=? name "true") #t)
-	  ((string-ci=? name "optional") lambda-optional-tag)
-	  ((string-ci=? name "rest") lambda-rest-tag)
-	  ((string-ci=? name "key") lambda-key-tag)
-	  ((string-ci=? name "aux") lambda-aux-tag)
+	  ((string-ci=? name "optional") lambda-tag:optional)
+	  ((string-ci=? name "rest") lambda-tag:rest)
+	  ((string-ci=? name "key") lambda-tag:key)
+	  ((string-ci=? name "aux") lambda-tag:aux)
 	  ((string-ci=? name "eof") (eof-object))
 	  ((string-ci=? name "default") (default-object))
 	  ((string-ci=? name "unspecific") unspecific)
 	  (else (error:illegal-named-constant name)))))
-
-(define lambda-optional-tag (object-new-type (ucode-type constant) 3))
-(define lambda-rest-tag (object-new-type (ucode-type constant) 4))
-(define lambda-aux-tag (object-new-type (ucode-type constant) 8))
-(define lambda-key-tag (object-new-type (ucode-type constant) 5))
 
 (define (handler:special-arg port db ctx char1 char2)
   ctx char1

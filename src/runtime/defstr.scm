@@ -73,37 +73,35 @@ differences:
 
 |#
 
-(define-expander 'DEFINE-STRUCTURE system-global-environment
-  (lambda (form environment closing-environment)
-    (if (not (and (pair? (cdr form)) (list? (cddr form))))
-	(error "Ill-formed special form:" form))
-    (make-syntactic-closure closing-environment '()
-      (let ((name-and-options (cadr form))
-	    (slot-descriptions (cddr form)))
+(define-syntax define-structure
+  (sc-macro-transformer
+   (lambda (form use-environment)
+     (syntax-check '(KEYWORD + DATUM) form)
+     (capture-syntactic-environment
+      (lambda (closing-environment)
 	(let ((structure
-	       (call-with-values
-		   (lambda ()
+	       (receive (name options)
+		   (let ((name-and-options (cadr form)))
 		     (if (pair? name-and-options)
 			 (values (car name-and-options) (cdr name-and-options))
 			 (values name-and-options '())))
-		 (lambda (name options)
-		   (if (not (symbol? name))
-		       (error "Structure name must be a symbol:" name))
-		   (if (not (list? options))
-		       (error "Structure options must be a list:" options))
-		   (let ((context
-			  (make-parser-context name
-					       environment
-					       closing-environment)))
-		     (parse/options options
-				    (parse/slot-descriptions slot-descriptions)
-				    context))))))
+		 (if (not (symbol? name))
+		     (error "Structure name must be a symbol:" name))
+		 (if (not (list? options))
+		     (error "Structure options must be a list:" options))
+		 (let ((context
+			(make-parser-context name
+					     use-environment
+					     closing-environment)))
+		   (parse/options options
+				  (parse/slot-descriptions (cddr form))
+				  context)))))
 	  `(BEGIN ,@(type-definitions structure)
 		  ,@(constructor-definitions structure)
 		  ,@(accessor-definitions structure)
 		  ,@(modifier-definitions structure)
 		  ,@(predicate-definitions structure)
-		  ,@(copier-definitions structure)))))))
+		  ,@(copier-definitions structure))))))))
 
 ;;;; Parse options
 
@@ -255,7 +253,7 @@ differences:
       (and (identifier? object)
 	   (there-exists? false-expression-names
 	     (lambda (name)
-	       (identifier=? (parser-context/environment context)
+	       (identifier=? (parser-context/use-environment context)
 			     object
 			     (parser-context/closing-environment context)
 			     name))))))
@@ -563,10 +561,10 @@ differences:
   (eq? (structure/physical-type structure) 'RECORD))
 
 (define-record-type <parser-context>
-    (make-parser-context name environment closing-environment)
+    (make-parser-context name use-environment closing-environment)
     parser-context?
   (name parser-context/name)
-  (environment parser-context/environment)
+  (use-environment parser-context/use-environment)
   (closing-environment parser-context/closing-environment))
 
 (define-record-type <option>
@@ -595,7 +593,7 @@ differences:
 		(parser-context/closing-environment context)))
 
 (define (close name context)
-  (close-syntax name (parser-context/environment context)))
+  (close-syntax name (parser-context/use-environment context)))
 
 (define (accessor-definitions structure)
   (let ((context (structure/context structure)))

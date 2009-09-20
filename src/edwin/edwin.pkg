@@ -135,11 +135,9 @@ USA.
 	  define-method
 	  usual==>
 	  with-instance-variables)
-  (import (runtime syntactic-closures)
-	  compile/subexpression
-	  make-compiler-item
-	  select-caddr
-	  select-cddddr))
+  (import (runtime syntax)
+	  compile/expression
+	  make-compiler-item))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")

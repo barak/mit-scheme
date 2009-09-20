@@ -355,13 +355,13 @@ USA.
 (define (lambda-list required optional rest auxiliary)
   (let ((optional (if (null? optional)
 		      '()
-		      (cons lambda-optional-tag optional)))
+		      (cons lambda-tag:optional optional)))
 	(rest (cond ((not rest) '())
 		    ((null? auxiliary) rest)
-		    (else (list lambda-rest-tag rest)))))
+		    (else (list lambda-tag:rest rest)))))
     (if (null? auxiliary)
 	`(,@required ,@optional . ,rest)
-	`(,@required ,@optional ,@rest ,lambda-aux-tag ,@auxiliary))))
+	`(,@required ,@optional ,@rest ,lambda-tag:aux ,@auxiliary))))
 
 (define (lambda-components** expression receiver)
   (lambda-components expression

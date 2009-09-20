@@ -86,24 +86,21 @@ USA.
 (define with-instance-variables
   (make-unmapped-macro-reference-trap
    (make-compiler-item
-    (lambda (form environment history)
-      (if (syntax-match? '(IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
-			 (cdr form))
-	  (let ((class-name (cadr form))
-		(self (caddr form))
-		(free-names (cadddr form))
-		(body (cddddr form)))
-	    (transform-instance-variables
-	     (class-instance-transforms
-	      (name->class (identifier->symbol class-name)))
-	     (compile/subexpression self environment history select-caddr)
-	     free-names
-	     (compile/subexpression
-	      `(,(close-syntax 'BEGIN system-global-environment) ,@body)
-	      environment
-	      history
-	      select-cddddr)))
-	  (ill-formed-syntax form))))))
+    (lambda (form environment)
+      (syntax-check '(KEYWORD IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
+		    form)
+      (let ((class-name (cadr form))
+	    (self (caddr form))
+	    (free-names (cadddr form))
+	    (body (cddddr form)))
+	(transform-instance-variables
+	 (class-instance-transforms
+	  (name->class (identifier->symbol class-name)))
+	 (compile/expression self environment)
+	 free-names
+	 (compile/expression
+	  `(,(close-syntax 'BEGIN system-global-environment) ,@body)
+	  environment)))))))
 
 (define-syntax ==>
   (syntax-rules ()
