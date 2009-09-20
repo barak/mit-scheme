@@ -39,11 +39,14 @@ if [ ${FASTP} = yes ]; then
     exec ./configure "${@}"
 fi
 
+: ${MIT_SCHEME_EXE:=mit-scheme-c}
+export MIT_SCHEME_EXE
+
 run_cmd ./Setup.sh
-MIT_SCHEME_EXE=mit-scheme-c run_configure --prefix=`pwd`/boot-root
+run_configure --prefix=`pwd`/boot-root
 run_cmd etc/compile-boot-compiler.sh mit-scheme-c
 run_cmd_in_dir compiler run_make compile-liarc-bundle
-run_cmd etc/native-prepare.sh mit-scheme-c
+run_cmd etc/native-prepare.sh "${MIT_SCHEME_EXE}"
 run_make compile-microcode
 
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
