@@ -216,7 +216,7 @@ USA.
       (sc-macro-transformer
        (lambda (form environment)
 	 `(DEFINE-INTEGRABLE (,(cadr form) VECTOR)
-	    (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
+	    (GUARANTEE-VECTOR VECTOR ',(cadr form))
 	    (VECTOR-REF VECTOR ,(caddr form)))))))
   (iref vector-first 0)
   (iref vector-second 1)
