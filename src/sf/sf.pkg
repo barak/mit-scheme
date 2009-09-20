@@ -80,9 +80,7 @@ USA.
 	  integrate/top-level
 	  integrate/get-top-level-block
 	  reassign
-	  variable/final-value)
-  (import (runtime parser)
-	  lambda-optional-tag))
+	  variable/final-value))
 
 (define-package (scode-optimizer cgen)
   (files "cgen")

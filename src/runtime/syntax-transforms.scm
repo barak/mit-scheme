@@ -30,73 +30,48 @@ USA.
 
 (declare (usual-integrations))
 
-;;;; Items
-
-(define (item-constructor rtd fields)
-  (let ((constructor (record-constructor rtd fields)))
-    (lambda (history . arguments)
-      (make-item history (apply constructor arguments)))))
-
-(define (keyword-constructor type fields)
-  (let ((constructor (item-constructor type fields)))
-    (lambda arguments
-      (apply constructor #f arguments))))
-
-(define <item>)
-(define make-item)
-(define <expander-item>)
-(define make-expander-item)
-
-(define (initialize-syntax-transforms!)
-  (set! <item>
-	(make-record-type "item" '(HISTORY RECORD)))
-  (set! make-item
-	(record-constructor <item> '(HISTORY RECORD)))
-  (set! <expander-item>
-	(make-record-type "expander-item" '(EXPANDER ENVIRONMENT)))
-  (set! make-expander-item
-	(keyword-constructor <expander-item> '(EXPANDER ENVIRONMENT)))
-  unspecific)
-
 (define (sc-macro-transformer->expander transformer closing-environment)
-  (make-expander-item (lambda (form environment closing-environment)
-			(make-syntactic-closure closing-environment '()
-			  (transformer form environment)))
-		      closing-environment))
+  (make-expander-item
+   (lambda (form use-environment)
+     (close-syntax (transformer form use-environment)
+		   closing-environment))))
 
 (define (rsc-macro-transformer->expander transformer closing-environment)
-  (make-expander-item (lambda (form environment closing-environment)
-			(make-syntactic-closure environment '()
-			  (transformer form closing-environment)))
-		      closing-environment))
+  (make-expander-item
+   (lambda (form use-environment)
+     (close-syntax (transformer form closing-environment)
+		   use-environment))))
 
 (define (er-macro-transformer->expander transformer closing-environment)
   (make-expander-item
-   (lambda (form environment closing-environment)
-     (make-syntactic-closure environment '()
-       (transformer
-	form
-	(let ((renames '()))
-	  (lambda (identifier)
-	    (let ((association (assq identifier renames)))
-	      (if association
-		  (cdr association)
-		  (let ((rename
-			 (make-syntactic-closure closing-environment '()
-			   identifier)))
-		    (set! renames (cons (cons identifier rename) renames))
-		    rename)))))
-	(lambda (x y)
-	  (identifier=? environment x environment y)))))
-   closing-environment))
+   (lambda (form use-environment)
+     (close-syntax (transformer form
+				(make-er-rename closing-environment)
+				(make-er-compare use-environment))
+		   use-environment))))
+
+(define (make-er-rename closing-environment)
+  (let ((renames '()))
+    (lambda (identifier)
+      (let ((p (assq identifier renames)))
+	(if p
+	    (cdr p)
+	    (let ((rename (close-syntax identifier closing-environment)))
+	      (set! renames (cons (cons identifier rename) renames))
+	      rename))))))
+
+(define (make-er-compare use-environment)
+  (lambda (x y)
+    (identifier=? use-environment x
+		  use-environment y)))
 
 (define (non-hygienic-macro-transformer->expander transformer
 						  closing-environment)
-  (make-expander-item (lambda (form environment closing-environment)
-			closing-environment
-			(make-syntactic-closure environment '()
-			  (apply transformer (cdr form))))
-		      closing-environment))
+  closing-environment
+  (make-expander-item
+   (lambda (form use-environment)
+     (close-syntax (apply transformer (cdr form))
+		   use-environment))))
 
 (define (syntactic-keyword->item keyword environment)
   (let ((item (environment-lookup-macro environment keyword)))

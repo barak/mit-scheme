@@ -359,10 +359,11 @@ USA.
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))
-	 ("syntax-transforms" . (RUNTIME SYNTACTIC-CLOSURES))))
+	 ("record" . (RUNTIME RECORD))))
       (files2
-       '(("prop1d" . (RUNTIME 1D-PROPERTY))
+       '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
+	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
+	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
 	 ("gcfinal" . (RUNTIME GC-FINALIZER))
@@ -381,9 +382,6 @@ USA.
 		      #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
-  (package-initialize '(RUNTIME SYNTACTIC-CLOSURES)
-		      'INITIALIZE-SYNTAX-TRANSFORMS!
-		      #t)
   (load-files files2)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! #t)
   (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! #t)
@@ -496,6 +494,7 @@ USA.
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
+   (RUNTIME SYNTAX DEFINITIONS)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)

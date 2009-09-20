@@ -34,47 +34,41 @@ USA.
 
 (declare (usual-integrations))
 
-(define-er-macro-transformer 'SYNTAX-RULES system-global-environment
-  (lambda (form rename compare)
-    (call-with-syntax-error-procedure
-     (lambda (syntax-error)
-       (expand/syntax-rules form rename compare syntax-error)))))
-
-(define (expand/syntax-rules form rename compare syntax-error)
-  (if (syntax-match? '((* IDENTIFIER) * ((IDENTIFIER . DATUM) EXPRESSION))
-		     (cdr form))
-      (let ((keywords (cadr form))
-	    (clauses (cddr form)))
-	(if (let loop ((keywords keywords))
-	      (and (pair? keywords)
-		   (or (memq (car keywords) (cdr keywords))
-		       (loop (cdr keywords)))))
-	    (syntax-error "Keywords list contains duplicates:" keywords)
-	    (let ((r-form (rename 'FORM))
-		  (r-rename (rename 'RENAME))
-		  (r-compare (rename 'COMPARE)))
-	      `(,(rename 'ER-MACRO-TRANSFORMER)
-		(,(rename 'LAMBDA)
-		 (,r-form ,r-rename ,r-compare)
-		 ,r-compare		;prevent compiler warnings
-		 ,(let loop ((clauses clauses))
-		    (if (pair? clauses)
-			(let ((pattern (caar clauses)))
-			  (let ((sids
-				 (parse-pattern rename compare keywords
-						pattern r-form)))
-			    `(,(rename 'IF)
-			      ,(generate-match rename compare keywords
-					       r-rename r-compare
-					       pattern r-form)
-			      ,(generate-output rename compare r-rename
-						sids (cadar clauses)
-						syntax-error)
-			      ,(loop (cdr clauses)))))
-			`(,(rename 'BEGIN)
-			  ,r-rename	;prevent compiler warnings
-			  (,(rename 'ILL-FORMED-SYNTAX) ,r-form)))))))))
-      (syntax-error "Ill-formed special form:" form)))
+(define-syntax syntax-rules
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (syntax-check '(KEYWORD (* IDENTIFIER) * ((IDENTIFIER . DATUM) EXPRESSION))
+		   form)
+     (let ((keywords (cadr form))
+	   (clauses (cddr form)))
+       (if (let loop ((keywords keywords))
+	     (and (pair? keywords)
+		  (or (memq (car keywords) (cdr keywords))
+		      (loop (cdr keywords)))))
+	   (syntax-error "Keywords list contains duplicates:" keywords)
+	   (let ((r-form (rename 'FORM))
+		 (r-rename (rename 'RENAME))
+		 (r-compare (rename 'COMPARE)))
+	     `(,(rename 'ER-MACRO-TRANSFORMER)
+	       (,(rename 'LAMBDA)
+		(,r-form ,r-rename ,r-compare)
+		,r-compare		;prevent compiler warnings
+		,(let loop ((clauses clauses))
+		   (if (pair? clauses)
+		       (let ((pattern (caar clauses)))
+			 (let ((sids
+				(parse-pattern rename compare keywords
+					       pattern r-form)))
+			   `(,(rename 'IF)
+			     ,(generate-match rename compare keywords
+					      r-rename r-compare
+					      pattern r-form)
+			     ,(generate-output rename compare r-rename
+					       sids (cadar clauses))
+			     ,(loop (cdr clauses)))))
+		       `(,(rename 'BEGIN)
+			 ,r-rename	;prevent compiler warnings
+			 (,(rename 'ILL-FORMED-SYNTAX) ,r-form))))))))))))
 
 (define (parse-pattern rename compare keywords pattern expression)
   (let loop
@@ -176,7 +170,7 @@ USA.
 		(else `(,(rename 'IF) ,predicate ,consequent #F))))))
     (loop pattern expression)))
 
-(define (generate-output rename compare r-rename sids template syntax-error)
+(define (generate-output rename compare r-rename sids template)
   (let loop ((template template) (ellipses '()))
     (cond ((identifier? template)
 	   (let ((sid
@@ -187,7 +181,7 @@ USA.
 			     (loop (cdr sids)))))))
 	     (if sid
 		 (begin
-		   (add-control! sid ellipses syntax-error)
+		   (add-control! sid ellipses)
 		   (sid-expression sid))
 		 `(,r-rename ,(syntax-quote template)))))
 	  ((or (zero-or-more? template rename compare)
@@ -198,8 +192,7 @@ USA.
 						  ellipsis
 						  (loop (car template)
 							(cons ellipsis
-							      ellipses))
-						  syntax-error))
+							      ellipses))))
 			     (loop (cddr template) ellipses)))
 	  ((pair? template)
 	   (optimized-cons rename compare
@@ -208,7 +201,7 @@ USA.
 	  (else
 	   `(,(rename 'QUOTE) ,template)))))
 
-(define (add-control! sid ellipses syntax-error)
+(define (add-control! sid ellipses)
   (let loop ((sid sid) (ellipses ellipses))
     (let ((control (sid-control sid)))
       (cond (control
@@ -223,7 +216,7 @@ USA.
 		 (syntax-error "Missing ellipsis in expansion." #f))
 	     (loop control (cdr ellipses)))))))
 
-(define (generate-ellipsis rename ellipsis body syntax-error)
+(define (generate-ellipsis rename ellipsis body)
   (let ((sids (ellipsis-sids ellipsis)))
     (if (pair? sids)
 	(let ((name (sid-name (car sids)))
@@ -259,9 +252,9 @@ USA.
 
 (define (syntax-quote expression)
   `(,(compiler->keyword
-      (lambda (form environment history)
+      (lambda (form environment)
 	environment			;ignore
-	(syntax-check '(KEYWORD DATUM) form history)
+	(syntax-check '(KEYWORD DATUM) form)
 	(output/constant (cadr form))))
     ,expression))
 

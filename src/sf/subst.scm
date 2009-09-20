@@ -781,7 +781,7 @@ you ask for.
 	(let ((arg-list (append (procedure/required procedure)
 				(if (null? (procedure/optional procedure))
 				    '()
-				    (cons lambda-optional-tag
+				    (cons lambda-tag:optional
 					  (procedure/optional procedure)))
 				(if (not (procedure/rest procedure))
 				    '()
