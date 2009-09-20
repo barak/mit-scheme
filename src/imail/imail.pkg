@@ -179,6 +179,7 @@ USA.
 	  edwin-command$imail-delete-forward
 	  edwin-command$imail-delete-message
 	  edwin-command$imail-disconnect
+	  edwin-command$imail-file-message
 	  edwin-command$imail-expunge
 	  edwin-command$imail-first-message
 	  edwin-command$imail-first-unseen-message
@@ -208,9 +209,16 @@ USA.
 	  edwin-command$imail-save-mime-body
 	  edwin-command$imail-search
 	  edwin-command$imail-select-message
+	  edwin-command$imail-sort-by-arrival
+	  edwin-command$imail-sort-by-author
+	  edwin-command$imail-sort-by-correspondent
+	  edwin-command$imail-sort-by-date
+	  edwin-command$imail-sort-by-recipient
+	  edwin-command$imail-sort-by-subject
 	  edwin-command$imail-toggle-header
 	  edwin-command$imail-toggle-message
 	  edwin-command$imail-toggle-mime-body
+	  edwin-command$imail-toggle-wrap-body
 	  edwin-command$imail-undelete-backward
 	  edwin-command$imail-undelete-forward
 	  edwin-command$imail-undelete-previous-message
@@ -259,13 +267,18 @@ USA.
   (files "imail-summary")
   (parent (edwin imail front-end))
   (export (edwin)
+	  edwin-command$imail-search-summary
 	  edwin-command$imail-summary
+	  edwin-command$imail-summary-beginning-of-message
 	  edwin-command$imail-summary-by-flags
 	  edwin-command$imail-summary-by-recipients
 	  edwin-command$imail-summary-by-regexp
 	  edwin-command$imail-summary-by-topic
+	  edwin-command$imail-summary-scroll-msg-down
+	  edwin-command$imail-summary-scroll-msg-up
 	  edwin-command$imail-summary-first-message
 	  edwin-command$imail-summary-last-message
+	  edwin-command$imail-summary-mouse-select-message
 	  edwin-command$imail-summary-next-message
 	  edwin-command$imail-summary-previous-message
 	  edwin-command$imail-summary-select-message
