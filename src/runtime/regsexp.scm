@@ -98,29 +98,13 @@ USA.
   (lambda ()
     (%compile-regsexp '(INVERSE-CHAR-SET "\n"))))
 
-(define-rule '('* FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(REPEAT> 0 #F ,regsexp))))
-
 (define-rule '('+ FORM)
   (lambda (regsexp)
     (%compile-regsexp `(REPEAT> 1 #F ,regsexp))))
 
-(define-rule '('? FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(REPEAT> 0 1 ,regsexp))))
-
-(define-rule '('*? FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(REPEAT< 0 #F ,regsexp))))
-
 (define-rule '('+? FORM)
   (lambda (regsexp)
     (%compile-regsexp `(REPEAT< 1 #F ,regsexp))))
-
-(define-rule '('?? FORM)
-  (lambda (regsexp)
-    (%compile-regsexp `(REPEAT< 0 1 ,regsexp))))
 
 (define-rule '('CHAR-SET * DATUM)
   (lambda items
@@ -129,6 +113,22 @@ USA.
 (define-rule '('INVERSE-CHAR-SET * DATUM)
   (lambda items
     (insn:inverse-char-set (%compile-char-set items))))
+
+(define-rule '('? FORM)
+  (lambda (regsexp)
+    (insn:? (%compile-regsexp regsexp))))
+
+(define-rule '('* FORM)
+  (lambda (regsexp)
+    (insn:* (%compile-regsexp regsexp))))
+
+(define-rule '('?? FORM)
+  (lambda (regsexp)
+    (insn:?? (%compile-regsexp regsexp))))
+
+(define-rule '('*? FORM)
+  (lambda (regsexp)
+    (insn:*? (%compile-regsexp regsexp))))
 
 (define-rule '('LINE-START) (lambda () (insn:line-start)))
 (define-rule '('LINE-END) (lambda () (insn:line-end)))
@@ -148,9 +148,10 @@ USA.
 (define (check-repeat-args n m)
   (guarantee-exact-nonnegative-integer n 'COMPILE-REGSEXP)
   (if m
-      (guarantee-exact-nonnegative-integer m 'COMPILE-REGSEXP)
-      (if (not (<= n m))
-	  (error:bad-range-argument m 'COMPILE-REGSEXP))))
+      (begin
+	(guarantee-exact-nonnegative-integer m 'COMPILE-REGSEXP)
+	(if (not (<= n m))
+	    (error:bad-range-argument m 'COMPILE-REGSEXP)))))
 
 (define-rule '('ALT * FORM)
   (lambda regsexps
@@ -249,7 +250,8 @@ USA.
 (define (insn:group key insn)
   (lambda (position groups succeed fail)
     (insn position
-	  (lambda (position* fail*)
+	  groups
+	  (lambda (position* groups fail*)
 	    (succeed position*
 		     (new-group key position position* groups)
 		     fail*))
@@ -289,24 +291,13 @@ USA.
 	   succeed
 	   (lambda ()
 	     (insn2 position groups succeed fail)))))
-
-(define (insn:repeat> n m insn)
-  (%insn:repeat n m insn insn:repeat>-limited insn:*))
 
-(define (insn:repeat< n m insn)
-  (%insn:repeat n m insn insn:repeat<-limited insn:*?))
-
-(define (insn:repeat>-limited limit insn)
+(define (insn:? insn)
   (lambda (position groups succeed fail)
-    (let loop ((i 0) (position position) (groups groups) (fail fail))
-      (if (< i limit)
-	  (insn position
-		groups
-		(lambda (position* groups* fail*)
-		  (loop (+ i 1) position* groups* fail*))
-		(lambda ()
-		  (succeed position groups fail)))
-	  (succeed position groups fail)))))
+    (insn position
+	  groups
+	  succeed
+	  (lambda () (succeed position groups fail)))))
 
 (define (insn:* insn)
   (lambda (position groups succeed fail)
@@ -314,47 +305,45 @@ USA.
       (insn position
 	    groups
 	    loop
-	    (lambda ()
-	      (succeed position groups fail))))))
+	    (lambda () (succeed position groups fail))))))
 
-(define (insn:repeat<-limited limit insn)
+(define (insn:?? insn)
   (lambda (position groups succeed fail)
-    (let loop ((i 0) (position position) (groups groups) (fail fail))
-      (if (< i limit)
-	  (succeed position
-		   groups
-		   (lambda ()
-		     (insn position
-			   groups
-			   (lambda (position* groups* fail*)
-			     (loop (+ i 1) position* groups* fail*))
-			   fail)))
-	  (fail)))))
+    (succeed position
+	     groups
+	     (lambda () (insn position groups succeed fail)))))
 
 (define (insn:*? insn)
   (lambda (position groups succeed fail)
     (let loop ((position position) (groups groups) (fail fail))
       (succeed position
 	       groups
-	       (lambda ()
-		 (insn position groups loop fail))))))
+	       (lambda () (insn position groups loop fail))))))
+
+(define (insn:repeat> n m insn)
+  (%insn:repeat n m insn %insn:repeat>-limited insn:*))
+
+(define (insn:repeat< n m insn)
+  (%insn:repeat n m insn %insn:repeat<-limited insn:*?))
 
 (define (%insn:repeat n m insn repeat-limited repeat-unlimited)
-  (if (eqv? n m)
-      (if (> n 0)
-	  (insn:repeat-exactly n insn)
-	  (insn:always-succeed))
-      (let ((tail
-	     (if m
-		 (repeat-limited (- m n) insn)
-		 (repeat-unlimited insn))))
-	(if (> n 0)
-	    (insn:seq2 (insn:repeat-exactly n insn) tail)
-	    tail))))
+  (if (and (= n 0) (not m))
+      (repeat-unlimited insn)
+      (if (eqv? n m)
+	  (if (> n 0)
+	      (%insn:repeat-exactly n insn)
+	      (insn:always-succeed))
+	  (let ((tail
+		 (if m
+		     (repeat-limited (- m n) insn)
+		     (repeat-unlimited insn))))
+	    (if (> n 0)
+		(insn:seq2 (%insn:repeat-exactly n insn) tail)
+		tail)))))
 
-(define (insn:repeat-exactly n insn)
+(define (%insn:repeat-exactly n insn)
   (if (<= n 8)
-      (let loop ((i 0))
+      (let loop ((i 1))
 	(if (< i n)
 	    (insn:seq2 insn (loop (+ i 1)))
 	    insn))
@@ -367,17 +356,82 @@ USA.
 		      (loop (+ i 1) position* groups* fail*))
 		    fail)
 	      (succeed position groups fail))))))
+
+(define (%insn:repeat>-limited limit insn)
+  (if (= limit 1)
+      (insn:? insn)
+      (lambda (position groups succeed fail)
+	(let loop ((i 0) (position position) (groups groups) (fail fail))
+	  (if (< i limit)
+	      (insn position
+		    groups
+		    (lambda (position* groups* fail*)
+		      (loop (+ i 1) position* groups* fail*))
+		    (lambda ()
+		      (succeed position groups fail)))
+	      (succeed position groups fail))))))
+
+(define (%insn:repeat<-limited limit insn)
+  (if (= limit 1)
+      (insn:?? insn)
+      (lambda (position groups succeed fail)
+	(let loop ((i 0) (position position) (groups groups) (fail fail))
+	  (succeed position
+		   groups
+		   (if (< i limit)
+		       (lambda ()
+			 (insn position
+			       groups
+			       (lambda (position* groups* fail*)
+				 (loop (+ i 1) position* groups* fail*))
+			       fail))
+		       fail))))))
+
+;;; A thought experiment...
+
+;;; Doesn't the compiler already know what the succeed continuation is
+;;; for each instruction?
+
+#|
+(define (???1 insn s1 s2)
+  (lambda (position groups fail)
+    (s1 position
+	groups
+	(lambda () (insn position groups s2 fail)))))
+
+(define (insn:?? insn)
+  (lambda (position groups succeed fail)
+    ((???1 insn succeed succeed) position groups fail)))
+
+(define (???2 insn s1)
+  (define s2
+    (lambda (position groups fail)
+      (s1 position
+	  groups
+	  (lambda () (insn position groups s2 fail)))))
+  s2)
+
+(define (insn:*? insn)
+  (lambda (position groups succeed fail)
+    ((???2 insn succeed) position groups fail)))
+
+(define (???3 i1 i2 succeed)
+  (???1 i1 succeed (???1 i2 succeed)))
+|#
 
 ;;;; Positions and groups
 
+(define (get-index position)
+  ((%position-type-get-index (%get-position-type position)) position))
+
 (define (next-char position)
-  ((%position-type-next-char (%get-position-type position))))
+  ((%position-type-next-char (%get-position-type position)) position))
 
 (define (prev-char position)
-  ((%position-type-prev-char (%get-position-type position))))
+  ((%position-type-prev-char (%get-position-type position)) position))
 
 (define (next-position position)
-  ((%position-type-next-position (%get-position-type position))))
+  ((%position-type-next-position (%get-position-type position)) position))
 
 (define (%get-position-type position)
   (or (find (lambda (type)
@@ -387,6 +441,7 @@ USA.
 
 (define-structure (%position-type (constructor %make-position-type))
   (predicate #f read-only #t)
+  (get-index #f read-only #t)
   (next-char #f read-only #t)
   (prev-char #f read-only #t)
   (next-position #f read-only #t)
@@ -409,14 +464,14 @@ USA.
 (define %all-position-types '())
 
 (define (new-group key start-position end-position groups)
-  (cons (cons key (%make-group-insn start-position end-position))
+  (cons (list key start-position end-position)
 	groups))
 
 (define (find-group key groups)
   (let ((p (assq key groups)))
     (if (not p)
 	(error "No group with this key:" key))
-    (cdr p)))
+    (%make-group-insn (cadr p) (caddr p))))
 
 (define (%make-group-insn start-position end-position)
   (let ((same? (%position-type-same? (%get-position-type start-position))))
@@ -449,12 +504,18 @@ USA.
 			       #f
 			       char)))))))
 
-(define (%top-level-match crsexp position)
-  ((%compiled-regsexp-insn crsexp) position
+(define (%top-level-match crsexp start-position)
+  ((%compiled-regsexp-insn crsexp) start-position
 				   '()
-				   (lambda (position groups fail)
-				     position fail
-				     groups)
+				   (lambda (end-position groups fail)
+				     fail
+				     (cons (list (get-index start-position)
+						 (get-index end-position))
+					   (map (lambda (g)
+						  (list (car g)
+							(get-index (cadr g))
+							(get-index (caddr g))))
+						groups)))
 				   (lambda () #f)))
 
 (define (%char-source->position source)
@@ -467,6 +528,8 @@ USA.
   (source #f read-only #t))
 
 (define-position-type %source-position?
+  (lambda (position)
+    (%source-position-index position))
   (lambda (position)
     (%source-position-next-char position))
   (lambda (position)
@@ -489,7 +552,7 @@ USA.
     (guarantee-compiled-regsexp crsexp caller)
     (guarantee-string string caller)
     (let* ((end
-	    (let ((length (string-length end)))
+	    (let ((length (string-length string)))
 	      (if (default-object? end)
 		  length
 		  (begin
@@ -531,6 +594,8 @@ USA.
   (%substring-end (cdr position)))
 
 (define-position-type %string-position?
+  (lambda (position)
+    (%string-position-index position))
   (lambda (position)
     (if (fix:< (%string-position-index position)
 	       (%string-position-end position))
