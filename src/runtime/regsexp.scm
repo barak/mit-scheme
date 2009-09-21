@@ -26,10 +26,16 @@ USA.
 ;;;; Regular s-expressions
 ;;; package: (runtime regular-sexpression)
 
+;;; The compiler takes a regular sexpression and returns an
+;;; instruction.  An instruction is a procedure that accepts a success
+;;; continuation, and returns a "linked instruction".  But success
+;;; continuations and linked instructions have the same signature,
+;;; which encourages the use of a combinator language.
+
 (declare (usual-integrations))
 
 (define (compile-regsexp regsexp)
-  (%make-compiled-regsexp (%compile-regsexp regsexp)))
+  (%make-compiled-regsexp ((%compile-regsexp regsexp) %top-level-success)))
 
 (define-record-type <compiled-regsexp>
     (%make-compiled-regsexp insn)
@@ -37,6 +43,11 @@ USA.
   (insn %compiled-regsexp-insn))
 
 (define-guarantee compiled-regsexp "compiled regular s-expression")
+
+(define (%top-level-success position groups fail)
+  fail
+  (cons (get-index position)
+	(%convert-groups groups)))
 
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
@@ -173,47 +184,64 @@ USA.
 ;;;; Instructions
 
 (define (insn:always-succeed)
-  (lambda (position groups succeed fail)
-    (succeed position groups fail)))
+  (lambda (succeed)
+    succeed))
 
 (define (insn:always-fail)
-  (lambda (position groups succeed fail)
-    position groups succeed
-    (fail)))
+  (lambda (succeed)
+    succeed
+    (lambda (position groups fail)
+      position groups
+      (fail))))
 
 (define (insn:string-start)
-  (lambda (position groups succeed fail)
-    (if (not (prev-char position))
-	(succeed position groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (not (prev-char position))
+	  (succeed position groups fail)
+	  (fail)))))
 
 (define (insn:string-end)
-  (lambda (position groups succeed fail)
-    (if (not (next-char position))
-	(succeed position groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (not (next-char position))
+	  (succeed position groups fail)
+	  (fail)))))
 
 (define (insn:line-start)
-  (lambda (position groups succeed fail)
-    (if (let ((char (prev-char position)))
-	  (or (not char)
-	      (char=? char #\newline)))
-	(succeed position groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (let ((char (prev-char position)))
+	    (or (not char)
+		(char=? char #\newline)))
+	  (succeed position groups fail)
+	  (fail)))))
 
 (define (insn:line-end)
-  (lambda (position groups succeed fail)
-    (if (let ((char (next-char position)))
-	  (or (not char)
-	      (char=? char #\newline)))
-	(succeed position groups fail)
-	(fail))))
-
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (let ((char (next-char position)))
+	    (or (not char)
+		(char=? char #\newline)))
+	  (succeed position groups fail)
+	  (fail)))))
+
 (define (insn:char char)
-  (lambda (position groups succeed fail)
-    (if (eqv? (next-char position) char)
-	(succeed (next-position position) groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (eqv? (next-char position) char)
+	  (succeed (next-position position) groups fail)
+	  (fail)))))
+
+(define (insn:chars chars)
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (let loop ((chars chars) (position position))
+	(if (pair? chars)
+	    (if (eqv? (next-char position) (car chars))
+		(loop (cdr chars) (next-position position))
+		(fail))
+	    (succeed position groups fail))))))
 
 (define (insn:string string)
   (let ((end (string-length string)))
@@ -222,204 +250,161 @@ USA.
 	  ((fix:= end 1)
 	   (insn:char (string-ref string 0)))
 	  (else
-	   (lambda (position groups succeed fail)
-	     (let loop ((i 0) (position position))
-	       (if (fix:< i end)
-		   (let ((char (string-ref string i)))
-		     (if (eqv? (next-char position) char)
-			 (loop (fix:+ i 1) (next-position position))
-			 (fail)))
-		   (succeed position groups fail))))))))
+	   (lambda (succeed)
+	     (lambda (position groups fail)
+	       (let loop ((i 0) (position position))
+		 (if (fix:< i end)
+		     (let ((char (string-ref string i)))
+		       (if (eqv? (next-char position) char)
+			   (loop (fix:+ i 1) (next-position position))
+			   (fail)))
+		     (succeed position groups fail)))))))))
 
 (define (insn:char-set alphabet)
-  (lambda (position groups succeed fail)
-    (if (let ((char (next-char position)))
-	  (and char
-	       (char-in-alphabet? char alphabet)))
-	(succeed (next-position position) groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (let ((char (next-char position)))
+	    (and char
+		 (char-in-alphabet? char alphabet)))
+	  (succeed (next-position position) groups fail)
+	  (fail)))))
 
 (define (insn:inverse-char-set alphabet)
-  (lambda (position groups succeed fail)
-    (if (let ((char (next-char position)))
-	  (and char
-	       (not (char-in-alphabet? char alphabet))))
-	(succeed (next-position position) groups fail)
-	(fail))))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (if (let ((char (next-char position)))
+	    (and char
+		 (not (char-in-alphabet? char alphabet))))
+	  (succeed (next-position position) groups fail)
+	  (fail)))))
 
 (define (insn:group key insn)
-  (lambda (position groups succeed fail)
-    (insn position
-	  groups
-	  (lambda (position* groups fail*)
-	    (succeed position*
-		     (new-group key position position* groups)
-		     fail*))
-	  fail)))
+  (insn:seq (list (%insn:start-group key)
+		  insn
+		  (%insn:end-group key))))
+
+(define (%insn:start-group key)
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (succeed position
+	       (%start-group key position groups)
+	       fail))))
+
+(define (%insn:end-group key)
+  (lambda (succeed)
+    (lambda (position groups fail)
+      (succeed position
+	       (%end-group key position groups)
+	       fail))))
 
 (define (insn:group-ref key)
-  (lambda (position groups succeed fail)
-    ((find-group key groups) position groups succeed fail)))
+  (lambda (succeed)
+    (lambda (position groups fail)
+      ((%find-group succeed key groups) position groups fail))))
 
 (define (insn:seq insns)
-  (if (pair? insns)
-      (let loop ((insn (car insns)) (insns (cdr insns)))
-	(if (pair? insns)
-	    (insn:seq2 insn (loop (car insns) (cdr insns)))
-	    insn))
-      (insn:always-succeed)))
-
-(define (insn:seq2 insn1 insn2)
-  (lambda (position groups succeed fail)
-    (insn1 position
-	   groups
-	   (lambda (position* groups* fail*)
-	     (insn2 position* groups* succeed fail*))
-	   fail)))
+  (lambda (succeed)
+    (fold-right (lambda (insn next)
+		  (insn next))
+		succeed
+		insns)))
 
 (define (insn:alt insns)
-  (if (pair? insns)
-      (let loop ((insn (car insns)) (insns (cdr insns)))
-	(if (pair? insns)
-	    (insn:alt2 insn (loop (car insns) (cdr insns)))
-	    insn))
-      (insn:always-fail)))
-
-(define (insn:alt2 insn1 insn2)
-  (lambda (position groups succeed fail)
-    (insn1 position
-	   succeed
-	   (lambda ()
-	     (insn2 position groups succeed fail)))))
+  (reduce-right (lambda (insn1 insn2)
+		  (lambda (succeed)
+		    (%failure-chain (insn1 succeed)
+				    (insn2 succeed))))
+		(insn:always-fail)
+		insns))
 
 (define (insn:? insn)
-  (lambda (position groups succeed fail)
-    (insn position
-	  groups
-	  succeed
-	  (lambda () (succeed position groups fail)))))
-
-(define (insn:* insn)
-  (lambda (position groups succeed fail)
-    (let loop ((position position) (groups groups) (fail fail))
-      (insn position
-	    groups
-	    loop
-	    (lambda () (succeed position groups fail))))))
+  (lambda (succeed)
+    (%failure-chain (insn succeed) succeed)))
 
 (define (insn:?? insn)
-  (lambda (position groups succeed fail)
-    (succeed position
-	     groups
-	     (lambda () (insn position groups succeed fail)))))
+  (lambda (succeed)
+    (%failure-chain succeed (insn succeed))))
+
+(define (insn:* insn)
+  (lambda (succeed)
+    (define loop
+      (%failure-chain (lambda (position groups fail)
+			(linked position groups fail))
+		      succeed))
+    (define linked (insn loop))
+    loop))
 
 (define (insn:*? insn)
-  (lambda (position groups succeed fail)
-    (let loop ((position position) (groups groups) (fail fail))
-      (succeed position
-	       groups
-	       (lambda () (insn position groups loop fail))))))
-
-(define (insn:repeat> n m insn)
-  (%insn:repeat n m insn %insn:repeat>-limited insn:*))
+  (lambda (succeed)
+    (define loop
+      (%failure-chain succeed
+		      (lambda (position groups fail)
+			(linked position groups fail))))
+    (define linked (insn loop))
+    loop))
 
-(define (insn:repeat< n m insn)
-  (%insn:repeat n m insn %insn:repeat<-limited insn:*?))
-
-(define (%insn:repeat n m insn repeat-limited repeat-unlimited)
-  (if (and (= n 0) (not m))
-      (repeat-unlimited insn)
-      (if (eqv? n m)
-	  (if (> n 0)
-	      (%insn:repeat-exactly n insn)
-	      (insn:always-succeed))
-	  (let ((tail
-		 (if m
-		     (repeat-limited (- m n) insn)
-		     (repeat-unlimited insn))))
-	    (if (> n 0)
-		(insn:seq2 (%insn:repeat-exactly n insn) tail)
-		tail)))))
-
-(define (%insn:repeat-exactly n insn)
-  (if (<= n 8)
-      (let loop ((i 1))
-	(if (< i n)
-	    (insn:seq2 insn (loop (+ i 1)))
-	    insn))
-      (lambda (position groups succeed fail)
-	(let loop ((i 0) (position position) (groups groups) (fail fail))
-	  (if (< i n)
-	      (insn position
-		    groups
-		    (lambda (position* groups* fail*)
-		      (loop (+ i 1) position* groups* fail*))
-		    fail)
-	      (succeed position groups fail))))))
-
-(define (%insn:repeat>-limited limit insn)
-  (if (= limit 1)
-      (insn:? insn)
-      (lambda (position groups succeed fail)
-	(let loop ((i 0) (position position) (groups groups) (fail fail))
-	  (if (< i limit)
-	      (insn position
-		    groups
-		    (lambda (position* groups* fail*)
-		      (loop (+ i 1) position* groups* fail*))
-		    (lambda ()
-		      (succeed position groups fail)))
-	      (succeed position groups fail))))))
-
-(define (%insn:repeat<-limited limit insn)
-  (if (= limit 1)
-      (insn:?? insn)
-      (lambda (position groups succeed fail)
-	(let loop ((i 0) (position position) (groups groups) (fail fail))
-	  (succeed position
-		   groups
-		   (if (< i limit)
-		       (lambda ()
-			 (insn position
-			       groups
-			       (lambda (position* groups* fail*)
-				 (loop (+ i 1) position* groups* fail*))
-			       fail))
-		       fail))))))
-
-;;; A thought experiment...
-
-;;; Doesn't the compiler already know what the succeed continuation is
-;;; for each instruction?
-
-#|
-(define (???1 insn s1 s2)
+(define (%failure-chain s1 s2)
   (lambda (position groups fail)
     (s1 position
 	groups
-	(lambda () (insn position groups s2 fail)))))
-
-(define (insn:?? insn)
-  (lambda (position groups succeed fail)
-    ((???1 insn succeed succeed) position groups fail)))
-
-(define (???2 insn s1)
-  (define s2
-    (lambda (position groups fail)
-      (s1 position
-	  groups
-	  (lambda () (insn position groups s2 fail)))))
-  s2)
-
-(define (insn:*? insn)
-  (lambda (position groups succeed fail)
-    ((???2 insn succeed) position groups fail)))
-
-(define (???3 i1 i2 succeed)
-  (???1 i1 succeed (???1 i2 succeed)))
-|#
+	(lambda () (s2 position groups fail)))))
 
-;;;; Positions and groups
+(define (insn:repeat> n m insn)
+  (%repeat n m insn %repeat>-limited insn:*))
+
+(define (insn:repeat< n m insn)
+  (%repeat n m insn %repeat<-limited insn:*?))
+
+(define (%repeat n m insn repeat-limited repeat-unlimited)
+  (let ((insn1 (%repeat-exactly n insn))
+	(insn2
+	 (if m
+	     (repeat-limited (- m n) insn)
+	     (repeat-unlimited insn))))
+    (lambda (succeed)
+      (insn1 (insn2 succeed)))))
+
+(define (%repeat-exactly n insn)
+  (%hybrid-chain n
+		 (lambda (succeed)
+		   succeed
+		   insn)))
+
+(define (%repeat>-limited limit insn)
+  (%hybrid-chain limit
+		 (lambda (succeed)
+		   (lambda (continue)
+		     (%failure-chain (insn continue) succeed)))))
+
+(define (%repeat<-limited limit insn)
+  (%hybrid-chain limit
+		 (lambda (succeed)
+		   (lambda (continue)
+		     (%failure-chain succeed (insn continue))))))
+
+(define (%hybrid-chain limit linker)
+  (if (<= limit 8)
+      (%immediate-chain limit linker)
+      (%delayed-chain limit linker)))
+
+(define (%immediate-chain limit pre-linker)
+  (lambda (succeed)
+    (let ((linker (pre-linker succeed)))
+      (let loop ((i 0))
+	(if (< i limit)
+	    (linker (loop (+ i 1)))
+	    succeed)))))
+
+(define (%delayed-chain limit pre-linker)
+  (lambda (succeed)
+    (let ((linker (pre-linker succeed)))
+      (let loop ((i 0))
+	(if (< i limit)
+	    (lambda (position groups fail)
+	      ((linker (loop (+ i 1))) position groups fail))
+	    succeed)))))
+
+;;;; Positions
 
 (define (get-index position)
   ((%position-type-get-index (%get-position-type position)) position))
@@ -462,33 +447,46 @@ USA.
 	       unspecific)))))))
 
 (define %all-position-types '())
+
+;;;; Groups
 
-(define (new-group key start-position end-position groups)
-  (cons (list key start-position end-position)
+(define (%start-group key position groups)
+  (cons (list key position)
 	groups))
 
-(define (find-group key groups)
+(define (%end-group key position groups)
+  ;; Kind of slow, but it's functional.  Could speed up with side
+  ;; effects.
+  (let ((p (assq key groups)))
+    (if (not (and p (null? (cddr p))))
+	(error "%END-GROUP called with no %START-GROUP:" key))
+    (cons (list key (cadr p) position)
+	  (delq p groups))))
+
+(define (%find-group succeed key groups)
   (let ((p (assq key groups)))
     (if (not p)
 	(error "No group with this key:" key))
-    (%make-group-insn (cadr p) (caddr p))))
+    (if (null? (cddr p))
+	(error "Reference to group appears before group's end:" key))
+    (insn:chars succeed (%group-chars (cadr p) (caddr p)))))
 
-(define (%make-group-insn start-position end-position)
+(define (%group-chars start-position end-position)
   (let ((same? (%position-type-same? (%get-position-type start-position))))
     (let loop ((position start-position) (chars '()))
       (if (same? start-position end-position)
-	  (insn:chars (reverse! chars))
+	  (reverse! chars)
 	  (loop (next-position position)
 		(cons (next-char position) chars))))))
 
-(define (insn:chars chars)
-  (lambda (position groups succeed fail)
-    (let loop ((chars chars) (position position))
-      (if (pair? chars)
-	  (if (eqv? (next-char position) (car chars))
-	      (loop (cdr chars) (next-position position))
-	      (fail))
-	  (succeed position groups fail)))))
+(define (%convert-groups groups)
+  (map (lambda (g)
+	 (list (car g)
+	       (get-index (cadr g))
+	       (get-index (caddr g))))
+       (remove (lambda (g)
+		 (null? (cddr g)))
+	       groups)))
 
 ;;;; Match input port
 
@@ -507,15 +505,6 @@ USA.
 (define (%top-level-match crsexp start-position)
   ((%compiled-regsexp-insn crsexp) start-position
 				   '()
-				   (lambda (end-position groups fail)
-				     fail
-				     (cons (list (get-index start-position)
-						 (get-index end-position))
-					   (map (lambda (g)
-						  (list (car g)
-							(get-index (cadr g))
-							(get-index (caddr g))))
-						groups)))
 				   (lambda () #f)))
 
 (define (%char-source->position source)
