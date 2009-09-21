@@ -4441,8 +4441,8 @@ USA.
 (define-package (runtime syntax syntax-rules)
   (files "syntax-rules")
   (parent (runtime syntax))
-  (export (runtime syntax definitions)
-	  er-macro-transformer:syntax-rules))
+  (export ()
+	  syntax-rules))
 
 (define-package (runtime syntax defstruct)
   (files "defstr")
