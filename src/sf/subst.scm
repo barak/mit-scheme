@@ -568,9 +568,9 @@ you ask for.
 		 (operator* (combination/operator operator)))
 	     (cond ((procedure? operator*) (descend operator*))
 		   ((integrate/compound-operator
-                     operator*
-                     (combination/operands operator))
-                    => descend)
+		     operator*
+		     (combination/operands operator))
+		    => descend)
 		   (else #f))))
 	  ((declaration? operator)
 	   (scan-body (declaration/expression operator)
