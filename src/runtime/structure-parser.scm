@@ -220,7 +220,7 @@ USA.
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF ,(equality-predicate item (cadr pattern))
+       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(single-val item) ,lose)
 	    (,lose))))))
 
@@ -229,20 +229,18 @@ USA.
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF ,(equality-predicate item (cadr pattern))
+       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(null-vals) ,lose)
 	    (,lose))))))
 
-(define (equality-predicate item datum)
-  `(,(cond ((or (symbol? datum)
-		(char? datum)
-		(boolean? datum)
-		(null? datum))
-	    'EQ?)
-	   ((number? datum) 'EQV?)
-	   (else 'EQUAL?))
-    ,item
-    ',datum))
+(define (equality-predicate datum)
+  (cond ((or (symbol? datum)
+	     (char? datum)
+	     (boolean? datum)
+	     (null? datum))
+	 'EQ?)
+	((number? datum) 'EQV?)
+	(else 'EQUAL?)))
 
 (define-context-method 'VALUES 'OBJECT
   (lambda (vals)
