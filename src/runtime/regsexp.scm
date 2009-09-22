@@ -56,9 +56,9 @@ USA.
 	 (insn:string regsexp))
 	((and (pair? regsexp)
 	      (symbol? (car regsexp))
-	      (list? (cdr regsexp))
 	      (find (lambda (rule)
-		      (syntax-match? (car rule) regsexp))
+		      (and (eq? (caar rule) (car regsexp))
+			   (syntax-match? (cdar rule) (cdr regsexp))))
 		    %compile-regsexp-rules))
 	 => (lambda (rule)
 	      (apply (cdr rule) (cdr regsexp))))
@@ -92,7 +92,13 @@ USA.
 (define (define-rule pattern compiler)
   (add-boot-init!
    (lambda ()
-     (let ((p (assoc pattern %compile-regsexp-rules)))
+     (if (not (and (pair? pattern)
+		   (symbol? (car pattern))))
+	 (error:bad-range-argument pattern 'DEFINE-RULE))
+     (let ((p
+	    (find (lambda (p)
+		    (eq? (car p) (car pattern)))
+		  %compile-regsexp-rules)))
        (if p
 	   (set-cdr! p compiler)
 	   (begin
@@ -105,53 +111,53 @@ USA.
 
 ;;;; Compiler rules
 
-(define-rule '('ANY-CHAR)
+(define-rule '(ANY-CHAR)
   (lambda ()
     (%compile-regsexp '(INVERSE-CHAR-SET "\n"))))
 
-(define-rule '('+ FORM)
+(define-rule '(+ FORM)
   (lambda (regsexp)
     (%compile-regsexp `(REPEAT> 1 #F ,regsexp))))
 
-(define-rule '('+? FORM)
+(define-rule '(+? FORM)
   (lambda (regsexp)
     (%compile-regsexp `(REPEAT< 1 #F ,regsexp))))
 
-(define-rule '('CHAR-SET * DATUM)
+(define-rule '(CHAR-SET * DATUM)
   (lambda items
     (insn:char-set (%compile-char-set items))))
 
-(define-rule '('INVERSE-CHAR-SET * DATUM)
+(define-rule '(INVERSE-CHAR-SET * DATUM)
   (lambda items
     (insn:inverse-char-set (%compile-char-set items))))
 
-(define-rule '('? FORM)
+(define-rule '(? FORM)
   (lambda (regsexp)
     (insn:? (%compile-regsexp regsexp))))
 
-(define-rule '('* FORM)
+(define-rule '(* FORM)
   (lambda (regsexp)
     (insn:* (%compile-regsexp regsexp))))
 
-(define-rule '('?? FORM)
+(define-rule '(?? FORM)
   (lambda (regsexp)
     (insn:?? (%compile-regsexp regsexp))))
 
-(define-rule '('*? FORM)
+(define-rule '(*? FORM)
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '('LINE-START) (lambda () (insn:line-start)))
-(define-rule '('LINE-END) (lambda () (insn:line-end)))
-(define-rule '('STRING-START) (lambda () (insn:string-start)))
-(define-rule '('STRING-END) (lambda () (insn:string-end)))
+(define-rule '(LINE-START) (lambda () (insn:line-start)))
+(define-rule '(LINE-END) (lambda () (insn:line-end)))
+(define-rule '(STRING-START) (lambda () (insn:string-start)))
+(define-rule '(STRING-END) (lambda () (insn:string-end)))
 
-(define-rule '('REPEAT> DATUM DATUM FORM)
+(define-rule '(REPEAT> DATUM DATUM FORM)
   (lambda (n m regsexp)
     (check-repeat-args n m)
     (insn:repeat> n m (%compile-regsexp regsexp))))
 
-(define-rule '('REPEAT< DATUM DATUM FORM)
+(define-rule '(REPEAT< DATUM DATUM FORM)
   (lambda (n m regsexp)
     (check-repeat-args n m)
     (insn:repeat< n m (%compile-regsexp regsexp))))
@@ -164,20 +170,20 @@ USA.
 	(if (not (<= n m))
 	    (error:bad-range-argument m 'COMPILE-REGSEXP)))))
 
-(define-rule '('ALT * FORM)
+(define-rule '(ALT * FORM)
   (lambda regsexps
     (insn:alt (map %compile-regsexp regsexps))))
 
-(define-rule '('SEQ * FORM)
+(define-rule '(SEQ * FORM)
   (lambda regsexps
     (insn:seq (map %compile-regsexp regsexps))))
 
-(define-rule '('GROUP DATUM FORM)
+(define-rule '(GROUP DATUM FORM)
   (lambda (key regsexp)
     (insn:group (%compile-group-key key)
 		(%compile-regsexp regsexp))))
 
-(define-rule '('GROUP-REF DATUM)
+(define-rule '(GROUP-REF DATUM)
   (lambda (key)
     (insn:group-ref (%compile-group-key key))))
 
