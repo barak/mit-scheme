@@ -638,8 +638,10 @@ you ask for.
     operations
     environment
     (integrate/quotation expression)))
-
+
 ;; Optimize (if #f a b) => b; (if #t a b) => a
+;;   (if (let (...) t) a b) => (let (...) (if t a b))
+;;   (if (begin ... t) a b) => (begin ... (if t a b))
 
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
@@ -652,12 +654,28 @@ you ask for.
 	  (alternative (integrate/expression
 			operations environment
 			(conditional/alternative expression))))
-      (if (constant? predicate)
-	  (if (constant/value predicate)
-	      consequent
-	      alternative)
-	  (conditional/make (conditional/scode expression)
-			    predicate consequent alternative)))))
+      (let loop ((predicate predicate))
+	(cond ((constant? predicate)
+	       (if (constant/value predicate)
+		   consequent
+		   alternative))
+	      ((sequence? predicate)
+	       (sequence-with-actions
+		predicate
+		(let ((actions (reverse (sequence/actions predicate))))
+		  (reverse
+		   (cons (loop (car actions))
+			 (cdr actions))))))
+	      ((and (combination? predicate)
+		    (procedure? (combination/operator predicate)))
+	       (combination-with-operator
+		predicate
+		(procedure-with-body
+		 (combination/operator predicate)
+		 (loop (procedure/body (combination/operator predicate))))))
+	      (else
+	       (conditional/make (conditional/scode expression)
+				 predicate consequent alternative)))))))
 
 ;; Optimize (or #f a) => a; (or #t a) => #t
 
