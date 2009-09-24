@@ -70,7 +70,7 @@ long_to_integer (long number)
 bool
 integer_to_ulong_p (SCHEME_OBJECT n)
 {
-  return ((FIXNUM_P (n)) || (BIGNUM_TO_ULONG_P (n)));
+  return ((FIXNUM_P (n)) ? (!FIXNUM_NEGATIVE_P (n)) : (BIGNUM_TO_ULONG_P (n)));
 }
 
 unsigned long
