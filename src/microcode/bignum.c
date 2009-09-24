@@ -742,13 +742,13 @@ bignum_fits_in_word_p (bignum_type bignum, long word_length,
   unsigned int n_bits;
 
   if (twos_complement_p)
+    n_bits = (word_length - 1);
+  else
     {
       if (BIGNUM_NEGATIVE_P (bignum))
 	return (0);
-      n_bits = (word_length - 1);
+      n_bits = word_length;
     }
-  else
-    n_bits = word_length;
 
   BIGNUM_ASSERT (n_bits > 0);
   {
