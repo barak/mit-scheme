@@ -424,7 +424,19 @@ USA.
 (define (rename-top-level-identifier identifier)
   (if (symbol? identifier)
       identifier
-      (rename-identifier identifier (delay 0))))
+      ;; Generate an uninterned symbol here and now, rather than
+      ;; storing anything in the rename database, because we are
+      ;; creating a top-level binding for a synthetic name, which must
+      ;; be globally unique.  Using the rename database causes the
+      ;; substitution logic above to try to use an interned symbol
+      ;; with a nicer name.  The decorations on this name are just
+      ;; that -- decorations, for human legibility.  It is the use of
+      ;; an uninterned symbol that guarantees uniqueness.
+      (utf8-string->uninterned-symbol
+       (string-append "."
+		      (symbol-name (identifier->symbol identifier))
+		      "."
+		      (number->string (force (make-rename-id)))))))
 
 (define (make-name-generator)
   (let ((id (make-rename-id)))
