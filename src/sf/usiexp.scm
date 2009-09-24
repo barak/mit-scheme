@@ -351,7 +351,7 @@ USA.
       (make-combination expr block (ucode-primitive cons)
 			(list (car rest)
 			      (list-expansion-loop #f block (cdr rest))))))
-
+
 (define (values-expansion expr operands if-expanded if-not-expanded block)
   if-not-expanded
   (if-expanded
@@ -373,12 +373,18 @@ USA.
 	   (let ((variable (variable/make&bind! block 'RECEIVER)))
 	     (procedure/make
 	      #f block lambda-tag:unnamed (list variable) '() #f
-	      (combination/make #f
-				block
-				(reference/make #f block variable)
-				(map (lambda (variable)
-				       (reference/make #f block variable))
-				     variables))))))
+	      (declaration/make
+	       #f
+	       ;; The receiver is used only once, and all its operand
+	       ;; expressions are effect-free, so integrating here is
+	       ;; safe.
+	       (declarations/parse block '((INTEGRATE-OPERATOR RECEIVER)))
+	       (combination/make #f
+				 block
+				 (reference/make #f block variable)
+				 (map (lambda (variable)
+					(reference/make #f block variable))
+				      variables)))))))
 	operands)))))
 
 (define (call-with-values-expansion expr operands

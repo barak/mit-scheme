@@ -453,15 +453,23 @@ you ask for.
 	 (combination/optimizing-make
 	  expression
 	  block
-	  (if (procedure? operator)
-	      (integrate/procedure-operator operations environment
-					    block operator operands)
-	      (let ((operator
-		     (integrate/expression operations environment operator)))
-		(if (procedure? operator)
+	  (let* ((integrate-procedure
+		  (lambda (operator)
 		    (integrate/procedure-operator operations environment
-						  block operator operands)
-		    operator)))
+						  block operator operands)))
+		 (operator
+		  (if (procedure? operator)
+		      (integrate-procedure operator)
+		      (let ((operator
+			     (integrate/expression operations
+						   environment
+						   operator)))
+			(if (procedure? operator)
+			    (integrate-procedure operator)
+			    operator)))))
+	    (cond ((integrate/compound-operator operator operands)
+		   => integrate-procedure)
+		  (else operator)))
 	  operands))))
 
 (define (integrate/procedure-operator operations environment
@@ -489,6 +497,116 @@ you ask for.
 		 block))
 	  (else (error "Unknown operation" operation))))
       integration-failure)))
+
+;;; ((let ((a (foo)) (b (bar)))
+;;;    (lambda (receiver)
+;;;      ...body...))
+;;;  (lambda (x y z)
+;;;    ...))
+;;;
+;;; =>
+;;;
+;;; (let ((receiver (lambda (x y z) ...)))
+;;;   (let ((a (foo)) (b (bar)))
+;;;     ...))
+;;;
+;;; We do this transformation conservatively, only if the operands of
+;;; the original combination have no side effects, so that this
+;;; transformation does not have the consequence of committing to a
+;;; particular order of evaluation when the original program didn't
+;;; request one.  Omitting the NON-SIDE-EFFECTING? test would transform
+;;;
+;;; ((let ((a (foo)) (b (bar)))
+;;;    (lambda (x y)
+;;;      ...body...))
+;;;  (mumble)
+;;;  (frotz))
+;;;
+;;; =>
+;;;
+;;; (let ((x (mumble)) (y (frotz)))
+;;;   (let ((a (foo)) (b (bar)))
+;;;     ...body...))
+;;;
+;;; Here, the input program required that (foo) and (bar) be evaluated
+;;; in some sequence without (mumble) or (frotz) intervening, and
+;;; otherwise requested no particular order of evaluation.  The output
+;;; of the more aggressive transformation evaluates both (mumble) and
+;;; (frotz) in some sequence before evaluating (foo) and (bar) in some
+;;; sequence.
+;;;
+;;; INTEGRATE/COMPOUND-OPERATOR takes any expression (usually from an
+;;; operator position), and, if it is a nested sequence of LETs,
+;;; BEGINs, or DECLAREs followed by a LAMBDA, returns a LAMBDA that is
+;;; equivalent to the expression if used in an operator position; or
+;;; otherwise returns #F.
+
+(define (integrate/compound-operator operator operands)
+  (define (scan-body body encloser)
+    (if (procedure? body)
+	(procedure-with-body body (encloser (procedure/body body)))
+	(scan-operator body encloser)))
+  (define (scan-operator operator encloser)
+    (cond ((sequence? operator)
+	   (let ((reversed-actions (reverse (sequence/actions operator))))
+	     (scan-body (car reversed-actions)
+			(let ((commands (cdr reversed-actions)))
+			  (lambda (expression)
+			    (encloser
+			     (sequence-with-actions
+			      operator
+			      (reverse (cons expression commands)))))))))
+	  ((combination? operator)
+	   (let ((descend
+		  (lambda (operator*)
+		    (scan-body (procedure/body operator*)
+			       (lambda (body*)
+				 (encloser
+				  (combination-with-operator
+				   operator
+				   (procedure-with-body operator* body*)))))))
+		 (operator* (combination/operator operator)))
+	     (cond ((procedure? operator*) (descend operator*))
+		   ((integrate/compound-operator
+		     operator*
+		     (combination/operands operator))
+		    => descend)
+		   (else #f))))
+	  ((declaration? operator)
+	   (scan-body (declaration/expression operator)
+		      (lambda (expression)
+			(encloser
+			 (declaration-with-expression operator expression)))))
+	  (else #f)))
+  (and (for-all? operands non-side-effecting?)
+       (scan-operator operator (lambda (body) body))))
+
+(define (combination-with-operator combination operator)
+  (combination/make (combination/scode combination)
+		    (combination/block combination)
+		    operator
+		    (combination/operands combination)))
+
+(define (declaration-with-expression declaration expression)
+  (declaration/make (declaration/scode declaration)
+		    (declaration/declarations declaration)
+		    expression))
+
+(define (procedure-with-body procedure body)
+  (procedure/make (procedure/scode procedure)
+		  (procedure/block procedure)
+		  (procedure/name procedure)
+		  (procedure/required procedure)
+		  (procedure/optional procedure)
+		  (procedure/rest procedure)
+		  body))
+
+(define (sequence-with-actions sequence actions)
+  (sequence/make (sequence/scode sequence) actions))
+
+(define (non-side-effecting? expression)
+  (or (reference? expression)
+      (non-side-effecting-in-sequence? expression)))
 
 (define-method/integrate 'DECLARATION
   (lambda (operations environment declaration)
@@ -520,8 +638,10 @@ you ask for.
     operations
     environment
     (integrate/quotation expression)))
-
+
 ;; Optimize (if #f a b) => b; (if #t a b) => a
+;;   (if (let (...) t) a b) => (let (...) (if t a b))
+;;   (if (begin ... t) a b) => (begin ... (if t a b))
 
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
@@ -534,12 +654,28 @@ you ask for.
 	  (alternative (integrate/expression
 			operations environment
 			(conditional/alternative expression))))
-      (if (constant? predicate)
-	  (if (constant/value predicate)
-	      consequent
-	      alternative)
-	  (conditional/make (conditional/scode expression)
-			    predicate consequent alternative)))))
+      (let loop ((predicate predicate))
+	(cond ((constant? predicate)
+	       (if (constant/value predicate)
+		   consequent
+		   alternative))
+	      ((sequence? predicate)
+	       (sequence-with-actions
+		predicate
+		(let ((actions (reverse (sequence/actions predicate))))
+		  (reverse
+		   (cons (loop (car actions))
+			 (cdr actions))))))
+	      ((and (combination? predicate)
+		    (procedure? (combination/operator predicate)))
+	       (combination-with-operator
+		predicate
+		(procedure-with-body
+		 (combination/operator predicate)
+		 (loop (procedure/body (combination/operator predicate))))))
+	      (else
+	       (conditional/make (conditional/scode expression)
+				 predicate consequent alternative)))))))
 
 ;; Optimize (or #f a) => a; (or #t a) => #t
 
