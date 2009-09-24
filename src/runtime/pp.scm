@@ -217,7 +217,10 @@ USA.
   (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
 	      (output-port port)
 	      (*unparse-uninterned-symbols-by-name?*
-	       *pp-uninterned-symbols-by-name*))
+	       *pp-uninterned-symbols-by-name*)
+	      (*unparse-abbreviate-quotations?*
+	       (or as-code?
+		   *unparse-abbreviate-quotations?*)))
     (let* ((numerical-walk
 	    (if *pp-avoid-circularity?*
 		numerical-walk-avoid-circularities

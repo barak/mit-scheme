@@ -220,7 +220,7 @@ USA.
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF ,(equality-predicate item (cadr pattern))
+       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(single-val item) ,lose)
 	    (,lose))))))
 
@@ -229,20 +229,18 @@ USA.
     env
     (make-object-parser
      (lambda (item win lose)
-       `(IF ,(equality-predicate item (cadr pattern))
+       `(IF (,(equality-predicate (cadr pattern)) ,item ',(cadr pattern))
 	    (,win ,(null-vals) ,lose)
 	    (,lose))))))
 
-(define (equality-predicate item datum)
-  `(,(cond ((or (symbol? datum)
-		(char? datum)
-		(boolean? datum)
-		(null? datum))
-	    'EQ?)
-	   ((number? datum) 'EQV?)
-	   (else 'EQUAL?))
-    ,item
-    ',datum))
+(define (equality-predicate datum)
+  (cond ((or (symbol? datum)
+	     (char? datum)
+	     (boolean? datum)
+	     (null? datum))
+	 'EQ?)
+	((number? datum) 'EQV?)
+	(else 'EQUAL?)))
 
 (define-context-method 'VALUES 'OBJECT
   (lambda (vals)
@@ -786,8 +784,8 @@ USA.
 
 ;;;; Optimizer
 
-;;; Made easier by two facts: each bound name is unique, and we never
-;;; copy expressions.
+;;; Made easier because: (1) each bound name is unique; (2) we never
+;;; copy expressions; and (3) there are no side-effects.
 
 (define (optimize-result expr)
   (fixup-lambdas
@@ -805,7 +803,7 @@ USA.
 	     rewrite-lambda
 	     rewrite-loop
 	     (lambda (expr loop)
-	       (let ((expr (rewrite-combination expr loop)))
+	       (let ((expr (rewrite-form expr loop)))
 		 (if (syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION)
 				    (car expr))
 		     (optimize-let (cadar expr)
@@ -876,7 +874,7 @@ USA.
 		       expr))))
 	     rewrite-lambda
 	     rewrite-loop
-	     rewrite-combination))
+	     rewrite-form))
 
 (define (fixup-lambdas expr)
   (walk-expr expr
@@ -892,7 +890,7 @@ USA.
 			      names)
 		    ,body)))
 	     rewrite-loop
-	     rewrite-combination))
+	     rewrite-form))
 
 (define (peephole-optimizer expr)
   (walk-expr expr
@@ -902,7 +900,7 @@ USA.
 	     rewrite-lambda
 	     rewrite-loop
 	     (lambda (expr loop)
-	       (let ((expr (rewrite-combination expr loop)))
+	       (let ((expr (rewrite-form expr loop)))
 		 (let loop ((optimizers (get-peephole-optimizers expr)))
 		   (if (pair? optimizers)
 		       ((car optimizers) expr
@@ -926,15 +924,9 @@ USA.
 
 (define-peephole-optimizer `('CONS EXPRESSION EXPRESSION)
   (lambda (expr win lose)
-    (if (equal? (cadr expr) (null-vals))
-	(win (caddr expr))
-	(lose))))
-
-(define-peephole-optimizer `('CONS EXPRESSION EXPRESSION)
-  (lambda (expr win lose)
-    (if (equal? (caddr expr) (null-vals))
-	(win (cadr expr))
-	(lose))))
+    (cond ((equal? (cadr expr) (null-vals)) (win (caddr expr)))
+	  ((equal? (caddr expr) (null-vals)) (win (cadr expr)))
+	  (else (lose)))))
 
 (define-peephole-optimizer `('FIX:+ ,fix:fixnum? ,fix:fixnum?)
   (lambda (expr win lose)
@@ -995,6 +987,8 @@ USA.
 	   (win (cadr expr)))
 	  ((memq '#T (cdr expr))
 	   (win (delq '#T (cdr expr))))
+	  ((memq '#F (cdr expr))
+	   (win '#F))
 	  ((any (lambda (expr)
 		  (syntax-match? '('AND * EXPRESSION) expr))
 		(cdr expr))
@@ -1006,59 +1000,9 @@ USA.
 				(cdr expr)))))
 	  (else (lose)))))
 
-(define-peephole-optimizer '('AND * EXPRESSION)
-  (lambda (expr win lose)
-    (let ((test?
-	   (lambda (expr)
-	     (or (syntax-match? `('FIX:< ,fix:fixnum? EXPRESSION)
-				expr)
-		 (syntax-match? `('FIX:= ,fix:fixnum? EXPRESSION)
-				expr)))))
-      (let ((expr* (list-copy expr)))
-	(let loop1 ((exprs (cdr expr*)) (changed? #f))
-	  (cond ((find-tail test? exprs)
-		 => (lambda (tail)
-		      (let ((related-test?
-			     (lambda (expr)
-			       (and (test? expr)
-				    (equal? (caddr expr)
-					    (caddr (car tail)))))))
-			(let loop2 ((changed? changed?))
-			  (let ((other (find related-test? (cdr tail))))
-			    (if other
-				(let ((expr (resolve-tests (car tail) other)))
-				  (if expr
-				      (begin
-					(set-car! tail expr)
-					(set-cdr! tail
-						  (delq! other (cdr tail)))
-					(loop2 #t))
-				      (begin
-					(set-car! tail '#F)
-					(set-cdr! tail
-						  (remove! related-test?
-							   (cdr tail)))
-					(loop1 (cdr tail) #t))))
-				(loop1 (cdr tail) changed?)))))))
-		(changed? (win expr*))
-		(else (lose))))))))
-
-(define (resolve-tests expr expr*)
-  (if (eq? (car expr) 'FIX:=)
-      (if (if (eq? (car expr*) 'FIX:=)
-	      (fix:= (cadr expr*) (cadr expr))
-	      (fix:< (cadr expr*) (cadr expr)))
-	  expr
-	  #f)
-      (if (fix:< (cadr expr) (cadr expr*))
-	  expr*
-	  (if (eq? (car expr*) 'FIX:<)
-	      expr
-	      #f))))
-
 (define (walk-expr expr
 		   if-constant if-quote if-reference
-		   if-lambda if-loop if-combination)
+		   if-lambda if-loop if-form)
   (let loop ((expr expr))
     (cond ((syntax-match? '('LAMBDA (* SYMBOL) EXPRESSION) expr)
 	   (if-lambda expr loop))
@@ -1068,7 +1012,7 @@ USA.
 	  ((syntax-match? '('QUOTE EXPRESSION) expr)
 	   (if-quote expr))
 	  ((syntax-match? '(+ EXPRESSION) expr)
-	   (if-combination expr loop))
+	   (if-form expr loop))
 	  ((syntax-match? 'IDENTIFIER expr)
 	   (if-reference expr))
 	  (else
@@ -1095,7 +1039,7 @@ USA.
 	   (caddr expr))
      ,(loop (cadddr expr))))
 
-(define (rewrite-combination expr loop)
+(define (rewrite-form expr loop)
   (map loop expr))
 
 ;;; Edwin Variables:

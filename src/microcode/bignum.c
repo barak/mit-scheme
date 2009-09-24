@@ -425,13 +425,6 @@ bignum_remainder (bignum_type numerator, bignum_type denominator)
     }
 }
 
-/* These procedures depend on the non-portable type `unsigned long'.
-   If your compiler doesn't support this type, either define the
-   switch `BIGNUM_NO_ULONG' to disable them (in "bignum.h"), or write
-   new versions that don't use this type. */
-
-#ifndef BIGNUM_NO_ULONG
-
 bignum_type
 long_to_bignum (long n)
 {
@@ -513,6 +506,7 @@ bignum_to_ulong (bignum_type bignum)
 {
   if (BIGNUM_ZERO_P (bignum))
     return (0);
+  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (bignum));
   {
     unsigned long accumulator = 0;
     bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
@@ -522,8 +516,6 @@ bignum_to_ulong (bignum_type bignum)
     return (accumulator);
   }
 }
-
-#endif /* not BIGNUM_NO_ULONG */
 
 #define DTB_WRITE_DIGIT(n_bits) do					\
 {									\
@@ -747,7 +739,17 @@ int
 bignum_fits_in_word_p (bignum_type bignum, long word_length,
 		       int twos_complement_p)
 {
-  unsigned int n_bits = (twos_complement_p ? (word_length - 1) : word_length);
+  unsigned int n_bits;
+
+  if (twos_complement_p)
+    n_bits = (word_length - 1);
+  else
+    {
+      if (BIGNUM_NEGATIVE_P (bignum))
+	return (0);
+      n_bits = word_length;
+    }
+
   BIGNUM_ASSERT (n_bits > 0);
   {
     bignum_length_type length = (BIGNUM_LENGTH (bignum));
