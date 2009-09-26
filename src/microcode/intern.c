@@ -38,11 +38,12 @@ string_hash (uint32_t length, const char * string)
   const unsigned char * end = (scan + length);
   uint32_t result = 2166136261U;
   while (scan < end)
-    result = ((result * 16777619U) + (*scan++));
-#if (BIGGEST_FIXNUM >= 0xFFFFFFFF)
+    result = ((result * 16777619U) ^ ((uint32_t) (*scan++)));
+#if (FIXNUM_LENGTH >= 32)
   return (result);
 #else
-  return (result & ((uint32_t) BIGGEST_FIXNUM));
+  /* Shorten the result using xor-folding.  */
+  return ((result >> FIXNUM_LENGTH) ^ (result & FIXNUM_MASK));
 #endif
 }
 
