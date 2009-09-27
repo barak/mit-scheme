@@ -35,7 +35,12 @@ USA.
 (declare (usual-integrations))
 
 (define (compile-regsexp regsexp)
-  (%make-compiled-regsexp ((%compile-regsexp regsexp) %top-level-success)))
+  (bind-condition-handler (list condition-type:error)
+      (lambda (condition)
+	(signal-compile-error regsexp condition))
+    (lambda ()
+      (%make-compiled-regsexp
+       ((%compile-regsexp regsexp) %top-level-success)))))
 
 (define-record-type <compiled-regsexp>
     (%make-compiled-regsexp insn)
@@ -63,8 +68,7 @@ USA.
 	 => (lambda (rule)
 	      (apply (cdr rule) (cdr regsexp))))
 	(else
-	 (error:wrong-type-argument regsexp "regular s-expression"
-				    'COMPILE-REGSEXP))))
+	 (error "Ill-formed regular s-expression:" regsexp))))
 
 (define (%compile-char-set items)
   (scalar-values->alphabet
@@ -78,16 +82,30 @@ USA.
 		       ((string? item)
 			(map char->integer (string->list item)))
 		       (else
-			(error:wrong-type-argument item "char-set item"
-						   'COMPILE-REGSEXP))))
+			(error "Ill-formed char-set item:" item))))
 	       items)))
 
 (define (%compile-group-key key)
   (if (not (or (fix:fixnum? key)
 	       (unicode-char? key)
 	       (symbol? key)))
-      (error:wrong-type-argument key "regsexp group key" 'COMPILE-REGSEXP))
+      (error "Ill-formed regsexp group key:" key))
   key)
+
+(define condition-type:compile-regsexp
+  (make-condition-type 'COMPILE-REGSEXP condition-type:error
+      '(PATTERN CAUSE)
+    (lambda (condition port)
+      (write (access-condition condition 'PATTERN) port)
+      (write-string ": " port)
+      (write-condition-report (access-condition condition 'CAUSE) port))))
+
+(define signal-compile-error
+  (condition-signaller condition-type:compile-regsexp
+		       '(PATTERN CAUSE)
+		       standard-error-handler))
+
+;;;; Compiler rules
 
 (define (define-rule pattern compiler)
   (add-boot-init!
@@ -108,8 +126,6 @@ USA.
 	     unspecific))))))
 
 (define %compile-regsexp-rules '())
-
-;;;; Compiler rules
 
 (define-rule '(ANY-CHAR)
   (lambda ()
@@ -131,6 +147,11 @@ USA.
   (lambda items
     (insn:inverse-char-set (%compile-char-set items))))
 
+(define-rule '(LINE-START) (lambda () (insn:line-start)))
+(define-rule '(LINE-END) (lambda () (insn:line-end)))
+(define-rule '(STRING-START) (lambda () (insn:string-start)))
+(define-rule '(STRING-END) (lambda () (insn:string-end)))
+
 (define-rule '(? FORM)
   (lambda (regsexp)
     (insn:? (%compile-regsexp regsexp))))
@@ -147,11 +168,6 @@ USA.
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '(LINE-START) (lambda () (insn:line-start)))
-(define-rule '(LINE-END) (lambda () (insn:line-end)))
-(define-rule '(STRING-START) (lambda () (insn:string-start)))
-(define-rule '(STRING-END) (lambda () (insn:string-end)))
-
 (define-rule '(REPEAT> DATUM DATUM FORM)
   (lambda (n m regsexp)
     (check-repeat-args n m)
@@ -163,12 +179,17 @@ USA.
     (insn:repeat< n m (%compile-regsexp regsexp))))
 
 (define (check-repeat-args n m)
+  (if (not n)
+      (error "Repeat lower limit may not be #F"))
+  (if (not (exact-nonnegative-integer? n))
+      (error "Repeat limit must be non-negative integer:" n))
   (guarantee-exact-nonnegative-integer n 'COMPILE-REGSEXP)
   (if m
       (begin
-	(guarantee-exact-nonnegative-integer m 'COMPILE-REGSEXP)
+	(if (not (exact-nonnegative-integer? m))
+	    (error "Repeat limit must be non-negative integer:" m))
 	(if (not (<= n m))
-	    (error:bad-range-argument m 'COMPILE-REGSEXP)))))
+	    (error "Repeat upper limit greater than lower limit:" n m)))))
 
 (define-rule '(ALT * FORM)
   (lambda regsexps
@@ -306,7 +327,7 @@ USA.
 (define (insn:group-ref key)
   (lambda (succeed)
     (lambda (position groups fail)
-      ((%find-group succeed key groups) position groups fail))))
+      (((%find-group key groups) succeed) position groups fail))))
 
 (define (insn:seq insns)
   (lambda (succeed)
@@ -469,21 +490,27 @@ USA.
     (cons (list key (cadr p) position)
 	  (delq p groups))))
 
-(define (%find-group succeed key groups)
+(define (%find-group key groups)
   (let ((p (assq key groups)))
     (if (not p)
-	(error "No group with this key:" key))
-    (if (null? (cddr p))
-	(error "Reference to group appears before group's end:" key))
-    (insn:chars succeed (%group-chars (cadr p) (caddr p)))))
+	;; This can happen with (* (GROUP ...)), but in other cases it
+	;; would be an error.
+	(insn:always-succeed)
+	(begin
+	  (if (null? (cddr p))
+	      (error "Reference to group appears before group's end:" key))
+	  (insn:chars (%group-chars (cadr p) (caddr p)))))))
 
 (define (%group-chars start-position end-position)
   (let ((same? (%position-type-same? (%get-position-type start-position))))
     (let loop ((position start-position) (chars '()))
-      (if (same? start-position end-position)
+      (if (same? position end-position)
 	  (reverse! chars)
-	  (loop (next-position position)
-		(cons (next-char position) chars))))))
+	  (let ((char (next-char position)))
+	    (if (not char)
+		(error "Failure of SAME? predicate"))
+	    (loop (next-position position)
+		  (cons char chars)))))))
 
 (define (%convert-groups groups)
   (map (lambda (g)

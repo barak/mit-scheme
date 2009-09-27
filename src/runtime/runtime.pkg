@@ -4934,6 +4934,7 @@ USA.
 	  <compiled-regsexp>
 	  compile-regsexp
 	  compiled-regsexp?
+	  condition-type:compile-regsexp
 	  error:not-compiled-regsexp
 	  guarantee-compiled-regsexp
 	  regsexp-match-input-port

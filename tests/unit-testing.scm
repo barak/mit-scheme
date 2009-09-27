@@ -131,20 +131,25 @@ USA.
       (write-object-property tag p port)))
 
 (define (report-failure failure port)
-  (let ((result (failure-feature 'RESULT failure)))
-    (if result
-	(begin
-	  (write-string "value" port)
-	  (let ((expr (failure-property 'EXPRESSION failure)))
-	    (if expr
-		(write-expr-property "of" expr port)))
-	  (write-feature "was" result port)
-	  (let ((expectation (failure-feature 'EXPECTATION failure)))
-	    (if expectation
-		(write-feature "but expected" expectation port))))
-	(write-string (or (failure-property 'DESCRIPTION failure)
-			  "failed for an unknown reason")
-		      port))))
+  (cond ((failure-property 'CONDITION failure)
+	 => (lambda (p)
+	      (write-string "failed with error: " port)
+	      (write-condition-report (cdr p) port)))
+	((failure-feature 'RESULT failure)
+	 => (lambda (result)
+	      (write-string "value" port)
+	      (let ((expr (failure-property 'EXPRESSION failure)))
+		(if expr
+		    (write-expr-property "of" expr port)))
+	      (write-feature "was" result port)
+	      (let ((expectation (failure-feature 'EXPECTATION failure)))
+		(if expectation
+		    (write-feature "but expected" expectation port)))))
+	((failure-property 'DESCRIPTION failure)
+	 => (lambda (p)
+	      (write-string (cdr p) port)))
+	(else
+	 (error "Ill-formed failure:" failure))))
 
 (define-syntax define-for-tests
   (er-macro-transformer
