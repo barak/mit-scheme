@@ -87,7 +87,11 @@ USA.
 	(let ((tag (cadr tags)))
 	  (cond ((record-type? (dispatch-tag-contents tag))
 		 (standard-unparser-method
-		  (%record-type-name (dispatch-tag-contents tag))
+		  (let ((name (%record-type-name (dispatch-tag-contents tag))))
+		    (if (and (string-prefix? "<" name)
+			     (string-suffix? ">" name))
+			(substring name 1 (fix:- (string-length name) 1))
+			name))
 		  #f))
 		((eq? tag record-type-type-tag)
 		 (standard-unparser-method 'RECORD-TYPE
