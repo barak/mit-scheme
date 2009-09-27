@@ -27,145 +27,138 @@ USA.
 
 (declare (usual-integrations))
 
-(define (test-string pattern string expected)
-  (assert-equal `(match-string ',pattern ,string)
-		 (match-string pattern string)
-		 expected))
-
 (define (match-string pattern string)
   (regsexp-match-string (compile-regsexp pattern) string))
 
-(define (assert-equal expr value expected)
-  (if (not (equal? value expected))
-      (begin
-	(fluid-let ((*unparse-abbreviate-quotations?* #t))
-	  (write expr))
-	(write-string " => ")
-	(write value)
-	(write-string " but expected ")
-	(write expected)
-	(newline))))
+(define ((match-string-test pattern string expected))
+  (assert-equal (match-string pattern string)
+		expected
+		'EXPRESSION `(match-string ',pattern ,string)))
 
-(define (test-strings pattern entries)
-  (for-each (lambda (p)
-	      (test-string pattern (car p) (cadr p)))
-	    entries))
+(define (match-strings-test pattern entries)
+  (map (lambda (p)
+	 (match-string-test pattern (car p) (cadr p)))
+       entries))
 
-(define (test-no-groups pattern entries)
-  (test-strings pattern
-		(map (lambda (p)
-		       (list (car p)
-			     (and (cadr p)
-				  (list (cadr p)))))
-		     entries)))
+(define (no-groups-test pattern entries)
+  (match-strings-test pattern
+		      (map (lambda (p)
+			     (list (car p)
+				   (and (cadr p)
+					(list (cadr p)))))
+			   entries)))
 
-(define (no-groups-tester strings)
-  (lambda (pattern indices)
-    (test-no-groups pattern
-		    (map list strings indices))))
-
-(define (run-tests)
-  (test-no-groups '(any-char)
+(define-test 'any-char
+  (no-groups-test '(any-char)
 		  '(("" #f)
 		    ("a" 1)
 		    ("b" 1)
-		    ("\n" #f)))
+		    ("\n" #f))))
 
-  (test-no-groups '(* (any-char))
+(define-test '*any-char
+  (no-groups-test '(* (any-char))
 		  '(("" 0)
 		    ("a" 1)
 		    ("ab" 2)
 		    ("abc" 3)
 		    ("ab\n" 2)
-		    ("a\nb" 1)))
+		    ("a\nb" 1))))
 
-  (test-string '(seq "a" "b") "ab" '(2))
+(define-test 'simple-seq
+  (match-string-test '(seq "a" "b") "ab" '(2)))
 
-  (let ((test (no-groups-tester '("" "a" "b" "ab" "ba" "aab"))))
-    (let ((equivalents
-	   (lambda (indices . patterns)
-	     (for-each (lambda (pattern)
-			 (test pattern indices))
-		       patterns))))
+(define-test 'repeat-equivalences-test
+  (let ((equivalents
+	 (lambda (indices . patterns)
+	   (map (let ((strings '("" "a" "b" "ab" "ba" "aab")))
+		  (lambda (pattern)
+		    (no-groups-test pattern
+				    (map list
+					 strings
+					 indices))))
+		patterns))))
+    (list
+     (equivalents '(0 0 0 0 0 0)
+		  ""
+		  '(repeat> 0 0 "a")
+		  '(repeat< 0 0 "a")
+		  '(seq "" ""))
 
-      (equivalents '(0 0 0 0 0 0)
-		   ""
-		   '(repeat> 0 0 "a")
-		   '(repeat< 0 0 "a")
-		   '(seq "" ""))
+     (equivalents '(#f 1 #f 1 #f 1)
+		  "a"
+		  '(repeat> 1 1 "a")
+		  '(repeat< 1 1 "a")
+		  '(seq "a" "")
+		  '(seq "" "a"))
 
-      (equivalents '(#f 1 #f 1 #f 1)
-		   "a"
-		   '(repeat> 1 1 "a")
-		   '(repeat< 1 1 "a")
-		   '(seq "a" "")
-		   '(seq "" "a"))
+     (equivalents '(#f #f #f #f #f 2)
+		  "aa"
+		  '(repeat> 2 2 "a")
+		  '(repeat< 2 2 "a")
+		  '(seq "a" "a")
+		  '(seq "aa" "")
+		  '(seq "" "aa"))
 
-      (equivalents '(#f #f #f #f #f 2)
-		   "aa"
-		   '(repeat> 2 2 "a")
-		   '(repeat< 2 2 "a")
-		   '(seq "a" "a")
-		   '(seq "aa" "")
-		   '(seq "" "aa"))
+     (equivalents '(0 1 0 1 0 2)
+		  '(* "a")
+		  '(repeat> 0 #f "a"))
 
-      (equivalents '(0 1 0 1 0 2)
-		   '(* "a")
-		   '(repeat> 0 #f "a"))
+     (equivalents '(0 0 0 0 0 0)
+		  '(*? "a")
+		  '(repeat< 0 #f "a"))
 
-      (equivalents '(0 0 0 0 0 0)
-		   '(*? "a")
-		   '(repeat< 0 #f "a"))
+     (equivalents '(#f 1 #f 1 #f 2)
+		  '(+ "a")
+		  '(seq "a" (* "a"))
+		  '(repeat> 1 #f "a"))
 
-      (equivalents '(#f 1 #f 1 #f 2)
-		   '(+ "a")
-		   '(seq "a" (* "a"))
-		   '(repeat> 1 #f "a"))
+     (equivalents '(#f 1 #f 1 #f 1)
+		  '(+? "a")
+		  '(seq "a" (*? "a"))
+		  '(repeat< 1 #f "a"))
 
-      (equivalents '(#f 1 #f 1 #f 1)
-		   '(+? "a")
-		   '(seq "a" (*? "a"))
-		   '(repeat< 1 #f "a"))
+     (equivalents '(0 1 0 1 0 1)
+		  '(? "a")
+		  '(repeat> 0 1 "a"))
 
-      (equivalents '(0 1 0 1 0 1)
-		   '(? "a")
-		   '(repeat> 0 1 "a"))
+     (equivalents '(0 0 0 0 0 0)
+		  '(?? "a")
+		  '(repeat< 0 1 "a")))))
+
+(define-test 'more-repeat-tests
+  (list
+   (match-string-test '(seq (? "a") "a") "aab" '(2))
+   (match-string-test '(seq (? "a") "ab") "aab" '(3))
 
-      (equivalents '(0 0 0 0 0 0)
-		   '(?? "a")
-		   '(repeat< 0 1 "a"))))
+   (match-string-test '(seq (?? "a") "a") "aab" '(1))
+   (match-string-test '(seq (?? "a") "ab") "aab" '(3))
 
-  (test-string '(seq (? "a") "a") "aab" '(2))
-  (test-string '(seq (? "a") "ab") "aab" '(3))
+   (match-string-test '(repeat> 1 2 "a") "aab" '(2))
+   (match-string-test '(seq (repeat> 1 2 "a") "b") "aab" '(3))
 
-  (test-string '(seq (?? "a") "a") "aab" '(1))
-  (test-string '(seq (?? "a") "ab") "aab" '(3))
+   (match-string-test '(repeat< 1 2 "a") "aab" '(1))
+   (match-string-test '(seq (repeat< 1 2 "a") "b") "aab" '(3))
 
-  (test-string '(repeat> 1 2 "a") "aab" '(2))
-  (test-string '(seq (repeat> 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(repeat> 1 3 "a") "aaab" '(3))
+   (match-string-test '(seq (repeat> 1 3 "a") "b") "aaab" '(4))
 
-  (test-string '(repeat< 1 2 "a") "aab" '(1))
-  (test-string '(seq (repeat< 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(repeat< 1 3 "a") "aaab" '(1))
+   (match-string-test '(seq (repeat< 1 3 "a") "b") "aaab" '(4))
 
-  (test-string '(repeat> 1 3 "a") "aaab" '(3))
-  (test-string '(seq (repeat> 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(seq (group foo (? "a")) "a") "aab" '(2 (foo 0 1)))
+   (match-string-test '(seq (group foo (? "a")) "ab") "aab" '(3 (foo 0 1)))
+   (match-string-test '(seq (group foo (? "a")) "aab") "aab" '(3 (foo 0 0)))
 
-  (test-string '(repeat< 1 3 "a") "aaab" '(1))
-  (test-string '(seq (repeat< 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(seq (group foo (?? "a")) "a") "aab" '(1 (foo 0 0)))
+   (match-string-test '(seq (group foo (?? "a")) "ab") "aab" '(3 (foo 0 1)))
+   (match-string-test '(seq (group foo (?? "a")) "aab") "aab" '(3 (foo 0 0)))
 
-  (test-string '(seq (group foo (? "a")) "a") "aab" '(2 (foo 0 1)))
-  (test-string '(seq (group foo (? "a")) "ab") "aab" '(3 (foo 0 1)))
-  (test-string '(seq (group foo (? "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (* "a")) "b") "aab" '(3 (foo 0 2)))
+   (match-string-test '(seq (group foo (* "a")) "ab") "aab" '(3 (foo 0 1)))
+   (match-string-test '(seq (group foo (* "a")) "aab") "aab" '(3 (foo 0 0)))
 
-  (test-string '(seq (group foo (?? "a")) "a") "aab" '(1 (foo 0 0)))
-  (test-string '(seq (group foo (?? "a")) "ab") "aab" '(3 (foo 0 1)))
-  (test-string '(seq (group foo (?? "a")) "aab") "aab" '(3 (foo 0 0)))
+   (match-string-test '(seq (group foo (*? "a")) "b") "aab" '(3 (foo 0 2)))
+   (match-string-test '(seq (group foo (*? "a")) "ab") "aab" '(3 (foo 0 1)))
+   (match-string-test '(seq (group foo (*? "a")) "aab") "aab" '(3 (foo 0 0)))
 
-  (test-string '(seq (group foo (* "a")) "b") "aab" '(3 (foo 0 2)))
-  (test-string '(seq (group foo (* "a")) "ab") "aab" '(3 (foo 0 1)))
-  (test-string '(seq (group foo (* "a")) "aab") "aab" '(3 (foo 0 0)))
-
-  (test-string '(seq (group foo (*? "a")) "b") "aab" '(3 (foo 0 2)))
-  (test-string '(seq (group foo (*? "a")) "ab") "aab" '(3 (foo 0 1)))
-  (test-string '(seq (group foo (*? "a")) "aab") "aab" '(3 (foo 0 0)))
-  )
+   ))
