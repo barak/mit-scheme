@@ -98,18 +98,21 @@ USA.
       (error "Ill-formed regsexp group key:" key))
   key)
 
-(define condition-type:compile-regsexp
-  (make-condition-type 'COMPILE-REGSEXP condition-type:error
-      '(PATTERN CAUSE)
-    (lambda (condition port)
-      (write (access-condition condition 'PATTERN) port)
-      (write-string ": " port)
-      (write-condition-report (access-condition condition 'CAUSE) port))))
-
-(define signal-compile-error
-  (condition-signaller condition-type:compile-regsexp
-		       '(PATTERN CAUSE)
-		       standard-error-handler))
+(define condition-type:compile-regsexp)
+(define signal-compile-error)
+(define (initialize-conditions!)
+  (set! condition-type:compile-regsexp
+	(make-condition-type 'COMPILE-REGSEXP condition-type:error
+	    '(PATTERN CAUSE)
+	  (lambda (condition port)
+	    (write (access-condition condition 'PATTERN) port)
+	    (write-string ": " port)
+	    (write-condition-report (access-condition condition 'CAUSE) port))))
+  (set! signal-compile-error
+	(condition-signaller condition-type:compile-regsexp
+			     '(PATTERN CAUSE)
+			     standard-error-handler))
+  unspecific)
 
 ;;;; Compiler rules
 
