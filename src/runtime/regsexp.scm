@@ -35,24 +35,30 @@ USA.
 (declare (usual-integrations))
 
 (define (compile-regsexp regsexp)
-  (bind-condition-handler (list condition-type:error)
-      (lambda (condition)
-	(signal-compile-error regsexp condition))
-    (lambda ()
-      (%make-compiled-regsexp
-       ((%compile-regsexp regsexp) %top-level-success)))))
+  (%link-insn
+   (bind-condition-handler (list condition-type:error)
+       (lambda (condition)
+	 (signal-compile-error regsexp condition))
+     (lambda ()
+       (%compile-regsexp regsexp)))))
+
+(define (%link-insn insn)
+  (%make-compiled-regsexp
+   (insn
+    (lambda (position groups fail)
+      fail
+      (cons (get-index position)
+	    (%convert-groups groups))))))
 
 (define-record-type <compiled-regsexp>
-    (%make-compiled-regsexp insn)
+    (%make-compiled-regsexp impl)
     compiled-regsexp?
-  (insn %compiled-regsexp-insn))
+  (impl %compiled-regsexp-impl))
 
 (define-guarantee compiled-regsexp "compiled regular s-expression")
 
-(define (%top-level-success position groups fail)
-  fail
-  (cons (get-index position)
-	(%convert-groups groups)))
+(define (%top-level-match crsexp start-position)
+  ((%compiled-regsexp-impl crsexp) start-position '() (lambda () #f)))
 
 (define (%compile-regsexp regsexp)
   (cond ((unicode-char? regsexp)
@@ -534,11 +540,6 @@ USA.
 			   (if (eof-object? char)
 			       #f
 			       char)))))))
-
-(define (%top-level-match crsexp start-position)
-  ((%compiled-regsexp-insn crsexp) start-position
-				   '()
-				   (lambda () #f)))
 
 (define (%char-source->position source)
   (%make-source-position 0 (source) #f source))
