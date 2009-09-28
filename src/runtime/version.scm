@@ -30,15 +30,16 @@ USA.
 
 (define copyright-years)
 
-(define (initialize-package!)
-  (set! copyright-years
-	(let ((now 2009)
-	      (then 1986))
-	  (iota (+ (- now then) 1) then)))
-  (add-subsystem-identification! "Release" '(7 7 90 "+"))
-  (snarf-microcode-version!)
-  (add-event-receiver! event:after-restore snarf-microcode-version!)
-  (add-subsystem-identification! "Runtime" '(15 7)))
+(add-boot-init!
+ (lambda ()
+   (set! copyright-years
+	 (let ((now 2009)
+	       (then 1986))
+	   (iota (+ (- now then) 1) then)))
+   (add-subsystem-identification! "Release" '(7 7 90 "+"))
+   (snarf-microcode-version!)
+   (add-event-receiver! event:after-restore snarf-microcode-version!)
+   (add-subsystem-identification! "Runtime" '(15 7))))
 
 (define (snarf-microcode-version!)
   (add-subsystem-identification! "Microcode"

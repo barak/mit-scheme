@@ -60,8 +60,7 @@ USA.
   (parent ())
   (export ()
 	  write-mit-scheme-copyright
-	  write-mit-scheme-license)
-  (initialization (initialize-package!)))
+	  write-mit-scheme-license))
 
 (define-package (runtime bit-string)
   (files "bitstr")

@@ -202,18 +202,21 @@ USA.
   (package/environment (find-package name)))
 
 (define (package-initialization-sequence specs)
-  (let loop ((specs specs))
-    (if (pair? specs)
-	(let ((spec (car specs)))
-	  (if (or (not (pair? spec))
-		  (symbol? (car spec)))
-	      (package-initialize spec #f #t)
-	      (package-initialize (car spec)
-				  (cadr spec)
-				  (if (pair? (cddr spec))
-				      (caddr spec)
-				      #t)))
-	  (loop (cdr specs))))))
+  (do ((specs specs (cdr specs)))
+      ((not (pair? specs)) unspecific)
+    (let ((spec (car specs)))
+      (cond ((eq? (car spec) 'OPTIONAL)
+	     (package-initialize (cadr spec)
+				 (and (pair? (cddr spec))
+				      (caddr spec))
+				 #f))
+	    ((pair? (car spec))
+	     (package-initialize (car spec)
+				 (and (pair? (cdr spec))
+				      (cadr spec))
+				 #t))
+	    (else
+	     (package-initialize spec #f #t))))))
 
 (define (remember-to-purify purify? filename value)
   (if purify?
@@ -492,7 +495,7 @@ USA.
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
    (RUNTIME SIMPLE-FILE-OPS)
-   ((RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES! #f)
+   (OPTIONAL (RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES!)
    ;; Syntax
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
@@ -520,19 +523,19 @@ USA.
    ;; Graphics.  The last type initialized is the default for
    ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
    ;; operating system are actually loaded and initialized.
-   ((RUNTIME STARBASE-GRAPHICS) #f #f)
-   (RUNTIME X-GRAPHICS)
-   ((RUNTIME OS2-GRAPHICS) #f #f)
+   (OPTIONAL (RUNTIME STARBASE-GRAPHICS))
+   (OPTIONAL (RUNTIME X-GRAPHICS))
+   (OPTIONAL (RUNTIME OS2-GRAPHICS))
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
-   ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
+   (OPTIONAL (RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES!)
    (RUNTIME URI)
    (RUNTIME RFC2822-HEADERS)
    (RUNTIME HTTP-SYNTAX)
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
-   ((RUNTIME WIN32-REGISTRY) #f #f)))
+   (OPTIONAL (RUNTIME WIN32-REGISTRY))))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
