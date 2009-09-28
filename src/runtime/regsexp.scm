@@ -372,22 +372,32 @@ USA.
   (lambda (succeed)
     (%failure-chain succeed (insn succeed))))
 
+;;; The next two operations must fail when the instruction makes no
+;;; progress in a given iteration.  Otherwise patterns like (* (SEQ))
+;;; will loop forever.
+
 (define (insn:* insn)
   (lambda (succeed)
-    (define loop
-      (%failure-chain (lambda (position groups fail)
-			(linked position groups fail))
-		      succeed))
-    (define linked (insn loop))
+    (define (loop position groups fail)
+      ((%failure-chain (insn
+			(lambda (position* groups* fail*)
+			  (if (same-positions? position* position)
+			      (fail*)
+			      (loop position* groups* fail*))))
+		       succeed)
+       position groups fail))
     loop))
 
 (define (insn:*? insn)
   (lambda (succeed)
-    (define loop
-      (%failure-chain succeed
-		      (lambda (position groups fail)
-			(linked position groups fail))))
-    (define linked (insn loop))
+    (define (loop position groups fail)
+      ((%failure-chain succeed
+		       (insn
+			(lambda (position* groups* fail*)
+			  (if (same-positions? position* position)
+			      (fail*)
+			      (loop position* groups* fail*)))))
+       position groups fail))
     loop))
 
 (define (%failure-chain s1 s2)
@@ -464,6 +474,9 @@ USA.
 
 (define (next-position position)
   ((%position-type-next-position (%get-position-type position)) position))
+
+(define (same-positions? p1 p2)
+  ((%position-type-same? (%get-position-type p1)) p1 p2))
 
 (define (%get-position-type position)
   (or (find (lambda (type)
