@@ -84,50 +84,56 @@ USA.
     (list
      (equivalents '(0 0 0 0 0 0)
 		  ""
-		  '(repeat> 0 0 "a")
-		  '(repeat< 0 0 "a")
+		  '(** 0 "a")
+		  '(** 0 0 "a")
+		  '(**? 0 "a")
+		  '(**? 0 0 "a")
 		  '(seq "" ""))
 
      (equivalents '(#f 1 #f 1 #f 1)
 		  "a"
-		  '(repeat> 1 1 "a")
-		  '(repeat< 1 1 "a")
+		  '(** 1 "a")
+		  '(** 1 1 "a")
+		  '(**? 1 "a")
+		  '(**? 1 1 "a")
 		  '(seq "a" "")
 		  '(seq "" "a"))
 
      (equivalents '(#f #f #f #f #f 2)
 		  "aa"
-		  '(repeat> 2 2 "a")
-		  '(repeat< 2 2 "a")
+		  '(** 2 "a")
+		  '(** 2 2 "a")
+		  '(**? 2 "a")
+		  '(**? 2 2 "a")
 		  '(seq "a" "a")
 		  '(seq "aa" "")
 		  '(seq "" "aa"))
 
      (equivalents '(0 1 0 1 0 2)
 		  '(* "a")
-		  '(repeat> 0 #f "a"))
+		  '(** 0 #f "a"))
 
      (equivalents '(0 0 0 0 0 0)
 		  '(*? "a")
-		  '(repeat< 0 #f "a"))
+		  '(**? 0 #f "a"))
 
      (equivalents '(#f 1 #f 1 #f 2)
 		  '(+ "a")
 		  '(seq "a" (* "a"))
-		  '(repeat> 1 #f "a"))
+		  '(** 1 #f "a"))
 
      (equivalents '(#f 1 #f 1 #f 1)
 		  '(+? "a")
 		  '(seq "a" (*? "a"))
-		  '(repeat< 1 #f "a"))
+		  '(**? 1 #f "a"))
 
      (equivalents '(0 1 0 1 0 1)
 		  '(? "a")
-		  '(repeat> 0 1 "a"))
+		  '(** 0 1 "a"))
 
      (equivalents '(0 0 0 0 0 0)
 		  '(?? "a")
-		  '(repeat< 0 1 "a")))))
+		  '(**? 0 1 "a")))))
 
 (define-test 'more-repeat-tests
   (list
@@ -137,17 +143,17 @@ USA.
    (match-string-test '(seq (?? "a") "a") "aab" '(1))
    (match-string-test '(seq (?? "a") "ab") "aab" '(3))
 
-   (match-string-test '(repeat> 1 2 "a") "aab" '(2))
-   (match-string-test '(seq (repeat> 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(** 1 2 "a") "aab" '(2))
+   (match-string-test '(seq (** 1 2 "a") "b") "aab" '(3))
 
-   (match-string-test '(repeat< 1 2 "a") "aab" '(1))
-   (match-string-test '(seq (repeat< 1 2 "a") "b") "aab" '(3))
+   (match-string-test '(**? 1 2 "a") "aab" '(1))
+   (match-string-test '(seq (**? 1 2 "a") "b") "aab" '(3))
 
-   (match-string-test '(repeat> 1 3 "a") "aaab" '(3))
-   (match-string-test '(seq (repeat> 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(** 1 3 "a") "aaab" '(3))
+   (match-string-test '(seq (** 1 3 "a") "b") "aaab" '(4))
 
-   (match-string-test '(repeat< 1 3 "a") "aaab" '(1))
-   (match-string-test '(seq (repeat< 1 3 "a") "b") "aaab" '(4))
+   (match-string-test '(**? 1 3 "a") "aaab" '(1))
+   (match-string-test '(seq (**? 1 3 "a") "b") "aaab" '(4))
 
    (match-string-test '(seq (group foo (? "a")) "a") "aab" '(2 (foo 0 1)))
    (match-string-test '(seq (group foo (? "a")) "ab") "aab" '(3 (foo 0 1)))
@@ -297,39 +303,39 @@ USA.
 	       "cd"
 	       (string-end))
 	  ("aabcccd" 7 (x 0 1)))
-	 ((seq (repeat> 1 1 "a") "b")
+	 ((seq (** 1 "a") "b")
 	  "ab")
-	 ((seq (repeat> 1 #f "a") "b")
+	 ((seq (** 1 #f "a") "b")
 	  "ab")
-	 ((seq (repeat> 1 2 "a") "b")
+	 ((seq (** 1 2 "a") "b")
 	  "aab")
-	 ((seq "a" (repeat> 0 0 "b") "c")
+	 ((seq "a" (** 0 "b") "c")
 	  "ac"
 	  ("abc" #f))
-	 ((seq "a" (repeat> 0 1 "b") "c")
+	 ((seq "a" (** 0 1 "b") "c")
 	  "ac"
 	  "abc"
 	  ("abbc" #f))
-	 ((seq "a" (repeat> 0 3 "b") "c")
+	 ((seq "a" (** 0 3 "b") "c")
 	  "ac"
 	  "abc"
 	  "abbc"
 	  "abbbc"
 	  ("abbbbc" #f))
-	 ((seq "a" (repeat> 1 0 "b") "c")
+	 ((seq "a" (** 1 0 "b") "c")
 	  ("ac" pattern-error))
-	 ((seq "a" (repeat> #f 1 "b") "c")
+	 ((seq "a" (** #f 1 "b") "c")
 	  ("ac" pattern-error))
-	 ((seq "a" (repeat> 1 1 "b") "c")
+	 ((seq "a" (** 1 "b") "c")
 	  ("ac" #f)
 	  "abc")
-	 ((seq "a" (repeat> 1 3 "b") "c")
+	 ((seq "a" (** 1 3 "b") "c")
 	  ("ac" #f)
 	  "abc")
-	 ((seq "a" (repeat> 2 2 "b") "c")
+	 ((seq "a" (** 2 "b") "c")
 	  ("abc" #f)
 	  "abbc")
-	 ((seq "a" (repeat> 2 4 "b") "c")
+	 ((seq "a" (** 2 4 "b") "c")
 	  ("abcabbc" #f))
 	 ((seq "a"
 	       (? (group x "b"))
@@ -337,7 +343,7 @@ USA.
 	       (group-ref x)
 	       "d")
 	  "acd")
-	 ((seq (repeat> 0 1 "-")
+	 ((seq (** 0 1 "-")
 	       (+ (char-set "0123456789"))
 	       (string-end))
 	  "-5"))))
@@ -376,7 +382,7 @@ USA.
 	  "AabC")
 	 ((seq "a" (+ (char-set ,(char-set->alphabet char-set:upper-case))) "c")
 	  "aBCc")
-	 ((seq "a" (repeat> 20 20 (char-set "ab")))
+	 ((seq "a" (** 20 (char-set "ab")))
 	  "aaaaabaaaabaaaabaaaab")
 	 ((seq "a"
 	       (char-set "ab") (char-set "ab") (char-set "ab") (char-set "ab")
@@ -443,13 +449,13 @@ USA.
 	 ("abcdefghijklmnopqrstuv"
 	  "abcdefghijklmnopqrstuv")
 	 ((alt (seq "CC" (char-set "13") "1")
-	       (seq (repeat> 21 21 "a")
+	       (seq (** 21 "a")
 		    (char-set "23")
 		    (char-set "EO")
 		    (char-set "123")
 		    (char-set "Es")
 		    (char-set "12")
-		    (repeat> 15 15 "a")
+		    (** 15 "a")
 		    "aa"
 		    (char-set "34")
 		    (char-set "EW")

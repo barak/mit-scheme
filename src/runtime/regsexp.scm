@@ -142,11 +142,11 @@ USA.
 
 (define-rule '(+ FORM)
   (lambda (regsexp)
-    (%compile-regsexp `(REPEAT> 1 #F ,regsexp))))
+    (%compile-regsexp `(** 1 #F ,regsexp))))
 
 (define-rule '(+? FORM)
   (lambda (regsexp)
-    (%compile-regsexp `(REPEAT< 1 #F ,regsexp))))
+    (%compile-regsexp `(**? 1 #F ,regsexp))))
 
 (define-rule '(CHAR-SET * DATUM)
   (lambda items
@@ -177,28 +177,39 @@ USA.
   (lambda (regsexp)
     (insn:*? (%compile-regsexp regsexp))))
 
-(define-rule '(REPEAT> DATUM DATUM FORM)
-  (lambda (n m regsexp)
-    (check-repeat-args n m)
-    (insn:repeat> n m (%compile-regsexp regsexp))))
+(define-rule '(** DATUM FORM)
+  (lambda (n regsexp)
+    (check-repeat-1-arg n)
+    (insn:** n n (%compile-regsexp regsexp))))
 
-(define-rule '(REPEAT< DATUM DATUM FORM)
-  (lambda (n m regsexp)
-    (check-repeat-args n m)
-    (insn:repeat< n m (%compile-regsexp regsexp))))
+(define-rule '(**? DATUM FORM)
+  (lambda (n regsexp)
+    (check-repeat-1-arg n)
+    (insn:**? n n (%compile-regsexp regsexp))))
 
-(define (check-repeat-args n m)
-  (if (not n)
-      (error "Repeat lower limit may not be #F"))
+(define (check-repeat-1-arg n)
+  (if (not (exact-nonnegative-integer? n))
+      (error "Repeat limit must be non-negative integer:" n)))
+
+(define-rule '(** DATUM DATUM FORM)
+  (lambda (n m regsexp)
+    (check-repeat-2-args n m)
+    (insn:** n m (%compile-regsexp regsexp))))
+
+(define-rule '(**? DATUM DATUM FORM)
+  (lambda (n m regsexp)
+    (check-repeat-2-args n m)
+    (insn:**? n m (%compile-regsexp regsexp))))
+
+(define (check-repeat-2-args n m)
   (if (not (exact-nonnegative-integer? n))
       (error "Repeat limit must be non-negative integer:" n))
-  (guarantee-exact-nonnegative-integer n 'COMPILE-REGSEXP)
   (if m
       (begin
 	(if (not (exact-nonnegative-integer? m))
 	    (error "Repeat limit must be non-negative integer:" m))
 	(if (not (<= n m))
-	    (error "Repeat upper limit greater than lower limit:" n m)))))
+	    (error "Repeat lower limit greater than upper limit:" n m)))))
 
 (define-rule '(ALT * FORM)
   (lambda regsexps
@@ -385,11 +396,23 @@ USA.
 	groups
 	(lambda () (s2 position groups fail)))))
 
-(define (insn:repeat> n m insn)
-  (%repeat n m insn %repeat>-limited insn:*))
+(define (insn:** n m insn)
+  (%repeat n m insn
+	   (lambda (limit insn)
+	     (%hybrid-chain limit
+			    (lambda (succeed)
+			      (lambda (continue)
+				(%failure-chain (insn continue) succeed)))))
+	   insn:*))
 
-(define (insn:repeat< n m insn)
-  (%repeat n m insn %repeat<-limited insn:*?))
+(define (insn:**? n m insn)
+  (%repeat n m insn
+	   (lambda (limit insn)
+	     (%hybrid-chain limit
+			    (lambda (succeed)
+			      (lambda (continue)
+				(%failure-chain succeed (insn continue))))))
+	   insn:*?))
 
 (define (%repeat n m insn repeat-limited repeat-unlimited)
   (let ((insn1 (%repeat-exactly n insn))
@@ -405,18 +428,6 @@ USA.
 		 (lambda (succeed)
 		   succeed
 		   insn)))
-
-(define (%repeat>-limited limit insn)
-  (%hybrid-chain limit
-		 (lambda (succeed)
-		   (lambda (continue)
-		     (%failure-chain (insn continue) succeed)))))
-
-(define (%repeat<-limited limit insn)
-  (%hybrid-chain limit
-		 (lambda (succeed)
-		   (lambda (continue)
-		     (%failure-chain succeed (insn continue))))))
 
 (define (%hybrid-chain limit linker)
   (if (<= limit 8)
