@@ -29,7 +29,7 @@ USA.
 
 (define (run-unit-tests filename/s #!optional environment)
   (report-results
-   (map run-test
+   (map run-test-definition
 	(load-unit-tests filename/s environment))))
 
 (define (load-unit-tests filename/s #!optional environment)
@@ -43,6 +43,7 @@ USA.
       (reverse! *registered-tests*))))
 
 (define (register-test name test)
+  (guarantee-test test 'ADD-TEST-DEFINITION)
   (set! *registered-tests* (cons (cons name test) *registered-tests*))
   unspecific)
 
@@ -63,32 +64,91 @@ USA.
 
 (define test-definitions '())
 
-(define (report-results results)
-  (let ((port (notification-output-port)))
-    (for-each (lambda (result)
-		(write (car result) port)
-		(write-string ": " port)
-		(cond ((not (cdr result))
-		       (write-string "passed" port))
-		      ((failure? (cdr result))
-		       (report-failure (cdr result) port))
-		      (else
-		       (error "Ill-formed result:" result)))
-		(newline port))
-	      results))
-  ;; Value is true iff all tests passed.
-  (every (lambda (result)
-	   (not (cdr result)))
-	 results))
+(define (test? object)
+  (or (thunk? object)
+      (list-of-type? object test?)))
 
-(define (run-test test)
-  (cons (car test)
-	(call-with-current-continuation
-	 (lambda (k)
-	   (bind-condition-handler (list condition-type:error)
-	       (lambda (condition)
-		 (k (make-failure 'CONDITION condition)))
-	     (cdr test))))))
+(define-guarantee test "test")
+
+(define (run-test-definition td)
+  ;; Runs sub-tests in left-to-right order.
+  (cons (car td)
+	(reverse!
+	 (let loop ((test (cdr td)) (name "") (results '()))
+	   (if (thunk? test)
+	       (cons (cons name (run-test-thunk test))
+		     results)
+	       (do ((tests test (cdr tests))
+		    (index 0 (+ index 1))
+		    (results results
+			     (loop (car tests)
+				   (string name "." index)
+				   results)))
+		   ((not (pair? tests)) results)))))))
+
+(define (run-test-thunk thunk)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:error)
+	 (lambda (condition)
+	   (k (make-failure 'CONDITION condition)))
+       thunk))))
+
+(define (report-results results)
+  (fold (lambda (a b) (and a b))
+	#t
+	(let ((port (notification-output-port)))
+	  (map (lambda (result)
+		 (report-result-group (car result) (cdr result) port))
+	       results))))
+
+(define (report-result-group name sub-test-results port)
+  (let ((n-sub-tests (length sub-test-results)))
+    (cond ((> n-sub-tests 1)
+	   (let ((n-failed (count cdr sub-test-results)))
+	     (write name port)
+	     (write-string ": " port)
+	     (if (> n-failed 0)
+		 (begin
+		   (write-string "failed " port)
+		   (write n-failed port)
+		   (write-string " sub-tests out of " port)
+		   (write n-sub-tests port)
+		   (write-string ":" port)
+		   (newline port)
+		   (for-each
+		    (lambda (sub-test-result)
+		      (if (cdr sub-test-result)
+			  (begin
+			    (write-string "    " port)
+			    (report-sub-test-result (car sub-test-result)
+						    (cdr sub-test-result)
+						    port))))
+		    sub-test-results))
+		 (begin
+		   (write-string "passed " port)
+		   (write n-sub-tests port)
+		   (write-string " sub-tests" port)
+		   (newline port)))))
+	  ((> n-sub-tests 0)
+	   (report-sub-test-result name
+				   (cdar sub-test-results)
+				   port))))
+  ;; Value is true iff all tests passed.
+  (every (lambda (n+r)
+	   (not (cdr n+r)))
+	 sub-test-results))
+
+(define (report-sub-test-result name failure port)
+  (write name port)
+  (write-string ": " port)
+  (cond ((not failure)
+	 (write-string "passed" port))
+	((failure? failure)
+	 (report-failure failure port))
+	(else
+	 (error "Ill-formed failure:" failure)))
+  (newline port))
 
 (define-record-type <failure>
     (%make-failure alist)
@@ -161,15 +221,11 @@ USA.
 	 (,(rename 'DEFINE) ,name ,value)
 	 (,(rename 'ADD-TEST-DEFINITION) ',name ,name))))))
 
-(define-for-tests (define-test name . tests)
-  (let ((tests (flatten tests)))
-    (if (pair? tests)
-	(if (pair? (cdr tests))
-	    (for-each (lambda (test index)
-			(register-test (symbol name '/ index) test))
-		      tests
-		      (iota (length tests)))
-	    (register-test name (car tests)))))
+(define-for-tests (define-test name test . tests)
+  (register-test name
+		 (if (null? tests)
+		     test
+		     (cons test tests)))
   name)
 
 (define (flatten tests)
