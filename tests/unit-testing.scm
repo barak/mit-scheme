@@ -131,7 +131,7 @@ USA.
 		   (write-string " sub-tests" port)
 		   (newline port)))))
 	  ((> n-sub-tests 0)
-	   (report-sub-test-result name
+	   (report-sub-test-result (write-to-string name)
 				   (cdar sub-test-results)
 				   port))))
   ;; Value is true iff all tests passed.
@@ -140,7 +140,7 @@ USA.
 	 sub-test-results))
 
 (define (report-sub-test-result name failure port)
-  (write name port)
+  (write-string name port)
   (write-string ": " port)
   (cond ((not failure)
 	 (write-string "passed" port))
