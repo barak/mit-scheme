@@ -75,16 +75,20 @@ USA.
   (cons (car td)
 	(reverse!
 	 (let loop ((test (cdr td)) (name "") (results '()))
-	   (if (thunk? test)
-	       (cons (cons name (run-test-thunk test))
-		     results)
-	       (do ((tests test (cdr tests))
-		    (index 0 (+ index 1))
-		    (results results
-			     (loop (car tests)
-				   (string name "." index)
-				   results)))
-		   ((not (pair? tests)) results)))))))
+	   (cond ((thunk? test)
+		  (cons (cons name (run-test-thunk test))
+			results))
+		 ((and (pair? test)
+		       (null? (cdr test)))
+		  (loop (car test) name results))
+		 (else
+		  (do ((tests test (cdr tests))
+		       (index 0 (+ index 1))
+		       (results results
+				(loop (car tests)
+				      (string name "." index)
+				      results)))
+		      ((not (pair? tests)) results))))))))
 
 (define (run-test-thunk thunk)
   (call-with-current-continuation
