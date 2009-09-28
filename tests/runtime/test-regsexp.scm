@@ -36,7 +36,7 @@ USA.
 	(if (and (eq? expected 'PATTERN-ERROR)
 		 (condition-of-type? result condition-type:compile-regsexp))
 	    #f
-	    (signal-condition condition))
+	    (signal-condition result))
 	(assert-equal result
 		      expected
 		      'EXPRESSION `(match-string ',pattern ,string)))))
