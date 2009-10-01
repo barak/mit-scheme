@@ -218,7 +218,7 @@ USA.
 		      (cond ((exact-integer? x) (< 0 x))
 			    ((real? x) (< 1 x))
 			    (else #f)))
-		    "real number < 1 or exact integer >= 1"
+		    "real number > 1 or exact integer >= 1"
 		    'SET-HASH-TABLE/REHASH-SIZE!)))
     (with-table-locked! table
       (lambda ()
