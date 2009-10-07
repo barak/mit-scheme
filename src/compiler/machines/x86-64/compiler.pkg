@@ -1,0 +1,763 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; Compiler Packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../sf/sf")
+
+(define-package (compiler)
+  (files "base/switch"
+	 "base/object"			;tagged object support
+	 "base/enumer"			;enumerations
+	 "base/sets"			;set abstraction
+	 "base/mvalue"			;multiple-value support
+	 "base/scode"			;SCode abstraction
+	 "machines/i386/machin"		;machine dependent stuff
+	 "back/asutl"			;back-end odds and ends
+	 "base/utils"			;odds and ends
+
+	 "base/cfg1"			;control flow graph
+	 "base/cfg2"
+	 "base/cfg3"
+
+	 "base/ctypes"			;CFG datatypes
+
+	 "base/rvalue"			;Right hand values
+	 "base/lvalue"			;Left hand values
+	 "base/blocks"			;rvalue: blocks
+	 "base/proced"			;rvalue: procedures
+	 "base/contin"			;rvalue: continuations
+
+	 "base/subprb"			;subproblem datatype
+
+	 "rtlbase/rgraph"		;program graph abstraction
+	 "rtlbase/rtlty1"		;RTL: type definitions
+	 "rtlbase/rtlty2"		;RTL: type definitions
+	 "rtlbase/rtlexp"		;RTL: expression operations
+	 "rtlbase/rtlcon"		;RTL: complex constructors
+	 "rtlbase/rtlreg"		;RTL: registers
+	 "rtlbase/rtlcfg"		;RTL: CFG types
+	 "rtlbase/rtlobj"		;RTL: CFG objects
+	 "rtlbase/regset"		;RTL: register sets
+	 "rtlbase/valclass"		;RTL: value classes
+
+	 "back/insseq"			;LAP instruction sequences
+	 )
+  (parent ())
+  (export ()
+	  compiler:analyze-side-effects?
+	  compiler:cache-free-variables?
+	  compiler:coalescing-constant-warnings?
+	  compiler:code-compression?
+	  compiler:compile-by-procedures?
+	  compiler:cross-compiling?
+	  compiler:cse?
+	  compiler:default-top-level-declarations
+	  compiler:enable-integration-declarations?
+	  compiler:generate-lap-files?
+	  compiler:generate-range-checks?
+	  compiler:generate-rtl-files?
+	  compiler:generate-stack-checks?
+	  compiler:generate-type-checks?
+	  compiler:implicit-self-static?
+	  compiler:intersperse-rtl-in-lap?
+	  compiler:noisy?
+	  compiler:open-code-floating-point-arithmetic?
+	  compiler:open-code-flonum-checks?
+	  compiler:open-code-primitives?
+	  compiler:optimize-environments?
+	  compiler:package-optimization-level
+	  compiler:preserve-data-structures?
+	  compiler:show-phases?
+	  compiler:show-procedures?
+	  compiler:show-subphases?
+	  compiler:show-time-reports?
+	  compiler:use-multiclosures?)
+  (import (runtime system-macros)
+	  ucode-primitive
+	  ucode-type)
+  (import ()
+	  (scode/access-components access-components)
+	  (scode/access-environment access-environment)
+	  (scode/access-name access-name)
+	  (scode/access? access?)
+	  (scode/assignment-components assignment-components)
+	  (scode/assignment-name assignment-name)
+	  (scode/assignment-value assignment-value)
+	  (scode/assignment? assignment?)
+	  (scode/combination-components combination-components)
+	  (scode/combination-operands combination-operands)
+	  (scode/combination-operator combination-operator)
+	  (scode/combination? combination?)
+	  (scode/comment-components comment-components)
+	  (scode/comment-expression comment-expression)
+	  (scode/comment-text comment-text)
+	  (scode/comment? comment?)
+	  (scode/conditional-alternative conditional-alternative)
+	  (scode/conditional-components conditional-components)
+	  (scode/conditional-consequent conditional-consequent)
+	  (scode/conditional-predicate conditional-predicate)
+	  (scode/conditional? conditional?)
+	  (scode/constant? scode-constant?)
+	  (scode/declaration-components declaration-components)
+	  (scode/declaration-expression declaration-expression)
+	  (scode/declaration-text declaration-text)
+	  (scode/declaration? declaration?)
+	  (scode/definition-components definition-components)
+	  (scode/definition-name definition-name)
+	  (scode/definition-value definition-value)
+	  (scode/definition? definition?)
+	  (scode/delay-components delay-components)
+	  (scode/delay-expression delay-expression)
+	  (scode/delay? delay?)
+	  (scode/disjunction-alternative disjunction-alternative)
+	  (scode/disjunction-components disjunction-components)
+	  (scode/disjunction-predicate disjunction-predicate)
+	  (scode/disjunction? disjunction?)
+	  (scode/lambda-components lambda-components)
+	  (scode/lambda? lambda?)
+	  (scode/make-access make-access)
+	  (scode/make-assignment make-assignment)
+	  (scode/make-combination make-combination)
+	  (scode/make-comment make-comment)
+	  (scode/make-conditional make-conditional)
+	  (scode/make-declaration make-declaration)
+	  (scode/make-definition make-definition)
+	  (scode/make-delay make-delay)
+	  (scode/make-disjunction make-disjunction)
+	  (scode/make-lambda make-lambda)
+	  (scode/make-open-block make-open-block)
+	  (scode/make-quotation make-quotation)
+	  (scode/make-sequence make-sequence)
+	  (scode/make-the-environment make-the-environment)
+	  (scode/make-unassigned? make-unassigned?)
+	  (scode/make-variable make-variable)
+	  (scode/open-block-components open-block-components)
+	  (scode/open-block? open-block?)
+	  (scode/primitive-procedure? primitive-procedure?)
+	  (scode/procedure? procedure?)
+	  (scode/quotation-expression quotation-expression)
+	  (scode/quotation? quotation?)
+	  (scode/sequence-actions sequence-actions)
+	  (scode/sequence-components sequence-components)
+	  (scode/sequence? sequence?)
+	  (scode/symbol? symbol?)
+	  (scode/the-environment? the-environment?)
+	  (scode/unassigned?-name unassigned?-name)
+	  (scode/unassigned?? unassigned??)
+	  (scode/variable-components variable-components)
+	  (scode/variable-name variable-name)
+	  (scode/variable? variable?)))
+
+(define-package (compiler reference-contexts)
+  (files "base/refctx")
+  (parent (compiler))
+  (export (compiler)
+	  add-reference-context/adjacent-parents!
+	  initialize-reference-contexts!
+	  make-reference-context
+	  modify-reference-contexts!
+	  reference-context/adjacent-parent?
+	  reference-context/block
+	  reference-context/offset
+	  reference-context/procedure
+	  reference-context?
+	  set-reference-context/offset!))
+
+(define-package (compiler macros)
+  (files "base/macros")
+  (parent (compiler))
+  (export (compiler)
+	  cfg-node-case
+	  define-enumeration
+	  define-export
+	  define-lvalue
+	  define-pnode
+	  define-root-type
+	  define-rtl-expression
+	  define-rtl-predicate
+	  define-rtl-statement
+	  define-rule
+	  define-rvalue
+	  define-snode
+	  define-vector-slots
+	  descriptor-list
+	  enumeration-case
+	  inst-ea
+	  lap
+	  last-reference
+	  make-lvalue
+	  make-pnode
+	  make-rvalue
+	  make-snode
+	  package
+	  rule-matcher))
+
+(define-package (compiler declarations)
+  (files "machines/i386/decls")
+  (parent (compiler))
+  (export (compiler)
+	  sc
+	  syntax-files!)
+  (import (scode-optimizer top-level)
+	  sf/internal)
+  (initialization (initialize-package!)))
+
+(define-package (compiler top-level)
+  (files "base/toplev"
+	 "base/crstop"
+	 "base/asstop")
+  (parent (compiler))
+  (export ()
+	  cbf
+	  cf
+	  compile-bin-file
+	  compile-file
+	  compile-file:force?
+	  compile-file:override-usual-integrations
+	  compile-file:sf-only?
+	  compile-procedure
+	  compile-scode
+	  compiler:compiled-code-pathname-type
+	  compiler:reset!
+	  lap->code)
+  (export (compiler)
+	  canonicalize-label-name)
+  (export (compiler fg-generator)
+	  compile-recursively)
+  (export (compiler rtl-generator)
+	  *ic-procedure-headers*
+	  *rtl-continuations*
+	  *rtl-expression*
+	  *rtl-graphs*
+	  *rtl-procedures*)
+  (export (compiler lap-syntaxer)
+	  *block-label*
+	  *external-labels*
+	  label->object)
+  (export (compiler debug)
+	  *root-expression*
+	  *rtl-procedures*
+	  *rtl-graphs*)
+  (import (runtime compiler-info)
+	  make-dbg-info-vector
+	  split-inf-structure!)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
+
+(define-package (compiler debug)
+  (files "base/debug")
+  (parent (compiler))
+  (export ()
+	  debug/find-continuation
+	  debug/find-entry-node
+	  debug/find-procedure
+	  debug/where
+	  dump-rtl
+	  po
+	  show-bblock-rtl
+	  show-fg
+	  show-fg-node
+	  show-rtl
+	  write-rtl-instructions)
+  (import (runtime pretty-printer)
+	  *pp-primitives-by-name*)
+  (import (runtime unparser)
+	  *unparse-uninterned-symbols-by-name?*))
+
+(define-package (compiler pattern-matcher/lookup)
+  (files "base/pmlook")
+  (parent (compiler))
+  (export (compiler)
+	  make-pattern-variable
+	  pattern-lookup
+	  pattern-lookup-1
+	  pattern-variable-name
+	  pattern-variable?
+	  pattern-variables))
+
+(define-package (compiler pattern-matcher/parser)
+  (files "base/pmpars")
+  (parent (compiler))
+  (export (compiler)
+	  make-rule-matcher
+	  parse-rule
+	  rule->matcher
+	  rule-result-expression)
+  (export (compiler macros)
+	  make-rule-matcher
+	  parse-rule
+	  rule->matcher
+	  rule-result-expression))
+
+(define-package (compiler pattern-matcher/early)
+  (files  "base/pmerly")
+  (parent (compiler))
+  (export (compiler)
+	  early-parse-rule
+	  early-pattern-lookup
+	  early-make-rule
+	  make-database-transformer
+	  make-symbol-transformer
+	  make-bit-mask-transformer))
+
+(define-package (compiler debugging-information)
+  (files "base/infnew")
+  (parent (compiler))
+  (export (compiler top-level)
+	  info-generation-phase-1
+	  info-generation-phase-2
+	  info-generation-phase-3)
+  (export (compiler rtl-generator)
+	  generated-dbg-continuation)
+  (import (runtime compiler-info)
+	  make-dbg-info
+
+	  make-dbg-expression
+	  dbg-expression/block
+	  dbg-expression/label
+	  set-dbg-expression/label!
+
+	  make-dbg-procedure
+	  dbg-procedure/block
+	  dbg-procedure/label
+	  set-dbg-procedure/label!
+	  dbg-procedure/name
+	  dbg-procedure/required
+	  dbg-procedure/optional
+	  dbg-procedure/rest
+	  dbg-procedure/auxiliary
+	  dbg-procedure/external-label
+	  set-dbg-procedure/external-label!
+	  dbg-procedure<?
+
+	  make-dbg-continuation
+	  dbg-continuation/block
+	  dbg-continuation/label
+	  set-dbg-continuation/label!
+	  dbg-continuation<?
+
+	  make-dbg-block
+	  dbg-block/parent
+	  dbg-block/layout
+	  dbg-block/stack-link
+	  set-dbg-block/procedure!
+
+	  make-dbg-variable
+	  dbg-variable/value
+	  set-dbg-variable/value!
+
+	  dbg-block-name/dynamic-link
+	  dbg-block-name/ic-parent
+	  dbg-block-name/normal-closure
+	  dbg-block-name/return-address
+	  dbg-block-name/static-link
+
+	  make-dbg-label-2
+	  dbg-label/offset
+	  set-dbg-label/external?!))
+
+(define-package (compiler constraints)
+   (files "base/constr")
+   (parent (compiler))
+   (export (compiler)
+	   make-constraint
+	   constraint/element
+	   constraint/graph-head
+	   constraint/afters
+	   constraint/closed?
+	   constraint-add!
+	   add-constraint-element!
+	   add-constraint-set!
+	   make-constraint-graph
+	   constraint-graph/entry-nodes
+	   constraint-graph/closed?
+	   close-constraint-graph!
+	   close-constraint-node!
+	   order-per-constraints
+	   order-per-constraints/extracted
+	   legal-ordering-per-constraints?
+	   with-new-constraint-marks
+	   constraint-marked?
+	   constraint-mark!
+	   transitively-close-dag!
+	   reverse-postorder))
+
+(define-package (compiler fg-generator)
+  (files "fggen/canon"			;SCode canonicalizer
+	 "fggen/fggen"			;SCode->flow-graph converter
+	 "fggen/declar"			;Declaration handling
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  canonicalize/top-level
+	  construct-graph)
+  (import (runtime scode-data)
+	  &pair-car
+	  &pair-cdr
+	  &triple-first
+	  &triple-second
+	  &triple-third))
+
+(define-package (compiler fg-optimizer)
+  (files "fgopt/outer"			;outer analysis
+	 "fgopt/sideff"			;side effect analysis
+	 )
+  (parent (compiler))
+  (export (compiler top-level)
+	  clear-call-graph!
+	  compute-call-graph!
+	  outer-analysis
+	  side-effect-analysis))
+
+(define-package (compiler fg-optimizer fold-constants)
+  (files "fgopt/folcon")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) fold-constants))
+
+(define-package (compiler fg-optimizer operator-analysis)
+  (files "fgopt/operan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) operator-analysis))
+
+(define-package (compiler fg-optimizer variable-indirection)
+  (files "fgopt/varind")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) initialize-variable-indirections!))
+
+(define-package (compiler fg-optimizer environment-optimization)
+  (files "fgopt/envopt")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) optimize-environments!))
+
+(define-package (compiler fg-optimizer closure-analysis)
+  (files "fgopt/closan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) identify-closure-limits!))
+
+(define-package (compiler fg-optimizer continuation-analysis)
+  (files "fgopt/contan")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level)
+	  continuation-analysis
+	  setup-block-static-links!))
+
+(define-package (compiler fg-optimizer compute-node-offsets)
+  (files "fgopt/offset")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) compute-node-offsets))
+
+(define-package (compiler fg-optimizer connectivity-analysis)
+  (files "fgopt/conect")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) connectivity-analysis))
+
+(define-package (compiler fg-optimizer delete-integrated-parameters)
+  (files "fgopt/delint")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) delete-integrated-parameters))
+
+(define-package (compiler fg-optimizer design-environment-frames)
+  (files "fgopt/desenv")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) design-environment-frames!))
+
+(define-package (compiler fg-optimizer setup-block-types)
+  (files "fgopt/blktyp")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level)
+	  setup-block-types!
+	  setup-closure-contexts!)
+  (export (compiler)
+	  indirection-block-procedure))
+
+(define-package (compiler fg-optimizer simplicity-analysis)
+  (files "fgopt/simple")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) simplicity-analysis)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  new-subproblem/compute-simplicity!))
+
+(define-package (compiler fg-optimizer simulate-application)
+  (files "fgopt/simapp")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) simulate-application))
+
+(define-package (compiler fg-optimizer subproblem-free-variables)
+  (files "fgopt/subfre")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) compute-subproblem-free-variables)
+  (export (compiler fg-optimizer) map-union)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  new-subproblem/compute-free-variables!))
+
+(define-package (compiler fg-optimizer subproblem-ordering)
+  (files "fgopt/order")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) subproblem-ordering))
+
+(define-package (compiler fg-optimizer subproblem-ordering reuse-frames)
+  (files "fgopt/reord" "fgopt/reuse")
+  (parent (compiler fg-optimizer subproblem-ordering))
+  (export (compiler top-level) setup-frame-adjustments)
+  (export (compiler fg-optimizer subproblem-ordering)
+	  order-subproblems/maybe-overwrite-block))
+
+(define-package (compiler fg-optimizer subproblem-ordering parameter-analysis)
+   (files "fgopt/param")
+   (parent (compiler fg-optimizer subproblem-ordering))
+   (export (compiler fg-optimizer subproblem-ordering)
+	   parameter-analysis))
+
+(define-package (compiler fg-optimizer return-equivalencing)
+  (files "fgopt/reteqv")
+  (parent (compiler fg-optimizer))
+  (export (compiler top-level) find-equivalent-returns!))
+
+(define-package (compiler rtl-generator)
+  (files "rtlgen/rtlgen"		;RTL generator
+	 "rtlgen/rgstmt"		;statements
+	 "rtlgen/fndvar"		;find variables
+	 "machines/i386/rgspcm"		;special close-coded primitives
+	 "rtlbase/rtline"		;linearizer
+	 )
+  (parent (compiler))
+  (export (compiler)
+	  make-linearizer)
+  (export (compiler top-level)
+	  generate/top-level
+	  linearize-rtl
+	  setup-bblock-continuations!)
+  (export (compiler debug)
+	  linearize-rtl)
+  (import (compiler top-level)
+	  label->object))
+
+(define-package (compiler rtl-generator generate/procedure-header)
+  (files "rtlgen/rgproc")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator) generate/procedure-header))
+
+(define-package (compiler rtl-generator combination/inline)
+  (files "rtlgen/opncod")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator) combination/inline)
+  (export (compiler top-level) open-coding-analysis))
+
+(define-package (compiler rtl-generator find-block)
+  (files "rtlgen/fndblk")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator) find-block))
+
+(define-package (compiler rtl-generator generate/rvalue)
+  (files "rtlgen/rgrval")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  generate/rvalue
+	  load-closure-environment
+	  make-cons-closure-indirection
+	  make-cons-closure-redirection
+	  make-closure-redirection
+	  make-ic-cons
+	  make-non-trivial-closure-cons
+	  make-trivial-closure-cons
+	  redirect-closure))
+
+(define-package (compiler rtl-generator generate/combination)
+  (files "rtlgen/rgcomb")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  generate/combination
+	  rtl:bump-closure)
+  (export (compiler rtl-generator combination/inline)
+	  generate/invocation-prefix))
+
+(define-package (compiler rtl-generator generate/return)
+  (files "rtlgen/rgretn")
+  (parent (compiler rtl-generator))
+  (export (compiler rtl-generator)
+	  make-return-operand
+	  generate/return
+	  generate/return*
+	  generate/trivial-return))
+
+(define-package (compiler rtl-cse)
+  (files "rtlopt/rcse1"			;RTL common subexpression eliminator
+	 "rtlopt/rcse2"
+	 "rtlopt/rcseep"		;CSE expression predicates
+	 "rtlopt/rcseht"		;CSE hash table
+	 "rtlopt/rcserq"		;CSE register/quantity abstractions
+	 "rtlopt/rcsesr"		;CSE stack references
+	 )
+  (parent (compiler))
+  (export (compiler top-level) common-subexpression-elimination))
+
+(define-package (compiler rtl-optimizer)
+  (files "rtlopt/rdebug")
+  (parent (compiler)))
+
+(define-package (compiler rtl-optimizer invertible-expression-elimination)
+  (files "rtlopt/rinvex")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) invertible-expression-elimination))
+
+(define-package (compiler rtl-optimizer common-suffix-merging)
+  (files "rtlopt/rtlcsm")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) merge-common-suffixes!))
+
+(define-package (compiler rtl-optimizer rtl-dataflow-analysis)
+  (files "rtlopt/rdflow")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) rtl-dataflow-analysis))
+
+(define-package (compiler rtl-optimizer rtl-rewriting)
+  (files "rtlopt/rerite")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level)
+	  rtl-rewriting:post-cse
+	  rtl-rewriting:pre-cse)
+  (export (compiler lap-syntaxer)
+	  add-rewriting-rule!
+	  add-pre-cse-rewriting-rule!))
+
+(define-package (compiler rtl-optimizer lifetime-analysis)
+  (files "rtlopt/rlife")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) lifetime-analysis)
+  (export (compiler rtl-optimizer code-compression) mark-set-registers!))
+
+(define-package (compiler rtl-optimizer code-compression)
+  (files "rtlopt/rcompr")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) code-compression))
+
+(define-package (compiler rtl-optimizer register-allocation)
+  (files "rtlopt/ralloc")
+  (parent (compiler rtl-optimizer))
+  (export (compiler top-level) register-allocation))
+
+(define-package (compiler lap-syntaxer)
+  (files "back/lapgn1"			;LAP generator
+	 "back/lapgn2"			; "      "
+	 "back/lapgn3"			; "      "
+	 "back/regmap"			;Hardware register allocator
+	 "machines/i386/lapgen"		;code generation rules
+	 "machines/i386/rules1"		;  "      "        "
+	 "machines/i386/rules2"		;  "      "        "
+	 "machines/i386/rules3"		;  "      "        "
+	 "machines/i386/rules4"		;  "      "        "
+	 "machines/i386/rulfix"		;  "      "        "
+	 "machines/i386/rulflo"		;  "      "        "
+	 "machines/i386/rulrew"		;code rewriting rules
+	 "back/syntax"			;Generic syntax phase
+	 "back/syerly"			;Early binding version
+	 "machines/i386/coerce"		;Coercions: integer -> bit string
+	 "back/asmmac"			;Macros for hairy syntax
+	 "machines/i386/insmac"		;Macros for hairy syntax
+	 "machines/i386/insutl"		;i386 instruction utilities
+	 "machines/i386/instr1"		;i386 instructions
+	 "machines/i386/instr2"		;  "        "
+	 "machines/i386/instrf"		;i387/i486 fp instructions
+	 )
+  (parent (compiler))
+  (export (compiler)
+	  available-machine-registers
+	  lap-generator/match-rtl-instruction
+	  lap:make-entry-point
+	  lap:make-label-statement
+	  lap:make-unconditional-branch
+	  lap:syntax-instruction)
+  (export (compiler top-level)
+	  *block-associations*
+	  *interned-assignments*
+	  *interned-constants*
+	  *interned-global-links*
+	  *interned-uuo-links*
+	  *interned-static-variables*
+	  *interned-variables*
+	  *next-constant*
+	  generate-lap)
+  (import (scode-optimizer expansion)
+	  scode->scode-expander))
+
+(define-package (compiler lap-syntaxer map-merger)
+  (files "back/mermap")
+  (parent (compiler lap-syntaxer))
+  (export (compiler lap-syntaxer)
+	  merge-register-maps))
+
+(define-package (compiler lap-syntaxer linearizer)
+  (files "back/linear")
+  (parent (compiler lap-syntaxer))
+  (export (compiler lap-syntaxer)
+	  add-end-of-block-code!
+	  add-extra-code!
+	  bblock-linearize-lap
+	  extra-code-block/xtra
+	  declare-extra-code-block!
+	  find-extra-code-block
+	  linearize-lap
+	  set-current-branches!
+	  set-extra-code-block/xtra!)
+  (export (compiler top-level)
+	  *end-of-block-code*
+	  linearize-lap))
+
+(define-package (compiler lap-optimizer)
+  (files "machines/i386/lapopt")
+  (parent (compiler))
+  (export (compiler top-level)
+	  optimize-linear-lap))
+
+(define-package (compiler assembler)
+  (files "machines/i386/assmd"		;Machine dependent
+	 "back/symtab"			;Symbol tables
+	 "back/bitutl"			;Assembly blocks
+	 "back/bittop"			;Assembler top level
+	 )
+  (parent (compiler))
+  (export (compiler)
+	  instruction-append)
+  (export (compiler top-level)
+	  assemble))
+
+(define-package (compiler disassembler)
+  (files "machines/i386/dassm1"
+	 "machines/i386/dassm2"
+	 "machines/i386/dassm3")
+  (parent (compiler))
+  (export ()
+	  compiler:write-lap-file
+	  compiler:disassemble)
+  (import (runtime compiler-info)
+	  compiled-code-block/dbg-info
+	  dbg-info-vector/blocks-vector
+	  dbg-info-vector?
+	  dbg-info/labels
+	  dbg-label/external?
+	  dbg-label/name
+	  dbg-labels/find-offset))
