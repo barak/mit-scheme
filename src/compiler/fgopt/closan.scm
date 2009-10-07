@@ -303,15 +303,18 @@ USA.
   ;; if it was an ancestor before procedure-drifting took place, don't
   ;; close, just undrift.
   (let ((procedure (condition-procedure condition)))
-    (cond ((block-ancestor-or-self? block block*)
-	   unspecific)
-	  ((and (original-block-ancestor? block block*)
-		(not (procedure-closure-context procedure)))
-	   (undrifting-constraint! block block* condition))
-	  (else
-	   (close-procedure! procedure
-			     (condition-keyword condition)
-			     (condition-argument condition))))))
+    (define (close)
+      (close-procedure! procedure
+			(condition-keyword condition)
+			(condition-argument condition)))
+    (cond ((and (ic-block? block*)
+		(not (eq? block block*)))
+	   (close))
+	  ((not (block-ancestor-or-self? block block*))
+	   (if (and (original-block-ancestor? block block*)
+		    (not (procedure-closure-context procedure)))
+	       (undrifting-constraint! block block* condition)
+	       (close))))))
 
 (define (close-procedure! procedure keyword argument)
   (add-closure-reason! procedure keyword argument)
