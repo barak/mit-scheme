@@ -31,7 +31,7 @@ USA.
 	      "base"
 	      "fggen"
 	      "fgopt"
-	      "machines/i386"
+	      "machines/x86-64"
 	      "rtlbase"
 	      "rtlgen"
 	      "rtlopt")))

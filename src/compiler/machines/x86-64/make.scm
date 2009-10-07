@@ -27,6 +27,6 @@ USA.
 
 (declare (usual-integrations))
 
-(let ((value ((load "base/make") "i386")))
+(let ((value ((load "base/make") "x86-64")))
   (set! (access compiler:compress-top-level? (->environment '(compiler))) #t)
   value)

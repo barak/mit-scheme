@@ -56,7 +56,7 @@ USA.
 				 "/"
 				 source-file-expression))))
 	  '("back" "base" "fggen" "fgopt" "rtlbase" "rtlgen" "rtlopt"
-		   "machines/i386"))))
+		   "machines/x86-64"))))
     (if (null? filenames)
 	(error "Can't find source files of compiler"))
     (set! source-filenames filenames))
@@ -336,7 +336,7 @@ USA.
 			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
 			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
 			      "syntax")
-	     (filename/append "machines/i386"
+	     (filename/append "machines/x86-64"
 			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
 			      "rulrew")
 	     (filename/append "fggen"
@@ -359,7 +359,7 @@ USA.
 			      "rerite" "rinvex" "rlife" "rtlcsm"))
      (->environment '(COMPILER)))
     (file-dependency/syntax/join
-     (filename/append "machines/i386"
+     (filename/append "machines/x86-64"
 		      "lapgen"
 		      "rules1" "rules2" "rules3" "rules4" "rulfix" "rulflo"
 		      "insutl" "instr1" "instr2" "instrf")
@@ -384,8 +384,8 @@ USA.
 			   "contin" "ctypes" "enumer" "lvalue"
 			   "object" "proced" "rvalue"
 			   "scode" "subprb" "utils"))
-	 (i386-base
-	  (append (filename/append "machines/i386" "machin")
+	 (x86-64-base
+	  (append (filename/append "machines/x86-64" "machin")
 		  (filename/append "back" "asutl")))
 	 (rtl-base
 	  (filename/append "rtlbase"
@@ -399,23 +399,23 @@ USA.
 				   "rcse2" "rcseep")
 		  cse-base))
 	 (instruction-base
-	  (filename/append "machines/i386" "assmd" "machin"))
+	  (filename/append "machines/x86-64" "assmd" "machin"))
 	 (lapgen-base
 	  (append (filename/append "back" "linear" "regmap")
-		  (filename/append "machines/i386" "lapgen")))
+		  (filename/append "machines/x86-64" "lapgen")))
 	 (assembler-base
 	  (append (filename/append "back" "symtab")
-		  (filename/append "machines/i386" "insutl")))
+		  (filename/append "machines/x86-64" "insutl")))
 	 (lapgen-body
 	  (append
 	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
-	   (filename/append "machines/i386"
+	   (filename/append "machines/x86-64"
 			    "rules1" "rules2" "rules3" "rules4"
 			    "rulfix" "rulflo")))
 	 (assembler-body
 	  (append
 	   (filename/append "back" "bittop")
-	   (filename/append "machines/i386"
+	   (filename/append "machines/x86-64"
 			    "instr1" "instr2" "instrf"))))
 
     (define (file-dependency/integration/join filenames dependencies)
@@ -436,7 +436,7 @@ USA.
        (string-append directory "/" name)
        (apply filename/append directory* names)))
 
-    (define-integration-dependencies "machines/i386" "machin" "back" "asutl")
+    (define-integration-dependencies "machines/x86-64" "machin" "back" "asutl")
     (define-integration-dependencies "base" "object" "base" "enumer")
     (define-integration-dependencies "base" "enumer" "base" "object")
     (define-integration-dependencies "base" "cfg1" "base" "object")
@@ -459,16 +459,16 @@ USA.
     (define-integration-dependencies "base" "subprb" "base"
       "cfg3" "contin" "enumer" "object" "proced")
 
-    (define-integration-dependencies "machines/i386" "machin" "rtlbase"
+    (define-integration-dependencies "machines/x86-64" "machin" "rtlbase"
       "rtlreg" "rtlty1" "rtlty2")
 
     (define-integration-dependencies "rtlbase" "rgraph" "base" "cfg1" "cfg2")
-    (define-integration-dependencies "rtlbase" "rgraph" "machines/i386"
+    (define-integration-dependencies "rtlbase" "rgraph" "machines/x86-64"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlcfg" "base"
       "cfg1" "cfg2" "cfg3")
     (define-integration-dependencies "rtlbase" "rtlcon" "base" "cfg3" "utils")
-    (define-integration-dependencies "rtlbase" "rtlcon" "machines/i386"
+    (define-integration-dependencies "rtlbase" "rtlcon" "machines/x86-64"
       "machin")
     (file-dependency/integration/join (filename/append "rtlbase" "rtlcon")
 				      rtl-base)
@@ -479,12 +479,12 @@ USA.
       "rtlcfg" "rtlty2")
     (define-integration-dependencies "rtlbase" "rtlobj" "base"
       "cfg1" "object" "utils")
-    (define-integration-dependencies "rtlbase" "rtlreg" "machines/i386"
+    (define-integration-dependencies "rtlbase" "rtlreg" "machines/x86-64"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlreg" "rtlbase"
       "rgraph" "rtlty1")
     (define-integration-dependencies "rtlbase" "rtlty1" "rtlbase" "rtlcfg")
-    (define-integration-dependencies "rtlbase" "rtlty2" "machines/i386"
+    (define-integration-dependencies "rtlbase" "rtlty2" "machines/x86-64"
       "machin")
     (define-integration-dependencies "rtlbase" "rtlty2" "rtlbase" "rtlty1")
 
@@ -498,7 +498,7 @@ USA.
 		       "envopt" "folcon" "offset" "operan" "order" "param"
 		       "outer" "reuse" "reteqv" "sideff" "simapp" "simple"
 		       "subfre" "varind"))
-     (append i386-base front-end-base))
+     (append x86-64-base front-end-base))
 
     (define-integration-dependencies "fgopt" "reuse" "fgopt" "reord")
 
@@ -506,14 +506,14 @@ USA.
      (filename/append "rtlgen"
 		      "fndblk" "fndvar" "opncod" "rgcomb" "rgproc" "rgretn"
 		      "rgrval" "rgstmt" "rtlgen")
-     (append i386-base front-end-base rtl-base))
+     (append x86-64-base front-end-base rtl-base))
 
     (file-dependency/integration/join
      (append cse-all
 	     (filename/append "rtlopt" "ralloc" "rcompr" "rdebug" "rdflow"
 			      "rerite" "rinvex" "rlife" "rtlcsm")
-	     (filename/append "machines/i386" "rulrew"))
-     (append i386-base rtl-base))
+	     (filename/append "machines/x86-64" "rulrew"))
+     (append x86-64-base rtl-base))
 
     (file-dependency/integration/join cse-all cse-base)
 

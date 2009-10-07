@@ -35,7 +35,7 @@ USA.
 	 "base/sets"			;set abstraction
 	 "base/mvalue"			;multiple-value support
 	 "base/scode"			;SCode abstraction
-	 "machines/i386/machin"		;machine dependent stuff
+	 "machines/x86-64/machin"	;machine dependent stuff
 	 "back/asutl"			;back-end odds and ends
 	 "base/utils"			;odds and ends
 
@@ -217,7 +217,7 @@ USA.
 	  rule-matcher))
 
 (define-package (compiler declarations)
-  (files "machines/i386/decls")
+  (files "machines/x86-64/decls")
   (parent (compiler))
   (export (compiler)
 	  sc
@@ -541,7 +541,7 @@ USA.
   (files "rtlgen/rtlgen"		;RTL generator
 	 "rtlgen/rgstmt"		;statements
 	 "rtlgen/fndvar"		;find variables
-	 "machines/i386/rgspcm"		;special close-coded primitives
+	 "machines/x86-64/rgspcm"	;special close-coded primitives
 	 "rtlbase/rtline"		;linearizer
 	 )
   (parent (compiler))
@@ -665,23 +665,24 @@ USA.
 	 "back/lapgn2"			; "      "
 	 "back/lapgn3"			; "      "
 	 "back/regmap"			;Hardware register allocator
-	 "machines/i386/lapgen"		;code generation rules
-	 "machines/i386/rules1"		;  "      "        "
-	 "machines/i386/rules2"		;  "      "        "
-	 "machines/i386/rules3"		;  "      "        "
-	 "machines/i386/rules4"		;  "      "        "
-	 "machines/i386/rulfix"		;  "      "        "
-	 "machines/i386/rulflo"		;  "      "        "
-	 "machines/i386/rulrew"		;code rewriting rules
+	 "back/checks"			;Interrupt checks
+	 "machines/x86-64/lapgen"	;code generation rules
+	 "machines/x86-64/rules1"	;  "      "        "
+	 "machines/x86-64/rules2"	;  "      "        "
+	 "machines/x86-64/rules3"	;  "      "        "
+	 "machines/x86-64/rules4"	;  "      "        "
+	 "machines/x86-64/rulfix"	;  "      "        "
+	 "machines/x86-64/rulflo"	;  "      "        "
+	 "machines/x86-64/rulrew"	;code rewriting rules
 	 "back/syntax"			;Generic syntax phase
 	 "back/syerly"			;Early binding version
-	 "machines/i386/coerce"		;Coercions: integer -> bit string
+	 "machines/x86-64/coerce"	;Coercions: integer -> bit string
 	 "back/asmmac"			;Macros for hairy syntax
-	 "machines/i386/insmac"		;Macros for hairy syntax
-	 "machines/i386/insutl"		;i386 instruction utilities
-	 "machines/i386/instr1"		;i386 instructions
-	 "machines/i386/instr2"		;  "        "
-	 "machines/i386/instrf"		;i387/i486 fp instructions
+	 "machines/x86-64/insmac"	;Macros for hairy syntax
+	 "machines/x86-64/insutl"	;x86-64 instruction utilities
+	 "machines/x86-64/instr1"	;x86-64 instructions
+	 "machines/x86-64/instr2"	;  "        "
+	 "machines/x86-64/instrf"	;  "        " fp instructions
 	 )
   (parent (compiler))
   (export (compiler)
@@ -728,13 +729,13 @@ USA.
 	  linearize-lap))
 
 (define-package (compiler lap-optimizer)
-  (files "machines/i386/lapopt")
+  (files "machines/x86-64/lapopt")
   (parent (compiler))
   (export (compiler top-level)
 	  optimize-linear-lap))
 
 (define-package (compiler assembler)
-  (files "machines/i386/assmd"		;Machine dependent
+  (files "machines/x86-64/assmd"	;Machine dependent
 	 "back/symtab"			;Symbol tables
 	 "back/bitutl"			;Assembly blocks
 	 "back/bittop"			;Assembler top level
@@ -746,9 +747,9 @@ USA.
 	  assemble))
 
 (define-package (compiler disassembler)
-  (files "machines/i386/dassm1"
-	 "machines/i386/dassm2"
-	 "machines/i386/dassm3")
+  (files "machines/x86-64/dassm1"
+	 "machines/x86-64/dassm2"
+	 "machines/x86-64/dassm3")
   (parent (compiler))
   (export ()
 	  compiler:write-lap-file

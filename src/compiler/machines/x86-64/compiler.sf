@@ -51,22 +51,22 @@ USA.
       (newline)
       (sf-and-load '("base/switch") '(COMPILER))
       (sf-and-load '("base/macros") '(COMPILER MACROS))
-      (sf-and-load '("machines/i386/decls") '(COMPILER DECLARATIONS))
+      (sf-and-load '("machines/x86-64/decls") '(COMPILER DECLARATIONS))
       (let ((environment (->environment '(COMPILER DECLARATIONS))))
 	(set! (access source-file-expression environment) "*.scm")
 	((access initialize-package! environment)))
       (sf-and-load '("base/pmlook") '(COMPILER PATTERN-MATCHER/LOOKUP))
       (sf-and-load '("base/pmpars") '(COMPILER PATTERN-MATCHER/PARSER))
-      (sf-and-load '("machines/i386/machin") '(COMPILER))
+      (sf-and-load '("machines/x86-64/machin") '(COMPILER))
       (fluid-let ((sf/default-declarations
 		   '((integrate-external "insseq")
 		     (integrate-external "machin")
 		     (usual-definition (set expt)))))
-	(sf-and-load '("machines/i386/assmd") '(COMPILER ASSEMBLER)))
+	(sf-and-load '("machines/x86-64/assmd") '(COMPILER ASSEMBLER)))
       (sf-and-load '("back/syntax") '(COMPILER LAP-SYNTAXER))
-      (sf-and-load '("machines/i386/coerce"
+      (sf-and-load '("machines/x86-64/coerce"
 		     "back/asmmac"
-		     "machines/i386/insmac")
+		     "machines/x86-64/insmac")
 		   '(COMPILER LAP-SYNTAXER))
       (sf-and-load '("base/scode") '(COMPILER))
       (sf-and-load '("base/pmerly") '(COMPILER PATTERN-MATCHER/EARLY))
