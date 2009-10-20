@@ -57,7 +57,7 @@ USA.
     (let ((rest (procedure-rest procedure)))
       (if (and rest (variable-unused? rest))
 	  (begin
-	    (set! deletions (eq-set-adjoin deletions rest))
+	    (set! deletions (eq-set-adjoin rest deletions))
 	    (set-procedure-rest! procedure false))))
     (with-values
 	(lambda ()
