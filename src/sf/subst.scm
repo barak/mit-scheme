@@ -604,7 +604,16 @@ you ask for.
 		    (declaration/declarations declaration)
 		    expression))
 
+;;; Replacing the body may cause variables from outside the original
+;;; body to be shadowed, so we use a sleazy stupid hack to work around
+;;; this, because cgen doesn't do alphatization itself.  (This is the
+;;; same hack as used in copy.scm to copy integrated expressions that
+;;; have free variables.)
+
 (define (procedure-with-body procedure body)
+  (for-each hackify-variable (procedure/required procedure))
+  (for-each hackify-variable (procedure/optional procedure))
+  (cond ((procedure/rest procedure) => hackify-variable))
   (procedure/make (procedure/scode procedure)
 		  (procedure/block procedure)
 		  (procedure/name procedure)
@@ -612,6 +621,11 @@ you ask for.
 		  (procedure/optional procedure)
 		  (procedure/rest procedure)
 		  body))
+
+(define (hackify-variable variable)
+  (set-variable/name!
+   variable
+   (string->uninterned-symbol (symbol-name (variable/name variable)))))
 
 (define (sequence-with-actions sequence actions)
   (sequence/make (sequence/scode sequence) actions))
