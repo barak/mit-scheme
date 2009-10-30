@@ -23,11 +23,15 @@ USA.
 
 |#
 
-;;;; LAP Optimizer for Intel i386.
+;;;; LAP Optimizer for AMD x86-64
 ;;; package: (compiler lap-optimizer)
 
 (declare (usual-integrations))
 
+(define (optimize-linear-lap instructions)
+  instructions)
+
+#|
 (define (optimize-linear-lap instructions)
   (rewrite-lap instructions))
 
@@ -376,3 +380,4 @@ USA.
   (lambda (dict)
     `((LEA ,(dict 'reg-object) (@RO UW ,(dict 'regno-closure) #xA0000000))
       (MOV W (@RO B ,regnum:free-pointer -4) ,(dict 'reg-object)))))
+|#
