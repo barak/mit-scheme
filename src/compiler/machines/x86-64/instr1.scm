@@ -430,7 +430,7 @@ USA.
 
   (((? size operand-size) (R (? target))
 			  (? source r/m-ea)
-			  (& (? multiplier sign-extended-word)))
+			  (& (? multiplier sign-extended-long)))
    (PREFIX (OPERAND size) (ModR/M target source))
    (BITS (8 #x6b))
    (ModR/M target source)
@@ -438,7 +438,7 @@ USA.
 
   (((? size operand-size) (R (? target))
 			  (? source r/m-ea)
-			  (&U (? multiplier zero-extended-word)))
+			  (&U (? multiplier zero-extended-long)))
    (PREFIX (OPERAND size) (ModR/M target source))
    (BITS (8 #x6b))
    (ModR/M target source)
