@@ -34,29 +34,30 @@ USA.
 ;;;; Pseudo ops
 
 (define-instruction BYTE
-  ((S (? value))
-   (BYTE (8 value SIGNED)))
-  ((U (? value))
-   (BYTE (8 value UNSIGNED))))
+  ((S (? value signed-byte))
+   (BITS (8 value SIGNED)))
+  ((U (? value unsigned-byte))
+   (BITS (8 value UNSIGNED))))
 
 (define-instruction WORD
-  ((S (? value))
-   (BYTE (16 value SIGNED)))
-  ((U (? value))
-   (BYTE (16 value UNSIGNED))))
+  ((S (? value signed-word))
+   (BITS (16 value SIGNED)))
+  ((U (? value unsigned-word))
+   (BITS (16 value UNSIGNED))))
 
 (define-instruction LONG
-  ((S (? value))
-   (BYTE (32 value SIGNED)))
-  ((U (? value))
-   (BYTE (32 value UNSIGNED))))
+  ((S (? value signed-long))
+   (BITS (32 value SIGNED)))
+  ((U (? value unsigned-long))
+   (BITS (32 value UNSIGNED))))
+
+(define-instruction QUAD
+  ((S (? value signed-quad))
+   (BITS (64 value SIGNED)))
+  ((U (? value unsigned-quad))
+   (BITS (64 value UNSIGNED))))
 
 ;;;; Actual instructions
-
-(define-trivial-instruction AAA #x37)
-(define-trivial-instruction AAD #xd5 #x0a)
-(define-trivial-instruction AAM #xd4 #x0a)
-(define-trivial-instruction AAS #x3f)
 
 (let-syntax
     ((define-arithmetic-instruction
@@ -65,105 +66,146 @@ USA.
 	 environment
 	 (let ((mnemonic (cadr form))
 	       (opcode (caddr form))
-	       (digit (cadddr form)))
+	       (digit (cadddr form))
+	       (signed-prefix (car (cddddr form)))
+	       (unsigned-prefix (cadr (cddddr form))))
+	   (define (signed suffix)
+	     (symbol signed-prefix '- suffix))
+	   (define (unsigned suffix)
+	     (symbol unsigned-prefix '- suffix))
 	   `(define-instruction ,mnemonic
-	      ((W (? target r/mW) (R (? source)))
-	       (BYTE (8 ,(+ opcode 1)))
+	      ((B (? target r/m-ea) (R (? source)))
+	       (PREFIX (ModR/M source target))
+	       (BITS (8 ,opcode))
 	       (ModR/M source target))
 
-	      ((W (R (? target)) (? source r/mW))
-	       (BYTE (8 ,(+ opcode 3)))
+	      ((B (R (? target)) (? source r/m-ea))
+	       (PREFIX (ModR/M source target))
+	       (BITS (8 ,(+ opcode 2)))
 	       (ModR/M target source))
 
-	      ((W (? target r/mW) (& (? value sign-extended-byte)))
-	       (BYTE (8 #x83))
-	       (ModR/M ,digit target)
-	       (BYTE (8 value SIGNED)))
-
-	      ((W (R 0) (& (? value)))	; AX/EAX
-	       (BYTE (8 ,(+ opcode 5)))
-	       (IMMEDIATE value))
-
-	      ((W (? target r/mW) (& (? value)))
-	       (BYTE (8 #x81))
-	       (ModR/M ,digit target)
-	       (IMMEDIATE value))
-
-	      ((W (? target r/mW) (&U (? value zero-extended-byte)))
-	       (BYTE (8 #x83))
-	       (ModR/M ,digit target)
-	       (BYTE (8 value UNSIGNED)))
-
-	      ((W (R 0) (&U (? value)))	; AX/EAX
-	       (BYTE (8 ,(+ opcode 5)))
-	       (IMMEDIATE value OPERAND UNSIGNED))
-
-	      ((W (? target r/mW) (&U (? value)))
-	       (BYTE (8 #x81))
-	       (ModR/M ,digit target)
-	       (IMMEDIATE value OPERAND UNSIGNED))
-
-	      ((B (? target r/mB) (R (? source)))
-	       (BYTE (8 ,opcode))
-	       (ModR/M source target))
-
-	      ((B (R (? target)) (? source r/mB))
-	       (BYTE (8 ,(+ opcode 2)))
-	       (ModR/M target source))
-
-	      ((B (R 0) (& (? value)))	; AL
-	       (BYTE (8 ,(+ opcode 4))
+	      ((B (R 0) (& (? value ,(signed 'BYTE))))		;AL
+	       (BITS (8 ,(+ opcode 4))
 		     (8 value SIGNED)))
 
-	      ((B (R 0) (&U (? value)))	; AL
-	       (BYTE (8 ,(+ opcode 4))
-		     (8 value UNSIGNED)))
+	      ((B (R 0) (&U (? value ,(unsigned 'BYTE))))	;AL
+	       (BITS (8 ,(+ opcode 4))
+		     (8 value SIGNED)))
 
-	      ((B (? target r/mB) (& (? value)))
-	       (BYTE (8 #x80))
+	      ((B (? target r/m-ea) (& (? value ,(signed 'BYTE))))
+	       (PREFIX (ModR/M target))
+	       (BITS (8 #x80))
 	       (ModR/M ,digit target)
-	       (BYTE (8 value SIGNED)))
+	       (BITS (8 value SIGNED)))
 
-	      ((B (? target r/mB) (&U (? value)))
-	       (BYTE (8 #x80))
+	      ((B (? target r/m-ea) (&U (? value ,(unsigned 'BYTE))))
+	       (PREFIX (ModR/M target))
+	       (BITS (8 #x80))
 	       (ModR/M ,digit target)
-	       (BYTE (8 value UNSIGNED)))))))))
+	       (BITS (8 value SIGNED)))
 
-  (define-arithmetic-instruction ADC #x10 2)
-  (define-arithmetic-instruction ADD #x00 0)
-  (define-arithmetic-instruction AND #x20 4)
-  (define-arithmetic-instruction CMP #x38 7)
-  (define-arithmetic-instruction OR  #x08 1)
-  (define-arithmetic-instruction SBB #x18 3)
-  (define-arithmetic-instruction SUB #x28 5)
-  (define-arithmetic-instruction XOR #x30 6))
+	      ((W (R 0) (& (? value ,(signed 'WORD))))
+	       (PREFIX (OPERAND 'W))
+	       (BITS (8 ,(+ opcode 5))
+		     (16 value SIGNED)))
+
+	      ((W (R 0) (&U (? value ,(unsigned 'WORD))))
+	       (PREFIX (OPERAND 'W))
+	       (BITS (8 ,(+ opcode 5))
+		     (16 value SIGNED)))
+
+	      (((? size operand-size) (R 0) (& (? value ,(signed 'LONG))))
+	       (PREFIX (OPERAND size))
+	       (BITS (8 ,(+ opcode 5))
+		     (32 value SIGNED)))
+
+	      (((? size operand-size) (R 0) (&U (? value ,(unsigned 'LONG))))
+	       (PREFIX (OPERAND size))
+	       (BITS (8 ,(+ opcode 5))
+		     (32 value SIGNED)))
 
-(define-instruction ARPL
-  (((? target r/mW) (R (? source)))
-   (BYTE (8 #x63))
-   (ModR/M source target)))
+	      (((? size operand-size) (? target r/m-ea) (R (? source)))
+	       (PREFIX (OPERAND size) (ModR/M source target))
+	       (BITS (8 ,(+ opcode 1)))
+	       (ModR/M source target))
 
-(define-instruction BOUND
-  (((R (? source)) (? bounds mW))
-   (BYTE (8 #x62))
-   (ModR/M source bounds)))
+	      (((? size operand-size) (R (? target)) (? source r/m-ea))
+	       (PREFIX (OPERAND size) (ModR/M target source))
+	       (BITS (8 ,(+ opcode 3)))
+	       (ModR/M target source))
 
+	      (((? size operand-size)
+		(? target r/m-ea)
+		(& (? value ,(signed 'BYTE))))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #x83))
+	       (ModR/M ,digit target)
+	       (BITS (8 value SIGNED)))
+
+	      (((? size operand-size)
+		(? target r/m-ea)
+		(&U (? value ,(unsigned 'BYTE))))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #x83))
+	       (ModR/M ,digit target)
+	       (BITS (8 value SIGNED)))
+
+	      ((W (? target r/m-ea) (& (? value ,(signed 'WORD))))
+	       (PREFIX (OPERAND 'W) (ModR/M target))
+	       (BITS (8 #x81))
+	       (ModR/M ,digit target)
+	       (BITS (16 value SIGNED)))
+
+	      ((W (? target r/m-ea) (&U (? value ,(unsigned 'WORD))))
+	       (PREFIX (OPERAND 'W) (ModR/M target))
+	       (BITS (8 #x81))
+	       (ModR/M ,digit target)
+	       (BITS (16 value SIGNED)))
+
+	      (((? size operand-size)
+		(? target r/m-ea)
+		(& (? value ,(signed 'LONG))))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #x81))
+	       (ModR/M ,digit target)
+	       (BITS (32 value SIGNED)))
+
+	      (((? size operand-size)
+		(? target r/m-ea)
+		(&U (? value ,(unsigned 'LONG))))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #x81))
+	       (ModR/M ,digit target)
+	       (BITS (32 value SIGNED)))))))))
+
+  (define-arithmetic-instruction ADC #x10 2 SIGN-EXTENDED ZERO-EXTENDED)
+  (define-arithmetic-instruction ADD #x00 0 SIGN-EXTENDED ZERO-EXTENDED)
+  (define-arithmetic-instruction AND #x20 4 SIGNED UNSIGNED)
+  (define-arithmetic-instruction CMP #x38 7 SIGN-EXTENDED ZERO-EXTENDED)
+  (define-arithmetic-instruction OR  #x08 1 SIGNED UNSIGNED)
+  (define-arithmetic-instruction SBB #x18 3 SIGN-EXTENDED ZERO-EXTENDED)
+  (define-arithmetic-instruction SUB #x28 5 SIGN-EXTENDED ZERO-EXTENDED)
+  (define-arithmetic-instruction XOR #x30 6 SIGNED UNSIGNED))
+
 (define-instruction BSF
-  (((R (? target)) (? source r/mW))
-   (BYTE (8 #x0f)
+  (((? size operand-size) (R (? target)) (? source r/m-ea))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x0f)
 	 (8 #xbc))
    (ModR/M target source)))
 
 (define-instruction BSR
-  (((R (? target)) (? source r/mW))
-   (BYTE (8 #x0f)
+  (((? size operand-size) (R (? target)) (? source r/m-ea))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x0f)
 	 (8 #xbd))
    (ModR/M target source)))
 
-(define-instruction BSWAP			; 486 only
-  (((R (? reg)))
-   (BYTE (8 #x0f)
-	 (8 (+ #xc8 reg)))))
+(define-instruction BSWAP
+  (((? size operand-size) (R (? reg)))
+   (PREFIX (OPERAND size) (OPCODE-REGISTER reg))
+   (BITS (8 #x0f)
+	 (8 (opcode-register #xc8 reg)))))
 
 (let-syntax
     ((define-bit-test-instruction
@@ -175,14 +217,17 @@ USA.
 	       (digit (cadddr form)))
 	   `(define-instruction ,mnemonic
 
-	      (((? target r/mW) (& (? posn)))
-	       (BYTE (8 #x0f)
+	      (((? size operand-size) (? target r/m-ea)
+				      (& (? posn unsigned-byte)))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #x0f)
 		     (8 #xba))
 	       (ModR/M ,digit target)
-	       (BYTE (8 posn UNSIGNED)))
+	       (BITS (8 posn)))
 
-	      (((? target r/mW) (R (? posn)))
-	       (BYTE (8 #x0f)
+	      (((? target r/m-ea) (R (? posn)))
+	       (PREFIX (ModR/M posn target))
+	       (BITS (8 #x0f)
 		     (8 ,opcode))
 	       (ModR/M posn target))))))))
 
@@ -193,38 +238,43 @@ USA.
   
 (define-instruction CALL
   (((@PCR (? dest)))
-   (BYTE (8 #xe8))
-   (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
+   (BITS (8 #xe8)
+	 (32 `(- ,dest (+ *PC* 4)))))
 
   (((@PCRO (? dest) (? offset)))
-   (BYTE (8 #xe8))
-   (IMMEDIATE `(- (+ ,dest ,offset) (+ *PC* 4)) ADDRESS)); fcn(*ADDRESS-SIZE*)
+   (BITS (8 #xe8)
+	 (32 `(- (+ ,dest ,offset) (+ *PC* 4)))))
 
-  (((@PCO (? displ)))
-   (BYTE (8 #xe8))
-   (IMMEDIATE displ ADDRESS))
+  (((@PCO (? offset)))
+   (BITS (8 #xe8)
+	 (32 offset)))
 
-  (((? dest r/mW))
-   (BYTE (8 #xff))
-   (ModR/M 2 dest))
+  (((? dest r/m-ea))
+   (PREFIX (ModR/M dest))
+   (BITS (8 #xff))
+   (ModR/M 2 dest)))
 
-  ((F (? dest mW))
-   (BYTE (8 #xff))
-   (ModR/M 3 dest))
+;;; Convert to Sign-Extended, in other assemblers identified by the
+;;; six mnemonics CBW, CWDE, CDQE, CWD, CDQ, and CDO.  The operand
+;;; size in this rendition means the size of the final result; thus,
+;;; (CSE L (R 0)) sign-extends AX (word) to EAX (long), and (CSE Q (R
+;;; 2) (R 0)) fills all sixty-four bits of RDX with the sign of RAX.
 
-  ((F (SEGMENT (? seg)) (OFFSET (? off)))
-   (BYTE (8 #x9a))
-   (BYTE (16 seg))
-   (IMMEDIATE off ADDRESS)))
+(define-instruction CSE
+  (((? size operand-size) (R 0))
+   (PREFIX (OPERAND (case size ((W) 'B) ((L) 'W) ((Q) 'L))))
+   (BITS (8 #x98)))
 
-(define-trivial-instruction CBW #x98)
-(define-trivial-instruction CWDE #x98)
+  (((? size operand-size) (R 2) (R 0))
+   (PREFIX (OPERAND size))
+   (BITS (8 #x99))))
+
 (define-trivial-instruction CLC #xf8)
 (define-trivial-instruction CLD #xfc)
 (define-trivial-instruction CLI #xfa)
 (define-trivial-instruction CLTS #x0f #x06)
 (define-trivial-instruction CMC #xf5)
-
+
 (let-syntax
     ((define-string-instruction
       (sc-macro-transformer
@@ -234,11 +284,12 @@ USA.
 	       (opcode (caddr form)))
 	   `(define-instruction ,mnemonic
 
-	      ((W)
-	       (BYTE (8 ,(+ opcode 1))))
-
 	      ((B)
-	       (BYTE (8 ,opcode)))))))))
+	       (BITS (8 ,opcode)))
+
+	      (((? size operand-size))
+	       (PREFIX (OPERAND size))
+	       (BITS (8 ,(+ opcode 1))))))))))
 
   (define-string-instruction CMPS #xa6)
   (define-string-instruction LODS #xac)
@@ -248,23 +299,23 @@ USA.
   (define-string-instruction SCAS #xae)
   (define-string-instruction STOS #xaa))
 
-(define-instruction CMPXCHG			; 486 only
-  ((W (? target r/mW) (R (? reg)))
-   (BYTE (8 #x0f)
-	 (8 #xa7))
+(define-instruction CMPXCHG
+  ((B (? target r/m-ea) (R (? reg)))
+   (PREFIX (ModR/M reg target))
+   (BITS (8 #x0f)
+	 (8 #xb1))
    (ModR/M reg target))
 
-  ((B (? target r/mB) (R (? reg)))
-   (BYTE (8 #x0f)
-	 (8 #xa6))
+  (((? size operand-size) (? target r/m-ea) (R (? reg)))
+   (PREFIX (OPERAND size) (ModR/M reg target))
+   (BITS (8 #x0f)
+	 (8 #xb0))
    (ModR/M reg target)))
 
 (define-trivial-instruction CPUID #x0F #xA2)
 
 (define-trivial-instruction CWD #x99)
 (define-trivial-instruction CDQ #x99)
-(define-trivial-instruction DAA #x27)
-(define-trivial-instruction DAS #x2f)
 
 (let-syntax
     ((define-inc/dec
@@ -275,15 +326,24 @@ USA.
 	       (digit (caddr form))
 	       (opcode (cadddr form)))
 	   `(define-instruction ,mnemonic
-	      ((W (R (? reg)))
-	       (BYTE (8 (+ ,opcode reg))))
+	      ;; There is no 64-bit analogue of these: the opcodes
+	      ;; have been repurposed for REX prefixes!
+	      ;;
+	      ;; ((W (R (? reg)))
+	      ;;  (PREFIX (OPERAND 'W))
+	      ;;  (BITS (8 (+ ,opcode reg))))
+	      ;;
+	      ;; ((L (R (? reg)))
+	      ;;  (BITS (8 (+ ,opcode reg))))
 
-	      ((W (? target r/mW))
-	       (BYTE (8 #xff))
+	      ((B (? target r/m-ea))
+	       (PREFIX (ModR/M target))
+	       (BITS (8 #xfe))
 	       (ModR/M ,digit target))
 
-	      ((B (? target r/mB))
-	       (BYTE (8 #xfe))
+	      (((? size operand-size) (? target r/m-ea))
+	       (PREFIX (OPERAND size) (ModR/M target))
+	       (BITS (8 #xff))
 	       (ModR/M ,digit target))))))))
 
   (define-inc/dec DEC 1 #x48)
@@ -297,12 +357,14 @@ USA.
 	 (let ((mnemonic (cadr form))
 	       (digit (caddr form)))
 	   `(define-instruction ,mnemonic
-	      ((W (R 0) (? operand r/mW))
-	       (BYTE (8 #xf7))
+	      ((B ((R 2) : (R 0)) (? operand r/m-ea))
+	       (PREFIX (ModR/M operand))
+	       (BITS (8 #xf6))
 	       (ModR/M ,digit operand))
 
-	      ((B (R 0) (? operand r/mB))
-	       (BYTE (8 #xf6))
+	      (((? size operand-size) ((R 2) : (R 0)) (? operand r/m-ea))
+	       (PREFIX (OPERAND size) (ModR/M operand))
+	       (BITS (8 #xf7))
 	       (ModR/M ,digit operand))))))))
 
   (define-mul/div DIV 6)
@@ -310,71 +372,110 @@ USA.
   (define-mul/div MUL 4))
 
 (define-instruction ENTER
-  (((& (? frame-size)) (& (? lexical-level)))
-   (BYTE (8 #xc8)
+  (((& (? frame-size unsigned-word)) (& (? lexical-level unsigned-byte)))
+   (BITS (8 #xc8)
 	 (16 frame-size)
 	 (8 lexical-level))))
 
 (define-trivial-instruction HLT #xf4)
-
+
 (define-instruction IMUL
-  ((W (R (? target)) (? source r/mW))
-   (BYTE (8 #x0f)
+  ((B (R 0) (? source r/m-ea))
+   (PREFIX (ModR/M source))
+   (BITS (8 #xf6))
+   (ModR/M 5 source))
+
+  (((? size operand-size) ((R 2) : (R 0)) (? source r/m-ea))
+   (PREFIX (OPERAND size) (ModR/M source))
+   (BITS (8 #xf7))
+   (ModR/M 5 source))
+
+  (((? size operand-size) (R (? target)) (? source r/m-ea))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x0f)
 	 (8 #xaf))
    (ModR/M target source))
 
-  ((W (R (? target)) (? source r/mW) (& (? value sign-extended-byte)))
-   (BYTE (8 #x6b))
+  (((? size operand-size) (R (? target))
+			  (? source r/m-ea)
+			  (& (? multiplier sign-extended-byte)))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x6b))
    (ModR/M target source)
-   (BYTE (8 value SIGNED)))
+   (BITS (8 multiplier SIGNED)))
 
-  ((W (R (? target)) (? source r/mW) (& (? value)))
-   (BYTE (8 #x69))
+  (((? size operand-size) (R (? target))
+			  (? source r/m-ea)
+			  (&U (? multiplier zero-extended-byte)))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x6b))
    (ModR/M target source)
-   (IMMEDIATE value))
+   (BITS (8 multiplier SIGNED)))
 
-  ((W (R (? target)) (? source r/mW) (&U (? value zero-extended-byte)))
-   (BYTE (8 #x6b))
+  ((W (R (? target))
+      (? source r/m-ea)
+      (& (? multiplier sign-extended-word)))
+   (PREFIX (OPERAND 'W) (ModR/M target source))
+   (BITS (8 #x69))
    (ModR/M target source)
-   (BYTE (8 value UNSIGNED)))
+   (BITS (16 multiplier SIGNED)))
 
-  ((W (R (? target)) (? source r/mW) (&U (? value)))
-   (BYTE (8 #x69))
+  ((W (R (? target))
+      (? source r/m-ea)
+      (&U (? multiplier zero-extended-word)))
+   (PREFIX (OPERAND 'W) (ModR/M target source))
+   (BITS (8 #x69))
    (ModR/M target source)
-   (IMMEDIATE value OPERAND UNSIGNED))
+   (BITS (16 multiplier SIGNED)))
+
+  (((? size operand-size) (R (? target))
+			  (? source r/m-ea)
+			  (& (? multiplier sign-extended-word)))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x6b))
+   (ModR/M target source)
+   (BITS (32 multiplier SIGNED)))
+
+  (((? size operand-size) (R (? target))
+			  (? source r/m-ea)
+			  (&U (? multiplier zero-extended-word)))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x6b))
+   (ModR/M target source)
+   (BITS (32 multiplier SIGNED))))
 
-  ((W ((R 2) : (R 0)) (? source r/mW))
-   (BYTE (8 #xf7))
-   (ModR/M 5 source))
-
-  ((B (R 0) (? source r/mB))
-   (BYTE (8 #xf6))
-   (ModR/M 5 source)))
-
 (define-instruction IN
-  ((W (R 0) (& (? port)))
-   (BYTE (8 #xe5)
-	 (8 port)))
-
-  ((W (R 0) (R 2))
-   (BYTE (8 #xed)))
-
-  ((B (R 0) (& (? port)))
-   (BYTE (8 #xe4)
+  ((B (R 0) (& (? port unsigned-byte)))
+   (BITS (8 #xe4)
 	 (8 port)))
 
   ((B (R 0) (R 2))
-   (BYTE (8 #xec))))
+   (BITS (8 #xec)))
+
+  ((W (R 0) (& (? port unsigned-byte)))
+   (PREFIX (OPERAND 'W))
+   (BITS (8 #xe5)
+	 (8 port)))
+
+  ((W (R 0) (R 2))
+   (PREFIX (OPERAND 'W))
+   (BITS (8 #xed)))
+
+  ((L (R 0) (& (? port unsigned-byte)))
+   (BITS (8 #xe5)
+	 (8 port)))
+
+  ((L (R 0) (R 2))
+   (BITS (8 #xed))))
 
 (define-instruction INT
   ((3)
-   (BYTE (8 #xcc)))
+   (BITS (8 #xcc)))
 
-  (((& (? vector)))
-   (BYTE (8 #xcd)
+  (((& (? vector unsigned-byte)))
+   (BITS (8 #xcd)
 	 (8 vector))))
 
-(define-trivial-instruction INTO #xce)
 (define-trivial-instruction INVD #x0f #x08)	; 486 only
 (define-trivial-instruction IRET #xcf)
 
@@ -384,38 +485,36 @@ USA.
        (lambda (form environment)
 	 environment
 	 (let ((mnemonic (cadr form))
-	       (opcode1 (caddr form))
-	       (opcode2 (cadddr form)))
+	       (short-opcode (caddr form))
+	       (near-opcode (cadddr form)))
 	   `(define-instruction ,mnemonic
-	      ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
 	      (((@PCR (? dest)))
-	       (VARIABLE-WIDTH
-		(disp `(- ,dest (+ *PC* 2)))
-		((-128 127)
-		 (BYTE (8 ,opcode1)
-		       (8 disp SIGNED)))
-		((() ())
-		 (BYTE (8 #x0f)
-		       (8 ,opcode2)
-		       (32 (- disp 4) SIGNED)))))
+	       (VARIABLE-WIDTH (disp `(- ,dest (+ *PC* 2)))
+		 ((#x-80 #x7f)
+		  (BITS (8 ,short-opcode)
+			(8 disp SIGNED)))
+		 ((() ())
+		  (BITS (8 #x0f)
+			(8 ,near-opcode)
+			(32 (- disp 4) SIGNED)))))
 
 	      ((B (@PCR (? dest)))
-	       (BYTE (8 ,opcode1)
+	       (BITS (8 ,short-opcode)
 		     (8 `(- ,dest (+ *PC* 1)) SIGNED)))
 
-	      ((W (@PCR (? dest)))
-	       (BYTE (8 #x0f)
-		     (8 ,opcode2))
-	       (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
+	      ((L (@PCR (? dest)))
+	       (BITS (8 #x0f)
+		     (8 ,near-opcode)
+		     (32 `(- ,dest (+ *PC* 4)) SIGNED)))
 
 	      ((B (@PCO (? displ)))
-	       (BYTE (8 ,opcode1)
+	       (BITS (8 ,short-opcode)
 		     (8 displ SIGNED)))
 
-	      ((W (@PCO (? displ)))
-	       (BYTE (8 #x0f)
-		     (8 ,opcode2))
-	       (IMMEDIATE displ ADDRESS))))))))
+	      ((L (@PCO (? displ)))
+	       (BITS (8 #x0f)
+		     (8 ,near-opcode)
+		     (32 displ SIGNED)))))))))
 
   (define-jump-instruction JA   #x77 #x87)
   (define-jump-instruction JAE  #x73 #x83)
@@ -457,11 +556,11 @@ USA.
 	       (opcode (caddr form)))
 	   `(define-instruction ,mnemonic
 	      ((B (@PCR (? dest)))
-	       (BYTE (8 ,opcode)
+	       (BITS (8 ,opcode)
 		     (8 `(- ,dest (+ *PC* 1)) SIGNED)))
 
-	      ((B (@PCO (? displ)))
-	       (BYTE (8 ,opcode)
+	      ((B (@PCO (? displ signed-byte)))
+	       (BITS (8 ,opcode)
 		     (8 displ SIGNED)))))))))
 
   (define-loop-instruction JCXZ   #xe3)
@@ -473,67 +572,51 @@ USA.
   (define-loop-instruction LOOPNZ #xe0))
 
 (define-instruction JMP
-  ;; This assumes that *ADDRESS-SIZE* is 4 (32-bit mode)
   (((@PCR (? dest)))
-   (VARIABLE-WIDTH
-    (disp `(- ,dest (+ *PC* 2)))
-    ((-128 127)
-     (BYTE (8 #xeb)
-	   (8 disp SIGNED)))
-    ((() ())
-     (BYTE (8 #xe9)
-	   (32 (- disp 3) SIGNED)))))
+   (VARIABLE-WIDTH (disp `(- ,dest (+ *PC* 2)))
+     ((#x-80 #x7f)
+      (BITS (8 #xeb)
+	    (8 disp SIGNED)))
+     ((() ())
+      (BITS (8 #xe9)
+	    (32 (- disp 3) SIGNED)))))
 
   (((@PCRO (? dest) (? offset)))
-   (VARIABLE-WIDTH
-    (disp `(- (+ ,dest ,offset) (+ *PC* 2)))
-    ((-128 127)
-     (BYTE (8 #xeb)
-	   (8 disp SIGNED)))
-    ((() ())
-     (BYTE (8 #xe9)
-	   (32 (- disp 3) SIGNED)))))
+   (VARIABLE-WIDTH (disp `(- (+ ,dest ,offset) (+ *PC* 2)))
+     ((#x-80 #x7f)
+      (BITS (8 #xeb)
+	    (8 disp SIGNED)))
+     ((() ())
+      (BITS (8 #xe9)
+	    (32 (- disp 3) SIGNED)))))
 
-  (((? dest r/mW))
-   (BYTE (8 #xff))
+  (((? dest r/m-ea))
+   (PREFIX (ModR/M dest))
+   (BITS (8 #xff))
    (ModR/M 4 dest))
 
   ((B (@PCR (? dest)))
-   (BYTE (8 #xeb)
+   (BITS (8 #xeb)
 	 (8 `(- ,dest (+ *PC* 1)) SIGNED)))
 
-  ((W (@PCR (? dest)))
-   (BYTE (8 #xe9))
-   (IMMEDIATE `(- ,dest (+ *PC* 4)) ADDRESS)) ; fcn(*ADDRESS-SIZE*)
+  ((L (@PCR (? dest)))
+   (BITS (8 #xe9)
+	 (32 `(- ,dest (+ *PC* 4)) SIGNED)))
 
   ((B (@PCO (? displ)))
-   (BYTE (8 #xeb)
+   (BITS (8 #xeb)
 	 (8 displ SIGNED)))
 
-  ((W (@PCO (? displ)))
-   (BYTE (8 #xe9))
-   (IMMEDIATE displ ADDRESS))
-
-  ((F (? dest mW))
-   (BYTE (8 #xff))
-   (ModR/M 5 dest))
-
-  ((F (SEGMENT (? seg)) (OFFSET (? off)))
-   (BYTE (8 #xea))
-   (BYTE (16 seg))
-   (IMMEDIATE off ADDRESS)))
+  ((L (@PCO (? displ)))
+   (BITS (8 #xe9)
+	 (32 displ SIGNED))))
 
 (define-trivial-instruction LAHF #x9f)
 
-(define-instruction LAR
-  (((R (? target)) (? source r/mW))
-   (BYTE (8 #x0f)
-	 (8 #x02))
-   (ModR/M target source)))
-
 (define-instruction LEA
-  (((R (? target)) (? source mW))
-   (BYTE (8 #x8d))
+  (((? size operand-size) (R (? target)) (? source m-ea))
+   (PREFIX (OPERAND size) (ModR/M target source))
+   (BITS (8 #x8d))
    (ModR/M target source)))
 
 (define-trivial-instruction LEAVE #xc9)
@@ -547,8 +630,8 @@ USA.
 	       (opcode (caddr form))
 	       (digit (cadddr form)))
 	   `(define-instruction ,mnemonic
-	      (((? operand mW))
-	       (BYTE (8 #x0f)
+	      (((? operand m-ea))
+	       (BITS (8 #x0f)
 		     (8 ,opcode))
 	       (ModR/M ,digit operand))))))))
 
