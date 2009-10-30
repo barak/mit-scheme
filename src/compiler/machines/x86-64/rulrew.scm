@@ -32,7 +32,7 @@ USA.
 
 (define-rule rewriting
   (CONS-NON-POINTER (? type) (? datum))
-  ;; On i386, there's no difference between an address and a datum,
+  ;; On x86, there's no difference between an address and a datum,
   ;; so the rules for constructing non-pointer objects are the same as
   ;; those for pointer objects.
   (rtl:make-cons-pointer type datum))

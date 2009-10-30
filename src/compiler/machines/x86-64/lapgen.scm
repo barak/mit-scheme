@@ -31,13 +31,26 @@ USA.
 ;;;; Register-Allocator Interface
 
 (define available-machine-registers
-  ;; esp holds the the stack pointer
-  ;; ebp holds the pointer mask
-  ;; esi holds the register array pointer
-  ;; edi holds the free pointer
+  ;; rsp holds the the stack pointer
+  ;; rbp holds the pointer mask
+  ;; rsi holds the register array pointer
+  ;; rdi holds the free pointer
+  ;++ float
   ;; fr7 is not used so that we can always push on the stack once.
-  (list eax ecx edx ebx fr0 fr1 fr2 fr3 fr4 fr5 fr6))
+  (list rax rcx rdx rbx r8 r9 r10 r11 r12 r13 r14 r15
+	;++ float
+	;; fr0 fr1 fr2 fr3 fr4 fr5 fr6
+	;; mmx0 mmx1 mmx2 mmx3 mmx4 mmx5 mmx6 mmx7
+	;; xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
+	;; xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15
+	))
 
+(define (sort-machine-registers registers)
+  registers)
+
+;++ float
+
+#;
 (define (sort-machine-registers registers)
   ;; FR0 is preferable to other FPU regs.  We promote it to the front
   ;; if we find another FPU reg in front of it.
@@ -57,27 +70,38 @@ USA.
   (cond ((machine-register? register)
 	 (vector-ref
 	  '#(GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
-	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT)
+	     GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
+	     ;++ float
+	     ;; FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT   ;x87 fp
+	     ;; FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT   ;MMX 64bit
+	     ;; MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA   ;XMM 128bit
+	     ;; MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA
+	     )
 	  register))
 	((register-value-class=word? register)
 	 'GENERAL)
 	((register-value-class=float? register)
 	 'FLOAT)
 	(else
-	 (error "unable to determine register type" register))))
-
+	 (error "Unable to determine register type:" register))))
+
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
-    (let loop ((i 0))
-      (cond ((>= i number-of-machine-registers)
-	     (lambda (register)
-	       (vector-ref references register)))
-	    ((< i 8)
-	     (vector-set! references i (INST-EA (R ,i)))
-	     (loop (1+ i)))
-	    (else
-	     (vector-set! references i (INST-EA (ST ,(floreg->sti i))))
-	     (loop (1+ i)))))))
+    (do ((i rax (+ i 1)))
+	((> i r15))
+      (vector-set! references i (INST-EA (R ,i))))
+    ;++ float
+    ;; (do ((i fr0 (+ i 1)))
+    ;; 	((>= i fr7))
+    ;;   (vector-set! references i (INST-EA (ST ,(floreg->sti i)))))
+    ;; (do ((i mmx0 (+ i 1)))
+    ;; 	((>= i mmx7))
+    ;;   (vector-set! references i (INST-EA (MMX ...))))
+    ;; (do ((i xmm0 (+ i 1)))
+    ;; 	((>= i xmm15))
+    ;;   (vector-set! references i (INST-EA (XMM ...))))
+    (lambda (register)
+      (vector-ref references register))))
 
 (define (register->register-transfer source target)
   (machine->machine-register source target))
@@ -85,6 +109,7 @@ USA.
 (define (reference->register-transfer source target)
   (cond ((equal? (register-reference target) source)
 	 (LAP))
+	;++ float
 	((float-register-reference? source)
 	 ;; Assume target is a float register
 	 (LAP (FLD ,source)))
@@ -101,7 +126,12 @@ USA.
 (define (register->home-transfer source target)
   (machine->pseudo-register source target))
 
+;++ float
+
 (define-integrable (float-register-reference? ea)
+  ea
+  #f
+  #;
   (and (pair? ea)
        (eq? (car ea) 'ST)))
 
@@ -134,8 +164,9 @@ USA.
 
 (define-integrable (machine->machine-register source target)
   (guarantee-registers-compatible source target)
+  ;++ float
   (if (not (float-register? source))
-      (LAP (MOV W ,(register-reference target) ,(register-reference source)))
+      (LAP (MOV Q ,(register-reference target) ,(register-reference source)))
       (let ((ssti (floreg->sti source))
 	    (tsti (floreg->sti target)))
 	(if (zero? ssti)
@@ -144,8 +175,9 @@ USA.
 		 (FSTP (ST ,(1+ tsti))))))))
 
 (define (machine-register->memory source target)
+  ;++ float
   (if (not (float-register? source))
-      (LAP (MOV W ,target ,(register-reference source)))
+      (LAP (MOV Q ,target ,(register-reference source)))
       (let ((ssti (floreg->sti source)))
 	(if (zero? ssti)
 	    (LAP (FST D ,target))
@@ -153,32 +185,48 @@ USA.
 		 (FSTP D ,target))))))
 
 (define (memory->machine-register source target)
+  ;++ float
   (if (not (float-register? target))
-      (LAP (MOV W ,(register-reference target) ,source))
+      (LAP (MOV Q ,(register-reference target) ,source))
       (LAP (FLD D ,source)
 	   (FSTP (ST ,(1+ (floreg->sti target)))))))
 
+(define-integrable (offset-referenceable? offset)
+  (byte-offset-referenceable? (* address-units-per-object offset)))
+
 (define-integrable (offset-reference register offset)
-  (byte-offset-reference register (* 4 offset)))
+  (byte-offset-reference register (* address-units-per-object offset)))
+
+(define-integrable (byte-offset-referenceable? offset)
+  (fits-in-signed-long? offset))
 
 (define (byte-offset-reference register offset)
   (cond ((zero? offset)
 	 (INST-EA (@R ,register)))
 	((fits-in-signed-byte? offset)
 	 (INST-EA (@RO B ,register ,offset)))
+	;; Assume that we are in 32-bit mode or in 64-bit mode, in
+	;; which case (@RO W ...) doesn't work.
+	;; ((fits-in-signed-word? offset)
+	;;  (INST-EA (@RO W ,register ,offset)))
+	((fits-in-signed-long? offset)
+	 (INST-EA (@RO L ,register ,offset)))
 	(else
-	 (INST-EA (@RO W ,register ,offset)))))
+	 (error "Offset too large:" offset))))
+
+(define-integrable (byte-unsigned-offset-referenceable? offset)
+  (byte-offset-referenceable? offset))
 
 (define (byte-unsigned-offset-reference register offset)
-  (cond ((zero? offset)
-	 (INST-EA (@R ,register)))
-	((fits-in-unsigned-byte? offset)
-	 (INST-EA (@RO UB ,register ,offset)))
-	(else
-	 (INST-EA (@RO UW ,register ,offset)))))
+  (if (< offset 0)
+      (error "Negative unsigned offset:" offset))
+  ;; We don't have unsigned addressing modes.
+  (byte-offset-reference register offset))
+
+;++ This computation is probably not quite right.
 
 (define-integrable (pseudo-register-offset register)
-  (+ (+ (* 16 4) (* 80 4))
+  (+ (+ (* 16 address-units-per-object) (* 80 address-units-per-object))
      (* 3 (register-renumber register))))
 
 (define-integrable (pseudo->machine-register source target)
@@ -187,6 +235,20 @@ USA.
 (define-integrable (machine->pseudo-register source target)
   (machine-register->memory source (pseudo-register-home target)))
 
+;++ float
+
+(define (general-register? register)
+  register
+  #t)
+
+(define (float-register? register)
+  register
+  #f)
+
+(define (floreg->sti reg)
+  (error "x87 floating-point not supported:" `(FLOREG->STI ,reg)))
+
+#|
 (define-integrable (floreg->sti reg)
   (- reg fr0))
 
@@ -195,6 +257,7 @@ USA.
 
 (define-integrable (float-register? register)
   (<= fr0 register fr7))
+|#
 
 ;;;; Utilities for the rules
 
@@ -219,7 +282,8 @@ USA.
 
 (define (object->machine-register! object mreg)
   ;; This funny ordering allows load-constant to use a pc value in mreg!
-  (let ((code (load-constant (INST-EA (R ,mreg)) object)))
+  ;; [TRC 20091025: Does this matter, given PC-relative addressing?]
+  (let ((code (load-constant->register (INST-EA (R ,mreg)) object)))
     (require-register! mreg)
     code))
 
@@ -227,84 +291,111 @@ USA.
   (move-to-alias-register! source (register-type target) target)
   (LAP))
 
-(define (convert-object/constant->register target constant conversion)
-  (delete-dead-registers!)
-  (let ((target (target-register-reference target)))
-    (if (non-pointer-object? constant)
-	;; Is this correct if conversion is object->address ?
-	(load-non-pointer target 0 (careful-object-datum constant))
-	(LAP ,@(load-constant target constant)
-	     ,@(conversion target)))))
-
-(define (non-pointer->literal object)
-  (make-non-pointer-literal (object-type object)
-			    (careful-object-datum object)))
-
-(define (load-immediate target value)
-  (if (zero? value)
-      (LAP (XOR W ,target ,target))
-      (LAP (MOV W ,target (& ,value)))))
-
-(define (load-non-pointer target type datum)
-  (let ((immediate-value (make-non-pointer-literal type datum)))
-    (if (zero? immediate-value)
-	(LAP (XOR W ,target ,target))
-	(LAP (MOV W ,target (&U ,immediate-value))))))
-
-(define (load-constant target obj)
-  (if (non-pointer-object? obj)
-      (load-non-pointer target (object-type obj) (careful-object-datum obj))
-      (load-pc-relative target (constant->label obj))))
-
 (define (load-pc-relative target label-expr)
-  (with-pc
-    (lambda (pc-label pc-register)
-      (LAP (MOV W ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))
+  (LAP (MOV Q ,target (@PCR ,label-expr))))
 
 (define (load-pc-relative-address target label-expr)
-  (with-pc
-    (lambda (pc-label pc-register)
-      (LAP (LEA ,target (@RO W ,pc-register (- ,label-expr ,pc-label)))))))  
-
-(define (with-pc recvr)
-  (with-values (lambda () (get-cached-label))
-    (lambda (label reg)
-      (if label
-	  (recvr label reg)
-	  (let ((temporary (allocate-temporary-register! 'GENERAL)))
-	    (pc->reg temporary
-		     (lambda (label prefix)
-		       (cache-label! label temporary)
-		       (LAP ,@prefix
-			    ,@(recvr label temporary)))))))))
-
-(define (pc->reg reg recvr)
-  (let ((label (generate-label 'GET-PC)))
-    (recvr label
-	   (LAP (CALL (@PCR ,label))
-		(LABEL ,label)
-		(POP ,(register-reference reg))))))
-
-(define-integrable (get-cached-label)
-  (register-map-label *register-map* 'GENERAL))
-
-(define-integrable (cache-label! label temporary)
-  (set! *register-map*
-	(set-machine-register-label *register-map* temporary label))
-  unspecific)
+  (LAP (LEA Q ,target (@PCR ,label-expr))))  
 
 (define (compare/register*register reg1 reg2)
   (cond ((register-alias reg1 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP W ,(register-reference alias) ,(any-reference reg2)))))
+	   (LAP (CMP Q ,(register-reference alias) ,(any-reference reg2)))))
 	((register-alias reg2 'GENERAL)
 	 =>
 	 (lambda (alias)
-	   (LAP (CMP W ,(any-reference reg1) ,(register-reference alias)))))
+	   (LAP (CMP Q ,(any-reference reg1) ,(register-reference alias)))))
 	(else
-	 (LAP (CMP W ,(source-register-reference reg1)
+	 (LAP (CMP Q ,(source-register-reference reg1)
 		   ,(any-reference reg2))))))
+
+(define (compare/reference*non-pointer register non-pointer)
+  (compare/reference*literal register (non-pointer->literal non-pointer)))
+
+(define (compare/reference*literal reference literal)
+  (if (fits-in-signed-long? literal)
+      (LAP (CMP Q ,reference (&U ,literal)))
+      (let ((temp (temporary-register-reference)))
+	(LAP (MOV Q ,temp (&U ,literal))
+	     (CMP Q ,reference ,temp)))))
+
+;;;; Literals and Constants
+
+;;; These are slightly tricky because most instructions don't admit
+;;; 64-bit operands.
+
+(define (convert-object/constant->register target object conversion)
+  (let ((target (target-register-reference target)))
+    (if (non-pointer-object? object)
+	;; Is this correct if conversion is object->address ?
+	(load-non-pointer-constant->register target object)
+	(LAP ,@(load-pointer-constant->register target object)
+	     ,@(conversion target)))))
+
+(define (load-constant->register register object)
+  (if (non-pointer-object? object)
+      (load-non-pointer-constant->register register object)
+      (load-pointer-constant->register register object)))
+
+(define (load-pointer-constant->register register object)
+  (LAP (MOV Q ,register (@PCR ,(constant->label object)))))
+
+(define (load-non-pointer-constant->register register object)
+  (load-non-pointer-literal->register register (non-pointer->literal object)))
+
+(define (load-non-pointer-constant->offset register object)
+  (load-non-pointer-literal->offset register (non-pointer->literal object)))
+
+(define (load-non-pointer->register register type datum)
+  (load-non-pointer-literal->register register
+				      (make-non-pointer-literal type datum)))
+
+(define (load-non-pointer->offset register type datum)
+  (load-non-pointer-literal->offset register
+				      (make-non-pointer-literal type datum)))
+
+(define (load-non-pointer-literal->register register literal)
+  (load-unsigned-immediate->register register literal))
+
+(define (load-non-pointer-literal->offset register literal)
+  (load-unsigned-immediate->offset register literal))
+
+(define (non-pointer->literal object)
+  (make-non-pointer-literal (object-type object)
+			    (careful-object-datum object)))
+
+(define (load-signed-immediate->register target immediate)
+  (cond ((zero? immediate)
+	 (LAP (XOR Q ,target ,target)))
+	((fits-in-signed-quad? immediate)
+	 (LAP (MOV Q ,target (& ,immediate))))
+	(else
+	 (error "Signed immediate too large:" immediate))))
+
+(define (load-unsigned-immediate->register target immediate)
+  (cond ((zero? immediate)
+	 (LAP (XOR Q ,target ,target)))
+	((fits-in-unsigned-quad? immediate)
+	 (LAP (MOV Q ,target (&U ,immediate))))
+	(else
+	 (error "Unsigned immediate too large:" immediate))))
+
+(define (load-signed-immediate->offset offset immediate)
+  (if (fits-in-signed-long? immediate)
+      (LAP (MOV Q ,(offset->reference! offset) (& ,immediate)))
+      (let* ((temporary (temporary-register-reference))
+	     (target (offset->reference! offset)))
+	(LAP ,@(load-signed-immediate->register temporary immediate)
+	     (MOV Q ,target ,temporary)))))
+
+(define (load-unsigned-immediate->offset offset immediate)
+  (if (fits-in-unsigned-long? immediate)
+      (LAP (MOV Q ,(offset->reference! offset) (&U ,immediate)))
+      (let* ((temporary (temporary-register-reference))
+	     (target (offset->reference! offset)))
+	(LAP ,@(load-unsigned-immediate->register temporary immediate)
+	     (MOV Q ,target ,temporary)))))
 
 (define (target-register target)
   (delete-dead-registers!)
@@ -350,7 +441,7 @@ USA.
 	   (lambda (temp)
 	     (let ((tref (register-reference temp))
 		   (ea (indexed-ea-mode base index scale b-offset)))
-	       (LAP (LEA ,tref ,ea)
+	       (LAP (LEA Q ,tref ,ea)
 		    ,@(object->address tref)
 		    ,@(recvr (INST-EA (@R ,temp)))))))
 	 (with-reused-temp
@@ -385,10 +476,12 @@ USA.
 (define (indexed-ea-mode base index scale offset)
   (cond ((zero? offset)
 	 (INST-EA (@RI ,base ,index ,scale)))
-	((<= -128 offset 127)
+	((fits-in-signed-byte? offset)
 	 (INST-EA (@ROI B ,base ,offset ,index ,scale)))
+	((fits-in-signed-long? offset)
+	 (INST-EA (@ROI L ,base ,offset ,index ,scale)))
 	(else
-	 (INST-EA (@ROI W ,base ,offset ,index ,scale)))))
+	 (error "Offset too large:" offset))))
 
 (define (rtl:simple-offset? expression)
   (and (rtl:offset? expression)
@@ -410,15 +503,16 @@ USA.
     (cond ((not (rtl:register? base))
 	   (indexed-ea (rtl:register-number (rtl:offset-address-base base))
 		       (rtl:register-number (rtl:offset-address-offset base))
-		       4
-		       (* 4 (rtl:machine-constant-value offset))))
+		       address-units-per-object
+		       (* address-units-per-object
+			  (rtl:machine-constant-value offset))))
 	  ((rtl:machine-constant? offset)
 	   (indirect-reference! (rtl:register-number base)
 				(rtl:machine-constant-value offset)))
 	  (else
 	   (indexed-ea (rtl:register-number base)
 		       (rtl:register-number offset)
-		       4
+		       address-units-per-object
 		       0)))))
 
 (define (rtl:simple-byte-offset? expression)
@@ -478,7 +572,9 @@ USA.
 (define (float-offset->reference! offset)
   ;; OFFSET must be a simple float offset
   (let ((base (rtl:float-offset-base offset))
-	(offset (rtl:float-offset-offset offset)))
+	(offset (rtl:float-offset-offset offset))
+	(objects-per-float
+	 (quotient address-units-per-float address-units-per-object)))
     (cond ((not (rtl:register? base))
 	   (let ((base*
 		  (rtl:register-number (rtl:offset-address-base base)))
@@ -488,26 +584,27 @@ USA.
 	     (if (rtl:machine-constant? offset)
 		 (indirect-reference!
 		  base*
-		  (+ (* 2 (rtl:machine-constant-value offset))
+		  (+ (* objects-per-float (rtl:machine-constant-value offset))
 		     w-offset))
 		 (indexed-ea base*
 			     (rtl:register-number offset)
-			     8
-			     (* 4 w-offset)))))
+			     address-units-per-float
+			     (* address-units-per-object w-offset)))))
 	  ((rtl:machine-constant? offset)
 	   (indirect-reference! (rtl:register-number base)
-				(* 2 (rtl:machine-constant-value offset))))
+				(* objects-per-float
+				   (rtl:machine-constant-value offset))))
 	  (else
 	   (indexed-ea (rtl:register-number base)
 		       (rtl:register-number offset)
-		       8
+		       address-units-per-object
 		       0)))))
 
 (define (object->type target)
-  (LAP (SHR W ,target (& ,scheme-datum-width))))
+  (LAP (SHR Q ,target (&U ,scheme-datum-width))))
 
 (define (object->datum target)
-  (LAP (AND W ,target (R ,regnum:datum-mask))))
+  (LAP (AND Q ,target (R ,regnum:datum-mask))))
 
 (define (object->address target)
   (declare (integrate-operator object->datum))
@@ -527,15 +624,15 @@ USA.
        (load-machine-register! (rtl:register-number expression) register))
       ((CONS-POINTER)
        (LAP ,@(clear-registers! register)
-	    ,@(load-non-pointer (rtl:machine-constant-value
-				 (rtl:cons-pointer-type expression))
-				(rtl:machine-constant-value
-				 (rtl:cons-pointer-datum expression))
-				target)))
+	    ,@(load-non-pointer->register
+	       target
+	       (rtl:machine-constant-value (rtl:cons-pointer-type expression))
+	       (rtl:machine-constant-value
+		(rtl:cons-pointer-datum expression)))))
       ((OFFSET)
        (let ((source-reference (offset->reference! expression)))
 	 (LAP ,@(clear-registers! register)
-	      (MOV W ,target ,source-reference))))
+	      (MOV Q ,target ,source-reference))))
       (else
        (error "Unknown expression type" (car expression))))))
 
@@ -599,13 +696,18 @@ USA.
   (LAP (CALL ,entry)))
 
 (define-integrable (invoke-interface code)
-  (LAP (MOV B (R ,eax) (& ,code))
+  (LAP (MOV B (R ,rax) (& ,code))
        ,@(invoke-hook entry:compiler-scheme-to-interface)))
 
 (define-integrable (invoke-interface/call code)
-  (LAP (MOV B (R ,eax) (& ,code))
+  (LAP (MOV B (R ,rax) (& ,code))
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
+;++ This uses a kludge to number entries by byte offsets from the
+;++ registers block, but that works only in the 32-bit i386 version;
+;++ for x86-64 version, all the entries' byte indices exceed the range
+;++ of signed bytes.  But this works for now.
+
 (define-syntax define-entries
   (sc-macro-transformer
    (lambda (form environment)
@@ -620,15 +722,15 @@ USA.
 		    (cons `(DEFINE-INTEGRABLE
 			     ,(symbol-append 'ENTRY:COMPILER-
 					     (car names))
-			     (byte-offset-reference regnum:regs-pointer
+			     (BYTE-OFFSET-REFERENCE REGNUM:REGS-POINTER
 						    ,index))
-			  (loop (cdr names) (+ index 4) high))
+			  (loop (cdr names) (+ index 8) high))
 		    (begin
 		      (warn "define-entries: Too many for byte offsets.")
 		      (loop names index (+ high 32000))))
 		'()))))))
 
-(define-entries #x40 #x80		; (* 16 4)
+(define-entries #x80 #x100		; (* 16 8)
   scheme-to-interface			; Main entry point (only one necessary)
   scheme-to-interface/call		; Used by rules3&4, for convenience.
   trampoline-to-interface		; Used by trampolines, for convenience.
@@ -646,7 +748,7 @@ USA.
   primitive-error
   short-primitive-apply)
 
-(define-entries #x-80 0
+(define-entries #x-100 0
   &+
   &-
   &*
@@ -691,5 +793,5 @@ USA.
   (for-each (lambda (rgraph)
 	      (for-each (lambda (edge)
 			  (determine-interrupt-checks (edge-right-node edge)))
-		(rgraph-entry-edges rgraph)))
-    rgraphs))
+			(rgraph-entry-edges rgraph)))
+	    rgraphs))

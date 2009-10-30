@@ -47,42 +47,38 @@ USA.
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (? expression rtl:simple-offset?))
   (set-equal-branches!)
-  (LAP (CMP W ,(source-register-reference register)
+  (LAP (CMP Q ,(source-register-reference register)
 	    ,(offset->reference! expression))))
 
 (define-rule predicate
   (EQ-TEST (? expression rtl:simple-offset?) (REGISTER (? register)))
   (set-equal-branches!)
-  (LAP (CMP W ,(offset->reference! expression)
+  (LAP (CMP Q ,(offset->reference! expression)
 	    ,(source-register-reference register))))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (REGISTER (? register)))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(any-reference register)
-	    (&U ,(non-pointer->literal constant)))))
+  (compare/reference*non-pointer (any-reference register) constant))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register)) (CONSTANT (? constant)))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(any-reference register)
-	    (&U ,(non-pointer->literal constant)))))
+  (compare/reference*non-pointer (any-reference register) constant))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant)) (? expression rtl:simple-offset?))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(offset->reference! expression)
-	    (&U ,(non-pointer->literal constant)))))
+  (compare/reference*non-pointer (offset->reference! expression) constant))
 
 (define-rule predicate
   (EQ-TEST (? expression rtl:simple-offset?) (CONSTANT (? constant)))
   (QUALIFIER (non-pointer-object? constant))
   (set-equal-branches!)
-  (LAP (CMP W ,(offset->reference! expression)
-	    (&U ,(non-pointer->literal constant)))))
+  (compare/reference*non-pointer (offset->reference! expression) constant))
 
 (define-rule predicate
   (EQ-TEST (CONSTANT (? constant-1)) (CONSTANT (? constant-2)))
@@ -103,32 +99,32 @@ USA.
 			 (MACHINE-CONSTANT (? datum)))
 	   (REGISTER (? register)))
   (set-equal-branches!)
-  (LAP (CMP W ,(any-reference register)
-	    (&U ,(make-non-pointer-literal type datum)))))
+  (compare/reference*literal (any-reference register)
+			     (make-non-pointer-literal type datum)))
 
 (define-rule predicate
   (EQ-TEST (REGISTER (? register))
 	   (CONS-POINTER (MACHINE-CONSTANT (? type))
 			 (MACHINE-CONSTANT (? datum))))
   (set-equal-branches!)
-  (LAP (CMP W ,(any-reference register)
-	    (&U ,(make-non-pointer-literal type datum)))))
+  (compare/reference*literal (any-reference register)
+			     (make-non-pointer-literal type datum)))
 
 (define-rule predicate
   (EQ-TEST (CONS-POINTER (MACHINE-CONSTANT (? type))
 			 (MACHINE-CONSTANT (? datum)))
 	   (? expression rtl:simple-offset?))
   (set-equal-branches!)
-  (LAP (CMP W ,(offset->reference! expression)
-	    (&U ,(make-non-pointer-literal type datum)))))
+  (compare/reference*literal (offset->reference! expression)
+			     (make-non-pointer-literal type datum)))
 
 (define-rule predicate
   (EQ-TEST (? expression rtl:simple-offset?)
 	   (CONS-POINTER (MACHINE-CONSTANT (? type))
 			 (MACHINE-CONSTANT (? datum))))
   (set-equal-branches!)
-  (LAP (CMP W ,(offset->reference! expression)
-	    (&U ,(make-non-pointer-literal type datum)))))
+  (compare/reference*literal (offset->reference! expression)
+			     (make-non-pointer-literal type datum)))
 
 
 ;; Combine tests for fixnum and non-negative by extracting the type
@@ -139,5 +135,5 @@ USA.
 	      (REGISTER (? register)))
   (let ((temp (standard-move-to-temporary! register)))
     (set-equal-branches!)
-    (LAP (SHR W ,temp (& ,(- scheme-datum-width 1)))
+    (LAP (SHR Q ,temp (&U ,(- scheme-datum-width 1)))
 	 (CMP B ,temp (&U ,(* 2 (ucode-type fixnum)))))))

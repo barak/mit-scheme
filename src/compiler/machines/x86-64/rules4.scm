@@ -35,7 +35,7 @@ USA.
   (QUALIFIER (interpreter-call-argument? extension))
   cont					; ignored
   (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension edx)))
+	 (interpreter-call-argument->machine-register! extension rdx)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 #|
@@ -54,8 +54,8 @@ USA.
 		  (interpreter-call-argument? value)))
   cont					; ignored
   (let* ((set-extension
-	  (interpreter-call-argument->machine-register! extension edx))
-	 (set-value (interpreter-call-argument->machine-register! value ebx)))
+	  (interpreter-call-argument->machine-register! extension rdx))
+	 (set-value (interpreter-call-argument->machine-register! value rbx)))
     (LAP ,@set-extension
 	 ,@set-value
 	 ,@(clear-map!)
@@ -69,7 +69,7 @@ USA.
   (QUALIFIER (interpreter-call-argument? extension))
   cont					; ignored
   (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension edx)))
+	 (interpreter-call-argument->machine-register! extension rdx)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
 	 ,@(invoke-interface/call code:compiler-unassigned?-trap))))
@@ -107,10 +107,10 @@ USA.
 
 (define (lookup-call code environment name)
   (let ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx)))
+	  (interpreter-call-argument->machine-register! environment rdx)))
     (LAP ,@set-environment
 	 ,@(clear-map (clear-map!))
-	 ,@(load-constant (INST-EA (R ,ebx)) name)
+	 ,@(load-constant->register (INST-EA (R ,rbx)) name)
 	 ,@(invoke-interface/call code))))
 
 (define-rule statement
@@ -129,11 +129,11 @@ USA.
 
 (define (assignment-call code environment name value)
   (let* ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx))
-	 (set-value (interpreter-call-argument->machine-register! value eax)))
+	  (interpreter-call-argument->machine-register! environment rdx))
+	 (set-value (interpreter-call-argument->machine-register! value rax)))
     (LAP ,@set-environment
 	 ,@set-value
 	 ,@(clear-map!)
-	 (MOV W ,reg:utility-arg-4 (R ,eax))
-	 ,@(load-constant (INST-EA (R ,ebx)) name)
+	 (MOV Q ,reg:utility-arg-4 (R ,rax))
+	 ,@(load-constant->register (INST-EA (R ,rbx)) name)
 	 ,@(invoke-interface/call code))))

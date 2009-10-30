@@ -36,23 +36,22 @@ USA.
   ;; The type code needs to be cleared first.
   (let ((checks (get-exit-interrupt-checks)))
     (cond ((null? checks)
-	   (let ((bblock
-		  (make-new-sblock
-		   (LAP (POP (R ,eax))	; continuation
-			(AND W (R ,eax) (R ,regnum:datum-mask)) ; clear type
-			(JMP (R ,eax))))))
-	     (current-bblock-continue! bblock)))
+	   (current-bblock-continue!
+	    (make-new-sblock
+	     (LAP (POP Q (R ,rax))				; continuation
+		  (AND Q (R ,rax) (R ,regnum:datum-mask))	; clear type
+		  (JMP (R ,rax))))))
 	  ((block-association 'POP-RETURN)
 	   => current-bblock-continue!)
 	  (else
 	   (let ((bblock
 		  (make-new-sblock
 		   (let ((interrupt-label (generate-label 'INTERRUPT)))
-		     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+		     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 			  (JGE (@PCR ,interrupt-label))
-			  (POP (R ,eax))	; continuation
-			  (AND W (R ,eax) (R ,regnum:datum-mask)) ; clear type
-			  (JMP (R ,eax))
+			  (POP Q (R ,rax)) ; continuation
+			  (AND Q (R ,rax) (R ,regnum:datum-mask)) ; clear type
+			  (JMP (R ,rax))
 			  (LABEL ,interrupt-label)
 			  ,@(invoke-hook
 			     entry:compiler-interrupt-continuation-2))))))
@@ -65,9 +64,9 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP (R ,ecx))
+       (POP Q (R ,rcx))
        #|
-       (MOV W (R ,edx) (& ,frame-size))
+       (MOV Q (R ,rdx) (&U ,frame-size))
        ,@(invoke-interface code:compiler-apply)
        |#
        ,@(case frame-size
@@ -80,7 +79,7 @@ USA.
 	   ((7) (invoke-hook entry:compiler-shortcircuit-apply-size-7))
 	   ((8) (invoke-hook entry:compiler-shortcircuit-apply-size-8))
 	   (else
-	    (LAP (MOV W (R ,edx) (& ,frame-size))
+	    (LAP (MOV Q (R ,rdx) (&U ,frame-size))
 		 ,@(invoke-hook entry:compiler-shortcircuit-apply))))))
 
 (define-rule statement
@@ -96,20 +95,18 @@ USA.
   ;; It expects the procedure at the top of the stack
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP (R ,eax))
-       (AND W (R ,eax) (R ,regnum:datum-mask)) ;clear type code
-       (JMP (R ,eax))))
+       (POP Q (R ,rax))
+       (AND Q (R ,rax) (R ,regnum:datum-mask)) ;clear type code
+       (JMP (R ,rax))))
 
 (define-rule statement
   (INVOCATION:LEXPR (? number-pushed) (? continuation) (? label))
   continuation
   (expect-no-exit-interrupt-checks)
-  (with-pc
-    (lambda (pc-label pc-register)
-      (LAP ,@(clear-map!)
-	   (LEA (R ,ecx) (@RO W ,pc-register (- ,label ,pc-label)))
-	   (MOV W (R ,edx) (& ,number-pushed))
-	   ,@(invoke-interface code:compiler-lexpr-apply)))))
+  (LAP ,@(clear-map!)
+       (LEA Q (R ,rcx) (@PCR ,label))
+       (MOV Q (R ,rdx) (&U ,number-pushed))
+       ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
@@ -117,9 +114,9 @@ USA.
   ;; It expects the procedure at the top of the stack
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP (R ,ecx))
-       (AND W (R ,ecx) (R ,regnum:datum-mask)) ; clear type code
-       (MOV W (R ,edx) (& ,number-pushed))
+       (POP Q (R ,rcx))
+       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ; clear type code
+       (MOV Q (R ,rdx) (&U ,number-pushed))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
 (define-rule statement
@@ -127,14 +124,14 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 3))))
+       (JMP (@PCRO ,(free-uuo-link-label name frame-size) 8))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 3))))
+       (JMP (@PCRO ,(global-uuo-link-label name frame-size) 8))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
@@ -142,16 +139,16 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (let* ((set-extension
-	  (interpreter-call-argument->machine-register! extension ecx))
+	  (interpreter-call-argument->machine-register! extension rcx))
 	 (set-address
-	  (begin (require-register! edx)
-		 (load-pc-relative-address (INST-EA (R ,edx))
+	  (begin (require-register! rdx)
+		 (load-pc-relative-address (INST-EA (R ,rdx))
 					   *block-label*))))
     (delete-dead-registers!)
     (LAP ,@set-extension
 	 ,@set-address
 	 ,@(clear-map!)
-	 (MOV W (R ,ebx) (& ,frame-size))
+	 (MOV Q (R ,rbx) (&U ,frame-size))
 	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
@@ -160,13 +157,13 @@ USA.
   continuation
   (expect-no-entry-interrupt-checks)
   (let* ((set-environment
-	  (interpreter-call-argument->machine-register! environment ecx))
-	 (set-name (object->machine-register! name edx)))
+	  (interpreter-call-argument->machine-register! environment rcx))
+	 (set-name (object->machine-register! name rdx)))
     (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@set-name
 	 ,@(clear-map!)
-	 (MOV W (R ,ebx) (& ,frame-size))
+	 (MOV Q (R ,rbx) (&U ,frame-size))
 	 ,@(invoke-interface code:compiler-lookup-apply))))
 
 (define-rule statement
@@ -174,39 +171,27 @@ USA.
   continuation				; ignored
   (if (eq? primitive compiled-error-procedure)
       (LAP ,@(clear-map!)
-	   (MOV W (R ,ecx) (& ,frame-size))
+	   (MOV Q (R ,rcx) (&U ,frame-size))
 	   ,@(invoke-hook entry:compiler-error))
       (let ((arity (primitive-procedure-arity primitive)))
 	(cond ((not (negative? arity))
-	       (with-values (lambda () (get-cached-label))
-		 (lambda (pc-label pc-reg)
-		   pc-reg		; ignored
-		   (if pc-label
-		       (let ((get-code
-			      (object->machine-register! primitive ecx)))
-			 (LAP ,@get-code
-			      ,@(clear-map!)
-			      ,@(invoke-hook entry:compiler-primitive-apply)))
-		       (let ((prim-label (constant->label primitive))
-			     (offset-label (generate-label 'PRIMOFF)))
-			 (LAP ,@(clear-map!)
-			      ,@(invoke-hook/call
-				 entry:compiler-short-primitive-apply)
-			      (LABEL ,offset-label)
-			      (LONG S (- ,prim-label ,offset-label))))))))
-	      ((= arity -1)
-	       (let ((get-code (object->machine-register! primitive ecx)))
+	       (let ((get-code
+		      (object->machine-register! primitive rcx)))
 		 (LAP ,@get-code
 		      ,@(clear-map!)
-		      (MOV W ,reg:lexpr-primitive-arity
-			   (& ,(-1+ frame-size)))
+		      ,@(invoke-hook entry:compiler-primitive-apply))))
+	      ((= arity -1)
+	       (let ((get-code (object->machine-register! primitive rcx)))
+		 (LAP ,@get-code
+		      ,@(clear-map!)
+		      (MOV Q ,reg:lexpr-primitive-arity (&U ,(-1+ frame-size)))
 		      ,@(invoke-hook entry:compiler-primitive-lexpr-apply))))
 	      (else
 	       ;; Unknown primitive arity.  Go through apply.
-	       (let ((get-code (object->machine-register! primitive ecx)))
+	       (let ((get-code (object->machine-register! primitive rcx)))
 		 (LAP ,@get-code
 		      ,@(clear-map!)
-		      (MOV W (R ,edx) (& ,frame-size))
+		      (MOV Q (R ,rdx) (&U ,frame-size))
 		      ,@(invoke-interface code:compiler-apply))))))))
 
 (let-syntax
@@ -255,6 +240,8 @@ USA.
 
 ;;; Invocation Prefixes
 
+;;; rsp = 4, regnum:stack-pointer
+
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP 0 (REGISTER 4))
   (LAP))
@@ -274,20 +261,20 @@ USA.
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (LAP (ADD W (R 4) (& ,(* 4 how-far)))))
+	   (LAP (ADD Q (R ,rsp) (&U ,(* address-units-per-object how-far)))))
 	  ((= frame-size 1)
 	   (let ((temp (temporary-register-reference)))
-	     (LAP (MOV W ,temp (@R 4))
-		  (ADD W (R 4) (& ,(* 4 offset)))
-		  (PUSH W ,temp))))
+	     (LAP (MOV Q ,temp (@R ,rsp))
+		  (ADD Q (R ,rsp) (&U ,(* address-units-per-object offset)))
+		  (PUSH Q ,temp))))
 	  ((= frame-size 2)
 	   (let ((temp1 (temporary-register-reference))
 		 (temp2 (temporary-register-reference)))
-	     (LAP (MOV W ,temp2 (@RO B 4 4))
-		  (MOV W ,temp1 (@R 4))
-		  (ADD W (R 4) (& ,(* 4 offset)))
-		  (PUSH W ,temp2)
-		  (PUSH W ,temp1))))
+	     (LAP (MOV Q ,temp2 (@RO B ,rsp ,address-units-per-object))
+		  (MOV Q ,temp1 (@R ,rsp))
+		  (ADD Q (R ,rsp) (&U ,(* address-units-per-object offset)))
+		  (PUSH Q ,temp2)
+		  (PUSH Q ,temp1))))
 	  (else
 	   (error "INVOCATION-PREFIX:MOVE-FRAME-UP: Incorrectly invoked!")))))
 
@@ -301,31 +288,33 @@ USA.
   (INVOCATION-PREFIX:DYNAMIC-LINK (? frame-size)
 				  (REGISTER (? reg-1))
 				  (REGISTER (? reg-2)))
-  (QUALIFIER (not (= reg-1 4)))
+  (QUALIFIER (not (= reg-1 rsp)))
   (let* ((label (generate-label 'DYN-CHOICE))
 	 (temp1 (move-to-temporary-register! reg-1 'GENERAL))
 	 (temp2 (standard-move-to-temporary! reg-2)))
-    (LAP (CMP W (R ,temp1) ,temp2)
+    (LAP (CMP Q (R ,temp1) ,temp2)
 	 (JLE (@PCR ,label))
-	 (MOV W (R ,temp1) ,temp2)
+	 (MOV Q (R ,temp1) ,temp2)
 	 (LABEL ,label)
 	 ,@(generate/move-frame-up* frame-size temp1 (lambda () temp2)))))
 
 (define (generate/move-frame-up* frame-size reg get-temp)
   (if (zero? frame-size)
-      (LAP (MOV W (R 4) (R ,reg)))
+      (LAP (MOV Q (R ,rsp) (R ,reg)))
       (let ((temp (get-temp))
 	    (ctr (allocate-temporary-register! 'GENERAL))
 	    (label (generate-label 'MOVE-LOOP)))
-	(LAP (LEA (R ,reg)
-		  ,(byte-offset-reference reg (* -4 frame-size)))
-	     (MOV W (R ,ctr) (& ,(-1+ frame-size)))
+	(LAP (LEA Q (R ,reg)
+		  ,(byte-offset-reference
+		    reg
+		    (* -1 address-units-per-object frame-size)))
+	     (MOV Q (R ,ctr) (&U ,(-1+ frame-size)))
 	     (LABEL ,label)
-	     (MOV W ,temp (@RI 4 ,ctr 4))
-	     (MOV W (@RI ,reg ,ctr 4) ,temp)
-	     (DEC W (R ,ctr))
+	     (MOV Q ,temp (@RI ,rsp ,ctr ,address-units-per-object))
+	     (MOV Q (@RI ,reg ,ctr ,address-units-per-object) ,temp)
+	     (SUB Q (R ,ctr) (&U 1))
 	     (JGE (@PCR ,label))
-	     (MOV W (R 4) (R ,reg))))))
+	     (MOV Q (R ,rsp) (R ,reg))))))
 
 ;;;; External Labels
 
@@ -389,11 +378,11 @@ USA.
 (define (interrupt-check interrupt-label checks)
   ;; This always does interrupt checks in line.
   (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-	     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+	     (LAP (CMP Q (R ,regnum:free-pointer) ,reg:compiled-memtop)
 		  (JGE (@PCR ,interrupt-label)))
 	     (LAP))
        ,@(if (memq 'STACK checks)
-	     (LAP (CMP W (R ,regnum:stack-pointer) ,reg:stack-guard)
+	     (LAP (CMP Q (R ,regnum:stack-pointer) ,reg:stack-guard)
 		  (JL (@PCR ,interrupt-label)))
 	     (LAP))))
 
@@ -456,323 +445,140 @@ USA.
 				  internal-label
 				  entry:compiler-interrupt-procedure)))
 
-;; Interrupt check placement
-;;
-;; The first two procedures are the interface.
-;; GET-EXIT-INTERRUPT-CHECKS and GET-ENTRY-INTERRUPT-CHECKS get a list
-;; of kinds interrupt check.  An empty list implies no check is
-;; required.  The list can contain these symbols:
-;;
-;;    STACK      stack check required here
-;;    HEAP       heap check required here
-;;    INTERRUPT  check required here to avoid loops without checks.
-;;
-;; The traversal and decision making is done immediately prior to LAP
-;; generation (from PRE-LAPGEN-ANALYSIS.)
-
-(define (get-entry-interrupt-checks)
-  (get-interupt-checks 'ENTRY-INTERRUPT-CHECKS))
-
-(define (get-exit-interrupt-checks)
-  (get-interupt-checks 'EXIT-INTERRUPT-CHECKS))
-
-(define (expect-no-entry-interrupt-checks)
-  (if (not (null? (get-entry-interrupt-checks)))
-      (error "No entry interrupt checks expected here" *current-bblock*)))
-
-(define (expect-no-exit-interrupt-checks)
-  (if (not (null? (get-exit-interrupt-checks)))
-      (error "No exit interrupt checks expected here" *current-bblock*)))
-
-(define (get-interupt-checks kind)
-  (cond ((cfg-node-get *current-bblock* kind)
-	 => cdr)
-	(else  (error "DETERMINE-INTERRUPT-CHECKS failed" kind))))
-
-;; This algorithm finds leaf-procedure-like paths in the rtl control
-;; flow graph.  If a procedure entry point can only reach a return, it
-;; is leaf-like.  If a return can only be reached from a procedure
-;; entry, it too is leaf-like.
-;;
-;; If a procedure reaches a procedure call, that could be a loop, so
-;; it is not leaf-like.  Similarly, if a continuation entry reaches
-;; return, that could be a long unwinding of recursion, so a check is
-;; needed in case the unwinding does allocation.
-;;
-;; Typically, true leaf procedures avoid both checks, and trivial
-;; cases (like MAP returning '()) avoid the exit check.
-;;
-;; This could be a lot smarter.  For example, a procedure entry does
-;; not need to check for interrupts if it reaches call sites of
-;; strictly lesser arity; or it could analyze the cycles in the CFG
-;; and select good places to break them
-;;
-;; The algorithm has three phases: (1) explore the CFG to find all
-;; entry and exit points, (2) propagate entry (exit) information so
-;; that each potential interrupt check point knows what kinds of exits
-;; (entrys) it reaches (is reached from), and (3) decide on the kinds
-;; of interrupt check that are required at each entry and exit.
-;;
-;; [TOFU is just a header node for the list of interrupt checks, to
-;; distingish () and #F]
-
-(define (determine-interrupt-checks bblock)
-  (let ((entries '())
-	(exits '()))
-
-    (define (explore bblock)
-      (or (cfg-node-get bblock 'INTERRUPT-CHECK-EXPLORE)
-	  (begin
-	    (cfg-node-put! bblock 'INTERRUPT-CHECK-EXPLORE #T)
-	    (if (node-previous=0? bblock)
-		(set! entries (cons bblock entries))
-		(if (rtl:continuation-entry?
-		     (rinst-rtl (bblock-instructions bblock)))
-		    ;; previous block is invocation:special-primitive
-		    ;; so it is just an out of line instruction
-		    (cfg-node-put! bblock 'ENTRY-INTERRUPT-CHECKS '(TOFU))))
-
-	    (for-each-previous-node bblock explore)
-	    (for-each-subsequent-node bblock explore)
-	    (if (and (snode? bblock)
-		     (or (not (snode-next bblock))
-			 (let ((last (last-insn bblock)))
-			   (or (rtl:invocation:special-primitive? last)
-			       (rtl:invocation:primitive? last)))))
-		(set! exits (cons bblock exits))))))
-
-    (define (for-each-subsequent-node node procedure)
-      (if (snode? node)
-	  (if (snode-next node)
-	      (procedure (snode-next node)))
-	  (begin
-	    (procedure (pnode-consequent node))
-	    (procedure (pnode-alternative node)))))
-
-    (define (propagator for-each-link)
-      (lambda (node update place)
-	(let propagate ((node node))
-	  (let ((old (cfg-node-get node place)))
-	    (let ((new (update old)))
-	      (if (not (equal? old new))
-		  (begin
-		    (cfg-node-put! node place new)
-		    (for-each-link node propagate))))))))
-
-    (define upward   (propagator for-each-previous-node))
-    (define downward (propagator for-each-subsequent-node))
-
-    (define (setting-flag old) old #T)
-
-    (define (propagate-entry-info bblock)
-      (let ((insn (rinst-rtl (bblock-instructions bblock))))
-	(cond ((or (rtl:continuation-entry? insn)
-		   (rtl:continuation-header? insn))
-	       (downward bblock setting-flag 'REACHED-FROM-CONTINUATION))
-	      ((or (rtl:closure-header? insn)
-		   (rtl:ic-procedure-header? insn)
-		   (rtl:open-procedure-header? insn)
-		   (rtl:procedure-header? insn))
-	       (downward bblock setting-flag 'REACHED-FROM-PROCEDURE))
-	      (else unspecific))))
-
-    (define (propagate-exit-info exit-bblock)
-      (let ((insn (last-insn exit-bblock)))
-	(cond ((rtl:pop-return? insn)
-	       (upward exit-bblock setting-flag 'REACHES-POP-RETURN))
-	      (else
-	       (upward exit-bblock setting-flag 'REACHES-INVOCATION)))))
-
-    (define (decide-entry-checks bblock)
-      (define (checks! types)
-	(cfg-node-put! bblock 'ENTRY-INTERRUPT-CHECKS (cons 'TOFU types)))
-      (define (decide-label internal-label)
-	(let ((object (label->object internal-label)))
-	  (let ((stack?
-		 (if (and (rtl-procedure? object)
-			  (not (rtl-procedure/stack-leaf? object))
-			  compiler:generate-stack-checks?)
-		     '(STACK)
-		     '())))
-	    (if (or (cfg-node-get bblock 'REACHES-INVOCATION)
-		    (pair? stack?))
-		(checks! (cons* 'HEAP 'INTERRUPT stack?))
-		(checks! '())))))
-
-      (let ((insn (rinst-rtl (bblock-instructions bblock))))
-	(cond ((rtl:continuation-entry? insn)  (checks! '()))
-	      ((rtl:continuation-header? insn) (checks! '()))
-	      ((rtl:closure-header? insn)
-	       (decide-label (rtl:closure-header-procedure insn)))
-	      ((rtl:ic-procedure-header? insn)
-	       (decide-label (rtl:ic-procedure-header-procedure insn)))
-	      ((rtl:open-procedure-header? insn)
-	       (decide-label (rtl:open-procedure-header-procedure insn)))
-	      ((rtl:procedure-header? insn)
-	       (decide-label (rtl:procedure-header-procedure insn)))
-	      (else
-	       (checks! '(INTERRUPT))))))
-
-    (define (last-insn bblock)
-      (rinst-rtl (rinst-last (bblock-instructions bblock))))
-
-    (define (decide-exit-checks bblock)
-      (define (checks! types)
-	(cfg-node-put! bblock 'EXIT-INTERRUPT-CHECKS (cons 'TOFU types)))
-      (if (rtl:pop-return? (last-insn bblock))
-	  (if (cfg-node-get bblock 'REACHED-FROM-CONTINUATION)
-	      (checks! '(INTERRUPT))
-	      (checks! '()))
-	  (checks! '())))
-
-    (explore bblock)
-
-    (for-each propagate-entry-info entries)
-    (for-each propagate-exit-info exits)
-    (for-each decide-entry-checks entries)
-    (for-each decide-exit-checks exits)
-
-    ))
-
 ;;;; Closures:
-
-;; Since i386 instructions are pc-relative, the GC can't relocate them unless
-;; there is a way to find where the closure was in old space before being
-;; transported.  The first entry point (tagged as an object) is always
-;; the last component of closures with any entry points.
 
 (define (generate/cons-closure target procedure-label min max size)
   (let* ((mtarget (target-register target))
 	 (target (register-reference mtarget))
-	 (temp (temporary-register-reference)))
-    (LAP ,@(load-pc-relative-address
-	    temp
-	    `(- ,(rtl-procedure/external-label (label->object procedure-label))
-		5))
-	 (MOV W (@R ,regnum:free-pointer)
-	      (&U ,(make-non-pointer-literal (ucode-type manifest-closure)
-					     (+ 4 size))))
-	 (MOV W (@RO B ,regnum:free-pointer 4)
-	      (&U ,(make-closure-code-longword min max 8)))
-	 (LEA ,target (@RO B ,regnum:free-pointer 8))
-	 ;; (CALL (@PCR <entry>))
-	 (MOV B (@RO B ,regnum:free-pointer 8) (&U #xe8))
-	 (SUB W ,temp ,target)
-	 (MOV W (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
-	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
-	 (LEA ,temp (@RO UW
-			 ,mtarget
-			 ,(make-non-pointer-literal (ucode-type compiled-entry)
-						    0)))
-	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-	 ,@(invoke-hook/call entry:compiler-conditionally-serialize))))
+	 (temp (temporary-register-reference))
+	 (data-offset address-units-per-closure-manifest)
+	 (format-offset (+ data-offset address-units-per-closure-entry-count))
+	 (pc-offset (+ format-offset address-units-per-entry-format-code))
+	 (slots-offset
+	  (+ pc-offset
+	     address-units-per-closure-entry-instructions
+	     address-units-per-closure-padding))
+	 (free-offset
+	  (+ slots-offset (* size address-units-per-object))))
+    (LAP (MOV Q ,temp (&U ,(make-closure-manifest size)))
+	 (MOV Q (@R ,regnum:free-pointer) ,temp)
+	 ;; There's only one entry point here.
+	 (MOV L (@RO B ,regnum:free-pointer ,data-offset) (&U 1))
+	 ,@(generate-closure-entry procedure-label min max format-offset temp)
+	 ;; Load the address of the entry instruction into TARGET.
+	 (LEA Q ,target (@RO B ,regnum:free-pointer ,pc-offset))
+	 ;; Bump FREE.
+	 (ADD Q (R ,regnum:free-pointer) (&U ,free-offset)))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((mtarget (target-register target))
 	 (target (register-reference mtarget))
 	 (temp (temporary-register-reference)))
-    (with-pc
-      (lambda (pc-label pc-reg)
-	(define (generate-entries entries offset)
-	  (let ((entry (car entries))
-		(rest (cdr entries)))
-	    (LAP (MOV W (@RO B ,regnum:free-pointer -9)
-		      (&U ,(make-closure-code-longword (cadr entry)
-						       (caddr entry)
-						       offset)))
-		 (MOV B (@RO B ,regnum:free-pointer -5) (&U #xe8))
-		 (LEA ,temp (@RO W
-				 ,pc-reg
-				 (- ,(rtl-procedure/external-label
-				      (label->object (car entry)))
-				    ,pc-label)))
-		 (SUB W ,temp (R ,regnum:free-pointer))
-		 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-		 ,@(if (null? rest)
-		       (LAP)
-		       (LAP (ADD W (R ,regnum:free-pointer) (& 10))
-			    ,@(generate-entries rest (+ 10 offset)))))))
+    (define (generate-entries entries offset)
+      (LAP ,@(let ((entry (car entries)))
+	       (let ((label (car entry))
+		     (min (cadr entry))
+		     (max (caddr entry)))
+		 (generate-closure-entry label min max offset temp)))
+	   ,@(generate-entries (cdr entries)
+			       (+ offset address-units-per-closure-entry))))
+    (let* ((data-offset address-units-per-closure-manifest)
+	   (first-format-offset
+	    (+ data-offset address-units-per-closure-entry-count))
+	   (first-pc-offset
+	    (+ first-format-offset address-units-per-entry-format-code)))
+      (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries size)))
+	   (MOV Q (@R ,regnum:free-pointer) ,temp)
+	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
+	   ,@(generate-entries entries first-format-offset)
+	   (LEA Q ,target (@RO B ,regnum:free-pointer ,first-pc-offset))
+	   (ADD Q (R ,regnum:free-pointer)
+		,(+ first-format-offset
+		    (* nentries address-units-per-closure-entry)
+		    (* size address-units-per-object)))))))
 
-	(LAP (MOV W (@R ,regnum:free-pointer)
-		  (&U ,(make-non-pointer-literal
-			(ucode-type manifest-closure)
-			(+ size (quotient (* 5 (1+ nentries)) 2)))))
-	     (MOV W (@RO B ,regnum:free-pointer 4)
-		  (&U ,(make-closure-longword nentries 0)))
-	     (LEA ,target (@RO B ,regnum:free-pointer 12))
-	     (ADD W (R ,regnum:free-pointer) (& 17))
-	     ,@(generate-entries entries 12)
-	     (ADD W (R ,regnum:free-pointer)
-		  (& ,(+ (* 4 size) (if (odd? nentries) 7 5))))
-	     (LEA ,temp
-		  (@RO UW
-		       ,mtarget
-		       ,(make-non-pointer-literal (ucode-type compiled-entry)
-						  0)))
-	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-	     ,@(invoke-hook/call entry:compiler-conditionally-serialize))))))
+(define (generate-closure-entry label min max offset temp)
+  (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
+	 (MOV-offset (+ offset address-units-per-entry-format-code))
+	 (imm64-offset (+ MOV-offset 2))
+	 (CALL-offset (+ imm64-offset 8)))
+    (LAP (MOV L (@RO B ,regnum:free-pointer ,offset)
+	      (&U ,(make-closure-code-longword min max MOV-offset)))
+	 (LEA Q ,temp (@PCR ,procedure-label))
+	 ;; (MOV Q (R ,rax) (&U <procedure-label>))
+	 ;; The instruction sequence is really `48 b8', but this is a
+	 ;; stupid little-endian architecture.  I want my afternoon
+	 ;; back.
+	 (MOV W (@RO B ,regnum:free-pointer ,MOV-offset) (&U #xB848))
+	 (MOV Q (@RO B ,regnum:free-pointer ,imm64-offset) ,temp)
+	 ;; (CALL (R ,rax))
+	 (MOV W (@RO B ,regnum:free-pointer ,CALL-offset) (&U #xD0FF)))))
 
-(define closure-share-names
-  '#(closure-0-interrupt closure-1-interrupt closure-2-interrupt
-     closure-3-interrupt closure-4-interrupt closure-5-interrupt
-     closure-6-interrupt closure-7-interrupt))
-
-(define (generate/closure-header internal-label nentries entry)
-  nentries				; ignored
+(define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
 	 (external-label (rtl-procedure/external-label rtl-proc))
 	 (checks (get-entry-interrupt-checks)))
-    (if (zero? nentries)
-	(LAP (EQUATE ,external-label ,internal-label)
-	     ,@(simple-procedure-header
-		(internal-procedure-code-word rtl-proc)
-		internal-label
-		entry:compiler-interrupt-procedure))
-	(let* ((prefix
-		(lambda (gc-label)
-		  (LAP (LABEL ,gc-label)
-		       ,@(if (zero? entry)
-			     (LAP)
-			     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-		       ,@(invoke-hook entry:compiler-interrupt-closure))))
-	       (label+adjustment
-		(lambda ()
-		  (LAP ,@(make-external-label internal-entry-code-word
-					      external-label)
-		       (ADD W (@R ,esp)
-			    (&U ,(generate/make-magic-closure-constant entry)))
-		       (LABEL ,internal-label))))
-	       (suffix
-		(lambda (gc-label)
-		  (LAP ,@(label+adjustment)
-		       ,@(interrupt-check gc-label checks)))))
-	  (if (null? checks)
-	      (LAP ,@(label+adjustment))
-	      (if (>= entry (vector-length closure-share-names))
-		  (let ((gc-label (generate-label)))
-		    (LAP ,@(prefix gc-label)
-			 ,@(suffix gc-label)))
-		  (share-instruction-sequence!
-		   (vector-ref closure-share-names entry)
-		   suffix
-		   (lambda (gc-label)
-		     (LAP ,@(prefix gc-label)
-			  ,@(suffix gc-label))))))))))
+    (define (label+adjustment)
+      (LAP ,@(make-external-label internal-entry-code-word external-label)
+	   ;; Assumption: RAX is not in use here.  (In fact, it is
+	   ;; used to store the absolute address of this header.)
+	   ;; See comment by CLOSURE-ENTRY-MAGIC to understand
+	   ;; what's going on here.
+	   (MOV Q (R ,rax) (&U ,(closure-entry-magic)))
+	   (ADD Q (@R ,rsp) (R ,rax))
+	   (LABEL ,internal-label)))
+    (cond ((zero? nentries)
+	   (LAP (EQUATE ,external-label ,internal-label)
+		,@(simple-procedure-header
+		   (internal-procedure-code-word rtl-proc)
+		   internal-label
+		   entry:compiler-interrupt-procedure)))
+	  ((pair? checks)
+	   (let ((gc-label (generate-label 'GC-LABEL)))
+	     (LAP (LABEL ,gc-label)
+		  ,@(invoke-hook entry:compiler-interrupt-closure)
+		  ,@(label+adjustment)
+		  ,@(interrupt-check gc-label checks))))
+	  (else
+	   (label+adjustment)))))
 
-(define (generate/make-magic-closure-constant entry)
-  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
-     (+ (* entry 10) 5)))
+;;; On entry to a closure, the quadword at the top of the stack will
+;;; be an untagged pointer to the byte following the CALL instruction
+;;; that led the machine there.  CLOSURE-ENTRY-MAGIC returns a number
+;;; that, when added to this quadword, yields the tagged compiled
+;;; entry that was used to invoke the closure.  This is what the RTL
+;;; deals with, and this is what interrupt handlers want, particularly
+;;; for the garbage collector, which wants to find only nice tagged
+;;; pointers on the stack.
 
-(define (make-closure-longword code-word pc-offset)
+(define-integrable (closure-entry-magic)
+  (- (make-non-pointer-literal (ucode-type COMPILED-ENTRY) 0)
+     address-units-per-closure-entry-instructions))
+
+(define-integrable (make-closure-manifest size)
+  (make-multiclosure-manifest 1 size))
+
+(define-integrable (make-multiclosure-manifest nentries size)
+  (make-non-pointer-literal
+   (ucode-type MANIFEST-CLOSURE)
+   (+ (quotient (+ address-units-per-closure-entry-count
+		   (* nentries address-units-per-closure-entry)
+		   address-units-per-closure-padding
+		   7)
+		8)
+      size)))
+
+(define-integrable (make-closure-longword code-word pc-offset)
   (+ code-word (* #x20000 pc-offset)))
 
-(define (make-closure-code-longword frame/min frame/max pc-offset)
+(define-integrable (make-closure-code-longword frame/min frame/max pc-offset)
   (make-closure-longword (make-procedure-code-word frame/min frame/max)
 			 pc-offset))
 
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
-  (generate/closure-header internal-label nentries entry))
+  entry					;ignore
+  (generate/closure-header internal-label nentries))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -786,11 +592,13 @@ USA.
   (case nentries
     ((0)
      (let ((target (target-register-reference target)))
-       (LAP (MOV W ,target (R ,regnum:free-pointer))
-	    (MOV W (@R ,regnum:free-pointer)
+       (LAP (MOV Q ,target		;Use TARGET as a temporary.
 		 (&U ,(make-non-pointer-literal (ucode-type manifest-vector)
 						size)))
-	    (ADD W (R ,regnum:free-pointer) (& ,(* 4 (1+ size)))))))
+	    (MOV Q (@R ,regnum:free-pointer) ,target)
+	    (MOV Q ,target (R ,regnum:free-pointer))
+	    (ADD Q (R ,regnum:free-pointer)
+		 (& ,(* address-units-per-object (1+ size)))))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
@@ -804,104 +612,102 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (pc->reg eax
-	   (lambda (pc-label prefix)
-	     (LAP ,@prefix
-		  (MOV W (R ,ecx) ,reg:environment)
-		  (MOV W (@RO W ,eax (- ,environment-label ,pc-label))
-		       (R ,ecx))
-		  (LEA (R ,edx) (@RO W ,eax (- ,*block-label* ,pc-label)))
-		  (LEA (R ,ebx) (@RO W ,eax (- ,free-ref-label ,pc-label)))
-		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
-		  #|
-		  ,@(invoke-interface/call code:compiler-link)
-		  |#
-		  ,@(invoke-hook/call entry:compiler-link)
-		  ,@(make-external-label (continuation-code-word false)
-					 (generate-label))))))
+  (LAP (MOV Q (R ,rcx) ,reg:environment)
+       (MOV Q (@PCR ,environment-label) (R ,rcx))
+       (LEA Q (R ,rdx) (@PCR ,*block-label*))
+       (LEA Q (R ,rbx) (@PCR ,free-ref-label))
+       (MOV Q ,reg:utility-arg-4 (&U ,n-sections))
+       #|
+       ,@(invoke-interface/call code:compiler-link)
+       |#
+       ,@(invoke-hook/call entry:compiler-link)
+       ,@(make-external-label (continuation-code-word #f)
+			      (generate-label))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (pc->reg eax
-	   (lambda (pc-label prefix)
-	     (LAP ,@prefix
-		  (MOV W (R ,edx) (@RO W ,eax (- ,code-block-label ,pc-label)))
-		  (AND W (R ,edx) (R ,regnum:datum-mask))
-		  (LEA (R ,ebx) (@RO W ,edx ,free-ref-offset))
-		  (MOV W (R ,ecx) ,reg:environment)
-		  (MOV W (@RO W ,edx ,environment-offset) (R ,ecx))
-		  (MOV W ,reg:utility-arg-4 (& ,n-sections))
-		  #|
-		  ,@(invoke-interface/call code:compiler-link)
-		  |#
-		  ,@(invoke-hook/call entry:compiler-link)
-		  ,@(make-external-label (continuation-code-word false)
-					 (generate-label))))))
+  (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
+       (AND Q (R ,rdx) (R ,regnum:datum-mask))
+       (LEA Q (R ,rbx) (@RO L ,rdx ,free-ref-offset))
+       (MOV Q (R ,rcx) ,reg:environment)
+       (MOV Q (@RO L ,rdx ,environment-offset) (R ,rcx))
+       (MOV Q ,reg:utility-arg-4 (&U ,n-sections))
+       #|
+       ,@(invoke-interface/call code:compiler-link)
+       |#
+       ,@(invoke-hook/call entry:compiler-link)
+       ,@(make-external-label (continuation-code-word #f)
+			      (generate-label))))
 
 (define (generate/remote-links n-blocks vector-label nsects)
   (if (zero? n-blocks)
       (LAP)
       (let ((loop (generate-label))
-	    (bytes  (generate-label))
+	    (bytes (generate-label))
 	    (end (generate-label)))
 	(LAP
 	 ;; Push counter
-	 (PUSH W (& 0))
-	 (LABEL ,loop)
-	 ,@(pc->reg
-	    eax
-	    (lambda (pc-label prefix)
-	      (LAP ,@prefix
-		   ;; Get index
-		   (MOV W (R ,ecx) (@R ,esp))
-		   ;; Get vector
-		   (MOV W (R ,edx) (@RO W ,eax (- ,vector-label ,pc-label)))
-		   ;; Get n-sections for this cc-block
-		   (XOR W (R ,ebx) (R ,ebx))
-		   (MOV B (R ,ebx) (@ROI B ,eax (- ,bytes ,pc-label) ,ecx 1))
-		   ;; address of vector
-		   (AND W (R ,edx) (R ,regnum:datum-mask))
-		   ;; Store n-sections in arg
-		   (MOV W ,reg:utility-arg-4 (R ,ebx))
-		   ;; vector-ref -> cc block
-		   (MOV W (R ,edx) (@ROI B ,edx 4 ,ecx 4))
-		   ;; address of cc-block
-		   (AND W (R ,edx) (R ,regnum:datum-mask))
-		   ;; cc-block length
-		   (MOV W (R ,ebx) (@R ,edx))
-		   ;; Get environment
-		   (MOV W (R ,ecx) ,reg:environment)
-		   ;; Eliminate length tags
-		   (AND W (R ,ebx) (R ,regnum:datum-mask))
-		   ;; Store environment
-		   (MOV W (@RI ,edx ,ebx 4) (R ,ecx))
-		   ;; Get NMV header
-		   (MOV W (R ,ecx) (@RO B ,edx 4))
-		   ;; Eliminate NMV tag
-		   (AND W (R ,ecx) (R ,regnum:datum-mask))
-		   ;; Address of first free reference
-		   (LEA (R ,ebx) (@ROI B ,edx 8 ,ecx 4))
-		   ;; Invoke linker
-		   ,@(invoke-hook/call entry:compiler-link)
-		   ,@(make-external-label (continuation-code-word false)
-					 (generate-label))
-		   ;; Increment counter and loop
-		   (INC W (@R ,esp))
-		   (CMP W (@R ,esp) (& ,n-blocks))
-		   (JL (@PCR ,loop))
-		   )))
+	 (PUSH Q (& 0))
+	(LABEL ,loop)
+	 ;; Get index
+	 (MOV Q (R ,rcx) (@R ,rsp))
+	 ;; Get vector
+	 (MOV Q (R ,rdx) (@PCR ,vector-label))
+	 ;; Get n-sections for this cc-block
+	 (XOR Q (R ,rbx) (R ,rbx))
+	 (LEA Q (R ,rax) (@PCR ,bytes))
+	 (MOV B (R ,rbx) (@RI ,rax ,rcx 1))
+	 ;; address of vector
+	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
+	 ;; Store n-sections in arg
+	 (MOV Q ,reg:utility-arg-4 (R ,rbx))
+	 ;; vector-ref -> cc block
+	 (MOV Q
+	      (R ,rdx)
+	      (@ROI B
+		    ,rdx ,address-units-per-object
+		    ,rcx ,address-units-per-object))
+	 ;; address of cc-block
+	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
+	 ;; cc-block length
+	 (MOV Q (R ,rbx) (@R ,rdx))
+	 ;; Get environment
+	 (MOV Q (R ,rcx) ,reg:environment)
+	 ;; Eliminate length tags
+	 (AND Q (R ,rbx) (R ,regnum:datum-mask))
+	 ;; Store environment
+	 (MOV Q (@RI ,rdx ,rbx ,address-units-per-object) (R ,rcx))
+	 ;; Get NMV header
+	 (MOV Q (R ,rcx) (@RO B ,rdx ,address-units-per-object))
+	 ;; Eliminate NMV tag
+	 (AND Q (R ,rcx) (R ,regnum:datum-mask))
+	 ;; Address of first free reference
+	 (LEA Q
+	      (R ,rbx)
+	      (@ROI B
+		    ,rdx ,(* 2 address-units-per-object)
+		    ,rcx ,address-units-per-object))
+	 ;; Invoke linker
+	 ,@(invoke-hook/call entry:compiler-link)
+	 ,@(make-external-label (continuation-code-word false)
+				(generate-label))
+	 ;; Increment counter and loop
+	 (ADD Q (@R ,rsp) (&U 1))
+	 (CMP Q (@R ,rsp) (&U ,n-blocks))
+	 (JL (@PCR ,loop))
+
 	 (JMP (@PCR ,end))
-	 (LABEL ,bytes)
+	(LABEL ,bytes)
 	 ,@(let walk ((bytes (vector->list nsects)))
 	     (if (null? bytes)
 		 (LAP)
 		 (LAP (BYTE U ,(car bytes))
 		      ,@(walk (cdr bytes)))))
-	 (LABEL ,end)
+	(LABEL ,end)
 	 ;; Pop counter
-	 (POP (R ,eax))))))
+	 (POP Q (R ,rax))))))
 
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
@@ -954,37 +760,25 @@ USA.
 		  . ,label)
 		 ,@constants))))
       (cons (car info) (inner constants))))
-
+
 ;; IMPORTANT:
 ;; frame-size and uuo-label are switched (with respect to the 68k
 ;; version) in order to preserve the arity in a constant position (the
-;; i386 is little-endian).  The invocation rule for uuo-links has been
-;; changed to take the extra 2 bytes into account.
-;;
-;; Like closures, execute caches use pc-relative JMP instructions,
-;; which can only be relocated if the old address is available.
-;; Thus execute-cache blocks are extended by a single word that
-;; contains its own address.
+;; x86 is little-endian).  The invocation rule for uuo-links has been
+;; changed to take the extra object into account.
 
-(define (transmogrifly uuos)
-  (define (do-rest uuos)
-    (define (inner name assoc)
-      (if (null? assoc)
-	  (do-rest (cdr uuos))
-	  (cons (cons (caar assoc)			; frame-size
-		      (cdar assoc))			; uuo-label
-		(cons (cons name			; variable name
-			    (allocate-constant-label))	; dummy label
-		      (inner name (cdr assoc))))))
-
-    (if (null? uuos)
-	'()
-	(inner (caar uuos) (cdar uuos))))
-
-  (if (null? uuos)
-      '()
-      (cons (cons false (allocate-constant-label)) 	; relocation address
-	    (do-rest uuos))))
+(define (transmogrifly variable.caches-list)
+  (append-map
+   (lambda (variable.caches)
+     (append-map (let ((variable (car variable.caches)))
+		   (lambda (cache)
+		     (let ((frame-size (car cache))
+			   (label (cdr cache)))
+		       `((,frame-size . ,label)
+			 (,variable . ,(allocate-constant-label))
+			 (#F . ,(allocate-constant-label))))))
+		 (cdr variable.caches)))
+   variable.caches-list))
 
 ;;; Local Variables: ***
 ;;; eval: (put 'declare-constants 'scheme-indent-hook 2) ***
