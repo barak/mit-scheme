@@ -33,9 +33,9 @@ USA.
      (if (syntax-match? '(IDENTIFIER DATUM * DATUM) (cdr form))
 	 `(DEFINE-INSTRUCTION ,(cadr form)
 	    (()
-	     (BYTE (8 ,(close-syntax (caddr form) environment)))
+	     (BITS (8 ,(close-syntax (caddr form) environment)))
 	     ,@(map (lambda (extra)
-		      `(BYTE (8 ,(close-syntax extra environment))))
+		      `(BITS (8 ,(close-syntax extra environment))))
 		    (cdddr form))))
 	 (ill-formed-syntax form)))))
 
@@ -52,20 +52,22 @@ USA.
        ,(compile-database (cdr form) environment
 	  (lambda (pattern actions)
 	    (let ((keyword (car pattern))
-		  (categories (car actions))
-		  (mode (cadr actions))
-		  (register (caddr actions))
-		  (tail (cdddr actions)))
+		  (categories (list-ref actions 0))
+		  (rex-prefix (list-ref actions 1))
+		  (mode (list-ref actions 2))
+		  (register (list-ref actions 3))
+		  (tail (list-tail actions 4)))
 	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
 		',keyword
 		',categories
+		',rex-prefix
 		,(integer-syntaxer mode environment 'UNSIGNED 2)
 		,(integer-syntaxer register environment 'UNSIGNED 3)
 		,(if (null? tail)
-		     `()
+		     `(,(close-syntax 'QUOTE environment) ())
 		     (process-fields tail #f environment))))))))))
 
-;; This one is necessary to distinguish between r/mW mW, etc.
+;; This one is necessary to distinguish between r/m-ea, m-ea, etc.
 
 (define-syntax define-ea-transformer
   (sc-macro-transformer
@@ -82,11 +84,6 @@ USA.
 			`(MATCH-RESULT)))))
 	 (ill-formed-syntax form)))))
 
-;; *** We can't really handle switching these right now. ***
-
-(define-integrable *ADDRESS-SIZE* 32)
-(define-integrable *OPERAND-SIZE* 32)
-
 (define (parse-instruction opcode tail early? environment)
   (process-fields (cons opcode tail) early? environment))
 
@@ -96,8 +93,7 @@ USA.
       (expand-variable-width (car fields) early? environment)
       (call-with-values (lambda () (expand-fields fields early? environment))
 	(lambda (code size)
-	  (if (not (zero? (remainder size 8)))
-	      (error "Bad syllable size:" size))
+	  size				;ignore
 	  code))))
 
 (define (expand-variable-width field early? environment)
@@ -109,86 +105,83 @@ USA.
 	(cadr binding)
 	environment
 	(map (lambda (clause)
-	       (call-with-values
-		   (lambda () (expand-fields (cdr clause) early? environment))
-		 (lambda (code size)
-		   (if (not (zero? (remainder size 8)))
-		       (error "Bad clause size:" size))
-		   `(,code ,size ,@(car clause)))))
+	       (receive (code size)
+		   (expand-fields (cdr clause) early? environment)
+		 (if (not (zero? (remainder size 8)))
+		     (error "Bad clause size:" size))
+		 `(,code ,size ,@(car clause))))
 	     clauses)))))
 
 (define (expand-fields fields early? environment)
   (if (pair? fields)
-      (call-with-values
-	  (lambda () (expand-fields (cdr fields) early? environment))
-       (lambda (tail tail-size)
-	 (case (caar fields)
-	   ;; For opcodes and fixed fields of the instruction
-	   ((BYTE)
-	    ;; (BYTE (8 #xff))
-	    ;; (BYTE (16 (+ foo #x23) SIGNED))
-	    (call-with-values
-		(lambda ()
-		  (collect-byte (cdar fields) tail environment))
-	      (lambda (code size)
-		(values code (+ size tail-size)))))
-	   ((ModR/M)
-	    ;; (ModR/M 2 source)	= /2 r/m(source)
-	    ;; (ModR/M r target)	= /r r/m(target)
-	    (if early?
-		(error "No early support for ModR/M -- Fix i386/insmac.scm"))
-	    (let ((field (car fields)))
-	      (let ((digit-or-reg (cadr field))
-		    (r/m (caddr field)))
-		(values `(,(close-syntax 'CONS-SYNTAX environment)
-			  (,(close-syntax 'EA/REGISTER environment) ,r/m)
-			  (,(close-syntax 'CONS-SYNTAX environment)
-			   ,(integer-syntaxer digit-or-reg environment
-					      'UNSIGNED 3)
-			   (,(close-syntax 'CONS-SYNTAX environment)
-			    (,(close-syntax 'EA/MODE environment) ,r/m)
-			    (,(close-syntax 'APPEND-SYNTAX! environment)
-			     (,(close-syntax 'EA/EXTRA environment) ,r/m)
-			     ,tail))))
-			(+ 8 tail-size)))))
-	   ;; For immediate operands whose size depends on the operand
-	   ;; size for the instruction (halfword vs. longword)
-	   ((IMMEDIATE)
-	    (values
-	     (let ((field (car fields)))
-	       (let ((value (cadr field))
-		     (mode (if (pair? (cddr field)) (caddr field) 'OPERAND))
-		     (domain
-		      (if (and (pair? (cddr field)) (pair? (cdddr field)))
-			  (cadddr field)
-			  'SIGNED)))
-		 `(,(close-syntax 'CONS-SYNTAX environment)
-		   ,(integer-syntaxer
-		     value
-		     environment
-		     domain
-		     (case mode
-		       ((OPERAND) *operand-size*)
-		       ((ADDRESS) *address-size*)
-		       (else (error "Unknown IMMEDIATE mode:" mode))))
-		   ,tail)))
-	     tail-size))
-	   (else
-	    (error "Unknown field kind:" (caar fields))))))
-      (values `'() 0)))
+      (receive (tail tail-size) (expand-fields (cdr fields) early? environment)
+	(case (caar fields)
+	  ;; For opcodes and fixed fields of the instruction
+	  ((BITS)
+	   ;; (BITS (8 #xff))
+	   ;; (BITS (16 (+ foo #x23) SIGNED))
+	   (receive (code size) (collect-bits (cdar fields) tail environment)
+	     (values code (+ size tail-size))))
+	  ((PREFIX)
+	   ;; (PREFIX (OPERAND size) (REGISTER [reg]) (EA ea))
+	   (if early?
+	       (error "No early support for PREFIX -- Fix x86-64/insmac.scm"))
+	   (values (collect-prefix (cdar fields) tail environment) -1))
+	  ((ModR/M)
+	   ;; (ModR/M 2 source)	= /2 r/m(source)
+	   ;; (ModR/M r target)	= /r r/m(target)
+	   (if early?
+	       (error "No early support for ModR/M -- Fix x86-64/insmac.scm"))
+	   (values (collect-ModR/M (cdar fields) tail environment) -1))
+	  (else
+	   (error "Unknown field kind:" (caar fields)))))
+      (values `(,(close-syntax 'QUOTE environment) ()) 0)))
 
-(define (collect-byte components tail environment)
+(define (collect-bits components tail environment)
   (let loop ((components components))
     (if (pair? components)
-	(call-with-values (lambda () (loop (cdr components)))
-	  (lambda (byte-tail byte-size)
-	    (let ((size (caar components))
-		  (expression (cadar components))
-		  (type (if (pair? (cddar components))
-			    (caddar components)
-			    'UNSIGNED)))
-	      (values `(,(close-syntax 'CONS-SYNTAX environment)
-			,(integer-syntaxer expression environment type size)
-			,byte-tail)
-		      (+ size byte-size)))))
+	(receive (bits-tail bits-size) (loop (cdr components))
+	  (let ((size (caar components))
+		(expression (cadar components))
+		(type (if (pair? (cddar components))
+			  (caddar components)
+			  'UNSIGNED)))
+	    (values `(,(close-syntax 'CONS-SYNTAX environment)
+		      ,(integer-syntaxer expression environment type size)
+		      ,bits-tail)
+		    (+ size bits-size))))
 	(values tail 0))))
+
+(define (collect-prefix options tail environment)
+  (let loop ((options options) (operand #f) (register #f) (r/m #f))
+    (if (pair? options)
+	(case (caar options)
+	  ((OPERAND) (loop (cdr options) (cadar options) register r/m))
+	  ((OPCODE-REGISTER)
+	   (loop (cdr options)
+		 operand
+		 (or (not (pair? (cdar options))) (cadar options))
+		 r/m))
+	  ((ModR/M)
+	   ;; (ModR/M <r/m>), for fixed digits
+	   ;; (ModR/M <reg> <r/m>), for registers
+	   (if (pair? (cddar options))
+	       (loop (cdr options) operand (cadar options) (caddar options))
+	       (loop (cdr options) operand #f (cadar options))))
+	  (else (error "Bad instruction prefix option:" (car options))))
+	(let ((cons-prefix (close-syntax 'CONS-PREFIX environment)))
+	  `(,cons-prefix ,operand ,register ,r/m ,tail)))))
+
+(define (collect-ModR/M field tail environment)
+  (let ((digit-or-reg (car field))
+	(ea (cadr field)))
+    `(,(close-syntax 'CONS-ModR/M environment)
+      ,(integer-syntaxer
+	(if (integer? digit-or-reg)
+	    (fix:and digit-or-reg 7)
+	    `(,(close-syntax 'FIX:AND environment) ,digit-or-reg 7))
+	environment
+	'UNSIGNED
+	3)
+      ,ea
+      ,tail)))

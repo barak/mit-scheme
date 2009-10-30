@@ -25,7 +25,7 @@ USA.
 
 |#
 
-;;;; RTL Generation: Special primitive combinations.  Intel i386 version.
+;;;; RTL Generation: Special primitive combinations.  AMD x86-64 version.
 ;;; package: (compiler rtl-generator)
 
 (declare (usual-integrations))

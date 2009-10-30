@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; Assembler Machine Dependencies.  Intel 386 version
+;;;; Assembler Machine Dependencies.  AMD x86-64 version
 
 (declare (usual-integrations))
 
@@ -36,8 +36,8 @@ USA.
 
 (define-integrable maximum-padding-length
   ;; Instructions can be any number of bytes long.
-  ;; Thus the maximum padding is 3 bytes.
-  24)
+  ;; Thus the maximum padding is 7 bytes.
+  56)
 
 (define-integrable padding-string
   ;; Pad with HLT instructions

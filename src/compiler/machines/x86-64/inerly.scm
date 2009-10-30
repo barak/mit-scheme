@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;; i386 Instruction Set Macros.  Early version
+;;; AMD x86-64 Instruction Set Macros.  Early version
 ;;; NOPs for now.
 
 (declare (usual-integrations))

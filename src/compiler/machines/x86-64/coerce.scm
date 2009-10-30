@@ -25,7 +25,7 @@ USA.
 
 |#
 
-;;;; Intel i386 Specific Coercions
+;;;; AMD x86-64 Specific Coercions
 
 (declare (usual-integrations))
 
@@ -42,7 +42,9 @@ USA.
 (define coerce-8-bit-unsigned (make-coercion 'UNSIGNED 8))
 (define coerce-16-bit-unsigned (make-coercion 'UNSIGNED 16))
 (define coerce-32-bit-unsigned (make-coercion 'UNSIGNED 32))
+(define coerce-64-bit-unsigned (make-coercion 'UNSIGNED 64))
 
 (define coerce-8-bit-signed (make-coercion 'SIGNED 8))
 (define coerce-16-bit-signed (make-coercion 'SIGNED 16))
 (define coerce-32-bit-signed (make-coercion 'SIGNED 32))
+(define coerce-64-bit-signed (make-coercion 'SIGNED 64))

@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; Machine Model for the Intel 386, i486, and successors
+;;;; Machine Model for the AMD x86-64
 ;;; package: (compiler)
 
 (declare (usual-integrations))
@@ -33,7 +33,7 @@ USA.
 (define use-pre/post-increment? false)
 (define-integrable endianness 'LITTLE)
 (define-integrable addressing-granularity 8)
-(define-integrable scheme-object-width 32)
+(define-integrable scheme-object-width 64)
 (define-integrable scheme-type-width 6)	;or 8
 
 ;; NOTE: expt is not being constant-folded now.
@@ -46,7 +46,7 @@ USA.
   (- scheme-object-width scheme-type-width))
 
 (define-integrable float-width 64)
-(define-integrable float-alignment 32)
+(define-integrable float-alignment 64)
 
 (define-integrable address-units-per-float
   (quotient float-width addressing-granularity))
@@ -65,7 +65,7 @@ USA.
 
 (define-integrable signed-fixnum/upper-limit
   ;; (expt 2 (-1+ scheme-datum-width)) ***
-  33554432)
+  #x0200000000000000)
 
 (define-integrable signed-fixnum/lower-limit
   (- signed-fixnum/upper-limit))
@@ -78,80 +78,152 @@ USA.
 
 ;;;; Closure format
 
-;; See microcode/cmpint-i386.h for a description of the layout.
-;; This must return a word based offset.
-;; On the i386, to save space, entries can be at 2 mod 4 addresses,
-;; which makes it impossible if the closure object used for
-;; referencing points to arbitrary entries.  Instead, all closure
-;; entry points bump to the canonical entry point, which is always
-;; longword aligned.
+;;; See microcode/cmpintmd/x86-64.h for a description of the layout.
+
+(define-integrable closure-entry-size 2)
+
+(define-integrable address-units-per-closure-manifest address-units-per-object)
+(define-integrable address-units-per-entry-format-code 4)
+(define-integrable address-units-per-closure-entry-count 4)
+(define-integrable address-units-per-closure-padding 4)
+
+;;; (MOV Q (R ,rax) (&U <entry>))	48 B8 <eight-byte immediate>
+;;; (CALL (R ,rax))			FF D0
+(define-integrable address-units-per-closure-entry-instructions 12)
+
+(define-integrable address-units-per-closure-entry
+  (+ address-units-per-entry-format-code
+     address-units-per-closure-entry-instructions))
+
+;;; Note:
+;;;
+;;; (= address-units-per-closure-entry #| 16 |#
+;;;    (* closure-entry-size #| 2 |# address-units-per-object #| 8 |#))
+
+;;; Given the number of entries in a closure, and the index of an
+;;; entry, return the number of words from that entry's closure
+;;; pointer to the location of the storage for the closure's first
+;;; free variable.  In this case, the closure pointer is the same as
+;;; the compiled entry pointer into the entry instructions.  This is
+;;; different from the i386, where the entry instructions are not all
+;;; object-aligned, and thus the closure pointer is adjusted to point
+;;; to the first entry in the closure block, which is always aligned.
+;;;
+;;; When there are zero entries, the `closure' is just a vector, and
+;;; represented by a tagged pointer to a manifest, following which are
+;;; the free variables.  In this case, the first offset is one object
+;;; past the manifest's address.
 
 (define (closure-first-offset nentries entry)
-  entry					; ignored
   (if (zero? nentries)
       1
-      (quotient (+ (+ 3 1) (* 5 (- nentries 1))) 2)))
+      (* (- nentries entry) closure-entry-size)))
 
-;; This is from the start of the complete closure object,
-;; viewed as a vector, and including the header word.
+;;; Given the number of entry points in a closure, return the distance
+;;; in objects from the address of the manifest closure to the address
+;;; of the first free variable.
 
 (define (closure-object-first-offset nentries)
-  (case nentries
-    ((0) 1)
-    ((1) 4)
-    (else
-     (quotient (+ 5 (* 5 nentries)) 2))))
+  (if (zero? nentries)
+      1					;One vector manifest.
+      ;; One object for the closure manifest, and one object for the
+      ;; leading entry count and the trailing padding.
+      (+ 2 (* nentries closure-entry-size))))
 
-;; Bump from one entry point to another.
+;;; Given the number of entries in a closure, and the indices of two
+;;; entries, return the number of bytes separating the two entries.
 
 (define (closure-entry-distance nentries entry entry*)
-  nentries				; ignored
-  (* 10 (- entry* entry)))
+  nentries				;ignore
+  (* (- entry* entry) address-units-per-closure-entry))
 
-;; Bump to the canonical entry point.
+;;; Given the number of entries in a closure, and the index of an
+;;; entry, return the number of bytes to add to a possibly misaligned
+;;; closure pointer to obtain a `canonical' entry point, which is
+;;; aligned on an object boundary.  Since all closure entry points are
+;;; aligned thus on this machine, we need adjust nothing.
 
 (define (closure-environment-adjustment nentries entry)
-  (declare (integrate-operator closure-entry-distance))
-  (closure-entry-distance nentries entry 0))
+  nentries entry			;ignore
+  0)
 
 ;;;; Machine registers
 
-(define eax 0)				; acumulator
-(define ecx 1)				; counter register
-(define edx 2)				; multiplication high-half target
-(define ebx 3)				; distinguished useful register
-(define esp 4)				; stack pointer
-(define ebp 5)				; frame pointer
-(define esi 6)				; string source pointer
-(define edi 7)				; string destination pointer
+(define rax 0)				; accumulator
+(define rcx 1)				; counter register
+(define rdx 2)				; multiplication high-half target
+(define rbx 3)				; distinguished useful register
+(define rsp 4)				; stack pointer
+(define rbp 5)				; frame pointer
+(define rsi 6)				; string source pointer
+(define rdi 7)				; string destination pointer
 
-;; Virtual floating point registers:
-;; Floating point stack locations, allocated as if registers.
-;; One left free to allow room to push and operate.
+;;; More general-purpose registers.
 
-(define fr0 8)
-(define fr1 9)
-(define fr2 10)
-(define fr3 11)
-(define fr4 12)
-(define fr5 13)
-(define fr6 14)
-(define fr7 15)
+(define r8 8)
+(define r9 9)
+(define r10 10)
+(define r11 11)
+(define r12 12)
+(define r13 13)
+(define r14 14)
+(define r15 15)
 
+;;; x87 floating-point stack locations, allocated as if registers.
+
+(define fr0 16)
+(define fr1 17)
+(define fr2 18)
+(define fr3 19)
+(define fr4 20)
+(define fr5 21)
+(define fr6 22)
+(define fr7 23)
+
+;;; 64-bit media registers (deprecated).
+
+(define mmx0 24)
+(define mmx1 25)
+(define mmx2 26)
+(define mmx3 27)
+(define mmx4 28)
+(define mmx5 29)
+(define mmx6 30)
+(define mmx7 31)
+
+;;; 128-bit media registers.
+
+(define xmm0 32)
+(define xmm1 33)
+(define xmm2 34)
+(define xmm3 35)
+(define xmm4 36)
+(define xmm5 37)
+(define xmm6 38)
+(define xmm7 39)
+(define xmm8 40)
+(define xmm9 41)
+(define xmm10 42)
+(define xmm11 43)
+(define xmm12 44)
+(define xmm13 45)
+(define xmm14 46)
+(define xmm15 47)
+
 (define number-of-machine-registers 16)
 (define number-of-temporary-registers 256)
 
-(define-integrable regnum:stack-pointer esp)
-(define-integrable regnum:datum-mask ebp)
-(define-integrable regnum:regs-pointer esi)
-(define-integrable regnum:free-pointer edi)
+(define-integrable regnum:stack-pointer rsp)
+(define-integrable regnum:datum-mask rbp)
+(define-integrable regnum:regs-pointer rsi)
+(define-integrable regnum:free-pointer rdi)
 
 (define-integrable (machine-register-known-value register)
   register				; ignored
   false)
 
 (define (machine-register-value-class register)
-  (cond ((<= eax register ebx)
+  (cond ((<= rax register rbx)
 	 value-class=object)
 	((= register regnum:datum-mask)
 	 value-class=immediate)
@@ -159,10 +231,16 @@ USA.
 	     (= register regnum:free-pointer)
 	     (= register regnum:regs-pointer))
 	 value-class=address)
+	((<= r8 register r15)
+	 value-class=object)
 	((<= fr0 register fr7)
 	 value-class=float)
+	((<= mmx0 register mmx7)
+	 (error "MMX media registers not allocated:" register))
+	((<= xmm0 register xmm15)
+	 (error "XMM media registers not allocated:" register))
 	(else
-	 (error "illegal machine register" register))))
+	 (error "Invalid machine register:" register))))
 
 (define-integrable register-block/memtop-offset 0)
 (define-integrable register-block/int-mask-offset 1)
@@ -174,30 +252,48 @@ USA.
 (define-integrable register-block/stack-guard-offset 11)
 
 (define-integrable (fits-in-signed-byte? value)
-  (and (>= value -128) (< value 128)))
+  (<= #x-80 value #x7f))
 
 (define-integrable (fits-in-unsigned-byte? value)
-  (and (>= value 0) (< value 128)))
+  (<= 0 value #xff))
+
+(define-integrable (fits-in-signed-word? value)
+  (<= #x-8000 value #x7fff))
+
+(define-integrable (fits-in-unsigned-word? value)
+  (<= 0 value #xffff))
+
+(define-integrable (fits-in-signed-long? value)
+  (<= #x-80000000 value #x7fffffff))
+
+(define-integrable (fits-in-unsigned-long? value)
+  (<= 0 value #xffffffff))
+
+(define-integrable (fits-in-signed-quad? value)
+  (<= #x-8000000000000000 value #x7fffffffffffffff))
+
+(define-integrable (fits-in-unsigned-quad? value)
+  (<= 0 value #xffffffffffffffff))
 
 ;;;; RTL Generator Interface
 
 (define (interpreter-register:access)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define (interpreter-register:cache-reference)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define (interpreter-register:cache-unassigned?)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define (interpreter-register:lookup)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define (interpreter-register:unassigned?)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define (interpreter-register:unbound?)
-  (rtl:make-machine-register eax))
+  (rtl:make-machine-register rax))
 
 (define-integrable (interpreter-block-register offset-value)
   (rtl:make-offset (interpreter-regs-pointer)
@@ -342,16 +438,44 @@ USA.
 	      (rtl:cons-pointer-datum expression)))))
       (else
        false))))
+
+;;; Disable all open-coding for now.
 
 (define compiler:open-code-floating-point-arithmetic?
-  true)
+  false)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM &/
-		  ;; Disabled: trig instructions are limited to an
-		  ;; input range of 0 <= |X| <= pi*2^62, and yield
-		  ;; inaccurate answers for an input range of 0 <= |X|
-		  ;; <= pi/4.  Correct argument reduction requires a
-		  ;; better approximation of pi than the i387 has.
-		  FLONUM-SIN FLONUM-COS FLONUM-TAN
-		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))
+  '(%RECORD %RECORD-LENGTH %RECORD-REF %RECORD-SET! %RECORD? &* &+ &-
+	    &/ &< &= &> -1+ 1+ BIT-STRING-LENGTH BIT-STRING? CAR CDR
+	    CHAR->INTEGER CHAR? CONS DIVIDE-FIXNUM EQ? EQUAL-FIXNUM?
+	    FIXNUM-AND FIXNUM-ANDC FIXNUM-LSH FIXNUM-NOT FIXNUM-OR
+	    FIXNUM-QUOTIENT FIXNUM-REMAINDER FIXNUM-XOR FIXNUM?
+	    FLOATING-VECTOR-CONS FLOATING-VECTOR-LENGTH
+	    FLOATING-VECTOR-REF FLOATING-VECTOR-SET! FLONUM-ABS
+	    FLONUM-ACOS FLONUM-ADD FLONUM-ASIN FLONUM-ATAN FLONUM-ATAN2
+	    FLONUM-CEILING FLONUM-COS FLONUM-DIVIDE FLONUM-EQUAL?
+	    FLONUM-EXP FLONUM-FLOOR FLONUM-GREATER? FLONUM-LESS?
+	    FLONUM-LOG FLONUM-MULTIPLY FLONUM-NEGATE FLONUM-NEGATIVE?
+	    FLONUM-POSITIVE? FLONUM-ROUND FLONUM-SIN FLONUM-SQRT
+	    FLONUM-SUBTRACT FLONUM-TAN FLONUM-TRUNCATE FLONUM-ZERO?
+	    FLONUM? GCD-FIXNUM GET-INTERRUPT-ENABLES
+	    GREATER-THAN-FIXNUM? HEAP-AVAILABLE? INDEX-FIXNUM?
+	    INTEGER->CHAR INTEGER-ADD INTEGER-ADD-1 INTEGER-EQUAL?
+	    INTEGER-GREATER? INTEGER-LESS? INTEGER-MULTIPLY
+	    INTEGER-NEGATIVE? INTEGER-POSITIVE? INTEGER-QUOTIENT
+	    INTEGER-REMAINDER INTEGER-SUBTRACT INTEGER-SUBTRACT-1
+	    INTEGER-ZERO? LESS-THAN-FIXNUM? MINUS-FIXNUM
+	    MINUS-ONE-PLUS-FIXNUM MULTIPLY-FIXNUM NEGATIVE-FIXNUM?
+	    NEGATIVE? NULL? OBJECT-TYPE OBJECT-TYPE? ONE-PLUS-FIXNUM
+	    PAIR? PLUS-FIXNUM POSITIVE-FIXNUM? POSITIVE?
+	    PRIMITIVE-GET-FREE PRIMITIVE-INCREMENT-FREE
+	    PRIMITIVE-OBJECT-REF PRIMITIVE-OBJECT-SET!
+	    PRIMITIVE-OBJECT-SET-TYPE PRIMITIVE-OBJECT-TYPE QUOTIENT
+	    REMAINDER SET-CAR! SET-CDR! SET-STRING-LENGTH!
+	    STRING-ALLOCATE STRING-LENGTH STRING-REF STRING-SET!
+	    STRING? SYSTEM-HUNK3-CXR0 SYSTEM-HUNK3-CXR1
+	    SYSTEM-HUNK3-CXR2 SYSTEM-PAIR-CAR SYSTEM-PAIR-CDR
+	    SYSTEM-PAIR-CONS SYSTEM-VECTOR-REF SYSTEM-VECTOR-SIZE
+	    VECTOR VECTOR-8B-REF VECTOR-8B-SET! VECTOR-CONS
+	    VECTOR-LENGTH VECTOR-REF VECTOR-SET! VECTOR? ZERO-FIXNUM?
+	    ZERO?))
