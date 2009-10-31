@@ -532,6 +532,13 @@ x86_64_initialize_no_fp:
 	leave
 	ret
 
+# Note:  The AMD64 ABI mandates that on entry to a function, RSP - 8
+# must be a multiple of 0x10; that is, the stack must be 128-bit
+# aligned.  We push six quadwords onto the stack, but there is already
+# a return address on the stack, for a total of seven quadwords, which
+# is misaligned.  Hence we push an extra dummy zero onto the stack,
+# which we must pop off in interface_to_C.
+
 define_c_label(C_to_interface)
 	OP(push,q)	REG(rbp)			# Link according
 	OP(mov,q)	TW(REG(rsp),REG(rbp))		#  to C's conventions
@@ -540,6 +547,7 @@ define_c_label(C_to_interface)
 	OP(push,q)	REG(r13)
 	OP(push,q)	REG(r14)
 	OP(push,q)	REG(r15)
+	OP(push,q)	IMM(0)				# Align stack
 	OP(mov,q)	TW(REG(rdi),REG(rdx))		# Entry point
 							# Preserve frame ptr
 	OP(mov,q)	TW(REG(rbp),ABS(EVR(C_Frame_Pointer)))
@@ -670,6 +678,10 @@ IF387(`
 interface_to_C_proceed:')
 
 	OP(mov,q)	TW(REG(rdx),REG(rax))		# Set up result
+	# We need a dummy register for the POP (which is three bytes
+	# shorter than ADD $8,RSP); since we're about to pop into r15
+	# anyway, we may as well use that.
+	OP(pop,q)	REG(r15)			# Undo stack alignment
 	OP(pop,q)	REG(r15)			# Restore callee-saves
 	OP(pop,q)	REG(r14)			#  registers
 	OP(pop,q)	REG(r13)
