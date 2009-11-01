@@ -234,7 +234,7 @@ USA.
 			   (length (procedure-original-optional model)))))
 		   (if (or (< n-supplied n-required)
 			   (and (> n-supplied n-expected)
-				(not (procedure-rest model))))
+				(not (procedure-original-rest model))))
 		       (warn "wrong number of arguments"
 			     n-supplied
 			     (error-irritant/noise char:newline)

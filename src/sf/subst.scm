@@ -122,6 +122,7 @@ USA.
 		(lambda ()
 		  (integrate/name-if-safe expression expression
 					  environment operations
+					  '(INTEGRATE INTEGRATE-SAFELY)
 					  integration-success
 					  integration-failure))))
 	(operations/lookup operations variable
@@ -143,14 +144,15 @@ USA.
 	       (integration-failure))))))))
 
 (define (integrate/name-if-safe expr reference environment
-				operations if-win if-fail)
+				operations safe-operations if-win if-fail)
   (let ((variable (reference/variable reference)))
     (if (or (variable/side-effected variable)
 	    (not (block/safe? (variable/block variable))))
 	(if-fail)
 	(let ((finish
 	       (lambda (value)
-		 (if (constant-value? value environment operations)
+		 (if (safely-integrable-value? value environment operations
+					       safe-operations)
 		     (if-win
 		      (reassign
 		       expr
@@ -173,29 +175,34 @@ USA.
       (with-new-scode (object/scode expr) object)
       object))
 
-(define (constant-value? value environment operations)
+(define (safely-integrable-value? value environment operations safe-operations)
   (let check ((value value) (top? #t))
     (or (constant? value)
 	(and (reference? value)
 	     (or (not top?)
-		 (let ((var (reference/variable value)))
-		   (and (not (variable/side-effected var))
-			(block/safe? (variable/block var))
-			(environment/lookup environment var
-			  (lambda (value*)
-			    (check value* #f))
-			  (lambda ()
-			    ;; unknown value
-			    (operations/lookup operations var
-			      (lambda (operation info)
-				operation info
-				#f)
+		 (let ((variable (reference/variable value)))
+		   (or (operations/lookup operations variable
+			 (lambda (operation info)
+			   info		;ignore
+			   (memq operation safe-operations))
+			 (lambda () #f))
+		       (and (not (variable/side-effected variable))
+			    (block/safe? (variable/block variable))
+			    (environment/lookup environment variable
+			      (lambda (value*)
+				(check value* #f))
 			      (lambda ()
-				;; No operations
-				#t)))
-			  (lambda ()
-			    ;; not found variable
-			    #t)))))))))
+				;; unknown value
+				(operations/lookup operations variable
+				  (lambda (operation info)
+				    operation info
+				    #f)
+				  (lambda ()
+				    ;; No operations
+				    #t)))
+			      (lambda ()
+				;; not found variable
+				#t))))))))))
 
 (define (integrate/reference-operator expression operations environment
 				      block operator operands)
@@ -217,6 +224,8 @@ USA.
 	      (lambda ()
 		(integrate/name-if-safe expression operator
 					environment operations
+					'(EXPAND INTEGRATE INTEGRATE-OPERATOR
+						 INTEGRATE-SAFELY)
 					integration-success
 					integration-failure))))
       (operations/lookup operations variable
@@ -544,7 +553,8 @@ you ask for.
 (define (integrate/compound-operator operator operands)
   (define (scan-body body encloser)
     (if (procedure? body)
-	(procedure-with-body body (encloser (procedure/body body)))
+	(and (not (open-block? (procedure/body body)))
+	     (procedure-with-body body (encloser (procedure/body body))))
 	(scan-operator body encloser)))
   (define (scan-operator operator encloser)
     (cond ((sequence? operator)
@@ -559,12 +569,14 @@ you ask for.
 	  ((combination? operator)
 	   (let ((descend
 		  (lambda (operator*)
-		    (scan-body (procedure/body operator*)
-			       (lambda (body*)
-				 (encloser
-				  (combination-with-operator
-				   operator
-				   (procedure-with-body operator* body*)))))))
+		    (and (not (open-block? (procedure/body operator*)))
+			 (scan-body
+			  (procedure/body operator*)
+			  (lambda (body*)
+			    (encloser
+			     (combination-with-operator
+			      operator
+			      (procedure-with-body operator* body*))))))))
 		 (operator* (combination/operator operator)))
 	     (cond ((procedure? operator*) (descend operator*))
 		   ((integrate/compound-operator
@@ -592,7 +604,16 @@ you ask for.
 		    (declaration/declarations declaration)
 		    expression))
 
+;;; Replacing the body may cause variables from outside the original
+;;; body to be shadowed, so we use a sleazy stupid hack to work around
+;;; this, because cgen doesn't do alphatization itself.  (This is the
+;;; same hack as used in copy.scm to copy integrated expressions that
+;;; have free variables.)
+
 (define (procedure-with-body procedure body)
+  (for-each hackify-variable (procedure/required procedure))
+  (for-each hackify-variable (procedure/optional procedure))
+  (cond ((procedure/rest procedure) => hackify-variable))
   (procedure/make (procedure/scode procedure)
 		  (procedure/block procedure)
 		  (procedure/name procedure)
@@ -600,6 +621,11 @@ you ask for.
 		  (procedure/optional procedure)
 		  (procedure/rest procedure)
 		  body))
+
+(define (hackify-variable variable)
+  (set-variable/name!
+   variable
+   (string->uninterned-symbol (symbol-name (variable/name variable)))))
 
 (define (sequence-with-actions sequence actions)
   (sequence/make (sequence/scode sequence) actions))
@@ -667,7 +693,10 @@ you ask for.
 		   (cons (loop (car actions))
 			 (cdr actions))))))
 	      ((and (combination? predicate)
-		    (procedure? (combination/operator predicate)))
+		    (procedure? (combination/operator predicate))
+		    (not
+		     (open-block?
+		      (procedure/body (combination/operator predicate)))))
 	       (combination-with-operator
 		predicate
 		(procedure-with-body
