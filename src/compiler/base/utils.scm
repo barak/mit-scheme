@@ -219,39 +219,37 @@ USA.
     NOT BIT-STRING-REF
     ))
 
-(define function-names
-  (append
-   boolean-valued-function-names
-   '(
-     ;; Numbers
-     MAX MIN + - * / 1+ -1+ CONJUGATE ABS QUOTIENT REMAINDER MODULO
-     INTEGER-DIVIDE GCD LCM NUMERATOR DENOMINATOR FLOOR CEILING TRUNCATE ROUND
-     FLOOR->EXACT CEILING->EXACT TRUNCATE->EXACT ROUND->EXACT
-     RATIONALIZE RATIONALIZE->EXACT SIMPLEST-RATIONAL SIMPLEST-EXACT-RATIONAL
-     EXP LOG SIN COS TAN ASIN ACOS ATAN SQRT EXPT MAKE-RECTANGULAR MAKE-POLAR
-     REAL-PART IMAG-PART MAGNITUDE ANGLE EXACT->INEXACT INEXACT->EXACT
-     FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
-     FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
-     FIX:AND FIX:ANDC FIX:NOT FIX:OR FIX:XOR
+(define function-additional-names
+  '(
+    ;; Numbers
+    MAX MIN + - * / 1+ -1+ CONJUGATE ABS QUOTIENT REMAINDER MODULO
+    INTEGER-DIVIDE GCD LCM NUMERATOR DENOMINATOR FLOOR CEILING TRUNCATE ROUND
+    FLOOR->EXACT CEILING->EXACT TRUNCATE->EXACT ROUND->EXACT
+    RATIONALIZE RATIONALIZE->EXACT SIMPLEST-RATIONAL SIMPLEST-EXACT-RATIONAL
+    EXP LOG SIN COS TAN ASIN ACOS ATAN SQRT EXPT MAKE-RECTANGULAR MAKE-POLAR
+    REAL-PART IMAG-PART MAGNITUDE ANGLE EXACT->INEXACT INEXACT->EXACT
+    FIX:1+ FIX:-1+ FIX:+ FIX:- FIX:*
+    FIX:DIVIDE FIX:GCD FIX:QUOTIENT FIX:REMAINDER
+    FIX:AND FIX:ANDC FIX:NOT FIX:OR FIX:XOR
 
-     INT:+ INT:- INT:* INT:DIVIDE INT:QUOTIENT INT:REMAINDER INT:ABS
-     INT:1+ INT:-1+ INT:NEGATE
-     FLO:+ FLO:- FLO:* FLO:/ FLO:NEGATE FLO:ABS FLO:EXP FLO:LOG FLO:SIN FLO:COS
-     FLO:TAN FLO:ASIN FLO:ACOS FLO:ATAN FLO:ATAN2 FLO:SQRT FLO:EXPT FLO:FLOOR
-     FLO:CEILING FLO:TRUNCATE FLO:ROUND FLO:FLOOR->EXACT FLO:CEILING->EXACT
-     FLO:TRUNCATE->EXACT FLO:ROUND->EXACT
+    INT:+ INT:- INT:* INT:DIVIDE INT:QUOTIENT INT:REMAINDER INT:ABS
+    INT:1+ INT:-1+ INT:NEGATE
+    FLO:+ FLO:- FLO:* FLO:/ FLO:NEGATE FLO:ABS FLO:EXP FLO:LOG FLO:SIN FLO:COS
+    FLO:TAN FLO:ASIN FLO:ACOS FLO:ATAN FLO:ATAN2 FLO:SQRT FLO:EXPT FLO:FLOOR
+    FLO:CEILING FLO:TRUNCATE FLO:ROUND FLO:FLOOR->EXACT FLO:CEILING->EXACT
+    FLO:TRUNCATE->EXACT FLO:ROUND->EXACT
 
-     ;; Random
-     OBJECT-TYPE CHAR-ASCII? ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
-     CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
-     PRIMITIVE-PROCEDURE-ARITY
+    ;; Random
+    OBJECT-TYPE CHAR-ASCII? ASCII->CHAR CHAR->INTEGER CHAR-BITS CHAR-CODE
+    CHAR-DOWNCASE CHAR-UPCASE INTEGER->CHAR MAKE-CHAR
+    PRIMITIVE-PROCEDURE-ARITY
 
-     ;; References (assumes immediate constants are immutable)
-     CAR CDR LENGTH
-     VECTOR-REF VECTOR-LENGTH
-     STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
-     BIT-STRING-LENGTH
-     )))
+    ;; References (assumes immediate constants are immutable)
+    CAR CDR LENGTH
+    VECTOR-REF VECTOR-LENGTH
+    STRING-REF STRING-LENGTH STRING-MAXIMUM-LENGTH
+    BIT-STRING-LENGTH
+    ))
 
 ;; The following definition is used to avoid computation if possible.
 ;; Not to avoid recomputation.  To avoid recomputation, function-names
@@ -268,31 +266,150 @@ USA.
     CONS LIST CONS* MAKE-STRING VECTOR MAKE-VECTOR LIST-COPY VECTOR-COPY
     LIST->VECTOR VECTOR->LIST MAKE-BIT-STRING MAKE-CELL STRING->SYMBOL
     ))
+
+;;; Since the values of global variables corresponding with primitives
+;;; are usually not the primitives themselves, but compiled procedures
+;;; that call the primitives (possibly in-line, to avoid the cost of
+;;; switching context between Scheme and C), and since SF turns
+;;; references to the variables into primitive constants, we must
+;;; separately detect them for constant-folding.  This list is
+;;; approximate -- it covers everything that the open-coders may need
+;;; to avoid generating bad RTL with entirely constant operands that
+;;; the back ends' RTL->LAP rules are not prepared for.  All this is a
+;;; horrible mess: none of this information should be hard-coded into
+;;; the compiler.
 
-(define additional-boolean-valued-function-primitives
-  (list (ucode-primitive zero?)
-	(ucode-primitive positive?)
-	(ucode-primitive negative?)
-	(ucode-primitive &=)
+(define boolean-valued-function-primitives
+  (list (ucode-primitive %record?)
 	(ucode-primitive &<)
-	(ucode-primitive &>)))
+	(ucode-primitive &=)
+	(ucode-primitive &>)
+	(ucode-primitive bit-string?)
+	(ucode-primitive char?)
+	(ucode-primitive eq?)
+	(ucode-primitive equal-fixnum?)
+	(ucode-primitive fixnum?)
+	(ucode-primitive flonum-equal?)
+	(ucode-primitive flonum-greater?)
+	(ucode-primitive flonum-less?)
+	(ucode-primitive flonum-negative?)
+	(ucode-primitive flonum-positive?)
+	(ucode-primitive flonum-zero?)
+	(ucode-primitive flonum?)
+	(ucode-primitive greater-than-fixnum?)
+	(ucode-primitive index-fixnum?)
+	(ucode-primitive integer-equal?)
+	(ucode-primitive integer-greater?)
+	(ucode-primitive integer-less?)
+	(ucode-primitive integer-negative?)
+	(ucode-primitive integer-positive?)
+	(ucode-primitive integer-zero?)
+	(ucode-primitive less-than-fixnum?)
+	(ucode-primitive negative-fixnum?)
+	(ucode-primitive negative?)
+	(ucode-primitive null?)
+	(ucode-primitive object-type?)
+	(ucode-primitive pair?)
+	(ucode-primitive positive-fixnum?)
+	(ucode-primitive positive?)
+	(ucode-primitive string?)
+	(ucode-primitive vector?)
+	(ucode-primitive zero-fixnum?)
+	(ucode-primitive zero?)))
 
+(define additional-side-effect-free-primitives
+  (list (ucode-primitive %record)
+	(ucode-primitive cons)
+	(ucode-primitive floating-vector-cons)
+	(ucode-primitive get-interrupt-enables)
+	(ucode-primitive heap-available?)
+	(ucode-primitive string-allocate)
+	(ucode-primitive system-pair-cons)
+	(ucode-primitive vector)
+	(ucode-primitive vector-cons)))
+
 (define additional-function-primitives
-  (list (ucode-primitive 1+)
-	(ucode-primitive -1+)
+  (list (ucode-primitive %record-length)
+	(ucode-primitive %record-ref)
+	(ucode-primitive &*)
 	(ucode-primitive &+)
 	(ucode-primitive &-)
-	(ucode-primitive &*)
-	(ucode-primitive &/)))
+	(ucode-primitive &/)
+	(ucode-primitive -1+)
+	(ucode-primitive 1+)
+	(ucode-primitive bit-string-length)
+	(ucode-primitive car)
+	(ucode-primitive cdr)
+	(ucode-primitive char->integer)
+	(ucode-primitive divide-fixnum)
+	(ucode-primitive fixnum-and)
+	(ucode-primitive fixnum-andc)
+	(ucode-primitive fixnum-lsh)
+	(ucode-primitive fixnum-not)
+	(ucode-primitive fixnum-or)
+	(ucode-primitive fixnum-quotient)
+	(ucode-primitive fixnum-remainder)
+	(ucode-primitive fixnum-xor)
+	(ucode-primitive floating-vector-length)
+	(ucode-primitive floating-vector-ref)
+	(ucode-primitive flonum-abs)
+	(ucode-primitive flonum-acos)
+	(ucode-primitive flonum-add)
+	(ucode-primitive flonum-asin)
+	(ucode-primitive flonum-atan)
+	(ucode-primitive flonum-atan2)
+	(ucode-primitive flonum-ceiling)
+	(ucode-primitive flonum-cos)
+	(ucode-primitive flonum-divide)
+	(ucode-primitive flonum-exp)
+	(ucode-primitive flonum-floor)
+	(ucode-primitive flonum-log)
+	(ucode-primitive flonum-multiply)
+	(ucode-primitive flonum-negate)
+	(ucode-primitive flonum-round)
+	(ucode-primitive flonum-sin)
+	(ucode-primitive flonum-sqrt)
+	(ucode-primitive flonum-subtract)
+	(ucode-primitive flonum-tan)
+	(ucode-primitive flonum-truncate)
+	(ucode-primitive gcd-fixnum)
+	(ucode-primitive integer->char)
+	(ucode-primitive integer-add)
+	(ucode-primitive integer-add-1)
+	(ucode-primitive integer-multiply)
+	(ucode-primitive integer-quotient)
+	(ucode-primitive integer-remainder)
+	(ucode-primitive integer-subtract)
+	(ucode-primitive integer-subtract-1)
+	(ucode-primitive minus-fixnum)
+	(ucode-primitive minus-one-plus-fixnum)
+	(ucode-primitive multiply-fixnum)
+	(ucode-primitive object-type)
+	(ucode-primitive one-plus-fixnum)
+	(ucode-primitive plus-fixnum)
+	(ucode-primitive primitive-object-ref)
+	(ucode-primitive primitive-object-set-type)
+	(ucode-primitive primitive-object-type)
+	(ucode-primitive quotient)
+	(ucode-primitive remainder)
+	(ucode-primitive string-length)
+	(ucode-primitive string-ref)
+	(ucode-primitive system-hunk3-cxr0)
+	(ucode-primitive system-hunk3-cxr1)
+	(ucode-primitive system-hunk3-cxr2)
+	(ucode-primitive system-pair-car)
+	(ucode-primitive system-pair-cdr)
+	(ucode-primitive system-vector-ref)
+	(ucode-primitive system-vector-size)
+	(ucode-primitive vector-8b-ref)
+	(ucode-primitive vector-length)
+	(ucode-primitive vector-ref)))
 
 ;;;; "Foldable" and side-effect-free operators
 
 (define boolean-valued-function-variables)
 (define function-variables)
 (define side-effect-free-variables)
-(define boolean-valued-function-primitives)
-(define function-primitives)
-(define side-effect-free-primitives)
 
 (let ((global-valued
        (lambda (names)
@@ -301,35 +418,27 @@ USA.
 	     (lexical-unreferenceable? system-global-environment name)))))
       (global-value
        (lambda (name)
-	 (lexical-reference system-global-environment name)))
-      (primitives
-       (let ((primitive-procedure?
-	      (lexical-reference system-global-environment
-				 'PRIMITIVE-PROCEDURE?)))
-	 (lambda (procedures)
-	   (list-transform-positive procedures primitive-procedure?)))))
+	 (lexical-reference system-global-environment name))))
   (let ((names (global-valued boolean-valued-function-names)))
     (let ((procedures (map global-value names)))
-      (set! boolean-valued-function-variables (map cons names procedures))
-      (set! boolean-valued-function-primitives
-	    (append! (primitives procedures)
-		     additional-boolean-valued-function-primitives))))
-  (let ((names (global-valued function-names)))
+      (set! boolean-valued-function-variables (map cons names procedures))))
+  (let ((names (global-valued function-additional-names)))
     (let ((procedures (map global-value names)))
       (set! function-variables
-	    (map* boolean-valued-function-variables cons names procedures))
-      (set! function-primitives
-	    (append! (primitives procedures)
-		     (append additional-function-primitives
-			     boolean-valued-function-primitives)))))
+	    (map* boolean-valued-function-variables cons names procedures))))
   (let ((names (global-valued side-effect-free-additional-names)))
     (let ((procedures (map global-value names)))
       (set! side-effect-free-variables
-	    (map* function-variables cons names procedures))
-      (set! side-effect-free-primitives
-	    (append! (primitives procedures)
-		     function-primitives))
-      unspecific)))
+	    (map* function-variables cons names procedures))))
+  unspecific)
+
+(define function-primitives
+  (append additional-function-primitives
+          boolean-valued-function-primitives))
+
+(define side-effect-free-primitives
+  (append additional-side-effect-free-primitives
+          function-primitives))
 
 (define-integrable (boolean-valued-function-variable? name)
   (assq name boolean-valued-function-variables))
