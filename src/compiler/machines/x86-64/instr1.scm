@@ -90,7 +90,7 @@ USA.
 
 	      ((B (R 0) (&U (? value ,(unsigned 'BYTE))))	;AL
 	       (BITS (8 ,(+ opcode 4))
-		     (8 value SIGNED)))
+		     (8 value UNSIGNED)))
 
 	      ((B (? target r/m-ea) (& (? value ,(signed 'BYTE))))
 	       (PREFIX (ModR/M target))
@@ -102,7 +102,7 @@ USA.
 	       (PREFIX (ModR/M target))
 	       (BITS (8 #x80))
 	       (ModR/M ,digit target)
-	       (BITS (8 value SIGNED)))
+	       (BITS (8 value UNSIGNED)))
 
 	      ((W (R 0) (& (? value ,(signed 'WORD))))
 	       (PREFIX (OPERAND 'W))
@@ -112,7 +112,7 @@ USA.
 	      ((W (R 0) (&U (? value ,(unsigned 'WORD))))
 	       (PREFIX (OPERAND 'W))
 	       (BITS (8 ,(+ opcode 5))
-		     (16 value SIGNED)))
+		     (16 value UNSIGNED)))
 
 	      (((? size operand-size) (R 0) (& (? value ,(signed 'LONG))))
 	       (PREFIX (OPERAND size))
@@ -122,7 +122,7 @@ USA.
 	      (((? size operand-size) (R 0) (&U (? value ,(unsigned 'LONG))))
 	       (PREFIX (OPERAND size))
 	       (BITS (8 ,(+ opcode 5))
-		     (32 value SIGNED)))
+		     (32 value UNSIGNED)))
 
 	      (((? size operand-size) (? target r/m-ea) (R (? source)))
 	       (PREFIX (OPERAND size) (ModR/M source target))
@@ -148,7 +148,7 @@ USA.
 	       (PREFIX (OPERAND size) (ModR/M target))
 	       (BITS (8 #x83))
 	       (ModR/M ,digit target)
-	       (BITS (8 value SIGNED)))
+	       (BITS (8 value UNSIGNED)))
 
 	      ((W (? target r/m-ea) (& (? value ,(signed 'WORD))))
 	       (PREFIX (OPERAND 'W) (ModR/M target))
@@ -160,7 +160,7 @@ USA.
 	       (PREFIX (OPERAND 'W) (ModR/M target))
 	       (BITS (8 #x81))
 	       (ModR/M ,digit target)
-	       (BITS (16 value SIGNED)))
+	       (BITS (16 value UNSIGNED)))
 
 	      (((? size operand-size)
 		(? target r/m-ea)
@@ -176,7 +176,7 @@ USA.
 	       (PREFIX (OPERAND size) (ModR/M target))
 	       (BITS (8 #x81))
 	       (ModR/M ,digit target)
-	       (BITS (32 value SIGNED)))))))))
+	       (BITS (32 value UNSIGNED)))))))))
 
   (define-arithmetic-instruction ADC #x10 2 SIGN-EXTENDED ZERO-EXTENDED)
   (define-arithmetic-instruction ADD #x00 0 SIGN-EXTENDED ZERO-EXTENDED)
