@@ -27,6 +27,8 @@ USA.
 ;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
+
+#|
 
 (let-syntax
     ((define-binary-flonum
@@ -335,3 +337,5 @@ USA.
 (define-trivial-instruction FXTRACT #xd9 #xf4)
 (define-trivial-instruction FYL2X   #xd9 #xf1)
 (define-trivial-instruction FYL2XP1 #xd9 #xf9)
+
+|#
