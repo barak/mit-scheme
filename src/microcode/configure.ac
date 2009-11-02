@@ -283,11 +283,6 @@ yes)
     i?86)
 	SCM_ARCH=i386
 	;;
-    # x86_64)
-    #     SCM_ARCH=i386
-    #     CFLAGS="${CFLAGS} -m32"
-    #     LDFLAGS="${LDFLAGS} -m32"
-    #     ;;
     m68k|m680?0)
 	SCM_ARCH=mc68k
 	;;
@@ -296,6 +291,9 @@ yes)
 	;;
     vax)
 	SCM_ARCH=vax
+	;;
+    x86_64)
+	SCM_ARCH=x86-64
 	;;
     esac
     ;;
