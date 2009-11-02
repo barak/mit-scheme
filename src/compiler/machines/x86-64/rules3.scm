@@ -173,27 +173,21 @@ USA.
       (LAP ,@(clear-map!)
 	   (MOV Q (R ,rcx) (&U ,frame-size))
 	   ,@(invoke-hook entry:compiler-error))
-      (let ((arity (primitive-procedure-arity primitive)))
-	(cond ((not (negative? arity))
-	       (let ((get-code
-		      (object->machine-register! primitive rcx)))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      ,@(invoke-hook entry:compiler-primitive-apply))))
-	      ((= arity -1)
-	       (let ((get-code (object->machine-register! primitive rcx)))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV Q ,reg:lexpr-primitive-arity (&U ,(-1+ frame-size)))
-		      ,@(invoke-hook entry:compiler-primitive-lexpr-apply))))
-	      (else
-	       ;; Unknown primitive arity.  Go through apply.
-	       (let ((get-code (object->machine-register! primitive rcx)))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV Q (R ,rdx) (&U ,frame-size))
-		      ,@(invoke-interface code:compiler-apply))))))))
-
+      (LAP ,@(object->machine-register! primitive rcx)
+	   ,@(clear-map!)
+	   ,@(let ((arity (primitive-procedure-arity primitive)))
+	       (cond ((not (negative? arity))
+		      (invoke-hook entry:compiler-primitive-apply))
+		     ((= arity -1)
+		      (LAP (MOV Q ,reg:lexpr-primitive-arity
+				(&U ,(- frame-size 1)))
+			   ,@(invoke-hook
+			      entry:compiler-primitive-lexpr-apply)))
+		     (else
+		      ;; Unknown primitive arity.  Go through apply.
+		      (LAP (MOV Q (R ,rdx) (&U ,frame-size))
+			   ,@(invoke-interface code:compiler-apply))))))))
+
 (let-syntax
     ((define-primitive-invocation
        (sc-macro-transformer
