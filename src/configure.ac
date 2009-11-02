@@ -44,6 +44,25 @@ c)
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
     AUXDIR_NAME=mit-scheme
+
+    AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
+    : ${MIT_SCHEME_EXE:=mit-scheme}
+    if ! ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)'	\
+	> /dev/null 2> /dev/null
+    then
+	AC_MSG_ERROR([
+This script needs an existing MIT/GNU Scheme installation to function.
+
+If you have installed MIT/GNU Scheme in an unusual location, or with
+an unusual name, set the environment variable MIT_SCHEME_EXE to the
+name or pathname of the MIT/GNU Scheme executable, which is usually
+\`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
+variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
+library directory, which is usually \`/usr/local/lib/mit-scheme'.
+])
+    else
+	AC_MSG_RESULT([yes])
+    fi
     ;;
 esac
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
