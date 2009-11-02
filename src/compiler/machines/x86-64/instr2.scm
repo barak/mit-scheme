@@ -241,17 +241,17 @@ USA.
 (define-trivial-instruction NOP #x90)
 
 (define-instruction OUT
-  ((B (& (? port unsigned-byte)) (R 0))
+  ((B (&U (? port unsigned-byte)) (R 0))
    (BITS (8 #xe6)
-	 (8 port)))
+	 (8 port UNSIGNED)))
 
   ((B (R 2) (R 0))
    (BITS (8 #xee)))
 
-  (((? size operand-size) (& (? port unsigned-byte)) (R 0))
+  (((? size operand-size) (&U (? port unsigned-byte)) (R 0))
    (PREFIX (OPERAND size))
    (BITS (8 #xe7)
-	 (8 port)))
+	 (8 port UNSIGNED)))
 
   (((PREFIX (OPERAND size)) (R 2) (R 0))
    (BITS (8 #xef))))
@@ -363,7 +363,7 @@ USA.
 
   ((Q (&U (? value zero-extended-byte))) ;No operand prefix.
    (BITS (8 #x6a)
-	 (8 value UNSIGNED)))
+	 (8 value SIGNED)))
 
   ((Q (& (? value sign-extended-long)))	;No operand prefix.
    (BITS (8 #x68)
@@ -371,7 +371,7 @@ USA.
 
   ((Q (&U (? value zero-extended-long))) ;No operand prefix.
    (BITS (8 #x68)
-	 (32 value UNSIGNED)))
+	 (32 value SIGNED)))
 
   ((W (? source m-ea))
    (PREFIX (OPERAND 'W) (ModR/M source))
@@ -463,7 +463,7 @@ USA.
 	       (BITS (8 #x0f)
 		     (8 ,opcode))
 	       (ModR/M target source)
-	       (BITS (8 count)))
+	       (BITS (8 count UNSIGNED)))
 
 	      (((? size operand-size) (? target r/m-ea)
 				      (R (? source))
@@ -485,11 +485,11 @@ USA.
 
   (((&U (? frame-size unsigned-word)))
    (BITS (8 #xc2)
-	 (16 frame-size)))
+	 (16 frame-size UNSIGNED)))
 
   ((F (&U (? frame-size unsigned-word)))
    (BITS (8 #xca)
-	 (16 frame-size))))
+	 (16 frame-size UNSIGNED))))
 
 (define-trivial-instruction SAHF #x9e)
 
@@ -552,8 +552,13 @@ USA.
    (BITS (8 #xa9)
 	 (16 value SIGNED)))
 
-  (((? size operand-size) (R 0) (& (? value signed-long)))
-   (PREFIX (OPERAND size))
+  ((L (R 0) (& (? value signed-long)))
+   (PREFIX (OPERAND 'L))
+   (BITS (8 #xa9)
+	 (32 value SIGNED)))
+
+  ((Q (R 0) (& (? value sign-extended-long)))
+   (PREFIX (OPERAND 'Q))
    (BITS (8 #xa9)
 	 (32 value SIGNED)))
 
@@ -566,11 +571,16 @@ USA.
    (BITS (8 #xa9)
 	 (16 value UNSIGNED)))
 
-  (((? size operand-size) (R 0) (&U (? value unsigned-long)))
-   (PREFIX (OPERAND size))
+  ((L (R 0) (&U (? value unsigned-long)))
+   (PREFIX (OPERAND 'L))
    (BITS (8 #xa9)
 	 (32 value UNSIGNED)))
 
+  ((Q (R 0) (&U (? value zero-extended-long)))
+   (PREFIX (OPERAND 'Q))
+   (BITS (8 #xa9)
+	 (32 value SIGNED)))
+
   ((B (? operand r/m-ea) (& (? value signed-byte)))
    (PREFIX (ModR/M operand))
    (BITS (8 #xf6))
@@ -583,8 +593,14 @@ USA.
    (ModR/M 0 operand)
    (BITS (16 value SIGNED)))
 
-  (((? size operand-size) (? operand r/m-ea) (& (? value signed-long)))
-   (PREFIX (OPERAND size) (ModR/M operand))
+  ((L (? operand r/m-ea) (& (? value signed-long)))
+   (PREFIX (OPERAND 'L) (ModR/M operand))
+   (BITS (8 #xf7))
+   (ModR/M 0 operand)
+   (BITS (32 value SIGNED)))
+
+  ((Q (? operand r/m-ea) (& (? value sign-extended-long)))
+   (PREFIX (OPERAND 'Q) (ModR/M operand))
    (BITS (8 #xf7))
    (ModR/M 0 operand)
    (BITS (32 value SIGNED)))
@@ -601,11 +617,17 @@ USA.
    (ModR/M 0 operand)
    (BITS (16 value UNSIGNED)))
 
-  (((? size operand-size) (? operand r/m-ea) (&U (? value unsigned-long)))
-   (PREFIX (OPERAND size) (ModR/M operand))
+  ((L (? operand r/m-ea) (&U (? value unsigned-long)))
+   (PREFIX (OPERAND 'L) (ModR/M operand))
    (BITS (8 #xf7))
    (ModR/M 0 operand)
    (BITS (32 value UNSIGNED)))
+
+  ((Q (? operand r/m-ea) (&U (? value zero-extended-long)))
+   (PREFIX (OPERAND 'Q) (ModR/M operand))
+   (BITS (8 #xf7))
+   (ModR/M 0 operand)
+   (BITS (32 value SIGNED)))
 
   ((B (? r/m r/m-ea) (R (? reg)))
    (PREFIX (ModR/M reg r/m))
