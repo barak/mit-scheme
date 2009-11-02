@@ -54,7 +54,7 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (ADDRESS->FIXNUM (OBJECT->ADDRESS (CONSTANT (? constant)))))
-  (convert-object/constant->register target constant address->fixnum))
+  (load-converted-constant target constant address->fixnum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FIXNUM (CONSTANT (? constant))))
@@ -127,33 +127,13 @@ USA.
   (fixnum-1-arg target source
    (lambda (target)
      (multiply-fixnum-constant target (* n fixnum-1) #f))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			  (OBJECT->FIXNUM (REGISTER (? source)))
-			  (OBJECT->FIXNUM (CONSTANT 2))
-			  #f)))
-  (QUALIFIER (multiply-object-by-2?))
-  (multiply-object-by-2 target source))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-			  (OBJECT->FIXNUM (CONSTANT 2))
-			  (OBJECT->FIXNUM (REGISTER (? source)))
-			  #f)))
-  (QUALIFIER (multiply-object-by-2?))
-  (multiply-object-by-2 target source))
 
 ;;;; Fixnum Predicates
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (REGISTER (? register)))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP W ,(source-register-reference register) (& 0))))
+  (LAP (CMP Q ,(source-register-reference register) (& 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (OBJECT->FIXNUM (REGISTER (? register))))
@@ -165,7 +145,7 @@ USA.
 (define-rule predicate
   (FIXNUM-PRED-1-ARG (? predicate) (? expression rtl:simple-offset?))
   (fixnum-branch! (fixnum-predicate/unary->binary predicate))
-  (LAP (CMP W ,(offset->reference! expression) (& 0))))
+  (LAP (CMP Q ,(offset->reference! expression) (& 0))))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
@@ -179,7 +159,7 @@ USA.
 		      (REGISTER (? register))
 		      (? expression rtl:simple-offset?))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(source-register-reference register)
+  (LAP (CMP Q ,(source-register-reference register)
 	    ,(offset->reference! expression))))
 
 (define-rule predicate
@@ -187,7 +167,7 @@ USA.
 		      (? expression rtl:simple-offset?)
 		      (REGISTER (? register)))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(offset->reference! expression)
+  (LAP (CMP Q ,(offset->reference! expression)
 	    ,(source-register-reference register))))
 
 (define-rule predicate
@@ -195,59 +175,57 @@ USA.
 		      (REGISTER (? register))
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(source-register-reference register)
-	    (& ,(* constant fixnum-1)))))
+  (compare/reference*fixnum (source-register-reference register) constant))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (REGISTER (? register)))
   (fixnum-branch! (commute-fixnum-predicate predicate))
-  (LAP (CMP W ,(source-register-reference register)
-	    (& ,(* constant fixnum-1)))))
+  (compare/reference*fixnum (source-register-reference register) constant))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (? expression rtl:simple-offset?)
 		      (OBJECT->FIXNUM (CONSTANT (? constant))))
   (fixnum-branch! predicate)
-  (LAP (CMP W ,(offset->reference! expression)
-	    (& ,(* constant fixnum-1)))))
+  (compare/reference*fixnum (offset->reference! expression) constant))
 
 (define-rule predicate
   (FIXNUM-PRED-2-ARGS (? predicate)
 		      (OBJECT->FIXNUM (CONSTANT (? constant)))
 		      (? expression rtl:simple-offset?))
   (fixnum-branch! (commute-fixnum-predicate predicate))
-  (LAP (CMP W ,(offset->reference! expression)
-	    (& ,(* constant fixnum-1)))))
+  (compare/reference*fixnum (offset->reference! expression) constant))
+
+(define (compare/reference*fixnum reference fixnum)
+  (with-signed-immediate-operand (* fixnum fixnum-1)
+    (lambda (operand)
+      (LAP (CMP Q ,reference ,operand)))))
 
 ;; This assumes that the immediately preceding instruction sets the
 ;; condition code bits correctly.
 
 (define-rule predicate
   (OVERFLOW-TEST)
-  (set-current-branches!
-   (lambda (label)
-     (LAP (JO (@PCR ,label))))
-   (lambda (label)
-     (LAP (JNO (@PCR ,label)))))
+  (set-current-branches! (lambda (label) (LAP (JO (@PCR ,label))))
+			 (lambda (label) (LAP (JNO (@PCR ,label)))))
   (LAP))
 
 ;;;; Utilities
 
 (define (object->fixnum target)
-  (LAP (SAL W ,target (& ,scheme-type-width))))
+  (LAP (SAL Q ,target (&U ,scheme-type-width))))
 
 (define (fixnum->object target)
-  (LAP (OR W ,target (& ,(ucode-type fixnum)))
-       (ROR W ,target (& ,scheme-type-width))))
+  (LAP (OR Q ,target (&U ,(ucode-type FIXNUM)))
+       (ROR Q ,target (&U ,scheme-type-width))))
 
 (define (address->fixnum target)
-  (LAP (SAL W ,target (& ,scheme-type-width))))
+  (LAP (SAL Q ,target (&U ,scheme-type-width))))
 
 (define (fixnum->address target)
-  (LAP (SHR W ,target (& ,scheme-type-width))))
+  (LAP (SHR Q ,target (&U ,scheme-type-width))))
 
 (define-integrable fixnum-1 64)		; (expt 2 scheme-type-width) ***
 
@@ -255,7 +233,7 @@ USA.
   (-1+ fixnum-1))
 
 (define (word->fixnum target)
-  (LAP (AND W ,target (& ,(fix:not fixnum-bits-mask)))))
+  (LAP (AND Q ,target (& ,(fix:not fixnum-bits-mask)))))
 
 (define (integer-power-of-2? n)
   (let loop ((power 1) (exponent 0))
@@ -265,9 +243,7 @@ USA.
 	   (loop (* 2 power) (1+ exponent))))))
 
 (define (load-fixnum-constant constant target)
-  (if (zero? constant)
-      (LAP (XOR W ,target ,target))
-      (LAP (MOV W ,target (& ,(* constant fixnum-1))))))
+  (load-signed-immediate target (* constant fixnum-1)))
 
 (define (add-fixnum-constant target constant overflow?)
   (let ((value (* constant fixnum-1)))
@@ -275,9 +251,11 @@ USA.
 	   (LAP))
 	  ((and (not (fits-in-signed-byte? value))
 		(fits-in-signed-byte? (- value)))
-	   (LAP (SUB W ,target (& ,(- value)))))
+	   (LAP (SUB Q ,target (& ,(- value)))))
 	  (else
-	   (LAP (ADD W ,target (& ,value)))))))
+	   (with-signed-immediate-operand value
+	     (lambda (operand)
+	       (LAP (ADD Q ,target ,operand))))))))
 
 (define (multiply-fixnum-constant target constant overflow?)
   (cond ((zero? constant)
@@ -287,18 +265,27 @@ USA.
 	     (LAP)
 	     (add-fixnum-constant target 0 overflow?)))
 	((= constant -1)
-	 (LAP (NEG W ,target)))
+	 (LAP (NEG Q ,target)))
 	((and (not overflow?)
 	      (integer-power-of-2? (abs constant)))
 	 =>
 	 (lambda (expt-of-2)
 	   (if (negative? constant)
-	       (LAP (SAL W ,target (& ,expt-of-2))
-		    (NEG W ,target))
-	       (LAP (SAL W ,target (& ,expt-of-2))))))
-	(else
+	       (LAP (SAL Q ,target (&U ,expt-of-2))
+		    (NEG Q ,target))
+	       (LAP (SAL Q ,target (&U ,expt-of-2))))))
+	;; It is tempting to use WITH-SIGNED-IMMEDIATE-OPERAND here to
+	;; get an operand for an otherwise common IMUL instruction,
+	;; but ternary IMUL takes a 32-bit immediate, whereas binary
+	;; IMUL takes an r/m and not an immediate, so these really
+	;; must be different cases.
+	((fits-in-signed-long? constant)
 	 ;; target must be a register!
-	 (LAP (IMUL W ,target ,target (& ,constant))))))
+	 (LAP (IMUL Q ,target ,target (& ,constant))))
+	(else
+	 (let ((temp (temporary-register-reference)))
+	   (LAP (MOV Q ,temp (& ,constant))
+		(IMUL Q ,target ,temp))))))
 
 ;;;; Operation tables
 
@@ -343,7 +330,7 @@ USA.
 				    target source1 source2)
   (let* ((worst-case
 	  (lambda (target source1 source2)
-	    (LAP (MOV W ,target ,source1)
+	    (LAP (MOV Q ,target ,source1)
 		 ,@(operate target source2))))
 	 (new-target-alias!
 	  (lambda ()
@@ -397,12 +384,12 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-NOT fixnum-methods/1-arg
   (lambda (target)
-    (LAP (NOT W ,target)
+    (LAP (NOT Q ,target)
 	 ,@(word->fixnum target))))
 
 (define-arithmetic-method 'FIXNUM-NEGATE fixnum-methods/1-arg
   (lambda (target)
-    (LAP (NEG W ,target))))
+    (LAP (NEG Q ,target))))
 
 (let-syntax
     ((binary-operation
@@ -418,7 +405,7 @@ USA.
 	       (lambda (target source2)
 		 (if (and ,idempotent? (equal? target source2))
 		     (LAP)
-		     (LAP (,instr W ,',target ,',source2)))))))))))
+		     (LAP (,instr Q ,',target ,',source2)))))))))))
 
   #| (binary-operation PLUS-FIXNUM ADD #t #f) |#
   (binary-operation MINUS-FIXNUM SUB #f #f)
@@ -429,7 +416,7 @@ USA.
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args
   (let* ((operate
 	  (lambda (target source2)
-	    (LAP (ADD W ,target ,source2))))
+	    (LAP (ADD Q ,target ,source2))))
 	 (standard (fixnum-2-args/standard #t operate)))
 
   (lambda (target source1 source2 overflow?)
@@ -449,7 +436,7 @@ USA.
 		   (operate (get-tgt) (register-reference one))))
 		(else
 		 (let ((target (target-register-reference target)))
-		   (LAP (LEA ,target (@RI ,one ,two 1)))))))))))
+		   (LAP (LEA Q ,target (@RI ,one ,two 1)))))))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args
   (fixnum-2-args/standard
@@ -460,65 +447,67 @@ USA.
 	 (let ((temp (temporary-register-reference)))
 	   (LAP ,@(if (equal? temp source2)
 		      (LAP)
-		      (LAP (MOV W ,temp ,source2)))
-		(NOT W ,temp)
-		(AND W ,target ,temp)))))))
+		      (LAP (MOV Q ,temp ,source2)))
+		(NOT Q ,temp)
+		(AND Q ,target ,temp)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args
   (fixnum-2-args/standard
    #f
    (lambda (target source2)
      (cond ((not (equal? target source2))
-	    (LAP (SAR W ,target (& ,scheme-type-width))
-		 (IMUL W ,target ,source2)))
+	    (LAP (SAR Q ,target (&U ,scheme-type-width))
+		 (IMUL Q ,target ,source2)))
 	   ((even? scheme-type-width)
-	    (LAP (SAR W ,target (& ,(quotient scheme-type-width 2)))
-		 (IMUL W ,target ,target)))
+	    (LAP (SAR Q ,target (&U ,(quotient scheme-type-width 2)))
+		 (IMUL Q ,target ,target)))
 	   (else
 	    (let ((temp (temporary-register-reference)))
-	      (LAP (MOV W ,temp ,target)
-		   (SAR W ,target (& ,scheme-type-width))
-		   (IMUL W ,target ,temp))))))))
+	      (LAP (MOV Q ,temp ,target)
+		   (SAR Q ,target (&U ,scheme-type-width))
+		   (IMUL Q ,target ,temp))))))))
+
+;++ This is absurd -- it should just be an assembly hook.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (let ((operate
 	 (lambda (target source2)
-	   ;; SOURCE2 is guaranteed not to be ECX because of the
+	   ;; SOURCE2 is guaranteed not to be RCX because of the
 	   ;; require-register! used below.
-	   ;; TARGET can be ECX only if the rule has machine register
-	   ;; ECX as the target, unlikely, but it must be handled!
+	   ;; TARGET can be RCX only if the rule has machine register
+	   ;; RCX as the target, unlikely, but it must be handled!
 	   (let ((with-target
 		   (lambda (target)
 		     (let ((jlabel (generate-label 'SHIFT-JOIN))
 			   (slabel (generate-label 'SHIFT-NEGATIVE))
 			   (zlabel (generate-label 'SHIFT-ZERO)))
-		       (LAP (MOV W (R ,ecx) ,source2)
-			    (SAR W (R ,ecx) (& ,scheme-type-width))
+		       (LAP (MOV Q (R ,rcx) ,source2)
+			    (SAR Q (R ,rcx) (&U ,scheme-type-width))
 			    (JS B (@PCR ,slabel))
-			    (CMP W (R ,ecx) (& ,scheme-datum-width))
+			    (CMP Q (R ,rcx) (& ,scheme-datum-width))
 			    (JGE B (@PCR ,zlabel))
-			    (SHL W ,target (R ,ecx))
+			    (SHL Q ,target (R ,rcx))
 			    (JMP B (@PCR ,jlabel))
 			    (LABEL ,zlabel)
-			    (XOR W ,target ,target)
+			    (XOR Q ,target ,target)
 			    (JMP B (@PCR ,jlabel))
 			    (LABEL ,slabel)
-			    (NEG W (R ,ecx))
-			    (CMP W (R ,ecx) (& ,scheme-datum-width))
-			    (JGE W (@PCR ,zlabel))
-			    (SHR W ,target (R ,ecx))
+			    (NEG Q (R ,rcx))
+			    (CMP Q (R ,rcx) (& ,scheme-datum-width))
+			    (JGE B (@PCR ,zlabel))
+			    (SHR Q ,target (R ,rcx))
 			    ,@(word->fixnum target)
 			    (LABEL ,jlabel))))))
 
-	     (if (not (equal? target (INST-EA (R ,ecx))))
+	     (if (not (equal? target (INST-EA (R ,rcx))))
 		 (with-target target)
 		 (let ((temp (temporary-register-reference)))
-		   (LAP (MOV W ,temp ,target)
+		   (LAP (MOV Q ,temp ,target)
 			,@(with-target temp)
-			(MOV W ,target ,temp))))))))
+			(MOV Q ,target ,temp))))))))
     (lambda (target source1 source2 overflow?)
       overflow?				; ignored
-      (require-register! ecx)
+      (require-register! rcx)
       (two-arg-register-operation operate
 				  #f
 				  target
@@ -526,29 +515,32 @@ USA.
 				  source2))))
 
 (define (do-division target source1 source2 result-reg)
-  (prefix-instructions! (load-machine-register! source1 eax))
-  (need-register! eax)
-  (require-register! edx)
+  (prefix-instructions! (load-machine-register! source1 rax))
+  (need-register! rax)
+  (require-register! rdx)
   (rtl-target:=machine-register! target result-reg)
   (let ((source2 (any-reference source2)))
-    (LAP (MOV W (R ,edx) (R ,eax))
-	 (SAR W (R ,edx) (& 31))
-	 (IDIV W (R ,eax) ,source2))))
+    ;; Before IDIV, the high (most significant) half of the 128-bit
+    ;; dividend is in RDX, and the low (least significant) half is in
+    ;; RAX.  After, the quotient is in RAX, and the remainder in RDX.
+    ;; First we fill RDX with the sign of RAX.
+    (LAP (CSE Q (R ,rdx) (R ,rax))
+	 (IDIV Q ((R ,rdx) : (R ,rax)) ,source2))))
 
 (define-arithmetic-method 'FIXNUM-QUOTIENT fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
     overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 1 (target-register-reference target))
-	(LAP ,@(do-division target source1 source2 eax)
-	     (SAL W (R ,eax) (& ,scheme-type-width))))))
+	(LAP ,@(do-division target source1 source2 rax)
+	     (SAL Q (R ,rax) (&U ,scheme-type-width))))))
 
 (define-arithmetic-method 'FIXNUM-REMAINDER fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
     overflow?				; ignored
     (if (= source2 source1)
 	(load-fixnum-constant 0 (target-register-reference target))
-	(do-division target source1 source2 edx))))
+	(do-division target source1 source2 rdx))))
 
 (define-arithmetic-method 'PLUS-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -566,18 +558,22 @@ USA.
 	  ((= n -1)
 	   (load-fixnum-constant -1 target))
 	  (else
-	   (LAP (OR W ,target (& ,(* n fixnum-1))))))))
-
+	   (with-signed-immediate-operand (* n fixnum-1)
+	     (lambda (operand)
+	       (LAP (OR Q ,target ,operand))))))))
+
 (define-arithmetic-method 'FIXNUM-XOR fixnum-methods/2-args-constant
   (lambda (target n overflow?)
     overflow?				; ignored
     (cond ((zero? n)
 	   (LAP))
 	  ((= n -1)
-	   (LAP (NOT W ,target)
+	   (LAP (NOT Q ,target)
 		,@(word->fixnum target)))
 	  (else
-	   (LAP (XOR W ,target (& ,(* n fixnum-1))))))))
+	   (with-signed-immediate-operand (* n fixnum-1)
+	     (lambda (operand)
+	       (LAP (XOR Q ,target ,operand))))))))
 
 (define-arithmetic-method 'FIXNUM-AND fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -587,7 +583,9 @@ USA.
 	  ((= n -1)
 	   (LAP))
 	  (else
-	   (LAP (AND W ,target (& ,(* n fixnum-1))))))))
+	   (with-signed-immediate-operand (* n fixnum-1)
+	     (lambda (operand)
+	       (LAP (AND Q ,target ,operand))))))))
 
 (define-arithmetic-method 'FIXNUM-ANDC fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -597,7 +595,9 @@ USA.
 	  ((= n -1)
 	   (load-fixnum-constant 0 target))
 	  (else
-	   (LAP (AND W ,target (& ,(* (fix:not n) fixnum-1))))))))
+	   (with-signed-immediate-operand (* (- -1 n) fixnum-1)
+	     (lambda (operand)
+	       (LAP (AND Q ,target ,operand))))))))
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -607,11 +607,18 @@ USA.
 	  ((not (<= (- 0 scheme-datum-width) n scheme-datum-width))
 	   (load-fixnum-constant 0 target))
 	  ((not (negative? n))
-	   (LAP (SHL W ,target (& ,n))))
+	   (LAP (SHL Q ,target (&U ,n))))
 	  (else
-	   (LAP (SHR W ,target (& ,(- 0 n)))
+	   (LAP (SHR Q ,target (&U ,(- 0 n)))
 		,@(word->fixnum target))))))
 
+;;; I don't think this rule is ever hit.  In any case, it does nothing
+;;; useful over the other rules; formerly, it used a single OR to
+;;; affix the type tag, since the two SHR's (one for the program, one
+;;; to make room for the type tag) could be merged by adding the
+;;; shift, but OR doesn't take 64-bit immediates, so that no longer
+;;; works.
+
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FIXNUM->OBJECT
@@ -622,9 +629,10 @@ USA.
   (QUALIFIER (and (exact-integer? n) (< (- scheme-datum-width) n 0)))
   (fixnum-1-arg target source
     (lambda (target)
-      (LAP (SHR W ,target (& ,(- scheme-type-width n)))
-	   (OR W ,target
-	       (&U ,(make-non-pointer-literal (ucode-type fixnum) 0)))))))
+      (LAP (SHR Q ,target (&U ,(- scheme-type-width n)))
+	   (SHL Q ,target (&U ,scheme-type-width))
+	   (OR Q ,target (&U ,(ucode-type FIXNUM)))
+	   (ROR Q ,target (&U ,scheme-type-width))))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -635,34 +643,7 @@ USA.
   (QUALIFIER (and (exact-integer? n) (< 0 n scheme-datum-width)))
   (fixnum-1-arg target source
     (lambda (target)
-      (LAP (SHL W ,target (& ,(+ scheme-type-width n)))))))
-
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (FIXNUM->OBJECT
-	   (FIXNUM-2-ARGS FIXNUM-LSH
-			  (OBJECT->FIXNUM (REGISTER (? source)))
-			  (OBJECT->FIXNUM (CONSTANT 1))
-			  #f)))
-  (QUALIFIER (multiply-object-by-2?))
-  (multiply-object-by-2 target source))
-
-;; Multiply by two by adding.  This can be done directly on the object
-;; if the fixnum tag is even, since the tag lsb acts as a place where
-;; the carry can stop.
-
-(define-integrable (multiply-object-by-2?)
-  (even? (ucode-type fixnum)))
-
-(define (multiply-object-by-2 target source)
-  (let ((src (source-register source)))
-    (let ((tgt (target-register-reference target)))
-      (let ((subtract-one-typecode
-	     (- #x100000000 (make-non-pointer-literal (ucode-type fixnum) 0)))
-	    (mask-out-carry-into-typecode-lsb
-	     (make-non-pointer-literal (ucode-type fixnum) (object-datum -1))))
-	(LAP (LEA ,tgt (@ROI UW ,src ,subtract-one-typecode ,src 1))
-	     (AND W ,tgt (&U ,mask-out-carry-into-typecode-lsb)))))))
+      (LAP (SHL Q ,target (&U ,(+ scheme-type-width n)))))))
 
 (define-arithmetic-method 'MULTIPLY-FIXNUM fixnum-methods/2-args-constant
   (lambda (target n overflow?)
@@ -674,20 +655,22 @@ USA.
     (cond ((= n 1)
 	   (LAP))
 	  ((= n -1)
-	   (LAP (NEG W ,target)))
+	   (LAP (NEG Q ,target)))
 	  ((integer-power-of-2? (if (negative? n) (- 0 n) n))
 	   =>
 	   (lambda (expt-of-2)
 	     (let ((label (generate-label 'QUO-SHIFT))
 		   (absn (if (negative? n) (- 0 n) n)))
-	       (LAP (CMP W ,target (& 0))
+	       (LAP (CMP Q ,target (& 0))
 		    (JGE B (@PCR ,label))
-		    (ADD W ,target (& ,(* (-1+ absn) fixnum-1)))
+		    ,@(with-unsigned-immediate-operand (* (- absn 1) fixnum-1)
+			(lambda (operand)
+			  (LAP (ADD Q ,target ,operand))))
 		    (LABEL ,label)
-		    (SAR W ,target (& ,expt-of-2))
+		    (SAR Q ,target (&U ,expt-of-2))
 		    ,@(word->fixnum target)
 		    ,@(if (negative? n)
-			  (LAP (NEG W ,target))
+			  (LAP (NEG Q ,target))
 			  (LAP))))))
 	  (else
 	   (error "Fixnum-quotient/constant: Bad value" n)))))
@@ -703,18 +686,32 @@ USA.
 	    ((integer-power-of-2? n)
 	     (let ((sign (temporary-register-reference))
 		   (label (generate-label 'REM-MERGE)))
-	       ;; This may produce a branch to a branch, but a
-	       ;; peephole optimizer should be able to fix this.
-	       (LAP (MOV W ,sign ,target)
-		    (AND W ,target (& ,(* (-1+ n) fixnum-1)))
-		    (JZ B (@PCR ,label))
-		    (SAR W ,sign (& ,(-1+ scheme-object-width)))
-		    (AND W ,sign (& ,(* n (- 0 fixnum-1))))
-		    (OR W ,target ,sign)
-		    (LABEL ,label))))
+	       ;; There is some hair here to deal with immediates that
+	       ;; don't fit in 32 bits, and reusing a temporary
+	       ;; register to store them.
+	       (receive (temp prefix:n-1 operand:n-1)
+		   (unsigned-immediate-operand (* (- n 1) fixnum-1)
+					       temporary-register-reference)
+		 (receive (temp prefix:-n operand:-n)
+		     (signed-immediate-operand
+		      (* n (- 0 fixnum-1))
+		      (lambda ()
+			(or temp (temporary-register-reference))))
+		   temp			;ignore
+		   ;; This may produce a branch to a branch, but a
+		   ;; peephole optimizer should be able to fix this.
+		   (LAP (MOV Q ,sign ,target)
+			,@prefix:n-1
+			(AND Q ,target ,operand:n-1)
+			(JZ B (@PCR ,label))
+			(SAR Q ,sign (&U ,(-1+ scheme-object-width)))
+			,@prefix:-n
+			(AND Q ,sign ,operand:-n)
+			(OR Q ,target ,sign)
+			(LABEL ,label))))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
-
+
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate
     ((ZERO-FIXNUM?) 'EQUAL-FIXNUM?)
