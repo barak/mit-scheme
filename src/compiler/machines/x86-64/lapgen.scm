@@ -281,9 +281,8 @@ USA.
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
 
 (define (object->machine-register! object mreg)
-  ;; This funny ordering allows load-constant to use a pc value in mreg!
-  ;; [TRC 20091025: Does this matter, given PC-relative addressing?]
-  (let ((code (load-constant->register (INST-EA (R ,mreg)) object)))
+  ;; This ordering allows LOAD-CONSTANT to use MREG as a temporary.
+  (let ((code (load-constant (INST-EA (R ,mreg)) object)))
     (require-register! mreg)
     code))
 
@@ -314,88 +313,126 @@ USA.
   (compare/reference*literal register (non-pointer->literal non-pointer)))
 
 (define (compare/reference*literal reference literal)
-  (if (fits-in-signed-long? literal)
-      (LAP (CMP Q ,reference (&U ,literal)))
-      (let ((temp (temporary-register-reference)))
-	(LAP (MOV Q ,temp (&U ,literal))
-	     (CMP Q ,reference ,temp)))))
+  (with-unsigned-immediate-operand literal
+    (lambda (operand)
+      (LAP (CMP Q ,reference ,operand)))))
 
 ;;;; Literals and Constants
 
 ;;; These are slightly tricky because most instructions don't admit
 ;;; 64-bit operands.
 
-(define (convert-object/constant->register target object conversion)
+(define (load-converted-constant target object conversion)
   (let ((target (target-register-reference target)))
     (if (non-pointer-object? object)
-	;; Is this correct if conversion is object->address ?
-	(load-non-pointer-constant->register target object)
-	(LAP ,@(load-pointer-constant->register target object)
+	;; Assumption: CONVERSION fetches the datum of the object,
+	;; which is the same as the address of the object.
+	(load-non-pointer target 0 (careful-object-datum object))
+	(LAP ,@(load-pointer-constant target object)
 	     ,@(conversion target)))))
 
-(define (load-constant->register register object)
+(define (load-constant register object)
   (if (non-pointer-object? object)
-      (load-non-pointer-constant->register register object)
-      (load-pointer-constant->register register object)))
+      (load-non-pointer-constant register object)
+      (load-pointer-constant register object)))
 
-(define (load-pointer-constant->register register object)
+(define (load-pointer-constant register object)
   (LAP (MOV Q ,register (@PCR ,(constant->label object)))))
 
-(define (load-non-pointer-constant->register register object)
-  (load-non-pointer-literal->register register (non-pointer->literal object)))
+(define (load-non-pointer-constant register object)
+  (load-non-pointer-literal register (non-pointer->literal object)))
 
-(define (load-non-pointer-constant->offset register object)
-  (load-non-pointer-literal->offset register (non-pointer->literal object)))
+(define (load-non-pointer register type datum)
+  (load-non-pointer-literal register (make-non-pointer-literal type datum)))
 
-(define (load-non-pointer->register register type datum)
-  (load-non-pointer-literal->register register
-				      (make-non-pointer-literal type datum)))
+(define (load-non-pointer-literal register literal)
+  (load-unsigned-immediate register literal))
 
-(define (load-non-pointer->offset register type datum)
-  (load-non-pointer-literal->offset register
-				      (make-non-pointer-literal type datum)))
+(define (store-non-pointer-constant register object)
+  (store-non-pointer-literal register (non-pointer->literal object)))
 
-(define (load-non-pointer-literal->register register literal)
-  (load-unsigned-immediate->register register literal))
+(define (store-non-pointer offset type datum)
+  (store-non-pointer-literal offset (make-non-pointer-literal type datum)))
 
-(define (load-non-pointer-literal->offset register literal)
-  (load-unsigned-immediate->offset register literal))
+(define (store-non-pointer-literal offset literal)
+  (store-unsigned-immediate offset literal))
 
 (define (non-pointer->literal object)
   (make-non-pointer-literal (object-type object)
 			    (careful-object-datum object)))
 
-(define (load-signed-immediate->register target immediate)
-  (cond ((zero? immediate)
+(define (load-signed-immediate target value)
+  (cond ((zero? value)
 	 (LAP (XOR Q ,target ,target)))
-	((fits-in-signed-quad? immediate)
-	 (LAP (MOV Q ,target (& ,immediate))))
+	((fits-in-signed-quad? value)
+	 (LAP (MOV Q ,target (& ,value))))
 	(else
-	 (error "Signed immediate too large:" immediate))))
+	 (error "Signed immediate too large:" value))))
 
-(define (load-unsigned-immediate->register target immediate)
-  (cond ((zero? immediate)
+(define (load-unsigned-immediate target value)
+  (cond ((zero? value)
 	 (LAP (XOR Q ,target ,target)))
-	((fits-in-unsigned-quad? immediate)
-	 (LAP (MOV Q ,target (&U ,immediate))))
+	((fits-in-unsigned-quad? value)
+	 (LAP (MOV Q ,target (&U ,value))))
 	(else
-	 (error "Unsigned immediate too large:" immediate))))
+	 (error "Unsigned immediate too large:" value))))
 
-(define (load-signed-immediate->offset offset immediate)
-  (if (fits-in-signed-long? immediate)
-      (LAP (MOV Q ,(offset->reference! offset) (& ,immediate)))
-      (let* ((temporary (temporary-register-reference))
-	     (target (offset->reference! offset)))
-	(LAP ,@(load-signed-immediate->register temporary immediate)
-	     (MOV Q ,target ,temporary)))))
+(define (store-signed-immediate offset value)
+  (with-signed-immediate-operand value
+    (lambda (operand)
+      (LAP (MOV Q ,(offset->reference! offset) ,operand)))))
 
-(define (load-unsigned-immediate->offset offset immediate)
-  (if (fits-in-unsigned-long? immediate)
-      (LAP (MOV Q ,(offset->reference! offset) (&U ,immediate)))
-      (let* ((temporary (temporary-register-reference))
-	     (target (offset->reference! offset)))
-	(LAP ,@(load-unsigned-immediate->register temporary immediate)
-	     (MOV Q ,target ,temporary)))))
+(define (store-unsigned-immediate offset value)
+  (with-unsigned-immediate-operand value
+    (lambda (operand)
+      (LAP (MOV Q ,(offset->reference! offset) ,operand)))))
+
+(define (with-signed-immediate-operand value receiver)
+  (receive (temp prefix operand)
+      (signed-immediate-operand value temporary-register-reference)
+    temp				;ignore
+    (LAP ,@prefix
+	 ,@(receiver operand))))
+
+(define (with-unsigned-immediate-operand value receiver)
+  (receive (temp prefix operand)
+      (unsigned-immediate-operand value temporary-register-reference)
+    temp				;ignore
+    (LAP ,@prefix
+	 ,@(receiver operand))))
+
+;;; SIGNED-IMMEDIATE-OPERAND and UNSIGNED-IMMEDIATE-OPERAND abstract
+;;; the pattern of performing an operation with an instruction that
+;;; takes an immediate operand of 32 bits, but using a value that may
+;;; exceed 32 bits and thus may require a temporary register (possibly
+;;; reused from something else).  Some instructions take immediates
+;;; differently, and cannot use this; e.g., IMUL.  These return the
+;;; temporary register reference if a temporary was necessary, an
+;;; instruction prefix to load the value into the temporary register,
+;;; and the operand to pass to the desired instruction, either a
+;;; 32-bit immediate operand or a register reference.  Except where
+;;; reusing the temporary register is useful, it is generally enough
+;;; to use WITH-(UN)SIGNED-IMMEDIATE-OPERAND above.
+
+(define (signed-immediate-operand value temporary-reference)
+  (let ((operand (INST-EA (& ,value))))
+    (cond ((fits-in-signed-long? value)
+	   (values #f (LAP) operand))
+	  ((fits-in-signed-quad? value)
+	   (let ((temp (temporary-reference)))
+	     (values temp (LAP (MOV Q ,temp ,operand)) temp)))
+	  (else
+	   (error "Signed immediate value too large:" value)))))
+
+(define (unsigned-immediate-operand value temporary-reference)
+  (let ((operand (INST-EA (&U ,value))))
+    (cond ((fits-in-unsigned-long? value)
+	   (values #f (LAP) operand))
+	  ((fits-in-unsigned-quad? value)
+	   (let ((temp (temporary-reference)))
+	     (values temp (LAP (MOV Q ,temp ,operand)) temp)))
+	  (else
+	   (error "Unsigned immediate value too large:" value)))))
 
 (define (target-register target)
   (delete-dead-registers!)
@@ -624,7 +661,7 @@ USA.
        (load-machine-register! (rtl:register-number expression) register))
       ((CONS-POINTER)
        (LAP ,@(clear-registers! register)
-	    ,@(load-non-pointer->register
+	    ,@(load-non-pointer
 	       target
 	       (rtl:machine-constant-value (rtl:cons-pointer-type expression))
 	       (rtl:machine-constant-value

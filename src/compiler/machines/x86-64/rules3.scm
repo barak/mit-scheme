@@ -261,23 +261,31 @@ USA.
     (cond ((zero? how-far)
 	   (LAP))
 	  ((zero? frame-size)
-	   (LAP (ADD Q (R ,rsp) (&U ,(* address-units-per-object how-far)))))
+	   (with-signed-immediate-operand (* address-units-per-object how-far)
+	     (lambda (addend)
+	       (LAP (ADD Q (R ,rsp) ,addend)))))
 	  ((= frame-size 1)
 	   (let ((temp (temporary-register-reference)))
 	     (LAP (MOV Q ,temp (@R ,rsp))
-		  (ADD Q (R ,rsp) (&U ,(* address-units-per-object offset)))
+		  ,@(with-signed-immediate-operand
+			(* address-units-per-object offset)
+		      (lambda (addend)
+			(LAP (ADD Q (R ,rsp) ,addend))))
 		  (PUSH Q ,temp))))
 	  ((= frame-size 2)
 	   (let ((temp1 (temporary-register-reference))
 		 (temp2 (temporary-register-reference)))
 	     (LAP (MOV Q ,temp2 (@RO B ,rsp ,address-units-per-object))
 		  (MOV Q ,temp1 (@R ,rsp))
-		  (ADD Q (R ,rsp) (&U ,(* address-units-per-object offset)))
+		  ,@(with-signed-immediate-operand
+			(* address-units-per-object offset)
+		      (lambda (addend)
+			(LAP (ADD Q (R ,rsp) ,addend))))
 		  (PUSH Q ,temp2)
 		  (PUSH Q ,temp1))))
 	  (else
 	   (error "INVOCATION-PREFIX:MOVE-FRAME-UP: Incorrectly invoked!")))))
-
+
 (define-rule statement
   (INVOCATION-PREFIX:MOVE-FRAME-UP (? frame-size) (REGISTER (? reg)))
   (generate/move-frame-up* frame-size
@@ -468,7 +476,9 @@ USA.
 	 ;; Load the address of the entry instruction into TARGET.
 	 (LEA Q ,target (@RO B ,regnum:free-pointer ,pc-offset))
 	 ;; Bump FREE.
-	 (ADD Q (R ,regnum:free-pointer) (&U ,free-offset)))))
+	 ,@(with-signed-immediate-operand free-offset
+	     (lambda (addend)
+	       (LAP (ADD Q (R ,regnum:free-pointer) ,addend)))))))
 
 (define (generate/cons-multiclosure target nentries size entries)
   (let* ((mtarget (target-register target))
@@ -486,16 +496,19 @@ USA.
 	   (first-format-offset
 	    (+ data-offset address-units-per-closure-entry-count))
 	   (first-pc-offset
-	    (+ first-format-offset address-units-per-entry-format-code)))
+	    (+ first-format-offset address-units-per-entry-format-code))
+	   (free-offset
+	    (+ first-format-offset
+	       (* nentries address-units-per-closure-entry)
+	       (* size address-units-per-object))))
       (LAP (MOV Q ,temp (&U ,(make-multiclosure-manifest nentries size)))
 	   (MOV Q (@R ,regnum:free-pointer) ,temp)
 	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
 	   ,@(generate-entries entries first-format-offset)
 	   (LEA Q ,target (@RO B ,regnum:free-pointer ,first-pc-offset))
-	   (ADD Q (R ,regnum:free-pointer)
-		,(+ first-format-offset
-		    (* nentries address-units-per-closure-entry)
-		    (* size address-units-per-object)))))))
+	   ,@(with-signed-immediate-operand free-offset
+	       (lambda (addend)
+		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))))))
 
 (define (generate-closure-entry label min max offset temp)
   (let* ((procedure-label (rtl-procedure/external-label (label->object label)))
@@ -597,8 +610,10 @@ USA.
 						size)))
 	    (MOV Q (@R ,regnum:free-pointer) ,target)
 	    (MOV Q ,target (R ,regnum:free-pointer))
-	    (ADD Q (R ,regnum:free-pointer)
-		 (& ,(* address-units-per-object (1+ size)))))))
+	    ,@(with-signed-immediate-operand
+		  (* address-units-per-object (1+ size))
+		(lambda (addend)
+		  (LAP (ADD Q (R ,regnum:free-pointer) ,addend)))))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
@@ -695,7 +710,13 @@ USA.
 				(generate-label))
 	 ;; Increment counter and loop
 	 (ADD Q (@R ,rsp) (&U 1))
-	 (CMP Q (@R ,rsp) (&U ,n-blocks))
+	 ,@(receive (temp prefix comparand)
+	       ;; Choose an arbitrary temporary register that is not
+	       ;; in use in this sequence.
+	       (unsigned-immediate-operand n-blocks (lambda () r11))
+	     temp			;ignore
+	     (LAP ,@prefix
+		  (CMP Q (@R ,rsp) ,comparand)))
 	 (JL (@PCR ,loop))
 
 	 (JMP (@PCR ,end))

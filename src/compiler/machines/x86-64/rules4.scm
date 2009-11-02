@@ -110,7 +110,7 @@ USA.
 	  (interpreter-call-argument->machine-register! environment rdx)))
     (LAP ,@set-environment
 	 ,@(clear-map (clear-map!))
-	 ,@(load-constant->register (INST-EA (R ,rbx)) name)
+	 ,@(load-constant (INST-EA (R ,rbx)) name)
 	 ,@(invoke-interface/call code))))
 
 (define-rule statement
@@ -135,5 +135,5 @@ USA.
 	 ,@set-value
 	 ,@(clear-map!)
 	 (MOV Q ,reg:utility-arg-4 (R ,rax))
-	 ,@(load-constant->register (INST-EA (R ,rbx)) name)
+	 ,@(load-constant (INST-EA (R ,rbx)) name)
 	 ,@(invoke-interface/call code))))

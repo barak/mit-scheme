@@ -51,7 +51,7 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (OFFSET-ADDRESS (REGISTER (? source))
 			  (MACHINE-CONSTANT (? n))))
-  (load-displaced-register target source (* address-units-per-object n)))
+  (load-displaced-register target source n address-units-per-object))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -63,7 +63,7 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (BYTE-OFFSET-ADDRESS (REGISTER (? source))
 			       (MACHINE-CONSTANT (? n))))
-  (load-displaced-register target source n))
+  (load-displaced-register target source n 1))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -75,7 +75,7 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (FLOAT-OFFSET-ADDRESS (REGISTER (? source))
 				(MACHINE-CONSTANT (? n))))
-  (load-displaced-register target source (* address-units-per-float n)))
+  (load-displaced-register target source n address-units-per-float))
 
 (define-rule statement
   ;; This is an intermediate rule -- not intended to produce code.
@@ -83,17 +83,15 @@ USA.
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(OFFSET-ADDRESS (REGISTER (? source))
 					(MACHINE-CONSTANT (? n)))))
-  (load-displaced-register/typed target
-				 source
-				 type
-				 (* address-units-per-object n)))
+  (load-displaced-register/typed target source type n
+				 address-units-per-object))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(BYTE-OFFSET-ADDRESS (REGISTER (? source))
 					     (MACHINE-CONSTANT (? n)))))
-  (load-displaced-register/typed target source type n))
+  (load-displaced-register/typed target source type n 1))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->TYPE (REGISTER (? source))))
@@ -113,11 +111,7 @@ USA.
       (assign-register->register target datum)
       (let* ((datum (source-register-reference datum))
 	     (target (target-register-reference target)))
-	;; We could use a single MOV instruction with a 64-bit
-	;; immediate, most of whose bytes are zero, but this three-
-	;; instruction sequence uses fewer bytes.
-	(LAP (MOV B ,target (&U ,type))
-	     (SHL Q ,target (&U ,scheme-datum-width))
+	(LAP (MOV Q ,target (&U ,(make-non-pointer-literal type 0)))
 	     (OR Q ,target ,datum)))))
 
 #| This doesn't work because immediate operands aren't big enough to
@@ -159,17 +153,17 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (CONSTANT (? object)))
-  (load-constant->register (target-register-reference target) object))
+  (load-constant (target-register-reference target) object))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (MACHINE-CONSTANT (? n)))
-  (load-signed-immediate->register (target-register-reference target) n))
+  (load-signed-immediate (target-register-reference target) n))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (load-non-pointer->register (target-register-reference target) type datum))
+  (load-non-pointer (target-register-reference target) type datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (ENTRY:PROCEDURE (? label)))
@@ -211,11 +205,11 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->DATUM (CONSTANT (? constant))))
-  (convert-object/constant->register target constant object->datum))
+  (load-converted-constant target constant object->datum))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->ADDRESS (CONSTANT (? constant))))
-  (convert-object/constant->register target constant object->address))
+  (load-converted-constant target constant object->address))
 
 ;;;; Transfers from Memory
 
@@ -239,13 +233,13 @@ USA.
 (define-rule statement
   (ASSIGN (? expression rtl:simple-offset?) (CONSTANT (? object)))
   (QUALIFIER (non-pointer-object? object))
-  (load-non-pointer-constant->offset expression object))
+  (store-non-pointer-constant expression object))
 
 (define-rule statement
   (ASSIGN (? expression rtl:simple-offset?)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (load-non-pointer->offset expression type datum))
+  (store-non-pointer expression type datum))
 
 (define-rule statement
   (ASSIGN (? expression rtl:simple-offset?)
@@ -253,7 +247,9 @@ USA.
 			       (MACHINE-CONSTANT (? n))))
   (if (zero? n)
       (LAP)
-      (LAP (ADD Q ,(offset->reference! expression) (& ,n)))))
+      (with-signed-immediate-operand n
+	(lambda (operand)
+	  (LAP (ADD Q ,(offset->reference! expression) ,operand))))))
 
 ;;;; Consing
 
@@ -277,20 +273,17 @@ USA.
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 4) -1) (CONSTANT (? value)))
   (QUALIFIER (non-pointer-object? value))
-  (push-non-pointer-literal (non-pointer->literal value)))
+  (with-unsigned-immediate-operand (non-pointer->literal value)
+    (lambda (operand)
+      (LAP (PUSH Q ,operand)))))
 
 (define-rule statement
   (ASSIGN (PRE-INCREMENT (REGISTER 4) -1)
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
 			(MACHINE-CONSTANT (? datum))))
-  (push-non-pointer-literal (make-non-pointer-literal type datum)))
-
-(define (push-non-pointer-literal literal)
-  (if (fits-in-unsigned-word? literal)
-      (LAP (PUSH Q (&U ,literal)))
-      (let ((temp (temporary-register-reference)))
-	(LAP (MOV Q ,temp (&U ,literal))
-	     (PUSH Q ,temp)))))
+  (with-unsigned-immediate-operand (make-non-pointer-literal type datum)
+    (lambda (operand)
+      (LAP (PUSH Q ,operand)))))
 
 ;;;; CHAR->ASCII/BYTE-OFFSET
 
@@ -349,53 +342,50 @@ USA.
 
 ;;;; Utilities specific to rules1
 
-(define (load-displaced-register/internal target source n signed?)
+(define (load-displaced-register/internal target source n scale signed?)
   (cond ((zero? n)
 	 (assign-register->register target source))
 	((and (= target source)
+	      ;; Why this condition?
 	      (= target rsp))
-	 (let ((addend (if signed? (INST-EA (& ,n)) (INST-EA (&U ,n)))))
-	   (if (fits-in-signed-long? n)
-	       (LAP (ADD Q (R ,rsp) ,addend))
-	       (begin
-		 (need-register! rsp)
-		 (let ((temp (temporary-register-reference)))
-		   (LAP (MOV Q ,temp ,addend)
-			(ADD Q (R ,rsp) ,temp)))))))
+	 ((if signed?
+	      with-signed-immediate-operand
+	      with-unsigned-immediate-operand)
+	  (* n scale)
+	  (lambda (operand)
+	    (LAP (ADD Q (R ,rsp) ,operand)))))
 	(else
 	 (receive (reference! referenceable?)
 	     (if signed?
 		 (values indirect-byte-reference! byte-offset-referenceable?)
 		 (values indirect-unsigned-byte-reference!
 			 byte-unsigned-offset-referenceable?))
-	   (define (with-address n suffix)
-	     (let* ((source (reference! source n))
-		    (target (target-register-reference target)))
-	       (LAP (LEA Q ,target ,source)
-		    ,@(suffix target))))
-	   (if (referenceable? n)
-	       (with-address n (lambda (target) target (LAP)))
-	       (let ((division (integer-divide n #x80000000)))
-		 (let ((q (integer-divide-quotient division))
-		       (r (integer-divide-remainder division)))
-		   (with-address r
-		     (lambda (target)
-		       (let ((temp (temporary-register-reference)))
-			 (LAP (MOV Q ,temp (&U ,q))
-			      (SHL Q ,temp (&U #x20))
-			      (ADD Q ,target ,temp))))))))))))
+	   (let ((n-scaled (* n scale)))
+	     (if (referenceable? n-scaled)
+		 (let* ((source (reference! source n-scaled))
+			(target (target-register-reference target)))
+		   (LAP (LEA Q ,target ,source)))
+		 (let ((temp (allocate-temporary-register! 'GENERAL))
+		       (source (allocate-indirection-register! source)))
+		   (let ((target (target-register-reference target)))
+		     (LAP (MOV Q (R ,temp)
+			       ,(if signed?
+				    (INST-EA (& ,n))
+				    (INST-EA (&U ,n))))
+			  (LEA Q ,target (@RI ,source ,temp ,scale)))))))))))
 
-(define-integrable (load-displaced-register target source n)
-  (load-displaced-register/internal target source n true))
+(define-integrable (load-displaced-register target source n scale)
+  (load-displaced-register/internal target source n scale #t))
 
-(define-integrable (load-displaced-register/typed target source type n)
-  (load-displaced-register/internal target
-				    source
-				    (if (zero? type)
-					n
+(define (load-displaced-register/typed target source type n scale)
+  (if (zero? type)
+      (load-displaced-register/internal target source n scale #f)
+      (load-displaced-register/internal target
+					source
 					(+ (make-non-pointer-literal type 0)
-					   n))
-				    false))
+					   (* n scale))
+					1
+					#f)))
 
 (define (load-indexed-register target source index scale)
   (let* ((source (indexed-ea source index scale 0))
@@ -431,10 +421,9 @@ USA.
 (define (load-char-into-register type source target)
   (let ((target (target-register-reference target)))
     (cond ((zero? type)
-	   ;; No faster, but smaller
 	   (LAP (MOVZX B ,target ,source)))
 	  (else
-	   (LAP ,@(load-non-pointer->register target type 0)
+	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
 
 (define (indirect-unsigned-byte-reference! register offset)
