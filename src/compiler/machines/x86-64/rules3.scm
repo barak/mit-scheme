@@ -269,7 +269,7 @@ USA.
 	  ((= frame-size 2)
 	   (let ((temp1 (temporary-register-reference))
 		 (temp2 (temporary-register-reference)))
-	     (LAP (MOV Q ,temp2 (@RO B ,rsp ,address-units-per-object))
+	     (LAP (MOV Q ,temp2 (@RO ,rsp ,address-units-per-object))
 		  (MOV Q ,temp1 (@R ,rsp))
 		  ,@(with-signed-immediate-operand
 			(* address-units-per-object offset)
@@ -465,10 +465,10 @@ USA.
     (LAP (MOV Q ,temp (&U ,(make-closure-manifest size)))
 	 (MOV Q (@R ,regnum:free-pointer) ,temp)
 	 ;; There's only one entry point here.
-	 (MOV L (@RO B ,regnum:free-pointer ,data-offset) (&U 1))
+	 (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U 1))
 	 ,@(generate-closure-entry procedure-label min max format-offset temp)
 	 ;; Load the address of the entry instruction into TARGET.
-	 (LEA Q ,target (@RO B ,regnum:free-pointer ,pc-offset))
+	 (LEA Q ,target (@RO ,regnum:free-pointer ,pc-offset))
 	 ;; Bump FREE.
 	 ,@(with-signed-immediate-operand free-offset
 	     (lambda (addend)
@@ -499,7 +499,7 @@ USA.
 	   (MOV Q (@R ,regnum:free-pointer) ,temp)
 	   (MOV L (@RO ,regnum:free-pointer ,data-offset) (&U ,nentries))
 	   ,@(generate-entries entries first-format-offset)
-	   (LEA Q ,target (@RO B ,regnum:free-pointer ,first-pc-offset))
+	   (LEA Q ,target (@RO ,regnum:free-pointer ,first-pc-offset))
 	   ,@(with-signed-immediate-operand free-offset
 	       (lambda (addend)
 		 (LAP (ADD Q (R ,regnum:free-pointer) ,addend))))))))
@@ -509,17 +509,17 @@ USA.
 	 (MOV-offset (+ offset address-units-per-entry-format-code))
 	 (imm64-offset (+ MOV-offset 2))
 	 (CALL-offset (+ imm64-offset 8)))
-    (LAP (MOV L (@RO B ,regnum:free-pointer ,offset)
+    (LAP (MOV L (@RO ,regnum:free-pointer ,offset)
 	      (&U ,(make-closure-code-longword min max MOV-offset)))
 	 (LEA Q ,temp (@PCR ,procedure-label))
 	 ;; (MOV Q (R ,rax) (&U <procedure-label>))
 	 ;; The instruction sequence is really `48 b8', but this is a
 	 ;; stupid little-endian architecture.  I want my afternoon
 	 ;; back.
-	 (MOV W (@RO B ,regnum:free-pointer ,MOV-offset) (&U #xB848))
-	 (MOV Q (@RO B ,regnum:free-pointer ,imm64-offset) ,temp)
+	 (MOV W (@RO ,regnum:free-pointer ,MOV-offset) (&U #xB848))
+	 (MOV Q (@RO ,regnum:free-pointer ,imm64-offset) ,temp)
 	 ;; (CALL (R ,rax))
-	 (MOV W (@RO B ,regnum:free-pointer ,CALL-offset) (&U #xD0FF)))))
+	 (MOV W (@RO ,regnum:free-pointer ,CALL-offset) (&U #xD0FF)))))
 
 (define (generate/closure-header internal-label nentries)
   (let* ((rtl-proc (label->object internal-label))
@@ -639,9 +639,9 @@ USA.
 			      n-sections)
   (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
        (AND Q (R ,rdx) (R ,regnum:datum-mask))
-       (LEA Q (R ,rbx) (@RO L ,rdx ,free-ref-offset))
+       (LEA Q (R ,rbx) (@RO ,rdx ,free-ref-offset))
        (MOV Q (R ,rcx) ,reg:environment)
-       (MOV Q (@RO L ,rdx ,environment-offset) (R ,rcx))
+       (MOV Q (@RO ,rdx ,environment-offset) (R ,rcx))
        (MOV Q ,reg:utility-arg-4 (&U ,n-sections))
        #|
        ,@(invoke-interface/call code:compiler-link)
@@ -675,8 +675,7 @@ USA.
 	 ;; vector-ref -> cc block
 	 (MOV Q
 	      (R ,rdx)
-	      (@ROI B
-		    ,rdx ,address-units-per-object
+	      (@ROI ,rdx ,address-units-per-object
 		    ,rcx ,address-units-per-object))
 	 ;; address of cc-block
 	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
@@ -689,14 +688,13 @@ USA.
 	 ;; Store environment
 	 (MOV Q (@RI ,rdx ,rbx ,address-units-per-object) (R ,rcx))
 	 ;; Get NMV header
-	 (MOV Q (R ,rcx) (@RO B ,rdx ,address-units-per-object))
+	 (MOV Q (R ,rcx) (@RO ,rdx ,address-units-per-object))
 	 ;; Eliminate NMV tag
 	 (AND Q (R ,rcx) (R ,regnum:datum-mask))
 	 ;; Address of first free reference
 	 (LEA Q
 	      (R ,rbx)
-	      (@ROI B
-		    ,rdx ,(* 2 address-units-per-object)
+	      (@ROI ,rdx ,(* 2 address-units-per-object)
 		    ,rcx ,address-units-per-object))
 	 ;; Invoke linker
 	 ,@(invoke-hook/call entry:compiler-link)

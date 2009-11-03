@@ -201,18 +201,9 @@ USA.
   (fits-in-signed-long? offset))
 
 (define (byte-offset-reference register offset)
-  (cond ((zero? offset)
-	 (INST-EA (@R ,register)))
-	((fits-in-signed-byte? offset)
-	 (INST-EA (@RO B ,register ,offset)))
-	;; Assume that we are in 32-bit mode or in 64-bit mode, in
-	;; which case (@RO W ...) doesn't work.
-	;; ((fits-in-signed-word? offset)
-	;;  (INST-EA (@RO W ,register ,offset)))
-	((fits-in-signed-long? offset)
-	 (INST-EA (@RO L ,register ,offset)))
-	(else
-	 (error "Offset too large:" offset))))
+  (if (zero? offset)
+      (INST-EA (@R ,register))
+      (INST-EA (@RO ,register ,offset))))
 
 (define-integrable (byte-unsigned-offset-referenceable? offset)
   (byte-offset-referenceable? offset))
@@ -511,14 +502,9 @@ USA.
 		   offset))
 
 (define (indexed-ea-mode base index scale offset)
-  (cond ((zero? offset)
-	 (INST-EA (@RI ,base ,index ,scale)))
-	((fits-in-signed-byte? offset)
-	 (INST-EA (@ROI B ,base ,offset ,index ,scale)))
-	((fits-in-signed-long? offset)
-	 (INST-EA (@ROI L ,base ,offset ,index ,scale)))
-	(else
-	 (error "Offset too large:" offset))))
+  (if (zero? offset)
+      (INST-EA (@RI ,base ,index ,scale))
+      (INST-EA (@ROI ,base ,offset ,index ,scale))))
 
 (define (rtl:simple-offset? expression)
   (and (rtl:offset? expression)

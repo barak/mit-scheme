@@ -51,21 +51,22 @@ USA.
        ,ea-database-name
        ,(compile-database (cdr form) environment
 	  (lambda (pattern actions)
+	    (if (not (and (list? actions)
+			  (<= 4 (length actions))))
+		(error "Malformed effective address rule:" pattern actions))
 	    (let ((keyword (car pattern))
 		  (categories (list-ref actions 0))
-		  (rex-prefix (list-ref actions 1))
+		  (rex (list-ref actions 1))
 		  (mode (list-ref actions 2))
-		  (register (list-ref actions 3))
-		  (tail (list-tail actions 4)))
+		  (r/m (list-ref actions 3))
+		  (extra (list-tail actions 4)))
 	      `(,(close-syntax 'MAKE-EFFECTIVE-ADDRESS environment)
-		',keyword
-		',categories
-		',rex-prefix
-		,(integer-syntaxer mode environment 'UNSIGNED 2)
-		,(integer-syntaxer register environment 'UNSIGNED 3)
-		,(if (null? tail)
-		     `(,(close-syntax 'QUOTE environment) ())
-		     (process-fields tail #f environment))))))))))
+		(,(close-syntax 'QUOTE environment) ,keyword)
+		,(parse-categories categories environment pattern)
+		,(parse-rex rex environment pattern)
+		,(parse-mode mode environment pattern)
+		,(parse-r/m r/m environment pattern)
+		,(parse-extra extra environment pattern)))))))))
 
 ;; This one is necessary to distinguish between r/m-ea, m-ea, etc.
 
@@ -83,6 +84,67 @@ USA.
 				EA))
 			`(MATCH-RESULT)))))
 	 (ill-formed-syntax form)))))
+
+(define (parse-categories categories environment context)
+  ;; At the moment only one category at a time is supported.
+  (if (not (and (pair? categories)
+		(eq? 'CATEGORIES (car categories))
+		(pair? (cdr categories))
+		(memq (cadr categories) '(REGISTER MEMORY))
+		(null? (cddr categories))))
+      (error "Malformed CATEGORIES for effective address rule:"
+	     categories
+	     context))
+  `(,(close-syntax 'QUOTE environment) ,(cdr categories)))
+
+(define (parse-rex rex environment context)
+  (define (expression:ior a b)
+    (if (and (integer? a) (integer? b))
+	(fix:or a b)
+	`(,(close-syntax 'FIX:OR environment) ,a ,b)))
+  (define (rex-bits name)
+    (case name
+      ((W) #x48) ((R) #x44) ((X) #x42) ((B) #x41)
+      (else (error "Malformed REX bit name:" name context))))
+  (if (not (and (pair? rex) (eq? 'REX (car rex)) (list? (cdr rex))))
+      (error "Malformed REX prefix for effective address rule:" rex context))
+  (let loop ((terms (cdr rex)) (expression 0))
+    (if (not (pair? terms))
+	expression
+	(loop (cdr terms)
+	      (expression:ior
+	       expression
+	       (let ((term (car terms)))
+		 (if (pair? term)
+		     (begin
+		       (if (not (and (pair? (cdr term)) (null? (cddr term))))
+			   (error "Malformed REX prefix term:" term context))
+		       `(,(close-syntax 'REGISTER-REX environment)
+			 ,(cadr term)
+			 ,(rex-bits (car term))))
+		     (rex-bits term))))))))
+
+(define (parse-mode mode environment context)
+  (if (not (and (pair? mode)
+		(eq? 'MODE (car mode))
+		(pair? (cdr mode))
+		(null? (cddr mode))))
+      (error "Malformed MODE for effective address rule:" mode context))
+  (integer-syntaxer (cadr mode) environment 'UNSIGNED 2))
+
+(define (parse-r/m r/m environment context)
+  (if (not (and (pair? r/m)
+		(eq? 'R/M (car r/m))
+		(pair? (cdr r/m))
+		(null? (cddr r/m))))
+      (error "Malformed R/M for effective address rule:" r/m context))
+  (integer-syntaxer (cadr r/m) environment 'UNSIGNED 3))
+
+(define (parse-extra extra environment context)
+  context				;ignore
+  (if (pair? extra)
+      (process-fields extra #f environment)
+      `(,(close-syntax 'QUOTE environment) ())))
 
 (define (parse-instruction opcode tail early? environment)
   (process-fields (cons opcode tail) early? environment))
@@ -111,7 +173,7 @@ USA.
 		     (error "Bad clause size:" size))
 		 `(,code ,size ,@(car clause))))
 	     clauses)))))
-
+
 (define (expand-fields fields early? environment)
   (if (pair? fields)
       (receive (tail tail-size) (expand-fields (cdr fields) early? environment)
@@ -123,7 +185,7 @@ USA.
 	   (receive (code size) (collect-bits (cdar fields) tail environment)
 	     (values code (+ size tail-size))))
 	  ((PREFIX)
-	   ;; (PREFIX (OPERAND size) (REGISTER [reg]) (EA ea))
+	   ;; (PREFIX (OPERAND size) (REGISTER [reg]) (ModR/M [reg] r/m))
 	   (if early?
 	       (error "No early support for PREFIX -- Fix x86-64/insmac.scm"))
 	   (values (collect-prefix (cdar fields) tail environment) -1))
@@ -136,7 +198,7 @@ USA.
 	  (else
 	   (error "Unknown field kind:" (caar fields)))))
       (values `(,(close-syntax 'QUOTE environment) ()) 0)))
-
+
 (define (collect-bits components tail environment)
   (let loop ((components components))
     (if (pair? components)

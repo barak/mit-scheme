@@ -36,450 +36,149 @@ USA.
 
 ;;;; Register
 
-  ((R (? r extended-reg))
-   (REGISTER)
-   #x41 #b11 r)
-
   ((R (? r))
-   (REGISTER)
-   0 #b11 r)
+   (CATEGORIES REGISTER)
+   (REX (B r))
+   (MODE #b11)
+   (R/M (register-bits r)))
 
 ;;;; Register-indirect
 
-  ((@R (? r extended-indirect-reg))
-   (MEMORY)
-   #x41 #b00 r)
-
   ((@R (? r indirect-reg))
-   (MEMORY)
-   0 #b00 r)
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b00)
+   (R/M (register-bits r)))
 
-  ;; Mode of 0 with R/M of 4 means that what follows is a SIB format,
-  ;; and R/M of 5 means that what follows is a PC-relative immediate
-  ;; offset (in 64-bit mode), so we must have special cases for rsp,
-  ;; rbp, r12, and r13.
+  ;; Mode #b00, r/m 4 means SIB, so put the register in a SIB base and
+  ;; use no index (i.e. index of 4).
 
-  ;; SIB format, with no scale.
-  ((@R 4)				; rsp
-   (MEMORY)
-   0 #b00 4
+  ((@R (? r indirect-reg=4mod8))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b00)
+   (R/M 4)
    (BITS (3 4)
 	 (3 4)
 	 (2 0)))
 
-  ;; rbp plus offset, with zero offset.
-  ((@R 5)				; rbp
-   (MEMORY)
-   0 #b01 5
-   (BITS (8 0)))
+  ;; Mode #b00, r/m 5 means RIP-relative 32-bit offset, so use mode
+  ;; #b01, r/m 5, which means the register plus 8-bit offset, and
+  ;; specify a zero offset.
 
-  ;; SIB format, with no scale.
-  ((@R 12)
-   (MEMORY)
-   #x41 #b00 4
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)))
-
-  ;; r13 plus offset, with zero offset.
-  ((@R 13)
-   (MEMORY)
-   #x41 #b01 5
+  ((@R (? r indirect-reg=5mod8))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b01)
+   (R/M 5)
    (BITS (8 0)))
 
-;;;; Register-indirect with 8-bit Offset
+;;;; Register-indirect with 8-bit offset
 
-  ;; Mode of #b01 with R/M of 13 means SIB plus offset, so we must
-  ;; have special cases for rsp and r12.
-
-  ((@RO B (? r extended-index-reg) (? offset))
-   (MEMORY)
-   #x41 #b01 r
+  ((@RO (? r offset-indirect-reg) (? offset sign-extended-byte))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b01)
+   (R/M (register-bits r))
    (BITS (8 offset SIGNED)))
 
-  ((@RO B (? r index-reg) (? offset))
-   (MEMORY)
-   0 #b01 r
-   (BITS (8 offset SIGNED)))
+  ;; Mode #b01, r/m 4 means SIB plus 8-bit offset, so use the SIB base
+  ;; for the register with no index (i.e. index of 4).
 
-  ((@RO UB (? r extended-index-reg) (? offset))
-   (MEMORY)
-   #x41 #b01 r
-   (BITS (8 offset UNSIGNED)))
-
-  ((@RO UB (? r index-reg) (? offset))
-   (MEMORY)
-   0 #b01 r
-   (BITS (8 offset UNSIGNED)))
-
-  ((@RO B 4 (? offset))			; rsp
-   (MEMORY)
-   0 #b01 4
+  ((@RO (? r offset-indirect-reg=4mod8) (? offset sign-extended-byte))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b01)
+   (R/M 4)
    (BITS (3 4)
 	 (3 4)
 	 (2 0)
 	 (8 offset SIGNED)))
 
-  ((@RO B 12 (? offset))
-   (MEMORY)
-   #x41 #b01 4
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (8 offset SIGNED)))
+;;;; Register-indirect with 32-bit offset
 
-  ((@RO UB 4 (? offset))
-   (MEMORY)
-   0 #b01 4
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (8 offset UNSIGNED)))
-
-  ((@RO UB 12 (? offset))
-   (MEMORY)
-   #x41 #b01 4
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (8 offset UNSIGNED)))
-
-;;;; Register-indirect with 32-bit Offset
-
-  ((@RO L (? r extended-index-reg) (? offset signed-long))
-   (MEMORY)
-   #x41 #b10 r
+  ((@RO (? r offset-indirect-reg) (? offset sign-extended-long))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b10)
+   (R/M (register-bits r))
    (BITS (32 offset SIGNED)))
 
-  ((@RO L (? r index-reg) (? offset signed-long))
-   (MEMORY)
-   0 #b10 r
-   (BITS (32 offset SIGNED)))
+  ;; Same special case as above, but with 32-bit offsets.
 
-  ((@RO L 4 (? offset signed-long))	; rsp
-   (MEMORY)
-   0 #b10 #b100
+  ((@RO (? r offset-indirect-reg=4mod8) (? offset sign-extended-long))
+   (CATEGORIES MEMORY)
+   (REX (B r))
+   (MODE #b10)
+   (R/M 4)
    (BITS (3 4)
 	 (3 4)
 	 (2 0)
 	 (32 offset SIGNED)))
 
-  ((@RO L 12 (? offset signed-long))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (32 offset SIGNED)))
+;;;; Register-indirect with index
 
-  ((@RO UL (? r extended-index-reg) (? offset unsigned-long))
-   (MEMORY)
-   #x41 #b10 r
-   (BITS (32 offset UNSIGNED)))
-
-  ((@RO UL (? r index-reg) (? offset unsigned-long))
-   (MEMORY)
-   0 #b10 r
-   (BITS (32 offset UNSIGNED)))
-
-  ((@RO UL 4 (? offset unsigned-long))	; rsp
-   (MEMORY)
-   0 #b10 #b100
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (32 offset UNSIGNED)))
-
-  ((@RO UL 12 (? offset unsigned-long))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 4)
-	 (3 4)
-	 (2 0)
-	 (32 offset UNSIGNED)))
-   
-;;;; Register-indirect Indexed
-
-  ((@RI (? b extended-base-reg) (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x43 #b00 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)))
-   
-  ((@RI (? b extended-base-reg) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   #x41 #b00 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)))
-   
-  ((@RI (? b base-reg) (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x42 #b00 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)))
-   
   ((@RI (? b base-reg) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b00 #b100
-   (BITS (3 b)
-	 (3 i)
+   (CATEGORIES MEMORY)
+   (REX (B b) (X i))
+   (MODE #b00)
+   (R/M 4)
+   (BITS (3 (register-bits b))
+	 (3 (register-bits i))
 	 (2 s)))
 
-  ((@RI 5 (? i extended-index-reg) (? s index-scale)) ; rbp
-   (MEMORY)
-   #x42 #b01 #b100
-   (BITS (3 5)
-	 (3 i)
-	 (2 s)
-	 (8 0)))
+  ;; Mode 0, r/m 4, SIB base 5 mean the register plus 32-bit offset,
+  ;; so specify a zero offset.
 
-  ((@RI 5 (? i index-reg) (? s index-scale)) ; rbp
-   (MEMORY)
-   0 #b01 #b100
+  ((@RI (? b base-reg=5mod8) (? i index-reg) (? s index-scale))
+   (CATEGORIES MEMORY)
+   (REX (B b) (X i))
+   (MODE #b01)
+   (R/M 4)
    (BITS (3 5)
-	 (3 i)
-	 (2 s)
-	 (8 0)))
-
-  ((@RI 13 (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x43 #b01 #b100
-   (BITS (3 5)
-	 (3 i)
-	 (2 s)
-	 (8 0)))
-
-  ((@RI 13 (? i index-reg) (? s index-scale))
-   (MEMORY)
-   #x41 #b01 #b100
-   (BITS (3 5)
-	 (3 i)
+	 (3 (register-bits i))
 	 (2 s)
 	 (8 0)))
 
-;;;; Register-indirect with Offset, Indexed
+;;;; Register-indirect with offset and scaled index
 
-  ((@ROI B (? b extended-reg) (? offset signed-byte) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x43 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
+  ;; No more special cases -- except that rsp can't be the index
+  ;; register at all here.
+
+  ((@ROI (? b) (? offset sign-extended-byte) (? i index-reg) (? s index-scale))
+   (CATEGORIES MEMORY)
+   (REX (B b) (X i))
+   (MODE #b01)
+   (R/M 4)
+   (BITS (3 (register-bits b))
+	 (3 (register-bits i))
 	 (2 s)
 	 (8 offset SIGNED)))
 
-  ((@ROI B (? b extended-reg) (? offset signed-byte) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset SIGNED)))
-
-  ((@ROI B (? b) (? offset signed-byte) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset SIGNED)))
-
-  ((@ROI B (? b) (? offset signed-byte) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset SIGNED)))
-
-  ((@ROI UB (? b extended-reg) (? offset unsigned-byte)
-	 (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x43 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset UNSIGNED)))
-
-  ((@ROI UB (? b extended-reg) (? offset unsigned-byte) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset UNSIGNED)))
-
-  ((@ROI UB (? b) (? offset unsigned-byte) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset UNSIGNED)))
-
-  ((@ROI UB (? b) (? offset unsigned-byte) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b01 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (8 offset UNSIGNED)))
-
-  ((@ROI W (? b extended-reg) (? offset signed-word) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x43 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset SIGNED)))
-
-  ((@ROI W (? b extended-reg) (? offset signed-word) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset SIGNED)))
-
-  ((@ROI W (? b) (? offset signed-word) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset SIGNED)))
-
-  ((@ROI W (? b) (? offset signed-word) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset SIGNED)))
-
-  ((@ROI UW (? b extended-reg) (? offset unsigned-word)
-	 (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x43 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset UNSIGNED)))
-
-  ((@ROI UW (? b extended-reg) (? offset unsigned-word) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset UNSIGNED)))
-
-  ((@ROI UW (? b) (? offset unsigned-word) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset UNSIGNED)))
-
-  ((@ROI UW (? b) (? offset unsigned-word) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (16 offset UNSIGNED)))
-
-  ((@ROI L (? b extended-reg) (? offset signed-long) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x43 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
+  ((@ROI (? b) (? offset sign-extended-long) (? i index-reg) (? s index-scale))
+   (CATEGORIES MEMORY)
+   (REX (B b) (X i))
+   (MODE #b10)
+   (R/M 4)
+   (BITS (3 (register-bits b))
+	 (3 (register-bits i))
 	 (2 s)
 	 (32 offset SIGNED)))
 
-  ((@ROI L (? b extended-reg) (? offset signed-long) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset SIGNED)))
-
-  ((@ROI L (? b) (? offset signed-long) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset SIGNED)))
-
-  ((@ROI L (? b) (? offset signed-long) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset SIGNED)))
-
-  ((@ROI UL (? b extended-reg) (? offset unsigned-long)
-	 (? i extended-index-reg) (? s index-scale))
-   (MEMORY)
-   #x43 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset UNSIGNED)))
-
-  ((@ROI UL (? b extended-reg) (? offset unsigned-long) (? i index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x41 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset UNSIGNED)))
-
-  ((@ROI UL (? b) (? offset unsigned-long) (? i extended-index-reg)
-	 (? s index-scale))
-   (MEMORY)
-   #x42 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset UNSIGNED)))
-
-  ((@ROI UL (? b) (? offset unsigned-long) (? i index-reg) (? s index-scale))
-   (MEMORY)
-   0 #b10 #b100
-   (BITS (3 b)
-	 (3 i)
-	 (2 s)
-	 (32 offset UNSIGNED)))
+;;;; RIP-relative (PC-relative)
 
   ((@PCR (? label))
-   (MEMORY)
-   0 #b00 #b101
+   (CATEGORIES MEMORY)
+   (REX)
+   (MODE #b00)
+   (R/M 5)
    (BITS (32 `(- ,label (+ *PC* 4)) SIGNED)))
 
-  ((@PCO (? offset))
-   (MEMORY)
-   0 #b00 #b101
+  ((@PCO (? offset signed-long))
+   (CATEGORIES MEMORY)
+   (REX)
+   (MODE #b00)
+   (R/M 5)
    (BITS (32 offset SIGNED))))
 
 (define-ea-transformer r/m-ea)
@@ -495,7 +194,14 @@ USA.
   (register #f read-only #t)
   (extra '() read-only #t))
 
-(define (cons-prefix operand-size register r/m tail)
+(declare (integrate-operator register-rex))
+(define-integrable (register-rex register rex)
+  (declare (integrate register))
+  (if (>= register r8)
+      rex
+      0))
+
+(define (cons-prefix operand-size register ea tail)
   (let ((tail
 	 (if (eq? operand-size 'W)
 	     (cons-syntax (syntax-evaluation #x66 coerce-8-bit-unsigned)
@@ -517,11 +223,11 @@ USA.
       (let ((extended-register?
 	     (or (eqv? register #t)
 		 (and register (>= register r8)))))
-	(if r/m
-	    (fix:or (if extended-register? #x44 0) (ea/rex-prefix r/m))
+	(if ea
+	    (fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
 	    (if extended-register? #x41 0)))))))
 
-(define (cons-modr/m digit ea tail)
+(define (cons-ModR/M digit ea tail)
   (cons-syntax (ea/register ea)
     (cons-syntax digit
       (cons-syntax (ea/mode ea)
@@ -538,40 +244,52 @@ USA.
     ((W L Q) s)
     (else #f)))
 
-(define (extended-reg r)
-  (and (>= r r8)
-       (- r r8)))
+(define-integrable (register-bits r)
+  (fix:and r #b111))
 
+(declare (integrate-operator indirect-reg))
 (define (indirect-reg r)
-  (and (< r r8)
-       (not (= r rsp))
-       (not (= r rbp))
+  (and (not (let ((bits (register-bits r)))
+	      (or (= bits 4)
+		  (= bits 5))))
        r))
 
-(define (extended-indirect-reg r)
-  (and (not (= r r12))
-       (not (= r r13))
-       (extended-reg r)))
+(declare (integrate-operator indirect-reg=4mod8))
+(define (indirect-reg=4mod8 r)
+  (and (= (register-bits r) 4)
+       r))
 
+(declare (integrate-operator indirect-reg=5mod8))
+(define (indirect-reg=5mod8 r)
+  (and (= (register-bits r) 5)
+       r))
+
+(declare (integrate-operator offset-indirect-reg))
+(define (offset-indirect-reg r)
+  (and (not (= (register-bits r) 4))
+       r))
+
+(declare (integrate-operator offset-indirect-reg=4mod8))
+(define (offset-indirect-reg=4mod8 r)
+  (and (= (register-bits r) 4)
+       r))
+
+(declare (integrate-operator base-reg))
 (define (base-reg r)
-  (and (< r r8)
-       (not (= r rbp))
+  (and (not (= (register-bits r) 5))
        r))
 
-(define (extended-base-reg r)
-  (and (not (= r r13))
-       (extended-reg r)))
+(declare (integrate-operator base-reg=5mod8))
+(define (base-reg=5mod8 r)
+  (and (= (register-bits r) 5)
+       r))
 
+(declare (integrate-operator index-reg))
 (define (index-reg r)
-  (and (< r r8)
-       (not (= r rsp))
+  (and (not (= r 4))
        r))
 
-(define (extended-index-reg r)
-  (and (not (= r r12))
-       (extended-reg r)))
-
-(define (index-scale scale-value)
+(define-integrable (index-scale scale-value)
   (case scale-value
     ((1) #b00)
     ((2) #b01)

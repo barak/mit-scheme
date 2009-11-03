@@ -125,7 +125,7 @@ USA.
       (let ((literal (make-non-pointer-literal type 0)))
 	(define (three-arg source)
 	  (let ((target (target-register-reference target)))
-	    (LAP (LEA Q ,target (@RO UL ,source ,literal)))))
+	    (LAP (LEA Q ,target (@RO ,source ,literal)))))
 
 	(define (two-arg target)
 	  (LAP (OR Q ,target (&U ,literal))))
