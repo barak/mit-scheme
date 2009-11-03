@@ -311,7 +311,7 @@ no|none)
     dnl bobcat vs mc68k or spectrum versus hppa.  I don't know what the
     dnl state of Scheme on these architectures is, however, so at least
     dnl this will flag an error if you try to use them.
-    if test -f "cmpauxmd/${enable_native_code}.m4"; then
+    if ! test -f "cmpauxmd/${enable_native_code}.m4"; then
 	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
     fi
     SCM_ARCH=${enable_native_code}
@@ -378,11 +378,17 @@ darwin*)
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
-    if test "${SCM_ARCH}" = i386; then
+    case ${SCM_ARCH} in
+    i386)
 	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
 	AS_FLAGS="-arch i386 ${AS_FLAGS}"
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-    fi
+    	;;
+    x86-64)
+	MACOSX_CFLAGS="-arch x86_64 ${MACOSX_CFLAGS}"
+	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
+    	;;
+    esac
     CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
