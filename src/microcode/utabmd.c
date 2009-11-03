@@ -117,6 +117,7 @@ cc_arch_name (void)
     case COMPILER_MIPS_TYPE: return ("mips");
     case COMPILER_C_TYPE: return ("c");
     case COMPILER_SVM_TYPE: return ("svm1");
+    case COMPILER_X86_64_TYPE: return ("x86-64");
     default: return (0);
     }
 }

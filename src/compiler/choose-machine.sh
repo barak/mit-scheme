@@ -81,6 +81,9 @@ hppa-* | hppa1.[01]-* | hppa2.?-*)
 vax-*)
     chosen vax
     ;;
+x86_64-*)
+    chosen x86-64
+    ;;
 *)
     chosen none
     ;;

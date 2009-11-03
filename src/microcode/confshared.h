@@ -225,7 +225,8 @@ typedef enum
   COMPILER_ALPHA_TYPE,
   COMPILER_MIPS_TYPE,
   COMPILER_C_TYPE,
-  COMPILER_SVM_TYPE
+  COMPILER_SVM_TYPE,
+  COMPILER_X86_64_TYPE,
 } cc_arch_t;
 
 #include "cmpintmd-config.h"
@@ -609,6 +610,8 @@ extern void win32_stack_reset (void);
 #ifdef __x86_64__
 #  define MACHINE_TYPE		"x86-64"
 #  define CURRENT_FASL_ARCH	FASL_X86_64
+#  define PC_ZERO_BITS		0
+#  define HEAP_IN_LOW_MEMORY	1
 #endif
 
 #ifdef __ia64__
