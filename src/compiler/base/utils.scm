@@ -388,7 +388,6 @@ USA.
 	(ucode-primitive one-plus-fixnum)
 	(ucode-primitive plus-fixnum)
 	(ucode-primitive primitive-object-ref)
-	(ucode-primitive primitive-object-set-type)
 	(ucode-primitive primitive-object-type)
 	(ucode-primitive quotient)
 	(ucode-primitive remainder)
