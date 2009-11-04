@@ -275,8 +275,8 @@ ifdef(`DASM',
       `define(IDX,`($1,$2)')')
 
 ifdef(`DASM',
-      `define(SDX,`dword ptr $1[$2*$3]')',
-      `define(SDX,`$1(,$2,$3)')')
+      `define(SDX,`dword ptr $1[$2+$3*$4]')',
+      `define(SDX,`$1($2,$3,$4)')')
 
 ifdef(`DASM',
       `define(IJMP,`$1')',
@@ -612,7 +612,8 @@ scheme_to_interface_proceed:
 
 	OP(xor,q)	TW(REG(rcx),REG(rcx))
 	OP(mov,b)	TW(REG(al),REG(cl))
-	OP(mov,q)	TW(SDX(EVR(utility_table),REG(rcx),8),REG(rax))
+	OP(lea,q)	TW(ABS(EVR(utility_table)),REG(rax))
+	OP(mov,q)	TW(SDX(,REG(rax),REG(rcx),8),REG(rax))
 
 	OP(mov,q)	TW(REG(rsp),REG(rdi))
 	OP(mov,q)	TW(DOF(REGBLOCK_UTILITY_ARG4(),regs),REG(r8))
