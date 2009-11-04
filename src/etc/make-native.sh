@@ -27,10 +27,14 @@ set -e
 . etc/functions.sh
 
 FASTP=no
+NATIVE_CODE=
 for ARG in "${@}"; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
+	;;
+    --enable-native-code=*)
+	NATIVE_CODE=${ARG}
 	;;
     esac
 done
@@ -43,7 +47,7 @@ fi
 export MIT_SCHEME_EXE
 
 run_cmd ./Setup.sh
-run_configure --prefix=`pwd`/boot-root
+run_configure --prefix=`pwd`/boot-root ${NATIVE_CODE}
 run_cmd etc/compile-boot-compiler.sh mit-scheme-c
 run_cmd_in_dir compiler run_make compile-liarc-bundle
 run_cmd etc/native-prepare.sh "${MIT_SCHEME_EXE}"
