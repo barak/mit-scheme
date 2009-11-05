@@ -876,8 +876,7 @@ tospace_closed (void)
 static void
 tospace_open (void)
 {
-  if (tospace_next != 0)
-    std_gc_death ("tospace is open, should be closed");
+  std_gc_death ("tospace is open, should be closed");
 }
 
 void
