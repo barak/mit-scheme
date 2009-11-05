@@ -50,7 +50,7 @@ USA.
 			      (system-library-directory-pathname name))))))
 		     (values (dir "")
 			     (dir "include"))))
-		  ((string=? cc-arch "C")
+		  ((string-ci=? cc-arch "C")
 		   (values "$(top_builddir)/microcode"
 			   "$(top_builddir)/microcode"))
 		  (else

@@ -32,24 +32,44 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
-case ${enable_native_code} in
+AC_CANONICAL_HOST
+
+AC_MSG_CHECKING([for native-code support])
+SCM_ARCH=`microcode/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
+case ${SCM_ARCH} in
+unknown*|"")
+    if test x"${SCM_ARCH}" = xunknown_spec; then
+	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
+    else
+	AC_MSG_ERROR([unable to determine native-code type])
+    fi
+    ;;
+none)
+    AC_MSG_RESULT([no])
+    ;;
+*)
+    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
+    ;;
+esac
+
+case ${SCM_ARCH} in
 c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
-    AUXDIR_NAME=mit-scheme-c
+    MIT_SCHEME_NATIVE=mit-scheme-native
     ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
-    AUXDIR_NAME=mit-scheme
+    MIT_SCHEME_NATIVE=mit-scheme-${SCM_ARCH}
+    : ${MIT_SCHEME_EXE:=${MIT_SCHEME_NATIVE}}
 
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
-    : ${MIT_SCHEME_EXE:=mit-scheme}
-    if ! ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)'	\
-	> /dev/null 2> /dev/null
-    then
+    if ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+	AC_MSG_RESULT([yes])
+    else
 	AC_MSG_ERROR([
 This script needs an existing MIT/GNU Scheme installation to function.
 
@@ -60,16 +80,17 @@ name or pathname of the MIT/GNU Scheme executable, which is usually
 variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
 library directory, which is usually \`/usr/local/lib/mit-scheme'.
 ])
-    else
-	AC_MSG_RESULT([yes])
     fi
     ;;
 esac
+AUXDIR_NAME=mit-scheme-${SCM_ARCH}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
 AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
+AC_SUBST([MIT_SCHEME_NATIVE])
+AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 
 AC_PROG_INSTALL
@@ -79,7 +100,7 @@ then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 
-etc/create-makefiles.sh "${enable_native_code}"
+etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${SCM_ARCH}"
 
 AC_CONFIG_SUBDIRS([microcode compiler])
 AC_CONFIG_FILES([
@@ -100,7 +121,7 @@ xml/Makefile
 ])
 AC_OUTPUT
 
-if test x${enable_native_code} = xc; then
+if test x"${SCM_ARCH}" = xc; then
     BN=liarc-cc
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     BN=liarc-ld
@@ -108,7 +129,8 @@ if test x${enable_native_code} = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
-    for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml; do
+    for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser \
+            xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)
     done

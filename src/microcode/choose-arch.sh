@@ -22,39 +22,68 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Utility to set up symbolic links at installation.
-
 set -e
 
-. `dirname "${0}"`/functions.sh
-
-if [ ${#} -eq 2 ]; then
-    DIR=${1}
-    EXE=${2}
-else
-    echo "usage: ${0} <directory> <name>"
+if test ${#} != 2; then
+    echo "usage: ${0} ARCH_SPEC HOST_CPU"
     exit 1
 fi
 
-case ${EXE} in
-    mit-scheme-c|mit-scheme-native)
-	if test ! -f "${DIR}"/mit-scheme; then
-	    run_cmd rm -f "${DIR}"/mit-scheme
-	    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme
-	fi
-	;;
-    mit-scheme-*)
-	if test ! -f "${DIR}"/mit-scheme-native; then
-	    run_cmd rm -f "${DIR}"/mit-scheme-native
-	    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme-native
-	fi
-	if test ! -f "${DIR}"/mit-scheme; then
-	    run_cmd rm -f "${DIR}"/mit-scheme
-	    run_cmd ln -s mit-scheme-native "${DIR}"/mit-scheme
-	fi
-	;;
-esac
+HERE=`dirname "${0}"`
+ARCH_SPEC=${1}
+HOST_CPU=${2}
 
-run_cmd rm -f "${DIR}"/scheme "${DIR}"/bchscheme
-run_cmd ln -s mit-scheme "${DIR}"/scheme
-run_cmd ln -s mit-scheme "${DIR}"/bchscheme
+case ${ARCH_SPEC} in
+yes|y)
+    case ${HOST_CPU} in
+    alpha*)
+	echo alpha
+	;;
+    hppa*)
+	echo hppa
+	;;
+    i?86)
+	echo i386
+	;;
+    m68k|m680?0)
+	echo mc68k
+	;;
+    mips*)
+	echo mips
+	;;
+    vax)
+	echo vax
+	;;
+    x86_64)
+	echo x86-64
+	;;
+    *)
+	echo unknown_host
+	;;
+    esac
+    ;;
+c|C)
+    echo c
+    exit
+    ;;
+svm|svm1)
+    echo svm1
+    exit
+    ;;
+no|none|n)
+    echo none
+    exit
+    ;;
+*)
+    # This is not quite right, because the compiler and microcode
+    # disagree about what some architectures should be called, such as
+    # bobcat vs mc68k or spectrum versus hppa.  I don't know what the
+    # state of Scheme on these architectures is, however, so at least
+    # this will flag an error if you try to use them.
+    if test -f "${HERE}/cmpauxmd/${ARCH_SPEC}.m4"; then
+	echo ${ARCH_SPEC}
+    else
+	echo unknown_spec
+    fi
+    ;;
+esac

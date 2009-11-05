@@ -60,7 +60,7 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
-MIT_SCHEME_NATIVE = mit-scheme-native
+MIT_SCHEME_NATIVE = @MIT_SCHEME_NATIVE@
 MIT_SCHEME_C = mit-scheme-c
 
 LIARC_BOOT_BUNDLES = compiler cref sf star-parser
@@ -69,6 +69,7 @@ LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin imail sos ssp xml
 SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 
+AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 EDDIR = $(AUXDIR)/edwin
 
@@ -142,8 +143,8 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	echo "done" > $@
 
 stamp_native-compile-scheme: compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme-native \
-	    --library boot-root/lib/mit-scheme --band boot-compiler.com
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/$(MIT_SCHEME_NATIVE) \
+	    --library boot-root/lib/$(AUXDIR_NAME) --band boot-compiler.com
 	echo "done" > $@
 
 
