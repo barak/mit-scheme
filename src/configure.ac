@@ -109,8 +109,9 @@ then
 fi
 
 etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${SCM_ARCH}"
+compiler/configure "${SCM_ARCH}"
 
-AC_CONFIG_SUBDIRS([microcode compiler])
+AC_CONFIG_SUBDIRS([microcode])
 AC_CONFIG_FILES([
 Makefile
 6001/Makefile

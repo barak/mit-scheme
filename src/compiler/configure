@@ -24,47 +24,37 @@
 
 set -e
 
-MACHINE=
-while test $# -gt 0; do
-    case "${1}" in
-    --enable-native-code=*)
-	MACHINE=`echo "${1}" | sed -e 's/--enable-native-code=//'`
-	shift
-	;;
-    --disable-native-code)
-	MACHINE=no
-	shift
-	;;
-    *)
-	shift
-	;;
-    esac
-done
-MACHINE=`./choose-machine.sh "${MACHINE}"`
+if test ${#} != 1; then
+    echo "usage: ${0} TARGET_ARCH" >&2
+    exit 1
+fi
 
-make_link ()
-{
-    local target link
-    target="${1}"
-    link="${2}"
-    if [ -e "${link}" -a ! -L "${link}" ]; then
-	cat <<EOF >&2
-${link} is not a symbolic link; refusing to clobber it.
-EOF
-	exit 1
-    else
-	CMDS="rm -f ${link} && ln -s ${target} ${link}"
-	echo "${CMDS}"; eval "${CMDS}"
-    fi
-}
+cd `dirname "${0}"`
+TARGET_ARCH=${1}
 
-make_link "machines/${MACHINE}" machine
+MACHINE=`./choose-machine.sh "${TARGET_ARCH}"`
+
+if test -z "${MACHINE}"; then
+    echo "Unknown target arch: ${TARGET_ARCH}" >&2
+    exit 1
+fi
 
 LINKS="compiler.cbf compiler.pkg compiler.sf make.com"
-if test "${MACHINE}" = C; then
+if test x${MACHINE} = xC; then
     LINKS="${LINKS} make.so"
 fi
 
+for FN in machine ${LINKS}; do
+    if test -e ${FN} && test ! -L ${FN}; then
+	echo "${FN} is not a symbolic link; refusing to clobber it." >&2
+	exit 1
+    fi
+done
+
+CMDS="rm -f machine && ln -s machines/${MACHINE} machine"
+echo "${CMDS}"; eval "${CMDS}"
+
 for FN in ${LINKS}; do
-    make_link "machine/${FN}" "${FN}"
+    CMDS="rm -f ${FN} && ln -s machine/${FN} ${FN}"
+    echo "${CMDS}"; eval "${CMDS}"
 done
