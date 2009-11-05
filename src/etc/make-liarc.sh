@@ -39,8 +39,9 @@ if [ ${FASTP} = yes ]; then
     exec ./configure "${@}"
 fi
 
-run_configure --prefix=`pwd`/boot-root --enable-native-code=c
+run_configure --prefix=`pwd`/boot-root --enable-native-code=c \
+    --disable-host-scheme-test
 run_make stamp_install-liarc-boot-compiler c-clean distclean
 
-run_configure --enable-native-code=c "${@}"
+run_configure --enable-native-code=c --disable-host-scheme-test "${@}"
 run_make stamp_compile-liarc-bundles build-bands clean-boot-root

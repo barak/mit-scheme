@@ -32,6 +32,11 @@ AC_ARG_ENABLE([native-code],
 	[Support native compiled code if available [[yes]]]))
 : ${enable_native_code='yes'}
 
+AC_ARG_ENABLE([host-scheme-test],
+    AS_HELP_STRING([--enable-host-scheme-test],
+	[Test for working scheme on build host [[yes]]]))
+: ${enable_host_scheme_test=yes}
+
 AC_CANONICAL_HOST
 
 AC_MSG_CHECKING([for native-code support])
@@ -64,11 +69,19 @@ c)
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
     MIT_SCHEME_NATIVE=mit-scheme-${SCM_ARCH}
-    : ${MIT_SCHEME_EXE:=${MIT_SCHEME_NATIVE}}
+    ;;
+esac
+AUXDIR_NAME=mit-scheme-${SCM_ARCH}
+AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
+: ${MIT_SCHEME_EXE:=${MIT_SCHEME_NATIVE}}
+
+if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
-    if ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	AC_MSG_RESULT([yes])
+    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+	:
+    elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+	MIT_SCHEME_EXE=mit-scheme
     else
 	AC_MSG_ERROR([
 This script needs an existing MIT/GNU Scheme installation to function.
@@ -81,10 +94,8 @@ variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
 library directory, which is usually \`/usr/local/lib/mit-scheme'.
 ])
     fi
-    ;;
-esac
-AUXDIR_NAME=mit-scheme-${SCM_ARCH}
-AUXDIR='$(libdir)'/${AUXDIR_NAME}
+    AC_MSG_RESULT([yes])
+fi
 
 AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
