@@ -62,25 +62,22 @@ c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
-    MIT_SCHEME_NATIVE=mit-scheme-native
     ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
-    MIT_SCHEME_NATIVE=mit-scheme-${SCM_ARCH}
     ;;
 esac
 AUXDIR_NAME=mit-scheme-${SCM_ARCH}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
-: ${MIT_SCHEME_EXE:=${MIT_SCHEME_NATIVE}}
-
+: ${MIT_SCHEME_EXE:=mit-scheme-${SCM_ARCH}}
 if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	:
-    elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    elif mit-scheme-native --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	MIT_SCHEME_EXE=mit-scheme
     else
 	AC_MSG_ERROR([
@@ -100,7 +97,7 @@ fi
 AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
-AC_SUBST([MIT_SCHEME_NATIVE])
+AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 
