@@ -69,16 +69,17 @@ c)
     INSTALL_LIARC_BUNDLES=
     ;;
 esac
+EXE_NAME=mit-scheme-${SCM_ARCH}
 AUXDIR_NAME=mit-scheme-${SCM_ARCH}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
 : ${MIT_SCHEME_EXE:=mit-scheme-${SCM_ARCH}}
 if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
-    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    if ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	:
     elif mit-scheme-native --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	MIT_SCHEME_EXE=mit-scheme
+	MIT_SCHEME_EXE=mit-scheme-native
     else
 	AC_MSG_ERROR([
 This script needs an existing MIT/GNU Scheme installation to function.
@@ -88,7 +89,7 @@ an unusual name, set the environment variable MIT_SCHEME_EXE to the
 name or pathname of the MIT/GNU Scheme executable, which is usually
 \`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
 variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually \`/usr/local/lib/mit-scheme'.
+library directory, which is usually \`/usr/local/lib/mit-scheme-${SCM_ARCH}'.
 ])
     fi
     AC_MSG_RESULT([yes])
@@ -98,6 +99,7 @@ AC_SUBST([ALL_TARGET])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
+AC_SUBST([EXE_NAME])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 

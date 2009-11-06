@@ -67,6 +67,7 @@ SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
 INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
+EXE_NAME = @EXE_NAME@
 AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 EDDIR = $(AUXDIR)/edwin
@@ -141,7 +142,7 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	echo "done" > $@
 
 stamp_native-compile-scheme: compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-root/bin/$(MIT_SCHEME_EXE) \
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/$(EXE_NAME) \
 	    --library boot-root/lib/$(AUXDIR_NAME) --band boot-compiler.com
 	echo "done" > $@
 

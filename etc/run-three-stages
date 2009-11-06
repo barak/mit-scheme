@@ -41,6 +41,22 @@ if ! [[ -d .git && -d src && -d etc ]]; then
     exit 1
 fi
 
+choose_arch ()
+{
+  sh src/microcode/choose-arch.sh "${@}"
+}
+
+host_cpu="$(sh src/config.guess | awk -F- '{ print $1 }')"
+
+if [ $# -eq 1 ]; then
+  enable_native_code="${1}"
+else
+  enable_native_code=yes
+fi
+
+printf 'Enabling native code: %s\n' "${enable_native_code}"
+SCM_ARCH="$(choose_arch "${enable_native_code}" "${host_cpu}")"
+
 # Hack for cph
 if which cpx > /dev/null; then
     : ${COPY:="cpx -sq"}
@@ -102,7 +118,8 @@ find_build_stage ()
 find_dist_stage ()
 {
     local STAGE=$(pwd)/${1}
-    if [[ -x ${STAGE}/bin/scheme && -f ${STAGE}/lib/mit-scheme/all.com ]]; then
+    if [[ -x ${STAGE}/bin/mit-scheme-${SCM_ARCH} \
+	  && -f ${STAGE}/lib/mit-scheme-${SCM_ARCH}/all.com ]]; then
 	echo "${STAGE}/bin/scheme --library ${STAGE}/lib/mit-scheme"
 	return 0
     else
