@@ -198,10 +198,9 @@ store_trampoline_insns (insn_t * entry, byte_t code)
 {
   (*entry++) = 0xB0;		/* MOV AL,code */
   (*entry++) = code;
-  (*entry++) = 0xFF;		/* CALL /2 disp32(ESI) */
+  (*entry++) = 0xFF;		/* CALL /2 disp32(RSI) */
   (*entry++) = 0x96;
   (* ((uint32_t *) entry)) = RSI_TRAMPOLINE_TO_INTERFACE_OFFSET;
-  X86_64_CACHE_SYNCHRONIZE ();
   return (false);
 }
 
@@ -223,7 +222,6 @@ x86_64_reset_hook (void)
 {
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * rsi_value = ((unsigned char *) Registers);
-  bool fp_support_present = (x86_64_interface_initialize ());
 
   /* These must match machines/x86-64/lapgen.scm */
 
@@ -249,78 +247,36 @@ x86_64_reset_hook (void)
   SETUP_REGISTER (asm_link);				/* 12 */
   SETUP_REGISTER (asm_error);				/* 13 */
   SETUP_REGISTER (asm_primitive_error);			/* 14 */
-  /* [TRC 20091025: This was an i386 hack for when the PC is not
-     available, which on x86-64 it always is. */
-  /* SETUP_REGISTER (asm_short_primitive_apply); */		/* 15 */
+  SETUP_REGISTER (asm_generic_add);			/* 15 */
+  SETUP_REGISTER (asm_generic_subtract);		/* 16 */
+  SETUP_REGISTER (asm_generic_multiply);		/* 17 */
+  SETUP_REGISTER (asm_generic_divide);			/* 18 */
+  SETUP_REGISTER (asm_generic_equal);			/* 19 */
+  SETUP_REGISTER (asm_generic_less);			/* 20 */
+  SETUP_REGISTER (asm_generic_greater);			/* 21 */
+  SETUP_REGISTER (asm_generic_increment);		/* 22 */
+  SETUP_REGISTER (asm_generic_decrement);		/* 23 */
+  SETUP_REGISTER (asm_generic_zero);			/* 24 */
+  SETUP_REGISTER (asm_generic_positive);		/* 25 */
+  SETUP_REGISTER (asm_generic_negative);		/* 26 */
+  SETUP_REGISTER (asm_generic_quotient);		/* 27 */
+  SETUP_REGISTER (asm_generic_remainder);		/* 28 */
+  SETUP_REGISTER (asm_generic_modulo);			/* 29 */
+  SETUP_REGISTER (asm_sc_apply);			/* 30 */
+  SETUP_REGISTER (asm_sc_apply_size_1);			/* 31 */
+  SETUP_REGISTER (asm_sc_apply_size_2);			/* 32 */
+  SETUP_REGISTER (asm_sc_apply_size_3);			/* 33 */
+  SETUP_REGISTER (asm_sc_apply_size_4);			/* 34 */
+  SETUP_REGISTER (asm_sc_apply_size_5);			/* 35 */
+  SETUP_REGISTER (asm_sc_apply_size_6);			/* 36 */
+  SETUP_REGISTER (asm_sc_apply_size_7);			/* 37 */
+  SETUP_REGISTER (asm_sc_apply_size_8);			/* 38 */
 
-  /* No more room for positive offsets without going to 32-bit
-     offsets!  */
-
-  /* This is a hack to make all the hooks be addressable with byte
-     offsets (instead of longword offsets).  The register block
-     extends to negative offsets as well, so all the following hooks
-     are accessed with negative offsets, and all fit in a byte.  */
-
-  /* [TRC 20091029: This hack doesn't work any longer; this code
-     should be cleaned up, since we must use longword offsets anyway.]
-     */
-
-  offset = -256;
-  if (fp_support_present)
-    {
-      SETUP_REGISTER (asm_generic_add);			/* -32 */
-      SETUP_REGISTER (asm_generic_subtract);		/* -31 */
-      SETUP_REGISTER (asm_generic_multiply);		/* -30 */
-      SETUP_REGISTER (asm_generic_divide);		/* -29 */
-      SETUP_REGISTER (asm_generic_equal);		/* -28 */
-      SETUP_REGISTER (asm_generic_less);		/* -27 */
-      SETUP_REGISTER (asm_generic_greater);		/* -26 */
-      SETUP_REGISTER (asm_generic_increment);		/* -25 */
-      SETUP_REGISTER (asm_generic_decrement);		/* -24 */
-      SETUP_REGISTER (asm_generic_zero);		/* -23 */
-      SETUP_REGISTER (asm_generic_positive);		/* -22 */
-      SETUP_REGISTER (asm_generic_negative);		/* -21 */
-      SETUP_REGISTER (asm_generic_quotient);		/* -20 */
-      SETUP_REGISTER (asm_generic_remainder);		/* -19 */
-      SETUP_REGISTER (asm_generic_modulo);		/* -18 */
-    }
-  else
-    {
-      SETUP_REGISTER (asm_nofp_add);			/* -32 */
-      SETUP_REGISTER (asm_nofp_subtract);		/* -31 */
-      SETUP_REGISTER (asm_nofp_multiply);		/* -30 */
-      SETUP_REGISTER (asm_nofp_divide);			/* -29 */
-      SETUP_REGISTER (asm_nofp_equal);			/* -28 */
-      SETUP_REGISTER (asm_nofp_less);			/* -27 */
-      SETUP_REGISTER (asm_nofp_greater);		/* -26 */
-      SETUP_REGISTER (asm_nofp_increment);		/* -25 */
-      SETUP_REGISTER (asm_nofp_decrement);		/* -24 */
-      SETUP_REGISTER (asm_nofp_zero);			/* -23 */
-      SETUP_REGISTER (asm_nofp_positive);		/* -22 */
-      SETUP_REGISTER (asm_nofp_negative);		/* -21 */
-      SETUP_REGISTER (asm_nofp_quotient);		/* -20 */
-      SETUP_REGISTER (asm_nofp_remainder);		/* -19 */
-      SETUP_REGISTER (asm_nofp_modulo);			/* -18 */
-    }
-
-  SETUP_REGISTER (asm_sc_apply);			/* -17 */
-  SETUP_REGISTER (asm_sc_apply_size_1);			/* -16 */
-  SETUP_REGISTER (asm_sc_apply_size_2);			/* -15 */
-  SETUP_REGISTER (asm_sc_apply_size_3);			/* -14 */
-  SETUP_REGISTER (asm_sc_apply_size_4);			/* -13 */
-  SETUP_REGISTER (asm_sc_apply_size_5);			/* -12 */
-  SETUP_REGISTER (asm_sc_apply_size_6);			/* -11 */
-  SETUP_REGISTER (asm_sc_apply_size_7);			/* -10 */
-  SETUP_REGISTER (asm_sc_apply_size_8);			/* -9 */
-  SETUP_REGISTER (asm_interrupt_continuation_2);	/* -8 */
-  /* [TRC 20091025: The cache synchronization bug does not occur in any
-      x86-64 machines of which I am aware.]
-
-  if (x86_64_cpuid_needed)
-    SETUP_REGISTER (asm_serialize_cache);		/\* -7 *\/
-  else
-    SETUP_REGISTER (asm_dont_serialize_cache);		/\* -7 *\/
-  */
+  /* Logically, this should be up by the other interrupt routines, but
+     I just wrote all those numbers above by hand and am too exhausted
+     by that gruelling effort to be inclined to go to the trouble to
+     renumber them now.  */
+  SETUP_REGISTER (asm_interrupt_continuation_2);	/* 39 */
 
 #ifdef _MACH_UNIX
   {
