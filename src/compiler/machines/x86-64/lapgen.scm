@@ -214,11 +214,11 @@ USA.
   ;; We don't have unsigned addressing modes.
   (byte-offset-reference register offset))
 
-;++ This computation is probably not quite right.
+;;; This returns an offset in objects, not bytes.
 
 (define-integrable (pseudo-register-offset register)
-  (+ (+ (* 16 address-units-per-object) (* 80 address-units-per-object))
-     (* 3 (register-renumber register))))
+  (+ (+ 16 80)				;Sixteen fixed, eighty hooks.
+     (register-renumber register)))
 
 (define-integrable (pseudo->machine-register source target)
   (memory->machine-register (pseudo-register-home source) target))
@@ -669,17 +669,9 @@ USA.
   (offset-reference regnum:regs-pointer
 		    register-block/environment-offset))
 
-(define reg:dynamic-link
-  (offset-reference regnum:regs-pointer
-		    register-block/dynamic-link-offset))
-
 (define reg:lexpr-primitive-arity
   (offset-reference regnum:regs-pointer
 		    register-block/lexpr-primitive-arity-offset))
-
-(define reg:utility-arg-4
-  (offset-reference regnum:regs-pointer
-		    register-block/utility-arg4-offset))
 
 (define reg:stack-guard
   (offset-reference regnum:regs-pointer
@@ -726,34 +718,20 @@ USA.
   (LAP (MOV B (R ,rax) (& ,code))
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
-;++ This uses a kludge to number entries by byte offsets from the
-;++ registers block, but that works only in the 32-bit i386 version;
-;++ for x86-64 version, all the entries' byte indices exceed the range
-;++ of signed bytes.  But this works for now.
-
 (define-syntax define-entries
   (sc-macro-transformer
    (lambda (form environment)
      environment
      `(BEGIN
-	,@(let loop
-	      ((names (cdddr form))
-	       (index (cadr form))
-	       (high (caddr form)))
+	,@(let loop ((names (cddr form)) (index (cadr form)))
 	    (if (pair? names)
-		(if (< index high)
-		    (cons `(DEFINE-INTEGRABLE
-			     ,(symbol-append 'ENTRY:COMPILER-
-					     (car names))
-			     (BYTE-OFFSET-REFERENCE REGNUM:REGS-POINTER
-						    ,index))
-			  (loop (cdr names) (+ index 8) high))
-		    (begin
-		      (warn "define-entries: Too many for byte offsets.")
-		      (loop names index (+ high 32000))))
+		(cons `(DEFINE-INTEGRABLE
+			   ,(symbol-append 'ENTRY:COMPILER- (car names))
+			 (BYTE-OFFSET-REFERENCE REGNUM:REGS-POINTER ,index))
+		      (loop (cdr names) (+ index 8)))
 		'()))))))
 
-(define-entries #x80 #x100		; (* 16 8)
+(define-entries #x80			; (* 16 8)
   scheme-to-interface			; Main entry point (only one necessary)
   scheme-to-interface/call		; Used by rules3&4, for convenience.
   trampoline-to-interface		; Used by trampolines, for convenience.
@@ -769,9 +747,6 @@ USA.
   link
   error
   primitive-error
-  short-primitive-apply)
-
-(define-entries #x-100 0
   &+
   &-
   &*
@@ -796,8 +771,7 @@ USA.
   shortcircuit-apply-size-6
   shortcircuit-apply-size-7
   shortcircuit-apply-size-8
-  interrupt-continuation-2
-  conditionally-serialize)
+  interrupt-continuation-2)
 
 ;; Operation tables
 

@@ -27,6 +27,8 @@ USA.
 ;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
+
+#|
 
 ;; ****
 ;; Missing: 2 argument operations and predicates with non-trivial
@@ -826,3 +828,4 @@ USA.
   (if (flo:32-bit-representation-exact? fp-value)
       (generate-ea (single-flonum->label fp-value) 'S)
       (generate-ea (double-flonum->label fp-value) 'D)))
+|#

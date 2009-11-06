@@ -64,7 +64,7 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP Q (R ,rcx))
+       (POP Q (R ,rbx))
        #|
        (MOV Q (R ,rdx) (&U ,frame-size))
        ,@(invoke-interface code:compiler-apply)
@@ -104,7 +104,7 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (LEA Q (R ,rcx) (@PCR ,label))
+       (LEA Q (R ,rbx) (@PCR ,label))
        (MOV Q (R ,rdx) (&U ,number-pushed))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
@@ -114,8 +114,8 @@ USA.
   ;; It expects the procedure at the top of the stack
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       (POP Q (R ,rcx))
-       (AND Q (R ,rcx) (R ,regnum:datum-mask)) ; clear type code
+       (POP Q (R ,rbx))
+       (AND Q (R ,rbx) (R ,regnum:datum-mask)) ; clear type code
        (MOV Q (R ,rdx) (&U ,number-pushed))
        ,@(invoke-interface code:compiler-lexpr-apply)))
 
@@ -139,7 +139,7 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (let* ((set-extension
-	  (interpreter-call-argument->machine-register! extension rcx))
+	  (interpreter-call-argument->machine-register! extension rbx))
 	 (set-address
 	  (begin (require-register! rdx)
 		 (load-pc-relative-address (INST-EA (R ,rdx))
@@ -148,7 +148,7 @@ USA.
     (LAP ,@set-extension
 	 ,@set-address
 	 ,@(clear-map!)
-	 (MOV Q (R ,rbx) (&U ,frame-size))
+	 (MOV Q (R ,rcx) (&U ,frame-size))
 	 ,@(invoke-interface code:compiler-cache-reference-apply))))
 
 (define-rule statement
@@ -157,13 +157,13 @@ USA.
   continuation
   (expect-no-entry-interrupt-checks)
   (let* ((set-environment
-	  (interpreter-call-argument->machine-register! environment rcx))
+	  (interpreter-call-argument->machine-register! environment rbx))
 	 (set-name (object->machine-register! name rdx)))
     (delete-dead-registers!)
     (LAP ,@set-environment
 	 ,@set-name
 	 ,@(clear-map!)
-	 (MOV Q (R ,rbx) (&U ,frame-size))
+	 (MOV Q (R ,rcx) (&U ,frame-size))
 	 ,@(invoke-interface code:compiler-lookup-apply))))
 
 (define-rule statement
@@ -171,9 +171,9 @@ USA.
   continuation				; ignored
   (if (eq? primitive compiled-error-procedure)
       (LAP ,@(clear-map!)
-	   (MOV Q (R ,rcx) (&U ,frame-size))
+	   (MOV Q (R ,rbx) (&U ,frame-size))
 	   ,@(invoke-hook entry:compiler-error))
-      (LAP ,@(object->machine-register! primitive rcx)
+      (LAP ,@(object->machine-register! primitive rbx)
 	   ,@(clear-map!)
 	   ,@(let ((arity (primitive-procedure-arity primitive)))
 	       (cond ((not (negative? arity))
@@ -621,11 +621,11 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (LAP (MOV Q (R ,rcx) ,reg:environment)
-       (MOV Q (@PCR ,environment-label) (R ,rcx))
+  (LAP (MOV Q (R ,rax) ,reg:environment)
+       (MOV Q (@PCR ,environment-label) (R ,rax))
        (LEA Q (R ,rdx) (@PCR ,*block-label*))
-       (LEA Q (R ,rbx) (@PCR ,free-ref-label))
-       (MOV Q ,reg:utility-arg-4 (&U ,n-sections))
+       (LEA Q (R ,rcx) (@PCR ,free-ref-label))
+       (MOV Q (R ,r8) (&U ,n-sections))
        #|
        ,@(invoke-interface/call code:compiler-link)
        |#
@@ -639,10 +639,10 @@ USA.
 			      n-sections)
   (LAP (MOV Q (R ,rdx) (@PCR ,code-block-label))
        (AND Q (R ,rdx) (R ,regnum:datum-mask))
-       (LEA Q (R ,rbx) (@RO ,rdx ,free-ref-offset))
-       (MOV Q (R ,rcx) ,reg:environment)
-       (MOV Q (@RO ,rdx ,environment-offset) (R ,rcx))
-       (MOV Q ,reg:utility-arg-4 (&U ,n-sections))
+       (LEA Q (R ,rcx) (@RO ,rdx ,free-ref-offset))
+       (MOV Q (R ,rax) ,reg:environment)
+       (MOV Q (@RO ,rdx ,environment-offset) (R ,rax))
+       (MOV Q (R ,r8) (&U ,n-sections))
        #|
        ,@(invoke-interface/call code:compiler-link)
        |#
@@ -661,41 +661,39 @@ USA.
 	 (PUSH Q (& 0))
 	(LABEL ,loop)
 	 ;; Get index
-	 (MOV Q (R ,rcx) (@R ,rsp))
+	 (MOV Q (R ,rax) (@R ,rsp))
 	 ;; Get vector
 	 (MOV Q (R ,rdx) (@PCR ,vector-label))
 	 ;; Get n-sections for this cc-block
-	 (XOR Q (R ,rbx) (R ,rbx))
-	 (LEA Q (R ,rax) (@PCR ,bytes))
-	 (MOV B (R ,rbx) (@RI ,rax ,rcx 1))
+	 (XOR Q (R ,r8) (R ,r8))
+	 (LEA Q (R ,rcx) (@PCR ,bytes))
+	 (MOV B (R ,r8) (@RI ,rcx ,rax 1))
 	 ;; address of vector
 	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
-	 ;; Store n-sections in arg
-	 (MOV Q ,reg:utility-arg-4 (R ,rbx))
 	 ;; vector-ref -> cc block
 	 (MOV Q
 	      (R ,rdx)
 	      (@ROI ,rdx ,address-units-per-object
-		    ,rcx ,address-units-per-object))
+		    ,rax ,address-units-per-object))
 	 ;; address of cc-block
 	 (AND Q (R ,rdx) (R ,regnum:datum-mask))
 	 ;; cc-block length
-	 (MOV Q (R ,rbx) (@R ,rdx))
+	 (MOV Q (R ,rcx) (@R ,rdx))
 	 ;; Get environment
-	 (MOV Q (R ,rcx) ,reg:environment)
+	 (MOV Q (R ,rax) ,reg:environment)
 	 ;; Eliminate length tags
-	 (AND Q (R ,rbx) (R ,regnum:datum-mask))
-	 ;; Store environment
-	 (MOV Q (@RI ,rdx ,rbx ,address-units-per-object) (R ,rcx))
-	 ;; Get NMV header
-	 (MOV Q (R ,rcx) (@RO ,rdx ,address-units-per-object))
-	 ;; Eliminate NMV tag
 	 (AND Q (R ,rcx) (R ,regnum:datum-mask))
+	 ;; Store environment
+	 (MOV Q (@RI ,rdx ,rcx ,address-units-per-object) (R ,rax))
+	 ;; Get NMV header
+	 (MOV Q (R ,rax) (@RO ,rdx ,address-units-per-object))
+	 ;; Eliminate NMV tag
+	 (AND Q (R ,rax) (R ,regnum:datum-mask))
 	 ;; Address of first free reference
 	 (LEA Q
-	      (R ,rbx)
+	      (R ,rcx)
 	      (@ROI ,rdx ,(* 2 address-units-per-object)
-		    ,rcx ,address-units-per-object))
+		    ,rax ,address-units-per-object))
 	 ;; Invoke linker
 	 ,@(invoke-hook/call entry:compiler-link)
 	 ,@(make-external-label (continuation-code-word false)

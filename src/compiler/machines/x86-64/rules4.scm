@@ -55,7 +55,7 @@ USA.
   cont					; ignored
   (let* ((set-extension
 	  (interpreter-call-argument->machine-register! extension rdx))
-	 (set-value (interpreter-call-argument->machine-register! value rbx)))
+	 (set-value (interpreter-call-argument->machine-register! value rcx)))
     (LAP ,@set-extension
 	 ,@set-value
 	 ,@(clear-map!)
@@ -110,7 +110,7 @@ USA.
 	  (interpreter-call-argument->machine-register! environment rdx)))
     (LAP ,@set-environment
 	 ,@(clear-map (clear-map!))
-	 ,@(load-constant (INST-EA (R ,rbx)) name)
+	 ,@(load-constant (INST-EA (R ,rcx)) name)
 	 ,@(invoke-interface/call code))))
 
 (define-rule statement
@@ -130,10 +130,9 @@ USA.
 (define (assignment-call code environment name value)
   (let* ((set-environment
 	  (interpreter-call-argument->machine-register! environment rdx))
-	 (set-value (interpreter-call-argument->machine-register! value rax)))
+	 (set-value (interpreter-call-argument->machine-register! value r8)))
     (LAP ,@set-environment
 	 ,@set-value
 	 ,@(clear-map!)
-	 (MOV Q ,reg:utility-arg-4 (R ,rax))
-	 ,@(load-constant (INST-EA (R ,rbx)) name)
+	 ,@(load-constant (INST-EA (R ,rcx)) name)
 	 ,@(invoke-interface/call code))))
