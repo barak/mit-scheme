@@ -48,11 +48,11 @@ fi
 
 case $(uname -s) in
     Darwin)
-	DEFAULT_STAGE0=macosx
+	: {DEFAULT_STAGE0:=macosx}
 	: ${COPY:="cp -pR"}
 	;;
     Linux)
-	DEFAULT_STAGE0=linux
+	: {DEFAULT_STAGE0:=linux}
 	: ${COPY:="cp -a"}
 	;;
     *)
@@ -67,10 +67,10 @@ run_stage ()
     local STAGE=stage${N}
 
     echo "**************** ${STAGE} ****************"
-    export MIT_SCHEME_EXE=$(find_stage stage$((N-1)))
-    rm -rf "${STAGE}"
-    ${COPY} src "${STAGE}"
-    (set -e; cd "${STAGE}"; ./Setup.sh; ./configure; make)
+    find_stage stage$((N-1))
+    rm -rf ${STAGE}
+    ${COPY} src ${STAGE}
+    (set -e; cd ${STAGE}; ./Setup.sh; ./configure; make)
     if ! [[ -f ${STAGE}/lib/all.com ]]; then
 	echo "${STAGE} failed"
 	exit 1
@@ -92,7 +92,8 @@ find_build_stage ()
 {
     local STAGE=$(pwd)/${1}
     if [[ -x ${STAGE}/microcode/scheme && ${STAGE}/lib/all.com ]]; then
-	echo "${STAGE}/microcode/scheme --library ${STAGE}/lib"
+	export MIT_SCHEME_EXE=${STAGE}/microcode/scheme
+	export MITSCHEME_LIBRARY_PATH=${STAGE}/lib
 	return 0
     else
 	return 1
@@ -102,8 +103,10 @@ find_build_stage ()
 find_dist_stage ()
 {
     local STAGE=$(pwd)/${1}
-    if [[ -x ${STAGE}/bin/scheme && -f ${STAGE}/lib/mit-scheme/all.com ]]; then
-	echo "${STAGE}/bin/scheme --library ${STAGE}/lib/mit-scheme"
+    local LIBDIR=${STAGE}/lib/mit-scheme*
+    if [[ -x ${STAGE}/bin/mit-scheme && -f ${LIBDIR}/all.com ]]; then
+	export MIT_SCHEME_EXE=${STAGE}/bin/mit-scheme
+	export MITSCHEME_LIBRARY_PATH=${LIBDIR}
 	return 0
     else
 	return 1
