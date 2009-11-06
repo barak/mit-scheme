@@ -48,11 +48,11 @@ fi
 
 case $(uname -s) in
     Darwin)
-	: {DEFAULT_STAGE0:=macosx}
+	: ${DEFAULT_STAGE0:=macosx}
 	: ${COPY:="cp -pR"}
 	;;
     Linux)
-	: {DEFAULT_STAGE0:=linux}
+	: ${DEFAULT_STAGE0:=linux}
 	: ${COPY:="cp -a"}
 	;;
     *)
