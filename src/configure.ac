@@ -77,7 +77,7 @@ if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	:
-    elif mit-scheme-native --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+    elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	MIT_SCHEME_EXE=mit-scheme
     else
 	AC_MSG_ERROR([
