@@ -198,8 +198,8 @@ LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
 AUX_DATA=
-AUXDIR_NAME=mit-scheme
-EXE_NAME=mit-scheme-native
+AUXDIR_NAME=
+EXE_NAME=
 INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
@@ -269,56 +269,15 @@ fi
 CCLD=${CC}
 
 AC_MSG_CHECKING([for native-code support])
-SCM_ARCH=none
-case ${enable_native_code} in
-yes)
-    case ${host_cpu} in
-    alpha*)
-	SCM_ARCH=alpha
-	;;
-    hppa*)
-	SCM_ARCH=hppa
-	GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-	;;
-    i?86)
-	SCM_ARCH=i386
-	;;
-    m68k|m680?0)
-	SCM_ARCH=mc68k
-	;;
-    mips*)
-	SCM_ARCH=mips
-	;;
-    vax)
-	SCM_ARCH=vax
-	;;
-    x86_64)
-	SCM_ARCH=x86-64
-	;;
-    esac
-    ;;
-c)
-    SCM_ARCH=c
-    ;;
-svm)
-    SCM_ARCH=svm1
-    ;;
-no|none)
-    ;;
-*)
-    dnl This is not quite right, because the compiler and microcode
-    dnl disagree about what some architectures should be called, such as
-    dnl bobcat vs mc68k or spectrum versus hppa.  I don't know what the
-    dnl state of Scheme on these architectures is, however, so at least
-    dnl this will flag an error if you try to use them.
-    if ! test -f "cmpauxmd/${enable_native_code}.m4"; then
-	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
-    fi
-    SCM_ARCH=${enable_native_code}
-    ;;
-esac
-
+SCM_ARCH=`"${srcdir}"/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
 case ${SCM_ARCH} in
+unknown*|"")
+    if "${SCM_ARCH}" = unknown_spec; then
+	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
+    else
+	AC_MSG_ERROR([unable to determine native-code type])
+    fi
+    ;;
 none)
     AC_MSG_RESULT([no])
     ;;
@@ -332,6 +291,13 @@ svm1)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
     ;;
 esac
+
+if test x${SCM_ARCH} = xhppa; then
+   GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
+fi
+
+AUXDIR_NAME=mit-scheme-${SCM_ARCH}
+EXE_NAME=mit-scheme-${SCM_ARCH}
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -372,7 +338,7 @@ darwin*)
 	SDK=MacOSX${MACOSX}
     fi
     MACOSX_SYSROOT=/Developer/SDKs/${SDK}.sdk
-    if ! test -d "${MACOSX_SYSROOT}"; then
+    if test ! -d "${MACOSX_SYSROOT}"; then
 	AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
@@ -1033,14 +999,10 @@ c)
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
-    AUXDIR_NAME=mit-scheme-c
-    EXE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include
     ;;
 svm1)
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
-    AUXDIR_NAME=mit-scheme-svm
-    EXE_NAME=mit-scheme-svm
     ;;
 *)
     AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${SCM_ARCH}.m4])
