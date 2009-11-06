@@ -141,7 +141,7 @@ stamp_install-native-boot-compiler: stamp_build-native-boot-compiler
 	echo "done" > $@
 
 stamp_native-compile-scheme: compile-microcode
-	@$(top_srcdir)/etc/compile.sh boot-root/bin/$(MIT_SCHEME_EXE) \
+	@$(top_srcdir)/etc/compile.sh boot-root/bin/mit-scheme \
 	    --library boot-root/lib/$(AUXDIR_NAME) --band boot-compiler.com
 	echo "done" > $@
 
