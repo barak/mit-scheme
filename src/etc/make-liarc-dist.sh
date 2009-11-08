@@ -26,6 +26,9 @@ set -e
 
 . etc/functions.sh
 
+: ${MIT_SCHEME_EXE:=mit-scheme-native}
+export MIT_SCHEME_EXE
+
 run_cmd ./Setup.sh
 run_configure --enable-native-code=c "${@}"
 run_make liarc-dist
