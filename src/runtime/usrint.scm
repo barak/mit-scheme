@@ -322,18 +322,17 @@ USA.
 	     (set! done? #t)
 	     v))
 	 (lambda ()
-	   (if done?
-	       (let ((port (notification-output-port)))
-		 (if (if n
-			 (> (output-port/bytes-written port) n)
-			 (output-port/line-start? port))
-		     (begin
-		       (fresh-line port)
-		       (write-notification-prefix port)
-		       (write-string "... " port)))
-		 (set! n)
-		 (write-string "done" port)
-		 (newline port))))))))
+	   (let ((port (notification-output-port)))
+	     (if (if n
+		     (> (output-port/bytes-written port) n)
+		     (output-port/line-start? port))
+		 (begin
+		   (fresh-line port)
+		   (write-notification-prefix port)
+		   (write-string "... " port)))
+	     (set! n)
+	     (write-string (if done? "done" "aborted") port)
+	     (newline port)))))))
 
 (define (wrap-notification-port port)
   (make-port wrapped-notification-port-type port))
