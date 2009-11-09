@@ -291,19 +291,22 @@ typedef unsigned long entry_count_t;
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_1 (code, (&current_block[entry_point]));		\
 } while (false)
 
 #define DLINK_INTERRUPT_CHECK(code, entry_point) do			\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_2 (code, (&current_block[entry_point]), Rdl);	\
 } while (false)
 
 #define CLOSURE_INTERRUPT_CHECK(code) do				\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_0 (code);						\
 } while (false)
 
