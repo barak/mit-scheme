@@ -23,11 +23,8 @@ USA.
 
 |#
 
-;;;; Intel i386 Instruction Set, part I
+;;;; AMD x86-64 Instruction Set, part I
 ;;; package: (compiler lap-syntaxer)
-
-;; Some of the instructions have their operands ill-specified in the
-;; i486 book.  Check against the appendices or the i386 book.
 
 (declare (usual-integrations))
 

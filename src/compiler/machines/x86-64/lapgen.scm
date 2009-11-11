@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; RTL Rules utilities for i386 and family.
+;;;; RTL Rules utilities for AMD x86-64 and family.
 ;;; package: (compiler lap-syntaxer)
 
 (declare (usual-integrations))
