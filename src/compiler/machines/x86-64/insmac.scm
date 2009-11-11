@@ -74,15 +74,20 @@ USA.
   (sc-macro-transformer
    (lambda (form environment)
      environment
-     (if (syntax-match? '(IDENTIFIER ? SYMBOL) (cdr form))
+     (if (syntax-match? '(IDENTIFIER * SYMBOL) (cdr form))
 	 `(DEFINE (,(cadr form) EXPRESSION)
 	    (LET ((MATCH-RESULT (PATTERN-LOOKUP ,ea-database-name EXPRESSION)))
 	      (AND MATCH-RESULT
-		   ,(if (pair? (cddr form))
-			`(LET ((EA (MATCH-RESULT)))
-			   (AND (MEMQ ',(caddr form) (EA/CATEGORIES EA))
-				EA))
-			`(MATCH-RESULT)))))
+		   ,(let ((categories (cddr form)))
+		      (if (pair? categories)
+			  `(LET ((EA (MATCH-RESULT)))
+			     (AND
+			      (OR
+			       ,@(map (lambda (category)
+					`(MEMQ ',category (EA/CATEGORIES EA)))
+				      categories))
+			      EA))
+			  `(MATCH-RESULT))))))
 	 (ill-formed-syntax form)))))
 
 (define (parse-categories categories environment context)
@@ -90,7 +95,7 @@ USA.
   (if (not (and (pair? categories)
 		(eq? 'CATEGORIES (car categories))
 		(pair? (cdr categories))
-		(memq (cadr categories) '(REGISTER MEMORY))
+		(memq (cadr categories) '(REGISTER MEMORY XMM))
 		(null? (cddr categories))))
       (error "Malformed CATEGORIES for effective address rule:"
 	     categories
@@ -215,24 +220,38 @@ USA.
 	(values tail 0))))
 
 (define (collect-prefix options tail environment)
-  (let loop ((options options) (operand #f) (register #f) (r/m #f))
+  (let loop ((options options) (operand #f) (register #f) (r/m #f) (float #f))
     (if (pair? options)
 	(case (caar options)
-	  ((OPERAND) (loop (cdr options) (cadar options) register r/m))
+	  ((OPERAND) (loop (cdr options) (cadar options) register r/m float))
 	  ((OPCODE-REGISTER)
 	   (loop (cdr options)
 		 operand
 		 (or (not (pair? (cdar options))) (cadar options))
-		 r/m))
+		 r/m
+		 float))
 	  ((ModR/M)
 	   ;; (ModR/M <r/m>), for fixed digits
 	   ;; (ModR/M <reg> <r/m>), for registers
-	   (if (pair? (cddar options))
-	       (loop (cdr options) operand (cadar options) (caddar options))
-	       (loop (cdr options) operand #f (cadar options))))
+	   (receive (register r/m)
+	       (if (pair? (cddar options))
+		   (values (cadar options) (caddar options))
+		   (values #f (cadar options)))
+	     (loop (cdr options) operand register r/m float)))
+	  ((FLOAT)
+	   ;; (FLOAT <scalar/packed> <single/double>)
+	   (loop (cdr options) operand register r/m (cdar options)))
 	  (else (error "Bad instruction prefix option:" (car options))))
-	(let ((cons-prefix (close-syntax 'CONS-PREFIX environment)))
-	  `(,cons-prefix ,operand ,register ,r/m ,tail)))))
+	(if float
+	    (let ((cons-float-prefix
+		   (close-syntax 'CONS-FLOAT-PREFIX environment)))
+	      (if operand
+		  (error "Float instructions can't have operand size prefix:"
+			 operand))
+	      `(,cons-float-prefix ,register ,r/m ,(car float) ,(cadr float)
+				   ,tail))
+	    (let ((cons-prefix (close-syntax 'CONS-PREFIX environment)))
+	      `(,cons-prefix ,operand ,register ,r/m ,tail))))))
 
 (define (collect-ModR/M field tail environment)
   (let ((digit-or-reg (car field))

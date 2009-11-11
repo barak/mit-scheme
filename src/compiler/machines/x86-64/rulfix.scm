@@ -316,54 +316,14 @@ USA.
 		   FIXNUM-AND
 		   FIXNUM-OR
 		   FIXNUM-XOR)))
-	     
+	     
 (define ((fixnum-2-args/standard commutative? operate) target source1
 						       source2 overflow?)
   overflow?				; ignored
-  (two-arg-register-operation operate
-			      commutative?
-			      target
-			      source1
-			      source2))
-
-(define (two-arg-register-operation operate commutative?
-				    target source1 source2)
-  (let* ((worst-case
-	  (lambda (target source1 source2)
-	    (LAP (MOV Q ,target ,source1)
-		 ,@(operate target source2))))
-	 (new-target-alias!
-	  (lambda ()
-	    (let ((source1 (any-reference source1))
-		  (source2 (any-reference source2)))
-	      (delete-dead-registers!)
-	      (worst-case (target-register-reference target)
-			  source1
-			  source2)))))
-    (cond ((not (pseudo-register? target))
-	   (if (not (eq? (register-type target) 'GENERAL))
-	       (error "two-arg-register-operation: Wrong type register"
-		      target 'GENERAL)
-	       (worst-case (register-reference target)
-			   (any-reference source1)
-			   (any-reference source2))))
-	  ((register-copy-if-available source1 'GENERAL target)
-	   =>
-	   (lambda (get-alias-ref)
-	     (if (= source2 source1)
-		 (let ((ref (get-alias-ref)))
-		   (operate ref ref))
-		 (let ((source2 (any-reference source2)))
-		   (operate (get-alias-ref) source2)))))
-	  ((not commutative?)
-	   (new-target-alias!))
-	  ((register-copy-if-available source2 'GENERAL target)
-	   =>
-	   (lambda (get-alias-ref)
-	     (let ((source1 (any-reference source1)))
-	       (operate (get-alias-ref) source1))))
-	  (else
-	   (new-target-alias!)))))
+  (binary-register-operation operate commutative? 'GENERAL
+			     (lambda (target source)
+			       (LAP (MOV Q ,target ,source)))
+			     target source1 source2))
 
 (define (fixnum-2-args/register*constant operator target
 					 source constant overflow?)
@@ -508,11 +468,10 @@ USA.
     (lambda (target source1 source2 overflow?)
       overflow?				; ignored
       (require-register! rcx)
-      (two-arg-register-operation operate
-				  #f
-				  target
-				  source1
-				  source2))))
+      (binary-register-operation operate #f 'GENERAL
+				 (lambda (target source)
+				   (LAP (MOV Q ,target ,source)))
+				 target source1 source2))))
 
 (define (do-division target source1 source2 result-reg)
   (prefix-instructions! (load-machine-register! source1 rax))

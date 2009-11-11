@@ -215,94 +215,24 @@ USA.
 
 (define-rule rewriting
   (OBJECT->FLOAT (REGISTER (? operand register-known-value)))
-  (QUALIFIER
-   (rtl:constant-flonum-test operand (lambda (v) v #T)))
+  ;; This is not quite what we want.  We really want to rewrite all
+  ;; OBJECT->FLOAT expressions with known constant operands, not just
+  ;; the nonzero ones, and then decide later whether to put it in
+  ;; memory based on whether there is a temporary register that we can
+  ;; zero with XOR.  By not rewriting this case when the constant is
+  ;; zero, using a temporary may cause some other register to be
+  ;; written to memory, which defeats the purpose of using XOR to
+  ;; avoid memory access.
+  (QUALIFIER (rtl:constant-flonum-test operand flo:nonzero?))
   (rtl:make-object->float operand))
 
 (define-rule rewriting
   (FLONUM-2-ARGS FLONUM-SUBTRACT
-		 (REGISTER (? operand-1 register-known-value))
-		 (? operand-2)
-		 (? overflow?))
-  (QUALIFIER (rtl:constant-flonum-test operand-1 flo:zero?))
-  (rtl:make-flonum-2-args 'FLONUM-SUBTRACT operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FLONUM-2-ARGS (? operation)
-		 (REGISTER (? operand-1 register-known-value))
-		 (? operand-2)
-		 (? overflow?))
-  (QUALIFIER
-   (and (memq operation
-	      '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
-	(rtl:constant-flonum-test operand-1 flo:one?)))
-  (rtl:make-flonum-2-args operation operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FLONUM-2-ARGS (? operation)
-		 (? operand-1)
-		 (REGISTER (? operand-2 register-known-value))
-		 (? overflow?))
-  (QUALIFIER
-   (and (memq operation
-	      '(FLONUM-ADD FLONUM-SUBTRACT FLONUM-MULTIPLY FLONUM-DIVIDE))
-	(rtl:constant-flonum-test operand-2 flo:one?)))
-  (rtl:make-flonum-2-args operation operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FLONUM-PRED-2-ARGS (? predicate)
-		      (? operand-1)
-		      (REGISTER (? operand-2 register-known-value)))
-  (QUALIFIER (rtl:constant-flonum-test operand-2 flo:zero?))
-  (list 'FLONUM-PRED-2-ARGS predicate operand-1 operand-2))
-
-(define-rule rewriting
-  (FLONUM-PRED-2-ARGS (? predicate)
-		      (REGISTER (? operand-1 register-known-value))
-		      (? operand-2))
-  (QUALIFIER (rtl:constant-flonum-test operand-1 flo:zero?))
-  (list 'FLONUM-PRED-2-ARGS predicate operand-1 operand-2))
-
-#|
-;; These don't work as written.  They are not simplified and are
-;; therefore passed whole to the back end, and there is no way to
-;; construct the graph at this level.
-
-;; acos (x) = atan ((sqrt (1 - x^2)) / x)
-
-(define-rule pre-cse-rewriting
-  (FLONUM-1-ARG FLONUM-ACOS (? operand) #f)
-  (rtl:make-flonum-2-args
-   'FLONUM-ATAN2
-   (rtl:make-flonum-1-arg
-    'FLONUM-SQRT
-    (rtl:make-flonum-2-args
-     'FLONUM-SUBTRACT
-     (rtl:make-object->float (rtl:make-constant 1.))
-     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand false)
-     false)
-    false)
-   operand
-   false))
-
-;; asin (x) = atan (x / (sqrt (1 - x^2)))
-
-(define-rule pre-cse-rewriting
-  (FLONUM-1-ARG FLONUM-ASIN (? operand) #f)
-  (rtl:make-flonum-2-args
-   'FLONUM-ATAN2
-   operand
-   (rtl:make-flonum-1-arg
-    'FLONUM-SQRT
-    (rtl:make-flonum-2-args
-     'FLONUM-SUBTRACT
-     (rtl:make-object->float (rtl:make-constant 1.))
-     (rtl:make-flonum-2-args 'FLONUM-MULTIPLY operand operand false)
-     false)
-    false)
-   false))
-
-|#
+                 (REGISTER (? operand1 register-known-value))
+                 (? operand2)
+                 (? overflow?))
+  (QUALIFIER (rtl:constant-flonum-test operand1 flo:zero?))
+  (rtl:make-flonum-1-arg 'FLONUM-NEGATE operand2 overflow?))
 
 (define (rtl:constant-flonum-test expression predicate)
   (and (rtl:object->float? expression)
@@ -312,8 +242,8 @@ USA.
 		(and (flo:flonum? n)
 		     (predicate n)))))))
 
-(define (flo:one? value)
-  (flo:= value 1.))
+(define-integrable (flo:nonzero? value)
+  (not (flo:= value 0.)))
 
 ;;;; Indexed addressing modes
 
@@ -336,19 +266,6 @@ USA.
 		(MACHINE-CONSTANT (? value)))
   (QUALIFIER (and (rtl:float-offset-address? base)
 		  (rtl:simple-subexpressions? base)))
-  (if (zero? value)
-      (rtl:make-float-offset
-       (rtl:float-offset-address-base base)
-       (rtl:float-offset-address-offset base))
-      (rtl:make-float-offset base (rtl:make-machine-constant value))))
-
-(define-rule rewriting
-  (FLOAT-OFFSET (REGISTER (? base register-known-value))
-		(MACHINE-CONSTANT (? value)))
-  (QUALIFIER
-   (and (rtl:offset-address? base)
-	(rtl:simple-subexpressions? base)
-	(rtl:machine-constant? (rtl:offset-address-offset base))))   
   (rtl:make-float-offset base (rtl:make-machine-constant value)))
 
 ;; This is here to avoid generating things like

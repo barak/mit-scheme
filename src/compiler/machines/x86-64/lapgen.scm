@@ -35,48 +35,20 @@ USA.
   ;; rbp holds the pointer mask
   ;; rsi holds the register array pointer
   ;; rdi holds the free pointer
-  ;++ float
-  ;; fr7 is not used so that we can always push on the stack once.
   (list rax rcx rdx rbx r8 r9 r10 r11 r12 r13 r14 r15
-	;++ float
-	;; fr0 fr1 fr2 fr3 fr4 fr5 fr6
-	;; mmx0 mmx1 mmx2 mmx3 mmx4 mmx5 mmx6 mmx7
-	;; xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
-	;; xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15
-	))
+	xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
+	xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15))
 
 (define (sort-machine-registers registers)
   registers)
-
-;++ float
-
-#;
-(define (sort-machine-registers registers)
-  ;; FR0 is preferable to other FPU regs.  We promote it to the front
-  ;; if we find another FPU reg in front of it.
-  (let loop ((regs registers))
-    (cond ((null? regs) registers)	; no float regs at all
-	  ((general-register? (car regs)); ignore general regs
-	   (loop (cdr regs)))
-	  ((= (car regs) fr0)		; found FR0 first
-	   registers)
-	  ((memq fr0 regs)		; FR0 not first, is it present?
-	   (cons fr0 (delq fr0 registers)) ; move to front
-	   registers)
-	  (else				; FR0 absent
-	   registers))))
 
 (define (register-type register)
   (cond ((machine-register? register)
 	 (vector-ref
 	  '#(GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
 	     GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL GENERAL
-	     ;++ float
-	     ;; FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT   ;x87 fp
-	     ;; FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT   ;MMX 64bit
-	     ;; MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA   ;XMM 128bit
-	     ;; MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA MEDIA
-	     )
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT
+	     FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT FLOAT)
 	  register))
 	((register-value-class=word? register)
 	 'GENERAL)
@@ -87,19 +59,14 @@ USA.
 
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
-    (do ((i rax (+ i 1)))
-	((> i r15))
-      (vector-set! references i (INST-EA (R ,i))))
-    ;++ float
-    ;; (do ((i fr0 (+ i 1)))
-    ;; 	((>= i fr7))
-    ;;   (vector-set! references i (INST-EA (ST ,(floreg->sti i)))))
-    ;; (do ((i mmx0 (+ i 1)))
-    ;; 	((>= i mmx7))
-    ;;   (vector-set! references i (INST-EA (MMX ...))))
-    ;; (do ((i xmm0 (+ i 1)))
-    ;; 	((>= i xmm15))
-    ;;   (vector-set! references i (INST-EA (XMM ...))))
+    (do ((r rax (+ r 1))
+	 (i 0 (+ i 1)))
+	((> r r15))
+      (vector-set! references r (INST-EA (R ,i))))
+    (do ((r xmm0 (+ r 1))
+	 (i 0 (+ i 1)))
+	((> r xmm15))
+      (vector-set! references r (INST-EA (XMM ,i))))
     (lambda (register)
       (vector-ref references register))))
 
@@ -109,10 +76,9 @@ USA.
 (define (reference->register-transfer source target)
   (cond ((equal? (register-reference target) source)
 	 (LAP))
-	;++ float
 	((float-register-reference? source)
 	 ;; Assume target is a float register
-	 (LAP (FLD ,source)))
+	 (LAP (MOVF S D ,(register-reference target) ,source)))
 	(else
 	 (memory->machine-register source target))))
 
@@ -126,14 +92,9 @@ USA.
 (define (register->home-transfer source target)
   (machine->pseudo-register source target))
 
-;++ float
-
 (define-integrable (float-register-reference? ea)
-  ea
-  #f
-  #;
   (and (pair? ea)
-       (eq? (car ea) 'ST)))
+       (eq? (car ea) 'XMM)))
 
 ;;;; Linearizer interface
 
@@ -162,34 +123,22 @@ USA.
 
 ;;;; Utilities for the register allocator interface
 
-(define-integrable (machine->machine-register source target)
+(define (generate-move register source-ref target-ref)
+  (if (float-register? register)
+      (LAP (MOVF S D ,target-ref ,source-ref))
+      (LAP (MOV Q ,target-ref ,source-ref))))
+
+(define (machine->machine-register source target)
   (guarantee-registers-compatible source target)
-  ;++ float
-  (if (not (float-register? source))
-      (LAP (MOV Q ,(register-reference target) ,(register-reference source)))
-      (let ((ssti (floreg->sti source))
-	    (tsti (floreg->sti target)))
-	(if (zero? ssti)
-	    (LAP (FST (ST ,tsti)))
-	    (LAP (FLD (ST ,ssti))
-		 (FSTP (ST ,(1+ tsti))))))))
+  (generate-move source
+		 (register-reference source)
+		 (register-reference target)))
 
 (define (machine-register->memory source target)
-  ;++ float
-  (if (not (float-register? source))
-      (LAP (MOV Q ,target ,(register-reference source)))
-      (let ((ssti (floreg->sti source)))
-	(if (zero? ssti)
-	    (LAP (FST D ,target))
-	    (LAP (FLD (ST ,ssti))
-		 (FSTP D ,target))))))
+  (generate-move source (register-reference source) target))
 
 (define (memory->machine-register source target)
-  ;++ float
-  (if (not (float-register? target))
-      (LAP (MOV Q ,(register-reference target) ,source))
-      (LAP (FLD D ,source)
-	   (FSTP (ST ,(1+ (floreg->sti target)))))))
+  (generate-move target source (register-reference target)))
 
 (define-integrable (offset-referenceable? offset)
   (byte-offset-referenceable? (* address-units-per-object offset)))
@@ -213,7 +162,7 @@ USA.
       (error "Negative unsigned offset:" offset))
   ;; We don't have unsigned addressing modes.
   (byte-offset-reference register offset))
-
+
 ;;; This returns an offset in objects, not bytes.
 
 (define-integrable (pseudo-register-offset register)
@@ -226,29 +175,11 @@ USA.
 (define-integrable (machine->pseudo-register source target)
   (machine-register->memory source (pseudo-register-home target)))
 
-;++ float
-
-(define (general-register? register)
-  register
-  #t)
-
-(define (float-register? register)
-  register
-  #f)
-
-(define (floreg->sti reg)
-  (error "x87 floating-point not supported:" `(FLOREG->STI ,reg)))
-
-#|
-(define-integrable (floreg->sti reg)
-  (- reg fr0))
-
 (define-integrable (general-register? register)
-  (< register fr0))
+  (< register xmm0))
 
 (define-integrable (float-register? register)
-  (<= fr0 register fr7))
-|#
+  (>= register xmm0))
 
 ;;;; Utilities for the rules
 
@@ -270,6 +201,10 @@ USA.
 	(delete-register! rtl-reg)
 	(flush-register! machine-reg)
 	(add-pseudo-register-alias! rtl-reg machine-reg))))
+
+;;; OBJECT->MACHINE-REGISTER! takes only general registers, not float
+;;; registers.  Otherwise, (INST-EA (R ,mreg)) would need to be
+;;; (register-reference mreg).
 
 (define (object->machine-register! object mreg)
   ;; This ordering allows LOAD-CONSTANT to use MREG as a temporary.
@@ -391,7 +326,7 @@ USA.
     temp				;ignore
     (LAP ,@prefix
 	 ,@(receiver operand))))
-
+
 ;;; SIGNED-IMMEDIATE-OPERAND and UNSIGNED-IMMEDIATE-OPERAND abstract
 ;;; the pattern of performing an operation with an instruction that
 ;;; takes an immediate operand of 32 bits, but using a value that may
@@ -410,6 +345,9 @@ USA.
     (cond ((fits-in-signed-long? value)
 	   (values #f (LAP) operand))
 	  ((fits-in-signed-quad? value)
+	   ;; (values #f
+	   ;;         (LAP)
+	   ;;         (INST-EA (@PCR ,(allocate-signed-quad-label value))))
 	   (let ((temp (temporary-reference)))
 	     (values temp (LAP (MOV Q ,temp ,operand)) temp)))
 	  (else
@@ -420,10 +358,39 @@ USA.
     (cond ((fits-in-unsigned-long? value)
 	   (values #f (LAP) operand))
 	  ((fits-in-unsigned-quad? value)
+	   ;; (values #f
+	   ;;         (LAP)
+	   ;;         (INST-EA (@PCR ,(allocate-unsigned-quad-label value))))
 	   (let ((temp (temporary-reference)))
 	     (values temp (LAP (MOV Q ,temp ,operand)) temp)))
 	  (else
 	   (error "Unsigned immediate value too large:" value)))))
+
+(define (allocate-data-label datum block-name offset alignment data)
+  (let* ((block
+	  (or (find-extra-code-block block-name)
+	      (let ((block
+		     (declare-extra-code-block! block-name 'ANYWHERE '())))
+		(add-extra-code!
+		 block
+		 (LAP (PADDING ,offset ,alignment ,padding-string)))
+		block)))
+	 (pairs (extra-code-block/xtra block))
+	 (place (assoc datum pairs)))
+    (if place
+	(cdr place)
+	(let ((label (generate-label block-name)))
+	  (set-extra-code-block/xtra!
+	   block
+	   (cons (cons datum label) pairs))
+	  (add-extra-code! block (LAP (LABEL ,label) ,@data))
+	  label))))
+
+(define (allocate-unsigned-quad-label quad)
+  (allocate-data-label quad 'QUADS 0 8 (LAP (QUAD U ,quad))))
+
+(define (allocate-signed-quad-label quad)
+  (allocate-data-label quad 'QUADS 0 8 (LAP (QUAD S ,quad))))
 
 (define (target-register target)
   (delete-dead-registers!)
@@ -461,6 +428,48 @@ USA.
 
 (define-integrable (allocate-indirection-register! register)
   (load-alias-register! register 'GENERAL))
+
+(define (binary-register-operation operate commutative? type move
+				   target source1 source2)
+  (let* ((worst-case
+	  (lambda (target source1 source2)
+	    (LAP ,@(move target source1)
+		 ,@(operate target source2))))
+	 (new-target-alias!
+	  (lambda ()
+	    (let ((source1 (standard-register-reference source1 type #f))
+		  (source2 (standard-register-reference source2 type #f)))
+	      (delete-dead-registers!)
+	      (worst-case
+	       (register-reference
+		(or (register-alias target type)
+		    (allocate-alias-register! target type)))
+	       source1
+	       source2)))))
+    (cond ((not (pseudo-register? target))
+	   (if (not (eq? (register-type target) type))
+	       (error "binary-register-operation: Wrong type register"
+		      target
+		      type)
+	       (worst-case (register-reference target)
+			   (standard-register-reference source1 type #f)
+			   (standard-register-reference source2 type #f))))
+	  ((register-copy-if-available source1 type target)
+	   => (lambda (get-alias-ref)
+		(if (= source2 source1)
+		    (let ((ref (get-alias-ref)))
+		      (operate ref ref))
+		    (let ((source2
+			   (standard-register-reference source2 type #f)))
+		      (operate (get-alias-ref) source2)))))
+	  ((not commutative?)
+	   (new-target-alias!))
+	  ((register-copy-if-available source2 type target)
+	   => (lambda (get-alias-ref)
+		(let ((source1 (standard-register-reference source1 type #f)))
+		  (operate (get-alias-ref) source1))))
+	  (else
+	   (new-target-alias!)))))
 
 (define (with-indexed-address base* index* scale b-offset protect recvr)
   (let* ((base (allocate-indirection-register! base*))

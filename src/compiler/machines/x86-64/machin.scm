@@ -169,48 +169,26 @@ USA.
 (define r14 14)
 (define r15 15)
 
-;;; x87 floating-point stack locations, allocated as if registers.
-
-(define fr0 16)
-(define fr1 17)
-(define fr2 18)
-(define fr3 19)
-(define fr4 20)
-(define fr5 21)
-(define fr6 22)
-(define fr7 23)
-
-;;; 64-bit media registers (deprecated).
-
-(define mmx0 24)
-(define mmx1 25)
-(define mmx2 26)
-(define mmx3 27)
-(define mmx4 28)
-(define mmx5 29)
-(define mmx6 30)
-(define mmx7 31)
-
 ;;; 128-bit media registers.
 
-(define xmm0 32)
-(define xmm1 33)
-(define xmm2 34)
-(define xmm3 35)
-(define xmm4 36)
-(define xmm5 37)
-(define xmm6 38)
-(define xmm7 39)
-(define xmm8 40)
-(define xmm9 41)
-(define xmm10 42)
-(define xmm11 43)
-(define xmm12 44)
-(define xmm13 45)
-(define xmm14 46)
-(define xmm15 47)
+(define xmm0 16)
+(define xmm1 17)
+(define xmm2 18)
+(define xmm3 19)
+(define xmm4 20)
+(define xmm5 21)
+(define xmm6 22)
+(define xmm7 23)
+(define xmm8 24)
+(define xmm9 25)
+(define xmm10 26)
+(define xmm11 27)
+(define xmm12 28)
+(define xmm13 29)
+(define xmm14 30)
+(define xmm15 31)
 
-(define number-of-machine-registers 16)
+(define number-of-machine-registers 32)
 (define number-of-temporary-registers 256)
 
 (define-integrable regnum:stack-pointer rsp)
@@ -233,12 +211,8 @@ USA.
 	 value-class=address)
 	((<= r8 register r15)
 	 value-class=object)
-	((<= fr0 register fr7)
-	 value-class=float)
-	((<= mmx0 register mmx7)
-	 (error "MMX media registers not allocated:" register))
 	((<= xmm0 register xmm15)
-	 (error "XMM media registers not allocated:" register))
+	 value-class=float)
 	(else
 	 (error "Invalid machine register:" register))))
 
@@ -392,64 +366,54 @@ USA.
       (error "Unknown register type" locative)))
 
 (define (rtl:constant-cost expression)
-  ;; i486 clock count for instruction to construct/fetch into register.
-  (let ((if-integer
-	 (lambda (value)
-	   value			; ignored
-	   ;; Can this be done in fewer bytes for suitably small values?
-	   1))				; MOV immediate
-	(get-pc-cost
-	 (+ 3				; CALL
-	    4))				; POP
-	(based-reference-cost
-	 1)				; MOV r/m
-	(address-offset-cost
-	 1))				; LEA instruction
-
-    (define (if-synthesized-constant type datum)
-      (if-integer (make-non-pointer-literal type datum)))
-
+  ;; Counts derived from the AMD64 Software Optimization Guide, Rev
+  ;; 3.06, from September 2005.  Scaled by two because LEA costs 1/2!
+  ;; This is pretty silly, but probably better than using i486 clock
+  ;; counts.
+  (let ((cost:lea 1)
+	(cost:mov-mem 6)
+	(cost:mov-imm 2)
+	(cost:or 2))
     (case (rtl:expression-type expression)
       ((CONSTANT)
        (let ((value (rtl:constant-value expression)))
 	 (if (non-pointer-object? value)
-	     (if-synthesized-constant (object-type value)
-				      (careful-object-datum value))
-	     (+ get-pc-cost based-reference-cost))))
+	     cost:mov-imm
+	     cost:mov-mem)))
       ((MACHINE-CONSTANT)
-       (if-integer (rtl:machine-constant-value expression)))
-      ((ENTRY:PROCEDURE
-	ENTRY:CONTINUATION)
-       (+ get-pc-cost address-offset-cost))
-      ((ASSIGNMENT-CACHE
-	VARIABLE-CACHE)
-       (+ get-pc-cost based-reference-cost))
-      ((OFFSET-ADDRESS
-	BYTE-OFFSET-ADDRESS
-	FLOAT-OFFSET-ADDRESS)
-       address-offset-cost)
+       cost:mov-imm)
+      ((ENTRY:PROCEDURE ENTRY:CONTINUATION)
+       (+ cost:mov-imm cost:lea cost:or))
+      ((OFFSET-ADDRESS BYTE-OFFSET-ADDRESS FLOAT-OFFSET-ADDRESS)
+       (receive (offset-selector scale)
+	   (case (rtl:expression-type expression)
+	     ((OFFSET-ADDRESS)
+	      (values rtl:offset-address-offset address-units-per-object))
+	     ((BYTE-OFFSET-ADDRESS)
+	      (values rtl:byte-offset-address-offset 1))
+	     ((FLOAT-OFFSET-ADDRESS)
+	      (values rtl:float-offset-address-offset
+		      address-units-per-float)))
+	 (let ((offset (offset-selector expression)))
+	   (if (and (rtl:machine-constant? offset)
+		    (not
+		     (fits-in-signed-long?
+		      (* scale (rtl:machine-constant-value offset)))))
+	       (+ cost:mov-imm cost:lea)
+	       cost:lea))))
       ((CONS-POINTER)
        (and (rtl:machine-constant? (rtl:cons-pointer-type expression))
 	    (rtl:machine-constant? (rtl:cons-pointer-datum expression))
-	    (if-synthesized-constant
-	     (rtl:machine-constant-value (rtl:cons-pointer-type expression))
-	     (rtl:machine-constant-value
-	      (rtl:cons-pointer-datum expression)))))
-      (else
-       false))))
+	    cost:mov-imm))
+      (else #f))))
 
 (define compiler:open-code-floating-point-arithmetic?
-  false)
+  #t)
 
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM
     &/
-    FLOATING-VECTOR-CONS FLOATING-VECTOR-LENGTH
-    FLOATING-VECTOR-REF FLOATING-VECTOR-SET! FLONUM-ABS
-    FLONUM-ACOS FLONUM-ADD FLONUM-ASIN FLONUM-ATAN FLONUM-ATAN2
-    FLONUM-CEILING FLONUM-COS FLONUM-DIVIDE FLONUM-EQUAL?
-    FLONUM-EXP FLONUM-FLOOR FLONUM-GREATER? FLONUM-LESS?
-    FLONUM-LOG FLONUM-MULTIPLY FLONUM-NEGATE FLONUM-NEGATIVE?
-    FLONUM-POSITIVE? FLONUM-ROUND FLONUM-SIN FLONUM-SQRT
-    FLONUM-SUBTRACT FLONUM-TAN FLONUM-TRUNCATE FLONUM-ZERO?
-    FLONUM? GCD-FIXNUM STRING-ALLOCATE VECTOR-CONS))
+    FLOATING-VECTOR-CONS FLONUM-ACOS FLONUM-ASIN FLONUM-ATAN
+    FLONUM-ATAN2 FLONUM-CEILING FLONUM-COS FLONUM-EXP FLONUM-FLOOR
+    FLONUM-LOG FLONUM-ROUND FLONUM-SIN FLONUM-TAN FLONUM-TRUNCATE
+    GCD-FIXNUM STRING-ALLOCATE VECTOR-CONS))

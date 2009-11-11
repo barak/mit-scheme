@@ -42,6 +42,12 @@ USA.
    (MODE #b11)
    (R/M (register-bits r)))
 
+  ((XMM (? r))
+   (CATEGORIES XMM)
+   (REX (B r))
+   (MODE #b11)
+   (R/M (register-bits r)))
+
 ;;;; Register-indirect
 
   ((@R (? r indirect-reg))
@@ -181,8 +187,11 @@ USA.
    (R/M 5)
    (BITS (32 offset SIGNED))))
 
-(define-ea-transformer r/m-ea)
+(define-ea-transformer r-ea REGISTER)
+(define-ea-transformer xmm-ea XMM)
 (define-ea-transformer m-ea MEMORY)
+(define-ea-transformer r/m-ea REGISTER MEMORY)
+(define-ea-transformer xmm/m-ea XMM MEMORY)
 
 (define-structure (effective-address
 		   (conc-name ea/)
@@ -197,10 +206,53 @@ USA.
 (declare (integrate-operator register-rex))
 (define-integrable (register-rex register rex)
   (declare (integrate register))
-  (if (>= register r8)
+  (if (>= register 8)
       rex
       0))
 
+(define (cons-ModR/M digit ea tail)
+  (cons-syntax (ea/register ea)
+    (cons-syntax digit
+      (cons-syntax (ea/mode ea)
+	(append-syntax! (ea/extra ea) tail)))))
+
+(declare (integrate-operator opcode-register))
+(define (opcode-register opcode register)
+  (declare (integrate opcode))
+  (+ opcode (if (>= register 8) (- register 8) register)))
+
+(declare (integrate-operator float-comparator))
+(define (float-comparator comparator)
+  (case comparator
+    ((=) 0)
+    ((<) 1)
+    ((<=) 2)
+    ((UNORDERED) 3)
+    ((/=) 4)
+    ((>=) 5)
+    ((>) 6)
+    ((ORDERED) 7)
+    (else (error "Bad float comparator:" comparator))))
+
+(declare (integrate-operator operand-size))
+(define (operand-size s)
+  ;; B must be handled separately in general.
+  (case s
+    ((W L Q) s)
+    (else #f)))
+
+(declare (integrate-operator float-packed/scalar))
+(define (float-packed/scalar s)
+  (case s
+    ((S P) s)
+    (else #f)))
+
+(declare (integrate-operator float-precision))
+(define (float-precision s)
+  (case s
+    ((D S) s)
+    (else #f)))
+
 (define (cons-prefix operand-size register ea tail)
   (let ((tail
 	 (if (eq? operand-size 'W)
@@ -222,28 +274,40 @@ USA.
 	(else (error "Invalid operand size:" operand-size)))
       (let ((extended-register?
 	     (or (eqv? register #t)
-		 (and register (>= register r8)))))
+		 (and register (>= register 8)))))
 	(if ea
 	    (fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
 	    (if extended-register? #x41 0)))))))
 
-(define (cons-ModR/M digit ea tail)
-  (cons-syntax (ea/register ea)
-    (cons-syntax digit
-      (cons-syntax (ea/mode ea)
-	(append-syntax! (ea/extra ea) tail)))))
+;;; The SSE instructions don't consistently use this pattern for their
+;;; opcodes, but enough of them do that this approximate abstraction
+;;; helps to clarify the instruction syntax.
 
-(declare (integrate-operator opcode-register))
-(define (opcode-register opcode register)
-  (declare (integrate opcode))
-  (+ opcode (if (>= register r8) (- register r8) register)))
+(define (cons-float-prefix register ea packed/scalar precision tail)
+  (let* ((tail
+	  (let ((float (list packed/scalar precision)))
+	    (if (equal? float '(P S))
+		tail
+		(cons
+		 (syntax-evaluation
+		  (cond ((equal? float '(P D)) #x66)
+			((equal? float '(S D)) #xF2)
+			((equal? float '(S S)) #xF3)
+			(else (error "Bad float type:" float)))
+		  coerce-8-bit-unsigned)
+		 tail))))
+	 (rex-prefix
+	  (let ((extended-register?
+		 (or (eqv? register #t)
+		     (and register (>= register 8)))))
+	    (if ea
+		(fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
+		(if extended-register? #x41 0)))))
+    (if (zero? rex-prefix)
+	tail
+	(cons-syntax (syntax-evaluation rex-prefix coerce-8-bit-unsigned)
+		     tail))))
 
-(define (operand-size s)
-  ;; B must be handled separately in general.
-  (case s
-    ((W L Q) s)
-    (else #f)))
-
 (define-integrable (register-bits r)
   (fix:and r #b111))
 
@@ -297,6 +361,18 @@ USA.
     ((8) #b11)
     (else false)))
 
+(declare (integrate-operator unsigned-2bit))
+(define (unsigned-2bit value)
+  (and (<= 0 value #b11) value))
+
+(declare (integrate-operator unsigned-3bit))
+(define (unsigned-3bit value)
+  (and (<= 0 value #b111) value))
+
+(declare (integrate-operator unsigned-5bit))
+(define (unsigned-5bit value)
+  (and (<= 0 value #b11111) value))
+
 (define (signed-byte value)
   (and (fits-in-signed-byte? value)
        value))
@@ -328,7 +404,7 @@ USA.
 (define (unsigned-quad value)
   (and (fits-in-unsigned-quad? value)
        value))
-
+
 (define (sign-extended-byte value)
   (and (fits-in-signed-byte? value)
        value))

@@ -170,7 +170,7 @@ ifdef(`SUPPRESS_LEADING_UNDERSCORE',
 ifdef(`WCC386R',
       `define(EFR,`$1_')',
       `define(EFR,`EPFR($1)')')
-
+
 define(hook_reference,`EFR(asm_$1)')
 
 define(define_data,`export_label(EVR($1))')
@@ -211,6 +211,10 @@ ifdef(`DASM',
       `define(allocate_space,`EVR($1) db $2 dup (0)')',
       `define(allocate_space,`EVR($1):
 	.space $2')')
+
+ifdef(`DASM',
+      `define(define_double,`EVR($1) dq $2')',
+      `define(define_double,`EVR($1):	.double $2')')
 
 ifdef(`DASM',
       `define(HEX, `0$1H')',
@@ -257,8 +261,8 @@ ifdef(`DASM',
       `define(LOF,`$1($2)')')
 
 ifdef(`DASM',
-      `define(DOF,`qword ptr $1[$2]')',
-      `define(DOF,`$1($2)')')
+      `define(QOF,`qword ptr $1[$2]')',
+      `define(QOF,`$1($2)')')
 
 ifdef(`DASM',
       `define(IDX,`dword ptr [$1] [$2]')',
@@ -290,11 +294,21 @@ define(TC_COMPILED_ENTRY,40)
 
 # TAG doesn't work due to m4 stupidity, so define these magic
 # constants here.  These are computed in terms of the parameters
-# above.
+# above, and ordered lexicographically.
 
+define(IMM_FALSE, `IMM(HEX(0000000000000000))')
+define(IMM_FIXNUM_0, `IMM(HEX(6800000000000000))')
+define(IMM_FLONUM_0, `IMM(HEX(1800000000000000))')
 define(IMM_MANIFEST_NM_VECTOR_1, `IMM(HEX(9c00000000000001))')
 define(IMM_TRUE, `IMM(HEX(2000000000000000))')
-define(IMM_FALSE, `IMM(HEX(0000000000000000))')
+
+# Flonums are represented by tagged pointers to the first of two
+# quadwords (sixteen bytes) in memory, the first of which is a
+# non-marked vector manifest of length 1, so that the GC will not
+# trace the other one, which is an IEEE 754 double-precision format
+# value.
+define(FLONUM_DATA_OFFSET,8)
+define(FLONUM_STORAGE_SIZE,16)
 
 define(REGBLOCK_VAL,16)
 define(REGBLOCK_COMPILER_TEMP,32)
@@ -333,6 +347,10 @@ allocate_quadword(C_Stack_Pointer)
 
 define_data(C_Frame_Pointer)
 allocate_quadword(C_Frame_Pointer)
+
+declare_alignment(8)
+define_double(flonum_zero,0.0)
+define_double(flonum_one,1.0)
 
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
@@ -421,12 +439,12 @@ ifdef(`WIN32',						# Register block = %rsi
 `	OP(mov,q)	TW(ABS(EVR(RegistersPtr)),regs)',
 `	OP(lea,q)	TW(ABS(EVR(Registers)),regs)')
 	OP(mov,q)	TW(ABS(EVR(Free)),rfree)	# Free pointer = %rdi
-	OP(mov,q)	TW(DOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
+	OP(mov,q)	TW(QOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
 	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
-	OP(mov,q)	TW(REG(rcx),DOF(REGBLOCK_DLINK(),regs))
+	OP(mov,q)	TW(REG(rcx),QOF(REGBLOCK_DLINK(),regs))
 	jmp		IJMP(REG(rdx))
 
 IF_WIN32(`
@@ -471,7 +489,7 @@ define_jump_indirection(interrupt_closure,18)
 define_jump_indirection(interrupt_continuation_2,3b)
 
 define_hook_label(interrupt_dlink)
-	OP(mov,q)	TW(DOF(REGBLOCK_DLINK(),regs),REG(rdx))
+	OP(mov,q)	TW(QOF(REGBLOCK_DLINK(),regs),REG(rdx))
 	OP(mov,b)	TW(IMM(HEX(19)),REG(al))
 	jmp	scheme_to_interface_call
 
@@ -551,21 +569,33 @@ asm_generic_fixnum_result:
 	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(or,b)	TW(IMM(TC_FIXNUM),REG(al))
 	OP(ror,q)	TW(IMM(TC_LENGTH),REG(rax))
-	OP(mov,q)	TW(REG(rax),LOF(REGBLOCK_VAL(),regs))
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
+	ret
+
+declare_alignment(2)
+asm_generic_flonum_result:
+	OP(and,q)	TW(rmask,IND(REG(rsp)))
+	OP(mov,q)	TW(IMM_MANIFEST_NM_VECTOR_1,REG(rcx))
+	OP(mov,q)	TW(REG(rcx),IND(rfree))
+	movsd		TW(REG(xmm0),QOF(FLONUM_DATA_OFFSET,rfree))
+	OP(mov,q)	TW(IMM_FLONUM_0,REG(rax))
+	OP(or,q)	TW(rfree,REG(rax))
+	OP(lea,q)	TW(QOF(FLONUM_STORAGE_SIZE,rfree),rfree)
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
 	ret
 
 declare_alignment(2)
 asm_generic_return_sharp_t:
 	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_TRUE,REG(rax))
-	OP(mov,q)	TW(REG(rax),LOF(REGBLOCK_VAL(),regs))
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
 	ret
 
 declare_alignment(2)
 asm_generic_return_sharp_f:
 	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_FALSE,REG(rax))
-	OP(mov,q)	TW(REG(rax),LOF(REGBLOCK_VAL(),regs))
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
 	ret
 
 define(define_unary_operation,
@@ -575,7 +605,15 @@ define_hook_label(generic_$1)
 	OP(mov,q)	TW(REG(rdx),REG(rax))
 	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rax))
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
+	je	asm_generic_$1_fix
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
+
+asm_generic_$1_flo:
+	OP(and,q)	TW(rmask,REG(rdx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
+	$4		TW(ABS(flonum_one),REG(xmm0))
+	jmp	asm_generic_flonum_result
 
 asm_generic_$1_fix:
 	OP(mov,q)	TW(REG(rdx),REG(rax))
@@ -595,7 +633,16 @@ define_hook_label(generic_$1)
 	OP(mov,q)	TW(REG(rdx),REG(rax))
 	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rax))
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
+	je	asm_generic_$1_fix
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
+
+asm_generic_$1_flo:
+	OP(and,q)	TW(rmask,REG(rdx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
+	ucomisd		TW(ABS(flonum_zero),REG(xmm0))
+	$3	asm_generic_return_sharp_t
+	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
 	OP(mov,q)	TW(REG(rdx),REG(rax))
@@ -610,7 +657,7 @@ asm_generic_$1_fail:
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
-`define_binary_operation_with_fixup($1,$2,$3,
+`define_binary_operation_with_fixup($1,$2,$3,$4,
 	`OP(shl,q)	TW(IMM(TC_LENGTH),REG(rax))')')
 
 define(define_binary_operation_with_fixup,
@@ -625,12 +672,21 @@ define_hook_label(generic_$1)
 	OP(cmp,b)	TW(REG(al),REG(cl))
 	jne	asm_generic_$1_fail
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
+	je	asm_generic_$1_fix
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
+
+asm_generic_$1_flo:
+	OP(and,q)	TW(rmask,REG(rdx))
+	OP(and,q)	TW(rmask,REG(rbx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
+	$4		TW(QOF(FLONUM_DATA_OFFSET,REG(rbx)),REG(xmm0))
+	jmp	asm_generic_flonum_result
 
 asm_generic_$1_fix:
 	OP(mov,q)	TW(REG(rdx),REG(rax))
 	OP(mov,q)	TW(REG(rbx),REG(rcx))
-	$4						# Set up rax.
+	$5						# Set up rax.
 	OP(shl,q)	TW(IMM(TC_LENGTH),REG(rcx))
 	OP($3,q)	TW(REG(rcx),REG(rax))		# subq
 	jno	asm_generic_fixnum_result
@@ -653,7 +709,17 @@ define_hook_label(generic_$1)
 	OP(cmp,b)	TW(REG(al),REG(cl))
 	jne	asm_generic_$1_fail
 	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
+	je	asm_generic_$1_fix
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
 	jne	asm_generic_$1_fail
+
+asm_generic_$1_flo:
+	OP(and,q)	TW(rmask,REG(rdx))
+	OP(and,q)	TW(rmask,REG(rbx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
+	ucomisd		TW(QOF(FLONUM_DATA_OFFSET,REG(rbx)),REG(xmm0))
+	$3	asm_generic_return_sharp_t
+	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
 	OP(shl,q)	TW(IMM(TC_LENGTH),REG(rdx))
@@ -668,43 +734,122 @@ asm_generic_$1_fail:
 	OP(mov,b)	TW(IMM(HEX($2)),REG(al))
 	jmp	scheme_to_interface')
 
-#define_unary_operation(decrement,22,sub)
-#define_unary_operation(increment,26,add)
+# Division is hairy.  I'm not sure whether this will do the right
+# thing for infinities and NaNs.
 
-#define_unary_predicate(negative,2a,jl)
-#define_unary_predicate(positive,2c,jg)
-#define_unary_predicate(zero,2d,je)
+define_hook_label(generic_divide)
+	OP(pop,q)	REG(rdx)
+	OP(pop,q)	REG(rbx)
+	# We want to divide rdx by rbx.  First put the numerator's tag
+	# in al and the denominator's tag in cl.
+	OP(mov,q)	TW(REG(rdx),REG(rax))
+	OP(mov,q)	TW(REG(rbx),REG(rcx))
+	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rax))
+	OP(shr,q)	TW(IMM(DATUM_LENGTH),REG(rcx))
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(al))
+	je	asm_generic_divide_fix
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(al))
+	jne	asm_generic_divide_fail
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
+	je	asm_generic_divide_flo_by_flo
+	OP(cmp,b)	TW(IMM(TC_FIXNUM),REG(cl))
+	jne	asm_generic_divide_fail
 
-# define_binary_operation(name,index,op)
-# define_binary_operation(  $1,   $2,$3)
-#define_binary_operation(add,2b,add)
-#define_binary_operation(subtract,28,sub)
+asm_generic_divide_flo_by_fix:
+	# Numerator (rdx) is a flonum, denominator (rbx) is a fixnum.
+	OP(mov,q)	TW(REG(rbx),REG(rcx))
+	OP(shl,q)	TW(IMM(TC_LENGTH),REG(rcx))
+	# Division by zero -- bail.
+	jz	asm_generic_divide_fail
+	OP(and,q)	TW(rmask,REG(rdx))
+	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rcx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
+	OP(cvtsi2sd,q)	TW(REG(rcx),REG(xmm1))
+	divsd		TW(REG(xmm1),REG(xmm0))
+	jmp	asm_generic_flonum_result
+
+asm_generic_divide_fix:
+	OP(cmp,b)	TW(IMM(TC_FLONUM),REG(cl))
+	jne asm_generic_divide_fail
+
+asm_generic_divide_fix_by_flo:
+	# Numerator (rdx) is a fixnum, denominator (rbx) is a flonum.
+	OP(mov,q)	TW(REG(rbx),REG(rax))
+	OP(and,q)	TW(rmask,REG(rax))
+	OP(mov,q)	TW(REG(rdx),REG(rcx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rax)),REG(xmm1))
+	OP(shl,q)	TW(IMM(TC_LENGTH),REG(rcx))
+	jz	asm_generic_divide_zero_by_flo
+	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rcx))
+	OP(cvtsi2sd,q)	TW(REG(rcx),REG(xmm0))
+	divsd		TW(REG(xmm1),REG(xmm0))
+	jmp	asm_generic_flonum_result
+
+asm_generic_divide_zero_by_flo:
+	# rcx contains zero, representing a numerator exactly zero.
+	# Defer division of 0 by 0.0; otherwise, yield exactly zero.
+	OP(cvtsi2sd,q)	TW(REG(rcx),REG(xmm0))
+	ucomisd		TW(REG(xmm1),REG(xmm0))
+	je	asm_generic_divide_fail
+	OP(and,q)	TW(rmask,IND(REG(rsp)))
+	OP(mov,q)	TW(IMM_FIXNUM_0,REG(rax))
+	OP(mov,q)	TW(REG(rax),QOF(REGBLOCK_VAL(),regs))
+	ret
+
+asm_generic_divide_flo_by_flo:
+	# Numerator (rdx) and denominator (rbx) are both flonums.
+	OP(mov,q)	TW(REG(rdx),REG(rax))
+	OP(mov,q)	TW(REG(rbx),REG(rcx))
+	OP(and,q)	TW(rmask,REG(rax))
+	OP(and,q)	TW(rmask,REG(rcx))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rax)),REG(xmm0))
+	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rcx)),REG(xmm1))
+	ucomisd		TW(ABS(flonum_zero),REG(xmm1))
+	je	asm_generic_divide_fail
+	divsd		TW(REG(xmm1),REG(xmm0))
+	jmp	asm_generic_flonum_result
+
+asm_generic_divide_fail:
+	OP(push,q)	REG(rbx)
+	OP(push,q)	REG(rdx)
+	OP(mov,b)	TW(IMM(HEX(23)),REG(al))
+	jmp	scheme_to_interface
+
+define_unary_operation(decrement,22,sub,subsd)
+define_unary_operation(increment,26,add,addsd)
+
+# define_unary_predicate(name,index,jcc)
+# define_unary_predicate(  $1,   $2, $3)
+define_unary_predicate(negative,2a,jl)
+define_unary_predicate(positive,2c,jg)
+define_unary_predicate(zero,2d,je)
+
+# define_binary_operation(name,index,fxop,flop)
+# define_binary_operation(  $1,   $2,  $3,  $4)
+define_binary_operation(add,2b,add,addsd)
+define_binary_operation(subtract,28,sub,subsd)
 
 # No fixup -- leave it unshifted.
-#define_binary_operation_with_fixup(multiply,29,imul)
+define_binary_operation_with_fixup(multiply,29,imul,mulsd)
 
 # define_binary_predicate(name,index,jcc)
-#define_binary_predicate(equal,24,je)
-#define_binary_predicate(greater,25,jg)
-#define_binary_predicate(less,27,jl)
+# define_binary_predicate(  $1,   $2, $3)
+define_binary_predicate(equal,24,je)
+define_binary_predicate(greater,25,jg)
+define_binary_predicate(less,27,jl)
 
-# At the moment, there is no advantage to using the above code, and in
-# fact using it is a waste, since the compiler open-codes the fixnum
-# case already.  Later, the above code will also handle floating-point
-# arguments, which the compiler does not open-code.
-
-define_jump_indirection(generic_decrement,22)
-define_jump_indirection(generic_divide,23)
-define_jump_indirection(generic_equal,24)
-define_jump_indirection(generic_greater,25)
-define_jump_indirection(generic_increment,26)
-define_jump_indirection(generic_less,27)
-define_jump_indirection(generic_subtract,28)
-define_jump_indirection(generic_multiply,29)
-define_jump_indirection(generic_negative,2a)
-define_jump_indirection(generic_add,2b)
-define_jump_indirection(generic_positive,2c)
-define_jump_indirection(generic_zero,2d)
+#define_jump_indirection(generic_decrement,22)
+#define_jump_indirection(generic_divide,23)
+#define_jump_indirection(generic_equal,24)
+#define_jump_indirection(generic_greater,25)
+#define_jump_indirection(generic_increment,26)
+#define_jump_indirection(generic_less,27)
+#define_jump_indirection(generic_subtract,28)
+#define_jump_indirection(generic_multiply,29)
+#define_jump_indirection(generic_negative,2a)
+#define_jump_indirection(generic_add,2b)
+#define_jump_indirection(generic_positive,2c)
+#define_jump_indirection(generic_zero,2d)
 define_jump_indirection(generic_quotient,37)
 define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)

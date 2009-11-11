@@ -372,6 +372,7 @@ USA.
 			       ,(if signed?
 				    (INST-EA (& ,n))
 				    (INST-EA (&U ,n))))
+			  ;++ Check that SCALE is a valid SIB scale.
 			  (LEA Q ,target (@RI ,source ,temp ,scale)))))))))))
 
 (define-integrable (load-displaced-register target source n scale)
@@ -394,28 +395,64 @@ USA.
 
 (define (load-pc-relative-address/typed target type label)
   ;++ This is pretty horrid, especially since it happens for every
-  ;++ continuation pushed!  Neither alternative is much good.
-  ;; Twenty bytes.
+  ;++ continuation pushed!  None of the alternatives is much good.
+  ;; Twenty bytes, but only three instructions and no extra memory.
   (let ((temp (temporary-register-reference)))
     (LAP (MOV Q ,temp (&U ,(make-non-pointer-literal type 0)))
 	 (LEA Q ,target (@PCR ,label))
 	 (OR Q ,target ,temp)))
   #|
-  ;; Nineteen bytes.
+  ;; Nineteen bytes, but rather complicated (and needs syntax for an
+  ;; addressing mode not presently supported).
+  (cond ((zero? type)
+	 (LAP (LEA Q ,target (@PCR ,label))))
+	((zero? (remainder type 8))
+	 (receive (type-divisor scale scale-log)
+	     (cond ((not (zero? (remainder type #x10))) (values 8 8 3))
+		   ((not (zero? (remainder type #x20))) (values #x10 4 2))
+		   ((not (zero? (remainder type #x40))) (values #x20 2 1))
+		   (else (error "Type too large:" type)))
+	   (let ((offset (quotient type type-divisor)))
+	     (LAP (LEA Q ,target (@PCR ,label))
+		  (LEA Q ,target (@OI ,offset ,target ,scale))
+		  (ROR Q ,target (&U ,scale-log))))))
+	(else ...))
+  |#
+  #|
+  ;; This would be brilliant, except that it needs (PC * 2^6)-relative
+  ;; addressing, rather than PC-relative addressing.
+  (let* ((reference-point (generate-label 'PC))
+	 (offset
+	  `(+ ,type
+	      (* ,(expt 2 scheme-type-width) (- ,label ,reference-point)))))
+    (LAP (LEA Q ,target (@PCO ,offset))
+	 (LABEL ,reference-point)
+	 (ROR Q ,target (&U ,scheme-type-width))))
+  |#
+  #|
+  ;; Nineteen bytes and no temporaries, but four instructions.
   (LAP (LEA Q ,target (@PCR ,label))
        (SHL Q ,target (&U ,scheme-type-width))
        (OR Q ,target (&U ,type))
        (ROR Q ,target (&U ,scheme-type-width)))
   |#
-  ;++ This doesn't work because CONSTANT->LABEL will give us a label
-  ;++ for the Scheme number object, not for the machine bit string.
   #|
-  ;; Seventeen bytes -- but we need the label to work.
+  ;; Seventeen bytes, but this requires reading eight bytes of memory.
   (let ((temp (temporary-register-reference))
 	(literal (make-non-pointer-literal type 0)))
-    (LAP (MOV Q ,temp (@PCR ,(constant->label literal)))
+    (LAP (MOV Q ,temp (@PCR ,(allocate-unsigned-quad-label literal)))
 	 (LEA Q ,target (@PCR ,label))
 	 (OR Q ,target ,temp)))
+  |#
+  #|
+  ;; Fourteen bytes and no temporaries, but this requires reading
+  ;; eight bytes of memory.
+  (let* ((reference-point (generate-label 'REFERENCE-POINT))
+	 (expression
+	  `(+ ,(make-non-pointer-literal type 0) (- ,label ,reference-point))))
+    (LAP (LABEL ,reference-point)
+	 (LEA Q ,target (@PCR ,reference-point))
+	 (ADD Q ,target (@PCR ,(allocate-unsigned-quad-label expression)))))
   |#)
 
 (define (load-char-into-register type source target)
@@ -464,17 +501,18 @@ USA.
 				   (rtl:offset-address-offset base))))
        expression))
 
-(define (with-decoded-detagged-offset expression recvr)
+(define (with-decoded-detagged-offset expression receiver)
   (let ((base (rtl:offset-base expression)))
     (let ((base* (rtl:offset-address-base base))
 	  (index (rtl:offset-address-offset base)))
-      (recvr (rtl:register-number (if (rtl:register? base*)
-				      base*
-				      (rtl:object->address-expression base*)))
-	     (rtl:register-number (if (rtl:register? index)
-				      index
-				      (rtl:object->datum-expression index)))
-	     (rtl:machine-constant-value (rtl:offset-offset expression))))))
+      (receiver
+       (rtl:register-number (if (rtl:register? base*)
+				base*
+				(rtl:object->address-expression base*)))
+       (rtl:register-number (if (rtl:register? index)
+				index
+				(rtl:object->datum-expression index)))
+       (rtl:machine-constant-value (rtl:offset-offset expression))))))
 
 ;;;; Improved string references
 
