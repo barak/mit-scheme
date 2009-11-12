@@ -862,6 +862,10 @@ asm_generic_$1_fail:
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
+`define_binary_operation_with_setup($1,$2,$3,$4,
+	`OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))')')
+
+define(define_binary_operation_with_setup,
 `declare_alignment(2)
 define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
@@ -886,7 +890,7 @@ asm_generic_$1_fail:
 asm_generic_$1_fix:
 	OP(mov,l)	TW(REG(edx),REG(eax))
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	$5						# Set up eax.
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
 	OP($3,l)	TW(REG(ecx),REG(eax))		# subl
 	jo	asm_generic_$1_fail
@@ -996,7 +1000,13 @@ define_unary_predicate(zero,2d,je,je)
 # define_binary_operation(  $1,   $2,     $3,     $4)
 define_binary_operation(add,2b,add,fadd)
 define_binary_operation(subtract,28,sub,fsub)
-define_binary_operation(multiply,29,imul,fmul)
+
+# To set up eax, kill its tag, but leave it unshifted; the other
+# operand will be shifted already, so that it will already include the
+# factor of 2^6 desired in the product.
+define_binary_operation_with_setup(multiply,29,imul,fmul,
+	`OP(and,l)	TW(rmask,REG(eax))')
+
 # Divide needs to check for 0, so we cant really use the following
 # define_binary_operation(divide,23,NONE,fdiv)
 

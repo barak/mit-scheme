@@ -657,10 +657,10 @@ asm_generic_$1_fail:
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
-`define_binary_operation_with_fixup($1,$2,$3,$4,
+`define_binary_operation_with_setup($1,$2,$3,$4,
 	`OP(shl,q)	TW(IMM(TC_LENGTH),REG(rax))')')
 
-define(define_binary_operation_with_fixup,
+define(define_binary_operation_with_setup,
 `declare_alignment(2)
 define_hook_label(generic_$1)
 	OP(pop,q)	REG(rdx)
@@ -829,8 +829,11 @@ define_unary_predicate(zero,2d,je)
 define_binary_operation(add,2b,add,addsd)
 define_binary_operation(subtract,28,sub,subsd)
 
-# No fixup -- leave it unshifted.
-define_binary_operation_with_fixup(multiply,29,imul,mulsd)
+# To set up rax, kill its tag, but leave it unshifted; the other
+# operand will be shifted already, so that it will already include the
+# factor of 2^6 desired in the product.
+define_binary_operation_with_setup(multiply,29,imul,mulsd,
+	`OP(and,q)	TW(rmask,REG(rax))')
 
 # define_binary_predicate(name,index,jcc)
 # define_binary_predicate(  $1,   $2, $3)
