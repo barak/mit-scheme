@@ -253,60 +253,57 @@ USA.
     ((D S) s)
     (else #f)))
 
-(define (cons-prefix operand-size register ea tail)
-  (let ((tail
-	 (if (eq? operand-size 'W)
-	     (cons-syntax (syntax-evaluation #x66 coerce-8-bit-unsigned)
-			  tail)
-	     tail)))
-    ((lambda (rex-prefix)
-       (if (zero? rex-prefix)
-	   tail
-	   (cons-syntax (syntax-evaluation rex-prefix coerce-8-bit-unsigned)
-			tail)))
-     (fix:or
-      (case operand-size
-	;; B must be handled separately; there is no prefix for it.
-	;; W is handled with a #x66 prefix.
-	;; L is the default.
-	((#F W L) 0)
-	((Q) #x48)
-	(else (error "Invalid operand size:" operand-size)))
-      (let ((extended-register?
-	     (or (eqv? register #t)
-		 (and register (>= register 8)))))
-	(if ea
-	    (fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
-	    (if extended-register? #x41 0)))))))
+;;; The REX prefix must come last, just before the `actual' opcode.
 
-;;; The SSE instructions don't consistently use this pattern for their
-;;; opcodes, but enough of them do that this approximate abstraction
-;;; helps to clarify the instruction syntax.
+(define (cons-prefix operand-size register ea tail)
+  ((lambda (tail)
+     (if (eq? operand-size 'W)
+	 (cons-syntax (syntax-evaluation #x66 coerce-8-bit-unsigned)
+		      tail)
+	 tail))
+   ((lambda (rex-prefix)
+      (if (zero? rex-prefix)
+	  tail
+	  (cons-syntax (syntax-evaluation rex-prefix coerce-8-bit-unsigned)
+		       tail)))
+    (fix:or
+     (case operand-size
+       ;; B must be handled separately; there is no prefix for it.
+       ;; W is handled with a #x66 prefix.
+       ;; L is the default.
+       ((#F W L) 0)
+       ((Q) #x48)
+       (else (error "Invalid operand size:" operand-size)))
+     (let ((extended-register?
+	    (or (eqv? register #t)
+		(and register (>= register 8)))))
+       (if ea
+	   (fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
+	   (if extended-register? #x41 0)))))))
 
 (define (cons-float-prefix register ea packed/scalar precision tail)
-  (let* ((tail
-	  (let ((float (list packed/scalar precision)))
-	    (if (equal? float '(P S))
-		tail
-		(cons
-		 (syntax-evaluation
-		  (cond ((equal? float '(P D)) #x66)
-			((equal? float '(S D)) #xF2)
-			((equal? float '(S S)) #xF3)
-			(else (error "Bad float type:" float)))
-		  coerce-8-bit-unsigned)
-		 tail))))
-	 (rex-prefix
+  ((lambda (tail)
+     (let ((float (list packed/scalar precision)))
+       (if (equal? float '(P S))
+	   tail
+	   (cons-syntax (syntax-evaluation
+			 (cond ((equal? float '(P D)) #x66)
+			       ((equal? float '(S D)) #xF2)
+			       ((equal? float '(S S)) #xF3)
+			       (else (error "Bad float type:" float)))
+			 coerce-8-bit-unsigned)
+			tail))))
+   (let ((rex-prefix
 	  (let ((extended-register?
 		 (or (eqv? register #t)
 		     (and register (>= register 8)))))
 	    (if ea
 		(fix:or (if extended-register? #x44 0) (ea/rex-prefix ea))
 		(if extended-register? #x41 0)))))
-    (if (zero? rex-prefix)
-	tail
-	(cons-syntax (syntax-evaluation rex-prefix coerce-8-bit-unsigned)
-		     tail))))
+     (if (zero? rex-prefix)
+	 tail
+	 (cons-syntax (syntax-evaluation rex-prefix coerce-8-bit-unsigned)
+		      tail)))))
 
 (define-integrable (register-bits r)
   (fix:and r #b111))

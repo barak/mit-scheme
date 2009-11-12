@@ -351,7 +351,7 @@ USA.
                               (LAP (JBE (@PCR ,label))))))
     (else
      (error "flonum-branch!: Unknown predicate" predicate)))
-  (LAP (UCOMISF D ,source1 ,source2)))
+  (LAP (UCOMIF S D ,source1 ,source2)))
                                    
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))

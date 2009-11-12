@@ -78,16 +78,16 @@ USA.
                        (opcode (caddr form)))
                    `(define-instruction ,mnemonic
                       ((P D (XMM (? target)) (? source xmm/m-ea))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 #xD0))
                        (ModR/M target source))
 
                       ((P S (XMM (? target)) (? source xmm/m-ea))
+                       (BITS (8 #xF2))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 #xF2)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 #xD0))
                        (ModR/M target source))))))))
   (define-packed-flop-instruction ADDSUBF       #xD0)
@@ -136,20 +136,21 @@ USA.
                  (let ((mnemonic (cadr form))
                        (opcode (caddr form)))
                    `(define-instruction ,mnemonic
-                      ((D (XMM (? source1)) (? source2 xmm/m-ea))
+                      ((S D (XMM (? source1)) (? source2 xmm/m-ea))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M source1 source2))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 ,opcode))
                        (ModR/M source1 source2))
 
-                      ((S (XMM (? source1)) (? source2 xmm/m-ea))
+                      ((S S (XMM (? source1)) (? source2 xmm/m-ea))
                        (PREFIX (ModR/M source1 source2))
                        (BITS (8 #x0F)
                              (8 ,opcode))
                        (ModR/M source1 source2))))))))
-  (define-un/ordered-compare-instruction COMISF #x2F)
-  (define-un/ordered-compare-instruction UCOMISF #x2E))
+  ;; What does the `I' stand for?
+  (define-un/ordered-compare-instruction COMIF #x2F)
+  (define-un/ordered-compare-instruction UCOMIF #x2E))
 
 (let-syntax ((define-conversion-instruction
               (sc-macro-transformer
@@ -168,10 +169,15 @@ USA.
                                  (rules (cdddr rules-definition)))
                              (map (lambda (rule)
                                     (let ((conversion (car rule))
+                                          (pre-prefix
+                                           (if (cadr rule)
+                                               `((BITS (8 ,(cadr rule))))
+                                               '()))
                                           (bytes
                                            (map (lambda (byte) `(8 ,byte))
-                                                (cdr rule))))
+                                                (cddr rule))))
                                       `((,conversion ,@pattern)
+                                        ,@pre-prefix
                                         (PREFIX ,@prefix-options
                                                 (ModR/M reg ea))
                                         (BITS ,@bytes)
@@ -183,11 +189,11 @@ USA.
     (define-rules ((XMM (? reg)) (? ea xmm/m-ea))
         ()
       (DQ->PD   #xF3 #x0F #xE6)
-      (DQ->PS        #x0F #x5B)
+      (DQ->PS   #f   #x0F #x5B)
       (PD->DQ   #xF2 #x0F #xE6)
       (PD->PS   #x66 #x0F #x5A)
       (PS->DQ   #x66 #x0F #x5B)
-      (PS->PD        #x0F #x5A)
+      (PS->PD   #f   #x0F #x5A)
       (SD->SS   #xF2 #x0F #x5A)
       (SS->SD   #xF3 #x0F #x5A))
 
@@ -216,18 +222,18 @@ USA.
   (((? target xmm-ea)
     (&U (? size unsigned-5bit))
     (&U (? position unsigned-5bit)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x78))
    (ModR/M 0 target)
    (BITS (8 size UNSIGNED)
          (8 position UNSIGNED)))
 
   (((XMM (? target)) (? source xmm-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x79))
    (ModR/M target source)))
 
@@ -236,18 +242,18 @@ USA.
     (? source xmm-ea)
     (&U (? size unsigned-5bit))
     (&U (? position unsigned-5bit)))
+   (BITS (8 #xF2))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF2)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x78))
    (ModR/M target source)
    (BITS (8 size UNSIGNED)
          (8 position UNSIGNED)))
 
   (((XMM (? target)) (? source xmm-ea))
+   (BITS (8 #xF2))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF2)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x79))
    (ModR/M target source)))
 
@@ -269,9 +275,9 @@ USA.
 
 (define-instruction LDDQU               ;Load Double Quadword Unaligned
   (((XMM (? target)) (? source m-ea))
+   (BITS (8 #xF2))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF2)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xF0))
    (ModR/M target source)))
 
@@ -284,9 +290,9 @@ USA.
 
 (define-instruction MASKMOVDQU
   (((@R 7) (XMM (? source1)) (? source2 xmm-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M source1 source2))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xF7))
    (ModR/M source1 source2)))
 
@@ -306,24 +312,24 @@ USA.
 (define-instruction MOVD
   ;++ SIZE can be only L or Q, not W.
   (((? size operand-size) (XMM (? target)) (? source r/m-ea))
+   (BITS (8 #x66))
    (PREFIX (OPERAND size) (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x6E))
    (ModR/M target source))
 
   (((? size operand-size) (? target r/m-ea) (XMM (? source)))
+   (BITS (8 #x66))
    (PREFIX (OPERAND size) (ModR/M source target))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x7E))
    (ModR/M source target)))
 
 (define-instruction MOVDDUP
   (((XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #xF2))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF2)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x12))
    (ModR/M target source)))
 
@@ -336,16 +342,16 @@ USA.
 
                    `(define-instruction ,mnemonic
                       (((XMM (? target)) (? source xmm/m-ea))
+                       (BITS (8 ,prefix))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 ,prefix)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 #x6F))
                        (ModR/M target source))
 
                       (((? target xmm/m-ea) (XMM (? source)))
+                       (BITS (8 ,prefix))
                        (PREFIX (ModR/M source target))
-                       (BITS (8 ,prefix)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 #x7F))
                        (ModR/M source target))))))))
   (define-move-dq-instruction MOVDQA #x66)
@@ -369,16 +375,16 @@ USA.
 
                       (define-instruction ,MOVx
                         ((P D (XMM (? target)) (? source m-ea))
+                         (BITS (8 #x66))
                          (PREFIX (ModR/M target source))
-                         (BITS (8 #x66)
-                               (8 #x0F)
+                         (BITS (8 #x0F)
                                (8 ,opcode2))
                          (ModR/M target source))
 
                         ((P D (? target m-ea) (XMM (? source)))
+                         (BITS (8 #x66))
                          (PREFIX (ModR/M source target))
-                         (BITS (8 #x66)
-                               (8 #x0F)
+                         (BITS (8 #x0F)
                                (8 ,(+ opcode2 1)))
                          (ModR/M source target))
 
@@ -424,16 +430,16 @@ USA.
 ;; Note: (MOVQ ...) is very different from (MOV Q ...)!
 (define-instruction MOVQ
   (((XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #xF3))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF3)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x7E))
    (ModR/M target source))
 
   (((? target xmm/m-ea) (XMM (? source)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M source target))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xD6))
    (ModR/M source target)))
 
@@ -461,9 +467,9 @@ USA.
                        (opcode (caddr form)))
                    `(define-instruction ,mnemonic
                       (((XMM (? target)) (? source xmm/m-ea))
+                       (BITS (8 #xF3))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 #xF3)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 ,opcode))
                        (ModR/M target source))))))))
   (define-mov/dup-instruction MOVSHDUP #x16)
@@ -492,9 +498,9 @@ USA.
                                (let ((size (car size/opcode))
                                      (opcode (cadr size/opcode)))
                                  `((,size (XMM (? target)) (? source xmm/m-ea))
+                                   (BITS (8 #x66))
                                    (PREFIX (ModR/M target source))
-                                   (BITS (8 #x66)
-                                         (8 #x0F)
+                                   (BITS (8 #x0F)
                                          (8 ,opcode))
                                    (ModR/M target source))))
                              size/opcode-list)))))))
@@ -524,9 +530,9 @@ USA.
                        (opcode (caddr form)))
                    `(define-instruction ,mnemonic
                       (((XMM (? target)) (? source xmm/m-ea))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 ,opcode))
                        (ModR/M target source))))))))
   (define-packed-instruction PAND #xDB)
@@ -539,67 +545,67 @@ USA.
 
 (define-instruction PEXTR
   ((W (R (? target)) (? source xmm-ea) (&U (? position unsigned-3bit)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xC5))
    (ModR/M target source)
    (BITS (8 position UNSIGNED))))
 
 (define-instruction PINSR
   ((W (XMM (? target)) (? source r-ea) (&U (? position unsigned-3bit)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xC4))
    (ModR/M target source)
    (BITS (8 position UNSIGNED))))
 
 (define-instruction PMOVMSKB
   (((R (? target)) (? source xmm-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xD7))
    (ModR/M target source)))
 
 (define-instruction PMULH
   ((W (XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xE5))
    (ModR/M target source))
 
   ((UW (XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xE4))
    (ModR/M target source)))
 
 (define-instruction PMULL
   ((W (XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #xD5))
    (ModR/M target source)))
 
 (define-instruction PSHUF
   ((L (XMM (? target)) (? source xmm/m-ea) (&U (? wibblethwop unsigned-byte)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x70))
    (ModR/M target source)
    (BITS (8 wibblethwop))))
 
 (define-instruction PSHUFH
   ((W (XMM (? target)) (? source xmm/m-ea) (&U (? zob unsigned-byte)))
+   (BITS (8 #xF3))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF3)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x70))
    (ModR/M target source)
    (BITS (8 zob))))
@@ -609,9 +615,9 @@ USA.
 
 (define-instruction PSHUFL
   ((W (XMM (? target)) (? source xmm/m-ea) (&U (? veeblefitzer unsigned-byte)))
+   (BITS (8 #xF3))
    (PREFIX (ModR/M target source))
-   (BITS (8 #xF3)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 #x70))
    (ModR/M target source)
    (BITS (8 veeblefitzer))))
@@ -627,9 +633,9 @@ USA.
                        (size/opcode-list (cddddr form)))
                    `(define-instruction ,mnemonic
                       ((DQ (? target xmm-ea) (&U count unsigned-byte))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M target))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 #x73))
                        (ModR/M ,dq-digit target)
                        (BITS (8 count UNSIGNED)))
@@ -637,9 +643,9 @@ USA.
                       (((? size operand-size)
                         (? target xmm-ea)
                         (&U (? count unsigned-byte)))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M target))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 (case size ((Q) #x73) ((L) #x72) ((W) #x71))))
                        (ModR/M ,digit target)
                        (BITS (8 count UNSIGNED)))
@@ -647,9 +653,9 @@ USA.
                       (((? size operand-size)
                         (XMM (? target))
                         (? source xmm/m-ea))
+                       (BITS (8 #x66))
                        (PREFIX (ModR/M target source))
-                       (BITS (8 #x66)
-                             (8 #x0F)
+                       (BITS (8 #x0F)
                              (8 (case size
                                   ((Q) ,(+ opcode 1))
                                   ((L) ,(+ opcode 2))
@@ -661,17 +667,17 @@ USA.
 (define-instruction PSRA
   ;++ This does not admit an operand size of Q.
   (((? size operand-size) (? target xmm-ea) (&U (? count unsigned-byte)))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 (case size ((L) #x72) ((W) #x71))))
    (ModR/M 4 target)
    (BITS (8 count UNSIGNED)))
 
   (((? size operand-size) (XMM (? target)) (? source xmm/m-ea))
+   (BITS (8 #x66))
    (PREFIX (ModR/M target source))
-   (BITS (8 #x66)
-         (8 #x0F)
+   (BITS (8 #x0F)
          (8 (case size ((L) #xE2) ((W) #xE1))))
    (ModR/M target source)))
 
