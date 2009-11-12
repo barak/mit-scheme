@@ -402,6 +402,7 @@ USA.
 
 (define (set-port/type! port type)
   (guarantee-port port 'SET-PORT/TYPE!)
+  (guarantee-port-type type 'SET-PORT/TYPE!)
   (set-port/%type! port type))
 
 (define (port/state port)
@@ -590,17 +591,17 @@ USA.
 
 (define (input-port? object)
   (and (port? object)
-       (port-type/supports-input? (port/type object))
+       (port-type/supports-input? (port/%type object))
        #t))
 
 (define (output-port? object)
   (and (port? object)
-       (port-type/supports-output? (port/type object))
+       (port-type/supports-output? (port/%type object))
        #t))
 
 (define (i/o-port? object)
   (and (port? object)
-       (let ((type (port/type object)))
+       (let ((type (port/%type object)))
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)
 	      #t))))
