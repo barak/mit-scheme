@@ -134,7 +134,7 @@ double_round (double x)
       : (! (0.5 < fractional)))
     return (integral);
   else
-    return (integral + (copysign (x, 1.0)));
+    return (integral + (copysign (1.0, x)));
 }
 
 /* Conversions between Scheme types and Scheme types. */
