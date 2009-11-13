@@ -178,6 +178,7 @@ extern int ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
 extern void asm_assignment_trap (void);
 extern void asm_dont_serialize_cache (void);
 extern void asm_error (void);
+extern void asm_fixnum_shift (void);
 extern void asm_generic_add (void);
 extern void asm_generic_decrement (void);
 extern void asm_generic_divide (void);

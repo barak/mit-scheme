@@ -780,7 +780,8 @@ USA.
   shortcircuit-apply-size-6
   shortcircuit-apply-size-7
   shortcircuit-apply-size-8
-  interrupt-continuation-2)
+  interrupt-continuation-2
+  fixnum-shift)
 
 ;; Operation tables
 

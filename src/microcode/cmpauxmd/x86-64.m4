@@ -296,6 +296,7 @@ define(TC_COMPILED_ENTRY,40)
 # constants here.  These are computed in terms of the parameters
 # above, and ordered lexicographically.
 
+define(IMM_DETAGGED_FIXNUM_MINUS_ONE, `IMM(HEX(ffffffffffffffc0))')
 define(IMM_FALSE, `IMM(HEX(0000000000000000))')
 define(IMM_FIXNUM_0, `IMM(HEX(6800000000000000))')
 define(IMM_FLONUM_0, `IMM(HEX(1800000000000000))')
@@ -856,6 +857,52 @@ define_binary_predicate(less,27,jl,jb)
 define_jump_indirection(generic_quotient,37)
 define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)
+
+# Input and output in rax, shift count in rcx, all detagged fixnums.
+# Return address is at the top of the stack.
+
+define_hook_label(fixnum_shift)
+	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rcx))
+	js	asm_fixnum_shift_negative
+
+asm_fixnum_lsh:
+	OP(cmp,q)	TW(IMM(DATUM_LENGTH),REG(rcx))
+	jge	asm_fixnum_lsh_overflow
+	OP(shl,q)	TW(REG(cl),REG(rax))
+	ret
+
+asm_fixnum_lsh_overflow:
+	OP(xor,q)	TW(REG(rax),REG(rax))
+	ret
+
+asm_fixnum_shift_negative:
+	OP(neg,q)	REG(rcx)
+
+asm_fixnum_rsh:
+	OP(cmp,q)	TW(IMM(DATUM_LENGTH),REG(rcx))
+	jge	asm_fixnum_rsh_overflow
+	OP(sar,q)	TW(REG(cl),REG(rax))
+
+	# Turn rax back into a detagged fixnum by masking off the low
+	# six bits.  -1 has all bits set, but its detagged format has
+	# the low six bits clear.  Use rcx as a temporary register
+	# because AND can't take a 64-bit immediate operand; only MOV
+	# can.
+	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rcx))
+	OP(and,q)	TW(REG(rcx),REG(rax))
+	ret
+
+asm_fixnum_rsh_overflow:
+	OP(cmp,q)	TW(IMM(0),REG(rax))
+	js	asm_fixnum_rsh_overflow_negative
+
+asm_fixnum_rsh_overflow_nonnegative:
+	OP(xor,q)	TW(REG(rax),REG(rax))
+	ret
+
+asm_fixnum_rsh_overflow_negative:
+	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rax))
+	ret
 
 IFDASM(`end')
 

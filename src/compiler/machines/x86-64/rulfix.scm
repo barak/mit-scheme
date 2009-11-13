@@ -427,51 +427,17 @@ USA.
 		   (SAR Q ,target (&U ,scheme-type-width))
 		   (IMUL Q ,target ,temp))))))))
 
-;++ This is absurd -- it should just be an assembly hook.
+;;; This calls an out-of-line assembly hook because it requires a lot
+;;; of hair to deal with shift counts that exceed the datum width, and
+;;; with negative arguments.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
-  (let ((operate
-	 (lambda (target source2)
-	   ;; SOURCE2 is guaranteed not to be RCX because of the
-	   ;; require-register! used below.
-	   ;; TARGET can be RCX only if the rule has machine register
-	   ;; RCX as the target, unlikely, but it must be handled!
-	   (let ((with-target
-		   (lambda (target)
-		     (let ((jlabel (generate-label 'SHIFT-JOIN))
-			   (slabel (generate-label 'SHIFT-NEGATIVE))
-			   (zlabel (generate-label 'SHIFT-ZERO)))
-		       (LAP (MOV Q (R ,rcx) ,source2)
-			    (SAR Q (R ,rcx) (&U ,scheme-type-width))
-			    (JS B (@PCR ,slabel))
-			    (CMP Q (R ,rcx) (& ,scheme-datum-width))
-			    (JGE B (@PCR ,zlabel))
-			    (SHL Q ,target (R ,rcx))
-			    (JMP B (@PCR ,jlabel))
-			    (LABEL ,zlabel)
-			    (XOR Q ,target ,target)
-			    (JMP B (@PCR ,jlabel))
-			    (LABEL ,slabel)
-			    (NEG Q (R ,rcx))
-			    (CMP Q (R ,rcx) (& ,scheme-datum-width))
-			    (JGE B (@PCR ,zlabel))
-			    (SHR Q ,target (R ,rcx))
-			    ,@(word->fixnum target)
-			    (LABEL ,jlabel))))))
-
-	     (if (not (equal? target (INST-EA (R ,rcx))))
-		 (with-target target)
-		 (let ((temp (temporary-register-reference)))
-		   (LAP (MOV Q ,temp ,target)
-			,@(with-target temp)
-			(MOV Q ,target ,temp))))))))
-    (lambda (target source1 source2 overflow?)
-      overflow?				; ignored
-      (require-register! rcx)
-      (binary-register-operation operate #f 'GENERAL
-				 (lambda (target source)
-				   (LAP (MOV Q ,target ,source)))
-				 target source1 source2))))
+  (lambda (target source1 source2 overflow?)
+    (prefix-instructions!
+     (LAP ,@(load-machine-register! source1 rax)
+          ,@(load-machine-register! source2 rcx)))
+    (rtl-target:=machine-register! target rax)
+    (LAP ,@(invoke-hook/call entry:compiler-fixnum-shift))))
 
 (define (do-division target source1 source2 result-reg)
   (prefix-instructions! (load-machine-register! source1 rax))

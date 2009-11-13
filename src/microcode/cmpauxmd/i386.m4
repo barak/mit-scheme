@@ -290,6 +290,8 @@ define(TC_FIXNUM,26)
 define(TC_MANIFEST_NM_VECTOR,39)
 define(TC_COMPILED_ENTRY,40)
 
+define(IMM_DETAGGED_FIXNUM_MINUS_ONE, IMM(eval((-1) * (1 << TC_LENGTH))))
+
 define(REGBLOCK_VAL,8)
 define(REGBLOCK_COMPILER_TEMP,16)
 define(REGBLOCK_LEXPR_ACTUALS,28)
@@ -1050,6 +1052,49 @@ define_jump_indirection(nofp_zero,2d)
 define_jump_indirection(nofp_quotient,37)
 define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
+
+# Input and output in eax, shift count in ecx, all detagged fixnums.
+# Return address is at the top of the stack.
+
+define_hook_label(fixnum_shift)
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	js	asm_fixnum_shift_negative
+
+asm_fixnum_lsh:
+	OP(cmp,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	jge	asm_fixnum_lsh_overflow
+	OP(shl,l)	TW(REG(cl),REG(eax))
+	ret
+
+asm_fixnum_lsh_overflow:
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	ret
+
+asm_fixnum_shift_negative:
+	OP(neg,l)	REG(ecx)
+
+asm_fixnum_rsh:
+	OP(cmp,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	jge	asm_fixnum_rsh_overflow
+	OP(sar,l)	TW(REG(cl),REG(eax))
+
+	# Turn eax back into a detagged fixnum by masking off the low
+	# six bits.  -1 has all bits set, but its detagged format has
+	# the low six bits clear.
+	OP(and,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
+	ret
+
+asm_fixnum_rsh_overflow:
+	OP(cmp,l)	TW(IMM(0),REG(eax))
+	js	asm_fixnum_rsh_overflow_negative
+
+asm_fixnum_rsh_overflow_nonnegative:
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	ret
+
+asm_fixnum_rsh_overflow_negative:
+	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
+	ret
 
 IFDASM(`end')
 

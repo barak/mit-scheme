@@ -278,6 +278,8 @@ x86_64_reset_hook (void)
      renumber them now.  */
   SETUP_REGISTER (asm_interrupt_continuation_2);	/* 39 */
 
+  SETUP_REGISTER (asm_fixnum_shift);			/* 40 */
+
 #ifdef _MACH_UNIX
   {
     vm_address_t addr;
