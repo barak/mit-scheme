@@ -718,7 +718,7 @@ asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rbx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
 	ucomisd		TW(QOF(FLONUM_DATA_OFFSET,REG(rbx)),REG(xmm0))
-	$3	asm_generic_return_sharp_t
+	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
@@ -835,11 +835,11 @@ define_binary_operation(subtract,28,sub,subsd)
 define_binary_operation_with_setup(multiply,29,imul,mulsd,
 	`OP(and,q)	TW(rmask,REG(rax))')
 
-# define_binary_predicate(name,index,jcc)
+# define_binary_predicate(name,index,fixjcc,flojcc)
 # define_binary_predicate(  $1,   $2, $3)
-define_binary_predicate(equal,24,je)
-define_binary_predicate(greater,25,jg)
-define_binary_predicate(less,27,jl)
+define_binary_predicate(equal,24,je,je)
+define_binary_predicate(greater,25,jg,ja)
+define_binary_predicate(less,27,jl,jb)
 
 #define_jump_indirection(generic_decrement,22)
 #define_jump_indirection(generic_divide,23)
