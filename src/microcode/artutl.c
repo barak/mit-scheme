@@ -126,7 +126,15 @@ double_truncate (double x)
 double
 double_round (double x)
 {
-  return (double_truncate ((x < 0) ? (x - 0.5) : (x + 0.5)));
+  double integral;
+  double fractional = (fabs (modf (x, (&integral))));
+
+  if ((fractional == 0.5)
+      ? ((fmod (integral, 2.0)) == 0.0)
+      : (! (0.5 < fractional)))
+    return (integral);
+  else
+    return (integral + (copysign (x, 1.0)));
 }
 
 /* Conversions between Scheme types and Scheme types. */
