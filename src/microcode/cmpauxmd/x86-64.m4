@@ -613,7 +613,7 @@ define_hook_label(generic_$1)
 asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rdx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
-	$4		TW(ABS(flonum_one),REG(xmm0))
+	$4		TW(ABS(EVR(flonum_one)),REG(xmm0))
 	jmp	asm_generic_flonum_result
 
 asm_generic_$1_fix:
@@ -641,7 +641,7 @@ define_hook_label(generic_$1)
 asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rdx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
-	ucomisd		TW(ABS(flonum_zero),REG(xmm0))
+	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm0))
 	$3	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
@@ -805,7 +805,7 @@ asm_generic_divide_flo_by_flo:
 	OP(and,q)	TW(rmask,REG(rcx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rax)),REG(xmm0))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rcx)),REG(xmm1))
-	ucomisd		TW(ABS(flonum_zero),REG(xmm1))
+	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm1))
 	je	asm_generic_divide_fail
 	divsd		TW(REG(xmm1),REG(xmm0))
 	jmp	asm_generic_flonum_result
