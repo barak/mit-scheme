@@ -45,7 +45,7 @@ USA.
   (add-subsystem-identification! "Microcode"
 				 (get-microcode-version-numbers)))
 
-(define (write-mit-scheme-copyright #!optional port line-prefix cmark)
+(define (write-mit-scheme-copyright #!optional port line-prefix cmark short?)
   (let ((port
 	 (if (default-object? port)
 	     (current-output-port)
@@ -55,8 +55,10 @@ USA.
     (write-words (let ((years (map number->string copyright-years)))
 		   `("Copyright"
 		     ,cmark
-		     ,@(map (lambda (s) (string-append s ","))
-			    (except-last-pair years))
+		     ,@(if short?
+			   '()
+			   (map (lambda (s) (string-append s ","))
+				(except-last-pair years)))
 		     ,(last years)
 		     "Massachusetts"
 		     "Institute"
