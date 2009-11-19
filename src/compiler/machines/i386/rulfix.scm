@@ -486,6 +486,7 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
+    overflow?                           ;ignore
     (prefix-instructions!
      (LAP ,@(load-machine-register! source1 eax)
           ,@(load-machine-register! source2 ecx)))
