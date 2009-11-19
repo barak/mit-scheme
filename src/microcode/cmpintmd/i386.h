@@ -309,6 +309,7 @@ extern void asm_primitive_error (void);
 extern void asm_primitive_lexpr_apply (void);
 extern void asm_reference_trap (void);
 extern void asm_safe_reference_trap (void);
+extern void asm_set_interrupt_enables (void);
 extern void asm_sc_apply (void);
 extern void asm_sc_apply_size_1 (void);
 extern void asm_sc_apply_size_2 (void);

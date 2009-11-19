@@ -673,7 +673,8 @@ USA.
   shortcircuit-apply-size-8
   interrupt-continuation-2
   conditionally-serialize
-  fixnum-shift)
+  fixnum-shift
+  set-interrupt-enables!)
 
 ;; Operation tables
 

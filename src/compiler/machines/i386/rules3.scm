@@ -172,42 +172,51 @@ USA.
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
-  (if (eq? primitive compiled-error-procedure)
-      (LAP ,@(clear-map!)
-	   (MOV W (R ,ecx) (& ,frame-size))
-	   ,@(invoke-hook entry:compiler-error))
-      (let ((arity (primitive-procedure-arity primitive)))
-	(cond ((not (negative? arity))
-	       (with-values (lambda () (get-cached-label))
-		 (lambda (pc-label pc-reg)
-		   pc-reg		; ignored
-		   (if pc-label
-		       (let ((get-code
-			      (object->machine-register! primitive ecx)))
-			 (LAP ,@get-code
-			      ,@(clear-map!)
-			      ,@(invoke-hook entry:compiler-primitive-apply)))
-		       (let ((prim-label (constant->label primitive))
-			     (offset-label (generate-label 'PRIMOFF)))
-			 (LAP ,@(clear-map!)
-			      ,@(invoke-hook/call
-				 entry:compiler-short-primitive-apply)
-			      (LABEL ,offset-label)
-			      (LONG S (- ,prim-label ,offset-label))))))))
-	      ((= arity -1)
-	       (let ((get-code (object->machine-register! primitive ecx)))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV W ,reg:lexpr-primitive-arity
-			   (& ,(-1+ frame-size)))
-		      ,@(invoke-hook entry:compiler-primitive-lexpr-apply))))
-	      (else
-	       ;; Unknown primitive arity.  Go through apply.
-	       (let ((get-code (object->machine-register! primitive ecx)))
-		 (LAP ,@get-code
-		      ,@(clear-map!)
-		      (MOV W (R ,edx) (& ,frame-size))
-		      ,@(invoke-interface code:compiler-apply))))))))
+  (cond ((eq? primitive compiled-error-procedure)
+	 (LAP ,@(clear-map!)
+	      (MOV W (R ,ecx) (& ,frame-size))
+	      ,@(invoke-hook entry:compiler-error)))
+	((eq? primitive (ucode-primitive SET-INTERRUPT-ENABLES!))
+	 (LAP ,@(clear-map!)
+	      ,@(invoke-hook entry:compiler-set-interrupt-enables!)))
+	(else
+	 (let ((arity (primitive-procedure-arity primitive)))
+	   (cond ((not (negative? arity))
+		  (known-primitive-invocation primitive))
+		 ((= arity -1)
+		  (lexpr-primitive-invocation primitive frame-size))
+		 (else
+		  (unknown-primitive-invocation primitive frame-size)))))))
+
+(define (known-primitive-invocation primitive)
+  (receive (pc-label pc-reg) (get-cached-label)
+    pc-reg				; ignored
+    (if pc-label
+	(LAP ,@(primitive-invocation-setup! primitive)
+	     ,@(invoke-hook entry:compiler-primitive-apply))
+	(let ((prim-label (constant->label primitive))
+	      (offset-label (generate-label 'PRIMOFF)))
+	  (LAP ,@(clear-map!)
+	       ,@(invoke-hook/call entry:compiler-short-primitive-apply)
+	       (LABEL ,offset-label)
+	       (LONG S (- ,prim-label ,offset-label)))))))
+
+(define (lexpr-primitive-invocation primitive frame-size)
+  (LAP ,@(primitive-invocation-setup! primitive)
+       (MOV W ,reg:lexpr-primitive-arity (& ,(-1+ frame-size)))
+       ,@(invoke-hook entry:compiler-primitive-lexpr-apply)))
+
+(define (unknown-primitive-invocation primitive frame-size)
+  ;; Unknown primitive arity.  Go through apply.
+  (LAP ,@(primitive-invocation-setup! primitive)
+       (MOV W (R ,edx) (& ,frame-size))
+       ,@(invoke-interface code:compiler-apply)))
+
+(define (primitive-invocation-setup! primitive)
+  (let* ((get-code (object->machine-register! primitive ecx))
+	 (clear-map (clear-map!)))
+    (LAP ,@get-code
+	 ,@clear-map)))
 
 (let-syntax
     ((define-primitive-invocation

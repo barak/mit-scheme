@@ -292,11 +292,18 @@ define(TC_COMPILED_ENTRY,40)
 
 define(IMM_DETAGGED_FIXNUM_MINUS_ONE, IMM(eval((-1) * (1 << TC_LENGTH))))
 
+define(INT_Stack_Overflow,HEX(1))
+define(INT_GC,HEX(4))
+
+define(REGBLOCK_MEMTOP,0)
+define(REGBLOCK_INT_MASK,4)
 define(REGBLOCK_VAL,8)
 define(REGBLOCK_COMPILER_TEMP,16)
 define(REGBLOCK_LEXPR_ACTUALS,28)
 define(REGBLOCK_PRIMITIVE,32)
 define(REGBLOCK_CLOSURE_FREE,36)
+define(REGBLOCK_STACK_GUARD,44)
+define(REGBLOCK_INT_CODE,48)
 
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
 define(REGBLOCK_UTILITY_ARG4,REGBLOCK_CLOSURE_FREE)
@@ -768,6 +775,58 @@ define_apply_fixed_size(5)
 define_apply_fixed_size(6)
 define_apply_fixed_size(7)
 define_apply_fixed_size(8)
+
+# On entry, the tagged interrupt mask is at the top of the stack,
+# below which is a tagged return address.  This implementation is not
+# very clever about avoiding unnecessary writes.
+
+define_hook_label(set_interrupt_enables)
+
+	# Store the old interrupt mask in the value register.
+	OP(mov,l)	TW(LOF(REGBLOCK_INT_MASK(),regs),REG(eax))
+	OP(or,l)	TW(IMM(eval(TAG(TC_FIXNUM,0))),REG(eax))
+	OP(mov,l)	TW(REG(eax),LOF(REGBLOCK_VAL(),regs))
+
+	# Store the new one in the interrupt mask register.
+	OP(pop,l)	REG(ecx)
+	OP(and,l)	TW(rmask,REG(ecx))
+	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_INT_MASK(),regs))
+
+set_interrupt_enables_determine_memtop:
+	# If there is an interrupt pending, set memtop to 0.
+	OP(test,l)	TW(LOF(REGBLOCK_INT_CODE(),regs),REG(ecx))
+	jz	set_interrupt_enables_memtop_1
+	OP(xor,l)	TW(REG(edx),REG(edx))
+	jmp	set_interrupt_enables_set_memtop
+
+set_interrupt_enables_memtop_1:
+	# If GC is enabled, set memtop to the heap allocation limit.
+	OP(test,l)	TW(IMM(INT_GC),REG(ecx))
+	jz	set_interrupt_enables_memtop_2
+	OP(mov,l)	TW(ABS(EVR(heap_alloc_limit)),REG(edx))
+	jmp	set_interrupt_enables_set_memtop
+
+set_interrupt_enables_memtop_2:
+	# Otherwise, there is no interrupt pending, and GC is not
+	# enabled, so set memtop to the absolute heap end.
+	OP(mov,l)	TW(ABS(EVR(heap_end)),REG(edx))
+
+set_interrupt_enables_set_memtop:
+	OP(mov,l)	TW(REG(edx),LOF(REGBLOCK_MEMTOP(),regs))
+
+set_interrupt_enables_determine_stack_guard:
+	OP(test,l)	TW(IMM(INT_Stack_Overflow),REG(ecx))
+	jz	set_interrupt_enables_stack_guard_1
+	OP(mov,l)	TW(ABS(EVR(stack_guard)),REG(edx))
+	jmp	set_interrupt_enables_set_stack_guard
+
+set_interrupt_enables_stack_guard_1:
+	OP(mov,l)	TW(ABS(EVR(stack_start)),REG(edx))
+
+set_interrupt_enables_set_stack_guard:
+	OP(mov,l)	TW(REG(edx),LOF(REGBLOCK_STACK_GUARD(),regs))
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	ret
 
 ###	The following code is used by generic arithmetic
 ###	whether the fixnum case is open-coded in line or not.

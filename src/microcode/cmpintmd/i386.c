@@ -339,6 +339,7 @@ i386_reset_hook (void)
   else
     SETUP_REGISTER (asm_dont_serialize_cache);		/* -7 */
   SETUP_REGISTER (asm_fixnum_shift);			/* -6 */
+  SETUP_REGISTER (asm_set_interrupt_enables);		/* -5 */
 
 #ifdef _MACH_UNIX
   {
