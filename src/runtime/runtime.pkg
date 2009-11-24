@@ -1095,6 +1095,8 @@ USA.
   (export (runtime string)
 	  %char-set-member?
 	  char-set-table)
+  (export (runtime parser)
+	  %char-set-member?)
   (export (runtime regular-expression-compiler)
 	  make-char-set)
   (initialization (initialize-package!)))
