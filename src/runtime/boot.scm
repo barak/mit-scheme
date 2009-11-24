@@ -158,11 +158,12 @@ USA.
     ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
 
 (define (run-boot-inits! environment)
-  (let ((inits
-	 ((ucode-primitive lexical-reference) environment saved-boot-inits)))
-    ((ucode-primitive unbind-variable) environment saved-boot-inits)
-    (for-each (lambda (init) (init))
-	      inits)))
+  (and (not (lexical-unreferenceable? environment saved-boot-inits))
+       (let ((inits
+	      ((ucode-primitive lexical-reference) environment saved-boot-inits)))
+	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
+	 (for-each (lambda (init) (init))
+		   inits))))
 
 (define boot-inits #f)
 (define saved-boot-inits '|#[saved-boot-inits]|)
