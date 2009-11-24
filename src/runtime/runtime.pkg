@@ -2111,10 +2111,16 @@ USA.
   (parent (runtime))
   (export ()
 	  (discard-char read-char)
+	  (%discard-char %read-char)
+	  (input-port/%discard-char input-port/%read-char)
 	  (input-port/discard-char input-port/read-char)
+	  %read-char
+	  %peek-char
 	  char-ready?
 	  eof-object
 	  eof-object?
+	  input-port/%read-char
+	  input-port/%peek-char
 	  input-port/char-ready?
 	  input-port/discard-chars
 	  input-port/eof?
@@ -2141,6 +2147,7 @@ USA.
   (files "output")
   (parent (runtime))
   (export ()
+	  %write-char
 	  beep
 	  call-with-truncated-output-port
 	  clear
@@ -2148,6 +2155,8 @@ USA.
 	  flush-output
 	  fresh-line
 	  newline
+	  output-port/%write-char
+	  output-port/%discretionary-flush
 	  output-port/bytes-written
 	  output-port/column
 	  output-port/discretionary-flush
