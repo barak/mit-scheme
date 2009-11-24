@@ -26,18 +26,25 @@ USA.
 ;;;; Input
 ;;; package: (runtime input-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+         (integrate-external "port"))
 
 ;;;; Low level
 
 (define (input-port/char-ready? port)
   ((port/operation/char-ready? port) port))
 
+(define-integrable (input-port/%read-char port)
+  ((port/%operation/read-char port) port))
+
 (define (input-port/read-char port)
   ((port/operation/read-char port) port))
 
 (define (input-port/unread-char port char)
   ((port/operation/unread-char port) port char))
+
+(define-integrable (input-port/%peek-char port)
+  ((port/%operation/peek-char port) port))
 
 (define (input-port/peek-char port)
   ((port/operation/peek-char port) port))
@@ -143,21 +150,25 @@ USA.
 		  (else #f))))
 	(input-port/char-ready? port))))
 
+(define (%read-char port)
+  (let loop ()
+    (or (input-port/%read-char port)
+	(loop))))
+
 (define (read-char #!optional port)
-  (let ((port (optional-input-port port 'READ-CHAR)))
-    (let loop ()
-      (or (input-port/read-char port)
-	  (loop)))))
+  (%read-char (optional-input-port port 'READ-CHAR)))
 
 (define (unread-char char #!optional port)
   (guarantee-char char 'UNREAD-CHAR)
   (input-port/unread-char (optional-input-port port 'UNREAD-CHAR) char))
 
+(define (%peek-char port)
+  (let loop ()
+    (or (input-port/%peek-char port)
+	(loop))))
+
 (define (peek-char #!optional port)
-  (let ((port (optional-input-port port 'PEEK-CHAR)))
-    (let loop ()
-      (or (input-port/peek-char port)
-	  (loop)))))
+  (%peek-char (optional-input-port port 'PEEK-CHAR)))
 
 (define (read-char-no-hang #!optional port)
   (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))
