@@ -2004,6 +2004,7 @@ USA.
 	  output-port-type?
 	  output-port?
 	  port-position
+	  port-type/%operation
 	  port-type/char-ready?
 	  port-type/discretionary-flush-output
 	  port-type/flush-output
@@ -2020,6 +2021,9 @@ USA.
 	  port-type/write-char
 	  port-type/write-substring
 	  port-type?
+	  port/%operation
+	  port/%state
+	  port/%type
 	  port/coding
 	  port/copy
 	  port/get-property
@@ -2072,12 +2076,16 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime input-port)
+	  port/%operation/read-char
+	  port/%operation/peek-char
 	  port/operation/char-ready?
 	  port/operation/peek-char
 	  port/operation/read-char
 	  port/operation/read-substring
 	  port/operation/unread-char)
   (export (runtime output-port)
+	  port/%operation/discretionary-flush-output
+	  port/%operation/write-char
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
 	  port/operation/fresh-line
