@@ -105,13 +105,17 @@ USA.
 		  (list (car entry) (cdr entry)))
 		(port-type/custom-operations type))))
 
-(define (port-type/operation type name)
-  (guarantee-port-type type 'PORT-TYPE/OPERATION)
+;; Assumes type is a PORT-TYPE
+(define (port-type/%operation type name)
   (let ((entry
 	 (or (assq name (port-type/custom-operations type))
 	     (assq name (port-type/standard-operations type)))))
     (and entry
 	 (cdr entry))))
+
+(define (port-type/operation type name)
+  (guarantee-port-type type 'PORT-TYPE/OPERATION)
+  (port-type/%operation type name))
 
 ;;;; Constructors
 
@@ -428,8 +432,12 @@ USA.
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
 
+(define-integrable (port/%operation port name)
+  (port-type/%operation (port/%type port) name))
+
 (define (port/operation port name)
-  (port-type/operation (port/type port) name))
+  (guarantee-port port 'port/operation)
+  (port/%operation port name))
 
 (define-syntax define-port-operation
   (sc-macro-transformer
@@ -450,6 +458,20 @@ USA.
 (define-port-operation line-start?)
 (define-port-operation flush-output)
 (define-port-operation discretionary-flush-output)
+
+;;; These operations assume that the port is in fact a port.
+(define-syntax define-unsafe-port-operation
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE-INTEGRABLE (,(symbol-append 'PORT/%OPERATION/ name) PORT)
+	  (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
+	   (PORT/%TYPE PORT)))))))
+
+(define-unsafe-port-operation discretionary-flush-output)
+(define-unsafe-port-operation read-char)
+(define-unsafe-port-operation peek-char)
+(define-unsafe-port-operation write-char)
 
 (define (port-position port)
   ((or (port/operation port 'POSITION)
@@ -515,7 +537,7 @@ USA.
        (%input-open? port)))
 
 (define (%input-open? port)
-  (let ((open? (port/operation port 'INPUT-OPEN?)))
+  (let ((open? (port/%operation port 'INPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
@@ -525,7 +547,7 @@ USA.
        (%output-open? port)))
 
 (define (%output-open? port)
-  (let ((open? (port/operation port 'OUTPUT-OPEN?)))
+  (let ((open? (port/%operation port 'OUTPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
