@@ -33,6 +33,8 @@ USA.
   (sf-conditionally "os2winp")
 
   (sf-conditionally "port")
+  (sf-conditionally "input")
+  (sf-conditionally "output")
   (sf-directory "."))
 
 ;; Guarantee that the package modeller is loaded.  load-option ensures
