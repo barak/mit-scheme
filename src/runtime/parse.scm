@@ -26,7 +26,9 @@ USA.
 ;;;; Scheme Parser
 ;;; package: (runtime parser)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "input")
+	 (integrate-external "port"))
 
 (define *parser-radix* 10)
 (define *parser-canonicalize-symbols?* #t)
@@ -71,7 +73,7 @@ USA.
   (let ((handlers (parser-table/initial (db-parser-table db))))
     (let loop ()
       (let* ((position (current-position port db))
-	     (char (read-char port)))
+	     (char (%read-char port)))
 	(if (eof-object? char)
 	    char
 	    (let ((object ((get-handler char handlers) port db ctx char)))
@@ -85,7 +87,7 @@ USA.
   (list 'CONTINUE-PARSING))
 
 (define (handler:special port db ctx char1)
-  (let ((char2 (read-char/no-eof port)))
+  (let ((char2 (%read-char/no-eof port)))
     ((get-handler char2 (parser-table/special (db-parser-table db)))
      port db ctx char1 char2)))
 
@@ -183,7 +185,7 @@ USA.
 (define (handler:comment port db ctx char)
   db ctx char
   (let loop ()
-    (let ((char (read-char port)))
+    (let ((char (%read-char port)))
       (cond ((eof-object? char) char)
 	    ((char=? char #\newline) unspecific)
 	    (else (loop)))))
@@ -192,16 +194,16 @@ USA.
 (define (handler:multi-line-comment port db ctx char1 char2)
   db ctx char1 char2
   (let loop ()
-    (case (read-char/no-eof port)
+    (case (%read-char/no-eof port)
       ((#\#)
        (let sharp ()
-	 (case (read-char/no-eof port)
+	 (case (%read-char/no-eof port)
 	   ((#\#) (sharp))
 	   ((#\|) (loop) (loop))
 	   (else (loop)))))
       ((#\|)
        (let vbar ()
-	 (case (read-char/no-eof port)
+	 (case (%read-char/no-eof port)
 	   ((#\#) unspecific)
 	   ((#\|) (vbar))
 	   (else (loop)))))
@@ -256,19 +258,19 @@ USA.
 		 (let ((char (car prefix)))
 		   (set! prefix (cdr prefix))
 		   char)
-		 (read-char/no-eof port))))
+		 (%read-char/no-eof port))))
 	(%peek
 	 (lambda ()
 	   (if (pair? prefix)
 	       (car prefix)
-	       (peek-char port))))
+	       (%peek-char port))))
 	(%discard
 	 (lambda ()
 	   (if (pair? prefix)
 	       (begin
 		 (set! prefix (cdr prefix))
 		 unspecific)
-	       (read-char port)))))
+	       (%read-char port)))))
     (let read-unquoted ((quoted? #f))
       (let ((char (%peek)))
 	(if (or (eof-object? char)
@@ -286,7 +288,7 @@ USA.
 			     (if (char=? char #\|)
 				 (read-unquoted #t)
 				 (begin
-				   (write-char (if (char=? char #\\)
+				   (%write-char (if (char=? char #\\)
 						   (%read)
 						   char)
 					       port*)
@@ -295,11 +297,11 @@ USA.
 		    ((char=? char #\\)
 		     (if quoting?
 			 (begin
-			   (write-char (%read) port*)
+			   (%write-char (%read) port*)
 			   (read-unquoted #t))
 			 (error:illegal-char char)))
 		    (else
-		     (write-char (canon char) port*)
+		     (%write-char (canon char) port*)
 		     (read-unquoted quoted?)))))))))
 
 (define (handler:list port db ctx char)
@@ -416,9 +418,9 @@ USA.
 
 (define (handler:unquote port db ctx char)
   ctx char
-  (if (char=? (peek-char/no-eof port) #\@)
+  (if (char=? (%peek-char/no-eof port) #\@)
       (begin
-	(read-char port)
+	(%read-char port)
 	(list 'UNQUOTE-SPLICING (read-object port db)))
       (list 'UNQUOTE (read-object port db))))
 
@@ -427,13 +429,13 @@ USA.
   (call-with-output-string
     (lambda (port*)
       (let loop ()
-	(let ((char (read-char/no-eof port)))
+	(let ((char (%read-char/no-eof port)))
 	  (case char
 	    ((#\")
 	     unspecific)
 	    ((#\\)
 	     (let ((char
-		    (let ((char (read-char/no-eof port)))
+		    (let ((char (%read-char/no-eof port)))
 		      (cond ((char-ci=? char #\n) #\newline)
 			    ((char-ci=? char #\t) #\tab)
 			    ((char-ci=? char #\v) #\vt)
@@ -443,21 +445,21 @@ USA.
 			    ((char-ci=? char #\a) #\bel)
 			    ((char->digit char 8) (octal->char char port))
 			    (else char)))))
-	       (write-char char port*)
+	       (%write-char char port*)
 	       (loop)))
 	    (else
-	     (write-char char port*)
+	     (%write-char char port*)
 	     (loop))))))))
 
 (define (octal->char c1 port)
   (let ((d1 (char->digit c1 8)))
     (if (or (not d1) (fix:> d1 3))
 	(error:illegal-char c1))
-    (let* ((c2 (read-char/no-eof port))
+    (let* ((c2 (%read-char/no-eof port))
 	   (d2 (char->digit c2 8)))
       (if (not d2)
 	  (error:illegal-char c2))
-      (let* ((c3 (read-char/no-eof port))
+      (let* ((c3 (%read-char/no-eof port))
 	     (d3 (char->digit c3 8)))
 	(if (not d3)
 	    (error:illegal-char c3))
@@ -495,10 +497,10 @@ USA.
 
 (define (handler:char port db ctx char1 char2)
   db ctx char1 char2
-  (let ((char (read-char/no-eof port))
+  (let ((char (%read-char/no-eof port))
 	(at-end?
 	 (lambda ()
-	   (let ((char (peek-char port)))
+	   (let ((char (%peek-char port)))
 	     (or (eof-object? char)
 		 (atom-delimiter? char))))))
     (if (or (atom-delimiter? char)
@@ -507,11 +509,11 @@ USA.
 	(name->char
 	 (call-with-output-string
 	   (lambda (port*)
-	     (write-char char port*)
+	     (%write-char char port*)
 	     (let loop ()
-	       (write-char (let ((char (read-char/no-eof port)))
+	       (%write-char (let ((char (%read-char/no-eof port)))
 			     (if (char=? char #\\)
-				 (read-char/no-eof port)
+				 (%read-char/no-eof port)
 				 char))
 			   port*)
 	       (if (not (at-end?))
@@ -535,7 +537,7 @@ USA.
 (define (handler:special-arg port db ctx char1 char2)
   ctx char1
   (let loop ((n (char->digit char2 10)))
-    (let ((char (read-char/no-eof port)))
+    (let ((char (%read-char/no-eof port)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
 	    ((char=? char #\=)
@@ -566,6 +568,16 @@ USA.
 (define non-shared-object
   (list 'NON-SHARED-OBJECT))
 
+(define (%read-char port)
+  (let ((char
+	 (let loop ()
+	   (or (input-port/%read-char port)
+	       (loop))))
+	(op (port/%operation port 'DISCRETIONARY-WRITE-CHAR)))
+    (if op
+	(op char port))
+    char))
+
 (define (read-char port)
   (let ((char
 	 (let loop ()
@@ -576,16 +588,33 @@ USA.
 	(op char port))
     char))
 
+(define (%read-char/no-eof port)
+  (let ((char (%read-char port)))
+    (if (eof-object? char)
+	(error:premature-eof port))
+    char))
+
 (define (read-char/no-eof port)
   (let ((char (read-char port)))
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
 
+(define (%peek-char port)
+  (let loop ()
+    (or (input-port/%peek-char port)
+	(loop))))
+
 (define (peek-char port)
   (let loop ()
     (or (input-port/peek-char port)
 	(loop))))
+
+(define (%peek-char/no-eof port)
+  (let ((char (%peek-char port)))
+    (if (eof-object? char)
+	(error:premature-eof port))
+    char))
 
 (define (peek-char/no-eof port)
   (let ((char (peek-char port)))
