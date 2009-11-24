@@ -594,7 +594,7 @@ USA.
 (define (transcribe-char char port)
   (let ((tport (port/transcript port)))
     (if tport
-	(write-char char tport))))
+	(%write-char char tport))))
 
 (define (transcribe-substring string start end port)
   (let ((tport (port/transcript port)))
