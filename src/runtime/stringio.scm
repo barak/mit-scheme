@@ -26,7 +26,8 @@ USA.
 ;;;; String I/O Ports (SRFI-6)
 ;;; package: (runtime string-i/o-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "port"))
 
 ;;;; Input as characters
 
@@ -104,11 +105,11 @@ USA.
   (write-string " from string" output-port))
 
 (define (internal-in/eof? port)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (not (fix:< (iistate-next ss) (iistate-end ss)))))
 
 (define (internal-in/read-substring port string start end)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (let ((n
 	   (move-chars! (iistate-string ss) (iistate-next ss) (iistate-end ss)
 			string start end)))
@@ -121,13 +122,13 @@ USA.
 		       narrow-in/unread-char))
 
 (define (narrow-in/peek-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(string-ref (iistate-string ss) (iistate-next ss))
 	(make-eof-object port))))
 
 (define (narrow-in/read-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(let ((char (string-ref (iistate-string ss) (iistate-next ss))))
 	  (set-iistate-next! ss (fix:+ (iistate-next ss) 1))
@@ -135,7 +136,7 @@ USA.
 	(make-eof-object port))))
 
 (define (narrow-in/unread-char port char)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (not (fix:< (iistate-start ss) (iistate-next ss)))
 	(error "No char to unread:" port))
     (let ((prev (fix:- (iistate-next ss) 1)))
@@ -149,13 +150,13 @@ USA.
 		       wide-in/unread-char))
 
 (define (wide-in/peek-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(wide-string-ref (iistate-string ss) (iistate-next ss))
 	(make-eof-object port))))
 
 (define (wide-in/read-char port)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (fix:< (iistate-next ss) (iistate-end ss))
 	(let ((char (wide-string-ref (iistate-string ss) (iistate-next ss))))
 	  (set-iistate-next! ss (fix:+ (iistate-next ss) 1))
@@ -163,7 +164,7 @@ USA.
 	(make-eof-object port))))
 
 (define (wide-in/unread-char port char)
-  (let ((ss (port/state port)))
+  (let ((ss (port/%state port)))
     (if (not (fix:< (iistate-start ss) (iistate-next ss)))
 	(error "No char to unread:" port))
     (let ((prev (fix:- (iistate-next ss) 1)))
@@ -190,19 +191,19 @@ USA.
   unread)
 
 (define (external-in/eof? port)
-  (let ((xs (port/state port)))
+  (let ((xs (port/%state port)))
     (and (not (xistate-unread xs))
 	 (not ((xistate-source xs))))))
 
 (define (external-in/peek-char port)
-  (let ((xs (port/state port)))
+  (let ((xs (port/%state port)))
     (or (xistate-unread xs)
 	(let ((char ((xistate-source xs))))
 	  (set-xistate-unread! xs char)
 	  char))))
 
 (define (external-in/read-char port)
-  (let ((xs (port/state port)))
+  (let ((xs (port/%state port)))
     (let ((unread (xistate-unread xs)))
       (if unread
 	  (begin
@@ -211,13 +212,13 @@ USA.
 	  ((xistate-source xs))))))
 
 (define (external-in/unread-char port char)
-  (let ((xs (port/state port)))
+  (let ((xs (port/%state port)))
     (if (xistate-unread xs)
 	(error "Can't unread two chars."))
     (set-xistate-unread! xs char)))
 
 (define (external-in/read-substring port string start end)
-  (source->sink! (xistate-source (port/state port))
+  (source->sink! (xistate-source (port/%state port))
 		 (string-sink string start end)))
 
 (define (move-chars! string start end string* start* end*)
@@ -410,7 +411,7 @@ USA.
 (define (narrow-out/write-char port char)
   (if (not (fix:< (char->integer char) #x100))
       (error:not-8-bit-char char))
-  (let ((os (port/state port)))
+  (let ((os (port/%state port)))
     (maybe-grow-buffer os 1)
     (string-set! (ostate-buffer os) (ostate-index os) char)
     (set-ostate-index! os (fix:+ (ostate-index os) 1))
@@ -418,11 +419,11 @@ USA.
     1))
 
 (define (narrow-out/extract-output port)
-  (let ((os (port/state port)))
+  (let ((os (port/%state port)))
     (string-head (ostate-buffer os) (ostate-index os))))
 
 (define (narrow-out/extract-output! port)
-  (let* ((os (port/state port))
+  (let* ((os (port/%state port))
 	 (output (string-head! (ostate-buffer os) (ostate-index os))))
     (reset-buffer! os)
     output))
@@ -433,7 +434,7 @@ USA.
 			wide-out/extract-output!))
 
 (define (wide-out/write-char port char)
-  (let ((os (port/state port)))
+  (let ((os (port/%state port)))
     (maybe-grow-buffer os 1)
     (wide-string-set! (ostate-buffer os) (ostate-index os) char)
     (set-ostate-index! os (fix:+ (ostate-index os) 1))
@@ -441,11 +442,11 @@ USA.
     1))
 
 (define (wide-out/extract-output port)
-  (let ((os (port/state port)))
+  (let ((os (port/%state port)))
     (wide-substring (ostate-buffer os) 0 (ostate-index os))))
 
 (define (wide-out/extract-output! port)
-  (let ((os (port/state port)))
+  (let ((os (port/%state port)))
     (let ((output (wide-substring (ostate-buffer os) 0 (ostate-index os))))
       (reset-buffer! os)
       output)))
@@ -466,17 +467,17 @@ USA.
   column)
 
 (define (string-out/output-column port)
-  (ostate-column (port/state port)))
+  (ostate-column (port/%state port)))
 
 (define (string-out/position port)
-  (ostate-index (port/state port)))
+  (ostate-index (port/%state port)))
 
 (define (string-out/write-self port output-port)
   port
   (write-string " to string" output-port))
 
 (define (string-out/write-substring port string start end)
-  (let ((os (port/state port))
+  (let ((os (port/%state port))
 	(n (- end start)))
     (maybe-grow-buffer os n)
     (let* ((start* (ostate-index os))
