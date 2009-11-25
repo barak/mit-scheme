@@ -26,7 +26,8 @@ USA.
 ;;;; Generic I/O Ports
 ;;; package: (runtime generic-i/o-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "port"))
 
 (define (make-generic-i/o-port source sink #!optional type . extra-state)
   (if (not (or source sink))
@@ -94,15 +95,15 @@ USA.
 		(list->vector extra)))
 
 (define-integrable (port-input-buffer port)
-  (gstate-input-buffer (port/state port)))
+  (gstate-input-buffer (port/%state port)))
 
 (define-integrable (port-output-buffer port)
-  (gstate-output-buffer (port/state port)))
+  (gstate-output-buffer (port/%state port)))
 
 (define (generic-i/o-port-accessor index)
   (guarantee-index-fixnum index 'GENERIC-I/O-PORT-ACCESSOR)
   (lambda (port)
-    (let ((extra (gstate-extra (port/state port))))
+    (let ((extra (gstate-extra (port/%state port))))
       (if (not (fix:< index (vector-length extra)))
 	  (error "Accessor index out of range:" index))
       (vector-ref extra index))))
@@ -110,7 +111,7 @@ USA.
 (define (generic-i/o-port-modifier index)
   (guarantee-index-fixnum index 'GENERIC-I/O-PORT-MODIFIER)
   (lambda (port object)
-    (let ((extra (gstate-extra (port/state port))))
+    (let ((extra (gstate-extra (port/%state port))))
       (if (not (fix:< index (vector-length extra)))
 	  (error "Accessor index out of range:" index))
       (vector-set! extra index object))))
@@ -405,10 +406,10 @@ USA.
   #t)
 
 (define (generic-io/coding port)
-  (gstate-coding (port/state port)))
+  (gstate-coding (port/%state port)))
 
 (define (generic-io/set-coding port name)
-  (let ((state (port/state port)))
+  (let ((state (port/%state port)))
     (let ((ib (gstate-input-buffer state)))
       (if ib
 	  (set-input-buffer-coding! ib name)))
@@ -430,10 +431,10 @@ USA.
 	(else '())))
 
 (define (generic-io/line-ending port)
-  (gstate-line-ending (port/state port)))
+  (gstate-line-ending (port/%state port)))
 
 (define (generic-io/set-line-ending port name)
-  (let ((state (port/state port)))
+  (let ((state (port/%state port)))
     (let ((ib (gstate-input-buffer state)))
       (if ib
 	  (set-input-buffer-line-ending!
