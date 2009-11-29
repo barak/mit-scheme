@@ -26,7 +26,8 @@ srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
 
-SOURCES = user.texinfo
 TARGET_ROOT = mit-scheme-user
+TEXINFO_ROOT = user
+SOURCES = $(TEXINFO_ROOT).texinfo
 
 include $(top_srcdir)/make-common

@@ -26,7 +26,8 @@ srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
 
-SOURCES = sos.texinfo
 TARGET_ROOT = mit-scheme-sos
+TEXINFO_ROOT = sos
+SOURCES = $(TEXINFO_ROOT).texinfo
 
 include $(top_srcdir)/make-common

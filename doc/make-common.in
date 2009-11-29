@@ -74,18 +74,18 @@ all: $(INFO_TARGET) $(HTML_TARGET)/index.html $(PDF_TARGET) $(PS_TARGET)
 
 $(INFO_TARGET): $(SOURCES)
 	rm -f $(INFO_TARGET)*
-	makeinfo --output=$(INFO_TARGET) $(word 1, $(SOURCES))
+	makeinfo --output=$(INFO_TARGET) $(TEXINFO_ROOT).texinfo
 
 $(HTML_TARGET)/index.html: $(SOURCES)
 	rm -rf $(HTML_TARGET)
-	makeinfo --html $(word 1, $(SOURCES))
+	makeinfo --html $(TEXINFO_ROOT).texinfo
 
 $(PDF_TARGET): $(SOURCES)
-	texi2pdf $(TEX_OPTIONS) --output=$@ $(word 1, $(SOURCES))
+	texi2pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
 
 $(PS_TARGET): $(SOURCES)
 	-rm -f $(DVI_TARGET)
-	texi2dvi $(TEX_OPTIONS) --output=$(DVI_TARGET) $(word 1, $(SOURCES))
+	texi2dvi $(TEX_OPTIONS) --output=$(DVI_TARGET) $(TEXINFO_ROOT).texinfo
 	dvips -q -o $@ $(DVI_TARGET)
 	rm -f $(DVI_TARGET)
 
@@ -94,6 +94,10 @@ mostlyclean:
 clean: mostlyclean
 	rm -f $(INFO_TARGET)* $(PDF_TARGET) $(PS_TARGET)
 	rm -rf $(HTML_TARGET)
+	rm -rf $(TEXINFO_ROOT).aux $(TEXINFO_ROOT).log $(TEXINFO_ROOT).toc
+	rm -rf $(TEXINFO_ROOT).pg $(TEXINFO_ROOT).tp
+	rm -rf $(TEXINFO_ROOT).cp* $(TEXINFO_ROOT).fn* $(TEXINFO_ROOT).ky*
+	rm -rf $(TEXINFO_ROOT).nv* $(TEXINFO_ROOT).op* $(TEXINFO_ROOT).vr*
 
 distclean: clean
 	rm -f Makefile

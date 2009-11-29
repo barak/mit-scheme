@@ -26,7 +26,8 @@ srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
 
-SOURCES = imail.texinfo
 TARGET_ROOT = mit-scheme-imail
+TEXINFO_ROOT = imail
+SOURCES = $(TEXINFO_ROOT).texinfo
 
 include $(top_srcdir)/make-common
