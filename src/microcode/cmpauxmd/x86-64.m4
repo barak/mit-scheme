@@ -859,7 +859,10 @@ define_jump_indirection(generic_remainder,38)
 define_jump_indirection(generic_modulo,39)
 
 # Input and output in rax, shift count in rcx, all detagged fixnums.
-# Return address is at the top of the stack.
+# Return address is at the top of the stack, untagged.  This hook must
+# not use any registers other than rax and rcx; if it does, the code
+# to generate calls to it, in compiler/machines/x86-64/rulfix.scm,
+# must clear the register map first.
 
 define_hook_label(fixnum_shift)
 	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rcx))

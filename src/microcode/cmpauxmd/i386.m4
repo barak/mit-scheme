@@ -1113,7 +1113,10 @@ define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
 
 # Input and output in eax, shift count in ecx, all detagged fixnums.
-# Return address is at the top of the stack.
+# Return address is at the top of the stack, untagged.  This hook must
+# not use any registers other than eax and ecx; if it does, the code
+# to generate calls to it, in compiler/machines/i386/rulfix.scm, must
+# clear the register map first.
 
 define_hook_label(fixnum_shift)
 	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ecx))

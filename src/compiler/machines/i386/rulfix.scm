@@ -486,12 +486,26 @@ USA.
 
 (define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
   (lambda (target source1 source2 overflow?)
-    overflow?                           ;ignore
-    (prefix-instructions!
-     (LAP ,@(load-machine-register! source1 eax)
-          ,@(load-machine-register! source2 ecx)))
-    (rtl-target:=machine-register! target eax)
-    (LAP ,@(invoke-hook/call entry:compiler-fixnum-shift))))
+    overflow?				;ignore
+    ;++ This is suboptimal in the cases when SOURCE1 is stored only in
+    ;++ ecx or when SOURCE2 is stored only in eax, and either one is
+    ;++ dead (which is often the case).  In such cases, this generates
+    ;++ code to needlessly save the dead pseudo-registers into their
+    ;++ homes simply because they were stored in eax and ecx.  It'd be
+    ;++ nice to have a variant of LOAD-MACHINE-REGISTER! for multiple
+    ;++ sources and targets, which would compute a parallel assignment
+    ;++ using machine registers if available for temporaries, or the
+    ;++ homes of pseudo-registers if not.
+    (let* ((load-eax (load-machine-register! source1 eax))
+	   (load-ecx (load-machine-register! source2 ecx)))
+      (delete-dead-registers!)
+      (rtl-target:=machine-register! target eax)
+      (LAP ,@load-eax
+	   ,@load-ecx
+	   ;; Clearing the map is not necessary because the hook uses
+	   ;; only eax and ecx.  If the hook were changed, it would be
+	   ;; necessary to clear the map first.
+	   ,@(invoke-hook/call entry:compiler-fixnum-shift)))))
 
 (define (do-division target source1 source2 result-reg)
   (prefix-instructions! (load-machine-register! source1 eax))
