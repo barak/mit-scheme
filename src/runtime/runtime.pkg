@@ -301,6 +301,7 @@ USA.
 	  exit
 	  false-procedure
 	  fasdump
+	  for-each-interned-symbol
 	  get-fixed-objects-vector
 	  get-interrupt-enables
 	  guarantee-hook-list

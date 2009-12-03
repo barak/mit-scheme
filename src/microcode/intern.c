@@ -32,7 +32,7 @@ USA.
 /* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
 
 static uint32_t
-string_hash (uint32_t length, const char * string)
+string_hash (long length, const char * string)
 {
   const unsigned char * scan = ((const unsigned char *) string);
   const unsigned char * end = (scan + length);
@@ -58,18 +58,70 @@ find_symbol_internal (unsigned long length, const char * string)
   while (true)
     {
       SCHEME_OBJECT list = (*bucket);
-      if (PAIR_P (list))
+      if ((WEAK_PAIR_P (list)) || (PAIR_P (list)))
 	{
 	  SCHEME_OBJECT symbol = (PAIR_CAR (list));
-	  SCHEME_OBJECT name = (MEMORY_REF (symbol, SYMBOL_NAME));
-	  if (((STRING_LENGTH (name)) == length)
-	      && ((memcmp ((STRING_POINTER (name)), string, length)) == 0))
-	    return (PAIR_CAR_LOC (list));
+          if (INTERNED_SYMBOL_P (symbol))
+            {
+              SCHEME_OBJECT name = (MEMORY_REF (symbol, SYMBOL_NAME));
+              if (((STRING_LENGTH (name)) == length)
+                  && ((memcmp ((STRING_POINTER (name)), string, length))
+                      == 0))
+                return (PAIR_CAR_LOC (list));
+              else
+                bucket = (PAIR_CDR_LOC (list));
+            }
+          else
+            (*bucket) = (PAIR_CDR (list));
 	}
       else
 	return (bucket);
-      bucket = (PAIR_CDR_LOC (list));
     }
+}
+
+static void
+replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
+{
+  SCHEME_OBJECT obarray = (VECTOR_REF (fixed_objects, OBARRAY));
+  SCHEME_OBJECT string = (MEMORY_REF (symbol, SYMBOL_NAME));
+  long length = (STRING_LENGTH (string));
+  const char *char_pointer = (STRING_POINTER (string));
+  SCHEME_OBJECT *bucket
+    = (VECTOR_LOC (obarray,
+                   ((string_hash (length, char_pointer))
+                    % (VECTOR_LENGTH (obarray)))));
+  while (true)
+    {
+      SCHEME_OBJECT list = (*bucket);
+      SCHEME_OBJECT element;
+
+      assert ((WEAK_PAIR_P (list)) || (PAIR_P (list)));
+      element = (PAIR_CAR (list));
+
+      if (INTERNED_SYMBOL_P (element))
+        {
+          if (element == symbol)
+            {
+              (*bucket) = (OBJECT_NEW_TYPE (type, list));
+              return;
+            }
+          bucket = (PAIR_CDR_LOC (list));
+        }
+      else
+        (*bucket) = (PAIR_CDR (list));
+    }
+}
+
+void
+strengthen_symbol (SCHEME_OBJECT symbol)
+{
+  replace_symbol_bucket_type (symbol, TC_LIST);
+}
+
+void
+weaken_symbol (SCHEME_OBJECT symbol)
+{
+  replace_symbol_bucket_type (symbol, TC_WEAK_CONS);
 }
 
 static SCHEME_OBJECT
@@ -81,7 +133,7 @@ make_symbol (SCHEME_OBJECT string, SCHEME_OBJECT * cell)
     Free += 2;
     MEMORY_SET (symbol, SYMBOL_NAME, string);
     MEMORY_SET (symbol, SYMBOL_GLOBAL_VALUE, UNBOUND_OBJECT);
-    (*cell) = (cons (symbol, EMPTY_LIST));
+    (*cell) = (system_pair_cons (TC_WEAK_CONS, symbol, EMPTY_LIST));
     return (symbol);
   }
 }
@@ -132,7 +184,7 @@ intern_symbol (SCHEME_OBJECT symbol)
   else
     {
       SCHEME_OBJECT result = (OBJECT_NEW_TYPE (TC_INTERNED_SYMBOL, symbol));
-      (*cell) = (cons (result, EMPTY_LIST));
+      (*cell) = (system_pair_cons (TC_WEAK_CONS, result, EMPTY_LIST));
       return (result);
     }
 }
@@ -147,7 +199,7 @@ arg_symbol (int n)
 const char *
 arg_interned_symbol (int n)
 {
-  CHECK_ARG (n, SYMBOL_P);
+  CHECK_ARG (n, INTERNED_SYMBOL_P);
   return (STRING_POINTER (MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
 }
 

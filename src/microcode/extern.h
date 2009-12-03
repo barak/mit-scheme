@@ -269,6 +269,8 @@ extern SCHEME_OBJECT string_to_symbol (SCHEME_OBJECT);
 extern SCHEME_OBJECT char_pointer_to_symbol (const char *);
 extern SCHEME_OBJECT memory_to_symbol (unsigned long, const void *);
 extern SCHEME_OBJECT find_symbol (unsigned long, const char *);
+extern void strengthen_symbol (SCHEME_OBJECT);
+extern void weaken_symbol (SCHEME_OBJECT);
 
 /* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);

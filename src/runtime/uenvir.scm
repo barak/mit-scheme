@@ -240,29 +240,18 @@ USA.
   value)
 
 (define (walk-global keep? map-entry)
-  (let ((obarray (fixed-objects-item 'OBARRAY)))
-    (let ((n-buckets (vector-length obarray)))
-      (let per-bucket ((index 0) (result '()))
-	(if (fix:< index n-buckets)
-	    (let per-symbol
-		((bucket (vector-ref obarray index))
-		 (result result))
-	      (if (pair? bucket)
-		  (per-symbol (cdr bucket)
-			      (let ((name (car bucket)))
-				(if (special-unbound-name? name)
-				    result
-				    (let ((value
-					   (map-reference-trap-value
-					    (lambda ()
-					      (system-pair-cdr name)))))
-				      (if (or (unbound-reference-trap? value)
-					      (not (keep? value)))
-					  result
-					  (cons (map-entry name value)
-						result))))))
-		  (per-bucket (fix:+ index 1) result)))
-	    result)))))
+  (let ((result '()))
+    (for-each-interned-symbol
+     (lambda (name)
+       (if (not (special-unbound-name? name))
+	   (let ((value
+		  (map-reference-trap-value
+		   (lambda ()
+		     (system-pair-cdr name)))))
+	     (if (and (not (unbound-reference-trap? value))
+		      (keep? value))
+		 (set! result (cons (map-entry value) result)))))))
+    result))
 
 (define (special-unbound-name? name)
   (eq? name package-name-tag))

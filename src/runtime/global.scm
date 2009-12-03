@@ -88,6 +88,7 @@ USA.
 	  ((#x00010200 #x0001020000030400) #t)
 	  ((#x00020100 #x0004030000020100) #f)
 	  (else (error "Unable to determine endianness of host."))))
+  (add-secondary-gc-daemon! clean-obarray)
   unspecific)
 
 ;;;; Potpourri
@@ -316,23 +317,69 @@ USA.
 (define unspecific
   (object-new-type (ucode-type constant) 1))
 
-(define (obarray->list #!optional obarray)
-  (let ((obarray
-	 (if (default-object? obarray)
-	     (fixed-objects-item 'OBARRAY)
-	     obarray)))
-    (let per-bucket
-	((index (fix:- (vector-length obarray) 1))
-	 (accumulator '()))
-      (if (fix:< index 0)
-	  accumulator
-	  (let per-symbol
-	      ((bucket (vector-ref obarray index))
-	       (accumulator accumulator))
-	    (if (pair? bucket)
-		(per-symbol (cdr bucket) (cons (car bucket) accumulator))
-		(per-bucket (fix:- index 1) accumulator)))))))
+(define (for-each-interned-symbol procedure)
+  (for-each-symbol-in-obarray (fixed-objects-item 'OBARRAY) procedure))
 
+(define (for-each-symbol-in-obarray obarray procedure)
+  (let per-bucket ((index (vector-length obarray)))
+    (if (fix:> index 0)
+	(let ((index (fix:- index 1)))
+	  (let per-symbol ((bucket (vector-ref obarray index)))
+	    (cond ((weak-pair? bucket)
+		   (let ((symbol (weak-car bucket)))
+		     (if (weak-pair/car? bucket)
+			 (procedure symbol)))
+		   (per-symbol (weak-cdr bucket)))
+		  ((pair? bucket)
+		   (procedure (car bucket))
+		   (per-symbol (cdr bucket)))
+		  (else
+		   (per-bucket index))))))))
+
+(define (obarray->list #!optional obarray)
+  (let ((list '()))
+    (define (accumulate symbol)
+      (set! list (cons symbol list))
+      unspecific)
+    (if (default-object? obarray)
+	(for-each-interned-symbol accumulate)
+	(for-each-symbol-in-obarray obarray accumulate))
+    list))
+
+(define (clean-obarray)
+  (without-interrupts
+   (lambda ()
+     (let ((obarray (fixed-objects-item 'OBARRAY)))
+       (let loop ((index (vector-length obarray)))
+	 (if (fix:> index 0)
+	     (let ((index (fix:- index 1)))
+	       (define (find-broken-entry bucket previous)
+		 (cond ((weak-pair? bucket)
+			(let ((d (weak-cdr bucket)))
+			  (if (weak-pair/car? bucket)
+			      (find-broken-entry d bucket)
+			      (delete-broken-entries d previous))))
+		       ((pair? bucket)
+			(find-broken-entry (cdr bucket) bucket))))
+	       (define (delete-broken-entries bucket previous)
+		 (cond ((weak-pair? bucket)
+			(let ((d (weak-cdr bucket)))
+			  (if (weak-pair/car? bucket)
+			      (begin (clobber previous bucket)
+				     (find-broken-entry d bucket))
+			      (delete-broken-entries d previous))))
+		       ((pair? bucket)
+			(clobber previous bucket)
+			(find-broken-entry (cdr bucket) bucket))
+		       (else
+			(clobber previous '()))))
+	       (define (clobber previous tail)
+		 (cond ((weak-pair? previous) (weak-set-cdr! previous tail))
+		       ((pair? previous) (set-cdr! previous tail))
+		       (else (vector-set! obarray index tail))))
+	       (find-broken-entry (vector-ref obarray index) #f)
+	       (loop index))))))))
+
 (define (impurify object)
   object)
 
