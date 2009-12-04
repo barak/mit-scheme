@@ -250,7 +250,7 @@ USA.
 		     (system-pair-cdr name)))))
 	     (if (and (not (unbound-reference-trap? value))
 		      (keep? value))
-		 (set! result (cons (map-entry value) result)))))))
+		 (set! result (cons (map-entry name value) result)))))))
     result))
 
 (define (special-unbound-name? name)
