@@ -1031,7 +1031,8 @@ USA.
 		    ob
 		    (cond ((char=? char #\tab)
 			   (fix:+ column (fix:- 8 (fix:remainder column 8))))
-			  ((<= #x20 (char->integer char) #x7E)
+			  ((and (fix:<= #x20 (char->integer char))
+				(fix:<= (char->integer char) #x7E))
 			   (fix:+ column 1))
 			  (else #f))))))
 	 #t)))
