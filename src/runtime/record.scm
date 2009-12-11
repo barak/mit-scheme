@@ -227,8 +227,13 @@ USA.
 	(vector-set! v i (car values))))))
 
 (define (record-type-default-value record-type field-name)
+  (record-type-default-value-by-index
+   record-type
+   (record-type-field-index record-type field-name #t)))
+
+(define (record-type-default-value-by-index record-type field-name-index)
   ((vector-ref (%record-type-default-inits record-type)
-	       (fix:- (record-type-field-index record-type field-name #t) 1))))
+	       (fix:- field-name-index 1))))
 
 (define set-record-type-unparser-method!
   (named-lambda (set-record-type-unparser-method!/booting record-type method)
@@ -540,8 +545,12 @@ USA.
 	      (structure-type/field-name-index type field-name)))
 
 (define-integrable (structure-type/default-init type field-name)
-  (vector-ref (structure-type/default-inits type)
-	      (structure-type/field-name-index type field-name)))
+  (structure-type/default-init-by-index
+   type
+   (structure-type/field-name-index type field-name)))
+
+(define-integrable (structure-type/default-init-by-index type field-name-index)
+  (vector-ref (structure-type/default-inits type) field-name-index))
 
 (define (structure-type/field-name-index type field-name)
   (let ((names (structure-type/field-names type)))
@@ -592,6 +601,9 @@ USA.
 (define (define-structure/default-value type field-name)
   ((structure-type/default-init type field-name)))
 
+(define (define-structure/default-value-by-index type field-name-index)
+  ((structure-type/default-init-by-index type field-name-index)))
+
 (define (define-structure/keyword-constructor type)
   (let ((names (structure-type/field-names type))
 	(indexes (structure-type/field-indexes type))

@@ -3047,6 +3047,7 @@ USA.
 	  %record?
 	  copy-record
 	  define-structure/default-value
+	  define-structure/default-value-by-index
 	  define-structure/keyword-constructor
 	  define-structure/list-accessor
 	  define-structure/list-modifier
@@ -3072,6 +3073,7 @@ USA.
 	  record-predicate
 	  record-type-default-inits
 	  record-type-default-value
+	  record-type-default-value-by-index
 	  record-type-descriptor
 	  record-type-dispatch-tag
 	  record-type-extension

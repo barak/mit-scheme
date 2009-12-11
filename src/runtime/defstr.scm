@@ -697,8 +697,8 @@ differences:
 			(optional (map name->slot optional))
 			(rest (and rest (name->slot rest))))
 		    (map (lambda (slot)
-			   (let* ((name (slot/name slot))
-				  (dv (default-value-expr structure name)))
+			   (let ((name (slot/name slot))
+				 (dv (default-value-expr structure slot)))
 			     (cond ((or (memq slot required)
 					(eq? slot rest))
 				    name)
@@ -706,7 +706,7 @@ differences:
 				    `(IF (DEFAULT-OBJECT? ,name) ,dv ,name))
 				   (else dv))))
 			 (structure/slots structure)))))))))))
-
+
 (define (make-constructor structure name lambda-list generate-body)
   (let* ((context (structure/context structure))
 	(tag-expression (close (structure/tag-expression structure) context)))
@@ -722,14 +722,25 @@ differences:
 	`(DEFINE (,name ,@lambda-list)
 	   ,(generate-body tag-expression)))))
 
-(define (default-value-expr structure name)
-  (let ((context (structure/context structure)))
-    `(,(absolute (if (structure/record-type? structure)
-		     'RECORD-TYPE-DEFAULT-VALUE
-		     'DEFINE-STRUCTURE/DEFAULT-VALUE)
-		 context)
-      ,(close (structure/type-descriptor structure) context)
-      ',name)))
+(define (default-value-expr structure slot)
+  (let ((expression (slot/default slot)))
+    ;; Scheme spends a remarkable amount of time fetching and calling
+    ;; the default value procedures.  This hack eliminates that time
+    ;; for many uses of DEFINE-STRUCTURE.
+    (if (not (pair? (strip-syntactic-closures expression)))
+	expression
+	(let ((record? (structure/record-type? structure))
+	      (context (structure/context structure)))
+	  `(,(absolute (if record?
+			   'RECORD-TYPE-DEFAULT-VALUE-BY-INDEX
+			   'DEFINE-STRUCTURE/DEFAULT-VALUE-BY-INDEX)
+		       context)
+	    ,(close (structure/type-descriptor structure) context)
+	    ,(- (slot/index slot)
+		(if record?
+		    0
+		    (+ (structure/offset structure)
+		       (if (structure/tagged? structure) 1 0)))))))))
 
 (define (copier-definitions structure)
   (let ((copier-name (structure/copier structure)))
