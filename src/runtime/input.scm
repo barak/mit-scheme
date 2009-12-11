@@ -117,15 +117,15 @@ USA.
 (define-integrable (accum-count a)
   (cdr a))
 
-(define (make-eof-object port)
+(define-integrable (make-eof-object port)
   port
   (eof-object))
 
-(define (eof-object)
-  (object-new-type (ucode-type constant) 6))
+(define-integrable (eof-object)
+  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
 
-(define (eof-object? object)
-  (eq? object (object-new-type (ucode-type constant) 6)))
+(define-integrable (eof-object? object)
+  (eq? object (eof-object)))
 
 (define (input-port/eof? port)
   (let ((eof? (port/operation port 'EOF?)))
