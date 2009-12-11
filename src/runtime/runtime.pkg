@@ -1043,6 +1043,9 @@ USA.
 	  %char<?
 	  downcase-table
 	  upcase-table)
+  (export (runtime parser)
+	  downcase-table
+	  identity-table)
   (initialization (initialize-package!)))
 
 (define-package (runtime character-set)

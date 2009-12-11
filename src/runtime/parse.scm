@@ -73,7 +73,7 @@ USA.
   (let ((handlers (parser-table/initial (db-parser-table db))))
     (let loop ()
       (let* ((position (current-position port db))
-	     (char (%read-char port)))
+	     (char (%read-char port db)))
 	(if (eof-object? char)
 	    char
 	    (let ((object ((get-handler char handlers) port db ctx char)))
@@ -87,7 +87,7 @@ USA.
   (list 'CONTINUE-PARSING))
 
 (define (handler:special port db ctx char1)
-  (let ((char2 (%read-char/no-eof port)))
+  (let ((char2 (%read-char/no-eof port db)))
     ((get-handler char2 (parser-table/special (db-parser-table db)))
      port db ctx char1 char2)))
 
@@ -185,7 +185,7 @@ USA.
 (define (handler:comment port db ctx char)
   db ctx char
   (let loop ()
-    (let ((char (%read-char port)))
+    (let ((char (%read-char port db)))
       (cond ((eof-object? char) char)
 	    ((char=? char #\newline) unspecific)
 	    (else (loop)))))
@@ -194,16 +194,16 @@ USA.
 (define (handler:multi-line-comment port db ctx char1 char2)
   db ctx char1 char2
   (let loop ()
-    (case (%read-char/no-eof port)
+    (case (%read-char/no-eof port db)
       ((#\#)
        (let sharp ()
-	 (case (%read-char/no-eof port)
+	 (case (%read-char/no-eof port db)
 	   ((#\#) (sharp))
 	   ((#\|) (loop) (loop))
 	   (else (loop)))))
       ((#\|)
        (let vbar ()
-	 (case (%read-char/no-eof port)
+	 (case (%read-char/no-eof port db)
 	   ((#\#) unspecific)
 	   ((#\|) (vbar))
 	   (else (loop)))))
@@ -248,29 +248,33 @@ USA.
 
 (define (parse-atom-1 port db prefix quoting?)
   (let ((port* (open-output-string))
-	(canon
+	(table
 	 (if (db-canonicalize-symbols? db)
-	     char-downcase
-	     identity-procedure))
-	(%read
-	 (lambda ()
-	     (if (pair? prefix)
-		 (let ((char (car prefix)))
-		   (set! prefix (cdr prefix))
-		   char)
-		 (%read-char/no-eof port))))
-	(%peek
-	 (lambda ()
-	   (if (pair? prefix)
-	       (car prefix)
-	       (%peek-char port))))
-	(%discard
-	 (lambda ()
-	   (if (pair? prefix)
-	       (begin
-		 (set! prefix (cdr prefix))
-		 unspecific)
-	       (%read-char port)))))
+	     downcase-table
+	     identity-table)))
+    (define (%canon char)
+      ;; Assumption: No character involved in I/O has bucky bits, and
+      ;; case conversion applies only to ISO-8859-1 characters.
+      (let ((integer (char->integer char)))
+	(if (fix:< integer #x100)
+	    (integer->char (vector-8b-ref table integer))
+	    char)))
+    (define (%read)
+      (if (pair? prefix)
+	  (let ((char (car prefix)))
+	    (set! prefix (cdr prefix))
+	    char)
+	  (%read-char/no-eof port db)))
+    (define (%peek)
+      (if (pair? prefix)
+	  (car prefix)
+	  (%peek-char port db)))
+    (define (%discard)
+      (if (pair? prefix)
+	  (begin
+	    (set! prefix (cdr prefix))
+	    unspecific)
+	  (%read-char port db)))
     (let read-unquoted ((quoted? #f))
       (let ((char (%peek)))
 	(if (or (eof-object? char)
@@ -301,7 +305,7 @@ USA.
 			   (read-unquoted #t))
 			 (error:illegal-char char)))
 		    (else
-		     (%write-char (canon char) port*)
+		     (%write-char (%canon char) port*)
 		     (read-unquoted quoted?)))))))))
 
 (define (handler:list port db ctx char)
@@ -418,9 +422,9 @@ USA.
 
 (define (handler:unquote port db ctx char)
   ctx char
-  (if (char=? (%peek-char/no-eof port) #\@)
+  (if (char=? (%peek-char/no-eof port db) #\@)
       (begin
-	(%read-char port)
+	(%read-char port db)
 	(list 'UNQUOTE-SPLICING (read-object port db)))
       (list 'UNQUOTE (read-object port db))))
 
@@ -429,13 +433,13 @@ USA.
   (call-with-output-string
     (lambda (port*)
       (let loop ()
-	(let ((char (%read-char/no-eof port)))
+	(let ((char (%read-char/no-eof port db)))
 	  (case char
 	    ((#\")
 	     unspecific)
 	    ((#\\)
 	     (let ((char
-		    (let ((char (%read-char/no-eof port)))
+		    (let ((char (%read-char/no-eof port db)))
 		      (cond ((char-ci=? char #\n) #\newline)
 			    ((char-ci=? char #\t) #\tab)
 			    ((char-ci=? char #\v) #\vt)
@@ -443,7 +447,7 @@ USA.
 			    ((char-ci=? char #\r) #\return)
 			    ((char-ci=? char #\f) #\page)
 			    ((char-ci=? char #\a) #\bel)
-			    ((char->digit char 8) (octal->char char port))
+			    ((char->digit char 8) (octal->char char port db))
 			    (else char)))))
 	       (%write-char char port*)
 	       (loop)))
@@ -451,15 +455,15 @@ USA.
 	     (%write-char char port*)
 	     (loop))))))))
 
-(define (octal->char c1 port)
+(define (octal->char c1 port db)
   (let ((d1 (char->digit c1 8)))
     (if (or (not d1) (fix:> d1 3))
 	(error:illegal-char c1))
-    (let* ((c2 (%read-char/no-eof port))
+    (let* ((c2 (%read-char/no-eof port db))
 	   (d2 (char->digit c2 8)))
       (if (not d2)
 	  (error:illegal-char c2))
-      (let* ((c3 (%read-char/no-eof port))
+      (let* ((c3 (%read-char/no-eof port db))
 	     (d3 (char->digit c3 8)))
 	(if (not d3)
 	    (error:illegal-char c3))
@@ -497,10 +501,10 @@ USA.
 
 (define (handler:char port db ctx char1 char2)
   db ctx char1 char2
-  (let ((char (%read-char/no-eof port))
+  (let ((char (%read-char/no-eof port db))
 	(at-end?
 	 (lambda ()
-	   (let ((char (%peek-char port)))
+	   (let ((char (%peek-char port db)))
 	     (or (eof-object? char)
 		 (atom-delimiter? char))))))
     (if (or (atom-delimiter? char)
@@ -511,9 +515,9 @@ USA.
 	   (lambda (port*)
 	     (%write-char char port*)
 	     (let loop ()
-	       (%write-char (let ((char (%read-char/no-eof port)))
+	       (%write-char (let ((char (%read-char/no-eof port db)))
 			     (if (char=? char #\\)
-				 (%read-char/no-eof port)
+				 (%read-char/no-eof port db)
 				 char))
 			   port*)
 	       (if (not (at-end?))
@@ -537,7 +541,7 @@ USA.
 (define (handler:special-arg port db ctx char1 char2)
   ctx char1
   (let loop ((n (char->digit char2 10)))
-    (let ((char (%read-char/no-eof port)))
+    (let ((char (%read-char/no-eof port db)))
       (cond ((char-numeric? char)
 	     (loop (+ (* 10 n) (char->digit char 10))))
 	    ((char=? char #\=)
@@ -568,64 +572,42 @@ USA.
 (define non-shared-object
   (list 'NON-SHARED-OBJECT))
 
-(define (%read-char port)
+(define (%read-char port db)
   (let ((char
 	 (let loop ()
 	   (or (input-port/%read-char port)
 	       (loop))))
-	(op (port/%operation port 'DISCRETIONARY-WRITE-CHAR)))
+	(op (db-discretionary-write-char db)))
     (if op
 	(op char port))
     char))
 
-(define (read-char port)
-  (let ((char
-	 (let loop ()
-	   (or (input-port/read-char port)
-	       (loop))))
-	(op (port/operation port 'DISCRETIONARY-WRITE-CHAR)))
-    (if op
-	(op char port))
-    char))
-
-(define (%read-char/no-eof port)
-  (let ((char (%read-char port)))
+(define (%read-char/no-eof port db)
+  (let ((char (%read-char port db)))
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
 
-(define (read-char/no-eof port)
-  (let ((char (read-char port)))
-    (if (eof-object? char)
-	(error:premature-eof port))
-    char))
-
-(define (%peek-char port)
+(define (%peek-char port db)
+  db					;ignore
   (let loop ()
     (or (input-port/%peek-char port)
 	(loop))))
 
-(define (peek-char port)
-  (let loop ()
-    (or (input-port/peek-char port)
-	(loop))))
-
-(define (%peek-char/no-eof port)
-  (let ((char (%peek-char port)))
-    (if (eof-object? char)
-	(error:premature-eof port))
-    char))
-
-(define (peek-char/no-eof port)
-  (let ((char (peek-char port)))
+(define (%peek-char/no-eof port db)
+  (let ((char (%peek-char port db)))
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
 
 (define-structure db
-  (environment #f read-only #t)
+  (radix #f read-only #t)
+  (canonicalize-symbols? #f read-only #t)
+  (associate-positions? #f read-only #t)
+  (parser-table #f read-only #t)
   (shared-objects #f read-only #t)
   (get-position #f read-only #t)
+  (discretionary-write-char #f read-only #t)
   position-mapping)
 
 (define (initial-db port environment)
@@ -636,22 +618,14 @@ USA.
 	     (begin
 	       (guarantee-environment environment #f)
 	       environment))))
-    (make-db environment
+    (make-db (environment-lookup environment '*PARSER-RADIX*)
+	     (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	     (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+	     (environment-lookup environment '*PARSER-TABLE*)
 	     (make-shared-objects)
 	     (position-operation port environment)
+	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
 	     '())))
-
-(define (db-radix db)
-  (environment-lookup (db-environment db) '*PARSER-RADIX*))
-
-(define (db-canonicalize-symbols? db)
-  (environment-lookup (db-environment db) '*PARSER-CANONICALIZE-SYMBOLS?*))
-
-(define (db-associate-positions? db)
-  (environment-lookup (db-environment db) '*PARSER-ASSOCIATE-POSITIONS?*))
-
-(define (db-parser-table db)
-  (environment-lookup (db-environment db) '*PARSER-TABLE*))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
