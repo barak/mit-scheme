@@ -1989,6 +1989,8 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
+	  error:not-input-port
+	  error:not-output-port
 	  generic-port-operation:read-substring
 	  generic-port-operation:write-substring
 	  guarantee-i/o-port
