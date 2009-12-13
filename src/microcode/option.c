@@ -213,7 +213,7 @@ Additional options may be supported by the band (and described below).\n\
 #    define DEFAULT_HEAP_SIZE 16384
 #  else
 #    define DEFAULT_HEAP_SIZE 4096
-#  fi
+#  endif
 #endif
 
 #ifndef HEAP_SIZE_VARIABLE
