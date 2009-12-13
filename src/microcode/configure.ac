@@ -203,6 +203,11 @@ EXE_NAME=
 INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
+case ${host_cpu} in
+i?86)
+    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
+    ;;
+esac
 
 dnl Save these prior to running AC_PROG_CC.
 SAVED_CFLAGS=${CFLAGS}

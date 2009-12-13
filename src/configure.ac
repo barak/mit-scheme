@@ -38,6 +38,11 @@ AC_ARG_ENABLE([host-scheme-test],
 : ${enable_host_scheme_test=yes}
 
 AC_CANONICAL_HOST
+case ${host_cpu} in
+i?86)
+    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
+    ;;
+esac
 
 AC_MSG_CHECKING([for native-code support])
 SCM_ARCH=`microcode/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
