@@ -36,11 +36,16 @@ mkdir mit-scheme.app/Contents/Resources
 
 # Install into temporary directory, then move contents into bundle.
 make install DESTDIR=$(pwd)/tmp
-mv tmp/usr/local/bin/mit-scheme-native \
-    mit-scheme.app/Contents/Resources/mit-scheme
-mv tmp/usr/local/lib/mit-scheme/macosx-starter mit-scheme.app/Contents/MacOS/.
-rm -f tmp/usr/local/lib/mit-scheme/runtime.com
-mv tmp/usr/local/lib/mit-scheme/* mit-scheme.app/Contents/Resources/.
+if [[ -f tmp/usr/local/bin/mit-scheme-x86-64 ]]; then
+    EXE=tmp/usr/local/bin/mit-scheme-x86-64
+else 
+    EXE=tmp/usr/local/bin/mit-scheme-i386
+fi
+mv "${EXE}" mit-scheme.app/Contents/Resources/mit-scheme
+cp etc/edwin.icns mit-scheme.app/Contents/Resources/appIcon.icns
+mv tmp/usr/local/lib/mit-scheme*/macosx-starter mit-scheme.app/Contents/MacOS/.
+rm -f tmp/usr/local/lib/mit-scheme*/runtime.com
+mv tmp/usr/local/lib/mit-scheme*/* mit-scheme.app/Contents/Resources/.
 rm -rf tmp
 
 # Generate an appropriate Info.plist file.
@@ -84,10 +89,8 @@ cat > mit-scheme.app/Contents/Info.plist <<EOF
     <string>English</string>
     <key>LSHasLocalizedDisplayName</key>
     <false/>
-    <!--
     <key>CFBundleIconFile</key>
     <string>appIcon.icns</string>
-    -->
   </dict>
 </plist>
 EOF
