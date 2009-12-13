@@ -209,7 +209,11 @@ Additional options may be supported by the band (and described below).\n\
 #endif
 
 #ifndef DEFAULT_HEAP_SIZE
-#  define DEFAULT_HEAP_SIZE 4096
+#  if SIZEOF_UNSIGNED_LONG == 8
+#    define DEFAULT_HEAP_SIZE 16384
+#  else
+#    define DEFAULT_HEAP_SIZE 4096
+#  fi
 #endif
 
 #ifndef HEAP_SIZE_VARIABLE
