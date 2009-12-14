@@ -72,7 +72,8 @@ an unusual name, set the environment variable MIT_SCHEME_EXE to the
 name or pathname of the MIT/GNU Scheme executable, which is usually
 \`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
 variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
+library directory, which is usually
+\`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
     AC_MSG_RESULT([yes])
