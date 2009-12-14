@@ -338,7 +338,11 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
+use_external_data(EVR(heap_alloc_limit))
+use_external_data(EVR(heap_end))
+use_external_data(EVR(stack_guard))
 use_external_data(EVR(stack_pointer))
+use_external_data(EVR(stack_start))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
