@@ -2,6 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
+AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
 
 AC_COPYRIGHT(
@@ -38,31 +39,9 @@ AC_ARG_ENABLE([host-scheme-test],
 : ${enable_host_scheme_test=yes}
 
 AC_CANONICAL_HOST
-case ${host_cpu} in
-i?86)
-    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
-    ;;
-esac
 
-AC_MSG_CHECKING([for native-code support])
-SCM_ARCH=`microcode/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
-case ${SCM_ARCH} in
-unknown*|"")
-    if test x"${SCM_ARCH}" = xunknown_spec; then
-	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
-    else
-	AC_MSG_ERROR([unable to determine native-code type])
-    fi
-    ;;
-none)
-    AC_MSG_RESULT([no])
-    ;;
-*)
-    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
-    ;;
-esac
-
-case ${SCM_ARCH} in
+MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+case ${mit_scheme_native_code} in
 c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
@@ -74,10 +53,10 @@ c)
     INSTALL_LIARC_BUNDLES=
     ;;
 esac
-AUXDIR_NAME=mit-scheme-${SCM_ARCH}
+AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
-: ${MIT_SCHEME_EXE:=mit-scheme-${SCM_ARCH}}
+: ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
 if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
@@ -93,7 +72,7 @@ an unusual name, set the environment variable MIT_SCHEME_EXE to the
 name or pathname of the MIT/GNU Scheme executable, which is usually
 \`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
 variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually \`/usr/local/lib/mit-scheme-${SCM_ARCH}'.
+library directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
     AC_MSG_RESULT([yes])
@@ -113,8 +92,8 @@ then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 
-etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${SCM_ARCH}"
-compiler/configure "${SCM_ARCH}"
+etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
+compiler/configure "${mit_scheme_native_code}"
 
 AC_CONFIG_SUBDIRS([microcode])
 AC_CONFIG_FILES([
@@ -135,7 +114,7 @@ xml/Makefile
 ])
 AC_OUTPUT
 
-if test x"${SCM_ARCH}" = xc; then
+if test x"${mit_scheme_native_code}" = xc; then
     BN=liarc-cc
     (cd lib; rm -f ${BN}; ${LN_S} ../microcode/${BN} .)
     BN=liarc-ld

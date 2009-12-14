@@ -268,41 +268,14 @@ if test "x${FOO}" != x; then
 fi
 CCLD=${CC}
 
-case ${host_cpu} in
-i?86)
-    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
-    ;;
-esac
-AC_MSG_CHECKING([for native-code support])
-SCM_ARCH=`"${srcdir}"/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
-case ${SCM_ARCH} in
-unknown*|"")
-    if "${SCM_ARCH}" = unknown_spec; then
-	AC_MSG_ERROR([unknown native-code type: ${enable_native_code}])
-    else
-	AC_MSG_ERROR([unable to determine native-code type])
-    fi
-    ;;
-none)
-    AC_MSG_RESULT([no])
-    ;;
-c)
-    AC_MSG_RESULT([yes, using portable C code])
-    ;;
-svm1)
-    AC_MSG_RESULT([yes, using portable SVM code])
-    ;;
-*)
-    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
-    ;;
-esac
+MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
 
-if test x${SCM_ARCH} = xhppa; then
+if test x${mit_scheme_native_code} = xhppa; then
    GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
 fi
 
-AUXDIR_NAME=mit-scheme-${SCM_ARCH}
-EXE_NAME=mit-scheme-${SCM_ARCH}
+AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+EXE_NAME=mit-scheme-${mit_scheme_native_code}
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -349,7 +322,7 @@ darwin*)
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
-    case ${SCM_ARCH} in
+    case ${mit_scheme_native_code} in
     i386)
 	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
 	AS_FLAGS="-arch i386 ${AS_FLAGS}"
@@ -955,7 +928,7 @@ if test "${enable_static_libs}" = no; then
 	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
 	    ],
 	    [
-	    if test ${SCM_ARCH} = c; then
+	    if test ${mit_scheme_native_code} = c; then
 		AC_MSG_ERROR(
 		    [--enable-native-code=c requires dynamic loader support])
 	    fi
@@ -993,7 +966,7 @@ fi
 
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
 
-case ${SCM_ARCH} in
+case ${mit_scheme_native_code} in
 none)
     ;;
 c)
@@ -1010,16 +983,16 @@ svm1)
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
     ;;
 *)
-    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${SCM_ARCH}.m4])
+    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
 esac
 
 AC_CONFIG_LINKS([
-    cmpintmd.h:cmpintmd/${SCM_ARCH}.h
-    cmpintmd.c:cmpintmd/${SCM_ARCH}.c
-    cmpintmd-config.h:cmpintmd/${SCM_ARCH}-config.h
+    cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h
+    cmpintmd.c:cmpintmd/${mit_scheme_native_code}.c
+    cmpintmd-config.h:cmpintmd/${mit_scheme_native_code}-config.h
     ])
 
 for base in ${OPTIONAL_BASES}; do

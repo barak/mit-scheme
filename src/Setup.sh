@@ -48,7 +48,7 @@ fi
 
 if [ ! -x configure ]; then
     echo "autoconf"
-    autoconf
+    autoconf --include=microcode
 fi
 
 . etc/functions.sh

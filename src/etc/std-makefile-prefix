@@ -62,7 +62,7 @@ INSTALL_COM = @INSTALL_COM@
 
 LN_S = @LN_S@
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
