@@ -26,13 +26,16 @@ USA.
 /* This conditional encompasses the entire file.  */
 #ifndef DISABLE_SOCKET_SUPPORT
 
+/* Needed for winsock2 include below.  */
+#define WIN32_LEAN_AND_MEAN
+
 #include "scheme.h"
 #include "prims.h"
 #include "nt.h"
 #include "ntio.h"
 #include "uxsock.h"
 
-#include <winsock.h>
+#include <winsock2.h>
 
 channel_class_t * NT_channel_class_tcp_stream_socket;
 channel_class_t * NT_channel_class_tcp_server_socket;
