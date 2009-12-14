@@ -81,6 +81,8 @@ all-liarc:
 	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --compiler
 	$(MAKE) compile-liarc-bundles build-bands
 
+macosx-app: stamp_macosx-app
+
 stamp_macosx-app: all
 	etc/make-macosx-app.sh
 	echo "done" > $@
@@ -172,7 +174,7 @@ install-auxdir-top:
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
-.PHONY: all compile-microcode build-bands all-native all-liarc
-.PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles native
+.PHONY: all all-native all-liarc macosx-app compile-microcode build-bands
+.PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
 .PHONY: tags TAGS install install-standard install-auxdir-top
