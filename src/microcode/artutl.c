@@ -133,8 +133,10 @@ double_round (double x)
       ? ((fmod (integral, 2.0)) == 0.0)
       : (! (0.5 < fractional)))
     return (integral);
+  else if (x < 0.0)
+    return (integral - 1.0);
   else
-    return (integral + (copysign (1.0, x)));
+    return (integral + 1.0);
 }
 
 /* Conversions between Scheme types and Scheme types. */
