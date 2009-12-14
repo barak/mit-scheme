@@ -22,7 +22,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Utility to build a MacOS X applicaton bundle to run Edwin.
+# Utility to build a MacOS X application bundle to run Edwin.
 
 set -e
 
@@ -62,7 +62,8 @@ if [[ -z ${AUXDIR} ]]; then
 	fi
     done
 fi
-mv tmp"${bindir}"/"${MIT_SCHEME_EXE}" mit-scheme.app/Contents/Resources/mit-scheme
+mv tmp"${bindir}"/"${MIT_SCHEME_EXE}" \
+    mit-scheme.app/Contents/Resources/mit-scheme
 mv tmp"${AUXDIR}"/macosx-starter mit-scheme.app/Contents/MacOS/.
 rm -f tmp"${AUXDIR}"/runtime.com
 mv tmp"${AUXDIR}"/* mit-scheme.app/Contents/Resources/.
