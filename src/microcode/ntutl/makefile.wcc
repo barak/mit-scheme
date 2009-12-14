@@ -201,6 +201,7 @@ sysprim.c &
 term.c &
 tparam.c &
 transact.c &
+utabmd.c &
 utils.c &
 vector.c &
 wind.c
@@ -287,6 +288,7 @@ sysprim.obj &
 term.obj &
 tparam.obj &
 transact.obj &
+utabmd.obj &
 utils.obj &
 vector.obj &
 wind.obj
