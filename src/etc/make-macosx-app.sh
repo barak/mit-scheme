@@ -26,6 +26,14 @@
 
 set -e
 
+# These values are placeholders; we need to get the right ones.
+: ${VERSION_STRING=$(date +%Y%m%d)}
+: ${LONG_VERSION_STRING="snapshot ${VERSION_STRING}"}
+: ${MACOSX_MIN_VERSION=10.5}
+: ${YEAR=$(date +%Y)}
+: ${bindir=/usr/local/bin}
+: ${libdir=/usr/local/lib}
+
 rm -rf tmp mit-scheme.app
 
 # Build directory structure for bundle.
@@ -36,24 +44,32 @@ mkdir mit-scheme.app/Contents/Resources
 
 # Install into temporary directory, then move contents into bundle.
 make install DESTDIR=$(pwd)/tmp
-if [[ -f tmp/usr/local/bin/mit-scheme-x86-64 ]]; then
-    EXE=tmp/usr/local/bin/mit-scheme-x86-64
-else 
-    EXE=tmp/usr/local/bin/mit-scheme-i386
+
+if [[ -z ${MIT_SCHEME_EXE} ]]; then
+    for FN in $(ls tmp"${bindir}"); do
+	[[ -L tmp${bindir}/${FN} ]] && continue
+	if [[ -f tmp${bindir}/${FN} ]]; then
+	    MIT_SCHEME_EXE=${FN}
+	    break;
+	fi
+    done
 fi
-mv "${EXE}" mit-scheme.app/Contents/Resources/mit-scheme
-cp etc/edwin.icns mit-scheme.app/Contents/Resources/appIcon.icns
-mv tmp/usr/local/lib/mit-scheme*/macosx-starter mit-scheme.app/Contents/MacOS/.
-rm -f tmp/usr/local/lib/mit-scheme*/runtime.com
-mv tmp/usr/local/lib/mit-scheme*/* mit-scheme.app/Contents/Resources/.
+if [[ -z ${AUXDIR} ]]; then
+    for FN in $(ls tmp"${libdir}"); do
+	if [[ -d tmp${libdir}/${FN} ]]; then
+	    AUXDIR=${libdir}/${FN}
+	    break
+	fi
+    done
+fi
+mv tmp"${bindir}"/"${MIT_SCHEME_EXE}" mit-scheme.app/Contents/Resources/mit-scheme
+mv tmp"${AUXDIR}"/macosx-starter mit-scheme.app/Contents/MacOS/.
+rm -f tmp"${AUXDIR}"/runtime.com
+mv tmp"${AUXDIR}"/* mit-scheme.app/Contents/Resources/.
 rm -rf tmp
+cp -p etc/edwin.icns mit-scheme.app/Contents/Resources/appIcon.icns
 
 # Generate an appropriate Info.plist file.
-# These values are placeholders; we need to get the right ones.
-VERSION_STRING=$(date +%Y%m%d)
-LONG_VERSION_STRING="snapshot ${VERSION_STRING}"
-MACOSX_MIN_VERSION=10.5
-YEAR=$(date +%Y)
 cat > mit-scheme.app/Contents/Info.plist <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist
@@ -81,7 +97,7 @@ cat > mit-scheme.app/Contents/Info.plist <<EOF
     <key>LSMinimumSystemVersion</key>
     <string>${MACOSX_MIN_VERSION}</string>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright (C) 1986-${YEAR} Massachusetts Institute of Technology</string>
+    <string>Copyright (C) ${YEAR} Massachusetts Institute of Technology</string>
 
     <key>CFBundleGetInfoString</key>
     <string>${LONG_VERSION_STRING}</string>
