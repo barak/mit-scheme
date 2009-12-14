@@ -203,11 +203,6 @@ EXE_NAME=
 INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
-case ${host_cpu} in
-i?86)
-    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
-    ;;
-esac
 
 dnl Save these prior to running AC_PROG_CC.
 SAVED_CFLAGS=${CFLAGS}
@@ -273,6 +268,11 @@ if test "x${FOO}" != x; then
 fi
 CCLD=${CC}
 
+case ${host_cpu} in
+i?86)
+    AC_CHECK_DECL([__x86_64__],[host_cpu=x86_64])
+    ;;
+esac
 AC_MSG_CHECKING([for native-code support])
 SCM_ARCH=`"${srcdir}"/choose-arch.sh "${enable_native_code}" "${host_cpu}"`
 case ${SCM_ARCH} in
