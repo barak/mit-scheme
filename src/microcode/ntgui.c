@@ -40,7 +40,7 @@ BOOL InitInstance(HANDLE, int);
 static SCHEME_OBJECT parse_event (SCREEN_EVENT *);
 
 int WINAPI
-WinMain (HANDLE hInst, HANDLE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
+WinMain (HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
     int argc;
     char **argv;
