@@ -81,6 +81,10 @@ all-liarc:
 	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --compiler
 	$(MAKE) compile-liarc-bundles build-bands
 
+stamp_macosx-app: all
+	etc/make-macosx-app.sh
+	echo "done" > $@
+
 compile-microcode:
 	(cd microcode && $(MAKE) all)
 
