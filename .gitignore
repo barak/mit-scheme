@@ -80,6 +80,7 @@ src/microcode/config.h
 src/microcode/float.h
 src/microcode/gc.cur
 src/microcode/limits.h
+src/microcode/makefile
 src/microcode/ntdialog.dlg
 src/microcode/ntdialog.h
 src/microcode/ntgui.rc
