@@ -1,1 +1,1 @@
-mit-scheme -load etc\windows\build-edwin.scm
+microcode\scheme.exe --library lib -load etc\windows\build-edwin.scm

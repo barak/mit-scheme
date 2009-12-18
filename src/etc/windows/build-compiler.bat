@@ -1,1 +1,1 @@
-mit-scheme --library kub --load etc\windows\build-compiler.scm
+microcode\scheme.exe --library lib --load etc\windows\build-compiler.scm
