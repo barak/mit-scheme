@@ -1,0 +1,31 @@
+md lib
+copy etc\optiondb.scm lib
+md lib\runtime
+copy runtime\chrsyn.com lib\runtime
+copy runtime\chrsyn.bci lib\runtime
+copy runtime\cpress.com lib\runtime
+copy runtime\cpress.bci lib\runtime
+copy runtime\format.com lib\runtime
+copy runtime\format.bci lib\runtime
+copy runtime\mime-codec.com lib\runtime
+copy runtime\mime-codec.bci lib\runtime
+copy runtime\optiondb.com lib\runtime
+copy runtime\optiondb.bci lib\runtime
+copy runtime\ordvec.com lib\runtime
+copy runtime\ordvec.bci lib\runtime
+copy runtime\process.com lib\runtime
+copy runtime\process.bci lib\runtime
+copy runtime\rbtree.com lib\runtime
+copy runtime\rbtree.bci lib\runtime
+copy runtime\regexp.com lib\runtime
+copy runtime\regexp.bci lib\runtime
+copy runtime\rexp.com lib\runtime
+copy runtime\rexp.bci lib\runtime
+copy runtime\rgxcmp.com lib\runtime
+copy runtime\rgxcmp.bci lib\runtime
+copy runtime\syncproc.com lib\runtime
+copy runtime\syncproc.bci lib\runtime
+copy runtime\wttree.com lib\runtime
+copy runtime\wttree.bci lib\runtime
+copy runtime\ystep.com lib\runtime
+copy runtime\ystep.bci lib\runtime
