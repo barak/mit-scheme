@@ -194,7 +194,7 @@ Additional options may be supported by the band (and described below).\n\
 
 #ifndef DEFAULT_LIBRARY_PATH
 #  ifdef DOS_LIKE_FILENAMES
-#    define DEFAULT_LIBRARY_PATH "\\scheme\\lib"
+#    define DEFAULT_LIBRARY_PATH "c:\\local\\mit-scheme"
 #  else
 #    define DEFAULT_LIBRARY_PATH "/usr/local/lib/mit-scheme"
 #  endif
