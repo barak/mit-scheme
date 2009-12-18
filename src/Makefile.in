@@ -84,7 +84,7 @@ all-liarc:
 macosx-app: stamp_macosx-app
 
 stamp_macosx-app: all
-	etc/make-macosx-app.sh
+	etc/macosx/make-app.sh
 	echo "done" > $@
 
 compile-microcode:
