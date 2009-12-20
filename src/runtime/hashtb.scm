@@ -776,23 +776,32 @@ USA.
   (cond ((and (eq? key=? eq?)
 	      (or (eq? key-hash eq-hash-mod)
 		  (eq? key-hash hash-by-identity)))
-	 (make-strong-rehash-type eq-hash-mod eq?))
+	 strong-eq-hash-table-type)
 	((and (eq? key=? eqv?)
 	      (eq? key-hash eqv-hash-mod))
-	 (make-strong-rehash-type eqv-hash-mod eqv?))
+	 strong-eqv-hash-table-type)
 	((and (eq? key=? equal?)
 	      (or (eq? key-hash equal-hash-mod)
 		  (eq? key-hash hash)))
-	 (make-strong-rehash-type equal-hash-mod equal?))
+	 equal-hash-table-type)
+	((and (eq? key=? string=?)
+	      (or (eq? key-hash string-hash-mod)
+		  (eq? key-hash string-hash)
+		  (eq? key-hash hash)))
+	 string-hash-table-type)
 	((and (or (eq? key=? string=?)
 		  (eq? key=? string-ci=?))
 	      (or (eq? key-hash string-hash-mod)
 		  (eq? key-hash string-hash)
+		  (eq? key-hash hash)
 		  (eq? key-hash string-ci-hash)))
-	 (make-strong-no-rehash-type (if (eq? key-hash string-hash)
-					 string-hash-mod
-					 key-hash)
-				     key=?))
+	 ;; This LET avoids copying the IF in the integrated body of
+	 ;; MAKE-STRONG-NO-REHASH-TYPE, which does no good.
+	 (let ((key-hash
+		(if (eq? key-hash string-hash)
+		    string-hash-mod
+		    key-hash)))
+	   (make-strong-no-rehash-type key-hash key=?)))
 	(else
 	 (make-strong-rehash-type key-hash key=?))))
 
