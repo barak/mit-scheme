@@ -34,14 +34,6 @@ CC = wcc386
 M4 = m4
 AS = wasm
 
-!ifdef __OS2__
-UTIL_SYSTEM = os2v2
-WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
-!else
-UTIL_SYSTEM = nt
-WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
-!endif
-
 # Compiler options.
 # [DEBUG] marks options used for debugging.
 # [OPTIMIZE] marks options used for optimization.
@@ -337,14 +329,14 @@ scheme.exe : $(OBJECTS) ntgui.res
 	wrc /q /ad /bt=nt ntgui.res $^@
 
 findprim.exe : findprim.obj
-	wlink system $(UTIL_SYSTEM) $(LDFLAGS) name $^@ file $[@
+	wlink system nt $(LDFLAGS) name $^@ file $[@
 
 findprim.obj : findprim.c
 	$(CC) $(UTIL_CFLAGS) $[@
 
 # Update the resource if necessary
 ntgui.res : ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
-	wrc /q /ad /bt=nt /r /x /D__WATCOMC__ $(WRCFLAGS_SYSTEM) $[@
+	wrc /q /ad /bt=nt /r /x /D__WATCOMC__ /i=$(%WATCOM)\h\nt $[@
 
 usrdef.c : $(SOURCES) findprim.exe
 	.\findprim $(SOURCES) > $^@
