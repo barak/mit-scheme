@@ -294,7 +294,7 @@ USA.
 (define-integrable (%weak-make-entry key datum)
   (if (or (not key)
 	  (number? key)			;Keep numbers in table.
-	  (symbol? key))		;Symbols, too.
+	  (interned-symbol? key))	;Symbols, too.
       (cons key datum)
       (system-pair-cons (ucode-type weak-cons) key datum)))
 
