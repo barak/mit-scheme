@@ -1,6 +1,3 @@
-(with-working-directory-pathname "microcode\\"
-  (lambda ()
-    (sf-conditionally "utabmd")))
 (with-working-directory-pathname "runtime\\"
   (lambda ()
     (load "runtime.sf")
