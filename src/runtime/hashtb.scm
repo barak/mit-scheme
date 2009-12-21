@@ -292,9 +292,11 @@ USA.
 					    %weak-entry-datum)))
 
 (define-integrable (%weak-make-entry key datum)
-  (if (or (not key)
-	  (number? key)			;Keep numbers in table.
-	  (interned-symbol? key))	;Symbols, too.
+  ;; Use an ordinary pair for objects that aren't pointers or that
+  ;; have unbounded extent.
+  (if (or (object-non-pointer? key)
+	  (number? key)
+	  (interned-symbol? key))
       (cons key datum)
       (system-pair-cons (ucode-type weak-cons) key datum)))
 
