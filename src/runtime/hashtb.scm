@@ -840,19 +840,16 @@ USA.
 	datum)))
 
 (define (hash-table-update! table key procedure #!optional get-default)
-  (hash-table/modify! table
-		      key
-		      (if (default-object? get-default)
-			  (lambda (datum)
-			    (if (eq? datum default-marker)
-				(error:bad-range-argument key
-							  'HASH-TABLE-UPDATE!))
-			    (procedure datum))
-			  (lambda (datum)
-			    (procedure (if (eq? datum default-marker)
-					   (get-default)
-					   datum))))
-		      default-marker))
+  (hash-table-set!
+   table
+   key
+   (procedure
+    (hash-table-ref table
+		    key
+		    (if (default-object? get-default)
+			(lambda ()
+			  (error:bad-range-argument key 'HASH-TABLE-UPDATE!))
+			get-default)))))
 
 (define (hash-table-copy table)
   (guarantee-hash-table table 'HASH-TABLE-COPY)
