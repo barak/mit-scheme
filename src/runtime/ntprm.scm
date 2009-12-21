@@ -346,9 +346,8 @@ USA.
 	    ;; Samba normally advertises itself as NTFS, except that
 	    ;; it doesn't claim to store Unicode on the disk.
 	    (if (and (string-ci=? name "NTFS")
-		     (fix:= 0
-			    (fix:and (nt-volume-info/file-system-flags info)
-				     nt-fs-flag/unicode-on-disk)))
+		     (even? (quotient (nt-volume-info/file-system-flags info)
+				      nt-fs-flag/unicode-on-disk)))
 		"Samba"
 		name)))
 	""))
