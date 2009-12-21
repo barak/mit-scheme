@@ -396,9 +396,9 @@ non-negative integer.
 @end example
 
 This procedure is provided for convenience in constructing hash tables.
-However, it is normally preferable to use @code{make-eq-hash-table} to
-build hash tables keyed by symbols, because @code{eq?} hash tables are
-much faster.
+However, it is normally preferable to use
+@code{make-strong-eq-hash-table} to build hash tables keyed by symbols,
+because @code{eq?} hash tables are much faster.
 @end deffn
 
 @deffn procedure symbol<? symbol1 symbol2

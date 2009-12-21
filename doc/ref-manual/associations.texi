@@ -420,20 +420,52 @@ prevents its keys from being reclaimed by the garbage collector, it is
 said to hold its keys @dfn{strongly}; otherwise it holds its keys
 @dfn{weakly} (@pxref{Weak Pairs}).
 
-@deffn procedure make-eq-hash-table [initial-size]
+@deffn procedure make-strong-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
-weakly.  These are the fastest of the standard hash tables.
+strongly.  These are the fastest of the standard hash tables.
+@end deffn
+
+@deffn procedure make-weak-eq-hash-table [initial-size]
+@findex eq?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eq?}.  The keys are held
+weakly.
+@end deffn
+
+@deffn procedure make-eq-hash-table [initial-size]
+@findex eq?
+This is an alias for @code{make-weak-eq-hash-table}.
+
+@strong{Warning}:  This become an alias
+@code{make-strong-eq-hash-table} instead.  We recommend that you use
+@code{make-weak-eq-hash-table} explicitly for weak hash tables.
+@end deffn
+
+@deffn procedure make-strong-eqv-hash-table [initial-size]
+@findex eqv?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+strongly.  These hash tables are a little slower than those made by
+@code{make-strong-eq-hash-table}.
+@end deffn
+
+@deffn procedure make-weak-eqv-hash-table [initial-size]
+@findex eqv?
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+weakly, except that booleans, characters, numbers, and interned symbols
+are held strongly.
 @end deffn
 
 @deffn procedure make-eqv-hash-table [initial-size]
 @findex eqv?
-Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{eqv?}.  The keys are held
-weakly, except that booleans, characters, and numbers are held strongly.
-These hash tables are a little slower than those made by
-@code{make-eq-hash-table}.
+This is an alias for @code{make-weak-eqv-hash-table}.
+
+@strong{Warning}:  This become an alias for
+@code{make-strong-eqv-hash-table} instead.  We recommend that you use
+@code{make-weak-eqv-hash-table} explicitly for weak hash tables.
 @end deffn
 
 @deffn procedure make-equal-hash-table [initial-size]
@@ -441,7 +473,7 @@ These hash tables are a little slower than those made by
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{equal?}.  The keys are held
 strongly.  These hash tables are quite a bit slower than those made by
-@code{make-eq-hash-table}.
+@code{make-strong-eq-hash-table}.
 @end deffn
 
 @deffn procedure make-string-hash-table [initial-size]
@@ -492,7 +524,7 @@ been defined:
 @findex string=?
 @example
 @group
-(define make-eq-hash-table
+(define make-weak-eq-hash-table
   (weak-hash-table/constructor eq-hash-mod eq? #t))
 
 (define make-equal-hash-table
@@ -819,12 +851,12 @@ standard address-hash-based hash tables.
 
 @deffn procedure eq-hash-mod object modulus
 This procedure is the key-hashing procedure used by
-@code{make-eq-hash-table}.
+@code{make-strong-eq-hash-table}.
 @end deffn
 
 @deffn procedure eqv-hash-mod object modulus
 This procedure is the key-hashing procedure used by
-@code{make-eqv-hash-table}.
+@code{make-strong-eqv-hash-table}.
 @end deffn
 
 @deffn procedure equal-hash-mod object modulus
