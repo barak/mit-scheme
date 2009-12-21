@@ -96,7 +96,7 @@ USA.
 		     (vector valid-attrs? type valid-local? procedure))))
 
 (define element-checkers
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (vx:standard-attrs elt)
   (vx:optional-attr 'class elt vx:nmtokens)

@@ -163,7 +163,7 @@ USA.
   (hash-table/key-list element-context-map))
 
 (define element-context-map
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-html-element a		inline)
 (define-html-element abbr	inline)

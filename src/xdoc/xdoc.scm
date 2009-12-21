@@ -87,10 +87,10 @@ USA.
 		    (*xdoc-environment* environment)
 		    (*xdoc-root*)
 		    (*xdoc-late?*)
-		    (*xdoc-element-properties* (make-eq-hash-table))
-		    (*xdoc-id-map* (make-eq-hash-table))
-		    (*xdoc-inputs* (make-eq-hash-table))
-		    (*xdoc-outputs* (make-eq-hash-table)))
+		    (*xdoc-element-properties* (make-weak-eq-hash-table))
+		    (*xdoc-id-map* (make-strong-eq-hash-table))
+		    (*xdoc-inputs* (make-weak-eq-hash-table))
+		    (*xdoc-outputs* (make-weak-eq-hash-table)))
 	  (let ((document (read/expand-xml-file pathname environment)))
 	    (set! *xdoc-root* (xml-document-root document))
 	    (set! *xdoc-late?* (due-date-in-past?))
@@ -375,7 +375,7 @@ USA.
   (hash-table/get html-generators (xdoc-element-name item) #f))
 
 (define html-generators
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (generate-container-items items extra-content?)
   (generate-container-groups
@@ -750,7 +750,7 @@ USA.
 	      value)))))
 
 (define xdoc-input-canonicalizers
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-xdoc-input 'text
   string-trim
@@ -901,7 +901,7 @@ USA.
       (error:bad-range-argument elt 'xdoc-output-definition)))
 
 (define xdoc-output-definitions
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-unary-xdoc-output 'check-input #t
   (lambda (elt)
@@ -1052,7 +1052,7 @@ USA.
   (hash-table/put! when-conditions name procedure))
 
 (define when-conditions
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-when-condition 'submitted
   (lambda (elt)
@@ -1435,7 +1435,7 @@ USA.
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-content-types
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (xdoc-element-type elt)
   (let ((local (xdoc-element-name elt)))
@@ -1444,7 +1444,7 @@ USA.
 	     (error "Unknown XDOC element name:" local)))))
 
 (define xdoc-element-types
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (xdoc-container? elt)
   (let ((type (xdoc-element-type elt)))

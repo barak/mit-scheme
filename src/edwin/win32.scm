@@ -417,7 +417,7 @@ USA.
 	 (handler screen event))))
 
 (define event-handlers
-  (make-eq-hash-table))
+  (make-strong-eqv-hash-table))
 
 (define (define-event-handler event-type handler)
   (hash-table/put! event-handlers event-type handler))

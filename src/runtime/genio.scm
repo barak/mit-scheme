@@ -556,14 +556,14 @@ USA.
 (define (initialize-name-maps!)
   (let ((convert-reverse
 	 (lambda (alist)
-	   (let ((table (make-eq-hash-table)))
+	   (let ((table (make-strong-eq-hash-table)))
 	     (for-each (lambda (n.d)
 			 (hash-table/put! table (cdr n.d) (car n.d)))
 		       alist)
 	     table)))
 	(convert-forward
 	 (lambda (alist)
-	   (let ((table (make-eq-hash-table)))
+	   (let ((table (make-strong-eq-hash-table)))
 	     (for-each (lambda (n.d)
 			 (hash-table/put! table (car n.d) (cdr n.d)))
 		       alist)

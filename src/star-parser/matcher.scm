@@ -110,7 +110,7 @@ USA.
       (hash-table/get matcher-preprocessors name #f)))
 
 (define matcher-preprocessors
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-*matcher-expander '+
   (lambda (expression)
@@ -288,7 +288,7 @@ USA.
   keyword)
 
 (define matcher-compilers
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-syntax define-atomic-matcher
   (rsc-macro-transformer

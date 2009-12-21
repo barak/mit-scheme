@@ -82,7 +82,7 @@ USA.
   predicate				; (lambda (dict) ...) -> bool
   constructor)				; (lambda (dict) ...) -> lap
 
-(define *rules* (make-eq-hash-table))
+(define *rules* (make-strong-eq-hash-table))
 
 
 ;; Rules are indexed by the last opcode in the pattern.

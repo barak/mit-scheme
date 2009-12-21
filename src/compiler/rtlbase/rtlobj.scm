@@ -103,7 +103,7 @@ USA.
 
 (define (make/label->object expression procedures continuations)
   (let ((hash-table
-	 (make-eq-hash-table
+	 (make-strong-eq-hash-table
 	  (+ (if expression 1 0)
 	     (length procedures)
 	     (length continuations)))))

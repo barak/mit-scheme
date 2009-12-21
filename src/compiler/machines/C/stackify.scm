@@ -69,7 +69,7 @@ USA.
 ;; This version uses an eq hash table
 
 (define-integrable (stackify/make-table)
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-integrable (stackify/table/lookup key)
   (hash-table/get *stackify/table* key #f))

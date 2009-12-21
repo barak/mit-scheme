@@ -154,7 +154,7 @@ USA.
     (alpha-substitute (unmapping->substitution unmapping) expression)))
 
 (define (empty-unmapping)
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (store-unmapping-entry! identifier unmapped-identifier unmapping)
   (hash-table/put! unmapping identifier unmapped-identifier))
@@ -399,8 +399,8 @@ USA.
 				   (conc-name rename-database/))
   (frame-number 0)
   (mapping-table (make-equal-hash-table) read-only #t)
-  (unmapping-table (make-eq-hash-table) read-only #t)
-  (id-table (make-eq-hash-table) read-only #t))
+  (unmapping-table (make-strong-eq-hash-table) read-only #t)
+  (id-table (make-strong-eq-hash-table) read-only #t))
 
 (define (make-rename-id)
   (delay

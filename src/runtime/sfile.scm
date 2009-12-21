@@ -315,7 +315,11 @@ USA.
 
 (define (initialize-package!)
   (set! interned-mime-types
-	(vector-map (lambda (token) token (make-eq-hash-table))
+	;; We really want each of these hash tables to be a
+	;; datum-weak hash table, but the hash table abstraction
+	;; doesn't support that.  Using a key-weak hash table does no
+	;; good because each datum has a strong reference to its key.
+	(vector-map (lambda (token) token (make-strong-eq-hash-table))
 		    top-level-mime-types))
   (set! unusual-interned-mime-types (make-equal-hash-table))
   (set! char-set:mime-token

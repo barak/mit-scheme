@@ -44,7 +44,7 @@ USA.
     (set! typein-saved-windows '())
     (set! map-name/internal->external identity-procedure)
     (set! map-name/external->internal identity-procedure)
-    (set! prompt-histories (make-eq-hash-table))
+    (set! prompt-histories (make-weak-eq-hash-table))
     unspecific))
 
 (define (make-typein-buffer-name depth)

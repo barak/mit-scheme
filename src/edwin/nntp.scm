@@ -1408,7 +1408,8 @@ USA.
 ;;; redundant paths to the ancestors of a header.
 
 (define (convert-header-graphs-to-trees headers)
-  (let ((tables (cons (make-eq-hash-table) (make-eq-hash-table))))
+  (let ((tables
+	 (cons (make-strong-eq-hash-table) (make-strong-eq-hash-table))))
     (for-each (lambda (header)
 		(if (eq? (hash-table/get (car tables) header 'NONE) 'NONE)
 		    (eliminate-redundant-relatives tables header)))
@@ -1722,7 +1723,7 @@ USA.
 ;;; common references.
 
 (define (build-equivalence-classes threads subject-alist)
-  (let ((equivalences (make-eq-hash-table)))
+  (let ((equivalences (make-strong-eq-hash-table)))
     (for-each (lambda (thread)
 		(hash-table/put! equivalences
 				 thread

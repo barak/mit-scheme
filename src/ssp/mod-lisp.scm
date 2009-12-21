@@ -647,7 +647,7 @@ USA.
 	(else
 	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))
 
-(define mime-handlers (make-eq-hash-table))
+(define mime-handlers (make-strong-eq-hash-table))
 (define mime-extensions (make-string-hash-table))
 
 (define (html-content-type)

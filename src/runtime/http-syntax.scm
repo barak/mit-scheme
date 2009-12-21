@@ -1000,7 +1000,7 @@ USA.
   (hash-table-ref/default header-value-defns name #f))
 
 (define-deferred header-value-defns
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-structure hvdefn
   (name #f read-only #t)

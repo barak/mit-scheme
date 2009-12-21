@@ -157,11 +157,13 @@ USA.
 (define (make-parser-macros parent)
   (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
   (%make-parser-macros (or parent *global-parser-macros*)
-		       (make-eq-hash-table)
-		       (make-eq-hash-table)))
+		       (make-strong-eq-hash-table)
+		       (make-strong-eq-hash-table)))
 
 (define *global-parser-macros*
-  (%make-parser-macros #f (make-eq-hash-table) (make-eq-hash-table)))
+  (%make-parser-macros #f
+		       (make-strong-eq-hash-table)
+		       (make-strong-eq-hash-table)))
 
 (define (guarantee-parser-macros object procedure)
   (if (not (parser-macros? object))

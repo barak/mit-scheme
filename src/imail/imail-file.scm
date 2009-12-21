@@ -40,7 +40,7 @@ USA.
 		    name predicate)))
 
 (define file-folder-types
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (prompt-for-file-folder-type url)
   (imail-ui:prompt-for-alist-value

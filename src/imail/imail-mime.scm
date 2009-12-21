@@ -768,7 +768,7 @@ USA.
 (define-guarantee mime-encoding "MIME codec")
 
 (define mime-encodings
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (define-mime-encoding name
           encode:initialize encode:finalize encode:update

@@ -152,7 +152,7 @@ USA.
   (hash-table/put! type-abbreviations name type))
 
 (define type-abbreviations
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-type-abbreviation 'boolean 'int)
 (define-type-abbreviation 'uchar '(unsigned char))
@@ -190,7 +190,7 @@ USA.
   (hash-table/get id-external-roots (id-type-name type) #f))
 
 (define id-external-roots
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (id-external-type type)
   (list (id-external-root type) "_t"))
@@ -248,7 +248,7 @@ USA.
 ;;;; PM Procedures
 
 (define pm-procedures
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-structure pmp
   (root-name #f read-only #t)

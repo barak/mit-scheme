@@ -864,17 +864,19 @@ USA.
 
 (define built-in-atoms-table
   (let ((n (vector-length built-in-atoms)))
-    (let ((table (make-eq-hash-table n)))
+    (let ((table (make-strong-eq-hash-table n)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
 	(hash-table/put! table (vector-ref built-in-atoms i) i))
       table)))
 
 (define display/cached-atoms-tables
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table/get table display #f)
-	  (let ((result (cons (make-eq-hash-table) (make-eqv-hash-table))))
+	  (let ((result
+		 (cons (make-strong-eq-hash-table)
+		       (make-strong-eqv-hash-table))))
 	    (hash-table/put! table display result)
 	    result)))))
 
@@ -1044,10 +1046,10 @@ In either case, it is copied to the primary selection."
 	 #t)))
 
 (define display/selection-records
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table/get table display #f)
-	  (let ((result (make-eq-hash-table)))
+	  (let ((result (make-strong-eq-hash-table)))
 	    (hash-table/put! table display result)
 	    result)))))
 

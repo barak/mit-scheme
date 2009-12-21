@@ -587,7 +587,7 @@ USA.
     (newline port)))
 
 (define (write-prefixes graph port)
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-strong-eq-hash-table)))
 
     (define (check-graph g)
       (for-each check-triple (rdf-graph-triples g)))

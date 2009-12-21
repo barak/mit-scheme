@@ -79,7 +79,7 @@ USA.
 	  (lambda ()
 	    (with-load-environment environment
 	      (lambda ()
-		(fluid-let ((*sabbr-table* (make-eq-hash-table)))
+		(fluid-let ((*sabbr-table* (make-strong-eq-hash-table)))
 		  (read-xml-file pathname
 				 `((scheme ,(pi-expander environment))
 				   (svar ,svar-expander)

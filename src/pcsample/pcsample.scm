@@ -474,7 +474,7 @@ TODO:
 
 (define (install-profile-hash-table)
 
-;;;(set! make-profile-hash-table     make-eq-hash-table);   weakly held
+;;;(set! make-profile-hash-table     make-weak-eq-hash-table);   weakly held
 ;;;(set!      profile-hash-table-car weak-car)
 ;;;(set!      profile-hash-table-cdr weak-cdr)
 

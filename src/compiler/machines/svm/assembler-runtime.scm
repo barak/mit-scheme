@@ -101,7 +101,7 @@ USA.
   (value symbol-binding-value))
 
 (define (make-symbol-table)
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (define-symbol name type value symbol-table)
   (hash-table/get symbol-table name (make-symbol-binding name type value)))
@@ -604,7 +604,7 @@ USA.
       (error:bad-range-argument name #f)))
 
 (define symbolic-operators
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-integrable (se-integer? object)
   (exact-integer? object))
@@ -695,7 +695,7 @@ USA.
   (hash-table/datum-list pvar-type-table))
 
 (define pvar-type-table
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (define-pvt name abbreviation sb-type predicate encoder decoder)
   (hash-table/put! pvar-type-table

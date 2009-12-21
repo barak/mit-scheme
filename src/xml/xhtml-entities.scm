@@ -288,7 +288,7 @@ USA.
        html-entity-alist))
 
 (define html-char->name-map
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-strong-eqv-hash-table)))
     (for-each (lambda (b) (hash-table/put! table (cadr b) (car b)))
 	      html-entity-alist)
     (lambda (char)

@@ -201,4 +201,4 @@ USA.
   (hash-table/get permanent-local-variables variable #f))
 
 (define permanent-local-variables
-  (make-eq-hash-table))
+  (make-weak-eq-hash-table))

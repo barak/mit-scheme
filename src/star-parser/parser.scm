@@ -107,7 +107,7 @@ USA.
       (hash-table/get parser-preprocessors name #f)))
 
 (define parser-preprocessors
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-*parser-expander '+
   (lambda (expression)
@@ -272,7 +272,7 @@ USA.
   keyword)
 
 (define parser-compilers
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-parser (match expression)
   (call-with-pointer pointer

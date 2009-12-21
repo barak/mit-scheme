@@ -44,23 +44,27 @@ USA.
 	      (error:bad-range-argument uri 'MAKE-XML-NAME))
 	  (%make-xml-name name-symbol uri)))))
 
+;;; EXPANDED-NAMES should be a key-weak hash table, but that has an
+;;; effect only if the other two hash tables are datum-weak, because
+;;; there is a strong reference from each datum to its associated key
+;;; in all three hash tables involved.  And since we don't have datum-
+;;; weak hash tables, for now these will all be key-strong, since
+;;; there's some overhead and no value to using key-weak hash tables.
+
 (define (%make-xml-name qname uri)
   (let ((uname
 	 (let ((local (xml-qname-local qname)))
-	   (hash-table/intern! (hash-table/intern! expanded-names
-						   uri
-						   make-eq-hash-table)
-			       local
-			       (lambda ()
-				 (make-expanded-name uri
-						     local
-						     (make-eq-hash-table)))))))
-    (hash-table/intern! (expanded-name-combos uname)
-			qname
-			(lambda () (make-combo-name qname uname)))))
+	   (hash-table/intern! (hash-table/intern! expanded-names uri
+				 make-strong-eq-hash-table)
+	       local
+	     (lambda ()
+	       (make-expanded-name uri local (make-strong-eq-hash-table)))))))
+    (hash-table/intern! (expanded-name-combos uname) qname
+      (lambda ()
+	(make-combo-name qname uname)))))
 
 (define expanded-names
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (xml-name? object)
   (or (xml-name-symbol? object)

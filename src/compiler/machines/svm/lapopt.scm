@@ -83,7 +83,7 @@ USA.
   constructor)				; (lambda (dict) ...) -> lap
 
 (define *rules*
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 ;; Rules are indexed by the last opcode in the pattern.
 
