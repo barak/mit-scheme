@@ -1885,6 +1885,8 @@ USA.
   (files "hashtb")
   (parent (runtime))
   (export ()
+	  (eq-hash-table-type weak-eq-hash-table-type)
+	  (eqv-hash-table-type weak-eqv-hash-table-type)
 	  (hash-table-delete! hash-table/remove!)
 	  (hash-table-equivalence-function hash-table/key=?)
 	  (hash-table-hash-function hash-table/key-hash)
@@ -1895,16 +1897,18 @@ USA.
 	  (hash-table-update!/default hash-table/modify!)
 	  (hash-table-values hash-table/datum-list)
 	  (hash-table-walk hash-table/for-each)
+	  (make-eq-hash-table make-weak-eq-hash-table)
+	  (make-eqv-hash-table make-weak-eqv-hash-table)
+	  (make-object-hash-table make-weak-eqv-hash-table)
+	  (make-symbol-hash-table make-weak-eq-hash-table)
 	  alist->hash-table
 	  eq-hash
 	  eq-hash-mod
-	  eq-hash-table-type
 	  equal-hash
 	  equal-hash-mod
 	  equal-hash-table-type
 	  eqv-hash
 	  eqv-hash-mod
-	  eqv-hash-table-type
 	  error:not-hash-table
 	  guarantee-hash-table
 	  hash-by-identity
@@ -1934,21 +1938,21 @@ USA.
 	  hash-table/size
 	  hash-table/type
 	  hash-table?
-	  make-eq-hash-table
 	  make-equal-hash-table
-	  make-eqv-hash-table
 	  make-hash-table
-	  make-object-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
-	  make-symbol-hash-table
+	  make-weak-eq-hash-table
+	  make-weak-eqv-hash-table
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
 	  strong-eqv-hash-table-type
 	  strong-hash-table/constructor
+	  weak-eq-hash-table-type
+	  weak-eqv-hash-table-type
 	  weak-hash-table/constructor)
   (initialization (initialize-package!)))
 

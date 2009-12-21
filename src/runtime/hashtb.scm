@@ -880,30 +880,28 @@ USA.
 
 (define address-hash-tables)
 
-(define eq-hash-table-type)
+(define weak-eq-hash-table-type)
 (define strong-eq-hash-table-type)
-(define eqv-hash-table-type)
+(define weak-eqv-hash-table-type)
 (define strong-eqv-hash-table-type)
 (define equal-hash-table-type)
 (define string-hash-table-type)
 
-(define make-eq-hash-table)
+(define make-weak-eq-hash-table)
 (define make-strong-eq-hash-table)
-(define make-eqv-hash-table)
+(define make-weak-eqv-hash-table)
 (define make-strong-eqv-hash-table)
 (define make-equal-hash-table)
 (define make-string-hash-table)
-(define make-symbol-hash-table)
-(define make-object-hash-table)
 
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! eq-hash-table-type
+  (set! weak-eq-hash-table-type
 	(make-weak-rehash-type eq-hash-mod eq?))
   (set! strong-eq-hash-table-type
 	(make-strong-rehash-type eq-hash-mod eq?))
-  (set! eqv-hash-table-type
+  (set! weak-eqv-hash-table-type
 	(make-weak-rehash-type eqv-hash-mod eqv?))
   (set! strong-eqv-hash-table-type
 	(make-strong-rehash-type eqv-hash-mod eqv?))
@@ -911,11 +909,11 @@ USA.
 	(make-strong-rehash-type equal-hash-mod equal?))
   (set! string-hash-table-type
 	(make-strong-no-rehash-type string-hash-mod string=?))
-  (set! make-eq-hash-table
+  (set! make-weak-eq-hash-table
 	(hash-table-constructor eq-hash-table-type))
   (set! make-strong-eq-hash-table
 	(hash-table-constructor strong-eq-hash-table-type))
-  (set! make-eqv-hash-table
+  (set! make-weak-eqv-hash-table
 	(hash-table-constructor eqv-hash-table-type))
   (set! make-strong-eqv-hash-table
 	(hash-table-constructor strong-eqv-hash-table-type))
@@ -923,9 +921,6 @@ USA.
 	(hash-table-constructor equal-hash-table-type))
   (set! make-string-hash-table
 	(hash-table-constructor string-hash-table-type))
-  ;; Define old names for compatibility:
-  (set! make-symbol-hash-table make-eq-hash-table)
-  (set! make-object-hash-table make-eqv-hash-table)
   unspecific)
 
 (define (mark-address-hash-tables!)
