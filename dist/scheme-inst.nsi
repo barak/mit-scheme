@@ -2,81 +2,86 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MIT-GNU Scheme"
-!define PRODUCT_VERSION "20090107"
+!define PRODUCT_VERSION "20091222"
 !define PRODUCT_PUBLISHER "GNU Project"
 !define PRODUCT_WEB_SITE "http://www.gnu.org/software/mit-scheme/"
+!define PRODUCT_DIR_ROOT_KEY "HKLM"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\scheme.exe"
-!define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
+!define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_STARTMENU_REGVAL "NSIS:StartMenuDir"
 
 SetCompressor lzma
 
-!define MIT_SCHEME_SRC_ROOT "c:\cph\xfer\mit-scheme-${PRODUCT_VERSION}\src"
-!define MIT_SCHEME_DOC_ROOT "c:\scheme"
-!define MIT_SCHEME_EXE "$INSTDIR\bin\scheme.exe"
-!define MIT_SCHEME_OPTIONS "--library $\"$INSTDIR\lib$\" --edit"
+!define MIT_SCHEME_ROOT "$%home%\mit-scheme"
+!define MIT_SCHEME_SRC_ROOT "${MIT_SCHEME_ROOT}\src"
+!define MIT_SCHEME_DOC_ROOT "${MIT_SCHEME_ROOT}\doc"
+!define MIT_SCHEME_BIN_DIR "$INSTDIR\bin"
+!define MIT_SCHEME_LIB_DIR "$INSTDIR\lib"
+!define MIT_SCHEME_DOC_DIR "$INSTDIR\doc"
+!define MIT_SCHEME_EXE_NAME "mit-scheme.exe"
+!define MIT_SCHEME_EXE "${MIT_SCHEME_BIN_DIR}\${MIT_SCHEME_EXE_NAME}"
+!define MIT_SCHEME_OPTIONS "--library $\"${MIT_SCHEME_LIB_DIR}$\" --edit"
+
+!macro mit_scheme_bci_install dir_name
+  SetOutPath "${MIT_SCHEME_LIB_DIR}\${dir_name}"
+  File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\*.bci"
+!macroend
+
+!macro mit_scheme_bci_uninstall dir_name
+  Delete "${MIT_SCHEME_LIB_DIR}\${dir_name}\*.bci"
+  RMDir "${MIT_SCHEME_LIB_DIR}\${dir_name}"
+!macroend
 
 !macro mit_scheme_aux_install dir_name
-  SetOutPath "$INSTDIR\lib\${dir_name}"
-  File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\*.bci"
+  !insertmacro mit_scheme_bci_install "${dir_name}"
   File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\*.com"
   File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\*-w32.pkd"
-  File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\load.scm"
+  File /nonfatal "${MIT_SCHEME_SRC_ROOT}\${dir_name}\load.scm"
 !macroend
 
 !macro mit_scheme_aux_uninstall dir_name
-  Delete "$INSTDIR\lib\${dir_name}\load.scm"
-  Delete "$INSTDIR\lib\${dir_name}\*-w32.pkd"
-  Delete "$INSTDIR\lib\${dir_name}\*.com"
-  Delete "$INSTDIR\lib\${dir_name}\*.bci"
-  RMDir "$INSTDIR\lib\${dir_name}"
+  Delete "${MIT_SCHEME_LIB_DIR}\${dir_name}\load.scm"
+  Delete "${MIT_SCHEME_LIB_DIR}\${dir_name}\*-w32.pkd"
+  Delete "${MIT_SCHEME_LIB_DIR}\${dir_name}\*.com"
+  !insertmacro mit_scheme_bci_uninstall "${dir_name}"
 !macroend
 
 !macro mit_scheme_option_install dir_name root_name
   File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\${root_name}.com"
 !macroend
 
-; MUI 1.67 compatible ------
-!include "MUI.nsh"
+!include "MUI2.nsh"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
-!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+!define MUI_UNABORTWARNING
 
-; Welcome page
+; Installer pages
 !insertmacro MUI_PAGE_WELCOME
-; License page
 !insertmacro MUI_PAGE_LICENSE "${MIT_SCHEME_SRC_ROOT}\copying"
-; Directory page
 !insertmacro MUI_PAGE_DIRECTORY
 ; Start menu page
 var ICONS_GROUP
-!define MUI_STARTMENUPAGE_NODISABLE
 !define MUI_STARTMENUPAGE_DEFAULTFOLDER "MIT-GNU Scheme"
 !define MUI_STARTMENUPAGE_REGISTRY_ROOT "${PRODUCT_UNINST_ROOT_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_KEY "${PRODUCT_UNINST_KEY}"
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "${PRODUCT_STARTMENU_REGVAL}"
 !insertmacro MUI_PAGE_STARTMENU Application $ICONS_GROUP
-; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
-; Finish page
-;!define MUI_FINISHPAGE_RUN "${MIT_SCHEME_EXE}"
-;!define MUI_FINISHPAGE_RUN_PARAMETERS "${MIT_SCHEME_OPTIONS}"
-;!define MUI_FINISHPAGE_RUN_NOTCHECKED
-;!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\doc\mit-scheme-user\index.html"
-;!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
-;!insertmacro MUI_PAGE_FINISH
+!insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
 
 ; Language files
 !insertmacro MUI_LANGUAGE "English"
 
 ; Reserve files
-!insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
+;!insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
 
 ; MUI end ------
 
@@ -92,22 +97,19 @@ Section "MainSection" SEC01
   SetOverwrite try
   SetShellVarContext all
 
-  SetOutPath "$INSTDIR\bin"
-  File "${MIT_SCHEME_SRC_ROOT}\microcode\scheme.exe"
+  SetOutPath "${MIT_SCHEME_BIN_DIR}"
+  File "/oname=${MIT_SCHEME_EXE_NAME}" \
+    "${MIT_SCHEME_SRC_ROOT}\microcode\scheme.exe"
   File "${MIT_SCHEME_SRC_ROOT}\win32\dibutils\dibutils.dll"
 
-  SetOutPath "$INSTDIR\lib"
+  SetOutPath "${MIT_SCHEME_LIB_DIR}"
   File "${MIT_SCHEME_SRC_ROOT}\all.com"
   File "${MIT_SCHEME_SRC_ROOT}\etc\optiondb.scm"
-  File "${MIT_SCHEME_SRC_ROOT}\microcode\utabmd.bin"
 
-  SetOutPath "$INSTDIR\lib\runtime"
+  !insertmacro mit_scheme_bci_install "runtime"
   !insertmacro mit_scheme_option_install "runtime" "chrsyn"
   !insertmacro mit_scheme_option_install "runtime" "cpress"
-  !insertmacro mit_scheme_option_install "runtime" "dosproc"
   !insertmacro mit_scheme_option_install "runtime" "format"
-  !insertmacro mit_scheme_option_install "runtime" "gdbm"
-  !insertmacro mit_scheme_option_install "runtime" "krypt"
   !insertmacro mit_scheme_option_install "runtime" "mime-codec"
   !insertmacro mit_scheme_option_install "runtime" "numint"
   !insertmacro mit_scheme_option_install "runtime" "optiondb"
@@ -120,9 +122,8 @@ Section "MainSection" SEC01
   !insertmacro mit_scheme_option_install "runtime" "syncproc"
   !insertmacro mit_scheme_option_install "runtime" "wttree"
   !insertmacro mit_scheme_option_install "runtime" "ystep"
-  File "${MIT_SCHEME_SRC_ROOT}\runtime\*.bci"
 
-  SetOutPath "$INSTDIR\lib\edwin"
+  !insertmacro mit_scheme_bci_install "edwin"
   !insertmacro mit_scheme_option_install "edwin" "artdebug"
   !insertmacro mit_scheme_option_install "edwin" "debian-changelog"
   !insertmacro mit_scheme_option_install "edwin" "eystep"
@@ -143,31 +144,36 @@ Section "MainSection" SEC01
   !insertmacro mit_scheme_option_install "edwin" "verilog"
   !insertmacro mit_scheme_option_install "edwin" "vhdl"
   !insertmacro mit_scheme_option_install "edwin" "webster"
-  File "${MIT_SCHEME_SRC_ROOT}\edwin\*.bci"
   File "${MIT_SCHEME_SRC_ROOT}\etc\tutorial"
   File "${MIT_SCHEME_DOC_ROOT}\info\*.*"
 
-  SetOutPath "$INSTDIR\doc"
+  SetOutPath "${MIT_SCHEME_DOC_DIR}"
   File "${MIT_SCHEME_DOC_ROOT}\htdoc\index.html"
-  SetOutPath "$INSTDIR\doc\mit-scheme-imail"
+  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-imail"
   File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-imail\*.*"
-  SetOutPath "$INSTDIR\doc\mit-scheme-ref"
+  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-ref"
   File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-ref\*.*"
-  SetOutPath "$INSTDIR\doc\mit-scheme-sos"
+  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-sos"
   File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-sos\*.*"
-  SetOutPath "$INSTDIR\doc\mit-scheme-user"
+  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-user"
   File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-user\*.*"
 
-  SetOutPath "$INSTDIR\lib\cref"
-  File "${MIT_SCHEME_SRC_ROOT}\cref\*.bci"
-  File "${MIT_SCHEME_SRC_ROOT}\cref\*.com"
-  File "${MIT_SCHEME_SRC_ROOT}\cref\*-w32.pkd"
-
+  !insertmacro mit_scheme_aux_install "cref"
   !insertmacro mit_scheme_aux_install "imail"
+  !insertmacro mit_scheme_aux_install "sf"
   !insertmacro mit_scheme_aux_install "sos"
   !insertmacro mit_scheme_aux_install "ssp"
   !insertmacro mit_scheme_aux_install "star-parser"
   !insertmacro mit_scheme_aux_install "xml"
+
+  !insertmacro mit_scheme_bci_install "compiler\back"
+  !insertmacro mit_scheme_bci_install "compiler\base"
+  !insertmacro mit_scheme_bci_install "compiler\fggen"
+  !insertmacro mit_scheme_bci_install "compiler\fgopt"
+  !insertmacro mit_scheme_bci_install "compiler\machines\i386"
+  !insertmacro mit_scheme_bci_install "compiler\rtlbase"
+  !insertmacro mit_scheme_bci_install "compiler\rtlgen"
+  !insertmacro mit_scheme_bci_install "compiler\rtlopt"
 
 ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
@@ -175,12 +181,12 @@ Section "MainSection" SEC01
   SetOutPath $INSTDIR
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\MIT-GNU Scheme.lnk" \
     "${MIT_SCHEME_EXE}" "${MIT_SCHEME_OPTIONS}" \
-    "${MIT_SCHEME_EXE}" 6
+    "${MIT_SCHEME_EXE}" 3
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Documentation.lnk" \
-    "$INSTDIR\doc\index.html"
+    "${MIT_SCHEME_DOC_DIR}\index.html"
   CreateShortCut "$DESKTOP\MIT-GNU Scheme.lnk" \
     "${MIT_SCHEME_EXE}" "${MIT_SCHEME_OPTIONS}" \
-    "${MIT_SCHEME_EXE}" 6
+    "${MIT_SCHEME_EXE}" 3
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
 
@@ -198,7 +204,8 @@ SectionEnd
 
 Section -Post
   WriteUninstaller "$INSTDIR\uninst.exe"
-  WriteRegStr HKLM "${PRODUCT_DIR_REGKEY}" "" "${MIT_SCHEME_EXE}"
+  WriteRegStr ${PRODUCT_DIR_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" \
+    "" "${MIT_SCHEME_EXE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
     "DisplayName" "$(^Name)"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
@@ -215,19 +222,6 @@ Section -Post
     "InstallLocation" "$INSTDIR"
 SectionEnd
 
-
-Function un.onUninstSuccess
-  HideWindow
-  MessageBox MB_ICONINFORMATION|MB_OK \
-    "$(^Name) was successfully removed from your computer."
-FunctionEnd
-
-Function un.onInit
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 \
-    "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES +2
-  Abort
-FunctionEnd
-
 Section Uninstall
   SetShellVarContext all
 
@@ -235,41 +229,48 @@ Section Uninstall
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\uninst.exe"
 
+  !insertmacro mit_scheme_bci_uninstall "compiler\rtlopt"
+  !insertmacro mit_scheme_bci_uninstall "compiler\rtlgen"
+  !insertmacro mit_scheme_bci_uninstall "compiler\rtlbase"
+  !insertmacro mit_scheme_bci_uninstall "compiler\machines\i386"
+  !insertmacro mit_scheme_bci_uninstall "compiler\fgopt"
+  !insertmacro mit_scheme_bci_uninstall "compiler\fggen"
+  !insertmacro mit_scheme_bci_uninstall "compiler\base"
+  !insertmacro mit_scheme_bci_uninstall "compiler\back"
+  RmDir "${MIT_SCHEME_LIB_DIR}\compiler\machines"
+  RmDir "${MIT_SCHEME_LIB_DIR}\compiler"
+
   !insertmacro mit_scheme_aux_uninstall "xml"
   !insertmacro mit_scheme_aux_uninstall "star-parser"
   !insertmacro mit_scheme_aux_uninstall "ssp"
   !insertmacro mit_scheme_aux_uninstall "sos"
+  !insertmacro mit_scheme_aux_uninstall "sf"
   !insertmacro mit_scheme_aux_uninstall "imail"
+  !insertmacro mit_scheme_aux_uninstall "cref"
 
-  Delete "$INSTDIR\lib\cref\*-w32.pkd"
-  Delete "$INSTDIR\lib\cref\*.com"
-  Delete "$INSTDIR\lib\cref\*.bci"
-  RMDir "$INSTDIR\lib\cref"
+  Delete "${MIT_SCHEME_DOC_DIR}\mit-scheme-user\*.*"
+  RMDir "${MIT_SCHEME_DOC_DIR}\mit-scheme-user"
+  Delete "${MIT_SCHEME_DOC_DIR}\mit-scheme-sos\*.*"
+  RMDir "${MIT_SCHEME_DOC_DIR}\mit-scheme-sos"
+  Delete "${MIT_SCHEME_DOC_DIR}\mit-scheme-ref\*.*"
+  RMDir "${MIT_SCHEME_DOC_DIR}\mit-scheme-ref"
+  Delete "${MIT_SCHEME_DOC_DIR}\mit-scheme-imail\*.*"
+  RMDir "${MIT_SCHEME_DOC_DIR}\mit-scheme-imail"
+  Delete "${MIT_SCHEME_DOC_DIR}\index.html"
+  RMDir "${MIT_SCHEME_DOC_DIR}"
 
-  Delete "$INSTDIR\doc\mit-scheme-user\*.*"
-  RMDir "$INSTDIR\doc\mit-scheme-user"
-  Delete "$INSTDIR\doc\mit-scheme-sos\*.*"
-  RMDir "$INSTDIR\doc\mit-scheme-sos"
-  Delete "$INSTDIR\doc\mit-scheme-ref\*.*"
-  RMDir "$INSTDIR\doc\mit-scheme-ref"
-  Delete "$INSTDIR\doc\mit-scheme-imail\*.*"
-  RMDir "$INSTDIR\doc\mit-scheme-imail"
-  Delete "$INSTDIR\doc\index.html"
-  RMDir "$INSTDIR\doc"
+  Delete "${MIT_SCHEME_LIB_DIR}\edwin\*.*"
+  RMDir "${MIT_SCHEME_LIB_DIR}\edwin"
 
-  Delete "$INSTDIR\lib\edwin\*.*"
-  RMDir "$INSTDIR\lib\edwin"
+  Delete "${MIT_SCHEME_LIB_DIR}\runtime\*.*"
+  RMDir "${MIT_SCHEME_LIB_DIR}\runtime"
 
-  Delete "$INSTDIR\lib\runtime\*.*"
-  RMDir "$INSTDIR\lib\runtime"
+  Delete "${MIT_SCHEME_LIB_DIR}\optiondb.scm"
+  Delete "${MIT_SCHEME_LIB_DIR}\all.com"
+  RMDir "${MIT_SCHEME_LIB_DIR}"
 
-  Delete "$INSTDIR\lib\utabmd.bin"
-  Delete "$INSTDIR\lib\optiondb.scm"
-  Delete "$INSTDIR\lib\all.com"
-  RMDir "$INSTDIR\lib"
-
-  Delete "$INSTDIR\bin\*.*"
-  RMDir "$INSTDIR\bin"
+  Delete "${MIT_SCHEME_BIN_DIR}\*.*"
+  RMDir "${MIT_SCHEME_BIN_DIR}"
 
   RMDir "$INSTDIR"
 
@@ -282,6 +283,6 @@ Section Uninstall
   RMDir "$SMPROGRAMS\$ICONS_GROUP"
 
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
-  DeleteRegKey HKLM "${PRODUCT_DIR_REGKEY}"
+  DeleteRegKey ${PRODUCT_DIR_ROOT_KEY} "${PRODUCT_DIR_REGKEY}"
   SetAutoClose true
 SectionEnd
