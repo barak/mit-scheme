@@ -4,15 +4,19 @@
 *.bin
 *.com
 *.crf
+*.dll
+*.err
 *.exe
 *.ext
 *.fre
 *.la
 *.lo
+*.map
 *.o
 *.obj
 *.pdf
 *.pkd
+*.res
 *~
 .edwin-ffi
 /C-*/
@@ -61,6 +65,9 @@ src/6001/Makefile
 src/6001/Makefile.in
 src/compiler/Makefile
 src/compiler/Makefile.in
+src/compiler/compiler.cbf
+src/compiler/compiler.pkg
+src/compiler/compiler.sf
 src/cref/Makefile
 src/cref/Makefile.in
 src/edwin/Makefile
@@ -69,9 +76,7 @@ src/edwin/edwin.bld
 src/imail/Makefile
 src/imail/Makefile.in
 src/lib/
-src/microcode/*.err
 src/microcode/*.ico
-src/microcode/*.map
 src/microcode/Makefile
 src/microcode/cmpauxmd.asm
 src/microcode/cmpintmd-config.h
@@ -85,7 +90,6 @@ src/microcode/makefile
 src/microcode/ntdialog.dlg
 src/microcode/ntdialog.h
 src/microcode/ntgui.rc
-src/microcode/ntgui.res
 src/microcode/scheme32.*
 src/microcode/usrdef.c
 src/runtime/Makefile
