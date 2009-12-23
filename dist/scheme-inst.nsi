@@ -15,7 +15,7 @@ SetCompressor lzma
 
 !define MIT_SCHEME_ROOT "$%home%\mit-scheme"
 !define MIT_SCHEME_SRC_ROOT "${MIT_SCHEME_ROOT}\src"
-!define MIT_SCHEME_DOC_ROOT "${MIT_SCHEME_ROOT}\doc"
+;!define MIT_SCHEME_DOC_ROOT "${MIT_SCHEME_ROOT}\doc"
 !define MIT_SCHEME_BIN_DIR "$INSTDIR\bin"
 !define MIT_SCHEME_LIB_DIR "$INSTDIR\lib"
 !define MIT_SCHEME_DOC_DIR "$INSTDIR\doc"
@@ -51,9 +51,9 @@ SetCompressor lzma
   File "${MIT_SCHEME_SRC_ROOT}\${dir_name}\${root_name}.com"
 !macroend
 
-!include "MUI2.nsh"
+; **************** MUI Begin ****************
 
-; MUI Settings
+!include "MUI2.nsh"
 !define MUI_ABORTWARNING
 !define MUI_UNABORTWARNING
 
@@ -77,18 +77,14 @@ var ICONS_GROUP
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_UNPAGE_FINISH
 
-; Language files
 !insertmacro MUI_LANGUAGE "English"
 
-; Reserve files
-;!insertmacro MUI_RESERVEFILE_INSTALLOPTIONS
-
-; MUI end ------
+; **************** MUI End ****************
 
 Name "MIT/GNU Scheme"
 OutFile "mit-scheme-${PRODUCT_VERSION}-ix86-win32.exe"
 InstallDir "$PROGRAMFILES\MIT-GNU Scheme"
-InstallDirRegKey "${PRODUCT_UNINST_ROOT_KEY}" "${PRODUCT_UNINST_KEY}" \
+InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
   "InstallLocation"
 ShowInstDetails hide
 ShowUnInstDetails hide
@@ -145,18 +141,22 @@ Section "MainSection" SEC01
   !insertmacro mit_scheme_option_install "edwin" "vhdl"
   !insertmacro mit_scheme_option_install "edwin" "webster"
   File "${MIT_SCHEME_SRC_ROOT}\etc\tutorial"
-  File "${MIT_SCHEME_DOC_ROOT}\info\*.*"
+  !ifdef MIT_SCHEME_DOC_ROOT
+    File "${MIT_SCHEME_DOC_ROOT}\info\*.*"
+  !endif
 
-  SetOutPath "${MIT_SCHEME_DOC_DIR}"
-  File "${MIT_SCHEME_DOC_ROOT}\htdoc\index.html"
-  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-imail"
-  File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-imail\*.*"
-  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-ref"
-  File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-ref\*.*"
-  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-sos"
-  File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-sos\*.*"
-  SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-user"
-  File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-user\*.*"
+  !ifdef MIT_SCHEME_DOC_ROOT
+    SetOutPath "${MIT_SCHEME_DOC_DIR}"
+    File "${MIT_SCHEME_DOC_ROOT}\htdoc\index.html"
+    SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-imail"
+    File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-imail\*.*"
+    SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-ref"
+    File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-ref\*.*"
+    SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-sos"
+    File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-sos\*.*"
+    SetOutPath "${MIT_SCHEME_DOC_DIR}\mit-scheme-user"
+    File "${MIT_SCHEME_DOC_ROOT}\htdoc\mit-scheme-user\*.*"
+  !endif
 
   !insertmacro mit_scheme_aux_install "cref"
   !insertmacro mit_scheme_aux_install "imail"
@@ -175,15 +175,17 @@ Section "MainSection" SEC01
   !insertmacro mit_scheme_bci_install "compiler\rtlgen"
   !insertmacro mit_scheme_bci_install "compiler\rtlopt"
 
-; Shortcuts
+  ; Shortcuts
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
   SetOutPath $INSTDIR
   CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\MIT-GNU Scheme.lnk" \
     "${MIT_SCHEME_EXE}" "${MIT_SCHEME_OPTIONS}" \
     "${MIT_SCHEME_EXE}" 3
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Documentation.lnk" \
-    "${MIT_SCHEME_DOC_DIR}\index.html"
+  !ifdef MIT_SCHEME_DOC_ROOT
+    CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Documentation.lnk" \
+      "${MIT_SCHEME_DOC_DIR}\index.html"
+  !endif
   CreateShortCut "$DESKTOP\MIT-GNU Scheme.lnk" \
     "${MIT_SCHEME_EXE}" "${MIT_SCHEME_OPTIONS}" \
     "${MIT_SCHEME_EXE}" 3
