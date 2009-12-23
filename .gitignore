@@ -7,7 +7,6 @@
 *.exe
 *.ext
 *.fre
-*.ico
 *.la
 *.lo
 *.o
@@ -71,6 +70,7 @@ src/imail/Makefile
 src/imail/Makefile.in
 src/lib/
 src/microcode/*.err
+src/microcode/*.ico
 src/microcode/*.map
 src/microcode/Makefile
 src/microcode/cmpauxmd.asm
