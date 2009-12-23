@@ -104,6 +104,7 @@ src/star-parser/Makefile
 src/star-parser/Makefile.in
 src/win32/Makefile
 src/win32/Makefile.in
+src/win32/dibutils/makefile
 src/xdoc/Makefile
 src/xdoc/Makefile.in
 src/xml/Makefile
