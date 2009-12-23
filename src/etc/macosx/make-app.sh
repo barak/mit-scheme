@@ -68,7 +68,7 @@ mv tmp"${AUXDIR}"/macosx-starter mit-scheme.app/Contents/MacOS/.
 rm -f tmp"${AUXDIR}"/runtime.com
 mv tmp"${AUXDIR}"/* mit-scheme.app/Contents/Resources/.
 rm -rf tmp
-cp -p etc/edwin.icns mit-scheme.app/Contents/Resources/appIcon.icns
+cp -p etc/macosx/schlogo.icns mit-scheme.app/Contents/Resources/appIcon.icns
 
 # Generate an appropriate Info.plist file.
 cat > mit-scheme.app/Contents/Info.plist <<EOF
