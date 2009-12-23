@@ -2,6 +2,7 @@
 #include "ntgui.h"
 #include "ntdialog.h"
 
+DEFAULT_ICON ICON schlogo.ico
 SHIELD3_ICON ICON shield3.ico
 SHIELD4_ICON ICON shield4.ico
 SHIELD2_ICON ICON shield2.ico
