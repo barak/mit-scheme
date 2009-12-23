@@ -28,6 +28,7 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+#include "uxtop.h"
 #include "uxtrap.h"
 
 extern const char * OS_current_user_name (void);
@@ -35,10 +36,6 @@ extern const char * OS_current_user_home_directory (void);
 
 #ifdef HAVE_SOCKETS
 #  include "uxsock.h"
-#endif
-
-#ifdef __APPLE__
-#  include <CoreServices/CoreServices.h>
 #endif
 
 DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
@@ -240,47 +237,6 @@ DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
   PRIMITIVE_RETURN (UNSPECIFIC);
 #endif
 }
-
-#ifdef __APPLE__
-const char *
-macosx_main_bundle_dir (void)
-{
-  CFBundleRef bundle;
-  CFURLRef url;
-  UInt8 buffer [4096];
-  char * bp;
-  char * result;
-
-  bundle = (CFBundleGetMainBundle());
-  if (bundle == 0)
-    return (0);
-
-  url = (CFBundleCopyResourceURL (bundle, (CFSTR ("all")), (CFSTR ("com")), 0));
-  if (url == 0)
-    return (0);
-
-  if (!CFURLGetFileSystemRepresentation (url, true, buffer, (sizeof (buffer))))
-    {
-      CFRelease (url);
-      return (0);
-    }
-  CFRelease (url);
-  bp = ((char *) buffer);
-
-  /* Discard everything after the final slash.  */
-  {
-    char * slash = (strrchr (bp, '/'));
-    if (slash != 0)
-      (*slash) = '\0';
-  }
-
-  result = (UX_malloc ((strlen (bp)) + 1));
-  if (result != 0)
-    strcpy (result, bp);
-
-  return (result);
-}
-#endif
 
 DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
 		  Prim_macosx_main_bundle_dir, 0, 0, 0)

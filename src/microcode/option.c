@@ -30,6 +30,7 @@ USA.
 #include "fasl.h"
 #include "osenv.h"
 #include "osfs.h"
+#include "uxtop.h"
 #include <sys/stat.h>
 
 #define xfree(p) OS_free ((void *) (p))
@@ -73,10 +74,6 @@ USA.
 #endif
 
 #define FILE_READABLE(filename) (OS_file_access ((filename), 4))
-
-#ifdef __APPLE__
-   extern const char * macosx_main_bundle_dir (void);
-#endif
 
 static bool option_summary;
 

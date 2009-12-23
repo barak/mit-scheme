@@ -30,4 +30,9 @@ USA.
 
 extern void UX_dump_core (void);
 
+#ifdef __APPLE__
+   extern bool macosx_in_app_p (void);
+   extern const char * macosx_main_bundle_dir (void);
+#endif
+
 #endif /* SCM_UXTOP_H */
