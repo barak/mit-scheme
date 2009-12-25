@@ -261,7 +261,8 @@ USA.
 
 (define (mhash-substring hash-type string start end)
   (let ((context (mhash-init hash-type)))
-    (mhash-update context string start end)
+    (if (fix:> end start)
+	(mhash-update context string start end))
     (mhash-end context)))
 
 (define (mhash-sum->number sum)
@@ -334,7 +335,8 @@ USA.
 
 (define (%md5-substring string start end)
   (let ((context ((ucode-primitive md5-init 0))))
-    ((ucode-primitive md5-update 4) context string start end)
+    (if (fix:> end start)
+	((ucode-primitive md5-update 4) context string start end))
     ((ucode-primitive md5-final 1) context)))
 
 (define md5-sum->number mhash-sum->number)
