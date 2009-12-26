@@ -209,7 +209,8 @@ DEFINE_PRIMITIVE ("MHASH", Prim_mhash, 4, 4, 0)
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (2));
-    unsigned long end = (arg_ulong_index_integer (4, ((STRING_LENGTH (string)) + 1)));
+    unsigned long end
+      = (arg_ulong_index_integer (4, ((STRING_LENGTH (string)) + 1)));
     unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     mhash ((arg_context (1)), (STRING_LOC (string, start)), (end - start));
   }
