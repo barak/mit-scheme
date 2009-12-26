@@ -112,9 +112,9 @@ Update CONTEXT with the contents of the substring (STRING,START,END).")
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (2));
-    unsigned long l = (STRING_LENGTH (string));
-    unsigned long start = (arg_ulong_index_integer (3, l));
-    unsigned long end = (arg_integer_in_range (4, start, (l + 1)));
+    unsigned long end
+      = (arg_ulong_index_integer (4, ((STRING_LENGTH (string)) + 1)));
+    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     MD5_UPDATE ((md5_context_arg (1)),
 		(STRING_LOC (string, start)),
 		(end - start));
