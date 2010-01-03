@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,7 +65,8 @@ USA.
       (LAP)
       (begin
 	(guarantee-registers-compatible source target)
-	(inst:copy (register-reference target)
+	(inst:copy (register-type target)
+		   (register-reference target)
 		   (register-reference source)))))
 
 (define (reference->register-transfer source target)
@@ -80,7 +81,7 @@ USA.
   (inst:load 'WORD (register-reference target) (pseudo-register-home source)))
 
 (define (register->home-transfer source target)
-  (inst:store 'WORD (register-reference target) (pseudo-register-home target)))
+  (inst:store 'WORD (register-reference source) (pseudo-register-home target)))
 
 ;;;; Linearizer interface
 
@@ -94,9 +95,6 @@ USA.
   block-start-label
   (LAP ,@(inst:entry-point label)
        ,@(make-expression-label label)))
-
-(define (make-expression-label label)
-  (make-external-label label 'EXPRESSION))
 
 (define (make-external-label label type-code)
   (set! *external-labels* (cons label *external-labels*))
@@ -121,6 +119,7 @@ USA.
   (make-external-label label (encode-continuation-offset label #xFFFE)))
 
 (define (make-continuation-label entry-label label)
+  entry-label
   (make-external-label label (encode-continuation-offset label #xFFFD)))
 
 (define (encode-procedure-type n-required n-optional rest?)
@@ -157,7 +156,7 @@ USA.
 	(else
 	 (error:bad-range-argument object 'LOAD-CONSTANT))))
 
-(define (simple-branches! condition source1 #!default source2)
+(define (simple-branches! condition source1 #!optional source2)
   (if (default-object? source2)
       (set-current-branches!
        (lambda (label)

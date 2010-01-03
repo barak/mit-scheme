@@ -2,7 +2,7 @@
 
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
 #     Technology
 #
 # This file is part of MIT/GNU Scheme.
@@ -33,6 +33,11 @@ TARGET_ARCH=${1}
 
 if test x"${TARGET_ARCH}" = xc; then
     echo C
+    exit 0
+fi
+
+if test x"${TARGET_ARCH}" = xsvm1; then
+    echo svm
     exit 0
 fi
 

@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,10 +36,20 @@ USA.
 ;;; machine instructions, which are distinguished by an opcode byte.
 
 (define-record-type <rt-coding-type>
-    (make-rt-coding-type name defns)
+    (%make-rt-coding-type name defns)
     rt-coding-type?
   (name rt-coding-type-name)
   (defns rt-coding-type-defns))
+
+(define rt-coding-types '())
+
+(define (make-rt-coding-type name defns)
+  (if (find-matching-item rt-coding-types
+	(lambda (rt-coding-type)
+	  (eq? (rt-coding-type-name rt-coding-type) name)))
+      (error "Coding type already exists" name)
+      (set! rt-coding-types
+	    (cons (%make-rt-coding-type name defns) rt-coding-types))))
 
 ;;; Each coding type has a number of definitions, each of which
 ;;; represents the code sequence associated with a particular value of
@@ -113,20 +123,19 @@ USA.
 
 ;;; **** where are real top-level entries? ****
 
-(define (match-rt-coding-type name expression coding-types symbol-table)
-  (let loop ((defns (rt-coding-type-defns (rt-coding-type name coding-types))))
+(define (match-rt-coding-type name expression symbol-table)
+  (let loop ((defns (rt-coding-type-defns (rt-coding-type name))))
     (and (pair? defns)
 	 (let ((pvals
 		(match-pattern (rt-defn-pattern (car defns))
 			       expression
-			       coding-types
 			       symbol-table)))
 	   (if pvals
 	       (make-rt-instance (car defns) pvals)
 	       (loop (cdr defns)))))))
 
-(define (decode-rt-coding-type name read-byte coding-types)
-  (let ((type (rt-coding-type name coding-types))
+(define (decode-rt-coding-type name read-byte)
+  (let ((type (rt-coding-type name))
 	(code (read-byte)))
     (let ((rcd
 	   (find-matching-item (rt-coding-type-defns type)
@@ -134,10 +143,11 @@ USA.
 	       (eqv? (rt-defn-code rcd) code)))))
       (if (not rcd)
 	  (error "No matching code:" code type))
-      (make-rt-instance rcd ((rt-defn-decoder rcd) read-byte coding-types)))))
+      (make-rt-instance rcd ((rt-defn-decoder rcd)
+			     read-byte rt-coding-types)))))
 
-(define (rt-coding-type name coding-types)
-  (or (find-matching-item coding-types
+(define (rt-coding-type name)
+  (or (find-matching-item rt-coding-types
 	(lambda (rt-coding-type)
 	  (eq? (rt-coding-type-name rt-coding-type) name)))
       (error:bad-range-argument name 'RT-CODING-TYPE)))
@@ -186,7 +196,7 @@ USA.
 (define-integrable (pvar-name pv) (cadr pv))
 (define-integrable (pvar-type pv) (caddr pv))
 
-(define (match-pattern pattern expression coding-types symbol-table)
+(define (match-pattern pattern expression symbol-table)
   (let loop ((pattern pattern) (expression expression) (pvals '()))
     (if (pair? pattern)
 	(if (eq? (car pattern) '_)
@@ -200,7 +210,6 @@ USA.
 		  (let ((instance
 			 (match-rt-coding-type (pvar-type pattern)
 					       expression
-					       coding-types
 					       symbol-table)))
 		    (and instance
 			 (cons instance pvals)))))
@@ -388,7 +397,8 @@ USA.
 	   (let ((name (symbol-append 'EA: tag)))
 	     `(BEGIN
 		(DEFINE-INTEGRABLE (,name ,@params)
-		  (INST-EA (,tag ,@(map (lambda (p) `(UNQUOTE p)) params))))
+		  (INST-EA (,tag ,@(map (lambda (p) (list 'UNQUOTE p))
+					params))))
 		(DEFINE-INTEGRABLE (,(symbol-append name '?) EA)
 		  (AND (PAIR? EA)
 		       (EQ? (CAR EA) ',tag))))))
@@ -442,8 +452,8 @@ USA.
      environment
      `(BEGIN
 	,@(map (lambda (name)
-		 `(DEFINE ,(symbol-append 'TRAP: name)
-		    (INST:TRAP ',name)))
+		 `(DEFINE (,(symbol-append 'TRAP: name) . ARGS)
+		    (APPLY INST:TRAP ',name ARGS)))
 	       (cddr form))))))
 
 (define-traps
@@ -456,10 +466,21 @@ USA.
 
   ;; This group returns; push return address.
   link conditionally-serialize
-  interrupt-closure interrupt-dlink interrupt-procedure
-  interrupt-continuation interrupt-ic-procedure
   reference-trap safe-reference-trap assignment-trap unassigned?-trap
   lookup safe-lookup set! unassigned? define unbound? access)
+
+(define-syntax define-interrupt-tests
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(BEGIN
+       ,@(map (lambda (name)
+		`(DEFINE-INST ,(symbol-append 'INTERRUPT-TEST- name)))
+	      (cddr form))))))
+
+(define-interrupt-tests
+  interrupt-test-closure interrupt-test-dynamic-link interrupt-test-procedure
+  interrupt-test-continuation interrupt-test-ic-procedure)
 
 ;;;; Machine registers
 
@@ -601,7 +622,7 @@ USA.
 
 (define (lookup-symbolic-operator name error?)
   (or (hash-table/get symbolic-operators name #f)
-      (error:bad-range-argument name #f)))
+      (and error? (error:bad-range-argument name #f))))
 
 (define symbolic-operators
   (make-strong-eq-hash-table))
