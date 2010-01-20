@@ -924,7 +924,7 @@ USA.
 	    ;; Compute a-b and a^b, then compute b-(a^b) and
 	    ;; cons it onto the front of a-b.
 	    (receive (a-b a-int-b)   (lset-diff+intersection = a b)
-	      (cond ((null? a-b)     (lset-difference b a =))
+	      (cond ((null? a-b)     (lset-difference = b a))
 		    ((null? a-int-b) (append b a))
 		    (else (fold (lambda (xb ans)
 				  (if (member xb a-int-b =) ans (cons xb ans)))
@@ -944,7 +944,7 @@ USA.
 	    ;; Compute a-b and a^b, then compute b-(a^b) and
 	    ;; cons it onto the front of a-b.
 	    (receive (a-b a-int-b)   (lset-diff+intersection! = a b)
-	      (cond ((null? a-b)     (lset-difference! b a =))
+	      (cond ((null? a-b)     (lset-difference! = b a))
 		    ((null? a-int-b) (append! b a))
 		    (else (pair-fold (lambda (b-pair ans)
 				       (if (member (car b-pair) a-int-b =)
