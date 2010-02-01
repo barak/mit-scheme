@@ -317,7 +317,7 @@ USA.
 	    ((scan-head
 	      (lambda (p)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(begin
 			  (vector-set! buckets i p)
 			  (scan-tail (cdr p) p))
@@ -328,13 +328,13 @@ USA.
 	     (scan-tail
 	      (lambda (p q)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(scan-tail (cdr p) p)
 			(begin
 			  (decrement-table-count! table)
 			  (let loop ((p (cdr p)))
 			    (if (pair? p)
-				(if (%weak-entry-key (car p))
+				(if (%weak-entry-valid? (car p))
 				    (begin
 				      (set-cdr! q p)
 				      (scan-tail (cdr p) p))
