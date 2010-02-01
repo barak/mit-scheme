@@ -41,6 +41,8 @@ if ! [[ -d .git && -d src && -d etc ]]; then
     exit 1
 fi
 
+CONFIG_ARGS=("${@}")
+
 # Hack for cph
 if which cpx > /dev/null; then
     : ${COPY:="cpx -sq"}
@@ -70,7 +72,7 @@ run_stage ()
     find_stage stage$((N-1))
     rm -rf ${STAGE}
     ${COPY} src ${STAGE}
-    (set -e; cd ${STAGE}; ./Setup.sh; ./configure; make)
+    (set -e; cd ${STAGE}; ./Setup.sh; ./configure "${CONFIG_ARGS[@]}"; make)
     if ! [[ -f ${STAGE}/lib/all.com ]]; then
 	echo "${STAGE} failed"
 	exit 1
