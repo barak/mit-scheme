@@ -1631,8 +1631,6 @@ USA.
     ((integer-add &+) 'plus-fixnum)
     ((integer-subtract &-) 'minus-fixnum)
     ((integer-multiply &*) 'multiply-fixnum)
-    ((integer-quotient quotient) 'fixnum-quotient)
-    ((integer-remainder remainder) 'fixnum-remainder)
     ((integer-add-1 1+) 'one-plus-fixnum)
     ((integer-subtract-1 -1+) 'minus-one-plus-fixnum)
     ((integer-negate) 'fixnum-negate)
@@ -1646,9 +1644,9 @@ USA.
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  '(&+ &- &* #| &/ |# QUOTIENT REMAINDER
-	       INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY
-	       INTEGER-QUOTIENT INTEGER-REMAINDER))
+	  ;; Don't add any division operators here.  The open-coding
+	  ;; doesn't test for divide-by-zero.
+	  '(&+ &- &* INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY))
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))
