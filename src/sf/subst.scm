@@ -139,9 +139,7 @@ USA.
 	     (else
 	      (error "Unknown operation" operation))))
 	 (lambda ()
-	   (if *eager-integration-switch
-	       (try-safe-integration)
-	       (integration-failure))))))))
+	   (integration-failure)))))))
 
 (define (integrate/name-if-safe expr reference environment
 				operations safe-operations if-win if-fail)
@@ -251,9 +249,7 @@ USA.
 	   (else
 	    (error "Unknown operation" operation))))
        (lambda ()
-	 (if *eager-integration-switch
-	     (try-safe-integration)
-	     (integration-failure)))))))
+	 (integration-failure))))))
 
 ;;;; Binding
 
@@ -411,34 +407,14 @@ you ask for.
 			  (if rest
 			      (append required optional (list rest))
 			      (append required optional))))
-	    (if (and *eta-substitution-switch
-		     (combination? body)
-		     (null? optional)
-		     (null? rest)
-		     (let ((operands (combination/operands body)))
-		       (match-up? operands required))
-		     (set/empty?
-		      (set/intersection
-		       (list->set variable? eq? required)
-		       (free/expression (combination/operator body)))))
-		(combination/operator body)
 		(procedure/make (procedure/scode procedure)
 				block
 				name
 				required
 				optional
 				rest
-				body))))))))
+				body)))))))
 
-(define (match-up? operands required)
-  (if (null? operands)
-      (null? required)
-      (and (not (null? required))
-	   (let ((this-operand (car operands))
-		 (this-required (car required)))
-	     (and (reference? this-operand)
-		  (eq? (reference/variable this-operand) this-required)
-		  (match-up? (cdr operands) (cdr required)))))))
 
 (define-method/integrate 'COMBINATION
   (lambda (operations environment combination)
