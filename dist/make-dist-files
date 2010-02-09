@@ -191,6 +191,7 @@ for ARCH in i386 x86-64; do
     if [[ ! -f ${STAMP_TAR} ]]; then
 	(
 	    set -e
+	    rm -f "${TARFILE}"
 	    cd "${IMAGE_LOCAL}"
 	    tar cvzf "${TL_DIR}"/"${TARFILE}" *
 	    chmod 444 "${TL_DIR}"/"${TARFILE}"
