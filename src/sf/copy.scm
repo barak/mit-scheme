@@ -98,7 +98,7 @@ USA.
 
 (define (copy/block parent environment block)
   (let ((result (block/make parent (block/safe? block) '()))
-	(old-bound (block/bound-variables-list block)))
+	(old-bound (block/bound-variables block)))
     (let ((new-bound
 	   (map (lambda (variable)
 		  (let ((new

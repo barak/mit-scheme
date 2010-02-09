@@ -39,7 +39,6 @@ USA.
 	       THE-ENVIRONMENT?
 	       VARIABLE?)))
   (sf-conditionally "object")
-  (sf-conditionally "lsets")
   (sf-directory "."))
 
 (load-option 'CREF)

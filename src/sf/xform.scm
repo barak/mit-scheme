@@ -50,7 +50,7 @@ USA.
     (let ((environment
 	   (if top-level?
 	       (environment/bind (environment/make)
-				 (block/bound-variables-list block))
+				 (block/bound-variables block))
 	       (environment/make))))
       (if (scode-open-block? expression)
 	  (begin
@@ -190,7 +190,7 @@ USA.
 	  (lambda (required optional rest)
 	    (let ((environment
 		   (environment/bind environment
-				     (block/bound-variables-list block))))
+				     (block/bound-variables block))))
 	      (procedure/make
 	       expression block name required optional rest
 	       (transform/procedure-body block

@@ -28,9 +28,7 @@ USA.
 (global-definitions "../runtime/runtime")
 
 (define-package (scode-optimizer)
-  (files "lsets"
-	 "table"
-	 "pthmap"
+  (files "pthmap"
 	 "object"
 	 "emodel"
 	 "gconst"
