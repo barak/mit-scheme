@@ -162,7 +162,7 @@ for ARCH in i386 x86-64; do
 		    --with-mcrypt=no --with-libpq=no --with-db-4=no
 		make
 	    )
-	    rm -f "${IMAGE_LIB}"/runtime.com
+	    rm -f "${SRC_DIR}"/lib/runtime.com
 	    touch "${STAMP_BUILD}"
 	) &> "${OUTPUT_DIR}"/"${ARCH}"-compile
     fi
