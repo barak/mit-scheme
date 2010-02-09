@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2000,2001,2002,2003,2005 Massachusetts Institute of Technology
 #
@@ -19,148 +19,175 @@
 
 set -e
 
-if [ $# -gt 3 ]; then
-    echo "usage: ${0} [TYPE [VERSION [DESTINATION]]]"
+if [[ ${#} -gt 1 ]]; then
+    echo "usage: ${0} [TYPE]" >&2
     exit 1
 fi
 
-TYPE=${1:-std}
-VERSION=${2}
-DESTINATION=${3}
+TYPE=${1:-standard}
 
-case "${TYPE}" in
-(std)
+case ${TYPE} in
+(standard)
+    FOO=$(ls mit-scheme-*.zip)
+    if [[ ${FOO} =~ mit-scheme-([0-9.]+)\.zip ]]; then
+	VERSION=${BASH_REMATCH[1]}
+    else
+	echo "Unable to determine version number; maybe in wrong directory?" >&2
+	exit 1
+    fi
     ;;
 (snapshot)
-    [ "${VERSION}" ] || VERSION=snapshot
+    VERSION=$(date +%Y%m%d)
     ;;
 (*)
-    echo "Unknown distribution type: ${TYPE}"
-    echo "Valid types: std snapshot"
+    echo "Unknown distribution type: ${TYPE}" >&2
+    echo "Valid types: standard snapshot" >&2
     exit 1
     ;;
 esac
 
-if [ "${VERSION}" = snapshot ]; then
-    VERSION=$(date +%Y%m%d)
-fi
-
-DIST_DIR=/scheme/v7/dist
-
-. "${DIST_DIR}"/release-prefix
+: ${DIST_DIR:="${HOME}"/mit-scheme/dist}
 
 TL_DIR=$(pwd)
-BUILD_DIR_REL=$(get_release_prefix "${VERSION}")
-BUILD_DIR=${TL_DIR}/${BUILD_DIR_REL}
-SRC_FILE=${BUILD_DIR}.tar.gz
-STAMP_BUILD=${TL_DIR}/stamp-build
-STAMP_IMAGE=${TL_DIR}/stamp-image
+BUILD_ROOT=mit-scheme-${VERSION}
+SRC_FILE=${BUILD_ROOT}.tar.gz
+LOCAL_DIR=/usr/local
+BINDIR=${LOCAL_DIR}/bin
+AUXDIR=${LOCAL_DIR}/lib/mit-scheme
+OUTPUT_DIR=.out
 
-IMAGE_DIR=${BUILD_DIR}-image
-BINDIR=${IMAGE_DIR}/usr/local/bin
-AUXDIR=${IMAGE_DIR}/usr/local/lib/mit-scheme
-
-if [ ! -f "${SRC_FILE}" ]; then
-    echo "No source file: ${SRC_FILE}."
+if [[ ! -f ${SRC_FILE} ]]; then
+    echo "No source file: ${SRC_FILE}." >&2
     exit 1
 fi
 
-MKDIR="install -d -m 755"
-INSTALL=install
-FOO=$(${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps)
-[ -n "${FOO}" ] && INSTALL="${INSTALL} --preserve-timestamps"
-INSTALL_DATA="${INSTALL} -m 644"
+MKDIR=(install -d -m 755)
+INSTALL=(install -p)
+INSTALL_DATA=("${INSTALL[@]}" -m 644)
 
-# It takes a lot of work to build the image.
-# Don't throw it away needlessly.
-
-if [ ! -f "${STAMP_BUILD}" ];then
-    rm -rf "${BUILD_DIR}"
-
-    tar xzf "${SRC_FILE}"
-
-    cd "${BUILD_DIR}"/src
-    ./configure --enable-static-libs=yes --enable-dynamic-modules=no \
-	--with-mcrypt=no --with-libpq=no --with-db-4=no
-    make
-
-    cd "${BUILD_DIR}"/doc
-    ./configure
-    make
-
-    touch "${STAMP_BUILD}"
-fi
-
-if [ ! -f "${STAMP_IMAGE}" ]; then
-    rm -rf "${IMAGE_DIR}"
-
-    cd "${BUILD_DIR}"/src
-    make install DESTDIR="${IMAGE_DIR}"
-    ${MKDIR} "${AUXDIR}"/doc
-    ${INSTALL_DATA} COPYING "${AUXDIR}"/doc/.
-
-    cd "${BUILD_DIR}"/doc
-    make install-info-gz DESTDIR="${IMAGE_DIR}" \
-	infodir=/usr/local/lib/mit-scheme/edwin/info
-    make install-html DESTDIR="${IMAGE_DIR}"
-
-    find "${IMAGE_DIR}" -type f -print | xargs chmod og-w
-    find "${IMAGE_DIR}" -type d -print | xargs chmod og-w
-
-    touch "${STAMP_IMAGE}"
-fi
-
-make_tarfile ()
+fixup_perms ()
 {
-    TARFILE=${TL_DIR}/${1}.tar.gz
-    [ -e "${TARFILE}" ] && rm -f "${TARFILE}"
-    (cd "${IMAGE_DIR}"/usr/local; tar cvzf "${TARFILE}" *)
-    chmod 444 "${TARFILE}"
+    chmod -R og-w "${1}"
 }
 
-if [ "${DESTINATION}" = "" ]; then
-    PRE=${BUILD_DIR_REL}-ix86
-    make_tarfile "${PRE}"-gnu-linux
-    if [ -f "${DIST_DIR}"/freebsd-bin/scheme ]; then
-	${INSTALL} "${DIST_DIR}"/freebsd-bin/* "${BINDIR}"/.
-	make_tarfile "${PRE}"-freebsd
-    fi
-else
-    make_tarfile "${DESTINATION}"
+DOC_BUILD_DIR=${BUILD_ROOT}-doc
+DOC_IMAGE_DIR=${DOC_BUILD_DIR}-image
+DOC_BUILD_OUT=${OUTPUT_DIR}/doc-build
+DOC_IMAGE_OUT=${OUTPUT_DIR}/doc-image
+STAMP_DOC_BUILD=${DOC_BUILD_DIR}.stamp
+STAMP_DOC_IMAGE=${DOC_IMAGE_DIR}.stamp
+if [[ ! -f ${STAMP_DOC_BUILD} ]]; then
+    echo "Building documentation" >&2
+
+    rm -rf "${BUILD_ROOT}" "${DOC_BUILD_DIR}"
+    tar xzf "${SRC_FILE}"
+    mv "${BUILD_ROOT}" "${DOC_BUILD_DIR}"
+    (
+	set -e
+	cd "${DOC_BUILD_DIR}"/doc
+	./configure
+	make
+    ) &> "${DOC_BUILD_OUT}"
+    touch "${STAMP_DOC_BUILD}"
 fi
 
-rm -rf "${STAMP_IMAGE}" "${IMAGE_DIR}"
+if [[ ! -f ${STAMP_DOC_IMAGE} ]]; then
+    echo "Make images for documentation" >&2
+(
+    set -e
 
-case "${TYPE}" in
-(std)
-    make_doc_file ()
-    {
-	DOCFILE=${BUILD_DIR}-${2}.${3}
-	rm -f "${DOCFILE}"
-	(cd "${TL_DIR}"; ${1} "${DOCFILE}" "${BUILD_DIR_REL}"/"${2}")
-	chmod a-w "${DOCFILE}"
-    }
+    # First build the image for binary distributions.
+    rm -rf "${DOC_IMAGE_DIR}"
+    (
+	set -e
+	cd "${DOC_BUILD_DIR}"/doc
+	make install-info-gz DESTDIR="${TL_DIR}"/"${DOC_IMAGE_DIR}"
+	make install-html DESTDIR="${TL_DIR}"/"${DOC_IMAGE_DIR}"
+    )
+    "${INSTALL_DATA[@]}" "${DOC_BUILD_DIR}"/src/COPYING \
+	"${DOC_IMAGE_DIR}"/"${AUXDIR}"/doc/.
+    fixup_perms "${DOC_IMAGE_DIR}"
 
-    for FMT in html info pdf ps; do
-	IMAGE_ROOT=doc-${FMT}
-	IMAGE_DIR=${BUILD_DIR}/${IMAGE_ROOT}
-	rm -rf "${IMAGE_DIR}"
-	mkdir "${IMAGE_DIR}"
+    # Then build the images for documentation tarballs.
+    DOC_FORMATS=(html info pdf ps)
+    IMAGE_DIR=${BUILD_ROOT}/doc
+    for FORMAT in "${DOC_FORMATS[@]}"; do
+	DOCFILE_BASE=${BUILD_ROOT}-doc-${FORMAT}
+	rm -rf "${BUILD_ROOT}"
+	"${MKDIR[@]}" "${IMAGE_DIR}"
 	(
-	    cd "${BUILD_DIR}"/doc
-	    make install-"${FMT}" "${FMT}"dir="${IMAGE_DIR}"
+	    set -e
+	    cd "${DOC_BUILD_DIR}"/doc
+	    make install-"${FORMAT}" "${FORMAT}"dir="${TL_DIR}"/"${IMAGE_DIR}"
 	)
-	make_doc_file "tar cvzf" "${IMAGE_ROOT}" "tar.gz"
-	make_doc_file "zip -r" "${IMAGE_ROOT}" "zip"
-	case "${FMT}" in
-	(html | pdf)
-	    rm -rf "${TL_DIR}"/"${IMAGE_ROOT}"
-	    mv -f "${IMAGE_DIR}" "${TL_DIR}"/.
-	    ;;
-	esac
+	rm -f "${DOCFILE_BASE}".tar.gz
+	tar cvzf "${DOCFILE_BASE}".tar.gz "${IMAGE_DIR}"
+	rm -f "${DOCFILE_BASE}".zip
+	zip -r "${DOCFILE_BASE}".zip "${IMAGE_DIR}"
+	rm -rf "${BUILD_ROOT}"
+	chmod 444 "${DOCFILE_BASE}".*
     done
-    ;;
-esac
 
-cd "${TL_DIR}"
-rm -rf "${STAMP_BUILD}" "${BUILD_DIR}"
+    touch "${STAMP_DOC_IMAGE}"
+    rm -rf "${DOC_BUILD_DIR}"
+) &> "${DOC_IMAGE_OUT}"
+fi
+
+for ARCH in i386 x86-64; do
+    BUILD_DIR=${BUILD_ROOT}-${ARCH}
+    SRC_DIR=${BUILD_DIR}/src
+    IMAGE_DIR=${BUILD_DIR}-image
+    TARFILE=${BUILD_DIR}.tar.gz
+    BINDIR=/usr/local/bin
+    STAMP_BUILD=${BUILD_DIR}.stamp
+    STAMP_IMAGE=${IMAGE_DIR}.stamp
+    STAMP_TAR=${BUILD_DIR}-tar.stamp
+
+    if [[ ! -f ${STAMP_BUILD} ]];then
+	echo "Building binaries for arch ${ARCH}" >&2
+	(
+	    set -e
+	    rm -rf "${BUILD_DIR}"
+	    tar xzf "${SRC_FILE}"
+	    mv "${BUILD_ROOT}" "${BUILD_DIR}"
+	    (
+		set -e
+		cd "${SRC_DIR}"
+		./configure --enable-native-code="${ARCH}" \
+		    --enable-static-libs=yes --enable-dynamic-modules=no \
+		    --with-mcrypt=no --with-libpq=no --with-db-4=no
+		make
+	    )
+	    touch "${STAMP_BUILD}"
+	) &> "${OUTPUT_DIR}"/"${ARCH}"-compile
+    fi
+    if [[ ! -f ${STAMP_IMAGE} ]]; then
+	echo "Making image for arch ${ARCH}" >&2
+	(
+	    set -e
+	    rm -rf "${IMAGE_DIR}"
+	    (
+		set -e
+		cd "${SRC_DIR}"
+		make install DESTDIR="${TL_DIR}"/"${IMAGE_DIR}"
+	    )
+	    # Don't save system-specific files.
+	    rm -rf "${IMAGE_DIR}"/"${BINDIR}"
+
+	    fixup_perms "${IMAGE_DIR}"
+	    touch "${STAMP_IMAGE}"
+	    rm -rf "${BUILD_DIR}"
+	) &> "${OUTPUT_DIR}"/"${ARCH}"-image
+    fi
+    if [[ ! -f ${STAMP_TAR} ]]; then
+	(
+	    set -e
+	    cd "${IMAGE_DIR}"/usr/local
+	    tar cvzf "${TL_DIR}"/"${TARFILE}" *
+	    chmod 444 "${TL_DIR}"/"${TARFILE}"
+	) &> "${OUTPUT_DIR}"/"${ARCH}"-tar
+	touch "${STAMP_TAR}"
+	rm -rf "${IMAGE_DIR}"
+    fi
+done
+rm -f *.stamp
