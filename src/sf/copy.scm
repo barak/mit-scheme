@@ -98,7 +98,7 @@ USA.
 
 (define (copy/block parent environment block)
   (let ((result (block/make parent (block/safe? block) '()))
-	(old-bound (block/bound-variables-list block)))
+	(old-bound (block/bound-variables block)))
     (let ((new-bound
 	   (map (lambda (variable)
 		  (let ((new
@@ -112,7 +112,6 @@ USA.
 	(set-block/declarations!
 	 result
 	 (copy/declarations block environment (block/declarations block)))
-	(set-block/flags! result (block/flags block))
 	(values result environment)))))
 
 (define (copy/variable block environment variable)
@@ -263,8 +262,7 @@ USA.
 		(if (eq? action open-block/value-marker)
 		    action
 		    (copy/expression block environment action)))
-	      (open-block/actions expression))
-	 (open-block/optimized expression))))))
+	      (open-block/actions expression)))))))
 
 (define-method/copy 'QUOTATION
   (lambda (block environment expression)

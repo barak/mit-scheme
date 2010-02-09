@@ -94,6 +94,7 @@ USA.
 ;;;; Potpourri
 
 (define (identity-procedure x) x)
+(define (constant-procedure k) (lambda args (declare (ignore args)) k))
 (define (null-procedure . args) args '())
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)

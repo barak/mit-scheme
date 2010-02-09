@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; SCode Optimizer: Intern object types
+;;; package: (scode-optimizer change-type)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))

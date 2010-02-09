@@ -27,9 +27,6 @@ USA.
 ;;; package: (scode-optimizer cgen)
 
 (declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution)
 	 (integrate-external "object"))
 
 (define *sf-associate*
@@ -220,6 +217,9 @@ USA.
 
 (define-method/cgen 'REFERENCE
   (lambda (interns expression)
+    (if (variable/must-ignore? (reference/variable expression))
+	(warn "Variable declared IGNORE, but was used: " 
+	      (variable/name (reference/variable expression))))
     (cgen/variable interns (reference/variable expression))))
 
 (define-method/cgen 'SEQUENCE

@@ -23,33 +23,22 @@ USA.
 
 |#
 
-;;;; SCode Optimizer: Free Variable Analysis
+;;;; SCode Optimizer: Free Variable Computation
+;;; package: (scode-optimizer free)
 
 (declare (usual-integrations)
-	 (integrate-external "object" "lsets"))
+	 (integrate-external "object"))
 
-(declare (integrate-operator no-free-variables singleton-variable
-			     list->variable-set))
-
-(define (no-free-variables) 
-  (empty-set variable? eq?))
-
-(define (singleton-variable variable) 
-  (singleton-set variable? eq? variable))
-
-(define (list->variable-set variable-list)
-  (list->set variable? eq? variable-list))
-
-(define (free/expressions expressions)
-  (if (null? expressions)
-      (no-free-variables)
-      (set/union (free/expression (car expressions))
-		 (free/expressions (cdr expressions)))))
-
 (declare (integrate-operator free/expression))
 
 (define (free/expression expression)
   ((expression/method dispatch-vector expression) expression))
+
+(define (free/expressions expressions)
+  (fold-left (lambda (answer expression)
+	       (set/union answer (free/expression expression)))
+	     (no-free-variables)
+	     expressions))
 
 (define dispatch-vector
   (expression/make-dispatch-vector))
@@ -73,13 +62,14 @@ USA.
 
 (define-method/free 'CONDITIONAL
   (lambda (expression)
-    (set/union*
+    (set/union
      (free/expression (conditional/predicate expression))
-     (free/expression (conditional/consequent expression))
-     (free/expression (conditional/alternative expression)))))
+     (set/union
+      (free/expression (conditional/consequent expression))
+      (free/expression (conditional/alternative expression))))))
 
 (define-method/free 'CONSTANT
-  (lambda (expression) 
+  (lambda (expression)
     expression
     (no-free-variables)))
 
@@ -96,34 +86,29 @@ USA.
     (set/union (free/expression (disjunction/predicate expression))
 	       (free/expression (disjunction/alternative expression)))))
 
+(define-method/free 'OPEN-BLOCK
+  (lambda (expression)
+    (let ((omit (block/bound-variables (open-block/block expression))))
+     (fold-left (lambda (variables action)
+		  (if (eq? action open-block/value-marker)
+		      variables
+		      (set/union variables (set/difference (free/expression action) omit))))
+		(set/difference (free/expressions (open-block/values expression)) omit)
+		(open-block/actions expression)))))
+
 (define-method/free 'PROCEDURE
   (lambda (expression)
     (set/difference
      (free/expression (procedure/body expression))
-     (list->variable-set
-      (block/bound-variables-list (procedure/block expression))))))
-
-(define-method/free 'OPEN-BLOCK
-  (lambda (expression)
-    (set/difference
-     (set/union (free/expressions (open-block/values expression))
-		(let loop ((actions (open-block/actions expression)))
-		  (cond ((null? actions) (no-free-variables))
-			((eq? (car actions) open-block/value-marker)
-			 (loop (cdr actions)))
-			(else
-			 (set/union (free/expression (car actions))
-				    (loop (cdr actions)))))))
-     (list->variable-set 
-      (block/bound-variables-list (open-block/block expression))))))
+     (block/bound-variables (procedure/block expression)))))
 
 (define-method/free 'QUOTATION
-  (lambda (expression) 
+  (lambda (expression)
     expression
     (no-free-variables)))
 
 (define-method/free 'REFERENCE
-  (lambda (expression) 
+  (lambda (expression)
     (singleton-variable (reference/variable expression))))
 
 (define-method/free 'SEQUENCE
@@ -131,6 +116,28 @@ USA.
     (free/expressions (sequence/actions expression))))
 
 (define-method/free 'THE-ENVIRONMENT
-  (lambda (expression) 
+  (lambda (expression)
     expression
     (no-free-variables)))
+
+(define-integrable (no-free-variables)
+  '())
+
+(define-integrable (singleton-variable variable)
+  (list variable))
+
+(define (set/adjoin set element)
+  (if (memq element set)
+      set
+      (cons element set)))
+
+(define-integrable (set/union left right)
+  (fold-left set/adjoin left right))
+
+(define (set/difference original remove)
+  (fold-left (lambda (answer element)
+	       (if (memq element remove)
+		   answer
+		   (set/adjoin answer element)))
+	     '()
+	     original))
