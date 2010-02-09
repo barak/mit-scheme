@@ -65,6 +65,8 @@ MKDIR=(install -d -m 755)
 INSTALL=(install -p)
 INSTALL_DATA=("${INSTALL[@]}" -m 644)
 
+"${MKDIR[@]}" "${OUTPUT_DIR}"
+
 fixup_perms ()
 {
     chmod -R og-w "${1}"
@@ -101,11 +103,12 @@ if [[ ! -f ${STAMP_DOC_IMAGE} ]]; then
     (
 	set -e
 	cd "${DOC_BUILD_DIR}"/doc
-	make install-info-gz DESTDIR="${TL_DIR}"/"${DOC_IMAGE_DIR}"
-	make install-html DESTDIR="${TL_DIR}"/"${DOC_IMAGE_DIR}"
+	make install-info-gz \
+	    infodir="${TL_DIR}"/"${DOC_IMAGE_DIR}"/edwin/info
+	make install-html htmldir="${TL_DIR}"/"${DOC_IMAGE_DIR}"/doc
     )
     "${INSTALL_DATA[@]}" "${DOC_BUILD_DIR}"/src/COPYING \
-	"${DOC_IMAGE_DIR}"/"${AUXDIR}"/doc/.
+	"${DOC_IMAGE_DIR}"/doc/.
     fixup_perms "${DOC_IMAGE_DIR}"
 
     # Then build the images for documentation tarballs.
@@ -118,7 +121,8 @@ if [[ ! -f ${STAMP_DOC_IMAGE} ]]; then
 	(
 	    set -e
 	    cd "${DOC_BUILD_DIR}"/doc
-	    make install-"${FORMAT}" "${FORMAT}"dir="${TL_DIR}"/"${IMAGE_DIR}"
+	    make install-"${FORMAT}" \
+		"${FORMAT}"dir="${TL_DIR}"/"${IMAGE_DIR}"
 	)
 	rm -f "${DOCFILE_BASE}".tar.gz
 	tar cvzf "${DOCFILE_BASE}".tar.gz "${IMAGE_DIR}"
@@ -138,7 +142,8 @@ for ARCH in i386 x86-64; do
     SRC_DIR=${BUILD_DIR}/src
     IMAGE_DIR=${BUILD_DIR}-image
     TARFILE=${BUILD_DIR}.tar.gz
-    BINDIR=/usr/local/bin
+    BINDIR=${IMAGE_DIR}/${LOCAL_DIR}/bin
+    LIBDIR=${IMAGE_DIR}/${LOCAL_DIR}/lib/mit-scheme-${ARCH}
     STAMP_BUILD=${BUILD_DIR}.stamp
     STAMP_IMAGE=${IMAGE_DIR}.stamp
     STAMP_TAR=${BUILD_DIR}-tar.stamp
@@ -173,6 +178,10 @@ for ARCH in i386 x86-64; do
 	    )
 	    # Don't save system-specific files.
 	    rm -rf "${IMAGE_DIR}"/"${BINDIR}"
+	    rm -rf "${IMAGE_DIR}"/"${LIBDIR}"/lib
+	    rm -f "${IMAGE_DIR}"/"${LIBDIR}"/macosx-starter
+	    # Merge in doc files.
+	    cp -pr "${DOC_IMAGE_DIR}"/* "${IMAGE_DIR}"/"${LIBDIR}"/.
 
 	    fixup_perms "${IMAGE_DIR}"
 	    touch "${STAMP_IMAGE}"
@@ -190,4 +199,5 @@ for ARCH in i386 x86-64; do
 	rm -rf "${IMAGE_DIR}"
     fi
 done
+rm -rf "${DOC_IMAGE_DIR}"
 rm -f *.stamp
