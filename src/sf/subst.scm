@@ -341,6 +341,18 @@ USA.
 			 (simulate-unknown-application environment procedure)
 			 procedure)))
 
+;;; If not #f, display the top-level procedure names as they are
+;;; processed.  Useful for debugging.
+(define sf:display-top-level-procedure-names? #f)
+
+(define (maybe-display-name name)
+  (if (and sf:display-top-level-procedure-names?
+	   (null? *current-block-names*))
+      (begin
+	(newline)
+	(display ";;   ")
+	(display name))))
+
 ;; Cannot optimize (lambda () (bar)) => bar (eta substitution) because
 ;; BAR may be a procedure with different arity than the lambda
 
@@ -371,12 +383,12 @@ you ask for.
 
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
+	(name  (procedure/name procedure))
 	(required (procedure/required procedure))
 	(optional (procedure/optional procedure))
 	(rest (procedure/rest procedure)))
-    (fluid-let ((*current-block-names*
-		 (cons (procedure/name procedure)
-		       *current-block-names*)))
+    (maybe-display-name name)
+    (fluid-let ((*current-block-names* (cons name *current-block-names*)))
       (process-block-flags (block/flags block)
 	(lambda ()
 	  (let ((body
@@ -412,7 +424,7 @@ you ask for.
 		(combination/operator body)
 		(procedure/make (procedure/scode procedure)
 				block
-				(procedure/name procedure)
+				name
 				required
 				optional
 				rest
