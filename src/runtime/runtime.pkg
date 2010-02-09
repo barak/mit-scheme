@@ -291,6 +291,7 @@ USA.
 	  cd
 	  cell-contents
 	  cell?
+	  constant-procedure
 	  default/exit
 	  default/quit
 	  environment-link-name
