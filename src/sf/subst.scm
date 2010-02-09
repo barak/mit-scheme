@@ -339,22 +339,8 @@ USA.
 
 (define (integrate/primitive-operator expression operations environment
 				      block operator operands)
-  (let ((integration-failure
-	 (lambda ()
-	   (combination/optimizing-make expression block operator operands))))
-    (operations/lookup operations (constant/value operator)
-      (lambda (operation info)
-	(case operation
-	  ((#F) (integration-failure))
-	  ((EXPAND)
-	   (info expression
-		 operands
-		 (lambda (expression)
-		   (integrate/expression operations environment expression))
-		 integration-failure
-		 block))
-	  (else (error "Unknown operation" operation))))
-      integration-failure)))
+  (declare (ignore operations environment))
+  (combination/optimizing-make expression block operator operands))
 
 ;;; ((let ((a (foo)) (b (bar)))
 ;;;    (lambda (receiver)
@@ -737,29 +723,6 @@ USA.
       (warn "Unable to integrate" (variable/name variable))
       (if-not))))
 
-(define *unknown-value "Unknown Value")
-
-(define (simulate-unknown-application environment procedure)
-  (define (bind-required environment required)
-    (if (null? required)
-	(bind-optional environment (procedure/optional procedure))
-	(bind-required
-	 (environment/bind environment (car required) *unknown-value)
-	 (cdr required))))
-
-  (define (bind-optional environment optional)
-    (if (null? optional)
-	(bind-rest environment (procedure/rest procedure))
-	(bind-optional
-	 (environment/bind environment (car optional) *unknown-value)
-	 (cdr optional))))
-
-  (define (bind-rest environment rest)
-    (if (null? rest)
-	environment
-	(environment/bind environment rest *unknown-value)))
-
-  (bind-required environment (procedure/required procedure)))
 
 (define (integrate/hack-apply? operands)
   (define (check operand)
@@ -788,94 +751,6 @@ USA.
 	      (append (except-last-pair operands)
 		      tail)))))
 
-(define (simulate-application environment block procedure operands)
-  (define (procedure->pretty procedure)
-    (if (procedure/scode procedure)
-	(unsyntax (procedure/scode procedure))
-	(let ((arg-list (append (procedure/required procedure)
-				(if (null? (procedure/optional procedure))
-				    '()
-				    (cons lambda-tag:optional
-					  (procedure/optional procedure)))
-				(if (not (procedure/rest procedure))
-				    '()
-				    (procedure/rest procedure)))))
-	  (if (procedure/name procedure)
-	      `(named-lambda (,(procedure/name procedure) ,@arg-list)
-		 ...)
-	      `(lambda ,arg-list
-		 ...)))))
-
-  (define (match-required environment required operands)
-    (cond ((null? required)
-	   (match-optional environment
-			   (procedure/optional procedure)
-			   operands))
-	  ((null? operands)
-	   (error "Too few operands in call to procedure"
-		  procedure
-		  (procedure->pretty procedure)))
-	  (else
-	   (match-required (environment/bind environment
-					     (car required)
-					     (car operands))
-			   (cdr required)
-			   (cdr operands)))))
-
-  (define (match-optional environment optional operands)
-    (cond ((null? optional)
-	   (match-rest environment (procedure/rest procedure) operands))
-	  ((null? operands)
-	   (match-rest environment (procedure/rest procedure) '()))
-	  (else
-	   (match-optional (environment/bind environment
-					     (car optional)
-					     (car operands))
-			   (cdr optional)
-			   (cdr operands)))))
-
-  (define (listify-tail operands)
-    (let ((const-null (constant/make #f '())))
-      (if (null? operands)
-	  const-null
-	  (let ((const-cons (constant/make #f (ucode-primitive cons))))
-	    (let walk ((operands operands))
-	      (if (null? operands)
-		  const-null
-		  (combination/make #f
-				    block
-				    const-cons
-				    (list (car operands)
-					  (walk (cdr operands))))))))))
-
-  (define (match-rest environment rest operands)
-    (cond (rest
-	   (environment/bind environment rest (listify-tail operands)))
-	  ((null? operands)
-	   environment)
-	  (else
-	   (error "Too many operands in call to procedure"
-		  procedure
-		  (procedure->pretty procedure)))))
-
-  (match-required environment (procedure/required procedure) operands))
-
-(define (environment/make)
-  '())
-
-(define-integrable (environment/bind environment variable value)
-  (cons (cons variable value) environment))
-
-(define-integrable (environment/bind-multiple environment variables values)
-  (map* environment cons variables values))
-
-(define (environment/lookup environment variable if-found if-unknown if-not)
-  (let ((association (assq variable environment)))
-    (if association
-	(if (eq? (cdr association) *unknown-value)
-	    (if-unknown)
-	    (if-found (cdr association)))
-	(if-not))))
 
 (define (delayed-integration/in-progress? delayed-integration)
   (eq? (delayed-integration/state delayed-integration) 'BEING-INTEGRATED))
