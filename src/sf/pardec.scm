@@ -306,11 +306,25 @@ USA.
 
 ;;;; Flag Declarations
 
+;; IGNORABLE suppresses warnings about the variable not being used.
+;; This is useful in macros that bind variables that the body may
+;; not actually use.  Mentioning the variable in a sequence will
+;; have the effect of marking it ignorable.
+(define-declaration 'IGNORABLE
+  (lambda (block names)
+    (for-each (lambda (variable)
+		(if variable
+		    (variable/may-ignore! variable)))
+	      (block/lookup-names block names #f))
+    '()))
+
+;; IGNORE causes warnings if an ignored variable actually ends
+;; up being used.
 (define-declaration 'IGNORE
   (lambda (block names)
     (for-each (lambda (variable)
 		(if variable
-		    (variable/can-ignore! variable)))
+		    (variable/must-ignore! variable)))
 	      (block/lookup-names block names #f))
     '()))
 

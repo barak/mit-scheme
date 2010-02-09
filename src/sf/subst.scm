@@ -219,7 +219,8 @@ USA.
 (define (variable/unreferenced? variable)
   (and (not (variable/integrated variable))
        (not (variable/referenced variable))
-       (not (variable/can-ignore? variable))))
+       (not (variable/may-ignore? variable))
+       (not (variable/must-ignore? variable))))
 
 (define-method/integrate 'PROCEDURE
   (lambda (operations environment procedure)
@@ -588,7 +589,7 @@ USA.
 	(cons (cond ((reference? action)
 		     ;; This clause lets you ignore a variable by
 		     ;; mentioning it in a sequence.
-		     (variable/can-ignore! (reference/variable action))
+		     (variable/may-ignore! (reference/variable action))
 		     action)
 		    ((eq? action open-block/value-marker)
 		     action)

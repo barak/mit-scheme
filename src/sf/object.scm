@@ -196,7 +196,8 @@ USA.
 (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
 (define-flag REFERENCED    variable/referenced    variable/reference!)
 (define-flag INTEGRATED    variable/integrated    variable/integrated!)
-(define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!)
+(define-flag MAY-IGNORE    variable/may-ignore?   variable/may-ignore!)
+(define-flag MUST-IGNORE   variable/must-ignore?  variable/must-ignore!)
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and
