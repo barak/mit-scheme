@@ -154,6 +154,12 @@ USA.
 
 (define known-declarations
   '())
+
+(define (known-declaration? operation)
+  (or (eq? operation 'EXPAND) ; this one is special 
+      (assq operation known-declarations)))
+
+(define-guarantee known-declaration "known declaration")
 
 ;;;; Integration Declarations
 

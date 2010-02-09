@@ -113,6 +113,7 @@ USA.
 	  declarations/map
 	  declarations/original
 	  declarations/parse
+	  guarantee-known-declaration
 	  operations->external))
 
 (define-package (scode-optimizer copy)
