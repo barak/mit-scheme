@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; SCode Optimizer: Global Imports
+;;; package: (scode-optimizer global-imports)
 
 (declare (usual-integrations))
 

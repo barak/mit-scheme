@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; Build utilities
+;;; package: (scode-optimizer build-utilities)
 
 (declare (usual-integrations))
 

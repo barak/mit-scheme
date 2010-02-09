@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; SCode Optimizer: Tables
+;;; package: (scode-optimizer)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
