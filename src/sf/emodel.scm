@@ -29,15 +29,6 @@ USA.
 (declare (usual-integrations)
 	 (integrate-external "object"))
 
-(define (block/make parent safe? bound-variables)
-  (let ((block
-	 (%block/make parent
-		      safe?
-		      bound-variables)))
-    (if parent
-	(set-block/children! parent (cons block (block/children parent))))
-    block))
-
 (define (variable/make&bind! block name)
   (or (%block/lookup-name block name)
       (%variable/make&bind! block name)))

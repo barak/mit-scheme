@@ -63,7 +63,7 @@ USA.
   (cdr (or (assq name (cdr enumeration))
 	   (error "Unknown enumeration name:" name))))
 
-(define (enumeration/name->index enumeration name)
+(define-integrable (enumeration/name->index enumeration name)
   (enumerand/index (enumeration/name->enumerand enumeration name)))
 
 (define-syntax define-enumeration
@@ -85,6 +85,7 @@ USA.
   (block
    delayed-integration
    variable))
+
 (define-enumeration enumeration/expression
   (access
    assignment
@@ -103,10 +104,52 @@ USA.
 
 ;;;; Records
 
+;;; The records used in SF are vectors that are tagged by an enumerand.
+
+;;; NOTE: In most cases, there is the assumption that the second element
+;;; in the vector is a piece of SCode that represents the original,
+;;; unintegrated form.
+
+(define-syntax define-simple-type
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (second form))
+	   (constructor-name (third form))  ;; symbol or #F
+	   (slots (fourth form)))
+       `(BEGIN
+	  (DEFINE-STRUCTURE
+	      (,name
+	       (TYPE VECTOR)
+	       (NAMED
+		,(close-syntax (symbol-append name '/ENUMERAND) environment))
+	       (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
+	       (CONC-NAME ,(symbol-append name '/))
+	       (CONSTRUCTOR ,(or constructor-name
+				 (symbol-append name '/MAKE))))
+	    (scode #f read-only #t)
+	    ,@slots)
+	 (DEFINE-GUARANTEE ,name ,(symbol->string name)))))))
+
+;;; These accessors apply to all the record types.
+(define-integrable (object/enumerand object)
+  (vector-ref object 0))
+
+(define (set-object/enumerand! object enumerand)
+  (vector-set! object 0 enumerand))
+
+(define-integrable (object/scode object)
+  (vector-ref object 1))
+
+(define (with-new-scode scode object)
+  (let ((new (vector-copy object)))
+    (vector-set! new 1 scode)
+    new))
+
+;;; BLOCK
 (define-structure (block (type vector)
 			 (named block/enumerand)
 			 (conc-name block/)
-			 (constructor %block/make
+			 (constructor block/%make
 				      (parent safe? bound-variables)))
   parent
   (children '())
@@ -114,6 +157,15 @@ USA.
   (declarations (declarations/make-null))
   bound-variables)
 
+(define-guarantee block "block")
+
+(define (block/make parent safe? bound-variables)
+  (let ((block (block/%make parent safe? bound-variables)))
+    (if parent
+	(set-block/children! parent (cons block (block/children parent))))
+    block))
+
+;;; DELAYED-INTEGRATION
 (define-structure (delayed-integration
 		   (type vector)
 		   (named delayed-integration/enumerand)
@@ -124,56 +176,64 @@ USA.
   operations
   value)
 
-(define-syntax define-simple-type
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((name (cadr form))
-	   (slots (caddr form))
-	   (scode? (if (pair? (cdddr form)) (cadddr form) #t)))
-       `(DEFINE-STRUCTURE
-	    (,name
-	     (TYPE VECTOR)
-	     (NAMED
-	      ,(close-syntax (symbol-append name '/ENUMERAND) environment))
-	     (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
-	     (CONC-NAME ,(symbol-append name '/))
-	     (CONSTRUCTOR ,(symbol-append name '/MAKE)))
-	  ,@(if scode?
-		`((scode #f read-only #t))
-		`())
-	  ,@slots)))))
+(define-guarantee delayed-integration "delayed integration")
 
-(define-simple-type variable (block name flags) #F)
-(define-simple-type access (environment name))
-(define-simple-type assignment (block variable value))
-(define-simple-type combination (block operator operands))
-(define-simple-type conditional (predicate consequent alternative))
-(define-simple-type constant (value))
-(define-simple-type declaration (declarations expression))
-(define-simple-type delay (expression))
-(define-simple-type disjunction (predicate alternative))
-(define-simple-type open-block (block variables values actions))
-(define-simple-type procedure (block name required optional rest body))
-(define-simple-type quotation (block expression))
-(define-simple-type reference (block variable))
-(define-simple-type sequence (actions))
-(define-simple-type the-environment (block))
+;;; VARIABLE
+;; Done specially so we can tweak the print method.
+;; This makes debugging an awful lot easier.
+;; Note that there is no SCODE slot.
+(define-structure (variable
+		   (type vector)
+		   (named variable/enumerand)
+		   (type-descriptor rtd:variable)
+		   (conc-name variable/)
+		   (constructor variable/make)
+		   (print-procedure
+		    (standard-unparser-method 
+		     'variable
+		     (lambda (var port)
+		       (write-string " " port)
+		       (write (variable/name var) port)))))
+  block
+  name
+  flags)
 
-;; Abstraction violations
+(define-guarantee variable "variable")
 
-(define-integrable (object/enumerand object)
-  (vector-ref object 0))
+;;; Expressions
+(define-simple-type access          #f (environment name))
+(define-simple-type assignment      #f (block variable value))
+(define-simple-type combination     #f (block operator operands))
+(define-simple-type conditional     #f (predicate consequent alternative))
+(define-simple-type constant        #f (value))
+(define-simple-type declaration     #f (declarations expression))
+(define-simple-type delay           #f (expression))
+(define-simple-type disjunction     #f (predicate alternative))
+(define-simple-type open-block      #f (block variables values actions))
+(define-simple-type procedure       #f (block name required optional rest body))
+(define-simple-type quotation       #f (block expression))
+(define-simple-type sequence        #f (actions))
+(define-simple-type the-environment #f (block))
 
-(define-integrable (set-object/enumerand! object enumerand)
-  (vector-set! object 0 enumerand))
+;; Done specially so we can tweak the print method.
+;; This makes debugging an awful lot easier.
+(define-structure (reference
+		   (type vector)
+		   (named reference/enumerand)
+		   (type-descriptor rtd:reference)
+		   (conc-name reference/)
+		   (constructor reference/make)
+		   (print-procedure
+		    (standard-unparser-method 
+		     'reference
+		     (lambda (ref port)
+		       (write-string " to " port)
+		       (write (variable/name (reference/variable ref)) port)))))
+  (scode #f read-only #t)
+  block
+  variable)
 
-(define-integrable (object/scode object)
-  (vector-ref object 1))
-
-(define (with-new-scode scode object)
-  (let ((new (vector-copy object)))
-    (vector-set! new 1 scode)
-    new))
+(define-guarantee reference "reference")
 
 ;;;; Miscellany
 
