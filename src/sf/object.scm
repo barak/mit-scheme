@@ -187,7 +187,7 @@ USA.
 		   (named variable/enumerand)
 		   (type-descriptor rtd:variable)
 		   (conc-name variable/)
-		   (constructor variable/make)
+		   (constructor variable/make (block name flags))
 		   (print-procedure
 		    (standard-unparser-method 
 		     'variable
@@ -196,24 +196,46 @@ USA.
 		       (write (variable/name var) port)))))
   block
   name
+  ;; A count of how many times in the block that the variable
+  ;; is invoked as an operator.
+  (invocation-count 0)
   flags)
 
 (define-guarantee variable "variable")
 
 ;;; Expressions
-(define-simple-type access          #f (environment name))
-(define-simple-type assignment      #f (block variable value))
-(define-simple-type combination     #f (block operator operands))
-(define-simple-type conditional     #f (predicate consequent alternative))
-(define-simple-type constant        #f (value))
-(define-simple-type declaration     #f (declarations expression))
-(define-simple-type delay           #f (expression))
-(define-simple-type disjunction     #f (predicate alternative))
-(define-simple-type open-block      #f (block variables values actions))
-(define-simple-type procedure       #f (block name required optional rest body))
-(define-simple-type quotation       #f (block expression))
-(define-simple-type sequence        #f (actions))
-(define-simple-type the-environment #f (block))
+(define-simple-type access          #f                 (environment name))
+(define-simple-type assignment      #f                 (block variable value))
+(define-simple-type combination     combination/%%make (block operator operands))
+(define-simple-type conditional     conditional/%make  (predicate consequent alternative))
+(define-simple-type constant        #f                 (value))
+(define-simple-type declaration     #f                 (declarations expression))
+(define-simple-type delay           #f                 (expression))
+(define-simple-type disjunction     disjunction/%make  (predicate alternative))
+(define-simple-type open-block      #f                 (block variables values actions))
+(define-simple-type procedure       #f                 (block name required optional rest body))
+(define-simple-type quotation       #f                 (block expression))
+(define-simple-type sequence        #f                 (actions))
+(define-simple-type the-environment #f                 (block))
+
+;;; Constructors that need to do work.
+
+(define (combination/%make scode block operator operands)
+  ;; Keep track of how many times a reference appears as an operator.
+  (if (reference? operator)
+      (let ((variable (reference/variable operator)))
+	(set-variable/invocation-count! variable
+					(1+ (variable/invocation-count variable)))))
+  (combination/%%make scode block operator operands))
+
+(define (combination/make expression block operator operands)
+  (combination/%make expression block operator operands))
+
+(define (conditional/make scode predicate consequent alternative)
+  (conditional/%make scode predicate consequent alternative))
+
+(define (disjunction/make scode predicate alternative)
+  (disjunction/%make scode predicate alternative))
 
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.

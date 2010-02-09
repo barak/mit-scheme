@@ -232,10 +232,10 @@ USA.
 (define (transform/combination* expression block environment expression*)
   (combination-components expression*
     (lambda (operator operands)
-      (combination/make expression
-			block
-			(transform/expression block environment operator)
-			(transform/expressions block environment operands)))))
+      (combination/%make expression
+			 block
+			 (transform/expression block environment operator)
+			 (transform/expressions block environment operands)))))
 
 (define (transform/comment block environment expression)
   (transform/expression block environment (comment-expression expression)))

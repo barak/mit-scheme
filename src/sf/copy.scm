@@ -187,7 +187,7 @@ USA.
 
 (define-method/copy 'COMBINATION
   (lambda (block environment expression)
-    (combination/make
+    (combination/%make
      (combination/scode expression)
      block
      (copy/expression block environment (combination/operator expression))
