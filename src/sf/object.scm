@@ -112,8 +112,7 @@ USA.
   (children '())
   safe?
   (declarations (declarations/make-null))
-  bound-variables
-  (flags '()))
+  bound-variables)
 
 (define-structure (delayed-integration
 		   (type vector)
@@ -153,7 +152,7 @@ USA.
 (define-simple-type declaration (declarations expression))
 (define-simple-type delay (expression))
 (define-simple-type disjunction (predicate alternative))
-(define-simple-type open-block (block variables values actions optimized))
+(define-simple-type open-block (block variables values actions))
 (define-simple-type procedure (block name required optional rest body))
 (define-simple-type quotation (block expression))
 (define-simple-type reference (block variable))

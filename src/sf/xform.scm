@@ -158,7 +158,7 @@ USA.
 				   (cons (transform (car actions))
 					 actions*))))))))))
       (lambda (vals actions)
-	(open-block/make expression block variables vals actions false)))))
+	(open-block/make expression block variables vals actions)))))
 
 (define (transform/variable block environment expression)
   (reference/make expression

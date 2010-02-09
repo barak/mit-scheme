@@ -53,13 +53,11 @@ USA.
 		(let ((operations
 		       (declarations/bind operations
 					  (block/declarations block))))
-		  (process-block-flags (block/flags block)
-		    (lambda ()
-		      (values operations
-			      environment
-			      (integrate/expression operations
-						    environment
-						    expression))))))))
+		  (values operations
+			  environment
+			  (integrate/expression operations
+						environment
+						expression))))))
      (lambda (operations environment expression)
        (values operations environment
 	       (quotation/make scode
@@ -105,8 +103,6 @@ USA.
 					     environment
 					     (assignment/value assignment))))))
 
-(define *eager-integration-switch #f)
-
 (define-method/integrate 'REFERENCE
   (lambda (operations environment expression)
     (let ((variable (reference/variable expression)))
@@ -117,14 +113,7 @@ USA.
 	       (integration-failure
 		(lambda ()
 		  (variable/reference! variable)
-		  expression))
-	       (try-safe-integration
-		(lambda ()
-		  (integrate/name-if-safe expression expression
-					  environment operations
-					  '(INTEGRATE INTEGRATE-SAFELY)
-					  integration-success
-					  integration-failure))))
+		  expression)))
 	(operations/lookup operations variable
 	 (lambda (operation info)
 	   (case operation
@@ -134,73 +123,15 @@ USA.
 	     ((INTEGRATE)
 	      (integrate/name expression expression info environment
 			      integration-success integration-failure))
-	     ((INTEGRATE-SAFELY)
-	      (try-safe-integration))
 	     (else
 	      (error "Unknown operation" operation))))
 	 (lambda ()
 	   (integration-failure)))))))
 
-(define (integrate/name-if-safe expr reference environment
-				operations safe-operations if-win if-fail)
-  (let ((variable (reference/variable reference)))
-    (if (or (variable/side-effected variable)
-	    (not (block/safe? (variable/block variable))))
-	(if-fail)
-	(let ((finish
-	       (lambda (value)
-		 (if (safely-integrable-value? value environment operations
-					       safe-operations)
-		     (if-win
-		      (reassign
-		       expr
-		       (copy/expression/intern (reference/block reference)
-					       value)))
-		     (if-fail)))))
-	  (environment/lookup environment variable
-            (lambda (value)
-	      (if (delayed-integration? value)
-		  (if (delayed-integration/in-progress? value)
-		      (if-fail)
-		      (finish (delayed-integration/force value)))
-		  (finish value)))
-	    (lambda () (if-fail))
-	    (lambda () (if-fail)))))))
-
 (define (reassign expr object)
   (if (and expr (object/scode expr))
-      ;; Abstraction violation
       (with-new-scode (object/scode expr) object)
       object))
-
-(define (safely-integrable-value? value environment operations safe-operations)
-  (let check ((value value) (top? #t))
-    (or (constant? value)
-	(and (reference? value)
-	     (or (not top?)
-		 (let ((variable (reference/variable value)))
-		   (or (operations/lookup operations variable
-			 (lambda (operation info)
-			   info		;ignore
-			   (memq operation safe-operations))
-			 (lambda () #f))
-		       (and (not (variable/side-effected variable))
-			    (block/safe? (variable/block variable))
-			    (environment/lookup environment variable
-			      (lambda (value*)
-				(check value* #f))
-			      (lambda ()
-				;; unknown value
-				(operations/lookup operations variable
-				  (lambda (operation info)
-				    operation info
-				    #f)
-				  (lambda ()
-				    ;; No operations
-				    #t)))
-			      (lambda ()
-				;; not found variable
-				#t))))))))))
 
 (define (integrate/reference-operator expression operations environment
 				      block operator operands)
@@ -217,15 +148,7 @@ USA.
 	      (lambda (operator)
 		(mark-integrated!)
 		(integrate/combination expression operations environment
-				       block operator operands)))
-	     (try-safe-integration
-	      (lambda ()
-		(integrate/name-if-safe expression operator
-					environment operations
-					'(EXPAND INTEGRATE INTEGRATE-OPERATOR
-						 INTEGRATE-SAFELY)
-					integration-success
-					integration-failure))))
+				       block operator operands))))
       (operations/lookup operations variable
        (lambda (operation info)
 	 (case operation
@@ -235,8 +158,6 @@ USA.
 			    operator info environment
 			    integration-success
 			    integration-failure))
-	   ((INTEGRATE-SAFELY)
-	    (try-safe-integration))
 	   ((EXPAND)
 	    (info expression
 		  operands
@@ -259,39 +180,33 @@ USA.
     (let ((operations
 	   (declarations/bind (operations/shadow operations variables)
 			      (block/declarations block))))
-      (process-block-flags (block/flags block)
-	(lambda ()
-	  (call-with-values
-	      (lambda ()
-		(environment/recursive-bind operations
-					    environment
-					    variables
-					    (open-block/values expression)))
-	    (lambda (environment vals)
-	      (let ((actions
-		     (integrate/actions operations
+      (call-with-values
+	  (lambda ()
+	    (environment/recursive-bind operations
 					environment
-					(open-block/actions expression))))
-		;; Complain about unreferenced variables.
-		;; If the block is unsafe, then it is likely that
-		;; there will be a lot of them on purpose (top level or
-		;; the-environment) so no complaining.
-		(if (block/safe? (open-block/block expression))
-		    (for-each (lambda (variable)
-				(if (variable/unreferenced? variable)
-				    (warn "Unreferenced defined variable:"
-					  (variable/name variable))))
-			      variables))
-		(values operations
-			environment
-			(if (open-block/optimized expression)
-			    (open-block/make
-			     (and expression (object/scode expression))
-			     block variables
-			     vals actions #t)
-			    (open-block/optimizing-make
-			     expression block variables vals
-			     actions operations environment)))))))))))
+					variables
+					(open-block/values expression)))
+	(lambda (environment vals)
+	  (let ((actions
+		 (integrate/actions operations
+				    environment
+				    (open-block/actions expression))))
+	    ;; Complain about unreferenced variables.
+	    ;; If the block is unsafe, then it is likely that
+	    ;; there will be a lot of them on purpose (top level or
+	    ;; the-environment) so no complaining.
+	    (if (block/safe? (open-block/block expression))
+		(for-each (lambda (variable)
+			    (if (variable/unreferenced? variable)
+				(warn "Unreferenced defined variable:"
+				      (variable/name variable))))
+			  variables))
+	    (values operations
+		    environment
+		    (open-block/make
+		     (and expression (object/scode expression))
+		     block variables
+		     vals actions))))))))
 
 (define-method/integrate 'OPEN-BLOCK
   (lambda (operations environment expression)
@@ -300,31 +215,6 @@ USA.
       (lambda (operations environment expression)
 	operations environment
 	expression))))
-
-(define (process-block-flags flags continuation)
-  (if (null? flags)
-      (continuation)
-      (let ((this-flag (car flags)))
-	(case this-flag
-	  ((AUTOMAGIC-INTEGRATIONS)
-	   (fluid-let ((*eager-integration-switch #T))
-	     (process-block-flags (cdr flags) continuation)))
-	  ((NO-AUTOMAGIC-INTEGRATIONS)
-	   (fluid-let ((*eager-integration-switch #F))
-	     (process-block-flags (cdr flags) continuation)))
-	  ((ETA-SUBSTITUTION)
-	   (fluid-let ((*eta-substitution-switch #T))
-	     (process-block-flags (cdr flags) continuation)))
-	  ((NO-ETA-SUBSTITUTION)
-	   (fluid-let ((*eta-substitution-switch #F))
-	     (process-block-flags (cdr flags) continuation)))
-	  ((OPEN-BLOCK-OPTIMIZATIONS)
-	   (fluid-let ((*block-optimizing-switch #T))
-	     (process-block-flags (cdr flags) continuation)))
-	  ((NO-OPEN-BLOCK-OPTIMIZATIONS)
-	   (fluid-let ((*block-optimizing-switch #F))
-	     (process-block-flags (cdr flags) continuation)))
-	  (else (error "Bad flag"))))))
 
 (define (variable/unreferenced? variable)
   (and (not (variable/integrated variable))
@@ -348,34 +238,6 @@ USA.
 	(newline)
 	(display ";;   ")
 	(display name))))
-
-;; Cannot optimize (lambda () (bar)) => bar (eta substitution) because
-;; BAR may be a procedure with different arity than the lambda
-
-#| You can get some weird stuff with this
-
-(define (foo x)
-  (define (loop1) (loop2))
-  (define (loop2) (loop3))
-  (define (loop3) (loop1))
-  (bar x))
-
-will optimize into
-
-(define (foo x)
-  (define loop1 loop3)
-  (define loop2 loop3)
-  (define loop3 loop3)
-  (bar x))
-
-and if you have automagic integrations on, this won't finish
-optimizing.  Well, you told the machine to loop forever, and it
-determines that it can do this at compile time, so you get what
-you ask for.
-
-|#
-
-(define *eta-substitution-switch #F)
 
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
@@ -385,35 +247,33 @@ you ask for.
 	(rest (procedure/rest procedure)))
     (maybe-display-name name)
     (fluid-let ((*current-block-names* (cons name *current-block-names*)))
-      (process-block-flags (block/flags block)
-	(lambda ()
-	  (let ((body
-		 (integrate/expression
-		  (declarations/bind
-		   (operations/shadow
-		    operations
-		    (append required optional (if rest (list rest) '())))
-		   (block/declarations block))
-		  environment
-		  (procedure/body procedure))))
-	    ;; Possibly complain about variables bound and not
-	    ;; referenced.
-	    (if (block/safe? block)
-		(for-each (lambda (variable)
-			    (if (variable/unreferenced? variable)
-				(warn "Unreferenced bound variable:"
-				      (variable/name variable)
-				      *current-block-names*)))
-			  (if rest
-			      (append required optional (list rest))
-			      (append required optional))))
-		(procedure/make (procedure/scode procedure)
-				block
-				name
-				required
-				optional
-				rest
-				body)))))))
+      (let ((body
+	     (integrate/expression
+	      (declarations/bind
+	       (operations/shadow
+		operations
+		(append required optional (if rest (list rest) '())))
+	       (block/declarations block))
+	      environment
+	      (procedure/body procedure))))
+	;; Possibly complain about variables bound and not
+	;; referenced.
+	(if (block/safe? block)
+	    (for-each (lambda (variable)
+			(if (variable/unreferenced? variable)
+			    (warn "Unreferenced bound variable:"
+				  (variable/name variable)
+				  *current-block-names*)))
+		      (if rest
+			  (append required optional (list rest))
+			  (append required optional))))
+	(procedure/make (procedure/scode procedure)
+			block
+			name
+			required
+			optional
+			rest
+			body)))))
 
 
 (define-method/integrate 'COMBINATION
@@ -1203,12 +1063,3 @@ forms are simply removed.
 			  referenced-operands
 			  (cons this-operand
 				unreferenced-operands))))))))))
-
-(define *block-optimizing-switch #f)
-
-(define (open-block/optimizing-make expression block vars values
-				    actions operations environment)
-  (declare (ignore operations environment))
-  (open-block/make
-   (and expression (object/scode expression))
-   block vars values actions #t))
