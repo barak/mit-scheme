@@ -239,7 +239,6 @@ USA.
 
 (define-integration-declaration 'INTEGRATE)
 (define-integration-declaration 'INTEGRATE-OPERATOR)
-(define-integration-declaration 'INTEGRATE-SAFELY)
 
 (define-declaration 'INTEGRATE-EXTERNAL
   (lambda (block specifications)
@@ -306,22 +305,6 @@ USA.
 			 (error "Unrecognized extern value:" value))))))))))
 
 ;;;; Flag Declarations
-
-(for-each (lambda (flag)
-	    (define-declaration flag
-	      (lambda (block tail)
-		(if (not (null? tail))
-		    (error "This declaration does not take arguments:"
-			   (cons flag tail)))
-		(if (not (memq flag (block/flags block)))
-		    (set-block/flags! block (cons flag (block/flags block))))
-		'())))
-	  '(AUTOMAGIC-INTEGRATIONS
-	    ETA-SUBSTITUTION
-	    OPEN-BLOCK-OPTIMIZATIONS
-	    NO-AUTOMAGIC-INTEGRATIONS
-	    NO-ETA-SUBSTITUTION
-	    NO-OPEN-BLOCK-OPTIMIZATIONS))
 
 (define-declaration 'IGNORE
   (lambda (block names)
