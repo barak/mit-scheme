@@ -27,9 +27,6 @@ USA.
 ;;; package: (scode-optimizer expansion)
 
 (declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution)
 	 (integrate-external "object"))
 
 ;;;; Reductions and replacements

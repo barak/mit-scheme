@@ -24,11 +24,9 @@ USA.
 |#
 
 ;;;; Pathname Maps
+;;; package: (scode-optimizer)
 
-(declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution))
+(declare (usual-integrations))
 
 (define pathname-map/make)
 (define pathname-map?)

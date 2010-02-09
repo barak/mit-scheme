@@ -27,9 +27,6 @@ USA.
 ;;; package: (scode-optimizer cgen)
 
 (declare (usual-integrations)
-	 (automagic-integrations)
-	 (open-block-optimizations)
-	 (eta-substitution)
 	 (integrate-external "object"))
 
 (define *sf-associate*
