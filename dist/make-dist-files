@@ -52,8 +52,6 @@ TL_DIR=$(pwd)
 BUILD_ROOT=mit-scheme-${VERSION}
 SRC_FILE=${BUILD_ROOT}.tar.gz
 LOCAL_DIR=/usr/local
-BINDIR=${LOCAL_DIR}/bin
-AUXDIR=${LOCAL_DIR}/lib/mit-scheme
 OUTPUT_DIR=.out
 
 if [[ ! -f ${SRC_FILE} ]]; then
@@ -142,8 +140,9 @@ for ARCH in i386 x86-64; do
     SRC_DIR=${BUILD_DIR}/src
     IMAGE_DIR=${BUILD_DIR}-image
     TARFILE=${BUILD_DIR}.tar.gz
-    BINDIR=${IMAGE_DIR}/${LOCAL_DIR}/bin
-    LIBDIR=${IMAGE_DIR}/${LOCAL_DIR}/lib/mit-scheme-${ARCH}
+    IMAGE_LOCAL=${IMAGE_DIR}${LOCAL_DIR}
+    IMAGE_BIN=${IMAGE_LOCAL}/bin
+    IMAGE_LIB=${IMAGE_LOCAL}/lib/mit-scheme-${ARCH}
     STAMP_BUILD=${BUILD_DIR}.stamp
     STAMP_IMAGE=${IMAGE_DIR}.stamp
     STAMP_TAR=${BUILD_DIR}-tar.stamp
@@ -177,11 +176,11 @@ for ARCH in i386 x86-64; do
 		make install DESTDIR="${TL_DIR}"/"${IMAGE_DIR}"
 	    )
 	    # Don't save system-specific files.
-	    rm -rf "${IMAGE_DIR}"/"${BINDIR}"
-	    rm -rf "${IMAGE_DIR}"/"${LIBDIR}"/lib
-	    rm -f "${IMAGE_DIR}"/"${LIBDIR}"/macosx-starter
+	    rm -rf "${IMAGE_BIN}"
+	    rm -rf "${IMAGE_LIB}"/lib
+	    rm -f "${IMAGE_LIB}"/macosx-starter
 	    # Merge in doc files.
-	    cp -pr "${DOC_IMAGE_DIR}"/* "${IMAGE_DIR}"/"${LIBDIR}"/.
+	    cp -pR "${DOC_IMAGE_DIR}"/* "${IMAGE_LIB}"/.
 
 	    fixup_perms "${IMAGE_DIR}"
 	    touch "${STAMP_IMAGE}"
@@ -191,7 +190,7 @@ for ARCH in i386 x86-64; do
     if [[ ! -f ${STAMP_TAR} ]]; then
 	(
 	    set -e
-	    cd "${IMAGE_DIR}"/usr/local
+	    cd "${IMAGE_LOCAL}"
 	    tar cvzf "${TL_DIR}"/"${TARFILE}" *
 	    chmod 444 "${TL_DIR}"/"${TARFILE}"
 	) &> "${OUTPUT_DIR}"/"${ARCH}"-tar
