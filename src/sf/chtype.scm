@@ -79,9 +79,7 @@ USA.
     (change-type/expression (conditional/alternative expression))))
 
 (define-method/change-type 'CONSTANT
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)
 
 (define-method/change-type 'DECLARATION
   (lambda (expression)
@@ -96,39 +94,28 @@ USA.
     (change-type/expression (disjunction/predicate expression))
     (change-type/expression (disjunction/alternative expression))))
 
+(define-method/change-type 'OPEN-BLOCK
+  (lambda (expression)
+    (change-type/expressions (open-block/values expression))
+    (for-each (lambda (action)
+		(if (not (eq? action open-block/value-marker))
+		    (change-type/expression action)))
+	      (open-block/actions expression))))
+
 (define-method/change-type 'PROCEDURE
   (lambda (expression)
     (change-type/expression (procedure/body expression))))
 
-(define-method/change-type 'OPEN-BLOCK
-  (lambda (expression)
-    (change-type/expressions (open-block/values expression))
-    (change-type/open-block-actions (open-block/actions expression))))
-
-(define (change-type/open-block-actions actions)
-  (cond ((null? actions) 'DONE)
-	((eq? (car actions) open-block/value-marker)
-	 (change-type/open-block-actions (cdr actions)))
-	(else (change-type/expression (car actions))
-	      (change-type/open-block-actions (cdr actions)))))
-
 (define-method/change-type 'QUOTATION
   (lambda (expression)
-    (change-type/quotation expression)))
-
-(define (change-type/quotation quotation)
-  (change-type/expression (quotation/expression quotation)))
+    (change-type/expression (quotation/expression expression))))
 
 (define-method/change-type 'REFERENCE
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)
 
 (define-method/change-type 'SEQUENCE
   (lambda (expression)
     (change-type/expressions (sequence/actions expression))))
 
 (define-method/change-type 'THE-ENVIRONMENT
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)

@@ -30,6 +30,7 @@ USA.
 	 (integrate-external "object"))
 
 (define (variable/make&bind! block name)
+  (guarantee-symbol name 'variable/make&bind!)
   (or (%block/lookup-name block name)
       (%variable/make&bind! block name)))
 
@@ -40,6 +41,7 @@ USA.
     variable))
 
 (define (block/lookup-name block name intern?)
+  (guarantee-symbol name 'block/lookup-name)
   (let search ((block block))
     (or (%block/lookup-name block name)
 	(if (block/parent block)
@@ -52,6 +54,7 @@ USA.
 			(eq? (variable/name variable) name))))
 
 (define (block/limited-lookup block name limit)
+  (guarantee-symbol name 'block/limited-lookup)
   (let search ((block block))
     (and (not (eq? block limit))
 	 (or (%block/lookup-name block name)

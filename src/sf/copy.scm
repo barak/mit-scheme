@@ -34,12 +34,14 @@ USA.
 (define copy/declarations)
 
 (define (copy/expression/intern block expression)
+  (guarantee-block block 'copy/expression/intern)
   (fluid-let ((root-block block)
 	      (copy/variable/free copy/variable/free/intern)
 	      (copy/declarations copy/declarations/intern))
     (copy/expression block (environment/make) expression)))
 
 (define (copy/expression/extern block expression)
+  (guarantee-block block 'copy/expression/extern)
   (fluid-let ((root-block block)
 	      (copy/variable/free copy/variable/free/extern)
 	      (copy/declarations copy/declarations/extern))
@@ -67,6 +69,7 @@ USA.
   (map* environment cons variables values))
 
 (define (environment/lookup environment variable if-found if-not)
+  (guarantee-variable variable 'environment/lookup)
   (let ((association (assq variable environment)))
     (if association
 	(if-found (cdr association))
@@ -82,6 +85,7 @@ USA.
 
 (define (make-renamer environment)
   (lambda (variable)
+    (guarantee-variable variable)
     (environment/lookup environment variable
       identity-procedure
       (lambda () (error "Variable missing during copy operation:" variable)))))
@@ -115,7 +119,7 @@ USA.
 	(values result environment)))))
 
 (define (copy/variable block environment variable)
-  block					;ignored
+  (declare (ignore block))
   (environment/lookup environment variable
     identity-procedure
     (lambda () (copy/variable/free variable))))
@@ -143,7 +147,7 @@ USA.
   (block/lookup-name root-block (variable/name variable) true))
 
 (define (copy/declarations/intern block environment declarations)
-  block					;ignored
+  (declare (ignore block))
   (if (null? declarations)
       '()
       (declarations/map declarations
@@ -195,13 +199,11 @@ USA.
      (conditional/scode expression)
      (copy/expression block environment (conditional/predicate expression))
      (copy/expression block environment (conditional/consequent expression))
-     (copy/expression block
-		      environment
-		      (conditional/alternative expression)))))
+     (copy/expression block environment (conditional/alternative expression)))))
 
 (define-method/copy 'CONSTANT
   (lambda (block environment expression)
-    block environment			;ignored
+    (declare (ignore block environment))
     expression))
 
 (define-method/copy 'DECLARATION
@@ -266,7 +268,7 @@ USA.
 
 (define-method/copy 'QUOTATION
   (lambda (block environment expression)
-    block environment			;ignored
+    (declare (ignore block environment))
     (copy/quotation expression)))
 
 (define-method/copy 'REFERENCE
@@ -284,5 +286,5 @@ USA.
 
 (define-method/copy 'THE-ENVIRONMENT
   (lambda (block environment expression)
-    block environment expression	;ignored
+    (declare (ignore block environment expression))
     (error "Attempt to integrate expression containing (THE-ENVIRONMENT)")))
