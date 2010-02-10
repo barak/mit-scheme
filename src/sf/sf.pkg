@@ -34,7 +34,12 @@ USA.
 	 "gconst"
 	 "usicon"
 	 "tables")
-  (parent ()))
+  (parent ())
+  (export ()
+	  sf:enable-disjunction-folding?
+	  sf:enable-disjunction-inversion?
+	  sf:enable-disjunction-linearization?
+	  sf:enable-disjunction-simplification?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")

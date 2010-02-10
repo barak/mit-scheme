@@ -541,21 +541,12 @@ USA.
 	       (conditional/make (conditional/scode expression)
 				 predicate consequent alternative)))))))
 
-;; Optimize (or #f a) => a; (or #t a) => #t
-
 (define-method/integrate 'DISJUNCTION
   (lambda (operations environment expression)
-    (let ((predicate (integrate/expression operations environment
-					   (disjunction/predicate expression)))
-	  (alternative (integrate/expression
-			operations environment
-			(disjunction/alternative expression))))
-      (if (constant? predicate)
-	  (if (constant/value predicate)
-	      predicate
-	      alternative)
-	  (disjunction/make (disjunction/scode expression)
-			    predicate alternative)))))
+    (disjunction/make 
+     (disjunction/scode expression)
+     (integrate/expression operations environment (disjunction/predicate expression))
+     (integrate/expression operations environment (disjunction/alternative expression)))))
 
 (define-method/integrate 'SEQUENCE
   (lambda (operations environment expression)

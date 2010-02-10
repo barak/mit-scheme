@@ -234,8 +234,46 @@ USA.
 (define (conditional/make scode predicate consequent alternative)
   (conditional/%make scode predicate consequent alternative))
 
+;;; Disjunction
+(define sf:enable-disjunction-folding? #t)
+(define sf:enable-disjunction-inversion? #t)
+(define sf:enable-disjunction-linearization?  #t)
+(define sf:enable-disjunction-simplification? #t)
+
 (define (disjunction/make scode predicate alternative)
-  (disjunction/%make scode predicate alternative))
+  (cond ((and (constant? predicate)
+	      (noisy-test sf:enable-disjunction-folding? "Fold constant disjunction"))
+	 (if (constant/value predicate)
+	     predicate
+	     alternative))
+
+	;; (or (foo) #f) => (foo)
+	((and (constant? alternative)
+	      (not (constant/value alternative))
+	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
+	 predicate)
+
+	;; (or (not e1) e2) => (if e1 e2 #t)
+	((and (combination? predicate)
+	      (constant? (combination/operator predicate))
+	      (eq? (constant/value (combination/operator predicate)) (ucode-primitive not))
+	      (= (length (combination/operands predicate)) 1)
+	      (noisy-test sf:enable-disjunction-inversion? "Disjunction inversion"))
+	 (conditional/make scode
+			   (first (combination/operands predicate))
+			   alternative
+			   (constant/make #f #t)))
+
+	;; Linearize complex disjunctions
+	((and (disjunction? predicate)
+	      (noisy-test sf:enable-disjunction-linearization? "Linearize disjunction"))
+	 (disjunction/make scode
+			   (disjunction/predicate predicate)
+			   (disjunction/make (object/scode predicate)
+					     (disjunction/alternative predicate)
+					     alternative)))
+	(else
+	 (disjunction/%make scode predicate alternative))))
 
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.
@@ -330,3 +368,23 @@ USA.
 
 (define integration-info-tag
   (string-copy "integration-info"))
+
+;;; Returns #T if switch is not #F or 'warn.
+;;; Additionally, prints text if switch is not #T.
+;;; So set switch to #f to disable,
+;;; set it to 'warn to disable, but issue a warning upon testing,
+;;; set it to #t to enable,
+;;; or set it to something like 'ok to enable *and* print noise.
+
+;;; To use, make this the last clause in a test.
+(define (noisy-test switch text)
+  (and switch
+       (cond ((eq? switch 'warn)
+	      (warn "Not performing possible action:" text)
+	      #f)
+	     ((not (eq? switch #t))
+	      (newline)
+	      (write-string "; ")
+	      (write-string text)
+	      #t)
+	     (else #t))))
