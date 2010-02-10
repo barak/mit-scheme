@@ -35,11 +35,22 @@ USA.
 	 "usicon"
 	 "tables")
   (parent ())
+  (import (runtime scode-combinator)
+	  combination/constant-folding-operators)
   (export ()
+	  sf:enable-argument-deletion?
+	  sf:enable-conditional->disjunction?
+	  sf:enable-conditional-folding?
+	  sf:enable-conditional-inversion?
+	  sf:enable-conjunction-linearization?
+	  sf:enable-constant-folding?
+	  sf:enable-disjunction-distribution?
 	  sf:enable-disjunction-folding?
 	  sf:enable-disjunction-inversion?
 	  sf:enable-disjunction-linearization?
-	  sf:enable-disjunction-simplification?))
+	  sf:enable-disjunction-simplification?
+	  sf:enable-distribute-primitives?
+	  ))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")

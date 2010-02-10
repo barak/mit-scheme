@@ -32,13 +32,13 @@ USA.
 ;;;; Fixed-arity arithmetic primitives
 
 (define (make-combination expression block primitive operands)
-  (combination/make (and expression (object/scode expression))
+  (combination/make expression
 		    block
 		    (constant/make #f primitive)
 		    operands))
 
 (define (make-operand-binding expression block operand make-body)
-  (combination/make (and expression (object/scode expression))
+  (combination/make expression
 		    block
 		    (let ((block (block/make block #t '()))
 			  (name (string->uninterned-symbol "operand")))
@@ -319,7 +319,7 @@ USA.
   (if (< 1 (length operands) 10)
       (if-expanded
        (combination/make
-	(and expr (object/scode expr))
+	expr
 	block
 	(global-ref/make 'APPLY)
 	(list (car operands)
@@ -364,7 +364,7 @@ USA.
                      (string-append "value-" (number->string position)))))
 		 (iota (length operands)))))
        (combination/make
-	(and expr (object/scode expr))
+	expr
 	block
 	(procedure/make
 	 #f
@@ -393,7 +393,7 @@ USA.
 	   (pair? (cdr operands))
 	   (null? (cddr operands)))
       (if-expanded
-       (combination/make (and expr (object/scode expr))
+       (combination/make expr
 			 block
 			 (combination/make #f block (car operands) '())
 			 (cdr operands)))

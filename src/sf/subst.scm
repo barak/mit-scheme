@@ -142,7 +142,7 @@ USA.
 	     (integration-failure
 	      (lambda ()
 		(variable/reference! variable)
-		(combination/optimizing-make expression block
+		(combination/make expression block
 					     operator operands)))
 	     (integration-success
 	      (lambda (operator)
@@ -308,7 +308,7 @@ USA.
 	       (integrate/primitive-operator expression operations environment
 					     block operator operands))))
 	(else
-	 (combination/optimizing-make
+	 (combination/make
 	  expression
 	  block
 	  (let* ((integrate-procedure
@@ -340,7 +340,7 @@ USA.
 (define (integrate/primitive-operator expression operations environment
 				      block operator operands)
   (declare (ignore operations environment))
-  (combination/optimizing-make expression block operator operands))
+  (combination/make expression block operator operands))
 
 ;;; ((let ((a (foo)) (b (bar)))
 ;;;    (lambda (receiver)
@@ -429,7 +429,7 @@ USA.
        (scan-operator operator (lambda (body) body))))
 
 (define (combination-with-operator combination operator)
-  (combination/make (combination/scode combination)
+  (combination/make combination
 		    (combination/block combination)
 		    operator
 		    (combination/operands combination)))
@@ -500,46 +500,19 @@ USA.
     environment
     (integrate/quotation expression)))
 
-;; Optimize (if #f a b) => b; (if #t a b) => a
-;;   (if (let (...) t) a b) => (let (...) (if t a b))
-;;   (if (begin ... t) a b) => (begin ... (if t a b))
-
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
-    (let ((predicate (integrate/expression
-		      operations environment
-		      (conditional/predicate expression)))
-	  (consequent (integrate/expression
-		       operations environment
-		       (conditional/consequent expression)))
-	  (alternative (integrate/expression
-			operations environment
-			(conditional/alternative expression))))
-      (let loop ((predicate predicate))
-	(cond ((constant? predicate)
-	       (if (constant/value predicate)
-		   consequent
-		   alternative))
-	      ((sequence? predicate)
-	       (sequence-with-actions
-		predicate
-		(let ((actions (reverse (sequence/actions predicate))))
-		  (reverse
-		   (cons (loop (car actions))
-			 (cdr actions))))))
-	      ((and (combination? predicate)
-		    (procedure? (combination/operator predicate))
-		    (not
-		     (open-block?
-		      (procedure/body (combination/operator predicate)))))
-	       (combination-with-operator
-		predicate
-		(procedure-with-body
-		 (combination/operator predicate)
-		 (loop (procedure/body (combination/operator predicate))))))
-	      (else
-	       (conditional/make (conditional/scode expression)
-				 predicate consequent alternative)))))))
+    (conditional/make
+     (conditional/scode expression)
+     (integrate/expression
+      operations environment
+      (conditional/predicate expression))
+     (integrate/expression
+      operations environment
+      (conditional/consequent expression))
+     (integrate/expression
+      operations environment
+      (conditional/alternative expression)))))
 
 (define-method/integrate 'DISJUNCTION
   (lambda (operations environment expression)
@@ -643,7 +616,7 @@ USA.
 	(dont-integrate
 	 (lambda ()
 	   (combination/make
-	    (and expression (object/scode expression))
+	    expression
 	    block
 	    (integrate/expression operations environment operator)
 	    (integrate/expressions operations environment operands)))))
@@ -771,162 +744,3 @@ USA.
      (error "Delayed integration has unknown state"
 	    delayed-integration)))
   (delayed-integration/value delayed-integration))
-
-;;;; Optimizations
-
-#|
-Simple LET-like combination.  Delete any unreferenced
-parameters.  If no parameters remain, delete the
-combination and lambda.  Values bound to the unreferenced
-parameters are pulled out of the combination.  But integrated
-forms are simply removed.
-
-(define (foo a)
-  (let ((a (+ a 3))
-	(b (bar a))
-	(c (baz a)))
-    (declare (integrate c))
-    (+ c a)))
-
-        ||
-        \/
-
-(define (foo a)
-  (bar a)
-  (let ((a (+ a 3)))
-    (+ (baz a) a)))
-
-|#
-
-(define (foldable-constant? thing)
-  (constant? thing))
-
-(define (foldable-constants? list)
-  (or (null? list)
-      (and (foldable-constant? (car list))
-	   (foldable-constants? (cdr list)))))
-
-(define (foldable-constant-value thing)
-  (cond ((constant? thing)
-	 (constant/value thing))
-	(else
-	 (error "foldable-constant-value: can't happen" thing))))
-
-(define *foldable-primitive-procedures
-  (map make-primitive-procedure
-       '(OBJECT-TYPE OBJECT-TYPE?
-         NOT EQ? NULL? PAIR? ZERO? POSITIVE? NEGATIVE?
-	 &= &< &> &+ &- &* &/ 1+ -1+)))
-
-(define (foldable-operator? operator)
-  (and (constant? operator)
-       (primitive-procedure? (constant/value operator))
-       (memq (constant/value operator) *foldable-primitive-procedures)))
-
-;;; deal with (let () (define ...))
-;;; deal with (let ((x 7)) (let ((y 4)) ...)) => (let ((x 7) (y 4)) ...)
-;;; Actually, we really don't want to hack with these for various
-;;; reasons
-
-(define (combination/optimizing-make expression block operator operands)
-  (cond (
-	 ;; fold constants
-	 (and (foldable-operator? operator)
-	      (foldable-constants? operands))
-	 (constant/make (and expression (object/scode expression))
-			(apply (constant/value operator)
-			       (map foldable-constant-value operands))))
-
-	(
-	 ;; (force (delay x)) ==> x
-	 (and (constant? operator)
-	      (eq? (constant/value operator) force)
-	      (= (length operands) 1)
-	      (delay? (car operands)))
-	 (delay/expression (car operands)))
-
-	((and (procedure? operator)
-	      (block/safe? (procedure/block operator))
-	      (for-all? (declarations/original
-			 (block/declarations (procedure/block operator)))
-		declarations/known?)
-	      (for-all? (procedure/optional operator)
-		variable/integrated)
-	      (or (not (procedure/rest operator))
-		  (variable/integrated (procedure/rest operator))))
-	 (delete-unreferenced-parameters
-	  (append (procedure/required operator)
-		  (procedure/optional operator))
-	  (procedure/rest operator)
-	  (procedure/body operator)
-	  operands
-	  (lambda (required referenced-operands unreferenced-operands)
-	    (let ((form
-		   (if (and (null? required)
-			    ;; need to avoid things like this
-			    ;; (foo bar (let () (define (baz) ..) ..))
-			    ;; optimizing into
-			    ;; (foo bar (define (baz) ..) ..)
-			    (not (open-block? (procedure/body operator))))
-		       (reassign expression (procedure/body operator))
-		       (combination/make
-			(and expression (object/scode expression))
-			block
-			(procedure/make
-			 (procedure/scode operator)
-			 (procedure/block operator)
-			 (procedure/name operator)
-			 required
-			 '()
-			 #f
-			 (procedure/body operator))
-			referenced-operands))))
-	      (if (null? unreferenced-operands)
-		  form
-		  (sequence/optimizing-make
-		   expression
-		   (append unreferenced-operands (list form))))))))
-	(else
-	 (combination/make (and expression (object/scode expression))
-			   block operator operands))))
-
-(define (delete-unreferenced-parameters parameters rest body operands receiver)
-  (let ((free-in-body (free/expression body)))
-    (let loop ((parameters 		parameters)
-	       (operands   		operands)
-	       (required-parameters	'())
-	       (referenced-operands	'())
-	       (unreferenced-operands	'()))
-    (cond ((null? parameters)
-	   (if (or rest (null? operands))
-	       (receiver (reverse required-parameters) ; preserve order
-			 (reverse referenced-operands)
-			 (if (or (null? operands)
-				 (variable/integrated rest))
-			     unreferenced-operands
-			     (append operands unreferenced-operands)))
-	       (error "Argument mismatch" operands)))
-	  ((null? operands)
-	   (error "Argument mismatch" parameters))
-	  (else
-	   (let ((this-parameter (car parameters))
-		 (this-operand   (car operands)))
-	     (cond ((memq this-parameter free-in-body)
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  (cons this-parameter required-parameters)
-			  (cons this-operand   referenced-operands)
-			  unreferenced-operands))
-		   ((variable/integrated this-parameter)
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  required-parameters
-			  referenced-operands
-			  unreferenced-operands))
-		   (else
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  required-parameters
-			  referenced-operands
-			  (cons this-operand
-				unreferenced-operands))))))))))

@@ -31,7 +31,7 @@ USA.
 ;;;; Enumerations
 
 (define (enumeration/make names)
-  (let ((enumerands 
+  (let ((enumerands
 	 (let loop ((names names) (index 0))
 	   (if (pair? names)
 	       (cons (vector #f (car names) index)
@@ -189,7 +189,7 @@ USA.
 		   (conc-name variable/)
 		   (constructor variable/make (block name flags))
 		   (print-procedure
-		    (standard-unparser-method 
+		    (standard-unparser-method
 		     'variable
 		     (lambda (var port)
 		       (write-string " " port)
@@ -228,11 +228,225 @@ USA.
 					(1+ (variable/invocation-count variable)))))
   (combination/%%make scode block operator operands))
 
+;; When constucting a combination, we may discover that we
+;; can reduce the combination through constant folding.
+(define sf:enable-constant-folding? #t)
+
+;; If we have a LET expression, and an argument has been integrated,
+;; then we can remove it from the lambda binding and the argument
+;; list.  This could lead to the combination disappearing altogether.
+(define sf:enable-argument-deletion? #t)
+
+;; If we apply a primitive to a conditional, rewrite such that
+;; the primitive is applied to the arms of the conditional.
+;; (This usually occurs with an (not (if foo <e1> <e2>)))
+(define sf:enable-distribute-primitives? #t)
+
+;; Foldable operators primitives that are members of
+;; combination/constant-folding-operators
+
+(define (foldable-combination? operator operands)
+  (and (constant? operator)
+       (let ((operator-value (constant/value operator)))
+	 (and (primitive-procedure? operator-value)
+	      (procedure-arity-valid? operator-value (length operands))
+	      (memq operator-value combination/constant-folding-operators)))
+	  ;; Check that the arguments are constant.
+       (for-all? operands constant?)))
+
+;; An operator is reducable if we can safely rewrite its argument list.
+(define (reducable-operator? operator)
+  (and (procedure? operator)
+       ;; if the block is not safe, then random code can be
+       ;; injected and it will expect to see all the arguments.
+       (block/safe? (procedure/block operator))
+       ;; if there are declarations we don't understand, we
+       ;; should leave things alone.
+       (for-all? (declarations/original
+		  (block/declarations (procedure/block operator)))
+		 declarations/known?)
+       ;; Unintegrated optionals are tricky and rare.  Punt.
+       (for-all? (procedure/optional operator) variable/integrated)
+       ;; Unintegrated rest arguments are tricky and rare.  Punt.
+       (let ((rest-arg (procedure/rest operator)))
+	 (or (not rest-arg) (variable/integrated rest-arg)))))
+
 (define (combination/make expression block operator operands)
-  (combination/%make expression block operator operands))
+  (cond ((and (foldable-combination? operator operands)
+	      (noisy-test sf:enable-constant-folding? "fold constants"))
+	 (combination/fold-constant expression
+				    (constant/value operator)
+				    (map constant/value operands)))
+
+	((and (constant? operator)
+	      (primitive-procedure? (constant/value operator))
+	      (= (length operands) 1)
+	      (conditional? (car operands))
+	      (noisy-test sf:enable-distribute-primitives?
+			  "Distribute primitives over conditionals"))
+	 (conditional/make (and expression (object/scode expression))
+			   (conditional/predicate (car operands))
+			   (combination/make #f
+					     block
+					     (constant/make #f (constant/value operator))
+					     (list (conditional/consequent (car operands))))
+			   (combination/make #f
+					     block
+					     (constant/make #f (constant/value operator))
+					     (list (conditional/alternative (car operands))))))
+
+	((and (reducable-operator? operator)
+	      (noisy-test sf:enable-argument-deletion? "argument deletion"))
+	 (call-with-values (lambda () (partition-operands operator operands))
+	   (lambda (new-argument-list new-operand-list other-operands)
+	     ;; The new-argument-list has the remaining arguments
+	     ;; after reduction.  The new-operand-list is the remaining
+	     ;; operands after reduction.  The other-operands are a
+	     ;; list of operands that must be evaluated (for effect)
+	     ;; but whose value is discarded.
+	     (let ((result-body
+		    (if (and (null? new-argument-list)
+			     ;; need to avoid things like this
+			     ;; (foo bar (let () (define (baz) ..) ..))
+			     ;; optimizing into
+			     ;; (foo bar (define (baz) ..) ..)
+			     (not (open-block? (procedure/body operator))))
+			(procedure/body operator)
+			(combination/%make
+			 (and expression (object/scode expression))
+			 block
+			 (procedure/make
+			  (procedure/scode operator)
+			  (procedure/block operator)
+			  (procedure/name operator)
+			  new-argument-list
+			  '()
+			  #f
+			  (procedure/body operator))
+			 new-operand-list))))
+	       (if (null? other-operands)
+		   result-body
+		   (sequence/make
+		    expression
+		    (append other-operands (list form))))))))
+	(else
+	 (combination/%make (and expression (object/scode expression)) block operator operands))))
+
+(define (combination/fold-constant expression operator operands)
+  (if (not (eq? sf:enable-constant-folding? #t))
+      (begin
+	(newline)
+	(display "; Folding (")
+	(display operator)
+	(for-each (lambda (operand) (display " ") (write operand)) operands)))
+  (let ((result (apply operator operands)))
+    (if (not (eq? sf:enable-constant-folding? #t))
+	(begin
+	  (display ") => ")
+	  (write result)))
+    (constant/make (and expression (object/scode expression)) result)))
+
+(define-integrable (partition-operands operator operands)
+  (let ((free-in-body (free/expression (procedure/body operator))))
+    (let loop ((parameters 		(append (procedure/required operator)
+						(procedure/optional operator)))
+	       (operands   		operands)
+	       (required-parameters	'())
+	       (referenced-operands	'())
+	       (unreferenced-operands	'()))
+    (cond ((null? parameters)
+	   (if (or (procedure/rest operator) (null? operands))
+	       (values (reverse required-parameters) ; preserve order
+			 (reverse referenced-operands)
+			 (if (or (null? operands)
+				 (variable/integrated (procedure/rest operator)))
+			     unreferenced-operands
+			     (append operands unreferenced-operands)))
+	       (error "Argument mismatch" operands)))
+	  ((null? operands)
+	   (error "Argument mismatch" parameters))
+	  (else
+	   (let ((this-parameter (car parameters))
+		 (this-operand   (car operands)))
+	     (cond ((memq this-parameter free-in-body)
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  (cons this-parameter required-parameters)
+			  (cons this-operand   referenced-operands)
+			  unreferenced-operands))
+		   ((variable/integrated this-parameter)
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  required-parameters
+			  referenced-operands
+			  unreferenced-operands))
+		   (else
+		    (loop (cdr parameters)
+			  (cdr operands)
+			  required-parameters
+			  referenced-operands
+			  (cons this-operand
+				unreferenced-operands))))))))))
+
+;;; Conditional
+(define sf:enable-conditional->disjunction? #t)
+(define sf:enable-conditional-folding? #t)
+(define sf:enable-conditional-inversion? #t)
+(define sf:enable-conjunction-linearization? #t)
+(define sf:enable-disjunction-distribution? #t)
 
 (define (conditional/make scode predicate consequent alternative)
-  (conditional/%make scode predicate consequent alternative))
+  (cond ((and (constant? predicate)
+	      (noisy-test sf:enable-conditional-folding? "folding conditional"))
+	 (if (constant/value predicate)
+	     consequent
+	     alternative))
+
+	;; (if foo foo ...) => (or foo ...)
+	((and (reference? predicate)
+	      (reference? consequent)
+	      (eq? (reference/variable predicate)
+		   (reference/variable consequent))
+	      (noisy-test sf:enable-conditional->disjunction? "Conditional to disjunction"))
+	 (disjunction/make scode predicate alternative))
+
+	;; (if (not e) c a) => (if e a c)
+	((and (combination? predicate)
+	      (constant? (combination/operator predicate))
+	      (eq? (constant/value (combination/operator predicate)) (ucode-primitive not))
+	      (= (length (combination/operands predicate)) 1)
+	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
+	 (conditional/make scode (first (combination/operands predicate))
+			   alternative
+			   consequent))
+
+	;; (if (if e1 e2 #f) <expr> K) => (if e1 (if e2 <expr> K) K)
+	((and (conditional? predicate)
+	      (constant? (conditional/alternative predicate))
+	      (not (constant/value (conditional/alternative predicate)))
+	      (constant? alternative)
+	      (noisy-test sf:enable-conjunction-linearization? "Conjunction linearization"))
+	 (conditional/make scode
+			   (conditional/predicate predicate)
+			   (conditional/make #f
+					     (conditional/consequent predicate)
+					     consequent
+					     alternative)
+			   alternative))
+
+	;; (if (or e1 e2) K <expr>) => (if e1 K (if e2 K <expr>))
+	((and (disjunction? predicate)
+	      (constant? consequent)
+	      (noisy-test sf:enable-disjunction-distribution? "Disjunction distribution"))
+	 (conditional/make scode
+			   (disjunction/predicate predicate)
+			   consequent
+			   (conditional/make #f
+					     (disjunction/alternative predicate)
+					     consequent
+					     alternative)))
+	(else
+	 (conditional/%make scode predicate consequent alternative))))
 
 ;;; Disjunction
 (define sf:enable-disjunction-folding? #t)
@@ -284,7 +498,7 @@ USA.
 		   (conc-name reference/)
 		   (constructor reference/make)
 		   (print-procedure
-		    (standard-unparser-method 
+		    (standard-unparser-method
 		     'reference
 		     (lambda (ref port)
 		       (write-string " to " port)
