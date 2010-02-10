@@ -36,7 +36,7 @@ USA.
 
 (define (free/expressions expressions)
   (fold-left (lambda (answer expression)
-	       (set/union answer (free/expression expression)))
+	       (lset-union eq? answer (free/expression expression)))
 	     (no-free-variables)
 	     expressions))
 
@@ -52,21 +52,22 @@ USA.
 
 (define-method/free 'ASSIGNMENT
   (lambda (expression)
-    (set/adjoin (free/expression (assignment/value expression))
-		(assignment/variable expression))))
+    (lset-adjoin eq?
+		 (free/expression (assignment/value expression))
+		 (assignment/variable expression))))
 
 (define-method/free 'COMBINATION
   (lambda (expression)
-    (set/union (free/expression (combination/operator expression))
-	       (free/expressions (combination/operands expression)))))
+    (lset-union eq?
+		(free/expression (combination/operator expression))
+		(free/expressions (combination/operands expression)))))
 
 (define-method/free 'CONDITIONAL
   (lambda (expression)
-    (set/union
-     (free/expression (conditional/predicate expression))
-     (set/union
-      (free/expression (conditional/consequent expression))
-      (free/expression (conditional/alternative expression))))))
+    (lset-union eq?
+		(free/expression (conditional/predicate expression))
+		(free/expression (conditional/consequent expression))
+		(free/expression (conditional/alternative expression)))))
 
 (define-method/free 'CONSTANT
   (lambda (expression)
@@ -83,8 +84,9 @@ USA.
 
 (define-method/free 'DISJUNCTION
   (lambda (expression)
-    (set/union (free/expression (disjunction/predicate expression))
-	       (free/expression (disjunction/alternative expression)))))
+    (lset-union eq?
+		(free/expression (disjunction/predicate expression))
+		(free/expression (disjunction/alternative expression)))))
 
 (define-method/free 'OPEN-BLOCK
   (lambda (expression)
@@ -92,19 +94,19 @@ USA.
      (fold-left (lambda (variables action)
 		  (if (eq? action open-block/value-marker)
 		      variables
-		      (set/union variables (set/difference (free/expression action) omit))))
-		(set/difference (free/expressions (open-block/values expression)) omit)
+		      (lset-union eq? variables (lset-difference eq? (free/expression action) omit))))
+		(lset-difference eq? (free/expressions (open-block/values expression)) omit)
 		(open-block/actions expression)))))
 
 (define-method/free 'PROCEDURE
   (lambda (expression)
-    (set/difference
+    (lset-difference eq?
      (free/expression (procedure/body expression))
      (block/bound-variables (procedure/block expression)))))
 
 (define-method/free 'QUOTATION
   (lambda (expression)
-    expression
+    (declare (ignore expression))
     (no-free-variables)))
 
 (define-method/free 'REFERENCE
@@ -117,7 +119,7 @@ USA.
 
 (define-method/free 'THE-ENVIRONMENT
   (lambda (expression)
-    expression
+    (declare (ignore expression))
     (no-free-variables)))
 
 (define-integrable (no-free-variables)
@@ -125,19 +127,3 @@ USA.
 
 (define-integrable (singleton-variable variable)
   (list variable))
-
-(define (set/adjoin set element)
-  (if (memq element set)
-      set
-      (cons element set)))
-
-(define-integrable (set/union left right)
-  (fold-left set/adjoin left right))
-
-(define (set/difference original remove)
-  (fold-left (lambda (answer element)
-	       (if (memq element remove)
-		   answer
-		   (set/adjoin answer element)))
-	     '()
-	     original))
