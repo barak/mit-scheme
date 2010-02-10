@@ -273,7 +273,7 @@ USA.
 
 (define (combination/make expression block operator operands)
   (cond ((and (foldable-combination? operator operands)
-	      (noisy-test sf:enable-constant-folding? "fold constants"))
+	      (noisy-test sf:enable-constant-folding? "Folding constants"))
 	 (combination/fold-constant expression
 				    (constant/value operator)
 				    (map constant/value operands)))
@@ -333,18 +333,16 @@ USA.
 	 (combination/%make (and expression (object/scode expression)) block operator operands))))
 
 (define (combination/fold-constant expression operator operands)
-  (if (not (eq? sf:enable-constant-folding? #t))
-      (begin
-	(newline)
-	(display "; Folding (")
-	(display operator)
-	(for-each (lambda (operand) (display " ") (write operand)) operands)))
   (let ((result (apply operator operands)))
-    (if (not (eq? sf:enable-constant-folding? #t))
-	(begin
-	  (display ") => ")
-	  (write result)))
-    (constant/make (and expression (object/scode expression)) result)))
+  (if (not (eq? sf:enable-constant-folding? #t))
+      (with-notification
+       (lambda (port)
+	 (display "Folding (" port)
+	 (display operator port)
+	 (for-each (lambda (operand) (display " " port) (write operand port)) operands)
+	 (display ") => " port)
+	 (write result port))))
+  (constant/make (and expression (object/scode expression)) result)))
 
 (define-integrable (partition-operands operator operands)
   (let ((free-in-body (free/expression (procedure/body operator))))
@@ -597,8 +595,7 @@ USA.
 	      (warn "Not performing possible action:" text)
 	      #f)
 	     ((not (eq? switch #t))
-	      (newline)
-	      (write-string "; ")
-	      (write-string text)
+	      (with-notification
+	       (lambda (port) (write-string text port)))
 	      #t)
 	     (else #t))))

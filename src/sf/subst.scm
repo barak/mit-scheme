@@ -232,13 +232,15 @@ USA.
 ;;; processed.  Useful for debugging.
 (define sf:display-top-level-procedure-names? #f)
 
-(define (maybe-display-name name)
+(define (maybe-displaying-name name thunk)
   (if (and sf:display-top-level-procedure-names?
 	   (null? *current-block-names*))
-      (begin
-	(newline)
-	(display ";;   ")
-	(display name))))
+      (with-notification
+       (lambda (port)
+	 (write-string "Integrating procedure " port)
+	 (write name port))
+       thunk)
+      (thunk)))
 
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
@@ -246,36 +248,37 @@ USA.
 	(required (procedure/required procedure))
 	(optional (procedure/optional procedure))
 	(rest (procedure/rest procedure)))
-    (maybe-display-name name)
-    (fluid-let ((*current-block-names* (cons name *current-block-names*)))
-      (let ((body
-	     (integrate/expression
-	      (declarations/bind
-	       (operations/shadow
-		operations
-		(append required optional (if rest (list rest) '())))
-	       (block/declarations block))
-	      environment
-	      (procedure/body procedure))))
-	;; Possibly complain about variables bound and not
-	;; referenced.
-	(if (block/safe? block)
-	    (for-each (lambda (variable)
-			(if (variable/unreferenced? variable)
-			    (warn "Unreferenced bound variable:"
-				  (variable/name variable)
-				  *current-block-names*)))
-		      (if rest
-			  (append required optional (list rest))
-			  (append required optional))))
-	(procedure/make (procedure/scode procedure)
-			block
-			name
-			required
-			optional
-			rest
-			body)))))
-
+    (maybe-displaying-name
+     name
+     (lambda ()
+       (fluid-let ((*current-block-names* (cons name *current-block-names*)))
+	 (let ((body
+		(integrate/expression
+		 (declarations/bind
+		  (operations/shadow
+		   operations
+		   (append required optional (if rest (list rest) '())))
+		  (block/declarations block))
+		 environment
+		 (procedure/body procedure))))
+	   ;; Possibly complain about variables bound and not
+	   ;; referenced.
+	   (if (block/safe? block)
+	       (for-each (lambda (variable)
+			   (if (variable/unreferenced? variable)
+			       (warn "Unreferenced bound variable:"
+				     (variable/name variable)
+				     *current-block-names*)))
+			 (if rest
+			     (append required optional (list rest))
+			     (append required optional))))
+	   (procedure/make (procedure/scode procedure)
+			   block
+			   name
+			   required
+			   optional
+			   rest
+			   body)))))))
 
 (define-method/integrate 'COMBINATION
   (lambda (operations environment combination)
