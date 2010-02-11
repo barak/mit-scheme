@@ -159,14 +159,13 @@ USA.
 			    integration-success
 			    integration-failure))
 	   ((EXPAND)
-	    (info expression
-		  operands
-		  (lambda (new-expression)
+	    (let ((new-expression (info expression operands (reference/block operator))))
+	      (if new-expression
+		  (begin
 		    (mark-integrated!)
-		    (integrate/expression operations environment
-					  new-expression))
-		  integration-failure
-		  (reference/block operator)))
+		    (integrate/expression operations environment new-expression))
+		  (integration-failure))))
+
 	   (else
 	    (error "Unknown operation" operation))))
        (lambda ()
@@ -613,31 +612,45 @@ USA.
       operations environment		;ignore
       expression)))
 
-(define (integrate/access-operator expression operations environment
-				   block operator operands)
+(define (integrate/access-operator expression operations environment block operator operands)
   (let ((name (access/name operator))
-	(dont-integrate
-	 (lambda ()
-	   (combination/make
-	    expression
-	    block
-	    (integrate/expression operations environment operator)
-	    (integrate/expressions operations environment operands)))))
-    (cond ((and (eq? name 'APPLY)
-		(integrate/hack-apply? operands))
-	   => (lambda (operands*)
-		(integrate/combination expression operations environment
-				       block (car operands*) (cdr operands*))))
-	  ((assq name usual-integrations/constant-alist)
-	   => (lambda (entry)
-		(integrate/combination expression operations environment
-				       block (cdr entry) operands)))
-	  ((assq name usual-integrations/expansion-alist)
-	   => (lambda (entry)
-		((cdr entry) expression operands
-			     identity-procedure dont-integrate #f)))
-	  (else
-	   (dont-integrate)))))
+	(environment*
+	 (integrate/expression operations environment (access/environment operator))))
+
+    (define (dont-integrate)
+      (combination/make
+       expression block
+       (access/make (access/scode operator) environment* name) operands))
+
+    (if (not (constant/system-global-environment? environment*))
+	(dont-integrate)
+	(operations/lookup-global
+	 operations name
+	 (lambda (operation info)
+	   (case operation
+	     ((#F) (dont-integrate));; shadowed
+
+	     ((INTEGRATE INTEGRATE-OPERATOR)
+	      ;; This branch is never taken because all the global
+	      ;; operators are defined via expansions.  But if that
+	      ;; ever changes...
+	      (integrate/name expression
+			      operator info environment
+			      (lambda (new-operator)
+				(integrate/combination
+				 expression operations environment
+				 block new-operator operands))
+			      dont-integrate))
+
+	     ((EXPAND)
+	      (cond ((info expression operands (reference/block operator))
+		     => (lambda (new-expression)
+			  (integrate/expression operations environment new-expression))) 
+		    (else (dont-integrate))))
+
+	     (else
+	      (error "unknown operation" operation))))
+	 dont-integrate))))
 
 ;;;; Environment
 
