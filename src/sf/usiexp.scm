@@ -462,6 +462,20 @@ USA.
 
 ;;;; Miscellaneous
 
+(define (eq?-expansion expr operands block)
+  (if (and (pair? operands)
+	   (pair? (cdr operands))
+	   (not (pair? (cddr operands))))
+      ;; Convert (eq? <expr> #f) and (eq? #f <expr>) to (not <expr>)
+      ;; Conditional inversion will remove the call to not.
+      (cond ((constant-eq? (first operands) #f)
+	     (make-combination expr block (ucode-primitive not) (cdr operands)))
+	    ((constant-eq? (second operands) #f)
+	     (make-combination expr block (ucode-primitive not) (list (car operands))))
+	    (else
+	     (make-combination expr block (ucode-primitive eq?) operands)))
+      #f))
+
 (define (make-string-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -481,7 +495,7 @@ USA.
 (define (exact-integer?-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
-      (make-operand-binding 
+      (make-operand-binding
        expr block (car operands)
        (lambda (block operand)
 	 (make-disjunction
@@ -519,7 +533,7 @@ USA.
 (define (symbol?-expansion expr operands block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
-      (make-operand-binding 
+      (make-operand-binding
        expr block (car operands)
        (lambda (block operand)
 	 (make-disjunction
@@ -636,6 +650,7 @@ USA.
 	    exact-integer?
 	    exact-rational?
 	    expt
+	    eq?
 	    fifth
 	    first
 	    fix:<=
@@ -717,6 +732,7 @@ USA.
 	   exact-integer?-expansion
 	   exact-rational?-expansion
 	   expt-expansion
+	   eq?-expansion
 	   fifth-expansion
 	   first-expansion
 	   fix:<=-expansion
