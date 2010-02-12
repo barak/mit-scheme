@@ -804,7 +804,7 @@ USA.
 	    (decode-G/E '(SUB B))
 	    (decode-G/E '(SUB W))
 	    (decode-Ib '(SUB B (R 0)))
-	    (decode-Iw '(AND W (R 0)))
+	    (decode-Iw '(SUB W (R 0)))
 	    (simple-inst '(CSSEG))
 	    (simple-inst '(DAS)))
 
