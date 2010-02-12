@@ -121,8 +121,11 @@ USA.
 	      (variable/reference! variable)
 	      expression)
 	     ((INTEGRATE)
-	      (integrate/name expression expression info environment
-			      integration-success integration-failure))
+	      (let ((new-expression
+		     (integrate/name expression expression info environment)))
+		(if new-expression
+		    (integration-success new-expression)
+		    (integration-failure))))
 	     (else
 	      (error "Unknown operation" operation))))
 	 (lambda ()
@@ -153,17 +156,20 @@ USA.
        (lambda (operation info)
 	 (case operation
 	   ((#F) (integration-failure))
-	   ((INTEGRATE INTEGRATE-OPERATOR)
-	    (integrate/name expression
-			    operator info environment
-			    integration-success
-			    integration-failure))
+
 	   ((EXPAND)
 	    (let ((new-expression (info expression operands (reference/block operator))))
 	      (if new-expression
 		  (begin
 		    (mark-integrated!)
 		    (integrate/expression operations environment new-expression))
+		  (integration-failure))))
+
+	   ((INTEGRATE INTEGRATE-OPERATOR)
+	    (let ((new-expression (integrate/name expression
+			    operator info environment)))
+	      (if new-expression
+		  (integration-success new-expression)
 		  (integration-failure))))
 
 	   (else
@@ -630,23 +636,22 @@ USA.
 	   (case operation
 	     ((#F) (dont-integrate));; shadowed
 
-	     ((INTEGRATE INTEGRATE-OPERATOR)
-	      ;; This branch is never taken because all the global
-	      ;; operators are defined via expansions.  But if that
-	      ;; ever changes...
-	      (integrate/name expression
-			      operator info environment
-			      (lambda (new-operator)
-				(integrate/combination
-				 expression operations environment
-				 block new-operator operands))
-			      dont-integrate))
-
 	     ((EXPAND)
 	      (cond ((info expression operands (reference/block operator))
 		     => (lambda (new-expression)
 			  (integrate/expression operations environment new-expression))) 
 		    (else (dont-integrate))))
+
+	     ((INTEGRATE INTEGRATE-OPERATOR)
+	      ;; This branch is never taken because all the global
+	      ;; operators are defined via expansions.  But if that
+	      ;; ever changes...
+	      (let ((new-expression (integrate/name expression operator info environment)))
+		(if new-expression
+		    (integrate/combination
+		     expression operations environment
+		     block new-expression operands)
+		    (dont-integrate))))
 
 	     (else
 	      (error "unknown operation" operation))))
@@ -669,25 +674,24 @@ USA.
 		vals)
       (values environment (map delayed-integration/force vals)))))
 
-(define (integrate/name expr reference info environment if-integrated if-not)
+(define (integrate/name expr reference info environment)
   (let ((variable (reference/variable reference)))
     (let ((finish
 	   (lambda (value)
-	     (if-integrated
-	      (reassign
-	       expr
-	       (copy/expression/intern (reference/block reference) value))))))
+	     (reassign
+	      expr
+	      (copy/expression/intern (reference/block reference) value)))))
       (if info
 	  (finish (integration-info/expression info))
 	  (environment/lookup environment variable
 	    (lambda (value)
 	      (if (delayed-integration? value)
 		  (if (delayed-integration/in-progress? value)
-		      (if-not)
+		      #f
 		      (finish (delayed-integration/force value)))
 		  (finish value)))
-	    if-not
-	    if-not)))))
+	    false-procedure
+	    false-procedure)))))
 
 (define (variable/final-value variable environment if-value if-not)
   (environment/lookup environment variable
