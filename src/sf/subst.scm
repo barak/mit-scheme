@@ -643,15 +643,10 @@ USA.
 		    (else (dont-integrate))))
 
 	     ((INTEGRATE INTEGRATE-OPERATOR)
-	      ;; This branch is never taken because all the global
-	      ;; operators are defined via expansions.  But if that
-	      ;; ever changes...
-	      (let ((new-expression (integrate/name expression operator info environment)))
-		(if new-expression
-		    (integrate/combination
-		     expression operations environment
-		     block new-expression operands)
-		    (dont-integrate))))
+	      ;; This can happen when a top-level variable shadows an expander.
+	      ;; Don't integrate here or the wrong thing will happen.
+	      ;; This needs to be fixed.
+	      (dont-integrate))
 
 	     (else
 	      (error "unknown operation" operation))))
