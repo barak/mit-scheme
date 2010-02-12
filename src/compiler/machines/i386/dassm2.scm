@@ -341,7 +341,11 @@ USA.
 	shortcircuit-apply-size-5
 	shortcircuit-apply-size-6
 	shortcircuit-apply-size-7
-	shortcircuit-apply-size-8)))))
+	shortcircuit-apply-size-8
+	interrupt-continuation-2
+	conditionally-serialize
+	fixnum-shift
+	set-interrupt-enables!)))))
 
 ;; These are used by dassm1.scm
 
