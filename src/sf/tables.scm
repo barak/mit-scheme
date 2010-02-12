@@ -154,7 +154,7 @@ USA.
 		       required))))
 
   (define (listify-tail operands)
-    (fold-right 
+    (fold-right
      (lambda (operand tail)
        (combination/make #f
 			 block
@@ -178,59 +178,81 @@ USA.
 
 ;;;; Operations
 
-;; An operations table is a cons of two alists.  The first alist
+;; An operations table is a triple of three alists.  The first alist
 ;; contains the lexically visible operations, the second contains
-;; the global operations.
+;; the top-level operations, the third contains the global operations.
+
+;; The global operations are installed by the `usual-integrations'
+;; declarations, external operations are installed in the top-level
+;; operations.  This allows us to lookup the appropriate operation
+;; when integrating an expression like (access foo #f) where there
+;; is an external integration that *also* is called foo.
 
 (define (operations/make)
-  (cons '() '()))
+  (vector '() '() '()))
 
 (define (operations/lookup operations variable if-found if-not)
   (guarantee-variable variable 'operations/lookup)
-  (let ((entry (assq variable (car operations))))
+  (let ((entry (assq variable (vector-ref operations 0))))
     (if entry
 	(if (cdr entry)
 	    (if-found (cadr entry) (cddr entry))
 	    (if-not))
-	(let ((entry (assq variable (cdr operations))))
+	(let ((entry (assq variable (vector-ref operations 1))))
 	  (if entry
-	      (if-found (cadr entry) (cddr entry))
-	      (if-not))))))
+	      (if (cdr entry)
+		  (if-found (cadr entry) (cddr entry))
+		  (if-not))
+	      (let ((entry (assq variable (vector-ref operations 2))))
+		(if entry
+		    (if-found (cadr entry) (cddr entry))
+		    (if-not))))))))
 
 ;; When processing a global reference, we only have a name.
 (define (operations/lookup-global operations name if-found if-not)
   (guarantee-symbol name 'operations/lookup-global)
   (let ((probe (find (lambda (entry)
 		       (eq? (variable/name (car entry)) name))
-		     (cdr operations))))
-    (if probe 
+		     (vector-ref operations 2))))
+    (if probe
 	(if-found (cadr probe) (cddr probe))
 	(if-not))))
 
 (define (operations/shadow operations variables)
-  (cons (map* (car operations)
-	      (lambda (variable) 
-		(guarantee-variable variable 'operations/shadow)
-		(cons variable false))
-	      variables)
-	(cdr operations)))
+  (vector (map* (vector-ref operations 0)
+		(lambda (variable)
+		  (guarantee-variable variable 'operations/shadow)
+		  (cons variable false))
+		variables)
+	  (vector-ref operations 1)
+	  (vector-ref operations 2)))
 
 (define (operations/bind operations operation variable value)
   (guarantee-known-declaration operation 'operations/bind)
   (guarantee-variable variable 'operations/bind)
-  (cons (cons (cons* variable operation value)
-	      (car operations))
-	(cdr operations)))
+  (vector (cons (cons* variable operation value)
+		(vector-ref operations 0))
+	  (vector-ref operations 1)
+	  (vector-ref operations 2)))
+
+(define (operations/bind-top-level operations operation variable value)
+  (guarantee-known-declaration operation 'operations/bind-top-level)
+  (guarantee-variable variable 'operations/bind-top-level)
+  (vector (vector-ref operations 0)
+	  (cons (cons* variable operation value)
+		(vector-ref operations 1))
+	  (vector-ref operations 2)))
 
 (define (operations/bind-global operations operation variable value)
   (guarantee-known-declaration operation 'operations/bind-global)
   (guarantee-variable variable 'operations/bind-global)
-  (cons (car operations)
-	(cons (cons* variable operation value)
-	      (cdr operations))))
+  (vector (vector-ref operations 0)
+	  (vector-ref operations 1)
+	  (cons (cons* variable operation value)
+		(vector-ref operations 2))))
 
 (define (operations/map-external operations procedure)
-  (let loop ((elements (car operations)))
+  (let loop ((elements (vector-ref operations 0)))
     (cond ((null? elements)
 	   '())
 	  ((cdar elements)

@@ -68,9 +68,11 @@ USA.
     (if (null? declarations)
 	operations
 	(loop (let ((declaration (car declarations)))
-		((if (declaration/overridable? declaration)
-		     operations/bind-global
-		     operations/bind)
+		((case (declaration/binding-level declaration)
+		   ((LOCAL)     operations/bind)
+		   ((TOP-LEVEL) operations/bind-top-level)
+		   ((GLOBAL)    operations/bind-global)
+		   (else (error "Unrecognized binding level" (declaration/binding-level declaration))))
 		 operations
 		 (declaration/operation declaration)
 		 (declaration/variable declaration)
@@ -86,7 +88,7 @@ USA.
 			    (let ((value (declaration/value declaration)))
 			      (and value
 				   (per-value value)))
-			    (declaration/overridable? declaration)))
+			    (declaration/binding-level declaration)))
 	(declaration-set/declarations declaration-set))))
 
 (define (declarations/known? declaration)
@@ -122,18 +124,23 @@ USA.
   ;; field depends on OPERATION.
   (value #f read-only #t)
 
-  ;; OVERRIDABLE? means that a user-defined variable of the same name
-  ;; will override this declaration.  It also means that this
-  ;; declaration should not be written out to the ".ext" file.
-  (overridable? #f read-only #t))
+  ;; BINDING-LEVEL indicates whether the declaration is `global',
+  ;; 'top-level' or 'local'.  Only 'local' declarations are written out
+  ;; to the ".ext" file.
 
-(define (make-declarations operation variables values overridable?)
+  ;; Usual-integrations are bound at the `global' level, external
+  ;; declarations are bound at the 'top-level' level.  This prevents
+  ;; confusion between external integrations that have the same name
+  ;; as usual ones.
+  (binding-level #f read-only #t))
+
+(define (make-declarations operation variables values binding-level)
   (if (eq? values 'NO-VALUES)
       (map (lambda (variable)
-	     (make-declaration operation variable #f overridable?))
+	     (make-declaration operation variable #f binding-level))
 	   variables)
       (map (lambda (variable value)
-	     (make-declaration operation variable value overridable?))
+	     (make-declaration operation variable value binding-level))
 	   variables
 	   values)))
 
@@ -156,7 +163,7 @@ USA.
   '())
 
 (define (known-declaration? operation)
-  (or (eq? operation 'EXPAND) ; this one is special 
+  (or (eq? operation 'EXPAND) ; this one is special
       (assq operation known-declarations)))
 
 (define-guarantee known-declaration "known declaration")
@@ -203,7 +210,7 @@ USA.
 			     (cons (make-declaration operation
 						     variable
 						     value
-						     #t)
+						     'GLOBAL)
 				   declarations))
 		       (set! remaining
 			     (cons (vector operation name value)
@@ -232,7 +239,7 @@ USA.
 		 (vector-ref remaining 0)
 		 (variable/make&bind! top-level-block (vector-ref remaining 1))
 		 (vector-ref remaining 2)
-		 #t)))
+		 'GLOBAL)))
 	    remaining))))
 
 (define (define-integration-declaration operation)
@@ -241,7 +248,7 @@ USA.
       (make-declarations operation
 			 (block/lookup-names block names #t)
 			 'NO-VALUES
-			 #f))))
+			 'LOCAL))))
 
 (define-integration-declaration 'INTEGRATE)
 (define-integration-declaration 'INTEGRATE-OPERATOR)
@@ -272,7 +279,7 @@ USA.
 					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))
-					 #t))))))
+					 'TOP-LEVEL))))))
 	    externs))))
      (append-map (lambda (specification)
 		   (let ((value
@@ -345,7 +352,7 @@ USA.
 			     (block/lookup-name block (car rule) #t)
 			     (make-dumpable-expander (reducer/make rule block)
 						     `(REDUCE-OPERATOR ,rule))
-			     #f))
+			     'LOCAL))
 	 reduction-rules)))
 
 (define (check-declaration-syntax kind declarations)
@@ -389,7 +396,7 @@ USA.
 	    (make-dumpable-expander
 	     (replacement/make replacement block)
 	     `(REPLACE-OPERATOR ,replacement))
-	    #f))
+	    'LOCAL))
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
@@ -429,5 +436,5 @@ USA.
 			     (block/lookup-name block (car expander) #t)
 			     (eval (cadr expander)
 				   expander-evaluation-environment)
-			     #f))
+			     'LOCAL))
 	 expanders)))

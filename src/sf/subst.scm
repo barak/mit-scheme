@@ -524,7 +524,7 @@ USA.
 
 (define-method/integrate 'DISJUNCTION
   (lambda (operations environment expression)
-    (disjunction/make 
+    (disjunction/make
      (disjunction/scode expression)
      (integrate/expression operations environment (disjunction/predicate expression))
      (integrate/expression operations environment (disjunction/alternative expression)))))
@@ -634,19 +634,19 @@ USA.
 	 operations name
 	 (lambda (operation info)
 	   (case operation
-	     ((#F) (dont-integrate));; shadowed
+	     ((#F) (dont-integrate))
 
 	     ((EXPAND)
 	      (cond ((info expression operands (reference/block operator))
 		     => (lambda (new-expression)
-			  (integrate/expression operations environment new-expression))) 
+			  (integrate/expression operations environment new-expression)))
 		    (else (dont-integrate))))
 
 	     ((INTEGRATE INTEGRATE-OPERATOR)
-	      ;; This can happen when a top-level variable shadows an expander.
-	      ;; Don't integrate here or the wrong thing will happen.
-	      ;; This needs to be fixed.
-	      (dont-integrate))
+	      (let ((new-operator
+		     (reassign operator
+			       (copy/expression/intern block (integration-info/expression info)))))
+		(integrate/combination expression operations environment block new-operator operands)))
 
 	     (else
 	      (error "unknown operation" operation))))
