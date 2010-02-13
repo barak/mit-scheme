@@ -29,16 +29,23 @@ USA.
 #include "prims.h"
 #include "osterm.h"
 
-#ifdef HAVE_LIBNCURSES
-/* <curses.h> will define false and true, but in recent versions
-   having them defined prior to including <curses.h> can cause a
-   parsing error on GNU systems.  */
+#if defined(HAVE_NCURSES_H) || defined(HAVE_CURSES_H)
+/* ncurses' <curses.h> will define false and true, but in recent
+   versions having them defined prior to including <curses.h> can cause
+   a parsing error on GNU systems.  */
 #  undef false
 #  undef true
 #  ifdef HAVE_TERMIOS_H
 #    include <termios.h>
 #  endif
-#  include <curses.h>
+#  if defined(HAVE_NCURSES_H)
+#    include <ncurses.h>
+#  elif defined(HAVE_CURSES_H)
+#    include <curses.h>
+#  endif
+#endif
+
+#if defined(HAVE_TERM_H)
 #  include <term.h>
 #else
    extern int tgetent (char *, const char *);
@@ -46,7 +53,7 @@ USA.
    extern int tgetflag (const char *);
    extern char * tgetstr (const char *, char **);
    extern char * tgoto (const char *, int, int);
-   extern int tputs (const char *, int, void (*) (int));
+   extern int tputs (const char *, int, int (*) (int));
 #endif
 
 extern char * tparam (const char *, void *, int, ...);
@@ -112,9 +119,6 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
   PRIMITIVE_HEADER (5);
   {
     char s [4096];
-#if defined(__netbsd__)
-    PRIMITIVE_RETURN (char_pointer_to_string (0));
-#else
     (void) tparam
       ((STRING_ARG (1)), s, (sizeof (s)),
        (arg_nonnegative_integer (2)),
@@ -122,7 +126,6 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
        (arg_nonnegative_integer (4)),
        (arg_nonnegative_integer (5)));
     PRIMITIVE_RETURN (char_pointer_to_string (s));
-#endif
   }
 }
 

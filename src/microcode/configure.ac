@@ -342,11 +342,6 @@ darwin*)
 netbsd*)
     DO_GCC_TESTS=yes
     GNU_LD=yes
-    dnl NetBSD, by default, has programs find non-base libraries via RPATH
-    if test "x${x_libraries}" != x; then
-	FOO=-Wl,-rpath,`echo ${x_libraries} | sed -e "s/:/ -Wl,-rpath,/g"`
-	LDFLAGS="${LDFLAGS} ${FOO}"
-    fi
     ;;
 openbsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
@@ -697,49 +692,71 @@ AC_SYS_LONG_FILE_NAMES
 AC_SYS_RESTARTABLE_SYSCALLS
 
 dnl curses/termcap/terminfo support
-AC_CHECK_LIB([ncurses], [tparm],
-    [
-    AC_DEFINE([HAVE_LIBNCURSES], [1],
-	[Define to 1 if you have the `ncurses' library (-lncurses).])
-    STATIC_LIBS="-lncurses ${STATIC_LIBS}"
-    AC_CHECK_HEADER([curses.h],
-	[
-	AC_DEFINE([HAVE_CURSES_H], [1],
-	    [Define to 1 if you have the <curses.h> header file.])
-	AC_CHECK_HEADER([term.h],
-	    [
-	    AC_DEFINE([HAVE_TERM_H], [1],
-		[Define to 1 if you have the <term.h> header file.])
-	    AC_CHECK_LIB([ncurses], [tparam],
-		[
-		AC_DEFINE([LIBNCURSES_DEFINES_TPARAM], [1],
-		    [Define if ncurses library defines `tparam'.])
-		],
-		[
-		OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
-		])
-	    ])
-	])
-    ],
-    [AC_CHECK_LIB([curses], [tparm],
-	[
-	AC_DEFINE([HAVE_LIBCURSES], [1],
-	    [Define to 1 if you have the `curses' library (-lcurses).])
-	STATIC_LIBS="-lcurses ${STATIC_LIBS}"
-	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
-	],
-	[
-	AC_CHECK_LIB([termcap], [tparam],
-	    [
-	    AC_DEFINE([HAVE_LIBTERMCAP], [1],
-		[Define to 1 if you have the `termcap' library (-ltermcap).])
-	    STATIC_LIBS="-ltermcap ${STATIC_LIBS}"
-	    ],
-	    [
-	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
-	    ])
-	])
-    ])
+
+dnl This is a mess because neither `tparam' nor `tparm' is available
+dnl everywhere, but as long as we have some access to the termcap
+dnl database, we can emulate `tparam' -- either in terms of `tparm' or
+dnl by pretending we know the format -- without bringing in the local
+dnl termcap reimplementation.
+
+AC_CHECK_LIB([ncurses], [tgetent], [have_ncurses=yes])
+AC_CHECK_LIB([ncurses], [tparm], [have_ncurses_tparm=yes])
+AC_CHECK_LIB([ncurses], [tparam], [have_ncurses_tparam=yes])
+AC_CHECK_LIB([curses], [tgetent], [have_curses=yes])
+AC_CHECK_LIB([curses], [tparm], [have_curses_tparm=yes])
+AC_CHECK_LIB([curses], [tparam], [have_curses_tparam=yes])
+AC_CHECK_LIB([termcap], [tgetent], [have_termcap=yes])
+AC_CHECK_LIB([termcap], [tparm], [have_termcap_tparm=yes])
+AC_CHECK_LIB([termcap], [tparam], [have_termcap_tparam=yes])
+
+if test "x${have_ncurses}" = xyes; then
+    termcap_library=ncurses
+elif test "x${have_curses_tparm}" != xyes	\
+	|| test "x${have_curses_tparam}" != xyes
+then
+    if test "x${have_termcap}" = xyes; then
+	termcap_library=termcap
+    elif test "x${have_curses}" = xyes; then
+	termcap_library=curses
+    fi
+dnl This is a little unusual (that we have either `tparm' or `tparam'
+dnl from `-lcurses', but not `tgetent'), but we should check anyway.
+elif test "x${have_curses}" = xyes; then
+    termcap_library=curses
+elif test "x${have_termcap}" = xyes; then
+    termcap_library=termcap
+fi
+
+case ${termcap_library} in
+curses)
+    AC_CHECK_HEADERS([curses.h term.h])
+    LIBS="-lcurses ${LIBS}"
+    ;;
+ncurses)
+    dnl ncurses sometimes uses ncurses.h and sometimes uses curses.h.
+    dnl We use whichever one is available, preferring the more
+    dnl specifically named one.
+    AC_CHECK_HEADERS([ncurses.h curses.h term.h])
+    LIBS="-lncurses ${LIBS}"
+    ;;
+termcap)
+    LIBS="-ltermcap ${LIBS}"
+    ;;
+esac
+
+if test "x${termcap_library}" = xno; then
+    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+else
+    eval have_tparam=\$have_${termcap_library}_tparam
+    if test "x${have_tparam}" != xyes; then
+	eval have_tparm=\$have_${termcap_library}_tparm
+	if test "x${have_tparm}" = xyes; then
+	    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+	else
+	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
+	fi
+    fi
+fi
 
 dnl The OpenSSL crypto library provides support for blowfish and MD5.
 if test "${with_openssl}" != no; then
