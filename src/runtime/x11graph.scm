@@ -206,6 +206,7 @@ USA.
   (initialize-colormap-datatype))
 
 (define (x-graphics/available?)
+  (load-library-object-file "prx11" #f)
   (implemented-primitive-procedure?
    (ucode-primitive x-graphics-open-window 3)))
 

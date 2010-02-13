@@ -108,6 +108,7 @@ PRMD5_LIBS = @PRMD5_LIBS@
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
 MODULE_LDFLAGS = @MODULE_LDFLAGS@
+MODULE_LOADER = @MODULE_LOADER@
 COMPILE_MODULE = $(COMPILE) -DCOMPILE_AS_MODULE $(MODULE_CFLAGS)
 LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
 MODULE_LIBS = -lc
@@ -191,26 +192,30 @@ extract-liarc-decls: extract-liarc-decls.o
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
 
-prbfish.so: prbfish.o scheme
+prbfish.so: prbfish.o @MODULE_LOADER@
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
-prmd5.so: prmd5.o scheme
+prmd5.so: prmd5.o @MODULE_LOADER@
 	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
-prmhash.so: prmhash.o scheme
+prmhash.so: prmhash.o @MODULE_LOADER@
 	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
-prmcrypt.so: prmcrypt.o scheme
+prmcrypt.so: prmcrypt.o @MODULE_LOADER@
 	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
 
-prgdbm.so: prgdbm.o scheme
+prgdbm.so: prgdbm.o @MODULE_LOADER@
 	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
-prdb4.so: prdb4.o scheme
+prdb4.so: prdb4.o @MODULE_LOADER@
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
-prpgsql.so: prpgsql.o scheme
+prpgsql.so: prpgsql.o @MODULE_LOADER@
 	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
+
+prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
+	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
+	  -lX11 $(MODULE_LIBS)
 
 @MODULE_RULES@
 

@@ -2434,8 +2434,8 @@ FONT is either a font name or a font ID.")
   }
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure,
-		  1, 1, "(X-WINDOW)\n\
+DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
+  "(X-WINDOW)\n\
 Returns the font-structure for the font currently associated with X-WINDOW.")
 {
   XFontStruct *font;
@@ -2738,3 +2738,81 @@ DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 6, 6,
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11base (void)
+{
+  declare_primitive ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0);
+  declare_primitive ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0);
+  declare_primitive ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0);
+  declare_primitive ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0);
+  declare_primitive ("X-CONVERT-SELECTION", Prim_x_convert_selection, 6, 6, 0);
+  declare_primitive ("X-DEBUG", Prim_x_debug, 1, 1, 0);
+  declare_primitive ("X-DELETE-PROPERTY", Prim_x_delete_property, 3, 3, 0);
+  declare_primitive ("X-DISPLAY-DESCRIPTOR", Prim_x_display_descriptor, 1, 1, 0);
+  declare_primitive ("X-DISPLAY-FLUSH", Prim_x_display_flush, 1, 1, 0);
+  declare_primitive ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0);
+  declare_primitive ("X-DISPLAY-GET-SIZE", Prim_x_display_get_size, 2, 2, 0);
+  declare_primitive ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0);
+  declare_primitive ("X-DISPLAY-SYNC", Prim_x_display_sync, 2, 2, 0);
+  declare_primitive ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2, 0);
+  declare_primitive ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0);
+  declare_primitive ("X-GET-SELECTION-OWNER", Prim_x_get_selection_owner, 2, 2, 0);
+  declare_primitive ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0);
+  declare_primitive ("X-ID->WINDOW", Prim_x_id_to_window, 2, 2, 0);
+  declare_primitive ("X-INTERN-ATOM", Prim_x_intern_atom, 3, 3, 0);
+  declare_primitive ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3, 0);
+  declare_primitive ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0);
+  declare_primitive ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0);
+  declare_primitive ("X-SELECT-INPUT", Prim_x_select_input, 3, 3, 0);
+  declare_primitive ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 6, 6, 0);
+  declare_primitive ("X-SET-DEFAULT-FONT", Prim_x_set_default_font, 2, 2, 0);
+  declare_primitive ("X-SET-SELECTION-OWNER", Prim_x_set_selection_owner, 4, 4, 0);
+  declare_primitive ("X-WINDOW-ANDC-EVENT-MASK", Prim_x_window_andc_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0);
+  declare_primitive ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0);
+  declare_primitive ("X-WINDOW-COORDS-LOCAL->ROOT", Prim_x_window_coords_local2root, 3, 3, 0);
+  declare_primitive ("X-WINDOW-COORDS-ROOT->LOCAL", Prim_x_window_coords_root2local, 3, 3, 0);
+  declare_primitive ("X-WINDOW-DISPLAY", Prim_x_window_display, 1, 1, 0);
+  declare_primitive ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0);
+  declare_primitive ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0);
+  declare_primitive ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1, 0);
+  declare_primitive ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0);
+  declare_primitive ("X-WINDOW-GET-SIZE", Prim_x_window_get_size, 1, 1, 0);
+  declare_primitive ("X-WINDOW-ICONIFY", Prim_x_window_iconify, 1, 1, 0);
+  declare_primitive ("X-WINDOW-ID", Prim_x_window_id, 1, 1, 0);
+  declare_primitive ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0);
+  declare_primitive ("X-WINDOW-MAP", Prim_x_window_map, 1, 1, 0);
+  declare_primitive ("X-WINDOW-OR-EVENT-MASK", Prim_x_window_or_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-QUERY-POINTER", Prim_x_window_query_pointer, 1, 1, 0);
+  declare_primitive ("X-WINDOW-RAISE", Prim_x_window_raise, 1, 1, 0);
+  declare_primitive ("X-WINDOW-SET-BACKGROUND-COLOR", Prim_x_window_set_background_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-BORDER-COLOR", Prim_x_window_set_border_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-BORDER-WIDTH", Prim_x_window_set_border_width, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-CLASS-HINT", Prim_x_window_set_class_hint, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-CURSOR-COLOR", Prim_x_window_set_cursor_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-EVENT-MASK", Prim_x_window_set_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-FONT", Prim_x_window_set_font, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INPUT-HINT", Prim_x_window_set_input_hint, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INTERNAL-BORDER-WIDTH", Prim_x_window_set_internal_border_width, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-MOUSE-COLOR", Prim_x_window_set_mouse_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-MOUSE-SHAPE", Prim_x_window_set_mouse_shape, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-NAME", Prim_x_window_set_name, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-SIZE", Prim_x_window_set_size, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-TRANSIENT-FOR-HINT", Prim_x_window_set_transient_for, 2, 2, 0);
+  declare_primitive ("X-WINDOW-UNMAP", Prim_x_window_unmap, 1, 1, 0);
+  declare_primitive ("X-WINDOW-WITHDRAW", Prim_x_window_withdraw, 1, 1, 0);
+  declare_primitive ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0);
+  declare_primitive ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0);
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

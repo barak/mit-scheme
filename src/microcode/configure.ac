@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme microcode], [15.2], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -169,6 +169,11 @@ AC_ARG_WITH([macosx-version],
     AS_HELP_STRING([--with-macosx-version],
 	[MacOSX version to compile for @<:@host's version@:>@]))
 
+AC_ARG_WITH([module-loader],
+    AS_HELP_STRING([--with-module-loader],
+	[Pathname of the Scheme executable, for building modules only]))
+: ${with_module_loader='yes'}
+
 if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
     AC_MSG_ERROR(
 	[--enable-native-code=c incompatible with --enable-static-libs])
@@ -189,11 +194,13 @@ PRMD5_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
 SCHEME_LDFLAGS=
 MODULE_BASES=
+MODULE_AUX_BASES=
 MODULE_LIBS=
 MODULE_TARGETS=
 MODULE_RULES=/dev/null
 MODULE_CFLAGS=
 MODULE_LDFLAGS=
+MODULE_LOADER=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
@@ -336,7 +343,15 @@ darwin*)
     CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"
+    if test "${with_module_loader}" != no; then
+      if test "${with_module_loader}" = yes; then
+	MODULE_LOADER='$(SCHEME_EXE)'
+      else
+	MODULE_LOADER="${with_module_loader}"
+      fi
+      MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle_loader "'$(MODULE_LOADER)'
+    fi
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
@@ -931,6 +946,21 @@ if test "${with_libpq}" != no; then
 	])
 fi
 
+dnl Add support for X if present.
+if test "${no_x}" != yes; then
+    if test "x${x_includes}" != x; then
+	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
+	CPPFLAGS="${CPPFLAGS} ${FOO}"
+    fi
+    if test "x${x_libraries}" != x; then
+	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
+	LDFLAGS="${LDFLAGS} ${FOO}"
+    fi
+    MODULE_LIBS="-lX11 ${MODULE_LIBS}"
+    MODULE_BASES="${MODULE_BASES} prx11"
+    MODULE_AUX_BASES="${MODULE_AUX_BASES} x11base x11color x11graph x11term"
+fi
+
 dnl Decide whether we're using static or dynamic libraries.
 if test "${enable_static_libs}" = no; then
     AC_CHECK_FUNC([dlopen],
@@ -965,20 +995,6 @@ fi
 if test ${enable_valgrind_mode} != no; then
     SCHEME_DEFS="${SCHEME_DEFS} -DVALGRIND_MODE"
     M4_FLAGS="${M4_FLAGS} -P VALGRIND_MODE,1"
-fi
-
-dnl Add support for X if present.
-if test "${no_x}" != yes; then
-    if test "x${x_includes}" != x; then
-	FOO=-I`echo ${x_includes} | sed -e "s/:/ -I/g"`
-	CPPFLAGS="${CPPFLAGS} ${FOO}"
-    fi
-    if test "x${x_libraries}" != x; then
-	FOO=-L`echo ${x_libraries} | sed -e "s/:/ -L/g"`
-	LIBS="${LIBS} ${FOO}"
-    fi
-    LIBS="${LIBS} -lX11"
-    OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
 fi
 
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
@@ -1022,6 +1038,9 @@ if test "x${MODULE_BASES}" != x; then
     rm -f ${MODULE_RULES}
     for BASE in ${MODULE_BASES}; do
 	MODULE_TARGETS="${MODULE_TARGETS} ${BASE}.so"
+	MODULE_AUX_BASES="${MODULE_AUX_BASES} ${BASE}"
+    done
+    for BASE in ${MODULE_AUX_BASES}; do
 	echo >> ${MODULE_RULES}
 	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
 	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
@@ -1044,6 +1063,7 @@ AC_SUBST([MODULE_TARGETS])
 AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
+AC_SUBST([MODULE_LOADER])
 AC_SUBST_FILE([LIARC_VARS])
 AC_SUBST_FILE([LIARC_RULES])
 AC_SUBST([AUX_PROGRAMS])

@@ -1,4 +1,4 @@
-#| -*-Scheme-*-
+/* -*-C-*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -21,25 +21,26 @@ along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
-|#
+*/
 
-;;;; Optional C files that are conditionally linked in.
+#ifdef COMPILE_AS_MODULE
 
-"cmpint"
-"comutl"
-"prbfish"
-"prgdbm"
-"prmcrypt"
-"prmd5"
-"prmhash"
-"prpgsql"
-"pruxdld"
-"prx11"
-"svm1-interp"
-"termcap"
-"terminfo"
-"tparam"
-"x11base"
-"x11color"
-"x11graph"
-"x11term"
+#include "scheme.h"
+
+extern void dload_initialize_x11base (void);
+extern void dload_initialize_x11color (void);
+extern void dload_initialize_x11graph (void);
+extern void dload_initialize_x11term (void);
+
+char *
+dload_initialize_file (void)
+{
+
+  dload_initialize_x11base ();
+  dload_initialize_x11color ();
+  dload_initialize_x11graph ();
+  dload_initialize_x11term ();
+  return ("#prx11");
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

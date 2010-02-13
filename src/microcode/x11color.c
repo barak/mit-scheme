@@ -239,8 +239,7 @@ If third arg WRITEABLE is true, returned colormap may be modified.")
   }
 }
 
-DEFINE_PRIMITIVE ("X-COPY-COLORMAP-AND-FREE", Prim_x_copy_colormap_and_free,
-		  1, 1,
+DEFINE_PRIMITIVE ("X-COPY-COLORMAP-AND-FREE", Prim_x_copy_colormap_and_free, 1, 1,
   "Return a new copy of COLORMAP.")
 {
   PRIMITIVE_HEADER (1);
@@ -536,3 +535,36 @@ DEFINE_PRIMITIVE("X-LOOKUP-COLOR", Prim_x_lookup_color, 2, 2, 0)
   VECTOR_SET(Result, 7, long_to_integer(Exact.blue));
   PRIMITIVE_RETURN(Result);
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11color (void)
+{
+  declare_primitive ("X-ALLOCATE-COLOR", Prim_x_allocate_color, 4, 4, 0);
+  declare_primitive ("X-ALLOCATE-NAMED-COLOR", Prim_x_allocate_named_color, 2, 2, 0);
+  declare_primitive ("X-COPY-COLORMAP-AND-FREE", Prim_x_copy_colormap_and_free, 1, 1, 0);
+  declare_primitive ("X-CREATE-COLORMAP", Prim_x_create_colormap, 3, 3, 0);
+  declare_primitive ("X-FREE-COLORMAP", Prim_x_free_colormap, 1, 1, 0);
+  declare_primitive ("X-FREE-COLORS", Prim_x_free_colors, 1, -1, 0);
+  declare_primitive ("X-GET-DEFAULT-COLORMAP", Prim_x_get_default_colormap, 2, 2, 0);
+  declare_primitive ("X-GET-DEFAULT-VISUAL", Prim_x_get_default_visual, 2, 2, 0);
+  declare_primitive ("X-GET-VISUAL-INFO", Prim_x_get_visual_info, 10, 10, 0);
+  declare_primitive ("X-GET-WINDOW-ATTRIBUTES", Prim_x_get_window_attributes, 1, 1, 0);
+  declare_primitive ("X-LOOKUP-COLOR", Prim_x_lookup_color, 2, 2, 0);
+  declare_primitive ("X-PARSE-COLOR", Prim_x_parse_color, 2, 2, 0);
+  declare_primitive ("X-QUERY-COLOR", Prim_x_query_color, 2, 2, 0);
+  declare_primitive ("X-QUERY-COLORS", Prim_x_query_colors, 1, -1, 0);
+  declare_primitive ("X-SET-WINDOW-COLORMAP", Prim_x_set_window_colormap, 2, 2, 0);
+  declare_primitive ("X-STORE-COLOR", Prim_x_store_color, 5, 5, 0);
+  declare_primitive ("X-STORE-COLORS", Prim_x_store_colors, 2, 2, 0);
+  declare_primitive ("X-STORE-NAMED-COLOR", Prim_x_store_named_color, 6, 6, 0);
+  declare_primitive ("X-VISUAL-DEALLOCATE", Prim_x_visual_deallocate, 1, 1, 0);
+  declare_primitive ("X-WINDOW-COLORMAP", Prim_x_window_colormap, 1, 1, 0);
+  declare_primitive ("X-WINDOW-VISUAL", Prim_x_window_visual, 1, 1, 0);
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

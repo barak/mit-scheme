@@ -23,6 +23,9 @@ USA.
 
 */
 
+#ifndef SCHEME_X11_H
+#define SCHEME_X11_H
+
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -344,3 +347,5 @@ extern void xw_make_window_map
    const char * resource_name,
    const char * resource_class,
    int map_p);
+
+#endif /* defined (SCHEME_X11_H) */

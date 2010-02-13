@@ -1359,8 +1359,10 @@ Otherwise, it is copied from the primary selection."
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
-      (and (implemented-primitive-procedure?
-	    (ucode-primitive x-open-display 1))
+      (and (begin
+	     (load-library-object-file "prx11" #f)
+	     (implemented-primitive-procedure?
+	      (ucode-primitive x-open-display 1)))
 	   (or x-display-name (get-environment-variable "DISPLAY"))
 	   (let ((display (x-open-display x-display-name)))
 	     (set! x-display-data display)

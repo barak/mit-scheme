@@ -856,8 +856,7 @@ xterm_scroll_lines_down (struct xwindow * xw,
 	     (XTERM_Y_PIXEL (xw, (y_start + lines))));
 }
 
-DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down,
-		  6, 6,
+DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 6, 6,
   "(XTERM-SCROLL-LINES-DOWN XTERM X-START X-END Y-START Y-END LINES)\n\
 Scroll the contents of the region down by LINES.")
 {
@@ -976,3 +975,36 @@ See `XTERM-SCREEN-CONTENTS' for the format of CONTENTS.")
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11term (void)
+{
+  declare_primitive ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0);
+  declare_primitive ("XTERM-DRAW-CURSOR", Prim_xterm_draw_cursor, 1, 1, 0);
+  declare_primitive ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0);
+  declare_primitive ("XTERM-ENABLE-CURSOR", Prim_xterm_enable_cursor, 2, 2, 0);
+  declare_primitive ("XTERM-ERASE-CURSOR", Prim_xterm_erase_cursor, 1, 1, 0);
+  declare_primitive ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-X-SIZE", Prim_xterm_map_x_size, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-Y-SIZE", Prim_xterm_map_y_size, 2, 2, 0);
+  declare_primitive ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0);
+  declare_primitive ("XTERM-RECONFIGURE", Prim_xterm_reconfigure, 3, 3, 0);
+  declare_primitive ("XTERM-RESTORE-CONTENTS", Prim_xterm_restore_contents, 6, 6, 0);
+  declare_primitive ("XTERM-SAVE-CONTENTS", Prim_xterm_save_contents, 5, 5, 0);
+  declare_primitive ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 6, 6, 0);
+  declare_primitive ("XTERM-SCROLL-LINES-UP", Prim_xterm_scroll_lines_up, 6, 6, 0);
+  declare_primitive ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0);
+  declare_primitive ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0);
+  declare_primitive ("XTERM-WRITE-CURSOR!", Prim_xterm_write_cursor, 3, 3, 0);
+  declare_primitive ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0);
+  declare_primitive ("XTERM-X-SIZE", Prim_xterm_x_size, 1, 1, 0);
+  declare_primitive ("XTERM-Y-SIZE", Prim_xterm_y_size, 1, 1, 0);
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

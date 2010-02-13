@@ -58,8 +58,8 @@ OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 
 # lib
 maybe_mkdir lib
-maybe_mkdir lib/lib
 maybe_link lib/edwin ../edwin
+maybe_link lib/lib ../microcode
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
