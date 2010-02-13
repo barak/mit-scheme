@@ -328,7 +328,7 @@ USA.
 		   result-body
 		   (sequence/make
 		    expression
-		    (append other-operands (list form))))))))
+		    (append other-operands (list result-body))))))))
 	(else
 	 (combination/%make (and expression (object/scode expression)) block operator operands))))
 
