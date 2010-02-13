@@ -201,15 +201,13 @@ tparam1 (char *string, char *outstring, int len, char *up, char *left,
 	    }
 	  else
 	    {
-	      char *renew;
 	      outend += outlen;
-	      renew = (char *) realloc (outstring, outlen *= 2);
-	      if (renew == 0)
+	      new = (char *) realloc (outstring, outlen *= 2);
+	      if (new == 0)
 		{
-		  free (new);
+		  free (outstring);
 		  return (0);
 		}
-	      new = renew;
 	    }
 	  op += new - outstring;
 	  outend += new - outstring;
