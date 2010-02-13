@@ -76,6 +76,8 @@ static char * tputs_output_scan;
 static int
 tputs_write_char (int c)
 {
+  if (tputs_output_scan >= (tputs_output + TERMCAP_BUFFER_SIZE))
+    error_external_return ();
   (*tputs_output_scan++) = c;
   return (c);
 }
@@ -114,31 +116,73 @@ DEFINE_PRIMITIVE ("TERMCAP-GET-STRING", Prim_termcap_get_string, 1, 1, 0)
   }
 }
 
+struct tc_env
+{
+  char *string_buffer;
+  char *string_pointer;
+};
+
+static void
+protect_tc (void *environment)
+{
+  struct tc_env *env = ((struct tc_env *) environment);
+  char *pointer = (env -> string_pointer);
+  if ((pointer != 0) && (pointer != (env -> string_buffer)))
+    free (pointer);
+}
+
 DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   {
-    char s [4096];
-    (void) tparam
-      ((STRING_ARG (1)), s, (sizeof (s)),
-       (arg_nonnegative_integer (2)),
-       (arg_nonnegative_integer (3)),
-       (arg_nonnegative_integer (4)),
-       (arg_nonnegative_integer (5)));
-    PRIMITIVE_RETURN (char_pointer_to_string (s));
+    char string_buffer [4096];
+    struct tc_env env;
+    SCHEME_OBJECT string = UNSPECIFIC;
+    (env . string_buffer) = string_buffer;
+    (env . string_pointer) = 0;
+    transaction_begin ();
+    dstack_protect ((&protect_tc), (&env));
+    (env . string_pointer)
+      = (tparam ((STRING_ARG (1)), string_buffer, (sizeof (string_buffer)),
+		 (arg_nonnegative_integer (2)),
+		 (arg_nonnegative_integer (3)),
+		 (arg_nonnegative_integer (4)),
+		 (arg_nonnegative_integer (5))));
+    if ((env . string_pointer) == 0)
+      error_external_return ();
+    string = (char_pointer_to_string (env . string_pointer));
+    transaction_commit ();
+    PRIMITIVE_RETURN (string);
   }
+}
+
+static void
+protect_free (void *environment)
+{
+  char *pointer = (* ((char **) environment));
+  if (pointer != 0)
+    free (pointer);
 }
 
 DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   {
+    char *string_pointer = 0;
+    SCHEME_OBJECT string = UNSPECIFIC;
     BC = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
-    PRIMITIVE_RETURN
-      (char_pointer_to_string (tgoto ((STRING_ARG (1)),
-				      (arg_nonnegative_integer (2)),
-				      (arg_nonnegative_integer (3)))));
+    transaction_begin ();
+    dstack_protect ((&protect_free), (&string_pointer));
+    string_pointer
+      = (tgoto ((STRING_ARG (1)),
+		(arg_nonnegative_integer (2)),
+		(arg_nonnegative_integer (3))));
+    if (string_pointer == 0)
+      error_external_return ();
+    string = (char_pointer_to_string (string_pointer));
+    transaction_commit ();
+    PRIMITIVE_RETURN (string);
   }
 }
 
