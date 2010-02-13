@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,15 +28,29 @@ USA.
 (global-definitions "../runtime/runtime")
 
 (define-package (scode-optimizer)
-  (files "lsets"
-	 "table"
-	 "pthmap"
+  (files "pthmap"
 	 "object"
 	 "emodel"
 	 "gconst"
 	 "usicon"
 	 "tables")
-  (parent ()))
+  (parent ())
+  (import (runtime scode-combinator)
+	  combination/constant-folding-operators)
+  (export ()
+	  sf:enable-argument-deletion?
+	  sf:enable-conditional->disjunction?
+	  sf:enable-conditional-folding?
+	  sf:enable-conditional-inversion?
+	  sf:enable-conjunction-linearization?
+	  sf:enable-constant-folding?
+	  sf:enable-disjunction-distribution?
+	  sf:enable-disjunction-folding?
+	  sf:enable-disjunction-inversion?
+	  sf:enable-disjunction-linearization?
+	  sf:enable-disjunction-simplification?
+	  sf:enable-distribute-primitives?
+	  ))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
@@ -76,6 +90,8 @@ USA.
 (define-package (scode-optimizer integrate)
   (files "subst")
   (parent (scode-optimizer))
+  (export ()
+	  sf:display-top-level-procedure-names?)
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block
@@ -113,6 +129,7 @@ USA.
 	  declarations/map
 	  declarations/original
 	  declarations/parse
+	  guarantee-known-declaration
 	  operations->external))
 
 (define-package (scode-optimizer copy)

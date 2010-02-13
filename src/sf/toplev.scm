@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,9 +63,8 @@ USA.
 (define sf:noisy? #t)
 
 (define (sf/set-usual-integrations-default-deletions! del-list)
-  (if (not (list-of-symbols? del-list))
-      (error "sf/set-usual-integrations-default-deletions!: Bad deletion list"
-	     del-list))
+  (guarantee-list-of-type del-list symbol? "list of symbols"
+			  'sf/set-usual-integrations-default-deletions!)
   (set! sf/usual-integrations-default-deletions del-list)
   unspecific)
 
@@ -83,22 +82,12 @@ USA.
 
 (define sf/usual-integrations-default-deletions
   '())
-
-(define (list-of-symbols? object)
-  (or (null? object)
-      (and (pair? object)
-	   (symbol? (car object))
-	   (list-of-symbols? (cdr object)))))
 
 ;;;; File Syntaxer
 
 (define (syntax-file input-string bin-string spec-string)
-  (if (not (environment? sf/default-syntax-table))
-      (error "Malformed binding of SF/DEFAULT-SYNTAX-TABLE:"
-	     sf/default-syntax-table))
-  (if (not (list-of-symbols? sf/top-level-definitions))
-      (error "Malformed binding of SF/TOP-LEVEL-DEFINITIONS:"
-	     sf/top-level-definitions))
+  (guarantee-environment sf/default-syntax-table 'syntax-file)
+  (guarantee-list-of-type sf/top-level-definitions symbol? 'syntax-file)
   (for-each (lambda (input-string)
 	      (receive (input-pathname bin-pathname spec-pathname)
 		  (sf/pathname-defaulting input-string bin-string spec-string)

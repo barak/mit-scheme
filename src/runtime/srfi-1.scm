@@ -11,7 +11,7 @@ Hanson for inclusion in MIT/GNU Scheme.
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -924,7 +924,7 @@ USA.
 	    ;; Compute a-b and a^b, then compute b-(a^b) and
 	    ;; cons it onto the front of a-b.
 	    (receive (a-b a-int-b)   (lset-diff+intersection = a b)
-	      (cond ((null? a-b)     (lset-difference b a =))
+	      (cond ((null? a-b)     (lset-difference = b a))
 		    ((null? a-int-b) (append b a))
 		    (else (fold (lambda (xb ans)
 				  (if (member xb a-int-b =) ans (cons xb ans)))
@@ -944,7 +944,7 @@ USA.
 	    ;; Compute a-b and a^b, then compute b-(a^b) and
 	    ;; cons it onto the front of a-b.
 	    (receive (a-b a-int-b)   (lset-diff+intersection! = a b)
-	      (cond ((null? a-b)     (lset-difference! b a =))
+	      (cond ((null? a-b)     (lset-difference! = b a))
 		    ((null? a-int-b) (append! b a))
 		    (else (pair-fold (lambda (b-pair ans)
 				       (if (member (car b-pair) a-int-b =)

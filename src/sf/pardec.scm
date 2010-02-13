@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,9 +68,11 @@ USA.
     (if (null? declarations)
 	operations
 	(loop (let ((declaration (car declarations)))
-		((if (declaration/overridable? declaration)
-		     operations/bind-global
-		     operations/bind)
+		((case (declaration/binding-level declaration)
+		   ((LOCAL)     operations/bind)
+		   ((TOP-LEVEL) operations/bind-top-level)
+		   ((GLOBAL)    operations/bind-global)
+		   (else (error "Unrecognized binding level" (declaration/binding-level declaration))))
 		 operations
 		 (declaration/operation declaration)
 		 (declaration/variable declaration)
@@ -86,7 +88,7 @@ USA.
 			    (let ((value (declaration/value declaration)))
 			      (and value
 				   (per-value value)))
-			    (declaration/overridable? declaration)))
+			    (declaration/binding-level declaration)))
 	(declaration-set/declarations declaration-set))))
 
 (define (declarations/known? declaration)
@@ -122,18 +124,23 @@ USA.
   ;; field depends on OPERATION.
   (value #f read-only #t)
 
-  ;; OVERRIDABLE? means that a user-defined variable of the same name
-  ;; will override this declaration.  It also means that this
-  ;; declaration should not be written out to the ".ext" file.
-  (overridable? #f read-only #t))
+  ;; BINDING-LEVEL indicates whether the declaration is `global',
+  ;; 'top-level' or 'local'.  Only 'local' declarations are written out
+  ;; to the ".ext" file.
 
-(define (make-declarations operation variables values overridable?)
+  ;; Usual-integrations are bound at the `global' level, external
+  ;; declarations are bound at the 'top-level' level.  This prevents
+  ;; confusion between external integrations that have the same name
+  ;; as usual ones.
+  (binding-level #f read-only #t))
+
+(define (make-declarations operation variables values binding-level)
   (if (eq? values 'NO-VALUES)
       (map (lambda (variable)
-	     (make-declaration operation variable #f overridable?))
+	     (make-declaration operation variable #f binding-level))
 	   variables)
       (map (lambda (variable value)
-	     (make-declaration operation variable value overridable?))
+	     (make-declaration operation variable value binding-level))
 	   variables
 	   values)))
 
@@ -154,6 +161,12 @@ USA.
 
 (define known-declarations
   '())
+
+(define (known-declaration? operation)
+  (or (eq? operation 'EXPAND) ; this one is special
+      (assq operation known-declarations)))
+
+(define-guarantee known-declaration "known declaration")
 
 ;;;; Integration Declarations
 
@@ -197,7 +210,7 @@ USA.
 			     (cons (make-declaration operation
 						     variable
 						     value
-						     #t)
+						     'GLOBAL)
 				   declarations))
 		       (set! remaining
 			     (cons (vector operation name value)
@@ -226,7 +239,7 @@ USA.
 		 (vector-ref remaining 0)
 		 (variable/make&bind! top-level-block (vector-ref remaining 1))
 		 (vector-ref remaining 2)
-		 #t)))
+		 'GLOBAL)))
 	    remaining))))
 
 (define (define-integration-declaration operation)
@@ -235,11 +248,10 @@ USA.
       (make-declarations operation
 			 (block/lookup-names block names #t)
 			 'NO-VALUES
-			 #f))))
+			 'LOCAL))))
 
 (define-integration-declaration 'INTEGRATE)
 (define-integration-declaration 'INTEGRATE-OPERATOR)
-(define-integration-declaration 'INTEGRATE-SAFELY)
 
 (define-declaration 'INTEGRATE-EXTERNAL
   (lambda (block specifications)
@@ -267,7 +279,7 @@ USA.
 					     name)
 					 (make-integration-info
 					  (copy/expression/extern block value))
-					 #t))))))
+					 'TOP-LEVEL))))))
 	    externs))))
      (append-map (lambda (specification)
 		   (let ((value
@@ -307,27 +319,25 @@ USA.
 
 ;;;; Flag Declarations
 
-(for-each (lambda (flag)
-	    (define-declaration flag
-	      (lambda (block tail)
-		(if (not (null? tail))
-		    (error "This declaration does not take arguments:"
-			   (cons flag tail)))
-		(if (not (memq flag (block/flags block)))
-		    (set-block/flags! block (cons flag (block/flags block))))
-		'())))
-	  '(AUTOMAGIC-INTEGRATIONS
-	    ETA-SUBSTITUTION
-	    OPEN-BLOCK-OPTIMIZATIONS
-	    NO-AUTOMAGIC-INTEGRATIONS
-	    NO-ETA-SUBSTITUTION
-	    NO-OPEN-BLOCK-OPTIMIZATIONS))
+;; IGNORABLE suppresses warnings about the variable not being used.
+;; This is useful in macros that bind variables that the body may
+;; not actually use.  Mentioning the variable in a sequence will
+;; have the effect of marking it ignorable.
+(define-declaration 'IGNORABLE
+  (lambda (block names)
+    (for-each (lambda (variable)
+		(if variable
+		    (variable/may-ignore! variable)))
+	      (block/lookup-names block names #f))
+    '()))
 
+;; IGNORE causes warnings if an ignored variable actually ends
+;; up being used.
 (define-declaration 'IGNORE
   (lambda (block names)
     (for-each (lambda (variable)
 		(if variable
-		    (variable/can-ignore! variable)))
+		    (variable/must-ignore! variable)))
 	      (block/lookup-names block names #f))
     '()))
 
@@ -342,7 +352,7 @@ USA.
 			     (block/lookup-name block (car rule) #t)
 			     (make-dumpable-expander (reducer/make rule block)
 						     `(REDUCE-OPERATOR ,rule))
-			     #f))
+			     'LOCAL))
 	 reduction-rules)))
 
 (define (check-declaration-syntax kind declarations)
@@ -386,7 +396,7 @@ USA.
 	    (make-dumpable-expander
 	     (replacement/make replacement block)
 	     `(REPLACE-OPERATOR ,replacement))
-	    #f))
+	    'LOCAL))
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
@@ -426,5 +436,5 @@ USA.
 			     (block/lookup-name block (car expander) #t)
 			     (eval (cadr expander)
 				   expander-evaluation-environment)
-			     #f))
+			     'LOCAL))
 	 expanders)))

@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,33 +23,22 @@ USA.
 
 |#
 
-;;;; SCode Optimizer: Free Variable Analysis
+;;;; SCode Optimizer: Free Variable Computation
+;;; package: (scode-optimizer free)
 
 (declare (usual-integrations)
-	 (integrate-external "object" "lsets"))
+	 (integrate-external "object"))
 
-(declare (integrate-operator no-free-variables singleton-variable
-			     list->variable-set))
-
-(define (no-free-variables) 
-  (empty-set variable? eq?))
-
-(define (singleton-variable variable) 
-  (singleton-set variable? eq? variable))
-
-(define (list->variable-set variable-list)
-  (list->set variable? eq? variable-list))
-
-(define (free/expressions expressions)
-  (if (null? expressions)
-      (no-free-variables)
-      (set/union (free/expression (car expressions))
-		 (free/expressions (cdr expressions)))))
-
 (declare (integrate-operator free/expression))
 
 (define (free/expression expression)
   ((expression/method dispatch-vector expression) expression))
+
+(define (free/expressions expressions)
+  (fold-left (lambda (answer expression)
+	       (lset-union eq? answer (free/expression expression)))
+	     (no-free-variables)
+	     expressions))
 
 (define dispatch-vector
   (expression/make-dispatch-vector))
@@ -63,23 +52,25 @@ USA.
 
 (define-method/free 'ASSIGNMENT
   (lambda (expression)
-    (set/adjoin (free/expression (assignment/value expression))
-		(assignment/variable expression))))
+    (lset-adjoin eq?
+		 (free/expression (assignment/value expression))
+		 (assignment/variable expression))))
 
 (define-method/free 'COMBINATION
   (lambda (expression)
-    (set/union (free/expression (combination/operator expression))
-	       (free/expressions (combination/operands expression)))))
+    (lset-union eq?
+		(free/expression (combination/operator expression))
+		(free/expressions (combination/operands expression)))))
 
 (define-method/free 'CONDITIONAL
   (lambda (expression)
-    (set/union*
-     (free/expression (conditional/predicate expression))
-     (free/expression (conditional/consequent expression))
-     (free/expression (conditional/alternative expression)))))
+    (lset-union eq?
+		(free/expression (conditional/predicate expression))
+		(free/expression (conditional/consequent expression))
+		(free/expression (conditional/alternative expression)))))
 
 (define-method/free 'CONSTANT
-  (lambda (expression) 
+  (lambda (expression)
     expression
     (no-free-variables)))
 
@@ -93,37 +84,33 @@ USA.
 
 (define-method/free 'DISJUNCTION
   (lambda (expression)
-    (set/union (free/expression (disjunction/predicate expression))
-	       (free/expression (disjunction/alternative expression)))))
-
-(define-method/free 'PROCEDURE
-  (lambda (expression)
-    (set/difference
-     (free/expression (procedure/body expression))
-     (list->variable-set
-      (block/bound-variables-list (procedure/block expression))))))
+    (lset-union eq?
+		(free/expression (disjunction/predicate expression))
+		(free/expression (disjunction/alternative expression)))))
 
 (define-method/free 'OPEN-BLOCK
   (lambda (expression)
-    (set/difference
-     (set/union (free/expressions (open-block/values expression))
-		(let loop ((actions (open-block/actions expression)))
-		  (cond ((null? actions) (no-free-variables))
-			((eq? (car actions) open-block/value-marker)
-			 (loop (cdr actions)))
-			(else
-			 (set/union (free/expression (car actions))
-				    (loop (cdr actions)))))))
-     (list->variable-set 
-      (block/bound-variables-list (open-block/block expression))))))
+    (let ((omit (block/bound-variables (open-block/block expression))))
+     (fold-left (lambda (variables action)
+		  (if (eq? action open-block/value-marker)
+		      variables
+		      (lset-union eq? variables (lset-difference eq? (free/expression action) omit))))
+		(lset-difference eq? (free/expressions (open-block/values expression)) omit)
+		(open-block/actions expression)))))
+
+(define-method/free 'PROCEDURE
+  (lambda (expression)
+    (lset-difference eq?
+     (free/expression (procedure/body expression))
+     (block/bound-variables (procedure/block expression)))))
 
 (define-method/free 'QUOTATION
-  (lambda (expression) 
-    expression
+  (lambda (expression)
+    (declare (ignore expression))
     (no-free-variables)))
 
 (define-method/free 'REFERENCE
-  (lambda (expression) 
+  (lambda (expression)
     (singleton-variable (reference/variable expression))))
 
 (define-method/free 'SEQUENCE
@@ -131,6 +118,12 @@ USA.
     (free/expressions (sequence/actions expression))))
 
 (define-method/free 'THE-ENVIRONMENT
-  (lambda (expression) 
-    expression
+  (lambda (expression)
+    (declare (ignore expression))
     (no-free-variables)))
+
+(define-integrable (no-free-variables)
+  '())
+
+(define-integrable (singleton-variable variable)
+  (list variable))

@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,7 +50,7 @@ USA.
     (let ((environment
 	   (if top-level?
 	       (environment/bind (environment/make)
-				 (block/bound-variables-list block))
+				 (block/bound-variables block))
 	       (environment/make))))
       (if (scode-open-block? expression)
 	  (begin
@@ -158,7 +158,7 @@ USA.
 				   (cons (transform (car actions))
 					 actions*))))))))))
       (lambda (vals actions)
-	(open-block/make expression block variables vals actions false)))))
+	(open-block/make expression block variables vals actions)))))
 
 (define (transform/variable block environment expression)
   (reference/make expression
@@ -190,7 +190,7 @@ USA.
 	  (lambda (required optional rest)
 	    (let ((environment
 		   (environment/bind environment
-				     (block/bound-variables-list block))))
+				     (block/bound-variables block))))
 	      (procedure/make
 	       expression block name required optional rest
 	       (transform/procedure-body block
@@ -232,10 +232,10 @@ USA.
 (define (transform/combination* expression block environment expression*)
   (combination-components expression*
     (lambda (operator operands)
-      (combination/make expression
-			block
-			(transform/expression block environment operator)
-			(transform/expressions block environment operands)))))
+      (combination/%make expression
+			 block
+			 (transform/expression block environment operator)
+			 (transform/expressions block environment operands)))))
 
 (define (transform/comment block environment expression)
   (transform/expression block environment (comment-expression expression)))

@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -317,7 +317,7 @@ USA.
 	    ((scan-head
 	      (lambda (p)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(begin
 			  (vector-set! buckets i p)
 			  (scan-tail (cdr p) p))
@@ -328,13 +328,13 @@ USA.
 	     (scan-tail
 	      (lambda (p q)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(scan-tail (cdr p) p)
 			(begin
 			  (decrement-table-count! table)
 			  (let loop ((p (cdr p)))
 			    (if (pair? p)
-				(if (%weak-entry-key (car p))
+				(if (%weak-entry-valid? (car p))
 				    (begin
 				      (set-cdr! q p)
 				      (scan-tail (cdr p) p))
