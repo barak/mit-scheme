@@ -843,16 +843,13 @@ if test "${with_mcrypt}" != no; then
 	[
 	AC_DEFINE([HAVE_MCRYPT_H], [1],
 	    [Define to 1 if you have the <mcrypt.h> header file.])
-	AC_CHECK_LIB([ltdl], [lt_dlinit], [mc_libs=-lltdl], [mc_libs=])
 	AC_CHECK_LIB([mcrypt], [mcrypt_generic_init],
 	    [
 	    AC_DEFINE([HAVE_LIBMCRYPT], [1],
 		[Define to 1 if you have the `mcrypt' library (-lmcrypt).])
-	    MODULE_LIBS="-lmcrypt ${mc_libs} ${MODULE_LIBS}"
+	    MODULE_LIBS="-lmcrypt ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prmcrypt"
-	    ],
-	    [],
-	    [${mc_libs}])
+	    ])
 	])
 fi
 

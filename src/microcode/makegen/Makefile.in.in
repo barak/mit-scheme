@@ -202,7 +202,7 @@ prmhash.so: prmhash.o @MODULE_LOADER@
 	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o @MODULE_LOADER@
-	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
+	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 
 prgdbm.so: prgdbm.o @MODULE_LOADER@
 	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
