@@ -183,21 +183,18 @@ USA.
 (define (string-maximum-length string)
   (guarantee-string string 'STRING-MAXIMUM-LENGTH)
   (fix:- (fix:lsh (fix:- (system-vector-length string) 1)
-		  (fix:- 0 %octets->words-shift))
+		  %words->octets-shift)
 	 1))
 
-(define-integrable %octets->words-shift
-  ((sc-macro-transformer
-    (lambda (form environment)
-      form environment
-      ;; This is written as a macro so that the shift will be a
-      ;; constant in the compiled code.  It does not work when
-      ;; cross-compiled!
-      (let ((chars-per-word (vector-ref (gc-space-status) 0)))
-	(case chars-per-word
-	  ((4) -2)
-	  ((8) -3)
-	  (else (error "Can't support this word size:" chars-per-word))))))))
+(define %octets->words-shift
+  (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+    (case chars-per-word
+      ((4) -2)
+      ((8) -3)
+      (else (error "Can't support this word size:" chars-per-word)))))
+
+(define %words->octets-shift
+  (- %octets->words-shift))
 
 (define (string . objects)
   (%string-append (map ->string objects)))
