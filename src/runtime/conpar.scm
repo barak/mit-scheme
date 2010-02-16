@@ -200,14 +200,7 @@ USA.
 (define (parse-one-frame state)
   (let ((handle-ordinary
 	 (lambda (stream)
-	   (let ((type
-		  (return-address->stack-frame-type
-		   (stream-car stream)
-		   (let ((type (parser-state/previous-type state)))
-		     (and type
-			  (1d-table/get (stack-frame-type/properties type)
-					allow-extended?-tag
-					#f))))))
+	   (let ((type (return-address->stack-frame-type (stream-car stream))))
 	     (let ((length
 		    (let ((length (stack-frame-type/length type)))
 		      (if (exact-nonnegative-integer? length)
@@ -314,7 +307,7 @@ USA.
    type elements state
    (let ((stream (parser-state/element-stream state)))
      (and (stream-pair? stream)
-	  (eq? (return-address->stack-frame-type (stream-car stream) #t)
+	  (eq? (return-address->stack-frame-type (stream-car stream))
 	       stack-frame-type/return-to-interpreter)))
    #f))
 
@@ -384,6 +377,54 @@ USA.
 	   (parse/standard-next type elements state #f #f))
 	  (else
 	   (error "Unknown special compiled frame code:" code)))))
+
+(define (parser/compiler-interrupt-restart type elements state)
+  (if (= 3 (vector-length elements))
+      (parser/standard type elements state)
+      ;; This is a hairy mongrel of PARSE/STANDARD-NEXT and
+      ;; PARSER/STANDARD, because it makes two stack frames at once,
+      ;; which we must do because the first stack frame tells us
+      ;; information not in the parser state that is needed in order
+      ;; to parse the second frame: the interrupt frame contains the
+      ;; dynamic link, which is all that we know about the size of the
+      ;; next frame.
+      (let ((history?
+	     (and (stack-frame-type/history-subproblem? type)
+		  (stack-frame-type/subproblem? type))))
+	(let ((n-elements (parser-state/n-elements state))
+	      (history-subproblem?
+	       (stack-frame-type/history-subproblem? type))
+	      (history (parser-state/history state))
+	      (previous-history-offset
+	       (parser-state/previous-history-offset state))
+	      (previous-history-control-point
+	       (parser-state/previous-history-control-point state)))
+	  (make-stack-frame
+	   type
+	   (vector-head elements 3)
+	   (parser-state/dynamic-state state)
+	   (parser-state/block-thread-events? state)
+	   (parser-state/interrupt-mask state)
+	   (if history? history undefined-history)
+	   previous-history-offset
+	   previous-history-control-point
+	   (fix:+ 3 n-elements)
+	   (parser-state/previous-type state)
+	   (parser/standard
+	    stack-frame-type/interrupt-compiled-procedure
+	    (vector-tail elements 3)
+	    (make-parser-state (parser-state/dynamic-state state)
+			       (parser-state/block-thread-events? state)
+			       (parser-state/interrupt-mask state)
+			       (if history-subproblem?
+				   (history-superproblem history)
+				   history)
+			       previous-history-offset
+			       previous-history-control-point
+			       (parser-state/element-stream state)
+			       n-elements
+			       (parser-state/next-control-point state)
+			       type)))))))
 
 (define (parser/stack-marker type elements state)
   (call-with-values
@@ -542,6 +583,24 @@ USA.
 		   (loop (stream-cdr s)))))
 	   offset)))))
 
+(define (length/interrupt-compiled-procedure stream offset)
+  offset				; ignored
+  (fix:+ (compiled-procedure-frame-size (stream-car stream)) 1))
+
+(define (length/compiler-interrupt-restart stream offset)
+  (or (let ((entry (stream-ref stream 3)))
+	(and (compiled-internal-procedure? entry)
+	     (let ((dynamic-link (stream-ref stream 2)))
+	       (and (stack-address? dynamic-link)
+		    (stack-address->index dynamic-link offset)))))
+      3))
+
+(define (compiled-internal-procedure? object)
+  (and (object-type? (ucode-type compiled-entry) object)
+       (fix:= 3
+	      (system-hunk3-cxr0
+	       ((ucode-primitive compiled-entry-kind 1) object)))))
+
 (define (length/special-compiled stream offset)
   ;; return address is reflect-to-interface
   offset
@@ -587,10 +646,6 @@ USA.
 	   (fix:- 10 1))
 	  (else
 	   (lose)))))
-
-(define (length/interrupt-compiled-procedure stream offset)
-  offset				; ignored
-  (fix:+ (compiled-procedure-frame-size (stream-car stream)) 1))
 
 (define (compiled-code-address/frame-size cc-address)
   (let ((lose (lambda () (error "Unexpected object:" cc-address))))
@@ -609,7 +664,7 @@ USA.
 (define (verify paranoia-index stream offset)
   (if (or (= paranoia-index 0) (stream-null? stream))
       #t
-      (let* ((type (return-address->stack-frame-type (stream-car stream) #f))
+      (let* ((type (return-address->stack-frame-type (stream-car stream)))
 	     (length
 	      (let ((length (stack-frame-type/length type)))
 		(if (exact-nonnegative-integer? length)
@@ -644,9 +699,6 @@ USA.
   (parser #f read-only #t)
   (properties (make-1d-table) read-only #t))
 
-(define allow-extended?-tag
-  (list 'ALLOW-EXTENDED?))
-
 (define (microcode-return/code->type code)
   (if (not (fix:< code (vector-length stack-frame-types)))
       (error:bad-range-argument code 'MICROCODE-RETURN/CODE->TYPE))
@@ -655,8 +707,7 @@ USA.
 (define (microcode-return/name->type name)
   (microcode-return/code->type (microcode-return name)))
 
-(define (return-address->stack-frame-type return-address allow-extended?)
-  allow-extended?			; ignored
+(define (return-address->stack-frame-type return-address)
   (cond ((interpreter-return-address? return-address)
 	 (let ((code (return-address/code return-address)))
 	   (let ((type (microcode-return/code->type code)))
@@ -793,10 +844,9 @@ USA.
 	(compiler-subproblem 'COMPILER-LOOKUP-APPLY-TRAP-RESTART length)
 	(compiler-subproblem 'COMPILER-OPERATOR-LOOKUP-TRAP-RESTART length))
 
-      (let ((type (compiler-frame 'COMPILER-INTERRUPT-RESTART 3)))
-	(1d-table/put! (stack-frame-type/properties type)
-		       allow-extended?-tag
-		       #t))
+      (stack-frame-type 'COMPILER-INTERRUPT-RESTART #f #t
+			length/compiler-interrupt-restart
+			parser/compiler-interrupt-restart)
 
       (compiler-frame 'COMPILER-LINK-CACHES-RESTART 8)
       (compiler-frame 'REENTER-COMPILED-CODE 2)
