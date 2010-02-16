@@ -1,6 +1,9 @@
 #!/bin/bash
-
-# Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,8 +34,8 @@ usage ()
     exit 1
 }
 
-(( ${#} == 1 )) || usage
-TYPE=${1}
+(( ${#} <= 1 )) || usage
+TYPE=${1:-standard}
 
 # We assume that there's a git working tree here that's in the right state.
 [[ -d ${PROJECT_NAME} ]] || usage
@@ -57,8 +60,8 @@ case ${TYPE} in
 esac
 
 DIST_DIR=mit-scheme-${RELEASE}
-LIARC32_DIST_DIR=${DIST_DIR}-c32
-LIARC64_DIST_DIR=${DIST_DIR}-c64
+LIARC_DIST_DIR=mit-scheme-c-${RELEASE}
+CHANGELOG=changelog.txt
 OUTPUT_DIR=.out
 
 # Set up trap to clean up any temporary files.
@@ -66,7 +69,7 @@ CLEANUP_BASE=$(pwd)
 cleanup ()
 {
     cd "${CLEANUP_BASE}"
-    rm -rf "${DIST_DIR}" "${LIARC32_DIST_DIR}" "${LIARC64_DIST_DIR}"
+    rm -rf "${DIST_DIR}" "${LIARC_DIST_DIR}"
 }
 trap cleanup EXIT SIGINT SIGQUIT SIGTERM
 cleanup
@@ -77,7 +80,7 @@ mkdir "${OUTPUT_DIR}"
 # Create the dist directory, a subset of the repo.
 echo "Creating the distribution directory"
 mkdir "${DIST_DIR}" "${DIST_DIR}"/etc
-for FILE in src doc LOG dist/Makefile; do
+for FILE in src doc "${CHANGELOG}" dist/Makefile; do
     cp -pR "${PROJECT_NAME}"/"${FILE}" "${DIST_DIR}"/.
 done
 cp -pR "${PROJECT_NAME}"/etc/xscheme.el "${DIST_DIR}"/etc/.
@@ -95,43 +98,27 @@ find "${DIST_DIR}" -exec chmod go-w '{}' \;
 
 # Now make the liarc dist directories.
 echo "Creating the liarc distribution directories"
-cp -pR "${DIST_DIR}" "${LIARC32_DIST_DIR}"
-cp -pR "${DIST_DIR}" "${LIARC64_DIST_DIR}"
+cp -pR "${DIST_DIR}" "${LIARC_DIST_DIR}"
 
 # The liarc dist requires additional setup.
-
-compile_liarc_bootstrap ()
-{
-    (
-    cd "${1}"/src
-    MIT_SCHEME_EXE=${2} etc/make-liarc-dist.sh
-    ) > "${OUTPUT_DIR}"/"${3}" 2>&1
-}
-
-echo "Compiling the liarc32 bootstrap files"
-compile_liarc_bootstrap "${LIARC32_DIST_DIR}" mit-scheme-i386 liarc32-compile
-
-echo "Compiling the liarc64 bootstrap files"
-compile_liarc_bootstrap "${LIARC64_DIST_DIR}" mit-scheme-x86-64 liarc64-compile
+echo "Compiling the liarc bootstrap files"
+(cd "${LIARC_DIST_DIR}"/src; MIT_SCHEME_EXE=mit-scheme-native etc/make-liarc-dist.sh) \
+    > "${OUTPUT_DIR}"/liarc-compile 2>&1
 
 # OK, we've built the directories, time to build the output files.
 echo "Building distribution archive files"
 TAR_FILE=${DIST_DIR}.tar.gz
-LIARC32_FILE=${LIARC32_DIST_DIR}.tar.gz
-LIARC64_FILE=${LIARC64_DIST_DIR}.tar.gz
+LIARC_FILE=${LIARC_DIST_DIR}.tar.gz
 ZIP_FILE=${DIST_DIR}.zip
 UCODE_FILE=${DIST_DIR}-ucode.tar.gz
-CHANGELOG=changelog.txt
-OUTPUTS=("${TAR_FILE}" "${LIARC32_FILE}" "${LIARC64_FILE}" "${ZIP_FILE}" \
-    "${UCODE_FILE}" "${CHANGELOG}")
+OUTPUTS=("${TAR_FILE}" "${LIARC_FILE}" "${ZIP_FILE}" "${UCODE_FILE}" "${CHANGELOG}")
 
 rm -f "${OUTPUTS[@]}"
 
 tar czf "${TAR_FILE}" "${DIST_DIR}"
-tar czf "${LIARC32_FILE}" "${LIARC32_DIST_DIR}"
-tar czf "${LIARC64_FILE}" "${LIARC64_DIST_DIR}"
+tar czf "${LIARC_FILE}" "${LIARC_DIST_DIR}"
 tar czf "${UCODE_FILE}" "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/microcode
-cp -p "${DIST_DIR}"/LOG "${CHANGELOG}"
+cp -p "${DIST_DIR}"/"${CHANGELOG}" .
 
 rm -rf "${DIST_DIR}"/src/lib
 # zip will complain if we have any dangling symlinks.
