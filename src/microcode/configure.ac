@@ -113,11 +113,6 @@ AH_BOTTOM(
 #endif /* SCM_CONFIG_H */])
 
 dnl Feature options
-AC_ARG_ENABLE([static-libs],
-    AS_HELP_STRING([--enable-static-libs],
-	[Link some libraries statically [[no]]]))
-: ${enable_static_libs='no'}
-
 AC_ARG_ENABLE([valgrind-mode],
     AS_HELP_STRING([--enable-valgrind-mode],
 	[Support running under valgrind [[no]]]))
@@ -186,9 +181,6 @@ M4_FLAGS=
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
-STATIC_LIBS=
-STATIC_PREFIX=
-STATIC_SUFFIX=
 PRBFISH_LIBS=
 PRMD5_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
@@ -374,10 +366,6 @@ solaris*)
 esac
 
 if test "${DO_GCC_TESTS}" = yes; then
-    if test "x${STATIC_LIBS}" != x; then
-	STATIC_PREFIX="-Xlinker -Bstatic"
-	STATIC_SUFFIX="-Xlinker -Bdynamic"
-    fi
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     fi
@@ -958,36 +946,26 @@ if test "${no_x}" != yes; then
     MODULE_AUX_BASES="${MODULE_AUX_BASES} x11base x11color x11graph x11term"
 fi
 
-dnl Decide whether we're using static or dynamic libraries.
-if test "${enable_static_libs}" = no; then
-    AC_CHECK_FUNC([dlopen],
+dnl Check for dynamic loader support.
+AC_CHECK_FUNC([dlopen],
+    [],
+    [
+    AC_CHECK_LIB([dl], [dlopen],
 	[
-	LIBS="${STATIC_LIBS} ${LIBS}"
+	AC_DEFINE([HAVE_LIBDL], [1],
+	    [Define to 1 if you have the `dl' library (-ldl).])
+	LIBS="-ldl ${LIBS}"
 	],
 	[
-	AC_CHECK_LIB([dl], [dlopen],
-	    [
-	    AC_DEFINE([HAVE_LIBDL], [1],
-		[Define to 1 if you have the `dl' library (-ldl).])
-	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
-	    ],
-	    [
-	    if test ${mit_scheme_native_code} = c; then
-		AC_MSG_ERROR(
-		    [--enable-native-code=c requires dynamic loader support])
-	    fi
-	    enable_static_libs=yes
-	    ])
+	if test ${mit_scheme_native_code} = c; then
+	    AC_MSG_ERROR(
+		[--enable-native-code=c requires dynamic loader support])
+	fi
 	])
-fi
-if test ${enable_static_libs} != no; then
-    STATIC_LIBS=${MODULE_LIBS}${STATIC_LIBS}
-else
-    STATIC_LIBS=
-    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
-    AC_DEFINE([UX_DLD_ENABLED], [1],
-	[Define to 1 if unix dynamic loading support is enabled.])
-fi
+    ])
+OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+AC_DEFINE([UX_DLD_ENABLED], [1],
+    [Define to 1 if unix dynamic loading support is enabled.])
 
 if test ${enable_valgrind_mode} != no; then
     SCHEME_DEFS="${SCHEME_DEFS} -DVALGRIND_MODE"
@@ -1049,9 +1027,6 @@ AC_SUBST([GC_HEAD_FILES])
 AC_SUBST([M4_FLAGS])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
-AC_SUBST([STATIC_LIBS])
-AC_SUBST([STATIC_PREFIX])
-AC_SUBST([STATIC_SUFFIX])
 AC_SUBST([PRBFISH_LIBS])
 AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])
