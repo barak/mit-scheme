@@ -387,10 +387,10 @@ extern SCHEME_OBJECT * memory_base;
   (bignum_fits_in_word_p ((bignum), ((sizeof (unsigned long)) * CHAR_BIT), 0))
 
 #define BIGNUM_TO_DOUBLE_P(bignum)					\
-  (bignum_fits_in_word_p ((bignum), DBL_MAX_EXP, 0))
+  (bignum_fits_in_word_p ((bignum), (DBL_MAX_EXP + 1), 1))
 
 #define LOSSLESS_BIGNUM_TO_DOUBLE_P(bignum)				\
-  (bignum_fits_in_word_p ((bignum), DBL_MANT_DIG, 0))
+  (bignum_fits_in_word_p ((bignum), (DBL_MANT_DIG + 1), 1))
 
 /* Flonum Operations */
 
