@@ -142,20 +142,10 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
     SCHEME_OBJECT integer = (ARG_REF (1));
     long control = (arg_index_integer (2, 4));
     if (FIXNUM_P (integer))
-    {
-      long X = (FIXNUM_TO_LONG (integer));
-      double Y = ((double) X);
-
-      if (((long) Y) == X)
-	PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
-      if ((control & 2) != 0)
-	error_bad_range_arg (1);
-      PRIMITIVE_RETURN (SHARP_F);
-    }
-    if (bignum_fits_in_word_p
-	(integer,
-	 (((control & 1) != 0) ? DBL_MANT_DIG : DBL_MAX_EXP),
-	 0))
+      PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
+    if (((control & 1) != 0)
+	? (LOSSLESS_BIGNUM_TO_DOUBLE_P (integer))
+	: (BIGNUM_TO_DOUBLE_P (integer)))
       PRIMITIVE_RETURN (BIGNUM_TO_FLONUM (integer));
     if ((control & 2) != 0)
       error_bad_range_arg (1);
