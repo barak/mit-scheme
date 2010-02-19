@@ -33,7 +33,7 @@ USA.
 (add-boot-init!
  (lambda ()
    (set! copyright-years
-	 (let ((now 2009)
+	 (let ((now 2010)
 	       (then 1986))
 	   (iota (+ (- now then) 1) then)))
    (add-subsystem-identification! "Release" '(9 0))

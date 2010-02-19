@@ -1,9 +1,9 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-user
-@set EDITION 1.92
-@set VERSION 7.7.90+
-@set UPDATED 2007-05-30
+@set EDITION 1.93
+@set VERSION 9.0
+@set UPDATED 2010-02-18
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -25,7 +25,8 @@ This manual documents the use of MIT/GNU Scheme @value{VERSION}.
 
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-    2005, 2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+    Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -147,21 +148,24 @@ using.
 @menu
 * Unix Installation::           
 * Windows Installation::        
-* Optional Configuration::      
 @end menu
 
 @node Unix Installation, Windows Installation, Installation, Installation
 @section Unix Installation
 
 We will use as an example the installation for GNU/Linux.  The
-installation for other unix systems is similar.
+installation for other unix systems is similar.  There are several
+references to @var{ARCH} below; these refer to the computer
+architecture that Scheme is compiled for, such as @samp{i386} or
+@samp{x86-64}.
 
 MIT/GNU Scheme is distributed as a compressed `tar' file.  The tar
 file contains two directories, called @file{bin} and @file{lib}.  The
-@file{bin} directory contains two executable files, @command{scheme} and
-@command{bchscheme}.  The @file{lib} directory contains one
-subdirectory, @file{lib/mit-scheme}, that Scheme uses while it is
-executing.
+@file{bin} directory contains one executable file, called
+@command{mit-scheme-@var{ARCH}}, and some symlinks for convenience and
+backwards compatibility.  The @file{lib} directory contains one
+subdirectory, @file{lib/mit-scheme-@var{ARCH}}, that Scheme uses while
+it is executing.
 
 The goal of the installation is to put the executable files in a
 directory where they will be executed as commands, and to put the
@@ -179,18 +183,17 @@ snapshot, and for @var{platform} the platform you are on, such as
 @samp{ix86-gnu-linux} or @samp{ix86-apple-darwin}:
 
 @example
-@group
 cd /usr/local
-rm -f bin/scheme bin/bchscheme
-rm -rf lib/mit-scheme
-gzip -cd mit-scheme-@var{version}-@var{platform}.tar.gz | tar xvf -
-@end group
+rm -f bin/scheme bin/bchscheme bin/mit-scheme*
+rm -rf lib/mit-scheme*
+tar xzf mit-scheme-@var{version}-@var{platform}.tar.gz
 @end example
 
 @noindent
 After executing these commands, the executable files will be in
 @file{/usr/local/bin}, and the library files will be in
-@file{/usr/local/lib/mit-scheme}.  No further configuration is required.
+@file{/usr/local/lib/mit-scheme-@var{ARCH}}.  No further configuration
+is required.
 
 To install the files in directories of your choice:
 
@@ -201,38 +204,42 @@ First unpack the distribution:
 @example
 mkdir temp
 cd temp
-gzip -cd mit-scheme-@var{version}-@var{platform}.tar.gz | tar xvf -
+tar xzf mit-scheme-@var{version}-@var{platform}.tar.gz
 @end example
 
 @item
 Next, move the contents of the @file{bin} directory to somewhere
 convenient that is on your execution path.  For example, if you had a
-directory @file{~/bin} on your path, you would do this:
+directory @file{$@{HOME@}/bin} on your path, you would do this:
 
 @example
-mv bin/* ~/bin/.
+mv bin/* $@{HOME@}/bin/.
 @end example
 
 @item
-Next, move or copy the @file{lib/mit-scheme} directory somewhere
-convenient.  For example, you could move it to your home directory:
+Next, move or copy the @file{lib/mit-scheme-@var{ARCH}} directory
+somewhere convenient.  For example, you could move it to your home
+directory:
 
 @example
-mv lib/mit-scheme ~/.
+mv lib/mit-scheme-@var{ARCH} $@{HOME@}/.
 @end example
 
-Note that if you have unpacked the distribution on a different drive
-than the one you plan to store the @file{mit-scheme} directory on, you
-must use the command @command{cp -pr} rather than @command{mv}.
+Note that on some unix systems, if you have unpacked the distribution
+on a different drive than the one you plan to store the
+@file{mit-scheme-@var{ARCH}} directory on, you must use the command
+@command{cp -pr} rather than @command{mv}.
 
 @item
-Next, you must tell Scheme where to find the @file{mit-scheme}
-directory.  This can be done in one of two ways.  The first way is to
-bind the environment variable @env{MITSCHEME_LIBRARY_PATH} to the full
-path to the directory, e.g.@: in @command{bash} you would do
+Next, you must tell Scheme where to find the
+@file{mit-scheme-@var{ARCH}} directory.  This can be done in one of
+two ways.  The first way is to bind the environment variable
+@env{MITSCHEME_LIBRARY_PATH} to the full path to the directory, e.g.@:
+in a Bourne shell you would do
 
 @example
-export MITSCHEME_LIBRARY_PATH=~/mit-scheme
+MITSCHEME_LIBRARY_PATH=$@{HOME@}/mit-scheme
+export MITSCHEME_LIBRARY_PATH
 @end example
 
 You should put this environment-variable binding in one of your shell
@@ -243,7 +250,7 @@ The second way is to use a command-line argument when invoking Scheme,
 e.g.@:
 
 @example
-scheme --library ~/mit-scheme
+mit-scheme --library $@{HOME@}/mit-scheme
 @end example
 
 @item
@@ -251,13 +258,11 @@ You should now be able to run MIT/GNU Scheme.  @xref{Running
 Scheme}, for more information.
 @end itemize
 
-@node Windows Installation, Optional Configuration, Unix Installation, Installation
+@node Windows Installation,  , Unix Installation, Installation
 @section Windows Installation
 
-This section describes how to install MIT/GNU Scheme on Windows
-95, Windows 98, Windows Me, Windows NT 4.0, Windows 2000, or Windows XP.
-The software should also work on older versions of Windows NT, but we
-haven't tested it there.
+This section describes how to install MIT/GNU Scheme on Windows 2000,
+Windows XP, Windows Vista, or Windows 7.
 
 MIT/GNU Scheme is distributed as a self-installing executable.
 Installation of the software is straightforward.  Simply execute the
@@ -268,67 +273,6 @@ to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
 @samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme}.
-
-@node Optional Configuration,  , Windows Installation, Installation
-@section Optional Configuration
-
-As distributed, Scheme contains several large files.  You might not need
-all of them, so this section will tell you what each is for so that you
-can decide if you want to delete some of them.  Also, we will discuss
-the two different Scheme executables, which are each useful in different
-situations; you should read this to decide which is right for you.
-
-The Scheme runtime environment and associated tools are normally
-stored in @dfn{bands}, which are large memory images stored in files
-(@pxref{World Images}).  Scheme requires at least one band to work
-properly.  The Scheme distribution includes two bands.  These bands
-are stored in the @file{lib/mit-scheme} directory on unix systems, and
-the @file{lib} directory on PC systems.
-
-@table @file
-@item runtime.com
-The is the basic world image, and the smallest.  It contains just the
-runtime files.  This is the band that is chosen when Scheme is invoked
-with no special command-line options.
-
-@item all.com
-This contains the runtime files, the native-code compiler, and Edwin.
-This band is chosen when either the @option{--compiler} or
-@option{--edwin} command-line options are supplied.
-@end table
-
-Depending on your needs, you may not need both of these files.  For
-example, if you always want the full development environment, you
-might keep @file{all.com} and delete @file{runtime.com}.  Remember
-that you must keep at least one of these files to use Scheme.
-
-In addition to bands, Scheme is distributed with two executable
-programs: @command{scheme} (called @command{scheme.exe} on PC systems),
-and @command{bchscheme} (called @command{bchschem.exe} on PC systems).
-Normally you will need only one of these files.
-
-The only difference between these two programs is in how they handle
-garbage collection.  @command{scheme} allocates two memory heaps, and
-copies objects between the heaps to preserve them.  This means that most
-of the time the other heap is occupying valuable memory but doesn't hold
-any interesting data.  @command{bchscheme} allocates only one memory
-heap, creates a disk file during garbage collection, copies objects into
-the file, then copies them back into memory.
-
-These programs provide you with some important performance trade-offs.
-If you have plenty of memory and want the best performance, use
-@command{scheme}.  If you don't have enough memory, or if you want to
-use less memory and will accept slower performance, use
-@command{bchscheme}.  One way to tell that you don't have enough memory
-is to run @command{scheme} for a while and see if your machine is paging
-during garbage collection.
-
-You might consider trying to use @command{scheme} and letting the
-operating system's paging handle the lack of @acronym{RAM}.  But usually
-you will find that using @command{bchscheme} without paging is much
-faster than using @command{scheme} with paging.  Of course, if you are
-using @command{bchscheme} and you're still paging, the best solution is
-to install more @acronym{RAM}.
 
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
@@ -354,7 +298,7 @@ using command-line options and environment variables.
 Under unix, MIT/GNU Scheme is invoked by typing
 
 @example
-scheme
+mit-scheme
 @end example
 
 @noindent
@@ -363,12 +307,13 @@ MIT/GNU Scheme is invoked by double-clicking on a shortcut.  In
 either case, Scheme will load itself and print something like this:
 
 @example
-@group
-Scheme saved on Monday June 17, 2002 at 12:10:46 PM
-  Release 7.7.1
-  Microcode 14.9
-  Runtime 15.1
-@end group
+Copyright (C) 2010 Massachusetts Institute of Technology
+This is free software; see the source for copying conditions. There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Image saved on Monday February 1, 2010 at 12:26:59 AM
+  Release 9.0       || Microcode 15.1 || Runtime 15.7 || SF 4.41
+  LIAR/x86-64 4.118 || Edwin 3.116
 @end example
 
 @noindent
@@ -399,21 +344,10 @@ written in Scheme.
 @cindex compatibility package, version
 Following this there may be additional version numbers for specific
 subsystems.  @samp{SF} refers to the scode optimization program
-@code{sf}, @samp{Liar} is the native-code compiler, 
-@samp{Edwin} is the Emacs-like text editor,
-and @samp{6.001} is the @acronym{SICP} compatibility package.
-
-@cindex compiler, starting
-You can load the compiler by giving Scheme the @option{--compiler}
-option:
-
-@example
-scheme --compiler
-@end example
-
-@noindent
-This option causes Scheme to use a larger constant space and heap, and
-to load the world image containing the compiler.
+@code{sf}; @samp{LIAR/@var{ARCH}} is the native-code compiler, where
+@var{ARCH} is the native-code architecture it compiles to;
+@samp{Edwin} is the Emacs-like text editor.  There are other
+subsystems you can load that will add themselves to this list.
 
 @node Customizing Scheme, Memory Usage, Basics of Starting Scheme, Running Scheme
 @section Customizing Scheme
@@ -496,11 +430,10 @@ collection}.
 @item
 @cindex constant space
 A @dfn{constant space} that is used for allocated objects, like the
-heap.
-Unlike the heap, storage used for objects in constant space is not
-reclaimed by garbage collection.
-Constant space is used for objects that are essentially permanent, like
-procedures in the runtime system.
+heap.  Unlike the heap, storage used for objects in constant space is
+not reclaimed by garbage collection.  Constant space is used for
+objects that are essentially permanent, like procedures in the runtime
+system.
 
 @item
 Some extra storage that is used by the microcode (the part of the system
@@ -511,32 +444,9 @@ that is implemented in C).
 All kinds of memory except the last may be controlled either by
 command-line options or by environment variables.
 
-@pindex scheme
-@pindex bchscheme
 MIT/GNU Scheme uses a two-space copying garbage collector for
-reclaiming storage in the heap.  There are two versions of Scheme which
-handle garbage collection differently.  The standard Scheme, called
-@command{scheme} under unix and @command{scheme.exe} on the PC, has two
-heaps, one for each ``space''.  An alternative, called
-@command{bchscheme} under unix and @command{bchschem.exe} on the PC, has
-one heap and uses a disk file for the other ``space'', thus trading
-memory usage against garbage collection speed (@pxref{Optional
-Configuration}).
-
-The total storage required by @command{scheme} is:
-
-@example
-@var{stack} + (@var{constant} + 2*@var{heap}) + @var{extra}
-@end example
-
-@noindent
-where @var{stack}, @var{constant} and @var{heap} are parameters that are
-selected when @command{scheme} starts.  For @command{bchscheme}, which
-has only one heap in memory, the equation is
-
-@example
-@var{stack} + (@var{constant} + @var{heap}) + @var{extra}
-@end example
+reclaiming storage in the heap.  The second space, used only during
+garbage collection, is dynamically allocated as needed.
 
 Once the storage is allocated for the constant space and the heap,
 Scheme will dynamically adjust the proportion of the total that is used
@@ -546,9 +456,9 @@ needed to be told the amount of constant space that was required when
 loading bands with the @option{--band} option.  Dynamic adjustment of
 the heap and constant space avoids this problem.
 
-If the size of the constant space is not specified, it is automatically
-set to the correct size for the band being loaded.  Thus, in general it
-is rarely necessary to explicitly set the size of the constant space.
+If the size of the constant space is not specified, it is
+automatically set to the correct size for the band being loaded; it is
+rarely necessary to explicitly set the size of the constant space.
 Additionally, each band requires a small amount of heap space; this
 amount is added to any specified heap size, so that the specified heap
 size is the amount of free space available.
@@ -578,36 +488,6 @@ continues to work, it is deprecated and will someday stop working.
 These are the microcode options:
 
 @table @option
-@item --compiler
-@opindex --compiler
-@nvindex MITSCHEME_COMPILER_BAND
-This option specifies defaults appropriate for loading the compiler.  It
-specifies the use of large sizes, exactly like @option{--large}; if the
-@option{--band} option is also specified, that is the only effect of
-this option.  Otherwise, the default band's filename is the value of the
-environment variable @env{MITSCHEME_COMPILER_BAND}, if defined, or
-@file{compiler.com}; the library directories are searched to locate this
-file.
-
-@item --edwin
-@opindex --edwin
-@nvindex MITSCHEME_EDWIN_BAND
-This option specifies defaults appropriate for loading the editor.  It
-specifies the use of large sizes, exactly like @option{--large}; if the
-@option{--band} option is also specified, that is the only effect of
-this option.  Otherwise, the default band's filename is the value of the
-environment variable @env{MITSCHEME_EDWIN_BAND}, if defined, or
-@file{edwin.com}; the library directories are searched to locate this
-file.
-
-@item --compiler --edwin
-@nvindex MITSCHEME_ALL_BAND
-If both the @option{--compiler} and @option{--edwin} options are given,
-Scheme will load an environment containing both the compiler and the
-editor.  The default band's filename is the value of the environment
-variable @env{MITSCHEME_ALL_BAND}, if defined, or @file{all.com}; the
-library directories are searched to locate this file.
-
 @item --band @var{filename}
 @opindex --band
 @nvindex MITSCHEME_BAND
@@ -615,67 +495,23 @@ library directories are searched to locate this file.
 @cindex band
 Specifies the initial world image file (@dfn{band}) to be loaded.
 Searches for @var{filename} in the working directory and the library
-directories, using the full pathname of the first readable file of that
-name.  If @var{filename} is an absolute pathname (on unix, this means it
-starts with @file{/}), then no search occurs---@var{filename} is
-tested for readability and then used directly.  If this option isn't
-given, the filename is the value of the environment variable
-@env{MITSCHEME_BAND}, or if that isn't defined, @file{runtime.com}; in
+directories, using the full pathname of the first readable file of
+that name.  If @var{filename} is an absolute pathname (on unix, this
+means it starts with @file{/}), then no search occurs---@var{filename}
+is tested for readability and then used directly.  If this option
+isn't given, the filename is the value of the environment variable
+@env{MITSCHEME_BAND}, or if that isn't defined, @file{all.com}; in
 these cases the library directories are searched, but not the working
 directory.
-
-@item --large
-@opindex --large
-Specifies that large heap, constant, and stack sizes should be used.
-These are specified by the environment variables
-
-@nvindex MITSCHEME_LARGE_HEAP
-@nvindex MITSCHEME_LARGE_CONSTANT
-@nvindex MITSCHEME_LARGE_STACK
-@example
-@group
-MITSCHEME_LARGE_HEAP
-MITSCHEME_LARGE_CONSTANT
-MITSCHEME_LARGE_STACK
-@end group
-@end example
-
-@noindent
-If this option isn't given, the small sizes are used, specified by the
-environment variables
-
-@nvindex MITSCHEME_SMALL_HEAP
-@nvindex MITSCHEME_SMALL_CONSTANT
-@nvindex MITSCHEME_SMALL_STACK
-@example
-@group
-MITSCHEME_SMALL_HEAP
-MITSCHEME_SMALL_CONSTANT
-MITSCHEME_SMALL_STACK
-@end group
-@end example
-
-@noindent
-There are reasonable built-in defaults for all of these environment
-variables, should any of them be undefined.  Note that any or all of the
-defaults can be individually overridden by the @option{--heap},
-@option{--constant}, and @option{--stack} options.
-
-@findex print-gc-statistics
-Note: the Scheme expression @samp{(print-gc-statistics)} shows how much
-heap and constant space is available and in use (@pxref{Garbage
-Collection}).
 
 @item --heap @var{blocks}
 @opindex --heap
 Specifies the size of the heap in 1024-word blocks.  Overrides any
-default.  Normally two such heaps are allocated; @command{bchscheme}
-allocates only one, and uses a disk file for the other.
-
-The size specified by this option is incremented by the amount of heap
-space needed by the band being loaded.  Consequently, @option{--heap}
-specifies how much free space will be available in the heap when Scheme
-starts, independent of the amount of heap already consumed by the band.
+default.  The size specified by this option is incremented by the
+amount of heap space needed by the band being loaded.  Consequently,
+@option{--heap} specifies how much free space will be available in the
+heap when Scheme starts, independent of the amount of heap already
+consumed by the band.
 
 @item --constant @var{blocks}
 @opindex --constant
@@ -691,31 +527,31 @@ programs.
 
 @item --option-summary
 @opindex --option-summary
-Causes Scheme to write an option summary to standard error.  This shows
-the values of all of the settable microcode option variables.
+Causes Scheme to write an option summary to standard error.  This
+shows the values of all of the settable microcode option variables.
 
 @item --emacs
 @opindex --emacs
-Specifies that Scheme is running as a subprocess of GNU Emacs.
-This option is automatically supplied by GNU Emacs, and should
-not be given under other circumstances.
+Specifies that Scheme is running as a subprocess of GNU Emacs.  This
+option is automatically supplied by GNU Emacs, and should not be given
+under other circumstances.
 
 @item --interactive
 @opindex --interactive
 If this option isn't specified, and Scheme's standard @acronym{I/O} is
-not a terminal, Scheme will detach itself from its controlling terminal,
-which prevents it from getting signals sent to the process group of that
-terminal.  If this option is specified, Scheme will not detach itself
-from the controlling terminal.
+not a terminal, Scheme will detach itself from its controlling
+terminal, which prevents it from getting signals sent to the process
+group of that terminal.  If this option is specified, Scheme will not
+detach itself from the controlling terminal.
 
 This detaching behavior is useful for running Scheme as a background
-job.  For example, using @command{bash}, the following will run Scheme
+job.  For example, using Bourne shell, the following will run Scheme
 as a background job, redirecting its input and output to files, and
 preventing it from being killed by keyboard interrupts or by logging
 out:
 
 @example
-scheme < /usr/cph/foo.in > /usr/cph/foo.out 2>&1 &
+mit-scheme < /usr/cph/foo.in > /usr/cph/foo.out 2>&1 &
 @end example
 
 This option is ignored under non-unix operating systems.
@@ -739,117 +575,18 @@ variable @env{MITSCHEME_LIBRARY_PATH} is used; if that isn't defined,
 the default is used.
 
 On unix, the elements of the list are separated by colons, and the
-default value is @file{/usr/local/lib/mit-scheme}.  On PCs, the elements
-of the list are separated by semicolons, and the default value is
-@file{c:\scheme\lib}.
+default value is @file{/usr/local/lib/mit-scheme-@var{ARCH}}.  On PCs,
+the elements of the list are separated by semicolons, and the default
+value is @file{c:\local\mit-scheme}.
 
 @item --fasl @var{filename}
 @opindex --fasl
 Specifies that a @dfn{cold load} should be performed, using
 @var{filename} as the initial file to be loaded.  If this option isn't
-given, a normal load is performed instead.  This option may not be used
-together with the @option{--compiler}, @option{--edwin}, or
-@option{--band} options.  This option is useful only for maintenance and
-development of the MIT/GNU Scheme runtime system.
-@end table
-
-@noindent
-In addition to the above, @command{bchscheme} recognizes the following
-command-line options, all of which specify parameters affecting how
-@command{bchscheme} uses disk storage to do garbage collection:
-
-@table @option
-@item --gc-directory @var{directory}
-@opindex --gc-directory
-@nvindex MITSCHEME_GC_DIRECTORY
-Specifies that @var{directory} should be used to create files for
-garbage collection.  If the option is not given, the value of
-environment variable @env{MITSCHEME_GC_DIRECTORY} is used instead, and
-if that is not defined, a standard temporary directory is used (see
-@env{TMPDIR} in @pxref{Runtime Environment Variables}).
-
-@item --gc-file @var{filename}
-@opindex --gc-file
-@opindex --gcfile
-@nvindex MITSCHEME_GC_FILE
-Specifies that @var{filename} should be used for garbage collection.  If
-the option is not given, the value of environment variable
-@env{MITSCHEME_GC_FILE} is used, and if this is not defined, a unique
-filename is generated in the directory specified with
-@option{--gc-directory}.
-
-@option{--gcfile} is an alias for @option{--gc-file}; at most one of
-these options should be specified.
-
-@item --gc-keep
-@opindex --gc-keep
-Specifies that the @acronym{GC} file used for garbage collection should
-not be deleted when Scheme terminates.  The @acronym{GC} file is deleted
-only if the file was created by this invocation of Scheme, and this
-option is not set.
-
-@item --gc-start-position @var{number}
-@opindex --gc-start-position
-@nvindex MITSCHEME_GC_START_POSITION
-Specifies the first byte position in the @acronym{GC} file at which the
-Scheme process can write.  If not given, the value of the environment
-variable @env{MITSCHEME_GC_START_POSITION} is used, and if that is not
-defined, @samp{0} is used, meaning the beginning of the file.  The area
-of the file used (and locked if possible) is the region between
-@option{--gc-start-position} and @option{--gc-end-position}.
-
-@item --gc-end-position @var{number}
-@opindex --gc-end-position
-@nvindex MITSCHEME_GC_END_POSITION
-Specifies the last byte position in the @acronym{GC} file at which the
-Scheme process can write.  If not given, the value of the environment
-variable @env{MITSCHEME_GC_END_POSITION} is used, and if that is not
-defined, the sum of the start position (as specified by
-@option{--gc-start-position}) and the heap size is used.  The area of
-the file used (and locked if possible) is the region between
-@option{--gc-start-position} and @option{--gc-end-position}.
-
-@item --gc-window-size @var{blocks}
-@opindex --gc-window-size
-@nvindex MITSCHEME_GC_WINDOW_SIZE
-Specifies the size of the windows into new space during garbage
-collection.  If this option is not given, the value of environment
-variable @env{MITSCHEME_GC_WINDOW_SIZE} is used instead, and if that
-is not defined, the value @samp{16} is used.
-@end table
-
-@noindent
-The following command-line options are only used by an experimental
-version of @command{bchscheme} that uses unix System V-style shared
-memory, and then only if the @file{gcdrone} program is installed in the
-library directory.
-
-@table @option
-@item --gc-drone @var{program}
-@opindex --gc-drone
-@nvindex MITSCHEME_GC_DRONE
-Specifies that @var{program} should be used as the drone program for
-overlapped @acronym{I/O} during garbage collection.  If the option is
-not given, the value of environment variable @env{MITSCHEME_GC_DRONE} is
-used instead, and if that is not defined, @file{gcdrone} is used.
-
-@item --gc-read-overlap @var{n}
-@opindex --gc-read-overlap
-@nvindex MITSCHEME_GC_READ_OVERLAP
-Specifies that Scheme should delegate at most @var{n} simultaneous disk
-read operations during garbage collection.  If the option is not given,
-the value of environment variable @env{MITSCHEME_GC_READ_OVERLAP} is
-used instead, and if that is not defined, @samp{0} is used, disabling
-overlapped reads.
-
-@item --gc-write-overlap @var{n}
-@opindex --gc-write-overlap
-@nvindex MITSCHEME_GC_WRITE_OVERLAP
-Specifies that Scheme should delegate at most @var{n} simultaneous disk
-write operations during garbage collection.  If the option is not given,
-the value of environment variable @env{MITSCHEME_GC_WRITE_OVERLAP} is
-used instead, and if that is not defined, @samp{0} is used, disabling
-overlapped writes.
+given, a normal load is performed instead.  This option may not be
+used together with the @option{--band} option.  This option is useful
+only for maintenance and development of the MIT/GNU Scheme runtime
+system.
 @end table
 
 @noindent
@@ -859,7 +596,7 @@ microcode options and after the image file is loaded.
 @table @option
 @item --no-init-file
 @opindex --no-init-file
-This option causes Scheme to ignore the @file{~/.scheme.init} or
+This option causes Scheme to ignore the @file{$@{HOME@}/.scheme.init} or
 @file{scheme.ini} file, normally loaded automatically when Scheme starts
 (if it exists).
 
@@ -918,14 +655,14 @@ argument @var{keyword} defines the option that will be recognized on the
 command line.  The @var{keyword} must be a string containing at least
 one character; do not include the leading hyphens.
 
-@deffn {procedure+} simple-command-line-parser keyword thunk [help]
+@deffn procedure simple-command-line-parser keyword thunk [help]
 Defines @var{keyword} to be a simple command-line option.  When this
 keyword is seen on the command line, it causes @var{thunk} to be
 executed.  @var{Help}, when provided, should be a string describing
 the option in the @command{--help} output.
 @end deffn
 
-@deffn {procedure+} argument-command-line-parser keyword multiple? procedure [help]
+@deffn procedure argument-command-line-parser keyword multiple? procedure [help]
 Defines @var{keyword} to be a command-line option that is followed by
 one or more command-line arguments.  @var{Procedure} is a procedure that
 accepts one argument; when @var{keyword} is seen, it is called once for
@@ -943,7 +680,7 @@ In this case, it does not matter if the following argument starts with a
 hyphen.
 @end deffn
 
-@deffn {procedure+} set-command-line-parser! keyword procedure
+@deffn procedure set-command-line-parser! keyword procedure
 This low-level procedure defines @var{keyword} to be a command-line
 option that is defined by @var{procedure}.  When @var{keyword} is seen,
 @var{procedure} is called with all of the command-line arguments,
@@ -972,164 +709,71 @@ procedure, e.g.@:
 
 @menu
 * Microcode Environment Variables::  
-* Bchscheme Environment Variables::  
 * Runtime Environment Variables::  
 * Edwin Environment Variables::  
 * Windows Environment Variables::  
 @end menu
 
-@node Microcode Environment Variables, Bchscheme Environment Variables, Environment Variables, Environment Variables
+@node Microcode Environment Variables, Runtime Environment Variables, Environment Variables, Environment Variables
 @subsection Environment Variables for the Microcode
 
 These environment variables are referred to by the microcode (the
-executable C programs called @command{scheme} and @command{bchscheme}
-under unix, and @command{scheme.exe} and @command{bchschem.exe} on the
-PC).
+executable C program called @command{mit-scheme} under unix, and
+@command{mit-scheme.exe} on the PC).
 
-@table @asis
-@item @env{MITSCHEME_ALL_BAND} (default: @file{all.com} on the library path)
-@nvindex MITSCHEME_ALL_BAND
-The initial band to be loaded if both the @option{--compiler} and
-@option{--edwin} options are given.  Overridden by @option{--band}.
-
-@item @env{MITSCHEME_BAND} (default: @file{runtime.com} on the library path)
+@table @env
+@item MITSCHEME_BAND
 @nvindex MITSCHEME_BAND
-The initial band to be loaded.  Overridden by @option{--band},
-@option{--compiler}, or @option{--edwin}.
+The initial band to be loaded.  The default value is @file{all.com}.
 
-@item @env{MITSCHEME_COMPILER_BAND} (default: @file{compiler.com} on the library path)
-@nvindex MITSCHEME_COMPILER_BAND
-The initial band to be loaded if the @option{--compiler} option is
-given.  Overridden by @option{--band}.
-
-@item @env{MITSCHEME_EDWIN_BAND} (default: @file{edwin.com} on the library path)
-@nvindex MITSCHEME_EDWIN_BAND
-The initial band to be loaded if the @option{--edwin} option is given.
-Overridden by @option{--band}.
-
-@item @env{MITSCHEME_LARGE_CONSTANT} (default: as needed)
-@nvindex MITSCHEME_LARGE_CONSTANT
-The size of constant space, in 1024-word blocks, if the
-@option{--large}, @option{--compiler}, or @option{--edwin} options are
-given.  Overridden by @option{--constant}.  Note: the default is
-computed to be the correct size for the band being loaded.
-
-@item @env{MITSCHEME_LARGE_HEAP} (default: @samp{1000})
-@nvindex MITSCHEME_LARGE_HEAP
-The size of the heap, in 1024-word blocks, if the @option{--large},
-@option{--compiler}, or @option{--edwin} options are given.  Overridden
-by @option{--heap}.
-
-@item @env{MITSCHEME_LARGE_STACK} (default: @samp{100})
-@nvindex MITSCHEME_LARGE_STACK
-The size of the stack, in 1024-word blocks, if the @option{--large},
-@option{--compiler}, or @option{--edwin} options are given.  Overridden
-by @option{--stack}.
-
-@item @env{MITSCHEME_LIBRARY_PATH}
+@item MITSCHEME_LIBRARY_PATH
 @nvindex MITSCHEME_LIBRARY_PATH
 A list of directories.  These directories are searched,
 left to right, to find bands and various other files.
 On unix systems the list is colon-separated, with the default
-@file{/usr/local/lib/mit-scheme}.
+@file{/usr/local/lib/mit-scheme-@var{ARCH}}.
 On PC systems the list is semicolon-separated with the default
-@file{c:\scheme\lib}.
+@file{c:\local\mit-scheme}.
 
-@item @env{MITSCHEME_SMALL_CONSTANT} (default: as needed)
-@nvindex MITSCHEME_SMALL_CONSTANT
-The size of constant space, in 1024-word blocks, if the size options are
-not given.  Overridden by @option{--constant}, @option{--large},
-@option{--compiler}, or @option{--edwin}.  Note: the default is computed
-to be the correct size for the band being loaded.
+@item MITSCHEME_CONSTANT
+@nvindex MITSCHEME_CONSTANT
+The size of constant space, in 1024-word blocks; overridden by
+@option{--constant}.  The default value is computed to be the correct
+size for the band being loaded.
 
-@item @env{MITSCHEME_SMALL_HEAP} (default: @samp{250})
-@nvindex MITSCHEME_SMALL_HEAP
-The size of the heap, in 1024-word blocks, if the size options are not
-given.  Overridden by @option{--heap}, @option{--large},
-@option{--compiler}, or @option{--edwin}.
+@item MITSCHEME_HEAP
+@nvindex MITSCHEME_HEAP
+The size of the heap, in 1024-word blocks; overridden by
+@option{--heap}.  The default value depends on the architecture: for
+32-bit machines the default is @samp{4096}, and for 64-bit machines
+the default is @samp{16384}.
 
-@item @env{MITSCHEME_SMALL_STACK} (default: @samp{100})
-@nvindex MITSCHEME_SMALL_STACK
-The size of the stack, in 1024-word blocks, if the size options are not
-given.  Overridden by @option{--stack}, @option{--large},
-@option{--compiler}, or @option{--edwin}.
+@item MITSCHEME_STACK
+@nvindex MITSCHEME_STACK
+The size of the stack, in 1024-word blocks; overridden by
+@option{--stack}.  The default value is @samp{128}.
 @end table
 
-@node Bchscheme Environment Variables, Runtime Environment Variables, Microcode Environment Variables, Environment Variables
-@subsection Environment Variables for @command{bchscheme}
-
-These environment variables are referred to by @command{bchscheme}
-(@emph{not} by @command{scheme}).
-
-@table @asis
-@item @env{MITSCHEME_GC_DIRECTORY}
-@nvindex MITSCHEME_GC_DIRECTORY
-The directory in which @acronym{GC} files are written.  Overridden by
-@option{--gc-directory}.  The default for this variable is the standard
-temporary directory (see @env{TMPDIR} in @pxref{Runtime Environment
-Variables}).
-
-@item @env{MITSCHEME_GC_FILE} (default: @file{GCXXXXXX})
-@nvindex MITSCHEME_GC_FILE
-The name of the file to use for garbage collection.  If it ends in 6
-@samp{X}s, the @samp{X}s are replaced by a letter and process id of the
-scheme process, thus generating a unique name.  Overridden by
-@option{--gc-file}.
-
-@item @env{MITSCHEME_GC_START_POSITION} (default: @samp{0})
-@nvindex MITSCHEME_GC_START_POSITION
-The first position in the @acronym{GC} file to use.  Overridden by
-@option{--gc-start-position}.
-
-@item @env{MITSCHEME_GC_END_POSITION} (default: @var{start-position}+@var{heap-size})
-@nvindex MITSCHEME_GC_END_POSITION
-The last position in the @acronym{GC} file to use.  Overridden by
-@option{--gc-end-position}.
-
-@item @env{MITSCHEME_GC_WINDOW_SIZE} (default: @samp{16})
-@nvindex MITSCHEME_GC_WINDOW_SIZE
-The size in blocks of windows into new space (in the @acronym{GC} file).
-Overridden by @option{--gc-window-size}.
-@end table
-
-@noindent
-The following environment variables are only used by an experimental
-version of Bchscheme that uses unix System V-style shared memory, and
-then only if the @file{gcdrone} program is installed:
-
-@table @asis
-@item @env{MITSCHEME_GC_DRONE} (default: @file{gcdrone})
-@nvindex MITSCHEME_GC_DRONE
-The program to use as the @acronym{I/O} drone during garbage collection.
-Overridden by @option{--gc-drone}.
-
-@item @env{MITSCHEME_GC_READ_OVERLAP} (default: @samp{0})
-@nvindex MITSCHEME_GC_READ_OVERLAP
-The maximum number of simultaneous read operations.
-Overridden by @option{--gc-read-overlap}.
-
-@item @env{MITSCHEME_GC_WRITE_OVERLAP} (default: @samp{0})
-@nvindex MITSCHEME_GC_WRITE_OVERLAP
-The maximum number of simultaneous write operations.
-Overridden by @option{--gc-write-overlap}.
-@end table
-
-@node Runtime Environment Variables, Edwin Environment Variables, Bchscheme Environment Variables, Environment Variables
+@node Runtime Environment Variables, Edwin Environment Variables, Microcode Environment Variables, Environment Variables
 @subsection Environment Variables for the Runtime System
 
 These environment variables are referred to by the runtime system.
 
-@table @asis
-@item @env{HOME}
+@table @env
+@item HOME
+@itemx HOMEDRIVE
+@itemx HOMEPATH
 @nvindex HOME
+@nvindex HOMEDRIVE
+@nvindex HOMEPATH
 Directory in which to look for init files.  E.g.@: @file{c:\users\joe}
-or @file{/home/joe}.  Under Windows NT/2000/XP, the environment variables
+or @file{/home/joe}.  Under Windows, the environment variables
 @env{HOMEDRIVE} and @env{HOMEPATH}, set by the operating system, are
 used instead.  Under unix, @env{HOME} is set by the login shell.
 
-@item @env{TMPDIR}
-@itemx @env{TEMP}
-@itemx @env{TMP}
+@item TMPDIR
+@itemx TEMP
+@itemx TMP
 @nvindex TMPDIR
 @nvindex TEMP
 @nvindex TMP
@@ -1139,19 +783,21 @@ under unix, @file{/var/tmp}, @file{/usr/tmp}, @file{/tmp}; under
 Windows, @file{\temp}, @file{\tmp}, and @file{\} (all on the system
 drive).
 
-@item @env{MITSCHEME_INF_DIRECTORY} (default: @file{SRC} on the library path)
+@item MITSCHEME_INF_DIRECTORY
 @nvindex MITSCHEME_INF_DIRECTORY
 Directory containing the debugging information files for the Scheme
 system.  Should contain subdirectories corresponding to the
 subdirectories in the source tree.  For example, if its value is
 @file{f:\random}, runtime system debugging files will be expected in
 @file{f:\random\runtime}, while Edwin debugging files will be expected
-in @file{f:\random\edwin}.
+in @file{f:\random\edwin}.  By default, the information is searched
+for on the library path.
 
-@item @env{MITSCHEME_LOAD_OPTIONS} (default: @file{optiondb.scm} on the library path)
+@item MITSCHEME_LOAD_OPTIONS
 @nvindex MITSCHEME_LOAD_OPTIONS
 Specifies the location of the options database file used by the
-@code{load-option} procedure.
+@code{load-option} procedure.  The default is  @file{optiondb.scm} on
+the library path.
 @end table
 
 @node Edwin Environment Variables, Windows Environment Variables, Runtime Environment Variables, Environment Variables
@@ -1159,69 +805,67 @@ Specifies the location of the options database file used by the
 
 These environment variables are referred to by Edwin.
 
-@table @asis
-@item @env{EDWIN_BINARY_DIRECTORY} (default: @file{edwin/autoload} on the library path)
+@table @env
+@item EDWIN_BINARY_DIRECTORY
 @nvindex EDWIN_BINARY_DIRECTORY
 Directory where Edwin expects to find files providing autoloaded
-facilities.
+facilities.  The default is @file{edwin} on the library path.
 
-@item @env{EDWIN_INFO_DIRECTORY} (default: @file{edwin/info} on the library path)
+@item EDWIN_INFO_DIRECTORY
 @nvindex EDWIN_INFO_DIRECTORY
 Directory where Edwin expects to find files for the `info' documentation
-subsystem.
+subsystem.  The default is @file{edwin/info} on the library path.
 
-@item @env{EDWIN_ETC_DIRECTORY} (default: @file{edwin/etc} on the library path)
+@item EDWIN_ETC_DIRECTORY
 @nvindex EDWIN_ETC_DIRECTORY
 Directory where Edwin expects to find utility programs and documentation
-strings.
+strings.  The default is @file{edwin} on the library path.
 
-@item @env{ESHELL}
+@item ESHELL
 @nvindex ESHELL
 Filename of the shell program to use in shell buffers.  If not defined,
 the @env{SHELL} environment variable is used instead.
 
-@item @env{SHELL} (default: @file{/bin/sh} (unix), @file{cmd.exe} (PC))
+@item SHELL
 @nvindex SHELL
 Filename of the shell program to use in shell buffers and when executing
 shell commands.  Used to initialize the @code{shell-path-name} editor
-variable.
+variable.  The default is @file{/bin/sh} on unix systems and
+@file{cmd.exe} on Windows systems.
 
-@item @env{PATH}
+@item PATH
 @nvindex PATH
 Used to initialize the @code{exec-path} editor variable, which is
 subsequently used for finding programs to be run as subprocesses.
 
-@item @env{DISPLAY}
+@item DISPLAY
 @nvindex DISPLAY
-Used when Edwin runs under unix and uses X11.
-Specifies the display on which Edwin will create windows.
+Used when Edwin runs under unix and uses X11.  Specifies the display
+on which Edwin will create windows.
 
-@item @env{TERM}
+@item TERM
 @nvindex TERM
-Used when Edwin runs under unix on a terminal.
-Terminal type.
+Used when Edwin runs under unix on a terminal.  Terminal type.
 
-@item @env{LINES} (default: auto-sense)
+@item LINES
 @nvindex LINES
-Used when Edwin runs under unix on a terminal.
-Number of text lines on the screen, for systems that don't support
-@samp{TIOCGWINSZ}.
+Used when Edwin runs under unix on a terminal.  Number of text lines
+on the screen, for systems that don't support @samp{TIOCGWINSZ}.
 
-@item @env{COLUMNS} (default: auto-sense)
+@item COLUMNS
 @nvindex COLUMNS
-Used when Edwin runs under unix on a terminal.
-Number of text columns on the screen, for systems that don't support
-@samp{TIOCGWINSZ}.
+Used when Edwin runs under unix on a terminal.  Number of text columns
+on the screen, for systems that don't support @samp{TIOCGWINSZ}.
 @end table
 
-@node Windows Environment Variables, , Edwin Environment Variables, Environment Variables
+@node Windows Environment Variables,  , Edwin Environment Variables, Environment Variables
 @subsection Environment Variables for Microsoft Windows
 
 These environment variables are specific to the Microsoft Windows
 implementation.
 
-@table @asis
-@item @env{MITSCHEME_FONT} (default: determined by operating system)
+@table @env
+@item MITSCHEME_FONT
 @nvindex MITSCHEME_FONT
 @cindex fonts
 A string specifying a font name and characteristics, for example
@@ -1234,7 +878,7 @@ variable-width fonts are not drawn correctly.
 Once in Edwin, the font can be changed with the @code{set-font} and
 @code{set-default-font} commands.
 
-@item @env{MITSCHEME_GEOMETRY} (default: @samp{-1,-1,-1,-1})
+@item MITSCHEME_GEOMETRY
 @nvindex MITSCHEME_GEOMETRY
 @cindex window position
 Four integers separated by commas or spaces that specify the placement
@@ -1243,29 +887,30 @@ and size of the MIT/GNU Scheme window as a
 screen pixels, and @samp{-1} means allow the system to choose this
 parameter.  E.g.@: @samp{-1,-1,500,300} places a 500 by 300 pixel window
 at some system-determined position on the screen.  The width and height
-include the window border and title.
+include the window border and title.  The default value is
+@samp{-1,-1,-1,-1}.
 
-@item @env{MITSCHEME_FOREGROUND} (default: according to desktop color scheme)
+@item MITSCHEME_FOREGROUND
 @nvindex MITSCHEME_FOREGROUND
 @cindex window color
-A value specifying the window
-text color.  The color is specified as hex blue, green and red values
-(@emph{not} RGB): e.g.@: @code{0xff0000} for blue.
+A value specifying the window text color.  The color is specified as
+hex blue, green and red values (@emph{not} RGB): e.g.@:
+@code{0xff0000} for blue.
 
-@item @env{MITSCHEME_BACKGROUND} (default: according to desktop color scheme)
+@item MITSCHEME_BACKGROUND
 @nvindex MITSCHEME_BACKGROUND
 A value specifying the window background color.  See
 @env{MITSCHEME_FOREGROUND}.
 
-@item @env{HOMEDRIVE}
-@itemx @env{HOMEPATH}
+@item HOMEDRIVE
+@itemx HOMEPATH
 @nvindex HOMEDRIVE
 @nvindex HOMEPATH
 These variables are used together to indicate the user's home
 directory.  This is the preferred way to specify the home directory.
 
-@item @env{USERNAME}
-@itemx @env{USER}
+@item USERNAME
+@itemx USER
 @nvindex USERNAME
 @nvindex USER
 Specifies the login name of the user running Scheme.  This is used for
@@ -1274,18 +919,11 @@ is used if @env{USERNAME} is not defined.  If neither of these
 variables is defined, an error is signalled when the username is
 required.
 
-@item @env{USERDIR}
+@item USERDIR
 @nvindex USERDIR
-Specifies a directory that contains the home directories of users.  One
-of the places in which Scheme looks for the user's home directory, by
-searching for a subdirectory with the user's login name.
-@c
-@c @item @env{MITSCHEME_TRAP_ALT_TAB} (default: @samp{false})
-@c @itemx @env{MITSCHEME_TRAP_ALT_ESCAPE} (default: @samp{false})
-@c @nvindex MITSCHEME_TRAP_ALT_TAB
-@c @nvindex MITSCHEME_TRAP_ALT_ESCAPE
-@c Boolean option specifying the handling of system command accelerators.
-@c These options do not actually work.
+Specifies a directory that contains the home directories of users.
+One of the places in which Scheme looks for the user's home directory,
+by searching for a subdirectory with the user's login name.
 @end table
 
 @node Starting Scheme from Microsoft Windows, Leaving Scheme, Environment Variables, Running Scheme
@@ -1302,17 +940,17 @@ read about it in the system help.
 
 @itemize @bullet
 @item
-Under Windows NT, Windows 2000, or Windows XP, shortcuts can be
-@emph{common} or @emph{personal}.  When setting common shortcuts it is
-important to make the shortcut properties independent of the vagaries
-of the environment of the user who is running them.
+Under Windows, shortcuts can be @emph{common} or @emph{personal}.
+When setting common shortcuts it is important to make the shortcut
+properties independent of the vagaries of the environment of the user
+who is running them.
 
 @item
 Give the shortcut an accurate @var{Description}.
 
 @item
-Include absolute pathnames to @command{scheme.exe} and
-@command{bchschem.exe} in the shortcut @var{Command line}.
+Use an absolute pathname to @command{mit-scheme.exe} in the shortcut
+@var{Command line}.
 
 @item
 If you specify the @option{--library} command-line option then you do
@@ -1321,19 +959,16 @@ variable.
 
 @item
 Set the shortcut's @var{Working Directory} to something sensible.  On
-Windows NT/2000/XP you can use @samp{%HOMEDRIVE%%HOMEPATH%} to make
-Scheme start up in the user's home directory.  On Windows 9x/ME you can
-use @samp{%HOME%} to achieve the same effect, provided that you have
-set the @env{HOME} environment variable as we recommend.
+Windows you can use @samp{%HOMEDRIVE%%HOMEPATH%} to make Scheme start
+up in the user's home directory.
 
 @item
 There are several icons available in the Scheme executable---choose
 one that best represents the options given on the command line.
 
 @item
-Specifying a band that contains Edwin is not sufficient to invoke the
-editor.  You also have to put @option{--edit} at the end of the command
-line.
+If you want the shortcut to start up Edwin automatically, put
+@option{--edit} at the end of the command line.
 @end itemize
 
 @node Leaving Scheme,  , Starting Scheme from Microsoft Windows, Running Scheme
@@ -1500,9 +1135,9 @@ Here are the definitions of the more common interrupt keys; on unix,
 type @kbd{C-c ?} for more possibilities.  Note that in any given
 implementation, only a subset of the following keys is available.
 
-@table @asis
-@item @kbd{C-c C-c}
-@itemx @kbd{C-g}
+@table @kbd
+@item C-c C-c
+@itemx C-g
 @kindex C-c C-c
 @kindex C-g
 Abort whatever Scheme evaluation is currently running and return to the
@@ -1514,8 +1149,8 @@ equivalent to evaluating
 (cmdl-interrupt/abort-top-level)
 @end example
 
-@item @kbd{C-c C-x}
-@itemx @kbd{C-x}
+@item C-c C-x
+@itemx C-x
 @kindex C-c C-x
 @kindex C-x
 Abort whatever Scheme evaluation is currently running and return to the
@@ -1527,8 +1162,8 @@ equivalent to evaluating
 (cmdl-interrupt/abort-nearest)
 @end example
 
-@item @kbd{C-c C-u}
-@itemx @kbd{C-u}
+@item C-c C-u
+@itemx C-u
 @kindex C-c C-u
 @kindex C-u
 Abort whatever Scheme evaluation is running and go up one level.  If you
@@ -1540,8 +1175,8 @@ level 1.  If no evaluation is running, this is equivalent to evaluating
 (cmdl-interrupt/abort-previous)
 @end example
 
-@item @kbd{C-c C-b}
-@itemx @kbd{C-b}
+@item C-c C-b
+@itemx C-b
 @kindex C-c C-b
 @kindex C-b
 @cindex breakpoint
@@ -1557,25 +1192,25 @@ evaluating
 @noindent
 in that @acronym{REPL} at any time.
 
-@item @kbd{C-c q}
+@item C-c q
 @kindex C-c q
 @findex exit
 Similar to typing @samp{(exit)} at the @acronym{REPL}, except that it
 works even if Scheme is running an evaluation, and does not request
 confirmation.
 
-@item @kbd{C-c z}
+@item C-c z
 @kindex C-c z
 @findex quit
 Similar to typing @samp{(quit)} at the @acronym{REPL}, except that it
 works even if Scheme is running an evaluation.
 
-@item @kbd{C-c i}
+@item C-c i
 @kindex C-c i
 Ignore the interrupt.  Type this if you made a mistake and didn't
 really mean to type @kbd{C-c}.
 
-@item @kbd{C-c ?}
+@item C-c ?
 @kindex C-c ?
 Print help information.  This will describe any other options not
 documented here.
@@ -1587,7 +1222,7 @@ documented here.
 Another way to exit a @acronym{REPL} is to use the @code{restart}
 procedure:
 
-@deffn {procedure+} restart [k]
+@deffn procedure restart [k]
 @cindex REPL, restarting from
 This procedure selects and invokes a @dfn{restart method}.  The list of
 restart methods is different for each @acronym{REPL} and for each error;
@@ -1687,7 +1322,7 @@ which it was closed by evaluating
 
 Here is the procedure that changes the @acronym{REPL}'s environment:
 
-@deffn {procedure+} ge environment
+@deffn procedure ge environment
 Changes the current @acronym{REPL} environment to be @var{environment}
 (@code{ge} stands for ``Goto Environment'').  @var{Environment} is
 allowed to be a procedure as well as an environment object.  If it is a
@@ -1695,7 +1330,7 @@ procedure, then the closing environment of that procedure is used in its
 place.
 @end deffn
 
-@deffn {procedure+} pe
+@deffn procedure pe
 This procedure is useful for finding out which environment you are in
 (@code{pe} stands for ``Print Environment'').  If the current
 @acronym{REPL} environment belongs to a package, then @code{pe} returns
@@ -1709,7 +1344,7 @@ returned.
 
 To load files of Scheme code, use the procedure @code{load}:
 
-@deffn {procedure} load filename [environment [syntax-table [purify?]]]
+@deffn procedure load filename [environment [syntax-table [purify?]]]
 @var{Filename} may be a string naming a file, or a list of strings
 naming multiple files.  @var{Environment}, if given, is the environment
 to evaluate the file in; if not given the current @acronym{REPL}
@@ -1734,7 +1369,7 @@ pathname type @code{"com"}.  (See the description of
 Components of Pathnames, scheme, MIT/GNU Scheme Reference Manual}.)
 @end deffn
 
-@defvr {variable+} load-noisily?
+@defvr variable load-noisily?
 If @code{load-noisily?} is set to @code{#t}, @code{load} will print the
 value of each expression in the file as it is evaluated.  Otherwise,
 nothing is printed except for the value of the last expression in the
@@ -1752,7 +1387,7 @@ procedure @code{cd}; @pxref{Working Directory, , , scheme, MIT/GNU
 Scheme Reference Manual}.  Files may be loaded when Scheme first starts;
 see the @option{--load} command-line option for details.
 
-@deffn {procedure+} load-option symbol [no-error?]
+@deffn procedure load-option symbol [no-error?]
 Loads the option specified by @var{symbol}; if already loaded, does
 nothing.  Returns @var{symbol}; if there is no such option, an error is
 signalled.  However, if @var{no-error?} is specified and true, no error
@@ -1773,10 +1408,6 @@ Reference Manual}.
 @item gdbm
 Support to access @code{gdbm} databases.  Undocumented; see the source
 files @file{runtime/gdbm.scm} and @file{microcode/prgdbm.c}.
-
-@item hash-table
-The hash-table data type.  @xref{Hash Tables, , , scheme, MIT/GNU Scheme
-Reference Manual}.
 
 @item ordered-vector
 Support to search and do completion on vectors of ordered elements.
@@ -1820,7 +1451,7 @@ normally this file consists of a series of calls to the procedure
 (further-load-options standard-load-options)
 @end example
 
-@deffn {procedure+} define-load-option symbol thunk @dots{}
+@deffn procedure define-load-option symbol thunk @dots{}
 Each @var{thunk} must be a procedure of no arguments.  Defines the load
 option named @var{symbol}.  When the procedure @code{load-option} is
 called with @var{symbol} as an argument, the @var{thunk} arguments are
@@ -1840,7 +1471,7 @@ the running process.  The file @file{runtime.com} that is loaded by the
 microcode is just such a band.  To make your own band, use the procedure
 @code{disk-save}.
 
-@deffn {procedure+} disk-save filename [identify]
+@deffn procedure disk-save filename [identify]
 Causes a band to be written to the file specified by @var{filename}.
 The optional argument @var{identify} controls what happens when that
 band is restored, as follows:
@@ -1880,7 +1511,7 @@ This section describes procedures that control garbage collection.
 @xref{Memory Usage}, for a discussion of how MIT/GNU Scheme uses
 memory.
 
-@deffn {procedure+} gc-flip [safety-margin]
+@deffn procedure gc-flip [safety-margin]
 Forces a garbage collection to occur.  Returns the number of words of
 storage available after collection, an exact non-negative integer.
 
@@ -1893,7 +1524,7 @@ under Emacs.)  @strong{Note well} that you should not specify
 a value that is too small, you can put Scheme in an unusable state.
 @end deffn
 
-@deffn {procedure+} purify object [pure-space? [queue?]]
+@deffn procedure purify object [pure-space? [queue?]]
 Moves @var{object} from the heap into constant space.  Has no effect if
 @var{object} is already stored in constant space.  @var{Object} is moved
 in its entirety; if it is a compound object such as a list, a vector, or
@@ -1928,14 +1559,14 @@ together in one garbage collection, while if done separately they would
 each require their own garbage collection.
 @end deffn
 
-@deffn {procedure+} flush-purification-queue!
+@deffn procedure flush-purification-queue!
 Forces any pending queued purification requests to be processed.  This
 examines the @code{purify} queue, and if it contains any requests,
 forces a garbage collection to process them.  If the queue is empty,
 does nothing.
 @end deffn
 
-@deffn {procedure+} print-gc-statistics
+@deffn procedure print-gc-statistics
 Prints out information about memory allocation and the garbage
 collector.  The information is printed to the current output port.
 Shows how much space is ``in use'' and how much is ``free'', separately
@@ -1969,7 +1600,7 @@ GC #1: took: 0.13 (81%) CPU time, 0.15 (1%) real time; free: 207210
 @end group
 @end example
 
-@deffn {procedure+} set-gc-notification! [on?]
+@deffn procedure set-gc-notification! [on?]
 Controls whether the user is notified of garbage collections.  If
 @var{on?} is true, notification is enabled; otherwise notification is
 disabled.  If @var{on?} is not given, it defaults to @code{#t}.  When
@@ -1994,7 +1625,7 @@ running with a larger heap.  A rough rule of thumb to halve the
 adjust the heap size without restarting Scheme.
 @end deffn
 
-@deffn {procedure+} toggle-gc-notification!
+@deffn procedure toggle-gc-notification!
 Toggles @acronym{GC} notification on and off.  If @acronym{GC}
 notification is turned on, turns it off; otherwise turns it on.
 @end deffn
@@ -2014,7 +1645,7 @@ the @option{--compiler} command-line option is specified.
 @node Compilation Procedures, Declarations, Compiling Programs, Compiling Programs
 @section Compilation Procedures
 
-@deffn {procedure+} cf filename [destination]
+@deffn procedure cf filename [destination]
 This is the program that transforms a source-code file into native-code
 binary form.  If @var{destination} is not given, as in
 
@@ -2083,7 +1714,7 @@ the @file{.bci} file and writes it back out as a @file{.bif} file.  The
 @file{.bif} file remains after Scheme exits.  The time interval and the
 behavior are controlled by the following variables.
 
-@defvr {variable+} *save-uncompressed-files?*
+@defvr variable *save-uncompressed-files?*
 This variable affects what happens when @file{.bci} files are
 uncompressed.  It allows a trade-off between performance and disk space.
 There are three possible values:
@@ -2109,14 +1740,14 @@ delete the @file{.bif} files.  They will be regenerated as needed.
 @end table
 @end defvr
 
-@defvr {variable+} *uncompressed-file-lifetime*
+@defvr variable *uncompressed-file-lifetime*
 The minimum length of time that a temporary uncompressed version of
 a @file{.bci} file will stay on disk after it is last used.
 The time is in milliseconds; the default is @samp{300000} (five
 minutes).
 @end defvr
 
-@defvr {variable+} load-debugging-info-on-demand?
+@defvr variable load-debugging-info-on-demand?
 If this variable is @file{#f}, then printing a compiled procedure
 will print the procedure's name only if the debugging information for
 that procedure is already loaded.  Otherwise, it will force
@@ -2124,7 +1755,7 @@ loading of the debugging information.
 The default value is @code{#f}.
 @end defvr
 
-@deffn {procedure+} sf filename [destination]
+@deffn procedure sf filename [destination]
 @code{sf} is the program that transforms a source-code file into binary
 SCode form; it is used on machines that do not support native-code
 compilation.  It performs numerous optimizations that can make your
@@ -2210,20 +1841,20 @@ definitions.  In fact, the compiler will perform full beta conversion,
 with automatic renaming, if you request it.  Here are the relevant
 declarations:
 
-@deffn {declaration+} integrate name @dots{}
+@deffn declaration integrate name @dots{}
 The variables @var{name}s must be defined in the same file as this
 declaration.  Any reference to one of the named variables that appears
 in the same block as the declaration, or one of its descendant blocks,
 will be replaced by the corresponding binding's value expression.
 @end deffn
 
-@deffn {declaration+} integrate-operator name @dots{}
+@deffn declaration integrate-operator name @dots{}
 Similar to the @code{integrate} declaration, except that it only
 substitutes for references that appear in the operator position of a
 combination.  All other references are ignored.
 @end deffn
 
-@deffn {declaration+} integrate-external filename
+@deffn declaration integrate-external filename
 Causes the compiler to use the top-level integrations provided by
 @var{filename}.  @var{filename} should not specify a file type, and the
 source-code file that it names must have been previously processed by
@@ -2375,7 +2006,7 @@ respectively.  All the other cases are not expanded but are handled by
 the original, general @code{map} procedure, which is less efficient
 because it must handle a variable number of arguments.
 
-@deffn {declaration+} replace-operator name @dots{}
+@deffn declaration replace-operator name @dots{}
 
 The syntax of this declaration is
 
@@ -2561,7 +2192,7 @@ Replacements:
 @end group
 @end example
 
-@deffn {declaration+} reduce-operator name @dots{}
+@deffn declaration reduce-operator name @dots{}
 The general format of the declaration is (brackets denote optional
 elements):
 
@@ -2884,7 +2515,7 @@ assumptions.  If you know that these conditions hold, the following
 declarations can speed up and reduce the size of a program that uses
 global variables.
 
-@deffn {declaration+} ignore-reference-traps variables
+@deffn declaration ignore-reference-traps variables
 This declaration tells the compiler that it need not check for
 reference-trap objects when referring to the given @var{variables}.
 If any of the @var{variables} is unbound or unassigned then a variable
@@ -2896,7 +2527,7 @@ cause some `unrelated' variable to mysteriously become unbound or
 unassigned.
 @end deffn
 
-@deffn {declaration+} ignore-assignment-traps variables
+@deffn declaration ignore-assignment-traps variables
 This declaration tells the compiler that it need not check for
 reference-trap objects when assigning to the given @var{variables}.  An
 assignment to a variable that ignores assignment traps can cause a great
@@ -2971,7 +2602,7 @@ kinds of number.
 @cindex fixnum (defn)
 A @dfn{fixnum} is an exact integer that is small enough to fit in a
 machine word.  In MIT/GNU Scheme, fixnums are 26 bits on 32-bit
-machines, and 56 bits on 64-bit machines; it is reasonable to assume
+machines, and 58 bits on 64-bit machines; it is reasonable to assume
 that fixnums are at least 24 bits.  Fixnums are signed; they are encoded
 using 2's complement.
 
@@ -3094,15 +2725,15 @@ disadvantages in another.
 
 The flonum vector operations are:
 
-@deffn {procedure+} flo:vector-cons n
+@deffn procedure flo:vector-cons n
 Create a flonum vector of length @var{n}.  The contents of the vector
 are arbitrary and might not be valid floating-point numbers.  The
 contents should not be used until initialized.
 @end deffn
 
-@deffn {procedure+} flo:vector-ref flonum-vector index
-@deffnx {procedure+} flo:vector-set! flonum-vector index value
-@deffnx {procedure+} flo:vector-length flonum-vector
+@deffn procedure flo:vector-ref flonum-vector index
+@deffnx procedure flo:vector-set! flonum-vector index value
+@deffnx procedure flo:vector-length flonum-vector
 These operations are analogous to the ordinary vector operations.
 @end deffn
 
@@ -3537,7 +3168,7 @@ command prints a brief summary of the debugger's commands.
 This section describes additional commands that are useful for
 debugging.
 
-@deffn {procedure+} bkpt datum argument @dots{}
+@deffn procedure bkpt datum argument @dots{}
 Sets a breakpoint.  When the breakpoint is encountered, @var{datum} and
 the @var{argument}s are typed (just as for @code{error}) and a
 read-eval-print loop is entered.  The environment of the read-eval-print
@@ -3572,7 +3203,7 @@ bar
 @end example
 @end deffn
 
-@deffn {procedure+} pp object [output-port [as-code?]]
+@deffn procedure pp object [output-port [as-code?]]
 The @code{pp} procedure is described in @ref{Output Procedures, , ,
 scheme, MIT/GNU Scheme Reference Manual}.  However, since this is a very
 useful debugging tool, we also mention it here.  @code{pp} provides two
@@ -3618,7 +3249,7 @@ the fields of the host object from the above example:
 @end enumerate
 @end deffn
 
-@deffn {procedure+} pa procedure
+@deffn procedure pa procedure
 @code{pa} prints the arguments of @var{procedure}.  This can be used to
 remind yourself, for example, of the correct order of the arguments to a
 procedure.
@@ -3641,7 +3272,7 @@ for-all?
 @end example
 @end deffn
 
-@deffn {procedure+} where [obj]
+@deffn procedure where [obj]
 @cindex environments, examining
 @cindex inspecting environments
 @cindex examining environments
@@ -3658,7 +3289,7 @@ user examine the closing environment of the procedure.  This is useful
 for debugging procedure arguments and values.
 @end deffn
 
-@deffn {procedure+} apropos string [environment [search-parents?]]
+@deffn procedure apropos string [environment [search-parents?]]
 @cindex finding procedures
 @cindex procedures, finding
 @cindex help
@@ -3702,7 +3333,7 @@ Giving advice to procedures is a powerful debugging technique.
 procedures.
 Note that the advice system only works for interpreted procedures.
 
-@deffn {procedure+} trace-entry procedure
+@deffn procedure trace-entry procedure
 Causes an informative message to be printed whenever
 @var{procedure} is entered.  The message is of the form
 
@@ -3731,7 +3362,7 @@ to the procedure.
 @end example
 @end deffn
 
-@deffn {procedure+} trace-exit procedure
+@deffn procedure trace-exit procedure
 Causes an informative message to be printed when @var{procedure}
 terminates.  The message contains the procedure, its argument values,
 and the value returned by the procedure.
@@ -3752,8 +3383,8 @@ and the value returned by the procedure.
 @end example
 @end deffn
 
-@deffn {procedure+} trace-both procedure
-@deffnx {procedure+} trace procedure
+@deffn procedure trace-both procedure
+@deffnx procedure trace procedure
 Equivalent to calling both @code{trace-entry} and @code{trace-exit} on
 @var{procedure}.  @code{trace} is the same as @code{trace-both}.
 
@@ -3779,23 +3410,23 @@ Equivalent to calling both @code{trace-entry} and @code{trace-exit} on
 @end example
 @end deffn
 
-@deffn {procedure+} untrace-entry [procedure]
+@deffn procedure untrace-entry [procedure]
 Stops tracing the entry of @var{procedure}.  If @var{procedure} is not
 given, the default is to stop tracing the entry of all entry-traced
 procedures.
 @end deffn
 
-@deffn {procedure+} untrace-exit [procedure]
+@deffn procedure untrace-exit [procedure]
 Stops tracing the exit of @var{procedure}.  If @var{procedure} is not
 given, the default is all exit-traced procedures.
 @end deffn
 
-@deffn {procedure+} untrace [procedure]
+@deffn procedure untrace [procedure]
 Stops tracing both the entry to and the exit from @var{procedure}.  If
 @var{procedure} is not given, the default is all traced procedures.
 @end deffn
 
-@deffn {procedure+} break-entry procedure
+@deffn procedure break-entry procedure
 Like @code{trace-entry} with the additional effect that a breakpoint is
 entered when @var{procedure} is invoked.  Both @var{procedure}
 and its arguments can be accessed by calling the procedures
@@ -3803,7 +3434,7 @@ and its arguments can be accessed by calling the procedures
 @code{continue} to continue from a breakpoint.
 @end deffn
 
-@deffn {procedure+} break-exit procedure
+@deffn procedure break-exit procedure
 Like @code{trace-exit}, except that a breakpoint is entered just prior
 to leaving @var{procedure}.  @var{Procedure}, its
 arguments, and the result can be accessed by calling the procedures
@@ -3811,25 +3442,25 @@ arguments, and the result can be accessed by calling the procedures
 @code{restart} or @code{continue} to continue from a breakpoint.
 @end deffn
 
-@deffn {procedure+} break-both procedure
-@deffnx {procedure+} break procedure
+@deffn procedure break-both procedure
+@deffnx procedure break procedure
 Sets a breakpoint at the beginning and end of @var{procedure}.  This is
 @code{break-entry} and @code{break-exit} combined.
 @end deffn
 
-@deffn {procedure+} unbreak [procedure]
+@deffn procedure unbreak [procedure]
 Discontinues the entering of a breakpoint on the entry to and exit from
 @var{procedure}.  If @var{procedure} is not given, the default is
 all breakpointed procedures.
 @end deffn
 
-@deffn {procedure+} unbreak-entry [procedure]
+@deffn procedure unbreak-entry [procedure]
 Discontinues the entering of a breakpoint on the entry to
 @var{procedure}.  If @var{procedure} is not given, the default is all
 entry-breakpointed procedures.
 @end deffn
 
-@deffn {procedure+} unbreak-exit [procedure]
+@deffn procedure unbreak-exit [procedure]
 Discontinues the entering of a breakpoint on the exit from
 @var{procedure}.  If @var{procedure} is not given, the default is all
 exit-breakpointed procedures.
@@ -3839,16 +3470,16 @@ The following three procedures are valid only within the dynamic extent
 of a breakpoint.  In other words, don't call them unless you are stopped
 inside a breakpoint.
 
-@deffn {procedure+} *proc*
+@deffn procedure *proc*
 Returns the procedure in which the breakpoint has stopped.
 @end deffn
 
-@deffn {procedure+} *args*
+@deffn procedure *args*
 Returns the arguments to the procedure in which the breakpoint has
 stopped.  The arguments are returned as a newly allocated list.
 @end deffn
 
-@deffn {procedure+} *result*
+@deffn procedure *result*
 Returns the result yielded by the procedure in which the breakpoint has
 stopped.  This is valid only when in an exit breakpoint.
 @end deffn
@@ -3868,37 +3499,37 @@ implemented by means of the more general advice procedures, so removing
 advice from an advised procedure will also remove traces and
 breakpoints.
 
-@deffn {procedure+} advise-entry procedure advice
+@deffn procedure advise-entry procedure advice
 @var{Advice} must be an entry-advice procedure.  @var{Advice} is
 attached to @var{procedure}, so that whenever @var{procedure} is
 entered, @var{advice} is called.
 @end deffn
 
-@deffn {procedure+} advise-exit procedure advice
+@deffn procedure advise-exit procedure advice
 @var{Advice} must be an exit-advice procedure.  @var{Advice} is attached
 to @var{procedure}, so that whenever @var{procedure} returns,
 @var{advice} is called.
 @end deffn
 
-@deffn {procedure+} advice procedure
+@deffn procedure advice procedure
 Returns the advice procedures, if any, that are attached to
 @var{procedure}.  This is returned as a list of two lists: the first
 list is all of the entry-advice procedures attached to @var{procedure},
 and the second is all of the exit-advice procedures.
 @end deffn
 
-@deffn {procedure+} unadvise-entry [procedure]
+@deffn procedure unadvise-entry [procedure]
 Removes all entry-advice procedures from @var{procedure}.  If
 @var{procedure} is not given, the default is all entry-advised
 procedures.
 @end deffn
 
-@deffn {procedure+} unadvise-exit [procedure]
+@deffn procedure unadvise-exit [procedure]
 Removes exit-advice procedures from @var{procedure}.  If @var{procedure}
 is not given, the default is all exit-advised procedures.
 @end deffn
 
-@deffn {procedure+} unadvise [procedure]
+@deffn procedure unadvise [procedure]
 Removes all advice procedures from @var{procedure}. This is a
 combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @var{procedure} is not given, the default is all advised procedures.
@@ -3908,16 +3539,15 @@ combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @chapter GNU Emacs Interface
 
 There is an interface library, called @file{xscheme}, distributed with
-MIT/GNU Scheme and GNU Emacs, which facilitates running
-Scheme as a subprocess of Emacs.  If you wish to use this interface,
-please install the version of @file{xscheme.el} that comes with
-MIT/GNU Scheme, as it is guaranteed to be correct for your version
-of Scheme.
+MIT/GNU Scheme and GNU Emacs, which facilitates running Scheme as a
+subprocess of Emacs.  If you are using a recent version of GNU Emacs,
+say version 22 or later, use the @file{xscheme} file that comes with
+it.  Otherwise use the one that is in the Scheme distribution.
 
 This interface works under unix only, because it requires unix signals
-for its operation.  Porting it to either Windows would require
-reimplementing the interface to eliminate the use of signals.  We have
-no plans to do this.
+for its operation.  Porting it to Windows would require reimplementing
+the interface to eliminate the use of signals.  We have no plans to do
+this.
 
 @findex run-scheme
 @opindex --emacs
@@ -4072,15 +3702,15 @@ in Emacs Lisp.  This manual does not discuss customization of Edwin.
 To use Edwin, start Scheme with the following command-line options:
 
 @example
-scheme --edwin --edit
+mit-scheme --edit
 @end example
 
 @noindent
 Alternatively, you can load Edwin by giving the @option{--edwin}
 command-line option and then calling the procedure @code{edit}:
 
-@deffn {procedure+} edit
-@deffnx {procedure+} edwin
+@deffn procedure edit
+@deffnx procedure edwin
 Enter the Edwin text editor.  If entering for the first time, the editor
 is initialized (by calling @code{create-editor} with no arguments).
 Otherwise, the previously-initialized editor is reentered.
@@ -4088,7 +3718,7 @@ Otherwise, the previously-initialized editor is reentered.
 The procedure @code{edwin} is an alias for @code{edit}.
 @end deffn
 
-@defvr {variable+} inhibit-editor-init-file?
+@defvr variable inhibit-editor-init-file?
 When Edwin is first initialized, it loads your init file (called
 @file{~/.edwin} under unix, @file{edwin.ini} on PCs) if you have one.
 If the Scheme variable @code{inhibit-editor-init-file?} is true,
@@ -4099,7 +3729,7 @@ Note that you can set this variable in your Scheme init file
 (@pxref{Customizing Scheme}).
 @end defvr
 
-@deffn {procedure+} create-editor arg @dots{}
+@deffn procedure create-editor arg @dots{}
 Initializes Edwin, or reinitializes it if already initialized.
 @code{create-editor} is normally invoked automatically by @code{edit}.
 
@@ -4125,7 +3755,7 @@ On the other hand, if @var{arg}s are given, they are used to update
 @end example
 @end deffn
 
-@defvr {variable+} create-editor-args
+@defvr variable create-editor-args
 This variable controls the initialization of Edwin.  The following
 values are defined:
 
@@ -4409,13 +4039,13 @@ bugs during the implementation of the editor; they are not intended for
 casual use, but as a means of recovering from bugs that would otherwise
 require reloading the editor's world image from the disk.
 
-@deffn {procedure+} save-editor-files
+@deffn procedure save-editor-files
 Examines Edwin, offering to save any unsaved buffers.  This is useful if
 some bug caused Edwin to die while there were unsaved buffers, and you
 want to save the information without restarting the editor.
 @end deffn
 
-@deffn {procedure+} reset-editor
+@deffn procedure reset-editor
 Resets Edwin, causing it to be reinitialized the next time that
 @code{edit} is called.  If you encounter a fatal bug in Edwin, a good
 way to recover is to first call @code{save-editor-files}, and then to
@@ -4423,7 +4053,7 @@ call @code{reset-editor}.  That should completely reset the editor to
 its initial state.
 @end deffn
 
-@deffn {procedure+} reset-editor-windows
+@deffn procedure reset-editor-windows
 Resets Edwin's display structures, without affecting any of the buffers
 or their contents.  This is useful if a bug in the display code causes
 Edwin's internal display data structures to get into an inconsistent
@@ -4433,73 +4063,8 @@ state that prevents Edwin from running.
 @node Release Notes, GNU Free Documentation License, Edwin, Top
 @appendix Release Notes
 
-The previous full release of MIT/GNU Scheme was version 7.6.1.
-This section describes changes that have occurred since that time.  For
-more detailed information, see the @file{ChangeLog} files in the source
-code.
-
-Note that MIT/GNU Scheme still conforms to the @cite{Revised^4
-Report on the Algorithmic Language Scheme}, but not to the
-@cite{Revised^5 Report on The Algorithmic Language Scheme}.
-
-These are the changes since release 7.7.0:
-
-@itemize @bullet
-@item
-Release 7.7.1 fixes several bugs in @acronym{IMAIL}; fixes a bug that
-prevented the use of server sockets on Windows systems; and fixes a bug
-that caused the debugger to generate errors in common circumstances.
-
-@item
-Release 7.7.0 provides ``hygienic'' macro support, as defined in
-@cite{R^4RS} and @cite{R^5RS}.  This is a complete rewrite of the syntax
-engine, so any program that uses macros should be rewritten to use the
-new engine.  A subset of the old macro-definition syntax is still
-supported, but this will eventually be removed.  Note that the new
-syntax engine has no effect on the compiled-code format; most binaries
-compiled by release 7.6.x should continue to work.
-
-There are several user-visible consequences to this change:
-
-@itemize @bullet
-@item
-These syntactic keywords have been eliminated:
-@code{define-macro},
-@code{in-package},
-@code{macro},
-@code{make-environment},
-@code{scode-quote},
-@code{unassigned?}, and
-@code{using-syntax}.
-
-@item
-The syntactic keyword @code{the-environment} has been restricted to use
-in top-level environments.  It is no longer allowed in the body of any
-binding form (e.g.@: @code{lambda}, @code{let}).
-
-@item
-Syntactic keywords are now stored in environments, rather than in a
-separate syntax-table structure.  The environment abstraction has been
-enhanced to support this, as well as to make it more general.  The
-changes are documented in the reference manual.
-
-@item
-The syntax-table abstraction has been eliminated, and most procedures
-and arguments involving syntax tables have been removed.  One exception
-is the @code{load} procedure, which still accepts a syntax-table
-argument, but ignores it.
-@end itemize
-
-Although the 7.6.1 release had a workaround for problems with certain
-@acronym{AMD} Athlon processors, the workaround was ineffective on
-machines running Windows operating systems (and possibly OS/2 systems as
-well).  This version fixes that problem.
-
-The hash-table abstraction is now always loaded.  It's not necessary to
-call @code{load-option} prior to use of hash tables.  For upwards
-compatibility, calling @samp{(load-option 'hash-table)} is still
-permitted but does nothing.
-@end itemize
+The release notes are online at
+@uref{http://www.gnu.org/software/mit-scheme/release.html}.
 
 @node GNU Free Documentation License, Environment-variable Index, Release Notes, Top
 @appendix GNU Free Documentation License
