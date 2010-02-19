@@ -28,6 +28,7 @@
 /macosx-*/
 /macosx/
 TAGS
+changelog.txt
 doc/*/*.aux
 doc/*/*.cp
 doc/*/*.cps
