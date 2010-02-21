@@ -20,185 +20,53 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-set -e
+# inputs: source tar, doc image tar
+# outputs: scheme binary tars
 
-if [[ ${#} -gt 1 ]]; then
-    echo "usage: ${0} [TYPE]" >&2
-    exit 1
-fi
+. "$(dirname "${0}")"/shared.sh
+make_output_dir
 
-TYPE=${1:-standard}
-
-case ${TYPE} in
-(standard)
-    FOO=$(ls mit-scheme-*.zip)
-    if [[ ${FOO} =~ mit-scheme-([0-9.]+)\.zip ]]; then
-	VERSION=${BASH_REMATCH[1]}
-    else
-	echo "Unable to determine version number; maybe in wrong directory?" >&2
-	exit 1
-    fi
-    ;;
-(snapshot)
-    VERSION=$(date +%Y%m%d)
-    ;;
-(*)
-    echo "Unknown distribution type: ${TYPE}" >&2
-    echo "Valid types: standard snapshot" >&2
-    exit 1
-    ;;
-esac
-
-TL_DIR=$(pwd)
-BUILD_ROOT=mit-scheme-${VERSION}
-SRC_FILE=${BUILD_ROOT}.tar.gz
-LOCAL_DIR=/usr/local
-OUTPUT_DIR=.out
-
-if [[ ! -f ${SRC_FILE} ]]; then
-    echo "No source file: ${SRC_FILE}." >&2
-    exit 1
-fi
-
-MKDIR=(install -d -m 755)
-INSTALL=(install -p)
-INSTALL_DATA=("${INSTALL[@]}" -m 644)
-
-"${MKDIR[@]}" "${OUTPUT_DIR}"
-
-fixup_perms ()
+build ()
 {
-    chmod -R og-w "${1}"
+    local ARCH=${1}
+    my_configure --enable-native-code="${ARCH}" \
+	--with-mcrypt=no --with-libpq=no --with-db-4=no
+    my_make
 }
 
-DOC_BUILD_DIR=${BUILD_ROOT}-doc
-DOC_IMAGE_DIR=${DOC_BUILD_DIR}-image
-DOC_BUILD_OUT=${OUTPUT_DIR}/doc-build
-DOC_IMAGE_OUT=${OUTPUT_DIR}/doc-image
-STAMP_DOC_BUILD=${DOC_BUILD_DIR}.stamp
-STAMP_DOC_IMAGE=${DOC_IMAGE_DIR}.stamp
-if [[ ! -f ${STAMP_DOC_BUILD} ]]; then
-    echo "Building documentation" >&2
+make_image ()
+{
+    local IMAGE_DIR=${TL_DIR}/${1}
+    my_make install DESTDIR="${IMAGE_DIR}"
+    my_mv "${IMAGE_DIR}"/usr/local/* "${IMAGE_DIR}"/.
+    my_rmdir "${IMAGE_DIR}"/usr/local
+    my_rmdir "${IMAGE_DIR}"/usr
+}
 
-    rm -rf "${BUILD_ROOT}" "${DOC_BUILD_DIR}"
-    tar xzf "${SRC_FILE}"
-    mv "${BUILD_ROOT}" "${DOC_BUILD_DIR}"
-    (
-	set -e
-	cd "${DOC_BUILD_DIR}"/doc
-	./configure
-	make
-    ) &> "${DOC_BUILD_OUT}"
-    touch "${STAMP_DOC_BUILD}"
-fi
-
-if [[ ! -f ${STAMP_DOC_IMAGE} ]]; then
-    echo "Make images for documentation" >&2
-(
-    set -e
-
-    # First build the image for binary distributions.
-    rm -rf "${DOC_IMAGE_DIR}"
-    (
-	set -e
-	cd "${DOC_BUILD_DIR}"/doc
-	make install-info-gz \
-	    infodir="${TL_DIR}"/"${DOC_IMAGE_DIR}"/edwin/info
-	make install-html htmldir="${TL_DIR}"/"${DOC_IMAGE_DIR}"/doc
-    )
-    "${INSTALL_DATA[@]}" "${DOC_BUILD_DIR}"/src/COPYING \
-	"${DOC_IMAGE_DIR}"/doc/.
-    fixup_perms "${DOC_IMAGE_DIR}"
-
-    # Then build the images for documentation tarballs.
-    DOC_FORMATS=(html info pdf ps)
-    IMAGE_DIR=${BUILD_ROOT}/doc
-    for FORMAT in "${DOC_FORMATS[@]}"; do
-	DOCFILE_BASE=${BUILD_ROOT}-doc-${FORMAT}
-	rm -rf "${BUILD_ROOT}"
-	"${MKDIR[@]}" "${IMAGE_DIR}"
-	(
-	    set -e
-	    cd "${DOC_BUILD_DIR}"/doc
-	    make install-"${FORMAT}" \
-		"${FORMAT}"dir="${TL_DIR}"/"${IMAGE_DIR}"
-	)
-	rm -f "${DOCFILE_BASE}".tar.gz
-	tar cvzf "${DOCFILE_BASE}".tar.gz "${IMAGE_DIR}"
-	rm -f "${DOCFILE_BASE}".zip
-	zip -r "${DOCFILE_BASE}".zip "${IMAGE_DIR}"
-	rm -rf "${BUILD_ROOT}"
-	chmod 444 "${DOCFILE_BASE}".*
-    done
-
-    touch "${STAMP_DOC_IMAGE}"
-    rm -rf "${DOC_BUILD_DIR}"
-) &> "${DOC_IMAGE_OUT}"
-fi
+remove_unshipped_files ()
+{
+    local IMAGE_DIR=${1}
+    local LIB_DIR=${IMAGE_DIR}/lib/mit-scheme-${2}
+    my_rm_rf "${IMAGE_DIR}"/bin "${LIB_DIR}"/lib
+    my_rm_f "${LIB_DIR}"/runtime.com "${LIB_DIR}"/macosx-starter
+}
 
 for ARCH in i386 x86-64; do
-    BUILD_DIR=${BUILD_ROOT}-${ARCH}
-    SRC_DIR=${BUILD_DIR}/src
-    IMAGE_DIR=${BUILD_DIR}-image
-    TARFILE=${BUILD_DIR}.tar.gz
-    IMAGE_LOCAL=${IMAGE_DIR}${LOCAL_DIR}
-    IMAGE_BIN=${IMAGE_LOCAL}/bin
-    IMAGE_LIB=${IMAGE_LOCAL}/lib/mit-scheme-${ARCH}
-    STAMP_BUILD=${BUILD_DIR}.stamp
-    STAMP_IMAGE=${IMAGE_DIR}.stamp
-    STAMP_TAR=${BUILD_DIR}-tar.stamp
+    IMAGE_DIR=${DIST_DIR}-${ARCH}
+    OUT_ROOT=${BUILD_OUT}-${ARCH}
 
-    if [[ ! -f ${STAMP_BUILD} ]];then
-	echo "Building binaries for arch ${ARCH}" >&2
-	(
-	    set -e
-	    rm -rf "${BUILD_DIR}"
-	    tar xzf "${SRC_FILE}"
-	    mv "${BUILD_ROOT}" "${BUILD_DIR}"
-	    (
-		set -e
-		cd "${SRC_DIR}"
-		./configure --enable-native-code="${ARCH}" \
-		    --with-mcrypt=no --with-libpq=no --with-db-4=no
-		make
-	    )
-	    rm -f "${SRC_DIR}"/lib/runtime.com
-	    touch "${STAMP_BUILD}"
-	) &> "${OUTPUT_DIR}"/"${ARCH}"-compile
-    fi
-    if [[ ! -f ${STAMP_IMAGE} ]]; then
-	echo "Making image for arch ${ARCH}" >&2
-	(
-	    set -e
-	    rm -rf "${IMAGE_DIR}"
-	    (
-		set -e
-		cd "${SRC_DIR}"
-		make install DESTDIR="${TL_DIR}"/"${IMAGE_DIR}"
-	    )
-	    # Don't save system-specific files.
-	    rm -rf "${IMAGE_BIN}"
-	    rm -rf "${IMAGE_LIB}"/lib
-	    rm -f "${IMAGE_LIB}"/macosx-starter
-	    # Merge in doc files.
-	    cp -pR "${DOC_IMAGE_DIR}"/* "${IMAGE_LIB}"/.
+    notify "Building binaries for arch ${ARCH}"
+    unpack_dist
+    run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build "${ARCH}"
 
-	    fixup_perms "${IMAGE_DIR}"
-	    touch "${STAMP_IMAGE}"
-	    rm -rf "${BUILD_DIR}"
-	) &> "${OUTPUT_DIR}"/"${ARCH}"-image
-    fi
-    if [[ ! -f ${STAMP_TAR} ]]; then
-	(
-	    set -e
-	    rm -f "${TARFILE}"
-	    cd "${IMAGE_LOCAL}"
-	    tar cvzf "${TL_DIR}"/"${TARFILE}" *
-	    chmod 444 "${TL_DIR}"/"${TARFILE}"
-	) &> "${OUTPUT_DIR}"/"${ARCH}"-tar
-	touch "${STAMP_TAR}"
-	rm -rf "${IMAGE_DIR}"
-    fi
+    notify "Making image for arch ${ARCH}"
+    new_temp_dir "${IMAGE_DIR}"
+    run_command "${OUT_ROOT}"-image "${DIST_DIR}"/src make_image "${IMAGE_DIR}"
+    remove_unshipped_files "${IMAGE_DIR}" "${ARCH}"
+    unpack_doc_image_into "${IMAGE_DIR}"/lib/mit-scheme-"${ARCH}"
+    fixup_perms "${IMAGE_DIR}"
+    make_tar_file "${OUT_ROOT}" "${IMAGE_DIR}"
+    cleanup_temp_files
 done
-rm -rf "${DOC_IMAGE_DIR}"
-rm -f *.stamp
+
+notify "Success!"

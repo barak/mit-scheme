@@ -20,112 +20,49 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-set -e
-umask 022
+# inputs: git source tree
+# outputs: changelog, source tar, ucode tar
 
-PROJECT_NAME=mit-scheme
-PROGRAM=${0}
+. "$(dirname "${0}")"/shared.sh
+reset_output_dir
 
-usage ()
-{
-    echo "usage: ${PROGRAM} TYPE" >&2
-    echo "  TYPE must be 'snapshot' to specify today's date" >&2
-    echo "    or 'standard' to specify standard release" >&2
-    exit 1
-}
+notify "Creating the changelog"
+my_rm_f "${CHANGELOG}"
+run_command "${CHANGELOG}" "${SOURCE_TREE}" git log --name-status
+make_read_only "${CHANGELOG}"
 
-(( ${#} <= 1 )) || usage
-TYPE=${1:-standard}
-
-# We assume that there's a git working tree here that's in the right state.
-[[ -d ${PROJECT_NAME} ]] || usage
-
-# Make sure there's a change log for us to publish.
-(cd "${PROJECT_NAME}"; etc/make-git-log)
-
-# Determine the appropriate release and tag info.
-source "$(dirname "${PROGRAM}")"/release-prefix
-case ${TYPE} in
-    snapshot)
-	RELEASE=$(date +%Y%m%d)
-	TAG=snapshot-${RELEASE}
-	;;
-    standard)
-	RELEASE=$(get_release "${PROJECT_NAME}")
-	TAG=$(get_release_tag "${RELEASE}")
-	;;
-    *)
-	usage
-	;;
-esac
-
-DIST_DIR=mit-scheme-${RELEASE}
-LIARC_DIST_DIR=mit-scheme-c-${RELEASE}
-CHANGELOG=changelog.txt
-OUTPUT_DIR=.out
-
-# Set up trap to clean up any temporary files.
-CLEANUP_BASE=$(pwd)
-cleanup ()
-{
-    cd "${CLEANUP_BASE}"
-    rm -rf "${DIST_DIR}" "${LIARC_DIST_DIR}"
-}
-trap cleanup EXIT SIGINT SIGQUIT SIGTERM
-cleanup
-
-rm -rf "${OUTPUT_DIR}"
-mkdir "${OUTPUT_DIR}"
-
-# Create the dist directory, a subset of the repo.
-echo "Creating the distribution directory"
-mkdir "${DIST_DIR}" "${DIST_DIR}"/etc
+notify "Creating the distribution directory"
+new_temp_dir "${DIST_DIR}"
+my_mkdir "${DIST_DIR}"/etc
 for FILE in src doc "${CHANGELOG}" dist/Makefile; do
-    cp -pR "${PROJECT_NAME}"/"${FILE}" "${DIST_DIR}"/.
+    my_cp "${SOURCE_TREE}"/"${FILE}" "${DIST_DIR}"/.
 done
-cp -pR "${PROJECT_NAME}"/etc/xscheme.el "${DIST_DIR}"/etc/.
+my_cp "${SOURCE_TREE}"/etc/xscheme.el "${DIST_DIR}"/etc/.
 
-# Configure the dist directory.
-echo "Configuring the distribution directory"
-(cd "${DIST_DIR}"/src; ./Setup.sh) > "${OUTPUT_DIR}"/src-config 2>&1
-(cd "${DIST_DIR}"/doc; autoconf) > "${OUTPUT_DIR}"/doc-config 2>&1
+# Clean up dot files from source tree
+my_find "${DIST_DIR}" -name '.*' -exec rm -f '{}' \;
 
-# Clean up after autoconf.
-find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
+reconf ()
+{
+    if [[ -f configure ]]; then
+	my_configure
+	my_make distclean
+    else
+	cmd autoconf
+    fi
+}
 
-# Make sure permissions are reasonable.
-find "${DIST_DIR}" -exec chmod go-w '{}' \;
+notify "Configuring the distribution directory"
+run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
+run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 
-# Now make the liarc dist directories.
-echo "Creating the liarc distribution directories"
-cp -pR "${DIST_DIR}" "${LIARC_DIST_DIR}"
+# Clean up after autoconf
+my_find "${DIST_DIR}" -type d -name autom4te.cache -exec rm -rf '{}' \;
+fixup_perms "${DIST_DIR}"
 
-# The liarc dist requires additional setup.
-echo "Compiling the liarc bootstrap files"
-(cd "${LIARC_DIST_DIR}"/src; MIT_SCHEME_EXE=mit-scheme-native etc/make-liarc-dist.sh) \
-    > "${OUTPUT_DIR}"/liarc-compile 2>&1
+notify "Creating archive files"
+make_tar_file "${SRC_OUT}" "${DIST_DIR}" 
+make_tar_file "${SRC_OUT}"-ucode "${DIST_UCODE}" \
+    "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/microcode
 
-# OK, we've built the directories, time to build the output files.
-echo "Building distribution archive files"
-TAR_FILE=${DIST_DIR}.tar.gz
-LIARC_FILE=${LIARC_DIST_DIR}.tar.gz
-ZIP_FILE=${DIST_DIR}.zip
-UCODE_FILE=${DIST_DIR}-ucode.tar.gz
-OUTPUTS=("${TAR_FILE}" "${LIARC_FILE}" "${ZIP_FILE}" "${UCODE_FILE}" "${CHANGELOG}")
-
-rm -f "${OUTPUTS[@]}"
-
-tar czf "${TAR_FILE}" "${DIST_DIR}"
-tar czf "${LIARC_FILE}" "${LIARC_DIST_DIR}"
-tar czf "${UCODE_FILE}" "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/microcode
-cp -p "${DIST_DIR}"/"${CHANGELOG}" .
-
-rm -rf "${DIST_DIR}"/src/lib
-# zip will complain if we have any dangling symlinks.
-for S in $(find "${DIST_DIR}" -type l); do
-    [[ ! -r ${S} ]] && rm -f "${S}"
-done
-zip -rlq "${ZIP_FILE}" "${DIST_DIR}"
-
-chmod -w "${OUTPUTS[@]}"
-echo "Success!"
+notify "Success!"
