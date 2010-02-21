@@ -27,7 +27,9 @@
 /linux/
 /macosx-*/
 /macosx/
+/pc/
 TAGS
+changelog.txt
 doc/*/*.aux
 doc/*/*.cp
 doc/*/*.cps
