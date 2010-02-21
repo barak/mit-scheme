@@ -105,6 +105,7 @@ USA.
 	       NEGATIVE-FIXNUM?
 	       NEGATIVE?
 	       NOT
+	       NULL?
 	       OBJECT-TYPE
 	       OBJECT-TYPE?
 	       ONE-PLUS-FIXNUM
