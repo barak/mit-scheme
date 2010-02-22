@@ -1,0 +1,74 @@
+#!/bin/bash
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# inputs: source tar, doc image tar
+# outputs: scheme binary tars
+
+. "$(dirname "${0}")"/shared.sh
+make_output_dir
+standard_args
+
+build ()
+{
+    local ARCH=${1}
+    my_configure --enable-native-code="${ARCH}" \
+	--with-mcrypt=no --with-libpq=no --with-db-4=no
+    my_make
+}
+
+make_image ()
+{
+    local IMAGE_DIR=${TL_DIR}/${1}
+    my_make install DESTDIR="${IMAGE_DIR}"
+    my_mv "${IMAGE_DIR}"/usr/local/* "${IMAGE_DIR}"/.
+    my_rmdir "${IMAGE_DIR}"/usr/local
+    my_rmdir "${IMAGE_DIR}"/usr
+}
+
+remove_unshipped_files ()
+{
+    local IMAGE_DIR=${1}
+    local LIB_DIR=${IMAGE_DIR}/lib/mit-scheme-${2}
+    my_rm_rf "${IMAGE_DIR}"/bin "${LIB_DIR}"/lib
+    my_rm_f "${LIB_DIR}"/runtime.com "${LIB_DIR}"/macosx-starter
+}
+
+for ARCH in i386 x86-64; do
+    IMAGE_DIR=${DIST_DIR}-${ARCH}
+    OUT_ROOT=${NATIVE_OUT}-${ARCH}
+
+    notify "Building binaries for arch ${ARCH}"
+    unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
+    run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build "${ARCH}"
+
+    notify "Making image for arch ${ARCH}"
+    new_temp_dir "${IMAGE_DIR}"
+    run_command "${OUT_ROOT}"-image "${DIST_DIR}"/src make_image "${IMAGE_DIR}"
+    remove_unshipped_files "${IMAGE_DIR}" "${ARCH}"
+    unpack_into_existing_dir "${DOC_IMAGE_DIR}" \
+	"${IMAGE_DIR}"/lib/mit-scheme-"${ARCH}"
+    fixup_perms "${IMAGE_DIR}"
+    make_tar_file "${OUT_ROOT}" "${IMAGE_DIR}"
+    cleanup_temp_files
+done
+
+notify_finished

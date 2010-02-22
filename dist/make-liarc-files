@@ -1,8 +1,8 @@
-# -*- shell-script -*-
+#!/bin/bash
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
 #     Technology
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,34 +17,30 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-# USA.
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
 
-get_release ()
+# inputs: source tar
+# outputs: liarc tar
+
+. "$(dirname "${0}")"/shared.sh
+make_output_dir
+standard_args
+
+LIARC_DIR=${PROJECT_NAME}-c-${RELEASE}
+
+compile_liarc_dist ()
 {
-    local prefix
-    if [[ -n ${1} ]]; then
-	prefix=${1}/
-    else
-	prefix=
-    fi
-    fgrep Release "${prefix}"src/runtime/version.scm \
-	| awk 'BEGIN { OFS = "." }
-	       NF == 4 { print $3, $4 }
-	       NF == 5 { print $3, $4, $5 }
-	       NF == 6 { print $3, $4, $5, $6 }
-	       NF == 7 { print $3, $4, $5, $6, $7 }' \
-	| tr -d \(\)\'\"
+    MIT_SCHEME_EXE=mit-scheme-native cmd etc/make-liarc-dist.sh
 }
 
-get_release_prefix ()
-{
-    v="${1:-$(get_release)}"
-    echo "mit-scheme-${v}"
-}
+notify "Creating the liarc distribution directory"
+unpack_dist_file_to "${DIST_DIR}" "${LIARC_DIR}"
 
-get_release_tag ()
-{
-    v="${1:-$(get_release)}"
-    echo "release-$(echo "${v}" | tr . -)"
-}
+notify "Compiling the liarc bootstrap files"
+run_command "${LIARC_OUT}"-compile "${LIARC_DIR}"/src compile_liarc_dist
+
+notify "Creating liarc archive file"
+make_tar_file "${LIARC_OUT}" "${LIARC_DIR}"
+
+notify_finished

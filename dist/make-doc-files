@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+#     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301, USA.
+
+# inputs: source tar
+# outputs: doc image tar, formatted doc tars
+
+. "$(dirname "${0}")"/shared.sh
+make_output_dir
+standard_args
+
+BUILD_DIR=doc-build
+
+build_docs ()
+{
+   my_configure
+   my_make
+}
+
+make_image_dir ()
+{
+    local DEST=${TL_DIR}/${DOC_IMAGE_DIR}
+    my_make install-info-gz infodir="${DEST}"/edwin/info
+    my_make install-html htmldir="${DEST}"/doc
+    my_install_data "${TL_DIR}"/"${BUILD_DIR}"/src/COPYING "${DEST}"/doc/.
+    fixup_perms "${DEST}"
+}
+
+make_archive_dir ()
+{
+    local FORMAT=${1}
+    my_make install-"${FORMAT}" "${FORMAT}"dir="${TL_DIR}"/"${DIST_DIR}"/doc
+}
+
+notify "Building documentation"
+unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
+run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
+
+notify "Making doc image for distributions"
+new_temp_dir "${DOC_IMAGE_DIR}"
+run_command "${DOC_OUT}"-image "${BUILD_DIR}"/doc make_image_dir
+make_tar_file "${DOC_OUT}"-image "${DOC_IMAGE_DIR}"
+
+new_temp_dir "${DIST_DIR}"
+for FORMAT in html info pdf; do
+    OUT=${DOC_OUT}-${FORMAT}
+    notify "Making archive for ${FORMAT}"
+    run_command "${OUT}" "${BUILD_DIR}"/doc make_archive_dir "${FORMAT}"
+    make_tar_file "${OUT}" "${DIST_DIR}"-doc-"${FORMAT}" "${DIST_DIR}"/doc
+    my_rm_rf "${DIST_DIR}"
+done
+
+notify_finished
