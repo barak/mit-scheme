@@ -25,6 +25,7 @@
 
 . "$(dirname "${0}")"/shared.sh
 reset_output_dir
+standard_args
 
 notify "Creating the changelog"
 my_rm_f "${CHANGELOG}"
@@ -33,10 +34,11 @@ make_read_only "${CHANGELOG}"
 
 notify "Creating the distribution directory"
 new_temp_dir "${DIST_DIR}"
-my_mkdir "${DIST_DIR}"/etc
-for FILE in src doc "${CHANGELOG}" dist/Makefile; do
+my_cp "${CHANGELOG}" "${DIST_DIR}"/.
+for FILE in src doc dist/Makefile; do
     my_cp "${SOURCE_TREE}"/"${FILE}" "${DIST_DIR}"/.
 done
+my_mkdir "${DIST_DIR}"/etc
 my_cp "${SOURCE_TREE}"/etc/xscheme.el "${DIST_DIR}"/etc/.
 
 # Clean up dot files from source tree
@@ -57,12 +59,12 @@ run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
 run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 
 # Clean up after autoconf
-my_find "${DIST_DIR}" -type d -name autom4te.cache -exec rm -rf '{}' \;
+find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
 fixup_perms "${DIST_DIR}"
 
 notify "Creating archive files"
 make_tar_file "${SRC_OUT}" "${DIST_DIR}" 
-make_tar_file "${SRC_OUT}"-ucode "${DIST_UCODE}" \
-    "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/microcode
+make_tar_file "${SRC_OUT}"-ucode "${UCODE_BASE}" \
+    "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/etc "${DIST_DIR}"/src/microcode
 
-notify "Success!"
+notify_finished

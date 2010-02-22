@@ -25,6 +25,7 @@
 
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
+standard_args
 
 LIARC_DIR=${PROJECT_NAME}-c-${RELEASE}
 
@@ -34,7 +35,7 @@ compile_liarc_dist ()
 }
 
 notify "Creating the liarc distribution directory"
-unpack_dist_to "${LIARC_DIR}"
+unpack_dist_file_to "${DIST_DIR}" "${LIARC_DIR}"
 
 notify "Compiling the liarc bootstrap files"
 run_command "${LIARC_OUT}"-compile "${LIARC_DIR}"/src compile_liarc_dist
@@ -42,4 +43,4 @@ run_command "${LIARC_OUT}"-compile "${LIARC_DIR}"/src compile_liarc_dist
 notify "Creating liarc archive file"
 make_tar_file "${LIARC_OUT}" "${LIARC_DIR}"
 
-notify "Success!"
+notify_finished

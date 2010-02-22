@@ -25,6 +25,7 @@
 
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
+standard_args
 
 build ()
 {
@@ -53,20 +54,21 @@ remove_unshipped_files ()
 
 for ARCH in i386 x86-64; do
     IMAGE_DIR=${DIST_DIR}-${ARCH}
-    OUT_ROOT=${BUILD_OUT}-${ARCH}
+    OUT_ROOT=${NATIVE_OUT}-${ARCH}
 
     notify "Building binaries for arch ${ARCH}"
-    unpack_dist
+    unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
     run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build "${ARCH}"
 
     notify "Making image for arch ${ARCH}"
     new_temp_dir "${IMAGE_DIR}"
     run_command "${OUT_ROOT}"-image "${DIST_DIR}"/src make_image "${IMAGE_DIR}"
     remove_unshipped_files "${IMAGE_DIR}" "${ARCH}"
-    unpack_doc_image_into "${IMAGE_DIR}"/lib/mit-scheme-"${ARCH}"
+    unpack_into_existing_dir "${DOC_IMAGE_DIR}" \
+	"${IMAGE_DIR}"/lib/mit-scheme-"${ARCH}"
     fixup_perms "${IMAGE_DIR}"
     make_tar_file "${OUT_ROOT}" "${IMAGE_DIR}"
     cleanup_temp_files
 done
 
-notify "Success!"
+notify_finished

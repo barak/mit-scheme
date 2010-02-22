@@ -25,6 +25,7 @@
 
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
+standard_args
 
 BUILD_DIR=doc-build
 
@@ -50,7 +51,7 @@ make_archive_dir ()
 }
 
 notify "Building documentation"
-unpack_dist_to "${BUILD_DIR}"
+unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
 run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
 
 notify "Making doc image for distributions"
@@ -67,4 +68,4 @@ for FORMAT in html info pdf; do
     my_rm_rf "${DIST_DIR}"
 done
 
-notify "Success!"
+notify_finished

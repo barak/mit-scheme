@@ -19,8 +19,12 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-set -e
+set -ae
 umask 022
+
+# Capture standard out so we can send messages there even when it's
+# redirected.
+exec 3>&1
 
 TL_DIR=$(pwd)
 PROGRAM=${0}
@@ -29,16 +33,31 @@ SOURCE_TREE=${PROJECT_NAME}
 
 usage ()
 {
-    echo "usage: ${PROGRAM} TYPE" >&2
-    echo "  TYPE must be 'snapshot' to specify today's date" >&2
-    echo "    or 'standard' to specify standard release" >&2
+    ${USAGE_FUNCTION:-standard_usage} >&2
     exit 1
 }
 
-(( ${#} <= 1 )) || usage
-DIST_TYPE=${1:-standard}
+standard_usage ()
+{
+    echo "usage: ${PROGRAM} TYPE"
+    usage_arg_type
+}
+
+usage_arg_type ()
+{
+    echo "  TYPE must be 'snapshot' to specify today's date"
+    echo "    or 'standard' to specify standard release"
+}
+
+standard_args ()
+{
+    (( ${#} <= 1 )) || usage
+    DIST_TYPE=${1:-standard}
+}
 
 [[ -d ${SOURCE_TREE} ]] || usage
+
+${ARGS_FUNCTION:-standard_args} "${@}"
 
 get_release ()
 {
@@ -52,15 +71,13 @@ get_release ()
 }
 
 case ${DIST_TYPE} in
-    (snapshot)
-    RELEASE=$(date +%Y%m%d)
-
+    snapshot)
+	RELEASE=$(date +%Y%m%d)
 	;;
-    (standard)
-    RELEASE=$(get_release)
-
+    standard)
+	RELEASE=$(get_release)
 	;;
-    (*)
+    *)
 	usage
 	;;
 esac
@@ -69,21 +86,36 @@ CHANGELOG=changelog.txt
 TAR_SUFFIX=.tar.gz
 
 DIST_DIR=${PROJECT_NAME}-${RELEASE}
+UCODE_BASE=${DIST_DIR}-ucode
 DOC_IMAGE_DIR=${DIST_DIR}-doc-image
-
-DIST_UCODE=${DIST_DIR}-ucode
 
 OUTPUT_DIR=${TL_DIR}/.out
 SRC_OUT=${OUTPUT_DIR}/src
 DOC_OUT=${OUTPUT_DIR}/doc
 LIARC_OUT=${OUTPUT_DIR}/liarc
-BUILD_OUT=${OUTPUT_DIR}/build
+NATIVE_OUT=${OUTPUT_DIR}/native
+SYSTEM_OUT=${OUTPUT_DIR}/system
 
-CMD_TRACE=
+notify ()
+{
+    echo "${@}" >&3
+}
+
+notify_finished ()
+{
+    notify "Success!"
+}
+
 cmd ()
 {
-    [[ -n ${CMD_TRACE} ]] && echo ">>>>" "${@}"
-    "${@}"
+    if [[ -z ${CMD_TRACE} ]]; then
+	"${@}"
+    else
+	notify ">>>>" "${@}"
+	if [[ ${CMD_TRACE} != norun ]]; then
+	    "${@}"
+	fi
+    fi
 }
 
 reset_output_dir ()
@@ -176,17 +208,20 @@ make_read_only ()
     cmd chmod 444 "${@}"
 }
 
-notify ()
-{
-    echo "${@}"
-}
-
 run_command ()
 {
     local OUT_FILE=${1}
-    local DIR=${2}
-    shift 2
-    (cd "${DIR}"; cmd "${@}") > "${OUT_FILE}" 2>&1
+    shift
+    run_command_helper "${@}" &> "${OUT_FILE}"
+}
+
+run_command_helper ()
+{
+    local DIR=${1}
+    shift
+    pushd "${DIR}" &> /dev/null
+    cmd "${@}"
+    popd &> /dev/null
 }
 
 make_tar_file ()
@@ -199,23 +234,22 @@ make_tar_file ()
 	set "${DIR}"
     fi
     my_rm_f "${TAR_FILE}"
-    my_tar "${DIR}" "${@}" > "${OUT_FILE}" 2>&1
+    my_tar "${DIR}" "${@}" &> "${OUT_FILE}"
     make_read_only "${TAR_FILE}"
 }
 
-unpack_dist_to ()
+unpack_dist_file_to ()
 {
-    local DEST=${1}
-    guarantee_tar "${DIST_DIR}"
+    local SOURCE=${1}
+    local DEST=${2}
+    guarantee_tar "${SOURCE}"
     new_temp_dir "${DEST}"
-    unpack_into "${DIST_DIR}" "${DEST}"
+    unpack_into_existing_dir "${SOURCE}" "${DEST}"
 }
 
-unpack_dist ()
+unpack_into_existing_dir ()
 {
-    guarantee_tar "${DIST_DIR}"
-    new_temp_file "${DIST_DIR}"
-    my_untar "${DIST_DIR}"
+    my_untar "${1}" -C "${2}" --strip-components 1
 }
 
 guarantee_tar ()
@@ -229,16 +263,6 @@ guarantee_file ()
 	echo "No source file: ${1}"
 	exit 1
     fi
-}
-
-unpack_doc_image_into ()
-{
-    unpack_into "${DOC_IMAGE_DIR}" "${1}"
-}
-
-unpack_into ()
-{
-    my_untar "${1}" -C "${2}" --strip-components 1
 }
 
 # Keep track of temp files and clean them up.
@@ -257,9 +281,11 @@ new_temp_dir ()
 
 cleanup_temp_files ()
 {
-    cd "${TL_DIR}"
-    my_rm_rf "${TEMP_FILES[@]}"
-    TEMP_FILES=()
+    if [[ -z ${PRESERVE_TEMP_FILES} ]]; then
+	cd "${TL_DIR}"
+	my_rm_rf "${TEMP_FILES[@]}"
+	TEMP_FILES=()
+    fi
 }
 
 TEMP_FILES=()
