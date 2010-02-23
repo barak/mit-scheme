@@ -38,6 +38,12 @@ USA.
 ;;; descriptive.
 (define *current-block-names*)
 
+(define (ignored-variable-warning name)
+  (warn (string-append "Variable \""
+		       (symbol->string name)
+		       "\" was declared IGNORE, but used anyway.")
+	name *current-block-names*))
+
 (define (integrate/top-level block expression)
   (integrate/top-level* (object/scode expression) block expression))
 
@@ -75,12 +81,7 @@ USA.
 	(list (if (eq? action open-block/value-marker)
 		  action
 		  (integrate/expression operations environment action)))
-	(cons (cond ((reference? action)
-		     ;; This clause lets you ignore a variable by
-		     ;; mentioning it in a sequence.
-		     (variable/may-ignore! (reference/variable action))
-		     action)
-		    ((eq? action open-block/value-marker)
+	(cons (cond ((eq? action open-block/value-marker)
 		     action)
 		    (else
 		     (integrate/expression operations environment action)))
@@ -118,7 +119,9 @@ USA.
 	(lambda (operation info)
 	  info				;ignore
 	  (case operation
-	    ((INTEGRATE INTEGRATE-OPERATOR EXPAND)
+	    ((IGNORE)
+	     (ignored-variable-warning (variable/name variable)))
+	    ((EXPAND INTEGRATE INTEGRATE-OPERATOR)
 	     (warn "Attempt to assign integrated name"
 		   (variable/name variable)))
 	    (else (error "Unknown operation" operation))))
@@ -240,7 +243,10 @@ USA.
 	(operations/lookup operations variable
 	 (lambda (operation info)
 	   (case operation
-	     ((INTEGRATE-OPERATOR EXPAND)
+	     ((IGNORE)
+	      (ignored-variable-warning (variable/name variable))
+	      (integration-failure))
+	     ((EXPAND INTEGRATE-OPERATOR)
 	      (variable/reference! variable)
 	      expression)
 	     ((INTEGRATE)
@@ -414,6 +420,10 @@ USA.
 			  (integrate/expression operations environment new-expression)))
 		    (else (dont-integrate))))
 
+	     ((IGNORE)
+	      (ignored-variable-warning (variable/name variable))
+	      (dont-integrate))
+
 	     ((INTEGRATE INTEGRATE-OPERATOR)
 	      (let ((new-operator
 		     (reassign operator
@@ -545,6 +555,10 @@ USA.
 		     (integrate/expression operations environment new-expression))
 		   (integration-failure))))
 
+	    ((IGNORE)
+	     (ignored-variable-warning (variable/name variable))
+	     (integration-failure))
+
 	    ((INTEGRATE INTEGRATE-OPERATOR)
 	     (let ((new-expression (integrate/name expression
 						   operator info environment)))
@@ -566,7 +580,7 @@ USA.
 (define-method/integrate-combination 'THE-ENVIRONMENT
   (lambda (expression operations environment block operator operands)
     (warn "(THE-ENVIRONMENT) used as an operator.  Will cause a runtime error.")
-    (combination/make expression block 
+    (combination/make expression block
 		      (integrate/expression operations environment operator)
 		      operands)))
 

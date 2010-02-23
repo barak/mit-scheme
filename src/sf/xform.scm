@@ -191,11 +191,29 @@ USA.
 	    (let ((environment
 		   (environment/bind environment
 				     (block/bound-variables block))))
-	      (procedure/make
-	       expression block name required optional rest
-	       (transform/procedure-body block
-					 environment
-					 body)))))))))
+	      (build-procedure expression block name required optional rest
+			       (transform/procedure-body block environment body)))))))))
+
+;; If procedure body is a sequence, scan the first elements and turn variable
+;; references into IGNORE declarations.
+(define (build-procedure expression block name required optional rest body)
+  (if (sequence? body)
+      (do ((actions (sequence/actions body) (cdr actions))
+	   (ignores '() (cons (variable/name (reference/variable (car actions))) ignores)))
+	  ((or (null? (cdr actions))
+	       (not (reference? (car actions))))
+	   (let ((final-body (if (null? (cdr actions))
+				 (car actions)
+				 (sequence/make (object/scode body) actions))))
+	     (procedure/make
+	      expression block name required optional rest
+	      (if (null? ignores)
+		  final-body
+		  (declaration/make #f (declarations/parse block `((ignore ,@ignores))) 
+				    final-body))))))
+      (procedure/make
+       expression block name required optional rest
+       body)))
 
 (define (transform/procedure-body block environment expression)
   (if (scode-open-block? expression)

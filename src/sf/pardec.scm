@@ -321,8 +321,7 @@ USA.
 
 ;; IGNORABLE suppresses warnings about the variable not being used.
 ;; This is useful in macros that bind variables that the body may
-;; not actually use.  Mentioning the variable in a sequence will
-;; have the effect of marking it ignorable.
+;; not actually use.
 (define-declaration 'IGNORABLE
   (lambda (block names)
     (for-each (lambda (variable)
@@ -332,14 +331,19 @@ USA.
     '()))
 
 ;; IGNORE causes warnings if an ignored variable actually ends
-;; up being used.
+;; up being used.  Mentioning the variable in a sequence will
+;; have the effect of marking it IGNORED.
 (define-declaration 'IGNORE
   (lambda (block names)
-    (for-each (lambda (variable)
-		(if variable
-		    (variable/must-ignore! variable)))
-	      (block/lookup-names block names #f))
-    '()))
+    (let ((variables (block/lookup-names block names #f)))
+      (for-each (lambda (variable)
+		  (if variable
+		      (variable/must-ignore! variable)))
+		variables)
+      (make-declarations 'IGNORE
+			 variables
+			 'NO-VALUES
+			 'LOCAL))))
 
 ;;;; Reductions and Expansions
 ;;; See "reduct.scm" for description of REDUCE-OPERATOR and REPLACE-OPERATOR.
