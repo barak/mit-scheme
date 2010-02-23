@@ -430,7 +430,6 @@ USA.
 
 (define-declaration 'EXPAND-OPERATOR
   (lambda (block expanders)
-    block				;ignored
     (map (lambda (expander)
 	   (make-declaration 'EXPAND
 			     (block/lookup-name block (car expander) #t)
