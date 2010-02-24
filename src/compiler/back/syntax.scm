@@ -142,7 +142,7 @@ USA.
 	`(,(close-syntax 'LET environment)
 	  ((,name ,expression))
 	  (,(close-syntax 'DECLARE environment) (INTEGRATE ,name))
-	  ,name				;ignore if not referenced
+	  (,(close-syntax 'DECLARE environment) (IGNORABLE ,name))
 	  (,(close-syntax 'CAR environment) ,(car chosen))))
       `(,(close-syntax 'SYNTAX-VARIABLE-WIDTH-EXPRESSION environment)
 	,expression
@@ -151,7 +151,7 @@ USA.
 		  `(,(close-syntax 'CONS environment)
 		    (,(close-syntax 'LAMBDA environment)
 		     (,name)
-		     ,name		;ignore if not referenced
+		     (,(close-syntax 'DECLARE environment) (IGNORABLE ,name))
 		     ,(car clause))
 		    ',(cdr clause)))
 		clauses)))))

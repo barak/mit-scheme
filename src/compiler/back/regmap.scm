@@ -748,7 +748,6 @@ for REGISTER.  If no such register exists, returns #F."
 			       (output-loop output-entries))))))
 
 (define-export (clear-map-instructions input-map)
-  input-map
   (input-loop (map-entries input-map) (LAP)))
 
 (define (input-loop entries tail)
