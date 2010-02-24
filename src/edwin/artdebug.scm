@@ -991,7 +991,6 @@ Prefix argument means do not kill the debugger buffer."
 (define (print-subproblem number frame port)
   (with-values (lambda () (stack-frame/debugging-info frame))
     (lambda (expression environment subexpression)
-      subexpression
       (print-history-level
        (stack-frame/compiled-code? frame)
        number

@@ -405,7 +405,6 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	    (find-escape next comtabs)))
 
     (define (show-bindings argument next comtabs)
-      comtabs
       (cons (call-with-output-string
 	     (lambda (port)
 	       (describe-bindings (mode-comtabs (name->mode argument 'ERROR))

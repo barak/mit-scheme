@@ -1071,7 +1071,7 @@ If this is an error, the debugger examines the error condition."
 		;; override.
 		(enqueue-output-operation! port
 		  (lambda (mark transcript?)
-		    mark transcript?
+		    mark
 		    (if (not transcript?)
 			(override-next-command!
 			 (lambda ()

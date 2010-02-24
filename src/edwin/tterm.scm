@@ -510,7 +510,6 @@ USA.
   unspecific)
 
 (define (console-wrap-update! screen thunk)
-  screen
   (let ((finished? (thunk)))
     (window-direct-output-cursor! (screen-cursor-window screen))
     (output-port/flush-output console-i/o-port)
