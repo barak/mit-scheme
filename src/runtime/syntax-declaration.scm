@@ -24,6 +24,7 @@ USA.
 |#
 
 ;;;; Declarations
+;;; package: (runtime syntax declaration)
 
 (declare (usual-integrations))
 
@@ -50,18 +51,6 @@ USA.
 (define known-declarations '())
 
 (for-each (lambda (keyword)
-	    (define-declaration keyword '()
-	      (lambda (declaration procedure)
-		procedure
-		declaration)))
-	  '(AUTOMAGIC-INTEGRATIONS
-	    NO-AUTOMAGIC-INTEGRATIONS
-	    ETA-SUBSTITUTION
-	    NO-ETA-SUBSTITUTION
-	    OPEN-BLOCK-OPTIMIZATIONS
-	    NO-OPEN-BLOCK-OPTIMIZATIONS))
-
-(for-each (lambda (keyword)
 	    (define-declaration keyword '(* IDENTIFIER)
 	      (lambda (declaration procedure)
 		(cons (car declaration)
@@ -69,10 +58,11 @@ USA.
 	  ;; The names in USUAL-INTEGRATIONS are always global.
 	  '(
 	    USUAL-INTEGRATIONS
+	    IGNORABLE
+	    IGNORE
 	    INTEGRATE
 	    INTEGRATE-OPERATOR
 	    INTEGRATE-SAFELY
-	    IGNORE
 	    TYPE-CHECKS
 	    NO-TYPE-CHECKS
 	    RANGE-CHECKS
