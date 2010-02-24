@@ -2567,7 +2567,7 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define-method insert-mime-body-inline*
     (entity (body <mime-body>) selector context mark)
-  entity body selector context		;ignore
+  entity selector			;ignore
   (call-with-auto-wrapped-output-mark
    mark
    (walk-mime-context-left-margin context)
@@ -2618,7 +2618,6 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define-method compute-mime-body-outline
     ((body <mime-body-one-part>) name context)
-  context
   (append (call-next-method body name context)
 	  (list (let ((encoding (mime-body-one-part-encoding body)))
 		  (and (not (known-mime-encoding? encoding))
