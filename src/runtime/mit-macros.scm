@@ -195,13 +195,13 @@ USA.
 (define-syntax :let*
   (er-macro-transformer
    (lambda (form rename compare)
-     rename compare			;ignore
+     compare			;ignore
      (expand/let* form (rename 'LET)))))
 
 (define-syntax :let*-syntax
   (er-macro-transformer
    (lambda (form rename compare)
-     rename compare			;ignore
+     compare			;ignore
      (expand/let* form (rename 'LET-SYNTAX)))))
 
 (define (expand/let* form let-keyword)

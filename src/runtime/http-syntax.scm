@@ -879,7 +879,7 @@ USA.
 	   (define (compile-rhs clause vars)
 	     (let ((rhs (cdr clause)))
 	       `(LAMBDA (,@vars PORT EMIT FIFO)
-		  ,@vars PORT EMIT FIFO
+		  (DECLARE (IGNORABLE ,@vars PORT EMIT FIFO))
 		  ,@(map compile-action (except-last-pair rhs))
 		  ,(let ((ns (last rhs)))
 		     (cond ((eq? ns 'DONE)

@@ -694,7 +694,6 @@ USA.
   (debug/read-eval-print-1 (get-evaluation-environment dstate port) port))
 
 (define-command (command/enter-where dstate port)
-  port
   (with-current-environment dstate port debug/where))
 
 ;;;; Condition commands

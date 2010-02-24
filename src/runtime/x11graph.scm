@@ -368,7 +368,6 @@ USA.
 
 (define-event-handler event-type:configure
   (lambda (window event)
-    window
     (x-graphics-reconfigure (vector-ref event 1)
 			    (vector-ref event 2)
 			    (vector-ref event 3))

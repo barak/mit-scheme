@@ -323,7 +323,6 @@ USA.
      (compile-item/expression (access-item/environment item)))))
 
 (define (compiler:the-environment form environment)
-  environment
   (syntax-check '(KEYWORD) form)
   (if (not (syntactic-environment/top-level? environment))
       (syntax-error "This form allowed only at top level:" form))

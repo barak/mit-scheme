@@ -183,7 +183,7 @@ USA.
   continue-parsing)
 
 (define (handler:comment port db ctx char)
-  db ctx char
+  ctx char
   (let loop ()
     (let ((char (%read-char port db)))
       (cond ((eof-object? char) char)
@@ -192,7 +192,7 @@ USA.
   continue-parsing)
 
 (define (handler:multi-line-comment port db ctx char1 char2)
-  db ctx char1 char2
+  ctx char1 char2
   (let loop ()
     (case (%read-char/no-eof port db)
       ((#\#)
@@ -429,7 +429,7 @@ USA.
       (list 'UNQUOTE (read-object port db))))
 
 (define (handler:string port db ctx char)
-  db ctx char
+  ctx char
   (call-with-output-string
     (lambda (port*)
       (let loop ()
@@ -500,7 +500,7 @@ USA.
 	     result))))))
 
 (define (handler:char port db ctx char1 char2)
-  db ctx char1 char2
+  ctx char1 char2
   (let ((char (%read-char/no-eof port db))
 	(at-end?
 	 (lambda ()
