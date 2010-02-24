@@ -799,7 +799,6 @@ M-x rename-file, or use the `r' command in Dired.")
   (make-condition-type 'FLOPPY-ERROR condition-type:error
       '(COMMAND OUTPUT)
     (lambda (condition port)
-      condition
       (write-string "An error occurred while accessing the floppy.\n" port)
       (write-string "The command being executed was:\n\n" port)
       (write-string (floppy-error/command condition) port)
