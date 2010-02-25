@@ -218,6 +218,29 @@ USA.
 (define-simple-type sequence        #f                 (actions))
 (define-simple-type the-environment #f                 (block))
 
+;;; Helpers for expressions
+(define-integrable (global-ref/make name)
+  (access/make #f
+	       (constant/make #f system-global-environment)
+	       name))
+
+(define (global-ref? object)
+  (and (access? object)
+       (constant? (access/environment object))
+       (eq? system-global-environment
+	    (constant/value (access/environment object)))
+       (access/name object)))
+
+(define (expression/call-to-not? expression)
+  (and (combination? expression)
+       (let ((operator (combination/operator expression)))
+	 (and (constant? operator)
+	      (let ((operator-value (constant/value operator)))
+		(and (eq? operator-value (ucode-primitive not))
+		     (procedure-arity-valid?
+		      operator-value
+		      (length (combination/operands expression)))))))))
+
 ;;; Constructors that need to do work.
 
 (define (combination/%make scode block operator operands)
@@ -280,7 +303,8 @@ USA.
 
 	((and (constant? operator)
 	      (primitive-procedure? (constant/value operator))
-	      (= (length operands) 1)
+	      (not (eq? (constant/value operator) (ucode-primitive not)))
+	      (length=? operands 1)
 	      (conditional? (car operands))
 	      (noisy-test sf:enable-distribute-primitives?
 			  "Distribute primitives over conditionals"))
@@ -409,10 +433,7 @@ USA.
 	 (disjunction/make scode predicate alternative))
 
 	;; (if (not e) c a) => (if e a c)
-	((and (combination? predicate)
-	      (constant? (combination/operator predicate))
-	      (eq? (constant/value (combination/operator predicate)) (ucode-primitive not))
-	      (= (length (combination/operands predicate)) 1)
+	((and (expression/call-to-not? predicate)
 	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
 	 (conditional/make scode (first (combination/operands predicate))
 			   alternative
@@ -466,10 +487,7 @@ USA.
 	 predicate)
 
 	;; (or (not e1) e2) => (if e1 e2 #t)
-	((and (combination? predicate)
-	      (constant? (combination/operator predicate))
-	      (eq? (constant/value (combination/operator predicate)) (ucode-primitive not))
-	      (= (length (combination/operands predicate)) 1)
+	((and (expression/call-to-not? predicate)
 	      (noisy-test sf:enable-disjunction-inversion? "Disjunction inversion"))
 	 (conditional/make scode
 			   (first (combination/operands predicate))
@@ -552,18 +570,6 @@ USA.
   ;; Useful for debugging
   (vector-ref dispatch-vector
 	      (enumeration/name->index enumeration/expression name)))
-
-(define-integrable (global-ref/make name)
-  (access/make #f
-	       (constant/make #f system-global-environment)
-	       name))
-
-(define (global-ref? object)
-  (and (access? object)
-       (constant? (access/environment object))
-       (eq? system-global-environment
-	    (constant/value (access/environment object)))
-       (access/name object)))
 
 (define-integrable (constant->integration-info constant)
   (make-integration-info (constant/make #f constant)))
