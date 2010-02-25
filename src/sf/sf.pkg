@@ -91,7 +91,8 @@ USA.
   (files "subst")
   (parent (scode-optimizer))
   (export ()
-	  sf:display-top-level-procedure-names?)
+	  sf:display-top-level-procedure-names?
+	  sf:enable-elide-double-negatives?)
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block

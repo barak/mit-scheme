@@ -219,17 +219,74 @@ USA.
 (define-simple-type the-environment #f                 (block))
 
 ;;; Helpers for expressions
-(define-integrable (global-ref/make name)
-  (access/make #f
-	       (constant/make #f system-global-environment)
-	       name))
 
-(define (global-ref? object)
-  (and (access? object)
-       (constant? (access/environment object))
-       (eq? system-global-environment
-	    (constant/value (access/environment object)))
-       (access/name object)))
+;; T if expression can be shown to return only #T or #F.
+(define (expression/boolean? expression)
+  (cond ((expression/call-to-boolean-predicate? expression))
+	((conditional? expression) (and (expression/boolean? (conditional/consequent expression))
+					(expression/boolean? (conditional/alternative expression))))
+	((constant? expression) (or (not (constant/value expression))
+				    (eq? (constant/value expression) #t)))
+	((declaration? expression) (expression/boolean? (declaration/expression expression)))
+	((disjunction? expression) (and (expression/boolean? (disjunction/predicate expression))
+					(expression/boolean? (conditional/alternative expression))))
+	((sequence? expression) (expression/boolean? (last (sequence/actions expression))))
+	(else #f)))
+
+(define primitive-boolean-predicates
+  (map (lambda (name)
+	 (make-primitive-procedure name #t))
+       '(
+	 %RECORD?
+	 &<
+	 &=
+	 &>
+	 BIT-STRING?
+	 CELL?
+	 CHAR-ASCII?
+	 CHAR?
+	 EQ?
+	 EQUAL-FIXNUM?
+	 FIXNUM?
+	 FLONUM-EQUAL?
+	 FLONUM-GREATER?
+	 FLONUM-LESS?
+	 FLONUM-NEGATIVE?
+	 FLONUM-POSITIVE?
+	 FLONUM-ZERO?
+	 FLONUM?
+	 GREATER-THAN-FIXNUM?
+	 INDEX-FIXNUM?
+	 INTEGER-EQUAL?
+	 INTEGER-GREATER?
+	 INTEGER-LESS?
+	 INTEGER-NEGATIVE?
+	 INTEGER-POSITIVE?
+	 INTEGER-ZERO?
+	 LESS-THAN-FIXNUM?
+	 NEGATIVE-FIXNUM?
+	 NEGATIVE?
+	 NOT
+	 NULL?
+	 OBJECT-TYPE?
+	 PAIR?
+	 POSITIVE-FIXNUM?
+	 POSITIVE?
+	 STRING?
+	 VECTOR?
+	 ZERO-FIXNUM?
+	 ZERO?
+	 )))
+
+(define (expression/call-to-boolean-predicate? expression)
+  (and (combination? expression)
+       (let ((operator (combination/operator expression)))
+	 (and (constant? operator)
+	      (let ((operator-value (constant/value operator)))
+		(and (memq operator-value primitive-boolean-predicates)
+		     (procedure-arity-valid? 
+		      operator-value
+		      (length (combination/operands expression)))))))))
 
 (define (expression/call-to-not? expression)
   (and (combination? expression)
@@ -240,6 +297,20 @@ USA.
 		     (procedure-arity-valid?
 		      operator-value
 		      (length (combination/operands expression)))))))))
+
+(define (expression/constant-eq? expression value)
+  (and (constant? expression)
+       (eq? (constant/value expression) value)))
+
+(define-integrable (global-ref/make name)
+  (access/make #f
+	       (constant/make #f system-global-environment)
+	       name))
+
+(define (global-ref? object)
+  (and (access? object)
+       (expression/constant-eq? (access/environment object) system-global-environment)
+       (access/name object)))
 
 ;;; Constructors that need to do work.
 
@@ -441,8 +512,7 @@ USA.
 
 	;; (if (if e1 e2 #f) <expr> K) => (if e1 (if e2 <expr> K) K)
 	((and (conditional? predicate)
-	      (constant? (conditional/alternative predicate))
-	      (not (constant/value (conditional/alternative predicate)))
+	      (expression/constant-eq? (conditional/alternative predicate) #f)
 	      (constant? alternative)
 	      (noisy-test sf:enable-conjunction-linearization? "Conjunction linearization"))
 	 (conditional/make scode
@@ -481,8 +551,7 @@ USA.
 	     alternative))
 
 	;; (or (foo) #f) => (foo)
-	((and (constant? alternative)
-	      (not (constant/value alternative))
+	((and (expression/constant-eq? alternative #f)
 	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
 	 predicate)
 

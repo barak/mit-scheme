@@ -456,20 +456,29 @@ USA.
     (integrate-combination/default expression operations environment block operator operands)))
 
 ;;; constant-operator
+(define sf:enable-elide-double-negatives? #t)
+
 (define-method/integrate-combination 'CONSTANT
   (lambda (expression operations environment block operator operands)
-    (if (primitive-procedure? (constant/value operator))
-	(let ((operands*
-	       (and (eq? (constant/value operator) (ucode-primitive apply))
-		    (integrate/hack-apply? operands))))
-	  (if operands*
-	      (integrate/combination expression operations environment
-				     block (car operands*) (cdr operands*))
-	      (integrate/primitive-operator expression operations environment
-					    block operator operands)))
-	(begin
-	  (warn "Application of constant value" (constant/value operator))
-	  (integrate-combination/default expression operations environment block operator operands)))))
+    ;; Elide a double negative only if it doesn't change the type of the answer.
+    (cond ((and (expression/constant-eq? operator (ucode-primitive not))
+		(length=? operands 1)
+		(expression/call-to-not? (first operands))
+		(expression/boolean? (first (combination/operands (first operands))))
+		(noisy-test sf:enable-elide-double-negatives? "elide double negative"))
+	   (first (combination/operands (first operands))))
+	  ((primitive-procedure? (constant/value operator))
+	   (let ((operands*
+		  (and (eq? (constant/value operator) (ucode-primitive apply))
+		       (integrate/hack-apply? operands))))
+	     (if operands*
+		 (integrate/combination expression operations environment
+					block (car operands*) (cdr operands*))
+		 (integrate/primitive-operator expression operations environment
+					       block operator operands))))
+	  (else
+	   (warn "Application of constant value" (constant/value operator))
+	   (integrate-combination/default expression operations environment block operator operands)))))
 
 (define (integrate/primitive-operator expression operations environment
 				      block operator operands)
