@@ -305,7 +305,7 @@ USA.
 
 (define (apply*-expansion expr operands block)
   (cond ((< (length operands) 2) #f)
-	((= 2 (length operands))
+	((length=? operands 2)
 	 (if (and (manifest-argument-list? (second operands))
 		  (noisy-test sf:enable-flatten-apply? "flatten-apply"))
 	     (combination/make expr block (first operands) (flatten-operands (second operands)))
@@ -412,7 +412,7 @@ USA.
 
 (define (general-car-cdr-expansion encoding)
   (lambda (expr operands block)
-    (if (= (length operands) 1)
+    (if (length=? operands 1)
 	(make-combination expr
 			  block
 			  (ucode-primitive general-car-cdr)
