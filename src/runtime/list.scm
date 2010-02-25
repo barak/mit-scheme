@@ -240,6 +240,34 @@ USA.
 (define (length list)
   (guarantee-list->length list 'LENGTH))
 
+(define (length=? left right)
+  (define (%length=? n list)
+    (cond ((pair? list) (and (fix:positive? n)
+			     (%length=? (fix:- n 1) (cdr list))))
+	  ((null? list) (fix:zero? n))
+	  (else (error:not-list list 'length=?))))
+
+  (define (%same-length left right)
+    (cond ((pair? left) (cond ((pair? right) (%same-length (cdr left) (cdr right)))
+			      ((null? right) #f)
+			      (else (error:not-list right 'length=?))))
+	  ((null? left) (cond ((pair? right) #f)
+			      ((null? right) #t)
+			      (else (error:not-list right 'length=?))))
+	  (else (error:not-list left 'length=?))))
+
+  ;; Take arguments in either order to make this easy to use.
+  (cond ((pair? left) (cond ((pair? right) (%same-length (cdr left) (cdr right)))
+			    ((index-fixnum? right) (%length=? right left))
+			    ((null? right) #F)
+			    (else (error:wrong-type-argument right "index fixnum or list" 'length=?))))
+	((index-fixnum? left) (%length=? left right))
+	((null? left) (cond ((pair? right) #f)
+			    ((index-fixnum? right) (fix:zero? right))
+			    ((null right) #t)
+			    (else (error:wrong-type-argument right "index fixnum or list" 'length=?))))
+	(else (error:wrong-type-argument left "index fixnum or list" 'length=?))))
+
 (define (not-pair? x)
   (not (pair? x)))
 

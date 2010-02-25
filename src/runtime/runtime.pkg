@@ -2359,6 +2359,7 @@ USA.
 	  last				;SRFI-1
 	  last-pair
 	  length
+	  length=?
 	  list
 	  list->weak-list
 	  list-copy
