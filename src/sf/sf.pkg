@@ -92,6 +92,7 @@ USA.
   (parent (scode-optimizer))
   (export ()
 	  sf:display-top-level-procedure-names?
+	  sf:enable-elide-conditional-canonicalization?
 	  sf:enable-elide-double-negatives?)
   (export (scode-optimizer)
 	  integrate/top-level

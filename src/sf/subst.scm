@@ -147,19 +147,29 @@ USA.
 			    (combination/operands combination)))))
 
 ;;;; CONDITIONAL
+
+;; Expression such as (if (pair? x) #t #f) don't need the conditional.
+(define sf:enable-elide-conditional-canonicalization? #t)
+
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
-    (conditional/make
-     (conditional/scode expression)
-     (integrate/expression
-      operations environment
-      (conditional/predicate expression))
-     (integrate/expression
-      operations environment
-      (conditional/consequent expression))
-     (integrate/expression
-      operations environment
-      (conditional/alternative expression)))))
+    (let ((ipred (integrate/expression
+		  operations environment
+		  (conditional/predicate expression)))
+	  (icons (integrate/expression
+		  operations environment
+		  (conditional/consequent expression)))
+	  (ialt (integrate/expression
+		 operations environment
+		 (conditional/alternative expression))))
+      (cond ((and (expression/constant-eq? icons #t)
+		  (expression/constant-eq? ialt #f)
+		  (expression/boolean? ipred)
+		  (noisy-test sf:enable-elide-conditional-canonicalization?
+			      "elide conditional canonicalization"))
+	     ipred)
+	    (else
+	     (conditional/make (conditional/scode expression) ipred icons ialt))))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
