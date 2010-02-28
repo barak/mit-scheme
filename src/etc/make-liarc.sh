@@ -39,6 +39,18 @@ if [ ${FASTP} = yes ]; then
     exec ./configure "${@}"
 fi
 
+if [ ! -f runtime/runtime-unx.c ]; then
+  cat <<EOF >&2
+*** Error in ${0}
+
+This script should be run only in a distribution of MIT/GNU Scheme
+prepared for portable C code, from the top-level \`src/' directory.
+To prepare the distribution, run etc/make-liarc-dist.sh from that
+directory.
+EOF
+  exit 1
+fi
+
 run_configure --prefix=`pwd`/boot-root --enable-native-code=c \
     --disable-host-scheme-test
 run_make stamp_install-liarc-boot-compiler c-clean distclean

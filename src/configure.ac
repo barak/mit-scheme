@@ -56,6 +56,13 @@ esac
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
+# Please keep the following messages synchronized with the messages in
+# these files:
+#
+#   src/Setup.sh
+#   src/configure.ac
+#   src/etc/make-native.sh
+
 : ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
 if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
@@ -65,15 +72,16 @@ if test x"${enable_host_scheme_test}" = xyes; then
 	MIT_SCHEME_EXE=mit-scheme
     else
 	AC_MSG_ERROR([
-This script needs an existing MIT/GNU Scheme installation to function.
+This script needs an existing MIT/GNU Scheme installation to function,
+but neither the program \`${MIT_SCHEME_EXE}' nor the program
+\`mit-scheme' appears to run it.
 
-If you have installed MIT/GNU Scheme in an unusual location, or with
-an unusual name, set the environment variable MIT_SCHEME_EXE to the
-name or pathname of the MIT/GNU Scheme executable, which is usually
-\`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
-variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually
-\`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
+If you have installed MIT/GNU Scheme in an unusual location, set the
+environment variable MIT_SCHEME_EXE to the name or pathname of the
+MIT/GNU Scheme executable, which is usually \`mit-scheme' or
+\`/usr/local/bin/mit-scheme', and set the environment variable
+MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
+directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
     AC_MSG_RESULT([yes])
