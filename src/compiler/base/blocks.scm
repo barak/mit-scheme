@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: blocks.scm,v 4.21 2008/01/30 20:01:42 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -159,7 +157,7 @@ from the continuation, and then "glued" into place afterwards.
     (if (boolean? checks)
 	checks
 	(let ((primitive
-	       (if (primitive-procedure? primitive)
+	       (if (scode/primitive-procedure? primitive)
 		   (primitive-procedure-name primitive)
 		   primitive))
 	      (default (car checks))

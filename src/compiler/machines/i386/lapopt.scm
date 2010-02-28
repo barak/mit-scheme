@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: lapopt.scm,v 1.11 2008/01/30 20:01:50 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,7 +82,7 @@ USA.
   predicate				; (lambda (dict) ...) -> bool
   constructor)				; (lambda (dict) ...) -> lap
 
-(define *rules* (make-eq-hash-table))
+(define *rules* (make-strong-eq-hash-table))
 
 
 ;; Rules are indexed by the last opcode in the pattern.

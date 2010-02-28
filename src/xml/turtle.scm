@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.46 2008/10/12 06:31:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -129,12 +127,8 @@ USA.
    (with-pointer p
      (alt (map make-rdf-bnode
 	       (seq "_:" parse:name))
-	  ;; This notation should probably accept whitespace between the
-	  ;; brackets, but the spec is written like this:
 	  (encapsulate (lambda (v) v (make-rdf-bnode))
-	    (seq "["
-		 parse:ws*
-		 (alt "]" (error p "Malformed blank node"))))
+	    (seq "[" parse:ws* "]"))
 	  (map (lambda (pols) (cons 'BLANK-NODE pols))
 	       (seq "["
 		    parse:ws*
@@ -284,7 +278,7 @@ USA.
 		  char-set:turtle-digit))
 
 (define alphabet:name-start-char
-  (code-points->alphabet
+  (scalar-values->alphabet
    '((#x0041 . #x005A)
      #x005F
      (#x0061 . #x007A)
@@ -303,7 +297,7 @@ USA.
 
 (define alphabet:name-char
   (alphabet+ alphabet:name-start-char
-	     (code-points->alphabet
+	     (scalar-values->alphabet
 	      '(#x002D
 		(#x0030 . #x0039)
 		#x00B7
@@ -314,7 +308,7 @@ USA.
   (alphabet- alphabet:name-start-char (alphabet #\_)))
 
 (define alphabet:character
-  (code-points->alphabet '((#x20 . #x5B) (#x5D . #x10FFFF))))
+  (scalar-values->alphabet '((#x20 . #x5B) (#x5D . #x10FFFF))))
 
 (define alphabet:ucharacter
   (alphabet- alphabet:character (alphabet #\>)))
@@ -593,7 +587,7 @@ USA.
     (newline port)))
 
 (define (write-prefixes graph port)
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-strong-eq-hash-table)))
 
     (define (check-graph g)
       (for-each check-triple (rdf-graph-triples g)))

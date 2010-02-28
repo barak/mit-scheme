@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rmailsum.scm,v 1.42 2008/01/30 20:02:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,11 +27,6 @@ USA.
 
 (declare (usual-integrations))
 
-(define-variable rmailsum-rcs-header
-  "The RCS header of the rmailsum.scm file."
-  "$Id: rmailsum.scm,v 1.42 2008/01/30 20:02:05 cph Exp $"
-  string?)
-
 (define-variable-per-buffer rmail-buffer
   "Corresponding RMAIL buffer for a summary buffer.
 FALSE means buffer is not a summary buffer."

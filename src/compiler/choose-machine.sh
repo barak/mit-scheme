@@ -1,10 +1,9 @@
 #!/bin/sh
 
-# $Id: choose-machine.sh,v 1.3 2008/01/30 20:01:41 cph Exp $
-#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -25,64 +24,27 @@
 
 set -e
 
-if [ ${#} -eq 0 ]; then
-    MACHINE=
-elif [ ${#} -eq 1 ]; then
-    MACHINE=${1}
-else
-    echo "usage: ${0} [NATIVE-CODE-TYPE]"
+if test ${#} -ne 1; then
+    echo "usage: ${0} TARGET_ARCH"
     exit 1
 fi
+HERE=`dirname "${0}"`
+TARGET_ARCH=${1}
 
-DIR=`dirname ${0}`
+if test x"${TARGET_ARCH}" = xc; then
+    echo C
+    exit 0
+fi
 
-chosen ()
-{
-    if [ -d "${DIR}/machines/${1}" ]; then
-	echo "${1}"
-	exit 0
-    else
-	echo "Unknown machine type: ${1}" 1>&2
-	exit 1
-    fi
-}
+if test x"${TARGET_ARCH}" = xsvm1; then
+    echo svm
+    exit 0
+fi
 
-case "${MACHINE}" in
-"" | yes)
-    ;;
-c)
-    chosen C
-    ;;
-no)
-    chosen none
-    ;;
-*)
-    chosen "${MACHINE}"
-esac
+if test -d "${HERE}/machines/${TARGET_ARCH}"; then
+    echo "${TARGET_ARCH}"
+    exit 0
+fi
 
-case `${DIR}/config.guess` in
-alpha-* | alphaev[56]-* | alphaev56-* | alphapca56-*)
-    chosen alpha
-    ;;
-m68k-*)
-    chosen bobcat
-    ;;
-i[3456]86-*)
-    chosen i386
-    ;;
-mips-* | mipsel-*)
-    chosen mips
-    ;;
-sparc-*)
-    chosen sparc
-    ;;
-hppa-* | hppa1.[01]-* | hppa2.?-*)
-    chosen spectrum
-    ;;
-vax-*)
-    chosen vax
-    ;;
-*)
-    chosen none
-    ;;
-esac
+echo "Unknown target architecture: ${TARGET_ARCH}" 1>&2
+exit 1

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: editor.scm,v 1.266 2008/01/30 20:02:00 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -89,7 +87,8 @@ USA.
 	      message))))))))
 
 (define (edwin . args) (apply edit args))
-(simple-command-line-parser "edit" edit)
+(simple-command-line-parser "edit" edit
+			    "Causes Edwin to start immediately after Scheme.")
 
 (define edwin-editor #f)
 (define editor-abort)

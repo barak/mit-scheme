@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: order.scm,v 4.23 2008/01/30 20:01:45 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -236,7 +234,7 @@ USA.
 			   (length (procedure-original-optional model)))))
 		   (if (or (< n-supplied n-required)
 			   (and (> n-supplied n-expected)
-				(not (procedure-rest model))))
+				(not (procedure-original-rest model))))
 		       (warn "wrong number of arguments"
 			     n-supplied
 			     (error-irritant/noise char:newline)

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: output.scm,v 14.44 2008/07/26 07:01:34 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,9 +26,13 @@ USA.
 ;;;; Output
 ;;; package: (runtime output-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "port"))
 
 ;;;; Low level
+
+(define-integrable (output-port/%write-char port char)
+  ((port/%operation/write-char port) port char))
 
 (define (output-port/write-char port char)
   ((port/operation/write-char port) port char))
@@ -49,6 +51,9 @@ USA.
 
 (define (output-port/flush-output port)
   ((port/operation/flush-output port) port))
+
+(define-integrable (output-port/%discretionary-flush port)
+  ((port/%operation/discretionary-flush-output port) port))
 
 (define (output-port/discretionary-flush port)
   ((port/operation/discretionary-flush-output port) port))
@@ -76,15 +81,22 @@ USA.
   (let ((operation (port/operation port 'BYTES-WRITTEN)))
     (and operation
 	 (operation port))))
+
+(define (output-port/synchronize-output port)
+  (let ((operation (port/operation port 'SYNCHRONIZE-OUTPUT)))
+    (if operation
+	(operation port))))
 
 ;;;; High level
 
+(define (%write-char char port)
+  (if (let ((n (output-port/%write-char port char)))
+	(and n
+	     (fix:> n 0)))
+      (output-port/%discretionary-flush port)))
+
 (define (write-char char #!optional port)
-  (let ((port (optional-output-port port 'WRITE-CHAR)))
-    (if (let ((n (output-port/write-char port char)))
-	  (and n
-	       (fix:> n 0)))
-	(output-port/discretionary-flush port))))
+  (%write-char char (optional-output-port port 'WRITE-CHAR)))
 
 (define (write-string string #!optional port)
   (let ((port (optional-output-port port 'WRITE-STRING)))
@@ -102,33 +114,33 @@ USA.
 
 (define (newline #!optional port)
   (let ((port (optional-output-port port 'NEWLINE)))
-    (if (let ((n (output-port/write-char port #\newline)))
+    (if (let ((n (output-port/%write-char port #\newline)))
 	  (and n
 	       (fix:> n 0)))
-	(output-port/discretionary-flush port))))
+	(output-port/%discretionary-flush port))))
 
 (define (fresh-line #!optional port)
   (let ((port (optional-output-port port 'FRESH-LINE)))
     (if (let ((n (output-port/fresh-line port)))
 	  (and n
 	       (fix:> n 0)))
-	(output-port/discretionary-flush port))))
+	(output-port/%discretionary-flush port))))
 
 (define (display object #!optional port environment)
   (let ((port (optional-output-port port 'DISPLAY)))
     (unparse-object/top-level object port #f environment)
-    (output-port/discretionary-flush port)))
+    (output-port/%discretionary-flush port)))
 
 (define (write object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE)))
     (output-port/write-object port object environment)
-    (output-port/discretionary-flush port)))
+    (output-port/%discretionary-flush port)))
 
 (define (write-line object #!optional port environment)
   (let ((port (optional-output-port port 'WRITE-LINE)))
     (output-port/write-object port object environment)
-    (output-port/write-char port #\newline)
-    (output-port/discretionary-flush port)))
+    (output-port/%write-char port #\newline)
+    (output-port/%discretionary-flush port)))
 
 (define (flush-output #!optional port)
   (output-port/flush-output (optional-output-port port 'FLUSH-OUTPUT)))
@@ -136,11 +148,11 @@ USA.
 (define (wrap-custom-operation-0 operation-name)
   (lambda (#!optional port)
     (let ((port (optional-output-port port operation-name)))
-      (let ((operation (port/operation port operation-name)))
+      (let ((operation (port/%operation port operation-name)))
 	(if operation
 	    (begin
 	      (operation port)
-	      (output-port/discretionary-flush port)))))))
+	      (output-port/%discretionary-flush port)))))))
 
 (define beep (wrap-custom-operation-0 'BEEP))
 (define clear (wrap-custom-operation-0 'CLEAR))

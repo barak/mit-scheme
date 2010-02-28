@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pcsample.scm,v 1.9 2008/01/30 20:02:27 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -476,7 +474,7 @@ TODO:
 
 (define (install-profile-hash-table)
 
-;;;(set! make-profile-hash-table     make-eq-hash-table);   weakly held
+;;;(set! make-profile-hash-table     make-weak-eq-hash-table);   weakly held
 ;;;(set!      profile-hash-table-car weak-car)
 ;;;(set!      profile-hash-table-cdr weak-cdr)
 

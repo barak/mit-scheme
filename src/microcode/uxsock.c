@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxsock.c,v 1.37 2008/01/30 20:02:22 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,12 +41,13 @@ OS_open_tcp_stream_socket (void * host, unsigned int port)
   Tchannel channel;
 
   transaction_begin ();
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_tcp_stream_socket, channel =);
   OS_channel_close_on_abort (channel);
   {
     struct sockaddr_in address;
+    memset((&address), 0, (sizeof (address)));
     (address . sin_family) = AF_INET;
     memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
     (address . sin_port) = port;
@@ -229,12 +228,13 @@ OS_open_unix_stream_socket (const char * filename)
   Tchannel channel;
 
   transaction_begin ();
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_UNIX, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_unix_stream_socket, channel =);
   OS_channel_close_on_abort (channel);
   {
     struct sockaddr_un address;
+    memset((&address), 0, (sizeof (address)));
     (address . sun_family) = AF_UNIX;
     strncpy ((address . sun_path), filename, (sizeof (address . sun_path)));
     do_connect (s, ((struct sockaddr *) (&address)), (sizeof (address)));
@@ -248,7 +248,7 @@ Tchannel
 OS_create_tcp_server_socket (void)
 {
   int s;
-  STD_UINT_SYSTEM_CALL
+  STD_FD_SYSTEM_CALL
     (syscall_socket, s, (UX_socket (AF_INET, SOCK_STREAM, 0)));
   MAKE_CHANNEL (s, channel_type_tcp_server_socket, return);
 }
@@ -259,6 +259,7 @@ OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
   struct sockaddr_in address;
   int one = 1;
 
+  memset((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
@@ -288,7 +289,7 @@ OS_listen_tcp_server_socket (Tchannel channel)
     (syscall_listen,
      (UX_listen ((CHANNEL_DESCRIPTOR (channel)), SOCKET_LISTEN_BACKLOG)));
 }
-
+
 Tchannel
 OS_server_connection_accept (Tchannel channel,
 			     void * peer_host,
@@ -297,6 +298,7 @@ OS_server_connection_accept (Tchannel channel,
   static struct sockaddr_in address;
   socklen_t address_length = (sizeof (struct sockaddr_in));
   int s;
+  memset((&address), 0, (sizeof (address)));
   while (1)
     {
       s = (UX_accept ((CHANNEL_DESCRIPTOR (channel)),
@@ -304,20 +306,17 @@ OS_server_connection_accept (Tchannel channel,
 		      (&address_length)));
       if (s >= 0)
 	break;
-      if (errno != EINTR)
-	{
 #ifdef EAGAIN
-	  if (errno == EAGAIN)
-	    return (NO_CHANNEL);
+      if (errno == EAGAIN)
+	return (NO_CHANNEL);
 #endif
 #ifdef EWOULDBLOCK
-	  if (errno == EWOULDBLOCK)
-	    return (NO_CHANNEL);
+      if (errno == EWOULDBLOCK)
+	return (NO_CHANNEL);
 #endif
-	  error_system_call (errno, syscall_accept);
-	}
-      deliver_pending_interrupts ();
+      UX_prim_check_fd_errno (syscall_accept);
     }
+  UX_out_of_files_p = false;
   if (peer_host != 0)
     memcpy (peer_host,
 	    (& (address . sin_addr)),

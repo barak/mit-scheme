@@ -17,10 +17,6 @@
 
 /* ADDED tk_GetIntervalToNextEvent */
 
-#ifndef lint
-static char rcsid[] = "$Id: tkEvent.c,v 1.2 2002/11/27 02:08:19 cph Exp $ SPRITE (Berkeley)";
-#endif
-
 #include "tkConfig.h"
 #include "tkInt.h"
 #include <errno.h>

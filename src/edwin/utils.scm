@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.63 2008/01/30 20:02:07 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -126,38 +124,10 @@ USA.
 	  (set-interrupt-enables! mask)
 	  result)))))
 
-(define (edwin-set-string-maximum-length! string n-chars)
-  (if (not (string? string))
-      (error:wrong-type-argument string "string" 'SET-STRING-MAXIMUM-LENGTH!))
-  (if (not (fix:fixnum? n-chars))
-      (error:wrong-type-argument n-chars "fixnum" 'SET-STRING-MAXIMUM-LENGTH!))
-  (if (not (and (fix:>= n-chars 0)
-		(fix:< n-chars
-		       (fix:lsh (fix:- (system-vector-length string) 1)
-				(fix:- 0 (chars-to-words-shift))))))
-      (error:bad-range-argument n-chars 'SET-STRING-MAXIMUM-LENGTH!))
-  (let ((mask (set-interrupt-enables! interrupt-mask/none)))
-    ((ucode-primitive primitive-object-set! 3)
-     string
-     0
-     ((ucode-primitive primitive-object-set-type 2)
-      (ucode-type manifest-nm-vector)
-      (fix:+ 1 (chars->words (fix:+ n-chars 1)))))
-    (set-string-length! string (fix:+ n-chars 1))
-    (string-set! string n-chars #\nul)
-    (set-string-length! string n-chars)
-    (set-interrupt-enables! mask)
-    unspecific))
-
 (define string-allocate
   (if (compiled-procedure? edwin-string-allocate)
       edwin-string-allocate
       (ucode-primitive string-allocate)))
-
-(define set-string-maximum-length!
-  (if (compiled-procedure? edwin-set-string-maximum-length!)
-      edwin-set-string-maximum-length!
-      (ucode-primitive set-string-maximum-length!)))
 
 (define (%substring-move! source start-source end-source
 			  target start-target)

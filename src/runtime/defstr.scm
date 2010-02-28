@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.59 2008/02/14 00:45:17 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -75,37 +73,35 @@ differences:
 
 |#
 
-(define-expander 'DEFINE-STRUCTURE system-global-environment
-  (lambda (form environment closing-environment)
-    (if (not (and (pair? (cdr form)) (list? (cddr form))))
-	(error "Ill-formed special form:" form))
-    (make-syntactic-closure closing-environment '()
-      (let ((name-and-options (cadr form))
-	    (slot-descriptions (cddr form)))
+(define-syntax define-structure
+  (sc-macro-transformer
+   (lambda (form use-environment)
+     (syntax-check '(KEYWORD + DATUM) form)
+     (capture-syntactic-environment
+      (lambda (closing-environment)
 	(let ((structure
-	       (call-with-values
-		   (lambda ()
+	       (receive (name options)
+		   (let ((name-and-options (cadr form)))
 		     (if (pair? name-and-options)
 			 (values (car name-and-options) (cdr name-and-options))
 			 (values name-and-options '())))
-		 (lambda (name options)
-		   (if (not (symbol? name))
-		       (error "Structure name must be a symbol:" name))
-		   (if (not (list? options))
-		       (error "Structure options must be a list:" options))
-		   (let ((context
-			  (make-parser-context name
-					       environment
-					       closing-environment)))
-		     (parse/options options
-				    (parse/slot-descriptions slot-descriptions)
-				    context))))))
+		 (if (not (symbol? name))
+		     (error "Structure name must be a symbol:" name))
+		 (if (not (list? options))
+		     (error "Structure options must be a list:" options))
+		 (let ((context
+			(make-parser-context name
+					     use-environment
+					     closing-environment)))
+		   (parse/options options
+				  (parse/slot-descriptions (cddr form))
+				  context)))))
 	  `(BEGIN ,@(type-definitions structure)
 		  ,@(constructor-definitions structure)
 		  ,@(accessor-definitions structure)
 		  ,@(modifier-definitions structure)
 		  ,@(predicate-definitions structure)
-		  ,@(copier-definitions structure)))))))
+		  ,@(copier-definitions structure))))))))
 
 ;;;; Parse options
 
@@ -257,7 +253,7 @@ differences:
       (and (identifier? object)
 	   (there-exists? false-expression-names
 	     (lambda (name)
-	       (identifier=? (parser-context/environment context)
+	       (identifier=? (parser-context/use-environment context)
 			     object
 			     (parser-context/closing-environment context)
 			     name))))))
@@ -565,10 +561,10 @@ differences:
   (eq? (structure/physical-type structure) 'RECORD))
 
 (define-record-type <parser-context>
-    (make-parser-context name environment closing-environment)
+    (make-parser-context name use-environment closing-environment)
     parser-context?
   (name parser-context/name)
-  (environment parser-context/environment)
+  (use-environment parser-context/use-environment)
   (closing-environment parser-context/closing-environment))
 
 (define-record-type <option>
@@ -597,7 +593,7 @@ differences:
 		(parser-context/closing-environment context)))
 
 (define (close name context)
-  (close-syntax name (parser-context/environment context)))
+  (close-syntax name (parser-context/use-environment context)))
 
 (define (accessor-definitions structure)
   (let ((context (structure/context structure)))
@@ -701,8 +697,8 @@ differences:
 			(optional (map name->slot optional))
 			(rest (and rest (name->slot rest))))
 		    (map (lambda (slot)
-			   (let* ((name (slot/name slot))
-				  (dv (default-value-expr structure name)))
+			   (let ((name (slot/name slot))
+				 (dv (default-value-expr structure slot)))
 			     (cond ((or (memq slot required)
 					(eq? slot rest))
 				    name)
@@ -710,7 +706,7 @@ differences:
 				    `(IF (DEFAULT-OBJECT? ,name) ,dv ,name))
 				   (else dv))))
 			 (structure/slots structure)))))))))))
-
+
 (define (make-constructor structure name lambda-list generate-body)
   (let* ((context (structure/context structure))
 	(tag-expression (close (structure/tag-expression structure) context)))
@@ -726,14 +722,25 @@ differences:
 	`(DEFINE (,name ,@lambda-list)
 	   ,(generate-body tag-expression)))))
 
-(define (default-value-expr structure name)
-  (let ((context (structure/context structure)))
-    `(,(absolute (if (structure/record-type? structure)
-		     'RECORD-TYPE-DEFAULT-VALUE
-		     'DEFINE-STRUCTURE/DEFAULT-VALUE)
-		 context)
-      ,(close (structure/type-descriptor structure) context)
-      ',name)))
+(define (default-value-expr structure slot)
+  (let ((expression (slot/default slot)))
+    ;; Scheme spends a remarkable amount of time fetching and calling
+    ;; the default value procedures.  This hack eliminates that time
+    ;; for many uses of DEFINE-STRUCTURE.
+    (if (not (pair? (strip-syntactic-closures expression)))
+	expression
+	(let ((record? (structure/record-type? structure))
+	      (context (structure/context structure)))
+	  `(,(absolute (if record?
+			   'RECORD-TYPE-DEFAULT-VALUE-BY-INDEX
+			   'DEFINE-STRUCTURE/DEFAULT-VALUE-BY-INDEX)
+		       context)
+	    ,(close (structure/type-descriptor structure) context)
+	    ,(- (slot/index slot)
+		(if record?
+		    0
+		    (+ (structure/offset structure)
+		       (if (structure/tagged? structure) 1 0)))))))))
 
 (define (copier-definitions structure)
   (let ((copier-name (structure/copier structure)))

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xpath.scm,v 1.8 2008/07/19 01:41:18 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -208,7 +206,7 @@ USA.
 
 (define-method node-name ((node <namespace-node>))
   (let ((name (xml-attribute-name (node-item node))))
-    (if (xml-name-qname=? name 'xmlns)
+    (if (eq? (xml-name->symbol name) 'xmlns)
 	(null-xml-name-prefix)
 	(xml-name-local name))))
 
@@ -319,12 +317,12 @@ USA.
     (let per-decl ((decls (node-ns-decls node)) (seen seen))
       (if (pair? decls)
 	  (let ((decl (car decls)))
-	    (let ((qname (xml-name-qname (xml-attribute-name decl))))
-	      (if (memq qname seen)
+	    (let ((aname (xml-name->symbol (xml-attribute-name decl))))
+	      (if (memq aname seen)
 		  (per-decl (force (cdr decls)) seen)
 		  (cons-stream decl
 			       (per-decl (force (cdr decls))
-					 (cons qname seen))))))
+					 (cons aname seen))))))
 	  (let ((parent (parent-node node)))
 	    (if parent
 		(per-node parent seen)

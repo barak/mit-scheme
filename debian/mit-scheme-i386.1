@@ -1,0 +1,92 @@
+.TH "mit\-scheme" "1" "9.0" "MIT/GNU Scheme Team" ""
+.SH "NAME"
+.LP
+mit-scheme-i386 \- Scheme development environment
+.SH "SYNOPSIS"
+.LP 
+.B mit\-scheme
+.RI [ OPTIONS ]
+.br 
+.SH "DESCRIPTION"
+.LP 
+MIT/GNU Scheme is an implementation of the Scheme programming
+language, providing an interpreter, compiler, source\-code debugger,
+integrated Emacs\-like editor, and a large runtime library.  MIT/GNU
+Scheme is best suited to programming large applications with a rapid
+development cycle.
+.SH "OPTIONS"
+.LP 
+These are some of the more common command\-line options.  For full
+information about available options, see the Texinfo documentation.
+.TP 
+.RI \-\-heap " NBLOCKS"
+.br 
+Specify the size of the heap in 1024\-word blocks.
+The default heap size is 4096 blocks.
+.TP 
+.RI \-\-stack " NBLOCKS"
+.br 
+Specify the size of the stack in 1024\-word blocks.
+The default stack size is 128 blocks.
+.TP 
+.RI \-\-library " PATH"
+.br 
+Specify where to look for Scheme's binary files.
+.I PATH
+should be a colon\-separated list of directory names.
+.TP 
+\-\-no\-init\-file
+.br 
+Don't load the user's init file.
+.TP 
+\-\-edit
+.br 
+Start the text editor automatically.
+.TP 
+.RI \-\-eval " EXPRESSION" ...
+.br 
+Evaluate the specified expressions after starting Scheme.
+.TP 
+.RI \-\-load " FILENAME" ...
+.br 
+Load the specified files after starting Scheme.
+.TP 
+\-\-option\-summary
+.br 
+Print a summary of the command\-line options, including default values.
+.SH "FILES"
+.LP 
+\fI/usr/lib/mit\-scheme-i386\fP 
+.SH "ENVIRONMENT VARIABLES"
+.LP 
+MIT/GNU Scheme refers to a large number of environment variables.  See
+the Texinfo documentation for details.
+.SH "EXAMPLES"
+.LP 
+To use the evaluator in a command-line interface, type:
+.LP 
+.B mit\-scheme-i386
+.LP 
+To start the editor and use it as a front-end to the evaluator, type:
+.LP 
+.B mit\-scheme-i386
+\-\-edit
+.SH "AUTHORS"
+.LP 
+MIT/GNU Scheme Team <bug\-mit\-scheme@gnu.org>
+.SH "SEE ALSO"
+.LP
+The full documentation for MIT/GNU Scheme is maintained as a set of
+Texinfo manuals.
+If the
+.B info
+program is properly installed at your site, the command
+.IP
+.B info
+"MIT/GNU Scheme User"
+.PP
+should give you access to the complete User's manual.  Programming
+information is located in the Info topics "MIT/GNU Scheme Ref" and
+"SOS".  Usage of the
+.B IMAIL
+mail reader is located in the "IMAIL" topic.

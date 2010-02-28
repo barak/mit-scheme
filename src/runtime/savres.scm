@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: savres.scm,v 14.49 2008/01/30 20:02:34 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,34 +122,9 @@ USA.
 	 (if (default-object? port)
 	     (current-output-port)
 	     (guarantee-output-port port 'IDENTIFY-WORLD))))
-    (let ((strings
-	   `("Copyright (C)"
-	     ,@(let loop ((ys copyright-years))
-		 (if (pair? (cdr ys))
-		     (cons (string-append (number->string (car ys)) ",")
-			   (loop (cdr ys)))
-		     (list (number->string (car ys)))))
-	     "Massachusetts"
-	     "Institute"
-	     "of"
-	     "Technology")))
-      (write-string (car strings) port)
-      (let loop
-	  ((strings (cdr strings))
-	   (col (string-length (car strings))))
-	(if (pair? strings)
-	    (let ((col* (+ col 1 (string-length (car strings)))))
-	      (if (<= col* 70)
-		  (begin
-		    (write-string " " port)
-		    (write-string (car strings) port)
-		    (loop (cdr strings) col*))
-		  (begin
-		    (newline port)
-		    (write-string "   " port)
-		    (loop strings 0)))))))
+    (write-mit-scheme-copyright port #!default #!default #t)
     (newline port)
-    (write-string license-statement port)
+    (write-mit-scheme-license port #!default #t)
     (newline port)
     (newline port)
     (if time-world-saved
@@ -170,7 +143,3 @@ USA.
 			      "  "
 			      " || "
 			      "")))
-
-(define license-statement
-  "This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")

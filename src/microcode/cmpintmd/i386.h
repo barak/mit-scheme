@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.h,v 1.42 2008/01/30 20:02:24 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -233,6 +231,8 @@ typedef struct
   (scan) += 1;								\
 } while (false)
 
+#define OPERATOR_RELOCATION_OFFSET 1
+
 #define READ_COMPILED_CLOSURE_TARGET(a, r)				\
   read_compiled_closure_target ((a), (&r))
 
@@ -267,6 +267,7 @@ extern int ASM_ENTRY_POINT (i386_interface_initialize) (void);
 extern void asm_assignment_trap (void);
 extern void asm_dont_serialize_cache (void);
 extern void asm_error (void);
+extern void asm_fixnum_shift (void);
 extern void asm_generic_add (void);
 extern void asm_generic_decrement (void);
 extern void asm_generic_divide (void);
@@ -308,6 +309,7 @@ extern void asm_primitive_error (void);
 extern void asm_primitive_lexpr_apply (void);
 extern void asm_reference_trap (void);
 extern void asm_safe_reference_trap (void);
+extern void asm_set_interrupt_enables (void);
 extern void asm_sc_apply (void);
 extern void asm_sc_apply_size_1 (void);
 extern void asm_sc_apply_size_2 (void);

@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.13 2008/01/30 20:02:19 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -211,9 +209,9 @@ DEFINE_PRIMITIVE ("MHASH", Prim_mhash, 4, 4, 0)
   CHECK_ARG (2, STRING_P);
   {
     SCHEME_OBJECT string = (ARG_REF (2));
-    unsigned long l = (STRING_LENGTH (string));
-    unsigned long start = (arg_ulong_index_integer (3, l));
-    unsigned long end = (arg_integer_in_range (4, start, (l + 1)));
+    unsigned long end
+      = (arg_ulong_index_integer (4, ((STRING_LENGTH (string)) + 1)));
+    unsigned long start = (arg_ulong_index_integer (3, (end + 1)));
     mhash ((arg_context (1)), (STRING_LOC (string, start)), (end - start));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);

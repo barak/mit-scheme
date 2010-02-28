@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.78 2008/01/30 20:02:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -231,51 +229,41 @@ The following commands evaluate Scheme expressions:
 	(lambda (prefix if-unique if-not-unique if-not-found)
 	  (let ((completions
 		 (let ((environment (evaluation-environment #f)))
-		   (let ((completions
-			  (obarray-completions
-			   (if (and bound-only?
-				    (environment-lookup
-				     environment
-				     '*PARSER-CANONICALIZE-SYMBOLS?*))
-			       (string-downcase prefix)
-			       prefix))))
-		     (if bound-only?
-			 (keep-matching-items completions
-			   (lambda (name)
-			     (environment-bound? environment name)))
-			 completions)))))
+		   (obarray-completions
+		    (if (and bound-only?
+			     (environment-lookup
+			      environment
+			      '*PARSER-CANONICALIZE-SYMBOLS?*))
+			(string-downcase prefix)
+			prefix)
+		    (if bound-only?
+			(lambda (symbol)
+			  (environment-bound? environment symbol))
+			(lambda (symbol)
+			  symbol	;ignore
+			  #t))))))
 	    (cond ((not (pair? completions))
 		   (if-not-found))
 		  ((null? (cdr completions))
-		   (if-unique (system-pair-car (car completions))))
+		   (if-unique (symbol-name (car completions))))
 		  (else
-		   (let ((completions (map system-pair-car completions)))
+		   (let ((completions (map symbol-name completions)))
 		     (if-not-unique
 		      (string-greatest-common-prefix completions)
 		      (lambda () (sort completions string<=?))))))))
 	(lambda (completion)
 	  (delete-string start end)
 	  (insert-string completion start))))))
-
-(define (obarray-completions prefix)
-  (let ((obarray (fixed-objects-item 'OBARRAY)))
-    (let ((prefix-length (string-length prefix))
-	  (obarray-length (vector-length obarray)))
-      (let index-loop ((i 0))
-	(if (fix:< i obarray-length)
-	    (let bucket-loop ((symbols (vector-ref obarray i)))
-	      (if (null? symbols)
-		  (index-loop (fix:+ i 1))
-		  (let ((string (system-pair-car (car symbols))))
-		    (if (and (fix:<= prefix-length (string-length string))
-			     (let loop ((index 0))
-			       (or (fix:= index prefix-length)
-				   (and (char=? (string-ref prefix index)
-						(string-ref string index))
-					(loop (fix:+ index 1))))))
-			(cons (car symbols) (bucket-loop (cdr symbols)))
-			(bucket-loop (cdr symbols))))))
-	    '())))))
+
+(define (obarray-completions prefix filter)
+  (let ((completions '()))
+    (for-each-interned-symbol
+     (lambda (symbol)
+       (if (and (string-prefix? prefix (symbol-name symbol))
+		(filter symbol))
+	   (set! completions (cons symbol completions)))
+       unspecific))
+    completions))
 
 (define-command scheme-complete-symbol
   "Perform completion on Scheme symbol preceding point.

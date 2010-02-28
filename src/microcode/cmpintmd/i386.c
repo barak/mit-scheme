@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: i386.c,v 1.3 2008/01/30 20:02:24 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -340,6 +338,8 @@ i386_reset_hook (void)
     SETUP_REGISTER (asm_serialize_cache);		/* -7 */
   else
     SETUP_REGISTER (asm_dont_serialize_cache);		/* -7 */
+  SETUP_REGISTER (asm_fixnum_shift);			/* -6 */
+  SETUP_REGISTER (asm_set_interrupt_enables);		/* -5 */
 
 #ifdef _MACH_UNIX
   {

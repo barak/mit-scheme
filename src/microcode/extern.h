@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: extern.h,v 9.71 2008/01/30 20:02:12 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -172,6 +170,7 @@ extern const char * Abort_Names [];
 extern const char * Error_Names [];
 extern const char * Term_Names [];
 extern const char * term_messages [];
+extern const char * fixed_objects_names [];
 
 extern bool trapping;
 
@@ -210,6 +209,8 @@ extern double double_round (double);
 extern SCHEME_OBJECT bignum_to_fixnum (SCHEME_OBJECT);
 extern SCHEME_OBJECT bignum_to_integer (SCHEME_OBJECT);
 extern SCHEME_OBJECT bignum_to_flonum (SCHEME_OBJECT);
+extern bool finite_flonum_p (SCHEME_OBJECT);
+extern bool flonum_is_finite_p (SCHEME_OBJECT);
 extern bool flonum_integer_p (SCHEME_OBJECT);
 extern SCHEME_OBJECT flonum_floor (SCHEME_OBJECT);
 extern SCHEME_OBJECT flonum_ceiling (SCHEME_OBJECT);
@@ -234,6 +235,7 @@ extern SCHEME_OBJECT integer_remainder (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_length_in_bits (SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
 
+extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);
 extern bool real_number_to_double_p (SCHEME_OBJECT);
 extern double real_number_to_double (SCHEME_OBJECT);
@@ -267,6 +269,8 @@ extern SCHEME_OBJECT string_to_symbol (SCHEME_OBJECT);
 extern SCHEME_OBJECT char_pointer_to_symbol (const char *);
 extern SCHEME_OBJECT memory_to_symbol (unsigned long, const void *);
 extern SCHEME_OBJECT find_symbol (unsigned long, const char *);
+extern void strengthen_symbol (SCHEME_OBJECT);
+extern void weaken_symbol (SCHEME_OBJECT);
 
 /* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);

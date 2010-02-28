@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: matcher.scm,v 1.38 2008/01/30 20:02:40 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -112,7 +110,7 @@ USA.
       (hash-table/get matcher-preprocessors name #f)))
 
 (define matcher-preprocessors
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-*matcher-expander '+
   (lambda (expression)
@@ -290,7 +288,7 @@ USA.
   keyword)
 
 (define matcher-compilers
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-syntax define-atomic-matcher
   (rsc-macro-transformer

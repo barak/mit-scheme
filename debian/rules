@@ -25,8 +25,7 @@ endif
 CFLAGS += -g
 
 PREFIX = /usr
-LIBDIR = $(PREFIX)/lib/mit-scheme
-EMACSDIR = $(PREFIX)/share/emacs/site-lisp/mit-scheme
+LIBDIR = $(PREFIX)/lib/mit-scheme-i386
 MANDIR = $(PREFIX)/share/man
 
 INSTALL = install --preserve-timestamps
@@ -47,7 +46,7 @@ autotools:
 build: configure-stamp build-stamp
 build-stamp:
 	dh_testdir
-	SCHEME_COMPILER="mit-scheme --compiler --heap 4000" $(MAKE)
+	SCHEME_COMPILER="mit-scheme-i386" $(MAKE)
 	touch build-stamp
 
 clean:
@@ -66,10 +65,10 @@ install: build
 	rm -f $(DESTDIR)$(PREFIX)/bin/scheme
 	rm -f $(DESTDIR)$(PREFIX)/bin/bchscheme
 	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme
+	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme-native
 	rm -f $(DESTDIR)$(LIBDIR)/runtime.com
 	$(INSTALL) -m 644 debian/mit-scheme.desktop \
 	    $(DESTDIR)$(PREFIX)/share/applications/.
-	$(INSTALL) -m 644 etc/*.el $(DESTDIR)$(EMACSDIR)/.
 	$(INSTALL) -m 644 icons/* \
 	    $(DESTDIR)$(PREFIX)/share/pixmaps/mit-scheme/.
 	dh_install --sourcedir=debian/tmp
@@ -82,14 +81,13 @@ binary-indep: build install
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs src/ChangeLog
+	dh_installchangelogs changelog.txt
 	dh_installdocs
 	dh_installexamples
 	dh_installmenu
-	dh_desktop
 #	dh_installdebconf	
 #	dh_installlogrotate
-	dh_installemacsen
+#	dh_installemacsen
 #	dh_installcatalogs
 #	dh_installpam
 #	dh_installmime

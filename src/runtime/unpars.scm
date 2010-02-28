@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.69 2008/01/30 20:02:36 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -313,10 +311,10 @@ USA.
 	((eq? object #t) (*unparse-string "#t"))
 	((default-object? object) (*unparse-string "#!default"))
 	((eof-object? object) (*unparse-string "#!eof"))
-	((eq? object lambda-aux-tag) (*unparse-string "#!aux"))
-	((eq? object lambda-key-tag) (*unparse-string "#!key"))
-	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
-	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
+	((eq? object lambda-tag:aux) (*unparse-string "#!aux"))
+	((eq? object lambda-tag:key) (*unparse-string "#!key"))
+	((eq? object lambda-tag:optional) (*unparse-string "#!optional"))
+	((eq? object lambda-tag:rest) (*unparse-string "#!rest"))
 	((eq? object unspecific) (*unparse-string "#!unspecific"))
 	(else (unparse/default object))))
 

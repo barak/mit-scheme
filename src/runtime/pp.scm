@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pp.scm,v 14.53 2008/01/30 20:02:33 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -219,7 +217,10 @@ USA.
   (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
 	      (output-port port)
 	      (*unparse-uninterned-symbols-by-name?*
-	       *pp-uninterned-symbols-by-name*))
+	       *pp-uninterned-symbols-by-name*)
+	      (*unparse-abbreviate-quotations?*
+	       (or as-code?
+		   *unparse-abbreviate-quotations?*)))
     (let* ((numerical-walk
 	    (if *pp-avoid-circularity?*
 		numerical-walk-avoid-circularities

@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: lookup.c,v 9.78 2008/02/02 17:57:36 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -444,7 +442,11 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     SCHEME_OBJECT * cell = (scan_frame (environment, symbol, 1));
     SCHEME_OBJECT old_value;
     if (cell != 0)
-      return (assign_variable_end (cell, value, (&old_value), 1));
+      {
+	if (GLOBAL_FRAME_P (environment))
+	  strengthen_symbol (symbol);
+	return (assign_variable_end (cell, value, (&old_value), 1));
+      }
   }
 
   /* At this point, we know that environment can't be the global
@@ -565,6 +567,9 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   if (target_cell == source_cell)
     return (PRIM_DONE);
 
+  if ((target_cell != 0) && (GLOBAL_FRAME_P (target_environment)))
+    strengthen_symbol (target_symbol);
+
   if ((target_cell != 0)
       && ((get_trap_kind (*target_cell)) == TRAP_COMPILER_CACHED))
     {
@@ -635,6 +640,8 @@ unbind_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 {
   SCHEME_OBJECT frame;
   SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
+  if (GLOBAL_FRAME_P (frame))
+    weaken_symbol (symbol);
   switch ((cell == 0) ? TRAP_UNBOUND : (get_trap_kind (*cell)))
     {
     case TRAP_UNBOUND:
@@ -887,7 +894,8 @@ add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		     SCHEME_OBJECT block, unsigned long offset,
 		     unsigned int reference_kind)
 {
-  SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, 0));
+  SCHEME_OBJECT frame = 0;
+  SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, (&frame)));
   SCHEME_OBJECT dummy_cell = UNBOUND_OBJECT;
   if (cell == 0)
     /* There's no binding for the variable, and we don't have access
@@ -895,6 +903,8 @@ add_cache_reference (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
        we'll install one, but it won't be attached to any environment
        structure.  */
     cell = (&dummy_cell);
+  else if (GLOBAL_FRAME_P (frame))
+    strengthen_symbol (symbol);
   /* This procedure must complete to keep the data structures
      consistent, so we do a GC check in advance to guarantee that all
      of the allocations will finish.  */

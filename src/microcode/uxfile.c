@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxfile.c,v 1.17 2008/01/30 20:02:22 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -73,8 +71,7 @@ static Tchannel
 open_file (const char * filename, int oflag)
 {
   int fd;
-  STD_UINT_SYSTEM_CALL
-    (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
+  STD_FD_SYSTEM_CALL (syscall_open, fd, (UX_open (filename, oflag, MODE_REG)));
 #ifdef SLAVE_PTY_P
   if ((SLAVE_PTY_P (filename)) && (!UX_setup_slave_pty (fd)))
     {
@@ -95,6 +92,7 @@ name (const char * filename)						\
 
 DEFUN_OPEN_FILE (OS_open_input_file, O_RDONLY)
 DEFUN_OPEN_FILE (OS_open_output_file, (O_WRONLY | O_CREAT | O_TRUNC))
+DEFUN_OPEN_FILE (OS_open_exclusive_output_file, (O_WRONLY | O_CREAT | O_EXCL))
 DEFUN_OPEN_FILE (OS_open_io_file, (O_RDWR | O_CREAT))
 
 #ifdef O_APPEND

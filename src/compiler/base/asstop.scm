@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: asstop.scm,v 1.22 2008/09/10 15:12:07 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -253,7 +251,9 @@ USA.
 		(set! *recursive-compilation-results*
 		      (cons (vector *recursive-compilation-number*
 				    info
-				    *code-vector*)
+				    *code-vector*
+				    *tl-bound*
+				    *tl-free*)
 			    *recursive-compilation-results*))
 		(vector 'DEBUGGING-INFO-WRAPPER
 			2

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: scode.scm,v 4.20 2008/02/14 02:12:27 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -96,7 +94,8 @@ USA.
 
 (define (scode/error-combination? object)
   (or (and (scode/combination? object)
-	   (eq? (scode/combination-operator object) error-procedure))
+	   (eq? (scode/combination-operator object)
+		(ucode-primitive error-procedure)))
       (and (scode/absolute-combination? object)
 	   (eq? (scode/absolute-combination-name object) 'ERROR-PROCEDURE))))
 
@@ -112,7 +111,8 @@ USA.
 		     (eq? (scode/absolute-combination-name irritants) 'LIST))
 		(scode/absolute-combination-operands irritants))
 	       ((and (scode/combination? irritants)
-		     (eq? (scode/combination-operator irritants) cons))
+		     (eq? (scode/combination-operator irritants)
+			  (ucode-primitive cons)))
 		(let ((operands (scode/combination-operands irritants)))
 		  (cons (car operands)
 			(loop (cadr operands)))))

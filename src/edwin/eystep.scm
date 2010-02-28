@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: eystep.scm,v 1.12 2008/01/30 20:02:01 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -173,7 +171,7 @@ c	contract the step under the cursor")
       (get-stepper-buffer state)))
 
 (define stepper-buffers
-  (make-eq-hash-table))
+  (make-weak-eq-hash-table))
 
 (define (current-stepper-state)
   (buffer->stepper-state (current-buffer)))
@@ -194,7 +192,7 @@ c	contract the step under the cursor")
 
 (define (get-buffer-ynode-regions buffer)
   (or (buffer-get buffer 'YNODE-REGIONS)
-      (let ((table (make-eq-hash-table)))
+      (let ((table (make-weak-eq-hash-table)))
 	(buffer-put! buffer 'YNODE-REGIONS table)
 	table)))
 

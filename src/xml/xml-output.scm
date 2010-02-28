@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.47 2008/10/26 23:35:16 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -92,7 +90,7 @@ USA.
 
 (define (emit-string string ctx)
   (let ((port (ctx-port ctx)))
-    (for-each-wide-char string
+    (for-each-unicode-char string
       (lambda (char)
 	(write-char char port)))))
 
@@ -415,7 +413,7 @@ USA.
 
 (define (xml-string-columns string)
   (let ((n 0))
-    (for-each-wide-char string
+    (for-each-unicode-char string
       (lambda (char)
 	(set! n
 	      (fix:+ n
@@ -434,7 +432,7 @@ USA.
   (utf8-string-length (xml-name-string name)))
 
 (define (write-xml-nmtoken nmtoken ctx)
-  (emit-string (xml-nmtoken-string nmtoken) ctx))
+  (emit-string (symbol-name nmtoken) ctx))
 
 (define (write-entity-value value col ctx)
   (if (xml-external-id? value)
@@ -488,7 +486,7 @@ USA.
       (emit-char #\space ctx)))
 
 (define (write-escaped-string string escapes ctx)
-  (for-each-wide-char string
+  (for-each-unicode-char string
     (lambda (char)
       (cond ((assq char escapes)
 	     => (lambda (e)
@@ -501,7 +499,7 @@ USA.
 	    (else
 	     (emit-char char ctx))))))
 
-(define (for-each-wide-char string procedure)
+(define (for-each-unicode-char string procedure)
   (let ((port (open-utf8-input-string string)))
     (let loop ()
       (let ((char (read-char port)))

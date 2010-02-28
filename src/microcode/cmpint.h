@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: cmpint.h,v 10.20 2008/02/14 06:47:33 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -381,6 +379,7 @@ extern SCHEME_OBJECT reflect_to_interface;
 
 extern SCHEME_OBJECT cc_block_debugging_info (SCHEME_OBJECT);
 extern SCHEME_OBJECT cc_block_environment (SCHEME_OBJECT);
+extern SCHEME_OBJECT cc_block_linkage_info (SCHEME_OBJECT);
 
 extern long enter_compiled_expression (void);
 extern void guarantee_cc_return (unsigned long);

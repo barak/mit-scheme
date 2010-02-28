@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: bigprm.c,v 1.12 2008/01/30 20:02:10 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -148,7 +146,7 @@ DEFINE_PRIMITIVE ("BIGNUM->FIXNUM", Prim_bignum_to_fixnum, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM->BIGNUM", Prim_flonum_to_bignum, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, FLONUM_P);
+  CHECK_ARG (1, finite_flonum_p);
   PRIMITIVE_RETURN (FLONUM_TO_BIGNUM (ARG_REF (1)));
 }
 

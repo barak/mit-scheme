@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: paths.scm,v 1.23 2008/01/30 20:02:04 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,7 +39,10 @@ USA.
   (edwin-library-directory-pathname "EDWIN_BINARY_DIRECTORY" #t))
 
 (define (edwin-info-directory)
-  (edwin-library-directory-pathname "EDWIN_INFO_DIRECTORY" #f))
+  (let ((pathname
+	 (edwin-library-directory-pathname "EDWIN_INFO_DIRECTORY" #f)))
+    (and pathname
+	 (merge-pathnames "info" (pathname-as-directory pathname)))))
 
 (define (edwin-etc-directory)
   (edwin-library-directory-pathname "EDWIN_ETC_DIRECTORY" #t))

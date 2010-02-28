@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: http-syntax.scm,v 1.10 2008/10/29 02:19:24 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1002,7 +1000,7 @@ USA.
   (hash-table-ref/default header-value-defns name #f))
 
 (define-deferred header-value-defns
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-structure hvdefn
   (name #f read-only #t)
@@ -1447,11 +1445,6 @@ USA.
 ))
 
 ;;;; Utilities
-
-(define initialize-package!
-  (let ((environment (the-environment)))
-    (lambda ()
-      (run-boot-inits! environment))))
 
 (define (parse-http-chunk-leader string)
   ((list-parser

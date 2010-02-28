@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtty.c,v 1.17 2008/01/30 20:02:22 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,10 +41,14 @@ extern void tputs (const char *, int, void (*) (char));
 
 static Tchannel input_channel;
 static Tchannel output_channel;
+
 static int tty_x_size;
 static int tty_y_size;
 static const char * tty_command_beep;
 static const char * tty_command_clear;
+
+static bool tty_size_synchronized_p;
+static void UX_synchronize_tty_size (void);
 
 Tchannel
 OS_tty_input_channel (void)
@@ -63,12 +65,14 @@ OS_tty_output_channel (void)
 unsigned int
 OS_tty_x_size (void)
 {
+  UX_synchronize_tty_size ();
   return (tty_x_size);
 }
 
 unsigned int
 OS_tty_y_size (void)
 {
+  UX_synchronize_tty_size ();
   return (tty_y_size);
 }
 
@@ -116,13 +120,37 @@ tputs_write_char (char c)
   (*tputs_output_scan++) = c;
 }
 
-void
-UX_reinitialize_tty (void)
+static void
+UX_tty_with_termcap (void (*procedure) (void))
 {
+  tputs_output_scan = tputs_output;
+  {
+    char termcap_buffer [TERMCAP_BUFFER_SIZE];
+    const char *term;
+    if ((isatty (STDOUT_FILENO))
+	&& (!option_emacs_subprocess)
+	&& ((term = (getenv ("TERM"))) != 0)
+	&& ((tgetent (termcap_buffer, term)) > 0))
+      (*procedure) ();
+  }
+}
+
+static void
+UX_synchronize_tty_size_with_termcap (void)
+{
+  tty_x_size = (tgetnum ("co"));
+  tty_y_size = (tgetnum ("li"));
+}
+
+static void
+UX_synchronize_tty_size (void)
+{
+  if (tty_size_synchronized_p)
+    return;
+
   tty_x_size = (-1);
   tty_y_size = (-1);
-  tty_command_beep = ALERT_STRING;
-  tty_command_clear = 0;
+
   /* Figure out the size of the terminal.  First ask the operating
      system, if it has an appropriate system call.  Then try the
      environment variables COLUMNS and LINES.  Then try termcap.
@@ -137,6 +165,7 @@ UX_reinitialize_tty (void)
       }
   }
 #endif /* TIOCGWINSZ */
+
   if ((tty_x_size <= 0) || (tty_y_size <= 0))
     {
       const char * columns = (UX_getenv ("COLUMNS"));
@@ -152,30 +181,39 @@ UX_reinitialize_tty (void)
 	    }
 	}
     }
-  tputs_output_scan = tputs_output;
-  {
-    static char tgetstr_buffer [TERMCAP_BUFFER_SIZE];
-    char termcap_buffer [TERMCAP_BUFFER_SIZE];
-    char * tbp = tgetstr_buffer;
-    const char * term;
-    if ((isatty (STDOUT_FILENO))
-	&& (!option_emacs_subprocess)
-	&& ((term = (getenv ("TERM"))) != 0)
-	&& ((tgetent (termcap_buffer, term)) > 0))
-      {
-	if ((tty_x_size <= 0) || (tty_y_size <= 0))
-	  {
-	    tty_x_size = (tgetnum ("co"));
-	    tty_y_size = (tgetnum ("li"));
-	  }
-	tty_command_clear = (tgetstr ("cl", (&tbp)));
-      }
-  }
+
+  if ((tty_x_size <= 0) || (tty_y_size <= 0))
+    UX_tty_with_termcap (&UX_synchronize_tty_size_with_termcap);
+
   if ((tty_x_size <= 0) || (tty_y_size <= 0))
     {
       tty_x_size = DEFAULT_TTY_X_SIZE;
       tty_y_size = DEFAULT_TTY_Y_SIZE;
     }
+
+  tty_size_synchronized_p = true;
+}
+
+static void
+UX_initialize_tty_with_termcap (void)
+{
+  static char tgetstr_buffer [TERMCAP_BUFFER_SIZE];
+  char *tbp = tgetstr_buffer;
+  tty_command_clear = (tgetstr ("cl", (&tbp)));
+}
+
+void
+UX_initialize_tty (void)
+{
+  input_channel = (OS_open_fd (STDIN_FILENO));
+  (CHANNEL_INTERNAL (input_channel)) = 1;
+  output_channel = (OS_open_fd (STDOUT_FILENO));
+  (CHANNEL_INTERNAL (output_channel)) = 1;
+  tty_size_synchronized_p = false;
+  UX_synchronize_tty_size ();
+  tty_command_beep = ALERT_STRING;
+  tty_command_clear = 0;
+  UX_tty_with_termcap (&UX_initialize_tty_with_termcap);
   if (tty_command_clear == 0)
     tty_command_clear = "\f";
   else
@@ -188,11 +226,7 @@ UX_reinitialize_tty (void)
 }
 
 void
-UX_initialize_tty (void)
+UX_reinitialize_tty (void)
 {
-  input_channel = (OS_open_fd (STDIN_FILENO));
-  (CHANNEL_INTERNAL (input_channel)) = 1;
-  output_channel = (OS_open_fd (STDOUT_FILENO));
-  (CHANNEL_INTERNAL (output_channel)) = 1;
-  UX_reinitialize_tty ();
+  tty_size_synchronized_p = false;
 }

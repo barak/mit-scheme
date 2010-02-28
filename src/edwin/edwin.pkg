@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.310 2008/08/15 20:46:12 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,11 +135,9 @@ USA.
 	  define-method
 	  usual==>
 	  with-instance-variables)
-  (import (runtime syntactic-closures)
-	  compile/subexpression
-	  make-compiler-item
-	  select-caddr
-	  select-cddddr))
+  (import (runtime syntax)
+	  compile/expression
+	  make-compiler-item))
 
 (define-package (edwin class-macros transform-instance-variables)
   (files "xform")
@@ -349,6 +345,7 @@ USA.
 	  window-direct-output-insert-char!
 	  window-direct-output-insert-newline!
 	  window-direct-output-insert-substring!
+	  window-direct-output-cursor!
 	  window-direct-update!
 	  window-home-cursor!
 	  window-mark->coordinates
@@ -377,6 +374,7 @@ USA.
   (export (edwin screen)
 	  editor-frame-screen
 	  editor-frame-select-cursor!
+	  editor-frame-cursor-window
 	  editor-frame-select-window!
 	  editor-frame-selected-window
 	  editor-frame-typein-window
@@ -1437,7 +1435,12 @@ USA.
           edwin-variable$diff-switches))
 
 (define-package (edwin vc)
-  (files "vc")
+  (files "vc"
+	 "vc-rcs"
+	 "vc-cvs"
+	 "vc-svn"
+	 "vc-bzr"
+	 "vc-git")
   (parent (edwin))
   (export (edwin)
 	  edwin-command$vc-diff
@@ -1453,6 +1456,7 @@ USA.
 	  edwin-command$vc-version-diff
 	  edwin-command$vc-version-other-window
 	  edwin-mode$vc-log
+	  edwin-variable$git-diff-switches
 	  edwin-variable$vc-checkin-hooks
 	  edwin-variable$vc-checkout-carefully
 	  edwin-variable$vc-command-messages
@@ -1662,7 +1666,6 @@ USA.
 	  edwin-variable$rmail-summary-buffer
 	  edwin-variable$rmail-summary-mode-hook
 	  edwin-variable$rmail-summary-vector
-	  edwin-variable$rmailsum-rcs-header
 	  fetch-all-fields
 	  fetch-first-field
 	  fetch-last-field

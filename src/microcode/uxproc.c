@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxproc.c,v 1.38 2008/03/09 20:24:33 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -318,8 +316,8 @@ OS_make_subprocess (const char * filename,
   /* Don't do `transaction_commit ()' here.  Because we used `vfork'
      to spawn the child, the side-effects that are performed by
      `transaction_commit' will occur in the parent as well. */
-  if (working_directory != 0)
-    UX_chdir (working_directory);
+  if ((working_directory != 0) && ((UX_chdir (working_directory)) < 0))
+    goto kill_child;
   {
     int in_fd = (-1);
     int out_fd = (-1);
@@ -414,14 +412,14 @@ OS_make_subprocess (const char * filename,
 	  : (fd == STDERR_FILENO)
 	  ? (channel_err_type == process_channel_type_none)
 	  : 1)
-	UX_close (fd);
+	(void) UX_close (fd);
   }
 
   /* Put the signal mask and handlers in a normal state.  */
   UX_initialize_child_signals ();
 
   /* Start the process. */
-  execve (filename, ((char * const *) argv), ((char * const *) envp));
+  (void) execve (filename, ((char * const *) argv), ((char * const *) envp));
  kill_child:
   _exit (1);
 }

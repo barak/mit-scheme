@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: x11base.c,v 1.97 2008/01/30 20:02:23 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1069,8 +1067,7 @@ enum event_type
    ((arg), (1 << ((unsigned int) event_type_supremum))))
 
 #define EVENT_ENABLED(xw, type)						\
-  (((xw) == 0)								\
-   || (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0))
+  (((XW_EVENT_MASK (xw)) & (1 << ((unsigned int) (type)))) != 0)
 
 #define EVENT_0 2
 #define EVENT_1 3
@@ -1215,6 +1212,8 @@ x_event_to_object (XEvent * event)
     = (x_window_to_xw (((event->xany) . display),
 		       ((event->xany) . window)));
   SCHEME_OBJECT result = SHARP_F;
+  if (xw == 0)
+    return result;
   switch (event->type)
     {
     case KeyPress:

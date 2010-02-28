@@ -1,0 +1,90 @@
+#| -*-Scheme-*-
+
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.
+
+|#
+
+;;;; Script to incrementally syntax the compiler
+
+(load-option 'CREF)
+
+;; Guarantee that the compiler's package structure exists.
+(if (not (name->package '(COMPILER)))
+    (let ((package-set (package-set-pathname "compiler")))
+      (if (not (file-exists? package-set))
+	  (cref/generate-trivial-constructor "compiler"))
+      (construct-packages-from-file (fasload package-set))))
+
+;; Guarantee that the necessary syntactic transforms and optimizers
+;; are loaded.
+(if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
+    ;; Refer to the cref package model (compiler.pkg) for syntax/load
+    ;; environments.
+    (let* ((xref (begin (load-option 'CREF)(->environment '(cross-reference))))
+
+	   ;; Assume there are no os-type-specific files or packages.
+	   (pmodel ((access read-package-model xref) "compiler" 'unix))
+
+	   (env
+	    (lambda (filename)
+	      (->environment
+	       (let ((path (->pathname filename)))
+		 (let loop ((packages ((access pmodel/packages xref) pmodel)))
+		   (if (pair? packages)
+		       (if (find (lambda (f) (pathname=? f path))
+				 ((access package/files xref) (car packages)))
+			   ((access package/name xref) (car packages))
+			   (loop (cdr packages)))
+		       (error "No package for file" file)))))))
+
+	   (sf-and-load
+	    (lambda files
+	      (for-each (lambda (file)
+			  (fluid-let ((sf/default-syntax-table (env file)))
+			    (sf-conditionally file)))
+			files)
+	      (for-each (lambda (file)
+			  (load (pathname-new-type file "bin") (env file)))
+			files))))
+
+      (fresh-line)
+      (newline)
+      (write-string "---- Loading compile-time files ----")
+      (newline)
+      (sf-and-load "base/switch")
+      (sf-and-load "base/macros")
+      (sf-and-load "machines/svm/decls")
+      (let ((environment (->environment '(COMPILER DECLARATIONS))))
+	((access initialize-package! environment)))
+      (sf-and-load "base/pmlook")
+      (sf-and-load "base/pmpars")
+      (sf-and-load "machines/svm/machine")
+      (sf-and-load "back/syntax")
+      (sf-and-load "base/scode")
+      (sf-and-load "base/pmerly")
+      (sf-and-load "back/syerly")))
+
+;; Resyntax any files that need it.
+((access syntax-files! (->environment '(COMPILER))))
+
+;; Rebuild the package constructors and cref.
+(cref/generate-constructors "compiler" 'ALL)

@@ -1,10 +1,8 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.45 2008/09/15 05:15:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,7 +49,7 @@ USA.
     ("dbgcmd"	(runtime debugger-command-loop))
     ("dbgutl"	(runtime debugger-utilities))
     ("debug"	(runtime debugger))
-    ("defstr"	(runtime defstruct))
+    ("defstr"	(runtime syntax defstruct))
     ("dospth"	(runtime pathname dos))
     ("dragon4"	(runtime number))
     ("emacs"	(runtime emacs-interface))
@@ -94,11 +92,13 @@ USA.
     ("krypt"	(runtime krypt))
     ("kryptdum"	(runtime krypt))
     ("lambda"	(runtime lambda-abstraction))
+    ("lambda-list" (runtime lambda-list))
     ("lambdx"	(runtime alternative-lambda))
     ("list"	(runtime list))
     ("load"	(runtime load))
     ("mime-codec" (runtime mime-codec))
-    ("mit-syntax" (runtime syntactic-closures))
+    ("mit-macros" (runtime mit-macros))
+    ("mit-syntax" (runtime syntax mit))
     ("msort"	(runtime merge-sort))
     ("ntdir"	(runtime directory))
     ("ntprm"	(runtime os-primitives))
@@ -132,6 +132,7 @@ USA.
     ("record"	(runtime record))
     ("recslot"	(runtime record-slot-access))
     ("regexp"	(runtime regular-expression))
+    ("regsexp"	(runtime regular-sexpression))
     ("rep"	(runtime rep))
     ("rexp"	(runtime rexp))
     ("rfc2822-headers" (runtime rfc2822-headers))
@@ -150,11 +151,17 @@ USA.
     ("structure-parser" (runtime structure-parser))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
-    ("syntactic-closures" (runtime syntactic-closures))
-    ("syntax-check" (runtime syntactic-closures))
-    ("syntax-output" (runtime syntactic-closures))
-    ("syntax-rules" (runtime syntactic-closures))
-    ("syntax-transforms" (runtime syntactic-closures))
+    ("syntax"	(runtime syntax top-level))
+    ("syntax-check" (runtime syntax check))
+    ("syntax-classify" (runtime syntax classify))
+    ("syntax-declaration" (runtime syntax declaration))
+    ("syntax-definitions" (runtime syntax definitions))
+    ("syntax-compile" (runtime syntax compile))
+    ("syntax-environment" (runtime syntax environment))
+    ("syntax-items" (runtime syntax items))
+    ("syntax-output" (runtime syntax output))
+    ("syntax-rules" (runtime syntax syntax-rules))
+    ("syntax-transforms" (runtime syntax transforms))
     ("sysclk"	(runtime system-clock))
     ("sysmac"	(runtime system-macros))
     ("system"	(runtime system))

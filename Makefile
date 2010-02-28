@@ -1,5 +1,3 @@
-# $Id: Makefile,v 1.1 2001/02/24 02:55:18 cph Exp $
-#
 # Copyright (c) 2001 Massachusetts Institute of Technology
 #
 # This program is free software; you can redistribute it and/or modify

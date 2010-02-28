@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.56 2008/01/30 20:02:15 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -70,6 +68,8 @@ typedef struct tagSCREEN_EVENT_LINK
 #define MAX_LINEINPUT 1024
 
 #define COMPUTE_SCROLL_LINES(height)    ((((height) * 2) + 4) / 5)
+
+#define DEFAULT_ICON "DEFAULT_ICON"
 
 typedef struct tagSCREENINFO
 {
@@ -381,7 +381,7 @@ Screen_InitApplication (HANDLE hInstance)
    wndclass.cbClsExtra =    0;
    wndclass.cbWndExtra =    SCREENEXTRABYTES;
    wndclass.hInstance =     hInstance;
-   wndclass.hIcon =         (LoadIcon (hInstance, "SHIELD3_ICON"));
+   wndclass.hIcon =         (LoadIcon (hInstance, DEFAULT_ICON));
    wndclass.hCursor =       (LoadCursor (NULL, IDC_ARROW));
    wndclass.hbrBackground = 0;
    wndclass.lpszMenuName =  0;
@@ -414,7 +414,7 @@ BOOL
 Screen_InitInstance (HANDLE hInstance, int nCmdShow )
 {
   ghInstance = hInstance;
-  ghDefaultIcon = LoadIcon (hInstance, "SHIELD2_ICON");
+  ghDefaultIcon = LoadIcon (hInstance, DEFAULT_ICON);
   return  TRUE;
 }
 
@@ -849,7 +849,7 @@ CreateScreenInfo (HWND hWnd)
 
    screen->hWnd                 = hWnd;
    screen->hIcon                =
-     LoadIcon ((HINSTANCE) GetWindowLong(hWnd,GWL_HINSTANCE), "SHIELD3_ICON");
+     LoadIcon ((HINSTANCE) GetWindowLong(hWnd,GWL_HINSTANCE), DEFAULT_ICON);
    screen->chars                = NULL;
    screen->attrs                = NULL;
    screen->write_attribute      = 0;

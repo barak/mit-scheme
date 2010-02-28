@@ -1,7 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.61 2008/09/27 03:59:05 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -9,7 +8,7 @@ AC_PROG_MAKE_SET
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -114,11 +113,6 @@ AH_BOTTOM(
 #endif /* SCM_CONFIG_H */])
 
 dnl Feature options
-AC_ARG_ENABLE([static-libs],
-    AS_HELP_STRING([--enable-static-libs],
-	[Link some libraries statically [[no]]]))
-: ${enable_static_libs='no'}
-
 AC_ARG_ENABLE([valgrind-mode],
     AS_HELP_STRING([--enable-valgrind-mode],
 	[Support running under valgrind [[no]]]))
@@ -164,21 +158,19 @@ AC_ARG_WITH([libpq],
 	[Use PostgreSQL libpq library if available [[yes]]]))
 : ${with_libpq='yes'}
 
-if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
-    AC_MSG_ERROR(
-	[--enable-native-code=c incompatible with --enable-static-libs])
-fi
+dnl For reasons I don't understand, it is necessary to use
+dnl quadigraphs here instead of [[ ... ]].
+AC_ARG_WITH([macosx-version],
+    AS_HELP_STRING([--with-macosx-version],
+	[MacOSX version to compile for @<:@host's version@:>@]))
 
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
-GC_HEAD_FILES=
+GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 M4_FLAGS=
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
-STATIC_LIBS=
-STATIC_PREFIX=
-STATIC_SUFFIX=
 PRBFISH_LIBS=
 PRMD5_LIBS=
 SCHEME_DEFS=-DMIT_SCHEME
@@ -192,9 +184,9 @@ MODULE_LDFLAGS=
 LIARC_VARS=/dev/null
 LIARC_RULES=/dev/null
 AUX_PROGRAMS=
-AUX_DATA=utabmd.bin
-AUXDIR_NAME=mit-scheme
-EXE_NAME=mit-scheme-native
+AUX_DATA=
+AUXDIR_NAME=
+EXE_NAME=
 INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
@@ -213,6 +205,9 @@ AC_C_VOLATILE
 AC_C_INLINE
 AC_C_STRINGIZE
 AC_C_PROTOTYPES
+AC_PROG_EGREP
+AC_PROG_FGREP
+AC_PROG_GREP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -246,19 +241,28 @@ if test ${GCC} = yes; then
 	)],
 	[
 	AC_MSG_RESULT([yes])
-        CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
-        CFLAGS="${CFLAGS} -Wold-style-definition"
+	CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
+	CFLAGS="${CFLAGS} -Wold-style-definition"
 	],
 	[AC_MSG_RESULT([no])])
 
     # other possibilities:
     # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
 fi
-FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
+FOO=`${INSTALL} --help 2> /dev/null | ${FGREP} -e --preserve-timestamps`
 if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
 CCLD=${CC}
+
+MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+
+if test x${mit_scheme_native_code} = xhppa; then
+   GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
+fi
+
+AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
+EXE_NAME=mit-scheme-${mit_scheme_native_code}
 
 dnl Add OS-dependent customizations.  This must happen before checking
 dnl any headers or library routines, because it may add CFLAGS or
@@ -282,15 +286,45 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    MACOSX=yes
-    MACOSX_SYSROOT=/Developer/SDKs/MacOSX10.4u.sdk
-    if test -d ${MACOSX_SYSROOT}; then
-	MACOSX_CFLAGS="-mmacosx-version-min=10.4 -isysroot ${MACOSX_SYSROOT}"
-	MACOSX_LDFLAGS="${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
-	CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
-	LDFLAGS="${LDFLAGS} ${MACOSX_LDFLAGS}"
+    if test -n "${with_macosx_version}"; then
+	MACOSX=${with_macosx_version}
+	MACOSX_CFLAGS="-mmacosx-version-min=${MACOSX}"
+    else
+	MACOSX=`sw_vers | ${GREP} ^ProductVersion: \
+	    | ${EGREP} -o '[[0-9]+\.[0-9]+]'`
+	if test -z "${MACOSX}"; then
+	    AC_MSG_ERROR([Unable to determine MacOSX version])
+	fi
+	MACOSX_CFLAGS=
     fi
+    if test "${MACOSX}" = 10.4; then
+	SDK=MacOSX${MACOSX}u
+    else
+	SDK=MacOSX${MACOSX}
+    fi
+    MACOSX_SYSROOT=/Developer/SDKs/${SDK}.sdk
+    if test ! -d "${MACOSX_SYSROOT}"; then
+	AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+    fi
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
+    AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
+    case ${mit_scheme_native_code} in
+    i386)
+	MACOSX_CFLAGS="-arch i386 ${MACOSX_CFLAGS}"
+	AS_FLAGS="-arch i386 ${AS_FLAGS}"
+	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
+    	;;
+    x86-64)
+	MACOSX_CFLAGS="-arch x86_64 ${MACOSX_CFLAGS}"
+	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
+    	;;
+    esac
+    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
+    LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
+    LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
+    AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
@@ -317,10 +351,6 @@ solaris*)
 esac
 
 if test "${DO_GCC_TESTS}" = yes; then
-    if test "x${STATIC_LIBS}" != x; then
-	STATIC_PREFIX="-Xlinker -Bstatic"
-	STATIC_SUFFIX="-Xlinker -Bdynamic"
-    fi
     if test "${GNU_LD}" = yes; then
 	SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     fi
@@ -490,7 +520,7 @@ AC_CHECK_TYPE([clock_t],
 	[Define to `unsigned long' if <time.h> doesn't define.])],
     [SCM_INC_TIME])
 
-AC_CHECK_TYPE([time_t], 
+AC_CHECK_TYPE([time_t],
     [],
     [AC_DEFINE([time_t], [long],
 	[Define to `long' if <time.h> doesn't define.])],
@@ -621,7 +651,8 @@ AC_FUNC_VPRINTF
 AC_FUNC_WAIT3
 AC_CHECK_FUNCS([ctermid])
 AC_CHECK_FUNCS([dup2])
-AC_CHECK_FUNCS([fcntl fegetround fesetround floor fpathconf frexp ftruncate])
+AC_CHECK_FUNCS([fcntl fdatasync fegetround fesetround floor fpathconf frexp])
+AC_CHECK_FUNCS([fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
@@ -632,7 +663,7 @@ AC_CHECK_FUNCS([poll prealloc])
 AC_CHECK_FUNCS([rename rmdir])
 AC_CHECK_FUNCS([select setitimer setpgrp setpgrp2 shmat sigaction])
 AC_CHECK_FUNCS([sighold socket statfs strchr strerror strstr strtol])
-AC_CHECK_FUNCS([strtoul symlink sysconf])
+AC_CHECK_FUNCS([strtoul symlink sync_file_range sysconf])
 AC_CHECK_FUNCS([times truncate])
 AC_CHECK_FUNCS([uname utime])
 AC_CHECK_FUNCS([waitpid])
@@ -653,7 +684,7 @@ AC_CHECK_LIB([ncurses], [tparm],
     [
     AC_DEFINE([HAVE_LIBNCURSES], [1],
 	[Define to 1 if you have the `ncurses' library (-lncurses).])
-    STATIC_LIBS="-lncurses ${STATIC_LIBS}"
+    LIBS="-lncurses ${LIBS}"
     AC_CHECK_HEADER([curses.h],
 	[
 	AC_DEFINE([HAVE_CURSES_H], [1],
@@ -677,7 +708,7 @@ AC_CHECK_LIB([ncurses], [tparm],
 	[
 	AC_DEFINE([HAVE_LIBCURSES], [1],
 	    [Define to 1 if you have the `curses' library (-lcurses).])
-	STATIC_LIBS="-lcurses ${STATIC_LIBS}"
+	LIBS="-lcurses ${LIBS}"
 	OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
 	],
 	[
@@ -685,7 +716,7 @@ AC_CHECK_LIB([ncurses], [tparm],
 	    [
 	    AC_DEFINE([HAVE_LIBTERMCAP], [1],
 		[Define to 1 if you have the `termcap' library (-ltermcap).])
-	    STATIC_LIBS="-ltermcap ${STATIC_LIBS}"
+	    LIBS="-ltermcap ${LIBS}"
 	    ],
 	    [
 	    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
@@ -699,16 +730,22 @@ if test "${with_openssl}" != no; then
 	CPPFLAGS="${CPPFLAGS} -I${with_openssl}/include"
 	LDFLAGS="${LDFLAGS} -L${with_openssl}/lib"
     fi
-    AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h])
-    AC_CHECK_LIB([crypto], [BF_set_key],
+    FOUND=
+    AC_CHECK_HEADERS([openssl/blowfish.h openssl/md5.h],
 	[
-	AC_DEFINE([HAVE_LIBCRYPTO], [1],
-	    [Define to 1 if you have the `crypto' library (-lcrypto).])
+	AC_CHECK_LIB([crypto], [BF_set_key],
+	    [
+	    AC_DEFINE([HAVE_LIBCRYPTO], [1],
+		[Define to 1 if you have the `crypto' library (-lcrypto).])
+	    FOUND=yes
+	    ])
+	])
+    if test -n "${FOUND}"; then
 	MODULE_LIBS="-lcrypto ${MODULE_LIBS}"
 	MODULE_BASES="${MODULE_BASES} prbfish prmd5"
 	PRBFISH_LIBS="-lcrypto"
 	PRMD5_LIBS="-lcrypto"
-	])
+    fi
 fi
 
 dnl These libraries might not be installed, so take care generating
@@ -809,7 +846,7 @@ if test "${with_db_4}" != no; then
 		[[db_create (0, 0, 0)]])],
 	    [
 	    AC_MSG_RESULT([yes])
-	    AC_DEFINE([HAVE_LIBDB_4], [1], 
+	    AC_DEFINE([HAVE_LIBDB_4], [1],
 		[Define to 1 if you have the `db-4' library (-ldb-4).])
 	    MODULE_LIBS="-ldb-4 ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prdb4"
@@ -860,36 +897,26 @@ if test "${with_libpq}" != no; then
 	])
 fi
 
-dnl Decide whether we're using static or dynamic libraries.
-if test "${enable_static_libs}" = no; then
-    AC_CHECK_FUNC([dlopen],
+dnl Check for dynamic loader support.
+AC_CHECK_FUNC([dlopen],
+    [],
+    [
+    AC_CHECK_LIB([dl], [dlopen],
 	[
-	LIBS="${STATIC_LIBS} ${LIBS}"
+	AC_DEFINE([HAVE_LIBDL], [1],
+	    [Define to 1 if you have the `dl' library (-ldl).])
+	LIBS="-ldl ${LIBS}"
 	],
 	[
-	AC_CHECK_LIB([dl], [dlopen],
-	    [
-	    AC_DEFINE([HAVE_LIBDL], [1],
-		[Define to 1 if you have the `dl' library (-ldl).])
-	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
-	    ],
-	    [
-	    if test ${enable_native_code} = c; then
-		AC_MSG_ERROR(
-		    [--enable-native-code=c requires dynamic loader support])
-	    fi
-	    enable_static_libs=yes
-	    ])
+	if test ${mit_scheme_native_code} = c; then
+	    AC_MSG_ERROR(
+		[--enable-native-code=c requires dynamic loader support])
+	fi
 	])
-fi
-if test ${enable_static_libs} != no; then
-    STATIC_LIBS=${MODULE_LIBS}${STATIC_LIBS}
-else
-    STATIC_LIBS=
-    OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
-    AC_DEFINE([UX_DLD_ENABLED], [1],
-	[Define to 1 if unix dynamic loading support is enabled.])
-fi
+    ])
+OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+AC_DEFINE([UX_DLD_ENABLED], [1],
+    [Define to 1 if unix dynamic loading support is enabled.])
 
 if test ${enable_valgrind_mode} != no; then
     SCHEME_DEFS="${SCHEME_DEFS} -DVALGRIND_MODE"
@@ -910,60 +937,12 @@ if test "${no_x}" != yes; then
     OPTIONAL_BASES="${OPTIONAL_BASES} x11base x11term x11graph x11color"
 fi
 
-AC_MSG_CHECKING([for native-code support])
 OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
-GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
-SCM_ARCH=none
-ECN_WARNP=no
 
-case ${enable_native_code} in
-yes)
-    case ${host_cpu} in
-    alpha*)
-	SCM_ARCH=alpha
-	;;
-    hppa*)
-	SCM_ARCH=hppa
-	GC_HEAD_FILES="${GC_HEAD_FILES} hppacach.h"
-	;;
-    i?86)
-	SCM_ARCH=i386
-	;;
-    # x86_64)
-    #     SCM_ARCH=i386
-    #     CFLAGS="${CFLAGS} -m32"
-    #     LDFLAGS="${LDFLAGS} -m32"
-    #     ;;
-    m68k|m680?0)
-	SCM_ARCH=mc68k
-	;;
-    mips*)
-	SCM_ARCH=mips
-	;;
-    vax)
-	SCM_ARCH=vax
-	;;
-    esac
-    ;;
-c)
-    SCM_ARCH=c
-    ;;
-svm)
-    SCM_ARCH=svm1
-    ;;
-no|none)
-    ;;
-*)
-    ECN_WARNP=yes
-    ;;
-esac
-
-case ${SCM_ARCH} in
+case ${mit_scheme_native_code} in
 none)
-    AC_MSG_RESULT([no])
     ;;
 c)
-    AC_MSG_RESULT([yes, using portable C code])
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
     AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
     AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
@@ -971,33 +950,22 @@ c)
     LIARC_VARS=liarc-vars
     LIARC_RULES=liarc-rules
     AUX_PROGRAMS="gen-nonce extract-liarc-decls"
-    AUX_DATA=
-    AUXDIR_NAME=mit-scheme-c
-    EXE_NAME=mit-scheme-c
     INSTALL_INCLUDE=install-include
     ;;
 svm1)
-    AC_MSG_RESULT([yes, using portable SVM code])
     OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
-    AUXDIR_NAME=mit-scheme-svm
-    EXE_NAME=mit-scheme-svm
     ;;
 *)
-    AC_MSG_RESULT([yes, for ${SCM_ARCH}])
-    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${SCM_ARCH}.m4])
+    AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
     OPTIONAL_OBJECTS="${OPTIONAL_OBJECTS} cmpauxmd.o"
     ;;
 esac
 
-if test ${ECN_WARNP} = yes; then
-    AC_MSG_WARN([illegal --enable-native-code value: ${enable_native_code}])
-fi
-
 AC_CONFIG_LINKS([
-    cmpintmd.h:cmpintmd/${SCM_ARCH}.h
-    cmpintmd.c:cmpintmd/${SCM_ARCH}.c
-    cmpintmd-config.h:cmpintmd/${SCM_ARCH}-config.h
+    cmpintmd.h:cmpintmd/${mit_scheme_native_code}.h
+    cmpintmd.c:cmpintmd/${mit_scheme_native_code}.c
+    cmpintmd-config.h:cmpintmd/${mit_scheme_native_code}-config.h
     ])
 
 for base in ${OPTIONAL_BASES}; do
@@ -1016,18 +984,11 @@ if test "x${MODULE_BASES}" != x; then
     done
 fi
 
-if test x${MACOSX} = xyes && test ${SCM_ARCH} = i386; then
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-fi
-
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
 AC_SUBST([M4_FLAGS])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
-AC_SUBST([STATIC_LIBS])
-AC_SUBST([STATIC_PREFIX])
-AC_SUBST([STATIC_SUFFIX])
 AC_SUBST([PRBFISH_LIBS])
 AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])

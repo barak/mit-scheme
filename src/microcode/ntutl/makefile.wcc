@@ -1,11 +1,9 @@
 ### -*- Makefile -*-
 ###
-###     $Id: makefile.wcc,v 1.26 2008/01/30 20:02:26 cph Exp $
-###
 ###     Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###         1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-###         2003, 2004, 2005, 2006, 2007, 2008 Massachusetts Institute
-###         of Technology
+###         2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+###         Massachusetts Institute of Technology
 ###
 ###     This file is part of MIT/GNU Scheme.
 ###
@@ -35,14 +33,6 @@ USER_LIBS = library wsock32.lib #,blowfish.lib,gdbm.lib,md5.lib,pq.lib
 CC = wcc386
 M4 = m4
 AS = wasm
-
-!ifdef __OS2__
-UTIL_SYSTEM = os2v2
-WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
-!else
-UTIL_SYSTEM = nt
-WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
-!endif
 
 # Compiler options.
 # [DEBUG] marks options used for debugging.
@@ -203,6 +193,7 @@ sysprim.c &
 term.c &
 tparam.c &
 transact.c &
+utabmd.c &
 utils.c &
 vector.c &
 wind.c
@@ -289,6 +280,7 @@ sysprim.obj &
 term.obj &
 tparam.obj &
 transact.obj &
+utabmd.obj &
 utils.obj &
 vector.obj &
 wind.obj
@@ -337,14 +329,14 @@ scheme.exe : $(OBJECTS) ntgui.res
 	wrc /q /ad /bt=nt ntgui.res $^@
 
 findprim.exe : findprim.obj
-	wlink system $(UTIL_SYSTEM) $(LDFLAGS) name $^@ file $[@
+	wlink system nt $(LDFLAGS) name $^@ file $[@
 
 findprim.obj : findprim.c
 	$(CC) $(UTIL_CFLAGS) $[@
 
 # Update the resource if necessary
 ntgui.res : ntgui.rc ntgui.h ntdialog.dlg ntdialog.h
-	wrc /q /ad /bt=nt /r /x /D__WATCOMC__ $(WRCFLAGS_SYSTEM) $[@
+	wrc /q /ad /bt=nt /r /x /D__WATCOMC__ /i=$(%WATCOM)\h\nt $[@
 
 usrdef.c : $(SOURCES) findprim.exe
 	.\findprim $(SOURCES) > $^@

@@ -72,6 +72,9 @@ USA.
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the `fdatasync' function. */
+#undef HAVE_FDATASYNC
+
 /* Define to 1 if you have the `fegetround' function. */
 #undef HAVE_FEGETROUND
 
@@ -95,6 +98,12 @@ USA.
 
 /* Define to 1 if you have the `frexp' function. */
 #undef HAVE_FREXP
+
+/* Define to 1 if you have the `fsync' function. */
+#undef HAVE_FSYNC
+
+/* Define to 1 if you have the `fsync_range' function. */
+#undef HAVE_FSYNC_RANGE
 
 /* Define to 1 if you have the `ftruncate' function. */
 #undef HAVE_FTRUNCATE
@@ -324,6 +333,9 @@ USA.
 
 /* Define to 1 if you have the `symlink' function. */
 #undef HAVE_SYMLINK
+
+/* Define to 1 if you have the `sync_file_range' function. */
+#undef HAVE_SYNC_FILE_RANGE
 
 /* Define to 1 if you have the `sysconf' function. */
 #undef HAVE_SYSCONF

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unsyn.scm,v 14.37 2008/02/29 16:06:34 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -102,12 +100,6 @@ USA.
       (cons (unsyntax-object (car objects))
 	    (unsyntax-objects (cdr objects)))
       '()))
-
-(define (unsyntax-error keyword message . irritants)
-  (apply error
-	 (cons (string-append "UNSYNTAX: " (symbol-name keyword) ": "
-			      message)
-	       irritants)))
 
 ;;;; Unsyntax Quanta
 
@@ -357,13 +349,13 @@ USA.
 (define (lambda-list required optional rest auxiliary)
   (let ((optional (if (null? optional)
 		      '()
-		      (cons lambda-optional-tag optional)))
+		      (cons lambda-tag:optional optional)))
 	(rest (cond ((not rest) '())
 		    ((null? auxiliary) rest)
-		    (else (list lambda-rest-tag rest)))))
+		    (else (list lambda-tag:rest rest)))))
     (if (null? auxiliary)
 	`(,@required ,@optional . ,rest)
-	`(,@required ,@optional ,@rest ,lambda-aux-tag ,@auxiliary))))
+	`(,@required ,@optional ,@rest ,lambda-tag:aux ,@auxiliary))))
 
 (define (lambda-components** expression receiver)
   (lambda-components expression
@@ -408,17 +400,12 @@ USA.
 		    (if (and (null? optional)
 			     (not rest)
 			     (= (length required) (length operands)))
-			(cond ((or (eq? name lambda-tag:unnamed)
-				   (eq? name lambda-tag:let))
-			       `(LET ,(unsyntax-let-bindings required operands)
-				  ,@(with-bindings required '() #F
-						   unsyntax-sequence body)))
-			      ((eq? name lambda-tag:fluid-let)
-			       (unsyntax/fluid-let required
-						   operands
-						   body
-						   ordinary-combination))
-			      (else (ordinary-combination)))
+			(if (or (eq? name lambda-tag:unnamed)
+				(eq? name lambda-tag:let))
+			    `(LET ,(unsyntax-let-bindings required operands)
+			       ,@(with-bindings required '() #F
+						unsyntax-sequence body))
+			    (ordinary-combination))
 			(ordinary-combination)))))
 	       (else
 		(ordinary-combination))))))))
@@ -454,102 +441,3 @@ USA.
 	       (cdr expression))
 	 ,@(cddr (caddr (car expression))))
       expression))
-
-(define (unsyntax/fluid-let names values body if-malformed)
-  (combination-components body
-    (lambda (operator operands)
-      ;; `fluid-let' expressions are complicated.  Rather than scan
-      ;; the entire expresion to find out if it has any substitutable
-      ;; subparts, we just treat it as malformed if there are active
-      ;; substitutions.
-      (cond ((pair? substitutions)
-	     (if-malformed))
-	    ((and (or (absolute-reference-to? operator 'SHALLOW-FLUID-BIND)
-		      (and (variable? operator)
-			   (eq? (variable-name operator) 'SHALLOW-FLUID-BIND)))
-		  (pair? operands)
-		  (lambda? (car operands))
-		  (pair? (cdr operands))
-		  (lambda? (cadr operands))
-		  (pair? (cddr operands))
-		  (lambda? (caddr operands))
-		  (null? (cdddr operands)))
-	     (unsyntax/fluid-let/shallow names values operands))
-	    ((and (eq? operator (ucode-primitive with-saved-fluid-bindings 1))
-		  (null? names)
-		  (null? values)
-		  (pair? operands)
-		  (lambda? (car operands))
-		  (null? (cdr operands)))
-	     (unsyntax/fluid-let/deep (car operands)))
-	    (else
-	     (if-malformed))))))
-
-(define (unsyntax/fluid-let/shallow names values operands)
-  names
-  `(FLUID-LET ,(unsyntax-let-bindings
-		(map extract-transfer-var
-		     (sequence-actions (lambda-body (car operands))))
-		(let every-other ((values values))
-		  (if (pair? values)
-		      (cons (car values) (every-other (cddr values)))
-		      '())))
-     ,@(lambda-components** (cadr operands)
-	 (lambda (name required optional rest body)
-	   name required optional rest
-	   (with-bindings required optional rest
-			  unsyntax-sequence body)))))
-
-(define (extract-transfer-var assignment)
-  (assignment-components assignment
-    (lambda (name value)
-      name
-      (cond ((assignment? value)
-	     (assignment-components value (lambda (name value) value name)))
-	    ((combination? value)
-	     (combination-components value
-	       (lambda (operator operands)
-		 (cond ((eq? operator lexical-assignment)
-			`(ACCESS ,(cadr operands)
-				 ,@(unexpand-access (car operands))))
-		       (else
-			(unsyntax-error 'FLUID-LET
-					"Unknown SCODE form"
-					assignment))))))
-	    (else
-	     (unsyntax-error 'FLUID-LET "Unknown SCODE form" assignment))))))
-
-(define (unsyntax/fluid-let/deep expression)
-  (let ((body (lambda-body expression)))
-    (let loop
-	((actions (sequence-actions body))
-	 (receiver
-	  (lambda (bindings body)
-	    `(FLUID-LET ,bindings ,@body))))
-      (let ((action (car actions)))
-	(if (and (combination? action)
-		 (or (eq? (combination-operator action)
-			  (ucode-primitive add-fluid-binding! 3))
-		     (eq? (combination-operator action)
-			  (ucode-primitive make-fluid-binding! 3))))
-	    (loop (cdr actions)
-	      (lambda (bindings body)
-		(receiver (cons (unsyntax-fluid-assignment action) bindings)
-			  body)))
-	    (receiver '() (unsyntax-objects actions)))))))
-
-(define (unsyntax-fluid-assignment combination)
-  (let ((operands (combination-operands combination)))
-    (let ((environment (car operands))
-	  (name (cadr operands))
-	  (value (caddr operands)))
-      (cond ((symbol? name)
-	     `((ACCESS ,name ,(unsyntax-object environment))
-	       ,(unsyntax-object value)))
-	    ((quotation? name)
-	     (let ((variable (quotation-expression name)))
-	       (if (variable? variable)
-		   `(,(variable-name variable) ,(unsyntax-object value))
-		   (unsyntax-error 'FLUID-LET "unexpected name" name))))
-	    (else
-	     (unsyntax-error 'FLUID-LET "unexpected name" name))))))

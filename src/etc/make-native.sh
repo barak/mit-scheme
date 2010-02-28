@@ -1,10 +1,9 @@
 #!/bin/sh
 #
-# $Id: make-native.sh,v 1.4 2008/01/30 20:02:08 cph Exp $
-#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -28,10 +27,14 @@ set -e
 . etc/functions.sh
 
 FASTP=no
+NATIVE_CODE=
 for ARG in "${@}"; do
     case ${ARG} in
     --help|--help=*|--version)
 	FASTP=yes
+	;;
+    --enable-native-code=*)
+	NATIVE_CODE=${ARG}
 	;;
     esac
 done
@@ -40,11 +43,14 @@ if [ ${FASTP} = yes ]; then
     exec ./configure "${@}"
 fi
 
+: ${MIT_SCHEME_EXE:=mit-scheme-c}
+export MIT_SCHEME_EXE
+
 run_cmd ./Setup.sh
-MIT_SCHEME_EXE=mit-scheme-c run_configure --prefix=`pwd`/boot-root
+run_configure --prefix=`pwd`/boot-root ${NATIVE_CODE}
 run_cmd etc/compile-boot-compiler.sh mit-scheme-c
 run_cmd_in_dir compiler run_make compile-liarc-bundle
-run_cmd etc/native-prepare.sh mit-scheme-c
+run_cmd etc/native-prepare.sh "${MIT_SCHEME_EXE}"
 run_make compile-microcode
 
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib \

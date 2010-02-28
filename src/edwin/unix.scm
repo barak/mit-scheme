@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.124 2008/01/30 20:02:06 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -323,7 +321,7 @@ Includes the new backup.  Must be > 0."
 	   (string-suffix? extension filename)))))
 
 (define (os/completion-ignored-extensions)
-  (append (list ".bin" ".com" ".ext"
+  (append (list ".bin" ".com" ".ext" ".so"
 		".inf" ".bif" ".bsm" ".bci" ".bcs"
 		".psb" ".moc" ".fni"
 		".bco" ".bld" ".bad" ".glo" ".fre"

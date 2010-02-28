@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: tterm.scm,v 1.46 2008/01/30 20:02:06 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -514,6 +512,7 @@ USA.
 (define (console-wrap-update! screen thunk)
   screen
   (let ((finished? (thunk)))
+    (window-direct-output-cursor! (screen-cursor-window screen))
     (output-port/flush-output console-i/o-port)
     finished?))
 
@@ -1039,7 +1038,7 @@ USA.
 		     (if scroll-region
 			 (cdr scroll-region)
 			 (tn-y-size (screen-description screen))))
-		   (screen-cursor-y screen))))
+		   (or (screen-cursor-y screen) 0))))
 
 (define-integrable (output-1 screen command)
   (output-n screen command 1))

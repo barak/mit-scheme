@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: clsmac.scm,v 1.16 2008/01/30 20:01:59 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -88,24 +86,21 @@ USA.
 (define with-instance-variables
   (make-unmapped-macro-reference-trap
    (make-compiler-item
-    (lambda (form environment history)
-      (if (syntax-match? '(IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
-			 (cdr form))
-	  (let ((class-name (cadr form))
-		(self (caddr form))
-		(free-names (cadddr form))
-		(body (cddddr form)))
-	    (transform-instance-variables
-	     (class-instance-transforms
-	      (name->class (identifier->symbol class-name)))
-	     (compile/subexpression self environment history select-caddr)
-	     free-names
-	     (compile/subexpression
-	      `(,(close-syntax 'BEGIN system-global-environment) ,@body)
-	      environment
-	      history
-	      select-cddddr)))
-	  (ill-formed-syntax form))))))
+    (lambda (form environment)
+      (syntax-check '(KEYWORD IDENTIFIER EXPRESSION (* IDENTIFIER) + EXPRESSION)
+		    form)
+      (let ((class-name (cadr form))
+	    (self (caddr form))
+	    (free-names (cadddr form))
+	    (body (cddddr form)))
+	(transform-instance-variables
+	 (class-instance-transforms
+	  (name->class (identifier->symbol class-name)))
+	 (compile/expression self environment)
+	 free-names
+	 (compile/expression
+	  `(,(close-syntax 'BEGIN system-global-environment) ,@body)
+	  environment)))))))
 
 (define-syntax ==>
   (syntax-rules ()

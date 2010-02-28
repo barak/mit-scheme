@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.21 2008/09/26 08:30:23 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,12 +38,13 @@ extern bool option_emacs_subprocess;
 extern bool option_force_interactive;
 extern bool option_disable_core_dump;
 extern bool option_batch_mode;
+extern bool option_show_help;
+extern bool option_show_version;
 
 /* String options */
 extern const char ** option_library_path;
 extern const char * option_band_file;
 extern const char * option_fasl_file;
-extern const char * option_utabmd_file;
 
 /* Numeric options */
 extern unsigned long option_heap_size;

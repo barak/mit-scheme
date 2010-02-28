@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: artutl.c,v 1.22 2008/01/30 20:02:10 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,7 +70,7 @@ long_to_integer (long number)
 bool
 integer_to_ulong_p (SCHEME_OBJECT n)
 {
-  return ((FIXNUM_P (n)) || (BIGNUM_TO_ULONG_P (n)));
+  return ((FIXNUM_P (n)) ? (!FIXNUM_NEGATIVE_P (n)) : (BIGNUM_TO_ULONG_P (n)));
 }
 
 unsigned long
@@ -128,7 +126,17 @@ double_truncate (double x)
 double
 double_round (double x)
 {
-  return (double_truncate ((x < 0) ? (x - 0.5) : (x + 0.5)));
+  double integral;
+  double fractional = (fabs (modf (x, (&integral))));
+
+  if ((fractional == 0.5)
+      ? ((fmod (integral, 2.0)) == 0.0)
+      : (! (0.5 < fractional)))
+    return (integral);
+  else if (x < 0.0)
+    return (integral - 1.0);
+  else
+    return (integral + 1.0);
 }
 
 /* Conversions between Scheme types and Scheme types. */
@@ -160,6 +168,27 @@ bignum_to_flonum (SCHEME_OBJECT bignum)
      : SHARP_F);
 }
 
+bool
+finite_flonum_p (SCHEME_OBJECT x)
+{
+  return ((FLONUM_P (x)) && (flonum_is_finite_p (x)));
+}
+
+bool
+flonum_is_finite_p (SCHEME_OBJECT x)
+{
+  return double_is_finite_p (FLONUM_TO_DOUBLE (x));
+}
+
+bool
+double_is_finite_p (double x)
+{
+  return
+    (((x > 1.0) || (x < -1.0))
+     ? (x != (x / 2.0))
+     : ((x <= 1.0) && (x >= -1.0)));
+}
+
 bool
 flonum_integer_p (SCHEME_OBJECT x)
 {

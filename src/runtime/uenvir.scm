@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.63 2008/01/30 20:02:36 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -242,29 +240,18 @@ USA.
   value)
 
 (define (walk-global keep? map-entry)
-  (let ((obarray (fixed-objects-item 'OBARRAY)))
-    (let ((n-buckets (vector-length obarray)))
-      (let per-bucket ((index 0) (result '()))
-	(if (fix:< index n-buckets)
-	    (let per-symbol
-		((bucket (vector-ref obarray index))
-		 (result result))
-	      (if (pair? bucket)
-		  (per-symbol (cdr bucket)
-			      (let ((name (car bucket)))
-				(if (special-unbound-name? name)
-				    result
-				    (let ((value
-					   (map-reference-trap-value
-					    (lambda ()
-					      (system-pair-cdr name)))))
-				      (if (or (unbound-reference-trap? value)
-					      (not (keep? value)))
-					  result
-					  (cons (map-entry name value)
-						result))))))
-		  (per-bucket (fix:+ index 1) result)))
-	    result)))))
+  (let ((result '()))
+    (for-each-interned-symbol
+     (lambda (name)
+       (if (not (special-unbound-name? name))
+	   (let ((value
+		  (map-reference-trap-value
+		   (lambda ()
+		     (system-pair-cdr name)))))
+	     (if (and (not (unbound-reference-trap? value))
+		      (keep? value))
+		 (set! result (cons (map-entry name value) result)))))))
+    result))
 
 (define (special-unbound-name? name)
   (eq? name package-name-tag))

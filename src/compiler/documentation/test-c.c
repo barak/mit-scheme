@@ -1,7 +1,5 @@
 /* -*- C -*- */
 
-/* $Id: test-c.c,v 1.4 2000/03/21 04:29:53 cph Exp $ */
-
 #include <stdio.h>
 
 extern long external_long;

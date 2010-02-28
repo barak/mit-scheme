@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: sysprim.c,v 9.58 2008/09/28 21:53:10 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -196,12 +194,19 @@ DEFINE_PRIMITIVE ("WRITE-FLOAT-TO-MEMORY", Prim_write_float_to_memory, 2, 2,
 Write FLOAT to memory at ADDRESS.")
 {
   PRIMITIVE_HEADER (2);
-   (* ((double *) (arg_ulong_integer (2)))) = (arg_flonum (1));
+  (* ((double *) (arg_ulong_integer (2)))) = (arg_flonum (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("CC-BLOCK-LINKAGE-INFO", Prim_cc_block_linkage_info, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, CC_BLOCK_P);
+  PRIMITIVE_RETURN (cc_block_linkage_info (ARG_REF (1)));
 }
 
 #ifndef __GNUC__
-#  pragma STDC FENV_ACCESS on
+#  pragma STDC FENV_ACCESS ON
 #endif
 
 enum { FRMODE_NEAREST, FRMODE_TOWARD_ZERO, FRMODE_DOWNWARD, FRMODE_UPWARD };

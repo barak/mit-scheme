@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: io.scm,v 14.88 2008/01/30 20:02:31 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -142,6 +140,7 @@ USA.
 	(ucode-primitive channel-descriptor 1)
 	(ucode-primitive channel-nonblocking 1)
 	(ucode-primitive channel-read 4)
+	(ucode-primitive channel-synchronize 1)
 	(ucode-primitive channel-write 4)
 	(ucode-primitive file-length-new 1)
 	(ucode-primitive file-position 1)
@@ -279,29 +278,54 @@ USA.
 			  (or (descriptor->channel descriptor)
 			      (make-channel descriptor)))
 			descriptors))))))
+
+(define (channel-synchronize channel)
+  ((ucode-primitive channel-synchronize 1) (channel-descriptor channel)))
 
 ;;;; File Primitives
 
-(define (file-open primitive filename)
+(define (file-open primitive operator filename)
   (let ((channel (open-channel (lambda (p) (primitive filename p)))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
 	(begin
 	  (channel-close channel)
-	  (error:bad-range-argument filename primitive)))
-    channel))
+	  (file-open primitive
+		     operator
+		     (error:file-operation filename
+					   "open"
+					   "file"
+					   (if (channel-type=directory? channel)
+					       "Is a directory"
+					       "Unknown file type")
+					   operator
+					   (list filename))))
+	channel)))
 
 (define (file-open-input-channel filename)
-  (file-open (ucode-primitive new-file-open-input-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-input-channel 2)
+	     file-open-input-channel
+	     filename))
 
 (define (file-open-output-channel filename)
-  (file-open (ucode-primitive new-file-open-output-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-output-channel 2)
+	     file-open-output-channel
+	     filename))
+
+(define (file-open-exclusive-output-channel filename)
+  (file-open (ucode-primitive new-file-open-exclusive-output-channel 2)
+	     file-open-exclusive-output-channel
+	     filename))
 
 (define (file-open-io-channel filename)
-  (file-open (ucode-primitive new-file-open-io-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-io-channel 2)
+	     file-open-io-channel
+	     filename))
 
 (define (file-open-append-channel filename)
-  (file-open (ucode-primitive new-file-open-append-channel 2) filename))
+  (file-open (ucode-primitive new-file-open-append-channel 2)
+	     file-open-append-channel
+	     filename))
 
 (define (channel-file-length channel)
   ((ucode-primitive file-length-new 1) (channel-descriptor channel)))
@@ -317,11 +341,17 @@ USA.
   ((ucode-primitive file-truncate 2) (channel-descriptor channel) length))
 
 (define (make-pipe)
-  (without-interrupts
-   (lambda ()
-     (let ((pipe ((ucode-primitive make-pipe 0))))
-       (values (make-channel (car pipe))
-	       (make-channel (cdr pipe)))))))
+  (let* ((writer)
+	 (reader
+	  (open-channel
+	   (lambda (reader-pair)
+	     (set! writer
+		   (open-channel
+		    (lambda (writer-pair)
+		      ((ucode-primitive new-make-pipe 2)
+		       reader-pair
+		       writer-pair))))))))
+    (values reader writer)))
 
 ;;;; Terminal Primitives
 

@@ -1,11 +1,9 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.70 2008/04/25 01:19:04 cph Exp $
-###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-###     2004, 2005, 2006, 2007, 2008 Massachusetts Institute of
-###     Technology
+###     2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+###     Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
 ###
@@ -292,11 +290,20 @@ define(TC_FIXNUM,26)
 define(TC_MANIFEST_NM_VECTOR,39)
 define(TC_COMPILED_ENTRY,40)
 
+define(IMM_DETAGGED_FIXNUM_MINUS_ONE, IMM(eval((-1) * (1 << TC_LENGTH))))
+
+define(INT_Stack_Overflow,HEX(1))
+define(INT_GC,HEX(4))
+
+define(REGBLOCK_MEMTOP,0)
+define(REGBLOCK_INT_MASK,4)
 define(REGBLOCK_VAL,8)
 define(REGBLOCK_COMPILER_TEMP,16)
 define(REGBLOCK_LEXPR_ACTUALS,28)
 define(REGBLOCK_PRIMITIVE,32)
 define(REGBLOCK_CLOSURE_FREE,36)
+define(REGBLOCK_STACK_GUARD,44)
+define(REGBLOCK_INT_CODE,48)
 
 define(REGBLOCK_DLINK,REGBLOCK_COMPILER_TEMP)
 define(REGBLOCK_UTILITY_ARG4,REGBLOCK_CLOSURE_FREE)
@@ -331,7 +338,11 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
+use_external_data(EVR(heap_alloc_limit))
+use_external_data(EVR(heap_end))
+use_external_data(EVR(stack_guard))
 use_external_data(EVR(stack_pointer))
+use_external_data(EVR(stack_start))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
@@ -769,6 +780,58 @@ define_apply_fixed_size(6)
 define_apply_fixed_size(7)
 define_apply_fixed_size(8)
 
+# On entry, the tagged interrupt mask is at the top of the stack,
+# below which is a tagged return address.  This implementation is not
+# very clever about avoiding unnecessary writes.
+
+define_hook_label(set_interrupt_enables)
+
+	# Store the old interrupt mask in the value register.
+	OP(mov,l)	TW(LOF(REGBLOCK_INT_MASK(),regs),REG(eax))
+	OP(or,l)	TW(IMM(eval(TAG(TC_FIXNUM,0))),REG(eax))
+	OP(mov,l)	TW(REG(eax),LOF(REGBLOCK_VAL(),regs))
+
+	# Store the new one in the interrupt mask register.
+	OP(pop,l)	REG(ecx)
+	OP(and,l)	TW(rmask,REG(ecx))
+	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_INT_MASK(),regs))
+
+set_interrupt_enables_determine_memtop:
+	# If there is an interrupt pending, set memtop to 0.
+	OP(test,l)	TW(LOF(REGBLOCK_INT_CODE(),regs),REG(ecx))
+	jz	set_interrupt_enables_memtop_1
+	OP(xor,l)	TW(REG(edx),REG(edx))
+	jmp	set_interrupt_enables_set_memtop
+
+set_interrupt_enables_memtop_1:
+	# If GC is enabled, set memtop to the heap allocation limit.
+	OP(test,l)	TW(IMM(INT_GC),REG(ecx))
+	jz	set_interrupt_enables_memtop_2
+	OP(mov,l)	TW(ABS(EVR(heap_alloc_limit)),REG(edx))
+	jmp	set_interrupt_enables_set_memtop
+
+set_interrupt_enables_memtop_2:
+	# Otherwise, there is no interrupt pending, and GC is not
+	# enabled, so set memtop to the absolute heap end.
+	OP(mov,l)	TW(ABS(EVR(heap_end)),REG(edx))
+
+set_interrupt_enables_set_memtop:
+	OP(mov,l)	TW(REG(edx),LOF(REGBLOCK_MEMTOP(),regs))
+
+set_interrupt_enables_determine_stack_guard:
+	OP(test,l)	TW(IMM(INT_Stack_Overflow),REG(ecx))
+	jz	set_interrupt_enables_stack_guard_1
+	OP(mov,l)	TW(ABS(EVR(stack_guard)),REG(edx))
+	jmp	set_interrupt_enables_set_stack_guard
+
+set_interrupt_enables_stack_guard_1:
+	OP(mov,l)	TW(ABS(EVR(stack_start)),REG(edx))
+
+set_interrupt_enables_set_stack_guard:
+	OP(mov,l)	TW(REG(edx),LOF(REGBLOCK_STACK_GUARD(),regs))
+	OP(and,l)	TW(rmask,IND(REG(esp)))
+	ret
+
 ###	The following code is used by generic arithmetic
 ###	whether the fixnum case is open-coded in line or not.
 ###	This takes care of fixnums and flonums so that the common
@@ -864,6 +927,10 @@ asm_generic_$1_fail:
 	jmp	scheme_to_interface')
 
 define(define_binary_operation,
+`define_binary_operation_with_setup($1,$2,$3,$4,
+	`OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))')')
+
+define(define_binary_operation_with_setup,
 `declare_alignment(2)
 define_hook_label(generic_$1)
 	OP(pop,l)	REG(edx)
@@ -888,7 +955,7 @@ asm_generic_$1_fail:
 asm_generic_$1_fix:
 	OP(mov,l)	TW(REG(edx),REG(eax))
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
-	OP(shl,l)	TW(IMM(TC_LENGTH),REG(eax))
+	$5						# Set up eax.
 	OP(shl,l)	TW(IMM(TC_LENGTH),REG(ecx))
 	OP($3,l)	TW(REG(ecx),REG(eax))		# subl
 	jo	asm_generic_$1_fail
@@ -998,7 +1065,13 @@ define_unary_predicate(zero,2d,je,je)
 # define_binary_operation(  $1,   $2,     $3,     $4)
 define_binary_operation(add,2b,add,fadd)
 define_binary_operation(subtract,28,sub,fsub)
-define_binary_operation(multiply,29,imul,fmul)
+
+# To set up eax, kill its tag, but leave it unshifted; the other
+# operand will be shifted already, so that it will already include the
+# factor of 2^6 desired in the product.
+define_binary_operation_with_setup(multiply,29,imul,fmul,
+	`OP(and,l)	TW(rmask,REG(eax))')
+
 # Divide needs to check for 0, so we cant really use the following
 # define_binary_operation(divide,23,NONE,fdiv)
 
@@ -1042,6 +1115,52 @@ define_jump_indirection(nofp_zero,2d)
 define_jump_indirection(nofp_quotient,37)
 define_jump_indirection(nofp_remainder,38)
 define_jump_indirection(nofp_modulo,39)
+
+# Input and output in eax, shift count in ecx, all detagged fixnums.
+# Return address is at the top of the stack, untagged.  This hook must
+# not use any registers other than eax and ecx; if it does, the code
+# to generate calls to it, in compiler/machines/i386/rulfix.scm, must
+# clear the register map first.
+
+define_hook_label(fixnum_shift)
+	OP(sar,l)	TW(IMM(TC_LENGTH),REG(ecx))
+	js	asm_fixnum_shift_negative
+
+asm_fixnum_lsh:
+	OP(cmp,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	jge	asm_fixnum_lsh_overflow
+	OP(shl,l)	TW(REG(cl),REG(eax))
+	ret
+
+asm_fixnum_lsh_overflow:
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	ret
+
+asm_fixnum_shift_negative:
+	OP(neg,l)	REG(ecx)
+
+asm_fixnum_rsh:
+	OP(cmp,l)	TW(IMM(DATUM_LENGTH),REG(ecx))
+	jge	asm_fixnum_rsh_overflow
+	OP(sar,l)	TW(REG(cl),REG(eax))
+
+	# Turn eax back into a detagged fixnum by masking off the low
+	# six bits.  -1 has all bits set, but its detagged format has
+	# the low six bits clear.
+	OP(and,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
+	ret
+
+asm_fixnum_rsh_overflow:
+	OP(cmp,l)	TW(IMM(0),REG(eax))
+	js	asm_fixnum_rsh_overflow_negative
+
+asm_fixnum_rsh_overflow_nonnegative:
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	ret
+
+asm_fixnum_rsh_overflow_negative:
+	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
+	ret
 
 IFDASM(`end')
 

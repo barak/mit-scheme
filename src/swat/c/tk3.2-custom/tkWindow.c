@@ -30,10 +30,6 @@
  * express or implied warranty.
  */
 
-#ifndef lint
-static char rcsid[] = "$Id: tkWindow.c,v 1.2 2002/11/27 02:09:00 cph Exp $ SPRITE (Berkeley)";
-#endif
-
 #include "tkConfig.h"
 #include "tkInt.h"
 

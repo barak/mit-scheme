@@ -2,8 +2,6 @@
 ;;;;; Basic objects for the Scheme User Interface Tool Kit
 ;;;; MIT/GNU Scheme Version derived from Scheme-To-C version 1.2
 
-;;;; $Id: baseobj.scm,v 1.2 2003/02/14 18:48:13 cph Exp $
-
 ;;;; Application objects
 
 (define (application->TKMainWindow obj) (Application%.TKMainWindow obj))

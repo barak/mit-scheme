@@ -1,3 +1,16 @@
+mit-scheme (9.0-1) unstable; urgency=low
+
+  * New upstream.
+  * debian/emacs*: removed.
+  * debian/mit-scheme-native.1: renamed to debian/mit-scheme-i386.1.
+  * debian/mit-scheme.{desktop,dirs,install,manpages,menu,postinst,prerm},
+    debian/mit-scheme-i386.1, debian/control, debian/rules: updated for
+    upstream changes.
+  * debian/control: Bump standards-version to 3.8.4 (no changes).
+  * debian/watch: Uncomment pattern for stable releases.
+
+ -- Chris Hanson <cph@debian.org>  Sat, 27 Feb 2010 23:50:14 -0800
+
 mit-scheme (7.7.90+20090107-1.1) unstable; urgency=low
 
   * Non-maintainer upload.

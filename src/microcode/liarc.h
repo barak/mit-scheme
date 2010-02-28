@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.33 2008/01/30 20:02:14 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -293,19 +291,22 @@ typedef unsigned long entry_count_t;
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_1 (code, (&current_block[entry_point]));		\
 } while (false)
 
 #define DLINK_INTERRUPT_CHECK(code, entry_point) do			\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_2 (code, (&current_block[entry_point]), Rdl);	\
 } while (false)
 
 #define CLOSURE_INTERRUPT_CHECK(code) do				\
 {									\
-  if (((long) Rhp) >= ((long) GET_MEMTOP))				\
+  if ((((long) Rhp) >= ((long) GET_MEMTOP))				\
+      || (((long) Rsp) < ((long) GET_STACK_GUARD)))			\
     INVOKE_INTERFACE_0 (code);						\
 } while (false)
 

@@ -1,10 +1,9 @@
 #!/bin/sh
 
-# $Id: create-makefiles.sh,v 1.5 2008/01/30 20:02:08 cph Exp $
-#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -27,16 +26,16 @@ set -e
 
 . etc/functions.sh
 
-if [ ${#} -eq 1 ]; then
-    NATIVE_CODE=${1}
-else
-    echo "usage: ${0} NATIVE-CODE-TYPE"
+if test ${#} -ne 2; then
+    echo "usage: ${0} HOST_SCHEME_EXE TARGET_ARCH"
     exit 1
 fi
+HOST_SCHEME_EXE=${1}
+TARGET_ARCH=${2}
 
-MDIR=`compiler/choose-machine.sh "${NATIVE_CODE}"`
+MDIR=`compiler/choose-machine.sh "${TARGET_ARCH}"`
 
-if [ -f makefiles_created ]; then
+if test -f makefiles_created; then
     CODE_TYPE=`cat makefiles_created`
     if test "${CODE_TYPE}" = "${MDIR}"; then
 	echo "Makefiles already created."
@@ -50,9 +49,7 @@ run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
 
-: ${MIT_SCHEME_EXE='mit-scheme'}
-
-run_cmd ${MIT_SCHEME_EXE} --heap 4000 <<EOF
+run_cmd ${HOST_SCHEME_EXE} --heap 4000 <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))

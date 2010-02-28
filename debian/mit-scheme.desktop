@@ -2,8 +2,8 @@
 Version=1.0
 Encoding=UTF-8
 Name=MIT/GNU Scheme
-Exec=/usr/bin/mit-scheme-native --heap 4096 --edit
-TryExec=mit-scheme-native
+Exec=/usr/bin/mit-scheme-i386 --edit
+TryExec=mit-scheme-i386
 Terminal=false
 Type=Application
 Icon=/usr/share/pixmaps/mit-scheme/lambda2.png

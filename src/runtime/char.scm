@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.36 2008/12/12 20:22:03 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,14 +28,10 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable (char? object)
-  ((ucode-primitive char?) object))
-
-(define-integrable (char->integer char)
-  ((ucode-primitive char->integer) char))
-
-(define-integrable (integer->char int)
-  ((ucode-primitive integer->char) int))
+(define-primitives
+  (char? 1)
+  (char->integer 1)
+  (integer->char 1))
 
 (define-integrable char-code-limit #x110000)
 (define-integrable char-bits-limit #x10)
@@ -177,33 +171,30 @@ USA.
 
 (define (char-downcase char)
   (guarantee-char char 'CHAR-DOWNCASE)
-  (%char-downcase char))
-
-(define (%char-downcase char)
-  (if (fix:< (%char-code char) 256)
-      (%make-char (vector-8b-ref downcase-table (%char-code char))
-		  (%char-bits char))
-      char))
+  (%case-map-char char downcase-table))
 
 (define (char-upcase char)
   (guarantee-char char 'CHAR-UPCASE)
-  (%char-upcase char))
+  (%case-map-char char upcase-table))
 
-(define (%char-upcase char)
-  (if (fix:< (%char-code char) 256)
-      (%make-char (vector-8b-ref upcase-table (%char-code char))
+(define-integrable (%case-map-char char table)
+  (if (fix:< (%char-code char) #x100)
+      (%make-char (vector-8b-ref table (%char-code char))
 		  (%char-bits char))
       char))
 
 (define downcase-table)
+(define identity-table)
 (define upcase-table)
 
 (define (initialize-case-conversions!)
-  (set! downcase-table (make-string 256))
-  (set! upcase-table (make-string 256))
+  (set! downcase-table (make-string #x100))
+  (set! identity-table (make-string #x100))
+  (set! upcase-table (make-string #x100))
   (do ((i 0 (fix:+ i 1)))
-      ((fix:= i 256))
+      ((fix:= i #x100))
     (vector-8b-set! downcase-table i i)
+    (vector-8b-set! identity-table i i)
     (vector-8b-set! upcase-table i i))
   (let ((case-range
 	 (lambda (uc-low uc-high lc-low)

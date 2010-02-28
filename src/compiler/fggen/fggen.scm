@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.45 2008/02/14 02:12:14 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -575,11 +573,11 @@ USA.
 (define (generate/combination block continuation context expression)
   (scode/combination-components expression
     (lambda (operator operands)
-      (cond ((eq? not operator)
+      (cond ((eq? (ucode-primitive not) operator)
 	     (generate/conditional block continuation context
 				   (scode/make-conditional (car operands)
 							   #F #T)))
-	    ((and (eq? general-car-cdr operator)
+	    ((and (eq? (ucode-primitive general-car-cdr) operator)
 		  (let ((n (cadr operands)))
 		    (and (exact-integer? n)
 			 (positive? n))))
@@ -951,7 +949,7 @@ USA.
 					 'LIST))
 			       (and (scode/combination? irritants)
 				    (eq? (scode/combination-operator irritants)
-					 cons)))))
+					 (ucode-primitive cons))))))
 		    (generate/error-combination block continuation
 						context expression))
 		   (else

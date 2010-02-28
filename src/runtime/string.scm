@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.70 2008/09/23 23:59:23 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,64 +41,28 @@ USA.
 
 ;;;; Primitives
 
-(define-integrable (string-allocate n)
-  ((ucode-primitive string-allocate) n))
-
-(define-integrable (string? object)
-  ((ucode-primitive string?) object))
-
-(define-integrable (string-length string)
-  ((ucode-primitive string-length) string))
-
-(define-integrable (string-maximum-length string)
-  ((ucode-primitive string-maximum-length) string))
-
-(define-integrable (set-string-length! string length)
-  ((ucode-primitive set-string-length!) string length))
-
-(define-integrable (set-string-maximum-length! string length)
-  ((ucode-primitive set-string-maximum-length!) string length))
-
-(define-integrable (string-ref string index)
-  ((ucode-primitive string-ref) string index))
-
-(define-integrable (string-set! string index char)
-  ((ucode-primitive string-set!) string index char))
-
-(define-integrable (substring-move-left! string1 start1 end1 string2 start2)
-  ((ucode-primitive substring-move-left!) string1 start1 end1 string2 start2))
-
-(define-integrable (substring-move-right! string1 start1 end1 string2 start2)
-  ((ucode-primitive substring-move-right!) string1 start1 end1 string2 start2))
-
-(define-integrable (vector-8b-ref vector-8b index)
-  ((ucode-primitive vector-8b-ref) vector-8b index))
-
-(define-integrable (vector-8b-set! vector-8b index byte)
-  ((ucode-primitive vector-8b-set!) vector-8b index byte))
-
-(define-integrable (vector-8b-fill! string start end ascii)
-  (substring-fill! string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-next-char string start end ascii)
-  (substring-find-next-char string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-previous-char string start end ascii)
-  (substring-find-previous-char string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-next-char-ci string start end ascii)
-  (substring-find-next-char-ci string start end (ascii->char ascii)))
-
-(define-integrable (vector-8b-find-previous-char-ci string start end ascii)
-  (substring-find-previous-char-ci string start end (ascii->char ascii)))
+(define-primitives
+  (set-string-length! 2)
+  (string-allocate 1)
+  (string-hash-mod 2)
+  (string-length 1)
+  (string-ref 2)
+  (string-set! 3)
+  (string? 1)
+  substring-move-left!
+  substring-move-right!
+  vector-8b-fill!
+  vector-8b-find-next-char
+  vector-8b-find-next-char-ci
+  vector-8b-find-previous-char
+  vector-8b-find-previous-char-ci
+  (vector-8b-ref 2)
+  (vector-8b-set! 3))
 
 (define (string-hash key #!optional modulus)
   (if (default-object? modulus)
       ((ucode-primitive string-hash) key)
       ((ucode-primitive string-hash-mod) key modulus)))
-
-(define (string-hash-mod key modulus)
-  ((ucode-primitive string-hash-mod) key modulus))
 
 (define (string-ci-hash key #!optional modulus)
   (string-hash (string-downcase key) modulus))
@@ -170,12 +132,15 @@ USA.
 
 (define (string-head string end)
   (guarantee-string string 'STRING-HEAD)
-  (guarantee-string-index end 'STRING-HEAD)
+  (guarantee-substring-end-index end (string-length string) 'STRING-HEAD)
+  (%string-head string end))
+
+(define-integrable (%string-head string end)
   (%substring string 0 end))
 
 (define (string-tail string start)
   (guarantee-string string 'STRING-TAIL)
-  (guarantee-string-index start 'STRING-TAIL)
+  (guarantee-substring-start-index start (string-length string) 'STRING-TAIL)
   (%substring string start (string-length string)))
 
 (define (string-copy string)
@@ -187,6 +152,49 @@ USA.
     (let ((result (string-allocate size)))
       (%substring-move! string 0 size result 0)
       result)))
+
+(define (string-head! string end)
+  (declare (no-type-checks) (no-range-checks))
+  (guarantee-string string 'STRING-HEAD!)
+  (guarantee-substring-end-index end (string-length string) 'STRING-HEAD!)
+  (%string-head! string end))
+
+(define %string-head!
+  (let ((reuse
+	 (lambda (string end)
+	   (declare (no-type-checks) (no-range-checks))
+	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
+	     (if (fix:< end (string-length string))
+		 (begin
+		   (string-set! string end #\nul)
+		   (set-string-length! string end)))
+	     ((ucode-primitive primitive-object-set! 3)
+	      string
+	      0
+	      ((ucode-primitive primitive-object-set-type 2)
+	       (ucode-type manifest-nm-vector)
+	       (fix:+ 2 (fix:lsh end %octets->words-shift))))
+	     (set-interrupt-enables! mask)
+	     string))))
+    (if (compiled-procedure? reuse)
+	reuse
+	%string-head)))
+
+(define (string-maximum-length string)
+  (guarantee-string string 'STRING-MAXIMUM-LENGTH)
+  (fix:- (fix:lsh (fix:- (system-vector-length string) 1)
+		  %words->octets-shift)
+	 1))
+
+(define %octets->words-shift
+  (let ((chars-per-word (vector-ref (gc-space-status) 0)))
+    (case chars-per-word
+      ((4) -2)
+      ((8) -3)
+      (else (error "Can't support this word size:" chars-per-word)))))
+
+(define %words->octets-shift
+  (- %octets->words-shift))
 
 (define (string . objects)
   (%string-append (map ->string objects)))
@@ -205,13 +213,15 @@ USA.
   (cond ((string? object) (string->utf8-string object))
 	((symbol? object) (symbol-name object))
 	((wide-string? object) (wide-string->utf8-string object))
-	((wide-char? object) (wide-string->utf8-string (wide-string object)))
+	((unicode-char? object)
+	 (wide-string->utf8-string (wide-string object)))
 	(else (%->string object 'UTF8-STRING))))
 
 (define (%->string object caller)
   (cond ((not object) "")
 	((number? object) (number->string object))
 	((uri? object) (uri->string object))
+	((pathname? object) (->namestring object))
 	(else (error:wrong-type-argument object "string component" caller))))
 
 (define (char->string char)
@@ -1546,7 +1556,7 @@ USA.
 
 (define (xsubstring xstring start end)
   (guarantee-xsubstring xstring start end 'XSUBSTRING)
-  (let ((string (make-string (fix:- end start))))
+  (let ((string (make-string (- end start))))
     (xsubstring-move! xstring start end string 0)
     string))
 
@@ -1570,10 +1580,11 @@ USA.
 	 (error:not-xstring xstring 'XSTRING-FILL!))))
 
 (define-integrable (xsubstring-find-char xstring start end datum finder caller)
-  (guarantee-xsubstring xstring start end caller)
   (cond ((string? xstring)
+	 (guarantee-substring xstring start end caller)
 	 (finder xstring start end datum))
 	((external-string? xstring)
+	 (guarantee-xsubstring xstring start end caller)
 	 (finder (external-string-descriptor xstring) start end datum))
 	(else
 	 (error:not-xstring xstring caller))))
@@ -1639,6 +1650,10 @@ USA.
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "string index" caller)))
 
+(define-integrable (guarantee-xstring-index object caller)
+  (if (not (exact-nonnegative-integer? object))
+      (error:wrong-type-argument object "xstring index" caller)))
+
 (define-integrable (guarantee-substring string start end caller)
   (if (not (and (string? string)
 		(index-fixnum? start)
@@ -1651,19 +1666,19 @@ USA.
   (guarantee-string string caller)
   (guarantee-substring-end-index end (string-length string) caller)
   (guarantee-substring-start-index start end caller))
-
+
 (define-integrable (guarantee-xsubstring xstring start end caller)
   (if (not (and (xstring? xstring)
-		(index-fixnum? start)
-		(index-fixnum? end)
-		(fix:<= start end)
-		(Fix:<= end (xstring-length xstring))))
+		(exact-nonnegative-integer? start)
+		(exact-nonnegative-integer? end)
+		(<= start end)
+		(<= end (xstring-length xstring))))
       (guarantee-xsubstring/fail xstring start end caller)))
 
 (define (guarantee-xsubstring/fail xstring start end caller)
   (guarantee-xstring xstring caller)
-  (guarantee-substring-end-index end (xstring-length xstring) caller)
-  (guarantee-substring-start-index start end caller))
+  (guarantee-xsubstring-end-index end (xstring-length xstring) caller)
+  (guarantee-xsubstring-start-index start end caller))
 
 (define-integrable (guarantee-substring-end-index end length caller)
   (guarantee-string-index end caller)
@@ -1674,6 +1689,18 @@ USA.
 (define-integrable (guarantee-substring-start-index start end caller)
   (guarantee-string-index start caller)
   (if (not (fix:<= start end))
+      (error:bad-range-argument start caller))
+  start)
+
+(define-integrable (guarantee-xsubstring-end-index end length caller)
+  (guarantee-xstring-index end caller)
+  (if (not (<= end length))
+      (error:bad-range-argument end caller))
+  end)
+
+(define-integrable (guarantee-xsubstring-start-index start end caller)
+  (guarantee-xstring-index start caller)
+  (if (not (<= start end))
       (error:bad-range-argument start caller))
   start)
 

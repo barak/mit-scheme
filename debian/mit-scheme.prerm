@@ -19,8 +19,8 @@ case "${1}" in
 (upgrade)
     ;;
 (remove|failed-upgrade|deconfigure)
-    update-alternatives --remove mit-scheme /usr/bin/mit-scheme-native
-    update-alternatives --remove scheme /usr/bin/mit-scheme-native
+    update-alternatives --remove mit-scheme /usr/bin/mit-scheme-i386
+    update-alternatives --remove scheme /usr/bin/mit-scheme-i386
     ;;
 (*)
     echo "prerm called with unknown argument \"${1}\"" >&2

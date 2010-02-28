@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: ntfile.c,v 1.19 2008/01/30 20:02:14 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,6 +70,13 @@ OS_open_append_file (const char * filename)
   if ((SetFilePointer (hFile, 0, 0, FILE_END)) == 0xFFFFFFFF)
     NT_error_api_call ((GetLastError ()), apicall_SetFilePointer);
   return (NT_open_handle (hFile));
+}
+
+Tchannel
+OS_open_exclusive_output_file (const char * filename)
+{
+  error_unimplemented_primitive ();
+  return (0);
 }
 
 static Tchannel

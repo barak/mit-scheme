@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rulfix.scm,v 1.39 2008/01/30 20:01:50 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -482,42 +480,32 @@ USA.
 		   (SAR W ,target (& ,scheme-type-width))
 		   (IMUL W ,target ,temp))))))))
 
-(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
-  (let ((operate
-	 (lambda (target source2)
-	   ;; SOURCE2 is guaranteed not to be ECX because of the
-	   ;; require-register! used below.
-	   ;; TARGET can be ECX only if the rule has machine register
-	   ;; ECX as the target, unlikely, but it must be handled!
-	   (let ((with-target
-		   (lambda (target)
-		     (let ((jlabel (generate-label 'SHIFT-JOIN))
-			   (slabel (generate-label 'SHIFT-NEGATIVE)))
-		       (LAP (MOV W (R ,ecx) ,source2)
-			    (SAR W (R ,ecx) (& ,scheme-type-width))
-			    (JS B (@PCR ,slabel))
-			    (SHL W ,target (R ,ecx))
-			    (JMP B (@PCR ,jlabel))
-			    (LABEL ,slabel)
-			    (NEG W (R ,ecx))
-			    (SHR W ,target (R ,ecx))
-			    ,@(word->fixnum target)
-			    (LABEL ,jlabel))))))
+;;; This calls an out-of-line assembly hook because it requires a lot
+;;; of hair to deal with shift counts that exceed the datum width, and
+;;; with negative arguments.
 
-	     (if (not (equal? target (INST-EA (R ,ecx))))
-		 (with-target target)
-		 (let ((temp (temporary-register-reference)))
-		   (LAP (MOV W ,temp ,target)
-			,@(with-target temp)
-			(MOV W ,target ,temp))))))))
-    (lambda (target source1 source2 overflow?)
-      overflow?				; ignored
-      (require-register! ecx)
-      (two-arg-register-operation operate
-				  #f
-				  target
-				  source1
-				  source2))))
+(define-arithmetic-method 'FIXNUM-LSH fixnum-methods/2-args
+  (lambda (target source1 source2 overflow?)
+    overflow?				;ignore
+    ;++ This is suboptimal in the cases when SOURCE1 is stored only in
+    ;++ ecx or when SOURCE2 is stored only in eax, and either one is
+    ;++ dead (which is often the case).  In such cases, this generates
+    ;++ code to needlessly save the dead pseudo-registers into their
+    ;++ homes simply because they were stored in eax and ecx.  It'd be
+    ;++ nice to have a variant of LOAD-MACHINE-REGISTER! for multiple
+    ;++ sources and targets, which would compute a parallel assignment
+    ;++ using machine registers if available for temporaries, or the
+    ;++ homes of pseudo-registers if not.
+    (let* ((load-eax (load-machine-register! source1 eax))
+	   (load-ecx (load-machine-register! source2 ecx)))
+      (delete-dead-registers!)
+      (rtl-target:=machine-register! target eax)
+      (LAP ,@load-eax
+	   ,@load-ecx
+	   ;; Clearing the map is not necessary because the hook uses
+	   ;; only eax and ecx.  If the hook were changed, it would be
+	   ;; necessary to clear the map first.
+	   ,@(invoke-hook/call entry:compiler-fixnum-shift)))))
 
 (define (do-division target source1 source2 result-reg)
   (prefix-instructions! (load-machine-register! source1 eax))
