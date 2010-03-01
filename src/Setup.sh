@@ -29,19 +29,28 @@ set -e
 
 : ${MIT_SCHEME_EXE:=mit-scheme}
 
+# Please keep the following messages synchronized with the messages in
+# these files:
+#
+#   src/Setup.sh
+#   src/configure.ac
+#   src/etc/make-native.sh
+
 if ! ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)' > /dev/null 2> /dev/null
 then
     cat <<EOF >&2
-This script needs an existing MIT/GNU Scheme installation to function.
+*** Error in ${0}
 
-If you have installed MIT/GNU Scheme in an unusual location, or with
-an unusual name, set the environment variable MIT_SCHEME_EXE to the
-name or pathname of the MIT/GNU Scheme executable, which is usually
-\`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
-variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually \`/usr/local/lib/mit-scheme-ARCH',
-where ARCH is the compiled code architecture, such as \`c', \`i386',
-etc.
+This script needs an existing MIT/GNU Scheme installation to function,
+but the program \`${MIT_SCHEME_EXE}' does not appear to run it.
+
+If you have installed MIT/GNU Scheme in an unusual location, set the
+environment variable MIT_SCHEME_EXE to the name or pathname of the
+MIT/GNU Scheme executable, which is usually \`mit-scheme' or
+\`/usr/local/bin/mit-scheme', and set the environment variable
+MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
+directory, which is usually \`/usr/local/lib/mit-scheme-ARCH', where
+ARCH is the compiled code architecture, such as \`c', \`i386', etc.
 EOF
     exit 1
 fi
