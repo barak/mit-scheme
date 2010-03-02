@@ -49,8 +49,7 @@ USA.
 	  sf:enable-disjunction-inversion?
 	  sf:enable-disjunction-linearization?
 	  sf:enable-disjunction-simplification?
-	  sf:enable-distribute-primitives?
-	  ))
+	  sf:enable-distribute-primitives?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
@@ -105,7 +104,8 @@ USA.
   (parent (scode-optimizer))
   (export (scode-optimizer)
 	  *sf-associate*
-	  cgen/external)
+	  cgen/external
+	  pp-form)
   (export (scode-optimizer expansion)
 	  cgen/external-with-declarations))
 
@@ -145,7 +145,8 @@ USA.
   (files "free")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  free/expression))
+	  free/expression
+	  variable/free-in-expression?))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
