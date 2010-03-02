@@ -460,6 +460,67 @@ USA.
        (eq? (constant/value expression) unspecific)
        (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
 
+;; A measure of how big an expression we are willing to duplicate
+;; when rewriting a conditional or disjunction.  In theory, there
+;; is no limit because the code is only duplicated on parallel
+;; branches and could only be encountered once per branch, but
+;; we want to avoid unnecessary code bloat.
+;; Values:
+;;    0 = inhibit all code duplication
+;;    1 = allow constants to be duplicated
+;;    2 - 4 = very conservative setting
+;;    4 - 8 = a tad conservative
+;;    8 - 16 = a bit liberal
+;;    64 - 10000 = go wild.
+;;
+;; This has been tested at very large values, so don't worry about
+;; cranking it up.  The code will be correct, but it will get larger.
+(define sf:maximum-duplicate-expression-size 2)
+
+(define (expression/can-duplicate? expression)
+  (define (descend size subexpression)
+    (cond ((>= size sf:maximum-duplicate-expression-size) size)
+
+	  ((combination? subexpression)
+	   (fold-left descend
+		      (descend (+ size 1) (combination/operator subexpression))
+		      (combination/operands subexpression)))
+
+	  ((conditional? subexpression)
+	   (descend
+	    (cond ((expression/always-false? (conditional/predicate subexpression))
+		   (descend (+ size 1) (conditional/alternative subexpression)))
+		  ((expression/never-false? (conditional/predicate subexpression))
+		   (descend (+ size 1) (conditional/consequent subexpression)))
+		 (else
+		  (descend (descend (+ size 1) (conditional/consequent subexpression))
+			   (conditional/alternative subexpression))))
+	    (conditional/predicate subexpression)))
+
+	  ((constant? subexpression) (+ size 0))
+
+	  ((declaration? subexpression)
+	   (descend (+ size 1) (declaration/expression subexpression)))
+
+	  ((disjunction? subexpression)
+	   (descend
+	    (if (expression/never-false? (disjunction/predicate subexpression))
+		(+ size 1)
+		(descend (+ size 1) (disjunction/alternative subexpression)))
+	    (disjunction/predicate subexpression)))
+
+	  ((and (reference? subexpression)
+		(not (variable/side-effected (reference/variable subexpression))))
+	   (+ size 1))
+
+	  ((sequence? subexpression)
+	   (fold-left descend
+		      (+ size 1)
+		      (sequence/actions subexpression)))
+
+	  (else (+ size sf:maximum-duplicate-expression-size))))
+  (< (descend 0 expression) sf:maximum-duplicate-expression-size))
+
 (define-integrable (global-ref/make name)
   (access/make #f
 	       (constant/make #f system-global-environment)
@@ -684,7 +745,7 @@ USA.
 	((and (conditional? predicate)
 	      (or (expression/constant-eq? (conditional/alternative predicate) #f)
 		  (expression/unspecific? (conditional/alternative predicate)))
-	      (constant? alternative)
+	      (expression/can-duplicate? alternative)
 	      (noisy-test sf:enable-conjunction-linearization? "Conjunction linearization"))
 	 (conditional/make scode
 			   (conditional/predicate predicate)
@@ -696,7 +757,7 @@ USA.
 
 	;; (if (or e1 e2) K <expr>) => (if e1 K (if e2 K <expr>))
 	((and (disjunction? predicate)
-	      (constant? consequent)
+	      (expression/can-duplicate? consequent)
 	      (noisy-test sf:enable-disjunction-distribution? "Disjunction distribution"))
 	 (conditional/make scode
 			   (disjunction/predicate predicate)
