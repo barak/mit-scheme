@@ -66,8 +66,12 @@ USA.
   (lambda (expression)
     (lset-union eq?
 		(free/expression (conditional/predicate expression))
-		(free/expression (conditional/consequent expression))
-		(free/expression (conditional/alternative expression)))))
+		(if (expression/always-false? (conditional/predicate expression))
+		    (no-free-variables)
+		    (free/expression (conditional/consequent expression)))
+		(if (expression/never-false? (conditional/predicate expression))
+		    (no-free-variables)
+		    (free/expression (conditional/alternative expression))))))
 
 (define-method/free 'CONSTANT
   (lambda (expression)
@@ -86,7 +90,9 @@ USA.
   (lambda (expression)
     (lset-union eq?
 		(free/expression (disjunction/predicate expression))
-		(free/expression (disjunction/alternative expression)))))
+		(if (expression/never-false? (disjunction/predicate expression))
+		    (no-free-variables)
+		    (free/expression (disjunction/alternative expression))))))
 
 (define-method/free 'OPEN-BLOCK
   (lambda (expression)
@@ -127,3 +133,105 @@ USA.
 
 (define-integrable (singleton-variable variable)
   (list variable))
+
+;;; VARIABLE/FREE-IN-EXPRESSION? <variable> <expression>
+;;; Test if a particular <variable> occurs free in <expression>.  Faster
+;;; and cheaper than collecting the entire free variable set and then
+;;; using memq.
+(define (variable/free-in-expression? variable expression)
+  ((expression/method is-free-dispatch-vector expression) variable expression))
+
+(define (is-free/expressions variable expressions)
+  (fold-left (lambda (answer expression)
+	       (or answer
+		   (variable/free-in-expression? variable expression)))
+	     #f
+	     expressions))
+
+(define is-free-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/is-free
+  (expression/make-method-definer is-free-dispatch-vector))
+
+(define-method/is-free 'ACCESS
+  (lambda (variable expression)
+    (variable/free-in-expression? variable (access/environment expression))))
+
+(define-method/is-free 'ASSIGNMENT
+  (lambda (variable expression)
+    (or (eq? variable (assignment/variable expression))
+	(variable/free-in-expression? variable (assignment/value expression)))))
+
+(define-method/is-free 'COMBINATION
+  (lambda (variable expression)
+    (or (variable/free-in-expression? variable (combination/operator expression))
+	(is-free/expressions variable (combination/operands expression)))))
+
+(define-method/is-free 'CONDITIONAL
+  (lambda (variable expression)
+    (or (variable/free-in-expression? variable (conditional/predicate expression))
+	(cond ((expression/always-false? (conditional/predicate expression))
+	       (variable/free-in-expression? variable (conditional/alternative expression)))
+	      ((expression/never-false? (conditional/predicate expression))
+	       (variable/free-in-expression? variable (conditional/consequent expression)))
+	      ((variable/free-in-expression? variable (conditional/consequent expression)))
+	      (else (variable/free-in-expression? variable (conditional/alternative expression)))))))
+
+(define-method/is-free 'CONSTANT
+  (lambda (variable expression)
+    (declare (ignore variable expression))
+    #f))
+
+(define-method/is-free 'DECLARATION
+  (lambda (variable expression)
+    (variable/free-in-expression? variable (declaration/expression expression))))
+
+(define-method/is-free 'DELAY
+  (lambda (variable expression)
+    (variable/free-in-expression? variable (delay/expression expression))))
+
+(define-method/is-free 'DISJUNCTION
+  (lambda (variable expression)
+    (or (variable/free-in-expression? variable (disjunction/predicate expression))
+	(if (expression/never-false? (disjunction/predicate expression))
+	    #f
+	    (variable/free-in-expression? variable (disjunction/alternative expression))))))
+
+(define-method/is-free 'OPEN-BLOCK
+  (lambda (variable expression)
+    (fold-left (lambda (answer action)
+		 (or answer
+		     (if (eq? action open-block/value-marker)
+			 #f
+			 (variable/free-in-expression? variable action))))
+	       #f
+	       (open-block/actions expression))))
+
+(define-method/is-free 'PROCEDURE
+  (lambda (variable expression)
+    (variable/free-in-expression? variable (procedure/body expression))))
+
+(define-method/is-free 'QUOTATION
+  (lambda (variable expression)
+    (declare (ignore variable expression))
+    #f))
+
+(define-method/is-free 'REFERENCE
+  (lambda (variable expression)
+    (eq? variable (reference/variable expression))))
+
+(define-method/is-free 'SEQUENCE
+  (lambda (variable expression)
+  (fold-left (lambda (answer action)
+	       (or answer
+		   (if (eq? action open-block/value-marker)
+		       #f
+		       (variable/free-in-expression? variable action))))
+	     #f
+	     (sequence/actions expression))))
+
+(define-method/is-free 'THE-ENVIRONMENT
+  (lambda (variable expression)
+    (declare (ignore variable expression))
+    #f))
