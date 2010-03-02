@@ -72,7 +72,7 @@ USA.
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))
-	   (re-read-microcode-tables!)
+	   (read-microcode-tables!)
 	   (lambda ()
 	     (set! time-world-saved time)
 	     (fluid-let ((*within-restore-window?* #t))
