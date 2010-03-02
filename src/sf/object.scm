@@ -284,7 +284,7 @@ USA.
 	 (and (constant? operator)
 	      (let ((operator-value (constant/value operator)))
 		(and (memq operator-value primitive-boolean-predicates)
-		     (procedure-arity-valid? 
+		     (procedure-arity-valid?
 		      operator-value
 		      (length (combination/operands expression)))))))))
 
@@ -640,21 +640,25 @@ USA.
   (vector-ref dispatch-vector
 	      (enumeration/name->index enumeration/expression name)))
 
-(define-integrable (constant->integration-info constant)
-  (make-integration-info (constant/make #f constant)))
+;;; Integration Info
+(define integration-info-tag
+  (string-copy "integration-info"))
+
+(define-integrable (make-integration-info expression)
+  (cons integration-info-tag expression))
 
 (define-integrable (integration-info? object)
   (and (pair? object)
        (eq? integration-info-tag (car object))))
 
-(define-integrable (make-integration-info expression)
-  (cons integration-info-tag expression))
+(define-guarantee integration-info "Integration info")
 
-(define-integrable (integration-info/expression integration-info)
+(define (integration-info/expression integration-info)
+  (guarantee-integration-info integration-info 'integration-info/expression)
   (cdr integration-info))
 
-(define integration-info-tag
-  (string-copy "integration-info"))
+(define-integrable (constant->integration-info constant)
+  (make-integration-info (constant/make #f constant)))
 
 ;;; Returns #T if switch is not #F or 'warn.
 ;;; Additionally, prints text if switch is not #T.
