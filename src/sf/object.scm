@@ -255,8 +255,10 @@ USA.
   (cond ((expression/call-to-boolean-predicate? expression))
 
 	((conditional? expression)
-	 (and (expression/boolean? (conditional/consequent expression))
-	      (expression/boolean? (conditional/alternative expression))))
+	 (and (or (expression/always-false? (conditional/predicate expression))
+		  (expression/boolean? (conditional/consequent expression)))
+	      (or (expression/never-false? (conditional/predicate expression))
+		  (expression/boolean? (conditional/alternative expression)))))
 
 	((constant? expression)
 	 (or (not (constant/value expression))
@@ -267,7 +269,8 @@ USA.
 
 	((disjunction? expression)
 	 (and (expression/boolean? (disjunction/predicate expression))
-	      (expression/boolean? (conditional/alternative expression))))
+	      (or (expression/never-false? (disjunction/predicate expression))
+		  (expression/boolean? (conditional/alternative expression)))))
 
 	((sequence? expression) (expression/boolean? (last (sequence/actions expression))))
 
