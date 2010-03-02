@@ -220,19 +220,129 @@ USA.
 
 ;;; Helpers for expressions
 
+;; True iff expression can be shown to always return #F.
+;; That is, the expression counts as #f to a conditional.
+(define (expression/always-false? expression)
+  (cond ((combination? expression)
+	 (cond ((expression/call-to-not? expression)
+		(expression/never-false? (first (combination/operands expression))))
+	       ((procedure? (combination/operator expression))
+		(expression/always-false? (procedure/body (combination/operator expression))))
+	       (else #f)))
+
+	((conditional? expression)
+	 (and (or (expression/always-false? (conditional/predicate expression))
+		  (expression/always-false? (conditional/consequent expression)))
+	      (or (expression/never-false? (conditional/predicate expression))
+		  (expression/always-false? (conditional/alternative expression)))))
+
+	((constant? expression) (not (constant/value expression)))
+
+	((declaration? expression)
+	 (expression/always-false? (declaration/expression expression)))
+
+	((disjunction? expression)
+	 (and (expression/always-false? (disjunction/predicate expression))
+	      (expression/always-false? (disjunction/alternative expression))))
+
+	((sequence? expression)
+	 (expression/always-false? (last (sequence/actions expression))))
+
+	(else #f)))
+
 ;; T if expression can be shown to return only #T or #F.
 (define (expression/boolean? expression)
   (cond ((expression/call-to-boolean-predicate? expression))
-	((conditional? expression) (and (expression/boolean? (conditional/consequent expression))
-					(expression/boolean? (conditional/alternative expression))))
-	((constant? expression) (or (not (constant/value expression))
-				    (eq? (constant/value expression) #t)))
-	((declaration? expression) (expression/boolean? (declaration/expression expression)))
-	((disjunction? expression) (and (expression/boolean? (disjunction/predicate expression))
-					(expression/boolean? (conditional/alternative expression))))
+
+	((conditional? expression)
+	 (and (expression/boolean? (conditional/consequent expression))
+	      (expression/boolean? (conditional/alternative expression))))
+
+	((constant? expression)
+	 (or (not (constant/value expression))
+	     (eq? (constant/value expression) #t)))
+
+	((declaration? expression)
+	 (expression/boolean? (declaration/expression expression)))
+
+	((disjunction? expression)
+	 (and (expression/boolean? (disjunction/predicate expression))
+	      (expression/boolean? (conditional/alternative expression))))
+
 	((sequence? expression) (expression/boolean? (last (sequence/actions expression))))
+
 	(else #f)))
 
+;; True iff evaluation of expression has no side effects.
+(define (expression/effect-free? expression)
+  (cond ((access? expression)
+	 (expresssion/effect-free? (access/environment expresssion)))
+
+	((combination? expression)
+	 (and (for-all? (combination/operands expression) expression/effect-free?)
+	      (or (expression/call-to-effect-free-primitive? expression)
+		  (and (procedure? (combination/operator expression))
+		       (expression/effect-free? (procedure/body (combination/operator expression)))))))
+
+	((conditional? expression)
+	 (and (expression/effect-free? (conditional/predicate expression))
+	      (or (expression/always-false? (conditional/predicate expression))
+		  (expression/effect-free? (conditional/consequent expression)))
+	      (or (expression/never-false? (conditional/predicate expression))
+		  (expression/effect-free? (conditional/alternative expression)))))
+
+	((constant? expression) #t)
+
+	((declaration? expression)
+	 (expression/effect-free? (declaration/expression expression)))
+
+	((delay? expression) #t)
+
+	((disjunction? expression)
+	 (and (expression/effect-free? (disjunction/predicate expression))
+	      (or (expression/never-false? (disjunction/predicate expression))
+		  (expression/effect-free? (disjunction/alternative expression)))))
+
+	((procedure? expression) #t)
+
+	((sequence? expression)
+	 (for-all? (sequence/actions expression) expression/effect-free?))
+
+	((reference? expression) #t)
+
+	(else #f)))
+
+;; True iff expression can be shown to never return #F.
+;; That is, the expression counts as #t to a conditional.
+(define (expression/never-false? expression)
+  (cond ((combination? expression)
+	 (cond ((expression/call-to-not? expression)
+		(expression/always-false? (first (combination/operands expression))))
+	       ((procedure? (combination/operator expression))
+		(expression/never-false? (procedure/body (combination/operator expression))))
+	       (else #f)))
+
+	((conditional? expression)
+	 (and (or (expression/always-false? (conditional/predicate expression))
+		  (expression/never-false? (conditional/consequent expression)))
+	      (or (expression/never-false? (conditional/predicate expression))
+		  (expression/never-false? (conditional/alternative expression)))))
+
+	((constant? expression) (constant/value expression))
+
+	((declaration? expression)
+	 (expression/never-false? (declaration/expression expression)))
+
+	((disjunction? expression)
+	 (or (expression/never-false? (disjunction/predicate expression))
+	     (expression/never-false? (disjunction/alternative expression))))
+
+	((sequence? expression)
+	 (expression/never-false? (last (sequence/actions expression))))
+
+	(else #f)))
+
+;; The primitive predicates that only return #T or #F.
 (define primitive-boolean-predicates
   (map (lambda (name)
 	 (make-primitive-procedure name #t))
@@ -278,6 +388,7 @@ USA.
 	 ZERO?
 	 )))
 
+;; True if expression is a call to one of the primitive-boolean-predicates.
 (define (expression/call-to-boolean-predicate? expression)
   (and (combination? expression)
        (let ((operator (combination/operator expression)))
@@ -288,6 +399,41 @@ USA.
 		      operator-value
 		      (length (combination/operands expression)))))))))
 
+;; These primitives have no side effects.  We consider primitives
+;; that check their arguments *have* a side effect. (Conservative)
+(define effect-free-primitives
+  (map (lambda (name)
+	 (make-primitive-procedure name #t))
+       '(
+	 %RECORD?
+	 BIT-STRING?
+	 CELL?
+	 CHAR?
+	 EQ?
+	 FIXNUM?
+	 FLONUM?
+	 NOT
+	 NULL?
+	 OBJECT-TYPE
+	 OBJECT-TYPE?
+	 PAIR?
+	 STRING?
+	 VECTOR?
+	 )))
+
+;; True if expression is a call to one of the effect-free-primitives.
+(define (expression/call-to-effect-free-primitive? expression)
+  (and (combination? expression)
+       (let ((operator (combination/operator expression)))
+	 (and (constant? operator)
+	      (let ((operator-value (constant/value operator)))
+		(and (memq operator-value effect-free-primitives)
+		     (procedure-arity-valid?
+		      operator-value
+		      (length (combination/operands expression)))))))))
+
+;; True if expression is a call to NOT.
+;; Used in conditional simplification.
 (define (expression/call-to-not? expression)
   (and (combination? expression)
        (let ((operator (combination/operator expression)))
@@ -489,11 +635,24 @@ USA.
 (define sf:enable-disjunction-distribution? #t)
 
 (define (conditional/make scode predicate consequent alternative)
-  (cond ((and (constant? predicate)
-	      (noisy-test sf:enable-conditional-folding? "folding conditional"))
-	 (if (constant/value predicate)
+  (cond ((and (expression/never-false? predicate)
+	      (noisy-test sf:enable-conditional-folding? "Fold constant true conditional"))
+	 (if (expression/effect-free? predicate)
 	     consequent
-	     alternative))
+	     (sequence/make scode (list predicate consequent))))
+
+	((and (expression/always-false? predicate)
+	      (noisy-test sf:enable-conditional-folding? "Fold constant false conditional"))
+	 (if (expression/effect-free? predicate)
+	     alternative
+	     (sequence/make scode (list predicate alternative))))
+
+	;; (if (not e) c a) => (if e a c)
+	((and (expression/call-to-not? predicate)
+	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
+	 (conditional/make scode (first (combination/operands predicate))
+			   alternative
+			   consequent))
 
 	;; (if foo foo ...) => (or foo ...)
 	((and (reference? predicate)
@@ -502,13 +661,6 @@ USA.
 		   (reference/variable consequent))
 	      (noisy-test sf:enable-conditional->disjunction? "Conditional to disjunction"))
 	 (disjunction/make scode predicate alternative))
-
-	;; (if (not e) c a) => (if e a c)
-	((and (expression/call-to-not? predicate)
-	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
-	 (conditional/make scode (first (combination/operands predicate))
-			   alternative
-			   consequent))
 
 	;; (if (if e1 e2 #f) <expr> K) => (if e1 (if e2 <expr> K) K)
 	((and (conditional? predicate)
@@ -544,14 +696,19 @@ USA.
 (define sf:enable-disjunction-simplification? #t)
 
 (define (disjunction/make scode predicate alternative)
-  (cond ((and (constant? predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Fold constant disjunction"))
-	 (if (constant/value predicate)
-	     predicate
-	     alternative))
+  (cond ((and (expression/never-false? predicate)
+	      (noisy-test sf:enable-disjunction-folding? "Fold constant true disjunction"))
+	 predicate)
+
+	((and (expression/always-false? predicate)
+	      (noisy-test sf:enable-disjunction-folding? "Fold constant false disjunction"))
+	 (if (expression/effect-free? predicate)
+	     alternative
+	     (sequence/make scode (list predicate alternative))))
 
 	;; (or (foo) #f) => (foo)
-	((and (expression/constant-eq? alternative #f)
+	((and (expression/always-false? alternative)
+	      (expression/effect-free? alternative)
 	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
 	 predicate)
 
