@@ -448,6 +448,18 @@ USA.
   (and (constant? expression)
        (eq? (constant/value expression) value)))
 
+;; If true, then expression/unspecific? will return #t on
+;; unspecific which will enable certain operations to treat
+;; the value as something more convenient.  For example, a
+;; conditional might just treat an unspecific as #F to enable
+;; folding.
+(define sf:enable-true-unspecific? #t)
+
+(define (expression/unspecific? expression)
+  (and (constant? expression)
+       (eq? (constant/value expression) unspecific)
+       (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
+
 (define-integrable (global-ref/make name)
   (access/make #f
 	       (constant/make #f system-global-environment)
@@ -647,6 +659,12 @@ USA.
 	     alternative
 	     (sequence/make scode (list predicate alternative))))
 
+	((and (expression/unspecific? predicate)
+	      (noisy-test sf:enable-conditional-folding? "Fold constant unspecific conditional"))
+	 (if (expression/effect-free? predicate)
+	     alternative
+	     (sequence/make scode (list predicate alternative))))
+
 	;; (if (not e) c a) => (if e a c)
 	((and (expression/call-to-not? predicate)
 	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
@@ -664,7 +682,8 @@ USA.
 
 	;; (if (if e1 e2 #f) <expr> K) => (if e1 (if e2 <expr> K) K)
 	((and (conditional? predicate)
-	      (expression/constant-eq? (conditional/alternative predicate) #f)
+	      (or (expression/constant-eq? (conditional/alternative predicate) #f)
+		  (expression/unspecific? (conditional/alternative predicate)))
 	      (constant? alternative)
 	      (noisy-test sf:enable-conjunction-linearization? "Conjunction linearization"))
 	 (conditional/make scode
