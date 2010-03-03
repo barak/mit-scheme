@@ -45,7 +45,9 @@ USA.
 	  sf:enable-constant-folding?
 	  sf:enable-disjunction-distribution?
 	  sf:enable-disjunction-simplification?
-	  sf:enable-distribute-primitives?))
+	  sf:enable-distribute-primitives?
+	  sf:enable-elide-conditional-canonicalization?
+	  sf:enable-true-unspecific?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
@@ -92,8 +94,8 @@ USA.
 	  sf:enable-disjunction-folding?
 	  sf:enable-disjunction-inversion?
 	  sf:enable-disjunction-linearization?
-	  sf:enable-elide-conditional-canonicalization?
-	  sf:enable-elide-double-negatives?)
+	  sf:enable-elide-double-negatives?
+	  sf:enable-rewrite-conditional-in-disjunction?)
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block
@@ -106,7 +108,7 @@ USA.
   (export (scode-optimizer)
 	  *sf-associate*
 	  cgen/external
-	  pp-form)
+	  pp-expression)
   (export (scode-optimizer expansion)
 	  cgen/external-with-declarations))
 

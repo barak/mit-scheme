@@ -478,7 +478,7 @@ USA.
 ;;
 ;; This has been tested at very large values, so don't worry about
 ;; cranking it up.  The code will be correct, but it will get larger.
-(define sf:maximum-duplicate-expression-size 2)
+(define sf:maximum-duplicate-expression-size 16)
 
 (define (expression/can-duplicate? expression)
   (define (descend size subexpression)

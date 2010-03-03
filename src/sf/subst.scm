@@ -249,6 +249,8 @@ USA.
 
 (define sf:enable-disjunction-folding? #t)
 (define sf:enable-disjunction-inversion? #t)
+(define sf:enable-disjunction-linearization? #t)
+(define sf:enable-rewrite-conditional-in-disjunction? #t)
 
 (define (integrate/disjunction operations environment expression
 			       integrated-predicate alternative)
@@ -278,6 +280,13 @@ USA.
 			      (list integrated-predicate
 				    integrated-alternative)))))
 
+	((and (conditional? integrated-predicate)
+	      (noisy-test sf:enable-rewrite-conditional-in-disjunction?
+			  "Rewriting conditional within disjunction."))
+	 (integrate/conditional-in-disjunction
+	  operations environment expression
+	  integrated-predicate alternative))
+
 	((and (disjunction? integrated-predicate)
 	      (noisy-test sf:enable-disjunction-linearization? "Linearizing disjunction"))
 	 ;; (or (or <e1> <e2>) <e3>) => (or <e1> (or <e2> <e3>))
@@ -305,8 +314,6 @@ USA.
 			   integrated-predicate
 			   (integrate/expression operations environment alternative)))))
 
-(define sf:enable-disjunction-linearization? #t)
-
 (define (disjunction/linearize operations environment expression e1 e2 alternative)
   ;; (or (or <e1> <e2>) <alternative>) => (or <e1> (or <e2> <alternative>))
   ;; We don't make anoter pass through integrate/disjunction here
@@ -326,6 +333,126 @@ USA.
 	operations)
     environment #f e2 alternative)))
 
+(define (integrate/conditional-in-disjunction
+	  operations environment expression
+	  integrated-predicate
+	  alternative)
+  (let ((e1 (conditional/predicate integrated-predicate))
+	(e2 (conditional/consequent integrated-predicate))
+	(e3 (conditional/alternative integrated-predicate)))
+
+  ;; (or (if e1 e2 e3) alternative) =>
+  ;;    (if e1 (or e2 alternative) (or e3 alternative))
+  ;; provided alternative can be duplicated, or e2 or e3 are
+  ;; such that alternative doesn't need to be duplicated.
+  ;;
+  ;; e1 e2 and e3 have been integrated, alternative has not.
+
+  (cond ((or (expression/never-false? e2)
+	     (expression/unspecific? e2))
+	 ;; If e2 is never false, then we can rewrite like this:
+	 ;; (if e1 e2 (or e3 alternative))
+	 (conditional/make (and expression (object/scode expression))
+			   e1
+			   e2
+			   (integrate/disjunction
+			    ;; alternative is only taken when e1 is false
+			    (if (and (reference? e1)
+				     (variable/safely-integrable? (reference/variable e1) operations)
+				     (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+				(operations/bind operations
+						 'INTEGRATE
+						 (reference/variable e1)
+						 (make-integration-info (constant/make #f #f)))
+				operations)
+			    environment
+			    #f
+			    e3 alternative)))
+
+	((or (expression/never-false? e3)
+	     (expression/unspecific? e3))
+	 ;; If e3 is never false, then we can rewrite like this:
+	 ;; (if e1 (or e2 alternative) e3)
+	 (conditional/make (and expression (object/scode expression))
+			   e1
+			   (integrate/disjunction operations environment #f e2 alternative)
+			   e3))
+	(else
+	 ;; See if we can duplicate the alternative.
+	 (let ((e4 (integrate/expression operations environment alternative)))
+	   (if (expression/can-duplicate? e4)
+	       (conditional/make
+		(and expression (object/scode expression))
+		e1
+		;; Consequent clause of new conditional
+		;; (or e2 alternative)
+		;; if e2 is always false, construct a sequence.
+		(if (expression/always-false? e2)
+		    (if (expression/effect-free? e2) e4 (sequence/make #f (list e2 e4)))
+		    (disjunction/make #f
+				      e2
+				      ;; if e2 is a variable that appears in e4,
+				      ;; re-integrate e4 to eliminate it as a known false.
+				      (if (and (reference? e2)
+					       (variable/safely-integrable? (reference/variable e2) operations)
+					       (variable/free-in-expression? (reference/variable e2) e4)
+					       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+					  (integrate/expression
+					   (operations/bind operations
+							    'INTEGRATE
+							    (reference/variable e2)
+							    (make-integration-info (constant/make #f #f)))
+					   environment
+					   e4)
+					  e4)))
+		;; Alternative clause of new conditional
+		;; (or e3 alternative)
+		;; first see if e1 is a variable that appears in e4
+		(cond ((and (reference? e1)
+			    (variable/safely-integrable? (reference/variable e1) operations)
+			    (variable/free-in-expression? (reference/variable e1) e4)
+			    (noisy-test sf:enable-conditional-propagation? "Propagating condition information"))
+		       ;; re-integrate e4 to take advantage of information about e1
+		       (let ((e4b (integrate/expression
+				   (operations/bind
+				    (if (and (reference? e3)
+					     (variable/safely-integrable? (reference/variable e3) operations)
+					     (variable/free-in-expression? (reference/variable e3) e4))
+					(operations/bind operations
+							 'integrate
+							 (reference/variable e3)
+							 (make-integration-info (constant/make #f #f)))
+					operations)
+				    'integrate
+				    (reference/variable e1)
+				    (make-integration-info (constant/make #F #F)))
+				   environment
+				   e4)))
+			 (if (expression/always-false? e3)
+			     (if (expression/effect-free? e3) e4b (sequence/make #f (list e3 e4b)))
+			     (disjunction/make #f e3 e4b))))
+		      ((expression/always-false? e3)
+		       (if (expression/effect-free? e3) e4 (sequence/make #f (list e3 e4))))
+		      (else (disjunction/make #f
+					      e3
+					      ;; if e3 is a variable that appears in e4,
+					      ;; re-integrate e4 to eliminate it as a known false.
+					      (if (and (reference? e3)
+						       (variable/safely-integrable? (reference/variable e3) operations)
+						       (variable/free-in-expression? (reference/variable e3) e4)
+						       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+						  (integrate/expression
+						   (operations/bind operations
+								    'INTEGRATE
+								    (reference/variable e3)
+								    (make-integration-info (constant/make #f #f)))
+						   environment
+						   e4)
+						  e4)))))
+	       ;; can't rewrite.
+	       (disjunction/make (and expression (object/scode expression))
+				 integrated-predicate
+				 e4)))))))
 
 ;;; OPEN-BLOCK
 (define-method/integrate 'OPEN-BLOCK
