@@ -705,36 +705,15 @@ USA.
 
 ;;; Conditional
 (define sf:enable-conditional->disjunction? #t)
-(define sf:enable-conditional-folding? #t)
-(define sf:enable-conditional-inversion? #t)
 (define sf:enable-conjunction-linearization? #t)
 (define sf:enable-disjunction-distribution? #t)
 
 (define (conditional/make scode predicate consequent alternative)
-  (cond ((and (expression/never-false? predicate)
-	      (noisy-test sf:enable-conditional-folding? "Fold constant true conditional"))
-	 (if (expression/effect-free? predicate)
-	     consequent
-	     (sequence/make scode (list predicate consequent))))
-
-	((and (expression/always-false? predicate)
-	      (noisy-test sf:enable-conditional-folding? "Fold constant false conditional"))
-	 (if (expression/effect-free? predicate)
-	     alternative
-	     (sequence/make scode (list predicate alternative))))
-
-	((and (expression/unspecific? predicate)
+  (cond ((and (expression/unspecific? predicate)
 	      (noisy-test sf:enable-conditional-folding? "Fold constant unspecific conditional"))
 	 (if (expression/effect-free? predicate)
 	     alternative
 	     (sequence/make scode (list predicate alternative))))
-
-	;; (if (not e) c a) => (if e a c)
-	((and (expression/call-to-not? predicate)
-	      (noisy-test sf:enable-conditional-inversion? "Conditional inversion"))
-	 (conditional/make scode (first (combination/operands predicate))
-			   alternative
-			   consequent))
 
 	;; (if foo foo ...) => (or foo ...)
 	((and (reference? predicate)
@@ -773,35 +752,15 @@ USA.
 	 (conditional/%make scode predicate consequent alternative))))
 
 ;;; Disjunction
-(define sf:enable-disjunction-folding? #t)
-(define sf:enable-disjunction-inversion? #t)
 (define sf:enable-disjunction-linearization?  #t)
 (define sf:enable-disjunction-simplification? #t)
 
 (define (disjunction/make scode predicate alternative)
-  (cond ((and (expression/never-false? predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Fold constant true disjunction"))
-	 predicate)
-
-	((and (expression/always-false? predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Fold constant false disjunction"))
-	 (if (expression/effect-free? predicate)
-	     alternative
-	     (sequence/make scode (list predicate alternative))))
-
-	;; (or (foo) #f) => (foo)
-	((and (expression/always-false? alternative)
+  (cond ((and (expression/always-false? alternative)
 	      (expression/effect-free? alternative)
 	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
+	 ;; (or (foo) #f) => (foo)
 	 predicate)
-
-	;; (or (not e1) e2) => (if e1 e2 #t)
-	((and (expression/call-to-not? predicate)
-	      (noisy-test sf:enable-disjunction-inversion? "Disjunction inversion"))
-	 (conditional/make scode
-			   (first (combination/operands predicate))
-			   alternative
-			   (constant/make #f #t)))
 
 	;; Linearize complex disjunctions
 	((and (disjunction? predicate)

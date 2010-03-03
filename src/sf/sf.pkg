@@ -40,13 +40,9 @@ USA.
   (export ()
 	  sf:enable-argument-deletion?
 	  sf:enable-conditional->disjunction?
-	  sf:enable-conditional-folding?
-	  sf:enable-conditional-inversion?
 	  sf:enable-conjunction-linearization?
 	  sf:enable-constant-folding?
 	  sf:enable-disjunction-distribution?
-	  sf:enable-disjunction-folding?
-	  sf:enable-disjunction-inversion?
 	  sf:enable-disjunction-linearization?
 	  sf:enable-disjunction-simplification?
 	  sf:enable-distribute-primitives?))
@@ -91,6 +87,10 @@ USA.
   (parent (scode-optimizer))
   (export ()
 	  sf:display-top-level-procedure-names?
+	  sf:enable-conditional-folding?
+	  sf:enable-conditional-inversion?
+	  sf:enable-disjunction-folding?
+	  sf:enable-disjunction-inversion?
 	  sf:enable-elide-conditional-canonicalization?
 	  sf:enable-elide-double-negatives?)
   (export (scode-optimizer)

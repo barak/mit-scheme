@@ -153,23 +153,56 @@ USA.
 
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
-    (let ((ipred (integrate/expression
-		  operations environment
-		  (conditional/predicate expression)))
-	  (icons (integrate/expression
-		  operations environment
-		  (conditional/consequent expression)))
-	  (ialt (integrate/expression
-		 operations environment
-		 (conditional/alternative expression))))
-      (cond ((and (expression/constant-eq? icons #t)
-		  (expression/constant-eq? ialt #f)
-		  (expression/boolean? ipred)
-		  (noisy-test sf:enable-elide-conditional-canonicalization?
-			      "elide conditional canonicalization"))
-	     ipred)
-	    (else
-	     (conditional/make (conditional/scode expression) ipred icons ialt))))))
+    (integrate/conditional operations environment expression
+			   (integrate/expression
+			    operations environment
+			    (conditional/predicate expression))
+			   (conditional/consequent expression)
+			   (conditional/alternative expression))))
+
+(define sf:enable-conditional-folding? #t)
+(define sf:enable-conditional-inversion? #t)
+
+(define (integrate/conditional operations environment expression
+			       integrated-predicate
+			       consequent
+			       alternative)
+  (cond ((and (expression/never-false? integrated-predicate)
+	      (noisy-test sf:enable-conditional-folding? "Fold constant true conditional"))
+	 (let ((integrated-consequent (integrate/expression operations environment consequent)))
+	   (if (expression/effect-free? integrated-predicate)
+	       integrated-consequent
+	       (sequence/make (and expression (conditional/scode expression))
+			      (list integrated-predicate integrated-consequent)))))
+
+	((and (expression/always-false? integrated-predicate)
+	      (noisy-test sf:enable-conditional-folding? "Fold constant false conditional"))
+	 (let ((integrated-alternative (integrate/expression operations environment alternative)))
+	   (if (expression/effect-free? integrated-predicate)
+	       integrated-alternative
+	       (sequence/make (and expression (conditional/scode expression))
+			      (list integrated-predicate integrated-alternative)))))
+
+	((and (expression/call-to-not? integrated-predicate)
+	      (noisy-test sf:enable-conditional-inversion? "Invert conditional"))
+	 (integrate/conditional operations environment expression
+				(first (combination/operands integrated-predicate))
+				alternative consequent))
+
+	(else (let ((icons (integrate/expression
+			    operations environment
+			    consequent))
+		    (ialt (integrate/expression
+			   operations environment
+			   alternative)))
+		(cond ((and (expression/constant-eq? icons #t)
+			    (expression/constant-eq? ialt #f)
+			    (expression/boolean? integrated-predicate)
+			    (noisy-test sf:enable-elide-conditional-canonicalization?
+					"elide conditional canonicalization"))
+		       integrated-predicate)
+		      (else
+		       (conditional/make (and expression (conditional/scode expression)) integrated-predicate icons ialt)))))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
@@ -201,10 +234,45 @@ USA.
 ;;; DISJUNCTION
 (define-method/integrate 'DISJUNCTION
   (lambda (operations environment expression)
-    (disjunction/make
-     (disjunction/scode expression)
-     (integrate/expression operations environment (disjunction/predicate expression))
-     (integrate/expression operations environment (disjunction/alternative expression)))))
+    (integrate/disjunction
+     operations environment expression
+     (integrate/expression
+      operations environment (disjunction/predicate expression))
+     (disjunction/alternative expression))))
+
+(define sf:enable-disjunction-folding? #t)
+(define sf:enable-disjunction-inversion? #t)
+
+(define (integrate/disjunction operations environment expression
+			       integrated-predicate alternative)
+  ;; Predicate has been integrated, but alternative has not.
+  ;; We can use information from the predicate to help in
+  ;; integrating the alternative.
+  (cond ((and (expression/never-false? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-folding? "Fold constant true disjunction"))
+	 predicate)
+
+	((and (expression/always-false? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-folding? "Fold constant false disjunction"))
+	 (let ((integrated-alternative (integrate/expression operations environment alternative)))
+	   (if (expression/effect-free? integrated-predicate)
+	       integrated-alternative
+	       (sequence/make (and expression (object/scode expression))
+			      (list integrated-predicate
+				    integrated-alternative)))))
+
+	;; (or (not e1) e2) => (if e1 e2 #t)
+	((and (expression/call-to-not? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-inversion? "Invert disjunction"))
+	 (integrate/conditional operations environment expression
+				(first (combination/operands integrated-predicate))
+				alternative
+				(constant/make #f #t)))
+
+	(else
+	 (disjunction/make (and expression (object/scode expression))
+			   integrated-predicate
+			   (integrate/expression operations environment alternative)))))
 
 ;;; OPEN-BLOCK
 (define-method/integrate 'OPEN-BLOCK
@@ -348,6 +416,12 @@ USA.
        (not (variable/referenced variable))
        (not (variable/may-ignore? variable))
        (not (variable/must-ignore? variable))))
+
+(define (variable/safely-integrable? variable operations)
+  (guarantee-variable variable 'variable/safely-integrable?)
+  (and (not (variable/side-effected variable))
+       (block/safe? (variable/block variable))
+       (operations/lookup operations variable false-procedure true-procedure)))
 
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
