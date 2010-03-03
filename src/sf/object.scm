@@ -705,8 +705,11 @@ USA.
 
 ;;; Conditional
 (define sf:enable-conditional->disjunction? #t)
+(define sf:enable-conditional-inversion? #t)
 (define sf:enable-conjunction-linearization? #t)
 (define sf:enable-disjunction-distribution? #t)
+;; Expression such as (if (pair? x) #t #f) don't need the conditional.
+(define sf:enable-elide-conditional-canonicalization? #t)
 
 (define (conditional/make scode predicate consequent alternative)
   (cond ((and (expression/unspecific? predicate)
@@ -748,11 +751,39 @@ USA.
 					     (disjunction/alternative predicate)
 					     consequent
 					     alternative)))
+
+	;; (if <boolean> #t #f) => <boolean>
+	((and (or (expression/constant-eq? consequent #t)
+		  (expression/unspecific? consequent))
+	      (or (expression/constant-eq? alternative #f)
+		  (expression/unspecific? alternative))
+	      (expression/boolean? predicate)
+	      (noisy-test sf:enable-elide-conditional-canonicalization?
+			  "Eliding conditional canonicalization"))
+	 predicate)
+
+	((and (expression/call-to-not? predicate)
+	      (noisy-test sf:enable-conditional-inversion? "Inverting conditional"))
+	 (conditional/make scode (first (combination/operands predicate))
+			   alternative
+			   consequent))
+
+	;; (if <exp> #f #t) => (not <exp>)
+	;; We know that we're not making a double negative here
+	;; because a call to NOT in the predicate would already
+	;; have been inverted by the previous clause.
+	((and (or (expression/constant-eq? consequent #f)
+		  (expression/unspecific? consequent))
+	      (or (expression/constant-eq? alternative #t)
+		  (expression/unspecific? alternative))
+	      (noisy-test sf:enable-elide-conditional-canonicalization?
+			  "Eliding inverse conditional canonicalization"))
+	 (combination/%make scode #f (constant/make #f (ucode-primitive not)) (list predicate)))
+
 	(else
 	 (conditional/%make scode predicate consequent alternative))))
 
 ;;; Disjunction
-(define sf:enable-disjunction-linearization?  #t)
 (define sf:enable-disjunction-simplification? #t)
 
 (define (disjunction/make scode predicate alternative)
@@ -762,14 +793,6 @@ USA.
 	 ;; (or (foo) #f) => (foo)
 	 predicate)
 
-	;; Linearize complex disjunctions
-	((and (disjunction? predicate)
-	      (noisy-test sf:enable-disjunction-linearization? "Linearize disjunction"))
-	 (disjunction/make scode
-			   (disjunction/predicate predicate)
-			   (disjunction/make (object/scode predicate)
-					     (disjunction/alternative predicate)
-					     alternative)))
 	(else
 	 (disjunction/%make scode predicate alternative))))
 

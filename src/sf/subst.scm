@@ -148,9 +148,6 @@ USA.
 
 ;;;; CONDITIONAL
 
-;; Expression such as (if (pair? x) #t #f) don't need the conditional.
-(define sf:enable-elide-conditional-canonicalization? #t)
-
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
     (integrate/conditional operations environment expression
@@ -161,7 +158,12 @@ USA.
 			   (conditional/alternative expression))))
 
 (define sf:enable-conditional-folding? #t)
-(define sf:enable-conditional-inversion? #t)
+
+;; If true, then when a conditional depends on a variable,
+;; and that variable is not side effected and has no declarations,
+;; we declare the variable to be integrable to a constant #F
+;; in the alternative branch.
+(define sf:enable-conditional-propagation? #t)
 
 (define (integrate/conditional operations environment expression
 			       integrated-predicate
@@ -185,24 +187,29 @@ USA.
 
 	((and (expression/call-to-not? integrated-predicate)
 	      (noisy-test sf:enable-conditional-inversion? "Invert conditional"))
+	 ;; (if (not <e1>) <e2> <e3>) => (if <e1> <e3> <e2>)
 	 (integrate/conditional operations environment expression
 				(first (combination/operands integrated-predicate))
 				alternative consequent))
 
-	(else (let ((icons (integrate/expression
-			    operations environment
-			    consequent))
-		    (ialt (integrate/expression
-			   operations environment
-			   alternative)))
-		(cond ((and (expression/constant-eq? icons #t)
-			    (expression/constant-eq? ialt #f)
-			    (expression/boolean? integrated-predicate)
-			    (noisy-test sf:enable-elide-conditional-canonicalization?
-					"elide conditional canonicalization"))
-		       integrated-predicate)
-		      (else
-		       (conditional/make (and expression (conditional/scode expression)) integrated-predicate icons ialt)))))))
+	((and (reference? integrated-predicate)
+	      (variable/safely-integrable? (reference/variable integrated-predicate) operations)
+	      (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+	 (let ((icons (integrate/expression operations environment consequent))
+	       (ialt (integrate/expression
+		      (operations/bind operations
+				       'INTEGRATE
+				       (reference/variable integrated-predicate)
+				       (make-integration-info (constant/make #f #f)))
+		      environment
+		      alternative)))
+	   (conditional/make (and expression (conditional/scode expression)) integrated-predicate icons ialt)))
+
+	(else
+	 (conditional/make (and expression (conditional/scode expression))
+			   integrated-predicate
+			   (integrate/expression operations environment consequent)
+			   (integrate/expression operations environment alternative)))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
@@ -249,11 +256,21 @@ USA.
   ;; We can use information from the predicate to help in
   ;; integrating the alternative.
   (cond ((and (expression/never-false? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Fold constant true disjunction"))
+	      (noisy-test sf:enable-disjunction-folding? "Folding constant true disjunction"))
+	 ;; (or <exp1> <exp2>) => <exp1> if <exp1> is never false
 	 predicate)
 
+	((and (expression/call-to-not? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-inversion? "Inverting disjunction"))
+	 ;; (or (not e1) e2) => (if e1 e2 #t)
+	 (integrate/conditional operations environment expression
+				(first (combination/operands integrated-predicate))
+				alternative
+				(constant/make #f #t)))
+
 	((and (expression/always-false? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Fold constant false disjunction"))
+	      (noisy-test sf:enable-disjunction-folding? "Folding constant false disjunction"))
+	 ;; (or <exp1> <exp2>) => (begin <exp1> <exp2>) if <exp1> is always false
 	 (let ((integrated-alternative (integrate/expression operations environment alternative)))
 	   (if (expression/effect-free? integrated-predicate)
 	       integrated-alternative
@@ -261,18 +278,54 @@ USA.
 			      (list integrated-predicate
 				    integrated-alternative)))))
 
-	;; (or (not e1) e2) => (if e1 e2 #t)
-	((and (expression/call-to-not? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-inversion? "Invert disjunction"))
-	 (integrate/conditional operations environment expression
-				(first (combination/operands integrated-predicate))
-				alternative
-				(constant/make #f #t)))
+	((and (disjunction? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-linearization? "Linearizing disjunction"))
+	 ;; (or (or <e1> <e2>) <e3>) => (or <e1> (or <e2> <e3>))
+	 (disjunction/linearize operations environment expression
+				(disjunction/predicate integrated-predicate)
+				(disjunction/alternative integrated-predicate)
+				alternative))
+
+	((and (reference? integrated-predicate)
+	      (variable/safely-integrable? (reference/variable integrated-predicate) operations)
+	      (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+	 ;; If <e1> is a reference, then <e1> must be #f in the alternative.
+	 (disjunction/make (and expression (object/scode expression))
+			   integrated-predicate
+			   (integrate/expression
+			    (operations/bind operations
+					     'INTEGRATE
+					     (reference/variable integrated-predicate)
+					     (make-integration-info (constant/make #f #f)))
+			    environment
+			    alternative)))
 
 	(else
 	 (disjunction/make (and expression (object/scode expression))
 			   integrated-predicate
 			   (integrate/expression operations environment alternative)))))
+
+(define sf:enable-disjunction-linearization? #t)
+
+(define (disjunction/linearize operations environment expression e1 e2 alternative)
+  ;; (or (or <e1> <e2>) <alternative>) => (or <e1> (or <e2> <alternative>))
+  ;; We don't make anoter pass through integrate/disjunction here
+  ;; because the inner disjunction has already been integrated and there
+  ;; is no further optimization to be done.
+  (disjunction/make
+   (and expression (object/scode expression))
+   e1
+   (integrate/disjunction
+    (if (and (reference? e1)
+	     (variable/safely-integrable? (reference/variable e1) operations)
+	     (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
+	(operations/bind operations
+			 'INTEGRATE
+			 (reference/variable e1)
+			 (make-integration-info (constant/make #f #f)))
+	operations)
+    environment #f e2 alternative)))
+
 
 ;;; OPEN-BLOCK
 (define-method/integrate 'OPEN-BLOCK
@@ -549,7 +602,7 @@ USA.
 		(length=? operands 1)
 		(expression/call-to-not? (first operands))
 		(expression/boolean? (first (combination/operands (first operands))))
-		(noisy-test sf:enable-elide-double-negatives? "elide double negative"))
+		(noisy-test sf:enable-elide-double-negatives? "Eliding double negative"))
 	   (first (combination/operands (first operands))))
 	  ((primitive-procedure? (constant/value operator))
 	   (let ((operands*
