@@ -1635,6 +1635,7 @@ USA.
 ;; meaningful message.  Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
+(declare (integrate-operator guarantee-string guarantee-xstring))
 (define-guarantee string "string")
 (define-guarantee xstring "xstring")
 
