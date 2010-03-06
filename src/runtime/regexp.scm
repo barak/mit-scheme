@@ -211,5 +211,5 @@ USA.
 				      (fix:+ i 1)))))
 			(string-set! s i #\])))
 		  s)))
-	    (re-quote-string (car chars)))
+	    (re-quote-string (string (car chars))))
 	"")))

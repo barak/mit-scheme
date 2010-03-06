@@ -218,36 +218,37 @@ USA.
 			   (substring-move! string i j result (fix:+ p 2))
 			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
 
-(define re-quote-string
-  (let ((special (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$)))
-    (lambda (string)
-      (let ((end (string-length string)))
-	(let ((n
-	       (let loop ((start 0) (n 0))
-		 (let ((index
-			(substring-find-next-char-in-set string start end
-							 special)))
-		   (if index
-		       (loop (1+ index) (1+ n))
-		       n)))))
-	  (if (zero? n)
-	      string
-	      (let ((result (string-allocate (+ end n))))
-		(let loop ((start 0) (i 0))
-		  (let ((index
-			 (substring-find-next-char-in-set string start end
-							  special)))
-		    (if index
-			(begin
-			  (substring-move! string start index result i)
-			  (let ((i (+ i (- index start))))
-			    (string-set! result i #\\)
-			    (string-set! result
-					 (1+ i)
-					 (string-ref string index))
-			    (loop (1+ index) (+ i 2))))
-			(substring-move! string start end result i))))
-		result)))))))
+(define char-set:re-special
+  (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$))
+
+(define (re-quote-string string)
+  (let ((end (string-length string)))
+    (let ((n
+	   (let loop ((start 0) (n 0))
+	     (let ((index
+		    (substring-find-next-char-in-set string start end
+						     char-set:re-special)))
+	       (if index
+		   (loop (1+ index) (1+ n))
+		   n)))))
+      (if (zero? n)
+	  string
+	  (let ((result (string-allocate (+ end n))))
+	    (let loop ((start 0) (i 0))
+	      (let ((index
+		     (substring-find-next-char-in-set string start end
+						      char-set:re-special)))
+		(if index
+		    (begin
+		      (substring-move! string start index result i)
+		      (let ((i (+ i (- index start))))
+			(string-set! result i #\\)
+			(string-set! result
+				     (1+ i)
+				     (string-ref string index))
+			(loop (1+ index) (+ i 2))))
+		    (substring-move! string start end result i))))
+	    result)))))
 
 ;;;; Char-Set Compiler
 
