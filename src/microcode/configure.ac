@@ -169,11 +169,6 @@ AC_ARG_WITH([module-loader],
 	[Pathname of the Scheme executable, for building modules only]))
 : ${with_module_loader='yes'}
 
-if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
-    AC_MSG_ERROR(
-	[--enable-native-code=c incompatible with --enable-static-libs])
-fi
-
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
 GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
