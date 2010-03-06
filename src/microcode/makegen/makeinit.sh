@@ -37,7 +37,7 @@ clean ()
   fi
 }
 
-trap clean EXIT SIGINT SIGQUIT SIGTERM
+trap clean EXIT INT QUIT TERM
 
 # Generate "config.h".
 
