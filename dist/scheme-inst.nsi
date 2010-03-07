@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MIT-GNU Scheme"
-!define PRODUCT_VERSION "20091222"
+!define PRODUCT_VERSION "9.0"
 !define PRODUCT_PUBLISHER "GNU Project"
 !define PRODUCT_WEB_SITE "http://www.gnu.org/software/mit-scheme/"
 !define PRODUCT_DIR_ROOT_KEY "HKLM"
@@ -13,7 +13,7 @@
 
 SetCompressor lzma
 
-!define MIT_SCHEME_ROOT "$%home%\mit-scheme"
+!define MIT_SCHEME_ROOT "$%home%\mit-scheme-${PRODUCT_VERSION}"
 !define MIT_SCHEME_SRC_ROOT "${MIT_SCHEME_ROOT}\src"
 ;!define MIT_SCHEME_DOC_ROOT "${MIT_SCHEME_ROOT}\doc"
 !define MIT_SCHEME_BIN_DIR "$INSTDIR\bin"
@@ -82,7 +82,7 @@ var ICONS_GROUP
 ; **************** MUI End ****************
 
 Name "MIT/GNU Scheme"
-OutFile "mit-scheme-${PRODUCT_VERSION}-ix86-win32.exe"
+OutFile "mit-scheme-${PRODUCT_VERSION}-i386-win32.exe"
 InstallDir "$PROGRAMFILES\MIT-GNU Scheme"
 InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" \
   "InstallLocation"
