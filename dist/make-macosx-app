@@ -46,6 +46,7 @@ make_output_dir
 shift 2
 
 OUT=${MACOSX_OUT}-${ARCH}
+ARCH_BASE=${DIST_DIR}-${ARCH}
 
 compile ()
 {
@@ -55,9 +56,9 @@ compile ()
 }
 
 notify "Compiling executable"
-unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
+unpack_dist_file_to "${ARCH_BASE}" "${DIST_DIR}"
 run_command "${OUT}"-compile "${DIST_DIR}"/src compile "${@}"
 
 notify "Building application bundle"
 run_command "${OUT}"-buildapp "${DIST_DIR}"/src etc/macosx/make-app.sh
-my_mv "${DIST_DIR}"/src/mit-scheme.app mit-scheme-9.0-"${ARCH}".app
+my_mv "${DIST_DIR}"/src/mit-scheme.app "${ARCH_BASE}".app
