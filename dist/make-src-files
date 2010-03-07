@@ -21,11 +21,10 @@
 # 02110-1301, USA.
 
 # inputs: git source tree
-# outputs: changelog, source tar, ucode tar
+# outputs: changelog, source tar
 
 . "$(dirname "${0}")"/shared.sh
 reset_output_dir
-standard_args
 
 notify "Creating the changelog"
 my_rm_f "${CHANGELOG}"
@@ -62,9 +61,7 @@ run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
 fixup_perms "${DIST_DIR}"
 
-notify "Creating archive files"
+notify "Creating archive file"
 make_tar_file "${SRC_OUT}" "${DIST_DIR}" 
-make_tar_file "${SRC_OUT}"-ucode "${UCODE_BASE}" \
-    "${DIST_DIR}"/src/COPYING "${DIST_DIR}"/src/etc "${DIST_DIR}"/src/microcode
 
 notify_finished

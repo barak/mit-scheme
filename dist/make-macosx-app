@@ -20,24 +20,22 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# inputs: ucode tar, scheme binary tars
-# outputs: system-specific tar
+# inputs: binary tar
+# outputs: MacOS X application
 
 system_args ()
 {
-    (( ${#} >= 3 )) || usage
+    (( ${#} >= 2 )) || usage
     DIST_TYPE=${1}
     ARCH=${2}
-    SYSTEM=${3}
 }
 ARGS_FUNCTION=system_args
 
 system_usage ()
 {
-    echo "usage: ${PROGRAM} TYPE ARCH SYSTEM [OPTIONS]"
+    echo "usage: ${PROGRAM} TYPE ARCH [OPTIONS]"
     usage_arg_type
     echo "  ARCH must be 'i386' or 'x86-64'"
-    echo "  SYSTEM is the operating system identifier"
     echo "  OPTIONS are passed to the configure script"
 }
 USAGE_FUNCTION=system_usage
@@ -45,38 +43,22 @@ USAGE_FUNCTION=system_usage
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
 
-shift 3
+shift 2
 
-OUT=${SYSTEM_OUT}-${ARCH}-${SYSTEM}
+OUT=${MACOSX_OUT}-${ARCH}
 ARCH_BASE=${DIST_DIR}-${ARCH}
-SYSTEM_BASE=${ARCH_BASE}-${SYSTEM}
-UCODE_DIR=${DIST_DIR}/src/microcode
-IMAGE_DIR=temp_image_dir
-LIB_DIR=lib/mit-scheme-"${ARCH}"
 
 compile ()
 {
     my_configure --enable-native-code="${ARCH}" "${@}"
-    my_make
-}
-
-make_image ()
-{
-    make install DESTDIR="${TL_DIR}"/"${IMAGE_DIR}"
+    my_make compile-microcode
+    etc/macosx/make-app.sh
 }
 
 notify "Compiling executable"
-unpack_dist_file_to "${UCODE_BASE}" "${DIST_DIR}"
-run_command "${OUT}"-compile "${UCODE_DIR}" compile "${@}"
+unpack_dist_file_to "${ARCH_BASE}" "${DIST_DIR}"
+run_command "${OUT}"-compile "${DIST_DIR}"/src compile "${@}"
 
-notify "Making image directory"
-new_temp_dir "${IMAGE_DIR}"
-run_command "${OUT}"-image "${UCODE_DIR}" make_image
-unpack_dist_file_to "${ARCH_BASE}" "${SYSTEM_BASE}"
-my_mv "${IMAGE_DIR}"/usr/local/bin "${SYSTEM_BASE}"/.
-my_mv "${IMAGE_DIR}"/usr/local/"${LIB_DIR}"/lib "${SYSTEM_BASE}"/"${LIB_DIR}"/.
-
-notify "Making archive file"
-make_tar_file "${OUT}" "${SYSTEM_BASE}"
-
-notify_finished
+notify "Building application bundle"
+run_command "${OUT}"-buildapp "${DIST_DIR}"/src etc/macosx/make-app.sh
+my_mv "${DIST_DIR}"/src/mit-scheme.app "${ARCH_BASE}".app

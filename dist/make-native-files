@@ -20,55 +20,48 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# inputs: source tar, doc image tar
-# outputs: scheme binary tars
+# inputs: source tar
+# outputs: binary tar
+
+system_args ()
+{
+    (( ${#} == 2 )) || usage
+    DIST_TYPE=${1}
+    ARCH=${2}
+}
+ARGS_FUNCTION=system_args
+
+system_usage ()
+{
+    echo "usage: ${PROGRAM} TYPE ARCH"
+    usage_arg_type
+    echo "  ARCH must be 'i386' or 'x86-64'"
+}
+USAGE_FUNCTION=system_usage
 
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
-standard_args
+
+shift 2
 
 build ()
 {
-    local ARCH=${1}
     my_configure --enable-native-code="${ARCH}" \
 	--with-mcrypt=no --with-libpq=no --with-db-4=no
     my_make
 }
 
-make_image ()
-{
-    local IMAGE_DIR=${TL_DIR}/${1}
-    my_make install DESTDIR="${IMAGE_DIR}"
-    my_mv "${IMAGE_DIR}"/usr/local/* "${IMAGE_DIR}"/.
-    my_rmdir "${IMAGE_DIR}"/usr/local
-    my_rmdir "${IMAGE_DIR}"/usr
-}
+OUT_ROOT=${NATIVE_OUT}-${ARCH}
 
-remove_unshipped_files ()
-{
-    local IMAGE_DIR=${1}
-    local LIB_DIR=${IMAGE_DIR}/lib/mit-scheme-${2}
-    my_rm_rf "${IMAGE_DIR}"/bin "${LIB_DIR}"/lib
-    my_rm_f "${LIB_DIR}"/runtime.com "${LIB_DIR}"/macosx-starter
-}
+notify "Building binaries for arch ${ARCH}"
+unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
+run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build
+run_command "${OUT_ROOT}"-clean "${DIST_DIR}"/src/microcode make distclean
+my_rm_f "${DIST_DIR}"/src/lib/runtime.com
 
-for ARCH in i386 x86-64; do
-    IMAGE_DIR=${DIST_DIR}-${ARCH}
-    OUT_ROOT=${NATIVE_OUT}-${ARCH}
-
-    notify "Building binaries for arch ${ARCH}"
-    unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
-    run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build "${ARCH}"
-
-    notify "Making image for arch ${ARCH}"
-    new_temp_dir "${IMAGE_DIR}"
-    run_command "${OUT_ROOT}"-image "${DIST_DIR}"/src make_image "${IMAGE_DIR}"
-    remove_unshipped_files "${IMAGE_DIR}" "${ARCH}"
-    unpack_into_existing_dir "${DOC_IMAGE_DIR}" \
-	"${IMAGE_DIR}"/lib/mit-scheme-"${ARCH}"
-    fixup_perms "${IMAGE_DIR}"
-    make_tar_file "${OUT_ROOT}" "${IMAGE_DIR}"
-    cleanup_temp_files
-done
+notify "Making tarball"
+fixup_perms "${DIST_DIR}"
+make_tar_file "${OUT_ROOT}" "${DIST_DIR}"-"${ARCH}" "${DIST_DIR}"
+cleanup_temp_files
 
 notify_finished

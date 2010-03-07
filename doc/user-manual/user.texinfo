@@ -156,107 +156,75 @@ using.
 We will use as an example the installation for GNU/Linux.  The
 installation for other unix systems is similar.  There are several
 references to @var{ARCH} below; these refer to the computer
-architecture that Scheme is compiled for, such as @samp{i386} or
+architecture that Scheme is compiled for, either @samp{i386} or
 @samp{x86-64}.
 
 MIT/GNU Scheme is distributed as a compressed `tar' file.  The tar
-file contains two directories, called @file{bin} and @file{lib}.  The
-@file{bin} directory contains one executable file, called
-@command{mit-scheme-@var{ARCH}}, and some symlinks for convenience and
-backwards compatibility.  The @file{lib} directory contains one
-subdirectory, @file{lib/mit-scheme-@var{ARCH}}, that Scheme uses while
-it is executing.
+file contains both source and binary files; the binary files are
+pre-compiled Scheme code for a particular computer architecture.
 
-The goal of the installation is to put the executable files in a
-directory where they will be executed as commands, and to put the
-library files in some convenient place where Scheme can find them.
+In order to install the software, it's necessary to configure and
+compile the C code, then to install the combined C and Scheme
+binaries.  This is done in the following steps:
 
-There are two ways to install this software: the conventional way in
-@file{/usr/local}, and the alternative way, in locations of your
-choice.  We encourage you to install this software in @file{/usr/local}
-if possible.
-
-To install the software in @file{/usr/local}, execute the following
-commands, substituting for @var{version} the version of Scheme you wish
-to install, or the date of the snapshot if you are installing a
-snapshot, and for @var{platform} the platform you are on, such as
-@samp{ix86-gnu-linux} or @samp{ix86-apple-darwin}:
+@enumerate
+@item
+Unpack the tar file,
+@file{mit-scheme-@var{VERSION}-@var{ARCH}.tar.gz}, into the directory
+@file{mit-scheme-@var{VERSION}}.  For example,
 
 @example
-cd /usr/local
-rm -f bin/scheme bin/bchscheme bin/mit-scheme*
-rm -rf lib/mit-scheme*
-tar xzf mit-scheme-@var{version}-@var{platform}.tar.gz
+tar xzf mit-scheme-9.0-i386.tar.gz
 @end example
 
-@noindent
-After executing these commands, the executable files will be in
-@file{/usr/local/bin}, and the library files will be in
-@file{/usr/local/lib/mit-scheme-@var{ARCH}}.  No further configuration
-is required.
+will create a new directory @file{mit-scheme-9.0}.
 
-To install the files in directories of your choice:
-
-@itemize @bullet
 @item
-First unpack the distribution:
+Move into the new directory:
 
 @example
-mkdir temp
-cd temp
-tar xzf mit-scheme-@var{version}-@var{platform}.tar.gz
+cd mit-scheme-@var{VERSION}/src
 @end example
 
 @item
-Next, move the contents of the @file{bin} directory to somewhere
-convenient that is on your execution path.  For example, if you had a
-directory @file{$@{HOME@}/bin} on your path, you would do this:
+Configure the software:
 
 @example
-mv bin/* $@{HOME@}/bin/.
+./configure
 @end example
 
 @item
-Next, move or copy the @file{lib/mit-scheme-@var{ARCH}} directory
-somewhere convenient.  For example, you could move it to your home
-directory:
+Build the software:
 
 @example
-mv lib/mit-scheme-@var{ARCH} $@{HOME@}/.
-@end example
-
-Note that on some unix systems, if you have unpacked the distribution
-on a different drive than the one you plan to store the
-@file{mit-scheme-@var{ARCH}} directory on, you must use the command
-@command{cp -pr} rather than @command{mv}.
-
-@item
-Next, you must tell Scheme where to find the
-@file{mit-scheme-@var{ARCH}} directory.  This can be done in one of
-two ways.  The first way is to bind the environment variable
-@env{MITSCHEME_LIBRARY_PATH} to the full path to the directory, e.g.@:
-in a Bourne shell you would do
-
-@example
-MITSCHEME_LIBRARY_PATH=$@{HOME@}/mit-scheme
-export MITSCHEME_LIBRARY_PATH
-@end example
-
-You should put this environment-variable binding in one of your shell
-init files, e.g.@ for @command{bash} it might go in the @file{.bashrc}
-file.
-
-The second way is to use a command-line argument when invoking Scheme,
-e.g.@:
-
-@example
-mit-scheme --library $@{HOME@}/mit-scheme
+make compile-microcode
 @end example
 
 @item
-You should now be able to run MIT/GNU Scheme.  @xref{Running
-Scheme}, for more information.
-@end itemize
+Install the software:
+
+@example
+make install
+@end example
+@end enumerate
+
+After installing the software, you can delete the unpacked directory:
+
+@example
+cd ../..
+rm -rf mit-scheme-@var{VERSION}
+@end example
+
+By default, the software will be installed in @file{/usr/local}, in
+the subdirectories @file{bin} and @file{lib}.  If you want it
+installed somewhere else, for example @file{/opt/mit-scheme}, pass the
+@option{--prefix} option to the configure script, as in
+@kbd{./configure --prefix=/opt/mit-scheme}.
+
+The configure script accepts all the normal arguments for such
+scripts, and additionally accepts some that are specific to MIT/GNU
+Scheme.  To see all the possible arguments and their meanings, run the
+command @kbd{./configure --help}.
 
 @node Windows Installation,  , Unix Installation, Installation
 @section Windows Installation
