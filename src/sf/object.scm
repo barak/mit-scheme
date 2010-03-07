@@ -279,7 +279,7 @@ USA.
 ;; True iff evaluation of expression has no side effects.
 (define (expression/effect-free? expression)
   (cond ((access? expression)
-	 (expresssion/effect-free? (access/environment expresssion)))
+	 (expression/effect-free? (access/environment expression)))
 
 	((combination? expression)
 	 (and (for-all? (combination/operands expression) expression/effect-free?)

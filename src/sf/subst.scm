@@ -260,7 +260,7 @@ USA.
   (cond ((and (expression/never-false? integrated-predicate)
 	      (noisy-test sf:enable-disjunction-folding? "Folding constant true disjunction"))
 	 ;; (or <exp1> <exp2>) => <exp1> if <exp1> is never false
-	 predicate)
+	 integrated-predicate)
 
 	((and (expression/call-to-not? integrated-predicate)
 	      (noisy-test sf:enable-disjunction-inversion? "Inverting disjunction"))
@@ -685,7 +685,7 @@ USA.
 		    (else (dont-integrate))))
 
 	     ((IGNORE)
-	      (ignored-variable-warning (variable/name variable))
+	      (ignored-variable-warning (variable/name name))
 	      (dont-integrate))
 
 	     ((INTEGRATE INTEGRATE-OPERATOR)

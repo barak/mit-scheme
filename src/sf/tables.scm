@@ -150,8 +150,8 @@ USA.
 	  ((null? optional)
 	   (match-rest environment (procedure/rest procedure) remaining-operands))
 	  ;; impossible?
-	  (else (error "INTERNAL ERROR: Required argument list is improper"
-		       required))))
+	  (else (error "INTERNAL ERROR: Optional argument list is improper"
+		       optional))))
 
   (define (listify-tail operands)
     (fold-right
