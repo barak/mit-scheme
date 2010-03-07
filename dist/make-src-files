@@ -25,7 +25,6 @@
 
 . "$(dirname "${0}")"/shared.sh
 reset_output_dir
-standard_args
 
 notify "Creating the changelog"
 my_rm_f "${CHANGELOG}"

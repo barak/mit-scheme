@@ -25,7 +25,6 @@
 
 . "$(dirname "${0}")"/shared.sh
 make_output_dir
-standard_args
 
 build ()
 {

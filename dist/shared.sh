@@ -92,7 +92,7 @@ SRC_OUT=${OUTPUT_DIR}/src
 DOC_OUT=${OUTPUT_DIR}/doc
 LIARC_OUT=${OUTPUT_DIR}/liarc
 NATIVE_OUT=${OUTPUT_DIR}/native
-SYSTEM_OUT=${OUTPUT_DIR}/system
+MACOSX_OUT=${OUTPUT_DIR}/macosx
 
 notify ()
 {
