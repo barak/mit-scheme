@@ -86,8 +86,6 @@ CHANGELOG=changelog.txt
 TAR_SUFFIX=.tar.gz
 
 DIST_DIR=${PROJECT_NAME}-${RELEASE}
-UCODE_BASE=${DIST_DIR}-ucode
-DOC_IMAGE_DIR=${DIST_DIR}-doc-image
 
 OUTPUT_DIR=${TL_DIR}/.out
 SRC_OUT=${OUTPUT_DIR}/src

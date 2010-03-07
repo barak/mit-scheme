@@ -35,15 +35,6 @@ build_docs ()
    my_make
 }
 
-make_image_dir ()
-{
-    local DEST=${TL_DIR}/${DOC_IMAGE_DIR}
-    my_make install-info-gz infodir="${DEST}"/edwin/info
-    my_make install-html htmldir="${DEST}"/doc
-    my_install_data "${TL_DIR}"/"${BUILD_DIR}"/src/COPYING "${DEST}"/doc/.
-    fixup_perms "${DEST}"
-}
-
 make_archive_dir ()
 {
     local FORMAT=${1}
@@ -53,11 +44,6 @@ make_archive_dir ()
 notify "Building documentation"
 unpack_dist_file_to "${DIST_DIR}" "${BUILD_DIR}"
 run_command "${DOC_OUT}"-build "${BUILD_DIR}"/doc build_docs
-
-notify "Making doc image for distributions"
-new_temp_dir "${DOC_IMAGE_DIR}"
-run_command "${DOC_OUT}"-image "${BUILD_DIR}"/doc make_image_dir
-make_tar_file "${DOC_OUT}"-image "${DOC_IMAGE_DIR}"
 
 new_temp_dir "${DIST_DIR}"
 for FORMAT in html info pdf; do
