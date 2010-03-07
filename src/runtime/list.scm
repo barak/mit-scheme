@@ -264,7 +264,7 @@ USA.
 	((index-fixnum? left) (%length=? left right))
 	((null? left) (cond ((pair? right) #f)
 			    ((index-fixnum? right) (fix:zero? right))
-			    ((null right) #t)
+			    ((null? right) #t)
 			    (else (error:wrong-type-argument right "index fixnum or list" 'length=?))))
 	(else (error:wrong-type-argument left "index fixnum or list" 'length=?))))
 
