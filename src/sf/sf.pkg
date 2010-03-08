@@ -148,8 +148,14 @@ USA.
   (files "analyze")
   (parent (scode-optimizer))
   (export (scode-optimizer)
+	  expression/always-false?
+	  expression/boolean?
+	  expression/can-duplicate?
+	  expression/effect-free?
 	  expression/free-variable?
-	  expression/free-variables))
+	  expression/free-variables
+	  expression/never-false?
+	  sf:maximum-duplicate-expression-size))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
