@@ -46,8 +46,7 @@ USA.
 	  sf:enable-disjunction-distribution?
 	  sf:enable-disjunction-simplification?
 	  sf:enable-distribute-primitives?
-	  sf:enable-elide-conditional-canonicalization?
-	  sf:enable-true-unspecific?))
+	  sf:enable-elide-conditional-canonicalization?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
@@ -155,7 +154,11 @@ USA.
 	  expression/free-variable?
 	  expression/free-variables
 	  expression/never-false?
-	  sf:maximum-duplicate-expression-size))
+	  expression/pure-false?
+	  expression/pure-true?
+	  expression/unspecific?
+	  sf:maximum-duplicate-expression-size
+	  sf:enable-true-unspecific?))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")

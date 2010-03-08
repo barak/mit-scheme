@@ -611,4 +611,156 @@ USA.
     (expression/never-false? (last (sequence/actions expression)))))
 
 (define-method/never-false? 'THE-ENVIRONMENT true-procedure)
+
+;;; EXPRESSION/PURE-FALSE?
+
+;; True iff all paths through expression end in returning
+;; exactly #F or unspecified, and no path has side effects.
+;; Expression is observationally equivalent to #F.
+(define (expression/pure-false? expression)
+  ((expression/method pure-false?-dispatch-vector expression) expression))
+
+(define pure-false?-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/pure-false?
+  (expression/make-method-definer pure-false?-dispatch-vector))
+
+(define-method/pure-false? 'ACCESS false-procedure)
+
+(define-method/pure-false? 'ASSIGNMENT false-procedure)
+
+(define-method/pure-false? 'COMBINATION
+  (lambda (expression)
+    (cond ((expression/call-to-not? expression)
+	   (expression/pure-true? (first (combination/operands expression))))
+	  ((procedure? (combination/operator expression))
+	   (and (for-all? (combination/operands expression) expression/effect-free?)
+		(expression/pure-false? (procedure/body (combination/operator expression)))))
+	  (else #f))))
+
+(define-method/pure-false? 'CONDITIONAL
+  (lambda (expression)
+    (and (expression/effect-free? (conditional/predicate expression))
+	 (or (expression/always-false? (conditional/predicate expression))
+	     (expression/pure-false? (conditional/consequent expression)))
+	 (or (expression/never-false? (conditional/predicate expression))
+	     (expression/pure-false? (conditional/alternative expression))))))
+
+(define-method/pure-false? 'CONSTANT
+  (lambda (expression)
+    (or (not (constant/value expression))
+	(and (eq? (constant/value expression) unspecific)
+	     (noisy-test sf:enable-true-unspecific? "Treating unspecific as pure false.")))))
+
+(define-method/pure-false? 'DECLARATION
+  (lambda (expression)
+    (expression/pure-false?
+     (declaration/expression expression))))
+
+(define-method/pure-false? 'DELAY false-procedure)
+
+(define-method/pure-false? 'DISJUNCTION
+  (lambda (expression)
+    (and (expression/pure-false? (disjunction/predicate expression))
+	 (expression/pure-false? (disjunction/alternative expression)))))
+
+;; Could be smarter
+(define-method/pure-false? 'OPEN-BLOCK false-procedure)
+
+(define-method/pure-false? 'PROCEDURE false-procedure)
+
+(define-method/pure-false? 'QUOTATION false-procedure)
+
+(define-method/pure-false? 'REFERENCE false-procedure)
+
+(define-method/pure-false? 'SEQUENCE
+  (lambda (expression)
+    (and (for-all? (except-last-pair (sequence/actions expression)) 
+		   expression/effect-free?) ;; unlikely
+	 (expression/pure-false? (last (sequence/actions expression))))))
+
+(define-method/pure-false? 'THE-ENVIRONMENT false-procedure)
+
+;;; EXPRESSION/PURE-TRUE?
+;;
+;; True iff all paths through expression end in returning
+;; exactly #T or unspecified, and no path has side effects.
+;; Expression is observationally equivalent to #T.
+(declare (integrate-operator expression/pure-true?))
+(define (expression/pure-true? expression)
+  ((expression/method pure-true?-dispatch-vector expression) expression))
+
+(define pure-true?-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/pure-true?
+  (expression/make-method-definer pure-true?-dispatch-vector))
+
+(define-method/pure-true? 'ACCESS false-procedure)
+
+(define-method/pure-true? 'ASSIGNMENT false-procedure)
+
+(define-method/pure-true? 'COMBINATION
+  (lambda (expression)
+    (cond ((expression/call-to-not? expression)
+	   (expression/pure-false? (first (combination/operands expression))))
+	  ((procedure? (combination/operator expression))
+	   (and (for-all? (combination/operands expression) expression/effect-free?)
+		(expression/pure-true? (procedure/body (combination/operator expression)))))
+	  (else #f))))
+
+(define-method/pure-true? 'CONDITIONAL
+  (lambda (expression)
+    (and (expression/effect-free? (conditional/predicate expression))
+	 (or (expression/always-false? (conditional/predicate expression))
+	     (expression/pure-true? (conditional/consequent expression)))
+	 (or (expression/never-false? (conditional/predicate expression))
+	     (expression/pure-true? (conditional/alternative expression))))))
+
+(define-method/pure-true? 'CONSTANT
+  (lambda (expression)
+    (or (eq? (constant/value expression) #t)
+	(and (eq? (constant/value expression) unspecific)
+	     (noisy-test sf:enable-true-unspecific? "Treating unspecific as pure true.")))))
+
+(define-method/pure-true? 'DECLARATION
+  (lambda (expression)
+    (expression/pure-true? (declaration/expression expression))))
+
+(define-method/pure-true? 'DELAY false-procedure)
+
+(define-method/pure-true? 'DISJUNCTION
+  (lambda (expression)
+    (and (expression/effect-free? (disjunction/predicate expression))
+	 (expression/boolean? (disjunction/predicate expression))
+	 (expression/pure-true? (disjunction/alternative expression)))))
+
+(define-method/pure-true? 'OPEN-BLOCK false-procedure)
+
+(define-method/pure-true? 'PROCEDURE false-procedure)
+
+(define-method/pure-true? 'QUOTATION false-procedure)
+
+(define-method/pure-true? 'REFERENCE false-procedure)
+
+(define-method/pure-true? 'SEQUENCE
+  (lambda (expression)
+    (and (for-all? (except-last-pair (sequence/actions expression)) 
+		   expression/effect-free?)
+	 (expression/pure-true? (last (sequence/actions expression))))))
+
+(define-method/pure-true? 'THE-ENVIRONMENT false-procedure)
+
+;; If true, then expression/unspecific? will return #t on
+;; unspecific which will enable certain operations to treat
+;; the value as something more convenient.  For example, a
+;; conditional might just treat an unspecific as #F to enable
+;; folding.
+(define sf:enable-true-unspecific? #t)
+
+(define (expression/unspecific? expression)
+  (and (constant? expression)
+       (eq? (constant/value expression) unspecific)
+       (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
 

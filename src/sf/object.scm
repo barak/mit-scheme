@@ -326,18 +326,6 @@ USA.
   (and (constant? expression)
        (eq? (constant/value expression) value)))
 
-;; If true, then expression/unspecific? will return #t on
-;; unspecific which will enable certain operations to treat
-;; the value as something more convenient.  For example, a
-;; conditional might just treat an unspecific as #F to enable
-;; folding.
-(define sf:enable-true-unspecific? #t)
-
-(define (expression/unspecific? expression)
-  (and (constant? expression)
-       (eq? (constant/value expression) unspecific)
-       (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
-
 (define-integrable (global-ref/make name)
   (access/make #f
 	       (constant/make #f system-global-environment)
