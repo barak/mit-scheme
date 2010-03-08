@@ -514,73 +514,29 @@ USA.
 (define sf:enable-elide-conditional-canonicalization? #t)
 
 (define (conditional/make scode predicate consequent alternative)
-  (cond ((and (expression/unspecific? predicate)
-	      (noisy-test sf:enable-conditional-folding? "Fold constant unspecific conditional"))
-	 (if (expression/effect-free? predicate)
-	     alternative
-	     (sequence/make scode (list predicate alternative))))
-
-	;; (if foo foo ...) => (or foo ...)
-	((and (reference? predicate)
-	      (reference? consequent)
-	      (eq? (reference/variable predicate)
-		   (reference/variable consequent))
-	      (noisy-test sf:enable-conditional->disjunction? "Conditional to disjunction"))
-	 (disjunction/make scode predicate alternative))
-
-	;; (if (if e1 e2 #f) <expr> K) => (if e1 (if e2 <expr> K) K)
-	((and (conditional? predicate)
-	      (or (expression/constant-eq? (conditional/alternative predicate) #f)
-		  (expression/unspecific? (conditional/alternative predicate)))
-	      (expression/can-duplicate? alternative)
-	      (noisy-test sf:enable-conjunction-linearization? "Conjunction linearization"))
-	 (conditional/make scode
-			   (conditional/predicate predicate)
-			   (conditional/make #f
-					     (conditional/consequent predicate)
-					     consequent
-					     alternative)
-			   alternative))
-
-	;; (if (or e1 e2) K <expr>) => (if e1 K (if e2 K <expr>))
-	((and (disjunction? predicate)
-	      (expression/can-duplicate? consequent)
-	      (noisy-test sf:enable-disjunction-distribution? "Disjunction distribution"))
-	 (conditional/make scode
-			   (disjunction/predicate predicate)
-			   consequent
-			   (conditional/make #f
-					     (disjunction/alternative predicate)
-					     consequent
-					     alternative)))
-
-	;; (if <boolean> #t #f) => <boolean>
-	((and (or (expression/constant-eq? consequent #t)
-		  (expression/unspecific? consequent))
-	      (or (expression/constant-eq? alternative #f)
-		  (expression/unspecific? alternative))
-	      (expression/boolean? predicate)
+  (cond ((and (expression/pure-false? consequent)
+	      (expression/pure-true? alternative)
 	      (noisy-test sf:enable-elide-conditional-canonicalization?
-			  "Eliding conditional canonicalization"))
-	 predicate)
-
-	((and (expression/call-to-not? predicate)
-	      (noisy-test sf:enable-conditional-inversion? "Inverting conditional"))
-	 (conditional/make scode (first (combination/operands predicate))
-			   alternative
-			   consequent))
-
+			  "Eliding inverse conditional canonicalization"))
 	;; (if <exp> #f #t) => (not <exp>)
 	;; We know that we're not making a double negative here
 	;; because a call to NOT in the predicate would already
-	;; have been inverted by the previous clause.
-	((and (or (expression/constant-eq? consequent #f)
-		  (expression/unspecific? consequent))
-	      (or (expression/constant-eq? alternative #t)
-		  (expression/unspecific? alternative))
-	      (noisy-test sf:enable-elide-conditional-canonicalization?
-			  "Eliding inverse conditional canonicalization"))
+	;; have been inverted.
 	 (combination/%make scode #f (constant/make #f (ucode-primitive not)) (list predicate)))
+
+	((and (expression/boolean? predicate)
+	      (expression/pure-true? consequent)
+	      (noisy-test sf:enable-elide-conditional-canonicalization?
+			  "Converting conditional canonicalization to disjunction"))
+	 ;; (if <boolean> #t e1) => (or <boolean> e1)
+	 ;;  NOTE:  if e1 is #F, then the disjunction will be eliminated.
+	 (disjunction/make scode predicate alternative))
+
+	((and (reference? predicate)
+	      (reference? consequent)
+	      (eq? (reference/variable predicate)
+		   (reference/variable consequent)))
+	 (disjunction/make scode predicate alternative))
 
 	(else
 	 (conditional/%make scode predicate consequent alternative))))
@@ -589,8 +545,7 @@ USA.
 (define sf:enable-disjunction-simplification? #t)
 
 (define (disjunction/make scode predicate alternative)
-  (cond ((and (expression/always-false? alternative)
-	      (expression/effect-free? alternative)
+  (cond ((and (expression/pure-false? alternative)
 	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
 	 ;; (or (foo) #f) => (foo)
 	 predicate)
