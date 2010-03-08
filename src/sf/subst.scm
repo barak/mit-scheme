@@ -395,7 +395,7 @@ USA.
 				      ;; re-integrate e4 to eliminate it as a known false.
 				      (if (and (reference? e2)
 					       (variable/safely-integrable? (reference/variable e2) operations)
-					       (variable/free-in-expression? (reference/variable e2) e4)
+					       (expression/free-variable? e4 (reference/variable e2))
 					       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
 					  (integrate/expression
 					   (operations/bind operations
@@ -410,14 +410,14 @@ USA.
 		;; first see if e1 is a variable that appears in e4
 		(cond ((and (reference? e1)
 			    (variable/safely-integrable? (reference/variable e1) operations)
-			    (variable/free-in-expression? (reference/variable e1) e4)
+			    (expression/free-variable? e4 (reference/variable e1))
 			    (noisy-test sf:enable-conditional-propagation? "Propagating condition information"))
 		       ;; re-integrate e4 to take advantage of information about e1
 		       (let ((e4b (integrate/expression
 				   (operations/bind
 				    (if (and (reference? e3)
 					     (variable/safely-integrable? (reference/variable e3) operations)
-					     (variable/free-in-expression? (reference/variable e3) e4))
+					     (expression/free-variable? e4 (reference/variable e3)))
 					(operations/bind operations
 							 'integrate
 							 (reference/variable e3)
@@ -439,7 +439,7 @@ USA.
 					      ;; re-integrate e4 to eliminate it as a known false.
 					      (if (and (reference? e3)
 						       (variable/safely-integrable? (reference/variable e3) operations)
-						       (variable/free-in-expression? (reference/variable e3) e4)
+						       (expression/free-variable? e4 (reference/variable e3))
 						       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
 						  (integrate/expression
 						   (operations/bind operations

@@ -148,8 +148,8 @@ USA.
   (files "analyze")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  expression/free-variables
-	  variable/free-in-expression?))
+	  expression/free-variable?
+	  expression/free-variables))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
