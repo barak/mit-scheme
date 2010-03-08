@@ -145,7 +145,7 @@ USA.
 	  copy/expression/extern))
 
 (define-package (scode-optimizer free)
-  (files "free")
+  (files "analyze")
   (parent (scode-optimizer))
   (export (scode-optimizer)
 	  free/expression
