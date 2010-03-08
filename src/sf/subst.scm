@@ -192,6 +192,11 @@ USA.
 				(first (combination/operands integrated-predicate))
 				alternative consequent))
 
+	((conditional? integrated-predicate)
+	 (integrate/nested-conditional
+	  operations environment expression
+	  integrated-predicate consequent alternative))
+
 	((disjunction? integrated-predicate)
 	 (integrate/disjunction-in-conditional
 	  operations environment expression
@@ -207,7 +212,7 @@ USA.
 (define sf:enable-rewrite-disjunction-in-conditional? #t)
 ;; If #t, move disjunctions out of the predicate if possible.
 
-(define (integrate/disjunction-in-conditional operations environment expression 
+(define (integrate/disjunction-in-conditional operations environment expression
 					      integrated-predicate consequent alternative)
   (let ((e1 (disjunction/predicate integrated-predicate))
 	(e2 (disjunction/alternative integrated-predicate)))
@@ -215,9 +220,7 @@ USA.
     ;; provided that e3 can be duplicated
 
     (let* ((e3a (integrate/expression operations environment consequent))
-	   ;; In any case, e4 can only be evaluated if both e1 and e2 are false
-	   (if-e1-false (operations/prepare-false-branch operations e1))
-	   (e4 (integrate/expression (operations/prepare-false-branch if-e1-false e2) environment alternative)))
+	   (if-e1-false (operations/prepare-false-branch operations e1)))
 
     (if (and (expression/can-duplicate? e3a)
 	     (noisy-test sf:enable-rewrite-disjunction-in-conditional? "Rewriting disjunction within conditional"))
@@ -225,12 +228,174 @@ USA.
 			  e1
 			  e3a
 			  (integrate/conditional if-e1-false environment #f
-						 e2 e3a e4))
+						 e2 e3a alternative))
 	;; nothing we can do.  Just make the conditional.
 	(conditional/make (and expression (object/scode expression))
 			  integrated-predicate
 			  e3a
-			  e4)))))
+			  (integrate/expression (operations/prepare-false-branch if-e1-false e2) environment alternative))))))
+
+(define sf:enable-rewrite-nested-conditional? #t)
+
+(define (integrate/nested-conditional operations environment expression
+				      integrated-predicate consequent alternative)
+
+  (let ((e1 (conditional/predicate integrated-predicate))
+	(e2 (conditional/consequent integrated-predicate))
+	(e3 (conditional/alternative integrated-predicate)))
+    ;; (if (if e1 e2 e3) e4 e5) =>
+    ;;    (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
+    ;;    (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
+    ;;    (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
+    ;;    (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
+    ;;    (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
+    ;;    (if e1 (if e2 e4 e5) (begin e3 e5))   case 6, e3 always false, e5 can be duplicated
+    ;;    (if e1 (if e2 e4 e5) (if e3 e4 e5))   case 7, e4 and e5 can be duplicated
+    ;;      and there is of course the general case where we can do nothing
+
+    ;; When propagating the conditional information, there are four contexts to consider:
+    ;; (if e1
+    ;;    (if e2 CC CA)   ; contexts CC and CA
+    ;;    (if e3 AC AA))  ; contexts AC and AA
+    ;;
+    ;; In context CA, we know e2 must be #F
+    ;; In contect AC, we know e1 must be #F
+    ;; In context AA, we know e1 and e3 must be #F.
+    ;;  othewise we can't glean any information.
+    ;; The predicates e2 and e3 have already been integrated, so there is
+    ;; nothing to be gained there.
+    (let ((context-CC operations)
+	  (context-CA (operations/prepare-false-branch operations e2))
+	  (context-AC (operations/prepare-false-branch operations e1))
+	  (context-AA (operations/prepare-false-branch (operations/prepare-false-branch operations e1) e3)))
+
+      (cond ((expression/never-false? e2)
+	     (let ((e4  (integrate/expression context-CC environment consequent)))
+	       (cond ((and (expression/always-false? e3)
+			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (1)"))
+		      ;;    (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
+		      (conditional/make (and expression (object/scode expression))
+					e1
+					(if (expression/effect-free? e2)
+					    e4
+					    (sequence/make #f (list e2 e4)))
+					(let ((e5a (integrate/expression context-AA environment alternative)))
+					  (if (expression/effect-free? e3)
+					      e5a
+					      (sequence/make #f (list e3 e5a))))))
+
+		     ((and (expression/can-duplicate? e4)
+			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (2)"))
+		      ;;    (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
+		      (conditional/make (and expression (object/scode expression))
+					e1
+					(if (expression/effect-free? e2)
+					    e4
+					    (sequence/make #f (list e2 e4)))
+					(integrate/conditional context-AC environment #f
+							       e3 e4 consequent)))
+		     (else
+		      ;; do nothing
+		      (conditional/make (and expression (object/scode expression))
+					integrated-predicate e4 (integrate/expression context-AA environment alternative))))))
+
+	    ((expression/always-false? e2)
+	     (let ((e5  (integrate/expression operations environment alternative)))
+
+	       (cond ((and (expression/never-false? e3)
+			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (3)"))
+		      ;; case 3 which doesn't appear to occur
+		      (conditional/make (and expression (object/scode expression)) integrated-predicate
+					e4a e5))
+
+		     ((and (expression/can-duplicate? e5)
+			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (4)"))
+		      ;;    (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
+		      (conditional/make (and expression (object/scode expression))
+					e1
+					;; case 4 consequent
+					;; avoid re-integrating e5 if unnecessary
+					(let ((e5a (if (and (reference? e2)
+							    (variable/safely-integrable? (reference/variable e2) operations)
+							    (expression/free-variable? e5 (reference/variable e2))
+							    (noisy-test sf:enable-conditional-propagation? "Propagating conditional information 4a"))
+						       (integrate/expression context-CA environment e5)
+						       e5)))
+					  (if (expression/effect-free? e2)
+					      e5a
+					      (sequence/make #f (list e2 e5a))))
+					;; case 4 alternative
+					(integrate/conditional context-AC environment
+					 #f e3 consequent e5)))
+		     (else
+		      ;; do nothing
+		      (conditional/make (and expression (object/scode expression)) integrated-predicate
+					(integrate/expression context-AC environment consequent)
+					e5)))))
+
+	    ((expression/never-false? e3)
+	     (let ((e4  (integrate/expression operations environment consequent)))
+	       (if (and (expression/can-duplicate? e4)
+			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (5)"))
+		   ;;    (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
+		   (conditional/make (and expression (object/scode expression))
+				     e1
+				     ;; consequent
+				     (integrate/conditional context-CA environment #f e2 e4 alternative)
+				     ;; alternative
+				     (if (expression/effect-free? e3)
+					 e4
+					 (sequence/make #f (list e3 e4))))
+		   ;; do nothing
+		   (conditional/make (and expression (object/scode expression)) integrated-predicate
+				     e4
+				     (integrate/expression context-CA environment alternative)))))
+
+	    ((expression/always-false? e3)
+	     (let ((e5 (integrate/expression operations environment alternative)))
+	       (if (and (expression/can-duplicate? e5)
+			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (6)"))
+		   ;; (if e1 (if e2 e4 e5) (begin e3 e5)) case 6, e3 always false, e5 can be duplicated
+		   (conditional/make (and expression (object/scode expression))
+				     e1
+				     ;; consequent for case 6
+				     (integrate/conditional operations environment #f e2 consequent e5)
+				     ;; alternative for case 6
+				     ;; avoid re-integrating e5 if possible
+				     (let ((e5a (if (or (and (reference? e1)
+							     (variable/safely-integrable? (reference/variable e1) operations)
+							     (expression/free-variable? e5 (reference/variable e1)))
+							(and (reference? e3)
+							     (variable/safely-integrable? (reference/variable e3) operations)
+							     (expression/free-variable? e5 (reference/variable e3))))
+						    (integrate/expression context-AA environment e5)
+						    e5)))
+				       (if (expression/effect-free? e3)
+					   e5a
+					   (sequence/make #f (list e3 e5a)))))
+		   ;; do nothing
+		   (conditional/make (and expression (object/scode expression)) integrated-predicate
+				     (integrate/expression context-CC environment consequent)
+				     e5))))
+
+	    (else
+	     (let ((e4 (integrate/expression operations environment consequent))
+		   (e5 (integrate/expression operations environment alternative)))
+	       (if (and (expression/can-duplicate? e4)
+			(expression/can-duplicate? e5)
+			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (7)"))
+		   ;; case 7
+		   (conditional/make (and expression (object/scode expression))
+				     e1
+				     ;; consequent for case 7
+				     (integrate/conditional operations environment #f
+							    e2 e4 e5)
+				     ;; alternative for case 7
+				     (integrate/conditional context-AC environment #f
+							    e3 e4 e5))
+		   ;; do nothing
+		   (conditional/make (and expression (object/scode expression))
+				     integrated-predicate e4 e5))))))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
