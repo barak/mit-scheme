@@ -757,10 +757,12 @@ USA.
 ;; the value as something more convenient.  For example, a
 ;; conditional might just treat an unspecific as #F to enable
 ;; folding.
-(define sf:enable-true-unspecific? #t)
+
+;; Disable for now because the pathname package uses unspecific
+;; as a special marker.  Ugh.
+(define sf:enable-true-unspecific? #f)
 
 (define (expression/unspecific? expression)
   (and (constant? expression)
        (eq? (constant/value expression) unspecific)
        (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
-
