@@ -192,24 +192,12 @@ USA.
 				(first (combination/operands integrated-predicate))
 				alternative consequent))
 
-	((and (reference? integrated-predicate)
-	      (variable/safely-integrable? (reference/variable integrated-predicate) operations)
-	      (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-	 (let ((icons (integrate/expression operations environment consequent))
-	       (ialt (integrate/expression
-		      (operations/bind operations
-				       'INTEGRATE
-				       (reference/variable integrated-predicate)
-				       (make-integration-info (constant/make #f #f)))
-		      environment
-		      alternative)))
-	   (conditional/make (and expression (conditional/scode expression)) integrated-predicate icons ialt)))
-
 	(else
 	 (conditional/make (and expression (conditional/scode expression))
 			   integrated-predicate
 			   (integrate/expression operations environment consequent)
-			   (integrate/expression operations environment alternative)))))
+			   (integrate/expression (operations/prepare-false-branch operations integrated-predicate)
+						 environment alternative)))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
@@ -295,24 +283,12 @@ USA.
 				(disjunction/alternative integrated-predicate)
 				alternative))
 
-	((and (reference? integrated-predicate)
-	      (variable/safely-integrable? (reference/variable integrated-predicate) operations)
-	      (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-	 ;; If <e1> is a reference, then <e1> must be #f in the alternative.
-	 (disjunction/make (and expression (object/scode expression))
-			   integrated-predicate
-			   (integrate/expression
-			    (operations/bind operations
-					     'INTEGRATE
-					     (reference/variable integrated-predicate)
-					     (make-integration-info (constant/make #f #f)))
-			    environment
-			    alternative)))
-
 	(else
 	 (disjunction/make (and expression (object/scode expression))
 			   integrated-predicate
-			   (integrate/expression operations environment alternative)))))
+			   (integrate/expression
+			    (operations/prepare-false-branch operations integrated-predicate)
+			    environment alternative)))))
 
 (define (disjunction/linearize operations environment expression e1 e2 alternative)
   ;; (or (or <e1> <e2>) <alternative>) => (or <e1> (or <e2> <alternative>))
@@ -322,15 +298,10 @@ USA.
   (disjunction/make
    (and expression (object/scode expression))
    e1
+   ;; We DO make a pass through integrate/disjunction here because there
+   ;; may be opportunities for optimizing the disjunction and alternative.
    (integrate/disjunction
-    (if (and (reference? e1)
-	     (variable/safely-integrable? (reference/variable e1) operations)
-	     (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-	(operations/bind operations
-			 'INTEGRATE
-			 (reference/variable e1)
-			 (make-integration-info (constant/make #f #f)))
-	operations)
+    (operations/prepare-false-branch operations e1)
     environment #f e2 alternative)))
 
 (define (integrate/conditional-in-disjunction
@@ -348,8 +319,7 @@ USA.
   ;;
   ;; e1 e2 and e3 have been integrated, alternative has not.
 
-  (cond ((or (expression/never-false? e2)
-	     (expression/unspecific? e2))
+  (cond ((expression/never-false? e2)
 	 ;; If e2 is never false, then we can rewrite like this:
 	 ;; (if e1 e2 (or e3 alternative))
 	 (conditional/make (and expression (object/scode expression))
@@ -357,20 +327,10 @@ USA.
 			   e2
 			   (integrate/disjunction
 			    ;; alternative is only taken when e1 is false
-			    (if (and (reference? e1)
-				     (variable/safely-integrable? (reference/variable e1) operations)
-				     (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-				(operations/bind operations
-						 'INTEGRATE
-						 (reference/variable e1)
-						 (make-integration-info (constant/make #f #f)))
-				operations)
-			    environment
-			    #f
-			    e3 alternative)))
+			    (operations/prepare-false-branch operations e1)
+			    environment #f e3 alternative)))
 
-	((or (expression/never-false? e3)
-	     (expression/unspecific? e3))
+	((expression/never-false? e3)
 	 ;; If e3 is never false, then we can rewrite like this:
 	 ;; (if e1 (or e2 alternative) e3)
 	 (conditional/make (and expression (object/scode expression))
@@ -386,73 +346,33 @@ USA.
 		e1
 		;; Consequent clause of new conditional
 		;; (or e2 alternative)
-		;; if e2 is always false, construct a sequence.
-		(if (expression/always-false? e2)
-		    (if (expression/effect-free? e2) e4 (sequence/make #f (list e2 e4)))
-		    (disjunction/make #f
-				      e2
-				      ;; if e2 is a variable that appears in e4,
-				      ;; re-integrate e4 to eliminate it as a known false.
-				      (if (and (reference? e2)
-					       (variable/safely-integrable? (reference/variable e2) operations)
-					       (expression/free-variable? e4 (reference/variable e2))
-					       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-					  (integrate/expression
-					   (operations/bind operations
-							    'INTEGRATE
-							    (reference/variable e2)
-							    (make-integration-info (constant/make #f #f)))
-					   environment
-					   e4)
-					  e4)))
+		(integrate/disjunction operations environment #f e2 e4)
+
 		;; Alternative clause of new conditional
 		;; (or e3 alternative)
-		;; first see if e1 is a variable that appears in e4
-		(cond ((and (reference? e1)
-			    (variable/safely-integrable? (reference/variable e1) operations)
-			    (expression/free-variable? e4 (reference/variable e1))
-			    (noisy-test sf:enable-conditional-propagation? "Propagating condition information"))
-		       ;; re-integrate e4 to take advantage of information about e1
-		       (let ((e4b (integrate/expression
-				   (operations/bind
-				    (if (and (reference? e3)
-					     (variable/safely-integrable? (reference/variable e3) operations)
-					     (expression/free-variable? e4 (reference/variable e3)))
-					(operations/bind operations
-							 'integrate
-							 (reference/variable e3)
-							 (make-integration-info (constant/make #f #f)))
-					operations)
-				    'integrate
-				    (reference/variable e1)
-				    (make-integration-info (constant/make #F #F)))
-				   environment
-				   e4)))
-			 (if (expression/always-false? e3)
-			     (if (expression/effect-free? e3) e4b (sequence/make #f (list e3 e4b)))
-			     (disjunction/make #f e3 e4b))))
-		      ((expression/always-false? e3)
-		       (if (expression/effect-free? e3) e4 (sequence/make #f (list e3 e4))))
-		      (else (disjunction/make #f
-					      e3
-					      ;; if e3 is a variable that appears in e4,
-					      ;; re-integrate e4 to eliminate it as a known false.
-					      (if (and (reference? e3)
-						       (variable/safely-integrable? (reference/variable e3) operations)
-						       (expression/free-variable? e4 (reference/variable e3))
-						       (noisy-test sf:enable-conditional-propagation? "Propagating conditional information"))
-						  (integrate/expression
-						   (operations/bind operations
-								    'INTEGRATE
-								    (reference/variable e3)
-								    (make-integration-info (constant/make #f #f)))
-						   environment
-						   e4)
-						  e4)))))
+		(integrate/disjunction
+		 (operations/prepare-false-branch operations e1)
+		 environment #f e3 e4))
 	       ;; can't rewrite.
 	       (disjunction/make (and expression (object/scode expression))
 				 integrated-predicate
 				 e4)))))))
+
+(define (operations/prepare-false-branch operations expression)
+  (if (and (reference? expression)
+	   (variable/safely-integrable? (reference/variable expression) operations)
+	   (noisy-test sf:enable-conditional-propagation? "Propagating conditional information."))
+      (operations/bind-to-false operations expression)
+      operations))
+
+;; Make an entry in the operations table to integrate
+;; the variable as #F.  Used in the false branch of
+;; conditionals.
+(define (operations/bind-to-false operations reference)
+  (operations/bind operations
+		   'INTEGRATE
+		   (reference/variable reference)
+		   (make-integration-info (constant/make #f #F))))
 
 ;;; OPEN-BLOCK
 (define-method/integrate 'OPEN-BLOCK
