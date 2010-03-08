@@ -192,12 +192,45 @@ USA.
 				(first (combination/operands integrated-predicate))
 				alternative consequent))
 
+	((disjunction? integrated-predicate)
+	 (integrate/disjunction-in-conditional
+	  operations environment expression
+	  integrated-predicate consequent alternative))
+
 	(else
 	 (conditional/make (and expression (conditional/scode expression))
 			   integrated-predicate
 			   (integrate/expression operations environment consequent)
 			   (integrate/expression (operations/prepare-false-branch operations integrated-predicate)
 						 environment alternative)))))
+
+(define sf:enable-rewrite-disjunction-in-conditional? #t)
+;; If #t, move disjunctions out of the predicate if possible.
+
+(define (integrate/disjunction-in-conditional operations environment expression 
+					      integrated-predicate consequent alternative)
+  (let ((e1 (disjunction/predicate integrated-predicate))
+	(e2 (disjunction/alternative integrated-predicate)))
+    ;; (if (or e1 e2) e3 e4) => (if e1 e3 (if e2 e3 e4))
+    ;; provided that e3 can be duplicated
+
+    (let* ((e3a (integrate/expression operations environment consequent))
+	   ;; In any case, e4 can only be evaluated if both e1 and e2 are false
+	   (if-e1-false (operations/prepare-false-branch operations e1))
+	   (e4 (integrate/expression (operations/prepare-false-branch if-e1-false e2) environment alternative)))
+
+    (if (and (expression/can-duplicate? e3a)
+	     (noisy-test sf:enable-rewrite-disjunction-in-conditional? "Rewriting disjunction within conditional"))
+	(conditional/make (and expression (object/scode expression))
+			  e1
+			  e3a
+			  (integrate/conditional if-e1-false environment #f
+						 e2 e3a e4))
+	;; nothing we can do.  Just make the conditional.
+	(conditional/make (and expression (object/scode expression))
+			  integrated-predicate
+			  e3a
+			  e4)))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
