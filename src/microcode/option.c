@@ -65,6 +65,14 @@ USA.
 #  endif
 #endif
 
+#ifndef QUOTE_CHAR
+#  ifdef DOS_LIKE_FILENAMES
+#    define QUOTE_CHAR (-1)
+#  else
+#    define QUOTE_CHAR '\\'
+#  endif
+#endif
+
 #ifdef DOS_LIKE_FILENAMES
 #  define FILE_ABSOLUTE(filename)			\
      ((((filename) [0]) == SUB_DIRECTORY_DELIMITER)	\
@@ -270,12 +278,91 @@ static char *
 string_copy (const char * s)
 {
   char * result = (OS_malloc ((strlen (s)) + 1));
-  {
-    const char * s1 = s;
-    char * s2 = result;
-    while (((*s2++) = (*s1++)) != '\0') ;
-  }
+  strcpy (result, s);
   return (result);
+}
+
+static char *
+string_copy_limited (const char * s, const char * e)
+{
+  unsigned int n_chars = (e - s);
+  char * result = (OS_malloc (n_chars + 1));
+  strncpy (result, s, n_chars);
+  return (result);
+}
+
+static bool
+must_quote_char_p (int c)
+{
+  return ((c == QUOTE_CHAR) || (c == PATH_DELIMITER));
+}
+
+static unsigned int
+strlen_after_quoting (const char * s)
+{
+  const char * scan = s;
+  unsigned int n_chars = 0;
+  while (true)
+    {
+      int c = (*scan++);
+      if (c == '\0')
+	return n_chars;
+      if (must_quote_char_p (c))
+	n_chars += 1;
+      n_chars += 1;
+    }
+}
+
+static char *
+quote_string (const char * s)
+{
+  const char * scan_in = s;
+  char * result = (OS_malloc ((strlen_after_quoting (s)) + 1));
+  char * scan_out = result;
+  while (true)
+    {
+      int c = (*scan_in++);
+      if (c == '\0')
+	break;
+      if (must_quote_char_p (c))
+	(*scan_out++) = QUOTE_CHAR;
+      (*scan_out++) = c;
+    }
+  (*scan_out) = '\0';
+  return result;
+}
+
+static unsigned int
+strlen_after_unquoting (const char * s)
+{
+  const char * scan = s;
+  unsigned int n_chars = 0;
+  while (true)
+    {
+      int c = (*scan++);
+      if (c == QUOTE_CHAR)
+	c = (*scan++);
+      if (c == '\0')
+	return n_chars;
+      n_chars += 1;
+    }
+}
+
+static char *
+unquote_string (const char * s)
+{
+  const char * scan_in = s;
+  char * result = (OS_malloc ((strlen_after_unquoting (s)) + 1));
+  char * scan_out = result;
+  while (true)
+    {
+      int c = (*scan_in++);
+      if (c == QUOTE_CHAR)
+	c = (*scan_in++);
+      (*scan_out++) = c;
+      if (c == '\0')
+	return result;
+    }
 }
 
 struct option_descriptor
@@ -475,6 +562,22 @@ get_wd (void)
   }
 }
 
+static const char *
+find_path_delimiter (const char * s)
+{
+  const char * scan = s;
+  while (true)
+    {
+      int c = (*scan++);
+      if (c == PATH_DELIMITER)
+	return (scan - 1);
+      if (c == QUOTE_CHAR)
+	c = (*scan++);
+      if (c == '\0')
+	return 0;
+    }
+}
+
 static const char **
 parse_path_string (const char * path)
 {
@@ -485,50 +588,44 @@ parse_path_string (const char * path)
      that before the scheme process gets too big.  */
   const char * wd = (get_wd ());
   unsigned int lwd = (strlen (wd));
-  while (1)
+  while (true)
     {
-      const char * scan = start;
-      const char * end;
-      while (1)
+      const char * delim = (find_path_delimiter (start));
+      char * unquoted;
+      char * end;
+      char * element;
+      if (delim != 0)
 	{
-	  int c = (*scan++);
-	  if ((c == '\0') || (c == PATH_DELIMITER))
-	    {
-	      end = (scan - 1);
-	      break;
-	    }
+	  const char * copy = (string_copy_limited (start, delim));
+	  unquoted = (unquote_string (copy));
+	  xfree (copy);
 	}
-      if ((start < end) && ((* (end - 1)) == SUB_DIRECTORY_DELIMITER))
-	end -= 1;
-      if (end == start)
-	obstack_ptr_grow ((&scratch_obstack), (string_copy (wd)));
+      else
+	unquoted = (unquote_string (start));
+
+      end = (unquoted + (strlen (unquoted)));
+      if ((end > unquoted) && ((* (end - 1)) == SUB_DIRECTORY_DELIMITER))
+	(*--end) = '\0';
+      if (FILE_ABSOLUTE (unquoted))
+	element = unquoted;
       else
 	{
-	  int absolute = (FILE_ABSOLUTE (start));
-	  {
-	    char * element
-	      = (OS_malloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
-	    char * scan_element = element;
-	    if (!absolute)
-	      {
-		const char * s = wd;
-		const char * e = (wd + lwd);
-		while (s < e)
-		  (*scan_element++) = (*s++);
-		(*scan_element++) = SUB_DIRECTORY_DELIMITER;
-	      }
+	  if ((*unquoted) == '\0')
+	    element = (string_copy (wd));
+	  else
 	    {
-	      const char * s = start;
-	      while (s < end)
-		(*scan_element++) = (*s++);
+	      element = (OS_malloc (lwd + (strlen (unquoted)) + 2));
+	      strcpy (element, wd);
+	      end = (element + lwd);
+	      (*end++) = SUB_DIRECTORY_DELIMITER;
+	      strcpy (end, unquoted);
 	    }
-	    (*scan_element) = '\0';
-	    obstack_ptr_grow ((&scratch_obstack), element);
-	  }
+	  xfree (unquoted);
 	}
-      if ((* (scan - 1)) == '\0')
+      obstack_ptr_grow ((&scratch_obstack), element);
+      if (delim == 0)
 	break;
-      start = scan;
+      start = (delim + 1);
     }
   obstack_ptr_grow ((&scratch_obstack), 0);
   if (wd != 0)
@@ -559,6 +656,20 @@ free_parsed_path (const char ** path)
       xfree (element);
     }
   xfree (path);
+}
+
+static char *
+add_to_library_path (const char * new_dir, const char * library_path)
+{
+  const char * quoted_dir = (quote_string (new_dir));
+  unsigned int quoted_dir_len = (strlen (quoted_dir));
+  char * result = (OS_malloc (quoted_dir_len + (strlen (library_path)) + 2));
+  char * end = (result + quoted_dir_len);
+  strcpy (result, quoted_dir);
+  (*end++) = PATH_DELIMITER;
+  strcpy (end, library_path);
+  xfree (quoted_dir);
+  return (result);
 }
 
 const char *
@@ -785,16 +896,9 @@ read_command_line_options (int argc, const char ** argv)
   const char * main_bundle_path = (macosx_main_bundle_dir ());
   if (main_bundle_path != 0)
     {
-      unsigned int n_chars =
-	((strlen (main_bundle_path))
-	 + (strlen (default_library_path))
-	 + 2);
-      char * new_path = (OS_malloc (n_chars));
-      strcpy (new_path, main_bundle_path);
-      strcat (new_path, ":");
-      strcat (new_path, default_library_path);
+      default_library_path =
+	(add_to_library_path (main_bundle_path, default_library_path));
       xfree (main_bundle_path);
-      default_library_path = new_path;
     }
 #endif
   option_library_path
