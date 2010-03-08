@@ -662,7 +662,7 @@ USA.
   (constant/make (and expression (object/scode expression)) result)))
 
 (define-integrable (partition-operands operator operands)
-  (let ((free-in-body (free/expression (procedure/body operator))))
+  (let ((free-in-body (expression/free-variables (procedure/body operator))))
     (let loop ((parameters 		(append (procedure/required operator)
 						(procedure/optional operator)))
 	       (operands   		operands)

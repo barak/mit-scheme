@@ -144,11 +144,11 @@ USA.
 	  copy/expression/intern
 	  copy/expression/extern))
 
-(define-package (scode-optimizer free)
+(define-package (scode-optimizer analyze)
   (files "analyze")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  free/expression
+	  expression/free-variables
 	  variable/free-in-expression?))
 
 (define-package (scode-optimizer change-type)

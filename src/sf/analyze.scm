@@ -23,107 +23,111 @@ USA.
 
 |#
 
-;;;; SCode Optimizer: Free Variable Computation
-;;; package: (scode-optimizer free)
+;;;; SCode Optimizer: Expression analysis
+;;; package: (scode-optimizer analyze)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
 
-(declare (integrate-operator free/expression))
+;;; EXPRESSION/FREE-VARIABLES
+;;
+;; Returns an EQ? LSET of the free variables in an expression.
 
-(define (free/expression expression)
-  ((expression/method dispatch-vector expression) expression))
+(declare (integrate-operator expression/free-variables))
 
-(define (free/expressions expressions)
+(define (expression/free-variables expression)
+  ((expression/method free-variables-dispatch-vector expression) expression))
+
+(define (expressions/free-variables expressions)
   (fold-left (lambda (answer expression)
-	       (lset-union eq? answer (free/expression expression)))
+	       (lset-union eq? answer (expression/free-variables expression)))
 	     (no-free-variables)
 	     expressions))
 
-(define dispatch-vector
+(define free-variables-dispatch-vector
   (expression/make-dispatch-vector))
 
-(define define-method/free
-  (expression/make-method-definer dispatch-vector))
+(define define-method/free-variables
+  (expression/make-method-definer free-variables-dispatch-vector))
 
-(define-method/free 'ACCESS
+(define-method/free-variables 'ACCESS
   (lambda (expression)
-    (free/expression (access/environment expression))))
+    (expression/free-variables (access/environment expression))))
 
-(define-method/free 'ASSIGNMENT
+(define-method/free-variables 'ASSIGNMENT
   (lambda (expression)
     (lset-adjoin eq?
-		 (free/expression (assignment/value expression))
+		 (expression/free-variables (assignment/value expression))
 		 (assignment/variable expression))))
 
-(define-method/free 'COMBINATION
+(define-method/free-variables 'COMBINATION
   (lambda (expression)
     (lset-union eq?
-		(free/expression (combination/operator expression))
-		(free/expressions (combination/operands expression)))))
+		(expression/free-variables (combination/operator expression))
+		(expressions/free-variables (combination/operands expression)))))
 
-(define-method/free 'CONDITIONAL
+(define-method/free-variables 'CONDITIONAL
   (lambda (expression)
     (lset-union eq?
-		(free/expression (conditional/predicate expression))
+		(expression/free-variables (conditional/predicate expression))
 		(if (expression/always-false? (conditional/predicate expression))
 		    (no-free-variables)
-		    (free/expression (conditional/consequent expression)))
+		    (expression/free-variables (conditional/consequent expression)))
 		(if (expression/never-false? (conditional/predicate expression))
 		    (no-free-variables)
-		    (free/expression (conditional/alternative expression))))))
+		    (expression/free-variables (conditional/alternative expression))))))
 
-(define-method/free 'CONSTANT
+(define-method/free-variables 'CONSTANT
   (lambda (expression)
     expression
     (no-free-variables)))
 
-(define-method/free 'DECLARATION
+(define-method/free-variables 'DECLARATION
   (lambda (expression)
-    (free/expression (declaration/expression expression))))
+    (expression/free-variables (declaration/expression expression))))
 
-(define-method/free 'DELAY
+(define-method/free-variables 'DELAY
   (lambda (expression)
-    (free/expression (delay/expression expression))))
+    (expression/free-variables (delay/expression expression))))
 
-(define-method/free 'DISJUNCTION
+(define-method/free-variables 'DISJUNCTION
   (lambda (expression)
     (lset-union eq?
-		(free/expression (disjunction/predicate expression))
+		(expression/free-variables (disjunction/predicate expression))
 		(if (expression/never-false? (disjunction/predicate expression))
 		    (no-free-variables)
-		    (free/expression (disjunction/alternative expression))))))
+		    (expression/free-variables (disjunction/alternative expression))))))
 
-(define-method/free 'OPEN-BLOCK
+(define-method/free-variables 'OPEN-BLOCK
   (lambda (expression)
     (let ((omit (block/bound-variables (open-block/block expression))))
      (fold-left (lambda (variables action)
 		  (if (eq? action open-block/value-marker)
 		      variables
-		      (lset-union eq? variables (lset-difference eq? (free/expression action) omit))))
-		(lset-difference eq? (free/expressions (open-block/values expression)) omit)
+		      (lset-union eq? variables (lset-difference eq? (expression/free-variables action) omit))))
+		(lset-difference eq? (expressions/free-variables (open-block/values expression)) omit)
 		(open-block/actions expression)))))
 
-(define-method/free 'PROCEDURE
+(define-method/free-variables 'PROCEDURE
   (lambda (expression)
     (lset-difference eq?
-     (free/expression (procedure/body expression))
+     (expression/free-variables (procedure/body expression))
      (block/bound-variables (procedure/block expression)))))
 
-(define-method/free 'QUOTATION
+(define-method/free-variables 'QUOTATION
   (lambda (expression)
     (declare (ignore expression))
     (no-free-variables)))
 
-(define-method/free 'REFERENCE
+(define-method/free-variables 'REFERENCE
   (lambda (expression)
     (singleton-variable (reference/variable expression))))
 
-(define-method/free 'SEQUENCE
+(define-method/free-variables 'SEQUENCE
   (lambda (expression)
-    (free/expressions (sequence/actions expression))))
+    (expressions/free-variables (sequence/actions expression))))
 
-(define-method/free 'THE-ENVIRONMENT
+(define-method/free-variables 'THE-ENVIRONMENT
   (lambda (expression)
     (declare (ignore expression))
     (no-free-variables)))
