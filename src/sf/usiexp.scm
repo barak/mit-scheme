@@ -469,12 +469,14 @@ USA.
       ;; Convert (eq? <expr> #f) and (eq? #f <expr>) to (not <expr>)
       ;; Conditional inversion will remove the call to not.
       (cond ((expression/always-false? (first operands))
+	     (warn "eq->not (1)" (first operands))
 	     (if (expression/effect-free? (first operands))
 		 (make-combination expr block (ucode-primitive not) (cdr operands))
 		 (sequence/make (and expr (object/scode expr))
 				(list (first operands)
 				      (make-combination #f block (ucode-primitive not) (cdr operands))))))
 	    ((expression/always-false? (second operands))
+	     (warn "eq->not (2)" (second operands))
 	     (if (expression/effect-free? (second operands))
 		 (make-combination expr block (ucode-primitive not) (list (car operands)))
 		 (sequence/make (and expr (object/scode expr))
@@ -489,6 +491,24 @@ USA.
 	   (null? (cdr operands)))
       (make-combination expr block (ucode-primitive string-allocate)
 			operands)
+      #f))
+
+(define (not-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (cond ((expression/always-false? (first operands))
+	     (warn "zapping not (1)" (first operands))
+	     (if (expression/effect-free? (first operands))
+		 (constant/make (and expr (object/scode expr)) #t)
+		 (sequence/make (and expr (object/scode expr))
+				(list (first operands) (constant/make #f #t)))))
+	    ((expression/never-false? (first operands))
+	     (warn "zapping not (2)" (first operands))
+	     (if (expression/effect-free? (first operands))
+		 (constant/make (and expr (object/scode expr)) #f)
+		 (sequence/make (and expr (object/scode expr))
+				(list (first operands) (constant/make #f #f)))))
+	    (else (make-combination expr block (ucode-primitive not) operands)))
       #f))
 
 (define (type-test-expansion type)
@@ -673,6 +693,7 @@ USA.
 	    make-vector-8b
 	    ;; modulo	; Compiler does not currently open-code it.
 	    negative?
+	    not
 	    number?
 	    positive?
 	    quotient
@@ -755,6 +776,7 @@ USA.
 	   make-string-expansion
 	   ;; modulo-expansion
 	   negative?-expansion
+	   not-expansion
 	   complex?-expansion
 	   positive?-expansion
 	   quotient-expansion
