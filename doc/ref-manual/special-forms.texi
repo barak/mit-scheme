@@ -1,11 +1,3 @@
-@c This file is part of the MIT/GNU Scheme Reference Manual.
-
-@c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
-@c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-@c     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
-@c     Technology
-@c See file scheme.texinfo for copying conditions.
-
 @node Special Forms, Equivalence Predicates, Overview, Top
 @chapter Special Forms
 
@@ -2771,7 +2763,7 @@ existing practice rather than introducing new functionality.
 @menu
 * cond-expand (SRFI 0)::        
 * receive (SRFI 8)::            
-* and-let* (SRFI 2)::
+* and-let* (SRFI 2)::           
 * define-record-type (SRFI 9)::  
 @end menu
 
