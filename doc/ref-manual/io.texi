@@ -1,11 +1,3 @@
-@c This file is part of the MIT/GNU Scheme Reference Manual.
-
-@c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
-@c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-@c     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
-@c     Technology
-@c See file scheme.texinfo for copying conditions.
-
 @node Input/Output, Operating-System Interface, Environments, Top
 @chapter Input/Output
 
@@ -192,8 +184,8 @@ corresponds to the name of the procedure.
 @cindex output port, console
 @code{console-i/o-port} is an @acronym{I/O} port that communicates
 with the ``console''.  Under unix, the console is the controlling
-terminal of the Scheme process.  Under Windows and OS/2, the console
-is the window that is created when Scheme starts up.
+terminal of the Scheme process.  Under Windows, the console is the
+window that is created when Scheme starts up.
 
 This variable is rarely used; instead programs should use one of the
 standard ports defined above.  This variable should not be modified.
@@ -242,14 +234,14 @@ pathname that is then opened.
 @cindex binary file ports
 @cindex newline translation
 Any file can be opened in one of two modes, @dfn{normal} or
-@dfn{binary}.  Normal mode is for accessing text files, and binary mode
-is for accessing other files.  Unix does not distinguish these modes,
-but Windows and OS/2 do: in normal mode, their file ports perform
-@dfn{newline translation}, mapping between the carriage-return/linefeed
-sequence that terminates text lines in files, and the @code{#\newline}
-that terminates lines in Scheme.  In binary mode, such ports do not
-perform newline translation.  Unless otherwise mentioned, the procedures
-in this section open files in normal mode.
+@dfn{binary}.  Normal mode is for accessing text files, and binary
+mode is for accessing other files.  Unix does not distinguish these
+modes, but Windows do: in normal mode, their file ports perform
+@dfn{newline translation}, mapping between the
+carriage-return/linefeed sequence that terminates text lines in files,
+and the @code{#\newline} that terminates lines in Scheme.  In binary
+mode, such ports do not perform newline translation.  Unless otherwise
+mentioned, the procedures in this section open files in normal mode.
 
 @deffn procedure open-input-file filename
 @cindex construction, of file input port

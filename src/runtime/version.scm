@@ -36,7 +36,7 @@ USA.
 	 (let ((now 2010)
 	       (then 1986))
 	   (iota (+ (- now then) 1) then)))
-   (add-subsystem-identification! "Release" '(9 0))
+   (add-subsystem-identification! "Release" '(9 0 1))
    (snarf-microcode-version!)
    (add-event-receiver! event:after-restore snarf-microcode-version!)
    (add-subsystem-identification! "Runtime" '(15 7))))

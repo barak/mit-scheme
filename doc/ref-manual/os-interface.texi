@@ -1,11 +1,3 @@
-@c This file is part of the MIT/GNU Scheme Reference Manual.
-
-@c Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
-@c     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-@c     2005, 2006, 2007, 2008, 2009 Massachusetts Institute of
-@c     Technology
-@c See file scheme.texinfo for copying conditions.
-
 @node Operating-System Interface, Error System, Input/Output, Top
 @chapter Operating-System Interface
 @cindex Operating-System Interface
@@ -286,7 +278,7 @@ missing components.
 
 Any component of a pathname may be the symbol @code{unspecific}, meaning
 that the component simply does not exist, for file systems in which such
-a value makes no sense.  For example, unix, Windows, and OS/2 file
+a value makes no sense.  For example, unix and Windows file
 systems usually do not support version numbers, so the version component
 for such a host might be @code{unspecific}.@footnote{This description is
 adapted from @cite{Common Lisp, The Language}, second edition, section
@@ -302,9 +294,9 @@ An implementation-defined type which may be tested for using the
 @code{host?} predicate.
 
 @item device
-On systems that support this component (Windows and OS/2), it may be
-specified as a string containing a single alphabetic character, for
-which the alphabetic case is ignored.
+On systems that support this component (Windows), it may be specified
+as a string containing a single alphabetic character, for which the
+alphabetic case is ignored.
 
 @item directory
 A non-empty list, which represents a @dfn{directory path}: a sequence of
@@ -692,9 +684,9 @@ Returns a pathname for the user's initialization file on @var{host}.
 The @var{host} argument defaults to the value of @code{local-host}.  If
 the initialization file does not exist this procedure returns @code{#f}.
 
-Under unix, the init file is called @file{.scheme.init}; under Windows
-and OS/2, the init file is called @file{scheme.ini}.  In either
-case, it is located in the user's home directory, which is computed by
+Under unix, the init file is called @file{.scheme.init}; under
+Windows, the init file is called @file{scheme.ini}.  In either case,
+it is located in the user's home directory, which is computed by
 @code{user-homedir-pathname}.
 @end deffn
 
@@ -712,18 +704,9 @@ computed using the @code{getlogin} system call, or if that fails, the
 @code{getuid} system call.  The resulting user name is passed to the
 @code{getpwnam} system call to obtain the home directory.
 
-Under OS/2, several heuristics are tried to find the user's home
-directory.  First, if the environment variable @code{HOME} is defined,
-that is the home directory.  If @code{HOME} is undefined, but the
-@code{USERDIR} and @code{USER} environment variables are defined and
-the directory @file{%USERDIR%\%USER%} exists, then it is used.  Failing
-that, if the directory @file{%USER%} exists on the OS/2 system
-drive, then it is used.  As a last resort, the OS/2 system drive is
-the home directory.
-
-Like OS/2, the Windows implementation uses heuristics based on
-environment variables.  The user's home directory is computed by
-examining several environment variables, in the following order:
+Under Windows, several heuristics are tried to find the user's home
+directory.  The user's home directory is computed by examining several
+environment variables, in the following order:
 
 @itemize @bullet
 @item
@@ -1004,11 +987,11 @@ Under unix, the directories @file{/var/tmp}, @file{/usr/tmp}, or
 @file{/tmp}.
 
 @item
-Under OS/2 or Windows, the following directories on the system drive:
+Under Windows, the following directories on the system drive:
 @file{\temp}, @file{\tmp}, or @file{\}.
 
 @item
-Under OS/2 or Windows, the current directory, as specified by
+Under Windows, the current directory, as specified by
 @code{*default-pathname-defaults*}.
 @end itemize
 @end deffn
@@ -1081,7 +1064,6 @@ unix-character-device
 unix-block-device
 unix-named-pipe
 unix-socket
-os2-named-pipe
 win32-named-pipe
 @end example
 @end deffn
@@ -1099,10 +1081,8 @@ output; i.e.@: a @dfn{writeable} file.  Otherwise returns @code{#f}.
 @deffn procedure file-executable? filename
 Returns @code{#t} if @var{filename} names a file that can be executed.
 Otherwise returns @code{#f}.  Under unix, an executable file is
-identified by its mode bits.  Under OS/2, an executable file has
-one of the file extensions @file{.exe}, @file{.com}, @file{.cmd}, or
-@file{.bat}.  Under Windows, an executable file has one of the file
-extensions @file{.exe}, @file{.com}, or @file{.bat}.
+identified by its mode bits.  Under Windows, an executable file has
+one of the file extensions @file{.exe}, @file{.com}, or @file{.bat}.
 @end deffn
 
 @deffn procedure file-access filename mode
@@ -1118,18 +1098,18 @@ returned.
 @end deffn
 
 @deffn procedure file-eq? filename1 filename2
-Determines whether @var{filename1} and @var{filename2} refer to the same
-file.  Under unix, this is done by comparing the inodes and devices of
-the two files.  Under OS/2 and Windows, this is done by comparing
+Determines whether @var{filename1} and @var{filename2} refer to the
+same file.  Under unix, this is done by comparing the inodes and
+devices of the two files.  Under Windows, this is done by comparing
 the filename strings.
 @end deffn
 
 @deffn procedure file-modes filename
 If @var{filename} names an existing file, @code{file-modes} returns an
 exact non-negative integer encoding the file's permissions.  The
-encoding of this integer is operating-system dependent.  Under unix, it
-is the least-significant 12 bits of the @code{st_mode} element of the
-@code{struct stat} structure.  Under OS/2 and Windows, it is the file
+encoding of this integer is operating-system dependent.  Under unix,
+it is the least-significant 12 bits of the @code{st_mode} element of
+the @code{struct stat} structure.  Under Windows, it is the file
 attribute bits, which are described below.  If @var{filename} does not
 name an existing file, @code{#f} is returned.
 @end deffn
@@ -1140,18 +1120,6 @@ non-negative integer that could have been returned by a call to
 @code{file-modes}.  @code{set-file-modes!} modifies the file's
 permissions to be those encoded by @var{modes}.
 @end deffn
-
-@defvr variable os2-file-mode/read-only
-@defvrx variable os2-file-mode/hidden
-@defvrx variable os2-file-mode/system
-@defvrx variable os2-file-mode/directory
-@defvrx variable os2-file-mode/archived
-The values of these variables are the ``mode bits'' that comprise the
-value returned by @code{file-modes} under OS/2.  These bits are small
-integers that are combined by adding to form a complete set of modes.
-The integer zero represents a set of modes in which none of these bits
-are set.
-@end defvr
 
 @defvr variable nt-file-mode/read-only
 @defvrx variable nt-file-mode/hidden
@@ -1280,15 +1248,15 @@ The length of the file in bytes.
 @end deffn
 
 @deffn procedure file-attributes/mode-string attributes
-The mode string of the file, a newly allocated string showing the file's
-mode bits.  Under unix, this string is in unix format.  Under OS/2 and
+The mode string of the file, a newly allocated string showing the
+file's mode bits.  Under unix, this string is in unix format.  Under
 Windows, this string shows the standard ``DOS'' attributes in their
 usual format.
 @end deffn
 
 @deffn procedure file-attributes/n-links attributes
 The number of links to the file, an exact positive integer.  Under
-Windows and OS/2, this is always @code{1}.
+Windows, this is always @code{1}.
 @end deffn
 
 The following additional accessors are defined under unix:
@@ -1305,19 +1273,12 @@ The group id of the file's group, an exact non-negative integer.
 The inode number of the file, an exact non-negative integer.
 @end deffn
 
-The following additional accessor is defined under OS/2 and Windows:
+The following additional accessor is defined under Windows:
 
 @deffn procedure file-attributes/modes attributes
 The attribute bits of the file.  This is an exact non-negative integer
 containing the file's attribute bits, exactly as specified by the
 operating system's API.
-@end deffn
-
-The following additional accessor is defined under OS/2:
-
-@deffn procedure file-attributes/allocated-length attributes
-The allocated length of the file, which can be larger than the length of
-the file due to fixed-length allocation units.
 @end deffn
 
 @node Directory Reader, Date and Time, File Manipulation, Operating-System Interface
@@ -1335,10 +1296,10 @@ the returned list contains only those pathnames whose name, type, and
 version components match those of @var{directory}; @code{wild} or
 @code{#f} as one of these components means ``match anything''.
 
-The OS/2 and Windows implementations support ``globbing'', in which the
+The Windows implementation supports ``globbing'', in which the
 characters @code{*} and @code{?} are interpreted to mean ``match
-anything'' and ``match any character'', respectively.  This ``globbing''
-is supported only in the file part of @var{directory}.
+anything'' and ``match any character'', respectively.  This
+``globbing'' is supported only in the file part of @var{directory}.
 @end deffn
 
 @node Date and Time, Machine Time, Directory Reader, Operating-System Interface
@@ -1596,33 +1557,6 @@ As stated above, file time is operating-system dependent.  As of this
 writing, two formats are used.  For unix and Windows systems, file time
 is the number of seconds since midnight January 1, 1970 UTC (the
 standard unix time convention).
-
-OS/2 represents file time as a 32-bit unsigned integer, in which the
-time components are broken down into unsigned bit fields.  The
-components are always stated in local time.  The fields, from MSB to
-LSB, are:
-
-@itemize @bullet
-@item
-7 bits representing the year, relative to 1900.
-
-@item
-4 bits representing the month, numbered 1 to 12.
-
-@item
-5 bits representing the day of the month, numbered 1 to 31.
-
-@item
-5 bits representing the hour of the day, numbered 0 to 23.
-
-@item
-6 bits representing the minute, numbered 0 to 59.
-
-@item
-5 bits representing the second.  This field is unusual in that it counts
-units of two seconds, so it is a number between 0 and 29, representing
-second counts corresponding to 0 through 58.
-@end itemize
 
 The following procedures generate their results in file-time format:
 
@@ -2410,10 +2344,6 @@ follows:
 On unix systems, @file{/bin/sh} is used.
 
 @item
-On OS/2 systems, the value of the environment variable @code{COMSPEC} is
-used, or if that is not set, @file{cmd.exe} on the current path.
-
-@item
 On Windows systems, the value of the environment variable @code{COMSPEC}
 is used.  If that is not set, @file{cmd.exe} is used for Windows NT, or
 @file{command.com} is used for Windows 9x; in each case the shell is
@@ -2572,7 +2502,7 @@ fit into other categories.
 @defvrx variable microcode-id/operating-system-name
 @code{microcode-id/operating-system} is bound to a symbol that specifies
 the type of operating system that Scheme is running under.  There are
-three possible values: @code{unix}, @code{os/2}, or @code{nt}.
+two possible values: @code{unix} or @code{nt}.
 
 @code{microcode-id/operating-system-name} is a string containing the
 same name as @code{microcode-id/operating-system}; the latter is created
@@ -2587,14 +2517,8 @@ possible values:
 @example
 @group
 "GNU/Linux"
-"FreeBSD"
-"DragonFlyBSD"
-"HP-UX"
-"SunOS"
-"OS/2 2.1"
-"OS/2 4.0"
+"MacOSX"
 "Microsoft Windows NT 4.0 (Build 1381; Service Pack 3)"
-"Microsoft Windows 98 (Build 410)"
 @end group
 @end example
 
