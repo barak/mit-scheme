@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "MIT-GNU Scheme"
-!define PRODUCT_VERSION "9.0"
+!define PRODUCT_VERSION "9.0.1"
 !define PRODUCT_PUBLISHER "GNU Project"
 !define PRODUCT_WEB_SITE "http://www.gnu.org/software/mit-scheme/"
 !define PRODUCT_DIR_ROOT_KEY "HKLM"
@@ -99,7 +99,7 @@ Section "MainSection" SEC01
   File "${MIT_SCHEME_SRC_ROOT}\win32\dibutils\dibutils.dll"
 
   SetOutPath "${MIT_SCHEME_LIB_DIR}"
-  File "${MIT_SCHEME_SRC_ROOT}\all.com"
+  File "${MIT_SCHEME_SRC_ROOT}\lib\all.com"
   File "${MIT_SCHEME_SRC_ROOT}\etc\optiondb.scm"
 
   !insertmacro mit_scheme_bci_install "runtime"

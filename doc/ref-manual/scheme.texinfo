@@ -1,9 +1,9 @@
 \input texinfo @c -*-texinfo-*-
 @comment %**start of header
 @setfilename mit-scheme-ref
-@set EDITION 1.103
-@set VERSION 7.7.90+
-@set UPDATED 2005-12-09
+@set EDITION 1.104
+@set VERSION 9.0.1
+@set UPDATED 2010-03-09
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -18,7 +18,8 @@ This manual documents MIT/GNU Scheme @value{VERSION}.
 
 Copyright @copyright{} 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-    2005, 2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+    Technology
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -95,7 +96,6 @@ Software Foundation raise funds for GNU development.''
 * Binding Index::               
 * Concept Index::               
 
-@ifnothtml
 @detailmenu
  --- The Detailed Node Listing ---
 
@@ -177,7 +177,7 @@ SRFI syntax
 
 * cond-expand (SRFI 0)::        
 * receive (SRFI 8)::            
-* and-let* (SRFI 2)::
+* and-let* (SRFI 2)::           
 * define-record-type (SRFI 9)::  
 
 Numbers
@@ -296,9 +296,17 @@ Weight-Balanced Trees
 Procedures
 
 * Procedure Operations::        
+* Arity::                       
 * Primitive Procedures::        
 * Continuations::               
 * Application Hooks::           
+* Generic Dispatch::            
+
+Generic Dispatch
+
+* Generic Procedures::          
+* Method Generators::           
+* Dispatch Tags::               
 
 Environments
 
@@ -412,7 +420,6 @@ Graphics
 * Images::                      
 * X Graphics::                  Graphics on the X Window System
 * Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
-* OS/2 Graphics::               Graphics on IBM OS/2
 
 X Graphics
 
@@ -424,14 +431,6 @@ Win32 Graphics
 
 * Win32 Graphics Type::         
 * Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
-
-OS/2 Graphics
-
-* OS/2 Graphics Type::          
-* Color Operations for OS/2 Graphics::  
-* Window Operations for OS/2 Graphics::  
-* Event Operations for OS/2 Graphics::  
-* Miscellaneous Operations for OS/2 Graphics::  
 
 Win32 Package Reference
 
@@ -451,7 +450,6 @@ Device Independent Bitmap Utilities
 * Other parts of the DIB Utilities implementation::  
 
 @end detailmenu
-@end ifnothtml
 @end menu
 
 @include acknowledgements.texi
