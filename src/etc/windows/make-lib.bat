@@ -1,4 +1,5 @@
 @echo off
+rd /s /q lib
 md lib
 copy etc\optiondb.scm lib
 
