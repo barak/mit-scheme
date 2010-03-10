@@ -7,5 +7,5 @@
   (load "machines/i386/make")
   (cd "../edwin")
   (load "make")
-  (disk-save "../all.com")
+  (disk-save "../lib/all.com")
   (%exit))
