@@ -83,7 +83,7 @@ USA.
 (define-method/always-false? 'OPEN-BLOCK
   (lambda (expression)
     (expression/always-false?
-     (open-block/actions expression))))
+     (last (open-block/actions expression)))))
 
 ;; A closure is not a false value.
 (define-method/always-false? 'PROCEDURE false-procedure)
@@ -150,7 +150,8 @@ USA.
 
 (define-method/boolean? 'OPEN-BLOCK 
   (lambda (expression)
-    (expression/boolean? (open-block/actions expression))))
+    (expression/boolean? 
+     (last (open-block/actions expression)))))
 
 (define-method/boolean? 'PROCEDURE false-procedure)
 
@@ -598,7 +599,8 @@ USA.
 
 (define-method/never-false? 'OPEN-BLOCK
   (lambda (expression)
-    (expression/never-false? (open-block/actions expression))))
+    (expression/never-false? 
+     (last (open-block/actions expression)))))
 
 (define-method/never-false? 'PROCEDURE true-procedure)
 
