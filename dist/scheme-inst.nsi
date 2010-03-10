@@ -99,7 +99,7 @@ Section "MainSection" SEC01
   File "${MIT_SCHEME_SRC_ROOT}\win32\dibutils\dibutils.dll"
 
   SetOutPath "${MIT_SCHEME_LIB_DIR}"
-  File "${MIT_SCHEME_SRC_ROOT}\all.com"
+  File "${MIT_SCHEME_SRC_ROOT}\lib\all.com"
   File "${MIT_SCHEME_SRC_ROOT}\etc\optiondb.scm"
 
   !insertmacro mit_scheme_bci_install "runtime"
