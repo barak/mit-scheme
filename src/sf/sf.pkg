@@ -148,6 +148,9 @@ USA.
 (define-package (scode-optimizer analyze)
   (files "analyze")
   (parent (scode-optimizer))
+  (export ()
+	  sf:maximum-duplicate-expression-size
+	  sf:enable-true-unspecific?)
   (export (scode-optimizer)
 	  expression/always-false?
 	  expression/boolean?
@@ -158,9 +161,7 @@ USA.
 	  expression/never-false?
 	  expression/pure-false?
 	  expression/pure-true?
-	  expression/unspecific?
-	  sf:maximum-duplicate-expression-size
-	  sf:enable-true-unspecific?))
+	  expression/unspecific?))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
