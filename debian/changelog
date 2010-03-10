@@ -1,3 +1,10 @@
+mit-scheme (9.0.1-1) unstable; urgency=low
+
+  * New upstream.
+  * debian/watch: Fix, previous version was broken.
+
+ -- Chris Hanson <cph@debian.org>  Wed, 10 Mar 2010 02:00:45 -0800
+
 mit-scheme (9.0-1) unstable; urgency=low
 
   * New upstream.

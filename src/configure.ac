@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [7.7.91], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [9.0.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -31,12 +31,12 @@ USA.
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
-: ${enable_native_code='yes'}
+: ${enable_native_code=yes}
 
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
-	[Test for working scheme on build host [[yes]]]))
-: ${enable_host_scheme_test=yes}
+	[Test for working scheme on build host [[no]]]))
+: ${enable_host_scheme_test=no}
 
 AC_CANONICAL_HOST
 
