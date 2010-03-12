@@ -54,6 +54,7 @@ USA.
 (declare (integrate-operator change-type/object))
 
 (define (change-type/object enumeration object)
+  (declare (integrate enumeration))
   (set-object/enumerand!
    object
    (enumeration/name->enumerand enumeration
