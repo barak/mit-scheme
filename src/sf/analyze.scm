@@ -64,7 +64,7 @@ USA.
 	     (expression/always-false? (conditional/alternative expression))))))
 
 (define-method/always-false? 'CONSTANT
-  (lambda (expression) 
+  (lambda (expression)
     (not (constant/value expression))))
 
 (define-method/always-false? 'DECLARATION
@@ -148,9 +148,9 @@ USA.
 	 (or (expression/never-false? (disjunction/predicate expression))
 	     (expression/boolean? (disjunction/alternative expression))))))
 
-(define-method/boolean? 'OPEN-BLOCK 
+(define-method/boolean? 'OPEN-BLOCK
   (lambda (expression)
-    (expression/boolean? 
+    (expression/boolean?
      (last (open-block/actions expression)))))
 
 (define-method/boolean? 'PROCEDURE false-procedure)
@@ -205,7 +205,7 @@ USA.
   (expression/make-method-definer can-dup-descend?-dispatch-vector))
 
 (define-integrable (dont-duplicate size expression)
-  (declare (ignore size expression)) 
+  (declare (ignore size expression))
   sf:maximum-duplicate-expression-size)
 
 (define-method/can-dup-descend? 'ACCESS  dont-duplicate)
@@ -599,7 +599,7 @@ USA.
 
 (define-method/never-false? 'OPEN-BLOCK
   (lambda (expression)
-    (expression/never-false? 
+    (expression/never-false?
      (last (open-block/actions expression)))))
 
 (define-method/never-false? 'PROCEDURE true-procedure)
@@ -678,7 +678,7 @@ USA.
 
 (define-method/pure-false? 'SEQUENCE
   (lambda (expression)
-    (and (for-all? (except-last-pair (sequence/actions expression)) 
+    (and (for-all? (except-last-pair (sequence/actions expression))
 		   expression/effect-free?) ;; unlikely
 	 (expression/pure-false? (last (sequence/actions expression))))))
 
@@ -748,7 +748,7 @@ USA.
 
 (define-method/pure-true? 'SEQUENCE
   (lambda (expression)
-    (and (for-all? (except-last-pair (sequence/actions expression)) 
+    (and (for-all? (except-last-pair (sequence/actions expression))
 		   expression/effect-free?)
 	 (expression/pure-true? (last (sequence/actions expression))))))
 
@@ -768,3 +768,125 @@ USA.
   (and (constant? expression)
        (eq? (constant/value expression) unspecific)
        (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
+
+;;; EXPRESSIONS/EQUAL?
+;;
+;; Returns #t if two expressions always compute the same value.
+;; This is not meant to be a heroic attempt to prove extrinsic equality,
+;; but rather a simple check to see if we have essentially the same
+;; form.  Returning false is a safe default.
+
+(declare (integrate-operator expressions/equal?))
+(define (expressions/equal? left right)
+  ((expression/method equal?-dispatch-vector left) left right))
+
+(define equal?-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/equal?
+  (expression/make-method-definer equal?-dispatch-vector))
+
+(define-method/equal? 'ACCESS
+  (lambda (left right)
+    (and (access? right)
+	 (eq? (access/name left) (access/name right))
+	 (expressions/equal? (access/environment left) (access/environment right)))))
+
+(define-method/equal? 'ASSIGNMENT
+  (lambda (left right)
+    (and (assignment? right)
+	 (eq? (assignment/variable left) (assignment/variable right))
+	 (expressions/equal? (assignment/value left) (assignment/value right)))))
+
+(define-method/equal? 'COMBINATION
+  (lambda (left right)
+    (and (combination? right)
+	 (let scan ((left-args (combination/operands left))
+		    (right-args (combination/operands right)))
+	   (cond ((pair? left-args) (and (pair? right-args)
+					 (expressions/equal? (car left-args) (car right-args))
+					 (scan (cdr left-args) (cdr right-args))))
+		 ((null? left-args) (and (null? right-args)
+					 (expressions/equal? (combination/operator left)
+							     (combination/operator right))))
+		 (else #f))))))
+
+(define-method/equal? 'CONDITIONAL
+  (lambda (left right)
+    (and (conditional? right)
+	 (or (and (expressions/equal? (conditional/predicate left) (conditional/predicate right))
+		  (or (expression/always-false? (conditional/predicate left))
+		      (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
+		  (or (expression/never-false? (conditional/predicate left))
+		      (expressions/equal? (conditional/alternative left) (conditional/alternative right))))
+	     (and (expression/pure-false? (conditional/predicate left))
+		  (expression/pure-false? (conditional/predicate right))
+		  (expressions/equal? (conditional/alternative left) (conditional/alternative right)))
+	     (and (expression/pure-true? (conditional/predicate left))
+		  (expression/pure-true? (conditional/predicate right))
+		  (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
+	     (and (expression/pure-false? (conditional/predicate left))
+		  (expression/pure-true? (conditional/predicate right))
+		  (expressions/equal? (conditional/alternative left) (conditional/consequent right)))
+	     (and (expression/pure-true? (conditional/predicate left))
+		  (expression/pure-false? (conditional/predicate right))
+		  (expressions/equal? (conditional/consequent left) (conditional/alternative right)))))))
+
+(define-method/equal? 'CONSTANT
+  (lambda (left right)
+    (and (constant? right)
+	 (eq? (constant/value left) (constant/value right)))))
+
+(define-method/equal? 'DECLARATION
+  (lambda (left right)
+    #f))
+
+(define-method/equal? 'DELAY
+  (lambda (left right)
+    #f))
+
+(define-method/equal? 'DISJUNCTION
+  (lambda (left right)
+    (and (disjunction? right)
+	 (expressions/equal? (disjunction/predicate left)
+			     (disjunction/predicate right))
+	 (expressions/equal? (disjunction/alternative left)
+			     (disjunction/alternative right)))))
+
+(define-method/equal? 'OPEN-BLOCK
+  (lambda (left right)
+    #f))
+
+(define-method/equal? 'PROCEDURE
+  (lambda (left right)
+    #f))
+
+(define-method/equal? 'QUOTATION
+  (lambda (left right)
+    #f))
+
+(define-method/equal? 'REFERENCE
+  (lambda (left right)
+    (and (reference? right)
+	 (eq? (reference/variable left)
+	      (reference/variable right)))))
+
+(define-method/equal? 'SEQUENCE
+  (lambda (left right)
+    (and (sequence? right)
+	 (let scan ((left-args (sequence/actions left))
+		    (right-args (sequence/actions right)))
+	   (cond ((pair? left-args)
+		  (and (pair? right-args)
+		       (if (eq? (car left-args) open-block/value-marker)
+			   (eq? (car right-args) open-block/value-marker)
+			   (and (not (eq? (car right-args) open-block/value-marker))
+				(expressions/equal? (car left-args)
+						    (car right-args))))
+		       (scan (cdr left-args) (cdr right-args))))
+		 ((null? left-args) (null? right-args))
+		 (else #f))))))
+
+(define-method/equal? 'THE-ENVIRONMENT
+  (lambda (left right)
+    (the-environment? right)))
