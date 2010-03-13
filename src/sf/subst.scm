@@ -103,13 +103,29 @@ USA.
     (let ((environment* (integrate/expression operations environment
 					      (access/environment expression)))
 	  (name (access/name expression)))
-      (cond ((and (constant/system-global-environment? environment*)
-		  (assq name usual-integrations/constant-alist))
-	     => (lambda (entry)
-		  (constant/make (access/scode expression)
-				 (constant/value (cdr entry)))))
-	    (else (access/make (access/scode expression)
-			       environment* name))))))
+
+      (define (dont-integrate)
+	(access/make (access/scode expression) environment* name))
+
+      (if (not (constant/system-global-environment? environment*))
+	  (dont-integrate)
+	  (operations/lookup-global
+	   operations name
+	   (lambda (operation info)
+	     (case operation
+	       ((#F EXPAND INTEGRATE-OPERATOR) (dont-integrate))
+
+	       ((IGNORE)
+		(ignored-variable-warning (variable/name variable))
+		(dont-integrate))
+
+	       ((INTEGRATE)
+		(reassign name (copy/expression/intern
+				block (integration-info/expression info))))
+
+	       (else
+		(error "Unknown operation" operation))))
+	   dont-integrate)))))
 
 ;;;; ASSIGNMENT
 (define-method/integrate 'ASSIGNMENT
@@ -165,6 +181,12 @@ USA.
 ;; in the alternative branch.
 (define sf:enable-conditional-propagation? #t)
 
+;; If the predicate is a call to NOT, flip the consequent and
+;; alternative and the sense of the predicate.
+(define sf:enable-conditional-inversion? #t)
+
+(define sf:enable-conditional->disjunction? #t)
+
 (define (integrate/conditional operations environment expression
 			       integrated-predicate
 			       consequent
@@ -203,11 +225,27 @@ USA.
 	  integrated-predicate consequent alternative))
 
 	(else
-	 (conditional/make (and expression (conditional/scode expression))
-			   integrated-predicate
-			   (integrate/expression operations environment consequent)
-			   (integrate/expression (operations/prepare-false-branch operations integrated-predicate)
-						 environment alternative)))))
+	 (let ((integrated-consequent (integrate/expression operations environment consequent)))
+	   (if (or (and (expressions/equal? integrated-predicate integrated-consequent)
+			(expression/effect-free? integrated-predicate)
+			(noisy-test sf:enable-conditional->disjunction? "Converting conditional to disjunction"))
+		   (and (expression/boolean? integrated-predicate)
+			(expression/pure-true? integrated-consequent)
+			(noisy-test sf:enable-elide-conditional-canonicalization? "Eliding conditional canonicalization")))
+	       (integrate/disjunction operations environment expression integrated-predicate alternative)
+
+	       (let ((integrated-alternative (integrate/expression
+					      (operations/prepare-false-branch operations integrated-predicate)
+					      environment alternative)))
+		 (if (expressions/equal? integrated-consequent integrated-alternative)
+		     (if (expression/effect-free? integrated-predicate)
+			 integrated-consequent
+			 (sequence/make (and expression (conditional/scode expression))
+					(list integrated-predicate integrated-consequent)))
+		     (conditional/make (and expression (conditional/scode expression))
+				       integrated-predicate
+				       integrated-consequent
+				       integrated-alternative))))))))
 
 (define sf:enable-rewrite-disjunction-in-conditional? #t)
 ;; If #t, move disjunctions out of the predicate if possible.
@@ -406,14 +444,14 @@ USA.
 ;;; DECLARATION
 (define-method/integrate 'DECLARATION
   (lambda (operations environment declaration)
-    (let ((declarations (declaration/declarations declaration))
-	  (expression (declaration/expression declaration)))
-      (declaration/make
-       (declaration/scode declaration)
-       declarations
-       (integrate/expression (declarations/bind operations declarations)
-			     environment
-			     expression)))))
+    (let ((answer (integrate/expression (declarations/bind operations (declaration/declarations declaration))
+					environment (declaration/expression declaration))))
+      (if (constant? answer)
+	  answer
+	  (declaration/make
+	   (declaration/scode declaration)
+	   (declaration/declarations declaration)
+	   answer)))))
 
 ;;; DELAY
 (define-method/integrate 'DELAY
@@ -608,33 +646,33 @@ USA.
 (define-method/integrate 'REFERENCE
   (lambda (operations environment expression)
     (let ((variable (reference/variable expression)))
-      (letrec ((integration-success
-		(lambda (new-expression)
-		  (variable/integrated! variable)
-		  new-expression))
-	       (integration-failure
-		(lambda ()
-		  (variable/reference! variable)
-		  expression)))
-	(operations/lookup operations variable
-	 (lambda (operation info)
-	   (case operation
-	     ((IGNORE)
-	      (ignored-variable-warning (variable/name variable))
-	      (integration-failure))
-	     ((EXPAND INTEGRATE-OPERATOR)
-	      (variable/reference! variable)
-	      expression)
-	     ((INTEGRATE)
-	      (let ((new-expression
-		     (integrate/name expression expression info environment)))
-		(if new-expression
-		    (integration-success new-expression)
-		    (integration-failure))))
-	     (else
-	      (error "Unknown operation" operation))))
-	 (lambda ()
-	   (integration-failure)))))))
+      (define (dont-integrate)
+	(variable/reference! variable)
+	expression)
+
+      (operations/lookup
+       operations variable
+       (lambda (operation info)
+	 (case operation
+	   ((IGNORE)
+	    (ignored-variable-warning (variable/name variable))
+	    (dont-integrate))
+
+	   ((EXPAND INTEGRATE-OPERATOR)
+	    (dont-integrate))
+
+	   ((INTEGRATE)
+	    (let ((new-expression
+		   (integrate/name expression expression info environment)))
+	      (if new-expression
+		  (begin (variable/integrated! variable)
+			 new-expression)
+		  (dont-integrate))))
+
+	   (else
+	    (error "Unknown operation" operation))))
+
+       dont-integrate))))
 
 (define (reassign expr object)
   (if (and expr (object/scode expr))
@@ -731,15 +769,20 @@ USA.
      name
      (lambda ()
        (fluid-let ((*current-block-names* (cons name *current-block-names*)))
-	 (let ((body
-		(integrate/expression
-		 (declarations/bind
-		  (operations/shadow
-		   operations
-		   (append required optional (if rest (list rest) '())))
-		  (block/declarations block))
-		 environment
-		 (procedure/body procedure))))
+	 (let* ((operations (declarations/bind
+			     (operations/shadow
+			      operations
+			      (append required optional (if rest (list rest) '())))
+			     (block/declarations block)))
+
+		(body (integrate/expression
+		       (if (block/safe? block)
+			   (make-additional-declarations
+			    operations environment
+			    (block/bound-variables block))
+			   operations)
+		       environment
+		       (procedure/body procedure))))
 	   ;; Possibly complain about variables bound and not
 	   ;; referenced.
 	   (if (block/safe? block)
@@ -758,6 +801,47 @@ USA.
 			   optional
 			   rest
 			   body)))))))
+
+(define sf:enable-safe-integration? #t)
+
+(define (make-additional-declarations operations environment variables)
+  (fold-left (lambda (operations variable)
+	       (make-additional-declaration operations environment variable))
+	     operations
+	     variables))
+
+(define (make-additional-declaration operations environment variable)
+  ;; Possibly augment operations with an appropriate declaration.
+  ;; Returns the original operations if no declaration is appropriate.
+  (if (variable/side-effected variable)
+      operations
+      (operations/lookup
+       operations variable
+       ;; Already a declaration, don't override it.
+       (constant-procedure operations)
+       (lambda ()
+	 ;; No operations on this variable, check if it has
+	 ;; a value
+	 (environment/lookup
+	  environment variable
+	  (lambda (value)
+	    ;; it has a value, see if we should integrate it
+	    (make-additional-declaration-with-value operations variable value))
+	  ;; No value
+	  (constant-procedure operations)
+	  ;; No binding
+	  (constant-procedure operations))))))
+
+(define (make-additional-declaration-with-value operations variable value)
+  (if (and (or (and (access? value) (global-ref? value))
+	       (constant? value)
+	       (and (reference? value)
+		    (not (variable/side-effected (reference/variable value)))
+		    (block/safe? (variable/block (reference/variable value)))))
+	   (noisy-test sf:enable-safe-integration? "Safe declarations"))
+      (operations/bind operations 'INTEGRATE variable
+		       (make-integration-info value))
+      operations))
 
 
 ;;; INTEGRATE-COMBINATION
@@ -849,6 +933,25 @@ USA.
 		(expression/boolean? (first (combination/operands (first operands))))
 		(noisy-test sf:enable-elide-double-negatives? "Eliding double negative"))
 	   (first (combination/operands (first operands))))
+	  ((and (expression/constant-eq? operator (ucode-primitive not))
+		(length=? operands 1)
+		(conditional? (first operands))
+		(or (expression/call-to-not? (conditional/consequent (first operands)))
+		    (expression/pure-true?  (conditional/consequent (first operands)))
+		    (expression/pure-false?  (conditional/consequent (first operands))))
+		(or (expression/call-to-not? (conditional/alternative (first operands)))
+		    (expression/pure-true? (conditional/alternative (first operands)))
+		    (expression/pure-false? (conditional/alternative (first operands)))))
+	   (integrate/conditional operations environment expression
+				  (conditional/predicate (first operands))
+				  (combination/make (conditional/consequent (first operands))
+						    #f
+						    (constant/make #f (ucode-primitive not))
+						    (list (conditional/consequent (first operands))))
+				  (combination/make (conditional/alternative (first operands))
+						    #f
+						    (constant/make #f (ucode-primitive not))
+						    (list (conditional/alternative (first operands))))))
 	  ((primitive-procedure? (constant/value operator))
 	   (let ((operands*
 		  (and (eq? (constant/value operator) (ucode-primitive apply))

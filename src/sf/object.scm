@@ -323,8 +323,10 @@ USA.
 		      (length (combination/operands expression)))))))))
 
 (define (expression/constant-eq? expression value)
-  (and (constant? expression)
-       (eq? (constant/value expression) value)))
+  (cond ((constant? expression) (eq? (constant/value expression) value))
+	((declaration? expression)
+	 (expression/constant-eq? (declaration/expression expression) value))
+	(else #f)))
 
 (define-integrable (global-ref/make name)
   (access/make #f
@@ -357,7 +359,6 @@ USA.
 
 ;; If we apply a primitive to a conditional, rewrite such that
 ;; the primitive is applied to the arms of the conditional.
-;; (This usually occurs with an (not (if foo <e1> <e2>)))
 (define sf:enable-distribute-primitives? #t)
 
 ;; Foldable operators primitives that are members of
@@ -506,11 +507,12 @@ USA.
 				unreferenced-operands))))))))))
 
 ;;; Conditional
-(define sf:enable-conditional->disjunction? #t)
-(define sf:enable-conditional-inversion? #t)
-(define sf:enable-conjunction-linearization? #t)
-(define sf:enable-disjunction-distribution? #t)
-;; Expression such as (if (pair? x) #t #f) don't need the conditional.
+
+;; If the arms of a conditional are #T and #F, then
+;; we're just canonicalizing the predicate value to a boolean.
+;; If we already know the predicate is a boolean we can elide
+;; this step.  Additionally, if the arms are #F and #T,
+;; we're simply calling NOT.
 (define sf:enable-elide-conditional-canonicalization? #t)
 
 (define (conditional/make scode predicate consequent alternative)
@@ -524,24 +526,12 @@ USA.
 	;; have been inverted.
 	 (combination/%make scode #f (constant/make #f (ucode-primitive not)) (list predicate)))
 
-	((and (expression/boolean? predicate)
-	      (expression/pure-true? consequent)
-	      (noisy-test sf:enable-elide-conditional-canonicalization?
-			  "Converting conditional canonicalization to disjunction"))
-	 ;; (if <boolean> #t e1) => (or <boolean> e1)
-	 ;;  NOTE:  if e1 is #F, then the disjunction will be eliminated.
-	 (disjunction/make scode predicate alternative))
-
-	((and (reference? predicate)
-	      (reference? consequent)
-	      (eq? (reference/variable predicate)
-		   (reference/variable consequent)))
-	 (disjunction/make scode predicate alternative))
-
 	(else
 	 (conditional/%make scode predicate consequent alternative))))
 
 ;;; Disjunction
+
+;; If the alternative of a disjunction is #F, we can elide the disjunction.
 (define sf:enable-disjunction-simplification? #t)
 
 (define (disjunction/make scode predicate alternative)

@@ -39,11 +39,8 @@ USA.
 	  combination/constant-folding-operators)
   (export ()
 	  sf:enable-argument-deletion?
-	  sf:enable-conditional->disjunction?
-	  sf:enable-conditional-inversion?
 	  sf:enable-conjunction-linearization?
 	  sf:enable-constant-folding?
-	  sf:enable-disjunction-distribution?
 	  sf:enable-disjunction-simplification?
 	  sf:enable-distribute-primitives?
 	  sf:enable-elide-conditional-canonicalization?))
@@ -88,7 +85,9 @@ USA.
   (parent (scode-optimizer))
   (export ()
 	  sf:display-top-level-procedure-names?
+	  sf:enable-conditional->disjunction?
 	  sf:enable-conditional-folding?
+	  sf:enable-conditional-inversion?
 	  sf:enable-conditional-propagation?
 	  sf:enable-disjunction-folding?
 	  sf:enable-disjunction-inversion?
@@ -96,7 +95,8 @@ USA.
 	  sf:enable-elide-double-negatives?
 	  sf:enable-rewrite-conditional-in-disjunction?
 	  sf:enable-rewrite-disjunction-in-conditional?
-	  sf:enable-rewrite-nested-conditional?)
+	  sf:enable-rewrite-nested-conditional?
+	  sf:enable-safe-integration?)
   (export (scode-optimizer)
 	  integrate/top-level
 	  integrate/get-top-level-block
@@ -161,7 +161,8 @@ USA.
 	  expression/never-false?
 	  expression/pure-false?
 	  expression/pure-true?
-	  expression/unspecific?))
+	  expression/unspecific?
+	  expressions/equal?))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
