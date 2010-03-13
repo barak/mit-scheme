@@ -837,13 +837,9 @@ USA.
     (and (constant? right)
 	 (eq? (constant/value left) (constant/value right)))))
 
-(define-method/equal? 'DECLARATION
-  (lambda (left right)
-    #f))
+(define-method/equal? 'DECLARATION false-procedure)
 
-(define-method/equal? 'DELAY
-  (lambda (left right)
-    #f))
+(define-method/equal? 'DELAY false-procedure)
 
 (define-method/equal? 'DISJUNCTION
   (lambda (left right)
@@ -853,17 +849,11 @@ USA.
 	 (expressions/equal? (disjunction/alternative left)
 			     (disjunction/alternative right)))))
 
-(define-method/equal? 'OPEN-BLOCK
-  (lambda (left right)
-    #f))
+(define-method/equal? 'OPEN-BLOCK false-procedure)
 
-(define-method/equal? 'PROCEDURE
-  (lambda (left right)
-    #f))
+(define-method/equal? 'PROCEDURE false-procedure)
 
-(define-method/equal? 'QUOTATION
-  (lambda (left right)
-    #f))
+(define-method/equal? 'QUOTATION false-procedure)
 
 (define-method/equal? 'REFERENCE
   (lambda (left right)
@@ -889,4 +879,5 @@ USA.
 
 (define-method/equal? 'THE-ENVIRONMENT
   (lambda (left right)
+    (declare (ignore left))
     (the-environment? right)))
