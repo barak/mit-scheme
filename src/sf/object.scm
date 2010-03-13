@@ -526,6 +526,12 @@ USA.
 	;; have been inverted.
 	 (combination/%make scode #f (constant/make #f (ucode-primitive not)) (list predicate)))
 
+	;; If the consequent and alternative are the same, just make a sequence.
+	((expressions/equal? consequent alternative)
+	 (if (expression/effect-free? predicate)
+	     consequent
+	     (sequence/make scode (list predicate consequent))))
+
 	(else
 	 (conditional/%make scode predicate consequent alternative))))
 
