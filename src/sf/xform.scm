@@ -182,7 +182,7 @@ USA.
       (let ((block (block/make block true '())))
 	(call-with-values
 	    (lambda ()
-	      (let ((name->variable 
+	      (let ((name->variable
 		     (lambda (name) (variable/make&bind! block name))))
 		(values (map name->variable required)
 			(map name->variable optional)
@@ -209,7 +209,7 @@ USA.
 	      expression block name required optional rest
 	      (if (null? ignores)
 		  final-body
-		  (declaration/make #f (declarations/parse block `((ignore ,@ignores))) 
+		  (declaration/make #f (declarations/parse block `((ignore ,@ignores)))
 				    final-body))))))
       (procedure/make
        expression block name required optional rest
@@ -302,7 +302,9 @@ USA.
       (quotation/make expression block expression**))))
 
 (define (transform/sequence block environment expression)
-  (sequence/make
+  ;; Don't remove references from sequences here.  We want them
+  ;; to signal ignored variables.
+  (sequence/%make
    expression
    (transform/expressions block environment (sequence-actions expression))))
 

@@ -193,19 +193,15 @@ USA.
 			       alternative)
   (cond ((and (expression/never-false? integrated-predicate)
 	      (noisy-test sf:enable-conditional-folding? "Fold constant true conditional"))
-	 (let ((integrated-consequent (integrate/expression operations environment consequent)))
-	   (if (expression/effect-free? integrated-predicate)
-	       integrated-consequent
-	       (sequence/make (and expression (conditional/scode expression))
-			      (list integrated-predicate integrated-consequent)))))
+	 (sequence/make (and expression (conditional/scode expression))
+			(list integrated-predicate
+			      (integrate/expression operations environment consequent))))
 
 	((and (expression/always-false? integrated-predicate)
 	      (noisy-test sf:enable-conditional-folding? "Fold constant false conditional"))
-	 (let ((integrated-alternative (integrate/expression operations environment alternative)))
-	   (if (expression/effect-free? integrated-predicate)
-	       integrated-alternative
-	       (sequence/make (and expression (conditional/scode expression))
-			      (list integrated-predicate integrated-alternative)))))
+	 (sequence/make (and expression (conditional/scode expression))
+			(list integrated-predicate
+			      (integrate/expression operations environment alternative))))
 
 	((and (expression/call-to-not? integrated-predicate)
 	      (noisy-test sf:enable-conditional-inversion? "Invert conditional"))
@@ -224,6 +220,14 @@ USA.
 	  operations environment expression
 	  integrated-predicate consequent alternative))
 
+	((sequence? integrated-predicate)
+	 (sequence/make (and expression (object/scode expression))
+			(append (except-last-pair (sequence/actions integrated-predicate))
+				(list (integrate/conditional operations environment #f
+							     (last (sequence/actions integrated-predicate))
+							     consequent
+							     alternative)))))
+
 	(else
 	 (let ((integrated-consequent (integrate/expression operations environment consequent)))
 	   (if (or (and (expressions/equal? integrated-predicate integrated-consequent)
@@ -234,13 +238,12 @@ USA.
 			(noisy-test sf:enable-elide-conditional-canonicalization? "Eliding conditional canonicalization")))
 	       (integrate/disjunction operations environment expression integrated-predicate alternative)
 
-	       (let ((integrated-alternative (integrate/expression
-					      (operations/prepare-false-branch operations integrated-predicate)
-					      environment alternative)))
-		 (conditional/make (and expression (conditional/scode expression))
-				   integrated-predicate
-				   integrated-consequent
-				   integrated-alternative)))))))
+	       (conditional/make (and expression (conditional/scode expression))
+				 integrated-predicate
+				 integrated-consequent
+				 (integrate/expression
+				  (operations/prepare-false-branch operations integrated-predicate)
+				  environment alternative)))))))
 
 (define sf:enable-rewrite-disjunction-in-conditional? #t)
 ;; If #t, move disjunctions out of the predicate if possible.
@@ -305,7 +308,7 @@ USA.
       (cond ((expression/never-false? e2)
 	     (if (and (expression/always-false? e3)
 		      (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (1)"))
-		 ;;    (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
+		 ;; (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
 		 (integrate/conditional operations environment expression
 					e1
 					(sequence/make #f (list e2 consequent))
@@ -313,7 +316,7 @@ USA.
 		 (let ((e4 (integrate/expression context-CC environment consequent)))
 		   (if (and (expression/can-duplicate? e4)
 			    (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (2)"))
-		       ;;    (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
+		       ;; (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
 		       (integrate/conditional operations environment expression
 					      e1
 					      (sequence/make #f (list e2 consequent))
@@ -327,13 +330,13 @@ USA.
 	     (let ((e5 (integrate/expression operations environment alternative)))
 	       (cond ((and (expression/never-false? e3)
 			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (3)"))
-		      ;;    (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
+		      ;; (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
 		      (conditional/make (and expression (object/scode expression))
 					integrated-predicate e4a e5))
 
 		     ((and (expression/can-duplicate? e5)
 			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (4)"))
-		      ;;    (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
+		      ;; (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
 		      (integrate/conditional operations environment expression
 					     e1
 					     (sequence/make #f (list e2 e5))
@@ -348,7 +351,7 @@ USA.
 	     (let ((e4 (integrate/expression operations environment consequent)))
 	       (if (and (expression/can-duplicate? e4)
 			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (5)"))
-		   ;;    (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
+		   ;; (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
 		   (integrate/conditional operations environment expression
 					  e1
 					  (conditional/make #f e2 e4 alternative)
@@ -378,7 +381,7 @@ USA.
 	       (if (and (expression/can-duplicate? e4)
 			(expression/can-duplicate? e5)
 			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (7)"))
-		   ;;    (if e1 (if e2 e4 e5) (if e3 e4 e5))   case 7, e4 and e5 can be duplicated
+		   ;; (if e1 (if e2 e4 e5) (if e3 e4 e5))   case 7, e4 and e5 can be duplicated
 		   (integrate/conditional operations environment expression
 					  e1
 					  (conditional/make #f e2 e4 e5)
@@ -449,12 +452,9 @@ USA.
 	((and (expression/always-false? integrated-predicate)
 	      (noisy-test sf:enable-disjunction-folding? "Folding constant false disjunction"))
 	 ;; (or <exp1> <exp2>) => (begin <exp1> <exp2>) if <exp1> is always false
-	 (let ((integrated-alternative (integrate/expression operations environment alternative)))
-	   (if (expression/effect-free? integrated-predicate)
-	       integrated-alternative
-	       (sequence/make (and expression (object/scode expression))
-			      (list integrated-predicate
-				    integrated-alternative)))))
+	 (sequence/make (and expression (object/scode expression))
+			(list integrated-predicate
+			      (integrate/expression operations environment alternative))))
 
 	((and (conditional? integrated-predicate)
 	      (noisy-test sf:enable-rewrite-conditional-in-disjunction?
@@ -469,6 +469,13 @@ USA.
 	 (integrate/disjunction operations environment expression
 				(disjunction/predicate integrated-predicate)
 				(disjunction/make #f (disjunction/alternative integrated-predicate) alternative)))
+
+	((sequence? integrated-predicate)
+	 (sequence/make (and expression (object/scode expression))
+			(append (except-last-pair (sequence/actions integrated-predicate))
+				(list (integrate/disjunction operations environment #f
+							     (last (sequence/actions integrated-predicate))
+							     alternative)))))
 
 	(else
 	 (disjunction/make (and expression (object/scode expression))
@@ -606,10 +613,8 @@ USA.
 ;;; SEQUENCE
 (define-method/integrate 'SEQUENCE
   (lambda (operations environment expression)
-    ;; Optimize (begin (foo)) => (foo)
-    ;; Optimize (begin a b (foo) 22 (bar)) => (begin (foo) (bar))
-    (sequence/optimizing-make
-     expression
+    (sequence/make
+     (and expression (object/scode expression))
      (integrate/actions operations environment
 			(sequence/actions expression)))))
 
@@ -1181,13 +1186,6 @@ USA.
   (or (reference? expression)
       (non-side-effecting-in-sequence? expression)))
 
-(define (sequence/optimizing-make expression actions)
-  (let ((actions (remove-non-side-effecting actions)))
-    (if (null? (cdr actions))
-	(car actions)
-	(sequence/make (and expression (object/scode expression))
-		       actions))))
-
 (define (remove-non-side-effecting actions)
   ;; Do not remove references from sequences, because they have
   ;; meaning as declarations.  The output code generator will take

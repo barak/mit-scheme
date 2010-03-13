@@ -215,7 +215,7 @@ USA.
 (define-simple-type open-block      #f                 (block variables values actions))
 (define-simple-type procedure       #f                 (block name required optional rest body))
 (define-simple-type quotation       #f                 (block expression))
-(define-simple-type sequence        #f                 (actions))
+(define-simple-type sequence        sequence/%make     (actions))
 (define-simple-type the-environment #f                 (block))
 
 ;;; Helpers for expressions
@@ -444,11 +444,9 @@ USA.
 			  #f
 			  (procedure/body operator))
 			 new-operand-list))))
-	       (if (null? other-operands)
-		   result-body
-		   (sequence/make
-		    (and expression (object/scode expression))
-		    (append other-operands (list result-body))))))))
+	       (sequence/make
+		(and expression (object/scode expression))
+		(append other-operands (list result-body)))))))
 	(else
 	 (combination/%make (and expression (object/scode expression)) block operator operands))))
 
@@ -528,9 +526,7 @@ USA.
 
 	;; If the consequent and alternative are the same, just make a sequence.
 	((expressions/equal? consequent alternative)
-	 (if (expression/effect-free? predicate)
-	     consequent
-	     (sequence/make scode (list predicate consequent))))
+	 (sequence/make scode (list predicate consequent)))
 
 	(else
 	 (conditional/%make scode predicate consequent alternative))))
@@ -548,6 +544,30 @@ USA.
 
 	(else
 	 (disjunction/%make scode predicate alternative))))
+
+;;; Sequence
+
+;;  Ensure that sequences are always flat.
+(define (sequence/make scode actions)
+  (define (sequence/collect-actions collected actions)
+    (fold-left (lambda (reversed action)
+		 (if (sequence? action)
+		     (sequence/collect-actions reversed (sequence/actions action))
+		     (cons action reversed)))
+	       collected
+	       actions))
+  (let ((filtered-actions
+	 (fold-left (lambda (filtered action)
+		      (if (expression/effect-free? action)
+			  (if (null? filtered)
+			      (list action)
+			      filtered)
+			  (cons action filtered)))
+		    '()
+		    (sequence/collect-actions '() actions))))
+    (if (null? (cdr filtered-actions))
+	(car filtered-actions)
+	(sequence/%make scode filtered-actions))))
 
 ;; Done specially so we can tweak the print method.
 ;; This makes debugging an awful lot easier.
