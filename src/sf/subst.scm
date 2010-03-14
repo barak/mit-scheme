@@ -708,6 +708,7 @@ USA.
 		       (if (block/safe? block)
 			   (make-additional-declarations
 			    operations environment
+			    (procedure/body procedure)
 			    (block/bound-variables block))
 			   operations)
 		       environment
@@ -733,13 +734,13 @@ USA.
 
 (define sf:enable-safe-integration? #t)
 
-(define (make-additional-declarations operations environment variables)
+(define (make-additional-declarations operations environment body variables)
   (fold-left (lambda (operations variable)
-	       (make-additional-declaration operations environment variable))
+	       (make-additional-declaration operations environment body variable))
 	     operations
 	     variables))
 
-(define (make-additional-declaration operations environment variable)
+(define (make-additional-declaration operations environment body variable)
   ;; Possibly augment operations with an appropriate declaration.
   ;; Returns the original operations if no declaration is appropriate.
   (if (variable/side-effected variable)
@@ -755,22 +756,34 @@ USA.
 	  environment variable
 	  (lambda (value)
 	    ;; it has a value, see if we should integrate it
-	    (make-additional-declaration-with-value operations variable value))
+	    (make-additional-declaration-with-value operations body variable value))
 	  ;; No value
 	  (constant-procedure operations)
 	  ;; No binding
 	  (constant-procedure operations))))))
 
-(define (make-additional-declaration-with-value operations variable value)
-  (if (and (or (and (access? value) (global-ref? value))
-	       (constant? value)
-	       (and (reference? value)
-		    (not (variable/side-effected (reference/variable value)))
-		    (block/safe? (variable/block (reference/variable value)))))
-	   (noisy-test sf:enable-safe-integration? "Safe declarations"))
-      (operations/bind operations 'INTEGRATE variable
-		       (make-integration-info value))
-      operations))
+(define (make-additional-declaration-with-value operations body variable value)
+  (cond ((and (or (and (access? value) (global-ref? value))
+		  (constant? value)
+		  (and (reference? value)
+		       (not (variable/side-effected (reference/variable value)))
+		       (block/safe? (variable/block (reference/variable value)))))
+	      (noisy-test sf:enable-safe-integration? "Safe declarations"))
+	 (operations/bind operations 'INTEGRATE variable
+			  (make-integration-info value)))
+	((procedure? value)
+	 (let ((info (expression/free-variable-info body variable))
+	       (size (expression/size value)))
+	   ;; Avoid exponential code explosion.
+	   ;; The *parser code gets out of control if you don't limit this.
+	   (if (and (zero? (cdr info))
+		    (or (= (car info) 1)
+			(and (> (car info) 1)
+			     (< (* size (car info)) 500)))
+		    (noisy-test sf:enable-safe-integration? "Safe declarations"))
+	       (operations/bind operations 'INTEGRATE-OPERATOR variable (make-integration-info value))
+	       operations)))
+	(else operations)))
 
 
 ;;; INTEGRATE-COMBINATION
@@ -1142,7 +1155,7 @@ USA.
 			(encloser
 			 (declaration-with-expression operator expression)))))
 	  (else #f)))
-  (and (for-all? operands non-side-effecting?)
+  (and (for-all? operands expression/effect-free?)
        (scan-operator operator (lambda (body) body))))
 
 (define (combination-with-operator combination operator)
@@ -1181,32 +1194,6 @@ USA.
 
 (define (sequence-with-actions sequence actions)
   (sequence/make (sequence/scode sequence) actions))
-
-(define (non-side-effecting? expression)
-  (or (reference? expression)
-      (non-side-effecting-in-sequence? expression)))
-
-(define (remove-non-side-effecting actions)
-  ;; Do not remove references from sequences, because they have
-  ;; meaning as declarations.  The output code generator will take
-  ;; care of removing them when they are no longer needed.
-  (if (null? (cdr actions))
-      actions
-      (let ((rest (remove-non-side-effecting (cdr actions))))
-	(if (non-side-effecting-in-sequence? (car actions))
-	    rest
-	    (cons (car actions) rest)))))
-
-(define (non-side-effecting-in-sequence? expression)
-  ;; Compiler does a better job of this because it is smarter about
-  ;; what kinds of expressions can cause side effects.  But this
-  ;; should be adequate to catch most of the simple cases.
-  (or (constant? expression)
-      (quotation? expression)
-      (delay? expression)
-      (procedure? expression)
-      (and (access? expression)
-	   (non-side-effecting-in-sequence? (access/environment expression)))))
 
 (define (constant/system-global-environment? expression)
   (and (constant? expression)
