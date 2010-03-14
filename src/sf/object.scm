@@ -196,9 +196,6 @@ USA.
 		       (write (variable/name var) port)))))
   block
   name
-  ;; A count of how many times in the block that the variable
-  ;; is invoked as an operator.
-  (invocation-count 0)
   flags)
 
 (define-guarantee variable "variable")
@@ -206,7 +203,7 @@ USA.
 ;;; Expressions
 (define-simple-type access          #f                 (environment name))
 (define-simple-type assignment      #f                 (block variable value))
-(define-simple-type combination     combination/%%make (block operator operands))
+(define-simple-type combination     combination/%make  (block operator operands))
 (define-simple-type conditional     conditional/%make  (predicate consequent alternative))
 (define-simple-type constant        #f                 (value))
 (define-simple-type declaration     #f                 (declarations expression))
@@ -339,14 +336,6 @@ USA.
        (access/name object)))
 
 ;;; Constructors that need to do work.
-
-(define (combination/%make scode block operator operands)
-  ;; Keep track of how many times a reference appears as an operator.
-  (if (reference? operator)
-      (let ((variable (reference/variable operator)))
-	(set-variable/invocation-count! variable
-					(1+ (variable/invocation-count variable)))))
-  (combination/%%make scode block operator operands))
 
 ;; When constucting a combination, we may discover that we
 ;; can reduce the combination through constant folding.
