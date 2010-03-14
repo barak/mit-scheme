@@ -550,6 +550,110 @@ USA.
 
 (define-method/free-variable? 'THE-ENVIRONMENT false-procedure)
 
+;;; EXPRESSION/FREE-VARIABLE-INFO <expression> <variable>
+;;
+;; Returns a PAIR, the car of which contains a count of the number
+;; of times the variable appears as an operator, the cdr contains
+;; the number of times the variable appears as an argument.
+;; Used to determine if adding an INTEGRATE-OPERATOR declaration
+;; is a good idea.
+
+(define (expression/free-variable-info expression variable)
+  (expression/free-variable-info-dispatch expression variable (cons 0 0)))
+
+(define (expression/free-variable-info-dispatch expression variable info)
+  ((expression/method free-info-dispatch-vector expression) expression variable info))
+
+(define (expressions/free-variable-info expressions variable info)
+  (fold-left (lambda (answer expression)
+	       (expression/free-variable-info-dispatch expression variable answer))
+	     info
+	     expressions))
+
+(define free-info-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/free-variable-info
+  (expression/make-method-definer free-info-dispatch-vector))
+
+(define-method/free-variable-info 'ACCESS
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch (access/environment expression) variable info)))
+
+(define-method/free-variable-info 'ASSIGNMENT
+  (lambda (expression variable info)
+    (or (eq? variable (assignment/variable expression))
+	(expression/free-variable-info-dispatch (assignment/value expression) variable info))))
+
+(define-method/free-variable-info 'COMBINATION
+  (lambda (expression variable info)
+    (let ((operator (combination/operator expression))
+	  (inner-info (expressions/free-variable-info (combination/operands expression) variable info)))
+      (if (and (reference? operator)
+	       (eq? (reference/variable operator) variable))
+	  (cons (+ (car inner-info) 1) (cdr inner-info))
+	  (expression/free-variable-info-dispatch operator variable inner-info)))))
+
+(define-method/free-variable-info 'CONDITIONAL
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch
+     (conditional/predicate expression) variable
+     (expression/free-variable-info-dispatch
+      (conditional/consequent expression) variable
+      (expression/free-variable-info-dispatch (conditional/alternative expression) variable info)))))
+
+(define-method/free-variable-info 'CONSTANT
+  (lambda (expression variable info) (declare (ignore expression variable)) info))
+
+(define-method/free-variable-info 'DECLARATION
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch (declaration/expression expression) variable info)))
+
+(define-method/free-variable-info 'DELAY
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch (delay/expression expression) variable info)))
+
+(define-method/free-variable-info 'DISJUNCTION
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch
+     (disjunction/predicate expression) variable
+     (expression/free-variable-info-dispatch
+      (disjunction/alternative expression) variable
+      info))))
+
+(define-method/free-variable-info 'OPEN-BLOCK
+  (lambda (expression variable info)
+    (fold-left (lambda (info action)
+		 (if (eq? action open-block/value-marker)
+		     info
+		     (expression/free-variable-info-dispatch action variable info)))
+	       info
+	       (open-block/actions expression))))
+
+(define-method/free-variable-info 'PROCEDURE
+  (lambda (expression variable info)
+    (expression/free-variable-info-dispatch (procedure/body expression) variable info)))
+
+(define-method/free-variable-info 'QUOTATION
+  (lambda (expression variable info)
+    (declare (ignore expression variable))
+    info))
+
+(define-method/free-variable-info 'REFERENCE
+  (lambda (expression variable info)
+    (if (eq? (reference/variable expression) variable)
+	(cons (car info) (+ 1 (cdr info)))
+	info)))
+
+(define-method/free-variable-info 'SEQUENCE
+  (lambda (expression variable info)
+    (expressions/free-variable-info (sequence/actions expression) variable info)))
+
+(define-method/free-variable-info 'THE-ENVIRONMENT
+  (lambda (expression variable info)
+    (declare (ignore expression variable))
+    info))
+
 ;;; EXPRESSION/NEVER-FALSE?
 ;;
 ;; True iff expression can be shown to never return #F.
@@ -754,6 +858,90 @@ USA.
 
 (define-method/pure-true? 'THE-ENVIRONMENT false-procedure)
 
+;;; EXPRESSION/SIZE <expr>
+;;
+;; Returns an integer count of the number of SCode nodes in the expression.
+;; Used to avoid exponential code bloat when adding INTEGRATE-OPERATOR
+;; declarations.
+(declare (integrate-operator expression/size))
+
+(define (expression/size expression)
+  ((expression/method size-dispatch-vector expression) expression))
+
+(define size-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/size
+  (expression/make-method-definer size-dispatch-vector))
+
+(define-method/size 'ACCESS
+  (lambda (expression)
+    (+ 1 (expression/size (access/environment expression)))))
+
+(define-method/size 'ASSIGNMENT
+  (lambda (expression)
+    (+ 1 (expression/size (assignment/value expression)))))
+
+(define-method/size 'COMBINATION
+  (lambda (expression)
+    (fold-left (lambda (total operand)
+		 (+ total (expression/size operand)))
+	       (+ 1 (expression/size (combination/operator expression)))
+	       (combination/operands expression))))
+
+(define-method/size 'CONDITIONAL
+  (lambda (expression)
+    (+ (expression/size (conditional/predicate expression))
+       (expression/size (conditional/consequent expression))
+       (expression/size (conditional/alternative expression))
+       1)))
+
+(define-method/size 'CONSTANT
+  (lambda (expression) (declare (ignore expression)) 1))
+
+(define-method/size 'DECLARATION
+  (lambda (expression)
+    (+ (expression/size (declaration/expression expression)) 1)))
+
+(define-method/size 'DELAY
+  (lambda (expression)
+    (+ (expression/size (delay/expression expression)) 1)))
+
+(define-method/size 'DISJUNCTION
+  (lambda (expression)
+    (+ (expression/size (disjunction/predicate expression))
+       (expression/size (disjunction/alternative expression))
+       1)))
+
+(define-method/size 'OPEN-BLOCK
+  (lambda (expression)
+    (fold-left (lambda (total action)
+		(if (eq? action open-block/value-marker)
+		    total
+		    (+ total (expression/size action))))
+	      1
+	      (open-block/actions expression))))
+
+(define-method/size 'PROCEDURE
+  (lambda (expression)
+    (+ (expression/size (procedure/body expression)) 1)))
+
+(define-method/size 'QUOTATION
+  (lambda (expression)
+    (+ 1 (expression/size (quotation/expression expression)))))
+
+(define-method/size 'REFERENCE
+  (lambda (expression)
+    (declare (ignore expression))
+    1))
+
+(define-method/size 'SEQUENCE
+  (lambda (expression)
+    (fold-left (lambda (total action)
+		 (+ total (expression/size action)))
+	       1
+	       (sequence/actions expression))))
+
 ;; If true, then expression/unspecific? will return #t on
 ;; unspecific which will enable certain operations to treat
 ;; the value as something more convenient.  For example, a
@@ -814,23 +1002,11 @@ USA.
 (define-method/equal? 'CONDITIONAL
   (lambda (left right)
     (and (conditional? right)
-	 (or (and (expressions/equal? (conditional/predicate left) (conditional/predicate right))
-		  (or (expression/always-false? (conditional/predicate left))
-		      (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
-		  (or (expression/never-false? (conditional/predicate left))
-		      (expressions/equal? (conditional/alternative left) (conditional/alternative right))))
-	     (and (expression/pure-false? (conditional/predicate left))
-		  (expression/pure-false? (conditional/predicate right))
-		  (expressions/equal? (conditional/alternative left) (conditional/alternative right)))
-	     (and (expression/pure-true? (conditional/predicate left))
-		  (expression/pure-true? (conditional/predicate right))
-		  (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
-	     (and (expression/pure-false? (conditional/predicate left))
-		  (expression/pure-true? (conditional/predicate right))
-		  (expressions/equal? (conditional/alternative left) (conditional/consequent right)))
-	     (and (expression/pure-true? (conditional/predicate left))
-		  (expression/pure-false? (conditional/predicate right))
-		  (expressions/equal? (conditional/consequent left) (conditional/alternative right)))))))
+	 (expressions/equal? (conditional/predicate left) (conditional/predicate right))
+	 (or (expression/always-false? (conditional/predicate left))
+	     (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
+	 (or (expression/never-false? (conditional/predicate left))
+	     (expressions/equal? (conditional/alternative left) (conditional/alternative right))))))
 
 (define-method/equal? 'CONSTANT
   (lambda (left right)
