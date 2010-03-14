@@ -157,10 +157,12 @@ USA.
 	  expression/can-duplicate?
 	  expression/effect-free?
 	  expression/free-variable?
+	  expression/free-variable-info
 	  expression/free-variables
 	  expression/never-false?
 	  expression/pure-false?
 	  expression/pure-true?
+	  expression/size
 	  expression/unspecific?
 	  expressions/equal?))
 
