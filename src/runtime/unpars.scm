@@ -345,7 +345,8 @@ USA.
 		 non-canon-symbol-quoted))
 	    (fix:= (string-length s) 0)
 	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
-		 (string->number s)))
+		 (string->number s))
+	    (looks-like-keyword? s))
 	(begin
 	  (*unparse-char #\|)
 	  (let ((end (string-length s)))
@@ -364,6 +365,17 @@ USA.
 			(*unparse-substring s start end))))))
 	  (*unparse-char #\|))
 	(*unparse-string s))))
+
+(define (looks-like-keyword? string)
+  (case (environment-lookup *environment* '*KEYWORD-STYLE*)
+    ((BOTH) 
+     (or (char=? (string-ref string 0) #\:)
+	 (char=? (string-ref string (- (string-length string) 1)) #\:)))
+    ((CL)
+     (char=? (string-ref string 0) #\:))
+    ((DSSSL SRFI-88)
+     (char=? (string-ref string (- (string-length string) 1)) #\:))
+    (else #f)))
 
 (define (unparse/character character)
   (if (or *slashify?*

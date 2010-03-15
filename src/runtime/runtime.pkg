@@ -276,6 +276,13 @@ USA.
 	  int:remainder
 	  int:zero?))
 
+(define-package (runtime keyword)
+  (files "keyword")
+  (parent (runtime))
+  (export ()
+	  *keyword-style*
+	  ))
+
 (define-package (runtime miscellaneous-global)
   (files "global")
   (parent (runtime))
