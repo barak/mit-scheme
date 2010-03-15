@@ -223,13 +223,42 @@ USA.
     (if quoted?
 	(string->symbol string)
 	(or (string->number string (db-radix db))
+	    (check-for-keyword string (db-keyword-style db))
 	    (string->symbol string)))))
 
 (define (handler:symbol port db ctx char)
   ctx
   (receive (string quoted?) (parse-atom port db (list char))
-    quoted?
-    (string->symbol string)))
+    (if quoted?
+	(string->symbol string)
+	(or (check-for-keyword string (db-keyword-style db))
+	    (string->symbol string)))))
+
+;; It'd be nice to have keyword objects work as part of the
+;; parser-table, but not everyone does keywords the same way
+;; (leading vs. trailing), so we'll just to check at the
+;; point when a symbol is being created.
+(define (check-for-keyword string style)
+  (case style
+    ((BOTH)
+     (cond ((and (> (string-length string) 0)
+		 (char=? (string-ref string 0) #\:))
+	    (string->keyword (string-tail string 1)))
+	   ((and (> (string-length string) 0)
+		 (char=? (string-ref string (- (string-length string) 1)) #\:))
+	    (string->keyword (string-head string (- (string-length string) 1))))
+	   (else #f)))
+    ((CL)
+     (if (and (> (string-length string) 0)
+	      (char=? (string-ref string 0) #\:))
+	 (string->keyword (string-tail string 1))
+	 #f))
+    ((DSSSL SRFI-88)
+     (if (and (> (string-length string) 0)
+	      (char=? (string-ref string (- (string-length string) 1)) #\:))
+	 (string->keyword (string-head string (- (string-length string) 1)))
+	 #f))
+    (else #f)))
 
 (define (handler:number port db ctx char1 char2)
   ctx
@@ -605,6 +634,7 @@ USA.
   (canonicalize-symbols? #f read-only #t)
   (associate-positions? #f read-only #t)
   (parser-table #f read-only #t)
+  (keyword-style #f read-only #t)
   (shared-objects #f read-only #t)
   (get-position #f read-only #t)
   (discretionary-write-char #f read-only #t)
@@ -622,6 +652,7 @@ USA.
 	     (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
 	     (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
 	     (environment-lookup environment '*PARSER-TABLE*)
+	     (environment-lookup environment '*KEYWORD-STYLE*)
 	     (make-shared-objects)
 	     (position-operation port environment)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
