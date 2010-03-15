@@ -57,15 +57,9 @@ USA.
   '(NULL-SEQUENCE))
 
 (define (cons-sequence action seq)
-  (cond ((object-type? sequence-2-type seq)
-	 (&typed-triple-cons sequence-3-type
-			     action
-			     (&pair-car seq)
-			     (&pair-cdr seq)))
-	((eq? seq null-sequence)
-	 action)
-	(else
-	 (&typed-pair-cons sequence-2-type action seq))))
+  (if (eq? seq null-sequence)
+      action
+      (&typed-pair-cons sequence-2-type action seq)))
 
 ;;;; Scanning
 
@@ -168,10 +162,12 @@ USA.
 		 (unscan-loop names** (&triple-third body)
 		   (lambda (names*** body***)
 		     (receiver names***
-			       (&typed-triple-cons sequence-3-type
-						   body*
-						   body**
-						   body***)))))))))
+			       (&typed-pair-cons sequence-2-type
+						 body*
+						 (&typed-pair-cons
+						  sequence-2-type
+						  body**
+						  body***))))))))))
 	(else
 	 (receiver names
 		   body))))
