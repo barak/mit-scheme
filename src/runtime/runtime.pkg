@@ -281,7 +281,11 @@ USA.
   (parent (runtime))
   (export ()
 	  *keyword-style*
-	  ))
+	  keyword?
+	  keyword->string
+	  string->keyword
+	  )
+  (initialization (initialize-package!)))
 
 (define-package (runtime miscellaneous-global)
   (files "global")

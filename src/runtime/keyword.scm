@@ -26,9 +26,46 @@ USA.
 
 (declare (usual-integrations))
 
+(define (initialize-package!)
+  (set! *keyword-intern-table* (make-string-hash-table)))
+
+(define *keyword-intern-table*)
 
 ;;; *KEYWORD-STYLE*
 ;;
 ;;  Should be one of DSSSL CL BOTH SRFI-88 or #f.
 (define *keyword-style* #f)
 
+(define-structure (keyword
+		   (constructor %make-keyword (name))
+		   (conc-name keyword/)
+		   (print-procedure (lambda (state object)
+				      (keyword-unparser state object))))
+  (name #f read-only #t))
+
+(define-guarantee keyword "Keyword object")
+
+(define (keyword-unparser state object)
+  (let ((port (unparser-state/port state)))
+    (case *keyword-style*
+      ((BOTH CL)
+       (write-char #\: port)
+       (write (keyword/name object) port))
+      ((DSSSL SRFI-88) 
+       (write (keyword/name object) port)
+       (write-char #\: port))
+      (else
+       (write-string "#[keyword " port)
+       (write (keyword/name object) port)
+       (write-string "]" port)))))
+
+(define (keyword->string keyword)
+  (guarantee-keyword keyword 'keyword->string)
+  (symbol->string (keyword/name keyword)))
+
+(define (string->keyword string)
+  (guarantee-string string 'string->keyword)
+  (or (hash-table/get *keyword-intern-table* string #f)
+      (let ((new-keyword (%make-keyword (string->symbol string))))
+	(hash-table/put! *keyword-intern-table* (string-copy string) new-keyword)
+	new-keyword)))
