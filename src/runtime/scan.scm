@@ -182,16 +182,18 @@ USA.
   (if (and (null? names)
 	   (null? declarations))
       body
-      (&typed-triple-cons
-       sequence-3-type
+      (&typed-pair-cons
+       sequence-2-type
        (vector open-block-tag names declarations)
-       (if (null? names)
-	   '()
-	   (make-sequence
-	    (map (lambda (name)
-		   (make-definition name (make-unassigned-reference-trap)))
-		 names)))
-       body)))
+       (&typed-pair-cons
+	sequence-2-type
+	(if (null? names)
+	    '()
+	    (make-sequence
+	     (map (lambda (name)
+		    (make-definition name (make-unassigned-reference-trap)))
+		  names)))
+	body))))
 
 (define (open-block? object)
   (or (and (object-type? sequence-2-type object)
