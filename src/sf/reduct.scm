@@ -247,7 +247,7 @@ Examples:
      (declare (integrate null))
      (lambda (block value combiner)
        (combiner block value (null block))))))
-  
+
 (define (->mapper-combiner mapper)
   (handle-variable mapper
    (lambda (mapper)
