@@ -144,6 +144,7 @@ USA.
       (store-char special #\[ handler:hashed-object)
       (store-char initial #\) handler:close-parenthesis)
       (store-char initial #\] handler:close-bracket)
+      (store-char initial #\: handler:prefix-keyword)
       (store-char initial #\; handler:comment)
       (store-char special #\| handler:multi-line-comment)
       (store-char special #\; handler:expression-comment)
@@ -219,46 +220,31 @@ USA.
 
 (define (handler:atom port db ctx char)
   ctx
-  (receive (string quoted?) (parse-atom port db (list char))
-    (if quoted?
-	(string->symbol string)
-	(or (string->number string (db-radix db))
-	    (check-for-keyword string (db-keyword-style db))
-	    (string->symbol string)))))
+  (receive (string quoted? final) (parse-atom port db (list char))
+    (cond ((and (eq? final #\:)
+		(eq? (db-keyword-style db) 'SUFFIX))
+	   (string->keyword (string-head string (- (string-length string) 1))))
+	  (quoted? (string->symbol string))
+	  (else (or (string->number string (db-radix db))
+		    (string->symbol string))))))
 
 (define (handler:symbol port db ctx char)
   ctx
-  (receive (string quoted?) (parse-atom port db (list char))
-    (if quoted?
-	(string->symbol string)
-	(or (check-for-keyword string (db-keyword-style db))
-	    (string->symbol string)))))
-
-;; It'd be nice to have keyword objects work as part of the
-;; parser-table, but not everyone does keywords the same way
-;; (leading vs. trailing), so we'll just to check at the
-;; point when a symbol is being created.
-(define (check-for-keyword string style)
-  (case style
-    ((BOTH)
-     (cond ((and (> (string-length string) 0)
-		 (char=? (string-ref string 0) #\:))
-	    (string->keyword (string-tail string 1)))
-	   ((and (> (string-length string) 0)
-		 (char=? (string-ref string (- (string-length string) 1)) #\:))
-	    (string->keyword (string-head string (- (string-length string) 1))))
-	   (else #f)))
-    ((CL)
-     (if (and (> (string-length string) 0)
-	      (char=? (string-ref string 0) #\:))
-	 (string->keyword (string-tail string 1))
-	 #f))
-    ((DSSSL SRFI-88)
-     (if (and (> (string-length string) 0)
-	      (char=? (string-ref string (- (string-length string) 1)) #\:))
-	 (string->keyword (string-head string (- (string-length string) 1)))
-	 #f))
-    (else #f)))
+  (receive (string quoted? final) (parse-atom port db (list char))
+    (declare (ignore quoted?))
+    (if (and (eq? final #\:)
+	     (eq? (db-keyword-style db) 'SUFFIX))
+	(string->keyword (string-head string (- (string-length string) 1)))
+	(string->symbol string))))
+
+(define (handler:prefix-keyword port db ctx char)
+  (if (eq? (db-keyword-style db) 'PREFIX)
+      (receive (string quoted? final) (parse-atom port db '())
+	(declare (ignore quoted? final))
+	(string->keyword string))
+      ;; If prefix-style keywords are not in use, just
+      ;; tail call the symbol handler.
+      (handler:symbol port db ctx char)))
 
 (define (handler:number port db ctx char1 char2)
   ctx
@@ -304,38 +290,49 @@ USA.
 	    (set! prefix (cdr prefix))
 	    unspecific)
 	  (%read-char port db)))
-    (let read-unquoted ((quoted? #f))
-      (let ((char (%peek)))
-	(if (or (eof-object? char)
-		(atom-delimiter? char))
-	    (if quoting?
-		(values (get-output-string port*) quoted?)
-		(get-output-string port*))
-	    (begin
-	      (guarantee-constituent char)
-	      (%discard)
-	      (cond ((char=? char #\|)
-		     (if quoting?
-			 (let read-quoted ()
-			   (let ((char (%read)))
-			     (if (char=? char #\|)
-				 (read-unquoted #t)
-				 (begin
-				   (%write-char (if (char=? char #\\)
-						   (%read)
-						   char)
-					       port*)
-				   (read-quoted)))))
-			 (error:illegal-char char)))
-		    ((char=? char #\\)
-		     (if quoting?
-			 (begin
-			   (%write-char (%read) port*)
-			   (read-unquoted #t))
-			 (error:illegal-char char)))
-		    (else
-		     (%write-char (%canon char) port*)
-		     (read-unquoted quoted?)))))))))
+
+    ;; main loop
+    ;; the quoted? flag indicates if we've ever
+    ;; quoted anything in the atom (to disqualify it
+    ;; from being a number).
+    ;; the previous-char is used to detect trailing colons
+    ;; for srfi-88 style keywords.
+    (let read-unquoted ((quoted? #f)
+			(previous-char #f)
+			(char (%peek)))
+      (if (or (eof-object? char)
+	      (atom-delimiter? char))
+	  (if quoting?
+	      (values (get-output-string port*) quoted? previous-char)
+	      (get-output-string port*))
+	  (begin
+	    (guarantee-constituent char)
+	    (%discard)
+	    (cond ((char=? char #\|)
+		   (if quoting?
+		       (let read-quoted ()
+			 (let ((char (%read)))
+			   (if (char=? char #\|)
+			       (read-unquoted #t char (%peek))
+			       (begin
+				 (%write-char (if (char=? char #\\)
+						  (%read)
+						  char)
+					      port*)
+				 (read-quoted)))))
+		       (error:illegal-char char)))
+		  ((char=? char #\\)
+		   (if quoting?
+		       (begin
+			 (%write-char (%read) port*)
+			 ;; Forget previous char so
+			 ;; that quoting a final colon will
+			 ;; suppress it from being a keyword.
+			 (read-unquoted #t #f (%peek)))
+		       (error:illegal-char char)))
+		  (else
+		   (%write-char (%canon char) port*)
+		   (read-unquoted quoted? char (%peek)))))))))
 
 (define (handler:list port db ctx char)
   ctx char
