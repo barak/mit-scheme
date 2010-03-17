@@ -2433,6 +2433,10 @@ USA.
   (files "lambda-list")
   (parent (runtime))
   (export ()
+	  error:not-mit-lambda-list
+	  error:not-r4rs-lambda-list
+	  guarantee-mit-lambda-list
+	  guarantee-r4rs-lambda-list
 	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
