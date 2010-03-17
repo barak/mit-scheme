@@ -125,7 +125,7 @@ USA.
   ((ucode-primitive with-interrupt-mask)
    (fix:and limit-mask (get-interrupt-enables))
    procedure))
-
+
 (define (object-constant? object)
   ((ucode-primitive constant?) object))
 
@@ -160,7 +160,9 @@ USA.
 (define (run-boot-inits! environment)
   (and (not (lexical-unreferenceable? environment saved-boot-inits))
        (let ((inits
-	      ((ucode-primitive lexical-reference) environment saved-boot-inits)))
+	      ((ucode-primitive lexical-reference)
+	       environment
+	       saved-boot-inits)))
 	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
 	 (for-each (lambda (init) (init))
 		   inits))))

@@ -92,7 +92,7 @@ USA.
 	       (fix:xor (vector-8b-ref buf k)
 			(vector-ref s (inc-mod
 				       (fix:+ (fix:1+ (vector-ref s i))
-					      (vector-ref s j)) 
+					      (vector-ref s j))
 				       ts))))
 	      (loop (fix:1+ k) i j)))
 	  (begin
@@ -107,7 +107,7 @@ USA.
      (vector-ref '#("Mon" "Tue" "Wed" "Thu" "Fri" "Sat" "Sun")
 		 (decoded-time/day-of-week the-time))
      " "
-     (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun" 
+     (vector-ref '#("Jan" "Feb" "Mar" "Apr" "May" "Jun"
 			  "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
 	       (-1+ (decoded-time/month the-time)))
      " "

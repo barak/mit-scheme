@@ -62,7 +62,7 @@ USA.
 
 (define (make-<=-operator <)
   (make-comparison-operator (lambda (x y) (not (< y x))) 'make-<=-operator))
-  
+
 (define (make->=-operator <)
   (make-comparison-operator (lambda (x y) (not (< x y))) 'make->=-operator))
 
@@ -125,7 +125,7 @@ USA.
    binary-invert-op))
 
 
-(define (make-arithmetic-package package-name . operations) 
+(define (make-arithmetic-package package-name . operations)
   (lambda (m . opt)
     (cond ((eq? m 'bound-names) (map car operations))
 	  ((eq? m 'package-name) package-name)

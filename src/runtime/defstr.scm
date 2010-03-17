@@ -28,7 +28,7 @@ USA.
 
 (declare (usual-integrations))
 
-#| 
+#|
 
 This macro works like the Common Lisp `defstruct' with the following
 differences:

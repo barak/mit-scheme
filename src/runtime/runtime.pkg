@@ -2911,7 +2911,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime primitive-io)
-  (files "io") 
+  (files "io")
   (parent (runtime))
   (export ()
 	  all-dld-handles
@@ -5048,7 +5048,7 @@ USA.
 	  rexp-line-end
 	  rexp-line-start
 	  rexp-n*
-	  rexp-n*m	  
+	  rexp-n*m
 	  rexp-n*n
 	  rexp-not-syntax-char
 	  rexp-not-word-char

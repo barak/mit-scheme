@@ -487,7 +487,7 @@ USA.
    (RUNTIME TRANSCRIPT)
    (RUNTIME STRING-I/O-PORT)
    (RUNTIME USER-INTERFACE)
-   ;; These MUST be done before (RUNTIME PATHNAME) 
+   ;; These MUST be done before (RUNTIME PATHNAME)
    ;; Typically only one of them is loaded.
    (RUNTIME PATHNAME UNIX)
    (RUNTIME PATHNAME DOS)

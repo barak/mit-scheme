@@ -191,7 +191,7 @@ USA.
 	  (if (fix:zero? n)
 	      (make-compiled-regexp string case-fold?)
 	      (let ((result
-		     (string-allocate 
+		     (string-allocate
 		      (let ((qr (integer-divide n 255)))
 			(fix:+ (fix:* 257 (integer-divide-quotient qr))
 			       (let ((r (integer-divide-remainder qr)))

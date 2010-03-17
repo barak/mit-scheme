@@ -205,7 +205,7 @@ USA.
 (define (dummy-reduction? reduction)
   (and (false? (reduction-expression reduction))
        (eq? (ucode-return-address pop-from-compiled-code)
-	    (reduction-environment reduction))))				 
+	    (reduction-environment reduction))))
 
 (define (record-dummy-reduction-in-history! history)
   (record-evaluation-in-history!

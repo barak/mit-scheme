@@ -425,6 +425,4 @@ USA.
 			     #f)))))
 		  (else
 		   (loop (entity-procedure p1))))
-	    
-	    
 	    #f))))

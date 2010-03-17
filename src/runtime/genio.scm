@@ -1222,11 +1222,11 @@ USA.
   #x0127 #x00B2 #x00B3 #x00B4 #x00B5 #x0125 #x00B7 #x00B8
   #x0131 #x015F #x011F #x0135 #x00BD #f     #x017C #x00C0
   #x00C1 #x00C2 #f     #x00C4 #x010A #x0108 #x00C7 #x00C8
-  #x00C9 #x00CA #x00CB #x00CC #x00CD #x00CE #x00CF #f    
+  #x00C9 #x00CA #x00CB #x00CC #x00CD #x00CE #x00CF #f
   #x00D1 #x00D2 #x00D3 #x00D4 #x0120 #x00D6 #x00D7 #x011C
   #x00D9 #x00DA #x00DB #x00DC #x016C #x015C #x00DF #x00E0
   #x00E1 #x00E2 #f     #x00E4 #x010B #x0109 #x00E7 #x00E8
-  #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f    
+  #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
 
@@ -1268,17 +1268,17 @@ USA.
   '(ISO_8859-5:1988 ISO-IR-144 ISO_8859-5 CYRILLIC CSISOLATINCYRILLIC))
 
 (define-8-bit-codecs iso-8859-6 #xA1
-  #f     #f     #f     #x00A4 #f     #f     #f     #f    
-  #f     #f     #f     #x060C #x00AD #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #x061B #f     #f     #f     #x061F #f    
+  #f     #f     #f     #x00A4 #f     #f     #f     #f
+  #f     #f     #f     #x060C #x00AD #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #x061B #f     #f     #f     #x061F #f
   #x0621 #x0622 #x0623 #x0624 #x0625 #x0626 #x0627 #x0628
   #x0629 #x062A #x062B #x062C #x062D #x062E #x062F #x0630
   #x0631 #x0632 #x0633 #x0634 #x0635 #x0636 #x0637 #x0638
   #x0639 #x063A #f     #f     #f     #f     #f     #x0640
   #x0641 #x0642 #x0643 #x0644 #x0645 #x0646 #x0647 #x0648
   #x0649 #x064A #x064B #x064C #x064D #x064E #x064F #x0650
-  #x0651 #x0652 #f     #f     #f     #f     #f     #f    
+  #x0651 #x0652 #f     #f     #f     #f     #f     #f
   #f     #f     #f     #f     #f     #f     #f)
 
 (define-coding-aliases 'ISO-8859-6
@@ -1307,10 +1307,10 @@ USA.
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00D7 #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
   #x00B1 #x00B2 #x00B3 #x00B4 #x00B5 #x00B6 #x00B7 #x00B8
-  #x00B9 #x00F7 #x00BB #x00BC #x00BD #x00BE #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
+  #x00B9 #x00F7 #x00BB #x00BC #x00BD #x00BE #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
   #f     #f     #f     #f     #f     #f     #x2017 #x05D0
   #x05D1 #x05D2 #x05D3 #x05D4 #x05D5 #x05D6 #x05D7 #x05D8
   #x05D9 #x05DA #x05DB #x05DC #x05DD #x05DE #x05DF #x05E0

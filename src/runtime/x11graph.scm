@@ -485,7 +485,7 @@ USA.
 	(let ((xw
 	       (x-graphics-open-window
 		 (x-display/xd display)
-		 (if (default-object? geometry) 
+		 (if (default-object? geometry)
 		     x-graphics-default-geometry
 		     geometry)
 		 (vector #f resource class))))
@@ -669,7 +669,7 @@ USA.
 		       (->flonum angle-start)
 		       (->flonum angle-sweep)
 		       fill?))
-   
+
 (define (x-graphics/draw-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
 		       (->flonum x)
@@ -679,7 +679,7 @@ USA.
 		       0.
 		       360.
 		       #f))
-   
+
 (define (x-graphics/fill-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
 		       (->flonum x)
@@ -689,11 +689,11 @@ USA.
 		       0.
 		       360.
 		       #t))
-   
+
 (define (x-graphics/fill-polygon device point-vector)
   (x-graphics-fill-polygon (x-graphics-device/xw device)
 			   (vector-map ->flonum point-vector)))
-   
+
 (define (x-graphics/copy-area device source-x-left source-y-top width height
 			      destination-x-left destination-y-top)
   (let ((xw (x-graphics-device/xw device)))

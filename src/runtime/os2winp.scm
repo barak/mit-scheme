@@ -419,7 +419,7 @@ USA.
 (define-integrable ROP_DSTINVERT   #x55)
 (define-integrable ROP_ZERO        #x00)
 (define-integrable ROP_ONE         #xFF)
-   
+
 ;; Constants for OS2PS-BITBLT options argument
 (define-integrable BBO_OR            0)
 (define-integrable BBO_AND           1)

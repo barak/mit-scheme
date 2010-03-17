@@ -83,7 +83,7 @@ USA.
 	  (set-cdr! bound old)
 	  value))
       (action argument)))
-	   
+
 (define (unsyntax scode)
   (fluid-let ((bound (list #F '())))
     (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode))))
@@ -241,7 +241,7 @@ USA.
 	       unexpand-disjunction
 	       (lambda (predicate alternative)
 		 (list (unsyntax-object predicate)
-		       (unsyntax-object alternative)))))))	   
+		       (unsyntax-object alternative)))))))
 
 (define (unexpand-disjunction predicate alternative)
   `(,(unsyntax-object predicate)

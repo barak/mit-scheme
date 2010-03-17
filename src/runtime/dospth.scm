@@ -35,7 +35,7 @@ USA.
   ;;   must be quoted by another.
   (char-set #\\ #\/))
 
-(define sub-directory-delimiter-string 
+(define sub-directory-delimiter-string
   "\\")
 
 (define init-file-name "scheme.ini")
@@ -206,7 +206,7 @@ USA.
 	 "")
 	((pair? directory)
 	 (string-append
-	  (if (eq? (car directory) 'ABSOLUTE) 
+	  (if (eq? (car directory) 'ABSOLUTE)
               sub-directory-delimiter-string
               "")
 	  (let loop ((directory (cdr directory)))

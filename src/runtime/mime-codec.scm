@@ -691,7 +691,7 @@ USA.
 (define binhex40-header-regexp
   "[\r\n\t ]*(This file must be converted with BinHex.*[\r\n][\r\n\t ]*:")
 
-(define (decode-binhex40-decoding context string start end)   
+(define (decode-binhex40-decoding context string start end)
   (let ((buffer (binhex40-decoding-context/input-buffer context)))
     (let loop
 	((start start)

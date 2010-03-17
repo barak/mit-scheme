@@ -43,7 +43,7 @@ USA.
 ;;   $MITSCHEME_LIBRARY_PATH/runtime/) into the environment of the
 ;;   package named PACKAGE-NAME, and then evaluates EXPR in that load
 ;;   environment. If EXPR is #F of course evaluating it has no effect.
-;; 
+;;
 ;; (FURTHER-LOAD-OPTIONS EXPR)
 ;;   EXPR is the place to look next for the load options.  Useful objects
 ;;   are STANDARD-LOAD-OPTIONS (load options supplied with the

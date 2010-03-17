@@ -165,7 +165,7 @@ USA.
   (hook/gc-finish start-value space-remaining))
 
 (define gc-boot-loading?)
-  
+
 (define gc-boot-death-message
   "\n;; Aborting boot-load: Not enough memory to load -- Use -large option.\n")
 

@@ -64,7 +64,7 @@ USA.
   (pq-tty 1)
   (pq-unescape-bytea 1)
   (pq-user 1))
-
+
 (define-syntax define-enum
   (sc-macro-transformer
    (lambda (form environment)
@@ -262,7 +262,7 @@ USA.
 (define (poll-pgsql-reset connection)
   (index->name (pq-reset-poll (connection->handle connection))
 	       postgres-polling-status))
-
+
 (define-syntax define-connection-accessor
   (sc-macro-transformer
    (lambda (form environment)

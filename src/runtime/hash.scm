@@ -149,7 +149,7 @@ USA.
   (or (eq? x #f)
       (object-hash x
 		   (if (default-object? table) default-hash-table table)
-		   #f)))  
+		   #f)))
 
 ;;; This can cons a bit when interpreted.
 

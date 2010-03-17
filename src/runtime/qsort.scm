@@ -36,7 +36,7 @@ USA.
 (define (quick-sort! vector predicate)
   (define (outer-loop l r)
     (if (fix:> r l)
-	(if (fix:= r (fix:+ l 1)) 
+	(if (fix:= r (fix:+ l 1))
 	    (if (predicate (vector-ref vector r)
 			   (vector-ref vector l))
 		(exchange! l r))

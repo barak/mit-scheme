@@ -1,6 +1,8 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2010 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,7 +29,8 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! *keyword-intern-table* (make-string-hash-table)))
+  (set! *keyword-intern-table* (make-string-hash-table))
+  unspecific)
 
 (define *keyword-intern-table*)
 
@@ -51,7 +54,7 @@ USA.
       ((BOTH CL)
        (write-char #\: port)
        (write (keyword/name object) port))
-      ((DSSSL SRFI-88) 
+      ((DSSSL SRFI-88)
        (write (keyword/name object) port)
        (write-char #\: port))
       (else
@@ -67,5 +70,7 @@ USA.
   (guarantee-string string 'string->keyword)
   (or (hash-table/get *keyword-intern-table* string #f)
       (let ((new-keyword (%make-keyword (string->symbol string))))
-	(hash-table/put! *keyword-intern-table* (string-copy string) new-keyword)
+	(hash-table/put! *keyword-intern-table*
+			 (string-copy string)
+			 new-keyword)
 	new-keyword)))

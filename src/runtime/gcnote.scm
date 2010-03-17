@@ -47,7 +47,7 @@ USA.
 		    default/record-statistic!)
 		(error "Can't grab GC statistics hook"))))
     unspecific))
-    
+
 (define (with-gc-notification! notify? thunk)
   (fluid-let ((hook/record-statistic!
 	       (if notify? gc-notification default/record-statistic!)))
@@ -126,7 +126,7 @@ USA.
 		     #d10))
 		"%)")
 	       7))))))
-	     
+
     (string-append ";GC #"
 		   (number->string (gc-statistic/meter statistic))
 		   ": took: "

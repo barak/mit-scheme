@@ -438,7 +438,7 @@ USA.
 (define (port/operation port name)
   (guarantee-port port 'port/operation)
   (port/%operation port name))
-
+
 (define-syntax define-port-operation
   (sc-macro-transformer
    (lambda (form environment)

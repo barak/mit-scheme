@@ -368,7 +368,7 @@ USA.
 
 (define (looks-like-keyword? string)
   (case (environment-lookup *environment* '*KEYWORD-STYLE*)
-    ((BOTH) 
+    ((BOTH)
      (or (char=? (string-ref string 0) #\:)
 	 (char=? (string-ref string (- (string-length string) 1)) #\:)))
     ((CL)

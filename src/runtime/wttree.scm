@@ -64,7 +64,7 @@ reference:
   (difference  #F read-only true)
   (subset?     #F read-only true)
   (rank        #F read-only true)
-)  
+)
 
 ;;;  Tree representation
 ;;;
@@ -243,7 +243,7 @@ reference:
   (define (node/rank k node rank)
     (cond ((empty? node)             #f)
 	  ((key<? k (node/k node))  (node/rank k (node/l node) rank))
-	  ((key>? k (node/k node))  
+	  ((key>? k (node/k node))
 	   (node/rank k (node/r node)
 		        (fix:+ 1 (fix:+ rank (node/size (node/l node))))))
 	  (else                     (fix:+ rank (node/size (node/l node))))))
@@ -305,7 +305,7 @@ reference:
 	  ((key<? (node/k node) x)
 	   (node/split-gt (node/r node) x))
 	  ((key<? x (node/k node))
-	   (node/concat3 (node/k node) (node/v node) 
+	   (node/concat3 (node/k node) (node/v node)
 			 (node/split-gt (node/l node) x) (node/r node)))
 	  (else (node/r node))))
 
@@ -431,7 +431,7 @@ reference:
       (cond ((null? alist)  node)
 	    ((pair? alist)  (loop (cdr alist)
 				  (node/add node (caar alist) (cdar alist))))
-	    (else           
+	    (else
 	     (error:wrong-type-argument alist "alist" 'alist->tree))))
     (%make-wt-tree my-type (loop alist empty)))
 
@@ -468,7 +468,7 @@ reference:
      ))
 
   my-type)
-	
+
 
 
 ;;;

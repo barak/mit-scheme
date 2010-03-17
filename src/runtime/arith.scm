@@ -492,7 +492,7 @@ USA.
 	  (if (< sl 10)
 	      (print-medium value split-factor split-digits)
 	      (make-power-stack value split-factor '() split-digits)))))
-  
+
   (cond ((not (int:integer? number))
 	 (error:wrong-type-argument number #f 'NUMBER->STRING))
 	((int:negative? number)
@@ -850,7 +850,7 @@ USA.
 	    (lambda (n e)
 	      (flo:denormalize (integer->flonum n #b11) e))))
 	(step1 n d))))
-  
+
   (define (slow-method n d)
     (if (int:positive? n)
 	(n>0 n d)

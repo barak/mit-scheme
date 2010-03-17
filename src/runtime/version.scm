@@ -174,7 +174,7 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.")
 (define (write-words words line-prefix indentation port)
   (let ((wrap-column (- (output-port/x-size port) 5))
 	(space " "))
-    
+
     (define (write-first-word words indent?)
       (write-string line-prefix port)
       (if indent? (write-string indentation port))

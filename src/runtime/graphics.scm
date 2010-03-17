@@ -452,8 +452,8 @@ USA.
 	    (fill-from-byte-vector (operation 'fill-from-byte-vector)))
 	(if (not (null? operations))
 	    (error "Extra image type operations: " operations)
-	    (%make-image-type create destroy 
-			      width height 
+	    (%make-image-type create destroy
+			      width height
 			      draw draw-subimage fill-from-byte-vector))))))
 
 (define-structure (image (conc-name image/) (constructor %make-image))

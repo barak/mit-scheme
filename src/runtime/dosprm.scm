@@ -404,7 +404,7 @@ USA.
 		 (close-port port)
 		 (set! port #f)
 		 unspecific))))))))
-	       
+
 (define console-channel-descriptor)
 
 (define (cache-console-channel-descriptor!)

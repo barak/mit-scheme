@@ -71,7 +71,7 @@ USA.
 	     (lambda (port*)
 	       (recvr
 		(channel-descriptor
-		 (port/input-channel port*))))))))	
+		 (port/input-channel port*))))))))
 
       (define (with-output-channel in out)
 	(cond ((default-object? stderr)

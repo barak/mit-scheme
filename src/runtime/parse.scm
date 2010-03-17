@@ -233,7 +233,7 @@ USA.
 	(string->symbol string)
 	(or (check-for-keyword string (db-keyword-style db))
 	    (string->symbol string)))))
-
+
 ;; It'd be nice to have keyword objects work as part of the
 ;; parser-table, but not everyone does keywords the same way
 ;; (leading vs. trailing), so we'll just to check at the

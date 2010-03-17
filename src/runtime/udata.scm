@@ -158,7 +158,7 @@ contains constants derived from the source program.
   (compiled-code-address->block (fasload filename)))
 
 (define (compiled-code-block/manifest-closure? block)
-  (object-type? 
+  (object-type?
    (ucode-type manifest-closure)
    ;; This combination returns an unsafe object, but since it
    ;; is used as an argument to a primitive, I can get away

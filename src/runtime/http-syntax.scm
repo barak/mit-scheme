@@ -1189,7 +1189,7 @@ USA.
 		    params-are-expectation?)
   write-parameters)
 
-#; 
+#;
 (define-header "From"
   ;; parser is completely different -- it's a mail address.
   ...

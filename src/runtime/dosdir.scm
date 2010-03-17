@@ -247,7 +247,7 @@ USA.
 	   (lambda (instance)
 	     (and (string? instance)
 		  (>= (string-length instance) totlen)
-		  (substring? middle instance)))))	   
+		  (substring? middle instance)))))
 
 	(else
 	 (let* ((prelen (string-length prefix))

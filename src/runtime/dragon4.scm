@@ -351,6 +351,6 @@ not much different to numbers within a few orders of magnitude of 1.
   (try 0.00499   '(absolute -3 normal) "0.")
 
 
-  (display "\n\nSuccesses: ") (display successes)  
+  (display "\n\nSuccesses: ") (display successes)
   (display "    Failures: ") (display failures))
 |#

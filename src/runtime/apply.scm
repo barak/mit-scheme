@@ -76,7 +76,7 @@ USA.
 			 (v7 (f v0 v1 v2 v3 v4 v5 v6))
 			 |#
 			   (else ((ucode-primitive apply) f a0))))))
-  
+
 (define (apply-entity-procedure self f . args)
   self					; ignored
   (apply-2 f
