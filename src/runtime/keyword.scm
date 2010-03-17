@@ -36,7 +36,7 @@ USA.
 
 ;;; *KEYWORD-STYLE*
 ;;
-;;  Should be one of DSSSL CL BOTH SRFI-88 or #f.
+;;  Should be one of PREFIX, SUFFIX, or #F.
 (define *keyword-style* #f)
 
 (define-structure (keyword
@@ -44,6 +44,9 @@ USA.
 		   (conc-name keyword/)
 		   (print-procedure (lambda (state object)
 				      (keyword-unparser state object))))
+  ;; logically, the name is a string, but
+  ;; we store it as a symbol so that the standard
+  ;; symbol-quoting conventions work.
   (name #f read-only #t))
 
 (define-guarantee keyword "Keyword object")
@@ -51,10 +54,10 @@ USA.
 (define (keyword-unparser state object)
   (let ((port (unparser-state/port state)))
     (case *keyword-style*
-      ((BOTH CL)
+      ((PREFIX)
        (write-char #\: port)
        (write (keyword/name object) port))
-      ((DSSSL SRFI-88)
+      ((SUFFIX)
        (write (keyword/name object) port)
        (write-char #\: port))
       (else
