@@ -199,11 +199,7 @@ struct xwindow
   int move_offset_x;
   int move_offset_y;
 
-#ifdef __GNUC__
-  void * extra [0];
-#else
-  void * extra [1];
-#endif
+  void * extra;
 };
 
 #define XW_ALLOCATION_INDEX(xw) ((xw) -> allocation_index)
