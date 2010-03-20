@@ -39,7 +39,7 @@ if test -z "${MACHINE}"; then
     exit 1
 fi
 
-LINKS="compiler.cbf compiler.pkg compiler.sf make.com"
+LINKS="compiler.cbf compiler.pkg compiler.sf make.com make.bin"
 if test x${MACHINE} = xC; then
     LINKS="${LINKS} make.so"
 fi

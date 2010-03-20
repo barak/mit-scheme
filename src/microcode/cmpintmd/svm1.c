@@ -30,7 +30,6 @@ USA.
 #include "errors.h"
 #include "svm1-defns.h"
 
-static unsigned int read_u16 (insn_t *);
 static void write_u16 (unsigned int, insn_t *);
 
 bool
@@ -197,7 +196,7 @@ write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
   return (false);
 }
 
-static unsigned int
+unsigned int
 read_u16 (insn_t * address)
 {
   return

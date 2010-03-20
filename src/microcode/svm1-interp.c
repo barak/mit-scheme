@@ -27,6 +27,7 @@ USA.
 
 #include "scheme.h"
 #include "svm1-defns.h"
+#include "cmpintmd/svm1.h"
 
 #define SVM1_REG_SP 0
 
@@ -663,15 +664,12 @@ DEFINE_INST (enter_closure)
 {
   DECODE_SVM1_INST_ENTER_CLOSURE (index);
   {
-    byte_t * block = (PC - (SIZEOF_SCHEME_OBJECT + ((index + 1) * 3)));
-    unsigned int count
-      = ((((unsigned int) (block[1])) << 8)
-	 | ((unsigned int) (block[0])));
+    byte_t * block = (PC - (CLOSURE_COUNT_SIZE
+			    + ((index + 1) * CLOSURE_ENTRY_SIZE)));
+    unsigned int count = (read_u16 (block));
     SCHEME_OBJECT * targets
-      = (((SCHEME_OBJECT *) block)
-	 + (1
-	    + (((count * 3) + (SIZEOF_SCHEME_OBJECT - 1))
-	       / SIZEOF_SCHEME_OBJECT)));
+      = (skip_compiled_closure_padding
+	 (block + (CLOSURE_COUNT_SIZE + (count * CLOSURE_ENTRY_SIZE))));
     push_object (MAKE_CC_BLOCK (((SCHEME_OBJECT *) block) - 1));
     NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
   }

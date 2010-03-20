@@ -25,7 +25,10 @@ USA.
 
 ;;;; Script to incrementally syntax the compiler
 
-(load-option 'CREF)
+(with-loader-base-uri "../lib"		;Use the accompanying sf and cref.
+  (lambda ()
+    (load-option 'CREF)
+    (load-option 'SF)))
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
@@ -39,7 +42,7 @@ USA.
 (if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
     ;; Refer to the cref package model (compiler.pkg) for syntax/load
     ;; environments.
-    (let* ((xref (begin (load-option 'CREF)(->environment '(cross-reference))))
+    (let* ((xref (->environment '(cross-reference)))
 
 	   ;; Assume there are no os-type-specific files or packages.
 	   (pmodel ((access read-package-model xref) "compiler" 'unix))

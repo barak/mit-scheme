@@ -23,10 +23,10 @@ USA.
 
 |#
 
-;;;; LAP Optimizer for SVM
-;;; package: (compiler lap-optimizer)
+;;;; Compiler: System Construction
 
 (declare (usual-integrations))
-
-(define (optimize-linear-lap instructions)
-  instructions)
+
+(let ((value ((load "base/make") "svm1")))
+  (set! (access compiler:compress-top-level? (->environment '(compiler))) #t)
+  value)

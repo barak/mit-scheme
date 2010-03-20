@@ -60,14 +60,7 @@ USA.
 		       (package/files (car packages)))
 		 (package/name (car packages))
 		 (loop (cdr packages)))
-	     (error "No package for file" file))))))
-
-  (define (init-packages pmodel)
-    (let* ((pathname (pmodel/pathname pmodel))
-	   (package-set (package-set-pathname pathname)))
-      (if (not (file-exists? package-set))
-	  (cref/generate-trivial-constructor pathname))
-      (construct-packages-from-file (fasload package-set))))
+	     (error "No package for file" filename))))))
 
   (set! source-hash (make-string-hash-table))
   (set! source-nodes

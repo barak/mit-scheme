@@ -110,7 +110,7 @@ USA.
   (type symbol-binding-type)
   (value symbol-binding-value))
 
-(define (make-symbol-table)
+(define (make-typed-symbol-table)
   (make-strong-eq-hash-table))
 
 (define (define-symbol name type value symbol-table)
@@ -121,7 +121,36 @@ USA.
 
 ;;;; Top level
 
-;;; **** where are real top-level entries? ****
+(define (init-assembler-instructions!)
+  ;; Initialize the assembler's instruction database using the
+  ;; patterns in the instruction coding type.
+  (let ((keywords '()))
+    (for-each
+      (lambda (defn)
+	(let* ((keyword (car (rt-defn-pattern defn)))
+	       (entry (assq keyword keywords)))
+	  (if entry
+	      (set-cdr! entry (cons defn (cdr entry)))
+	      (set! keywords (cons (cons keyword defn) keywords)))))
+      (rt-coding-type-defns (rt-coding-type 'instruction)))
+    (for-each
+      (lambda (keyword.defns)
+	(add-instruction!
+	 (car keyword.defns)
+	 (map (lambda (defn)
+		(let ((pattern (cdr (rt-defn-pattern defn))))
+		  ;; The matcher.
+		  (lambda (expr)	;without keyword
+		    (let ((pvals (match-pattern pattern expr
+						(make-typed-symbol-table))))
+		      (and pvals
+			   ;; The match result thunk.
+			   (lambda ()
+			     (error "cannot yet assemble" expr defn)))))))
+	      (cdr keyword.defns))))
+      keywords)))
+
+;;;(define-import add-instruction! (compiler lap-syntaxer))
 
 (define (match-rt-coding-type name expression symbol-table)
   (let loop ((defns (rt-coding-type-defns (rt-coding-type name))))
@@ -151,6 +180,52 @@ USA.
 	(lambda (rt-coding-type)
 	  (eq? (rt-coding-type-name rt-coding-type) name)))
       (error:bad-range-argument name 'RT-CODING-TYPE)))
+
+;;;; Assembler Machine Dependencies
+
+(let-syntax
+    ((ucode-type
+      (sc-macro-transformer
+       (lambda (form environment)
+	 environment
+	 (apply microcode-type (cdr form))))))
+
+(define-integrable maximum-padding-length
+  ;; Instructions can be any number of bytes long.
+  ;; Thus the maximum padding is 7 bytes.
+  56)
+
+(define-integrable padding-string
+  ;; Pad with zero, the distinguished invalid opcode.
+  (unsigned-integer->bit-string 8 0))
+
+(define-integrable block-offset-width
+  ;; Block offsets are encoded words
+  16)
+
+(define maximum-block-offset
+  (- (expt 2 (-1+ block-offset-width)) 1))
+
+(define-integrable (block-offset->bit-string offset start?)
+  (unsigned-integer->bit-string block-offset-width
+				(+ (* 2 offset)
+				   (if start? 0 1))))
+
+;;; Machine dependent instruction order
+
+(define (instruction-insert! bits block position receiver)
+  (let ((l (bit-string-length bits)))
+    (bit-substring-move-right! bits 0 l block position)
+    (receiver (+ position l))))
+
+(define-integrable (instruction-initial-position block)
+  block					; ignored
+  0)
+
+(define-integrable instruction-append bit-string-append)
+
+;;; end let-syntax
+)
 
 ;;;; Patterns
 
@@ -258,261 +333,7 @@ USA.
 		  (k (reverse! expressions) pvals))))
 	(k pattern pvals))))
 
-;;;; Instructions
-
-(define-syntax define-inst
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
-	 (let ((tag (cadr form))
-	       (params (cddr form)))
-	   (let ((name (symbol-append 'INST: tag)))
-	     `(BEGIN
-		(DEFINE-INTEGRABLE (,name ,@params)
-		  (LIST (LIST ',tag ,@params)))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) INST)
-		  (EQ? (CAR INST) ',tag)))))
-	 (ill-formed-syntax form)))))
-
-(define-syntax define-unary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TARGET SOURCE)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
-(define-syntax define-generic-unary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TYPE TARGET SOURCE)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
-(define-syntax define-binary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TARGET SOURCE1 SOURCE2)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
-(define-syntax define-generic-binary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TYPE
-			     TARGET SOURCE1 SOURCE2)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
-(define-inst store size source address)
-(define-inst load size target address)
-(define-inst load-address target address)
-(define-inst load-immediate target value)
-(define-inst copy-block size size-type from to)
-
-(define (load-immediate-operand? n)
-  (or (and (exact-integer? n)
-	   (<= #x80000000 n < #x100000000))
-      (flo:flonum? n)))
-
-;; TYPE and DATUM can be constants or registers; address is a register.
-(define-inst load-pointer target type address)
-(define-inst load-non-pointer target type datum)
-
-(define-inst label label)
-(define-inst entry-point label)
-
-(define-inst jump address)
-
-(define (inst:trap n . args)
-  (list (cons* 'TRAP n args)))
-
-(define (inst:conditional-jump condition source arg3 #!optional arg4)
-  (list (cons* 'CONDITIONAL-JUMP
-	       condition
-	       source
-	       arg3
-	       (if (default-object? arg4) '() (list arg4)))))
-
-(define (inst:conditional-jump? inst)
-  (eq? (car inst) 'CONDITIONAL-JUMP))
-
-;; N-ELTS is a constant or a register.
-(define-inst flonum-header target n-elts)
-
-(define-inst datum-u8 expression)
-(define-inst datum-u16 expression)
-(define-inst datum-u32 expression)
-(define-inst datum-s8 expression)
-(define-inst datum-s16 expression)
-(define-inst datum-s32 expression)
-
-(define-generic-unary-operations
-  copy negate increment decrement abs)
-
-(define-unary-operations
-  object-type object-datum object-address
-  fixnum->integer integer->fixnum address->integer integer->address
-  not
-  sqrt round ceiling floor truncate
-  log exp cos sin tan acos asin atan
-  flonum-align flonum-length)
-
-(define-generic-binary-operations
-  + - *)
-
-(define-binary-operations
-  quotient remainder
-  lsh and andc or xor
-  max-unsigned min-unsigned
-  / atan2)
-
-;;;; Memory addressing
-
-(define-syntax define-ea
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(SYMBOL * SYMBOL) (cdr form))
-	 (let ((tag (cadr form))
-	       (params (cddr form)))
-	   (let ((name (symbol-append 'EA: tag)))
-	     `(BEGIN
-		(DEFINE-INTEGRABLE (,name ,@params)
-		  (INST-EA (,tag ,@(map (lambda (p) (list 'UNQUOTE p))
-					params))))
-		(DEFINE-INTEGRABLE (,(symbol-append name '?) EA)
-		  (AND (PAIR? EA)
-		       (EQ? (CAR EA) ',tag))))))
-	 (ill-formed-syntax form)))))
-
-(define-ea indirect base)
-(define-ea offset base offset scale)
-(define-ea indexed base offset oscale index iscale)
-(define-ea pre-decrement base scale)
-(define-ea pre-increment base scale)
-(define-ea post-decrement base scale)
-(define-ea post-increment base scale)
-(define-ea pc-relative offset)
-
-(define (memory-reference? ea)
-  (or (ea:indirect? ea)
-      (ea:offset? ea)
-      (ea:indexed? ea)
-      (ea:pre-decrement? ea)
-      (ea:pre-increment? ea)
-      (ea:post-decrement? ea)
-      (ea:post-increment? ea)
-      (ea:pc-relative? ea)))
-
-(define (ea:address label)
-  (ea:pc-relative `(- ,label *PC*)))
-
-(define (ea:stack-pop)
-  (ea:post-increment regnum:stack-pointer 'WORD))
-
-(define (ea:stack-push)
-  (ea:pre-decrement regnum:stack-pointer 'WORD))
-
-(define (ea:stack-ref index)
-  (ea:offset regnum:stack-pointer index 'WORD))
-
-(define (ea:alloc-word)
-  (ea:post-increment regnum:free-pointer 'WORD))
-
-(define (ea:alloc-byte)
-  (ea:post-increment regnum:free-pointer 'BYTE))
-
-(define (ea:alloc-float)
-  (ea:post-increment regnum:free-pointer 'FLOAT))
-
-;;;; Traps
-
-(define-syntax define-traps
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     `(BEGIN
-	,@(map (lambda (name)
-		 `(DEFINE (,(symbol-append 'TRAP: name) . ARGS)
-		    (APPLY INST:TRAP ',name ARGS)))
-	       (cddr form))))))
-
-(define-traps
-  ;; This group doesn't return; don't push return address.
-  apply lexpr-apply cache-reference-apply lookup-apply
-  primitive-apply primitive-lexpr-apply
-  error primitive-error
-  &+ &- &* &/ 1+ -1+ quotient remainder modulo
-  &= &< &> zero? positive? negative?
-
-  ;; This group returns; push return address.
-  link conditionally-serialize
-  reference-trap safe-reference-trap assignment-trap unassigned?-trap
-  lookup safe-lookup set! unassigned? define unbound? access)
-
-(define-syntax define-interrupt-tests
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     `(BEGIN
-       ,@(map (lambda (name)
-		`(DEFINE-INST ,(symbol-append 'INTERRUPT-TEST- name)))
-	      (cddr form))))))
-
-(define-interrupt-tests
-  interrupt-test-closure interrupt-test-dynamic-link interrupt-test-procedure
-  interrupt-test-continuation interrupt-test-ic-procedure)
-
-;;;; Machine registers
-
-(define-integrable number-of-machine-registers 512)
-(define-integrable number-of-temporary-registers 512)
-
-(define-syntax define-fixed-registers
-  (sc-macro-transformer
-   (lambda (form environment)
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 (let ((alist
-		(let loop ((names (cdr form)) (index 0))
-		  (if (pair? names)
-		      (cons (cons (car names) index)
-			    (loop (cdr names) (+ index 1)))
-		      '()))))
-	   `(BEGIN
-	      ,@(map (lambda (p)
-		       `(DEFINE-INTEGRABLE ,(symbol-append 'REGNUM: (car p))
-			  ,(cdr p)))
-		     alist)
-	      (DEFINE FIXED-REGISTERS ',alist)))
-	 (ill-formed-syntax form)))))
-
-(define-fixed-registers
-  stack-pointer
-  dynamic-link
-  free-pointer
-  value
-  environment)
-
-(define-integrable regnum:float-0 256)
+;;;; Registers
 
 (define (any-register? object)
   (and (index-fixnum? object)
@@ -529,25 +350,8 @@ USA.
        (fix:>= object regnum:float-0)
        (fix:- object regnum:float-0)))
 
-(define available-machine-registers
-  (let loop ((r regnum:environment))
-    (if (< r number-of-machine-registers)
-	(cons r (loop (+ r 1)))
-	'())))
-
-;;;; Register references
-
-(define register-reference
-  (let ((references
-	 (list->vector
-	  (map (lambda (r) `(R ,r)) available-machine-registers))))
-    (lambda (register)
-      (guarantee-limited-index-fixnum register
-				      number-of-machine-registers
-				      'REGISTER-REFERENCE)
-      (vector-ref references register))))
-
 (define (register-reference? object)
+  ;; Copied from lapgen.scm, for assembler rule compilation (withOUT lapgen).
   (and (pair? object)
        (eq? (car object) 'R)
        (pair? (cdr object))
@@ -571,12 +375,6 @@ USA.
        (fix:>= (cadr object) regnum:float-0)
        (fix:< (cadr object) number-of-machine-registers)
        (null? (cddr object))))
-
-(define-guarantee register-reference "register reference")
-
-(define (reference->register reference)
-  (guarantee-register-reference reference 'REFERENCE->REGISTER)
-  (cadr reference))
 
 ;;;; Symbolic expressions
 
@@ -595,6 +393,7 @@ USA.
 		       (map (lambda (expression)
 			      (cond ((se-integer? expression) 'INTEGER)
 				    ((se-float? expression) 'FLOAT)
+				    ;;((se-address? expression) 'ADDRESS)
 				    (else (loop expression))))
 			    (cdr expression))))
 		  (and (pair? types)
@@ -633,6 +432,7 @@ USA.
 (define-integrable (se-float? object)
   (flo:flonum? object))
 
+#|
 (define (se-address? object)
   ???)
 
@@ -641,6 +441,7 @@ USA.
 
 (define (se-address:- address1 address2)
   ???)
+|#
 
 (define-symbolic-operator '+
   (lambda (types)
@@ -650,9 +451,10 @@ USA.
 		  (for-all? (cdr types) sb-type:integer?)))
 	 (car types)))
   (lambda (pvals)
-    (if (se-address? (car pvals))
-	(se-address:+ (car pvals) (apply + (cdr pvals)))
-	(apply + pvals))))
+;;    (if (se-address? (car pvals))
+;;	(se-address:+ (car pvals) (apply + (cdr pvals)))
+;;	(apply + pvals))))
+    (apply + pvals)))
 
 (define-symbolic-operator '-
   (lambda (types)
@@ -667,11 +469,12 @@ USA.
   (lambda (pvals)
     (let ((pv1 (car pvals))
 	  (pv2 (cadr pvals)))
-      (if (se-address? pv1)
-	  (if (se-address? pv2)
-	      (se-address:- pv1 pv2)
-	      (se-address:+ pv1 (- pv2)))
-	  (- pv1 pv2)))))
+;;      (if (se-address? pv1)
+;;	  (if (se-address? pv2)
+;;	      (se-address:- pv1 pv2)
+;;	      (se-address:+ pv1 (- pv2)))
+;;	  (- pv1 pv2)))))
+      (- pv1 pv2))))
 
 (define-symbolic-operator '*
   (lambda (types)
@@ -919,6 +722,9 @@ USA.
 		     (loop (/ x 2) (+ e 1))
 		     x)))
 	      (else x)))))
+
+;;;(define-import register-reference (compiler lap-syntaxer))
+;;;(define-import reference->register (compiler lap-syntaxer))
 
 (define (encode-rref rref write-byte)
   (encode-unsigned-integer-8 (reference->register rref) write-byte))

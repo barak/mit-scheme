@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,10 +23,23 @@ USA.
 
 |#
 
-;;;; LAP Optimizer for SVM
-;;; package: (compiler lap-optimizer)
+;;;; Disassembler: User Level
+;;; package: (compiler disassembler)
 
 (declare (usual-integrations))
 
-(define (optimize-linear-lap instructions)
-  instructions)
+;;; Flags that control disassembler behavior
+
+(define disassembler/symbolize-output? #t)
+(define disassembler/compiled-code-heuristics? #t)
+(define disassembler/write-offsets? #t)
+(define disassembler/write-addresses? #f)
+
+;;;; Top level entries
+
+(define (compiler:write-lap-file filename #!optional symbol-table?)
+  (error "unimplemented" 'compiler:write-lap-file filename
+	 (if (default-object? symbol-table?) #t symbol-table?)))
+
+(define (compiler:disassemble entry)
+  (error "unimplemented" 'compiler:disassemble entry))

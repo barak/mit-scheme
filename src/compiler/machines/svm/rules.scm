@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -42,15 +42,22 @@ USA.
 
 (define-rule statement
   (ASSIGN (? thunk parse-memory-ref)
-	  (REGISTER (? target)))
+	  (REGISTER (? source)))
   (receive (scale target) (thunk)
     (inst:store scale (word-source source) target)))
 
 (define-rule statement
+  (ASSIGN (? thunk parse-memory-ref)
+	  (CONSTANT (? constant)))
+  (receive (scale target) (thunk)
+    (let ((temp (word-temporary)))
+      (LAP ,@(load-constant temp constant)
+	   ,@(inst:store scale temp target)))))
+
+(define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (? thunk parse-memory-address))
-  (let ((source (thunk)))
-    (inst:load-address (word-target target) source)))
+	  (? source-ea parse-memory-address))
+  (inst:load-address (word-target target) source-ea))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -135,6 +142,31 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(? source-ea parse-memory-address)))
+  (let ((temp (word-temporary)))
+    (LAP ,@(inst:load-address temp source-ea)
+	 ,@(inst:load-pointer (word-target target) type temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:PROCEDURE (? label))))
+  (let ((temp (word-temporary)))
+    (LAP ,@(inst:load-address temp (ea:address (rtl-procedure/external-label
+						(label->object label))))
+	 ,@(inst:load-pointer (word-target target) type temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (CONS-POINTER (MACHINE-CONSTANT (? type))
+			(ENTRY:CONTINUATION (? label))))
+  (let ((temp (word-temporary)))
+    (LAP ,@(inst:load-address temp (ea:address label))
+	 ,@(inst:load-pointer (word-target target) type temp))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
 	  (OBJECT->TYPE (REGISTER (? source))))
   (let ((source (word-source source)))
     (inst:object-type (word-target target)
@@ -195,6 +227,13 @@ USA.
 		    (word-source source1)
 		    (word-source source2))
   (LAP))
+
+(define-rule predicate
+  (EQ-TEST (REGISTER (? source1)) (CONSTANT (? constant)))
+  (QUALIFIER (non-pointer-object? constant))
+  (let ((temp (word-temporary)))
+    (simple-branches! 'EQ (word-source source1) temp)
+    (load-constant temp constant)))
 
 (define-rule predicate
   (PRED-1-ARG INDEX-FIXNUM?
@@ -474,21 +513,12 @@ USA.
 		   ,@(inst:jump (ea:indirect temp)))))))
      (let ((checks (get-exit-interrupt-checks)))
        (if (null? checks)
-	   (make-new-sblock (pop-return))
-	   (memoize-associated-bblock 'POP-RETURN
-	     (lambda ()
-	       (make-new-sblock
-		(let ((label (generate-label 'INTERRUPT)))
-		  (LAP ,@(interrupt-check label checks)
-		       ,@(pop-return)
-		       ,@(inst:label label)
-		       ,@(trap:interrupt-continuation)))))))))))
-
-(define (memoize-associated-bblock name generator)
-  (or (block-association name)
-      (let ((bblock (generator)))
-	(block-associate! name bblock)
-	bblock)))
+	   (make-new-sblock
+	    (pop-return))
+	   (make-new-sblock
+	    (LAP ,@(inst:interrupt-test-continuation)
+		 ,@(pop-return)))))))
+  (LAP))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -497,7 +527,7 @@ USA.
   (LAP ,@(clear-map!)
        ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
        ,@(inst:load-immediate rref:word-1 frame-size)
-       ,@(trap:apply)))
+       ,@(trap:apply rref:word-0 rref:word-1)))
 
 (define-rule statement
   (INVOCATION:JUMP (? frame-size) (? continuation) (? label))
@@ -522,7 +552,7 @@ USA.
   (LAP ,@(clear-map!)
        ,@(inst:load-address rref:word-0 (ea:address label))
        ,@(inst:load-immediate rref:word-1 number-pushed)
-       ,@(trap:compiler-lexpr-apply)))
+       ,@(trap:lexpr-apply rref:word-0 rref:word-1)))
 
 (define-rule statement
   (INVOCATION:COMPUTED-LEXPR (? number-pushed) (? continuation))
@@ -532,7 +562,7 @@ USA.
        ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
        ,@(inst:object-address rref:word-0 rref:word-0)
        ,@(inst:load-immediate rref:word-1 number-pushed)
-       ,@(trap:compiler-lexpr-apply)))
+       ,@(trap:lexpr-apply rref:word-0 rref:word-1)))
 
 (define-rule statement
   (INVOCATION:UUO-LINK (? frame-size) (? continuation) (? name))
@@ -554,12 +584,12 @@ USA.
 			      (REGISTER (? extension)))
   continuation
   (expect-no-exit-interrupt-checks)
-  (let ((set-extension (load-machine-register! extension regnum:word-2)))
+  (let ((set-extension (load-machine-register! extension regnum:word-0)))
     (LAP ,@set-extension
 	 ,@(clear-map!)
-	 ,@(inst:load-immediate rref:word-0 frame-size)
-	 ,@(inst:load-address rref:word-2 (ea:address *block-label*))
-	 ,@(trap:cache-reference-apply))))
+	 ,@(inst:load-immediate rref:word-2 frame-size)
+	 ,@(inst:load-address rref:word-1 (ea:address *block-label*))
+	 ,@(trap:cache-reference-apply rref:word-0 rref:word-1 rref:word-2))))
 
 (define-rule statement
   (INVOCATION:LOOKUP (? frame-size)
@@ -568,28 +598,30 @@ USA.
 		     (? name))
   continuation
   (expect-no-entry-interrupt-checks)
-  (let ((set-environment (load-machine-register! environment regnum:word-2)))
+  (let ((set-environment (load-machine-register! environment regnum:word-0)))
     (LAP ,@set-environment
 	 ,@(clear-map!)
-	 ,@(inst:load-immediate rref:word-0 frame-size)
+	 ,@(inst:load-immediate rref:word-2 frame-size)
 	 ,@(load-constant rref:word-1 name)
-	 ,@(trap:lookup-apply))))
+	 ,@(trap:lookup-apply rref:word-0 rref:word-1 rref:word-2))))
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
   continuation				; ignored
   (LAP ,@(clear-map!)
-       (if (eq? primitive compiled-error-procedure)
-	   (LAP ,@(inst:load-immediate rref:word-0 frame-size)
-		,@(trap:error))
-	   (LAP ,@(load-constant rref:word-0 primitive)
-		,@(let ((arity (primitive-procedure-arity primitive)))
-		    (if (>= arity 0)
-			(trap:primitive-apply)
-			(LAP ,@(inst:load-immediate rref:word-1 frame-size)
-			     ,@(if (= arity -1)
-				   (trap:primitive-lexpr-apply)
-				   (trap:apply)))))))))
+       ,@(if (eq? primitive compiled-error-procedure)
+	     (LAP ,@(inst:load-immediate rref:word-0 frame-size)
+		  ,@(trap:error rref:word-0))
+	     (LAP ,@(load-constant rref:word-0 primitive)
+		  ,@(let ((arity (primitive-procedure-arity primitive)))
+		      (if (>= arity 0)
+			  (trap:primitive-apply rref:word-0)
+			  (LAP ,@(inst:load-immediate rref:word-1 frame-size)
+			       ,@(if (= arity -1)
+				     (trap:primitive-lexpr-apply rref:word-0
+								 rref:word-1)
+				     (trap:apply rref:word-0
+						 rref:word-1)))))))))
 
 (define-syntax define-primitive-invocation
   (sc-macro-transformer
@@ -639,12 +671,12 @@ USA.
   (if (= frame-size 0)
       (if (= register rref:stack-pointer)
 	  (LAP)
-	  (inst:copy rref:stack-pointer register))
+	  (inst:copy 'WORD rref:stack-pointer register))
       (let ((temp (word-temporary)))
 	(LAP ,@(inst:load-address temp
 				  (ea:offset register (- frame-size) 'WORD))
 	     ,@(inst:copy-block frame-size 'WORD rref:stack-pointer temp)
-	     ,@(inst:copy rref:stack-pointer temp)))))
+	     ,@(inst:copy 'WORD rref:stack-pointer temp)))))
 
 ;;;; Procedure headers
 
@@ -662,30 +694,12 @@ USA.
 ;;; interrupt handler that saves and restores the dynamic link
 ;;; register.
 
-(define (interrupt-check label checks)
-  ;; This always does interrupt checks in line.
-  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-	     (LAP ,@(inst:compare 'WORD
-				  rref:free-pointer
-				  rref:memtop-pointer)
-		  ,@(inst:conditional-jump 'UGE (ea:address label)))
-	     (LAP))
-       ,@(if (memq 'STACK checks)
-	     (LAP ,@(inst:compare 'WORD
-				  rref:stack-pointer
-				  rref:stack-guard)
-		  ,@(inst:conditional-jump 'ULT (ea:address label)))
-	     (LAP))))
-
-(define (simple-procedure-header label trap)
+(define (simple-procedure-header label interrupt-test)
   (let ((checks (get-entry-interrupt-checks)))
     (if (null? checks)
 	label
-	(let ((gc-label (generate-label)))
-	  (LAP (LABEL ,gc-label)
-	       ,@(trap)
-	       ,@label
-	       ,@(interrupt-check gc-label checks))))))
+	(LAP ,@label
+	     ,@(interrupt-test)))))
 
 (define-rule statement
   (CONTINUATION-ENTRY (? label))
@@ -700,14 +714,11 @@ USA.
 (define-rule statement
   (IC-PROCEDURE-HEADER (? internal-label))
   (get-entry-interrupt-checks)		; force search
-  (let ((external-label (internal->external-label internal-label))
-	(gc-label (generate-label)))
+  (let ((external-label (internal->external-label internal-label)))
     (LAP (ENTRY-POINT ,external-label)
 	 (EQUATE ,external-label ,internal-label)
-	 (LABEL ,gc-label)
-	 ,@(trap:interrupt-ic-procedure)
 	 ,@(make-expression-label internal-label)
-	 ,@(interrupt-check gc-label))))
+	 ,@(inst:interrupt-test-ic-procedure))))
 
 (define-rule statement
   (OPEN-PROCEDURE-HEADER (? internal-label))
@@ -716,15 +727,15 @@ USA.
 	 ,@(simple-procedure-header
 	    (make-internal-procedure-label internal-label)
 	    (if (rtl-procedure/dynamic-link? rtl-proc)
-		trap:interrupt-dlink
-		trap:interrupt-procedure)))))
+		inst:interrupt-test-dynamic-link
+		inst:interrupt-test-procedure)))))
 
 (define-rule statement
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
   (LAP (EQUATE ,(internal->external-label internal-label) ,internal-label)
        ,@(simple-procedure-header
 	  (make-procedure-label min (- (abs max) min) (< max 0) internal-label)
-	  trap:interrupt-procedure)))
+	  inst:interrupt-test-procedure)))
 
 ;; Interrupt check placement
 ;;
@@ -905,132 +916,121 @@ USA.
 
 ;;;; Closures:
 
-;; Since i386 instructions are pc-relative, the GC can't relocate them unless
-;; there is a way to find where the closure was in old space before being
-;; transported.  The first entry point (tagged as an object) is always
-;; the last component of closures with any entry points.
-
 (define (generate/cons-closure target procedure-label min max size)
+  min max ;;No entry format word necessary.
   (let ((target (word-target target))
-	(temp (word-temporary)))
-    (LAP ,@(inst:load-address
-	    temp
-	    (ea:address `(- ,(internal->external-label procedure-label) 5)))
-	 (MOV W (@R ,regnum:free-pointer)
-	      (&U ,(make-non-pointer-literal (ucode-type manifest-closure)
-					     (+ 4 size))))
-	 (MOV W (@RO B ,regnum:free-pointer 4)
-	      (&U ,(make-closure-code-longword min max 8)))
-	 (LEA ,target (@RO B ,regnum:free-pointer 8))
-	 ;; (CALL (@PCR <entry>))
-	 (MOV B (@RO B ,regnum:free-pointer 8) (&U #xe8))
-	 (SUB W ,temp ,target)
-	 (MOV W (@RO B ,regnum:free-pointer 9) ,temp) ; displacement
-	 (ADD W (R ,regnum:free-pointer) (& ,(* 4 (+ 5 size))))
-	 (LEA ,temp (@RO UW
-			 ,mtarget
-			 ,(make-non-pointer-literal (ucode-type compiled-entry)
-						    0)))
-	 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-	 ,@(trap:conditionally-serialize))))
+	(temp (word-temporary))
+	(free rref:free-pointer)
+	(total-words (+ 1    ;; header
+			1    ;; count
+			1    ;; padded entry
+			1    ;; targets
+			size ;; variables
+			))
+	(label (internal->external-label procedure-label))
+	(count-offset (* 1 address-units-per-object))
+	(entry-offset (* 2 address-units-per-object))
+	(target-offset (* 3 address-units-per-object)))
+    (LAP
+     ;; header
+     ,@(inst:load-non-pointer temp (ucode-type manifest-closure) total-words)
+     ,@(inst:store 'WORD temp (ea:indirect free))
+
+     ;; entry count: 1 (little-endian short)
+     ,@(inst:load-immediate temp 1)
+     ,@(inst:store 'BYTE temp (ea:offset free count-offset 'BYTE))
+     ,@(inst:load-immediate temp 0)
+     ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
+
+     ,@(inst:load-pointer target
+			  (ucode-type compiled-entry)
+			  (ea:offset free entry-offset 'BYTE))
+
+     ;; entry: (inst:enter-closure 0)
+     ,@(inst:load-immediate temp svm1-inst:enter-closure)
+     ,@(inst:store 'BYTE temp (ea:offset free entry-offset 'BYTE))
+     ,@(inst:load-immediate temp 0)
+     ,@(inst:store 'BYTE temp (ea:offset free (+ 1 entry-offset) 'BYTE))
+     ,@(inst:store 'BYTE temp (ea:offset free (+ 2 entry-offset) 'BYTE))
+
+     ;; target: procedure-label
+     ,@(inst:load-pointer temp (ucode-type compiled-entry) (ea:address label))
+     ,@(inst:store 'WORD temp (ea:offset free target-offset 'BYTE))
+
+     ,@(inst:load-address free (ea:offset free total-words 'WORD)))))
 
 (define (generate/cons-multiclosure target nentries size entries)
-  (let ((target (word-target target))
-	(temp (word-temporary)))
-    (with-pc
-      (lambda (pc-label pc-reg)
-	(define (generate-entries entries offset)
-	  (let ((entry (car entries))
-		(rest (cdr entries)))
-	    (LAP (MOV W (@RO B ,regnum:free-pointer -9)
-		      (&U ,(make-closure-code-longword (cadr entry)
-						       (caddr entry)
-						       offset)))
-		 (MOV B (@RO B ,regnum:free-pointer -5) (&U #xe8))
-		 (LEA ,temp (@RO W
-				 ,pc-reg
-				 (- ,(internal->external-label (car entry))
-				    ,pc-label)))
-		 (SUB W ,temp (R ,regnum:free-pointer))
-		 (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-		 ,@(if (null? rest)
-		       (LAP)
-		       (LAP (ADD W (R ,regnum:free-pointer) (& 10))
-			    ,@(generate-entries rest (+ 10 offset)))))))
+  (let ((free rref:free-pointer)
+	(little-end (lambda (short) (fix:and short #xFF)))
+	(big-end (lambda (short) (fix:lsh short -8))))
+    (let ((entry-words (integer-ceiling (* closure-entry-size nentries)
+					address-units-per-object)))
+      (let ((target (word-target target))
+	    (temp (word-temporary))
+	    (total-words (+ 1	    ;; header
+			    1	    ;; count
+			    entry-words ;; padded entries
+			    nentries    ;; targets
+			    size	    ;; variables
+			    ))
+	    (count-offset (* 1 address-units-per-object))
+	    (first-entry-offset (* 2 address-units-per-object))
+	    (first-target-woffset (+ 1 1 entry-words)))
 
-	(LAP (MOV W (@R ,regnum:free-pointer)
-		  (&U ,(make-non-pointer-literal
-			(ucode-type manifest-closure)
-			(+ size (quotient (* 5 (1+ nentries)) 2)))))
-	     (MOV W (@RO B ,regnum:free-pointer 4)
-		  (&U ,(make-closure-longword nentries 0)))
-	     (LEA ,target (@RO B ,regnum:free-pointer 12))
-	     (ADD W (R ,regnum:free-pointer) (& 17))
-	     ,@(generate-entries entries 12)
-	     (ADD W (R ,regnum:free-pointer)
-		  (& ,(+ (* 4 size) (if (odd? nentries) 7 5))))
-	     (LEA ,temp
-		  (@RO UW
-		       ,mtarget
-		       ,(make-non-pointer-literal (ucode-type compiled-entry)
-						  0)))
-	     (MOV W (@RO B ,regnum:free-pointer -4) ,temp)
-	     ,@(trap:conditionally-serialize))))))
+	(define (generate-entries entries index offset)
+	  (LAP
+	   ,@(inst:load-immediate temp svm1-inst:enter-closure)
+	   ,@(inst:store 'BYTE temp (ea:offset free offset 'BYTE))
+	   ,@(inst:load-immediate temp (little-end index))
+	   ,@(inst:store 'BYTE temp (ea:offset free (1+ offset) 'BYTE))
+	   ,@(inst:load-immediate temp (big-end index))
+	   ,@(inst:store 'BYTE temp (ea:offset free (+ 2 offset) 'BYTE))
+	   ,@(if (null? (cdr entries))
+		 (LAP)
+		 (generate-entries (cdr entries) (1+ index) (+ 3 offset)))))
+
+	(define (generate-targets entries woffset)
+	  (let ((label (internal->external-label (caar entries))))
+	    (LAP
+	     ,@(inst:load-pointer temp (ucode-type compiled-entry)
+				  (ea:address label))
+	     ,@(inst:store 'WORD temp (ea:offset free woffset 'WORD))
+	     ,@(if (null? (cdr entries))
+		   (LAP)
+		   (generate-targets (cdr entries) (1+ woffset))))))
+
+	(LAP
+	 ;; header
+	 ,@(inst:load-non-pointer temp
+				  (ucode-type manifest-closure) total-words)
+	 ,@(inst:store 'WORD temp (ea:indirect free))
+
+	 ;; entry count (little-endian short)
+	 ,@(inst:load-immediate temp (little-end nentries))
+	 ,@(inst:store 'BYTE temp (ea:offset free count-offset 'BYTE))
+	 ,@(inst:load-immediate temp (big-end nentries))
+	 ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
+
+	 ,@(inst:load-pointer target (ucode-type compiled-entry)
+			      (ea:offset free first-entry-offset 'BYTE))
+
+	 ,@(generate-entries entries 0 first-entry-offset)
+
+	 ,@(generate-targets entries first-target-woffset)
+
+	 ,@(inst:load-address free (ea:offset free total-words 'WORD)))))))
 
-(define closure-share-names
-  '#(closure-0-interrupt closure-1-interrupt closure-2-interrupt
-     closure-3-interrupt closure-4-interrupt closure-5-interrupt
-     closure-6-interrupt closure-7-interrupt))
-
-(define (generate/closure-header internal-label nentries entry)
-  nentries				; ignored
-  (let ((external-label (internal->external-label internal-label))
-	(checks (get-entry-interrupt-checks)))
+(define (generate/closure-header internal-label nentries index)
+  index
+  (let ((external-label (internal->external-label internal-label)))
     (if (zero? nentries)
 	(LAP (EQUATE ,external-label ,internal-label)
 	     ,@(simple-procedure-header
 		(make-internal-procedure-label internal-label)
-		trap:interrupt-procedure))
-	(let* ((prefix
-		(lambda (gc-label)
-		  (LAP (LABEL ,gc-label)
-		       ,@(if (zero? entry)
-			     (LAP)
-			     (LAP (ADD W (@R ,esp) (& ,(* 10 entry)))))
-		       ,@(trap:interrupt-closure))))
-	       (label+adjustment
-		(lambda ()
-		  (LAP ,@(make-internal-entry-label external-label)
-		       (ADD W (@R ,esp)
-			    (&U ,(generate/make-magic-closure-constant entry)))
-		       (LABEL ,internal-label))))
-	       (suffix
-		(lambda (gc-label)
-		  (LAP ,@(label+adjustment)
-		       ,@(interrupt-check gc-label checks)))))
-	  (if (null? checks)
-	      (LAP ,@(label+adjustment))
-	      (if (>= entry (vector-length closure-share-names))
-		  (let ((gc-label (generate-label)))
-		    (LAP ,@(prefix gc-label)
-			 ,@(suffix gc-label)))
-		  (share-instruction-sequence!
-		   (vector-ref closure-share-names entry)
-		   suffix
-		   (lambda (gc-label)
-		     (LAP ,@(prefix gc-label)
-			  ,@(suffix gc-label))))))))))
-
-(define (generate/make-magic-closure-constant entry)
-  (- (make-non-pointer-literal (ucode-type compiled-entry) 0)
-     (+ (* entry 10) 5)))
-
-(define (make-closure-longword code-word pc-offset)
-  (+ code-word (* #x20000 pc-offset)))
-
-(define (make-closure-code-longword frame/min frame/max pc-offset)
-  (make-closure-longword (make-procedure-code-word frame/min frame/max)
-			 pc-offset))
+		inst:interrupt-test-procedure))
+	(LAP ,@(simple-procedure-header
+		(make-internal-entry-label external-label)
+		inst:interrupt-test-closure)))))
 
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
@@ -1047,12 +1047,17 @@ USA.
 	  (CONS-MULTICLOSURE (? nentries) (? size) (? entries)))
   (case nentries
     ((0)
-     (let ((target (word-target target)))
-       (LAP (MOV W ,target (R ,regnum:free-pointer))
-	    (MOV W (@R ,regnum:free-pointer)
-		 (&U ,(make-non-pointer-literal (ucode-type manifest-vector)
-						size)))
-	    (ADD W (R ,regnum:free-pointer) (& ,(* 4 (1+ size)))))))
+     (let ((target (word-target target))
+	   (temp (word-temporary)))
+       (LAP ,@(inst:load-pointer target
+				 (ucode-type compiled-entry) rref:free-pointer)
+
+	    ,@(inst:load-non-pointer temp (ucode-type manifest-vector) size)
+	    ,@(inst:store 'WORD temp (ea:indirect rref:free-pointer))
+
+	    ,@(inst:load-address rref:free-pointer 
+				 (ea:offset rref:free-pointer
+					    (1+ size) 'WORD)))))
     ((1)
      (let ((entry (vector-ref entries 0)))
        (generate/cons-closure target
@@ -1066,107 +1071,109 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (let ((t1 (word-temporary))
-	(t2 (word-temporary))
-	(t3 (word-temporary)))
-    (LAP ,@(inst:store 'WORD regnum:environment (ea:address environment-label))
-	 ,@(inst:load-address t1 (ea:address *block-label*))
-	 ,@(inst:load-address t2 (ea:address free-ref-label))
-	 ,@(inst:load-immediate t3 n-sections)
-	 ,@(trap:link t1 t2 t3)
-	 ,@(make-internal-continuation-label (generate-label)))))
+  (LAP ,@(inst:store 'WORD regnum:environment (ea:address environment-label))
+       ,@(inst:load-address rref:word-0 (ea:address *block-label*))
+       ,@(inst:load-address rref:word-1 (ea:address free-ref-label))
+       ,@(inst:load-immediate rref:word-2 n-sections)
+       ,@(trap:link rref:word-0 rref:word-1 rref:word-2)
+       ,@(make-internal-continuation-label (generate-label))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (let ((t1 (word-temporary))
-	(t2 (word-temporary))
-	(t3 (word-temporary)))
-    (LAP ,@(inst:load-address t1 (ea:address code-block-label))
-	 ,@(inst:load-address t2 (ea:offset t1 environment-offset 'WORD))
-	 ,@(inst:store 'WORD regnum:environment (ea:indirect t2))
-	 ,@(inst:load-address t2 (ea:offset t1 free-ref-offset 'WORD))
-	 ,@(inst:load-immediate t3 n-sections)
-	 ,@(trap:link t1 t2 t3)
-	 ,@(make-internal-continuation-label (generate-label)))))
+  (LAP ,@(inst:load-address rref:word-0 (ea:address code-block-label))
+       ,@(inst:load-address rref:word-1
+			    (ea:offset rref:word-0
+				       environment-offset 'WORD))
+       ,@(inst:store 'WORD regnum:environment (ea:indirect rref:word-1))
+       ,@(inst:load-address rref:word-1 (ea:offset rref:word-0
+						   free-ref-offset 'WORD))
+       ,@(inst:load-immediate rref:word-2 n-sections)
+       ,@(trap:link rref:word-0 rref:word-1 rref:word-2)
+       ,@(make-internal-continuation-label (generate-label))))
 
-(define (generate/remote-links n-blocks vector-label nsects)
+(define (generate/remote-links n-blocks vector-label n-sections)
   (if (> n-blocks 0)
-      (let ((loop (generate-label))
-	    (bytes  (generate-label))
-	    (end (generate-label)))
-	(LAP ,@(inst:load-immediate regnum:word-0 0)
-	     ,@(inst:store 'WORD regnum:word-0 (ea:stack-push))
-	     ,@(inst:label loop)
-	     ;; Get index
-	     ,@(inst:load 'WORD regnum:word-0 (ea:stack-ref 0))
-	     ;; Get vector
-	     ,@(inst:load 'WORD regnum:word-1 (ea:address vector-label))
-	     ;; Get n-sections for this cc-block
-	     ,@(inst:load-immediate regnum:word-2 0)
-	     ,@(inst:load-address regnum:word-3 (ea:address bytes))
-	     ,@(inst:load 'BYTE regnum:word-3
-			  (ea:indexed regnum:word-3
-				      1 'BYTE
-				      regnum:word-0 'BYTE))
-	     ;; address of vector
-	     ,@(object-address regnum:word-1 regnum:word-1)
+      (let ((loop-label (generate-label))
+	    (bytes-label  (generate-label))
+	    (end-label (generate-label))
 
+	    (rref:index rref:word-0)
+	    (rref:bytes rref:word-1)
+	    (rref:vector rref:word-2)
+	    (rref:block rref:word-3)
+	    (rref:n-sections rref:word-4)
+	    (rref:sections rref:word-5)
+	    (rref:length rref:word-6))
+	(LAP
+	 ;; Init index, bytes and vector.
+	 ,@(inst:load-immediate rref:index 0)
+	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
+	 ,@(inst:load-address rref:vector (ea:address vector-label))
 
+	 ,@(inst:label loop-label)
 
-	     ;; Store n-sections in arg
-	     (MOV W ,regnum:utility-arg-4 (R ,ebx))
-	     ;; vector-ref -> cc block
-	     (MOV W (R ,edx) (@ROI B ,edx 4 ,ecx 4))
-	     ;; address of cc-block
-	     (AND W (R ,edx) (R ,regnum:datum-mask))
-	     ;; cc-block length
-	     (MOV W (R ,ebx) (@R ,edx))
-	     ;; Get environment
-	     (MOV W (R ,ecx) ,regnum:environment)
-	     ;; Eliminate length tags
-	     (AND W (R ,ebx) (R ,regnum:datum-mask))
-	     ;; Store environment
-	     (MOV W (@RI ,edx ,ebx 4) (R ,ecx))
-	     ;; Get NMV header
-	     (MOV W (R ,ecx) (@RO B ,edx 4))
-	     ;; Eliminate NMV tag
-	     (AND W (R ,ecx) (R ,regnum:datum-mask))
-	     ;; Address of first free reference
-	     (LEA (R ,ebx) (@ROI B ,edx 8 ,ecx 4))
-	     ;; Invoke linker
-	     ,@(trap:link)
-	     ,@(make-internal-continuation-label (generate-label))
-	     ;; Increment counter and loop
-	     (INC W (@R ,esp))
-	     (CMP W (@R ,esp) (& ,n-blocks))
-	     (JL (@PCR ,loop))
-	     (JMP (@PCR ,end))
-	     (LABEL ,bytes)
-	     ,@(let walk ((bytes (vector->list nsects)))
-		 (if (null? bytes)
-		     (LAP)
-		     (LAP (BYTE U ,(car bytes))
-			  ,@(walk (cdr bytes)))))
-	     (LABEL ,end)
-	     ;; Pop counter
-	     (POP (R ,eax))))
+	 ;; Get n-sections for this cc-block.
+	 ,@(inst:load-immediate rref:n-sections 0)
+	 ,@(inst:load 'BYTE rref:n-sections
+		      (ea:indexed rref:bytes 0 'BYTE rref:index 'BYTE))
+	 ;; Get cc-block.
+	 ,@(inst:load 'WORD rref:block
+		      (ea:indexed rref:vector 1 'WORD rref:index 'WORD))
+	 ,@(inst:object-address rref:block rref:block)
+	 ;; Get cc-block length.
+	 ,@(inst:load 'WORD rref:length (ea:indirect rref:block))
+	 ,@(inst:object-datum rref:length rref:length)
+	 ;; Store environment.
+	 ,@(inst:store 'WORD rref:environment
+		       (ea:indexed rref:block 0 'BYTE rref:length 'WORD))
+	 ;; Get NMV length.
+	 ,@(inst:load 'WORD rref:length (ea:offset rref:block 1 'WORD))
+	 ,@(inst:object-datum rref:length rref:length)
+	 ;; Address of first section.
+	 ,@(inst:load-address rref:sections
+			      (ea:indexed rref:block 2 'WORD rref:length 'WORD))
+	 ;; Invoke linker
+	 ,@(trap:link rref:block rref:sections rref:n-sections)
+	 ,@(make-internal-continuation-label (generate-label))
+
+	 ;; Increment counter and loop
+	 ,@(inst:increment 'WORD rref:index rref:index)
+	 ,@(inst:load-immediate rref:length n-blocks)
+	 ,@(inst:conditional-jump 'LT rref:index rref:length
+				  (ea:address loop-label))
+	 ,@(inst:jump (ea:address end-label))
+
+	 ,@(inst:label bytes-label)
+	 ,@(let walk ((bytes (vector->list n-sections)))
+	     (if (null? bytes)
+		 (LAP)
+		 (LAP ,@(inst:datum-u8 (car bytes))
+		      ,@(walk (cdr bytes)))))
+
+	 ,@(inst:label end-label)))
       (LAP)))
 
+(define-integrable linkage-type:operator 0)
+(define-integrable linkage-type:reference 1)
+(define-integrable linkage-type:assignment 2)
+(define-integrable linkage-type:global-operator 3)
+
 (define (generate/constants-block constants references assignments
 				  uuo-links global-links static-vars)
   (receive (labels code)
-      (???3 linkage-type:operator (???4 uuo-links)
-	    linkage-type:reference references
-	    linkage-type:assignment assignments
-	    linkage-type:global-operator (???4 global-links))
+      (generate/sections
+       linkage-type:operator (generate/uuos uuo-links)
+       linkage-type:reference references
+       linkage-type:assignment assignments
+       linkage-type:global-operator (generate/uuos global-links))
     (let ((environment-label (allocate-constant-label)))
       (values (LAP ,@code
-		   ,@(???2 (map (lambda (pair)
-				  (cons #f (cdr pair)))
-				static-vars))
-		   ,@(???2 constants)
+		   ,@(generate/constants (map (lambda (pair)
+						(cons #f (cdr pair)))
+					      static-vars))
+		   ,@(generate/constants constants)
 		   ;; Placeholder for the debugging info filename
 		   (SCHEME-OBJECT ,(allocate-constant-label) DEBUGGING-INFO)
 		   ;; Placeholder for the load time environment if needed
@@ -1178,20 +1185,21 @@ USA.
 	      (if (pair? labels) (car labels) #f)
 	      (length labels)))))
 
-(define (???3 . groups)
+(define (generate/sections . groups)
   (let loop ((groups groups))
     (if (pair? groups)
 	(let ((linkage-type (car groups))
 	      (entries (cadr groups)))
 	  (if (pair? entries)
 	      (receive (labels code) (loop (cddr groups))
-		(receive (label code*) (???1 linkage-type entries)
+		(receive (label code*)
+			 (generate/section linkage-type entries)
 		  (values (cons label labels)
 			  (LAP ,@code* ,@code))))
 	      (loop (cddr groups))))
 	(values '() (LAP)))))
 
-(define (???1 linkage-type entries)
+(define (generate/section linkage-type entries)
   (if (pair? entries)
       (let ((label (allocate-constant-label)))
 	(values label
@@ -1199,24 +1207,26 @@ USA.
 		      ,label
 		      ,(make-linkage-type-marker linkage-type
 						 (length entries)))
-		     ,@(???2 entries))))
+		     ,@(generate/constants entries))))
       (values #f (LAP))))
 
-(define (???2 entries)
+(define (generate/constants entries)
   (let loop ((entries entries))
     (if (pair? entries)
 	(LAP (SCHEME-OBJECT ,(cdar entries) ,(caar entries))
 	     ,@(loop (cdr entries)))
 	(LAP))))
 
-(define (???4 links)
-  (append-map (lambda (entry)
-		(append-map (let ((name (car entry)))
-			      (lambda (p)
-				(list p
-				      (cons name (allocate-constant-label)))))
-			    (cdr entry)))
-	      links))
+(define (generate/uuos name.caches-list)
+  (append-map (lambda (name.caches)
+		(append-map (let ((name (car name.caches)))
+			      (lambda (cache)
+				(let ((frame-size (car cache))
+				      (label (cdr cache)))
+				  (LAP (,frame-size . ,label)
+				       (,name . ,(allocate-constant-label))))))
+			    (cdr name.caches)))
+	      name.caches-list))
 
 (define (make-linkage-type-marker linkage-type n-entries)
   (let ((type-offset #x10000))
@@ -1230,36 +1240,29 @@ USA.
   (INTERPRETER-CALL:CACHE-REFERENCE (? cont) (? extension) (? safe?))
   (QUALIFIER (interpreter-call-argument? extension))
   cont					; ignored
-  (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension edx)))
-    (LAP ,@set-extension
-	 ,@(clear-map!)
+  (let ((cache (interpreter-call-temporary extension)))
+    (LAP ,@(clear-map!)
 	 ,@(if safe?
-	       (trap:safe-reference-trap)
-	       (trap:reference-trap)))))
+	       (trap:safe-lookup cache)
+	       (trap:lookup cache)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
   cont					; ignored
-  (let* ((set-extension
-	  (interpreter-call-argument->machine-register! extension edx))
-	 (set-value (interpreter-call-argument->machine-register! value ebx)))
-    (LAP ,@set-extension
-	 ,@set-value
-	 ,@(clear-map!)
-	 ,@(trap:assignment-trap))))
+  (let* ((cache (interpreter-call-temporary extension))
+	 (value (interpreter-call-temporary value)))
+   (LAP ,@(clear-map!)
+	,@(trap:assignment-trap cache value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
   (QUALIFIER (interpreter-call-argument? extension))
   cont					; ignored
-  (let ((set-extension
-	 (interpreter-call-argument->machine-register! extension edx)))
-    (LAP ,@set-extension
-	 ,@(clear-map!)
-	 ,@(trap:unassigned?-trap))))
+  (let ((cache (interpreter-call-temporary extension)))
+    (LAP ,@(clear-map!)
+	 ,@(trap:unassigned?-trap cache))))
 
 ;;;; Interpreter Calls
 
@@ -1292,12 +1295,11 @@ USA.
   (lookup-call trap:unbound? environment name))
 
 (define (lookup-call trap environment name)
-  (let ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx)))
-    (LAP ,@set-environment
-	 ,@(clear-map (clear-map!))
-	 ,@(load-constant regnum:word-1 name)
-	 ,@(trap))))
+  (let ((environment-reg (interpreter-call-temporary environment))
+	(name-reg (word-temporary)))
+    (LAP ,@(clear-map (clear-map!))
+	 ,@(load-constant name-reg name)
+	 ,@(trap environment-reg name-reg))))
 
 (define-rule statement
   (INTERPRETER-CALL:DEFINE (? cont) (? environment) (? name) (? value))
@@ -1314,15 +1316,12 @@ USA.
   (assignment-call trap:set! environment name value))
 
 (define (assignment-call trap environment name value)
-  (let* ((set-environment
-	  (interpreter-call-argument->machine-register! environment edx))
-	 (set-value (interpreter-call-argument->machine-register! value eax)))
-    (LAP ,@set-environment
-	 ,@set-value
-	 ,@(clear-map!)
-	 (MOV W ,regnum:utility-arg-4 (R ,eax))
-	 ,@(load-constant (INST-EA (R ,ebx)) name)
-	 ,@(trap))))
+  (let ((environment-reg (interpreter-call-temporary environment))
+	(name-reg (word-temporary))
+	(value-reg (interpreter-call-temporary value)))
+    (LAP ,@(clear-map!)
+	 ,@(load-constant (INST-EA ,name-reg) name)
+	 ,@(trap environment-reg name-reg value-reg))))
 
 ;;;; Synthesized Data
 
@@ -1477,6 +1476,13 @@ USA.
 	  (lambda (n)
 	    (integer-power-of-2? (abs n))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
+
+(define (integer-power-of-2? n)
+  (let loop ((power 1) (exponent 0))
+    (cond ((< n power) #f)
+	  ((= n power) exponent)
+	  (else
+	   (loop (* 2 power) (1+ exponent))))))
 
 (define-rule rewriting
   (FIXNUM-2-ARGS FIXNUM-LSH

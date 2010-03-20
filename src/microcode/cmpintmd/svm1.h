@@ -83,5 +83,6 @@ typedef struct
 extern long C_to_interface (void *);
 extern void initialize_svm1 (void);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
+extern unsigned int read_u16 (insn_t *);
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */

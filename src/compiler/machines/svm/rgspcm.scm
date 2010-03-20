@@ -18,12 +18,13 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
 
-;;;; RTL Generation: Special primitive combinations.  Intel i386 version.
+;;;; RTL Generation: Special primitive combinations.  Scheme Virtual
+;;;; Machine version.
 ;;; package: (compiler rtl-generator)
 
 (declare (usual-integrations))

@@ -77,6 +77,10 @@ all-native: compile-microcode
 	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --compiler
 	$(MAKE) build-bands
 
+all-svm: compile-microcode
+	@$(top_srcdir)/etc/compile-svm.sh "$(MIT_SCHEME_EXE)"
+	$(MAKE) build-bands
+
 all-liarc:
 	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --compiler
 	$(MAKE) compile-liarc-bundles build-bands
@@ -174,7 +178,8 @@ install-auxdir-top:
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
-.PHONY: all all-native all-liarc macosx-app compile-microcode build-bands
+.PHONY: all all-native all-liarc all-svm macosx-app
+.PHONY: compile-microcode build-bands
 .PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
 .PHONY: tags TAGS install install-standard install-auxdir-top

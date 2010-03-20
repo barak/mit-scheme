@@ -47,6 +47,11 @@ c)
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     ;;
+svm1)
+    ALL_TARGET=all-svm
+    INSTALL_COM='$(INSTALL_DATA)'
+    INSTALL_LIARC_BUNDLES=
+    ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'

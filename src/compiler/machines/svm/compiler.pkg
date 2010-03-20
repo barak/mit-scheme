@@ -27,6 +27,7 @@ USA.
 
 (global-definitions "../runtime/runtime")
 (global-definitions "../sf/sf")
+(global-definitions "../cref/cref")
 
 (define-package (compiler)
   (files "base/switch"
@@ -668,10 +669,7 @@ USA.
   (export (compiler top-level) register-allocation))
 
 (define-package (compiler lap-syntaxer)
-  (files "machines/svm/assembler-runtime" ;ea:*, inst:* procedures
-	 "machines/svm/assembler-db"
-	 "machines/svm/svm1-opcodes"
-	 "back/lapgn1"			;LAP generator
+  (files "back/lapgn1"			;LAP generator
 	 "back/lapgn2"			; "      "
 	 "back/lapgn3"			; "      "
 	 "back/regmap"			;Hardware register allocator
@@ -731,12 +729,20 @@ USA.
 	  optimize-linear-lap))
 
 (define-package (compiler assembler)
-  (files "back/bitutl"			;Assembly blocks
+  (files "machines/svm/assembler-runtime"
+	 "machines/svm/assembler-db"
+	 "machines/svm/svm1-opcodes"
+	 "back/symtab"			;Symbol tables.
+	 "back/bitutl"			;Assembly blocks
 	 "back/bittop"			;Assembler top level
 	 )
   (parent (compiler))
   (export (compiler)
 	  instruction-append)
+  (import (compiler lap-syntaxer)
+	  add-instruction!
+	  reference->register
+	  register-reference)
   (export (compiler top-level)
 	  assemble))
 
