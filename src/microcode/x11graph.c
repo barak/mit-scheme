@@ -45,7 +45,13 @@ struct gw_extra
   int y_cursor;
 };
 
-#define XW_EXTRA(xw) ((struct gw_extra *) ((xw) -> extra))
+struct xwindow_graphics
+{
+  struct xwindow xw;
+  struct gw_extra extra;
+};
+
+#define XW_EXTRA(xw) (& (((struct xwindow_graphics *) xw) -> extra))
 
 #define XW_X_LEFT(xw) ((XW_EXTRA (xw)) -> x_left)
 #define XW_X_RIGHT(xw) ((XW_EXTRA (xw)) -> x_right)
@@ -370,7 +376,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	struct xwindow * xw =
 	  (x_make_window
 	   (xd, window, x_size, y_size, (&attributes), (&methods),
-	    (sizeof (struct gw_extra))));
+	    (sizeof (struct xwindow_graphics))));
 	(XW_X_LEFT (xw)) = ((float) (-1));
 	(XW_X_RIGHT (xw)) = ((float) 1);
 	(XW_Y_BOTTOM (xw)) = ((float) (-1));

@@ -198,8 +198,6 @@ struct xwindow
   /* The offset we need to add to compensate for type A WMs.  */
   int move_offset_x;
   int move_offset_y;
-
-  void * extra;
 };
 
 #define XW_ALLOCATION_INDEX(xw) ((xw) -> allocation_index)
@@ -326,7 +324,7 @@ extern struct xwindow * x_make_window
    int y_size,
    struct drawing_attributes * attributes,
    struct xwindow_methods * methods,
-   unsigned int extra);
+   unsigned int size);
 
 extern void xw_set_wm_input_hint (struct xwindow * xw, int input_hint);
 extern void xw_set_wm_name (struct xwindow * xw, const char * name);

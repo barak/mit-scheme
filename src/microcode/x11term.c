@@ -55,7 +55,13 @@ struct xterm_extra
   char cursor_enabled_p;
 };
 
-#define XW_EXTRA(xw) ((struct xterm_extra *) ((xw) -> extra))
+struct xwindow_term
+{
+  struct xwindow xw;
+  struct xterm_extra extra;
+};
+
+#define XW_EXTRA(xw) (& (((struct xwindow_term *) xw) -> extra))
 
 #define XW_X_CSIZE(xw) ((XW_EXTRA (xw)) -> x_size)
 #define XW_Y_CSIZE(xw) ((XW_EXTRA (xw)) -> y_size)
@@ -534,7 +540,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 	   (y_size - (size_hints->base_height)),
 	   (&attributes),
 	   (&methods),
-	   (sizeof (struct xterm_extra))));
+	   (sizeof (struct xwindow_term))));
     (XW_X_CSIZE (xw)) = x_csize;
     (XW_Y_CSIZE (xw)) = y_csize;
     (XW_CURSOR_X (xw)) = 0;

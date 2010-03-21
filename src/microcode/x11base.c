@@ -569,7 +569,7 @@ x_make_window (struct xdisplay * xd,
 	       int y_size,
 	       struct drawing_attributes * attributes,
 	       struct xwindow_methods * methods,
-	       unsigned int extra)
+	       unsigned int size)
 {
   GC normal_gc;
   GC reverse_gc;
@@ -591,9 +591,9 @@ x_make_window (struct xdisplay * xd,
      background_pixel);
   XDefineCursor (display, window, mouse_cursor);
   XSelectInput (display, window, 0);
-  xw
-    = (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw->extra)))
-		 + extra));
+  if (size < (sizeof (struct xwindow)))
+    error_external_return ();
+  xw = (x_malloc (size));
   (XW_ALLOCATION_INDEX (xw)) = (allocate_table_index ((&x_window_table), xw));
   (XW_XD (xw)) = xd;
   (XW_WINDOW (xw)) = window;
