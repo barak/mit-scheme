@@ -928,7 +928,7 @@ check_newspace_sync (void)
 {
   if ((newspace_next - newspace_start)
       != (tospace_next - tospace_start))
-    std_gc_death ("mismatch between newspace and tospace ptrs: %d/%d",
+    std_gc_death ("mismatch between newspace and tospace ptrs: %td/%td",
 		  (newspace_next - newspace_start),
 		  (tospace_next - tospace_start));
 }
