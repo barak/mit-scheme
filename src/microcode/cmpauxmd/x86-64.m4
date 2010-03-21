@@ -642,7 +642,7 @@ asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rdx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
 	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm0))
-	$3	asm_generic_return_sharp_t
+	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
@@ -819,11 +819,11 @@ asm_generic_divide_fail:
 define_unary_operation(decrement,22,sub,subsd)
 define_unary_operation(increment,26,add,addsd)
 
-# define_unary_predicate(name,index,jcc)
-# define_unary_predicate(  $1,   $2, $3)
-define_unary_predicate(negative,2a,jl)
-define_unary_predicate(positive,2c,jg)
-define_unary_predicate(zero,2d,je)
+# define_unary_predicate(name,index,fxjcc,fljcc)
+# define_unary_predicate(  $1,   $2,    $3,  $4)
+define_unary_predicate(negative,2a,jl,jb)
+define_unary_predicate(positive,2c,jg,ja)
+define_unary_predicate(zero,2d,je,je)
 
 # define_binary_operation(name,index,fxop,flop)
 # define_binary_operation(  $1,   $2,  $3,  $4)
