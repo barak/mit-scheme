@@ -291,6 +291,51 @@ string_copy_limited (const char * s, const char * e)
   return (result);
 }
 
+#ifdef __APPLE__
+
+static bool
+must_quote_char_p (int c)
+{
+  return ((c == QUOTE_CHAR) || (c == PATH_DELIMITER));
+}
+
+static unsigned int
+strlen_after_quoting (const char * s)
+{
+  const char * scan = s;
+  unsigned int n_chars = 0;
+  while (true)
+    {
+      int c = (*scan++);
+      if (c == '\0')
+	return n_chars;
+      if (must_quote_char_p (c))
+	n_chars += 1;
+      n_chars += 1;
+    }
+}
+
+static char *
+quote_string (const char * s)
+{
+  const char * scan_in = s;
+  char * result = (OS_malloc ((strlen_after_quoting (s)) + 1));
+  char * scan_out = result;
+  while (true)
+    {
+      int c = (*scan_in++);
+      if (c == '\0')
+	break;
+      if (must_quote_char_p (c))
+	(*scan_out++) = QUOTE_CHAR;
+      (*scan_out++) = c;
+    }
+  (*scan_out) = '\0';
+  return result;
+}
+
+#endif /* __APPLE__ */
+
 static unsigned int
 strlen_after_unquoting (const char * s)
 {
@@ -616,6 +661,24 @@ free_parsed_path (const char ** path)
     }
   xfree (path);
 }
+
+#ifdef __APPLE__
+
+static char *
+add_to_library_path (const char * new_dir, const char * library_path)
+{
+  const char * quoted_dir = (quote_string (new_dir));
+  unsigned int quoted_dir_len = (strlen (quoted_dir));
+  char * result = (OS_malloc (quoted_dir_len + (strlen (library_path)) + 2));
+  char * end = (result + quoted_dir_len);
+  strcpy (result, quoted_dir);
+  (*end++) = PATH_DELIMITER;
+  strcpy (end, library_path);
+  xfree (quoted_dir);
+  return (result);
+}
+
+#endif /* __APPLE__ */
 
 const char *
 search_for_library_file (const char * filename)
