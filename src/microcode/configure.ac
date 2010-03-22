@@ -204,6 +204,13 @@ SAVED_LDFLAGS=${LDFLAGS}
 
 dnl Checks for programs.
 AC_PROG_CC
+AC_PROG_CC_STDC
+if test "x${ac_cv_prog_cc_c99}" != xno; then
+   AC_DEFINE([HAVE_STDC_99], [1], [Does the compiler support C99?])
+fi
+if test "x${ac_cv_prog_cc_c89}" != xno; then
+   AC_DEFINE([HAVE_STDC_89], [1], [Does the compiler support C89?])
+fi
 AC_C_BACKSLASH_A
 AC_C_BIGENDIAN
 AC_C_CONST
