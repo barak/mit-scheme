@@ -928,7 +928,12 @@ check_newspace_sync (void)
 {
   if ((newspace_next - newspace_start)
       != (tospace_next - tospace_start))
-    std_gc_death ("mismatch between newspace and tospace ptrs: %td/%td",
+    std_gc_death (
+#ifdef HAVE_STDC_99
+		  "mismatch between newspace and tospace ptrs: %td/%td",
+#else
+		  "mismatch between newspace and tospace ptrs: %d/%d",
+#endif
 		  (newspace_next - newspace_start),
 		  (tospace_next - tospace_start));
 }
