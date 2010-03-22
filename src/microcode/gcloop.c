@@ -932,7 +932,7 @@ check_newspace_sync (void)
 #ifdef HAVE_STDC_99
 		  "mismatch between newspace and tospace ptrs: %td/%td",
 #else
-		  "mismatch between newspace and tospace ptrs: %d/%d",
+		  "mismatch between newspace and tospace ptrs: %ld/%ld",
 #endif
 		  (newspace_next - newspace_start),
 		  (tospace_next - tospace_start));
