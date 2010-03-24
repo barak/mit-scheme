@@ -184,33 +184,141 @@ USA.
   continue-parsing)
 
 (define (handler:comment port db ctx char)
-  ctx char
-  (let loop ()
+  (declare (ignore ctx char))
+
+  ;; This is a small state machine that looks for  -*-
+  ;; The scan state is when it hasn't found anything.
+  ;; The dash state is after a - has been seen.
+  ;; The discard state is after the file-attributes-line has
+  ;; been parsed.
+  (define (scan)
+    (let ((char (%read-char port db)))
+      (if (eof-object? char)
+	  char
+	  (case char
+	    ((#\newline) unspecific)
+	    ((#\-) (dash))
+	    (else (scan))))))
+
+  (define (dash)
+    (let ((char (%read-char port db)))
+      (if (eof-object? char)
+	  char
+	  (case char
+	    ((#\newline) unspecific)
+	    ((#\*)
+	     (let ((char (%read-char port db)))
+	       (if (eof-object? char)
+		   char
+		   (case char
+		     ((#\newline) unspecific)
+		     ((#\-)
+		      (parse-file-attributes-line port db false)
+		      (discard))
+		     (else (scan))))))
+	    ((#\-) (dash))
+	    (else (scan))))))
+
+  (define (discard)
     (let ((char (%read-char port db)))
       (cond ((eof-object? char) char)
 	    ((char=? char #\newline) unspecific)
-	    (else (loop)))))
-  continue-parsing)
+	    (else (discard)))))
 
-(define (handler:multi-line-comment port db ctx char1 char2)
-  ctx char1 char2
-  (let loop ()
+  ;; If we're past the second line, just discard.
+  (if (< (current-line port db) 2)
+      (scan)
+      (discard))
+
+  continue-parsing)
+
+(define (handler:multi-line-comment
+	 port db ctx char1 char2)
+  (declare (ignore ctx char1 char2))
+  ;; In addition to parsing out the multi-line-comment, we want to
+  ;; extract out the file attribute line if it exists in the first
+  ;; line.  To do this, we use a small state machine implemented as a
+  ;; bunch of internal functions.  Each state function takes a
+  ;; character from the port as an input and finishes by tail-calling
+  ;; the next state with the next character.
+
+  ;; These first five states are where we scan the
+  ;; first line looking for the file attribute marker, end of comment,
+  ;; nested comment, or end of line.
+
+  (define (scan)
     (case (%read-char/no-eof port db)
-      ((#\#)
-       (let sharp ()
-	 (case (%read-char/no-eof port db)
-	   ((#\#) (sharp))
-	   ((#\|) (loop) (loop))
-	   (else (loop)))))
-      ((#\|)
-       (let vbar ()
-	 (case (%read-char/no-eof port db)
-	   ((#\#) unspecific)
-	   ((#\|) (vbar))
-	   (else (loop)))))
-      (else (loop))))
-  continue-parsing)
+      ((#\newline) (discard 0))
+      ((#\#) (sharp))
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
 
+  (define (sharp)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0))
+      ((#\#) (sharp))
+      ((#\-) (dash))
+      ((#\|) (discard 1))		; nested comment
+      (else (scan))))
+
+  (define (vbar)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0))
+      ((#\#) unspecific)		; end of comment
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  (define (dash)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0))
+      ((#\#) (sharp))
+      ((#\*) (dash-star))
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  (define (dash-star)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0))
+      ((#\#) (sharp))
+      ((#\-) (parse-file-attributes-line port db true) (discard 0))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  ;; Next three states are the discard loop where we
+  ;; just track the nesting level and discard stuff.
+  ;; We don't look for the file-attribute marker.
+
+  (define (discard depth)
+    (case (%read-char/no-eof port db)
+      ((#\#) (discard-sharp depth))
+      ((#\|) (discard-vbar depth))
+      (else (discard depth))))
+
+  (define (discard-sharp depth)
+    (case (%read-char/no-eof port db)
+      ((#\#) (discard-sharp depth))
+      ((#\|) (discard (+ depth 1))) ; push
+      (else (discard depth))))
+
+  (define (discard-vbar depth)
+    (case (%read-char/no-eof port db)
+      ((#\#) (if (> depth 0)
+		 (discard (- depth 1)) ; pop
+		 unspecific))
+      ((#\|) (discard-vbar depth))
+      (else (discard depth))))
+
+  ;; Start the machine.
+  ;; If we're past the second line, just discard.
+  (if (< (current-line port db) 2)
+      (scan)
+      (discard 0))
+
+  continue-parsing)
+
 ;; It would be better if we could skip over the object without
 ;; creating it, but for now this will work.
 (define (handler:expression-comment port db ctx char1 char2)
@@ -635,6 +743,7 @@ USA.
   (shared-objects #f read-only #t)
   (get-position #f read-only #t)
   (discretionary-write-char #f read-only #t)
+  (input-line #f read-only #t)
   position-mapping)
 
 (define (initial-db port environment)
@@ -653,6 +762,7 @@ USA.
 	     (make-shared-objects)
 	     (position-operation port environment)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
+	     (port/operation port 'INPUT-LINE)
 	     '())))
 
 (define (position-operation port environment)
@@ -664,6 +774,9 @@ USA.
 
 (define-integrable (current-position port db)
   ((db-get-position db) port))
+
+(define-integrable (current-line port db)
+  ((db-input-line db) port))
 
 (define-integrable (record-object-position! position object db)
   (if (and position (object-pointer? object))

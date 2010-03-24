@@ -2793,6 +2793,13 @@ USA.
 	  char-set/symbol-quotes)
   (initialization (initialize-package!)))
 
+(define-package (runtime parser file-attributes)
+  (files "file-attributes")
+  (parent (runtime parser))
+  (export (runtime parser)
+	  parse-file-attributes-line)
+  (initialization (initialize-package!)))
+
 (define-package (runtime parser-table)
   (files "partab")
   (parent (runtime))
