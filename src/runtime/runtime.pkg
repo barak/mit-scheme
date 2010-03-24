@@ -2146,6 +2146,7 @@ USA.
 	  input-port/%read-char
 	  input-port/%peek-char
 	  input-port/char-ready?
+	  input-port/line
 	  input-port/discard-chars
 	  input-port/eof?
 	  input-port/peek-char

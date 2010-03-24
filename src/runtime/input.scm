@@ -131,6 +131,11 @@ USA.
   (let ((eof? (port/operation port 'EOF?)))
     (and eof?
 	 (eof? port))))
+
+(define (input-port/line port)
+  (let ((operation (port/operation port 'INPUT-LINE)))
+    (and operation
+	 (operation port))))
 
 ;;;; High level
 
