@@ -121,6 +121,7 @@ USA.
 	 `((CHAR-READY? ,generic-io/char-ready?)
 	   (CLOSE-INPUT ,generic-io/close-input)
 	   (EOF? ,generic-io/eof?)
+	   (INPUT-LINE ,generic-io/input-line)
 	   (INPUT-OPEN? ,generic-io/input-open?)
 	   (PEEK-CHAR ,generic-io/peek-char)
 	   (READ-CHAR ,generic-io/read-char)
@@ -194,9 +195,13 @@ USA.
   (buffer-has-input? (port-input-buffer port)))
 
 (define (generic-io/peek-char port)
-  (let ((char (generic-io/read-char port)))
+  (let* ((ib (port-input-buffer port))
+	 (line (input-buffer-line ib))
+	 (char (generic-io/read-char port)))
     (if (char? char)
-	(let ((ib (port-input-buffer port)))
+	;; Undo effect of read-char.
+	(begin
+	  (set-input-buffer-line! ib line)
 	  (set-input-buffer-start! ib (input-buffer-prev ib))))
     char))
 
@@ -213,16 +218,21 @@ USA.
 	      (else (error "Unknown result:" r))))))))
 
 (define (generic-io/unread-char port char)
-  char					;ignored
   (let ((ib (port-input-buffer port)))
     (let ((bp (input-buffer-prev ib)))
       (if (not (fix:< bp (input-buffer-start ib)))
 	  (error "No char to unread:" port))
+      ;; If unreading a newline, decrement the line count.
+      (if (char=? char #\newline)
+	  (set-input-buffer-line! ib (fix:- (input-buffer-line ib) 1)))
       (set-input-buffer-start! ib bp))))
 
 (define (generic-io/read-substring port string start end)
   (read-substring (port-input-buffer port) string start end))
 
+(define (generic-io/input-line port)
+  (input-buffer-line (port-input-buffer port)))
+
 (define (generic-io/eof? port)
   (input-buffer-at-eof? (port-input-buffer port)))
 
@@ -714,6 +724,7 @@ USA.
   end
   decode
   normalize
+  line
   compute-encoded-character-size)
 
 (define (make-input-buffer source coder-name normalizer-name)
@@ -727,6 +738,7 @@ USA.
 		       (line-ending ((source/get-channel source))
 				    normalizer-name
 				    #f))
+		      0
 		      (name->sizer coder-name)))
 
 (define (input-buffer-open? ib)
@@ -742,6 +754,7 @@ USA.
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
+  (set-input-buffer-line! ib -1)
   (set-input-buffer-prev! ib -1)
   (set-input-buffer-start! ib -1)
   (set-input-buffer-end! ib -1))
@@ -761,7 +774,13 @@ USA.
   ((input-buffer-compute-encoded-character-size ib) ib char))
 
 (define (read-next-char ib)
-  ((input-buffer-normalize ib) ib))
+  (let ((char ((input-buffer-normalize ib) ib)))
+    (if (and (char? char)
+	     (char=? char #\newline))
+	(let ((line (input-buffer-line ib)))
+	  (if line
+	      (set-input-buffer-line! ib (fix:+ line 1)))))
+    char))
 
 (define (decode-char ib)
   (and (fix:< (input-buffer-start ib) (input-buffer-end ib))
@@ -818,9 +837,11 @@ USA.
 	     (next-char-ready? ib)))))
 
 (define (next-char-ready? ib)
-  (let ((bs (input-buffer-start ib)))
+  (let ((bl (input-buffer-line ib))
+	(bs (input-buffer-start ib)))
     (and (read-next-char ib)
 	 (begin
+	   (set-input-buffer-line! ib bl)
 	   (set-input-buffer-start! ib bs)
 	   #t))))
 
