@@ -30,15 +30,17 @@ USA.
 	 (integrate-external "input")
 	 (integrate-external "port"))
 
-(define *parser-radix* 10)
-(define *parser-canonicalize-symbols?* #t)
 (define *parser-associate-positions?* #f)
+(define *parser-canonicalize-symbols?* #t)
 (define *parser-keyword-style* #f)
-(define ignore-extra-list-closes #t)
-(define runtime-parser-radix 10)
-(define runtime-parser-canonicalize-symbols? #t)
+(define *parser-radix* 10)
+
 (define runtime-parser-associate-positions? #f)
+(define runtime-parser-canonicalize-symbols? #t)
 (define runtime-parser-keyword-style #f)
+(define runtime-parser-radix 10)
+
+(define ignore-extra-list-closes #t)
 
 (define (parse-object port environment)
   ((top-level-parser port) port environment))
@@ -737,11 +739,11 @@ USA.
     char))
 
 (define-structure db
-  (radix #f read-only #t)
-  (canonicalize-symbols? #f read-only #t)
   (associate-positions? #f read-only #t)
-  (parser-table #f read-only #t)
+  (canonicalize-symbols? #f read-only #t)
   (keyword-style #f read-only #t)
+  (radix #f read-only #t)
+  (parser-table #f read-only #t)
   (shared-objects #f read-only #t)
   (get-position #f read-only #t)
   (discretionary-write-char #f read-only #t)
@@ -756,11 +758,11 @@ USA.
 	     (begin
 	       (guarantee-environment environment #f)
 	       environment))))
-    (make-db (environment-lookup environment '*PARSER-RADIX*)
+    (make-db (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
 	     (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
-	     (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
-	     (environment-lookup environment '*PARSER-TABLE*)
 	     (environment-lookup environment '*PARSER-KEYWORD-STYLE*)
+	     (environment-lookup environment '*PARSER-RADIX*)
+	     (environment-lookup environment '*PARSER-TABLE*)
 	     (make-shared-objects)
 	     (position-operation port environment)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
