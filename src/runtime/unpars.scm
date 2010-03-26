@@ -367,13 +367,10 @@ USA.
 	(*unparse-string s))))
 
 (define (looks-like-keyword? string)
-  (case (environment-lookup *environment* '*KEYWORD-STYLE*)
-    ((BOTH)
-     (or (char=? (string-ref string 0) #\:)
-	 (char=? (string-ref string (- (string-length string) 1)) #\:)))
-    ((CL)
+  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+    ((PREFIX)
      (char=? (string-ref string 0) #\:))
-    ((DSSSL SRFI-88)
+    ((SUFFIX)
      (char=? (string-ref string (- (string-length string) 1)) #\:))
     (else #f)))
 
