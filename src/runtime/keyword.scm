@@ -53,7 +53,7 @@ USA.
 
 (define (keyword-unparser state object)
   (let ((port (unparser-state/port state)))
-    (case *keyword-style*
+    (case *parser-keyword-style*
       ((PREFIX)
        (write-char #\: port)
        (write (keyword/name object) port))
