@@ -34,11 +34,6 @@ USA.
 
 (define *keyword-intern-table*)
 
-;;; *KEYWORD-STYLE*
-;;
-;;  Should be one of PREFIX, SUFFIX, or #F.
-(define *keyword-style* #f)
-
 (define-structure (keyword
 		   (constructor %make-keyword (name))
 		   (conc-name keyword/)
