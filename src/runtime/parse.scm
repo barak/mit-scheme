@@ -31,14 +31,20 @@ USA.
 	 (integrate-external "port"))
 
 (define *parser-associate-positions?* #f)
+(define *parser-atom-delimiters*)
 (define *parser-canonicalize-symbols?* #t)
+(define *parser-constituents*)
 (define *parser-keyword-style* #f)
 (define *parser-radix* 10)
+(define *parser-table*)
 
 (define runtime-parser-associate-positions? #f)
+(define runtime-parser-atom-delimiters)
 (define runtime-parser-canonicalize-symbols? #t)
+(define runtime-parser-constituents)
 (define runtime-parser-keyword-style #f)
 (define runtime-parser-radix 10)
+(define runtime-parser-table)
 
 (define ignore-extra-list-closes #t)
 
@@ -109,8 +115,6 @@ USA.
 (define char-set/atom-delimiters)
 (define char-set/symbol-quotes)
 (define char-set/number-leaders)
-(define *parser-table*)
-(define runtime-parser-table)
 
 (define (initialize-package!)
   (let* ((constituents
