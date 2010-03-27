@@ -121,32 +121,35 @@ USA.
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
-  (let ((do-it
-	 (let ((start-date (get-decoded-time)))
-	   (lambda ()
-	     (fasdump (make-comment
-		       `((SOURCE-FILE . ,(->namestring input-pathname))
-			 (DATE ,(decoded-time/year start-date)
-			       ,(decoded-time/month start-date)
-			       ,(decoded-time/day start-date))
-			 (TIME ,(decoded-time/hour start-date)
-			       ,(decoded-time/minute start-date)
-			       ,(decoded-time/second start-date)))
-		       (sf/file->scode input-pathname bin-pathname
-				       environment declarations))
-		      bin-pathname
-		      #t)))))
-    (if sf:noisy?
-	(let ((message
-	       (lambda (port)
-		 (write-string "Generating SCode for file: " port)
-		 (write (enough-namestring input-pathname) port)
-		 (write-string " => " port)
-		 (write (enough-namestring bin-pathname) port))))
-	  (if (eq? sf:noisy? 'old-style)
-	      (timed message do-it)
-	      (with-notification message do-it)))
-	(do-it))))
+  (with-simple-restart
+   'CONTINUE (string-append "Skip processing file " (->namestring input-pathname))
+   (lambda ()
+     (let ((do-it
+	    (let ((start-date (get-decoded-time)))
+	      (lambda ()
+		(fasdump (make-comment
+			  `((SOURCE-FILE . ,(->namestring input-pathname))
+			    (DATE ,(decoded-time/year start-date)
+				  ,(decoded-time/month start-date)
+				  ,(decoded-time/day start-date))
+			    (TIME ,(decoded-time/hour start-date)
+				  ,(decoded-time/minute start-date)
+				  ,(decoded-time/second start-date)))
+			  (sf/file->scode input-pathname bin-pathname
+					  environment declarations))
+			 bin-pathname
+			 #t)))))
+       (if sf:noisy?
+	   (let ((message
+		  (lambda (port)
+		    (write-string "Generating SCode for file: " port)
+		    (write (enough-namestring input-pathname) port)
+		    (write-string " => " port)
+		    (write (enough-namestring bin-pathname) port))))
+	     (if (eq? sf:noisy? 'old-style)
+		 (timed message do-it)
+		 (with-notification message do-it)))
+	   (do-it))))))
 
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
