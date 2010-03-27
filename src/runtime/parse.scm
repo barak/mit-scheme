@@ -34,6 +34,7 @@ USA.
 (define *parser-atom-delimiters*)
 (define *parser-canonicalize-symbols?* #t)
 (define *parser-constituents*)
+(define *parser-enable-file-attributes-parsing?* #f)
 (define *parser-keyword-style* #f)
 (define *parser-radix* 10)
 (define *parser-table*)
@@ -42,6 +43,7 @@ USA.
 (define runtime-parser-atom-delimiters)
 (define runtime-parser-canonicalize-symbols? #t)
 (define runtime-parser-constituents)
+(define runtime-parser-enable-file-attributes-parsing? #f)
 (define runtime-parser-keyword-style #f)
 (define runtime-parser-radix 10)
 (define runtime-parser-table)
@@ -184,12 +186,6 @@ USA.
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
 
-(define-integrable (atom-delimiter? char)
-  (char-set-member? char-set/atom-delimiters char))
-
-(define (guarantee-constituent char)
-  (if (not (char-set-member? char-set/constituents char))
-      (error:illegal-char char)))
 
 (define (handler:whitespace port db ctx char)
   port db ctx char
@@ -238,7 +234,8 @@ USA.
 	    (else (discard)))))
 
   ;; If we're past the second line, just discard.
-  (if (< (current-line port db) 2)
+  (if (and (< (current-line port db) 2)
+	   (db-enable-file-attributes-parsing db))
       (scan)
       (discard))
 
@@ -325,7 +322,8 @@ USA.
 
   ;; Start the machine.
   ;; If we're past the second line, just discard.
-  (if (< (current-line port db) 2)
+  (if (and (< (current-line port db) 2)
+	   (db-enable-file-attributes-parsing db))
       (scan)
       (discard 0))
 
@@ -386,7 +384,9 @@ USA.
 	(table
 	 (if (db-canonicalize-symbols? db)
 	     downcase-table
-	     identity-table)))
+	     identity-table))
+	(atom-delimiters (db-atom-delimiters db))
+	(constituents (db-constituents db)))
     (define (%canon char)
       ;; Assumption: No character involved in I/O has bucky bits, and
       ;; case conversion applies only to ISO-8859-1 characters.
@@ -421,12 +421,13 @@ USA.
 			(previous-char #f)
 			(char (%peek)))
       (if (or (eof-object? char)
-	      (atom-delimiter? char))
+	      (%char-set-member? atom-delimiters char))
 	  (if quoting?
 	      (values (get-output-string port*) quoted? previous-char)
 	      (get-output-string port*))
 	  (begin
-	    (guarantee-constituent char)
+	    (if (not (%char-set-member? constituents char))
+		(error:illegal-char char))
 	    (%discard)
 	    (cond ((char=? char #\|)
 		   (if quoting?
@@ -652,8 +653,8 @@ USA.
 	 (lambda ()
 	   (let ((char (%peek-char port db)))
 	     (or (eof-object? char)
-		 (atom-delimiter? char))))))
-    (if (or (atom-delimiter? char)
+		 (%char-set-member? (db-atom-delimiters db) char))))))
+    (if (or (%char-set-member? (db-atom-delimiters db) char)
 	    (at-end?))
 	char
 	(name->char
@@ -721,7 +722,7 @@ USA.
 (define (%read-char port db)
   (let ((char
 	 (let loop ()
-	   (or (input-port/%read-char port)
+	   (or ((db-read-char db) port)
 	       (loop))))
 	(op (db-discretionary-write-char db)))
     (if op
@@ -734,10 +735,9 @@ USA.
 	(error:premature-eof port))
     char))
 
-(define (%peek-char port db)
-  db					;ignore
+(define-integrable (%peek-char port db)
   (let loop ()
-    (or (input-port/%peek-char port)
+    (or ((db-peek-char db) port)
 	(loop))))
 
 (define (%peek-char/no-eof port db)
@@ -748,33 +748,51 @@ USA.
 
 (define-structure db
   (associate-positions? #f read-only #t)
+  (atom-delimiters #f read-only #t)
   (canonicalize-symbols? #f read-only #t)
+  (constituents #f read-only #t)
+  (enable-file-attributes-parsing #f read-only #t)
   (keyword-style #f read-only #t)
   (radix #f read-only #t)
   (parser-table #f read-only #t)
   (shared-objects #f read-only #t)
-  (get-position #f read-only #t)
+  ;; Cached port operations
   (discretionary-write-char #f read-only #t)
+  (get-position #f read-only #t)
   (input-line #f read-only #t)
+  (peek-char #f read-only #t)
+  (read-char #f read-only #t)
   position-mapping)
 
 (define (initial-db port environment)
-  (let ((environment
-	 (if (or (default-object? environment)
-		 (parser-table? environment))
-	     (nearest-repl/environment)
-	     (begin
-	       (guarantee-environment environment #f)
-	       environment))))
+  (let* ((environment
+	  (if (or (default-object? environment)
+		  (parser-table? environment))
+	      (nearest-repl/environment)
+	      (begin
+		(guarantee-environment environment #f)
+		environment)))
+	 (atom-delimiters
+	  (environment-lookup environment '*PARSER-ATOM-DELIMITERS*))
+	 (constituents
+	  (environment-lookup environment '*PARSER-CONSTITUENTS*)))
+    (guarantee-char-set atom-delimiters #f)
+    (guarantee-char-set constituents #f)
     (make-db (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+	     atom-delimiters
 	     (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	     constituents
+	     (environment-lookup environment
+				 '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*)
 	     (environment-lookup environment '*PARSER-KEYWORD-STYLE*)
 	     (environment-lookup environment '*PARSER-RADIX*)
 	     (environment-lookup environment '*PARSER-TABLE*)
 	     (make-shared-objects)
-	     (position-operation port environment)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
+	     (position-operation port environment)
 	     (port/operation port 'INPUT-LINE)
+	     (port/operation port 'PEEK-CHAR)
+	     (port/operation port 'READ-CHAR)
 	     '())))
 
 (define (position-operation port environment)

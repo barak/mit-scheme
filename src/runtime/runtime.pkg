@@ -2775,6 +2775,7 @@ USA.
 	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
 	  *parser-constituents*
+	  *parser-enable-file-attributes-parsing?*
 	  *parser-keyword-style*
 	  *parser-radix*
 	  *parser-table*
@@ -2787,6 +2788,8 @@ USA.
 	  (*parser-atom-delimiters* runtime-parser-atom-delimiters)
 	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
 	  (*parser-constituents* runtime-parser-constituents)
+	  (*parser-enable-file-attributes-parsing?*
+	   runtime-parser-enable-file-attributes-parsing?)
 	  (*parser-keyword-style* runtime-parser-keyword-style)
 	  (*parser-radix* runtime-parser-radix)
 	  (*parser-table* runtime-parser-table))
