@@ -283,6 +283,7 @@ USA.
 	  keyword?
 	  keyword->string
 	  string->keyword
+	  symbol->keyword
 	  )
   (initialization (initialize-package!)))
 
