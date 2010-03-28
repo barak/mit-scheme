@@ -118,8 +118,6 @@ USA.
 	       ;; be side-effected, but it is useful to be able to
 	       ;; constant fold this primitive anyway.
 	       STRING->SYMBOL
-	       SYMBOL->STRING
-	       SYMBOL?
 	       ZERO-FIXNUM?
 	       ZERO?
 	       ))))
