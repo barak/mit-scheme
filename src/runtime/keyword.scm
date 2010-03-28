@@ -72,3 +72,7 @@ USA.
 			 (string-copy string)
 			 new-keyword)
 	new-keyword)))
+
+(define (symbol->keyword symbol)
+  (guarantee-symbol symbol 'symbol->keyword)
+  (string->keyword (symbol->string symbol)))
