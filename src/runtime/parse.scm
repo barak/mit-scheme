@@ -871,7 +871,7 @@ USA.
 (define (process-mode-attribute file-attribute-alist port)
   (declare (ignore port))
   (let ((mode-entry
-	 (lookup-file-attribute file-attribute-alist 'KEYWORD-STYLE)))
+	 (lookup-file-attribute file-attribute-alist 'MODE)))
     (if (pair? mode-entry)
 	(let ((value (cdr mode-entry)))
 	  (if (or (not (symbol value))
