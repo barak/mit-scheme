@@ -362,17 +362,25 @@ USA.
 (define (handler:symbol port db ctx char)
   ctx
   (receive (string quoted? final) (parse-atom port db (list char))
-    (declare (ignore quoted?))
     (if (and (eq? final #\:)
-	     (eq? (db-keyword-style db) 'SUFFIX))
+	     (eq? (db-keyword-style db) 'SUFFIX)
+	     ;; Nasty edge case:  A bare colon.  Treat as a symbol
+	     ;; unless quoted.
+	     (or (not (= (string-length string) 1))
+		 quoted?))
 	(string->keyword (string-head string (- (string-length string) 1)))
 	(string->symbol string))))
 
 (define (handler:prefix-keyword port db ctx char)
   (if (eq? (db-keyword-style db) 'PREFIX)
       (receive (string quoted? final) (parse-atom port db '())
-	(declare (ignore quoted? final))
-	(string->keyword string))
+	(declare (ignore final))
+	(if (and (zero? (string-length string))
+		 (not quoted?))
+	    ;; Nasty edge case:  A bare colon.  Treat as a symbol
+	    ;; unless quoted.
+	    (string->symbol ":")
+	    (string->keyword string)))
       ;; If prefix-style keywords are not in use, just
       ;; tail call the symbol handler.
       (handler:symbol port db ctx char)))
