@@ -253,8 +253,13 @@ USA.
 	  flo:vector-set!
 	  flo:with-rounding-mode
 	  flo:zero?
+	  guarantee-fixnum
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
+	  guarantee-negative-fixnum
+	  guarantee-non-negative-fixnum
+	  guarantee-non-positive-fixnum
+	  guarantee-positive-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -274,7 +279,11 @@ USA.
 	  int:positive?
 	  int:quotient
 	  int:remainder
-	  int:zero?))
+	  int:zero?
+	  negative-fixnum?
+	  non-negative-fixnum?
+	  non-positive-fixnum?
+	  positive-fixnum?))
 
 (define-package (runtime keyword)
   (files "keyword")
