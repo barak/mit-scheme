@@ -2318,6 +2318,7 @@ USA.
 	  cons*
 	  count-matching-items
 	  count-non-matching-items
+	  decode-general-car-cdr
 	  del-assoc
 	  del-assoc!
 	  del-assq
@@ -2336,6 +2337,7 @@ USA.
 	  delv!
 	  dotted-list?			;SRFI-1
 	  eighth
+	  encode-general-car-cdr
 	  error:not-alist
 	  error:not-circular-list
 	  error:not-dotted-list

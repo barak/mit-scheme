@@ -474,6 +474,31 @@ USA.
 		      (error:not-weak-list items 'WEAK-DELQ!))))))
     (trim-initial-segment items)))
 
+;;;; General CAR CDR
+
+;;; Return a list of car and cdr symbols that the code
+;;; represents.  Leftmost operation is outermost.
+(define (decode-general-car-cdr code)
+  (guarantee-positive-fixnum code)
+  (do ((code code (fix:lsh code -1))
+       (result '() (cons (if (even? code) 'cdr 'car) result)))
+      ((= code 1) result)))
+
+;;; Return the bit string that encode the operation-list.
+;;; Operation list is encoded with leftmost outer.
+(define (encode-general-car-cdr operation-list)
+  (do ((code operation-list (cdr code))
+       (answer 1 (+ (* answer 2)
+		    (case (car code)
+		      ((CAR) 1)
+		      ((CDR) 0)
+		      (else (error "encode-general-car-cdr: Invalid operation"
+				    (car code)))))))
+      ((not (pair? code))
+       (if (not (fixnum? answer))
+	   (error "encode-general-car-cdr: code too large" answer)
+	   answer))))
+
 ;;;; Standard Selectors
 
 (declare (integrate-operator safe-car safe-cdr))
