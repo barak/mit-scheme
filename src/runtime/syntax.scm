@@ -113,7 +113,9 @@ USA.
 ;;;; Identifiers
 
 (define (identifier? object)
-  (or (symbol? object)
+  (or (and (symbol? object)
+	   ;; This makes `:keyword' objects be self-evaluating.
+	   (not (keyword? object)))
       (synthetic-identifier? object)))
 
 (define (synthetic-identifier? object)

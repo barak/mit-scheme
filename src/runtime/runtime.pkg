@@ -291,10 +291,7 @@ USA.
   (export ()
 	  keyword?
 	  keyword->string
-	  string->keyword
-	  symbol->keyword
-	  )
-  (initialization (initialize-package!)))
+	  string->keyword))
 
 (define-package (runtime miscellaneous-global)
   (files "global")
