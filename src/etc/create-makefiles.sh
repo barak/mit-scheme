@@ -49,7 +49,7 @@ run_cmd ln -s machine/compiler.pkg compiler/.
 
 BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
 
-run_cmd ${HOST_SCHEME_EXE} --heap 4000 <<EOF
+run_cmd ${HOST_SCHEME_EXE} --batch-mode --heap 4000 <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))

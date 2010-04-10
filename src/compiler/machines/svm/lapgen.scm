@@ -31,7 +31,7 @@ USA.
 ;;;; Register-allocator interface
 
 (define available-machine-registers
-  (let loop ((r regnum:environment))
+  (let loop ((r regnum:word-0))
     (if (< r number-of-machine-registers)
 	(cons r (loop (+ r 1)))
 	'())))
@@ -43,50 +43,13 @@ USA.
   (cond ((register-value-class=word? register) 'WORD)
 	((register-value-class=float? register) 'FLOAT)
 	(else (error:bad-range-argument register 'REGISTER-TYPE))))
-
-;;;; Register references
-
-(define register-reference
-  (let ((references (make-vector number-of-machine-registers)))
-    (do ((i 0 (+ i 1)))
-	((>= i number-of-machine-registers))
-      (vector-set! references i `(R ,i)))
-    (lambda (register)
-      (guarantee-limited-index-fixnum register
-				      number-of-machine-registers
-				      'REGISTER-REFERENCE)
-      (vector-ref references register))))
-
-(define (register-reference? object)
-  (and (pair? object)
-       (eq? (car object) 'R)
-       (pair? (cdr object))
-       (index-fixnum? (cadr object))
-       (fix:< (cadr object) number-of-machine-registers)
-       (null? (cddr object))))
-
-(define-guarantee register-reference "register reference")
-
-(define (reference->register reference)
-  (guarantee-register-reference reference 'REFERENCE->REGISTER)
-  (cadr reference))
-
-(define-integrable rref:word-0 (register-reference regnum:word-0))
-(define-integrable rref:word-1 (register-reference (+ 1 regnum:word-0)))
-(define-integrable rref:word-2 (register-reference (+ 2 regnum:word-0)))
-(define-integrable rref:word-3 (register-reference (+ 3 regnum:word-0)))
-(define-integrable rref:word-4 (register-reference (+ 4 regnum:word-0)))
-(define-integrable rref:word-5 (register-reference (+ 5 regnum:word-0)))
-(define-integrable rref:word-6 (register-reference (+ 6 regnum:word-0)))
 
 (define (register->register-transfer source target)
   (if (= source target)
       (LAP)
       (begin
 	(guarantee-registers-compatible source target)
-	(inst:copy (register-type target)
-		   (register-reference target)
-		   (register-reference source)))))
+	(inst:copy (register-reference target) (register-reference source)))))
 
 (define (reference->register-transfer source target)
   (cond ((register-reference? source)
@@ -104,25 +67,6 @@ USA.
 
 (define (pseudo-register-home register)
   (error "Attempt to access temporary register:" register))
-
-(define-syntax define-fixed-register-references
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (if (syntax-match? '(* symbol) (cdr form))
-	 `(BEGIN
-	    ,@(map (lambda (name)
-		     `(DEFINE-INTEGRABLE ,(symbol-append 'RREF: name)
-			(REGISTER-REFERENCE ,(symbol-append 'REGNUM: name))))
-		   (cdr form)))
-	 (ill-formed-syntax form)))))
-
-(define-fixed-register-references
-  stack-pointer
-  dynamic-link
-  free-pointer
-  value
-  environment)
 
 ;;;; Linearizer interface
 
@@ -140,7 +84,7 @@ USA.
 (define (make-external-label label type-code)
   (set! *external-labels* (cons label *external-labels*))
   (LAP ,@(inst:datum-u16 type-code)
-       ,@(inst:datum-u16 `(- ,label *START*))
+         (BLOCK-OFFSET ,label)
        ,@(inst:label label)))
 
 (define (make-expression-label label)
@@ -329,12 +273,7 @@ USA.
   (pattern-lookup memory-ref-rules expression))
 
 (define (parse-memory-address expression)
-  (let ((thunk (pattern-lookup memory-address-rules expression)))
-    (and thunk
-	 (receive (scale ea)
-	     (thunk)
-	   scale
-	   ea))))
+  (pattern-lookup memory-address-rules expression))
 
 (define (make-memory-rules offset-operator?)
   (list (rule-matcher ((? scale offset-operator?)

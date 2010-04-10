@@ -42,9 +42,11 @@ run_make ()
 
 run_cmd_in_dir ()
 (
-    cd "${1}"
+    D="${1}"
     shift
-    run_cmd "${@}"
+    cd "${D}"
+    echo "run_cmd in ${D}/:" "${@}"
+    "${@}"
 )
 
 get_fasl_file ()
@@ -115,4 +117,10 @@ maybe_rm ()
     if [ "${DIRS}" ]; then
 	run_cmd rm -rf ${DIRS}
     fi
+}
+
+maybe_mv ()
+{
+    # When $1 is e.g. *.com, punt.
+    if [ -e "$1" ]; then mv "${@}"; fi
 }

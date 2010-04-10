@@ -22,7 +22,11 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Utility for MIT/GNU Scheme compiler staging.
+# Utility for MIT/GNU Scheme subsystem staging.
+
+set -e
+
+. ../etc/functions.sh
 
 if [ $# -ne 2 ]; then
     echo "usage: $0 <command> <tag>"
@@ -34,6 +38,13 @@ DIRNAME="STAGE${2}"
 case "${1}" in
 make)
     mkdir "${DIRNAME}" && mv -f *.com *.bci "${DIRNAME}/."
+    ;;
+make-cross)
+    mkdir "$DIRNAME"
+    maybe_mv *.com "$DIRNAME"
+    maybe_mv *.bci "$DIRNAME"
+    maybe_mv *.moc "$DIRNAME"
+    maybe_mv *.fni "$DIRNAME"
     ;;
 unmake)
     mv -f "${DIRNAME}"/* . && rmdir "${DIRNAME}"

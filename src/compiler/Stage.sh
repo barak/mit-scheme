@@ -24,6 +24,10 @@
 
 # Utility for MIT/GNU Scheme compiler staging.
 
+set -e
+
+. ../etc/functions.sh
+
 if [ $# -ne 2 ]; then
     echo "usage: $0 <command> <tag>"
     exit 1
@@ -36,6 +40,16 @@ case "${1}" in
 make)
     for D in ${SUBDIRS}; do
 	(cd ${D} && mkdir "${S}" && mv -f *.com *.bci "${S}") || exit 1
+    done
+    ;;
+make-cross)
+    for D in $SUBDIRS; do
+	( cd $D
+	  mkdir "$S"
+	  maybe_mv *.com "$S"
+	  maybe_mv *.bci "$S"
+	  maybe_mv *.moc "$S"
+	  maybe_mv *.fni "$S" )
     done
     ;;
 unmake)

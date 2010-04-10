@@ -38,26 +38,39 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (? thunk parse-memory-ref))
   (receive (scale source) (thunk)
-    (inst:load scale (word-target target) source)))
+    (let ((target (case scale
+		    ((BYTE WORD) (word-target target))
+		    ((FLOAT) (float-target target))
+		    (else (error "Unexpected load scale:" scale)))))
+      (inst:load scale target source))))
 
 (define-rule statement
   (ASSIGN (? thunk parse-memory-ref)
 	  (REGISTER (? source)))
   (receive (scale target) (thunk)
-    (inst:store scale (word-source source) target)))
+    (let ((source (case scale
+		    ((BYTE WORD) (word-source source))
+		    ((FLOAT) (float-source source))
+		    (else (error "Unexpected store scale:" scale)))))
+      (inst:store scale source target))))
 
 (define-rule statement
   (ASSIGN (? thunk parse-memory-ref)
 	  (CONSTANT (? constant)))
   (receive (scale target) (thunk)
-    (let ((temp (word-temporary)))
+    (let ((temp (case scale
+		  ((BYTE WORD) (word-temporary))
+		  ((FLOAT) (float-temporary))
+		  (else (error "Unexpected store constant scale:" scale)))))
       (LAP ,@(load-constant temp constant)
 	   ,@(inst:store scale temp target)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
-	  (? source-ea parse-memory-address))
-  (inst:load-address (word-target target) source-ea))
+	  (? thunk parse-memory-address))
+  (receive (scale source-ea) (thunk)
+    scale
+    (inst:load-address (word-target target) source-ea)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -143,10 +156,12 @@ USA.
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (CONS-POINTER (MACHINE-CONSTANT (? type))
-			(? source-ea parse-memory-address)))
-  (let ((temp (word-temporary)))
-    (LAP ,@(inst:load-address temp source-ea)
-	 ,@(inst:load-pointer (word-target target) type temp))))
+			(? thunk parse-memory-address)))
+  (receive (scale source-ea) (thunk)
+    scale
+    (let ((temp (word-temporary)))
+      (LAP ,@(inst:load-address temp source-ea)
+	   ,@(inst:load-pointer (word-target target) type temp)))))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
@@ -257,13 +272,6 @@ USA.
     (inst:integer->fixnum (word-target target)
 			  source)))
 
-(define-rule statement
-  (ASSIGN (REGISTER (? target))
-	  (OBJECT->FIXNUM (CONSTANT (? value))))
-  (QUALIFIER (and (fix:fixnum? value) (load-immediate-operand? value)))
-  (inst:load-immediate (word-target target)
-		       value))
-
 ;; The next two are no-ops on this architecture.
 
 (define-rule statement
@@ -283,8 +291,8 @@ USA.
 		     (REGISTER (? source)))
   (simple-branches! (case predicate
 		      ((ZERO-FIXNUM?) 'EQ)
-		      ((NEGATIVE-FIXNUM?) 'LT)
-		      ((POSITIVE-FIXNUM?) 'GT)
+		      ((NEGATIVE-FIXNUM?) 'SLT)
+		      ((POSITIVE-FIXNUM?) 'SGT)
 		      (else (error "Unknown fixnum predicate:" predicate)))
 		    (word-source source))
   (LAP))
@@ -305,8 +313,8 @@ USA.
   (LAP))
 
 (define-rule predicate
-  (OVERFLOW-TEST (REGISTER (? source)))
-  (simple-branches! 'NFIX source)
+  (OVERFLOW-TEST)
+  ;; The fixnum methods must test for overflow.
   (LAP))
 
 (define-rule statement
@@ -331,7 +339,7 @@ USA.
        (lambda (name inst)
 	 (define-fixnum-1-arg-method name
 	   (lambda (target source overflow?)
-	     overflow?
+	     (if overflow? (simple-branches! 'NFIX target))
 	     (inst target source))))))
   (standard 'ONE-PLUS-FIXNUM inst:increment)
   (standard 'MINUS-ONE-PLUS-FIXNUM inst:decrement)
@@ -363,7 +371,7 @@ USA.
        (lambda (name inst)
 	 (define-fixnum-2-args-method name
 	   (lambda (target source1 source2 overflow?)
-	     overflow?
+	     (if overflow? (simple-branches! 'NFIX target))
 	     (inst target source1 source2))))))
   (standard 'PLUS-FIXNUM inst:+)
   (standard 'MINUS-FIXNUM inst:-)
@@ -401,6 +409,12 @@ USA.
 		      (float-target target)
 		      (ea:offset temp 1 'WORD)))))
 
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (OBJECT->FLOAT (CONSTANT (? value))))
+  (QUALIFIER (flo:flonum? value))
+  (inst:load-immediate (float-target target) value))
+
 (define-rule predicate
   (FLONUM-PRED-1-ARG (? predicate)
 		     (REGISTER (? source)))
@@ -424,16 +438,30 @@ USA.
 		    (float-source source1)
 		    (float-source source2))
   (LAP))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (REGISTER (? source1))
+		      (OBJECT->FLOAT (CONSTANT (? constant))))
+  (QUALIFIER (flo:flonum? constant))
+  (let ((temp (float-temporary)))
+    (simple-branches! (case predicate
+			((FLONUM-EQUAL?) 'EQ)
+			((FLONUM-LESS?) 'LT)
+			((FLONUM-GREATER?) 'GT)
+			(else (error "Unknown flonum predicate:" predicate)))
+		      (float-source source1) temp)
+    (inst:load-immediate temp constant)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
 	  (FLONUM-1-ARG (? operation)
 			(REGISTER (? source))
 			(? overflow?)))
-  (let ((source (word-source source)))
+  (let ((source (float-source source)))
     ((or (1d-table/get flonum-1-arg-methods operation #f)
 	 (error "Unknown flonum operation:" operation))
-     (word-target target)
+     (float-target target)
      source
      overflow?)))
 
@@ -448,7 +476,7 @@ USA.
 	 (define-flonum-1-arg-method name
 	   (lambda (target source overflow?)
 	     overflow?
-	     (inst target target source))))))
+	     (inst target source))))))
   (standard 'FLONUM-NEGATE inst:negate)
   (standard 'FLONUM-ABS inst:abs)
   (standard 'FLONUM-SQRT inst:sqrt)
@@ -471,14 +499,46 @@ USA.
 			 (REGISTER (? source1))
 			 (REGISTER (? source2))
 			 (? overflow?)))
-  (let ((source1 (word-source source1))
-	(source2 (word-source source2)))
+  (let ((source1 (float-source source1))
+	(source2 (float-source source2)))
     ((or (1d-table/get flonum-2-args-methods operation #f)
 	 (error "Unknown flonum operation:" operation))
-     (word-target target)
+     (float-target target)
      source1
      source2
      overflow?)))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS (? operation)
+			 (REGISTER (? source1))
+			 (OBJECT->FLOAT (CONSTANT (? value)))
+			 (? overflow?)))
+  (let ((source1 (float-source source1))
+	(temp (float-temporary)))
+    (LAP ,@(inst:load-immediate temp value)
+	 ,@((or (1d-table/get flonum-2-args-methods operation #f)
+		(error "Unknown flonum operation:" operation))
+	    (float-target target)
+	    source1
+	    temp
+	    overflow?))))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FLONUM-2-ARGS (? operation)
+			 (OBJECT->FLOAT (CONSTANT (? value)))
+			 (REGISTER (? source2))
+			 (? overflow?)))
+  (let ((source2 (float-source source2))
+	(temp (float-temporary)))
+    (LAP ,@(inst:load-immediate temp value)
+	 ,@((or (1d-table/get flonum-2-args-methods operation #f)
+		(error "Unknown flonum operation:" operation))
+	    (float-target target)
+	    source2
+	    temp
+	    overflow?))))
 
 (define flonum-2-args-methods
   (make-1d-table))
@@ -584,26 +644,31 @@ USA.
 			      (REGISTER (? extension)))
   continuation
   (expect-no-exit-interrupt-checks)
-  (let ((set-extension (load-machine-register! extension regnum:word-0)))
-    (LAP ,@set-extension
-	 ,@(clear-map!)
-	 ,@(inst:load-immediate rref:word-2 frame-size)
-	 ,@(inst:load-address rref:word-1 (ea:address *block-label*))
-	 ,@(trap:cache-reference-apply rref:word-0 rref:word-1 rref:word-2))))
+  (let ((rref:cache-addr (word-source extension))
+	(rref:block-addr (word-temporary))
+	(rref:frame-size (word-temporary)))
+    (LAP ,@(clear-map!)
+	 ,@(inst:load-immediate rref:frame-size frame-size)
+	 ,@(inst:load-address rref:block-addr (ea:address *block-label*))
+	 ,@(trap:cache-reference-apply
+	    rref:cache-addr rref:block-addr rref:frame-size))))
 
-(define-rule statement
+#| There is no comutil_lookup_apply, no (trap:lookup-apply ...) instruction.
+ (define-rule statement
   (INVOCATION:LOOKUP (? frame-size)
 		     (? continuation)
 		     (REGISTER (? environment))
 		     (? name))
   continuation
   (expect-no-entry-interrupt-checks)
-  (let ((set-environment (load-machine-register! environment regnum:word-0)))
-    (LAP ,@set-environment
-	 ,@(clear-map!)
-	 ,@(inst:load-immediate rref:word-2 frame-size)
-	 ,@(load-constant rref:word-1 name)
-	 ,@(trap:lookup-apply rref:word-0 rref:word-1 rref:word-2))))
+  (let ((rref:environment (word-source environment))
+	(rref:frame-size (word-temporary))
+	(rref:name (word-temporary)))
+    (LAP ,@(clear-map!)
+	 ,@(inst:load-immediate rref:frame-size frame-size)
+	 ,@(load-constant rref:name name)
+	 ,@(trap:lookup-apply rref:environment rref:frame-size rref:name))))
+|#
 
 (define-rule statement
   (INVOCATION:PRIMITIVE (? frame-size) (? continuation) (? primitive))
@@ -614,14 +679,17 @@ USA.
 		  ,@(trap:error rref:word-0))
 	     (LAP ,@(load-constant rref:word-0 primitive)
 		  ,@(let ((arity (primitive-procedure-arity primitive)))
-		      (if (>= arity 0)
-			  (trap:primitive-apply rref:word-0)
-			  (LAP ,@(inst:load-immediate rref:word-1 frame-size)
-			       ,@(if (= arity -1)
-				     (trap:primitive-lexpr-apply rref:word-0
-								 rref:word-1)
-				     (trap:apply rref:word-0
-						 rref:word-1)))))))))
+		      (cond
+		       ((>= arity 0)
+			(trap:primitive-apply rref:word-0))
+		       ((= arity -1)
+			(LAP
+			 ,@(inst:load-immediate rref:word-1 (- frame-size 1))
+			 ,@(inst:store 'WORD rref:word-1 (ea:lexpr-actuals))
+			 ,@(trap:primitive-lexpr-apply rref:word-0)))
+		       (else
+			(LAP ,@(inst:load-immediate rref:word-1 frame-size)
+			     ,@(trap:apply rref:word-0 rref:word-1)))))))))
 
 (define-syntax define-primitive-invocation
   (sc-macro-transformer
@@ -667,16 +735,15 @@ USA.
 	(LAP ,@(inst:min-unsigned temp (word-source r1) (word-source r2))
 	     ,@(move-frame-up frame-size temp)))))
 
-(define (move-frame-up frame-size register)
+(define (move-frame-up frame-size source)
   (if (= frame-size 0)
-      (if (= register rref:stack-pointer)
+      (if (= (reference->register source) regnum:stack-pointer)
 	  (LAP)
-	  (inst:copy 'WORD rref:stack-pointer register))
+	  (inst:copy rref:stack-pointer source))
       (let ((temp (word-temporary)))
-	(LAP ,@(inst:load-address temp
-				  (ea:offset register (- frame-size) 'WORD))
+	(LAP ,@(inst:load-address temp (ea:offset source (- frame-size) 'WORD))
 	     ,@(inst:copy-block frame-size 'WORD rref:stack-pointer temp)
-	     ,@(inst:copy 'WORD rref:stack-pointer temp)))))
+	     ,@(inst:copy rref:stack-pointer temp)))))
 
 ;;;; Procedure headers
 
@@ -942,9 +1009,8 @@ USA.
      ,@(inst:load-immediate temp 0)
      ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
 
-     ,@(inst:load-pointer target
-			  (ucode-type compiled-entry)
-			  (ea:offset free entry-offset 'BYTE))
+     ,@(inst:load-address target (ea:offset free entry-offset 'BYTE))
+     ,@(inst:load-pointer target (ucode-type compiled-entry) target)
 
      ;; entry: (inst:enter-closure 0)
      ,@(inst:load-immediate temp svm1-inst:enter-closure)
@@ -954,7 +1020,8 @@ USA.
      ,@(inst:store 'BYTE temp (ea:offset free (+ 2 entry-offset) 'BYTE))
 
      ;; target: procedure-label
-     ,@(inst:load-pointer temp (ucode-type compiled-entry) (ea:address label))
+     ,@(inst:load-address temp (ea:address label))
+     ,@(inst:load-pointer temp (ucode-type compiled-entry) temp)
      ,@(inst:store 'WORD temp (ea:offset free target-offset 'BYTE))
 
      ,@(inst:load-address free (ea:offset free total-words 'WORD)))))
@@ -992,8 +1059,8 @@ USA.
 	(define (generate-targets entries woffset)
 	  (let ((label (internal->external-label (caar entries))))
 	    (LAP
-	     ,@(inst:load-pointer temp (ucode-type compiled-entry)
-				  (ea:address label))
+	     ,@(inst:load-address temp (ea:address label))
+	     ,@(inst:load-pointer temp (ucode-type compiled-entry) temp)
 	     ,@(inst:store 'WORD temp (ea:offset free woffset 'WORD))
 	     ,@(if (null? (cdr entries))
 		   (LAP)
@@ -1011,8 +1078,8 @@ USA.
 	 ,@(inst:load-immediate temp (big-end nentries))
 	 ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
 
-	 ,@(inst:load-pointer target (ucode-type compiled-entry)
-			      (ea:offset free first-entry-offset 'BYTE))
+	 ,@(inst:load-address target (ea:offset free first-entry-offset 'BYTE))
+	 ,@(inst:load-pointer target (ucode-type compiled-entry) target)
 
 	 ,@(generate-entries entries 0 first-entry-offset)
 
@@ -1023,13 +1090,13 @@ USA.
 (define (generate/closure-header internal-label nentries index)
   index
   (let ((external-label (internal->external-label internal-label)))
-    (if (zero? nentries)
-	(LAP (EQUATE ,external-label ,internal-label)
-	     ,@(simple-procedure-header
+    (LAP (EQUATE ,external-label ,internal-label)
+	 ,@(if (zero? nentries)
+	       (simple-procedure-header
 		(make-internal-procedure-label internal-label)
-		inst:interrupt-test-procedure))
-	(LAP ,@(simple-procedure-header
-		(make-internal-entry-label external-label)
+		inst:interrupt-test-procedure)
+	       (simple-procedure-header
+		(make-internal-entry-label internal-label)
 		inst:interrupt-test-closure)))))
 
 (define-rule statement
@@ -1071,27 +1138,39 @@ USA.
 ;;; This is invoked by the top level of the LAP generator.
 
 (define (generate/quotation-header environment-label free-ref-label n-sections)
-  (LAP ,@(inst:store 'WORD regnum:environment (ea:address environment-label))
-       ,@(inst:load-address rref:word-0 (ea:address *block-label*))
-       ,@(inst:load-address rref:word-1 (ea:address free-ref-label))
-       ,@(inst:load-immediate rref:word-2 n-sections)
-       ,@(trap:link rref:word-0 rref:word-1 rref:word-2)
-       ,@(make-internal-continuation-label (generate-label))))
+  (let ((rref:block-addr rref:word-0)
+	(rref:constant-addr rref:word-1)
+	(rref:n-sections rref:word-2))
+    (LAP ,@(inst:load 'WORD rref:word-0 (ea:environment))
+	 ,@(inst:store 'WORD rref:word-0 (ea:address environment-label))
+	 ,@(inst:load-address rref:block-addr (ea:address *block-label*))
+	 ,@(inst:load-address rref:constant-addr (ea:address free-ref-label))
+	 ,@(inst:load-immediate rref:n-sections n-sections)
+	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
+	 ,@(make-internal-continuation-label (generate-label)))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
 			      free-ref-offset
 			      n-sections)
-  (LAP ,@(inst:load-address rref:word-0 (ea:address code-block-label))
-       ,@(inst:load-address rref:word-1
-			    (ea:offset rref:word-0
-				       environment-offset 'WORD))
-       ,@(inst:store 'WORD regnum:environment (ea:indirect rref:word-1))
-       ,@(inst:load-address rref:word-1 (ea:offset rref:word-0
-						   free-ref-offset 'WORD))
-       ,@(inst:load-immediate rref:word-2 n-sections)
-       ,@(trap:link rref:word-0 rref:word-1 rref:word-2)
-       ,@(make-internal-continuation-label (generate-label))))
+  (let ((rref:block-addr rref:word-0)
+	(rref:constant-addr rref:word-1)
+	(rref:n-sections rref:word-2)
+	(rref:block.environment-addr rref:word-3)
+	(rref:environment rref:word-4))
+    (LAP ,@(inst:load-address rref:block-addr (ea:address code-block-label))
+	 ,@(inst:load-address rref:block.environment-addr
+			      (ea:offset rref:block-addr
+					 environment-offset 'WORD))
+	 ,@(inst:load 'WORD rref:environment (ea:environment))
+	 ,@(inst:store 'WORD rref:environment
+		       (ea:indirect rref:block.environment-addr))
+	 ,@(inst:load-address rref:constant-addr
+			      (ea:offset rref:block-addr
+					 free-ref-offset 'WORD))
+	 ,@(inst:load-immediate rref:n-sections n-sections)
+	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
+	 ,@(make-internal-continuation-label (generate-label)))))
 
 (define (generate/remote-links n-blocks vector-label n-sections)
   (if (> n-blocks 0)
@@ -1105,12 +1184,14 @@ USA.
 	    (rref:block rref:word-3)
 	    (rref:n-sections rref:word-4)
 	    (rref:sections rref:word-5)
-	    (rref:length rref:word-6))
+	    (rref:length rref:word-6)
+	    (rref:environment rref:word-7))
 	(LAP
 	 ;; Init index, bytes and vector.
 	 ,@(inst:load-immediate rref:index 0)
 	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
 	 ,@(inst:load-address rref:vector (ea:address vector-label))
+	 ,@(inst:load 'WORD rref:environment (ea:environment))
 
 	 ,@(inst:label loop-label)
 
@@ -1139,7 +1220,7 @@ USA.
 	 ,@(make-internal-continuation-label (generate-label))
 
 	 ;; Increment counter and loop
-	 ,@(inst:increment 'WORD rref:index rref:index)
+	 ,@(inst:increment rref:index rref:index)
 	 ,@(inst:load-immediate rref:length n-blocks)
 	 ,@(inst:conditional-jump 'LT rref:index rref:length
 				  (ea:address loop-label))
@@ -1254,7 +1335,7 @@ USA.
   (let* ((cache (interpreter-call-temporary extension))
 	 (value (interpreter-call-temporary value)))
    (LAP ,@(clear-map!)
-	,@(trap:assignment-trap cache value))))
+	,@(trap:assignment cache value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
@@ -1262,7 +1343,7 @@ USA.
   cont					; ignored
   (let ((cache (interpreter-call-temporary extension)))
     (LAP ,@(clear-map!)
-	 ,@(trap:unassigned?-trap cache))))
+	 ,@(trap:unassigned? cache))))
 
 ;;;; Interpreter Calls
 
@@ -1337,20 +1418,15 @@ USA.
 	(rtl:constant? (rtl:object->type-expression type))))
   (rtl:make-cons-pointer
    (rtl:make-machine-constant
-    (object-type (rtl:constant-value (rtl:object->type-expression datum))))
+    (object-type (rtl:constant-value (rtl:object->type-expression type))))
    datum))
-
-(define-rule rewriting
-  (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
-  (QUALIFIER (rtl:machine-constant? datum))
-  (rtl:make-cons-pointer type datum))
 
 (define-rule rewriting
   (CONS-POINTER (? type) (REGISTER (? datum register-known-value)))
   (QUALIFIER
    (and (rtl:object->datum? datum)
 	(rtl:constant-non-pointer? (rtl:object->datum-expression datum))))
-  (rtl:make-cons-pointer
+  (rtl:make-cons-non-pointer
    type
    (rtl:make-machine-constant
     (object-datum (rtl:constant-value (rtl:object->datum-expression datum))))))
@@ -1429,7 +1505,7 @@ USA.
 		     (zero? (rtl:machine-constant-value expression))))))
 	(else #f)))
 
-;;;; Fixnums
+;;;; Fixnum rewriting.
 
 (define-rule rewriting
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
@@ -1437,75 +1513,17 @@ USA.
   (rtl:make-object->fixnum source))
 
 (define-rule rewriting
-  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-		 (REGISTER (? operand-1 register-known-value))
-		 (? operand-2)
-		 (? overflow?))
-  (QUALIFIER (rtl:constant-fixnum-test operand-1 (lambda (n) n #t)))
-  (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FIXNUM-2-ARGS MULTIPLY-FIXNUM
-		 (? operand-1)
-		 (REGISTER (? operand-2 register-known-value))
-		 (? overflow?))
-  (QUALIFIER
-   (and (rtl:constant-fixnum-test operand-2 (lambda (n) n #t))))
-  (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FIXNUM-2-ARGS (? operator)
-		 (? operand-1)
-		 (REGISTER (? operand-2 register-known-value))
-		 (? overflow?))
-  (QUALIFIER
-   (and (memq operator '(PLUS-FIXNUM MINUS-FIXNUM))
-	(rtl:register? operand-1)
-	(rtl:constant-fixnum-test operand-2 zero?)))
-  (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
-
-(define-rule rewriting
-  (FIXNUM-2-ARGS (? operator)
-		 (? operand-1)
-		 (REGISTER (? operand-2 register-known-value))
-		 (? overflow?))
-  (QUALIFIER
-   (and (memq operator '(FIXNUM-QUOTIENT FIXNUM-REMAINDER))
-	(rtl:register? operand-1)
-	(rtl:constant-fixnum-test operand-2
-	  (lambda (n)
-	    (integer-power-of-2? (abs n))))))
-  (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
-
-(define (integer-power-of-2? n)
-  (let loop ((power 1) (exponent 0))
-    (cond ((< n power) #f)
-	  ((= n power) exponent)
-	  (else
-	   (loop (* 2 power) (1+ exponent))))))
-
-(define-rule rewriting
-  (FIXNUM-2-ARGS FIXNUM-LSH
-		 (? operand-1)
-		 (REGISTER (? operand-2 register-known-value))
-		 #F)
-  (QUALIFIER (and (rtl:register? operand-1)
-		  (rtl:constant-fixnum-test operand-2 (lambda (n) n #t))))
-  (rtl:make-fixnum-2-args 'FIXNUM-LSH operand-1 operand-2 #F))
+  (OBJECT->FIXNUM (CONSTANT (? value)))
+  (QUALIFIER (fix:fixnum? value))
+  (rtl:make-machine-constant value))
 
 (define (rtl:constant-fixnum? expression)
   (and (rtl:constant? expression)
        (fix:fixnum? (rtl:constant-value expression))
        (rtl:constant-value expression)))
-
-(define (rtl:constant-fixnum-test expression predicate)
-  (and (rtl:object->fixnum? expression)
-       (let ((expression (rtl:object->fixnum-expression expression)))
-	 (and (rtl:constant? expression)
-	      (let ((n (rtl:constant-value expression)))
-		(and (fix:fixnum? n)
-		     (predicate n)))))))
 
+;;;; Flonum rewriting.
+
 (define-rule rewriting
   (OBJECT->FLOAT (REGISTER (? operand register-known-value)))
   (QUALIFIER

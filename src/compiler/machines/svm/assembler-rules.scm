@@ -107,7 +107,14 @@ USA.
     base)
 
   (define-code-sequence (offset (_ base word-register)
-				(_ offset unsigned-8)
+				(_ offset signed-8)
+				(_ oscale scale-factor))
+    base
+    offset
+    oscale)
+
+  (define-code-sequence (offset (_ base word-register)
+				(_ offset signed-16)
 				(_ oscale scale-factor))
     base
     offset

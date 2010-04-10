@@ -121,37 +121,249 @@ USA.
 
 ;;;; Top level
 
+;;(define-import instructions (compiler lap-syntaxer))
+
+(define (add-instruction! keyword assemblers)
+  (let ((entry (assq keyword instructions)))
+    (if (pair? entry)
+	(set-cdr! entry assemblers)
+	(set! instructions (cons (cons keyword assemblers) instructions)))))
+
+(define (add-instruction-assembler! keyword assembler)
+  (let ((entry (assq keyword instructions)))
+    (if entry
+	(set-cdr! entry (cons assembler (cdr entry)))
+	(set! instructions (cons (list keyword assembler) instructions)))))
+
+(define (clear-instructions!)
+  (set! instructions '()))
+
 (define (init-assembler-instructions!)
   ;; Initialize the assembler's instruction database using the
-  ;; patterns in the instruction coding type.
-  (let ((keywords '()))
-    (for-each
-      (lambda (defn)
-	(let* ((keyword (car (rt-defn-pattern defn)))
+  ;; patterns and encoders in the instruction coding type (the
+  ;; "fixed-width instruction" assemblers) as well as special
+  ;; assemblers that create variable-width-expressions and other
+  ;; assembler expressions as required by the machine-independent,
+  ;; top-level, branch-tensioning assembler.
+
+  (clear-instructions!)
+
+  ;; Create the fixed width instruction assemblers first.  They are
+  ;; used to create the variable-width instruction assemblers.
+  (for-each
+    (lambda (keyword.defns)
+      (add-instruction!
+       (car keyword.defns)
+       (map fixed-instruction-assembler (cdr keyword.defns))))
+    (instruction-keywords))
+
+  ;; Create the variable width instruction assemblers.
+  (add-instruction-assembler! 'STORE (store-assembler))
+  (add-instruction-assembler! 'LOAD (load-assembler))
+  (add-instruction-assembler! 'LOAD-ADDRESS (load-address-assembler))
+  (add-instruction-assembler! 'JUMP (jump-assembler))
+  (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump1-assembler))
+  (add-instruction-assembler! 'CONDITIONAL-JUMP (cjump2-assembler)))
+
+(define (instruction-keywords)
+  ;; An alist: instruction keyword X list of rt-defns.
+  (let loop ((keywords '())
+	     (defns (rt-coding-type-defns (rt-coding-type 'instruction))))
+    (if (pair? defns)
+	(let* ((defn (car defns))
+	       (keyword (car (rt-defn-pattern defn)))
 	       (entry (assq keyword keywords)))
 	  (if entry
-	      (set-cdr! entry (cons defn (cdr entry)))
-	      (set! keywords (cons (cons keyword defn) keywords)))))
-      (rt-coding-type-defns (rt-coding-type 'instruction)))
-    (for-each
-      (lambda (keyword.defns)
-	(add-instruction!
-	 (car keyword.defns)
-	 (map (lambda (defn)
-		(let ((pattern (cdr (rt-defn-pattern defn))))
-		  ;; The matcher.
-		  (lambda (expr)	;without keyword
-		    (let ((pvals (match-pattern pattern expr
-						(make-typed-symbol-table))))
-		      (and pvals
-			   ;; The match result thunk.
-			   (lambda ()
-			     (error "cannot yet assemble" expr defn)))))))
-	      (cdr keyword.defns))))
-      keywords)))
+	      (begin
+		(set-cdr! entry (cons defn (cdr entry)))
+		(loop keywords (cdr defns)))
+	      (loop (cons (list keyword defn) keywords)
+		    (cdr defns))))
+	keywords)))
 
-;;;(define-import add-instruction! (compiler lap-syntaxer))
+(define (fixed-instruction-assembler defn)
+  ;; Return a rule matching the exact instruction pattern in rt-DEFN.
+  ;; It will match only appropriately-sized constants.
+  (lambda (expression)	;without keyword
+    (let ((pvals (match-pattern (cdr (rt-defn-pattern defn))
+				expression
+				(make-typed-symbol-table))))
+      (and pvals
+	   ;; The match result thunk.
+	   (lambda ()
+	     (let ((bytes '()))
+	       ((rt-defn-encoder defn)
+		(make-rt-instance defn pvals)
+		(lambda (byte) (set! bytes (cons byte bytes))))
+	       (map (lambda (byte)
+		      (if (integer? byte)
+			  (vector-ref bit-strings byte)
+			  byte))
+		    (reverse! bytes))))))))
 
+(define bit-strings
+  (let ((v (make-vector 256)))
+    (let loop ((i 0))
+      (if (fix:< i 256)
+	  (begin
+	    (vector-set! v i (unsigned-integer->bit-string 8 i))
+	    (loop (fix:1+ i)))))
+    v))
+
+(define (fixed-instruction-width lap)
+  (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
+      (reduce-left + 0 (map bit-string-length
+			    (lap:syntax-instruction (car lap))))
+      (error "FIXED-INSTRUCTION-WIDTH: Multiple instructions in LAP" lap)))
+
+(define (assemble-fixed-instruction width lap)
+  (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
+      (let ((bits (list->bit-string (lap:syntax-instruction (car lap)))))
+	(if (not (= width (bit-string-length bits)))
+	    (error "Mis-sized fixed instruction" lap))
+	(list bits))
+      (error "ASSEMBLE-FIXED-INSTRUCTION: Multiple instructions in LAP" lap)))
+
+(define (store-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width
+	  (inst:store 'WORD rref:word-0 (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width
+	  (inst:store 'BYTE rref:word-1 (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width
+	  (inst:store 'WORD rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((? scale) (? source) (PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:store scale source (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
+(define (load-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width
+	  (inst:load 'WORD rref:word-0 (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width
+	  (inst:load 'BYTE rref:word-1 (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width
+	  (inst:load 'WORD rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((? scale) (? target) (PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:load scale target (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
+(define (load-address-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width
+	  (inst:load-address rref:word-0 (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width
+	  (inst:load-address rref:word-1 (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width
+	  (inst:load-address rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((? target) (PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:load-address target (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
+(define (jump-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:jump (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
+(define (cjump2-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
+				 (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
+				 (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
+				 (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((? test) (? src1) (? src2) (PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:conditional-jump test src1 src2
+					       (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
+(define (cjump1-assembler)
+  (let ((8bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7F))))
+	(16bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7FFF))))
+	(32bit-width
+	 (fixed-instruction-width
+	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7FFFFFFF)))))
+    (rule-matcher
+     ((? test) (? source) (PC-RELATIVE (- (? addr1) (? addr2))))
+     (let ((assembler
+	    (lambda (width)
+	      (lambda (value)
+		(assemble-fixed-instruction
+		 width (inst:conditional-jump test source
+					       (ea:pc-relative value)))))))
+       `((VARIABLE-WIDTH-EXPRESSION
+	  (- ,addr1 ,addr2)
+	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
+	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
+	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+
 (define (match-rt-coding-type name expression symbol-table)
   (let loop ((defns (rt-coding-type-defns (rt-coding-type name))))
     (and (pair? defns)
@@ -182,13 +394,6 @@ USA.
       (error:bad-range-argument name 'RT-CODING-TYPE)))
 
 ;;;; Assembler Machine Dependencies
-
-(let-syntax
-    ((ucode-type
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (apply microcode-type (cdr form))))))
 
 (define-integrable maximum-padding-length
   ;; Instructions can be any number of bytes long.
@@ -223,9 +428,6 @@ USA.
   0)
 
 (define-integrable instruction-append bit-string-append)
-
-;;; end let-syntax
-)
 
 ;;;; Patterns
 
@@ -272,15 +474,16 @@ USA.
 (define-integrable (pvar-type pv) (caddr pv))
 
 (define (match-pattern pattern expression symbol-table)
+  (let ((pvals (match-pattern* pattern expression symbol-table)))
+    (and pvals (reverse! pvals))))
+
+(define (match-pattern* pattern expression symbol-table)
   (let loop ((pattern pattern) (expression expression) (pvals '()))
     (if (pair? pattern)
 	(if (eq? (car pattern) '_)
 	    (let ((pvt (lookup-pvar-type (pvar-type pattern))))
 	      (if pvt
-		  (and (or ((pvt-predicate pvt) expression)
-			   (eq? (match-symbolic-expression expression
-							   symbol-table)
-				(pvt-sb-type pvt)))
+		  (and ((pvt-predicate pvt) expression)
 		       (cons expression pvals))
 		  (let ((instance
 			 (match-rt-coding-type (pvar-type pattern)
@@ -335,170 +538,15 @@ USA.
 
 ;;;; Registers
 
-(define (any-register? object)
-  (and (index-fixnum? object)
-       (fix:< object number-of-machine-registers)
-       object))
-
-(define (word-register? object)
-  (and (any-register? object)
-       (fix:< object regnum:float-0)
-       object))
-
-(define (float-register? object)
-  (and (any-register? object)
-       (fix:>= object regnum:float-0)
-       (fix:- object regnum:float-0)))
-
-(define (register-reference? object)
-  ;; Copied from lapgen.scm, for assembler rule compilation (withOUT lapgen).
-  (and (pair? object)
-       (eq? (car object) 'R)
-       (pair? (cdr object))
-       (index-fixnum? (cadr object))
-       (fix:< (cadr object) number-of-machine-registers)
-       (null? (cddr object))))
-
 (define (word-register-reference? object)
-  (and (pair? object)
-       (eq? (car object) 'R)
-       (pair? (cdr object))
-       (index-fixnum? (cadr object))
-       (fix:< (cadr object) regnum:float-0)
-       (null? (cddr object))))
+  (and (register-reference? object)
+       (fix:< (reference->register object) regnum:float-0)))
 
 (define (float-register-reference? object)
-  (and (pair? object)
-       (eq? (car object) 'R)
-       (pair? (cdr object))
-       (index-fixnum? (cadr object))
-       (fix:>= (cadr object) regnum:float-0)
-       (fix:< (cadr object) number-of-machine-registers)
-       (null? (cddr object))))
-
-;;;; Symbolic expressions
-
-(define (match-symbolic-expression expression symbol-table)
-  (let loop ((expression expression))
-    (cond ((symbol? expression)
-	   (let ((binding (lookup-symbol expression symbol-table)))
-	     (and binding
-		  (symbol-binding-type binding))))
-	  ((and (pair? expression)
-		(symbol? (car expression))
-		(list? (cdr expression))
-		(lookup-symbolic-operator (car expression) #f))
-	   => (lambda (op)
-		(let ((types
-		       (map (lambda (expression)
-			      (cond ((se-integer? expression) 'INTEGER)
-				    ((se-float? expression) 'FLOAT)
-				    ;;((se-address? expression) 'ADDRESS)
-				    (else (loop expression))))
-			    (cdr expression))))
-		  (and (pair? types)
-		       (for-all? types (lambda (type) type))
-		       ((symbolic-operator-matcher op) types)))))
-	  (else #f))))
-
-(define (symbolic-pval? pval)
-  (or (symbol? pval)
-      (and (pair? pval)
-	   (symbol? (car pval)))))
-
-(define (sb-type:address? type) (eq? type 'ADDRESS))
-(define (sb-type:integer? type) (eq? type 'INTEGER))
-(define (sb-type:float? type) (eq? type 'FLOAT))
-
-(define (define-symbolic-operator name matcher evaluator)
-  (hash-table/put! symbolic-operators name (cons matcher evaluator)))
-
-(define (symbolic-operator-matcher op)
-  (car op))
-
-(define (symbolic-operator-evaluator op)
-  (cdr op))
-
-(define (lookup-symbolic-operator name error?)
-  (or (hash-table/get symbolic-operators name #f)
-      (and error? (error:bad-range-argument name #f))))
-
-(define symbolic-operators
-  (make-strong-eq-hash-table))
-
-(define-integrable (se-integer? object)
-  (exact-integer? object))
-
-(define-integrable (se-float? object)
-  (flo:flonum? object))
-
-#|
-(define (se-address? object)
-  ???)
-
-(define (se-address:+ address offset)
-  ???)
-
-(define (se-address:- address1 address2)
-  ???)
-|#
-
-(define-symbolic-operator '+
-  (lambda (types)
-    (and (or (for-all? types sb-type:integer?)
-	     (for-all? types sb-type:float?)
-	     (and (sb-type:address? (car types))
-		  (for-all? (cdr types) sb-type:integer?)))
-	 (car types)))
-  (lambda (pvals)
-;;    (if (se-address? (car pvals))
-;;	(se-address:+ (car pvals) (apply + (cdr pvals)))
-;;	(apply + pvals))))
-    (apply + pvals)))
-
-(define-symbolic-operator '-
-  (lambda (types)
-    (and (fix:= (length types) 2)
-	 (let ((t1 (car types))
-	       (t2 (cadr types)))
-	   (cond ((and (sb-type:address? t1) (sb-type:integer? t2)) t1)
-		 ((not (eq? t1 t2)) #f)
-		 ((or (sb-type:integer? t1) (sb-type:float? t1)) t1)
-		 ((sb-type:address? t1) 'INTEGER)
-		 (else #f)))))
-  (lambda (pvals)
-    (let ((pv1 (car pvals))
-	  (pv2 (cadr pvals)))
-;;      (if (se-address? pv1)
-;;	  (if (se-address? pv2)
-;;	      (se-address:- pv1 pv2)
-;;	      (se-address:+ pv1 (- pv2)))
-;;	  (- pv1 pv2)))))
-      (- pv1 pv2))))
-
-(define-symbolic-operator '*
-  (lambda (types)
-    (and (or (for-all? types sb-type:integer?)
-	     (for-all? types sb-type:float?))
-	 (car types)))
-  (lambda (pvals)
-    (apply * pvals)))
-
-(define-symbolic-operator '/
-  (lambda (types)
-    (and (fix:= (length types) 2)
-	 (let ((t1 (car types))
-	       (t2 (cadr types)))
-	   (and (eq? t1 t2)
-		(or (sb-type:integer? t1)
-		    (sb-type:float? t1))
-		t1))))
-  (lambda (pvals)
-    (let ((pv1 (car pvals))
-	  (pv2 (cadr pvals)))
-      (if (exact-integer? pv1)
-	  (quotient pv1 pv2)
-	  (/ pv1 pv2)))))
+  (and (register-reference? object)
+       (let ((regnum (reference->register object)))
+	 (and (fix:>= regnum regnum:float-0)
+	      (fix:< regnum number-of-machine-registers)))))
 
 ;;;; Pattern-variable types
 
@@ -559,14 +607,13 @@ USA.
 
 (define-pvt 'TYPE-WORD 'TC 'INTEGER
   (lambda (object)
-    (and (se-integer? object)
-	 (< object #x40)))
+    (and (exact-nonnegative-integer? object) (< object #x40)))
   'ENCODE-UNSIGNED-INTEGER-8
   'DECODE-UNSIGNED-INTEGER-8)
 
 (define-pvt 'FLOAT 'FLT 'FLOAT
   (lambda (object)
-    (se-float? object))
+    (flo:flonum? object))
   'ENCODE-FLOAT
   'DECODE-FLOAT)
 
@@ -723,11 +770,13 @@ USA.
 		     x)))
 	      (else x)))))
 
-;;;(define-import register-reference (compiler lap-syntaxer))
-;;;(define-import reference->register (compiler lap-syntaxer))
-
 (define (encode-rref rref write-byte)
-  (encode-unsigned-integer-8 (reference->register rref) write-byte))
+  (let ((regnum (reference->register rref)))
+    (encode-unsigned-integer-8
+     (if (fix:< regnum regnum:float-0)
+	 regnum
+	 (fix:- regnum regnum:float-0))
+     write-byte)))
 
 (define (decode-rref read-byte)
   (register-reference (decode-unsigned-integer-8 read-byte)))
