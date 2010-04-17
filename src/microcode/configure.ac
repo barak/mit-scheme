@@ -286,6 +286,7 @@ DO_GCC_TESTS=no
 GNU_LD=no
 case ${host_os} in
 linux-gnu)
+    M4_FLAGS="${M4_FLAGS} -P __linux__,1"
     DO_GCC_TESTS=yes
     GNU_LD=yes
     ;;
@@ -387,6 +388,7 @@ if test "${DO_GCC_TESTS}" = yes; then
 	[
 	AC_MSG_RESULT([yes])
 	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+	M4_FLAGS="${M4_FLAGS} -P __ELF__,1"
 	],
 	[AC_MSG_RESULT([no])])
 fi
