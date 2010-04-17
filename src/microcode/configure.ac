@@ -995,7 +995,7 @@ svm1)
 *)
     AC_CHECK_PROG([M4], [m4], [m4])
     if test "x${M4}" != xm4; then
-	AC_ERROR([m4 not found])
+	AC_MSG_ERROR([m4 not found])
     fi
     AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} cmpauxmd.m4"
