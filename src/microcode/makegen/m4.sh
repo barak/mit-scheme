@@ -24,13 +24,29 @@
 
 # Processing to simulate m4 accepting definition arguments.
 
+set -e
+
+TMP_FILE="m4.tmp"
+
+clean ()
+{
+  rm -f "${TMP_FILE}"
+}
+
+run_m4 ()
+{
+  m4 && clean
+}
+
+trap clean EXIT INT QUIT TERM
+rm -f "${TMP_FILE}"
+touch "${TMP_FILE}"
+
 if [ $# = 0 ]
 then
-  sed -e '/^#/D' | m4 | sed -e 's/@/$/g' -e 's/^$//'
+  sed -e '/^#/D' | run_m4 | sed -e 's/@/$/g' -e 's/^$//'
 else
-  TMP_FILE="m4.tmp"
   SEEN_INPUT=0
-  rm -f "${TMP_FILE}"
   while [ $# != 0 ]; do
     if [ "${1}" = "-P" ]; then
       echo "define(${2})" >> "${TMP_FILE}"
@@ -44,6 +60,13 @@ else
   if [ ${SEEN_INPUT} -eq 0 ]; then
     sed -e '/^#/D' >> "${TMP_FILE}"
   fi
-  m4 < "${TMP_FILE}" | sed -e 's/@/$/g' -e 's/^$//'
-  rm -f "${TMP_FILE}"
+  run_m4 < "${TMP_FILE}" | sed -e 's/@/$/g' -e 's/^$//'
+fi
+
+# If m4 was successful, run_m4 has deleted the temporary file.  If
+# not, report the failure; exiting will have the effect of running
+# `clean', which will delete the temporary file.
+
+if [ -f "${TMP_FILE}" ]; then
+  exit 1
 fi
