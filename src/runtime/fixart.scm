@@ -108,6 +108,29 @@ USA.
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
 
+(define-guarantee fixnum "fixnum")
+
+(define-integrable (positive-fixnum? object)
+  (and (fixnum? object)
+       (fix:positive? object)))
+
+(define-integrable (negative-fixnum? object)
+  (and (fixnum? object)
+       (fix:negative? object)))
+
+(define-integrable (non-negative-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:negative? object))))
+
+(define-integrable (non-positive-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:positive? object))))
+
+(define-guarantee positive-fixnum "positive fixnum")
+(define-guarantee negative-fixnum "negative fixnum")
+(define-guarantee non-positive-fixnum "non-positive fixnum")
+(define-guarantee non-negative-fixnum "non-negative fixnum")
+
 (define-integrable (guarantee-index-fixnum object caller)
   (if (not (index-fixnum? object))
       (error:wrong-type-argument object "index integer" caller)))

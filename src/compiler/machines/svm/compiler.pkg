@@ -740,9 +740,7 @@ USA.
   (export (compiler)
 	  instruction-append)
   (import (compiler lap-syntaxer)
-	  add-instruction!
-	  reference->register
-	  register-reference)
+	  instructions)
   (export (compiler top-level)
 	  assemble))
 

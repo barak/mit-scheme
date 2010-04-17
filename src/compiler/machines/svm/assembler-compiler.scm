@@ -1029,3 +1029,10 @@ USA.
     (if (eq? (car pvars) pv)
 	index
 	(loop (cdr pvars) (fix:+ index 1)))))
+
+;;; This hides the rule-matcher forms in assembler-runtime.
+(define-syntax RULE-MATCHER 
+  (rsc-macro-transformer
+   (lambda (form environment)
+     form environment
+     #f)))

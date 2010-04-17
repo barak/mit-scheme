@@ -1,4 +1,4 @@
-#| -*-Scheme-*-
+#| -*- Mode: Scheme; keyword-style: none -*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -253,8 +253,13 @@ USA.
 	  flo:vector-set!
 	  flo:with-rounding-mode
 	  flo:zero?
+	  guarantee-fixnum
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
+	  guarantee-negative-fixnum
+	  guarantee-non-negative-fixnum
+	  guarantee-non-positive-fixnum
+	  guarantee-positive-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -274,18 +279,19 @@ USA.
 	  int:positive?
 	  int:quotient
 	  int:remainder
-	  int:zero?))
+	  int:zero?
+	  negative-fixnum?
+	  non-negative-fixnum?
+	  non-positive-fixnum?
+	  positive-fixnum?))
 
 (define-package (runtime keyword)
   (files "keyword")
   (parent (runtime))
   (export ()
-	  *keyword-style*
 	  keyword?
 	  keyword->string
-	  string->keyword
-	  )
-  (initialization (initialize-package!)))
+	  string->keyword))
 
 (define-package (runtime miscellaneous-global)
   (files "global")
@@ -2309,6 +2315,7 @@ USA.
 	  cons*
 	  count-matching-items
 	  count-non-matching-items
+	  decode-general-car-cdr
 	  del-assoc
 	  del-assoc!
 	  del-assq
@@ -2327,6 +2334,7 @@ USA.
 	  delv!
 	  dotted-list?			;SRFI-1
 	  eighth
+	  encode-general-car-cdr
 	  error:not-alist
 	  error:not-circular-list
 	  error:not-dotted-list
@@ -2773,7 +2781,11 @@ USA.
   (parent (runtime))
   (export ()
 	  *parser-associate-positions?*
+	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
+	  *parser-constituents*
+	  *parser-enable-file-attributes-parsing?*
+	  *parser-keyword-style*
 	  *parser-radix*
 	  *parser-table*
 	  define-bracketed-object-parser-method
@@ -2782,7 +2794,12 @@ USA.
 	  system-global-parser-table)
   (export (runtime)
 	  (*parser-associate-positions?* runtime-parser-associate-positions?)
+	  (*parser-atom-delimiters* runtime-parser-atom-delimiters)
 	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
+	  (*parser-constituents* runtime-parser-constituents)
+	  (*parser-enable-file-attributes-parsing?*
+	   runtime-parser-enable-file-attributes-parsing?)
+	  (*parser-keyword-style* runtime-parser-keyword-style)
 	  (*parser-radix* runtime-parser-radix)
 	  (*parser-table* runtime-parser-table))
   (export (runtime character)
@@ -2791,6 +2808,13 @@ USA.
 	  char-set/atom-delimiters
 	  char-set/number-leaders
 	  char-set/symbol-quotes)
+  (initialization (initialize-package!)))
+
+(define-package (runtime parser file-attributes)
+  (files "file-attributes")
+  (parent (runtime parser))
+  (export (runtime parser)
+	  parse-file-attributes-line)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser-table)

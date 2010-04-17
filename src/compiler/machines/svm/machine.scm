@@ -93,19 +93,6 @@ USA.
 		    '())))
 	 (ill-formed-syntax form)))))
 
-(define-syntax define-generic-unary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TYPE TARGET SOURCE)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
 (define-syntax define-binary-operations
   (sc-macro-transformer
    (lambda (form environment)
@@ -119,20 +106,6 @@ USA.
 		    '())))
 	 (ill-formed-syntax form)))))
 
-(define-syntax define-generic-binary-operations
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (if (syntax-match? '(* SYMBOL) (cdr form))
-	 `(BEGIN
-	    ,@(let loop ((names (cdr form)))
-		(if (pair? names)
-		    (cons `(DEFINE-INST ,(car names) TYPE
-			     TARGET SOURCE1 SOURCE2)
-			  (loop (cdr names)))
-		    '())))
-	 (ill-formed-syntax form)))))
-
 (define-inst store size source address)
 (define-inst load size target address)
 (define-inst load-address target address)
@@ -141,7 +114,7 @@ USA.
 
 (define (load-immediate-operand? n)
   (or (and (exact-integer? n)
-	   (<= #x80000000 n < #x100000000))
+	   (<= #x-80000000 n) (<= n #x7FFFFFFF))
       (flo:flonum? n)))
 
 ;; TYPE and DATUM can be constants or registers; address is a register.
@@ -176,10 +149,8 @@ USA.
 (define-inst datum-s16 expression)
 (define-inst datum-s32 expression)
 
-(define-generic-unary-operations
-  copy negate increment decrement abs)
-
 (define-unary-operations
+  copy negate increment decrement abs
   object-type object-datum object-address
   fixnum->integer integer->fixnum address->integer integer->address
   not
@@ -187,10 +158,8 @@ USA.
   log exp cos sin tan acos asin atan
   flonum-align flonum-length)
 
-(define-generic-binary-operations
-  + - *)
-
 (define-binary-operations
+  + - *
   quotient remainder
   lsh and andc or xor
   max-unsigned min-unsigned
@@ -238,22 +207,30 @@ USA.
   (ea:pc-relative `(- ,label *PC*)))
 
 (define (ea:stack-pop)
-  (ea:post-increment regnum:stack-pointer 'WORD))
+  (ea:post-increment rref:stack-pointer 'WORD))
 
 (define (ea:stack-push)
-  (ea:pre-decrement regnum:stack-pointer 'WORD))
+  (ea:pre-decrement rref:stack-pointer 'WORD))
 
 (define (ea:stack-ref index)
-  (ea:offset regnum:stack-pointer index 'WORD))
+  (ea:offset rref:stack-pointer index 'WORD))
 
 (define (ea:alloc-word)
-  (ea:post-increment regnum:free-pointer 'WORD))
+  (ea:post-increment rref:free-pointer 'WORD))
 
 (define (ea:alloc-byte)
-  (ea:post-increment regnum:free-pointer 'BYTE))
+  (ea:post-increment rref:free-pointer 'BYTE))
 
 (define (ea:alloc-float)
-  (ea:post-increment regnum:free-pointer 'FLOAT))
+  (ea:post-increment rref:free-pointer 'FLOAT))
+
+(define (ea:environment)
+  (ea:offset rref:interpreter-register-block
+	     register-block/environment-offset 'WORD))
+
+(define (ea:lexpr-actuals)
+  (ea:offset rref:interpreter-register-block
+	     register-block/lexpr-actuals-offset 'WORD))
 
 ;;;; Traps
 
@@ -263,21 +240,23 @@ USA.
      environment
      `(BEGIN
 	,@(map (lambda (name)
-		 `(DEFINE (,(symbol-append 'TRAP: name) . ARGS)
-		    (APPLY INST:TRAP ',name ARGS)))
+		 (let ((code (if (pair? name) (cadr name) name))
+		       (prim (if (pair? name) (car name) name)))
+		   `(DEFINE (,(symbol-append 'TRAP: prim) . ARGS)
+		      (APPLY INST:TRAP ',code ARGS))))
 	       (cdr form))))))
 
 (define-traps
   ;; This group doesn't return; don't push return address.
-  apply lexpr-apply cache-reference-apply lookup-apply
+  apply lexpr-apply cache-reference-apply
   primitive-apply primitive-lexpr-apply
   error primitive-error
-  &+ &- &* &/ 1+ -1+ quotient remainder modulo
-  &= &< &> zero? positive? negative?
+  (&+ add) (&- subtract) (&* multiply) (&/ divide) (1+ increment)
+  (-1+ decrement) quotient remainder modulo
+  (&= equal?) (&< less?) (&> greater?) zero? positive? negative?
 
   ;; This group returns; push return address.
-  link conditionally-serialize
-  reference-trap safe-reference-trap assignment-trap unassigned?-trap
+  link assignment
   lookup safe-lookup set! unassigned? define unbound? access)
 
 (define-syntax define-interrupt-tests
@@ -292,10 +271,35 @@ USA.
 (define-interrupt-tests
   closure dynamic-link procedure continuation ic-procedure)
 
-;;;; Machine registers
+;;;; Machine registers, register references.
 
 (define-integrable number-of-machine-registers 512)
 (define-integrable number-of-temporary-registers 512)
+
+(define register-reference
+  (let ((references (make-vector number-of-machine-registers)))
+    (do ((i 0 (+ i 1)))
+	((>= i number-of-machine-registers))
+      (vector-set! references i `(R ,i)))
+    (lambda (register)
+      (guarantee-limited-index-fixnum register
+				      number-of-machine-registers
+				      'REGISTER-REFERENCE)
+      (vector-ref references register))))
+
+(define (register-reference? object)
+  (and (pair? object)
+       (eq? (car object) 'R)
+       (pair? (cdr object))
+       (index-fixnum? (cadr object))
+       (fix:< (cadr object) number-of-machine-registers)
+       (null? (cddr object))))
+
+(define-guarantee register-reference "register reference")
+
+(define (reference->register reference)
+  (guarantee-register-reference reference 'REFERENCE->REGISTER)
+  (cadr reference))
 
 (define-syntax define-fixed-registers
   (sc-macro-transformer
@@ -313,19 +317,32 @@ USA.
 		       `(DEFINE-INTEGRABLE ,(symbol-append 'REGNUM: (car p))
 			  ,(cdr p)))
 		     alist)
+	      ,@(map (lambda (p)
+		       `(DEFINE-INTEGRABLE ,(symbol-append 'RREF: (car p))
+			  (REGISTER-REFERENCE ,(cdr p))))
+		     alist)
 	      (DEFINE FIXED-REGISTERS ',alist)))
 	 (ill-formed-syntax form)))))
 
 (define-fixed-registers
+  interpreter-register-block
   stack-pointer
-  dynamic-link
   free-pointer
   value
-  environment)
+  dynamic-link)
 
 (define-integrable regnum:float-0 256)
 
-(define-integrable regnum:word-0 regnum:environment)
+(define-integrable regnum:word-0 (1+ regnum:dynamic-link))
+
+(define-integrable rref:word-0 (register-reference regnum:word-0))
+(define-integrable rref:word-1 (register-reference (+ 1 regnum:word-0)))
+(define-integrable rref:word-2 (register-reference (+ 2 regnum:word-0)))
+(define-integrable rref:word-3 (register-reference (+ 3 regnum:word-0)))
+(define-integrable rref:word-4 (register-reference (+ 4 regnum:word-0)))
+(define-integrable rref:word-5 (register-reference (+ 5 regnum:word-0)))
+(define-integrable rref:word-6 (register-reference (+ 6 regnum:word-0)))
+(define-integrable rref:word-7 (register-reference (+ 7 regnum:word-0)))
 
 (define-integrable (machine-register-known-value register)
   register
@@ -335,35 +352,39 @@ USA.
   (guarantee-limited-index-fixnum register
 				  number-of-machine-registers
 				  'MACHINE-REGISTER-VALUE-CLASS)
-  (cond ((or (fix:= register regnum:stack-pointer)
+  (cond ((or (fix:= register regnum:interpreter-register-block)
+	     (fix:= register regnum:stack-pointer)
 	     (fix:= register regnum:dynamic-link)
 	     (fix:= register regnum:free-pointer))
 	 value-class=address)
 	((fix:< register regnum:float-0) value-class=object)
 	(else value-class=float)))
+
+(define-integrable register-block/memtop-offset 0)
+(define-integrable register-block/int-mask-offset 1)
+(define-integrable register-block/environment-offset 3)
+(define-integrable register-block/lexpr-actuals-offset 7)
+(define-integrable register-block/stack-guard-offset 11)
 
 ;;;; RTL Generator Interface
 
-(define (interpreter-register:environment)
-  (rtl:make-machine-register regnum:environment))
-
 (define (interpreter-register:access)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
 
 (define (interpreter-register:cache-reference)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
 
 (define (interpreter-register:cache-unassigned?)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
 
 (define (interpreter-register:lookup)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
 
 (define (interpreter-register:unassigned?)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
 
 (define (interpreter-register:unbound?)
-  (rtl:make-machine-register regnum:environment))
+  (rtl:make-machine-register regnum:word-0))
   
 (define-syntax define-machine-register
   (sc-macro-transformer
@@ -385,10 +406,23 @@ USA.
 (define-machine-register value-register regnum:value)
 
 (define (interpreter-regs-pointer)
-  (error "This machine does not have a register block."))
-(define-integrable (interpreter-regs-pointer? expression)
-  expression
-  #f)
+  (rtl:make-machine-register regnum:interpreter-register-block))
+
+(define (interpreter-regs-pointer? expression)
+  (and (rtl:register? expression)
+       (= (rtl:register-number expression) regnum:interpreter-register-block)))
+
+(define-integrable (interpreter-block-register offset-value)
+  (rtl:make-offset (interpreter-regs-pointer)
+		   (rtl:make-machine-constant offset-value)))
+
+(define-integrable (interpreter-block-register? expression offset-value)
+  (and (rtl:offset? expression)
+       (interpreter-regs-pointer? (rtl:offset-base expression))
+       (let ((offset (rtl:offset-offset expression)))
+	 (and (rtl:machine-constant? offset)
+	      (= (rtl:machine-constant-value offset)
+		 offset-value)))))
 
 (define (rtl:machine-register? rtl-register)
   (case rtl-register
@@ -396,8 +430,6 @@ USA.
     ((FREE) (interpreter-free-pointer))
     ((DYNAMIC-LINK) (interpreter-dynamic-link))
     ((VALUE) (interpreter-value-register))
-    ((ENVIRONMENT)
-     (interpreter-register:environment))
     ((INTERPRETER-CALL-RESULT:ACCESS)
      (interpreter-register:access))
     ((INTERPRETER-CALL-RESULT:CACHE-REFERENCE)
@@ -411,12 +443,20 @@ USA.
     ((INTERPRETER-CALL-RESULT:UNBOUND?)
      (interpreter-register:unbound?))
     (else
-     ;; Make this an error so that rtl:interpreter-register->offset is
-     ;; never called.
-     (error "No such register:" rtl-register))))
+     false)))
 
 (define (rtl:interpreter-register->offset locative)
-  (error "Unknown register type:" locative))
+  (case locative
+    ((MEMORY-TOP)
+     register-block/memtop-offset)
+    ((INT-MASK)
+     register-block/int-mask-offset)
+    ((STACK-GUARD)
+     register-block/stack-guard-offset)
+    ((ENVIRONMENT)
+     register-block/environment-offset)
+    (else
+     (error "No such interpreter register" locative))))
 
 (define (rtl:constant-cost expression)
   (let ((if-integer

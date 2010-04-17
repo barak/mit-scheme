@@ -162,7 +162,8 @@ initialize_svm1 (void)
   for (i = 0; (i < N_WORD_REGISTERS); i += 1)
     WREG_SET (i, 0);
   for (i = 0; (i < N_FLOAT_REGISTERS); i += 1)
-    WREG_SET (i, 0.0);
+    FREG_SET (i, 0.0);
+  WREG_SET (SVM1_REG_INTERPRETER_REGISTER_BLOCK, (word_t)Registers);
 }
 
 #define IMPORT_REGS() do						\
@@ -1242,21 +1243,39 @@ DEFINE_ADDRESS_DECODER (indir)
   (address->value) = offset_address_value;				\
 }
 
-DEFINE_ADDRESS_DECODER (offset_b)
+DEFINE_ADDRESS_DECODER (offset_s8_b)
 {
-  DECODE_SVM1_ADDR_OFFSET_B (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
 }
 
-DEFINE_ADDRESS_DECODER (offset_w)
+DEFINE_ADDRESS_DECODER (offset_s8_w)
 {
-  DECODE_SVM1_ADDR_OFFSET_W (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
 }
 
-DEFINE_ADDRESS_DECODER (offset_f)
+DEFINE_ADDRESS_DECODER (offset_s8_f)
 {
-  DECODE_SVM1_ADDR_OFFSET_F (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_F (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_b)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_B (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_w)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_W (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_f)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
 }
 

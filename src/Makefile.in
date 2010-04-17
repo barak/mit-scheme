@@ -77,9 +77,20 @@ all-native: compile-microcode
 	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --compiler
 	$(MAKE) build-bands
 
-all-svm: compile-microcode
+all-svm: microcode/svm1-defns.h
+	$(MAKE) compile-microcode
 	@$(top_srcdir)/etc/compile-svm.sh "$(MIT_SCHEME_EXE)"
 	$(MAKE) build-bands
+
+microcode/svm1-defns.h: compiler/machines/svm/assembler-rules.scm \
+	  compiler/machines/svm/machine.scm \
+	  compiler/machines/svm/assembler-compiler.scm \
+	  compiler/machines/svm/assembler-runtime.scm \
+	  compiler/machines/svm/compile-assembler.scm
+	( cd compiler/machines/svm/ \
+	  && $(MIT_SCHEME_EXE) --batch-mode --load compile-assembler \
+		</dev/null )
+	cp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h
 
 all-liarc:
 	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --compiler
@@ -166,6 +177,9 @@ clean-boot-root:
 tags TAGS:
 	$(top_srcdir)/Tags.sh $(SUBDIRS)
 
+subdir-list:
+	@for D in $(SUBDIRS); do echo $$D; done
+
 install: install-standard @INSTALL_LIARC_BUNDLES@
 
 install-standard: install-auxdir-top
@@ -182,4 +196,4 @@ install-auxdir-top:
 .PHONY: compile-microcode build-bands
 .PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
-.PHONY: tags TAGS install install-standard install-auxdir-top
+.PHONY: tags TAGS subdir-list install install-standard install-auxdir-top

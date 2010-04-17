@@ -27,6 +27,8 @@ USA.
   (lambda ()
     (let ((environment (make-top-level-environment)))
       (load "machine" environment)
-      (load "assembler-runtime" environment)
+      ;; Load assembler-compiler before -runtime.
+      ;; It needs to create RULE-MATCHER anti-syntax.
       (load "assembler-compiler" environment)
+      (load "assembler-runtime" environment)
       ((access compile-assembler-rules environment) "assembler-rules.scm"))))

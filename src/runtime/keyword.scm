@@ -28,52 +28,25 @@ USA.
 
 (declare (usual-integrations))
 
-(define (initialize-package!)
-  (set! *keyword-intern-table* (make-string-hash-table))
-  unspecific)
 
-(define *keyword-intern-table*)
+;; Keywords are really interned symbols with a funny name.  We do it
+;; this way because we need to keep eq-ness when fasdumping and
+;; fasload them.  The self-evaluating property of keywords is handled
+;; by in the syntaxer which simply doesn't recognize them as
+;; identifiers.
 
-;;; *KEYWORD-STYLE*
-;;
-;;  Should be one of PREFIX, SUFFIX, or #F.
-(define *keyword-style* #f)
-
-(define-structure (keyword
-		   (constructor %make-keyword (name))
-		   (conc-name keyword/)
-		   (print-procedure (lambda (state object)
-				      (keyword-unparser state object))))
-  ;; logically, the name is a string, but
-  ;; we store it as a symbol so that the standard
-  ;; symbol-quoting conventions work.
-  (name #f read-only #t))
-
-(define-guarantee keyword "Keyword object")
-
-(define (keyword-unparser state object)
-  (let ((port (unparser-state/port state)))
-    (case *keyword-style*
-      ((PREFIX)
-       (write-char #\: port)
-       (write (keyword/name object) port))
-      ((SUFFIX)
-       (write (keyword/name object) port)
-       (write-char #\: port))
-      (else
-       (write-string "#[keyword " port)
-       (write (keyword/name object) port)
-       (write-string "]" port)))))
-
-(define (keyword->string keyword)
-  (guarantee-keyword keyword 'keyword->string)
-  (symbol->string (keyword/name keyword)))
+(define-integrable keyword-prefix "#[keyword]")
 
 (define (string->keyword string)
   (guarantee-string string 'string->keyword)
-  (or (hash-table/get *keyword-intern-table* string #f)
-      (let ((new-keyword (%make-keyword (string->symbol string))))
-	(hash-table/put! *keyword-intern-table*
-			 (string-copy string)
-			 new-keyword)
-	new-keyword)))
+  (string->symbol (string-append keyword-prefix string)))
+
+(define (keyword? object)
+  (and (interned-symbol? object)
+       (string-prefix? keyword-prefix (symbol->string object))))
+
+(define-guarantee keyword "keyword")
+
+(define (keyword->string keyword)
+  (guarantee-keyword keyword 'keyword->string)
+  (string-tail (symbol->string keyword) (string-length keyword-prefix)))

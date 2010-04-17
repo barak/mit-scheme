@@ -336,44 +336,59 @@ USA.
 	  (unparse-symbol symbol)))))
 
 (define (unparse-symbol symbol)
-  (let ((s (symbol-name symbol)))
-    (if (or (string-find-next-char-in-set
-	     s
-	     (if (environment-lookup *environment*
-				     '*PARSER-CANONICALIZE-SYMBOLS?*)
-		 canon-symbol-quoted
-		 non-canon-symbol-quoted))
-	    (fix:= (string-length s) 0)
-	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
-		 (string->number s))
-	    (looks-like-keyword? s))
-	(begin
-	  (*unparse-char #\|)
-	  (let ((end (string-length s)))
-	    (let loop ((start 0))
-	      (if (fix:< start end)
-		  (let ((i
-			 (substring-find-next-char-in-set
-			  s start end
-			  char-set/symbol-quotes)))
-		    (if i
-			(begin
-			  (*unparse-substring s start i)
-			  (*unparse-char #\\)
-			  (*unparse-char (string-ref s i))
-			  (loop (fix:+ i 1)))
-			(*unparse-substring s start end))))))
-	  (*unparse-char #\|))
-	(*unparse-string s))))
+  (if (keyword? symbol)
+      (unparse-keyword-name (keyword->string symbol))
+      (unparse-symbol-name (symbol-name symbol))))
+
+(define (unparse-keyword-name s)
+  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+    ((PREFIX)
+     (*unparse-char #\:)
+     (unparse-symbol-name s))
+    ((SUFFIX)
+     (unparse-symbol-name s)
+     (*unparse-char #\:))
+    (else
+     (*unparse-string "#[keyword ")
+     (unparse-symbol-name s)
+     (*unparse-char #\]))))
+
+(define (unparse-symbol-name s)
+  (if (or (string-find-next-char-in-set
+	   s
+	   (if (environment-lookup *environment*
+				   '*PARSER-CANONICALIZE-SYMBOLS?*)
+	       canon-symbol-quoted
+	       non-canon-symbol-quoted))
+	  (fix:= (string-length s) 0)
+	  (and (char-set-member? char-set/number-leaders (string-ref s 0))
+	       (string->number s))
+	  (and (fix:> (string-length s) 1)
+	       (looks-like-keyword? s)))
+      (begin
+	(*unparse-char #\|)
+	(let ((end (string-length s)))
+	  (let loop ((start 0))
+	    (if (fix:< start end)
+		(let ((i
+		       (substring-find-next-char-in-set
+			s start end
+			char-set/symbol-quotes)))
+		  (if i
+		      (begin
+			(*unparse-substring s start i)
+			(*unparse-char #\\)
+			(*unparse-char (string-ref s i))
+			(loop (fix:+ i 1)))
+		      (*unparse-substring s start end))))))
+	(*unparse-char #\|))
+      (*unparse-string s)))
 
 (define (looks-like-keyword? string)
-  (case (environment-lookup *environment* '*KEYWORD-STYLE*)
-    ((BOTH)
-     (or (char=? (string-ref string 0) #\:)
-	 (char=? (string-ref string (- (string-length string) 1)) #\:)))
-    ((CL)
+  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+    ((PREFIX)
      (char=? (string-ref string 0) #\:))
-    ((DSSSL SRFI-88)
+    ((SUFFIX)
      (char=? (string-ref string (- (string-length string) 1)) #\:))
     (else #f)))
 

@@ -114,10 +114,11 @@ USA.
 	       POSITIVE-FIXNUM?
 	       POSITIVE?
 	       PRIMITIVE-PROCEDURE-ARITY
-	       ;; STRING->SYMBOL is a special case.  Strings have can
+	       ;; STRING->SYMBOL is a special case.  Strings can
 	       ;; be side-effected, but it is useful to be able to
 	       ;; constant fold this primitive anyway.
 	       STRING->SYMBOL
+	       STRING-LENGTH
 	       ZERO-FIXNUM?
 	       ZERO?
 	       ))))

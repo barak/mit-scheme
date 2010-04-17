@@ -30,13 +30,25 @@ USA.
 	 (integrate-external "input")
 	 (integrate-external "port"))
 
-(define *parser-radix* 10)
-(define *parser-canonicalize-symbols?* #t)
 (define *parser-associate-positions?* #f)
-(define ignore-extra-list-closes #t)
-(define runtime-parser-radix 10)
-(define runtime-parser-canonicalize-symbols? #t)
+(define *parser-atom-delimiters*)
+(define *parser-canonicalize-symbols?* #t)
+(define *parser-constituents*)
+(define *parser-enable-file-attributes-parsing?* #t)
+(define *parser-keyword-style* #f)
+(define *parser-radix* 10)
+(define *parser-table*)
+
 (define runtime-parser-associate-positions? #f)
+(define runtime-parser-atom-delimiters)
+(define runtime-parser-canonicalize-symbols? #t)
+(define runtime-parser-constituents)
+(define runtime-parser-enable-file-attributes-parsing? #t)
+(define runtime-parser-keyword-style #f)
+(define runtime-parser-radix 10)
+(define runtime-parser-table)
+
+(define ignore-extra-list-closes #t)
 
 (define (parse-object port environment)
   ((top-level-parser port) port environment))
@@ -55,16 +67,20 @@ USA.
 	    (read-finish (port/operation port 'READ-FINISH)))
 	(lambda (port environment)
 	  (if read-start (read-start port))
-	  (let ((db (initial-db port environment)))
-	    (let ((object (dispatch port db 'TOP-LEVEL)))
-	      (if read-finish (read-finish port))
-	      (finish-parsing object db)))))))
+	  (let restart ()
+	    (let* ((db (initial-db port environment))
+		   (object (dispatch port db 'TOP-LEVEL)))
+	      (if (eq? object restart-parsing)
+		  (restart)
+		  (begin
+		    (if read-finish (read-finish port))
+		    (finish-parsing object db)))))))))
 
 (define (read-in-context port db ctx)
   (let ((object (dispatch port db ctx)))
-    (if (eof-object? object)
-	(error:premature-eof port))
-    object))
+    (cond ((eof-object? object)	(error:premature-eof port))
+	  ((eq? object restart-parsing) (error:unexpected-restart port))
+	  (else object))))
 
 (define-integrable (read-object port db)
   (read-in-context port db 'OBJECT))
@@ -77,14 +93,23 @@ USA.
 	(if (eof-object? char)
 	    char
 	    (let ((object ((get-handler char handlers) port db ctx char)))
-	      (if (eq? object continue-parsing)
-		  (loop)
-		  (begin
-		    (record-object-position! position object db)
-		    object))))))))
+	      (cond ((eq? object continue-parsing) (loop))
+		    ((eq? object restart-parsing) object)
+		    (else
+		     (record-object-position! position object db)
+		     object))))))))
 
+;; Causes the dispatch to be re-run.
+;; Used to discard things like whitespace and comments.
 (define continue-parsing
   (list 'CONTINUE-PARSING))
+
+;; Causes the dispatch to finish, but the top-level parser will return
+;; back into the dispatch after re-initializing the db.  This is used
+;; to reset the parser when changing read syntax as specified by the
+;; file attributes list.
+(define restart-parsing
+  (list 'RESTART-PARSING))
 
 (define (handler:special port db ctx char1)
   (let ((char2 (%read-char/no-eof port db)))
@@ -105,8 +130,6 @@ USA.
 (define char-set/atom-delimiters)
 (define char-set/symbol-quotes)
 (define char-set/number-leaders)
-(define *parser-table*)
-(define runtime-parser-table)
 
 (define (initialize-package!)
   (let* ((constituents
@@ -166,51 +189,159 @@ USA.
     (set! char-set/constituents constituents)
     (set! char-set/atom-delimiters atom-delimiters)
     (set! char-set/symbol-quotes symbol-quotes)
-    (set! char-set/number-leaders number-leaders))
+    (set! char-set/number-leaders number-leaders)
+    (set! *parser-atom-delimiters* atom-delimiters)
+    (set! *parser-constituents* constituents)
+    (set! runtime-parser-atom-delimiters atom-delimiters)
+    (set! runtime-parser-constituents constituents))
   (set! *parser-table* system-global-parser-table)
   (set! runtime-parser-table system-global-parser-table)
   (set! hashed-object-interns (make-strong-eq-hash-table))
   (initialize-condition-types!))
 
-(define-integrable (atom-delimiter? char)
-  (char-set-member? char-set/atom-delimiters char))
-
-(define (guarantee-constituent char)
-  (if (not (char-set-member? char-set/constituents char))
-      (error:illegal-char char)))
 
 (define (handler:whitespace port db ctx char)
   port db ctx char
   continue-parsing)
 
 (define (handler:comment port db ctx char)
-  ctx char
-  (let loop ()
+  (declare (ignore ctx char))
+
+  ;; This is a small state machine that looks for  -*-
+  ;; The scan state is when it hasn't found anything.
+  ;; The dash state is after a - has been seen.
+  ;; The discard state is after the file-attributes-line has
+  ;; been parsed.
+  (define (scan)
+    (let ((char (%read-char port db)))
+      (if (eof-object? char)
+	  char
+	  (case char
+	    ((#\newline) unspecific)
+	    ((#\-) (dash))
+	    (else (scan))))))
+
+  (define (dash)
+    (let ((char (%read-char port db)))
+      (if (eof-object? char)
+	  char
+	  (case char
+	    ((#\newline) unspecific)
+	    ((#\*)
+	     (let ((char (%read-char port db)))
+	       (if (eof-object? char)
+		   char
+		   (case char
+		     ((#\newline) unspecific)
+		     ((#\-)
+		      (process-file-attributes
+		       (parse-file-attributes-line port db false) port)
+		      (discard restart-parsing))
+		     (else (scan))))))
+	    ((#\-) (dash))
+	    (else (scan))))))
+
+  (define (discard action)
     (let ((char (%read-char port db)))
       (cond ((eof-object? char) char)
-	    ((char=? char #\newline) unspecific)
-	    (else (loop)))))
-  continue-parsing)
+	    ((char=? char #\newline) action)
+	    (else (discard action)))))
 
-(define (handler:multi-line-comment port db ctx char1 char2)
-  ctx char1 char2
-  (let loop ()
+  ;; If we're past the second line, just discard.
+  (if (and (< (current-line port db) 2)
+	   (db-enable-file-attributes-parsing db))
+      (scan)
+      (discard continue-parsing)))
+
+(define (handler:multi-line-comment
+	 port db ctx char1 char2)
+  (declare (ignore ctx char1 char2))
+  ;; In addition to parsing out the multi-line-comment, we want to
+  ;; extract out the file attribute line if it exists in the first
+  ;; line.  To do this, we use a small state machine implemented as a
+  ;; bunch of internal functions.  Each state function takes a
+  ;; character from the port as an input and finishes by tail-calling
+  ;; the next state with the next character.
+
+  ;; These first five states are where we scan the
+  ;; first line looking for the file attribute marker, end of comment,
+  ;; nested comment, or end of line.
+
+  (define (scan)
     (case (%read-char/no-eof port db)
-      ((#\#)
-       (let sharp ()
-	 (case (%read-char/no-eof port db)
-	   ((#\#) (sharp))
-	   ((#\|) (loop) (loop))
-	   (else (loop)))))
-      ((#\|)
-       (let vbar ()
-	 (case (%read-char/no-eof port db)
-	   ((#\#) unspecific)
-	   ((#\|) (vbar))
-	   (else (loop)))))
-      (else (loop))))
-  continue-parsing)
+      ((#\newline) (discard 0 continue-parsing))
+      ((#\#) (sharp))
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
 
+  (define (sharp)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0 continue-parsing))
+      ((#\#) (sharp))
+      ((#\-) (dash))
+      ((#\|) (discard 1 continue-parsing))		; nested comment
+      (else (scan))))
+
+  (define (vbar)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0 continue-parsing))
+      ((#\#) unspecific)		; end of comment
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  (define (dash)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0 continue-parsing))
+      ((#\#) (sharp))
+      ((#\*) (dash-star))
+      ((#\-) (dash))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  (define (dash-star)
+    (case (%read-char/no-eof port db)
+      ((#\newline) (discard 0 continue-parsing))
+      ((#\#) (sharp))
+      ((#\-)
+       (process-file-attributes (parse-file-attributes-line port db true) port)
+       (discard 0 restart-parsing))
+      ((#\|) (vbar))
+      (else (scan))))
+
+  ;; Next three states are the discard loop where we
+  ;; just track the nesting level and discard stuff.
+  ;; We don't look for the file-attribute marker.
+
+  (define (discard depth action)
+    (case (%read-char/no-eof port db)
+      ((#\#) (discard-sharp depth action))
+      ((#\|) (discard-vbar depth action))
+      (else (discard depth action))))
+
+  (define (discard-sharp depth action)
+    (case (%read-char/no-eof port db)
+      ((#\#) (discard-sharp depth action))
+      ((#\|) (discard (+ depth 1) action)) ; push
+      (else (discard depth action))))
+
+  (define (discard-vbar depth action)
+    (case (%read-char/no-eof port db)
+      ((#\#) (if (> depth 0)
+		 (discard (- depth 1) action) ; pop
+		 action))
+      ((#\|) (discard-vbar depth action))
+      (else (discard depth action))))
+
+  ;; Start the machine.
+  ;; If we're past the second line, just discard.
+  (if (and (< (current-line port db) 2)
+	   (db-enable-file-attributes-parsing db))
+      (scan)
+      (discard 0 continue-parsing)))
+
+
 ;; It would be better if we could skip over the object without
 ;; creating it, but for now this will work.
 (define (handler:expression-comment port db ctx char1 char2)
@@ -231,17 +362,25 @@ USA.
 (define (handler:symbol port db ctx char)
   ctx
   (receive (string quoted? final) (parse-atom port db (list char))
-    (declare (ignore quoted?))
     (if (and (eq? final #\:)
-	     (eq? (db-keyword-style db) 'SUFFIX))
+	     (eq? (db-keyword-style db) 'SUFFIX)
+	     ;; Nasty edge case:  A bare colon.  Treat as a symbol
+	     ;; unless quoted.
+	     (or (not (= (string-length string) 1))
+		 quoted?))
 	(string->keyword (string-head string (- (string-length string) 1)))
 	(string->symbol string))))
 
 (define (handler:prefix-keyword port db ctx char)
   (if (eq? (db-keyword-style db) 'PREFIX)
       (receive (string quoted? final) (parse-atom port db '())
-	(declare (ignore quoted? final))
-	(string->keyword string))
+	(declare (ignore final))
+	(if (and (zero? (string-length string))
+		 (not quoted?))
+	    ;; Nasty edge case:  A bare colon.  Treat as a symbol
+	    ;; unless quoted.
+	    (string->symbol ":")
+	    (string->keyword string)))
       ;; If prefix-style keywords are not in use, just
       ;; tail call the symbol handler.
       (handler:symbol port db ctx char)))
@@ -266,7 +405,9 @@ USA.
 	(table
 	 (if (db-canonicalize-symbols? db)
 	     downcase-table
-	     identity-table)))
+	     identity-table))
+	(atom-delimiters (db-atom-delimiters db))
+	(constituents (db-constituents db)))
     (define (%canon char)
       ;; Assumption: No character involved in I/O has bucky bits, and
       ;; case conversion applies only to ISO-8859-1 characters.
@@ -301,12 +442,13 @@ USA.
 			(previous-char #f)
 			(char (%peek)))
       (if (or (eof-object? char)
-	      (atom-delimiter? char))
+	      (%char-set-member? atom-delimiters char))
 	  (if quoting?
 	      (values (get-output-string port*) quoted? previous-char)
 	      (get-output-string port*))
 	  (begin
-	    (guarantee-constituent char)
+	    (if (not (%char-set-member? constituents char))
+		(error:illegal-char char))
 	    (%discard)
 	    (cond ((char=? char #\|)
 		   (if quoting?
@@ -532,8 +674,8 @@ USA.
 	 (lambda ()
 	   (let ((char (%peek-char port db)))
 	     (or (eof-object? char)
-		 (atom-delimiter? char))))))
-    (if (or (atom-delimiter? char)
+		 (%char-set-member? (db-atom-delimiters db) char))))))
+    (if (or (%char-set-member? (db-atom-delimiters db) char)
 	    (at-end?))
 	char
 	(name->char
@@ -601,7 +743,7 @@ USA.
 (define (%read-char port db)
   (let ((char
 	 (let loop ()
-	   (or (input-port/%read-char port)
+	   (or ((db-read-char db) port)
 	       (loop))))
 	(op (db-discretionary-write-char db)))
     (if op
@@ -614,10 +756,9 @@ USA.
 	(error:premature-eof port))
     char))
 
-(define (%peek-char port db)
-  db					;ignore
+(define-integrable (%peek-char port db)
   (let loop ()
-    (or (input-port/%peek-char port)
+    (or ((db-peek-char db) port)
 	(loop))))
 
 (define (%peek-char/no-eof port db)
@@ -625,35 +766,61 @@ USA.
     (if (eof-object? char)
 	(error:premature-eof port))
     char))
-
+
 (define-structure db
-  (radix #f read-only #t)
-  (canonicalize-symbols? #f read-only #t)
   (associate-positions? #f read-only #t)
-  (parser-table #f read-only #t)
+  (atom-delimiters #f read-only #t)
+  (canonicalize-symbols? #f read-only #t)
+  (constituents #f read-only #t)
+  (enable-file-attributes-parsing #f read-only #t)
   (keyword-style #f read-only #t)
+  (radix #f read-only #t)
+  (parser-table #f read-only #t)
   (shared-objects #f read-only #t)
-  (get-position #f read-only #t)
+  ;; Cached port operations
   (discretionary-write-char #f read-only #t)
+  (get-position #f read-only #t)
+  (input-line #f read-only #t)
+  (peek-char #f read-only #t)
+  (read-char #f read-only #t)
   position-mapping)
 
 (define (initial-db port environment)
-  (let ((environment
-	 (if (or (default-object? environment)
-		 (parser-table? environment))
-	     (nearest-repl/environment)
-	     (begin
-	       (guarantee-environment environment #f)
-	       environment))))
-    (make-db (environment-lookup environment '*PARSER-RADIX*)
-	     (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
-	     (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+  (let* ((environment
+	  (if (or (default-object? environment)
+		  (parser-table? environment))
+	      (nearest-repl/environment)
+	      (begin
+		(guarantee-environment environment #f)
+		environment)))
+	 (atom-delimiters
+	  (environment-lookup environment '*PARSER-ATOM-DELIMITERS*))
+	 (constituents
+	  (environment-lookup environment '*PARSER-CONSTITUENTS*)))
+    (guarantee-char-set atom-delimiters #f)
+    (guarantee-char-set constituents #f)
+    (make-db (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+	     atom-delimiters
+	     (overridable-value
+	      port environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	     constituents
+	     (overridable-value
+	      port environment '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*)
+	     (overridable-value port environment '*PARSER-KEYWORD-STYLE*)
+	     (environment-lookup environment '*PARSER-RADIX*)
 	     (environment-lookup environment '*PARSER-TABLE*)
-	     (environment-lookup environment '*KEYWORD-STYLE*)
 	     (make-shared-objects)
-	     (position-operation port environment)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
+	     (position-operation port environment)
+	     (port/operation port 'INPUT-LINE)
+	     (port/operation port 'PEEK-CHAR)
+	     (port/operation port 'READ-CHAR)
 	     '())))
+
+(define (overridable-value port environment name)
+  ;; Check the port property list for the name, and then the
+  ;; environment.  This way a port can override the default.
+  (port/get-property port name (environment-lookup environment name)))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
@@ -661,6 +828,9 @@ USA.
 	(or (port/operation port 'POSITION)
 	    default)
 	default)))
+
+(define-integrable (current-line port db)
+  ((db-input-line db) port))
 
 (define-integrable (current-position port db)
   ((db-get-position db) port))
@@ -675,6 +845,83 @@ USA.
   (if (db-associate-positions? db)
       (cons object (db-position-mapping db))
       object))
+
+(define (process-file-attributes file-attribute-alist port)
+  (if file-attribute-alist
+      (begin
+	;; Disable further attributes parsing.
+	(port/set-property! port '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?* #f)
+	(process-keyword-attribute file-attribute-alist port)
+	(process-mode-attribute file-attribute-alist port)
+	(process-studly-case-attribute file-attribute-alist port))))
+
+(define (lookup-file-attribute file-attribute-alist attribute)
+  (assoc attribute file-attribute-alist
+	 (lambda (left right)
+	   (string-ci=? (symbol-name left) (symbol-name right)))))
+
+;;; Look for keyword-style: prefix or keyword-style: suffix
+(define (process-keyword-attribute file-attribute-alist port)
+  (let ((keyword-entry
+	 (lookup-file-attribute file-attribute-alist 'KEYWORD-STYLE)))
+    (if (pair? keyword-entry)
+	(let ((value (cdr keyword-entry)))
+	  (cond ((and (symbol? value)
+		      (or (string-ci=? (symbol-name value) "none")
+			  (string-ci=? (symbol-name value) "false")))
+		 (port/set-property! port '*PARSER-KEYWORD-STYLE* #f))
+		((and (symbol? value)
+		      (string-ci=? (symbol-name value) "prefix"))
+		 (port/set-property! port '*PARSER-KEYWORD-STYLE* 'PREFIX))
+		((and (symbol? value)
+		      (string-ci=? (symbol-name value) "suffix"))
+		 (port/set-property! port '*PARSER-KEYWORD-STYLE* 'SUFFIX))
+		(else
+		 (warn "Unrecognized value for keyword-style" value)))))))
+
+;;; Don't do anything with the mode, but warn if it isn't scheme.
+(define (process-mode-attribute file-attribute-alist port)
+  (declare (ignore port))
+  (let ((mode-entry
+	 (lookup-file-attribute file-attribute-alist 'MODE)))
+    (if (pair? mode-entry)
+	(let ((value (cdr mode-entry)))
+	  (if (or (not (symbol? value))
+		  (not (string-ci=? (symbol-name value) "scheme")))
+	      (warn "Unexpected file mode:" (if (symbol? value)
+						(symbol-name value)
+						value)))))))
+
+;; If you want to turn on studly case, then the attribute must be
+;; exactly "sTuDly-case" and the value must be exactly "True".  After
+;; all, case is important.  If you want to turn it off, the case of
+;; the attribute and the value don't matter.
+(define (process-studly-case-attribute file-attribute-alist port)
+  (let ((studly-case-entry
+	 (lookup-file-attribute file-attribute-alist 'STUDLY-CASE)))
+    (if (pair? studly-case-entry)
+	(let ((value (cdr studly-case-entry)))
+	  (cond ((or (eq? value #t)
+		     (and (symbol? value)
+			  (string-ci=? (symbol-name value) "true")))
+		 ;; STricTly cHeck thE case.
+		 (cond ((not (string=? (symbol-name (car studly-case-entry))
+				       "sTuDly-case"))
+			(warn "Attribute name mismatch.  Expected sTuDly-case.")
+			#f)
+		       ((and (symbol? value)
+			     (not (string=? (symbol-name value) "True")))
+			(warn "Attribute value mismatch.  Expected True.")
+			#f)
+		       (else
+			(port/set-property!
+			 port '*PARSER-CANONICALIZE-SYMBOLS?* #f))))
+		((or (not value)
+		     (and (symbol? value)
+			  (string-ci=? (symbol-name value) "false")))
+		 (port/set-property! port '*PARSER-CANONICALIZE-SYMBOLS?* #t))
+		(else (warn "Unrecognized value for sTuDly-case" value)))))))
+
 
 (define-syntax define-parse-error
   (sc-macro-transformer
@@ -701,7 +948,6 @@ USA.
 					   STANDARD-ERROR-HANDLER)))))
 	 (ill-formed-syntax form)))))
 
-(define condition-type:parse-error)
 (define condition-type:illegal-bit-string)
 (define condition-type:illegal-boolean)
 (define condition-type:illegal-char)
@@ -710,12 +956,14 @@ USA.
 (define condition-type:illegal-named-constant)
 (define condition-type:illegal-number)
 (define condition-type:illegal-unhash)
-(define condition-type:undefined-hash)
 (define condition-type:no-quoting-allowed)
+(define condition-type:non-shared-object)
+(define condition-type:parse-error)
 (define condition-type:premature-eof)
 (define condition-type:re-shared-object)
-(define condition-type:non-shared-object)
 (define condition-type:unbalanced-close)
+(define condition-type:undefined-hash)
+(define condition-type:unexpected-restart)
 (define error:illegal-bit-string)
 (define error:illegal-boolean)
 (define error:illegal-char)
@@ -724,12 +972,13 @@ USA.
 (define error:illegal-named-constant)
 (define error:illegal-number)
 (define error:illegal-unhash)
-(define error:undefined-hash)
 (define error:no-quoting-allowed)
+(define error:non-shared-object)
 (define error:premature-eof)
 (define error:re-shared-object)
-(define error:non-shared-object)
 (define error:unbalanced-close)
+(define error:undefined-hash)
+(define error:unexpected-restart)
 
 (define (initialize-condition-types!)
   (set! condition-type:parse-error
@@ -803,4 +1052,8 @@ USA.
     (lambda (char port)
       (write-string "Unbalanced close parenthesis: " port)
       (write char port)))
+  (define-parse-error (unexpected-restart port)
+    (lambda (port* port)
+      (write-string "Unexpected parse restart on: " port)
+      (write port* port)))
   unspecific)

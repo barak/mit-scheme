@@ -410,6 +410,99 @@ USA.
 
 ;;;; General CAR/CDR Encodings
 
+(define (call-to-car? expression)
+  (and (combination? expression)
+       (constant-eq? (combination/operator expression) (ucode-primitive car))
+       (length=? (combination/operands expression) 1)))
+
+(define (call-to-cdr? expression)
+  (and (combination? expression)
+       (constant-eq? (combination/operator expression) (ucode-primitive cdr))
+       (length=? (combination/operands expression) 1)))
+
+(define (call-to-general-car-cdr? expression)
+  (and (combination? expression)
+       (constant-eq? (combination/operator expression)
+		     (ucode-primitive general-car-cdr))
+       (length=? (combination/operands expression) 2)
+       (constant? (second (combination/operands expression)))))
+
+(define (car-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (let ((operand (first operands)))
+	(cond ((call-to-car? operand)
+	       ;; (car (car x)) => (caar x)
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make #f #b111))))
+	      ;; (car (cdr x)) => (cadr x)
+	      ((call-to-cdr? operand)
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make #f #b110))))
+
+	      ((call-to-general-car-cdr? operand)
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make
+		       #f
+		       (encode-general-car-cdr
+			(cons 'car
+			      (decode-general-car-cdr
+			       (constant/value
+				(second (combination/operands operand))))))))))
+	      (else
+	       (make-combination expr block (ucode-primitive car) operands))))
+      ;; ill-formed call
+      (begin
+	(warn "Wrong number of arguments in call to CAR.")
+	#f)))
+
+(define (cdr-expansion expr operands block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (let ((operand (first operands)))
+	(cond ((call-to-car? operand)
+	       ;; (cdr (car x)) => (cdar x)
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make #f #b101))))
+	      ;; (cdr (car x)) => (cddr x)
+	      ((call-to-cdr? operand)
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make #f #b100))))
+
+	      ((call-to-general-car-cdr? (car operands))
+	       (make-combination
+		expr block
+		(ucode-primitive general-car-cdr)
+		(list (first (combination/operands operand))
+		      (constant/make
+		       #f
+		       (encode-general-car-cdr
+			(cons 'cdr
+			      (decode-general-car-cdr
+			       (constant/value
+				(second (combination/operands operand))))))))))
+	      (else
+	       (make-combination expr block (ucode-primitive cdr) operands))))
+      ;; ill-formed call
+      (begin
+	(warn "Wrong number of arguments in call to CDR.")
+	#f)))
+
 (define (general-car-cdr-expansion encoding)
   (lambda (expr operands block)
     (if (length=? operands 1)
@@ -451,10 +544,10 @@ USA.
 (define cdddar-expansion (general-car-cdr-expansion #b10001))
 (define cddddr-expansion (general-car-cdr-expansion #b10000))
 
-(define first-expansion (general-car-cdr-expansion #b11))
-(define second-expansion  cadr-expansion)
-(define third-expansion   caddr-expansion)
-(define fourth-expansion  cadddr-expansion)
+(define first-expansion   (general-car-cdr-expansion #b11))
+(define second-expansion  (general-car-cdr-expansion #b110))
+(define third-expansion   (general-car-cdr-expansion #b1100))
+(define fourth-expansion  (general-car-cdr-expansion #b11000))
 (define fifth-expansion   (general-car-cdr-expansion #b110000))
 (define sixth-expansion   (general-car-cdr-expansion #b1100000))
 (define seventh-expansion (general-car-cdr-expansion #b11000000))
@@ -469,13 +562,18 @@ USA.
       ;; Convert (eq? <expr> #f) and (eq? #f <expr>) to (not <expr>)
       ;; Conditional inversion will remove the call to not.
       (cond ((expression/always-false? (first operands))
-	     (sequence/make (and expr (object/scode expr))
-			    (list (first operands)
-				  (make-combination #f block (ucode-primitive not) (cdr operands)))))
+	     (sequence/make
+	      (and expr (object/scode expr))
+	      (list (first operands)
+		    (make-combination #f block
+				      (ucode-primitive not) (cdr operands)))))
 	    ((expression/always-false? (second operands))
-	     (sequence/make (and expr (object/scode expr))
-			    (list (second operands)
-				  (make-combination #f block (ucode-primitive not) (list (car operands))))))
+	     (sequence/make
+	      (and expr (object/scode expr))
+	      (list (second operands)
+		    (make-combination #f block
+				      (ucode-primitive not)
+				      (list (car operands))))))
 	    (else
 	     (make-combination expr block (ucode-primitive eq?) operands)))
       #f))
@@ -644,6 +742,7 @@ USA.
 	    caddr
 	    cadr
 	    call-with-values
+	    car
 	    cdaaar
 	    cdaadr
 	    cdaar
@@ -658,6 +757,7 @@ USA.
 	    cddddr
 	    cdddr
 	    cddr
+	    cdr
 	    char=?
 	    complex?
 	    cons*
@@ -727,6 +827,7 @@ USA.
 	   caddr-expansion
 	   cadr-expansion
 	   call-with-values-expansion
+	   car-expansion
 	   cdaaar-expansion
 	   cdaadr-expansion
 	   cdaar-expansion
@@ -741,6 +842,7 @@ USA.
 	   cddddr-expansion
 	   cdddr-expansion
 	   cddr-expansion
+	   cdr-expansion
 	   char=?-expansion
 	   complex?-expansion
 	   cons*-expansion
