@@ -58,7 +58,6 @@ unpack_dist_file_to "${DIST_DIR}" "${DIST_DIR}"
 run_command "${OUT_ROOT}"-compile "${DIST_DIR}"/src build
 run_command "${OUT_ROOT}"-clean "${DIST_DIR}"/src/microcode make distclean
 my_rm_f "${DIST_DIR}"/src/lib/runtime.com
-my_rmdir "${DIST_DIR}"/src/lib/lib
 
 notify "Making tarball"
 fixup_perms "${DIST_DIR}"
