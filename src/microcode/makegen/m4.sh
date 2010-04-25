@@ -26,6 +26,14 @@
 
 set -e
 
+if [ $# -le 1 ]; then
+  printf 'Usage: %s m4 <file/definition> ...\n' >&2
+  exit 1
+fi
+
+M4="${1}"
+shift
+
 TMP_FILE="m4.tmp"
 
 clean ()
@@ -35,7 +43,7 @@ clean ()
 
 run_m4 ()
 {
-  m4 && clean
+  ${M4} && clean
 }
 
 trap clean EXIT INT QUIT TERM

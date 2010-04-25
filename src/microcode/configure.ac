@@ -996,7 +996,7 @@ svm1)
     ;;
 *)
     AC_CHECK_PROG([M4], [m4], [m4])
-    if test "x${M4}" != xm4; then
+    if test "x${M4}" = x; then
 	AC_MSG_ERROR([m4 not found])
     fi
     AC_CONFIG_LINKS([cmpauxmd.m4:cmpauxmd/${mit_scheme_native_code}.m4])
@@ -1033,6 +1033,7 @@ fi
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])
 AC_SUBST([M4_FLAGS])
+AC_SUBST([M4])
 AC_SUBST([OPTIONAL_SOURCES])
 AC_SUBST([OPTIONAL_OBJECTS])
 AC_SUBST([PRBFISH_LIBS])

@@ -69,7 +69,7 @@ AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
 CCLD = @CCLD@
-M4 = $(srcdir)/makegen/m4.sh
+M4 = $(srcdir)/makegen/m4.sh @M4@
 AS = as
 TAR = tar
 GZIP_ENV = --best
