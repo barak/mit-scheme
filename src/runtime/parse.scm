@@ -248,7 +248,9 @@ USA.
 	    (else (discard action)))))
 
   ;; If we're past the second line, just discard.
-  (if (and (< (current-line port db) 2)
+  (if (and (let ((line (current-line port db)))
+	     (and line
+		  (< line 2)))
 	   (db-enable-file-attributes-parsing db))
       (scan)
       (discard continue-parsing)))
@@ -829,8 +831,11 @@ USA.
 	    default)
 	default)))
 
-(define-integrable (current-line port db)
-  ((db-input-line db) port))
+(define (current-line port db)
+  (let ((proc (db-input-line db)))
+    (if proc
+	(proc port)
+	#f)))
 
 (define-integrable (current-position port db)
   ((db-get-position db) port))
