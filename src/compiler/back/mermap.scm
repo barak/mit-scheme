@@ -115,7 +115,7 @@ USA.
 	    (eqv? home (vector-ref entry 0))))))
     (lambda (x-entry y-entry)
       (vector (vector-ref x-entry 0)
-	      (+ (vector-ref x-entry 1) (vector-ref y-entry 1))
+	      (min (vector-ref x-entry 1) (vector-ref y-entry 1))
 	      (merge-entries (vector-ref x-entry 2) (vector-ref y-entry 2)
 		(lambda (entry entries)
 		  (assq (car entry) entries))
