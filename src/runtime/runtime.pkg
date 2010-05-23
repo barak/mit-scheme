@@ -1071,21 +1071,36 @@ USA.
   (files "chrset")
   (parent (runtime))
   (export ()
+	  (8-bit-alphabet? 8-bit-char-set?)
+	  (<alphabet> <char-set>)
+	  (alphabet char-set)
+	  (alphabet+ char-set-union)
+	  (alphabet- char-set-difference)
+	  (alphabet->char-set char-set->alphabet)
+	  (alphabet->string char-set->string)
+	  (alphabet-predicate char-set-predicate)
+	  (alphabet? char-set?)
+	  (string->alphabet string->char-set)
 	  8-bit-char-set?
+	  <char-set>
+	  alphabet->scalar-values
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
+	  char-in-alphabet?
 	  char-lower-case?
 	  char-numeric?
 	  char-set
+	  char-set->alphabet
+	  char-set->scalar-values
 	  char-set-difference
 	  char-set-intersection
 	  char-set-invert
 	  char-set-member?
 	  char-set-members
-	  char-set->scalar-values
+	  char-set-predicate
 	  char-set-union
 	  char-set:alphabetic
 	  char-set:alphanumeric
@@ -1123,6 +1138,7 @@ USA.
 	  guarantee-well-formed-scalar-value-list
 	  guarantee-well-formed-scalar-value-range
 	  predicate->char-set
+	  scalar-values->alphabet
 	  scalar-values->char-set
 	  string->char-set
 	  well-formed-scalar-value-list?
@@ -5221,17 +5237,7 @@ USA.
 	  (wide-string->utf32-le-string string->utf32-le-string)
 	  (wide-string->utf32-string string->utf32-string)
 	  (wide-string->utf8-string string->utf8-string)
-	  8-bit-alphabet?
-	  <alphabet>
 	  <wide-string>
-	  alphabet
-	  alphabet+
-	  alphabet-
-	  alphabet->char-set
-	  alphabet->scalar-values
-	  alphabet->string
-	  alphabet-predicate
-	  alphabet?
 	  call-with-utf16-be-input-string
 	  call-with-utf16-be-output-string
 	  call-with-utf16-input-string
@@ -5246,11 +5252,7 @@ USA.
 	  call-with-utf32-output-string
 	  call-with-utf8-input-string
 	  call-with-utf8-output-string
-	  char-in-alphabet?
-	  char-set->alphabet
 	  combine-utf16-surrogates
-	  error:not-8-bit-alphabet
-	  error:not-alphabet
 	  error:not-unicode-char
 	  error:not-unicode-scalar-value
 	  error:not-utf16-be-string
@@ -5265,8 +5267,6 @@ USA.
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
-	  guarantee-8-bit-alphabet
-	  guarantee-alphabet
 	  guarantee-unicode-char
 	  guarantee-unicode-scalar-value
 	  guarantee-utf16-be-string
@@ -5296,9 +5296,7 @@ USA.
 	  open-utf32-output-string
 	  open-utf8-input-string
 	  open-utf8-output-string
-	  scalar-values->alphabet
 	  split-into-utf16-surrogates
-	  string->alphabet
 	  string->utf16-be-string
 	  string->utf16-le-string
 	  string->utf16-string

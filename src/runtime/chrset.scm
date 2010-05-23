@@ -264,6 +264,11 @@ USA.
 		      (else #t)))
 	      #f)))))
 
+(define (char-set-predicate char-set)
+  (guarantee-char-set char-set 'CHAR-SET-PREDICATE)
+  (lambda (char)
+    (char-set-member? char-set char)))
+
 (define (char-set=? char-set . char-sets)
   (guarantee-char-set char-set 'CHAR-SET=?)
   (guarantee-char-sets char-sets 'CHAR-SET=?)
@@ -495,46 +500,46 @@ USA.
 		  (ascii-range->char-set #xC0 #xD7)
 		  (ascii-range->char-set #xD8 #xDE)))
 (define-deferred char-set:not-upper-case (char-set-invert char-set:upper-case))
-(define-deferred char-upper-case? (%char-set-test char-set:upper-case))
+(define-deferred char-upper-case? (char-set-predicate char-set:upper-case))
 
 (define-deferred char-set:lower-case
   (char-set-union (ascii-range->char-set #x61 #x7B)
 		  (ascii-range->char-set #xE0 #xF7)
 		  (ascii-range->char-set #xF8 #xFF)))
 (define-deferred char-set:not-lower-case (char-set-invert char-set:lower-case))
-(define-deferred char-lower-case? (%char-set-test char-set:lower-case))
+(define-deferred char-lower-case? (char-set-predicate char-set:lower-case))
 
 (define-deferred char-set:numeric (ascii-range->char-set #x30 #x3A))
 (define-deferred char-set:not-numeric (char-set-invert char-set:numeric))
-(define-deferred char-numeric? (%char-set-test char-set:numeric))
+(define-deferred char-numeric? (char-set-predicate char-set:numeric))
 
 (define-deferred char-set:graphic
   (char-set-union (ascii-range->char-set #x20 #x7F)
 		  (ascii-range->char-set #xA0 #x100)))
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
-(define-deferred char-graphic? (%char-set-test char-set:graphic))
+(define-deferred char-graphic? (char-set-predicate char-set:graphic))
 
 (define-deferred char-set:whitespace
   (char-set #\newline #\tab #\linefeed #\page #\return #\space
 	    (integer->char #xA0)))
 (define-deferred char-set:not-whitespace (char-set-invert char-set:whitespace))
-(define-deferred char-whitespace? (%char-set-test char-set:whitespace))
+(define-deferred char-whitespace? (char-set-predicate char-set:whitespace))
 
 (define-deferred char-set:alphabetic
   (char-set-union char-set:upper-case char-set:lower-case))
 (define-deferred char-set:not-alphabetic (char-set-invert char-set:alphabetic))
-(define-deferred char-alphabetic? (%char-set-test char-set:alphabetic))
+(define-deferred char-alphabetic? (char-set-predicate char-set:alphabetic))
 
 (define-deferred char-set:alphanumeric
   (char-set-union char-set:alphabetic char-set:numeric))
 (define-deferred char-set:not-alphanumeric
   (char-set-invert char-set:alphanumeric))
-(define-deferred char-alphanumeric? (%char-set-test char-set:alphanumeric))
+(define-deferred char-alphanumeric? (char-set-predicate char-set:alphanumeric))
 
 (define-deferred char-set:standard
   (char-set-union char-set:graphic (char-set #\newline)))
 (define-deferred char-set:not-standard (char-set-invert char-set:standard))
-(define-deferred char-standard? (%char-set-test char-set:standard))
+(define-deferred char-standard? (char-set-predicate char-set:standard))
 
 (define-deferred char-set:newline
   (char-set #\newline))
@@ -547,52 +552,35 @@ USA.
 (define-deferred char-set:ctls
   (char-set-union (ascii-range->char-set #x00 #x20)
 		  (ascii-range->char-set #x7F #x80)))
-(define-deferred char-ctl? (%char-set-test char-set:ctls))
+(define-deferred char-ctl? (char-set-predicate char-set:ctls))
 
 (define-deferred char-set:wsp (char-set #\space #\tab))
-(define-deferred char-wsp? (%char-set-test char-set:wsp))
-
-(define (%char-set-test char-set)
-  (lambda (char)
-    (char-set-member? char-set char)))
+(define-deferred char-wsp? (char-set-predicate char-set:wsp))
 
 ;;;; Backwards compatibility
 
 (define (string->char-set string)
-  (guarantee-string string 'STRING->CHAR-SET)
-  (let ((n (string-length string))
-	(low (%make-low 0)))
-    (do ((i 0 (fix:+ i 1)))
-	((fix:= i n))
-      (%low-set! low (vector-8b-ref string i)))
-    (%make-char-set low '#() '#())))
+  (scalar-values->char-set (map char->integer (string->list string))))
 
 (define (char-set->string char-set)
-  (guarantee-8-bit-char-set char-set 'CHAR-SET->STRING)
-  (let loop ((i 0) (chars '()))
-    (if (fix:< i %low-length)
-	(loop (fix:+ i 1)
-	      (if (%scalar-value-in-char-set? i char-set)
-		  (cons (integer->char i) chars)
-		  chars))
-	(apply string (reverse! chars)))))
+  (list->string (map integer->char (char-set-members char-set))))
+
+(define (char-set-members char-set)
+  (guarantee-8-bit-char-set char-set 'CHAR-SET-MEMBERS)
+  (let ((low (char-set-low char-set)))
+    (let loop ((code 0))
+      (if (fix:< code #x100)
+	  (if (%low-ref low code)
+	      (cons (integer->char code)
+		    (loop (fix:+ code 1)))
+	      (loop (fix:+ code 1)))
+	  '()))))
 
 (define (predicate->char-set predicate)
   (%scalar-values->char-set
    (filter (lambda (i)
 	     (predicate (integer->char i)))
 	   (iota #x100))))
-
-(define (char-set-members char-set)
-  (guarantee-8-bit-char-set char-set 'CHAR-SET-MEMBERS)
-  (let ((low (char-set-low char-set)))
-    (let loop ((code #xFF) (chars '()))
-      (if (fix:>= code 0)
-	  (loop (fix:- code 1)
-		(if (%low-ref low code)
-		    (cons (integer->char code) chars)
-		    chars))
-	  chars))))
 
 (define (char-set . chars)
   (for-each (lambda (char)
@@ -614,3 +602,25 @@ USA.
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
   (%scalar-values->char-set (list (cons start (fix:- end 1)))))
+
+(define (char-in-alphabet? char alphabet)
+  (char-set-member? alphabet char))
+
+(define (scalar-values->alphabet items)
+  (scalar-values->char-set
+   (map (lambda (range)
+	  (if (and (pair? range)
+		   (unicode-scalar-value? (car range))
+		   (unicode-scalar-value? (cdr range)))
+	      (cons (car range) (fix:+ (cdr range) 1))
+	      range))
+	items)))
+
+(define (alphabet->scalar-values alphabet)
+  (map (lambda (range)
+	 (if (pair? range)
+	     (set-cdr! range (fix:- (cdr range) 1))))
+       (char-set->scalar-values alphabet)))
+
+(define (char-set->alphabet char-set)
+  char-set)
