@@ -50,11 +50,11 @@ fi
 
 case $(uname -s) in
     Darwin)
-	: ${DEFAULT_STAGE0:=macosx}
+	: ${STAGE0:=macosx}
 	: ${COPY:="cp -pR"}
 	;;
     Linux)
-	: ${DEFAULT_STAGE0:=linux}
+	: ${STAGE0:=linux}
 	: ${COPY:="cp -a"}
 	;;
     *)
@@ -72,7 +72,7 @@ run_stage ()
     find_stage stage$((N-1))
     rm -rf ${STAGE}
     ${COPY} src ${STAGE}
-    (set -e; cd ${STAGE}; ./Setup.sh; ./configure "${CONFIG_ARGS[@]}"; make)
+    (set -e; cd ${STAGE}; ./Setup.sh && ./configure "${CONFIG_ARGS[@]}" && make)
     if ! [[ -f ${STAGE}/lib/all.com ]]; then
 	echo "${STAGE} failed"
 	exit 1
@@ -84,7 +84,7 @@ find_stage ()
     find_build_stage "${1}" && return 0
     if [[ ${1} == stage0 ]]; then
 	find_dist_stage "${1}" && return 0
-	find_build_stage "${DEFAULT_STAGE0}" && return 0
+	find_build_stage "${STAGE0}" && return 0
     fi
     echo "Unable to find ${1} executable" >&2
     exit 1
