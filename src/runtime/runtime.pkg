@@ -647,6 +647,7 @@ USA.
 	  vector-fourth
 	  vector-grow
 	  vector-head
+	  vector-head!
 	  vector-length
 	  vector-map
 	  vector-move!
@@ -1070,6 +1071,7 @@ USA.
   (files "chrset")
   (parent (runtime))
   (export ()
+	  8-bit-char-set?
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
@@ -1083,6 +1085,7 @@ USA.
 	  char-set-invert
 	  char-set-member?
 	  char-set-members
+	  char-set->scalar-values
 	  char-set-union
 	  char-set:alphabetic
 	  char-set:alphanumeric
@@ -1111,17 +1114,21 @@ USA.
 	  char-whitespace?
 	  char-wsp?
 	  chars->char-set
+	  error:not-8-bit-char-set
+	  error:not-char-set
+	  error:not-well-formed-scalar-value-list
+	  error:not-well-formed-scalar-value-range
+	  guarantee-8-bit-char-set
 	  guarantee-char-set
+	  guarantee-well-formed-scalar-value-list
+	  guarantee-well-formed-scalar-value-range
 	  predicate->char-set
-	  string->char-set)
+	  scalar-values->char-set
+	  string->char-set
+	  well-formed-scalar-value-list?
+	  well-formed-scalar-value-range?)
   (export (runtime string)
-	  %char-set-member?
-	  char-set-table)
-  (export (runtime parser)
-	  %char-set-member?)
-  (export (runtime regular-expression-compiler)
-	  make-char-set)
-  (initialization (initialize-package!)))
+	  char-set-table))
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
@@ -5255,8 +5262,6 @@ USA.
 	  error:not-utf32-le-string
 	  error:not-utf32-string
 	  error:not-utf8-string
-	  error:not-well-formed-scalar-value-list
-	  error:not-well-formed-scalar-value-range
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
@@ -5273,8 +5278,6 @@ USA.
 	  guarantee-utf32-le-string
 	  guarantee-utf32-string
 	  guarantee-utf8-string
-	  guarantee-well-formed-scalar-value-list
-	  guarantee-well-formed-scalar-value-range
 	  guarantee-wide-string
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
@@ -5338,8 +5341,6 @@ USA.
 	  utf8-string-length
 	  utf8-string-valid?
 	  utf8-string?
-	  well-formed-scalar-value-list?
-	  well-formed-scalar-value-range?
 	  wide-string
 	  wide-string->string
 	  wide-string-index?

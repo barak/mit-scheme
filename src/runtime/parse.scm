@@ -444,12 +444,12 @@ USA.
 			(previous-char #f)
 			(char (%peek)))
       (if (or (eof-object? char)
-	      (%char-set-member? atom-delimiters char))
+	      (char-set-member? atom-delimiters char))
 	  (if quoting?
 	      (values (get-output-string port*) quoted? previous-char)
 	      (get-output-string port*))
 	  (begin
-	    (if (not (%char-set-member? constituents char))
+	    (if (not (char-set-member? constituents char))
 		(error:illegal-char char))
 	    (%discard)
 	    (cond ((char=? char #\|)
@@ -676,8 +676,8 @@ USA.
 	 (lambda ()
 	   (let ((char (%peek-char port db)))
 	     (or (eof-object? char)
-		 (%char-set-member? (db-atom-delimiters db) char))))))
-    (if (or (%char-set-member? (db-atom-delimiters db) char)
+		 (char-set-member? (db-atom-delimiters db) char))))))
+    (if (or (char-set-member? (db-atom-delimiters db) char)
 	    (at-end?))
 	char
 	(name->char

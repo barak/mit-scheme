@@ -421,7 +421,7 @@ USA.
 		     (if (and allow-runs? (fix:= start index))
 			 result
 			 (cons (%substring string start index) result))))
-		   ((%char-set-member? delimiter (string-ref string index))
+		   ((char-set-member? delimiter (string-ref string index))
 		    (loop (fix:+ index 1)
 			  (fix:+ index 1)
 			  (if (and allow-runs? (fix:= start index))

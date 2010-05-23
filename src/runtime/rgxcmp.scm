@@ -259,43 +259,30 @@ USA.
 ;;; #\^ must appear anywhere except as the first character in the set.
 
 (define (re-compile-char-set pattern negate?)
-  (let ((length (string-length pattern))
-	(table (string-allocate 256)))
-    (let ((kernel
-	   (lambda (start background foreground)
-	     (let ((adjoin!
-		    (lambda (ascii)
-		      (vector-8b-set! table ascii foreground))))
-	       (vector-8b-fill! table 0 256 background)
-	       (let loop
-		   ((pattern (substring->list pattern start length)))
-		 (if (pair? pattern)
-		     (if (and (pair? (cdr pattern))
-			      (char=? (cadr pattern) #\-)
-			      (pair? (cddr pattern)))
-			 (begin
-			   (let ((end (char->ascii (caddr pattern))))
-			     (let loop
-				 ((index (char->ascii (car pattern))))
-			       (if (fix:<= index end)
-				   (begin
-				     (vector-8b-set! table
-						     index
-						     foreground)
-				     (loop (fix:+ index 1))))))
-			   (loop (cdddr pattern)))
-			 (begin
-			   (adjoin! (char->ascii (car pattern)))
-			   (loop (cdr pattern))))))))))
-      (if (and (not (fix:zero? length))
-	       (char=? (string-ref pattern 0) #\^))
-	  (if negate?
-	      (kernel 1 0 1)
-	      (kernel 1 1 0))
-	  (if negate?
-	      (kernel 0 1 0)
-	      (kernel 0 0 1))))
-    (make-char-set table)))
+  (define (loop pattern scalar-values)
+    (if (pair? pattern)
+	(if (and (pair? (cdr pattern))
+		 (char=? (cadr pattern) #\-)
+		 (pair? (cddr pattern)))
+	    (loop (cdddr pattern)
+		  (cons (cons (char->integer (car pattern))
+			      (fix:+ (char->integer (caddr pattern)) 1))
+			scalar-values))
+	    (loop (cdr pattern)
+		  (cons (char->integer (car pattern))
+			scalar-values)))
+	scalar-values))
+
+  (let ((pattern (string->list pattern)))
+    (receive (pattern negate?)
+	(if (and (pair? pattern)
+		 (char=? (car pattern) #\^))
+	    (values (cdr pattern) (not negate?))
+	    (values pattern negate?))
+      (let ((char-set (scalar-values->char-set (loop pattern '()))))
+	(if negate?
+	    char-set
+	    (char-set-invert char-set))))))
 
 ;;;; Translation Tables
 
