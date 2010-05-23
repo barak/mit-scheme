@@ -30,6 +30,8 @@ USA.
 
 (define-primitives
   (list->vector 1)
+  (primitive-make-object 2)
+  (primitive-object-set! 3)
   (subvector->list 3)
   (subvector-fill! 4)
   (subvector-move-left! 5)
@@ -76,6 +78,14 @@ USA.
 
 (define-integrable (vector-head vector end)
   (subvector vector 0 end))
+
+(define (vector-head! vector end)
+  (guarantee-subvector vector 0 end 'VECTOR-HEAD!)
+  (if (fix:< end (vector-length end))
+      (primitive-object-set! vector 0
+			     (primitive-make-object (ucode-type false)
+						    end)))
+  vector)
 
 (define (vector-tail vector start)
   (guarantee-vector vector 'VECTOR-TAIL)
