@@ -63,7 +63,7 @@ USA.
 		   (let ((table (make-vector-8b #x100)))
 		     (do ((i 0 (fix:+ i 1)))
 			 ((not (fix:< i #x100)))
-		       (vector-8b-set! table i (%low-ref low char-set)))
+		       (vector-8b-set! table i (if (%low-ref low i) 1 0)))
 		     table)))
 
 (define-integrable %low-length #x100)
@@ -115,7 +115,7 @@ USA.
 
 (define (%range-end range)
   (if (pair? range)
-      (car range)
+      (cdr range)
       (fix:+ range 1)))
 
 (define (char-set->scalar-values char-set)
@@ -123,9 +123,9 @@ USA.
   (reverse!
    (%high->scalar-values (char-set-high-starts char-set)
 			 (char-set-high-ends char-set)
-			 (%low->scalar-values (char-set-low char-set) '()))))
+			 (%low->scalar-values (char-set-low char-set)))))
 
-(define (%low->scalar-values low result)
+(define (%low->scalar-values low)
 
   (define (find-start i result)
     (if (fix:< i %low-limit)
@@ -142,17 +142,27 @@ USA.
 	      (find-start i (cons (%make-range start i) result)))
 	  (cons (%make-range start i) result))))
 
-  (find-start 0 result))
+  (find-start 0 '()))
 
 (define (%high->scalar-values starts ends result)
   (let ((n (vector-length starts)))
-    (let loop ((i 0) (result result))
+    (define (loop i result)
       (if (fix:< i n)
 	  (loop (fix:+ i 1)
 		(cons (%make-range (vector-ref starts i)
 				   (vector-ref ends i))
 		      result))
-	  result))))
+	  result))
+
+    (if (and (fix:> n 0)
+	     (pair? result)
+	     (fix:= (vector-ref starts 0)
+		    (%range-end (car result))))
+	(loop 1
+	      (cons (%make-range (%range-start (car result))
+				 (vector-ref ends 0))
+		    (cdr result)))
+	(loop 0 result))))
 
 (define (scalar-values->char-set ranges)
   (guarantee-well-formed-scalar-value-list ranges 'SCALAR-VALUES->CHAR-SET)
@@ -160,7 +170,7 @@ USA.
 
 (define (%scalar-values->char-set ranges)
   (receive (low-ranges high-ranges)
-      (%canonicalize-scalar-value-list ranges)
+      (%split-ranges (%canonicalize-scalar-value-list ranges))
     (receive (high-starts high-ends)
 	(%scalar-values->high high-ranges)
       (%make-char-set (%scalar-values->low low-ranges)
@@ -172,7 +182,7 @@ USA.
     (for-each (lambda (range)
 		(let ((end (%range-end range)))
 		  (do ((i (%range-start range) (fix:+ i 1)))
-		      ((fix:> i end))
+		      ((not (fix:< i end)))
 		    (%low-set! low i))))
 	      ranges)
     low))
@@ -190,32 +200,31 @@ USA.
 
 (define (%canonicalize-scalar-value-list ranges)
   ;; Sort ranges in order, then merge adjacent ranges.
-  (%split-ranges
-   (if (pair? ranges)
-       (let ((ranges (sort ranges %range<?)))
-	 (let loop
-	     ((start1 (%range-start (car ranges)))
-	      (end1 (%range-end (car ranges)))
-	      (ranges (cdr ranges))
-	      (result '()))
-	   (if (pair? ranges)
-	       (let ((start2 (%range-start (car ranges)))
-		     (end2 (%range-end (car ranges)))
-		     (ranges (cdr ranges)))
-		 (if (fix:< end1 start2)
-		     (loop start2
-			   end2
-			   ranges
-			   (cons (%make-range start1 end1)
-				 result))
-		     (loop start1
-			   (fix:max end1 end2)
-			   ranges
-			   result)))
-	       (reverse!
-		(cons (%make-range start1 end1)
-		      result)))))
-       ranges)))
+  (if (pair? ranges)
+      (let ((ranges (sort ranges %range<?)))
+	(let loop
+	    ((start1 (%range-start (car ranges)))
+	     (end1 (%range-end (car ranges)))
+	     (ranges (cdr ranges))
+	     (result '()))
+	  (if (pair? ranges)
+	      (let ((start2 (%range-start (car ranges)))
+		    (end2 (%range-end (car ranges)))
+		    (ranges (cdr ranges)))
+		(if (fix:< end1 start2)
+		    (loop start2
+			  end2
+			  ranges
+			  (cons (%make-range start1 end1)
+				result))
+		    (loop start1
+			  (fix:max end1 end2)
+			  ranges
+			  result)))
+	      (reverse!
+	       (cons (%make-range start1 end1)
+		     result)))))
+      ranges))
 
 (define (%range<? range1 range2)
   (or (fix:< (%range-start range1)
