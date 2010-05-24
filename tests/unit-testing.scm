@@ -62,24 +62,38 @@ USA.
     test-environment))
 
 (define (run-unit-test name.test)
-  ;; Runs sub-tests in left-to-right order.
   (cons (car name.test)
-	(reverse!
-	 (let loop ((test (cdr name.test)) (name "") (results '()))
-	   (cond ((thunk? test)
-		  (cons (cons name (run-test-thunk test))
-			results))
-		 ((and (pair? test)
-		       (null? (cdr test)))
-		  (loop (car test) name results))
-		 (else
-		  (do ((tests test (cdr tests))
-		       (index 0 (+ index 1))
-		       (results results
-				(loop (car tests)
-				      (string name "." index)
-				      results)))
-		      ((not (pair? tests)) results))))))))
+	(append-map! (lambda (named-sub-test)
+		       (name-and-flatten (car named-sub-test)
+					 (cdr named-sub-test)))
+		     (run-sub-tests (name-and-flatten "" (cdr name.test))))))
+
+(define (run-sub-tests named-sub-tests)
+  ;; Runs sub-tests in left-to-right order.
+  (let loop ((named-sub-tests named-sub-tests) (results '()))
+    (if (pair? named-sub-tests)
+	(loop (cdr named-sub-tests)
+	      (cons (cons (caar named-sub-tests)
+			  (run-test-thunk (cdar named-sub-tests)))
+		    results))
+	(reverse! results))))
+
+(define (name-and-flatten root-name item)
+  (flatten (attach-names root-name item)))
+
+(define (attach-names root-name item)
+  (let loop ((item item) (name root-name))
+    (if (list? item)
+	(map (lambda (item index)
+	       (loop item (string name "." index)))
+	     item
+	     (iota (length item)))
+	(cons name item))))
+
+(define (flatten items)
+  (if (list? items)
+      (append-map! flatten items)
+      (list items)))
 
 (define (run-test-thunk thunk)
   (call-with-current-continuation
@@ -97,53 +111,54 @@ USA.
 		 (report-result-group (car result) (cdr result) port))
 	       results))))
 
-(define (report-result-group name sub-test-results port)
-  (let ((n-sub-tests (length sub-test-results)))
-    (cond ((> n-sub-tests 1)
-	   (let ((n-failed (count cdr sub-test-results)))
-	     (write name port)
+(define (report-result-group test-name sub-test-results port)
+  (let ((n-sub-test-results (length sub-test-results)))
+    (cond ((> n-sub-test-results 1)
+	   (let ((n-failed (count failing-sub-test? sub-test-results)))
+	     (write test-name port)
 	     (write-string ": " port)
 	     (if (> n-failed 0)
 		 (begin
 		   (write-string "failed " port)
 		   (write n-failed port)
 		   (write-string " sub-tests out of " port)
-		   (write n-sub-tests port)
+		   (write n-sub-test-results port)
 		   (write-string ":" port)
 		   (newline port)
 		   (for-each
 		    (lambda (sub-test-result)
-		      (if (cdr sub-test-result)
-			  (begin
-			    (write-string "    " port)
-			    (report-sub-test-result (car sub-test-result)
-						    (cdr sub-test-result)
-						    port))))
+		      (if (failing-sub-test? sub-test-result)
+			  (report-test-failure "    "
+					       (car sub-test-result)
+					       (cdr sub-test-result)
+					       port)))
 		    sub-test-results))
 		 (begin
 		   (write-string "passed " port)
-		   (write n-sub-tests port)
+		   (write n-sub-test-results port)
 		   (write-string " sub-tests" port)
 		   (newline port)))))
-	  ((> n-sub-tests 0)
-	   (report-sub-test-result (write-to-string name)
-				   (cdar sub-test-results)
-				   port))))
-  ;; Value is true iff all tests passed.
-  (every (lambda (n+r)
-	   (not (cdr n+r)))
-	 sub-test-results))
+	  ((> n-sub-test-results 0)
+	   (report-test-failure ""
+				(write-to-string test-name)
+				(cdar sub-test-results)
+				port))))
+  (every passing-sub-test? sub-test-results))
 
-(define (report-sub-test-result name failure port)
+(define (report-test-failure prefix name failure port)
+  (write-string prefix port)
   (write-string name port)
   (write-string ": " port)
-  (cond ((not failure)
-	 (write-string "passed" port))
-	((failure? failure)
-	 (report-failure failure port))
-	(else
-	 (error "Ill-formed failure:" failure)))
+  (cond ((not failure) (write-string "passed" port))
+	((failure? failure) (report-failure failure port))
+	(else (error "Ill-formed failure:" failure)))
   (newline port))
+
+(define (failing-sub-test? sub-test-result)
+  (cdr sub-test-result))
+
+(define (passing-sub-test? sub-test-result)
+  (not (cdr sub-test-result)))
 
 (define-record-type <failure>
     (%make-failure alist)
