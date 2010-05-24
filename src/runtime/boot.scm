@@ -142,6 +142,15 @@ USA.
 (define-integrable (default-object)
   ((ucode-primitive object-set-type) (ucode-type constant) 7))
 
+(define (load-with-boot-inits! . arguments)
+  (receive (value inits)
+      (fluid-let ((boot-inits '()))
+	(let ((value (apply load arguments)))
+	  (values value (reverse! boot-inits))))
+    (for-each (lambda (init) (init))
+	      inits)
+    value))
+
 (define (init-boot-inits!)
   (set! boot-inits '())
   unspecific)
