@@ -338,7 +338,9 @@ USA.
 
   ;; Start the machine.
   ;; If we're past the second line, just discard.
-  (if (and (< (current-line port db) 2)
+  (if (and (let ((line (current-line port db)))
+	     (and line
+		  (< line 2)))
 	   (db-enable-file-attributes-parsing db))
       (scan)
       (discard 0 continue-parsing)))
