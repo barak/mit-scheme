@@ -29,15 +29,11 @@ USA.
 
 (define (run-unit-tests filename/s #!optional environment)
   (report-results
-   (map run-test-definition
+   (map run-unit-test
 	(load-unit-tests filename/s environment))))
 
 (define (load-unit-tests filename/s #!optional environment)
-  (let ((test-environment
-	 (if (default-object? environment)
-	     (make-top-level-environment)
-	     (extend-top-level-environment environment))))
-    (initialize-test-environment! test-environment)
+  (let ((test-environment (make-test-environment! environment)))
     (fluid-let ((*registered-tests* '()))
       (load filename/s test-environment)
       (reverse! *registered-tests*))))
@@ -49,32 +45,27 @@ USA.
 
 (define *registered-tests*)
 
-(define (initialize-test-environment! test-environment)
-  (for-each (lambda (p)
-	      (environment-define test-environment (car p) (cdr p)))
-	    test-definitions))
-
-(define (add-test-definition name value)
-  (let ((p (assq name test-definitions)))
-    (if p
-	(set-cdr! p value)
-	(begin
-	  (set! test-definitions (cons (cons name value) test-definitions))
-	  unspecific))))
-
-(define test-definitions '())
-
 (define (test? object)
   (or (thunk? object)
       (list-of-type? object test?)))
 
 (define-guarantee test "test")
 
-(define (run-test-definition td)
+(define (make-test-environment! #!optional parent)
+  (let ((test-environment
+	 (if (default-object? parent)
+	     (make-top-level-environment)
+	     (extend-top-level-environment parent))))
+    (for-each (lambda (p)
+		(environment-define test-environment (car p) (cdr p)))
+	      test-definitions)
+    test-environment))
+
+(define (run-unit-test name.test)
   ;; Runs sub-tests in left-to-right order.
-  (cons (car td)
+  (cons (car name.test)
 	(reverse!
-	 (let loop ((test (cdr td)) (name "") (results '()))
+	 (let loop ((test (cdr name.test)) (name "") (results '()))
 	   (cond ((thunk? test)
 		  (cons (cons name (run-test-thunk test))
 			results))
@@ -225,19 +216,22 @@ USA.
 	 (,(rename 'DEFINE) ,name ,value)
 	 (,(rename 'ADD-TEST-DEFINITION) ',name ,name))))))
 
+(define (add-test-definition name value)
+  (let ((p (assq name test-definitions)))
+    (if p
+	(set-cdr! p value)
+	(begin
+	  (set! test-definitions (cons (cons name value) test-definitions))
+	  unspecific))))
+
+(define test-definitions '())
+
 (define-for-tests (define-test name test . tests)
   (register-test name
 		 (if (null? tests)
 		     test
 		     (cons test tests)))
   name)
-
-(define (flatten tests)
-  (append-map! (lambda (test)
-		 (if (list? test)
-		     (flatten test)
-		     (list test)))
-	       tests))
 
 (define-for-tests (predicate-assertion predicate description)
   (lambda (value . properties)
@@ -289,3 +283,14 @@ USA.
 (define-for-tests assert-<= (binary-assertion <=))
 (define-for-tests assert-> (binary-assertion >))
 (define-for-tests assert->= (binary-assertion >=))
+
+(define-for-tests (assert-error thunk condition-types . properties)
+  (call-with-current-continuation
+   (lambda (k)
+     (apply make-failure
+	    'RESULT-OBJECT 
+	    (bind-condition-handler condition-types
+		(lambda (condition)
+		  (k #f))
+	      thunk)
+	    properties))))
