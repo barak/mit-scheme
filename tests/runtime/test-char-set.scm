@@ -27,28 +27,30 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-test:%canonicalize-scalar-value-list n-ranges n-iter)
-  (make-random-svl-tests n-ranges n-iter %canonicalize-scalar-value-list))
+(define-test 'scalar-value-list
+  (lambda ()
+    (list (run-random-svl-tests 0 1)
+	  (map (lambda (i)
+		 (run-random-svl-tests i 100))
+	       (iota 4 1))
+	  (run-random-svl-tests 100 100))))
 
-(define (make-test:char-set->scalar-values n-ranges n-iter)
-  (make-random-svl-tests n-ranges n-iter
-    (lambda (svl)
-      (char-set->scalar-values (scalar-values->char-set svl)))))
+(define (run-random-svl-tests n-ranges n-iter)
+  (map (lambda (i)
+	 i
+	 (run-random-svl-test n-ranges))
+       (iota n-iter)))
 
-(define (make-random-svl-tests n-ranges n-iter procedure)
-  (make-initialized-list n-iter
-    (lambda (i)
-      i
-      (lambda ()
-	(let ((svl (make-random-svl n-ranges)))
-	  (guarantee-well-formed-scalar-value-list svl)
-	  (let ((svl1 (%canonicalize-scalar-value-list svl))
-		(svl2 (char-set->scalar-values (scalar-values->char-set svl))))
-	    (or (assert-true `(canonical-svl? ,svl1)
-			     (canonical-svl? svl1))
-		(assert-true `(canonical-svl? ,svl2)
-			     (canonical-svl? svl2))
-		(assert-equal svl1 svl2))))))))
+(define (run-random-svl-test n-ranges)
+  (let ((svl (make-random-svl n-ranges)))
+    (guarantee-well-formed-scalar-value-list svl)
+    (let ((svl1 (%canonicalize-scalar-value-list svl))
+	  (svl2 (char-set->scalar-values (scalar-values->char-set svl))))
+      (list (assert-true `(canonical-svl? ,svl1)
+			 (canonical-svl? svl1))
+	    (assert-true `(canonical-svl? ,svl2)
+			 (canonical-svl? svl2))
+	    (assert-equal svl1 svl2)))))
 
 (define (make-random-svl n-ranges)
   ;; Random modulus must exceed %LOW-LIMIT.
@@ -91,10 +93,3 @@ USA.
       (and (pred items)
 	   (every-tail pred (cdr items)))
       (pred items)))
-
-(define-test '%canonicalize-scalar-value-list
-  (make-test:%canonicalize-scalar-value-list 0 1)
-  (map (lambda (i)
-	 (make-test:%canonicalize-scalar-value-list i 100))
-       (iota 4 1))
-  (make-test:%canonicalize-scalar-value-list 100 100))
