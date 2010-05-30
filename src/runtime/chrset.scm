@@ -326,7 +326,8 @@ USA.
     (do ((i 0 (fix:+ i 1)))
 	((fix:= i %low-length))
       (vector-8b-set! low i
-		      (fix:not (vector-8b-ref low1 i))))
+		      (fix:and (fix:not (vector-8b-ref low1 i))
+			       #xff)))
     low))
 
 (define (%high-invert high1)
