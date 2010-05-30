@@ -36,19 +36,19 @@ USA.
 ;;; adjacent.  These ranges are sorted so that their STARTs are in
 ;;; order.
 ;;;
-;;; The HIGH range sequence is implemented as a pair of vectors, one
-;;; for the STARTs and one for the ENDs.  The two vectors have the
-;;; same length.
+;;; The HIGH range sequence is implemented as a vector of alternating
+;;; START and END points.  The vector always has an even number of
+;;; points.
 ;;;
 ;;; For simplicity, character sets are allowed to contain ranges that
 ;;; contain illegal scalar values.  However, CHAR-SET-MEMBER? doesn't
 ;;; accept illegal characters.
 
 (define-structure (char-set (type-descriptor <char-set>)
-			    (constructor %%make-char-set))
+			    (constructor %%make-char-set)
+			    (conc-name %char-set-))
   (low #f read-only #t)
-  (high-starts #f read-only #t)
-  (high-ends #f read-only #t)
+  (high #f read-only #t)
   ;; Backwards compatibility:
   (table #f read-only #t))
 
@@ -58,8 +58,8 @@ USA.
   (for-each (lambda (char-set) (guarantee-char-set char-set caller))
 	    char-sets))
 
-(define (%make-char-set low high-starts high-ends)
-  (%%make-char-set low high-starts high-ends
+(define (%make-char-set low high)
+  (%%make-char-set low high
 		   (let ((table (make-vector-8b #x100)))
 		     (do ((i 0 (fix:+ i 1)))
 			 ((not (fix:< i #x100)))
@@ -84,7 +84,7 @@ USA.
 			  (fix:lsh 1 (fix:and scalar-value 7)))))
 
 (define %null-char-set
-  (%make-char-set (%make-low 0) '#() '#()))
+  (%make-char-set (%make-low 0) '#()))
 
 ;;;; Conversion to and from scalar-values list
 
@@ -121,9 +121,8 @@ USA.
 (define (char-set->scalar-values char-set)
   (guarantee-char-set char-set 'CHAR-SET->SCALAR-VALUES)
   (reverse!
-   (%high->scalar-values (char-set-high-starts char-set)
-			 (char-set-high-ends char-set)
-			 (%low->scalar-values (char-set-low char-set)))))
+   (%high->scalar-values (%char-set-high char-set)
+			 (%low->scalar-values (%char-set-low char-set)))))
 
 (define (%low->scalar-values low)
 
@@ -144,23 +143,23 @@ USA.
 
   (find-start 0 '()))
 
-(define (%high->scalar-values starts ends result)
-  (let ((n (vector-length starts)))
+(define (%high->scalar-values high result)
+  (let ((n (vector-length high)))
     (define (loop i result)
       (if (fix:< i n)
-	  (loop (fix:+ i 1)
-		(cons (%make-range (vector-ref starts i)
-				   (vector-ref ends i))
+	  (loop (fix:+ i 2)
+		(cons (%make-range (vector-ref high i)
+				   (vector-ref high (fix:+ i 1)))
 		      result))
 	  result))
 
     (if (and (fix:> n 0)
 	     (pair? result)
-	     (fix:= (vector-ref starts 0)
+	     (fix:= (vector-ref high 0)
 		    (%range-end (car result))))
-	(loop 1
+	(loop 2
 	      (cons (%make-range (%range-start (car result))
-				 (vector-ref ends 0))
+				 (vector-ref high 1))
 		    (cdr result)))
 	(loop 0 result))))
 
@@ -171,11 +170,8 @@ USA.
 (define (%scalar-values->char-set ranges)
   (receive (low-ranges high-ranges)
       (%split-ranges (%canonicalize-scalar-value-list ranges))
-    (receive (high-starts high-ends)
-	(%scalar-values->high high-ranges)
-      (%make-char-set (%scalar-values->low low-ranges)
-		      high-starts
-		      high-ends))))
+    (%make-char-set (%scalar-values->low low-ranges)
+		    (%scalar-values->high high-ranges))))
 
 (define (%scalar-values->low ranges)
   (let ((low (%make-low 0)))
@@ -188,15 +184,13 @@ USA.
     low))
 
 (define (%scalar-values->high ranges)
-  (let ((n-high (length ranges)))
-    (let ((high-starts (make-vector n-high))
-	  (high-ends (make-vector n-high)))
-      (do ((ranges ranges (cdr ranges))
-	   (i 0 (fix:+ i 1)))
-	  ((not (pair? ranges)))
-	(vector-set! high-starts i (%range-start (car ranges)))
-	(vector-set! high-ends i (%range-end (car ranges))))
-      (values high-starts high-ends))))
+  (let ((high (make-vector (fix:* 2 (length ranges)))))
+    (do ((ranges ranges (cdr ranges))
+	 (i 0 (fix:+ i 2)))
+	((not (pair? ranges)))
+      (vector-set! high i (%range-start (car ranges)))
+      (vector-set! high (fix:+ i 1) (%range-end (car ranges))))
+    high))
 
 (define (%canonicalize-scalar-value-list ranges)
   ;; Sort ranges in order, then merge adjacent ranges.
@@ -260,16 +254,15 @@ USA.
 
 (define (%scalar-value-in-char-set? value char-set)
   (if (fix:< value %low-limit)
-      (%low-ref (char-set-low char-set) value)
-      (let ((high-starts (char-set-high-starts char-set))
-	    (high-ends (char-set-high-ends char-set)))
-	(let loop ((lower 0) (upper (vector-length high-starts)))
+      (%low-ref (%char-set-low char-set) value)
+      (let ((high (%char-set-high char-set)))
+	(let loop ((lower 0) (upper (vector-length high)))
 	  (if (fix:< lower upper)
-	      (let ((index (fix:quotient (fix:+ lower upper) 2)))
-		(cond ((fix:< value (vector-ref high-starts index))
-		       (loop lower index))
-		      ((fix:>= value (vector-ref high-ends index))
-		       (loop (fix:+ index 1) upper))
+	      (let ((i (fix:quotient (fix:+ lower upper) 2)))
+		(cond ((fix:< value (vector-ref high i))
+		       (loop lower i))
+		      ((fix:>= value (vector-ref high (fix:+ i 1)))
+		       (loop (fix:+ i 2) upper))
 		      (else #t)))
 	      #f)))))
 
@@ -286,9 +279,8 @@ USA.
 	 char-sets))
 
 (define (%=? c1 c2)
-  (and (%=?-low (char-set-low c1) (char-set-low c2))
-       (%=?-high (char-set-high-starts c1) (char-set-high-starts c2))
-       (%=?-high (char-set-high-ends c1) (char-set-high-ends c2))))
+  (and (%=?-low (%char-set-low c1) (%char-set-low c2))
+       (%=?-high (%char-set-high c1) (%char-set-high c2))))
 
 (define (%=?-low l1 l2)
   (let loop ((i 0))
@@ -310,8 +302,8 @@ USA.
 
 (define (8-bit-char-set? char-set)
   (and (char-set? char-set)
-       (fix:= (vector-length (char-set-high-starts char-set)) 0)
-       (let ((low (char-set-low char-set)))
+       (fix:= (vector-length (%char-set-high char-set)) 0)
+       (let ((low (%char-set-low char-set)))
 	 (let loop ((i #x20))
 	   (or (fix:= i %low-length)
 	       (and (fix:= (vector-8b-ref low i) 0)
@@ -325,206 +317,183 @@ USA.
   (guarantee-char-set char-set 'CHAR-SET-INVERT)
   (%invert char-set))
 
-(define-deferred %invert
-  (%split-map-1 (%low-unary fix:not)
-		%invert-high))
+(define (%invert cs1)
+  (%make-char-set (%low-invert (%char-set-low cs1))
+		  (%high-invert (%char-set-high cs1))))
 
-(define (%invert-high starts1 ends1)
-  (let ((n1 (vector-length starts1)))
+(define (%low-invert low1)
+  (let ((low (%make-low)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i %low-length))
+      (vector-8b-set! low i
+		      (fix:not (vector-8b-ref low1 i))))
+    low))
 
-    (define (go n i1 prev-end)
-      (let ((starts (make-vector n))
-	    (ends (make-vector n)))
-	(let loop ((i1 i1) (i 0) (prev-end prev-end))
-	  (if (fix:< i1 n1)
-	      (loop (fix:+ i1 1)
-		    (%high-copy-1 (vector-ref starts1 i1)
-				  (vector-ref ends1 i1)
-				  starts ends i))
-	      (%high-copy-1 prev-end char-code-limit
-			    starts ends i)))
-	(values starts ends)))
-
-    (if (and (fix:> n1 0)
-	     (fix:= (vector-ref starts1 0) %low-limit))
-	(go n1 1 (vector-ref ends1 0))
-	(go (fix:+ n1 1) 0 %low-limit))))
+(define (%high-invert high1)
+  (let ((n1 (vector-length high1)))
+    (if (fix:> n1 0)
+	(let ((leading-flush?
+	       (fix:= (vector-ref high1 0) %low-limit))
+	      (trailing-flush?
+	       (fix:= (vector-ref high1 (fix:- n1 1)) char-code-limit)))
+	  (receive (start1 start)
+	      (if leading-flush?
+		  (values 1 0)
+		  (values 0 1))
+	    (let ((m (fix:+ start (fix:- n1 start1))))
+	      (receive (end1 n)
+		  (if trailing-flush?
+		      (values (fix:- n1 1) (fix:- m 1))
+		      (values n1 (fix:+ m 1)))
+		(let ((high (make-vector n)))
+		  (if (not leading-flush?)
+		      (vector-set! high 0 %low-limit))
+		  (subvector-move-left! high1 start1 end1 high start)
+		  (if (not trailing-flush?)
+		      (vector-set! high (fix:- n 1) char-code-limit))
+		  high)))))
+	(vector %low-limit char-code-limit))))
 
 (define (char-set-union . char-sets)
   (guarantee-char-sets char-sets 'CHAR-SET-UNION)
   (reduce %union %null-char-set char-sets))
 
-(define-deferred %union
-  (%split-map-2 (%low-binary fix:or)
-		(%high-binary %high-copy-n %high-copy-n
-			      %high-copy-1 %high-copy-1
-			      (lambda (start1 end1 start2 end2 starts ends i)
-				(%high-copy-1 (fix:min start1 start2)
-					      (fix:max end1 end2)
-					      starts ends i)))))
+(define (%union cs1 cs2)
+  (%binary fix:or
+	   (lambda (a b) (or a b))
+	   cs1
+	   cs2))
 
 (define (char-set-intersection . char-sets)
   (guarantee-char-sets char-sets 'CHAR-SET-INTERSECTION)
   (reduce %intersection %null-char-set char-sets))
 
-(define-deferred %intersection
-  (%split-map-2 (%low-binary fix:and)
-		(%high-binary %high-drop-n %high-drop-n
-			      %high-drop-1 %high-drop-1
-			      (lambda (start1 end1 start2 end2 starts ends i)
-				(%high-copy-1 (fix:max start1 start2)
-					      (fix:min end1 end2)
-					      starts ends i)))))
+(define (%intersection cs1 cs2)
+  (%binary fix:and
+	   (lambda (a b) (and a b))
+	   cs1
+	   cs2))
 
 (define (char-set-difference char-set . char-sets)
   (guarantee-char-set char-set 'CHAR-SET-DIFFERENCE)
   (guarantee-char-sets char-sets 'CHAR-SET-DIFFERENCE)
   (fold-left %difference char-set char-sets))
 
-(define-deferred %difference
-  (%split-map-2 (%low-binary fix:andc)
-		(%high-binary %high-drop-n %high-copy-n
-			      %high-drop-1 %high-copy-1
-			      (lambda (start1 end1 start2 end2 starts ends i)
+(define (%difference cs1 cs2)
+  (%binary fix:andc
+	   (lambda (a b) (and a (not b)))
+	   cs1
+	   cs2))
 
-				(define (shave-head i start1 start2)
-				  (if (fix:< start1 start2)
-				      (%high-copy-1 start1 start2
-						    starts ends i)
-				      i))
+(define (%binary low-operation high-operation cs1 cs2)
+  (%make-char-set (%low-binary low-operation
+			       (%char-set-low cs1)
+			       (%char-set-low cs2))
+		  (%high-binary high-operation
+				(%char-set-high cs1)
+				(%char-set-high cs2))))
 
-				(define (shave-tail i end1 end2)
-				  (if (fix:< end2 end1)
-				      (%high-copy-1 end2 end1
-						    starts ends i)
-				      i))
-				(shave-tail (shave-head i start1 start2)
-					    end1
-					    end2)))))
+(define (%low-binary operation low1 low2)
+  (let ((low (%make-low)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:= i %low-length))
+      (vector-8b-set! low i
+		      (operation (vector-8b-ref low1 i)
+				 (vector-8b-ref low2 i))))
+    low))
 
-;;;; Support for mapping operations
+(define (%high-binary operation high1 high2)
+  (let ((n1 (vector-length high1))
+	(n2 (vector-length high2)))
+    (let ((high (make-vector (fix:+ n1 n2))))
 
-(define (%split-map-1 %map-low %map-high)
-  (lambda (c1)
-    (receive (high-starts high-ends)
-	(%map-high (char-set-high-starts c1)
-		   (char-set-high-ends c1))
-      (%make-char-set (%map-low (char-set-low c1))
-		      high-starts
-		      high-ends))))
+      (define (loop i1 state1 i2 state2 last-state i)
+	(cond ((not (fix:< i1 n1))
+	       (let loop2
+		   ((i2 i2)
+		    (state2 state2)
+		    (last-state last-state)
+		    (i i))
+		 (if (fix:< i2 n2)
+		     (let ((this-point (vector-ref high2 i2))
+			   (state2 (not state2)))
+		       (let ((this-state (operation state1 state2)))
+			 (loop2 (fix:+ i2 1) state2 this-state
+				(accum this-point this-state last-state i))))
+		     (finish last-state i))))
+	      ((not (fix:< i2 n2))
+	       (let loop1
+		   ((i1 i1)
+		    (state1 state1)
+		    (last-state last-state)
+		    (i i))
+		 (if (fix:< i1 n1)
+		     (let ((this-point (vector-ref high1 i1))
+			   (state1 (not state1)))
+		       (let ((this-state (operation state1 state2)))
+			 (loop1 (fix:+ i1 1) state1 this-state
+				(accum this-point this-state last-state i))))
+		     (finish last-state i))))
+	      (else
+	       (let ((point1 (vector-ref high1 i1))
+		     (point2 (vector-ref high2 i2)))
+		 (receive (this-point i1 state1 i2 state2)
+		     (cond ((fix:< point1 point2)
+			    (values point1
+				    (fix:+ i1 1) (not state1)
+				    i2 state2))
+			   ((fix:< point2 point1)
+			    (values point2
+				    i1 state1
+				    (fix:+ i2 1) (not state2)))
+			   (else
+			    (values point1
+				    (fix:+ i1 1) (not state1)
+				    (fix:+ i2 1) (not state2))))
+		   (let ((this-state (operation state1 state2)))
+		     (loop i1 state1
+			   i2 state2
+			   this-state
+			   (accum this-point this-state last-state i))))))))
 
-(define (%split-map-2 %map-low %map-high)
-  (lambda (c1 c2)
-    (receive (high-starts high-ends)
-	(%map-high (char-set-high-starts c1)
-		   (char-set-high-ends c1)
-		   (char-set-high-starts c2)
-		   (char-set-high-ends c2))
-      (%make-char-set (%map-low (char-set-low c1)
-				(char-set-low c2))
-		      high-starts
-		      high-ends))))
+      (define (accum this-point this-state last-state i)
+	(if (boolean=? this-state last-state)
+	    i
+	    (begin
+	      (vector-set! high i this-point)
+	      (fix:+ i 1))))
 
-(define (%low-unary operation)
-  (lambda (low1)
-    (let ((low* (%make-low)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i %low-length))
-	(vector-8b-set! low* i
-			(operation (vector-8b-ref low1 i))))
-      low*)))
+      (define (finish last-state i)
+	(vector-head! high
+		      (if last-state
+			  (if (fix:< (vector-ref high (fix:- i 1))
+				     char-code-limit)
+			      (begin
+				(vector-set! high i char-code-limit)
+				(fix:+ i 1))
+			      (fix:- i 1))
+			  i)))
 
-(define (%low-binary operation)
-  (lambda (low1 low2)
-    (let ((low (%make-low)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((fix:= i %low-length))
-	(vector-8b-set! low i
-			(operation (vector-8b-ref low1 i)
-				   (vector-8b-ref low2 i))))
-      low)))
-
-(define (%high-binary empty-left empty-right
-		      disjoint-left disjoint-right
-		      overlap)
-  (lambda (starts1 ends1 starts2 ends2)
-    (let ((n1 (vector-length starts1))
-	  (n2 (vector-length starts2)))
-      (let ((starts (make-vector (fix:+ n1 n2)))
-	    (ends (make-vector (fix:+ n1 n2))))
-	(let ((n
-	       (let loop ((i1 0) (i2 0) (i 0))
-		 (cond ((fix:>= i1 n1)
-			(empty-left starts2 ends2 i2 n2
-				    starts ends i))
-		       ((fix:>= i2 n2)
-			(empty-right starts1 ends1 i1 n1
-				     starts ends i))
-		       (else
-			(let ((start1 (vector-ref starts1 i1))
-			      (end1 (vector-ref ends1 i1))
-			      (start2 (vector-ref starts2 i2))
-			      (end2 (vector-ref ends2 i2)))
-			  (cond ((fix:< end1 start2)
-				 (loop (fix:+ i1 1)
-				       i2
-				       (disjoint-left start1 end1
-						      starts ends i)))
-				((fix:< end2 start1)
-				 (loop i1
-				       (fix:+ i2 1)
-				       (disjoint-right start2 end2
-						       starts ends i)))
-				(else
-				 (loop (fix:+ i1 1)
-				       (fix:+ i2 1)
-				       (overlap start1 end1
-						start2 end2
-						starts ends i))))))))))
-	  (values (vector-head! starts n)
-		  (vector-head! ends n)))))))
-
-(define (%high-copy-n starts1 ends1 i1 n1 starts ends i)
-  (subvector-move-left! starts1 i1 n1 starts i)
-  (subvector-move-left! ends1 i1 n1 ends i)
-  (fix:+ i (fix:- n1 i1)))
-
-(define (%high-drop-n starts1 ends1 i1 n1 starts ends i)
-  starts1 ends1 i1 n1 starts ends
-  i)
-
-(define (%high-copy-1 start1 end1 starts ends i)
-  (vector-set! starts i start1)
-  (vector-set! ends i end1)
-  (fix:+ i 1))
-
-(define (%high-drop-1 start1 end1 starts ends i)
-  start1 end1 starts ends
-  i)
+      (loop 0 #f 0 #f #f 0))))
 
 ;;;; Standard character sets
 
 (define-deferred char-set:upper-case
-  (char-set-union (ascii-range->char-set #x41 #x5B)
-		  (ascii-range->char-set #xC0 #xD7)
-		  (ascii-range->char-set #xD8 #xDE)))
+  (scalar-values->char-set '((#x41 . #x5B) (#xC0 . #xD7) (#xD8 . #xDE))))
 (define-deferred char-set:not-upper-case (char-set-invert char-set:upper-case))
 (define-deferred char-upper-case? (char-set-predicate char-set:upper-case))
 
 (define-deferred char-set:lower-case
-  (char-set-union (ascii-range->char-set #x61 #x7B)
-		  (ascii-range->char-set #xE0 #xF7)
-		  (ascii-range->char-set #xF8 #xFF)))
+  (scalar-values->char-set '((#x61 . #x7B) (#xE0 . #xF7) (#xF8 . #xFF))))
 (define-deferred char-set:not-lower-case (char-set-invert char-set:lower-case))
 (define-deferred char-lower-case? (char-set-predicate char-set:lower-case))
 
-(define-deferred char-set:numeric (ascii-range->char-set #x30 #x3A))
+(define-deferred char-set:numeric (scalar-values->char-set '((#x30 . #x3A))))
 (define-deferred char-set:not-numeric (char-set-invert char-set:numeric))
 (define-deferred char-numeric? (char-set-predicate char-set:numeric))
 
 (define-deferred char-set:graphic
-  (char-set-union (ascii-range->char-set #x20 #x7F)
-		  (ascii-range->char-set #xA0 #x100)))
+  (scalar-values->char-set '((#x20 . #x7F) (#xA0 . #x100))))
 (define-deferred char-set:not-graphic (char-set-invert char-set:graphic))
 (define-deferred char-graphic? (char-set-predicate char-set:graphic))
 
@@ -556,11 +525,10 @@ USA.
 ;;; Used in RFCs:
 
 (define-deferred char-set:ascii
-  (ascii-range->char-set #x00 #x80))
+  (scalar-values->char-set '((#x00 . #x80))))
 
 (define-deferred char-set:ctls
-  (char-set-union (ascii-range->char-set #x00 #x20)
-		  (ascii-range->char-set #x7F #x80)))
+  (scalar-values->char-set '((#x00 . #x20) #x7F)))
 (define-deferred char-ctl? (char-set-predicate char-set:ctls))
 
 (define-deferred char-set:wsp (char-set #\space #\tab))
@@ -576,7 +544,7 @@ USA.
 
 (define (char-set-members char-set)
   (guarantee-8-bit-char-set char-set 'CHAR-SET-MEMBERS)
-  (let ((low (char-set-low char-set)))
+  (let ((low (%char-set-low char-set)))
     (let loop ((code 0))
       (if (fix:< code #x100)
 	  (if (%low-ref low code)
