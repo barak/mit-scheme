@@ -72,6 +72,35 @@ USA.
 	      (if (= m 0)
 		  n
 		  (cons n (+ n m 1))))))))))
+
+(define-test 'membership
+  (lambda ()
+    (map (lambda (svl)
+	   (map (lambda (value)
+		  (run-sub-test
+		   (lambda ()
+		     (with-test-properties
+			 (lambda ()
+			   (assert-boolean-=
+			    (char-set-member? (scalar-values->char-set svl)
+					      (integer->char value))
+			    (named-call 'SVL-MEMBER? svl-member? svl value)))
+		       'EXPRESSION `(CHAR-SET-MEMBER? ,svl ,value)))))
+		(enumerate-test-values)))
+	 interesting-svls)))
+
+(define (enumerate-test-values)
+  (append (iota (+ %low-limit 8))
+	  (iota 8 (- char-code-limit 8))))
+
+(define (svl-member? svl value)
+  (let loop ((svl svl))
+    (if (pair? svl)
+	(if (and (<= (segment-start (car svl)) value)
+		 (< value (segment-end (car svl))))
+	    #t
+	    (loop (cdr svl)))
+	#f)))
 
 (define-test 'invert
   (lambda ()
