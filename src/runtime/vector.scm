@@ -81,7 +81,7 @@ USA.
 
 (define (vector-head! vector end)
   (guarantee-subvector vector 0 end 'VECTOR-HEAD!)
-  (if (fix:< end (vector-length end))
+  (if (fix:< end (vector-length vector))
       (primitive-object-set! vector 0
 			     (primitive-make-object (ucode-type false)
 						    end)))
