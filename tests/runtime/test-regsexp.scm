@@ -31,15 +31,15 @@ USA.
   (regsexp-match-string (compile-regsexp pattern) string))
 
 (define ((match-string-test pattern string expected))
-  (let ((thunk (lambda () (match-string pattern string)))
-	(expr `(match-string ',pattern ,string)))
-    (if (eq? expected 'PATTERN-ERROR)
-	(assert-error thunk
-		      (list condition-type:compile-regsexp)
-		      'EXPRESSION error)
-	(assert-equal (thunk)
-		      expected
-		      'EXPRESSION expr))))
+  (let ((thunk (lambda () (match-string pattern string))))
+    (run-sub-test
+     (lambda ()
+       (with-test-properties
+	   (lambda ()
+	     (if (eq? expected 'PATTERN-ERROR)
+		 (assert-error thunk (list condition-type:compile-regsexp))
+		 (assert-equal (thunk) expected)))
+	 'EXPRESSION `(match-string ',pattern ,string))))))
 
 (define (match-strings-test pattern entries)
   (map (lambda (p)
