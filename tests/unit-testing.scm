@@ -27,10 +27,22 @@ USA.
 
 (declare (usual-integrations))
 
+(define (run-unit-test filename/s test-name #!optional environment)
+  (let ((port (notification-output-port)))
+    (let ((tests (load-unit-tests filename/s environment)))
+      (let ((test (assq test-name tests)))
+	(if (not test)
+	    (error "Unknown test name:" test-name (map car tests)))
+	(run-and-report test port)))))
+
 (define (run-unit-tests filename/s #!optional environment)
-  (report-results
-   (map run-unit-test
-	(load-unit-tests filename/s environment))))
+  (let ((port (notification-output-port))
+	(pass? #t))
+    (for-each (lambda (test)
+		(if (not (run-and-report test port))
+		    (set! pass? #f)))
+	      (load-unit-tests filename/s environment))
+    pass?))
 
 (define (load-unit-tests filename/s #!optional environment)
   (let ((test-environment (make-test-environment! environment)))
@@ -61,12 +73,47 @@ USA.
 	      test-definitions)
     test-environment))
 
-(define (run-unit-test name.test)
-  (cons (car name.test)
-	(append-map! (lambda (named-sub-test)
-		       (name-and-flatten (car named-sub-test)
-					 (cdr named-sub-test)))
-		     (run-sub-tests (name-and-flatten "" (cdr name.test))))))
+(define-syntax define-for-tests
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare
+     (receive (name value)
+	 (parse-define-form form rename)
+       `(,(rename 'BEGIN)
+	 (,(rename 'DEFINE) ,name ,value)
+	 (,(rename 'ADD-TEST-DEFINITION) ',name ,name))))))
+
+(define (add-test-definition name value)
+  (let ((p (assq name test-definitions)))
+    (if p
+	(set-cdr! p value)
+	(begin
+	  (set! test-definitions (cons (cons name value) test-definitions))
+	  unspecific))))
+
+(define test-definitions '())
+
+(define-for-tests (define-test name test . tests)
+  (register-test name
+		 (if (null? tests)
+		     test
+		     (cons test tests)))
+  name)
+
+;;;; Test runner
+
+(define (run-and-report name.test port)
+  (let ((start-time (process-time-clock)))
+    (let ((results
+	   (append-map! (lambda (named-sub-test)
+			  (name-and-flatten (car named-sub-test)
+					    (cdr named-sub-test)))
+			(run-sub-tests (name-and-flatten "" (cdr name.test))))))
+      (report-result (car name.test)
+		     (internal-time/ticks->seconds
+		      (- (process-time-clock) start-time))
+		     results
+		     port))))
 
 (define (run-sub-tests named-sub-tests)
   ;; Runs sub-tests in left-to-right order.
@@ -74,7 +121,7 @@ USA.
     (if (pair? named-sub-tests)
 	(loop (cdr named-sub-tests)
 	      (cons (cons (caar named-sub-tests)
-			  (run-test-thunk (cdar named-sub-tests)))
+			  ((cdar named-sub-tests)))
 		    results))
 	(reverse! results))))
 
@@ -94,56 +141,43 @@ USA.
   (if (list? items)
       (append-map! flatten items)
       (list items)))
-
-(define (run-test-thunk thunk)
-  (call-with-current-continuation
-   (lambda (k)
-     (bind-condition-handler (list condition-type:error)
-	 (lambda (condition)
-	   (k (make-failure 'CONDITION condition)))
-       thunk))))
 
-(define (report-results results)
-  (fold (lambda (a b) (and a b))
-	#t
-	(let ((port (notification-output-port)))
-	  (map (lambda (result)
-		 (report-result-group (car result) (cdr result) port))
-	       results))))
+;;;; Reporting
 
-(define (report-result-group test-name sub-test-results port)
-  (let ((n-sub-test-results (length sub-test-results)))
-    (cond ((> n-sub-test-results 1)
-	   (let ((n-failed (count failing-sub-test? sub-test-results)))
-	     (write test-name port)
-	     (write-string ": " port)
-	     (if (> n-failed 0)
-		 (begin
-		   (write-string "failed " port)
-		   (write n-failed port)
-		   (write-string " sub-tests out of " port)
-		   (write n-sub-test-results port)
-		   (write-string ":" port)
-		   (newline port)
-		   (for-each
-		    (lambda (sub-test-result)
-		      (if (failing-sub-test? sub-test-result)
-			  (report-test-failure "    "
-					       (car sub-test-result)
-					       (cdr sub-test-result)
-					       port)))
-		    sub-test-results))
-		 (begin
-		   (write-string "passed " port)
-		   (write n-sub-test-results port)
-		   (write-string " sub-tests" port)
-		   (newline port)))))
-	  ((> n-sub-test-results 0)
-	   (report-test-failure ""
-				(write-to-string test-name)
-				(cdar sub-test-results)
-				port))))
+(define (report-result test-name elapsed-time sub-test-results port)
+  (let ((n-sub-test-results (length sub-test-results))
+	(n-failed (count failing-sub-test? sub-test-results)))
+    (write test-name port)
+    (write-string ": " port)
+    (if (> n-failed 0)
+	(begin
+	  (write-string "failed " port)
+	  (write n-failed port)
+	  (write-string " sub-tests out of " port)
+	  (write n-sub-test-results port)
+	  (report-test-time elapsed-time port)
+	  (write-string ":" port)
+	  (newline port)
+	  (for-each
+	   (lambda (sub-test-result)
+	     (if (failing-sub-test? sub-test-result)
+		 (report-test-failure "    "
+				      (car sub-test-result)
+				      (cdr sub-test-result)
+				      port)))
+	   sub-test-results))
+	(begin
+	  (write-string "passed " port)
+	  (write n-sub-test-results port)
+	  (write-string " sub-tests" port)
+	  (report-test-time elapsed-time port)
+	  (newline port))))
   (every passing-sub-test? sub-test-results))
+
+(define (report-test-time elapsed-time port)
+  (write-string " in " port)
+  (write elapsed-time port)
+  (write-string " seconds" port))
 
 (define (report-test-failure prefix name failure port)
   (write-string prefix port)
@@ -160,6 +194,12 @@ USA.
 (define (passing-sub-test? sub-test-result)
   (not (cdr sub-test-result)))
 
+(define condition-type:failure
+  (make-condition-type 'FAILURE #f '(FAILURE) #f))
+
+(define condition-failure
+  (condition-accessor condition-type:failure 'FAILURE))
+
 (define-record-type <failure>
     (%make-failure alist)
     failure?
@@ -167,6 +207,11 @@ USA.
 
 (define (make-failure . plist)
   (%make-failure (keyword-list->alist plist)))
+
+(define (extend-failure failure plist)
+  (%make-failure
+   (append (failure-alist failure)
+	   (keyword-list->alist plist))))
 
 (define (failure-property key failure)
   (assq key (failure-alist failure)))
@@ -221,69 +266,94 @@ USA.
 	(else
 	 (error "Ill-formed failure:" failure))))
 
-(define-syntax define-for-tests
-  (er-macro-transformer
-   (lambda (form rename compare)
-     compare
-     (receive (name value)
-	 (parse-define-form form rename)
-       `(,(rename 'BEGIN)
-	 (,(rename 'DEFINE) ,name ,value)
-	 (,(rename 'ADD-TEST-DEFINITION) ',name ,name))))))
+;;;; Assertions
 
-(define (add-test-definition name value)
-  (let ((p (assq name test-definitions)))
-    (if p
-	(set-cdr! p value)
-	(begin
-	  (set! test-definitions (cons (cons name value) test-definitions))
-	  unspecific))))
+(define-for-tests (run-sub-test thunk)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handlers
+      (list condition-type:failure
+	    (lambda (condition)
+	      (k (access-condition condition 'FAILURE)))
+	    condition-type:error
+	    (lambda (condition)
+	      (if (not throw-test-errors?)
+		  (k (make-failure 'CONDITION condition)))))
+      (lambda ()
+	(thunk)
+	#f)))))
 
-(define test-definitions '())
+(define-for-tests (with-test-properties thunk . properties)
+  (bind-condition-handlers
+   (list condition-type:failure
+	 (lambda (condition)
+	   (error
+	    (remake-failure-condition
+	     condition
+	     (extend-failure (condition-failure condition)
+			     properties))))
+	 condition-type:error
+	 (lambda (condition)
+	   (if (not throw-test-errors?)
+	       (apply fail 'CONDITION condition properties))))
+   thunk))
 
-(define-for-tests (define-test name test . tests)
-  (register-test name
-		 (if (null? tests)
-		     test
-		     (cons test tests)))
-  name)
+(define throw-test-errors? #f)
+
+(define (bind-condition-handlers bindings thunk)
+  (if (pair? bindings)
+      (bind-condition-handler (list (car bindings))
+	  (cadr bindings)
+	(lambda ()
+	  (bind-condition-handlers (cddr bindings) thunk)))
+      (thunk)))
+
+(define-for-tests (fail . plist)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (error
+      (make-failure-condition continuation
+			      (apply make-failure plist))))))
+
+(define (make-failure-condition continuation failure)
+  (make-condition condition-type:failure
+		  continuation
+		  'BOUND-RESTARTS
+		  (list 'FAILURE failure)))
+
+(define (remake-failure-condition condition failure)
+  (make-condition condition-type:failure
+		  (condition/continuation condition)
+		  (condition/restarts condition)
+		  (list 'FAILURE failure)))
+
+(define-for-tests (assert predicate description value . properties)
+  (%assert predicate value description properties))
 
 (define-for-tests (predicate-assertion predicate description)
   (lambda (value . properties)
-    (if (predicate value)
-	#f
-	(apply make-failure
-	       'RESULT-OBJECT value
-	       'EXPECTATION-DESCRIPTION description
-	       properties))))
+    (%assert predicate value description properties)))
 
-(define-for-tests (assert predicate description value . properties)
-  (apply (predicate-assertion predicate description)
-	 value
-	 properties))
+(define (%assert predicate value description properties)
+  (if (not (predicate value))
+      (apply fail
+	     'RESULT-OBJECT value
+	     'EXPECTATION-DESCRIPTION description
+	     properties)))
 
-(define-for-tests (assert-true expr value)
-  (if value
-      #f
-      (make-failure 'EXPRESSION expr
-		    'RESULT-DESCRIPTION "false"
-		    'EXPECTATION-DESCRIPTION "true")))
+(define-for-tests assert-true
+  (predicate-assertion (lambda (x) x) "true"))
 
-(define-for-tests (assert-false expr value)
-  (if value
-      (make-failure 'EXPRESSION expr
-		    'RESULT-DESCRIPTION "true"
-		    'EXPECTATION-DESCRIPTION "false")
-      #f))
+(define-for-tests assert-false
+  (predicate-assertion not "false"))
 
 (define-for-tests assert-null
   (predicate-assertion null? "an empty list"))
 
 (define-for-tests (binary-assertion comparator)
   (lambda (value expected . properties)
-    (if (comparator value expected)
-	#f
-	(apply make-failure
+    (if (not (comparator value expected))
+	(apply fail
 	       'RESULT-OBJECT value
 	       'EXPECTATION-OBJECT expected
 	       properties))))
@@ -302,7 +372,7 @@ USA.
 (define-for-tests (assert-error thunk condition-types . properties)
   (call-with-current-continuation
    (lambda (k)
-     (apply make-failure
+     (apply fail
 	    'RESULT-OBJECT 
 	    (bind-condition-handler condition-types
 		(lambda (condition)

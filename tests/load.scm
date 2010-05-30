@@ -27,6 +27,9 @@ USA.
   (environment-link-name environment '(runtime mit-macros) 'PARSE-DEFINE-FORM)
   (load (merge-pathnames "unit-testing" (current-load-pathname))
 	environment)
-  (if (environment-bound? system-global-environment 'RUN-UNIT-TESTS)
-      (unbind-variable system-global-environment 'RUN-UNIT-TESTS))
-  (environment-link-name system-global-environment environment 'RUN-UNIT-TESTS))
+  (for-each (lambda (name)
+	      (if (environment-bound? system-global-environment name)
+		  (unbind-variable system-global-environment name))
+	      (link-variables system-global-environment name
+			      environment name))
+	    '(RUN-UNIT-TEST RUN-UNIT-TESTS THROW-TEST-ERRORS?)))
