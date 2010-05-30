@@ -1145,7 +1145,7 @@ USA.
 	  well-formed-scalar-value-list?
 	  well-formed-scalar-value-range?)
   (export (runtime string)
-	  char-set-table))
+	  (char-set-table %char-set-table)))
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
