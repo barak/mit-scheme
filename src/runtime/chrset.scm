@@ -258,7 +258,7 @@ USA.
       (let ((high (%char-set-high char-set)))
 	(let loop ((lower 0) (upper (vector-length high)))
 	  (if (fix:< lower upper)
-	      (let ((i (fix:quotient (fix:+ lower upper) 2)))
+	      (let ((i (fix:* 2 (fix:quotient (fix:+ lower upper) 4))))
 		(cond ((fix:< value (vector-ref high i))
 		       (loop lower i))
 		      ((fix:>= value (vector-ref high (fix:+ i 1)))
