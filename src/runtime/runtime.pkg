@@ -5083,6 +5083,7 @@ USA.
 	  compiled-regexp/byte-stream
 	  compiled-regexp/translation-table
 	  condition-type:re-compile-pattern
+	  re-char-pattern->scalar-values
 	  re-compile-char
 	  re-compile-char-set
 	  re-compile-pattern

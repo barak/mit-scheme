@@ -259,6 +259,14 @@ USA.
 ;;; #\^ must appear anywhere except as the first character in the set.
 
 (define (re-compile-char-set pattern negate?)
+  (receive (scalar-values negate?*)
+      (re-char-pattern->scalar-values pattern)
+    (let ((char-set (scalar-values->char-set scalar-values)))
+      (if (if negate? (not negate?*) negate?*)
+	  (char-set-invert char-set)
+	  char-set))))
+
+(define (re-char-pattern->scalar-values pattern)
   (define (loop pattern scalar-values)
     (if (pair? pattern)
 	(if (and (pair? (cdr pattern))
@@ -274,15 +282,10 @@ USA.
 	scalar-values))
 
   (let ((pattern (string->list pattern)))
-    (receive (pattern negate?)
-	(if (and (pair? pattern)
-		 (char=? (car pattern) #\^))
-	    (values (cdr pattern) (not negate?))
-	    (values pattern negate?))
-      (let ((char-set (scalar-values->char-set (loop pattern '()))))
-	(if negate?
-	    char-set
-	    (char-set-invert char-set))))))
+    (if (and (pair? pattern)
+	     (char=? (car pattern) #\^))
+	(values (loop (cdr pattern) '()) #t)
+	(values (loop pattern '()) #f))))
 
 ;;;; Translation Tables
 
