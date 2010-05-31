@@ -554,12 +554,6 @@ USA.
 	      (loop (fix:+ code 1)))
 	  '()))))
 
-(define (predicate->char-set predicate)
-  (%scalar-values->char-set
-   (filter (lambda (i)
-	     (predicate (integer->char i)))
-	   (iota #x100))))
-
 (define (char-set . chars)
   (for-each (lambda (char)
 	      (guarantee-unicode-char char 'CHAR-SET))

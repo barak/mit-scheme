@@ -1137,7 +1137,6 @@ USA.
 	  guarantee-char-set
 	  guarantee-well-formed-scalar-value-list
 	  guarantee-well-formed-scalar-value-range
-	  predicate->char-set
 	  scalar-values->char-set
 	  string->char-set
 	  well-formed-scalar-value-list?

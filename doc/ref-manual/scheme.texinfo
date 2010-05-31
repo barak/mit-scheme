@@ -210,7 +210,6 @@ Unicode
 
 * Wide Strings::                
 * Unicode Representations::     
-* Alphabets::                   
 
 Strings
 

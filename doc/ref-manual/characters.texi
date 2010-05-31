@@ -624,24 +624,25 @@ Returns a character set consisting of all the characters that occur in
 @end deffn
 
 @deffn procedure scalar-values->char-set items
-Returns a character set containing the scalar values described by
-@var{items}.  @var{Items} must satisfy
+Returns a character set containing the Unicode scalar values described
+by @var{items}.  @var{Items} must satisfy
 @code{well-formed-scalar-values-list?}.
 @end deffn
 
 @deffn procedure char-set->scalar-values char-set
-Returns a well-formed scalar-values list that describes the scalar values
-represented by @var{char-set}.
+Returns a well-formed scalar-values list that describes the Unicode
+scalar values represented by @var{char-set}.
 @end deffn
 
 @deffn procedure well-formed-scalar-values-list? object
 Returns @code{#t} if @var{object} is a well-formed scalar-values list,
 otherwise returns @code{#f}.  A well-formed scalar-values list is a
-proper list, each element of which is either a unicode scalar value or a
-pair of unicode scalar values.  A pair of scalar values represents a
-contiguous range of scalar values.  The @sc{car} of the pair is the
-inclusive lower limit, and the @sc{cdr} is the exclusive upper limit.
-The lower limit must be strictly less than to the upper limit.
+proper list, each element of which is either a Unicode scalar value or
+a pair of Unicode scalar values.  A pair of Unicode scalar values
+represents a contiguous range of Unicode scalar values.  The @sc{car}
+of the pair is the inclusive lower limit, and the @sc{cdr} is the
+exclusive upper limit.  The lower limit must be strictly less than to
+the upper limit.
 @end deffn
 
 @deffn procedure char-set-invert char-set
@@ -665,8 +666,8 @@ least one o the @var{char-set}s.
 @end deffn
 
 @deffn procedure 8-bit-char-set? char-set
-Returns @code{#t} if @var{char-set} contains only 8-bit scalar values,
-otherwise returns @code{#f}.
+Returns @code{#t} if @var{char-set} contains only 8-bit scalar values
+(i.e.@. @acronym{ISO-8859-1} characters), otherwise returns @code{#f}.
 @end deffn
 
 @deffn procedure ascii-range->char-set lower upper
@@ -680,27 +681,22 @@ This procedure is obsolete.  Instead use
 @deffn procedure char-set-members char-set
 This procedure is obsolete; instead use @code{char-set->scalar-values}.
 
-Returns a newly allocated list of the @acronym{ISO-8859-1} characters in
-@var{char-set}, ignoring any characters outside of that set.
-@end deffn
-
-@deffn procedure predicate->char-set predicate
-@var{Predicate} must be a procedure of one argument.
-@code{predicate->char-set} creates and returns a character set
-consisting of the @acronym{ISO-8859-1} characters for which
-@var{predicate} is true.
+Returns a newly allocated list of the @acronym{ISO-8859-1} characters
+in @var{char-set}.  If @var{char-set} contains any characters outside
+of the @acronym{ISO-8859-1} range, they will not be in the returned
+list.
 @end deffn
 
 @node Unicode,  , Character Sets, Characters
 @section Unicode
 
 @cindex Unicode
-MIT/GNU Scheme provides rudimentary support for Unicode characters.  In
-an ideal world, Unicode would be the base character set for MIT/GNU
+MIT/GNU Scheme provides rudimentary support for Unicode characters.
+In an ideal world, Unicode would be the base character set for MIT/GNU
 Scheme.  But MIT/GNU Scheme predates the invention of Unicode, and
 converting an application of this size is a considerable undertaking.
-So for the time being, the base character set for @acronym{I/O} and
-strings is @acronym{ISO-8859-1}, and Unicode support is grafted on.
+So for the time being, the base character set for strings is
+@acronym{ISO-8859-1}, and Unicode support is grafted on.
 
 This Unicode support was implemented as a part of the @acronym{XML}
 parser (@pxref{XML Support}) implementation.  @acronym{XML} uses
