@@ -252,6 +252,11 @@ USA.
   (guarantee-unicode-char char 'CHAR-SET-MEMBER?)
   (%scalar-value-in-char-set? (char-code char) char-set))
 
+(define (scalar-value-in-char-set? scalar-value char-set)
+  (guarantee-unicode-scalar-value scalar-value 'SCALAR-VALUE-IN-CHAR-SET?)
+  (guarantee-char-set char-set 'SCALAR-VALUE-IN-CHAR-SET?)
+  (%scalar-value-in-char-set? scalar-value char-set))
+
 (define (%scalar-value-in-char-set? value char-set)
   (if (fix:< value %low-limit)
       (%low-ref (%char-set-low char-set) value)
