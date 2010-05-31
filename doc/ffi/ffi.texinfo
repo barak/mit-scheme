@@ -1,0 +1,1224 @@
+\input texinfo @c -*-Texinfo-*-
+@comment %**start of header
+@setfilename mit-scheme-ffi
+@set VERSION 0.1
+@settitle FFI @value{VERSION}
+@comment %**end of header
+
+@macro myresult{}
+@ifhtml
+ =>
+@end ifhtml
+@ifnothtml
+ @result{}
+@end ifnothtml
+@end macro
+
+@copying
+This manual documents @acronym{FFI} @value{VERSION}.
+
+Copyright @copyright{} 2010 Matthew Birkholz
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.2 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with the Front-Cover Texts being ``A GNU Manual,''
+and with the Back-Cover Texts as in (a) below.  A copy of the
+license is included in the section entitled ``GNU Free Documentation
+License.''
+
+(a) The FSF's Back-Cover Text is: ``You have freedom to copy and modify
+this GNU Manual, like GNU software.  Copies published by the Free
+Software Foundation raise funds for GNU development.''
+@end quotation
+@end copying
+
+@dircategory Programming Languages
+@direntry
+* FFI: (mit-scheme-ffi).		MIT/GNU Scheme Foreign Functions
+@end direntry
+
+@titlepage
+@title The FFI Reference Manual
+@subtitle a Foreign Function Interface (@value{VERSION})
+@subtitle for MIT/GNU Scheme version 7.7.90+
+@author by Matt Birkholz
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@ifnottex
+@node Top, Introduction, (dir), (dir)
+@top FFI
+
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction:: A synopsis and quick summary.
+* C Declarations:: Declare C types and functions.
+* Alien Data:: Manipulate C data.
+* Alien Functions:: Generate callout trampolines and call them.
+* Callbacks:: Generate callback trampolines and get interrupted by them.
+* Compiling and Linking:: Build and install the shim.
+* Hello World:: A short example.
+* GNU Free Documentation License::  
+@end menu
+
+
+@node Introduction, C Declarations, Top, Top
+@chapter Introduction
+
+This FFI provides Scheme syntax for calling C functions and accessing
+C data.  The functions and data structures are declared in a case
+sensitive @file{.cdecl} file, which is used by a shim generator to
+produce callout and callback trampoline functions.  The trampolines
+are compiled and linked to the C toolkit, producing a shared object
+that Scheme can dynamically load.
+
+@heading Synopsis
+
+Examples of the new syntax:
+
+@example
+(C-include "prhello")
+
+@group
+(malloc (C-sizeof "GdkEvent"))
+@myresult{} #[alien 42 0x081afc60]
+@end group
+
+@group
+(C-> @verb{"#@42"} "GdkEvent any type")
+@myresult{} 14
+@end group
+
+(C->= @verb{"#@42"} "GdkEvent any type" 13)
+
+@group
+(C-enum "GDK_MAP")
+@myresult{} 14
+@end group
+
+@group
+(C-enum "GdkEventType" 14)
+@myresult{} |GDK_MAP|
+@end group
+
+@group
+(C-sizeof "GdkColor")
+@myresult{} 12
+@end group
+
+@group
+(C-offset "GdkColor blue")
+@myresult{} 8
+@end group
+
+@group
+(C-array-loc @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_NORMAL"))
+@myresult{} #[alien 44 0x081afc60] @r{; New alien.}
+@end group
+
+@group
+(C-array-loc! @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_PRELIGHT"))
+@myresult{} #[alien 43 0x081afc78] @r{; Modified alien.}
+@end group
+
+@group
+(C-call "gtk_window_new" retval args @dots{})
+@myresult{} #!unspecific
+@end group
+
+@group
+(C-callback "delete_event")
+@myresult{} #[alien-function 44 Scm_delete_event]
+@end group
+
+@group
+(C-callback (lambda (window event) @dots{}))
+@myresult{} 13                     @r{; A fixnum registration ID.}
+@end group
+
+@end example
+@comment The C-array-loc! example assumes 2 GdkColors are 6 words, #x18bytes.
+@comment 0x081afc78 - 0x081afc60 = 0x18
+
+@heading Summary
+
+A Scheme-like declaration of a toolkit's C functions, constants, and
+data types is given in a case sensitive @file{.cdecl} file.  The C
+declarations look like this:
+
+@smallexample
+(extern (* GtkWidget)              @r{; gtk+-2.4.0/gtk/gtkwindow.h}
+        gtk_window_new
+        (type GtkWindowType))
+
+(typedef GtkWindowType             @r{; gtk+-2.4.0/gtk/gtkenums.h}
+         (enum
+          (GTK_WINDOW_TOPLEVEL)
+          (GTK_WINDOW_POPUP)))
+@end smallexample
+
+The @strong{@code{c-generate}} procedure reads these declarations and
+writes three files: @file{@i{library}-types.bin} (a fasdump of the
+parsed declarations), @file{@i{library}-const.c} (a C program that
+prints C constants and struct offsets), and @file{@i{library}-shim.c}
+(trampoline functions adapting Scheme procedure application to C
+function call).  The @file{-const.c} program generates a
+@file{-const.scm} file, which can be syntaxed to produce a
+@file{-const.bin} file.
+
+@smallexample
+(load-option 'FFI)
+(c-generate "prhello" "#include <gtk/gtk.h>")
+@end smallexample
+
+The @file{-types.bin} and @file{-const.bin} files together provide
+the information needed to expand @code{C-...} syntax, and are only
+needed at syntax time.  The compiled @file{-shim.so} file is used at
+run time, dynamically loaded into the Scheme machine.  @ref{Compiling
+and Linking}, which describes these files in more detail, and shows
+how they might be built and installed.
+
+@smallexample
+(C-include "prhello")
+@end smallexample
+
+The @strong{@code{C-include}} syntax loads the @file{-types.bin} and
+@file{-const.bin} files @emph{at syntax time}.  It should appear
+at the top level of any file containing @code{C-...} syntax, or be
+evaluated in the syntax environment of such code.
+
+The @strong{@code{C-call}} syntax arranges to invoke a callout
+trampoline.  Arguments to the trampoline can be integers, floats,
+strings or aliens (non-heap pointers, to C data structures,
+@pxref{Alien Data}).
+
+@smallexample
+(let ((alien (make-alien '|GtkWidget|)))
+  (C-call "gtk_window_new" alien type)
+  (if (alien-null? alien) (error "could not open new window"))
+  alien)
+@end smallexample
+
+The @strong{@code{C-callback}} syntax is used when registering a
+Scheme callback trampoline.  The two forms of the syntax provide two
+arguments for the registration function: the callback trampoline's
+address, and a ``user data'' argument.  When the toolkit calls the
+trampoline, it must provide the fixnum-sized user data as an argument.
+
+@smallexample
+(C-call "g_signal_connect" window "delete_event" 
+        (C-callback "delete_event")     ; @r{@i{e.g. &Scm_delete_event}}
+        (C-callback                     ; @r{@i{e.g. 314}}
+          (lambda (window event)
+            (C-call "gtk_widget_destroy" window)
+            0)))
+@end smallexample
+
+The first use of @code{C-callback} (above) expands into a callback
+trampoline address --- an alien function.  The second use evaluates to
+a fixnum, which is associated with the given Scheme procedure.
+
+The @strong{@code{C->}} and @strong{@code{C->=}} syntaxes peek and
+poke values into alien data structures.  They take an alien and a
+constant string specifying the alien data type and the member to be
+accessed (if any).
+
+@smallexample
+@group
+(C-> alien "GdkRectangle y")
+@expansion{}
+(#[primitive c-peek-int] alien 4)
+@end group
+
+@group
+(C->= alien "GdkRectangle width" 0)
+@expansion{}
+(#[primitive c-poke-int] alien 8 0)
+@end group
+@end smallexample
+
+@smallexample
+@group
+(C-> alien "GdkEvent any type")
+@expansion{}
+(#[primitive c-peek-int] alien 0)
+@end group
+@end smallexample
+
+@smallexample
+@group
+(C-> alien "gfloat")
+@expansion{}
+(#[primitive c-peek-float] alien 0)
+@end group
+@end smallexample
+
+A three argument form of the syntax provides an alien to receive a
+peeked pointer.  This avoids consing a new alien.
+
+@smallexample
+(C-> alien "GtkWidget style" alien)
+@end smallexample
+
+The above syntax is understood to say ``The data at this @code{alien}
+address is a GtkWidget.  Load its @code{style} member (an alien
+address), into @code{alien} (clobbering @code{alien}'s old address).''
+
+The @strong{@code{C-enum}}, @strong{@code{C-sizeof}} and
+@strong{@code{C-offset}} syntaxes all
+transform into integer constants.  The last two transform into a padded
+byte size and a byte offset respectively.
+
+@smallexample
+@group
+(C-enum "GTK_WINDOW_POPUP")
+@expansion{}
+1
+@end group
+
+@group
+(C-sizeof "GdkColor")
+@expansion{}
+12
+@end group
+
+@group
+(C-offset "GdkColor blue")
+@expansion{}
+8
+@end group
+
+@end smallexample
+
+The two element form of the @code{C-enum} syntax can be used to find
+the name of a constant given its runtime value.  It expects the name
+of an enum type in a constant string.  If the runtime (second)
+argument is not one of the constants declared by that type, the
+returned value is @code{#f}.
+
+@smallexample
+@group
+(C-enum "GdkEventType" (C-> @verb{"#@42"} "GdkEvent any type"))
+@myresult{}
+|GDK_MAP|
+@end group
+@end smallexample
+
+The @strong{@code{c-array-loc}} and @strong{@code{c-array-loc!}}
+syntaxes compute the locations of C array elements.  They can be used
+to advance a scan pointer or locate an element by its index.  The
+examples in the synopsis might expand as shown here.
+
+@smallexample
+(C-array-loc @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_NORMAL"))
+@expansion{}
+(alien-byte-increment @verb{"#@43"} (* (C-sizeof "GdkColor")
+                              (C-enum "GTK_STATE_NORMAL")))
+@expansion{}
+(alien-byte-increment @verb{"#@43"} 0)
+@myresult{}
+@verb{"#@44"}
+
+(C-array-loc! @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_PRELIGHT"))
+@expansion{}
+(alien-byte-increment! @verb{"#@43"} (* (C-sizeof "GdkColor")
+                               (C-enum "GTK_STATE_PRELIGHT")))
+@expansion{}
+(alien-byte-increment! @verb{"#@43"} 24)
+@myresult{}
+@verb{"#@43"}
+@end smallexample
+
+A simple scan of characters in the wide string @code{alien} might
+look like this.
+
+@smallexample
+(let ((len (C-> alien "toolkit_string_type int_member"))
+      (scan (C-> alien "toolkit_string_type array_member")))
+  (let loop ((n 0))
+    (if (< n len)
+        (let ((wchar (C-> scan "wchar")))
+          (process wchar)
+          (C-array-loc! scan "wchar" 1)
+          (loop (1+ n))))))
+@end smallexample
+
+That is a quick look at the facilities.  The next section describes
+the C declaration language, and the following sections examine the FFI's
+syntax and runtime facilities in detail.  Final sections provide an
+example program and show how its dynamically loaded shim is built.
+
+
+@node C Declarations, Alien Data, Introduction, Top
+@chapter C Declarations
+
+A shim between Scheme and a C toolkit is specified by a case sensitive
+@file{.cdecl} file containing Scheme-like declarations of all relevant
+toolkit types, constants, and functions.  Callback functions to be
+passed to the toolkit are also specified here.
+
+There are some limitations on the C types that can be declared.
+Basic, struct, union, enum and pointer types are allowed, but
+bit-field members are not supported.  C function parameters can be
+basic, enum or pointer types.  The return type of a C function is the
+same plus @code{void}.  Basically, no struct or union argument or
+return types, at the moment.
+
+Each top-level form in the C declaration file must look like one of
+these:
+
+@smallexample
+(include "filename")
+(typedef Name @var{any})
+(struct Name (Member @var{type}) @dots{})
+(union Name (Member @var{type}) @dots{})
+(enum @i{Name} (Member) @dots{})
+(extern @var{return-type} Name (param1 @var{arg-type}) @dots{})
+(callback @var{return-type} Name (param1 @var{arg-type}) @dots{})
+@end smallexample
+
+An enum's @i{@var{Name}} is optional.
+
+@var{arg-type} is currently restricted to the following forms.  It is
+assumed that a lone @var{Name} is defined as a type on this list:
+
+@smallexample
+Name
+@var{basics}
+(* @var{any})
+(enum Name)
+(enum @i{Name} (Member) @dots{})
+@end smallexample
+
+@var{return-type} can be either @var{arg-type} or the word @code{void}.
+
+@var{basics} can be any of the words: @code{char}, @code{uchar},
+@code{short}, @code{ushort}, @code{int}, @code{uint}, @code{long},
+@code{ulong}, @code{float}, or @code{double} (all lowercase).
+
+@var{type} includes structs and unions:
+
+@smallexample
+@var{arg-type}
+(struct Name)
+(struct @i{Name} (Member @var{type}) @dots{})
+(union Name)
+(union @i{Name} (Member @var{type}) @dots{})
+@end smallexample
+
+@var{any} is any @var{type} @emph{or} @code{void}.
+
+The @code{include} expression includes another @file{.cdecl} file in
+the current @file{.cdecl} file.  The string argument is interpreted
+relative to the current file's directory.
+
+While the informal grammar above allows anonymous structs to be
+specified for argument or member types, they are of little use outside
+top-level, @i{named} struct or union declarations.  The peek and poke
+(@code{C->} and @code{C->=}) syntax expects a type name (e.g.
+@code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before any
+member names.
+
+@smallexample
+(C-include "prhello")
+@end smallexample
+
+The @strong{@code{C-include}} syntax takes a library name and loads
+the corresponding @file{-types} and @file{-const} files at syntax
+time.  This makes the C types and constants available to the other
+@code{C-...} syntax expanders.  The form binds @code{c-includes} in
+the syntax environment @i{unless} it is already defined there.  Thus a
+@code{(C-includes "library")} form can be placed at the top of every
+file with @code{C-...} syntax, @emph{or} loaded into the syntax-time
+environment of those files.
+
+
+@node Alien Data, Alien Functions, C Declarations, Top
+@chapter Alien Data
+
+A C data structure is represented by an alien containing the data
+structure's memory address.  ``Peek'' primitives are available to read
+pointers and the basic C types (e.g. ints, floats) at small (fixnum)
+offsets from an alien's address.  They return to Scheme an alien
+address, integer or flonum as appropriate.  ``Poke'' primitives
+do the reverse, storing pointers, integers or floats at fixnum offsets
+from alien addresses.
+Other procedures on aliens are @code{alien?},
+@code{alien-null?}, @code{alien-null!}, @code{copy-alien}, @code{alien=?},
+@code{alien-byte-increment}, and @code{c-peek-cstring}.  Refer to
+@file{ffi.pkg} in The Source for a complete list.
+
+The @code{C->} and @code{C->=} syntaxes apply the peek and poke
+primitives to constant offsets.  They expect their first argument
+subform to be a constant string --- space-separated words naming a C
+type and any member to be accessed.  A member within a struct or union
+member is specified by appending its name.  For example @code{"struct
+_GdkEvent any window"} would specify a peek at the @code{window}
+member of the @code{any} member of the @code{struct _GdkEvent} data at
+some alien address.  Note that the final member's type must be a basic
+C type, pointer type, or enum type.  Otherwise, an error is signaled
+at syntax time.
+
+@smallexample
+@group
+(C-> alien "struct _GdkEvent any window" window-alien)
+@expansion{}
+(#[primitive c-peek-pointer] alien 0 window-alien)
+@myresult{}
+#[alien 44 (* GdkWindow) 0x081afc60]
+@end group
+@end smallexample
+
+Note that in the example above, the final member has a pointer type.
+In this case an extra alien argument can be provided to receive the
+peeked pointer.  Otherwise a new alien is created and returned.
+
+@heading Malloc
+
+The @code{malloc} procedure returns an alien that will automatically
+free the malloced memory when it is garbage collected.
+It can also be explicitly freed with the @code{free} procedure.  The alien
+address can be incremented to scan the malloced memory, then freed
+(without returning it to the original, malloced address).  A band
+restore marks all malloced aliens as though they have been freed.
+
+@smallexample
+(free (malloc '|GdkRectangle|))
+@end smallexample
+
+In general, if a callout returns a pointer to a toolkit resource that
+should be freed, some care is necessary.  Typically such a resource is
+registered with a weak reference to a Scheme representative.  When the
+representative disappears (is garbage collected), the resource is
+freed.  The callout trampoline might cons a fresh alien and return it
+to Scheme, to be registered for later freeing, but an interrupt
+between the return and the registration may leave the
+alien un-registered, never to be freed.
+
+@smallexample
+    (let* ((alien (make-alien)))
+      (c-call "library_function" alien)
+      ;; An interrupt or non-local exit here can drop the alien resource.
+      (register-alien-to-free! alien)
+      ...mumble...
+      (c-free alien))
+@end smallexample
+
+To close the hole a null alien can be allocated and registered
+@emph{before} the callout.  If something interrupts normal execution
+before the callout trampoline can write to it, and the continuation is
+eventually abandoned, the null alien will be swept up in the next GC,
+but not erroneously freed.  If the alien is dropped immediately after
+the trampoline returns to Scheme, it will still be swept up and, no
+longer null, properly freed.
+
+@smallexample
+    (let* ((alien (make-alien '|GdkRectangle|)))
+      (register-alien-to-free! alien)
+      ;; Prepared to free the resource whether allocated or not.
+      (c-call "library_function" alien)
+      ...mumble...
+      (c-free alien))
+@end smallexample
+
+
+@node Alien Functions, Callbacks, Alien Data, Top
+@chapter Alien Functions
+
+The @code{C-call} syntax produces code that applies @code{call-alien}
+to an alien function structure --- a cache for the callout
+trampoline's entry address.
+
+@smallexample
+@group
+(C-call "gtk_button_new" (make-alien '(* |GtkWidget|)))
+@expansion{}
+(call-alien '#[alien-function gtk_button_new] (make-alien @dots{}))
+@end group
+@end smallexample
+
+The alien function contains all the information needed to load the
+callout trampoline on demand (i.e. its name and library).  Once the
+alien function has cached the entry address, @code{call-alien} can
+invoke the trampoline (via @code{#[primitive c-call]}).  The
+trampoline gets its arguments off the Scheme stack, converts them to C
+values, calls the C function, conses a result, and returns it to
+Scheme.  As a special case a function returning a pointer type
+expects an extra first argument.  If this argument is @code{#f}, the
+return value is discarded.  If the argument is an alien, the
+function's return value clobbers the alien's address.  This makes it
+easy to grab pointers to toolkit resources without dropping them, or
+avoid unnecessary consing of aliens.
+
+The @code{alien-function} structures are fasdumpable.  The caching
+mechanism invalidates the cache when a band is restored, or a
+fasdumped object is fasloaded.  The alien function will lookup the
+trampoline entry point again on demand.
+
+
+@node Callbacks, Compiling and Linking, Alien Functions, Top
+@chapter Callbacks
+
+A callback declaration must include a parameter named ``ID''.  The ID
+argument will be used to find the Scheme callback procedure.  It must
+be the same ``user data'' value provided to the toolkit when the
+callback was registered.  For example, a callback trampoline named
+@code{Scm_delete_event} might be declared like this:
+
+@smallexample
+(callback gint
+          delete_event
+          (window (* GtkWidget))
+          (event (* GdkEventAny))
+          (ID gpointer))
+@end smallexample
+
+The callback might be registered with the toolkit like this:
+
+@smallexample
+(C-call "g_signal_connect" window "delete_event" 
+        (C-callback "delete_event")     ; @r{@i{e.g. &Scm_delete_event}}
+        (C-callback                     ; @r{@i{e.g. 314}}
+          (lambda (window event)
+            (C-call "gtk_widget_destroy" window)
+            0)))
+@end smallexample
+
+The toolkit's registration function, @code{g_signal_connect}, would be
+declared like this:
+
+@smallexample
+(extern void
+        g_signal_connect
+        (object (* GtkObject))
+        (name (* gchar))
+        (CALLBACK GtkSignalFunc)
+        (ID gpointer))
+@end smallexample
+
+This function should have parameters named @code{CALLBACK} and
+@code{ID}.  The callout trampoline will convert the callback argument
+from a Scheme alien function to an entry address.  The @code{ID} argument
+will be converted to a C integer and then cast to its declared type
+(in this example, @code{gpointer}).
+
+Note that the registered callback procedures are effectively pinned.
+They cannot be garbage collected.  They are ``on call'' to handle
+callbacks from the toolkit until they are explicitly de-registered.  A
+band restore automatically de-registers all callbacks.
+
+The callback procedures are executed like an interrupt handler.  They
+actually interrupt the thread executing the most recent callout,
+e.g. to @code{gtk_main}.  The thread runs with thread switching
+disabled for the duration of the callback, and can callout to the
+toolkit, which can callback again.  The (nested) callbacks and nested
+callouts all run in the same thread, and so will return in LIFO order
+as expected by the toolkit.  Note that the runtime system will not
+balk at a callback procedure that calls @code{yield-thread}, waits for
+I/O, sleeps, or otherwise causes a thread switch.  Presumably such a
+procedure has some other way of enforcing the LIFO ordering.
+
+The @code{outf-console} procedure is provided for debugging purposes.
+It writes one or more argument strings (and @code{write}s any
+non-strings) to the console and flushes, atomically, via a machine
+primitive, bypassing the runtime's I/O buffering and thread switching.
+Thus multiple debugging trace messages arrive on the console intact
+and uninterrupted.
+
+
+@node Compiling and Linking, Hello World, Callbacks, Top
+@chapter Compiling and Linking
+
+The @strong{@code{c-generate}} procedure takes a library name and an
+optional preamble.  It reads the @file{@i{library}.cdecl} file and
+writes two @file{.c} files.  The preamble is included at the top of
+both.  It typically contains @code{#include} C pre-processor
+directives required by the C library, but could include additional
+shim code.  Here is a short script that generates a shim for the
+example ``Hello, World!'' program.
+
+@smallexample
+(load-option 'FFI)
+(c-generate "prhello" "#include <gtk/gtk.h>")
+@end smallexample
+
+This script will produce three files:
+
+@table @file
+
+@item prhello-shim.c
+This file contains the trampoline functions --- one for each declared
+C extern or callback.  It includes the @file{mit-scheme.h} header
+file, found in the @code{AUXDIR} directory ---
+e.g. @file{/usr/local/lib/mit-scheme/}.
+
+@item prhello-const.c
+This file contains a C program that creates
+@file{prhello-const.scm}.  It is compiled and linked
+as normal for programs using the toolkit, and does not depend on the
+Scheme machine.  It does not actually call any
+toolkit functions.  It just collects information from the compiler
+about the declared C types and constants.
+
+@item prhello-types.bin
+This file is a fasdumped @code{c-includes} structure containing all of
+the types, constants and functions declared in the @file{.cdecl} file.
+
+@end table
+
+The following Makefile rules describe the process of building and
+installing a shim for the example ``Hello, World!'' program.  They can
+be found in @file{src/ffi/Makefile}
+
+@example
+@comment INCLUDE ../../src/ffi/Makefile-fragment FROM /^install-example:/ TO END
+@verbatim
+install-example: build-example
+	$(INSTALL_DATA) prhello-types.bin ../lib/.
+	$(INSTALL_DATA) prhello-const.bin ../lib/.
+	$(INSTALL_DATA) prhello-shim.so ../lib/.
+
+build-example: prhello-shim.so prhello-types.bin prhello-const.bin
+
+prhello-shim.so: prhello-shim.o
+	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-2.0`
+
+prhello-shim.o: prhello-shim.c
+	$(CC) -I../lib -Wall -fPIC `pkg-config --cflags gtk+-2.0` -o $@ -c $<
+
+prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
+	(echo "(load-option 'FFI)"; \
+	 echo '(C-generate "prhello" "#include <gtk/gtk.h>")') \
+	| ../microcode/scheme --library ../lib --batch-mode
+
+prhello-const.bin: prhello-const.scm
+	echo '(sf "prhello-const")' | mit-scheme --compiler --batch-mode
+
+prhello-const.scm: prhello-const
+	./prhello-const
+
+prhello-const: prhello-const.o
+	@rm -f $@
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ `pkg-config --libs gtk+-2.0`
+
+prhello-const.o: prhello-const.c
+	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<
+@end verbatim
+@end example
+
+
+@node Hello World, GNU Free Documentation License, Compiling and Linking, Top
+@chapter Hello World
+
+This
+@iftex
+chapter
+@end iftex
+@ifnottex
+node
+@end ifnottex
+includes the C declarations and Scheme code required to implement
+Havoc Pennington's Hello World example from
+@uref{http://developer.gnome.org/doc/GGAD/, GGAD}.  For an extra,
+Schemely treat, its @code{delete_event} callback is a Scheme procedure
+closed over a binding of @code{counter} that is used to implement some
+impertinent behavior.
+@example
+@verbatiminclude ../../src/ffi/prhello.scm
+@end example
+
+Here are the C declarations.
+@example
+@verbatiminclude ../../src/ffi/prhello.cdecl
+@end example
+
+To run the example:
+
+@smallexample
+@verbatim
+	cd src/ffi/
+	make install-example
+	../microcode/scheme --library ../lib
+	(load-option 'FFI)
+	(load "prhello.scm")
+	(hello)
+@end verbatim
+@end smallexample
+
+You might also syntax the Scheme code first, as in the following
+script.  The syntactic transformers of the FFI are needed here.
+
+@smallexample
+@verbatim
+	../microcode/scheme --library ../lib --batch-mode <<EOF
+	(load-option 'FFI)
+	(sf "prhello.scm")
+	EOF
+@end verbatim
+@end smallexample
+
+The resulting @file{prhello.bin} file can be loaded and run with just
+the FFI-enhanced runtime.  The FFI option is not needed.
+
+@smallexample
+@verbatim
+	../microcode/scheme --library ../lib
+	(load "prhello")
+	(hello)
+@end verbatim
+@end smallexample
+
+
+@node GNU Free Documentation License, , Hello World, Top
+@appendix GNU Free Documentation License
+
+@center Version 1.2, November 2002
+
+@display
+Copyright @copyright{} 2000,2001,2002 Free Software Foundation, Inc.
+51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+@end display
+
+@enumerate 0
+@item
+PREAMBLE
+
+The purpose of this License is to make a manual, textbook, or other
+functional and useful document @dfn{free} in the sense of freedom: to
+assure everyone the effective freedom to copy and redistribute it,
+with or without modifying it, either commercially or noncommercially.
+Secondarily, this License preserves for the author and publisher a way
+to get credit for their work, while not being considered responsible
+for modifications made by others.
+
+This License is a kind of ``copyleft'', which means that derivative
+works of the document must themselves be free in the same sense.  It
+complements the GNU General Public License, which is a copyleft
+license designed for free software.
+
+We have designed this License in order to use it for manuals for free
+software, because free software needs free documentation: a free
+program should come with manuals providing the same freedoms that the
+software does.  But this License is not limited to software manuals;
+it can be used for any textual work, regardless of subject matter or
+whether it is published as a printed book.  We recommend this License
+principally for works whose purpose is instruction or reference.
+
+@item
+APPLICABILITY AND DEFINITIONS
+
+This License applies to any manual or other work, in any medium, that
+contains a notice placed by the copyright holder saying it can be
+distributed under the terms of this License.  Such a notice grants a
+world-wide, royalty-free license, unlimited in duration, to use that
+work under the conditions stated herein.  The ``Document'', below,
+refers to any such manual or work.  Any member of the public is a
+licensee, and is addressed as ``you''.  You accept the license if you
+copy, modify or distribute the work in a way requiring permission
+under copyright law.
+
+A ``Modified Version'' of the Document means any work containing the
+Document or a portion of it, either copied verbatim, or with
+modifications and/or translated into another language.
+
+A ``Secondary Section'' is a named appendix or a front-matter section
+of the Document that deals exclusively with the relationship of the
+publishers or authors of the Document to the Document's overall
+subject (or to related matters) and contains nothing that could fall
+directly within that overall subject.  (Thus, if the Document is in
+part a textbook of mathematics, a Secondary Section may not explain
+any mathematics.)  The relationship could be a matter of historical
+connection with the subject or with related matters, or of legal,
+commercial, philosophical, ethical or political position regarding
+them.
+
+The ``Invariant Sections'' are certain Secondary Sections whose titles
+are designated, as being those of Invariant Sections, in the notice
+that says that the Document is released under this License.  If a
+section does not fit the above definition of Secondary then it is not
+allowed to be designated as Invariant.  The Document may contain zero
+Invariant Sections.  If the Document does not identify any Invariant
+Sections then there are none.
+
+The ``Cover Texts'' are certain short passages of text that are listed,
+as Front-Cover Texts or Back-Cover Texts, in the notice that says that
+the Document is released under this License.  A Front-Cover Text may
+be at most 5 words, and a Back-Cover Text may be at most 25 words.
+
+A ``Transparent'' copy of the Document means a machine-readable copy,
+represented in a format whose specification is available to the
+general public, that is suitable for revising the document
+straightforwardly with generic text editors or (for images composed of
+pixels) generic paint programs or (for drawings) some widely available
+drawing editor, and that is suitable for input to text formatters or
+for automatic translation to a variety of formats suitable for input
+to text formatters.  A copy made in an otherwise Transparent file
+format whose markup, or absence of markup, has been arranged to thwart
+or discourage subsequent modification by readers is not Transparent.
+An image format is not Transparent if used for any substantial amount
+of text.  A copy that is not ``Transparent'' is called ``Opaque''.
+
+Examples of suitable formats for Transparent copies include plain
+@sc{ascii} without markup, Texinfo input format, La@TeX{} input
+format, @acronym{SGML} or @acronym{XML} using a publicly available
+@acronym{DTD}, and standard-conforming simple @acronym{HTML},
+PostScript or @acronym{PDF} designed for human modification.  Examples
+of transparent image formats include @acronym{PNG}, @acronym{XCF} and
+@acronym{JPG}.  Opaque formats include proprietary formats that can be
+read and edited only by proprietary word processors, @acronym{SGML} or
+@acronym{XML} for which the @acronym{DTD} and/or processing tools are
+not generally available, and the machine-generated @acronym{HTML},
+PostScript or @acronym{PDF} produced by some word processors for
+output purposes only.
+
+The ``Title Page'' means, for a printed book, the title page itself,
+plus such following pages as are needed to hold, legibly, the material
+this License requires to appear in the title page.  For works in
+formats which do not have any title page as such, ``Title Page'' means
+the text near the most prominent appearance of the work's title,
+preceding the beginning of the body of the text.
+
+A section ``Entitled XYZ'' means a named subunit of the Document whose
+title either is precisely XYZ or contains XYZ in parentheses following
+text that translates XYZ in another language.  (Here XYZ stands for a
+specific section name mentioned below, such as ``Acknowledgements'',
+``Dedications'', ``Endorsements'', or ``History''.)  To ``Preserve the Title''
+of such a section when you modify the Document means that it remains a
+section ``Entitled XYZ'' according to this definition.
+
+The Document may include Warranty Disclaimers next to the notice which
+states that this License applies to the Document.  These Warranty
+Disclaimers are considered to be included by reference in this
+License, but only as regards disclaiming warranties: any other
+implication that these Warranty Disclaimers may have is void and has
+no effect on the meaning of this License.
+
+@item
+VERBATIM COPYING
+
+You may copy and distribute the Document in any medium, either
+commercially or noncommercially, provided that this License, the
+copyright notices, and the license notice saying this License applies
+to the Document are reproduced in all copies, and that you add no other
+conditions whatsoever to those of this License.  You may not use
+technical measures to obstruct or control the reading or further
+copying of the copies you make or distribute.  However, you may accept
+compensation in exchange for copies.  If you distribute a large enough
+number of copies you must also follow the conditions in section 3.
+
+You may also lend copies, under the same conditions stated above, and
+you may publicly display copies.
+
+@item
+COPYING IN QUANTITY
+
+If you publish printed copies (or copies in media that commonly have
+printed covers) of the Document, numbering more than 100, and the
+Document's license notice requires Cover Texts, you must enclose the
+copies in covers that carry, clearly and legibly, all these Cover
+Texts: Front-Cover Texts on the front cover, and Back-Cover Texts on
+the back cover.  Both covers must also clearly and legibly identify
+you as the publisher of these copies.  The front cover must present
+the full title with all words of the title equally prominent and
+visible.  You may add other material on the covers in addition.
+Copying with changes limited to the covers, as long as they preserve
+the title of the Document and satisfy these conditions, can be treated
+as verbatim copying in other respects.
+
+If the required texts for either cover are too voluminous to fit
+legibly, you should put the first ones listed (as many as fit
+reasonably) on the actual cover, and continue the rest onto adjacent
+pages.
+
+If you publish or distribute Opaque copies of the Document numbering
+more than 100, you must either include a machine-readable Transparent
+copy along with each Opaque copy, or state in or with each Opaque copy
+a computer-network location from which the general network-using
+public has access to download using public-standard network protocols
+a complete Transparent copy of the Document, free of added material.
+If you use the latter option, you must take reasonably prudent steps,
+when you begin distribution of Opaque copies in quantity, to ensure
+that this Transparent copy will remain thus accessible at the stated
+location until at least one year after the last time you distribute an
+Opaque copy (directly or through your agents or retailers) of that
+edition to the public.
+
+It is requested, but not required, that you contact the authors of the
+Document well before redistributing any large number of copies, to give
+them a chance to provide you with an updated version of the Document.
+
+@item
+MODIFICATIONS
+
+You may copy and distribute a Modified Version of the Document under
+the conditions of sections 2 and 3 above, provided that you release
+the Modified Version under precisely this License, with the Modified
+Version filling the role of the Document, thus licensing distribution
+and modification of the Modified Version to whoever possesses a copy
+of it.  In addition, you must do these things in the Modified Version:
+
+@enumerate A
+@item
+Use in the Title Page (and on the covers, if any) a title distinct
+from that of the Document, and from those of previous versions
+(which should, if there were any, be listed in the History section
+of the Document).  You may use the same title as a previous version
+if the original publisher of that version gives permission.
+
+@item
+List on the Title Page, as authors, one or more persons or entities
+responsible for authorship of the modifications in the Modified
+Version, together with at least five of the principal authors of the
+Document (all of its principal authors, if it has fewer than five),
+unless they release you from this requirement.
+
+@item
+State on the Title page the name of the publisher of the
+Modified Version, as the publisher.
+
+@item
+Preserve all the copyright notices of the Document.
+
+@item
+Add an appropriate copyright notice for your modifications
+adjacent to the other copyright notices.
+
+@item
+Include, immediately after the copyright notices, a license notice
+giving the public permission to use the Modified Version under the
+terms of this License, in the form shown in the Addendum below.
+
+@item
+Preserve in that license notice the full lists of Invariant Sections
+and required Cover Texts given in the Document's license notice.
+
+@item
+Include an unaltered copy of this License.
+
+@item
+Preserve the section Entitled ``History'', Preserve its Title, and add
+to it an item stating at least the title, year, new authors, and
+publisher of the Modified Version as given on the Title Page.  If
+there is no section Entitled ``History'' in the Document, create one
+stating the title, year, authors, and publisher of the Document as
+given on its Title Page, then add an item describing the Modified
+Version as stated in the previous sentence.
+
+@item
+Preserve the network location, if any, given in the Document for
+public access to a Transparent copy of the Document, and likewise
+the network locations given in the Document for previous versions
+it was based on.  These may be placed in the ``History'' section.
+You may omit a network location for a work that was published at
+least four years before the Document itself, or if the original
+publisher of the version it refers to gives permission.
+
+@item
+For any section Entitled ``Acknowledgements'' or ``Dedications'', Preserve
+the Title of the section, and preserve in the section all the
+substance and tone of each of the contributor acknowledgements and/or
+dedications given therein.
+
+@item
+Preserve all the Invariant Sections of the Document,
+unaltered in their text and in their titles.  Section numbers
+or the equivalent are not considered part of the section titles.
+
+@item
+Delete any section Entitled ``Endorsements''.  Such a section
+may not be included in the Modified Version.
+
+@item
+Do not retitle any existing section to be Entitled ``Endorsements'' or
+to conflict in title with any Invariant Section.
+
+@item
+Preserve any Warranty Disclaimers.
+@end enumerate
+
+If the Modified Version includes new front-matter sections or
+appendices that qualify as Secondary Sections and contain no material
+copied from the Document, you may at your option designate some or all
+of these sections as invariant.  To do this, add their titles to the
+list of Invariant Sections in the Modified Version's license notice.
+These titles must be distinct from any other section titles.
+
+You may add a section Entitled ``Endorsements'', provided it contains
+nothing but endorsements of your Modified Version by various
+parties---for example, statements of peer review or that the text has
+been approved by an organization as the authoritative definition of a
+standard.
+
+You may add a passage of up to five words as a Front-Cover Text, and a
+passage of up to 25 words as a Back-Cover Text, to the end of the list
+of Cover Texts in the Modified Version.  Only one passage of
+Front-Cover Text and one of Back-Cover Text may be added by (or
+through arrangements made by) any one entity.  If the Document already
+includes a cover text for the same cover, previously added by you or
+by arrangement made by the same entity you are acting on behalf of,
+you may not add another; but you may replace the old one, on explicit
+permission from the previous publisher that added the old one.
+
+The author(s) and publisher(s) of the Document do not by this License
+give permission to use their names for publicity for or to assert or
+imply endorsement of any Modified Version.
+
+@item
+COMBINING DOCUMENTS
+
+You may combine the Document with other documents released under this
+License, under the terms defined in section 4 above for modified
+versions, provided that you include in the combination all of the
+Invariant Sections of all of the original documents, unmodified, and
+list them all as Invariant Sections of your combined work in its
+license notice, and that you preserve all their Warranty Disclaimers.
+
+The combined work need only contain one copy of this License, and
+multiple identical Invariant Sections may be replaced with a single
+copy.  If there are multiple Invariant Sections with the same name but
+different contents, make the title of each such section unique by
+adding at the end of it, in parentheses, the name of the original
+author or publisher of that section if known, or else a unique number.
+Make the same adjustment to the section titles in the list of
+Invariant Sections in the license notice of the combined work.
+
+In the combination, you must combine any sections Entitled ``History''
+in the various original documents, forming one section Entitled
+``History''; likewise combine any sections Entitled ``Acknowledgements'',
+and any sections Entitled ``Dedications''.  You must delete all
+sections Entitled ``Endorsements.''
+
+@item
+COLLECTIONS OF DOCUMENTS
+
+You may make a collection consisting of the Document and other documents
+released under this License, and replace the individual copies of this
+License in the various documents with a single copy that is included in
+the collection, provided that you follow the rules of this License for
+verbatim copying of each of the documents in all other respects.
+
+You may extract a single document from such a collection, and distribute
+it individually under this License, provided you insert a copy of this
+License into the extracted document, and follow this License in all
+other respects regarding verbatim copying of that document.
+
+@item
+AGGREGATION WITH INDEPENDENT WORKS
+
+A compilation of the Document or its derivatives with other separate
+and independent documents or works, in or on a volume of a storage or
+distribution medium, is called an ``aggregate'' if the copyright
+resulting from the compilation is not used to limit the legal rights
+of the compilation's users beyond what the individual works permit.
+When the Document is included an aggregate, this License does not
+apply to the other works in the aggregate which are not themselves
+derivative works of the Document.
+
+If the Cover Text requirement of section 3 is applicable to these
+copies of the Document, then if the Document is less than one half of
+the entire aggregate, the Document's Cover Texts may be placed on
+covers that bracket the Document within the aggregate, or the
+electronic equivalent of covers if the Document is in electronic form.
+Otherwise they must appear on printed covers that bracket the whole
+aggregate.
+
+@item
+TRANSLATION
+
+Translation is considered a kind of modification, so you may
+distribute translations of the Document under the terms of section 4.
+Replacing Invariant Sections with translations requires special
+permission from their copyright holders, but you may include
+translations of some or all Invariant Sections in addition to the
+original versions of these Invariant Sections.  You may include a
+translation of this License, and all the license notices in the
+Document, and any Warrany Disclaimers, provided that you also include
+the original English version of this License and the original versions
+of those notices and disclaimers.  In case of a disagreement between
+the translation and the original version of this License or a notice
+or disclaimer, the original version will prevail.
+
+If a section in the Document is Entitled ``Acknowledgements'',
+``Dedications'', or ``History'', the requirement (section 4) to Preserve
+its Title (section 1) will typically require changing the actual
+title.
+
+@item
+TERMINATION
+
+You may not copy, modify, sublicense, or distribute the Document except
+as expressly provided for under this License.  Any other attempt to
+copy, modify, sublicense or distribute the Document is void, and will
+automatically terminate your rights under this License.  However,
+parties who have received copies, or rights, from you under this
+License will not have their licenses terminated so long as such
+parties remain in full compliance.
+
+@item
+FUTURE REVISIONS OF THIS LICENSE
+
+The Free Software Foundation may publish new, revised versions
+of the GNU Free Documentation License from time to time.  Such new
+versions will be similar in spirit to the present version, but may
+differ in detail to address new problems or concerns.  See
+@uref{http://www.gnu.org/copyleft/}.
+
+Each version of the License is given a distinguishing version number.
+If the Document specifies that a particular numbered version of this
+License ``or any later version'' applies to it, you have the option of
+following the terms and conditions either of that specified version or
+of any later version that has been published (not as a draft) by the
+Free Software Foundation.  If the Document does not specify a version
+number of this License, you may choose any version ever published (not
+as a draft) by the Free Software Foundation.
+@end enumerate
+
+@page
+@appendixsec ADDENDUM: How to use this License for your documents
+
+To use this License in a document you have written, include a copy of
+the License in the document and put the following copyright and
+license notices just after the title page:
+
+@smallexample
+@group
+  Copyright (C)  @var{year}  @var{your name}.
+  Permission is granted to copy, distribute and/or modify this document
+  under the terms of the GNU Free Documentation License, Version 1.2
+  or any later version published by the Free Software Foundation;
+  with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+  A copy of the license is included in the section entitled ``GNU
+  Free Documentation License''.
+@end group
+@end smallexample
+
+If you have Invariant Sections, Front-Cover Texts and Back-Cover Texts,
+replace the ``with...Texts.'' line with this:
+
+@smallexample
+@group
+    with the Invariant Sections being @var{list their titles}, with
+    the Front-Cover Texts being @var{list}, and with the Back-Cover Texts
+    being @var{list}.
+@end group
+@end smallexample
+
+If you have Invariant Sections without Cover Texts, or some other
+combination of the three, merge those two alternatives to suit the
+situation.
+
+If your document contains nontrivial examples of program code, we
+recommend releasing these examples in parallel under your choice of
+free software license, such as the GNU General Public License,
+to permit their use in free software.
+
+@bye

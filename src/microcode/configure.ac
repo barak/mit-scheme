@@ -967,7 +967,7 @@ AC_CHECK_FUNC([dlopen],
 	fi
 	])
     ])
-OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld pruxffi"
 AC_DEFINE([UX_DLD_ENABLED], [1],
     [Define to 1 if unix dynamic loading support is enabled.])
 

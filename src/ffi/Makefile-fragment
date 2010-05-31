@@ -1,0 +1,47 @@
+#-*-Makefile-*-
+# ffi/Makefile-fragment
+
+TARGET_DIR = $(AUXDIR)/ffi
+
+install:
+	rm -rf $(DESTDIR)$(TARGET_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
+	$(INSTALL_COM) *.com $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) ffi-*.pkd $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) load.scm $(DESTDIR)$(TARGET_DIR)/.
+
+clean-example:
+	rm -rf prhello-shim.* prhello-types.bin
+	rm -rf prhello-const prhello-const.*
+
+install-example: build-example
+	$(INSTALL_DATA) prhello-types.bin ../lib/.
+	$(INSTALL_DATA) prhello-const.bin ../lib/.
+	$(INSTALL_DATA) prhello-shim.so ../lib/.
+
+build-example: prhello-shim.so prhello-types.bin prhello-const.bin
+
+prhello-shim.so: prhello-shim.o
+	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-2.0`
+
+prhello-shim.o: prhello-shim.c
+	$(CC) -I../lib -Wall -fPIC `pkg-config --cflags gtk+-2.0` -o $@ -c $<
+
+prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
+	(echo "(load-option 'FFI)"; \
+	 echo '(C-generate "prhello" "#include <gtk/gtk.h>")') \
+	| ../microcode/scheme --library ../lib --batch-mode
+
+prhello-const.bin: prhello-const.scm
+	echo '(sf "prhello-const")' | mit-scheme --compiler --batch-mode
+
+prhello-const.scm: prhello-const
+	./prhello-const
+
+prhello-const: prhello-const.o
+	@rm -f $@
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ `pkg-config --libs gtk+-2.0`
+
+prhello-const.o: prhello-const.c
+	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<

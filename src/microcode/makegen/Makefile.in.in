@@ -221,6 +221,9 @@ prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
 tags: TAGS
 TAGS:
 	etags -r '/^DEF[A-Z0-9_]*[ \t]*(\("[^"]+"\|[a-zA-Z_][a-zA-Z0-9_]*\)/' \
+	    *.[ch] */*.[ch]						      \
+	|| etags							      \
+       --regex-C='/^DEF[A-Z0-9_]*[ \t]*\(("[^"]+"|[a-zA-Z_][a-zA-Z0-9_]+)/\1/'\
 	    *.[ch] */*.[ch]
 
 mostlyclean:
@@ -274,6 +277,7 @@ install-auxDATA: $(aux_DATA)
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
+	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

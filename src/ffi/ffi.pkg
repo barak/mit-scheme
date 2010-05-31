@@ -1,0 +1,38 @@
+#| -*-Scheme-*-
+
+FFI System Packaging |#
+
+(global-definitions "../runtime/runtime")
+
+(define-package (ffi)
+  (parent ())
+  (files "ctypes" "cdecls" "syntax")
+  (import (runtime)
+	  ucode-primitive)
+  (import (runtime ffi)
+	  make-alien-function
+	  alien-function/filename)
+  (import (runtime syntax environment)
+	  syntactic-environment->environment)
+  (export ()
+	  c-include
+	  load-c-includes
+	  c-include-noisily?
+	  c->
+	  c->=
+	  c-enum
+	  c-call
+	  c-callback
+	  c-sizeof
+	  c-offset
+	  c-array-loc
+	  c-array-loc!))
+
+(define-package (ffi generator)
+  (parent (ffi))
+  (files "generator")
+  (import (runtime ffi)
+	  alien-function/parameters
+	  alien-function/return-type)
+  (export ()
+	  c-generate))

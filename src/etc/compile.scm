@@ -37,7 +37,7 @@ USA.
   (with-working-directory-pathname "sos"
     (lambda ()
       (load "load")))
-  (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp")))
+  (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp" "ffi")))
 
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
