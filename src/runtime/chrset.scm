@@ -544,7 +544,7 @@ USA.
   (list->string (map integer->char (char-set-members char-set))))
 
 (define (char-set-members char-set)
-  (guarantee-8-bit-char-set char-set 'CHAR-SET-MEMBERS)
+  (guarantee-char-set char-set 'CHAR-SET-MEMBERS)
   (let ((low (%char-set-low char-set)))
     (let loop ((code 0))
       (if (fix:< code #x100)
