@@ -248,6 +248,11 @@ USA.
 (define (report-failure failure port)
   (cond ((failure-property 'CONDITION failure)
 	 => (lambda (p)
+	      (let ((expr (failure-property 'EXPRESSION failure)))
+		(if expr
+		    (begin
+		      (write-expr-property #f expr port)
+		      (write-string " " port))))
 	      (write-string "failed with error: " port)
 	      (write-condition-report (cdr p) port)))
 	((failure-feature 'RESULT failure)
@@ -368,6 +373,10 @@ USA.
 (define-for-tests assert-<= (binary-assertion <=))
 (define-for-tests assert-> (binary-assertion >))
 (define-for-tests assert->= (binary-assertion >=))
+
+(define-for-tests assert-boolean-= (binary-assertion boolean=?))
+(define-for-tests assert-boolean-!=
+  (binary-assertion (lambda (x y) (not (boolean=? x y)))))
 
 (define-for-tests (assert-error thunk condition-types . properties)
   (call-with-current-continuation
