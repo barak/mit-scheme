@@ -169,7 +169,7 @@ USA.
            (string-of-xml-chars? object))))
 
 (define (string-of-xml-chars? string)
-  (for-all-chars-in-string? (alphabet-predicate alphabet:xml-char)
+  (for-all-chars-in-string? (char-set-predicate char-set:xml-char)
                             string
                             0
                             (string-length string)

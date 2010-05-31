@@ -239,18 +239,6 @@ USA.
 (define-integrable (char-in-set? char set)
   (char-set-member? set char))
 
-(define (match-parser-buffer-char-in-alphabet buffer alphabet)
-  (match-char buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-not-in-alphabet buffer alphabet)
-  (match-char-not buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-in-alphabet-no-advance buffer alphabet)
-  (match-char-no-advance buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-not-in-alphabet-no-advance buffer alphabet)
-  (match-char-not-no-advance buffer alphabet char-in-alphabet?))
-
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
        (let ((char

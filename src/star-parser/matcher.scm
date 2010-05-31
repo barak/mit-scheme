@@ -170,7 +170,7 @@ USA.
 							external-bindings
 							internal-bindings))))
 
-(define-matcher-preprocessor '(CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI ALPHABET)
+(define-matcher-preprocessor '(CHAR CHAR-CI NOT-CHAR NOT-CHAR-CI)
   (lambda (expression external-bindings internal-bindings)
     external-bindings internal-bindings
     (check-1-arg expression)
@@ -316,10 +316,6 @@ USA.
 (define-atomic-matcher (char-set char-set)
   `(MATCH-PARSER-BUFFER-CHAR-IN-SET ,*buffer-name*
 				    ,(protect char-set free-names)))
-
-(define-atomic-matcher (alphabet alphabet)
-  `(MATCH-PARSER-BUFFER-CHAR-IN-ALPHABET ,*buffer-name*
-					 ,(protect alphabet free-names)))
 
 (define-atomic-matcher (string string)
   `(MATCH-PARSER-BUFFER-STRING ,*buffer-name* ,(protect string free-names)))

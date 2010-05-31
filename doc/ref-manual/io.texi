@@ -60,7 +60,8 @@ a port that you specify.  The current output port is initially
 @code{console-i/o-port}, but Scheme provides procedures that let you
 change the current output port to be a file or string.
 
-All ports read or write only @acronym{ISO-8859-1} characters.
+Nearly all ports read or write Unicode characters; the exceptions are
+those for which non-Unicode character coding has been specified.
 
 Every port is either an input port, an output port, or both.  The
 following predicates distinguish all of the possible cases.
@@ -1920,10 +1921,7 @@ with buffering and backtracking.  A parser-buffer pointer is a pointer
 into the stream of characters provided by a parser buffer.
 
 Note that all of the procedures defined here consider a parser buffer
-to contain a stream of 8-bit characters in the @acronym{ISO-8859-1}
-character set, except for @code{match-utf8-char-in-alphabet} which
-treats it as a stream of Unicode characters encoded as 8-bit bytes in
-the @acronym{UTF-8} encoding.
+to contain a stream of Unicode characters.
 
 There are several constructors for parser buffers:
 
@@ -2075,15 +2073,6 @@ The @samp{-ci} procedures do case-insensitive matching.
 @deffnx procedure match-parser-buffer-substring-ci-no-advance buffer string start end
 These procedures match the specified substring against @var{buffer}'s
 contents.  The @samp{-ci} procedures do case-insensitive matching.
-@end deffn
-
-@deffn procedure match-utf8-char-in-alphabet buffer alphabet
-This procedure treats @var{buffer}'s contents as @acronym{UTF-8}
-encoded Unicode characters and matches the next such character against
-@var{alphabet}, which must be a Unicode alphabet (@pxref{Unicode}).
-@acronym{UTF-8} represents characters with 1 to 6 bytes, so a
-successful match can move the internal pointer forward by as many as 6
-bytes.
 @end deffn
 
 The remaining procedures provide information that can be used to
@@ -2353,12 +2342,6 @@ The @code{string-ci} expression does case-insensitive matching.
 These expressions match a single character that is a member of a given
 character set.  The @var{expression} operand is a Scheme expression
 that must evaluate to a character set at run time.
-@end deffn
-
-@deffn {matcher expression} alphabet expression
-These expressions match a single character that is a member of a given
-Unicode alphabet (@pxref{Unicode}).  The @var{expression} operand is a
-Scheme expression that must evaluate to an alphabet at run time.
 @end deffn
 
 @deffn {matcher expression} end-of-input

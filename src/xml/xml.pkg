@@ -36,14 +36,14 @@ USA.
   (files "xml-chars")
   (parent (runtime xml))
   (export ()
-	  alphabet:xml-char
+	  char-set:xml-char
 	  char-set:xml-whitespace)
   (export (runtime xml)
-	  alphabet:char-data
-	  alphabet:name-initial
-	  alphabet:name-subsequent
-	  alphabet:ncname-initial
-	  alphabet:ncname-subsequent))
+	  char-set:char-data
+	  char-set:name-initial
+	  char-set:name-subsequent
+	  char-set:ncname-initial
+	  char-set:ncname-subsequent))
 
 (define-package (runtime xml names)
   (files "xml-names")

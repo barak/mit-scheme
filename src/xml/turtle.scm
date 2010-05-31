@@ -161,8 +161,8 @@ USA.
 
 (define match:name
   (*matcher
-   (seq (alphabet alphabet:name-start-char)
-	(* (alphabet alphabet:name-char)))))
+   (seq (char-set char-set:name-start-char)
+	(* (char-set char-set:name-char)))))
 
 (define parse:prefix
   (*parser
@@ -171,8 +171,8 @@ USA.
 
 (define match:prefix-name
   (*matcher
-   (? (seq (alphabet alphabet:prefix-name-start-char)
-	   (* (alphabet alphabet:name-char))))))
+   (? (seq (char-set char-set:prefix-name-start-char)
+	   (* (char-set char-set:name-char))))))
 
 ;;;; Literals
 
@@ -259,7 +259,7 @@ USA.
    (map (lambda (s) (make-rdf-literal s xsd:boolean))
 	(match (alt "true" "false")))))
 
-;;;; Alphabets
+;;;; Character sets
 
 (define char-set:turtle-hex
   (string->char-set "0123456789ABCDEF"))
@@ -277,52 +277,52 @@ USA.
   (char-set-union char-set:turtle-lower
 		  char-set:turtle-digit))
 
-(define alphabet:name-start-char
-  (scalar-values->alphabet
-   '((#x0041 . #x005A)
+(define char-set:name-start-char
+  (scalar-values->char-set
+   '((#x0041 . #x005B)
      #x005F
-     (#x0061 . #x007A)
-     (#x00C0 . #x00D6)
-     (#x00D8 . #x00F6)
-     (#x00F8 . #x02FF)
-     (#x0370 . #x037D)
-     (#x037F . #x1FFF)
-     (#x200C . #x200D)
-     (#x2070 . #x218F)
-     (#x2C00 . #x2FEF)
-     (#x3001 . #xD7FF)
-     (#xF900 . #xFDCF)
-     (#xFDF0 . #xFFFD)
-     (#x10000 . #xEFFFF))))
+     (#x0061 . #x007B)
+     (#x00C0 . #x00D7)
+     (#x00D8 . #x00F7)
+     (#x00F8 . #x0300)
+     (#x0370 . #x037E)
+     (#x037F . #x2000)
+     (#x200C . #x200E)
+     (#x2070 . #x2190)
+     (#x2C00 . #x2FF0)
+     (#x3001 . #xD800)
+     (#xF900 . #xFDD0)
+     (#xFDF0 . #xFFFE)
+     (#x10000 . #xF0000))))
 
-(define alphabet:name-char
-  (alphabet+ alphabet:name-start-char
-	     (scalar-values->alphabet
-	      '(#x002D
-		(#x0030 . #x0039)
-		#x00B7
-		(#x0300 . #x036F)
-		(#x203F . #x2040)))))
+(define char-set:name-char
+  (char-set-union char-set:name-start-char
+		  (scalar-values->char-set
+		   '(#x002D
+		     (#x0030 . #x003A)
+		     #x00B7
+		     (#x0300 . #x0370)
+		     (#x203F . #x2041)))))
 
-(define alphabet:prefix-name-start-char
-  (alphabet- alphabet:name-start-char (alphabet #\_)))
+(define char-set:prefix-name-start-char
+  (char-set-difference char-set:name-start-char (char-set #\_)))
 
-(define alphabet:character
-  (scalar-values->alphabet '((#x20 . #x5B) (#x5D . #x10FFFF))))
+(define char-set:character
+  (scalar-values->char-set '((#x20 . #x5C) (#x5D . #x110000))))
 
-(define alphabet:ucharacter
-  (alphabet- alphabet:character (alphabet #\>)))
+(define char-set:ucharacter
+  (char-set-difference char-set:character (char-set #\>)))
 
-(define alphabet:scharacter
-  (alphabet- alphabet:character (alphabet #\")))
+(define char-set:scharacter
+  (char-set-difference char-set:character (char-set #\")))
 
-(define alphabet:lcharacter
-  (alphabet+ alphabet:character (alphabet #\tab #\newline #\return)))
+(define char-set:lcharacter
+  (char-set-union char-set:character (char-set #\tab #\newline #\return)))
 
 ;;;; Escaped strings
 
 (define (delimited-region-parser name start-delim end-delim
-				 alphabet parse-escapes)
+				 char-set parse-escapes)
   (lambda (buffer)
     (let ((output (open-utf8-output-string))
 	  (start (get-parser-buffer-pointer buffer)))
@@ -334,7 +334,7 @@ USA.
 		   (copy p)
 		   (match-parser-buffer-string buffer end-delim)
 		   (finish))
-		  ((match-parser-buffer-char-in-alphabet buffer alphabet)
+		  ((match-parser-buffer-char-in-set buffer char-set)
 		   (loop))
 		  ((match-parser-buffer-char-no-advance buffer #\\)
 		   (copy p)
@@ -409,21 +409,21 @@ USA.
   (delimited-region-parser "string"
 			   "\""
 			   "\""
-			   alphabet:scharacter
+			   char-set:scharacter
 			   parse:scharacter-escape))
 
 (define parse:long-string
   (delimited-region-parser "long string"
 			   "\"\"\""
 			   "\"\"\""
-			   alphabet:lcharacter
+			   char-set:lcharacter
 			   parse:scharacter-escape))
 
 (define parse:uriref
   (delimited-region-parser "URI reference"
 			   "<"
 			   ">"
-			   alphabet:ucharacter
+			   char-set:ucharacter
 			   parse:ucharacter-escape))
 
 ;;;; Whitespace

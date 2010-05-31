@@ -77,14 +77,14 @@ USA.
 	 (error "Ill-formed regular s-expression:" regsexp))))
 
 (define (%compile-char-set items)
-  (scalar-values->alphabet
+  (scalar-values->char-set
    (append-map (lambda (item)
 		 (cond ((well-formed-scalar-value-range? item)
 			(list item))
 		       ((unicode-char? item)
 			(list (char->integer item)))
-		       ((alphabet? item)
-			(alphabet->scalar-values item))
+		       ((char-set? item)
+			(char-set->scalar-values item))
 		       ((string? item)
 			(map char->integer (string->list item)))
 		       (else
@@ -307,21 +307,21 @@ USA.
 			   (fail)))
 		     (succeed position groups fail)))))))))
 
-(define (insn:char-set alphabet)
+(define (insn:char-set char-set)
   (lambda (succeed)
     (lambda (position groups fail)
       (if (let ((char (next-char position)))
 	    (and char
-		 (char-in-alphabet? char alphabet)))
+		 (char-set-member? char-set char)))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 
-(define (insn:inverse-char-set alphabet)
+(define (insn:inverse-char-set char-set)
   (lambda (succeed)
     (lambda (position groups fail)
       (if (let ((char (next-char position)))
 	    (and char
-		 (not (char-in-alphabet? char alphabet))))
+		 (not (char-set-member? char-set char))))
 	  (succeed (next-position position) groups fail)
 	  (fail)))))
 

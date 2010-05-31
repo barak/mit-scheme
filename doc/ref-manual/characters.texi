@@ -520,10 +520,8 @@ corresponding to @var{code}.
 @cindex set, of characters
 
 MIT/GNU Scheme's character-set abstraction is used to represent groups
-of characters, such as the letters or digits.  Character sets may
-contain only @acronym{ISO-8859-1} characters; use the @dfn{alphabet}
-abstraction (@pxref{Unicode} if you need to cover the entire Unicode
-range.
+of characters, such as the letters or digits.  A character set may
+contain any Unicode character.
 
 @deffn procedure char-set? object
 @cindex type predicate, for character set
@@ -541,8 +539,10 @@ Returns @code{#t} if @var{object} is a character set; otherwise returns
 @defvrx variable char-set:graphic
 @defvrx variable char-set:not-graphic
 @defvrx variable char-set:standard
-These variables contain predefined character sets.
-To see the contents of one of these sets, use @code{char-set-members}.
+These variables contain predefined character sets.  At present, these
+character sets contain only @acronym{ISO-8859-1} characters; in the
+future they will contain all the relevant Unicode characters.  To see
+the contents of one of these sets, use @code{char-set->scalar-values}.
 
 @cindex alphabetic character (defn)
 @cindex character, alphabetic (defn)
@@ -596,10 +596,6 @@ These predicates are defined in terms of the respective character sets
 defined above.
 @end deffn
 
-@deffn procedure char-set-members char-set
-Returns a newly allocated list of the characters in @var{char-set}.
-@end deffn
-
 @deffn procedure char-set-member? char-set char
 Returns @code{#t} if @var{char} is in @var{char-set}; otherwise returns
 @code{#f}.
@@ -612,15 +608,14 @@ exactly the same characters; otherwise returns @code{#f}.
 
 @deffn procedure char-set char @dots{}
 @cindex construction, of character set
-Returns a character set consisting of the specified @acronym{ISO-8859-1}
-characters.  With no arguments, @code{char-set} returns an empty
-character set.
+Returns a character set consisting of the specified characters.  With no
+arguments, @code{char-set} returns an empty character set.
 @end deffn
 
 @deffn procedure chars->char-set chars
 Returns a character set consisting of @var{chars}, which must be a list
-of @acronym{ISO-8859-1} characters.  This is equivalent to @code{(apply
-char-set @var{chars})}.
+of characters.  This is equivalent to @code{(apply char-set
+@var{chars})}.
 @end deffn
 
 @deffn procedure string->char-set string
@@ -628,28 +623,35 @@ Returns a character set consisting of all the characters that occur in
 @var{string}.
 @end deffn
 
-@deffn procedure ascii-range->char-set lower upper
-@var{Lower} and @var{upper} must be exact non-negative integers
-representing @acronym{ISO-8859-1} character codes, and @var{lower} must
-be less than or equal to @var{upper}.  This procedure creates and
-returns a new character set consisting of the characters whose
-@acronym{ISO-8859-1} codes are between @var{lower} (inclusive) and
-@var{upper} (exclusive).
-
-For historical reasons, the name of this procedure refers to
-``@acronym{ASCII}'' rather than ``@acronym{ISO-8859-1}''.
+@deffn procedure scalar-values->char-set items
+Returns a character set containing the scalar values described by
+@var{items}.  @var{Items} must satisfy
+@code{well-formed-scalar-values-list?}.
 @end deffn
 
-@deffn procedure predicate->char-set predicate
-@var{Predicate} must be a procedure of one argument.
-@code{predicate->char-set} creates and returns a character set
-consisting of the @acronym{ISO-8859-1} characters for which
-@var{predicate} is true.
+@deffn procedure char-set->scalar-values char-set
+Returns a well-formed scalar-values list that describes the scalar values
+represented by @var{char-set}.
 @end deffn
 
-@deffn procedure char-set-difference char-set1 char-set2
+@deffn procedure well-formed-scalar-values-list? object
+Returns @code{#t} if @var{object} is a well-formed scalar-values list,
+otherwise returns @code{#f}.  A well-formed scalar-values list is a
+proper list, each element of which is either a unicode scalar value or a
+pair of unicode scalar values.  A pair of scalar values represents a
+contiguous range of scalar values.  The @sc{car} of the pair is the
+inclusive lower limit, and the @sc{cdr} is the exclusive upper limit.
+The lower limit must be strictly less than to the upper limit.
+@end deffn
+
+@deffn procedure char-set-invert char-set
+Returns a character set consisting of the characters that are not in
+@var{char-set}.
+@end deffn
+
+@deffn procedure char-set-difference char-set1 char-set @dots{}
 Returns a character set consisting of the characters that are in
-@var{char-set1} but aren't in @var{char-set2}.
+@var{char-set1} but aren't in any of the @var{char-set}s.
 @end deffn
 
 @deffn procedure char-set-intersection char-set @dots{}
@@ -662,9 +664,31 @@ Returns a character set consisting of the characters that are in at
 least one o the @var{char-set}s.
 @end deffn
 
-@deffn procedure char-set-invert char-set
-Returns a character set consisting of the @acronym{ISO-8859-1}
-characters that are not in @var{char-set}.
+@deffn procedure 8-bit-char-set? char-set
+Returns @code{#t} if @var{char-set} contains only 8-bit scalar values,
+otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure ascii-range->char-set lower upper
+This procedure is obsolete.  Instead use
+
+@example
+(scalar-values->char-set (list (cons @var{lower} @var{upper})))
+@end example
+@end deffn
+
+@deffn procedure char-set-members char-set
+This procedure is obsolete; instead use @code{char-set->scalar-values}.
+
+Returns a newly allocated list of the @acronym{ISO-8859-1} characters in
+@var{char-set}, ignoring any characters outside of that set.
+@end deffn
+
+@deffn procedure predicate->char-set predicate
+@var{Predicate} must be a procedure of one argument.
+@code{predicate->char-set} creates and returns a character set
+consisting of the @acronym{ISO-8859-1} characters for which
+@var{predicate} is true.
 @end deffn
 
 @node Unicode,  , Character Sets, Characters
@@ -703,7 +727,7 @@ if @var{object} is a character with no bucky bits and whose code
 satisfies @code{unicode-scalar-value?}.
 @end deffn
 
-The Unicode implementation consists of three parts:
+The Unicode implementation consists of these parts:
 
 @itemize @bullet
 @item
@@ -714,17 +738,11 @@ that support the full Unicode character set with constant-time access.
 @acronym{I/O} procedures that read and write Unicode characters in
 several external representations, specifically @acronym{UTF-8},
 @acronym{UTF-16}, and @acronym{UTF-32}.
-
-@item
-An @dfn{alphabet} abstraction, which is an efficient implementation of
-sets of Unicode scalar values (similar to the @code{char-set}
-abstraction).
 @end itemize
 
 @menu
 * Wide Strings::                
 * Unicode Representations::     
-* Alphabets::                   
 @end menu
 
 @node Wide Strings, Unicode Representations, Unicode, Unicode
@@ -817,7 +835,7 @@ accumulated output is returned as a wide string.  This is equivalent to:
 @end example
 @end deffn
 
-@node Unicode Representations, Alphabets, Wide Strings, Unicode
+@node Unicode Representations, , Wide Strings, Unicode
 @subsection Unicode Representations
 
 @cindex Unicode external representations
@@ -898,96 +916,4 @@ encoded in the corresponding @samp{utfNN} representation, and returns
 that stream as a byte vector.  The arguments @var{start}
 and @var{end} allow specification of a substring; they default to zero
 and @var{string}'s length, respectively.
-@end deffn
-
-@node Alphabets,  , Unicode Representations, Unicode
-@subsection Alphabets
-
-@cindex Alphabet, Unicode
-Applications often need to manipulate sets of characters, such as the
-set of alphabetic characters or the set of whitespace characters.  The
-@dfn{alphabet} abstraction provides an efficient implementation of
-sets of Unicode scalar values.
-
-@deffn procedure alphabet? object
-Returns @code{#t} if @var{object} is a Unicode alphabet, otherwise
-returns @code{#f}.
-@end deffn
-
-@deffn procedure alphabet unicode-char @dots{}
-Returns a Unicode alphabet containing the Unicode characters passed as
-arguments.
-@end deffn
-
-@deffn procedure scalar-values->alphabet items
-Returns a Unicode alphabet containing the scalar values described by
-@var{items}.  @var{Items} must satisfy
-@code{well-formed-scalar-values-list?}.
-@end deffn
-
-@deffn procedure alphabet->scalar-values alphabet
-Returns a well-formed scalar-values list that describes the scalar values
-represented by @var{alphabet}.
-@end deffn
-
-@deffn procedure well-formed-scalar-values-list? object
-Returns @code{#t} if @var{object} is a well-formed scalar-values list,
-otherwise returns @code{#f}.  A well-formed scalar-values list is a
-proper list, each element of which is either a unicode scalar value or a
-pair of unicode scalar values.  A pair of scalar values represents a
-contiguous range of scalar values.  The @sc{car} of the pair is the
-lower limit, and the @sc{cdr} is the upper limit.  Both limits are
-inclusive, and the lower limit must be less than or equal to the upper
-limit.
-@end deffn
-
-@deffn procedure char-in-alphabet? char alphabet
-Returns @code{#t} if @var{char} is a member of @var{alphabet},
-otherwise returns @code{#f}.
-@end deffn
-
-Character sets and alphabets can be converted to one another, provided
-that the alphabet contains only 8-bit scalar values.  This is true
-because 8-bit scalar values in Unicode map directly to
-@acronym{ISO-8859-1} characters, which is what character sets contain.
-
-@deffn procedure char-set->alphabet char-set
-Returns a Unicode alphabet containing the scalar values that correspond
-to characters that are members of @var{char-set}.
-@end deffn
-
-@deffn procedure alphabet->char-set alphabet
-Returns a character set containing the characters that correspond to
-8-bit scalar values that are members of @var{alphabet}.  (Scalar values
-outside the 8-bit range are ignored.)
-@end deffn
-
-@deffn procedure string->alphabet string
-Returns a Unicode alphabet containing the scalar values corresponding to
-the characters in @var{string}.  Equivalent to
-
-@example
-(char-set->alphabet (string->char-set @var{string}))
-@end example
-@end deffn
-
-@deffn procedure alphabet->string alphabet
-Returns a newly-allocated string containing the characters corresponding
-to the 8-bit scalar values in @var{alphabet}.  (Scalar values outside
-the 8-bit range are ignored.)
-@end deffn
-
-@deffn procedure 8-bit-alphabet? alphabet
-Returns @code{#t} if @var{alphabet} contains only 8-bit scalar values,
-otherwise returns @code{#f}.
-@end deffn
-
-@deffn procedure alphabet+ alphabet @dots{}
-Returns a Unicode alphabet that contains each scalar value that is a
-member of any of the @var{alphabet} arguments.
-@end deffn
-
-@deffn procedure alphabet- alphabet1 alphabet2
-Returns a Unicode alphabet that contains each scalar value that is a
-member of @var{alphabet1} and is not a member of @var{alphabet2}.
 @end deffn

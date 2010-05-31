@@ -108,23 +108,23 @@ USA.
 
 (define (name-matcher initial subsequent)
   (lambda (buffer)
-    (and (match-parser-buffer-char-in-alphabet buffer initial)
+    (and (match-parser-buffer-char-in-set buffer initial)
 	 (let loop ()
-	   (if (match-parser-buffer-char-in-alphabet buffer subsequent)
+	   (if (match-parser-buffer-char-in-set buffer subsequent)
 	       (loop)
 	       #t)))))
 
 (define match-ncname
-  (name-matcher alphabet:ncname-initial
-		alphabet:ncname-subsequent))
+  (name-matcher char-set:ncname-initial
+		char-set:ncname-subsequent))
 
 (define match:xml-name
-  (name-matcher alphabet:name-initial
-		alphabet:name-subsequent))
+  (name-matcher char-set:name-initial
+		char-set:name-subsequent))
 
 (define match:xml-nmtoken
-  (name-matcher alphabet:name-subsequent
-		alphabet:name-subsequent))
+  (name-matcher char-set:name-subsequent
+		char-set:name-subsequent))
 
 (define match:xml-qname
   (*matcher (seq match-ncname (? (seq ":" match-ncname)))))

@@ -27,335 +27,335 @@ USA.
 
 (declare (usual-integrations))
 
-(define alphabet:xml-base-char
-  (scalar-values->alphabet
-   '((#x0041 . #x005A)
-     (#x0061 . #x007A)
-     (#x00C0 . #x00D6)
-     (#x00D8 . #x00F6)
-     (#x00F8 . #x00FF)
-     (#x0100 . #x0131)
-     (#x0134 . #x013E)
-     (#x0141 . #x0148)
-     (#x014A . #x017E)
-     (#x0180 . #x01C3)
-     (#x01CD . #x01F0)
-     (#x01F4 . #x01F5)
-     (#x01FA . #x0217)
-     (#x0250 . #x02A8)
-     (#x02BB . #x02C1)
+(define char-set:xml-base-char
+  (scalar-values->char-set
+   '((#x0041 . #x005B)
+     (#x0061 . #x007B)
+     (#x00C0 . #x00D7)
+     (#x00D8 . #x00F7)
+     (#x00F8 . #x0100)
+     (#x0100 . #x0132)
+     (#x0134 . #x013F)
+     (#x0141 . #x0149)
+     (#x014A . #x017F)
+     (#x0180 . #x01C4)
+     (#x01CD . #x01F1)
+     (#x01F4 . #x01F6)
+     (#x01FA . #x0218)
+     (#x0250 . #x02A9)
+     (#x02BB . #x02C2)
      #x0386
-     (#x0388 . #x038A)
+     (#x0388 . #x038B)
      #x038C
-     (#x038E . #x03A1)
-     (#x03A3 . #x03CE)
-     (#x03D0 . #x03D6)
+     (#x038E . #x03A2)
+     (#x03A3 . #x03CF)
+     (#x03D0 . #x03D7)
      #x03DA
      #x03DC
      #x03DE
      #x03E0
-     (#x03E2 . #x03F3)
-     (#x0401 . #x040C)
-     (#x040E . #x044F)
-     (#x0451 . #x045C)
-     (#x045E . #x0481)
-     (#x0490 . #x04C4)
-     (#x04C7 . #x04C8)
-     (#x04CB . #x04CC)
-     (#x04D0 . #x04EB)
-     (#x04EE . #x04F5)
-     (#x04F8 . #x04F9)
-     (#x0531 . #x0556)
+     (#x03E2 . #x03F4)
+     (#x0401 . #x040D)
+     (#x040E . #x0450)
+     (#x0451 . #x045D)
+     (#x045E . #x0482)
+     (#x0490 . #x04C5)
+     (#x04C7 . #x04C9)
+     (#x04CB . #x04CD)
+     (#x04D0 . #x04EC)
+     (#x04EE . #x04F6)
+     (#x04F8 . #x04FA)
+     (#x0531 . #x0557)
      #x0559
-     (#x0561 . #x0586)
-     (#x05D0 . #x05EA)
-     (#x05F0 . #x05F2)
-     (#x0621 . #x063A)
-     (#x0641 . #x064A)
-     (#x0671 . #x06B7)
-     (#x06BA . #x06BE)
-     (#x06C0 . #x06CE)
-     (#x06D0 . #x06D3)
+     (#x0561 . #x0587)
+     (#x05D0 . #x05EB)
+     (#x05F0 . #x05F3)
+     (#x0621 . #x063B)
+     (#x0641 . #x064B)
+     (#x0671 . #x06B8)
+     (#x06BA . #x06BF)
+     (#x06C0 . #x06CF)
+     (#x06D0 . #x06D4)
      #x06D5
-     (#x06E5 . #x06E6)
-     (#x0905 . #x0939)
+     (#x06E5 . #x06E7)
+     (#x0905 . #x093A)
      #x093D
-     (#x0958 . #x0961)
-     (#x0985 . #x098C)
-     (#x098F . #x0990)
-     (#x0993 . #x09A8)
-     (#x09AA . #x09B0)
+     (#x0958 . #x0962)
+     (#x0985 . #x098D)
+     (#x098F . #x0991)
+     (#x0993 . #x09A9)
+     (#x09AA . #x09B1)
      #x09B2
-     (#x09B6 . #x09B9)
-     (#x09DC . #x09DD)
-     (#x09DF . #x09E1)
-     (#x09F0 . #x09F1)
-     (#x0A05 . #x0A0A)
-     (#x0A0F . #x0A10)
-     (#x0A13 . #x0A28)
-     (#x0A2A . #x0A30)
-     (#x0A32 . #x0A33)
-     (#x0A35 . #x0A36)
-     (#x0A38 . #x0A39)
-     (#x0A59 . #x0A5C)
+     (#x09B6 . #x09BA)
+     (#x09DC . #x09DE)
+     (#x09DF . #x09E2)
+     (#x09F0 . #x09F2)
+     (#x0A05 . #x0A0B)
+     (#x0A0F . #x0A11)
+     (#x0A13 . #x0A29)
+     (#x0A2A . #x0A31)
+     (#x0A32 . #x0A34)
+     (#x0A35 . #x0A37)
+     (#x0A38 . #x0A3A)
+     (#x0A59 . #x0A5D)
      #x0A5E
-     (#x0A72 . #x0A74)
-     (#x0A85 . #x0A8B)
+     (#x0A72 . #x0A75)
+     (#x0A85 . #x0A8C)
      #x0A8D
-     (#x0A8F . #x0A91)
-     (#x0A93 . #x0AA8)
-     (#x0AAA . #x0AB0)
-     (#x0AB2 . #x0AB3)
-     (#x0AB5 . #x0AB9)
+     (#x0A8F . #x0A92)
+     (#x0A93 . #x0AA9)
+     (#x0AAA . #x0AB1)
+     (#x0AB2 . #x0AB4)
+     (#x0AB5 . #x0ABA)
      #x0ABD
      #x0AE0
-     (#x0B05 . #x0B0C)
-     (#x0B0F . #x0B10)
-     (#x0B13 . #x0B28)
-     (#x0B2A . #x0B30)
-     (#x0B32 . #x0B33)
-     (#x0B36 . #x0B39)
+     (#x0B05 . #x0B0D)
+     (#x0B0F . #x0B11)
+     (#x0B13 . #x0B29)
+     (#x0B2A . #x0B31)
+     (#x0B32 . #x0B34)
+     (#x0B36 . #x0B3A)
      #x0B3D
-     (#x0B5C . #x0B5D)
-     (#x0B5F . #x0B61)
-     (#x0B85 . #x0B8A)
-     (#x0B8E . #x0B90)
-     (#x0B92 . #x0B95)
-     (#x0B99 . #x0B9A)
+     (#x0B5C . #x0B5E)
+     (#x0B5F . #x0B62)
+     (#x0B85 . #x0B8B)
+     (#x0B8E . #x0B91)
+     (#x0B92 . #x0B96)
+     (#x0B99 . #x0B9B)
      #x0B9C
-     (#x0B9E . #x0B9F)
-     (#x0BA3 . #x0BA4)
-     (#x0BA8 . #x0BAA)
-     (#x0BAE . #x0BB5)
-     (#x0BB7 . #x0BB9)
-     (#x0C05 . #x0C0C)
-     (#x0C0E . #x0C10)
-     (#x0C12 . #x0C28)
-     (#x0C2A . #x0C33)
-     (#x0C35 . #x0C39)
-     (#x0C60 . #x0C61)
-     (#x0C85 . #x0C8C)
-     (#x0C8E . #x0C90)
-     (#x0C92 . #x0CA8)
-     (#x0CAA . #x0CB3)
-     (#x0CB5 . #x0CB9)
+     (#x0B9E . #x0BA0)
+     (#x0BA3 . #x0BA5)
+     (#x0BA8 . #x0BAB)
+     (#x0BAE . #x0BB6)
+     (#x0BB7 . #x0BBA)
+     (#x0C05 . #x0C0D)
+     (#x0C0E . #x0C11)
+     (#x0C12 . #x0C29)
+     (#x0C2A . #x0C34)
+     (#x0C35 . #x0C3A)
+     (#x0C60 . #x0C62)
+     (#x0C85 . #x0C8D)
+     (#x0C8E . #x0C91)
+     (#x0C92 . #x0CA9)
+     (#x0CAA . #x0CB4)
+     (#x0CB5 . #x0CBA)
      #x0CDE
-     (#x0CE0 . #x0CE1)
-     (#x0D05 . #x0D0C)
-     (#x0D0E . #x0D10)
-     (#x0D12 . #x0D28)
-     (#x0D2A . #x0D39)
-     (#x0D60 . #x0D61)
-     (#x0E01 . #x0E2E)
+     (#x0CE0 . #x0CE2)
+     (#x0D05 . #x0D0D)
+     (#x0D0E . #x0D11)
+     (#x0D12 . #x0D29)
+     (#x0D2A . #x0D3A)
+     (#x0D60 . #x0D62)
+     (#x0E01 . #x0E2F)
      #x0E30
-     (#x0E32 . #x0E33)
-     (#x0E40 . #x0E45)
-     (#x0E81 . #x0E82)
+     (#x0E32 . #x0E34)
+     (#x0E40 . #x0E46)
+     (#x0E81 . #x0E83)
      #x0E84
-     (#x0E87 . #x0E88)
+     (#x0E87 . #x0E89)
      #x0E8A
      #x0E8D
-     (#x0E94 . #x0E97)
-     (#x0E99 . #x0E9F)
-     (#x0EA1 . #x0EA3)
+     (#x0E94 . #x0E98)
+     (#x0E99 . #x0EA0)
+     (#x0EA1 . #x0EA4)
      #x0EA5
      #x0EA7
-     (#x0EAA . #x0EAB)
-     (#x0EAD . #x0EAE)
+     (#x0EAA . #x0EAC)
+     (#x0EAD . #x0EAF)
      #x0EB0
-     (#x0EB2 . #x0EB3)
+     (#x0EB2 . #x0EB4)
      #x0EBD
-     (#x0EC0 . #x0EC4)
-     (#x0F40 . #x0F47)
-     (#x0F49 . #x0F69)
-     (#x10A0 . #x10C5)
-     (#x10D0 . #x10F6)
+     (#x0EC0 . #x0EC5)
+     (#x0F40 . #x0F48)
+     (#x0F49 . #x0F6A)
+     (#x10A0 . #x10C6)
+     (#x10D0 . #x10F7)
      #x1100
-     (#x1102 . #x1103)
-     (#x1105 . #x1107)
+     (#x1102 . #x1104)
+     (#x1105 . #x1108)
      #x1109
-     (#x110B . #x110C)
-     (#x110E . #x1112)
+     (#x110B . #x110D)
+     (#x110E . #x1113)
      #x113C
      #x113E
      #x1140
      #x114C
      #x114E
      #x1150
-     (#x1154 . #x1155)
+     (#x1154 . #x1156)
      #x1159
-     (#x115F . #x1161)
+     (#x115F . #x1162)
      #x1163
      #x1165
      #x1167
      #x1169
-     (#x116D . #x116E)
-     (#x1172 . #x1173)
+     (#x116D . #x116F)
+     (#x1172 . #x1174)
      #x1175
      #x119E
      #x11A8
      #x11AB
-     (#x11AE . #x11AF)
-     (#x11B7 . #x11B8)
+     (#x11AE . #x11B0)
+     (#x11B7 . #x11B9)
      #x11BA
-     (#x11BC . #x11C2)
+     (#x11BC . #x11C3)
      #x11EB
      #x11F0
      #x11F9
-     (#x1E00 . #x1E9B)
-     (#x1EA0 . #x1EF9)
-     (#x1F00 . #x1F15)
-     (#x1F18 . #x1F1D)
-     (#x1F20 . #x1F45)
-     (#x1F48 . #x1F4D)
-     (#x1F50 . #x1F57)
+     (#x1E00 . #x1E9C)
+     (#x1EA0 . #x1EFA)
+     (#x1F00 . #x1F16)
+     (#x1F18 . #x1F1E)
+     (#x1F20 . #x1F46)
+     (#x1F48 . #x1F4E)
+     (#x1F50 . #x1F58)
      #x1F59
      #x1F5B
      #x1F5D
-     (#x1F5F . #x1F7D)
-     (#x1F80 . #x1FB4)
-     (#x1FB6 . #x1FBC)
+     (#x1F5F . #x1F7E)
+     (#x1F80 . #x1FB5)
+     (#x1FB6 . #x1FBD)
      #x1FBE
-     (#x1FC2 . #x1FC4)
-     (#x1FC6 . #x1FCC)
-     (#x1FD0 . #x1FD3)
-     (#x1FD6 . #x1FDB)
-     (#x1FE0 . #x1FEC)
-     (#x1FF2 . #x1FF4)
-     (#x1FF6 . #x1FFC)
+     (#x1FC2 . #x1FC5)
+     (#x1FC6 . #x1FCD)
+     (#x1FD0 . #x1FD4)
+     (#x1FD6 . #x1FDC)
+     (#x1FE0 . #x1FED)
+     (#x1FF2 . #x1FF5)
+     (#x1FF6 . #x1FFD)
      #x2126
-     (#x212A . #x212B)
+     (#x212A . #x212C)
      #x212E
-     (#x2180 . #x2182)
-     (#x3041 . #x3094)
-     (#x30A1 . #x30FA)
-     (#x3105 . #x312C)
-     (#xAC00 . #xD7A3))))
+     (#x2180 . #x2183)
+     (#x3041 . #x3095)
+     (#x30A1 . #x30FB)
+     (#x3105 . #x312D)
+     (#xAC00 . #xD7A4))))
 
-(define alphabet:xml-ideographic
-  (scalar-values->alphabet
+(define char-set:xml-ideographic
+  (scalar-values->char-set
    '(#x3007
-     (#x3021 . #x3029)
-     (#x4E00 . #x9FA5))))
+     (#x3021 . #x302A)
+     (#x4E00 . #x9FA6))))
 
-(define alphabet:xml-combining-char
-  (scalar-values->alphabet
-   '((#x0300 . #x0345)
-     (#x0360 . #x0361)
-     (#x0483 . #x0486)
-     (#x0591 . #x05A1)
-     (#x05A3 . #x05B9)
-     (#x05BB . #x05BD)
+(define char-set:xml-combining-char
+  (scalar-values->char-set
+   '((#x0300 . #x0346)
+     (#x0360 . #x0362)
+     (#x0483 . #x0487)
+     (#x0591 . #x05A2)
+     (#x05A3 . #x05BA)
+     (#x05BB . #x05BE)
      #x05BF
-     (#x05C1 . #x05C2)
+     (#x05C1 . #x05C3)
      #x05C4
-     (#x064B . #x0652)
+     (#x064B . #x0653)
      #x0670
-     (#x06D6 . #x06DC)
-     (#x06DD . #x06DF)
-     (#x06E0 . #x06E4)
-     (#x06E7 . #x06E8)
-     (#x06EA . #x06ED)
-     (#x0901 . #x0903)
+     (#x06D6 . #x06DD)
+     (#x06DD . #x06E0)
+     (#x06E0 . #x06E5)
+     (#x06E7 . #x06E9)
+     (#x06EA . #x06EE)
+     (#x0901 . #x0904)
      #x093C
-     (#x093E . #x094C)
+     (#x093E . #x094D)
      #x094D
-     (#x0951 . #x0954)
-     (#x0962 . #x0963)
-     (#x0981 . #x0983)
+     (#x0951 . #x0955)
+     (#x0962 . #x0964)
+     (#x0981 . #x0984)
      #x09BC
      #x09BE
      #x09BF
-     (#x09C0 . #x09C4)
-     (#x09C7 . #x09C8)
-     (#x09CB . #x09CD)
+     (#x09C0 . #x09C5)
+     (#x09C7 . #x09C9)
+     (#x09CB . #x09CE)
      #x09D7
-     (#x09E2 . #x09E3)
+     (#x09E2 . #x09E4)
      #x0A02
      #x0A3C
      #x0A3E
      #x0A3F
-     (#x0A40 . #x0A42)
-     (#x0A47 . #x0A48)
-     (#x0A4B . #x0A4D)
-     (#x0A70 . #x0A71)
-     (#x0A81 . #x0A83)
+     (#x0A40 . #x0A43)
+     (#x0A47 . #x0A49)
+     (#x0A4B . #x0A4E)
+     (#x0A70 . #x0A72)
+     (#x0A81 . #x0A84)
      #x0ABC
-     (#x0ABE . #x0AC5)
-     (#x0AC7 . #x0AC9)
-     (#x0ACB . #x0ACD)
-     (#x0B01 . #x0B03)
+     (#x0ABE . #x0AC6)
+     (#x0AC7 . #x0ACA)
+     (#x0ACB . #x0ACE)
+     (#x0B01 . #x0B04)
      #x0B3C
-     (#x0B3E . #x0B43)
-     (#x0B47 . #x0B48)
-     (#x0B4B . #x0B4D)
-     (#x0B56 . #x0B57)
-     (#x0B82 . #x0B83)
-     (#x0BBE . #x0BC2)
-     (#x0BC6 . #x0BC8)
-     (#x0BCA . #x0BCD)
+     (#x0B3E . #x0B44)
+     (#x0B47 . #x0B49)
+     (#x0B4B . #x0B4E)
+     (#x0B56 . #x0B58)
+     (#x0B82 . #x0B84)
+     (#x0BBE . #x0BC3)
+     (#x0BC6 . #x0BC9)
+     (#x0BCA . #x0BCE)
      #x0BD7
-     (#x0C01 . #x0C03)
-     (#x0C3E . #x0C44)
-     (#x0C46 . #x0C48)
-     (#x0C4A . #x0C4D)
-     (#x0C55 . #x0C56)
-     (#x0C82 . #x0C83)
-     (#x0CBE . #x0CC4)
-     (#x0CC6 . #x0CC8)
-     (#x0CCA . #x0CCD)
-     (#x0CD5 . #x0CD6)
-     (#x0D02 . #x0D03)
-     (#x0D3E . #x0D43)
-     (#x0D46 . #x0D48)
-     (#x0D4A . #x0D4D)
+     (#x0C01 . #x0C04)
+     (#x0C3E . #x0C45)
+     (#x0C46 . #x0C49)
+     (#x0C4A . #x0C4E)
+     (#x0C55 . #x0C57)
+     (#x0C82 . #x0C84)
+     (#x0CBE . #x0CC5)
+     (#x0CC6 . #x0CC9)
+     (#x0CCA . #x0CCE)
+     (#x0CD5 . #x0CD7)
+     (#x0D02 . #x0D04)
+     (#x0D3E . #x0D44)
+     (#x0D46 . #x0D49)
+     (#x0D4A . #x0D4E)
      #x0D57
      #x0E31
-     (#x0E34 . #x0E3A)
-     (#x0E47 . #x0E4E)
+     (#x0E34 . #x0E3B)
+     (#x0E47 . #x0E4F)
      #x0EB1
-     (#x0EB4 . #x0EB9)
-     (#x0EBB . #x0EBC)
-     (#x0EC8 . #x0ECD)
-     (#x0F18 . #x0F19)
+     (#x0EB4 . #x0EBA)
+     (#x0EBB . #x0EBD)
+     (#x0EC8 . #x0ECE)
+     (#x0F18 . #x0F1A)
      #x0F35
      #x0F37
      #x0F39
      #x0F3E
      #x0F3F
-     (#x0F71 . #x0F84)
-     (#x0F86 . #x0F8B)
-     (#x0F90 . #x0F95)
+     (#x0F71 . #x0F85)
+     (#x0F86 . #x0F8C)
+     (#x0F90 . #x0F96)
      #x0F97
-     (#x0F99 . #x0FAD)
-     (#x0FB1 . #x0FB7)
+     (#x0F99 . #x0FAE)
+     (#x0FB1 . #x0FB8)
      #x0FB9
-     (#x20D0 . #x20DC)
+     (#x20D0 . #x20DD)
      #x20E1
-     (#x302A . #x302F)
+     (#x302A . #x3030)
      #x3099
      #x309A)))
 
-(define alphabet:xml-digit
-  (scalar-values->alphabet
-   '((#x0030 . #x0039)
-     (#x0660 . #x0669)
-     (#x06F0 . #x06F9)
-     (#x0966 . #x096F)
-     (#x09E6 . #x09EF)
-     (#x0A66 . #x0A6F)
-     (#x0AE6 . #x0AEF)
-     (#x0B66 . #x0B6F)
-     (#x0BE7 . #x0BEF)
-     (#x0C66 . #x0C6F)
-     (#x0CE6 . #x0CEF)
-     (#x0D66 . #x0D6F)
-     (#x0E50 . #x0E59)
-     (#x0ED0 . #x0ED9)
-     (#x0F20 . #x0F29))))
+(define char-set:xml-digit
+  (scalar-values->char-set
+   '((#x0030 . #x003A)
+     (#x0660 . #x066A)
+     (#x06F0 . #x06FA)
+     (#x0966 . #x0970)
+     (#x09E6 . #x09F0)
+     (#x0A66 . #x0A70)
+     (#x0AE6 . #x0AF0)
+     (#x0B66 . #x0B70)
+     (#x0BE7 . #x0BF0)
+     (#x0C66 . #x0C70)
+     (#x0CE6 . #x0CF0)
+     (#x0D66 . #x0D70)
+     (#x0E50 . #x0E5A)
+     (#x0ED0 . #x0EDA)
+     (#x0F20 . #x0F2A))))
 
-(define alphabet:xml-extender
-  (scalar-values->alphabet
+(define char-set:xml-extender
+  (scalar-values->char-set
    '(#x00B7
      #x02D0
      #x02D1
@@ -364,43 +364,43 @@ USA.
      #x0E46
      #x0EC6
      #x3005
-     (#x3031 . #x3035)
-     (#x309D . #x309E)
-     (#x30FC . #x30FE))))
+     (#x3031 . #x3036)
+     (#x309D . #x309F)
+     (#x30FC . #x30FF))))
 
-(define alphabet:xml-char
-  (scalar-values->alphabet
+(define char-set:xml-char
+  (scalar-values->char-set
    '(#x0009
      #x000A
      #x000D
-     (#x0020 . #xD7FF)
-     (#xE000 . #xFFFD)
-     (#x10000 . #x10FFFF))))
+     (#x0020 . #xD800)
+     (#xE000 . #xFFFE)
+     (#x10000 . #x110000))))
 
-(define alphabet:char-data
-  (alphabet- alphabet:xml-char
-	     (string->alphabet "<&")))
+(define char-set:char-data
+  (char-set-difference char-set:xml-char
+		       (string->char-set "<&")))
 
-(define alphabet:name-initial
-  (alphabet+ alphabet:xml-base-char
-	     alphabet:xml-ideographic
-	     (string->alphabet "_:")))
+(define char-set:name-initial
+  (char-set-union char-set:xml-base-char
+		  char-set:xml-ideographic
+		  (string->char-set "_:")))
 
-(define alphabet:name-subsequent		;[4]
-  (alphabet+ alphabet:xml-base-char
-	     alphabet:xml-ideographic
-	     alphabet:xml-digit
-	     alphabet:xml-combining-char
-	     alphabet:xml-extender
-	     (string->alphabet ".-_:")))
+(define char-set:name-subsequent		;[4]
+  (char-set-union char-set:xml-base-char
+		  char-set:xml-ideographic
+		  char-set:xml-digit
+		  char-set:xml-combining-char
+		  char-set:xml-extender
+		  (string->char-set ".-_:")))
 
-(define alphabet:ncname-initial
-  (alphabet- alphabet:name-initial
-	     (string->alphabet ":")))
+(define char-set:ncname-initial
+  (char-set-difference char-set:name-initial
+		       (string->char-set ":")))
 
-(define alphabet:ncname-subsequent
-  (alphabet- alphabet:name-subsequent
-	     (string->alphabet ":")))
+(define char-set:ncname-subsequent
+  (char-set-difference char-set:name-subsequent
+		       (string->char-set ":")))
 
 (define char-set:xml-whitespace
   (char-set #\space #\tab #\return #\linefeed))

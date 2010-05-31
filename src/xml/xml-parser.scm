@@ -66,12 +66,12 @@ USA.
 	  (set-cdr! elements (cddr elements)))))
   elements)
 
-(define (string-parser description alphabet)
-  (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
-	(a2 (alphabet- alphabet (string->alphabet "'"))))
+(define (string-parser description char-set)
+  (let ((a1 (char-set-difference char-set (string->char-set "\"")))
+	(a2 (char-set-difference char-set (string->char-set "'"))))
     (*parser
-     (alt (sbracket description "\"" "\"" (match (* (alphabet a1))))
-	  (sbracket description "'" "'" (match (* (alphabet a2))))))))
+     (alt (sbracket description "\"" "\"" (match (* (char-set a1))))
+	  (sbracket description "'" "'" (match (* (char-set a2))))))))
 
 ;;;; Entry points
 
@@ -469,15 +469,15 @@ USA.
 
 (define (bracketed-region-parser description start end)
   (let ((parser
-	 (terminated-region-parser description alphabet:xml-char #t end)))
+	 (terminated-region-parser description char-set:xml-char #t end)))
     (*parser (sbracket description start end parser))))
 
-(define (terminated-region-parser description alphabet must-match? end)
+(define (terminated-region-parser description char-set must-match? end)
   (let ((matcher
-	 (terminated-region-matcher description alphabet must-match? end)))
+	 (terminated-region-matcher description char-set must-match? end)))
     (*parser (map normalize-line-endings (match matcher)))))
 
-(define (terminated-region-matcher description alphabet must-match? . ends)
+(define (terminated-region-matcher description char-set must-match? . ends)
   description
   (lambda (buffer)
     (let loop ()
@@ -485,7 +485,7 @@ USA.
 	       (lambda (end)
 		 (match-parser-buffer-string-no-advance buffer end)))
 	     #t)
-	    ((match-parser-buffer-char-in-alphabet buffer alphabet)
+	    ((match-parser-buffer-char-in-set buffer char-set)
 	     (loop))
 	    (must-match?
 	     (let ((p (get-parser-buffer-pointer buffer))
@@ -498,7 +498,7 @@ USA.
 (define parse-char-data			;[14]
   (let ((parse-body
 	 (terminated-region-parser "character data"
-				   alphabet:char-data
+				   char-set:char-data
 				   #f
 				   "]]>")))
     (*parser
@@ -510,7 +510,7 @@ USA.
 
 (define parse-comment			;[15]
   (let ((parse-body
-	 (terminated-region-parser "comment" alphabet:xml-char #t "--")))
+	 (terminated-region-parser "comment" char-set:xml-char #t "--")))
     (*parser
      (encapsulate
 	 (lambda (v)
@@ -627,7 +627,7 @@ USA.
 	(start "<?")
 	(end "?>"))
     (let ((parse-body
-	   (terminated-region-parser description alphabet:xml-char #t end)))
+	   (terminated-region-parser description char-set:xml-char #t end)))
       (*parser
        (with-pointer p
 	 (transform
@@ -676,7 +676,7 @@ USA.
 	     (if (not (unicode-scalar-value? n))
 		 (perror p "Invalid code point" n))
 	     (let ((char (integer->char n)))
-	       (if (not (char-in-alphabet? char alphabet:xml-char))
+	       (if (not (char-set-member? char-set:xml-char char))
 		   (perror p "Disallowed Unicode character" char))
 	       (call-with-utf8-output-string
 		 (lambda (port)
@@ -774,9 +774,9 @@ USA.
   (attribute-list-parser (*parser (map make-xml-name (match match:xml-name)))
 			 (lambda (a) a)))
 
-(define (attribute-value-parser alphabet parse-reference)
-  (let ((a1 (alphabet- alphabet (string->alphabet "\"")))
-	(a2 (alphabet- alphabet (string->alphabet "'"))))
+(define (attribute-value-parser char-set parse-reference)
+  (let ((a1 (char-set-difference char-set (string->char-set "\"")))
+	(a2 (char-set-difference char-set (string->char-set "'"))))
     (*parser
      (encapsulate (lambda (v)
 		    (let ((elements (coalesce-strings! (vector->list v))))
@@ -784,15 +784,15 @@ USA.
 			  (list "")
 			  elements)))
        (alt (sbracket "attribute value" "\"" "\""
-	      (* (alt (match (+ (alphabet a1)))
+	      (* (alt (match (+ (char-set a1)))
 		      parse-reference)))
 	    (sbracket "attribute value" "'" "'"
-	      (* (alt (match (+ (alphabet a2)))
+	      (* (alt (match (+ (char-set a2)))
 		      parse-reference))))))))
 
 (define parse-entity-value		;[9]
   (attribute-value-parser
-   (alphabet- alphabet:xml-char (string->alphabet "%&"))
+   (char-set-difference char-set:xml-char (string->char-set "%&"))
    (*parser
     (alt parse-char-reference
 	 parse-entity-reference-deferred
@@ -810,7 +810,7 @@ USA.
 
 (define parse-attribute-value		;[10]
   (let ((parser
-	 (attribute-value-parser alphabet:char-data
+	 (attribute-value-parser char-set:char-data
 				 parse-reference-deferred)))
     (*parser
      (map (lambda (elements)
@@ -1275,14 +1275,13 @@ USA.
 		 parse-system-literal))))))
 
 (define parse-system-literal		;[11]
-  (string-parser "system literal" alphabet:xml-char))
+  (string-parser "system literal" char-set:xml-char))
 
 (define parse-public-id-literal		;[12,13]
   (string-parser "public-ID literal"
-		 (char-set->alphabet
-		  (char-set-union
-		   char-set:alphanumeric
-		   (string->char-set " \r\n-'()+,./:=?;!*#@$_%")))))
+		 (char-set-union
+		  char-set:alphanumeric
+		  (string->char-set " \r\n-'()+,./:=?;!*#@$_%"))))
 
 ;;;; External subset
 
@@ -1299,9 +1298,9 @@ USA.
 	   parse-decl-separator))))
 
 (define external-decl-parser
-  (let ((a1 (alphabet- alphabet:xml-char (string->alphabet "%\"'>")))
-	(a2 (alphabet- alphabet:xml-char (string->alphabet "\"")))
-	(a3 (alphabet- alphabet:xml-char (string->alphabet "'"))))
+  (let ((a1 (char-set-difference char-set:xml-char (string->char-set "%\"'>")))
+	(a2 (char-set-difference char-set:xml-char (string->char-set "\"")))
+	(a3 (char-set-difference char-set:xml-char (string->char-set "'"))))
     (lambda (prefix parse-decl)
       (*parser
        (with-pointer p
@@ -1313,9 +1312,9 @@ USA.
 	    (require-success "Malformed markup declaration"
 	      (seq
 	       (* (alt (match
-			(alt (* (alphabet a1))
-			     (seq (char #\") (* (alphabet a2)) (char #\"))
-			     (seq (char #\') (* (alphabet a3)) (char #\'))))
+			(alt (* (char-set a1))
+			     (seq (char #\") (* (char-set a2)) (char #\"))
+			     (seq (char #\') (* (char-set a3)) (char #\'))))
 		       parse-parameter-entity-reference))
 	       (match ">"))))))))))
 
@@ -1395,7 +1394,7 @@ USA.
 		match-!ignore)))))
 
 (define match-!ignore			;[65]
-  (terminated-region-matcher "ignore section" alphabet:xml-char #t
+  (terminated-region-matcher "ignore section" char-set:xml-char #t
 			     conditional-start conditional-end))
 
 (define parse-parameterized-conditional

@@ -580,25 +580,3 @@ USA.
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
   (%scalar-values->char-set (list (cons start (fix:- end 1)))))
-
-(define (char-in-alphabet? char alphabet)
-  (char-set-member? alphabet char))
-
-(define (scalar-values->alphabet items)
-  (scalar-values->char-set
-   (map (lambda (range)
-	  (if (and (pair? range)
-		   (unicode-scalar-value? (car range))
-		   (unicode-scalar-value? (cdr range)))
-	      (cons (car range) (fix:+ (cdr range) 1))
-	      range))
-	items)))
-
-(define (alphabet->scalar-values alphabet)
-  (map (lambda (range)
-	 (if (pair? range)
-	     (set-cdr! range (fix:- (cdr range) 1))))
-       (char-set->scalar-values alphabet)))
-
-(define (char-set->alphabet char-set)
-  char-set)
