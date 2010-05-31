@@ -160,44 +160,6 @@ USA.
       (procedure port)
       (get-output-string! port))))
 
-;;;; Unicode characters
-
-(define (unicode-char? object)
-  (and (char? object)
-       (legal-code-32? (char->integer object))))
-
-(define-guarantee unicode-char "a Unicode character")
-
-(define (unicode-scalar-value? object)
-  (and (index-fixnum? object)
-       (fix:< object char-code-limit)
-       (not (illegal? object))))
-
-(define-guarantee unicode-scalar-value "a Unicode scalar value")
-
-(define-integrable (legal-code-32? pt)
-  (and (fix:< pt char-code-limit)
-       (not (illegal? pt))))
-
-(define-integrable (legal-code-16? pt)
-  (not (illegal? pt)))
-
-(define-integrable (illegal? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
-      (fix:= pt #xFFFE)
-      (fix:= pt #xFFFF)))
-
-#|
-
-Not used at the moment.
-
-(define-integrable (non-character? pt)
-  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
-      (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
-      (fix:= #x00FFFE (fix:and #x00FFFE pt))))
-
-|#
-
 ;;;; Unicode strings
 
 (define-structure (wide-string (type-descriptor <wide-string>)

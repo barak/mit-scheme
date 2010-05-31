@@ -1014,6 +1014,9 @@ USA.
   (files "char")
   (parent (runtime))
   (export ()
+	  (error:not-wide-char error:not-unicode-char)
+	  (guarantee-wide-char guarantee-unicode-char)
+	  (wide-char? unicode-char?)
 	  8-bit-char?
 	  ascii->char
 	  char->ascii
@@ -1051,14 +1054,20 @@ USA.
 	  digit->char
 	  error:not-char
 	  error:not-radix
+	  error:not-unicode-char
+	  error:not-unicode-scalar-value
 	  guarantee-8-bit-char
 	  guarantee-char
 	  guarantee-radix
+	  guarantee-unicode-char
+	  guarantee-unicode-scalar-value
 	  integer->char
 	  make-char
 	  name->char
 	  radix?
-	  set-char-bits)
+	  set-char-bits
+	  unicode-char?
+	  unicode-scalar-value?)
   (export (runtime string)
 	  %char<?
 	  downcase-table
@@ -1066,6 +1075,9 @@ USA.
   (export (runtime parser)
 	  downcase-table
 	  identity-table)
+  (export (runtime unicode)
+	  legal-code-16?
+	  legal-code-32?)
   (initialization (initialize-package!)))
 
 (define-package (runtime character-set)
@@ -5228,9 +5240,6 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
-	  (error:not-wide-char error:not-unicode-char)
-	  (guarantee-wide-char guarantee-unicode-char)
-	  (wide-char? unicode-char?)
 	  (wide-string->utf16-be-string string->utf16-be-string)
 	  (wide-string->utf16-le-string string->utf16-le-string)
 	  (wide-string->utf16-string string->utf16-string)
@@ -5254,8 +5263,6 @@ USA.
 	  call-with-utf8-input-string
 	  call-with-utf8-output-string
 	  combine-utf16-surrogates
-	  error:not-unicode-char
-	  error:not-unicode-scalar-value
 	  error:not-utf16-be-string
 	  error:not-utf16-high-surrogate
 	  error:not-utf16-le-string
@@ -5268,8 +5275,6 @@ USA.
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
-	  guarantee-unicode-char
-	  guarantee-unicode-scalar-value
 	  guarantee-utf16-be-string
 	  guarantee-utf16-high-surrogate
 	  guarantee-utf16-le-string
@@ -5307,8 +5312,6 @@ USA.
 	  string->utf8-string
 	  string->utf8-string
 	  string->wide-string
-	  unicode-char?
-	  unicode-scalar-value?
 	  utf16-be-string->wide-string
 	  utf16-be-string-length
 	  utf16-be-string-valid?
