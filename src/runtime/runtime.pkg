@@ -1084,16 +1084,33 @@ USA.
   (files "chrset")
   (parent (runtime))
   (export ()
+	  (8-bit-alphabet? 8-bit-char-set?)
+	  (<alphabet> <char-set>)
+	  (alphabet char-set)
+	  (alphabet+ char-set-union)
+	  (alphabet- char-set-difference)
+	  (alphabet->string char-set->string)
+	  (alphabet-predicate char-set-predicate)
+	  (alphabet? char-set?)
+	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
+	  (error:not-alphabet error:not-char-set)
+	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
+	  (guarantee-alphabet guarantee-char-set)
+	  (string->alphabet string->char-set)
 	  8-bit-char-set?
 	  <char-set>
+	  alphabet->char-set
+	  alphabet->scalar-values
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
+	  char-in-alphabet?
 	  char-lower-case?
 	  char-numeric?
 	  char-set
+	  char-set->alphabet
 	  char-set->scalar-values
 	  char-set-difference
 	  char-set-intersection
@@ -1138,6 +1155,7 @@ USA.
 	  guarantee-well-formed-scalar-value-list
 	  guarantee-well-formed-scalar-value-range
 	  scalar-value-in-char-set?
+	  scalar-values->alphabet
 	  scalar-values->char-set
 	  string->char-set
 	  well-formed-scalar-value-list?
@@ -5170,6 +5188,14 @@ USA.
   (files "parser-buffer")
   (parent (runtime))
   (export ()
+	  (match-parser-buffer-char-in-alphabet match-parser-buffer-char-in-set)
+	  (match-parser-buffer-char-in-alphabet-no-advance
+	   match-parser-buffer-char-in-set-no-advance)
+	  (match-parser-buffer-char-not-in-alphabet
+	   match-parser-buffer-char-not-in-set)
+	  (match-parser-buffer-char-not-in-alphabet-no-advance
+	   match-parser-buffer-char-not-in-set-no-advance)
+	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-set)
 	  *match-string
 	  *match-symbol
 	  *match-utf8-string
@@ -5186,12 +5212,9 @@ USA.
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
 	  match-parser-buffer-char-ci-no-advance
-	  
-	  
 	  match-parser-buffer-char-in-set
 	  match-parser-buffer-char-in-set-no-advance
 	  match-parser-buffer-char-no-advance
-	  
 	  match-parser-buffer-char-not-in-set
 	  match-parser-buffer-char-not-in-set-no-advance
 	  match-parser-buffer-not-char

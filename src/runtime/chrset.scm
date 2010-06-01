@@ -85,6 +85,17 @@ USA.
 
 (define %null-char-set
   (%make-char-set (%make-low 0) '#()))
+
+(define (8-bit-char-set? char-set)
+  (and (char-set? char-set)
+       (fix:= (vector-length (%char-set-high char-set)) 0)
+       (let ((low (%char-set-low char-set)))
+	 (let loop ((i #x20))
+	   (or (fix:= i %low-length)
+	       (and (fix:= (vector-8b-ref low i) 0)
+		    (loop (fix:+ i 1))))))))
+
+(define-guarantee 8-bit-char-set "an 8-bit char-set")
 
 ;;;; Conversion to and from scalar-values list
 
@@ -95,7 +106,7 @@ USA.
   (if (pair? range)
       (and (index-fixnum? (car range))
 	   (index-fixnum? (cdr range))
-	   (fix:< (car range) (cdr range))
+	   (fix:<= (car range) (cdr range))
 	   (fix:<= (cdr range) char-code-limit))
       (and (index-fixnum? range)
 	   (fix:< range char-code-limit))))
@@ -302,19 +313,6 @@ USA.
 	       (and (fix:= (vector-ref h1 i) (vector-ref h2 i))
 		    (loop (fix:+ i 1)))
 	       #t)))))
-
-;;;; 8-bit character sets
-
-(define (8-bit-char-set? char-set)
-  (and (char-set? char-set)
-       (fix:= (vector-length (%char-set-high char-set)) 0)
-       (let ((low (%char-set-low char-set)))
-	 (let loop ((i #x20))
-	   (or (fix:= i %low-length)
-	       (and (fix:= (vector-8b-ref low i) 0)
-		    (loop (fix:+ i 1))))))))
-
-(define-guarantee 8-bit-char-set "an 8-bit char-set")
 
 ;;;; Mapping operations
 
@@ -579,3 +577,33 @@ USA.
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
   (%scalar-values->char-set (list (cons start (fix:- end 1)))))
+
+(define (alphabet->char-set char-set)
+  char-set)
+
+(define (char-set->alphabet char-set)
+  char-set)
+
+(define (char-in-alphabet? char char-set)
+  (char-set-member? char-set char))
+
+(define (alphabet->scalar-values char-set)
+  (map (lambda (range)
+	 (if (pair? range)
+	     (cons (car range)
+		   (fix:- (cdr range) 1))
+	     range))
+       (char-set->scalar-values char-set)))
+
+(define (scalar-values->alphabet ranges)
+  (guarantee-well-formed-scalar-value-list ranges 'SCALAR-VALUES->ALPHABET)
+  (%scalar-values->char-set
+   (map (lambda (range)
+	  (if (pair? range)
+	      (cons (car range)
+		    (if (fix:< (cdr range) char-code-limit)
+			(fix:+ (cdr range) 1)
+			(error:bad-range-argument (cdr range)
+						  'SCALAR-VALUES->ALPHABET)))
+	      range))
+	ranges)))

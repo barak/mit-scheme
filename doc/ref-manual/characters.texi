@@ -641,7 +641,7 @@ proper list, each element of which is either a Unicode scalar value or
 a pair of Unicode scalar values.  A pair of Unicode scalar values
 represents a contiguous range of Unicode scalar values.  The @sc{car}
 of the pair is the inclusive lower limit, and the @sc{cdr} is the
-exclusive upper limit.  The lower limit must be strictly less than to
+exclusive upper limit.  The lower limit must be less than or equal to
 the upper limit.
 @end deffn
 
