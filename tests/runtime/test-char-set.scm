@@ -71,7 +71,7 @@ USA.
 	    (let ((m (random modulus)))
 	      (if (= m 0)
 		  n
-		  (cons n (+ n m 1))))))))))
+		  (cons n (+ n m))))))))))
 
 (define-test 'membership
   (lambda ()
