@@ -9,7 +9,7 @@ install:
 	$(INSTALL_COM) *.com $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) ffi-*.pkd $(DESTDIR)$(TARGET_DIR)/.
-	$(INSTALL_DATA) load.scm $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) make.scm $(DESTDIR)$(TARGET_DIR)/.
 
 clean-example:
 	rm -rf prhello-shim.* prhello-types.bin
