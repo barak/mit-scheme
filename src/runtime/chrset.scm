@@ -204,9 +204,14 @@ USA.
     high))
 
 (define (%canonicalize-scalar-value-list ranges)
-  ;; Sort ranges in order, then merge adjacent ranges.
+  ;; Sort ranges in order, delete empty ranges, then merge adjacent
+  ;; ranges.
   (if (pair? ranges)
-      (let ((ranges (sort ranges %range<?)))
+      (let ((ranges
+	     (filter! (lambda (range)
+			(fix:< (%range-start range)
+			       (%range-end range)))
+		      (sort ranges %range<?))))
 	(let loop
 	    ((start1 (%range-start (car ranges)))
 	     (end1 (%range-end (car ranges)))
