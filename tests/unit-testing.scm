@@ -273,17 +273,20 @@ USA.
 
 ;;;; Assertions
 
-(define-for-tests (run-sub-test thunk)
+(define-for-tests (run-sub-test thunk . properties)
   (call-with-current-continuation
    (lambda (k)
      (bind-condition-handlers
       (list condition-type:failure
 	    (lambda (condition)
-	      (k (access-condition condition 'FAILURE)))
+	      (k (extend-failure (condition-failure condition)
+				 properties)))
 	    condition-type:error
 	    (lambda (condition)
 	      (if (not throw-test-errors?)
-		  (k (make-failure 'CONDITION condition)))))
+		  (k (apply make-failure
+			    'CONDITION condition
+			    properties)))))
       (lambda ()
 	(thunk)
 	#f)))))
