@@ -340,7 +340,7 @@ USA.
   (lambda (points)
     (let loop ((points points))
       (if (pair? points)
-	  (append! (mapper (car points) (cdr points))
+	  (append! (mapper (car points) points)
 		   (loop (cdr points)))
 	  '()))))
 
