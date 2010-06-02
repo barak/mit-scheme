@@ -69,7 +69,7 @@ USA.
 	(let loop ()
 	  (let ((n (random (- char-code-limit modulus))))
 	    (let ((m (random modulus)))
-	      (if (= m 0)
+	      (if (= m 1)
 		  n
 		  (cons n (+ n m))))))))))
 
