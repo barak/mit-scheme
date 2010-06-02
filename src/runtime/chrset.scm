@@ -260,7 +260,7 @@ USA.
 
 (define (char-set-member? char-set char)
   (guarantee-char-set char-set 'CHAR-SET-MEMBER?)
-  (guarantee-unicode-char char 'CHAR-SET-MEMBER?)
+  (guarantee-char char 'CHAR-SET-MEMBER?)
   (%scalar-value-in-char-set? (char-code char) char-set))
 
 (define (scalar-value-in-char-set? scalar-value char-set)
@@ -559,12 +559,12 @@ USA.
 
 (define (char-set . chars)
   (for-each (lambda (char)
-	      (guarantee-unicode-char char 'CHAR-SET))
+	      (guarantee-char char 'CHAR-SET))
 	    chars)
   (%scalar-values->char-set (map char->integer chars)))
 
 (define (chars->char-set chars)
-  (guarantee-list-of-type chars unicode-char? "character" 'CHARS->CHAR-SET)
+  (guarantee-list-of-type chars char? "character" 'CHARS->CHAR-SET)
   (%scalar-values->char-set (map char->integer chars)))
 
 (define (ascii-range->char-set start end)
