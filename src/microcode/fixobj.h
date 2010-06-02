@@ -191,7 +191,7 @@ USA.
   /* 0x3E */	"pc-sample/ufo-table",					\
   /* 0x3F */	"compiled-code-bkpt-handler",				\
   /* 0x40 */	"gc-wabbit-descwiptor",					\
-  /* 0x41 */	0,							\
+  /* 0x41 */	"callback-handler",					\
   /* 0x42 */	0,							\
   /* 0x43 */	0,							\
   /* 0x44 */	0,							\
