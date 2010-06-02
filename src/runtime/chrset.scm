@@ -206,12 +206,12 @@ USA.
 (define (%canonicalize-scalar-value-list ranges)
   ;; Sort ranges in order, delete empty ranges, then merge adjacent
   ;; ranges.
-  (if (pair? ranges)
-      (let ((ranges
-	     (filter! (lambda (range)
-			(fix:< (%range-start range)
-			       (%range-end range)))
-		      (sort ranges %range<?))))
+  (let ((ranges
+	 (filter! (lambda (range)
+		    (fix:< (%range-start range)
+			   (%range-end range)))
+		  (sort ranges %range<?))))
+    (if (pair? ranges)
 	(let loop
 	    ((start1 (%range-start (car ranges)))
 	     (end1 (%range-end (car ranges)))
@@ -233,8 +233,8 @@ USA.
 			  result)))
 	      (reverse!
 	       (cons (%make-range start1 end1)
-		     result)))))
-      ranges))
+		     result))))
+	ranges)))
 
 (define (%range<? range1 range2)
   (or (fix:< (%range-start range1)
