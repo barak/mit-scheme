@@ -92,6 +92,9 @@ USA.
 (define-load-option 'CREF
   (guarded-system-loader '(cross-reference) "cref"))
 
+(define-load-option 'FFI
+  (guarded-system-loader '(ffi) "ffi"))
+
 (define-load-option 'IMAIL
   (guarded-system-loader '(edwin imail) "imail"))
 

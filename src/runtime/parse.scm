@@ -217,7 +217,7 @@ USA.
       (if (eof-object? char)
 	  char
 	  (case char
-	    ((#\newline) unspecific)
+	    ((#\newline) continue-parsing)
 	    ((#\-) (dash))
 	    (else (scan))))))
 
@@ -226,16 +226,17 @@ USA.
       (if (eof-object? char)
 	  char
 	  (case char
-	    ((#\newline) unspecific)
+	    ((#\newline) continue-parsing)
 	    ((#\*)
 	     (let ((char (%read-char port db)))
 	       (if (eof-object? char)
 		   char
 		   (case char
-		     ((#\newline) unspecific)
+		     ((#\newline) continue-parsing)
 		     ((#\-)
 		      (process-file-attributes
-		       (parse-file-attributes-line port db false) port)
+		       (parse-file-attributes-line port db false)
+		       port)
 		      (discard restart-parsing))
 		     (else (scan))))))
 	    ((#\-) (dash))
@@ -255,8 +256,7 @@ USA.
       (scan)
       (discard continue-parsing)))
 
-(define (handler:multi-line-comment
-	 port db ctx char1 char2)
+(define (handler:multi-line-comment port db ctx char1 char2)
   (declare (ignore ctx char1 char2))
   ;; In addition to parsing out the multi-line-comment, we want to
   ;; extract out the file attribute line if it exists in the first
@@ -288,7 +288,7 @@ USA.
   (define (vbar)
     (case (%read-char/no-eof port db)
       ((#\newline) (discard 0 continue-parsing))
-      ((#\#) unspecific)		; end of comment
+      ((#\#) continue-parsing)		; end of comment
       ((#\-) (dash))
       ((#\|) (vbar))
       (else (scan))))
@@ -338,7 +338,9 @@ USA.
 
   ;; Start the machine.
   ;; If we're past the second line, just discard.
-  (if (and (< (current-line port db) 2)
+  (if (and (let ((line (current-line port db)))
+	     (and line
+		  (< line 2)))
 	   (db-enable-file-attributes-parsing db))
       (scan)
       (discard 0 continue-parsing)))

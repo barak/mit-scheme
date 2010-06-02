@@ -1,0 +1,42 @@
+#| -*-Scheme-*-
+
+Syntax the FFI system. |#
+
+(load-option 'CREF)
+
+;; Temporary hack, until (runtime ffi) is in the released version.
+(if (not (name->package '(RUNTIME FFI)))
+    (let ((path (package-set-pathname "../runtime/runtime")))
+      (if (not (file-exists? path))
+	  (cref/generate-trivial-constructor "../runtime/runtime"))
+      (eval `(for-each-vector-element
+	      (package-file/descriptions (fasload ,path))
+	      (lambda (description)
+		(if (equal? (package-description/name description) '(RUNTIME FFI))
+		    (begin
+		      (construct-normal-package-from-description description)
+		      (create-links-from-description description)
+		      (load "../runtime/ffi" (->environment '(RUNTIME FFI))
+			    'ignored #t)))))
+	    (->environment '(PACKAGE)))))
+
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    (let ((ffi-files '("ctypes" "cdecls" "syntax" "generator")))
+
+      ;; Build an empty package for use at syntax-time.
+      ;; The imports should bind esp. ucode-primitive in (ffi).
+      (if (not (name->package '(FFI)))
+	  (let ((path (package-set-pathname "ffi")))
+	    (if (not (file-exists? path))
+		(cref/generate-trivial-constructor "ffi"))
+	    (construct-packages-from-file (fasload path))))
+
+      ;; Syntax everything in (ffi).
+      (fluid-let ((sf/default-syntax-table (->environment '(ffi)))
+		  (sf/default-declarations
+		   (cons '(usual-integrations) sf/default-declarations)))
+	(for-each (lambda (f) (sf-conditionally f #t)) ffi-files))
+
+      ;; Cross-check.
+      (cref/generate-constructors "ffi" 'ALL))))

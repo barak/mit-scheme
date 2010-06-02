@@ -3087,6 +3087,44 @@ USA.
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
 
+(define-package (runtime ffi)
+  (parent (runtime))
+  (files "ffi")
+  (export ()
+	  make-alien
+	  copy-alien
+	  alien/ctype
+	  set-alien/ctype!
+	  alien?
+	  alien-null?
+	  alien-null!
+	  alien/address-string
+	  null-alien
+	  alien=?
+	  alien-hash
+	  copy-alien-address!
+	  alien-function?
+	  alien-function/name
+	  alien-byte-increment
+	  alien-byte-increment!
+	  guarantee-alien
+	  c-peek-cstring
+	  c-peek-cstring!
+	  c-peek-cstringp
+	  c-peek-cstringp!
+	  c-poke-pointer
+	  c-poke-pointer!
+	  c-poke-string
+	  c-poke-string!
+	  c-enum-name
+	  call-alien
+	  malloc
+	  free
+	  register-c-callback
+	  de-register-c-callback
+	  outf-console)
+  (initialization (initialize-package!)))
+
 (define-package (runtime program-copier)
   (files "prgcop")
   (parent (runtime))

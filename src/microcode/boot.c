@@ -60,6 +60,7 @@ const char * scheme_program_name;
 const char * OS_Name;
 const char * OS_Variant;
 struct obstack scratch_obstack;
+struct obstack ffi_obstack;
 void * initial_C_stack_pointer;
 static char * reload_saved_string;
 static unsigned int reload_saved_string_length;
@@ -107,6 +108,7 @@ main_name (int argc, const char ** argv)
   OS2_initialize_early ();
 #endif
   obstack_init (&scratch_obstack);
+  obstack_init (&ffi_obstack);
   dstack_initialize ();
   transaction_initialize ();
   reload_saved_string = 0;
@@ -202,7 +204,7 @@ start_scheme (void)
 static void
 Do_Enter_Interpreter (void)
 {
-  Interpret ();
+  Interpret (0);
   outf_fatal ("\nThe interpreter returned to top level!\n");
   Microcode_Termination (TERM_EXIT);
 }
@@ -218,7 +220,7 @@ Enter_Interpreter (void)
 SCHEME_OBJECT
 Re_Enter_Interpreter (void)
 {
-  Interpret ();
+  Interpret (0);
   return (GET_VAL);
 }
 

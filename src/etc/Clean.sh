@@ -82,6 +82,7 @@ if [ ${MAINTAINER} = yes ]; then
 	maybe_rm Makefile.in
 	maybe_rm Makefile-bundle
     fi
+    maybe_rm TAGS
 fi
 
 for KEYWORD in ${KEYWORDS}; do
