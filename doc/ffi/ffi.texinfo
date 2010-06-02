@@ -64,7 +64,7 @@ Software Foundation raise funds for GNU development.''
 * Callbacks:: Generate callback trampolines and get interrupted by them.
 * Compiling and Linking:: Build and install the shim.
 * Hello World:: A short example.
-* GNU Free Documentation License::  
+* GNU Free Documentation License::
 @end menu
 
 
@@ -212,7 +212,7 @@ address, and a ``user data'' argument.  When the toolkit calls the
 trampoline, it must provide the fixnum-sized user data as an argument.
 
 @smallexample
-(C-call "g_signal_connect" window "delete_event" 
+(C-call "g_signal_connect" window "delete_event"
         (C-callback "delete_event")     ; @r{@i{e.g. &Scm_delete_event}}
         (C-callback                     ; @r{@i{e.g. 314}}
           (lambda (window event)
@@ -582,7 +582,7 @@ callback was registered.  For example, a callback trampoline named
 The callback might be registered with the toolkit like this:
 
 @smallexample
-(C-call "g_signal_connect" window "delete_event" 
+(C-call "g_signal_connect" window "delete_event"
         (C-callback "delete_event")     ; @r{@i{e.g. &Scm_delete_event}}
         (C-callback                     ; @r{@i{e.g. 314}}
           (lambda (window event)
