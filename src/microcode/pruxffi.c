@@ -33,188 +33,102 @@ USA.
 
 /* Alien Addresses */
 
-#define HALF_WORD_SHIFT ((sizeof (void*) * CHAR_BIT) / 2)
-#define HALF_WORD_MASK ((1 << HALF_WORD_SHIFT) - 1)
+#define HALF_WORD_SHIFT ((sizeof (void *) * CHAR_BIT) / 2UL)
+#define HALF_WORD_MASK ((1UL << HALF_WORD_SHIFT) - 1UL)
 #define ARG_RECORD(argument_number)					\
   ((RECORD_P (ARG_REF (argument_number)))				\
    ? (ARG_REF (argument_number))					\
-   : ((error_wrong_type_arg (argument_number)), ((SCM) 0)))
+   : ((error_wrong_type_arg (argument_number)), 0))
 
 int
 is_alien (SCM alien)
 {
-  if (RECORD_P (alien) && VECTOR_LENGTH (alien) == 4)
+  if ((RECORD_P (alien)) && ((VECTOR_LENGTH (alien)) == 4))
     {
-      SCM high = VECTOR_REF (alien, 1);
-      SCM low  = VECTOR_REF (alien, 2);
-      if (UNSIGNED_FIXNUM_P (high) && UNSIGNED_FIXNUM_P (low))
+      SCM high = (VECTOR_REF (alien, 1));
+      SCM low  = (VECTOR_REF (alien, 2));
+      if ((UNSIGNED_FIXNUM_P (high)) && (UNSIGNED_FIXNUM_P (low)))
 	return (1);
     }
   return (0);
 }
 
-void*
+void *
 alien_address (SCM alien)
 {
-  ulong high = FIXNUM_TO_ULONG (VECTOR_REF (alien, 1));
-  ulong low = FIXNUM_TO_ULONG (VECTOR_REF (alien, 2));
-  return (void*)((high << HALF_WORD_SHIFT) + low);
+  unsigned long high = (FIXNUM_TO_ULONG (VECTOR_REF (alien, 1)));
+  unsigned long low = (FIXNUM_TO_ULONG (VECTOR_REF (alien, 2)));
+  return ((void *) ((high << HALF_WORD_SHIFT) + low));
 }
 
 void
-set_alien_address (SCM alien, const void* ptr)
+set_alien_address (SCM alien, const void * ptr)
 {
-  ulong addr = (ulong) ptr;
-  VECTOR_SET (alien, 1, ULONG_TO_FIXNUM (addr >> HALF_WORD_SHIFT));
-  VECTOR_SET (alien, 2, ULONG_TO_FIXNUM (addr & HALF_WORD_MASK));
+  unsigned long addr = ((unsigned long) ptr);
+  VECTOR_SET (alien, 1, (ULONG_TO_FIXNUM (addr >> HALF_WORD_SHIFT)));
+  VECTOR_SET (alien, 2, (ULONG_TO_FIXNUM (addr & HALF_WORD_MASK)));
 }
 
 SCM
 arg_alien (int argn)
 {
-  SCM alien = ARG_REF (argn);
+  SCM alien = (ARG_REF (argn));
   if (is_alien (alien))
     return (alien);
   error_wrong_type_arg (argn);
-  /* NOTREACHED */
-  return ((SCM)0);
+  return (0);
 }
 
-void*
+void *
 arg_address (int argn)
 {
   SCM alien = ARG_REF (argn);
   if (is_alien (alien))
     return (alien_address (alien));
   error_wrong_type_arg (argn);
-  /* NOTREACHED */
-  return ((SCM)0);
+  return (0);
 }
 
+#define C_PEEKER(type_to_object, type)					\
+{									\
+  PRIMITIVE_HEADER (2);							\
+  PRIMITIVE_RETURN							\
+    (type_to_object							\
+     (* (((type *) (arg_address (1)))					\
+	 + (UNSIGNED_FIXNUM_ARG (2)))));				\
+}
 
 /* Peek the Basic Types */
 
 DEFINE_PRIMITIVE ("C-PEEK-CHAR", Prim_peek_char, 2, 2, 0)
-{
-  /* Return the C char at the address ALIEN+OFFSET. */
-
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char* ptr = (char*)(addr+offset);
-    char value = *ptr;
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM ((long)value));
-  }
-}
+  C_PEEKER(LONG_TO_FIXNUM, char)
 
 DEFINE_PRIMITIVE ("C-PEEK-UCHAR", Prim_peek_uchar, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    unsigned char * ptr = (unsigned char*)(addr+offset);
-    unsigned char value = *ptr;
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM ((ulong)value));
-  }
-}
+  C_PEEKER(LONG_TO_FIXNUM, unsigned char)
 
 DEFINE_PRIMITIVE ("C-PEEK-SHORT", Prim_peek_short, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    short* ptr = (short*)(addr+offset);
-    short value = *ptr;
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM ((long)value));
-  }
-}
+  C_PEEKER(LONG_TO_FIXNUM, short)
 
 DEFINE_PRIMITIVE ("C-PEEK-USHORT", Prim_peek_ushort, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    ushort* ptr = (ushort*)(addr+offset);
-    ushort value = *ptr;
-    PRIMITIVE_RETURN (LONG_TO_FIXNUM ((ulong)value));
-  }
-}
+  C_PEEKER(LONG_TO_FIXNUM, unsigned short)
 
 DEFINE_PRIMITIVE ("C-PEEK-INT", Prim_peek_int, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    int* ptr = (int*)(addr+offset);
-    int value = *ptr;
-    PRIMITIVE_RETURN (long_to_integer ((long)value));
-  }
-}
+  C_PEEKER(long_to_integer, int)
 
 DEFINE_PRIMITIVE ("C-PEEK-UINT", Prim_peek_uint, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    uint* ptr = (uint*)(addr+offset);
-    uint value = *ptr;
-    PRIMITIVE_RETURN (ulong_to_integer ((ulong)value));
-  }
-}
+  C_PEEKER(ulong_to_integer, unsigned int)
 
 DEFINE_PRIMITIVE ("C-PEEK-LONG", Prim_peek_long, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    long* ptr = (long*)(addr+offset);
-    long value = *ptr;
-    PRIMITIVE_RETURN (long_to_integer (value));
-  }
-}
+  C_PEEKER(long_to_integer, long)
 
 DEFINE_PRIMITIVE ("C-PEEK-ULONG", Prim_peek_ulong, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    ulong* ptr = (ulong*)(addr+offset);
-    ulong value = *ptr;
-    PRIMITIVE_RETURN (ulong_to_integer (value));
-  }
-}
+  C_PEEKER(ulong_to_integer, unsigned long)
 
 DEFINE_PRIMITIVE ("C-PEEK-FLOAT", Prim_peek_float, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    float* ptr = (float*)(addr+offset);
-    float value = *ptr;
-    PRIMITIVE_RETURN (double_to_flonum ((double)value));
-  }
-}
+  C_PEEKER(double_to_flonum, float)
 
 DEFINE_PRIMITIVE ("C-PEEK-DOUBLE", Prim_peek_double, 2, 2, 0)
-{
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    double* ptr = (double*)(addr+offset);
-    double value = *ptr;
-    PRIMITIVE_RETURN (double_to_flonum (value));
-  }
-}
+  C_PEEKER(double_to_flonum, double)
 
 DEFINE_PRIMITIVE ("C-PEEK-POINTER", Prim_peek_pointer, 3, 3, 0)
 {
@@ -223,28 +137,21 @@ DEFINE_PRIMITIVE ("C-PEEK-POINTER", Prim_peek_pointer, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    SCM alien = ARG_RECORD (3);
-    void** ptr = (void**)(addr+offset);
-    void* value = *ptr;
-    set_alien_address (alien, value);
+    SCM alien = (ARG_RECORD (3));
+    set_alien_address
+      (alien,
+       (* (((void **) (arg_address (1))) + (UNSIGNED_FIXNUM_ARG (2)))));
     PRIMITIVE_RETURN (alien);
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRING", Prim_peek_cstring, 2, 2, 0)
 {
-  /* Return a Scheme string containing the characters in a C string
-     that starts at the address ALIEN+OFFSET. */
-
   PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char* ptr = (char*)(addr+offset);
-    PRIMITIVE_RETURN (char_pointer_to_string (ptr));
-  }
+  PRIMITIVE_RETURN
+    (char_pointer_to_string
+     (((char *) (arg_address (1)))
+      + (UNSIGNED_FIXNUM_ARG (2))));
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
@@ -255,30 +162,15 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
 
   PRIMITIVE_HEADER (2);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char* ptr = (char*)(addr+offset);
-    SCM str = char_pointer_to_string (ptr);
-    set_alien_address (ARG_REF (1), ptr + strlen (ptr) + 1);
-    PRIMITIVE_RETURN (str);
+    char * ptr = (((char *) (arg_address (1))) + (UNSIGNED_FIXNUM_ARG (2)));
+    SCM string = (char_pointer_to_string (ptr));
+    set_alien_address ((ARG_REF (1)), (ptr + strlen (ptr) + 1));
+    PRIMITIVE_RETURN (string);
   }
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
-{
-  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
-     Copy the C string into the heap and return the new Scheme
-     string. */
-
-  PRIMITIVE_HEADER (2);
-  {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char** ptr = (char**)(addr+offset);
-    char* value = *ptr;
-    PRIMITIVE_RETURN (char_pointer_to_string (value));
-  }
-}
+  C_PEEKER(char_pointer_to_string, char *)
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
@@ -289,17 +181,15 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 
   PRIMITIVE_HEADER (2);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char** ptr = (char**)(addr+offset);
-    char* value = *ptr;
-    SCM val = char_pointer_to_string (value);
-    set_alien_address (ARG_REF (1), ptr + 1); /* No more aborts! */
-    PRIMITIVE_RETURN (val);
+    char ** ptr
+      = (((char **) (arg_address (1)))
+	 + (UNSIGNED_FIXNUM_ARG (2)));
+    SCM string = char_pointer_to_string (*ptr);
+    set_alien_address (ARG_REF (1), (ptr + 1)); /* No more aborts! */
+    PRIMITIVE_RETURN (string);
   }
 }
 
-
 /* Poke the Basic Types */
 
 DEFINE_PRIMITIVE ("C-POKE-CHAR", Prim_poke_char, 3, 3, 0)
@@ -308,9 +198,9 @@ DEFINE_PRIMITIVE ("C-POKE-CHAR", Prim_poke_char, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    char* ptr = (char*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    char * ptr = (char *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -320,9 +210,9 @@ DEFINE_PRIMITIVE ("C-POKE-UCHAR", Prim_poke_uchar, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    unsigned char* ptr = (unsigned char*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    unsigned char * ptr = (unsigned char *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -332,9 +222,9 @@ DEFINE_PRIMITIVE ("C-POKE-SHORT", Prim_poke_short, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    short* ptr = (short*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    short * ptr = (short *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -344,9 +234,9 @@ DEFINE_PRIMITIVE ("C-POKE-USHORT", Prim_poke_ushort, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    ushort* ptr = (ushort*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    ushort * ptr = (ushort *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -356,9 +246,9 @@ DEFINE_PRIMITIVE ("C-POKE-INT", Prim_poke_int, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    int* ptr = (int*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    int * ptr = (int *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -368,9 +258,9 @@ DEFINE_PRIMITIVE ("C-POKE-UINT", Prim_poke_uint, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    uint* ptr = (uint*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    unsigned int * ptr = (unsigned int *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -380,9 +270,9 @@ DEFINE_PRIMITIVE ("C-POKE-LONG", Prim_poke_long, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    long* ptr = (long*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    long * ptr = (long *)(addr+offset);
     *ptr = arg_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -392,9 +282,9 @@ DEFINE_PRIMITIVE ("C-POKE-ULONG", Prim_poke_ulong, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    ulong* ptr = (ulong*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    unsigned long * ptr = (unsigned long *)(addr+offset);
     *ptr = arg_ulong_integer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -404,9 +294,9 @@ DEFINE_PRIMITIVE ("C-POKE-FLOAT", Prim_poke_float, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    float* ptr = (float*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    float * ptr = (float *)(addr+offset);
     *ptr = arg_real_number (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -416,9 +306,9 @@ DEFINE_PRIMITIVE ("C-POKE-DOUBLE", Prim_poke_double, 3, 3, 0)
 {
   PRIMITIVE_HEADER (3);
   {
-    char* addr = (char*) arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    double* ptr = (double*)(addr+offset);
+    char * addr = (char *) arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    double * ptr = (double *)(addr+offset);
     *ptr = arg_real_number (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -431,9 +321,9 @@ DEFINE_PRIMITIVE ("C-POKE-POINTER", Prim_poke_pointer, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* addr = arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    void** ptr = (void**)(addr+offset);
+    char * addr = arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    void ** ptr = (void **)(addr+offset);
     *ptr = arg_pointer (3);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -447,9 +337,9 @@ DEFINE_PRIMITIVE ("C-POKE-POINTER!", Prim_poke_pointer_bang, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* addr = arg_address (1);
-    uint offset = UNSIGNED_FIXNUM_ARG (2);
-    void** ptr = (void**)(addr+offset);
+    char * addr = arg_address (1);
+    unsigned int offset = UNSIGNED_FIXNUM_ARG (2);
+    void ** ptr = (void **)(addr+offset);
     *ptr = arg_pointer (3);
     set_alien_address (ARG_REF (1), ptr + 1);
   }
@@ -463,7 +353,7 @@ DEFINE_PRIMITIVE ("C-POKE-STRING", Prim_poke_string, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* address, * scan;
+    char * address, * scan;
     int offset, length;
     SCM string;
 
@@ -487,7 +377,7 @@ DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
 
   PRIMITIVE_HEADER (3);
   {
-    char* address, * scan;
+    char * address, * scan;
     int offset, length;
     SCM string;
 
@@ -513,7 +403,7 @@ DEFINE_PRIMITIVE ("C-MALLOC", Prim_c_malloc, 2, 2, 0)
   {
     SCM alien = arg_alien (1);
     int size = arg_ulong_integer (2);
-    void* mem = malloc (size);
+    void * mem = malloc (size);
     set_alien_address (alien, mem);
     PRIMITIVE_RETURN (UNSPECIFIC);
   }
@@ -523,7 +413,7 @@ DEFINE_PRIMITIVE ("C-FREE", Prim_c_free, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
-    void* addr = arg_address (1);
+    void * addr = arg_address (1);
     if (addr != NULL)
       free (addr);
     PRIMITIVE_RETURN (UNSPECIFIC);
@@ -533,20 +423,20 @@ DEFINE_PRIMITIVE ("C-FREE", Prim_c_free, 1, 1, 0)
 
 /* The CStack */
 
-char*
+char *
 cstack_top (void)
 {
   return (ffi_obstack.next_free);
 }
 
 void
-cstack_push (void* addr, int bytes)
+cstack_push (void * addr, int bytes)
 {
   obstack_grow ((&ffi_obstack), addr, bytes);
 }
 
-char*
-cstack_lpop (char* tos, int bytes)
+char *
+cstack_lpop (char * tos, int bytes)
 {
   tos = tos - bytes;
   if (tos < ffi_obstack.object_base)
@@ -560,7 +450,7 @@ cstack_lpop (char* tos, int bytes)
 }
 
 void
-cstack_pop (char* tos)
+cstack_pop (char * tos)
 {
   if (tos < ffi_obstack.object_base)
     {
@@ -637,7 +527,7 @@ callout_unseal (CalloutTrampIn expected)
   /* Used by a callout part1 trampoline to strip the CStack's frame
      header (tramp, depth) before pushing return values. */
 
-  char* tos;
+  char * tos;
   CalloutTrampIn found;
   int depth;
 
@@ -673,7 +563,7 @@ DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
 
   PRIMITIVE_HEADER (LEXPR);
   {
-    char* tos;
+    char * tos;
     CalloutTrampIn tramp;
     int depth;
     SCM val;
@@ -692,13 +582,13 @@ DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
   }
 }
 
-char*
+char *
 callout_lunseal (CalloutTrampIn expected)
 {
   /* Used by a callout part2 trampoline to strip the CStack's frame
      header (tramp, depth) before lpopping return value(s). */
 
-  char* tos;
+  char * tos;
   CalloutTrampIn found;
   int depth;
 
@@ -715,7 +605,7 @@ callout_lunseal (CalloutTrampIn expected)
 }
 
 void
-callout_pop (char* tos)
+callout_pop (char * tos)
 {
   /* Used by a callout part2 trampoline just before returning. */
 
@@ -754,7 +644,7 @@ callback_run_kernel (int callback_id, CallbackKernel kernel)
     }
 
   /* Need to push 2 each of prim+header+continuation. */
-  if (! CAN_PUSH_P (2*(1+1+CONTINUATION_SIZE)))
+  if (! CAN_PUSH_P (2 * (1 + 1 + CONTINUATION_SIZE)))
     {
       outf_error
 	("\nWarning: punted callback #%d.  No room on stack!\n", callback_id);
@@ -784,7 +674,7 @@ DEFINE_PRIMITIVE ("RUN-CALLBACK", Prim_run_callback, 0, 0, 0)
 
   PRIMITIVE_HEADER (0);
   { 
-    char* tos;
+    char * tos;
     CallbackKernel kernel;
     int depth;
 
@@ -826,13 +716,13 @@ DEFINE_PRIMITIVE ("RETURN-TO-C", Prim_return_to_c, 0, 0, 0)
   }
 }
 
-char*
+char *
 callback_lunseal (CallbackKernel expected)
 {
   /* Used by a callback kernel to strip the CStack's frame header
      (kernel, depth) before lpopping arguments. */
 
-  char* tos;
+  char * tos;
   CallbackKernel found;
   int depth;
 
@@ -887,7 +777,8 @@ valid_callback_handler (void)
   handler = (VECTOR_REF (fixed_objects, CALLBACK_HANDLER));
   if (! interpreter_applicable_p (handler))
     {
-      outf_error ("\nWarning: bogus callback handler: 0x%x.\n", (uint)handler);
+      outf_error ("\nWarning: bogus callback handler: 0x%x.\n",
+		  ((unsigned int) handler));
       outf_flush_error ();
       Do_Micro_Error (ERR_INAPPLICABLE_OBJECT, true);
       abort_to_interpreter (PRIM_APPLY);
@@ -909,7 +800,7 @@ valid_callback_id (int id)
 }
 
 void
-callback_return (char* tos)
+callback_return (char * tos)
 {
   cstack_pop (tos);
   PRIMITIVE_ABORT (PRIM_APPLY);
@@ -924,7 +815,7 @@ arg_long (int argn)
   return (arg_integer (argn));
 }
 
-ulong
+unsigned long
 arg_ulong (int argn)
 {
   return (arg_ulong_integer (argn));
@@ -938,7 +829,7 @@ arg_double (int argn)
   return (arg_real_number (argn));
 }
 
-void*
+void *
 arg_alien_entry (int argn)
 {
   /* Expect an alien-function.  Return its address. */
@@ -950,7 +841,7 @@ arg_alien_entry (int argn)
   return (alien_address (alienf));
 }
 
-void*
+void *
 arg_pointer (int argn)
 {
   /* Accept an alien, string, xstring handle (positive integer),
@@ -958,22 +849,22 @@ arg_pointer (int argn)
 
   SCM arg = ARG_REF (argn);
   if (integer_zero_p (arg))
-    return ((void*)0);
+    return ((void *)0);
   if (STRING_P (arg))
-    return ((void*) (STRING_POINTER (arg)));
+    return ((void *) (STRING_POINTER (arg)));
   if ((INTEGER_P (arg)) && (integer_to_ulong_p (arg)))
     {
-      unsigned char* result = lookup_external_string (arg, NULL);
+      unsigned char * result = lookup_external_string (arg, NULL);
       if (result == 0)
 	error_wrong_type_arg (argn);
-      return ((void*) result);
+      return ((void *) result);
     }
   if (is_alien (arg))
     return (alien_address (arg));
 
   error_wrong_type_arg (argn);
   /*NOTREACHED*/
-  return ((void*)0);
+  return ((void *)0);
 }
 
 SCM
@@ -983,7 +874,7 @@ long_to_scm (const long i)
 }
 
 SCM
-ulong_to_scm (const ulong i)
+ulong_to_scm (const unsigned long i)
 {
   return (ulong_to_integer (i));
 }
@@ -995,7 +886,7 @@ double_to_scm (const double d)
 }
 
 SCM
-pointer_to_scm (const void* p)
+pointer_to_scm (const void * p)
 {
   /* Return a pointer from a callout.  Expect the first real argument
      (the 2nd) to be either #F or an alien. */
@@ -1015,7 +906,7 @@ pointer_to_scm (const void* p)
 }
 
 SCM
-cons_alien (const void* addr)
+cons_alien (const void * addr)
 {
   /* Construct an alien.  Used by callback kernels to construct
      arguments for the Scheme callback-handler, or part2 of callouts
@@ -1061,7 +952,7 @@ long_value (void)
   return (integer_to_long (value));
 }
 
-ulong
+unsigned long
 ulong_value (void)
 {
   /* Convert VAL to an unsigned long.  Accept integers AND characters.
@@ -1081,7 +972,8 @@ ulong_value (void)
     {
       /* error_bad_range_arg (1); */
       outf_error
-	("\nWarning: Callback returned an integer larger than a C ulong!\n");
+	("\nWarning: "
+	 "Callback returned an integer larger than a C unsigned long!\n");
       outf_flush_error ();
       return (0);
     }
@@ -1113,7 +1005,7 @@ double_value (void)
   return (real_number_to_double (value));
 }
 
-void*
+void *
 pointer_value (void)
 {
   SCM value = GET_VAL;
@@ -1123,14 +1015,14 @@ pointer_value (void)
   /* NOT allowing a Scheme string (heap pointer!) into the toolkit. */
   if ((INTEGER_P (value)) && (integer_to_ulong_p (value)))
     {
-      unsigned char* result = lookup_external_string (value, NULL);
+      unsigned char * result = lookup_external_string (value, NULL);
       if (result == 0)
 	{
 	  outf_error ("\nWarning: Callback returned a bogus xstring.\n");
 	  outf_flush_error ();
 	  return (NULL);
 	}
-      return ((void*) result);
+      return ((void *) result);
     }
   if (is_alien (value))
     return (alien_address (value));
@@ -1174,7 +1066,7 @@ DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
     SCM arg = ARG_REF (1);
     if (STRING_P (arg))
       {
-	char* string = ((char*) STRING_LOC (arg, 0));
+	char * string = ((char *) STRING_LOC (arg, 0));
 	outf_console ("%s", string);
 	outf_flush_console ();
       }
