@@ -90,7 +90,7 @@ arg_address (int argn)
 }
 
 #define ALIEN_ADDRESS_LOC(type)						\
-  (((type *) (arg_address (1))) + (UNSIGNED_FIXNUM_ARG (2)))
+  ((type *)(((char *) (arg_address (1))) + (UNSIGNED_FIXNUM_ARG (2))))
 
 #define ALIEN_ADDRESS_REF(type) (* (ALIEN_ADDRESS_LOC (type)))
 
