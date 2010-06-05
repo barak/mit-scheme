@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2010 Matthew Birkholz
+Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
 
 This file is part of MIT/GNU Scheme.
 

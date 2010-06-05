@@ -17,7 +17,7 @@
 @copying
 This manual documents @acronym{FFI} @value{VERSION}.
 
-Copyright @copyright{} 2010 Matthew Birkholz
+Copyright @copyright{} 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
