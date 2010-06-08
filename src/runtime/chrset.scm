@@ -581,7 +581,7 @@ USA.
       (error:bad-range-argument start 'ASCII-RANGE->CHAR-SET))
   (if (not (fix:<= end #x100))
       (error:bad-range-argument end 'ASCII-RANGE->CHAR-SET))
-  (%scalar-values->char-set (list (cons start (fix:- end 1)))))
+  (%scalar-values->char-set (list (cons start end))))
 
 (define (alphabet->char-set char-set)
   char-set)
