@@ -5431,6 +5431,7 @@ USA.
 	  char-set:uri-segment
 	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
+	  encode-uri-path-segment
 	  error:not-partial-uri
 	  error:not-uri
 	  error:not-uri-authority

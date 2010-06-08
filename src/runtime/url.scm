@@ -633,6 +633,12 @@ USA.
 
 (define (write-segment segment port)
   (write-encoded segment char-set:uri-segment port))
+
+(define (encode-uri-path-segment segment)
+  (guarantee-string segment 'ENCODE-URI-PATH-SEGMENT)
+  (call-with-output-string
+    (lambda (port)
+      (write-segment segment port))))
 
 ;;;; Escape codecs
 
