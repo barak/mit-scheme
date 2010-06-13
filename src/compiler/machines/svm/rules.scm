@@ -629,14 +629,16 @@ USA.
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:address (free-uuo-link-label name frame-size)))))
+       ,@(inst:jump (ea:uuo-entry-address
+		     (free-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:GLOBAL-LINK (? frame-size) (? continuation) (? name))
   continuation
   (expect-no-exit-interrupt-checks)
   (LAP ,@(clear-map!)
-       ,@(inst:jump (ea:address (global-uuo-link-label name frame-size)))))
+       ,@(inst:jump (ea:uuo-entry-address
+		     (global-uuo-link-label name frame-size)))))
 
 (define-rule statement
   (INVOCATION:CACHE-REFERENCE (? frame-size)
@@ -801,7 +803,7 @@ USA.
   (PROCEDURE-HEADER (? internal-label) (? min) (? max))
   (LAP (EQUATE ,(internal->external-label internal-label) ,internal-label)
        ,@(simple-procedure-header
-	  (make-procedure-label min (- (abs max) min) (< max 0) internal-label)
+	  (make-procedure-label min max internal-label)
 	  inst:interrupt-test-procedure)))
 
 ;; Interrupt check placement
@@ -983,8 +985,10 @@ USA.
 
 ;;;; Closures:
 
+(define-integrable (low-byte short) (fix:and short #xFF))
+(define-integrable (high-byte short) (fix:lsh short -8))
+
 (define (generate/cons-closure target procedure-label min max size)
-  min max ;;No entry format word necessary.
   (let ((target (word-target target))
 	(temp (word-temporary))
 	(free rref:free-pointer)
@@ -994,32 +998,38 @@ USA.
 			1    ;; targets
 			size ;; variables
 			))
+	(entry-type (encode-procedure-type min max))
 	(label (internal->external-label procedure-label))
 	(count-offset (* 1 address-units-per-object))
 	(entry-offset (* 2 address-units-per-object))
 	(target-offset (* 3 address-units-per-object)))
     (LAP
      ;; header
-     ,@(inst:load-non-pointer temp (ucode-type manifest-closure) total-words)
+     ,@(inst:load-non-pointer temp
+			      (ucode-type manifest-closure) (-1+ total-words))
      ,@(inst:store 'WORD temp (ea:indirect free))
 
-     ;; entry count: 1 (little-endian short)
+     ;; entry count
      ,@(inst:load-immediate temp 1)
      ,@(inst:store 'BYTE temp (ea:offset free count-offset 'BYTE))
      ,@(inst:load-immediate temp 0)
      ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
 
-     ,@(inst:load-address target (ea:offset free entry-offset 'BYTE))
-     ,@(inst:load-pointer target (ucode-type compiled-entry) target)
+     ;; entry type
+     ,@(inst:load-immediate temp (low-byte entry-type))
+     ,@(inst:store 'BYTE temp (ea:offset free (- entry-offset 2) 'BYTE))
+     ,@(inst:load-immediate temp (high-byte entry-type))
+     ,@(inst:store 'BYTE temp (ea:offset free (- entry-offset 1) 'BYTE))
 
-     ;; entry: (inst:enter-closure 0)
+     ;; entry point
+     ,@(inst:load-address target (ea:offset free entry-offset 'BYTE))
      ,@(inst:load-immediate temp svm1-inst:enter-closure)
      ,@(inst:store 'BYTE temp (ea:offset free entry-offset 'BYTE))
      ,@(inst:load-immediate temp 0)
      ,@(inst:store 'BYTE temp (ea:offset free (+ 1 entry-offset) 'BYTE))
      ,@(inst:store 'BYTE temp (ea:offset free (+ 2 entry-offset) 'BYTE))
 
-     ;; target: procedure-label
+     ;; target
      ,@(inst:load-address temp (ea:address label))
      ,@(inst:load-pointer temp (ucode-type compiled-entry) temp)
      ,@(inst:store 'WORD temp (ea:offset free target-offset 'BYTE))
@@ -1027,10 +1037,9 @@ USA.
      ,@(inst:load-address free (ea:offset free total-words 'WORD)))))
 
 (define (generate/cons-multiclosure target nentries size entries)
-  (let ((free rref:free-pointer)
-	(little-end (lambda (short) (fix:and short #xFF)))
-	(big-end (lambda (short) (fix:lsh short -8))))
-    (let ((entry-words (integer-ceiling (* closure-entry-size nentries)
+  (let ((free rref:free-pointer))
+    (let ((entry-words (integer-ceiling (- (* closure-entry-size nentries)
+					   entry-type-size)
 					address-units-per-object)))
       (let ((target (word-target target))
 	    (temp (word-temporary))
@@ -1045,16 +1054,28 @@ USA.
 	    (first-target-woffset (+ 1 1 entry-words)))
 
 	(define (generate-entries entries index offset)
-	  (LAP
-	   ,@(inst:load-immediate temp svm1-inst:enter-closure)
-	   ,@(inst:store 'BYTE temp (ea:offset free offset 'BYTE))
-	   ,@(inst:load-immediate temp (little-end index))
-	   ,@(inst:store 'BYTE temp (ea:offset free (1+ offset) 'BYTE))
-	   ,@(inst:load-immediate temp (big-end index))
-	   ,@(inst:store 'BYTE temp (ea:offset free (+ 2 offset) 'BYTE))
-	   ,@(if (null? (cdr entries))
-		 (LAP)
-		 (generate-entries (cdr entries) (1+ index) (+ 3 offset)))))
+	  (let ((entry-type (let ((entry (car entries)))
+			      (let ((min (cadr entry))
+				    (max (caddr entry)))
+				(encode-procedure-type min max)))))
+	    (LAP
+	     ;; entry type
+	     ,@(inst:load-immediate temp (low-byte entry-type))
+	     ,@(inst:store 'BYTE temp (ea:offset free (- offset 2) 'BYTE))
+	     ,@(inst:load-immediate temp (high-byte entry-type))
+	     ,@(inst:store 'BYTE temp (ea:offset free (- offset 1) 'BYTE))
+
+	     ;; entry point
+	     ,@(inst:load-immediate temp svm1-inst:enter-closure)
+	     ,@(inst:store 'BYTE temp (ea:offset free offset 'BYTE))
+	     ,@(inst:load-immediate temp (low-byte index))
+	     ,@(inst:store 'BYTE temp (ea:offset free (1+ offset) 'BYTE))
+	     ,@(inst:load-immediate temp (high-byte index))
+	     ,@(inst:store 'BYTE temp (ea:offset free (+ 2 offset) 'BYTE))
+	     ,@(if (null? (cdr entries))
+		   (LAP)
+		   (generate-entries (cdr entries) (1+ index)
+				     (+ offset closure-entry-size))))))
 
 	(define (generate-targets entries woffset)
 	  (let ((label (internal->external-label (caar entries))))
@@ -1069,17 +1090,17 @@ USA.
 	(LAP
 	 ;; header
 	 ,@(inst:load-non-pointer temp
-				  (ucode-type manifest-closure) total-words)
+				  (ucode-type manifest-closure)
+				  (-1+ total-words))
 	 ,@(inst:store 'WORD temp (ea:indirect free))
 
 	 ;; entry count (little-endian short)
-	 ,@(inst:load-immediate temp (little-end nentries))
+	 ,@(inst:load-immediate temp (low-byte nentries))
 	 ,@(inst:store 'BYTE temp (ea:offset free count-offset 'BYTE))
-	 ,@(inst:load-immediate temp (big-end nentries))
+	 ,@(inst:load-immediate temp (high-byte nentries))
 	 ,@(inst:store 'BYTE temp (ea:offset free (1+ count-offset) 'BYTE))
 
 	 ,@(inst:load-address target (ea:offset free first-entry-offset 'BYTE))
-	 ,@(inst:load-pointer target (ucode-type compiled-entry) target)
 
 	 ,@(generate-entries entries 0 first-entry-offset)
 
@@ -1095,9 +1116,7 @@ USA.
 	       (simple-procedure-header
 		(make-internal-procedure-label internal-label)
 		inst:interrupt-test-procedure)
-	       (simple-procedure-header
-		(make-internal-entry-label internal-label)
-		inst:interrupt-test-closure)))))
+	       (make-internal-entry-label internal-label)))))
 
 (define-rule statement
   (CLOSURE-HEADER (? internal-label) (? nentries) (? entry))
@@ -1304,8 +1323,8 @@ USA.
 			      (lambda (cache)
 				(let ((frame-size (car cache))
 				      (label (cdr cache)))
-				  (LAP (,frame-size . ,label)
-				       (,name . ,(allocate-constant-label))))))
+				  `((,frame-size . ,label)
+				    (,name . ,(allocate-constant-label))))))
 			    (cdr name.caches)))
 	      name.caches-list))
 
@@ -1325,7 +1344,8 @@ USA.
     (LAP ,@(clear-map!)
 	 ,@(if safe?
 	       (trap:safe-lookup cache)
-	       (trap:lookup cache)))))
+	       (trap:lookup cache))
+	 ,@(make-internal-continuation-label (generate-label)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
@@ -1335,7 +1355,8 @@ USA.
   (let* ((cache (interpreter-call-temporary extension))
 	 (value (interpreter-call-temporary value)))
    (LAP ,@(clear-map!)
-	,@(trap:assignment cache value))))
+	,@(trap:assignment cache value)
+	,@(make-internal-continuation-label (generate-label)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
@@ -1343,66 +1364,8 @@ USA.
   cont					; ignored
   (let ((cache (interpreter-call-temporary extension)))
     (LAP ,@(clear-map!)
-	 ,@(trap:unassigned? cache))))
-
-;;;; Interpreter Calls
-
-;;; All the code that follows is obsolete.  It hasn't been used in a while.
-;;; It is provided in case the relevant switches are turned off, but there
-;;; is no real reason to do this.  Perhaps the switches should be removed.
-
-(define-rule statement
-  (INTERPRETER-CALL:ACCESS (? cont) (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call trap:access environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:LOOKUP (? cont) (? environment) (? name) (? safe?))
-  (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call (if safe? trap:safe-lookup trap:lookup) environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:UNASSIGNED? (? cont) (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call trap:unassigned? environment name))
-
-(define-rule statement
-  (INTERPRETER-CALL:UNBOUND? (? cont) (? environment) (? name))
-  (QUALIFIER (interpreter-call-argument? environment))
-  cont					; ignored
-  (lookup-call trap:unbound? environment name))
-
-(define (lookup-call trap environment name)
-  (let ((environment-reg (interpreter-call-temporary environment))
-	(name-reg (word-temporary)))
-    (LAP ,@(clear-map (clear-map!))
-	 ,@(load-constant name-reg name)
-	 ,@(trap environment-reg name-reg))))
-
-(define-rule statement
-  (INTERPRETER-CALL:DEFINE (? cont) (? environment) (? name) (? value))
-  (QUALIFIER (and (interpreter-call-argument? environment)
-		  (interpreter-call-argument? value)))
-  cont					; ignored
-  (assignment-call trap:define environment name value))
-
-(define-rule statement
-  (INTERPRETER-CALL:SET! (? cont) (? environment) (? name) (? value))
-  (QUALIFIER (and (interpreter-call-argument? environment)
-		  (interpreter-call-argument? value)))
-  cont					; ignored
-  (assignment-call trap:set! environment name value))
-
-(define (assignment-call trap environment name value)
-  (let ((environment-reg (interpreter-call-temporary environment))
-	(name-reg (word-temporary))
-	(value-reg (interpreter-call-temporary value)))
-    (LAP ,@(clear-map!)
-	 ,@(load-constant (INST-EA ,name-reg) name)
-	 ,@(trap environment-reg name-reg value-reg))))
+	 ,@(trap:unassigned? cache)
+	 ,@(make-internal-continuation-label (generate-label)))))
 
 ;;;; Synthesized Data
 

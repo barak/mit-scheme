@@ -206,6 +206,11 @@ USA.
 (define (ea:address label)
   (ea:pc-relative `(- ,label *PC*)))
 
+(define (ea:uuo-entry-address label)
+  ;; LABEL is the uuo-link-label, but the PC to jump to is AFTER the u16
+  ;; frame-size.
+  (ea:pc-relative `(- (+ ,label 2) *PC*)))
+
 (define (ea:stack-pop)
   (ea:post-increment rref:stack-pointer 'WORD))
 
@@ -257,7 +262,8 @@ USA.
 
   ;; This group returns; push return address.
   link assignment
-  lookup safe-lookup set! unassigned? define unbound? access)
+  ;; set! define unbound? access
+  lookup safe-lookup unassigned?)
 
 (define-syntax define-interrupt-tests
   (sc-macro-transformer
@@ -268,8 +274,7 @@ USA.
 		`(DEFINE-INST ,(symbol-append 'INTERRUPT-TEST- name)))
 	      (cdr form))))))
 
-(define-interrupt-tests
-  closure dynamic-link procedure continuation ic-procedure)
+(define-interrupt-tests dynamic-link procedure continuation ic-procedure)
 
 ;;;; Machine registers, register references.
 
@@ -510,22 +515,22 @@ USA.
 
 ;; See microcode/cmpintmd/svm1.c for a description of the layout.
 
-(define-integrable closure-entry-size 3)
+(define-integrable closure-entry-size 5)
+(define-integrable entry-type-size 2)
 
 ;; Offset of the first object in the closure from the address of the
-;; first closure entry point, in words.  In order to make this work,
-;; we add padding to the closure-count field so that the first entry
-;; is aligned on an object boundary.
+;; first closure entry point, in words.
 
-;; The canonical entry point for a closure with no entry points is the
+;; The first entry point for a closure with no entry points is the
 ;; head of the vector of value cells.
 
 (define (closure-first-offset count entry)
   entry
   (if (= count 0)
       1
-      (+ (integer-ceiling (* count closure-entry-size)
+      (+ (integer-ceiling (- (* count closure-entry-size) entry-type-size)
 			  address-units-per-object)
+	 ;; Targets.
 	 count)))
 
 ;; Offset of the first object in the closure from the address of the
@@ -534,7 +539,10 @@ USA.
 (define (closure-object-first-offset count)
   (if (= count 0)
       1
-      (+ 2 (closure-first-offset count 0))))
+      (+ 1 ;; Header
+	 1 ;; Count
+	 (closure-first-offset count 0)	;; Entries and targets.
+	 )))
 
 ;; Increment from one closure entry address to another, in bytes.
 

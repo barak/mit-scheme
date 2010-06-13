@@ -27,11 +27,6 @@ set -e
 . etc/functions.sh
 
 for SUBDIR in `MAKEFLAGS= make -s subdir-list | sort | uniq`; do
-    if [ -x $SUBDIR/Stage.sh ]; then
-	# Try to avoid a subdir that was not compiled (else
-	# $SUBDIR/Stage.sh will abort).
-	if [ "`cd $SUBDIR && echo *.com`" = "*.com" \
-	     -a "`cd $SUBDIR && echo *.moc`" = "*.moc" ]; then continue; fi
-	run_cmd_in_dir $SUBDIR ./Stage.sh "$@"
-    fi
+    if [ ! -x $SUBDIR/Stage.sh ]; then continue; fi
+    run_cmd_in_dir $SUBDIR ./Stage.sh "$@"
 done

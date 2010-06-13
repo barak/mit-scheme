@@ -19,51 +19,49 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-# Build a cross-compiler targeting the Scheme Virtual Machine.  Use it
-# to cross-compile everything.  Use the new machine to finish the
+# Build a cross-compiler targeting a new Scheme Virtual Machine.  Use
+# it to cross-compile everything.  Use the new machine to finish the
 # cross-compile, leaving the build tree ready for build-bands.sh.
 
 set -e
 
 . etc/functions.sh
 
-if [ -f lib/x-compiler.com ]; then
-    rm -v lib/x-runtime.com
-    rm -v lib/x-compiler.com
-    run_cmd ./Stage.sh remove 0
-    run_cmd ./Stage.sh make-cross 0
-    run_cmd ./Stage.sh unmake X
-fi
+# Remove the cross-compiler's bands and stash its products (if any).
+run_cmd rm -f lib/x-runtime.com
+run_cmd rm -f lib/x-compiler.com
+run_cmd ./Stage.sh remove 0
+run_cmd ./Stage.sh make-cross 0
+
+# Restore its host-compiled .com's (if any).
+run_cmd ./Stage.sh unmake X
 
 # Compile the cross-compiler.
 
-# This script follows the example of LIARC's compile-boot-
-# compiler.sh script, which takes pains to syntax the target
-# compiler withOUT the host compiler present.
-
+# Syntax prerequisites.
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.sf </dev/null
 done
-FASL=make.bin
 
-# Comment out the next 5 lines for a fully-interpreted cross-compiler.
-# This does not really work because runtime.sf will die during
-# cross-compilation without option *parser in --library ../lib.
+# Compile prerequisites.
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.cbf </dev/null
 done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 FASL=make.com
 
+# Dump prerequisites into x-runtime.com.
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF
 echo ""
 
+# Syntax compiler, using x-runtime.com.
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
 (load "compiler.sf")
+(sf "base/crsend")
 EOF
 
 if [ -s compiler/compiler-unx.crf ]; then
@@ -71,10 +69,11 @@ if [ -s compiler/compiler-unx.crf ]; then
     exit 1
 fi
 
+# Optionally, compile cross-compiler.
 run_cmd_in_dir compiler "${@}" --batch-mode --load compiler.cbf </dev/null
 
+# Load up everything, because it is all about to go away!
 run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
-;; Load up everything, because it is all about to go away.
 (load-option 'SF)
 (load-option 'CREF)
 (load-option '*PARSER)
@@ -87,12 +86,13 @@ EOF
 
 # Remove host code to STAGEX/ subdirs.
 run_cmd ./Stage.sh make X
-# Dodge unfortunate incompatibility between 9.0.1 and master.
+# Dodge incompatibility between 9.0.1 and master.
 run_cmd_in_dir runtime mv os2winp.ext os2winp.bin STAGEX
 
-# Restore previously cross-compiled code (if any).
-# (Comment this out to start from scratch with each rebuilt cross-compiler.)
-if [ -e sf/STAGE0 ]; then run_cmd ./Stage.sh unmake 0; fi
+# Restore previously cross-compiled code (if any).  (Replace "unmake"
+# with "remove" to start from scratch with each rebuilt
+# cross-compiler.)
+run_cmd ./Stage.sh unmake 0
 
 # Cross-compile everything, producing svm1 .moc's.
 # edwin/snr.scm needs more than --heap 9000!
@@ -103,13 +103,11 @@ run_cmd "${@}" --batch-mode --heap 10000 --library lib \
   (fluid-let (;;(compiler:generate-lap-files? #t)
 	      ;;(compiler:intersperse-rtl-in-lap? #t)
 	      (compiler:cross-compiling? #t))
-
-    ;; Compile star-parser before runtime, so runtime.sf does
-    ;; not die.  Our --library does not include a *PARSER option!
+    ;; Syntax star-parser before runtime, so runtime.sf does not die.
+    ;; Our --library does not already include a *PARSER option!
     (compile-cref compile-dir)
     (compile-dir "star-parser")
-    (compile-everything))
-  (sf "compiler/base/crsend"))
+    (compile-everything)))
 EOF
 
 # Finish the cross-compilation with the new machine.

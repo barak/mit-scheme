@@ -88,44 +88,38 @@ USA.
        ,@(inst:label label)))
 
 (define (make-expression-label label)
-  (make-external-label label #xFFFF))
-
-(define (make-internal-entry-label label)
   (make-external-label label #xFFFE))
 
-(define (make-internal-continuation-label label)
+(define (make-internal-entry-label label)
   (make-external-label label #xFFFD))
 
-(define (make-procedure-label n-required n-optional rest? label)
-  (make-external-label label
-		       (encode-procedure-type n-required n-optional rest?)))
+(define (make-internal-continuation-label label)
+  (make-external-label label #xFFFC))
+
+(define (make-procedure-label min max internal-label)
+  (make-external-label internal-label (encode-procedure-type min max)))
 
 (define (make-internal-procedure-label label)
-  (make-external-label label (encode-internal-procedure-offset label #xFFFE)))
+  (make-external-label label #xFFFD))
 
 (define (make-continuation-label entry-label label)
   entry-label
-  (make-external-label label (encode-continuation-offset label #xFFFD)))
+  (make-external-label label (encode-continuation-offset label #xFFFC)))
 
-(define (encode-procedure-type n-required n-optional rest?)
-  (guarantee-exact-nonnegative-integer n-required)
-  (guarantee-exact-nonnegative-integer n-optional)
-  (if (not (and (< n-required #x80) (< n-optional #x80)))
-      (error "Can't encode procedure arity:" n-required n-optional))
-  (fix:or n-required
-	  (fix:or (fix:lsh n-optional 7)
-		  (if rest? #x4000 0))))
-
-(define (encode-internal-procedure-offset label default)
-  (let ((offset
-	 (rtl-procedure/next-continuation-offset (label->object label))))
-    (if offset
-	(begin
-	  (guarantee-exact-nonnegative-integer offset)
-	  (if (not (< offset #x7FF8))
-	      (error "Can't encode internal-procedure offset:" offset))
-	  (+ offset #x8000))
-	default)))
+(define (encode-procedure-type min-frame max-frame)
+  (let ((n-required (-1+ min-frame))
+	(n-optional (if (negative? max-frame)
+			;; Do NOT include rest arg.
+			(- (abs max-frame) min-frame 1)
+			(- max-frame min-frame)))
+	(rest? (negative? max-frame)))
+    (guarantee-exact-nonnegative-integer n-required)
+    (guarantee-exact-nonnegative-integer n-optional)
+    (if (not (and (< n-required #x80) (< n-optional #x80)))
+	(error "Can't encode procedure arity:" n-required n-optional))
+    (fix:or n-required
+	    (fix:or (fix:lsh n-optional 7)
+		    (if rest? #x4000 0)))))
 
 (define (encode-continuation-offset label default)
   (let ((offset

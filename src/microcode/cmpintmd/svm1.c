@@ -39,7 +39,9 @@ read_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
 
   if ((*address) == SVM1_INST_ENTER_CLOSURE)
     {
-      make_cc_entry_type (cet, CET_CLOSURE);
+      n = read_u16 (address - 2);
+      make_compiled_procedure_type
+	(cet, (n & 0x007F), ((n & 0x3F80) >> 7), ((n & 0x4000) != 0));
       return (false);
     }
   n = (read_u16 (address - 4));
@@ -124,22 +126,12 @@ write_cc_entry_type (cc_entry_type_t * cet, insn_t * address)
       n = (0xFFF8 + 2);
       break;
 
-    case CET_CLOSURE:
-      return ((*address) != SVM1_INST_ENTER_CLOSURE);
-
     default:
       return (true);
     }
   write_u16 (n, (address - 4));
   return (false);
 }
-
-/* The offset is encoded as two bytes.  It's relative to its own
-   address, _not_ relative to the entry address, and points to the
-   first non-marked word in the block.  */
-
-#define CC_ENTRY_REFERENCE_OFFSET					\
-  (CC_ENTRY_OFFSET_SIZE + (2 * (sizeof (SCHEME_OBJECT))))
 
 bool
 read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
@@ -149,23 +141,14 @@ read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
       unsigned int index = (read_u16 (address + 1));
       (ceo->offset)
 	= ((sizeof (SCHEME_OBJECT))
-	   + CLOSURE_COUNT_SIZE
-	   + (index * CLOSURE_ENTRY_SIZE));
+	   + CLOSURE_ENTRY_OFFSET + (index * CLOSURE_ENTRY_SIZE));
       (ceo->continued_p) = false;
     }
   else
     {
       unsigned int n = (read_u16 (address - 2));
-      if (n < 0x8000)
-	{
-	  (ceo->offset) = (n + CC_ENTRY_REFERENCE_OFFSET);
-	  (ceo->continued_p) = false;
-	}
-      else
-	{
-	  (ceo->offset) = (n - 0x8000);
-	  (ceo->continued_p) = true;
-	}
+      ceo->offset = (n >> 1);
+      ceo->continued_p = ((n & 1) != 0);
     }
   return (false);
 }
@@ -175,24 +158,12 @@ read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 bool
 write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  unsigned long offset;
+  unsigned int code;
 
   if ((*address) == SVM1_INST_ENTER_CLOSURE)
     return (true);			/* not supported */
-  offset = (ceo->offset);
-  if (ceo->continued_p)
-    {
-      offset -= CC_ENTRY_REFERENCE_OFFSET;
-      if (! (offset < 0x8000))
-	return (true);
-    }
-  else
-    {
-      if (! (offset < 0x8000))
-	return (true);
-      offset += 0x8000;
-    }
-  write_u16 (offset, (address - 2));
+  code = (ceo->offset) << 1;
+  write_u16 (code + (ceo->continued_p ? 1 : 0), address - 2);
   return (false);
 }
 
@@ -224,27 +195,29 @@ write_u16 (unsigned int n, insn_t * address)
    0x00    TC_MANIFEST_CLOSURE | n_words == 12
 
    0x04    count == 3
-   0x06    2 padding bytes (next address must be word-aligned)
+   0x06    2 cc-entry type bytes (next address must be word-aligned)
 
    0x08    SVM1_INST_ENTER_CLOSURE
    0x09    index == 0
 
-   0x0B    SVM1_INST_ENTER_CLOSURE
-   0x0C    index == 1
+   0x0B    2 cc-entry type (arity) bytes
+   0x0D    SVM1_INST_ENTER_CLOSURE
+   0x0E    index == 1
 
-   0x0E    SVM1_INST_ENTER_CLOSURE
-   0x0F    index == 2
+   0x10    2 cc-entry type (arity) bytes
+   0x12    SVM1_INST_ENTER_CLOSURE
+   0x13    index == 2
 
-   0x11    3 padding bytes (next address must be word-aligned)
+   0x15    3 padding bytes (next address must be word-aligned)
 
-   0x14    target 0
-   0x18    target 1
-   0x1C    target 2
+   0x18    target 0
+   0x1C    target 1
+   0x20    target 2
 
-   0x20    value cell 0
-   0x24    value cell 1
-   0x28    value cell 2
-   0x2C    value cell 3
+   0x24    value cell 0
+   0x28    value cell 1
+   0x2C    value cell 2
+   0x30    value cell 3
 
    */
 
@@ -257,7 +230,7 @@ compiled_closure_count (SCHEME_OBJECT * block)
 insn_t *
 compiled_closure_start (SCHEME_OBJECT * block)
 {
-  return (((insn_t *) block) + CLOSURE_COUNT_SIZE);
+  return (((insn_t *) block) + CLOSURE_ENTRY_OFFSET);
 }
 
 insn_t *
@@ -286,11 +259,11 @@ compiled_closure_entry_to_target (insn_t * entry)
 {
   unsigned int index = (read_u16 (entry + 1));
   insn_t * block
-    = (entry - (CLOSURE_COUNT_SIZE + (index * CLOSURE_ENTRY_SIZE)));
+    = (entry - (CLOSURE_ENTRY_OFFSET + (index * CLOSURE_ENTRY_SIZE)));
   unsigned int count = (read_u16 (block));
   SCHEME_OBJECT * targets
     = (skip_compiled_closure_padding
-       (block + (CLOSURE_COUNT_SIZE + (count * CLOSURE_ENTRY_SIZE))));
+       (block + (CLOSURE_ENTRY_START + (count * CLOSURE_ENTRY_SIZE))));
   return (targets[index]);
 }
 
@@ -308,19 +281,19 @@ compiled_closure_entry_to_target (insn_t * entry)
    procedure.  It is laid out in memory like this (on a 32-bit
    machine):
 
-   0x00    n-args encoded as fixnum
+   0x00    frame-size (fixnum)
    0x04    name encoded as symbol
 
    After linking, the cache is changed as follows:
 
-   0x00    n-args
+   0x00    frame-size (u16)
    0x02    SVM1_INST_IJUMP_U8
    0x03    offset = 0
    0x04    32-bit address
 
    On a 64-bit machine, the post-linking layout is:
 
-   0x00    n-args
+   0x00    frame-size (u16)
    0x02    4 padding bytes
    0x06    SVM1_INST_IJUMP_U8
    0x07    offset = 0
@@ -405,6 +378,42 @@ bool
 store_trampoline_insns (insn_t * entry, byte_t code)
 {
   (entry[0]) = SVM1_INST_TRAP_TRAP_0;
-  (entry[1]) = code;
+  switch (code)
+    {
+    case TRAMPOLINE_K_RETURN_TO_INTERPRETER:
+      entry[1] = SVM1_TRAP_0_RETURN_TO_INTERPRETER; break;
+    case TRAMPOLINE_K_APPLY:
+      entry[1] = SVM1_TRAP_0_OPERATOR_APPLY; break;
+    case TRAMPOLINE_K_LEXPR_PRIMITIVE:
+      entry[1] = SVM1_TRAP_0_OPERATOR_LEXPR; break;
+    case TRAMPOLINE_K_PRIMITIVE:
+      entry[1] = SVM1_TRAP_0_OPERATOR_PRIMITIVE; break;
+    case TRAMPOLINE_K_LOOKUP:
+      entry[1] = SVM1_TRAP_0_OPERATOR_LOOKUP; break;
+    case TRAMPOLINE_K_1_0:
+      entry[1] = SVM1_TRAP_0_OPERATOR_1_0; break;
+    case TRAMPOLINE_K_2_1:
+      entry[1] = SVM1_TRAP_0_OPERATOR_2_1; break;
+    case TRAMPOLINE_K_2_0:
+      entry[1] = SVM1_TRAP_0_OPERATOR_2_0; break;
+    case TRAMPOLINE_K_3_2:
+      entry[1] = SVM1_TRAP_0_OPERATOR_3_2; break;
+    case TRAMPOLINE_K_3_1:
+      entry[1] = SVM1_TRAP_0_OPERATOR_3_1; break;
+    case TRAMPOLINE_K_3_0:
+      entry[1] = SVM1_TRAP_0_OPERATOR_3_0; break;
+    case TRAMPOLINE_K_4_3:
+      entry[1] = SVM1_TRAP_0_OPERATOR_4_3; break;
+    case TRAMPOLINE_K_4_2:
+      entry[1] = SVM1_TRAP_0_OPERATOR_4_2; break;
+    case TRAMPOLINE_K_4_1:
+      entry[1] = SVM1_TRAP_0_OPERATOR_4_1; break;
+    case TRAMPOLINE_K_4_0:
+      entry[1] = SVM1_TRAP_0_OPERATOR_4_0; break;
+    case TRAMPOLINE_K_REFLECT_TO_INTERFACE:
+      entry[1] = SVM1_TRAP_0_REFLECT_TO_INTERFACE; break;
+    default:
+      return (true);
+    }
   return (false);
 }

@@ -335,6 +335,29 @@ extern bool store_trampoline_insns (insn_t *, byte_t);
    start of the trampoline's storage area.  */
 extern SCHEME_OBJECT * trampoline_storage (SCHEME_OBJECT *);
 
+typedef enum
+{
+  TRAMPOLINE_K_RETURN_TO_INTERPRETER,
+  TRAMPOLINE_K_APPLY,
+  TRAMPOLINE_K_ARITY,		/* unused */
+  TRAMPOLINE_K_ENTITY,		/* unused */
+  TRAMPOLINE_K_INTERPRETED,	/* unused */
+  TRAMPOLINE_K_LEXPR_PRIMITIVE,
+  TRAMPOLINE_K_PRIMITIVE,
+  TRAMPOLINE_K_LOOKUP,
+  TRAMPOLINE_K_1_0,
+  TRAMPOLINE_K_2_1,
+  TRAMPOLINE_K_2_0,
+  TRAMPOLINE_K_3_2,
+  TRAMPOLINE_K_3_1,
+  TRAMPOLINE_K_3_0,
+  TRAMPOLINE_K_4_3,
+  TRAMPOLINE_K_4_2,
+  TRAMPOLINE_K_4_1,
+  TRAMPOLINE_K_4_0,
+  TRAMPOLINE_K_REFLECT_TO_INTERFACE = 0x3A
+} trampoline_type_t;
+
 #ifndef UTILITY_RESULT_DEFINED
 #ifdef CMPINT_USE_STRUCS
 

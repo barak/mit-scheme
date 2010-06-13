@@ -746,7 +746,7 @@ USA.
 
 (define-package (compiler disassembler)
   (files "machines/svm/disassembler")
-  (parent (compiler))
+  (parent (compiler assembler))
   (export ()
 	  compiler:write-lap-file
 	  compiler:disassemble)
