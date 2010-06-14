@@ -332,9 +332,11 @@ USA.
   (let* ((do-parse
 	  (lambda (string)
 	    (let ((v (*parse-string parser string)))
-	      (if (and (not v) caller)
-		  (error:bad-range-argument object caller))
-	      (vector-ref v 0))))
+	      (if v
+		  (vector-ref v 0)
+		  (begin
+		    (if caller (error:bad-range-argument object caller))
+		    #f)))))
 	 (do-string
 	  (lambda (string)
 	    (or (hash-table/get interned-uris string #f)
