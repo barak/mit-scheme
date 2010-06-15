@@ -437,7 +437,6 @@ USA.
 
 (define-code-sequence instruction (interrupt-test-procedure))
 (define-code-sequence instruction (interrupt-test-dynamic-link))
-(define-code-sequence instruction (interrupt-test-closure))
 (define-code-sequence instruction (interrupt-test-ic-procedure))
 (define-code-sequence instruction (interrupt-test-continuation))
 

@@ -142,9 +142,7 @@ USA.
   ;; Initialize the assembler's instruction database using the
   ;; patterns and encoders in the instruction coding type (the
   ;; "fixed-width instruction" assemblers) as well as special
-  ;; assemblers that create variable-width-expressions and other
-  ;; assembler expressions as required by the machine-independent,
-  ;; top-level, branch-tensioning assembler.
+  ;; assemblers that create variable-width-expressions.
 
   (clear-instructions!)
 
@@ -154,7 +152,9 @@ USA.
     (lambda (keyword.defns)
       (add-instruction!
        (car keyword.defns)
-       (map fixed-instruction-assembler (cdr keyword.defns))))
+       (map fixed-instruction-assembler
+	    ;; Instruction-keywords reverses the definitions.
+	    (reverse! (cdr keyword.defns)))))
     (instruction-keywords))
 
   ;; Create the variable width instruction assemblers.
@@ -218,151 +218,162 @@ USA.
 
 (define (assemble-fixed-instruction width lap)
   (if (and (pair? lap) (pair? (car lap)) (null? (cdr lap)))
-      (let ((bits (list->bit-string (lap:syntax-instruction (car lap)))))
-	(if (not (= width (bit-string-length bits)))
+      (let* ((bits (lap:syntax-instruction (car lap)))
+	     (len (reduce-left + 0 (map bit-string-length bits))))
+	(if (not (= len width))
 	    (error "Mis-sized fixed instruction" lap))
-	(list bits))
+	bits)
       (error "ASSEMBLE-FIXED-INSTRUCTION: Multiple instructions in LAP" lap)))
 
+(define (pc-relative-stats nbits make-sample)
+  ;; Returns a list: the byte and bit widths for a class of
+  ;; variable-width instructions (calculated by measuring a
+  ;; representative assembled by MAKE-SAMPLE) and the range of offsets
+  ;; encodable by each.
+  ;; 
+  ;; The variable-width expression refers to *PC*, which is the PC at
+  ;; the beginning of this instruction.  The instruction will actually
+  ;; use the PC at the beginning of the next instruction.  Thus the
+  ;; actual range of the encoding is translated upward by this
+  ;; instruction's width, and the actual offset translated back again
+  ;; in the pc-relative-selector-handler.
+  (let ((high (-1+ (expt 2 (-1+ nbits))))
+	(low (- (expt 2 (-1+ nbits)))))
+    (let* ((bit-width (fixed-instruction-width (make-sample high)))
+	   (byte-width (/ bit-width 8)))
+      (list nbits byte-width bit-width
+	    (+ low byte-width) (+ high byte-width)))))
+
+(define (pc-relative-selector stats make-inst)
+  ;; Create a selector for a variable-width-expression using the stats
+  ;; calculated earlier by pc-relative-stats.
+  (let ((nbits (car stats))
+	(byte-width (cadr stats))
+	(bit-width (caddr stats)))
+    (cons
+     (named-lambda (pc-relative-selector-handler offset)
+       (let ((operand (fix-offset (- offset byte-width) nbits)))
+	 (assemble-fixed-instruction bit-width (make-inst operand))))
+     (cddr stats))))
+
+(define-integrable (fix-offset offset nbits)
+  (if (or (and (= nbits 16)
+	       (let ((low #x-80) (high #x7F))
+		 (and (<= low offset) (<= offset high))))
+	  (and (= nbits 32)
+	       (let ((low #x-8000) (high #x7FFF))
+		 (and (<= low offset) (<= offset high)))))
+      (begin
+	(warn "Bit tensioner widened encoding" nbits offset)
+	(signed-integer->bit-string nbits offset))
+      ;; Does not fit into a smaller number of bytes; no fixing necessary.
+      offset))
+
 (define (store-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width
-	  (inst:store 'WORD rref:word-0 (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width
-	  (inst:store 'BYTE rref:word-1 (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width
-	  (inst:store 'WORD rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((? scale) (? source) (PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:store scale source (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:store 'WORD rref:word-0
+				   (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((? scale) (? source) (PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:store scale source
+				      (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (load-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width
-	  (inst:load 'WORD rref:word-0 (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width
-	  (inst:load 'BYTE rref:word-1 (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width
-	  (inst:load 'WORD rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((? scale) (? target) (PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:load scale target (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:load 'WORD rref:word-0
+				  (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((? scale) (? target) (PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:load scale target
+				     (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (load-address-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width
-	  (inst:load-address rref:word-0 (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width
-	  (inst:load-address rref:word-1 (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width
-	  (inst:load-address rref:word-2 (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((? target) (PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:load-address target (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:load-address rref:word-0
+					  (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((? target) (PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:load-address target
+					     (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (jump-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width (inst:jump (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:jump (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:jump (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:jump (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (cjump2-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
-				 (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
-				 (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 rref:word-1
-				 (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((? test) (? src1) (? src2) (PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:conditional-jump test src1 src2
-					       (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:conditional-jump 'EQ rref:word-0 rref:word-1
+					      (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((? test) (? src1) (? src2) (PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:conditional-jump test src1 src2
+						 (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (cjump1-assembler)
-  (let ((8bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7F))))
-	(16bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7FFF))))
-	(32bit-width
-	 (fixed-instruction-width
-	  (inst:conditional-jump 'EQ rref:word-0 (ea:pc-relative #x7FFFFFFF)))))
-    (rule-matcher
-     ((? test) (? source) (PC-RELATIVE (- (? addr1) (? addr2))))
-     (let ((assembler
-	    (lambda (width)
-	      (lambda (value)
-		(assemble-fixed-instruction
-		 width (inst:conditional-jump test source
-					       (ea:pc-relative value)))))))
-       `((VARIABLE-WIDTH-EXPRESSION
-	  (- ,addr1 ,addr2)
-	  (,(assembler  8bit-width)  ,8bit-width       #x-80       #x7F)
-	  (,(assembler 16bit-width) ,16bit-width     #x-8000     #x7FFF)
-	  (,(assembler 32bit-width) ,32bit-width #x-80000000 #x7FFFFFFF)))))))
+  (let ((make-sample (lambda (offset)
+		       (inst:conditional-jump 'EQ rref:word-0
+					      (ea:pc-relative offset)))))
+    (let (( 8bit-stats (pc-relative-stats  8 make-sample))
+	  (16bit-stats (pc-relative-stats 16 make-sample))
+	  (32bit-stats (pc-relative-stats 32 make-sample)))
+      (rule-matcher
+       ((? test) (? source) (PC-RELATIVE (- (? label) *PC*)))
+       (let ((make-inst (lambda (offset)
+			  (inst:conditional-jump test source
+						 (ea:pc-relative offset)))))
+	 `((VARIABLE-WIDTH-EXPRESSION
+	    (- ,label *PC*)
+	    ,(pc-relative-selector  8bit-stats make-inst)
+	    ,(pc-relative-selector 16bit-stats make-inst)
+	    ,(pc-relative-selector 32bit-stats make-inst))))))))
 
 (define (match-rt-coding-type name expression symbol-table)
   (let loop ((defns (rt-coding-type-defns (rt-coding-type name))))
@@ -378,20 +389,45 @@ USA.
 (define (decode-rt-coding-type name read-byte)
   (let ((type (rt-coding-type name))
 	(code (read-byte)))
-    (let ((rcd
-	   (find-matching-item (rt-coding-type-defns type)
-	     (lambda (rcd)
-	       (eqv? (rt-defn-code rcd) code)))))
-      (if (not rcd)
-	  (error "No matching code:" code type))
-      (make-rt-instance rcd ((rt-defn-decoder rcd)
-			     read-byte rt-coding-types)))))
+    (let ((defn
+	    (find-matching-item (rt-coding-type-defns type)
+	     (lambda (defn)
+	       (eqv? (rt-defn-code defn) code)))))
+      (if defn
+	  (cons (rt-defn-name defn)
+		((rt-defn-decoder defn) read-byte))
+	  (coding-error code type)))))
 
 (define (rt-coding-type name)
   (or (find-matching-item rt-coding-types
 	(lambda (rt-coding-type)
 	  (eq? (rt-coding-type-name rt-coding-type) name)))
       (error:bad-range-argument name 'RT-CODING-TYPE)))
+
+(define condition-type:coding-error
+  (make-condition-type
+   'rt-coding-error
+   condition-type:error
+   '(INVALID-CODE CODING-TYPE)
+   (lambda (condition port)
+     (write-string "Coding error: 0x" port)
+     (write-string (number->string (access-condition condition 'INVALID-CODE)
+				   16) port)
+     (write-string " is not a valid " port)
+     (write (access-condition condition 'CODING-TYPE) port)
+     (write-string " rt-coding-type." port))))
+
+(define coding-error
+  (let ((signaller (condition-signaller condition-type:coding-error
+					'(INVALID-CODE CODING-TYPE)
+					standard-error-handler)))
+    (named-lambda (coding-error code type)
+      (call-with-current-continuation
+       (lambda (continuation)
+	 (with-restart 'CONTINUE "Continue with the next byte."
+		       (lambda () (continuation `(WORD U ,code)))
+		       values
+		       (lambda () (signaller code type))))))))
 
 ;;;; Assembler Machine Dependencies
 
@@ -595,9 +631,11 @@ USA.
     (let ((limit (expt 2 (- n-bits 1))))
       (define-pvt (symbol 'SIGNED- n-bits) (symbol 'S n-bits) 'INTEGER
 	(lambda (object)
-	  (and (exact-integer? object)
-	       (>= object (- limit))
-	       (< object limit)))
+	  (or (and (bit-string? object)
+		   (= n-bits (bit-string-length object)))
+	      (and (exact-integer? object)
+		   (>= object (- limit))
+		   (< object limit))))
 	(symbol 'ENCODE-SIGNED-INTEGER- n-bits)
 	(symbol 'DECODE-SIGNED-INTEGER- n-bits)))))
 
@@ -635,8 +673,7 @@ USA.
 ;;;; Primitive codecs
 
 (define (encode-unsigned-integer-8 n write-byte)
-  (write-byte (remainder n #x100))
-  (write-byte (quotient n #x100)))
+  (write-byte n))
 
 (define (encode-unsigned-integer-16 n write-byte)
   (write-byte (remainder n #x100))
@@ -666,27 +703,46 @@ USA.
     (+ (* (decode-unsigned-integer-32 read-byte) #x100000000) d0)))
 
 (define (encode-signed-integer-8 n write-byte)
-  (write-byte (if (fix:< n 0)
-		  (fix:+ n #x100)
-		  n)))
+  (if (bit-string? n)
+      (write-bytes n 1 write-byte)
+      (write-byte (if (fix:< n 0)
+		      (fix:+ n #x100)
+		      n))))
 
 (define (encode-signed-integer-16 n write-byte)
-  (encode-unsigned-integer-16 (if (fix:< n 0)
-				  (fix:+ n #x10000)
-				  n)
-			      write-byte))
+  (if (bit-string? n)
+      (write-bytes n 2 write-byte)
+      (encode-unsigned-integer-16 (if (fix:< n 0)
+				      (fix:+ n #x10000)
+				      n)
+				  write-byte)))
 
 (define (encode-signed-integer-32 n write-byte)
-  (encode-unsigned-integer-32 (if (< n 0)
-				  (+ n #x100000000)
-				  n)
-			      write-byte))
+  (if (bit-string? n)
+      (write-bytes n 4 write-byte)
+      (encode-unsigned-integer-32 (if (< n 0)
+				      (+ n #x100000000)
+				      n)
+				  write-byte)))
 
 (define (encode-signed-integer-64 n write-byte)
-  (encode-unsigned-integer-64 (if (< n 0)
-				  (+ n #x10000000000000000)
-				  n)
-			      write-byte))
+  (if (bit-string? n)
+      (write-bytes n 8 write-byte)
+      (encode-unsigned-integer-64 (if (< n 0)
+				      (+ n #x10000000000000000)
+				      n)
+				  write-byte)))
+
+(define (write-bytes bits bytes write-byte)
+  (if (not (= (* bytes 8) (bit-string-length bits)))
+      (error "Wrong number of bytes" bytes bits))
+  (let loop ((start 0)
+	     (end (bit-string-length bits)))
+    (if (fix:< start end)
+	(let ((next (fix:+ start 8)))
+	  (write-byte (bit-string->unsigned-integer
+		       (bit-substring bits start next)))
+	  (loop next end)))))
 
 (define (decode-signed-integer-8 read-byte)
   (let ((n (read-byte)))
@@ -779,4 +835,11 @@ USA.
      write-byte)))
 
 (define (decode-rref read-byte)
-  (register-reference (decode-unsigned-integer-8 read-byte)))
+  (let ((regnum (decode-unsigned-integer-8 read-byte)))
+    (list 'R
+	  (cond ((= regnum regnum:interpreter-register-block) 'IBLOCK)
+		((= regnum regnum:stack-pointer) 'SP)
+		((= regnum regnum:free-pointer) 'FREE)
+		((= regnum regnum:value) 'VALUE)
+		((= regnum regnum:dynamic-link) 'DLINK)
+		(else regnum)))))

@@ -37,7 +37,9 @@ DIRNAME="STAGE${2}"
 
 case "${1}" in
 make)
-    mkdir "${DIRNAME}" && mv -f *.com *.bci "${DIRNAME}/."
+    mkdir "${DIRNAME}"
+    maybe_mv *.com "${DIRNAME}/."
+    maybe_mv *.bci "${DIRNAME}/."
     ;;
 make-cross)
     mkdir "$DIRNAME"
@@ -47,7 +49,10 @@ make-cross)
     maybe_mv *.fni "$DIRNAME"
     ;;
 unmake)
-    mv -f "${DIRNAME}"/* . && rmdir "${DIRNAME}"
+    if [ -d "${DIRNAME}" ]; then
+	maybe_mv "${DIRNAME}"/* .
+	rmdir "${DIRNAME}"
+    fi
     ;;
 remove)
     rm -rf "${DIRNAME}"

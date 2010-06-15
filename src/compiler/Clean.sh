@@ -48,10 +48,12 @@ done
 
 case ${1} in
 distclean | maintainer-clean)
-    echo "rm -f machine compiler.cbf compiler.pkg compiler.sf"
-    rm -f machine compiler.cbf compiler.pkg compiler.sf
-    echo "rm -f make.com make.bin make.so"
-    rm -f make.com make.bin make.so
+    maybe_rm machine compiler.cbf compiler.pkg compiler.sf
+    maybe_rm make.com make.bin make.so
+    maybe_rm machines/svm/assembler-db.scm
+    maybe_rm machines/svm/assembler-rules.exp
+    maybe_rm machines/svm/svm1-defns.h
+    maybe_rm machines/svm/svm1-opcodes.scm
     ;;
 esac
 

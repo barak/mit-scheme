@@ -39,7 +39,10 @@ S="STAGE${2}"
 case "${1}" in
 make)
     for D in ${SUBDIRS}; do
-	(cd ${D} && mkdir "${S}" && mv -f *.com *.bci "${S}") || exit 1
+	( cd "${D}"
+	  mkdir "${S}"
+	  maybe_mv *.com "${S}/."
+	  maybe_mv *.bci "${S}/." )
     done
     ;;
 make-cross)
@@ -54,7 +57,11 @@ make-cross)
     ;;
 unmake)
     for D in ${SUBDIRS}; do
-	(cd ${D} && mv -f "${S}"/* . && rmdir "${S}") || exit 1
+	( cd "${D}"
+	  if [ -d "${S}" ]; then
+	      maybe_mv "${S}"/* .
+	      rmdir "${S}"
+	  fi )
     done
     ;;
 remove)

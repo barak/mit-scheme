@@ -40,13 +40,9 @@ USA.
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
 (if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
-    ;; Refer to the cref package model (compiler.pkg) for syntax/load
-    ;; environments.
+    ;; Assume there are no os-type-specific files or packages.
     (let* ((xref (->environment '(cross-reference)))
-
-	   ;; Assume there are no os-type-specific files or packages.
 	   (pmodel ((access read-package-model xref) "compiler" 'unix))
-
 	   (env
 	    (lambda (filename)
 	      (->environment
@@ -88,6 +84,7 @@ USA.
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
+(sf-conditionally "make")
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-constructors "compiler" 'ALL)
