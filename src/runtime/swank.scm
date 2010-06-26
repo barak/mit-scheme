@@ -33,14 +33,16 @@ USA.
 
 ;;; Suggested for .emacs:
 #|
-  (defun mit-scheme-init (file encoding)
+(when (require 'slime nil t)
+
+  (defun mit-scheme-start-swank (file encoding)
     (format "%S\n\n" `(start-swank ,file)))
 
   (defun mit-scheme-find-buffer-package ()
     (save-excursion
       (let ((case-fold-search t))
-	(beginning-of-buffer)
-	(and (re-search-forward "^;+ package: \\((.+)\\).*$" nil t)
+	(goto-char (point-min))
+	(and (re-search-forward "^;+ package: \\(([^)]+)\\)" nil t)
 	     (match-string-no-properties 1)))))
 
   (defun mit-scheme-slime-mode-init ()
@@ -48,15 +50,14 @@ USA.
     (make-local-variable 'slime-find-buffer-package-function)
     (setq slime-find-buffer-package-function 'mit-scheme-find-buffer-package))
 
-  (when (require 'slime nil t)
-    (slime-setup)
-    (if (not (memq 'mit-scheme slime-lisp-implementations))
-	(setq slime-lisp-implementations
-	      (cons '(mit-scheme ("mit-scheme") :init mit-scheme-init)
-		    slime-lisp-implementations)))
-    (setq slime-default-lisp 'mit-scheme)
-    (add-hook 'scheme-mode-hook 'mit-scheme-slime-mode-init)
-    (setq inferior-lisp-program "mit-scheme"))
+  (slime-setup)
+  (if (not (memq 'mit-scheme slime-lisp-implementations))
+      (setq slime-lisp-implementations
+	    (cons '(mit-scheme ("mit-scheme")
+			       :init mit-scheme-start-swank)
+		  slime-lisp-implementations)))
+  (setq slime-default-lisp 'mit-scheme)
+  (add-hook 'scheme-mode-hook 'mit-scheme-slime-mode-init))
 |#
 
 (declare (usual-integrations))
@@ -680,24 +681,29 @@ swank:xref
 
 (define (swank:simple-completions socket string package)
   socket
-  (let ((strings (all-completions string (user-env package) string-prefix?)))
+  (let ((strings (all-completions string (user-env package))))
     (list (sort strings string<?)
 	  (longest-common-prefix strings))))
 
-(define (all-completions pattern env match?)
-  (let ((ss (map symbol-name (environment-names env))))
-    (keep-matching-items ss (lambda (s) (match? pattern s)))))
-
-(define (environment-names env)
-  (append (environment-bound-names env)
-	  (if (environment-has-parent? env)
-	      (environment-names (environment-parent env))
-	      '())))
+(define (all-completions prefix environment)
+  (let ((prefix
+	 (if (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	     (string-downcase prefix)
+	     prefix))
+	(completions '()))
+    (for-each-interned-symbol
+     (lambda (symbol)
+       (if (and (string-prefix? prefix (symbol-name symbol))
+		(environment-bound? environment symbol))
+	   (set! completions (cons (symbol-name symbol) completions)))
+       unspecific))
+    completions))
 
 (define (longest-common-prefix strings)
-  (define (common-prefix s1 s2)
-    (substring s1 0 (string-match-forward s1 s2)))
-  (reduce common-prefix "" strings))
+  (reduce (lambda (s1 s2)
+	    (substring s1 0 (string-match-forward s1 s2)))
+	  ""
+	  strings))
 
 ;;;; Apropos
 
