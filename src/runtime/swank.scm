@@ -31,6 +31,34 @@ USA.
 ;;;; SWANK module for MIT/GNU Scheme
 ;;; package: (runtime swank)
 
+;;; Suggested for .emacs:
+#|
+  (defun mit-scheme-init (file encoding)
+    (format "%S\n\n" `(start-swank ,file)))
+
+  (defun mit-scheme-find-buffer-package ()
+    (save-excursion
+      (let ((case-fold-search t))
+	(beginning-of-buffer)
+	(and (re-search-forward "^;+ package: \\((.+)\\).*$" nil t)
+	     (match-string-no-properties 1)))))
+
+  (defun mit-scheme-slime-mode-init ()
+    (slime-mode t)
+    (make-local-variable 'slime-find-buffer-package-function)
+    (setq slime-find-buffer-package-function 'mit-scheme-find-buffer-package))
+
+  (when (require 'slime nil t)
+    (slime-setup)
+    (if (not (memq 'mit-scheme slime-lisp-implementations))
+	(setq slime-lisp-implementations
+	      (cons '(mit-scheme ("mit-scheme") :init mit-scheme-init)
+		    slime-lisp-implementations)))
+    (setq slime-default-lisp 'mit-scheme)
+    (add-hook 'scheme-mode-hook 'mit-scheme-slime-mode-init)
+    (setq inferior-lisp-program "mit-scheme"))
+|#
+
 (declare (usual-integrations))
 
 (define (start-swank #!optional port-file)
