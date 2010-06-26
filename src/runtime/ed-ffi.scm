@@ -150,6 +150,7 @@ USA.
     ("string"	(runtime string))
     ("stringio"	(runtime string-i/o-port))
     ("structure-parser" (runtime structure-parser))
+    ("swank"	(runtime swank))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntax"	(runtime syntax top-level))

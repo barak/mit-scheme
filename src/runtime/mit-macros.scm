@@ -84,17 +84,18 @@ USA.
 (define supported-srfi-features
   '(MIT
     MIT/GNU
-    SRFI-0                              ;COND-EXPAND
-    SRFI-1                              ;List Library
-    SRFI-2                              ;AND-LET*
-    SRFI-6                              ;Basic String Ports
-    SRFI-8                              ;RECEIVE
-    SRFI-9                              ;DEFINE-RECORD-TYPE
-    SRFI-23                             ;ERROR
-    SRFI-27                             ;Sources of Random Bits
-    SRFI-30                             ;Nested Multi-Line Comments (#| ... |#)
-    SRFI-62                             ;S-expression comments
-    SRFI-69				;Basic Hash Tables
+    SWANK		       ;Provides SWANK module for SLIME
+    SRFI-0		       ;COND-EXPAND
+    SRFI-1		       ;List Library
+    SRFI-2		       ;AND-LET*
+    SRFI-6		       ;Basic String Ports
+    SRFI-8		       ;RECEIVE
+    SRFI-9		       ;DEFINE-RECORD-TYPE
+    SRFI-23		       ;ERROR
+    SRFI-27		       ;Sources of Random Bits
+    SRFI-30		       ;Nested Multi-Line Comments (#| ... |#)
+    SRFI-62		       ;S-expression comments
+    SRFI-69		       ;Basic Hash Tables
     ))
 
 (define-syntax :receive

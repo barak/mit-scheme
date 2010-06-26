@@ -128,6 +128,10 @@ USA.
 	(error:bad-range-argument field-name operator))
     (cdr association)))
 
+(define (condition-type/name type)
+  (guarantee-condition-type type 'CONDITION-TYPE/NAME)
+  (%condition-type/name type))
+
 (define (condition-type/field-names type)
   (guarantee-condition-type type 'CONDITION-TYPE/FIELD-NAMES)
   (map car (%condition-type/field-indexes type)))

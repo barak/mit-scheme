@@ -1612,6 +1612,7 @@ USA.
 	  condition-type/field-names
 	  condition-type/generalizations
 	  condition-type/get
+	  condition-type/name
 	  condition-type/properties
 	  condition-type/put!
 	  condition-type:arithmetic-error
@@ -2253,12 +2254,14 @@ USA.
   (files "intrpt")
   (parent (runtime))
   (export ()
-          event:console-resize)
+	  event:console-resize)
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
   (export (runtime load)
 	  generate-suspend-file?)
+  (export (runtime swank)
+	  keyboard-interrupt-vector)
   (initialization (initialize-package!)))
 
 (define-package (runtime lambda-abstraction)
@@ -4733,6 +4736,8 @@ USA.
   (export (runtime emacs-interface)
 	  port/read-finish
 	  port/read-start)
+  (export (runtime swank)
+	  port/write-result)
   (initialization (initialize-package!)))
 
 (define-package (runtime thread)
@@ -5790,3 +5795,10 @@ USA.
 	    win32-registry/value-names
 	    win32/expand-environment-strings)
     (initialization (initialize-package!)))))
+
+(define-package (runtime swank)
+  (files "swank")
+  (parent (runtime))
+  (export ()
+	  start-swank)
+  (initialization (initialize-package!)))

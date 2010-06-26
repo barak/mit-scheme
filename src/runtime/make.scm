@@ -538,7 +538,8 @@ USA.
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
    (OPTIONAL (RUNTIME WIN32-REGISTRY))
-   (OPTIONAL (RUNTIME FFI))))
+   (OPTIONAL (RUNTIME FFI))
+   (RUNTIME SWANK)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
