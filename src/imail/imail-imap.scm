@@ -2298,7 +2298,11 @@ USA.
   (vector-ref (imap-folder-messages folder) index))
 
 (define-method first-unseen-message-index ((folder <imap-folder>))
-  (or (imap-folder-unseen folder) 0))
+  (or (let ((unseen (imap-folder-unseen folder)))
+	(and unseen
+	     (< unseen (folder-length folder))
+	     unseen))
+      0))
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (imap:command:expunge (guarantee-imap-folder-open folder)))
