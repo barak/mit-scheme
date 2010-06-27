@@ -51,6 +51,7 @@ USA.
 	     ((STRING) (string? object))
 	     ((CHAR) (char? object))
 	     ((URI) (->uri object #f))
+	     ((INDEX) (exact-nonnegative-integer? object))
 	     (else (match-error))))
 	  ((pair? pattern)
 	   (case (car pattern)
