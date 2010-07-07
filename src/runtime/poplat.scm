@@ -73,6 +73,12 @@ USA.
   (and (pair? object)
        (eq? (car object) population-tag)))
 
+(define (add-to-population!/unsafe population object)
+  (set-cdr! population
+	    (system-pair-cons weak-cons-type
+			      (canonicalize object)
+			      (cdr population))))
+
 (define (add-to-population! population object)
   (let ((object (canonicalize object)))
     (let loop ((previous population) (this (cdr population)))

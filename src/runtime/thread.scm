@@ -108,7 +108,7 @@ USA.
     (set-thread/continuation! thread continuation)
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
-    (add-to-population! thread-population thread)
+    (add-to-population!/unsafe thread-population thread)
     (thread-running thread)
     thread))
 

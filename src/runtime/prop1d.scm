@@ -43,7 +43,7 @@ USA.
 
 (define (make-1d-table)
   (let ((table (list 1d-table-tag)))
-    (add-to-population! population-of-1d-tables table)
+    (add-to-population!/unsafe population-of-1d-tables table)
     table))
 
 (define (1d-table? object)

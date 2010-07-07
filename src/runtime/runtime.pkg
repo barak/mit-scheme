@@ -2955,6 +2955,8 @@ USA.
 	  map-over-population!
 	  population?
 	  remove-from-population!)
+  (export (runtime)
+	  add-to-population!/unsafe)
   (initialization (initialize-package!)))
 
 (define-package (runtime pretty-printer)
