@@ -576,7 +576,8 @@ Interpret (int pop_return_p)
     case TC_VARIABLE:
       {
 	SCHEME_OBJECT val = GET_VAL;
-	long temp = (lookup_variable (GET_ENV, GET_EXP, (&val)));
+	SCHEME_OBJECT name = (GET_VARIABLE_SYMBOL (GET_EXP));
+	long temp = (lookup_variable (GET_ENV, name, (&val)));
 	if (temp != PRIM_DONE)
 	  {
 	    /* Back out of the evaluation. */
@@ -765,8 +766,6 @@ Interpret (int pop_return_p)
 	SCHEME_OBJECT val;
 	long code;
 
-	if (!ENVIRONMENT_P (GET_VAL))
-	  POP_RETURN_ERROR (ERR_BAD_FRAME);
 	code = (lookup_variable (GET_VAL,
 				 (MEMORY_REF (GET_EXP, ACCESS_NAME)),
 				 (&val)));
@@ -785,14 +784,18 @@ Interpret (int pop_return_p)
 
     case RC_EXECUTE_ASSIGNMENT_FINISH:
       {
+	SCHEME_OBJECT variable = (MEMORY_REF (GET_EXP, ASSIGN_NAME));
 	SCHEME_OBJECT old_val;
 	long code;
 
 	POP_ENV ();
-	code = (assign_variable (GET_ENV,
-				 (MEMORY_REF (GET_EXP, ASSIGN_NAME)),
-				 GET_VAL,
-				 (&old_val)));
+	if (TC_VARIABLE == (OBJECT_TYPE (variable)))
+	  code = (assign_variable (GET_ENV,
+				   (GET_VARIABLE_SYMBOL (variable)),
+				   GET_VAL,
+				   (&old_val)));
+	else
+	  code = ERR_BAD_FRAME;
 	if (code == PRIM_DONE)
 	  SET_VAL (old_val);
 	else
