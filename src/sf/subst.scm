@@ -116,12 +116,13 @@ USA.
 	       ((#F EXPAND INTEGRATE-OPERATOR) (dont-integrate))
 
 	       ((IGNORE)
-		(ignored-variable-warning (variable/name variable))
+		(ignored-variable-warning name)
 		(dont-integrate))
 
 	       ((INTEGRATE)
 		(reassign name (copy/expression/intern
-				block (integration-info/expression info))))
+				(access/block expression)
+				(integration-info/expression info))))
 
 	       (else
 		(error "Unknown operation" operation))))
@@ -331,8 +332,10 @@ USA.
 	       (cond ((and (expression/never-false? e3)
 			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (3)"))
 		      ;; (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
-		      (conditional/make (and expression (object/scode expression))
-					integrated-predicate e4a e5))
+		      (integrate/conditional operations environment expression
+					     e1
+					     (sequence/make #f (list e2 e5))
+					     (sequence/make #f (list e3 consequent))))
 
 		     ((and (expression/can-duplicate? e5)
 			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (4)"))
