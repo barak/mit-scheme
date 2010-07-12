@@ -178,15 +178,10 @@ lookup_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
   SCHEME_OBJECT * cell;
   SCHEME_OBJECT value;
 
-  if (!ENVIRONMENT_P (environment))
+  if (! ((ENVIRONMENT_P (environment)) && (SYMBOL_P (symbol))))
     return (ERR_BAD_FRAME);
 
-  cell
-    = (find_binding_cell (environment,
-			  (((OBJECT_TYPE (symbol)) == TC_VARIABLE)
-			   ? (GET_VARIABLE_SYMBOL (symbol))
-			   : symbol),
-			  0));
+  cell = (find_binding_cell (environment, symbol, 0));
   if (cell == 0)
     return (ERR_UNBOUND_VARIABLE);
 
@@ -324,15 +319,10 @@ long
 assign_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT value, SCHEME_OBJECT * value_ret)
 {
-  if (!ENVIRONMENT_P (environment))
+  if (! ((ENVIRONMENT_P (environment)) || (SYMBOL_P (symbol))))
     return (ERR_BAD_FRAME);
   {
-    SCHEME_OBJECT * cell
-      = (find_binding_cell (environment,
-			    (((OBJECT_TYPE (symbol)) == TC_VARIABLE)
-			     ? (GET_VARIABLE_SYMBOL (symbol))
-			     : symbol),
-			    0));
+    SCHEME_OBJECT * cell = (find_binding_cell (environment, symbol, 0));
     if (cell == 0)
       return (ERR_UNBOUND_VARIABLE);
     return (assign_variable_end (cell, value, value_ret, 0));
@@ -434,7 +424,7 @@ long
 define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
 		 SCHEME_OBJECT value)
 {
-  if (!ENVIRONMENT_P (environment))
+  if (! ((ENVIRONMENT_P (environment)) || (SYMBOL_P (symbol))))
     return (ERR_BAD_FRAME);
 
   /* If there is already a binding, just assign to it.  */
@@ -552,7 +542,9 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   SCHEME_OBJECT * target_cell;
 
   if (! ((ENVIRONMENT_P (target_environment))
-	 && (ENVIRONMENT_P (source_environment))))
+	 && (ENVIRONMENT_P (source_environment))
+	 && (SYMBOL_P (target_symbol))
+	 && (SYMBOL_P (source_symbol))))
     return (ERR_BAD_FRAME);
 
   source_cell = (find_binding_cell (source_environment, source_symbol, 0));
