@@ -39,7 +39,6 @@ USA.
 	  combination/constant-folding-operators)
   (export ()
 	  sf:enable-argument-deletion?
-	  sf:enable-conjunction-linearization?
 	  sf:enable-constant-folding?
 	  sf:enable-disjunction-simplification?
 	  sf:enable-distribute-primitives?
