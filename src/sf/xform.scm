@@ -241,6 +241,7 @@ USA.
   (access-components expression
     (lambda (environment* name)
       (access/make expression
+		   block
 		   (transform/expression block environment environment*)
 		   name))))
 

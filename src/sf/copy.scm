@@ -172,6 +172,7 @@ USA.
 (define-method/copy 'ACCESS
   (lambda (block environment expression)
     (access/make (access/scode expression)
+		 (access/block expression)
 		 (copy/expression block
 				  environment
 				  (access/environment expression))

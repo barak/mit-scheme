@@ -201,7 +201,7 @@ USA.
 (define-guarantee variable "variable")
 
 ;;; Expressions
-(define-simple-type access          #f                 (environment name))
+(define-simple-type access          #f                 (block environment name))
 (define-simple-type assignment      #f                 (block variable value))
 (define-simple-type combination     combination/%make  (block operator operands))
 (define-simple-type conditional     conditional/%make  (predicate consequent alternative))
@@ -327,6 +327,7 @@ USA.
 
 (define-integrable (global-ref/make name)
   (access/make #f
+	       #f
 	       (constant/make #f system-global-environment)
 	       name))
 

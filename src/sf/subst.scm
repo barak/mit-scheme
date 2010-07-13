@@ -105,7 +105,9 @@ USA.
 	  (name (access/name expression)))
 
       (define (dont-integrate)
-	(access/make (access/scode expression) environment* name))
+	(access/make (access/scode expression)
+		     (access/block expression)
+		     environment* name))
 
       (if (not (constant/system-global-environment? environment*))
 	  (dont-integrate)
@@ -815,7 +817,9 @@ USA.
     (define (dont-integrate)
       (combination/make
        expression block
-       (access/make (access/scode operator) environment* name) operands))
+       (access/make (access/scode operator)
+		    (access/block operator)
+		    environment* name) operands))
 
     (if (not (constant/system-global-environment? environment*))
 	(dont-integrate)
