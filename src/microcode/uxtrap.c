@@ -43,9 +43,6 @@ USA.
 #ifdef __ppc64__
 #  undef ENABLE_TRAP_RECOVERY
 #endif
-#ifdef __x86_64__
-#  undef ENABLE_TRAP_RECOVERY
-#endif
 #ifdef __ia64__
 #  undef ENABLE_TRAP_RECOVERY
 #endif
