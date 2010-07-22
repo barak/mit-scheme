@@ -1691,11 +1691,11 @@ plausible_cc_block_p (SCHEME_OBJECT * block)
     if ((read_cc_entry_type ((&cet), entry))
 	|| ((cet.marker) != CET_EXPRESSION))
       {
-	entry += CC_ENTRY_GC_TRAP_SIZE;
-	if ((read_cc_entry_type ((&cet), entry))
-	    || (! (((cet.marker) == CET_PROCEDURE)
-		   || ((cet.marker) == CET_CONTINUATION))))
-	  return (0);
+	insn_t * real_entry = (entry + CC_ENTRY_GC_TRAP_SIZE);
+	if ((! (read_cc_entry_type ((&cet), real_entry)))
+	    && (((cet.marker) == CET_PROCEDURE)
+		|| ((cet.marker) == CET_CONTINUATION)))
+	  entry = real_entry;
       }
   }
   {
