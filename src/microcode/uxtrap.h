@@ -642,12 +642,12 @@ typedef struct
    reasonable guess.  */
 
 #if defined(__NetBSD__)
-
 #include <sys/param.h>
-
 #if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 200000000
 
 #  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#  define HAVE_SIGCONTEXT
+
 #  include <sys/siginfo.h>
 #  include <sys/ucontext.h>
 
@@ -655,7 +655,7 @@ typedef struct
 #    include <i386/mcontext.h>
 #    define SIGCONTEXT_NREGS _NGREG
 #    define __SIGCONTEXT_REG(scp, ir)           \
-  ((((scp) -> uc_mcontext) -> __gregs) [(ir)])
+  ((((scp) -> uc_mcontext) . __gregs) [(ir)])
 #    define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, _REG_GS)))
 #    define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, _REG_EDI))
 #  endif
