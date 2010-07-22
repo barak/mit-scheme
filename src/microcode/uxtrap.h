@@ -389,116 +389,6 @@ struct full_sigcontext
 #endif /* mips */
 
 #ifdef __IA32__
-
-#ifdef __linux__
-
-/* This isn't really the right test: what we really want to know is if
-   the kernel supports the newer signal-delivery mechanism.  */
-
-#ifdef _POSIX_REALTIME_SIGNALS
-
-#define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
-
-#define HAVE_SIGCONTEXT
-#define SIGCONTEXT_NREGS NGREG
-#define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, REG_GS)))
-#define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, REG_ESP))
-#define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, REG_EIP))
-#define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, REG_EDI))
-
-#define INITIALIZE_UX_SIGNAL_CODES()					\
-{									\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_INTDIV, "integer divide by 0 trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_INTOVF, "integer overflow trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTDIV, "floating-point divide by 0 trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTOVF, "floating-point overflow trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTUND, "floating-point underflow trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTRES, "floating-point inexact result");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTSUB, "subscript-range trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGFPE, (~ 0L), FPE_FLTINV, "invalid floating-point operation");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_ILLOPC, "illegal opcode trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_ILLOPN, "illegal operand trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_ILLADR, "illegal addressing mode trap");	\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_ILLTRP, "illegal trap");			\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_PRVOPC, "privileged opcode trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_PRVREG, "privileged register trap");		\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_COPROC, "co-processor trap");			\
-  DECLARE_UX_SIGNAL_CODE						\
-    (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
-}
-
-#else /* not _POSIX_REALTIME_SIGNALS */
-
-/* In Linux 2.0 and earlier, signal handlers are called with one
-   argument.  There's an "iBCS2 signal stack" register dump just above
-   it.  Thus, the fictitious `info' argument to the handler is
-   actually the first member of this register dump (described by
-   linux_sigcontext_t, below).  Unfortunately, kludging SIGINFO_CODE
-   to access the sc_trapno will fail later on when looking at the
-   saved_info.  */
-
-typedef struct
-{
-  unsigned short gs, __gsh;
-  unsigned short fs, __fsh;
-  unsigned short es, __esh;
-  unsigned short ds, __dsh;
-  unsigned long edi;
-  unsigned long esi;
-  unsigned long ebp;
-  unsigned long esp;
-  unsigned long ebx;
-  unsigned long edx;
-  unsigned long ecx;
-  unsigned long eax;
-  unsigned long trapno;
-  unsigned long err;
-  unsigned long eip;
-  unsigned short cs, __csh;
-  unsigned long eflags;
-  unsigned long esp_at_signal;
-  unsigned short ss, __ssh;
-  void * fpstate;
-} linux_sigcontext_t;
-
-#define HAVE_SIGCONTEXT
-#define SIGCONTEXT_T linux_sigcontext_t
-#define SIGCONTEXT_NREGS 19
-#define SIGCONTEXT_FIRST_REG(scp) (scp)
-#define SIGCONTEXT_SP(scp) ((scp) -> esp)
-#define SIGCONTEXT_PC(scp) ((scp) -> eip)
-#define SIGCONTEXT_RFREE(scp) ((scp) -> edi)
-
-/* DECLARE_SIGCONTEXT gives us a chance to generate a pointer to the
-   register dump, since it is used at the beginning of STD_HANDLER's.
-   In terms of the expected arguments to the STD_ signal HANDLER's,
-   the register dump is right above `signo', at `info', one long below
-   `pscp', which is what DECLARE_SIGCONTEXT is getting for `arg'.
-   Thus, our pointer to a scp is initialized to the address of `arg'
-   minus 1 long.  */
-
-#define DECLARE_SIGCONTEXT(scp, arg)					\
-  SIGCONTEXT_T * scp;							\
-  scp = ((SIGCONTEXT_T *) (((unsigned long *) (& (arg))) - 1))
-
-#endif /* not _POSIX_REALTIME_SIGNALS */
-
-#endif /* __linux__ */
  
 #if defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <ucontext.h>
@@ -636,6 +526,145 @@ typedef struct
 #endif /* __svr4__ */
 
 #endif /* __sparc */
+
+#ifdef __linux__
+
+/* This isn't really the right test: what we really want to know is if
+   the kernel supports the newer signal-delivery mechanism.  */
+
+#  ifdef _POSIX_REALTIME_SIGNALS
+
+#  ifdef __IA32__
+#    define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_NREGS NGREG
+#    define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, REG_GS)))
+#    define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, REG_ESP))
+#    define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, REG_EIP))
+#    define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, REG_EDI))
+#  endif /* __IA32__ */
+
+#  ifdef __x86_64__
+#    define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_NREGS NGREG
+#    define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, REG_R8)))
+#    define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, REG_RSP))
+#    define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, REG_RIP))
+#    define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, REG_RDI))
+#  endif /* __x86_64__ */
+
+#  else /* not _POSIX_REALTIME_SIGNALS */
+
+#    ifdef __IA32__
+
+/* In Linux 2.0 and earlier, signal handlers are called with one
+   argument.  There's an "iBCS2 signal stack" register dump just above
+   it.  Thus, the fictitious `info' argument to the handler is
+   actually the first member of this register dump (described by
+   linux_sigcontext_t, below).  Unfortunately, kludging SIGINFO_CODE
+   to access the sc_trapno will fail later on when looking at the
+   saved_info.  */
+
+typedef struct
+{
+  unsigned short gs, __gsh;
+  unsigned short fs, __fsh;
+  unsigned short es, __esh;
+  unsigned short ds, __dsh;
+  unsigned long edi;
+  unsigned long esi;
+  unsigned long ebp;
+  unsigned long esp;
+  unsigned long ebx;
+  unsigned long edx;
+  unsigned long ecx;
+  unsigned long eax;
+  unsigned long trapno;
+  unsigned long err;
+  unsigned long eip;
+  unsigned short cs, __csh;
+  unsigned long eflags;
+  unsigned long esp_at_signal;
+  unsigned short ss, __ssh;
+  void * fpstate;
+} linux_sigcontext_t;
+
+#      define HAVE_SIGCONTEXT
+#      define SIGCONTEXT_T linux_sigcontext_t
+#      define SIGCONTEXT_NREGS 19
+#      define SIGCONTEXT_FIRST_REG(scp) (scp)
+#      define SIGCONTEXT_SP(scp) ((scp) -> esp)
+#      define SIGCONTEXT_PC(scp) ((scp) -> eip)
+#      define SIGCONTEXT_RFREE(scp) ((scp) -> edi)
+
+/* DECLARE_SIGCONTEXT gives us a chance to generate a pointer to the
+   register dump, since it is used at the beginning of STD_HANDLER's.
+   In terms of the expected arguments to the STD_ signal HANDLER's,
+   the register dump is right above `signo', at `info', one long below
+   `pscp', which is what DECLARE_SIGCONTEXT is getting for `arg'.
+   Thus, our pointer to a scp is initialized to the address of `arg'
+   minus 1 long.  */
+
+#      define DECLARE_SIGCONTEXT(scp, arg)				\
+  SIGCONTEXT_T * scp;							\
+  scp = ((SIGCONTEXT_T *) (((unsigned long *) (& (arg))) - 1))
+
+#    endif /* __IA32__ */
+
+#  endif /* _POSIX_REALTIME_SIGNALS */
+
+#  define INITIALIZE_UX_SIGNAL_CODES()					\
+{									\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTDIV, "integer divide by 0 trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_INTOVF, "integer overflow trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTDIV, "floating-point divide by 0 trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTOVF, "floating-point overflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTUND, "floating-point underflow trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTRES, "floating-point inexact result");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTSUB, "subscript-range trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGFPE, (~ 0L), FPE_FLTINV, "invalid floating-point operation");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPC, "illegal opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLOPN, "illegal operand trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLADR, "illegal addressing mode trap");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_ILLTRP, "illegal trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVOPC, "privileged opcode trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_PRVREG, "privileged register trap");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_COPROC, "co-processor trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~ 0L), SEGV_MAPERR, "address not mapped to object");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGSEGV, (~ 0L), SEGV_ACCERR, "invalid permissions for mapped object"); \
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~ 0L), BUS_ADRALN, "invalid address alignment");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~ 0L), BUS_ADRERR, "nonexistent physical address");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGBUS, (~ 0L), BUS_OBJERR, "object-specific hardware error");	\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~ 0L), TRAP_BRKPT, "process breakpoint");		\
+  DECLARE_UX_SIGNAL_CODE						\
+    (SIGTRAP, (~ 0L), TRAP_TRACE, "process trace trap");		\
+}
+
+#endif /* __linux__ */
 
 /* Judging by the CVS logs, NetBSD seems to have begun supporting
    siginfo cruft somewhere around 1.5ish or 1.6ish, so 2.0 is a
