@@ -182,7 +182,7 @@ userio_choose_option (const char * herald,
       fputs (prompt, stdout);
       fflush (stdout);
       {
-	char command = (userio_read_char_raw ());
+	unsigned char command = ((unsigned char) (userio_read_char_raw ()));
 	if ((command == '\0') && (errno != 0))
 	  return (command);
 	putc ('\n', stdout);
@@ -197,7 +197,7 @@ userio_choose_option (const char * herald,
 	      if (choice == 0)
 		break;
 	      {
-		char option = (*choice);
+		unsigned char option = (*choice);
 		if (islower (option))
 		  option = (toupper (option));
 		if (command == option)
