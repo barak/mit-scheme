@@ -46,7 +46,7 @@ extern void UX_reinitialize_tty (void);
 
 #ifdef HAVE_POSIX_SIGNALS
 
-#ifdef _POSIX_REALTIME_SIGNALS
+#ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
 #  define SIGACT_HANDLER(act) ((act) -> sa_sigaction)
 #else
 #  define SIGACT_HANDLER(act) ((act) -> sa_handler)

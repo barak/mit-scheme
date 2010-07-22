@@ -72,6 +72,10 @@ USA.
 
 #if defined(__netbsd__) || defined(__NetBSD__)
 #  define SYSTEM_VARIANT "NetBSD"
+#  include <sys/param.h>
+#  if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 200000000
+#    define HAVE_SIGACTION_SIGINFO_SIGNALS
+#  endif
 #endif
 
 #ifdef _NEXTOS
@@ -270,6 +274,10 @@ USA.
 typedef RETSIGTYPE Tsignal_handler_result;
 
 #ifdef _POSIX_REALTIME_SIGNALS
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#endif
+
+#ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
    typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
 #else
    typedef RETSIGTYPE (*Tsignal_handler) (int);

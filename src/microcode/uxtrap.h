@@ -637,7 +637,67 @@ typedef struct
 
 #endif /* __sparc */
 
+/* Judging by the CVS logs, NetBSD seems to have begun supporting
+   siginfo cruft somewhere around 1.5ish or 1.6ish, so 2.0 is a
+   reasonable guess.  */
+
+#if defined(__NetBSD__)
+
+#include <sys/param.h>
+
+#if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 200000000
+
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#  include <sys/siginfo.h>
+#  include <sys/ucontext.h>
+
+#  ifdef __IA32__
+#    include <i386/mcontext.h>
+#    define SIGCONTEXT_NREGS _NGREG
+#    define __SIGCONTEXT_REG(scp, ir)           \
+  ((((scp) -> uc_mcontext) -> __gregs) [(ir)])
+#    define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, _REG_GS)))
+#    define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, _REG_EDI))
+#  endif
+
+#  define SIGCONTEXT_SP(scp) (_UC_MACHINE_SP (scp))
+#  define SIGCONTEXT_PC(scp) (_UC_MACHINE_PC (scp))
+
+#  define INITIALIZE_UX_SIGNAL_CODES()                                  \
+  do {                                                                  \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_ILLOPC, "Illegal opcode"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_ILLOPN, "Illegal operand"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_ILLADR, "Illegal addressing mode"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_ILLTRP, "Illegal trap"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_PRVOPC, "Privileged opcode"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_PRVREG, "Privileged register"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_COPROC, "Coprocessor error"); \
+    DECLARE_UX_SIGNAL_CODE (SIGILL, (~0L), ILL_BADSTK, "Internal stack error"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_INTDIV, "Integer divide by zero"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_INTOVF, "Integer overflow"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTDIV, "Floating-point divide by zero"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTOVF, "Floating-point overflow"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTUND, "Floating-point underflow"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTRES, "Floating-point inexact result"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTINV, "Invalid floating-point operation"); \
+    DECLARE_UX_SIGNAL_CODE (SIGFPE, (~0L), FPE_FLTSUB, "Subscript out of range"); \
+    DECLARE_UX_SIGNAL_CODE (SIGSEGV, (~0L), SEGV_MAPERR, "Address not mapped to object"); \
+    DECLARE_UX_SIGNAL_CODE (SIGSEGV, (~0L), SEGV_ACCERR, "Invalid permissions for mapped object"); \
+    DECLARE_UX_SIGNAL_CODE (SIGBUS, (~0L), BUS_ADRALN, "Invalid address alignment"); \
+    DECLARE_UX_SIGNAL_CODE (SIGBUS, (~0L), BUS_ADRERR, "Nonexistent physical address"); \
+    DECLARE_UX_SIGNAL_CODE (SIGBUS, (~0L), BUS_OBJERR, "Object-specific hardware error"); \
+    DECLARE_UX_SIGNAL_CODE (SIGTRAP, (~0L), TRAP_BRKPT, "Process breakpoint"); \
+    DECLARE_UX_SIGNAL_CODE (SIGTRAP, (~0L), TRAP_TRACE, "Process trace trap"); \
+  } while (0)
+
+#endif /* __NetBSD_Version__ >= 200000000 */
+#endif /* __NetBSD__ */
+
 #ifdef _POSIX_REALTIME_SIGNALS
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#endif
+
+#ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
 #  define SIGINFO_T siginfo_t *
 #  define SIGINFO_VALID_P(info) (1)
 #  define SIGINFO_CODE(info) ((info) -> si_code)
@@ -682,7 +742,7 @@ typedef struct
 #endif
 
 #ifndef SIGCONTEXT_RFREE
-#  define SIGCONTEXT_RFREE ((unsigned long) heap_alloc_limit)
+#  define SIGCONTEXT_RFREE(scp) ((unsigned long) heap_alloc_limit)
 #endif
 
 #ifndef SIGCONTEXT_SCHSP
