@@ -237,7 +237,7 @@ USA.
 
 #define TERM_MESSAGE_TABLE						\
 {									\
-/* 0x00 */		"Happy Happy Joy Joy",				\
+/* 0x00 */		"Moriturus te saluto",				\
 /* 0x01 */		"Unrecoverable error while loading a band",	\
 /* 0x02 */		"Broken heart encountered",			\
 /* 0x03 */		"Non pointer relocation",			\
