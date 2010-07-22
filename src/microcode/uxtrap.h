@@ -646,22 +646,31 @@ typedef struct
 #if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 200000000
 
 #  define HAVE_SIGACTION_SIGINFO_SIGNALS
-#  define HAVE_SIGCONTEXT
 
 #  include <sys/siginfo.h>
 #  include <sys/ucontext.h>
+#  include <machine/mcontext.h>
 
 #  ifdef __IA32__
-#    include <i386/mcontext.h>
-#    define SIGCONTEXT_NREGS _NGREG
-#    define __SIGCONTEXT_REG(scp, ir)           \
-  ((((scp) -> uc_mcontext) . __gregs) [(ir)])
-#    define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, _REG_GS)))
-#    define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, _REG_EDI))
+#    define SIGCONTEXT_RFREE(scp) ((SIGCONTEXT_FIRST_REG (scp)) [_REG_EDI])
+#    define HAVE_NETBSD_GENERIC_MCONTEXT
 #  endif
 
-#  define SIGCONTEXT_SP(scp) (_UC_MACHINE_SP (scp))
-#  define SIGCONTEXT_PC(scp) (_UC_MACHINE_PC (scp))
+#  ifdef __x86_64__
+#    define SIGCONTEXT_RFREE(scp) ((SIGCONTEXT_FIRST_REG (scp)) [_REG_RDI])
+#    define HAVE_NETBSD_GENERIC_MCONTEXT
+#  endif
+
+/* When I checked, on 2010-07-22, the only NetBSD ports without the
+   generic mcontext interface were IA-64 and usermode.  */
+
+#  ifdef HAVE_NETBSD_GENERIC_MCONTEXT
+#    define HAVE_SIGCONTEXT
+#    define SIGCONTEXT_NREGS _NGREG
+#    define SIGCONTEXT_FIRST_REG(scp) (((scp) -> uc_mcontext) . __gregs)
+#    define SIGCONTEXT_SP(scp) (_UC_MACHINE_SP (scp))
+#    define SIGCONTEXT_PC(scp) (_UC_MACHINE_PC (scp))
+#  endif
 
 #  define INITIALIZE_UX_SIGNAL_CODES()                                  \
   do {                                                                  \
