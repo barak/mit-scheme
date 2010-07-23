@@ -233,18 +233,11 @@ extern void asm_sc_apply_size_8 (void);
 extern void asm_scheme_to_interface (void);
 extern void asm_scheme_to_interface_call (void);
 extern void asm_serialize_cache (void);
-/* [TRC 20091025: This was an i386 hack for when the PC is not
-   available, which on x86-64 it always is. */
-/* extern void asm_short_primitive_apply (void); */
 extern void asm_trampoline_to_interface (void);
 
-/* extern void x86_64_cache_synchronize (void); */
-/* extern void start_closure_relocation (SCHEME_OBJECT *, reloc_ref_t *); */
 extern insn_t * read_compiled_closure_target (insn_t *);
-/* extern void start_operator_relocation (SCHEME_OBJECT *, reloc_ref_t *); */
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern void x86_64_reset_hook (void);
 
-extern int x86_64_cpuid_needed;
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */
