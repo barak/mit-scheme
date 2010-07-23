@@ -356,6 +356,24 @@ define_double(flonum_one,1.0)
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
 
+define_c_label(x86_64_fpe_reset_traps)
+	OP(push,q)	REG(rbp)
+	OP(mov,q)	TW(REG(rsp),REG(rbp))
+	OP(sub,q)	TW(IMM(8),REG(rsp))
+	stmxcsr		IND(REG(rsp))
+	# Clear 7 (invalid operation mask)
+	#       8 (denormalized operand mask)
+	#       9 (zero-divide exception mask)
+	#       10 (overflow exception mask)
+	#       11 (underflow exception mask)
+	#       15 (flush-to-zero (if set, gives non-IEEE semantics))
+	OP(and,l)	TW(IMM(HEX(ffff707f)),IND(REG(rsp)))
+	# Set   12 (precision exception mask)
+	OP(or,l)	TW(IMM(HEX(1000)),IND(REG(rsp)))
+	ldmxcsr		IND(REG(rsp))
+	leave
+	ret
+
 # C_to_interface passes control from C into Scheme.  To C it is a
 # unary procedure; its one argument is passed in rdi.  It saves the
 # state of the C world (the C frame pointer and stack pointer) and
