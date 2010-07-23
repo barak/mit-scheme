@@ -795,7 +795,7 @@ typedef struct
    extern int _etext;
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__NetBSD__)
    extern unsigned int _init;
    extern unsigned int etext;
 #  define ADDRESS_UCODE_P(addr)						\
