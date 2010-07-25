@@ -193,7 +193,7 @@ USA.
 
 ;;;; Message handlers
 
-(define-message-handler '(':emacs-rex form string datum index)
+(define-message-handler '(':emacs-rex form datum datum index)
   (lambda (socket level sexp pstring thread id)
     thread
     (call-with-current-continuation
@@ -209,7 +209,10 @@ USA.
 			  socket)))))))
 
 (define (emacs-rex socket sexp pstring)
-  (fluid-let ((*buffer-pstring* pstring))
+  (fluid-let ((*buffer-pstring*
+	       (cond ((emacs-false? pstring) #f)
+		     ((string? pstring) pstring)
+		     (else (error:bad-range-argument pstring 'EMACS-REX)))))
     (eval (cons* (car sexp) socket (cdr sexp))
 	  swank-env)))
 
@@ -219,7 +222,8 @@ USA.
   (the-environment))
 
 (define (buffer-env)
-  (if (string-ci=? *buffer-pstring* "COMMON-LISP-USER")
+  (if (or (not *buffer-pstring*)
+	  (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
       (get-current-environment)
       (pstring->env *buffer-pstring*)))
 
