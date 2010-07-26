@@ -341,11 +341,11 @@ darwin*)
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"
     if test "${with_module_loader}" != no; then
       if test "${with_module_loader}" = yes; then
-	MODULE_LOADER='$(SCHEME_EXE)'
+	MODULE_LOADER='${SCHEME_EXE}'
       else
 	MODULE_LOADER="${with_module_loader}"
       fi
-      MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle_loader "'$(MODULE_LOADER)'
+      MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle_loader ${MODULE_LOADER}"
     fi
     AUX_PROGRAMS="${AUX_PROGRAMS} macosx-starter"
     ;;
