@@ -41,7 +41,7 @@ USA.
 	     (list filename))))
     (let ((try-dir
 	   (lambda (base-dir)
-	     (let ((dir 
+	     (let ((dir
 		    (pathname-as-directory
 		     (merge-pathnames place
 				      (pathname-as-directory base-dir)))))
