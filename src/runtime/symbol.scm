@@ -129,9 +129,7 @@ USA.
 (define (symbol-hash-mod symbol modulus)
   (string-hash-mod (symbol-name symbol) modulus))
 
-(define (symbol<? x y)
-  (guarantee-symbol x 'SYMBOL<?)
-  (guarantee-symbol y 'SYMBOL<?)
+(define (%symbol<? x y)
   (let ((sx (system-pair-car x))
 	(sy (system-pair-car y)))
     (let ((lx (string-length sx))
@@ -144,6 +142,16 @@ USA.
 		 (loop (fix:+ i 1)))
 		(else
 		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
+
+(define (symbol<? x y)
+  (guarantee-symbol x 'SYMBOL<?)
+  (guarantee-symbol y 'SYMBOL<?)
+  (%symbol<? x y))
+
+(define (symbol>? x y)
+  (guarantee-symbol x 'SYMBOL>?)
+  (guarantee-symbol y 'SYMBOL>?)
+  (%symbol<? y x))
 
 (define (symbol->utf8-string symbol)
   (string-copy (symbol-name symbol)))
