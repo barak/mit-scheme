@@ -209,10 +209,7 @@ USA.
 			  socket)))))))
 
 (define (emacs-rex socket sexp pstring)
-  (fluid-let ((*buffer-pstring*
-	       (cond ((elisp-false? pstring) #f)
-		     ((string? pstring) pstring)
-		     (else (error:bad-range-argument pstring 'EMACS-REX)))))
+  (fluid-let ((*buffer-pstring* pstring))
     (eval (cons* (car sexp) socket (cdr sexp))
 	  swank-env)))
 
@@ -222,24 +219,25 @@ USA.
   (the-environment))
 
 (define (buffer-env)
-  (if (or (not *buffer-pstring*)
-	  (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
-      (get-current-environment)
-      (pstring->env *buffer-pstring*)))
+  (pstring->env *buffer-pstring*))
 
 (define (pstring->env pstring)
-  (if (string-prefix? anonymous-package-prefix pstring)
-      (let ((object
-	     (object-unhash
-	      (string->number (string-tail pstring
-					   (string-length
-					    anonymous-package-prefix))
-			      10
-			      #t))))
-	(if (not (environment? object))
-	    (error:wrong-type-datum object "environment"))
-	object)
-      (package/environment (find-package (read-from-string pstring) #t))))
+  (cond ((or (not (string? pstring))
+	     (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
+	 (get-current-environment))
+	((string-prefix? anonymous-package-prefix pstring)
+	 (let ((object
+		(object-unhash
+		 (string->number (string-tail pstring
+					      (string-length
+					       anonymous-package-prefix))
+				 10
+				 #t))))
+	   (if (not (environment? object))
+	       (error:wrong-type-datum object "environment"))
+	   object))
+	(else
+	 (package/environment (find-package (read-from-string pstring) #t)))))
 
 (define (env->pstring env)
   (let ((package (environment->package env)))
