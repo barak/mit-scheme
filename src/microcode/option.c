@@ -988,7 +988,10 @@ read_command_line_options (int argc, const char ** argv)
 				STACK_SIZE_VARIABLE,
 				DEFAULT_STACK_SIZE));
   if (option_show_version)
-    outf_console ("%s", PACKAGE_STRING);
+    {
+      outf_console ("%s\n", PACKAGE_STRING);
+      outf_flush_console ();
+    }
   if (option_show_help)
     print_help ();
   if (option_summary)
