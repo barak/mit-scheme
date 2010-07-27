@@ -210,7 +210,7 @@ USA.
 
 (define (emacs-rex socket sexp pstring)
   (fluid-let ((*buffer-pstring*
-	       (cond ((emacs-false? pstring) #f)
+	       (cond ((elisp-false? pstring) #f)
 		     ((string? pstring) pstring)
 		     (else (error:bad-range-argument pstring 'EMACS-REX)))))
     (eval (cons* (car sexp) socket (cdr sexp))
