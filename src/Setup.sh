@@ -68,12 +68,21 @@ OTHER_SUBDIRS="6001 compiler rcs runtime win32 xdoc microcode"
 # lib
 maybe_mkdir lib
 maybe_link lib/edwin ../edwin
-maybe_link lib/lib ../microcode
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
 maybe_link lib/ffi ../ffi
+
+# This is a kludge so that liarc bundles can coexist with microcode
+# modules in the same lib directory.  If you have a better way to make
+# this work, please implement it.  Making lib/lib a symlink to
+# ../microcode does not work -- configure.ac wants to make symlinks at
+# lib/lib/sf.so to ../../sf/sf.so, &c.
+maybe_mkdir lib/lib
+for MODULE in prbfish prmd5 prmhash prmcrypt prgdbm prdb4 prpgsql prx11; do
+  maybe_link "lib/lib/${MODULE}.so" "../../microcode/${MODULE}.so"
+done
 
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"

@@ -549,6 +549,7 @@ USA.
 	  symbol-hash-mod
 	  symbol-name
 	  symbol<?
+	  symbol>?
 	  symbol?
 	  uninterned-symbol?
 	  utf8-string->symbol
