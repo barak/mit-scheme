@@ -33,7 +33,7 @@ USA.
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
 {
-  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encoded_time ())));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_encoded_time ()));
 }
 
 #define DECODE_TIME_BODY(proc)						\
@@ -45,7 +45,7 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
     struct time_structure ts;						\
     if (! (len >= 10))							\
       error_bad_range_arg (1);						\
-    proc (((time_t) (arg_ulong_integer (2))), &ts);			\
+    proc (((time_t) (arg_index_integer_to_intmax (2, TIME_T_MAX))), &ts); \
     VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
     VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
     VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
@@ -108,7 +108,7 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
 	&& (integer_to_ulong_p (VECTOR_REF (vec, 9))))
        ? (integer_to_ulong (VECTOR_REF (vec, 9)))
        : INT_MAX);
-  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encode_time (&ts))));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_encode_time (&ts)));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,

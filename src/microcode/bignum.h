@@ -27,13 +27,6 @@ USA.
 
 #ifndef SCM_BIGNUM_H_INCLUDED
 #define SCM_BIGNUM_H_INCLUDED 1
-
-/* The `unsigned long' type is used for the conversion procedures
-   `bignum_to_long' and `long_to_bignum'.  Older implementations of C
-   don't support this type; if you have such an implementation you can
-   disable these procedures using the following flag (alternatively
-   you could write alternate versions that don't require this type). */
-/* #define BIGNUM_NO_ULONG */
 
 #ifdef MIT_SCHEME
 
@@ -70,12 +63,14 @@ extern int bignum_divide
 		   bignum_type * remainder);
 extern bignum_type bignum_quotient (bignum_type, bignum_type);
 extern bignum_type bignum_remainder (bignum_type, bignum_type);
-#ifndef BIGNUM_NO_ULONG
 extern bignum_type long_to_bignum (long);
 extern bignum_type ulong_to_bignum (unsigned long);
 extern long bignum_to_long (bignum_type);
 extern unsigned long bignum_to_ulong (bignum_type);
-#endif /* not BIGNUM_NO_ULONG */
+extern bignum_type intmax_to_bignum (intmax_t);
+extern bignum_type uintmax_to_bignum (uintmax_t);
+extern intmax_t bignum_to_intmax (bignum_type);
+extern uintmax_t bignum_to_uintmax (bignum_type);
 extern bignum_type double_to_bignum (double);
 extern double bignum_to_double (bignum_type);
 extern int bignum_fits_in_word_p

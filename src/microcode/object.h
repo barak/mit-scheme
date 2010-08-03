@@ -386,6 +386,12 @@ extern SCHEME_OBJECT * memory_base;
 #define BIGNUM_TO_ULONG_P(bignum)					\
   (bignum_fits_in_word_p ((bignum), ((sizeof (unsigned long)) * CHAR_BIT), 0))
 
+#define BIGNUM_TO_INTMAX_P(bignum)					\
+  (bignum_fits_in_word_p ((bignum), ((sizeof (intmax_t)) * CHAR_BIT), 1))
+
+#define BIGNUM_TO_UINTMAX_P(bignum)					\
+  (bignum_fits_in_word_p ((bignum), ((sizeof (uintmax_t)) * CHAR_BIT), 0))
+
 #define BIGNUM_TO_DOUBLE_P(bignum)					\
   (bignum_fits_in_word_p ((bignum), (DBL_MAX_EXP + 1), 1))
 

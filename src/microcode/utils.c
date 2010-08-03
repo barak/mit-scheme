@@ -380,6 +380,17 @@ arg_integer (int arg_number)
   return (integer_to_long (object));
 }
 
+intmax_t
+arg_integer_to_intmax (int arg_number)
+{
+  SCHEME_OBJECT object = (ARG_REF (arg_number));
+  if (! (INTEGER_P (object)))
+    error_wrong_type_arg (arg_number);
+  if (! (integer_to_intmax_p (object)))
+    error_bad_range_arg (arg_number);
+  return (integer_to_intmax (object));
+}
+
 long
 arg_nonnegative_integer (int arg_number)
 {
@@ -393,6 +404,15 @@ long
 arg_index_integer (int arg_number, long upper_limit)
 {
   long result = (arg_integer (arg_number));
+  if ((result < 0) || (result >= upper_limit))
+    error_bad_range_arg (arg_number);
+  return (result);
+}
+
+intmax_t
+arg_index_integer_to_intmax (int arg_number, intmax_t upper_limit)
+{
+  intmax_t result = (arg_integer_to_intmax (arg_number));
   if ((result < 0) || (result >= upper_limit))
     error_bad_range_arg (arg_number);
   return (result);

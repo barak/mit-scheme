@@ -129,7 +129,7 @@ DEFINE_PRIMITIVE ("FILE-LENGTH-NEW", Prim_file_length_new, 1, 1,
   "Return the length of CHANNEL in characters.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_file_length (arg_channel (1))));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_file_length (arg_channel (1))));
 }
 
 DEFINE_PRIMITIVE ("FILE-POSITION", Prim_file_position, 1, 1,
@@ -137,7 +137,7 @@ DEFINE_PRIMITIVE ("FILE-POSITION", Prim_file_position, 1, 1,
 This is a non-negative number strictly less than the file's length.")
 {
   PRIMITIVE_HEADER (1);
-  PRIMITIVE_RETURN (long_to_integer (OS_file_position (arg_channel (1))));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_file_position (arg_channel (1))));
 }
 
 DEFINE_PRIMITIVE ("FILE-SET-POSITION", Prim_file_set_position, 2, 2,
@@ -145,7 +145,8 @@ DEFINE_PRIMITIVE ("FILE-SET-POSITION", Prim_file_set_position, 2, 2,
 POSITION must be a non-negative number strictly less than the file's length.")
 {
   PRIMITIVE_HEADER (1);
-  OS_file_set_position ((arg_channel (1)), (arg_nonnegative_integer (2)));
+  OS_file_set_position
+    ((arg_channel (1)), (arg_index_integer_to_intmax (2, OFF_T_MAX)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -154,6 +155,7 @@ DEFINE_PRIMITIVE ("FILE-TRUNCATE", Prim_file_truncate, 2, 2,
 LENGTH must be a non-negative number.")
 {
   PRIMITIVE_HEADER (1);
-  OS_file_truncate ((arg_channel (1)), (arg_nonnegative_integer (2)));
+  OS_file_truncate
+    ((arg_channel (1)), (arg_index_integer_to_intmax (2, OFF_T_MAX)));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

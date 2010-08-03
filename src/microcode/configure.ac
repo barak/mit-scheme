@@ -471,42 +471,16 @@ AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
-dnl These macros are too new; we'll handle this by hand for now.
-
-dnl AC_TYPE_INT8_T
-dnl AC_TYPE_INT16_T
-dnl AC_TYPE_INT32_T
-dnl AC_TYPE_INTPTR_T
-dnl AC_TYPE_UINT8_T
-dnl AC_TYPE_UINT16_T
-dnl AC_TYPE_UINT32_T
-dnl AC_TYPE_UINTPTR_T
-
-define([SCM_STDINT_MSG], [Define replacement if no <stdint.h>.])dnl
-
-AC_CHECK_TYPE([int8_t],,
-    [AC_DEFINE_UNQUOTED([int8_t], [signed char], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([int16_t],,
-    [AC_DEFINE_UNQUOTED([int16_t], [short], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([int32_t],,
-    [AC_DEFINE_UNQUOTED([int32_t], [int], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([uint8_t],,
-    [AC_DEFINE_UNQUOTED([uint8_t], [unsigned char], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([uint16_t],,
-    [AC_DEFINE_UNQUOTED([uint16_t], [unsigned short], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([uint32_t],,
-    [AC_DEFINE_UNQUOTED([uint32_t], [unsigned int], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([intptr_t],,
-    [AC_DEFINE_UNQUOTED([intptr_t], [long], SCM_STDINT_MSG)])
-
-AC_CHECK_TYPE([uintptr_t],,
-    [AC_DEFINE_UNQUOTED([uintptr_t], [unsigned long], SCM_STDINT_MSG)])
+AC_TYPE_INT8_T
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INTPTR_T
+AC_TYPE_INTMAX_T
+AC_TYPE_UINT8_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINTPTR_T
+AC_TYPE_UINTMAX_T
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
@@ -519,6 +493,8 @@ AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_SIZEOF([void *])
 AC_CHECK_SIZEOF([intptr_t])
 AC_CHECK_SIZEOF([uintptr_t])
+AC_CHECK_SIZEOF([intmax_t])
+AC_CHECK_SIZEOF([uintmax_t])
 
 if test ${ac_cv_sizeof_char} -ne 1; then
     AC_MSG_ERROR([SIZEOF_CHAR is not 1])
@@ -562,6 +538,9 @@ AC_CHECK_TYPE([speed_t],
     [AC_DEFINE([speed_t], [short],
 	[Define to `short' if <termios.h> doesn't define.])],
     [SCM_INC_TERMIO])
+
+AC_CHECK_SIZEOF([time_t])
+AC_CHECK_SIZEOF([off_t])
 
 AC_STRUCT_TM
 AC_STRUCT_TIMEZONE

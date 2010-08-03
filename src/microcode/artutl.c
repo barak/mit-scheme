@@ -58,6 +58,18 @@ integer_to_long (SCHEME_OBJECT n)
   return ((FIXNUM_P (n)) ? (FIXNUM_TO_LONG (n)) : (bignum_to_long (n)));
 }
 
+bool
+integer_to_intmax_p (SCHEME_OBJECT n)
+{
+  return ((FIXNUM_P (n)) || (BIGNUM_TO_INTMAX_P (n)));
+}
+
+intmax_t
+integer_to_intmax (SCHEME_OBJECT n)
+{
+  return ((FIXNUM_P (n)) ? (FIXNUM_TO_LONG (n)) : (bignum_to_intmax (n)));
+}
+
 SCHEME_OBJECT
 long_to_integer (long number)
 {
@@ -65,6 +77,15 @@ long_to_integer (long number)
     ((LONG_TO_FIXNUM_P (number))
      ? (LONG_TO_FIXNUM (number))
      : (long_to_bignum (number)));
+}
+
+SCHEME_OBJECT
+intmax_to_integer (intmax_t number)
+{
+  return
+    (((LONG_MIN <= number) && (number <= LONG_MAX))
+     ? (long_to_integer (number))
+     : (intmax_to_bignum (number)));
 }
 
 bool
@@ -81,6 +102,21 @@ integer_to_ulong (SCHEME_OBJECT n)
 	  : (bignum_to_ulong (n)));
 }
 
+bool
+integer_to_uintmax_p (SCHEME_OBJECT n)
+{
+  return
+    ((FIXNUM_P (n)) ? (!FIXNUM_NEGATIVE_P (n)) : (BIGNUM_TO_UINTMAX_P (n)));
+}
+
+uintmax_t
+integer_to_uintmax (SCHEME_OBJECT n)
+{
+  return ((FIXNUM_P (n))
+          ? ((uintmax_t) (FIXNUM_TO_LONG (n)))
+          : (bignum_to_uintmax (n)));
+}
+
 SCHEME_OBJECT
 ulong_to_integer (unsigned long number)
 {
@@ -92,6 +128,14 @@ ulong_to_integer (unsigned long number)
        : (long_to_bignum (s_number)));
   else
     return (ulong_to_bignum (number));
+}
+
+SCHEME_OBJECT
+uintmax_to_integer (uintmax_t number)
+{
+  return ((number <= ULONG_MAX)
+          ? (ulong_to_integer (number))
+          : (uintmax_to_bignum (number)));
 }
 
 bool
@@ -477,11 +521,8 @@ static unsigned long
 unsigned_long_length_in_bits (unsigned long n)
 {
   unsigned long result = 0;
-  while (n > 0)
-    {
-      result += 1;
-      n >>= 1;
-    }
+  while (n > 0xff) { result += 8; n >>= 8; }
+  while (n > 0)    { result += 1; n >>= 1; }
   return (result);
 }
 

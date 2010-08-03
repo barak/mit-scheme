@@ -425,97 +425,108 @@ bignum_remainder (bignum_type numerator, bignum_type denominator)
     }
 }
 
-bignum_type
-long_to_bignum (long n)
+static bignum_type
+bignum_from_digits (bignum_digit_type *start_digits,
+		    bignum_digit_type *end_digits,
+		    bool negative_p)
 {
-  int negative_p;
-  bignum_digit_type result_digits [BIGNUM_DIGITS_FOR_LONG];
-  bignum_digit_type * end_digits = result_digits;
-  /* Special cases win when these small constants are cached. */
-  if (n == 0) return (BIGNUM_ZERO ());
-  if (n == 1) return (BIGNUM_ONE (0));
-  if (n == -1) return (BIGNUM_ONE (1));
-  {
-    unsigned long accumulator = ((negative_p = (n < 0)) ? (-n) : n);
-    do
-      {
-	(*end_digits++) = (accumulator & BIGNUM_DIGIT_MASK);
-	accumulator >>= BIGNUM_DIGIT_LENGTH;
-      }
-    while (accumulator != 0);
-  }
-  {
-    bignum_type result =
-      (bignum_allocate ((end_digits - result_digits), negative_p));
-    bignum_digit_type * scan_digits = result_digits;
-    bignum_digit_type * scan_result = (BIGNUM_START_PTR (result));
-    while (scan_digits < end_digits)
-      (*scan_result++) = (*scan_digits++);
-    return (result);
-  }
+  bignum_type result =
+    (bignum_allocate ((end_digits - start_digits), negative_p));
+  bignum_digit_type *scan_digits = start_digits;
+  bignum_digit_type *scan_result = (BIGNUM_START_PTR (result));
+  while (scan_digits < end_digits)
+    (*scan_result++) = (*scan_digits++);
+  return (result);
 }
 
-long
-bignum_to_long (bignum_type bignum)
-{
-  if (BIGNUM_ZERO_P (bignum))
-    return (0);
-  {
-    unsigned long accumulator = 0;
-    bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
-    bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));
-    while (start < scan)
-      accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));
-    return
-      ((BIGNUM_NEGATIVE_P (bignum))
-       ? (- ((long) accumulator))
-       : ((long) accumulator));
-  }
+#define DEFINE_INT_TO_BIGNUM(NAME, TYPE, UTYPE)				\
+bignum_type								\
+NAME (TYPE n)								\
+{									\
+  /* Special cases win when these small constants are cached.  */	\
+  if (n == 0) return (BIGNUM_ZERO ());					\
+  if (n == 1) return (BIGNUM_ONE (0));					\
+  if (n == -1) return (BIGNUM_ONE (1));					\
+  {									\
+    int negative_p;							\
+    bignum_digit_type result_digits [BIGNUM_DIGITS_FOR_TYPE (TYPE)];	\
+    bignum_digit_type * end_digits = result_digits;			\
+    UTYPE accumulator = ((negative_p = (n < 0)) ? (-n) : n);		\
+    do {								\
+      (*end_digits++) = (accumulator & BIGNUM_DIGIT_MASK);		\
+      accumulator >>= BIGNUM_DIGIT_LENGTH;				\
+    } while (accumulator != 0);						\
+    return								\
+      (bignum_from_digits (result_digits, end_digits, negative_p));	\
+  }									\
 }
 
-bignum_type
-ulong_to_bignum (unsigned long n)
-{
-  bignum_digit_type result_digits [BIGNUM_DIGITS_FOR_LONG];
-  bignum_digit_type * end_digits = result_digits;
-  /* Special cases win when these small constants are cached. */
-  if (n == 0) return (BIGNUM_ZERO ());
-  if (n == 1) return (BIGNUM_ONE (0));
-  {
-    unsigned long accumulator = n;
-    do
-      {
-	(*end_digits++) = (accumulator & BIGNUM_DIGIT_MASK);
-	accumulator >>= BIGNUM_DIGIT_LENGTH;
-      }
-    while (accumulator != 0);
-  }
-  {
-    bignum_type result =
-      (bignum_allocate ((end_digits - result_digits), 0));
-    bignum_digit_type * scan_digits = result_digits;
-    bignum_digit_type * scan_result = (BIGNUM_START_PTR (result));
-    while (scan_digits < end_digits)
-      (*scan_result++) = (*scan_digits++);
-    return (result);
-  }
+DEFINE_INT_TO_BIGNUM (long_to_bignum, long, unsigned long)
+DEFINE_INT_TO_BIGNUM (intmax_to_bignum, intmax_t, uintmax_t)
+
+#define DEFINE_BIGNUM_TO_INT(NAME, TYPE, UTYPE)				\
+TYPE									\
+NAME (bignum_type bignum)						\
+{									\
+  if (BIGNUM_ZERO_P (bignum))						\
+    return (0);								\
+  {									\
+    UTYPE accumulator = 0;						\
+    bignum_digit_type * start = (BIGNUM_START_PTR (bignum));		\
+    bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));	\
+    while (start < scan)						\
+      accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));	\
+    return								\
+      ((BIGNUM_NEGATIVE_P (bignum))					\
+       ? (- ((TYPE) accumulator))					\
+       : ((TYPE) accumulator));						\
+  }									\
 }
 
-unsigned long
-bignum_to_ulong (bignum_type bignum)
-{
-  if (BIGNUM_ZERO_P (bignum))
-    return (0);
-  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (bignum));
-  {
-    unsigned long accumulator = 0;
-    bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
-    bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));
-    while (start < scan)
-      accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));
-    return (accumulator);
-  }
+DEFINE_BIGNUM_TO_INT (bignum_to_long, long, unsigned long)
+DEFINE_BIGNUM_TO_INT (bignum_to_intmax, intmax_t, uintmax_t)
+
+#define DEFINE_UINT_TO_BIGNUM(NAME, TYPE)				\
+bignum_type								\
+NAME (TYPE n)								\
+{									\
+  /* Special cases win when these small constants are cached. */	\
+  if (n == 0) return (BIGNUM_ZERO ());					\
+  if (n == 1) return (BIGNUM_ONE (0));					\
+  {									\
+    bignum_digit_type result_digits [BIGNUM_DIGITS_FOR_TYPE (TYPE)];	\
+    bignum_digit_type * end_digits = result_digits;			\
+    TYPE accumulator = n;						\
+    do {								\
+      (*end_digits++) = (accumulator & BIGNUM_DIGIT_MASK);		\
+      accumulator >>= BIGNUM_DIGIT_LENGTH;				\
+    } while (accumulator != 0);						\
+    return (bignum_from_digits (result_digits, end_digits, false));	\
+  }									\
 }
+
+DEFINE_UINT_TO_BIGNUM (ulong_to_bignum, unsigned long)
+DEFINE_UINT_TO_BIGNUM (uintmax_to_bignum, uintmax_t)
+
+#define DEFINE_BIGNUM_TO_UINT(NAME, TYPE)				\
+TYPE									\
+NAME (bignum_type bignum)						\
+{									\
+  if (BIGNUM_ZERO_P (bignum))						\
+    return (0);								\
+  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (bignum));				\
+  {									\
+    TYPE accumulator = 0;						\
+    bignum_digit_type * start = (BIGNUM_START_PTR (bignum));		\
+    bignum_digit_type * scan = (start + (BIGNUM_LENGTH (bignum)));	\
+    while (start < scan)						\
+      accumulator = ((accumulator << BIGNUM_DIGIT_LENGTH) + (*--scan));	\
+    return (accumulator);						\
+  }									\
+}
+
+DEFINE_BIGNUM_TO_UINT (bignum_to_ulong, unsigned long)
+DEFINE_BIGNUM_TO_UINT (bignum_to_uintmax, uintmax_t)
 
 #define DTB_WRITE_DIGIT(n_bits) do					\
 {									\

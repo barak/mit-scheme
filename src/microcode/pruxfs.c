@@ -66,7 +66,7 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME", Prim_file_mod_time, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     ((UX_read_file_status ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_mtime))
+     ? (intmax_to_integer (s . st_mtime))
      : SHARP_F);
 }
 
@@ -76,7 +76,7 @@ DEFINE_PRIMITIVE ("FILE-MOD-TIME-INDIRECT", Prim_file_mod_time_indirect, 1, 1, 0
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     ((UX_read_file_status_indirect ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_mtime))
+     ? (intmax_to_integer (s . st_mtime))
      : SHARP_F);
 }
 
@@ -86,7 +86,7 @@ DEFINE_PRIMITIVE ("FILE-ACCESS-TIME", Prim_file_acc_time, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     ((UX_read_file_status ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_atime))
+     ? (intmax_to_integer (s . st_atime))
      : SHARP_F);
 }
 
@@ -96,7 +96,7 @@ DEFINE_PRIMITIVE ("FILE-ACCESS-TIME-INDIRECT", Prim_file_acc_time_indirect, 1, 1
   PRIMITIVE_HEADER (1);
   PRIMITIVE_RETURN
     ((UX_read_file_status_indirect ((STRING_ARG (1)), (&s)))
-     ? (long_to_integer (s . st_atime))
+     ? (intmax_to_integer (s . st_atime))
      : SHARP_F);
 }
 
@@ -107,8 +107,8 @@ The file must exist and you must be the owner (or superuser).")
 {
   struct utimbuf times;
   PRIMITIVE_HEADER (3);
-  times.actime = (arg_nonnegative_integer (2));
-  times.modtime = (arg_nonnegative_integer (3));
+  times.actime = (arg_index_integer_to_intmax (2, TIME_T_MAX));
+  times.modtime = (arg_index_integer_to_intmax (3, TIME_T_MAX));
   STD_VOID_SYSTEM_CALL
     (syscall_utime, (UX_utime ((STRING_ARG (1)), (&times))));
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -173,16 +173,16 @@ file_attributes_internal (struct stat * s)
       VECTOR_SET (result, 0, SHARP_F);
       break;
     }
-  VECTOR_SET (result, 1, (long_to_integer (s -> st_nlink)));
-  VECTOR_SET (result, 2, (long_to_integer (s -> st_uid)));
-  VECTOR_SET (result, 3, (long_to_integer (s -> st_gid)));
-  VECTOR_SET (result, 4, (long_to_integer (s -> st_atime)));
-  VECTOR_SET (result, 5, (long_to_integer (s -> st_mtime)));
-  VECTOR_SET (result, 6, (long_to_integer (s -> st_ctime)));
-  VECTOR_SET (result, 7, (long_to_integer (s -> st_size)));
+  VECTOR_SET (result, 1, (intmax_to_integer (s -> st_nlink)));
+  VECTOR_SET (result, 2, (intmax_to_integer (s -> st_uid)));
+  VECTOR_SET (result, 3, (intmax_to_integer (s -> st_gid)));
+  VECTOR_SET (result, 4, (intmax_to_integer (s -> st_atime)));
+  VECTOR_SET (result, 5, (intmax_to_integer (s -> st_mtime)));
+  VECTOR_SET (result, 6, (intmax_to_integer (s -> st_ctime)));
+  VECTOR_SET (result, 7, (intmax_to_integer (s -> st_size)));
   file_mode_string (s, (STRING_POINTER (modes)));
   VECTOR_SET (result, 8, modes);
-  VECTOR_SET (result, 9, (long_to_integer (s -> st_ino)));
+  VECTOR_SET (result, 9, (intmax_to_integer (s -> st_ino)));
   return (result);
 }
 

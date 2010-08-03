@@ -125,6 +125,22 @@ USA.
 #  include "error: pointers must fit in 'unsigned long'"
 #endif
 
+#ifndef OFF_T_MAX
+#  if SIZEOF_OFF_T < SIZEOF_INTMAX_T
+#    define OFF_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_OFF_T)))
+#  else
+#    define OFF_T_MAX INTMAX_MAX
+#  endif
+#endif
+
+#ifndef TIME_T_MAX
+#  if SIZEOF_TIME_T == SIZEOF_INTMAX_T
+#    define TIME_T_MAX INTMAX_MAX
+#  else
+#    define TIME_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_TIME_T)))
+#  endif
+#endif
+
 #if ((defined (__GNUC__)) && (__GNUC__ >= 3))
 #  define ATTRIBUTE(x) __attribute__ (x)
 #  define NORETURN __attribute__ ((__noreturn__))

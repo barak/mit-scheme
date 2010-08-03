@@ -132,8 +132,8 @@ extern void abort ();
 #define BIGNUM_BITS_TO_DIGITS(n)					\
   (((n) + (BIGNUM_DIGIT_LENGTH - 1)) / BIGNUM_DIGIT_LENGTH)
 
-#define BIGNUM_DIGITS_FOR_LONG						\
-  (BIGNUM_BITS_TO_DIGITS ((sizeof (long)) * CHAR_BIT))
+#define BIGNUM_DIGITS_FOR_TYPE(TYPE)					\
+  (BIGNUM_BITS_TO_DIGITS ((sizeof (TYPE)) * CHAR_BIT))
 
 #ifndef BIGNUM_DISABLE_ASSERTION_CHECKS
 
