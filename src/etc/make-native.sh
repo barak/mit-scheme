@@ -78,9 +78,9 @@ EOF
   exit 1
 }
 
-test_program='(begin (write microcode-id/compiled-code-type) (%exit 0))'
+test_exp='(begin (write microcode-id/compiled-code-type) (%exit 0))'
 scheme_failure=
-cc_type=`${MIT_SCHEME_EXE} --batch-mode --eval "${test_program}" 2>/dev/null` \
+cc_type=`"${MIT_SCHEME_EXE}" --batch-mode --eval "${test_exp}" 2>/dev/null` \
   || scheme_failure=yes
 
 if [ yes = "${scheme_failure}" ]; then

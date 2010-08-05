@@ -94,7 +94,7 @@ compiler/machines/svm/svm1-defns.h: \
 	  compiler/machines/svm/assembler-runtime.scm \
 	  compiler/machines/svm/compile-assembler.scm
 	( cd compiler/machines/svm/ \
-	  && $(MIT_SCHEME_EXE) --batch-mode --load compile-assembler \
+	  && "$(MIT_SCHEME_EXE)" --batch-mode --load compile-assembler \
 		</dev/null )
 
 all-liarc:

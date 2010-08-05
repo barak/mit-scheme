@@ -36,7 +36,7 @@ set -e
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-if ! ${MIT_SCHEME_EXE} --batch-mode --eval '(%exit)' > /dev/null 2> /dev/null
+if ! "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' > /dev/null 2> /dev/null
 then
     cat <<EOF >&2
 *** Error in ${0}
