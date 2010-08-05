@@ -518,6 +518,45 @@ done_setting_up_cpuid:
 no_cpuid_instr:
 	leave
 	ret
+
+# Call a function (esp[1]) with an argument (esp[2]) and a stack
+# pointer and frame pointer from inside C.  When it returns, restore
+# the original stack pointer.  This kludge is necessary for operating
+# system libraries (notably NetBSD's libpthread) that store important
+# information in the stack pointer, and get confused when they are
+# called in a signal handler for a signal delivered while Scheme has
+# set esp to something funny.
+
+define_c_label(within_c_stack)
+	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(eax))
+	# Are we currently in C, signalled by having no saved C stack pointer?
+	OP(cmp,l)	TW(IMM(0),REG(eax))
+	# Yes: just call the function without messing with esp.
+	je		within_c_stack_from_c
+	# No: we have to switch esp to point into the C stack.
+	OP(push,l)	REG(ebp)			# Save frame pointer
+	OP(mov,l)	TW(REG(esp),REG(ebp))
+	OP(mov,l)	TW(REG(eax),REG(esp))		# Switch to C stack
+	OP(push,l)	REG(ebp)			# Save stack pointer
+	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
+	call		IJMP(LOF(8,REG(ebp)))		# Call function
+
+define_debugging_label(within_c_stack_restore)
+	OP(pop,l)	REG(eax)			# Pop argument
+	OP(pop,l)	REG(esp)			# Restore stack pointer
+							#   and switch back to
+							#   Scheme stack
+	OP(pop,l)	REG(ebp)			# Restore frame pointer
+	ret
+
+define_debugging_label(within_c_stack_from_c)
+	OP(push,l)	REG(ebp)			# Save a frame pointer,
+	OP(mov,l)	TW(REG(esp),REG(ebp))		#   for debuggers.
+	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
+	call		IJMP(LOF(8,REG(ebp)))
+	leave
+	ret
+
 
 define_c_label(C_to_interface)
 	OP(push,l)	REG(ebp)			# Link according
@@ -574,6 +613,9 @@ scheme_to_interface_proceed:
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
+	# Signal to within_c_stack that we are now in C land.
+	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
+
 	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
 
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
@@ -614,6 +656,9 @@ interface_to_scheme_proceed:
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
+	# Restore the C stack pointer, which we zeroed back in
+	# scheme_to_interface, for within_c_stack.
+	OP(mov,l)	TW(REG(esp),EVR(C_Stack_Pointer))
 	OP(mov,l)	TW(EVR(stack_pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link

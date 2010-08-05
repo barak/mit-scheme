@@ -175,6 +175,7 @@ typedef byte_t insn_t;
 #endif
 
 extern void ASM_ENTRY_POINT (x86_64_fpe_reset_traps) (void);
+extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);
 extern void asm_dont_serialize_cache (void);

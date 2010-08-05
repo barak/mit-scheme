@@ -374,6 +374,41 @@ define_c_label(x86_64_fpe_reset_traps)
 	leave
 	ret
 
+# Call a function (rdi) with an argument (rsi) and a stack pointer and
+# frame pointer from inside C.  When it returns, restore the original
+# stack pointer.  This kludge is necessary for operating system
+# libraries (notably NetBSD's libpthread) that store important
+# information in the stack pointer, and get confused when they are
+# called in a signal handler for a signal delivered while Scheme has
+# set esp to something they consider funny.
+
+define_c_label(within_c_stack)
+	OP(mov,q)	TW(ABS(EVR(C_Stack_Pointer)),REG(rax))
+	# Are we currently in C, signalled by having no saved C stack pointer?
+	OP(cmp,q)	TW(IMM(0),REG(rax))
+	# Yes: just call the function without messing with rsp.
+	je		within_c_stack_from_c
+	# No: we have to switch rsp to point into the C stack.
+	OP(push,q)	REG(rbp)			# Save frame pointer
+	OP(mov,q)	TW(REG(rsp),REG(rbp))
+	OP(mov,q)	TW(REG(rax),REG(rsp))		# Switch to C stack
+	OP(push,q)	REG(rbp)			# Save stack pointer
+	OP(mov,q)	TW(REG(rdi),REG(rax))		# arg1 (fn) -> rax
+	OP(mov,q)	TW(REG(rsi),REG(rdi))		# arg2 (arg) -> arg1
+	call		IJMP(REG(rax))			# call fn(arg)
+
+define_debugging_label(within_c_stack_restore)
+	OP(pop,q)	REG(rsp)			# Restore stack pointer
+							#   and switch back to
+							#   Scheme stack
+	OP(pop,q)	REG(rbp)			# Restore frame pointer
+	ret
+
+define_debugging_label(within_c_stack_from_c)
+	OP(mov,q)	TW(REG(rdi),REG(rax))		# arg1 (fn) -> rax
+	OP(mov,q)	TW(REG(rsi),REG(rdi))		# arg2 (arg) -> arg1
+	jmp		IJMP(REG(rax))			# tail-call fn(arg)
+
 # C_to_interface passes control from C into Scheme.  To C it is a
 # unary procedure; its one argument is passed in rdi.  It saves the
 # state of the C world (the C frame pointer and stack pointer) and
@@ -433,6 +468,9 @@ define_debugging_label(scheme_to_interface)
 	OP(mov,q)	TW(ABS(EVR(C_Stack_Pointer)),REG(rsp))
 	OP(mov,q)	TW(ABS(EVR(C_Frame_Pointer)),REG(rbp))
 
+	# Signal to within_c_stack that we are now in C land.
+	OP(mov,q)	TW(IMM(0),ABS(EVR(C_Stack_Pointer)))
+
 	OP(sub,q)	TW(IMM(16),REG(rsp))	# alloc struct return
 	OP(mov,q)	TW(REG(rsp),REG(rdi))	# Structure is first argument.
 	OP(mov,q)	TW(REG(rbx),REG(rsi))	# rbx -> second argument.
@@ -460,6 +498,9 @@ ifdef(`WIN32',						# Register block = %rsi
 	OP(mov,q)	TW(ABS(EVR(Free)),rfree)	# Free pointer = %rdi
 	OP(mov,q)	TW(QOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
 	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
+	# Restore the C stack pointer, which we zeroed back in
+	# scheme_to_interface, for within_c_stack.
+	OP(mov,q)	TW(REG(rsp),ABS(EVR(C_Stack_Pointer)))
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link

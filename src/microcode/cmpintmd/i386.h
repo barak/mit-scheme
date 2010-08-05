@@ -263,6 +263,7 @@ typedef struct
 #endif
 
 extern int ASM_ENTRY_POINT (i386_interface_initialize) (void);
+extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);
 extern void asm_dont_serialize_cache (void);

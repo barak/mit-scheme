@@ -44,9 +44,46 @@ USA.
 #  endif
 #endif
 
+#if defined(CC_IS_NATIVE) && !defined(SIGNAL_HANDLERS_CAN_USE_SCHEME_STACK)
+
+struct signal_instance
+{
+  int signo;
+  SIGINFO_T info;
+  SIGCONTEXT_ARG_T * pscp;
+};
+
+#  define DEFUN_STD_HANDLER(name, statement)			\
+								\
+DEFUN_STD_HANDLER_ (name##_body, statement)			\
+								\
+void								\
+name##_wrapper (void *context)					\
+{								\
+  struct signal_instance *i = context;				\
+  (void) name##_body ((i->signo), (i->info), (i->pscp));	\
+}								\
+								\
+Tsignal_handler_result						\
+name (int signo, SIGINFO_T info, SIGCONTEXT_ARG_T * pscp)	\
+{								\
+  struct signal_instance i;					\
+  (i.signo) = signo;						\
+  (i.info) = info;						\
+  (i.pscp) = pscp;						\
+  within_c_stack ((&name##_wrapper), (&i));			\
+  SIGNAL_HANDLER_RETURN ();					\
+}
+
+#else
+
+#  define DEFUN_STD_HANDLER DEFUN_STD_HANDLER_
+
+#endif /* CC_SUPPORT_P && !SIGNAL_HANDLERS_CAN_USE_SCHEME_STACK */
+
 #ifndef NEED_HANDLER_TRANSACTION
 
-#define DEFUN_STD_HANDLER(name, statement)				\
+#define DEFUN_STD_HANDLER_(name, statement)				\
 Tsignal_handler_result							\
 name (int signo,							\
       SIGINFO_T info,							\
@@ -70,7 +107,7 @@ struct handler_record
   Tsignal_handler handler;
 };
 
-#define DEFUN_STD_HANDLER(name, statement)				\
+#define DEFUN_STD_HANDLER_(name, statement)				\
 Tsignal_handler_result							\
 name (int signo,							\
       SIGINFO_T info,							\
