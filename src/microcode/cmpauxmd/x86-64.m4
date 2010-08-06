@@ -966,6 +966,20 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rax))
 	ret
 
+define_c_label(x86_64_read_mxcsr)
+	enter		IMM(8),IMM(0)
+	stmxcsr		IND(REG(rsp))
+	OP(mov,l)	TW(IND(REG(rsp)),REG(eax))
+	leave
+	ret
+
+define_c_label(x86_64_write_mxcsr)
+	enter		IMM(8),IMM(0)
+	OP(mov,l)	TW(REG(eax),IND(REG(rsp)))
+	ldmxcsr		IND(REG(rsp))
+	leave
+	ret
+
 IFDASM(`end')
 
 # Mark the stack nonexecutable.  If we ever put code (e.g.,

@@ -239,6 +239,37 @@ extern void asm_trampoline_to_interface (void);
 extern insn_t * read_compiled_closure_target (insn_t *);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern void x86_64_reset_hook (void);
+extern int x86_64_read_mxcsr (void);
+extern void x86_64_write_mxcsr (int);
 
+#ifndef HAVE_FENV_H
+
+#  define FE_TONEAREST 0
+#  define FE_DOWNWARD 1
+#  define FE_UPWARD 2
+#  define FE_TOWARDZERO 3
+
+#  define HAVE_FEGETROUND
+#  define HAVE_FESETROUND
+
+static inline int
+fegetround (void)
+{
+  return (3 & ((x86_64_read_mxcsr ()) >> 13));
+}
+
+static inline void
+fesetround (int mode)
+{
+  switch (mode)
+    {
+    case 0: case 1: case 2: case 3: break;
+    default: return (1);
+    }
+  x86_64_write_mxcsr ((mode << 13) | (0xffff9fff & (x86_64_read_mxcsr ())));
+  return (0);
+}
+
+#endif /* HAVE_FENV_H */
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */
