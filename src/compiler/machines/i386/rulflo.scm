@@ -265,11 +265,7 @@ USA.
   ;; Disabled: FSIN and FCOS limited to pi * 2^62.
   ;;(define-flonum-operation FLONUM-SIN FSIN)
   ;;(define-flonum-operation FLONUM-COS FCOS)
-  (define-flonum-operation FLONUM-SQRT FSQRT)
-  (define-flonum-operation FLONUM-ROUND FRNDINT))
-
-;; These (and FLONUM-ROUND above) presume that the default rounding mode
-;; is round-to-nearest/even
+  (define-flonum-operation FLONUM-SQRT FSQRT))
 
 (define (define-rounding prim-name mode)
   (define-arithmetic-method prim-name flonum-methods/1-arg
@@ -281,6 +277,7 @@ USA.
 		    (LAP)
 		    (LAP (FLD (ST ,source))))
 	      (MOV B ,temp (@RO B ,regnum:free-pointer 1))
+	      (AND B (@RO B ,regnum:free-pointer 1) (&U #xf3))
 	      (OR B (@RO B ,regnum:free-pointer 1) (&U ,mode))
 	      (FNLDCW (@R ,regnum:free-pointer))
 	      (FRNDINT)
@@ -290,6 +287,7 @@ USA.
 		    (LAP (FSTP (ST ,(1+ target)))))
 	      (FNLDCW (@R ,regnum:free-pointer))))))))
 
+(define-rounding 'FLONUM-ROUND #x00)
 (define-rounding 'FLONUM-CEILING #x08)
 (define-rounding 'FLONUM-FLOOR #x04)
 (define-rounding 'FLONUM-TRUNCATE #x0c)
