@@ -227,12 +227,14 @@ USA.
 	  flo:ceiling->exact
 	  flo:cos
 	  flo:exp
+	  flo:expm1
 	  flo:expt
 	  flo:finite?
 	  flo:flonum?
 	  flo:floor
 	  flo:floor->exact
 	  flo:log
+	  flo:log1p
 	  flo:max
 	  flo:min
 	  flo:negate

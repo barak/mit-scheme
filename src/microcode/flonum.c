@@ -146,6 +146,13 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   FLONUM_RESULT (result);						\
 }
 
+DEFINE_PRIMITIVE ("FLONUM-EXPM1", Prim_flonum_expm1, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION
+       (expm1, ((x >= - M_LN2) && (x <= M_LN2)))
+DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
+     RESTRICTED_TRANSCENDENTAL_FUNCTION
+       (log1p, ((x >= (M_SQRT1_2 - 1.0)) && (x <= (1.0 - M_SQRT1_2))))
+
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
 DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)

@@ -410,4 +410,4 @@ USA.
   true)
 
 (define compiler:primitives-with-no-open-coding
-  '(DIVIDE-FIXNUM GCD-FIXNUM &/))
+  '(DIVIDE-FIXNUM GCD-FIXNUM &/ FLONUM-EXPM1 FLONUM-LOG1P))

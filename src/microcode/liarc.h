@@ -469,8 +469,10 @@ extern int multiply_with_overflow (long, long, long *);
 #define DOUBLE_CEILING ceil
 #define DOUBLE_COS cos
 #define DOUBLE_EXP exp
+#define DOUBLE_EXPM1 expm1
 #define DOUBLE_FLOOR floor
 #define DOUBLE_LOG log
+#define DOUBLE_LOG1P log1p
 #define DOUBLE_SIN sin
 #define DOUBLE_SQRT sqrt
 #define DOUBLE_TAN tan

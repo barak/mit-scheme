@@ -319,6 +319,24 @@ USA.
 	  (FXCH (ST 0) (ST 1))
 	  (FYL2X)))))
 
+(define-arithmetic-method 'FLONUM-LOG1P flonum-methods/1-arg
+  ;; Computes LOG(X+1).
+  ;; X must be in the range: (- (SQRT 1/2) 1) <= X <= (- 1 (SQRT 1/2))
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     (LAP (FLDLN2)
+	  (FXCH (ST 0) (ST 1))
+	  (FYL2XP1)))))
+
+(define-arithmetic-method 'FLONUM-EXPM1 flonum-methods/1-arg
+  ;; Computes EXP(X)-1.
+  ;; X must be in the range: (- (LOG 2)) <= X <= (LOG 2)
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     (LAP (FLDL2E)
+	  (FMULP (ST 1) (ST 0))
+	  (F2XM1)))))
+
 (define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top
    (lambda ()
