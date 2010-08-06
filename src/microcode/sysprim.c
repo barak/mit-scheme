@@ -205,6 +205,48 @@ DEFINE_PRIMITIVE ("CC-BLOCK-LINKAGE-INFO", Prim_cc_block_linkage_info, 1, 1, 0)
   PRIMITIVE_RETURN (cc_block_linkage_info (ARG_REF (1)));
 }
 
+/* Emulate <fenv.h> with BSD's <ieeefp.h>.  */
+
+#if !defined(HAVE_FENV_H) && defined(HAVE_IEEEFP_H)
+#  include <ieeefp.h>
+#endif
+
+#if !defined(HAVE_FEGETROUND) && defined(HAVE_FPGETROUND)
+#  define fegetround fpgetround
+#  define HAVE_FEGETROUND
+#endif
+
+#if !defined(HAVE_FESETROUND) && defined(HAVE_FPSETROUND)
+
+static inline int
+fesetround (int mode)
+{
+  /* fpsetround never fails; instead, it returns the old rounding mode,
+     which has only a one-in-four chance in general of being 0 as the
+     SET-FLOAT-ROUNDING-MODE primitive wants.  */
+  (void) fpsetround (mode);
+  return (0);
+}
+
+#  define HAVE_FESETROUND
+#endif
+
+#if !defined(FE_TONEAREST) && defined(FP_RN)
+#  define FE_TONEAREST FP_RN
+#endif
+
+#if !defined(FE_TOWARDZERO) && defined(FP_RZ)
+#  define FE_TOWARDZERO FP_RZ
+#endif
+
+#if !defined(FE_DOWNWARD) && defined(FP_RM)
+#  define FE_DOWNWARD FP_RM
+#endif
+
+#if !defined(FE_UPWARD) && defined(FP_RP)
+#  define FE_UPWARD FP_RP
+#endif
+
 #ifndef __GNUC__
 #  pragma STDC FENV_ACCESS ON
 #endif

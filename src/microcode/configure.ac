@@ -402,7 +402,8 @@ AC_HEADER_STDC
 AC_HEADER_STDBOOL
 AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
-AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h limits.h malloc.h sgtty.h stropts.h time.h])
+AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h limits.h malloc.h sgtty.h])
+AC_CHECK_HEADERS([stropts.h time.h])
 AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h])
 AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h])
 AC_CHECK_HEADERS([termio.h termios.h unistd.h utime.h])
@@ -650,7 +651,7 @@ AC_FUNC_WAIT3
 AC_CHECK_FUNCS([ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([fcntl fdatasync fegetround fesetround floor fpathconf frexp])
-AC_CHECK_FUNCS([fsync fsync_range ftruncate])
+AC_CHECK_FUNCS([fpgetround fpsetround fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
