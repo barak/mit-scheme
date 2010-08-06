@@ -1207,6 +1207,30 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
 	ret
 
+define_c_label(i387_read_fp_control_word)
+IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
+	je		i387_read_fp_control_word_lose
+	enter		IMM(4),IMM(0)
+	fnstcw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave
+	ret
+')
+
+i387_read_fp_control_word_lose:
+	OP(xor,l)	TW(REG(eax),REG(eax))
+	ret
+
+define_c_label(i387_write_fp_control_word)
+IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
+	je		i387_write_fp_control_word_lose
+	fldcw		LOF(4,REG(esp))
+	ret
+')
+
+i387_write_fp_control_word_lose:
+	ret
+
 IFDASM(`end')
 
 # Mark the stack nonexecutable.  If we ever put code (e.g.,

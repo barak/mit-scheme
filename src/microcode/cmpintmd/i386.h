@@ -332,7 +332,40 @@ extern insn_t * read_compiled_closure_target (insn_t *, reloc_ref_t *);
 extern void start_operator_relocation (SCHEME_OBJECT *, reloc_ref_t *);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *, reloc_ref_t *);
 extern void i386_reset_hook (void);
+extern int i387_read_fp_control_word (void);
+extern void i387_write_fp_control_word (int);
 
 extern int ia32_cpuid_needed;
+
+#ifndef HAVE_FENV_H
+
+#  define FE_TONEAREST 0
+#  define FE_DOWNWARD 1
+#  define FE_UPWARD 2
+#  define FE_TOWARDZERO 3
+
+#  define HAVE_FEGETROUND
+#  define HAVE_FESETROUND
+
+static inline int
+fegetround (void)
+{
+  return (3 & ((i387_read_fp_control_word ()) >> 10));
+}
+
+static inline int
+fesetround (int mode)
+{
+  switch (mode)
+    {
+    case 0: case 1: case 2: case 3: break;
+    default: return (1);
+    }
+  i387_write_fp_control_word
+    ((mode << 10) | (0xf3ff & (i387_read_fp_control_word ())));
+  return (0);
+}
+
+#endif /* HAVE_FENV_H */
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */
