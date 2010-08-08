@@ -691,6 +691,9 @@ dnl database, we can emulate `tparam' -- either in terms of `tparm' or
 dnl by pretending we know the format -- without bringing in the local
 dnl termcap reimplementation.
 
+dnl Go for whatever header files we can.
+AC_CHECK_HEADERS([ncurses.h curses.h term.h])
+
 if test "x${with_termcap}" = xyes; then
 
     AC_CHECK_LIB([ncurses], [tgetent], [have_ncurses=yes])
@@ -733,9 +736,6 @@ elif test "x${with_termcap}" != xno; then
     fi
 
 fi
-
-dnl Go for whatever header files we can.
-AC_CHECK_HEADERS([ncurses.h curses.h term.h])
 
 case "${with_termcap}" in
 yes)
