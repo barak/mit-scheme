@@ -32,7 +32,7 @@ USA.
 #define RC_INTERNAL_APPLY		0x03
 /* unused			 	0x04 */
 #define RC_RESTORE_HISTORY 		0x05
-#define RC_INVOKE_STACK_THREAD 		0x06
+/* unused 				0x06 */
 /* unused		 		0x07 */
 #define RC_EXECUTE_ASSIGNMENT_FINISH	0x08
 #define RC_EXECUTE_DEFINITION_FINISH	0x09
@@ -59,12 +59,9 @@ USA.
 /* unused				0x1E */
 /* unused			 	0x1F */
 #define RC_NORMAL_GC_DONE	 	0x20
-/* unused	 			0x21 */
-#define RC_PURIFY_GC_1			0x22
-#define RC_PURIFY_GC_2			0x23
-/* unused	 			0x24 through 0x28 */
+/* unused	 			0x21 through 0x28 */
 #define RC_POP_FROM_COMPILED_CODE 	0x29
-#define RC_RETURN_TRAP_POINT		0x2A
+/* unused				0x2A */
 /* unused				0x2B */
 /* unused				0x2C */
 /* unused				0x2D */
@@ -78,10 +75,7 @@ USA.
 /* unused				0x44 */
 #define RC_RESTORE_INT_MASK		0x45
 #define RC_HALT				0x46
-/* unused				0x47 */
-#define RC_REPEAT_DISPATCH		0x48
-#define RC_GC_CHECK			0x49
-/* unused				0x4A through 0x52 */
+/* unused				0x47 through 0x52 */
 #define RC_COMP_LOOKUP_TRAP_RESTART  	0x53
 #define RC_COMP_ASSIGNMENT_TRAP_RESTART 0x54
 /* unused				0x55 */
@@ -94,11 +88,10 @@ USA.
 #define RC_HARDWARE_TRAP		0x5C
 #define RC_INTERNAL_APPLY_VAL		0x5D
 #define RC_COMP_ERROR_RESTART		0x5E
-#define RC_PRIMITIVE_CONTINUE		0x5F
 
 /* When adding return codes, add them to the table below as well! */
 
-#define MAX_RETURN_CODE			0x5F
+#define MAX_RETURN_CODE			0x5E
 
 #define RETURN_NAME_TABLE						\
 {									\
@@ -108,7 +101,7 @@ USA.
 /* 0x03 */		"internal-apply",				\
 /* 0x04 */		0,						\
 /* 0x05 */		"restore-history",				\
-/* 0x06 */		"invoke-stack-thread",				\
+/* 0x06 */		0,						\
 /* 0x07 */		0,						\
 /* 0x08 */		"assignment-continue",				\
 /* 0x09 */		"definition-continue",				\
@@ -136,15 +129,15 @@ USA.
 /* 0x1f */		0,						\
 /* 0x20 */		"normal-garbage-collect-done",			\
 /* 0x21 */		0,						\
-/* 0x22 */		"purify-after-first-gc",			\
-/* 0x23 */		"purify-after-second-gc",			\
+/* 0x22 */		0,						\
+/* 0x23 */		0,						\
 /* 0x24 */		0,						\
 /* 0x25 */		0,						\
 /* 0x26 */		0,						\
 /* 0x27 */		0,						\
 /* 0x28 */		0,						\
 /* 0x29 */		"pop-from-compiled-code",			\
-/* 0x2a */		"return-trap-point",				\
+/* 0x2a */		0,						\
 /* 0x2b */		0,						\
 /* 0x2c */		0,						\
 /* 0x2d */		0,						\
@@ -174,8 +167,8 @@ USA.
 /* 0x45 */		"restore-interrupt-mask",			\
 /* 0x46 */		"halt",						\
 /* 0x47 */		0,						\
-/* 0x48 */		"repeat-dispatch",				\
-/* 0x49 */		"gc-check",					\
+/* 0x48 */		0,						\
+/* 0x49 */		0,						\
 /* 0x4a */		0,						\
 /* 0x4b */		0,						\
 /* 0x4c */		0,						\
@@ -196,6 +189,5 @@ USA.
 /* 0x5b */		"compiler-link-caches-restart",			\
 /* 0x5c */		"hardware-trap",				\
 /* 0x5d */		"internal-apply-val",				\
-/* 0x5e */		"compiler-error-restart",			\
-/* 0x5f */		"primitive-continue"				\
+/* 0x5e */		"compiler-error-restart"			\
 }

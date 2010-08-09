@@ -273,9 +273,7 @@ USA.
   (set! stack-frame-type/pop-return-error
 	(microcode-return/name->type 'POP-RETURN-ERROR))
   (record-method 'COMBINATION-APPLY method/null)
-  (record-method 'GC-CHECK method/null)
   (record-method 'REENTER-COMPILED-CODE method/null)
-  (record-method 'REPEAT-DISPATCH method/environment-only)
   (let ((method (method/standard &pair-car)))
     (record-method 'DISJUNCTION-DECIDE method)
     (record-method 'SEQUENCE-2-SECOND method))

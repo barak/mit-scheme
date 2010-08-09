@@ -1141,15 +1141,6 @@ Interpret (int pop_return_p)
 	  }
       }
 
-    case RC_INVOKE_STACK_THREAD:
-      /* Used for WITH_THREADED_STACK primitive.  */
-      Will_Push (3);
-      PUSH_VAL ();		/* Value calculated by thunk.  */
-      PUSH_EXP ();
-      PUSH_APPLY_FRAME_HEADER (1);
-      Pushed ();
-      goto internal_apply;
-
     case RC_JOIN_STACKLETS:
       unpack_control_point (GET_EXP);
       break;
