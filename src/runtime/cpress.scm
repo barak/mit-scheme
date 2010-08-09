@@ -553,6 +553,7 @@ USA.
   ;; If necessary, invalidate old commands until this is true.  If the
   ;; buffer size is optimal, this is never necessary, because the
   ;; buffer is big enough to hold all of the commands in the window.
+  (declare (ignorable nb))
   (if (and (not buffer-size-optimal?)
 	   oldest-node)
       (let ((end (bb-end byte-buffer)))
