@@ -25,17 +25,42 @@
 # Program to set up MIT/GNU Scheme microcode from CVS for distribution.
 # Requires `gcc' and `scheme'.
 
-set -e
+set -eu
+
+autoheader=done
+autoconf=done
+makeinit=done
+
+clean ()
+{
+    if [ "x${autoheader}" != xdone ]; then
+	rm -f config.h.in
+    fi
+    if [ "x${autoconf}" != xdone ]; then
+	rm -f configure
+    fi
+    if [ "x${makeinit}" != xdone ]; then
+	rm -f Makefile.deps Makefile.in
+    fi
+}
+
+trap clean EXIT INT TERM
 
 if [ ! -f config.h.in ]; then
+    autoheader=clean
     echo "autoheader"
     autoheader
+    autoheader=done
 fi
 if [ ! -x configure ]; then
+    autoconf=clean
     echo "autoconf"
     autoconf
+    autoconf=done
 fi
-( cd cmpauxmd && make "${@}" )
+( cd cmpauxmd && make ${@:+"${@}"} )
 if [ ! -f Makefile.in ]; then
-    makegen/makeinit.sh "${@}"
+    makeinit=clean
+    makegen/makeinit.sh ${@:+"${@}"}
+    makeinit=done
 fi

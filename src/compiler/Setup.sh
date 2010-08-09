@@ -25,11 +25,11 @@
 # Utility to set up the MIT/GNU Scheme compiler directory.
 # The working directory must be the compiler directory.
 
-set -e
+set -eu
 
 . ../etc/functions.sh
 
-../etc/Setup.sh "${@}"
+../etc/Setup.sh ${@:+"${@}"}
 
 for N in 1 2 3; do
     maybe_link machines/vax/dinstr${N}.scm instr${N}.scm

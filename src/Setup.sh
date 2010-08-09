@@ -25,9 +25,20 @@
 # Utility to set up the MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
 
-set -e
+set -eu
 
 : ${MIT_SCHEME_EXE:=mit-scheme}
+
+configure=done
+
+clean ()
+{
+    if [ "x${configure}" != xdone ]; then
+	rm -f configure
+    fi
+}
+
+trap clean EXIT INT TERM
 
 # Please keep the following messages synchronized with the messages in
 # these files:
@@ -56,8 +67,10 @@ EOF
 fi
 
 if [ ! -x configure ]; then
+    configure=clean
     echo "autoconf"
     autoconf --include=microcode
+    configure=done
 fi
 
 . etc/functions.sh
@@ -87,5 +100,5 @@ done
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
-    (cd ${SUBDIR} && ./Setup.sh "$@")
+    (cd ${SUBDIR} && ./Setup.sh ${@:+"${@}"})
 done

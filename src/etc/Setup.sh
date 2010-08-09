@@ -25,7 +25,7 @@
 # Utility to set up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
 
-set -e
+set -eu
 
 . ../etc/functions.sh
 
