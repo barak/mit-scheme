@@ -28,7 +28,6 @@ USA.
 #include "scheme.h"
 #include "trap.h"
 #include "lookup.h"
-#include "winder.h"
 #include "history.h"
 
 extern void * obstack_chunk_alloc (size_t);
@@ -1142,66 +1141,6 @@ Interpret (int pop_return_p)
 	  }
       }
 
-    case RC_MOVE_TO_ADJACENT_POINT:
-      /* GET_EXP contains the space in which we are moving */
-      {
-	long From_Count;
-	SCHEME_OBJECT Thunk;
-	SCHEME_OBJECT New_Location;
-
-	From_Count
-	  = (UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_FROM_DISTANCE)));
-	if (From_Count != 0)
-	  {
-	    SCHEME_OBJECT Current = STACK_REF (TRANSLATE_FROM_POINT);
-	    STACK_REF (TRANSLATE_FROM_DISTANCE)
-	      = (LONG_TO_UNSIGNED_FIXNUM (From_Count - 1));
-	    Thunk = (MEMORY_REF (Current, STATE_POINT_AFTER_THUNK));
-	    New_Location
-	      = (MEMORY_REF (Current, STATE_POINT_NEARER_POINT));
-	    (STACK_REF (TRANSLATE_FROM_POINT)) = New_Location;
-	    if ((From_Count == 1)
-		&& ((STACK_REF (TRANSLATE_TO_DISTANCE))
-		    == (LONG_TO_UNSIGNED_FIXNUM (0))))
-	      stack_pointer = (STACK_LOC (4));
-	    else
-	      SAVE_CONT ();
-	  }
-	else
-	  {
-	    long To_Count;
-	    SCHEME_OBJECT To_Location;
-	    long i;
-
-	    To_Count
-	      = ((UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_TO_DISTANCE)))
-		 - 1);
-	    To_Location = (STACK_REF (TRANSLATE_TO_POINT));
-	    for (i = 0; (i < To_Count); i += 1)
-	      To_Location
-		= (MEMORY_REF (To_Location, STATE_POINT_NEARER_POINT));
-	    Thunk = (MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK));
-	    New_Location = To_Location;
-	    (STACK_REF (TRANSLATE_TO_DISTANCE))
-	      = (LONG_TO_UNSIGNED_FIXNUM (To_Count));
-	    if (To_Count == 0)
-	      stack_pointer = (STACK_LOC (4));
-	    else
-	      SAVE_CONT ();
-	  }
-	if (GET_EXP != SHARP_F)
-	  {
-	    MEMORY_SET (GET_EXP, STATE_SPACE_NEAREST_POINT, New_Location);
-	  }
-	else
-	  current_state_point = New_Location;
-	Will_Push (2);
-	STACK_PUSH (Thunk);
-	PUSH_APPLY_FRAME_HEADER (0);
-	Pushed ();
-	goto internal_apply;
-      }
-
     case RC_INVOKE_STACK_THREAD:
       /* Used for WITH_THREADED_STACK primitive.  */
       Will_Push (3);
@@ -1354,19 +1293,6 @@ Interpret (int pop_return_p)
          so just pop the second argument.  */
       stack_pointer = (STACK_LOCATIVE_OFFSET (stack_pointer, 1));
       break;
-
-    case RC_RESTORE_TO_STATE_POINT:
-      {
-	SCHEME_OBJECT Where_To_Go = GET_EXP;
-	Will_Push (CONTINUATION_SIZE);
-	/* Restore the contents of GET_VAL after moving to point */
-	SET_EXP (GET_VAL);
-	SET_RC (RC_RESTORE_VALUE);
-	SAVE_CONT ();
-	Pushed ();
-	Translate_To_Point (Where_To_Go);
-	break;			/* We never get here.... */
-      }
 
     case RC_SEQ_2_DO_2:
       END_SUBPROBLEM ();

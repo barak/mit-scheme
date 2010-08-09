@@ -294,7 +294,6 @@ std_gc_pt1 (void)
   add_to_tospace (fixed_objects);
   add_to_tospace
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
-  add_to_tospace (current_state_point);
 
   current_gc_table = (std_gc_table ());
   gc_scan_oldspace (stack_pointer, stack_end);
@@ -316,7 +315,6 @@ std_gc_pt2 (void)
 
   fixed_objects = (*saved_to++);
   history_register = (OBJECT_ADDRESS (*saved_to++));
-  current_state_point = (*saved_to++);
   saved_to = 0;
 
   CC_TRANSPORT_END ();

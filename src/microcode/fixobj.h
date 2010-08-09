@@ -46,8 +46,8 @@ USA.
 #define STEPPER_STATE		0x0E
 #define FIXED_OBJECTS_SLOTS	0x0F	/* Names of these slots. */
 #define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
-#define State_Space_Tag		0x11	/* Tag for state spaces. */
-#define State_Point_Tag		0x12	/* Tag for state points. */
+/* #define UNUSED		0x11 */
+/* #define UNUSED		0x12 */
 #define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
 /* #define UNUSED		0x15 */
@@ -63,7 +63,7 @@ USA.
 /* #define UNUSED		0x1F */
 #define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
 /* #define UNUSED	 	0x21 */
-#define State_Space_Root	0x22 	/* Root of state space. */
+/* #define UNUSED		0x22 */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
 
@@ -143,8 +143,8 @@ USA.
   /* 0x0E */	"stepper-state",					\
   /* 0x0F */	"microcode-fixed-objects-slots",			\
   /* 0x10 */	"files-to-delete",					\
-  /* 0x11 */	"state-space-tag",					\
-  /* 0x12 */	"state-point-tag",					\
+  /* 0x11 */	0,							\
+  /* 0x12 */	0,							\
   /* 0x13 */	"dummy-history",					\
   /* 0x14 */	"bignum-one",						\
   /* 0x15 */	0,							\
@@ -160,7 +160,7 @@ USA.
   /* 0x1F */	0,							\
   /* 0x20 */	"compiler-error-procedure",				\
   /* 0x21 */	0,							\
-  /* 0x22 */	"state-space-root",					\
+  /* 0x22 */	0,							\
   /* 0x23 */	"primitive-profiling-table",				\
   /* 0x24 */	"generic-trampoline-zero?",				\
   /* 0x25 */	"generic-trampoline-positive?",				\

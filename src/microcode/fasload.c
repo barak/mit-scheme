@@ -202,7 +202,6 @@ can, however, be any file which can be loaded with BINARY-FASLOAD.")
     compiler_initialize (true);
 #endif
   fixed_objects = SHARP_F;
-  current_state_point = SHARP_F;
 
   /* Setup initial program */
   SET_RC (RC_END_OF_COMPUTATION);

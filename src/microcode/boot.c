@@ -145,7 +145,6 @@ start_scheme (void)
       outf_console ("\n");
       outf_flush_console ();
     }
-  current_state_point = SHARP_F;
   initialize_fixed_objects_vector ();
 
   if (option_fasl_file != 0)

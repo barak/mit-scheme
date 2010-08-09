@@ -58,9 +58,6 @@ SCHEME_OBJECT * constant_alloc_next;
 SCHEME_OBJECT * constant_start;
 SCHEME_OBJECT * constant_end;
 
-/* dynamic state point */
-SCHEME_OBJECT current_state_point;
-
 /* Address of the most recent return code in the stack.
    This is only meaningful while in compiled code.  */
 SCHEME_OBJECT * last_return_code;

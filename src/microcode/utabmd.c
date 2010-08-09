@@ -155,7 +155,6 @@ initialize_fixed_objects_vector (void)
   STORE_NAME_VECTOR (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
 
   STORE_FIXOBJ (DUMMY_HISTORY, (initialize_history ()));
-  STORE_FIXOBJ (State_Space_Tag, SHARP_T);
   STORE_FIXOBJ (Bignum_One, (long_to_bignum (1)));
   STORE_FIXOBJ (FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
   STORE_FIXOBJ (FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);

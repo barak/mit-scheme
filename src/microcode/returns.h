@@ -66,8 +66,8 @@ USA.
 #define RC_POP_FROM_COMPILED_CODE 	0x29
 #define RC_RETURN_TRAP_POINT		0x2A
 /* unused				0x2B */
-#define RC_RESTORE_TO_STATE_POINT	0x2C
-#define RC_MOVE_TO_ADJACENT_POINT	0x2D
+/* unused				0x2C */
+/* unused				0x2D */
 #define RC_RESTORE_VALUE		0x2E
 #define RC_RESTORE_DONT_COPY_HISTORY    0x2F
 /* unused				0x30 through 0x3F */
@@ -146,8 +146,8 @@ USA.
 /* 0x29 */		"pop-from-compiled-code",			\
 /* 0x2a */		"return-trap-point",				\
 /* 0x2b */		0,						\
-/* 0x2c */		"restore-to-state-point",			\
-/* 0x2d */		"move-to-adjacent-point",			\
+/* 0x2c */		0,						\
+/* 0x2d */		0,						\
 /* 0x2e */		"restore-value",				\
 /* 0x2f */		"restore-dont-copy-history",			\
 /* 0x30 */		0,						\

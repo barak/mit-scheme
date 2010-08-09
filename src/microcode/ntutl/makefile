@@ -421,7 +421,6 @@ TRAP_H = trap.h
 TYPES_H = types.h
 USRDEF_H = usrdef.h $(SCHEME_H) $(PRIMS_H)
 UXSOCK_H = uxsock.h $(OSIO_H)
-WINDER_H = winder.h
 ZONES_H = zones.h
 
 PSBMAP_H = psbmap.h $(CONFIG_H) $(TYPES_H) $(OBJECT_H) $(BIGNUM_H) \
@@ -463,10 +462,10 @@ fasload.obj: fasload.c $(SCHEME_H) $(PRIMS_H) $(OSSCHEME_H) $(OSFILE_H) \
 fixnum.obj: fixnum.c $(SCHEME_H) $(PRIMS_H) $(MUL_C)
 flonum.obj: flonum.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
 generic.obj: generic.c $(SCHEME_H) $(PRIMS_H)
-hooks.obj: hooks.c $(SCHEME_H) $(PRIMS_H) $(WINDER_H) $(HISTORY_H)
+hooks.obj: hooks.c $(SCHEME_H) $(PRIMS_H) $(HISTORY_H)
 hunk.obj: hunk.c $(SCHEME_H) $(PRIMS_H)
 intern.obj: intern.c $(SCHEME_H) $(PRIMS_H) $(TRAP_H)
-interp.obj: interp.c $(SCHEME_H) $(LOCKS_H) $(TRAP_H) $(LOOKUP_H) $(WINDER_H) \
+interp.obj: interp.c $(SCHEME_H) $(LOCKS_H) $(TRAP_H) $(LOOKUP_H) \
 	$(HISTORY_H) $(CMPINT_H) $(ZONES_H) $(PRMCON_H)
 intprm.obj: intprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
 list.obj: list.c $(SCHEME_H) $(PRIMS_H)
@@ -496,7 +495,7 @@ term.obj: term.c $(SCHEME_H) $(OSTOP_H) $(OSIO_H) $(OSFS_H) $(OSFILE_H) \
 	$(EDWIN_H)
 tparam.obj: tparam.c ansidecl.h
 transact.obj: transact.c ansidecl.h $(OUTF_H) $(DSTACK_H)
-utils.obj: utils.c $(SCHEME_H) $(PRIMS_H) $(WINDER_H) $(HISTORY_H) \
+utils.obj: utils.c $(SCHEME_H) $(PRIMS_H) $(HISTORY_H) \
 	$(CMPINT_H) $(SYSCALL_H)
 vector.obj: vector.c $(SCHEME_H) $(PRIMS_H)
 wind.obj: wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)

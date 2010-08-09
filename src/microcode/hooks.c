@@ -28,7 +28,6 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "winder.h"
 #include "history.h"
 
 static SCHEME_OBJECT allocate_control_point (unsigned long, bool);
@@ -360,152 +359,6 @@ memoized yet.")
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
     }
-  }
-}
-
-/* State Space Implementation */
-
-DEFINE_PRIMITIVE ("EXECUTE-AT-NEW-STATE-POINT",
-		  Prim_execute_at_new_point, 4, 4,
-		  "(OLD-STATE-POINT BEFORE-THUNK DURING-THUNK AFTER-THUNK)\n\
-Invoke DURING-THUNK in a new state point defined by the transition\n\
-<BEFORE-THUNK, AFTER-THUNK> from OLD-STATE-POINT.\n\
-If OLD-STATE-POINT is #F, the current state point in the global state\n\
-space is used as the starting point.")
-{
-  PRIMITIVE_HEADER (4);
-
-  canonicalize_primitive_context ();
-  {
-    SCHEME_OBJECT old_point;
-    if ((ARG_REF (1)) == SHARP_F)
-      old_point = current_state_point;
-    else
-      {
-	CHECK_ARG (1, STATE_SPACE_P);
-	old_point = (MEMORY_REF ((ARG_REF (1)), STATE_SPACE_NEAREST_POINT));
-      }
-    {
-      SCHEME_OBJECT new_point =
-	(allocate_marked_vector (TC_VECTOR, STATE_POINT_LENGTH, true));
-      SCHEME_OBJECT during_thunk = (ARG_REF (3));
-      MEMORY_SET (new_point, STATE_POINT_TAG,
-		  (VECTOR_REF (fixed_objects, State_Point_Tag)));
-      MEMORY_SET (new_point, STATE_POINT_BEFORE_THUNK, (ARG_REF (2)));
-      MEMORY_SET (new_point, STATE_POINT_AFTER_THUNK, (ARG_REF (4)));
-      MEMORY_SET (new_point, STATE_POINT_NEARER_POINT, old_point);
-      MEMORY_SET
-	(new_point,
-	 STATE_POINT_DISTANCE_TO_ROOT,
-	 (1 + (MEMORY_REF (old_point, STATE_POINT_DISTANCE_TO_ROOT))));
-
-      POP_PRIMITIVE_FRAME (4);
-    Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 1));
-      /* Push a continuation to go back to the current state after the
-	 body is evaluated */
-      SET_EXP (old_point);
-      SET_RC (RC_RESTORE_TO_STATE_POINT);
-      SAVE_CONT ();
-      /* Push a stack frame which will call the body after we have moved
-	 into the new state point */
-      STACK_PUSH (during_thunk);
-      PUSH_APPLY_FRAME_HEADER (0);
-      /* Push the continuation to go with the stack frame */
-      SET_EXP (SHARP_F);
-      SET_RC (RC_INTERNAL_APPLY);
-      SAVE_CONT ();
-    Pushed ();
-      Translate_To_Point (new_point);
-      /*NOTREACHED*/
-      PRIMITIVE_RETURN (UNSPECIFIC);
-    }
-  }
-}
-
-DEFINE_PRIMITIVE ("TRANSLATE-TO-STATE-POINT", Prim_translate_to_point, 1, 1,
-		  "(STATE-POINT)\nRestore the dynamic state to STATE-POINT.")
-{
-  PRIMITIVE_HEADER (1);
-  canonicalize_primitive_context ();
-  CHECK_ARG (1, STATE_POINT_P);
-  {
-    SCHEME_OBJECT state_point = (ARG_REF (1));
-    POP_PRIMITIVE_FRAME (1);
-    Translate_To_Point (state_point);
-    /*NOTREACHED*/
-    PRIMITIVE_RETURN (UNSPECIFIC);
-  }
-}
-
-DEFINE_PRIMITIVE ("MAKE-STATE-SPACE", Prim_make_state_space, 1, 1,
-		  "(MUTABLE?)\n\
-Return a newly-allocated state-space.\n\
-Argument MUTABLE?, if not #F, means return a mutable state-space.\n\
-Otherwise, -the- immutable state-space is saved internally.")
-{
-  PRIMITIVE_HEADER (1);
-  {
-    SCHEME_OBJECT new_point =
-      (allocate_marked_vector (TC_VECTOR, STATE_POINT_LENGTH, true));
-    MEMORY_SET (new_point, STATE_POINT_TAG,
-		     (VECTOR_REF (fixed_objects, State_Point_Tag)));
-    MEMORY_SET (new_point, STATE_POINT_BEFORE_THUNK, SHARP_F);
-    MEMORY_SET (new_point, STATE_POINT_AFTER_THUNK, SHARP_F);
-    MEMORY_SET
-      (new_point, STATE_POINT_DISTANCE_TO_ROOT, (LONG_TO_UNSIGNED_FIXNUM (0)));
-    if ((ARG_REF (1)) == SHARP_F)
-      {
-	MEMORY_SET (new_point, STATE_POINT_NEARER_POINT, SHARP_F);
-	current_state_point = new_point;
-	PRIMITIVE_RETURN (SHARP_F);
-      }
-    else
-      {
-	SCHEME_OBJECT new_space =
-	  (allocate_marked_vector (TC_VECTOR, STATE_SPACE_LENGTH, true));
-	MEMORY_SET (new_space, STATE_SPACE_TAG,
-			 (VECTOR_REF (fixed_objects, State_Space_Tag)));
-	MEMORY_SET (new_space, STATE_SPACE_NEAREST_POINT, new_point);
-	MEMORY_SET (new_point, STATE_POINT_NEARER_POINT, new_space);
-	PRIMITIVE_RETURN (new_space);
-      }
-  }
-}
-
-DEFINE_PRIMITIVE ("CURRENT-DYNAMIC-STATE", Prim_current_dynamic_state, 1, 1,
-		  "(STATE-SPACE)\n\
-Return the current state point in STATE-SPACE. If STATE-SPACE is #F,\n\
-return the current state point in the global state space.")
-{
-  PRIMITIVE_HEADER (1);
-
-  if ((ARG_REF (1)) == SHARP_F)
-    PRIMITIVE_RETURN (current_state_point);
-  CHECK_ARG (1, STATE_SPACE_P);
-  PRIMITIVE_RETURN (MEMORY_REF ((ARG_REF (1)), STATE_SPACE_NEAREST_POINT));
-}
-
-DEFINE_PRIMITIVE ("SET-CURRENT-DYNAMIC-STATE!", Prim_set_dynamic_state, 1, 1,
-		  "(STATE-POINT)\n\
-Set the current dynamic state point to STATE-POINT.")
-{
-  PRIMITIVE_HEADER (1);
-  CHECK_ARG (1, STATE_POINT_P);
-  {
-    SCHEME_OBJECT state_point = (ARG_REF (1));
-    SCHEME_OBJECT state_space = (Find_State_Space (state_point));
-    SCHEME_OBJECT result;
-    if (state_space == SHARP_F)
-      {
-	result = current_state_point;
-	current_state_point = state_point;
-      }
-    else
-      {
-	result = (MEMORY_REF (state_space, STATE_SPACE_NEAREST_POINT));
-	MEMORY_SET (state_space, STATE_SPACE_NEAREST_POINT, state_point);
-      }
-    PRIMITIVE_RETURN (result);
   }
 }
 

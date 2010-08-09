@@ -149,8 +149,6 @@ extern SCHEME_OBJECT * stack_end;
 extern SCHEME_OBJECT * constant_alloc_next;
 extern SCHEME_OBJECT * constant_start;
 extern SCHEME_OBJECT * constant_end;
-
-extern SCHEME_OBJECT current_state_point;
 
 /* Address of the most recent return code in the stack.  This is
    only meaningful while in compiled code.  */
@@ -343,8 +341,6 @@ extern void Stack_Death (void) NORETURN;
 extern SCHEME_OBJECT * control_point_start (SCHEME_OBJECT);
 extern SCHEME_OBJECT * control_point_end (SCHEME_OBJECT);
 extern void unpack_control_point (SCHEME_OBJECT);
-
-extern SCHEME_OBJECT Find_State_Space (SCHEME_OBJECT);
 
 /* Debugging utilities */
 

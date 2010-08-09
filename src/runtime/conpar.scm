@@ -825,7 +825,6 @@ USA.
     (standard-subproblem 'REPEAT-DISPATCH 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-APPLY 4)
-    (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
 
     (let ((length (length/application-frame 2 0)))
