@@ -45,8 +45,18 @@ USA.
 #  endif
 #endif
 
-#if defined(HAVE_TERM_H)
-#  include <term.h>
+/* Some instances of curses.h (I'm looking at you, NetBSD) not only
+   declare an external variable ospeed, but also define it to be a
+   macro expanding to a function call.  WTF?  Unix sucks.  */
+#undef ospeed
+
+#if defined(HAVE_TERM_H) || defined(HAVE_TERMCAP_H)
+#  ifdef HAVE_TERM_H
+#    include <term.h>
+#  endif
+#  ifdef HAVE_TERMCAP_H
+#   include <termcap.h>
+#  endif
 #else
    extern int tgetent (char *, const char *);
    extern int tgetnum (const char *);
@@ -54,13 +64,13 @@ USA.
    extern char * tgetstr (const char *, char **);
    extern char * tgoto (const char *, int, int);
    extern int tputs (const char *, int, int (*) (int));
+   extern char * BC;
+   extern char * UP;
+   extern char PC;
+   extern speed_t ospeed;
 #endif
 
 extern char * tparam (const char *, void *, int, ...);
-extern char * BC;
-extern char * UP;
-extern char PC;
-extern speed_t ospeed;
 
 #ifndef TERMCAP_BUFFER_SIZE
 #define TERMCAP_BUFFER_SIZE 2048

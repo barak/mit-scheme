@@ -692,7 +692,7 @@ dnl by pretending we know the format -- without bringing in the local
 dnl termcap reimplementation.
 
 dnl Go for whatever header files we can.
-AC_CHECK_HEADERS([ncurses.h curses.h term.h])
+AC_CHECK_HEADERS([ncurses.h curses.h term.h termcap.h])
 
 if test "x${with_termcap}" = xyes; then
 
@@ -756,6 +756,7 @@ no) ;;
 	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
 	fi
     fi
+    ;;
 esac
 
 dnl The OpenSSL crypto library provides support for blowfish and MD5.
