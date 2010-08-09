@@ -336,7 +336,6 @@ extern void back_out_of_primitive (void);
 
 extern void Interpret (int pop_return_p);
 extern void Do_Micro_Error (long, bool);
-extern void Translate_To_Point (SCHEME_OBJECT);
 extern void Stack_Death (void) NORETURN;
 extern SCHEME_OBJECT * control_point_start (SCHEME_OBJECT);
 extern SCHEME_OBJECT * control_point_end (SCHEME_OBJECT);

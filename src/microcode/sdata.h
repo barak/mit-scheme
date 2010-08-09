@@ -459,15 +459,6 @@ USA.
  * continues after the evaluation.
  */
 
-/* When in RC_MOVE_TO_ADJACENT_POINT in the interpreter, the following
-   information is available on the stack (placed there by
-   Translate_To_Point
-*/
-#define TRANSLATE_FROM_POINT		0
-#define TRANSLATE_FROM_DISTANCE		1
-#define TRANSLATE_TO_POINT		2
-#define TRANSLATE_TO_DISTANCE		3
-
 /* TRUE
  * The initial binding of the variable T is to an object of this type.
  * This type is the beginnings of a possible move toward a system where
