@@ -315,6 +315,10 @@ USA.
 	  default/exit
 	  default/quit
 	  environment-link-name
+	  ephemeron-broken?
+	  ephemeron-datum
+	  ephemeron-key
+	  ephemeron?
 	  eq?
 	  error-procedure
 	  error:not-hook-list
@@ -344,6 +348,7 @@ USA.
 	  link-variables
 	  local-assignment
 	  make-cell
+	  make-ephemeron
 	  make-hook-list
 	  make-non-pointer-object
 	  non-pointer-type-code?
@@ -367,6 +372,7 @@ USA.
 	  run-hooks-in-list
 	  scode-eval
 	  set-cell-contents!
+	  set-ephemeron-datum!
 	  set-interrupt-enables!
 	  show-time
 	  system-hunk3-cons

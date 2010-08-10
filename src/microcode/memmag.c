@@ -253,6 +253,7 @@ the primitive GC daemons before returning.")
 
   open_tospace (heap_start);
   initialize_weak_chain ();
+  ephemeron_count = 0;
 
   std_gc_pt1 ();
   std_gc_pt2 ();
@@ -317,6 +318,15 @@ std_gc_pt2 (void)
   history_register = (OBJECT_ADDRESS (*saved_to++));
   saved_to = 0;
 
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  /* This should never trigger, because we discard the previous
+     ephemeron array, which always has at least as many slots as there
+     are live ephemerons.  Add one for the vector's manifest.  */
+  if (GC_NEEDED_P (ephemeron_count + 1))
+    std_gc_death ("No room for ephemeron array");
+#endif
+  ephemeron_array = (make_vector (ephemeron_count, SHARP_F, false));
+
   CC_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
 }
@@ -329,7 +339,7 @@ save_tospace_copy (SCHEME_OBJECT * start, SCHEME_OBJECT * end, void * p)
 		  ((end - start) * SIZEOF_SCHEME_OBJECT));
   return (true);
 }
-
+
 void
 stack_death (const char * name)
 {
@@ -357,4 +367,73 @@ DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)
 #endif
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static unsigned long primes [] =
+  {
+    /* A list of primes that approximately doubles, up to near 2^32.
+       If you have that many ephemerons, collisions in the ephemeron
+       hash table are the least of your worries.  */
+    11, 23, 53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 49157,
+    98317, 196613, 393241, 786433, 1572869, 3145739, 6291469, 12582917,
+    25165843, 50331653, 100663319, 201326611, 402653189, 805306457,
+    1610612741,
+  };
+
+static unsigned long
+compute_ephemeron_array_length (void)
+{
+  unsigned int start = 0, end = ((sizeof primes) / (sizeof (*primes)));
+  unsigned int index;
+
+  if ((primes [end - 1]) < ephemeron_count)
+    return (primes [end - 1]);
+
+  do {
+    index = (start + ((end - start) / 2));
+    if ((primes [index]) < ephemeron_count)
+      start = (index + 1);
+    else if (ephemeron_count < (primes [index]))
+      end = index;
+    else
+      return (primes [index]);
+  } while (start < end);
+
+  return (primes [start]);
+}
+
+static void
+guarantee_ephemeron_space (void)
+{
+  /* Guarantee space after Free and in the ephemeron array for one
+     ephemeron.  */
+  if ((VECTOR_P (ephemeron_array))
+      && (ephemeron_count <= (VECTOR_LENGTH (ephemeron_array))))
+    Primitive_GC_If_Needed (EPHEMERON_SIZE);
+  else
+    {
+      unsigned long length = (compute_ephemeron_array_length ());
+      /* We could be cleverer about expanding the ephemeron array, and
+	 tell the GC (above) that we really want an ephemeron array
+	 that is one slot larger.  */
+      Primitive_GC_If_Needed (EPHEMERON_SIZE + VECTOR_DATA + length);
+      ephemeron_array = (make_vector (length, SHARP_F, false));
+    }
+}
+
+DEFINE_PRIMITIVE ("MAKE-EPHEMERON", Prim_make_ephemeron, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  ephemeron_count += 1;
+  guarantee_ephemeron_space ();
+  {
+    SCHEME_OBJECT * addr = Free;
+    (*Free++) = MARKED_EPHEMERON_MANIFEST;
+    (*Free++) = (ARG_REF (1));	/* key */
+    (*Free++) = (ARG_REF (2));	/* datum */
+    (*Free++) = SHARP_F;	/* list */
+    (*Free++) = SHARP_F;	/* queue */
+    assert ((Free - addr) == EPHEMERON_SIZE);
+    PRIMITIVE_RETURN (MAKE_POINTER_OBJECT (TC_EPHEMERON, addr));
+  }
 }

@@ -192,6 +192,7 @@ extern SCHEME_OBJECT * memory_base;
 #define CONTROL_POINT_P(object) ((OBJECT_TYPE (object)) == TC_CONTROL_POINT)
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
+#define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)

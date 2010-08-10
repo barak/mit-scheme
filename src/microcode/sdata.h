@@ -499,4 +499,26 @@ USA.
 #define COMPLEX_REAL		0
 #define COMPLEX_IMAG		1
 
+/* EPHEMERON
+ * Similar to a weak pair, but the datum is weakly referenced too.  The
+ * key and datum are simultaneously dropped iff the only references to
+ * the key go through the datum.  Every ephemeron has extra slots for
+ * data structures that the garbage collector needs to implement this,
+ * so that the garbage collector need not allocate auxiliary storage.
+ */
+
+#define EPHEMERON_MANIFEST	0
+#define EPHEMERON_KEY		1
+#define EPHEMERON_DATUM		2
+#define EPHEMERON_LIST		3
+#define EPHEMERON_NEXT		4
+
+#define EPHEMERON_SIZE		5
+
+#define MARKED_EPHEMERON_MANIFEST				\
+  (MAKE_OBJECT (TC_MANIFEST_VECTOR, (EPHEMERON_SIZE - 1)))
+
+#define UNMARKED_EPHEMERON_MANIFEST				\
+  (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (EPHEMERON_SIZE - 1)))
+
 #endif /* not SCM_SDATA_H */

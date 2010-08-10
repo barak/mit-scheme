@@ -155,6 +155,7 @@ extern gc_handler_t gc_handle_pair;
 extern gc_handler_t gc_handle_triple;
 extern gc_handler_t gc_handle_quadruple;
 extern gc_handler_t gc_handle_weak_pair;
+extern gc_handler_t gc_handle_ephemeron;
 extern gc_handler_t gc_handle_cc_entry;
 extern gc_handler_t gc_handle_aligned_vector;
 extern gc_handler_t gc_handle_unaligned_vector;

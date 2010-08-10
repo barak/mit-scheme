@@ -39,13 +39,13 @@
 22     88     BROKEN-HEART                01     04     LIST
 23     8C     ASSIGNMENT                  0D     34     MANIFEST-CLOSURE
 24     90     HUNK3-B                     27     9C     MANIFEST-NM-VECTOR
-25     94     IN-PACKAGE                  2B     AC     MANIFEST-SPECIAL-NM-VECTOR
+25     94     IN-PACKAGE                  2B     AC     EPHEMERON
 26     98     COMBINATION                 16     58     NON-MARKED-VECTOR
 27     9C     MANIFEST-NM-VECTOR          00     00     NULL
 28     A0     COMPILED-ENTRY              30     C0     PCOMB0
 29     A4     LEXPR                       1B     6C     PCOMB1
 2A     A8     PCOMB3                      04     10     PCOMB2
-2B     AC     MANIFEST-SPECIAL-NM-VECTOR  2A     A8     PCOMB3
+2B     AC     EPHEMERON                   2A     A8     PCOMB3
 2C     B0     VARIABLE                    18     60     PRIMITIVE
 2D     B4     THE-ENVIRONMENT             0F     3C     PROCEDURE
 2E     B8     FUTURE                      38     E0     QUAD

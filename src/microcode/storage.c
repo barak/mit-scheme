@@ -64,6 +64,13 @@ SCHEME_OBJECT * last_return_code;
 
 SCHEME_OBJECT fixed_objects;
 
+/* Array of contiguous auxiliary storage, one entry per ephemeron, for
+   the sake of the garbage collector, which can use the array however
+   it pleases -- as a hash table, binary tree, &c.  */
+
+SCHEME_OBJECT ephemeron_array = SHARP_F;
+unsigned long ephemeron_count = 0;
+
 bool trapping;
 
 unsigned long n_heap_blocks;

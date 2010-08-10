@@ -155,6 +155,9 @@ extern SCHEME_OBJECT * constant_end;
 extern SCHEME_OBJECT * last_return_code;
 extern SCHEME_OBJECT fixed_objects;
 
+extern SCHEME_OBJECT ephemeron_array;
+extern unsigned long ephemeron_count;
+
 extern char * CONT_PRINT_RETURN_MESSAGE;
 extern char * CONT_PRINT_EXPR_MESSAGE;
 extern char * RESTORE_CONT_RETURN_MESSAGE;

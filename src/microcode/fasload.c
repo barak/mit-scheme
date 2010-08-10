@@ -471,6 +471,7 @@ relocate_block_table (void)
       (GCT_RAW_ADDRESS_TO_CC_ENTRY (&table)) = fasload_raw_address_to_cc_entry;
 
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_PCOMB0)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
@@ -600,6 +601,7 @@ intern_block_table (void)
       (GCT_CC_ENTRY (&table)) = intern_cc_entry;
 
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_INTERNED_SYMBOL)) = intern_handle_symbol;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
 

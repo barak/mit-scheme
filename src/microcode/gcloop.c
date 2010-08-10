@@ -62,6 +62,9 @@ USA.
 #include "outf.h"
 #include "gccode.h"
 
+/* For ephemeron layout.  */
+#include "sdata.h"
+
 static SCHEME_OBJECT ** p_fromspace_start;
 static SCHEME_OBJECT ** p_fromspace_end;
 static gc_tospace_allocator_t * gc_tospace_allocator;
@@ -115,10 +118,32 @@ static SCHEME_OBJECT current_object;
      ((* ((SCHEME_OBJECT **) (addr))) = (ref))
 #endif
 
+/* The weak chain is a linked list of all the live weak pairs whose
+   cars are not GC-invariant, described below.
+
+   The ephemeron list is a linked list of all the live ephemerons whose
+   cars are not GC-invariant.  The ephemeron queue is a queue of all
+   the live ephemerons whose keys have been proven live but whose data
+   slots have not yet been scanned.  The ephemeron hash table is a map
+   from fromspace addresses to lists of ephemerons, in which an
+   association between a fromspace address and a list of ephemerons
+   indicates that if the object stored at that fromspace address is
+   proven live, those ephemerons must not be broken, and consequently
+   their data must be live too.  */
+
 static SCHEME_OBJECT * weak_chain;
+static SCHEME_OBJECT ephemeron_list = SHARP_F;
+static SCHEME_OBJECT ephemeron_queue = SHARP_F;
+static bool scanning_ephemerons_p = false;
+
+extern SCHEME_OBJECT ephemeron_array;
+extern unsigned long ephemeron_count;
+
+static void queue_ephemerons_for_key (SCHEME_OBJECT *);
+static SCHEME_OBJECT gc_transport_weak_pair (SCHEME_OBJECT);
+static SCHEME_OBJECT gc_transport_ephemeron (SCHEME_OBJECT);
 
 static void run_gc_loop (SCHEME_OBJECT * , SCHEME_OBJECT **);
-static SCHEME_OBJECT gc_transport_weak_pair (SCHEME_OBJECT);
 static void tospace_closed (void) NORETURN;
 static void tospace_open (void) NORETURN;
 
@@ -323,11 +348,9 @@ initialize_gc_table (gc_table_t * table, bool transport_p)
 	break;
       }
   (GCT_ENTRY (table, TC_WEAK_CONS)) = gc_handle_weak_pair;
+  (GCT_ENTRY (table, TC_EPHEMERON)) = gc_handle_ephemeron;
   (GCT_ENTRY (table, TC_BIG_FLONUM)) = gc_handle_aligned_vector;
   (GCT_ENTRY (table, TC_COMPILED_CODE_BLOCK)) = gc_handle_aligned_vector;
-  /* The next is for backwards compatibility with older bands.
-     This type used to be TC_MANIFEST_SPECIAL_NM_VECTOR.  */
-  (GCT_ENTRY (table, 0x2B)) = gc_handle_non_pointer;
   (GCT_TUPLE (table)) = gc_tuple;
   (GCT_VECTOR (table)) = gc_vector;
   (GCT_CC_ENTRY (table)) = gc_cc_entry;
@@ -448,12 +471,17 @@ DEFINE_GC_PRECHECK_FROM (gc_precheck_from)
     std_gc_death ("out of range pointer: %#lx", ((unsigned long) from));
 #endif
 #endif
-  return
-    ((ADDRESS_IN_FROMSPACE_P (from))
-     ? ((BROKEN_HEART_P (*from))
-	? (OBJECT_ADDRESS (*from))
-	: 0)
-     : from);
+  if (!ADDRESS_IN_FROMSPACE_P (from))
+    return (from);
+  if (BROKEN_HEART_P (*from))
+    return (OBJECT_ADDRESS (*from));
+  if (scanning_ephemerons_p)
+    /* It would be nice if we had the new address, too; that way we
+       could eliminate a post-processing loop over the list of all
+       ephemerons.  However, the GC abstraction doesn't have a nice way
+       to do that.  */
+    queue_ephemerons_for_key (from);
+  return (0);
 }
 
 DEFINE_GC_PRECHECK_FROM (gc_precheck_from_no_transport)
@@ -553,6 +581,16 @@ DEFINE_GC_HANDLER (gc_handle_weak_pair)
   return (scan + 1);
 }
 
+DEFINE_GC_HANDLER (gc_handle_ephemeron)
+{
+  SCHEME_OBJECT * new_address = (GC_PRECHECK_FROM (OBJECT_ADDRESS (object)));
+  (*scan)
+    = ((new_address != 0)
+       ? (OBJECT_NEW_ADDRESS (object, new_address))
+       : (gc_transport_ephemeron (object)));
+  return (scan + 1);
+}
+
 DEFINE_GC_HANDLER (gc_handle_cc_entry)
 {
   (*scan) = (GC_HANDLE_CC_ENTRY (object));
@@ -740,36 +778,96 @@ DEFINE_GC_HANDLER (gc_handle_undefined)
 	      |_______|_____________|   |   |_____________________|
 
  */
+
+static SCHEME_OBJECT *
+weak_referent_address (SCHEME_OBJECT object)
+{
+  switch (gc_ptr_type (object))
+    {
+    case GC_POINTER_NORMAL:
+      return (OBJECT_ADDRESS (object));
 
+    case GC_POINTER_COMPILED:
+#ifdef CC_SUPPORT_P
+      return (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
+#else
+      gc_no_cc_support ();
+#endif
+
+    default:
+      return (0);
+    }
+}
+
+static SCHEME_OBJECT
+weak_referent_forward (SCHEME_OBJECT object)
+{
+  SCHEME_OBJECT * addr;
+
+  switch (gc_ptr_type (object))
+    {
+    case GC_POINTER_NORMAL:
+      addr = (OBJECT_ADDRESS (object));
+      if (BROKEN_HEART_P (*addr))
+	return (MAKE_OBJECT_FROM_OBJECTS (object, (*addr)));
+      return (SHARP_F);
+
+    case GC_POINTER_COMPILED:
+#ifdef CC_SUPPORT_P
+      addr = (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (object)));
+      if (BROKEN_HEART_P (*addr))
+	return (CC_ENTRY_NEW_BLOCK (object, (OBJECT_ADDRESS (*addr)), addr));
+#else
+      gc_no_cc_support ();
+#endif
+      return (SHARP_F);
+
+    case GC_POINTER_NOT:
+    default:			/* suppress bogus GCC warning */
+      std_gc_death ("Non-pointer cannot be a weak reference.");
+      return (SHARP_F);
+    }
+}
+
+static void
+queue_ephemerons_for_key (SCHEME_OBJECT * addr)
+{
+  SCHEME_OBJECT ht = ephemeron_array;
+  unsigned long index = (((unsigned long) addr) % (VECTOR_LENGTH (ht)));
+  SCHEME_OBJECT * entry_loc = (VECTOR_LOC (ht, index));
+  SCHEME_OBJECT entry;
+
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  if (!scanning_ephemerons_p)
+    std_gc_death ("queue_ephemerons_for_key while not scanning ephemerons");
+
+  if (!ADDRESS_IN_FROMSPACE_P (addr))
+    std_gc_death ("Queueing ephemerons for key with non-fromspace address.");
+#endif
+
+  while (EPHEMERON_P (entry = (*entry_loc)))
+    {
+      SCHEME_OBJECT * entry_addr = (OBJECT_ADDRESS (entry));
+      SCHEME_OBJECT * next_loc
+	= (NEWSPACE_TO_TOSPACE (entry_addr + EPHEMERON_NEXT));
+      if (addr == (OBJECT_ADDRESS (READ_TOSPACE (entry_addr + EPHEMERON_KEY))))
+	{
+	  (*entry_loc) = (*next_loc);
+	  (*next_loc) = ephemeron_queue;
+	  ephemeron_queue = entry;
+	}
+      entry_loc = next_loc;
+    }
+}
+
 static SCHEME_OBJECT
 gc_transport_weak_pair (SCHEME_OBJECT pair)
 {
   SCHEME_OBJECT * old_addr = (OBJECT_ADDRESS (pair));
   SCHEME_OBJECT * new_addr = (GC_TRANSPORT_WORDS (old_addr, 2, false));
   SCHEME_OBJECT old_car = (READ_TOSPACE (new_addr));
-  SCHEME_OBJECT * caddr;
+  SCHEME_OBJECT * caddr = (weak_referent_address (old_car));
 
-  /* Don't add pair to chain unless old_car is a pointer into old
-     space.  */
-
-  switch (gc_ptr_type (old_car))
-    {
-    case GC_POINTER_NORMAL:
-      caddr = (OBJECT_ADDRESS (old_car));
-      break;
-
-    case GC_POINTER_COMPILED:
-#ifdef CC_SUPPORT_P
-      caddr = (cc_entry_address_to_block_address (CC_ENTRY_ADDRESS (old_car)));
-#else
-      gc_no_cc_support ();
-#endif
-      break;
-
-    default:
-      caddr = 0;
-      break;
-    }
   if ((caddr != 0) && (ADDRESS_IN_FROMSPACE_P (caddr)))
     {
       WRITE_TOSPACE (new_addr, (OBJECT_NEW_TYPE (TC_NULL, old_car)));
@@ -785,17 +883,150 @@ gc_transport_weak_pair (SCHEME_OBJECT pair)
   return (OBJECT_NEW_ADDRESS (pair, new_addr));
 }
 
+static SCHEME_OBJECT
+gc_transport_ephemeron (SCHEME_OBJECT old_ephemeron)
+{
+  SCHEME_OBJECT * old_addr = (OBJECT_ADDRESS (old_ephemeron));
+  SCHEME_OBJECT * new_addr
+    = (GC_TRANSPORT_WORDS (old_addr, EPHEMERON_SIZE, false));
+  SCHEME_OBJECT new_ephemeron = (OBJECT_NEW_ADDRESS (old_ephemeron, new_addr));
+  SCHEME_OBJECT old_key = (READ_TOSPACE (new_addr + EPHEMERON_KEY));
+  SCHEME_OBJECT * old_key_addr = (weak_referent_address (old_key));
+  SCHEME_OBJECT index;
+  SCHEME_OBJECT ht = ephemeron_array;
+
+  ephemeron_count += 1;
+
+  /* If the key is GC-invariant or live, the ephemeron will not be
+     broken, so leave a marked vector manifest to make the GC will scan
+     its contents, including the datum.  */
+  if ((old_key_addr == 0)
+      || (!ADDRESS_IN_FROMSPACE_P (old_key_addr))
+      || (SHARP_F != (weak_referent_forward (old_key))))
+    {
+      WRITE_TOSPACE (new_addr, MARKED_EPHEMERON_MANIFEST);
+      return (new_ephemeron);
+    }
+
+  /* Write a manifest that makes the GC skip over the ephemeron.  */
+  WRITE_TOSPACE (new_addr, UNMARKED_EPHEMERON_MANIFEST);
+
+  /* Map its key back to it.  */
+  index = (((unsigned long) old_key_addr) % (VECTOR_LENGTH (ht)));
+  WRITE_TOSPACE ((new_addr + EPHEMERON_NEXT), (VECTOR_REF (ht, index)));
+  VECTOR_SET (ht, index, new_ephemeron);
+
+  /* Link it up in the ephemeron list.  */
+  WRITE_TOSPACE ((new_addr + EPHEMERON_LIST), ephemeron_list);
+  ephemeron_list = new_ephemeron;
+
+  return (new_ephemeron);
+}
+
+static void
+scan_newspace_addr (SCHEME_OBJECT * addr)
+{
+  gc_ignore_object_p_t * ignore_object_p
+    = (GCT_IGNORE_OBJECT_P (current_gc_table));
+  SCHEME_OBJECT * scan;
+  SCHEME_OBJECT object;
+
+  addr = (NEWSPACE_TO_TOSPACE (addr));
+  scan = addr;
+
+  INITIALIZE_GC_HISTORY ();
+  object = (*scan);
+  HANDLE_GC_TRAP (scan, object);
+  if ((ignore_object_p != 0) && ((*ignore_object_p) (object)))
+    return;
+
+  current_scan = scan;
+  current_object = object;
+  scan = ((* (GCT_ENTRY (current_gc_table, (OBJECT_TYPE (object)))))
+	  (scan, object));
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+  if (scan != (addr + 1))
+    std_gc_death ("scan_newspace_addr overflowed");
+#endif
+}
+
+static void
+scan_ephemerons (void)
+{
+  SCHEME_OBJECT ephemeron = ephemeron_list;
+  SCHEME_OBJECT * saved_newspace_next = newspace_next;
+  scanning_ephemerons_p = true;
+  while (EPHEMERON_P (ephemeron))
+    {
+      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+      SCHEME_OBJECT old_key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
+      ephemeron = (READ_TOSPACE (ephemeron_addr + EPHEMERON_LIST));
+      /* It is tempting to scan the ephemeron's datum right here and
+	 now, but we can't do that because it may already be in the
+	 queue, and the assumption is that for each ephemeron in the
+	 queue, its key has been proven live but its datum has not yet
+	 been scanned.  It is tempting to link this up in the queue
+	 right here and now, but we can't do that, because we must also
+	 delete it from the hash table so that nothing else will put it
+	 in the queue again.  */
+      if (SHARP_F != (weak_referent_forward (old_key)))
+	queue_ephemerons_for_key (weak_referent_address (old_key));
+    }
+  while (EPHEMERON_P (ephemeron = ephemeron_queue))
+    {
+      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+      {
+	SCHEME_OBJECT key = (READ_TOSPACE (ephemeron_addr + EPHEMERON_KEY));
+	if (! (weak_referent_forward (key)))
+	  std_gc_death
+	    ("Ephemeron queued whose key has not been forwarded: %lx", key);
+      }
+#endif
+      ephemeron_queue = (READ_TOSPACE (ephemeron_addr + EPHEMERON_NEXT));
+      saved_newspace_next = newspace_next;
+      scan_newspace_addr (ephemeron_addr + EPHEMERON_DATUM);
+      gc_scan_tospace (saved_newspace_next, 0);
+    }
+  scanning_ephemerons_p = false;
+}
+
 void
 initialize_weak_chain (void)
 {
   weak_chain = 0;
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   weak_chain_length = 0;
+  if (ephemeron_list != SHARP_F) std_gc_death ("Bad ephemeron list.");
+  if (ephemeron_queue != SHARP_F) std_gc_death ("Bad ephemeron queue.");
+  if (scanning_ephemerons_p != SHARP_F) std_gc_death ("Bad ephemeron state.");
 #endif
 }
 
-void
-update_weak_pointers (void)
+static void
+update_ephemerons (void)
+{
+  SCHEME_OBJECT ephemeron = ephemeron_list;
+  while (EPHEMERON_P (ephemeron))
+    {
+      SCHEME_OBJECT * ephemeron_addr = (OBJECT_ADDRESS (ephemeron));
+      SCHEME_OBJECT * key_loc = (ephemeron_addr + EPHEMERON_KEY);
+      SCHEME_OBJECT old_key = (READ_TOSPACE (key_loc));
+      SCHEME_OBJECT new_key = (weak_referent_forward (old_key));
+      WRITE_TOSPACE (ephemeron_addr, MARKED_EPHEMERON_MANIFEST);
+      WRITE_TOSPACE (key_loc, new_key);
+      /* Advance before we clobber the list pointer.  */
+      ephemeron = (READ_TOSPACE (ephemeron_addr + EPHEMERON_LIST));
+      WRITE_TOSPACE ((ephemeron_addr + EPHEMERON_LIST), SHARP_F);
+      WRITE_TOSPACE ((ephemeron_addr + EPHEMERON_NEXT), SHARP_F);
+      if (new_key == SHARP_F)
+	WRITE_TOSPACE ((ephemeron_addr + EPHEMERON_DATUM), SHARP_F);
+    }
+  ephemeron_list = SHARP_F;
+}
+
+static void
+update_weak_pairs (void)
 {
 #if 0
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
@@ -810,39 +1041,18 @@ update_weak_pointers (void)
       SCHEME_OBJECT old_car
 	= (OBJECT_NEW_TYPE ((OBJECT_TYPE (obj)),
 			    (READ_TOSPACE (new_addr))));
-      SCHEME_OBJECT * addr;
 
-      switch (gc_ptr_type (old_car))
-	{
-	case GC_POINTER_NORMAL:
-	  addr = (OBJECT_ADDRESS (old_car));
-	  WRITE_TOSPACE (new_addr,
-			 ((BROKEN_HEART_P (*addr))
-			  ? (MAKE_OBJECT_FROM_OBJECTS (old_car, (*addr)))
-			  : SHARP_F));
-	  break;
-
-	case GC_POINTER_COMPILED:
-#ifdef CC_SUPPORT_P
-	  addr = (cc_entry_address_to_block_address
-		  (CC_ENTRY_ADDRESS (old_car)));
-	  WRITE_TOSPACE (new_addr,
-			 ((BROKEN_HEART_P (*addr))
-			  ? (CC_ENTRY_NEW_BLOCK (old_car,
-						 (OBJECT_ADDRESS (*addr)),
-						 addr))
-			  : SHARP_F));
-#else
-	  std_gc_death (0, "update_weak_pointers: unsupported compiled code");
-#endif
-	  break;
-
-	case GC_POINTER_NOT:
-	  std_gc_death ("update_weak_pointers: non-pointer found");
-	  break;
-	}
+      WRITE_TOSPACE (new_addr, (weak_referent_forward (old_car)));
       weak_chain = (((OBJECT_DATUM (obj)) == 0) ? 0 : (OBJECT_ADDRESS (obj)));
     }
+}
+
+void
+update_weak_pointers (void)
+{
+  scan_ephemerons ();
+  update_ephemerons ();
+  update_weak_pairs ();
 }
 
 void
@@ -1065,7 +1275,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_COMPILED,			/* TC_COMPILED_ENTRY */
   GC_PAIR,			/* TC_LEXPR */
   GC_VECTOR,			/* TC_PCOMB3 */
-  GC_UNDEFINED,			/* 0x2B */
+  GC_VECTOR,			/* TC_EPHEMERON */
   GC_TRIPLE,			/* TC_VARIABLE */
   GC_NON_POINTER,		/* TC_THE_ENVIRONMENT */
   GC_UNDEFINED,			/* 0x2E */

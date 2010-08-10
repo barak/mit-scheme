@@ -340,6 +340,7 @@ fasdump_table (void)
       (GCT_ENTRY ((&table), TC_VARIABLE)) = handle_variable;
       (GCT_ENTRY ((&table), TC_ENVIRONMENT)) = handle_environment;
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
 
       initialized_p = true;
     }

@@ -67,12 +67,16 @@ USA.
   system-vector?
   (system-vector-length system-vector-size)
   system-vector-ref
-  system-vector-set!)
+  system-vector-set!
+
+  primitive-object-ref primitive-object-set!)
 
 (define (host-big-endian?)
   host-big-endian?-saved)
 
 (define host-big-endian?-saved)
+
+(define ephemeron-type)
 
 (define (initialize-package!)
   ;; Assumptions:
@@ -89,6 +93,9 @@ USA.
 	  ((#x00020100 #x0004030000020100) #f)
 	  (else (error "Unable to determine endianness of host."))))
   (add-secondary-gc-daemon! clean-obarray)
+  ;; Kludge until the next released version, to avoid a bootstrapping
+  ;; failure.
+  (set! ephemeron-type (microcode-type 'EPHEMERON))
   unspecific)
 
 ;;;; Potpourri
@@ -462,3 +469,46 @@ USA.
   (for-each (lambda (p)
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))
+
+;;;; Ephemerons
+
+(define canonical-false (list 'FALSE))
+
+(define (canonicalize object)
+  (if (eq? object #f)
+      canonical-false
+      object))
+
+(define (decanonicalize object)
+  (if (eq? object canonical-false)
+      #f
+      object))
+
+(define (make-ephemeron key datum)
+  ((ucode-primitive MAKE-EPHEMERON 2) (canonicalize key) (canonicalize datum)))
+
+(define (ephemeron? object)
+  (object-type? ephemeron-type object))
+
+(define-guarantee ephemeron "ephemeron")
+
+(define (ephemeron-key ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-KEY)
+  (decanonicalize (primitive-object-ref ephemeron 1)))
+
+(define (ephemeron-datum ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-DATUM)
+  (decanonicalize (primitive-object-ref ephemeron 2)))
+
+(define (set-ephemeron-datum! ephemeron datum)
+  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-DATUM!)
+  (let ((key (primitive-object-ref ephemeron 1)))
+    (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
+    ;; Guarantee that the key is referenced until this procedure
+    ;; returns.
+    (identity-procedure key))
+  unspecific)
+
+(define (ephemeron-broken? ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-BROKEN?)
+  (not (primitive-object-ref ephemeron 1)))
