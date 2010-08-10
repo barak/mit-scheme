@@ -9,6 +9,7 @@
 * Promises::                    
 * Streams::                     
 * Weak Pairs::                  
+* Ephemerons::
 @end menu
 
 @node Booleans, Symbols, Miscellaneous Datatypes, Miscellaneous Datatypes
@@ -857,7 +858,7 @@ invoking @var{procedure} with the corresponding elements of the
 @var{stream}s as its arguments.
 @end deffn
 
-@node Weak Pairs,  , Streams, Miscellaneous Datatypes
+@node Weak Pairs, Ephemerons, Streams, Miscellaneous Datatypes
 @section Weak Pairs
 
 @cindex weak pair (defn)
@@ -943,3 +944,82 @@ Returns the cdr component of @var{weak-cdr}.
 Sets the cdr component of @var{weak-pair} to @var{object} and returns an
 unspecified result.
 @end deffn
+
+@node Ephemerons,  , Weak Pairs, Miscellaneous Datatypes
+@section Ephemerons
+
+@cindex ephemeron (defn)
+@cindex ephemeron, broken
+@cindex broken ephemeron
+An @dfn{ephemeron} is an object with two weakly referenced components
+called its @dfn{key} and @dfn{datum}.  The garbage collector drops an
+ephemeron's references to both key and datum, rendering the ephemeron
+@dfn{broken}, if and only if the garbage collector can prove that
+there are no strong references to the key.  In other words, an
+ephemeron is broken when nobody else cares about its key.  Note that
+an ephemeron's reference to its datum may be dropped even if the datum
+is still reachable; all that matters is whether the key is reachable.
+Once broken, ephemerons never cease to be broken; setting the datum of
+a broken ephemeron with @code{set-ephemeron-datum!}  has no effect.
+
+Ephemerons are considerably heavier-weight than weak pairs, because
+garbage-collecting ephemerons is more complicated than
+garbage-collecting weak pairs.  Each ephemeron needs five words of
+storage, rather than the two words needed by a weak pair.  However,
+while the garbage collector spends more time on ephemerons than on
+other objects, the amount of time it spends on ephemerons scales
+linearly with the number of live ephemerons, which is how its running
+time scales with the total number of live objects anyway.
+
+@deffn procedure ephemeron? object
+@cindex type predicate, for ephemeron
+Returns @code{#t} if @var{object} is a ephemeron; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure make-ephemeron key datum
+@cindex construction, of ephemeron
+Allocates and returns a new ephemeron, with components @var{key} and
+@var{datum}.
+@end deffn
+
+@deffn procedure ephemeron-broken? ephemeron
+Returns @code{#t} if the garbage collector has dropped
+@var{ephemeron}'s references to its key and datum; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure ephemeron-key ephemeron
+@deffnx procedure ephemeron-datum ephemeron
+@cindex selection, of ephemeron component
+@cindex component selection, of ephemeron
+These return the key or datum components, respectively, of
+@var{ephemeron}.  If @var{ephemeron} has been broken, these operation
+return @code{#f}, but they can also return @code{#f} if that is the
+value that was stored in the key or value component.
+@end deffn
+
+@deffn procedure set-ephemeron-datum! ephemeron object
+Sets the datum component of @var{ephemeron} to @var{object} and
+returns an unspecified result.  If @var{ephemeron} is broken, this has
+no effect.
+@end deffn
+
+Like @code{weak-pair/car?}, @code{ephemeron-broken?} must be used with
+care.  @code{Ephemeron-broken?} on an ephemeron guarantees that any
+prior call to @code{ephemeron-key} or @code{ephemeron-datum} on the
+same ephemeron yielded the key or datum that was stored in the
+ephemeron, but it makes no guarantees about subsequent calls to
+@code{ephemeron-key} or @code{ephemeron-datum}.  Thus, the correct
+idiom to fetch an ephemeron's key and datum and use them if the
+ephemeron is not broken is
+
+@example
+@group
+(let ((key (ephemeron-key ephemeron))
+      (datum (ephemeron-datum ephemeron)))
+  (if (ephemeron-broken? ephemeron)
+      @dots{} @r{broken case} @dots{}
+      @dots{} @r{code using @var{key} and @var{datum}} @dots{}))
+@end group
+@end example

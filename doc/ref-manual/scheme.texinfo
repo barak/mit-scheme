@@ -267,6 +267,7 @@ Miscellaneous Datatypes
 * Promises::                    
 * Streams::                     
 * Weak Pairs::                  
+* Ephemerons::
 
 Associations
 
