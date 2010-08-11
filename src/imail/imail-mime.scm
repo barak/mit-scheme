@@ -704,6 +704,7 @@ USA.
 
 (define (mime:get-content-language header-fields)
   ;++ implement
+  (declare (ignore header-fields))
   #f)
 
 ;;;; Extended RFC 822 Tokenizer
