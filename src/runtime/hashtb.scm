@@ -167,23 +167,30 @@ USA.
 	    (hash-table->alist table)))
 
 (define (hash-table-fold table procedure initial-value)
-  (guarantee-hash-table table 'HASH-TABLE-FOLD)
-  ((table-type-method:fold (table-type table)) table procedure initial-value))
+  (fold (lambda (p v) (procedure (car p) (cdr p) v))
+	initial-value
+	(hash-table->alist table)))
 
 (define (hash-table->alist table)
-  (hash-table-fold table
-		   (lambda (key datum alist) (cons (cons key datum) alist))
-		   '()))
+  (guarantee-hash-table table 'HASH-TABLE->ALIST)
+  (%hash-table-fold table
+		    (lambda (key datum alist) (cons (cons key datum) alist))
+		    '()))
 
 (define (hash-table/key-list table)
-  (hash-table-fold table
-		   (lambda (key datum alist) datum (cons key alist))
-		   '()))
+  (guarantee-hash-table table 'HASH-TABLE/KEY-LIST)
+  (%hash-table-fold table
+		    (lambda (key datum alist) datum (cons key alist))
+		    '()))
 
 (define (hash-table/datum-list table)
-  (hash-table-fold table
-		   (lambda (key datum alist) key (cons datum alist))
-		   '()))
+  (guarantee-hash-table table 'HASH-TABLE/DATUM-LIST)
+  (%hash-table-fold table
+		    (lambda (key datum alist) key (cons datum alist))
+		    '()))
+
+(define (%hash-table-fold table procedure initial-value)
+  ((table-type-method:fold (table-type table)) table procedure initial-value))
 
 (define (hash-table/rehash-threshold table)
   (guarantee-hash-table table 'HASH-TABLE/REHASH-THRESHOLD)
@@ -865,12 +872,14 @@ USA.
 	table*))))
 
 (define (hash-table-merge! table1 table2)
+  (guarantee-hash-table table1 'HASH-TABLE-MERGE!)
+  (guarantee-hash-table table2 'HASH-TABLE-MERGE!)
   (if (not (eq? table2 table1))
-      (hash-table-fold table2
-		       (lambda (key datum ignore)
-			 ignore
-			 (hash-table/put! table1 key datum))
-		       unspecific))
+      (%hash-table-fold table2
+			(lambda (key datum ignore)
+			  ignore
+			  (hash-table/put! table1 key datum))
+			unspecific))
   table1)
 
 ;;;; Miscellany
