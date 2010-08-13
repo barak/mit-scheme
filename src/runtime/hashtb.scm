@@ -280,15 +280,18 @@ USA.
 (define-integrable (make-weak-type key-hash key=? rehash-after-gc?
 				   compute-hash!)
   (make-table-type key-hash key=? rehash-after-gc?
-		   (make-method:get compute-hash! key=? %weak-entry-key
-				    %weak-entry-datum)
+		   (make-method:get compute-hash! key=? %weak-entry-valid?
+				    %weak-entry-key %weak-entry-datum)
 		   (make-method:put! compute-hash! key=? %weak-make-entry
-				     %weak-entry-key %weak-set-entry-datum!)
+				     %weak-entry-valid? %weak-entry-key
+				     %weak-set-entry-datum!)
 		   (make-method:modify! compute-hash! key=? %weak-make-entry
-					%weak-entry-key %weak-entry-datum
+					%weak-entry-valid? %weak-entry-key
+					%weak-entry-datum
 					%weak-set-entry-datum!)
-		   (make-method:remove! compute-hash! key=? %weak-entry-key)
-		   weak-method:clean!
+		   (make-method:remove! compute-hash! key=? %weak-entry-valid?
+					%weak-entry-key)
+		   (make-method:clean! %weak-entry-valid?)
 		   (make-method:rehash! key-hash %weak-entry-valid?
 					%weak-entry-key)
 		   (make-method:fold %weak-entry-valid? %weak-entry-key
@@ -315,41 +318,42 @@ USA.
 (define-integrable %weak-entry-datum system-pair-cdr)
 (define-integrable %weak-set-entry-datum! system-pair-set-cdr!)
 
-(define (weak-method:clean! table)
-  (let ((buckets (table-buckets table)))
-    (let ((n-buckets (vector-length buckets)))
-      (do ((i 0 (fix:+ i 1)))
-	  ((not (fix:< i n-buckets)))
-	(letrec
-	    ((scan-head
-	      (lambda (p)
-		(if (pair? p)
-		    (if (%weak-entry-valid? (car p))
-			(begin
-			  (vector-set! buckets i p)
-			  (scan-tail (cdr p) p))
-			(begin
-			  (decrement-table-count! table)
-			  (scan-head (cdr p))))
-		    (vector-set! buckets i p))))
-	     (scan-tail
-	      (lambda (p q)
-		(if (pair? p)
-		    (if (%weak-entry-valid? (car p))
-			(scan-tail (cdr p) p)
-			(begin
-			  (decrement-table-count! table)
-			  (let loop ((p (cdr p)))
-			    (if (pair? p)
-				(if (%weak-entry-valid? (car p))
-				    (begin
-				      (set-cdr! q p)
-				      (scan-tail (cdr p) p))
-				    (begin
-				      (decrement-table-count! table)
-				      (loop (cdr p))))
-				(set-cdr! q p)))))))))
-	  (scan-head (vector-ref buckets i)))))))
+(define-integrable (make-method:clean! entry-valid?)
+  (lambda (table)
+    (let ((buckets (table-buckets table)))
+      (let ((n-buckets (vector-length buckets)))
+	(do ((i 0 (fix:+ i 1)))
+	    ((not (fix:< i n-buckets)))
+	  (letrec
+	      ((scan-head
+		(lambda (p)
+		  (if (pair? p)
+		      (if (entry-valid? (car p))
+			  (begin
+			    (vector-set! buckets i p)
+			    (scan-tail (cdr p) p))
+			  (begin
+			    (decrement-table-count! table)
+			    (scan-head (cdr p))))
+		      (vector-set! buckets i p))))
+	       (scan-tail
+		(lambda (p q)
+		  (if (pair? p)
+		      (if (entry-valid? (car p))
+			  (scan-tail (cdr p) p)
+			  (begin
+			    (decrement-table-count! table)
+			    (let loop ((p (cdr p)))
+			      (if (pair? p)
+				  (if (entry-valid? (car p))
+				      (begin
+					(set-cdr! q p)
+					(scan-tail (cdr p) p))
+				      (begin
+					(decrement-table-count! table)
+					(loop (cdr p))))
+				  (set-cdr! q p)))))))))
+	    (scan-head (vector-ref buckets i))))))))
 
 ;;;; Strong table type
 
@@ -375,17 +379,17 @@ USA.
 (define-integrable (make-strong-type key-hash key=? rehash-after-gc?
 				     compute-hash!)
   (make-table-type key-hash key=? rehash-after-gc?
-		   (make-method:get compute-hash! key=? %strong-entry-key
-				    %strong-entry-datum)
+		   (make-method:get compute-hash! key=? %strong-entry-valid?
+				    %strong-entry-key %strong-entry-datum)
 		   (make-method:put! compute-hash! key=? %strong-make-entry
-				     %strong-entry-key
+				     %strong-entry-valid? %strong-entry-key
 				     %strong-set-entry-datum!)
 		   (make-method:modify! compute-hash! key=?
-					%strong-make-entry %strong-entry-key
-					%strong-entry-datum
+					%strong-make-entry %strong-entry-valid?
+					%strong-entry-key %strong-entry-datum
 					%strong-set-entry-datum!)
 		   (make-method:remove! compute-hash! key=?
-					%strong-entry-key)
+					%strong-entry-valid? %strong-entry-key)
 		   (lambda (table) table unspecific)
 		   (make-method:rehash! key-hash %strong-entry-valid?
 					%strong-entry-key)
@@ -405,23 +409,27 @@ USA.
 
 ;;;; Methods
 
-(define-integrable (make-method:get compute-hash! key=? entry-key entry-datum)
+(define-integrable (make-method:get compute-hash! key=?
+				    entry-valid? entry-key entry-datum)
   (lambda (table key default)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)))
 	(if (pair? p)
-	    (if (key=? (entry-key (car p)) key)
-		(entry-datum (car p))
-		(loop (cdr p)))
+	    (let ((key* (entry-key (car p)))
+		  (datum (entry-datum (car p))))
+	      (if (and (entry-valid? (car p)) (key=? key* key))
+		  datum
+		  (loop (cdr p))))
 	    default)))))
 
-(define-integrable (make-method:put! compute-hash! key=? make-entry entry-key
-				     set-entry-datum!)
+(define-integrable (make-method:put! compute-hash! key=? make-entry
+				     entry-valid? entry-key set-entry-datum!)
   (lambda (table key datum)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
 	(if (pair? p)
-	    (if (key=? (entry-key (car p)) key)
+	    (if (let ((key* (entry-key (car p))))
+		  (and (entry-valid? (car p)) (key=? key* key)))
 		(set-entry-datum! (car p) datum)
 		(loop (cdr p) p))
 	    (with-table-locked! table
@@ -434,18 +442,21 @@ USA.
 		(maybe-grow-table! table))))))))
 
 (define-integrable (make-method:modify! compute-hash! key=? make-entry
-					entry-key entry-datum set-entry-datum!)
+					entry-valid? entry-key entry-datum
+					set-entry-datum!)
   (lambda (table key procedure default)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
 	(if (pair? p)
-	    (if (key=? (entry-key (car p)) key)
-		(with-table-locked! table
-		  (lambda ()
-		    (let ((datum (procedure (entry-datum (car p)))))
-		      (set-entry-datum! (car p) datum)
-		      datum)))
-		(loop (cdr p) p))
+	    (let ((key* (entry-key (car p)))
+		  (datum (entry-datum (car p))))
+	      (if (and (entry-valid? (car p)) (key=? key* key))
+		  (with-table-locked! table
+		    (lambda ()
+		      (let ((datum* (procedure datum)))
+			(set-entry-datum! (car p) datum*)
+			datum*)))
+		  (loop (cdr p) p)))
 	    (let ((datum (procedure default)))
 	      (with-table-locked! table
 		(lambda ()
@@ -457,12 +468,14 @@ USA.
 		  (maybe-grow-table! table)))
 	      datum))))))
 
-(define-integrable (make-method:remove! compute-hash! key=? entry-key)
+(define-integrable (make-method:remove! compute-hash! key=?
+					entry-valid? entry-key)
   (lambda (table key)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
 	(if (pair? p)
-	    (if (key=? (entry-key (car p)) key)
+	    (if (let ((key* (entry-key (car p))))
+		  (and (entry-valid? (car p)) (key=? key* key)))
 		(with-table-locked! table
 		  (lambda ()
 		    (if q
@@ -478,9 +491,9 @@ USA.
       (let ((n-buckets (vector-length buckets)))
 	(let loop ((p entries))
 	  (if (pair? p)
-	      (let ((q (cdr p)))
+	      (let ((key (entry-key (car p))) (q (cdr p)))
 		(if (entry-valid? (car p))
-		    (let ((hash (key-hash (entry-key (car p)) n-buckets)))
+		    (let ((hash (key-hash key n-buckets)))
 		      (set-cdr! p (vector-ref buckets hash))
 		      (vector-set! buckets hash p))
 		    (decrement-table-count! table))
@@ -495,11 +508,11 @@ USA.
 	      (let per-entry ((p (vector-ref buckets i)) (value value))
 		(if (pair? p)
 		    (per-entry (cdr p)
-			       (if (entry-valid? (car p))
-				   (procedure (entry-key (car p))
-					      (entry-datum (car p))
-					      value)
-				   value))
+			       (let ((key (entry-key (car p)))
+				     (datum (entry-datum (car p))))
+				 (if (entry-valid? (car p))
+				     (procedure key datum value)
+				     value)))
 		    (per-bucket (fix:+ i 1) value)))
 	      value))))))
 
@@ -508,24 +521,23 @@ USA.
   (lambda (bucket)
     (let find-head ((p bucket))
       (if (pair? p)
-	  (if (entry-valid? (car p))
-	      (let ((head
-		     (cons (make-entry (entry-key (car p))
-				       (entry-datum (car p)))
-			   '())))
-		(let loop ((p (cdr p)) (previous head))
-		  (if (pair? p)
-		      (loop (cdr p)
-			    (if (entry-valid? (car p))
-				(let ((p*
-				       (cons (make-entry (entry-key (car p))
-							 (entry-datum (car p)))
-					     '())))
-				  (set-cdr! previous p*)
-				  p*)
-				previous))))
-		head)
-	      (find-head (cdr p)))
+	  (let ((key (entry-key (car p)))
+		(datum (entry-datum (car p))))
+	    (if (entry-valid? (car p))
+		(let ((head (cons (make-entry key datum) '())))
+		  (let loop ((p (cdr p)) (previous head))
+		    (if (pair? p)
+			(loop (cdr p)
+			      (let ((key (entry-key (car p)))
+				    (datum (entry-datum (car p))))
+				(if (entry-valid? (car p))
+				    (let ((p*
+					   (cons (make-entry key datum) '())))
+				      (set-cdr! previous p*)
+				      p*)
+				    previous)))))
+		  head)
+		(find-head (cdr p))))
 	  p))))
 
 ;;;; Resizing
