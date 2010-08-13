@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -113,12 +113,25 @@ USA.
    (lambda (table key datum) table key datum unspecific)
    (lambda (table key) table key unspecific)
    (lambda (table key default) table key default unspecific)
-   (lambda (table) table unspecific)))
+   (lambda (table) table '())))
 
+(load-option 'RB-TREE)
+
+(define (make-pointer-tree)
+  (make-rb-tree (lambda (x y) (fix:= (car x) (car y)))
+		(lambda (x y) (fix:< (car x) (car y)))))
+
+(define rbt
+  (make-implementation make-pointer-tree
+		       rb-tree/insert!
+		       rb-tree/delete!
+		       rb-tree/lookup
+		       rb-tree->alist))
+
 (load-option 'HASH-TABLE)
 
-(define htq
-  (make-implementation make-eq-hash-table
+(define shtq
+  (make-implementation make-strong-eq-hash-table
 		       hash-table/put!
 		       hash-table/remove!
 		       hash-table/get
@@ -126,8 +139,26 @@ USA.
 			 (sort (hash-table->alist table)
 			       (lambda (x y) (fix:< (caar x) (caar y)))))))
 
-(define htv
-  (make-implementation make-eqv-hash-table
+(define shtv
+  (make-implementation make-strong-eqv-hash-table
+		       hash-table/put!
+		       hash-table/remove!
+		       hash-table/get
+		       (lambda (table)
+			 (sort (hash-table->alist table)
+			       (lambda (x y) (fix:< (caar x) (caar y)))))))
+
+(define whtq
+  (make-implementation make-weak-eq-hash-table
+		       hash-table/put!
+		       hash-table/remove!
+		       hash-table/get
+		       (lambda (table)
+			 (sort (hash-table->alist table)
+			       (lambda (x y) (fix:< (caar x) (caar y)))))))
+
+(define whtv
+  (make-implementation make-weak-eqv-hash-table
 		       hash-table/put!
 		       hash-table/remove!
 		       hash-table/get
@@ -143,19 +174,6 @@ USA.
 		       (lambda (table)
 			 (sort (hash-table->alist table)
 			       (lambda (x y) (fix:< (caar x) (caar y)))))))
-
-(load-option 'RB-TREE)
-
-(define (make-pointer-tree)
-  (make-rb-tree (lambda (x y) (fix:= (car x) (car y)))
-		(lambda (x y) (fix:< (car x) (car y)))))
-
-(define rbt
-  (make-implementation make-pointer-tree
-		       rb-tree/insert!
-		       rb-tree/delete!
-		       rb-tree/lookup
-		       rb-tree->alist))
 
 (define (test-correctness s implementation)
   (let ((table ((implementation/make implementation)))
@@ -190,3 +208,71 @@ USA.
 			  (eq? (cdar alist) (cdar check))))
 		(error "Alist element incorrect:" (car alist) (car check)))
 	    (loop (cdr alist) (cdr check)))))))
+
+(define (check implementation)
+  (let ((n #x1000))
+    (do ((i 0 (+ i 1))) ((= i #x100))
+      (let* ((key-radix (+ 1 (random-integer n)))
+	     (insert-fraction (random-real))
+	     (delete-fraction (- 1 insert-fraction)))
+	(test-correctness
+	 (make-sequence n key-radix insert-fraction delete-fraction)
+	 implementation)))))
+
+(define-test 'CHECK-AGAINST-RB-TREE
+  (lambda ()
+    (define (sub-test name implementation)
+      name				;What to do?
+      (run-sub-test (lambda () (check implementation))))
+    (sub-test 'STRONG-EQ-HASH-TABLE shtq)
+    (sub-test 'STRONG-EQV-HASH-TABLE shtv)
+    (sub-test 'WEAK-EQ-HASH-TABLE whtq)
+    (sub-test 'WEAK-EQV-HASH-TABLE whtv)
+    (sub-test 'EQUAL-HASH-TABLE ht)))
+
+;;; These are carefully tailored to the internal representation of
+;;; the hash table.  This is simpler, but less robust, than writing a
+;;; big, hairy, complicated statistical test that guarantees the
+;;; desired behaviour with high probability.
+
+(define-test 'REGRESSION:FALSE-KEY-OF-BROKEN-WEAK-ENTRY
+  (lambda ()
+    (let ((hash-table
+	   ((weak-hash-table/constructor (lambda (k m) k m 0) eqv?))))
+      (hash-table/put! hash-table (cons 0 0) 'LOSE)
+      (gc-flip)
+      (assert-eqv (hash-table/get hash-table #f 'WIN) 'WIN))))
+
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE
+  (lambda ()
+    (let ((hash-table
+	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
+      (hash-table/put! hash-table 0 'LOSE-0)
+      (hash-table-update! hash-table 0
+	(lambda (datum)
+	  datum				;ignore
+	  ;; Force consing a new entry.
+	  (hash-table/remove! hash-table 0)
+	  (hash-table/put! hash-table 0 'LOSE-1)
+	  'WIN))
+      (assert-eqv (hash-table/get hash-table 0 'LOSE-2) 'WIN))))
+
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-FOLD
+  (lambda ()
+    (let* ((index 1)
+	   (hash-table
+	    ((strong-hash-table/constructor (lambda (k m) k m index)
+					    eqv?
+					    #t))))
+      (hash-table/put! hash-table 0 0)
+      (hash-table/put! hash-table 1 1)
+      (assert-eqv (hash-table-fold hash-table
+				   (lambda (key datum count)
+				     key datum ;ignore
+				     (set! index 0)
+				     ;; Force a rehash.
+				     (gc-flip)
+				     (hash-table/get hash-table 0 #f)
+				     (+ count 1))
+				   0)
+		  2))))
