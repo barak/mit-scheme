@@ -1198,6 +1198,8 @@ USA.
 	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
 	  special-form-procedure-name?)
+  (export (runtime stack-sampler)
+	  special-form-procedure-name?)
   (export (runtime environment)
 	  dbg-block/find-name
 	  dbg-block/ic-parent-index
@@ -5812,4 +5814,13 @@ USA.
   (parent (runtime))
   (export ()
 	  start-swank)
+  (initialization (initialize-package!)))
+
+(define-package (runtime stack-sampler)
+  (files "stack-sample")
+  (parent (runtime))
+  (export ()
+	  stack-sampler:debug-internal-errors?
+	  stack-sampler:show-expressions?
+	  with-stack-sampling)
   (initialization (initialize-package!)))

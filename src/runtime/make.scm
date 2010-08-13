@@ -539,7 +539,8 @@ USA.
    (RUNTIME HTML-FORM-CODEC)
    (OPTIONAL (RUNTIME WIN32-REGISTRY))
    (OPTIONAL (RUNTIME FFI))
-   (RUNTIME SWANK)))
+   (RUNTIME SWANK)
+   (RUNTIME STACK-SAMPLER)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
