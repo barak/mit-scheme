@@ -736,7 +736,8 @@ USA.
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
 		   (cddar entries)
-		   (or (file-exists? (cadar entries))
+		   (or (file-modification-time<? compressed-file
+						 (cadar entries))
 		       (begin
 			 (set-cdr! (cdar entries) #f)
 			 #f)))
