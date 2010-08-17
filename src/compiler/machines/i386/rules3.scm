@@ -727,7 +727,6 @@ USA.
      closure-6-interrupt closure-7-interrupt))
 
 (define (generate/closure-header internal-label nentries entry)
-  nentries				; ignored
   (let* ((rtl-proc (label->object internal-label))
 	 (external-label (rtl-procedure/external-label rtl-proc))
 	 (checks (get-entry-interrupt-checks)))
