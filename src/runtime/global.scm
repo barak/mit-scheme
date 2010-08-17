@@ -472,6 +472,16 @@ USA.
 
 ;;;; Ephemerons
 
+;;; The layout of an ephemeron is as follows:
+;;;
+;;;   0 vector (marked or non-marked) manifest
+;;;   1 key
+;;;   2 datum
+;;;   3 extra
+;;;   .  slots
+;;;   .    for
+;;;   .      GC
+
 (define canonical-false (list 'FALSE))
 
 (define (canonicalize object)
@@ -500,13 +510,18 @@ USA.
   (guarantee-ephemeron ephemeron 'EPHEMERON-DATUM)
   (decanonicalize (primitive-object-ref ephemeron 2)))
 
+(define (set-ephemeron-key! ephemeron key)
+  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-KEY!)
+  (let ((key* (primitive-object-ref ephemeron 1)))
+    (if key* (primitive-object-set! ephemeron 1 (canonicalize key)))
+    (reference-barrier key*))
+  unspecific)
+
 (define (set-ephemeron-datum! ephemeron datum)
   (guarantee-ephemeron ephemeron 'SET-EPHEMERON-DATUM!)
   (let ((key (primitive-object-ref ephemeron 1)))
     (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
-    ;; Guarantee that the key is referenced until this procedure
-    ;; returns.
-    (identity-procedure key))
+    (reference-barrier key))
   unspecific)
 
 (define (ephemeron-broken? ephemeron)

@@ -959,8 +959,9 @@ there are no strong references to the key.  In other words, an
 ephemeron is broken when nobody else cares about its key.  Note that
 an ephemeron's reference to its datum may be dropped even if the datum
 is still reachable; all that matters is whether the key is reachable.
-Once broken, ephemerons never cease to be broken; setting the datum of
-a broken ephemeron with @code{set-ephemeron-datum!}  has no effect.
+Once broken, ephemerons never cease to be broken; setting the key or
+datum of a broken ephemeron with @code{set-ephemeron-key!} or
+@code{set-ephemeron-datum!} has no effect.
 
 Ephemerons are considerably heavier-weight than weak pairs, because
 garbage-collecting ephemerons is more complicated than
@@ -993,16 +994,17 @@ Returns @code{#t} if the garbage collector has dropped
 @deffnx procedure ephemeron-datum ephemeron
 @cindex selection, of ephemeron component
 @cindex component selection, of ephemeron
-These return the key or datum components, respectively, of
-@var{ephemeron}.  If @var{ephemeron} has been broken, these operation
+These return the key or datum component, respectively, of
+@var{ephemeron}.  If @var{ephemeron} has been broken, these operations
 return @code{#f}, but they can also return @code{#f} if that is the
 value that was stored in the key or value component.
 @end deffn
 
-@deffn procedure set-ephemeron-datum! ephemeron object
-Sets the datum component of @var{ephemeron} to @var{object} and
-returns an unspecified result.  If @var{ephemeron} is broken, this has
-no effect.
+@deffn procedure set-ephemeron-key! ephemeron object
+@deffnx procedure set-ephemeron-datum! ephemeron object
+These set the key or datum component, respectively, of @var{ephemeron}
+to @var{object} and return an unspecified result.  If @var{ephemeron}
+is broken, neither of these operations has any effect.
 @end deffn
 
 Like @code{weak-pair/car?}, @code{ephemeron-broken?} must be used with

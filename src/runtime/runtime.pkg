@@ -374,6 +374,7 @@ USA.
 	  scode-eval
 	  set-cell-contents!
 	  set-ephemeron-datum!
+	  set-ephemeron-key!
 	  set-interrupt-enables!
 	  show-time
 	  system-hunk3-cons
