@@ -368,6 +368,7 @@ USA.
 	  primitive-procedure-documentation
 	  pwd
 	  quit
+	  (reference-barrier identity-procedure)
 	  remove-hook-from-list
 	  run-hooks-in-list
 	  scode-eval
