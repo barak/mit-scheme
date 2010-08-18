@@ -178,7 +178,7 @@ print_return_name (outf_channel stream, SCHEME_OBJECT Ptr)
 }
 
 void
-Print_Return (char * String)
+Print_Return (const char * String)
 {
   outf_error ("%s: ", String);
   print_return_name (ERROR_OUTPUT, GET_RET);
@@ -826,7 +826,7 @@ find_flag (int flag_number)
     }
 }
 
-static char *
+static const char *
 flag_name (int flag_number)
 {
   switch (flag_number)

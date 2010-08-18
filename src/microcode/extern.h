@@ -350,7 +350,7 @@ extern void Back_Trace (outf_channel);
 extern void Debug_Stack_Trace (void);
 extern void Debug_Print (SCHEME_OBJECT, bool);
 extern void Show_Env (SCHEME_OBJECT);
-extern void Print_Return (char *);
+extern void Print_Return (const char *);
 extern void Print_Expression (SCHEME_OBJECT, const char *);
 extern void Print_Primitive (SCHEME_OBJECT);
 
