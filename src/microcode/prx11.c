@@ -32,7 +32,7 @@ extern void dload_initialize_x11color (void);
 extern void dload_initialize_x11graph (void);
 extern void dload_initialize_x11term (void);
 
-char *
+const char *
 dload_initialize_file (void)
 {
 

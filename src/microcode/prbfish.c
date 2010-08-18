@@ -236,7 +236,7 @@ Returned value is the new value of NUM.")
 
 #ifdef COMPILE_AS_MODULE
 
-char *
+const char *
 dload_initialize_file (void)
 {
   declare_primitive

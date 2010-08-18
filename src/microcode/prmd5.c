@@ -153,7 +153,7 @@ Finalize CONTEXT and return the digest as a 16-byte string.")
 
 #ifdef COMPILE_AS_MODULE
 
-char *
+const char *
 dload_initialize_file (void)
 {
   declare_primitive

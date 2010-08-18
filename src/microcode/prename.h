@@ -30,8 +30,8 @@ USA.
 
 struct primitive_alias_s
 {
-  char * alias;
-  char * name;
+  const char * alias;
+  const char * name;
 };
 
 static struct primitive_alias_s primitive_aliases [] =

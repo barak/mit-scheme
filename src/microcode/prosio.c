@@ -115,7 +115,7 @@ DEFINE_PRIMITIVE ("CHANNEL-TYPE", Prim_channel_type, 1, 1,
 }
 
 /* Must match definition of `enum channel_type' in "osio.h".  */
-static char * channel_type_names [] =
+static const char * channel_type_names [] =
 {
   "unknown",
   "file",

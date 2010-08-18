@@ -158,10 +158,10 @@ extern SCHEME_OBJECT fixed_objects;
 extern SCHEME_OBJECT ephemeron_array;
 extern unsigned long ephemeron_count;
 
-extern char * CONT_PRINT_RETURN_MESSAGE;
-extern char * CONT_PRINT_EXPR_MESSAGE;
-extern char * RESTORE_CONT_RETURN_MESSAGE;
-extern char * RESTORE_CONT_EXPR_MESSAGE;
+extern const char * CONT_PRINT_RETURN_MESSAGE;
+extern const char * CONT_PRINT_EXPR_MESSAGE;
+extern const char * RESTORE_CONT_RETURN_MESSAGE;
+extern const char * RESTORE_CONT_EXPR_MESSAGE;
 
 extern unsigned long MAX_RETURN;
 
@@ -317,7 +317,7 @@ extern void import_primitive_table
 
 extern void initialize_primitives (void);
 extern SCHEME_OBJECT make_primitive (const char *, int);
-extern SCHEME_OBJECT find_primitive_cname (char *, bool, bool, int);
+extern SCHEME_OBJECT find_primitive_cname (const char *, bool, bool, int);
 extern SCHEME_OBJECT find_primitive (SCHEME_OBJECT, bool, bool, int);
 
 /* Interpreter utilities */
@@ -351,7 +351,7 @@ extern void Debug_Stack_Trace (void);
 extern void Debug_Print (SCHEME_OBJECT, bool);
 extern void Show_Env (SCHEME_OBJECT);
 extern void Print_Return (char *);
-extern void Print_Expression (SCHEME_OBJECT, char *);
+extern void Print_Expression (SCHEME_OBJECT, const char *);
 extern void Print_Primitive (SCHEME_OBJECT);
 
 #endif /* not SCM_EXTERN_H */

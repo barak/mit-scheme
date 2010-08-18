@@ -38,7 +38,7 @@ SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
 
 static SCHEME_OBJECT copy_history (SCHEME_OBJECT);
-static void error_death (long, char *) NORETURN;
+static void error_death (long, const char *) NORETURN;
 
 /* Helper procedures for setup_interrupt, which follows. */
 
@@ -181,7 +181,7 @@ err_print (long error_code, outf_channel where)
 long death_blow;
 
 static void
-error_death (long code, char * message)
+error_death (long code, const char * message)
 {
   death_blow = code;
   outf_fatal ("\nMicrocode Error: %s.\n", message);

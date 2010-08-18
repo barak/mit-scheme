@@ -331,7 +331,7 @@ any_x_errors_p (Display * display)
 static int
 x_decode_color (Display * display,
 		Colormap color_map,
-		char * color_name,
+		const char * color_name,
 		unsigned long * color_return)
 {
   XColor cdef;
@@ -386,15 +386,15 @@ x_set_mouse_colors (Display * display,
   XRecolorCursor (display, mouse_cursor, (&mouse_color), (&background_color));
 }
 
-char *
+const char *
 x_get_default (Display * display,
 	       const char * resource_name,
 	       const char * resource_class,
 	       const char * property_name,
 	       const char * property_class,
-	       char * sdefault)
+	       const char * sdefault)
 {
-  char * result = (XGetDefault (display, resource_name, property_name));
+  const char * result = (XGetDefault (display, resource_name, property_name));
   if (result != 0)
     return (result);
   result = (XGetDefault (display, resource_class, property_name));
@@ -417,7 +417,7 @@ x_default_color (Display * display,
 		 const char * property_class,
 		 unsigned long default_color)
 {
-  char * color_name
+  const char * color_name
     = (x_get_default (display, resource_name, resource_class,
 		      property_name, property_class, 0));
   unsigned long result;
@@ -450,7 +450,7 @@ x_default_attributes (Display * display,
   if ((attributes->font) == 0)
     error_external_return ();
   {
-    char * s
+    const char * s
       = (x_get_default (display,
 			resource_name, resource_class,
 			"borderWidth", "BorderWidth",
@@ -458,7 +458,7 @@ x_default_attributes (Display * display,
     (attributes->border_width) = ((s == 0) ? 0 : (atoi (s)));
   }
   {
-    char * s
+    const char * s
       = (x_get_default (display,
 			resource_name, resource_class,
 			"internalBorder", "BorderWidth",
@@ -893,7 +893,7 @@ xw_process_event (struct xwindow * xw, XEvent * event)
 {
   if (x_debug > 0)
     {
-      char * type_name;
+      const char * type_name;
       fprintf (stderr, "\nX event on 0x%lx: ", ((event->xany) . window));
       switch (event->type)
 	{
