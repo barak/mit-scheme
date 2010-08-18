@@ -303,13 +303,13 @@ extern int x_debug;
 extern void * x_malloc (unsigned int size);
 extern void * x_realloc (void * ptr, unsigned int size);
 
-extern char * x_get_default
+extern const char * x_get_default
   (Display * display,
    const char * resource_name,
    const char * resource_class,
    const char * property_name,
    const char * property_class,
-   char * sdefault);
+   const char * sdefault);
 
 extern void x_default_attributes
   (Display * display,

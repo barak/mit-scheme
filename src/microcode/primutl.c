@@ -107,7 +107,7 @@ Prim_unimplemented (void)
 }
 
 static void
-initialization_error (char * reason, char * item)
+initialization_error (const char * reason, const char * item)
 {
   outf_fatal ("initialize_primitives: Error %s %s.\n", reason, item);
   termination_init_error ();
@@ -329,7 +329,7 @@ make_primitive (const char * name, int arity)
 }
 
 SCHEME_OBJECT
-find_primitive_cname (char * name, bool intern_p, bool allow_p, int arity)
+find_primitive_cname (const char * name, bool intern_p, bool allow_p, int arity)
 {
   tree_node prim = (tree_lookup (prim_procedure_tree, name));
   if (prim != 0)

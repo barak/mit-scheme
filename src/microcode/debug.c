@@ -37,13 +37,13 @@ USA.
 
 static void do_printing (outf_channel, SCHEME_OBJECT, bool);
 static bool print_primitive_name (outf_channel, SCHEME_OBJECT);
-static void print_expression (outf_channel, SCHEME_OBJECT, char *);
+static void print_expression (outf_channel, SCHEME_OBJECT, const char *);
 
 /* Compiled Code Debugging */
 
 #ifdef CC_SUPPORT_P
 
-char *
+const char *
 compiled_entry_filename (SCHEME_OBJECT entry)
 {
   SCHEME_OBJECT result = (compiled_entry_debug_filename (entry));
@@ -320,7 +320,7 @@ Print_Vector (SCHEME_OBJECT vector)
 }
 
 static void
-print_expression (outf_channel stream, SCHEME_OBJECT expression, char * string)
+print_expression (outf_channel stream, SCHEME_OBJECT expression, const char * string)
 {
   if ((string [0]) != 0)
     outf (stream, "%s: ", string);
@@ -328,7 +328,7 @@ print_expression (outf_channel stream, SCHEME_OBJECT expression, char * string)
 }
 
 void
-Print_Expression (SCHEME_OBJECT expression, char * string)
+Print_Expression (SCHEME_OBJECT expression, const char * string)
 {
   print_expression (ERROR_OUTPUT, expression, string);
 }
