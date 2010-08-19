@@ -1681,29 +1681,37 @@ cc_entry_address_to_block_address (insn_t * entry)
     }
 }
 
+static bool
+plausible_first_cc_entry_p (insn_t * entry, insn_t * zero)
+{
+  cc_entry_type_t cet;
+  cc_entry_offset_t ceo;
+
+  if (read_cc_entry_type ((&cet), entry))
+    return (false);
+
+  if (read_cc_entry_offset ((&ceo), entry))
+    return (false);
+
+  if ((ceo.offset) != (entry - zero))
+    return (false);
+
+  return (true);
+}
+
 int
 plausible_cc_block_p (SCHEME_OBJECT * block)
 {
   insn_t * zero = ((insn_t *) block);
   insn_t * entry = (((insn_t *) (block + 2)) + CC_ENTRY_HEADER_SIZE);
-  {
-    cc_entry_type_t cet;
-    if ((read_cc_entry_type ((&cet), entry))
-	|| ((cet.marker) != CET_EXPRESSION))
-      {
-	insn_t * real_entry = (entry + CC_ENTRY_GC_TRAP_SIZE);
-	if ((! (read_cc_entry_type ((&cet), real_entry)))
-	    && (((cet.marker) == CET_PROCEDURE)
-		|| ((cet.marker) == CET_CONTINUATION)))
-	  entry = real_entry;
-      }
-  }
-  {
-    cc_entry_offset_t ceo;
-    if ((read_cc_entry_offset ((&ceo), entry))
-	|| ((ceo.offset) != (entry - zero)))
-      return (0);
-  }
+
+  if (!plausible_first_cc_entry_p (entry, zero))
+    {
+      entry += CC_ENTRY_GC_TRAP_SIZE;
+      if (!plausible_first_cc_entry_p (entry, zero))
+	return (0);
+    }
+
   {
     SCHEME_OBJECT * block_end = ((CC_BLOCK_ADDR_END (block)) - 1);
     return
@@ -1713,7 +1721,7 @@ plausible_cc_block_p (SCHEME_OBJECT * block)
        && (ENVIRONMENT_P (*block_end)));
   }
 }
-
+
 static bool
 unlinked_section_start_p (SCHEME_OBJECT * mp, SCHEME_OBJECT * end)
 {
