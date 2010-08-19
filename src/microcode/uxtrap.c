@@ -108,8 +108,6 @@ static void continue_from_trap
    static SCHEME_OBJECT * find_constant_address (unsigned long);
 #  ifdef ENABLE_TRAP_RECOVERY
      static SCHEME_OBJECT * find_block_address (unsigned long, SCHEME_OBJECT *);
-     static SCHEME_OBJECT * find_block_address_in_area
-       (SCHEME_OBJECT *, SCHEME_OBJECT *);
 #  endif
 #endif
 
@@ -438,14 +436,9 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
   setup_trap_frame (signo, info, scp, (&recovery_info), new_sp);
 }
 
-/* Find the compiled code block in area that contains `pc'.
-   This attempts to be more efficient than `find_block_address_in_area'.
-   If the pointer is in the heap, it can actually do twice as
-   much work, but it is expected to pay off on the average. */
+/* Find the compiled code block in area that contains `pc'.  */
 
 #ifdef CC_SUPPORT_P
-
-#define MINIMUM_SCAN_RANGE 2048
 
 static SCHEME_OBJECT *
 find_heap_address (unsigned long pc)
@@ -459,32 +452,14 @@ find_constant_address (unsigned long pc)
   return (find_block_address (pc, constant_start));
 }
 
-static SCHEME_OBJECT *
-find_block_address (unsigned long pc, SCHEME_OBJECT * area_start)
-{
-  SCHEME_OBJECT * pcp = ((SCHEME_OBJECT *) (pc &~ SCHEME_ALIGNMENT_MASK));
-  unsigned long maximum_distance = (pcp - area_start);
-  unsigned long distance = maximum_distance;
-
-  while ((distance / 2) > MINIMUM_SCAN_RANGE)
-    distance = (distance / 2);
-  while (1)
-    {
-      SCHEME_OBJECT * block
-	= (find_block_address_in_area (pcp, (pcp - distance)));
-      distance *= 2;
-      if ((block != 0) || (distance >= maximum_distance))
-	return (block);
-    }
-}
-
 /* Find the compiled code block in area that contains `pc_value',
    by scanning sequentially the complete area.
    For the time being, skip over manifest closures and linkage sections.  */
 
 static SCHEME_OBJECT *
-find_block_address_in_area (SCHEME_OBJECT * pcp, SCHEME_OBJECT * area_start)
+find_block_address (unsigned long pc, SCHEME_OBJECT * area_start)
 {
+  SCHEME_OBJECT * pcp = ((SCHEME_OBJECT *) (pc &~ SCHEME_ALIGNMENT_MASK));
   SCHEME_OBJECT * first_valid = area_start;
   SCHEME_OBJECT * area = area_start;
 
