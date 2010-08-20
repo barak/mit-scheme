@@ -29,13 +29,6 @@ USA.
 
 ;;;; Utilities
 
-;;; REFERENCE-BARRIER guarantees that OBJECT will be considered live at
-;;; least until the call to REFERENCE-BARRIER, by forcing the compiler
-;;; to assume that it passes out.
-
-(define (reference-barrier object)
-  (identity-procedure object))
-
 (define (assert-unbroken ephemeron key datum)
   (assert-equal (ephemeron-key ephemeron) key)
   (assert-equal (ephemeron-datum ephemeron) datum)
