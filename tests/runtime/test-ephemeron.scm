@@ -409,3 +409,45 @@ USA.
 	  (assert-true (ephemeron? ephemeron))
 	  (assert-broken ephemeron))))))
 |#
+
+;;; Assumption: CONSTANT-PROCEDURE yields compiled closures.
+
+(define-test 'COMPILED-KEY
+  (lambda ()
+    (let ((key (constant-procedure 0)) (datum (list 'DATUM)))
+      (let ((e (make-ephemeron key datum)))
+	(repeat (lambda ()
+		  (assert-true (procedure? (ephemeron-key e)))
+		  (assert-eqv ((ephemeron-key e)) 0)
+		  (assert-equal (ephemeron-datum e) '(DATUM))
+		  (assert-false (ephemeron-broken? e))))
+	(reference-barrier key)
+	(set! key 0)
+	(finally (lambda () (assert-broken e)))))))
+
+(define-test 'COMPILED-DATUM
+  (lambda ()
+    (let ((key (list 'KEY)) (datum (constant-procedure 0)))
+      (let ((e (make-ephemeron key datum)))
+	(repeat (lambda ()
+		  (assert-equal (ephemeron-key e) '(KEY))
+		  (assert-true (procedure? (ephemeron-datum e)))
+		  (assert-eqv ((ephemeron-datum e)) 0)
+		  (assert-false (ephemeron-broken? e))))
+	(reference-barrier key)
+	(set! key 0)
+	(finally (lambda () (assert-broken e)))))))
+
+(define-test 'COMPILED-KEY&DATUM
+  (lambda ()
+    (let ((key (constant-procedure 0)) (datum (constant-procedure 1)))
+      (let ((e (make-ephemeron key datum)))
+	(repeat (lambda ()
+		  (assert-true (procedure? (ephemeron-key e)))
+		  (assert-true (procedure? (ephemeron-datum e)))
+		  (assert-eqv ((ephemeron-key e)) 0)
+		  (assert-eqv ((ephemeron-datum e)) 1)
+		  (assert-false (ephemeron-broken? e))))
+	(reference-barrier key)
+	(set! key 0)
+	(finally (lambda () (assert-broken e)))))))
