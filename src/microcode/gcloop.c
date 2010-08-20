@@ -850,7 +850,9 @@ queue_ephemerons_for_key (SCHEME_OBJECT * addr)
       SCHEME_OBJECT * entry_addr = (OBJECT_ADDRESS (entry));
       SCHEME_OBJECT * next_loc
 	= (NEWSPACE_TO_TOSPACE (entry_addr + EPHEMERON_NEXT));
-      if (addr == (OBJECT_ADDRESS (READ_TOSPACE (entry_addr + EPHEMERON_KEY))))
+      SCHEME_OBJECT * key_addr
+	= (weak_referent_address (READ_TOSPACE (entry_addr + EPHEMERON_KEY)));
+      if (addr == key_addr)
 	{
 	  (*entry_loc) = (*next_loc);
 	  (*next_loc) = ephemeron_queue;
