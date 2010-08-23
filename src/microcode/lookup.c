@@ -78,30 +78,53 @@ USA.
 
 #define EXTERNAL_UNASSIGNED_OBJECT					\
   (VECTOR_REF (fixed_objects, NON_OBJECT))
+
+#define PALIST_COND(palist_var) (PAIR_P (*palist_var))
+
+#define PALIST_HEADER(palist_var, prefs_var)				\
+  SCHEME_OBJECT * prefs_var = (PAIR_CDR_LOC (PAIR_CAR (*palist_var)));
+
+#define PALIST_FOOTER(palist_var) do					\
+{									\
+  if (PAIR_P (PAIR_CDR (PAIR_CAR (*palist_var))))			\
+    palist_var = (PAIR_CDR_LOC (*palist_var));				\
+  else									\
+    (*palist_var) = (PAIR_CDR (*palist_var));				\
+} while (false)
+
+#define PREFS_COND(prefs_var) (PAIR_P (*prefs_var))
+
+#define PREFS_HEADER(prefs_var)						\
+  PREFS_HEADER_1 (prefs_var, (PAIR_CAR (*prefs_var)))
+
+#define PREFS_HEADER_1(prefs_var, cache)				\
+{									\
+  if ((GET_CACHE_REFERENCE_BLOCK (cache)) == SHARP_F)			\
+    {									\
+      (*prefs_var) = (PAIR_CDR (*prefs_var));				\
+      continue;								\
+    }									\
+}
+
+#define PREFS_FOOTER(prefs_var) do					\
+{									\
+  prefs_var = (PAIR_CDR_LOC (*prefs_var));				\
+} while (false)
 
 #define WALK_REFERENCES(refs_pointer, ref_var, body)			\
 {									\
   SCHEME_OBJECT * WR_palist = (refs_pointer);				\
-  while (PAIR_P (*WR_palist))						\
+  while (PALIST_COND (WR_palist))					\
     {									\
-      SCHEME_OBJECT * WR_prefs						\
-	= (PAIR_CDR_LOC (PAIR_CAR (*WR_palist)));			\
-      while (PAIR_P (*WR_prefs))					\
+      PALIST_HEADER (WR_palist, WR_prefs);				\
+      while (PREFS_COND (WR_prefs))					\
 	{								\
 	  SCHEME_OBJECT ref_var = (PAIR_CAR (*WR_prefs));		\
-	  if ((GET_CACHE_REFERENCE_BLOCK (ref_var))			\
-	      == SHARP_F)						\
-	    (*WR_prefs) = (PAIR_CDR (*WR_prefs));			\
-	  else								\
-	    {								\
-	      body;							\
-	      WR_prefs = (PAIR_CDR_LOC (*WR_prefs));			\
-	    }								\
+	  PREFS_HEADER_1 (WR_prefs, ref_var);				\
+	  body;								\
+	  PREFS_FOOTER (WR_prefs);					\
 	}								\
-      if (PAIR_P (PAIR_CDR (PAIR_CAR (*WR_palist))))			\
-	WR_palist = (PAIR_CDR_LOC (*WR_palist));			\
-      else								\
-	(*WR_palist) = (PAIR_CDR (*WR_palist));				\
+      PALIST_FOOTER (WR_palist);					\
     }									\
 }
 
@@ -122,9 +145,11 @@ static long unbind_cached_variable
 static void unbind_variable_1
   (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
 static unsigned long update_cache_refs_space
-  (SCHEME_OBJECT, SCHEME_OBJECT);
+  (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT);
+static unsigned long update_cache_refs_space_1
+  (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
 static long update_cache_references
-  (SCHEME_OBJECT, SCHEME_OBJECT *, SCHEME_OBJECT);
+  (SCHEME_OBJECT, SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
 static SCHEME_OBJECT * find_binding_cell
   (SCHEME_OBJECT, SCHEME_OBJECT, SCHEME_OBJECT *);
 static SCHEME_OBJECT * scan_frame
@@ -157,9 +182,13 @@ static void install_cache
 static void install_operator_cache
   (SCHEME_OBJECT, SCHEME_OBJECT, unsigned long);
 static unsigned long ref_pairs_to_move
-  (SCHEME_OBJECT *, SCHEME_OBJECT, unsigned long *);
+  (SCHEME_OBJECT *, SCHEME_OBJECT, SCHEME_OBJECT);
+static void delete_ref_pairs
+  (SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
 static void move_ref_pairs
-  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int, SCHEME_OBJECT);
+  (SCHEME_OBJECT, SCHEME_OBJECT, unsigned int, SCHEME_OBJECT, SCHEME_OBJECT);
+static SCHEME_OBJECT * new_alist_entry
+  (SCHEME_OBJECT *, SCHEME_OBJECT);
 static int move_ref_pair_p
   (SCHEME_OBJECT, SCHEME_OBJECT);
 static SCHEME_OBJECT * find_references_named
@@ -464,7 +493,7 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     GC_CHECK
       (2
        + ((old_cache != SHARP_F)
-	  ? (update_cache_refs_space (old_cache, environment))
+	  ? (update_cache_refs_space (old_cache, environment, symbol))
 	  : 0));
 
     /* Create the binding.  */
@@ -476,7 +505,7 @@ define_variable (SCHEME_OBJECT environment, SCHEME_OBJECT symbol,
     return
       ((old_cache != SHARP_F)
        ? (update_cache_references
-	  (old_cache, (PAIR_CDR_LOC (pair)), environment))
+	  (old_cache, (PAIR_CDR_LOC (pair)), environment, symbol))
        : PRIM_DONE);
   }
 }
@@ -600,7 +629,7 @@ link_variables (SCHEME_OBJECT target_environment, SCHEME_OBJECT target_symbol,
   RETURN_IF_ERROR (guarantee_cache (source_cell));
   return (define_variable (target_environment, target_symbol, (*source_cell)));
 }
-
+
 #ifdef CC_SUPPORT_P
 static void
 move_all_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
@@ -688,14 +717,9 @@ unbind_cached_variable (SCHEME_OBJECT * cell, SCHEME_OBJECT frame,
   SCHEME_OBJECT cache = (GET_TRAP_CACHE (*cell));
   SCHEME_OBJECT * shadowed_cell
     = (find_binding_cell ((GET_FRAME_PARENT (frame)), symbol, 0));
-  SCHEME_OBJECT dummy_cell = UNBOUND_OBJECT;
-  GC_CHECK (update_cache_refs_space (cache, frame));
+  GC_CHECK (update_cache_refs_space (cache, frame, symbol));
   unbind_variable_1 (cell, frame, symbol);
-  return
-    (update_cache_references
-     (cache,
-      ((shadowed_cell == 0) ? (&dummy_cell) : shadowed_cell),
-      frame));
+  return (update_cache_references (cache, shadowed_cell, frame, symbol));
 }
 
 static void
@@ -775,6 +799,8 @@ compiler_var_error (SCHEME_OBJECT cache, SCHEME_OBJECT block,
     ((GET_CACHE_REFERENCES (cache, reference_kind)),
      reference,
      {
+       /* If this reference is in the right block, return the symbol
+	  being referenced.  */
        if ((GET_CACHE_REFERENCE_BLOCK (reference)) == block)
 	 return (PAIR_CAR (PAIR_CAR (*WR_palist)));
      });
@@ -920,35 +946,32 @@ static void
 add_reference (SCHEME_OBJECT * palist,
 	       SCHEME_OBJECT symbol, SCHEME_OBJECT block, unsigned long offset)
 {
-  while (PAIR_P (*palist))
+  SCHEME_OBJECT * prefs = (find_references_named (palist, symbol));
+  if (prefs != 0)
     {
-      if ((PAIR_CAR (PAIR_CAR (*palist))) == symbol)
+      while (PREFS_COND (prefs))
 	{
-	  SCHEME_OBJECT * prefs = (PAIR_CDR_LOC (PAIR_CAR (*palist)));
-	  while (PAIR_P (*prefs))
+	  if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == SHARP_F)
 	    {
-	      if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == SHARP_F)
-		{
-		  SET_CACHE_REFERENCE_BLOCK ((PAIR_CAR (*prefs)), block);
-		  SET_CACHE_REFERENCE_OFFSET ((PAIR_CAR (*prefs)), offset);
-		  return;
-		}
-	      prefs = (PAIR_CDR_LOC (*prefs));
+	      /* Reuse this pair.  */
+	      SET_CACHE_REFERENCE_BLOCK ((PAIR_CAR (*prefs)), block);
+	      SET_CACHE_REFERENCE_OFFSET ((PAIR_CAR (*prefs)), offset);
+	      return;
 	    }
-	  {
-	    SCHEME_OBJECT reference;
-	    DIE_IF_ERROR (make_cache_reference (block, offset, (&reference)));
-	    (*prefs) = (cons (reference, EMPTY_LIST));
-	  }
-	  return;
+	  PREFS_FOOTER (prefs);
 	}
-      palist = (PAIR_CDR_LOC (*palist));
+      {
+	SCHEME_OBJECT reference;
+	DIE_IF_ERROR (make_cache_reference (block, offset, (&reference)));
+	(*prefs) = (cons (reference, EMPTY_LIST));
+      }
+      return;
     }
   {
     SCHEME_OBJECT reference;
     DIE_IF_ERROR (make_cache_reference (block, offset, (&reference)));
-    (*palist)
-      = (cons ((cons (symbol, (cons (reference, EMPTY_LIST)))), EMPTY_LIST));
+    SCHEME_OBJECT alist = (*palist);
+    (*palist) = (cons ((cons (symbol, (cons (reference, EMPTY_LIST)))), alist));
   }
 }
 
@@ -992,48 +1015,77 @@ install_operator_cache (SCHEME_OBJECT cache,
 #endif /* CC_SUPPORT_P */
 
 static unsigned long
-update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment)
+update_cache_refs_space (SCHEME_OBJECT from_cache, SCHEME_OBJECT environment,
+			 SCHEME_OBJECT symbol)
 {
 #ifdef CC_SUPPORT_P
-  unsigned long n_names = 0;
-  unsigned long n_lookups
-    = (ref_pairs_to_move ((GET_CACHE_LOOKUP_REFERENCES (from_cache)),
-			  environment, (&n_names)));
-  unsigned long n_assignments
-    = (ref_pairs_to_move ((GET_CACHE_ASSIGNMENT_REFERENCES (from_cache)),
-			  environment, (&n_names)));
-  unsigned long n_operators
-    = (ref_pairs_to_move ((GET_CACHE_OPERATOR_REFERENCES (from_cache)),
-			  environment, (&n_names)));
-
-  /* No references need to be updated.  */
-  if (! ((n_lookups == 0) && (n_assignments == 0) && (n_operators == 0)))
-    return
-      ((n_operators * SPACE_PER_UUO_LINK)
-       + (n_names * 4)
-       + (3 * SPACE_PER_CACHE));
+  return
+    ((update_cache_refs_space_1
+      (from_cache, CACHE_REFERENCES_LOOKUP, environment, symbol))
+     + (update_cache_refs_space_1
+	(from_cache, CACHE_REFERENCES_ASSIGNMENT, environment, symbol))
+     + (update_cache_refs_space_1
+	(from_cache, CACHE_REFERENCES_OPERATOR, environment, symbol)));
+#else
+  return (0);
 #endif
-
-  return (PRIM_DONE);
 }
 
+/* Generate a conservative estimate of the space needed to move some
+   cache refs from one cache to another.  */
+
+static unsigned long
+update_cache_refs_space_1 (SCHEME_OBJECT from_cache, unsigned int kind,
+			   SCHEME_OBJECT environment, SCHEME_OBJECT symbol)
+{
+  SCHEME_OBJECT * from_palist = (GET_CACHE_REFERENCES (from_cache, kind));
+  unsigned long n_refs = (ref_pairs_to_move (from_palist, environment, symbol));
+  unsigned long result = 0;
+  if (n_refs > 0)
+    {
+      /* Space for new cache and new alist entry, if needed.  */
+      result += (SPACE_PER_CACHE + 4);
+      if (kind == CACHE_REFERENCES_OPERATOR)
+	/* space for new trampolines, if needed.  */
+	result += (n_refs * SPACE_PER_UUO_LINK);
+    }
+  return (result);
+}
+
 static long
 update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
-			 SCHEME_OBJECT environment)
+			 SCHEME_OBJECT environment, SCHEME_OBJECT symbol)
 {
-  DIE_IF_ERROR (guarantee_cache (to_cell));
-  {
-    SCHEME_OBJECT to_cache = (GET_TRAP_CACHE (*to_cell));
+  if (to_cell != 0)
+    {
+      DIE_IF_ERROR (guarantee_cache (to_cell));
+      {
+	SCHEME_OBJECT to_cache = (GET_TRAP_CACHE (*to_cell));
 #ifdef CC_SUPPORT_P
-    move_ref_pairs
-      (from_cache, to_cache, CACHE_REFERENCES_LOOKUP, environment);
-    move_ref_pairs
-      (from_cache, to_cache, CACHE_REFERENCES_ASSIGNMENT, environment);
-    move_ref_pairs
-      (from_cache, to_cache, CACHE_REFERENCES_OPERATOR, environment);
+	move_ref_pairs
+	  (from_cache, to_cache, CACHE_REFERENCES_LOOKUP,
+	   environment, symbol);
+	move_ref_pairs
+	  (from_cache, to_cache, CACHE_REFERENCES_ASSIGNMENT,
+	   environment, symbol);
+	move_ref_pairs
+	  (from_cache, to_cache, CACHE_REFERENCES_OPERATOR,
+	   environment, symbol);
 #endif
-    update_clone (to_cache);
-  }
+	update_clone (to_cache);
+      }
+    }
+#ifdef CC_SUPPORT_P
+  else
+    {
+      delete_ref_pairs
+	(from_cache, CACHE_REFERENCES_LOOKUP, environment, symbol);
+      delete_ref_pairs
+	(from_cache, CACHE_REFERENCES_ASSIGNMENT, environment, symbol);
+      delete_ref_pairs
+	(from_cache, CACHE_REFERENCES_OPERATOR, environment, symbol);
+    }
+#endif
   update_clone (from_cache);
   return (PRIM_DONE);
 }
@@ -1042,74 +1094,80 @@ update_cache_references (SCHEME_OBJECT from_cache, SCHEME_OBJECT * to_cell,
 
 static unsigned long
 ref_pairs_to_move (SCHEME_OBJECT * palist, SCHEME_OBJECT environment,
-		   unsigned long * n_names_ret)
+		   SCHEME_OBJECT symbol)
 {
+  SCHEME_OBJECT * prefs = (find_references_named (palist, symbol));
   unsigned long n_refs = 0;
-  while (PAIR_P (*palist))
-    {
-      int any_moved_p = 0;
-      SCHEME_OBJECT * prefs = (PAIR_CDR_LOC (PAIR_CAR (*palist)));
-      while (PAIR_P (*prefs))
-	if ((GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (*prefs))) == SHARP_F)
-	  (*prefs) = (PAIR_CDR (*prefs));
-	else
-	  {
-	    if (move_ref_pair_p ((*prefs), environment))
-	      {
-		n_refs += 1;
-		any_moved_p = 1;
-	      }
-	    prefs = (PAIR_CDR_LOC (*prefs));
-	  }
-      if (any_moved_p)
-	(*n_names_ret) += 1;
-      palist = (PAIR_CDR_LOC (*palist));
-    }
+  if (prefs != 0)
+    while (PREFS_COND (prefs))
+      {
+	PREFS_HEADER (prefs);
+	if (move_ref_pair_p ((*prefs), environment))
+	  n_refs += 1;
+	PREFS_FOOTER (prefs);
+      }
   return (n_refs);
 }
 
 static void
+delete_ref_pairs (SCHEME_OBJECT from_cache, unsigned int kind,
+		  SCHEME_OBJECT environment, SCHEME_OBJECT symbol)
+{
+  SCHEME_OBJECT * from_palist = (GET_CACHE_REFERENCES (from_cache, kind));
+  SCHEME_OBJECT * from_prefs = (find_references_named (from_palist, symbol));
+  if (from_prefs != 0)
+    while (PREFS_COND (from_prefs))
+      {
+	PREFS_HEADER (from_prefs);
+	if (move_ref_pair_p ((*from_prefs), environment))
+	  {
+	    (*from_prefs) = (PAIR_CDR (*from_prefs));
+	    continue;
+	  }
+	PREFS_FOOTER (from_prefs);
+      }
+}
+
+static void
 move_ref_pairs (SCHEME_OBJECT from_cache, SCHEME_OBJECT to_cache,
-		unsigned int reference_kind, SCHEME_OBJECT environment)
+		unsigned int reference_kind, SCHEME_OBJECT environment,
+		SCHEME_OBJECT symbol)
 {
   SCHEME_OBJECT * from_palist
     = (GET_CACHE_REFERENCES (from_cache, reference_kind));
   SCHEME_OBJECT * to_palist
     = (GET_CACHE_REFERENCES (to_cache, reference_kind));
-  while (PAIR_P (*from_palist))
-    {
-      SCHEME_OBJECT * from_prefs = (PAIR_CDR_LOC (PAIR_CAR (*from_palist)));
-      SCHEME_OBJECT symbol = (PAIR_CAR (PAIR_CAR (*from_palist)));
-      SCHEME_OBJECT * to_prefs = (find_references_named (to_palist, symbol));
-      while (PAIR_P (*from_prefs))
+  SCHEME_OBJECT * from_prefs = (find_references_named (from_palist, symbol));
+  SCHEME_OBJECT * to_prefs = (find_references_named (to_palist, symbol));
+  if (from_prefs != 0)
+    while (PREFS_COND (from_prefs))
+      {
+	PREFS_HEADER (from_prefs);
 	if (move_ref_pair_p ((*from_prefs), environment))
 	  {
 	    SCHEME_OBJECT p = (*from_prefs);
 	    (*from_prefs) = (PAIR_CDR (p));
 	    if (to_prefs == 0)
-	      {
-		SCHEME_OBJECT p2;
-		SET_PAIR_CDR (p, EMPTY_LIST);
-		p2 = (cons ((cons (symbol, p)), (*to_palist)));
-		(*to_palist) = p2;
-	      }
-	    else
-	      {
-		SET_PAIR_CDR (p, (*to_prefs));
-		(*to_prefs) = p;
-	      }
+	      to_prefs = (new_alist_entry (to_palist, symbol));
+	    SET_PAIR_CDR (p, (*to_prefs));
+	    (*to_prefs) = p;
 	    install_cache (to_cache,
 			   (GET_CACHE_REFERENCE_BLOCK (PAIR_CAR (p))),
 			   (GET_CACHE_REFERENCE_OFFSET (PAIR_CAR (p))),
 			   reference_kind);
+	    continue;
 	  }
-	else
-	  from_prefs = (PAIR_CDR_LOC (*from_prefs));
-      if (PAIR_P (PAIR_CDR (PAIR_CAR (*from_palist))))
-	from_palist = (PAIR_CDR_LOC (*from_palist));
-      else
-	(*from_palist) = (PAIR_CDR (*from_palist));
-    }
+	PREFS_FOOTER (from_prefs);
+      }
+}
+
+static SCHEME_OBJECT *
+new_alist_entry (SCHEME_OBJECT * to_palist, SCHEME_OBJECT symbol)
+{
+  SCHEME_OBJECT entry = (cons (symbol, EMPTY_LIST));
+  SCHEME_OBJECT head = (*to_palist);
+  (*to_palist) = (cons (entry, head));
+  return (PAIR_CDR_LOC (entry));
 }
 
 static int
