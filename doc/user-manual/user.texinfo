@@ -3,7 +3,7 @@
 @setfilename mit-scheme-user
 @set EDITION 1.93
 @set VERSION 9.0
-@set UPDATED 2010-02-18
+@set UPDATED 2010-08-23
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
