@@ -135,16 +135,11 @@ USA.
 ;;;; Utilities for the rules
 
 (define (load-constant target object)
-  (cond ((object-pointer? object)
-	 (inst:load 'WORD
-		    target
-		    (ea:address (constant->label object))))
-	((object-non-pointer? object)
-	 (inst:load-non-pointer target
-				(object-type object)
-				(object-datum object)))
-	(else
-	 (error:bad-range-argument object 'LOAD-CONSTANT))))
+  (if (non-pointer-object? object)
+      (inst:load-non-pointer target
+			     (object-type object)
+			     (careful-object-datum object))
+      (inst:load 'WORD target (ea:address (constant->label object)))))
 
 (define (simple-branches! condition source1 #!optional source2)
   (if (default-object? source2)
