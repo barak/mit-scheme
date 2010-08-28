@@ -771,7 +771,7 @@ DEFINE_CJF_1 (pl, pu, s32, S32)
 
 #define CMP_FIX(a) (LONG_TO_FIXNUM_P (a))
 #define CMP_NFIX(a) (!CMP_FIX (a))
-#define CMP_IFIX(a) (((a) & SIGN_MASK) == (TC_FIXNUM * 2))
+#define CMP_IFIX(a) (((a) & SIGN_MASK) == (MAKE_OBJECT (TC_FIXNUM, 0)))
 #define CMP_NIFIX(a) (!CMP_IFIX (a))
 
 DEFINE_CJF (fix, FIX)
