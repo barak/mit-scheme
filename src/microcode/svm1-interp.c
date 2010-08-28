@@ -686,14 +686,14 @@ DEFINE_INST (cjump_##pl##_##rl##_##rl##_pcr_##sl)			\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_##ru##_PCR_##su			\
     (source1, source2, offset);						\
-  CJ_PCR (CMP_##pu ((WREG_REF (source1)), (WREG_REF (source2))));	\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source1)), (ru##EG_REF (source2))));	\
 }
 
 #define DEFINE_CJ_2(pl, pu, rl, ru, z, sl, su)				\
 DEFINE_INST (cjump_##pl##_##rl##_pcr_##sl)				\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_PCR_##su (source, offset);	\
-  CJ_PCR (CMP_##pu ((WREG_REF (source)), z));				\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source)), z));				\
 }
 
 #define CJ_PCR(p) COND_OFFSET_PC (p, offset)
