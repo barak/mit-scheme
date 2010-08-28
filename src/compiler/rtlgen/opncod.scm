@@ -617,14 +617,14 @@ USA.
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-LSH
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant -1))
 		false)))
 	    (lambda (locative)
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-QUOTIENT
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant quantum))
 		false)))))))
 
