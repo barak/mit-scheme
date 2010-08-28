@@ -158,11 +158,7 @@ read_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 bool
 write_cc_entry_offset (cc_entry_offset_t * ceo, insn_t * address)
 {
-  unsigned int code;
-
-  if ((*address) == SVM1_INST_ENTER_CLOSURE)
-    return (true);			/* not supported */
-  code = (ceo->offset) << 1;
+  unsigned int code = (ceo->offset) << 1;
   write_u16 (code + (ceo->continued_p ? 1 : 0), address - 2);
   return (false);
 }
