@@ -294,18 +294,21 @@ USA.
 		      (values scale
 			      (ea:indexed (word-source base)
 					  offset scale*
-					  (word-source index) scale)))
-	(rule-matcher (POST-INCREMENT (REGISTER (? base)) 1)
-		      (values 'WORD
-			      (ea:post-increment (word-source base) 'WORD)))
-	(rule-matcher (PRE-INCREMENT (REGISTER (? base)) -1)
-		      (values 'WORD
-			      (ea:pre-decrement (word-source base) 'WORD)))))
+					  (word-source index) scale)))))
 
 (define memory-ref-rules
-  (make-memory-rules
-   (lambda (expression)
-     (offset-operator? expression))))
+  (append
+   (make-memory-rules
+    (lambda (expression)
+      (offset-operator? expression)))
+   ;; There is no POST-INCREMENT-ADDRESS or PRE-INCREMENT-ADDRESS, so
+   ;; these rules have no analogue in MEMORY-ADDRESS-RULES.
+   (list (rule-matcher (POST-INCREMENT (REGISTER (? base)) 1)
+		       (values 'WORD
+			       (ea:post-increment (word-source base) 'WORD)))
+	 (rule-matcher (PRE-INCREMENT (REGISTER (? base)) -1)
+		       (values 'WORD
+			       (ea:pre-decrement (word-source base) 'WORD))))))
 
 (define memory-address-rules
   (make-memory-rules
