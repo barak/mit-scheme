@@ -1344,8 +1344,7 @@ USA.
     (LAP ,@(clear-map!)
 	 ,@(if safe?
 	       (trap:safe-lookup cache)
-	       (trap:lookup cache))
-	 ,@(make-internal-continuation-label (generate-label)))))
+	       (trap:lookup cache)))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-ASSIGNMENT (? cont) (? extension) (? value))
@@ -1355,8 +1354,7 @@ USA.
   (let* ((cache (interpreter-call-temporary extension))
 	 (value (interpreter-call-temporary value)))
    (LAP ,@(clear-map!)
-	,@(trap:assignment cache value)
-	,@(make-internal-continuation-label (generate-label)))))
+	,@(trap:assignment cache value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
@@ -1364,8 +1362,7 @@ USA.
   cont					; ignored
   (let ((cache (interpreter-call-temporary extension)))
     (LAP ,@(clear-map!)
-	 ,@(trap:unassigned? cache)
-	 ,@(make-internal-continuation-label (generate-label)))))
+	 ,@(trap:unassigned? cache))))
 
 ;;;; Synthesized Data
 
