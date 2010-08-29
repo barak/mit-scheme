@@ -127,47 +127,11 @@ USA.
 		       rb-tree/delete!
 		       rb-tree/lookup
 		       rb-tree->alist))
-
+
 (load-option 'HASH-TABLE)
 
-(define shtq
-  (make-implementation make-strong-eq-hash-table
-		       hash-table/put!
-		       hash-table/remove!
-		       hash-table/get
-		       (lambda (table)
-			 (sort (hash-table->alist table)
-			       (lambda (x y) (fix:< (caar x) (caar y)))))))
-
-(define shtv
-  (make-implementation make-strong-eqv-hash-table
-		       hash-table/put!
-		       hash-table/remove!
-		       hash-table/get
-		       (lambda (table)
-			 (sort (hash-table->alist table)
-			       (lambda (x y) (fix:< (caar x) (caar y)))))))
-
-(define whtq
-  (make-implementation make-weak-eq-hash-table
-		       hash-table/put!
-		       hash-table/remove!
-		       hash-table/get
-		       (lambda (table)
-			 (sort (hash-table->alist table)
-			       (lambda (x y) (fix:< (caar x) (caar y)))))))
-
-(define whtv
-  (make-implementation make-weak-eqv-hash-table
-		       hash-table/put!
-		       hash-table/remove!
-		       hash-table/get
-		       (lambda (table)
-			 (sort (hash-table->alist table)
-			       (lambda (x y) (fix:< (caar x) (caar y)))))))
-
-(define ht
-  (make-implementation make-equal-hash-table
+(define (make-hash-table-implementation constructor)
+  (make-implementation constructor
 		       hash-table/put!
 		       hash-table/remove!
 		       hash-table/get
@@ -209,6 +173,8 @@ USA.
 		(error "Alist element incorrect:" (car alist) (car check)))
 	    (loop (cdr alist) (cdr check)))))))
 
+;;;; Correctness Tests
+
 (define (check implementation)
   (let ((n #x1000))
     (do ((i 0 (+ i 1))) ((= i #x100))
@@ -219,16 +185,43 @@ USA.
 	 (make-sequence n key-radix insert-fraction delete-fraction)
 	 implementation)))))
 
-(define-test 'CHECK-AGAINST-RB-TREE
-  (lambda ()
-    (define (sub-test name implementation)
-      name				;What to do?
-      (run-sub-test (lambda () (check implementation))))
-    (sub-test 'STRONG-EQ-HASH-TABLE shtq)
-    (sub-test 'STRONG-EQV-HASH-TABLE shtv)
-    (sub-test 'WEAK-EQ-HASH-TABLE whtq)
-    (sub-test 'WEAK-EQV-HASH-TABLE whtv)
-    (sub-test 'EQUAL-HASH-TABLE ht)))
+(define (integer-hash-mod integer modulus)
+  (int:remainder (if (int:< integer 0) (int:- 0 integer) integer) modulus))
+
+(let ((hash-parameters
+       (list (list 'EQ eq-hash-mod eq? #t)
+	     (list 'EQV eqv-hash-mod eqv? #t)
+	     (list 'EQUAL equal-hash-mod equal? #t)
+	     (list 'INTEGER
+		   (lambda (x modulus) (integer-hash-mod (car x) modulus))
+		   (lambda (x y) (int:= (car x) (car y)))
+		   #f)))
+      (entry-types
+       (list (list 'STRONG hash-table-entry-type:strong)
+	     (list 'KEY-WEAK hash-table-entry-type:key-weak)
+	     (list 'DATUM-WEAK hash-table-entry-type:datum-weak)
+	     (list 'KEY/DATUM-WEAK hash-table-entry-type:key/datum-weak)
+	     (list 'KEY-EPHEMERAL hash-table-entry-type:key-ephemeral)
+	     (list 'DATUM-EPHEMERAL hash-table-entry-type:datum-ephemeral)
+	     (list 'KEY&DATUM-EPHEMERAL
+		   hash-table-entry-type:key&datum-ephemeral))))
+  (for-each (lambda (hash-parameters)
+	      (for-each (lambda (entry-type)
+			  (define-test
+			    (symbol-append 'CORRECTNESS-VS-RB:
+					   (car entry-type)
+					   '-
+					   (car hash-parameters))
+			    (lambda ()
+			      (check
+			       (make-hash-table-implementation
+				(apply hash-table/constructor
+				       (append (cdr hash-parameters)
+					       (cdr entry-type))))))))
+			entry-types))
+	    hash-parameters))
+
+;;;; Regression Tests
 
 ;;; These are carefully tailored to the internal representation of
 ;;; the hash table.  This is simpler, but less robust, than writing a
