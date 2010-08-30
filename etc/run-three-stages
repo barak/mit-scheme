@@ -93,7 +93,7 @@ find_stage ()
 find_build_stage ()
 {
     local STAGE=$(pwd)/${1}
-    if [[ -x ${STAGE}/microcode/scheme && ${STAGE}/lib/all.com ]]; then
+    if [[ -x ${STAGE}/microcode/scheme && -f ${STAGE}/lib/all.com ]]; then
 	export MIT_SCHEME_EXE=${STAGE}/microcode/scheme
 	export MITSCHEME_LIBRARY_PATH=${STAGE}/lib
 	return 0
