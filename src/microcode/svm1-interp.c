@@ -318,6 +318,16 @@ decode_unsigned_32 (void)
   return ((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
 }
 
+static uint64_t
+decode_unsigned_64 (void)
+{
+  uint64_t b0, b1, b2, b3, b4, b5, b6, b7;
+  b0 = NEXT_BYTE; b1 = NEXT_BYTE; b2 = NEXT_BYTE; b3 = NEXT_BYTE;
+  b4 = NEXT_BYTE; b5 = NEXT_BYTE; b6 = NEXT_BYTE; b7 = NEXT_BYTE;
+  return ((b7 << 56) | (b6 << 48) | (b5 << 40) | (b4 << 32)
+	  | (b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
+}
+
 static long
 decode_signed_8 (void)
 {
@@ -351,30 +361,27 @@ decode_signed_32 (void)
 #endif
 }
 
+static int64_t
+decode_signed_64 (void)
+{
+  uint64_t n = (decode_unsigned_64 ());
+  if (n < ((uint64_t) 0x8000000000000000))
+    return ((int64_t) n);
+  n -= ((uint64_t) 0x8000000000000000);
+  {
+    int64_t r = ((int64_t) n);
+    r -= ((int64_t) 0x4000000000000000);
+    r -= ((int64_t) 0x4000000000000000);
+    return (r);
+  }
+}
+
 static double
 decode_float (void)
 {
-  union { double f; byte_t b [(sizeof (double))]; } x;
-
-  if (little_endian_p)
-    {
-      unsigned int i = 0;
-      while (i < (sizeof (double)))
-	{
-	  ((x.b) [i]) = NEXT_BYTE;
-	  i += 1;
-	}
-    }
-  else
-    {
-      unsigned int i = (sizeof (double));
-      while (i > 0)
-	{
-	  i -= 1;
-	  ((x.b) [i]) = NEXT_BYTE;
-	}
-    }
-  return (x.f);
+  int64_t significand = (decode_signed_64 ());
+  int exponent = (decode_signed_16 ());
+  return (ldexp (((double) significand), exponent));
 }
 
 /* Instruction definitions */
@@ -679,14 +686,14 @@ DEFINE_INST (cjump_##pl##_##rl##_##rl##_pcr_##sl)			\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_##ru##_PCR_##su			\
     (source1, source2, offset);						\
-  CJ_PCR (CMP_##pu ((WREG_REF (source1)), (WREG_REF (source2))));	\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source1)), (ru##EG_REF (source2))));	\
 }
 
 #define DEFINE_CJ_2(pl, pu, rl, ru, z, sl, su)				\
 DEFINE_INST (cjump_##pl##_##rl##_pcr_##sl)				\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_PCR_##su (source, offset);	\
-  CJ_PCR (CMP_##pu ((WREG_REF (source)), z));				\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source)), z));				\
 }
 
 #define CJ_PCR(p) COND_OFFSET_PC (p, offset)
@@ -764,7 +771,7 @@ DEFINE_CJF_1 (pl, pu, s32, S32)
 
 #define CMP_FIX(a) (LONG_TO_FIXNUM_P (a))
 #define CMP_NFIX(a) (!CMP_FIX (a))
-#define CMP_IFIX(a) (((a) & SIGN_MASK) == (TC_FIXNUM * 2))
+#define CMP_IFIX(a) (((a) & SIGN_MASK) == (MAKE_OBJECT (TC_FIXNUM, 0)))
 #define CMP_NIFIX(a) (!CMP_IFIX (a))
 
 DEFINE_CJF (fix, FIX)

@@ -3,7 +3,7 @@
 @setfilename mit-scheme-user
 @set EDITION 1.93
 @set VERSION 9.0
-@set UPDATED 2010-02-18
+@set UPDATED 2010-08-23
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -76,6 +76,7 @@ Software Foundation raise funds for GNU development.''
 * Using Scheme::                
 * Compiling Programs::          
 * Debugging::                   
+* Profiling::                   
 * GNU Emacs Interface::         
 * Edwin::                       
 * Release Notes::               
@@ -2754,7 +2755,7 @@ A great deal of care has to be taken with the standard math procedures.
 For example, when called with a flonum, both @code{sqrt} and @code{asin}
 can return a complex number (e.g@: with argument @code{-1.5}).
 
-@node Debugging, GNU Emacs Interface, Compiling Programs, Top
+@node Debugging, Profiling, Compiling Programs, Top
 @chapter Debugging
 
 Parts of this chapter are adapted from @cite{Don't Panic: A 6.001 User's
@@ -3503,7 +3504,72 @@ combination of @code{unadvise-entry} and @code{unadvise-exit}.  If
 @var{procedure} is not given, the default is all advised procedures.
 @end deffn
 
-@node GNU Emacs Interface, Edwin, Debugging, Top
+@node Profiling, GNU Emacs Interface, Debugging, Top
+@chapter Profiling
+
+MIT/GNU Scheme provides a simple-minded statistical profiler called
+the stack sampler, which periodically interrupts the program and
+records the return addresses that it finds on the stack.  For each
+return address, the stack sampler records two counts: the number of
+times that return address was at the top of the stack, called the
+@dfn{sampled} count, and the number of times that return address was
+somewhere else in the stack, called the @dfn{waiting} count.  The
+topmost `return address' may correspond with a procedure rather than a
+continuation, if the procedure was about to be called in a tail
+position when the stack sampler interrupted.
+
+If a return address has a high sampled count, it is in a specific part
+of the program that may warrant micro-optimization.  If a return
+address has a high waiting count, then the program spends a long time
+computing the expression for whose value continuations corresponding
+with the return address are waiting, and the expression may warrant a
+better algorithm.
+
+The stack sampling is very coarse-grained, because the program is
+interrupted only at safe points, which are a subset of procedure calls
+and returns.  Another approach to profiling is to record the address
+of the machine instruction the program is about to have the machine
+execute, and then to find where in the program that instruction is.
+This could provide finer-grained sampled counts, but it requires a
+lower-level implementation, and cannot provide waiting counts, because
+the stack may not be in a consistent, inspectable state except at safe
+points.
+
+Finally, the stack sampler gives information only about compiled code;
+it ignores continuations on the stack for interpreted code.  This is
+because continuations for compiled code are easier to deal with, and
+in any case, if a program is too slow when interpreted, the first step
+is to compile it, not to profile it.
+
+@deffn procedure with-stack-sampling interval procedure
+Applies @var{procedure} to zero arguments.  During the dynamic extent
+of the call to @var{procedure}, the stack sampler interrupts the
+program at intervals of approximately @var{interval} milliseconds.
+When @var{procedure} returns, @code{with-stack-sampling} displays the
+waiting and sampled counts it gathered.
+
+More precisely, after each sample, the stack sampler will not sample
+again before @var{interval} milliseconds of real time (in the sense of
+@code{real-time-clock}; @pxref{Machine Time, , Machine Time,
+mit-scheme-ref, MIT/GNU Scheme Reference Manual}) have elapsed,
+although more time may elapse before the next sample.
+@end deffn
+
+@defvr variable stack-sampler:show-expressions?
+If true, the output of @code{with-stack-sampling} shows the
+subexpression corresponding with each return address, and the
+expression enclosing it.  If false, the output is shorter (one line
+per return address), and just shows the names of procedures forming
+the environment hierarchy corresponding with the return address.
+@end defvr
+
+@defvr variable stack-sampler:debug-internal-errors?
+If false, the default, errors signalled while recording a sample are
+ignored.  Set this to true only if you are debugging the internals of
+the system.
+@end defvr
+
+@node GNU Emacs Interface, Edwin, Profiling, Top
 @chapter GNU Emacs Interface
 
 There is an interface library, called @file{xscheme}, distributed with
