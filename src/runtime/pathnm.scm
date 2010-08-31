@@ -605,7 +605,7 @@ these rules:
 (define (system-library-directory-pathname #!optional pathname required?)
   (if (if (default-object? pathname) #f pathname)
       (let ((dir (%find-library-file pathname)))
-	(cond ((file-directory? dir)
+	(cond ((and dir (file-directory? dir))
 	       (pathname-as-directory dir))
 	      ((if (default-object? required?) #f required?)
 	       (system-library-directory-pathname
