@@ -23,7 +23,7 @@ USA.
 
 |#
 
-;;;; Test of character-set abstraction
+;;;; Tests of shadowing
 
 (declare (usual-integrations))
 
