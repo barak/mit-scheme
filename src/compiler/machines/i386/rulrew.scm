@@ -151,6 +151,16 @@ USA.
   (rtl:make-object->fixnum source))
 
 (define-rule rewriting
+  (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
+  (QUALIFIER (rtl:cons-non-pointer? source))
+  (rtl:make-object->fixnum (rtl:cons-non-pointer-datum source)))
+
+(define-rule rewriting
+  (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
+  (QUALIFIER (rtl:object->datum? source))
+  (rtl:make-object->fixnum (rtl:object->datum-expression source)))
+
+(define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 		 (REGISTER (? operand-1 register-known-value))
 		 (? operand-2)

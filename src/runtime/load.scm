@@ -376,7 +376,7 @@ USA.
 (define (load-library-object-file name errors?)
   (let ((pathname
 	 (merge-pathnames (pathname-new-type name "so")
-			  (system-library-directory-pathname "lib"))))
+			  (system-library-directory-pathname "lib" errors?))))
     (if (and errors? (not (file-regular? pathname)))
 	(error "No library object file of this name:" name))
     (if (dld-loaded-file? pathname)

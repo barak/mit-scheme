@@ -1312,7 +1312,7 @@ USA.
 	    (require-success "Malformed markup declaration"
 	      (seq
 	       (* (alt (match
-			(alt (* (char-set a1))
+			(alt (+ (char-set a1))
 			     (seq (char #\") (* (char-set a2)) (char #\"))
 			     (seq (char #\') (* (char-set a3)) (char #\'))))
 		       parse-parameter-entity-reference))
