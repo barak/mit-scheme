@@ -260,3 +260,34 @@ DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
   CHECK_ARG (2, INTEGER_P);
   PRIMITIVE_RETURN (flonum_denormalize ((ARG_REF (1)), (ARG_REF (2))));
 }
+
+typedef
+union
+{
+  double dbl;
+  unsigned long ul;
+} double_unsigned_long_cast;
+
+DEFINE_PRIMITIVE ("CAST-FLONUM-TO-INTEGER", Prim_cast_flonum_to_integer, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, FLONUM_P);
+
+  double_unsigned_long_cast cast;
+
+  cast.dbl = FLONUM_TO_DOUBLE (ARG_REF (1));
+
+  PRIMITIVE_RETURN (ulong_to_integer (cast.ul));
+}
+
+DEFINE_PRIMITIVE ("CAST-INTEGER-TO-FLONUM", Prim_cast_integer_to_flonum, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, INTEGER_P);
+
+  double_unsigned_long_cast cast;
+
+  cast.ul = integer_to_long (ARG_REF (1));
+
+  PRIMITIVE_RETURN (double_to_flonum (cast.dbl));
+}

@@ -2770,6 +2770,7 @@ USA.
 	  error:not-real
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
+	  flo:nan?
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
 	  flonum-unparser-cutoff
