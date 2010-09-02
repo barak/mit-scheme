@@ -84,6 +84,17 @@ USA.
      -1.0
      #*1011111111110000000000000000000000000000000000000000000000000000)
 
+    ;; We should a procedure that tests for floating-point infinity
+    ;; and use it here.
+    (let ((positive-infinity
+	   (integer-to-double
+	    #*0111111111110000000000000000000000000000000000000000000000000000)))
+      (assert-true (flo:positive? positive-infinity)))
+    (let ((negative-infinity
+	   (integer-to-double
+	    #*1111111111110000000000000000000000000000000000000000000000000000)))
+      (assert-true (flo:negative? negative-infinity)))
+
     (assert-true
      (flo:nan?
       (integer-to-double
@@ -126,6 +137,15 @@ USA.
 		 #*01001010010111010111110000000000)
     (test-single -1.0
 		 #*10111111100000000000000000000000)
+
+    ;; We should a procedure that tests for floating-point infinity
+    ;; and use it here.
+    (let ((positive-infinity
+	   (integer-to-single #*01111111100000000000000000000000)))
+      (assert-true (flo:positive? positive-infinity)))
+    (let ((negative-infinity
+	   (integer-to-single #*11111111100000000000000000000000)))
+      (assert-true (flo:negative? negative-infinity)))
 
     (assert-true
      (flo:nan?
