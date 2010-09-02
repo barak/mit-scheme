@@ -27,54 +27,103 @@ USA.
 
 (declare (usual-integrations))
 
-(define-test 'test-casting
+(define (factorial n)
+  (if (< n 2)
+      1
+      (* n (factorial (- n 1)))))
+
+(define ((make-cast-tester cast-to-integer cast-to-flonum size-in-bits)
+	 flonum
+	 integer-as-bit-string)
+  (assert-equal
+   (unsigned-integer->bit-string size-in-bits (cast-to-integer flonum))
+   integer-as-bit-string)
+  (assert-equal
+   flonum
+   (cast-to-flonum integer-as-bit-string)))
+
+(define-test 'test-casting-doubles
   (lambda ()
+    (define cast-ieee754-double-to-integer
+      (make-primitive-procedure 'cast-ieee754-double-to-integer))
 
-    (define cast-flonum-to-integer
-      (make-primitive-procedure 'cast-flonum-to-integer))
+    (define cast-integer-to-ieee754-double
+      (make-primitive-procedure 'cast-integer-to-ieee754-double))
 
-    (define cast-integer-to-flonum
-      (make-primitive-procedure 'cast-integer-to-flonum))
+    (define (integer-to-double integer-as-bit-string)
+      (cast-integer-to-ieee754-double
+       (bit-string->unsigned-integer integer-as-bit-string)))
 
-    (define (itof integer-as-bit-string)
-       (cast-integer-to-flonum
-	(bit-string->unsigned-integer integer-as-bit-string)))
+    (define test-double
+      (make-cast-tester cast-ieee754-double-to-integer
+			integer-to-double
+			64))
 
-    (define (factorial n)
-      (if (< n 2)
-	  1
-	  (* n (factorial (- n 1)))))
-
-    (define (test flonum integer-as-bit-string)
-      (assert-equal
-       (unsigned-integer->bit-string 64 (cast-flonum-to-integer flonum))
-       integer-as-bit-string)
-      (assert-equal
-       flonum
-       (itof integer-as-bit-string)))
-
-    (test 0.0
+    (test-double 0.0
 	  #*0000000000000000000000000000000000000000000000000000000000000000)
-    (test -0.0
+    (test-double -0.0
 	  #*1000000000000000000000000000000000000000000000000000000000000000)
-    (test 1.0
+    (test-double 1.0
 	  #*0011111111110000000000000000000000000000000000000000000000000000)
-    (test 2.0
+    (test-double 2.0
 	  #*0100000000000000000000000000000000000000000000000000000000000000)
-    (test 4.0
+    (test-double 4.0
 	  #*0100000000010000000000000000000000000000000000000000000000000000)
-    (test 8.0
+    (test-double 8.0
 	  #*0100000000100000000000000000000000000000000000000000000000000000)
-    (test (->flonum (factorial 100))
+    (test-double (->flonum (factorial 100))
 	  #*0110000010111011001100001001011001001110110000111001010111011100)
-    (test -1.0
+    (test-double -1.0
 	  #*1011111111110000000000000000000000000000000000000000000000000000)
 
     (assert-true
      (flo:nan?
-      (itof
+      (integer-to-double
        #*0111111111110000000000000000000000000000000000000000000000000001)))
     (assert-true
      (flo:nan?
-      (itof
+      (integer-to-double
        #*0111111111111111111111111111111111111111111111111111111111111111)))))
+
+(define-test 'test-casting-singles
+  (lambda ()
+    (define cast-ieee754-single-to-integer
+      (make-primitive-procedure 'cast-ieee754-single-to-integer))
+
+    (define cast-integer-to-ieee754-single
+      (make-primitive-procedure 'cast-integer-to-ieee754-single))
+
+    (define (integer-to-single integer-as-bit-string)
+      (cast-integer-to-ieee754-single
+       (bit-string->unsigned-integer integer-as-bit-string)))
+
+    (define test-single
+      (make-cast-tester cast-ieee754-single-to-integer
+			integer-to-single
+			32))
+
+    (test-single 0.0
+	  #*00000000000000000000000000000000)
+    (test-single -0.0
+	  #*10000000000000000000000000000000)
+    (test-single 1.0
+	  #*00111111100000000000000000000000)
+    (test-single 2.0
+	  #*01000000000000000000000000000000)
+    (test-single 4.0
+	  #*01000000100000000000000000000000)
+    (test-single 8.0
+	  #*01000001000000000000000000000000)
+    (test-single (->flonum (factorial 10))
+	  #*01001010010111010111110000000000)
+    (test-single -1.0
+	  #*10111111100000000000000000000000)
+
+    (assert-true
+     (flo:nan?
+      (integer-to-single
+       #*01111111100000000000000000000001)))
+    (assert-true
+     (flo:nan?
+      (integer-to-single
+       #*01111111111111111111111111111111)))))
