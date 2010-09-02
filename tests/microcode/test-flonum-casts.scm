@@ -84,8 +84,8 @@ USA.
      -1.0
      #*1011111111110000000000000000000000000000000000000000000000000000)
 
-    ;; We should a procedure that tests for floating-point infinity
-    ;; and use it here.
+    ;; We should add a procedure that tests for floating-point
+    ;; infinity and use it here.
     (let ((positive-infinity
 	   (integer-to-double
 	    #*0111111111110000000000000000000000000000000000000000000000000000)))
@@ -138,8 +138,8 @@ USA.
     (test-single -1.0
 		 #*10111111100000000000000000000000)
 
-    ;; We should a procedure that tests for floating-point infinity
-    ;; and use it here.
+    ;; We should add a procedure that tests for floating-point
+    ;; infinity and use it here.
     (let ((positive-infinity
 	   (integer-to-single #*01111111100000000000000000000000)))
       (assert-true (flo:positive? positive-infinity)))
