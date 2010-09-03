@@ -93,16 +93,7 @@ USA.
 	   (integer-to-double
 	    #*1111111111110000000000000000000000000000000000000000000000000000)))
       (assert-false (flo:finite? negative-infinity))
-      (assert-true (flo:negative? negative-infinity)))
-
-    (assert-true
-     (flo:nan?
-      (integer-to-double
-       #*0111111111110000000000000000000000000000000000000000000000000001)))
-    (assert-true
-     (flo:nan?
-      (integer-to-double
-       #*0111111111111111111111111111111111111111111111111111111111111111)))))
+      (assert-true (flo:negative? negative-infinity)))))
 
 (define-test 'test-casting-singles
   (lambda ()
@@ -145,13 +136,4 @@ USA.
     (let ((negative-infinity
 	   (integer-to-single #*11111111100000000000000000000000)))
       (assert-true (flo:negative? negative-infinity))
-      (assert-false (flo:finite? negative-infinity)))
-
-    (assert-true
-     (flo:nan?
-      (integer-to-single
-       #*01111111100000000000000000000001)))
-    (assert-true
-     (flo:nan?
-      (integer-to-single
-       #*01111111111111111111111111111111)))))
+      (assert-false (flo:finite? negative-infinity)))))
