@@ -50,7 +50,10 @@ static SCHEME_OBJECT * new_prim_table;
 #define REQUIRED_HEAP(h)						\
   ((FASLHDR_HEAP_SIZE (h))						\
    + (FASLHDR_N_PRIMITIVES (h))						\
-   + (FASLHDR_PRIMITIVE_TABLE_SIZE (h)))
+   + (FASLHDR_PRIMITIVE_TABLE_SIZE (h))					\
+   + (((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)		\
+      ? (VECTOR_DATA + (FASLHDR_EPHEMERON_COUNT (h)))			\
+      : 0))
 
 struct load_band_termination_state
 {
@@ -68,7 +71,7 @@ static unsigned long reload_constant_size = 0;
 static void init_fasl_file (const char *, bool, fasl_file_handle_t *);
 static void close_fasl_file (void *);
 
-static SCHEME_OBJECT load_file (fasl_file_handle_t);
+static SCHEME_OBJECT load_file (fasl_file_handle_t, unsigned long);
 static void * read_from_file (void *, size_t, fasl_file_handle_t);
 static bool primitive_numbers_unchanged_p (SCHEME_OBJECT *);
 
@@ -120,7 +123,7 @@ that was dumped.")
     }
   failed_heap_length = 0;
 
-  result = (load_file (handle));
+  result = (load_file (handle, ephemeron_count));
   transaction_commit ();
   PRIMITIVE_RETURN (result);
 }
@@ -243,7 +246,8 @@ read_band_file (SCHEME_OBJECT s)
 
   init_fasl_file (file_name, true, (&handle));
   if (!allocations_ok_p ((FASLHDR_CONSTANT_SIZE (fh)),
-			 (REQUIRED_HEAP (fh))))
+			 (REQUIRED_HEAP (fh)),
+			 (FASLHDR_HEAP_RESERVED (fh))))
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
 
   /* Now read the file into memory.  Past this point we can't abort
@@ -251,8 +255,9 @@ read_band_file (SCHEME_OBJECT s)
   ENTER_CRITICAL_SECTION ("band load");
   (state->no_return_p) = true;
 
-  reset_allocator_parameters (FASLHDR_CONSTANT_SIZE (fh));
-  result = (load_file (handle));
+  reset_allocator_parameters
+    ((FASLHDR_CONSTANT_SIZE (fh)), (FASLHDR_HEAP_RESERVED (fh)));
+  result = (load_file (handle, 0));
 
   /* Done -- we have the new image.  */
   transaction_commit ();
@@ -350,7 +355,7 @@ execute_reload_cleanups (void)
 }
 
 static SCHEME_OBJECT
-load_file (fasl_file_handle_t handle)
+load_file (fasl_file_handle_t handle, unsigned long prior_ephemeron_count)
 {
   new_heap_start = Free;
   new_constant_start = constant_alloc_next;
@@ -429,6 +434,13 @@ load_file (fasl_file_handle_t handle)
 	PUSH_D_CACHE_REGION (new_constant_start, (FASLHDR_CONSTANT_SIZE (fh)));
     }
 #endif
+
+  if ((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+    {
+      ephemeron_count
+	= (prior_ephemeron_count + (FASLHDR_EPHEMERON_COUNT (fh)));
+      ephemeron_array = (make_vector (ephemeron_count, SHARP_F, false));
+    }
 
   return
     (* ((SCHEME_OBJECT *)

@@ -78,6 +78,7 @@ static fasl_header_t * fh;
 static env_mode_t current_env_mode;
 static prim_renumber_t * current_pr;
 static bool cc_seen_p;
+static unsigned long dumped_ephemeron_count;
 
 static gc_table_t * fasdump_table (void);
 static gc_handler_t handle_primitive;
@@ -87,6 +88,7 @@ static gc_handler_t handle_symbol;
 static gc_handler_t handle_broken_heart;
 static gc_handler_t handle_variable;
 static gc_handler_t handle_environment;
+static gc_handler_t handle_ephemeron;
 
 static gc_object_handler_t fasdump_cc_entry;
 static gc_precheck_from_t fasdump_precheck_from;
@@ -96,7 +98,8 @@ static void initialize_fixups (void);
 static void add_fixup (SCHEME_OBJECT *);
 static void run_fixups (void *);
 
-static void initialize_fasl_header (bool);
+static void initialize_fasl_header (bool, bool);
+static void finalize_fasl_header (unsigned long);
 static bool write_fasl_file
   (SCHEME_OBJECT *, SCHEME_OBJECT *, fasl_file_handle_t);
 
@@ -144,6 +147,7 @@ at by compiled code are ignored (and discarded).")
 
   new_heap_start = (get_newspace_ptr ());
   add_to_tospace (ARG_REF (1));
+  dumped_ephemeron_count = 0;
 
   transaction_begin ();		/* 2 */
 
@@ -166,8 +170,7 @@ at by compiled code are ignored (and discarded).")
 
   transaction_commit ();	/* 2 */
 
-  initialize_fasl_header (cc_seen_p);
-  (FASLHDR_BAND_P (fh)) = false;
+  initialize_fasl_header (cc_seen_p, false);
   (FASLHDR_CONSTANT_START (fh)) = new_heap_start;
   (FASLHDR_CONSTANT_END (fh)) = new_heap_start;
   (FASLHDR_HEAP_START (fh)) = new_heap_start;
@@ -175,6 +178,7 @@ at by compiled code are ignored (and discarded).")
   (FASLHDR_ROOT_POINTER (fh)) = new_heap_start;
   (FASLHDR_N_PRIMITIVES (fh)) = (current_pr->next_code);
   (FASLHDR_PRIMITIVE_TABLE_SIZE (fh)) = prim_table_length;
+  finalize_fasl_header (dumped_ephemeron_count);
 
   ok = ((write_fasl_header (fh, (ff_info . handle)))
 	&& (save_tospace (save_tospace_write, (&ff_info))));
@@ -340,7 +344,7 @@ fasdump_table (void)
       (GCT_ENTRY ((&table), TC_VARIABLE)) = handle_variable;
       (GCT_ENTRY ((&table), TC_ENVIRONMENT)) = handle_environment;
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
-      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = handle_ephemeron;
 
       initialized_p = true;
     }
@@ -464,6 +468,13 @@ DEFINE_GC_HANDLER (handle_environment)
   (*scan) = (GC_HANDLE_VECTOR (object, false));
   return (scan + 1);
 }
+
+static
+DEFINE_GC_HANDLER (handle_ephemeron)
+{
+  dumped_ephemeron_count += 1;
+  return (gc_handle_unaligned_vector (scan, object));
+}
 
 typedef struct
 {
@@ -529,8 +540,7 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
   CHECK_ARG (2, STRING_P);
 
   Primitive_GC_If_Needed (5);
-  initialize_fasl_header (true);
-  (FASLHDR_BAND_P (fh)) = true;
+  initialize_fasl_header (true, true);
   {
     SCHEME_OBJECT comb;
     SCHEME_OBJECT root;
@@ -576,6 +586,7 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
       (FASLHDR_HEAP_END (fh)) = prim_table_start;
       (FASLHDR_CONSTANT_START (fh)) = constant_start;
       (FASLHDR_CONSTANT_END (fh)) = constant_alloc_next;
+      finalize_fasl_header (ephemeron_count);
 
       OS_file_remove_link (filename);
       if (!open_fasl_output_file (filename, (&handle)))
@@ -591,18 +602,24 @@ When the file is reloaded, PROCEDURE is called with an argument of #F.")
 }
 
 static void
-initialize_fasl_header (bool cc_p)
+initialize_fasl_header (bool cc_p, bool band_p)
 {
   fh = (&fasl_header);
-  (FASLHDR_VERSION (fh)) = OUTPUT_FASL_VERSION;
+  /* Provisionally set the version -- later, finalize_fasl_header will
+     change it to the EPHEMERON format if there were any ephemerons.
+     The difference between the older C_CODE format and the newer
+     STACK_END format applies only to bands.  */
+  (FASLHDR_VERSION (fh))
+    = (band_p ? FASL_VERSION_STACK_END : FASL_VERSION_C_CODE);
   (FASLHDR_ARCH (fh)) = CURRENT_FASL_ARCH;
+  (FASLHDR_BAND_P (fh)) = band_p;
 
 #ifdef HEAP_IN_LOW_MEMORY
   (FASLHDR_MEMORY_BASE (fh)) = 0;
 #else
   (FASLHDR_MEMORY_BASE (fh)) = memory_block_start;
 #endif
-  (FASLHDR_HEAP_RESERVED (fh)) = heap_reserved;
+  (FASLHDR_HEAP_RESERVED (fh)) = (band_p ? heap_reserved : 0);
 
   (FASLHDR_STACK_START (fh)) = stack_start;
   (FASLHDR_STACK_END (fh)) = stack_end;
@@ -621,6 +638,16 @@ initialize_fasl_header (bool cc_p)
     }
   (FASLHDR_N_C_CODE_BLOCKS (fh)) = 0;
   (FASLHDR_C_CODE_TABLE_SIZE (fh)) = 0;
+}
+
+static void
+finalize_fasl_header (unsigned long ephemeron_count)
+{
+  if (ephemeron_count != 0)
+    {
+      (FASLHDR_VERSION (fh)) = FASL_VERSION_EPHEMERONS;
+      (FASLHDR_EPHEMERON_COUNT (fh)) = ephemeron_count;
+    }
 }
 
 static bool

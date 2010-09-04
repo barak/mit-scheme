@@ -67,7 +67,8 @@ USA.
 #define FASL_OFFSET_C_SIZE	14	/* # of words in the C code table */
 #define FASL_OFFSET_MEM_BASE	15	/* Saved value of memory_base */
 #define FASL_OFFSET_STACK_SIZE	16	/* # of words in stack area */
-#define FASL_OFFSET_HEAP_RSVD   17	/* value of heap_reserved */
+#define FASL_OFFSET_HEAP_RSVD	17	/* value of heap_reserved */
+#define FASL_OFFSET_EPHEMERONS	18	/* # of ephemerons in fasl */
 
 /* Version information encoding */
 
@@ -102,18 +103,17 @@ typedef enum
   FASL_VERSION_INTERFACE_VERSION,
   FASL_VERSION_NEW_BIGNUMS,
   FASL_VERSION_C_CODE,
-  FASL_VERSION_STACK_END
+  FASL_VERSION_STACK_END,
+  FASL_VERSION_EPHEMERONS,
 } fasl_version_t;
 
 #define OLDEST_INPUT_FASL_VERSION FASL_VERSION_C_CODE
-#define NEWEST_INPUT_FASL_VERSION FASL_VERSION_STACK_END
+#define NEWEST_INPUT_FASL_VERSION FASL_VERSION_EPHEMERONS
 
-#if 0
-/* Temporarily disabled for testing.  */
-#define OUTPUT_FASL_VERSION FASL_VERSION_STACK_END
-#else
-#define OUTPUT_FASL_VERSION FASL_VERSION_C_CODE
-#endif
+/* Nothing uses this at the moment -- the fasdumper selects C_CODE for
+   non-bands, STACK_END if there are no ephemerons, or EPHEMERONS if
+   there is at least one ephemeron in the fasl.  */
+#define OUTPUT_FASL_VERSION FASL_VERSION_EPHEMERONS
 
 typedef struct
 {
@@ -138,6 +138,7 @@ typedef struct
   SCHEME_OBJECT utilities_vector;
   SCHEME_OBJECT * utilities_start;
   SCHEME_OBJECT * utilities_end;
+  unsigned long ephemeron_count;
 } fasl_header_t;
 
 #define FASLHDR_VERSION(h) ((h)->version)
@@ -161,6 +162,7 @@ typedef struct
 #define FASLHDR_UTILITIES_VECTOR(h) ((h)->utilities_vector)
 #define FASLHDR_UTILITIES_START(h) ((h)->utilities_start)
 #define __FASLHDR_UTILITIES_END(h) ((h)->utilities_end)
+#define FASLHDR_EPHEMERON_COUNT(h) ((h)->ephemeron_count)
 
 #define FASLHDR_UTILITIES_END(h) (faslhdr_utilities_end (h))
 

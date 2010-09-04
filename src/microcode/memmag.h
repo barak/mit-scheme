@@ -83,8 +83,8 @@ USA.
 #  define CONSTANT_SPACE_FUDGE 128
 #endif
 
-extern bool allocations_ok_p (unsigned long, unsigned long);
-extern void reset_allocator_parameters (unsigned long);
+extern bool allocations_ok_p (unsigned long, unsigned long, unsigned long);
+extern void reset_allocator_parameters (unsigned long, unsigned long);
 extern bool object_in_heap_p (SCHEME_OBJECT);
 extern void std_gc_pt1 (void);
 extern void std_gc_pt2 (void);

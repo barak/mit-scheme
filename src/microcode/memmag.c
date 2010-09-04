@@ -139,7 +139,7 @@ setup_memory (unsigned long heap_size,
   saved_stack_size = stack_size;
   saved_constant_size = constant_size;
   saved_heap_size = heap_size;
-  reset_allocator_parameters (0);
+  reset_allocator_parameters (0, 0);
   initialize_gc (heap_size, (&heap_start), (&Free), allocate_tospace, abort_gc);
 }
 
@@ -151,20 +151,22 @@ reset_memory (void)
 }
 
 bool
-allocations_ok_p (unsigned long n_constant, unsigned long n_heap)
+allocations_ok_p (unsigned long n_constant,
+		  unsigned long n_heap,
+		  unsigned long n_reserved)
 {
   return
     ((memory_block_start
       + saved_stack_size
       + n_constant + CONSTANT_SPACE_FUDGE
-      + n_heap + DEFAULT_HEAP_RESERVED)
+      + n_heap + ((n_reserved == 0) ? DEFAULT_HEAP_RESERVED : n_reserved))
      < memory_block_end);
 }
 
 void
-reset_allocator_parameters (unsigned long n_constant)
+reset_allocator_parameters (unsigned long n_constant, unsigned long reserved)
 {
-  heap_reserved = DEFAULT_HEAP_RESERVED;
+  heap_reserved = ((reserved == 0) ? DEFAULT_HEAP_RESERVED : reserved);
   gc_space_needed = 0;
   SET_STACK_LIMITS (memory_block_start, saved_stack_size);
   constant_start = (memory_block_start + saved_stack_size);

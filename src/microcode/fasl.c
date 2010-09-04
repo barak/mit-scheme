@@ -192,6 +192,10 @@ encode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
     = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_C_CODE_TABLE_SIZE (h))));
 
   (raw[FASL_OFFSET_UT_BASE]) = (FASLHDR_UTILITIES_VECTOR (h));
+
+  if ((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)
+    (raw[FASL_OFFSET_EPHEMERONS])
+      = (MAKE_OBJECT (TC_BROKEN_HEART, (FASLHDR_EPHEMERON_COUNT (h))));
 }
 
 static bool
@@ -226,7 +230,7 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
     (FASLHDR_HEAP_RESERVED (h))
       = (((FASLHDR_VERSION (h)) >= FASL_VERSION_STACK_END)
 	 ? (OBJECT_DATUM (raw[FASL_OFFSET_HEAP_RSVD]))
-	 : 4500);
+	 : 0);
 
     (FASLHDR_CONSTANT_START (h))
       = (fasl_object_address ((raw[FASL_OFFSET_CONST_BASE]), h));
@@ -282,6 +286,9 @@ decode_fasl_header (SCHEME_OBJECT * raw, fasl_header_t * h)
     }
     (__FASLHDR_UTILITIES_END (h)) = 0;
   }
+  if ((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)
+    (FASLHDR_EPHEMERON_COUNT (h))
+      = (OBJECT_DATUM (raw[FASL_OFFSET_EPHEMERONS]));
   return (true);
 }
 
