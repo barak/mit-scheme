@@ -1101,7 +1101,31 @@ USA.
     (make-table-type key-hash key=? rehash-after-gc? compute-hash!
 		     entry-type)))
 
-(define-integrable (open-type-constructor entry-type)
+;;; Using syntax rather than integrable procedures avoids some
+;;; unnecessary duplicates of the great pile of hash table code.  This
+;;; is a non-hygienic kludge, so don't use it outside this file.  It's
+;;; non-hygienic because of a collection of bugs: SYNTAX-RULES and
+;;; DECLARE don't mix, hygienically macro-generated macro definitions
+;;; aren't fasdumpable...
+
+(define-syntax define-integrableish
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment			;ignore
+     (let ((name (caadr form))
+	   (parameters (cdadr form))
+	   (body (cddr form)))
+       `(DEFINE-SYNTAX ,name
+	  (SC-MACRO-TRANSFORMER
+	   (LAMBDA (FORM ENVIRONMENT)
+	     (CONS '(NAMED-LAMBDA (,name ,@parameters)
+		      (DECLARE (INTEGRATE ,@parameters))
+		      ,@body)
+		   (MAP (LAMBDA (SUBFORM)
+			  (CLOSE-SYNTAX SUBFORM ENVIRONMENT))
+			(CDR FORM))))))))))
+
+(define-integrableish (open-type-constructor entry-type)
   (declare (integrate-operator %make-hash-table-type make-table-type))
   (declare (integrate-operator make-method:get make-method:put!))
   (declare (integrate-operator make-method:modify! make-method:remove!))
@@ -1117,12 +1141,12 @@ USA.
       (make-table-type key-hash key=? rehash-after-gc? compute-hash!
 		       entry-type))))
 
-(define-integrable (open-type-constructor! entry-type)
+(define-integrableish (open-type-constructor! entry-type)
   (hash-table/put! hash-table-type-constructors
 		   entry-type
 		   (open-type-constructor entry-type)))
 
-(define-integrable (open-type key-hash key=? rehash-after-gc? entry-type)
+(define-integrableish (open-type key-hash key=? rehash-after-gc? entry-type)
   (declare (integrate-operator %make-hash-table-type make-table-type))
   (declare (integrate-operator compute-address-hash compute-non-address-hash))
   (declare (integrate-operator make-method:get make-method:put!))
@@ -1135,7 +1159,7 @@ USA.
 		       (compute-non-address-hash key-hash))
 		   entry-type))
 
-(define-integrable (open-type! key-hash key=? rehash-after-gc? entry-type)
+(define-integrableish (open-type! key-hash key=? rehash-after-gc? entry-type)
   (let ((hash-table-type
 	 (open-type key-hash key=? rehash-after-gc? entry-type)))
     (memoize-hash-table-type! key-hash key=? rehash-after-gc? entry-type
