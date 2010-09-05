@@ -472,7 +472,9 @@ DEFINE_GC_HANDLER (handle_environment)
 static
 DEFINE_GC_HANDLER (handle_ephemeron)
 {
-  dumped_ephemeron_count += 1;
+  /* Count each one once by counting only if there is no borken heart.  */
+  if (0 == (GC_PRECHECK_FROM (OBJECT_ADDRESS (object))))
+    dumped_ephemeron_count += 1;
   return (gc_handle_unaligned_vector (scan, object));
 }
 

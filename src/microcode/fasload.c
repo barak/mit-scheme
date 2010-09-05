@@ -50,10 +50,7 @@ static SCHEME_OBJECT * new_prim_table;
 #define REQUIRED_HEAP(h)						\
   ((FASLHDR_HEAP_SIZE (h))						\
    + (FASLHDR_N_PRIMITIVES (h))						\
-   + (FASLHDR_PRIMITIVE_TABLE_SIZE (h))					\
-   + (((FASLHDR_VERSION (h)) >= FASL_VERSION_EPHEMERONS)		\
-      ? (VECTOR_DATA + (FASLHDR_EPHEMERON_COUNT (h)))			\
-      : 0))
+   + (FASLHDR_PRIMITIVE_TABLE_SIZE (h)))
 
 struct load_band_termination_state
 {
@@ -102,6 +99,8 @@ that was dumped.")
   fasl_file_handle_t handle;
   static unsigned long failed_heap_length = 0;
   unsigned long heap_length;
+  unsigned long n_ephemerons = 0;
+  unsigned long extra_ephemeron_space = 0;
   SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
 
@@ -113,11 +112,19 @@ that was dumped.")
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
 
   heap_length = (REQUIRED_HEAP (fh));
-  if (GC_NEEDED_P (heap_length))
+  if ((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+    {
+      n_ephemerons = (FASLHDR_EPHEMERON_COUNT (fh));
+      extra_ephemeron_space
+	= (compute_extra_ephemeron_space (ephemeron_count + n_ephemerons));
+    }
+  if (GC_NEEDED_P (heap_length + extra_ephemeron_space))
     {
       if (heap_length == failed_heap_length)
 	signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
       failed_heap_length = heap_length;
+      n_ephemerons_requested = n_ephemerons;
+      ephemeron_request_hard_p = false;
       REQUEST_GC (heap_length);
       signal_interrupt_from_primitive ();
     }
@@ -245,9 +252,13 @@ read_band_file (SCHEME_OBJECT s)
   transaction_record_action (tat_abort, terminate_band_load, state);
 
   init_fasl_file (file_name, true, (&handle));
-  if (!allocations_ok_p ((FASLHDR_CONSTANT_SIZE (fh)),
-			 (REQUIRED_HEAP (fh)),
-			 (FASLHDR_HEAP_RESERVED (fh))))
+  if (!allocations_ok_p
+      ((FASLHDR_CONSTANT_SIZE (fh)),
+       ((REQUIRED_HEAP (fh))
+	+ (((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+	   ? (compute_extra_ephemeron_space (FASLHDR_EPHEMERON_COUNT (fh)))
+	   : 0)),
+       (FASLHDR_HEAP_RESERVED (fh))))
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
 
   /* Now read the file into memory.  Past this point we can't abort
@@ -257,6 +268,8 @@ read_band_file (SCHEME_OBJECT s)
 
   reset_allocator_parameters
     ((FASLHDR_CONSTANT_SIZE (fh)), (FASLHDR_HEAP_RESERVED (fh)));
+  /* We cleared the heap; the ephemeron array is now bogus.  */
+  ephemeron_array = SHARP_F;
   result = (load_file (handle, 0));
 
   /* Done -- we have the new image.  */
@@ -355,7 +368,7 @@ execute_reload_cleanups (void)
 }
 
 static SCHEME_OBJECT
-load_file (fasl_file_handle_t handle, unsigned long prior_ephemeron_count)
+load_file (fasl_file_handle_t handle, unsigned long old_ephemeron_count)
 {
   new_heap_start = Free;
   new_constant_start = constant_alloc_next;
@@ -436,11 +449,8 @@ load_file (fasl_file_handle_t handle, unsigned long prior_ephemeron_count)
 #endif
 
   if ((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
-    {
-      ephemeron_count
-	= (prior_ephemeron_count + (FASLHDR_EPHEMERON_COUNT (fh)));
-      ephemeron_array = (make_vector (ephemeron_count, SHARP_F, false));
-    }
+    guarantee_extra_ephemeron_space
+      (old_ephemeron_count + (FASLHDR_EPHEMERON_COUNT (fh)));
 
   return
     (* ((SCHEME_OBJECT *)

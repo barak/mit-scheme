@@ -84,6 +84,10 @@ unsigned long heap_reserved;
 /* Amount of space needed when GC requested */
 unsigned long gc_space_needed;
 
+/* Number of new ephemerons requested from the GC.  */
+unsigned long n_ephemerons_requested;
+bool ephemeron_request_hard_p;
+
 #ifndef HEAP_IN_LOW_MEMORY
    SCHEME_OBJECT * memory_base;
 #endif

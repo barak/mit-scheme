@@ -73,6 +73,8 @@ static gc_tospace_allocator_t allocate_tospace;
 static gc_abort_handler_t abort_gc NORETURN;
 static gc_walk_proc_t save_tospace_copy;
 
+static unsigned long compute_ephemeron_array_length (unsigned long);
+
 /* Memory Allocation, sequential processor:
 
 oo
@@ -320,14 +322,28 @@ std_gc_pt2 (void)
   history_register = (OBJECT_ADDRESS (*saved_to++));
   saved_to = 0;
 
+  {
+    unsigned long length
+      = (compute_ephemeron_array_length
+	 (ephemeron_count + n_ephemerons_requested));
+    if (!HEAP_AVAILABLE_P
+	((VECTOR_DATA + length) + (n_ephemerons_requested * EPHEMERON_SIZE)))
+      {
+	if (ephemeron_request_hard_p)
+	  gc_space_needed += (VECTOR_DATA + length);
+	length = (compute_ephemeron_array_length (ephemeron_count));
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
-  /* This should never trigger, because we discard the previous
-     ephemeron array, which always has at least as many slots as there
-     are live ephemerons.  Add one for the vector's manifest.  */
-  if (GC_NEEDED_P (ephemeron_count + 1))
-    std_gc_death ("No room for ephemeron array");
+	/* This should never trigger, because we discard the previous
+	   ephemeron array, which always has room for at least as many
+	   ephemerons as are now live.  */
+	if (!HEAP_AVAILABLE_P (VECTOR_DATA + length))
+	  std_gc_death ("No room for ephemeron array");
 #endif
-  ephemeron_array = (make_vector (ephemeron_count, SHARP_F, false));
+      }
+    ephemeron_array = (make_vector (length, SHARP_F, false));
+    n_ephemerons_requested = 0;
+    ephemeron_request_hard_p = false;
+  }
 
   CC_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
@@ -383,19 +399,19 @@ static unsigned long primes [] =
   };
 
 static unsigned long
-compute_ephemeron_array_length (void)
+compute_ephemeron_array_length (unsigned long n)
 {
   unsigned int start = 0, end = ((sizeof primes) / (sizeof (*primes)));
   unsigned int index;
 
-  if ((primes [end - 1]) < ephemeron_count)
+  if ((primes [end - 1]) < n)
     return (primes [end - 1]);
 
   do {
     index = (start + ((end - start) / 2));
-    if ((primes [index]) < ephemeron_count)
+    if ((primes [index]) < n)
       start = (index + 1);
-    else if (ephemeron_count < (primes [index]))
+    else if (n < (primes [index]))
       end = index;
     else
       return (primes [index]);
@@ -404,22 +420,44 @@ compute_ephemeron_array_length (void)
   return (primes [start]);
 }
 
-static void
-guarantee_ephemeron_space (void)
+static bool
+ephemeron_array_big_enough_p (unsigned long n)
 {
-  /* Guarantee space after Free and in the ephemeron array for one
-     ephemeron.  */
-  if ((VECTOR_P (ephemeron_array))
-      && (ephemeron_count <= (VECTOR_LENGTH (ephemeron_array))))
-    Primitive_GC_If_Needed (EPHEMERON_SIZE);
+  return
+    ((n == 0)
+     || ((VECTOR_P (ephemeron_array))
+	 && (n <= (VECTOR_LENGTH (ephemeron_array)))));
+}
+
+unsigned long
+compute_extra_ephemeron_space (unsigned long n)
+{
+  if (ephemeron_array_big_enough_p (n))
+    return (0);
   else
+    return (VECTOR_DATA + (compute_ephemeron_array_length (n)));
+}
+
+void
+guarantee_extra_ephemeron_space (unsigned long n)
+{
+  ephemeron_count = n;
+  if (!ephemeron_array_big_enough_p (n))
     {
-      unsigned long length = (compute_ephemeron_array_length ());
-      /* We could be cleverer about expanding the ephemeron array, and
-	 tell the GC (above) that we really want an ephemeron array
-	 that is one slot larger.  */
-      Primitive_GC_If_Needed (EPHEMERON_SIZE + VECTOR_DATA + length);
+      unsigned long length = (compute_ephemeron_array_length (n));
+      assert (HEAP_AVAILABLE_P (VECTOR_DATA + length));
       ephemeron_array = (make_vector (length, SHARP_F, false));
+    }
+}
+
+static void
+gc_if_needed_for_ephemeron (unsigned long extra_space)
+{
+  if (GC_NEEDED_P (EPHEMERON_SIZE + extra_space))
+    {
+      n_ephemerons_requested = 1;
+      ephemeron_request_hard_p = true;
+      Primitive_GC (EPHEMERON_SIZE);
     }
 }
 
@@ -427,7 +465,15 @@ DEFINE_PRIMITIVE ("MAKE-EPHEMERON", Prim_make_ephemeron, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
   ephemeron_count += 1;
-  guarantee_ephemeron_space ();
+  if (ephemeron_array_big_enough_p (ephemeron_count))
+    gc_if_needed_for_ephemeron (0);
+  else
+    {
+      unsigned long length
+	= (compute_ephemeron_array_length (ephemeron_count));
+      gc_if_needed_for_ephemeron (VECTOR_DATA + length);
+      ephemeron_array = (make_vector (length, SHARP_F, false));
+    }
   {
     SCHEME_OBJECT * addr = Free;
     (*Free++) = MARKED_EPHEMERON_MANIFEST;

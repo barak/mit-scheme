@@ -192,6 +192,10 @@ extern unsigned long heap_reserved;
 
 /* Amount of space needed when GC requested */
 extern unsigned long gc_space_needed;
+
+/* Number of new ephemerons requested from the GC.  */
+extern unsigned long n_ephemerons_requested;
+extern bool ephemeron_request_hard_p;
 
 /* Arithmetic utilities */
 extern SCHEME_OBJECT Mul (SCHEME_OBJECT, SCHEME_OBJECT);
@@ -279,6 +283,8 @@ extern SCHEME_OBJECT memory_to_symbol (unsigned long, const void *);
 extern SCHEME_OBJECT find_symbol (unsigned long, const char *);
 extern void strengthen_symbol (SCHEME_OBJECT);
 extern void weaken_symbol (SCHEME_OBJECT);
+extern unsigned long compute_extra_ephemeron_space (unsigned long);
+extern void guarantee_extra_ephemeron_space (unsigned long);
 
 /* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);
