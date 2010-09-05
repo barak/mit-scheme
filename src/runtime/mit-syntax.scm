@@ -344,13 +344,13 @@ USA.
 
 (define (classifier:declare form environment definition-environment)
   definition-environment
-  (syntax-check '(KEYWORD * (SYMBOL * DATUM)) form)
+  (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
   (make-declaration-item
    (lambda ()
      (classify/declarations (cdr form) environment))))
 
 (define (classifier:local-declare form environment definition-environment)
-  (syntax-check '(KEYWORD (* (SYMBOL * DATUM)) + FORM) form)
+  (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
   (let ((body
 	 (classify/body (cddr form)
 			environment

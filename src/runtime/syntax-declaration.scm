@@ -41,7 +41,14 @@ USA.
 (define (map-declaration-identifiers procedure declaration)
   (if (not (pair? declaration))
       (error "Ill-formed declaration:" declaration))
-  (let ((entry (assq (car declaration) known-declarations)))
+  (let* ((declaration
+	  ;++ This is a kludge -- rather than strip syntactic closures,
+	  ;++ it should be aware of the environment.
+	  (if (symbol? (car declaration))
+	      declaration
+	      (cons (strip-syntactic-closures (car declaration))
+		    (cdr declaration))))
+	 (entry (assq (car declaration) known-declarations)))
     (if (and entry (syntax-match? (cadr entry) (cdr declaration)))
 	((cddr entry) declaration procedure)
 	(begin
