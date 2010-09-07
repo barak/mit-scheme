@@ -266,6 +266,8 @@ DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
  * to support using these primitives with non-IEEE 754 floating-point
  * numbers, we may have to adjust them.
  */
+
+#if defined UINT64_MAX || defined uint64_t
 typedef
 union
 {
@@ -296,6 +298,7 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-DOUBLE", Prim_cast_integer_to_ieee754
 
   PRIMITIVE_RETURN (double_to_flonum (cast.dbl));
 }
+#endif
 
 typedef
 union
