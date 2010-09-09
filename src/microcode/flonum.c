@@ -281,12 +281,13 @@ DEFINE_PRIMITIVE ("CAST-IEEE754-DOUBLE-TO-INTEGER", Prim_cast_ieee754_double_to_
   PRIMITIVE_HEADER (1);
 #if defined UINT64_MAX || defined uint64_t
   CHECK_ARG (1, FLONUM_P);
+  {
+    double_uint64_t_cast cast;
 
-  double_uint64_t_cast cast;
+    cast.dbl = FLONUM_TO_DOUBLE (ARG_REF (1));
 
-  cast.dbl = FLONUM_TO_DOUBLE (ARG_REF (1));
-
-  PRIMITIVE_RETURN (uintmax_to_integer (cast.u64));
+    PRIMITIVE_RETURN (uintmax_to_integer (cast.u64));
+  }
 #else
   error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -298,12 +299,13 @@ DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-DOUBLE", Prim_cast_integer_to_ieee754
   PRIMITIVE_HEADER (1);
 #if defined UINT64_MAX || defined uint64_t
   CHECK_ARG (1, INTEGER_P);
+  {
+    double_uint64_t_cast cast;
 
-  double_uint64_t_cast cast;
+    cast.u64 = integer_to_uintmax (ARG_REF (1));
 
-  cast.u64 = integer_to_uintmax (ARG_REF (1));
-
-  PRIMITIVE_RETURN (double_to_flonum (cast.dbl));
+    PRIMITIVE_RETURN (double_to_flonum (cast.dbl));
+  }
 #else
   error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);
