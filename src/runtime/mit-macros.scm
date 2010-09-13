@@ -565,3 +565,10 @@ USA.
 
 (define (unassigned-expression)
   `(,keyword:unassigned))
+
+(define-syntax :begin0
+  (syntax-rules ()
+    ((BEGIN0 form0 form1+ ...)
+     (LET ((RESULT form0))
+       form1+ ...
+       RESULT))))

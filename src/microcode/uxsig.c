@@ -549,9 +549,9 @@ DEFUN_STD_HANDLER (sighnd_terminate,
 static
 DEFUN_STD_HANDLER (sighnd_fpe,
 {
+  FPE_RESET_TRAPS ();
   if (executing_scheme_primitive_p ())
     error_floating_point_exception ();
-  FPE_RESET_TRAPS ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
 #endif

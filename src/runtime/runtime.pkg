@@ -4599,6 +4599,7 @@ USA.
 	  (access :access)
 	  (and :and)
 	  (and-let* :and-let*)
+	  (begin0 :begin0)
 	  (case :case)
 	  (cond :cond)
 	  (cond-expand :cond-expand)
