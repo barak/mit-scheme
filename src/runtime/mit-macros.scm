@@ -529,36 +529,27 @@ USA.
      compare
      (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
      (let ((names (map car (cadr form)))
-	   (r-let (rename 'LET))
+	   (expressions (map cadr (cadr form)))
+	   (r-define (rename 'DEFINE))
 	   (r-lambda (rename 'LAMBDA))
-	   (r-set! (rename 'SET!)))
-       (let ((out-temps
-	      (map (lambda (name)
-		     name
-		     (make-synthetic-identifier 'OUT-TEMP))
-		   names))
-	     (in-temps
-	      (map (lambda (name)
-		     name
-		     (make-synthetic-identifier 'IN-TEMP))
-		   names))
-	     (swap
-	      (lambda (tos names froms)
-		`(,r-lambda ()
-			    ,@(map (lambda (to name from)
-				     `(,r-set! ,to
-					       (,r-set! ,name
-							(,r-set! ,from))))
-				   tos
-				   names
-				   froms)
-			    ,(unspecific-expression)))))
-	 `(,r-let (,@(map cons in-temps (map cdr (cadr form)))
-		   ,@(map list out-temps))
-		  (,(rename 'SHALLOW-FLUID-BIND)
-		   ,(swap out-temps names in-temps)
-		   (,r-lambda () ,@(cddr form))
-		   ,(swap in-temps names out-temps))))))))
+	   (r-let (rename 'LET))
+	   (r-set! (rename 'SET!))
+	   (r-shallow-fluid-bind (rename 'SHALLOW-FLUID-BIND))
+	   (r-unspecific (rename 'UNSPECIFIC)))
+       (let ((temporaries (map make-synthetic-identifier names))
+	     (swap! (make-synthetic-identifier 'SWAP!))
+	     (body `(,r-lambda () ,@(cddr form))))
+	 `(,r-let ,(map list temporaries expressions)
+	    (,r-define (,swap!)
+	      ,@(map (lambda (name temporary)
+		       (let ((temporary* (make-synthetic-identifier 'TEMP)))
+			 `(,r-let ((,temporary* ,temporary))
+			    (,r-set! ,temporary ,name)
+			    (,r-set! ,name ,temporary*))))
+		     names
+		     temporaries)
+	      ,r-unspecific)
+	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
 
 (define (unspecific-expression)
   `(,keyword:unspecific))

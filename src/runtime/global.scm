@@ -124,36 +124,16 @@ USA.
 (define (limit-interrupts! limit-mask)
   (set-interrupt-enables! (fix:and limit-mask (get-interrupt-enables))))
 
-(define (object-component-binder get-component set-component!)
-  (lambda (object new-value thunk)
-    (let ((old-value))
-      (shallow-fluid-bind
-       (lambda ()
-	 (set! old-value (get-component object))
-	 (set-component! object new-value)
-	 (set! new-value #f)
-	 unspecific)
-       thunk
-       (lambda ()
-	 (set! new-value (get-component object))
-	 (set-component! object old-value)
-	 (set! old-value #f)
-	 unspecific)))))
+(define-integrable (object-component-binder get-component set-component!)
+  (lambda (object value thunk)
+    (define (swap!)
+      (let ((value* value))
+	(set! value (get-component object))
+	(set-component! object value*)))
+    (shallow-fluid-bind swap! thunk swap!)))
 
-(define (bind-cell-contents! cell new-value thunk)
-  (let ((old-value))
-    (shallow-fluid-bind
-     (lambda ()
-       (set! old-value (cell-contents cell))
-       (set-cell-contents! cell new-value)
-       (set! new-value)
-       unspecific)
-     thunk
-     (lambda ()
-       (set! new-value (cell-contents cell))
-       (set-cell-contents! cell old-value)
-       (set! old-value)
-       unspecific))))
+(define bind-cell-contents!
+  (object-component-binder cell-contents set-cell-contents!))
 
 (define (values . objects)
   (lambda (receiver)
