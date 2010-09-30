@@ -5455,7 +5455,6 @@ USA.
 	  char-set:uri-fragment
 	  char-set:uri-hex
 	  char-set:uri-ipvfuture
-	  char-set:uri-opaque-auth
 	  char-set:uri-query
 	  char-set:uri-reg-name
 	  char-set:uri-scheme
@@ -5535,7 +5534,6 @@ USA.
 	  uri-rexp:ipv6-address
 	  uri-rexp:ipvfuture
 	  uri-rexp:ls32
-	  uri-rexp:opaque-auth
 	  uri-rexp:path
 	  uri-rexp:path-abempty
 	  uri-rexp:path-absolute
