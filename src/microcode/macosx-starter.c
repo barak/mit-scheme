@@ -57,7 +57,7 @@ main (int argc, const char ** argv)
   pid = (vfork ());
   if (pid == 0)
     {
-      execl (bp, bp, "--edit", ((char *) 0));
+      execl (bp, bp, "--macosx-application", "--edit", ((char *) 0));
       _exit (1);
     }
   return ((pid > 0) ? 0 : 3);
