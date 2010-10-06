@@ -232,6 +232,8 @@ macosx_main_bundle_dir (void)
 bool
 macosx_in_app_p (void)
 {
+  if (!option_macosx_application)
+    return (false);
   CFURLRef url = (macosx_default_band_url ());
   if (url == 0)
     return (false);

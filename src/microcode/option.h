@@ -40,6 +40,9 @@ extern bool option_disable_core_dump;
 extern bool option_batch_mode;
 extern bool option_show_help;
 extern bool option_show_version;
+#ifdef __APPLE__
+  extern bool option_macosx_application;
+#endif
 
 /* String options */
 extern const char ** option_library_path;
