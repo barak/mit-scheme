@@ -1207,35 +1207,56 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
 	ret
 
-define_c_label(i387_read_fp_control_word)
-IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
-	je		i387_read_fp_control_word_lose
-	enter		IMM(4),IMM(0)
+define_c_label(sse_read_mxcsr)
+IFSSE(`	enter		IMM(4),IMM(0)
+	stmxcsr		IND(REG(esp))
+	OP(mov,l)	TW(IND(REG(esp)),REG(eax))
+	leave')
+	ret
+
+define_c_label(sse_write_mxcsr)
+IFSSE(`	ldmxcsr		LOF(4,REG(esp))')
+	ret
+
+define_c_label(x87_clear_exceptions)
+IF387(`	fnclex')
+	ret
+
+define_c_label(x87_trap_exceptions)
+IF387(`	fwait')
+	ret
+
+define_c_label(x87_read_control_word)
+IF387(`	enter		IMM(4),IMM(0)
 	fnstcw		IND(REG(esp))
 	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
-	leave
-	ret
-')
-
-i387_read_fp_control_word_lose:
-	OP(xor,l)	TW(REG(eax),REG(eax))
+	leave')
 	ret
 
-define_c_label(i387_write_fp_control_word)
-IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
-	je		i387_write_fp_control_word_lose
-	fldcw		LOF(4,REG(esp))
+define_c_label(x87_write_control_word)
+IF387(`	fldcw		LOF(4,REG(esp))')
 	ret
-')
 
-i387_write_fp_control_word_lose:
+define_c_label(x87_read_status_word)
+IF387(`	enter		IMM(4),IMM(0)
+	fnstsw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave')
+	ret
+
+define_c_label(x87_read_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fnstenv		IND(REG(eax))')
+	ret
+
+define_c_label(x87_write_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fldenv		IND(REG(eax))')
 	ret
 
 IFDASM(`end')
 
-# Mark the stack nonexecutable.  If we ever put code (e.g.,
-# dynamic-extent closure entry points) on the stack, this would have
-# to change.
+# Mark the C stack nonexecutable.
 
 ifdef(`__linux__', `ifdef(`__ELF__', `.section .note.GNU-stack,"",%progbits')')
 

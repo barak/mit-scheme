@@ -982,9 +982,7 @@ define_c_label(x86_64_write_mxcsr)
 
 IFDASM(`end')
 
-# Mark the stack nonexecutable.  If we ever put code (e.g.,
-# dynamic-extent closure entry points) on the stack, this would have
-# to change.
+# Mark the C stack nonexecutable.
 
 ifdef(`__linux__', `ifdef(`__ELF__', `.section .note.GNU-stack,"",%progbits')')
 
