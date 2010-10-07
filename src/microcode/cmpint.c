@@ -2812,7 +2812,7 @@ declare_builtin (unsigned long builtin, const char * name)
 	  }
 	else
 	  {
-	    unsigned int scan = n_builtins;
+	    unsigned int scan = (n_builtins++);
 	    while (low < scan)
 	      {
 		(builtins [scan]) = (builtins [scan - 1]);
@@ -2837,6 +2837,7 @@ int
 pc_to_builtin_index (unsigned long pc)
 {
   if (! ((builtins != 0)
+	 && (n_builtins > 0)
 	 && (pc >= (builtins[0]))
 	 && (pc < (builtins [(n_builtins - 1)]))))
     return (-1);
