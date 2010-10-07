@@ -1292,14 +1292,14 @@ USA.
 (define (string-search-all pattern text)
   (guarantee-string pattern 'STRING-SEARCH-ALL)
   (guarantee-string text 'STRING-SEARCH-ALL)
-  (%bm-substring-search-all text 0 (string-length text)
-			    pattern 0 (string-length pattern)))
+  (%substring-search-all text 0 (string-length text)
+			 pattern 0 (string-length pattern)))
 
 (define (substring-search-all pattern text tstart tend)
   (guarantee-string pattern 'SUBSTRING-SEARCH-ALL)
   (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-ALL)
-  (%bm-substring-search-all text tstart tend
-			    pattern 0 (string-length pattern)))
+  (%substring-search-all text tstart tend
+			 pattern 0 (string-length pattern)))
 
 (define (%substring-search-forward text tstart tend pattern pstart pend)
   ;; Returns index of first matched char, or #F.
@@ -1351,6 +1351,27 @@ USA.
 				  pattern pstart pend-1)
 		     tend
 		     (loop (fix:- tend 1)))))))))
+
+(define (%substring-search-all text tstart tend pattern pstart pend)
+  (let ((plen (fix:- pend pstart)))
+    (cond ((fix:= plen 1)
+	   (let ((c (string-ref pattern pstart)))
+	     (let loop ((ti tend) (occurrences '()))
+	       (let ((index (%substring-find-previous-char text tstart ti c)))
+		 (if index
+		     (loop index (cons index occurrences))
+		     occurrences)))))
+	  #;    ;This may not be worthwhile -- I have no measurements.
+	  ((fix:< plen 4)
+	   (let loop ((ti tend) (occurrences '()))
+	     (let ((index
+		    (%dumb-substring-search-backward text tstart ti
+						     pattern pstart pend)))
+	       (if index
+		   (loop (fix:+ index (fix:- plen 1)) (cons index occurrences))
+		   occurrences))))
+	  (else
+	   (%bm-substring-search-all text tstart tend pattern pstart pend)))))
 
 ;;;; Boyer-Moore String Search
 
