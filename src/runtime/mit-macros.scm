@@ -542,10 +542,7 @@ USA.
 	 `(,r-let ,(map list temporaries expressions)
 	    (,r-define (,swap!)
 	      ,@(map (lambda (name temporary)
-		       (let ((temporary* (make-synthetic-identifier 'TEMP)))
-			 `(,r-let ((,temporary* ,temporary))
-			    (,r-set! ,temporary ,name)
-			    (,r-set! ,name ,temporary*))))
+		       `(,r-set! ,name (,r-set! ,temporary (,r-set! ,name))))
 		     names
 		     temporaries)
 	      ,r-unspecific)
