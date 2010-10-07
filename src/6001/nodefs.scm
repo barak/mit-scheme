@@ -60,7 +60,7 @@ USA.
 		      (make-sequence
 		       (list expression
 			     (make-combination
-			      write-definition-value
+			      (make-quotation write-definition-value)
 			      (cons name
 				    (if (unassigned-reference-trap? value)
 					'()
