@@ -596,6 +596,15 @@ USA.
 (define (remove-property! object key)
   (set-object-properties! object (del-assq! key (object-properties object))))
 
+(define (intern-property! object key generator)
+  (let* ((default (cons 0 0))
+	 (datum (get-property object key default)))
+    (if (eq? datum default)
+	(let ((datum (generator object)))
+	  (store-property! object key datum)
+	  datum)
+	datum)))
+
 ;;;; Modification events
 
 (define-class <modification-event-mixin> ()

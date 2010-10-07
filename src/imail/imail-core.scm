@@ -629,11 +629,51 @@ USA.
    (lambda (port)
      (write-header-fields (message-header-fields message) port)
      (write-message-body message port))))
-
+
 (define (message-time message)
-  (let ((date (get-first-header-field-value message "date" #f)))
-    (and date
-	 (parse-header-field-date date))))
+  (intern-property! message '|#[(edwin imail)message-time]|
+    (lambda (message)
+      (let ((date (get-first-header-field-value message "date" #f)))
+	(and date
+	     (parse-header-field-date date))))))
+
+(define (message-subject message)
+  (intern-property! message '|#[(edwin imail)message-subject|
+    (lambda (message)
+      (cond ((get-first-header-field-value message "subject" #f)
+	     => strip-subject-re)
+	    (else "")))))
+
+(define (strip-subject-re subject)
+  (let ((end (string-length subject)))
+    (let loop ((start 0))
+      (if (and (fix:<= 3 (fix:- end start))
+	       (substring-prefix-ci? "Re:" 0 3 subject (fix:+ start 3) end))
+	  (loop
+	   (substring-find-next-char-in-set subject (fix:+ start 3) end
+					    char-set:subject-content))
+	  (string-tail subject start)))))
+
+(define char-set:subject-content (char-set-invert (char-set #\space #\tab)))
+
+(define (message-author message)
+  (intern-property! message '|#[(edwin imail)message-author|
+    (lambda (message)
+      (or (get-first-header-field-address message "from" #f)
+	  (get-first-header-field-address message "sender" #f)
+	  ""))))
+
+(define (message-recipient message)
+  (intern-property! message '|#[(edwin imail)message-recipient]|
+    (lambda ()
+      (or (get-first-header-field-address message "to" #f)
+	  (get-first-header-field-address message "apparently-to" #f)
+	  ""))))
+
+(define (get-first-header-field-address message name error?)
+  (let ((v (get-first-header-field-value message name error?)))
+    (and v
+	 (rfc822:first-address v))))
 
 ;;;; Message Navigation
 

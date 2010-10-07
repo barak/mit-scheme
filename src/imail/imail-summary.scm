@@ -591,16 +591,10 @@ SUBJECT is a string of regexps separated by commas."
 	  (else s))))
 
 (define (message-summary-subject-string message)
-  (let ((s
-	 (let ((s (or (get-first-header-field-value message "subject" #f) "")))
-	   (let ((regs (re-string-match "\\(re:[ \t]*\\)+" s #t)))
-	     (if regs
-		 (string-tail s (re-match-end-index 0 regs))
-		 s)))))
-    (let ((i (string-find-next-char s #\newline)))
-      (if i
-	  (string-head s i)
-	  s))))
+  (let ((subject (message-subject message)))
+    (cond ((string-find-next-char subject #\newline)
+	   => (lambda (line-end) (string-head subject line-end)))
+	  (else subject))))
 
 ;;;; Navigation
 

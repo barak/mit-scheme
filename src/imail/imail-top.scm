@@ -1373,32 +1373,6 @@ ADDRESSES is a string consisting of several addresses separated by commas."
       (set-buffer-point! buffer point)
       (mark-temporary! point)
       value)))
-
-(define (message-subject message)
-  (let ((subject (get-first-header-field-value message "subject" #f)))
-    (if subject
-	(strip-subject-re subject)
-	"")))
-
-(define (strip-subject-re subject)
-  (if (string-prefix-ci? "re:" subject)
-      (strip-subject-re (string-trim-left (string-tail subject 3)))
-      subject))
-
-(define (message-author message)
-  (or (get-first-header-field-address message "from" #f)
-      (get-first-header-field-address message "sender" #f)
-      ""))
-
-(define (message-recipient message)
-  (or (get-first-header-field-address message "to" #f)
-      (get-first-header-field-address message "apparently-to" #f)
-      ""))
-
-(define (get-first-header-field-address message name error?)
-  (let ((v (get-first-header-field-value message name error?)))
-    (and v
-	 (rfc822:first-address v))))
 
 ;;;; Folder Operations
 
