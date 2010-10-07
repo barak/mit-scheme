@@ -35,12 +35,19 @@ extern void dload_initialize_x11term (void);
 const char *
 dload_initialize_file (void)
 {
-
   dload_initialize_x11base ();
   dload_initialize_x11color ();
   dload_initialize_x11graph ();
   dload_initialize_x11term ();
   return ("#prx11");
+}
+
+extern void dload_finalize_x11base (void);
+
+void
+dload_finalize_file (void)
+{
+  dload_finalize_x11base ();
 }
 
 #endif /* defined (COMPILE_AS_MODULE) */

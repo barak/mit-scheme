@@ -146,8 +146,20 @@ dld_load (const char * path)
 }
 
 static void
+dld_finalize (void * handle)
+{
+  void * address = (dlsym (handle, "dld_finalize_file"));
+  if (address != 0)
+    {
+      void (*finalize) (void) = address;
+      (*finalize) ();
+    }
+}
+
+static void
 dld_unload (void * handle)
 {
+  dld_finalize (handle);
   if ((dlclose (handle)) != 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
@@ -177,7 +189,11 @@ dld_unload_all (void)
       void ** scan = loaded_handles;
       void ** end = (scan + n_loaded_handles);
       while (scan < end)
-	dlclose (*scan++);
+	{
+	  void * handle = (*scan++);
+	  dld_finalize (handle);
+	  dlclose (handle);
+	}
 
       OS_free (loaded_handles);
       loaded_handles_size = 0;

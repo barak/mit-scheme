@@ -1571,7 +1571,9 @@ initialize_once (void)
   (x_error_info.code) = 0;
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
+#ifndef COMPILE_AS_MODULE
   add_reload_cleanup (x_close_all_displays);
+#endif
   initialization_done = 1;
 }
 
@@ -2813,6 +2815,13 @@ dload_initialize_x11base (void)
   declare_primitive ("X-WINDOW-WITHDRAW", Prim_x_window_withdraw, 1, 1, 0);
   declare_primitive ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0);
   declare_primitive ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0);
+}
+
+void
+dload_finalize_x11base (void)
+{
+  if (initialization_done)
+    x_close_all_displays ();
 }
 
 #endif /* defined (COMPILE_AS_MODULE) */
