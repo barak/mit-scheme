@@ -529,7 +529,7 @@ USA.
      compare
      (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
      (let ((names (map car (cadr form)))
-	   (expressions (map cadr (cadr form)))
+	   (right-hand-sides (map cdr (cadr form)))
 	   (r-define (rename 'DEFINE))
 	   (r-lambda (rename 'LAMBDA))
 	   (r-let (rename 'LET))
@@ -539,7 +539,7 @@ USA.
        (let ((temporaries (map make-synthetic-identifier names))
 	     (swap! (make-synthetic-identifier 'SWAP!))
 	     (body `(,r-lambda () ,@(cddr form))))
-	 `(,r-let ,(map list temporaries expressions)
+	 `(,r-let ,(map cons temporaries right-hand-sides)
 	    (,r-define (,swap!)
 	      ,@(map (lambda (name temporary)
 		       `(,r-set! ,name (,r-set! ,temporary (,r-set! ,name))))
