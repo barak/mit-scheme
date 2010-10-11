@@ -512,8 +512,8 @@ OS_process_any_status_change (void)
   return (process_tick != sync_tick);
 }
 
-void
-OS_process_send_signal (Tprocess process, int sig)
+static void
+process_send_signal (Tprocess process, int sig)
 {
   STD_VOID_SYSTEM_CALL
     (syscall_kill,
@@ -523,6 +523,41 @@ OS_process_send_signal (Tprocess process, int sig)
 	       sig)));
 }
 
+void
+OS_process_send_signal (Tprocess process, int sig)
+{
+  /* This is hairy because it is not OK to send a signal if the process
+     has already terminated and we have already called wait(2) -- its
+     pid will be recycled, and we might send a signal to some innocent
+     bystander.  So we must guarantee that we won't call wait(2), by
+     blocking SIGCHLD, and check whether the process is in such a state
+     that we can safely signal it.  */
+  transaction_begin ();
+  block_sigchld ();
+  switch (PROCESS_RAW_STATUS (process))
+    {
+    case process_status_running:
+    case process_status_stopped:
+      process_send_signal (process, sig);
+      break;
+
+    case process_status_exited:
+    case process_status_signalled:
+      /* FIXME: This should signal an error with an argument -- namely,
+	 with the process index, so that the runtime can do a reverse
+	 lookup in the subprocess GC finalizer and put the appropriate
+	 subprocess object in the Scheme error it signals.  */
+      error_process_terminated ();
+
+      /* The remaining cases shouldn't happen unless there is a bug in
+	 the runtime; and if so, this is basically like a system call
+	 error.  */
+    default:
+      error_in_system_call (syserr_no_such_process, syscall_kill);
+    }
+  transaction_commit ();
+}
+
 void
 OS_process_kill (Tprocess process)
 {
@@ -561,7 +596,7 @@ OS_process_continue_background (Tprocess process)
   if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
       NEW_RAW_STATUS (process, process_status_running, 0);
-      OS_process_send_signal (process, SIGCONT);
+      process_send_signal (process, SIGCONT);
     }
   transaction_commit ();
 }
@@ -576,7 +611,7 @@ OS_process_continue_foreground (Tprocess process)
   if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
       NEW_RAW_STATUS (process, process_status_running, 0);
-      OS_process_send_signal (process, SIGCONT);
+      process_send_signal (process, SIGCONT);
     }
   process_wait (process);
   transaction_commit ();

@@ -2639,6 +2639,7 @@ USA.
 	  condition-type:out-of-file-handles
 	  condition-type:primitive-io-error
 	  condition-type:primitive-procedure-error
+	  condition-type:process-terminated-error
 	  condition-type:system-call-error
 	  condition-type:unimplemented-primitive
 	  condition-type:unimplemented-primitive-for-os

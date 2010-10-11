@@ -41,6 +41,7 @@ extern void error_out_of_channels (void) NORETURN;
 extern void error_unimplemented_primitive (void) NORETURN;
 extern void error_out_of_processes (void) NORETURN;
 extern void error_floating_point_exception (void) NORETURN;
+extern void error_process_terminated (void) NORETURN;
 
 #ifdef __OS2__
    extern void request_attention_interrupt (void);

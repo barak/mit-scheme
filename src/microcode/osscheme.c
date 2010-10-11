@@ -51,6 +51,12 @@ error_floating_point_exception (void)
   signal_error_from_primitive (ERR_FLOATING_OVERFLOW);
 }
 
+void
+error_process_terminated (void)
+{
+  signal_error_from_primitive (ERR_PROCESS_TERMINATED);
+}
+
 int
 executing_scheme_primitive_p (void)
 {

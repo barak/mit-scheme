@@ -95,10 +95,11 @@ USA.
 #define ERR_ILLEGAL_CONTINUATION		0x3C
 #define ERR_STACK_HAS_SLIPPED			0x3D
 #define ERR_CANNOT_RECURSE			0x3E
+#define ERR_PROCESS_TERMINATED			0x3F
 
 /* If you add any error codes here, add them to the table below.  */
 
-#define MAX_ERROR				0x3E
+#define MAX_ERROR				0x3F
 
 #define ERROR_NAME_TABLE						\
 {									\
@@ -164,7 +165,8 @@ USA.
 /* 0x3b */		"unknown-primitive-continuation",		\
 /* 0x3c */		"illegal-continuation",				\
 /* 0x3d */		"stack-has-slipped",				\
-/* 0x3e */		"cannot-recurse"				\
+/* 0x3e */		"cannot-recurse",				\
+/* 0x3f */		"process-terminated",				\
 }
 
 /* Termination codes: the interpreter halts on these */

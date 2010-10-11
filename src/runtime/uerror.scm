@@ -41,6 +41,7 @@ USA.
 (define condition-type:out-of-file-handles)
 (define condition-type:primitive-io-error)
 (define condition-type:primitive-procedure-error)
+(define condition-type:process-terminated-error)
 (define condition-type:system-call-error)
 (define condition-type:unimplemented-primitive)
 (define condition-type:unimplemented-primitive-for-os)
@@ -724,6 +725,21 @@ USA.
 		  (signal-file-operation continuation operator operands 0
 					 "open" "file" "channel table full")
 		  (signal continuation operator operands))))))))
+
+;++ This should identify the process, but that requires reverse lookup
+;++ in the subprocess GC finalizer, and I'm lazy.
+
+(set! condition-type:process-terminated-error
+  (make-condition-type 'PROCESS-TERMINATED
+      condition-type:primitive-procedure-error
+      '()
+    (lambda (condition port)
+      (write-string "The primitive " port)
+      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-string " was given a process that has terminated."))))
+
+(define-primitive-error 'PROCESS-TERMINATED
+  condition-type:process-terminated-error)
 
 (set! condition-type:system-call-error
   (make-condition-type 'SYSTEM-CALL-ERROR
