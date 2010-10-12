@@ -638,7 +638,7 @@ USA.
 	     (parse-header-field-date date))))))
 
 (define (message-subject message)
-  (intern-property! message '|#[(edwin imail)message-subject|
+  (intern-property! message '|#[(edwin imail)message-subject]|
     (lambda (message)
       (cond ((get-first-header-field-value message "subject" #f)
 	     => strip-subject-re)
@@ -657,7 +657,7 @@ USA.
 (define char-set:subject-content (char-set-invert (char-set #\space #\tab)))
 
 (define (message-author message)
-  (intern-property! message '|#[(edwin imail)message-author|
+  (intern-property! message '|#[(edwin imail)message-author]|
     (lambda (message)
       (or (get-first-header-field-address message "from" #f)
 	  (get-first-header-field-address message "sender" #f)
