@@ -74,12 +74,23 @@ USA.
     (if (undefined-value? value)
 	(debugger-message port "No value")
 	(debugger-message port "Value: " value))))
-
+
 (define (output-to-string length thunk)
-  (let ((x (with-output-to-truncated-string length thunk)))
-    (if (and (car x) (> length 4))
-	(substring-move! " ..." 0 4 (cdr x) (- length 4)))
-    (cdr x)))
+  (let ((thunk
+	 (lambda ()
+	   (call-with-current-continuation
+	    (lambda (exit)
+	      (bind-condition-handler (list condition-type:error)
+		  (lambda (condition)
+		    (write-string "<Error while printing: ")
+		    (write-condition-report condition (current-output-port))
+		    (write-string ">")
+		    (exit unspecific))
+		thunk))))))
+    (let ((x (with-output-to-truncated-string length thunk)))
+      (if (and (car x) (> length 4))
+	  (substring-move! " ..." 0 4 (cdr x) (- length 4)))
+      (cdr x))))
 
 (define (show-frames environment depth port)
   (debugger-presentation port
