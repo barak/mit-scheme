@@ -63,6 +63,7 @@ USA.
 
 (define record-type-type-tag)
 (define unparse-record)
+(define record-entity-unparser)
 (define record-description)
 
 (define (initialize-record-type-type!)
@@ -104,6 +105,15 @@ USA.
 		     (write-char #\space port)
 		     (write (dispatch-tag-contents tag) port))))
 		(else record-method))))))
+  (set! record-entity-unparser
+	(make-generic-procedure 1 'RECORD-ENTITY-UNPARSER))
+  (set-generic-procedure-default-generator! record-entity-unparser
+    (let ((default-method
+	   (let ((method (standard-unparser-method 'ENTITY #f)))
+	     (lambda (extra) extra method))))
+      (lambda (generic tags)
+	generic tags			;ignore
+	default-method)))
   (set! %set-record-type-default-inits!
 	%set-record-type-default-inits!/after-boot)
   (set! set-record-type-unparser-method!
@@ -131,7 +141,8 @@ USA.
 			(cons (list i (%record-ref record i)) d)))))))))
 
 (define (make-record-type type-name field-names
-			  #!optional default-inits unparser-method)
+			  #!optional
+			  default-inits unparser-method entity-unparser-method)
   (let ((caller 'MAKE-RECORD-TYPE))
     (guarantee-list-of-unique-symbols field-names caller)
     (let* ((names ((ucode-primitive list->vector) field-names))
@@ -149,6 +160,9 @@ USA.
 	  (%set-record-type-default-inits! record-type default-inits caller))
       (if (not (default-object? unparser-method))
 	  (set-record-type-unparser-method! record-type unparser-method))
+      (if (not (default-object? entity-unparser-method))
+	  (set-record-type-entity-unparser-method! record-type
+						   entity-unparser-method))
       record-type)))
 
 (define (record-type? object)
@@ -235,6 +249,16 @@ USA.
   ((vector-ref (%record-type-default-inits record-type)
 	       (fix:- field-name-index 1))))
 
+(define (record-type-extension record-type)
+  (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
+  (%record-type-extension record-type))
+
+(define (set-record-type-extension! record-type extension)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
+  (%set-record-type-extension! record-type extension))
+
+;;;; Unparser Methods
+
 (define set-record-type-unparser-method!
   (named-lambda (set-record-type-unparser-method!/booting record-type method)
     (let loop ((ms deferred-unparser-methods))
@@ -264,13 +288,31 @@ USA.
 	      generic
 	      (and (eq? (cadr tags) tag) method)))))))
 
-(define (record-type-extension record-type)
-  (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
-  (%record-type-extension record-type))
+;;; It's not kosher to use this during the cold load.
 
-(define (set-record-type-extension! record-type extension)
-  (guarantee-record-type record-type 'SET-RECORD-TYPE-EXTENSION!)
-  (%set-record-type-extension! record-type extension))
+(define (set-record-type-entity-unparser-method! record-type method)
+  (guarantee-record-type record-type 'SET-RECORD-TYPE-UNPARSER-METHOD!)
+  (if method
+      (guarantee-unparser-method method 'SET-RECORD-TYPE-UNPARSER-METHOD!))
+  (let ((tag (%record-type-dispatch-tag record-type)))
+    (remove-generic-procedure-generators record-entity-unparser (list tag))
+    (if method
+	;; Kludge to make generic dispatch work.
+	(let ((method (lambda (extra) extra method)))
+	  (add-generic-procedure-generator record-entity-unparser
+	    (lambda (generic tags)
+	      generic
+	      (and (eq? (car tags) tag) method)))))))
+
+;;; To mimic UNPARSE-RECORD.  Dunno whether anyone cares.
+
+(define (unparse-record-entity state entity)
+  (guarantee-unparser-state state 'UNPARSE-RECORD-ENTITY)
+  (if (entity? entity)
+      (guarantee-record (entity-extra entity) 'UNPARSE-RECORD-ENTITY)
+      (error:wrong-type-argument entity "record entity"
+				 'UNPARSE-RECORD-ENTITY))
+  ((record-entity-unparser (entity-extra entity)) state entity))
 
 (define (record-constructor record-type #!optional field-names)
   (guarantee-record-type record-type 'RECORD-CONSTRUCTOR)
@@ -487,29 +529,17 @@ USA.
 
 ;;;; Runtime support for DEFINE-STRUCTURE
 
-(define rtd:structure-type)
-(define make-define-structure-type)
-(define structure-type?)
-(define structure-type/physical-type)
-(define structure-type/name)
-(define structure-type/field-names)
-(define structure-type/field-indexes)
-(define structure-type/default-inits)
-(define structure-type/unparser-method)
-(define set-structure-type/unparser-method!)
-(define structure-type/tag)
-(define structure-type/length)
-
 (define (initialize-structure-type-type!)
   (set! rtd:structure-type
 	(make-record-type "structure-type"
 			  '(PHYSICAL-TYPE NAME FIELD-NAMES FIELD-INDEXES
 					  DEFAULT-INITS UNPARSER-METHOD TAG
-					  LENGTH)))
+					  LENGTH ENTITY-UNPARSER-METHOD)))
   (set! make-define-structure-type
 	(let ((constructor (record-constructor rtd:structure-type)))
 	  (lambda (physical-type name field-names field-indexes default-inits
-				 unparser-method tag length)
+				 unparser-method tag length
+				 #!optional entity-unparser-method)
 	    (constructor physical-type
 			 name
 			 field-names
@@ -517,7 +547,10 @@ USA.
 			 default-inits
 			 unparser-method
 			 tag
-			 length))))
+			 length
+			 (if (default-object? entity-unparser-method)
+			     #f
+			     entity-unparser-method)))))
   (set! structure-type?
 	(record-predicate rtd:structure-type))
   (set! structure-type/physical-type
@@ -538,7 +571,26 @@ USA.
 	(record-accessor rtd:structure-type 'TAG))
   (set! structure-type/length
 	(record-accessor rtd:structure-type 'LENGTH))
+  (set! structure-type/entity-unparser-method
+	(record-accessor rtd:structure-type 'ENTITY-UNPARSER-METHOD))
+  (set! set-structure-type/entity-unparser-method!
+	(record-modifier rtd:structure-type 'ENTITY-UNPARSER-METHOD))
   unspecific)
+
+(define rtd:structure-type)
+(define make-define-structure-type)
+(define structure-type?)
+(define structure-type/physical-type)
+(define structure-type/name)
+(define structure-type/field-names)
+(define structure-type/field-indexes)
+(define structure-type/default-inits)
+(define structure-type/unparser-method)
+(define set-structure-type/unparser-method!)
+(define structure-type/tag)
+(define structure-type/length)
+(define structure-type/entity-unparser-method)
+(define set-structure-type/entity-unparser-method!)
 
 (define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)
@@ -566,6 +618,11 @@ USA.
   (let ((type (tag->structure-type tag physical-type)))
     (and type
 	 (structure-type/unparser-method type))))
+
+(define (structure-tag/entity-unparser-method tag physical-type)
+  (let ((type (tag->structure-type tag physical-type)))
+    (and type
+	 (structure-type/entity-unparser-method type))))
 
 (define (named-structure? object)
   (cond ((record? object) #t)

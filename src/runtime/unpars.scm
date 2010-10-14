@@ -352,7 +352,7 @@ USA.
      (*unparse-string "#[keyword ")
      (unparse-symbol-name s)
      (*unparse-char #\]))))
-
+
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
 	   s
@@ -476,6 +476,11 @@ USA.
 	     ;; Check the global tagging table too.
 	     (unparser/tagged-vector-method tag)))))
 
+(define (unparse-vector/entity-unparser vector)
+  (and (fix:> (vector-length vector) 0)
+       (structure-tag/entity-unparser-method (safe-vector-ref vector 0)
+					     'VECTOR)))
+
 (define (unparse-vector/normal vector)
   (limit-unparse-depth
    (lambda ()
@@ -557,6 +562,9 @@ USA.
     (or (structure-tag/unparser-method tag 'LIST)
 	;; Check the global tagging table too.
 	(unparser/tagged-pair-method tag))))
+
+(define (unparse-list/entity-unparser pair)
+  (structure-tag/entity-unparser-method (safe-car pair) 'LIST))
 
 (define (unparse-list/prefix-pair prefix pair)
   (*unparse-string prefix)
@@ -707,7 +715,7 @@ USA.
 		 (unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
 	       (if (< limit length)
 		   (*unparse-string " ..."))))))))
-
+
 (define (unparse/entity entity)
 
   (define (plain name)
@@ -729,5 +737,18 @@ USA.
 		       (compiled-procedure/name proc))
 		  => named-arity-dispatched-procedure)
 		 (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
-	(else
-	 (plain 'ENTITY))))
+	(*unparse-with-maximum-readability?*
+	 (*unparse-readable-hash entity))
+	((record? (entity-extra entity))
+	 ;; Kludge to make the generic dispatch mechanism work.
+	 (invoke-user-method
+	  (lambda (state entity)
+	    ((record-entity-unparser (entity-extra entity)) state entity))
+	  entity))
+	((or (and (vector? (entity-extra entity))
+		  (unparse-vector/entity-unparser (entity-extra entity)))
+	     (and (pair? (entity-extra entity))
+		  (unparse-list/entity-unparser (entity-extra entity))))
+	 => (lambda (method)
+	      (invoke-user-method method entity)))
+	(else (plain 'ENTITY))))

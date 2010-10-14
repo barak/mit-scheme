@@ -3222,6 +3222,7 @@ USA.
 	  record-constructor
 	  record-copy
 	  record-description
+	  record-entity-unparser
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
@@ -3237,12 +3238,15 @@ USA.
 	  record-updater
 	  record?
 	  set-record-type-default-inits!
+	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
 	  set-record-type-unparser-method!
-	  unparse-record)
+	  unparse-record
+	  unparse-record-entity)
   (export (runtime record-slot-access)
 	  record-type-field-index)
   (export (runtime unparser)
+	  structure-tag/entity-unparser-method
 	  structure-tag/unparser-method)
   (initialization (initialize-package!)))
 

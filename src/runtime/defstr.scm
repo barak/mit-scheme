@@ -56,6 +56,9 @@ differences:
   a procedure of two arguments (the unparser state and the structure
   instance) rather than three as in Common Lisp.
 
+* There is an additional option PRINT-ENTITY-PROCEDURE, used to print
+  an entity whose extra object is a structure instance.
+
 * By default, named structures are tagged with a unique object of some
   kind.  In Common Lisp, the structures are tagged with symbols, but
   that depends on the Common Lisp package system to help generate
@@ -114,6 +117,8 @@ differences:
 	  (copier-option (find-option 'COPIER options))
 	  (predicate-option (find-option 'PREDICATE options))
 	  (print-procedure-option (find-option 'PRINT-PROCEDURE options))
+	  (print-entity-procedure-option
+	   (find-option 'PRINT-ENTITY-PROCEDURE options))
 	  (type-option (find-option 'TYPE options))
 	  (type-descriptor-option (find-option 'TYPE-DESCRIPTOR options))
 	  (named-option (find-option 'NAMED options))
@@ -132,7 +137,8 @@ differences:
 	    (check-for-illegal-untyped named-option initial-offset-option))
 	(if (not tagged?)
 	    (check-for-illegal-untagged predicate-option
-					print-procedure-option))
+					print-procedure-option
+					print-entity-procedure-option))
 	(do ((slots slots (cdr slots))
 	     (index (if tagged? (+ offset 1) offset) (+ index 1)))
 	    ((not (pair? slots)))
@@ -159,6 +165,9 @@ differences:
 				(option/argument print-procedure-option)
 				(and type-option
 				     (default-unparser-text context)))
+			    (if print-entity-procedure-option
+				(option/argument print-entity-procedure-option)
+				#f)
 			    (if type-option
 				(option/argument type-option)
 				'RECORD)
@@ -211,7 +220,9 @@ differences:
     (if initial-offset-option
 	(lose initial-offset-option))))
 
-(define (check-for-illegal-untagged predicate-option print-procedure-option)
+(define (check-for-illegal-untagged predicate-option
+				    print-procedure-option
+				    print-entity-procedure-option)
   (let ((test
 	 (lambda (option)
 	   (if (and option
@@ -221,7 +232,8 @@ differences:
 	       (error "Structure option illegal for unnamed structure:"
 		      (option/original option))))))
     (test predicate-option)
-    (test print-procedure-option)))
+    (test print-procedure-option)
+    (test print-entity-procedure-option)))
 
 (define (compute-constructors constructor-options
 			      keyword-constructor-options
@@ -425,6 +437,13 @@ differences:
       (lambda (arg)
 	`(PRINT-PROCEDURE ,(if (false-expression? arg context) #f arg))))))
 
+(define-option 'PRINT-ENTITY-PROCEDURE #f
+  (lambda (option context)
+    (one-required-argument option
+      (lambda (arg)
+	`(PRINT-ENTITY-PROCEDURE
+	  ,(if (false-expression? arg context) #f arg))))))
+
 (define-option 'TYPE #f
   (lambda (option context)
     context
@@ -538,9 +557,9 @@ differences:
 
 (define-record-type <structure>
     (make-structure context conc-name constructors keyword-constructors copier
-		    predicate print-procedure physical-type named?
-		    type-descriptor tag-expression safe-accessors? offset
-		    slots)
+		    predicate print-procedure print-entity-procedure
+		    physical-type named? type-descriptor tag-expression
+		    safe-accessors? offset slots)
     structure?
   (context structure/context)
   (conc-name structure/conc-name)
@@ -549,6 +568,7 @@ differences:
   (copier structure/copier)
   (predicate structure/predicate)
   (print-procedure structure/print-procedure)
+  (print-entity-procedure structure/print-entity-procedure)
   (physical-type structure/physical-type)
   (named? structure/tagged?)
   (type-descriptor structure/type-descriptor)
@@ -792,7 +812,8 @@ differences:
 	(tag-expression (structure/tag-expression structure))
 	(slots (structure/slots structure))
 	(context (structure/context structure))
-	(print-procedure (structure/print-procedure structure)))
+	(print-procedure (structure/print-procedure structure))
+	(print-entity-procedure (structure/print-entity-procedure structure)))
     (let ((name (symbol->string (parser-context/name context)))
 	  (field-names (map slot/name slots))
 	  (inits
@@ -805,7 +826,8 @@ differences:
 		 ',name
 		 ',field-names
 		 (LIST ,@inits)
-		 ,(close print-procedure context))
+		 ,(close print-procedure context)
+		 ,(close print-entity-procedure context))
 	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		 ',(structure/physical-type structure)
 		 ',name
@@ -821,7 +843,10 @@ differences:
 		      '#F)
 		 ',(+ (if (structure/tagged? structure) 1 0)
 		      (structure/offset structure)
-		      (length slots)))))
+		      (length slots))
+		 ,(if (structure/tagged? structure)
+		      (close print-entity-procedure context)
+		      '#F))))
 	,@(if (and tag-expression
 		   (not (eq? tag-expression type-name)))
 	      `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
