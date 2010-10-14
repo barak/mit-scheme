@@ -844,9 +844,10 @@ differences:
 		 ',(+ (if (structure/tagged? structure) 1 0)
 		      (structure/offset structure)
 		      (length slots))
-		 ,(if (structure/tagged? structure)
-		      (close print-entity-procedure context)
-		      '#F))))
+		 ,@(if (and (structure/tagged? structure)
+			    print-entity-procedure)
+		       (list (close print-entity-procedure context))
+		       '()))))
 	,@(if (and tag-expression
 		   (not (eq? tag-expression type-name)))
 	      `((,(absolute 'NAMED-STRUCTURE/SET-TAG-DESCRIPTION! context)
