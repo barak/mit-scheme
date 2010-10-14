@@ -288,7 +288,7 @@ xterm_dump_rectangle (struct xwindow * xw,
   unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
   if ((signed_x < 0) || (((unsigned int) signed_x) < border))
     {
-      width -= (border - x);
+      width -= (border - ((unsigned int) signed_x));
       x = 0;
     }
   else
@@ -297,7 +297,7 @@ xterm_dump_rectangle (struct xwindow * xw,
     width = ((XW_X_SIZE (xw)) - x);
   if ((signed_y < 0) || (((unsigned int) signed_y) < border))
     {
-      height -= (border - y);
+      height -= (border - ((unsigned int) signed_y));
       y = 0;
     }
   else
