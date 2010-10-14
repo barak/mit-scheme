@@ -827,7 +827,9 @@ differences:
 		 ',field-names
 		 (LIST ,@inits)
 		 ,(close print-procedure context)
-		 ,(close print-entity-procedure context))
+		 ,@(if print-entity-procedure
+		       (list (close print-entity-procedure context))
+		       '()))
 	       `(,(absolute 'MAKE-DEFINE-STRUCTURE-TYPE context)
 		 ',(structure/physical-type structure)
 		 ',name
