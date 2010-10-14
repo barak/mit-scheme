@@ -1113,7 +1113,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_ulong_integer (2));
+    int signed_xp = (arg_integer (2));
+    unsigned int xp = ((signed_xp < 0) ? 0 : ((unsigned int) signed_xp));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (x_coordinate_map
@@ -1129,7 +1130,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_ulong_integer (2));
+    int signed_yp = (arg_integer (2));
+    unsigned int yp = ((signed_yp < 0) ? 0 : ((unsigned int) signed_yp));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (y_coordinate_map

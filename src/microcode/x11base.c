@@ -1295,7 +1295,7 @@ x_event_to_object (XEvent * event)
 		  {
 		    result
 		      = (make_event_object (xw, event_type_take_focus, 1));
-		    EVENT_INTEGER
+		    EVENT_ULONG_INTEGER
 		      (result, EVENT_0, (((event->xclient) . data . l) [1]));
 		  }
 	      }

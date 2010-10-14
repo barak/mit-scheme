@@ -273,34 +273,35 @@ xterm_dump_contents (struct xwindow * xw,
 	}
     }
 }
-
+
 static void
 xterm_dump_rectangle (struct xwindow * xw,
-		      unsigned int x,
-		      unsigned int y,
+		      int signed_x,
+		      int signed_y,
 		      unsigned int width,
 		      unsigned int height)
 {
   XFontStruct * font = (XW_FONT (xw));
+  int x, y;
   unsigned int fwidth = (FONT_WIDTH (font));
   unsigned int fheight = (FONT_HEIGHT (font));
   unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
-  if (x < border)
+  if ((signed_x < 0) || (((unsigned int) signed_x) < border))
     {
       width -= (border - x);
       x = 0;
     }
   else
-    x -= border;
+    x = (((unsigned int) signed_x) - border);
   if ((x + width) > (XW_X_SIZE (xw)))
     width = ((XW_X_SIZE (xw)) - x);
-  if (y < border)
+  if ((signed_y < 0) || (((unsigned int) signed_y) < border))
     {
       height -= (border - y);
       y = 0;
     }
   else
-    y -= border;
+    y = (((unsigned int) signed_y) - border);
   if ((y + height) > (XW_Y_SIZE (xw)))
     height = ((XW_Y_SIZE (xw)) - y);
   {
@@ -407,8 +408,8 @@ DEFINE_PRIMITIVE ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   xterm_dump_rectangle ((x_window_arg (1)),
-			(arg_ulong_integer (2)),
-			(arg_ulong_integer (3)),
+			(arg_integer (2)),
+			(arg_integer (3)),
 			(arg_ulong_integer (4)),
 			(arg_ulong_integer (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -419,7 +420,8 @@ DEFINE_PRIMITIVE ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_ulong_integer (2));
+    int signed_xp = (arg_integer (2));
+    unsigned int xp = ((signed_xp < 0) ? 0 : ((unsigned int) signed_xp));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
@@ -435,7 +437,8 @@ DEFINE_PRIMITIVE ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_ulong_integer (2));
+    int signed_yp = (arg_integer (2));
+    unsigned int yp = ((signed_yp < 0) ? 0 : ((unsigned int) signed_yp));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
