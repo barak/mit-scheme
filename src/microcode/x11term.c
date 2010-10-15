@@ -282,26 +282,27 @@ xterm_dump_rectangle (struct xwindow * xw,
 		      unsigned int height)
 {
   XFontStruct * font = (XW_FONT (xw));
-  int x, y;
+  unsigned int x = ((signed_x < 0) ? 0 : ((unsigned int) signed_x));
+  unsigned int y = ((signed_y < 0) ? 0 : ((unsigned int) signed_y));
   unsigned int fwidth = (FONT_WIDTH (font));
   unsigned int fheight = (FONT_HEIGHT (font));
   unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
-  if ((signed_x < 0) || (((unsigned int) signed_x) < border))
+  if (x < border)
     {
-      width -= (border - ((unsigned int) signed_x));
+      width -= (border - x);
       x = 0;
     }
   else
-    x = (((unsigned int) signed_x) - border);
+    x -= border;
   if ((x + width) > (XW_X_SIZE (xw)))
     width = ((XW_X_SIZE (xw)) - x);
-  if ((signed_y < 0) || (((unsigned int) signed_y) < border))
+  if (y < border)
     {
-      height -= (border - ((unsigned int) signed_y));
+      height -= (border - y);
       y = 0;
     }
   else
-    y = (((unsigned int) signed_y) - border);
+    y -= border;
   if ((y + height) > (XW_Y_SIZE (xw)))
     height = ((XW_Y_SIZE (xw)) - y);
   {
