@@ -1461,64 +1461,28 @@ ping_server (struct xdisplay * xd)
    cooperate with this strategy.  */
 
 static SCHEME_OBJECT
-xd_process_events (struct xdisplay * xd, int non_block_p, int use_select_p)
+xd_process_events (struct xdisplay * xd)
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
-  SCHEME_OBJECT result;
+  XEvent event;
+  SCHEME_OBJECT result = SHARP_F;
   if (x_debug > 1)
     {
-      fprintf (stderr, "Enter xd_process_events (%s)\n",
-	       (non_block_p ? "non-blocking" : "blocking"));
+      fprintf (stderr, "Enter xd_process_events\n");
       fflush (stderr);
     }
-  if (!OS_have_select_p)
-    use_select_p = 0;
   if (XD_CACHED_EVENT_P (xd))
     {
       events_queued = (XEventsQueued (display, QueuedAlready));
+      event = (XD_CACHED_EVENT (xd));
       goto restart;
     }
-  if (use_select_p)
-    events_queued = (XEventsQueued (display, QueuedAlready));
-  else if (non_block_p)
+  ping_server (xd);
+  events_queued = (XEventsQueued (display, QueuedAfterReading));
+  while (0 < events_queued)
     {
-      ping_server (xd);
-      events_queued = (XEventsQueued (display, QueuedAfterReading));
-    }
-  else
-    events_queued = 0;
-  while (1)
-    {
-      XEvent event;
-      if (events_queued > 0)
-	events_queued -= 1;
-      else
-	{
-	  if (use_select_p)
-	    switch (UX_select_input ((ConnectionNumber (display)),
-				     (!non_block_p)))
-	      {
-	      case select_input_none:
-		result = SHARP_F; goto done;
-	      case select_input_other:
-		result = (LONG_TO_FIXNUM (-2)); goto done;
-	      case select_input_process_status:
-		result = (LONG_TO_FIXNUM (-3)); goto done;
-	      case select_input_interrupt:
-		result = (LONG_TO_FIXNUM (-4)); goto done;
-	      case select_input_argument:
-		ping_server (xd);
-		events_queued = (XEventsQueued (display, QueuedAfterReading));
-		continue;
-	      }
-	  else if (non_block_p)
-	    {
-	      result = SHARP_F;
-	      goto done;
-	    }
-	  ping_server (xd);
-	}
+      events_queued -= 1;
       XNextEvent (display, (&event));
       if ((event.type) == KeymapNotify)
 	continue;
@@ -1540,18 +1504,17 @@ xd_process_events (struct xdisplay * xd, int non_block_p, int use_select_p)
       result = (x_event_to_object (&event));
       (XD_CACHED_EVENT_P (xd)) = 0;
       if (result != SHARP_F)
-	goto done;
+	break;
     }
- done:
   if (x_debug > 1)
     {
       fprintf (stderr, "Return from xd_process_events: ");
       if (result == SHARP_F)
 	fprintf (stderr, "#f");
-      else if (FIXNUM_P (result))
-	fprintf (stderr, "%ld", (FIXNUM_TO_LONG (result)));
-      else
+      else if (VECTOR_P (result))
 	fprintf (stderr, "[vector]");
+      else
+	fprintf (stderr, "[other: 0x%lx]", ((unsigned long) result));
       fprintf (stderr, "\n");
       fflush (stderr);
     }
@@ -1718,14 +1681,16 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
   {
     struct xdisplay * xd = (x_display_arg (1));
     SCHEME_OBJECT how = (ARG_REF (2));
-    if (how == SHARP_F)
-      PRIMITIVE_RETURN (xd_process_events (xd, 0, 1));
-    else if (how == (LONG_TO_UNSIGNED_FIXNUM (0)))
-      PRIMITIVE_RETURN (xd_process_events (xd, 1, 1));
-    else if (how == (LONG_TO_UNSIGNED_FIXNUM (1)))
-      PRIMITIVE_RETURN (xd_process_events (xd, 0, 0));
-    else
-      PRIMITIVE_RETURN (xd_process_events (xd, 1, 0));
+    /* Previously, the `how' argument could be #F (block, select), 0
+       (don't block, select), 1 (block, don't select), 2 (don't block,
+       don't select).  Now we never select or block -- it is up to the
+       caller to do that.  #F and 0 have been unused for a long time,
+       and the only caller that used 1 in the system already selected
+       and blocked anyway.  */
+    if ((how != (LONG_TO_UNSIGNED_FIXNUM (1)))
+	&& (how != (LONG_TO_UNSIGNED_FIXNUM (2))))
+      error_bad_range_arg (2);
+    PRIMITIVE_RETURN (xd_process_events (xd));
   }
 }
 
