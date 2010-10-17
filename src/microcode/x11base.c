@@ -28,7 +28,6 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
-#include "uxselect.h"
 #include "osio.h"
 #include "x11.h"
 #include <X11/Xmd.h>
