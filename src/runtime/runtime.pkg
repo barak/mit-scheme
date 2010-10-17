@@ -314,6 +314,7 @@ USA.
 	  shift-right
 	  splice-bit-field
 	  test-bit-field
+	  test-bit-field?
 
 	  ;; Truth table order
 	  bitwise-and

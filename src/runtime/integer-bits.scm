@@ -88,6 +88,9 @@ USA.
   (bitwise-ior (shift-left (extract-bit-field size 0 field) position)
 	       (bitwise-andc2 integer (bit-mask size position))))
 
+(define-integrable (test-bit-field? size position integer)
+  (not (zero? (extract-bit-field size position integer))))
+
 (declare (integrate-operator test-bit-field))
 (define (test-bit-field size position integer mask)
   (declare (integrate position integer mask))
