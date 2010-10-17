@@ -32,6 +32,7 @@ USA.
 #endif
 
 #include "bignmint.h"
+#include "bits.h"
 
 #ifndef MIT_SCHEME
 
@@ -100,14 +101,6 @@ static bignum_type bignum_copy (bignum_type);
 static bignum_type bignum_new_sign (bignum_type, int);
 static bignum_type bignum_maybe_new_sign (bignum_type, int);
 static void bignum_destructive_copy (bignum_type, bignum_type);
-
-#define ULONG_LENGTH_IN_BITS(digit, len) do				\
-{									\
-  unsigned long w = digit;						\
-  len = 0;								\
-  while (w > 0xff) { len += 8; w >>= 8; }				\
-  while (w > 0)    { len += 1; w >>= 1; }				\
-} while (0)
 
 /* Exports */
 
@@ -622,13 +615,10 @@ bignum_to_double (bignum_type bignum)
 #  include "error: must have FLT_RADIX==2"
 #endif
     double value = 0;
-    bignum_digit_type mask = 0;
     bignum_digit_type guard_bit_mask = BIGNUM_RADIX>>1;
     bignum_digit_type rounding_correction = 0;
-    int current_digit_bit_count = 0;
-
-    ULONG_LENGTH_IN_BITS (msd, current_digit_bit_count);
-    mask = ((1UL << current_digit_bit_count) - 1UL);
+    int current_digit_bit_count = (ulong_length_in_bits (msd));
+    bignum_digit_type mask = (BIGNUM_DIGIT_ONES (current_digit_bit_count));
 
     while (1) {
       if (current_digit_bit_count > bits_to_get) {
@@ -781,33 +771,599 @@ bignum_fits_in_word_p (bignum_type bignum, long word_length,
     }
   }
 }
+
+/* All these bitwise operations are complicated because they interpret
+   integers as their two's-complement representations, whereas bignums
+   are stored in a ones-complement representation.  */
 
 bignum_type
+bignum_bitwise_not (bignum_type bignum)
+{
+  return (bignum_subtract ((BIGNUM_ONE (1)), bignum));
+}
+
+#define DEFINE_BITWISE_UNSIGNED(NAME, COMMUTE, OP, POSTOP)	\
+static bignum_type						\
+NAME (bignum_type x, bignum_type y)				\
+{								\
+  if ((BIGNUM_LENGTH (x)) < (BIGNUM_LENGTH (y)))		\
+    COMMUTE (y, x);						\
+  {								\
+    bignum_length_type x_length = (BIGNUM_LENGTH (x));		\
+    bignum_length_type y_length = (BIGNUM_LENGTH (y));		\
+    bignum_length_type r_length = x_length;			\
+    bignum_type r = (bignum_allocate (r_length, 0));		\
+    bignum_digit_type *x_scan = (BIGNUM_START_PTR (x));		\
+    bignum_digit_type *x_end = (x_scan + x_length);		\
+    bignum_digit_type *y_scan = (BIGNUM_START_PTR (y));		\
+    bignum_digit_type *y_end = (y_scan + y_length);		\
+    bignum_digit_type *r_scan = (BIGNUM_START_PTR (r));		\
+    BIGNUM_ASSERT (x_length >= y_length);			\
+    while (y_scan < y_end)					\
+      (*r_scan++) = (BITWISE_##OP ((*x_scan++), (*y_scan++)));	\
+    while (x_scan < x_end)					\
+      (*r_scan++) = (BITWISE_##OP ((*x_scan++), 0));		\
+    return (POSTOP (bignum_trim (r)));				\
+  }								\
+}
+
+#define BITWISE_AND(x, y) ((x) & (y))
+#define BITWISE_ANDC2(x, y) ((x) &~ (y))
+#define BITWISE_ANDC1(x, y) ((y) &~ (x))
+#define BITWISE_XOR(x, y) ((x) ^ (y))
+#define BITWISE_IOR(x, y) ((x) | (y))
+
+/* These don't work, because they set the high bits.  */
+/* #define BITWISE_ORC2(x, y) (BIGNUM_DIGIT_MASK & ((x) |~ (y))) */
+/* #define BITWISE_ORC1(x, y) (BIGNUM_DIGIT_MASK & ((y) |~ (x))) */
+
+/* Kludgey syntactic hack!  */
+#define COMMUTE(name) return bignum_bitwise_##name##_unsigned
+#define SWAP(x, y) do { bignum_type t = x; x = y; y = t; } while (0)
+
+static bignum_type bignum_bitwise_andc1_unsigned (bignum_type, bignum_type);
+static bignum_type bignum_bitwise_orc1_unsigned (bignum_type, bignum_type);
+
+/* These definitions are ordered by their truth tables.  */
+
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_clear_unsigned, SWAP, CLEAR,) */
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_and_unsigned, SWAP, AND,)
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_andc2_unsigned, COMMUTE(andc1), ANDC2,)
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_arg1_unsigned, COMMUTE(ARG2), ARG1,) */
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_andc1_unsigned, COMMUTE(andc2), ANDC1,)
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_arg2_unsigned, ARG2,) */
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_xor_unsigned, SWAP, XOR,)
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_ior_unsigned, SWAP, IOR,)
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_nor_unsigned, SWAP, IOR, bignum_bitwise_not)
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_eqv_unsigned, SWAP, XOR, bignum_bitwise_not)
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_not2_unsigned, COMMUTE(not1), ARG1, bignum_bitwise_not) */
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_orc2_unsigned, COMMUTE(orc1), ORC2,) */
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_not1_unsigned, COMMUTE(not1), ARG2, bignum_bitwise_not) */
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_orc1_unsigned, COMMUTE(orc2), ORC2,) */
+DEFINE_BITWISE_UNSIGNED (bignum_bitwise_nand_unsigned, SWAP, AND, bignum_bitwise_not)
+/* DEFINE_BITWISE_UNSIGNED (bignum_bitwise_set_unsigned, SWAP, CLEAR, bignum_bitwise_not) */
+
+static bignum_type
+bignum_bitwise_orc2_unsigned (bignum_type x, bignum_type y)
+{
+  return (bignum_bitwise_not (bignum_bitwise_andc1 (x, y)));
+}
+
+static bignum_type
+bignum_bitwise_orc1_unsigned (bignum_type x, bignum_type y)
+{
+  return (bignum_bitwise_not (bignum_bitwise_andc2 (x, y)));
+}
+
+#undef SWAP
+#undef COMMUTE
+#undef DEFINE_BITWISE_UNSIGNED
+
+#define DEFINE_BITWISE(NAME, X0, Y0, PP, PN, NP, NN)			\
+bignum_type								\
+NAME (bignum_type x, bignum_type y)					\
+{									\
+  if (BIGNUM_ZERO_P (x)) return (Y0);					\
+  if (BIGNUM_ZERO_P (y)) return (X0);					\
+  return								\
+    ((BIGNUM_POSITIVE_P (x))						\
+     ? ((BIGNUM_POSITIVE_P (y))						\
+	? (bignum_bitwise_##PP##_unsigned (x, y))			\
+	: (bignum_bitwise_##PN##_unsigned (x, (bignum_bitwise_not (y))))) \
+     : ((BIGNUM_POSITIVE_P (y))						\
+	? (bignum_bitwise_##NP##_unsigned ((bignum_bitwise_not (x)), y)) \
+	: (bignum_bitwise_##NN##_unsigned				\
+	   ((bignum_bitwise_not (x)), (bignum_bitwise_not (y)))))); \
+}
+
+DEFINE_BITWISE (bignum_bitwise_and, (BIGNUM_ZERO ()), (BIGNUM_ZERO ()),
+		and, andc2, andc1, nor)
+
+DEFINE_BITWISE (bignum_bitwise_andc2, x, (BIGNUM_ZERO ()),
+		andc2, and, nor, andc1)
+
+DEFINE_BITWISE (bignum_bitwise_andc1, (BIGNUM_ZERO ()), y,
+		andc1, nor, and, andc2)
+
+DEFINE_BITWISE (bignum_bitwise_xor, x, y, xor, eqv, eqv, xor)
+
+DEFINE_BITWISE (bignum_bitwise_ior, x, y, ior, orc2, orc1, nand)
+
+DEFINE_BITWISE (bignum_bitwise_nor,
+		(bignum_bitwise_not (x)),
+		(bignum_bitwise_not (y)),
+		nor, andc1, andc2, and)
+
+DEFINE_BITWISE (bignum_bitwise_eqv,
+		(bignum_bitwise_not (x)),
+		(bignum_bitwise_not (y)),
+		eqv, xor, xor, eqv)
+
+DEFINE_BITWISE (bignum_bitwise_orc2,
+		(BIGNUM_ONE (1)), (bignum_bitwise_not (y)),
+		orc2, ior, nand, orc1)
+
+DEFINE_BITWISE (bignum_bitwise_orc1,
+		(bignum_bitwise_not (x)), (BIGNUM_ONE (1)),
+		orc1, nand, ior, orc2)
+
+DEFINE_BITWISE (bignum_bitwise_nand, (BIGNUM_ONE (1)), (BIGNUM_ONE (1)),
+		nand, orc1, orc2, ior)
+
+#undef DEFINE_BITWISE
+
+/* General bit-twiddlers.  */
+
+/* (edit a a-pos b b-pos selector size)
+     = (ior (and a (shift-left selector a-pos))
+            (shift-left (and (shift-right b b-pos) (not selector)) a-pos))
+
+   In other words, replace a[a-pos + i] by b[b-pos + i] if selector[i]
+   is zero, and shift the result right by pos (which can be negative).
+   For example, (extract size pos x) = (edit x pos 0 0 (mask size 0)).  */
+
+#if 0
+bignum_type
+bignum_edit_bit_field (bignum_type x, unsigned long x_position,
+		       bignum_type y, unsigned long y_position,
+		       bignum_type selector, unsigned long size)
+{
+  BIGNUM_ASSERT (!BIGNUM_NEGATIVE_P (x));
+  BIGNUM_ASSERT (!BIGNUM_NEGATIVE_P (y));
+  BIGNUM_ASSERT (!BIGNUM_NEGATIVE_P (selector));
+  if (BIGNUM_ZERO_P (selector))
+    return (x);
+  {
+    bignum_length_type x_length = (BIGNUM_LENGTH (x));
+    bignum_length_type y_length = (BIGNUM_LENGTH (y));
+    bignum_length_type selector_length = (BIGNUM_LENGTH (selector));
+    bignum_length_type r_length = (MAX (x_length, (y_position + size)));
+    bignum_type r = (bignum_allocate (r_length, (BIGNUM_NEGATIVE_P (x))));
+    bignum_length_type x_digit_position = (x_position / BIGNUM_DIGIT_LENGTH);
+    bignum_length_type y_digit_position = (y_position / BIGNUM_DIGIT_LENGTH);
+    bignum_length_type x_bit_position = (x_position % BIGNUM_DIGIT_LENGTH);
+    bignum_length_type y_bit_position = (y_position % BIGNUM_DIGIT_LENGTH);
+    bignum_digit_type *x_scan = (BIGNUM_START_PTR (x));
+    bignum_digit_type *y_scan = (BIGNUM_START_PTR (y));
+    bignum_digit_type *selector_scan = (BIGNUM_START_PTR (selector));
+    bignum_digit_type *r_scan = (BIGNUM_START_PTR (r));
+    bignum_digit_type *x_end = (x_scan + x_length);
+    bignum_digit_type *y_end = (y_scan + y_length);
+    bignum_digit_type *selector_end = (selector_scan + selector_length);
+    {
+      bignum_digit_type *stop = (x_scan + (MIN (x_digit_position, x_length)));
+      while (x_scan < stop)
+	(*r_scan++) = (*x_scan++);
+    }
+    /* Four cases to deal with, depending on whether or not x and y
+       have more digits.  */
+    y_scan += (MIN (y_digit_position, (y_end - y_scan)));
+    if ((x_scan < x_end) && (y_scan < y_end))
+      {
+	bignum_digit_type x_low_mask = (BIGNUM_DIGIT_ONES (x_bit_position));
+	bignum_digit_type x_high_mask
+	  = (BIGNUM_DIGIT_ONES (BIGNUM_DIGIT_LENGTH - x_bit_position));
+	bignum_digit_type y_low_mask = (BIGNUM_DIGIT_ONES (y_bit_position));
+	bignum_digit_type y_high_mask
+	  = (BIGNUM_DIGIT_ONES (BIGNUM_DIGIT_LENGTH - y_bit_position));
+	bignum_digit_type r_carry = ((*x_scan) & x_low_mask);
+	bignum_digit_type x_carry
+	  = (((*x_scan++) >> x_bit_position) & x_high_mask);
+	bignum_digit_type y_carry
+	  = (((*y_scan++) >> y_bit_position) & y_high_mask);
+	while ((x_scan < x_end) && (y_scan < y_end))
+	  {
+	    bignum_digit_type selector = (*selector_scan++);
+	    bignum_digit_type x = (*x_scan++);
+	    bignum_digit_type y = (*y_scan++);
+	    (*r_scan++)
+	      = (r_carry
+		 | ((x_carry ) << x_bit_position)
+
+
+		 | ((((x >> x_bit_position) & x_high_mask &~ selector)
+		     | (high_y & selector))
+		    << x_bit_position));
+	    carry = ...;
+	  }
+      }
+    else if (x_scan < x_end)
+      {
+      }
+    else if (y_scan < y_end)
+      {
+      }
+    else
+      {
+      }
+  }
+}
+#endif /* 0 */
+
+/* (splice a a-pos b b-pos size)
+     = (edit a a-pos b b-pos (mask size) size)
+
+   Thus, e.g., (extract size pos x) = (splice x pos 0 0 size).  */
+
+#if 0
+bignum_type
+bignum_splice_bit_field (bignum_type x, unsigned long x_position,
+			 bignum_type y, unsigned long y_position,
+			 unsigned long size)
+{
+  ...
+}
+#endif /* 0 */
+
+/* Ones-complement length.  */
+
+unsigned long
 bignum_length_in_bits (bignum_type bignum)
 {
   if (BIGNUM_ZERO_P (bignum))
-    return (BIGNUM_ZERO ());
+    return (0);
   {
     bignum_length_type index = ((BIGNUM_LENGTH (bignum)) - 1);
-    bignum_digit_type digit = (BIGNUM_REF (bignum, index));
-    bignum_digit_type delta = 0;
-    bignum_type result = (bignum_allocate (2, 0));
-    (BIGNUM_REF (result, 0)) = index;
-    (BIGNUM_REF (result, 1)) = 0;
-    bignum_destructive_scale_up (result, BIGNUM_DIGIT_LENGTH);
-    ULONG_LENGTH_IN_BITS (digit, delta);
-    bignum_destructive_add (result, ((bignum_digit_type) delta));
-    return (bignum_trim (result));
+    return
+      ((ulong_length_in_bits (BIGNUM_REF (bignum, index)))
+       + (BIGNUM_DIGIT_LENGTH * index));
   }
 }
 
-bignum_type
-bignum_length_upper_limit (void)
+/* Two's-complement length.  */
+
+unsigned long
+bignum_integer_length (bignum_type bignum)
 {
-  bignum_type result = (bignum_allocate (2, 0));
-  (BIGNUM_REF (result, 0)) = 0;
-  (BIGNUM_REF (result, 1)) = BIGNUM_DIGIT_LENGTH;
-  return (result);
+  unsigned long length_in_bits = (bignum_length_in_bits (bignum));
+  if ((BIGNUM_ZERO_P (bignum)) || (BIGNUM_POSITIVE_P (bignum)))
+    return (length_in_bits);
+  /* else if (BIGNUM_NEGATIVE_P (bignum)) */
+  {
+    /* We have to test whether it is a negative power of two.  If so,
+       we treat its length as one less than bignum_length_in_bits,
+       because we are really measuring the length of the finite
+       sequence of bits before the infinite sequence of zero bits (for
+       nonnegative integers) or one bits (for negative integers) in the
+       integer's general two's-complement representation.  Thus,
+       negative powers of two appear to have one fewer bit.  */
+    bignum_digit_type *scan = (BIGNUM_START_PTR (bignum));
+    bignum_digit_type *end = (scan + (BIGNUM_LENGTH (bignum)) - 1);
+    while (scan < end)
+      if (0 != (*scan++))
+	return (length_in_bits);
+    return (length_in_bits - (0 == ((*end) & ((*end) - 1))));
+  }
+}
+
+long
+bignum_first_set_bit (bignum_type bignum)
+{
+  if (BIGNUM_ZERO_P (bignum))
+    return (-1);
+  {
+    bignum_digit_type *start = (BIGNUM_START_PTR (bignum));
+    bignum_digit_type *scan = start;
+    bignum_digit_type *end = (scan + (BIGNUM_LENGTH (bignum)));
+    while (scan < end)
+      {
+	if ((*scan) != 0) break;
+	scan += 1;
+      }
+    BIGNUM_ASSERT (scan < end);
+    return
+      ((ulong_bit_count (((*scan) ^ ((*scan) - 1)) >> 1))
+       + ((scan - start) * BIGNUM_DIGIT_LENGTH));
+  }
+}
+
+static inline unsigned long
+digits_bit_count (bignum_digit_type **scan_loc, unsigned long count)
+{
+  unsigned long bit_count = 0;
+  bignum_digit_type *end = ((*scan_loc) + count);
+  while ((*scan_loc) < end)
+    bit_count += (ulong_bit_count (* ((*scan_loc) ++)));
+  return (bit_count);
+}
+
+static inline unsigned long
+digits_hamming_distance (bignum_digit_type **x_scan_loc,
+			 bignum_digit_type **y_scan_loc,
+			 unsigned long count)
+{
+  unsigned long hamming_distance = 0;
+  bignum_digit_type *end = ((*x_scan_loc) + count);
+  while ((*x_scan_loc) < end)
+    hamming_distance
+      += (ulong_bit_count ((* ((*x_scan_loc) ++)) ^ (* ((*y_scan_loc) ++))));
+  return (hamming_distance);
+}
+
+/* Hamming distance: the easy case.  */
+
+static unsigned long
+bignum_positive_hamming_distance (bignum_type x, bignum_type y)
+{
+  BIGNUM_ASSERT (!BIGNUM_ZERO_P (x));
+  BIGNUM_ASSERT (!BIGNUM_ZERO_P (y));
+  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (x));
+  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (y));
+  if ((BIGNUM_LENGTH (x)) < (BIGNUM_LENGTH (y)))
+    {
+      bignum_type t = x; x = y; y = t;
+    }
+  {
+    bignum_digit_type *x_scan = (BIGNUM_START_PTR (x));
+    bignum_digit_type *y_scan = (BIGNUM_START_PTR (y));
+    unsigned long hamming_distance
+      = (digits_hamming_distance
+	 ((&x_scan), (&y_scan), (BIGNUM_LENGTH (y))));
+    hamming_distance
+      += (digits_bit_count
+	  ((&x_scan), ((BIGNUM_LENGTH (x)) - (BIGNUM_LENGTH (y)))));
+    return (hamming_distance);
+  }
+}
+
+/* Hamming distance: the hard case.  */
+
+#if 0
+/* Is this actually faster than (hamming-distance (not x) (not y))?  */
+
+#define MIN(A,B) (((A) < (B)) ? (A) : (B))
+
+static unsigned long
+bignum_negative_hamming_distance (bignum_type x, bignum_type y)
+{
+  BIGNUM_ASSERT (!BIGNUM_ZERO_P (x));
+  BIGNUM_ASSERT (!BIGNUM_ZERO_P (y));
+  BIGNUM_ASSERT (BIGNUM_NEGATIVE_P (x));
+  BIGNUM_ASSERT (BIGNUM_NEGATIVE_P (y));
+  {
+    bignum_digit_type *x_scan = (BIGNUM_START_PTR (x));
+    bignum_digit_type *y_scan = (BIGNUM_START_PTR (y));
+    bignum_digit_type *x_end = (x_scan + (BIGNUM_LENGTH (x)));
+    bignum_digit_type *y_end = (y_scan + (BIGNUM_LENGTH (y)));
+    bignum_digit_type x_digit, y_digit;
+    unsigned long hamming_distance;
+    /* Find the position of the first nonzero digit of x or y, and
+       maybe exchange x and y to guarantee that x's is nonzero.  */
+    while (1)
+      {
+	BIGNUM_ASSERT (x_scan < x_end);
+	BIGNUM_ASSERT (y_scan < y_end);
+	x_digit = (*x_scan++);
+	y_digit = (*y_scan++);
+	if (x_digit != 0) break;
+	if (y_digit != 0)
+	  {
+	    bignum_digit_type *t;
+	    t = x_scan; x_scan = y_scan; y_scan = t;
+	    t = x_end; x_end = y_end; y_end = t;
+	    x_digit = y_digit;
+	    y_digit = 0;
+	    break;
+	  }
+      }
+    /* Convert the first nonzero digit of x and the corresponding digit
+       (possibly zero) of y to two's-complement.  */
+    x_digit = (-x_digit);
+    y_digit = (-y_digit);
+    hamming_distance
+      = (ulong_bit_count ((x_digit ^ y_digit) & BIGNUM_DIGIT_MASK));
+    /* Skip over zeroes in y.  */
+    if (y_digit == 0)
+      {
+	bignum_digit_type *y_ptr = y_scan;
+	bignum_length_type zeroes;
+	do {
+	  BIGNUM_ASSERT (y_scan < y_end);
+	  y_digit = (*y_scan++);
+	} while (y_digit == 0);
+	/* If we any more zeroes, compute the Hamming distance of that
+	   segment as if all corresponding digits of x were ones.  */
+	zeroes = (y_scan - y_ptr - 1);
+	hamming_distance += (zeroes * BIGNUM_DIGIT_LENGTH);
+	/* Then subtract the amount by which this overestimated.  */
+	hamming_distance
+	  -= (digits_bit_count ((&x_scan), (MIN ((x_end - x_scan), zeroes))));
+	/* Convert the first nonzero digit of y to two's-complement --
+	   we can subtract 1 because it is nonzero and (semantically,
+	   if not in the type system) unsigned, and hence positive.  */
+	hamming_distance
+	  += (ulong_bit_count
+	      ((y_digit - 1) ^ ((x_scan < x_end) ? (*x_scan++) : 0)));
+      }
+    /* Finally, scan over the overlapping parts of x and y and then the
+       non-overlapping high part of whichever is longer.  */
+    hamming_distance
+      += (digits_hamming_distance
+	  ((&x_scan), (&y_scan), (MIN ((x_end - x_scan), (y_end - y_scan)))));
+    hamming_distance
+      += ((x_scan < x_end)
+	  ? (digits_bit_count ((&x_scan), (x_end - x_scan)))
+	  : (digits_bit_count ((&y_scan), (y_end - y_scan))));
+    return (hamming_distance);
+  }
+}
+#endif /* 0 */
+
+static unsigned long
+bignum_bit_count_unsigned (bignum_type x)
+{
+  bignum_digit_type *scan = (BIGNUM_START_PTR (x));
+  return (digits_bit_count ((&scan), (BIGNUM_LENGTH (x))));
+}
+
+static unsigned long
+bignum_negative_hamming_distance (bignum_type x, bignum_type y)
+{
+  x = (bignum_bitwise_not (x));
+  y = (bignum_bitwise_not (y));
+  if (BIGNUM_ZERO_P (x)) return (bignum_bit_count_unsigned (y));
+  if (BIGNUM_ZERO_P (y)) return (bignum_bit_count_unsigned (x));
+  return (bignum_positive_hamming_distance (x, y));
+}
+
+unsigned long
+bignum_bit_count (bignum_type x) /* a.k.a. Hamming weight, pop count */
+{
+  if (BIGNUM_ZERO_P (x))
+    return (0);
+  if (BIGNUM_NEGATIVE_P (x))
+    /* return (bignum_negative_hamming_distance (x, (BIGNUM_ONE (1)))); */
+    return (bignum_bit_count_unsigned (bignum_bitwise_not (x)));
+  else
+    return (bignum_bit_count_unsigned (x));
+}
+
+long
+bignum_hamming_distance (bignum_type x, bignum_type y)
+{
+  if (x == y)
+    return (0);
+  if (BIGNUM_ZERO_P (x))
+    return ((BIGNUM_NEGATIVE_P (y)) ? (-1) : (bignum_bit_count_unsigned (y)));
+  if (BIGNUM_ZERO_P (y))
+    return ((BIGNUM_NEGATIVE_P (x)) ? (-1) : (bignum_bit_count_unsigned (x)));
+  return
+    ((BIGNUM_POSITIVE_P (x))
+     ? ((BIGNUM_POSITIVE_P (y))
+	? (bignum_positive_hamming_distance (x, y))
+	: (-1))
+     : ((BIGNUM_POSITIVE_P (y))
+	? (-1)
+	: (bignum_negative_hamming_distance (x, y))));
+}
+
+#if 0
+
+bignum_type
+bignum_nonnegative_one_bits (unsigned long size, unsigned long position)
+{
+  if (size == 0)
+    return (BIGNUM_ZERO ());
+  {
+    unsigned long total = (size + position);
+    bignum_length_type total_digits = (total / BIGNUM_DIGIT_LENGTH);
+    bignum_length_type total_bits = (total % BIGNUM_DIGIT_LENGTH);
+    bignum_length_type zero_digits = (position / BIGNUM_DIGIT_LENGTH);
+    bignum_length_type zero_bits = (position % BIGNUM_DIGIT_LENGTH);
+    bignum_length_type one_digits = (size / BIGNUM_DIGIT_LENGTH);
+    bignum_length_type one_bits = (size % BIGNUM_DIGIT_LENGTH);
+    bignum_length_type first_nonzero_bits
+      = (BIGNUM_DIGIT_LENGTH - zero_bits);
+    bignum_length_type first_one_bits
+      = ((one_bits < first_nonzero_bits) ? one_bits
+	 : (one_bits - first_nonzero_bits));
+    bignum_length_type last_one_bits = (one_bits - first_one_bits);
+    bignum_length_type length = (total_digits + (0 != total_bits));
+    bignum_type r = (bignum_allocate (length, 0));
+    bignum_digit_type *r_scan = (BIGNUM_START_PTR (r));
+    bignum_digit_type *r_zero_end = (r_scan + zero_digits);
+    bignum_digit_type *r_one_end
+      = (r_zero_end + (first_one_bits != 0) + one_digits);
+    BIGNUM_ASSERT ((r_one_end + (last_one_bits != 0)) == (r_scan + length));
+    while (r_scan < r_zero_end)
+      (*r_scan++) = 0;
+    if (first_one_bits != 0)
+      (*r_scan++) = ((BIGNUM_DIGIT_ONES (first_one_bits)) << zero_bits);
+    while (r_scan < r_one_end)
+      (*r_scan++) = BIGNUM_DIGIT_MASK;
+    if (last_one_bits != 0)
+      (*r_scan++) = (BIGNUM_DIGIT_ONES (last_one_bits));
+    return (r);
+  }
+}
+
+#endif
+
+bignum_type
+bignum_nonnegative_one_bits (unsigned long size, unsigned long position)
+{
+  return
+    (bignum_shift_left
+     ((bignum_bitwise_not (bignum_shift_left ((BIGNUM_ONE (1)), size))),
+      position));
+}
+
+bignum_type
+bignum_negative_zero_bits (unsigned long n, unsigned long m)
+{
+  return (bignum_bitwise_not (bignum_nonnegative_one_bits (n, m)));
+}
+
+static bignum_type
+bignum_shift_right_unsigned (bignum_type n,
+			     unsigned long digits,
+			     unsigned long bits)
+{
+  bignum_length_type n_length = (BIGNUM_LENGTH (n));
+  bignum_digit_type *n_start = (BIGNUM_START_PTR (n));
+  bignum_digit_type *n_scan = (n_start + digits);
+  bignum_digit_type *n_end = (n_start + n_length);
+  bignum_length_type r_length
+    = (n_length - digits
+       - ((n_start < n_end) && (0 == ((n_end[-1]) >> bits))));
+  bignum_type r = (bignum_allocate (r_length, 0));
+  bignum_digit_type *r_scan = (BIGNUM_START_PTR (r));
+  if (bits == 0)
+    while (n_scan < n_end)
+      (*r_scan++) = (*n_scan++);
+  else
+    {
+      bignum_digit_type mask = (BIGNUM_DIGIT_ONES (bits));
+      bignum_digit_type shift = (BIGNUM_DIGIT_LENGTH - bits);
+      bignum_digit_type extra = ((*n_scan++) >> bits);
+      while (n_scan < n_end)
+	{
+	  bignum_digit_type digit = (*n_scan++);
+	  (*r_scan++) = (((digit & mask) << shift) | extra);
+	  extra = (digit >> bits);
+	}
+      if (extra != 0)
+	(*r_scan++) = extra;
+      BIGNUM_ASSERT (r_scan == ((BIGNUM_START_PTR (r)) + r_length));
+    }
+  return (r);
+}
+
+bignum_type
+bignum_shift_right (bignum_type n, unsigned long m)
+{
+  unsigned long digits = (m / BIGNUM_DIGIT_LENGTH);
+  unsigned long bits = (m % BIGNUM_DIGIT_LENGTH);
+
+  if (digits >= (BIGNUM_LENGTH (n)))
+    return ((BIGNUM_NEGATIVE_P (n)) ? (BIGNUM_ONE (1)) : (BIGNUM_ZERO ()));
+
+  if (BIGNUM_NEGATIVE_P (n))
+    return
+      (bignum_bitwise_not
+       (bignum_shift_right_unsigned ((bignum_bitwise_not (n)), digits, bits)));
+  else
+    return (bignum_shift_right_unsigned (n, digits, bits));
 }
 
 bignum_type
@@ -815,10 +1371,10 @@ bignum_shift_left (bignum_type n, unsigned long m)
 {
   unsigned long ln = (BIGNUM_LENGTH (n));
   unsigned long delta = 0;
-  if (m == 0)
+  if ((m == 0) || (BIGNUM_ZERO_P (n)))
     return (n);
 
-  ULONG_LENGTH_IN_BITS ((BIGNUM_REF (n, (ln - 1))), delta);
+  delta = (ulong_length_in_bits (BIGNUM_REF (n, (ln - 1))));
 
   {
     unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
@@ -858,7 +1414,7 @@ unsigned_long_to_shifted_bignum (unsigned long n, unsigned long m, int sign)
   if (n == 0)
     return (BIGNUM_ZERO ());
 
-  ULONG_LENGTH_IN_BITS (n, delta);
+  delta = (ulong_length_in_bits (n));
 
   {
     unsigned long zeroes = (m / BIGNUM_DIGIT_LENGTH);
@@ -897,13 +1453,10 @@ digit_stream_to_bignum (unsigned int n_digits,
       return (long_to_bignum (negative_p ? (- digit) : digit));
     }
   {
-    bignum_length_type length;
-    {
-      unsigned int log_radix = 0;
-      ULONG_LENGTH_IN_BITS (radix, log_radix);
-      /* This length will be at least as large as needed. */
-      length = (BIGNUM_BITS_TO_DIGITS (n_digits * log_radix));
-    }
+    /* This length will be at least as large as needed. */
+    bignum_length_type length
+      = (BIGNUM_BITS_TO_DIGITS
+	 (n_digits * (ulong_length_in_bits (radix))));
     {
       bignum_type result = (bignum_allocate_zeroed (length, negative_p));
       while ((n_digits--) > 0)
@@ -1797,7 +2350,7 @@ bignum_digit_to_bignum (bignum_digit_type digit, int negative_p)
 static bignum_type
 bignum_allocate (bignum_length_type length, int negative_p)
 {
-  BIGNUM_ASSERT ((length >= 0) || (length < BIGNUM_RADIX));
+  BIGNUM_ASSERT ((0 <= length) && (length <= BIGNUM_LENGTH_MAX));
   {
     bignum_type result = (BIGNUM_ALLOCATE (length));
     BIGNUM_SET_HEADER (result, length, negative_p);
@@ -1808,7 +2361,7 @@ bignum_allocate (bignum_length_type length, int negative_p)
 static bignum_type
 bignum_allocate_zeroed (bignum_length_type length, int negative_p)
 {
-  BIGNUM_ASSERT ((length >= 0) || (length < BIGNUM_RADIX));
+  BIGNUM_ASSERT ((0 <= length) && (length <= BIGNUM_LENGTH_MAX));
   {
     bignum_type result = (BIGNUM_ALLOCATE (length));
     bignum_digit_type * scan = (BIGNUM_START_PTR (result));
@@ -1824,7 +2377,7 @@ static bignum_type
 bignum_shorten_length (bignum_type bignum, bignum_length_type length)
 {
   bignum_length_type current_length = (BIGNUM_LENGTH (bignum));
-  BIGNUM_ASSERT ((length >= 0) || (length <= current_length));
+  BIGNUM_ASSERT ((0 <= length) && (length <= current_length));
   if (length < current_length)
     {
       BIGNUM_SET_HEADER

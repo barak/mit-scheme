@@ -95,6 +95,19 @@ extern void abort ();
 #define BIGNUM_DIGIT_MASK	(BIGNUM_RADIX - 1UL)
 #define BIGNUM_HALF_DIGIT_MASK	(BIGNUM_RADIX_ROOT - 1UL)
 
+/* This limit guarantees that the number of bits in a bignum (in ones-
+   or two's-complement) fits in a long.  Practically speaking, we won't
+   reach this limit even on a 32-bit machine because the heap can hold
+   at most 2^26 bytes, and thus 2^24 digits -- which is already less
+   than this value, a little under 2^25.  The same applies to 64-bit
+   machines; it doesn't cease to apply until 128-bit machines, but
+   we're not going to worry about those.  */
+#define BIGNUM_LENGTH_MAX					\
+  ((BIGNUM_RADIX / BIGNUM_DIGIT_LENGTH) - BIGNUM_DIGIT_LENGTH)
+
+#define BIGNUM_DIGIT(c) ((bignum_digit_type) (c))
+#define BIGNUM_DIGIT_ONES(n) (~ ((~ (BIGNUM_DIGIT (0))) << (n)))
+
 #define BIGNUM_START_PTR(bignum)					\
   ((BIGNUM_TO_POINTER (bignum)) + 1)
 

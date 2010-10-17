@@ -288,6 +288,45 @@ USA.
 	  non-positive-fixnum?
 	  positive-fixnum?))
 
+(define-package (runtime integer-bits)
+  (files "integer-bits")
+  (parent (runtime))
+  (export ()
+	  all-bits-set?
+	  any-bits-set?
+	  arithmetic-shift
+	  bit-antimask
+	  bit-count
+	  bit-mask
+	  bit-set?
+	  bitwise-merge
+	  bitwise-not
+	  clear-bit
+	  edit-bit-field
+	  extract-bit
+	  extract-bit-field
+	  first-set-bit
+	  hamming-distance
+	  integer-length
+	  replace-bit-field
+	  set-bit
+	  shift-left
+	  shift-right
+	  splice-bit-field
+	  test-bit-field
+
+	  ;; Truth table order
+	  bitwise-and
+	  bitwise-andc1
+	  bitwise-andc2
+	  bitwise-xor
+	  bitwise-ior
+	  bitwise-nor
+	  bitwise-eqv
+	  bitwise-orc2
+	  bitwise-orc1
+	  bitwise-nand))
+
 (define-package (runtime keyword)
   (files "keyword")
   (parent (runtime))

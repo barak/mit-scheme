@@ -73,12 +73,36 @@ extern intmax_t bignum_to_intmax (bignum_type);
 extern uintmax_t bignum_to_uintmax (bignum_type);
 extern bignum_type double_to_bignum (double);
 extern double bignum_to_double (bignum_type);
-extern int bignum_fits_in_word_p
-  (bignum_type,
-			   long word_length,
-			   int twos_complement_p);
-extern bignum_type bignum_length_in_bits (bignum_type);
-extern bignum_type bignum_length_upper_limit (void);
+extern int bignum_fits_in_word_p (bignum_type, long, int);
+extern unsigned long bignum_length_in_bits (bignum_type);
+extern unsigned long bignum_integer_length (bignum_type);
+extern long bignum_first_set_bit (bignum_type);
+extern unsigned long bignum_bit_count (bignum_type);
+extern long bignum_hamming_distance (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_not (bignum_type);
+extern bignum_type bignum_bitwise_and (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_andc2 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_andc1 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_xor (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_ior (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_nor (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_eqv (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_orc2 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_orc1 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_nand (bignum_type, bignum_type);
+#if 0
+extern bignum_type bignum_edit_bit_field
+  (bignum_type, unsigned long,
+   bignum_type, unsigned long,
+   bignum_type, unsigned long);
+extern bignum_type bignum_splice_bit_field
+  (bignum_type, unsigned long,
+   bignum_type, unsigned long,
+   unsigned long);
+#endif
+extern bignum_type bignum_nonnegative_one_bits (unsigned long, unsigned long);
+extern bignum_type bignum_negative_zero_bits (unsigned long, unsigned long);
+extern bignum_type bignum_shift_right (bignum_type, unsigned long);
 extern bignum_type bignum_shift_left (bignum_type, unsigned long);
 extern bignum_type unsigned_long_to_shifted_bignum
   (unsigned long, unsigned long, int);

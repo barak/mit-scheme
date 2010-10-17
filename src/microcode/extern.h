@@ -245,7 +245,25 @@ extern bool integer_divide
 extern SCHEME_OBJECT integer_quotient (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_remainder (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_length_in_bits (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_length (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_first_set_bit (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bit_count (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_hamming_distance (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_not (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_and (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_andc2 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_andc1 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_xor (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_ior (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_nor (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_eqv (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_orc2 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_orc1 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_nand (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_nonnegative_one_bits (unsigned long, unsigned long);
+extern SCHEME_OBJECT integer_negative_zero_bits (unsigned long, unsigned long);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
+extern SCHEME_OBJECT integer_shift_right (SCHEME_OBJECT, unsigned long);
 
 extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);

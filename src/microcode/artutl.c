@@ -26,6 +26,7 @@ USA.
 /* Arithmetic Utilities */
 
 #include "scheme.h"
+#include "bits.h"
 
 /* Conversions between Scheme types and C types. */
 
@@ -477,10 +478,7 @@ integer_quotient (SCHEME_OBJECT n, SCHEME_OBJECT d)
     }
   {
     SCHEME_OBJECT result = (bignum_quotient (n, d));
-    return
-      ((result == SHARP_F)
-       ? SHARP_F
-       : (bignum_to_integer (result)));
+    return ((result == SHARP_F) ? SHARP_F : (bignum_to_integer (result)));
   }
 }
 
@@ -517,14 +515,9 @@ integer_remainder (SCHEME_OBJECT n, SCHEME_OBJECT d)
   }
 }
 
-static unsigned long
-unsigned_long_length_in_bits (unsigned long n)
-{
-  unsigned long result = 0;
-  while (n > 0xff) { result += 8; n >>= 8; }
-  while (n > 0)    { result += 1; n >>= 1; }
-  return (result);
-}
+/* Length and Bit Counts */
+
+/* Ones-complement length.  */
 
 SCHEME_OBJECT
 integer_length_in_bits (SCHEME_OBJECT n)
@@ -532,28 +525,187 @@ integer_length_in_bits (SCHEME_OBJECT n)
   if (FIXNUM_P (n))
     {
       long n1 = (FIXNUM_TO_LONG (n));
-      return (LONG_TO_UNSIGNED_FIXNUM
-	      (unsigned_long_length_in_bits ((n1 < 0) ? (- n1) : n1)));
+      return (ULONG_TO_FIXNUM (ulong_length_in_bits ((n1 < 0) ? (- n1) : n1)));
     }
   else
-    return (bignum_to_integer (bignum_length_in_bits (n)));
+    return (ulong_to_integer (bignum_length_in_bits (n)));
 }
+
+/* Two's-complement length.  */
+
+SCHEME_OBJECT
+integer_length (SCHEME_OBJECT n)
+{
+  if (FIXNUM_P (n))
+    {
+      long n1 = (FIXNUM_TO_LONG (n));
+      return (ULONG_TO_FIXNUM (ulong_length_in_bits ((n1 < 0) ? (~n1) : n1)));
+    }
+  else
+    return (ulong_to_integer (bignum_integer_length (n)));
+}
+
+SCHEME_OBJECT
+integer_first_set_bit (SCHEME_OBJECT n)
+{
+  if (FIXNUM_P (n))
+    {
+      long n1 = (FIXNUM_TO_LONG (n));
+      return
+	(LONG_TO_FIXNUM
+	 (ulong_first_set_bit ((n1 < 0) ? (~ ((unsigned long) (~n1))) : n1)));
+    }
+  else
+    return (long_to_integer (bignum_first_set_bit (n)));
+}
+
+SCHEME_OBJECT
+integer_bit_count (SCHEME_OBJECT n)
+{
+  if (FIXNUM_P (n))
+    {
+      long n1 = (FIXNUM_TO_LONG (n));
+      return (ULONG_TO_FIXNUM (ulong_bit_count ((n1 < 0) ? (~n1) : n1)));
+    }
+  else
+    return (ulong_to_integer (bignum_bit_count (n)));
+}
+
+SCHEME_OBJECT
+integer_hamming_distance (SCHEME_OBJECT n, SCHEME_OBJECT m)
+{
+  if ((FIXNUM_P (n)) && (FIXNUM_P (m)))
+    {
+      long x = ((FIXNUM_TO_LONG (n)) ^ (FIXNUM_TO_LONG (m)));
+      return
+	((x < 0)
+	 ? (LONG_TO_FIXNUM (-1))
+	 : (ULONG_TO_FIXNUM (ulong_bit_count (x))));
+    }
+  else
+    return
+      (long_to_integer
+       (bignum_hamming_distance
+	(((FIXNUM_P (n)) ? (FIXNUM_TO_BIGNUM (n)) : n),
+	 ((FIXNUM_P (m)) ? (FIXNUM_TO_BIGNUM (m)) : m))));
+}
+
+/* Bitwise Operations */
+
+SCHEME_OBJECT
+integer_bitwise_not (SCHEME_OBJECT n)
+{
+  if (FIXNUM_P (n))
+    return (LONG_TO_FIXNUM (~ (FIXNUM_TO_LONG (n))));
+  else
+    return (bignum_bitwise_not (n));
+}
+
+#define DEFINE_BITWISE(NAME, OP)					\
+SCHEME_OBJECT								\
+NAME (SCHEME_OBJECT n, SCHEME_OBJECT m)					\
+{									\
+  if ((FIXNUM_P (n)) && (FIXNUM_P (m)))					\
+    return								\
+      (LONG_TO_FIXNUM							\
+       (BITWISE_##OP ((FIXNUM_TO_LONG (n)), (FIXNUM_TO_LONG (m)))));	\
+  else									\
+    return								\
+      (bignum_to_integer						\
+       (bignum_bitwise_##OP						\
+	(((FIXNUM_P (n)) ? (FIXNUM_TO_BIGNUM (n)) : n),			\
+	 ((FIXNUM_P (m)) ? (FIXNUM_TO_BIGNUM (m)) : m))));		\
+}
+
+#define BITWISE_and(x, y) ((x) & (y))
+#define BITWISE_andc2(x, y) ((x) &~ (y))
+#define BITWISE_andc1(x, y) ((y) &~ (x))
+#define BITWISE_xor(x, y) ((x) ^ (y))
+#define BITWISE_ior(x, y) ((x) | (y))
+#define BITWISE_nor(x, y) (~ ((x) | (y)))
+#define BITWISE_eqv(x, y) (~ ((x) ^ (y)))
+#define BITWISE_orc2(x, y) ((x) |~ (y))
+#define BITWISE_orc1(x, y) ((y) |~ (x))
+#define BITWISE_nand(x, y) (~ ((x) & (y)))
+
+DEFINE_BITWISE (integer_bitwise_and, and)
+DEFINE_BITWISE (integer_bitwise_andc2, andc2)
+DEFINE_BITWISE (integer_bitwise_andc1, andc1)
+DEFINE_BITWISE (integer_bitwise_xor, xor)
+DEFINE_BITWISE (integer_bitwise_ior, ior)
+DEFINE_BITWISE (integer_bitwise_nor, nor)
+DEFINE_BITWISE (integer_bitwise_eqv, eqv)
+DEFINE_BITWISE (integer_bitwise_orc2, orc2)
+DEFINE_BITWISE (integer_bitwise_orc1, orc1)
+DEFINE_BITWISE (integer_bitwise_nand, nand)
+
+SCHEME_OBJECT
+integer_nonnegative_one_bits (unsigned long n, unsigned long m)
+{
+  if (n == 0)
+    return (LONG_TO_FIXNUM (0));
+  else if ((n + m) <= FIXNUM_LENGTH)
+    return (ULONG_TO_FIXNUM ((~ ((~ ((unsigned long) 0)) << n)) << m));
+  else
+    return (bignum_nonnegative_one_bits (n, m));
+}
+
+SCHEME_OBJECT
+integer_negative_zero_bits (unsigned long n, unsigned long m)
+{
+  if (n == 0)
+    return (LONG_TO_FIXNUM (-1));
+  else if ((n + m) <= FIXNUM_LENGTH)
+    return
+      (LONG_TO_FIXNUM (~ ((long) ((~ ((~ ((unsigned long) 0)) << n)) << m))));
+  else
+    return (bignum_negative_zero_bits (n, m));
+}
+
+/* Shift: multiplication and Euclidean division by 2^m */
 
 SCHEME_OBJECT
 integer_shift_left (SCHEME_OBJECT n, unsigned long m)
 {
-  if ((m == 0) || (!integer_positive_p (n)))
+  if (m == 0)
     return (n);
   if (FIXNUM_P (n))
     {
-      unsigned long n1 = (UNSIGNED_FIXNUM_TO_LONG (n));
-      unsigned long ln = (unsigned_long_length_in_bits (n1));
-      unsigned long lr = (ln + m);
-      return
-	((lr <= FIXNUM_LENGTH)
-	 ? (LONG_TO_UNSIGNED_FIXNUM (n1 << m))
-	 : (unsigned_long_to_shifted_bignum (n1, m, 0)));
+      long n1 = (FIXNUM_TO_LONG (n));
+      if (n1 < 0)
+	{
+	  if ((m + (ulong_length_in_bits (~n1))) < FIXNUM_LENGTH)
+	    /* The behaviour of shifting a negative integer is
+	       undefined in C.  */
+	    return (LONG_TO_FIXNUM (- ((-n1) << m)));
+	  else
+	    return
+	      (bignum_negate (unsigned_long_to_shifted_bignum ((-n1), m, 0)));
+	}
+      else if (0 < n1)
+	{
+	  if ((m + (ulong_length_in_bits (n1))) < FIXNUM_LENGTH)
+	    return (LONG_TO_FIXNUM (n1 << m));
+	  else
+	    return (unsigned_long_to_shifted_bignum (n1, m, 0));
+	}
+      else
+	return (LONG_TO_FIXNUM (0));
     }
   else
     return (bignum_shift_left (n, m));
+}
+
+SCHEME_OBJECT
+integer_shift_right (SCHEME_OBJECT n, unsigned long m)
+{
+  if (m == 0)
+    return (n);
+  if (FIXNUM_P (n))
+    {
+      long n1 = (FIXNUM_TO_LONG (n));
+      return (LONG_TO_FIXNUM ((n1 < 0) ? (~ ((~n1) >> m)) : (n1 >> m)));
+    }
+  else
+    return (bignum_to_integer (bignum_shift_right (n, m)));
 }
