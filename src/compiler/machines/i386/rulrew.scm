@@ -150,6 +150,11 @@ USA.
   (QUALIFIER (rtl:constant-fixnum? source))
   (rtl:make-object->fixnum source))
 
+#|
+
+These are tempting, but there is a lapopt rule that makes
+OBJECT->FIXNUM not, after all, independent of the tag.
+
 (define-rule rewriting
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:cons-non-pointer? source))
@@ -159,6 +164,8 @@ USA.
   (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
   (QUALIFIER (rtl:object->datum? source))
   (rtl:make-object->fixnum (rtl:object->datum-expression source)))
+
+|#
 
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
@@ -176,7 +183,7 @@ USA.
   (QUALIFIER
    (and (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
-
+
 (define-rule rewriting
   (FIXNUM-2-ARGS (? operator)
 		 (? operand-1)
