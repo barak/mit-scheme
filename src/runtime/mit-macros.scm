@@ -528,7 +528,7 @@ USA.
    (lambda (form rename compare)
      compare
      (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
-     (let ((names (map car (cadr form)))
+     (let ((left-hand-sides (map car (cadr form)))
 	   (right-hand-sides (map cdr (cadr form)))
 	   (r-define (rename 'DEFINE))
 	   (r-lambda (rename 'LAMBDA))
@@ -536,14 +536,18 @@ USA.
 	   (r-set! (rename 'SET!))
 	   (r-shallow-fluid-bind (rename 'SHALLOW-FLUID-BIND))
 	   (r-unspecific (rename 'UNSPECIFIC)))
-       (let ((temporaries (map make-synthetic-identifier names))
+       (let ((temporaries
+	      (map (lambda (lhs)
+		     (make-synthetic-identifier
+		      (if (identifier? lhs) lhs 'TEMPORARY)))
+		   left-hand-sides))
 	     (swap! (make-synthetic-identifier 'SWAP!))
 	     (body `(,r-lambda () ,@(cddr form))))
 	 `(,r-let ,(map cons temporaries right-hand-sides)
 	    (,r-define (,swap!)
-	      ,@(map (lambda (name temporary)
-		       `(,r-set! ,name (,r-set! ,temporary (,r-set! ,name))))
-		     names
+	      ,@(map (lambda (lhs temporary)
+		       `(,r-set! ,lhs (,r-set! ,temporary (,r-set! ,lhs))))
+		     left-hand-sides
 		     temporaries)
 	      ,r-unspecific)
 	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
