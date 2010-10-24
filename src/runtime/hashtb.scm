@@ -137,7 +137,6 @@ USA.
 
 (define (hash-table/modify! table key procedure default)
   (guarantee-hash-table table 'HASH-TABLE/MODIFY!)
-  (guarantee-procedure-of-arity procedure 1 'HASH-TABLE/MODIFY!)
   ((table-type-method:modify! (table-type table)) table key procedure default))
 
 (define (hash-table/intern! table key get-datum)
