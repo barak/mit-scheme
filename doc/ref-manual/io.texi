@@ -1183,7 +1183,7 @@ the object).  Subsequently, the expression
 @end example
 
 @noindent
-is notation for the object.
+is notation for an expression evaluating to the object.
 
 If @var{procedure} is supplied, the returned method generates a slightly
 different external representation:
