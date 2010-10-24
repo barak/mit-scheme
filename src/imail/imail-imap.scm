@@ -112,16 +112,20 @@ USA.
 (define (make-imap-url-string url mailbox)
   (if (not mailbox)
       (error:wrong-type-argument mailbox string 'MAKE-IMAP-URL-STRING))
-  (string-append "//"
-		 (let ((user-id (imap-url-user-id url)))
-		   (if (string=? user-id (current-user-name))
-		       ""
-		       (string-append (url:encode-string user-id) "@")))
-		 (string-downcase (imap-url-host url))
-		 (let ((port (imap-url-port url)))
-		   (if (= port 143)
-		       ""
-		       (string-append ":" (number->string port))))
+  (string-append (call-with-output-string
+		  (lambda (port)
+		    (write-uri-authority
+		     (make-uri-authority
+		      (let ((user-id (imap-url-user-id url)))
+			(if (string=? user-id (current-user-name))
+			    #f
+			    user-id))
+		      (string-downcase (imap-url-host url))
+		      (let ((port (imap-url-port url)))
+			(if (= port 143)
+			    #f
+			    port)))
+		     port)))
 		 (if (or (string=? mailbox "")
 			 (string=? mailbox "/"))
 		     mailbox
