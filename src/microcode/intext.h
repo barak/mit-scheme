@@ -42,7 +42,7 @@ extern struct interruptable_extent * enter_interruptable_extent (void);
 extern int enter_interruption_extent (void);
 extern void exit_interruption_extent (void);
 
-#define INTERRUPTABLE_EXTENT(result, expression)			\
+#define INTERRUPTABLE_EXTENT(result, expression) do			\
 {									\
   int saved_errno;							\
   struct interruptable_extent * INTERRUPTABLE_EXTENT_frame =		\
@@ -60,6 +60,6 @@ extern void exit_interruption_extent (void);
   saved_errno = errno;							\
   dstack_set_position (current_interruptable_extent -> position);	\
   errno = saved_errno;							\
-}
+} while (0)
 
 #endif /* SCM_INTEXT_H */
