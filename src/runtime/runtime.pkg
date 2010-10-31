@@ -3165,6 +3165,7 @@ USA.
 	  copy-alien
 	  alien/ctype
 	  set-alien/ctype!
+	  c-cast
 	  alien?
 	  alien-null?
 	  alien-null!

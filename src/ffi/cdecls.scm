@@ -271,9 +271,16 @@ USA.
 		(pair? (cdr form))
 		(null? (cddr form))))
       (cerror form "malformed parameter declaration"))
+  (if (string-find-next-char-in-set
+       (symbol-name (car form)) char-set:not-c-symbol)
+      (cerror form "invalid parameter name"))
   (let ((name (car form))
 	(ctype (valid-ctype (cadr form) includes)))
     (list name ctype)))
+
+(define char-set:not-c-symbol (char-set-invert
+			       (char-set-union (char-set #\_)
+					       char-set:alphanumeric)))
 
 (define (valid-ctype form includes)
   ;; Returns a valid ctype expression, a copy of FORM.  Modifies
