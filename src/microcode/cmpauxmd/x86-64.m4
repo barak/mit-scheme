@@ -997,7 +997,7 @@ define_c_label(x87_read_control_word)
 
 define_c_label(x87_write_control_word)
 	enter		IMM(4),IMM(0)
-	OP(mov,w)	TW(REG(di),IND(REG(rsp))
+	OP(mov,w)	TW(REG(di),IND(REG(rsp)))
 	fldcw		IND(REG(esp))
 	leave
 	ret
