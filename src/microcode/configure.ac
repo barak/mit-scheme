@@ -667,8 +667,11 @@ AC_FUNC_VPRINTF
 AC_FUNC_WAIT3
 AC_CHECK_FUNCS([ctermid])
 AC_CHECK_FUNCS([dup2])
-AC_CHECK_FUNCS([fcntl fdatasync fegetround fesetround floor fpathconf frexp])
-AC_CHECK_FUNCS([fpgetround fpsetround fsync fsync_range ftruncate])
+AC_CHECK_FUNCS([fcntl fdatasync feclearexcept fedisableexcept feenableexcept])
+AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
+AC_CHECK_FUNCS([feraiseexcept fesetenv fesetexceptflag fesetround])
+AC_CHECK_FUNCS([fetestexcept feupdateenv floor fpathconf frexp fpgetround])
+AC_CHECK_FUNCS([fpsetround fsync fsync_range ftruncate])
 AC_CHECK_FUNCS([getcwd gethostbyname gethostname getlogin getpagesize getpgrp])
 AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
