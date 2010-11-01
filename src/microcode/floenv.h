@@ -33,6 +33,12 @@ USA.
 
 #if (defined (HAVE_FENV_H))
 #  include <fenv.h>
+#  ifdef HAVE_FENV_T
+#    define scheme_fenv_t fenv_t
+#  endif
+#  ifdef HAVE_FEXCEPT_T
+#    define scheme_fexcept_t fexcept_t
+#  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
 
 /* Assumption: If we have <ieeefp.h>, then we don't need to test for
@@ -42,43 +48,117 @@ USA.
 
 #  include <ieeefp.h>
 
-#  define FE_TONEAREST FP_RN
-#  define FE_DOWNWARD FP_RM
-#  define FE_UPWARD FP_RP
-#  define FE_TOWARDZERO FP_RZ
+#  ifndef FE_TONEAREST
+#    define FE_TONEAREST FP_RN
+#  endif
 
-#  define fegetround fpgetround
-#  define fesetround(rm) ((fpsetround (rm)), 0)
+#  ifndef FE_DOWNWARD
+#    define FE_DOWNWARD FP_RM
+#  endif
 
-#  define FE_INVALID FP_X_INV
-#  define FE_DIVBYZERO FP_X_DZ
-#  define FE_OVERFLOW FP_X_OFL
-#  define FE_UNDERFLOW FP_X_UFL
-#  define FE_INEXACT FP_X_IMP
+#  ifndef FE_UPWARD
+#    define FE_UPWARD FP_RP
+#  endif
+
+#  ifndef FE_TOWARDZERO
+#    define FE_TOWARDZERO FP_RZ
+#  endif
+
+#  ifndef HAVE_FEGETROUND
+#    define HAVE_FEGETROUND
+#    define fegetround fpgetround
+#  endif
+
+#  ifndef HAVE_FESETROUND
+#    define HAVE_FESETROUND
+#    define fesetround(rm) ((fpsetround (rm)), 0)
+#  endif
+
+#  ifndef FE_INVALID
+#    define FE_INVALID FP_X_INV
+#  endif
+
+#  ifndef FE_DIVBYZERO
+#    define FE_DIVBYZERO FP_X_DZ
+#  endif
+
+#  ifndef FE_OVERFLOW
+#    define FE_OVERFLOW FP_X_OFL
+#  endif
+
+#  ifndef FE_UNDERFLOW
+#    define FE_UNDERFLOW FP_X_UFL
+#  endif
+
+#  ifndef FE_INEXACT
+#    define FE_INEXACT FP_X_IMP
+#  endif
+
 /* FP_X_IOV?  */
 
-#  define fexcept_t fp_except
+#  ifndef HAVE_FEXCEPT_T
+#    define HAVE_FEXCEPT_T
+typedef fp_except fexcept_t;
+#  endif
 
-#  define fetestexcepts(excepts) ((excepts) & (fpgetsticky ()))
-#  define fecleareexcept(excepts)		\
-  (fpsetsticky ((fpgetsticky ()) &~ (FE_ALL_EXCEPT & (excepts))))
+#  ifndef HAVE_FETESTEXCEPT
+#    define HAVE_FETESTEXCEPT
+#    define fetestexcept(excepts) ((excepts) & (fpgetsticky ()))
+#  endif
 
+#  ifndef HAVE_FECLEAREXCEPT
+#    define HAVE_FECLEAREXCEPT
+#    define feclearexcept(excepts)		\
+  ((fpsetsticky ((fpgetsticky ()) &~ (FE_ALL_EXCEPT & (excepts)))), 0)
+#  endif
+
+#  ifndef HAVE_FERAISEEXCEPT
+#    define HAVE_FERAISEEXCEPT
 /* This isn't right -- it doesn't necessarily actually raise the
    exception until some floating-point operation is performed.  */
-#  define feraiseexcept(excepts)		\
-  (fpsetsticky ((fpgetsticky ()) || (FE_ALL_EXCEPT & (excepts)))
+#    define feraiseexcept(excepts)		\
+  ((fpsetsticky ((fpgetsticky ()) || (FE_ALL_EXCEPT & (excepts)))), 0)
+#  endif
 
-#  define fegetexceptflag(flagp, excepts)	\
+#  ifndef HAVE_FEGETEXCEPTFLAG
+#    define HAVE_FEGETEXCEPTFLAG
+#    define fegetexceptflag(flagp, excepts)	\
   (((* ((0 ? ((int *) 0) : flagp))) = ((excepts) & (fpgetsticky ()))), 0)
-#  define fesetexceptflag(flagp, excepts)				\
-  (fpsetsticky								\
-   (FE_ALL_EXCEPT & (excepts) & (* ((0 ? ((const int *) 0) : flagp)))))
+#  endif
 
-#  define fegetexcept fpgetmask
-#  define feenableexcept(excepts)		\
+#  ifndef HAVE_FESETEXCEPTFLAG
+#    define HAVE_FESETEXCEPTFLAG
+#    define fesetexceptflag(flagp, excepts)				\
+  ((fpsetsticky								\
+    (FE_ALL_EXCEPT & (excepts) & (* ((0 ? ((const int *) 0) : flagp))))), \
+   0)
+#  endif
+
+#  ifndef HAVE_FEGETEXCEPT
+#    define HAVE_FEGETEXCEPT
+#    define fegetexcept fpgetmask
+#  endif
+
+#  ifndef HAVE_FEENABLEEXCEPT
+#    define HAVE_FEENABLEEXCEPT
+#    define feenableexcept(excepts)		\
   (fpsetmask ((fpgetmask ()) || (FE_ALL_EXCEPT & (excepts))))
-#  define fedisableexcept(excepts)		\
+#  endif
+
+#  ifndef HAVE_FEDISABLEEXCEPT
+#    define HAVE_FEDISABLEEXCEPT
+#    define fedisableexcept(excepts)		\
   (fpsetmask ((fpgetmask ()) &~ (FE_ALL_EXCEPT & (excepts))))
+#  endif
+
+/* Kludge for NetBSD<6, which only halfway supports C99 fenv cruft.  */
+#  ifdef fenv_t
+#    undef fenv_t
+#  endif
+#  define fenv_t scheme_fenv_t
+#  ifndef HAVE_FENV_T
+#    define HAVE_FENV_T
+#  endif
 
 typedef struct
 {
@@ -86,6 +166,11 @@ typedef struct
   fp_except fe_sticky_exceptions;
   fp_rnd fe_rounding_mode;
 } fenv_t;
+
+#  define HAVE_FEGETENV
+#  define HAVE_FESETENV
+#  define HAVE_FEHOLDEXCEPT
+#  define HAVE_FEUPDATEENV
 
 static inline int
 fegetenv (fenv_t *fe)
@@ -121,5 +206,6 @@ feupdateenv (const fenv_t *fe)
   /* Unfortunately, this doesn't actually do anything, because of the
      useless definition of feraiseexcept above.  */
   (void) feraiseexcept (exceptions);
+  return (0);
 }
 #endif
