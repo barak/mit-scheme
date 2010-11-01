@@ -161,7 +161,7 @@ DEFINE_PRIMITIVE ("DEFER-FLOAT-EXCEPTIONS", Prim_defer_float_exceptions, 0, 0, 0
 #endif
 }
 
-DEFINE_PRIMITIVE ("UPDATE-FLOAT-ENVIRONMENT", Prim_restore_float_environment, 1, 1, 0)
+DEFINE_PRIMITIVE ("UPDATE-FLOAT-ENVIRONMENT", Prim_update_float_environment, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #ifdef HAVE_FEUPDATEENV
