@@ -330,3 +330,9 @@ x86_64_reset_hook (void)
   }
 #endif /* _MACH_UNIX */
 }
+
+#ifndef HAVE_FENV_H
+#  define x87_p 1
+#  define sse_p 1
+#  include "cmpintmd/x86-fenv.c"
+#endif

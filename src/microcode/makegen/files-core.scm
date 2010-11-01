@@ -42,6 +42,7 @@ USA.
 "fasl"
 "fasload"
 "fixnum"
+"floenv"
 "flonum"
 "gcloop"
 "generic"

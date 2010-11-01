@@ -381,6 +381,10 @@ USA.
 (define-for-tests assert-boolean-!=
   (binary-assertion (lambda (x y) (not (boolean=? x y)))))
 
+(define-for-tests assert-memv
+  (binary-assertion (lambda (actual-value expected-list)
+		      (and (memv actual-value expected-list) #t))))
+
 (define-for-tests (assert-error thunk condition-types . properties)
   (call-with-current-continuation
    (lambda (k)

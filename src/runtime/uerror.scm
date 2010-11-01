@@ -319,26 +319,32 @@ USA.
 	  (string-replace (symbol-name error-type) #\- #\space)
 	  (string-append "error " (write-to-string error-type)))))
 
+;++ Whattakludge!
+
 (define (normalize-trap-code-name name)
-  (let loop ((prefixes '("floating-point " "integer ")))
-    (if (not (null? prefixes))
-	(if (string-prefix-ci? (car prefixes) name)
-	    (set! name (string-tail name (string-length (car prefixes))))
-	    (loop (cdr prefixes)))))
-  (let loop ((suffixes '(" trap" " fault")))
-    (if (not (null? suffixes))
-	(if (string-suffix-ci? (car suffixes) name)
-	    (set! name
-		  (string-head name
-			       (- (string-length name)
-				  (string-length (car suffixes)))))
-	    (loop (cdr suffixes)))))
-  (cond ((string-ci=? "underflow" name) 'UNDERFLOW)
-	((string-ci=? "overflow" name) 'OVERFLOW)
-	((or (string-ci=? "divide by 0" name)
-	     (string-ci=? "divide by zero" name))
+  (cond ((or (string-prefix-ci? "integer divide by 0" name)
+	     (string-prefix-ci? "integer divide by zero" name))
+	 'INTEGER-DIVIDE-BY-ZERO)
+	((or (string-prefix-ci? "floating-point divide by 0" name)
+	     (string-prefix-ci? "floating-point divide by zero" name))
+	 'FLOATING-POINT-DIVIDE-BY-ZERO)
+	((or (string-prefix-ci? "divide by 0" name)
+	     (string-prefix-ci? "divide by zero" name))
 	 'DIVIDE-BY-ZERO)
-	(else false)))
+	((or (string-prefix-ci? "inexact result" name)
+	     (string-prefix-ci? "inexact operation" name)
+	     (string-prefix-ci? "floating-point inexact result" name))
+	 'INEXACT-RESULT)
+	((or (string-prefix-ci? "invalid operation" name)
+	     (string-prefix-ci? "invalid floating-point operation" name))
+	 'INVALID-OPERATION)
+	((or (string-prefix-ci? "overflow" name)
+	     (string-prefix-ci? "floating-point overflow" name))
+	 'OVERFLOW)
+	((or (string-prefix-ci? "underflow" name)
+	     (string-prefix-ci? "floating-point underflow" name))
+	 'UNDERFLOW)
+	(else #f)))
 
 (define (file-primitive-description primitive)
   (cond ((or (eq? primitive (ucode-primitive file-exists? 1))
@@ -985,10 +991,14 @@ USA.
     "User microcode reset"))
 
 (set! hook/hardware-trap
-      (let ((signal-user-microcode-reset
-	     (condition-signaller condition-type:user-microcode-reset '()))
+      (let ((signal-arithmetic-error
+	     (condition-signaller condition-type:arithmetic-error
+				  '(OPERATOR OPERANDS)))
 	    (signal-divide-by-zero
 	     (condition-signaller condition-type:divide-by-zero
+				  '(OPERATOR OPERANDS)))
+	    (signal-floating-point-divide-by-zero
+	     (condition-signaller condition-type:floating-point-divide-by-zero
 				  '(OPERATOR OPERANDS)))
 	    (signal-floating-point-overflow
 	     (condition-signaller condition-type:floating-point-overflow
@@ -996,11 +1006,20 @@ USA.
 	    (signal-floating-point-underflow
 	     (condition-signaller condition-type:floating-point-underflow
 				  '(OPERATOR OPERANDS)))
-	    (signal-arithmetic-error
-	     (condition-signaller condition-type:arithmetic-error
-				  '(OPERATOR OPERANDS)))
 	    (signal-hardware-trap
-	     (condition-signaller condition-type:hardware-trap '(NAME CODE))))
+	     (condition-signaller condition-type:hardware-trap '(NAME CODE)))
+	    (signal-inexact-floating-point-result
+	     (condition-signaller condition-type:inexact-floating-point-result
+				  '(OPERATOR OPERANDS)))
+	    (signal-integer-divide-by-zero
+	     (condition-signaller condition-type:integer-divide-by-zero
+				  '(OPERATOR OPERANDS)))
+	    (signal-invalid-floating-point-operation
+	     (condition-signaller
+	      condition-type:invalid-floating-point-operation
+	      '(OPERATOR OPERANDS)))
+	    (signal-user-microcode-reset
+	     (condition-signaller condition-type:user-microcode-reset '())))
 	(lambda (name)
 	  (call-with-current-continuation
 	   (lambda (k)
@@ -1013,12 +1032,15 @@ USA.
 			  ((or (string=? "XCPT_FLOAT_OVERFLOW" name)
 			       (string=? "XCPT_INTEGER_OVERFLOW" name))
 			   (signal-floating-point-overflow k #f '()))
-			  ((or (string=? "XCPT_FLOAT_DIVIDE_BY_ZERO" name)
-			       (string=? "XCPT_INTEGER_DIVIDE_BY_ZERO" name))
-			   (signal-divide-by-zero k #f '()))
+			  ((string=? "XCPT_FLOAT_DIVIDE_BY_ZERO" name)
+			   (signal-floating-point-divide-by-zero k #f '()))
+			  ((string=? "XCPT_INTEGER_DIVIDE_BY_ZERO" name)
+			   (signal-integer-divide-by-zero k #f '()))
+			  ((string=? "XCPT_FLOAT_INEXACT_RESULT" name)
+			   (signal-inexact-floating-point-result k #f '()))
+			  ((string=? "XCPT_FLOAT_INVALID_OPERATION" name)
+			   (signal-invalid-floating-point-operation k #f '()))
 			  ((or (string=? "XCPT_FLOAT_DENORMAL_OPERAND" name)
-			       (string=? "XCPT_FLOAT_INEXACT_RESULT" name)
-			       (string=? "XCPT_FLOAT_INVALID_OPERATION" name)
 			       (string=? "XCPT_FLOAT_STACK_CHECK" name)
 			       (string=? "XCPT_B1NPX_ERRATA_02" name))
 			   (signal-arithmetic-error k #f '()))
@@ -1032,14 +1054,20 @@ USA.
 		      (if (string=? "SIGFPE" name)
 			  ((case (and (string? code)
 				      (normalize-trap-code-name code))
-			     ((UNDERFLOW) signal-floating-point-underflow)
-			     ((OVERFLOW) signal-floating-point-overflow)
 			     ((DIVIDE-BY-ZERO) signal-divide-by-zero)
+			     ((FLOATING-POINT-DIVIDE-BY-ZERO)
+			      signal-floating-point-divide-by-zero)
+			     ((INEXACT-RESULT)
+			      signal-inexact-floating-point-result)
+			     ((INTEGER-DIVIDE-BY-ZERO)
+			      signal-integer-divide-by-zero)
+			     ((INVALID-OPERATION)
+			      signal-invalid-floating-point-operation)
+			     ((OVERFLOW) signal-floating-point-overflow)
+			     ((UNDERFLOW) signal-floating-point-underflow)
 			     (else signal-arithmetic-error))
-			   k false '())
-			  (signal-hardware-trap k
-						name
-						code)))))))))))
+			   k #f '())
+			  (signal-hardware-trap k name code)))))))))))
 
 ;;; end INITIALIZE-PACKAGE!.
 )

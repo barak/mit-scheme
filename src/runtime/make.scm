@@ -476,6 +476,8 @@ USA.
    ((RUNTIME REGULAR-SEXPRESSION) INITIALIZE-CONDITIONS!)
    ;; System dependent stuff
    ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES!)
+   ;; Floating-point environment -- needed by threads.
+   (RUNTIME FLOATING-POINT-ENVIRONMENT)
    ;; Threads
    (RUNTIME THREAD)
    ;; I/O
@@ -582,5 +584,8 @@ USA.
 )
 
 (package/add-child! system-global-package 'USER user-initial-environment)
+;; Might be better to do this sooner, to trap on floating-point
+;; mistakes earlier in the cold load.
+(flo:set-environment! (flo:default-environment))
 (start-thread-timer)
 (initial-top-level-repl)

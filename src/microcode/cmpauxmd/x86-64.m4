@@ -966,18 +966,58 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rax))
 	ret
 
-define_c_label(x86_64_read_mxcsr)
+define_c_label(sse_read_mxcsr)
 	enter		IMM(8),IMM(0)
 	stmxcsr		IND(REG(rsp))
 	OP(mov,l)	TW(IND(REG(rsp)),REG(eax))
 	leave
 	ret
 
-define_c_label(x86_64_write_mxcsr)
+define_c_label(sse_write_mxcsr)
 	enter		IMM(8),IMM(0)
-	OP(mov,l)	TW(REG(eax),IND(REG(rsp)))
+	OP(mov,l)	TW(REG(edi),IND(REG(rsp)))
 	ldmxcsr		IND(REG(rsp))
 	leave
+	ret
+
+define_c_label(x87_clear_exceptions)
+	fnclex
+	ret
+
+define_c_label(x87_trap_exceptions)
+	fwait
+	ret
+
+define_c_label(x87_read_control_word)
+	enter		IMM(4),IMM(0)
+	fnstcw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave
+	ret
+
+define_c_label(x87_write_control_word)
+	enter		IMM(4),IMM(0)
+	OP(mov,w)	TW(REG(di),IND(REG(rsp))
+	fldcw		IND(REG(esp))
+	leave
+	ret
+
+define_c_label(x87_read_status_word)
+	enter		IMM(4),IMM(0)
+	fnstsw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave
+	ret
+
+define_c_label(x87_read_environment)
+	fnstenv		IND(REG(rdi))
+	# fnstenv masks all exceptions (go figure), so we must load
+	# the control word back in order to undo that.
+	fldcw		IND(REG(eax))
+	ret
+
+define_c_label(x87_write_environment)
+	fldenv		IND(REG(rdi))
 	ret
 
 IFDASM(`end')

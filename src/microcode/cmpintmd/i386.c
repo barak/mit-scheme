@@ -389,3 +389,11 @@ i386_reset_hook (void)
   }
 #endif /* _MACH_UNIX */
 }
+
+#ifndef HAVE_FENV_H
+extern int i387_presence;
+extern int sse_presence;
+#  define x87_p i387_presence
+#  define sse_p sse_presence
+#  include "cmpintmd/x86-fenv.c"
+#endif

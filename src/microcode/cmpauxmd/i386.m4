@@ -113,8 +113,12 @@
 ###	what you're doing.
 ### DISABLE_387
 ###	If defined, do not generate 387 floating-point instructions.
+### DISABLE_SSE
+###	If defined, do not generate SSE media instructions.
 ### VALGRIND_MODE
 ###	If defined, modify code to make it work with valgrind.
+
+define(DISABLE_SSE,1)
 
 ####	Utility macros and definitions
 
@@ -129,6 +133,14 @@ ifdef(`DISABLE_387',
 ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
+
+ifdef(`DISABLE_SSE',
+      `define(IFSSE,`')',
+      `define(IFSSE,`$1')')
+
+ifdef(`DISABLE_SSE',
+      `define(IFNSSE,`$1')',
+      `define(IFNSSE,`')')
 
 IF_WIN32(`define(DASM,1)')
 ifdef(`WCC386R',`define(WCC386,1)')
@@ -358,6 +370,9 @@ allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 define_data(i387_presence)
 allocate_longword(i387_presence)
 
+define_data(sse_presence)
+allocate_longword(sse_presence)
+
 define_data(C_Stack_Pointer)
 allocate_longword(C_Stack_Pointer)
 
@@ -400,6 +415,13 @@ ifdef(`VALGRIND_MODE',`',`
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
+
+# FIXME: Some IA-32 systems have SSE support, and since the microcode
+# might use SSE instructions, we need to determine, using CPUID,
+# whether the CPU supports SSE instructions, so that we can save and
+# restore the SSE MXCSR in the floating-point environment.
+
+	OP(mov,l)	TW(IMM(0),ABS(EVR(sse_presence)))
 
 # Do a bunch of hair to determine if we need to do cache synchronization.
 # See if the CPUID instruction is supported.
@@ -1207,28 +1229,54 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
 	ret
 
-define_c_label(i387_read_fp_control_word)
-IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
-	je		i387_read_fp_control_word_lose
-	enter		IMM(4),IMM(0)
+define_c_label(sse_read_mxcsr)
+IFSSE(`	enter		IMM(4),IMM(0)
+	stmxcsr		IND(REG(esp))
+	OP(mov,l)	TW(IND(REG(esp)),REG(eax))
+	leave')
+	ret
+
+define_c_label(sse_write_mxcsr)
+IFSSE(`	ldmxcsr		LOF(4,REG(esp))')
+	ret
+
+define_c_label(x87_clear_exceptions)
+IF387(`	fnclex')
+	ret
+
+define_c_label(x87_trap_exceptions)
+IF387(`	fwait')
+	ret
+
+define_c_label(x87_read_control_word)
+IF387(`	enter		IMM(4),IMM(0)
 	fnstcw		IND(REG(esp))
 	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
-	leave
-	ret
-')
-
-i387_read_fp_control_word_lose:
-	OP(xor,l)	TW(REG(eax),REG(eax))
+	leave')
 	ret
 
-define_c_label(i387_write_fp_control_word)
-IF387(`	OP(cmp,l)	TW(IMM(0),ABS(EVR(i387_presence)))
-	je		i387_write_fp_control_word_lose
-	fldcw		LOF(4,REG(esp))
+define_c_label(x87_write_control_word)
+IF387(`	fldcw		LOF(4,REG(esp))')
 	ret
-')
 
-i387_write_fp_control_word_lose:
+define_c_label(x87_read_status_word)
+IF387(`	enter		IMM(4),IMM(0)
+	fnstsw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave')
+	ret
+
+define_c_label(x87_read_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fnstenv		IND(REG(eax))
+	# fnstenv masks all exceptions (go figure), so we must load
+	# the control word back in order to undo that.
+	fldcw		IND(REG(eax))')
+	ret
+
+define_c_label(x87_write_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fldenv		IND(REG(eax))')
 	ret
 
 IFDASM(`end')

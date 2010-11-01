@@ -33,7 +33,7 @@ USA.
 extern void * obstack_chunk_alloc (size_t);
 #define obstack_chunk_free free
 extern void preserve_signal_mask (void);
-extern void fixup_float_rounding_mode (void);
+extern void fixup_float_environment (void);
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -268,7 +268,7 @@ Interpret (int pop_return_p)
   bind_interpreter_state (&new_state);
   dispatch_code = (setjmp (interpreter_catch_env));
   preserve_signal_mask ();
-  fixup_float_rounding_mode ();
+  fixup_float_environment ();
 
   switch (dispatch_code)
     {

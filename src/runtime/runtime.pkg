@@ -242,9 +242,6 @@ USA.
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
-	  flo:rounding-mode
-	  flo:rounding-modes
-	  flo:set-rounding-mode!
 	  flo:sin
 	  flo:sqrt
 	  flo:tan
@@ -254,7 +251,6 @@ USA.
 	  flo:vector-length
 	  flo:vector-ref
 	  flo:vector-set!
-	  flo:with-rounding-mode
 	  flo:zero?
 	  guarantee-fixnum
 	  guarantee-index-fixnum
@@ -287,6 +283,48 @@ USA.
 	  non-negative-fixnum?
 	  non-positive-fixnum?
 	  positive-fixnum?))
+
+(define-package (runtime floating-point-environment)
+  (files "floenv")
+  (parent (runtime))
+  (export ()
+	  flo:clear-exceptions!
+	  flo:default-environment
+	  flo:default-exception-mask
+	  flo:default-rounding-mode
+	  flo:defer-exceptions!
+	  flo:deferring-exceptions
+	  flo:environment
+	  flo:exception:divide-by-zero
+	  flo:exception:inexact-result
+	  flo:exception:invalid-operation
+	  flo:exception:overflow
+	  flo:exception:underflow
+	  flo:exceptions->names
+	  flo:ignoring-exceptions
+	  flo:mask-exceptions!
+	  flo:masked-exceptions
+	  flo:names->exceptions
+	  flo:preserving-environment
+	  flo:raise-exceptions!
+	  flo:restore-exception-flags!
+	  flo:rounding-mode
+	  flo:rounding-modes
+	  flo:save-exception-flags
+	  flo:set-environment!
+	  flo:set-masked-exceptions!
+	  flo:set-rounding-mode!
+	  flo:supported-exceptions
+	  flo:test-exception-flags
+	  flo:test-exceptions
+	  flo:unmask-exceptions!
+	  flo:unmaskable-exceptions
+	  flo:update-environment!
+	  flo:with-default-environment
+	  flo:with-exception-mask
+	  flo:with-exceptions-masked
+	  flo:with-rounding-mode)
+  (initialization (initialize-package!)))
 
 (define-package (runtime integer-bits)
   (files "integer-bits")
@@ -1304,6 +1342,7 @@ USA.
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
+	  continuation/floating-point-environment
 	  continuation?
 	  error:not-continuation
 	  guarantee-continuation
@@ -1335,6 +1374,7 @@ USA.
 	  stack-frame/compiled-code?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
+	  stack-frame/floating-point-environment
 	  stack-frame/interrupt-mask
 	  stack-frame/length
 	  stack-frame/next
@@ -1680,10 +1720,14 @@ USA.
 	  condition-type:error
 	  condition-type:file-error
 	  condition-type:file-operation-error
+	  condition-type:floating-point-divide-by-zero
 	  condition-type:floating-point-overflow
 	  condition-type:floating-point-underflow
 	  condition-type:illegal-datum
 	  condition-type:illegal-pathname-component
+	  condition-type:inexact-floating-point-result
+	  condition-type:integer-divide-by-zero
+	  condition-type:invalid-floating-point-operation
 	  condition-type:macro-binding
 	  condition-type:no-such-restart
 	  condition-type:not-8-bit-char
