@@ -469,13 +469,6 @@ define([SCM_INC_BSDTTY],
     #endif
     ])
 
-define([SCM_INC_FENV],
-    [
-    #ifdef HAVE_FENV_H
-    #  include <fenv.h>
-    #endif
-    ])
-
 dnl Checks for types and structs
 AC_TYPE_MODE_T
 AC_TYPE_OFF_T
@@ -554,8 +547,15 @@ AC_CHECK_TYPE([speed_t],
 	[Define to `short' if <termios.h> doesn't define.])],
     [SCM_INC_TERMIO])
 
-AC_CHECK_TYPES([fenv_t], [], [], [SCM_INC_FENV])
-AC_CHECK_TYPES([fexcept_t], [], [], [SCM_INC_FENV])
+define([SCM_INC_FENV],
+    [
+    #include <fenv.h>
+    ])
+
+if test "x$ac_cv_header_fenv_h" = "xyes"; then
+  AC_CHECK_TYPES([fenv_t], [], [], [SCM_INC_FENV])
+  AC_CHECK_TYPES([fexcept_t], [], [], [SCM_INC_FENV])
+fi
 
 AC_CHECK_SIZEOF([time_t])
 AC_CHECK_SIZEOF([off_t])
