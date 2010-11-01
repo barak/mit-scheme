@@ -94,6 +94,11 @@ USA.
 #    define FE_INEXACT FP_X_IMP
 #  endif
 
+#  ifndef FE_ALL_EXCEPT
+#    define FE_ALL_EXCEPT			\
+  (FE_DIVBYZERO | FE_INEXACT | FE_INVALID | FE_OVERFLOW | FE_UNDERFLOW)
+#  endif
+
 /* FP_X_IOV?  */
 
 #  ifndef HAVE_FEXCEPT_T
@@ -117,7 +122,7 @@ typedef fp_except fexcept_t;
 /* This isn't right -- it doesn't necessarily actually raise the
    exception until some floating-point operation is performed.  */
 #    define feraiseexcept(excepts)		\
-  ((fpsetsticky ((fpgetsticky ()) || (FE_ALL_EXCEPT & (excepts)))), 0)
+  ((fpsetsticky ((fpgetsticky ()) | (FE_ALL_EXCEPT & (excepts)))), 0)
 #  endif
 
 #  ifndef HAVE_FEGETEXCEPTFLAG
@@ -142,7 +147,7 @@ typedef fp_except fexcept_t;
 #  ifndef HAVE_FEENABLEEXCEPT
 #    define HAVE_FEENABLEEXCEPT
 #    define feenableexcept(excepts)		\
-  (fpsetmask ((fpgetmask ()) || (FE_ALL_EXCEPT & (excepts))))
+  (fpsetmask ((fpgetmask ()) | (FE_ALL_EXCEPT & (excepts))))
 #  endif
 
 #  ifndef HAVE_FEDISABLEEXCEPT
