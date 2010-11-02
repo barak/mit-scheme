@@ -119,10 +119,19 @@ typedef fp_except fexcept_t;
 
 #  ifndef HAVE_FERAISEEXCEPT
 #    define HAVE_FERAISEEXCEPT
-/* This isn't right -- it doesn't necessarily actually raise the
-   exception until some floating-point operation is performed.  */
-#    define feraiseexcept(excepts)		\
-  ((fpsetsticky ((fpgetsticky ()) | (FE_ALL_EXCEPT & (excepts)))), 0)
+static inline int
+feraiseexcept (int excepts)
+{
+  (void) fpsetsticky ((fpgetsticky ()) | (FE_ALL_EXCEPT & (excepts)));
+  /* Force a floating-point operation to happen, which ideally should
+     trap if there are unmasked exceptions pending, presumably because
+     of the above fpsetsticky.  */
+  volatile double x = 0;
+  volatile double y = 0;
+  volatile double z = (x + y);
+  (void) z;			/* ignored */
+  return (0);
+}
 #  endif
 
 #  ifndef HAVE_FEGETEXCEPTFLAG
@@ -208,8 +217,6 @@ feupdateenv (const fenv_t *fe)
 {
   fp_except exceptions = (fpgetsticky ());
   (void) fesetenv (fe);
-  /* Unfortunately, this doesn't actually do anything, because of the
-     useless definition of feraiseexcept above.  */
   (void) feraiseexcept (exceptions);
   return (0);
 }
