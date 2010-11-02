@@ -182,7 +182,6 @@ magic = ([TC_COMPILED_ENTRY | 0] - (offset + length_of_CALL_instruction))
 */
 
 #define ASM_RESET_HOOK i386_reset_hook
-#define FPE_RESET_TRAPS i386_interface_initialize
 
 #define CMPINT_USE_STRUCS 1
 

@@ -541,15 +541,13 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     ? (find_signal_name (signo))
     : 0)))
 
-#ifndef FPE_RESET_TRAPS
-#  define FPE_RESET_TRAPS()
-#endif
-
 #ifdef HAVE_SIGFPE
+extern void clear_float_exceptions (void);
+
 static
 DEFUN_STD_HANDLER (sighnd_fpe,
 {
-  FPE_RESET_TRAPS ();
+  clear_float_exceptions ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
 #endif

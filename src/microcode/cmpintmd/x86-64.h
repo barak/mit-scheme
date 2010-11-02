@@ -117,7 +117,6 @@ entry	0		MOV	AL,code		0xB0, code-byte
 */
 
 #define ASM_RESET_HOOK x86_64_reset_hook
-#define FPE_RESET_TRAPS x86_64_fpe_reset_traps
 
 #define CMPINT_USE_STRUCS 1
 
@@ -174,7 +173,7 @@ typedef byte_t insn_t;
 #  define ASM_ENTRY_POINT(name) name
 #endif
 
-extern void ASM_ENTRY_POINT (x86_64_fpe_reset_traps) (void);
+extern void ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
 extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);

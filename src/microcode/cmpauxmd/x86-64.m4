@@ -356,7 +356,7 @@ define_double(flonum_one,1.0)
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
 
-define_c_label(x86_64_fpe_reset_traps)
+define_c_label(x86_64_interface_initialize)
 	OP(push,q)	REG(rbp)
 	OP(mov,q)	TW(REG(rsp),REG(rbp))
 	OP(sub,q)	TW(IMM(8),REG(rsp))

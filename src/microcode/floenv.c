@@ -77,6 +77,14 @@ fixup_float_environment (void)
 #endif
 }
 
+void
+clear_float_exceptions (void)
+{
+#ifdef HAVE_FECLEAREXCEPT
+  (void) feclearexcept (FE_ALL_EXCEPT);
+#endif
+}
+
 /* FIXME: Alignment?  */
 
 static SCHEME_OBJECT

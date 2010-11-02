@@ -223,7 +223,7 @@ x86_64_reset_hook (void)
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * rsi_value = ((unsigned char *) Registers);
 
-  x86_64_fpe_reset_traps ();
+  x86_64_interface_initialize ();
 
   /* These must match machines/x86-64/lapgen.scm */
 
