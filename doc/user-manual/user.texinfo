@@ -2656,7 +2656,7 @@ arithmetic}) and maximum speed.  It's safe use is entirely up to you.
 (declare (usual-integrations) (integrate-operator %increment!))
 (define (%increment! v i)
   (declare (no-type-checks) (no-range-checks))
-  (flo:vector-set! v (flo:+ (flo:vector-ref v i) 1.)))
+  (flo:vector-set! v i (flo:+ (flo:vector-ref v i) 1.)))
 @end group
 @end example
 
