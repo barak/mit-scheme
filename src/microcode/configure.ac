@@ -1025,6 +1025,12 @@ if test "x${MODULE_BASES}" != x; then
 	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
     done
 fi
+if test "x${MODULE_TARGETS}" != x; then
+    if test ! -e ../lib/lib; then mkdir ../lib/lib; fi
+    for BASE in ${MODULE_TARGETS}; do
+	ln -sf ../../microcode/${BASE} ../lib/lib/${BASE}
+    done
+fi
 
 AC_SUBST([AS_FLAGS])
 AC_SUBST([GC_HEAD_FILES])

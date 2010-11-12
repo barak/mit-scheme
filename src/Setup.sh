@@ -87,16 +87,6 @@ maybe_link lib/runtime ../runtime
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
 maybe_link lib/ffi ../ffi
 
-# This is a kludge so that liarc bundles can coexist with microcode
-# modules in the same lib directory.  If you have a better way to make
-# this work, please implement it.  Making lib/lib a symlink to
-# ../microcode does not work -- configure.ac wants to make symlinks at
-# lib/lib/sf.so to ../../sf/sf.so, &c.
-maybe_mkdir lib/lib
-for MODULE in prbfish prmd5 prmhash prmcrypt prgdbm prdb4 prpgsql prx11; do
-  maybe_link "lib/lib/${MODULE}.so" "../../microcode/${MODULE}.so"
-done
-
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
