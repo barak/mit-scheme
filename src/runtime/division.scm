@@ -78,7 +78,7 @@ USA.
 
 ;;;; Euclidean Division
 
-;;; 0 < r < |d|
+;;; 0 <= r < |d|
 
 (define (euclidean/ n d)
   (if (and (exact-integer? n) (exact-integer? d))
