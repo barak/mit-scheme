@@ -51,6 +51,11 @@ USA.
 
 (define-integrable set-alien/ctype! set-%alien/ctype!)
 
+(declare (integrate-operator c-cast))
+(define (c-cast alien ctype)
+  (set-%alien/ctype! alien ctype)
+  alien)
+
 (define (alien/address-string alien)
   ;; Returns a string of length 8, e.g. "081adc60".
   (let ((high (%alien/high-bits alien)))
@@ -64,27 +69,32 @@ USA.
   (let ((ctype (if (default-object? ctype) #f ctype)))
     (%make-alien 0 0 ctype)))
 
-(define-integrable (alien/address alien)
+(declare (integrate-operator alien/address))
+(define (alien/address alien)
   (+ (* (%alien/high-bits alien) #x10000)
      (%alien/low-bits alien)))
 
-(define-integrable (copy-alien-address! alien source)
+(declare (integrate-operator copy-alien-address!))
+(define (copy-alien-address! alien source)
   (if (not (eq? alien source))
       (begin
 	(set-%alien/high-bits! alien (%alien/high-bits source))
 	(set-%alien/low-bits! alien (%alien/low-bits source)))))
 
-(define-integrable (alien-null? alien)
+(declare (integrate-operator alien-null?))
+(define (alien-null? alien)
   (and (fix:zero? (%alien/high-bits alien))
        (fix:zero? (%alien/low-bits alien))))
 
-(define-integrable (alien-null! alien)
+(declare (integrate-operator alien-null!))
+(define (alien-null! alien)
   (set-%alien/high-bits! alien 0)
   (set-%alien/low-bits! alien 0))
 
 (define null-alien (make-alien '|void|))
 
-(define-integrable (alien=? alien1 alien2)
+(declare (integrate-operator alien=?))
+(define (alien=? alien1 alien2)
   (and (fix:= (%alien/high-bits alien1) (%alien/high-bits alien2))
        (fix:= (%alien/low-bits alien1) (%alien/low-bits alien2))))
 

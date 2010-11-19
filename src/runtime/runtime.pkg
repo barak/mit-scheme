@@ -367,6 +367,26 @@ USA.
 	  bitwise-orc1
 	  bitwise-nand))
 
+(define-package (runtime integer-division)
+  (files "division")
+  (parent (runtime))
+  (export ()
+          ceiling-quotient
+          ceiling-remainder
+          ceiling/
+          euclidean-quotient
+          euclidean-remainder
+          euclidean/
+          floor-quotient
+          floor-remainder
+          floor/
+          round-quotient
+          round-remainder
+          round/
+          truncate-quotient
+          truncate-remainder
+          truncate/))
+
 (define-package (runtime keyword)
   (files "keyword")
   (parent (runtime))
@@ -3208,6 +3228,7 @@ USA.
 	  copy-alien
 	  alien/ctype
 	  set-alien/ctype!
+	  c-cast
 	  alien?
 	  alien-null?
 	  alien-null!

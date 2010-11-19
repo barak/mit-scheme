@@ -149,6 +149,7 @@ using.
 @menu
 * Unix Installation::           
 * Windows Installation::        
+* Portable C Installation::
 @end menu
 
 @node Unix Installation, Windows Installation, Installation, Installation
@@ -175,16 +176,16 @@ Unpack the tar file,
 @file{mit-scheme-@var{VERSION}}.  For example,
 
 @example
-tar xzf mit-scheme-9.0-i386.tar.gz
+tar xzf mit-scheme-9.0.1-i386.tar.gz
 @end example
 
-will create a new directory @file{mit-scheme-9.0}.
+will create a new directory @file{mit-scheme-9.0.1}.
 
 @item
 Move into the new directory:
 
 @example
-cd mit-scheme-@var{VERSION}/src
+cd mit-scheme-9.0.1/src
 @end example
 
 @item
@@ -207,6 +208,9 @@ Install the software:
 @example
 make install
 @end example
+
+Depending on configuration options and file-system permissions, you
+may need super-user privileges to do the installation step.
 @end enumerate
 
 After installing the software, you can delete the unpacked directory:
@@ -227,7 +231,7 @@ scripts, and additionally accepts some that are specific to MIT/GNU
 Scheme.  To see all the possible arguments and their meanings, run the
 command @kbd{./configure --help}.
 
-@node Windows Installation,  , Unix Installation, Installation
+@node Windows Installation, Portable C Installation, Unix Installation, Installation
 @section Windows Installation
 
 This section describes how to install MIT/GNU Scheme on Windows 2000,
@@ -242,6 +246,68 @@ to be placed.
 
 To uninstall the software, open up the @samp{Control Panel}, run
 @samp{Add/Remove Programs}, and double-click on @samp{MIT/GNU Scheme}.
+
+@node Portable C Installation, , Windows Installation, Installation
+@section Portable C Installation
+
+This section describes how to generate binaries from the portable C
+distribution. These binaries should run with little or no trouble on most
+modern architectures and operating systems.  It will probably require
+tweaking for systems that haven't been tested.
+
+When built this way, the system runs slower than when it is built
+using the native-code compiler. For this reason, you will usually want
+to use native-code binaries when running on a 32-bit Intel
+architecture machine.  However, the portable-code binaries can address
+larger amounts of virtual memory than the native-code binaries, so it
+is reasonable (and supported) to use both kinds on the same machine.
+
+@enumerate
+@item
+Unpack the tar file,
+@file{mit-scheme-c-@var{VERSION}.tar.gz}, into the directory
+@file{mit-scheme-c-@var{VERSION}}.  For example,
+
+@example
+tar xzf mit-scheme-c-9.0.1.tar.gz
+@end example
+
+will create a new directory @file{mit-scheme-c-9.0.1}.
+
+@item
+Move into the new directory:
+
+@example
+cd mit-scheme-c-@var{VERSION}/src
+@end example
+
+@item
+Build the program:
+
+@example
+./etc/make-liarc.sh
+@end example
+
+This will take a long time; on fairly fast machines with lots of RAM
+it takes about an hour.  On older machines it will take longer or fail
+altogether, at which point you should ask for help.  Note that you can
+pass configure options to the script.
+
+@example
+ etc/make-liarc.sh --help
+ etc/make-liarc.sh --prefix=/usr
+@end example
+
+@item
+Install the program:
+
+@example
+ make install
+@end example
+
+Depending on configuration options and file-system permissions, you
+may need super-user privileges to do the installation step.
+@end enumerate
 
 @node Running Scheme, Using Scheme, Installation, Top
 @chapter Running Scheme
@@ -2301,6 +2367,7 @@ explanations useful.
 @menu
 * Coding style::                
 * Global variables::            
+* Type and range checking::
 * Fixnum arithmetic::           
 * Flonum arithmetic::           
 @end menu
@@ -2445,7 +2512,7 @@ expressions in the body.  Following the standard simultaneously assures
 portability and avoids the implementation inefficiencies described in
 this section.
 
-@node Global variables, Fixnum arithmetic, Coding style, Efficiency Tips
+@node Global variables, Type and range checking, Coding style, Efficiency Tips
 @subsection Global variables
 
 @cindex variable caches
@@ -2561,7 +2628,51 @@ For example, to ignore reference traps on all the variables except
 @c 
 @c In all versions, top level declarations affect the whole source file.
 
-@node Fixnum arithmetic, Flonum arithmetic, Global variables, Efficiency Tips
+@node Type and range checking, Fixnum arithmetic, Global variables, Efficiency Tips
+@subsection Type and range checking
+
+@cindex type checking
+@cindex range checking
+@cindex index checking
+The compiler inserts type (and range) checks so that e.g. applying
+@code{vector-ref} to a string (or an invalid index) signals an error.
+Without these checks, an in-lined @code{vector-ref} application will return
+garbage --- an object with random type and address.  At best,
+accessing any part of that object will produce an invalid address
+trap.  At worst, the garbage collector is confused and your world is
+destroyed.
+
+The compiler punts type and range checks when it can prove they are
+not necessary.  Using ``Better Predicates'' helps (@pxref{Coding
+style}), but many checks will remain.  If you know a data structure
+will be read-only, a certain size, etc. many of the remaining checks
+can prove unnecessary.  To make these decisions for yourself, you can
+turn off the compiler's implicit checks.  The following procedure
+definition ensures minimum flonum consing (i.e. none, @pxref{Flonum
+arithmetic}) and maximum speed.  It's safe use is entirely up to you.
+
+@example
+@group
+(declare (usual-integrations) (integrate-operator %increment!))
+(define (%increment! v i)
+  (declare (no-type-checks) (no-range-checks))
+  (flo:vector-set! v i (flo:+ (flo:vector-ref v i) 1.)))
+@end group
+@end example
+
+Here are the relevant declarations:
+
+@deffn declaration no-type-checks
+In-lined primitives within the block will not check their arguments'
+types.
+@end deffn
+
+@deffn declaration no-range-checks
+In-lined primitives within the block will not check that indices are
+valid.
+@end deffn
+
+@node Fixnum arithmetic, Flonum arithmetic, Type and range checking, Efficiency Tips
 @subsection Fixnum arithmetic
 
 The usual arithmetic operations like @code{+} and @code{<} are called
