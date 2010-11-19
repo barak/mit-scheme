@@ -290,10 +290,10 @@ USA.
   (export ()
 	  flo:clear-exceptions!
 	  flo:default-environment
-	  flo:default-exception-mask
 	  flo:default-rounding-mode
-	  flo:defer-exceptions!
-	  flo:deferring-exceptions
+	  flo:default-trapped-exceptions
+	  flo:defer-exception-traps!
+	  flo:deferring-exception-traps
 	  flo:environment
 	  flo:exception:divide-by-zero
 	  flo:exception:inexact-result
@@ -301,9 +301,7 @@ USA.
 	  flo:exception:overflow
 	  flo:exception:underflow
 	  flo:exceptions->names
-	  flo:ignoring-exceptions
-	  flo:mask-exceptions!
-	  flo:masked-exceptions
+	  flo:ignoring-exception-traps
 	  flo:names->exceptions
 	  flo:preserving-environment
 	  flo:raise-exceptions!
@@ -312,18 +310,21 @@ USA.
 	  flo:rounding-modes
 	  flo:save-exception-flags
 	  flo:set-environment!
-	  flo:set-masked-exceptions!
 	  flo:set-rounding-mode!
+	  flo:set-trapped-exceptions!
 	  flo:supported-exceptions
 	  flo:test-exception-flags
 	  flo:test-exceptions
-	  flo:unmask-exceptions!
-	  flo:unmaskable-exceptions
+	  flo:trap-exceptions!
+	  flo:trappable-exceptions
+	  flo:trapped-exceptions
+	  flo:untrap-exceptions!
 	  flo:update-environment!
 	  flo:with-default-environment
-	  flo:with-exception-mask
-	  flo:with-exceptions-masked
-	  flo:with-rounding-mode)
+	  flo:with-exceptions-trapped
+	  flo:with-exceptions-untrapped
+	  flo:with-rounding-mode
+	  flo:with-trapped-exceptions)
   (initialization (initialize-package!)))
 
 (define-package (runtime integer-bits)
@@ -1342,7 +1343,6 @@ USA.
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
-	  continuation/floating-point-environment
 	  continuation?
 	  error:not-continuation
 	  guarantee-continuation
@@ -1374,7 +1374,6 @@ USA.
 	  stack-frame/compiled-code?
 	  stack-frame/dynamic-state
 	  stack-frame/elements
-	  stack-frame/floating-point-environment
 	  stack-frame/interrupt-mask
 	  stack-frame/length
 	  stack-frame/next

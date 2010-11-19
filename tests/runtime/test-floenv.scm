@@ -25,6 +25,11 @@ USA.
 
 ;;;; Tests of the floating-point environment
 
+;;; Many tests fail if there are accrued exceptions when you run them.
+;;; This is pretty silly, but you can work around it provisionally by
+;;; evaluating (FLO:CLEAR-EXCEPTIONS! (FLO:SUPPORTED-EXCEPTIONS))
+;;; before running the tests.
+
 (declare (usual-integrations))
 
 (define-test 'FLO:DEFAULT-ROUNDING-MODE
@@ -97,8 +102,8 @@ USA.
 
 (define (no-op x) x)			;Do not integrate!
 
-(define (define-fpe-descriptor name unmaskable? exception condition-type)
-  (let ((descriptor (list name exception condition-type unmaskable? '())))
+(define (define-fpe-descriptor name trappable? exception condition-type)
+  (let ((descriptor (list name exception condition-type trappable? '())))
     (cond ((assq name floating-point-exception-descriptors)
 	   => (lambda (descriptor*)
 		(set-cdr! descriptor* (cdr descriptor))))
@@ -125,23 +130,23 @@ USA.
 	      (apply receiver descriptor))
 	    floating-point-exception-descriptors))
 
-(define (for-each-unmaskable-exception receiver)
+(define (for-each-trappable-exception receiver)
   (for-each-exception
-   (lambda (name exception condition-type unmaskable? elicitors)
-     (if unmaskable?
+   (lambda (name exception condition-type trappable? elicitors)
+     (if trappable?
 	 (receiver name exception condition-type elicitors)))))
 
 (define (for-each-exception-elicitor receiver)
   (for-each-exception
-   (lambda (name exception condition-type unmaskable? elicitors)
+   (lambda (name exception condition-type trappable? elicitors)
      (for-each (lambda (name.elicitor)
-		 (receiver name exception condition-type unmaskable?
+		 (receiver name exception condition-type trappable?
 			   (car name.elicitor)
 			   (cdr name.elicitor)))
 	       elicitors))))
 
-(define (for-each-unmaskable-exception-elicitor receiver)
-  (for-each-unmaskable-exception
+(define (for-each-trappable-exception-elicitor receiver)
+  (for-each-trappable-exception
    (lambda (name exception condition-type elicitors)
      (for-each (lambda (name.elicitor)
 		 (receiver name exception condition-type
@@ -212,14 +217,14 @@ USA.
       ;; relying on the exception flag will fail.
       (flo:* (no-op .5) (flo:shift (no-op 1.) -1022)))))
 
-(define (for-each-unmaskable-exception receiver)
+(define (for-each-trappable-exception receiver)
   (for-each-exception
-   (lambda (name exception condition-type unmaskable? elicitors)
-     (if unmaskable? (receiver name exception condition-type elicitors)))))
+   (lambda (name exception condition-type trappable? elicitors)
+     (if trappable? (receiver name exception condition-type elicitors)))))
 
 (for-each-exception
- (lambda (name exception condition-type unmaskable? elicitors)
-   condition-type unmaskable? elicitors	;ignore
+ (lambda (name exception condition-type trappable? elicitors)
+   condition-type trappable? elicitors	;ignore
    (define-test (symbol-append 'FLO:EXCEPTIONS->NAMES ': name)
      (lambda ()
        (assert-equal (flo:exceptions->names (exception)) (list name))))
@@ -257,118 +262,106 @@ USA.
 		      (map car floating-point-exception-descriptors))
      '())))
 
-(define-test 'FLO:MASKED-EXCEPTIONS
+(define-test 'FLO:TRAPPED-EXCEPTIONS
   (lambda ()
-    (flo:masked-exceptions)))
+    (flo:trapped-exceptions)))
 
-(define (define-set-masked-exceptions-test name to-mask)
-  (define-test (symbol-append 'FLO:SET-MASKED-EXCEPTIONS! ': name)
+(define (define-set-trapped-exceptions-test name to-trap)
+  (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name)
     (lambda ()
-      (let ((exceptions (fix:andc (flo:supported-exceptions) (to-mask)))
-	    (mask (flo:masked-exceptions)))
+      (let ((exceptions (to-trap))
+	    (trapped (flo:trapped-exceptions)))
 	(dynamic-wind
 	 (lambda () unspecific)
 	 (lambda ()
-	   (assert-eqv (flo:set-masked-exceptions! exceptions) mask)
-	   (assert-eqv (flo:masked-exceptions) exceptions))
-	 (lambda () (flo:set-masked-exceptions! mask)))))))
+	   (assert-eqv (flo:set-trapped-exceptions! exceptions) trapped)
+	   (assert-eqv (flo:trapped-exceptions) exceptions))
+	 (lambda () (flo:set-trapped-exceptions! trapped)))))))
 
-(define (define-with-exception-mask-test name to-mask)
-  (define-test (symbol-append 'FLO:WITH-EXCEPTION-MASK ': name)
+(define (define-with-trapped-exceptions-test name to-trap)
+  (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
     (lambda ()
-      (let ((exceptions (fix:andc (flo:supported-exceptions) (to-mask))))
-	(flo:with-exception-mask exceptions
+      (let ((exceptions (to-trap)))
+	(flo:with-trapped-exceptions exceptions
 	  (lambda ()
-	    (assert-eqv (flo:masked-exceptions) exceptions)))))))
+	    (assert-eqv (flo:trapped-exceptions) exceptions)))))))
 
-(define-set-masked-exceptions-test 'ALL (lambda () 0))
-(define-set-masked-exceptions-test 'NONE flo:unmaskable-exceptions)
+(define-set-trapped-exceptions-test 'ALL (lambda () 0))
+(define-set-trapped-exceptions-test 'NONE flo:trappable-exceptions)
 
-(define-with-exception-mask-test 'ALL (lambda () 0))
-(define-with-exception-mask-test 'NONE flo:unmaskable-exceptions)
+(define-with-trapped-exceptions-test 'ALL (lambda () 0))
+(define-with-trapped-exceptions-test 'NONE flo:trappable-exceptions)
 
-(for-each-unmaskable-exception
+(for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
    elicitors				;ignore
-   (define-test (symbol-append 'FLO:WITH-EXCEPTION-MASK ': name)
+   (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
      (lambda ()
-       (let ((mask (fix:andc (flo:supported-exceptions) (exception))))
-	 (flo:with-exception-mask mask
-	   (lambda ()
-	     (assert-eqv (flo:masked-exceptions) mask))))))))
-
-(for-each-unmaskable-exception
- (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
-   (define-test (symbol-append 'FLO:MASK-EXCEPTIONS! ': name)
-     (lambda ()
-       (let ((mask
-	      (fix:andc (flo:supported-exceptions)
-			(flo:unmaskable-exceptions))))
-	 (flo:with-exception-mask mask
-	   (lambda ()
-	     (assert-eqv (flo:mask-exceptions! (exception)) mask)
-	     (assert-eqv (flo:masked-exceptions)
-			 (fix:or mask (exception))))))))))
-
-(for-each-unmaskable-exception
- (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
-   (define-test (symbol-append 'FLO:UNMASK-EXCEPTIONS! ': name)
-     (lambda ()
-       (flo:with-exception-mask (flo:supported-exceptions)
+       (flo:with-trapped-exceptions (exception)
 	 (lambda ()
-	   (assert-eqv (flo:unmask-exceptions! (exception))
-		       (flo:supported-exceptions))
-	   (assert-eqv (flo:masked-exceptions)
-		       (fix:andc (flo:supported-exceptions) (exception)))))))))
-
-(for-each-unmaskable-exception
- (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
-   (define-test (symbol-append 'FLO:SET-MASKED-EXCEPTIONS! ': name ': 'ENABLE)
-     (lambda ()
-       (let ((mask
-	      (fix:andc (flo:supported-exceptions)
-			(flo:unmaskable-exceptions))))
-	 (flo:with-exception-mask (fix:or mask (exception))
-	   (lambda ()
-	     (assert-eqv (flo:set-masked-exceptions! mask)
-			 (fix:or mask (exception)))
-	     (assert-eqv (flo:masked-exceptions) mask))))))))
-
-(for-each-unmaskable-exception
- (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
-   (define-test (symbol-append 'FLO:SET-MASKED-EXCEPTIONS! ': name ': 'DISABLE)
-     (lambda ()
-       (let ((mask (fix:andc (flo:supported-exceptions) (exception))))
-	 (flo:with-exception-mask (flo:supported-exceptions)
-	   (lambda ()
-	     (assert-eqv (flo:set-masked-exceptions! mask)
-			 (flo:supported-exceptions))
-	     (assert-eqv (flo:masked-exceptions) mask))))))))
+	   (assert-eqv (flo:trapped-exceptions) (exception))))))))
 
-(for-each-unmaskable-exception-elicitor
+(for-each-trappable-exception
+ (lambda (name exception condition-type elicitors)
+   elicitors				;ignore
+   (define-test (symbol-append 'FLO:TRAP-EXCEPTIONS! ': name)
+     (lambda ()
+       (flo:with-trapped-exceptions 0
+	 (lambda ()
+	   (assert-eqv (flo:trap-exceptions! (exception)) 0)
+	   (assert-eqv (flo:trapped-exceptions) (exception))))))))
+
+(for-each-trappable-exception
+ (lambda (name exception condition-type elicitors)
+   elicitors				;ignore
+   (define-test (symbol-append 'FLO:UNTRAP-EXCEPTIONS! ': name)
+     (lambda ()
+       (flo:with-trapped-exceptions (flo:trappable-exceptions)
+	 (lambda ()
+	   (assert-eqv (flo:untrap-exceptions! (exception))
+		       (flo:trappable-exceptions))
+	   (assert-eqv (flo:trapped-exceptions)
+		       (fix:andc (flo:trappable-exceptions) (exception)))))))))
+
+(for-each-trappable-exception
+ (lambda (name exception condition-type elicitors)
+   elicitors				;ignore
+   (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'ENABLE)
+     (lambda ()
+       (flo:with-trapped-exceptions 0
+	 (lambda ()
+	   (assert-eqv (flo:set-trapped-exceptions! (exception)) 0)
+	   (assert-eqv (flo:trapped-exceptions) (exception))))))))
+
+(for-each-trappable-exception
+ (lambda (name exception condition-type elicitors)
+   elicitors				;ignore
+   (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'DISABLE)
+     (lambda ()
+       (let ((exceptions (fix:andc (flo:trappable-exceptions) (exception))))
+	 (flo:with-trapped-exceptions (flo:trappable-exceptions)
+	   (lambda ()
+	     (assert-eqv (flo:set-trapped-exceptions! exceptions)
+			 (flo:trappable-exceptions))
+	     (assert-eqv (flo:trapped-exceptions) exceptions))))))))
+
+(for-each-trappable-exception-elicitor
  (lambda (name exception condition-type elicitor-name elicitor)
    (define-test (symbol-append 'ELICIT ': name ': elicitor-name)
      (lambda ()
        (assert-error (lambda ()
-		       (flo:with-exception-mask
-			   (fix:andc (flo:supported-exceptions) (exception))
-			 elicitor))
+		       (flo:with-trapped-exceptions (exception) elicitor))
 		     (list condition-type))))))
 
-(for-each-unmaskable-exception-elicitor
+(for-each-trappable-exception-elicitor
  (lambda (name exception condition-type elicitor-name elicitor)
    (define-test (symbol-append 'ELICIT-DEFERRED ': name ': elicitor-name)
      (lambda ()
        (assert-error
 	(lambda ()
-	  (flo:with-exception-mask
-	      (fix:andc (flo:supported-exceptions) (flo:unmaskable-exceptions))
+	  (flo:with-trapped-exceptions (flo:trappable-exceptions)
 	    (lambda ()
-	      (flo:deferring-exceptions
+	      (flo:deferring-exception-traps
 	       (lambda ()
 		 (let ((flag #f))
 		   (dynamic-wind (lambda () unspecific)
@@ -377,29 +370,29 @@ USA.
 	(list condition-type))))))
 
 (for-each-exception-elicitor
- (lambda (name exception condition-type unmaskable? elicitor-name elicitor)
-   unmaskable?				;ignore
+ (lambda (name exception condition-type trappable? elicitor-name elicitor)
+   trappable?				;ignore
    (define-test (symbol-append 'ELICIT-IGNORED ': name ': elicitor-name)
      (lambda ()
-       (flo:ignoring-exceptions elicitor)))))
+       (flo:ignoring-exception-traps elicitor)))))
 
 (for-each-exception-elicitor
- (lambda (name exception condition-type unmaskable? elicitor-name elicitor)
-   unmaskable?				;ignore
+ (lambda (name exception condition-type trappable? elicitor-name elicitor)
+   trappable?				;ignore
    (define-test (symbol-append 'ELICIT-AND-TEST ': name ': elicitor-name)
      (lambda ()
-       (assert-eqv (flo:ignoring-exceptions
+       (assert-eqv (flo:ignoring-exception-traps
 		    (lambda ()
 		      (elicitor)
 		      (flo:test-exceptions (exception))))
 		   (exception))))))
 
 (for-each-exception-elicitor
- (lambda (name exception condition-type unmaskable? elicitor-name elicitor)
-   unmaskable?				;ignore
+ (lambda (name exception condition-type trappable? elicitor-name elicitor)
+   trappable?				;ignore
    (define-test (symbol-append 'ELICIT-CLEAR-TEST ': name ': elicitor-name)
      (lambda ()
-       (assert-eqv (flo:ignoring-exceptions
+       (assert-eqv (flo:ignoring-exception-traps
 		    (lambda ()
 		      (elicitor)
 		      (flo:clear-exceptions! (exception))
@@ -441,17 +434,17 @@ USA.
 	  (if (eq? 'UPWARD (flo:default-rounding-mode))
 	      'TO-NEAREST
 	      'UPWARD))
-	 (flo:set-masked-exceptions!
-	  (if (= (flo:supported-exceptions) (flo:default-exception-mask))
-	      (fix:andc (flo:supported-exceptions)
-			(flo:unmaskable-exceptions))
-	      (flo:supported-exceptions)))
+	 (flo:set-trapped-exceptions!
+	  (if (= (flo:trappable-exceptions) (flo:default-trapped-exceptions))
+	      (fix:andc (flo:default-trapped-exceptions)
+			(flo:trappable-exceptions))
+	      (flo:trappable-exceptions)))
 	 (flo:with-default-environment procedure))))))
 
 (define-default-environment-test 'ROUNDING-MODE
   (lambda ()
     (assert-eqv (flo:rounding-mode) (flo:default-rounding-mode))))
 
-(define-default-environment-test 'MASKED-EXCEPTIONS
+(define-default-environment-test 'TRAPPED-EXCEPTIONS
   (lambda ()
-    (assert-eqv (flo:masked-exceptions) (flo:default-exception-mask))))
+    (assert-eqv (flo:trapped-exceptions) (flo:default-trapped-exceptions))))

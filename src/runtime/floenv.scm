@@ -33,21 +33,21 @@ USA.
 (define-primitives
   (flo:environment float-environment 0)
   (flo:set-environment! set-float-environment 1)
-  (flo:defer-exceptions! defer-float-exceptions 0)
+  (flo:defer-exception-traps! defer-float-exception-traps 0)
   (flo:update-environment! update-float-environment 1))
 
-(define (flo:deferring-exceptions procedure)
+(define (flo:deferring-exception-traps procedure)
   (flo:preserving-environment
    (lambda ()
-     (let ((environment (flo:defer-exceptions!)))
+     (let ((environment (flo:defer-exception-traps!)))
        (let ((result (procedure)))
 	 (flo:update-environment! environment)
 	 result)))))
 
-(define (flo:ignoring-exceptions procedure)
+(define (flo:ignoring-exception-traps procedure)
   (flo:preserving-environment
    (lambda ()
-     (flo:defer-exceptions!)
+     (flo:defer-exception-traps!)
      (procedure))))
 
 (define (flo:preserving-environment procedure)
@@ -74,7 +74,7 @@ USA.
 	(let ((environment (flo:environment)))
 	  (flo:set-rounding-mode! (flo:default-rounding-mode))
 	  (flo:clear-exceptions! (flo:supported-exceptions))
-	  (flo:set-masked-exceptions! (flo:default-exception-mask))
+	  (flo:set-trapped-exceptions! (flo:default-trapped-exceptions))
 	  (let ((environment* (flo:environment)))
 	    (flo:set-environment! environment)
 	    environment*)))
@@ -141,35 +141,40 @@ USA.
   (flo:save-exception-flags save-float-exception-flags 1)
   (flo:test-exception-flags test-float-exception-flags 2)
   (flo:restore-exception-flags! restore-float-exception-flags 2)
-  (flo:masked-exceptions masked-float-exceptions 0)
-  (flo:set-masked-exceptions! set-masked-float-exceptions 1)
-  (flo:mask-exceptions! mask-float-exceptions 1)
-  (flo:unmask-exceptions! unmask-float-exceptions 1)
-  (flo:unmaskable-exceptions unmaskable-float-exceptions 0))
+  (flo:trapped-exceptions trapped-float-exceptions 0)
+  (flo:set-trapped-exceptions! set-trapped-float-exceptions 1)
+  (flo:trap-exceptions! trap-float-exceptions 1)
+  (flo:untrap-exceptions! untrap-float-exceptions 1)
+  (flo:trappable-exceptions trappable-float-exceptions 0))
 
-(define (flo:default-exception-mask)
-  ;; By default, we unmask the standard IEEE 754 exceptions that Scheme
-  ;; can safely run with, in order to report errors as soon as they
-  ;; happen.  Scheme cannot safely run with the inexact result
-  ;; exception (which you almost never want *trapping* anyway), and
-  ;; there are some non-standard exceptions which we will mask in order
+(define (flo:default-trapped-exceptions)
+  ;; By default, we trap the standard IEEE 754 exceptions that Scheme
+  ;; can safely run with trapped, in order to report errors as soon as
+  ;; they happen.  Scheme cannot safely run with the inexact result
+  ;; exception trapped (which you almost never want anyway), and there
+  ;; are some non-standard exceptions which we will not trap in order
   ;; to keep behaviour consistent between host systems.
-  (fix:andc (flo:supported-exceptions)
-	    (fix:or (fix:or (flo:exception:divide-by-zero)
-			    (flo:exception:invalid-operation))
-		    (fix:or (flo:exception:overflow)
-			    (flo:exception:underflow)))))
+  (fix:or (fix:or (flo:exception:divide-by-zero)
+                  (flo:exception:invalid-operation))
+          (fix:or (flo:exception:overflow)
+                  (flo:exception:underflow))))
 
-(define (flo:with-exception-mask exceptions procedure)
+(define (flo:with-trapped-exceptions exceptions procedure)
   (flo:preserving-environment
    (lambda ()
-     (flo:set-masked-exceptions! exceptions)
+     (flo:set-trapped-exceptions! exceptions)
      (procedure))))
 
-(define (flo:with-exceptions-masked exceptions procedure)
+(define (flo:with-exceptions-trapped exceptions procedure)
   (flo:preserving-environment
    (lambda ()
-     (flo:mask-exceptions! exceptions)
+     (flo:trap-exceptions! exceptions)
+     (procedure))))
+
+(define (flo:with-exceptions-untrapped exceptions procedure)
+  (flo:preserving-environment
+   (lambda ()
+     (flo:untrap-exceptions! exceptions)
      (procedure))))
 
 ;++ Include machine-dependent bits, by number rather than by name.

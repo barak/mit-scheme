@@ -151,7 +151,7 @@ DEFINE_PRIMITIVE ("SET-FLOAT-ENVIRONMENT", Prim_set_float_environment, 1, 1, 0)
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("DEFER-FLOAT-EXCEPTIONS", Prim_defer_float_exceptions, 0, 0, 0)
+DEFINE_PRIMITIVE ("DEFER-FLOAT-EXCEPTION-TRAPS", Prim_defer_float_exception_traps, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 #ifdef HAVE_FEHOLDEXCEPT
@@ -293,36 +293,36 @@ arg_float_exceptions (int n)
 }
 
 /* It is not safe to run Scheme with the inexact result exception
-   unmasked, but the exception can sometimes be useful to test.
-   Consequently, we go to some trouble to make sure that it is masked,
-   and signal an error if anyone ever tries to unmask it.  */
+   trapped, but the exception can sometimes be useful to test.
+   Consequently, we go to some trouble to make sure that it is not
+   trapped, and signal an error if anyone ever tries to trap it.  */
 
-static const int always_masked_exceptions = 0
+static const int non_trappable_exceptions = 0
 #ifdef FE_INEXACT
   | FE_INEXACT
 #endif
   ;
 
 static int
-arg_maskable_float_exceptions (int n)
+arg_untrappable_float_exceptions (int n)
 {
-  return (always_masked_exceptions | (arg_float_exceptions (n)));
+  return (non_trappable_exceptions | (arg_float_exceptions (n)));
 }
 
 static int
-arg_unmaskable_float_exceptions (int n)
+arg_trappable_float_exceptions (int n)
 {
   int exceptions = (arg_float_exceptions (n));
-  if (exceptions & always_masked_exceptions)
+  if (exceptions & non_trappable_exceptions)
     error_bad_range_arg (n);
   return (exceptions);
 }
 
 static int
-arg_float_exception_mask (int n)
+arg_float_exceptions_to_trap (int n)
 {
   int exceptions = (arg_float_exceptions (n));
-  if (! (exceptions & always_masked_exceptions))
+  if (exceptions & non_trappable_exceptions)
     error_bad_range_arg (n);
   return (exceptions);
 }
@@ -378,8 +378,8 @@ DEFINE_PRIMITIVE ("FLOAT-INEXACT-RESULT-EXCEPTION", Prim_float_inexact_result_ex
 DEFINE_PRIMITIVE ("FLOAT-EXCEPTIONS", Prim_float_exceptions, 0, 0, 0)
     FLOAT_EXCEPTIONS_PRIMITIVE (FE_ALL_EXCEPT)
 
-DEFINE_PRIMITIVE ("UNMASKABLE-FLOAT-EXCEPTIONS", Prim_unmaskable_float_exceptions, 0, 0, 0)
-    FLOAT_EXCEPTIONS_PRIMITIVE (FE_ALL_EXCEPT &~ always_masked_exceptions)
+DEFINE_PRIMITIVE ("TRAPPABLE-FLOAT-EXCEPTIONS", Prim_trappable_float_exceptions, 0, 0, 0)
+    FLOAT_EXCEPTIONS_PRIMITIVE (FE_ALL_EXCEPT &~ non_trappable_exceptions)
 
 DEFINE_PRIMITIVE ("TEST-FLOAT-EXCEPTIONS", Prim_test_float_exceptions, 1, 1, 0)
 {
@@ -457,14 +457,14 @@ DEFINE_PRIMITIVE ("RESTORE-FLOAT-EXCEPTION-FLAGS", Prim_restore_float_exception_
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("MASKED-FLOAT-EXCEPTIONS", Prim_masked_float_exceptions, 0, 0, 0)
+DEFINE_PRIMITIVE ("TRAPPED-FLOAT-EXCEPTIONS", Prim_trapped_float_exceptions, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
 #ifdef HAVE_FEGETEXCEPT
   {
     int exceptions = (fegetexcept ());
     if (exceptions < 0) error_external_return ();
-    FLOAT_EXCEPTIONS_RESULT (FE_ALL_EXCEPT &~ exceptions);
+    FLOAT_EXCEPTIONS_RESULT (exceptions);
   }
 #else
   error_unimplemented_primitive ();
@@ -472,18 +472,18 @@ DEFINE_PRIMITIVE ("MASKED-FLOAT-EXCEPTIONS", Prim_masked_float_exceptions, 0, 0,
 #endif
 }
 
-DEFINE_PRIMITIVE ("SET-MASKED-FLOAT-EXCEPTIONS", Prim_set_masked_float_exceptions, 1, 1, 0)
+DEFINE_PRIMITIVE ("SET-TRAPPED-FLOAT-EXCEPTIONS", Prim_set_trapped_float_exceptions, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
   {
-    int masked_exceptions = (arg_float_exception_mask (1));
-    int previous_exceptions = (fedisableexcept (masked_exceptions));
+    int exceptions = (arg_float_exceptions_to_trap (1));
+    int previous_exceptions = (feenableexcept (exceptions));
     if ((0 > previous_exceptions)
-	|| (0 > (feenableexcept (FE_ALL_EXCEPT &~ masked_exceptions))))
+	|| (0 > (fedisableexcept (FE_ALL_EXCEPT &~ exceptions))))
       error_external_return ();
     cache_float_environment ();
-    FLOAT_EXCEPTIONS_RESULT (FE_ALL_EXCEPT &~ previous_exceptions);
+    FLOAT_EXCEPTIONS_RESULT (previous_exceptions);
   }
 #else
   error_unimplemented_primitive ();
@@ -491,16 +491,16 @@ DEFINE_PRIMITIVE ("SET-MASKED-FLOAT-EXCEPTIONS", Prim_set_masked_float_exception
 #endif
 }
 
-DEFINE_PRIMITIVE ("MASK-FLOAT-EXCEPTIONS", Prim_mask_float_exceptions, 1, 1, 0)
+DEFINE_PRIMITIVE ("UNTRAP-FLOAT-EXCEPTIONS", Prim_untrap_float_exceptions, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #ifdef HAVE_FEDISABLEEXCEPT
   {
-    int exceptions = (arg_maskable_float_exceptions (1));
+    int exceptions = (arg_untrappable_float_exceptions (1));
     int previous_exceptions = (fedisableexcept (exceptions));
     if (previous_exceptions < 0) error_external_return ();
     cache_float_environment ();
-    FLOAT_EXCEPTIONS_RESULT (FE_ALL_EXCEPT &~ previous_exceptions);
+    FLOAT_EXCEPTIONS_RESULT (previous_exceptions);
   }
 #else
   error_unimplemented_primitive ();
@@ -508,16 +508,16 @@ DEFINE_PRIMITIVE ("MASK-FLOAT-EXCEPTIONS", Prim_mask_float_exceptions, 1, 1, 0)
 #endif
 }
 
-DEFINE_PRIMITIVE ("UNMASK-FLOAT-EXCEPTIONS", Prim_unmask_float_exceptions, 1, 1, 0)
+DEFINE_PRIMITIVE ("TRAP-FLOAT-EXCEPTIONS", Prim_trap_float_exceptions, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
 #ifdef HAVE_FEENABLEEXCEPT
   {
-    int exceptions = (arg_unmaskable_float_exceptions (1));
+    int exceptions = (arg_trappable_float_exceptions (1));
     int previous_exceptions = (feenableexcept (exceptions));
     if (previous_exceptions < 0) error_external_return ();
     cache_float_environment ();
-    FLOAT_EXCEPTIONS_RESULT (FE_ALL_EXCEPT &~ previous_exceptions);
+    FLOAT_EXCEPTIONS_RESULT (previous_exceptions);
   }
 #else
   error_unimplemented_primitive ();
