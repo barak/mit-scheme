@@ -65,6 +65,12 @@ cache_float_environment (void)
   if (0 != (fegetenv (&scheme_fenv)))
     error_external_return ();
   scheme_fenv_p = true;
+  /* Work around glibc lossage: fesetenv has the side effect of masking
+     all exception traps on amd64.  */
+#  ifdef HAVE_FESETENV
+  if (0 != (fesetenv (&scheme_fenv)))
+    error_external_return ();
+#  endif
 #endif
 }
 
@@ -130,6 +136,11 @@ DEFINE_PRIMITIVE ("FLOAT-ENVIRONMENT", Prim_float_environment, 0, 0, 0)
     SCHEME_OBJECT environment = (allocate_fenv (&envp));
     if (0 != (fegetenv (envp)))
       error_external_return ();
+  /* Work around glibc lossage.  */
+#  ifdef HAVE_FESETENV
+    if (0 != (fesetenv (envp)))
+      error_external_return ();
+#  endif
     PRIMITIVE_RETURN (environment);
   }
 #else
