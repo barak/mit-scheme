@@ -602,9 +602,11 @@ OS_directory_valid_p (unsigned int index)
 unsigned int
 OS_directory_open (const char * name)
 {
-  DIR * pointer = (opendir (name));
-  if (pointer == 0)
-    error_system_call (errno, syscall_opendir);
+  DIR * pointer;
+  STD_PTR_SYSTEM_CALL (syscall_opendir, pointer, (opendir (name)));
+  /* FIXME: This leaks a directory pointer if malloc or realloc fails
+     here.  Avoiding this safely with a transaction is unfortunately
+     not straightforward.  */
   return (allocate_directory_pointer (pointer));
 }
 
