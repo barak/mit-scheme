@@ -647,10 +647,10 @@ USA.
 (define (strip-subject-re subject)
   (let ((end (string-length subject)))
     (let loop ((start 0))
-      (if (and (fix:<= 3 (fix:- end start))
-	       (substring-prefix-ci? "Re:" 0 3 subject (fix:+ start 3) end))
+      (if (and (<= 3 (- end start))
+	       (substring-prefix-ci? "Re:" 0 3 subject start end))
 	  (loop
-	   (substring-find-next-char-in-set subject (fix:+ start 3) end
+	   (substring-find-next-char-in-set subject (+ start 3) end
 					    char-set:subject-content))
 	  (string-tail subject start)))))
 
