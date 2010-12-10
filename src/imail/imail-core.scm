@@ -649,9 +649,10 @@ USA.
     (let loop ((start 0))
       (if (and (<= 3 (- end start))
 	       (substring-prefix-ci? "Re:" 0 3 subject start end))
-	  (loop
-	   (substring-find-next-char-in-set subject (+ start 3) end
-					    char-set:subject-content))
+	  (cond ((substring-find-next-char-in-set subject (+ start 3) end
+						  char-set:subject-content)
+		 => loop)
+		(else ""))
 	  (string-tail subject start)))))
 
 (define char-set:subject-content (char-set-invert (char-set #\space #\tab)))
