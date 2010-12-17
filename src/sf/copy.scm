@@ -171,12 +171,16 @@ USA.
 
 (define-method/copy 'ACCESS
   (lambda (block environment expression)
-    (access/make (access/scode expression)
-		 (access/block expression)
-		 (copy/expression block
-				  environment
-				  (access/environment expression))
-		 (access/name expression))))
+    (call-with-values
+	(lambda ()
+	  (copy/block block environment (access/block expression)))
+      (lambda (block environment)
+	(access/make (access/scode expression)
+		     block
+		     (copy/expression block
+				      environment
+				      (access/environment expression))
+		     (access/name expression))))))
 
 (define-method/copy 'ASSIGNMENT
   (lambda (block environment expression)
