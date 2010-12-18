@@ -423,14 +423,18 @@ USA.
 			       ((memq object '(#!optional #!rest #!key #!aux))
 				keyword-tag)
 			       (else constant-tag)))))))
-    (assign-type 'FLONUM
-		 (let ((flonum-vector-tag
-			(make-built-in-tag '(FLONUM-VECTOR))))
-		   (lambda (default-tag)
-		     (lambda (object)
-		       (if (fix:= 2 (system-vector-length object))
-			   default-tag
-			   flonum-vector-tag)))))
+
+    ;; Flonum length can change size on different architectures, so we
+    ;; measure one.
+    (let ((flonum-length (system-vector-length microcode-id/floating-epsilon)))
+      (assign-type 'FLONUM
+		   (let ((flonum-vector-tag
+			  (make-built-in-tag '(FLONUM-VECTOR))))
+		     (lambda (default-tag)
+		       (lambda (object)
+			 (if (fix:= flonum-length (system-vector-length object))
+			     default-tag
+			     flonum-vector-tag))))))
     (assign-type 'RECORD
 		 (let ((dt-tag (make-built-in-tag '(DISPATCH-TAG))))
 		   (lambda (default-tag)
