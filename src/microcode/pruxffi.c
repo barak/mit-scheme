@@ -498,7 +498,7 @@ static SCM run_callback = SHARP_F;
 static SCM return_to_c = SHARP_F;
 
 void
-callback_run_kernel (int callback_id, CallbackKernel kernel)
+callback_run_kernel (long callback_id, CallbackKernel kernel)
 {
   /* Used by callback trampolines.
 
@@ -513,7 +513,7 @@ callback_run_kernel (int callback_id, CallbackKernel kernel)
       if (run_callback == SHARP_F || return_to_c == SHARP_F)
 	{
 	  outf_error
-	    ("\nWarning: punted callback #%d.  Missing primitives!\n",
+	    ("\nWarning: punted callback #%ld.  Missing primitives!\n",
 	     callback_id);
 	  outf_flush_error ();
 	  SET_VAL (FIXNUM_ZERO);
@@ -525,7 +525,7 @@ callback_run_kernel (int callback_id, CallbackKernel kernel)
   if (! CAN_PUSH_P (2 * (1 + 1 + CONTINUATION_SIZE)))
     {
       outf_error
-	("\nWarning: punted callback #%d.  No room on stack!\n", callback_id);
+	("\nWarning: punted callback #%ld.  No room on stack!\n", callback_id);
       outf_flush_error ();
       SET_VAL (FIXNUM_ZERO);
       return;
@@ -617,10 +617,10 @@ callback_lunseal (CallbackKernel expected)
 }
 
 static SCM valid_callback_handler (void);
-static SCM valid_callback_id (int id);
+static SCM valid_callback_id (long id);
 
 void
-callback_run_handler (int callback_id, SCM arglist)
+callback_run_handler (long callback_id, SCM arglist)
 {
   /* Used by callback kernels, inside the interpreter.  Thus it MAY GC
      abort.
@@ -666,7 +666,7 @@ valid_callback_handler (void)
 }
 
 static SCM
-valid_callback_id (int id)
+valid_callback_id (long id)
 {
   /* Validate the callback ID and convert to a fixnum. */
 
