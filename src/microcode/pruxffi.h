@@ -56,9 +56,9 @@ extern char* callout_lunseal (CalloutTrampIn expected);
 extern void callout_pop (char* tos);
 
 typedef void (*CallbackKernel)(void);
-extern void callback_run_kernel (int callback_id, CallbackKernel kernel);
+extern void callback_run_kernel (long callback_id, CallbackKernel kernel);
 extern char* callback_lunseal (CallbackKernel expected);
-extern void callback_run_handler (int callback_id, SCM arglist);
+extern void callback_run_handler (long callback_id, SCM arglist);
 extern void callback_return (char* tos);
 
 /* Converters. */

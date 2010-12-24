@@ -375,7 +375,7 @@ Scm_kernel_"name" (void)
 
   /* Construct. */
   "args-var" = empty_list();"constructs"
-  callback_run_handler ((int)ID, "args-var");
+  callback_run_handler ((long)ID, "args-var");
 
   callback_return ("tos-var");
 }"))))
@@ -392,7 +392,7 @@ Scm_kernel_"name" (void)
 "ret-decl"
 Scm_"name" ("arglist")
 \{"saves"
-  callback_run_kernel ((int)ID, (CallbackKernel)&Scm_kernel_"name");"return"
+  callback_run_kernel ((long)ID, (CallbackKernel)&Scm_kernel_"name");"return"
 }
 ")))))
 
@@ -542,7 +542,7 @@ grovel_basics (FILE * out)
 			(decl (decl-string name))
 			(name (symbol-name name)))
 		   (string-append "
-  fprintf (out, \"   ((sizeof "name") . %d)\\n\", sizeof ("decl"));")))
+  fprintf (out, \"   ((sizeof "name") . %ld)\\n\", (long) sizeof ("decl"));")))
 		    peek-poke-primitives))
    "
 \}
@@ -618,7 +618,7 @@ void
 "fname" (FILE * out)
 \{
   "decl" S;
-  fprintf (out, \"   (")(write key)(_" . %d)\\n\", sizeof ("decl"));"))
+  fprintf (out, \"   (")(write key)(_" . %ld)\\n\", (long) sizeof ("decl"));"))
     (for-each-member-path
      ctype includes
      (lambda (path brief-type)
@@ -626,7 +626,7 @@ void
 		    "" "." "" (map symbol-name path)))
 	     (key (cons* 'OFFSET name path)))
 	 (_ "
-  fprintf (out, \"   (")(write key)(_" %d . ")(write brief-type)(_")\\n\", (char*)&(S."path") - (char*)&S);"))))
+  fprintf (out, \"   (")(write key)(_" %ld . ")(write brief-type)(_")\\n\", (long)((char*)&(S."path") - (char*)&S));"))))
     (_ "
 \}
 ")

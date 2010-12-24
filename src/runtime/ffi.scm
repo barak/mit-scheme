@@ -38,6 +38,27 @@ USA.
   ;; A symbol or list.
   ctype)
 
+;; Breaking a word in two produces high and low fixnums.  If they are
+;; two digits representing a larger number, then RADIX is their base.
+;; For a 32 bit word, (radix) is #x10000.
+;;
+;; This substitutes a constant when there is a compiler, per its
+;; target.  Else this is a reference to %radix.
+(define-syntax radix
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore rename compare))
+     (if (not (null? (cdr form)))
+	 (syntax-error "No sub-forms allowed:" form))
+     (cond ((get-subsystem-version "LIAR/i386") #x10000)
+	   ((get-subsystem-version "LIAR/x86-64") #x100000000)
+	   (else
+	    '%RADIX)))))
+
+;; This is only needed when the target machine's word size is unknown
+;; (e.g. when compiling to C, or when there is no compiler).
+(define %radix)
+
 (set-record-type-unparser-method! rtd:alien
   (standard-unparser-method
    'alien
@@ -57,13 +78,14 @@ USA.
   alien)
 
 (define (alien/address-string alien)
-  ;; Returns a string of length 8, e.g. "081adc60".
-  (let ((high (%alien/high-bits alien)))
-    (if (eq? high #f) "< null >"
-	(let ((low (%alien/low-bits alien))
-	      (4hex (lambda (n)
-		      (string-pad-left (number->string n 16) 4 #\0))))
-	  (string-append (4hex high) (4hex low))))))
+  ;; Returns a string, e.g. "081adc60".
+  (let ((high (%alien/high-bits alien))
+	(low (%alien/low-bits alien))
+	(hex (lambda (n)
+	       (string-pad-left (number->string n 16)
+				(if (fix:= (radix) #x10000) 4 8)
+				#\0))))
+    (string-append (hex high) (hex low))))
 
 (define (make-alien #!optional ctype)
   (let ((ctype (if (default-object? ctype) #f ctype)))
@@ -71,7 +93,7 @@ USA.
 
 (declare (integrate-operator alien/address))
 (define (alien/address alien)
-  (+ (* (%alien/high-bits alien) #x10000)
+  (+ (* (%alien/high-bits alien) (radix))
      (%alien/low-bits alien)))
 
 (declare (integrate-operator copy-alien-address!))
@@ -117,7 +139,7 @@ USA.
   ;; This procedure returns ALIEN after modifying it to have an
   ;; address INCREMENT bytes away from its previous address.  If CTYPE
   ;; is specified, the type slot of ALIEN is set.
-  (let ((quotient.remainder (fix:divide increment #x10000)))
+  (let ((quotient.remainder (fix:divide increment (radix))))
     (let ((new-high (fix:+ (%alien/high-bits alien)
 			   (integer-divide-quotient quotient.remainder)))
 	  (new-low (fix:+ (%alien/low-bits alien)
@@ -128,10 +150,10 @@ USA.
 	     (if (fix:zero? new-high)
 		 (error:bad-range-argument increment 'alien-byte-increment!)
 		 (begin
-		   (set-%alien/low-bits! alien (fix:+ new-low #x10000))
+		   (set-%alien/low-bits! alien (fix:+ new-low (radix)))
 		   (set-%alien/high-bits! alien (fix:-1+ new-high)))))
-	    ((fix:>= new-low #x10000)
-	     (set-%alien/low-bits! alien (fix:- new-low #x10000))
+	    ((fix:>= new-low (radix))
+	     (set-%alien/low-bits! alien (fix:- new-low (radix)))
 	     (set-%alien/high-bits! alien (fix:1+ new-high)))
 	    (else
 	     (set-%alien/low-bits! alien new-low)
@@ -212,7 +234,7 @@ USA.
   (string-tail (%alien-function/name alienf) 4)) 
 
 (define (%set-alien-function/address! alienf address)
-  (let ((qr (integer-divide address #x10000)))
+  (let ((qr (integer-divide address (radix))))
     (set-%alien-function/high-bits! alienf (integer-divide-quotient qr))
     (set-%alien-function/low-bits! alienf (integer-divide-remainder qr))))
 
@@ -488,6 +510,7 @@ USA.
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
+  (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
   (set! trace? #f)
   (set! calloutback-stack '()))
 
