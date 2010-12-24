@@ -314,12 +314,15 @@ static const int non_trappable_exceptions = 0
 #endif
   ;
 
+#ifdef HAVE_FEDISABLEEXCEPT
 static int
 arg_untrappable_float_exceptions (int n)
 {
   return (non_trappable_exceptions | (arg_float_exceptions (n)));
 }
+#endif
 
+#ifdef HAVE_FEENABLEEXCEPT
 static int
 arg_trappable_float_exceptions (int n)
 {
@@ -328,7 +331,9 @@ arg_trappable_float_exceptions (int n)
     error_bad_range_arg (n);
   return (exceptions);
 }
+#endif
 
+#if ((defined (HAVE_FEENABLEEXCEPT)) && (defined (HAVE_FEDISABLEEXCEPT)))
 static int
 arg_float_exceptions_to_trap (int n)
 {
@@ -337,6 +342,7 @@ arg_float_exceptions_to_trap (int n)
     error_bad_range_arg (n);
   return (exceptions);
 }
+#endif
 
 #define FLOAT_EXCEPTIONS_PRIMITIVE(E)	\
 {					\
@@ -478,8 +484,7 @@ DEFINE_PRIMITIVE ("TRAPPED-FLOAT-EXCEPTIONS", Prim_trapped_float_exceptions, 0, 
     FLOAT_EXCEPTIONS_RESULT (exceptions);
   }
 #else
-  error_unimplemented_primitive ();
-  PRIMITIVE_RETURN (UNSPECIFIC);
+  PRIMITIVE_RETURN (ULONG_TO_FIXNUM (0));
 #endif
 }
 
@@ -497,7 +502,6 @@ DEFINE_PRIMITIVE ("SET-TRAPPED-FLOAT-EXCEPTIONS", Prim_set_trapped_float_excepti
     FLOAT_EXCEPTIONS_RESULT (previous_exceptions);
   }
 #else
-  error_unimplemented_primitive ();
   PRIMITIVE_RETURN (UNSPECIFIC);
 #endif
 }

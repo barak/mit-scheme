@@ -340,7 +340,7 @@ darwin*)
 	AS_FLAGS="-arch x86_64 ${AS_FLAGS}"
     	;;
     esac
-    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
+    CFLAGS="${CFLAGS} ${MACOSX_CFLAGS} -frounding-math"
     LDFLAGS="${LDFLAGS} ${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
     LDFLAGS="${LDFLAGS} -framework CoreFoundation"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle"

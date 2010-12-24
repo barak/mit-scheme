@@ -39,6 +39,9 @@ USA.
 #  ifdef HAVE_FEXCEPT_T
 #    define scheme_fexcept_t fexcept_t
 #  endif
+#  ifdef __APPLE__
+#    undef HAVE_FEGETEXCEPT
+#  endif
 #elif ((!defined (CMPINTMD_EMULATES_FENV)) && (defined (HAVE_IEEEFP_H)))
 
 /* Assumption: If we have <ieeefp.h>, then we don't need to test for
