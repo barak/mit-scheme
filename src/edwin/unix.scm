@@ -679,7 +679,8 @@ option, instead taking -P <filename>."
 	  (merge-pathnames ".newsrc" homedir)))))
 
 (define (os/info-default-directory-list)
-  (list "/usr/local/lib/info"
+  (list "/usr/local/share/info"
+	"/usr/local/lib/info"
 	"/usr/local/info"
 	"/usr/share/info"
 	"/usr/info"))
