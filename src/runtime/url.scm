@@ -317,15 +317,15 @@ USA.
 ;;;; Parser
 
 (define (->uri object #!optional caller)
-  (%->uri object parse-uri caller))
+  (%->uri object parse-uri (lambda (uri) uri #t) caller))
 
 (define (->absolute-uri object #!optional caller)
-  (%->uri object parse-absolute-uri caller))
+  (%->uri object parse-absolute-uri uri-absolute? caller))
 
 (define (->relative-uri object #!optional caller)
-  (%->uri object parse-relative-uri caller))
+  (%->uri object parse-relative-uri uri-relative? caller))
 
-(define (%->uri object parser caller)
+(define (%->uri object parser predicate caller)
   ;; Kludge: take advantage of fact that (NOT (NOT #!DEFAULT)).
   (let* ((do-parse
 	  (lambda (string)
@@ -340,7 +340,11 @@ USA.
 	    (or (hash-table/get interned-uris string #f)
 		(do-parse (utf8-string->wide-string string))))))
     (cond ((uri? object)
-	   object)
+	   (if (predicate object)
+	       object
+	       (begin
+		 (if caller (error:bad-range-argument object caller))
+		 #f)))
 	  ((string? object)
 	   (do-string object))
 	  ((symbol? object)
@@ -352,7 +356,7 @@ USA.
 	  (else
 	   (if caller (error:not-uri object caller))
 	   #f))))
-
+
 (define (string->uri string #!optional start end)
   (%string->uri parse-uri string start end 'STRING->URI))
 
