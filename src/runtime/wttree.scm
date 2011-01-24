@@ -127,7 +127,7 @@ parameters assisted by Coq.  This is what we use here now.
 ;;;
 
 (define (n-join k v l r)
-  (make-node k v l r (+ 1 (+ (node/size l) (node/size r)))))
+  (make-node k v l r (+ 1 (node/size l) (node/size r))))
 (declare (integrate-operator n-join))
 
 (define (single-l a.k a.v x r)
@@ -654,7 +654,7 @@ parameters assisted by Coq.  This is what we use here now.
     (define (balanced? node)
       (or (empty? node)
 	  (let ((l (node/l node)) (r (node/r node)))
-	    (let ((lw (+ (node/size l) 1)) (rw (+ (node/size r) 1)))
+	    (let ((lw (node/weight l)) (rw (node/weight r)))
 	      (and (<= lw (* wt-tree-delta rw))
 		   (<= rw (* wt-tree-delta lw))
 		   (balanced? l)
