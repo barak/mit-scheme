@@ -5008,6 +5008,7 @@ USA.
           wt-tree/subset?
           wt-tree/union
           wt-tree/union-merge
+          wt-tree/valid?                ; Debugging utility only.
           wt-tree?))
 
 (define-package (runtime apropos)
