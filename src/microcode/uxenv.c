@@ -28,6 +28,192 @@ USA.
 #include "ux.h"
 #include "osenv.h"
 
+/* Seconds since the UTC Epoch */
+
+/* This is a disaster, thanks to the mind-boggling brain damage of
+   POSIX.  At any time t, the POSIX time P(t) is the number of SI
+   seconds, S(t), since the UTC epoch (1972-01-01T00:00:00Z), plus
+   63072000 (= 2*365*86400, to adjust for the Unix epoch, which would
+   be `1970-01-01T00:00:00Z' if modern UTC hadn't begun only in 1972),
+   *minus* the number L(t) of those seconds that were leap seconds in
+   UTC.  That is, P(t) = S(t) + 63072000 - L(t).
+
+   Problem (in the sense of problem set): Find S given P.
+   Problem (in the sense of disaster): POSIX doesn't tell us S or L.
+
+   So what do we do?  Fortunately, many popular Unix systems set their
+   clocks using the Network Time Protocol with the NTP Project's ntpd.
+   In order to support this, they provide a couple of extra-POSIX
+   routines, ntp_gettime and ntp_adjtime, giving the TAI - UTC offset.
+
+   What if we don't have ntp_gettime or ntp_adjtime, or if the kernel
+   doesn't know the TAI - UTC offset?  We're screwed.  We could guess
+   that there have been 24 leap seconds, which is true at the time of
+   writing (2010-12-09).  But this is wrong if the clock is set to TAI,
+   and this causes the Scheme clock to misbehave if the kernel assumes
+   the TAI - UTC offset to be zero and then increments it when an NTP
+   server tells it of a new leap second: at this point Scheme would
+   switch from assuming a TAI - UTC offset of 24 seconds to assuming a
+   TAI - UTC offset of 1 second, and rewind the clock by 23 seconds --
+   it would behave even worse than a POSIX clock.
+
+   So instead, if the kernel reports a TAI - UTC offset of under ten,
+   we take that to be the number of leap seconds, so that at least when
+   it is incremented and the system clock is rewound by a second, we
+   can show a smoothly advancing clock.  If the kernel reports a TAI -
+   UTC offset of at least ten, we subtract ten from it to compute the
+   number of leap seconds (because 1972-01-01T00:00:00Z is 1972-01-01
+   at 00:00:10 in TAI).
+
+   Why a threshold of ten?  Since modern UTC began, the TAI - UTC
+   offset has never been under ten.  So if you represent times during
+   the entire existence of modern UTC so far, this heuristic will
+   work.  */
+
+/* Summary of scenarios:
+
+   (a) If your system lacks ntp_gettime/ntp_adjtime, and its clock is
+       set to POSIX time, then you lose exactly as badly as any POSIX
+       program does.  (The clock is wrong by 24 at the time of writing,
+       and it misbehaves during a leap second.)
+
+   (b) If your system lacks ntp_gettime/ntp_adjtime, and its clock is
+       set to TAI, then you win.  (The clock is correct and behaves
+       well.)
+
+   (c) If your system has ntp_gettime/ntp_adjtime, its clock is set to
+       POSIX time, and its TAI - UTC offset is initialized to 0 but is
+       incremented at the same time the POSIX clock is rewound, then
+
+       . you will have time stamps that are off by 24 seconds at the
+         time of writing, but
+
+       . your clock will behave well,
+
+       at least for the next net of nine positive leap seconds during
+       continuous operation of your system, which should cover a good
+       decade or so.
+
+   (d) If your system has ntp_gettime/ntp_adjtime, and its clock is set
+       to POSIX time with the correct TAI - UTC offset, then you win,
+       at least for the next net of fourteen negative leap seconds, but
+       there never has been a negative leap second and probably never
+       will be.
+
+   (e) If your system has ntp_gettime/ntp_adjtime, and its clock is set
+       to TAI with a constant TAI - UTC offset of 0, then you win.
+
+   Scenario (c) is the case for most modern Unix systems that I know.
+   Scenario (d) is easily configured for most such Unix systems.
+   Scenarios (b) and (e) are the case for any system administered by
+   users of djbware (see <http://cr.yp.to/proto/utctai.html>).
+
+   What about time zones?  I will think about them some other time.  */
+
+static intmax_t utc_epoch_minus_unix_epoch = 63072000L;
+
+static long
+guess_n_leap_seconds (long tai)
+{
+  return ((tai < 10) ? tai : (tai - 10));
+}
+
+static intmax_t
+guess_time_from_posix (intmax_t posix, long tai)
+{
+  /* This is to be used only for querying the current clock -- it
+     assumes tai is the current TAI - UTC offset.  To find the (best
+     approximation of) the seconds since an epoch from POSIX time
+     requires consulting a leap second table.  */
+  /* FIXME: There is a minor danger of arithmetic overflow here -- but
+     only on broken operating systems with wildly bogus values for
+     POSIX time and the TAI - UTC offset, or near 2038 on archaic
+     systems with no 64-bit integer type.  */
+  return (posix - utc_epoch_minus_unix_epoch + (guess_n_leap_seconds (tai)));
+}
+
+/* The following routines may lose information -- namely, the
+   information that the system's clock is bogus.  But if this is so,
+   you'll probably notice the fact anyway, and this paranoia prevents
+   bad values from making Scheme crash.  These are macros because the
+   signedness of the types defined in struct timeval and struct
+   timespec is pretty random.  */
+
+#define SANITIZE_NSEC(NSEC)                                             \
+  (((NSEC) < 0)                                 ? 0                     \
+   : (((uintmax_t) (NSEC)) < 1000000000UL)      ? ((uint32_t) (NSEC))   \
+   :                                              999999999UL)
+
+#define SANITIZE_USEC(USEC)                                             \
+  (((USEC) < 0)                         ? 0                             \
+   : (((uintmax_t) (USEC)) < 1000000UL) ? (1000UL * ((uint32_t) (USEC))) \
+   :                                      999999UL)
+
+#if defined(HAVE_BSD_NTP)
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  struct ntptimeval ntv;
+  STD_VOID_SYSTEM_CALL (syscall_ntp_gettime, (UX_ntp_gettime (&ntv)));
+  (t->seconds)
+    = (guess_time_from_posix (((intmax_t) (ntv.time.tv_sec)), (ntv.tai)));
+  (t->nanoseconds) = (SANITIZE_NSEC (ntv.time.tv_nsec));
+}
+
+#elif defined(HAVE_LINUX_NTP)
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  static const struct timex zero_tx;
+  struct timex tx = zero_tx;
+  /* This doesn't actually adjust the time, because we have set
+     tx.modes to zero, meaning no modifications.  It does, however,
+     return some useful information in tx, which Linux's ntp_gettime
+     failed to return until recent versions.  */
+  STD_VOID_SYSTEM_CALL (syscall_ntp_adjtime, (UX_ntp_adjtime (&tx)));
+  (t->seconds)
+    = (guess_time_from_posix (((intmax_t) (tx.time.tv_sec)), (tx.tai)));
+  (t->nanoseconds) = (SANITIZE_USEC (tx.time.tv_usec));
+}
+
+#elif defined(HAVE_CLOCK_GETTIME)
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime t)
+{
+  struct timespec ts;
+  STD_VOID_SYSTEM_CALL
+    (syscall_clock_gettime, (UX_clock_gettime (CLOCK_REALTIME, (&ts))));
+  (t->seconds) = (guess_time_from_posix (((intmax_t) (ts.tv_sec)), 0));
+  (t->nanoseconds) = (SANITIZE_NSEC (ts.tv_nsec));
+}
+
+#elif defined(HAVE_GETTIMEOFDAY)
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  struct timeval tv;
+  STD_VOID_SYSTEM_CALL (syscall_gettimeofday, (UX_gettimeofday ((&tv), 0)));
+  (t->seconds) = (guess_time_from_posix (((intmax_t) (tv.tv_sec)), 0));
+  (t->nanoseconds) = (SANITIZE_USEC (tv.tv_usec));
+}
+
+#else  /* You are a sad, strange little Unix.  */
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  intmax_t posix_time;
+  STD_UINT_SYSTEM_CALL (syscall_time, posix_time, (UX_time (0)));
+  (t->seconds) = (guess_time_from_posix (posix_time, 0));
+  (t->nanoseconds) = 0;
+}
+
+#endif
+
 time_t
 OS_encoded_time (void)
 {

@@ -213,6 +213,35 @@ USA.
 #  endif
 #endif
 
+#ifdef HAVE_SYS_TIMEX_H
+#  include <sys/timex.h>
+#endif
+
+/* This detects both the NTP system calls found in BSD systems (NetBSD,
+   FreeBSD) and the NTP system calls found in Linux systems.  What is
+   found on other systems, I don't know.  We use this to get at the
+   system's record of the UTC - TAI offset.  */
+
+#ifdef HAVE_NTP_GETTIME
+#ifdef HAVE_STRUCT_NTPTIMEVAL
+#ifdef HAVE_NTPTIMEVAL_TAI
+#ifdef HAVE_NTPTIMEVAL_TIME_TV_NSEC
+#  define HAVE_BSD_NTP
+#endif
+#endif
+#endif
+#endif
+
+#ifdef HAVE_NTP_ADJTIME
+#ifdef HAVE_STRUCT_TIMEX
+#ifdef HAVE_TIMEX_TAI
+#ifdef HAVE_TIMEX_TIME_TV_USEC
+#  define HAVE_LINUX_NTP
+#endif
+#endif
+#endif
+#endif
+
 #ifdef HAVE_UTIME_H
 #  include <utime.h>
 #else
@@ -458,6 +487,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_bind bind
 #define UX_chdir chdir
 #define UX_chmod chmod
+#define UX_clock_gettime clock_gettime
 #define UX_close close
 #define UX_connect connect
 #define UX_ctime ctime
@@ -493,6 +523,8 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_malloc malloc
 #define UX_mknod mknod
 #define UX_mktime mktime
+#define UX_ntp_adjtime ntp_adjtime
+#define UX_ntp_gettime ntp_gettime
 #define UX_open open
 #define UX_pause pause
 #define UX_pipe pipe

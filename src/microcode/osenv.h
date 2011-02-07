@@ -41,6 +41,23 @@ struct time_structure
   int time_zone;
 };
 
+struct scheme_nanotime
+{
+  intmax_t seconds;
+  uint32_t nanoseconds;
+};
+
+#if 0
+/* Any practical use?  */
+
+struct scheme_attotime
+{
+  intmax_t seconds;
+  uint64_t attoseconds;
+};
+#endif
+
+extern void OS_nanotime_since_utc_epoch (struct scheme_nanotime *);
 extern time_t OS_encoded_time (void);
 extern void OS_decode_time (time_t, struct time_structure *);
 extern void OS_decode_utc (time_t, struct time_structure *);

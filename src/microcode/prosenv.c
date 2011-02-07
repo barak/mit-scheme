@@ -30,6 +30,17 @@ USA.
 #include "osenv.h"
 #include "ostop.h"
 
+DEFINE_PRIMITIVE ("NANOTIME-SINCE-UTC-EPOCH", Prim_nanotime_since_utc_epoch, 1, 1, 0)
+{
+  struct scheme_nanotime t;
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PAIR_P);
+  OS_nanotime_since_utc_epoch (&t);
+  SET_PAIR_CAR ((ARG_REF (1)), (intmax_to_integer (t.seconds)));
+  SET_PAIR_CDR ((ARG_REF (1)), (uintmax_to_integer (t.nanoseconds)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
 {

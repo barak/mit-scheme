@@ -410,7 +410,8 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h limits.h malloc.h sgtty.h])
 AC_CHECK_HEADERS([stropts.h time.h])
 AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h])
-AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/un.h sys/vfs.h])
+AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/timex.h sys/un.h])
+AC_CHECK_HEADERS([sys/vfs.h])
 AC_CHECK_HEADERS([termio.h termios.h unistd.h utime.h])
 AC_CHECK_HEADERS([dlfcn.h netdb.h signal.h])
 AC_CHECK_HEADERS([sys/mman.h float.h assert.h stdint.h])
@@ -426,6 +427,14 @@ define([SCM_INC_TIME],
     #  else
     #    include <time.h>
     #  endif
+    #endif
+    ])
+
+define([SCM_INC_SYS_TIMEX],
+    [
+    SCM_INC_TIME
+    #ifdef HAVE_SYS_TIMEX_H
+    #  include <sys/timex.h>
     #endif
     ])
 
@@ -650,6 +659,38 @@ AC_CHECK_TYPE([struct sigcontext],
     [],
     [SCM_INC_SIGNAL])
 
+AC_CHECK_TYPE([struct ntptimeval],
+    [AC_DEFINE([HAVE_STRUCT_NTPTIMEVAL], [1],
+	[Define if `struct ntptimeval' is defined in <sys/timex.h>.])
+     AC_CHECK_MEMBER([struct ntptimeval.tai],
+	[AC_DEFINE([HAVE_NTPTIMEVAL_TAI], [1],
+	    [Define if `struct ntptimeval' has the `tai' member.])],
+	[],
+	[SCM_INC_SYS_TIMEX])
+     AC_CHECK_MEMBER([struct ntptimeval.time.tv_nsec],
+	[AC_DEFINE([HAVE_NTPTIMEVAL_TIME_TV_NSEC], [1],
+	    [Define if `struct ntptimeval' has the `time.tv_nsec' member.])],
+	[],
+	[SCM_INC_SYS_TIMEX])],
+    [],
+    [SCM_INC_SYS_TIMEX])
+
+AC_CHECK_TYPE([struct timex],
+    [AC_DEFINE([HAVE_STRUCT_TIMEX], [1],
+	[Define if `struct timex' is defined in <sys/timex.h>.])
+     AC_CHECK_MEMBER([struct timex.tai],
+	[AC_DEFINE([HAVE_TIMEX_TAI], [1],
+	    [Define if `struct timex' has the `tai' member.])],
+	[],
+	[SCM_INC_SYS_TIMEX])
+     AC_CHECK_MEMBER([struct timex.time.tv_usec],
+	[AC_DEFINE([HAVE_TIMEX_TIME_TV_USEC], [1],
+	    [Define if `struct timex' has the `time.tv_usec' member.])],
+	[],
+	[SCM_INC_SYS_TIMEX])],
+    [],
+    [SCM_INC_SYS_TIMEX])
+
 dnl Checks for compiler characteristics.
 AC_C_BIGENDIAN
 AC_C_CHAR_UNSIGNED
@@ -665,7 +706,7 @@ AC_FUNC_UTIME_NULL
 AC_FUNC_VFORK
 AC_FUNC_VPRINTF
 AC_FUNC_WAIT3
-AC_CHECK_FUNCS([ctermid])
+AC_CHECK_FUNCS([clock_gettime ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([fcntl fdatasync feclearexcept fedisableexcept feenableexcept])
 AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])
@@ -677,7 +718,7 @@ AC_CHECK_FUNCS([getpt gettimeofday getwd grantpt])
 AC_CHECK_FUNCS([kill])
 AC_CHECK_FUNCS([lockf])
 AC_CHECK_FUNCS([memcpy mkdir mktime modf])
-AC_CHECK_FUNCS([nice])
+AC_CHECK_FUNCS([nice ntp_adjtime ntp_gettime])
 AC_CHECK_FUNCS([poll prealloc])
 AC_CHECK_FUNCS([rename rmdir])
 AC_CHECK_FUNCS([select setitimer setpgrp setpgrp2 shmat sigaction])

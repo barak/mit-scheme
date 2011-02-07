@@ -49,6 +49,15 @@ unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
 }
 #endif
 
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  /* I have no idea what the NT clock does about leap seconds.  If you
+     know, please adjust this comment and/or code accordingly.  */
+  (t->seconds) = ((intmax_t) (OS_encoded_time ()));
+  (t->nanoseconds) = 0;
+}
+
 time_t
 OS_encoded_time (void)
 {
