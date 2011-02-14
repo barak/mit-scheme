@@ -116,8 +116,8 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   (ts . time_zone)
     = (((len > 9)
 	&& (INTEGER_P (VECTOR_REF (vec, 9)))
-	&& (integer_to_ulong_p (VECTOR_REF (vec, 9))))
-       ? (integer_to_ulong (VECTOR_REF (vec, 9)))
+	&& (integer_to_long_p (VECTOR_REF (vec, 9))))
+       ? (integer_to_long (VECTOR_REF (vec, 9)))
        : INT_MAX);
   PRIMITIVE_RETURN (intmax_to_integer (OS_encode_time (&ts)));
 }
