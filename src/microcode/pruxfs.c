@@ -28,8 +28,11 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+#include "uxio.h"
 #include "osfs.h"
+#include "osio.h"
 
+extern void UX_read_fd_status (int fd, struct stat * s);
 extern int UX_read_file_status (const char * filename, struct stat * s);
 extern int UX_read_file_status_indirect
   (const char * filename, struct stat * s);
@@ -130,6 +133,14 @@ The file must exist and you must be the owner (or superuser).")
    9 = inode number of the file
 
    The file_mode_string stuff was gobbled from GNU Emacs. */
+
+DEFINE_PRIMITIVE ("CHANNEL-FILE-ATTRIBUTES", Prim_channel_file_attributes, 1, 1, 0)
+{
+  struct stat s;
+  PRIMITIVE_HEADER (1);
+  UX_read_fd_status ((CHANNEL_DESCRIPTOR (arg_channel (1))), (&s));
+  return (file_attributes_internal (&s));
+}
 
 #define FILE_ATTRIBUTES_PRIMITIVE(stat_syscall)				\
 {									\

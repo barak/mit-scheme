@@ -134,6 +134,12 @@ USA.
       }							\
   } while (0)
 
+void
+UX_read_fd_status (int fd, struct stat * s)
+{
+  STD_VOID_SYSTEM_CALL (syscall_fstat, (UX_fstat (fd, s)));
+}
+
 int
 UX_read_file_status (const char * filename, struct stat * s)
 {
