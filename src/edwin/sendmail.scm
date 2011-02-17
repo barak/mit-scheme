@@ -100,7 +100,7 @@ Otherwise, mail is sent directly to the named host using SMTP."
   "Service to connect to on the mail relay host.
 Can be a service name (a string), a service number, or #F.
 If #F, service \"smtp\" is used.
-This is used only of `mail-relay-host' is set."
+This is used only if `mail-relay-host' is set."
   #f
   (lambda (service)
     (or (not service)
