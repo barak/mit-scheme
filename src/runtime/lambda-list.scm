@@ -123,6 +123,26 @@ USA.
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
 (define lambda-tag:aux (object-new-type (ucode-type constant) 8))
+
+(define (lambda-tag? object)
+  (or (eq? object lambda-tag:aux)
+      (eq? object lambda-tag:key)
+      (eq? object lambda-tag:optional)
+      (eq? object lambda-tag:rest)
+
+      ;; The following ones are called `lambda-tag', but they are
+      ;; semantically quite different from lambda list keywords.
+      ;; This should be fixed some day.
+
+      ;; From lambda.scm
+      (eq? object lambda-tag:internal-lambda)
+      (eq? object lambda-tag:internal-lexpr)
+
+      ;; From syntax-output.scm
+      (eq? object lambda-tag:fluid-let)
+      (eq? object lambda-tag:let)
+      (eq? object lambda-tag:unnamed)
+      ))
 
 (define (parse-mit-lambda-list lambda-list)
   (let ((required (list '()))
