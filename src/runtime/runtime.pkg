@@ -2104,6 +2104,7 @@ USA.
 	  hash-table-fold
 	  hash-table-merge!
 	  hash-table-ref
+	  hash-table-type?
 	  hash-table-update!
 	  hash-table/clean!
 	  hash-table/clear!
@@ -2415,6 +2416,9 @@ USA.
   (export (runtime compiler-info)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
+  (export (runtime lambda-list)
+	  lambda-tag:internal-lambda
+	  lambda-tag:internal-lexpr)
   (initialization (initialize-package!)))
 
 (define-package (runtime list)
@@ -2619,6 +2623,7 @@ USA.
 	  lambda-tag:key
 	  lambda-tag:optional
 	  lambda-tag:rest
+	  lambda-tag?
 	  map-mit-lambda-list
 	  map-r4rs-lambda-list
 	  mit-lambda-list?
@@ -3797,6 +3802,7 @@ USA.
 	  graphics-set-drawing-mode
 	  graphics-set-line-style
 	  graphics-type
+	  (graphics-type? graphics-device-type?)
 	  graphics-type-available?
 	  graphics-type-name
 	  graphics-type-properties
