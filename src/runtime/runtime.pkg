@@ -2874,7 +2874,11 @@ USA.
 	  error:not-exact-rational
 	  error:not-inexact
 	  error:not-integer
+	  error:not-negative
+	  error:not-non-negative
+	  error:not-non-positive
 	  error:not-number
+	  error:not-positive
 	  error:not-rational
 	  error:not-real
 	  exact-nonnegative-integer?
@@ -2895,7 +2899,11 @@ USA.
 	  guarantee-exact-rational
 	  guarantee-inexact
 	  guarantee-integer
+	  guarantee-negative
+	  guarantee-non-negative
+	  guarantee-non-positive
 	  guarantee-number
+	  guarantee-positive
 	  guarantee-rational
 	  guarantee-real
 	  inexact?
@@ -2906,6 +2914,8 @@ USA.
 	  max
 	  min
 	  modulo
+	  non-negative?
+	  non-positive?
 	  number->string
 	  odd?
 	  quotient

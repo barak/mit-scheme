@@ -1846,6 +1846,17 @@ USA.
 (define-guarantee exact-nonnegative-integer "exact non-negative integer")
 (define-guarantee exact-positive-integer "exact positive integer")
 
+(define (non-negative? object)
+  (not (negative? object)))
+
+(define (non-positive? object)
+  (not (positive? object)))
+
+(define-guarantee positive "positive number")
+(define-guarantee negative "negative number")
+(define-guarantee non-positive "non-positive number")
+(define-guarantee non-negative "non-negative number")
+
 ;;; The following three procedures were originally just renamings of
 ;;; their COMPLEX: equivalents.  They have been rewritten this way to
 ;;; cause the compiler to generate better code for them.
