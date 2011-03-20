@@ -730,12 +730,12 @@ Schemely treat, its @code{delete_event} callback is a Scheme procedure
 closed over a binding of @code{counter} that is used to implement some
 impertinent behavior.
 @example
-@verbatiminclude ../../src/ffi/prhello.scm
+@verbatiminclude prhello.scm
 @end example
 
 Here are the C declarations.
 @example
-@verbatiminclude ../../src/ffi/prhello.cdecl
+@verbatiminclude prhello.cdecl
 @end example
 
 To run the example:
