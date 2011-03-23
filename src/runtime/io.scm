@@ -288,18 +288,15 @@ USA.
   (let ((channel (open-channel (lambda (p) (primitive filename p)))))
     (if (or (channel-type=directory? channel)
 	    (channel-type=unknown? channel))
-	(begin
+	(let ((reason
+	       (if (channel-type=directory? channel)
+		   "Is a directory"
+		   "Unknown file type")))
 	  (channel-close channel)
 	  (file-open primitive
 		     operator
-		     (error:file-operation filename
-					   "open"
-					   "file"
-					   (if (channel-type=directory? channel)
-					       "Is a directory"
-					       "Unknown file type")
-					   operator
-					   (list filename))))
+		     (error:file-operation filename "open" "file" reason
+					   operator (list filename))))
 	channel)))
 
 (define (file-open-input-channel filename)
