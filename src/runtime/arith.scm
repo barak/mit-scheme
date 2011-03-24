@@ -1159,6 +1159,18 @@ USA.
 
 (define-rational-unary real:numerator rat:numerator)
 (define-rational-unary real:denominator rat:denominator)
+
+(define-syntax define-rational-exact-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((operator (close-syntax (list-ref form 2) environment)))
+       `(DEFINE (,(list-ref form 1) Q)
+	  (IF (FLONUM? Q)
+	      (,operator (FLO:->RATIONAL Q))
+	      (,operator Q)))))))
+
+(define-rational-exact-unary real:numerator->exact rat:numerator)
+(define-rational-exact-unary real:denominator->exact rat:denominator)
 
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
@@ -1522,6 +1534,12 @@ USA.
 
 (define (complex:denominator q)
   (real:denominator (complex:real-arg 'DENOMINATOR q)))
+
+(define (complex:numerator->exact q)
+  (real:numerator->exact (complex:real-arg 'NUMERATOR->EXACT q)))
+
+(define (complex:denominator->exact q)
+  (real:denominator->exact (complex:real-arg 'DENOMINATOR->EXACT q)))
 
 (define (complex:floor x)
   (if (recnum? x)
