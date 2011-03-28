@@ -698,6 +698,7 @@ USA.
 	  environment-extension-procedure
 	  environment-extension?
 	  force
+	  guarantee-promise
 	  interpreter-return-address?
 	  make-return-address
 	  microcode-error
