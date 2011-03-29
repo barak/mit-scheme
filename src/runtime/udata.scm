@@ -262,6 +262,8 @@ contains constants derived from the source program.
 (define-integrable (promise? object)
   (object-type? (ucode-type delayed) object))
 
+(define-guarantee promise "promise")
+
 (define-integrable (promise-forced? promise)
   (eq? #t (system-pair-car promise)))
 
@@ -288,8 +290,7 @@ contains constants derived from the source program.
   (system-pair-car promise))
 
 (define (force promise)
-  (if (not (promise? promise))
-      (error:wrong-type-argument promise "promise" 'FORCE))
+  (guarantee-promise promise 'FORCE)
   (case (system-pair-car promise)
     ((#T)
      (system-pair-cdr promise))

@@ -698,6 +698,7 @@ USA.
 	  environment-extension-procedure
 	  environment-extension?
 	  force
+	  guarantee-promise
 	  interpreter-return-address?
 	  make-return-address
 	  microcode-error
@@ -2817,6 +2818,7 @@ USA.
 	  (conjugate complex:conjugate)
 	  (cos complex:cos)
 	  (denominator complex:denominator)
+	  (denominator->exact complex:denominator->exact)
 	  (even? complex:even?)
 	  (exact->inexact complex:exact->inexact)
 	  (exact-rational? rat:rational?)
@@ -2840,6 +2842,7 @@ USA.
 	  (negative? complex:negative?)
 	  (number? complex:complex?)
 	  (numerator complex:numerator)
+	  (numerator->exact complex:numerator->exact)
 	  (positive? complex:positive?)
 	  (rational? complex:rational?)
 	  (rationalize complex:rationalize)
