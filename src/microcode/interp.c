@@ -916,6 +916,7 @@ Interpret (int pop_return_p)
 	  SIGNAL_INTERRUPT (interrupts);
 	}
 
+      /* Check your calendars, folks.  */
     perform_application:
 #ifdef APPLY_UCODE_HOOK
       APPLY_UCODE_HOOK ();
