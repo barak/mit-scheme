@@ -76,8 +76,6 @@ Like Fundamental mode, but no self-inserting characters.")
 	(ref-mode-object read-only)
 	(ref-mode-object read-only-noarg)))
 
-;;; Actually porting viper-mode left as an exercise for the reader...
-
 (define-key 'fundamental #\c-space 'set-mark-command)
 (define-key 'fundamental #\c-% 'replace-string)
 (define-key 'fundamental #\c-- 'negative-argument)
