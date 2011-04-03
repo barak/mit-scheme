@@ -781,15 +781,18 @@ differences:
 		(close (structure/tag-expression structure) context)))
 	  (case (structure/physical-type structure)
 	    ((RECORD)
-	     `((DEFINE ,predicate-name
-		 (LET ((TAG
-			(,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
-			 ,tag-expression)))
-		   (NAMED-LAMBDA (,predicate-name OBJECT)
-		     (AND (,(absolute '%RECORD? context) OBJECT)
-			  (,(absolute 'EQ? context)
-			   (,(absolute '%RECORD-REF context) OBJECT 0)
-			   TAG)))))))
+	     (let ((tag-name (make-synthetic-identifier 'TAG)))
+	       `((DEFINE ,tag-name
+		   (,(absolute 'RECORD-TYPE-DISPATCH-TAG context)
+		    ,tag-expression))
+		 (DEFINE (,predicate-name OBJECT)
+		   (DECLARE
+		    (IGNORE-REFERENCE-TRAPS (SET ,(close tag-name context))))
+		   (AND (,(absolute '%RECORD? context) OBJECT)
+			(,(absolute 'EQ? context)
+			 (,(absolute '%RECORD-REF context) OBJECT 0)
+			 ;++ Work around a bug in the expander.
+			 ,(close tag-name context)))))))
 	    ((VECTOR)
 	     `((DEFINE (,predicate-name OBJECT)
 		 (AND (,(absolute 'VECTOR? context) OBJECT)
