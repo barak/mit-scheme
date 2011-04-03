@@ -28,21 +28,20 @@ USA.
 (declare (usual-integrations))
 
 (define (make-xml-name name #!optional uri)
-  (let ((name-symbol (make-xml-name-symbol name))
-	(uri
-	 (if (default-object? uri)
-	     (null-xml-namespace-uri)
-	     (->absolute-uri uri 'MAKE-XML-NAME))))
-    (if (null-xml-namespace-uri? uri)
-	name-symbol
-	(begin
-	  (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
-	  (if (not (case (xml-qname-prefix name-symbol)
-		     ((xml) (uri=? uri xml-uri))
-		     ((xmlns) (uri=? uri xmlns-uri))
-		     (else #t)))
-	      (error:bad-range-argument uri 'MAKE-XML-NAME))
-	  (%make-xml-name name-symbol uri)))))
+  (let ((name-symbol (make-xml-name-symbol name)))
+    (cond ((default-object? uri)
+	   name-symbol)
+	  ((null-xml-namespace-uri? uri)
+	   name-symbol)
+	  (else
+	   (let ((uri (->absolute-uri uri 'MAKE-XML-NAME)))
+	     (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
+	     (if (not (case (xml-qname-prefix name-symbol)
+			((xml) (uri=? uri xml-uri))
+			((xmlns) (uri=? uri xmlns-uri))
+			(else #t)))
+		 (error:bad-range-argument uri 'MAKE-XML-NAME))
+	     (%make-xml-name name-symbol uri))))))
 
 ;;; EXPANDED-NAMES should be a key-weak hash table, but that has an
 ;;; effect only if the other two hash tables are datum-weak, because
