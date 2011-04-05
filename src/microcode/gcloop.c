@@ -394,6 +394,11 @@ gc_scan_oldspace (SCHEME_OBJECT * scan, SCHEME_OBJECT * end)
 {
   OS_expect_sequential_access (scan, end);
   run_gc_loop (scan, (&end));
+  /* FIXME: This doesn't actually revert the expectation for [scan,
+     end).  However, Unix has no way to query the madvice, or to
+     dynamically scope it, so this is the best we can do.  Fortunately,
+     at the moment, none of the system uses any special madvice, so it
+     doesn't matter for now.  */
   OS_expect_normal_access (scan, end);
 }
 
