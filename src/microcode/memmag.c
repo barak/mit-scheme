@@ -79,11 +79,15 @@ static unsigned long compute_ephemeron_array_length (unsigned long);
 /* Memory Allocation, sequential processor:
 
 oo
-   ------------------------------------------ <- fixed boundary (currently)
-   |           Heap 2			    |
+   ------------------------------------------
+   |           Temporary heap (tospace)     |
    |                                        |
-   ------------------------------------------ <- boundary moved by purify
-   |           Heap 1			    |
+   __________________________________________ <- chosen by malloc/realloc
+   .                                        .
+   .                                        .
+   .                                        .
+   ------------------------------------------ <- fixed boundary (currently)
+   |           Heap                         |
    |                                        |
    ------------------------------------------ <- boundary moved by purify
    |     Constant + Pure Space    /\        |
