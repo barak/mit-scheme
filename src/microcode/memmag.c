@@ -30,6 +30,7 @@ USA.
 #include "history.h"
 #include "gccode.h"
 #include "osscheme.h"
+#include "ostop.h"
 
 #ifdef __WIN32__
    extern void win32_allocate_registers (void);
@@ -315,6 +316,7 @@ void
 std_gc_pt2 (void)
 {
   SCHEME_OBJECT * p = (get_newspace_ptr ());
+  OS_free_pages (heap_start, heap_end);
   (void) save_tospace (save_tospace_copy, 0);
   Free = p;
 

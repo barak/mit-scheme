@@ -38,5 +38,8 @@ extern void OS_save_internal_state (void);
 extern void OS_restore_internal_state (void);
 extern void OS_restore_external_state (void);
 extern const char * OS_error_code_to_message (unsigned int code);
+extern void OS_expect_sequential_access (void *start, void *end);
+extern void OS_expect_normal_access (void *start, void *end);
+extern void OS_free_pages (void *start, void *end);
 
 #endif /* SCM_OSTOP_H */

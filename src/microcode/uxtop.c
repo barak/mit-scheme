@@ -558,3 +558,88 @@ OS_syserr_names (unsigned long * length, const char *** names)
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = syserr_names_table;
 }
+
+static unsigned long
+round_up (unsigned long n, unsigned long factor)
+{
+  return (((n + (factor - 1)) / factor) * factor);
+}
+
+static unsigned long
+round_down (unsigned long n, unsigned long factor)
+{
+  return ((n / factor) * factor);
+}
+
+static void
+estimate_pages (void *start, void *end,
+                unsigned long (*round_start) (unsigned long, unsigned long),
+                unsigned long (*round_end) (unsigned long, unsigned long),
+                void **addr, size_t *len)
+{
+  if (end <= start)
+    {
+      (*addr) = start;
+      (*len) = 0;
+      return;
+    }
+
+  {
+    unsigned long page_size = (UX_getpagesize ());
+    char *page_start
+      = ((char *) ((*round_start) (((unsigned long) start), page_size)));
+    char *page_end
+      = ((char *) ((*round_end) (((unsigned long) end), page_size)));
+    (*addr) = ((void *) page_start);
+    (*len) = ((page_start < page_end) ? (page_end - page_start) : 0);
+  }
+}
+
+static void
+underestimate_pages (void *start, void *end, void **addr, size_t *len)
+{
+  estimate_pages (start, end, (&round_up), (&round_down), addr, len);
+}
+
+static void
+overestimate_pages (void *start, void *end, void **addr, size_t *len)
+{
+  estimate_pages (start, end, (&round_down), (&round_up), addr, len);
+}
+
+void
+OS_expect_sequential_access (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  overestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_POSIX_MADVISE)) && (defined (POSIX_MADV_SEQUENTIAL)))
+  (void) posix_madvise (addr, len, POSIX_MADV_SEQUENTIAL);
+#elif ((defined (HAVE_MADVISE)) && (defined (MADV_SEQUENTIAL)))
+  (void) madvise (addr, len, MADV_SEQUENTIAL);
+#endif
+}
+
+void
+OS_expect_normal_access (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  overestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_POSIX_MADVISE)) && (defined (POSIX_MADV_NORMAL)))
+  (void) posix_madvise (addr, len, POSIX_MADV_NORMAL);
+#elif ((defined (HAVE_MADVISE)) && (defined (MADV_NORMAL)))
+  (void) madvise (addr, len, MADV_NORMAL);
+#endif
+}
+
+void
+OS_free_pages (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  underestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_MADVISE)) && (defined (MADV_FREE)))
+  (void) madvise (addr, len, MADV_FREE);
+#endif
+}

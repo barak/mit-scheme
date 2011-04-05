@@ -1980,3 +1980,24 @@ win32_error_code_to_syserr (DWORD code)
     default: return (syserr_unknown);
     }
 }
+
+void
+OS_expect_sequential_access (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}
+
+void
+OS_expect_normal_access (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}
+
+void
+OS_free_pages (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}

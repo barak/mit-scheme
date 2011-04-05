@@ -65,6 +65,9 @@ USA.
 /* For ephemeron layout.  */
 #include "sdata.h"
 
+/* For memory advice.  */
+#include "ostop.h"
+
 static SCHEME_OBJECT ** p_fromspace_start;
 static SCHEME_OBJECT ** p_fromspace_end;
 static gc_tospace_allocator_t * gc_tospace_allocator;
@@ -226,6 +229,7 @@ save_tospace (gc_walk_proc_t * proc, void * ctx)
   GUARANTEE_TOSPACE_OPEN ();
   CHECK_NEWSPACE_SYNC ();
   ok = (proc (tospace_start, tospace_next, ctx));
+  OS_free_pages (tospace_start, tospace_end);
   CLOSE_TOSPACE ();
   return (ok);
 }
@@ -235,6 +239,7 @@ discard_tospace (void)
 {
   GUARANTEE_TOSPACE_OPEN ();
   CHECK_NEWSPACE_SYNC ();
+  OS_free_pages (tospace_start, tospace_end);
   CLOSE_TOSPACE ();
 }
 
@@ -387,7 +392,9 @@ std_gc_table (void)
 void
 gc_scan_oldspace (SCHEME_OBJECT * scan, SCHEME_OBJECT * end)
 {
+  OS_expect_sequential_access (scan, end);
   run_gc_loop (scan, (&end));
+  OS_expect_normal_access (scan, end);
 }
 
 void

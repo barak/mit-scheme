@@ -2525,3 +2525,24 @@ OS_syscall_names (unsigned long * length, const char *** names)
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
   (*names) = syscall_names_table;
 }
+
+void
+OS_expect_sequential_access (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}
+
+void
+OS_expect_normal_access (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}
+
+void
+OS_free_pages (void *start, void *end)
+{
+  (void) start;                 /* ignore */
+  (void) end;                   /* ignore */
+}
