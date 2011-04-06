@@ -633,6 +633,21 @@ OS_expect_normal_access (void *start, void *end)
 #endif
 }
 
+/* Brain-damaged Linux uses MADV_DONTNEED to mean the destructive
+   operation that everyone else means by MADV_FREE.  Everywhere else,
+   (POSIX_)MADV_DONTNEED is a nondestructive operation which is useless
+   here.  Fortunately, if Linux ever changes its meaning of
+   MADV_DONTNEED to match the rest of the world, the consequences here
+   are harmless, and if Linux additionally defines MADV_FREE like
+   everyone else in the world, then everything here will be
+   hunky-dory.  */
+
+#if ((defined (__linux__)) && (defined (HAVE_MADVISE)))
+#  if ((! (defined (MADV_FREE))) && (defined (MADV_DONTNEED)))
+#    define MADV_FREE MADV_DONTNEED
+#  endif
+#endif
+
 void
 OS_free_pages (void *start, void *end)
 {
