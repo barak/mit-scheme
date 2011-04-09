@@ -73,6 +73,10 @@ EDDIR = $(AUXDIR)/edwin
 
 all: @ALL_TARGET@
 
+check:
+	./microcode/scheme --library lib --batch-mode \
+	  --load ../tests/check.scm --eval '(%exit)'
+
 all-native: compile-microcode
 	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" \
 					--compiler --batch-mode
