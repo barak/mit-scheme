@@ -50,7 +50,7 @@ USA.
     "runtime/test-integer-bits"
     "runtime/test-process"
     "runtime/test-regsexp"
-    "runtime/test-wttree"
+    ("runtime/test-wttree" (runtime wt-tree))
     ))
 
 (with-working-directory-pathname
