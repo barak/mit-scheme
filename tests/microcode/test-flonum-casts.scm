@@ -27,113 +27,147 @@ USA.
 
 (declare (usual-integrations))
 
+;;;; Utilities
+
 (define (factorial n)
   (if (< n 2)
       1
       (* n (factorial (- n 1)))))
 
-(define ((make-cast-tester cast-to-integer cast-to-flonum size-in-bits)
-	 flonum
-	 integer-as-bit-string)
-  (assert-equal
-   (unsigned-integer->bit-string size-in-bits (cast-to-integer flonum))
-   integer-as-bit-string)
-  (assert-equal
-   flonum
-   (cast-to-flonum integer-as-bit-string)))
+(define (define-cast-test name flonum integer
+          prim:flonum->integer prim:integer->flonum)
+  (define (->procedure object)
+    (if (procedure? object) object (lambda () object)))
+  (let ((flonum->integer (make-primitive-procedure prim:flonum->integer 1))
+        (integer->flonum (make-primitive-procedure prim:integer->flonum 1))
+        (flonum (->procedure flonum))
+        (integer (->procedure integer)))
+    (define-test (symbol prim:flonum->integer ': name)
+      (lambda ()
+        (assert-equal (flonum->integer (flonum)) (integer))))
+    (define-test (symbol prim:integer->flonum ': name)
+      (lambda ()
+        (assert-equal (integer->flonum (integer)) (flonum))))))
 
-(define-test 'test-casting-doubles
+(define (define-double-cast-test name double integer)
+  (define-cast-test name double integer
+    'CAST-IEEE754-DOUBLE-TO-INTEGER
+    'CAST-INTEGER-TO-IEEE754-DOUBLE))
+
+(define (define-single-cast-test name single integer)
+  (define-cast-test name single integer
+    'CAST-IEEE754-SINGLE-TO-INTEGER
+    'CAST-INTEGER-TO-IEEE754-SINGLE))
+
+(define (flo:infinite? flonum)
+  (not (flo:finite? flonum)))
+
+(define assert-flo:infinite
+  (predicate-assertion flo:infinite? "infinite flonum"))
+
+(define assert-flo:positive
+  (predicate-assertion flo:positive? "positive flonum"))
+
+(define assert-flo:negative
+  (predicate-assertion flo:negative? "negative flonum"))
+
+;;;; Double
+
+(define-double-cast-test 'POSITIVE-ZERO +0.0
+  #b0000000000000000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'NEGATIVE-ZERO -0.0
+  #b1000000000000000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'POSITIVE-ONE +1.0
+  #b0011111111110000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'POSITIVE-TWO +2.0
+  #b0100000000000000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'POSITIVE-FOUR +4.0
+  #b0100000000010000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'POSITIVE-EIGHT +8.0
+  #b0100000000100000000000000000000000000000000000000000000000000000)
+
+(define-double-cast-test 'ONE-HUNDRED-FACTORIAL
+  (lambda () (->flonum (factorial 100)))
+  #b0110000010111011001100001001011001001110110000111001010111011100)
+
+(define-double-cast-test 'NEGATIVE-ONE -1.0
+  #b1011111111110000000000000000000000000000000000000000000000000000)
+
+(define-test 'DOUBLE-POSITIVE-INFINITY-IS-INFINITE
   (lambda ()
-    (define cast-ieee754-double-to-integer
-      (make-primitive-procedure 'cast-ieee754-double-to-integer))
+    (assert-flo:infinite
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-DOUBLE 1)
+      #b0111111111110000000000000000000000000000000000000000000000000000))))
 
-    (define cast-integer-to-ieee754-double
-      (make-primitive-procedure 'cast-integer-to-ieee754-double))
-
-    (define (integer-to-double integer-as-bit-string)
-      (cast-integer-to-ieee754-double
-       (bit-string->unsigned-integer integer-as-bit-string)))
-
-    (define test-double
-      (make-cast-tester cast-ieee754-double-to-integer
-			integer-to-double
-			64))
-
-    (test-double
-     0.0
-     #*0000000000000000000000000000000000000000000000000000000000000000)
-    (test-double
-     -0.0
-     #*1000000000000000000000000000000000000000000000000000000000000000)
-    (test-double
-     1.0
-     #*0011111111110000000000000000000000000000000000000000000000000000)
-    (test-double
-     2.0
-     #*0100000000000000000000000000000000000000000000000000000000000000)
-    (test-double
-     4.0
-     #*0100000000010000000000000000000000000000000000000000000000000000)
-    (test-double
-     8.0
-     #*0100000000100000000000000000000000000000000000000000000000000000)
-    (test-double
-     (->flonum (factorial 100))
-     #*0110000010111011001100001001011001001110110000111001010111011100)
-    (test-double
-     -1.0
-     #*1011111111110000000000000000000000000000000000000000000000000000)
-
-    (let ((positive-infinity
-	   (integer-to-double
-	    #*0111111111110000000000000000000000000000000000000000000000000000)))
-      (assert-false (flo:finite? positive-infinity))
-      (assert-true (flo:positive? positive-infinity)))
-    (let ((negative-infinity
-	   (integer-to-double
-	    #*1111111111110000000000000000000000000000000000000000000000000000)))
-      (assert-false (flo:finite? negative-infinity))
-      (assert-true (flo:negative? negative-infinity)))))
-
-(define-test 'test-casting-singles
+(define-test 'DOUBLE-POSITIVE-INFINITY-IS-POSITIVE
   (lambda ()
-    (define cast-ieee754-single-to-integer
-      (make-primitive-procedure 'cast-ieee754-single-to-integer))
+    (assert-flo:positive
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-DOUBLE 1)
+      #b0111111111110000000000000000000000000000000000000000000000000000))))
 
-    (define cast-integer-to-ieee754-single
-      (make-primitive-procedure 'cast-integer-to-ieee754-single))
+(define-test 'DOUBLE-NEGATIVE-INFINITY-IS-INFINITE
+  (lambda ()
+    (assert-flo:infinite
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-DOUBLE 1)
+      #b0111111111110000000000000000000000000000000000000000000000000000))))
 
-    (define (integer-to-single integer-as-bit-string)
-      (cast-integer-to-ieee754-single
-       (bit-string->unsigned-integer integer-as-bit-string)))
+(define-test 'DOUBLE-NEGATIVE-INFINITY-IS-NEGATIVE
+  (lambda ()
+    (assert-flo:negative
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-DOUBLE 1)
+      #b1111111111110000000000000000000000000000000000000000000000000000))))
+
+;;;; Single
 
-    (define test-single
-      (make-cast-tester cast-ieee754-single-to-integer
-			integer-to-single
-			32))
+(define-single-cast-test 'POSITIVE-ZERO +0.0
+  #b00000000000000000000000000000000)
 
-    (test-single 0.0
-		 #*00000000000000000000000000000000)
-    (test-single -0.0
-		 #*10000000000000000000000000000000)
-    (test-single 1.0
-		 #*00111111100000000000000000000000)
-    (test-single 2.0
-		 #*01000000000000000000000000000000)
-    (test-single 4.0
-		 #*01000000100000000000000000000000)
-    (test-single 8.0
-		 #*01000001000000000000000000000000)
-    (test-single (->flonum (factorial 10))
-		 #*01001010010111010111110000000000)
-    (test-single -1.0
-		 #*10111111100000000000000000000000)
+(define-single-cast-test 'NEGATIVE-ZERO -0.0
+  #b10000000000000000000000000000000)
 
-    (let ((positive-infinity
-	   (integer-to-single #*01111111100000000000000000000000)))
-      (assert-true (flo:positive? positive-infinity))
-      (assert-false (flo:finite? positive-infinity)))
-    (let ((negative-infinity
-	   (integer-to-single #*11111111100000000000000000000000)))
-      (assert-true (flo:negative? negative-infinity))
-      (assert-false (flo:finite? negative-infinity)))))
+(define-single-cast-test 'POSITIVE-ONE +1.0
+  #b00111111100000000000000000000000)
+
+(define-single-cast-test 'POSITIVE-TWO +2.0
+  #b01000000000000000000000000000000)
+
+(define-single-cast-test 'POSITIVE-FOUR +4.0
+  #b01000000100000000000000000000000)
+
+(define-single-cast-test 'POSITIVE-EIGHT +8.0
+  #b01000001000000000000000000000000)
+
+(define-single-cast-test 'TEN-FACTORIAL (lambda () (->flonum (factorial 10)))
+  #b01001010010111010111110000000000)
+
+(define-single-cast-test 'NEGATIVE-ONE -1.0
+  #b10111111100000000000000000000000)
+
+(define-test 'SINGLE-POSITIVE-INFINITY-IS-INFINITE
+  (lambda ()
+    (assert-flo:infinite
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-SINGLE 1)
+      #b01111111100000000000000000000000))))
+
+(define-test 'SINGLE-POSITIVE-INFINITY-IS-POSITIVE
+  (lambda ()
+    (assert-flo:positive
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-SINGLE 1)
+      #b01111111100000000000000000000000))))
+
+(define-test 'SINGLE-NEGATIVE-INFINITY-IS-INFINITE
+  (lambda ()
+    (assert-flo:infinite
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-SINGLE 1)
+      #b11111111100000000000000000000000))))
+
+(define-test 'SINGLE-NEGATIVE-INFINITY-IS-NEGATIVE
+  (lambda ()
+    (assert-flo:negative
+     ((make-primitive-procedure 'CAST-INTEGER-TO-IEEE754-SINGLE 1)
+      #b11111111100000000000000000000000))))
