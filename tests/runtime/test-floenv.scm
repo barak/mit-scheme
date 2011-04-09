@@ -294,7 +294,7 @@ USA.
 
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
+   condition-type elicitors		;ignore
    (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
      (lambda ()
        (flo:with-trapped-exceptions (exception)
@@ -303,7 +303,7 @@ USA.
 
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
+   condition-type elicitors		;ignore
    (define-test (symbol-append 'FLO:TRAP-EXCEPTIONS! ': name)
      (lambda ()
        (flo:with-trapped-exceptions 0
@@ -313,7 +313,7 @@ USA.
 
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
+   condition-type elicitors		;ignore
    (define-test (symbol-append 'FLO:UNTRAP-EXCEPTIONS! ': name)
      (lambda ()
        (flo:with-trapped-exceptions (flo:trappable-exceptions)
@@ -325,7 +325,7 @@ USA.
 
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
+   condition-type elicitors		;ignore
    (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'ENABLE)
      (lambda ()
        (flo:with-trapped-exceptions 0
@@ -335,7 +335,7 @@ USA.
 
 (for-each-trappable-exception
  (lambda (name exception condition-type elicitors)
-   elicitors				;ignore
+   condition-type elicitors		;ignore
    (define-test (symbol-append 'FLO:SET-TRAPPED-EXCEPTIONS! ': name ': 'DISABLE)
      (lambda ()
        (let ((exceptions (fix:andc (flo:trappable-exceptions) (exception))))
@@ -355,6 +355,7 @@ USA.
 
 (for-each-trappable-exception-elicitor
  (lambda (name exception condition-type elicitor-name elicitor)
+   exception				;ignore
    (define-test (symbol-append 'ELICIT-DEFERRED ': name ': elicitor-name)
      (lambda ()
        (assert-error
@@ -371,14 +372,14 @@ USA.
 
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
-   trappable?				;ignore
+   exception condition-type trappable?	;ignore
    (define-test (symbol-append 'ELICIT-IGNORED ': name ': elicitor-name)
      (lambda ()
        (flo:ignoring-exception-traps elicitor)))))
 
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
-   trappable?				;ignore
+   condition-type trappable?		;ignore
    (define-test (symbol-append 'ELICIT-AND-TEST ': name ': elicitor-name)
      (lambda ()
        (assert-eqv (flo:ignoring-exception-traps
@@ -389,7 +390,7 @@ USA.
 
 (for-each-exception-elicitor
  (lambda (name exception condition-type trappable? elicitor-name elicitor)
-   trappable?				;ignore
+   condition-type trappable?		;ignore
    (define-test (symbol-append 'ELICIT-CLEAR-TEST ': name ': elicitor-name)
      (lambda ()
        (assert-eqv (flo:ignoring-exception-traps
