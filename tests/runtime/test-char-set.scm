@@ -68,6 +68,7 @@ USA.
   (let ((modulus (* %low-limit 2)))
     (make-initialized-list n-ranges
       (lambda (i)
+	i
 	(let loop ()
 	  (let ((n (random (- char-code-limit modulus))))
 	    (let ((m (random modulus)))
