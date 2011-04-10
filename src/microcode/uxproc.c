@@ -277,11 +277,6 @@ OS_make_subprocess (const char * filename,
 
   transaction_begin ();
   child = (process_allocate ());
-
-  /* Flush streams so that output won't be duplicated after the fork.  */
-  fflush (stdout);
-  fflush (stderr);
-
   grab_signal_mask ();
   if (ctty_type == process_ctty_type_inherit_fg)
     block_jc_signals ();
