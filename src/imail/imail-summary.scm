@@ -686,13 +686,26 @@ SUBJECT is a string of regexps separated by commas."
 	   (extract-string (re-match-start 1) (re-match-end 1)))
 	  1)))
 
-(define (imail-summary-match-line mark)
-  (re-match-forward
+(define (make-imail-summary-regexp suffix)
+  (re-compile-pattern
    (string-append
     "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\)  +\\([0-9.]+[a-zA-Z ]\\)"
-    (if (ref-variable imail-summary-show-date mark)
-	" \\([ 123][0-9] [a-zA-Z]+  \\| +\\)"
-	"  "))
+    suffix)
+   #f))
+
+(define imail-summary-regexp-without-date
+  (make-imail-summary-regexp "  "))
+
+(define imail-summary-regexp-with-date
+  (make-imail-summary-regexp " \\([ 123][0-9] [a-zA-Z]+  \\| +\\)"))
+
+(define (imail-summary-match-line mark)
+  (re-match-forward
+   ;++ This is pretty bogus -- changing the variable will just quietly
+   ;++ break all operations on the summary buffer.
+   (if (ref-variable imail-summary-show-date mark)
+       imail-summary-regexp-with-date
+       imail-summary-regexp-without-date)
    (line-start mark 0)
    (line-end mark 0)
    #f))
