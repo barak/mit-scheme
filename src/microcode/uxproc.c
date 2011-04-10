@@ -165,11 +165,9 @@ UX_initialize_processes (void)
   }
   scheme_ctty_fd = (OS_ctty_fd ());
   scheme_jc_status =
-    ((scheme_ctty_fd < 0)
-     ? process_jc_status_no_ctty
-     : (UX_SC_JOB_CONTROL ())
-     ? process_jc_status_jc
-     : process_jc_status_no_jc);
+    ((scheme_ctty_fd < 0)     ? process_jc_status_no_ctty
+     : (UX_SC_JOB_CONTROL ()) ? process_jc_status_jc
+     : /*else*/			process_jc_status_no_jc);
   foreground_child_process = NO_PROCESS;
   subprocess_death_hook = subprocess_death;
   stop_signal_hook = stop_signal_handler;
@@ -200,7 +198,7 @@ process_allocate_abort (void * environment)
     }
   OS_process_deallocate (process);
 }
-
+
 static Tprocess
 process_allocate (void)
 {
