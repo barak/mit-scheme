@@ -706,7 +706,7 @@ AC_FUNC_UTIME_NULL
 AC_FUNC_VFORK
 AC_FUNC_VPRINTF
 AC_FUNC_WAIT3
-AC_CHECK_FUNCS([clock_gettime ctermid])
+AC_CHECK_FUNCS([clock_gettime closefrom ctermid])
 AC_CHECK_FUNCS([dup2])
 AC_CHECK_FUNCS([fcntl fdatasync feclearexcept fedisableexcept feenableexcept])
 AC_CHECK_FUNCS([fegetenv fegetexcept fegetexceptflag fegetround feholdexcept])

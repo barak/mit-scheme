@@ -621,6 +621,13 @@ typedef RETSIGTYPE Tsignal_handler_result;
    extern unsigned long UX_getpagesize (void);
 #  define EMULATE_GETPAGESIZE
 #endif
+
+#ifdef HAVE_CLOSEFROM
+#  define UX_closefrom closefrom
+#else
+   extern int UX_closefrom (int);
+#  define EMULATE_CLOSEFROM
+#endif
 
 /* poll is somewhat busted on Mac OSX 10.4 (Tiger), so use select.  */
 #ifdef __APPLE__

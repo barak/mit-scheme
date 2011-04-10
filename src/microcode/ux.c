@@ -624,6 +624,33 @@ fpathconf (int filedes, int parameter)
 }
 #endif /* EMULATE_FPATHCONF */
 
+#ifdef EMULATE_CLOSEFROM
+
+int
+UX_closefrom (int fd)
+{
+#if ((defined (HAVE_FCNTL)) && (defined (F_CLOSEM)))
+  return (UX_fcntl (fd, F_CLOSEM));
+#elif ((defined (HAVE_FCNTL)) && (defined (F_MAXFD)))
+  int max_fd = (UX_fcntl ((-1), F_MAXFD));
+  int status;
+  if (max_fd < 0) return (max_fd);
+  while (fd <= max_fd)
+    if (((status = (UX_close (fd++))) < 0) && (errno != EBADF))
+      return (status);
+  return (0);
+#else
+  int fd_limit = (UX_SC_OPEN_MAX ());
+  int status;
+  while (fd < fd_limit)
+    if (((status = (UX_close (fd++))) < 0) && (errno != EBADF))
+      return (status);
+  return (0);
+#endif
+}
+
+#endif
+
 void *
 OS_malloc_init (size_t size)
 {
