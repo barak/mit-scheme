@@ -367,6 +367,8 @@ SUBJECT is a string of regexps separated by commas."
 	(mark-temporary! mark))
       (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES (list->vector messages)))))
 
+;++ I am sorry to have written such a load of garbage.
+
 (define (expand-imail-summary-buffer buffer new-messages)
   (let ((old-messages (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES #f))
 	(index-digits (buffer-get buffer 'IMAIL-SUMMARY-INDEX-DIGITS #f))
@@ -405,6 +407,10 @@ SUBJECT is a string of regexps separated by commas."
 			       old-messages
 			       mark*
 			       (cons new-message messages))))
+		     ;++ This can't possibly be right if we have just
+		     ;++ inserted some new messages.  We need to bump
+		     ;++ the old messages' indices, like we do when we
+		     ;++ expunge messages.
 		     ((eqv? (imail-summary-selected-message-index mark)
 			    (message-index old-message))
 		      (merge new-messages
