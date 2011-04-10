@@ -57,19 +57,19 @@ static Tprocess foreground_child_process;
 static long process_tick;
 static long sync_tick;
 
-#define NEW_RAW_STATUS(process, status, reason)				\
+#define NEW_RAW_STATUS(process, status, reason) do			\
 {									\
   (PROCESS_RAW_STATUS (process)) = (status);				\
   (PROCESS_RAW_REASON (process)) = (reason);				\
   (PROCESS_TICK (process)) = (++process_tick);				\
-}
+} while (0)
 
-#define PROCESS_STATUS_SYNC(process)					\
+#define PROCESS_STATUS_SYNC(process) do					\
 {									\
   (PROCESS_STATUS (process)) = (PROCESS_RAW_STATUS (process));		\
   (PROCESS_REASON (process)) = (PROCESS_RAW_REASON (process));		\
   (PROCESS_SYNC_TICK (process)) = (PROCESS_TICK (process));		\
-}
+} while (0)
 
 /* This macro should only be used when
    (scheme_jc_status == process_jc_status_jc). */
@@ -719,20 +719,14 @@ subprocess_death (pid_t pid, int * status)
   if (process != NO_PROCESS)
     {
       if (WIFEXITED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_exited, (WEXITSTATUS (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_exited, (WEXITSTATUS (*status)));
       else if (WIFSTOPPED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_stopped, (WSTOPSIG (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_stopped, (WSTOPSIG (*status)));
       else if (WIFSIGNALED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_signalled, (WTERMSIG (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_signalled, (WTERMSIG (*status)));
     }
 }
 
