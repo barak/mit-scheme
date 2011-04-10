@@ -290,6 +290,7 @@ OS_make_subprocess (const char * filename,
   else
     block_sigchld ();
   STD_UINT_SYSTEM_CALL (syscall_vfork, child_pid, (UX_vfork ()));
+
   if (child_pid > 0)
     {
       /* In the parent process. */
@@ -299,14 +300,33 @@ OS_make_subprocess (const char * filename,
       (PROCESS_RAW_REASON (child)) = 0;
       (PROCESS_TICK (child)) = process_tick;
       PROCESS_STATUS_SYNC (child);
+
+      /* If we are doing job control for the child, make sure the child
+	 is in its own progress group before returning, so that we can
+	 set the ctty's process group and send job control signals to
+	 the child.  */
       if (child_jc_status == process_jc_status_jc)
-	STD_VOID_SYSTEM_CALL
-	  (syscall_setpgid, (UX_setpgid (child_pid, child_pid)));
+	/* There is a race condition here: see the RATIONALE section of
+    <http://pubs.opengroup.org/onlinepubs/9699919799/functions/setpgid.html>
+	   (POSIX.1-2008) for details.	The gist is that neither parent
+	   nor child can rely on the other to set the child's process
+	   group, so both try it.  It's OK for either the parent or the
+	   child to lose the race: after calling setpgid, each one
+	   cares only that the child have its own process group, which
+	   will be the case irrespective of who wins the race.	If the
+	   parent loses the race (and the child has already exec'd or
+	   exited), setpgid here may barf, and there are many ways that
+	   the parent can lose the race, so we just ignore any failure
+	   here under the (mildly bogus) assumption that failure means
+	   losing the race rather than manifesting a bug.  */
+	(void) UX_setpgid (child_pid, child_pid);
+
       if (ctty_type == process_ctty_type_inherit_fg)
 	{
 	  give_terminal_to (child);
 	  process_wait (child);
 	}
+
       transaction_commit ();
       return (child);
     }

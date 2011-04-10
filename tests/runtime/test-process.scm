@@ -58,3 +58,18 @@ USA.
       (assert-eqv (subprocess-wait subprocess) 'EXITED)
       (assert-error (lambda () (subprocess-kill subprocess))
                     (list condition-type:process-terminated-error)))))
+
+(define-test 'GRACEFUL-SETPGID-RACE
+  ;; This is a slightly bogus test.  We actually do want to report an
+  ;; error in this situation, but it's not clear that there's a
+  ;; straightforward way to do that nicely.  What this test is actually
+  ;; checking is whether Scheme handles the setpgid race condition
+  ;; without signalling an error when setpgid fails for the loser of
+  ;; the race.
+  (lambda ()
+    (let ((subprocess                   ;An apostrophe!  Yikes!  Run!
+           (run-subprocess-in-foreground "/this/program/doesn't/exist"
+                                         '#("fnord")
+                                         '#())))
+      (assert-eqv (subprocess-wait subprocess) 'EXITED)
+      (assert-eqv (subprocess-exit-reason subprocess) 1))))
