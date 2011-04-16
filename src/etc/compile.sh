@@ -26,7 +26,7 @@ set -e
 
 . etc/functions.sh
 
-run_cmd "${@}" --heap 6000 --stack 200 <<EOF
+run_cmd "${@}" --heap 6000 --stack 200 --batch-mode <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-everything))
