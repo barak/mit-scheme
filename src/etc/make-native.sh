@@ -105,7 +105,7 @@ run_cmd etc/native-prepare.sh "${MIT_SCHEME_EXE}"
 run_make compile-microcode
 
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
-    --fasl make.bin --heap 6000 <<EOF
+    --fasl make.bin --heap 6000 --batch-mode <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))

@@ -29,7 +29,7 @@ set -e
 FASL=`get_fasl_file`
 
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
-    --fasl "${FASL}" --heap 6000 <<EOF
+    --fasl "${FASL}" --heap 6000 --batch-mode <<EOF
 (begin
   (load-option (quote compiler))
   (load-option (quote cref))

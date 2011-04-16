@@ -112,7 +112,7 @@ EOF
 
 # Finish the cross-compilation with the new machine.
 run_cmd_in_dir runtime \
-    ../microcode/scheme --library ../lib --fasl make.bin <<EOF
+    ../microcode/scheme --library ../lib --fasl make.bin --batch-mode <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))
