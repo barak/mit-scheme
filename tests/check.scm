@@ -29,8 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-(load (merge-pathnames "load" (directory-pathname (current-load-pathname))))
-
 ;;; Can't just look at */test-*.scm because not everything has been
 ;;; converted to use the automatic framework.
 
@@ -51,11 +49,13 @@ USA.
     "runtime/test-process"
     "runtime/test-regsexp"
     ("runtime/test-wttree" (runtime wt-tree))
+    "ffi/test-ffi"
     ))
 
 (with-working-directory-pathname
     (directory-pathname (current-load-pathname))
   (lambda ()
+    (load "load")
     (for-each (lambda (entry)
                 (receive (pathname environment)
                          (if (pair? entry)
@@ -81,5 +81,11 @@ USA.
                               (compile-file (file-pathname pathname)
                                             '()
                                             environment))))
-                      (run-unit-tests pathname environment)))))
+                      (let* ((t (pathname-type pathname))
+                             (p (if (and t (string=? "com" t)
+                                         (eq? 'C
+                                              microcode-id/compiled-code-type))
+                                    (pathname-new-type pathname "so")
+                                    pathname)))
+                        (run-unit-tests p environment))))))
               known-tests)))

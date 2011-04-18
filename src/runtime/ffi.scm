@@ -162,26 +162,24 @@ USA.
       (set-%alien/ctype! alien ctype))
   alien)
 
-(define (guarantee-alien operator object #!optional ctype)
-  (let loop ((object object))
-    (if (and (alien? object)
-	     (or (default-object? ctype)
-		 (equal? (%alien/ctype object) ctype)))
-	object
-	(loop
-	 (call-with-current-continuation
-	  (lambda (continuation)
-	    (with-restart
-	     'USE-VALUE			;name
-	     "Continue with an alien."	;reporter
-	     continuation		;effector
-	     (lambda ()			;interactor
-	       (values
-		(prompt-for-evaluated-expression
-		 "New alien (an expression to be evaluated)")))
-	     (lambda ()			;thunk
-	       (error:wrong-type-argument
-		object "an alien" operator)))))))))
+(declare (integrate-operator guarantee-alien))
+(define (guarantee-alien object operator)
+  (if (not (alien? object))
+      (error:not-alien object operator)))
+
+(define (error:not-alien object operator)
+  (call-with-current-continuation
+   (lambda (continuation)
+     (with-restart
+      'USE-VALUE			;name
+      "Continue with an alien."		;reporter
+      continuation			;effector
+      (lambda ()			;interactor
+	(values
+	 (prompt-for-evaluated-expression
+	  "New alien (an expression to be evaluated)")))
+      (lambda ()			;thunk
+	(error:wrong-type-argument object "an alien" operator))))))
 
 
 ;;; Alien Functions
@@ -219,6 +217,14 @@ USA.
 
   ;; Band ID
   band-id)
+
+(declare (integrate-operator guarantee-alien-function))
+(define (guarantee-alien-function object operator)
+  (if (not (alien-function? object))
+      (error:not-alien-function object operator)))
+
+(define (error:not-alien-function object operator)
+  (error:wrong-type-argument object "an alien function" operator))
 
 (define (make-alien-function name library return-type params filename)
   (%make-alien-function 0 0 (string-append "Scm_" name)
@@ -303,8 +309,7 @@ USA.
 	      (loop (cdr consts)))))))
 
 (define (call-alien alien-function . args)
-  (if (not (alien-function? alien-function))
-      (error:bad-range-argument alien-function 'call-alien))
+  (guarantee-alien-function alien-function 'call-alien)
   (alien-function-cache! alien-function)
   (for-each
    (lambda (arg)
@@ -361,18 +366,23 @@ USA.
 	  (loop (cdr aliens)))))
   (set! malloced-aliens '()))
 
-(define (malloc size ctype)
-  ;; Add copy to malloced-aliens BEFORE calling malloc.
-  (let ((alien (make-alien ctype))
-	(copy (make-alien ctype)))
-    (let ((entry (weak-cons alien copy)))
-      (without-interrupts
-       (lambda ()
-	 (set! malloced-aliens (cons entry malloced-aliens)))))
-    ((ucode-primitive c-malloc 2) copy size)
-    ;; Even an interrupt here will not leak a byte.
-    (copy-alien-address! alien copy)
+(define (make-alien-to-free ctype init)
+  ;; Register BEFORE initializing (allocating).
+  (let ((alien (make-alien ctype)))
+    (let ((copy (make-alien ctype)))
+      (let ((entry (weak-cons alien copy)))
+	(without-interrupts
+	 (lambda ()
+	   (set! malloced-aliens (cons entry malloced-aliens)))))
+      (init copy)
+      ;; Even an abort here will not leak a byte.
+      (copy-alien-address! alien copy))
     alien))
+
+(define (malloc size ctype)
+  (make-alien-to-free ctype
+		      (lambda (alien)
+			((ucode-primitive c-malloc 2) alien size))))
 
 (define (free alien)
   (if (not (alien? alien))

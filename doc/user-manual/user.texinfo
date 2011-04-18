@@ -294,15 +294,15 @@ altogether, at which point you should ask for help.  Note that you can
 pass configure options to the script.
 
 @example
- etc/make-liarc.sh --help
- etc/make-liarc.sh --prefix=/usr
+./etc/make-liarc.sh --help
+./etc/make-liarc.sh --prefix=/usr
 @end example
 
 @item
 Install the program:
 
 @example
- make install
+make install
 @end example
 
 Depending on configuration options and file-system permissions, you

@@ -66,6 +66,22 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
 
 # **** END BOILERPLATE ****
 
+CC = @CC@
+CCLD = @CCLD@
+
+DEFS = @DEFS@
+CFLAGS = @CFLAGS@
+CPPFLAGS = @CPPFLAGS@ -I../lib
+LDFLAGS = @LDFLAGS@
+
+COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS)
+LINK = $(CCLD) $(LDFLAGS) -o $@
+
+SHIM_CFLAGS = @SHIM_CFLAGS@
+SHIM_LDFLAGS = @SHIM_LDFLAGS@
+COMPILE_SHIM = $(COMPILE) $(SHIM_CFLAGS)
+LINK_SHIM = $(LINK) $(SHIM_LDFLAGS)
+
 AUXDIR = @AUXDIR@
 
 all:

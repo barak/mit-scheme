@@ -86,6 +86,8 @@ maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
 maybe_link lib/ffi ../ffi
+maybe_link config.sub microcode/config.sub
+maybe_link config.guess microcode/config.guess
 
 for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"

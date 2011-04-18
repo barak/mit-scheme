@@ -1,0 +1,32 @@
+/* -*-C-*- */
+
+/* A test library; used to test the C/Unix FFI. */
+
+#include "ffi-test.h"
+
+static void *callback_data;
+static TestDoubleCallback callback_func;
+
+extern void
+test_register_double (TestDoubleCallback callback, void *user_data)
+{
+  callback_func = callback;
+  callback_data = user_data;
+}
+
+extern double
+test_double (double d, TestStruct *s)
+{
+  if (!callback_data) return 0.0;
+  return (d * callback_func (s->second, callback_data));
+}
+
+extern char *
+test_string (char *stri, TestStruct *stru)
+{
+  int l1 = strlen (stri);
+  int l2 = strlen (stru->fourth);
+  char *s = malloc (3);
+  snprintf (s, 3, "%d", l1 + l2);
+  return (s);
+}

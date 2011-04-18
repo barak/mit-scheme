@@ -3,6 +3,7 @@
 
 TARGET_DIR = $(AUXDIR)/ffi
 
+# Install the FFI option, and test lib.
 install:
 	rm -rf $(DESTDIR)$(TARGET_DIR)
 	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
@@ -10,38 +11,52 @@ install:
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) ffi-*.pkd $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) make.scm $(DESTDIR)$(TARGET_DIR)/.
+	$(INSTALL_DATA) ffi-test-shim.so ffi-test-types.bin ffi-test-const.bin \
+			$(DESTDIR)$(AUXDIR_DIR)/.
 
-clean-example:
-	rm -rf prhello-shim.* prhello-types.bin
-	rm -rf prhello-const prhello-const.*
+# Build a test library interface.
 
-install-example: build-example
-	$(INSTALL_DATA) prhello-types.bin ../lib/.
-	$(INSTALL_DATA) prhello-const.bin ../lib/.
-	$(INSTALL_DATA) prhello-shim.so ../lib/.
+# This target is built after everything else (during build-ffis), and
+# should use the new machine, runtime, etc.
 
-build-example: prhello-shim.so prhello-types.bin prhello-const.bin
+# This interface is for tests/ffi/test-ffi.scm, which uses its own
+# wrapper, so there is no need for the compile-ffi procedure (hint).
+build: ../lib/ffi-test-types.bin ../lib/ffi-test-const.bin		\
+       ../lib/ffi-test-shim.so
 
-prhello-shim.so: prhello-shim.o
-	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-2.0`
+../lib/ffi-test-shim.so: ffi-test-shim.o ffi-test.o
+	$(LINK_SHIM) $^ -o $@
 
-prhello-shim.o: prhello-shim.c
-	$(CC) -I../lib -Wall -fPIC `pkg-config --cflags gtk+-2.0` -o $@ -c $<
+ffi-test-shim.o: ffi-test-shim.c ffi-test.h
+	$(COMPILE_SHIM) -o $@ -c $<
 
-prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
+ffi-test-shim.c ffi-test-const.c ../lib/ffi-test-types.bin: ffi-test.cdecl
 	(echo "(load-option 'FFI)"; \
-	 echo '(C-generate "prhello" "#include <gtk/gtk.h>")') \
+	 echo '(C-generate "ffi-test" "#include \"ffi-test.h\"")') \
 	| ../microcode/scheme --library ../lib --batch-mode
+	cp -p ffi-test-types.bin ../lib/ffi-test-types.bin
 
-prhello-const.bin: prhello-const.scm
-	echo '(sf "prhello-const")' | mit-scheme --compiler --batch-mode
+../lib/ffi-test-const.bin: ffi-test-const.scm
+	echo '(sf "ffi-test-const")' \
+	| ../microcode/scheme --library ../lib --batch-mode
+	cp -p ffi-test-const.bin ../lib/ffi-test-const.bin
 
-prhello-const.scm: prhello-const
-	./prhello-const
+ffi-test-const.scm: ffi-test-const
+	./ffi-test-const
 
-prhello-const: prhello-const.o
+ffi-test-const: ffi-test-const.o
 	@rm -f $@
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ `pkg-config --libs gtk+-2.0`
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-prhello-const.o: prhello-const.c
-	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<
+ffi-test-const.o: ffi-test-const.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+# Finally, the test library itself.
+
+ffi-test.o: ffi-test.c ffi-test.h
+	$(COMPILE_SHIM) -o $@ -c $<
+
+ffi-test.c: ffi-test.c.stay
+	cp -p ffi-test.c.stay ffi-test.c
+
+.PHONY: build

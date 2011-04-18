@@ -492,41 +492,6 @@ restore marks all malloced aliens as though they have been freed.
 (free (malloc '|GdkRectangle|))
 @end smallexample
 
-In general, if a callout returns a pointer to a toolkit resource that
-should be freed, some care is necessary.  Typically such a resource is
-registered with a weak reference to a Scheme representative.  When the
-representative disappears (is garbage collected), the resource is
-freed.  The callout trampoline might cons a fresh alien and return it
-to Scheme, to be registered for later freeing, but an interrupt
-between the return and the registration may leave the
-alien un-registered, never to be freed.
-
-@smallexample
-    (let* ((alien (make-alien)))
-      (c-call "library_function" alien)
-      ;; An interrupt or non-local exit here can drop the alien resource.
-      (register-alien-to-free! alien)
-      ...mumble...
-      (c-free alien))
-@end smallexample
-
-To close the hole a null alien can be allocated and registered
-@emph{before} the callout.  If something interrupts normal execution
-before the callout trampoline can write to it, and the continuation is
-eventually abandoned, the null alien will be swept up in the next GC,
-but not erroneously freed.  If the alien is dropped immediately after
-the trampoline returns to Scheme, it will still be swept up and, no
-longer null, properly freed.
-
-@smallexample
-    (let* ((alien (make-alien '|GdkRectangle|)))
-      (register-alien-to-free! alien)
-      ;; Prepared to free the resource whether allocated or not.
-      (c-call "library_function" alien)
-      ...mumble...
-      (c-free alien))
-@end smallexample
-
 
 @node Alien Functions, Callbacks, Alien Data, Top
 @chapter Alien Functions
@@ -673,11 +638,9 @@ the types, constants and functions declared in the @file{.cdecl} file.
 @end table
 
 The following Makefile rules describe the process of building and
-installing a shim for the example ``Hello, World!'' program.  They can
-be found in @file{src/ffi/Makefile}
+installing a shim for the example ``Hello, World!'' program.
 
 @example
-@comment INCLUDE ../../src/ffi/Makefile-fragment FROM /^install-example:/ TO END
 @verbatim
 install-example: build-example
 	$(INSTALL_DATA) prhello-types.bin ../lib/.
@@ -737,42 +700,6 @@ Here are the C declarations.
 @example
 @verbatiminclude prhello.cdecl
 @end example
-
-To run the example:
-
-@smallexample
-@verbatim
-	cd src/ffi/
-	make install-example
-	../microcode/scheme --library ../lib
-	(load-option 'FFI)
-	(load "prhello.scm")
-	(hello)
-@end verbatim
-@end smallexample
-
-You might also syntax the Scheme code first, as in the following
-script.  The syntactic transformers of the FFI are needed here.
-
-@smallexample
-@verbatim
-	../microcode/scheme --library ../lib --batch-mode <<EOF
-	(load-option 'FFI)
-	(sf "prhello.scm")
-	EOF
-@end verbatim
-@end smallexample
-
-The resulting @file{prhello.bin} file can be loaded and run with just
-the FFI-enhanced runtime.  The FFI option is not needed.
-
-@smallexample
-@verbatim
-	../microcode/scheme --library ../lib
-	(load "prhello")
-	(hello)
-@end verbatim
-@end smallexample
 
 
 @node GNU Free Documentation License, , Hello World, Top
