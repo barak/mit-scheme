@@ -3,7 +3,7 @@
 
 TARGET_DIR = $(AUXDIR)/ffi
 
-# Install the FFI option, and test lib.
+# Install the FFI option.
 install:
 	rm -rf $(DESTDIR)$(TARGET_DIR)
 	$(mkinstalldirs) $(DESTDIR)$(TARGET_DIR)
@@ -11,8 +11,6 @@ install:
 	$(INSTALL_DATA) *.bci $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) ffi-*.pkd $(DESTDIR)$(TARGET_DIR)/.
 	$(INSTALL_DATA) make.scm $(DESTDIR)$(TARGET_DIR)/.
-	$(INSTALL_DATA) ffi-test-shim.so ffi-test-types.bin ffi-test-const.bin \
-			$(DESTDIR)$(AUXDIR_DIR)/.
 
 # Build a test library interface.
 
@@ -21,25 +19,22 @@ install:
 
 # This interface is for tests/ffi/test-ffi.scm, which uses its own
 # wrapper, so there is no need for the compile-ffi procedure (hint).
-build: ../lib/ffi-test-types.bin ../lib/ffi-test-const.bin		\
-       ../lib/ffi-test-shim.so
+build: ffi-test-shim.so ffi-test-types.bin ffi-test-const.bin
 
-../lib/ffi-test-shim.so: ffi-test-shim.o ffi-test.o
+ffi-test-shim.so: ffi-test-shim.o ffi-test.o
 	$(LINK_SHIM) $^ -o $@
 
 ffi-test-shim.o: ffi-test-shim.c ffi-test.h
 	$(COMPILE_SHIM) -o $@ -c $<
 
-ffi-test-shim.c ffi-test-const.c ../lib/ffi-test-types.bin: ffi-test.cdecl
+ffi-test-shim.c ffi-test-const.c ffi-test-types.bin: ffi-test.cdecl
 	(echo "(load-option 'FFI)"; \
 	 echo '(C-generate "ffi-test" "#include \"ffi-test.h\"")') \
 	| ../microcode/scheme --library ../lib --batch-mode
-	cp -p ffi-test-types.bin ../lib/ffi-test-types.bin
 
-../lib/ffi-test-const.bin: ffi-test-const.scm
+ffi-test-const.bin: ffi-test-const.scm
 	echo '(sf "ffi-test-const")' \
 	| ../microcode/scheme --library ../lib --batch-mode
-	cp -p ffi-test-const.bin ../lib/ffi-test-const.bin
 
 ffi-test-const.scm: ffi-test-const
 	./ffi-test-const
