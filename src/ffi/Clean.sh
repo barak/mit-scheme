@@ -10,4 +10,5 @@ fi
 ../etc/Clean.sh "${1}"
 . ../etc/functions.sh
 
-maybe_rm prhello-const prhello-const.scm
+maybe_rm ffi-test.c
+maybe_rm ffi-test-shim.* ffi-test-const ffi-test-const.* ffi-test-types.*

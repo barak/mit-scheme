@@ -3259,6 +3259,9 @@ USA.
 	  alien-function/name
 	  alien-byte-increment
 	  alien-byte-increment!
+	  error:not-alien
+	  guarantee-alien-function
+	  error:not-alien-function
 	  guarantee-alien
 	  c-peek-cstring
 	  c-peek-cstring!
@@ -3270,6 +3273,7 @@ USA.
 	  c-poke-string!
 	  c-enum-name
 	  call-alien
+	  make-alien-to-free
 	  malloc
 	  free
 	  register-c-callback

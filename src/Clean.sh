@@ -74,6 +74,7 @@ fi
 
 if [ ${MAINTAINER} = yes ]; then
     maybe_rm autom4te.cache configure lib stamp_* boot-root makefiles_created
+    maybe_rm config.sub config.guess
 fi
 
 for SUBDIR in ${SUBDIRS}; do

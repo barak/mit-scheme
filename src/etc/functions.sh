@@ -103,12 +103,12 @@ maybe_rm ()
     FILES=
     DIRS=
     for FN in "${@}"; do
-	if [ ! -L "${FN}" ]; then
-	    if [ -f "${FN}" ]; then
-		FILES="${FILES} ${FN}"
-	    elif [ -d "${FN}" ]; then
-		DIRS="${DIRS} ${FN}"
-	    fi
+	if [ -L "${FN}" ]; then
+	    FILES="${FILES} ${FN}"
+	elif [ -f "${FN}" ]; then
+	    FILES="${FILES} ${FN}"
+	elif [ -d "${FN}" ]; then
+	    DIRS="${DIRS} ${FN}"
 	fi
     done
     if [ "${FILES}" ]; then
