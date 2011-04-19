@@ -93,9 +93,13 @@ USA.
 			  (sf/default-declarations
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
-			     ,@(if (null? dependencies)
-				   '()
-				   `((INTEGRATE-EXTERNAL ,@dependencies))))))
+			     ,@(let ((deps (keep-matching-items
+					    dependencies
+					    (lambda (item)
+					      (eq? #f (pathname-type item))))))
+				 (if (null? deps)
+				     '()
+				     `((INTEGRATE-EXTERNAL ,@deps)))))))
 		(sf input-file output-file))))
 	  (if (not compile-file:sf-only?)
 	      (process-file (bin-pathname file)
