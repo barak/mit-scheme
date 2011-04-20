@@ -29,9 +29,9 @@ USA.
 (declare (usual-integrations))
 
 (define (compile-system name directory . options)
-  ;; Gets a list of file.package from DIRECTORY/NAME.pkg, creates the
-  ;; packages described therein, then (re)compiles (as necessary) and
-  ;; loads each file in order.
+  ;; Gets a list of files from DIRECTORY/NAME.pkg, creates the
+  ;; packages described therein, and loads each file, in order,
+  ;; re-compiling it first when necessary.
   ;;
   ;; If OPTIONS includes 'dependencies, its value should be an alist
   ;; of filenames, as they appear in the NAME.pkg file, each
@@ -50,20 +50,22 @@ USA.
       (let* ((os-type microcode-id/operating-system)
 	     (pmodel (read-package-model name os-type))
 	     (pathname (pmodel/pathname pmodel))
-	     (dependencies (find-option 'dependencies options '()))
-	     (syntax-only? (find-option 'syntax-only? options #f)))
+	     (dependencies (find-option 'dependencies options '())))
 
-	(define (env file)
-	  (->environment
-	   (let loop ((cps (pmodel/packages pmodel)))
-	     (if (pair? cps)
-		 (if (find (lambda (f) (pathname=? f file))
-			   (package/files (car cps)))
-		     (package/name (car cps))
-		     (loop (cdr cps)))
-		 (error "No cref-package for file:" file)))))
+	(declare (integrate-operator file-package))
+	(define (file-package file)
+	  (let loop ((packages (pmodel/packages pmodel)))
+	    (if (pair? packages)
+		(if (find (lambda (f) (pathname=? f file))
+			  (package/files (car packages)))
+		    (car packages)
+		    (loop (cdr packages)))
+		(error "No cref package for file:" file pmodel))))
 
-	(define (deps file)
+	(define-integrable (file-environment file)
+	  (->environment (package/name (file-package file))))
+
+	(define-integrable (file-dependencies file)
 	  (let ((entry (assoc file dependencies)))
 	    (if entry (cdr entry) '())))
 
@@ -79,15 +81,17 @@ USA.
 			 (loop (cdr packages)))
 		     #f))))
 	  (if existing
-	      (warn "Package already exists:" (package/name (car packages)))
-	      ;; Build package(s) for use at syntax-time.
+	      (error "Package already exists:" existing)
 	      (construct-packages-from-file
 	       (construct-external-descriptions pmodel))))
 
 	(for-each
 	  (lambda (file)
-	    (compile-file file (deps file) (env file))
-	    (load file))
+	    (let ((env (file-environment file))
+		  (deps (file-dependencies file))
+		  (type (if compile-file:sf-only? "bin" #f)))
+	      (compile-file file deps env)
+	      (load (pathname-new-type file type) env)))
 	  (append-map package/files (pmodel/packages pmodel)))
 
 	(cref/generate-constructors name 'ALL)))))
