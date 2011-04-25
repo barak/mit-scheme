@@ -37,7 +37,8 @@ USA.
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
       (bin-pathname (lambda (path) (pathname-new-type path "bin")))
-      (ext-pathname (lambda (path) (pathname-new-type path "ext")))
+      (ext-pathname (lambda (path) (pathname-default-type path "ext")))
+      (ext-pathname? (lambda (path) (equal? (pathname-type path) "ext")))
       (com-pathname
        (lambda (path)
 	 (pathname-new-type path (compiler:compiled-code-pathname-type)))))
@@ -94,9 +95,7 @@ USA.
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
 			     ,@(let ((deps (keep-matching-items
-					    dependencies
-					    (lambda (item)
-					      (eq? #f (pathname-type item))))))
+					    dependencies ext-pathname?)))
 				 (if (null? deps)
 				     '()
 				     `((INTEGRATE-EXTERNAL ,@deps)))))))
