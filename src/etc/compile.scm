@@ -44,7 +44,11 @@ USA.
       (in-liarc
        (lambda ()
 	 (c-compile-dir dir)
-	 (run-synchronous-subprocess "make" '("compile-liarc-bundle"))))
+	 (let ((line "make compile-liarc-bundle"))
+	   (for-each display (list ";Running `"line"' in "dir"...\n"))
+	   (let ((code (run-shell-command line 'working-directory dir)))
+	     (if (not (zero? code))
+		 (error "Shell command exited with error code:" code))))))
       (compile-dir dir)))
 
 (define (compile-boot-dirs compile-dir)
