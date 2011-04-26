@@ -70,7 +70,7 @@ USA.
 	    (if entry (cdr entry) '())))
 
 	(for-each (lambda (file.deps)
-		    (if (not (for-all? string? file.deps))
+		    (if (not (for-all? file.deps string?))
 			(error "Bogus dependency:" file.deps)))
 		  dependencies)
 
