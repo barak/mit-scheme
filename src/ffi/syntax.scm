@@ -66,8 +66,8 @@ USA.
 	 (name (pathname-name lib))
 	 (const (pathname-new-name lib (string-append name "-const")))
 	 (types (pathname-new-name lib (string-append name "-types")))
-	 (includes (fasload types))
-	 (comment (fasload const))
+	 (includes (fasload types (not c-include-noisily?)))
+	 (comment (fasload const (not c-include-noisily?)))
 	 (enums.struct-values
 	  (if (comment? comment) (comment-expression comment)
 	      (error:wrong-type-datum comment "a fasl comment"))))

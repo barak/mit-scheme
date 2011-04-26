@@ -59,10 +59,11 @@ USA.
 	(cwd (if load/loading?
 		 (directory-pathname (current-load-pathname))
 		 (working-directory-pathname))))
-    (include-cdecl-file library cwd cwd includes)
+    (fluid-let ((c-include-noisily? #t))
+      (include-cdecl-file library cwd cwd includes))
     includes))
 
-(define c-include-noisily? #t)
+(define c-include-noisily? #f)
 (define current-filename)
 
 (define (include-cdecl-file filename cwd twd includes)
