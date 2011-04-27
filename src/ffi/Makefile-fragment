@@ -22,7 +22,7 @@ install:
 build: ffi-test-shim.so ffi-test-types.bin ffi-test-const.bin
 
 ffi-test-shim.so: ffi-test-shim.o ffi-test.o
-	$(LINK_SHIM) $^ -o $@
+	$(LINK_SHIM) ffi-test-shim.o ffi-test.o -o $@
 
 ffi-test-shim.o: ffi-test-shim.c ffi-test.h
 	$(COMPILE_SHIM) -o $@ -c $<
@@ -41,7 +41,7 @@ ffi-test-const.scm: ffi-test-const
 
 ffi-test-const: ffi-test-const.o
 	@rm -f $@
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ ffi-test-const.o
 
 ffi-test-const.o: ffi-test-const.c
 	$(CC) $(CFLAGS) -o $@ -c $<
