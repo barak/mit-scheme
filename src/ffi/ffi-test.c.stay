@@ -2,6 +2,10 @@
 
 /* A test library; used to test the C/Unix FFI. */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "ffi-test.h"
 
 static void *callback_data;

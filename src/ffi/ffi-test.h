@@ -2,9 +2,6 @@
 
 /* Header for a test library; used to test the C/Unix FFI. */
 
-#include <string.h>
-#include <stdio.h>
-
 typedef struct {
 
   char first;

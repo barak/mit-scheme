@@ -495,6 +495,8 @@ Scm_"name" ("arglist")
 /* Prefix */
 "prefix"
 /* End Prefix */
+
+#include <stdio.h>
 " (basics-grovel-func) (enums-grovel-func includes)))
       (flush-output)
       (let* ((structs (gen-struct-grovel-funcs includes))
