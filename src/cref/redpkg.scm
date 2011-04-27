@@ -241,11 +241,9 @@ USA.
    os-type))
 
 (define (parse-package-expressions expressions pathname os-type)
-  (append-map! (lambda (expression)
-		 (let ((pexpr
-			(parse-package-expression expression pathname os-type)))
-		   (if (not pexpr) '() (list pexpr))))
-	       expressions))
+  (filter-map (lambda (expression)
+		(parse-package-expression expression pathname os-type))
+	      expressions))
 
 (define (parse-package-expression expression pathname os-type)
   (let ((lose
