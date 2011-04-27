@@ -49,7 +49,6 @@ USA.
     (lambda ()
       (let* ((os-type microcode-id/operating-system)
 	     (pmodel (read-package-model name os-type))
-	     (pathname (pmodel/pathname pmodel))
 	     (dependencies (find-option 'dependencies options '())))
 
 	(declare (integrate-operator file-package))
