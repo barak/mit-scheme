@@ -1,6 +1,0 @@
-#| -*-Scheme-*-
-
-Compile the FFI system. |#
-
-(fluid-let ((compiler:coalescing-constant-warnings? #f))
-  (compile-directory "."))

@@ -96,7 +96,8 @@ USA.
 			     globals)
 		     (loop descriptions packages extensions loads globals)))
 		  (else
-		   (error "Unknown description keyword:" (car description)))))
+		   (warn "Unexpected description:" description)
+		   (loop descriptions packages extensions loads globals))))
 	      (values packages extensions loads globals)))))
     (receive (packages extensions loads globals)
 	(loop descriptions '() '() '() '())
@@ -240,9 +241,11 @@ USA.
    os-type))
 
 (define (parse-package-expressions expressions pathname os-type)
-  (map (lambda (expression)
-	 (parse-package-expression expression pathname os-type))
-       expressions))
+  (append-map! (lambda (expression)
+		 (let ((pexpr
+			(parse-package-expression expression pathname os-type)))
+		   (if (not pexpr) '() (list pexpr))))
+	       expressions))
 
 (define (parse-package-expression expression pathname os-type)
   (let ((lose
@@ -297,7 +300,8 @@ USA.
 			      os-type))
 			   filenames))))
       (else
-       (lose)))))
+       (warn "Unexpected description:" expression)
+       #f))))
 
 (define (parse-package-definition name options)
   (check-package-options options)
@@ -373,7 +377,7 @@ USA.
 			(append! (package-description/finalizations package)
 				 (list finalization))))))
 		(else
-		 (error "Unrecognized option keyword:" (car option)))))
+		 (warn "Unexpected option:" option))))
 	    options))
 
 (define (parse-name name)

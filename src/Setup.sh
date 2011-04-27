@@ -86,6 +86,10 @@ maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
 maybe_link lib/ffi ../ffi
+maybe_link lib/ffi-test-shim.so ../ffi/ffi-test-shim.so
+maybe_link lib/ffi-test-types.bin ../ffi/ffi-test-types.bin
+maybe_link lib/ffi-test-const.bin ../ffi/ffi-test-const.bin
+
 maybe_link config.sub microcode/config.sub
 maybe_link config.guess microcode/config.guess
 

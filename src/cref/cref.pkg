@@ -40,6 +40,12 @@ USA.
 	  cref/generate-trivial-constructor
 	  cref/package-files))
 
+(define-package (cross-reference build-utilities)
+  (files "butils")
+  (parent (cross-reference))
+  (export ()
+	  compile-system))
+
 (define-package (cross-reference analyze-file)
   (files "anfile")
   (parent (cross-reference))

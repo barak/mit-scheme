@@ -37,7 +37,8 @@ USA.
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
       (bin-pathname (lambda (path) (pathname-new-type path "bin")))
-      (ext-pathname (lambda (path) (pathname-new-type path "ext")))
+      (ext-pathname (lambda (path) (pathname-default-type path "ext")))
+      (ext-pathname? (lambda (path) (equal? (pathname-type path) "ext")))
       (com-pathname
        (lambda (path)
 	 (pathname-new-type path (compiler:compiled-code-pathname-type)))))
@@ -93,9 +94,11 @@ USA.
 			  (sf/default-declarations
 			   `((USUAL-INTEGRATIONS
 			      ,@compile-file:override-usual-integrations)
-			     ,@(if (null? dependencies)
-				   '()
-				   `((INTEGRATE-EXTERNAL ,@dependencies))))))
+			     ,@(let ((deps (keep-matching-items
+					    dependencies ext-pathname?)))
+				 (if (null? deps)
+				     '()
+				     `((INTEGRATE-EXTERNAL ,@deps)))))))
 		(sf input-file output-file))))
 	  (if (not compile-file:sf-only?)
 	      (process-file (bin-pathname file)

@@ -107,10 +107,6 @@ AC_SUBST([AUXDIR])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
-if test "`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`"
-then
-    INSTALL="${INSTALL} --preserve-timestamps"
-fi
 
 echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
 etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
