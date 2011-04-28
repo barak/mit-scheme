@@ -915,8 +915,7 @@ USA.
 	(char-set-union char-set:uri-alpha
 			char-set:uri-digit
 			(string->char-set "+-.")))
-  (let* ((gen-delims (string->char-set ":/?#[]@"))
-	 (sub-delims (string->char-set "!$&'()*+,;="))
+  (let* ((sub-delims (string->char-set "!$&'()*+,;="))
 	 (unreserved
 	  (char-set-union char-set:uri-alpha
 			  char-set:uri-digit
