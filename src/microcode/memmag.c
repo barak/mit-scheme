@@ -120,12 +120,16 @@ setup_memory (unsigned long heap_size,
       exit (1);
     }
 
+  /* Consistency check 2 */
+  if ((stack_size + heap_size + constant_size) >= DATUM_MASK)
+    goto allocation_too_large;
+
   /* Allocate */
   ALLOCATE_HEAP_SPACE ((stack_size + heap_size + constant_size),
 		       memory_block_start,
 		       memory_block_end);
 
-  /* Consistency check 2 */
+  /* Consistency check 3 */
   if (memory_block_start == 0)
     {
       outf_fatal ("Not enough memory for this configuration.\n");
@@ -133,9 +137,10 @@ setup_memory (unsigned long heap_size,
       exit (1);
     }
 
-  /* Consistency check 3 */
+  /* Consistency check 4 */
   if ((ADDRESS_TO_DATUM (memory_block_end)) > DATUM_MASK)
     {
+    allocation_too_large:
       outf_fatal ("Requested allocation is too large.\n");
       outf_fatal ("Try again with a smaller argument to '--heap'.\n");
       outf_flush_fatal ();
