@@ -427,11 +427,11 @@ USA.
   (description false read-only true)
   (baud-rate-index false read-only true)
   (baud-rate false read-only true)
-  (insert-line-cost false read-only true)
-  (insert-line-next-cost false read-only true)
-  (delete-line-cost false read-only true)
-  (delete-line-next-cost false read-only true)
-  (scroll-region-cost false read-only true)
+  (insert-line-cost false)
+  (insert-line-next-cost false)
+  (delete-line-cost false)
+  (delete-line-next-cost false)
+  (scroll-region-cost false)
   (cursor-x false)
   (cursor-y false)
   (standout-mode? false)
@@ -1182,9 +1182,24 @@ Note that the multiply factors are in tenths of characters.  |#
 	    (if (or (not (= x-size (screen-x-size screen)))
 		    (not (= y-size (screen-y-size screen))))
 		(begin
-		  (without-interrupts
-		   (lambda ()
-		     (set-tn-x-size! desc x-size)
-		     (set-tn-y-size! desc y-size)
-		     (set-screen-size! screen x-size y-size)))
+		  (update-terminal-size! screen state desc x-size y-size)
 		  (update-screen! screen #t))))))))
+
+(define (update-terminal-size! screen state desc x-size y-size)
+  (receive (insert-line-cost
+	    insert-line-next-cost
+	    delete-line-cost
+	    delete-line-next-cost
+	    scroll-region-cost)
+      (let ((baud-rate (terminal-state/baud-rate state)))
+	(compute-scrolling-costs desc baud-rate x-size y-size))
+    (without-interrupts
+     (lambda ()
+       (set-tn-x-size! desc x-size)
+       (set-tn-y-size! desc y-size)
+       (set-terminal-state/insert-line-cost! state insert-line-cost)
+       (set-terminal-state/insert-line-next-cost! state insert-line-next-cost)
+       (set-terminal-state/delete-line-cost! state delete-line-cost)
+       (set-terminal-state/delete-line-next-cost! state delete-line-next-cost)
+       (set-terminal-state/scroll-region-cost! state scroll-region-cost)
+       (set-screen-size! screen x-size y-size)))))
