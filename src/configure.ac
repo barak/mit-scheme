@@ -77,18 +77,48 @@ AUXDIR='$(libdir)'/${AUXDIR_NAME}
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-: ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
 if test x"${enable_host_scheme_test}" = xyes; then
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
-    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	:
+    # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
+    # don't try to detect anything automagically, if it's set -- this
+    # will make broken scripts that set MIT_SCHEME_EXE brokenly fail
+    # early.  (2) Otherwise, use mit-scheme-ARCH if we can, because
+    # it's guaranteed to have the right compiler.  (3) Try mit-scheme
+    # if that fails.  (Will mit-scheme and not mit-scheme-ARCH ever be
+    # the right thing?)
+    found_p=no
+    env_p=no
+    native_exe="mit-scheme-${mit_scheme_native_code}"
+    if test x"${MIT_SCHEME_EXE:+set}" = xset; then
+	env_p=yes
+	if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1;
+	then
+	    found_p=yes
+	fi
+    elif "${native_exe}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+	MIT_SCHEME_EXE="${native_exe}"
+	found_p=yes
     elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	MIT_SCHEME_EXE=mit-scheme
+	found_p=yes
+    fi
+    if test x"${found_p}" = xyes; then
+	AC_MSG_RESULT([yes])
     else
+	message=
+	if test x"${env_p}" = xyes; then
+	    message="the MIT_SCHEME_EXE environment variable does not run it:
+
+   MIT_SCHEME_EXE=${MIT_SCHEME_EXE}"
+	else
+	    message="the following programs do not run it:
+
+   mit-scheme-${mit_scheme_native_code}
+   mit-scheme"
+	fi
 	AC_MSG_ERROR([
 This script needs an existing MIT/GNU Scheme installation to function,
-but neither the program \`${MIT_SCHEME_EXE}' nor the program
-\`mit-scheme' appears to run it.
+but ${message}
 
 If you have installed MIT/GNU Scheme in an unusual location, set the
 environment variable MIT_SCHEME_EXE to the name or pathname of the
@@ -98,7 +128,6 @@ MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
 directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
-    AC_MSG_RESULT([yes])
 fi
 
 AC_SUBST([ALL_TARGET])
