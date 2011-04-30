@@ -78,7 +78,9 @@ AUXDIR='$(libdir)'/${AUXDIR_NAME}
 #   src/configure.ac
 #   src/etc/make-native.sh
 
-if test x"${enable_host_scheme_test}" = xyes; then
+if test x"${enable_host_scheme_test}" = xno; then
+    : ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
+else
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
     # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
     # don't try to detect anything automagically, if it's set -- this
