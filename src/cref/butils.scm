@@ -111,8 +111,6 @@ USA.
 	    (let ((target (->environment (car import)))
 		  (source (->environment (cadr import)))
 		  (names (cddr import)))
-	      (for-each display (list";compile-system: linking: "
-				     target" <- "source": "names"\n"))
 	      (for-each (lambda (name)
 			 (environment-link-name target source name))
 		       names)))
