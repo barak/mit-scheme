@@ -68,7 +68,7 @@ fi
 
 if [ ! -x configure ]; then
     configure=clean
-    echo "autoconf"
+    echo "autoconf --include=microcode"
     autoconf --include=microcode
     configure=done
 fi
