@@ -40,8 +40,12 @@ AC_ARG_ENABLE([native-code],
 
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
-	[Test for working scheme on build host [[no]]]))
-: ${enable_host_scheme_test=no}
+	[Test for working scheme on build host [[if necessary]]]))
+if test -f lib/all.com; then
+  : ${enable_host_scheme_test=no}
+else
+  : ${enable_host_scheme_test=yes}
+fi
 
 AC_CANONICAL_HOST
 
