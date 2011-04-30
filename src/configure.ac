@@ -109,8 +109,9 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 
 echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
-etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
-compiler/configure "${mit_scheme_native_code}"
+etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}" \
+  || exit $?
+compiler/configure "${mit_scheme_native_code}" || exit $?
 
 AC_CONFIG_SUBDIRS([microcode])
 
