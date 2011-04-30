@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,6 +37,15 @@ USA.
   ;; If OPTIONS includes 'dependencies, its value should be an alist
   ;; of filenames, as they appear in the NAME.pkg file, each
   ;; associated with a list of pathnames (relative to DIRECTORY).
+  ;;
+  ;; If OPTIONS includes 'imports, its value should be a list,
+  ;;
+  ;;     ( (<target-package> <source-package> . <bound-names>)... )
+  ;;
+  ;; e.g. (((gtk keys) (ffi) find-c-includes c-enum-constant-values)).
+  ;; Each symbol in <bound-names> is bound in the target package and
+  ;; linked to the same name in the source package.  <target-package>
+  ;; and <source-package> should be package names -- lists of symbols.
 
   (define (find-option name options default)
     (let loop ((opts options))
@@ -49,7 +59,8 @@ USA.
     (lambda ()
       (let* ((os-type microcode-id/operating-system)
 	     (pmodel (read-package-model name os-type))
-	     (dependencies (find-option 'dependencies options '())))
+	     (dependencies (find-option 'dependencies options '()))
+	     (imports (find-option 'imports options '())))
 
 	(declare (integrate-operator file-package))
 	(define (file-package file)
@@ -73,6 +84,17 @@ USA.
 			(error "Bogus dependency:" file.deps)))
 		  dependencies)
 
+	(for-each (lambda (import)
+		    (let ((target (car import))
+			  (source (cadr import))
+			  (names (cddr import))
+			  (glt guarantee-list-of-type))
+		      (declare (integrate glt))
+		      (glt target symbol? "package name" 'compile-system)
+		      (glt source symbol? "package name" 'compile-system)
+		      (glt names symbol? "imported names" 'compile-system)))
+		  imports)
+    
 	(let ((existing
 	       (let loop ((packages (pmodel/packages pmodel)))
 		 (if (pair? packages)
@@ -83,6 +105,18 @@ USA.
 	      (error "Package already exists:" existing)
 	      (construct-packages-from-file
 	       (construct-external-descriptions pmodel))))
+
+	(for-each
+	  (lambda (import)
+	    (let ((target (->environment (car import)))
+		  (source (->environment (cadr import)))
+		  (names (cddr import)))
+	      (for-each display (list";compile-system: linking: "
+				     target" <- "source": "names"\n"))
+	      (for-each (lambda (name)
+			 (environment-link-name target source name))
+		       names)))
+	  imports)
 
 	(for-each
 	  (lambda (file)
