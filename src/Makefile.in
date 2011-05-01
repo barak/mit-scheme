@@ -80,12 +80,12 @@ check:
 
 all-native: compile-microcode
 	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
-	$(MAKE) build-bands build-ffis
+	$(MAKE) build-bands #build-ffis
 
 all-svm: microcode/svm1-defns.h
 	$(MAKE) compile-microcode
 	@$(top_srcdir)/etc/compile-svm.sh "$(MIT_SCHEME_EXE)"
-	$(MAKE) build-bands build-ffis
+	$(MAKE) build-bands #build-ffis
 
 microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
 	if cmp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h; \
@@ -103,7 +103,7 @@ compiler/machines/svm/svm1-defns.h: \
 
 all-liarc:
 	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
-	$(MAKE) compile-liarc-bundles build-bands build-ffis
+	$(MAKE) compile-liarc-bundles build-bands #build-ffis
 
 build-ffis:
 	etc/make-in-subdirs.sh build ffi $(FFIS)
