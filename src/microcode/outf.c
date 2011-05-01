@@ -168,22 +168,10 @@ outf_flush_error (void)
     fflush (stderr);
 }
 
-static unsigned int
-find_fatal_buf_nul (void)
-{
-  unsigned int scan = 0;
-  while (scan < MAX_FATAL_BUF)
-    if ((fatal_buf[scan++]) == '\0')
-      return (scan - 1);
-  /* There's no NUL character in the buffer. */
-  (fatal_buf[0]) = '\0';
-  return (0);
-}
-
 void
 voutf_fatal (const char * format, va_list args)
 {
-  unsigned int end = (find_fatal_buf_nul ());
+  unsigned int end = (strlen (fatal_buf));
   VSNPRINTF ((& (fatal_buf[end])), (MAX_FATAL_BUF - end), format, args);
 }
 
