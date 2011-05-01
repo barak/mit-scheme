@@ -51,9 +51,12 @@ doc/*/*.tp
 doc/*/*.vr
 doc/*/*.vrs
 doc/Makefile
+doc/autom4te.cache/
 doc/config.log
 doc/config.status
 doc/configure
+doc/ffi/Makefile
+doc/ffi/mit-scheme-ffi/
 doc/imail/Makefile
 doc/imail/mit-scheme-imail/
 doc/make-common
