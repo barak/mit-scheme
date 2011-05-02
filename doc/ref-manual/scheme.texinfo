@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.104
-@set VERSION 9.0.1
-@set UPDATED 2010-08-17
+@set VERSION 9.1
+@set UPDATED 2011-05-01
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
