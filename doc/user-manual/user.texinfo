@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.93
-@set VERSION 9.0
-@set UPDATED 2010-08-23
+@set VERSION 9.1
+@set UPDATED 2011-05-01
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -176,16 +176,16 @@ Unpack the tar file,
 @file{mit-scheme-@var{VERSION}}.  For example,
 
 @example
-tar xzf mit-scheme-9.0.1-i386.tar.gz
+tar xzf mit-scheme-@var{VERSION}-i386.tar.gz
 @end example
 
-will create a new directory @file{mit-scheme-9.0.1}.
+will create a new directory @file{mit-scheme-@var{VERSION}}.
 
 @item
 Move into the new directory:
 
 @example
-cd mit-scheme-9.0.1/src
+cd mit-scheme-@var{VERSION}/src
 @end example
 
 @item
@@ -269,10 +269,10 @@ Unpack the tar file,
 @file{mit-scheme-c-@var{VERSION}}.  For example,
 
 @example
-tar xzf mit-scheme-c-9.0.1.tar.gz
+tar xzf mit-scheme-c-@var{VERSION}.tar.gz
 @end example
 
-will create a new directory @file{mit-scheme-c-9.0.1}.
+will create a new directory @file{mit-scheme-c-@var{VERSION}}.
 
 @item
 Move into the new directory:
@@ -342,13 +342,13 @@ MIT/GNU Scheme is invoked by double-clicking on a shortcut.  In
 either case, Scheme will load itself and print something like this:
 
 @example
-Copyright (C) 2010 Massachusetts Institute of Technology
+Copyright (C) 2011 Massachusetts Institute of Technology
 This is free software; see the source for copying conditions. There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-Image saved on Monday February 1, 2010 at 12:26:59 AM
-  Release 9.0       || Microcode 15.1 || Runtime 15.7 || SF 4.41
-  LIAR/x86-64 4.118 || Edwin 3.116
+Image saved on Sunday May 1, 2011 at 4:38:16 PM
+  Release 9.1 || Microcode 15.3 || Runtime 15.7 || SF 4.41 || LIAR/x86-64 4.118
+  Edwin 3.116
 @end example
 
 @noindent
