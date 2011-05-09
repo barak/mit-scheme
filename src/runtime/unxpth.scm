@@ -78,15 +78,8 @@ USA.
   (let ((string (car components))
 	(replace-head
 	 (lambda (string)
-	   ;; If STRING has a trailing slash, and it's followed by a
-	   ;; slash, drop the trailing slash to avoid doubling.
-	   (let ((head (string-components string #\/)))
-	     (append (if (and (pair? (cdr components))
-			      (pair? (cdr head))
-			      (string-null? (car (last-pair head))))
-			 (except-last-pair head)
-			 head)
-		     (cdr components))))))
+	   (append (string-components string #\/)
+		   (cdr components)))))
     (let ((end (string-length string)))
       (if (or (= 0 end)
 	      (not *expand-directory-prefixes?*))
@@ -118,9 +111,8 @@ USA.
       directory))
 
 (define (parse-directory-components components)
-  (if (there-exists? components string-null?)
-      (error "Directory contains null component:" components))
-  (map parse-directory-component components))
+  (map parse-directory-component
+       (delete-matching-items components string-null?)))
 
 (define (parse-directory-component component)
   (if (string=? ".." component)
