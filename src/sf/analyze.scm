@@ -166,117 +166,6 @@ USA.
 
 (define-method/boolean? 'THE-ENVIRONMENT false-procedure)
 
-;; EXPRESSION/CAN-DUPLICATE?
-;;
-;; True if an expression can be duplicated on the consequent and
-;; alternative branches of a conditional.
-;;
-;; SF:MAXIMUM-DUPLICATE-EXPRESSION-SIZE
-;;
-;; A measure of how big an expression we are willing to duplicate
-;; when rewriting a conditional or disjunction.  In theory, there
-;; is no limit because the code is only duplicated on parallel
-;; branches and could only be encountered once per branch, but
-;; we want to avoid unnecessary code bloat.
-;; Values:
-;;    0 = inhibit all code duplication
-;;    1 = allow constants to be duplicated
-;;    2 - 4 = very conservative setting
-;;    4 - 8 = a tad conservative
-;;    8 - 16 = a bit liberal
-;;    64 - 10000 = go wild.
-;;
-;; This has been tested at very large values, it produces
-;; correct code, but the code can get quite a bit larger
-;; and take longer to compile.
-(define sf:maximum-duplicate-expression-size 8)
-
-(define (expression/can-duplicate? expression)
-  (< (expression/can-dup-descend? 0 expression) sf:maximum-duplicate-expression-size))
-
-(define (expression/can-dup-descend? size expression)
-  (if (>= size sf:maximum-duplicate-expression-size)
-      size
-      ((expression/method can-dup-descend?-dispatch-vector expression) size expression)))
-
-(define can-dup-descend?-dispatch-vector
-  (expression/make-dispatch-vector))
-
-(define define-method/can-dup-descend?
-  (expression/make-method-definer can-dup-descend?-dispatch-vector))
-
-(define-integrable (dont-duplicate size expression)
-  (declare (ignore size expression))
-  sf:maximum-duplicate-expression-size)
-
-(define-method/can-dup-descend? 'ACCESS  dont-duplicate)
-
-(define-method/can-dup-descend? 'ASSIGNMENT  dont-duplicate)
-
-(define-method/can-dup-descend? 'COMBINATION
-  (lambda (size expression)
-    (fold-left expression/can-dup-descend?
-	       (let ((operator (combination/operator expression)))
-		 (cond ((procedure? operator) (expression/can-dup-descend? (+ size 1) (procedure/body operator)))
-		       (else (expression/can-dup-descend? (+ size 1) operator))))
-	       (combination/operands expression))))
-
-(define-method/can-dup-descend? 'CONDITIONAL
-  (lambda (size expression)
-    (expression/can-dup-descend?
-     (cond ((expression/always-false? (conditional/predicate expression))
-	    (expression/can-dup-descend? (+ size 1) (conditional/alternative expression)))
-	   ((expression/never-false? (conditional/predicate expression))
-	    (expression/can-dup-descend? (+ size 1) (conditional/consequent expression)))
-	   (else
-	    (expression/can-dup-descend? (expression/can-dup-descend? (+ size 1) (conditional/consequent expression))
-					 (conditional/alternative expression))))
-     (conditional/predicate expression))))
-
-(define-method/can-dup-descend? 'CONSTANT
-  (lambda (size expression)
-    (declare (ignore expression)) (+ size 0))) ;; no cost
-
-(define-method/can-dup-descend? 'DECLARATION
-  (lambda (size expression)
-    (expression/can-dup-descend? (+ size 1) (declaration/expression expression))))
-
-(define-method/can-dup-descend? 'DELAY
-  (lambda (size expression)
-    (expression/can-dup-descend? (+ size 1) (delay/expression expression))))
-
-(define-method/can-dup-descend? 'DISJUNCTION
-  (lambda (size expression)
-    (expression/can-dup-descend?
-     (if (expression/never-false? (disjunction/predicate expression))
-	 size
-	 (expression/can-dup-descend? (+ size 2) (disjunction/alternative expression)))
-     (disjunction/predicate expression))))
-
-(define-method/can-dup-descend? 'OPEN-BLOCK dont-duplicate)
-
-;; If it is a procedure, we don't want to duplicate it
-;; in case someone might compare it with EQ?
-;; We'll handle LET specially in the combination case.
-(define-method/can-dup-descend? 'PROCEDURE dont-duplicate)
-
-(define-method/can-dup-descend? 'QUOTATION dont-duplicate)
-
-(define-method/can-dup-descend? 'REFERENCE
-  (lambda (size expression)
-    (if (variable/side-effected (reference/variable expression))
-	sf:maximum-duplicate-expression-size
-	(+ size 1))))
-
-(define-method/can-dup-descend? 'SEQUENCE
-  (lambda (size expression)
-    (fold-left expression/can-dup-descend?
-	       (+ size 1)
-	       (sequence/actions expression))))
-
-(define-method/can-dup-descend? 'THE-ENVIRONMENT dont-duplicate)
-
-
 ;;; EXPRESSION/EFFECT-FREE?
 ;;
 ;; True iff evaluation of expression has no side effects.
@@ -592,7 +481,7 @@ USA.
 	  (inner-info (expressions/free-variable-info (combination/operands expression) variable info)))
       (if (and (reference? operator)
 	       (eq? (reference/variable operator) variable))
-	  (cons (+ (car inner-info) 1) (cdr inner-info))
+	  (cons (fix:1+ (car inner-info)) (cdr inner-info))
 	  (expression/free-variable-info-dispatch operator variable inner-info)))))
 
 (define-method/free-variable-info 'CONDITIONAL
@@ -643,7 +532,7 @@ USA.
 (define-method/free-variable-info 'REFERENCE
   (lambda (expression variable info)
     (if (eq? (reference/variable expression) variable)
-	(cons (car info) (+ 1 (cdr info)))
+	(cons (car info) (fix:1+ (cdr info)))
 	info)))
 
 (define-method/free-variable-info 'SEQUENCE
@@ -756,9 +645,7 @@ USA.
 
 (define-method/pure-false? 'CONSTANT
   (lambda (expression)
-    (or (not (constant/value expression))
-	(and (eq? (constant/value expression) unspecific)
-	     (noisy-test sf:enable-true-unspecific? "Treating unspecific as pure false.")))))
+    (not (constant/value expression))))
 
 (define-method/pure-false? 'DECLARATION
   (lambda (expression)
@@ -827,9 +714,7 @@ USA.
 
 (define-method/pure-true? 'CONSTANT
   (lambda (expression)
-    (or (eq? (constant/value expression) #t)
-	(and (eq? (constant/value expression) unspecific)
-	     (noisy-test sf:enable-true-unspecific? "Treating unspecific as pure true.")))))
+    (eq? (constant/value expression) #t)))
 
 (define-method/pure-true? 'DECLARATION
   (lambda (expression)
@@ -877,59 +762,59 @@ USA.
 
 (define-method/size 'ACCESS
   (lambda (expression)
-    (+ 1 (expression/size (access/environment expression)))))
+    (fix:1+ (expression/size (access/environment expression)))))
 
 (define-method/size 'ASSIGNMENT
   (lambda (expression)
-    (+ 1 (expression/size (assignment/value expression)))))
+    (fix:1+ (expression/size (assignment/value expression)))))
 
 (define-method/size 'COMBINATION
   (lambda (expression)
     (fold-left (lambda (total operand)
-		 (+ total (expression/size operand)))
-	       (+ 1 (expression/size (combination/operator expression)))
+		 (fix:+ total (expression/size operand)))
+	       (fix:1+ (expression/size (combination/operator expression)))
 	       (combination/operands expression))))
 
 (define-method/size 'CONDITIONAL
   (lambda (expression)
-    (+ (expression/size (conditional/predicate expression))
-       (expression/size (conditional/consequent expression))
-       (expression/size (conditional/alternative expression))
-       1)))
+    (fix:+ 
+     (expression/size (conditional/predicate expression))
+     (fix:+
+      (expression/size (conditional/consequent expression))
+      (fix:1+ (expression/size (conditional/alternative expression)))))))
 
 (define-method/size 'CONSTANT
   (lambda (expression) (declare (ignore expression)) 1))
 
 (define-method/size 'DECLARATION
   (lambda (expression)
-    (+ (expression/size (declaration/expression expression)) 1)))
+    (fix:1+ (expression/size (declaration/expression expression)))))
 
 (define-method/size 'DELAY
   (lambda (expression)
-    (+ (expression/size (delay/expression expression)) 1)))
+    (fix:1+ (expression/size (delay/expression expression)))))
 
 (define-method/size 'DISJUNCTION
   (lambda (expression)
-    (+ (expression/size (disjunction/predicate expression))
-       (expression/size (disjunction/alternative expression))
-       1)))
+    (fix:+ (expression/size (disjunction/predicate expression))
+	   (fix:1+ (expression/size (disjunction/alternative expression))))))
 
 (define-method/size 'OPEN-BLOCK
   (lambda (expression)
     (fold-left (lambda (total action)
 		(if (eq? action open-block/value-marker)
 		    total
-		    (+ total (expression/size action))))
+		    (fix:+ total (expression/size action))))
 	      1
 	      (open-block/actions expression))))
 
 (define-method/size 'PROCEDURE
   (lambda (expression)
-    (+ (expression/size (procedure/body expression)) 1)))
+    (fix:1+ (expression/size (procedure/body expression)))))
 
 (define-method/size 'QUOTATION
   (lambda (expression)
-    (+ 1 (expression/size (quotation/expression expression)))))
+    (fix:1+ (expression/size (quotation/expression expression)))))
 
 (define-method/size 'REFERENCE
   (lambda (expression)
@@ -939,122 +824,6 @@ USA.
 (define-method/size 'SEQUENCE
   (lambda (expression)
     (fold-left (lambda (total action)
-		 (+ total (expression/size action)))
+		 (fix:+ total (expression/size action)))
 	       1
 	       (sequence/actions expression))))
-
-;; If true, then expression/unspecific? will return #t on
-;; unspecific which will enable certain operations to treat
-;; the value as something more convenient.  For example, a
-;; conditional might just treat an unspecific as #F to enable
-;; folding.
-
-;; Disable for now because the pathname package uses unspecific
-;; as a special marker.  Ugh.
-(define sf:enable-true-unspecific? #f)
-
-(define (expression/unspecific? expression)
-  (and (constant? expression)
-       (eq? (constant/value expression) unspecific)
-       (noisy-test sf:enable-true-unspecific? "Enable true unspecific")))
-
-;;; EXPRESSIONS/EQUAL?
-;;
-;; Returns #t if two expressions always compute the same value.
-;; This is not meant to be a heroic attempt to prove extrinsic equality,
-;; but rather a simple check to see if we have essentially the same
-;; form.  Returning false is a safe default.
-
-(declare (integrate-operator expressions/equal?))
-(define (expressions/equal? left right)
-  ((expression/method equal?-dispatch-vector left) left right))
-
-(define equal?-dispatch-vector
-  (expression/make-dispatch-vector))
-
-(define define-method/equal?
-  (expression/make-method-definer equal?-dispatch-vector))
-
-(define-method/equal? 'ACCESS
-  (lambda (left right)
-    (and (access? right)
-	 (eq? (access/name left) (access/name right))
-	 (expressions/equal? (access/environment left) (access/environment right)))))
-
-(define-method/equal? 'ASSIGNMENT
-  (lambda (left right)
-    (and (assignment? right)
-	 (eq? (assignment/variable left) (assignment/variable right))
-	 (expressions/equal? (assignment/value left) (assignment/value right)))))
-
-(define-method/equal? 'COMBINATION
-  (lambda (left right)
-    (and (combination? right)
-	 (let scan ((left-args (combination/operands left))
-		    (right-args (combination/operands right)))
-	   (cond ((pair? left-args) (and (pair? right-args)
-					 (expressions/equal? (car left-args) (car right-args))
-					 (scan (cdr left-args) (cdr right-args))))
-		 ((null? left-args) (and (null? right-args)
-					 (expressions/equal? (combination/operator left)
-							     (combination/operator right))))
-		 (else #f))))))
-
-(define-method/equal? 'CONDITIONAL
-  (lambda (left right)
-    (and (conditional? right)
-	 (expressions/equal? (conditional/predicate left) (conditional/predicate right))
-	 (or (expression/always-false? (conditional/predicate left))
-	     (expressions/equal? (conditional/consequent left) (conditional/consequent right)))
-	 (or (expression/never-false? (conditional/predicate left))
-	     (expressions/equal? (conditional/alternative left) (conditional/alternative right))))))
-
-(define-method/equal? 'CONSTANT
-  (lambda (left right)
-    (and (constant? right)
-	 (eq? (constant/value left) (constant/value right)))))
-
-(define-method/equal? 'DECLARATION false-procedure)
-
-(define-method/equal? 'DELAY false-procedure)
-
-(define-method/equal? 'DISJUNCTION
-  (lambda (left right)
-    (and (disjunction? right)
-	 (expressions/equal? (disjunction/predicate left)
-			     (disjunction/predicate right))
-	 (expressions/equal? (disjunction/alternative left)
-			     (disjunction/alternative right)))))
-
-(define-method/equal? 'OPEN-BLOCK false-procedure)
-
-(define-method/equal? 'PROCEDURE false-procedure)
-
-(define-method/equal? 'QUOTATION false-procedure)
-
-(define-method/equal? 'REFERENCE
-  (lambda (left right)
-    (and (reference? right)
-	 (eq? (reference/variable left)
-	      (reference/variable right)))))
-
-(define-method/equal? 'SEQUENCE
-  (lambda (left right)
-    (and (sequence? right)
-	 (let scan ((left-args (sequence/actions left))
-		    (right-args (sequence/actions right)))
-	   (cond ((pair? left-args)
-		  (and (pair? right-args)
-		       (if (eq? (car left-args) open-block/value-marker)
-			   (eq? (car right-args) open-block/value-marker)
-			   (and (not (eq? (car right-args) open-block/value-marker))
-				(expressions/equal? (car left-args)
-						    (car right-args))))
-		       (scan (cdr left-args) (cdr right-args))))
-		 ((null? left-args) (null? right-args))
-		 (else #f))))))
-
-(define-method/equal? 'THE-ENVIRONMENT
-  (lambda (left right)
-    (declare (ignore left))
-    (the-environment? right)))

@@ -205,11 +205,11 @@ USA.
 (define-simple-type access          #f                 (block environment name))
 (define-simple-type assignment      #f                 (block variable value))
 (define-simple-type combination     combination/%make  (block operator operands))
-(define-simple-type conditional     conditional/%make  (predicate consequent alternative))
+(define-simple-type conditional     #f                 (predicate consequent alternative))
 (define-simple-type constant        #f                 (value))
 (define-simple-type declaration     #f                 (declarations expression))
 (define-simple-type delay           #f                 (expression))
-(define-simple-type disjunction     disjunction/%make  (predicate alternative))
+(define-simple-type disjunction     #f                 (predicate alternative))
 (define-simple-type open-block      #f                 (block variables values actions))
 (define-simple-type procedure       #f                 (block name required optional rest body))
 (define-simple-type quotation       #f                 (block expression))
@@ -348,10 +348,6 @@ USA.
 ;; list.  This could lead to the combination disappearing altogether.
 (define sf:enable-argument-deletion? #t)
 
-;; If we apply a primitive to a conditional, rewrite such that
-;; the primitive is applied to the arms of the conditional.
-(define sf:enable-distribute-primitives? #t)
-
 ;; Foldable operators primitives that are members of
 ;; combination/constant-folding-operators
 
@@ -383,31 +379,13 @@ USA.
 
 (define (combination/make expression block operator operands)
   (cond ((and (foldable-combination? operator operands)
-	      (noisy-test sf:enable-constant-folding? "Folding constants"))
+	      (noisy-test sf:enable-constant-folding? "Fold constant"))
 	 (combination/fold-constant expression
 				    (constant/value operator)
 				    (map constant/value operands)))
 
-	((and (constant? operator)
-	      (primitive-procedure? (constant/value operator))
-	      (not (eq? (constant/value operator) (ucode-primitive not)))
-	      (length=? operands 1)
-	      (conditional? (car operands))
-	      (noisy-test sf:enable-distribute-primitives?
-			  "Distribute primitives over conditionals"))
-	 (conditional/make (and expression (object/scode expression))
-			   (conditional/predicate (car operands))
-			   (combination/make #f
-					     block
-					     (constant/make #f (constant/value operator))
-					     (list (conditional/consequent (car operands))))
-			   (combination/make #f
-					     block
-					     (constant/make #f (constant/value operator))
-					     (list (conditional/alternative (car operands))))))
-
 	((and (reducable-operator? operator)
-	      (noisy-test sf:enable-argument-deletion? "argument deletion"))
+	      (noisy-test sf:enable-argument-deletion? "Delete argument"))
 	 (call-with-values (lambda () (partition-operands operator operands))
 	   (lambda (new-argument-list new-operand-list other-operands)
 	     ;; The new-argument-list has the remaining arguments
@@ -416,13 +394,12 @@ USA.
 	     ;; list of operands that must be evaluated (for effect)
 	     ;; but whose value is discarded.
 	     (let ((result-body
-		    (if (and (null? new-argument-list)
+		    (if (or (pair? new-argument-list)
 			     ;; need to avoid things like this
 			     ;; (foo bar (let () (define (baz) ..) ..))
 			     ;; optimizing into
 			     ;; (foo bar (define (baz) ..) ..)
-			     (not (open-block? (procedure/body operator))))
-			(procedure/body operator)
+			     (open-block? (procedure/body operator)))
 			(combination/%make
 			 (and expression (object/scode expression))
 			 block
@@ -434,10 +411,13 @@ USA.
 			  '()
 			  #f
 			  (procedure/body operator))
-			 new-operand-list))))
-	       (sequence/make
-		(and expression (object/scode expression))
-		(append other-operands (list result-body)))))))
+			 new-operand-list)
+			(procedure/body operator))))
+	       (if (null? other-operands)
+		   result-body
+		   (sequence/make
+		    (and expression (object/scode expression))
+		    (append other-operands (list result-body))))))))
 	(else
 	 (combination/%make (and expression (object/scode expression)) block operator operands))))
 
@@ -461,80 +441,39 @@ USA.
 	       (required-parameters	'())
 	       (referenced-operands	'())
 	       (unreferenced-operands	'()))
-    (cond ((null? parameters)
-	   (if (or (procedure/rest operator) (null? operands))
-	       (values (reverse required-parameters) ; preserve order
+      (cond ((null? parameters)
+	     (if (or (procedure/rest operator) (null? operands))
+		 (values (reverse required-parameters) ; preserve order
 			 (reverse referenced-operands)
 			 (if (or (null? operands)
 				 (variable/integrated (procedure/rest operator)))
 			     unreferenced-operands
 			     (append operands unreferenced-operands)))
-	       (error "Argument mismatch" operands)))
-	  ((null? operands)
-	   (error "Argument mismatch" parameters))
-	  (else
-	   (let ((this-parameter (car parameters))
-		 (this-operand   (car operands)))
-	     (cond ((memq this-parameter free-in-body)
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  (cons this-parameter required-parameters)
-			  (cons this-operand   referenced-operands)
-			  unreferenced-operands))
-		   ((variable/integrated this-parameter)
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  required-parameters
-			  referenced-operands
-			  unreferenced-operands))
-		   (else
-		    (loop (cdr parameters)
-			  (cdr operands)
-			  required-parameters
-			  referenced-operands
-			  (cons this-operand
-				unreferenced-operands))))))))))
-
-;;; Conditional
-
-;; If the arms of a conditional are #T and #F, then
-;; we're just canonicalizing the predicate value to a boolean.
-;; If we already know the predicate is a boolean we can elide
-;; this step.  Additionally, if the arms are #F and #T,
-;; we're simply calling NOT.
-(define sf:enable-elide-conditional-canonicalization? #t)
-
-(define (conditional/make scode predicate consequent alternative)
-  (cond ((and (expression/pure-false? consequent)
-	      (expression/pure-true? alternative)
-	      (noisy-test sf:enable-elide-conditional-canonicalization?
-			  "Eliding inverse conditional canonicalization"))
-	;; (if <exp> #f #t) => (not <exp>)
-	;; We know that we're not making a double negative here
-	;; because a call to NOT in the predicate would already
-	;; have been inverted.
-	 (combination/%make scode #f (constant/make #f (ucode-primitive not)) (list predicate)))
-
-	;; If the consequent and alternative are the same, just make a sequence.
-	((expressions/equal? consequent alternative)
-	 (sequence/make scode (list predicate consequent)))
-
-	(else
-	 (conditional/%make scode predicate consequent alternative))))
-
-;;; Disjunction
-
-;; If the alternative of a disjunction is #F, we can elide the disjunction.
-(define sf:enable-disjunction-simplification? #t)
-
-(define (disjunction/make scode predicate alternative)
-  (cond ((and (expression/pure-false? alternative)
-	      (noisy-test sf:enable-disjunction-simplification? "Simplify disjunction"))
-	 ;; (or (foo) #f) => (foo)
-	 predicate)
-
-	(else
-	 (disjunction/%make scode predicate alternative))))
+		 (error "Argument mismatch" operands)))
+	    ((null? operands)
+	     (error "Argument mismatch" parameters))
+	    (else
+	     (let ((this-parameter (car parameters))
+		   (this-operand   (car operands)))
+	       (cond ((memq this-parameter free-in-body)
+		      (loop (cdr parameters)
+			    (cdr operands)
+			    (cons this-parameter required-parameters)
+			    (cons this-operand   referenced-operands)
+			    unreferenced-operands))
+		     ((variable/integrated this-parameter)
+		      (loop (cdr parameters)
+			    (cdr operands)
+			    required-parameters
+			    referenced-operands
+			    unreferenced-operands))
+		     (else
+		      (loop (cdr parameters)
+			    (cdr operands)
+			    required-parameters
+			    referenced-operands
+			    (cons this-operand
+				  unreferenced-operands))))))))))
 
 ;;; Sequence
 

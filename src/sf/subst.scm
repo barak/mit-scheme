@@ -167,7 +167,6 @@ USA.
 			    (combination/operands combination)))))
 
 ;;;; CONDITIONAL
-
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
     (integrate/conditional operations environment expression
@@ -179,222 +178,48 @@ USA.
 
 (define sf:enable-conditional-folding? #t)
 
-;; If true, then when a conditional depends on a variable,
-;; and that variable is not side effected and has no declarations,
-;; we declare the variable to be integrable to a constant #F
-;; in the alternative branch.
-(define sf:enable-conditional-propagation? #t)
-
-;; If the predicate is a call to NOT, flip the consequent and
-;; alternative and the sense of the predicate.
-(define sf:enable-conditional-inversion? #t)
-
-(define sf:enable-conditional->disjunction? #t)
-
 (define (integrate/conditional operations environment expression
 			       integrated-predicate
 			       consequent
 			       alternative)
-  (cond ((and (expression/never-false? integrated-predicate)
-	      (noisy-test sf:enable-conditional-folding? "Fold constant true conditional"))
-	 (sequence/make (and expression (conditional/scode expression))
-			(list integrated-predicate
-			      (integrate/expression operations environment consequent))))
-
-	((and (expression/always-false? integrated-predicate)
-	      (noisy-test sf:enable-conditional-folding? "Fold constant false conditional"))
-	 (sequence/make (and expression (conditional/scode expression))
-			(list integrated-predicate
-			      (integrate/expression operations environment alternative))))
-
-	((and (expression/call-to-not? integrated-predicate)
-	      (noisy-test sf:enable-conditional-inversion? "Invert conditional"))
+  (cond ((expression/call-to-not? integrated-predicate)
 	 ;; (if (not <e1>) <e2> <e3>) => (if <e1> <e3> <e2>)
-	 (integrate/conditional operations environment expression
-				(first (combination/operands integrated-predicate))
-				alternative consequent))
-
-	((conditional? integrated-predicate)
-	 (integrate/nested-conditional
+	 (integrate/conditional 
 	  operations environment expression
-	  integrated-predicate consequent alternative))
-
-	((disjunction? integrated-predicate)
-	 (integrate/disjunction-in-conditional
-	  operations environment expression
-	  integrated-predicate consequent alternative))
+	  (first (combination/operands integrated-predicate))
+	  alternative consequent))
 
 	((sequence? integrated-predicate)
-	 (sequence/make (and expression (object/scode expression))
-			(append (except-last-pair (sequence/actions integrated-predicate))
-				(list (integrate/conditional operations environment #f
-							     (last (sequence/actions integrated-predicate))
-							     consequent
-							     alternative)))))
+	 (sequence/make
+	  (and expression (object/scode expression))
+	  (append (except-last-pair (sequence/actions integrated-predicate))
+		  (list (integrate/conditional 
+			 operations environment #f
+			 (last (sequence/actions integrated-predicate))
+			 consequent
+			 alternative)))))
+
+	((and (expression/never-false? integrated-predicate)
+	      (noisy-test sf:enable-conditional-folding? 
+			  "Fold constant true conditional"))
+	 (sequence/make 
+	  (and expression (conditional/scode expression))
+	  (list integrated-predicate
+		(integrate/expression operations environment consequent))))
+
+	((and (expression/always-false? integrated-predicate)
+	      (noisy-test sf:enable-conditional-folding? 
+			  "Fold constant false conditional"))
+	 (sequence/make 
+	  (and expression (conditional/scode expression))
+	  (list integrated-predicate
+		(integrate/expression operations environment alternative))))
 
 	(else
-	 (let ((integrated-consequent (integrate/expression operations environment consequent)))
-	   (if (or (and (expressions/equal? integrated-predicate integrated-consequent)
-			(expression/effect-free? integrated-predicate)
-			(noisy-test sf:enable-conditional->disjunction? "Converting conditional to disjunction"))
-		   (and (expression/boolean? integrated-predicate)
-			(expression/pure-true? integrated-consequent)
-			(noisy-test sf:enable-elide-conditional-canonicalization? "Eliding conditional canonicalization")))
-	       (integrate/disjunction operations environment expression integrated-predicate alternative)
-
-	       (conditional/make (and expression (conditional/scode expression))
-				 integrated-predicate
-				 integrated-consequent
-				 (integrate/expression
-				  (operations/prepare-false-branch operations integrated-predicate)
-				  environment alternative)))))))
-
-(define sf:enable-rewrite-disjunction-in-conditional? #t)
-;; If #t, move disjunctions out of the predicate if possible.
-
-(define (integrate/disjunction-in-conditional operations environment expression
-					      integrated-predicate consequent alternative)
-  (let ((e1 (disjunction/predicate integrated-predicate))
-	(e2 (disjunction/alternative integrated-predicate))
-	(e3 (integrate/expression operations environment consequent)))
-    ;; (if (or e1 e2) e3 e4) => (if e1 e3 (if e2 e3 e4))
-    ;; provided that e3 can be duplicated
-    (if (and (expression/can-duplicate? e3)
-	     (noisy-test sf:enable-rewrite-disjunction-in-conditional? "Rewriting disjunction within conditional"))
-	(integrate/conditional operations environment expression
-			       e1
-			       e3
-			       (conditional/make #f e2 e3 alternative))
-
-	;; nothing we can do.  Just make the conditional.
-	(conditional/make (and expression (object/scode expression))
-			  integrated-predicate
-			  e3
-			  (integrate/expression (operations/prepare-false-branch
-						 (operations/prepare-false-branch operations e1)
-						 e2)
-						environment alternative)))))
-
-(define sf:enable-rewrite-nested-conditional? #t)
-
-(define (integrate/nested-conditional operations environment expression
-				      integrated-predicate consequent alternative)
-
-  (let ((e1 (conditional/predicate integrated-predicate))
-	(e2 (conditional/consequent integrated-predicate))
-	(e3 (conditional/alternative integrated-predicate)))
-    ;; (if (if e1 e2 e3) e4 e5) =>
-    ;;    (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
-    ;;    (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
-    ;;    (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
-    ;;    (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
-    ;;    (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
-    ;;    (if e1 (if e2 e4 e5) (begin e3 e5))   case 6, e3 always false, e5 can be duplicated
-    ;;    (if e1 (if e2 e4 e5) (if e3 e4 e5))   case 7, e4 and e5 can be duplicated
-    ;;      and there is of course the general case where we can do nothing
-
-    ;; When propagating the conditional information, there are four contexts to consider:
-    ;; (if e1
-    ;;    (if e2 CC CA)   ; contexts CC and CA
-    ;;    (if e3 AC AA))  ; contexts AC and AA
-    ;;
-    ;; In context CA, we know e2 must be #F
-    ;; In contect AC, we know e1 must be #F
-    ;; In context AA, we know e1 and e3 must be #F.
-    ;;  othewise we can't glean any information.
-    ;; The predicates e2 and e3 have already been integrated, so there is
-    ;; nothing to be gained there.
-    (let ((context-CC operations)
-	  (context-CA (operations/prepare-false-branch operations e2))
-	  (context-AC (operations/prepare-false-branch operations e1))
-	  (context-AA (operations/prepare-false-branch (operations/prepare-false-branch operations e1) e3)))
-
-      (cond ((expression/never-false? e2)
-	     (if (and (expression/always-false? e3)
-		      (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (1)"))
-		 ;; (if e1 (begin e2 e4) (begin e3 e5))   case 1, e2 never false, e3 always false
-		 (integrate/conditional operations environment expression
-					e1
-					(sequence/make #f (list e2 consequent))
-					(sequence/make #f (list e3 alternative)))
-		 (let ((e4 (integrate/expression context-CC environment consequent)))
-		   (if (and (expression/can-duplicate? e4)
-			    (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (2)"))
-		       ;; (if e1 (begin e2 e4) (if e3 e4 e5))   case 2, e2 never false, e4 can be duplicated
-		       (integrate/conditional operations environment expression
-					      e1
-					      (sequence/make #f (list e2 consequent))
-					      (conditional/make #f e3 e4 alternative))
-		       (conditional/make (and expression (object/scode expression))
-					 integrated-predicate
-					 e4
-					 (integrate/expression context-AA environment alternative))))))
-
-	    ((expression/always-false? e2)
-	     (let ((e5 (integrate/expression operations environment alternative)))
-	       (cond ((and (expression/never-false? e3)
-			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (3)"))
-		      ;; (if e1 (begin e2 e5) (begin e3 e4))   case 3, e2 always false, e3 never false
-		      (integrate/conditional operations environment expression
-					     e1
-					     (sequence/make #f (list e2 e5))
-					     (sequence/make #f (list e3 consequent))))
-
-		     ((and (expression/can-duplicate? e5)
-			   (noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (4)"))
-		      ;; (if e1 (begin e2 e5) (if e3 e4 e5))   case 4, e2 always false, e5 can be duplicated
-		      (integrate/conditional operations environment expression
-					     e1
-					     (sequence/make #f (list e2 e5))
-					     (conditional/make #f e3 consequent e5)))
-		     (else
-		      ;; do nothing
-		      (conditional/make (and expression (object/scode expression)) integrated-predicate
-					(integrate/expression context-AC environment consequent)
-					e5)))))
-
-	    ((expression/never-false? e3)
-	     (let ((e4 (integrate/expression operations environment consequent)))
-	       (if (and (expression/can-duplicate? e4)
-			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (5)"))
-		   ;; (if e1 (if e2 e4 e5) (begin e3 e4))   case 5, e3 never false, e4 can be duplicated
-		   (integrate/conditional operations environment expression
-					  e1
-					  (conditional/make #f e2 e4 alternative)
-					  (sequence/make #f (list e3 e4)))
-		   ;; do nothing
-		   (conditional/make (and expression (object/scode expression)) integrated-predicate
-				     e4
-				     (integrate/expression context-CA environment alternative)))))
-
-	    ((expression/always-false? e3)
-	     (let ((e5 (integrate/expression operations environment alternative)))
-	       (if (and (expression/can-duplicate? e5)
-			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (6)"))
-		   ;; (if e1 (if e2 e4 e5) (begin e3 e5)) case 6, e3 always false, e5 can be duplicated
-		   (integrate/conditional operations environment expression
-					  e1
-					  (conditional/make #f e2 consequent e5)
-					  (sequence/make #f (list e3 e5)))
-		   ;; do nothing
-		   (conditional/make (and expression (object/scode expression)) integrated-predicate
-				     (integrate/expression context-CC environment consequent)
-				     e5))))
-
-	    (else
-	     (let ((e4 (integrate/expression operations environment consequent))
-		   (e5 (integrate/expression operations environment alternative)))
-	       (if (and (expression/can-duplicate? e4)
-			(expression/can-duplicate? e5)
-			(noisy-test sf:enable-rewrite-nested-conditional? "Rewrite nested conditional (7)"))
-		   ;; (if e1 (if e2 e4 e5) (if e3 e4 e5))   case 7, e4 and e5 can be duplicated
-		   (integrate/conditional operations environment expression
-					  e1
-					  (conditional/make #f e2 e4 e5)
-					  (conditional/make #f e3 e4 e5))
-		   ;; do nothing
-		   (conditional/make (and expression (object/scode expression))
-				     integrated-predicate e4 e5))))))))
+	 (conditional/make (and expression (conditional/scode expression))
+			   integrated-predicate
+			   (integrate/expression operations environment consequent)
+			   (integrate/expression operations environment alternative)))))
 
 ;;; CONSTANT
 (define-method/integrate 'CONSTANT
@@ -405,8 +230,11 @@ USA.
 ;;; DECLARATION
 (define-method/integrate 'DECLARATION
   (lambda (operations environment declaration)
-    (let ((answer (integrate/expression (declarations/bind operations (declaration/declarations declaration))
-					environment (declaration/expression declaration))))
+    (let ((answer
+	   (integrate/expression 
+	    (declarations/bind operations 
+			       (declaration/declarations declaration))
+	    environment (declaration/expression declaration))))
       (if (constant? answer)
 	  answer
 	  (declaration/make
@@ -433,119 +261,48 @@ USA.
      (disjunction/alternative expression))))
 
 (define sf:enable-disjunction-folding? #t)
-(define sf:enable-disjunction-inversion? #t)
-(define sf:enable-disjunction-linearization? #t)
-(define sf:enable-rewrite-conditional-in-disjunction? #t)
 
 (define (integrate/disjunction operations environment expression
 			       integrated-predicate alternative)
-  ;; Predicate has been integrated, but alternative has not.
-  ;; We can use information from the predicate to help in
-  ;; integrating the alternative.
-  (cond ((and (expression/never-false? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Folding constant true disjunction"))
+  (cond ((expression/call-to-not? integrated-predicate)
+	 ;; (or (not e1) e2) => (if e1 e2 #t)
+	 (integrate/conditional 
+	  operations environment expression
+	  (first (combination/operands integrated-predicate))
+	  alternative
+	  (constant/make #f #t)))
+
+	((and (expression/never-false? integrated-predicate)
+	      (noisy-test sf:enable-disjunction-folding? 
+			  "Fold constant true disjunction"))
 	 ;; (or <exp1> <exp2>) => <exp1> if <exp1> is never false
 	 integrated-predicate)
 
-	((and (expression/call-to-not? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-inversion? "Inverting disjunction"))
-	 ;; (or (not e1) e2) => (if e1 e2 #t)
-	 (integrate/conditional operations environment expression
-				(first (combination/operands integrated-predicate))
-				alternative
-				(constant/make #f #t)))
-
 	((and (expression/always-false? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-folding? "Folding constant false disjunction"))
-	 ;; (or <exp1> <exp2>) => (begin <exp1> <exp2>) if <exp1> is always false
+	      (noisy-test sf:enable-disjunction-folding?
+			  "Fold constant false disjunction"))
+	 ;; (or <exp1> <exp2>)
+	 ;; => (begin <exp1> <exp2>) if <exp1> is always false
 	 (sequence/make (and expression (object/scode expression))
 			(list integrated-predicate
-			      (integrate/expression operations environment alternative))))
-
-	((and (conditional? integrated-predicate)
-	      (noisy-test sf:enable-rewrite-conditional-in-disjunction?
-			  "Rewriting conditional within disjunction."))
-	 (integrate/conditional-in-disjunction
-	  operations environment expression
-	  integrated-predicate alternative))
-
-	((and (disjunction? integrated-predicate)
-	      (noisy-test sf:enable-disjunction-linearization? "Linearizing disjunction"))
-	 ;; (or (or <e1> <e2>) <e3>) => (or <e1> (or <e2> <e3>))
-	 (integrate/disjunction operations environment expression
-				(disjunction/predicate integrated-predicate)
-				(disjunction/make #f (disjunction/alternative integrated-predicate) alternative)))
+			      (integrate/expression 
+			       operations environment alternative))))
 
 	((sequence? integrated-predicate)
-	 (sequence/make (and expression (object/scode expression))
-			(append (except-last-pair (sequence/actions integrated-predicate))
-				(list (integrate/disjunction operations environment #f
-							     (last (sequence/actions integrated-predicate))
-							     alternative)))))
+	 (sequence/make 
+	  (and expression (object/scode expression))
+	  (append (except-last-pair (sequence/actions integrated-predicate))
+		  (list (integrate/disjunction 
+			 operations environment #f
+			 (last (sequence/actions integrated-predicate))
+			 alternative)))))
 
 	(else
 	 (disjunction/make (and expression (object/scode expression))
 			   integrated-predicate
 			   (integrate/expression
-			    (operations/prepare-false-branch operations integrated-predicate)
+			    operations
 			    environment alternative)))))
-
-(define (integrate/conditional-in-disjunction operations environment expression
-					      integrated-predicate alternative)
-  (let ((e1 (conditional/predicate integrated-predicate))
-	(e2 (conditional/consequent integrated-predicate))
-	(e3 (conditional/alternative integrated-predicate)))
-
-    ;; (or (if e1 e2 e3) alternative) =>
-    ;;    (if e1 (or e2 alternative) (or e3 alternative))
-    ;; provided alternative can be duplicated, or e2 or e3 are
-    ;; such that alternative doesn't need to be duplicated.
-    ;;
-    ;; e1 e2 and e3 have been integrated, alternative has not.
-
-    (cond ((expression/never-false? e2)
-	   ;; If e2 is never false, then we can rewrite like this:
-	   ;; (if e1 e2 (or e3 alternative))
-	   (integrate/conditional operations environment expression
-				  e1
-				  e2
-				  (disjunction/make #f e3 alternative)))
-
-	  ((expression/never-false? e3)
-	   ;; If e3 is never false, then we can rewrite like this:
-	   ;; (if e1 (or e2 alternative) e3)
-	   (integrate/conditional operations environment expression
-				  e1
-				  (disjunction/make #f e2 alternative)
-				  e3))
-	  (else
-	   ;; See if we can duplicate the alternative.
-	   (let ((e4 (integrate/expression operations environment alternative)))
-	     (if (expression/can-duplicate? e4)
-		 (integrate/conditional operations environment expression
-					e1
-					(disjunction/make #f e2 e4)
-					(disjunction/make #f e3 e4))
-		 ;; can't rewrite.
-		 (disjunction/make (and expression (object/scode expression))
-				   integrated-predicate
-				   e4)))))))
-
-(define (operations/prepare-false-branch operations expression)
-  (if (and (reference? expression)
-	   (variable/safely-integrable? (reference/variable expression) operations)
-	   (noisy-test sf:enable-conditional-propagation? "Propagating conditional information."))
-      (operations/bind-to-false operations expression)
-      operations))
-
-;; Make an entry in the operations table to integrate
-;; the variable as #F.  Used in the false branch of
-;; conditionals.
-(define (operations/bind-to-false operations reference)
-  (operations/bind operations
-		   'INTEGRATE
-		   (reference/variable reference)
-		   (make-integration-info (constant/make #f #F))))
 
 ;;; OPEN-BLOCK
 (define-method/integrate 'OPEN-BLOCK
@@ -775,19 +532,19 @@ USA.
 		       (not (variable/side-effected (reference/variable value)))
 		       (block/safe? (variable/block (reference/variable value)))))
 	      (noisy-test sf:enable-safe-integration? "Safe declarations"))
-	 (operations/bind operations 'INTEGRATE variable
+	 (operations/bind operations 'INTEGRATE variable 
 			  (make-integration-info value)))
 	((procedure? value)
-	 (let ((info (expression/free-variable-info body variable))
-	       (size (expression/size value)))
+	 (let ((info (expression/free-variable-info body variable)))
 	   ;; Avoid exponential code explosion.
 	   ;; The *parser code gets out of control if you don't limit this.
-	   (if (and (zero? (cdr info))
-		    (or (= (car info) 1)
-			(and (> (car info) 1)
-			     (< (* size (car info)) 500)))
+	   (if (and (fix:zero? (cdr info)) ; No argument references
+		    (or (fix:= (car info) 1) ; Exactly one operator use
+			(and (fix:> (car info) 1)
+			     (< (* (expression/size value) (car info)) 500)))
 		    (noisy-test sf:enable-safe-integration? "Safe declarations"))
-	       (operations/bind operations 'INTEGRATE-OPERATOR variable (make-integration-info value))
+	       (operations/bind operations 'INTEGRATE-OPERATOR variable
+				(make-integration-info value))
 	       operations)))
 	(else operations)))
 
@@ -880,28 +637,12 @@ USA.
     (cond ((and (expression/constant-eq? operator (ucode-primitive not))
 		(length=? operands 1)
 		(expression/call-to-not? (first operands))
-		(expression/boolean? (first (combination/operands (first operands))))
-		(noisy-test sf:enable-elide-double-negatives? "Eliding double negative"))
+		(expression/boolean? 
+		 (first (combination/operands (first operands))))
+		(noisy-test sf:enable-elide-double-negatives? 
+			    "Elide double negative"))
 	   (first (combination/operands (first operands))))
-	  ((and (expression/constant-eq? operator (ucode-primitive not))
-		(length=? operands 1)
-		(conditional? (first operands))
-		(or (expression/call-to-not? (conditional/consequent (first operands)))
-		    (expression/pure-true?  (conditional/consequent (first operands)))
-		    (expression/pure-false?  (conditional/consequent (first operands))))
-		(or (expression/call-to-not? (conditional/alternative (first operands)))
-		    (expression/pure-true? (conditional/alternative (first operands)))
-		    (expression/pure-false? (conditional/alternative (first operands)))))
-	   (integrate/conditional operations environment expression
-				  (conditional/predicate (first operands))
-				  (combination/make (conditional/consequent (first operands))
-						    #f
-						    (constant/make #f (ucode-primitive not))
-						    (list (conditional/consequent (first operands))))
-				  (combination/make (conditional/alternative (first operands))
-						    #f
-						    (constant/make #f (ucode-primitive not))
-						    (list (conditional/alternative (first operands))))))
+
 	  ((primitive-procedure? (constant/value operator))
 	   (let ((operands*
 		  (and (eq? (constant/value operator) (ucode-primitive apply))
@@ -911,9 +652,11 @@ USA.
 					block (car operands*) (cdr operands*))
 		 (integrate/primitive-operator expression operations environment
 					       block operator operands))))
+
 	  (else
 	   (warn "Application of constant value" (constant/value operator))
-	   (integrate-combination/default expression operations environment block operator operands)))))
+	   (integrate-combination/default expression operations environment 
+					  block operator operands)))))
 
 (define (integrate/primitive-operator expression operations environment
 				      block operator operands)
@@ -938,7 +681,8 @@ USA.
 ;;; disjunction-operator
 (define-method/integrate-combination 'DISJUNCTION
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment
+				   block operator operands)))
 
 ;;; open-block-operator
 (define-method/integrate-combination 'OPEN-BLOCK
@@ -950,7 +694,8 @@ USA.
 ;;; procedure-operator (let)
 (define-method/integrate-combination 'PROCEDURE
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment
+				   block operator operands)))
 
 (define (integrate/procedure-operator operations environment
 				      block procedure operands)
@@ -962,7 +707,8 @@ USA.
 ;;; quotation-operator
 (define-method/integrate-combination 'QUOTATION
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment 
+				   block operator operands)))
 
 ;;; reference-operator
 (define-method/integrate-combination 'REFERENCE
@@ -1012,13 +758,14 @@ USA.
 
 	    (else
 	     (error "Unknown operation" operation))))
-			 (lambda ()
-			   (integration-failure))))))
+	(lambda ()
+	  (integration-failure))))))
 
 ;;; sequence-operator
 (define-method/integrate-combination 'SEQUENCE
   (lambda (expression operations environment block operator operands)
-    (integrate-combination/default expression operations environment block operator operands)))
+    (integrate-combination/default expression operations environment
+				   block operator operands)))
 
 ;;; the-environment-operator
 (define-method/integrate-combination 'THE-ENVIRONMENT

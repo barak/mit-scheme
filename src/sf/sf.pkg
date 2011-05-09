@@ -40,10 +40,7 @@ USA.
 	  combination/constant-folding-operators)
   (export ()
 	  sf:enable-argument-deletion?
-	  sf:enable-constant-folding?
-	  sf:enable-disjunction-simplification?
-	  sf:enable-distribute-primitives?
-	  sf:enable-elide-conditional-canonicalization?))
+	  sf:enable-constant-folding?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
@@ -85,17 +82,9 @@ USA.
   (parent (scode-optimizer))
   (export ()
 	  sf:display-top-level-procedure-names?
-	  sf:enable-conditional->disjunction?
 	  sf:enable-conditional-folding?
-	  sf:enable-conditional-inversion?
-	  sf:enable-conditional-propagation?
 	  sf:enable-disjunction-folding?
-	  sf:enable-disjunction-inversion?
-	  sf:enable-disjunction-linearization?
 	  sf:enable-elide-double-negatives?
-	  sf:enable-rewrite-conditional-in-disjunction?
-	  sf:enable-rewrite-disjunction-in-conditional?
-	  sf:enable-rewrite-nested-conditional?
 	  sf:enable-safe-integration?)
   (export (scode-optimizer)
 	  integrate/top-level
@@ -148,13 +137,9 @@ USA.
 (define-package (scode-optimizer analyze)
   (files "analyze")
   (parent (scode-optimizer))
-  (export ()
-	  sf:maximum-duplicate-expression-size
-	  sf:enable-true-unspecific?)
   (export (scode-optimizer)
 	  expression/always-false?
 	  expression/boolean?
-	  expression/can-duplicate?
 	  expression/effect-free?
 	  expression/free-variable?
 	  expression/free-variable-info
@@ -162,9 +147,7 @@ USA.
 	  expression/never-false?
 	  expression/pure-false?
 	  expression/pure-true?
-	  expression/size
-	  expression/unspecific?
-	  expressions/equal?))
+	  expression/size))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
