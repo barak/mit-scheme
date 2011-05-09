@@ -28,7 +28,7 @@ USA.
 ;;; package: (scode-optimizer analyze)
 
 (declare (usual-integrations)
-	 (integrate-external "object"))
+         (integrate-external "object"))
 
 ;;; EXPRESSION/ALWAYS-FALSE?
 
@@ -52,17 +52,17 @@ USA.
 (define-method/always-false? 'COMBINATION
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
-	   (expression/never-false? (first (combination/operands expression))))
-	  ((procedure? (combination/operator expression))
-	   (expression/always-false? (procedure/body (combination/operator expression))))
-	  (else #f))))
+           (expression/never-false? (first (combination/operands expression))))
+          ((procedure? (combination/operator expression))
+           (expression/always-false? (procedure/body (combination/operator expression))))
+          (else #f))))
 
 (define-method/always-false? 'CONDITIONAL
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
-	     (expression/always-false? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/always-false? (conditional/alternative expression))))))
+             (expression/always-false? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/always-false? (conditional/alternative expression))))))
 
 (define-method/always-false? 'CONSTANT
   (lambda (expression)
@@ -79,7 +79,7 @@ USA.
 (define-method/always-false? 'DISJUNCTION
   (lambda (expression)
     (and (expression/always-false? (disjunction/predicate expression))
-	 (expression/always-false? (disjunction/alternative expression)))))
+         (expression/always-false? (disjunction/alternative expression)))))
 
 (define-method/always-false? 'OPEN-BLOCK
   (lambda (expression)
@@ -121,21 +121,21 @@ USA.
 (define-method/boolean? 'COMBINATION
   (lambda (expression)
     (or (expression/call-to-boolean-predicate? expression)
-	(and (procedure? (combination/operator expression))
-	     (boolean? (procedure/body (combination/operator expression)))))))
+        (and (procedure? (combination/operator expression))
+             (boolean? (procedure/body (combination/operator expression)))))))
 
 (define-method/boolean? 'CONDITIONAL
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
-	     (expression/boolean? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/boolean? (conditional/alternative expression))))))
+             (expression/boolean? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/boolean? (conditional/alternative expression))))))
 
 (define-method/boolean? 'CONSTANT
   (lambda (expression)
     ;; jrm:  do not accept unspecific here.
     (or (not (constant/value expression))
-	(eq? (constant/value expression) #t))))
+        (eq? (constant/value expression) #t))))
 
 (define-method/boolean? 'DECLARATION
   (lambda (expression)
@@ -146,8 +146,8 @@ USA.
 (define-method/boolean? 'DISJUNCTION
   (lambda (expression)
     (and (expression/boolean? (disjunction/predicate expression))
-	 (or (expression/never-false? (disjunction/predicate expression))
-	     (expression/boolean? (disjunction/alternative expression))))))
+         (or (expression/never-false? (disjunction/predicate expression))
+             (expression/boolean? (disjunction/alternative expression))))))
 
 (define-method/boolean? 'OPEN-BLOCK
   (lambda (expression)
@@ -188,17 +188,17 @@ USA.
 (define-method/effect-free? 'COMBINATION
   (lambda (expression)
     (and (for-all? (combination/operands expression) expression/effect-free?)
-	 (or (expression/call-to-effect-free-primitive? expression)
-	     (and (procedure? (combination/operator expression))
-		  (expression/effect-free? (procedure/body (combination/operator expression))))))))
+         (or (expression/call-to-effect-free-primitive? expression)
+             (and (procedure? (combination/operator expression))
+                  (expression/effect-free? (procedure/body (combination/operator expression))))))))
 
 (define-method/effect-free? 'CONDITIONAL
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
-	 (or (expression/always-false? (conditional/predicate expression))
-	     (expression/effect-free? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/effect-free? (conditional/alternative expression))))))
+         (or (expression/always-false? (conditional/predicate expression))
+             (expression/effect-free? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/effect-free? (conditional/alternative expression))))))
 
 (define-method/effect-free? 'CONSTANT true-procedure)
 
@@ -212,8 +212,8 @@ USA.
 (define-method/effect-free? 'DISJUNCTION
   (lambda (expression)
     (and (expression/effect-free? (disjunction/predicate expression))
-	 (or (expression/never-false? (disjunction/predicate expression))
-	     (expression/effect-free? (disjunction/alternative expression))))))
+         (or (expression/never-false? (disjunction/predicate expression))
+             (expression/effect-free? (disjunction/alternative expression))))))
 
 ;; This could be smarter and skip the assignments
 ;; done for the letrec, but it is easier to just
@@ -247,9 +247,9 @@ USA.
 
 (define (expressions/free-variables expressions)
   (fold-left (lambda (answer expression)
-	       (lset-union eq? answer (expression/free-variables expression)))
-	     (no-free-variables)
-	     expressions))
+               (lset-union eq? answer (expression/free-variables expression)))
+             (no-free-variables)
+             expressions))
 
 (define free-variables-dispatch-vector
   (expression/make-dispatch-vector))
@@ -264,25 +264,25 @@ USA.
 (define-method/free-variables 'ASSIGNMENT
   (lambda (expression)
     (lset-adjoin eq?
-		 (expression/free-variables (assignment/value expression))
-		 (assignment/variable expression))))
+                 (expression/free-variables (assignment/value expression))
+                 (assignment/variable expression))))
 
 (define-method/free-variables 'COMBINATION
   (lambda (expression)
     (lset-union eq?
-		(expression/free-variables (combination/operator expression))
-		(expressions/free-variables (combination/operands expression)))))
+                (expression/free-variables (combination/operator expression))
+                (expressions/free-variables (combination/operands expression)))))
 
 (define-method/free-variables 'CONDITIONAL
   (lambda (expression)
     (lset-union eq?
-		(expression/free-variables (conditional/predicate expression))
-		(if (expression/always-false? (conditional/predicate expression))
-		    (no-free-variables)
-		    (expression/free-variables (conditional/consequent expression)))
-		(if (expression/never-false? (conditional/predicate expression))
-		    (no-free-variables)
-		    (expression/free-variables (conditional/alternative expression))))))
+                (expression/free-variables (conditional/predicate expression))
+                (if (expression/always-false? (conditional/predicate expression))
+                    (no-free-variables)
+                    (expression/free-variables (conditional/consequent expression)))
+                (if (expression/never-false? (conditional/predicate expression))
+                    (no-free-variables)
+                    (expression/free-variables (conditional/alternative expression))))))
 
 (define-method/free-variables 'CONSTANT
   (lambda (expression)
@@ -300,20 +300,20 @@ USA.
 (define-method/free-variables 'DISJUNCTION
   (lambda (expression)
     (lset-union eq?
-		(expression/free-variables (disjunction/predicate expression))
-		(if (expression/never-false? (disjunction/predicate expression))
-		    (no-free-variables)
-		    (expression/free-variables (disjunction/alternative expression))))))
+                (expression/free-variables (disjunction/predicate expression))
+                (if (expression/never-false? (disjunction/predicate expression))
+                    (no-free-variables)
+                    (expression/free-variables (disjunction/alternative expression))))))
 
 (define-method/free-variables 'OPEN-BLOCK
   (lambda (expression)
     (let ((omit (block/bound-variables (open-block/block expression))))
      (fold-left (lambda (variables action)
-		  (if (eq? action open-block/value-marker)
-		      variables
-		      (lset-union eq? variables (lset-difference eq? (expression/free-variables action) omit))))
-		(lset-difference eq? (expressions/free-variables (open-block/values expression)) omit)
-		(open-block/actions expression)))))
+                  (if (eq? action open-block/value-marker)
+                      variables
+                      (lset-union eq? variables (lset-difference eq? (expression/free-variables action) omit))))
+                (lset-difference eq? (expressions/free-variables (open-block/values expression)) omit)
+                (open-block/actions expression)))))
 
 (define-method/free-variables 'PROCEDURE
   (lambda (expression)
@@ -356,10 +356,10 @@ USA.
 
 (define (expressions/free-variable? expressions variable)
   (fold-left (lambda (answer expression)
-	       (or answer
-		   (expression/free-variable? expression variable)))
-	     #f
-	     expressions))
+               (or answer
+                   (expression/free-variable? expression variable)))
+             #f
+             expressions))
 
 (define is-free-dispatch-vector
   (expression/make-dispatch-vector))
@@ -374,22 +374,22 @@ USA.
 (define-method/free-variable? 'ASSIGNMENT
   (lambda (expression variable)
     (or (eq? variable (assignment/variable expression))
-	(expression/free-variable? (assignment/value expression) variable))))
+        (expression/free-variable? (assignment/value expression) variable))))
 
 (define-method/free-variable? 'COMBINATION
   (lambda (expression variable)
     (or (expression/free-variable? (combination/operator expression) variable)
-	(expressions/free-variable? (combination/operands expression) variable))))
+        (expressions/free-variable? (combination/operands expression) variable))))
 
 (define-method/free-variable? 'CONDITIONAL
   (lambda (expression variable)
     (or (expression/free-variable? (conditional/predicate expression) variable)
-	(cond ((expression/always-false? (conditional/predicate expression))
-	       (expression/free-variable? (conditional/alternative expression) variable))
-	      ((expression/never-false? (conditional/predicate expression))
-	       (expression/free-variable? (conditional/consequent expression) variable))
-	      ((expression/free-variable? (conditional/consequent expression) variable))
-	      (else (expression/free-variable? (conditional/alternative expression) variable))))))
+        (cond ((expression/always-false? (conditional/predicate expression))
+               (expression/free-variable? (conditional/alternative expression) variable))
+              ((expression/never-false? (conditional/predicate expression))
+               (expression/free-variable? (conditional/consequent expression) variable))
+              ((expression/free-variable? (conditional/consequent expression) variable))
+              (else (expression/free-variable? (conditional/alternative expression) variable))))))
 
 (define-method/free-variable? 'CONSTANT false-procedure)
 
@@ -404,19 +404,19 @@ USA.
 (define-method/free-variable? 'DISJUNCTION
   (lambda (expression variable)
     (or (expression/free-variable? (disjunction/predicate expression) variable)
-	(if (expression/never-false? (disjunction/predicate expression))
-	    #f
-	    (expression/free-variable? (disjunction/alternative expression) variable)))))
+        (if (expression/never-false? (disjunction/predicate expression))
+            #f
+            (expression/free-variable? (disjunction/alternative expression) variable)))))
 
 (define-method/free-variable? 'OPEN-BLOCK
   (lambda (expression variable)
     (fold-left (lambda (answer action)
-		 (or answer
-		     (if (eq? action open-block/value-marker)
-			 #f
-			 (expression/free-variable? action variable))))
-	       #f
-	       (open-block/actions expression))))
+                 (or answer
+                     (if (eq? action open-block/value-marker)
+                         #f
+                         (expression/free-variable? action variable))))
+               #f
+               (open-block/actions expression))))
 
 (define-method/free-variable? 'PROCEDURE
   (lambda (expression variable)
@@ -431,12 +431,12 @@ USA.
 (define-method/free-variable? 'SEQUENCE
   (lambda (expression variable)
   (fold-left (lambda (answer action)
-	       (or answer
-		   (if (eq? action open-block/value-marker)
-		       #f
-		       (expression/free-variable? action variable))))
-	     #f
-	     (sequence/actions expression))))
+               (or answer
+                   (if (eq? action open-block/value-marker)
+                       #f
+                       (expression/free-variable? action variable))))
+             #f
+             (sequence/actions expression))))
 
 (define-method/free-variable? 'THE-ENVIRONMENT false-procedure)
 
@@ -456,9 +456,9 @@ USA.
 
 (define (expressions/free-variable-info expressions variable info)
   (fold-left (lambda (answer expression)
-	       (expression/free-variable-info-dispatch expression variable answer))
-	     info
-	     expressions))
+               (expression/free-variable-info-dispatch expression variable answer))
+             info
+             expressions))
 
 (define free-info-dispatch-vector
   (expression/make-dispatch-vector))
@@ -473,16 +473,16 @@ USA.
 (define-method/free-variable-info 'ASSIGNMENT
   (lambda (expression variable info)
     (or (eq? variable (assignment/variable expression))
-	(expression/free-variable-info-dispatch (assignment/value expression) variable info))))
+        (expression/free-variable-info-dispatch (assignment/value expression) variable info))))
 
 (define-method/free-variable-info 'COMBINATION
   (lambda (expression variable info)
     (let ((operator (combination/operator expression))
-	  (inner-info (expressions/free-variable-info (combination/operands expression) variable info)))
+          (inner-info (expressions/free-variable-info (combination/operands expression) variable info)))
       (if (and (reference? operator)
-	       (eq? (reference/variable operator) variable))
-	  (cons (fix:1+ (car inner-info)) (cdr inner-info))
-	  (expression/free-variable-info-dispatch operator variable inner-info)))))
+               (eq? (reference/variable operator) variable))
+          (cons (fix:1+ (car inner-info)) (cdr inner-info))
+          (expression/free-variable-info-dispatch operator variable inner-info)))))
 
 (define-method/free-variable-info 'CONDITIONAL
   (lambda (expression variable info)
@@ -514,11 +514,11 @@ USA.
 (define-method/free-variable-info 'OPEN-BLOCK
   (lambda (expression variable info)
     (fold-left (lambda (info action)
-		 (if (eq? action open-block/value-marker)
-		     info
-		     (expression/free-variable-info-dispatch action variable info)))
-	       info
-	       (open-block/actions expression))))
+                 (if (eq? action open-block/value-marker)
+                     info
+                     (expression/free-variable-info-dispatch action variable info)))
+               info
+               (open-block/actions expression))))
 
 (define-method/free-variable-info 'PROCEDURE
   (lambda (expression variable info)
@@ -532,8 +532,8 @@ USA.
 (define-method/free-variable-info 'REFERENCE
   (lambda (expression variable info)
     (if (eq? (reference/variable expression) variable)
-	(cons (car info) (fix:1+ (cdr info)))
-	info)))
+        (cons (car info) (fix:1+ (cdr info)))
+        info)))
 
 (define-method/free-variable-info 'SEQUENCE
   (lambda (expression variable info)
@@ -566,17 +566,17 @@ USA.
 (define-method/never-false? 'COMBINATION
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
-	   (expression/always-false? (first (combination/operands expression))))
-	  ((procedure? (combination/operator expression))
-	   (expression/never-false? (procedure/body (combination/operator expression))))
-	  (else #f))))
+           (expression/always-false? (first (combination/operands expression))))
+          ((procedure? (combination/operator expression))
+           (expression/never-false? (procedure/body (combination/operator expression))))
+          (else #f))))
 
 (define-method/never-false? 'CONDITIONAL
   (lambda (expression)
     (and (or (expression/always-false? (conditional/predicate expression))
-	     (expression/never-false? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/never-false? (conditional/alternative expression))))))
+             (expression/never-false? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/never-false? (conditional/alternative expression))))))
 
 (define-method/never-false? 'CONSTANT        constant/value)
 
@@ -589,7 +589,7 @@ USA.
 (define-method/never-false? 'DISJUNCTION
   (lambda (expression)
     (or (expression/never-false? (disjunction/predicate expression))
-	(expression/never-false? (disjunction/alternative expression)))))
+        (expression/never-false? (disjunction/alternative expression)))))
 
 (define-method/never-false? 'OPEN-BLOCK
   (lambda (expression)
@@ -629,19 +629,19 @@ USA.
 (define-method/pure-false? 'COMBINATION
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
-	   (expression/pure-true? (first (combination/operands expression))))
-	  ((procedure? (combination/operator expression))
-	   (and (for-all? (combination/operands expression) expression/effect-free?)
-		(expression/pure-false? (procedure/body (combination/operator expression)))))
-	  (else #f))))
+           (expression/pure-true? (first (combination/operands expression))))
+          ((procedure? (combination/operator expression))
+           (and (for-all? (combination/operands expression) expression/effect-free?)
+                (expression/pure-false? (procedure/body (combination/operator expression)))))
+          (else #f))))
 
 (define-method/pure-false? 'CONDITIONAL
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
-	 (or (expression/always-false? (conditional/predicate expression))
-	     (expression/pure-false? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/pure-false? (conditional/alternative expression))))))
+         (or (expression/always-false? (conditional/predicate expression))
+             (expression/pure-false? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/pure-false? (conditional/alternative expression))))))
 
 (define-method/pure-false? 'CONSTANT
   (lambda (expression)
@@ -657,7 +657,7 @@ USA.
 (define-method/pure-false? 'DISJUNCTION
   (lambda (expression)
     (and (expression/pure-false? (disjunction/predicate expression))
-	 (expression/pure-false? (disjunction/alternative expression)))))
+         (expression/pure-false? (disjunction/alternative expression)))))
 
 ;; Could be smarter
 (define-method/pure-false? 'OPEN-BLOCK false-procedure)
@@ -671,8 +671,8 @@ USA.
 (define-method/pure-false? 'SEQUENCE
   (lambda (expression)
     (and (for-all? (except-last-pair (sequence/actions expression))
-		   expression/effect-free?) ;; unlikely
-	 (expression/pure-false? (last (sequence/actions expression))))))
+                   expression/effect-free?) ;; unlikely
+         (expression/pure-false? (last (sequence/actions expression))))))
 
 (define-method/pure-false? 'THE-ENVIRONMENT false-procedure)
 
@@ -698,19 +698,19 @@ USA.
 (define-method/pure-true? 'COMBINATION
   (lambda (expression)
     (cond ((expression/call-to-not? expression)
-	   (expression/pure-false? (first (combination/operands expression))))
-	  ((procedure? (combination/operator expression))
-	   (and (for-all? (combination/operands expression) expression/effect-free?)
-		(expression/pure-true? (procedure/body (combination/operator expression)))))
-	  (else #f))))
+           (expression/pure-false? (first (combination/operands expression))))
+          ((procedure? (combination/operator expression))
+           (and (for-all? (combination/operands expression) expression/effect-free?)
+                (expression/pure-true? (procedure/body (combination/operator expression)))))
+          (else #f))))
 
 (define-method/pure-true? 'CONDITIONAL
   (lambda (expression)
     (and (expression/effect-free? (conditional/predicate expression))
-	 (or (expression/always-false? (conditional/predicate expression))
-	     (expression/pure-true? (conditional/consequent expression)))
-	 (or (expression/never-false? (conditional/predicate expression))
-	     (expression/pure-true? (conditional/alternative expression))))))
+         (or (expression/always-false? (conditional/predicate expression))
+             (expression/pure-true? (conditional/consequent expression)))
+         (or (expression/never-false? (conditional/predicate expression))
+             (expression/pure-true? (conditional/alternative expression))))))
 
 (define-method/pure-true? 'CONSTANT
   (lambda (expression)
@@ -725,8 +725,8 @@ USA.
 (define-method/pure-true? 'DISJUNCTION
   (lambda (expression)
     (and (expression/effect-free? (disjunction/predicate expression))
-	 (expression/boolean? (disjunction/predicate expression))
-	 (expression/pure-true? (disjunction/alternative expression)))))
+         (expression/boolean? (disjunction/predicate expression))
+         (expression/pure-true? (disjunction/alternative expression)))))
 
 (define-method/pure-true? 'OPEN-BLOCK false-procedure)
 
@@ -739,8 +739,8 @@ USA.
 (define-method/pure-true? 'SEQUENCE
   (lambda (expression)
     (and (for-all? (except-last-pair (sequence/actions expression))
-		   expression/effect-free?)
-	 (expression/pure-true? (last (sequence/actions expression))))))
+                   expression/effect-free?)
+         (expression/pure-true? (last (sequence/actions expression))))))
 
 (define-method/pure-true? 'THE-ENVIRONMENT false-procedure)
 
@@ -771,13 +771,13 @@ USA.
 (define-method/size 'COMBINATION
   (lambda (expression)
     (fold-left (lambda (total operand)
-		 (fix:+ total (expression/size operand)))
-	       (fix:1+ (expression/size (combination/operator expression)))
-	       (combination/operands expression))))
+                 (fix:+ total (expression/size operand)))
+               (fix:1+ (expression/size (combination/operator expression)))
+               (combination/operands expression))))
 
 (define-method/size 'CONDITIONAL
   (lambda (expression)
-    (fix:+ 
+    (fix:+
      (expression/size (conditional/predicate expression))
      (fix:+
       (expression/size (conditional/consequent expression))
@@ -797,16 +797,16 @@ USA.
 (define-method/size 'DISJUNCTION
   (lambda (expression)
     (fix:+ (expression/size (disjunction/predicate expression))
-	   (fix:1+ (expression/size (disjunction/alternative expression))))))
+           (fix:1+ (expression/size (disjunction/alternative expression))))))
 
 (define-method/size 'OPEN-BLOCK
   (lambda (expression)
     (fold-left (lambda (total action)
-		(if (eq? action open-block/value-marker)
-		    total
-		    (fix:+ total (expression/size action))))
-	      1
-	      (open-block/actions expression))))
+                (if (eq? action open-block/value-marker)
+                    total
+                    (fix:+ total (expression/size action))))
+              1
+              (open-block/actions expression))))
 
 (define-method/size 'PROCEDURE
   (lambda (expression)
@@ -824,6 +824,6 @@ USA.
 (define-method/size 'SEQUENCE
   (lambda (expression)
     (fold-left (lambda (total action)
-		 (fix:+ total (expression/size action)))
-	       1
-	       (sequence/actions expression))))
+                 (fix:+ total (expression/size action)))
+               1
+               (sequence/actions expression))))
