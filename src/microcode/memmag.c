@@ -114,7 +114,7 @@ setup_memory (unsigned long heap_size,
   ALLOCATE_REGISTERS ();
 
   /* Consistency check 1 */
-  if ((heap_size == 0) || (stack_size == 0) || (constant_size == 0))
+  if ((heap_size == 0) || (stack_size == 0))
     {
       outf_fatal ("Configuration won't hold initial data.\n");
       outf_flush_fatal ();
