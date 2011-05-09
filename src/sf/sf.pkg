@@ -30,155 +30,138 @@ USA.
 
 (define-package (scode-optimizer)
   (files "pthmap"
-	 "object"
-	 "emodel"
-	 "gconst"
-	 "usicon"
-	 "tables")
+         "object"
+         "emodel"
+         "gconst"
+         "usicon"
+         "tables")
   (parent ())
   (import (runtime scode-combinator)
-	  combination/constant-folding-operators)
+          combination/constant-folding-operators)
   (export ()
-	  sf:enable-argument-deletion?
-	  sf:enable-constant-folding?
-	  sf:enable-disjunction-simplification?
-	  sf:enable-distribute-primitives?
-	  sf:enable-elide-conditional-canonicalization?))
+          sf:enable-argument-deletion?
+          sf:enable-constant-folding?))
 
 (define-package (scode-optimizer global-imports)
   (files "gimprt")
   (parent ())
   (export (scode-optimizer)
-	  scode-assignment?
-	  scode-open-block?
-	  scode-sequence?))
+          scode-assignment?
+          scode-open-block?
+          scode-sequence?))
 
 (define-package (scode-optimizer top-level)
   (files "toplev")
   (parent (scode-optimizer))
   (export ()
-	  sf
-	  sf/default-declarations
-	  sf/default-syntax-table
-	  sf/pathname-defaulting
-	  sf/set-usual-integrations-default-deletions!
-	  sf/top-level-definitions
-	  sf/usual-integrations-default-deletions
-	  sf:noisy?
-	  syntax&integrate)
+          sf
+          sf/default-declarations
+          sf/default-syntax-table
+          sf/pathname-defaulting
+          sf/set-usual-integrations-default-deletions!
+          sf/top-level-definitions
+          sf/usual-integrations-default-deletions
+          sf:noisy?
+          syntax&integrate)
   (export (scode-optimizer)
-	  integrate/procedure
-	  integrate/file
-	  integrate/sexp
-	  integrate/scode
-	  read-externs-file))
+          integrate/procedure
+          integrate/file
+          integrate/sexp
+          integrate/scode
+          read-externs-file))
 
 (define-package (scode-optimizer transform)
   (files "xform")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  transform/top-level
-	  transform/recursive))
+          transform/top-level
+          transform/recursive))
 
 (define-package (scode-optimizer integrate)
   (files "subst")
   (parent (scode-optimizer))
   (export ()
-	  sf:display-top-level-procedure-names?
-	  sf:enable-conditional->disjunction?
-	  sf:enable-conditional-folding?
-	  sf:enable-conditional-inversion?
-	  sf:enable-conditional-propagation?
-	  sf:enable-disjunction-folding?
-	  sf:enable-disjunction-inversion?
-	  sf:enable-disjunction-linearization?
-	  sf:enable-elide-double-negatives?
-	  sf:enable-rewrite-conditional-in-disjunction?
-	  sf:enable-rewrite-disjunction-in-conditional?
-	  sf:enable-rewrite-nested-conditional?
-	  sf:enable-safe-integration?)
+          sf:display-top-level-procedure-names?
+          sf:enable-conditional-folding?
+          sf:enable-disjunction-folding?
+          sf:enable-elide-double-negatives?
+          sf:enable-safe-integration?)
   (export (scode-optimizer)
-	  integrate/top-level
-	  integrate/get-top-level-block
-	  reassign
-	  variable/final-value))
+          integrate/top-level
+          integrate/get-top-level-block
+          reassign
+          variable/final-value))
 
 (define-package (scode-optimizer cgen)
   (files "cgen")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  *sf-associate*
-	  cgen/external
-	  pp-expression)
+          *sf-associate*
+          cgen/external
+          pp-expression)
   (export (scode-optimizer expansion)
-	  cgen/external-with-declarations))
+          cgen/external-with-declarations))
 
 (define-package (scode-optimizer expansion)
   (files "usiexp" "reduct")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  reducer/make
-	  replacement/make
-	  usual-integrations/expansion-names
-	  usual-integrations/expansion-values
-	  usual-integrations/expansion-alist)
+          reducer/make
+          replacement/make
+          usual-integrations/expansion-names
+          usual-integrations/expansion-values
+          usual-integrations/expansion-alist)
   (export (scode-optimizer declarations)
-	  expander-evaluation-environment))
+          expander-evaluation-environment))
 
 (define-package (scode-optimizer declarations)
   (files "pardec")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  declarations/bind
-	  declarations/known?
-	  declarations/make-null
-	  declarations/map
-	  declarations/original
-	  declarations/parse
-	  guarantee-known-declaration
-	  operations->external))
+          declarations/bind
+          declarations/known?
+          declarations/make-null
+          declarations/map
+          declarations/original
+          declarations/parse
+          guarantee-known-declaration
+          operations->external))
 
 (define-package (scode-optimizer copy)
   (files "copy")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  copy/expression/intern
-	  copy/expression/extern))
+          copy/expression/intern
+          copy/expression/extern))
 
 (define-package (scode-optimizer analyze)
   (files "analyze")
   (parent (scode-optimizer))
-  (export ()
-	  sf:maximum-duplicate-expression-size
-	  sf:enable-true-unspecific?)
   (export (scode-optimizer)
-	  expression/always-false?
-	  expression/boolean?
-	  expression/can-duplicate?
-	  expression/effect-free?
-	  expression/free-variable?
-	  expression/free-variable-info
-	  expression/free-variables
-	  expression/never-false?
-	  expression/pure-false?
-	  expression/pure-true?
-	  expression/size
-	  expression/unspecific?
-	  expressions/equal?))
+          expression/always-false?
+          expression/boolean?
+          expression/effect-free?
+          expression/free-variable?
+          expression/free-variable-info
+          expression/free-variables
+          expression/never-false?
+          expression/pure-false?
+          expression/pure-true?
+          expression/size))
 
 (define-package (scode-optimizer change-type)
   (files "chtype")
   (parent (scode-optimizer))
   (export (scode-optimizer)
-	  change-type/block
-	  change-type/expression))
+          change-type/block
+          change-type/expression))
 
 (define-package (scode-optimizer build-utilities)
   (files "butils")
   (parent ())
   (export ()
-	  compile-directory
-	  compile-directory?
-	  sf-conditionally
-	  sf-directory
-	  sf-directory?))
+          compile-directory
+          compile-directory?
+          sf-conditionally
+          sf-directory
+          sf-directory?))
