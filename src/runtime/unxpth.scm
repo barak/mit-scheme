@@ -61,7 +61,7 @@ USA.
 	  (%make-pathname host
 			  'UNSPECIFIC
 			  (let ((components (except-last-pair components)))
-			    (and (not (null? components))
+			    (and (pair? components)
 				 (simplify-directory
 				  (if (string=? "" (car components))
 				      (cons 'ABSOLUTE
@@ -162,7 +162,7 @@ USA.
 	 (string-append
 	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
 	  (let loop ((directory (cdr directory)))
-	    (if (null? directory)
+	    (if (not (pair? directory))
 		""
 		(string-append (unparse-directory-component (car directory))
 			       "/"
@@ -269,7 +269,7 @@ USA.
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
     (if (or (%pathname-name pathname)
 	    (%pathname-type pathname)
-	    (null? (cdr directory)))
+	    (not (pair? (cdr directory))))
 	;; Root directory can't be represented as a file, because the
 	;; name field of a pathname must be a non-null string.  We
 	;; could signal an error here, but instead we'll just return
