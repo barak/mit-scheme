@@ -78,44 +78,50 @@ USA.
 	       (merge-pathnames directory)
 	       (working-directory-pathname))))
 	(process #f))
-    (bind-condition-handler '()
-	(lambda (condition)
-	  (if (and process (not (eq? process 'DELETED)))
-	      (begin
-		(subprocess-delete process)
-		(set! process 'DELETED)))
-	  (signal-condition condition))
-      (lambda ()
-	(set! process
-	      ((if (and (subprocess-context/use-pty? context)
-			((ucode-primitive have-ptys? 0)))
-		   start-pty-subprocess
-		   start-pipe-subprocess)
-	       (os/find-program program directory)
-	       (list->vector (cons (file-namestring program) arguments))
-	       (let ((environment (subprocess-context/environment context)))
-		 (if directory
-		     (cons environment (->namestring directory))
-		     environment))))
-	(let loop ()
-	  (let* ((status (synchronous-process-wait process context))
-		 (reason (subprocess-exit-reason process))
-		 (p process))
-	    (subprocess-delete process)
-	    (set! process 'DELETED)
-	    (case status
-	      ((EXITED)
-	       reason)
-	      ((SIGNALLED)
-	       (error:subprocess-signalled p reason))
-	      ((STOPPED)
-	       (subprocess-kill p)
-	       (subprocess-wait p)
-	       (error:subprocess-stopped p reason))
-	      ((RUNNING)
-	       (loop))
-	      (else
-	       (error "Unknown subprocess status:" status)))))))))
+    (dynamic-wind
+     (lambda ()
+       (set! process (start-subprocess program arguments directory context)))
+     (lambda ()
+       (let loop ()
+	 (receive (status reason) (synchronous-process-wait process context)
+	   (case status
+	     ((EXITED) reason)
+	     ((SIGNALLED) (error:subprocess-signalled process reason))
+	     ;++ Give a restart to continue the process and loop?
+	     ((STOPPED) (error:subprocess-stopped process reason))
+	     ;++ Should happen, but there are races that make it happen.
+	     ((RUNNING) (loop))
+	     (else
+	      (error "Invalid synchronous subprocess status:" status))))))
+     (lambda ()
+       (if (and process
+		;++ Need a predicate SUBPROCESS-LIVE? or something.
+		(not (memq (subprocess-status process) '(EXITED SIGNALLED))))
+	   (ignore-errors (lambda () (subprocess-kill process))))))))
+
+(define (start-subprocess program arguments directory context)
+  ((if (and (subprocess-context/use-pty? context)
+	    ((ucode-primitive have-ptys? 0)))
+       start-pty-subprocess
+       start-pipe-subprocess)
+   (os/find-program program directory)
+   (list->vector (cons (file-namestring program) arguments))
+   (let ((environment (subprocess-context/environment context)))
+     (if directory
+	 (cons environment (->namestring directory))
+	 environment))))
+
+;++ Oops...
+
+(define (subprocess-wait* process)
+  (subprocess-wait process)
+  (let tick-loop ((tick (subprocess-status-tick process)))
+    (let ((status (subprocess-status process))
+	  (exit-reason (subprocess-exit-reason process)))
+      (let ((tick* (subprocess-status-tick process)))
+	(if (eq? tick* tick)
+	    (values status exit-reason)
+	    (tick-loop tick*))))))
 
 (define condition-type:subprocess-abnormal-termination
   (make-condition-type 'SUBPROCESS-ABNORMAL-TERMINATION condition-type:error
@@ -191,7 +197,7 @@ USA.
 		      (do ()
 			  ((= (copy-output) 0))
 			(if redisplay-hook (redisplay-hook)))))))))))
-  (subprocess-wait process))
+  (subprocess-wait* process))
 
 (define (call-with-input-copier process process-input nonblock? bsize receiver)
   (let ((port (subprocess-output-port process)))
