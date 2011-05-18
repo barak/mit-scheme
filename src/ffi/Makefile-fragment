@@ -21,11 +21,11 @@ install:
 # wrapper, so there is no need for the compile-ffi procedure (hint).
 build: ffi-test-shim.so ffi-test-types.bin ffi-test-const.bin
 
-ffi-test-shim.so: ffi-test-shim.o ffi-test.o
-	$(LINK_SHIM) ffi-test-shim.o ffi-test.o -o $@
+ffi-test-shim.so: ffi-test-shim.o ffi-test.o $(SHIM_LOADER)
+	$(LINK_SHIM) ffi-test-shim.o ffi-test.o $(SHIM_LIBS)
 
 ffi-test-shim.o: ffi-test-shim.c ffi-test.h
-	$(COMPILE_SHIM) -o $@ -c $<
+	$(COMPILE_SHIM) -c $*.c
 
 ffi-test-shim.c ffi-test-const.c ffi-test-types.bin: ffi-test.cdecl
 	(echo "(load-option 'FFI)"; \
