@@ -1313,6 +1313,9 @@ USA.
 			  (error:bad-range-argument key 'HASH-TABLE-UPDATE!))
 			get-default)))))
 
+(define (hash-table-update!/default table key procedure default)
+  (hash-table-update! table key procedure (lambda () default)))
+
 (define (hash-table-copy table)
   (guarantee-hash-table table 'HASH-TABLE-COPY)
   (with-table-locked! table
