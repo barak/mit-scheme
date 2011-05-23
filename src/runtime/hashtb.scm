@@ -626,8 +626,11 @@ USA.
 	      (lambda (key* barrier)
 		(declare (integrate key* barrier))
 		(if (key=? key* key)
-		    (begin (set-entry-datum! entry-type (car p) datum)
-			   (barrier))
+		    (begin
+		      (with-table-locked! table
+			(lambda ()
+			  (set-entry-datum! entry-type (car p) datum)))
+		      (barrier))
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
 	    (with-table-locked! table
