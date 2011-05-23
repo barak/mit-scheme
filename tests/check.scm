@@ -50,7 +50,7 @@ USA.
     "runtime/test-process"
     "runtime/test-regsexp"
     ("runtime/test-wttree" (runtime wt-tree))
-    "ffi/test-ffi"
+    ;;"ffi/test-ffi"
     ))
 
 (with-working-directory-pathname
