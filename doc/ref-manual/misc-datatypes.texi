@@ -1008,7 +1008,8 @@ is broken, neither of these operations has any effect.
 @end deffn
 
 Like @code{weak-pair/car?}, @code{ephemeron-broken?} must be used with
-care.  @code{Ephemeron-broken?} on an ephemeron guarantees that any
+care.  @code{Ephemeron-broken?} returning @code{#f} on an ephemeron
+guarantees that any
 prior call to @code{ephemeron-key} or @code{ephemeron-datum} on the
 same ephemeron yielded the key or datum that was stored in the
 ephemeron, but it makes no guarantees about subsequent calls to
