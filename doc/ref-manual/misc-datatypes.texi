@@ -937,7 +937,7 @@ unspecified result.
 @end deffn
 
 @deffn procedure weak-cdr weak-pair
-Returns the cdr component of @var{weak-cdr}.
+Returns the cdr component of @var{weak-pair}.
 @end deffn
 
 @deffn procedure weak-set-cdr! weak-pair object
