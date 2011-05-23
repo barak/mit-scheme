@@ -653,12 +653,12 @@ USA.
 	      (lambda (key* datum barrier)
 		(declare (integrate key* datum barrier))
 		(if (key=? key* key)
-		    (with-table-locked! table
-		      (lambda ()
-			(let ((datum* (procedure datum)))
-			  (set-entry-datum! entry-type (car p) datum*)
-			  (barrier)
-			  datum*)))
+		    (let ((datum* (procedure datum)))
+		      (with-table-locked! table
+			(lambda ()
+			  (set-entry-datum! entry-type (car p) datum*)))
+		      (barrier)
+		      datum*)
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
 	    (let ((datum (procedure default)))
