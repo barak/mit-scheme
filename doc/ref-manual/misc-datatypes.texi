@@ -863,11 +863,15 @@ invoking @var{procedure} with the corresponding elements of the
 
 @cindex weak pair (defn)
 @cindex pair, weak (defn)
-@dfn{Weak pairs} are a mechanism for building data structures that point
-at objects without protecting them from garbage collection.  The car of
-a weak pair holds its pointer weakly, while the cdr holds its pointer in
-the normal way.  If the object in the car of a weak pair is not held
-normally by any other data structure, it will be garbage-collected.
+@dfn{Weak pairs} are a mechanism for building data structures that
+point at objects without protecting them from garbage collection.  The
+car of a weak pair holds its pointer weakly, while the cdr holds its
+pointer in the normal way.  If the object in the car of a weak pair is
+not held normally by any other data structure, it will be
+garbage-collected.  Note that the object in the cdr of a weak pair
+could prevent the object in the car of a weak pair from being garbage
+collected, if it held a normal reference thereto.  In contrast,
+@xref{Ephemerons}.
 
 @findex pair?
 Note: weak pairs are @emph{not} pairs; that is, they do not satisfy the
@@ -951,17 +955,22 @@ unspecified result.
 @cindex ephemeron (defn)
 @cindex ephemeron, broken
 @cindex broken ephemeron
-An @dfn{ephemeron} is an object with two weakly referenced components
-called its @dfn{key} and @dfn{datum}.  The garbage collector drops an
+@dfn{Ephemerons} are a mechanism for building data structures that
+point at objects without protecting them from garbage collection.  An
+ephemeron is an object with two weakly referenced components called
+its @dfn{key} and @dfn{datum}.  The garbage collector drops an
 ephemeron's references to both key and datum, rendering the ephemeron
 @dfn{broken}, if and only if the garbage collector can prove that
 there are no strong references to the key.  In other words, an
-ephemeron is broken when nobody else cares about its key.  Note that
-an ephemeron's reference to its datum may be dropped even if the datum
-is still reachable; all that matters is whether the key is reachable.
-Once broken, ephemerons never cease to be broken; setting the key or
-datum of a broken ephemeron with @code{set-ephemeron-key!} or
-@code{set-ephemeron-datum!} has no effect.
+ephemeron is broken when nobody else cares about its key.  In
+particular, the datum holding a reference to the key will not in
+itself prevent the ephemeron from becoming broken (in contrast,
+@xref{Weak Pairs}).  Once broken, ephemerons never cease to be broken;
+setting the key or datum of a broken ephemeron with
+@code{set-ephemeron-key!} or @code{set-ephemeron-datum!} has no
+effect.  Note that an ephemeron's reference to its datum may be
+dropped even if the datum is still reachable; all that matters is
+whether the key is reachable.
 
 Ephemerons are considerably heavier-weight than weak pairs, because
 garbage-collecting ephemerons is more complicated than
