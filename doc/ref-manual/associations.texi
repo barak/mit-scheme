@@ -380,6 +380,25 @@ is proportional to the number of associations in the table; the
 constant of proportionality is described below (@pxref{Resizing of Hash
 Tables}).
 
+In addition to the hash table interface described in the following,
+MIT Scheme implements SRFI 69: ``Basic hash tables''.  The reason for
+supporting two interfaces is partly historical---MIT Scheme supported
+hash tables prior to the existence of SRFI 69---and partly
+technical---SFRI 69 fails to specify certain optimization-enabling
+exceptions to its semantics, forcing a correct implementation to pay
+the non-negligible performance cost of completely safe behavior.
+@footnote{SRFI 69 does not give hash functions the flexibility to
+return new hash values after a garbage collection, which prevents a
+system whose garbage collector may relocate objects from hashing based
+on the addresses of objects in memory (@pxref{Address Hashing}).  SRFI
+69 also does not specify circumstances when procedures passed as
+arguments to hash table operations may not themselves modify the hash
+table, which requires defensive copying and defensive repetitions of
+lookups.}  The MIT Scheme native hash table interface, in contrast,
+specifies the minor exceptions it needs, and is therefore implemented
+more efficiently.  We do not describe the SRFI-69-compliant interface
+here, as that would be redundant with the SRFI document.
+
 (Previously, the hash-table implementation was a run-time-loadable
 option, but as of release 7.7.0 it is loaded by default.  It's no longer
 necessary to call @code{load-option} prior to using hash tables.)
