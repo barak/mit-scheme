@@ -759,7 +759,7 @@ swank:xref
 (define (inspect-object o)
   (let ((previous istate)
 	(content (inspect o))
-	(parts (make-eqv-hash-table)))
+	(parts (make-strong-eqv-hash-table)))
     (set! istate (make-istate o parts #f previous content))
     (if previous (set-istate-next! previous istate))
     (istate->elisp istate)))

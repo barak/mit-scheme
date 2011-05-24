@@ -2071,7 +2071,6 @@ USA.
 	  (hash-table-ref/default hash-table/get)
 	  (hash-table-set! hash-table/put!)
 	  (hash-table-size hash-table/count)
-	  (hash-table-update!/default hash-table/modify!)
 	  (hash-table-values hash-table/datum-list)
 	  (hash-table-walk hash-table/for-each)
 	  (make-eq-hash-table make-key-weak-eq-hash-table)
@@ -2108,6 +2107,7 @@ USA.
 	  hash-table-ref
 	  hash-table-type?
 	  hash-table-update!
+	  hash-table-update!/default
 	  hash-table/clean!
 	  hash-table/clear!
 	  hash-table/constructor

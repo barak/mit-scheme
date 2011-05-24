@@ -725,7 +725,7 @@ USA.
 	     (error:illegal-char char))))))
 
 (define (make-shared-objects)
-  (make-eqv-hash-table))
+  (make-strong-eqv-hash-table))
 
 (define (save-shared-object! db n object)
   (let ((table (db-shared-objects db)))

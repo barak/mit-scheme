@@ -251,6 +251,34 @@ USA.
 	  'WIN))
       (assert-eqv (hash-table/get hash-table 0 'LOSE-2) 'WIN))))
 
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT:0
+  (lambda ()
+    (let ((hash-table
+	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
+      (hash-table/put! hash-table 0 'LOSE-0)
+      (hash-table-update!/default hash-table 0
+        (lambda (datum)
+          datum				;ignore
+          ;; Force consing a new entry.
+          (hash-table/remove! hash-table 0)
+          (hash-table/put! hash-table 0 'LOSE-1)
+          'WIN)
+        'LOSE-2)
+      (assert-eqv (hash-table/get hash-table 0 'LOSE-3) 'WIN))))
+
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT:1
+  (lambda ()
+    (let ((hash-table
+	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
+      (hash-table-update!/default hash-table 0
+	(lambda (datum)
+	  datum				;ignore
+	  (hash-table/put! hash-table 1 'WIN-1)
+	  'WIN-0)
+        'LOSE-0A)
+      (assert-eqv (hash-table/get hash-table 0 'LOSE-0B) 'WIN-0)
+      (assert-eqv (hash-table/get hash-table 1 'LOSE-1) 'WIN-1))))
+
 (define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-FOLD
   (lambda ()
     (let* ((index 1)
