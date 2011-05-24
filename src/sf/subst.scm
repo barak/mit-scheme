@@ -77,16 +77,11 @@ USA.
        expressions))
 
 (define (integrate/actions operations environment actions)
-  (let ((action (car actions)))
-    (if (null? (cdr actions))
-        (list (if (eq? action open-block/value-marker)
-                  action
-                  (integrate/expression operations environment action)))
-        (cons (cond ((eq? action open-block/value-marker)
-                     action)
-                    (else
-                     (integrate/expression operations environment action)))
-              (integrate/actions operations environment (cdr actions))))))
+  (map (lambda (action)
+	 (if (eq? action open-block/value-marker)
+	     action
+	     (integrate/expression operations environment action)))
+       actions))
 
 (define (integrate/expression operations environment expression)
   ((expression/method dispatch-vector expression)
@@ -719,19 +714,16 @@ USA.
 (define (integrate/reference-operator expression operations environment
                                       block operator operands)
   (let ((variable (reference/variable operator)))
-    (letrec ((mark-integrated!
-              (lambda ()
-                (variable/integrated! variable)))
-             (integration-failure
-              (lambda ()
-                (variable/reference! variable)
-                (combination/make expression block
-                                  operator operands)))
-             (integration-success
-              (lambda (operator)
-                (mark-integrated!)
-                (integrate/combination expression operations environment
-                                       block operator operands))))
+    (let ((integration-failure
+	   (lambda ()
+	     (variable/reference! variable)
+	     (combination/make expression block operator operands)))
+
+	  (integration-success
+	   (lambda (operator)
+	     (variable/integrated! variable)
+	     (integrate/combination expression operations environment
+				    block operator operands))))
       (operations/lookup operations variable
         (lambda (operation info)
           (case operation
@@ -741,7 +733,7 @@ USA.
              (let ((new-expression (info expression operands (reference/block operator))))
                (if new-expression
                    (begin
-                     (mark-integrated!)
+                     (variable/integrated! variable)
                      (integrate/expression operations environment new-expression))
                    (integration-failure))))
 
@@ -758,8 +750,7 @@ USA.
 
             (else
              (error "Unknown operation" operation))))
-        (lambda ()
-          (integration-failure))))))
+	integration-failure))))
 
 ;;; sequence-operator
 (define-method/integrate-combination 'SEQUENCE
