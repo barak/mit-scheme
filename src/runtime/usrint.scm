@@ -312,7 +312,7 @@ USA.
 	     (fresh-line port)
 	     (write-notification-prefix port)
 	     (message (wrap-notification-port port))
-	     (write-string "... " port)
+	     (write-string "..." port)
 	     (set! n (output-port/bytes-written port))
 	     unspecific))
 	 (lambda ()
@@ -330,9 +330,9 @@ USA.
 		 (begin
 		   (fresh-line port)
 		   (write-notification-prefix port)
-		   (write-string "... " port)))
+		   (write-string "..." port)))
 	     (set! n)
-	     (write-string (if done? "done" "aborted") port)
+	     (write-string (if done? " done" " aborted") port)
 	     (newline port)))))))
 
 (define (wrap-notification-port port)
