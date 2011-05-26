@@ -1004,8 +1004,8 @@ ephemeron's references to both key and datum, rendering the ephemeron
 there are no strong references to the key.  In other words, an
 ephemeron is broken when nobody else cares about its key.  In
 particular, the datum holding a reference to the key will not in
-itself prevent the ephemeron from becoming broken (in contrast,
-@xref{Weak Pairs}).  Once broken, ephemerons never cease to be broken;
+itself prevent the ephemeron from becoming broken; in contrast,
+@xref{Weak Pairs}.  Once broken, ephemerons never cease to be broken;
 setting the key or datum of a broken ephemeron with
 @code{set-ephemeron-key!} or @code{set-ephemeron-datum!} has no
 effect.  Note that an ephemeron's reference to its datum may be
