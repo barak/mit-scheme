@@ -1017,14 +1017,15 @@ is broken, neither of these operations has any effect.
 @end deffn
 
 Like @code{weak-pair/car?}, @code{ephemeron-broken?} must be used with
-care.  @code{Ephemeron-broken?} returning @code{#f} on an ephemeron
-guarantees that any
-prior call to @code{ephemeron-key} or @code{ephemeron-datum} on the
-same ephemeron yielded the key or datum that was stored in the
-ephemeron, but it makes no guarantees about subsequent calls to
-@code{ephemeron-key} or @code{ephemeron-datum}.  Thus, the correct
-idiom to fetch an ephemeron's key and datum and use them if the
-ephemeron is not broken is
+care.  If @code{(ephemeron-broken? @var{ephemeron})} yields false, it
+guarantees only that prior evaluations of @code{(ephemeron-key
+@var{ephemeron})} or @code{(ephemeron-datum @var{ephemeron})} yielded the key
+or datum that was stored in the ephemeron, but it makes no guarantees
+about subsequent calls to @code{ephemeron-key} or
+@code{ephemeron-datum}: the garbage collector may run and break the
+ephemeron immediately after @code{ephemeron-broken?} returns.  Thus,
+the correct idiom to fetch an ephemeron's key and datum and use them
+if the ephemeron is not broken is
 
 @example
 @group
