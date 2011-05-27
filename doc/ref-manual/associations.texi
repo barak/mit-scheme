@@ -638,9 +638,10 @@ Returns an unspecified result.  @var{Procedure} must not modify
 @code{hash-table/remove!} to remove the association being processed.
 @end deffn
 
-The following procedure is a more general form of
-@code{hash-table/get}.  In circumstances where it is adequate,
-@code{hash-table/get} is usually preferable because it is faster.
+The following procedure is useful when there is no sensible default
+value for @code{hash-table/get} and the caller must choose between
+different actions depending on whether there is a datum associated
+with the key.
 
 @deffn procedure hash-table/lookup hash-table key if-found if-not-found
 @var{If-found} must be a procedure of one argument, and
@@ -654,29 +655,23 @@ the invoked procedure, i.e.@: calls it tail-recursively).  The average
 time required by this operation is bounded by a constant.
 @end deffn
 
-The following procedures capture some common use patterns of hash
-tables that can be accelerated by dedicated operations.
-
 @deffn procedure hash-table/modify! hash-table key procedure default
-@var{Procedure} must be a procedure of one argument.  Calls
-@var{procedure} on the datum associated with @var{key} in
-@var{hash-table} (or on @var{default} if there is no association for
-@var{key}), associates the result with @var{key}, and returns that
-same result.  @var{Procedure} must not modify @var{hash-table}.  Note:
-if @var{hash-table} is address-hashed (@pxref{Address Hashing}) or
-holds keys weakly @var{procedure} must not access @var{hash-table}
-either, because in these circumstances an access can trigger a
-deferred modification.
+@var{Procedure} must be a procedure of one argument.  Applies
+@var{procedure} to the datum associated with @var{key} in
+@var{hash-table} or to @var{default} if there is no association for
+@var{key}, associates the result with @var{key}, and returns that
+same result.  @var{Procedure} must not use @var{hash-table}.  The average
+time required by this operation is bounded by a constant.
 @end deffn
 
 @deffn procedure hash-table/intern! hash-table key get-default
 @var{Get-default} must be a procedure of no arguments.  Ensures that
 @var{hash-table} has an association for @var{key} and returns the
-associated datum.  If @var{hash-table} did not have an association for
-@var{key}, invokes @var{get-default} on no arguments, associates the
-result with @var{key} in @var{hash-table}, and returns it.  As with
-@code{hash-table/modify!}, @var{get-default} must not modify
-@var{hash-table}.
+associated datum.  If @var{hash-table} did not have a datum associated
+with @var{key}, @code{hash-table/intern!} applies @var{get-default} to
+zero arguments to generate one.  As with @code{hash-table/modify!},
+@var{get-default} must not use @var{hash-table}.  The average time
+required by this operation is bounded by a constant.
 @end deffn
 
 @node Resizing of Hash Tables, Address Hashing, Basic Hash Table Operations, Hash Tables
