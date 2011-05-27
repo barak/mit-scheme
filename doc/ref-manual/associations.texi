@@ -494,6 +494,101 @@ keys, and compares them with @code{string=?}.  The keys are held
 strongly.
 @end deffn
 
+The next procedure is used to create new hash-table constructors.  All
+of the above hash table constructors could have been created by calls
+to this ``constructor-constructor''; see the examples below.
+
+@deffn procedure hash-table/constructor key-hash key=? rehash-after-gc? entry-type
+@cindex hashing, of key in hash table
+@cindex modulus, of hashing procedure
+This procedure accepts four arguments and returns a hash-table
+constructor.  The @var{key=?} argument is an equivalence predicate for
+the keys of the hash table.  The @var{key-hash} argument is a procedure
+that computes a hash number.  Specifically, @var{key-hash} accepts two
+arguments, a key and an exact positive integer (the @dfn{modulus}), and
+returns an exact non-negative integer that is less than the modulus.
+
+The argument @var{rehash-after-gc?}, if true, says that the
+values returned by @var{key-hash} might change after a garbage
+collection.  If so, the hash-table implementation arranges for the table
+to be rehashed when necessary.  (@xref{Address Hashing}, for
+information about hash procedures that have this property.)  Otherwise,
+it is assumed that @var{key-hash} always returns the same value for the
+same arguments.
+
+The argument @var{entry-type} determines the strength with which the
+hash table will hold its keys and values.  It must be one of
+@code{hash-table-entry-type:strong},
+@code{hash-table-entry-type:key-weak},
+@code{hash-table-entry-type:datum-weak},
+@code{hash-table-entry-type:key/datum-weak},
+@code{hash-table-entry-type:key-ephemeral},
+@code{hash-table-entry-type:datum-ephemeral}, or
+@code{hash-table-entry-type:key&datum-ephemeral}.
+@end deffn
+
+@defvr variable hash-table-entry-type:strong
+The entry type for hash tables that hold both keys and data strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key-weak
+An entry type for hash tables that hold keys weakly and data strongly.
+An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
+(car) slot holds the key of the entry and whose strong (cdr) slot
+holds the datum of the entry.  If a key of such a hash table is
+garbage collected, the corresponding entry will be removed.  Note that
+if some datum holds some key strongly, the table will effectively hold
+that key strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:datum-weak
+An entry type for hash tables that hold keys strongly and data weakly.
+An entry of this type is a weak pair (@pxref{Weak Pairs}) whose weak
+(car) slot holds the datum of the entry and whose strong (cdr) slot
+holds the key of the entry.  If a datum of such a hash table is
+garbage collected, all corresponding entries will be removed.  Note that
+if some key holds some datum strongly, the table will effectively hold
+that datum strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key/datum-weak
+The entry type for hash tables that hold both keys and data weakly.
+An entry of this type is a weak list, holding both the key and the
+datum in the weak (car) slot of weak pairs (@pxref{Weak Pairs}).  If
+either a key or datum of such a hash table is garbage collected, all
+corresponding entries will be removed.
+@end defvr
+
+@defvr variable hash-table-entry-type:key-ephemeral
+An entry type for hash tables that hold data ephemerally, keyed by the keys.
+An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
+is the key of the entry and whose datum is the datum of the entry.  If
+a key of such a hash table is garbage collected, the corresponding
+entry will be removed.  Note that the table holds all its keys weakly
+even if some data should hold some keys strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:datum-ephemeral
+An entry type for hash tables that hold keys ephemerally, keyed by the data.
+An entry of this type is an ephemeron (@pxref{Ephemerons}) whose key
+is the datum of the entry and whose datum is the key of the entry.  If
+a datum of such a hash table is garbage collected, all corresponding
+entries will be removed.  Note that the table holds all its data weakly
+even if some keys should hold some data strongly.
+@end defvr
+
+@defvr variable hash-table-entry-type:key&datum-ephemeral
+The entry type for hash tables that hold both keys and data
+ephemerally keyed on each other.  An entry of this type is a pair of
+ephemerons (@pxref{Ephemerons}), one holding the datum keyed by the
+key and the other holding the key keyed by the datum.  If both the key
+and the datum of any entry of such a hash table are garbage collected,
+the entry will be removed.  The table holds all its keys and data
+weakly itself, but will prevent any key or datum from being garbage
+collected if there are strong references to its datum or key,
+respectively.
+@end defvr
+
 The next two procedures are used to create new hash-table constructors.
 All of the above hash table constructors, with the exception of
 @code{make-eqv-hash-table}, could have been created by calls to these
