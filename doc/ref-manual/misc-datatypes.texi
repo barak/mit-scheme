@@ -892,6 +892,14 @@ a weak reference (but the cdr is still strong).  The heavier-weight
 count as holding the object in its key field strongly even if the
 object in its datum field does.
 
+@strong{Warning}: Working with weak references is subtle and requires
+careful analysis; most programs should avoid working with them
+directly.  The most common use cases for weak references ought to be
+served by hash tables (@pxref{Hash Tables}), which can employ various
+flavors of weak entry types, 1d tables (@pxref{1D Tables}), which hold
+their keys weakly, and the association table (@pxref{The Association
+Table}), which also holds its keys weakly.
+
 @menu
 * Weak Pairs::                  
 * Ephemerons::
