@@ -429,7 +429,7 @@ predicate that is used to compare keys, and whether or not the table
 allows its keys to be reclaimed by the garbage collector.  If a table
 prevents its keys from being reclaimed by the garbage collector, it is
 said to hold its keys @dfn{strongly}; otherwise it holds its keys
-@dfn{weakly} (@pxref{Weak Pairs}).
+@dfn{weakly} (@pxref{Weak References}).
 
 @deffn procedure make-strong-eq-hash-table [initial-size]
 @findex eq?
