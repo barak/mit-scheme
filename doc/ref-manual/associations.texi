@@ -589,6 +589,31 @@ collected if there are strong references to its datum or key,
 respectively.
 @end defvr
 
+Some examples showing how some standard hash-table constructors could have
+been defined:
+
+@findex eq-hash-mod
+@findex eq?
+@findex equal-hash-mod
+@findex equal?
+@findex string-hash-mod
+@findex string=?
+@example
+@group
+(define make-weak-eq-hash-table
+  (hash-table/constructor eq-hash-mod eq? #t
+    hash-table-entry-type:key-weak))
+
+(define make-equal-hash-table
+  (hash-table/constructor equal-hash-mod equal? #t
+    hash-table-entry-type:strong))
+
+(define make-string-hash-table
+  (hash-table/constructor string-hash-mod string=? #f
+    hash-table-entry-type:strong))
+@end group
+@end example
+
 The next two procedures are used to create new hash-table constructors.
 All of the above hash table constructors, with the exception of
 @code{make-eqv-hash-table}, could have been created by calls to these
@@ -618,28 +643,6 @@ hash tables that hold their keys strongly.  The constructors returned by
 @code{weak-hash-table/constructor} make hash tables that hold their keys
 weakly.
 @end deffn
-
-Some examples showing how some standard hash-table constructors could have
-been defined:
-
-@findex eq-hash-mod
-@findex eq?
-@findex equal-hash-mod
-@findex equal?
-@findex string-hash-mod
-@findex string=?
-@example
-@group
-(define make-weak-eq-hash-table
-  (weak-hash-table/constructor eq-hash-mod eq? #t))
-
-(define make-equal-hash-table
-  (strong-hash-table/constructor equal-hash-mod equal? #t))
-
-(define make-string-hash-table
-  (strong-hash-table/constructor string-hash-mod string=? #f))
-@end group
-@end example
 
 The following procedure is sometimes useful in conjunction with weak
 hash tables.  Normally it is not needed, because such hash tables clean
