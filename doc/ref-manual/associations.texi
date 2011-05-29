@@ -619,15 +619,15 @@ been defined:
 @end example
 
 The following procedure is sometimes useful in conjunction with weak
-hash tables.  Normally it is not needed, because such hash tables clean
-themselves automatically as they are used.
+and ephemeral hash tables.  Normally it is not needed, because such
+hash tables clean themselves automatically as they are used.
 
 @deffn procedure hash-table/clean! hash-table
-If @var{hash-table} is a type of hash table that holds its @var{key}s
-weakly, this procedure recovers any space that was being used to record
-associations for objects that have been reclaimed by the garbage
-collector.  Otherwise, this procedure does nothing.  In either case, it
-returns an unspecified result.
+If @var{hash-table} is a type of hash table that holds its keys or
+data weakly or ephemerally, this procedure recovers any space that was
+being used to record associations for objects that have been reclaimed
+by the garbage collector.  Otherwise, this procedure does nothing.  In
+either case, it returns an unspecified result.
 @end deffn
 
 The following procedures are provided only for backward compatibility.
