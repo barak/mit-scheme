@@ -703,9 +703,10 @@ bounded by a constant.
 
 @deffn procedure hash-table/count hash-table
 Returns the number of associations in @var{hash-table} as an exact
-non-negative integer.  If @var{hash-table} holds its keys weakly, this
+non-negative integer.  If @var{hash-table}
+does not hold its keys and data strongly, this
 is a conservative upper bound that may count some associations whose
-keys have recently been reclaimed by the garbage collector.  The average
+keys or data have recently been reclaimed by the garbage collector.  The average
 and worst-case times required by this operation are bounded by a
 constant.
 @end deffn
