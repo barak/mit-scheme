@@ -425,6 +425,10 @@ constructors are procedures that accept one optional argument,
 @cindex equivalence predicate, of hash table
 @cindex strongly held keys, of hash table
 @cindex weakly held keys, of hash table
+@cindex ephemerally held keys, of hash table
+@cindex strongly held data, of hash table
+@cindex weakly held data, of hash table
+@cindex ephemerally held data, of hash table
 Hash tables are normally characterized by two things: the equivalence
 predicate that is used to compare keys, and how the table allows its
 keys and data to be reclaimed by the garbage collector.  If a table
