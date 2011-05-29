@@ -2152,10 +2152,18 @@ USA.
 	  hash-table/size
 	  hash-table/type
 	  hash-table?
+          key-ephemeral-eq-hash-table-type
+          key-ephemeral-eqv-hash-table-type
+          key-weak-eq-hash-table-type
+          key-weak-eqv-hash-table-type
 	  make-equal-hash-table
 	  make-hash-table
 	  make-hash-table*
 	  make-hash-table-type
+          make-key-ephemeral-eq-hash-table
+          make-key-ephemeral-eqv-hash-table
+          make-key-weak-eq-hash-table
+          make-key-weak-eqv-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table

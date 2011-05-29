@@ -372,7 +372,8 @@ entries for @var{y-key} exist.
 @cindex hash table
 Hash tables are a fast, powerful mechanism for storing large numbers of
 associations.  MIT/GNU Scheme's hash tables feature automatic resizing,
-customizable growth parameters, and customizable hash procedures.
+customizable growth parameters, customizable hash procedures, and
+many options for weak references to keys or data.
 
 The average times for the insertion, deletion, and lookup operations on
 a hash table are bounded by a constant.  The space required by the table
@@ -425,64 +426,67 @@ constructors are procedures that accept one optional argument,
 @cindex strongly held keys, of hash table
 @cindex weakly held keys, of hash table
 Hash tables are normally characterized by two things: the equivalence
-predicate that is used to compare keys, and whether or not the table
-allows its keys to be reclaimed by the garbage collector.  If a table
-prevents its keys from being reclaimed by the garbage collector, it is
-said to hold its keys @dfn{strongly}; otherwise it holds its keys
-@dfn{weakly} (@pxref{Weak References}).
+predicate that is used to compare keys, and how the table allows its
+keys and data to be reclaimed by the garbage collector.  If a table
+prevents its keys and data from being reclaimed by the garbage
+collector, it is said to hold its keys and data @dfn{strongly}; other
+arrangements are possible, where a table may hold keys or data
+@dfn{weakly} or @dfn{ephemerally} (@pxref{Weak References}).
 
 @deffn procedure make-strong-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{eq?}.  The keys are held
+keys, and compares those keys with @code{eq?}.  The keys and data are held
 strongly.  These are the fastest of the standard hash tables.
 @end deffn
 
-@deffn procedure make-weak-eq-hash-table [initial-size]
+@deffn procedure make-key-weak-eq-hash-table [initial-size]
 @findex eq?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eq?}.  The keys are held
-weakly.
+weakly, but the data are held strongly.  Note that if a datum holds a
+key strongly, the table will effectively hold that key strongly.
 @end deffn
 
-@deffn procedure make-eq-hash-table [initial-size]
+@deffn procedure make-key-ephemeral-eq-hash-table [initial-size]
 @findex eq?
-This is an alias for @code{make-weak-eq-hash-table}.
-
-@strong{Warning}:  This may become an alias
-@code{make-strong-eq-hash-table} instead.  We recommend that you use
-@code{make-weak-eq-hash-table} explicitly for weak hash tables.
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eq?}.  The keys are held
+weakly, even if some of the data should hold some of the keys
+strongly.
 @end deffn
 
 @deffn procedure make-strong-eqv-hash-table [initial-size]
 @findex eqv?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{eqv?}.  The keys are held
+keys, and compares those keys with @code{eqv?}.  The keys and data are held
 strongly.  These hash tables are a little slower than those made by
 @code{make-strong-eq-hash-table}.
 @end deffn
 
-@deffn procedure make-weak-eqv-hash-table [initial-size]
+@deffn procedure make-key-weak-eqv-hash-table [initial-size]
 @findex eqv?
 Returns a newly allocated hash table that accepts arbitrary objects as
 keys, and compares those keys with @code{eqv?}.  The keys are held
-weakly, except that booleans, characters, numbers, and interned symbols
-are held strongly.
+weakly, except that booleans, characters, numbers, and interned
+symbols are held strongly.  The data are held strongly.  Note that if
+a datum holds a key strongly, the table will effectively hold that key
+strongly.
 @end deffn
 
-@deffn procedure make-eqv-hash-table [initial-size]
+@deffn procedure make-key-ephemeral-eqv-hash-table [initial-size]
 @findex eqv?
-This is an alias for @code{make-weak-eqv-hash-table}.
-
-@strong{Warning}:  This may become an alias for
-@code{make-strong-eqv-hash-table} instead.  We recommend that you use
-@code{make-weak-eqv-hash-table} explicitly for weak hash tables.
+Returns a newly allocated hash table that accepts arbitrary objects as
+keys, and compares those keys with @code{eqv?}.  The keys are held
+weakly, except that booleans, characters, numbers, and interned
+symbols are held strongly.  The keys are effectively held weakly even
+if some of the data should hold some of the keys strongly.
 @end deffn
 
 @deffn procedure make-equal-hash-table [initial-size]
 @findex equal?
 Returns a newly allocated hash table that accepts arbitrary objects as
-keys, and compares those keys with @code{equal?}.  The keys are held
+keys, and compares those keys with @code{equal?}.  The keys and data are held
 strongly.  These hash tables are quite a bit slower than those made by
 @code{make-strong-eq-hash-table}.
 @end deffn
@@ -490,7 +494,7 @@ strongly.  These hash tables are quite a bit slower than those made by
 @deffn procedure make-string-hash-table [initial-size]
 @findex string=?
 Returns a newly allocated hash table that accepts character strings as
-keys, and compares them with @code{string=?}.  The keys are held
+keys, and compares them with @code{string=?}.  The keys and data are held
 strongly.
 @end deffn
 
@@ -655,6 +659,23 @@ associations for objects that have been reclaimed by the garbage
 collector.  Otherwise, this procedure does nothing.  In either case, it
 returns an unspecified result.
 @end deffn
+
+The following procedures are provided only for backward compatibility.
+They should be considered @strong{deprecated} and should not be used
+in new programs.
+
+@deffn procedure make-weak-eq-hash-table [initial-size]
+@deffnx procedure make-eq-hash-table [initial-size]
+@findex eq?
+These are aliases of @code{make-key-weak-eq-hash-table}.
+@end deffn
+
+@deffn procedure make-weak-eqv-hash-table [initial-size]
+@deffnx procedure make-eqv-hash-table [initial-size]
+@findex eq?
+These are aliases of @code{make-key-weak-eqv-hash-table}.
+@end deffn
+
 
 @node Basic Hash Table Operations, Resizing of Hash Tables, Construction of Hash Tables, Hash Tables
 @subsection Basic Hash Table Operations
