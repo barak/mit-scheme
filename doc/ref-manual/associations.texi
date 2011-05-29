@@ -769,6 +769,24 @@ same result.  @var{Procedure} must not use @var{hash-table}.  The average
 time required by this operation is bounded by a constant.
 @end deffn
 
+@c The reason that the procedure passed to hash-table/modify!  may not
+@c even use the hash table is that, e.g., hash-table/get may actually
+@c mutate the underlying table, because it may perform some deferred
+@c cleanup.  Specifically, if the table needs to be rehashed on GC, it
+@c is not actually rehashed when the garbage collector runs, but on
+@c the next access thereafter.  If the procedure given to
+@c hash-table/modify! accesses the hash table, and a garbage
+@c collection occurs after this procedure is invoked but before the
+@c (last) access it makes, the table may be rehashed, which may cause
+@c hash-table/modify! to insert the returned datum into the wrong
+@c bucket or into a dead hash table entry.  An analagous problem
+@c plagues weak and ephemeral tables; in this case, even if the table
+@c is not rehashed, accessing it after a GC may trigger a cleanup of
+@c entries whose keys or data have been garbage collected, which may
+@c trigger a resizing of the table and cause hash-table/modify!  to
+@c put its datum into the wrong place.  The same considerations apply
+@c to hash-table/intern!.
+
 @deffn procedure hash-table/intern! hash-table key get-default
 @var{Get-default} must be a procedure of no arguments.  Ensures that
 @var{hash-table} has an association for @var{key} and returns the
