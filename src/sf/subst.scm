@@ -717,13 +717,7 @@ USA.
     (let ((integration-failure
 	   (lambda ()
 	     (variable/reference! variable)
-	     (combination/make expression block operator operands)))
-
-	  (integration-success
-	   (lambda (operator)
-	     (variable/integrated! variable)
-	     (integrate/combination expression operations environment
-				    block operator operands))))
+	     (combination/make expression block operator operands))))
       (operations/lookup operations variable
         (lambda (operation info)
           (case operation
@@ -745,7 +739,10 @@ USA.
              (let ((new-expression (integrate/name expression
                                                    operator info environment)))
                (if new-expression
-                   (integration-success new-expression)
+		   (begin
+		     (variable/integrated! variable)
+		     (integrate/combination expression operations environment
+					    block new-expression operands))
                    (integration-failure))))
 
             (else
@@ -989,8 +986,7 @@ USA.
               (error "Unfinished integration" value)
               (if-value (delayed-integration/force value)))
           (if-value value)))
-    (lambda ()
-      (if-not))
+    if-not
     (lambda ()
       (warn "Unable to integrate" (variable/name variable))
       (if-not))))
