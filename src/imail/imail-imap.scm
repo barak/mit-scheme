@@ -1378,9 +1378,8 @@ USA.
 	      (let ((keywords (select-uncached-keywords message keywords)))
 		(if (pair? keywords)
 		    (begin
-		      (hash-table/modify! message-sets keywords
-			(lambda (messages) (cons message messages))
-			'())
+		      (hash-table/modify! message-sets keywords '()
+			(lambda (messages) (cons message messages)))
 		      (set! count (+ count 1)))))))))))
     (values message-sets count)))
 
