@@ -933,11 +933,20 @@ USA.
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
-	    (let ((operator (apply-frame/operator frame)))
-	      (signal continuation
-		      operator
-		      (procedure-arity operator)
-		      (apply-frame/operands frame))))))))
+	    ;; This is a heuristic kludge.  It can break down:
+	    ;;   (let ((p (lambda (x y) 0)))
+	    ;;     (p (make-entity p 0)))
+	    ;; But without the kludge, (min) gives a confusing error,
+	    ;; which is probably more common than this pathological
+	    ;; case.
+	    (let loop ((operator (apply-frame/operator frame))
+		       (operands (apply-frame/operands frame)))
+	      (if (and (pair? operands)
+		       (entity? (car operands))
+		       (eq? operator (entity-procedure (car operands))))
+		  (loop (car operands) (cdr operands))
+		  (let ((arity (procedure-arity operator)))
+		    (signal continuation operator arity operands)))))))))
 
 (define-error-handler 'FLOATING-OVERFLOW
   (let ((signal
