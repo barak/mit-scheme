@@ -302,16 +302,11 @@ USA.
 
 ;;;; N-ary List Operations
 
-(define sf:enable-flatten-apply? #t)
-
 (define (apply*-expansion expr operands block)
-  (cond ((< (length operands) 2) #f)
-	((length=? operands 2)
-	 (if (and (manifest-argument-list? (second operands))
-		  (noisy-test sf:enable-flatten-apply? "flatten-apply"))
-	     (combination/make expr block (first operands) (flatten-operands (second operands)))
-	     (make-combination expr block (ucode-primitive apply) operands)))
-	((< (length operands) 10)
+  (cond ((length=? operands 2)
+	 (make-combination expr block (ucode-primitive apply) operands))
+	((not (pair? operands)) #f)
+	((pair? (cdr operands))
 	 (apply*-expansion
 	  expr
 	  (list (car operands)
@@ -319,30 +314,8 @@ USA.
 	  block))
 	(else #f)))
 
-;;; If an argument constructs a null-terminated list, we flatten
-;;; the call to apply.
-(define (manifest-argument-list? expr)
-  (or (constant-eq? expr '())
-      (and (combination? expr)
-	   (let ((operator (combination/operator expr))
-		 (operands (combination/operands expr)))
-	     (and (or (constant-eq? operator (ucode-primitive cons))
-		      (eq? (global-ref? operator) 'cons))
-		  (pair? operands)
-		  (pair? (cdr operands))
-		  (null? (cddr operands))
-		  (manifest-argument-list? (second operands)))))))
-
-(define (flatten-operands operands)
-  (unfold (lambda (operands) (constant-eq? operands '()))
-	  (lambda (operands) (first (combination/operands operands)))
-	  (lambda (operands) (second (combination/operands operands)))
-	  operands))
-
 (define (cons*-expansion expr operands block)
-  (if (< -1 (length operands) 9)
-      (cons*-expansion-loop expr block operands)
-      #f))
+  (cons*-expansion-loop expr block operands))
 
 (define (cons*-expansion-loop expr block rest)
   (if (null? (cdr rest))
@@ -354,16 +327,14 @@ USA.
 			      (cons*-expansion-loop #f block (cdr rest))))))
 
 (define (list-expansion expr operands block)
-  (if (< (length operands) 9)
-      (list-expansion-loop expr block operands)
-      #f))
+  (list-expansion-loop expr block operands))
 
 (define (list-expansion-loop expr block rest)
-  (if (null? rest)
-      (constant/make (and expr (object/scode expr)) '())
-      (make-combination expr block (ucode-primitive cons)
+  (cond ((pair? rest) (make-combination expr block (ucode-primitive cons)
 			(list (car rest)
-			      (list-expansion-loop #f block (cdr rest))))))
+			      (list-expansion-loop #f block (cdr rest)))))
+	((null? rest) (constant/make (and expr (object/scode expr)) '()))
+	(else (error "Improper list."))))
 
 (define (values-expansion expr operands block)
   (let ((block (block/make block #t '())))
