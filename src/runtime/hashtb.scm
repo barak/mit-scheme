@@ -136,18 +136,14 @@ USA.
   (guarantee-hash-table table 'HASH-TABLE/PUT!)
   ((table-type-method:put! (table-type table)) table key datum))
 
-(define (hash-table/modify! table key procedure default)
+(define (hash-table/modify! table key default procedure)
   (guarantee-hash-table table 'HASH-TABLE/MODIFY!)
-  ((table-type-method:modify! (table-type table)) table key procedure default))
+  ((table-type-method:modify! (table-type table)) table key default procedure))
 
-(define (hash-table/intern! table key get-datum)
-  (hash-table/modify! table
-		      key
-		      (lambda (datum)
-			(if (eq? datum default-marker)
-			    (get-datum)
-			    datum))
-		      default-marker))
+(define (hash-table/intern! table key generator)
+  (hash-table/modify! table key default-marker
+    (lambda (datum)
+      (if (eq? datum default-marker) (generator) datum))))
 
 (define (hash-table/remove! table key)
   (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
@@ -626,8 +622,11 @@ USA.
 	      (lambda (key* barrier)
 		(declare (integrate key* barrier))
 		(if (key=? key* key)
-		    (begin (set-entry-datum! entry-type (car p) datum)
-			   (barrier))
+		    (begin
+		      (with-table-locked! table
+			(lambda ()
+			  (set-entry-datum! entry-type (car p) datum)))
+		      (barrier))
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
 	    (with-table-locked! table
@@ -642,7 +641,7 @@ USA.
 
 (define (make-method:modify! compute-hash! key=? entry-type)
   (declare (integrate-operator compute-hash! key=? entry-type))
-  (define (method:modify! table key procedure default)
+  (define (method:modify! table key default procedure)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
 	(if (pair? p)
@@ -650,12 +649,12 @@ USA.
 	      (lambda (key* datum barrier)
 		(declare (integrate key* datum barrier))
 		(if (key=? key* key)
-		    (with-table-locked! table
-		      (lambda ()
-			(let ((datum* (procedure datum)))
-			  (set-entry-datum! entry-type (car p) datum*)
-			  (barrier)
-			  datum*)))
+		    (let ((datum* (procedure datum)))
+		      (with-table-locked! table
+			(lambda ()
+			  (set-entry-datum! entry-type (car p) datum*)))
+		      (barrier)
+		      datum*)
 		    (loop (cdr p) p)))
 	      (lambda () (loop (cdr p) p)))
 	    (let ((datum (procedure default)))

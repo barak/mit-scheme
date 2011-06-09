@@ -336,6 +336,7 @@ USA.
 	  any-bits-set?
 	  arithmetic-shift
 	  bit-antimask
+	  bit-clear?
 	  bit-count
 	  bit-mask
 	  bit-set?
@@ -355,6 +356,7 @@ USA.
 	  splice-bit-field
 	  test-bit-field
 	  test-bit-field?
+	  toggle-bit
 
 	  ;; Truth table order
 	  bitwise-and

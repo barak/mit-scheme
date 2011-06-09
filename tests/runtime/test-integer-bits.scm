@@ -370,11 +370,11 @@ USA.
   (lambda (a b)
     (if (not (eqv? (hamming-distance a b)
                    (if (eqv? (negative? a) (negative? b))
-                    (bit-count (bitwise-xor a b))
-                    -1)))
+                       (bit-count (bitwise-xor a b))
+                       -1)))
         (error "Failed:" `(HAMMING-DISTANCE ,a ,b)
                '=> (hamming-distance a b)))))
-
+
 (define-test 'BIT-MASK
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
@@ -394,3 +394,22 @@ USA.
                     (bitwise-not
                      (shift-left (bitwise-not (shift-left -1 size))
                                  position)))))))
+
+(define (define-per-bit-test name procedure)
+  (define-test name
+    (lambda ()
+      (do ((i 0 (+ i 1))) ((>= i #x100))
+        (procedure (random-integer-of-weight (random-integer #x1000) #x1000)
+                   (random-integer #x1000))))))
+
+(define-per-bit-test 'SET-BIT
+  (lambda (n i) (assert-true (bit-set? i (set-bit i n)))))
+
+(define-per-bit-test 'CLEAR-BIT
+  (lambda (n i) (assert-true (bit-clear? i (clear-bit i n)))))
+
+(define-per-bit-test 'TOGGLE-BIT
+  (lambda (n i) (assert-eqv (bit-clear? i (toggle-bit i n)) (bit-set? i n))))
+
+(define-per-bit-test 'EXTRACT-BIT
+  (lambda (n i) (assert-eqv (zero? (extract-bit i n)) (bit-clear? i n))))

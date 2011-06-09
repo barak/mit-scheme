@@ -125,6 +125,9 @@ USA.
   (extract-bit-field 1 bit integer))
 
 (define-integrable (bit-set? bit integer)
+  (not (bit-clear? bit integer)))
+
+(define-integrable (bit-clear? bit integer)
   (zero? (extract-bit-field 1 bit integer)))
 
 ;;; SRFI 60 operations
