@@ -440,12 +440,6 @@ USA.
        (not (variable/may-ignore? variable))
        (not (variable/must-ignore? variable))))
 
-(define (variable/safely-integrable? variable operations)
-  (guarantee-variable variable 'variable/safely-integrable?)
-  (and (not (variable/side-effected variable))
-       (block/safe? (variable/block variable))
-       (operations/lookup operations variable false-procedure true-procedure)))
-
 (define (integrate/procedure operations environment procedure)
   (let ((block (procedure/block procedure))
         (name  (procedure/name procedure))
@@ -456,21 +450,14 @@ USA.
      name
      (lambda ()
        (fluid-let ((*current-block-names* (cons name *current-block-names*)))
-         (let* ((operations (declarations/bind
-                             (operations/shadow
-                              operations
-                              (append required optional (if rest (list rest) '())))
-                             (block/declarations block)))
-
-                (body (integrate/expression
-                       (if (block/safe? block)
-                           (make-additional-declarations
-                            operations environment
-                            (procedure/body procedure)
-                            (block/bound-variables block))
-                           operations)
-                       environment
-                       (procedure/body procedure))))
+         (let ((body (integrate/expression
+		      (declarations/bind
+		       (operations/shadow
+			operations
+			(append required optional (if rest (list rest) '())))
+		       (block/declarations block))
+		      environment
+		      (procedure/body procedure))))
            ;; Possibly complain about variables bound and not
            ;; referenced.
            (if (block/safe? block)
@@ -489,59 +476,6 @@ USA.
                            optional
                            rest
                            body)))))))
-
-(define sf:enable-safe-integration? #t)
-
-(define (make-additional-declarations operations environment body variables)
-  (fold-left (lambda (operations variable)
-               (make-additional-declaration operations environment body variable))
-             operations
-             variables))
-
-(define (make-additional-declaration operations environment body variable)
-  ;; Possibly augment operations with an appropriate declaration.
-  ;; Returns the original operations if no declaration is appropriate.
-  (if (variable/side-effected variable)
-      operations
-      (operations/lookup
-       operations variable
-       ;; Already a declaration, don't override it.
-       (constant-procedure operations)
-       (lambda ()
-         ;; No operations on this variable, check if it has
-         ;; a value
-         (environment/lookup
-          environment variable
-          (lambda (value)
-            ;; it has a value, see if we should integrate it
-            (make-additional-declaration-with-value operations body variable value))
-          ;; No value
-          (constant-procedure operations)
-          ;; No binding
-          (constant-procedure operations))))))
-
-(define (make-additional-declaration-with-value operations body variable value)
-  (cond ((and (or (and (access? value) (global-ref? value))
-                  (constant? value)
-                  (and (reference? value)
-                       (not (variable/side-effected (reference/variable value)))
-                       (block/safe? (variable/block (reference/variable value)))))
-              (noisy-test sf:enable-safe-integration? "Safe declarations"))
-         (operations/bind operations 'INTEGRATE variable
-                          (make-integration-info value)))
-        ((procedure? value)
-         (let ((info (expression/free-variable-info body variable)))
-           ;; Avoid exponential code explosion.
-           ;; The *parser code gets out of control if you don't limit this.
-           (if (and (fix:zero? (cdr info)) ; No argument references
-                    (or (fix:= (car info) 1) ; Exactly one operator use
-                        (and (fix:> (car info) 1)
-                             (< (* (expression/size value) (car info)) 500)))
-                    (noisy-test sf:enable-safe-integration? "Safe declarations"))
-               (operations/bind operations 'INTEGRATE-OPERATOR variable
-                                (make-integration-info value))
-               operations)))
-        (else operations)))
 
 
 ;;; INTEGRATE-COMBINATION
