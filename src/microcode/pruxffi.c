@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Matthew Birkholz
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,6 +27,7 @@ USA.
 #include "prims.h"
 #include "bignmint.h"
 #include "history.h"
+#include "floenv.h"
 #include "pruxffi.h"
 /* Using SCM instead of SCHEME_OBJECT here, hoping to ensure that
    these types always match. */
@@ -366,6 +367,46 @@ DEFINE_PRIMITIVE ("C-CALL", Prim_c_call, 1, LEXPR, 0)
   }
 }
 
+void
+alienate_float_environment (void)
+{
+  int s;
+
+#ifdef FE_DFL_ENV
+  s = fesetenv (FE_DFL_ENV);
+  if (s != 0)
+    {
+      outf_error ("Error status from fesetenv: %d\n", s);
+      outf_flush_error ();
+    }
+#else
+# ifdef HAVE_FECLEAREXCEPT
+#  ifdef HAVE_FEDISABLEEXCEPT
+#   ifdef HAVE_FESETROUND
+  s = feclearexcept (FE_ALL_EXCEPT);
+  if (s == -1)
+    {
+      outf_error ("Error status from feclearexcept: %d\n", s);
+      outf_flush_error ();
+    }
+  s = fedisableexcept (FE_ALL_EXCEPT);
+  if (s == -1)
+    {
+      outf_error ("Error status from fedisableexcept: %d\n", s);
+      outf_flush_error ();
+    }
+  s = fesetround (FE_TONEAREST);
+  if (s != 0)
+    {
+      outf_error ("Error status from fesetround: %d\n", s);
+      outf_flush_error ();
+    }
+#   endif
+#  endif
+# endif
+#endif
+}
+
 static SCM c_call_continue = SHARP_F;
 
 void
@@ -397,7 +438,7 @@ callout_seal (CalloutTrampIn tramp)
   /* Back out of C-CALL-CONTINUE. */
   SET_PRIMITIVE (c_call_continue);
   back_out_of_primitive ();
-  /* Ready for Interpret(1). */
+  alienate_float_environment ();
 }
 
 void
@@ -543,6 +584,7 @@ callback_run_kernel (long callback_id, CallbackKernel kernel)
   PUSH_APPLY_FRAME_HEADER (0);
   SAVE_CONT();
   Interpret (1);
+  alienate_float_environment ();
   cstack_depth -= 1;
 }
 
