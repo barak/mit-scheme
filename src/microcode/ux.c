@@ -206,8 +206,8 @@ UX_setsid (void)
   int fd = (UX_open ("/dev/tty", O_RDWR, 0));
   if (fd >= 0)
     {
-      UX_ioctl (fd, TIOCNOTTY, 0);
-      UX_close (fd);
+      (void) UX_ioctl (fd, TIOCNOTTY, 0);
+      (void) UX_close (fd);
     }
 #endif
   return (setpgrp (0, 0));
@@ -366,7 +366,7 @@ int
 UX_dup2 (int fd, int fd2)
 {
   if (fd != fd2)
-    UX_close (fd2);
+    (void) UX_close (fd2);
   {
     int result = (UX_fcntl (fd, F_DUPFD, fd2));
     if ((result < 0) && (errno == EINVAL))
@@ -634,19 +634,21 @@ UX_closefrom (int fd)
   return (UX_fcntl (fd, F_CLOSEM));
 #elif ((defined (HAVE_FCNTL)) && (defined (F_MAXFD)))
   int max_fd = (UX_fcntl ((-1), F_MAXFD));
-  int status;
+  int status = 0, error = 0;
   if (max_fd < 0) return (max_fd);
   while (fd <= max_fd)
-    if (((status = (UX_close (fd++))) < 0) && (errno != EBADF))
-      return (status);
-  return (0);
+    if (((UX_close (fd++)) < 0) && (errno != EBADF))
+      status = (-1), error = errno;
+  errno = error;
+  return (status);
 #else
   int fd_limit = (UX_SC_OPEN_MAX ());
-  int status;
+  int status = 0, error = 0;
   while (fd < fd_limit)
-    if (((status = (UX_close (fd++))) < 0) && (errno != EBADF))
-      return (status);
-  return (0);
+    if (((UX_close (fd++)) < 0) && (errno != EBADF))
+      status = (-1), error = errno;
+  errno = error;
+  return (status);
 #endif
 }
 

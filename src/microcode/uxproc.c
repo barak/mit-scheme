@@ -416,15 +416,14 @@ OS_make_subprocess (const char * filename,
   }
 
   /* Close all file descriptors not used by the child.  */
-  /* FIXME: Handle EINTR?  */
   if (channel_in_type == process_channel_type_none)
-    if ((UX_close (STDIN_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDIN_FILENO);
   if (channel_out_type == process_channel_type_none)
-    if ((UX_close (STDOUT_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDOUT_FILENO);
   if (channel_err_type == process_channel_type_none)
-    if ((UX_close (STDERR_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDERR_FILENO);
   /* Assumption: STDIN_FILENO = 0, STDOUT_FILENO = 1, STDERR_FILENO = 2.  */
-  if ((UX_closefrom (3)) < 0) goto kill_child;
+  (void) UX_closefrom (3);
 
   /* Put the signal mask and handlers in a normal state.  */
   UX_initialize_child_signals ();

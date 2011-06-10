@@ -759,7 +759,8 @@ open_pty_master_bsd (Tchannel * master_fd, const char ** master_fname)
 	  }
 	if ((UX_access (slave_name, (R_OK | W_OK))) < 0)
 	  {
-	    UX_close (fd);
+	    /* FIXME: Need to handle EINTR.  */
+	    (void) UX_close (fd);
 	    continue;
 	  }
 	MAKE_CHANNEL (fd, channel_type_unix_pty_master, (*master_fd) =);
