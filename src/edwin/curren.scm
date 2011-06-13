@@ -614,7 +614,7 @@ The buffer is guaranteed to be selected at that time."
 			 (there-exists? (buffer-windows buffer)
 			   (lambda (window)
 			     (eq? (window-screen window) screen))))))
-	     (weak-cdr buffers)))))
+	     (loop (weak-cdr buffers))))))
 
 (define setting-up-buffer-layout? #f)
 (define buffer-layout-key (list 'BUFFER-LAYOUT))
