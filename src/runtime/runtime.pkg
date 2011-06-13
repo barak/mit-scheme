@@ -2566,6 +2566,7 @@ USA.
 	  list-of-type?
 	  list-of-type?->length
 	  list-ref
+	  list-set!
 	  list-tail
 	  list=				;SRFI-1
 	  list?
