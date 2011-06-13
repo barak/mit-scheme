@@ -326,6 +326,12 @@ USA.
 	(error:bad-range-argument index 'LIST-REF))
     (car tail)))
 
+(define (list-set! list index new-value)
+  (let ((tail (list-tail list index)))
+    (if (not (pair? tail))
+	(error:bad-range-argument index 'LIST-SET!))
+    (set-car! tail new-value)))
+
 (define (list-tail list index)
   (guarantee-index-fixnum index 'LIST-TAIL)
   (let loop ((list list) (index* index))
