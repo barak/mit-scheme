@@ -41,18 +41,6 @@ USA.
 (define ring-set!)
 (let ()
 
-(define (list-ref l i)
-  (cond ((null? l) (error "Index too large" 'LIST-REF))
-	((zero? i) (car l))
-	(else (list-ref (cdr l) (-1+ i)))))
-
-(define (list-set! l i o)
-  (let loop ((l l) (i i))
-    (cond ((null? l) (error "index too large" i))
-	  ((zero? i) (set-car! l o))
-	  (else (list-ref (cdr l) (-1+ i)))))
-  unspecific)
-
 (define (list-truncate! l i)
   (cond ((null? l) unspecific)
 	((= i 1) (set-cdr! l '()))
