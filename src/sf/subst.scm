@@ -111,7 +111,7 @@ USA.
            operations name
            (lambda (operation info)
              (case operation
-               ((#F EXPAND INTEGRATE-OPERATOR) (dont-integrate))
+               ((#F EXPAND) (dont-integrate))
 
                ((IGNORE)
                 (ignored-variable-warning name)
@@ -121,6 +121,10 @@ USA.
                 (reassign name (copy/expression/intern
                                 (access/block expression)
                                 (integration-info/expression info))))
+
+	       ((INTEGRATE-OPERATOR)
+		(warn "Not integrating operator in access: " name)
+		(dont-integrate))
 
                (else
                 (error "Unknown operation" operation))))
@@ -332,6 +336,8 @@ USA.
       expression)))
 
 ;;;; Reference
+(define sf:warn-on-unintegrated-argument #f)
+
 (define-method/integrate 'REFERENCE
   (lambda (operations environment expression)
     (let ((variable (reference/variable expression)))
@@ -347,7 +353,7 @@ USA.
             (ignored-variable-warning (variable/name variable))
             (dont-integrate))
 
-           ((EXPAND INTEGRATE-OPERATOR)
+           ((EXPAND)
             (dont-integrate))
 
            ((INTEGRATE)
@@ -357,6 +363,11 @@ USA.
                   (begin (variable/integrated! variable)
                          new-expression)
                   (dont-integrate))))
+
+	   ((INTEGRATE-OPERATOR)
+	    (if sf:warn-on-unintegrated-argument
+		(warn "Not integrating operator in argument position: " variable))
+	    (dont-integrate))
 
            (else
             (error "Unknown operation" operation))))
