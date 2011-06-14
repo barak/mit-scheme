@@ -654,8 +654,12 @@ give_terminal_to (Tprocess process)
       OS_save_internal_state ();
       OS_restore_external_state ();
       while ((UX_tcsetpgrp (scheme_ctty_fd, (PROCESS_ID (process)))) < 0)
-	if ((errno != ENOSYS) && (errno != EINTR))
-	  error_system_call (errno, syscall_tcsetpgrp);
+	{
+	  if (errno == ENOSYS)
+	    break;
+	  if (errno != EINTR)
+	    error_system_call (errno, syscall_tcsetpgrp);
+	}
     }
 }
 
@@ -665,7 +669,7 @@ get_terminal_back (void)
   if (foreground_child_process != NO_PROCESS)
     {
       while ((UX_tcsetpgrp (scheme_ctty_fd, (UX_getpgrp ()))) < 0)
-	if ((errno != ENOSYS) && (errno != EINTR))
+	if (errno != EINTR)
 	  /* We're in no position to signal an error here (inside a
 	     transaction commit/abort action or a signal handler), so
 	     just bail.  */
