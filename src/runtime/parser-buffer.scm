@@ -225,11 +225,6 @@ USA.
 (define (match-parser-buffer-not-char-ci-no-advance buffer char)
   (match-char-not-no-advance buffer char char-ci=?))
 
-(define-integrable char-in-set?
-  (lambda (char set)
-    (declare (integrate char set))
-    (char-set-member? set char)))
-
 (define (match-parser-buffer-char-in-set buffer set)
   (match-char buffer set char-in-set?))
 
@@ -241,6 +236,9 @@ USA.
 
 (define (match-parser-buffer-char-not-in-set-no-advance buffer set)
   (match-char-not-no-advance buffer set char-in-set?))
+
+(define-integrable (char-in-set? char set)
+  (char-set-member? set char))
 
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
@@ -270,40 +268,6 @@ USA.
 			   (declare (integrate c1 c2))
 			   (not (compare c1 c2)))))
 
-(declare (integrate match-substring-loop))
-(define (match-substring-loop buffer string start end
-					 compare extract)
-  (declare (integrate compare extract))
-  (and (guarantee-buffer-chars buffer (fix:- end start))
-       (let ((bs (parser-buffer-string buffer)))
-	 (let loop
-	     ((i start)
-	      (bi (parser-buffer-index buffer))
-	      (bl (parser-buffer-line buffer)))
-	   (if (fix:< i end)
-	       (and (compare (extract string i) (wide-string-ref bs bi))
-		    (loop (fix:+ i 1)
-			  (fix:+ bi 1)
-			  (if (char=? (wide-string-ref bs bi) #\newline)
-			      (fix:+ bl 1)
-			      bl)))
-	       (begin
-		 (set-parser-buffer-index! buffer bi)
-		 (set-parser-buffer-line! buffer bl)
-		 #t))))))
-
-(declare (integrate match-substring-loop-na))
-(define (match-substring-loop-na buffer string start end
-					    compare extract)
-  (declare (integrate compare extract))
-  (and (guarantee-buffer-chars buffer (fix:- end start))
-       (let ((bs (parser-buffer-string buffer)))
-	 (let loop ((i start) (bi (parser-buffer-index buffer)))
-	   (if (fix:< i end)
-	       (and (compare (extract string i) (wide-string-ref bs bi))
-		    (loop (fix:+ i 1) (fix:+ bi 1)))
-	       #t)))))
-
 (define (match-parser-buffer-string buffer string)
   (match-string buffer string match-substring-loop char=?))
 
@@ -353,6 +317,36 @@ USA.
 	 (error:wrong-type-argument string "string" #f))))
 
 
+(define-integrable (match-substring-loop buffer string start end
+					 compare extract)
+  (and (guarantee-buffer-chars buffer (fix:- end start))
+       (let ((bs (parser-buffer-string buffer)))
+	 (let loop
+	     ((i start)
+	      (bi (parser-buffer-index buffer))
+	      (bl (parser-buffer-line buffer)))
+	   (if (fix:< i end)
+	       (and (compare (extract string i) (wide-string-ref bs bi))
+		    (loop (fix:+ i 1)
+			  (fix:+ bi 1)
+			  (if (char=? (wide-string-ref bs bi) #\newline)
+			      (fix:+ bl 1)
+			      bl)))
+	       (begin
+		 (set-parser-buffer-index! buffer bi)
+		 (set-parser-buffer-line! buffer bl)
+		 #t))))))
+
+(define-integrable (match-substring-loop-na buffer string start end
+					    compare extract)
+  (and (guarantee-buffer-chars buffer (fix:- end start))
+       (let ((bs (parser-buffer-string buffer)))
+	 (let loop ((i start) (bi (parser-buffer-index buffer)))
+	   (if (fix:< i end)
+	       (and (compare (extract string i) (wide-string-ref bs bi))
+		    (loop (fix:+ i 1) (fix:+ bi 1)))
+	       #t)))))
+
 (define-integrable (increment-buffer-index! buffer char)
   (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))
   (if (char=? char #\newline)
