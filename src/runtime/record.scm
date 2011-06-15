@@ -43,14 +43,14 @@ USA.
   (primitive-object-set-type 2)
   (vector-cons 2))
 
-(define (%make-record length object)
+(define-integrable (%make-record length object)
   ((ucode-primitive object-set-type) (ucode-type record)
 				     (vector-cons length object)))
 
-(define (%record-tag record)
+(define-integrable (%record-tag record)
   (%record-ref record 0))
 
-(define (%tagged-record? tag object)
+(define-integrable (%tagged-record? tag object)
   (and (%record? object)
        (eq? (%record-tag object) tag)))
 
@@ -169,31 +169,31 @@ USA.
 (define (record-type? object)
   (%tagged-record? record-type-type-tag object))
 
-(define (%record-type-descriptor record)
+(define-integrable (%record-type-descriptor record)
   (dispatch-tag-contents (%record-tag record)))
 
-(define (%record-type-dispatch-tag record-type)
+(define-integrable (%record-type-dispatch-tag record-type)
   (%record-ref record-type 1))
 
-(define (%record-type-name record-type)
+(define-integrable (%record-type-name record-type)
   (%record-ref record-type 2))
 
-(define (%record-type-field-names record-type)
+(define-integrable (%record-type-field-names record-type)
   (%record-ref record-type 3))
 
-(define (%record-type-default-inits record-type)
+(define-integrable (%record-type-default-inits record-type)
   (%record-ref record-type 4))
 
-(define (%record-type-extension record-type)
+(define-integrable (%record-type-extension record-type)
   (%record-ref record-type 5))
 
-(define (%set-record-type-extension! record-type extension)
+(define-integrable (%set-record-type-extension! record-type extension)
   (%record-set! record-type 5 extension))
 
-(define (%record-type-n-fields record-type)
+(define-integrable (%record-type-n-fields record-type)
   (vector-length (%record-type-field-names record-type)))
 
-(define (%record-type-length record-type)
+(define-integrable (%record-type-length record-type)
   (fix:+ 1 (%record-type-n-fields record-type)))
 
 (define (record-type-dispatch-tag record-type)
@@ -598,16 +598,16 @@ USA.
 (define structure-type/entity-unparser-method)
 (define set-structure-type/entity-unparser-method!)
 
-(define (structure-type/field-index type field-name)
+(define-integrable (structure-type/field-index type field-name)
   (vector-ref (structure-type/field-indexes type)
 	      (structure-type/field-name-index type field-name)))
 
-(define (structure-type/default-init type field-name)
+(define-integrable (structure-type/default-init type field-name)
   (structure-type/default-init-by-index
    type
    (structure-type/field-name-index type field-name)))
 
-(define (structure-type/default-init-by-index type field-name-index)
+(define-integrable (structure-type/default-init-by-index type field-name-index)
   (vector-ref (structure-type/default-inits type) field-name-index))
 
 (define (structure-type/field-name-index type field-name)
@@ -749,24 +749,24 @@ USA.
 	  (check-list-untagged structure type)
 	  (set-car! (list-tail structure index) value)))))
 
-(define (check-vector-tagged structure type)
+(define-integrable (check-vector-tagged structure type)
   (if (not (and (vector? structure)
 		(fix:= (vector-length structure)
 		       (structure-type/length type))
 		(eq? (vector-ref structure 0) (structure-type/tag type))))
       (error:wrong-type-argument structure type #f)))
 
-(define (check-vector-untagged structure type)
+(define-integrable (check-vector-untagged structure type)
   (if (not (and (vector? structure)
 		(fix:= (vector-length structure)
 		       (structure-type/length type))))
       (error:wrong-type-argument structure type #f)))
 
-(define (check-list-tagged structure type)
+(define-integrable (check-list-tagged structure type)
   (if (not (and (eq? (list?->length structure) (structure-type/length type))
 		(eq? (car structure) (structure-type/tag type))))
       (error:wrong-type-argument structure type #f)))
 
-(define (check-list-untagged structure type)
+(define-integrable (check-list-untagged structure type)
   (if (not (eq? (list?->length structure) (structure-type/length type)))
       (error:wrong-type-argument structure type #f)))
