@@ -244,8 +244,8 @@ USA.
     (make-the-environment)))
 
 ;;; Debugging utility
-(define (pp-expression form)
+(define (pp-expression form #!optional port)
   (fluid-let ((*pp-primitives-by-name* #f)
 	      (*pp-uninterned-symbols-by-name* #f)
 	      (*unparse-abbreviate-quotations?* #t))
-    (pp (cgen/external-with-declarations form))))
+    (pp (cgen/external-with-declarations form) port)))
