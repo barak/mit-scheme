@@ -163,6 +163,8 @@ USA.
 	(else
 	 (ill-formed-syntax form))))
 
+(define named-let-strategy 'letrec)
+
 (define-syntax :let
   (er-macro-transformer
    (lambda (form rename compare)
@@ -172,15 +174,37 @@ USA.
 	    (let ((name (cadr form))
 		  (bindings (caddr form))
 		  (body (cdddr form)))
-	      `((,(rename 'LETREC)
-		 ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
-						  ,@body)))
-		 ,name)
-		,@(map (lambda (binding)
-			 (if (pair? (cdr binding))
-			     (cadr binding)
-			     (unassigned-expression)))
-		       bindings))))
+	      (case named-let-strategy
+		((letrec)
+		 `((,(rename 'LETREC)
+		    ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
+			     ,@body)))
+		    ,name)
+		   ,@(map (lambda (binding)
+			    (if (pair? (cdr binding))
+				(cadr binding)
+				(unassigned-expression)))
+			  bindings)))
+		((fixed-point)
+		 (let ((iter (make-synthetic-identifier 'ITER))
+		       (kernel (make-synthetic-identifier 'KERNEL))
+		       (temps (map (lambda (b)
+				     (declare (ignore b))
+				     (make-synthetic-identifier 'TEMP)) bindings)))
+		   `((,(rename 'LAMBDA) (,kernel)
+		      (,kernel ,kernel ,@(map (lambda (binding)
+						(if (pair? (cdr binding))
+						    (cadr binding)
+						    (unassigned-expression)))
+					      bindings)))
+		     (,(rename 'LAMBDA) (,iter ,@(map car bindings))
+		      ((,(rename 'LAMBDA) (,name)
+			(,(rename 'DECLARE) (INTEGRATE-OPERATOR ,name))
+			,@body)
+		       (,(rename 'LAMBDA) ,temps
+			(,(rename 'DECLARE) (INTEGRATE ,@temps))
+			(,iter ,iter ,@temps)))))))
+		(else (error "Unrecognized named-let-strategy: " named-let-strategy)))))
 	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
 	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
 	   (else
@@ -519,7 +543,7 @@ USA.
 	      `(,r-begin
 		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
 		(,r-define ,(cadr form)
-			   (,r-declare (INTEGRATE ,@(cdadr form)))
+			    (,r-declare (INTEGRATE ,@(cdadr form)))
 			   ,@(cddr form))))
 	     (else
 	      (ill-formed-syntax form)))))))

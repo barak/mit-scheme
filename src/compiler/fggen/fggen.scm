@@ -31,7 +31,7 @@ USA.
 
 ;; Note: The C back end cannot dump objects, and instead generates
 ;; code to construct the objects.
-;; Thus the unmapping of reference traps must be done late, 
+;; Thus the unmapping of reference traps must be done late
 ;; when generating such code, and not early, since the code
 ;; that destructures object will otherwise run into actual
 ;; reference traps.
@@ -306,25 +306,6 @@ USA.
       (make-subproblem/canonical (make-return block continuation rvalue)
 				 continuation)))
 
-(define-integrable (make-variable-generator extract-name safe?)
-  (lambda (block continuation context expression)
-    context				; ignored
-    (continue/rvalue block
-		     continuation
-		     (make-reference block
-				     (find-name block
-						(extract-name expression))
-				     safe?))))
-
-(define generate/variable
-  (make-variable-generator scode/variable-name #f))
-
-(define generate/safe-variable
-  (make-variable-generator scode/safe-variable-name #t))
-
-(define generate/global-variable
-  (make-variable-generator scode/global-variable-name #f))
-
 (define-integrable (scode/make-safe-variable name)
   (cons safe-variable-tag name))
 
@@ -375,6 +356,26 @@ USA.
 	     block
 	     (cons variable
 		   (block-variables-nontransitively-free block))))))
+
+(define-integrable (make-variable-generator extract-name safe?)
+  (lambda (block continuation context expression)
+    context				; ignored
+    (continue/rvalue block
+		     continuation
+		     (make-reference block
+				     (find-name block
+						(extract-name expression))
+				     safe?))))
+
+(define generate/variable
+  (make-variable-generator scode/variable-name #f))
+
+(define generate/safe-variable
+  (make-variable-generator scode/safe-variable-name #t))
+
+(define generate/global-variable
+  (make-variable-generator scode/global-variable-name #f))
+
 
 (define (generate/lambda block continuation context expression)
   (generate/lambda* block continuation

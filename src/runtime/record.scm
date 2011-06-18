@@ -519,9 +519,14 @@ USA.
   (and (list-of-type? object symbol?)
        (let loop ((elements object))
 	 (if (pair? elements)
-	     (if (memq (car elements) (cdr elements))
-		 #f
-		 (loop (cdr elements)))
+	     ;; No memq in the cold load.
+	     (let memq ((item (car elements))
+			(tail (cdr elements)))
+	       (cond ((pair? tail) (if (eq? item (car tail))
+				       #f
+				       (memq item (cdr tail))))
+		     ((null? tail) (loop (cdr elements)))
+		     (else (error "Improper list."))))
 	     #t))))
 
 (define-guarantee list-of-unique-symbols "list of unique symbols")

@@ -76,7 +76,7 @@ USA.
 	  (->environment (package/name (file-package file))))
 
 	(define-integrable (file-dependencies file)
-	  (let ((entry (assoc file dependencies)))
+	  (let ((entry (assoc (->namestring file) dependencies)))
 	    (if entry (cdr entry) '())))
 
 	(for-each (lambda (file.deps)

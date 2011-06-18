@@ -73,8 +73,10 @@ USA.
 			     (compiled-procedure/environment procedure)))
 			  'PROCEDURE-COMPONENTS))
 
+(declare (integrate-operator discriminate-procedure))
 (define (discriminate-procedure procedure if-primitive if-compound if-compiled
 				caller)
+  (declare (integrate if-primitive if-compound if-compiled caller))
   (let ((procedure* (skip-entities procedure)))
     (cond ((%primitive-procedure? procedure*) (if-primitive procedure*))
 	  ((%compound-procedure? procedure*) (if-compound procedure*))

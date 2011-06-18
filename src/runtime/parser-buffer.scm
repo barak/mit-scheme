@@ -316,6 +316,7 @@ USA.
 	(else
 	 (error:wrong-type-argument string "string" #f))))
 
+
 (define-integrable (match-substring-loop buffer string start end
 					 compare extract)
   (and (guarantee-buffer-chars buffer (fix:- end start))
@@ -345,7 +346,7 @@ USA.
 	       (and (compare (extract string i) (wide-string-ref bs bi))
 		    (loop (fix:+ i 1) (fix:+ bi 1)))
 	       #t)))))
-
+
 (define-integrable (increment-buffer-index! buffer char)
   (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))
   (if (char=? char #\newline)
