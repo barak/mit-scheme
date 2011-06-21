@@ -77,7 +77,8 @@ open_file (const char * filename, int oflag)
   if ((SLAVE_PTY_P (filename)) && (!UX_setup_slave_pty (fd)))
     {
       int xerrno = errno;
-      UX_close (fd);
+      /* FIXME: Need to check for EINTR.  */
+      (void) UX_close (fd);
       error_system_call (xerrno, syscall_open);
     }
 #endif

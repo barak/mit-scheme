@@ -479,9 +479,10 @@ OS_file_touch (const char * filename)
 	transaction_commit ();
 #else
 	transaction_commit ();
+	/* FIXME: Need to check for EINTR.  */
 	fd = (UX_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
 	if (fd >= 0)
-	  STD_VOID_SYSTEM_CALL (syscall_close, (UX_close (fd)));
+	  (void) UX_close (fd);
 #endif
 	return (0);
       }
@@ -504,7 +505,7 @@ OS_file_touch (const char * filename)
 static void
 protect_fd_close (void * ap)
 {
-  UX_close (* ((int *) ap));
+  (void) UX_close (* ((int *) ap));
 }
 
 static void

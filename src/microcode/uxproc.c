@@ -416,15 +416,14 @@ OS_make_subprocess (const char * filename,
   }
 
   /* Close all file descriptors not used by the child.  */
-  /* FIXME: Handle EINTR?  */
   if (channel_in_type == process_channel_type_none)
-    if ((UX_close (STDIN_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDIN_FILENO);
   if (channel_out_type == process_channel_type_none)
-    if ((UX_close (STDOUT_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDOUT_FILENO);
   if (channel_err_type == process_channel_type_none)
-    if ((UX_close (STDERR_FILENO)) < 0) goto kill_child;
+    (void) UX_close (STDERR_FILENO);
   /* Assumption: STDIN_FILENO = 0, STDOUT_FILENO = 1, STDERR_FILENO = 2.  */
-  if ((UX_closefrom (3)) < 0) goto kill_child;
+  (void) UX_closefrom (3);
 
   /* Put the signal mask and handlers in a normal state.  */
   UX_initialize_child_signals ();
@@ -655,8 +654,12 @@ give_terminal_to (Tprocess process)
       OS_save_internal_state ();
       OS_restore_external_state ();
       while ((UX_tcsetpgrp (scheme_ctty_fd, (PROCESS_ID (process)))) < 0)
-	if ((errno != ENOSYS) && (errno != EINTR))
-	  error_system_call (errno, syscall_tcsetpgrp);
+	{
+	  if (errno == ENOSYS)
+	    break;
+	  if (errno != EINTR)
+	    error_system_call (errno, syscall_tcsetpgrp);
+	}
     }
 }
 
@@ -666,7 +669,7 @@ get_terminal_back (void)
   if (foreground_child_process != NO_PROCESS)
     {
       while ((UX_tcsetpgrp (scheme_ctty_fd, (UX_getpgrp ()))) < 0)
-	if ((errno != ENOSYS) && (errno != EINTR))
+	if (errno != EINTR)
 	  /* We're in no position to signal an error here (inside a
 	     transaction commit/abort action or a signal handler), so
 	     just bail.  */

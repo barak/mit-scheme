@@ -124,8 +124,12 @@ OS_channel_close (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      STD_VOID_SYSTEM_CALL
-	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
+      if (0 > (UX_close (CHANNEL_DESCRIPTOR (channel))))
+	switch (errno)
+	  {
+	  case EINTR:	deliver_pending_interrupts ();			break;
+	  case EBADF:	error_system_call (errno, syscall_close);	break;
+	  }
       MARK_CHANNEL_CLOSED (channel);
     }
 }
@@ -135,7 +139,7 @@ OS_channel_close_noerror (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      UX_close (CHANNEL_DESCRIPTOR (channel));
+      (void) UX_close (CHANNEL_DESCRIPTOR (channel));
       MARK_CHANNEL_CLOSED (channel);
     }
 }

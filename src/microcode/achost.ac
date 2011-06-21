@@ -149,6 +149,7 @@ darwin*)
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
+    MACOSX_CFLAGS="${MACOSX_CFLAGS} -DSIGNAL_HANDLERS_CAN_USE_SCHEME_STACK"
     AC_MSG_NOTICE([Compiling for MacOSX version ${MACOSX}])
     case ${mit_scheme_native_code} in
     i386)
