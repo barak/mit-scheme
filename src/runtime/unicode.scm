@@ -258,10 +258,10 @@ USA.
   (let ((input (open-input string start end))
 	(output (open-output)))
     (let loop ()
-      (let ((c (read-char input)))
+      (let ((c (%read-char input)))
 	(if (not (eof-object? c))
 	    (begin
-	      (write-char c output)
+	      (%write-char c output)
 	      (loop)))))
     (get-output-string! output)))
 
@@ -681,7 +681,7 @@ USA.
 (define (for-all-chars-in-string? predicate string #!optional start end coding)
   (let ((port (open-string string start end coding 'FOR-ALL-CHARS-IN-STRING?)))
     (let loop ()
-      (let ((char (read-char port)))
+      (let ((char (%read-char port)))
 	(cond ((eof-object? char) #t)
 	      ((predicate char) (loop))
 	      (else #f))))))
@@ -689,7 +689,7 @@ USA.
 (define (for-any-char-in-string? predicate string #!optional start end coding)
   (let ((port (open-string string start end coding 'FOR-ANY-CHAR-IN-STRING?)))
     (let loop ()
-      (let ((char (read-char port)))
+      (let ((char (%read-char port)))
 	(cond ((eof-object? char) #f)
 	      ((predicate char) #t)
 	      (else (loop)))))))
