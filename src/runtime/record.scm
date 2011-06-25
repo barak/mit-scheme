@@ -43,9 +43,11 @@ USA.
   (primitive-object-set-type 2)
   (vector-cons 2))
 
-(define-integrable (%make-record length object)
-  ((ucode-primitive object-set-type) (ucode-type record)
-				     (vector-cons length object)))
+(define-integrable (%make-record tag length)
+  (let ((record ((ucode-primitive object-set-type)
+		 (ucode-type record) (vector-cons length #f))))
+    (%record-set! record 0 tag)
+    record))
 
 (define-integrable (%record-tag record)
   (%record-ref record 0))
@@ -56,8 +58,8 @@ USA.
 
 (define (%copy-record record)
   (let ((length (%record-length record)))
-    (let ((result (%make-record length #f)))
-      (do ((index 0 (fix:+ index 1)))
+    (let ((result (%make-record (%record-tag record) length)))
+      (do ((index 1 (fix:+ index 1)))
 	  ((fix:= index length))
 	(%record-set! result index (%record-ref record index)))
       result)))
@@ -351,13 +353,12 @@ USA.
 	    (letrec
 		((constructor
 		  (lambda field-values
-		    (let ((record (%make-record reclen #f))
+		    (let ((record (%make-record tag reclen))
 			  (lose
 			   (lambda ()
 			     (error:wrong-number-of-arguments constructor
 							      n-fields
 							      field-values))))
-		      (%record-set! record 0 tag)
 		      (do ((i 1 (fix:+ i 1))
 			   (vals field-values (cdr vals)))
 			  ((not (fix:< i reclen))
@@ -400,8 +401,8 @@ USA.
 						      (length indexes)
 						      field-values))))
 	      (let ((record
-		     (%make-record (%record-type-length record-type) #f)))
-		(%record-set! record 0 (%record-type-dispatch-tag record-type))
+		     (%make-record (%record-type-dispatch-tag record-type)
+				   (%record-type-length record-type))))
 		(do ((indexes indexes (cdr indexes))
 		     (values field-values (cdr values)))
 		    ((not (pair? indexes))
@@ -424,9 +425,8 @@ USA.
       ((constructor
 	(lambda keyword-list
 	  (let ((n (%record-type-length record-type)))
-	    (let ((record (%make-record n #f))
+	    (let ((record (%make-record (%record-type-dispatch-tag record-type) n))
 		  (seen? (vector-cons n #f)))
-	      (%record-set! record 0 (%record-type-dispatch-tag record-type))
 	      (do ((kl keyword-list (cddr kl)))
 		  ((not (and (pair? kl)
 			     (symbol? (car kl))
