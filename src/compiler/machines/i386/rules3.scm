@@ -398,14 +398,23 @@ USA.
 
 (define (interrupt-check interrupt-label checks)
   ;; This always does interrupt checks in line.
-  (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
-	     (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
-		  (JGE (@PCR ,interrupt-label)))
-	     (LAP))
-       ,@(if (memq 'STACK checks)
-	     (LAP (CMP W (R ,regnum:stack-pointer) ,reg:stack-guard)
-		  (JL (@PCR ,interrupt-label)))
-	     (LAP))))
+  (let ((branch-target (generate-label 'INTERRUPT)))
+    ;; Put the interrupt check branch target after the branch so that
+    ;; it is a forward branch, which Intel and AMD CPUs will predict
+    ;; not taken by default, in the absence of dynamic branch
+    ;; prediction profile data.
+    (add-end-of-block-code!
+     (lambda ()
+       (LAP (LABEL ,branch-target)
+	    (JMP (@PCR ,interrupt-label)))))
+    (LAP ,@(if (or (memq 'INTERRUPT checks) (memq 'HEAP checks))
+	       (LAP (CMP W (R ,regnum:free-pointer) ,reg:compiled-memtop)
+		    (JGE (@PCR ,branch-target)))
+	       (LAP))
+	 ,@(if (memq 'STACK checks)
+	       (LAP (CMP W (R ,regnum:stack-pointer) ,reg:stack-guard)
+		    (JL (@PCR ,branch-target)))
+	       (LAP)))))
 
 (define (simple-procedure-header code-word label entry)
   (let ((checks (get-entry-interrupt-checks)))
