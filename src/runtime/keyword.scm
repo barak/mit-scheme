@@ -29,7 +29,6 @@ USA.
 
 (declare (usual-integrations))
 
-
 ;; Keywords are really interned symbols with a funny name.  We do it
 ;; this way because we need to keep eq-ness when fasdumping and
 ;; fasload them.  The self-evaluating property of keywords is handled
@@ -39,15 +38,15 @@ USA.
 (define-integrable keyword-prefix "#[keyword]")
 
 (define (string->keyword string)
-  (guarantee-string string 'string->keyword)
+  (guarantee-string string 'STRING->KEYWORD)
   (string->symbol (string-append keyword-prefix string)))
 
 (define (keyword? object)
   (and (interned-symbol? object)
-       (string-prefix? keyword-prefix (symbol->string object))))
+       (string-prefix? keyword-prefix (symbol-name object))))
 
 (define-guarantee keyword "keyword")
 
 (define (keyword->string keyword)
-  (guarantee-keyword keyword 'keyword->string)
-  (string-tail (symbol->string keyword) (string-length keyword-prefix)))
+  (guarantee-keyword keyword 'KEYWORD->STRING)
+  (string-tail (symbol-name keyword) (string-length keyword-prefix)))
