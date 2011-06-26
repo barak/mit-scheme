@@ -332,22 +332,24 @@ DEFINE_PRIMITIVE ("CAST-IEEE754-SINGLE-TO-INTEGER", Prim_cast_ieee754_single_to_
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, FLONUM_P);
+  {
+    float_uint32_t_cast cast;
 
-  float_uint32_t_cast cast;
+    cast.f = (float) FLONUM_TO_DOUBLE (ARG_REF (1));
 
-  cast.f = (float) FLONUM_TO_DOUBLE (ARG_REF (1));
-
-  PRIMITIVE_RETURN (uintmax_to_integer (cast.u32));
+    PRIMITIVE_RETURN (uintmax_to_integer (cast.u32));
+  }
 }
 
 DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754_single, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, INTEGER_P);
+  {
+    float_uint32_t_cast cast;
 
-  float_uint32_t_cast cast;
+    cast.u32 = integer_to_uintmax (ARG_REF (1));
 
-  cast.u32 = integer_to_uintmax (ARG_REF (1));
-
-  PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+    PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+  }
 }
