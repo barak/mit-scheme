@@ -35,6 +35,9 @@ USA.
 /* next free word in heap */
 SCHEME_OBJECT * Free;
 
+/* value of Free on entry to primitive, or 0 if not in primitive */
+SCHEME_OBJECT * Free_primitive = 0;
+
 /* strict limit for Free */
 SCHEME_OBJECT * heap_alloc_limit;
 

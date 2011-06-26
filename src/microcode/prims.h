@@ -58,7 +58,18 @@ SCHEME_OBJECT fn_name (void)
 
 #define Primitive_GC(Amount) do						\
 {									\
-  REQUEST_GC (Amount);							\
+  if (Free_primitive < heap_start)					\
+    {									\
+      outf_fatal							\
+        ("\nMicrocode requested primitive GC outside primitive!\n");	\
+      Microcode_Termination (TERM_EXIT);				\
+    }									\
+  if (Free < Free_primitive)						\
+    {									\
+      outf_fatal ("\nFree has gone backwards!\n");			\
+      Microcode_Termination (TERM_EXIT);				\
+    }									\
+  REQUEST_GC ((Amount) + (Free - Free_primitive));			\
   signal_interrupt_from_primitive ();					\
 } while (0)
 
