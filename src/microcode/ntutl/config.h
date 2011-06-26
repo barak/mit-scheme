@@ -57,6 +57,8 @@ typedef short nlink_t;
 #endif
 
 typedef unsigned char cc_t;
+typedef long intmax_t;
+typedef unsigned long uintmax_t;
 
 /* The number of bytes in a unsigned long.  */
 #define SIZEOF_UNSIGNED_LONG 4
