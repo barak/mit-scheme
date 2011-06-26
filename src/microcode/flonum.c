@@ -30,6 +30,14 @@ USA.
 #include "prims.h"
 #include <errno.h>
 
+#ifndef M_LN2
+#  define M_LN2       0.693147180559945309417232121458176568  /* log e2 */
+#endif
+
+#ifndef M_SQRT1_2
+#  define M_SQRT1_2   0.707106781186547524400844362104849039  /* 1/sqrt(2) */
+#endif
+
 double
 arg_flonum (int arg_number)
 {
