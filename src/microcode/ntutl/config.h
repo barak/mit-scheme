@@ -223,11 +223,17 @@ typedef unsigned char cc_t;
 /* The size of `intptr_t', as computed by sizeof. */
 #define SIZEOF_INTPTR_T 4
 
+/* The size of `off_t', as computed by sizeof. */
+#define SIZEOF_OFF_T 4
+
 /* The size of `long', as computed by sizeof. */
 #define SIZEOF_LONG 4
 
 /* The size of `short', as computed by sizeof. */
 #define SIZEOF_SHORT 2
+
+/* The size of `time_t', as computed by sizeof. */
+#define SIZEOF_TIME_T 4
 
 /* The size of `uintmax_t', as computed by sizeof. */
 #define SIZEOF_UINTMAX_T 8
