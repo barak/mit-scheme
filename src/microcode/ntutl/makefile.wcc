@@ -132,6 +132,7 @@ fasdump.c &
 fasl.c &
 fasload.c &
 fixnum.c &
+floenv.c &
 flonum.c &
 gcloop.c &
 generic.c &
@@ -219,6 +220,7 @@ fasdump.obj &
 fasl.obj &
 fasload.obj &
 fixnum.obj &
+floenv.obj &
 flonum.obj &
 gcloop.obj &
 generic.obj &
