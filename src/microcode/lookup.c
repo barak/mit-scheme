@@ -970,8 +970,9 @@ add_reference (SCHEME_OBJECT * palist,
     }
   {
     SCHEME_OBJECT reference;
+    SCHEME_OBJECT alist;
     DIE_IF_ERROR (make_cache_reference (block, offset, (&reference)));
-    SCHEME_OBJECT alist = (*palist);
+    alist = (*palist);
     (*palist) = (cons ((cons (symbol, (cons (reference, EMPTY_LIST)))), alist));
   }
 }

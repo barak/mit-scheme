@@ -667,7 +667,7 @@ pc_in_hyperspace:
 
   scheme_sp_valid
     = (pc_in_scheme
-       && (ADDRESS_IN_STACK_P (scheme_sp))
+       && (ADDRESS_IN_STACK_P ((SCHEME_OBJECT *) scheme_sp))
        && (ALIGNED_P (scheme_sp)));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 2"));

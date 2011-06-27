@@ -148,11 +148,26 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("FLONUM-EXPM1", Prim_flonum_expm1, 1, 1, 0)
+#ifdef HAVE_EXPM1
      RESTRICTED_TRANSCENDENTAL_FUNCTION
        (expm1, ((x >= - M_LN2) && (x <= M_LN2)))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
+
 DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
+#ifdef HAVE_LOG1P
      RESTRICTED_TRANSCENDENTAL_FUNCTION
        (log1p, ((x >= (M_SQRT1_2 - 1.0)) && (x <= (1.0 - M_SQRT1_2))))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
 
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
@@ -324,22 +339,24 @@ DEFINE_PRIMITIVE ("CAST-IEEE754-SINGLE-TO-INTEGER", Prim_cast_ieee754_single_to_
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, FLONUM_P);
+  {
+    float_uint32_t_cast cast;
 
-  float_uint32_t_cast cast;
+    cast.f = (float) FLONUM_TO_DOUBLE (ARG_REF (1));
 
-  cast.f = (float) FLONUM_TO_DOUBLE (ARG_REF (1));
-
-  PRIMITIVE_RETURN (uintmax_to_integer (cast.u32));
+    PRIMITIVE_RETURN (uintmax_to_integer (cast.u32));
+  }
 }
 
 DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754_single, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, INTEGER_P);
+  {
+    float_uint32_t_cast cast;
 
-  float_uint32_t_cast cast;
+    cast.u32 = integer_to_uintmax (ARG_REF (1));
 
-  cast.u32 = integer_to_uintmax (ARG_REF (1));
-
-  PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+    PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+  }
 }
