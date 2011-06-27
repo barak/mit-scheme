@@ -666,6 +666,7 @@ USA.
 	 "back/lapgn2"			; "      "
 	 "back/lapgn3"			; "      "
 	 "back/regmap"			;Hardware register allocator
+	 "back/checks"			;Interrupt checks
 	 "machines/i386/lapgen"		;code generation rules
 	 "machines/i386/rules1"		;  "      "        "
 	 "machines/i386/rules2"		;  "      "        "

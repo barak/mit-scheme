@@ -161,4 +161,4 @@ USA.
   (utf8-string->wide-string (symbol-name symbol)))
 
 (define (symbol->string symbol)
-  (wide-string->string (symbol->wide-string symbol)))
+  (utf8-string->string (symbol-name symbol)))
