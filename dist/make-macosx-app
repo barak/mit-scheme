@@ -61,4 +61,5 @@ run_command "${OUT}"-compile "${DIST_DIR}"/src compile "${@}"
 
 notify "Building application bundle"
 run_command "${OUT}"-buildapp "${DIST_DIR}"/src etc/macosx/make-app.sh
+my_rm_rf "${ARCH_BASE}".app
 my_mv "${DIST_DIR}"/src/mit-scheme.app "${ARCH_BASE}".app
