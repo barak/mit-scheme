@@ -135,10 +135,10 @@ USA.
 #endif
 
 #ifndef TIME_T_MAX
-#  if SIZEOF_TIME_T == SIZEOF_INTMAX_T
-#    define TIME_T_MAX INTMAX_MAX
-#  else
+#  if SIZEOF_TIME_T < SIZEOF_INTMAX_T
 #    define TIME_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_TIME_T)))
+#  else
+#    define TIME_T_MAX INTMAX_MAX
 #  endif
 #endif
 

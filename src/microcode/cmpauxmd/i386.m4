@@ -262,6 +262,10 @@ ifdef(`DASM',
       `define(IND,`($1)')')
 
 ifdef(`DASM',
+      `define(INDW,`word ptr [$1]')',
+      `define(INDW,`($1)')')
+
+ifdef(`DASM',
       `define(BOF,`byte ptr $1[$2]')',
       `define(BOF,`$1($2)')')
 
@@ -1257,7 +1261,7 @@ IF387(`	fwait')
 define_c_label(x87_read_control_word)
 IF387(`	enter		IMM(4),IMM(0)
 	fnstcw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
 	ret
 
@@ -1268,7 +1272,7 @@ IF387(`	fldcw		LOF(4,REG(esp))')
 define_c_label(x87_read_status_word)
 IF387(`	enter		IMM(4),IMM(0)
 	fnstsw		IND(REG(esp))
-	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
 	ret
 

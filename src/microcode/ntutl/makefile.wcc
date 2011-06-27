@@ -55,6 +55,7 @@ AS = wasm
 # /ox		enable various optimizations [OPTIMIZE]
 # /s		remove stack overflow checks
 # /w1		set warning-message level
+# /za99		undocumented option to enable partial C99 support
 # /zc		place literal strings in code segment
 # /ze		enable language extensions (default)
 # /zp4		use 4-byte alignment (required for MS compatibility)
@@ -62,12 +63,13 @@ AS = wasm
 #
 # /DMIT_SCHEME	required to specialize some code
 # /DGUI		configure a console window
+# /DHAVE_CONFIG_H we have config.h
 # omitted: /DNO_CONST /Di386
 #
 # For debugging, uncomment next line and comment one following.
 #UTIL_CFLAGS = /6r /d2 /ei /op /s /w1 /zc /zp4 /zq
-UTIL_CFLAGS = /6r /d1+ /ei /oe /op /ox /s /w1 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /i=.
+UTIL_CFLAGS = /6r /d1+ /ei /oe /op /ox /s /w1 /za99 /zc /zp4 /zq
+CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /DHAVE_CONFIG_H /i=.
 
 # Linker options.
 #
@@ -132,6 +134,7 @@ fasdump.c &
 fasl.c &
 fasload.c &
 fixnum.c &
+floenv.c &
 flonum.c &
 gcloop.c &
 generic.c &
@@ -219,6 +222,7 @@ fasdump.obj &
 fasl.obj &
 fasload.obj &
 fixnum.obj &
+floenv.obj &
 flonum.obj &
 gcloop.obj &
 generic.obj &
