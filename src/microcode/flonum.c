@@ -30,14 +30,6 @@ USA.
 #include "prims.h"
 #include <errno.h>
 
-#ifndef M_LN2
-#  define M_LN2       0.693147180559945309417232121458176568  /* log e2 */
-#endif
-
-#ifndef M_SQRT1_2
-#  define M_SQRT1_2   0.707106781186547524400844362104849039  /* 1/sqrt(2) */
-#endif
-
 double
 arg_flonum (int arg_number)
 {
@@ -156,11 +148,26 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 }
 
 DEFINE_PRIMITIVE ("FLONUM-EXPM1", Prim_flonum_expm1, 1, 1, 0)
+#ifdef HAVE_EXPM1
      RESTRICTED_TRANSCENDENTAL_FUNCTION
        (expm1, ((x >= - M_LN2) && (x <= M_LN2)))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
+
 DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
+#ifdef HAVE_LOG1P
      RESTRICTED_TRANSCENDENTAL_FUNCTION
        (log1p, ((x >= (M_SQRT1_2 - 1.0)) && (x <= (1.0 - M_SQRT1_2))))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
 
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
