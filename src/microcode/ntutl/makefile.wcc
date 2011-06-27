@@ -67,7 +67,7 @@ AS = wasm
 # For debugging, uncomment next line and comment one following.
 #UTIL_CFLAGS = /6r /d2 /ei /op /s /w1 /zc /zp4 /zq
 UTIL_CFLAGS = /6r /d1+ /ei /oe /op /ox /s /w1 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /i=.
+CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /DHAVE_CONFIG_H /i=.
 
 # Linker options.
 #
