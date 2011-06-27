@@ -1266,7 +1266,7 @@ IF387(`	fldcw		LOF(4,REG(esp))')
 define_c_label(x87_read_status_word)
 IF387(`	enter		IMM(4),IMM(0)
 	fnstsw		IND(REG(esp))
-	OP(mov,w)	TW(IND@(REG(esp)),REG(ax))
+	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
 	leave')
 	ret
 
