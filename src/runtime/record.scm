@@ -75,7 +75,7 @@ USA.
 		   #f
 		   "record-type"
 		   '#(DISPATCH-TAG NAME FIELD-NAMES DEFAULT-INITS EXTENSION)
-		   (vector-cons 5 (lambda () #f))
+		   (vector-cons 5 #f)
 		   #f)))
     (set! record-type-type-tag (make-dispatch-tag type))
     (%record-set! type 0 record-type-type-tag)
@@ -155,7 +155,7 @@ USA.
 		     #f
 		     (->type-name type-name)
 		     names
-		     (vector-cons n (lambda () #f))
+		     (vector-cons n #f)
 		     #f))
 	   (tag (make-dispatch-tag record-type)))
       (%record-set! record-type 1 tag)

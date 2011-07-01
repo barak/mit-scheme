@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Structure Definition Macro
-;;; package: (runtime defstruct)
+;;; package: (runtime syntax defstruct)
 
 (declare (usual-integrations))
 
@@ -822,7 +822,10 @@ differences:
 	  (field-names (map slot/name slots))
 	  (inits
 	   (map (lambda (slot)
-		  `(LAMBDA () ,(close (slot/default slot) context)))
+		  (let ((default (slot/default slot)))
+		    (if (false-marker? default)
+			#f
+			`(LAMBDA () ,(close default context)))))
 		slots)))
       `((DEFINE ,type-name
 	  ,(if (structure/record-type? structure)
