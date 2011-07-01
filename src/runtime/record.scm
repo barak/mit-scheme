@@ -235,7 +235,9 @@ USA.
 						 caller)
     (let ((v (%record-type-default-inits record-type)))
       (if (not (fix:= (guarantee-list-of-type->length
-		       default-inits thunk? "default initializers" caller)
+		       default-inits
+		       (lambda (init) (or (not init) (thunk? init)))
+		       "default initializer" caller)
 		      (vector-length v)))
 	  (error:bad-range-argument default-inits caller))
       (do ((values default-inits (cdr values))
@@ -249,8 +251,9 @@ USA.
    (record-type-field-index record-type field-name #t)))
 
 (define (record-type-default-value-by-index record-type field-name-index)
-  ((vector-ref (%record-type-default-inits record-type)
-	       (fix:- field-name-index 1))))
+  (let ((init (vector-ref (%record-type-default-inits record-type)
+			  (fix:- field-name-index 1))))
+    (and init (init))))
 
 (define (record-type-extension record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-EXTENSION)
@@ -375,7 +378,7 @@ USA.
 	       field-names))
 	 (defaults
 	   (let* ((n (%record-type-length record-type))
-		 (seen? (vector-cons n #f)))
+		  (seen? (vector-cons n #f)))
 	     (do ((indexes indexes (cdr indexes)))
 		 ((not (pair? indexes)))
 	       (vector-set! seen? (car indexes) #t))
@@ -413,10 +416,9 @@ USA.
 		      (n (vector-length defaults)))
 		  (do ((i 0 (fix:+ i 1)))
 		      ((not (fix:< i n)))
-		    (%record-set!
-		     record
-		     (vector-ref defaults i)
-		     ((vector-ref v (fix:- (vector-ref defaults i) 1))))))
+		    (let* ((index (vector-ref defaults i))
+			   (init (vector-ref v (fix:- index 1))))
+		      (and init (%record-set! record index (init))))))
 		record)))))
       constructor)))
 
@@ -442,7 +444,8 @@ USA.
 		(do ((i 1 (fix:+ i 1)))
 		    ((not (fix:< i n)))
 		  (if (not (vector-ref seen? i))
-		      (%record-set! record i ((vector-ref v (fix:- i 1)))))))
+		      (let ((init (vector-ref v (fix:- i 1))))
+			(and init (%record-set! record i (init)))))))
 	      record)))))
     constructor))
 
@@ -698,9 +701,8 @@ USA.
 	    (do ((i 0 (fix:+ i 1)))
 		((not (fix:< i n)))
 	      (if (not (vector-ref seen? i))
-		  (vector-set! v
-			       (vector-ref indexes i)
-			       ((vector-ref inits i))))))
+		  (let ((init (vector-ref inits i)))
+		    (and init (vector-set! v (vector-ref indexes i) (init)))))))
 	  (if (eq? (structure-type/physical-type type) 'LIST)
 	      (do ((i (fix:- len 1) (fix:- i 1))
 		   (list '() (cons (vector-ref v i) list)))
