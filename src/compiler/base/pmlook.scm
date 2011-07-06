@@ -38,50 +38,52 @@ USA.
 	 (or ((car matchers) instance)
 	     (loop (cdr matchers))))))
 
+;;; PATTERN-LOOKUP-1 returns either #f or the result of applying
+;;; <body> to the values matched by the pattern.  The values
+;;; are in reverse order of variable occurrance in the pattern,
+;;; repeated occurrances of a pattern variable must be eqv?,
+;;; and only the first occurrance is used.
+
 (define (pattern-lookup-1 pattern body instance)
-  (let loop
-      ((pattern pattern)
-       (instance instance)
-       (vars '())
-       (vals '())
-       (k (lambda (vars vals) vars (apply body vals))))
-    (cond ((pattern-variable? pattern)
-	   (let ((var (pattern-variable-name pattern)))
-	     (let find-var ((vars* vars) (vals* vals))
-	       (if (pair? vars*)
-		   (if (eq? (car vars*) var)
-		       (and (eqv? (car vals*) instance)
-			    (k vars vals))
-		       (find-var (cdr vars*) (cdr vals*)))
-		   (k (cons var vars) (cons instance vals))))))
-	  ((pair? pattern)
-	   (and (pair? instance)
-		(loop (car pattern)
-		      (car instance)
-		      vars
-		      vals
-		      (lambda (vars vals)
-			(loop (cdr pattern)
-			      (cdr instance)
-			      vars
-			      vals
-			      k)))))
-	  (else
-	   (and (eqv? pattern instance)
-		(k vars vals))))))
+  (let ((binding-alist
+	 (let loop ((pattern pattern)
+		    (instance instance)
+		    (binding-alist '()))
+	   ;; Cheat:  we know pattern variables are pairs
+	   (cond ((pair? pattern)
+		  (cond ((eq? (car pattern) pattern-variable-tag)
+			 (let ((var (pattern-variable-name pattern)))
+			   (let ((entry (assq var binding-alist)))
+			     (if entry
+				 (and (eqv? (cdr entry) instance)
+				      binding-alist)
+				 (cons (cons var instance) binding-alist)))))
+			((pair? instance)
+			 (let ((binding-alist*
+				(loop (car pattern) (car instance) binding-alist)))
+			   (and binding-alist*
+				(loop (cdr pattern) (cdr instance) binding-alist*))))
+			(else #f)))
+		 ((eqv? pattern instance) binding-alist)
+		 (else #f)))))
+    (and binding-alist
+	 (apply body (map cdr binding-alist)))))
 
 (define (pattern-variables pattern)
-  (let loop ((pattern pattern) (vars '()) (k (lambda (vars) vars)))
-    (cond ((pattern-variable? pattern)
-	   (k (let ((var (pattern-variable-name pattern)))
-		(if (memq var vars)
-		    vars
-		    (cons var vars)))))
-	  ((pair? pattern)
-	   (loop (car pattern)
-		 vars
-		 (lambda (vars) (loop (cdr pattern) vars k))))
-	  (else (k vars)))))
+  (let loop ((pattern pattern) (vars '()))
+    (cond ((pair? pattern)
+	   ;; Cheat:  we know pattern variables are pairs
+	   (if (eq? (car pattern) pattern-variable-tag)
+	       (let ((var (pattern-variable-name pattern)))
+		 (if (memq var vars)
+		     vars
+		     (cons var vars)))
+	       (if (pair? pattern)
+		   (let ((vars1 (loop (car pattern) vars)))
+		     (and vars1
+			  (loop (cdr pattern) vars1)))
+		   vars)))
+	  (else vars))))
 
 (define-integrable (make-pattern-variable name)
   (cons pattern-variable-tag name))
