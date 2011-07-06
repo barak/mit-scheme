@@ -40,9 +40,9 @@ USA.
 
 ;;; PATTERN-LOOKUP-1 returns either #f or the result of applying
 ;;; <body> to the values matched by the pattern.  The values
-;;; are in reverse order of variable occurrance in the pattern,
-;;; repeated occurrances of a pattern variable must be eqv?,
-;;; and only the first occurrance is used.
+;;; are in reverse order of variable occurrence in the pattern,
+;;; repeated occurrences of a pattern variable must be eqv?,
+;;; and only the first occurrence is used.
 
 (define (pattern-lookup-1 pattern body instance)
   (let ((binding-alist
