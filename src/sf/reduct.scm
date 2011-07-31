@@ -304,7 +304,7 @@ Examples:
 		     (lambda (block x y)
 		       (combine-2 block (expr block) x y)))))))
 
-      (lambda (expr operands if-expanded if-not-expanded block)
+      (lambda (expr operands block)
 	(define (group l)
 	  (if (null? (cdr l))
 	      (last block (car l) binop)
@@ -316,28 +316,19 @@ Examples:
 		(let ((l (length operands)))
 		  (or (< l min-args)
 		      (and max-args (> l max-args)))))
-	    (if-not-expanded)
-	    (if-expanded
-	     (reassign
-	      expr
-	      (let ((l1 (list-head operands spare-args))
-		    (l2 (map2 (list-tail operands spare-args))))
-		(cond ((null? l2)
-		       (wrap block
-			     l1
-			     (none block)))
-		      ((null? (cdr l2))
-		       (wrap block
-			     l1
-			     (single block
-				     (car l2)
-				     (lambda (block x y)
-				       (binop block x y)))))
-		      (else
-		       (wrap block
-			     l1
-			     (binop block (car l2)
-				    (group (cdr l2))))))))))))))
+	    #f
+	    (reassign
+	     expr
+	     (let ((l1 (list-head operands spare-args))
+		   (l2 (map2 (list-tail operands spare-args))))
+	       (cond ((null? l2)
+		      (wrap block l1 (none block)))
+		     ((null? (cdr l2))
+		      (wrap block l1 (single block (car l2) binop)))
+		     (else
+		      (wrap block
+			    l1
+			    (binop block (car l2) (group (cdr l2)))))))))))))
 
 (define (group-right spare-args min-args max-args
 		     binop source-block exprs
@@ -504,7 +495,7 @@ Examples:
 			   (cdr replacement)
 			   decl-block))
     (lambda (table default)
-      (lambda (expr operands if-expanded if-not-expanded block)
+      (lambda (expr operands block)
 	(let* ((len (length operands))
 	       (candidate (or (and (< len (vector-length table))
 				   (vector-ref table len))
@@ -514,15 +505,14 @@ Examples:
 		       (block/limited-lookup block
 					     (car candidate)
 					     decl-block)))
-	      (if-not-expanded)
-	      (if-expanded
-	       (combination/make (and expr (object/scode expr))
-				 block
-				 (let ((frob (cdr candidate)))
-				   (if (variable? frob)
-				       (lookup (variable/name frob) block)
-				       frob))
-				 operands))))))))
+	      #f
+	      (combination/make (and expr (object/scode expr))
+				block
+				(let ((frob (cdr candidate)))
+				  (if (variable? frob)
+				      (lookup (variable/name frob) block)
+				      frob))
+				operands)))))))
 
 (define (parse-replacement name ocases block)
   (define (collect len cases default)

@@ -405,9 +405,9 @@ USA.
 	 replacements)))
 
 (define (make-dumpable-expander expander declaration)
-  (make-entity (lambda (self expr operands if-expanded if-not-expanded block)
+  (make-entity (lambda (self expr operands block)
 		 self			; ignored
-		 (expander expr operands if-expanded if-not-expanded block))
+		 (expander expr operands block))
 	       (cons '*DUMPABLE-EXPANDER* declaration)))
 
 (define (dumpable-expander? object)
