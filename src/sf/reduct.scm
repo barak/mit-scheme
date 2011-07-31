@@ -506,7 +506,7 @@ Examples:
 					     (car candidate)
 					     decl-block)))
 	      #f
-	      (combination/make (and expr (object/scode expr))
+	      (combination/make expr
 				block
 				(let ((frob (cdr candidate)))
 				  (if (variable? frob)
