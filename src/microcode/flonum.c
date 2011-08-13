@@ -27,7 +27,7 @@ USA.
 /* Floating Point Arithmetic */
 
 #include "scheme.h"
-#include "osscheme.h"
+#include "osscheme.h"		/* error_unimplemented_primitive -- foo */
 #include "prims.h"
 #include <errno.h>
 
