@@ -71,8 +71,9 @@ USA.
   ;; FILENAME relative to CWD (current working directory).
   ;; Abbreviates namestrings under TWD (topmost working, build directory).
 
-  (let* ((pathname (merge-pathnames
-		    (pathname-default-type filename "cdecl") cwd))
+  (let* ((pathname (->simple-pathname
+		    (merge-pathnames (pathname-default-type filename "cdecl")
+				     cwd)))
 	 (new-cwd (directory-pathname pathname))
 	 (namestring (enough-namestring pathname twd))
 	 (modtime (file-modification-time-indirect namestring))
@@ -98,6 +99,14 @@ USA.
 				   (write-string namestring port))
 				 kernel)
 	      (kernel))))))
+
+(define (->simple-pathname pathname)
+  (let loop ((count 0)
+	     (simpler (pathname-simplify pathname)))
+    (let ((again (pathname-simplify simpler)))
+      (cond ((fix:> count 100) (error "Could not simplify:" pathname))
+	    ((pathname=? again simpler) again)
+	    (else (loop again (fix:1+ count)))))))
 
 (define read-environment
   (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*) '(#f)))
