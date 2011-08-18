@@ -4883,6 +4883,8 @@ USA.
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
 	  prompt-for-expression
+	  prompt-for-string
+	  call-with-pass-phrase
 	  with-notification)
   (export (runtime rep)
 	  port/set-default-environment
