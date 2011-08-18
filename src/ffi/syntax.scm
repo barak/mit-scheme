@@ -238,7 +238,9 @@ USA.
 (define (lookup-enum-value name whole-form includes)
   (let ((entry (assq name (c-includes/enum-values includes))))
     (if (not entry)
-	(serror whole-form "constant not declared")
+	(begin
+	  (warn "no declaration of constant:" name)
+	  0)
 	(cdr entry))))
 
 (define (c-enum-constant-values name form includes)
@@ -425,7 +427,7 @@ USA.
 			(if (pair? entry)
 			    (cdr entry)
 			    (begin
-			      (warn "no declaration of C function:" func-name)
+			      (warn "no declaration of callout:" func-name)
 			      func-name)))))
 	  `(CALL-ALIEN ,alien
 		       . ,(map (lambda (form) (close-syntax form usage-env))
@@ -457,7 +459,9 @@ USA.
 		   (name (string->symbol obj)))
 	      (let ((entry (assq name callbacks)))
 		(if (pair? entry) (cdr entry)
-		    (serror form "C function not declared"))))
+		    (begin
+		      (warn "no declaration of callback:" name)
+		      name))))
 	    (let ((value-form (close-syntax obj usage-env)))
 	      `(REGISTER-C-CALLBACK ,value-form))))))))
 
