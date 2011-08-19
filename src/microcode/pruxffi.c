@@ -173,21 +173,45 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
-  C_PEEKER (char_pointer_to_string, char *)
+{
+  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
+     Copy the C string into the heap and return the new Scheme
+     string.  If the pointer is null, return (). */
+
+  PRIMITIVE_HEADER (2);
+  {
+    char ** ptr = (ALIEN_ADDRESS_LOC (char *));
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	PRIMITIVE_RETURN (char_pointer_to_string (*ptr));
+      }
+  }
+}
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
   /* Follow the pointer at the address ALIEN+OFFSET to a C string.
      Set ALIEN to the address of the char pointer after ALIEN+OFFSET.
      Copy the C string into the heap and return the new Scheme
-     string. */
+     string.  If the pointer is null, return (). */
 
   PRIMITIVE_HEADER (2);
   {
     char ** ptr = (ALIEN_ADDRESS_LOC (char *));
-    SCM string = char_pointer_to_string (*ptr);
-    set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
-    PRIMITIVE_RETURN (string);
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	SCM string = char_pointer_to_string (*ptr);
+	set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
+	PRIMITIVE_RETURN (string);
+      }
   }
 }
 
