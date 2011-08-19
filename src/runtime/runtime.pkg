@@ -561,6 +561,21 @@ USA.
 	  queue-map!
 	  queue->list))
 
+(define-package (runtime thread-queue)
+  (files "thread-queue")
+  (parent (runtime))
+  (export ()
+	  make-thread-queue
+	  thread-queue/empty?
+	  thread-queue/empty!
+	  thread-queue/queue!
+	  thread-queue/queue-no-hang!
+	  thread-queue/push!
+	  thread-queue/dequeue!
+	  thread-queue/peek-no-hang
+	  thread-queue/peek-until
+	  thread-queue/peek))
+
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
