@@ -227,7 +227,7 @@ USA.
       (lambda (name value-form)
 	(let* ((includes (find-c-includes usage-env)))
 	  (if (not value-form)
-	      (lookup-enum-value name form includes)
+	      (lookup-enum-value name includes)
 	      (if (integer? value-form)
 		  (c-enum-name value-form name
 				(c-enum-constant-values name form includes))
@@ -235,7 +235,7 @@ USA.
 			(constants (c-enum-constant-values name form includes)))
 		    `(C-ENUM-NAME ,value ',name ',constants))))))))))
 
-(define (lookup-enum-value name whole-form includes)
+(define (lookup-enum-value name includes)
   (let ((entry (assq name (c-includes/enum-values includes))))
     (if (not entry)
 	(begin
