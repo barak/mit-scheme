@@ -255,7 +255,7 @@ USA.
 		    (char=? char #\return)
 		    (char=? char #\linefeed))
 		(receiver input)
-		(set-string-length! str (string-maximum-length str))
+		(set-string-length! input (string-maximum-length input))
 		(string-fill! input #\delete)
 		(port/with-output-terminal-mode port 'COOKED
 		  (lambda ()
