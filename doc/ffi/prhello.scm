@@ -32,7 +32,7 @@ callbacks. |#
 	      (C-callback "delete_event")	;trampoline
 	      (C-callback			;callback ID
 	       (lambda (w e)
-		 (outf-console ";Delete me "(- 2 counter)" times.\n")
+		 (outf-error ";Delete me "(- 2 counter)" times.\n")
 		 (set! counter (1+ counter))
 		 ;; Three or more is the charm.
 		 (if (> counter 2)

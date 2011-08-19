@@ -3282,7 +3282,7 @@ USA.
 	  free
 	  register-c-callback
 	  de-register-c-callback
-	  outf-console)
+	  outf-error)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

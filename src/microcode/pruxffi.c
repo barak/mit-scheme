@@ -998,7 +998,7 @@ empty_list (void)
   return (EMPTY_LIST);
 }
 
-DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
+DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
 {
   /* To avoid the normal i/o system when debugging a callback. */
 
@@ -1008,8 +1008,8 @@ DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
     if (STRING_P (arg))
       {
 	char * string = ((char *) STRING_LOC (arg, 0));
-	outf_console ("%s", string);
-	outf_flush_console ();
+	outf_error ("%s", string);
+	outf_flush_error ();
       }
     else
       {
