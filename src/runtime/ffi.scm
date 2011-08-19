@@ -96,6 +96,11 @@ USA.
   (+ (* (%alien/high-bits alien) (radix))
      (%alien/low-bits alien)))
 
+(define (%set-alien/address! alien address)
+  (let ((qr (integer-divide address (radix))))
+    (set-%alien/high-bits! alien (integer-divide-quotient qr))
+    (set-%alien/low-bits! alien (integer-divide-remainder qr))))
+
 (declare (integrate-operator copy-alien-address!))
 (define (copy-alien-address! alien source)
   (if (not (eq? alien source))
@@ -267,19 +272,22 @@ USA.
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
 
-(define (c-peek-cstring alien)
+(define-integrable (c-peek-cstring alien)
   ((ucode-primitive c-peek-cstring 2) alien 0))
 
-(define (c-peek-cstring! alien)
+(define-integrable (c-peek-cstring! alien)
   ((ucode-primitive c-peek-cstring! 2) alien 0))
 
-(define (c-peek-cstringp alien)
+(define-integrable (c-peek-cstringp alien)
   ((ucode-primitive c-peek-cstringp 2) alien 0))
 
-(define (c-peek-cstringp! alien)
+(define-integrable (c-peek-cstringp! alien)
   ((ucode-primitive c-peek-cstringp! 2) alien 0))
 
-(define (c-poke-pointer dest alien)
+(define-integrable (c-peek-bytes alien offset count buffer start)
+  ((ucode-primitive c-peek-bytes 5) alien offset count buffer start))
+
+(define-integrable (c-poke-pointer dest alien)
   ;; Sets the pointer at the alien DEST to point to the ALIEN.
   ((ucode-primitive c-poke-pointer 3) dest 0 alien))
 
@@ -297,6 +305,9 @@ USA.
   ;; STRING length.
   (guarantee-string string 'C-POKE-STRING)
   ((ucode-primitive c-poke-string! 3) alien 0 string))
+
+(define-integrable (c-poke-bytes alien offset count buffer start)
+  ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
   enum-name

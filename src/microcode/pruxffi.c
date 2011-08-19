@@ -214,6 +214,23 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
       }
   }
 }
+
+DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
+{
+  /* Copy, from ALIEN+OFFSET, COUNT bytes to STRING[START..]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    const void * src = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    void * dest = STRING_LOC (string, index);
+    memcpy (dest, src, count);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
 
 #define C_POKER(type, value_arg_ref)					\
 {									\
@@ -302,6 +319,23 @@ DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
     unsigned long n_chars = ((STRING_LENGTH (string)) + 1);
     strncpy (ptr, (STRING_POINTER (string)), n_chars);
     set_alien_address ((ARG_REF (1)), (ptr + n_chars));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("C-POKE-BYTES", Prim_poke_bytes, 5, 5, 0)
+{
+  /* Copy to ALIEN+OFFSET COUNT bytes from STRING[START]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    void * dest = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    const void * src = STRING_LOC (string, index);
+    memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

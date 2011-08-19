@@ -3271,10 +3271,12 @@ USA.
 	  c-peek-cstring!
 	  c-peek-cstringp
 	  c-peek-cstringp!
+	  c-peek-bytes
 	  c-poke-pointer
 	  c-poke-pointer!
 	  c-poke-string
 	  c-poke-string!
+	  c-poke-bytes
 	  c-enum-name
 	  call-alien
 	  make-alien-to-free
