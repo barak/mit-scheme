@@ -654,7 +654,8 @@ USA.
 		(lambda () (channel-port channel))
 		(lambda (port) (set-channel-port! channel port))
 		(lambda () (channel-open? channel))
-		(lambda () (channel-close channel))
+		(lambda () ;; channel-close provided by maybe-close-channels
+		  unspecific)
 		(lambda () (channel-has-input? channel))
 		(lambda (string start end)
 		  (channel-read channel string start end))))
@@ -694,7 +695,8 @@ USA.
 	      (lambda () (channel-port channel))
 	      (lambda (port) (set-channel-port! channel port))
 	      (lambda () (channel-open? channel))
-	      (lambda () (channel-close channel))
+	      (lambda () ;; channel-close provided by maybe-close-channels
+		unspecific)
 	      (lambda (string start end)
 		(channel-write channel string start end))))
 
@@ -755,6 +757,7 @@ USA.
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
+  ((source/close (input-buffer-source ib)))
   (set-input-buffer-line! ib -1)
   (set-input-buffer-prev! ib -1)
   (set-input-buffer-start! ib -1)
@@ -997,6 +1000,7 @@ USA.
   (if (output-buffer-open? ob)
       (begin
 	(force-drain-output-buffer ob)
+	((sink/close (output-buffer-sink ob)))
 	(set-output-buffer-start! ob -1))))
 
 (define (output-buffer-channel ob)

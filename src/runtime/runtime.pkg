@@ -561,6 +561,21 @@ USA.
 	  queue-map!
 	  queue->list))
 
+(define-package (runtime thread-queue)
+  (files "thread-queue")
+  (parent (runtime))
+  (export ()
+	  make-thread-queue
+	  thread-queue/empty?
+	  thread-queue/empty!
+	  thread-queue/queue!
+	  thread-queue/queue-no-hang!
+	  thread-queue/push!
+	  thread-queue/dequeue!
+	  thread-queue/peek-no-hang
+	  thread-queue/peek-until
+	  thread-queue/peek))
+
 (define-package (runtime simple-file-ops)
   (files "sfile")
   (parent (runtime))
@@ -3271,10 +3286,12 @@ USA.
 	  c-peek-cstring!
 	  c-peek-cstringp
 	  c-peek-cstringp!
+	  c-peek-bytes
 	  c-poke-pointer
 	  c-poke-pointer!
 	  c-poke-string
 	  c-poke-string!
+	  c-poke-bytes
 	  c-enum-name
 	  call-alien
 	  make-alien-to-free
@@ -3282,7 +3299,7 @@ USA.
 	  free
 	  register-c-callback
 	  de-register-c-callback
-	  outf-console)
+	  outf-error)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)
@@ -4883,6 +4900,8 @@ USA.
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
 	  prompt-for-expression
+	  prompt-for-string
+	  call-with-pass-phrase
 	  with-notification)
   (export (runtime rep)
 	  port/set-default-environment

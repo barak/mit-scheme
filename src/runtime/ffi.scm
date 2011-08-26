@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Matthew Birkholz
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,6 +95,11 @@ USA.
 (define (alien/address alien)
   (+ (* (%alien/high-bits alien) (radix))
      (%alien/low-bits alien)))
+
+(define (%set-alien/address! alien address)
+  (let ((qr (integer-divide address (radix))))
+    (set-%alien/high-bits! alien (integer-divide-quotient qr))
+    (set-%alien/low-bits! alien (integer-divide-remainder qr))))
 
 (declare (integrate-operator copy-alien-address!))
 (define (copy-alien-address! alien source)
@@ -267,19 +272,22 @@ USA.
 	    (error:bad-range-argument afunc 'alien-function-cache!))
 	(set-%alien-function/band-id! afunc band-id))))
 
-(define (c-peek-cstring alien)
+(define-integrable (c-peek-cstring alien)
   ((ucode-primitive c-peek-cstring 2) alien 0))
 
-(define (c-peek-cstring! alien)
+(define-integrable (c-peek-cstring! alien)
   ((ucode-primitive c-peek-cstring! 2) alien 0))
 
-(define (c-peek-cstringp alien)
+(define-integrable (c-peek-cstringp alien)
   ((ucode-primitive c-peek-cstringp 2) alien 0))
 
-(define (c-peek-cstringp! alien)
+(define-integrable (c-peek-cstringp! alien)
   ((ucode-primitive c-peek-cstringp! 2) alien 0))
 
-(define (c-poke-pointer dest alien)
+(define-integrable (c-peek-bytes alien offset count buffer start)
+  ((ucode-primitive c-peek-bytes 5) alien offset count buffer start))
+
+(define-integrable (c-poke-pointer dest alien)
   ;; Sets the pointer at the alien DEST to point to the ALIEN.
   ((ucode-primitive c-poke-pointer 3) dest 0 alien))
 
@@ -297,6 +305,9 @@ USA.
   ;; STRING length.
   (guarantee-string string 'C-POKE-STRING)
   ((ucode-primitive c-poke-string! 3) alien 0 string))
+
+(define-integrable (c-poke-bytes alien offset count buffer start)
+  ((ucode-primitive c-poke-bytes 5) alien offset count buffer start))
 
 (define (c-enum-name value enum-name constants)
   enum-name
@@ -322,15 +333,15 @@ USA.
 
 (define (call-alien* alien-function args)
   (let ((old-top calloutback-stack))
-    (if-tracing
-     (outf-console ";"(tindent)"=> "alien-function" "args"\n")
+    (%if-tracing
+     (outf-error ";"(tindent)"=> "alien-function" "args"\n")
      (set! calloutback-stack (cons (cons* alien-function args) old-top)))
     (let ((value (apply (ucode-primitive c-call -1) alien-function args)))
-      (if-tracing
-       (assert (eq? old-top (cdr calloutback-stack))
-	       "call-alien: freak stack "calloutback-stack"\n")
+      (%if-tracing
+       (%assert (eq? old-top (cdr calloutback-stack))
+		"call-alien: freak stack "calloutback-stack"\n")
        (set! calloutback-stack old-top)
-       (outf-console ";"(tindent)"<= "value"\n"))
+       (outf-error ";"(tindent)"<= "value"\n"))
       value)))
 
 
@@ -469,16 +480,16 @@ USA.
 	(error:bad-range-argument id 'apply-callback))
     (normalize-aliens! args)
     (let ((old-top calloutback-stack))
-      (if-tracing
-       (outf-console ";"(tindent)"=>> "procedure" "args"\n")
+      (%if-tracing
+       (outf-error ";"(tindent)"=>> "procedure" "args"\n")
        (set! calloutback-stack (cons (cons procedure args) old-top)))
       (let ((value (apply-callback-proc procedure args)))
-	(if-tracing
-	 (assert (and (pair? calloutback-stack)
-		      (eq? old-top (cdr calloutback-stack)))
-		 "callback-handler: freak stack "calloutback-stack"\n")
+	(%if-tracing
+	 (%assert (and (pair? calloutback-stack)
+		       (eq? old-top (cdr calloutback-stack)))
+		  "callback-handler: freak stack "calloutback-stack"\n")
 	 (set! calloutback-stack old-top)
-	 (outf-console ";"(tindent)"<<= "value"\n"))
+	 (outf-error ";"(tindent)"<<= "value"\n"))
 	value))))
 
 (define (apply-callback-proc procedure args)
@@ -501,12 +512,24 @@ USA.
 		(error "Cannot return from a callback more than once.")
 		(loop)))))))))
 
-;; For callback debugging...
-(define (outf-console . objects)
-  ((ucode-primitive outf-console 1)
+;;; For callback debugging:
+
+(define (outf-error . objects)
+  ((ucode-primitive outf-error 1)
    (apply string-append
 	  (map (lambda (o) (if (string? o) o (write-to-string o)))
 	       objects))))
+
+(define (registered-callback-count)
+  (let* ((vector registered-callbacks)
+	 (end (vector-length vector)))
+    (let loop ((i 0)(count 0))
+      (if (fix:< i end)
+	  (loop (fix:1+ i)
+		(if (vector-ref vector i)
+		    (fix:1+ count)
+		    count))
+	  (cons count end)))))
 
 (define (initialize-callbacks!)
   (vector-set! (get-fixed-objects-vector) #x41 callback-handler))
@@ -514,14 +537,14 @@ USA.
 
 (define calloutback-stack '())
 
-(define trace? #f)
+(define %trace? #f)
 
 (define (reset-package!)
   (reset-alien-functions!)
   (reset-malloced-aliens!)
   (reset-callbacks!)
   (set! %radix (if (fix:fixnum? #x100000000) #x100000000 #x10000))
-  (set! trace? #f)
+  (set! %trace? #f)
   (set! calloutback-stack '()))
 
 (define (initialize-package!)
@@ -531,20 +554,20 @@ USA.
   (add-gc-daemon! free-malloced-aliens)
   unspecific)
 
-(define-syntax if-tracing
+(define-syntax %if-tracing
   (syntax-rules ()
     ((_ . BODY)
-     (if trace? ((lambda () . BODY))))))
+     (if %trace? ((lambda () . BODY))))))
 
-(define-syntax assert
+(define-syntax %assert
   (syntax-rules ()
     ((_ TEST . MSG)
      (if (not TEST) (error "Failed assert:" . MSG)))))
 
-(define-syntax trace
+(define-syntax %trace
   (syntax-rules ()
     ((_ . MSG)
-     (if trace? ((lambda () (outf-console . MSG)))))))
+     (if %trace? ((lambda () (outf-error . MSG)))))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))

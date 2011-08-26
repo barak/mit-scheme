@@ -173,22 +173,63 @@ DEFINE_PRIMITIVE ("C-PEEK-CSTRING!", Prim_peek_cstring_bang, 2, 2, 0)
 }
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP", Prim_peek_cstringp, 2, 2, 0)
-  C_PEEKER (char_pointer_to_string, char *)
+{
+  /* Follow the pointer at the address ALIEN+OFFSET to a C string.
+     Copy the C string into the heap and return the new Scheme
+     string.  If the pointer is null, return (). */
+
+  PRIMITIVE_HEADER (2);
+  {
+    char ** ptr = (ALIEN_ADDRESS_LOC (char *));
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	PRIMITIVE_RETURN (char_pointer_to_string (*ptr));
+      }
+  }
+}
 
 DEFINE_PRIMITIVE ("C-PEEK-CSTRINGP!", Prim_peek_cstringp_bang, 2, 2, 0)
 {
   /* Follow the pointer at the address ALIEN+OFFSET to a C string.
      Set ALIEN to the address of the char pointer after ALIEN+OFFSET.
      Copy the C string into the heap and return the new Scheme
-     string. */
+     string.  If the pointer is null, return (). */
 
   PRIMITIVE_HEADER (2);
   {
     char ** ptr = (ALIEN_ADDRESS_LOC (char *));
-    SCM string = char_pointer_to_string (*ptr);
-    set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
-    PRIMITIVE_RETURN (string);
+    if (*ptr == NULL)
+      {
+	PRIMITIVE_RETURN (EMPTY_LIST);
+      }
+    else
+      {
+	SCM string = char_pointer_to_string (*ptr);
+	set_alien_address ((ARG_REF (1)), (ptr + 1)); /* No more aborts! */
+	PRIMITIVE_RETURN (string);
+      }
   }
+}
+
+DEFINE_PRIMITIVE ("C-PEEK-BYTES", Prim_peek_bytes, 5, 5, 0)
+{
+  /* Copy, from ALIEN+OFFSET, COUNT bytes to STRING[START..]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    const void * src = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    void * dest = STRING_LOC (string, index);
+    memcpy (dest, src, count);
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 #define C_POKER(type, value_arg_ref)					\
@@ -278,6 +319,23 @@ DEFINE_PRIMITIVE ("C-POKE-STRING!", Prim_poke_string_bang, 3, 3, 0)
     unsigned long n_chars = ((STRING_LENGTH (string)) + 1);
     strncpy (ptr, (STRING_POINTER (string)), n_chars);
     set_alien_address ((ARG_REF (1)), (ptr + n_chars));
+  }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("C-POKE-BYTES", Prim_poke_bytes, 5, 5, 0)
+{
+  /* Copy to ALIEN+OFFSET COUNT bytes from STRING[START]. */
+
+  PRIMITIVE_HEADER (5);
+  CHECK_ARG (4, STRING_P);
+  {
+    void * dest = (ALIEN_ADDRESS_LOC (void *));
+    int count = (UNSIGNED_FIXNUM_ARG (3));
+    SCM string = (ARG_REF (4));
+    int index = arg_index_integer (5, (STRING_LENGTH (string)));
+    const void * src = STRING_LOC (string, index);
+    memcpy (dest, src, count);
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
@@ -974,7 +1032,7 @@ empty_list (void)
   return (EMPTY_LIST);
 }
 
-DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
+DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
 {
   /* To avoid the normal i/o system when debugging a callback. */
 
@@ -984,8 +1042,8 @@ DEFINE_PRIMITIVE ("OUTF-CONSOLE", Prim_outf_console, 1, 1, 0)
     if (STRING_P (arg))
       {
 	char * string = ((char *) STRING_LOC (arg, 0));
-	outf_console ("%s", string);
-	outf_flush_console ();
+	outf_error ("%s", string);
+	outf_flush_error ();
       }
     else
       {

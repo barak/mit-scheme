@@ -165,6 +165,110 @@ USA.
 	     (beep port)
 	     (flush-output port)))
 	 (loop))))))
+
+(define (prompt-for-string prompt #!optional port)
+  ;; Returns a string (the normal, "cooked" input line) or eof-object.
+  (let ((port (if (default-object? port) (interaction-i/o-port) port)))
+    (let ((operation (port/operation port 'PROMPT-FOR-STRING)))
+      (if operation
+	  (operation port prompt)
+	  (default/prompt-for-string port prompt)))))
+
+(define (default/prompt-for-string port prompt)
+  (port/with-output-terminal-mode port 'COOKED
+    (lambda ()
+      (fresh-line port)
+      (newline port)
+      (write-string prompt port)
+      (flush-output port)))
+  (port/with-input-terminal-mode port 'COOKED
+    (lambda ()
+      (read-line port))))
+
+(define (call-with-pass-phrase prompt receiver #!optional port)
+  ;; Returns a string or eof-object -- the normal, "cooked but not
+  ;; echoed" input line.
+  (let ((port (if (default-object? port) (interaction-i/o-port) port)))
+    (let ((operation (port/operation port 'CALL-WITH-PASS-PHRASE)))
+      (if operation
+	  (operation port prompt receiver)
+	  (default/call-with-pass-phrase port prompt receiver)))))
+
+(define (default/call-with-pass-phrase port prompt receiver)
+  ;; Kludge: Uses RAW mode and "cooks" #\backspace, #\return, etc.
+  ;; without regard for the tty's current "special characters".
+  ;; Signals an error if PORT is not an i/o port.
+
+  (define (del-char str)
+    (let ((l (string-length str)))
+      (if (fix:> l 0)
+	  (set-string-length! str (fix:-1+ l))))
+    str)
+
+  (define (add-char str char)
+    (let ((i (string-length str))
+	  (max (if (string-null? str) 0 (string-maximum-length str))))
+      (if (fix:< i max)
+	  (begin
+	    (set-string-length! str (fix:1+ i))
+	    (string-set! str i char)
+	    str)
+	  (let ((new (string-allocate (fix:+ 10 i))))
+	    (if (not (string-null? str))
+		(begin
+		  (substring-move! str 0 i new 0)
+		  (set-string-length! str (string-maximum-length str))
+		  (string-fill! str #\delete)))
+	    (set-string-length! new (fix:1+ i))
+	    (string-set! new i char)
+	    new))))
+
+  (define-integrable (with-binary-line-ending thunk)
+    (let ((outside))
+      (dynamic-wind
+	  (lambda ()
+	    (if (port/open? port)
+		(begin
+		  (set! outside (port/line-ending port))
+		  (port/set-line-ending port 'BINARY))))
+	  thunk
+	  (lambda ()
+	    (if (port/open? port)
+		(begin
+		  (port/set-line-ending port outside)
+		  (set! outside)))))))
+
+  (guarantee-i/o-port port 'default/call-with-pass-phrase)
+  (port/with-output-terminal-mode port 'COOKED
+    (lambda ()
+      (fresh-line port)
+      (newline port)
+      (write-string (canonicalize-prompt prompt ": ") port)
+      (flush-output port)))
+  (let loop ((input ""))
+    (let ((char (with-binary-line-ending
+		 (lambda ()
+		   (port/with-input-terminal-mode port 'RAW
+		     (lambda ()
+		       (read-char port)))))))
+      (cond ((or (eof-object? char)
+		    (char=? char #\return)
+		    (char=? char #\linefeed))
+		(receiver input)
+		(set-string-length! input (string-maximum-length input))
+		(string-fill! input #\delete)
+		(port/with-output-terminal-mode port 'COOKED
+		  (lambda ()
+		    (newline port)))
+		unspecific)
+	    ((or (char=? char #\backspace)
+		 (char=? char #\delete))
+	     (loop (del-char input)))
+	    ((char=? char #\U+15)
+	     (set-string-length! input 0)
+	     (loop input))
+	    (else
+	     (loop (add-char input char)))))))
 
 (define (canonicalize-prompt prompt suffix)
   (if (let ((length (string-length prompt)))

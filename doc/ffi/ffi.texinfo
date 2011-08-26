@@ -589,11 +589,11 @@ balk at a callback procedure that calls @code{yield-thread}, waits for
 I/O, sleeps, or otherwise causes a thread switch.  Presumably such a
 procedure has some other way of enforcing the LIFO ordering.
 
-The @code{outf-console} procedure is provided for debugging purposes.
+The @code{outf-error} procedure is provided for debugging purposes.
 It writes one or more argument strings (and @code{write}s any
-non-strings) to the console and flushes, atomically, via a machine
+non-strings) to the Unix ``stderr'' channel, atomically, via a machine
 primitive, bypassing the runtime's I/O buffering and thread switching.
-Thus multiple debugging trace messages arrive on the console intact
+Thus trace messages from multiple threads will appear on stderr intact
 and uninterrupted.
 
 
