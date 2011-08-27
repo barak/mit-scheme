@@ -430,7 +430,7 @@ weakly.
 @findex eq?
 This is an alias for @code{make-weak-eq-hash-table}.
 
-@strong{Warning}:  This become an alias
+@strong{Warning}:  This will become an alias for
 @code{make-strong-eq-hash-table} instead.  We recommend that you use
 @code{make-weak-eq-hash-table} explicitly for weak hash tables.
 @end deffn
@@ -455,7 +455,7 @@ are held strongly.
 @findex eqv?
 This is an alias for @code{make-weak-eqv-hash-table}.
 
-@strong{Warning}:  This become an alias for
+@strong{Warning}:  This will become an alias for
 @code{make-strong-eqv-hash-table} instead.  We recommend that you use
 @code{make-weak-eqv-hash-table} explicitly for weak hash tables.
 @end deffn
