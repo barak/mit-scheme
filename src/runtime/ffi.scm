@@ -556,18 +556,21 @@ USA.
 
 (define-syntax %if-tracing
   (syntax-rules ()
-    ((_ . BODY)
-     (if %trace? ((lambda () . BODY))))))
+    ((_ BODY ...)
+     (if %trace?
+	 (begin BODY ...)))))
 
 (define-syntax %assert
   (syntax-rules ()
-    ((_ TEST . MSG)
-     (if (not TEST) (error "Failed assert:" . MSG)))))
+    ((_ TEST MSG ...)
+     (if (not TEST)
+	 (error "Failed assert:" MSG ...)))))
 
 (define-syntax %trace
   (syntax-rules ()
-    ((_ . MSG)
-     (if %trace? ((lambda () (outf-error . MSG)))))))
+    ((_ MSG ...)
+     (if %trace?
+	 (outf-error MSG ...)))))
 
 (define (tindent)
   (make-string (* 2 (length calloutback-stack)) #\space))
