@@ -323,24 +323,24 @@ USA.
     (discard-known-char #\return input)
     (discard-known-char #\linefeed input)
     (let loop ((i 0))
-      (if (fix:< i n)
-	  (let ((i (fix:+ i 1))
+      (if (< i n)
+	  (let ((i (+ i 1))
 		(char (read-char-no-eof input)))
 	    (if (and (char=? char #\return)
-		     (fix:< i n)
+		     (< i n)
 		     (char=? (peek-char-no-eof input) #\linefeed))
 		(begin
 		  (discard-char input)
 		  (newline output)
 		  (if (and progress-hook
-			   (or (fix:= (fix:remainder i 4096) 0)
-			       (fix:= (fix:remainder i 4096) 4095)))
+			   (or (= (remainder i 4096) 0)
+			       (= (remainder i 4096) 4095)))
 		      (progress-hook i n))
-		  (loop (fix:+ i 1)))
+		  (loop (+ i 1)))
 		(begin
 		  (write-char char output)
 		  (if (and progress-hook
-			   (fix:= (fix:remainder i 4096) 0))
+			   (= (remainder i 4096) 0))
 		      (progress-hook i n))
 		  (loop i))))))))
 
@@ -552,8 +552,7 @@ USA.
 (define (read-substring!-internal string start end port)
   (let ((n-read (read-substring! string start end port)))
     (if imap-transcript-port
-	(write-substring string start (fix:+ start n-read)
-			 imap-transcript-port))
+	(write-substring string start (+ start n-read) imap-transcript-port))
     n-read))
 
 (define (start-imap-transcript pathname)
