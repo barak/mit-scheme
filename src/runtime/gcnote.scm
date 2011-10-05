@@ -69,9 +69,9 @@ USA.
 		 (newline)
 		 (write-string
 		  (string-pad-right (string-append label ": ") 17))
-		 (write-number n-words 8)
+		 (write-number n-words 9)
 		 (write-string " words = ")
-		 (write-number (quotient n-words 1024) 5)
+		 (write-number (quotient n-words 1024) 6)
 		 (write-string " blocks")
 		 (let ((n-words (remainder n-words 1024)))
 		   (write-string " + ")

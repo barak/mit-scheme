@@ -1,6 +1,9 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -317,8 +320,8 @@ Scm_"name" (void)
 	 (string-append (decl-string (ctype-pointer/target-type ctype))
 			" *"))
 	((ctype/const? ctype)
-	 (string-append "const "
-			(decl-string (ctype-const/qualified-type ctype))))
+	 (string-append (decl-string (ctype-const/qualified-type ctype))
+			" const"))
 	((ctype/struct-name? ctype)
 	 (string-append "struct " (symbol-name (ctype-struct/name ctype))))
 	((ctype/union-name? ctype)

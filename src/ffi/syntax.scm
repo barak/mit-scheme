@@ -1,6 +1,9 @@
 #| -*-Scheme-*-
 
-Copyright (C) 2006, 2007, 2008, 2009, 2010 Matthew Birkholz
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -227,7 +230,7 @@ USA.
       (lambda (name value-form)
 	(let* ((includes (find-c-includes usage-env)))
 	  (if (not value-form)
-	      (lookup-enum-value name form includes)
+	      (lookup-enum-value name includes)
 	      (if (integer? value-form)
 		  (c-enum-name value-form name
 				(c-enum-constant-values name form includes))
@@ -235,10 +238,12 @@ USA.
 			(constants (c-enum-constant-values name form includes)))
 		    `(C-ENUM-NAME ,value ',name ',constants))))))))))
 
-(define (lookup-enum-value name whole-form includes)
+(define (lookup-enum-value name includes)
   (let ((entry (assq name (c-includes/enum-values includes))))
     (if (not entry)
-	(serror whole-form "constant not declared")
+	(begin
+	  (warn "no declaration of constant:" name)
+	  0)
 	(cdr entry))))
 
 (define (c-enum-constant-values name form includes)
@@ -425,7 +430,7 @@ USA.
 			(if (pair? entry)
 			    (cdr entry)
 			    (begin
-			      (warn "no declaration of C function:" func-name)
+			      (warn "no declaration of callout:" func-name)
 			      func-name)))))
 	  `(CALL-ALIEN ,alien
 		       . ,(map (lambda (form) (close-syntax form usage-env))
@@ -457,7 +462,9 @@ USA.
 		   (name (string->symbol obj)))
 	      (let ((entry (assq name callbacks)))
 		(if (pair? entry) (cdr entry)
-		    (serror form "C function not declared"))))
+		    (begin
+		      (warn "no declaration of callback:" name)
+		      name))))
 	    (let ((value-form (close-syntax obj usage-env)))
 	      `(REGISTER-C-CALLBACK ,value-form))))))))
 

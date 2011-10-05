@@ -326,7 +326,6 @@ void
 std_gc_pt2 (void)
 {
   SCHEME_OBJECT * p = (get_newspace_ptr ());
-  OS_free_pages (heap_start, heap_end);
   (void) save_tospace (save_tospace_copy, 0);
   Free = p;
 
