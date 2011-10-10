@@ -138,6 +138,7 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #endif
 
 extern SCHEME_OBJECT * Free;
+extern SCHEME_OBJECT * Free_primitive;
 extern SCHEME_OBJECT * heap_alloc_limit;
 extern SCHEME_OBJECT * heap_start;
 extern SCHEME_OBJECT * heap_end;

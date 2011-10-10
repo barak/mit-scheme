@@ -119,6 +119,7 @@ USA.
 {									\
   void * PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
   SET_PRIMITIVE (primitive);						\
+  Free_primitive = Free;						\
   SET_VAL								\
     ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
      ());								\
@@ -129,6 +130,7 @@ USA.
 		  (PRIMITIVE_NAME (primitive)));			\
       Microcode_Termination (TERM_EXIT);				\
     }									\
+  Free_primitive = 0;							\
   SET_PRIMITIVE (SHARP_F);						\
 } while (0)
 

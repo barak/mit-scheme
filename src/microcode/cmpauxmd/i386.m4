@@ -563,12 +563,17 @@ define_c_label(within_c_stack)
 	OP(push,l)	REG(ebp)			# Save frame pointer
 	OP(mov,l)	TW(REG(esp),REG(ebp))
 	OP(mov,l)	TW(REG(eax),REG(esp))		# Switch to C stack
+	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
+	OP(push,l)	IMM(0)				# Align sp to 16 bytes
 	OP(push,l)	REG(ebp)			# Save stack pointer
 	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
 	call		IJMP(LOF(8,REG(ebp)))		# Call function
 
 define_debugging_label(within_c_stack_restore)
 	OP(pop,l)	REG(eax)			# Pop argument
+	OP(mov,l)	TW(REG(esp),REG(eax))		# Restore C stack ptr
+	OP(add,l)	TW(IMM(8),REG(eax))
+	OP(mov,l)	TW(REG(eax),EVR(C_Stack_Pointer))
 	OP(pop,l)	REG(esp)			# Restore stack pointer
 							#   and switch back to
 							#   Scheme stack
@@ -578,6 +583,7 @@ define_debugging_label(within_c_stack_restore)
 define_debugging_label(within_c_stack_from_c)
 	OP(push,l)	REG(ebp)			# Save a frame pointer,
 	OP(mov,l)	TW(REG(esp),REG(ebp))		#   for debuggers.
+	OP(push,l)	IMM(0)				# Align sp to 16 bytes
 	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
 	call		IJMP(LOF(8,REG(ebp)))
 	leave

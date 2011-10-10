@@ -44,20 +44,20 @@ USA.
 ;; generation (from PRE-LAPGEN-ANALYSIS.)
 
 (define (get-entry-interrupt-checks)
-  (get-interupt-checks 'ENTRY-INTERRUPT-CHECKS))
+  (get-interrupt-checks 'ENTRY-INTERRUPT-CHECKS))
 
 (define (get-exit-interrupt-checks)
-  (get-interupt-checks 'EXIT-INTERRUPT-CHECKS))
+  (get-interrupt-checks 'EXIT-INTERRUPT-CHECKS))
 
 (define (expect-no-entry-interrupt-checks)
-  (if (not (null? (get-entry-interrupt-checks)))
+  (if (pair? (get-entry-interrupt-checks))
       (error "No entry interrupt checks expected here" *current-bblock*)))
 
 (define (expect-no-exit-interrupt-checks)
-  (if (not (null? (get-exit-interrupt-checks)))
+  (if (pair? (get-exit-interrupt-checks))
       (error "No exit interrupt checks expected here" *current-bblock*)))
 
-(define (get-interupt-checks kind)
+(define (get-interrupt-checks kind)
   (or (cfg-node-get *current-bblock* kind)
       (error "DETERMINE-INTERRUPT-CHECKS failed" kind)))
 
@@ -92,7 +92,7 @@ USA.
     (define (explore bblock)
       (or (cfg-node-get bblock 'INTERRUPT-CHECK-EXPLORE)
 	  (begin
-	    (cfg-node-put! bblock 'INTERRUPT-CHECK-EXPLORE #T)
+	    (cfg-node-put! bblock 'INTERRUPT-CHECK-EXPLORE #t)
 	    (if (node-previous=0? bblock)
 		(set! entries (cons bblock entries))
 		(if (rtl:continuation-entry?
@@ -130,7 +130,7 @@ USA.
     (define upward   (propagator for-each-previous-node))
     (define downward (propagator for-each-subsequent-node))
 
-    (define (setting-flag old) old #T)
+    (define (setting-flag old) old #t)
 
     (define (propagate-entry-info bblock)
       (let ((insn (rinst-rtl (bblock-instructions bblock))))

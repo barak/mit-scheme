@@ -334,9 +334,9 @@ USA.
 			      "refctx" "rvalue" "scode" "sets" "subprb"
 			      "switch" "utils")
 	     (filename/append "back"
-			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
-			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
-			      "syntax")
+			      "asmmac" "bittop" "bitutl" "checks" "insseq"
+			      "lapgn1" "lapgn2" "lapgn3" "linear" "regmap"
+			      "symtab" "syntax")
 	     (filename/append "machines/x86-64"
 			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
 			      "rulrew")
@@ -409,7 +409,7 @@ USA.
 		  (filename/append "machines/x86-64" "insutl")))
 	 (lapgen-body
 	  (append
-	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
+	   (filename/append "back" "checks" "lapgn1" "lapgn2" "syntax")
 	   (filename/append "machines/x86-64"
 			    "rules1" "rules2" "rules3" "rules4"
 			    "rulfix" "rulflo")))
@@ -544,6 +544,9 @@ USA.
     (file-dependency/integration/join (append assembler-base assembler-body)
 				      assembler-base)
 
+    (define-integration-dependencies "back" "checks" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "back" "checks" "rtlbase"
+      "rtlcfg" "rtlobj" "rtlty1")
     (define-integration-dependencies "back" "lapgn1" "base"
       "cfg1" "cfg2" "utils")
     (define-integration-dependencies "back" "lapgn1" "rtlbase"

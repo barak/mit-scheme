@@ -104,9 +104,10 @@ USA.
    (lambda (form rename compare)
      compare				;ignore
      (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
-	 `(,(rename 'CALL-WITH-VALUES)
-	   (,(rename 'LAMBDA) () ,(caddr form))
-	   (,(rename 'LAMBDA) ,(cadr form) ,@(cdddr form)))
+	 (let ((r-lambda (rename 'LAMBDA)))
+	   `(,(rename 'CALL-WITH-VALUES)
+	     (,r-lambda () ,(caddr form))
+	     (,r-lambda ,(cadr form) ,@(cdddr form))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax :define-record-type
@@ -190,19 +191,21 @@ USA.
 		       (kernel (make-synthetic-identifier 'KERNEL))
 		       (temps (map (lambda (b)
 				     (declare (ignore b))
-				     (make-synthetic-identifier 'TEMP)) bindings)))
-		   `((,(rename 'LAMBDA) (,kernel)
+				     (make-synthetic-identifier 'TEMP)) bindings))
+		       (r-lambda (rename 'LAMBDA))
+		       (r-declare (rename 'DECLARE)))
+		   `((,r-lambda (,kernel)
 		      (,kernel ,kernel ,@(map (lambda (binding)
 						(if (pair? (cdr binding))
 						    (cadr binding)
 						    (unassigned-expression)))
 					      bindings)))
-		     (,(rename 'LAMBDA) (,iter ,@(map car bindings))
-		      ((,(rename 'LAMBDA) (,name)
-			(,(rename 'DECLARE) (INTEGRATE-OPERATOR ,name))
+		     (,r-lambda (,iter ,@(map car bindings))
+		      ((,r-lambda (,name)
+			(,r-declare (INTEGRATE-OPERATOR ,name))
 			,@body)
-		       (,(rename 'LAMBDA) ,temps
-			(,(rename 'DECLARE) (INTEGRATE ,@temps))
+		       (,r-lambda ,temps
+			(,r-declare (INTEGRATE ,@temps))
 			(,iter ,iter ,@temps)))))))
 		(else (error "Unrecognized named-let-strategy: " named-let-strategy)))))
 	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
@@ -543,7 +546,7 @@ USA.
 	      `(,r-begin
 		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
 		(,r-define ,(cadr form)
-			    (,r-declare (INTEGRATE ,@(cdadr form)))
+			   (,r-declare (INTEGRATE ,@(cdadr form)))
 			   ,@(cddr form))))
 	     (else
 	      (ill-formed-syntax form)))))))
