@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -182,7 +183,7 @@ USA.
     (parse-digits string start end 0 exactness radix
       (lambda (start* integer exactness sharp?)
 	sharp?
-	(and (> start* start) ; >0 denominator digits 
+	(and (> start* start) ; >0 denominator digits
 	     (parse-complex string start* end
 			    (finish integer exactness sign)
 			    exactness radix sign))))))
@@ -254,8 +255,7 @@ USA.
 	  (finish-real integer exponent exactness sign)
 	  (parse-decimal-5 string start end
 			   integer exponent exactness sign))))
-			   
-  
+
   (and (fix:< start end)
        (let ((esign (string-ref string start)))
 	 (if (sign? esign)
@@ -345,7 +345,7 @@ USA.
     (apply-exactness exactness
 		     (* (apply-sign sign integer)
 			(expt 10 exponent))))
-   
+
   (if (or (eq? 'INEXACT exactness) (eq? 'IMPLICIT-INEXACT exactness))
       (let ((abs-exponent (if (< exponent 0) (- exponent) exponent))
 	    (powers-of-10 exact-flonum-powers-of-10))

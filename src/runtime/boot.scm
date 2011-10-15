@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -125,7 +126,7 @@ USA.
   ((ucode-primitive with-interrupt-mask)
    (fix:and limit-mask (get-interrupt-enables))
    procedure))
-
+
 (define (object-constant? object)
   ((ucode-primitive constant?) object))
 
@@ -141,6 +142,15 @@ USA.
 
 (define-integrable (default-object)
   ((ucode-primitive object-set-type) (ucode-type constant) 7))
+
+(define (load-with-boot-inits! . arguments)
+  (receive (value inits)
+      (fluid-let ((boot-inits '()))
+	(let ((value (apply load arguments)))
+	  (values value (reverse! boot-inits))))
+    (for-each (lambda (init) (init))
+	      inits)
+    value))
 
 (define (init-boot-inits!)
   (set! boot-inits '())
@@ -160,7 +170,9 @@ USA.
 (define (run-boot-inits! environment)
   (and (not (lexical-unreferenceable? environment saved-boot-inits))
        (let ((inits
-	      ((ucode-primitive lexical-reference) environment saved-boot-inits)))
+	      ((ucode-primitive lexical-reference)
+	       environment
+	       saved-boot-inits)))
 	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
 	 (for-each (lambda (init) (init))
 		   inits))))

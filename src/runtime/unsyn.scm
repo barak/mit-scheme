@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -83,7 +84,7 @@ USA.
 	  (set-cdr! bound old)
 	  value))
       (action argument)))
-	   
+
 (define (unsyntax scode)
   (fluid-let ((bound (list #F '())))
     (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode))))
@@ -241,7 +242,7 @@ USA.
 	       unexpand-disjunction
 	       (lambda (predicate alternative)
 		 (list (unsyntax-object predicate)
-		       (unsyntax-object alternative)))))))	   
+		       (unsyntax-object alternative)))))))
 
 (define (unexpand-disjunction predicate alternative)
   `(,(unsyntax-object predicate)

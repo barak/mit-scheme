@@ -1,8 +1,9 @@
-#| -*-Scheme-*-
+#| -*- Mode: Scheme; keyword-style: none -*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -84,17 +85,18 @@ USA.
 (define supported-srfi-features
   '(MIT
     MIT/GNU
-    SRFI-0                              ;COND-EXPAND
-    SRFI-1                              ;List Library
-    SRFI-2                              ;AND-LET*
-    SRFI-6                              ;Basic String Ports
-    SRFI-8                              ;RECEIVE
-    SRFI-9                              ;DEFINE-RECORD-TYPE
-    SRFI-23                             ;ERROR
-    SRFI-27                             ;Sources of Random Bits
-    SRFI-30                             ;Nested Multi-Line Comments (#| ... |#)
-    SRFI-62                             ;S-expression comments
-    SRFI-69				;Basic Hash Tables
+    SWANK		       ;Provides SWANK module for SLIME
+    SRFI-0		       ;COND-EXPAND
+    SRFI-1		       ;List Library
+    SRFI-2		       ;AND-LET*
+    SRFI-6		       ;Basic String Ports
+    SRFI-8		       ;RECEIVE
+    SRFI-9		       ;DEFINE-RECORD-TYPE
+    SRFI-23		       ;ERROR
+    SRFI-27		       ;Sources of Random Bits
+    SRFI-30		       ;Nested Multi-Line Comments (#| ... |#)
+    SRFI-62		       ;S-expression comments
+    SRFI-69		       ;Basic Hash Tables
     ))
 
 (define-syntax :receive
@@ -102,9 +104,10 @@ USA.
    (lambda (form rename compare)
      compare				;ignore
      (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
-	 `(,(rename 'CALL-WITH-VALUES)
-	   (,(rename 'LAMBDA) () ,(caddr form))
-	   (,(rename 'LAMBDA) ,(cadr form) ,@(cdddr form)))
+	 (let ((r-lambda (rename 'LAMBDA)))
+	   `(,(rename 'CALL-WITH-VALUES)
+	     (,r-lambda () ,(caddr form))
+	     (,r-lambda ,(cadr form) ,@(cdddr form))))
 	 (ill-formed-syntax form)))))
 
 (define-syntax :define-record-type
@@ -161,6 +164,8 @@ USA.
 	(else
 	 (ill-formed-syntax form))))
 
+(define named-let-strategy 'letrec)
+
 (define-syntax :let
   (er-macro-transformer
    (lambda (form rename compare)
@@ -170,15 +175,39 @@ USA.
 	    (let ((name (cadr form))
 		  (bindings (caddr form))
 		  (body (cdddr form)))
-	      `((,(rename 'LETREC)
-		 ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
-						  ,@body)))
-		 ,name)
-		,@(map (lambda (binding)
-			 (if (pair? (cdr binding))
-			     (cadr binding)
-			     (unassigned-expression)))
-		       bindings))))
+	      (case named-let-strategy
+		((letrec)
+		 `((,(rename 'LETREC)
+		    ((,name (,(rename 'NAMED-LAMBDA) (,name ,@(map car bindings))
+			     ,@body)))
+		    ,name)
+		   ,@(map (lambda (binding)
+			    (if (pair? (cdr binding))
+				(cadr binding)
+				(unassigned-expression)))
+			  bindings)))
+		((fixed-point)
+		 (let ((iter (make-synthetic-identifier 'ITER))
+		       (kernel (make-synthetic-identifier 'KERNEL))
+		       (temps (map (lambda (b)
+				     (declare (ignore b))
+				     (make-synthetic-identifier 'TEMP)) bindings))
+		       (r-lambda (rename 'LAMBDA))
+		       (r-declare (rename 'DECLARE)))
+		   `((,r-lambda (,kernel)
+		      (,kernel ,kernel ,@(map (lambda (binding)
+						(if (pair? (cdr binding))
+						    (cadr binding)
+						    (unassigned-expression)))
+					      bindings)))
+		     (,r-lambda (,iter ,@(map car bindings))
+		      ((,r-lambda (,name)
+			(,r-declare (INTEGRATE-OPERATOR ,name))
+			,@body)
+		       (,r-lambda ,temps
+			(,r-declare (INTEGRATE ,@temps))
+			(,iter ,iter ,@temps)))))))
+		(else (error "Unrecognized named-let-strategy: " named-let-strategy)))))
 	   ((syntax-match? '((* (IDENTIFIER ? EXPRESSION)) + FORM) (cdr form))
 	    `(,keyword:let ,@(cdr (normalize-let-bindings form))))
 	   (else
@@ -195,13 +224,13 @@ USA.
 (define-syntax :let*
   (er-macro-transformer
    (lambda (form rename compare)
-     rename compare			;ignore
+     compare			;ignore
      (expand/let* form (rename 'LET)))))
 
 (define-syntax :let*-syntax
   (er-macro-transformer
    (lambda (form rename compare)
-     rename compare			;ignore
+     compare			;ignore
      (expand/let* form (rename 'LET-SYNTAX)))))
 
 (define (expand/let* form let-keyword)
@@ -527,40 +556,39 @@ USA.
    (lambda (form rename compare)
      compare
      (syntax-check '(KEYWORD (* (FORM ? EXPRESSION)) + FORM) form)
-     (let ((names (map car (cadr form)))
-	   (r-let (rename 'LET))
+     (let ((left-hand-sides (map car (cadr form)))
+	   (right-hand-sides (map cdr (cadr form)))
+	   (r-define (rename 'DEFINE))
 	   (r-lambda (rename 'LAMBDA))
-	   (r-set! (rename 'SET!)))
-       (let ((out-temps
-	      (map (lambda (name)
-		     name
-		     (make-synthetic-identifier 'OUT-TEMP))
-		   names))
-	     (in-temps
-	      (map (lambda (name)
-		     name
-		     (make-synthetic-identifier 'IN-TEMP))
-		   names))
-	     (swap
-	      (lambda (tos names froms)
-		`(,r-lambda ()
-			    ,@(map (lambda (to name from)
-				     `(,r-set! ,to
-					       (,r-set! ,name
-							(,r-set! ,from))))
-				   tos
-				   names
-				   froms)
-			    ,(unspecific-expression)))))
-	 `(,r-let (,@(map cons in-temps (map cdr (cadr form)))
-		   ,@(map list out-temps))
-		  (,(rename 'SHALLOW-FLUID-BIND)
-		   ,(swap out-temps names in-temps)
-		   (,r-lambda () ,@(cddr form))
-		   ,(swap in-temps names out-temps))))))))
+	   (r-let (rename 'LET))
+	   (r-set! (rename 'SET!))
+	   (r-shallow-fluid-bind (rename 'SHALLOW-FLUID-BIND))
+	   (r-unspecific (rename 'UNSPECIFIC)))
+       (let ((temporaries
+	      (map (lambda (lhs)
+		     (make-synthetic-identifier
+		      (if (identifier? lhs) lhs 'TEMPORARY)))
+		   left-hand-sides))
+	     (swap! (make-synthetic-identifier 'SWAP!))
+	     (body `(,r-lambda () ,@(cddr form))))
+	 `(,r-let ,(map cons temporaries right-hand-sides)
+	    (,r-define (,swap!)
+	      ,@(map (lambda (lhs temporary)
+		       `(,r-set! ,lhs (,r-set! ,temporary (,r-set! ,lhs))))
+		     left-hand-sides
+		     temporaries)
+	      ,r-unspecific)
+	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
 
 (define (unspecific-expression)
   `(,keyword:unspecific))
 
 (define (unassigned-expression)
   `(,keyword:unassigned))
+
+(define-syntax :begin0
+  (syntax-rules ()
+    ((BEGIN0 form0 form1+ ...)
+     (LET ((RESULT form0))
+       form1+ ...
+       RESULT))))

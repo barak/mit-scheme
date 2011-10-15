@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,12 +68,16 @@ USA.
   system-vector?
   (system-vector-length system-vector-size)
   system-vector-ref
-  system-vector-set!)
+  system-vector-set!
+
+  primitive-object-ref primitive-object-set!)
 
 (define (host-big-endian?)
   host-big-endian?-saved)
 
 (define host-big-endian?-saved)
+
+(define ephemeron-type)
 
 (define (initialize-package!)
   ;; Assumptions:
@@ -89,11 +94,15 @@ USA.
 	  ((#x00020100 #x0004030000020100) #f)
 	  (else (error "Unable to determine endianness of host."))))
   (add-secondary-gc-daemon! clean-obarray)
+  ;; Kludge until the next released version, to avoid a bootstrapping
+  ;; failure.
+  (set! ephemeron-type (microcode-type 'EPHEMERON))
   unspecific)
 
 ;;;; Potpourri
 
 (define (identity-procedure x) x)
+(define (constant-procedure k) (lambda args (declare (ignore args)) k))
 (define (null-procedure . args) args '())
 (define (false-procedure . args) args #f)
 (define (true-procedure . args) args #t)
@@ -116,36 +125,16 @@ USA.
 (define (limit-interrupts! limit-mask)
   (set-interrupt-enables! (fix:and limit-mask (get-interrupt-enables))))
 
-(define (object-component-binder get-component set-component!)
-  (lambda (object new-value thunk)
-    (let ((old-value))
-      (shallow-fluid-bind
-       (lambda ()
-	 (set! old-value (get-component object))
-	 (set-component! object new-value)
-	 (set! new-value #f)
-	 unspecific)
-       thunk
-       (lambda ()
-	 (set! new-value (get-component object))
-	 (set-component! object old-value)
-	 (set! old-value #f)
-	 unspecific)))))
+(define-integrable (object-component-binder get-component set-component!)
+  (lambda (object value thunk)
+    (define (swap!)
+      (let ((value* value))
+	(set! value (get-component object))
+	(set-component! object value*)))
+    (shallow-fluid-bind swap! thunk swap!)))
 
-(define (bind-cell-contents! cell new-value thunk)
-  (let ((old-value))
-    (shallow-fluid-bind
-     (lambda ()
-       (set! old-value (cell-contents cell))
-       (set-cell-contents! cell new-value)
-       (set! new-value)
-       unspecific)
-     thunk
-     (lambda ()
-       (set! new-value (cell-contents cell))
-       (set-cell-contents! cell old-value)
-       (set! old-value)
-       unspecific))))
+(define bind-cell-contents!
+  (object-component-binder cell-contents set-cell-contents!))
 
 (define (values . objects)
   (lambda (receiver)
@@ -461,3 +450,61 @@ USA.
   (for-each (lambda (p)
 	      (apply (cdr p) arguments))
 	    (hook-list-hooks hook-list)))
+
+;;;; Ephemerons
+
+;;; The layout of an ephemeron is as follows:
+;;;
+;;;   0 vector (marked or non-marked) manifest
+;;;   1 key
+;;;   2 datum
+;;;   3 extra
+;;;   .  slots
+;;;   .    for
+;;;   .      GC
+
+(define canonical-false (list 'FALSE))
+
+(define (canonicalize object)
+  (if (eq? object #f)
+      canonical-false
+      object))
+
+(define (decanonicalize object)
+  (if (eq? object canonical-false)
+      #f
+      object))
+
+(define (make-ephemeron key datum)
+  ((ucode-primitive MAKE-EPHEMERON 2) (canonicalize key) (canonicalize datum)))
+
+(define (ephemeron? object)
+  (object-type? ephemeron-type object))
+
+(define-guarantee ephemeron "ephemeron")
+
+(define (ephemeron-key ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-KEY)
+  (decanonicalize (primitive-object-ref ephemeron 1)))
+
+(define (ephemeron-datum ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-DATUM)
+  (decanonicalize (primitive-object-ref ephemeron 2)))
+
+(define (set-ephemeron-key! ephemeron key)
+  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-KEY!)
+  (let ((key* (primitive-object-ref ephemeron 1)))
+    (if key* (primitive-object-set! ephemeron 1 (canonicalize key)))
+    (reference-barrier key*))
+  unspecific)
+
+(define (set-ephemeron-datum! ephemeron datum)
+  (guarantee-ephemeron ephemeron 'SET-EPHEMERON-DATUM!)
+  (let ((key (primitive-object-ref ephemeron 1)))
+    (if key (primitive-object-set! ephemeron 2 (canonicalize datum)))
+    (reference-barrier key))
+  unspecific)
+
+(define (ephemeron-broken? ephemeron)
+  (guarantee-ephemeron ephemeron 'EPHEMERON-BROKEN?)
+  (not (primitive-object-ref ephemeron 1)))

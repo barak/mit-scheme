@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -170,8 +171,10 @@ USA.
   (define-use-function 'FLONUM-CEILING "DOUBLE_CEILING")
   (define-use-function 'FLONUM-COS "DOUBLE_COS")
   (define-use-function 'FLONUM-EXP "DOUBLE_EXP")
+  (define-use-function 'FLONUM-EXPM1 "DOUBLE_EXPM1")
   (define-use-function 'FLONUM-FLOOR "DOUBLE_FLOOR")
   (define-use-function 'FLONUM-LOG "DOUBLE_LOG")
+  (define-use-function 'FLONUM-LOG1P "DOUBLE_LOG1P")
   (define-use-function 'FLONUM-ROUND "DOUBLE_ROUND")
   (define-use-function 'FLONUM-SIN "DOUBLE_SIN")
   (define-use-function 'FLONUM-SQRT "DOUBLE_SQRT")

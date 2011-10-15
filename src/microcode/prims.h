@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,7 +58,18 @@ SCHEME_OBJECT fn_name (void)
 
 #define Primitive_GC(Amount) do						\
 {									\
-  REQUEST_GC (Amount);							\
+  if (Free_primitive < heap_start)					\
+    {									\
+      outf_fatal							\
+        ("\nMicrocode requested primitive GC outside primitive!\n");	\
+      Microcode_Termination (TERM_EXIT);				\
+    }									\
+  if (Free < Free_primitive)						\
+    {									\
+      outf_fatal ("\nFree has gone backwards!\n");			\
+      Microcode_Termination (TERM_EXIT);				\
+    }									\
+  REQUEST_GC ((Amount) + (Free - Free_primitive));			\
   signal_interrupt_from_primitive ();					\
 } while (0)
 
@@ -82,8 +94,10 @@ extern void error_bad_range_arg (int) NORETURN;
 extern void error_external_return (void) NORETURN;
 extern void error_with_argument (SCHEME_OBJECT) NORETURN;
 extern long arg_integer (int);
+extern intmax_t arg_integer_to_intmax (int);
 extern long arg_nonnegative_integer (int);
 extern long arg_index_integer (int, long);
+extern intmax_t arg_index_integer_to_intmax (int, intmax_t);
 extern long arg_integer_in_range (int, long, long);
 extern unsigned long arg_ulong_integer (int);
 extern unsigned long arg_ulong_index_integer (int, unsigned long);

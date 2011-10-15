@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,6 +28,7 @@ USA.
 
 #include "scheme.h"
 #include "svm1-defns.h"
+#include "cmpintmd/svm1.h"
 
 #define SVM1_REG_SP 0
 
@@ -76,14 +78,29 @@ typedef byte_t tc_t;
 #define FLOAT_REF(a) (* (FLOAT_ADDR (a)))
 
 
-typedef byte_t * inst_defn_t (void);
+typedef bool inst_defn_t (void);
 static inst_defn_t * inst_defns [256];
 
-#define DEFINE_INST(name) static byte_t * insn_##name (void)
-#define NEXT_PC return (PC)
-#define OFFSET_PC(o) return (PC + (o))
-#define COND_OFFSET_PC(p, o) return ((p) ? (PC + (o)) : PC)
-#define NEW_PC(addr) return (addr)
+#define DEFINE_INST(name) static bool insn_##name (void)
+#define NEXT_PC return (1)
+#define OFFSET_PC(o) do							\
+{									\
+  PC = PC + (o);							\
+  return (1);								\
+} while (0)
+
+#define COND_OFFSET_PC(p, o) do						\
+{									\
+  if (p) { PC = PC + (o); }						\
+  return (1);								\
+} while (0)
+
+#define NEW_PC(addr) do							\
+{									\
+  PC = (addr);								\
+  return (1);								\
+} while (0)
+
 static long svm1_result;
 
 #define EXIT_VM(code) do						\
@@ -112,10 +129,10 @@ struct address_s
 #define DECODE_ADDRESS(name) address_t name; decode_address (&name)
 static void decode_address (address_t *);
 
-typedef byte_t * trap_0_t (void);
-typedef byte_t * trap_1_t (wreg_t);
-typedef byte_t * trap_2_t (wreg_t, wreg_t);
-typedef byte_t * trap_3_t (wreg_t, wreg_t, wreg_t);
+typedef bool trap_0_t (void);
+typedef bool trap_1_t (wreg_t);
+typedef bool trap_2_t (wreg_t, wreg_t);
+typedef bool trap_3_t (wreg_t, wreg_t, wreg_t);
 
 static trap_0_t * traps_0 [256];
 static trap_1_t * traps_1 [256];
@@ -133,7 +150,7 @@ static void initialize_decoder_tables (void);
 static int initialized_p = 0;
 static int little_endian_p;
 
-static byte_t * execute_instruction (void);
+static bool execute_instruction (void);
 
 static void
 compute_little_endian_p (void)
@@ -161,13 +178,14 @@ initialize_svm1 (void)
   for (i = 0; (i < N_WORD_REGISTERS); i += 1)
     WREG_SET (i, 0);
   for (i = 0; (i < N_FLOAT_REGISTERS); i += 1)
-    WREG_SET (i, 0.0);
+    FREG_SET (i, 0.0);
+  WREG_SET (SVM1_REG_INTERPRETER_REGISTER_BLOCK, ((word_t)Registers));
 }
 
 #define IMPORT_REGS() do						\
 {									\
-  WREG_SET (SVM1_REG_STACK_POINTER, ((SCHEME_OBJECT) stack_pointer));	\
-  WREG_SET (SVM1_REG_FREE_POINTER, ((SCHEME_OBJECT) Free));		\
+  WREG_SET (SVM1_REG_STACK_POINTER, ((word_t)stack_pointer));		\
+  WREG_SET (SVM1_REG_FREE_POINTER, ((word_t)Free));			\
   WREG_SET (SVM1_REG_VALUE, GET_VAL);					\
 } while (0)
 
@@ -176,7 +194,7 @@ initialize_svm1 (void)
   stack_pointer								\
     = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));		\
   Free = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_FREE_POINTER)));	\
-  SET_VAL (WREG_REF (SVM1_REG_VALUE));					\
+  SET_VAL ((SCHEME_OBJECT) (WREG_REF (SVM1_REG_VALUE)));		\
 } while (0)
 
 long
@@ -184,20 +202,14 @@ C_to_interface (void * address)
 {
   IMPORT_REGS ();
   PC = address;
-  while (1)
-    {
-      byte_t * new_pc = (execute_instruction ());
-      if (new_pc == 0)
-	break;
-      PC = new_pc;
-    }
+  while (execute_instruction ());
   EXPORT_REGS ();
   return (svm1_result);
 }
 
 static jmp_buf k_execute_instruction;
 
-static byte_t *
+static bool
 execute_instruction (void)
 {
   if ((setjmp (k_execute_instruction)) != 0)
@@ -205,7 +217,7 @@ execute_instruction (void)
   return ((* (inst_defns[NEXT_BYTE])) ());
 }
 
-static insn_t *
+static bool
 illegal_instruction (void)
 {
   signal_illegal_instruction ();
@@ -307,6 +319,16 @@ decode_unsigned_32 (void)
   return ((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
 }
 
+static uint64_t
+decode_unsigned_64 (void)
+{
+  uint64_t b0, b1, b2, b3, b4, b5, b6, b7;
+  b0 = NEXT_BYTE; b1 = NEXT_BYTE; b2 = NEXT_BYTE; b3 = NEXT_BYTE;
+  b4 = NEXT_BYTE; b5 = NEXT_BYTE; b6 = NEXT_BYTE; b7 = NEXT_BYTE;
+  return ((b7 << 56) | (b6 << 48) | (b5 << 40) | (b4 << 32)
+	  | (b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
+}
+
 static long
 decode_signed_8 (void)
 {
@@ -340,30 +362,27 @@ decode_signed_32 (void)
 #endif
 }
 
+static int64_t
+decode_signed_64 (void)
+{
+  uint64_t n = (decode_unsigned_64 ());
+  if (n < ((uint64_t) 0x8000000000000000))
+    return ((int64_t) n);
+  n -= ((uint64_t) 0x8000000000000000);
+  {
+    int64_t r = ((int64_t) n);
+    r -= ((int64_t) 0x4000000000000000);
+    r -= ((int64_t) 0x4000000000000000);
+    return (r);
+  }
+}
+
 static double
 decode_float (void)
 {
-  union { double f; byte_t b [(sizeof (double))]; } x;
-
-  if (little_endian_p)
-    {
-      unsigned int i = 0;
-      while (i < (sizeof (double)))
-	{
-	  ((x.b) [i]) = NEXT_BYTE;
-	  i += 1;
-	}
-    }
-  else
-    {
-      unsigned int i = (sizeof (double));
-      while (i > 0)
-	{
-	  i -= 1;
-	  ((x.b) [i]) = NEXT_BYTE;
-	}
-    }
-  return (x.f);
+  int64_t significand = (decode_signed_64 ());
+  int exponent = (decode_signed_16 ());
+  return (ldexp (((double) significand), exponent));
 }
 
 /* Instruction definitions */
@@ -466,8 +485,10 @@ DEFINE_INST (load_immediate_fr_flt)
   NEXT_PC;
 }
 
+#define TYPE_CODE_MASK_LOW (N_TYPE_CODES - 1U)
+
 #define X_MAKE_OBJECT(t, d)						\
-  (MAKE_OBJECT (((t) & TYPE_CODE_MASK), ((d) & DATUM_MASK)))
+  (MAKE_OBJECT (((t) & TYPE_CODE_MASK_LOW), ((d) & DATUM_MASK)))
 
 #define X_MAKE_PTR(t, a) (X_MAKE_OBJECT (t, (ADDRESS_TO_DATUM (a))))
 
@@ -658,24 +679,6 @@ DEFINE_INST (icall_u32)
   push_icall_entry (PC - 5);
   IJUMP (offset);
 }
-
-DEFINE_INST (enter_closure)
-{
-  DECODE_SVM1_INST_ENTER_CLOSURE (index);
-  {
-    byte_t * block = (PC - (SIZEOF_SCHEME_OBJECT + ((index + 1) * 3)));
-    unsigned int count
-      = ((((unsigned int) (block[1])) << 8)
-	 | ((unsigned int) (block[0])));
-    SCHEME_OBJECT * targets
-      = (((SCHEME_OBJECT *) block)
-	 + (1
-	    + (((count * 3) + (SIZEOF_SCHEME_OBJECT - 1))
-	       / SIZEOF_SCHEME_OBJECT)));
-    push_object (MAKE_CC_BLOCK (((SCHEME_OBJECT *) block) - 1));
-    NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
-  }
-}
 
 /* Conditional jumps */
 
@@ -684,14 +687,14 @@ DEFINE_INST (cjump_##pl##_##rl##_##rl##_pcr_##sl)			\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_##ru##_PCR_##su			\
     (source1, source2, offset);						\
-  CJ_PCR (CMP_##pu ((WREG_REF (source1)), (WREG_REF (source2))));	\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source1)), (ru##EG_REF (source2))));	\
 }
 
 #define DEFINE_CJ_2(pl, pu, rl, ru, z, sl, su)				\
 DEFINE_INST (cjump_##pl##_##rl##_pcr_##sl)				\
 {									\
   DECODE_SVM1_INST_CJUMP_##pu##_##ru##_PCR_##su (source, offset);	\
-  CJ_PCR (CMP_##pu ((WREG_REF (source)), z));				\
+  CJ_PCR (CMP_##pu ((ru##EG_REF (source)), z));				\
 }
 
 #define CJ_PCR(p) COND_OFFSET_PC (p, offset)
@@ -769,7 +772,7 @@ DEFINE_CJF_1 (pl, pu, s32, S32)
 
 #define CMP_FIX(a) (LONG_TO_FIXNUM_P (a))
 #define CMP_NFIX(a) (!CMP_FIX (a))
-#define CMP_IFIX(a) (((a) & SIGN_MASK) == (TC_FIXNUM * 2))
+#define CMP_IFIX(a) (((a) & SIGN_MASK) == (MAKE_OBJECT (TC_FIXNUM, 0)))
 #define CMP_NIFIX(a) (!CMP_IFIX (a))
 
 DEFINE_CJF (fix, FIX)
@@ -783,7 +786,7 @@ DEFINE_INST (trap_trap_0)
   return ((* (traps_0[code])) ());
 }
 
-static byte_t *
+static bool
 illegal_trap_0 (void)
 {
   signal_illegal_instruction ();
@@ -796,7 +799,7 @@ DEFINE_INST (trap_trap_1_wr)
   return ((* (traps_1[code])) (r1));
 }
 
-static byte_t *
+static bool
 illegal_trap_1 (wreg_t r1)
 {
   signal_illegal_instruction ();
@@ -809,7 +812,7 @@ DEFINE_INST (trap_trap_2_wr)
   return ((* (traps_2[code])) (r1, r2));
 }
 
-static byte_t *
+static bool
 illegal_trap_2 (wreg_t r1, wreg_t r2)
 {
   signal_illegal_instruction ();
@@ -822,7 +825,7 @@ DEFINE_INST (trap_trap_3_wr)
   return ((* (traps_3[code])) (r1, r2, r3));
 }
 
-static byte_t *
+static bool
 illegal_trap_3 (wreg_t r1, wreg_t r2, wreg_t r3)
 {
   signal_illegal_instruction ();
@@ -834,16 +837,16 @@ illegal_trap_3 (wreg_t r1, wreg_t r2, wreg_t r3)
   EXPORT_REGS ()
 
 #define TRAP_SUFFIX(result)						\
+  IMPORT_REGS ();							\
   if ((result).scheme_p)						\
     {									\
-      IMPORT_REGS ();							\
       NEW_PC ((result).arg.new_pc);					\
     }									\
   else									\
     EXIT_VM ((result).arg.interpreter_code)
 
 #define DEFINE_TRAP_0(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (void)							\
 {									\
   TRAP_PREFIX (result);							\
@@ -856,7 +859,7 @@ trap_##nl (void)							\
 }
 
 #define DEFINE_TRAP_1(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1)						\
 {									\
   TRAP_PREFIX (result);							\
@@ -869,7 +872,7 @@ trap_##nl (wreg_t source1)						\
 }
 
 #define DEFINE_TRAP_2(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1, wreg_t source2)				\
 {									\
   TRAP_PREFIX (result);							\
@@ -882,7 +885,7 @@ trap_##nl (wreg_t source1, wreg_t source2)				\
 }
 
 #define DEFINE_TRAP_3(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1, wreg_t source2, wreg_t source3)		\
 {									\
   TRAP_PREFIX (result);							\
@@ -895,7 +898,7 @@ trap_##nl (wreg_t source1, wreg_t source2, wreg_t source3)		\
 }
 
 #define DEFINE_TRAP_R0(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (void)							\
 {									\
   TRAP_PREFIX (result);							\
@@ -908,7 +911,7 @@ trap_##nl (void)							\
 }
 
 #define DEFINE_TRAP_R1(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1)						\
 {									\
   TRAP_PREFIX (result);							\
@@ -921,7 +924,7 @@ trap_##nl (wreg_t source1)						\
 }
 
 #define DEFINE_TRAP_R2(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1, wreg_t source2)				\
 {									\
   TRAP_PREFIX (result);							\
@@ -934,7 +937,7 @@ trap_##nl (wreg_t source1, wreg_t source2)				\
 }
 
 #define DEFINE_TRAP_R3(nl, util_name)					\
-byte_t *								\
+bool									\
 trap_##nl (wreg_t source1, wreg_t source2, wreg_t source3)		\
 {									\
   TRAP_PREFIX (result);							\
@@ -947,7 +950,7 @@ trap_##nl (wreg_t source1, wreg_t source2, wreg_t source3)		\
 }
 
 #define DEFINE_TRAMPOLINE(nl, util_name)				\
-byte_t *								\
+bool									\
 trap_##nl (void)							\
 {									\
   TRAP_PREFIX (result);							\
@@ -1013,17 +1016,18 @@ DEFINE_TRAMPOLINE (operator_primitive, operator_primitive_trap)
 DEFINE_TRAMPOLINE (reflect_to_interface, reflect_to_interface)
 DEFINE_TRAMPOLINE (return_to_interpreter, return_to_interpreter)
 
+#define INTERRUPT_TEST							\
+    (((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_FREE_POINTER)))		\
+       >= GET_MEMTOP)							\
+      || (((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)))	\
+	  < GET_STACK_GUARD)
+
 #define DEFINE_INTERRUPT_TEST(name, a1, a2)				\
 DEFINE_INST (interrupt_test_##name)					\
 {									\
-  if ((((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_FREE_POINTER)))		\
-       >= GET_MEMTOP)							\
-      || (((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)))	\
-	  >= GET_STACK_GUARD))						\
+  if (INTERRUPT_TEST)							\
     {									\
-      utility_result_t result;						\
-									\
-      EXPORT_REGS ();							\
+      TRAP_PREFIX(result);						\
       compiler_interrupt_common ((&result), (a1), (a2));		\
       TRAP_SUFFIX (result);						\
     }									\
@@ -1031,13 +1035,36 @@ DEFINE_INST (interrupt_test_##name)					\
 }
 
 DEFINE_INTERRUPT_TEST (procedure, (PC - 1), SHARP_F)
-DEFINE_INTERRUPT_TEST (closure, 0, SHARP_F)
 DEFINE_INTERRUPT_TEST (ic_procedure, (PC - 1), GET_ENV)
-DEFINE_INTERRUPT_TEST (continuation, (PC - 1), GET_VAL)
+DEFINE_INTERRUPT_TEST (continuation, 0, GET_VAL)
 
 DEFINE_INTERRUPT_TEST (dynamic_link,
 		       (PC - 1),
 		       (MAKE_CC_STACK_ENV (WREG_REF (SVM1_REG_DYNAMIC_LINK))))
+
+DEFINE_INST (enter_closure)
+{
+  DECODE_SVM1_INST_ENTER_CLOSURE (index);
+
+  if (INTERRUPT_TEST)
+    {
+      TRAP_PREFIX(result);
+      compiler_interrupt_common ((&result), PC - 3, SHARP_F);
+      TRAP_SUFFIX (result);
+    }
+
+  {
+    byte_t * block = (PC - (CLOSURE_ENTRY_START
+			    + ((index + 1) * CLOSURE_ENTRY_SIZE)));
+    unsigned int count = (read_u16 (block));
+    SCHEME_OBJECT * targets
+      = (skip_compiled_closure_padding
+	 (block + (CLOSURE_ENTRY_START + (count * CLOSURE_ENTRY_SIZE))));
+    push_object (MAKE_CC_ENTRY (((SCHEME_OBJECT *)
+				 (block + CLOSURE_ENTRY_OFFSET))));
+    NEW_PC (BYTE_ADDR (OBJECT_ADDRESS (targets[index])));
+  }
+}
 
 DEFINE_INST (flonum_header_u8)
 {
@@ -1244,21 +1271,39 @@ DEFINE_ADDRESS_DECODER (indir)
   (address->value) = offset_address_value;				\
 }
 
-DEFINE_ADDRESS_DECODER (offset_b)
+DEFINE_ADDRESS_DECODER (offset_s8_b)
 {
-  DECODE_SVM1_ADDR_OFFSET_B (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
 }
 
-DEFINE_ADDRESS_DECODER (offset_w)
+DEFINE_ADDRESS_DECODER (offset_s8_w)
 {
-  DECODE_SVM1_ADDR_OFFSET_W (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
 }
 
-DEFINE_ADDRESS_DECODER (offset_f)
+DEFINE_ADDRESS_DECODER (offset_s8_f)
 {
-  DECODE_SVM1_ADDR_OFFSET_F (base, offset);
+  DECODE_SVM1_ADDR_OFFSET_S8_F (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_b)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_B (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_w)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_W (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s16_f)
+{
+  DECODE_SVM1_ADDR_OFFSET_S16_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
 }
 

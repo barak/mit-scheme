@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -592,13 +593,13 @@ USA.
   (and (rtl:float-offset? expression)
        (let ((base (rtl:float-offset-base expression))
 	     (offset (rtl:float-offset-offset expression)))
-	 (and (or (rtl:machine-constant? offset)
-		  (rtl:register? offset))
-	      (or (rtl:register? base)
-		  (and (rtl:offset-address? base)
-		       (rtl:register? (rtl:offset-address-base base))
-		       (rtl:machine-constant?
-			(rtl:offset-address-offset base))))))
+	 (if (rtl:register? base)
+	     (or (rtl:machine-constant? offset)
+		 (rtl:register? offset))
+	     (and (rtl:float-offset-address? base)
+		  (rtl:machine-constant? offset)
+		  (rtl:register? (rtl:float-offset-address-base base))
+		  (rtl:register? (rtl:float-offset-address-offset base)))))
        expression))
 
 (define (float-offset->reference! offset)
@@ -608,20 +609,11 @@ USA.
 	(objects-per-float
 	 (quotient address-units-per-float address-units-per-object)))
     (cond ((not (rtl:register? base))
-	   (let ((base*
-		  (rtl:register-number (rtl:offset-address-base base)))
-		 (w-offset
-		  (rtl:machine-constant-value
-		   (rtl:offset-address-offset base))))
-	     (if (rtl:machine-constant? offset)
-		 (indirect-reference!
-		  base*
-		  (+ (* objects-per-float (rtl:machine-constant-value offset))
-		     w-offset))
-		 (indexed-ea base*
-			     (rtl:register-number offset)
-			     address-units-per-float
-			     (* address-units-per-object w-offset)))))
+	   (indexed-ea
+	    (rtl:register-number (rtl:float-offset-address-base base))
+	    (rtl:register-number (rtl:float-offset-address-offset base))
+	    address-units-per-float
+	    (* address-units-per-float (rtl:machine-constant-value offset))))
 	  ((rtl:machine-constant? offset)
 	   (indirect-reference! (rtl:register-number base)
 				(* objects-per-float

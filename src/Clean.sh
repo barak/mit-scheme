@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -74,6 +74,7 @@ fi
 
 if [ ${MAINTAINER} = yes ]; then
     maybe_rm autom4te.cache configure lib stamp_* boot-root makefiles_created
+    maybe_rm config.sub config.guess
 fi
 
 for SUBDIR in ${SUBDIRS}; do

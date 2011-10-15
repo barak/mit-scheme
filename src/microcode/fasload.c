@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,7 +69,7 @@ static unsigned long reload_constant_size = 0;
 static void init_fasl_file (const char *, bool, fasl_file_handle_t *);
 static void close_fasl_file (void *);
 
-static SCHEME_OBJECT load_file (fasl_file_handle_t);
+static SCHEME_OBJECT load_file (fasl_file_handle_t, unsigned long);
 static void * read_from_file (void *, size_t, fasl_file_handle_t);
 static bool primitive_numbers_unchanged_p (SCHEME_OBJECT *);
 
@@ -99,6 +100,8 @@ that was dumped.")
   fasl_file_handle_t handle;
   static unsigned long failed_heap_length = 0;
   unsigned long heap_length;
+  unsigned long n_ephemerons = 0;
+  unsigned long extra_ephemeron_space = 0;
   SCHEME_OBJECT result;
   PRIMITIVE_HEADER (1);
 
@@ -110,17 +113,25 @@ that was dumped.")
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
 
   heap_length = (REQUIRED_HEAP (fh));
-  if (GC_NEEDED_P (heap_length))
+  if ((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+    {
+      n_ephemerons = (FASLHDR_EPHEMERON_COUNT (fh));
+      extra_ephemeron_space
+	= (compute_extra_ephemeron_space (ephemeron_count + n_ephemerons));
+    }
+  if (GC_NEEDED_P (heap_length + extra_ephemeron_space))
     {
       if (heap_length == failed_heap_length)
 	signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
       failed_heap_length = heap_length;
+      n_ephemerons_requested = n_ephemerons;
+      ephemeron_request_hard_p = false;
       REQUEST_GC (heap_length);
       signal_interrupt_from_primitive ();
     }
   failed_heap_length = 0;
 
-  result = (load_file (handle));
+  result = (load_file (handle, ephemeron_count));
   transaction_commit ();
   PRIMITIVE_RETURN (result);
 }
@@ -202,7 +213,6 @@ can, however, be any file which can be loaded with BINARY-FASLOAD.")
     compiler_initialize (true);
 #endif
   fixed_objects = SHARP_F;
-  current_state_point = SHARP_F;
 
   /* Setup initial program */
   SET_RC (RC_END_OF_COMPUTATION);
@@ -243,8 +253,13 @@ read_band_file (SCHEME_OBJECT s)
   transaction_record_action (tat_abort, terminate_band_load, state);
 
   init_fasl_file (file_name, true, (&handle));
-  if (!allocations_ok_p ((FASLHDR_CONSTANT_SIZE (fh)),
-			 (REQUIRED_HEAP (fh))))
+  if (!allocations_ok_p
+      ((FASLHDR_CONSTANT_SIZE (fh)),
+       ((REQUIRED_HEAP (fh))
+	+ (((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+	   ? (compute_extra_ephemeron_space (FASLHDR_EPHEMERON_COUNT (fh)))
+	   : 0)),
+       (FASLHDR_HEAP_RESERVED (fh))))
     signal_error_from_primitive (ERR_FASL_FILE_TOO_BIG);
 
   /* Now read the file into memory.  Past this point we can't abort
@@ -252,8 +267,11 @@ read_band_file (SCHEME_OBJECT s)
   ENTER_CRITICAL_SECTION ("band load");
   (state->no_return_p) = true;
 
-  reset_allocator_parameters (FASLHDR_CONSTANT_SIZE (fh));
-  result = (load_file (handle));
+  reset_allocator_parameters
+    ((FASLHDR_CONSTANT_SIZE (fh)), (FASLHDR_HEAP_RESERVED (fh)));
+  /* We cleared the heap; the ephemeron array is now bogus.  */
+  ephemeron_array = SHARP_F;
+  result = (load_file (handle, 0));
 
   /* Done -- we have the new image.  */
   transaction_commit ();
@@ -351,7 +369,7 @@ execute_reload_cleanups (void)
 }
 
 static SCHEME_OBJECT
-load_file (fasl_file_handle_t handle)
+load_file (fasl_file_handle_t handle, unsigned long old_ephemeron_count)
 {
   new_heap_start = Free;
   new_constant_start = constant_alloc_next;
@@ -431,6 +449,10 @@ load_file (fasl_file_handle_t handle)
     }
 #endif
 
+  if ((FASLHDR_VERSION (fh)) >= FASL_VERSION_EPHEMERONS)
+    guarantee_extra_ephemeron_space
+      (old_ephemeron_count + (FASLHDR_EPHEMERON_COUNT (fh)));
+
   return
     (* ((SCHEME_OBJECT *)
 	(relocate_address (FASLHDR_ROOT_POINTER (fh)))));
@@ -472,6 +494,7 @@ relocate_block_table (void)
       (GCT_RAW_ADDRESS_TO_CC_ENTRY (&table)) = fasload_raw_address_to_cc_entry;
 
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_PCOMB0)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
@@ -601,6 +624,7 @@ intern_block_table (void)
       (GCT_CC_ENTRY (&table)) = intern_cc_entry;
 
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
+      (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_INTERNED_SYMBOL)) = intern_handle_symbol;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
 

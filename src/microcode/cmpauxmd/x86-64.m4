@@ -2,7 +2,7 @@
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-###     2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
 ###     Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
@@ -356,6 +356,64 @@ define_double(flonum_one,1.0)
 DECLARE_CODE_SEGMENT()
 declare_alignment(2)
 
+define_c_label(x86_64_interface_initialize)
+	OP(push,q)	REG(rbp)
+	OP(mov,q)	TW(REG(rsp),REG(rbp))
+	OP(sub,q)	TW(IMM(8),REG(rsp))
+	stmxcsr		IND(REG(rsp))
+	# Clear 7 (invalid operation mask)
+	#       8 (denormalized operand mask)
+	#       9 (zero-divide exception mask)
+	#       10 (overflow exception mask)
+	#       11 (underflow exception mask)
+	#       15 (flush-to-zero (if set, gives non-IEEE semantics))
+	OP(and,l)	TW(IMM(HEX(ffff707f)),IND(REG(rsp)))
+	# Set   12 (precision exception mask)
+	OP(or,l)	TW(IMM(HEX(1000)),IND(REG(rsp)))
+	ldmxcsr		IND(REG(rsp))
+	leave
+	ret
+
+# Call a function (rdi) with an argument (rsi) and a stack pointer and
+# frame pointer from inside C.  When it returns, restore the original
+# stack pointer.  This kludge is necessary for operating system
+# libraries (notably NetBSD's libpthread) that store important
+# information in the stack pointer, and get confused when they are
+# called in a signal handler for a signal delivered while Scheme has
+# set esp to something they consider funny.
+
+define_c_label(within_c_stack)
+	OP(mov,q)	TW(ABS(EVR(C_Stack_Pointer)),REG(rax))
+	# Are we currently in C, signalled by having no saved C stack pointer?
+	OP(cmp,q)	TW(IMM(0),REG(rax))
+	# Yes: just call the function without messing with rsp.
+	je		within_c_stack_from_c
+	# No: we have to switch rsp to point into the C stack.
+	OP(push,q)	REG(rbp)			# Save frame pointer
+	OP(mov,q)	TW(REG(rsp),REG(rbp))
+	OP(mov,q)	TW(REG(rax),REG(rsp))		# Switch to C stack
+	OP(mov,q)	TW(IMM(0),ABS(EVR(C_Stack_Pointer)))
+	OP(push,q)	IMM(0)				# Align sp to 16 bytes
+	OP(push,q)	REG(rbp)			# Save stack pointer
+	OP(mov,q)	TW(REG(rdi),REG(rax))		# arg1 (fn) -> rax
+	OP(mov,q)	TW(REG(rsi),REG(rdi))		# arg2 (arg) -> arg1
+	call		IJMP(REG(rax))			# call fn(arg)
+
+define_debugging_label(within_c_stack_restore)
+	OP(mov,q)	TW(REG(rsp),REG(rax))		# Restore C stack ptr
+	OP(add,q)	TW(IMM(16),REG(rax))
+	OP(mov,q)	TW(REG(rax),ABS(EVR(C_Stack_Pointer)))
+	OP(pop,q)	REG(rsp)			# Restore stack pointer
+							#   and switch back to
+							#   Scheme stack
+	OP(pop,q)	REG(rbp)			# Restore frame pointer
+	ret
+
+define_debugging_label(within_c_stack_from_c)
+	OP(mov,q)	TW(REG(rdi),REG(rax))		# arg1 (fn) -> rax
+	OP(mov,q)	TW(REG(rsi),REG(rdi))		# arg2 (arg) -> arg1
+	jmp		IJMP(REG(rax))			# tail-call fn(arg)
+
 # C_to_interface passes control from C into Scheme.  To C it is a
 # unary procedure; its one argument is passed in rdi.  It saves the
 # state of the C world (the C frame pointer and stack pointer) and
@@ -415,6 +473,9 @@ define_debugging_label(scheme_to_interface)
 	OP(mov,q)	TW(ABS(EVR(C_Stack_Pointer)),REG(rsp))
 	OP(mov,q)	TW(ABS(EVR(C_Frame_Pointer)),REG(rbp))
 
+	# Signal to within_c_stack that we are now in C land.
+	OP(mov,q)	TW(IMM(0),ABS(EVR(C_Stack_Pointer)))
+
 	OP(sub,q)	TW(IMM(16),REG(rsp))	# alloc struct return
 	OP(mov,q)	TW(REG(rsp),REG(rdi))	# Structure is first argument.
 	OP(mov,q)	TW(REG(rbx),REG(rsi))	# rbx -> second argument.
@@ -442,6 +503,9 @@ ifdef(`WIN32',						# Register block = %rsi
 	OP(mov,q)	TW(ABS(EVR(Free)),rfree)	# Free pointer = %rdi
 	OP(mov,q)	TW(QOF(REGBLOCK_VAL(),regs),REG(rax)) # Value/dynamic link
 	OP(mov,q)	TW(IMM(ADDRESS_MASK),rmask)	# = %rbp
+	# Restore the C stack pointer, which we zeroed back in
+	# scheme_to_interface, for within_c_stack.
+	OP(mov,q)	TW(REG(rsp),ABS(EVR(C_Stack_Pointer)))
 	OP(mov,q)	TW(ABS(EVR(stack_pointer)),REG(rsp))
 	OP(mov,q)	TW(REG(rax),REG(rcx))		# Preserve if used
 	OP(and,q)	TW(rmask,REG(rcx))		# Restore potential dynamic link
@@ -642,7 +706,7 @@ asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rdx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
 	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm0))
-	$3	asm_generic_return_sharp_t
+	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
 asm_generic_$1_fix:
@@ -819,11 +883,11 @@ asm_generic_divide_fail:
 define_unary_operation(decrement,22,sub,subsd)
 define_unary_operation(increment,26,add,addsd)
 
-# define_unary_predicate(name,index,jcc)
-# define_unary_predicate(  $1,   $2, $3)
-define_unary_predicate(negative,2a,jl)
-define_unary_predicate(positive,2c,jg)
-define_unary_predicate(zero,2d,je)
+# define_unary_predicate(name,index,fxjcc,fljcc)
+# define_unary_predicate(  $1,   $2,    $3,  $4)
+define_unary_predicate(negative,2a,jl,jb)
+define_unary_predicate(positive,2c,jg,ja)
+define_unary_predicate(zero,2d,je,je)
 
 # define_binary_operation(name,index,fxop,flop)
 # define_binary_operation(  $1,   $2,  $3,  $4)
@@ -907,7 +971,65 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rax))
 	ret
 
+define_c_label(sse_read_mxcsr)
+	enter		IMM(8),IMM(0)
+	stmxcsr		IND(REG(rsp))
+	OP(mov,l)	TW(IND(REG(rsp)),REG(eax))
+	leave
+	ret
+
+define_c_label(sse_write_mxcsr)
+	enter		IMM(8),IMM(0)
+	OP(mov,l)	TW(REG(edi),IND(REG(rsp)))
+	ldmxcsr		IND(REG(rsp))
+	leave
+	ret
+
+define_c_label(x87_clear_exceptions)
+	fnclex
+	ret
+
+define_c_label(x87_trap_exceptions)
+	fwait
+	ret
+
+define_c_label(x87_read_control_word)
+	enter		IMM(4),IMM(0)
+	fnstcw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave
+	ret
+
+define_c_label(x87_write_control_word)
+	enter		IMM(4),IMM(0)
+	OP(mov,w)	TW(REG(di),IND(REG(rsp)))
+	fldcw		IND(REG(esp))
+	leave
+	ret
+
+define_c_label(x87_read_status_word)
+	enter		IMM(4),IMM(0)
+	fnstsw		IND(REG(esp))
+	OP(mov,w)	TW(IND(REG(esp)),REG(ax))
+	leave
+	ret
+
+define_c_label(x87_read_environment)
+	fnstenv		IND(REG(rdi))
+	# fnstenv masks all exceptions (go figure), so we must load
+	# the control word back in order to undo that.
+	fldcw		IND(REG(eax))
+	ret
+
+define_c_label(x87_write_environment)
+	fldenv		IND(REG(rdi))
+	ret
+
 IFDASM(`end')
+
+# Mark the C stack nonexecutable.
+
+ifdef(`__linux__', `ifdef(`__ELF__', `.section .note.GNU-stack,"",%progbits')')
 
 ### Edwin Variables:
 ### comment-column: 56

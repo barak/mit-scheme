@@ -2,7 +2,7 @@
 ###
 ### Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-###     2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+###     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
 ###     Institute of Technology
 ###
 ### This file is part of MIT/GNU Scheme.
@@ -113,8 +113,12 @@
 ###	what you're doing.
 ### DISABLE_387
 ###	If defined, do not generate 387 floating-point instructions.
+### DISABLE_SSE
+###	If defined, do not generate SSE media instructions.
 ### VALGRIND_MODE
 ###	If defined, modify code to make it work with valgrind.
+
+define(DISABLE_SSE,1)
 
 ####	Utility macros and definitions
 
@@ -129,6 +133,14 @@ ifdef(`DISABLE_387',
 ifdef(`DISABLE_387',
       `define(IFN387,`$1')',
       `define(IFN387,`')')
+
+ifdef(`DISABLE_SSE',
+      `define(IFSSE,`')',
+      `define(IFSSE,`$1')')
+
+ifdef(`DISABLE_SSE',
+      `define(IFNSSE,`$1')',
+      `define(IFNSSE,`')')
 
 IF_WIN32(`define(DASM,1)')
 ifdef(`WCC386R',`define(WCC386,1)')
@@ -250,6 +262,10 @@ ifdef(`DASM',
       `define(IND,`($1)')')
 
 ifdef(`DASM',
+      `define(INDW,`word ptr [$1]')',
+      `define(INDW,`($1)')')
+
+ifdef(`DASM',
       `define(BOF,`byte ptr $1[$2]')',
       `define(BOF,`$1($2)')')
 
@@ -358,6 +374,9 @@ allocate_space(Registers,eval(REGBLOCK_SIZE_IN_OBJECTS*4))
 define_data(i387_presence)
 allocate_longword(i387_presence)
 
+define_data(sse_presence)
+allocate_longword(sse_presence)
+
 define_data(C_Stack_Pointer)
 allocate_longword(C_Stack_Pointer)
 
@@ -400,6 +419,13 @@ ifdef(`VALGRIND_MODE',`',`
 i386_initialize_no_fp:
 ')
 	OP(mov,l)	TW(REG(eax),ABS(EVR(i387_presence)))
+
+# FIXME: Some IA-32 systems have SSE support, and since the microcode
+# might use SSE instructions, we need to determine, using CPUID,
+# whether the CPU supports SSE instructions, so that we can save and
+# restore the SSE MXCSR in the floating-point environment.
+
+	OP(mov,l)	TW(IMM(0),ABS(EVR(sse_presence)))
 
 # Do a bunch of hair to determine if we need to do cache synchronization.
 # See if the CPUID instruction is supported.
@@ -518,6 +544,51 @@ done_setting_up_cpuid:
 no_cpuid_instr:
 	leave
 	ret
+
+# Call a function (esp[1]) with an argument (esp[2]) and a stack
+# pointer and frame pointer from inside C.  When it returns, restore
+# the original stack pointer.  This kludge is necessary for operating
+# system libraries (notably NetBSD's libpthread) that store important
+# information in the stack pointer, and get confused when they are
+# called in a signal handler for a signal delivered while Scheme has
+# set esp to something funny.
+
+define_c_label(within_c_stack)
+	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(eax))
+	# Are we currently in C, signalled by having no saved C stack pointer?
+	OP(cmp,l)	TW(IMM(0),REG(eax))
+	# Yes: just call the function without messing with esp.
+	je		within_c_stack_from_c
+	# No: we have to switch esp to point into the C stack.
+	OP(push,l)	REG(ebp)			# Save frame pointer
+	OP(mov,l)	TW(REG(esp),REG(ebp))
+	OP(mov,l)	TW(REG(eax),REG(esp))		# Switch to C stack
+	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
+	OP(push,l)	IMM(0)				# Align sp to 16 bytes
+	OP(push,l)	REG(ebp)			# Save stack pointer
+	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
+	call		IJMP(LOF(8,REG(ebp)))		# Call function
+
+define_debugging_label(within_c_stack_restore)
+	OP(pop,l)	REG(eax)			# Pop argument
+	OP(mov,l)	TW(REG(esp),REG(eax))		# Restore C stack ptr
+	OP(add,l)	TW(IMM(8),REG(eax))
+	OP(mov,l)	TW(REG(eax),EVR(C_Stack_Pointer))
+	OP(pop,l)	REG(esp)			# Restore stack pointer
+							#   and switch back to
+							#   Scheme stack
+	OP(pop,l)	REG(ebp)			# Restore frame pointer
+	ret
+
+define_debugging_label(within_c_stack_from_c)
+	OP(push,l)	REG(ebp)			# Save a frame pointer,
+	OP(mov,l)	TW(REG(esp),REG(ebp))		#   for debuggers.
+	OP(push,l)	IMM(0)				# Align sp to 16 bytes
+	OP(push,l)	LOF(HEX(c),REG(ebp))		# Push argument
+	call		IJMP(LOF(8,REG(ebp)))
+	leave
+	ret
+
 
 define_c_label(C_to_interface)
 	OP(push,l)	REG(ebp)			# Link according
@@ -574,6 +645,9 @@ scheme_to_interface_proceed:
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
+	# Signal to within_c_stack that we are now in C land.
+	OP(mov,l)	TW(IMM(0),EVR(C_Stack_Pointer))
+
 	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
 
 	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
@@ -614,6 +688,9 @@ interface_to_scheme_proceed:
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
+	# Restore the C stack pointer, which we zeroed back in
+	# scheme_to_interface, for within_c_stack.
+	OP(mov,l)	TW(REG(esp),EVR(C_Stack_Pointer))
 	OP(mov,l)	TW(EVR(stack_pointer),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
@@ -1162,7 +1239,61 @@ asm_fixnum_rsh_overflow_negative:
 	OP(mov,l)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(eax))
 	ret
 
+define_c_label(sse_read_mxcsr)
+IFSSE(`	enter		IMM(4),IMM(0)
+	stmxcsr		IND(REG(esp))
+	OP(mov,l)	TW(IND(REG(esp)),REG(eax))
+	leave')
+	ret
+
+define_c_label(sse_write_mxcsr)
+IFSSE(`	ldmxcsr		LOF(4,REG(esp))')
+	ret
+
+define_c_label(x87_clear_exceptions)
+IF387(`	fnclex')
+	ret
+
+define_c_label(x87_trap_exceptions)
+IF387(`	fwait')
+	ret
+
+define_c_label(x87_read_control_word)
+IF387(`	enter		IMM(4),IMM(0)
+	fnstcw		IND(REG(esp))
+	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
+	leave')
+	ret
+
+define_c_label(x87_write_control_word)
+IF387(`	fldcw		LOF(4,REG(esp))')
+	ret
+
+define_c_label(x87_read_status_word)
+IF387(`	enter		IMM(4),IMM(0)
+	fnstsw		IND(REG(esp))
+	OP(mov,w)	TW(INDW(REG(esp)),REG(ax))
+	leave')
+	ret
+
+define_c_label(x87_read_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fnstenv		IND(REG(eax))
+	# fnstenv masks all exceptions (go figure), so we must load
+	# the control word back in order to undo that.
+	fldcw		IND(REG(eax))')
+	ret
+
+define_c_label(x87_write_environment)
+IF387(`	OP(mov,l)	TW(LOF(4,REG(esp)),REG(eax))
+	fldenv		IND(REG(eax))')
+	ret
+
 IFDASM(`end')
+
+# Mark the C stack nonexecutable.
+
+ifdef(`__linux__', `ifdef(`__ELF__', `.section .note.GNU-stack,"",%progbits')')
 
 ### Edwin Variables:
 ### comment-column: 56

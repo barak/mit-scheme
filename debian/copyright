@@ -9,15 +9,13 @@ Copyright:
 
    MIT/GNU Scheme is Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991,
    1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
    Institute of Technology, 77 Massachusetts Avenue, Cambridge MA
    02139, USA.  MIT/GNU Scheme is released under the GNU General
    Public License with the additional exemption that compiling,
    linking, and/or using OpenSSL is allowed.  On Debian GNU/Linux
    systems, the complete text of the GNU General Public License can be
    found in `/usr/share/common-licenses/GPL'.
-
-   ----------------------------------------------------------------
 
    MIT/GNU Scheme is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -33,3 +31,20 @@ Copyright:
    along with MIT/GNU Scheme; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
    02110-1301, USA.
+
+   ----------------------------------------------------------------
+
+   The MIT/GNU Scheme Reference Manual and related manuals are
+   Copyright (C) 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1999, 2000,
+   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
+   Massachusetts Institute of Technology, 77 Massachusetts Avenue,
+   Cambridge MA 02139, USA.  They are released under the GNU Free
+   Documentation License.  On Debian GNU/Linux systems, the complete
+   text of the GNU Free Documentation License can be found in
+   `/usr/share/common-licenses/GFDL'.
+
+   Permission is granted to copy, distribute and/or modify these
+   documents under the terms of the GNU Free Documentation License,
+   Version 1.2 or any later version published by the Free Software
+   Foundation; with no Invariant Sections, with no Front-Cover Texts
+   and no Back-Cover Texts.

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,7 +46,13 @@ struct gw_extra
   int y_cursor;
 };
 
-#define XW_EXTRA(xw) ((struct gw_extra *) ((xw) -> extra))
+struct xwindow_graphics
+{
+  struct xwindow xw;
+  struct gw_extra extra;
+};
+
+#define XW_EXTRA(xw) (& (((struct xwindow_graphics *) xw) -> extra))
 
 #define XW_X_LEFT(xw) ((XW_EXTRA (xw)) -> x_left)
 #define XW_X_RIGHT(xw) ((XW_EXTRA (xw)) -> x_right)
@@ -196,8 +203,7 @@ reset_virtual_device_coordinates (struct xwindow * xw)
   reset_clip_rectangle (xw);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent,
-		  5, 5,
+DEFINE_PRIMITIVE ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5,
   "(X-GRAPHICS-SET-VDC-EXTENT WINDOW X-MIN Y-MIN X-MAX Y-MAX)\n\
 Set the virtual device coordinates to the given values.")
 {
@@ -238,8 +244,7 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE",
-		  Prim_x_graphics_set_clip_rectangle, 5, 5,
+DEFINE_PRIMITIVE ("X-GRAPHICS-SET-CLIP-RECTANGLE", Prim_x_graphics_set_clip_rectangle, 5, 5,
   "(X-GRAPHICS-SET-CLIP-RECTANGLE WINDOW X-LEFT Y-BOTTOM X-RIGHT Y-TOP)\n\
 Set the clip rectangle to the given coordinates.")
 {
@@ -372,7 +377,7 @@ If third argument SUPPRESS-MAP? is true, do not map the window immediately.")
 	struct xwindow * xw =
 	  (x_make_window
 	   (xd, window, x_size, y_size, (&attributes), (&methods),
-	    (sizeof (struct gw_extra))));
+	    (sizeof (struct xwindow_graphics))));
 	(XW_X_LEFT (xw)) = ((float) (-1));
 	(XW_X_RIGHT (xw)) = ((float) 1);
 	(XW_Y_BOTTOM (xw)) = ((float) (-1));
@@ -617,8 +622,7 @@ transparent background.")
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
-DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-IMAGE-STRING",
-		  Prim_x_graphics_draw_image_string, 4, 4,
+DEFINE_PRIMITIVE ("X-GRAPHICS-DRAW-IMAGE-STRING", Prim_x_graphics_draw_image_string, 4, 4,
   "(X-GRAPHICS-DRAW-IMAGE-STRING WINDOW X Y STRING)\n\
 Draw characters in the current font at the given coordinates, with\n\
 solid background.")
@@ -1110,7 +1114,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_ulong_integer (2));
+    int signed_xp = (arg_integer (2));
+    unsigned int xp = ((signed_xp < 0) ? 0 : ((unsigned int) signed_xp));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (x_coordinate_map
@@ -1126,7 +1131,8 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinat
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_ulong_integer (2));
+    int signed_yp = (arg_integer (2));
+    unsigned int yp = ((signed_yp < 0) ? 0 : ((unsigned int) signed_yp));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (y_coordinate_map
@@ -1136,3 +1142,46 @@ DEFINE_PRIMITIVE ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinat
 	 : by)));
   }
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11graph (void)
+{
+  declare_primitive ("X-BYTES-INTO-IMAGE", Prim_x_bytes_into_image, 2, 2, 0);
+  declare_primitive ("X-CREATE-IMAGE", Prim_x_create_image, 3, 3, 0);
+  declare_primitive ("X-DESTROY-IMAGE", Prim_x_destroy_image, 1, 1, 0);
+  declare_primitive ("X-DISPLAY-IMAGE", Prim_x_display_image, 8, 8, 0);
+  declare_primitive ("X-GET-PIXEL-FROM-IMAGE", Prim_x_get_image_pixel, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-COPY-AREA", Prim_x_graphics_copy_area, 8, 8, 0);
+  declare_primitive ("X-GRAPHICS-DRAG-CURSOR", Prim_x_graphics_drag_cursor, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-ARC", Prim_x_graphics_draw_arc, 8, 8, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-IMAGE-STRING", Prim_x_graphics_draw_image_string, 4, 4, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-LINE", Prim_x_graphics_draw_line, 5, 5, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-LINES", Prim_x_graphics_draw_lines, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-POINT", Prim_x_graphics_draw_point, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-POINTS", Prim_x_graphics_draw_points, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-DRAW-STRING", Prim_x_graphics_draw_string, 4, 4, 0);
+  declare_primitive ("X-GRAPHICS-FILL-POLYGON", Prim_x_graphics_fill_polygon, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-MAP-X-COORDINATE", Prim_x_graphics_map_x_coordinate, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-MAP-Y-COORDINATE", Prim_x_graphics_map_y_coordinate, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-MOVE-CURSOR", Prim_x_graphics_move_cursor, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-OPEN-WINDOW", Prim_x_graphics_open_window, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-RECONFIGURE", Prim_x_graphics_reconfigure, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-RESET-CLIP-RECTANGLE", Prim_x_graphics_reset_clip_rectangle, 1, 1, 0);
+  declare_primitive ("X-GRAPHICS-SET-CLIP-RECTANGLE", Prim_x_graphics_set_clip_rectangle, 5, 5, 0);
+  declare_primitive ("X-GRAPHICS-SET-DASHES", Prim_x_graphics_set_dashes, 3, 3, 0);
+  declare_primitive ("X-GRAPHICS-SET-FILL-STYLE", Prim_x_graphics_set_fill_style, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-SET-FUNCTION", Prim_x_graphics_set_function, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-SET-LINE-STYLE", Prim_x_graphics_set_line_style, 2, 2, 0);
+  declare_primitive ("X-GRAPHICS-SET-VDC-EXTENT", Prim_x_graphics_set_vdc_extent, 5, 5, 0);
+  declare_primitive ("X-GRAPHICS-VDC-EXTENT", Prim_x_graphics_vdc_extent, 1, 1, 0);
+  declare_primitive ("X-READ-IMAGE", Prim_x_read_image, 8, 8, 0);
+  declare_primitive ("X-SET-PIXEL-IN-IMAGE", Prim_x_set_image_pixel, 4, 4, 0);
+  declare_primitive ("X-WINDOW-DEPTH", Prim_x_window_depth, 1, 1, 0);
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

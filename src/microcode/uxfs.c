@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -133,6 +134,12 @@ USA.
 	deliver_pending_interrupts ();			\
       }							\
   } while (0)
+
+void
+UX_read_fd_status (int fd, struct stat * s)
+{
+  STD_VOID_SYSTEM_CALL (syscall_fstat, (UX_fstat (fd, s)));
+}
 
 int
 UX_read_file_status (const char * filename, struct stat * s)
@@ -472,9 +479,10 @@ OS_file_touch (const char * filename)
 	transaction_commit ();
 #else
 	transaction_commit ();
+	/* FIXME: Need to check for EINTR.  */
 	fd = (UX_open (filename, (O_WRONLY | O_TRUNC), MODE_REG));
 	if (fd >= 0)
-	  STD_VOID_SYSTEM_CALL (syscall_close, (UX_close (fd)));
+	  (void) UX_close (fd);
 #endif
 	return (0);
       }
@@ -497,7 +505,7 @@ OS_file_touch (const char * filename)
 static void
 protect_fd_close (void * ap)
 {
-  UX_close (* ((int *) ap));
+  (void) UX_close (* ((int *) ap));
 }
 
 static void
@@ -602,9 +610,11 @@ OS_directory_valid_p (unsigned int index)
 unsigned int
 OS_directory_open (const char * name)
 {
-  DIR * pointer = (opendir (name));
-  if (pointer == 0)
-    error_system_call (errno, syscall_opendir);
+  DIR * pointer;
+  STD_PTR_SYSTEM_CALL (syscall_opendir, pointer, (opendir (name)));
+  /* FIXME: This leaks a directory pointer if malloc or realloc fails
+     here.  Avoiding this safely with a transaction is unfortunately
+     not straightforward.  */
   return (allocate_directory_pointer (pointer));
 }
 

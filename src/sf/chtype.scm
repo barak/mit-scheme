@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,6 +25,7 @@ USA.
 |#
 
 ;;;; SCode Optimizer: Intern object types
+;;; package: (scode-optimizer change-type)
 
 (declare (usual-integrations)
 	 (integrate-external "object"))
@@ -53,6 +55,7 @@ USA.
 (declare (integrate-operator change-type/object))
 
 (define (change-type/object enumeration object)
+  (declare (integrate enumeration))
   (set-object/enumerand!
    object
    (enumeration/name->enumerand enumeration
@@ -78,9 +81,7 @@ USA.
     (change-type/expression (conditional/alternative expression))))
 
 (define-method/change-type 'CONSTANT
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)
 
 (define-method/change-type 'DECLARATION
   (lambda (expression)
@@ -95,39 +96,28 @@ USA.
     (change-type/expression (disjunction/predicate expression))
     (change-type/expression (disjunction/alternative expression))))
 
+(define-method/change-type 'OPEN-BLOCK
+  (lambda (expression)
+    (change-type/expressions (open-block/values expression))
+    (for-each (lambda (action)
+		(if (not (eq? action open-block/value-marker))
+		    (change-type/expression action)))
+	      (open-block/actions expression))))
+
 (define-method/change-type 'PROCEDURE
   (lambda (expression)
     (change-type/expression (procedure/body expression))))
 
-(define-method/change-type 'OPEN-BLOCK
-  (lambda (expression)
-    (change-type/expressions (open-block/values expression))
-    (change-type/open-block-actions (open-block/actions expression))))
-
-(define (change-type/open-block-actions actions)
-  (cond ((null? actions) 'DONE)
-	((eq? (car actions) open-block/value-marker)
-	 (change-type/open-block-actions (cdr actions)))
-	(else (change-type/expression (car actions))
-	      (change-type/open-block-actions (cdr actions)))))
-
 (define-method/change-type 'QUOTATION
   (lambda (expression)
-    (change-type/quotation expression)))
-
-(define (change-type/quotation quotation)
-  (change-type/expression (quotation/expression quotation)))
+    (change-type/expression (quotation/expression expression))))
 
 (define-method/change-type 'REFERENCE
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)
 
 (define-method/change-type 'SEQUENCE
   (lambda (expression)
     (change-type/expressions (sequence/actions expression))))
 
 (define-method/change-type 'THE-ENVIRONMENT
-  (lambda (expression)
-    expression ; ignored
-    'DONE))
+  false-procedure)

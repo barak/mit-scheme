@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -127,6 +128,10 @@ USA.
     (if (not association)
 	(error:bad-range-argument field-name operator))
     (cdr association)))
+
+(define (condition-type/name type)
+  (guarantee-condition-type type 'CONDITION-TYPE/NAME)
+  (%condition-type/name type))
 
 (define (condition-type/field-names type)
   (guarantee-condition-type type 'CONDITION-TYPE/FIELD-NAMES)
@@ -693,10 +698,14 @@ USA.
 (define condition-type:error)
 (define condition-type:file-error)
 (define condition-type:file-operation-error)
+(define condition-type:floating-point-divide-by-zero)
 (define condition-type:floating-point-overflow)
 (define condition-type:floating-point-underflow)
 (define condition-type:illegal-datum)
 (define condition-type:illegal-pathname-component)
+(define condition-type:inexact-floating-point-result)
+(define condition-type:integer-divide-by-zero)
+(define condition-type:invalid-floating-point-operation)
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
 (define condition-type:not-8-bit-char)
@@ -1060,7 +1069,7 @@ USA.
 			    " the same "
 			    (get-noun condition)
 			    " again.")))))
-
+
   (set! condition-type:variable-error
 	(make-condition-type 'VARIABLE-ERROR condition-type:cell-error
 	    '(ENVIRONMENT)
@@ -1088,7 +1097,7 @@ USA.
 	  (lambda (condition port)
 	    (write-string "Variable reference to a syntactic keyword: " port)
 	    (write (access-condition condition 'LOCATION) port))))
-
+
   (let ((arithmetic-error-report
 	 (lambda (description)
 	   (lambda (condition port)
@@ -1107,6 +1116,26 @@ USA.
 	  (make-condition-type 'DIVIDE-BY-ZERO condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Division by zero")))
+    (set! condition-type:integer-divide-by-zero
+	  (make-condition-type 'INTEGER-DIVIDE-BY-ZERO
+	      condition-type:divide-by-zero
+	      '()
+	    (arithmetic-error-report "Integer division by zero")))
+    (set! condition-type:floating-point-divide-by-zero
+	  (make-condition-type 'FLOATING-POINT-DIVIDE-BY-ZERO
+	      condition-type:divide-by-zero
+	      '()
+	    (arithmetic-error-report "Floating-point division by zero")))
+    (set! condition-type:inexact-floating-point-result
+	  (make-condition-type 'INEXACT-FLOATING-POINT-RESULT
+	      condition-type:arithmetic-error
+	      '()
+	    (arithmetic-error-report "Inexact floating-point result")))
+    (set! condition-type:invalid-floating-point-operation
+	  (make-condition-type 'INVALID-FLOATING-POINT-OPERATION
+	      condition-type:arithmetic-error
+	      '()
+	    (arithmetic-error-report "Invalid floating-point operation")))
     (set! condition-type:floating-point-overflow
 	  (make-condition-type 'FLOATING-POINT-OVERFLOW
 	      condition-type:arithmetic-error
@@ -1117,14 +1146,14 @@ USA.
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
-
+
   (set! condition-type:not-8-bit-char
 	(make-condition-type 'NOT-8-BIT-CHAR condition-type:error '(CHAR)
 	  (lambda (condition port)
 	    (write-string "Character too large for 8-bit string: " port)
 	    (write (access-condition condition 'CHAR) port)
 	    (newline port))))
-
+
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
 			       '(MESSAGE IRRITANTS)))

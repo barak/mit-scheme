@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -69,7 +69,7 @@ AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
 CCLD = @CCLD@
-M4 = $(srcdir)/makegen/m4.sh
+M4 = $(srcdir)/makegen/m4.sh @M4@
 AS = as
 TAR = tar
 GZIP_ENV = --best
@@ -107,6 +107,7 @@ PRMD5_LIBS = @PRMD5_LIBS@
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
 MODULE_LDFLAGS = @MODULE_LDFLAGS@
+MODULE_LOADER = @MODULE_LOADER@
 COMPILE_MODULE = $(COMPILE) -DCOMPILE_AS_MODULE $(MODULE_CFLAGS)
 LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
 MODULE_LIBS = -lc
@@ -190,32 +191,39 @@ extract-liarc-decls: extract-liarc-decls.o
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
 
-prbfish.so: prbfish.o scheme
+prbfish.so: prbfish.o @MODULE_LOADER@
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
-prmd5.so: prmd5.o scheme
+prmd5.so: prmd5.o @MODULE_LOADER@
 	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
-prmhash.so: prmhash.o scheme
+prmhash.so: prmhash.o @MODULE_LOADER@
 	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
-prmcrypt.so: prmcrypt.o scheme
-	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
+prmcrypt.so: prmcrypt.o @MODULE_LOADER@
+	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 
-prgdbm.so: prgdbm.o scheme
+prgdbm.so: prgdbm.o @MODULE_LOADER@
 	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
-prdb4.so: prdb4.o scheme
+prdb4.so: prdb4.o @MODULE_LOADER@
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
-prpgsql.so: prpgsql.o scheme
+prpgsql.so: prpgsql.o @MODULE_LOADER@
 	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
+
+prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
+	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
+	  -lX11 $(MODULE_LIBS)
 
 @MODULE_RULES@
 
 tags: TAGS
 TAGS:
 	etags -r '/^DEF[A-Z0-9_]*[ \t]*(\("[^"]+"\|[a-zA-Z_][a-zA-Z0-9_]*\)/' \
+	    *.[ch] */*.[ch]						      \
+	|| etags							      \
+       --regex-C='/^DEF[A-Z0-9_]*[ \t]*\(("[^"]+"|[a-zA-Z_][a-zA-Z0-9_]+)/\1/'\
 	    *.[ch] */*.[ch]
 
 mostlyclean:
@@ -269,6 +277,7 @@ install-auxDATA: $(aux_DATA)
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
+	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

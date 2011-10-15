@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -121,6 +122,7 @@ USA.
 	 `((CHAR-READY? ,generic-io/char-ready?)
 	   (CLOSE-INPUT ,generic-io/close-input)
 	   (EOF? ,generic-io/eof?)
+	   (INPUT-LINE ,generic-io/input-line)
 	   (INPUT-OPEN? ,generic-io/input-open?)
 	   (PEEK-CHAR ,generic-io/peek-char)
 	   (READ-CHAR ,generic-io/read-char)
@@ -194,9 +196,13 @@ USA.
   (buffer-has-input? (port-input-buffer port)))
 
 (define (generic-io/peek-char port)
-  (let ((char (generic-io/read-char port)))
+  (let* ((ib (port-input-buffer port))
+	 (line (input-buffer-line ib))
+	 (char (generic-io/read-char port)))
     (if (char? char)
-	(let ((ib (port-input-buffer port)))
+	;; Undo effect of read-char.
+	(begin
+	  (set-input-buffer-line! ib line)
 	  (set-input-buffer-start! ib (input-buffer-prev ib))))
     char))
 
@@ -213,16 +219,21 @@ USA.
 	      (else (error "Unknown result:" r))))))))
 
 (define (generic-io/unread-char port char)
-  char					;ignored
   (let ((ib (port-input-buffer port)))
     (let ((bp (input-buffer-prev ib)))
       (if (not (fix:< bp (input-buffer-start ib)))
 	  (error "No char to unread:" port))
+      ;; If unreading a newline, decrement the line count.
+      (if (char=? char #\newline)
+	  (set-input-buffer-line! ib (fix:- (input-buffer-line ib) 1)))
       (set-input-buffer-start! ib bp))))
 
 (define (generic-io/read-substring port string start end)
   (read-substring (port-input-buffer port) string start end))
 
+(define (generic-io/input-line port)
+  (input-buffer-line (port-input-buffer port)))
+
 (define (generic-io/eof? port)
   (input-buffer-at-eof? (port-input-buffer port)))
 
@@ -714,6 +725,7 @@ USA.
   end
   decode
   normalize
+  line
   compute-encoded-character-size)
 
 (define (make-input-buffer source coder-name normalizer-name)
@@ -727,6 +739,7 @@ USA.
 		       (line-ending ((source/get-channel source))
 				    normalizer-name
 				    #f))
+		      0
 		      (name->sizer coder-name)))
 
 (define (input-buffer-open? ib)
@@ -742,6 +755,7 @@ USA.
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
+  (set-input-buffer-line! ib -1)
   (set-input-buffer-prev! ib -1)
   (set-input-buffer-start! ib -1)
   (set-input-buffer-end! ib -1))
@@ -761,7 +775,13 @@ USA.
   ((input-buffer-compute-encoded-character-size ib) ib char))
 
 (define (read-next-char ib)
-  ((input-buffer-normalize ib) ib))
+  (let ((char ((input-buffer-normalize ib) ib)))
+    (if (and (char? char)
+	     (char=? char #\newline))
+	(let ((line (input-buffer-line ib)))
+	  (if line
+	      (set-input-buffer-line! ib (fix:+ line 1)))))
+    char))
 
 (define (decode-char ib)
   (and (fix:< (input-buffer-start ib) (input-buffer-end ib))
@@ -818,9 +838,11 @@ USA.
 	     (next-char-ready? ib)))))
 
 (define (next-char-ready? ib)
-  (let ((bs (input-buffer-start ib)))
+  (let ((bl (input-buffer-line ib))
+	(bs (input-buffer-start ib)))
     (and (read-next-char ib)
 	 (begin
+	   (set-input-buffer-line! ib bl)
 	   (set-input-buffer-start! ib bs)
 	   #t))))
 
@@ -1222,11 +1244,11 @@ USA.
   #x0127 #x00B2 #x00B3 #x00B4 #x00B5 #x0125 #x00B7 #x00B8
   #x0131 #x015F #x011F #x0135 #x00BD #f     #x017C #x00C0
   #x00C1 #x00C2 #f     #x00C4 #x010A #x0108 #x00C7 #x00C8
-  #x00C9 #x00CA #x00CB #x00CC #x00CD #x00CE #x00CF #f    
+  #x00C9 #x00CA #x00CB #x00CC #x00CD #x00CE #x00CF #f
   #x00D1 #x00D2 #x00D3 #x00D4 #x0120 #x00D6 #x00D7 #x011C
   #x00D9 #x00DA #x00DB #x00DC #x016C #x015C #x00DF #x00E0
   #x00E1 #x00E2 #f     #x00E4 #x010B #x0109 #x00E7 #x00E8
-  #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f    
+  #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
 
@@ -1268,17 +1290,17 @@ USA.
   '(ISO_8859-5:1988 ISO-IR-144 ISO_8859-5 CYRILLIC CSISOLATINCYRILLIC))
 
 (define-8-bit-codecs iso-8859-6 #xA1
-  #f     #f     #f     #x00A4 #f     #f     #f     #f    
-  #f     #f     #f     #x060C #x00AD #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #x061B #f     #f     #f     #x061F #f    
+  #f     #f     #f     #x00A4 #f     #f     #f     #f
+  #f     #f     #f     #x060C #x00AD #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #x061B #f     #f     #f     #x061F #f
   #x0621 #x0622 #x0623 #x0624 #x0625 #x0626 #x0627 #x0628
   #x0629 #x062A #x062B #x062C #x062D #x062E #x062F #x0630
   #x0631 #x0632 #x0633 #x0634 #x0635 #x0636 #x0637 #x0638
   #x0639 #x063A #f     #f     #f     #f     #f     #x0640
   #x0641 #x0642 #x0643 #x0644 #x0645 #x0646 #x0647 #x0648
   #x0649 #x064A #x064B #x064C #x064D #x064E #x064F #x0650
-  #x0651 #x0652 #f     #f     #f     #f     #f     #f    
+  #x0651 #x0652 #f     #f     #f     #f     #f     #f
   #f     #f     #f     #f     #f     #f     #f)
 
 (define-coding-aliases 'ISO-8859-6
@@ -1307,10 +1329,10 @@ USA.
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00D7 #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
   #x00B1 #x00B2 #x00B3 #x00B4 #x00B5 #x00B6 #x00B7 #x00B8
-  #x00B9 #x00F7 #x00BB #x00BC #x00BD #x00BE #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
-  #f     #f     #f     #f     #f     #f     #f     #f    
+  #x00B9 #x00F7 #x00BB #x00BC #x00BD #x00BE #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
+  #f     #f     #f     #f     #f     #f     #f     #f
   #f     #f     #f     #f     #f     #f     #x2017 #x05D0
   #x05D1 #x05D2 #x05D3 #x05D4 #x05D5 #x05D6 #x05D7 #x05D8
   #x05D9 #x05DA #x05DB #x05DC #x05DD #x05DE #x05DF #x05E0

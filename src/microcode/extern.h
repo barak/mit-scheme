@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -137,6 +138,7 @@ extern void set_ulong_register (unsigned int, unsigned long);
 #endif
 
 extern SCHEME_OBJECT * Free;
+extern SCHEME_OBJECT * Free_primitive;
 extern SCHEME_OBJECT * heap_alloc_limit;
 extern SCHEME_OBJECT * heap_start;
 extern SCHEME_OBJECT * heap_end;
@@ -149,18 +151,19 @@ extern SCHEME_OBJECT * stack_end;
 extern SCHEME_OBJECT * constant_alloc_next;
 extern SCHEME_OBJECT * constant_start;
 extern SCHEME_OBJECT * constant_end;
-
-extern SCHEME_OBJECT current_state_point;
 
 /* Address of the most recent return code in the stack.  This is
    only meaningful while in compiled code.  */
 extern SCHEME_OBJECT * last_return_code;
 extern SCHEME_OBJECT fixed_objects;
 
-extern char * CONT_PRINT_RETURN_MESSAGE;
-extern char * CONT_PRINT_EXPR_MESSAGE;
-extern char * RESTORE_CONT_RETURN_MESSAGE;
-extern char * RESTORE_CONT_EXPR_MESSAGE;
+extern SCHEME_OBJECT ephemeron_array;
+extern unsigned long ephemeron_count;
+
+extern const char * CONT_PRINT_RETURN_MESSAGE;
+extern const char * CONT_PRINT_EXPR_MESSAGE;
+extern const char * RESTORE_CONT_RETURN_MESSAGE;
+extern const char * RESTORE_CONT_EXPR_MESSAGE;
 
 extern unsigned long MAX_RETURN;
 
@@ -178,6 +181,7 @@ extern const char * scheme_program_name;
 extern const char * OS_Name;
 extern const char * OS_Variant;
 extern struct obstack scratch_obstack;
+extern struct obstack ffi_obstack;
 
 extern unsigned long n_heap_blocks;
 extern unsigned long n_constant_blocks;
@@ -190,6 +194,10 @@ extern unsigned long heap_reserved;
 
 /* Amount of space needed when GC requested */
 extern unsigned long gc_space_needed;
+
+/* Number of new ephemerons requested from the GC.  */
+extern unsigned long n_ephemerons_requested;
+extern bool ephemeron_request_hard_p;
 
 /* Arithmetic utilities */
 extern SCHEME_OBJECT Mul (SCHEME_OBJECT, SCHEME_OBJECT);
@@ -197,10 +205,16 @@ extern long fixnum_to_long (SCHEME_OBJECT);
 extern SCHEME_OBJECT double_to_fixnum (double);
 extern bool integer_to_long_p (SCHEME_OBJECT);
 extern long integer_to_long (SCHEME_OBJECT);
+extern bool integer_to_intmax_p (SCHEME_OBJECT);
+extern intmax_t integer_to_intmax (SCHEME_OBJECT);
 extern SCHEME_OBJECT long_to_integer (long);
+extern SCHEME_OBJECT intmax_to_integer (intmax_t);
 extern bool integer_to_ulong_p (SCHEME_OBJECT);
 extern unsigned long integer_to_ulong (SCHEME_OBJECT);
+extern bool integer_to_uintmax_p (SCHEME_OBJECT);
+extern uintmax_t integer_to_uintmax (SCHEME_OBJECT);
 extern SCHEME_OBJECT ulong_to_integer (unsigned long);
+extern SCHEME_OBJECT uintmax_to_integer (uintmax_t);
 extern bool integer_to_double_p (SCHEME_OBJECT);
 extern double integer_to_double (SCHEME_OBJECT);
 extern SCHEME_OBJECT double_to_integer (double);
@@ -233,7 +247,25 @@ extern bool integer_divide
 extern SCHEME_OBJECT integer_quotient (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_remainder (SCHEME_OBJECT, SCHEME_OBJECT);
 extern SCHEME_OBJECT integer_length_in_bits (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_length (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_first_set_bit (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bit_count (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_hamming_distance (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_not (SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_and (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_andc2 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_andc1 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_xor (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_ior (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_nor (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_eqv (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_orc2 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_orc1 (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_bitwise_nand (SCHEME_OBJECT, SCHEME_OBJECT);
+extern SCHEME_OBJECT integer_nonnegative_one_bits (unsigned long, unsigned long);
+extern SCHEME_OBJECT integer_negative_zero_bits (unsigned long, unsigned long);
 extern SCHEME_OBJECT integer_shift_left (SCHEME_OBJECT, unsigned long);
+extern SCHEME_OBJECT integer_shift_right (SCHEME_OBJECT, unsigned long);
 
 extern bool double_is_finite_p (double);
 extern SCHEME_OBJECT double_to_flonum (double);
@@ -271,6 +303,8 @@ extern SCHEME_OBJECT memory_to_symbol (unsigned long, const void *);
 extern SCHEME_OBJECT find_symbol (unsigned long, const char *);
 extern void strengthen_symbol (SCHEME_OBJECT);
 extern void weaken_symbol (SCHEME_OBJECT);
+extern unsigned long compute_extra_ephemeron_space (unsigned long);
+extern void guarantee_extra_ephemeron_space (unsigned long);
 
 /* Random and OS utilities */
 extern int strcmp_ci (const char *, const char *);
@@ -309,6 +343,7 @@ extern void import_primitive_table
 
 extern void initialize_primitives (void);
 extern SCHEME_OBJECT make_primitive (const char *, int);
+extern SCHEME_OBJECT find_primitive_cname (const char *, bool, bool, int);
 extern SCHEME_OBJECT find_primitive (SCHEME_OBJECT, bool, bool, int);
 
 /* Interpreter utilities */
@@ -328,15 +363,12 @@ extern void preserve_interrupt_mask (void);
 extern void canonicalize_primitive_context (void);
 extern void back_out_of_primitive (void);
 
-extern void Interpret (void);
+extern void Interpret (int pop_return_p);
 extern void Do_Micro_Error (long, bool);
-extern void Translate_To_Point (SCHEME_OBJECT);
 extern void Stack_Death (void) NORETURN;
 extern SCHEME_OBJECT * control_point_start (SCHEME_OBJECT);
 extern SCHEME_OBJECT * control_point_end (SCHEME_OBJECT);
 extern void unpack_control_point (SCHEME_OBJECT);
-
-extern SCHEME_OBJECT Find_State_Space (SCHEME_OBJECT);
 
 /* Debugging utilities */
 
@@ -344,8 +376,8 @@ extern void Back_Trace (outf_channel);
 extern void Debug_Stack_Trace (void);
 extern void Debug_Print (SCHEME_OBJECT, bool);
 extern void Show_Env (SCHEME_OBJECT);
-extern void Print_Return (char *);
-extern void Print_Expression (SCHEME_OBJECT, char *);
+extern void Print_Return (const char *);
+extern void Print_Expression (SCHEME_OBJECT, const char *);
 extern void Print_Primitive (SCHEME_OBJECT);
 
 #endif /* not SCM_EXTERN_H */

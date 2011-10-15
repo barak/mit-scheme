@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,13 +29,12 @@ USA.
 #include "scheme.h"
 #include "trap.h"
 #include "lookup.h"
-#include "winder.h"
 #include "history.h"
 
 extern void * obstack_chunk_alloc (size_t);
 #define obstack_chunk_free free
 extern void preserve_signal_mask (void);
-extern void fixup_float_rounding_mode (void);
+extern void fixup_float_environment (void);
 
 /* In order to make the interpreter tail recursive (i.e.
  * to avoid calling procedures and thus saving unnecessary
@@ -253,7 +253,7 @@ abort_to_interpreter_argument (void)
 long prim_apply_error_code;
 
 void
-Interpret (void)
+Interpret (int pop_return_p)
 {
   long dispatch_code;
   struct interpreter_state_s new_state;
@@ -269,12 +269,15 @@ Interpret (void)
   bind_interpreter_state (&new_state);
   dispatch_code = (setjmp (interpreter_catch_env));
   preserve_signal_mask ();
-  fixup_float_rounding_mode ();
+  fixup_float_environment ();
 
   switch (dispatch_code)
     {
-    case 0:
-      break;
+    case 0:			/* first time */
+      if (pop_return_p)
+	goto pop_return;	/* continue */
+      else
+	break;			/* fall into eval */
 
     case PRIM_APPLY:
       PROCEED_AFTER_PRIMITIVE ();
@@ -308,6 +311,11 @@ Interpret (void)
       PROCEED_AFTER_PRIMITIVE ();
       goto pop_return;
 
+    case PRIM_RETURN_TO_C:
+      PROCEED_AFTER_PRIMITIVE ();
+      unbind_interpreter_state (interpreter_state);
+      return;
+
     case PRIM_NO_TRAP_POP_RETURN:
       PROCEED_AFTER_PRIMITIVE ();
       goto pop_return_non_trapping;
@@ -315,6 +323,11 @@ Interpret (void)
     case PRIM_INTERRUPT:
       back_out_of_primitive ();
       SIGNAL_INTERRUPT (PENDING_INTERRUPTS ());
+
+    case PRIM_ABORT_TO_C:
+      back_out_of_primitive ();
+      unbind_interpreter_state (interpreter_state);
+      return;
 
     case ERR_ARG_1_WRONG_TYPE:
       back_out_of_primitive ();
@@ -563,7 +576,8 @@ Interpret (void)
     case TC_VARIABLE:
       {
 	SCHEME_OBJECT val = GET_VAL;
-	long temp = (lookup_variable (GET_ENV, GET_EXP, (&val)));
+	SCHEME_OBJECT name = (GET_VARIABLE_SYMBOL (GET_EXP));
+	long temp = (lookup_variable (GET_ENV, name, (&val)));
 	if (temp != PRIM_DONE)
 	  {
 	    /* Back out of the evaluation. */
@@ -752,8 +766,6 @@ Interpret (void)
 	SCHEME_OBJECT val;
 	long code;
 
-	if (!ENVIRONMENT_P (GET_VAL))
-	  POP_RETURN_ERROR (ERR_BAD_FRAME);
 	code = (lookup_variable (GET_VAL,
 				 (MEMORY_REF (GET_EXP, ACCESS_NAME)),
 				 (&val)));
@@ -772,14 +784,18 @@ Interpret (void)
 
     case RC_EXECUTE_ASSIGNMENT_FINISH:
       {
+	SCHEME_OBJECT variable = (MEMORY_REF (GET_EXP, ASSIGN_NAME));
 	SCHEME_OBJECT old_val;
 	long code;
 
 	POP_ENV ();
-	code = (assign_variable (GET_ENV,
-				 (MEMORY_REF (GET_EXP, ASSIGN_NAME)),
-				 GET_VAL,
-				 (&old_val)));
+	if (TC_VARIABLE == (OBJECT_TYPE (variable)))
+	  code = (assign_variable (GET_ENV,
+				   (GET_VARIABLE_SYMBOL (variable)),
+				   GET_VAL,
+				   (&old_val)));
+	else
+	  code = ERR_BAD_FRAME;
 	if (code == PRIM_DONE)
 	  SET_VAL (old_val);
 	else
@@ -1126,75 +1142,6 @@ Interpret (void)
 	  }
       }
 
-    case RC_MOVE_TO_ADJACENT_POINT:
-      /* GET_EXP contains the space in which we are moving */
-      {
-	long From_Count;
-	SCHEME_OBJECT Thunk;
-	SCHEME_OBJECT New_Location;
-
-	From_Count
-	  = (UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_FROM_DISTANCE)));
-	if (From_Count != 0)
-	  {
-	    SCHEME_OBJECT Current = STACK_REF (TRANSLATE_FROM_POINT);
-	    STACK_REF (TRANSLATE_FROM_DISTANCE)
-	      = (LONG_TO_UNSIGNED_FIXNUM (From_Count - 1));
-	    Thunk = (MEMORY_REF (Current, STATE_POINT_AFTER_THUNK));
-	    New_Location
-	      = (MEMORY_REF (Current, STATE_POINT_NEARER_POINT));
-	    (STACK_REF (TRANSLATE_FROM_POINT)) = New_Location;
-	    if ((From_Count == 1)
-		&& ((STACK_REF (TRANSLATE_TO_DISTANCE))
-		    == (LONG_TO_UNSIGNED_FIXNUM (0))))
-	      stack_pointer = (STACK_LOC (4));
-	    else
-	      SAVE_CONT ();
-	  }
-	else
-	  {
-	    long To_Count;
-	    SCHEME_OBJECT To_Location;
-	    long i;
-
-	    To_Count
-	      = ((UNSIGNED_FIXNUM_TO_LONG (STACK_REF (TRANSLATE_TO_DISTANCE)))
-		 - 1);
-	    To_Location = (STACK_REF (TRANSLATE_TO_POINT));
-	    for (i = 0; (i < To_Count); i += 1)
-	      To_Location
-		= (MEMORY_REF (To_Location, STATE_POINT_NEARER_POINT));
-	    Thunk = (MEMORY_REF (To_Location, STATE_POINT_BEFORE_THUNK));
-	    New_Location = To_Location;
-	    (STACK_REF (TRANSLATE_TO_DISTANCE))
-	      = (LONG_TO_UNSIGNED_FIXNUM (To_Count));
-	    if (To_Count == 0)
-	      stack_pointer = (STACK_LOC (4));
-	    else
-	      SAVE_CONT ();
-	  }
-	if (GET_EXP != SHARP_F)
-	  {
-	    MEMORY_SET (GET_EXP, STATE_SPACE_NEAREST_POINT, New_Location);
-	  }
-	else
-	  current_state_point = New_Location;
-	Will_Push (2);
-	STACK_PUSH (Thunk);
-	PUSH_APPLY_FRAME_HEADER (0);
-	Pushed ();
-	goto internal_apply;
-      }
-
-    case RC_INVOKE_STACK_THREAD:
-      /* Used for WITH_THREADED_STACK primitive.  */
-      Will_Push (3);
-      PUSH_VAL ();		/* Value calculated by thunk.  */
-      PUSH_EXP ();
-      PUSH_APPLY_FRAME_HEADER (1);
-      Pushed ();
-      goto internal_apply;
-
     case RC_JOIN_STACKLETS:
       unpack_control_point (GET_EXP);
       break;
@@ -1338,19 +1285,6 @@ Interpret (void)
          so just pop the second argument.  */
       stack_pointer = (STACK_LOCATIVE_OFFSET (stack_pointer, 1));
       break;
-
-    case RC_RESTORE_TO_STATE_POINT:
-      {
-	SCHEME_OBJECT Where_To_Go = GET_EXP;
-	Will_Push (CONTINUATION_SIZE);
-	/* Restore the contents of GET_VAL after moving to point */
-	SET_EXP (GET_VAL);
-	SET_RC (RC_RESTORE_VALUE);
-	SAVE_CONT ();
-	Pushed ();
-	Translate_To_Point (Where_To_Go);
-	break;			/* We never get here.... */
-      }
 
     case RC_SEQ_2_DO_2:
       END_SUBPROBLEM ();

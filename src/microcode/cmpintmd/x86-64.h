@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -173,7 +174,8 @@ typedef byte_t insn_t;
 #  define ASM_ENTRY_POINT(name) name
 #endif
 
-extern int ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
+extern void ASM_ENTRY_POINT (x86_64_interface_initialize) (void);
+extern void ASM_ENTRY_POINT (within_c_stack) (void (*) (void *), void *);
 
 extern void asm_assignment_trap (void);
 extern void asm_dont_serialize_cache (void);
@@ -232,18 +234,17 @@ extern void asm_sc_apply_size_8 (void);
 extern void asm_scheme_to_interface (void);
 extern void asm_scheme_to_interface_call (void);
 extern void asm_serialize_cache (void);
-/* [TRC 20091025: This was an i386 hack for when the PC is not
-   available, which on x86-64 it always is. */
-/* extern void asm_short_primitive_apply (void); */
 extern void asm_trampoline_to_interface (void);
 
-/* extern void x86_64_cache_synchronize (void); */
-/* extern void start_closure_relocation (SCHEME_OBJECT *, reloc_ref_t *); */
 extern insn_t * read_compiled_closure_target (insn_t *);
-/* extern void start_operator_relocation (SCHEME_OBJECT *, reloc_ref_t *); */
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
 extern void x86_64_reset_hook (void);
 
-extern int x86_64_cpuid_needed;
+#ifndef HAVE_FENV_H
+#  define CMPINTMD_EMULATES_FENV
+#  define x87_p 1
+#  define sse_p 1
+#  include "cmpintmd/x86-fenv.h"
+#endif
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */

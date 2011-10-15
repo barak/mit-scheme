@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,6 +42,23 @@ struct time_structure
   int time_zone;
 };
 
+struct scheme_nanotime
+{
+  intmax_t seconds;
+  uint32_t nanoseconds;
+};
+
+#if 0
+/* Any practical use?  */
+
+struct scheme_attotime
+{
+  intmax_t seconds;
+  uint64_t attoseconds;
+};
+#endif
+
+extern void OS_nanotime_since_utc_epoch (struct scheme_nanotime *);
 extern time_t OS_encoded_time (void);
 extern void OS_decode_time (time_t, struct time_structure *);
 extern void OS_decode_utc (time_t, struct time_structure *);

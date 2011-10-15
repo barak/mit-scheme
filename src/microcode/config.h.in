@@ -4,7 +4,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,6 +38,12 @@ USA.
 /* Define to 1 if you have the <bsdtty.h> header file. */
 #undef HAVE_BSDTTY_H
 
+/* Define to 1 if you have the `clock_gettime' function. */
+#undef HAVE_CLOCK_GETTIME
+
+/* Define to 1 if you have the `closefrom' function. */
+#undef HAVE_CLOSEFROM
+
 /* Define to 1 if you have the `ctermid' function. */
 #undef HAVE_CTERMID
 
@@ -66,6 +73,9 @@ USA.
 /* Define to 1 if you have the `dup2' function. */
 #undef HAVE_DUP2
 
+/* Define to 1 if you have the `expm1' function. */
+#undef HAVE_EXPM1
+
 /* Define to 1 if you have the `fcntl' function. */
 #undef HAVE_FCNTL
 
@@ -75,14 +85,56 @@ USA.
 /* Define to 1 if you have the `fdatasync' function. */
 #undef HAVE_FDATASYNC
 
+/* Define to 1 if you have the `feclearexcept' function. */
+#undef HAVE_FECLEAREXCEPT
+
+/* Define to 1 if you have the `fedisableexcept' function. */
+#undef HAVE_FEDISABLEEXCEPT
+
+/* Define to 1 if you have the `feenableexcept' function. */
+#undef HAVE_FEENABLEEXCEPT
+
+/* Define to 1 if you have the `fegetenv' function. */
+#undef HAVE_FEGETENV
+
+/* Define to 1 if you have the `fegetexcept' function. */
+#undef HAVE_FEGETEXCEPT
+
+/* Define to 1 if you have the `fegetexceptflag' function. */
+#undef HAVE_FEGETEXCEPTFLAG
+
 /* Define to 1 if you have the `fegetround' function. */
 #undef HAVE_FEGETROUND
+
+/* Define to 1 if you have the `feholdexcept' function. */
+#undef HAVE_FEHOLDEXCEPT
 
 /* Define to 1 if you have the <fenv.h> header file. */
 #undef HAVE_FENV_H
 
+/* Define to 1 if the system has the type `fenv_t'. */
+#undef HAVE_FENV_T
+
+/* Define to 1 if you have the `feraiseexcept' function. */
+#undef HAVE_FERAISEEXCEPT
+
+/* Define to 1 if you have the `fesetenv' function. */
+#undef HAVE_FESETENV
+
+/* Define to 1 if you have the `fesetexceptflag' function. */
+#undef HAVE_FESETEXCEPTFLAG
+
 /* Define to 1 if you have the `fesetround' function. */
 #undef HAVE_FESETROUND
+
+/* Define to 1 if you have the `fetestexcept' function. */
+#undef HAVE_FETESTEXCEPT
+
+/* Define to 1 if you have the `feupdateenv' function. */
+#undef HAVE_FEUPDATEENV
+
+/* Define to 1 if the system has the type `fexcept_t'. */
+#undef HAVE_FEXCEPT_T
 
 /* Define to 1 if you have the <float.h> header file. */
 #undef HAVE_FLOAT_H
@@ -95,6 +147,12 @@ USA.
 
 /* Define to 1 if you have the `fpathconf' function. */
 #undef HAVE_FPATHCONF
+
+/* Define to 1 if you have the `fpgetround' function. */
+#undef HAVE_FPGETROUND
+
+/* Define to 1 if you have the `fpsetround' function. */
+#undef HAVE_FPSETROUND
 
 /* Define to 1 if you have the `frexp' function. */
 #undef HAVE_FREXP
@@ -144,6 +202,15 @@ USA.
 /* Define if `struct hostent' has the `h_addr_list' member. */
 #undef HAVE_HOSTENT_H_ADDR_LIST
 
+/* Define to 1 if you have the <ieeefp.h> header file. */
+#undef HAVE_IEEEFP_H
+
+/* Define to 1 if the system has the type `intmax_t'. */
+#undef HAVE_INTMAX_T
+
+/* Define to 1 if the system has the type `intptr_t'. */
+#undef HAVE_INTPTR_T
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -152,9 +219,6 @@ USA.
 
 /* Define to 1 if you have the `crypto' library (-lcrypto). */
 #undef HAVE_LIBCRYPTO
-
-/* Define to 1 if you have the `curses' library (-lcurses). */
-#undef HAVE_LIBCURSES
 
 /* Define to 1 if you have the `db-4' library (-ldb-4). */
 #undef HAVE_LIBDB_4
@@ -174,17 +238,11 @@ USA.
 /* Define to 1 if you have the `mhash' library (-lmhash). */
 #undef HAVE_LIBMHASH
 
-/* Define to 1 if you have the `ncurses' library (-lncurses). */
-#undef HAVE_LIBNCURSES
-
 /* Define to 1 if you have the `pq' library (-lpq). */
 #undef HAVE_LIBPQ
 
 /* Define to 1 if you have the <libpq-fe.h> header file. */
 #undef HAVE_LIBPQ_FE_H
-
-/* Define to 1 if you have the `termcap' library (-ltermcap). */
-#undef HAVE_LIBTERMCAP
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
@@ -192,8 +250,17 @@ USA.
 /* Define to 1 if you have the `lockf' function. */
 #undef HAVE_LOCKF
 
+/* Define to 1 if you have the `log1p' function. */
+#undef HAVE_LOG1P
+
 /* Define to 1 if you support file names longer than 14 characters. */
 #undef HAVE_LONG_FILE_NAMES
+
+/* Define to 1 if the system has the type `long long int'. */
+#undef HAVE_LONG_LONG_INT
+
+/* Define to 1 if you have the `madvise' function. */
+#undef HAVE_MADVISE
 
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
@@ -222,6 +289,9 @@ USA.
 /* Define to 1 if you have the `modf' function. */
 #undef HAVE_MODF
 
+/* Define to 1 if you have the <ncurses.h> header file. */
+#undef HAVE_NCURSES_H
+
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #undef HAVE_NDIR_H
 
@@ -231,6 +301,18 @@ USA.
 /* Define to 1 if you have the `nice' function. */
 #undef HAVE_NICE
 
+/* Define if `struct ntptimeval' has the `tai' member. */
+#undef HAVE_NTPTIMEVAL_TAI
+
+/* Define if `struct ntptimeval' has the `time.tv_nsec' member. */
+#undef HAVE_NTPTIMEVAL_TIME_TV_NSEC
+
+/* Define to 1 if you have the `ntp_adjtime' function. */
+#undef HAVE_NTP_ADJTIME
+
+/* Define to 1 if you have the `ntp_gettime' function. */
+#undef HAVE_NTP_GETTIME
+
 /* Define to 1 if you have the <openssl/blowfish.h> header file. */
 #undef HAVE_OPENSSL_BLOWFISH_H
 
@@ -239,6 +321,9 @@ USA.
 
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
+
+/* Define to 1 if you have the `posix_madvise' function. */
+#undef HAVE_POSIX_MADVISE
 
 /* Define to 1 if you have the `prealloc' function. */
 #undef HAVE_PREALLOC
@@ -289,6 +374,12 @@ USA.
 /* Define to 1 if stdbool.h conforms to C99. */
 #undef HAVE_STDBOOL_H
 
+/* Does the compiler support C89? */
+#undef HAVE_STDC_89
+
+/* Does the compiler support C99? */
+#undef HAVE_STDC_99
+
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
 
@@ -325,8 +416,14 @@ USA.
 /* Define if `struct ltchars' is defined in <bsdtty.h>. */
 #undef HAVE_STRUCT_LTCHARS
 
+/* Define if `struct ntptimeval' is defined in <sys/timex.h>. */
+#undef HAVE_STRUCT_NTPTIMEVAL
+
 /* Define if `struct sigcontext' is defined in <signal.h>. */
 #undef HAVE_STRUCT_SIGCONTEXT
+
+/* Define if `struct timex' is defined in <sys/timex.h>. */
+#undef HAVE_STRUCT_TIMEX
 
 /* Define to 1 if `tm_zone' is member of `struct tm'. */
 #undef HAVE_STRUCT_TM_TM_ZONE
@@ -375,6 +472,9 @@ USA.
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
+/* Define to 1 if you have the <sys/timex.h> header file. */
+#undef HAVE_SYS_TIMEX_H
+
 /* Define to 1 if you have the <sys/time.h> header file. */
 #undef HAVE_SYS_TIME_H
 
@@ -390,6 +490,9 @@ USA.
 /* Define to 1 if you have <sys/wait.h> that is POSIX.1 compatible. */
 #undef HAVE_SYS_WAIT_H
 
+/* Define to 1 if you have the <termcap.h> header file. */
+#undef HAVE_TERMCAP_H
+
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
@@ -401,6 +504,12 @@ USA.
 
 /* Define to 1 if you have the `times' function. */
 #undef HAVE_TIMES
+
+/* Define if `struct timex' has the `tai' member. */
+#undef HAVE_TIMEX_TAI
+
+/* Define if `struct timex' has the `time.tv_usec' member. */
+#undef HAVE_TIMEX_TIME_TV_USEC
 
 /* Define if timezone variable is available. */
 #undef HAVE_TIMEZONE
@@ -422,11 +531,20 @@ USA.
    `tzname'. */
 #undef HAVE_TZNAME
 
+/* Define to 1 if the system has the type `uintmax_t'. */
+#undef HAVE_UINTMAX_T
+
+/* Define to 1 if the system has the type `uintptr_t'. */
+#undef HAVE_UINTPTR_T
+
 /* Define to 1 if you have the `uname' function. */
 #undef HAVE_UNAME
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if the system has the type `unsigned long long int'. */
+#undef HAVE_UNSIGNED_LONG_LONG_INT
 
 /* Define to 1 if you have the `utime' function. */
 #undef HAVE_UTIME
@@ -461,9 +579,6 @@ USA.
 
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
-
-/* Define if ncurses library defines `tparam'. */
-#undef LIBNCURSES_DEFINES_TPARAM
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
@@ -500,14 +615,26 @@ USA.
 /* The size of `int', as computed by sizeof. */
 #undef SIZEOF_INT
 
+/* The size of `intmax_t', as computed by sizeof. */
+#undef SIZEOF_INTMAX_T
+
 /* The size of `intptr_t', as computed by sizeof. */
 #undef SIZEOF_INTPTR_T
 
 /* The size of `long', as computed by sizeof. */
 #undef SIZEOF_LONG
 
+/* The size of `off_t', as computed by sizeof. */
+#undef SIZEOF_OFF_T
+
 /* The size of `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
+
+/* The size of `time_t', as computed by sizeof. */
+#undef SIZEOF_TIME_T
+
+/* The size of `uintmax_t', as computed by sizeof. */
+#undef SIZEOF_UINTMAX_T
 
 /* The size of `uintptr_t', as computed by sizeof. */
 #undef SIZEOF_UINTPTR_T
@@ -558,6 +685,21 @@ USA.
 /* Define for large files, on AIX-style hosts. */
 #undef _LARGE_FILES
 
+/* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the
+   #define below would cause a syntax error. */
+#undef _UINT32_T
+
+/* Define for Solaris 2.5.1 so the uint64_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the
+   #define below would cause a syntax error. */
+#undef _UINT64_T
+
+/* Define for Solaris 2.5.1 so the uint8_t typedef from <sys/synch.h>,
+   <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the
+   #define below would cause a syntax error. */
+#undef _UINT8_T
+
 /* Define to 1 if type `char' is unsigned and you are not using gcc.  */
 #ifndef __CHAR_UNSIGNED__
 # undef __CHAR_UNSIGNED__
@@ -584,16 +726,28 @@ USA.
 #undef inline
 #endif
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of a signed integer type of width exactly 16 bits if
+   such a type exists and the standard includes do not define it. */
 #undef int16_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of a signed integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
 #undef int32_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of a signed integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
+#undef int64_t
+
+/* Define to the type of a signed integer type of width exactly 8 bits if such
+   a type exists and the standard includes do not define it. */
 #undef int8_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the widest signed integer type if <stdint.h> and <inttypes.h> do
+   not define. */
+#undef intmax_t
+
+/* Define to the type of a signed integer type wide enough to hold a pointer,
+   if such a type exists, and if the system does not define it. */
 #undef intptr_t
 
 /* Define to `int' if <sys/types.h> does not define. */
@@ -627,16 +781,28 @@ USA.
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef uid_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of an unsigned integer type of width exactly 16 bits if
+   such a type exists and the standard includes do not define it. */
 #undef uint16_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of an unsigned integer type of width exactly 32 bits if
+   such a type exists and the standard includes do not define it. */
 #undef uint32_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the type of an unsigned integer type of width exactly 64 bits if
+   such a type exists and the standard includes do not define it. */
+#undef uint64_t
+
+/* Define to the type of an unsigned integer type of width exactly 8 bits if
+   such a type exists and the standard includes do not define it. */
 #undef uint8_t
 
-/* Define replacement if no <stdint.h>. */
+/* Define to the widest unsigned integer type if <stdint.h> and <inttypes.h>
+   do not define. */
+#undef uintmax_t
+
+/* Define to the type of an unsigned integer type wide enough to hold a
+   pointer, if such a type exists, and if the system does not define it. */
 #undef uintptr_t
 
 /* Define as `fork' if `vfork' does not work. */

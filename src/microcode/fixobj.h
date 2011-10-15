@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,8 +47,8 @@ USA.
 #define STEPPER_STATE		0x0E
 #define FIXED_OBJECTS_SLOTS	0x0F	/* Names of these slots. */
 #define FIXOBJ_FILES_TO_DELETE	0x10	/* Temporary files to delete. */
-#define State_Space_Tag		0x11	/* Tag for state spaces. */
-#define State_Point_Tag		0x12	/* Tag for state points. */
+/* #define UNUSED		0x11 */
+/* #define UNUSED		0x12 */
 #define DUMMY_HISTORY		0x13	/* Empty history structure. */
 #define Bignum_One              0x14    /* Cache for bignum one. */
 /* #define UNUSED		0x15 */
@@ -63,7 +64,7 @@ USA.
 /* #define UNUSED		0x1F */
 #define CC_ERROR_PROCEDURE	0x20	/* Error handler for compiled code. */
 /* #define UNUSED	 	0x21 */
-#define State_Space_Root	0x22 	/* Root of state space. */
+/* #define UNUSED		0x22 */
 #define Primitive_Profiling_Table 0x23	/* Table of profile counts for
 					   primitives. */
 
@@ -119,7 +120,9 @@ USA.
 
 #define GC_WABBIT_DESCRIPTOR		0x40
 
-/* 4 extra slots for expansion and debugging.  */
+#define CALLBACK_HANDLER		0x41
+
+/* 3 extra slots for expansion and debugging.  */
 #define N_FIXED_OBJECTS			0x45
 
 #define FIXED_OBJECTS_NAMES						\
@@ -141,8 +144,8 @@ USA.
   /* 0x0E */	"stepper-state",					\
   /* 0x0F */	"microcode-fixed-objects-slots",			\
   /* 0x10 */	"files-to-delete",					\
-  /* 0x11 */	"state-space-tag",					\
-  /* 0x12 */	"state-point-tag",					\
+  /* 0x11 */	0,							\
+  /* 0x12 */	0,							\
   /* 0x13 */	"dummy-history",					\
   /* 0x14 */	"bignum-one",						\
   /* 0x15 */	0,							\
@@ -158,7 +161,7 @@ USA.
   /* 0x1F */	0,							\
   /* 0x20 */	"compiler-error-procedure",				\
   /* 0x21 */	0,							\
-  /* 0x22 */	"state-space-root",					\
+  /* 0x22 */	0,							\
   /* 0x23 */	"primitive-profiling-table",				\
   /* 0x24 */	"generic-trampoline-zero?",				\
   /* 0x25 */	"generic-trampoline-positive?",				\
@@ -189,7 +192,7 @@ USA.
   /* 0x3E */	"pc-sample/ufo-table",					\
   /* 0x3F */	"compiled-code-bkpt-handler",				\
   /* 0x40 */	"gc-wabbit-descwiptor",					\
-  /* 0x41 */	0,							\
+  /* 0x41 */	"callback-handler",					\
   /* 0x42 */	0,							\
   /* 0x43 */	0,							\
   /* 0x44 */	0,							\

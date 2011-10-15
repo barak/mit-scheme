@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -367,6 +368,8 @@ SUBJECT is a string of regexps separated by commas."
 	(mark-temporary! mark))
       (buffer-put! buffer 'IMAIL-SUMMARY-MESSAGES (list->vector messages)))))
 
+;++ I am sorry to have written such a load of garbage.
+
 (define (expand-imail-summary-buffer buffer new-messages)
   (let ((old-messages (buffer-get buffer 'IMAIL-SUMMARY-MESSAGES #f))
 	(index-digits (buffer-get buffer 'IMAIL-SUMMARY-INDEX-DIGITS #f))
@@ -405,6 +408,10 @@ SUBJECT is a string of regexps separated by commas."
 			       old-messages
 			       mark*
 			       (cons new-message messages))))
+		     ;++ This can't possibly be right if we have just
+		     ;++ inserted some new messages.  We need to bump
+		     ;++ the old messages' indices, like we do when we
+		     ;++ expunge messages.
 		     ((eqv? (imail-summary-selected-message-index mark)
 			    (message-index old-message))
 		      (merge new-messages
@@ -591,16 +598,10 @@ SUBJECT is a string of regexps separated by commas."
 	  (else s))))
 
 (define (message-summary-subject-string message)
-  (let ((s
-	 (let ((s (or (get-first-header-field-value message "subject" #f) "")))
-	   (let ((regs (re-string-match "\\(re:[ \t]*\\)+" s #t)))
-	     (if regs
-		 (string-tail s (re-match-end-index 0 regs))
-		 s)))))
-    (let ((i (string-find-next-char s #\newline)))
-      (if i
-	  (string-head s i)
-	  s))))
+  (let ((subject (message-subject message)))
+    (cond ((string-find-next-char subject #\newline)
+	   => (lambda (line-end) (string-head subject line-end)))
+	  (else subject))))
 
 ;;;; Navigation
 
@@ -692,13 +693,26 @@ SUBJECT is a string of regexps separated by commas."
 	   (extract-string (re-match-start 1) (re-match-end 1)))
 	  1)))
 
-(define (imail-summary-match-line mark)
-  (re-match-forward
+(define (make-imail-summary-regexp suffix)
+  (re-compile-pattern
    (string-append
     "[* ][D ][U ][A ][R ][F ] +\\([0-9]+\\)  +\\([0-9.]+[a-zA-Z ]\\)"
-    (if (ref-variable imail-summary-show-date mark)
-	" \\([ 123][0-9] [a-zA-Z]+  \\| +\\)"
-	"  "))
+    suffix)
+   #f))
+
+(define imail-summary-regexp-without-date
+  (make-imail-summary-regexp "  "))
+
+(define imail-summary-regexp-with-date
+  (make-imail-summary-regexp " \\([ 123][0-9] [a-zA-Z]+  \\| +\\)"))
+
+(define (imail-summary-match-line mark)
+  (re-match-forward
+   ;++ This is pretty bogus -- changing the variable will just quietly
+   ;++ break all operations on the summary buffer.
+   (if (ref-variable imail-summary-show-date mark)
+       imail-summary-regexp-with-date
+       imail-summary-regexp-without-date)
    (line-start mark 0)
    (line-end mark 0)
    #f))

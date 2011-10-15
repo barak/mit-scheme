@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -265,11 +266,7 @@ USA.
   ;; Disabled: FSIN and FCOS limited to pi * 2^62.
   ;;(define-flonum-operation FLONUM-SIN FSIN)
   ;;(define-flonum-operation FLONUM-COS FCOS)
-  (define-flonum-operation FLONUM-SQRT FSQRT)
-  (define-flonum-operation FLONUM-ROUND FRNDINT))
-
-;; These (and FLONUM-ROUND above) presume that the default rounding mode
-;; is round-to-nearest/even
+  (define-flonum-operation FLONUM-SQRT FSQRT))
 
 (define (define-rounding prim-name mode)
   (define-arithmetic-method prim-name flonum-methods/1-arg
@@ -281,6 +278,7 @@ USA.
 		    (LAP)
 		    (LAP (FLD (ST ,source))))
 	      (MOV B ,temp (@RO B ,regnum:free-pointer 1))
+	      (AND B (@RO B ,regnum:free-pointer 1) (&U #xf3))
 	      (OR B (@RO B ,regnum:free-pointer 1) (&U ,mode))
 	      (FNLDCW (@R ,regnum:free-pointer))
 	      (FRNDINT)
@@ -290,6 +288,7 @@ USA.
 		    (LAP (FSTP (ST ,(1+ target)))))
 	      (FNLDCW (@R ,regnum:free-pointer))))))))
 
+(define-rounding 'FLONUM-ROUND #x00)
 (define-rounding 'FLONUM-CEILING #x08)
 (define-rounding 'FLONUM-FLOOR #x04)
 (define-rounding 'FLONUM-TRUNCATE #x0c)
@@ -318,6 +317,24 @@ USA.
      (LAP (FLDLN2)
 	  (FXCH (ST 0) (ST 1))
 	  (FYL2X)))))
+
+(define-arithmetic-method 'FLONUM-LOG1P flonum-methods/1-arg
+  ;; Computes LOG(X+1).
+  ;; X must be in the range: (- (SQRT 1/2) 1) <= X <= (- 1 (SQRT 1/2))
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     (LAP (FLDLN2)
+	  (FXCH (ST 0) (ST 1))
+	  (FYL2XP1)))))
+
+(define-arithmetic-method 'FLONUM-EXPM1 flonum-methods/1-arg
+  ;; Computes EXP(X)-1.
+  ;; X must be in the range: (- (LOG 2)) <= X <= (LOG 2)
+  (flonum-unary-operation/stack-top
+   (lambda ()
+     (LAP (FLDL2E)
+	  (FMULP (ST 1) (ST 0))
+	  (F2XM1)))))
 
 (define-arithmetic-method 'FLONUM-EXP flonum-methods/1-arg
   (flonum-unary-operation/stack-top

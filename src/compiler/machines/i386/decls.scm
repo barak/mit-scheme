@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -333,9 +334,9 @@ USA.
 			      "refctx" "rvalue" "scode" "sets" "subprb"
 			      "switch" "utils")
 	     (filename/append "back"
-			      "asmmac" "bittop" "bitutl" "insseq" "lapgn1"
-			      "lapgn2" "lapgn3" "linear" "regmap" "symtab"
-			      "syntax")
+			      "asmmac" "bittop" "bitutl" "checks" "insseq"
+			      "lapgn1" "lapgn2" "lapgn3" "linear" "regmap"
+			      "symtab" "syntax")
 	     (filename/append "machines/i386"
 			      "dassm1" "insmac" "lapopt" "machin" "rgspcm"
 			      "rulrew")
@@ -408,7 +409,7 @@ USA.
 		  (filename/append "machines/i386" "insutl")))
 	 (lapgen-body
 	  (append
-	   (filename/append "back" "lapgn1" "lapgn2" "syntax")
+	   (filename/append "back" "checks" "lapgn1" "lapgn2" "syntax")
 	   (filename/append "machines/i386"
 			    "rules1" "rules2" "rules3" "rules4"
 			    "rulfix" "rulflo")))
@@ -543,6 +544,9 @@ USA.
     (file-dependency/integration/join (append assembler-base assembler-body)
 				      assembler-base)
 
+    (define-integration-dependencies "back" "checks" "base" "cfg1" "cfg2")
+    (define-integration-dependencies "back" "checks" "rtlbase"
+      "rtlcfg" "rtlobj" "rtlty1")
     (define-integration-dependencies "back" "lapgn1" "base"
       "cfg1" "cfg2" "utils")
     (define-integration-dependencies "back" "lapgn1" "rtlbase"

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -155,7 +156,6 @@ initialize_fixed_objects_vector (void)
   STORE_NAME_VECTOR (IDENTIFICATION_VECTOR, identity_names, N_IDENTITY_NAMES);
 
   STORE_FIXOBJ (DUMMY_HISTORY, (initialize_history ()));
-  STORE_FIXOBJ (State_Space_Tag, SHARP_T);
   STORE_FIXOBJ (Bignum_One, (long_to_bignum (1)));
   STORE_FIXOBJ (FIXOBJ_EDWIN_AUTO_SAVE, EMPTY_LIST);
   STORE_FIXOBJ (FIXOBJ_FILES_TO_DELETE, EMPTY_LIST);

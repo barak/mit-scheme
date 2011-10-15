@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -182,7 +183,7 @@ userio_choose_option (const char * herald,
       fputs (prompt, stdout);
       fflush (stdout);
       {
-	char command = (userio_read_char_raw ());
+	unsigned char command = ((unsigned char) (userio_read_char_raw ()));
 	if ((command == '\0') && (errno != 0))
 	  return (command);
 	putc ('\n', stdout);
@@ -197,7 +198,7 @@ userio_choose_option (const char * herald,
 	      if (choice == 0)
 		break;
 	      {
-		char option = (*choice);
+		unsigned char option = (*choice);
 		if (islower (option))
 		  option = (toupper (option));
 		if (command == option)

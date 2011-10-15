@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,13 +38,13 @@ USA.
 
 static void do_printing (outf_channel, SCHEME_OBJECT, bool);
 static bool print_primitive_name (outf_channel, SCHEME_OBJECT);
-static void print_expression (outf_channel, SCHEME_OBJECT, char *);
+static void print_expression (outf_channel, SCHEME_OBJECT, const char *);
 
 /* Compiled Code Debugging */
 
 #ifdef CC_SUPPORT_P
 
-char *
+const char *
 compiled_entry_filename (SCHEME_OBJECT entry)
 {
   SCHEME_OBJECT result = (compiled_entry_debug_filename (entry));
@@ -178,7 +179,7 @@ print_return_name (outf_channel stream, SCHEME_OBJECT Ptr)
 }
 
 void
-Print_Return (char * String)
+Print_Return (const char * String)
 {
   outf_error ("%s: ", String);
   print_return_name (ERROR_OUTPUT, GET_RET);
@@ -320,7 +321,7 @@ Print_Vector (SCHEME_OBJECT vector)
 }
 
 static void
-print_expression (outf_channel stream, SCHEME_OBJECT expression, char * string)
+print_expression (outf_channel stream, SCHEME_OBJECT expression, const char * string)
 {
   if ((string [0]) != 0)
     outf (stream, "%s: ", string);
@@ -328,7 +329,7 @@ print_expression (outf_channel stream, SCHEME_OBJECT expression, char * string)
 }
 
 void
-Print_Expression (SCHEME_OBJECT expression, char * string)
+Print_Expression (SCHEME_OBJECT expression, const char * string)
 {
   print_expression (ERROR_OUTPUT, expression, string);
 }
@@ -826,7 +827,7 @@ find_flag (int flag_number)
     }
 }
 
-static char *
+static const char *
 flag_name (int flag_number)
 {
   switch (flag_number)

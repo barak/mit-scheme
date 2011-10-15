@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -236,9 +237,48 @@ USA.
 				   description
 				   (if (default-object? caller) #f caller)))
     n))
-
+
 (define (length list)
   (guarantee-list->length list 'LENGTH))
+
+(define (length=? left right)
+  (define (%length=? n list)
+    (cond ((pair? list) (and (fix:positive? n)
+			     (%length=? (fix:- n 1) (cdr list))))
+	  ((null? list) (fix:zero? n))
+	  (else (error:not-list list 'length=?))))
+
+  (define (%same-length left right)
+    (cond ((pair? left)
+	   (cond ((pair? right) (%same-length (cdr left) (cdr right)))
+		 ((null? right) #f)
+		 (else (error:not-list right 'length=?))))
+	  ((null? left)
+	   (cond ((pair? right) #f)
+		 ((null? right) #t)
+		 (else (error:not-list right 'length=?))))
+	  (else
+	   (error:not-list left 'length=?))))
+
+  ;; Take arguments in either order to make this easy to use.
+  (cond ((pair? left)
+	 (cond ((pair? right) (%same-length (cdr left) (cdr right)))
+	       ((index-fixnum? right) (%length=? right left))
+	       ((null? right) #f)
+	       (else
+		(error:wrong-type-argument right "index fixnum or list"
+					   'length=?))))
+	((index-fixnum? left)
+	 (%length=? left right))
+	((null? left)
+	 (cond ((pair? right) #f)
+	       ((index-fixnum? right) (fix:zero? right))
+	       ((null? right) #t)
+	       (else
+		(error:wrong-type-argument right "index fixnum or list"
+					   'length=?))))
+	(else
+	 (error:wrong-type-argument left "index fixnum or list" 'length=?))))
 
 (define (not-pair? x)
   (not (pair? x)))
@@ -285,6 +325,12 @@ USA.
     (if (not (pair? tail))
 	(error:bad-range-argument index 'LIST-REF))
     (car tail)))
+
+(define (list-set! list index new-value)
+  (let ((tail (list-tail list index)))
+    (if (not (pair? tail))
+	(error:bad-range-argument index 'LIST-SET!))
+    (set-car! tail new-value)))
 
 (define (list-tail list index)
   (guarantee-index-fixnum index 'LIST-TAIL)
@@ -434,6 +480,31 @@ USA.
 		  (if (not (null? this))
 		      (error:not-weak-list items 'WEAK-DELQ!))))))
     (trim-initial-segment items)))
+
+;;;; General CAR CDR
+
+;;; Return a list of car and cdr symbols that the code
+;;; represents.  Leftmost operation is outermost.
+(define (decode-general-car-cdr code)
+  (guarantee-positive-fixnum code)
+  (do ((code code (fix:lsh code -1))
+       (result '() (cons (if (even? code) 'cdr 'car) result)))
+      ((= code 1) result)))
+
+;;; Return the bit string that encode the operation-list.
+;;; Operation list is encoded with leftmost outer.
+(define (encode-general-car-cdr operation-list)
+  (do ((code operation-list (cdr code))
+       (answer 1 (+ (* answer 2)
+		    (case (car code)
+		      ((CAR) 1)
+		      ((CDR) 0)
+		      (else (error "encode-general-car-cdr: Invalid operation"
+				    (car code)))))))
+      ((not (pair? code))
+       (if (not (fixnum? answer))
+	   (error "encode-general-car-cdr: code too large" answer)
+	   answer))))
 
 ;;;; Standard Selectors
 

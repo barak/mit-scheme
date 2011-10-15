@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -129,9 +130,7 @@ USA.
 (define (symbol-hash-mod symbol modulus)
   (string-hash-mod (symbol-name symbol) modulus))
 
-(define (symbol<? x y)
-  (guarantee-symbol x 'SYMBOL<?)
-  (guarantee-symbol y 'SYMBOL<?)
+(define (%symbol<? x y)
   (let ((sx (system-pair-car x))
 	(sy (system-pair-car y)))
     (let ((lx (string-length sx))
@@ -145,6 +144,16 @@ USA.
 		(else
 		 (fix:< (vector-8b-ref sx i) (vector-8b-ref sy i)))))))))
 
+(define (symbol<? x y)
+  (guarantee-symbol x 'SYMBOL<?)
+  (guarantee-symbol y 'SYMBOL<?)
+  (%symbol<? x y))
+
+(define (symbol>? x y)
+  (guarantee-symbol x 'SYMBOL>?)
+  (guarantee-symbol y 'SYMBOL>?)
+  (%symbol<? y x))
+
 (define (symbol->utf8-string symbol)
   (string-copy (symbol-name symbol)))
 
@@ -152,4 +161,4 @@ USA.
   (utf8-string->wide-string (symbol-name symbol)))
 
 (define (symbol->string symbol)
-  (wide-string->string (symbol->wide-string symbol)))
+  (utf8-string->string (symbol-name symbol)))

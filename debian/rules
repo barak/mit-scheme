@@ -6,7 +6,18 @@
 #export DH_VERBOSE=1
 
 AUTOTOOLS := /usr/share/misc
-DESTDIR := $(shell pwd)/debian/tmp
+DESTDIR_LOCAL := debian/tmp
+DESTDIR := $(shell pwd)/$(DESTDIR_LOCAL)
+
+PREFIX = /usr
+LIBDIR = $(PREFIX)/lib/mit-scheme-i386
+INFODIR = $(PREFIX)/share/info
+MANDIR = $(PREFIX)/share/man
+DOCDIR = $(PREFIX)/share/doc/mit-scheme-doc
+HTMLDIR = $(DOCDIR)/html
+PDFDIR = $(DOCDIR)/pdf
+
+INSTALL = install --preserve-timestamps
 
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -17,6 +28,9 @@ else
   CONF_FLAGS := --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
 endif
 
+CONF_FLAGS += --prefix=$(PREFIX) --mandir=$(MANDIR) --infodir=$(INFODIR) \
+	--enable-html=$(HTMLDIR) --enable-pdf=$(PDFDIR) --enable-ps=no
+
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
     CFLAGS := -O0
 else
@@ -24,18 +38,11 @@ else
 endif
 CFLAGS += -g
 
-PREFIX = /usr
-LIBDIR = $(PREFIX)/lib/mit-scheme-i386
-MANDIR = $(PREFIX)/share/man
-
-INSTALL = install --preserve-timestamps
-
-CONF_FLAGS += --prefix=$(PREFIX) --mandir=$(MANDIR)
-
 configure: configure-stamp autotools
 configure-stamp:
 	dh_testdir
 	cd src; CFLAGS="$(CFLAGS)" ./configure $(CONF_FLAGS)
+	cd doc; ./configure $(CONF_FLAGS)
 	touch configure-stamp
 
 autotools:
@@ -44,6 +51,8 @@ autotools:
 	cp -a $(AUTOTOOLS)/config.guess src/.
 
 build: configure-stamp build-stamp
+build-arch: build-stamp
+build-indep: build-stamp
 build-stamp:
 	dh_testdir
 	SCHEME_COMPILER="mit-scheme-i386" $(MAKE)
@@ -59,9 +68,11 @@ clean:
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k
-	dh_installdirs --package=mit-scheme --tmpdir=debian/tmp
+	dh_prep
+	dh_installdirs --package=mit-scheme --tmpdir=$(DESTDIR_LOCAL)
 	cd src;$(MAKE) install DESTDIR=$(DESTDIR)
+	cd doc;$(MAKE) install-html DESTDIR=$(DESTDIR)
+	cd doc;$(MAKE) install-pdf DESTDIR=$(DESTDIR)
 	rm -f $(DESTDIR)$(PREFIX)/bin/scheme
 	rm -f $(DESTDIR)$(PREFIX)/bin/bchscheme
 	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme
@@ -71,11 +82,26 @@ install: build
 	    $(DESTDIR)$(PREFIX)/share/applications/.
 	$(INSTALL) -m 644 icons/* \
 	    $(DESTDIR)$(PREFIX)/share/pixmaps/mit-scheme/.
-	dh_install --sourcedir=debian/tmp
+	dh_install --sourcedir=$(DESTDIR_LOCAL)
 
 # Build architecture-independent files here.
 binary-indep: build install
-# We have nothing to do by default.
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs
+	dh_installdocs
+	dh_installexamples
+	dh_installinfo
+	dh_installman
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
 
 # Build architecture-dependent files here.
 binary-arch: build install
@@ -85,23 +111,12 @@ binary-arch: build install
 	dh_installdocs
 	dh_installexamples
 	dh_installmenu
-#	dh_installdebconf	
-#	dh_installlogrotate
-#	dh_installemacsen
-#	dh_installcatalogs
-#	dh_installpam
-#	dh_installmime
-#	dh_installinit
-#	dh_installcron
 	dh_installinfo
 	dh_installman
 	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
-#	dh_perl
-#	dh_python
-#	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps
 	dh_gencontrol

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +31,7 @@ USA.
 #include "history.h"
 #include "gccode.h"
 #include "osscheme.h"
+#include "ostop.h"
 
 #ifdef __WIN32__
    extern void win32_allocate_registers (void);
@@ -73,14 +75,20 @@ static gc_tospace_allocator_t allocate_tospace;
 static gc_abort_handler_t abort_gc NORETURN;
 static gc_walk_proc_t save_tospace_copy;
 
+static unsigned long compute_ephemeron_array_length (unsigned long);
+
 /* Memory Allocation, sequential processor:
 
 oo
-   ------------------------------------------ <- fixed boundary (currently)
-   |           Heap 2			    |
+   ------------------------------------------
+   |           Temporary heap (tospace)     |
    |                                        |
-   ------------------------------------------ <- boundary moved by purify
-   |           Heap 1			    |
+   __________________________________________ <- chosen by malloc/realloc
+   .                                        .
+   .                                        .
+   .                                        .
+   ------------------------------------------ <- fixed boundary (currently)
+   |           Heap                         |
    |                                        |
    ------------------------------------------ <- boundary moved by purify
    |     Constant + Pure Space    /\        |
@@ -106,19 +114,23 @@ setup_memory (unsigned long heap_size,
   ALLOCATE_REGISTERS ();
 
   /* Consistency check 1 */
-  if ((heap_size == 0) || (stack_size == 0) || (constant_size == 0))
+  if ((heap_size == 0) || (stack_size == 0))
     {
       outf_fatal ("Configuration won't hold initial data.\n");
       outf_flush_fatal ();
       exit (1);
     }
 
+  /* Consistency check 2 */
+  if ((stack_size + heap_size + constant_size) >= DATUM_MASK)
+    goto allocation_too_large;
+
   /* Allocate */
   ALLOCATE_HEAP_SPACE ((stack_size + heap_size + constant_size),
 		       memory_block_start,
 		       memory_block_end);
 
-  /* Consistency check 2 */
+  /* Consistency check 3 */
   if (memory_block_start == 0)
     {
       outf_fatal ("Not enough memory for this configuration.\n");
@@ -126,9 +138,10 @@ setup_memory (unsigned long heap_size,
       exit (1);
     }
 
-  /* Consistency check 3 */
+  /* Consistency check 4 */
   if ((ADDRESS_TO_DATUM (memory_block_end)) > DATUM_MASK)
     {
+    allocation_too_large:
       outf_fatal ("Requested allocation is too large.\n");
       outf_fatal ("Try again with a smaller argument to '--heap'.\n");
       outf_flush_fatal ();
@@ -139,7 +152,7 @@ setup_memory (unsigned long heap_size,
   saved_stack_size = stack_size;
   saved_constant_size = constant_size;
   saved_heap_size = heap_size;
-  reset_allocator_parameters (0);
+  reset_allocator_parameters (0, 0);
   initialize_gc (heap_size, (&heap_start), (&Free), allocate_tospace, abort_gc);
 }
 
@@ -151,20 +164,22 @@ reset_memory (void)
 }
 
 bool
-allocations_ok_p (unsigned long n_constant, unsigned long n_heap)
+allocations_ok_p (unsigned long n_constant,
+		  unsigned long n_heap,
+		  unsigned long n_reserved)
 {
   return
     ((memory_block_start
       + saved_stack_size
       + n_constant + CONSTANT_SPACE_FUDGE
-      + n_heap + DEFAULT_HEAP_RESERVED)
+      + n_heap + ((n_reserved == 0) ? DEFAULT_HEAP_RESERVED : n_reserved))
      < memory_block_end);
 }
 
 void
-reset_allocator_parameters (unsigned long n_constant)
+reset_allocator_parameters (unsigned long n_constant, unsigned long reserved)
 {
-  heap_reserved = DEFAULT_HEAP_RESERVED;
+  heap_reserved = ((reserved == 0) ? DEFAULT_HEAP_RESERVED : reserved);
   gc_space_needed = 0;
   SET_STACK_LIMITS (memory_block_start, saved_stack_size);
   constant_start = (memory_block_start + saved_stack_size);
@@ -253,6 +268,7 @@ the primitive GC daemons before returning.")
 
   open_tospace (heap_start);
   initialize_weak_chain ();
+  ephemeron_count = 0;
 
   std_gc_pt1 ();
   std_gc_pt2 ();
@@ -294,7 +310,6 @@ std_gc_pt1 (void)
   add_to_tospace (fixed_objects);
   add_to_tospace
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
-  add_to_tospace (current_state_point);
 
   current_gc_table = (std_gc_table ());
   gc_scan_oldspace (stack_pointer, stack_end);
@@ -311,13 +326,36 @@ void
 std_gc_pt2 (void)
 {
   SCHEME_OBJECT * p = (get_newspace_ptr ());
+  OS_free_pages (heap_start, heap_end);
   (void) save_tospace (save_tospace_copy, 0);
   Free = p;
 
   fixed_objects = (*saved_to++);
   history_register = (OBJECT_ADDRESS (*saved_to++));
-  current_state_point = (*saved_to++);
   saved_to = 0;
+
+  {
+    unsigned long length
+      = (compute_ephemeron_array_length
+	 (ephemeron_count + n_ephemerons_requested));
+    if (!HEAP_AVAILABLE_P
+	((VECTOR_DATA + length) + (n_ephemerons_requested * EPHEMERON_SIZE)))
+      {
+	if (ephemeron_request_hard_p)
+	  gc_space_needed += (VECTOR_DATA + length);
+	length = (compute_ephemeron_array_length (ephemeron_count));
+#ifdef ENABLE_GC_DEBUGGING_TOOLS
+	/* This should never trigger, because we discard the previous
+	   ephemeron array, which always has room for at least as many
+	   ephemerons as are now live.  */
+	if (!HEAP_AVAILABLE_P (VECTOR_DATA + length))
+	  std_gc_death ("No room for ephemeron array");
+#endif
+      }
+    ephemeron_array = (make_vector (length, SHARP_F, false));
+    n_ephemerons_requested = 0;
+    ephemeron_request_hard_p = false;
+  }
 
   CC_TRANSPORT_END ();
   CLEAR_INTERRUPT (INT_GC);
@@ -331,7 +369,7 @@ save_tospace_copy (SCHEME_OBJECT * start, SCHEME_OBJECT * end, void * p)
 		  ((end - start) * SIZEOF_SCHEME_OBJECT));
   return (true);
 }
-
+
 void
 stack_death (const char * name)
 {
@@ -359,4 +397,103 @@ DEFINE_PRIMITIVE ("GC-TRACE-REFERENCES", Prim_gc_trace_references, 2, 2, 0)
 #endif
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+static unsigned long primes [] =
+  {
+    /* A list of primes that approximately doubles, up to near 2^32.
+       If you have that many ephemerons, collisions in the ephemeron
+       hash table are the least of your worries.  */
+    11, 23, 53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 49157,
+    98317, 196613, 393241, 786433, 1572869, 3145739, 6291469, 12582917,
+    25165843, 50331653, 100663319, 201326611, 402653189, 805306457,
+    1610612741,
+  };
+
+static unsigned long
+compute_ephemeron_array_length (unsigned long n)
+{
+  unsigned int start = 0, end = ((sizeof primes) / (sizeof (*primes)));
+  unsigned int index;
+
+  if ((primes [end - 1]) < n)
+    return (primes [end - 1]);
+
+  do {
+    index = (start + ((end - start) / 2));
+    if ((primes [index]) < n)
+      start = (index + 1);
+    else if (n < (primes [index]))
+      end = index;
+    else
+      return (primes [index]);
+  } while (start < end);
+
+  return (primes [start]);
+}
+
+static bool
+ephemeron_array_big_enough_p (unsigned long n)
+{
+  return
+    ((n == 0)
+     || ((VECTOR_P (ephemeron_array))
+	 && (n <= (VECTOR_LENGTH (ephemeron_array)))));
+}
+
+unsigned long
+compute_extra_ephemeron_space (unsigned long n)
+{
+  if (ephemeron_array_big_enough_p (n))
+    return (0);
+  else
+    return (VECTOR_DATA + (compute_ephemeron_array_length (n)));
+}
+
+void
+guarantee_extra_ephemeron_space (unsigned long n)
+{
+  ephemeron_count = n;
+  if (!ephemeron_array_big_enough_p (n))
+    {
+      unsigned long length = (compute_ephemeron_array_length (n));
+      assert (HEAP_AVAILABLE_P (VECTOR_DATA + length));
+      ephemeron_array = (make_vector (length, SHARP_F, false));
+    }
+}
+
+static void
+gc_if_needed_for_ephemeron (unsigned long extra_space)
+{
+  if (GC_NEEDED_P (EPHEMERON_SIZE + extra_space))
+    {
+      n_ephemerons_requested = 1;
+      ephemeron_request_hard_p = true;
+      Primitive_GC (EPHEMERON_SIZE);
+    }
+}
+
+DEFINE_PRIMITIVE ("MAKE-EPHEMERON", Prim_make_ephemeron, 2, 2, 0)
+{
+  PRIMITIVE_HEADER (2);
+  ephemeron_count += 1;
+  if (ephemeron_array_big_enough_p (ephemeron_count))
+    gc_if_needed_for_ephemeron (0);
+  else
+    {
+      unsigned long length
+	= (compute_ephemeron_array_length (ephemeron_count));
+      gc_if_needed_for_ephemeron (VECTOR_DATA + length);
+      ephemeron_array = (make_vector (length, SHARP_F, false));
+    }
+  {
+    SCHEME_OBJECT * addr = Free;
+    (*Free++) = MARKED_EPHEMERON_MANIFEST;
+    (*Free++) = (ARG_REF (1));	/* key */
+    (*Free++) = (ARG_REF (2));	/* datum */
+    (*Free++) = SHARP_F;	/* list */
+    (*Free++) = SHARP_F;	/* queue */
+    assert ((Free - addr) == EPHEMERON_SIZE);
+    PRIMITIVE_RETURN (MAKE_POINTER_OBJECT (TC_EPHEMERON, addr));
+  }
 }

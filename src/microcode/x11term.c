@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -55,7 +56,13 @@ struct xterm_extra
   char cursor_enabled_p;
 };
 
-#define XW_EXTRA(xw) ((struct xterm_extra *) ((xw) -> extra))
+struct xwindow_term
+{
+  struct xwindow xw;
+  struct xterm_extra extra;
+};
+
+#define XW_EXTRA(xw) (& (((struct xwindow_term *) xw) -> extra))
 
 #define XW_X_CSIZE(xw) ((XW_EXTRA (xw)) -> x_size)
 #define XW_Y_CSIZE(xw) ((XW_EXTRA (xw)) -> y_size)
@@ -267,15 +274,17 @@ xterm_dump_contents (struct xwindow * xw,
 	}
     }
 }
-
+
 static void
 xterm_dump_rectangle (struct xwindow * xw,
-		      unsigned int x,
-		      unsigned int y,
+		      int signed_x,
+		      int signed_y,
 		      unsigned int width,
 		      unsigned int height)
 {
   XFontStruct * font = (XW_FONT (xw));
+  unsigned int x = ((signed_x < 0) ? 0 : ((unsigned int) signed_x));
+  unsigned int y = ((signed_y < 0) ? 0 : ((unsigned int) signed_y));
   unsigned int fwidth = (FONT_WIDTH (font));
   unsigned int fheight = (FONT_HEIGHT (font));
   unsigned int border = (XW_INTERNAL_BORDER_WIDTH (xw));
@@ -401,8 +410,8 @@ DEFINE_PRIMITIVE ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0)
 {
   PRIMITIVE_HEADER (5);
   xterm_dump_rectangle ((x_window_arg (1)),
-			(arg_ulong_integer (2)),
-			(arg_ulong_integer (3)),
+			(arg_integer (2)),
+			(arg_integer (3)),
 			(arg_ulong_integer (4)),
 			(arg_ulong_integer (5)));
   PRIMITIVE_RETURN (UNSPECIFIC);
@@ -413,7 +422,8 @@ DEFINE_PRIMITIVE ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int xp = (arg_ulong_integer (2));
+    int signed_xp = (arg_integer (2));
+    unsigned int xp = ((signed_xp < 0) ? 0 : ((unsigned int) signed_xp));
     int bx = (xp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
@@ -429,7 +439,8 @@ DEFINE_PRIMITIVE ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0
   PRIMITIVE_HEADER (2);
   {
     struct xwindow * xw = (x_window_arg (1));
-    unsigned int yp = (arg_ulong_integer (2));
+    int signed_yp = (arg_integer (2));
+    unsigned int yp = ((signed_yp < 0) ? 0 : ((unsigned int) signed_yp));
     int by = (yp - (XW_INTERNAL_BORDER_WIDTH (xw)));
     PRIMITIVE_RETURN
       (long_to_integer
@@ -534,7 +545,7 @@ DEFINE_PRIMITIVE ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0)
 	   (y_size - (size_hints->base_height)),
 	   (&attributes),
 	   (&methods),
-	   (sizeof (struct xterm_extra))));
+	   (sizeof (struct xwindow_term))));
     (XW_X_CSIZE (xw)) = x_csize;
     (XW_Y_CSIZE (xw)) = y_csize;
     (XW_CURSOR_X (xw)) = 0;
@@ -856,8 +867,7 @@ xterm_scroll_lines_down (struct xwindow * xw,
 	     (XTERM_Y_PIXEL (xw, (y_start + lines))));
 }
 
-DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down,
-		  6, 6,
+DEFINE_PRIMITIVE ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 6, 6,
   "(XTERM-SCROLL-LINES-DOWN XTERM X-START X-END Y-START Y-END LINES)\n\
 Scroll the contents of the region down by LINES.")
 {
@@ -976,3 +986,36 @@ See `XTERM-SCREEN-CONTENTS' for the format of CONTENTS.")
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11term (void)
+{
+  declare_primitive ("XTERM-CLEAR-RECTANGLE!", Prim_xterm_clear_rectangle, 6, 6, 0);
+  declare_primitive ("XTERM-DRAW-CURSOR", Prim_xterm_draw_cursor, 1, 1, 0);
+  declare_primitive ("XTERM-DUMP-RECTANGLE", Prim_xterm_dump_rectangle, 5, 5, 0);
+  declare_primitive ("XTERM-ENABLE-CURSOR", Prim_xterm_enable_cursor, 2, 2, 0);
+  declare_primitive ("XTERM-ERASE-CURSOR", Prim_xterm_erase_cursor, 1, 1, 0);
+  declare_primitive ("XTERM-MAP-X-COORDINATE", Prim_xterm_map_x_coordinate, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-X-SIZE", Prim_xterm_map_x_size, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-Y-COORDINATE", Prim_xterm_map_y_coordinate, 2, 2, 0);
+  declare_primitive ("XTERM-MAP-Y-SIZE", Prim_xterm_map_y_size, 2, 2, 0);
+  declare_primitive ("XTERM-OPEN-WINDOW", Prim_xterm_open_window, 3, 3, 0);
+  declare_primitive ("XTERM-RECONFIGURE", Prim_xterm_reconfigure, 3, 3, 0);
+  declare_primitive ("XTERM-RESTORE-CONTENTS", Prim_xterm_restore_contents, 6, 6, 0);
+  declare_primitive ("XTERM-SAVE-CONTENTS", Prim_xterm_save_contents, 5, 5, 0);
+  declare_primitive ("XTERM-SCROLL-LINES-DOWN", Prim_xterm_scroll_lines_down, 6, 6, 0);
+  declare_primitive ("XTERM-SCROLL-LINES-UP", Prim_xterm_scroll_lines_up, 6, 6, 0);
+  declare_primitive ("XTERM-SET-SIZE", Prim_xterm_set_size, 3, 3, 0);
+  declare_primitive ("XTERM-WRITE-CHAR!", Prim_xterm_write_char, 5, 5, 0);
+  declare_primitive ("XTERM-WRITE-CURSOR!", Prim_xterm_write_cursor, 3, 3, 0);
+  declare_primitive ("XTERM-WRITE-SUBSTRING!", Prim_xterm_write_substring, 7, 7, 0);
+  declare_primitive ("XTERM-X-SIZE", Prim_xterm_x_size, 1, 1, 0);
+  declare_primitive ("XTERM-Y-SIZE", Prim_xterm_y_size, 1, 1, 0);
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

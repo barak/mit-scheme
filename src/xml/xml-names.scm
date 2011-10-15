@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,21 +29,20 @@ USA.
 (declare (usual-integrations))
 
 (define (make-xml-name name #!optional uri)
-  (let ((name-symbol (make-xml-name-symbol name))
-	(uri
-	 (if (default-object? uri)
-	     (null-xml-namespace-uri)
-	     (->absolute-uri uri 'MAKE-XML-NAME))))
-    (if (null-xml-namespace-uri? uri)
-	name-symbol
-	(begin
-	  (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
-	  (if (not (case (xml-qname-prefix name-symbol)
-		     ((xml) (uri=? uri xml-uri))
-		     ((xmlns) (uri=? uri xmlns-uri))
-		     (else #t)))
-	      (error:bad-range-argument uri 'MAKE-XML-NAME))
-	  (%make-xml-name name-symbol uri)))))
+  (let ((name-symbol (make-xml-name-symbol name)))
+    (cond ((default-object? uri)
+	   name-symbol)
+	  ((null-xml-namespace-uri? uri)
+	   name-symbol)
+	  (else
+	   (let ((uri (->absolute-uri uri 'MAKE-XML-NAME)))
+	     (guarantee-xml-qname name-symbol 'MAKE-XML-NAME)
+	     (if (not (case (xml-qname-prefix name-symbol)
+			((xml) (uri=? uri xml-uri))
+			((xmlns) (uri=? uri xmlns-uri))
+			(else #t)))
+		 (error:bad-range-argument uri 'MAKE-XML-NAME))
+	     (%make-xml-name name-symbol uri))))))
 
 ;;; EXPANDED-NAMES should be a key-weak hash table, but that has an
 ;;; effect only if the other two hash tables are datum-weak, because
@@ -108,23 +108,23 @@ USA.
 
 (define (name-matcher initial subsequent)
   (lambda (buffer)
-    (and (match-parser-buffer-char-in-alphabet buffer initial)
+    (and (match-parser-buffer-char-in-set buffer initial)
 	 (let loop ()
-	   (if (match-parser-buffer-char-in-alphabet buffer subsequent)
+	   (if (match-parser-buffer-char-in-set buffer subsequent)
 	       (loop)
 	       #t)))))
 
 (define match-ncname
-  (name-matcher alphabet:ncname-initial
-		alphabet:ncname-subsequent))
+  (name-matcher char-set:ncname-initial
+		char-set:ncname-subsequent))
 
 (define match:xml-name
-  (name-matcher alphabet:name-initial
-		alphabet:name-subsequent))
+  (name-matcher char-set:name-initial
+		char-set:name-subsequent))
 
 (define match:xml-nmtoken
-  (name-matcher alphabet:name-subsequent
-		alphabet:name-subsequent))
+  (name-matcher char-set:name-subsequent
+		char-set:name-subsequent))
 
 (define match:xml-qname
   (*matcher (seq match-ncname (? (seq ":" match-ncname)))))

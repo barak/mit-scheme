@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -376,7 +377,7 @@ USA.
 (define (load-library-object-file name errors?)
   (let ((pathname
 	 (merge-pathnames (pathname-new-type name "so")
-			  (system-library-directory-pathname "lib"))))
+			  (system-library-directory-pathname "lib" errors?))))
     (if (and errors? (not (file-regular? pathname)))
 	(error "No library object file of this name:" name))
     (if (dld-loaded-file? pathname)

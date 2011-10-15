@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -85,7 +86,9 @@ USA.
   (flo:negate flonum-negate 1)
   (flo:abs flonum-abs 1)
   (flo:exp flonum-exp 1)
+  (flo:expm1 flonum-expm1 1)
   (flo:log flonum-log 1)
+  (flo:log1p flonum-log1p 1)
   (flo:sin flonum-sin 1)
   (flo:cos flonum-cos 1)
   (flo:tan flonum-tan 1)
@@ -107,6 +110,29 @@ USA.
   (flo:vector-length floating-vector-length 1)
   (flo:vector-ref floating-vector-ref 2)
   (flo:vector-set! floating-vector-set! 3))
+
+(define-guarantee fixnum "fixnum")
+
+(define-integrable (positive-fixnum? object)
+  (and (fixnum? object)
+       (fix:positive? object)))
+
+(define-integrable (negative-fixnum? object)
+  (and (fixnum? object)
+       (fix:negative? object)))
+
+(define-integrable (non-negative-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:negative? object))))
+
+(define-integrable (non-positive-fixnum? object)
+  (and (fixnum? object)
+       (not (fix:positive? object))))
+
+(define-guarantee positive-fixnum "positive fixnum")
+(define-guarantee negative-fixnum "negative fixnum")
+(define-guarantee non-positive-fixnum "non-positive fixnum")
+(define-guarantee non-negative-fixnum "non-negative fixnum")
 
 (define-integrable (guarantee-index-fixnum object caller)
   (if (not (index-fixnum? object))
@@ -151,56 +177,3 @@ USA.
 (define (->flonum x)
   (guarantee-real x '->FLONUM)
   (exact->inexact (real-part x)))
-
-(define-primitives
-  (float-rounding-modes 0)
-  (get-float-rounding-mode 0)
-  (set-float-rounding-mode 1))
-
-(define float-rounding-mode-names
-  '#(TO-NEAREST TOWARD-ZERO DOWNWARD UPWARD))
-
-(define (flo:rounding-modes)
-  (let ((n (vector-length float-rounding-mode-names))
-	(m (float-rounding-modes)))
-    (let loop ((i 0) (names '()))
-      (if (fix:< i n)
-	  (loop (fix:+ i 1)
-		(if (fix:= (fix:and (fix:lsh 1 i) m) 0)
-		    names
-		    (cons (vector-ref float-rounding-mode-names i) names)))
-	  names))))
-
-(define (flo:rounding-mode)
-  (let ((m (get-float-rounding-mode)))
-    (if (not (fix:< m (vector-length float-rounding-mode-names)))
-	(error "Unknown float rounding mode:" m))
-    (vector-ref float-rounding-mode-names m)))
-
-(define (flo:set-rounding-mode! mode)
-  (set-float-rounding-mode (%mode-name->number mode 'FLO:SET-ROUNDING-MODE!)))
-
-(define (flo:with-rounding-mode mode thunk)
-  (let ((inside-mode (%mode-name->number mode 'FLO:WITH-ROUNDING-MODE))
-	(outside-mode))
-    (shallow-fluid-bind (lambda ()
-			  (set! outside-mode (get-float-rounding-mode))
-			  (set-float-rounding-mode inside-mode)
-			  (set! inside-mode)
-			  unspecific)
-			thunk
-			(lambda ()
-			  (set! inside-mode (get-float-rounding-mode))
-			  (set-float-rounding-mode outside-mode)
-			  (set! outside-mode)
-			  unspecific))))
-
-(define (%mode-name->number mode caller)
-  (guarantee-interned-symbol mode caller)
-  (let ((n (vector-length float-rounding-mode-names)))
-    (let loop ((i 0))
-      (if (not (fix:< i n))
-	  (error:bad-range-argument mode caller))
-      (if (eq? mode (vector-ref float-rounding-mode-names i))
-	  i
-	  (loop (fix:+ i 1))))))

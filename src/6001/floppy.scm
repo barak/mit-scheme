@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -799,7 +800,6 @@ M-x rename-file, or use the `r' command in Dired.")
   (make-condition-type 'FLOPPY-ERROR condition-type:error
       '(COMMAND OUTPUT)
     (lambda (condition port)
-      condition
       (write-string "An error occurred while accessing the floppy.\n" port)
       (write-string "The command being executed was:\n\n" port)
       (write-string (floppy-error/command condition) port)

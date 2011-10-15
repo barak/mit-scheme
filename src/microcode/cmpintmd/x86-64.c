@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -223,6 +224,8 @@ x86_64_reset_hook (void)
   int offset = (COMPILER_REGBLOCK_N_FIXED * (sizeof (SCHEME_OBJECT)));
   unsigned char * rsi_value = ((unsigned char *) Registers);
 
+  x86_64_interface_initialize ();
+
   /* These must match machines/x86-64/lapgen.scm */
 
   SETUP_REGISTER (asm_scheme_to_interface); 		/* 0 */
@@ -328,3 +331,9 @@ x86_64_reset_hook (void)
   }
 #endif /* _MACH_UNIX */
 }
+
+#ifndef HAVE_FENV_H
+#  define x87_p 1
+#  define sse_p 1
+#  include "cmpintmd/x86-fenv.c"
+#endif

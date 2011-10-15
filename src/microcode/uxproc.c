@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,19 +58,19 @@ static Tprocess foreground_child_process;
 static long process_tick;
 static long sync_tick;
 
-#define NEW_RAW_STATUS(process, status, reason)				\
+#define NEW_RAW_STATUS(process, status, reason) do			\
 {									\
   (PROCESS_RAW_STATUS (process)) = (status);				\
   (PROCESS_RAW_REASON (process)) = (reason);				\
   (PROCESS_TICK (process)) = (++process_tick);				\
-}
+} while (0)
 
-#define PROCESS_STATUS_SYNC(process)					\
+#define PROCESS_STATUS_SYNC(process) do					\
 {									\
   (PROCESS_STATUS (process)) = (PROCESS_RAW_STATUS (process));		\
   (PROCESS_REASON (process)) = (PROCESS_RAW_REASON (process));		\
   (PROCESS_SYNC_TICK (process)) = (PROCESS_TICK (process));		\
-}
+} while (0)
 
 /* This macro should only be used when
    (scheme_jc_status == process_jc_status_jc). */
@@ -165,11 +166,9 @@ UX_initialize_processes (void)
   }
   scheme_ctty_fd = (OS_ctty_fd ());
   scheme_jc_status =
-    ((scheme_ctty_fd < 0)
-     ? process_jc_status_no_ctty
-     : (UX_SC_JOB_CONTROL ())
-     ? process_jc_status_jc
-     : process_jc_status_no_jc);
+    ((scheme_ctty_fd < 0)     ? process_jc_status_no_ctty
+     : (UX_SC_JOB_CONTROL ()) ? process_jc_status_jc
+     : /*else*/			process_jc_status_no_jc);
   foreground_child_process = NO_PROCESS;
   subprocess_death_hook = subprocess_death;
   stop_signal_hook = stop_signal_handler;
@@ -200,7 +199,7 @@ process_allocate_abort (void * environment)
     }
   OS_process_deallocate (process);
 }
-
+
 static Tprocess
 process_allocate (void)
 {
@@ -279,17 +278,13 @@ OS_make_subprocess (const char * filename,
 
   transaction_begin ();
   child = (process_allocate ());
-
-  /* Flush streams so that output won't be duplicated after the fork.  */
-  fflush (stdout);
-  fflush (stderr);
-
   grab_signal_mask ();
   if (ctty_type == process_ctty_type_inherit_fg)
     block_jc_signals ();
   else
     block_sigchld ();
   STD_UINT_SYSTEM_CALL (syscall_vfork, child_pid, (UX_vfork ()));
+
   if (child_pid > 0)
     {
       /* In the parent process. */
@@ -299,14 +294,33 @@ OS_make_subprocess (const char * filename,
       (PROCESS_RAW_REASON (child)) = 0;
       (PROCESS_TICK (child)) = process_tick;
       PROCESS_STATUS_SYNC (child);
+
+      /* If we are doing job control for the child, make sure the child
+	 is in its own progress group before returning, so that we can
+	 set the ctty's process group and send job control signals to
+	 the child.  */
       if (child_jc_status == process_jc_status_jc)
-	STD_VOID_SYSTEM_CALL
-	  (syscall_setpgid, (UX_setpgid (child_pid, child_pid)));
+	/* There is a race condition here: see the RATIONALE section of
+    <http://pubs.opengroup.org/onlinepubs/9699919799/functions/setpgid.html>
+	   (POSIX.1-2008) for details.	The gist is that neither parent
+	   nor child can rely on the other to set the child's process
+	   group, so both try it.  It's OK for either the parent or the
+	   child to lose the race: after calling setpgid, each one
+	   cares only that the child have its own process group, which
+	   will be the case irrespective of who wins the race.	If the
+	   parent loses the race (and the child has already exec'd or
+	   exited), setpgid here may barf, and there are many ways that
+	   the parent can lose the race, so we just ignore any failure
+	   here under the (mildly bogus) assumption that failure means
+	   losing the race rather than manifesting a bug.  */
+	(void) UX_setpgid (child_pid, child_pid);
+
       if (ctty_type == process_ctty_type_inherit_fg)
 	{
 	  give_terminal_to (child);
 	  process_wait (child);
 	}
+
       transaction_commit ();
       return (child);
     }
@@ -400,20 +414,16 @@ OS_make_subprocess (const char * filename,
 	  goto kill_child;
       }
   }
-  {
-    /* Close all other file descriptors. */
-    int open_max = (UX_SC_OPEN_MAX ());
-    int fd;
-    for (fd = 0; (fd < open_max); fd += 1)
-      if ((fd == STDIN_FILENO)
-	  ? (channel_in_type == process_channel_type_none)
-	  : (fd == STDOUT_FILENO)
-	  ? (channel_out_type == process_channel_type_none)
-	  : (fd == STDERR_FILENO)
-	  ? (channel_err_type == process_channel_type_none)
-	  : 1)
-	(void) UX_close (fd);
-  }
+
+  /* Close all file descriptors not used by the child.  */
+  if (channel_in_type == process_channel_type_none)
+    (void) UX_close (STDIN_FILENO);
+  if (channel_out_type == process_channel_type_none)
+    (void) UX_close (STDOUT_FILENO);
+  if (channel_err_type == process_channel_type_none)
+    (void) UX_close (STDERR_FILENO);
+  /* Assumption: STDIN_FILENO = 0, STDOUT_FILENO = 1, STDERR_FILENO = 2.  */
+  (void) UX_closefrom (3);
 
   /* Put the signal mask and handlers in a normal state.  */
   UX_initialize_child_signals ();
@@ -512,8 +522,8 @@ OS_process_any_status_change (void)
   return (process_tick != sync_tick);
 }
 
-void
-OS_process_send_signal (Tprocess process, int sig)
+static void
+process_send_signal (Tprocess process, int sig)
 {
   STD_VOID_SYSTEM_CALL
     (syscall_kill,
@@ -523,6 +533,41 @@ OS_process_send_signal (Tprocess process, int sig)
 	       sig)));
 }
 
+void
+OS_process_send_signal (Tprocess process, int sig)
+{
+  /* This is hairy because it is not OK to send a signal if the process
+     has already terminated and we have already called wait(2) -- its
+     pid will be recycled, and we might send a signal to some innocent
+     bystander.  So we must guarantee that we won't call wait(2), by
+     blocking SIGCHLD, and check whether the process is in such a state
+     that we can safely signal it.  */
+  transaction_begin ();
+  block_sigchld ();
+  switch (PROCESS_RAW_STATUS (process))
+    {
+    case process_status_running:
+    case process_status_stopped:
+      process_send_signal (process, sig);
+      break;
+
+    case process_status_exited:
+    case process_status_signalled:
+      /* FIXME: This should signal an error with an argument -- namely,
+	 with the process index, so that the runtime can do a reverse
+	 lookup in the subprocess GC finalizer and put the appropriate
+	 subprocess object in the Scheme error it signals.  */
+      error_process_terminated ();
+
+      /* The remaining cases shouldn't happen unless there is a bug in
+	 the runtime; and if so, this is basically like a system call
+	 error.  */
+    default:
+      error_in_system_call (syserr_no_such_process, syscall_kill);
+    }
+  transaction_commit ();
+}
+
 void
 OS_process_kill (Tprocess process)
 {
@@ -561,7 +606,7 @@ OS_process_continue_background (Tprocess process)
   if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
       NEW_RAW_STATUS (process, process_status_running, 0);
-      OS_process_send_signal (process, SIGCONT);
+      process_send_signal (process, SIGCONT);
     }
   transaction_commit ();
 }
@@ -576,7 +621,7 @@ OS_process_continue_foreground (Tprocess process)
   if ((PROCESS_RAW_STATUS (process)) == process_status_stopped)
     {
       NEW_RAW_STATUS (process, process_status_running, 0);
-      OS_process_send_signal (process, SIGCONT);
+      process_send_signal (process, SIGCONT);
     }
   process_wait (process);
   transaction_commit ();
@@ -608,7 +653,13 @@ give_terminal_to (Tprocess process)
       foreground_child_process = process;
       OS_save_internal_state ();
       OS_restore_external_state ();
-      UX_tcsetpgrp (scheme_ctty_fd, (PROCESS_ID (process)));
+      while ((UX_tcsetpgrp (scheme_ctty_fd, (PROCESS_ID (process)))) < 0)
+	{
+	  if (errno == ENOSYS)
+	    break;
+	  if (errno != EINTR)
+	    error_system_call (errno, syscall_tcsetpgrp);
+	}
     }
 }
 
@@ -617,7 +668,12 @@ get_terminal_back (void)
 {
   if (foreground_child_process != NO_PROCESS)
     {
-      UX_tcsetpgrp (scheme_ctty_fd, (UX_getpgrp ()));
+      while ((UX_tcsetpgrp (scheme_ctty_fd, (UX_getpgrp ()))) < 0)
+	if (errno != EINTR)
+	  /* We're in no position to signal an error here (inside a
+	     transaction commit/abort action or a signal handler), so
+	     just bail.  */
+	  break;
       OS_save_external_state ();
       OS_restore_internal_state ();
       foreground_child_process = NO_PROCESS;
@@ -667,20 +723,14 @@ subprocess_death (pid_t pid, int * status)
   if (process != NO_PROCESS)
     {
       if (WIFEXITED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_exited, (WEXITSTATUS (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_exited, (WEXITSTATUS (*status)));
       else if (WIFSTOPPED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_stopped, (WSTOPSIG (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_stopped, (WSTOPSIG (*status)));
       else if (WIFSIGNALED (*status))
-	{
-	  NEW_RAW_STATUS
-	    (process, process_status_signalled, (WTERMSIG (*status)));
-	}
+	NEW_RAW_STATUS
+	  (process, process_status_signalled, (WTERMSIG (*status)));
     }
 }
 

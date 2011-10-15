@@ -2,15 +2,17 @@ Source: mit-scheme
 Section: lisp
 Priority: optional
 Maintainer: Chris Hanson <cph@debian.org>
-Build-Depends: debhelper (>> 5.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev, libxt-dev, libdb-dev, libltdl-dev
-Standards-Version: 3.8.4
+DM-Upload-Allowed: yes
+Build-Depends: debhelper (>> 8.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev, libxt-dev, libdb-dev, libltdl-dev
+Build-Depends-Indep: texinfo, texlive
+Standards-Version: 3.9.2
 Homepage: http://www.gnu.org/software/mit-scheme/
 
 Package: mit-scheme
 Architecture: i386
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: mime-support
-Suggests: mit-scheme-dbg
+Suggests: mit-scheme-dbg, mit-scheme-doc
 Description: MIT/GNU Scheme development environment
  MIT/GNU Scheme is an implementation of the Scheme programming language,
  providing an interpreter, compiler, source-code debugger, integrated
@@ -26,7 +28,7 @@ Priority: extra
 Architecture: i386
 Depends: mit-scheme (= ${binary:Version}), ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
-Conflicts: mit-scheme (<< 7.7.90+20060414-0)
+Breaks: mit-scheme (<< 7.7.90+20060414-0)
 Replaces: mit-scheme (<< 7.7.90+20060414-0)
 Description: MIT/GNU Scheme debugging files
  MIT/GNU Scheme is an implementation of the Scheme programming language,
@@ -39,3 +41,20 @@ Description: MIT/GNU Scheme debugging files
  environment.  These files provide support for debugging the MIT/GNU
  Scheme system, and are useful only if you need to see the system
  internals while you are debugging.
+
+Package: mit-scheme-doc
+Section: doc
+Priority: optional
+Architecture: all
+Depends: ${misc:Depends}
+Enhances: mit-scheme (= ${binary:Version})
+Breaks: mit-scheme (<< 7.7.90+20060414-0)
+Replaces: mit-scheme (<< 7.7.90+20060414-0)
+Description: MIT/GNU Scheme documentation
+ MIT/GNU Scheme is an implementation of the Scheme programming language,
+ providing an interpreter, compiler, source-code debugger, integrated
+ Emacs-like editor, and a large runtime library.  MIT/GNU Scheme is best
+ suited to programming large applications with a rapid development
+ cycle.
+ .
+ This package contains documentation in Info, HTML, and PDF formats.

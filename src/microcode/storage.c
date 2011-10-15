@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -34,6 +35,9 @@ USA.
 /* next free word in heap */
 SCHEME_OBJECT * Free;
 
+/* value of Free on entry to primitive, or 0 if not in primitive */
+SCHEME_OBJECT * Free_primitive = 0;
+
 /* strict limit for Free */
 SCHEME_OBJECT * heap_alloc_limit;
 
@@ -58,14 +62,18 @@ SCHEME_OBJECT * constant_alloc_next;
 SCHEME_OBJECT * constant_start;
 SCHEME_OBJECT * constant_end;
 
-/* dynamic state point */
-SCHEME_OBJECT current_state_point;
-
 /* Address of the most recent return code in the stack.
    This is only meaningful while in compiled code.  */
 SCHEME_OBJECT * last_return_code;
 
 SCHEME_OBJECT fixed_objects;
+
+/* Array of contiguous auxiliary storage, one entry per ephemeron, for
+   the sake of the garbage collector, which can use the array however
+   it pleases -- as a hash table, binary tree, &c.  */
+
+SCHEME_OBJECT ephemeron_array = SHARP_F;
+unsigned long ephemeron_count = 0;
 
 bool trapping;
 
@@ -79,6 +87,10 @@ unsigned long heap_reserved;
 
 /* Amount of space needed when GC requested */
 unsigned long gc_space_needed;
+
+/* Number of new ephemerons requested from the GC.  */
+unsigned long n_ephemerons_requested;
+bool ephemeron_request_hard_p;
 
 #ifndef HEAP_IN_LOW_MEMORY
    SCHEME_OBJECT * memory_base;
@@ -108,10 +120,10 @@ unsigned long gc_space_needed;
    unsigned int local_circle [100];
 #endif
 
-char * CONT_PRINT_RETURN_MESSAGE =   "SAVE_CONT, return code";
-char * CONT_PRINT_EXPR_MESSAGE   =   "SAVE_CONT, expression";
-char * RESTORE_CONT_RETURN_MESSAGE = "RESTORE_CONT, return code";
-char * RESTORE_CONT_EXPR_MESSAGE =   "RESTORE_CONT, expression";
+const char * CONT_PRINT_RETURN_MESSAGE =   "SAVE_CONT, return code";
+const char * CONT_PRINT_EXPR_MESSAGE   =   "SAVE_CONT, expression";
+const char * RESTORE_CONT_RETURN_MESSAGE = "RESTORE_CONT, return code";
+const char * RESTORE_CONT_EXPR_MESSAGE =   "RESTORE_CONT, expression";
 
 /* Interpreter code name and message tables */
 

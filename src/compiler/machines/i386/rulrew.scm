@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -150,6 +151,23 @@ USA.
   (QUALIFIER (rtl:constant-fixnum? source))
   (rtl:make-object->fixnum source))
 
+#|
+
+These are tempting, but there is a lapopt rule that makes
+OBJECT->FIXNUM not, after all, independent of the tag.
+
+(define-rule rewriting
+  (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
+  (QUALIFIER (rtl:cons-non-pointer? source))
+  (rtl:make-object->fixnum (rtl:cons-non-pointer-datum source)))
+
+(define-rule rewriting
+  (OBJECT->FIXNUM (REGISTER (? source register-known-value)))
+  (QUALIFIER (rtl:object->datum? source))
+  (rtl:make-object->fixnum (rtl:object->datum-expression source)))
+
+|#
+
 (define-rule rewriting
   (FIXNUM-2-ARGS MULTIPLY-FIXNUM
 		 (REGISTER (? operand-1 register-known-value))
@@ -166,7 +184,7 @@ USA.
   (QUALIFIER
    (and (rtl:constant-fixnum-test operand-2 (lambda (n) n true))))
   (rtl:make-fixnum-2-args 'MULTIPLY-FIXNUM operand-1 operand-2 overflow?))
-
+
 (define-rule rewriting
   (FIXNUM-2-ARGS (? operator)
 		 (? operand-1)

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -50,7 +51,7 @@ USA.
     (let ((environment
 	   (if top-level?
 	       (environment/bind (environment/make)
-				 (block/bound-variables-list block))
+				 (block/bound-variables block))
 	       (environment/make))))
       (if (scode-open-block? expression)
 	  (begin
@@ -158,7 +159,7 @@ USA.
 				   (cons (transform (car actions))
 					 actions*))))))))))
       (lambda (vals actions)
-	(open-block/make expression block variables vals actions false)))))
+	(open-block/make expression block variables vals actions)))))
 
 (define (transform/variable block environment expression)
   (reference/make expression
@@ -182,7 +183,7 @@ USA.
       (let ((block (block/make block true '())))
 	(call-with-values
 	    (lambda ()
-	      (let ((name->variable 
+	      (let ((name->variable
 		     (lambda (name) (variable/make&bind! block name))))
 		(values (map name->variable required)
 			(map name->variable optional)
@@ -190,12 +191,30 @@ USA.
 	  (lambda (required optional rest)
 	    (let ((environment
 		   (environment/bind environment
-				     (block/bound-variables-list block))))
-	      (procedure/make
-	       expression block name required optional rest
-	       (transform/procedure-body block
-					 environment
-					 body)))))))))
+				     (block/bound-variables block))))
+	      (build-procedure expression block name required optional rest
+			       (transform/procedure-body block environment body)))))))))
+
+;; If procedure body is a sequence, scan the first elements and turn variable
+;; references into IGNORE declarations.
+(define (build-procedure expression block name required optional rest body)
+  (if (sequence? body)
+      (do ((actions (sequence/actions body) (cdr actions))
+	   (ignores '() (cons (variable/name (reference/variable (car actions))) ignores)))
+	  ((or (null? (cdr actions))
+	       (not (reference? (car actions))))
+	   (let ((final-body (if (null? (cdr actions))
+				 (car actions)
+				 (sequence/make (object/scode body) actions))))
+	     (procedure/make
+	      expression block name required optional rest
+	      (if (null? ignores)
+		  final-body
+		  (declaration/make #f (declarations/parse block `((ignore ,@ignores)))
+				    final-body))))))
+      (procedure/make
+       expression block name required optional rest
+       body)))
 
 (define (transform/procedure-body block environment expression)
   (if (scode-open-block? expression)
@@ -223,6 +242,7 @@ USA.
   (access-components expression
     (lambda (environment* name)
       (access/make expression
+		   block
 		   (transform/expression block environment environment*)
 		   name))))
 
@@ -232,10 +252,10 @@ USA.
 (define (transform/combination* expression block environment expression*)
   (combination-components expression*
     (lambda (operator operands)
-      (combination/make expression
-			block
-			(transform/expression block environment operator)
-			(transform/expressions block environment operands)))))
+      (combination/%make expression
+			 block
+			 (transform/expression block environment operator)
+			 (transform/expressions block environment operands)))))
 
 (define (transform/comment block environment expression)
   (transform/expression block environment (comment-expression expression)))
@@ -284,7 +304,9 @@ USA.
       (quotation/make expression block expression**))))
 
 (define (transform/sequence block environment expression)
-  (sequence/make
+  ;; Don't remove references from sequences here.  We want them
+  ;; to signal ignored variables.
+  (sequence/%make
    expression
    (transform/expressions block environment (sequence-actions expression))))
 

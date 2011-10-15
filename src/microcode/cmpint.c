@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -79,29 +80,6 @@ typedef enum
   STACK_PUSH (ULONG_TO_FIXNUM (code));					\
   STACK_PUSH (reflect_to_interface);					\
 } while (false)
-
-typedef enum
-{
-  TRAMPOLINE_K_RETURN_TO_INTERPRETER,
-  TRAMPOLINE_K_APPLY,
-  TRAMPOLINE_K_ARITY,		/* unused */
-  TRAMPOLINE_K_ENTITY,		/* unused */
-  TRAMPOLINE_K_INTERPRETED,	/* unused */
-  TRAMPOLINE_K_LEXPR_PRIMITIVE,
-  TRAMPOLINE_K_PRIMITIVE,
-  TRAMPOLINE_K_LOOKUP,
-  TRAMPOLINE_K_1_0,
-  TRAMPOLINE_K_2_1,
-  TRAMPOLINE_K_2_0,
-  TRAMPOLINE_K_3_2,
-  TRAMPOLINE_K_3_1,
-  TRAMPOLINE_K_3_0,
-  TRAMPOLINE_K_4_3,
-  TRAMPOLINE_K_4_2,
-  TRAMPOLINE_K_4_1,
-  TRAMPOLINE_K_4_0,
-  TRAMPOLINE_K_REFLECT_TO_INTERFACE = 0x3A
-} trampoline_type_t;
 
 #define TC_TRAMPOLINE_HEADER TC_FIXNUM
 #define TRAMPOLINE_TABLE_SIZE 4
@@ -1704,29 +1682,37 @@ cc_entry_address_to_block_address (insn_t * entry)
     }
 }
 
+static bool
+plausible_first_cc_entry_p (insn_t * entry, insn_t * zero)
+{
+  cc_entry_type_t cet;
+  cc_entry_offset_t ceo;
+
+  if (read_cc_entry_type ((&cet), entry))
+    return (false);
+
+  if (read_cc_entry_offset ((&ceo), entry))
+    return (false);
+
+  if ((ceo.offset) != (entry - zero))
+    return (false);
+
+  return (true);
+}
+
 int
 plausible_cc_block_p (SCHEME_OBJECT * block)
 {
   insn_t * zero = ((insn_t *) block);
   insn_t * entry = (((insn_t *) (block + 2)) + CC_ENTRY_HEADER_SIZE);
-  {
-    cc_entry_type_t cet;
-    if ((read_cc_entry_type ((&cet), entry))
-	|| ((cet.marker) != CET_EXPRESSION))
-      {
-	entry += CC_ENTRY_GC_TRAP_SIZE;
-	if ((read_cc_entry_type ((&cet), entry))
-	    || (! (((cet.marker) == CET_PROCEDURE)
-		   || ((cet.marker) == CET_CONTINUATION))))
-	  return (0);
-      }
-  }
-  {
-    cc_entry_offset_t ceo;
-    if ((read_cc_entry_offset ((&ceo), entry))
-	|| ((ceo.offset) != (entry - zero)))
-      return (0);
-  }
+
+  if (!plausible_first_cc_entry_p (entry, zero))
+    {
+      entry += CC_ENTRY_GC_TRAP_SIZE;
+      if (!plausible_first_cc_entry_p (entry, zero))
+	return (0);
+    }
+
   {
     SCHEME_OBJECT * block_end = ((CC_BLOCK_ADDR_END (block)) - 1);
     return
@@ -1736,7 +1722,7 @@ plausible_cc_block_p (SCHEME_OBJECT * block)
        && (ENVIRONMENT_P (*block_end)));
   }
 }
-
+
 static bool
 unlinked_section_start_p (SCHEME_OBJECT * mp, SCHEME_OBJECT * end)
 {
@@ -2827,7 +2813,7 @@ declare_builtin (unsigned long builtin, const char * name)
 	  }
 	else
 	  {
-	    unsigned int scan = n_builtins;
+	    unsigned int scan = (n_builtins++);
 	    while (low < scan)
 	      {
 		(builtins [scan]) = (builtins [scan - 1]);
@@ -2852,6 +2838,7 @@ int
 pc_to_builtin_index (unsigned long pc)
 {
   if (! ((builtins != 0)
+	 && (n_builtins > 0)
 	 && (pc >= (builtins[0]))
 	 && (pc < (builtins [(n_builtins - 1)]))))
     return (-1);

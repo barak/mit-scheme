@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -427,11 +428,11 @@ USA.
   (description false read-only true)
   (baud-rate-index false read-only true)
   (baud-rate false read-only true)
-  (insert-line-cost false read-only true)
-  (insert-line-next-cost false read-only true)
-  (delete-line-cost false read-only true)
-  (delete-line-next-cost false read-only true)
-  (scroll-region-cost false read-only true)
+  (insert-line-cost false)
+  (insert-line-next-cost false)
+  (delete-line-cost false)
+  (delete-line-next-cost false)
+  (scroll-region-cost false)
   (cursor-x false)
   (cursor-y false)
   (standout-mode? false)
@@ -510,7 +511,6 @@ USA.
   unspecific)
 
 (define (console-wrap-update! screen thunk)
-  screen
   (let ((finished? (thunk)))
     (window-direct-output-cursor! (screen-cursor-window screen))
     (output-port/flush-output console-i/o-port)
@@ -1183,9 +1183,24 @@ Note that the multiply factors are in tenths of characters.  |#
 	    (if (or (not (= x-size (screen-x-size screen)))
 		    (not (= y-size (screen-y-size screen))))
 		(begin
-		  (without-interrupts
-		   (lambda ()
-		     (set-tn-x-size! desc x-size)
-		     (set-tn-y-size! desc y-size)
-		     (set-screen-size! screen x-size y-size)))
+		  (update-terminal-size! screen state desc x-size y-size)
 		  (update-screen! screen #t))))))))
+
+(define (update-terminal-size! screen state desc x-size y-size)
+  (receive (insert-line-cost
+	    insert-line-next-cost
+	    delete-line-cost
+	    delete-line-next-cost
+	    scroll-region-cost)
+      (let ((baud-rate (terminal-state/baud-rate state)))
+	(compute-scrolling-costs desc baud-rate x-size y-size))
+    (without-interrupts
+     (lambda ()
+       (set-tn-x-size! desc x-size)
+       (set-tn-y-size! desc y-size)
+       (set-terminal-state/insert-line-cost! state insert-line-cost)
+       (set-terminal-state/insert-line-next-cost! state insert-line-next-cost)
+       (set-terminal-state/delete-line-cost! state delete-line-cost)
+       (set-terminal-state/delete-line-next-cost! state delete-line-next-cost)
+       (set-terminal-state/scroll-region-cost! state scroll-region-cost)
+       (set-screen-size! screen x-size y-size)))))

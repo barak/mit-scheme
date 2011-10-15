@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,10 +31,21 @@ USA.
 #include "osenv.h"
 #include "ostop.h"
 
+DEFINE_PRIMITIVE ("NANOTIME-SINCE-UTC-EPOCH", Prim_nanotime_since_utc_epoch, 1, 1, 0)
+{
+  struct scheme_nanotime t;
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, PAIR_P);
+  OS_nanotime_since_utc_epoch (&t);
+  SET_PAIR_CAR ((ARG_REF (1)), (intmax_to_integer (t.seconds)));
+  SET_PAIR_CDR ((ARG_REF (1)), (uintmax_to_integer (t.nanoseconds)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
 DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
   "Return the current time as an integer.")
 {
-  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encoded_time ())));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_encoded_time ()));
 }
 
 #define DECODE_TIME_BODY(proc)						\
@@ -45,7 +57,7 @@ DEFINE_PRIMITIVE ("ENCODED-TIME", Prim_encoded_time, 0, 0,
     struct time_structure ts;						\
     if (! (len >= 10))							\
       error_bad_range_arg (1);						\
-    proc (((time_t) (arg_ulong_integer (2))), &ts);			\
+    proc (((time_t) (arg_index_integer_to_intmax (2, TIME_T_MAX))), &ts); \
     VECTOR_SET (vec, 1, (ulong_to_integer (ts . second)));		\
     VECTOR_SET (vec, 2, (ulong_to_integer (ts . minute)));		\
     VECTOR_SET (vec, 3, (ulong_to_integer (ts . hour)));		\
@@ -105,10 +117,10 @@ DEFINE_PRIMITIVE ("ENCODE-TIME", Prim_encode_time, 1, 1,
   (ts . time_zone)
     = (((len > 9)
 	&& (INTEGER_P (VECTOR_REF (vec, 9)))
-	&& (integer_to_ulong_p (VECTOR_REF (vec, 9))))
-       ? (integer_to_ulong (VECTOR_REF (vec, 9)))
+	&& (integer_to_long_p (VECTOR_REF (vec, 9))))
+       ? (integer_to_long (VECTOR_REF (vec, 9)))
        : INT_MAX);
-  PRIMITIVE_RETURN (ulong_to_integer ((unsigned long) (OS_encode_time (&ts))));
+  PRIMITIVE_RETURN (intmax_to_integer (OS_encode_time (&ts)));
 }
 
 DEFINE_PRIMITIVE ("SYSTEM-CLOCK", Prim_system_clock, 0, 0,

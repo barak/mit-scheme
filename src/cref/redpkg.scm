@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -96,7 +97,8 @@ USA.
 			     globals)
 		     (loop descriptions packages extensions loads globals)))
 		  (else
-		   (error "Unknown description keyword:" (car description)))))
+		   (warn "Unexpected description:" description)
+		   (loop descriptions packages extensions loads globals))))
 	      (values packages extensions loads globals)))))
     (receive (packages extensions loads globals)
 	(loop descriptions '() '() '() '())
@@ -240,9 +242,9 @@ USA.
    os-type))
 
 (define (parse-package-expressions expressions pathname os-type)
-  (map (lambda (expression)
-	 (parse-package-expression expression pathname os-type))
-       expressions))
+  (filter-map (lambda (expression)
+		(parse-package-expression expression pathname os-type))
+	      expressions))
 
 (define (parse-package-expression expression pathname os-type)
   (let ((lose
@@ -297,7 +299,8 @@ USA.
 			      os-type))
 			   filenames))))
       (else
-       (lose)))))
+       (warn "Unexpected description:" expression)
+       #f))))
 
 (define (parse-package-definition name options)
   (check-package-options options)
@@ -373,7 +376,7 @@ USA.
 			(append! (package-description/finalizations package)
 				 (list finalization))))))
 		(else
-		 (error "Unrecognized option keyword:" (car option)))))
+		 (warn "Unexpected option:" option))))
 	    options))
 
 (define (parse-name name)

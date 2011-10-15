@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -68,7 +69,7 @@ USA.
 #define TC_COMPILED_ENTRY		0x28
 #define TC_LEXPR			0x29
 #define TC_PCOMB3			0x2A
-/* #define TC_UNUSED			0x2B */
+#define TC_EPHEMERON			0x2B
 #define TC_VARIABLE			0x2C
 #define TC_THE_ENVIRONMENT		0x2D
 /* #define TC_UNUSED			0x2E */
@@ -146,7 +147,7 @@ USA.
   /* 0x28 */			"compiled-entry",			\
   /* 0x29 */			"lexpr",				\
   /* 0x2a */			"primitive-combination-3",		\
-  /* 0x2b */			0,					\
+  /* 0x2b */			"ephemeron",				\
   /* 0x2c */			"variable",				\
   /* 0x2d */			"the-environment",			\
   /* 0x2e */			0,					\

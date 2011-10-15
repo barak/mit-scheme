@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,6 +124,22 @@ USA.
 
 #if (SIZEOF_UINTPTR_T > SIZEOF_UNSIGNED_LONG)
 #  include "error: pointers must fit in 'unsigned long'"
+#endif
+
+#ifndef OFF_T_MAX
+#  if SIZEOF_OFF_T < SIZEOF_INTMAX_T
+#    define OFF_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_OFF_T)))
+#  else
+#    define OFF_T_MAX INTMAX_MAX
+#  endif
+#endif
+
+#ifndef TIME_T_MAX
+#  if SIZEOF_TIME_T < SIZEOF_INTMAX_T
+#    define TIME_T_MAX (~ ((~ ((intmax_t) 0)) << (CHAR_BIT * SIZEOF_TIME_T)))
+#  else
+#    define TIME_T_MAX INTMAX_MAX
+#  endif
 #endif
 
 #if ((defined (__GNUC__)) && (__GNUC__ >= 3))

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -389,3 +390,11 @@ i386_reset_hook (void)
   }
 #endif /* _MACH_UNIX */
 }
+
+#ifndef HAVE_FENV_H
+extern int i387_presence;
+extern int sse_presence;
+#  define x87_p i387_presence
+#  define sse_p sse_presence
+#  include "cmpintmd/x86-fenv.c"
+#endif

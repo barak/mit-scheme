@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,6 +70,8 @@ USA.
 #define PRIM_APPLY_INTERRUPT		-9
 #define PRIM_APPLY_ERROR		-10
 #define PRIM_NO_TRAP_POP_RETURN		-11
+#define PRIM_RETURN_TO_C		-12
+#define PRIM_ABORT_TO_C			-13
 
 #define ABORT_NAME_TABLE						\
 {									\
@@ -82,7 +85,9 @@ USA.
   /* -8 */	"TOUCH",						\
   /* -9 */	"APPLY-INTERRUPT",					\
   /* -10 */	"REENTER",						\
-  /* -11 */	"NO-TRAP-POP-RETURN"					\
+  /* -11 */	"NO-TRAP-POP-RETURN",					\
+  /* -12 */	"RETURN-TO-C",						\
+  /* -13 */	"ABORT-TO-C"						\
 }
 
 /* Some numbers of parameters which mean something special */

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -459,15 +460,6 @@ USA.
  * continues after the evaluation.
  */
 
-/* When in RC_MOVE_TO_ADJACENT_POINT in the interpreter, the following
-   information is available on the stack (placed there by
-   Translate_To_Point
-*/
-#define TRANSLATE_FROM_POINT		0
-#define TRANSLATE_FROM_DISTANCE		1
-#define TRANSLATE_TO_POINT		2
-#define TRANSLATE_TO_DISTANCE		3
-
 /* TRUE
  * The initial binding of the variable T is to an object of this type.
  * This type is the beginnings of a possible move toward a system where
@@ -507,5 +499,27 @@ USA.
 
 #define COMPLEX_REAL		0
 #define COMPLEX_IMAG		1
+
+/* EPHEMERON
+ * Similar to a weak pair, but the datum is weakly referenced too.  The
+ * key and datum are simultaneously dropped iff the only references to
+ * the key go through the datum.  Every ephemeron has extra slots for
+ * data structures that the garbage collector needs to implement this,
+ * so that the garbage collector need not allocate auxiliary storage.
+ */
+
+#define EPHEMERON_MANIFEST	0
+#define EPHEMERON_KEY		1
+#define EPHEMERON_DATUM		2
+#define EPHEMERON_LIST		3
+#define EPHEMERON_NEXT		4
+
+#define EPHEMERON_SIZE		5
+
+#define MARKED_EPHEMERON_MANIFEST				\
+  (MAKE_OBJECT (TC_MANIFEST_VECTOR, (EPHEMERON_SIZE - 1)))
+
+#define UNMARKED_EPHEMERON_MANIFEST				\
+  (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, (EPHEMERON_SIZE - 1)))
 
 #endif /* not SCM_SDATA_H */

@@ -1,3 +1,24 @@
+mit-scheme (9.1-1) unstable; urgency=low
+
+  * New upstream.
+  * debian/control, debian/copyright, debian/mit-scheme-doc.*,
+    debian/mit-scheme.install, debian/rules, Upstream has removed cover
+    texts from documentation licenses, so merge packages mit-scheme and
+    mit-scheme-doc back together.
+  * debian/compat: Bump to current version.
+  * debian/control: Bump standards-version to current and make
+    necessary changes.
+  * debian/rules: Fix lintian warnings.
+
+ -- Chris Hanson <cph@debian.org>  Sat, 15 Oct 2011 03:08:33 -0700
+
+mit-scheme (9.0.1-1+b1) sid; urgency=low
+
+  * Binary-only non-maintainer upload for i386; no source changes.
+  * Rebuild against libssl1.0.0
+
+ -- i386 Build Daemon (murphy) <buildd_i386-murphy@buildd.debian.org>  Wed, 13 Apr 2011 00:54:48 +0000
+
 mit-scheme (9.0.1-1) unstable; urgency=low
 
   * New upstream.

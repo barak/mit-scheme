@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,7 +26,10 @@ USA.
 
 ;;;; Script to incrementally syntax the compiler
 
-(load-option 'CREF)
+(with-loader-base-uri "../lib"		;Use the accompanying sf and cref.
+  (lambda ()
+    (load-option 'CREF)
+    (load-option 'SF)))
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
@@ -37,13 +41,9 @@ USA.
 ;; Guarantee that the necessary syntactic transforms and optimizers
 ;; are loaded.
 (if (lexical-unreferenceable? (->environment '(COMPILER)) 'SYNTAX-FILES!)
-    ;; Refer to the cref package model (compiler.pkg) for syntax/load
-    ;; environments.
-    (let* ((xref (begin (load-option 'CREF)(->environment '(cross-reference))))
-
-	   ;; Assume there are no os-type-specific files or packages.
+    ;; Assume there are no os-type-specific files or packages.
+    (let* ((xref (->environment '(cross-reference)))
 	   (pmodel ((access read-package-model xref) "compiler" 'unix))
-
 	   (env
 	    (lambda (filename)
 	      (->environment
@@ -85,6 +85,7 @@ USA.
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
+(sf-conditionally "make")
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-constructors "compiler" 'ALL)

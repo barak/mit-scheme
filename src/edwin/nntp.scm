@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1859,19 +1860,6 @@ USA.
 	    y
 	    (loop (cdr x) (if (memq (car x) y) y (cons (car x) y)))))))
 
-(define (differenceq x y)
-  (if (null? y)
-      x
-      (let loop ((x x) (z '()))
-	(if (null? x)
-	    (reverse! z)
-	    (loop (cdr x) (if (memq (car x) y) z (cons (car x) z)))))))
-
-(define (subsetq? x y)
-  (or (null? x)
-      (and (memq (car x) y)
-	   (subsetq? (cdr x) y))))
-
 (define (remove-duplicates items)
   (let loop ((items items) (result '()))
     (if (null? items)
@@ -1880,12 +1868,3 @@ USA.
 	      (if (memq (car items) result)
 		  result
 		  (cons (car items) result))))))
-
-(define (hash-table/modify! table key default modifier)
-  (hash-table/put! table key (modifier (hash-table/get table key default))))
-
-(define (map! procedure items)
-  (do ((items items (cdr items)))
-      ((null? items))
-    (set-car! items (procedure (car items))))
-  items)

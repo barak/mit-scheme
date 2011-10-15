@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -158,7 +159,7 @@ contains constants derived from the source program.
   (compiled-code-address->block (fasload filename)))
 
 (define (compiled-code-block/manifest-closure? block)
-  (object-type? 
+  (object-type?
    (ucode-type manifest-closure)
    ;; This combination returns an unsafe object, but since it
    ;; is used as an argument to a primitive, I can get away
@@ -262,6 +263,8 @@ contains constants derived from the source program.
 (define-integrable (promise? object)
   (object-type? (ucode-type delayed) object))
 
+(define-guarantee promise "promise")
+
 (define-integrable (promise-forced? promise)
   (eq? #t (system-pair-car promise)))
 
@@ -288,8 +291,7 @@ contains constants derived from the source program.
   (system-pair-car promise))
 
 (define (force promise)
-  (if (not (promise? promise))
-      (error:wrong-type-argument promise "promise" 'FORCE))
+  (guarantee-promise promise 'FORCE)
   (case (system-pair-car promise)
     ((#T)
      (system-pair-cdr promise))

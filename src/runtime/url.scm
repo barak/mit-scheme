@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -178,12 +179,10 @@ USA.
   (%uri-authority-port authority))
 
 (define (uri-userinfo? object)
-  (and (string? object)
-       (*match-string parser:userinfo object)))
+  (utf8-string? object))
 
 (define (uri-host? object)
-  (and (string? object)
-       (*match-string matcher:host object)))
+  (utf8-string? object))
 
 (define (uri-port? object)
   (exact-nonnegative-integer? object))
@@ -319,28 +318,34 @@ USA.
 ;;;; Parser
 
 (define (->uri object #!optional caller)
-  (%->uri object parse-uri caller))
+  (%->uri object parse-uri (lambda (uri) uri #t) caller))
 
 (define (->absolute-uri object #!optional caller)
-  (%->uri object parse-absolute-uri caller))
+  (%->uri object parse-absolute-uri uri-absolute? caller))
 
 (define (->relative-uri object #!optional caller)
-  (%->uri object parse-relative-uri caller))
+  (%->uri object parse-relative-uri uri-relative? caller))
 
-(define (%->uri object parser caller)
+(define (%->uri object parser predicate caller)
   ;; Kludge: take advantage of fact that (NOT (NOT #!DEFAULT)).
   (let* ((do-parse
 	  (lambda (string)
 	    (let ((v (*parse-string parser string)))
-	      (if (and (not v) caller)
-		  (error:bad-range-argument object caller))
-	      (vector-ref v 0))))
+	      (if v
+		  (vector-ref v 0)
+		  (begin
+		    (if caller (error:bad-range-argument object caller))
+		    #f)))))
 	 (do-string
 	  (lambda (string)
 	    (or (hash-table/get interned-uris string #f)
 		(do-parse (utf8-string->wide-string string))))))
     (cond ((uri? object)
-	   object)
+	   (if (predicate object)
+	       object
+	       (begin
+		 (if caller (error:bad-range-argument object caller))
+		 #f)))
 	  ((string? object)
 	   (do-string object))
 	  ((symbol? object)
@@ -352,7 +357,7 @@ USA.
 	  (else
 	   (if caller (error:not-uri object caller))
 	   #f))))
-
+
 (define (string->uri string #!optional start end)
   (%string->uri parse-uri string start end 'STRING->URI))
 
@@ -455,7 +460,12 @@ USA.
 
 (define parser:hostport
   (*parser
-   (seq (map uri-string-downcase (match matcher:host))
+   (seq (map uri-string-downcase
+	     (alt (match matcher:ip-literal)
+		  ;; subsumed by MATCHER:REG-NAME
+		  ;;matcher:ipv4-address
+		  (map decode-component
+		       (match matcher:reg-name))))
 	(alt (seq ":"
 		  (map string->number
 		       (match (+ (char-set char-set:uri-digit)))))
@@ -474,13 +484,6 @@ USA.
 	       (begin
 		 (write-char (char-downcase char) output)
 		 (loop)))))))))
-
-(define matcher:host
-  (*matcher
-   (alt matcher:ip-literal
-	;; subsumed by MATCHER:REG-NAME
-	;;matcher:ipv4-address
-	matcher:reg-name)))
 
 (define matcher:ip-literal
   (*matcher
@@ -625,7 +628,9 @@ USA.
 	(write-encoded userinfo char-set:uri-userinfo output)
 	(write-char #\@ output)))
   (if host
-      (write-encoded host char-set:uri-opaque-auth output))
+      (if (*match-string matcher:ip-literal host)
+	  (write-string host output)
+	  (write-encoded host char-set:uri-reg-name output)))
   (if port
       (begin
 	(write-char #\: output)
@@ -633,6 +638,12 @@ USA.
 
 (define (write-segment segment port)
   (write-encoded segment char-set:uri-segment port))
+
+(define (encode-uri-path-segment segment)
+  (guarantee-string segment 'ENCODE-URI-PATH-SEGMENT)
+  (call-with-output-string
+    (lambda (port)
+      (write-segment segment port))))
 
 ;;;; Escape codecs
 
@@ -745,9 +756,6 @@ USA.
 (define (uri-rexp:scheme)
   (rexp-sequence char-set:uri-alpha
 		 (rexp* char-set:uri-scheme)))
-
-(define (uri-rexp:opaque-auth)
-  (rexp* char-set:uri-opaque-auth))
 
 (define (uri-rexp:authority)
   (rexp-sequence (rexp-optional (uri-rexp:userinfo) "@")
@@ -879,13 +887,13 @@ USA.
 (define char-set:uri-hex)
 (define char-set:uri-scheme)
 (define char-set:uri-userinfo)
-(define char-set:uri-opaque-auth)
 (define char-set:uri-ipvfuture)
 (define char-set:uri-reg-name)
 (define char-set:uri-segment)
 (define char-set:uri-segment-nc)
 (define char-set:uri-query)
 (define char-set:uri-fragment)
+(define char-set:uri-sloppy-auth)
 
 (define parser:userinfo)
 (define matcher:reg-name)
@@ -908,24 +916,22 @@ USA.
 	(char-set-union char-set:uri-alpha
 			char-set:uri-digit
 			(string->char-set "+-.")))
-  (let* ((uri-char
+  (let* ((sub-delims (string->char-set "!$&'()*+,;="))
+	 (unreserved
 	  (char-set-union char-set:uri-alpha
 			  char-set:uri-digit
-			  (string->char-set "!$&'()*+,-./:;=?@_~")))
+			  (string->char-set "-._~")))
 	 (component-chars
-	  (lambda (free)
-	    (char-set-difference uri-char (string->char-set free)))))
-    (set! char-set:uri-userinfo		(component-chars "/?@"))
+	  (lambda (extra)
+	    (char-set-union unreserved sub-delims (string->char-set extra)))))
+    (set! char-set:uri-userinfo		(component-chars ":"))
     (set! char-set:uri-ipvfuture	char-set:uri-userinfo)
-    (set! char-set:uri-reg-name		(component-chars "/:?@"))
-    (set! char-set:uri-segment		(component-chars "/?"))
-    (set! char-set:uri-segment-nc	(component-chars "/:?"))
-    (set! char-set:uri-query		uri-char)
-    (set! char-set:uri-fragment		uri-char)
-
-    (set! char-set:uri-opaque-auth
-	  (char-set-union (component-chars "/?")
-			  (string->char-set "[]"))))
+    (set! char-set:uri-reg-name		(component-chars ""))
+    (set! char-set:uri-segment		(component-chars ":@"))
+    (set! char-set:uri-segment-nc	(component-chars "@"))
+    (set! char-set:uri-query		(component-chars ":@/?"))
+    (set! char-set:uri-fragment		char-set:uri-query)
+    (set! char-set:uri-sloppy-auth	(component-chars ":@[]")))
 
   (set! parser:userinfo		(component-parser-* char-set:uri-userinfo))
   (set! matcher:reg-name	(component-matcher-* char-set:uri-reg-name))
@@ -1241,7 +1247,7 @@ USA.
   (EOF))
 
 (define-ppu-state authority
-  (opaque-auth (push) authority)
+  (sloppy-auth (push) authority)
   (/ (set authority) (push) path)
   (? (set authority) query)
   (|#| (set authority) fragment)

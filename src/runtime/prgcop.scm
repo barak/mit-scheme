@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -150,13 +151,13 @@ USA.
 	 (len (vector-length new)))
     ((ucode-primitive declare-compiled-code-block 1) typed)
     (add-association! obj typed)
-    (do ((i (fix:+ (object-datum (vector-ref new 0)) 1) (fix:+ 1 i)))    
+    (do ((i (fix:+ (object-datum (vector-ref new 0)) 1) (fix:+ 1 i)))
 	((not (fix:< i len)))
       (vector-set! new i (copy-object (vector-ref new i))))
     typed))
 
 (define-integrable (atomically thunk)
-  (with-absolutely-no-interrupts thunk))  
+  (with-absolutely-no-interrupts thunk))
 
 (define ((%copy-pair type) obj)
   (%%copy-pair type obj))
@@ -264,7 +265,7 @@ USA.
 (define (copy-VARIABLE-object obj)
   (let ((var (make-variable (variable-name obj))))
     (add-association! obj var)
-    var))    
+    var))
 
 (define (copy-COMMENT-object obj)
   (let ((the-text (comment-text obj)))

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -118,6 +119,7 @@ USA.
 {									\
   void * PRIMITIVE_APPLY_INTERNAL_position = dstack_position;		\
   SET_PRIMITIVE (primitive);						\
+  Free_primitive = Free;						\
   SET_VAL								\
     ((* (Primitive_Procedure_Table [PRIMITIVE_NUMBER (primitive)]))	\
      ());								\
@@ -128,6 +130,7 @@ USA.
 		  (PRIMITIVE_NAME (primitive)));			\
       Microcode_Termination (TERM_EXIT);				\
     }									\
+  Free_primitive = 0;							\
   SET_PRIMITIVE (SHARP_F);						\
 } while (0)
 

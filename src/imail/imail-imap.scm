@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -112,16 +113,20 @@ USA.
 (define (make-imap-url-string url mailbox)
   (if (not mailbox)
       (error:wrong-type-argument mailbox string 'MAKE-IMAP-URL-STRING))
-  (string-append "//"
-		 (let ((user-id (imap-url-user-id url)))
-		   (if (string=? user-id (current-user-name))
-		       ""
-		       (string-append (url:encode-string user-id) "@")))
-		 (string-downcase (imap-url-host url))
-		 (let ((port (imap-url-port url)))
-		   (if (= port 143)
-		       ""
-		       (string-append ":" (number->string port))))
+  (string-append (call-with-output-string
+		  (lambda (port)
+		    (write-uri-authority
+		     (make-uri-authority
+		      (let ((user-id (imap-url-user-id url)))
+			(if (string=? user-id (current-user-name))
+			    #f
+			    user-id))
+		      (string-downcase (imap-url-host url))
+		      (let ((port (imap-url-port url)))
+			(if (= port 143)
+			    #f
+			    port)))
+		     port)))
 		 (if (or (string=? mailbox "")
 			 (string=? mailbox "/"))
 		     mailbox
@@ -1373,9 +1378,8 @@ USA.
 	      (let ((keywords (select-uncached-keywords message keywords)))
 		(if (pair? keywords)
 		    (begin
-		      (hash-table/modify! message-sets keywords
-			(lambda (messages) (cons message messages))
-			'())
+		      (hash-table/modify! message-sets keywords '()
+			(lambda (messages) (cons message messages)))
 		      (set! count (+ count 1)))))))))))
     (values message-sets count)))
 
@@ -2298,7 +2302,11 @@ USA.
   (vector-ref (imap-folder-messages folder) index))
 
 (define-method first-unseen-message-index ((folder <imap-folder>))
-  (or (imap-folder-unseen folder) 0))
+  (or (let ((unseen (imap-folder-unseen folder)))
+	(and unseen
+	     (< unseen (folder-length folder))
+	     unseen))
+      0))
 
 (define-method expunge-deleted-messages ((folder <imap-folder>))
   (imap:command:expunge (guarantee-imap-folder-open folder)))

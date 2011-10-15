@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -492,7 +493,7 @@ USA.
 	  (if (< sl 10)
 	      (print-medium value split-factor split-digits)
 	      (make-power-stack value split-factor '() split-digits)))))
-  
+
   (cond ((not (int:integer? number))
 	 (error:wrong-type-argument number #f 'NUMBER->STRING))
 	((int:negative? number)
@@ -850,7 +851,7 @@ USA.
 	    (lambda (n e)
 	      (flo:denormalize (integer->flonum n #b11) e))))
 	(step1 n d))))
-  
+
   (define (slow-method n d)
     (if (int:positive? n)
 	(n>0 n d)
@@ -1159,6 +1160,18 @@ USA.
 
 (define-rational-unary real:numerator rat:numerator)
 (define-rational-unary real:denominator rat:denominator)
+
+(define-syntax define-rational-exact-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((operator (close-syntax (list-ref form 2) environment)))
+       `(DEFINE (,(list-ref form 1) Q)
+	  (IF (FLONUM? Q)
+	      (,operator (FLO:->RATIONAL Q))
+	      (,operator Q)))))))
+
+(define-rational-exact-unary real:numerator->exact rat:numerator)
+(define-rational-exact-unary real:denominator->exact rat:denominator)
 
 (define-syntax define-transcendental-unary
   (sc-macro-transformer
@@ -1522,6 +1535,12 @@ USA.
 
 (define (complex:denominator q)
   (real:denominator (complex:real-arg 'DENOMINATOR q)))
+
+(define (complex:numerator->exact q)
+  (real:numerator->exact (complex:real-arg 'NUMERATOR->EXACT q)))
+
+(define (complex:denominator->exact q)
+  (real:denominator->exact (complex:real-arg 'DENOMINATOR->EXACT q)))
 
 (define (complex:floor x)
   (if (recnum? x)
@@ -1845,6 +1864,17 @@ USA.
 (define-guarantee inexact "inexact number")
 (define-guarantee exact-nonnegative-integer "exact non-negative integer")
 (define-guarantee exact-positive-integer "exact positive integer")
+
+(define (non-negative? object)
+  (not (negative? object)))
+
+(define (non-positive? object)
+  (not (positive? object)))
+
+(define-guarantee positive "positive number")
+(define-guarantee negative "negative number")
+(define-guarantee non-positive "non-positive number")
+(define-guarantee non-negative "non-negative number")
 
 ;;; The following three procedures were originally just renamings of
 ;;; their COMPLEX: equivalents.  They have been rewritten this way to

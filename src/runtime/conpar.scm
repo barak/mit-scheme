@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -807,7 +808,6 @@ USA.
     (standard-subproblem 'ACCESS-CONTINUE 2)
     (standard-subproblem 'PRIMITIVE-COMBINATION-1-APPLY 2)
     (standard-subproblem 'FORCE-SNAP-THUNK 2)
-    (standard-subproblem 'GC-CHECK 2)
     (standard-subproblem 'ASSIGNMENT-CONTINUE 3)
     (standard-subproblem 'DEFINITION-CONTINUE 3)
     (standard-subproblem 'SEQUENCE-2-SECOND 3)
@@ -822,10 +822,8 @@ USA.
     (standard-subproblem 'PRIMITIVE-COMBINATION-2-APPLY 3)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND 3)
     (standard-subproblem 'COMBINATION-2-PROCEDURE 4)
-    (standard-subproblem 'REPEAT-DISPATCH 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND 4)
     (standard-subproblem 'PRIMITIVE-COMBINATION-3-APPLY 4)
-    (standard-subproblem 'MOVE-TO-ADJACENT-POINT 6)
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
 
     (let ((length (length/application-frame 2 0)))

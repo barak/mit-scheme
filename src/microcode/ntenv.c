@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,6 +49,15 @@ unix_time_to_system_time (unsigned long ut, SYSTEMTIME * st)
   (void) FileTimeToSystemTime ((&ft), st);
 }
 #endif
+
+void
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
+{
+  /* I have no idea what the NT clock does about leap seconds.  If you
+     know, please adjust this comment and/or code accordingly.  */
+  (t->seconds) = ((intmax_t) (OS_encoded_time ()));
+  (t->nanoseconds) = 0;
+}
 
 time_t
 OS_encoded_time (void)

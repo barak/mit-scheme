@@ -3,7 +3,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 		       NO WARRANTY
 
@@ -115,6 +116,9 @@ what you give them.   Help stamp out software-hoarding!  */
 #define NO_ARG_ARRAY
 #endif
 
+#include <stdlib.h>
+#include <string.h>
+
 extern char * tparam (char *, char *, int, int, int, int, int);
 extern char * tgoto (char *, int, int);
 
@@ -134,11 +138,8 @@ char * tparam1 (char *, char *, int, char *, char *, int *);
 
 /* VARARGS 2 */
 char *
-tparam (string, outstring, len, arg0, arg1, arg2, arg3)
-     char *string;
-     char *outstring;
-     int len;
-     int arg0, arg1, arg2, arg3;
+tparam (char *string, char *outstring, int len,
+	int arg0, int arg1, int arg2, int arg3)
 {
 #ifdef NO_ARG_ARRAY
   int arg[4];
@@ -158,9 +159,7 @@ char *UP;
 static char tgoto_buf[50];
 
 char *
-tgoto (cm, hpos, vpos)
-     char *cm;
-     int hpos, vpos;
+tgoto (char *cm, int hpos, int vpos)
 {
   int args[2];
   if (!cm)
@@ -171,12 +170,8 @@ tgoto (cm, hpos, vpos)
 }
 
 char *
-tparam1 (string, outstring, len, up, left, argp)
-     char *string;
-     char *outstring;
-     int len;
-     char *up, *left;
-     int *argp;
+tparam1 (char *string, char *outstring, int len, char *up, char *left,
+	 int *argp)
 {
   int c;
   char *p = string;
@@ -200,13 +195,20 @@ tparam1 (string, outstring, len, up, left, argp)
 	  if (outlen == 0)
 	    {
 	      new = (char *) malloc (outlen = 40 + len);
+	      if (new == 0)
+		return (0);
 	      outend += 40;
-	      bcopy (outstring, new, op - outstring);
+	      (void) memcpy (new, outstring, op - outstring);
 	    }
 	  else
 	    {
 	      outend += outlen;
 	      new = (char *) realloc (outstring, outlen *= 2);
+	      if (new == 0)
+		{
+		  free (outstring);
+		  return (0);
+		}
 	    }
 	  op += new - outstring;
 	  outend += new - outstring;

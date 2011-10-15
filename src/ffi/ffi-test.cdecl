@@ -1,0 +1,27 @@
+;;; -*-Scheme-*-
+
+;;;; Declarations for a test library; used to test the C/Unix FFI.
+
+(typedef TestStruct
+  (struct
+    (first char)
+    (second double)
+    (third char)
+    (fourth (* char))))
+
+(extern double test_double
+	(d double)
+	(s (* TestStruct)))
+
+(extern (* char) test_string
+	(c (* char))
+	(s (* TestStruct)))
+
+(extern void test_register_double
+	(CALLBACK TestDoubleCallback)
+	(ID (* void)))
+(typedef TestDoubleCallback (* mumble))
+
+(callback double test_double_callback
+	  (d double)
+	  (ID (* void)))

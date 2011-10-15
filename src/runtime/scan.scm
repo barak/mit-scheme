@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,15 +58,9 @@ USA.
   '(NULL-SEQUENCE))
 
 (define (cons-sequence action seq)
-  (cond ((object-type? sequence-2-type seq)
-	 (&typed-triple-cons sequence-3-type
-			     action
-			     (&pair-car seq)
-			     (&pair-cdr seq)))
-	((eq? seq null-sequence)
-	 action)
-	(else
-	 (&typed-pair-cons sequence-2-type action seq))))
+  (if (eq? seq null-sequence)
+      action
+      (&typed-pair-cons sequence-2-type action seq)))
 
 ;;;; Scanning
 
@@ -79,9 +74,19 @@ USA.
 
 (define (scan-loop expression receiver)
   (cond ((object-type? sequence-2-type expression)
-	 (scan-loop (&pair-cdr expression)
-		    (scan-loop (&pair-car expression)
-			       receiver)))
+	 (let ((first (&pair-car expression)))
+	   (if (and (vector? first)
+		    (not (zero? (vector-length first)))
+		    (eq? (vector-ref first 0) open-block-tag))
+	       (scan-loop
+		(&pair-cdr (&pair-cdr expression))
+		(lambda (names declarations body)
+		  (receiver (append (vector-ref first 1) names)
+			    (append (vector-ref first 2) declarations)
+			    body)))
+	       (scan-loop (&pair-cdr expression)
+			  (scan-loop first
+				     receiver)))))
 	((object-type? sequence-3-type expression)
 	 (let ((first (&triple-first expression)))
 	   (if (and (vector? first)
@@ -158,10 +163,12 @@ USA.
 		 (unscan-loop names** (&triple-third body)
 		   (lambda (names*** body***)
 		     (receiver names***
-			       (&typed-triple-cons sequence-3-type
-						   body*
-						   body**
-						   body***)))))))))
+			       (&typed-pair-cons sequence-2-type
+						 body*
+						 (&typed-pair-cons
+						  sequence-2-type
+						  body**
+						  body***))))))))))
 	(else
 	 (receiver names
 		   body))))
@@ -172,26 +179,37 @@ USA.
   (if (and (null? names)
 	   (null? declarations))
       body
-      (&typed-triple-cons
-       sequence-3-type
+      (&typed-pair-cons
+       sequence-2-type
        (vector open-block-tag names declarations)
-       (if (null? names)
-	   '()
-	   (make-sequence
-	    (map (lambda (name)
-		   (make-definition name (make-unassigned-reference-trap)))
-		 names)))
-       body)))
+       (&typed-pair-cons
+	sequence-2-type
+	(if (null? names)
+	    '()
+	    (make-sequence
+	     (map (lambda (name)
+		    (make-definition name (make-unassigned-reference-trap)))
+		  names)))
+	body))))
 
 (define (open-block? object)
-  (and (object-type? sequence-3-type object)
-       (vector? (&triple-first object))
-       (eq? (vector-ref (&triple-first object) 0) open-block-tag)))
+  (or (and (object-type? sequence-2-type object)
+	   (vector? (&pair-car object))
+	   (eq? (vector-ref (&pair-car object) 0) open-block-tag))
+      (and (object-type? sequence-3-type object)
+	   (vector? (&triple-first object))
+	   (eq? (vector-ref (&triple-first object) 0) open-block-tag))))
 
 (define-guarantee open-block "SCode open-block")
 
 (define (open-block-components open-block receiver)
   (guarantee-open-block open-block 'OPEN-BLOCK-COMPONENTS)
-  (receiver (vector-ref (&triple-first open-block) 1)
-	    (vector-ref (&triple-first open-block) 2)
-	    (&triple-third open-block)))
+  (cond ((object-type? sequence-2-type open-block)
+	 (receiver (vector-ref (&pair-car open-block) 1)
+		   (vector-ref (&pair-car open-block) 2)
+		   (&pair-cdr (&pair-cdr open-block))))
+	((object-type? sequence-3-type open-block)
+	 (receiver (vector-ref (&triple-first open-block) 1)
+		   (vector-ref (&triple-first open-block) 2)
+		   (&triple-third open-block)))
+	(else (error:not-open-block open-block 'open-block-components))))

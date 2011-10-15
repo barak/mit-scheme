@@ -1,7 +1,7 @@
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -61,10 +61,11 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/microcode/mkinstalldirs
 # **** END BOILERPLATE ****
 
 LIARC_BOOT_BUNDLES = compiler cref sf star-parser
-LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin imail sos ssp xml
+LIARC_BUNDLES = $(LIARC_BOOT_BUNDLES) edwin ffi imail sos ssp xml
+FFIS = @FFIS@
 
 SUBDIRS = $(INSTALLED_SUBDIRS) 6001 compiler rcs win32 xdoc
-INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES)
+INSTALLED_SUBDIRS = microcode runtime $(LIARC_BUNDLES) $(FFIS)
 
 MIT_SCHEME_EXE = @MIT_SCHEME_EXE@
 AUXDIR_NAME = @AUXDIR_NAME@
@@ -73,13 +74,39 @@ EDDIR = $(AUXDIR)/edwin
 
 all: @ALL_TARGET@
 
+check:
+	./microcode/scheme --library lib --batch-mode \
+	  --load ../tests/check.scm --eval '(%exit)'
+
 all-native: compile-microcode
-	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --compiler
-	$(MAKE) build-bands
+	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
+	$(MAKE) build-bands #build-ffis
+
+all-svm: microcode/svm1-defns.h
+	$(MAKE) compile-microcode
+	@$(top_srcdir)/etc/compile-svm.sh "$(MIT_SCHEME_EXE)"
+	$(MAKE) build-bands #build-ffis
+
+microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
+	if cmp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h; \
+	then cp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h; fi
+
+compiler/machines/svm/svm1-defns.h: \
+	  compiler/machines/svm/assembler-rules.scm \
+	  compiler/machines/svm/machine.scm \
+	  compiler/machines/svm/assembler-compiler.scm \
+	  compiler/machines/svm/assembler-runtime.scm \
+	  compiler/machines/svm/compile-assembler.scm
+	( cd compiler/machines/svm/ \
+	  && "$(MIT_SCHEME_EXE)" --batch-mode --load compile-assembler \
+		</dev/null )
 
 all-liarc:
-	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --compiler
-	$(MAKE) compile-liarc-bundles build-bands
+	@$(top_srcdir)/etc/c-compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
+	$(MAKE) compile-liarc-bundles build-bands #build-ffis
+
+build-ffis:
+	etc/make-in-subdirs.sh build ffi $(FFIS)
 
 macosx-app: stamp_macosx-app
 
@@ -162,6 +189,9 @@ clean-boot-root:
 tags TAGS:
 	$(top_srcdir)/Tags.sh $(SUBDIRS)
 
+subdir-list:
+	@for D in $(SUBDIRS); do echo $$D; done
+
 install: install-standard @INSTALL_LIARC_BUNDLES@
 
 install-standard: install-auxdir-top
@@ -174,7 +204,8 @@ install-auxdir-top:
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
-.PHONY: all all-native all-liarc macosx-app compile-microcode build-bands
+.PHONY: all all-native all-liarc all-svm macosx-app
+.PHONY: compile-microcode build-bands
 .PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
-.PHONY: tags TAGS install install-standard install-auxdir-top
+.PHONY: tags TAGS subdir-list install install-standard install-auxdir-top

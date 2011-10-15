@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -87,6 +88,42 @@ USA.
   (%make-char (%char-code char)
 	      (fix:andc (%char-bits char) bits)))
 
+(define (unicode-char? object)
+  (and (char? object)
+       (legal-code-32? (char->integer object))))
+
+(define-guarantee unicode-char "a Unicode character")
+
+(define (unicode-scalar-value? object)
+  (and (index-fixnum? object)
+       (fix:< object char-code-limit)
+       (not (illegal? object))))
+
+(define-guarantee unicode-scalar-value "a Unicode scalar value")
+
+(define-integrable (legal-code-32? pt)
+  (and (fix:< pt char-code-limit)
+       (not (illegal? pt))))
+
+(define-integrable (legal-code-16? pt)
+  (not (illegal? pt)))
+
+(define-integrable (illegal? pt)
+  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
+      (fix:= pt #xFFFE)
+      (fix:= pt #xFFFF)))
+
+#|
+
+Not used at the moment.
+
+(define-integrable (non-character? pt)
+  (or (and (fix:>= pt #xD800) (fix:< pt #xE000))
+      (and (fix:>= pt #xFDD0) (fix:< pt #xFDF0))
+      (fix:= #x00FFFE (fix:and #x00FFFE pt))))
+
+|#
+
 (define (8-bit-char? object)
   (and (char? object)
        (fix:< (char->integer object) 256)))
