@@ -27,9 +27,9 @@
 set -e
 
 # These values are placeholders; we need to get the right ones.
-: ${VERSION_STRING=9.0}
+: ${VERSION_STRING=9.1}
 : ${LONG_VERSION_STRING="release ${VERSION_STRING}"}
-: ${MACOSX_MIN_VERSION=10.5}
+: ${MACOSX_MIN_VERSION=10.6}
 : ${YEAR=$(date +%Y)}
 : ${bindir=/usr/local/bin}
 : ${libdir=/usr/local/lib}
