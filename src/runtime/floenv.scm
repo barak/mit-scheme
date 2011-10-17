@@ -70,7 +70,7 @@ USA.
 (define (flo:default-environment)
   default-environment)
 
-(define (initialize-package!)
+(define (reset-package!)
   (set! default-environment
 	(let ((environment (flo:environment)))
 	  (flo:set-rounding-mode! (flo:default-rounding-mode))
@@ -80,6 +80,10 @@ USA.
 	    (flo:set-environment! environment)
 	    environment*)))
   unspecific)
+
+(define (initialize-package!)
+  (reset-package!)
+  (add-event-receiver! event:after-restore reset-package!))
 
 (define-primitives
   (float-rounding-modes 0)
