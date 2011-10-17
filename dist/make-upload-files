@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+if (( ${#} < 1 )); then
+    echo "usage: ${0} VERSION FILE..."
+    exit 1
+fi
+
+VERSION=${1}
+shift
+
+if ! [[ ${VERSION} =~ ^[0-9.]+$ ]]; then
+    echo "${VERSION} doesn't look like a version number"
+    echo "usage: ${0} VERSION FILE..."
+    exit 1
+fi
+
+for FILE in "${@}"; do
+    rm -f "${FILE}".directive
+    cat > "${FILE}".directive <<EOF
+version: 1.1
+directory: mit-scheme/stable.pkg/${VERSION}
+filename: ${FILE}
+EOF
+    rm -f "${FILE}".sig "${FILE}".directive.asc
+    gpg -b "${FILE}"
+    gpg --clearsign "${FILE}".directive && rm "${FILE}".directive
+done
