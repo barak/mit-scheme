@@ -962,10 +962,10 @@ One of the symbols: @code{normal}, @code{scientific}, or
 @code{engineering}.  This specifies the format in which the number will
 be printed.@*  @code{scientific} specifies that the number will be printed
 using scientific notation: @code{@var{x}.@var{xxx}e@var{yyy}}.  In other
-words, the number is printed as a mantissa between zero inclusive and
+words, the number is printed as a significand between zero inclusive and
 ten exclusive, and an exponent.  @code{engineering} is like
 @code{scientific}, except that the exponent is always a power of three,
-and the mantissa is constrained to be between zero inclusive and 1000
+and the significand is constrained to be between zero inclusive and 1000
 exclusive.  If @code{normal} is specified, the number will be printed in
 positional notation if it is ``small enough'', otherwise it is printed
 in scientific notation.  A number is ``small enough'' when the number of
