@@ -47,9 +47,9 @@ shift 2
 build ()
 {
     my_configure --enable-native-code="${ARCH}" \
-	--with-mcrypt=no --with-libpq=no --with-db-4=no \
-	--with-default-target=compile-microcode
-    my_make all
+	--with-mcrypt=no --with-libpq=no --with-db-4=no
+    my_make
+    touch .native-release-marker
 }
 
 OUT_ROOT=${NATIVE_OUT}-${ARCH}

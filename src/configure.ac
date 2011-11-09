@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [9.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [9.1.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -29,6 +29,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 ])
 
+if test -f .native-release-marker; then
+    IS_NATIVE_RELEASE=yes
+else
+    IS_NATIVE_RELEASE=no
+fi
+
 AC_ARG_ENABLE([debugging],
     AS_HELP_STRING([--enable-debugging],
 	[Compile with debugging support [[no]]]))
@@ -42,11 +48,21 @@ AC_ARG_ENABLE([native-code],
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
 	[Test for working scheme on build host [[if necessary]]]))
-if test -f lib/all.com; then
-  : ${enable_host_scheme_test=no}
+if test x"${IS_NATIVE_RELEASE}" = xyes || test -f lib/all.com; then
+    : ${enable_host_scheme_test=no}
 else
-  : ${enable_host_scheme_test=yes}
+    : ${enable_host_scheme_test=yes}
 fi
+
+AC_ARG_WITH([default-target],
+    AS_HELP_STRING([--with-default-target],
+	[Set the default make target [[all]]]))
+if test x"${IS_NATIVE_RELEASE}" = xyes; then
+    : ${with_default_target=compile-microcode}
+else
+    : ${with_default_target=all}
+fi
+DEFAULT_TARGET=${with_default_target}
 
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
