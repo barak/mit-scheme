@@ -72,6 +72,8 @@ AUXDIR_NAME = @AUXDIR_NAME@
 AUXDIR = @AUXDIR@
 EDDIR = $(AUXDIR)/edwin
 
+default-target: @DEFAULT_TARGET@
+
 all: @ALL_TARGET@
 
 check:
@@ -204,7 +206,7 @@ install-auxdir-top:
 	$(INSTALL_DATA) $(top_srcdir)/etc/optiondb.scm $(DESTDIR)$(AUXDIR)/.
 	$(INSTALL_DATA) lib/*.com $(DESTDIR)$(AUXDIR)/.
 
-.PHONY: all all-native all-liarc all-svm macosx-app
+.PHONY: default-target all all-native all-liarc all-svm macosx-app
 .PHONY: compile-microcode build-bands
 .PHONY: liarc-dist compile-liarc-bundles install-liarc-bundles
 .PHONY: mostlyclean clean distclean maintainer-clean c-clean clean-boot-root
