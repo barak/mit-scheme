@@ -48,6 +48,11 @@ else
   : ${enable_host_scheme_test=yes}
 fi
 
+AC_ARG_WITH([default-target],
+    AS_HELP_STRING([--with-default-target],
+	[Set the default make target [[all]]]))
+DEFAULT_TARGET=${with_default_target=all}
+
 AC_CANONICAL_HOST
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
@@ -133,6 +138,7 @@ directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code
     fi
 fi
 
+AC_SUBST([DEFAULT_TARGET])
 AC_SUBST([ALL_TARGET])
 AC_SUBST([FFIS])
 AC_SUBST([INSTALL_COM])
