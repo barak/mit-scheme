@@ -124,13 +124,14 @@ OS_channel_close (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      if (0 > (UX_close (CHANNEL_DESCRIPTOR (channel))))
+      int status = (UX_close (CHANNEL_DESCRIPTOR (channel)));
+      MARK_CHANNEL_CLOSED (channel);
+      if (status < 0)
 	switch (errno)
 	  {
 	  case EINTR:	deliver_pending_interrupts ();			break;
 	  case EBADF:	error_system_call (errno, syscall_close);	break;
 	  }
-      MARK_CHANNEL_CLOSED (channel);
     }
 }
 
