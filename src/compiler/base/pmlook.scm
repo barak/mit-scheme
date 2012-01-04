@@ -69,6 +69,31 @@ USA.
     (and binding-alist
 	 (apply body (map cdr binding-alist)))))
 
+;;; PATTERN-LOOKUP-2 returns either #f or the result of applying
+;;; <body> to the values matched by the pattern.  The values
+;;; are in reverse order of variable occurrence in the pattern.
+;;; There must be no repeated occurrences of a pattern variable.
+
+(define (pattern-lookup-2 pattern body instance)
+  (let ((value-list
+	 (let loop ((pattern pattern)
+		    (instance instance)
+		    (value-list '()))
+	   ;; Cheat:  we know pattern variables are pairs
+	   (cond ((pair? pattern)
+		  (cond ((eq? (car pattern) pattern-variable-tag)
+			 (cons instance value-list))
+			((pair? instance)
+			 (let ((value-list*
+				(loop (car pattern) (car instance) value-list)))
+			   (and value-list*
+				(loop (cdr pattern) (cdr instance) value-list*))))
+			(else #f)))
+		 ((eqv? pattern instance) value-list)
+		 (else #f)))))
+    (and value-list
+	 (apply body value-list))))
+
 (define (pattern-variables pattern)
   (let loop ((pattern pattern) (vars '()))
     (cond ((pair? pattern)
