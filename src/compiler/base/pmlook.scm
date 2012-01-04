@@ -85,6 +85,20 @@ USA.
 		   vars)))
 	  (else vars))))
 
+(define (pattern-contains-duplicates? pattern)
+  (not (let loop ((pattern pattern)
+		  (vars '()))
+	 (if (pair? pattern)
+	     ;; Cheat:  we know pattern variables are pairs
+	     (if (eq? (car pattern) pattern-variable-tag)
+		 (if (memq (pattern-variable-name pattern) vars)
+		     #f			; found a duplicate
+		     (cons (pattern-variable-name pattern) vars))
+		 (let ((vars1 (loop (car pattern) vars)))
+		   (and vars1
+			(loop (cdr pattern) vars1))))
+	     vars))))
+
 (define-integrable (make-pattern-variable name)
   (cons pattern-variable-tag name))
 
