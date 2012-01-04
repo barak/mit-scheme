@@ -308,6 +308,7 @@ USA.
   (parent (compiler))
   (export (compiler)
 	  make-pattern-variable
+	  pattern-contains-duplicates?
 	  pattern-lookup
 	  pattern-lookup-1
 	  pattern-variable-name
