@@ -311,6 +311,7 @@ USA.
 	  pattern-contains-duplicates?
 	  pattern-lookup
 	  pattern-lookup-1
+	  pattern-lookup-2
 	  pattern-variable-name
 	  pattern-variable?
 	  pattern-variables))
