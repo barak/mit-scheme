@@ -207,12 +207,12 @@ USA.
 		    destination-binding)
        (let ((local-name (binding/name local-binding))
 	     (remote-name (binding/name remote-binding)))
-	 (let ((name-string (binding-name->string local-name)))
+	 (let ((name-string (name->string local-name)))
 	   (if (eq? local-name remote-name)
 	       name-string
 	       (string-append name-string
 			      " ["
-			      (binding-name->string remote-name)
+			      (name->string remote-name)
 			      "]"))))))))
 
 (define (local-map/export source destination)
@@ -255,12 +255,12 @@ USA.
   (for-each
    (lambda (reference)
      (format-expressions port indentation width package
-			 (binding-name->string (reference/name reference))
+			 (name->string (reference/name reference))
 			 (reference/expressions reference)))
    references))
 
 (define (format-expressions port indentation width package name expressions)
-  (receive (symbols pairs)
+  (receive (names pairs)
       (classify-expression-names
        (map (lambda (expression)
 	      (expression->name expression package))
@@ -270,7 +270,7 @@ USA.
     (newline port)
     (let ((indentation (new-indentation indentation)))
       (write-strings/compact port indentation width
-			     (map symbol-name (sort symbols symbol<?)))
+			     (sort (map name->string names) string<?))
       (write-items/miser port indentation width
 	(sort pairs
 	  (lambda (x y)
@@ -278,7 +278,7 @@ USA.
 		(and (string=? (car x) (car y))
 		     (or (not (pair? (cdr x)))
 			 (and (pair? (cdr y))
-			      (symbol<? (cadr x) (cadr y))))))))))))
+			      (name<? (cadr x) (cadr y))))))))))))
 
 (define (classify-expression-names names)
   (if (pair? names)
@@ -344,12 +344,7 @@ USA.
   (string-append indentation "    "))
 
 (define (binding/name-string binding)
-  (binding-name->string (binding/name binding)))
-
-(define (binding-name->string name)
-  (if (symbol? name)
-      (symbol-name name)
-      (write-to-string name)))
+  (name->string (binding/name binding)))
 
 (define (package/name-string package)
   (package-name->string (package/name package)))
@@ -357,5 +352,5 @@ USA.
 (define (package-name->string name)
   (string-append "("
 		 (decorated-string-append "" " " ""
-					  (map binding-name->string name))
+					  (map name->string name))
 		 ")"))

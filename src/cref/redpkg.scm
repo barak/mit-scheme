@@ -640,9 +640,9 @@ USA.
 					  destination-name
 					  (binding/value-cell source-binding)
 					  new?)))
-		       (rb-tree/insert! (package/bindings destination-package)
-					destination-name
-					binding)
+		       (package/put-binding! destination-package
+					     destination-name
+					     binding)
 		       binding)))
 	       owner-package
 	       new?)))
@@ -658,12 +658,11 @@ USA.
 		 (let ((binding (make-binding package name value-cell new?)))
 		   (set-value-cell/source-binding! value-cell binding)
 		   binding))))
-	  (rb-tree/insert! (package/bindings package) name binding)
+	  (package/put-binding! package name binding)
 	  binding))))
 
 (define (make-reference package name expression)
-  (let ((references (package/references package))
-	(add-reference!
+  (let ((add-reference!
 	 (lambda (reference)
 	   (set-reference/expressions!
 	    reference
@@ -671,13 +670,13 @@ USA.
 	   (set-expression/references!
 	    expression
 	    (cons reference (expression/references expression))))))
-    (let ((reference (rb-tree/lookup references name #f)))
+    (let ((reference (package/find-reference package name)))
       (if reference
 	  (begin
 	    (if (not (memq expression (reference/expressions reference)))
 		(add-reference! reference))
 	    reference)
 	  (let ((reference (%make-reference package name)))
-	    (rb-tree/insert! references name reference)
+	    (package/put-reference! package name reference)
 	    (add-reference! reference)
 	    reference)))))
