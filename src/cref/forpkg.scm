@@ -52,7 +52,7 @@ USA.
     (let ((free-references
 	   (append-map! (lambda (package)
 			  (delete-matching-items
-			      (package/sorted-references package)
+			      (package/references package)
 			    reference/binding))
 			packages)))
       (if (pair? free-references)
@@ -91,22 +91,21 @@ USA.
 	 (classify-bindings-by-package
 	  (lambda (binding)
 	    (binding/package (binding/source-binding binding)))
-	  (package/sorted-bindings package))))
+	  (package/bindings package))))
     (let ((class (assq package classes)))
       (if class
 	  (format-package/bindings port indentation width package (cdr class)))
       (for-each (lambda (class)
 		  (if (not (eq? package (car class)))
 		      (format-package/imports port indentation width package
-					      (car class)
-					      (cdr class))))
+					      (car class) (cdr class))))
 		classes)
       (if class
 	  (for-each
 	   (lambda (class)
 	     (if (not (eq? package (car class)))
-		 (format-package/exports port indentation width (car class)
-					 (sort (cdr class) binding<?))))
+		 (format-package/exports port indentation width
+					 (car class) (cdr class))))
 	   (classify-bindings-by-package
 	    binding/package
 	    (append-map (lambda (binding)
@@ -148,7 +147,7 @@ USA.
 			    (set! unlinked (cons value-cell unlinked)))
 			   ((not (memq value-cell linked))
 			    (set! linked (cons value-cell linked))))))
-		 (package/sorted-bindings package)))
+		 (package/bindings package)))
      packages)
     (values unlinked linked)))
 
@@ -231,7 +230,7 @@ USA.
 	       (binding->name binding)
 	       (append-map reference/expressions
 			   (binding/references binding))))
-	    bindings))
+	    (sort bindings binding<?)))
 
 (define (classify-bindings-by-package binding->package bindings)
   (let ((classes '()))
@@ -243,9 +242,6 @@ USA.
 	       (set-cdr! entry (cons binding (cdr entry)))
 	       (set! classes (cons (list package binding) classes))))))
      bindings)
-    (for-each (lambda (class)
-		(set-cdr! class (reverse! (cdr class))))
-	      classes)
     (sort classes
 	  (lambda (x y)
 	    (package<? (car x) (car y))))))

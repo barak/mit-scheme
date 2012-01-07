@@ -55,8 +55,7 @@ USA.
   (list-transform-positive (pmodel/extra-packages pmodel)
     (lambda (package)
       (or (there-exists? (package/links package) link/new?)
-	  (there-exists? (package/sorted-bindings package)
-	    new-internal-binding?)))))
+	  (there-exists? (package/bindings package) new-internal-binding?)))))
 
 (define (new-internal-binding? binding)
   (and (binding/new? binding)
@@ -90,7 +89,7 @@ USA.
 		      '())))
 	      (list->vector
 	       (map binding/name
-		    (list-transform-positive (package/sorted-bindings package)
+		    (list-transform-positive (package/bindings package)
 		      new-internal-binding?)))
 	      (list->vector
 	       (map (lambda (link)
