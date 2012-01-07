@@ -59,8 +59,8 @@ USA.
   (files '())
   parent
   (children '())
-  (bindings (make-rb-tree eq? symbol<?) read-only #t)
-  (references (make-rb-tree eq? symbol<?) read-only #t)
+  (bindings (make-strong-eq-hash-table) read-only #t)
+  (references (make-strong-eq-hash-table) read-only #t)
   (links '()))
 
 (define-integrable (package/n-files package)
@@ -69,14 +69,25 @@ USA.
 (define-integrable (package/root? package)
   (null? (package/name package)))
 
+(define-integrable (package/find-reference package name)
+  (hash-table/get (package/references package) name #f))
+
+(define-integrable (package/put-reference! package name reference)
+  (hash-table/put! (package/references package) name reference))
+
 (define-integrable (package/find-binding package name)
-  (rb-tree/lookup (package/bindings package) name #f))
+  (hash-table/get (package/bindings package) name #f))
+
+(define-integrable (package/put-binding! package name binding)
+  (hash-table/put! (package/bindings package) name binding))
 
 (define-integrable (package/sorted-bindings package)
-  (rb-tree/datum-list (package/bindings package)))
+  (sort (hash-table/datum-list (package/bindings package))
+	binding<?))
 
 (define-integrable (package/sorted-references package)
-  (rb-tree/datum-list (package/references package)))
+  (sort (hash-table/datum-list (package/references package))
+	reference<?))
 
 (define-integrable (file-case/type file-case)
   (car file-case))
@@ -195,8 +206,17 @@ USA.
 (define (package<? x y)
   (symbol-list<? (package/name x) (package/name y)))
 
-(define (binding<? x y)
-  (symbol<? (binding/name x) (binding/name y)))
+(declare (integrate-operator name->string))
+(define (name->string name)
+  (if (interned-symbol? name)
+      (symbol-name name)
+      (write-to-string name)))
 
-(define (reference<? x y)
-  (symbol<? (reference/name x) (reference/name y)))
+(define-integrable (name<? x y)
+  (string<? (name->string x) (name->string y)))
+
+(define-integrable (binding<? x y)
+  (name<? (binding/name x) (binding/name y)))
+
+(define-integrable (reference<? x y)
+  (name<? (reference/name x) (reference/name y)))
