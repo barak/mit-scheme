@@ -28,7 +28,6 @@ USA.
 
 (declare (usual-integrations))
 
-(load-option 'RB-TREE)
 (with-loader-base-uri (system-library-uri "cref/")
   (lambda ()
     (load-package-set "cref")))

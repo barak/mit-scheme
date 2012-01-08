@@ -59,8 +59,8 @@ USA.
   (files '())
   parent
   (children '())
-  (bindings (make-rb-tree eq? symbol<?) read-only #t)
-  (references (make-rb-tree eq? symbol<?) read-only #t)
+  (%bindings '())
+  (%references '())
   (links '()))
 
 (define-integrable (package/n-files package)
@@ -69,14 +69,27 @@ USA.
 (define-integrable (package/root? package)
   (null? (package/name package)))
 
+(define-integrable (package/find-reference package name)
+  (let ((entry (assq name (package/%references package))))
+    (and entry (cdr entry))))
+
+(define-integrable (package/put-reference! package name reference)
+  (set-package/%references! package (cons (cons name reference)
+					  (package/%references package))))
+
 (define-integrable (package/find-binding package name)
-  (rb-tree/lookup (package/bindings package) name #f))
+  (let ((entry (assq name (package/%bindings package))))
+    (and entry (cdr entry))))
 
-(define-integrable (package/sorted-bindings package)
-  (rb-tree/datum-list (package/bindings package)))
+(define-integrable (package/put-binding! package name binding)
+  (set-package/%bindings! package (cons (cons name binding)
+					(package/%bindings package))))
 
-(define-integrable (package/sorted-references package)
-  (rb-tree/datum-list (package/references package)))
+(define-integrable (package/bindings package)
+  (map cdr (package/%bindings package)))
+
+(define-integrable (package/references package)
+  (map cdr (package/%references package)))
 
 (define-integrable (file-case/type file-case)
   (car file-case))
@@ -195,8 +208,17 @@ USA.
 (define (package<? x y)
   (symbol-list<? (package/name x) (package/name y)))
 
-(define (binding<? x y)
-  (symbol<? (binding/name x) (binding/name y)))
+(declare (integrate-operator name->string))
+(define (name->string name)
+  (if (interned-symbol? name)
+      (symbol-name name)
+      (write-to-string name)))
 
-(define (reference<? x y)
-  (symbol<? (reference/name x) (reference/name y)))
+(define-integrable (name<? x y)
+  (string<? (name->string x) (name->string y)))
+
+(define-integrable (binding<? x y)
+  (name<? (binding/name x) (binding/name y)))
+
+(define-integrable (reference<? x y)
+  (name<? (reference/name x) (reference/name y)))
