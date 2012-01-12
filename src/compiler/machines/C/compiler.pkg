@@ -307,6 +307,7 @@ USA.
   (files "base/pmlook")
   (parent (compiler))
   (export (compiler)
+	  generate-pattern-matcher
 	  make-pattern-variable
 	  pattern-contains-duplicates?
 	  pattern-lookup
