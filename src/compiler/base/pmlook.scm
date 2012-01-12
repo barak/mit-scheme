@@ -94,6 +94,10 @@ USA.
     (and value-list
 	 (apply body value-list))))
 
+;; Stub definition for the moment.
+(define (generate-pattern-matcher pattern body environment)
+  (error "GENERATE-PATTERN-MATCHER: Stub not yet implemented."))
+
 (define (pattern-variables pattern)
   (let loop ((pattern pattern) (vars '()))
     (cond ((pair? pattern)
