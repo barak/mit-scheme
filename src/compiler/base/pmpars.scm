@@ -144,6 +144,7 @@ USA.
 				 ,@qualifiers
 				 (,r-lambda () ,body)))))
       `(,r-lambda ,outer-vars
+	  (,(close-syntax 'DECLARE environment) (INTEGRATE ,@outer-vars))
 	  ,(if (and (null? inner-vars)
 		    (null? xforms))
 	       qualified-body
