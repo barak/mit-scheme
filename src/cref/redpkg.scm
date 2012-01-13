@@ -219,7 +219,7 @@ USA.
 (define (resolve-references! pmodel)
   (for-each (lambda (package)
 	      (for-each resolve-reference!
-			(package/sorted-references package)))
+			(package/references package)))
 	    (pmodel/packages pmodel)))
 
 (define (resolve-reference! reference)

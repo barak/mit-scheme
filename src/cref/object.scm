@@ -59,8 +59,8 @@ USA.
   (files '())
   parent
   (children '())
-  (bindings (make-strong-eq-hash-table) read-only #t)
-  (references (make-strong-eq-hash-table) read-only #t)
+  (%bindings '())
+  (%references '())
   (links '()))
 
 (define-integrable (package/n-files package)
@@ -70,24 +70,26 @@ USA.
   (null? (package/name package)))
 
 (define-integrable (package/find-reference package name)
-  (hash-table/get (package/references package) name #f))
+  (let ((entry (assq name (package/%references package))))
+    (and entry (cdr entry))))
 
 (define-integrable (package/put-reference! package name reference)
-  (hash-table/put! (package/references package) name reference))
+  (set-package/%references! package (cons (cons name reference)
+					  (package/%references package))))
 
 (define-integrable (package/find-binding package name)
-  (hash-table/get (package/bindings package) name #f))
+  (let ((entry (assq name (package/%bindings package))))
+    (and entry (cdr entry))))
 
 (define-integrable (package/put-binding! package name binding)
-  (hash-table/put! (package/bindings package) name binding))
+  (set-package/%bindings! package (cons (cons name binding)
+					(package/%bindings package))))
 
-(define-integrable (package/sorted-bindings package)
-  (sort (hash-table/datum-list (package/bindings package))
-	binding<?))
+(define-integrable (package/bindings package)
+  (map cdr (package/%bindings package)))
 
-(define-integrable (package/sorted-references package)
-  (sort (hash-table/datum-list (package/references package))
-	reference<?))
+(define-integrable (package/references package)
+  (map cdr (package/%references package)))
 
 (define-integrable (file-case/type file-case)
   (car file-case))
