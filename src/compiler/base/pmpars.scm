@@ -108,7 +108,7 @@ USA.
 				     environment)
 	     environment))))
 
-(define compile-pattern-matchers? #f)
+(define compile-pattern-matchers? #t)
 
 (define (make-rule-matcher pattern expression environment)
   ;; PATTERN-LOOKUP-2 and the compiled matchers require that there
@@ -144,7 +144,9 @@ USA.
 				 ,@qualifiers
 				 (,r-lambda () ,body)))))
       `(,r-lambda ,outer-vars
-	  (,(close-syntax 'DECLARE environment) (INTEGRATE ,@outer-vars))
+	  (,(close-syntax 'DECLARE environment)
+	   (INTEGRATE ,@outer-vars)
+	   (TYPE-CHECKS))
 	  ,(if (and (null? inner-vars)
 		    (null? xforms))
 	       qualified-body
