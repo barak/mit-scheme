@@ -155,26 +155,19 @@ USA.
 
 ;;;; Noops
 
-(package (cfg-node-tag/noop! cfg-node-tag/noop?)
+(define-integrable (cfg-node-tag/noop! tag)
+  (set-vector-tag-noop! tag true))
 
-(define-export (cfg-node-tag/noop! tag)
-  (vector-tag-put! tag noop-tag-property true))
-
-(define-export (cfg-node-tag/noop? tag)
-  (vector-tag-get tag noop-tag-property))
-
-(define noop-tag-property
-  "noop-tag-property")
-
-)
+(define-integrable (cfg-node-tag/noop? tag)
+  (vector-tag-noop tag))
 
 (define-integrable (cfg-node/noop? node)
   (cfg-node-tag/noop? (tagged-vector/tag node)))
 
 (define noop-node-tag
-  (make-vector-tag snode-tag 'NOOP false))
-
-(cfg-node-tag/noop! noop-node-tag)
+  (let ((tag (make-vector-tag snode-tag 'NOOP false)))
+    (cfg-node-tag/noop! tag)
+    tag))
 
 (define-integrable (make-noop-node)
   (let ((node (make-snode noop-node-tag)))
