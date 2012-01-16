@@ -32,20 +32,20 @@ USA.
 
 (define cfg-node-tag (make-vector-tag #f 'CFG-NODE #f))
 (define cfg-node? (tagged-vector/subclass-predicate cfg-node-tag))
-(define-vector-slots node 1 generation alist previous-edges)
+(define-vector-slots node 1 generation subgraph-color alist previous-edges)
 
 (set-vector-tag-description!
  cfg-node-tag
  (lambda (node)
-   (descriptor-list node node generation alist previous-edges)))
+   (descriptor-list node node generation subgraph-color alist previous-edges)))
 
 (define snode-tag (make-vector-tag cfg-node-tag 'SNODE #f))
 (define snode? (tagged-vector/subclass-predicate snode-tag))
-(define-vector-slots snode 4 next-edge)
+(define-vector-slots snode 5 next-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-snode tag . extra)
-;;;   (list->vector (cons* tag #f '() '() #f extra)))
+;;;   (list->vector (cons* tag #f #f '() '() #f extra)))
 
 (set-vector-tag-description!
  snode-tag
@@ -55,11 +55,11 @@ USA.
 
 (define pnode-tag (make-vector-tag cfg-node-tag 'PNODE #f))
 (define pnode? (tagged-vector/subclass-predicate pnode-tag))
-(define-vector-slots pnode 4 consequent-edge alternative-edge)
+(define-vector-slots pnode 5 consequent-edge alternative-edge)
 
 ;;; converted to a macro.
 ;;; (define (make-pnode tag . extra)
-;;;   (list->vector (cons* tag #f '() '() #f #f extra)))
+;;;   (list->vector (cons* tag #f #f '() '() #f #f extra)))
 
 (set-vector-tag-description!
  pnode-tag
