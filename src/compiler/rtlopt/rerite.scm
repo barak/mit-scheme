@@ -32,9 +32,9 @@ USA.
 (define-structure (rewriting-rules (conc-name rewriting-rules/)
 				   (constructor make-rewriting-rules ()))
   (assignment '())
-  (statement '())
+  (statement  (make-strong-eq-hash-table))
   (register '())
-  (expression '())
+  (expression  (make-strong-eq-hash-table))
   (generic '()))
 
 (define rules:pre-cse (make-rewriting-rules))
@@ -105,20 +105,20 @@ USA.
   (or (if (rtl:assign? rtl)
 	  (pattern-lookup (rewriting-rules/assignment rules) rtl)
 	  (let ((entries
-		 (assq (rtl:expression-type rtl)
-		       (rewriting-rules/statement rules))))
+		 (hash-table/get (rewriting-rules/statement rules)
+				 (rtl:expression-type rtl) #f)))
 	    (and entries
-		 (pattern-lookup (cdr entries) rtl))))
+		 (pattern-lookup entries rtl))))
       (pattern-lookup (rewriting-rules/generic rules) rtl)))
 
 (define (match-rtl-expression rules expression)
   (or (if (rtl:register? expression)
 	  (pattern-lookup (rewriting-rules/register rules) expression)
 	  (let ((entries
-		 (assq (rtl:expression-type expression)
-		       (rewriting-rules/expression rules))))
+		 (hash-table/get (rewriting-rules/expression rules)
+				 (rtl:expression-type expression) #f)))
 	    (and entries
-		 (pattern-lookup (cdr entries) expression))))
+		 (pattern-lookup entries expression))))
       (pattern-lookup (rewriting-rules/generic rules) expression)))
 
 (define (new-rewriting-rule! rules pattern matcher)
@@ -133,24 +133,12 @@ USA.
 		rules
 		(cons matcher (rewriting-rules/register rules))))
 	      ((memq keyword rtl:expression-types)
-	       (let ((entries
-		      (assq keyword (rewriting-rules/expression rules))))
-		 (if entries
-		     (set-cdr! entries (cons matcher (cdr entries)))
-		     (set-rewriting-rules/expression!
-		      rules
-		      (cons (list keyword matcher)
-			    (rewriting-rules/expression rules))))))
+	       (hash-table/modify! (rewriting-rules/expression rules) keyword '()
+				   (lambda (rules) (cons matcher rules))))
 	      ((or (memq keyword rtl:statement-types)
 		   (memq keyword rtl:predicate-types))
-	       (let ((entries
-		      (assq keyword (rewriting-rules/statement rules))))
-		 (if entries
-		     (set-cdr! entries (cons matcher (cdr entries)))
-		     (set-rewriting-rules/statement!
-		      rules
-		      (cons (list keyword matcher)
-			    (rewriting-rules/statement rules))))))
+	       (hash-table/modify! (rewriting-rules/statement rules) keyword '()
+				   (lambda (rules) (cons matcher rules))))
 	      (else
 	       (error "illegal RTL type" keyword))))
       (set-rewriting-rules/generic! rules
