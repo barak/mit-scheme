@@ -365,10 +365,10 @@ USA.
 	   (bblock-compress!
 	    (edge-right-node edge)
 	    (lambda (bblock)
-	      (cfg-node-get bblock potential-control-merge-marker)))))
+	      (node-potential-control-merge bblock)))))
 	(let ((bblock (edge-right-node edge)))
 	  (edge-disconnect-right! edge)
-	  (cfg-node-put! bblock potential-control-merge-marker true)
+	  (set-node-potential-control-merge! bblock true)
 	  (case (cfg-tag cfg)
 	    ((SNODE-CFG)
 	     (make-scfg bblock (scfg-next-hooks cfg)))
@@ -381,11 +381,9 @@ USA.
 
 (define (rgraph/postcompress! rgraph)
   (for-each (lambda (bblock)
-	      (cfg-node-remove! bblock potential-control-merge-marker))
+	      (set-node-potential-control-merge! bblock #f))
 	    (rgraph-bblocks rgraph)))
 
-(define potential-control-merge-marker
-  (intern "#[(compiler rtl-generator)potential-control-merge]"))
 
 (define (rgraph/compress! rgraph)
   (with-new-node-marks
