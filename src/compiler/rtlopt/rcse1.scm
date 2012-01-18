@@ -92,10 +92,10 @@ USA.
     (let ((rtl (rinst-rtl rinst)))
       ((if (eq? (rtl:expression-type rtl) 'ASSIGN)
 	   cse/assign
-	   (let ((entry (assq (rtl:expression-type rtl) cse-methods)))
-	     (if (not entry)
+	   (let ((method (hash-table/get cse-methods (rtl:expression-type rtl) #f)))
+	     (if (not method)
 		 (error "Missing CSE method" (rtl:expression-type rtl)))
-	     (cdr entry)))
+	     method))
        rtl))
     (if (rinst-next rinst)
 	(loop (rinst-next rinst))))
@@ -131,14 +131,11 @@ USA.
   (walk-bblock bblock))
 
 (define (define-cse-method type method)
-  (let ((entry (assq type cse-methods)))
-    (if entry
-	(set-cdr! entry method)
-	(set! cse-methods (cons (cons type method) cse-methods))))
+  (hash-table/put! cse-methods type method)
   type)
 
-(define cse-methods
-  '())
+(define cse-methods (make-strong-eq-hash-table))
+
 
 (define (cse/assign statement)
   (expression-replace! rtl:assign-expression rtl:set-assign-expression!
