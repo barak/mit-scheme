@@ -171,8 +171,8 @@ USA.
 						   ,@slots))))))))
 		     (ill-formed-syntax form)))))))))))
 
-(define-type-definition snode 6 #f)
-(define-type-definition pnode 7 #f)
+(define-type-definition snode 7 #f)
+(define-type-definition pnode 8 #f)
 (define-type-definition rvalue 2 rvalue-types)
 (define-type-definition lvalue 14 #f)
 
@@ -214,7 +214,7 @@ USA.
 		(map (lambda (form) (close-syntax form environment))
 		     (cddr form))))
 	   `((ACCESS VECTOR ,system-global-environment)
-	     ,tag #F #F '() '() #F ,@extra))
+	     ,tag #F #F #F '() '() #F ,@extra))
 	 (ill-formed-syntax form)))))
 
 (define-syntax make-pnode
@@ -226,7 +226,7 @@ USA.
 		(map (lambda (form) (close-syntax form environment))
 		     (cddr form))))
 	   `((ACCESS VECTOR ,system-global-environment)
-	     ,tag #F #F '() '() #F #F ,@extra))
+	     ,tag #F #F #F '() '() #F #F ,@extra))
 	 (ill-formed-syntax form)))))
 
 (define-syntax make-rvalue
