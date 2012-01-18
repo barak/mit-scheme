@@ -203,11 +203,13 @@ if you have a working installation with a runtime band.  Here is how:
         a.  Start scheme with the runtime band:
             scheme --band runtime.com
 
-        b.  ]=> (load "make.scm")
+        b.  ]=> (load-option 'sf)
 
-        c.  ]=> (load "compiler.cbf")
+        c.  ]=> (load "make")
 
-        d.  ]=> (exit)
+        d.  ]=> (load "compiler.cbf")
+
+        e.  ]=> (exit)
 
     5.  Build a new compiler band with these steps:
 
