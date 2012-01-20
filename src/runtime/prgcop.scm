@@ -227,12 +227,9 @@ USA.
     typed))
 
 (define (copy-SEQUENCE-object obj)
-  (cond ((object-type? (ucode-type SEQUENCE-2) obj)
-	 (%%copy-pair (ucode-type SEQUENCE-2) obj))
-	((object-type? (ucode-type SEQUENCE-3) obj)
-	 (%%copy-triple (ucode-type SEQUENCE-3) obj))
-	(else
-	 (error "copy-SEQUENCE-object: Unknown type" obj))))
+  (if (object-type? (ucode-type SEQUENCE-2) obj)
+      (%%copy-pair (ucode-type SEQUENCE-2) obj)
+      (error "copy-SEQUENCE-object: Unknown type" obj)))
 
 (define (copy-COMBINATION-object obj)
   (cond ((object-type? (ucode-type combination) obj)

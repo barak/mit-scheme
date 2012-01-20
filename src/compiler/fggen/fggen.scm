@@ -501,30 +501,17 @@ USA.
 ;;;; Combinators
 
 (define (generate/sequence block continuation context expression)
-  (let ((join (scfg*ctype->ctype! continuation)))
-    (let ((do-action
-	   (lambda (action continuation-type)
-	     (generate/subproblem/effect block continuation context
-					 action continuation-type expression)))
-	  (do-result
-	   (lambda (expression)
-	     (generate/expression block continuation context expression))))
-      ;; These are done in a funny way to enforce processing in sequence order.
+  (if (object-type? (ucode-type sequence-2) expression)
+      ;; This is done in a funny way to enforce processing in sequence order.
       ;; In this way, compile-by-procedures compiles in a predictable order.
-      (cond ((object-type? (ucode-type sequence-2) expression)
-	     (let ((first (do-action (&pair-car expression) 'SEQUENCE-2-SECOND)))
-	       (join first
-		     (do-result (&pair-cdr expression)))))
-	    ((object-type? (ucode-type sequence-3) expression)
-	     (let ((first (do-action (&triple-first expression) 'SEQUENCE-3-SECOND)))
-	       (join
-		first
-		(let ((second (do-action (&triple-second expression) 'SEQUENCE-3-THIRD)))
-		  (join
-		   second
-		   (do-result (&triple-third expression)))))))
-	    (else
-	     (error "Not a sequence" expression))))))
+      (let ((first (generate/subproblem/effect
+		    block continuation context
+		    (&pair-car expression) 'SEQUENCE-2-SECOND
+		    expression)))
+	((scfg*ctype->ctype! continuation)
+	 first
+	 (generate/expression block continuation context (&pair-cdr expression))))
+      (error "Not a sequence" expression)))
 
 (define (generate/conditional block continuation context expression)
   (scode/conditional-components expression

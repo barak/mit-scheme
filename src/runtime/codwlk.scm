@@ -123,7 +123,7 @@ USA.
 		      (DISJUNCTION ,walk/disjunction)
 		      ((LAMBDA LEXPR EXTENDED-LAMBDA) ,walk/lambda)
 		      (QUOTATION ,walk/quotation)
-		      ((SEQUENCE-2 SEQUENCE-3) ,walk/sequence)
+		      (SEQUENCE-2 ,walk/sequence)
 		      (THE-ENVIRONMENT ,walk/the-environment)
 		      (VARIABLE ,walk/variable)))
 	  table)))
