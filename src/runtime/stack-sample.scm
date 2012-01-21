@@ -366,7 +366,7 @@
        output-port)))
 
 (define (show-expression expression subexpression output-port)
-  (write-string " evaluating " output-port)
+  (write-string " evaluating" output-port)
   (cond ((invalid-expression-description expression)
          => (lambda (description)
               (write-string description output-port)
@@ -389,9 +389,9 @@
 (define (invalid-expression-description expression)
   (cond ((debugging-info/compiled-code? expression)
          ;++ Should this display the compiled entry itself?
-         "compiled code")
+         " compiled code")
         ((debugging-info/undefined-expression? expression)
-         "undefined expression")
+         " undefined expression")
         (else #f)))
 
 (define (profile-pp expression output-port)
