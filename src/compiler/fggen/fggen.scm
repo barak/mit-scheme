@@ -988,7 +988,7 @@ USA.
       (standard-entry the-environment)
       (standard-entry variable)
       (dispatch-entries (lambda lexpr extended-lambda) generate/lambda)
-      (dispatch-entries (sequence-2 sequence-3) generate/sequence)
+      (dispatch-entry sequence-2 generate/sequence)
       (dispatch-entries (combination-1 combination-2 combination
 				       primitive-combination-0
 				       primitive-combination-1
