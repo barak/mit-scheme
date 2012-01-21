@@ -501,16 +501,17 @@ USA.
 ;;;; Combinators
 
 (define (generate/sequence block continuation context expression)
-  (if (object-type? (ucode-type sequence-2) expression)
+  (if (scode/sequence? expression)
       ;; This is done in a funny way to enforce processing in sequence order.
       ;; In this way, compile-by-procedures compiles in a predictable order.
       (let ((first (generate/subproblem/effect
 		    block continuation context
-		    (&pair-car expression) 'SEQUENCE-2-SECOND
+		    (scode/sequence-first expression) 'SEQUENCE-2-SECOND
 		    expression)))
 	((scfg*ctype->ctype! continuation)
 	 first
-	 (generate/expression block continuation context (&pair-cdr expression))))
+	 (generate/expression block continuation context
+			      (scode/sequence-second expression))))
       (error "Not a sequence" expression)))
 
 (define (generate/conditional block continuation context expression)
