@@ -126,35 +126,53 @@ USA.
 
 ;;;; Sequence
 
+(define-integrable (%make-sequence first second)
+  (&typed-pair-cons (ucode-type sequence-2) first second))
+
+(define-integrable (sequence? object)
+  (object-type? (ucode-type sequence-2) object))
+
+(define-integrable (%sequence-first sequence) (&pair-car sequence))
+(define-integrable (%sequence-second sequence) (&pair-cdr sequence))
+
+(define-guarantee sequence "SCode sequence")
+
 (define (make-sequence actions)
   (if (null? actions)
       (error "MAKE-SEQUENCE: No actions"))
   (let loop ((actions actions))
-    (if (null? (cdr actions))
-	(car actions)
-	(&typed-pair-cons (ucode-type sequence-2)
-			  (car actions)
-			  (loop (cdr actions))))))
+    (cond ((null? (cdr actions)) (car actions))
+	  ((sequence? (car actions))
+	   (loop (append (sequence-actions (car actions)) (cdr actions))))
+	  (else	(%make-sequence (car actions) (loop (cdr actions)))))))
 
-(define (sequence? object)
-  (object-type? (ucode-type sequence-2) object))
+(define (sequence-first expression)
+  (guarantee-sequence expression 'SEQUENCE-FIRST)
+  (%sequence-first expression))
 
-(define-guarantee sequence "SCode sequence")
-
-(define (sequence-actions expression)
-  (if (object-type? (ucode-type sequence-2) expression)
-      (append! (sequence-actions (&pair-car expression))
-	       (sequence-actions (&pair-cdr expression)))
-      (list expression)))
+(define (sequence-second expression)
+  (guarantee-sequence expression 'SEQUENCE-SECOND)
+  (%sequence-second expression))
 
 (define (sequence-immediate-actions expression)
-  (if (object-type? (ucode-type sequence-2) expression)
-      (list (&pair-car expression)
-	    (&pair-cdr expression))
-      (error:not-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)))
+  (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)
+  (list (%sequence-first expression)
+	(%sequence-second expression)))
+
+(define (sequence-actions expression)
+  (if (sequence? expression)
+      (cons (%sequence-first expression)
+	    (sequence-actions (%sequence-second expression)))
+      (list expression)))
 
 (define (sequence-components expression receiver)
   (receiver (sequence-actions expression)))
+
+(define (copy-sequence expression)
+  (guarantee-sequence expression 'COPY-SEQUENCE)
+  (%make-sequence (%sequence-first expression)
+		  (%sequence-second expression)))
+
 
 ;;;; Conditional
 
