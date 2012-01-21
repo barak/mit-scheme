@@ -3634,6 +3634,8 @@ USA.
 	  sequence-actions
 	  sequence-components
 	  sequence-immediate-actions
+	  sequence-first
+	  sequence-second
 	  sequence?
 	  unassigned?-components
 	  unassigned?-name
