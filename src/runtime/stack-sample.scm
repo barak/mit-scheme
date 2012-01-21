@@ -115,9 +115,8 @@
 
 ;;;; Running with Stack Sampling
 
-(define (run-with-stack-sampling sample-interval thunk)
-  (let ((profile (make-profile))
-        (timer-registration #t))
+(define (run-with-stack-sampling profile sample-interval thunk)
+  (let ((timer-registration #t))
     (define (register-event)
       (if timer-registration
           (set! timer-registration
@@ -279,7 +278,7 @@
       (with-notification (lambda (output-port)
                            (write-string "Stack-sampling" output-port))
         (lambda ()
-          (run-with-stack-sampling sample-interval thunk)))
+          (run-with-stack-sampling (make-profile) sample-interval thunk)))
     (write-notification-line
      (lambda (output-port)
        (display-profile profile output-port)))
