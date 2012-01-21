@@ -137,32 +137,21 @@ USA.
 			  (loop (cdr actions))))))
 
 (define (sequence? object)
-  (or (object-type? (ucode-type sequence-2) object)
-      (object-type? (ucode-type sequence-3) object)))
+  (object-type? (ucode-type sequence-2) object))
 
 (define-guarantee sequence "SCode sequence")
 
 (define (sequence-actions expression)
-  (cond ((object-type? (ucode-type sequence-2) expression)
-	 (append! (sequence-actions (&pair-car expression))
-		  (sequence-actions (&pair-cdr expression))))
-	((object-type? (ucode-type sequence-3) expression)
-	 (append! (sequence-actions (&triple-first expression))
-		  (sequence-actions (&triple-second expression))
-		  (sequence-actions (&triple-third expression))))
-	(else
-	 (list expression))))
+  (if (object-type? (ucode-type sequence-2) expression)
+      (append! (sequence-actions (&pair-car expression))
+	       (sequence-actions (&pair-cdr expression)))
+      (list expression)))
 
 (define (sequence-immediate-actions expression)
-  (cond ((object-type? (ucode-type sequence-2) expression)
-	 (list (&pair-car expression)
-	       (&pair-cdr expression)))
-	((object-type? (ucode-type sequence-3) expression)
-	 (list (&triple-first expression)
-	       (&triple-second expression)
-	       (&triple-third expression)))
-	(else
-	 (error:not-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS))))
+  (if (object-type? (ucode-type sequence-2) expression)
+      (list (&pair-car expression)
+	    (&pair-cdr expression))
+      (error:not-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)))
 
 (define (sequence-components expression receiver)
   (receiver (sequence-actions expression)))
