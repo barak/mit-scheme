@@ -36,8 +36,6 @@ USA.
          "usicon"
          "tables")
   (parent ())
-  (import (runtime scode-combinator)
-          combination/constant-folding-operators)
   (export ()
           sf:enable-argument-deletion?
           sf:enable-constant-folding?))
