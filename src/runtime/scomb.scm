@@ -141,10 +141,9 @@ USA.
   (if (null? actions)
       (error "MAKE-SEQUENCE: No actions"))
   (let loop ((actions actions))
-    (cond ((null? (cdr actions)) (car actions))
-	  ((sequence? (car actions))
-	   (loop (append (sequence-actions (car actions)) (cdr actions))))
-	  (else	(%make-sequence (car actions) (loop (cdr actions)))))))
+    (if (null? (cdr actions))
+	(car actions)
+	(%make-sequence (car actions) (loop (cdr actions))))))
 
 (define (sequence-first expression)
   (guarantee-sequence expression 'SEQUENCE-FIRST)
@@ -161,8 +160,8 @@ USA.
 
 (define (sequence-actions expression)
   (if (sequence? expression)
-      (cons (%sequence-first expression)
-	    (sequence-actions (%sequence-second expression)))
+      (append! (sequence-actions (%sequence-first expression))
+	       (sequence-actions (%sequence-second expression)))
       (list expression)))
 
 (define (sequence-components expression receiver)
@@ -177,15 +176,10 @@ USA.
 ;;;; Conditional
 
 (define (make-conditional predicate consequent alternative)
-  (if (and (combination? predicate)
-	   (eq? (combination-operator predicate) (ucode-primitive not)))
-      (make-conditional (car (combination-operands predicate))
-			alternative
-			consequent)
-      (&typed-triple-cons (ucode-type conditional)
-			  predicate
-			  consequent
-			  alternative)))
+  (&typed-triple-cons (ucode-type conditional)
+		      predicate
+		      consequent
+		      alternative))
 
 (define (conditional? object)
   (object-type? (ucode-type conditional) object))
@@ -217,12 +211,7 @@ USA.
 ;;;; Disjunction
 
 (define (make-disjunction predicate alternative)
-  (if (and (combination? predicate)
-	   (eq? (combination-operator predicate) (ucode-primitive not)))
-      (make-conditional (car (combination-operands predicate))
-			alternative
-			true)
-      (&typed-pair-cons (ucode-type disjunction) predicate alternative)))
+  (&typed-pair-cons (ucode-type disjunction) predicate alternative))
 
 (define (disjunction? object)
   (object-type? (ucode-type disjunction) object))
@@ -257,54 +246,75 @@ USA.
 
 (define-guarantee combination "SCode combination")
 
-(define (make-combination operator operands)
-  (if (and (procedure? operator)
-	   (not (primitive-procedure? operator)))
-      (error:wrong-type-argument operator
-				 "operator expression"
-				 'MAKE-COMBINATION))
-  (if (and (memq operator combination/constant-folding-operators)
-	   (let loop ((operands operands))
-	     (or (null? operands)
-		 (and (scode-constant? (car operands))
-		      (loop (cdr operands))))))
-      (apply operator operands)
-      (%make-combination operator operands)))
-
+;; TODO(jmarshall): Remove or relocate this.
 (define combination/constant-folding-operators)
 
-(define (%make-combination operator operands)
-  (cond ((null? operands)
-	 (if (and (primitive-procedure? operator)
-		  (= (primitive-procedure-arity operator) 0))
-	     (object-new-type (ucode-type primitive-combination-0) operator)
-	     (&typed-vector-cons (ucode-type combination)
-				 (cons operator '()))))
-	((null? (cdr operands))
-	 (&typed-pair-cons
-	  (if (and (primitive-procedure? operator)
-		   (= (primitive-procedure-arity operator) 1))
-	      (ucode-type primitive-combination-1)
-	      (ucode-type combination-1))
-	  operator
-	  (car operands)))
-	((null? (cddr operands))
-	 (&typed-triple-cons
-	  (if (and (primitive-procedure? operator)
-		   (= (primitive-procedure-arity operator) 2))
-	      (ucode-type primitive-combination-2)
-	      (ucode-type combination-2))
-	  operator
-	  (car operands)
-	  (cadr operands)))
-	(else
-	 (&typed-vector-cons
-	  (if (and (null? (cdddr operands))
-		   (primitive-procedure? operator)
-		   (= (primitive-procedure-arity operator) 3))
-	      (ucode-type primitive-combination-3)
-	      (ucode-type combination))
-	  (cons operator operands)))))
+(define (make-combination operator operands)
+
+  (define-integrable (%make-combination-0 operator)
+    (if (and (primitive-procedure? operator)
+	     (= (primitive-procedure-arity operator) 0))
+	(object-new-type (ucode-type primitive-combination-0) operator)
+	(&typed-vector-cons (ucode-type combination)
+			    (cons operator '()))))
+
+  (define-integrable (%make-combination-1 operator operand0)
+    (if (and (primitive-procedure? operator)
+	     (= (primitive-procedure-arity operator) 1))
+	(&typed-pair-cons (ucode-type primitive-combination-1)
+			  operator operand0)
+	(&typed-pair-cons (ucode-type combination-1)
+			  operator operand0)))
+
+  (define-integrable (%make-combination-2 operator operand0 operand1)
+    (if (and (primitive-procedure? operator)
+	     (= (primitive-procedure-arity operator) 2))
+	(&typed-triple-cons (ucode-type primitive-combination-2)
+			    operator operand0 operand1)
+	(&typed-triple-cons (ucode-type combination-2)
+			    operator operand0 operand1)))
+
+  (define-integrable (%make-combination-3 operator)
+    (if (and (primitive-procedure? operator)
+	     (= (primitive-procedure-arity operator) 3))
+	(&typed-vector-cons (ucode-type primitive-combination-3)
+			    (cons operator operands))
+	(&typed-vector-cons (ucode-type combination)
+			    (cons operator operands))))
+
+  (cond ((pair? operands)
+	 (let ((operand0 (car operands))
+	       (tail0 (cdr operands)))
+	   (cond ((pair? tail0)
+		  (let ((operand1 (car tail0))
+			(tail1 (cdr tail0)))
+		    (cond ((pair? tail1)
+			   (let ((tail2 (cdr tail1)))
+			     (cond ((pair? tail2)
+				    (&typed-vector-cons
+				     (ucode-type combination)
+				     (cons operator operands)))
+				   ((null? tail2)
+				    (%make-combination-3 operator))
+				   (else (&typed-vector-cons
+					  (ucode-type combination)
+					  (cons operator operands))))))
+			  ((null? tail1)
+			   (%make-combination-2 operator operand0 operand1))
+			  (else (&typed-vector-cons
+				 (ucode-type combination)
+				 (cons operator operands))))))
+		 ((null? tail0)
+		  (%make-combination-1 operator operand0))
+		 (else (&typed-vector-cons
+			(ucode-type combination)
+			(cons operator operands))))))
+	((null? operands)
+	 (%make-combination-0 operator))
+	(else (&typed-vector-cons
+	       (ucode-type combination)
+	       (cons operator operands)))))
+
 
 (define-syntax combination-dispatch
   (sc-macro-transformer
