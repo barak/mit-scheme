@@ -925,6 +925,7 @@ USA.
 	  (vector-8b-maximum-length string-maximum-length)
 	  (vector-8b? string?)
 	  allocate-external-string
+	  ascii-string-copy
 	  burst-string
 	  camel-case-string->lisp
 	  char->string
@@ -3633,6 +3634,8 @@ USA.
 	  sequence-actions
 	  sequence-components
 	  sequence-immediate-actions
+	  sequence-first
+	  sequence-second
 	  sequence?
 	  unassigned?-components
 	  unassigned?-name

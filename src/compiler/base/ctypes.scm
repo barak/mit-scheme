@@ -283,14 +283,9 @@ USA.
 
 ;;; Node Properties
 
-(define-integrable (node/subgraph-color node)
-  (cfg-node-get node node/subgraph-color-tag))
+(define-integrable node/subgraph-color node-subgraph-color)
 
-(define-integrable (set-node/subgraph-color! node color)
-  (cfg-node-put! node node/subgraph-color-tag color))
-
-(define node/subgraph-color-tag
-  "subgraph-color-tag")
+(define-integrable set-node/subgraph-color! set-node-subgraph-color!)
 
 (define-structure (subgraph-color
 		   (conc-name subgraph-color/)

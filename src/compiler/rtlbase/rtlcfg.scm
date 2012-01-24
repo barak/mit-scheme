@@ -31,7 +31,7 @@ USA.
 (define-snode sblock)
 (define-pnode pblock)
 
-(define-vector-slots bblock 6
+(define-vector-slots bblock 8
   instructions
   live-at-entry
   live-at-exit
@@ -39,13 +39,13 @@ USA.
   label
   continuations)
 
-(define-vector-slots sblock 12
+(define-vector-slots sblock 14
   continuation)
 
 (define (make-sblock instructions)
   (make-pnode sblock-tag instructions false false false false '() false))
 
-(define-vector-slots pblock 12
+(define-vector-slots pblock 14
   consequent-lap-generator
   alternative-lap-generator)
 

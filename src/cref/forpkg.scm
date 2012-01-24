@@ -52,7 +52,7 @@ USA.
     (let ((free-references
 	   (append-map! (lambda (package)
 			  (delete-matching-items
-			      (package/sorted-references package)
+			      (package/references package)
 			    reference/binding))
 			packages)))
       (if (pair? free-references)
@@ -91,22 +91,21 @@ USA.
 	 (classify-bindings-by-package
 	  (lambda (binding)
 	    (binding/package (binding/source-binding binding)))
-	  (package/sorted-bindings package))))
+	  (package/bindings package))))
     (let ((class (assq package classes)))
       (if class
 	  (format-package/bindings port indentation width package (cdr class)))
       (for-each (lambda (class)
 		  (if (not (eq? package (car class)))
 		      (format-package/imports port indentation width package
-					      (car class)
-					      (cdr class))))
+					      (car class) (cdr class))))
 		classes)
       (if class
 	  (for-each
 	   (lambda (class)
 	     (if (not (eq? package (car class)))
-		 (format-package/exports port indentation width (car class)
-					 (sort (cdr class) binding<?))))
+		 (format-package/exports port indentation width
+					 (car class) (cdr class))))
 	   (classify-bindings-by-package
 	    binding/package
 	    (append-map (lambda (binding)
@@ -148,7 +147,7 @@ USA.
 			    (set! unlinked (cons value-cell unlinked)))
 			   ((not (memq value-cell linked))
 			    (set! linked (cons value-cell linked))))))
-		 (package/sorted-bindings package)))
+		 (package/bindings package)))
      packages)
     (values unlinked linked)))
 
@@ -207,12 +206,12 @@ USA.
 		    destination-binding)
        (let ((local-name (binding/name local-binding))
 	     (remote-name (binding/name remote-binding)))
-	 (let ((name-string (binding-name->string local-name)))
+	 (let ((name-string (name->string local-name)))
 	   (if (eq? local-name remote-name)
 	       name-string
 	       (string-append name-string
 			      " ["
-			      (binding-name->string remote-name)
+			      (name->string remote-name)
 			      "]"))))))))
 
 (define (local-map/export source destination)
@@ -231,7 +230,7 @@ USA.
 	       (binding->name binding)
 	       (append-map reference/expressions
 			   (binding/references binding))))
-	    bindings))
+	    (sort bindings binding<?)))
 
 (define (classify-bindings-by-package binding->package bindings)
   (let ((classes '()))
@@ -243,9 +242,6 @@ USA.
 	       (set-cdr! entry (cons binding (cdr entry)))
 	       (set! classes (cons (list package binding) classes))))))
      bindings)
-    (for-each (lambda (class)
-		(set-cdr! class (reverse! (cdr class))))
-	      classes)
     (sort classes
 	  (lambda (x y)
 	    (package<? (car x) (car y))))))
@@ -255,12 +251,12 @@ USA.
   (for-each
    (lambda (reference)
      (format-expressions port indentation width package
-			 (binding-name->string (reference/name reference))
+			 (name->string (reference/name reference))
 			 (reference/expressions reference)))
    references))
 
 (define (format-expressions port indentation width package name expressions)
-  (receive (symbols pairs)
+  (receive (names pairs)
       (classify-expression-names
        (map (lambda (expression)
 	      (expression->name expression package))
@@ -270,7 +266,7 @@ USA.
     (newline port)
     (let ((indentation (new-indentation indentation)))
       (write-strings/compact port indentation width
-			     (map symbol-name (sort symbols symbol<?)))
+			     (sort (map name->string names) string<?))
       (write-items/miser port indentation width
 	(sort pairs
 	  (lambda (x y)
@@ -278,7 +274,7 @@ USA.
 		(and (string=? (car x) (car y))
 		     (or (not (pair? (cdr x)))
 			 (and (pair? (cdr y))
-			      (symbol<? (cadr x) (cadr y))))))))))))
+			      (name<? (cadr x) (cadr y))))))))))))
 
 (define (classify-expression-names names)
   (if (pair? names)
@@ -344,12 +340,7 @@ USA.
   (string-append indentation "    "))
 
 (define (binding/name-string binding)
-  (binding-name->string (binding/name binding)))
-
-(define (binding-name->string name)
-  (if (symbol? name)
-      (symbol-name name)
-      (write-to-string name)))
+  (name->string (binding/name binding)))
 
 (define (package/name-string package)
   (package-name->string (package/name package)))
@@ -357,5 +348,5 @@ USA.
 (define (package-name->string name)
   (string-append "("
 		 (decorated-string-append "" " " ""
-					  (map binding-name->string name))
+					  (map name->string name))
 		 ")"))

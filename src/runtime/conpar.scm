@@ -811,8 +811,6 @@ USA.
     (standard-subproblem 'ASSIGNMENT-CONTINUE 3)
     (standard-subproblem 'DEFINITION-CONTINUE 3)
     (standard-subproblem 'SEQUENCE-2-SECOND 3)
-    (standard-subproblem 'SEQUENCE-3-SECOND 3)
-    (standard-subproblem 'SEQUENCE-3-THIRD 3)
     (standard-subproblem 'CONDITIONAL-DECIDE 3)
     (standard-subproblem 'DISJUNCTION-DECIDE 3)
     (standard-subproblem 'COMBINATION-1-PROCEDURE 3)

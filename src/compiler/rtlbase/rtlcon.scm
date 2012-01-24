@@ -226,17 +226,17 @@ USA.
   (expression-simplify expression scfg*pcfg->pcfg! receiver))
 
 (define-export (expression-simplify-for-pseudo-assignment expression receiver)
-  (let ((entry (assq (car expression) expression-methods)))
+  (let ((entry (hash-table/get expression-methods (car expression) #f)))
     (if entry
-	(apply (cdr entry) receiver scfg*scfg->scfg! (cdr expression))
+	(apply entry receiver scfg*scfg->scfg! (cdr expression))
 	(receiver expression))))
 
 (define (expression-simplify expression scfg-append! receiver)
   (if (rtl:register? expression)
       (receiver expression)
-      (let ((entry (assq (car expression) expression-methods)))
+      (let ((entry (hash-table/get expression-methods (car expression) #f)))
 	(if entry
-	    (apply (cdr entry)
+	    (apply entry
 		   (lambda (expression)
 		     (if (rtl:register? expression)
 			 (receiver expression)
@@ -360,7 +360,7 @@ USA.
 			granularity*)
 		       scfg-append!
 		       (lambda (base-reg)
-			(if-memory base-reg offset granularity)))))) 
+			(if-memory base-reg offset granularity))))))
 		  (else
 		   (error "illegal offset base" locative)))))
 	     ((INDEX)
@@ -409,15 +409,11 @@ USA.
      (receiver pseudo))))
 
 (define (define-expression-method name method)
-  (let ((entry (assq name expression-methods)))
-    (if entry
-	(set-cdr! entry method)
-	(set! expression-methods
-	      (cons (cons name method) expression-methods))))
+  (hash-table/put! expression-methods name method)
   name)
 
 (define expression-methods
-  '())
+  (make-strong-eq-hash-table))
 
 (define-expression-method 'FETCH
   (lambda (receiver scfg-append! locative)
@@ -551,13 +547,13 @@ USA.
 	  (expression-simplify type scfg-append!
 	    (lambda (type)
 	      (if use-pre/post-increment?
-		  (assign-to-temporary  
+		  (assign-to-temporary
 		   (rtl:make-offset-address free
 					    (rtl:make-machine-constant (- nelements)))
 		   scfg-append!
 		   (lambda (temporary)
 		     (receiver (rtl:make-cons-pointer type temporary))))
-		  (assign-to-temporary 
+		  (assign-to-temporary
 		   (rtl:make-cons-pointer type free)
 		   scfg-append!
 		   (lambda (temporary)
@@ -578,7 +574,7 @@ USA.
 		    (scfg-append! (store-element! (car elements) offset)
 				  (loop (cdr elements)
 					(1+ offset))))))))
-	  
+
 	(let process ((elements elements)
 		      (offset 0)
 		      (chunk 1))

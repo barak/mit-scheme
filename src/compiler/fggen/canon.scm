@@ -874,7 +874,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 				       primitive-combination-3)
 			canonicalize/combination)
       (dispatch-entries (lambda lexpr extended-lambda) canonicalize/lambda)
-      (dispatch-entries (sequence-2 sequence-3) canonicalize/sequence))
+      (dispatch-entry sequence-2 canonicalize/sequence))
     (named-lambda (canonicalize/expression expression bound context)
       ((vector-ref dispatch-vector (object-type expression))
        expression bound context))))

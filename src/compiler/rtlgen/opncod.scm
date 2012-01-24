@@ -66,11 +66,9 @@ USA.
 	 (rvalue/constant? callee)
 	 (let ((value (constant-value callee)))
 	   (and (scode/primitive-procedure? value)
-		(let ((entry
-		       (assq (primitive-procedure-name value)
-			     name->open-coders)))
+		(let ((entry (hash-table/get name->open-coders (primitive-procedure-name value) #f)))
 		  (and entry
-		       (try-handler combination value (cdr entry)))))))))
+		       (try-handler combination value entry))))))))
 
 (define (try-handler combination primitive entry)
   (let ((operands (combination/operands combination)))
@@ -209,12 +207,8 @@ USA.
   (let ((per-name
 	 (lambda (name handler)
 	   (if (available-primitive? name)
-	       (let ((entry (assq name name->open-coders))
-		     (item (vector handler ->effect ->predicate ->value)))
-		 (if entry
-		     (set-cdr! entry item)
-		     (set! name->open-coders
-			   (cons (cons name item) name->open-coders))))))))
+	       (let ((item (vector handler ->effect ->predicate ->value)))
+		 (hash-table/put! name->open-coders name item))))))
     (lambda (name handler)
       (if (list? name)
 	  (for-each (lambda (name)
@@ -223,8 +217,7 @@ USA.
 	  (per-name name handler))
       name)))
 
-(define name->open-coders
-  '())
+(define name->open-coders (make-strong-eq-hash-table))
 
 (define define-open-coder/effect
   (open-coder-definer invoke/effect->effect

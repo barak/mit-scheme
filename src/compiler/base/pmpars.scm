@@ -96,69 +96,96 @@ USA.
 (define (rule->matcher pattern body environment)
   (receive (pattern variables qualifiers actions) (parse-rule pattern body)
     (values pattern
-	    (make-rule-matcher pattern
-			       (rule-result-expression variables
-						       qualifiers
-						       `(,(close-syntax
-							   'BEGIN
-							   environment)
-							 ,@actions)
-						       environment)
-			       environment))))
+	    (make-rule-matcher
+	     pattern
+	     (rule-result-expression variables
+				     qualifiers
+				     (if (and (pair? actions)
+					      (null? (cdr actions)))
+					 (car actions)
+					 `(,(close-syntax 'BEGIN environment)
+					   ,@actions))
+				     environment)
+	     environment))))
+
+(define compile-pattern-matchers? #t)
 
 (define (make-rule-matcher pattern expression environment)
-  (let ((r-lambda (close-syntax 'LAMBDA environment))
-	(instance (close-syntax 'INSTANCE environment))
-	(r-pl1 (close-syntax 'PATTERN-LOOKUP-1 environment)))
-    `(,r-lambda (,instance)
-       (,r-pl1 ',pattern
-	       ,expression
-	       ,instance))))
+  ;; PATTERN-LOOKUP-2 and the compiled matchers require that there
+  ;; are no duplicated variables in the pattern.  Fortunately, that
+  ;; is the usual case.  If there are duplicates, we use the slower
+  ;; PATTERN-LOOKUP-1.
+  (cond ((pattern-contains-duplicates? pattern)
+	 (let ((instance (close-syntax 'INSTANCE environment))
+	       (r-lambda (close-syntax 'LAMBDA environment))
+	       (lookup   (close-syntax 'PATTERN-LOOKUP-1 environment))
+	       (r-quote  (close-syntax 'QUOTE environment)))
+	   `(,r-lambda (,instance)
+		       (,lookup (,r-quote ,pattern) ,expression ,instance))))
+	(compile-pattern-matchers?
+	 (generate-pattern-matcher pattern expression environment))
+	(else
+	 (let ((instance (close-syntax 'INSTANCE environment))
+	       (r-lambda (close-syntax 'LAMBDA environment))
+	       (lookup   (close-syntax 'PATTERN-LOOKUP-2 environment))
+	       (r-quote  (close-syntax 'QUOTE environment)))
+	   `(,r-lambda (,instance)
+		       (,lookup (,r-quote ,pattern) ,expression ,instance))))))
 
 (define (rule-result-expression variables qualifiers body environment)
   (receive (outer-vars inner-vars xforms xqualifiers)
       (process-transformations variables environment)
-    (let ((r-lambda (close-syntax 'LAMBDA environment))
-	  (r-let (close-syntax 'LET environment))
-	  (r-and (close-syntax 'AND environment)))
+    (let* ((r-lambda (close-syntax 'LAMBDA environment))
+	   (qualified-body (if (and (null? xqualifiers)
+				    (null? qualifiers))
+			       `(,r-lambda () ,body)
+			       `(,(close-syntax 'AND environment)
+				 ,@xqualifiers
+				 ,@qualifiers
+				 (,r-lambda () ,body)))))
       `(,r-lambda ,outer-vars
-		  (,r-let ,(map list inner-vars xforms)
-			  (,r-and ,@xqualifiers
-				  ,@qualifiers
-				  (,r-lambda () ,body)))))))
+	  (,(close-syntax 'DECLARE environment)
+	   (INTEGRATE ,@outer-vars)
+	   (TYPE-CHECKS))
+	  ,(if (and (null? inner-vars)
+		    (null? xforms))
+	       qualified-body
+	       `(,(close-syntax 'LET environment) ,(map list inner-vars xforms)
+		 ,qualified-body))))))
 
 (define (process-transformations variables environment)
-  (let ((r-map (close-syntax 'MAP environment))
-	(r-apply (close-syntax 'APPLY environment))
-	(r-boolean/and (close-syntax 'BOOLEAN/AND environment)))
-    (let loop ((variables variables))
-      (if (pair? variables)
-	  (receive (outer-vars inner-vars xforms qualifiers)
-	      (loop (cdr variables))
-	    (let ((name (caar variables))
-		  (variable (cdar variables)))
-	      (if (pair? variable)
-		  (let ((var (car variable)))
-		    (if (not (null? (cdr variable)))
-			(error "Multiple variable qualifiers:"
-			       (car variables)))
-		    (let ((xform (cadr var))
-			  (outer-var
-			   (if (pair? (cddr var))
-			       (caddr var)
-			       name)))
-		      (if (eq? (car var) '?)
-			  (values (cons outer-var outer-vars)
-				  (cons name inner-vars)
-				  (cons `(,xform ,outer-var) xforms)
-				  (cons name qualifiers))
-			  (values (cons outer-var outer-vars)
-				  (cons name inner-vars)
-				  (cons `(,r-map ,xform ,outer-var) xforms)
-				  (cons `(,r-apply ,r-boolean/and ,name)
-					qualifiers)))))
-		  (values (cons name outer-vars)
-			  inner-vars
-			  xforms
-			  qualifiers))))
-	  (values '() '() '() '())))))
+  (let loop ((variables variables))
+    (if (pair? variables)
+	(receive (outer-vars inner-vars xforms qualifiers)
+ 	    (loop (cdr variables))
+	  (let ((name (caar variables))
+		(variable (cdar variables)))
+	    (if (pair? variable)
+		(let ((var (car variable)))
+		  (if (not (null? (cdr variable)))
+		      (error "Multiple variable qualifiers:"
+			     (car variables)))
+		  (let ((xform (cadr var))
+			(outer-var
+			 (if (pair? (cddr var))
+			     (caddr var)
+			     name)))
+		    (if (eq? (car var) '?)
+			(values (cons outer-var outer-vars)
+				(cons name inner-vars)
+				(cons `(,xform ,outer-var) xforms)
+				(cons name qualifiers))
+			(values (cons outer-var outer-vars)
+				(cons name inner-vars)
+				(cons `(,(close-syntax 'MAP environment)
+					,xform ,outer-var)
+				      xforms)
+				(cons `(,(close-syntax 'APPLY environment)
+					,(close-syntax 'BOOLEAN/AND environment)
+					,name)
+				      qualifiers)))))
+		(values (cons name outer-vars)
+			inner-vars
+			xforms
+			qualifiers))))
+	(values '() '() '() '()))))

@@ -29,16 +29,21 @@ USA.
 (declare (usual-integrations))
 
 (define-structure (vector-tag
-		   (constructor %make-vector-tag (parent name index)))
+		   (constructor %make-vector-tag (parent name index noop)))
   (parent false read-only true)
   (name false read-only true)
   (index false read-only true)
   (%unparser false)
   (description false)
-  (method-alist '()))
+  (method-alist '())
+
+  ;; This property was stored in the method alist, but it is used so
+  ;; frequently that it deserves its own slot.
+  (noop false)
+  )
 
 (define make-vector-tag
-  (let ((root-tag (%make-vector-tag false 'OBJECT false)))
+  (let ((root-tag (%make-vector-tag false 'OBJECT false false)))
     (set-vector-tag-%unparser!
      root-tag
      (lambda (state object)
@@ -52,7 +57,10 @@ USA.
 			       name
 			       (and enumeration
 				    (enumeration/name->index enumeration
-							     name)))))
+							     name))
+			       ;; Propagate this downward at construction time
+			       ;; to avoid having to crawl upward at use time.
+			       (and parent (vector-tag-noop parent)))))
 	(unparser/set-tagged-vector-method! tag tagged-vector/unparse)
 	tag))))
 

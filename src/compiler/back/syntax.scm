@@ -69,20 +69,17 @@ USA.
 	(match-result))))
 
 (define (instruction-lookup instruction)
-  (pattern-lookup
-   (cdr (or (assq (car instruction) instructions)
-	    (error "INSTRUCTION-LOOKUP: Unknown keyword" (car instruction))))
-   (cdr instruction)))
+  (let ((pattern (hash-table/get instructions (car instruction) #f)))
+    (if pattern
+	(pattern-lookup pattern (cdr instruction))
+	(error "INSTRUCTION-LOOKUP: Unknown keyword" (car instruction)))))
 
 (define (add-instruction! keyword lookup)
-  (let ((entry (assq keyword instructions)))
-    (if entry
-	(set-cdr! entry lookup)
-	(set! instructions (cons (cons keyword lookup) instructions))))
+  (hash-table/put! instructions keyword lookup)
   keyword)
 
 (define instructions
-  '())
+  (make-strong-eq-hash-table))
 
 (define (integer-syntaxer expression environment coercion-type size)
   (let ((name (make-coercion-name coercion-type size)))

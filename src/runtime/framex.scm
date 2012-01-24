@@ -230,11 +230,8 @@ USA.
 		       ((ASSIGNMENT-CONTINUE
 			 DEFINITION-CONTINUE)
 			(win &pair-cdr))
-		       ((SEQUENCE-3-SECOND
-			 CONDITIONAL-DECIDE)
+		       ((CONDITIONAL-DECIDE)
 			(win &triple-first))
-		       ((SEQUENCE-3-THIRD)
-			(win &triple-second))
 		       ((COMBINATION-OPERAND)
 			(values
 			 expression
@@ -283,11 +280,9 @@ USA.
     (record-method 'COMBINATION-1-PROCEDURE method)
     (record-method 'DEFINITION-CONTINUE method))
   (let ((method (method/standard &triple-first)))
-    (record-method 'CONDITIONAL-DECIDE method)
-    (record-method 'SEQUENCE-3-SECOND method))
+    (record-method 'CONDITIONAL-DECIDE method))
   (let ((method (method/standard &triple-second)))
-    (record-method 'COMBINATION-2-PROCEDURE method)
-    (record-method 'SEQUENCE-3-THIRD method))
+    (record-method 'COMBINATION-2-PROCEDURE method))
   (let ((method (method/standard &triple-third)))
     (record-method 'COMBINATION-2-FIRST-OPERAND method)
     (record-method 'PRIMITIVE-COMBINATION-2-FIRST-OPERAND method))

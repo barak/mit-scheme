@@ -163,6 +163,8 @@ USA.
 	  (scode/quotation? quotation?)
 	  (scode/sequence-actions sequence-actions)
 	  (scode/sequence-components sequence-components)
+	  (scode/sequence-first sequence-first)
+	  (scode/sequence-second sequence-second)
 	  (scode/sequence? sequence?)
 	  (scode/symbol? symbol?)
 	  (scode/the-environment? the-environment?)
@@ -307,9 +309,12 @@ USA.
   (files "base/pmlook")
   (parent (compiler))
   (export (compiler)
+	  generate-pattern-matcher
 	  make-pattern-variable
+	  pattern-contains-duplicates?
 	  pattern-lookup
 	  pattern-lookup-1
+	  pattern-lookup-2
 	  pattern-variable-name
 	  pattern-variable?
 	  pattern-variables))

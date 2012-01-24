@@ -48,11 +48,8 @@ USA.
 (define-integrable open-block-tag
   ((ucode-primitive string->symbol) "#[open-block]"))
 
-(define-integrable sequence-2-type
+(define-integrable sequence-type
   (ucode-type sequence-2))
-
-(define-integrable sequence-3-type
-  (ucode-type sequence-3))
 
 (define null-sequence
   '(NULL-SEQUENCE))
@@ -60,7 +57,7 @@ USA.
 (define (cons-sequence action seq)
   (if (eq? seq null-sequence)
       action
-      (&typed-pair-cons sequence-2-type action seq)))
+      (&typed-pair-cons sequence-type action seq)))
 
 ;;;; Scanning
 
@@ -73,7 +70,7 @@ USA.
   ((scan-loop expression receiver) '() '() null-sequence))
 
 (define (scan-loop expression receiver)
-  (cond ((object-type? sequence-2-type expression)
+  (cond ((object-type? sequence-type expression)
 	 (let ((first (&pair-car expression)))
 	   (if (and (vector? first)
 		    (not (zero? (vector-length first)))
@@ -87,21 +84,6 @@ USA.
 	       (scan-loop (&pair-cdr expression)
 			  (scan-loop first
 				     receiver)))))
-	((object-type? sequence-3-type expression)
-	 (let ((first (&triple-first expression)))
-	   (if (and (vector? first)
-		    (not (zero? (vector-length first)))
-		    (eq? (vector-ref first 0) open-block-tag))
-	       (scan-loop
-		(&triple-third expression)
-		(lambda (names declarations body)
-		  (receiver (append (vector-ref first 1) names)
-			    (append (vector-ref first 2) declarations)
-			    body)))
-	       (scan-loop (&triple-third expression)
-			  (scan-loop (&triple-second expression)
-				     (scan-loop first
-						receiver))))))
 	((definition? expression)
 	 (definition-components expression
 	   (lambda (name value)
@@ -131,7 +113,7 @@ USA.
 		 names*))
       (if (null? declarations)
 	  body*
-	  (&typed-pair-cons sequence-2-type
+	  (&typed-pair-cons sequence-type
 			    (make-block-declaration declarations)
 			    body*)))))
 
@@ -146,29 +128,15 @@ USA.
 			   (make-definition name value))
 		 (receiver names
 			   body)))))
-	((object-type? sequence-2-type body)
+	((object-type? sequence-type body)
 	 (unscan-loop names (&pair-car body)
 	   (lambda (names* body*)
 	     (unscan-loop names* (&pair-cdr body)
 	       (lambda (names** body**)
 		 (receiver names**
-			   (&typed-pair-cons sequence-2-type
+			   (&typed-pair-cons sequence-type
 					     body*
 					     body**)))))))
-	((object-type? sequence-3-type body)
-	 (unscan-loop names (&triple-first body)
-	   (lambda (names* body*)
-	     (unscan-loop names* (&triple-second body)
-	       (lambda (names** body**)
-		 (unscan-loop names** (&triple-third body)
-		   (lambda (names*** body***)
-		     (receiver names***
-			       (&typed-pair-cons sequence-2-type
-						 body*
-						 (&typed-pair-cons
-						  sequence-2-type
-						  body**
-						  body***))))))))))
 	(else
 	 (receiver names
 		   body))))
@@ -180,10 +148,10 @@ USA.
 	   (null? declarations))
       body
       (&typed-pair-cons
-       sequence-2-type
+       sequence-type
        (vector open-block-tag names declarations)
        (&typed-pair-cons
-	sequence-2-type
+	sequence-type
 	(if (null? names)
 	    '()
 	    (make-sequence
@@ -193,23 +161,16 @@ USA.
 	body))))
 
 (define (open-block? object)
-  (or (and (object-type? sequence-2-type object)
-	   (vector? (&pair-car object))
-	   (eq? (vector-ref (&pair-car object) 0) open-block-tag))
-      (and (object-type? sequence-3-type object)
-	   (vector? (&triple-first object))
-	   (eq? (vector-ref (&triple-first object) 0) open-block-tag))))
+  (and (object-type? sequence-type object)
+       (vector? (&pair-car object))
+       (eq? (vector-ref (&pair-car object) 0) open-block-tag)))
 
 (define-guarantee open-block "SCode open-block")
 
 (define (open-block-components open-block receiver)
   (guarantee-open-block open-block 'OPEN-BLOCK-COMPONENTS)
-  (cond ((object-type? sequence-2-type open-block)
-	 (receiver (vector-ref (&pair-car open-block) 1)
-		   (vector-ref (&pair-car open-block) 2)
-		   (&pair-cdr (&pair-cdr open-block))))
-	((object-type? sequence-3-type open-block)
-	 (receiver (vector-ref (&triple-first open-block) 1)
-		   (vector-ref (&triple-first open-block) 2)
-		   (&triple-third open-block)))
-	(else (error:not-open-block open-block 'open-block-components))))
+  (if (object-type? sequence-type open-block)
+      (receiver (vector-ref (&pair-car open-block) 1)
+		(vector-ref (&pair-car open-block) 2)
+		(&pair-cdr (&pair-cdr open-block)))
+      (error:not-open-block open-block 'open-block-components)))

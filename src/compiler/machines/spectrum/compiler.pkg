@@ -162,6 +162,8 @@ USA.
 	  (scode/quotation? quotation?)
 	  (scode/sequence-actions sequence-actions)
 	  (scode/sequence-components sequence-components)
+	  (scode/sequence-first sequence-first)
+	  (scode/sequence-second sequence-second)
 	  (scode/sequence? sequence?)
 	  (scode/symbol? symbol?)
 	  (scode/the-environment? the-environment?)

@@ -46,7 +46,8 @@ USA.
 
 (define (string->uninterned-symbol string)
   (make-uninterned-symbol (if (string? string)
-			      (string->utf8-string string)
+			      (or (ascii-string-copy string)
+				  (string->utf8-string string))
 			      (wide-string->utf8-string string))))
 
 (define (utf8-string->uninterned-symbol string)
@@ -61,7 +62,8 @@ USA.
 
 (define (string->symbol string)
   ((ucode-primitive string->symbol) (if (string? string)
-					(string->utf8-string string)
+					(or (ascii-string-copy string)
+					    (string->utf8-string string))
 					(wide-string->utf8-string string))))
 
 (define (utf8-string->symbol string)
@@ -161,4 +163,6 @@ USA.
   (utf8-string->wide-string (symbol-name symbol)))
 
 (define (symbol->string symbol)
-  (utf8-string->string (symbol-name symbol)))
+  ;; `Gensyms' are constructed with this, so try the fast copy first.
+  (or (ascii-string-copy (symbol-name symbol))
+      (utf8-string->string (symbol-name symbol))))

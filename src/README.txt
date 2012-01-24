@@ -171,3 +171,59 @@ system-wide location(s), you may want to set the MIT_SCHEME_EXE
 environment variable.  The Makefiles expect it to be the host scheme's
 command name.  For information about installing MIT/GNU Scheme in
 unusual locations, please see the Unix Installation instructions.
+
+Building an incompatible compiler
+=================================
+
+If the basic compiler data structures have changed, it may not be
+possible to directly build the compiler by invoking make.  (This is a
+known bug.)
+
+However, it is possible to build the compiler from the Scheme sources
+if you have a working installation with a runtime band.  Here is how:
+
+    1.  Put the source tree into the `configured' state as per the
+        above instructions.
+
+    2.  Make the "src/compiler/" directory be your working directory.
+
+    3.  `Syntax' the compiler with these steps:
+
+        a.  Start scheme with the runtime band:
+            scheme --band runtime.com
+
+        b.  ]=> (load-option 'sf)
+
+        c.  ]=> (load "compiler.sf")
+
+        d.  ]=> (exit)
+
+    4.  Compile the compiler with these steps:
+
+        a.  Start scheme with the runtime band:
+            scheme --band runtime.com
+
+        b.  ]=> (load-option 'sf)
+
+        c.  ]=> (load "make")
+
+        d.  ]=> (load "compiler.cbf")
+
+        e.  ]=> (exit)
+
+    5.  Build a new compiler band with these steps:
+
+        a.  Start scheme with the runtime band:
+            scheme --band runtime.com
+
+        b.  ]=> (load-option 'cref)
+
+        c.  ]=> (load-option 'sf)
+
+        d.  ]=> (load "make")
+
+        e.  ]=> (disk-save "compiler-band.com")
+
+The resulting band, compiler-band.com, should be suitable for
+compiling the compiler.
+
