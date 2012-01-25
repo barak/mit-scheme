@@ -232,22 +232,9 @@ USA.
       (error "copy-SEQUENCE-object: Unknown type" obj)))
 
 (define (copy-COMBINATION-object obj)
-  (cond ((object-type? (ucode-type combination) obj)
-	 (%%copy-vector (ucode-type combination) obj))
-	((object-type? (ucode-type combination-1) obj)
-	 (%%copy-pair (ucode-type combination-1) obj))
-	((object-type? (ucode-type combination-2) obj)
-	 (%%copy-triple (ucode-type combination-2) obj))
-	((object-type? (ucode-type primitive-combination-0) obj)
-	 obj)					; Non-pointer
-	((object-type? (ucode-type primitive-combination-1) obj)
-	 (%%copy-pair (ucode-type primitive-combination-1) obj))
-	((object-type? (ucode-type primitive-combination-2) obj)
-	 (%%copy-triple (ucode-type primitive-combination-2) obj))
-	((object-type? (ucode-type primitive-combination-3) obj)
-	 (%%copy-vector (ucode-type primitive-combination-3) obj))
-	(else
-	 (error "copy-COMBINATION-object: Unknown type" obj))))
+  (make-combination
+   (copy-object (combination-operator obj))
+   (map copy-object (combination-operands obj))))
 
 (define (copy-LAMBDA-object obj)
   (cond ((object-type? (ucode-type lambda) obj)

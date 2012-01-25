@@ -161,71 +161,8 @@ USA.
 (define-guarantee combination "SCode combination")
 
 (define (make-combination operator operands)
-
-  (define-integrable (%make-combination-0 operator)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 0))
-	(object-new-type (ucode-type primitive-combination-0) operator)
-	(&typed-vector-cons (ucode-type combination)
-			    (cons operator '()))))
-
-  (define-integrable (%make-combination-1 operator operand0)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 1))
-	(&typed-pair-cons (ucode-type primitive-combination-1)
-			  operator operand0)
-	(&typed-pair-cons (ucode-type combination-1)
-			  operator operand0)))
-
-  (define-integrable (%make-combination-2 operator operand0 operand1)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 2))
-	(&typed-triple-cons (ucode-type primitive-combination-2)
-			    operator operand0 operand1)
-	(&typed-triple-cons (ucode-type combination-2)
-			    operator operand0 operand1)))
-
-  (define-integrable (%make-combination-3 operator)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 3))
-	(&typed-vector-cons (ucode-type primitive-combination-3)
-			    (cons operator operands))
-	(&typed-vector-cons (ucode-type combination)
-			    (cons operator operands))))
-
-  (cond ((pair? operands)
-	 (let ((operand0 (car operands))
-	       (tail0 (cdr operands)))
-	   (cond ((pair? tail0)
-		  (let ((operand1 (car tail0))
-			(tail1 (cdr tail0)))
-		    (cond ((pair? tail1)
-			   (let ((tail2 (cdr tail1)))
-			     (cond ((pair? tail2)
-				    (&typed-vector-cons
-				     (ucode-type combination)
-				     (cons operator operands)))
-				   ((null? tail2)
-				    (%make-combination-3 operator))
-				   (else (&typed-vector-cons
-					  (ucode-type combination)
-					  (cons operator operands))))))
-			  ((null? tail1)
-			   (%make-combination-2 operator operand0 operand1))
-			  (else (&typed-vector-cons
-				 (ucode-type combination)
-				 (cons operator operands))))))
-		 ((null? tail0)
-		  (%make-combination-1 operator operand0))
-		 (else (&typed-vector-cons
-			(ucode-type combination)
-			(cons operator operands))))))
-	((null? operands)
-	 (%make-combination-0 operator))
-	(else (&typed-vector-cons
-	       (ucode-type combination)
-	       (cons operator operands)))))
-
+  (&typed-vector-cons (ucode-type combination)
+		      (cons operator operands)))
 
 (define-syntax combination-dispatch
   (sc-macro-transformer
