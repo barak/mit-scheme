@@ -181,14 +181,7 @@ USA.
                                integrated-predicate
                                consequent
                                alternative)
-  (cond ((expression/call-to-not? integrated-predicate)
-         ;; (if (not <e1>) <e2> <e3>) => (if <e1> <e3> <e2>)
-         (integrate/conditional
-          operations environment expression
-          (first (combination/operands integrated-predicate))
-          alternative consequent))
-
-        ((sequence? integrated-predicate)
+  (cond ((sequence? integrated-predicate)
          (sequence/make
           (and expression (object/scode expression))
           (append (except-last-pair (sequence/actions integrated-predicate))
@@ -263,15 +256,7 @@ USA.
 
 (define (integrate/disjunction operations environment expression
                                integrated-predicate alternative)
-  (cond ((expression/call-to-not? integrated-predicate)
-         ;; (or (not e1) e2) => (if e1 e2 #t)
-         (integrate/conditional
-          operations environment expression
-          (first (combination/operands integrated-predicate))
-          alternative
-          (constant/make #f #t)))
-
-        ((and (expression/never-false? integrated-predicate)
+  (cond ((and (expression/never-false? integrated-predicate)
               (noisy-test sf:enable-disjunction-folding?
                           "Fold constant true disjunction"))
          ;; (or <exp1> <exp2>) => <exp1> if <exp1> is never false
