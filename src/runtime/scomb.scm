@@ -59,6 +59,14 @@ USA.
   (guarantee-sequence expression 'SEQUENCE-SECOND)
   (%sequence-second expression))
 
+(define (sequence-immediate-first expression)
+  (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-FIRST)
+  (%sequence-first expression))
+
+(define (sequence-immediate-second expression)
+  (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-SECOND)
+  (%sequence-second expression))
+
 (define (sequence-immediate-actions expression)
   (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)
   (list (%sequence-first expression)
