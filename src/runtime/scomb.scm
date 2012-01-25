@@ -38,8 +38,8 @@ USA.
 (define-integrable (sequence? object)
   (object-type? (ucode-type sequence-2) object))
 
-(define-integrable (%sequence-first sequence) (&pair-car sequence))
-(define-integrable (%sequence-second sequence) (&pair-cdr sequence))
+(define-integrable (%sequence-immediate-first sequence) (&pair-car sequence))
+(define-integrable (%sequence-immediate-second sequence) (&pair-cdr sequence))
 
 (define-guarantee sequence "SCode sequence")
 
@@ -53,29 +53,29 @@ USA.
 
 (define (sequence-first expression)
   (guarantee-sequence expression 'SEQUENCE-FIRST)
-  (%sequence-first expression))
+  (%sequence-immediate-first expression))
 
 (define (sequence-second expression)
   (guarantee-sequence expression 'SEQUENCE-SECOND)
-  (%sequence-second expression))
+  (%sequence-immediate-second expression))
 
 (define (sequence-immediate-first expression)
   (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-FIRST)
-  (%sequence-first expression))
+  (%sequence-immediate-first expression))
 
 (define (sequence-immediate-second expression)
   (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-SECOND)
-  (%sequence-second expression))
+  (%sequence-immediate-second expression))
 
 (define (sequence-immediate-actions expression)
   (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)
-  (list (%sequence-first expression)
-	(%sequence-second expression)))
+  (list (%sequence-immediate-first expression)
+	(%sequence-immediate-second expression)))
 
 (define (sequence-actions expression)
   (if (sequence? expression)
-      (append! (sequence-actions (%sequence-first expression))
-	       (sequence-actions (%sequence-second expression)))
+      (append! (sequence-actions (%sequence-immediate-first expression))
+	       (sequence-actions (%sequence-immediate-second expression)))
       (list expression)))
 
 (define (sequence-components expression receiver)
@@ -83,8 +83,8 @@ USA.
 
 (define (copy-sequence expression)
   (guarantee-sequence expression 'COPY-SEQUENCE)
-  (%make-sequence (%sequence-first expression)
-		  (%sequence-second expression)))
+  (%make-sequence (%sequence-immediate-first expression)
+		  (%sequence-immediate-second expression)))
 
 
 ;;;; Conditional

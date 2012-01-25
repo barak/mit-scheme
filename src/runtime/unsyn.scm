@@ -385,10 +385,10 @@ USA.
 
 (define (unsyntax-lambda-body-sequence body)
   (if (sequence? body)
-      (let ((first-action (sequence-first body)))
+      (let ((first-action (sequence-immediate-first body)))
 	(if (block-declaration? first-action)
 	    `((DECLARE ,@(block-declaration-text first-action))
-	      ,@(unsyntax-sequence (sequence-second body)))
+	      ,@(unsyntax-sequence (sequence-immediate-second body)))
 	    (unsyntax-sequence body)))
       (list (unsyntax-object body))))
 
