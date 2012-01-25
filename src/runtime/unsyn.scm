@@ -376,23 +376,21 @@ USA.
 			     (unscan-defines auxiliary declarations body))))))
 
 (define (unsyntax-lambda-body body)
-  (cond ((open-block? body)
-	 (open-block-components body
-	   (lambda (names declarations open-block-body)
-	     (let ((unscanned (unscan-defines names declarations open-block-body)))
-	       (if (sequence? unscanned)
-		   (unsyntax-lambda-body-sequence unscanned)
-		   (list (unsyntax-object unscanned)))))))
-	((sequence? body) (unsyntax-lambda-body-sequence sequence))
-	(else (list (unsyntax-object body)))))
+  (if (open-block? body)
+      (open-block-components body
+	(lambda (names declarations open-block-body)
+	  (unsyntax-lambda-body-sequence
+	   (unscan-defines names declarations open-block-body))))
+      (unsyntax-lambda-body-sequence body)))
 
-(define (unsyntax-lambda-body-sequence sequence)
-  (guarantee-sequence sequence 'unsyntax-lambda-body-sequence)
-  (let ((first-action (sequence-first sequence)))
-    (if (block-declaration? first-action)
-	`((DECLARE ,@(block-declaration-text first-action))
-	  ,@(unsyntax-sequence (sequence-second sequence)))
-	(unsyntax-sequence sequence))))
+(define (unsyntax-lambda-body-sequence body)
+  (if (sequence? body)
+      (let ((first-action (sequence-first body)))
+	(if (block-declaration? first-action)
+	    `((DECLARE ,@(block-declaration-text first-action))
+	      ,@(unsyntax-sequence (sequence-second body)))
+	    (unsyntax-sequence body)))
+      (list (unsyntax-object body))))
 
 ;;;; Combinations
 
