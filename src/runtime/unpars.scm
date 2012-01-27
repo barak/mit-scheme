@@ -75,15 +75,18 @@ USA.
   (let ((table (make-unparser-table unparse/default)))
     (for-each (lambda (entry)
 		(unparser-table/set-entry! table (car entry) (cadr entry)))
-	      `((BIGNUM ,unparse/number)
+	      `((ASSIGNMENT ,unparse/assignment)
+		(BIGNUM ,unparse/number)
 		(CHARACTER ,unparse/character)
 		(COMPILED-ENTRY ,unparse/compiled-entry)
 		(COMPLEX ,unparse/number)
 		(CONSTANT ,unparse/constant)
+		(DEFINITION ,unparse/definition)
 		(ENTITY ,unparse/entity)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FLONUM ,unparse/flonum)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
+		(LAMBDA ,unparse/lambda)
 		(LIST ,unparse/pair)
 		(NEGATIVE-FIXNUM ,unparse/number)
 		(FALSE ,unparse/false)
@@ -670,6 +673,21 @@ USA.
 	(usual-method))))
 
 ;;;; Miscellaneous
+
+(define (unparse/assignment assignment)
+  (*unparse-with-brackets 'ASSIGNMENT assignment
+    (lambda ()
+      (*unparse-object (assignment-name assignment)))))
+
+(define (unparse/definition definition)
+  (*unparse-with-brackets 'DEFINITION definition
+    (lambda ()
+      (*unparse-object (definition-name definition)))))
+
+(define (unparse/lambda lambda-object)
+  (*unparse-with-brackets 'LAMBDA lambda-object
+    (lambda ()
+      (*unparse-object (lambda-name lambda-object)))))
 
 (define (unparse/variable variable)
   (*unparse-with-brackets 'VARIABLE variable
