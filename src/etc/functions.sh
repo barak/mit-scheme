@@ -104,7 +104,7 @@ maybe_rm ()
     DIRS=
     for FN in "${@}"; do
 	if [ -L "${FN}" ]; then
-	    FILES="${FILES} ${FN}"
+	    :
 	elif [ -f "${FN}" ]; then
 	    FILES="${FILES} ${FN}"
 	elif [ -d "${FN}" ]; then
