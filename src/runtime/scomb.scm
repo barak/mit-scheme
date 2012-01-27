@@ -38,8 +38,8 @@ USA.
 (define-integrable (sequence? object)
   (object-type? (ucode-type sequence-2) object))
 
-(define-integrable (%sequence-first sequence) (&pair-car sequence))
-(define-integrable (%sequence-second sequence) (&pair-cdr sequence))
+(define-integrable (%sequence-immediate-first sequence) (&pair-car sequence))
+(define-integrable (%sequence-immediate-second sequence) (&pair-cdr sequence))
 
 (define-guarantee sequence "SCode sequence")
 
@@ -53,21 +53,29 @@ USA.
 
 (define (sequence-first expression)
   (guarantee-sequence expression 'SEQUENCE-FIRST)
-  (%sequence-first expression))
+  (%sequence-immediate-first expression))
 
 (define (sequence-second expression)
   (guarantee-sequence expression 'SEQUENCE-SECOND)
-  (%sequence-second expression))
+  (%sequence-immediate-second expression))
+
+(define (sequence-immediate-first expression)
+  (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-FIRST)
+  (%sequence-immediate-first expression))
+
+(define (sequence-immediate-second expression)
+  (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-SECOND)
+  (%sequence-immediate-second expression))
 
 (define (sequence-immediate-actions expression)
   (guarantee-sequence expression 'SEQUENCE-IMMEDIATE-ACTIONS)
-  (list (%sequence-first expression)
-	(%sequence-second expression)))
+  (list (%sequence-immediate-first expression)
+	(%sequence-immediate-second expression)))
 
 (define (sequence-actions expression)
   (if (sequence? expression)
-      (append! (sequence-actions (%sequence-first expression))
-	       (sequence-actions (%sequence-second expression)))
+      (append! (sequence-actions (%sequence-immediate-first expression))
+	       (sequence-actions (%sequence-immediate-second expression)))
       (list expression)))
 
 (define (sequence-components expression receiver)
@@ -75,8 +83,8 @@ USA.
 
 (define (copy-sequence expression)
   (guarantee-sequence expression 'COPY-SEQUENCE)
-  (%make-sequence (%sequence-first expression)
-		  (%sequence-second expression)))
+  (%make-sequence (%sequence-immediate-first expression)
+		  (%sequence-immediate-second expression)))
 
 
 ;;;; Conditional
@@ -153,71 +161,8 @@ USA.
 (define-guarantee combination "SCode combination")
 
 (define (make-combination operator operands)
-
-  (define-integrable (%make-combination-0 operator)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 0))
-	(object-new-type (ucode-type primitive-combination-0) operator)
-	(&typed-vector-cons (ucode-type combination)
-			    (cons operator '()))))
-
-  (define-integrable (%make-combination-1 operator operand0)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 1))
-	(&typed-pair-cons (ucode-type primitive-combination-1)
-			  operator operand0)
-	(&typed-pair-cons (ucode-type combination-1)
-			  operator operand0)))
-
-  (define-integrable (%make-combination-2 operator operand0 operand1)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 2))
-	(&typed-triple-cons (ucode-type primitive-combination-2)
-			    operator operand0 operand1)
-	(&typed-triple-cons (ucode-type combination-2)
-			    operator operand0 operand1)))
-
-  (define-integrable (%make-combination-3 operator)
-    (if (and (primitive-procedure? operator)
-	     (= (primitive-procedure-arity operator) 3))
-	(&typed-vector-cons (ucode-type primitive-combination-3)
-			    (cons operator operands))
-	(&typed-vector-cons (ucode-type combination)
-			    (cons operator operands))))
-
-  (cond ((pair? operands)
-	 (let ((operand0 (car operands))
-	       (tail0 (cdr operands)))
-	   (cond ((pair? tail0)
-		  (let ((operand1 (car tail0))
-			(tail1 (cdr tail0)))
-		    (cond ((pair? tail1)
-			   (let ((tail2 (cdr tail1)))
-			     (cond ((pair? tail2)
-				    (&typed-vector-cons
-				     (ucode-type combination)
-				     (cons operator operands)))
-				   ((null? tail2)
-				    (%make-combination-3 operator))
-				   (else (&typed-vector-cons
-					  (ucode-type combination)
-					  (cons operator operands))))))
-			  ((null? tail1)
-			   (%make-combination-2 operator operand0 operand1))
-			  (else (&typed-vector-cons
-				 (ucode-type combination)
-				 (cons operator operands))))))
-		 ((null? tail0)
-		  (%make-combination-1 operator operand0))
-		 (else (&typed-vector-cons
-			(ucode-type combination)
-			(cons operator operands))))))
-	((null? operands)
-	 (%make-combination-0 operator))
-	(else (&typed-vector-cons
-	       (ucode-type combination)
-	       (cons operator operands)))))
-
+  (&typed-vector-cons (ucode-type combination)
+		      (cons operator operands)))
 
 (define-syntax combination-dispatch
   (sc-macro-transformer

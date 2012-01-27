@@ -172,7 +172,7 @@ USA.
 	     (if (eq? lambda-name name)
 		 `(DEFINE (,name . ,(lambda-list required optional rest '()))
 		    ,@(with-bindings required optional rest
-				     unsyntax-sequence body))
+				     unsyntax-lambda-body body))
 		 `(DEFINE ,name ,@(unexpand-binding-value value))))))
 	(else
 	 `(DEFINE ,name ,@(unexpand-binding-value value)))))
@@ -322,7 +322,7 @@ USA.
 	  (collect-lambda name
 			  (lambda-list required optional rest '())
 			  (with-bindings required optional rest
-					 unsyntax-sequence body))))
+					 unsyntax-lambda-body body))))
       (lambda-components expression
 	(lambda (name required optional rest auxiliary declarations body)
 	  (collect-lambda name
@@ -374,6 +374,23 @@ USA.
 			  (bind-auxilliaries internal-defines body)))
 	  (bind-auxilliaries auxiliary
 			     (unscan-defines auxiliary declarations body))))))
+
+(define (unsyntax-lambda-body body)
+  (if (open-block? body)
+      (open-block-components body
+	(lambda (names declarations open-block-body)
+	  (unsyntax-lambda-body-sequence
+	   (unscan-defines names declarations open-block-body))))
+      (unsyntax-lambda-body-sequence body)))
+
+(define (unsyntax-lambda-body-sequence body)
+  (if (sequence? body)
+      (let ((first-action (sequence-immediate-first body)))
+	(if (block-declaration? first-action)
+	    `((DECLARE ,@(block-declaration-text first-action))
+	      ,@(unsyntax-sequence (sequence-immediate-second body)))
+	    (unsyntax-sequence body)))
+      (list (unsyntax-object body))))
 
 ;;;; Combinations
 
@@ -405,7 +422,7 @@ USA.
 				(eq? name lambda-tag:let))
 			    `(LET ,(unsyntax-let-bindings required operands)
 			       ,@(with-bindings required '() #F
-						unsyntax-sequence body))
+						unsyntax-lambda-body body))
 			    (ordinary-combination))
 			(ordinary-combination)))))
 	       (else

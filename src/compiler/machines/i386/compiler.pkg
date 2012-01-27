@@ -164,6 +164,8 @@ USA.
 	  (scode/quotation? quotation?)
 	  (scode/sequence-actions sequence-actions)
 	  (scode/sequence-components sequence-components)
+	  (scode/sequence-immediate-first sequence-immediate-first)
+	  (scode/sequence-immediate-second sequence-immediate-second)
 	  (scode/sequence-first sequence-first)
 	  (scode/sequence-second sequence-second)
 	  (scode/sequence? sequence?)
