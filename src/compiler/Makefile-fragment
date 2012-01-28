@@ -1,1 +1,36 @@
+COMPILER_DIR = $(AUXDIR)/compiler
+BACK_DIR = $(COMPILER_DIR)/back
+BASE_DIR = $(COMPILER_DIR)/base
+FGGEN_DIR = $(COMPILER_DIR)/fggen
+FGOPT_DIR = $(COMPILER_DIR)/fgopt
+MACHINE_DIR = $(COMPILER_DIR)/machine
+MACHINES_DIR = $(COMPILER_DIR)/machines
+RTLBASE_DIR = $(COMPILER_DIR)/rtlbase
+RTLGEN_DIR = $(COMPILER_DIR)/rtlgen
+RTLOPT_DIR = $(COMPILER_DIR)/rtlopt
+
 install:
+	$(mkinstalldirs) $(DESTDIR)$(COMPILER_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(BACK_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(BASE_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(FGGEN_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(FGOPT_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(RTLBASE_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(RTLGEN_DIR)
+	$(mkinstalldirs) $(DESTDIR)$(RTLOPT_DIR)
+	$(INSTALL_DATA) compiler-unx.pkd $(DESTDIR)$(COMPILER-DIR)/.
+	cd back ; $(INSTALL_COM) *.com $(DESTDIR)$(BACK_DIR)/.
+	cd back ; $(INSTALL_DATA) *.bci $(DESTDIR)$(BACK_DIR)/.
+	cd base ; $(INSTALL_COM) *.com $(DESTDIR)$(BASE_DIR)/.
+	cd base ; $(INSTALL_DATA) *.bci $(DESTDIR)$(BASE_DIR)/.
+	cd fggen ; $(INSTALL_COM) *.com $(DESTDIR)$(FGGEN_DIR)/.
+	cd fggen ; $(INSTALL_DATA) *.bci $(DESTDIR)$(FGGEN_DIR)/.
+	cd fgopt ; $(INSTALL_COM) *.com $(DESTDIR)$(FGOPT_DIR)/.
+	cd fgopt ; $(INSTALL_DATA) *.bci $(DESTDIR)$(FGOPT_DIR)/.
+	cd rtlbase ; $(INSTALL_COM) *.com $(DESTDIR)$(RTLBASE_DIR)/.
+	cd rtlbase ; $(INSTALL_DATA) *.bci $(DESTDIR)$(RTLBASE_DIR)/.
+	cd rtlgen ; $(INSTALL_COM) *.com $(DESTDIR)$(RTLGEN_DIR)/.
+	cd rtlgen ; $(INSTALL_DATA) *.bci $(DESTDIR)$(RTLGEN_DIR)/.
+	cd rtlopt ; $(INSTALL_COM) *.com $(DESTDIR)$(RTLOPT_DIR)/.
+	cd rtlopt ; $(INSTALL_DATA) *.bci $(DESTDIR)$(RTLOPT_DIR)/.
+
