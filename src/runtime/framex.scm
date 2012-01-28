@@ -289,8 +289,7 @@ USA.
   (record-method 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND
 		 (method/standard &vector-fourth))
   (let ((method (method/expression-only &pair-car)))
-    (record-method 'ACCESS-CONTINUE method)
-    (record-method 'IN-PACKAGE-CONTINUE method))
+    (record-method 'ACCESS-CONTINUE method))
   (record-method 'PRIMITIVE-COMBINATION-1-APPLY
 		 (method/expression-only &pair-cdr))
   (record-method 'PRIMITIVE-COMBINATION-2-APPLY
