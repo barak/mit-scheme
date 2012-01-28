@@ -72,7 +72,7 @@ USA.
 #define TC_EPHEMERON			0x2B
 #define TC_VARIABLE			0x2C
 #define TC_THE_ENVIRONMENT		0x2D
-/* #define TC_UNUSED			0x2E */
+#define TC_SYNTAX_ERROR			0x2E
 #define TC_VECTOR_1B			0x2F
 #define TC_PCOMB0			0x30
 #define TC_VECTOR_16B			0x31
@@ -150,7 +150,7 @@ USA.
   /* 0x2b */			"ephemeron",				\
   /* 0x2c */			"variable",				\
   /* 0x2d */			"the-environment",			\
-  /* 0x2e */			0,					\
+  /* 0x2e */			"syntax-error",				\
   /* 0x2f */			"vector-1b",				\
   /* 0x30 */			"primitive-combination-0",		\
   /* 0x31 */			"vector-16b",				\

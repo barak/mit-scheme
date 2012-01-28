@@ -40,8 +40,8 @@ USA.
 #define ERR_IN_SYSTEM_CALL			0x04
 #define ERR_WITH_ARGUMENT			0x05
 #define ERR_BAD_FRAME				0x06
-#define ERR_BROKEN_COMPILED_VARIABLE		0x07
-#define ERR_UNDEFINED_USER_TYPE			0x08
+/* #define ERR_BROKEN_COMPILED_VARIABLE		0x07 */
+/* #define ERR_UNDEFINED_USER_TYPE		0x08 */
 #define ERR_UNDEFINED_PRIMITIVE			0x09
 #define ERR_EXTERNAL_RETURN			0x0A
 #define ERR_EXECUTE_MANIFEST_VECTOR		0x0B
@@ -54,7 +54,7 @@ USA.
 #define ERR_ARG_3_BAD_RANGE			0x12
 #define ERR_MACRO_BINDING			0x13
 #define ERR_FASDUMP_OBJECT_TOO_LARGE		0x14
-/* #define ERR_BAD_INTERRUPT_CODE		0x15 */
+#define ERR_SYNTAX_ERROR			0x15
 /* #define ERR_NO_ERRORS			0x16 */
 #define ERR_FASL_FILE_TOO_BIG			0x17
 #define ERR_FASL_FILE_BAD_DATA			0x18
@@ -62,9 +62,9 @@ USA.
 /* #define ERR_WRITE_INTO_PURE_SPACE		0x1A */
 /* #define ERR_LOSING_SPARE_HEAP		0x1B */
 /* #define ERR_NO_HASH_TABLE			0x1C */
-#define ERR_BAD_SET                             0x1D
-#define ERR_ARG_1_FAILED_COERCION      		0x1E
-#define ERR_ARG_2_FAILED_COERCION      		0x1F
+/* #define ERR_BAD_SET				0x1D */
+/* #define ERR_ARG_1_FAILED_COERCION		0x1E */
+/* #define ERR_ARG_2_FAILED_COERCION		0x1F */
 #define ERR_OUT_OF_FILE_HANDLES			0x20
 /* #define ERR_SHELL_DIED			0x21 */
 #define ERR_ARG_4_BAD_RANGE			0x22
@@ -86,14 +86,14 @@ USA.
 #define ERR_FLOATING_OVERFLOW			0x32
 #define ERR_UNIMPLEMENTED_PRIMITIVE		0x33
 #define ERR_ILLEGAL_REFERENCE_TRAP		0x34
-#define ERR_BROKEN_VARIABLE_CACHE		0x35
+/* #define ERR_BROKEN_VARIABLE_CACHE		0x35 */
 #define ERR_WRONG_ARITY_PRIMITIVES		0x36
-#define ERR_IO_ERROR				0x37
+/* #define ERR_IO_ERROR				0x37 */
 #define ERR_FASDUMP_ENVIRONMENT			0x38
 #define ERR_FASLOAD_BAND			0x39
 #define ERR_FASLOAD_COMPILED_MISMATCH		0x3A
-#define ERR_UNKNOWN_PRIMITIVE_CONTINUATION	0x3B
-#define ERR_ILLEGAL_CONTINUATION		0x3C
+/* #define ERR_UNKNOWN_PRIMITIVE_CONTINUATION	0x3B */
+/* #define ERR_ILLEGAL_CONTINUATION		0x3C */
 #define ERR_STACK_HAS_SLIPPED			0x3D
 #define ERR_CANNOT_RECURSE			0x3E
 #define ERR_PROCESS_TERMINATED			0x3F
@@ -111,8 +111,8 @@ USA.
 /* 0x04 */		"system-call",					\
 /* 0x05 */		"error-with-argument",				\
 /* 0x06 */		"bad-frame",					\
-/* 0x07 */		"broken-compiled-variable",			\
-/* 0x08 */		"undefined-user-type",				\
+/* 0x07 */		0,						\
+/* 0x08 */		0,						\
 /* 0x09 */		"undefined-primitive-operation",		\
 /* 0x0a */		"external-return",				\
 /* 0x0b */		"execute-manifest-vector",			\
@@ -125,7 +125,7 @@ USA.
 /* 0x12 */		"bad-range-argument-2",				\
 /* 0x13 */		"macro-binding",				\
 /* 0x14 */		"fasdump-object-too-large",			\
-/* 0x15 */		0,						\
+/* 0x15 */		"syntax-error",					\
 /* 0x16 */		0,						\
 /* 0x17 */		"fasl-file-too-big",				\
 /* 0x18 */		"fasl-file-bad-data",				\
@@ -133,9 +133,9 @@ USA.
 /* 0x1a */		0,						\
 /* 0x1b */		0,						\
 /* 0x1c */		0,						\
-/* 0x1d */		"bad-assignment",				\
-/* 0x1e */		"failed-arg-1-coercion",			\
-/* 0x1f */		"failed-arg-2-coercion",			\
+/* 0x1d */		0,						\
+/* 0x1e */		0,						\
+/* 0x1f */		0,						\
 /* 0x20 */		"out-of-file-handles",				\
 /* 0x21 */		0,						\
 /* 0x22 */		"bad-range-argument-3",				\
@@ -157,14 +157,14 @@ USA.
 /* 0x32 */		"floating-overflow",				\
 /* 0x33 */		"unimplemented-primitive",			\
 /* 0x34 */		"illegal-reference-trap",			\
-/* 0x35 */		"broken-variable-cache",			\
+/* 0x35 */		0,						\
 /* 0x36 */		"wrong-arity-primitives",			\
-/* 0x37 */		"io-error",					\
+/* 0x37 */		0,						\
 /* 0x38 */		"fasdump-environment",				\
 /* 0x39 */		"fasload-band",					\
 /* 0x3a */		"fasload-compiled-mismatch",			\
-/* 0x3b */		"unknown-primitive-continuation",		\
-/* 0x3c */		"illegal-continuation",				\
+/* 0x3b */		0,						\
+/* 0x3c */		0,						\
 /* 0x3d */		"stack-has-slipped",				\
 /* 0x3e */		"cannot-recurse",				\
 /* 0x3f */		"process-terminated",				\

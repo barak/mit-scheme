@@ -569,6 +569,9 @@ Interpret (int pop_return_p)
       PUSH_ENV ();
       PUSH_NTH_THEN (RC_SEQ_3_DO_2, SEQUENCE_1);
 
+    case TC_SYNTAX_ERROR:
+      EVAL_ERROR (ERR_SYNTAX_ERROR);
+
     case TC_THE_ENVIRONMENT:
       SET_VAL (GET_ENV);
       break;
