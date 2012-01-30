@@ -43,7 +43,6 @@ USA.
 (define condition-type:primitive-io-error)
 (define condition-type:primitive-procedure-error)
 (define condition-type:process-terminated-error)
-(define condition-type:syntax-error)
 (define condition-type:system-call-error)
 (define condition-type:unimplemented-primitive)
 (define condition-type:unimplemented-primitive-for-os)
@@ -902,25 +901,6 @@ USA.
       (write-string "The object " port)
       (write (access-condition condition 'DATUM) port)
       (write-string " is not applicable." port))))
-
-(set! condition-type:syntax-error
-  (make-condition-type 'SYNTAX-ERROR condition-type:error
-      '(MESSAGE DATUM)
-      (lambda (condition port)
-	(write-string "Syntax error: " port)
-	(write-string (access-condition condition 'MESSAGE) port)
-	(write (access-condition condition 'DATUM) port))))
-
-(define-error-handler 'SYNTAX-ERROR
-  (let ((signal
-	 (condition-signaller condition-type:syntax-error
-			      '(MESSAGE DATUM))))
-    (lambda (continuation)
-      (let ((frame (continuation/first-subproblem continuation)))
-	(let ((expression (eval-frame/expression frame)))
-	  (signal continuation
-		  (syntax-error-message expression)
-		  (syntax-error-datum expression)))))))
 
 (define-error-handler 'UNDEFINED-PROCEDURE
   (let ((signal

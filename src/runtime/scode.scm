@@ -93,24 +93,6 @@ USA.
   (guarantee-quotation quotation 'QUOTATION-EXPRESSION)
   (&singleton-element quotation))
 
-;;;; Syntax error
-
-(define (make-syntax-error message datum)
-  (&typed-pair-cons (ucode-type syntax-error) message datum))
-
-(define (syntax-error? object)
-  (object-type? (ucode-type syntax-error) object))
-
-(define-guarantee syntax-error "SCode syntax error")
-
-(define (syntax-error-message syntax-error)
-  (guarantee-syntax-error syntax-error 'syntax-error-message)
-  (system-pair-car syntax-error))
-
-(define (syntax-error-datum syntax-error)
-  (guarantee-syntax-error syntax-error 'syntax-error-datum)
-  (system-pair-cdr syntax-error))
-
 ;;;; Variable
 
 (define (make-variable name)
