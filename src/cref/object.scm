@@ -59,8 +59,8 @@ USA.
   (files '())
   parent
   (children '())
-  (%bindings '())
-  (%references '())
+  (bindings '())
+  (references '())
   (links '()))
 
 (define-integrable (package/n-files package)
@@ -70,26 +70,20 @@ USA.
   (null? (package/name package)))
 
 (define-integrable (package/find-reference package name)
-  (let ((entry (assq name (package/%references package))))
-    (and entry (cdr entry))))
+  (find-matching-item (package/references package)
+		      (lambda (ref) (eq? (reference/name ref) name))))
 
-(define-integrable (package/put-reference! package name reference)
-  (set-package/%references! package (cons (cons name reference)
-					  (package/%references package))))
+(define-integrable (package/put-reference! package reference)
+  (set-package/references! package
+			   (cons reference (package/references package))))
 
 (define-integrable (package/find-binding package name)
-  (let ((entry (assq name (package/%bindings package))))
-    (and entry (cdr entry))))
+  (find-matching-item (package/bindings package)
+		      (lambda (ref) (eq? (binding/name ref) name))))
 
-(define-integrable (package/put-binding! package name binding)
-  (set-package/%bindings! package (cons (cons name binding)
-					(package/%bindings package))))
-
-(define-integrable (package/bindings package)
-  (map cdr (package/%bindings package)))
-
-(define-integrable (package/references package)
-  (map cdr (package/%references package)))
+(define-integrable (package/put-binding! package binding)
+  (set-package/bindings! package
+			 (cons binding (package/bindings package))))
 
 (define-integrable (file-case/type file-case)
   (car file-case))

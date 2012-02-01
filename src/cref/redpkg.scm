@@ -640,9 +640,7 @@ USA.
 					  destination-name
 					  (binding/value-cell source-binding)
 					  new?)))
-		       (package/put-binding! destination-package
-					     destination-name
-					     binding)
+		       (package/put-binding! destination-package binding)
 		       binding)))
 	       owner-package
 	       new?)))
@@ -658,7 +656,7 @@ USA.
 		 (let ((binding (make-binding package name value-cell new?)))
 		   (set-value-cell/source-binding! value-cell binding)
 		   binding))))
-	  (package/put-binding! package name binding)
+	  (package/put-binding! package binding)
 	  binding))))
 
 (define (make-reference package name expression)
@@ -677,6 +675,6 @@ USA.
 		(add-reference! reference))
 	    reference)
 	  (let ((reference (%make-reference package name)))
-	    (package/put-reference! package name reference)
+	    (package/put-reference! package reference)
 	    (add-reference! reference)
 	    reference)))))
