@@ -125,19 +125,17 @@ USA.
 ;;(define-import instructions (compiler lap-syntaxer))
 
 (define (add-instruction! keyword assemblers)
-  (let ((entry (assq keyword instructions)))
-    (if (pair? entry)
-	(set-cdr! entry assemblers)
-	(set! instructions (cons (cons keyword assemblers) instructions)))))
+  (hash-table/put! instructions keyword assemblers)
+  keyword)
 
 (define (add-instruction-assembler! keyword assembler)
-  (let ((entry (assq keyword instructions)))
-    (if entry
-	(set-cdr! entry (cons assembler (cdr entry)))
-	(set! instructions (cons (list keyword assembler) instructions)))))
+  (let ((assemblers (hash-table/get instructions keyword #f)))
+    (if assemblers
+	(hash-table/put! instructions keyword (cons assembler assemblers))
+	(hash-table/put! instructions keyword (list assembler)))))
 
 (define (clear-instructions!)
-  (set! instructions '()))
+  (hash-table/clear! instructions))
 
 (define (init-assembler-instructions!)
   ;; Initialize the assembler's instruction database using the
