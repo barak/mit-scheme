@@ -35,12 +35,13 @@ USA.
 		  ancestors
 		  '#()
 		  (list->vector
-		   (map (lambda (name)
-			  (vector name (car ancestors)))
+		   (map (lambda (n.p)
+			  (if (pair? n.p)
+			      (vector (car n.p) (cdr n.p))
+			      (vector n.p (car ancestors))))
 			exported-names))
 		  (list->vector
-		   (map (lambda (n.p)
-			  (vector (car n.p) (cdr n.p)))
+		   (map (lambda (n.p) (vector (car n.p) (cdr n.p)))
 			imported-names))
 		  #f))))
    (vector (package '(cross-reference)
@@ -51,6 +52,10 @@ USA.
 		      cref/generate-cref-unusual
 		      cref/generate-trivial-constructor
 		      cref/package-files)
+		    '())
+	   (package '(cross-reference build-utilities)
+		    '((cross-reference) ())
+		    '((compile-system))
 		    '())
 	   (package '(cross-reference analyze-file)
 		    '((cross-reference) ())
@@ -78,6 +83,7 @@ USA.
 		  '#()
 		  '#()))))
    (vector (files '(cross-reference) "mset" "object" "toplev")
+	   (files '(cross-reference build-utilities) "butils")
 	   (files '(cross-reference analyze-file) "anfile")
 	   (files '(cross-reference constructor) "conpkg")
 	   (files '(cross-reference formatter) "forpkg")
