@@ -3590,7 +3590,6 @@ USA.
 	  make-definition
 	  make-delay
 	  make-quotation
-	  make-syntax-error
 	  make-the-environment
 	  make-variable
 	  quotation-expression
@@ -3600,9 +3599,6 @@ USA.
 	  set-comment-text!
 	  set-declaration-expression!
 	  set-declaration-text!
-	  syntax-error?
-	  syntax-error-message
-	  syntax-error-datum
 	  the-environment?
 	  variable-components
 	  variable-name
