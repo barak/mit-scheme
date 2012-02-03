@@ -227,15 +227,9 @@ compiled_closure_count (SCHEME_OBJECT * block)
 insn_t *
 compiled_closure_start (SCHEME_OBJECT * block)
 {
-  return (((insn_t *) block) + CLOSURE_ENTRY_OFFSET);
+  return (((insn_t *) block) + CLOSURE_ENTRY_START);
 }
 
-insn_t *
-compiled_closure_entry (insn_t * start)
-{
-  return start;
-}
-
 insn_t *
 compiled_closure_next (insn_t * start)
 {
