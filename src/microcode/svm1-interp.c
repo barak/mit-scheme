@@ -187,6 +187,7 @@ initialize_svm1 (void)
   WREG_SET (SVM1_REG_STACK_POINTER, ((word_t)stack_pointer));		\
   WREG_SET (SVM1_REG_FREE_POINTER, ((word_t)Free));			\
   WREG_SET (SVM1_REG_VALUE, GET_VAL);					\
+  WREG_SET (SVM1_REG_DYNAMIC_LINK, BYTE_ADDR(OBJECT_ADDRESS(GET_VAL)));	\
 } while (0)
 
 #define EXPORT_REGS() do						\
