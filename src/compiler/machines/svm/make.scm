@@ -28,6 +28,10 @@ USA.
 
 (declare (usual-integrations))
 
+;; The (cross-reference) package is needed when loading the compiler's
+;; package set.
+(load-option 'CREF)
+
 (let ((value ((load "base/make") "svm1")))
   (set! (access compiler:compress-top-level? (->environment '(compiler))) #t)
   ((access init-assembler-instructions! (->environment '(compiler assembler))))

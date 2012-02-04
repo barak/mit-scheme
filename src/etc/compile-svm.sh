@@ -53,7 +53,7 @@ done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 FASL=make.com
 
-# Dump prerequisites into x-runtime.com.
+# Dump new runtime into x-runtime.com.
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")
@@ -80,17 +80,12 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 (load-option 'SF)
 (load-option 'CREF)
 (load-option '*PARSER)
-;;(load-option 'COMPILER)
-;; The above fails!  Unable to find package directory: "compiler"
-(with-working-directory-pathname "compiler"
-  (lambda () (load "machine/make")))
+(load-option 'COMPILER)
 (disk-save "lib/x-compiler.com")
 EOF
 
 # Remove host code to STAGEX/ subdirs.
 run_cmd ./Stage.sh make X
-# Dodge incompatibility between 9.0.1 and master.
-run_cmd_in_dir runtime mv os2winp.ext os2winp.bin STAGEX
 
 # Restore previously cross-compiled code (if any).  (Replace "unmake"
 # with "remove" to start from scratch with each rebuilt

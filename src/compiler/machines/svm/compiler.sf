@@ -26,10 +26,8 @@ USA.
 
 ;;;; Script to incrementally syntax the compiler
 
-(with-loader-base-uri "../lib"		;Use the accompanying sf and cref.
-  (lambda ()
-    (load-option 'CREF)
-    (load-option 'SF)))
+(load-option 'CREF)
+(load-option 'SF)
 
 ;; Guarantee that the compiler's package structure exists.
 (if (not (name->package '(COMPILER)))
@@ -85,7 +83,7 @@ USA.
 
 ;; Resyntax any files that need it.
 ((access syntax-files! (->environment '(COMPILER))))
-(sf-conditionally "make")
+(sf-conditionally "machine/make")
 
 ;; Rebuild the package constructors and cref.
 (cref/generate-constructors "compiler" 'ALL)
