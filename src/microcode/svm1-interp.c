@@ -180,6 +180,10 @@ initialize_svm1 (void)
   for (i = 0; (i < N_FLOAT_REGISTERS); i += 1)
     FREG_SET (i, 0.0);
   WREG_SET (SVM1_REG_INTERPRETER_REGISTER_BLOCK, ((word_t)Registers));
+
+  /* These are hard-coded into compiler/machines/svm/machine.scm. */
+  assert (COMPILER_TEMP_SIZE == 2);
+  assert (COMPILER_REGBLOCK_N_FIXED == 14);
 }
 
 #define IMPORT_REGS() do						\

@@ -280,7 +280,9 @@ USA.
 ;;;; Machine registers, register references.
 
 (define-integrable number-of-machine-registers 512)
-(define-integrable number-of-temporary-registers 512)
+(define-integrable number-of-temporary-registers 256)
+(define-integrable number-of-fixed-interpreter-registers 14)
+(define-integrable words-per-compiler-temporary 2)
 
 (define register-reference
   (let ((references (make-vector number-of-machine-registers)))
