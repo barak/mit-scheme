@@ -2645,6 +2645,7 @@ USA.
 	  lambda-tag:optional
 	  lambda-tag:rest
 	  lambda-tag?
+	  make-lambda-list
 	  map-mit-lambda-list
 	  map-r4rs-lambda-list
 	  mit-lambda-list?

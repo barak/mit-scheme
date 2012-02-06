@@ -170,7 +170,7 @@ USA.
 	 (lambda-components** value
 	   (lambda (lambda-name required optional rest body)
 	     (if (eq? lambda-name name)
-		 `(DEFINE (,name . ,(lambda-list required optional rest '()))
+		 `(DEFINE (,name . ,(make-lambda-list required optional rest '()))
 		    ,@(with-bindings required optional rest
 				     unsyntax-lambda-body body))
 		 `(DEFINE ,name ,@(unexpand-binding-value value))))))
@@ -320,13 +320,13 @@ USA.
       (lambda-components** expression
 	(lambda (name required optional rest body)
 	  (collect-lambda name
-			  (lambda-list required optional rest '())
+			  (make-lambda-list required optional rest '())
 			  (with-bindings required optional rest
 					 unsyntax-lambda-body body))))
       (lambda-components expression
 	(lambda (name required optional rest auxiliary declarations body)
 	  (collect-lambda name
-			  (lambda-list required optional rest auxiliary)
+			  (make-lambda-list required optional rest auxiliary)
 			  (let ((body (unsyntax-sequence body)))
 			    (if (null? declarations)
 				body
@@ -345,18 +345,7 @@ USA.
   (lambda-components** expression
     (lambda (name required optional rest body)
       name body
-      (lambda-list required optional rest '()))))
-
-(define (lambda-list required optional rest auxiliary)
-  (let ((optional (if (null? optional)
-		      '()
-		      (cons lambda-tag:optional optional)))
-	(rest (cond ((not rest) '())
-		    ((null? auxiliary) rest)
-		    (else (list lambda-tag:rest rest)))))
-    (if (null? auxiliary)
-	`(,@required ,@optional . ,rest)
-	`(,@required ,@optional ,@rest ,lambda-tag:aux ,@auxiliary))))
+      (make-lambda-list required optional rest '()))))
 
 (define (lambda-components** expression receiver)
   (lambda-components expression

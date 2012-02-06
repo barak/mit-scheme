@@ -203,3 +203,24 @@ USA.
 	(if (identifier? bvl)
 	    (procedure bvl)
 	    '()))))
+
+;;; Aux is almost always the empty list.
+(define (make-lambda-list required optional rest aux)
+  (guarantee-list-of-unique-symbols required)
+  (guarantee-list-of-unique-symbols optional)
+  (if rest
+      (guarantee-symbol rest))
+  (guarantee-list-of-unique-symbols aux)
+  (let ((rest-aux-tail (if (not rest)
+			   (if (null? aux)
+			       '()
+			       (cons lambda-tag:aux aux))
+			   (if (null? aux)
+			       rest
+			       (cons* lambda-tag:rest rest
+				      lambda-tag:aux aux)))))
+    (append required
+	    (if (null? optional)
+		rest-aux-tail
+		(cons lambda-tag:optional
+		      (append optional rest-aux-tail))))))
