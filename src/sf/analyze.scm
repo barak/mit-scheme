@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -827,3 +827,89 @@ USA.
                  (fix:+ total (expression/size action)))
                1
                (sequence/actions expression))))
+
+;;; EXPRESSION->list <expr>
+;;
+;; Returns an list representation of the SCode nodes in the expression.
+;; Used for debugging sf.
+
+(define (expression->list expression)
+  ((expression/method expression->list-dispatch-vector expression) expression))
+
+(define expression->list-dispatch-vector
+  (expression/make-dispatch-vector))
+
+(define define-method/expression->list
+  (expression/make-method-definer expression->list-dispatch-vector))
+
+(define-method/expression->list 'ACCESS
+  (lambda (expression)
+    `(ACCESS ,(access/name expression)
+	     ,(expression->list (access/environment expression)))))
+
+(define-method/expression->list 'ASSIGNMENT
+  (lambda (expression)
+    `(SET! ,(assignment/variable expression)
+	   ,(expression->list (assignment/value expression)))))
+
+(define-method/expression->list 'COMBINATION
+  (lambda (expression)
+    (cons (expression->list (combination/operator expression))
+	  (map expression->list (combination/operands expression)))))
+
+(define-method/expression->list 'CONDITIONAL
+  (lambda (expression)
+    `(IF ,(expression->list (conditional/predicate expression))
+	 ,(expression->list (conditional/consequent expression))
+	 ,(expression->list (conditional/alternative expression)))))
+
+(define-method/expression->list 'CONSTANT
+  (lambda (expression) (constant/value expression)))
+
+(define-method/expression->list 'DECLARATION
+  (lambda (expression)
+    `(DECLARE ,(declaration/declarations expression)
+	      ,(expression->list (declaration/expression expression)))))
+
+(define-method/expression->list 'DELAY
+  (lambda (expression)
+    `(DELAY ,(expression->list (delay/expression expression)))))
+
+(define-method/expression->list 'DISJUNCTION
+  (lambda (expression)
+    `(OR ,(expression->list (disjunction/predicate expression))
+	 ,(expression->list (disjunction/alternative expression)))))
+
+(define-method/expression->list 'OPEN-BLOCK
+  (lambda (expression)
+    `(OPEN-BLOCK
+      ',(map variable/name (open-block/variables expression))
+      ,@(map (lambda (action)
+	       (if (eq? action open-block/value-marker)
+		   `(QUOTE ,action)
+		   (expression->list action)))
+	     (open-block/actions expression)))))
+
+(define-method/expression->list 'PROCEDURE
+  (lambda (expression)
+    (let ((name (procedure/name expression))
+	  (required (map variable/name (procedure/required expression)))
+	  (optional (map variable/name (procedure/optional expression)))
+	  (rest     (let ((rest-arg (procedure/rest expression)))
+		      (and rest-arg
+			   (variable/name rest-arg)))))
+      `(PROCEDURE ,name
+		  ,(make-lambda-list required optional rest '())
+		  ,(expression->list (procedure/body expression))))))
+
+(define-method/expression->list 'QUOTATION
+  (lambda (expression)
+    `(QUOTE ,(quotation/expression expression))))
+
+(define-method/expression->list 'REFERENCE
+  (lambda (expression)
+    (variable/name (reference/variable expression))))
+
+(define-method/expression->list 'SEQUENCE
+  (lambda (expression)
+    `(BEGIN ,@(map expression->list (sequence/actions expression)))))
