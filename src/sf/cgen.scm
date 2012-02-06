@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,10 +51,10 @@ USA.
 (define (cgen/top-level quotation)
   (let ((block (quotation/block quotation))
 	(expression (quotation/expression quotation)))
-    (let ((result (cgen/expression (list block) expression)))
-      (if (open-block? expression)
-	  result
-	  (cgen/declaration (block/declarations block) result)))))
+    (if (open-block? expression)
+	(cgen-open-block expression)
+	(cgen/declaration (block/declarations block)
+			  (cgen/expression (list block) expression)))))
 
 (define (cgen/declaration declarations expression)
   (let ((declarations (maybe-flush-declarations declarations)))
@@ -180,36 +180,32 @@ USA.
 		  (map variable/name (procedure/optional procedure))
 		  (let ((rest (procedure/rest procedure)))
 		    (and rest (variable/name rest)))
-		  (let ((block (procedure/block procedure)))
-		    (make-open-block
-		     '()
-		     (maybe-flush-declarations (block/declarations block))
-		     (cgen/expression (list block)
-				      (procedure/body procedure)))))))
+		  (let ((block (procedure/block procedure))
+			(body  (procedure/body procedure)))
+		    (if (open-block? body)
+			(cgen-open-block body)
+			(cgen/expression (list block)
+					 (procedure/body procedure)))))))
 
-(define-method/cgen 'OPEN-BLOCK
-  (lambda (interns expression)
-    interns ; is ignored
-    (let ((block (open-block/block expression)))
-      (make-open-block '()
-		       (maybe-flush-declarations (block/declarations block))
-		       (cgen/body (list block) expression)))))
-
-(define (cgen/body interns open-block)
-  (make-sequence
-   (let loop
-       ((variables (open-block/variables open-block))
-	(values (open-block/values open-block))
-	(actions (open-block/actions open-block)))
-     (cond ((null? variables) (cgen/expressions interns actions))
-	   ((null? actions) (error "Extraneous auxiliaries"))
-	   ((eq? (car actions) open-block/value-marker)
-	    (cons (make-definition (variable/name (car variables))
-				   (cgen/expression interns (car values)))
-		  (loop (cdr variables) (cdr values) (cdr actions))))
-	   (else
-	    (cons (cgen/expression interns (car actions))
-		  (loop variables values (cdr actions))))))))
+(define (cgen-open-block expression)
+  (let ((block (open-block/block expression)))
+    (make-open-block
+     (map variable/name (open-block/variables expression))
+     (maybe-flush-declarations (block/declarations block))
+     (make-sequence
+      (let loop
+	  ((variables (open-block/variables expression))
+	   (values (open-block/values expression))
+	   (actions (open-block/actions expression)))
+	(cond ((null? variables) (cgen/expressions (list block) actions))
+	      ((null? actions) (error "Extraneous auxiliaries"))
+	      ((eq? (car actions) open-block/value-marker)
+	       (cons (make-assignment (variable/name (car variables))
+				      (cgen/expression (list block) (car values)))
+		     (loop (cdr variables) (cdr values) (cdr actions))))
+	      (else
+	       (cons (cgen/expression (list block) (car actions))
+		     (loop variables values (cdr actions))))))))))
 
 (define-method/cgen 'QUOTATION
   (lambda (interns expression)
