@@ -377,22 +377,22 @@ USA.
 ;;;; RTL Generator Interface
 
 (define (interpreter-register:access)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:cache-reference)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:cache-unassigned?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:lookup)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:unassigned?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
 
 (define (interpreter-register:unbound?)
-  (rtl:make-machine-register regnum:word-0))
+  (rtl:make-machine-register regnum:value))
   
 (define-syntax define-machine-register
   (sc-macro-transformer
