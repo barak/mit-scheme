@@ -31,7 +31,9 @@ USA.
 
 #define ASM_RESET_HOOK initialize_svm1
 
-#define COMPILER_REGBLOCK_N_FIXED 512
+#define COMPILER_REGBLOCK_N_TEMPS 256
+#define COMPILER_TEMP_SIZE ((sizeof (double)) / (sizeof (SCHEME_OBJECT)))
+#define COMPILER_REGBLOCK_N_FIXED REGBLOCK_MINIMUM_LENGTH
 
 typedef byte_t insn_t;
 

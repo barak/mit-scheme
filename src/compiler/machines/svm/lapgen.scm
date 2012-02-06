@@ -61,27 +61,26 @@ USA.
 	 (error:bad-range-argument source #f))))
 
 (define (home->register-transfer source target)
-  ;; Not sure why this started happening after 9.1.1 during the
-  ;; compilation of runtime/poplat.scm...
-  (warn "Ignoring unspill:" source "->" target)
-  (LAP))
+  (warn "Unspilled:" source "->" target)
+  (LAP ,@(inst:load (register-type source)
+		    (register-reference target)
+		    (home source))))
 
 (define (register->home-transfer source target)
-  ;; Not sure why this started happening after 9.1.1 during the
-  ;; compilation of runtime/poplat.scm...
-  (warn "Ignoring spill:" source "->" target)
-  (LAP))
+  (warn "Spilled:" source "->" target)
+  (LAP ,@(inst:store (register-type target)
+		     (register-reference source)
+		     (home target))))
 
 (define (pseudo-register-home register)
-  ;; With 256 registers, pseudo registers should not need "homes".
-  ;; Before 9.1.1 this was true.  Lately runtime/poplat.scm gets the
-  ;; no-reuse-possible optimization in standard-register-reference,
-  ;; which assumes a home.
+  (warn "Needed home:" register)
+  (home register))
 
-  ;; That optimization in standard-register-reference is the only use
-  ;; of pseudo-register-home in the machine-independent compiler, so
-  ;; this definition just aims to defeat it for now.
-  (reference-alias-register! register (register-type register)))
+(define-integrable (home register)
+  (ea:offset rref:interpreter-register-block
+	     (+ number-of-fixed-interpreter-registers
+		 (* words-per-compiler-temporary (register-renumber register)))
+	     'WORD))
 
 ;;;; Linearizer interface
 
