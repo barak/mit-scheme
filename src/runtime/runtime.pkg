@@ -3715,7 +3715,11 @@ USA.
   (parent (runtime))
   (export ()
 	  make-open-block
+	  open-block-actions
 	  open-block-components
+	  open-block-declarations
+	  open-block-definitions
+	  open-block-names
 	  open-block?
 	  scan-defines
 	  unscan-defines))
