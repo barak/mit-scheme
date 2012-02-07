@@ -191,7 +191,7 @@ initialize_svm1 (void)
   WREG_SET (SVM1_REG_STACK_POINTER, ((word_t)stack_pointer));		\
   WREG_SET (SVM1_REG_FREE_POINTER, ((word_t)Free));			\
   WREG_SET (SVM1_REG_VALUE, GET_VAL);					\
-  WREG_SET (SVM1_REG_DYNAMIC_LINK, BYTE_ADDR(OBJECT_ADDRESS(GET_VAL)));	\
+  WREG_SET (SVM1_REG_DYNAMIC_LINK, ((word_t)(OBJECT_ADDRESS(GET_VAL)))); \
 } while (0)
 
 #define EXPORT_REGS() do						\
@@ -589,7 +589,7 @@ copy_block (word_t * to, word_t * from, word_t n_words)
 
 DEFINE_INST (copy_block_u8_w)
 {
-  DECODE_SVM1_INST_COPY_BLOCK_U8_W (r_to, r_from, n_words);
+  DECODE_SVM1_INST_COPY_BLOCK_U8_W (n_words, r_from, r_to);
   copy_block ((WORD_ADDR (WREG_REF (r_to))),
 	      (WORD_ADDR (WREG_REF (r_from))),
 	      n_words);
@@ -598,7 +598,7 @@ DEFINE_INST (copy_block_u8_w)
 
 DEFINE_INST (copy_block_wr_w)
 {
-  DECODE_SVM1_INST_COPY_BLOCK_WR_W (r_to, r_from, r_n_words);
+  DECODE_SVM1_INST_COPY_BLOCK_WR_W (r_n_words, r_from, r_to);
   copy_block ((WORD_ADDR (WREG_REF (r_to))),
 	      (WORD_ADDR (WREG_REF (r_from))),
 	      (WREG_REF (r_n_words)));

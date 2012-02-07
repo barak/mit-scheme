@@ -228,18 +228,18 @@ USA.
 	      word
 	      (_ from word-register)
 	      (_ to word-register))
-  to
+  size
   from
-  size)
+  to)
 
 (define-code-sequence instruction
   (copy-block (_ size word-register)
 	      word
 	      (_ from word-register)
 	      (_ to word-register))
-  to
+  size
   from
-  size)
+  to)
 
 (define-implicit-coding-type type-operand
   (define-code-sequence (_ type type-word)
