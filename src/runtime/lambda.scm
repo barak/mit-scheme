@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -90,7 +90,7 @@ USA.
 		    set-clexpr-unwrapped-body!
 		    set-xlambda-unwrapped-body!))
   (set! lambda-names-vector
-	(dispatch-0 'LAMBDA-NAME
+	(dispatch-0 'LAMBDA-NAMES-VECTOR
 		    slambda-names-vector
 		    slexpr-names-vector
 		    xlambda-names-vector))
@@ -237,24 +237,9 @@ USA.
 
 ;;;; Compound Lexpr
 
-(define (make-clexpr name required rest auxiliary body)
-  (make-slexpr name
-	       required
-	       (make-combination
-		(make-internal-lexpr
-		 (list rest)
-		 (if (null? auxiliary)
-		     body
-		     (make-combination (make-internal-lambda auxiliary body)
-				       (make-unassigned auxiliary))))
-		(list (let ((environment (make-the-environment)))
-			(make-combination
-			 (ucode-primitive system-subvector-to-list)
-			 (list environment
-			       (+ (length required) 3)
-			       (make-combination
-				(ucode-primitive system-vector-size)
-				(list environment)))))))))
+;;; TODO(jrm):  I'm removing constructor so new SCode won't contain
+;;; these, although given the conditions it is unlikely there were
+;;; any.  In the next release we can remove the accessors etc.
 
 (define (clexpr-components clexpr receiver)
   (slexpr-components clexpr
@@ -401,7 +386,7 @@ USA.
 	  ((not (null? optional))
 	   (error "Optionals not implemented" 'MAKE-LAMBDA))
 	  (rest
-	   (make-clexpr name required rest auxiliary body*))
+	   (error "You want how many arguments?  AND a rest arg?"))
 	  (else
 	   (make-clambda name required auxiliary body*)))))
 
@@ -457,7 +442,7 @@ USA.
 			   "#[Block Declaration]")))
   (text #f read-only #t))
 
-;;;; Simple Lambda/Lexpr
+;;;; Simple Lambda
 
 (define-integrable slambda-type
   (ucode-type lambda))
@@ -490,11 +475,14 @@ USA.
 (define-integrable (set-slambda-body! slambda body)
   (&pair-set-car! slambda body))
 
+;;;; Simple lexpr
+
+;;; TODO(jrm):  I've removed the constructor so new SCode won't
+;;; contain these.  In the next release we can remove the accessors
+;;; etc.
+
 (define-integrable slexpr-type
   (ucode-type lexpr))
-
-(define-integrable (make-slexpr name required body)
-  (&typed-pair-cons slexpr-type body (list->vector (cons name required))))
 
 (define-integrable (slexpr? object)
   (object-type? slexpr-type object))
@@ -524,9 +512,6 @@ USA.
 
 (define-integrable (make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))
-
-(define-integrable (make-internal-lexpr names body)
-  (make-slambda lambda-tag:internal-lexpr names body))
 
 (define (internal-lambda? *lambda)
   (and (slambda? *lambda)
