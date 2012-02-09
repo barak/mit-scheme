@@ -149,17 +149,14 @@ USA.
 	(make-assignment name value))))
 
 (define (rewrite/lambda expression environment bound-names)
-  (lambda-components expression
-    (lambda (name required optional rest auxiliary declarations body)
-      (make-lambda
-       name required optional rest auxiliary declarations
+  (lambda-components* expression
+    (lambda (name required optional rest body)
+      (make-lambda*
+       name required optional rest
        (rewrite/expression body
 			   environment
 			   (difference bound-names
-				       (append required
-					       optional
-					       auxiliary
-					       (if rest (list rest) '()))))))))
+				       (lambda-bound expression)))))))
 
 (define (rewrite/the-environment expression environment bound-names)
   expression environment bound-names
