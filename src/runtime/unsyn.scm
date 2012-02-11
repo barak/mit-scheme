@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,10 +49,19 @@ USA.
 			     (VARIABLE ,unsyntax-VARIABLE-object))))
   unspecific)
 
-(define unsyntaxer:macroize? #t)
-(define unsyntaxer:show-comments? #f)
-(define unsyntaxer:elide-global-accesses? #f)
+;;; If UNSYNTAXER:MACROIZE? is #f, then the unsyntaxed output will
+;;; closely match the concrete structure that is given to SCODE-EVAL.
+;;; If it is #t, then the unsyntaxed output will more closely match
+;;; the abstract structure of the SCODE (as output by syntax and sf).
 
+(define unsyntaxer:macroize? #t)
+
+(define unsyntaxer:elide-global-accesses? #f)
+(define unsyntaxer:fold-sequence-tail? #t)
+(define unsyntaxer:show-comments? #f)
+
+;;; The substitutions mechanism is for putting the '### marker in
+;;; debugger output.
 (define substitutions '())
 
 (define (unsyntax-with-substitutions scode alist)
@@ -96,11 +105,6 @@ USA.
 
 (define unsyntaxer/scode-walker)
 
-(define (unsyntax-objects objects)
-  (if (pair? objects)
-      (cons (unsyntax-object (car objects))
-	    (unsyntax-objects (cdr objects)))
-      '()))
 
 ;;;; Unsyntax Quanta
 
@@ -204,21 +208,19 @@ USA.
       (list (unsyntax-object seq))))
 
 (define (unsyntax-sequence-actions seq)
-  (let ((actions (sequence-immediate-actions seq)))
-    (let loop ((actions actions))
-      (if (pair? actions)
-	  (let ((substitution (has-substitution? (car actions))))
-	    (cond (substitution
-		   (cons (cdr substitution)
-			 (loop (cdr actions))))
-		  ((and (eq? #t unsyntaxer:macroize?)
-			(sequence? (car actions)))
-		   (append (unsyntax-sequence-actions (car actions))
-			   (loop (cdr actions))))
-		  (else
-		   (cons (unsyntax-object (car actions))
-			 (loop (cdr actions))))))
-	  '()))))
+  (let ((tail (if (and unsyntaxer:fold-sequence-tail?
+		       (sequence? (sequence-immediate-second seq)))
+		  (unsyntax-sequence-actions (sequence-immediate-second seq))
+		  (list (unsyntax-object (sequence-immediate-second seq))))))
+   (let ((substitution (has-substitution? (sequence-immediate-first seq))))
+     (cond (substitution
+	    (cons (cdr substitution) tail))
+	   ((and (eq? #t unsyntaxer:macroize?)
+		 (sequence? (sequence-immediate-first seq)))
+	    (append (unsyntax-sequence-actions (sequence-immediate-first seq))
+		    tail))
+	   (else
+	    (cons (unsyntax-object (sequence-immediate-first seq)) tail))))))
 
 (define (unsyntax-OPEN-BLOCK-object open-block)
   (if (eq? #t unsyntaxer:macroize?)
@@ -389,7 +391,7 @@ USA.
      (lambda (operator operands)
        (let ((ordinary-combination
 	      (lambda ()
-		`(,(unsyntax-object operator) ,@(unsyntax-objects operands)))))
+		`(,(unsyntax-object operator) ,@(map unsyntax-object operands)))))
 	 (cond ((or (not (eq? #t unsyntaxer:macroize?))
 		    (has-substitution? operator))
 		(ordinary-combination))
