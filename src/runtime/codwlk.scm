@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,6 +42,7 @@ USA.
   (delay #f read-only #t)
   (disjunction #f read-only #t)
   (error-combination #f read-only #t)
+  (extended-lambda #f read-only #t)
   (lambda #f read-only #t)
   (open-block #f read-only #t)
   (quotation #f read-only #t)
@@ -65,6 +66,7 @@ USA.
 			  default)))))
 	     (let ((comment-handler (lookup 'COMMENT default))
 		   (combination-handler (lookup 'COMBINATION default))
+		   (lambda-handler (lookup 'LAMBDA default))
 		   (sequence-handler (lookup 'SEQUENCE default)))
 	       (%make-scode-walker (lookup 'ACCESS default)
 				   (lookup 'ASSIGNMENT default)
@@ -78,7 +80,8 @@ USA.
 				   (lookup 'DISJUNCTION default)
 				   (lookup 'ERROR-COMBINATION
 					   combination-handler)
-				   (lookup 'LAMBDA default)
+				   (lookup 'EXTENDED-LAMBDA lambda-handler)
+				   lambda-handler
 				   (lookup 'OPEN-BLOCK sequence-handler)
 				   (lookup 'QUOTATION default)
 				   sequence-handler
@@ -121,7 +124,8 @@ USA.
 		      (DEFINITION ,walk/definition)
 		      (DELAY ,walk/delay)
 		      (DISJUNCTION ,walk/disjunction)
-		      ((LAMBDA LEXPR EXTENDED-LAMBDA) ,walk/lambda)
+		      (EXTENDED-LAMBDA ,walk/extended-lambda)
+		      ((LAMBDA LEXPR) ,walk/lambda)
 		      (QUOTATION ,walk/quotation)
 		      (SEQUENCE-2 ,walk/sequence)
 		      (THE-ENVIRONMENT ,walk/the-environment)
@@ -179,6 +183,10 @@ USA.
 (define (walk/disjunction walker expression)
   expression
   (scode-walker/disjunction walker))
+
+(define (walk/extended-lambda walker expression)
+  expression
+  (scode-walker/extended-lambda walker))
 
 (define (walk/lambda walker expression)
   expression
