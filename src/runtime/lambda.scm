@@ -487,8 +487,7 @@ USA.
     (cond ((and (< (length required) 256)
 		(< (length optional) 256)
 		(or (not (null? optional))
-		    rest
-		    (not (null? auxiliary))))
+		    rest))
 	   (make-xlambda name required optional rest auxiliary body*))
 	  ((not (null? optional))
 	   (error "Optionals not implemented" 'MAKE-LAMBDA))
