@@ -29,7 +29,42 @@ USA.
 
 (declare (usual-integrations))
 
+(define lambda-body)
+(define set-lambda-body!)
+(define lambda-bound)
+(define lambda-interface)
+(define lambda-name)
+
+;;; A lambda is an abstract 7-tuple consisting of these elements:
+;;;  name          name of the lambda
+;;;  required      list of symbols, required arguments in order (null if no required)
+;;;  optional      list of symbols, optional arguments in order, (null if no optionals)
+;;;  rest          symbol, rest argument, #F if no rest argument
+;;;  auxiliary     list of auxiliaries to be bound to unassigned, (null if no auxiliaries)
+;;;  declarations  list of declarations for the lexical block
+;;;  body          an expression.  If there are auxiliaries, the body typically
+;;;                begins with the appropriate assignments.
+
+;;; A lambda has a concrete representation of either
+;;; (ucode-type lambda) or (ucode-type extended-lambda),
+;;; auxiliaries are implemented as an `internal' lambda
+;;; of a compound lambda.
+
 (define (initialize-package!)
+  (define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) *lambda)
+    ((cond ((slambda? *lambda) clambda-op)
+	   ((slexpr? *lambda) clexpr-op)
+	   ((xlambda? *lambda) xlambda-op)
+	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
+     *lambda))
+
+  (define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) *lambda arg)
+    ((cond ((slambda? *lambda) clambda-op)
+	   ((slexpr? *lambda) clexpr-op)
+	   ((xlambda? *lambda) xlambda-op)
+	   (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
+     *lambda arg))
+
   (lambda-body-procedures clambda/physical-body clambda/set-physical-body!
     (lambda (wrap-body! wrapper-components unwrap-body!
 			unwrapped-body set-unwrapped-body!)
@@ -38,14 +73,6 @@ USA.
       (set! clambda-unwrap-body! unwrap-body!)
       (set! clambda-unwrapped-body unwrapped-body)
       (set! set-clambda-unwrapped-body! set-unwrapped-body!)))
-  (lambda-body-procedures clexpr/physical-body clexpr/set-physical-body!
-    (lambda (wrap-body! wrapper-components unwrap-body!
-			unwrapped-body set-unwrapped-body!)
-      (set! clexpr-wrap-body! wrap-body!)
-      (set! clexpr-wrapper-components wrapper-components)
-      (set! clexpr-unwrap-body! unwrap-body!)
-      (set! clexpr-unwrapped-body unwrapped-body)
-      (set! set-clexpr-unwrapped-body! set-unwrapped-body!)))
   (lambda-body-procedures xlambda/physical-body xlambda/set-physical-body!
     (lambda (wrap-body! wrapper-components unwrap-body!
 			unwrapped-body set-unwrapped-body!)
@@ -64,46 +91,69 @@ USA.
 		    clambda-has-internal-lambda?
 		    clexpr-has-internal-lambda?
 		    xlambda-has-internal-lambda?))
-  (set! lambda-wrap-body!
-	(dispatch-1 'LAMBDA-WRAP-BODY!
-		    clambda-wrap-body!
-		    clexpr-wrap-body!
-		    xlambda-wrap-body!))
-  (set! lambda-wrapper-components
-	(dispatch-1 'LAMBDA-WRAPPER-COMPONENTS
-		    clambda-wrapper-components
-		    clexpr-wrapper-components
-		    xlambda-wrapper-components))
-  (set! lambda-unwrap-body!
-	(dispatch-0 'LAMBDA-UNWRAP-BODY!
-		    clambda-unwrap-body!
-		    clexpr-unwrap-body!
-		    xlambda-unwrap-body!))
+  (set! lambda-arity
+	(dispatch-1 'LAMBDA-ARITY
+		    slambda-arity
+		    slexpr-arity
+		    xlambda-arity))
   (set! lambda-body
 	(dispatch-0 'LAMBDA-BODY
 		    clambda-unwrapped-body
-		    clexpr-unwrapped-body
+		    clexpr/physical-body
 		    xlambda-unwrapped-body))
-  (set! set-lambda-body!
-	(dispatch-1 'SET-LAMBDA-BODY!
-		    set-clambda-unwrapped-body!
-		    set-clexpr-unwrapped-body!
-		    set-xlambda-unwrapped-body!))
-  (set! lambda-names-vector
-	(dispatch-0 'LAMBDA-NAMES-VECTOR
-		    slambda-names-vector
-		    slexpr-names-vector
-		    xlambda-names-vector))
+  (set! lambda-bound
+	(dispatch-0 'LAMBDA-BOUND
+		    clambda-bound
+		    clexpr-bound
+		    xlambda-bound))
+  (set! lambda-immediate-body
+	(dispatch-0 'LAMBDA-IMMEDIATE-BODY
+		    slambda-body
+		    slexpr-body
+		    xlambda-body))
+  (set! lambda-interface
+	(dispatch-0 'LAMBDA-INTERFACE
+		    slambda-interface
+		    clexpr-interface
+		    xlambda-interface))
   (set! lambda-name
 	(dispatch-0 'LAMBDA-NAME
 		    slambda-name
 		    slexpr-name
 		    xlambda-name))
-  (set! lambda-bound
-	(dispatch-0 'LAMBDA-BOUND
-		    clambda-bound
-		    clexpr-bound
-		    xlambda-bound)))
+  (set! lambda-names-vector
+	(dispatch-0 'LAMBDA-NAMES-VECTOR
+		    slambda-names-vector
+		    slexpr-names-vector
+		    xlambda-names-vector))
+  (set! lambda-unwrap-body!
+	(dispatch-0 'LAMBDA-UNWRAP-BODY!
+		    clambda-unwrap-body!
+		    (lambda (*lambda)
+		      *lambda
+		      (error "Cannot advise clexprs."))
+		    xlambda-unwrap-body!))
+  (set! lambda-wrap-body!
+	(dispatch-1 'LAMBDA-WRAP-BODY!
+		    clambda-wrap-body!
+		    (lambda (*lambda transform)
+		      *lambda transform
+		      (error "Cannot advise clexprs."))
+		    xlambda-wrap-body!))
+  (set! lambda-wrapper-components
+	(dispatch-1 'LAMBDA-WRAPPER-COMPONENTS
+		    clambda-wrapper-components
+		    (lambda (*lambda receiver)
+		      *lambda receiver
+		      (error "Cannot advise clexprs."))
+		    xlambda-wrapper-components))
+  (set! set-lambda-body!
+	(dispatch-1 'SET-LAMBDA-BODY!
+		    set-clambda-unwrapped-body!
+		    (lambda (*lambda new-body)
+		      *lambda new-body
+		      (error "Cannot advise clexprs."))
+		    set-xlambda-unwrapped-body!)))
 
 ;;;; Hairy Advice Wrappers
 
@@ -186,12 +236,7 @@ USA.
 ;;;; Compound Lambda
 
 (define (make-clambda name required auxiliary body)
-  (make-slambda name
-		required
-		(if (null? auxiliary)
-		    body
-		    (make-combination (make-internal-lambda auxiliary body)
-				      (make-unassigned auxiliary)))))
+  (make-slambda name required (make-auxiliary-lambda auxiliary body)))
 
 (define (clambda-components clambda receiver)
   (slambda-components clambda
@@ -263,16 +308,18 @@ USA.
 		(slambda-auxiliary internal)
 		(lambda-body-auxiliary (slambda-body internal)))))))
 
+(define (clexpr-interface clexpr)
+  (slexpr-components clexpr
+    (lambda (name required body)
+      name
+      (let ((internal (combination-operator body)))
+	(let ((auxiliary (slambda-auxiliary internal)))
+	  (make-lambda-list required '() (car auxiliary) '()))))))
+
 (define (clexpr-has-internal-lambda? clexpr)
   (let ((internal (combination-operator (slexpr-body clexpr))))
     (or (lambda-body-has-internal-lambda? (slambda-body internal))
 	internal)))
-
-(define clexpr-wrap-body!)
-(define clexpr-wrapper-components)
-(define clexpr-unwrap-body!)
-(define clexpr-unwrapped-body)
-(define set-clexpr-unwrapped-body!)
 
 (define (clexpr/physical-body clexpr)
   (slambda-body (clexpr-has-internal-lambda? clexpr)))
@@ -282,44 +329,103 @@ USA.
 
 ;;;; Extended Lambda
 
-(define-integrable xlambda-type
-  (ucode-type extended-lambda))
+(define (xlambda? object)
+  (object-type? (ucode-type extended-lambda) object))
+
+(define-guarantee xlambda "an extended lambda")
+
+(define (%xlambda-body xlambda)
+  (&triple-first xlambda))
+
+(define (%xlambda-names-vector xlambda)
+  (&triple-second xlambda))
+
+(define (%xlambda-encoded-arity xlambda)
+  (object-datum (&triple-third xlambda)))
+
+(define (xlambda-body xlambda)
+  (guarantee-xlambda xlambda 'xlambda-body)
+  (%xlambda-body xlambda))
+
+(define (xlambda-names-vector xlambda)
+  (guarantee-xlambda xlambda 'xlambda-names-vector)
+  (%xlambda-names-vector xlambda))
+
+(define (xlambda-encoded-arity xlambda)
+  (guarantee-xlambda xlambda 'xlambda-encoded-arity)
+  (%xlambda-encoded-arity xlambda))
+
+(define (encode-xlambda-arity n-required n-optional rest?)
+  (+ n-optional (* 256 (+ n-required (if rest? 256 0)))))
+
+(define (decode-xlambda-arity arity receiver)
+  (let ((qr1 (integer-divide arity 256)))
+    (let ((qr2 (integer-divide (car qr1) 256)))
+      (receiver (cdr qr2)
+		(cdr qr1)
+		(= (car qr2) 1)))))
 
 (define (make-xlambda name required optional rest auxiliary body)
   (&typed-triple-cons
-   xlambda-type
-   (if (null? auxiliary)
-       body
-       (make-combination (make-internal-lambda auxiliary body)
-			 (make-unassigned auxiliary)))
+   (ucode-type extended-lambda)
+   (make-auxiliary-lambda auxiliary body)
    (list->vector
     (cons name (append required optional (if rest (list rest) '()))))
    (make-non-pointer-object
-    (+ (length optional)
-       (* 256
-	  (+ (length required)
-	     (if rest 256 0)))))))
-
-(define-integrable (xlambda? object)
-  (object-type? xlambda-type object))
+    (encode-xlambda-arity (length required) (length optional) rest))))
 
 (define (xlambda-components xlambda receiver)
-  (let ((qr1 (integer-divide (object-datum (&triple-third xlambda)) 256)))
-    (let ((qr2 (integer-divide (car qr1) 256)))
-      (let ((ostart (1+ (cdr qr2))))
-	(let ((rstart (+ ostart (cdr qr1))))
-	  (let ((astart (+ rstart (car qr2)))
-		(bound (&triple-second xlambda)))
+  (guarantee-xlambda xlambda 'xlambda-components)
+  (decode-xlambda-arity
+   (%xlambda-encoded-arity xlambda)
+   (lambda (n-required n-optional rest?)
+      (let ((ostart (1+ n-required)))
+	(let ((rstart (+ ostart n-optional)))
+	  (let ((astart (+ rstart (if rest? 1 0)))
+		(bound (%xlambda-names-vector xlambda)))
 	    (receiver (vector-ref bound 0)
 		      (subvector->list bound 1 ostart)
 		      (subvector->list bound ostart rstart)
-		      (if (zero? (car qr2))
-			  #F ;;!'()
-			  (vector-ref bound rstart))
+		      (if rest?
+			  (vector-ref bound rstart)
+			  #F) ;;!'()
 		      (append
 		       (subvector->list bound astart (vector-length bound))
 		       (lambda-body-auxiliary (&triple-first xlambda)))
 		      (xlambda-unwrapped-body xlambda))))))))
+
+(define (xlambda-arity xlambda offset)
+  (xlambda-components xlambda
+    (lambda (name required optional rest auxiliary decl body)
+      name auxiliary decl body
+      (make-lambda-arity (length required)
+			 (length optional)
+			 rest
+			 offset))))
+
+(define (%xlambda-interface xlambda)
+  (decode-xlambda-arity
+   (%xlambda-encoded-arity xlambda)
+   (lambda (n-required n-optional rest?)
+     (let ((bound (%xlambda-names-vector xlambda)))
+       (make-lambda-list
+	(subvector->list bound 1 (+ n-required 1))
+	(subvector->list bound (+ n-required 1) (+ n-optional n-required 1))
+	(and rest? (vector-ref bound (+ n-optional n-required 1))))))))
+
+(define (xlambda-name xlambda)
+  (guarantee-xlambda xlambda 'xlambda-name)
+  (vector-ref (%xlambda-names-vector xlambda) 0))
+
+(define (xlambda-interface xlambda)
+  (guarantee-xlambda xlambda 'xlambda-interface)
+  (%xlambda-interface xlambda))
+
+(define (xlambda-bound xlambda)
+  (guarantee-xlambda xlambda 'xlambda-bound)
+  (append (let ((names (%xlambda-names-vector xlambda)))
+	    (subvector->list names 1 (vector-length names)))
+	  (lambda-body-auxiliary (%xlambda-body xlambda))))
 
 (define (xlambda-names-vector xlambda)
   (&triple-second xlambda))
@@ -411,30 +517,15 @@ USA.
 	  (else
 	   (loop (cdr items) duplicates)))))
 
-(define ((dispatch-0 op-name clambda-op clexpr-op xlambda-op) *lambda)
-  ((cond ((slambda? *lambda) clambda-op)
-	 ((slexpr? *lambda) clexpr-op)
-	 ((xlambda? *lambda) xlambda-op)
-	 (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
-   *lambda))
-
-(define ((dispatch-1 op-name clambda-op clexpr-op xlambda-op) *lambda arg)
-  ((cond ((slambda? *lambda) clambda-op)
-	 ((slexpr? *lambda) clexpr-op)
-	 ((xlambda? *lambda) xlambda-op)
-	 (else (error:wrong-type-argument *lambda "SCode lambda" op-name)))
-   *lambda arg))
 
 (define &lambda-components)
 (define has-internal-lambda?)
+(define lambda-arity)
 (define lambda-wrap-body!)
 (define lambda-wrapper-components)
 (define lambda-unwrap-body!)
-(define lambda-body)
-(define set-lambda-body!)
+(define lambda-immediate-body)
 (define lambda-names-vector)
-(define lambda-name)
-(define lambda-bound)
 
 (define-structure (block-declaration
 		   (type vector)
@@ -443,37 +534,82 @@ USA.
   (text #f read-only #t))
 
 ;;;; Simple Lambda
-
-(define-integrable slambda-type
-  (ucode-type lambda))
-
-(define-integrable (make-slambda name required body)
-  (&typed-pair-cons slambda-type body (list->vector (cons name required))))
-
-(define-integrable (slambda? object)
-  (object-type? slambda-type object))
-
-(define (slambda-components slambda receiver)
-  (let ((bound (&pair-cdr slambda)))
-    (receiver (vector-ref bound 0)
-	      (subvector->list bound 1 (vector-length bound))
-	      (&pair-car slambda))))
-
-(define (slambda-names-vector slambda)
-  (&pair-cdr slambda))
-
-(define-integrable (slambda-name slambda)
-  (vector-ref (&pair-cdr slambda) 0))
+(define (slambda-arity slambda offset)
+  (guarantee-slambda slambda 'slambda-arity)
+  (%slambda-arity slambda offset))
 
 (define (slambda-auxiliary slambda)
-  (let ((bound (&pair-cdr slambda)))
-    (subvector->list bound 1 (vector-length bound))))
+  (guarantee-slambda slambda 'slambda-auxiliary)
+  (%slambda-auxiliary slambda))
 
-(define-integrable (slambda-body slambda)
+(define (slambda-body slambda)
+  (guarantee-slambda slambda 'slambda-body)
+  (%slambda-body slambda))
+
+(define (set-slambda-body! slambda new-body)
+  (guarantee-slambda slambda 'set-slambda-body!)
+  (%set-slambda-body! slambda new-body))
+
+(define (slambda-components slambda receiver)
+  (guarantee-slambda slambda 'slambda-components)
+  (%slambda-components slambda receiver))
+
+(define (slambda-interface slambda)
+  (guarantee-slambda slambda 'slambda-interface)
+  (%slambda-interface slambda))
+
+(define (slambda-name slambda)
+  (guarantee-slambda slambda 'slambda-name)
+  (%slambda-name slambda))
+
+(define (slambda-names-vector slambda)
+  (guarantee-slambda slambda 'slambda-names-vector)
+  (%slambda-names-vector slambda))
+
+(define (make-slambda name required body)
+  (&typed-pair-cons (ucode-type lambda)
+		    body (list->vector (cons name required))))
+
+(define-integrable (slambda? object)
+  (object-type? (ucode-type lambda) object))
+
+(define-guarantee slambda "simple lambda")
+
+(define-integrable (%slambda-body slambda)
   (&pair-car slambda))
 
-(define-integrable (set-slambda-body! slambda body)
+(define-integrable (%set-slambda-body! slambda body)
   (&pair-set-car! slambda body))
+
+(define-integrable (%slambda-names-vector slambda)
+  (&pair-cdr slambda))
+
+(define (%slambda-arity slambda offset)
+  (make-lambda-arity
+   (- (vector-length (%slambda-names-vector slambda)) 1)
+   0
+   #f
+   offset))
+
+(define-integrable (%slambda-auxiliary slambda)
+  (let ((bound (%slambda-names-vector slambda)))
+    (subvector->list bound 1 (vector-length bound))))
+
+(define-integrable (%slambda-interface slambda)
+  (let ((bound (%slambda-names-vector slambda)))
+    (make-lambda-list
+     (subvector->list bound 1 (vector-length bound))
+     '()
+     #f
+     '())))
+
+(define-integrable (%slambda-name slambda)
+  (vector-ref (%slambda-names-vector slambda) 0))
+
+(define (%slambda-components slambda receiver)
+  (receiver (%slambda-name slambda)
+	    (%slambda-interface slambda)
+	    (%slambda-body slambda)))
 
 ;;;; Simple lexpr
 
@@ -493,6 +629,14 @@ USA.
 	      (subvector->list bound 1 (vector-length bound))
 	      (&pair-car slexpr))))
 
+(define (slexpr-interface slexpr)
+  (let ((bound (&pair-cdr slexpr)))
+    (subvector->list bound 1 (vector-length bound))))
+
+(define (slexpr-arity slexpr offset)
+  (let ((bound (&pair-cdr slexpr)))
+    (make-lambda-arity (- (vector-length bound) 2) 0 #t offset)))
+
 (define (slexpr-names-vector slexpr)
   (&pair-cdr slexpr))
 
@@ -510,8 +654,14 @@ USA.
 (define-integrable lambda-tag:internal-lexpr
   ((ucode-primitive string->symbol) "#[internal-lexpr]"))
 
-(define-integrable (make-internal-lambda names body)
+(define-integrable (%make-internal-lambda names body)
   (make-slambda lambda-tag:internal-lambda names body))
+
+(define (make-auxiliary-lambda auxiliary body)
+  (if (null? auxiliary)
+      body
+      (make-combination (%make-internal-lambda auxiliary body)
+			(make-unassigned auxiliary))))
 
 (define (internal-lambda? *lambda)
   (and (slambda? *lambda)
@@ -523,3 +673,13 @@ USA.
 	 auxiliary
 	 (make-unassigned-reference-trap))
        auxiliary))
+
+(define (make-lambda-arity required-count optional-count rest? offset)
+  (let ((r (fix:- required-count offset)))
+    (cond (rest?
+	   (make-procedure-arity (fix:max 0 r) #f))
+	  ((fix:>= r 0)
+	   (make-procedure-arity r (fix:+ r optional-count)))
+	  (else
+	   (error "Illegal arity for entity:"
+		  (list required-count optional-count rest? offset))))))
