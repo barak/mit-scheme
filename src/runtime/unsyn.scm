@@ -41,6 +41,7 @@ USA.
 			     (DEFINITION ,unsyntax-DEFINITION-object)
 			     (DELAY ,unsyntax-DELAY-object)
 			     (DISJUNCTION ,unsyntax-DISJUNCTION-object)
+			     (EXTENDED-LAMBDA ,unsyntax-EXTENDED-LAMBDA-object)
 			     (LAMBDA ,unsyntax-LAMBDA-object)
 			     (OPEN-BLOCK ,unsyntax-OPEN-BLOCK-object)
 			     (QUOTATION ,unsyntax-QUOTATION)
@@ -317,23 +318,27 @@ USA.
 
 ;;;; Lambdas
 
+(define (unsyntax-EXTENDED-LAMBDA-object expression)
+  (if unsyntaxer:macroize?
+      (unsyntax-lambda expression)
+      `(&XLAMBDA (,(lambda-name expression) ,@(lambda-interface expression))
+		 ,(unsyntax-object (lambda-immediate-body expression)))))
+
 (define (unsyntax-LAMBDA-object expression)
   (if unsyntaxer:macroize?
-      (lambda-components** expression
-	(lambda (name required optional rest body)
-	  (collect-lambda name
-			  (make-lambda-list required optional rest '())
-			  (with-bindings required optional rest
-					 unsyntax-lambda-body body))))
-      (lambda-components expression
-	(lambda (name required optional rest auxiliary declarations body)
-	  (collect-lambda name
-			  (make-lambda-list required optional rest auxiliary)
-			  (let ((body (unsyntax-sequence body)))
-			    (if (null? declarations)
-				body
-				`((DECLARE ,@declarations)
-				  ,@body))))))))
+      (unsyntax-lambda expression)
+      (collect-lambda (lambda-name expression)
+		      (lambda-interface expression)
+		      (list (unsyntax-object
+			     (lambda-immediate-body expression))))))
+
+(define (unsyntax-lambda expression)
+  (lambda-components** expression
+    (lambda (name required optional rest body)
+      (collect-lambda name
+		      (make-lambda-list required optional rest '())
+		      (with-bindings required optional rest
+				     unsyntax-lambda-body body)))))
 
 (define (collect-lambda name bvl body)
   (if (eq? name lambda-tag:unnamed)
