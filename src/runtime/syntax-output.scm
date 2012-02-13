@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -25,6 +25,7 @@ USA.
 |#
 
 ;;;; Syntaxer Output Interface
+;;; package: (runtime syntax output)
 
 (declare (usual-integrations))
 
@@ -89,14 +90,34 @@ USA.
   (output/combination (output/named-lambda lambda-tag:let names body) values))
 
 (define (output/letrec names values body)
-  (output/let '() '()
-	      (make-sequence
-	       (append! (map make-definition names values)
-			(list
-			 (let ((body (scan-defines body make-open-block)))
-			   (if (open-block? body)
-			       (output/let '() '() body)
-			       body)))))))
+  (let ((temps (map (lambda (name)
+		      (utf8-string->uninterned-symbol
+		       (string-append (symbol-name (identifier->symbol name))
+				      "-value"))) names)))
+    (output/let
+     names (map (lambda (name) name (output/unassigned)) names)
+     (make-sequence
+      (cons (output/let
+	     temps values
+	     (make-sequence (map (lambda (name temp)
+				   (make-assignment name (make-variable temp)))
+				 names temps)))
+	    (list
+	     (let ((body (scan-defines body make-open-block)))
+	       (if (open-block? body)
+		   (output/let '() '() body)
+		   body))))))))
+
+(define (output/letrec* names values body)
+  (output/let
+   names (map (lambda (name) name (output/unassigned)) names)
+   (make-sequence
+    (append! (map make-assignment names values)
+	     (list
+	      (let ((body (scan-defines body make-open-block)))
+		(if (open-block? body)
+		    (output/let '() '() body)
+		    body)))))))
 
 (define (output/body declarations body)
   (scan-defines (let ((declarations (apply append declarations)))

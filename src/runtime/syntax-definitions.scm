@@ -25,6 +25,7 @@ USA.
 |#
 
 ;;;; Code to install syntax keywords in global environment
+;;; package: (runtime syntax definitions)
 
 (declare (usual-integrations))
 
@@ -45,6 +46,7 @@ USA.
   (define-classifier 'ER-MACRO-TRANSFORMER classifier:er-macro-transformer)
   (define-classifier 'LET-SYNTAX classifier:let-syntax)
   (define-classifier 'LETREC classifier:letrec)
+  (define-classifier 'LETREC* classifier:letrec*)
   (define-classifier 'LETREC-SYNTAX classifier:letrec-syntax)
   (define-classifier 'LOCAL-DECLARE classifier:local-declare)
   (define-classifier 'NON-HYGIENIC-MACRO-TRANSFORMER

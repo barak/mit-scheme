@@ -4694,6 +4694,7 @@ USA.
 	  output/lambda
 	  output/let
 	  output/letrec
+	  output/letrec*
 	  output/local-declare
 	  output/named-lambda
 	  output/post-process-expression
@@ -4737,6 +4738,7 @@ USA.
 	  classifier:er-macro-transformer
 	  classifier:let-syntax
 	  classifier:letrec
+	  classifier:letrec*
 	  classifier:letrec-syntax
 	  classifier:local-declare
 	  classifier:non-hygienic-macro-transformer
