@@ -31,6 +31,7 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "fixnum.h"
 
 static long
 arg_fixnum (int n)
