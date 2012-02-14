@@ -191,7 +191,7 @@ initialize_svm1 (void)
   WREG_SET (SVM1_REG_STACK_POINTER, ((word_t)stack_pointer));		\
   WREG_SET (SVM1_REG_FREE_POINTER, ((word_t)Free));			\
   WREG_SET (SVM1_REG_VALUE, GET_VAL);					\
-  WREG_SET (SVM1_REG_DYNAMIC_LINK, BYTE_ADDR(OBJECT_ADDRESS(GET_VAL)));	\
+  WREG_SET (SVM1_REG_DYNAMIC_LINK, ((word_t)(OBJECT_ADDRESS(GET_VAL)))); \
 } while (0)
 
 #define EXPORT_REGS() do						\
@@ -659,29 +659,29 @@ push_object (SCHEME_OBJECT object)
 }
 
 static void
-push_icall_entry (void * entry)
+push_entry (void)
 {
-  push_object (MAKE_CC_BLOCK (entry));
+  push_object (MAKE_CC_ENTRY (PC + CC_ENTRY_HEADER_SIZE));
 }
 
 DEFINE_INST (icall_u8)
 {
   DECODE_SVM1_INST_ICALL_U8 (offset);
-  push_icall_entry (PC - 2);
+  push_entry ();
   IJUMP (offset);
 }
 
 DEFINE_INST (icall_u16)
 {
   DECODE_SVM1_INST_ICALL_U16 (offset);
-  push_icall_entry (PC - 3);
+  push_entry ();
   IJUMP (offset);
 }
 
 DEFINE_INST (icall_u32)
 {
   DECODE_SVM1_INST_ICALL_U32 (offset);
-  push_icall_entry (PC - 5);
+  push_entry ();
   IJUMP (offset);
 }
 
