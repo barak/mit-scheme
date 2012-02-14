@@ -27,6 +27,7 @@ USA.
 /* Scheme Virtual Machine version 1 */
 
 #include "scheme.h"
+#include "fixnum.h"
 #include "svm1-defns.h"
 #include "cmpintmd/svm1.h"
 
@@ -244,6 +245,9 @@ signal_illegal_instruction (void)
 
 #define SIGNED_BINARY(op, a1, a2)					\
   (FROM_SIGNED ((TO_SIGNED (a1)) op (TO_SIGNED (a2))))
+
+#define SIGNED_BINFUNC(func, a1, a2)					\
+  (FROM_SIGNED (func (TO_SIGNED (a1), TO_SIGNED (a2))))
 
 #if 0
 /* The above definition isn't guaranteed to work in ANSI C, but in
@@ -1121,11 +1125,16 @@ DEFINE_INST (flonum_align)
 #define FDECR(x) ((x) - 1.0)
 #define WABS(x) (SIGNED_UNARY (labs, (x)))
 
-#define OP_ADD(x, y) ((x) + (y))
-#define OP_SUBTRACT(x, y) ((x) - (y))
-#define OP_MULTIPLY(x, y) ((x) * (y))
-#define OP_DIVIDE(x, y) ((x) / (y))
-#define OP_REMAINDER(x, y) ((x) % (y))
+#define FOP_ADD(x, y) ((x) + (y))
+#define FOP_SUBTRACT(x, y) ((x) - (y))
+#define FOP_MULTIPLY(x, y) ((x) * (y))
+#define FOP_DIVIDE(x, y) ((x) / (y))
+
+#define OP_ADD(x, y) (SIGNED_BINARY (+, (x), (y)))
+#define OP_SUBTRACT(x, y) (SIGNED_BINARY (-, (x), (y)))
+#define OP_MULTIPLY(x, y) (SIGNED_BINARY (*, (x), (y)))
+#define OP_DIVIDE(x, y) (SIGNED_BINFUNC (FIXNUM_QUOTIENT, (x), (y)))
+#define OP_REMAINDER(x, y) (SIGNED_BINFUNC (FIXNUM_REMAINDER, (x), (y)))
 #define OP_AND(x, y) ((x) & (y))
 #define OP_ANDC(x, y) ((x) &~ (y))
 #define OP_OR(x, y) ((x) | (y))
@@ -1212,10 +1221,7 @@ DEFINE_INST (lsh)
 {
   DECODE_SVM1_INST_LSH (target, source1, source2);
   long n = (TO_SIGNED (WREG_REF (source2)));
-  WREG_SET (target,
-	    ((n < 0)
-	     ? ((WREG_REF (source1)) >> (- n))
-	     : ((WREG_REF (source1)) << n)));
+  WREG_SET (target, FIXNUM_LSH((WREG_REF (source1)), n));
   NEXT_PC;
 }
 
@@ -1245,10 +1251,10 @@ DEFINE_INST (nl)							\
   NEXT_PC;								\
 }
 
-DEFINE_BINARY_FR (add_fr, ADD_FR, OP_ADD)
-DEFINE_BINARY_FR (subtract_fr, SUBTRACT_FR, OP_SUBTRACT)
-DEFINE_BINARY_FR (multiply_fr, MULTIPLY_FR, OP_MULTIPLY)
-DEFINE_BINARY_FR (divide, DIVIDE, OP_DIVIDE)
+DEFINE_BINARY_FR (add_fr, ADD_FR, FOP_ADD)
+DEFINE_BINARY_FR (subtract_fr, SUBTRACT_FR, FOP_SUBTRACT)
+DEFINE_BINARY_FR (multiply_fr, MULTIPLY_FR, FOP_MULTIPLY)
+DEFINE_BINARY_FR (divide, DIVIDE, FOP_DIVIDE)
 DEFINE_BINARY_FR (atan2, ATAN2, atan2)
 
 /* Address decoders */

@@ -37,6 +37,7 @@ USA.
 #include "const.h"
 #include "object.h"
 #include "sdata.h"
+#include "fixnum.h"
 #include "errors.h"
 #include "stack.h"
 #include "interp.h"
@@ -249,46 +250,6 @@ typedef unsigned long entry_count_t;
   CACHE_VARIABLES ();							\
   JUMP (IICdest);							\
 } while (false)
-
-#define MAX_BIT_SHIFT DATUM_LENGTH
-
-#define RIGHT_SHIFT_UNSIGNED(source, number)				\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((((unsigned long) (source)) & DATUM_MASK) >> (number)))
-
-#define RIGHT_SHIFT(source, number)					\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((source) >> (number)))
-
-#define LEFT_SHIFT(source, number)					\
-  (((number) > MAX_BIT_SHIFT)						\
-   ? 0									\
-   : ((source) << (number)))
-
-#define FIXNUM_LSH(source, number)					\
-  (((number) >= 0)							\
-   ? (LEFT_SHIFT (source, number))					\
-   : (RIGHT_SHIFT_UNSIGNED (source, (- (number)))))
-
-#define FIXNUM_REMAINDER(source1, source2)				\
-  (((source2) > 0)							\
-   ? (((source1) >= 0)							\
-      ? ((source1) % (source2))						\
-      : (- ((- (source1)) % (source2))))				\
-   : (((source1) >= 0)							\
-      ? ((source1) % (- (source2)))					\
-      : (- ((- (source1)) % (- (source2))))))
-
-#define FIXNUM_QUOTIENT(source1, source2)				\
-  (((source2) > 0)							\
-   ? (((source1) >= 0)							\
-      ? ((source1) / (source2))						\
-      : (- ((- (source1)) / (source2))))				\
-   : (((source1) >= 0)							\
-      ? (- ((source1) / (- (source2))))					\
-      : ((- (source1)) / (- (source2)))))
 
 #define INTERRUPT_CHECK(code, entry_point) do				\
 {									\
