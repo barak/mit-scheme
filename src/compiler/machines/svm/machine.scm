@@ -161,7 +161,7 @@ USA.
 
 (define-binary-operations
   + - *
-  quotient remainder
+  product quotient remainder
   lsh and andc or xor
   max-unsigned min-unsigned
   / atan2)

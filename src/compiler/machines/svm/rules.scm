@@ -376,7 +376,6 @@ USA.
 	     (inst target source1 source2))))))
   (standard 'PLUS-FIXNUM inst:+)
   (standard 'MINUS-FIXNUM inst:-)
-  (standard 'MULTIPLY-FIXNUM inst:*)
   (standard 'FIXNUM-QUOTIENT inst:quotient)
   (standard 'FIXNUM-REMAINDER inst:remainder)
   (standard 'FIXNUM-LSH inst:lsh)
@@ -384,6 +383,12 @@ USA.
   (standard 'FIXNUM-ANDC inst:andc)
   (standard 'FIXNUM-OR inst:or)
   (standard 'FIXNUM-XOR inst:xor))
+
+(define-fixnum-2-args-method 'MULTIPLY-FIXNUM
+  (lambda (target source1 source2 overflow?)
+    (if overflow? (simple-branches! 'NFIX target))
+    ((if overflow? inst:product inst:*)
+     target source1 source2)))
 
 ;;;; Flonums
 

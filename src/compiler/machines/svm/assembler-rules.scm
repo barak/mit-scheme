@@ -574,6 +574,7 @@ USA.
 	SOURCE1
 	SOURCE2))))
 
+(define-word-binary-instruction product)
 (define-word-binary-instruction quotient)
 (define-word-binary-instruction remainder)
 (define-word-binary-instruction lsh)

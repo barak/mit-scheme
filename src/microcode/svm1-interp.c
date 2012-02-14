@@ -1188,9 +1188,19 @@ DEFINE_INST (nl)							\
   NEXT_PC;								\
 }
 
+static word_t
+multiply_with_overflow (long x, long y)
+{
+  word_t ans = (Mul ((LONG_TO_FIXNUM (x)), (LONG_TO_FIXNUM (y))));
+  return (ans == SHARP_F
+	  ? SHARP_T   /* This need only be !NFIX for overflow-test. */
+	  : FIXNUM_TO_LONG (ans));
+}
+
 DEFINE_BINARY_WR (add_wr, ADD_WR, OP_ADD)
 DEFINE_BINARY_WR (subtract_wr, SUBTRACT_WR, OP_SUBTRACT)
 DEFINE_BINARY_WR (multiply_wr, MULTIPLY_WR, OP_MULTIPLY)
+DEFINE_BINARY_WR (product, PRODUCT, multiply_with_overflow)
 DEFINE_BINARY_WR (quotient, QUOTIENT, OP_DIVIDE)
 DEFINE_BINARY_WR (remainder, REMAINDER, OP_REMAINDER)
 DEFINE_BINARY_WR (and, AND, OP_AND)
