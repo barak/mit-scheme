@@ -30,37 +30,36 @@ set -e
 
 . etc/functions.sh
 
-# Remove the cross-compiler's bands and stash its products (if any).
+echo "# Remove the cross-compiler's bands and stash its products."
 run_cmd rm -f lib/x-runtime.com
 run_cmd rm -f lib/x-compiler.com
 run_cmd ./Stage.sh remove 0
 run_cmd ./Stage.sh make-cross 0
 
-# Restore its host-compiled .com's (if any).
+echo "# Restore the cross-compiler's host-compiled .coms."
 run_cmd ./Stage.sh unmake X
 
-# Compile the cross-compiler.
+echo "# Re-compile the cross-compiler."
 
-# Syntax prerequisites.
+echo "#    Re-syntax prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.sf </dev/null
 done
 
-# Compile prerequisites.
+echo "#    Re-compile prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.cbf </dev/null
 done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 FASL=make.com
 
-# Dump new runtime into x-runtime.com.
+echo "#    Dump new runtime into x-runtime.com."
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF
-echo ""
 
-# Syntax compiler, using x-runtime.com.
+echo "#    Re-syntax cross-compiler using x-runtime.com."
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
 (load "compiler.sf")
@@ -72,10 +71,10 @@ if [ -s compiler/compiler-unx.crf ]; then
     exit 1
 fi
 
-# Optionally, compile cross-compiler.
+echo "#     Re-compile cross-compiler."
 run_cmd_in_dir compiler "${@}" --batch-mode --load compiler.cbf </dev/null
 
-# Load up everything, because it is all about to go away!
+echo "# Dump cross-compiler into x-compiler.com."
 run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 (load-option 'SF)
 (load-option 'CREF)
@@ -84,37 +83,30 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 (disk-save "lib/x-compiler.com")
 EOF
 
-# Remove host code to STAGEX/ subdirs.
+echo "# Remove host code to STAGEX/ subdirs."
 run_cmd ./Stage.sh make X
 
-# Restore previously cross-compiled code (if any).  (Replace "unmake"
-# with "remove" to start from scratch with each rebuilt
-# cross-compiler.)
+echo "# Restore previously cross-compiled code."
+# (Replace "unmake" with "remove" to start from scratch with each
+# rebuilt cross-compiler.)
 run_cmd ./Stage.sh unmake 0
 
-# Cross-compile everything, producing svm1 .moc's.
-# edwin/snr.scm needs more than --heap 9000!
-run_cmd "${@}" --batch-mode --heap 10000 --library lib \
-	       --band x-compiler.com <<EOF
+echo "# Re-cross-compile everything."
+run_cmd "${@}" --batch-mode --library lib --band x-compiler.com <<EOF
 (begin
   (load "etc/compile")
-  (fluid-let (;;(compiler:generate-lap-files? #t)
-	      ;;(compiler:intersperse-rtl-in-lap? #t)
+  (fluid-let ((compiler:generate-lap-files? #t)
+	      (compiler:intersperse-rtl-in-lap? #t)
 	      (compiler:cross-compiling? #t))
-    ;; Syntax star-parser before runtime, so runtime.sf does not die.
-    ;; Our --library does not already include a *PARSER option!
-    (compile-cref compile-dir)
-    (compile-dir "star-parser")
     (compile-everything)))
 EOF
 
-# Finish the cross-compilation with the new machine.
+echo "# Finish the cross-compilation with the new machine."
 run_cmd_in_dir runtime \
     ../microcode/scheme --library ../lib --fasl make.bin --batch-mode <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))
 EOF
-echo ""
 
-# Ready to build-bands.sh with the new machine.
+echo "# Ready to build-bands.sh with the new machine."
