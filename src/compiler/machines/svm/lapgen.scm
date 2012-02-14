@@ -117,8 +117,7 @@ USA.
   (make-external-label label #xFFFD))
 
 (define (make-continuation-label entry-label label)
-  entry-label
-  (make-external-label label (encode-continuation-offset label #xFFFC)))
+  (make-external-label label (encode-continuation-offset entry-label #xFFFC)))
 
 (define (encode-procedure-type min-frame max-frame)
   (let ((n-required (-1+ min-frame))
@@ -137,7 +136,9 @@ USA.
 
 (define (encode-continuation-offset label default)
   (let ((offset
-	 (rtl-continuation/next-continuation-offset (label->object label))))
+	 (if label
+	     (rtl-continuation/next-continuation-offset (label->object label))
+	     0)))
     (if offset
 	(begin
 	  (guarantee-exact-nonnegative-integer offset)

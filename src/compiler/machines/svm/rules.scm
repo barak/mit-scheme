@@ -1168,7 +1168,7 @@ USA.
 	 ,@(inst:load-address rref:constant-addr (ea:address free-ref-label))
 	 ,@(inst:load-immediate rref:n-sections n-sections)
 	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
-	 ,@(make-internal-continuation-label (generate-label)))))
+	 ,@(make-continuation-label false (generate-label)))))
 
 (define (generate/remote-link code-block-label
 			      environment-offset
@@ -1177,21 +1177,17 @@ USA.
   (let ((rref:block-addr rref:word-0)
 	(rref:constant-addr rref:word-1)
 	(rref:n-sections rref:word-2)
-	(rref:block.environment-addr rref:word-3)
-	(rref:environment rref:word-4))
-    (LAP ,@(inst:load-address rref:block-addr (ea:address code-block-label))
-	 ,@(inst:load-address rref:block.environment-addr
-			      (ea:offset rref:block-addr
-					 environment-offset 'WORD))
+	(rref:environment rref:word-3))
+    (LAP ,@(inst:load 'WORD rref:block-addr (ea:address code-block-label))
+	 ,@(inst:object-address rref:block-addr rref:block-addr)
 	 ,@(inst:load 'WORD rref:environment (ea:environment))
 	 ,@(inst:store 'WORD rref:environment
-		       (ea:indirect rref:block.environment-addr))
+		       (ea:offset rref:block-addr environment-offset 'WORD))
 	 ,@(inst:load-address rref:constant-addr
-			      (ea:offset rref:block-addr
-					 free-ref-offset 'WORD))
+			      (ea:offset rref:block-addr free-ref-offset 'WORD))
 	 ,@(inst:load-immediate rref:n-sections n-sections)
 	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
-	 ,@(make-internal-continuation-label (generate-label)))))
+	 ,@(make-continuation-label false (generate-label)))))
 
 (define (generate/remote-links n-blocks vector-label n-sections)
   (if (> n-blocks 0)
@@ -1211,7 +1207,8 @@ USA.
 	 ;; Init index, bytes and vector.
 	 ,@(inst:load-immediate rref:index 0)
 	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
-	 ,@(inst:load-address rref:vector (ea:address vector-label))
+	 ,@(inst:load 'WORD rref:vector (ea:address vector-label))
+	 ,@(inst:object-address rref:vector rref:vector)
 	 ,@(inst:load 'WORD rref:environment (ea:environment))
 
 	 ,@(inst:label loop-label)
