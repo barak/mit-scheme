@@ -542,8 +542,8 @@ USA.
 	 ,@((or (1d-table/get flonum-2-args-methods operation #f)
 		(error "Unknown flonum operation:" operation))
 	    (float-target target)
-	    source2
 	    temp
+	    source2
 	    overflow?))))
 
 (define flonum-2-args-methods
@@ -570,21 +570,12 @@ USA.
   (POP-RETURN)
   ;; The continuation is on the stack.
   ;; The type code needs to be cleared first.
-  (current-bblock-continue!
-   (let ((pop-return
-	  (lambda ()
-	    (let ((temp (word-temporary)))
-	      (LAP ,@(inst:load 'WORD temp (ea:stack-pop))
-		   ,@(inst:object-address temp temp)
-		   ,@(inst:jump (ea:indirect temp)))))))
-     (let ((checks (get-exit-interrupt-checks)))
-       (if (null? checks)
-	   (make-new-sblock
-	    (pop-return))
-	   (make-new-sblock
-	    (LAP ,@(inst:interrupt-test-continuation)
-		 ,@(pop-return)))))))
-  (LAP))
+  (let ((checks (get-exit-interrupt-checks)))
+    (LAP ,@(clear-map!)
+	 ,@(if (null? checks) '() (inst:interrupt-test-continuation))
+	 ,@(inst:load 'WORD rref:word-0 (ea:stack-pop))
+	 ,@(inst:object-address rref:word-0 rref:word-0)
+	 ,@(inst:jump (ea:indirect rref:word-0)))))
 
 (define-rule statement
   (INVOCATION:APPLY (? frame-size) (? continuation))
@@ -709,7 +700,12 @@ USA.
 					,(make-primitive-procedure name #t))
 	  frame-size continuation
 	  (expect-no-exit-interrupt-checks)
-	  (,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+	  (%primitive-invocation
+	   ,(close-syntax (symbol-append 'TRAP: name) environment)))))))
+
+(define (%primitive-invocation make-trap)
+  (LAP ,@(clear-map!)
+       ,@(make-trap)))
 
 (define-primitive-invocation &+)
 (define-primitive-invocation &-)
