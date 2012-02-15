@@ -43,23 +43,6 @@ USA.
 
 ;; Breaking a word in two produces high and low fixnums.  If they are
 ;; two digits representing a larger number, then RADIX is their base.
-;; For a 32 bit word, (radix) is #x10000.
-;;
-;; This substitutes a constant when there is a compiler, per its
-;; target.  Else this is a reference to %radix.
-(define-syntax radix
-  (er-macro-transformer
-   (lambda (form rename compare)
-     (declare (ignore rename compare))
-     (if (not (null? (cdr form)))
-	 (syntax-error "No sub-forms allowed:" form))
-     (cond ((get-subsystem-version "LIAR/i386") #x10000)
-	   ((get-subsystem-version "LIAR/x86-64") #x100000000)
-	   (else
-	    '%RADIX)))))
-
-;; This is only needed when the target machine's word size is unknown
-;; (e.g. when compiling to C, or when there is no compiler).
 (define %radix)
 
 (set-record-type-unparser-method! rtd:alien
@@ -86,7 +69,7 @@ USA.
 	(low (%alien/low-bits alien))
 	(hex (lambda (n)
 	       (string-pad-left (number->string n 16)
-				(if (fix:= (radix) #x10000) 4 8)
+				(if (fix:= %radix #x10000) 4 8)
 				#\0))))
     (string-append (hex high) (hex low))))
 
@@ -96,11 +79,11 @@ USA.
 
 (declare (integrate-operator alien/address))
 (define (alien/address alien)
-  (+ (* (%alien/high-bits alien) (radix))
+  (+ (* (%alien/high-bits alien) %radix)
      (%alien/low-bits alien)))
 
 (define (%set-alien/address! alien address)
-  (let ((qr (integer-divide address (radix))))
+  (let ((qr (integer-divide address %radix)))
     (set-%alien/high-bits! alien (integer-divide-quotient qr))
     (set-%alien/low-bits! alien (integer-divide-remainder qr))))
 
@@ -147,7 +130,7 @@ USA.
   ;; This procedure returns ALIEN after modifying it to have an
   ;; address INCREMENT bytes away from its previous address.  If CTYPE
   ;; is specified, the type slot of ALIEN is set.
-  (let ((quotient.remainder (fix:divide increment (radix))))
+  (let ((quotient.remainder (fix:divide increment %radix)))
     (let ((new-high (fix:+ (%alien/high-bits alien)
 			   (integer-divide-quotient quotient.remainder)))
 	  (new-low (fix:+ (%alien/low-bits alien)
@@ -158,10 +141,10 @@ USA.
 	     (if (fix:zero? new-high)
 		 (error:bad-range-argument increment 'alien-byte-increment!)
 		 (begin
-		   (set-%alien/low-bits! alien (fix:+ new-low (radix)))
+		   (set-%alien/low-bits! alien (fix:+ new-low %radix))
 		   (set-%alien/high-bits! alien (fix:-1+ new-high)))))
-	    ((fix:>= new-low (radix))
-	     (set-%alien/low-bits! alien (fix:- new-low (radix)))
+	    ((fix:>= new-low %radix)
+	     (set-%alien/low-bits! alien (fix:- new-low %radix))
 	     (set-%alien/high-bits! alien (fix:1+ new-high)))
 	    (else
 	     (set-%alien/low-bits! alien new-low)
@@ -248,7 +231,7 @@ USA.
   (string-tail (%alien-function/name alienf) 4)) 
 
 (define (%set-alien-function/address! alienf address)
-  (let ((qr (integer-divide address (radix))))
+  (let ((qr (integer-divide address %radix)))
     (set-%alien-function/high-bits! alienf (integer-divide-quotient qr))
     (set-%alien-function/low-bits! alienf (integer-divide-remainder qr))))
 
