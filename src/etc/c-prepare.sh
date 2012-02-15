@@ -33,8 +33,13 @@ else
     exit 1
 fi
 
-run_cmd "${EXE}" --band runtime.com --heap 6000 --stack 200 <<EOF
+run_cmd "${EXE}" --batch-mode --library lib --band x-compiler.com <<EOF
 (begin
   (load "etc/compile.scm")
-  (c-prepare))
+  (in-liarc
+   (lambda ()
+     (compile-boot-dirs c-compile-dir))))
 EOF
+
+# distclean will not get these...
+run_cmd ./Stage.sh remove X

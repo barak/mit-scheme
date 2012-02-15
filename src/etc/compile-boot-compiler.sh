@@ -33,14 +33,38 @@ else
     exit 1
 fi
 
-run_cmd "${EXE}" --band runtime.com --heap 6000 <<EOF
-(begin
-  (load "etc/compile.scm")
-  (compile-bootstrap-1))
+run_cmd "${EXE}" --batch-mode <<EOF
+(load "etc/compile.scm")
+(compile-cref compile-dir)
+(for-each compile-dir '("runtime" "star-parser" "sf"))
 EOF
 
-run_cmd "${EXE}" --band all.com --heap 6000 <<EOF
-(begin
-  (load "etc/compile.scm")
-  (compile-bootstrap-2))
+FASL=`get_fasl_file`
+run_cmd_in_dir runtime "${EXE}" --batch-mode --library ../lib --fasl $FASL <<EOF
+(disk-save "../lib/x-runtime.com")
 EOF
+echo ""
+
+run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
+(load-option 'SF)
+(with-working-directory-pathname "compiler"
+  (lambda ()
+    (load "compiler.sf")))
+EOF
+
+run_cmd "${EXE}" --batch-mode <<EOF
+(with-working-directory-pathname "compiler"
+  (lambda ()
+    (load "compiler.cbf")))
+EOF
+
+run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
+(load-option 'SF)
+(load-option 'CREF)
+(load-option '*PARSER)
+(load-option 'COMPILER)
+(disk-save "lib/x-compiler.com")
+EOF
+
+# Remove host (native) code to STAGEX/ subdirs.
+run_cmd ./Stage.sh make X
