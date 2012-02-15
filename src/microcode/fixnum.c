@@ -281,7 +281,6 @@ DEFINE_PRIMITIVE ("FIXNUM-LSH", Prim_fixnum_lsh, 2, 2, 0)
   {
     unsigned long x = (arg_unsigned_fixnum (1));
     long y = (arg_fixnum (2));
-    unsigned long z;
 
     LOGICAL_RESULT (FIXNUM_LSH (x, y));
   }
