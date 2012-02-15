@@ -18,7 +18,7 @@ install:
 	$(mkinstalldirs) $(DESTDIR)$(RTLBASE_DIR)
 	$(mkinstalldirs) $(DESTDIR)$(RTLGEN_DIR)
 	$(mkinstalldirs) $(DESTDIR)$(RTLOPT_DIR)
-	$(INSTALL_DATA) compiler-unx.pkd $(DESTDIR)$(COMPILER-DIR)/.
+	$(INSTALL_DATA) compiler-*.pkd $(DESTDIR)$(COMPILER_DIR)/.
 	cd back ; $(INSTALL_COM) *.com $(DESTDIR)$(BACK_DIR)/.
 	cd back ; $(INSTALL_DATA) *.bci $(DESTDIR)$(BACK_DIR)/.
 	cd base ; $(INSTALL_COM) *.com $(DESTDIR)$(BASE_DIR)/.
