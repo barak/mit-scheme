@@ -34,6 +34,9 @@ USA.
 
 (define (compile-all-dirs compile-dir)
   (compile-boot-dirs compile-dir)
+  (compile-remaining-dirs compile-dir))
+
+(define (compile-remaining-dirs compile-dir)
   (compile-dir "sos")
   (with-working-directory-pathname "sos"
     (lambda ()

@@ -26,12 +26,9 @@ set -e
 
 . etc/functions.sh
 
-FASL=`get_fasl_file`
-
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib --heap 6000 \
-    --fasl "${FASL}" --batch-mode <<EOF
+    --band runtime.com --batch-mode <<EOF
 (begin
-  (disk-save "../lib/runtime.com")
   (load-option (quote compiler))
   (load-option (quote edwin))
   (disk-save "../lib/all.com"))
