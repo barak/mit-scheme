@@ -209,7 +209,7 @@ DEFINE_PRIMITIVE ("FIXNUM-QUOTIENT", Prim_fixnum_quotient, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    FIXNUM_RESULT (numerator == 0
+    FIXNUM_RESULT (denominator == 0
 		   ? (error_bad_range_arg (2), 0)
 		   : FIXNUM_QUOTIENT (numerator, denominator));
   }
@@ -221,7 +221,7 @@ DEFINE_PRIMITIVE ("FIXNUM-REMAINDER", Prim_fixnum_remainder, 2, 2, 0)
   {
     long numerator = (arg_fixnum (1));
     long denominator = (arg_fixnum (2));
-    FIXNUM_RESULT (numerator == 0
+    FIXNUM_RESULT (denominator == 0
 		   ? (error_bad_range_arg (2), 0)
 		   : FIXNUM_REMAINDER (numerator, denominator));
   }
