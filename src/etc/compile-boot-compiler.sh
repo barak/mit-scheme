@@ -34,9 +34,10 @@ else
 fi
 
 run_cmd "${EXE}" --batch-mode <<EOF
-(load "etc/compile.scm")
-(compile-cref compile-dir)
-(for-each compile-dir '("runtime" "star-parser" "sf"))
+(begin
+  (load "etc/compile.scm")
+  (compile-cref compile-dir)
+  (for-each compile-dir '("runtime" "star-parser" "sf")))
 EOF
 
 FASL=`get_fasl_file`
@@ -46,10 +47,11 @@ EOF
 echo ""
 
 run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
-(load-option 'SF)
-(with-working-directory-pathname "compiler"
-  (lambda ()
-    (load "compiler.sf")))
+(begin
+  (load-option 'SF)
+  (with-working-directory-pathname "compiler"
+    (lambda ()
+      (load "compiler.sf"))))
 EOF
 
 run_cmd "${EXE}" --batch-mode <<EOF
@@ -59,11 +61,12 @@ run_cmd "${EXE}" --batch-mode <<EOF
 EOF
 
 run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
-(load-option 'SF)
-(load-option 'CREF)
-(load-option '*PARSER)
-(load-option 'COMPILER)
-(disk-save "lib/x-compiler.com")
+(begin
+  (load-option 'SF)
+  (load-option 'CREF)
+  (load-option '*PARSER)
+  (load-option 'COMPILER)
+  (disk-save "lib/x-compiler.com"))
 EOF
 
 # Remove host (native) code to STAGEX/ subdirs.

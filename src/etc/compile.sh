@@ -27,9 +27,10 @@ set -e
 . etc/functions.sh
 
 run_cmd "${@}"<<EOF
-(load "etc/compile.scm")
-(compile-cref compile-dir)
-(for-each compile-dir '("runtime" "star-parser" "sf"))
+(begin
+  (load "etc/compile.scm")
+  (compile-cref compile-dir)
+  (for-each compile-dir '("runtime" "star-parser" "sf")))
 EOF
 
 FASL=`get_fasl_file`
@@ -40,9 +41,10 @@ EOF
 
 # Syntax the new compiler in fresh (compiler) packages.  Use the new sf too.
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
-(load-option 'SF)
-(with-working-directory-pathname "compiler/"
-  (lambda () (load "compiler.sf")))
+(begin
+  (load-option 'SF)
+  (with-working-directory-pathname "compiler/"
+    (lambda () (load "compiler.sf"))))
 EOF
 
 run_cmd "${@}"<<EOF
@@ -51,7 +53,8 @@ run_cmd "${@}"<<EOF
 EOF
 
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
-(load-option 'COMPILER)
-(load "etc/compile.scm")
-(compile-remaining-dirs compile-dir)
+(begin
+  (load-option 'COMPILER)
+  (load "etc/compile.scm")
+  (compile-remaining-dirs compile-dir))
 EOF

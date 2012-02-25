@@ -62,8 +62,9 @@ EOF
 echo "#    Re-syntax cross-compiler using x-runtime.com."
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
-(load "compiler.sf")
-(sf "base/crsend")
+(begin
+  (load "compiler.sf")
+  (sf "base/crsend"))
 EOF
 
 if [ -s compiler/compiler-unx.crf ]; then
@@ -76,11 +77,12 @@ run_cmd_in_dir compiler "${@}" --batch-mode --load compiler.cbf </dev/null
 
 echo "# Dump cross-compiler into x-compiler.com."
 run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
-(load-option 'SF)
-(load-option 'CREF)
-(load-option '*PARSER)
-(load-option 'COMPILER)
-(disk-save "lib/x-compiler.com")
+(begin
+  (load-option 'SF)
+  (load-option 'CREF)
+  (load-option '*PARSER)
+  (load-option 'COMPILER)
+  (disk-save "lib/x-compiler.com"))
 EOF
 
 echo "# Remove host code to STAGEX/ subdirs."
