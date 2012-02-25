@@ -42,11 +42,11 @@ make)
     maybe_mv *.bci "${DIRNAME}/."
     ;;
 make-cross)
-    mkdir "$DIRNAME"
-    maybe_mv *.com "$DIRNAME"
-    maybe_mv *.bci "$DIRNAME"
-    maybe_mv *.moc "$DIRNAME"
-    maybe_mv *.fni "$DIRNAME"
+    mkdir "${DIRNAME}"
+    maybe_mv *.com "${DIRNAME}"
+    maybe_mv *.bci "${DIRNAME}"
+    maybe_mv *.moc "${DIRNAME}"
+    maybe_mv *.fni "${DIRNAME}"
     ;;
 unmake)
     if [ -d "${DIRNAME}" ]; then
