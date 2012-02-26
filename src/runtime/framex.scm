@@ -136,9 +136,8 @@ USA.
 
 (define (method/force-snap-thunk frame)
   (let ((promise (stack-frame/ref frame 1)))
-    (values (%make-combination
-	     (ucode-primitive force 1)
-	     (list (make-evaluated-object promise)))
+    (values (make-combination (ucode-primitive force 1)
+			      (list (make-evaluated-object promise)))
 	    undefined-environment
 	    (cond ((promise-forced? promise) undefined-expression)
 		  ((promise-non-expression? promise) unknown-expression)
@@ -147,7 +146,7 @@ USA.
 					   (promise-expression promise)))))))
 
 (define ((method/application-frame index) frame)
-  (values (%make-combination
+  (values (make-combination
 	   (make-evaluated-object (stack-frame/ref frame index))
 	   (stack-frame-list frame (1+ index)))
 	  undefined-environment
@@ -165,17 +164,17 @@ USA.
 	  undefined-expression))
 
 (define (method/compiler-lookup-apply-trap-restart frame)
-  (values (%make-combination (make-variable (stack-frame/ref frame 2))
-			     (stack-frame-list frame 6))
+  (values (make-combination (make-variable (stack-frame/ref frame 2))
+			    (stack-frame-list frame 6))
 	  (stack-frame/ref frame 3)
 	  undefined-expression))
 
 (define (method/compiler-error-restart frame)
   (let ((primitive (stack-frame/ref frame 2)))
     (if (primitive-procedure? primitive)
-	(values (%make-combination (make-variable 'apply)
-				   (list primitive
-					 unknown-expression))
+	(values (make-combination (make-variable 'apply)
+				  (list primitive
+					unknown-expression))
 		undefined-environment
 		undefined-expression)
 	(stack-frame/debugging-info/default frame))))

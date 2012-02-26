@@ -3647,8 +3647,6 @@ USA.
 	  unassigned?-name
 	  unassigned??
 	  undefined-conditional-branch)
-  (export (runtime debugging-info)
-	  %make-combination)
   (initialization (initialize-package!)))
 
 (define-package (runtime scode-data)
