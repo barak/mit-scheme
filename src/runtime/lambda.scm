@@ -297,7 +297,7 @@ USA.
 		    (car auxiliary)
 		    (append (cdr auxiliary)
 			    (lambda-body-auxiliary (slambda-body internal)))
-		    (clexpr-unwrapped-body clexpr)))))))
+		    (clexpr/physical-body clexpr)))))))
 
 (define (clexpr-bound clexpr)
   (slexpr-components clexpr
@@ -427,17 +427,6 @@ USA.
   (append (let ((names (%xlambda-names-vector xlambda)))
 	    (subvector->list names 1 (vector-length names)))
 	  (lambda-body-auxiliary (%xlambda-body xlambda))))
-
-(define (xlambda-names-vector xlambda)
-  (&triple-second xlambda))
-
-(define (xlambda-name xlambda)
-  (vector-ref (&triple-second xlambda) 0))
-
-(define (xlambda-bound xlambda)
-  (append (let ((names (&triple-second xlambda)))
-	    (subvector->list names 1 (vector-length names)))
-	  (lambda-body-auxiliary (&triple-first xlambda))))
 
 (define (xlambda-has-internal-lambda? xlambda)
   (lambda-body-has-internal-lambda? (&triple-first xlambda)))
