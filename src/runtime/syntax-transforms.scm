@@ -35,19 +35,21 @@ USA.
   (make-expander-item
    (lambda (form use-environment)
      (close-syntax (transformer form use-environment)
-		   closing-environment))))
+		   (->syntactic-environment closing-environment)))))
 
 (define (rsc-macro-transformer->expander transformer closing-environment)
   (make-expander-item
    (lambda (form use-environment)
-     (close-syntax (transformer form closing-environment)
+     (close-syntax (transformer form
+				(->syntactic-environment closing-environment))
 		   use-environment))))
 
 (define (er-macro-transformer->expander transformer closing-environment)
   (make-expander-item
    (lambda (form use-environment)
      (close-syntax (transformer form
-				(make-er-rename closing-environment)
+				(make-er-rename
+				 (->syntactic-environment closing-environment))
 				(make-er-compare use-environment))
 		   use-environment))))
 
