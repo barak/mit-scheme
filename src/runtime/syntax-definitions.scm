@@ -30,12 +30,12 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (create-bindings system-global-environment))
+  (create-bindings (->syntactic-environment system-global-environment)))
 
-(define (create-bindings environment)
+(define (create-bindings senv)
 
   (define (def name item)
-    (syntactic-environment/define environment name item))
+    (syntactic-environment/define senv name item))
 
   (define (define-classifier name classifier)
     (def name (make-classifier-item classifier)))

@@ -4628,6 +4628,7 @@ USA.
 	  guarantee-syntactic-environment
 	  syntactic-environment?)
   (export (runtime syntax)
+	  ->syntactic-environment
 	  bind-variable!
 	  make-internal-syntactic-environment
 	  make-partial-syntactic-environment

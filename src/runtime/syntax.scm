@@ -48,17 +48,14 @@ USA.
 
 (define (syntax* forms environment)
   (guarantee-list forms 'SYNTAX*)
-  (guarantee-syntactic-environment environment 'SYNTAX*)
-  (fluid-let ((*rename-database* (initial-rename-database)))
-    (output/post-process-expression
-     (if (syntactic-environment/top-level? environment)
-	 (compile-body-item/top-level
-	  (let ((environment
-		 (make-top-level-syntactic-environment environment)))
-	    (classify/body forms
-			   environment
-			   environment)))
-	 (output/sequence (compile/expressions forms environment))))))
+  (let ((senv (->syntactic-environment environment 'SYNTAX*)))
+    (fluid-let ((*rename-database* (initial-rename-database)))
+      (output/post-process-expression
+       (if (syntactic-environment/top-level? senv)
+	   (compile-body-item/top-level
+	    (let ((senv (make-top-level-syntactic-environment senv)))
+	      (classify/body forms senv senv)))
+	   (output/sequence (compile/expressions forms senv)))))))
 
 (define (compile/expression expression environment)
   (compile-item/expression (classify/expression expression environment)))
@@ -80,18 +77,18 @@ USA.
 (define-guarantee syntactic-closure "syntactic closure")
 
 (define (make-syntactic-closure environment free-names form)
-  (guarantee-syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)
-  (guarantee-list-of-type free-names identifier?
-			  "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
-  (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
-	  (and (syntactic-closure? form)
-	       (null? (syntactic-closure/free-names form))
-	       (not (identifier? (syntactic-closure/form form))))
-	  (not (or (syntactic-closure? form)
-		   (pair? form)
-		   (symbol? form))))
-      form
-      (%make-syntactic-closure environment free-names form)))
+  (let ((senv (->syntactic-environment environment 'MAKE-SYNTACTIC-CLOSURE)))
+    (guarantee-list-of-type free-names identifier?
+			    "list of identifiers" 'MAKE-SYNTACTIC-CLOSURE)
+    (if (or (memq form free-names)	;LOOKUP-IDENTIFIER assumes this.
+	    (and (syntactic-closure? form)
+		 (null? (syntactic-closure/free-names form))
+		 (not (identifier? (syntactic-closure/form form))))
+	    (not (or (syntactic-closure? form)
+		     (pair? form)
+		     (symbol? form))))
+	form
+	(%make-syntactic-closure senv free-names form))))
 
 (define (strip-syntactic-closures object)
   (if (let loop ((object object))

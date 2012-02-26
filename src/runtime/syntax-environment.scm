@@ -28,86 +28,54 @@ USA.
 
 (declare (usual-integrations))
 
-(define (syntactic-environment? object)
-  (or (internal-syntactic-environment? object)
-      (top-level-syntactic-environment? object)
-      (environment? object)
-      (partial-syntactic-environment? object)
-      (null-syntactic-environment? object)))
+(define-record-type <syntactic-environment>
+    (make-senv ops state)
+    syntactic-environment?
+  (ops senv-ops)
+  (state senv-state))
 
 (define-guarantee syntactic-environment "syntactic environment")
 
-(define (syntactic-environment/top-level? object)
-  (or (top-level-syntactic-environment? object)
-      (interpreter-environment? object)))
+(define-record-type <senv-ops>
+    (make-senv-ops type lookup define rename ->environment)
+    senv-ops?
+  (type senv-ops:type)
+  (lookup senv-ops:lookup)
+  (define senv-ops:define)
+  (rename senv-ops:rename)
+  (->environment senv-ops:->environment))
 
-(define (syntactic-environment/lookup environment name)
-  (cond ((internal-syntactic-environment? environment)
-	 (internal-syntactic-environment/lookup environment name))
-	((top-level-syntactic-environment? environment)
-	 (top-level-syntactic-environment/lookup environment name))
-	((environment? environment)
-	 (and (symbol? name)
-	      (environment/lookup environment name)))
-	((partial-syntactic-environment? environment)
-	 (partial-syntactic-environment/lookup environment name))
-	((null-syntactic-environment? environment)
-	 (null-syntactic-environment/lookup environment name))
+(define (->syntactic-environment object #!optional caller)
+  (cond ((environment? object)
+	 (runtime-environment->syntactic-environment object))
+	((syntactic-environment? object)
+	 object)
 	(else
-	 (error:not-syntactic-environment environment
-					  'SYNTACTIC-ENVIRONMENT/LOOKUP))))
+	 (error:not-syntactic-environment object caller))))
 
-(define (syntactic-environment/define environment name item)
-  (cond ((internal-syntactic-environment? environment)
-	 (internal-syntactic-environment/define environment name item))
-	((top-level-syntactic-environment? environment)
-	 (top-level-syntactic-environment/define environment name item))
-	((environment? environment)
-	 (environment/define environment name item))
-	((partial-syntactic-environment? environment)
-	 (partial-syntactic-environment/define environment name item))
-	((null-syntactic-environment? environment)
-	 (null-syntactic-environment/define environment name item))
-	(else
-	 (error:not-syntactic-environment environment
-					  'SYNTACTIC-ENVIRONMENT/DEFINE))))
+(define (senv-type senv)
+  ((senv-ops:type (senv-ops senv)) (senv-state senv)))
 
-(define (syntactic-environment/rename environment name)
-  (cond ((internal-syntactic-environment? environment)
-	 (internal-syntactic-environment/rename environment name))
-	((top-level-syntactic-environment? environment)
-	 (top-level-syntactic-environment/rename environment name))
-	((environment? environment)
-	 (environment/rename environment name))
-	((partial-syntactic-environment? environment)
-	 (partial-syntactic-environment/rename environment name))
-	((null-syntactic-environment? environment)
-	 (null-syntactic-environment/rename environment name))
-	(else
-	 (error:not-syntactic-environment environment
-					  'SYNTACTIC-ENVIRONMENT/RENAME))))
+(define (syntactic-environment/top-level? senv)
+  (let ((type (senv-type senv)))
+    (or (eq? type 'top-level)
+	(eq? type 'runtime-top-level))))
 
-(define (syntactic-environment->environment environment)
-  (cond ((internal-syntactic-environment? environment)
-	 (internal-syntactic-environment->environment environment))
-	((top-level-syntactic-environment? environment)
-	 (top-level-syntactic-environment->environment environment))
-	((environment? environment)
-	 environment)
-	((partial-syntactic-environment? environment)
-	 (partial-syntactic-environment->environment environment))
-	((null-syntactic-environment? environment)
-	 (null-syntactic-environment->environment environment))
-	(else
-	 (error:not-syntactic-environment
-	  environment
-	  'SYNTACTIC-ENVIRONMENT->ENVIRONMENT))))
+(define (syntactic-environment/lookup senv name)
+  ((senv-ops:lookup (senv-ops senv)) (senv-state senv) name))
 
-(define (bind-variable! environment name)
-  (let ((rename (syntactic-environment/rename environment name)))
-    (syntactic-environment/define environment
-				  name
-				  (make-variable-item rename))
+(define (syntactic-environment/define senv name item)
+  ((senv-ops:define (senv-ops senv)) (senv-state senv) name item))
+
+(define (syntactic-environment/rename senv name)
+  ((senv-ops:rename (senv-ops senv)) (senv-state senv) name))
+
+(define (syntactic-environment->environment senv)
+  ((senv-ops:->environment (senv-ops senv)) (senv-state senv)))
+
+(define (bind-variable! senv name)
+  (let ((rename (syntactic-environment/rename senv name)))
+    (syntactic-environment/define senv name (make-variable-item rename))
     rename))
 
 ;;; Null syntactic environments signal an error for any operation.
@@ -115,190 +83,188 @@ USA.
 ;;; prevent illegal use of definitions) and to seal off environments
 ;;; used in magic keywords.
 
-(define-record-type <null-syntactic-environment>
-    (%make-null-syntactic-environment)
-    null-syntactic-environment?)
+(define null-senv-ops
+  (make-senv-ops
+   (lambda (state)
+     state
+     'null)
+   (lambda (state name)
+     state
+     (error "Can't lookup name in null syntactic environment:" name))
+   (lambda (state name item)
+     state
+     (error "Can't bind name in null syntactic environment:" name item))
+   (lambda (state name)
+     state
+     (error "Can't rename name in null syntactic environment:" name))
+   (lambda (state)
+     state
+     (error "Can't evaluate in null syntactic environment."))))
 
 (define null-syntactic-environment
-  (%make-null-syntactic-environment))
-
-(define (null-syntactic-environment/lookup environment name)
-  environment
-  (error "Can't lookup name in null syntactic environment:" name))
-
-(define (null-syntactic-environment/define environment name item)
-  environment
-  (error "Can't bind name in null syntactic environment:" name item))
-
-(define (null-syntactic-environment/rename environment name)
-  environment
-  (error "Can't rename name in null syntactic environment:" name))
-
-(define (null-syntactic-environment->environment environment)
-  environment
-  (error "Can't evaluate in null syntactic environment."))
+  (make-senv null-senv-ops unspecific))
 
 ;;; Runtime environments can be used to look up keywords, but can't be
 ;;; modified.
 
-(define (environment/lookup environment name)
-  (let ((item (environment-lookup-macro environment name)))
-    (if (procedure? item)
-	;; **** Kludge to support bootstrapping.
-	(non-hygienic-macro-transformer->expander item environment)
-	item)))
+(define (runtime-environment->syntactic-environment env)
+  (guarantee-environment env 'environment->syntactic-environment)
+  (make-senv runtime-senv-ops env))
 
-(define (environment/define environment name item)
-  (environment-define-macro environment name item))
-
-(define (environment/rename environment name)
-  environment
-  (rename-top-level-identifier name))
+(define runtime-senv-ops
+  (make-senv-ops
+   (lambda (env)
+     (if (interpreter-environment? env) 'runtime-top-level 'runtime))
+   (lambda (env name)
+     (and (symbol? name)
+	  (let ((item (environment-lookup-macro env name)))
+	    (if (procedure? item)
+		;; **** Kludge to support bootstrapping.
+		(non-hygienic-macro-transformer->expander item env)
+		item))))
+   (lambda (env name item)
+     (environment-define-macro env name item))
+   (lambda (env name)
+     env
+     (rename-top-level-identifier name))
+   (lambda (env)
+     env)))
 
 ;;; Top-level syntactic environments represent top-level environments.
 ;;; They are always layered over a real syntactic environment.
 
-(define-record-type <top-level-syntactic-environment>
-    (%make-top-level-syntactic-environment parent bound)
-    top-level-syntactic-environment?
-  (parent top-level-syntactic-environment/parent)
-  (bound top-level-syntactic-environment/bound
-	 set-top-level-syntactic-environment/bound!))
-
 (define (make-top-level-syntactic-environment parent)
-  (guarantee-syntactic-environment parent
-				   'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT)
-  (if (not (or (syntactic-environment/top-level? parent)
-	       (null-syntactic-environment? parent)))
+  (guarantee-syntactic-environment parent 'make-top-level-syntactic-environment)
+  (if (not (let ((type (senv-type parent)))
+	     (or (eq? type 'top-level)
+		 (eq? type 'runtime-top-level)
+		 (eq? type 'null))))
       (error:bad-range-argument parent "top-level syntactic environment"
-				'MAKE-TOP-LEVEL-SYNTACTIC-ENVIRONMENT))
-  (%make-top-level-syntactic-environment parent '()))
+				'make-top-level-syntactic-environment))
+  (make-senv tl-senv-ops (make-tl-state parent '())))
 
-(define (top-level-syntactic-environment/lookup environment name)
-  (let ((binding
-	 (assq name (top-level-syntactic-environment/bound environment))))
-    (if binding
-	(cdr binding)
-	(syntactic-environment/lookup
-	 (top-level-syntactic-environment/parent environment)
-	 name))))
+(define-record-type <tl-state>
+    (make-tl-state parent bound)
+    tl-state?
+  (parent tl-state-parent)
+  (bound tl-state-bound set-tl-state-bound!))
 
-(define (top-level-syntactic-environment/define environment name item)
-  (let ((bound (top-level-syntactic-environment/bound environment)))
-    (let ((binding (assq name bound)))
-      (if binding
-	  (set-cdr! binding item)
-	  (set-top-level-syntactic-environment/bound!
-	   environment
-	   (cons (cons name item) bound))))))
-
-(define (top-level-syntactic-environment/rename environment name)
-  environment
-  (rename-top-level-identifier name))
-
-(define (top-level-syntactic-environment->environment environment)
-  (syntactic-environment->environment
-   (top-level-syntactic-environment/parent environment)))
+(define tl-senv-ops
+  (make-senv-ops
+   (lambda (state)
+     state
+     'top-level)
+   (lambda (state name)
+     (let ((binding (assq name (tl-state-bound state))))
+       (if binding
+	   (cdr binding)
+	   (syntactic-environment/lookup (tl-state-parent state) name))))
+   (lambda (state name item)
+     (let ((bound (tl-state-bound state)))
+       (let ((binding (assq name bound)))
+	 (if binding
+	     (set-cdr! binding item)
+	     (set-tl-state-bound! state (cons (cons name item) bound))))))
+   (lambda (state name)
+     state
+     (rename-top-level-identifier name))
+   (lambda (state)
+     (syntactic-environment->environment (tl-state-parent state)))))
 
 ;;; Internal syntactic environments represent environments created by
 ;;; procedure application.
 
-(define-record-type <internal-syntactic-environment>
-    (%make-internal-syntactic-environment parent bound free rename-state)
-    internal-syntactic-environment?
-  (parent internal-syntactic-environment/parent)
-  (bound internal-syntactic-environment/bound
-	 set-internal-syntactic-environment/bound!)
-  (free internal-syntactic-environment/free
-	set-internal-syntactic-environment/free!)
-  (rename-state internal-syntactic-environment/rename-state))
-
 (define (make-internal-syntactic-environment parent)
-  (guarantee-syntactic-environment parent 'MAKE-INTERNAL-SYNTACTIC-ENVIRONMENT)
-  (%make-internal-syntactic-environment parent '() '() (make-rename-id)))
+  (guarantee-syntactic-environment parent 'make-internal-syntactic-environment)
+  (make-senv internal-senv-ops
+	     (make-internal-state parent '() '() (make-rename-id))))
 
-(define (internal-syntactic-environment/lookup environment name)
-  (let ((binding
-	 (or (assq name (internal-syntactic-environment/bound environment))
-	     (assq name (internal-syntactic-environment/free environment)))))
-    (if binding
-	(cdr binding)
-	(let ((item
-	       (syntactic-environment/lookup
-		(internal-syntactic-environment/parent environment)
-		name)))
-	  (set-internal-syntactic-environment/free!
-	   environment
-	   (cons (cons name item)
-		 (internal-syntactic-environment/free environment)))
-	  item))))
+(define-record-type <internal-state>
+    (make-internal-state parent bound free rename-state)
+    internal-state?
+  (parent internal-state-parent)
+  (bound internal-state-bound set-internal-state-bound!)
+  (free internal-state-free set-internal-state-free!)
+  (rename-state internal-state-rename-state))
 
-(define (internal-syntactic-environment/define environment name item)
-  (cond ((assq name (internal-syntactic-environment/bound environment))
-	 => (lambda (binding)
-	      (set-cdr! binding item)))
-	((assq name (internal-syntactic-environment/free environment))
-	 (if (reserved-name-item? item)
-	     (syntax-error "Premature reference to reserved name:" name)
-	     (error "Can't define name; already free:" name)))
-	(else
-	 (set-internal-syntactic-environment/bound!
-	  environment
-	  (cons (cons name item)
-		(internal-syntactic-environment/bound environment))))))
-
-(define (internal-syntactic-environment/rename environment name)
-  (rename-identifier
-   name
-   (internal-syntactic-environment/rename-state environment)))
-
-(define (internal-syntactic-environment->environment environment)
-  (syntactic-environment->environment
-   (internal-syntactic-environment/parent environment)))
+(define internal-senv-ops
+  (make-senv-ops
+   (lambda (state)
+     state
+     'internal)
+   (lambda (state name)
+     (let ((binding
+	    (or (assq name (internal-state-bound state))
+		(assq name (internal-state-free state)))))
+       (if binding
+	   (cdr binding)
+	   (let ((item
+		  (syntactic-environment/lookup (internal-state-parent state)
+						name)))
+	     (set-internal-state-free! state
+				       (cons (cons name item)
+					     (internal-state-free state)))
+	     item))))
+   (lambda (state name item)
+     (cond ((assq name (internal-state-bound state))
+	    => (lambda (binding)
+		 (set-cdr! binding item)))
+	   ((assq name (internal-state-free state))
+	    (if (reserved-name-item? item)
+		(syntax-error "Premature reference to reserved name:" name)
+		(error "Can't define name; already free:" name)))
+	   (else
+	    (set-internal-state-bound! state
+				       (cons (cons name item)
+					     (internal-state-bound state))))))
+   (lambda (state name)
+     (rename-identifier name (internal-state-rename-state state)))
+   (lambda (state)
+     (syntactic-environment->environment (internal-state-parent state)))))
 
 ;;; Partial syntactic environments are used to implement syntactic
 ;;; closures that have free names.
 
-(define-record-type <partial-syntactic-environment>
-    (%make-partial-syntactic-environment names
-					 names-environment
-					 else-environment)
-    partial-syntactic-environment?
-  (names partial-syntactic-environment/names)
-  (names-environment partial-syntactic-environment/names-environment)
-  (else-environment partial-syntactic-environment/else-environment))
-
-(define (make-partial-syntactic-environment names
-					    names-environment
-					    else-environment)
+(define (make-partial-syntactic-environment names names-senv else-senv)
+  (guarantee-list-of-unique-symbols names 'make-partial-syntactic-environment)
+  (guarantee-syntactic-environment names-senv
+				   'make-partial-syntactic-environment)
+  (guarantee-syntactic-environment else-senv
+				   'make-partial-syntactic-environment)
   (if (or (null? names)
-	  (eq? names-environment else-environment))
-      else-environment
-      (%make-partial-syntactic-environment names
-					   names-environment
-					   else-environment)))
+	  (eq? names-senv else-senv))
+      else-senv
+      (make-senv partial-senv-ops
+		 (%make-partial-state names names-senv else-senv))))
 
-(define (partial-syntactic-environment/lookup environment name)
-  (syntactic-environment/lookup
-   (if (memq name (partial-syntactic-environment/names environment))
-       (partial-syntactic-environment/names-environment environment)
-       (partial-syntactic-environment/else-environment environment))
-   name))
+(define-record-type <partial-state>
+    (%make-partial-state names names-senv else-senv)
+    partial-state?
+  (names partial-state-names)
+  (names-senv partial-state-names-senv)
+  (else-senv partial-state-else-senv))
 
-(define (partial-syntactic-environment/define environment name item)
-  ;; **** Shouldn't this be a syntax error?  It can happen as the
-  ;; result of a misplaced definition.  ****
-  (error "Can't bind name in partial syntactic environment:"
-	 environment name item))
-
-(define (partial-syntactic-environment/rename environment name)
-  (syntactic-environment/rename
-   (if (memq name (partial-syntactic-environment/names environment))
-       (partial-syntactic-environment/names-environment environment)
-       (partial-syntactic-environment/else-environment environment))
-   name))
-
-(define (partial-syntactic-environment->environment environment)
-  ;; **** Shouldn't this be a syntax error?  It can happen as the
-  ;; result of a partially-closed transformer.  ****
-  (error "Can't evaluate in partial syntactic environment:" environment))
+(define partial-senv-ops
+  (make-senv-ops
+   (lambda (state)
+     state
+     'partial)
+   (lambda (state name)
+     (syntactic-environment/lookup (if (memq name (partial-state-names state))
+				       (partial-state-names-senv state)
+				       (partial-state-else-senv state))
+				   name))
+   (lambda (state name item)
+     ;; **** Shouldn't this be a syntax error?  It can happen as the
+     ;; result of a misplaced definition.  ****
+     (error "Can't bind name in partial syntactic environment:"
+	    state name item))
+   (lambda (state name)
+     (syntactic-environment/rename (if (memq name (partial-state-names state))
+				       (partial-state-names-senv state)
+				       (partial-state-else-senv state))
+				   name))
+   (lambda (state)
+     ;; **** Shouldn't this be a syntax error?  It can happen as the
+     ;; result of a partially-closed transformer.  ****
+     (error "Can't evaluate in partial syntactic environment:" state))))
