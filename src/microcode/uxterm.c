@@ -51,6 +51,12 @@ extern int UX_terminal_control_ok (int fd);
 #    endif
 #  endif /* HAVE_SGTTY_H */
 #endif /* not HAVE_TERMIOS_H nor HAVE_TERMIO_H */
+
+#if defined(HAVE_POSIX_OPENPT) || defined(HAVE_OPENPTY)
+#  undef TRY_OPEN_PTY_MASTER_BSD
+#else 
+#  define TRY_OPEN_PTY_MASTER_BSD 1
+#endif
 
 struct terminal_state
 {
@@ -732,6 +738,8 @@ OS_have_ptys_p (void)
 #endif
 }
 
+#ifdef TRY_OPEN_PTY_MASTER_BSD
+
 static const char *
 open_pty_master_bsd (Tchannel * master_fd, const char ** master_fname)
 {
@@ -770,11 +778,18 @@ open_pty_master_bsd (Tchannel * master_fd, const char ** master_fname)
   return (0);
 }
 
+#endif /* not TRY_OPEN_PTY_MASTER_BSD */
+
 #ifndef O_NOCTTY
 #  define O_NOCTTY 0
 #endif
 
-/* Open an available pty, putting channel in (*ptyv),
+/* Don't use posix_openpt in Mac OS X; openpty works properly. */
+#ifdef __APPLE__
+#  undef HAVE_POSIX_OPENPT
+#endif
+
+/* Open an available pty, putting channel in (*master_fd),
    and return the file name of the pty.
    Signal error if none available.  */
 
@@ -785,11 +800,27 @@ OS_open_pty_master (Tchannel * master_fd, const char ** master_fname)
   while (1)
     {
       static char slave_name [24];
+#ifdef HAVE_POSIX_OPENPT
+      int fd = (posix_openpt (O_RDWR | O_NOCTTY));
+#else
+#ifdef HAVE_OPENPTY
+      int fd;
+      {
+	int slave_fd;
+	int rc = (openpty ((&fd), (&slave_fd), slave_name, 0, 0));
+	if (rc < 0)
+	  fd = -1;
+	else
+	  (void) UX_close(slave_fd);
+      }
+#else
 #ifdef HAVE_GETPT
       int fd = (getpt ());
 #else
       int fd = (UX_open ("/dev/ptmx", (O_RDWR | O_NOCTTY), 0));
-#endif
+#endif /* not HAVE_GETPT */
+#endif /* not HAVE_OPENPTY */
+#endif /* not HAVE_POSIX_OPENPT */
       if (fd < 0)
 	{
 	  if (errno == EINTR)
@@ -797,9 +828,13 @@ OS_open_pty_master (Tchannel * master_fd, const char ** master_fname)
 	      deliver_pending_interrupts ();
 	      continue;
 	    }
+#ifdef TRY_OPEN_PTY_MASTER_BSD
 	  /* Try BSD open.  This is needed for Linux which might have
 	     Unix98 support in the library but not the kernel.  */
 	  return (open_pty_master_bsd (master_fd, master_fname));
+#else
+	  return (0);
+#endif
 	}
 #ifdef sonyrisc
       sony_block_sigchld ();

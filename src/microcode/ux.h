@@ -296,6 +296,10 @@ USA.
 #include <stropts.h>
 #endif
 
+#ifdef HAVE_UTIL_H
+#  include <util.h>
+#endif
+
 #include "intext.h"
 #include "dstack.h"
 #include "osscheme.h"
