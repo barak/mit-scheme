@@ -685,8 +685,8 @@ Back_Trace (outf_channel stream)
 	  break;
 	}
 #endif
-      Temp = (STACK_POP ());
       outf (stream, "{%#lx}", ((unsigned long) stack_pointer));
+      Temp = (STACK_POP ());
       if (RETURN_CODE_P (Temp))
 	{
 	  if (print_one_continuation_frame (stream, Temp))
