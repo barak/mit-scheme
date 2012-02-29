@@ -489,7 +489,7 @@ USA.
 
 ;; global variable used by runtime/udata.scm -- Moby yuck!
 
-(set! compiled-code-block/bytes-per-object 4)
+(set! compiled-code-block/bytes-per-object address-units-per-object)
 
 
 ;;;; i386/dasm3.scm
