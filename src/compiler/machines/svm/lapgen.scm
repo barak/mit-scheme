@@ -151,9 +151,12 @@ USA.
 
 (define (load-constant target object)
   (if (non-pointer-object? object)
-      (inst:load-non-pointer target
-			     (object-type object)
-			     (careful-object-datum object))
+      (let ((datum (if (fix:fixnum? object)
+		       object 		;Need a signed integer here.
+		       (object-datum object))))
+	(if (>= datum signed-fixnum/upper-limit)
+	    (error "Can't encode non-pointer datum:" datum))
+	(inst:load-non-pointer target (object-type object) datum))
       (inst:load 'WORD target (ea:address (constant->label object)))))
 
 (define (simple-branches! condition source1 #!optional source2)
@@ -231,6 +234,8 @@ USA.
 		  (rtl:cons-pointer-type expression)))
 	   (datum (rtl:machine-constant-value
 		   (rtl:cons-pointer-datum expression))))
+       (if (>= datum signed-fixnum/upper-limit)
+	   (error "Can't encode pointer datum:" datum))
        (prefix-instructions!
 	(LAP ,@(inst:load-non-pointer temp type datum)))
        temp))

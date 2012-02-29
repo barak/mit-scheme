@@ -212,12 +212,6 @@ USA.
   value)
 
 (define-code-sequence instruction
-  (load-immediate (_ target word-register)
-		  (_ value unsigned-integer))
-  target
-  value)
-
-(define-code-sequence instruction
   (load-immediate (_ target float-register)
 		  (_ value float))
   target
@@ -250,7 +244,7 @@ USA.
 (define-code-sequence instruction
   (load-non-pointer (_ target word-register)
 		    (_ type type-operand)
-		    (_ datum unsigned-integer))
+		    (_ datum signed-integer))
   target
   type
   datum)

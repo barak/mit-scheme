@@ -466,27 +466,6 @@ DEFINE_INST (load_immediate_wr_s32)
   NEXT_PC;
 }
 
-DEFINE_INST (load_immediate_wr_u8)
-{
-  DECODE_SVM1_INST_LOAD_IMMEDIATE_WR_U8 (target, value);
-  WREG_SET (target, value);
-  NEXT_PC;
-}
-
-DEFINE_INST (load_immediate_wr_u16)
-{
-  DECODE_SVM1_INST_LOAD_IMMEDIATE_WR_U16 (target, value);
-  WREG_SET (target, value);
-  NEXT_PC;
-}
-
-DEFINE_INST (load_immediate_wr_u32)
-{
-  DECODE_SVM1_INST_LOAD_IMMEDIATE_WR_U32 (target, value);
-  WREG_SET (target, value);
-  NEXT_PC;
-}
-
 DEFINE_INST (load_immediate_fr_flt)
 {
   DECODE_SVM1_INST_LOAD_IMMEDIATE_FR_FLT (target, value);
@@ -503,44 +482,44 @@ DEFINE_INST (load_immediate_fr_flt)
 
 #define X_OBJECT_ADDRESS(o) ((word_t) (OBJECT_ADDRESS (o)))
 
-DEFINE_INST (load_non_pointer_tc_u8)
+DEFINE_INST (load_non_pointer_tc_s8)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_U8 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_S8 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT (type, datum)));
   NEXT_PC;
 }
 
-DEFINE_INST (load_non_pointer_tc_u16)
+DEFINE_INST (load_non_pointer_tc_s16)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_U16 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_S16 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT (type, datum)));
   NEXT_PC;
 }
 
-DEFINE_INST (load_non_pointer_tc_u32)
+DEFINE_INST (load_non_pointer_tc_s32)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_U32 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_TC_S32 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT (type, datum)));
   NEXT_PC;
 }
 
-DEFINE_INST (load_non_pointer_wr_u8)
+DEFINE_INST (load_non_pointer_wr_s8)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_U8 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_S8 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT ((WREG_REF (type)), datum)));
   NEXT_PC;
 }
 
-DEFINE_INST (load_non_pointer_wr_u16)
+DEFINE_INST (load_non_pointer_wr_s16)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_U16 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_S16 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT ((WREG_REF (type)), datum)));
   NEXT_PC;
 }
 
-DEFINE_INST (load_non_pointer_wr_u32)
+DEFINE_INST (load_non_pointer_wr_s32)
 {
-  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_U32 (target, type, datum);
+  DECODE_SVM1_INST_LOAD_NON_POINTER_WR_S32 (target, type, datum);
   WREG_SET (target, (X_MAKE_OBJECT ((WREG_REF (type)), datum)));
   NEXT_PC;
 }
