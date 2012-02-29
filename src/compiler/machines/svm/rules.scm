@@ -131,6 +131,8 @@ USA.
   (ASSIGN (REGISTER (? target))
 	  (CONS-NON-POINTER (MACHINE-CONSTANT (? type))
 			    (MACHINE-CONSTANT (? datum))))
+  (if (>= datum signed-fixnum/upper-limit)
+      (error "Can't encode non-pointer datum:" datum))
   (inst:load-non-pointer (word-target target)
 			 type
 			 datum))
@@ -638,12 +640,11 @@ USA.
 		     (global-uuo-link-label name frame-size)))))
 
 (define-rule statement
-  (INVOCATION:CACHE-REFERENCE (? frame-size)
-			      (? continuation)
-			      (REGISTER (? extension)))
+  (INVOCATION:CACHE-REFERENCE (? frame-size) (? continuation) (? extension))
+  (QUALIFIER (interpreter-call-argument? extension))
   continuation
   (expect-no-exit-interrupt-checks)
-  (let ((rref:cache-addr (word-source extension))
+  (let ((rref:cache-addr (interpreter-call-temporary extension))
 	(rref:block-addr (word-temporary))
 	(rref:frame-size (word-temporary)))
     (LAP ,@(clear-map!)
@@ -654,13 +655,11 @@ USA.
 
 #| There is no comutil_lookup_apply, no (trap:lookup-apply ...) instruction.
  (define-rule statement
-  (INVOCATION:LOOKUP (? frame-size)
-		     (? continuation)
-		     (REGISTER (? environment))
-		     (? name))
+  (INVOCATION:LOOKUP (? frame-size) (? continuation) (? environment) (? name))
+  (QUALIFIER (interpreter-call-argument? environment))
   continuation
   (expect-no-entry-interrupt-checks)
-  (let ((rref:environment (word-source environment))
+  (let ((rref:environment (interpreter-call-temporary environment))
 	(rref:frame-size (word-temporary))
 	(rref:name (word-temporary)))
     (LAP ,@(clear-map!)
@@ -1350,10 +1349,10 @@ USA.
   (QUALIFIER (and (interpreter-call-argument? extension)
 		  (interpreter-call-argument? value)))
   cont					; ignored
-  (let* ((cache (interpreter-call-temporary extension))
-	 (value (interpreter-call-temporary value)))
-   (LAP ,@(clear-map!)
-	,@(trap:assignment cache value))))
+  (let ((cache (interpreter-call-temporary extension))
+	(value (interpreter-call-temporary value)))
+    (LAP ,@(clear-map!)
+	 ,@(trap:assignment cache value))))
 
 (define-rule statement
   (INTERPRETER-CALL:CACHE-UNASSIGNED? (? cont) (? extension))
