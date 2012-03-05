@@ -216,6 +216,34 @@ write_u16 (unsigned int n, insn_t * address)
    0x2C    value cell 2
    0x30    value cell 3
 
+   On a 64-bit machine:
+
+   0x00    TC_MANIFEST_CLOSURE | n_words == 10
+
+   0x08    count == 3
+   0x0A    4 unused bytes
+   0x0E    2 cc-entry type (arity) bytes
+
+   0x10    SVM1_INST_ENTER_CLOSURE (this first entry must be word aligned)
+   0x11    index == 0
+   0x13    2 cc-entry type (arity) bytes
+   0x15    SVM1_INST_ENTER_CLOSURE
+   0x16    index == 1
+
+   0x18    2 cc-entry type (arity) bytes
+   0x1A    SVM1_INST_ENTER_CLOSURE
+   0x1B    index == 2
+   0x1D    3 padding bytes
+
+   0x20    target 0
+   0x28    target 1
+   0x30    target 2
+
+   0x38    value cell 0
+   0x40    value cell 1
+   0x48    value cell 2
+   0x50    value cell 3
+
    */
 
 unsigned long
