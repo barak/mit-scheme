@@ -51,13 +51,10 @@ USA.
    macro expanding to a function call.  WTF?  Unix sucks.  */
 #undef ospeed
 
-#if defined(HAVE_TERM_H) || defined(HAVE_TERMCAP_H)
-#  ifdef HAVE_TERM_H
-#    include <term.h>
-#  endif
-#  ifdef HAVE_TERMCAP_H
-#   include <termcap.h>
-#  endif
+#if defined(HAVE_TERM_H)
+#  include <term.h>
+#elif defined(HAVE_TERMCAP_H)
+#  include <termcap.h>
 #else
    extern int tgetent (char *, const char *);
    extern int tgetnum (const char *);
