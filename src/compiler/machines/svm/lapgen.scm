@@ -61,19 +61,16 @@ USA.
 	 (error:bad-range-argument source #f))))
 
 (define (home->register-transfer source target)
-  (warn "Unspilled:" source "->" target)
   (LAP ,@(inst:load (register-type source)
 		    (register-reference target)
 		    (home source))))
 
 (define (register->home-transfer source target)
-  (warn "Spilled:" source "->" target)
   (LAP ,@(inst:store (register-type target)
 		     (register-reference source)
 		     (home target))))
 
 (define (pseudo-register-home register)
-  (warn "Needed home:" register)
   (home register))
 
 (define-integrable (home register)

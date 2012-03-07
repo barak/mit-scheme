@@ -262,9 +262,7 @@ USA.
 	  (and (= nbits 32)
 	       (let ((low #x-8000) (high #x7FFF))
 		 (and (<= low offset) (<= offset high)))))
-      (begin
-	(warn "Bit tensioner widened encoding" nbits offset)
-	(signed-integer->bit-string nbits offset))
+      (signed-integer->bit-string nbits offset)
       ;; Does not fit into a smaller number of bytes; no fixing necessary.
       offset))
 
