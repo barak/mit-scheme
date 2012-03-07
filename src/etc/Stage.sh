@@ -40,6 +40,8 @@ make)
     mkdir "${DIRNAME}"
     maybe_mv *.com "${DIRNAME}/."
     maybe_mv *.bci "${DIRNAME}/."
+    maybe_mv *.lap "${DIRNAME}/."
+    maybe_mv *.rtl "${DIRNAME}/."
     ;;
 make-cross)
     mkdir "${DIRNAME}"
@@ -47,6 +49,8 @@ make-cross)
     maybe_mv *.bci "${DIRNAME}"
     maybe_mv *.moc "${DIRNAME}"
     maybe_mv *.fni "${DIRNAME}"
+    maybe_mv *.lap "${DIRNAME}/."
+    maybe_mv *.rtl "${DIRNAME}/."
     ;;
 unmake)
     if [ -d "${DIRNAME}" ]; then
