@@ -1307,6 +1307,24 @@ DEFINE_ADDRESS_DECODER (offset_s16_f)
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
 }
 
+DEFINE_ADDRESS_DECODER (offset_s32_b)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_B (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s32_w)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_W (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s32_f)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_F (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+}
+
 static word_t
 indexed_address_value (address_t * address)
 {
