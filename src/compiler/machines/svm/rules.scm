@@ -1181,9 +1181,9 @@ USA.
 	 ,@(inst:object-address rref:block-addr rref:block-addr)
 	 ,@(inst:load 'WORD rref:environment (ea:environment))
 	 ,@(inst:store 'WORD rref:environment
-		       (ea:offset rref:block-addr environment-offset 'WORD))
+		       (ea:offset rref:block-addr environment-offset 'BYTE))
 	 ,@(inst:load-address rref:constant-addr
-			      (ea:offset rref:block-addr free-ref-offset 'WORD))
+			      (ea:offset rref:block-addr free-ref-offset 'BYTE))
 	 ,@(inst:load-immediate rref:n-sections n-sections)
 	 ,@(trap:link rref:block-addr rref:constant-addr rref:n-sections)
 	 ,@(make-continuation-label false (generate-label)))))
@@ -1203,17 +1203,16 @@ USA.
 	    (rref:length rref:word-6)
 	    (rref:environment rref:word-7))
 	(LAP
-	 ;; Init index, bytes and vector.
+	 ;; Init index.
 	 ,@(inst:load-immediate rref:index 0)
+
+	 ,@(inst:label loop-label)
+	 ;; Re-init bytes, vector, environment.
 	 ,@(inst:load-address rref:bytes (ea:address bytes-label))
 	 ,@(inst:load 'WORD rref:vector (ea:address vector-label))
 	 ,@(inst:object-address rref:vector rref:vector)
 	 ,@(inst:load 'WORD rref:environment (ea:environment))
-
-	 ,@(inst:label loop-label)
-
 	 ;; Get n-sections for this cc-block.
-	 ,@(inst:load-immediate rref:n-sections 0)
 	 ,@(inst:load 'BYTE rref:n-sections
 		      (ea:indexed rref:bytes 0 'BYTE rref:index 'BYTE))
 	 ;; Get cc-block.
@@ -1232,11 +1231,14 @@ USA.
 	 ;; Address of first section.
 	 ,@(inst:load-address rref:sections
 			      (ea:indexed rref:block 2 'WORD rref:length 'WORD))
+	 ;; Push index.
+	 ,@(inst:store 'WORD rref:index (ea:stack-push))
 	 ;; Invoke linker
 	 ,@(trap:link rref:block rref:sections rref:n-sections)
 	 ,@(make-internal-continuation-label (generate-label))
-
-	 ;; Increment counter and loop
+	 ;; Pop index.
+	 ,@(inst:load 'WORD rref:index (ea:stack-pop))
+	 ;; Increment index and loop.
 	 ,@(inst:increment rref:index rref:index)
 	 ,@(inst:load-immediate rref:length n-blocks)
 	 ,@(inst:conditional-jump 'LT rref:index rref:length
