@@ -30,36 +30,37 @@ set -e
 
 . etc/functions.sh
 
-echo "# Remove the cross-compiler's bands and stash its products."
+echo "# `date`: Remove the cross-compiler's bands and stash its products."
 run_cmd rm -f lib/x-runtime.com
 run_cmd rm -f lib/x-compiler.com
 run_cmd ./Stage.sh remove 0
 run_cmd ./Stage.sh make-cross 0
 
-echo "# Restore the cross-compiler's host-compiled .coms."
+echo "# `date`: Restore the cross-compiler's host-compiled .coms."
 run_cmd ./Stage.sh unmake X
 
-echo "# Re-compile the cross-compiler."
+echo "# `date`: Re-compile the cross-compiler."
 
-echo "#    Re-syntax prerequisites."
+echo "# `date`:    Re-syntax prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.sf </dev/null
 done
 
-echo "#    Re-compile prerequisites."
+echo "# `date`:    Re-compile prerequisites."
 for DIR in runtime sf cref; do
     run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.cbf </dev/null
 done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
-FASL=make.com
 
-echo "#    Dump new runtime into x-runtime.com."
+echo "# `date`:    Dump new runtime into x-runtime.com."
+FASL=`get_fasl_file`
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF
+echo ""
 
-echo "#    Re-syntax cross-compiler using x-runtime.com."
+echo "# `date`:    Re-syntax cross-compiler using x-runtime.com."
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
 (begin
@@ -72,10 +73,10 @@ if [ -s compiler/compiler-unx.crf ]; then
     exit 1
 fi
 
-echo "#     Re-compile cross-compiler."
+echo "# `date`:     Re-compile cross-compiler."
 run_cmd_in_dir compiler "${@}" --batch-mode --load compiler.cbf </dev/null
 
-echo "# Dump cross-compiler into x-compiler.com."
+echo "# `date`: Dump cross-compiler into x-compiler.com."
 run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 (begin
   (load-option 'SF)
@@ -85,16 +86,29 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
   (disk-save "lib/x-compiler.com"))
 EOF
 
-echo "# Remove host code to STAGEX/ subdirs."
+echo "# `date`: Remove host code to STAGEX/ subdirs."
 run_cmd ./Stage.sh make X
 
-echo "# Restore previously cross-compiled code."
+echo "# `date`: Restore previously cross-compiled code."
 # (Replace "unmake" with "remove" to start from scratch with each
 # rebuilt cross-compiler.)
 run_cmd ./Stage.sh unmake 0
 
-echo "# Re-cross-compile everything."
-run_cmd "${@}" --batch-mode --library lib --band x-compiler.com <<EOF
+if [ "$FAST" ]; then
+
+    # Use the host-compiled cross-compiler to compile everything.  If
+    # the host system is native, this will be much faster than using the
+    # svm but will not compile by-procedures.
+
+    # Compilation of edwin/snr.bin aborted "out of memory" with --heap
+    # 9000 on i386.  That is as large a heap as can be allocated with
+    # all.com onboard, but HEAP is for x-compiler.com which is a
+    # megaword smaller.
+    HEAP=10000
+
+    echo "# `date`: Re-cross-compile everything."
+    run_cmd "${@}" --batch-mode --library lib \
+		   --band x-compiler.com --heap $HEAP <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #t)
@@ -103,12 +117,68 @@ run_cmd "${@}" --batch-mode --library lib --band x-compiler.com <<EOF
     (compile-everything)))
 EOF
 
-echo "# Finish the cross-compilation with the new machine."
-run_cmd_in_dir runtime \
-    ../microcode/scheme --library ../lib --fasl make.bin --batch-mode <<EOF
+    echo "# `date`: Finish-cross-compilation of everything."
+    run_cmd_in_dir runtime \
+	../microcode/scheme --batch-mode --library ../lib \
+			    --fasl make.bin <<EOF
 (begin
   (load "../compiler/base/crsend")
   (finish-cross-compilation:directory ".."))
 EOF
 
-echo "# Ready to build-bands.sh with the new machine."
+    echo "# `date`: Ready to build-bands.sh with the new machine."
+    exit 0
+
+fi
+
+# Use the host-compiled LIAR/svm to compile boot-dirs, then use the
+# new svm and boot-compiler to compile everything.  This exercises the
+# code produced by the cross-compiler, and compiles by-procedure.
+
+# Compilation of machines/svm/assembler-db.bin aborted "out of
+# memory" with --heap 8000 on i386 and x86-64.
+HEAP=9000
+
+echo "# `date`: Re-cross-compile boot-dirs."
+run_cmd "${@}" --batch-mode --library lib \
+    --band x-compiler.com --heap $HEAP <<EOF
+(begin
+  (load "etc/compile")
+  (fluid-let ((compiler:generate-lap-files? #f)
+	      (compiler:intersperse-rtl-in-lap? #f)
+	      (compiler:cross-compiling? #t))
+    (compile-boot-dirs compile-dir)))
+EOF
+
+echo "# `date`: Finish-cross-compilation of boot-dirs."
+run_cmd_in_dir runtime \
+    ../microcode/scheme --batch-mode --library ../lib --fasl make.bin <<EOF
+(begin
+  (load "../compiler/base/crsend")
+  (finish-cross-compilation:directory ".."))
+EOF
+
+echo "# `date`: Dump new compiler into boot-compiler.com."
+run_cmd_in_dir runtime \
+    ../microcode/scheme --batch-mode --library ../lib --fasl $FASL <<EOF
+(disk-save "../lib/boot-runtime.com")
+(load-option 'SF)
+(load-option 'CREF)
+(load-option '*PARSER)
+(load-option 'COMPILER)
+(disk-save "../lib/boot-compiler.com")
+EOF
+
+run_cmd ./Stage.sh make-cross 0
+
+echo "# `date`: Use the new machine and compiler to re-compile everything."
+run_cmd ./microcode/scheme --batch-mode --library lib \
+    --band boot-compiler.com --heap $HEAP <<EOF
+(load "etc/compile")
+(fluid-let ((compiler:generate-lap-files? #f)
+	    (compiler:intersperse-rtl-in-lap? #f))
+  ;;This can take 3-4 hours on a Core i3-550 with 4GB.
+  (compile-everything))
+EOF
+
+echo "# `date`: Ready to build-bands.sh with the new machine."
