@@ -161,12 +161,13 @@ EOF
 echo "# `date`: Dump new compiler into boot-compiler.com."
 run_cmd_in_dir runtime \
     ../microcode/scheme --batch-mode --library ../lib --fasl $FASL <<EOF
-(disk-save "../lib/boot-runtime.com")
-(load-option 'SF)
-(load-option 'CREF)
-(load-option '*PARSER)
-(load-option 'COMPILER)
-(disk-save "../lib/boot-compiler.com")
+(begin
+  (disk-save "../lib/boot-runtime.com")
+  (load-option 'SF)
+  (load-option 'CREF)
+  (load-option '*PARSER)
+  (load-option 'COMPILER)
+  (disk-save "../lib/boot-compiler.com"))
 EOF
 
 run_cmd ./Stage.sh make-cross 0
@@ -174,11 +175,12 @@ run_cmd ./Stage.sh make-cross 0
 echo "# `date`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
     --band boot-compiler.com --heap $HEAP <<EOF
-(load "etc/compile")
-(fluid-let ((compiler:generate-lap-files? #f)
-	    (compiler:intersperse-rtl-in-lap? #f))
-  ;;This can take 3-4 hours on a Core i3-550 with 4GB.
-  (compile-everything))
+(begin
+  (load "etc/compile")
+  (fluid-let ((compiler:generate-lap-files? #f)
+	      (compiler:intersperse-rtl-in-lap? #f))
+    ;;This can take 3-4 hours on a Core i3-550 with 4GB.
+    (compile-everything)))
 EOF
 
 echo "# `date`: Ready to build-bands.sh with the new machine."
