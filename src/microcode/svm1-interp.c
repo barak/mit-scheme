@@ -182,9 +182,7 @@ initialize_svm1 (void)
     FREG_SET (i, 0.0);
   WREG_SET (SVM1_REG_INTERPRETER_REGISTER_BLOCK, ((word_t)Registers));
 
-  /* These are hard-coded into compiler/machines/svm/machine.scm. */
-  assert (COMPILER_TEMP_SIZE == 2);
-  assert (COMPILER_REGBLOCK_N_FIXED == 14);
+  assert (((sizeof (double)) / (sizeof (SCHEME_OBJECT))) <= COMPILER_TEMP_SIZE);
 }
 
 #define IMPORT_REGS() do						\
