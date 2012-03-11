@@ -27,37 +27,54 @@ USA.
 ;;;; Utility to update copyright and license statements.
 
 (declare (usual-integrations))
+
+(define (translate-standard-dirs root-dir translation)
+  (let* ((root-dir (pathname-as-directory root-dir))
+	 (target (merge-pathnames "translated-files" root-dir))
+	 (target-dir (pathname-as-directory target)))
+    (make-directory target)
+    (for-each (lambda (dir)
+		(translate-directory (merge-pathnames dir root-dir)
+				     (merge-pathnames dir target-dir)
+				     root-dir
+				     translation))
+	      '("dist" "doc" "etc" "html" "src" "tests"))))
 
-(define (translate-license leader)
-  (let ((ks (find-key-string leader old-key-string)))
-    (and ks
-	 (let* ((ps (string-line-start leader ks))
-		(prefix (substring leader ps ks))
-		(pe (skip-paragraphs leader ks prefix old-n-paragraphs)))
-	   (and pe
-		(let ((prefix (string-replace prefix #\tab #\space)))
-		  (list ps
-			pe
-			prefix
-			prefix
-			new-license
-			(find-trailer leader pe old-license-final-token))))))))
+(define (translate-directory source target root-dir translation)
+  (let ((source (pathname-as-directory source))
+	(target (pathname-as-directory target)))
+    (let loop ((pathnames (list source)))
+      (if (pair? pathnames)
+	  (let* ((input (car pathnames))
+		 (output
+		  (merge-pathnames (enough-pathname input source) target)))
+	    (if (file-directory? input)
+		(loop (if (match-path input root-dir dirs-to-skip)
+			  (cdr pathnames)
+			  (begin
+			    (if (not (file-directory? output))
+				(make-directory output))
+			    (append (directory-read
+				     (pathname-as-directory input))
+				    (cdr pathnames)))))
+		(begin
+		  (if (and (file-regular? input)
+			   (not (match-path input root-dir files-to-skip)))
+		      (let ((results (translation (read-file-leader input))))
+			(if (pair? results)
+			    (translate-file-1 input output results)
+			    (if (not
+				 (match-path input root-dir
+					     suppress-warnings-for))
+				(begin
+				  (write-string "skipping ")
+				  (write-string
+				   (enough-namestring input root-dir))
+				  (newline))))))
+		  (loop (cdr pathnames)))))))))
 
-(define old-key-string "You should have received a copy of")
-(define old-n-paragraphs 1)
-(define old-license-final-token "USA.")
-
-(define new-license
-  (map (lambda (pp) (burst-string pp char-set:whitespace #t))
-       '("
-You should have received a copy of the GNU General Public License
-along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
-USA."
-	 )))
-
-(define (match-path rel res)
-  (any (let ((ns (->namestring rel)))
+(define (match-path pathname root-dir res)
+  (any (let ((ns (enough-namestring pathname root-dir)))
 	 (lambda (re)
 	   (re-string-match re ns)))
        res))
@@ -70,7 +87,10 @@ USA."
     ))
 
 (define files-to-skip
-  '("microcode/svm1-defns\\.h$"
+  '("src/microcode/svm1-defns\\.h$"
+    ".+\\.png$"
+    ".+\\.pdf$"
+    "html/.+\\.html$"
     ))
 
 (define suppress-warnings-for
@@ -84,40 +104,101 @@ USA."
     "\\(.*/\\)?README$"
     "\\(.*/\\)?TAGS$"
     "\\(.*/\\)?TODO$"
-    "swat/"
+    "src/swat/"
     ".+\\.ico$"
     ".+\\.sh$"
     ".+\\.txt$"))
 
-(define (translate-copyright leader)
-  (receive (ls le prefix cmark) (match-copyright leader)
-    (and ls
-	 (let ((end (string-length leader)))
-	   (let ((le
-		  (let loop ((le le))
-		    (let ((ls (string-next-line-start leader le)))
-		      (if ls
-			  (let ((regs
-				 (re-substring-match copyright-line-regexp
-						     leader ls end)))
-			    (if regs
-				(loop (re-match-end-index 0 regs))
-				ls))
-			  le)))))
-	     (let ((prefix1 (string-replace prefix #\tab #\space)))
-	       (list ls
-		     le
-		     prefix1
-		     (if (string=? prefix1 "[")
-			 "    "
-			 (string-append prefix1 "    "))
-		     `(("Copyright"
-			,cmark ,@(copyright-years (this-year))
-			"Massachusetts" "Institute" "of" "Technology"))
-		     #f)))))))
+(define (read-file-leader pathname)
+  (call-with-input-file pathname
+    (lambda (port)
+      (let ((leader (make-string 4096)))
+	(string-head leader (read-substring! leader 0 4096 port))))))
 
-(define (match-copyright leader)
-  (let ((regs (re-string-search-forward copyright-line-regexp leader)))
+(define (translate-file-1 input output results)
+  (call-with-input-file input
+    (lambda (input)
+      (call-with-output-file output
+	(lambda (output)
+	  (let loop ((results results) (index 0))
+	    (if (pair? results)
+		(receive (ps pe prefix1 prefix2 new-pps trailer)
+		    (apply values (car results))
+		  (let* ((n (- ps index))
+			 (buffer (make-string n)))
+		    (input-port/read-string! input buffer)
+		    (output-port/write-substring output buffer 0 n))
+		  (input-port/read-string! input (make-string (fix:- pe ps)))
+		  (let ((spacer
+			 (string-trim-right prefix2 char-set:not-whitespace))
+			(do-pp
+			 (lambda (pp)
+			   (output-port/write-string
+			    output
+			    (fill-paragraph pp prefix1 prefix2 70)))))
+		    (do-pp (car new-pps))
+		    (for-each (lambda (pp)
+				(write-string spacer output)
+				(newline output)
+				(do-pp pp))
+			      (cdr new-pps))
+		    (if trailer
+			(begin
+			  (newline output)
+			  (write-string trailer output)
+			  (newline output))))
+		  (loop (cdr results) pe))
+		(transfer-bytes input output)))))))
+  ;;(set-file-times! output #f (file-modification-time input))
+  (set-file-modes! output (file-modes input)))
+
+(define (transfer-bytes input output)
+  (let ((buffer (make-string 512)))
+    (let loop ()
+      (let ((n-read (input-port/read-string! input buffer)))
+	(if (fix:> n-read 0)
+	    (begin
+	      (output-port/write-substring output buffer 0 n-read)
+	      (loop)))))))
+
+;;;; Copyright translation
+
+(define (translate-copyright leader)
+  (let ((end (string-length leader)))
+    (let loop ((start 0) (results '()))
+      (receive (ls le prefix cmark) (match-copyright leader start end)
+	(if ls
+	    (let ((le
+		   (let loop ((le le))
+		     (let ((ls (string-next-line-start leader le)))
+		       (if ls
+			   (let ((regs
+				  (re-substring-match copyright-line-regexp
+						      leader ls end)))
+			     (if regs
+				 (loop (re-match-end-index 0 regs))
+				 ls))
+			   le)))))
+	      (let ((prefix1 (string-replace prefix #\tab #\space)))
+		(loop le
+		      (cons
+		       (list ls
+			     le
+			     prefix1
+			     (if (string=? prefix1 "[")
+				 "    "
+				 (string-append prefix1 "    "))
+			     `(("Copyright"
+				,cmark ,@(copyright-years (this-year))
+				"Massachusetts" "Institute" "of" "Technology"))
+			     #f)
+		       results))))
+	    (and (pair? results)
+		 (reverse results)))))))
+
+(define (match-copyright leader start end)
+  (let ((regs
+	 (re-substring-search-forward copyright-line-regexp leader start end)))
     (if regs
 	(values (re-match-start-index 0 regs)
 		(re-match-end-index 0 regs)
@@ -152,94 +233,35 @@ USA."
 (define (this-year)
   (decoded-time/year (get-decoded-time)))
 
-(define (translate-directory source target translation)
-  (let ((source (pathname-as-directory source))
-	(target (pathname-as-directory target)))
-    (let loop ((pathnames (list source)))
-      (cond ((null? pathnames)
-	     unspecific)
-	    #|
-	      ((file-symbolic-link? (car pathnames))
-	       => (lambda (contents)
-		    (soft-link-file contents
-				    (merge-pathnames
-				     (enough-pathname (car pathnames) source)
-				     target))
-		    (loop (cdr pathnames))))
-	      |#
-	    ((file-directory? (car pathnames))
-	     (let ((rel (enough-pathname (car pathnames) source)))
-	       (loop (if (match-path rel dirs-to-skip)
-			 (cdr pathnames)
-			 (begin
-			   (let ((output (merge-pathnames rel target)))
-			     (if (not (file-directory? output))
-				 (make-directory output)))
-			   (append (directory-read
-				    (pathname-as-directory (car pathnames)))
-				   (cdr pathnames)))))))
-	    (else
-	     (let ((rel (enough-pathname (car pathnames) source)))
-	       (let ((input (car pathnames))
-		     (output (merge-pathnames rel target)))
-		 (let ((result
-			(and (not (match-path rel files-to-skip))
-			     (translation (read-file-leader input)))))
-		   (if result
-		       (apply translate-file-1 input output result)
-		       (if (not (match-path rel suppress-warnings-for))
-			   (begin
-			     (write-string "skipping ")
-			     (write-string (->namestring rel))
-			     (newline)
-			     ;;(copy-file input output)
-			     ))))))
-	     (loop (cdr pathnames)))))))
+;;;; License translation
 
-(define (read-file-leader pathname)
-  (call-with-input-file pathname
-    (lambda (port)
-      (let ((leader (make-string 4096)))
-	(string-head leader (read-substring! leader 0 4096 port))))))
+(define (translate-license leader)
+  (let ((ks (find-key-string leader old-key-string)))
+    (and ks
+	 (let* ((ps (string-line-start leader ks))
+		(prefix (substring leader ps ks))
+		(pe (skip-paragraphs leader ks prefix old-n-paragraphs)))
+	   (and pe
+		(let ((prefix (string-replace prefix #\tab #\space)))
+		  (list (list ps
+			      pe
+			      prefix
+			      prefix
+			      new-license
+			      (find-trailer leader pe
+					    old-license-final-token)))))))))
 
-(define (translate-file-1 input output ps pe prefix1 prefix2 new-pps trailer)
-  (call-with-input-file input
-    (lambda (input)
-      (call-with-output-file output
-	(lambda (output)
-	  (let ((buffer (make-string ps)))
-	    (input-port/read-string! input buffer)
-	    (output-port/write-substring output buffer 0 ps))
-	  (input-port/read-string! input (make-string (fix:- pe ps)))
-	  (let ((spacer (string-trim-right prefix2 char-set:not-whitespace))
-		(do-pp
-		 (lambda (pp)
-		   (output-port/write-string
-		    output
-		    (fill-paragraph pp prefix1 prefix2 70)))))
-	    (do-pp (car new-pps))
-	    (for-each (lambda (pp)
-			(write-string spacer output)
-			(newline output)
-			(do-pp pp))
-		      (cdr new-pps))
-	    (if trailer
-		(begin
-		  (newline output)
-		  (write-string trailer output)
-		  (newline output))))
-	  (transfer-bytes input output)))))
-  ;;(set-file-times! output #f (file-modification-time input))
-  (set-file-modes! output (file-modes input)))
+(define old-key-string "You should have received a copy of")
+(define old-n-paragraphs 1)
+(define old-license-final-token "USA.")
 
-(define (transfer-bytes input output)
-  (let ((buffer (make-string 512)))
-    (let loop ()
-      (let ((n-read (input-port/read-string! input buffer)))
-	(if (fix:> n-read 0)
-	    (begin
-	      (output-port/write-substring output buffer 0 n-read)
-	      (loop)))))))
+(define new-license
+  (map (lambda (pp) (burst-string pp char-set:whitespace #t))
+       '("
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
+USA.")))
 
 (define (find-key-string leader key-string)
   (let* ((n (string-length key-string))
@@ -267,12 +289,15 @@ USA."
 	  (else
 	   (write-string "Unknown ending: ")
 	   (write-string (substring leader (- end 10) end))
-	   (newline))))
+	   (newline)
+	   #f)))
   (define (test end string)
     (let ((n (string-length string)))
       (and (> (- end n) 0)
 	   (substring=? leader (- end n) end string 0 n))))
   (skip-whitespace pe))
+
+;;;; Text manipulation
 
 (define (string-line-start string index)
   (let ((n (substring-find-previous-char string 0 index #\newline)))
