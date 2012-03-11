@@ -29,6 +29,8 @@
 /macosx-*/
 /macosx/
 /pc/
+/svm/
+/svm1/
 TAGS
 changelog.txt
 doc/*/*.aux
