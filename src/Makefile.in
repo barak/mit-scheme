@@ -90,8 +90,9 @@ all-svm: microcode/svm1-defns.h
 	$(MAKE) build-bands #build-ffis
 
 microcode/svm1-defns.h: compiler/machines/svm/svm1-defns.h
-	if ! cmp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h; \
-	then cp compiler/machines/svm/svm1-defns.h microcode/svm1-defns.h; fi
+	@$(top_srcdir)/etc/maybe-update-file.sh \
+	  compiler/machines/svm/svm1-defns.h \
+	  microcode/svm1-defns.h
 
 compiler/machines/svm/svm1-defns.h: \
 	  compiler/machines/svm/assembler-rules.scm \
