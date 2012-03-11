@@ -40,7 +40,7 @@ run_cmd "${EXE}" --batch-mode <<EOF
   (for-each compile-dir '("runtime" "star-parser" "sf")))
 EOF
 
-FASL=`get_fasl_file`
+get_fasl_file
 run_cmd_in_dir runtime "${EXE}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF

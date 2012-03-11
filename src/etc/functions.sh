@@ -52,10 +52,10 @@ run_cmd_in_dir ()
 get_fasl_file ()
 {
     if [ -f runtime/make.o ]; then
-	echo "http://www.gnu.org/software/mit-scheme/lib/runtime/make.so"
+	FASL=http://www.gnu.org/software/mit-scheme/lib/runtime/make.so
 	return 0
     elif [ -f runtime/make.com ]; then
-	echo "make.com"
+	FASL=make.com
 	return 0
     else
 	echo "Can't find argument for --fasl." >&2

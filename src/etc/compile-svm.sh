@@ -53,7 +53,7 @@ done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 
 echo "# `date`:    Dump new runtime into x-runtime.com."
-FASL=`get_fasl_file`
+get_fasl_file
 run_cmd_in_dir runtime \
     "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/x-runtime.com")

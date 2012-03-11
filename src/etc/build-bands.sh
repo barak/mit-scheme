@@ -27,7 +27,7 @@ set -e
 . etc/functions.sh
 
 if [ ! -e lib/runtime.com ]; then
-  FASL=`get_fasl_file`
+  get_fasl_file
   run_cmd_in_dir runtime \
 	../microcode/scheme --batch-mode --library ../lib --fasl $FASL <<EOF
 (disk-save "../lib/runtime.com")

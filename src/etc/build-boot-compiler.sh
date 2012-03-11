@@ -26,8 +26,7 @@ set -e
 
 . etc/functions.sh
 
-FASL=`get_fasl_file`
-
+get_fasl_file
 run_cmd_in_dir runtime ../microcode/scheme --library ../lib \
     --fasl "${FASL}" --heap 6000 --batch-mode <<EOF
 (begin
