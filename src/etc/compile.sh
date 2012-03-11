@@ -26,7 +26,7 @@ set -e
 
 . etc/functions.sh
 
-run_cmd "${@}"<<EOF
+run_cmd "${@}" <<EOF
 (begin
   (load "etc/compile.scm")
   (compile-cref compile-dir)
@@ -35,7 +35,7 @@ EOF
 
 get_fasl_file
 run_cmd_in_dir runtime ../microcode/scheme --batch-mode		\
-	--library ../lib --fasl $FASL <<EOF
+	--library ../lib --fasl "${FASL}" <<EOF
 (disk-save "../lib/runtime.com")
 EOF
 
@@ -47,7 +47,7 @@ run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
     (lambda () (load "compiler.sf"))))
 EOF
 
-run_cmd "${@}"<<EOF
+run_cmd "${@}" <<EOF
 (with-working-directory-pathname "compiler/"
   (lambda () (load "compiler.cbf")))
 EOF

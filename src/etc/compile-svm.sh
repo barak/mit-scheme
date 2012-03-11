@@ -43,19 +43,19 @@ echo "# `date`: Re-compile the cross-compiler."
 
 echo "# `date`:    Re-syntax prerequisites."
 for DIR in runtime sf cref; do
-    run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.sf </dev/null
+    run_cmd_in_dir ${DIR} "${@}" --batch-mode --load ${DIR}.sf </dev/null
 done
 
 echo "# `date`:    Re-compile prerequisites."
 for DIR in runtime sf cref; do
-    run_cmd_in_dir $DIR "${@}" --batch-mode --load $DIR.cbf </dev/null
+    run_cmd_in_dir ${DIR} "${@}" --batch-mode --load ${DIR}.cbf </dev/null
 done
 run_cmd_in_dir star-parser "${@}" --batch-mode --load compile.scm </dev/null
 
 echo "# `date`:    Dump new runtime into x-runtime.com."
 get_fasl_file
 run_cmd_in_dir runtime \
-    "${@}" --batch-mode --library ../lib --fasl $FASL <<EOF
+    "${@}" --batch-mode --library ../lib --fasl "${FASL}" <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF
 echo ""
@@ -94,7 +94,7 @@ echo "# `date`: Restore previously cross-compiled code."
 # rebuilt cross-compiler.)
 run_cmd ./Stage.sh unmake 0
 
-if [ "$FAST" ]; then
+if [ "${FAST}" ]; then
 
     # Use the host-compiled cross-compiler to compile everything.  If
     # the host system is native, this will be much faster than using the
@@ -108,7 +108,7 @@ if [ "$FAST" ]; then
 
     echo "# `date`: Re-cross-compile everything."
     run_cmd "${@}" --batch-mode --library lib \
-		   --band x-compiler.com --heap $HEAP <<EOF
+		   --band x-compiler.com --heap ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #t)
@@ -141,7 +141,7 @@ HEAP=9000
 
 echo "# `date`: Re-cross-compile boot-dirs."
 run_cmd "${@}" --batch-mode --library lib \
-    --band x-compiler.com --heap $HEAP <<EOF
+    --band x-compiler.com --heap ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #f)
@@ -160,7 +160,7 @@ EOF
 
 echo "# `date`: Dump new compiler into boot-compiler.com."
 run_cmd_in_dir runtime \
-    ../microcode/scheme --batch-mode --library ../lib --fasl $FASL <<EOF
+    ../microcode/scheme --batch-mode --library ../lib --fasl "${FASL}" <<EOF
 (begin
   (disk-save "../lib/boot-runtime.com")
   (load-option 'SF)
@@ -174,7 +174,7 @@ run_cmd ./Stage.sh make-cross 0
 
 echo "# `date`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
-    --band boot-compiler.com --heap $HEAP <<EOF
+    --band boot-compiler.com --heap ${HEAP} <<EOF
 (begin
   (load "etc/compile")
   (fluid-let ((compiler:generate-lap-files? #f)
