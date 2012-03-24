@@ -601,3 +601,9 @@ USA.
      (LET ((RESULT form0))
        form1+ ...
        RESULT))))
+
+(define-syntax :assert
+  (syntax-rules ()
+    ((ASSERT condition)
+     (IF (NOT condition)
+         (ERROR "Assertion failed:" 'condition)))))

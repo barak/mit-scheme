@@ -4766,6 +4766,7 @@ USA.
 	  (access :access)
 	  (and :and)
 	  (and-let* :and-let*)
+	  (assert :assert)
 	  (begin0 :begin0)
 	  (case :case)
 	  (cond :cond)
