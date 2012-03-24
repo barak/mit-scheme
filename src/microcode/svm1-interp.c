@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
-    Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
+    of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,8 +30,6 @@ USA.
 #include "fixnum.h"
 #include "svm1-defns.h"
 #include "cmpintmd/svm1.h"
-
-#define SVM1_REG_SP 0
 
 typedef SCHEME_OBJECT word_t;	/* convenience abbreviation */
 
@@ -145,13 +143,10 @@ static trap_3_t * traps_3 [256];
 #define DECODE_TRAP_2(name) byte_t name = NEXT_BYTE
 #define DECODE_TRAP_3(name) byte_t name = NEXT_BYTE
 
-static void signal_illegal_instruction (void);
 static void initialize_decoder_tables (void);
 
 static int initialized_p = 0;
 static int little_endian_p;
-
-static bool execute_instruction (void);
 
 static void
 compute_little_endian_p (void)
@@ -182,9 +177,7 @@ initialize_svm1 (void)
     FREG_SET (i, 0.0);
   WREG_SET (SVM1_REG_INTERPRETER_REGISTER_BLOCK, ((word_t)Registers));
 
-  /* These are hard-coded into compiler/machines/svm/machine.scm. */
-  assert (COMPILER_TEMP_SIZE == 2);
-  assert (COMPILER_REGBLOCK_N_FIXED == 14);
+  assert (((sizeof (double)) / (sizeof (SCHEME_OBJECT))) <= COMPILER_TEMP_SIZE);
 }
 
 #define IMPORT_REGS() do						\
@@ -208,33 +201,16 @@ C_to_interface (void * address)
 {
   IMPORT_REGS ();
   PC = address;
-  while (execute_instruction ());
+  while ((* (inst_defns[NEXT_BYTE])) ());
   EXPORT_REGS ();
   return (svm1_result);
-}
-
-static jmp_buf k_execute_instruction;
-
-static bool
-execute_instruction (void)
-{
-  if ((setjmp (k_execute_instruction)) != 0)
-    return (0);
-  return ((* (inst_defns[NEXT_BYTE])) ());
 }
 
 static bool
 illegal_instruction (void)
 {
-  signal_illegal_instruction ();
-  return (0);
-}
-
-static void
-signal_illegal_instruction (void)
-{
   svm1_result = ERR_COMPILED_CODE_ERROR;
-  longjmp (k_execute_instruction, 1);
+  return (0);
 }
 
 #define TO_SIGNED(n) ((long) (n))
@@ -281,8 +257,7 @@ static wreg_t
 decode_wreg (void)
 {
   byte_t b = NEXT_BYTE;
-  if (!WORD_REGISTER_P (b))
-    signal_illegal_instruction ();
+  assert (WORD_REGISTER_P (b));
   return (b);
 }
 
@@ -290,8 +265,7 @@ static freg_t
 decode_freg (void)
 {
   byte_t b = NEXT_BYTE;
-  if (!FLOAT_REGISTER_P (b))
-    signal_illegal_instruction ();
+  assert (FLOAT_REGISTER_P (b));
   return (b);
 }
 
@@ -299,8 +273,7 @@ static tc_t
 decode_type_word (void)
 {
   byte_t b = NEXT_BYTE;
-  if (b >= N_TYPE_CODES)
-    signal_illegal_instruction ();
+  assert (b < N_TYPE_CODES);
   return (b);
 }
 
@@ -777,7 +750,7 @@ DEFINE_INST (trap_trap_0)
 static bool
 illegal_trap_0 (void)
 {
-  signal_illegal_instruction ();
+  svm1_result = ERR_COMPILED_CODE_ERROR;
   return (0);
 }
 
@@ -790,7 +763,7 @@ DEFINE_INST (trap_trap_1_wr)
 static bool
 illegal_trap_1 (wreg_t r1)
 {
-  signal_illegal_instruction ();
+  svm1_result = ERR_COMPILED_CODE_ERROR;
   return (0);
 }
 
@@ -803,7 +776,7 @@ DEFINE_INST (trap_trap_2_wr)
 static bool
 illegal_trap_2 (wreg_t r1, wreg_t r2)
 {
-  signal_illegal_instruction ();
+  svm1_result = ERR_COMPILED_CODE_ERROR;
   return (0);
 }
 
@@ -816,7 +789,7 @@ DEFINE_INST (trap_trap_3_wr)
 static bool
 illegal_trap_3 (wreg_t r1, wreg_t r2, wreg_t r3)
 {
-  signal_illegal_instruction ();
+  svm1_result = ERR_COMPILED_CODE_ERROR;
   return (0);
 }
 
@@ -1244,10 +1217,16 @@ decode_address (address_t * address)
   (* (address_decoders[NEXT_BYTE])) (address);
 }
 
+static word_t
+illegal_address_value (address_t * address)
+{
+  return (0);
+}
+
 static void
 illegal_address (address_t * address)
 {
-  signal_illegal_instruction ();
+  address->value = illegal_address_value;
 }
 
 static word_t
@@ -1304,6 +1283,24 @@ DEFINE_ADDRESS_DECODER (offset_s16_w)
 DEFINE_ADDRESS_DECODER (offset_s16_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_F (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s32_b)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_B (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s32_w)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_W (base, offset);
+  MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+}
+
+DEFINE_ADDRESS_DECODER (offset_s32_f)
+{
+  DECODE_SVM1_ADDR_OFFSET_S32_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
 }
 

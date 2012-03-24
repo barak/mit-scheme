@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
-#     of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts
+#     Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -40,8 +40,9 @@ run_cmd "${EXE}" --batch-mode <<EOF
   (for-each compile-dir '("runtime" "star-parser" "sf")))
 EOF
 
-FASL=`get_fasl_file`
-run_cmd_in_dir runtime "${EXE}" --batch-mode --library ../lib --fasl $FASL <<EOF
+get_fasl_file
+run_cmd_in_dir runtime "${EXE}" --batch-mode --library ../lib \
+    --fasl "${FASL}" <<EOF
 (disk-save "../lib/x-runtime.com")
 EOF
 echo ""
