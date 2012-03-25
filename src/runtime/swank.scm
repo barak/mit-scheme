@@ -952,6 +952,7 @@ swank:xref
 (define (elisp-true? o) (not (elisp-false? o)))
 
 (define nil '())
+(define t 'T)
 
 (define (->line o)
   (let ((r (write-to-string o 100)))
