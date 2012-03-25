@@ -224,6 +224,7 @@ USA.
 
 (define (pstring->env pstring)
   (cond ((or (not (string? pstring))
+	     (not (string? *buffer-pstring*))
 	     (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
 	 (get-current-environment))
 	((string-prefix? anonymous-package-prefix pstring)
