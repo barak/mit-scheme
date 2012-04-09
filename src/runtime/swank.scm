@@ -517,7 +517,7 @@ swank:xref
 			 socket)
 	  (sldb-loop level socket))
 	(lambda ()
-	  (write-message `(:debug-return 0 ,level 'NIL) socket)))))
+	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket)))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
