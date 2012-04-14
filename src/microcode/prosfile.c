@@ -68,7 +68,7 @@ If the file exists, it is rewritten.")
 DEFINE_PRIMITIVE ("NEW-FILE-OPEN-EXCLUSIVE-OUTPUT-CHANNEL",
                   Prim_new_file_open_exclusive_output_channel, 2, 2,
   "Open an output file called FILENAME.\n\
-The channel number is saved in the cdr of WEAK-PAPIR.\n\
+The channel number is saved in the cdr of WEAK-PAIR.\n\
 If the file exists, an error is signalled.")
   NEW_OPEN_FILE_PRIMITIVE (OS_open_exclusive_output_file)
 
