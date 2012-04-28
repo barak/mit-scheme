@@ -160,24 +160,35 @@ USA.
      )))
 
 (define (get-console-input-operations terminal-state)
+  ;; When the input is a prefix of the character sequence sent by some
+  ;; key, we are prepared to wait a little-while to see if the rest of
+  ;; the sequence arrives.
+
+  ;; These procedures read buffer-fuls of input octets and match the
+  ;; terminal's special key sequences against the buffer.  They wait a
+  ;; little-while for incomplete sequences, then yield the individual
+  ;; characters.
   (let ((channel (port/input-channel console-i/o-port))
-        (string  (make-string (* 3 input-buffer-size)))
+        (buffer  (make-string (* 3 input-buffer-size)))
         (start   0)
         (end     0)
-        (incomplete-pending #F)
-	(timeout-interval 1000)		; 1s. Should be f(baud rate) etc
-        (len     0))                    ; length of event in input characters
-    ;; When the input is a prefix of the character sequence sent by some key
-    ;; we are prepared to wait a little while to see if the rest of
-    ;; the sequence arrives.  INCOMPLETE-PENDING is either #F, the
-    ;; real time at which we timeout for waiting for the sequence to
-    ;; complete, or #T if a timeout occured.
+	(little-while 500)		; .5sec. Should be f(baud rate) etc
+
+	;; INCOMPLETE-PENDING is either #F, the real time at which we
+	;; should stop waiting for the sequence to complete, or #T if
+	;; we are no longer waiting.  It is set in parse-key when an
+	;; incomplete sequence is first matched, and is not cleared
+	;; until something (special-key or individual character) is
+	;; read (consumed, not peeked).  Thus many peeks and a
+	;; subsequent read do not EACH wait a little-while.
+        (incomplete-pending #F))
+
     (letrec
-        ((parse-key			; -> #F or a char? or a special-key?
-	  (lambda ()
+        ((match-key			; -> match: #F or char or (seq . name)
+	  (named-lambda (match-key)
 	    (and (fix:< start end)
 		 terminal-state
-		 (let ((n-chars  (fix:- end start)))
+		 (let ((n-chars (fix:- end start)))
 		   (let find
 		       ((key-pairs (terminal-state/key-table terminal-state))
 			(possible-pending? #F))
@@ -190,124 +201,134 @@ USA.
 				   (set! incomplete-pending #T)))
 			   (if (number? incomplete-pending)
 			       #F
-			       (begin
-				 (set! len 1)
-				 ;; We must explicitly map the 8th bit
-				 ;; of an incoming character to the
-				 ;; meta bit.
-				 (let ((code (vector-8b-ref string start)))
-				   (if (fix:< code #x80)
-				       (make-char code 0)
-				       (make-char (fix:and code #x7F)
-						  char-bit:meta))))))
+			       (vector-8b-ref buffer start)))
 			 (let* ((key-seq  (caar key-pairs))
 				(n-seq    (string-length key-seq)))
 			   (cond ((and (fix:<= n-seq n-chars)
-				       (substring=? string start
+				       (substring=? buffer start
 						    (fix:+ start n-seq)
 						    key-seq 0 n-seq))
-				  (set! len n-seq)
-				  (cdar key-pairs))
+				  (car key-pairs))
 				 ((and (fix:> n-seq n-chars)
-				       (substring=? string start
+				       (substring=? buffer start
 						    (fix:+ start n-chars)
 						    key-seq 0 n-chars))
 				  (if (not incomplete-pending)
 				      (set! incomplete-pending
 					    (+ (real-time-clock)
-					       timeout-interval)))
+					       little-while)))
 				  (find (cdr key-pairs) #T))
 				 (else
 				  (find (cdr key-pairs)
 					possible-pending?))))))))))
-	 (read-more?			; -> #F or #T is some chars were read
-	  (lambda (block?)
+	 (read-more?			; -> #F or #T if some octets were read
+	  (named-lambda (read-more? block?)
 	    (if block?
 		(channel-blocking channel)
 		(channel-nonblocking channel))
-	    (let ((n (channel-read channel string end input-buffer-size)))
+	    (let ((n (%channel-read channel buffer end input-buffer-size)))
 	      (cond ((not n)  #F)
+		    ((eq? n #T) #F)
 		    ((fix:> n 0)
 		     (set! end (fix:+ end n))
 		     #T)
 		    ((fix:= n 0)
 		     ;;(error "Reached EOF in keyboard input.")
-		     #F)
-		    (else
-		     (error "Illegal return value:" n))))))
-	 (read-char
-	  (lambda (block?)
-	    (if (read-more? block?)
-		(parse-key)
-		#F)))
-	 (read-event
-	  (lambda (block?)
-	    (or (read-char #f)
-		(let loop ()
-		  (cond (inferior-thread-changes? event:interrupt)
-			((process-output-available?) event:process-output)
-			((not have-select?)
-			 (and block? (read-event block?)))
-			(else
-			 (case (test-for-io-on-channel channel 'READ block?)
-			   ((#F) #f)
-			   ((PROCESS-STATUS-CHANGE) event:process-status)
-			   ((INTERRUPT) (loop))
-			   (else (read-event block?)))))))))
-	 (guarantee-result
-	  (lambda ()
-	    (let ((event (read-event #t)))
-	      (cond ((char? event) event)
-		    ((special-key? event) event)
-		    ((process-change-event event)
-		     => (lambda (flag)
-			  (make-input-event
-			   (if (eq? flag 'FORCE-RETURN) 'RETURN 'UPDATE)
-			   update-screens! #f)))
-		    (else (guarantee-result))))))
-	 (consume!
-	  (lambda (bytes)
-	    (set! start (fix:+ start bytes))
-	    (cond ((fix:>= start end)	; all consumed
-		   (set! end 0)
-		   (set! start 0))
+		     #F)))))
+	 (match-event	; -> #F or match (char or pair) or input event
+	  (named-lambda (match-event block?)
+	    (let loop ()
+	      (or (begin
+		    (read-more? #f)
+		    (match-key))
+		  ;; Atomically poll async event sources and block.
+		  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+		    (cond (inferior-thread-changes?
+			   (set-interrupt-enables! mask)
+			   (or (->update-event (accept-thread-output))
+			       (loop)))
+			  ((process-output-available?)
+			   (set-interrupt-enables! mask)
+			   (or (->update-event (accept-process-output))
+			       (loop)))
+			  ((process-status-changes?)
+			   (set-interrupt-enables! mask)
+			   (or (->update-event (handle-process-status-changes))
+			       (loop)))
+			  ((not have-select?)
+			   (set-interrupt-enables! mask)
+			   (and block? (loop)))
+			  (incomplete-pending
+			   ;; Must busy-wait.
+			   (set-interrupt-enables! mask)
+			   (loop))
+			  (block?
+			   (read-more? #t)
+			   (set-interrupt-enables! mask)
+			   (loop))
+			  (else
+			   (set-interrupt-enables! mask)
+			   #f)))))))
+	 (->update-event
+	  (named-lambda (->update-event redisplay?)
+	    (and redisplay?
+		 (make-input-event
+		  (if (eq? redisplay? 'FORCE-RETURN) 'RETURN 'UPDATE)
+		  update-screens! #f))))
+	 (consume-match!
+	  (named-lambda (consume-match! match)
+	    (cond ((fixnum? match)
+		   (set! start (fix:1+ start)))
+		  ((input-event? match)
+		   unspecific)
+		  ((pair? match)
+		   (set! start (fix:+ start (string-length (car match)))))
+		  (else (error "Inedible match:" match)))
+	    (if (fix:< end start)
+		(error "Overconsumption:" buffer start end match))
+	    (cond ((fix:= start end)	; all consumed
+		   (if (not (fix:zero? start))
+		       (set! start 0))
+		   (if (not (fix:zero? end))
+		       (set! end 0)))
 		  ((fix:>= start input-buffer-size)
-		   (substring-move-left! string start end string 0)
+		   (substring-move-left! buffer start end buffer 0)
 		   (set! end (fix:- end start))
 		   (set! start 0)))
-	    (set! incomplete-pending #F)
-	    unspecific)))
+	    (set! incomplete-pending #f)))
+	 (->event
+	  (named-lambda (->event match)
+	    (cond ((eq? match #f)
+		   #F)
+		  ((fixnum? match)
+		   ;; Assume the eighth bit is a meta bit.
+		   (if (fix:< match #x80)
+		       (make-char match 0)
+		       (make-char (fix:and match #x7F) char-bit:meta)))
+		  ((input-event? match)
+		   match)
+		  ((pair? match)
+		   (cdr match))
+		  (else (error "Bogus input match:" match))))))
       (values
-       (lambda ()			;halt-update?
+       (named-lambda (halt-update?)
 	 (or (fix:< start end)
-	     (read-char #f)))
-       (lambda ()			;peek-no-hang
-	 (or (parse-key)
-	     (let ((event (read-event #f)))
-	       (if (fix:fixnum? event)
-		   (begin
-		     (process-change-event event)
-		     #f)
-		   event))))
-       (lambda ()			;peek
-	 (or (parse-key)
-	     (guarantee-result)))
-       (lambda ()			;read
-	 (let ((event (or (parse-key) (guarantee-result))))
-	   (consume! len)
-	   event))))))
-
+	     (read-more? #f)))
+       (named-lambda (peek-no-hang)
+	 (let ((event (->event (match-event #f))))
+	   (if (input-event? event)
+	       (begin
+		 (apply-input-event event)
+		 #f)
+	       event)))
+       (named-lambda (peek)
+	 (->event (match-event #t)))
+       (named-lambda (read)
+	 (let ((match (match-event #t)))
+	   (consume-match! match)
+	   (->event match)))))))
 
 (define-integrable input-buffer-size 16)
-(define-integrable event:process-output -2)
-(define-integrable event:process-status -3)
-(define-integrable event:interrupt -4)
-
-(define (process-change-event event)
-  (cond ((fix:= event event:process-output) (accept-process-output))
-	((fix:= event event:process-status) (handle-process-status-changes))
-	((fix:= event event:interrupt) (accept-thread-output))
-	(else (error "Illegal change event:" event))))
 
 (define (signal-interrupt!)
   (signal-thread-event editor-thread

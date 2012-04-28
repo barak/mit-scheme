@@ -169,6 +169,23 @@ USA.
 	(ucode-primitive terminal-set-state 2)))
 
 (define (channel-read channel buffer start end)
+  (let loop ()
+    (let ((n (with-thread-events-blocked
+	      (lambda ()
+		(%channel-read channel buffer start end)))))
+      (if (eq? n #t)
+	  (begin
+	    (handle-subprocess-status-change)
+	    (if (channel-closed? channel)
+		0
+		(loop)))
+	  n))))
+
+(define (%channel-read channel buffer start end)
+  ;; Returns 0 (eof) or a fixnum (the number of octets written into
+  ;; BUFFER).  May also return #f if the channel is not blocking and
+  ;; there are no octets to read.  May also return #t if the operation
+  ;; was un-blocked by a thread-event, e.g. subprocess status change.
   (let ((do-read
 	 (lambda ()
 	   ((ucode-primitive channel-read 4)
@@ -180,20 +197,16 @@ USA.
 	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(with-thread-events-blocked
-	  (lambda ()
-	    (let ((do-test
-		   (lambda (k)
-		     (let ((result (test-for-io-on-channel channel 'READ)))
-		       (case result
-			 ((READ HANGUP ERROR) (do-read))
-			 ((PROCESS-STATUS-CHANGE)
-			  (handle-subprocess-status-change)
-			  (if (channel-closed? channel) 0 (k)))
-			 (else (k)))))))
-	      (if (channel-blocking? channel)
-		  (let loop () (do-test loop))
-		  (do-test (lambda () #f))))))
+	(let ((do-test
+	       (lambda (k)
+		 (let ((result (test-for-io-on-channel channel 'READ)))
+		   (case result
+		     ((READ HANGUP ERROR) (do-read))
+		     ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+		     (else (k)))))))
+	  (if (channel-blocking? channel)
+	      (let loop () (do-test loop))
+	      (do-test (lambda () #f))))
 	(do-read))))
 
 (define (channel-write channel buffer start end)

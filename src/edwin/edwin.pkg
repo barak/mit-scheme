@@ -988,6 +988,7 @@ USA.
     (export (edwin)
 	    resize-screen)
     (import (runtime primitive-io)
+	    %channel-read
 	    channel-type=terminal?
 	    have-select?
 	    terminal-get-state
