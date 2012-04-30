@@ -3258,6 +3258,8 @@ USA.
 	  make-select-registry
 	  remove-from-select-registry!
 	  test-select-registry)
+  (import (runtime thread)
+	  %deregister-io-descriptor)
   (export (runtime directory)
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
