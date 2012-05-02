@@ -442,7 +442,7 @@ signalled it is best to actually put a breakpoint on entry to
 @vindex standard-error-hook
 @cindex REP loop
 Called internally by @code{error} after it calls
-@code{signal-condition}.  Normally creates creates a new @sc{repl} with
+@code{signal-condition}.  Normally creates a new @sc{repl} with
 the prompt @code{"error>"} (but see @code{standard-error-hook}).  In
 order to simulate the effect of calling @code{error}, code may call
 @code{signal-condition} directly and then call
