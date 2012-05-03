@@ -383,6 +383,65 @@ USA.
 
 (define (swank:set-default-directory socket directory)
   (->namestring (set-working-directory-pathname! directory)))
+
+;;;; Describe
+(define (swank:describe-symbol socket symbol)
+  (let* ((env (buffer-env))
+	 (package (env->pstring env))
+	 (symbol (string->symbol symbol))
+	 (type (environment-reference-type env symbol))
+	 (binding (if (eq? type 'normal) (environment-lookup env symbol) #f))
+	 (binding-type (if binding (get-object-type-name binding) #f))
+	 (params (if (and binding (procedure? binding)) (procedure-parameters symbol env) #f)))
+    (string-append
+     (format #f "~a in package ~a~a of type ~a.~%~%" (string-upcase (symbol->string symbol))
+	     package
+	     (if (and binding
+		      (procedure? binding))
+		 (format #f " [originally defined in package ~a]" (env->pstring (procedure-environment binding)))
+		 "")
+	     (if binding-type binding-type type))
+     (if binding
+	 (format #f "Bound to ~a.~%" binding)
+	 "")
+     (if params
+	 (format #f "~%Signature: ~a.~%~%" params)
+	 "")
+     (if binding
+	 (format #f "It is:~%~%~a~%" (with-output-to-string (lambda () (pp binding))))
+	 ""))))
+
+(define (swank:describe-function socket function)
+  (swank:describe-symbol socket function))
+
+(define (swank:describe-definition-for-emacs socket name type)
+  type
+  (swank:describe-symbol socket name))
+
+(define (get-object-type-name obj)
+  (cond ((boolean? obj) "boolean")
+	((string? obj) "string")
+	((char? obj) "char")
+	((fixnum? obj) "fixnum")
+	((integer? obj) "integer")
+	((rational? obj) "rational")
+	((real? obj) "real")
+	((complex? obj) "complex")
+	((vector? obj) "vector")
+	((pair? obj) "pair")
+	((null? obj) "empty list")
+	((bit-string? obj) "bit-string")
+	((cell? obj) "cell")
+	((condition? obj) "condition")
+	((environment? obj) "environment")
+	((port? obj) "port")
+	((procedure? obj) "procedure")
+	((promise? obj) "promise")
+	((symbol? obj) "symbol")
+	((weak-pair? obj) "weak-pair")
+	((record-type? obj) "record-type")
+	((wide-string? obj) "wide-string")
+	(else (user-object-type obj))))
 
 ;;;; Miscellaneous
 
