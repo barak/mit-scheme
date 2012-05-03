@@ -211,7 +211,7 @@ USA.
 
 (define (emacs-rex socket sexp pstring)
   (fluid-let ((*buffer-pstring* pstring))
-    (eval (cons* (car sexp) socket (cdr sexp))
+    (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
 (define *buffer-pstring*)
@@ -420,7 +420,19 @@ USA.
       :lisp-implementation
       (:type "MIT/GNU Scheme"
        :version ,(get-subsystem-version-string "release"))
-      :version "20100404")))
+      :version "2012-05-02"
+      :encoding
+      (:coding-systems
+       ("utf-8-unix" "iso-latin-1-unix")))))
+
+(define (swank:swank-require socket packages)
+  socket
+  packages
+  '())
+
+(define (swank:autodoc socket expr . params)
+  socket params
+  (list ':not-available 't))
 
 (define (swank:quit-lisp socket)
   socket
@@ -952,9 +964,6 @@ swank:xref
 (define (elisp-false? o) (or (null? o) (eq? o 'NIL)))
 (define (elisp-true? o) (not (elisp-false? o)))
 
-(define nil '())
-(define t 'T)
-
 (define (->line o)
   (let ((r (write-to-string o 100)))
     (if (car r)
@@ -971,3 +980,17 @@ swank:xref
 		  (*unparser-list-depth-limit* 4)
 		  (*unparser-string-length-limit* 100))
 	(pp o p)))))
+
+;; quote keywords, t and nil
+(define (quote-special x)
+  (cond ((and (symbol? x)
+	      (or
+	       (and (> (string-length (symbol->string x)) 0)
+		    (char=? #\: (string-ref (symbol->string x) 0)))
+	       (eq? x 't)))
+	 `(quote ,x))
+	((and (symbol? x)
+	      (eq? x 'nil))
+	 '())
+	(else
+	 x)))
