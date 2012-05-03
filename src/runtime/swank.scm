@@ -201,16 +201,22 @@ USA.
      (lambda (k)
        (bind-condition-handler (list condition-type:serious-condition)
 	   (lambda (condition)
-	     (invoke-sldb socket (+ level 1) condition)
-	     (write-message `(:return (:abort) ,id) socket)
-	     (k unspecific))
+	     (dynamic-wind
+		 (lambda ()
+		   #f)
+		 (lambda ()
+		   (invoke-sldb socket (+ level 1) condition))
+		 (lambda ()
+		   (write-message `(:return (:abort ,(condition/report-string condition)) ,id) socket))))
 	 (lambda ()
-	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring))
+	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring id))
 				    ,id)
 			  socket)))))))
+(define *index*)
 
-(define (emacs-rex socket sexp pstring)
-  (fluid-let ((*buffer-pstring* pstring))
+(define (emacs-rex socket sexp pstring id)
+  (fluid-let ((*buffer-pstring* pstring)
+	      (*index* id))
     (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
 	  swank-env)))
 
@@ -600,7 +606,7 @@ swank:xref
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
-	  '())))
+	  (list *index*))))
 
 (define (sldb-restarts restarts)
   (map (lambda (r)
@@ -623,6 +629,7 @@ swank:xref
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
   socket sldb-level
+  (write-message `(:return (:abort "NIL") ,*index*) socket)
   (invoke-restart (list-ref (sldb-state.restarts *sldb-state*) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
