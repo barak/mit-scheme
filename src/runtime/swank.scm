@@ -430,9 +430,55 @@ USA.
   packages
   '())
 
+(define swank-extra-documentation
+  '((let bindings . body)
+    (let* bindings . body)
+    (letrec bindings . body)
+    (receive bindings expression . body)
+    (define name . body)
+    (quote expression)
+    (quasiquote expression)
+    (unquote expression)
+    (unquote-splicing expression)
+    (if test then else)
+    (set! name value)))
+
+(define (procedure-parameters symbol env)
+  (let ((type (environment-reference-type env symbol)))
+    (let ((ans (if (eq? type 'normal)
+		   (let ((binding (environment-lookup env symbol)))
+		     (if (and binding
+			      (procedure? binding))
+			 (cons symbol (read-from-string (string-trim (with-output-to-string
+								       (lambda () (pa binding))))))
+			 #f))
+		   (let ((extra (assq symbol swank-extra-documentation)))
+		     (if extra
+			 extra
+			 #f)))))
+      ans)))
+
+(define (find-string-before-swank-cursor-marker expr)
+  (if (list? expr)
+      (if (member 'swank::%cursor-marker% expr)
+	  (if (string? (car expr))
+	      (car expr)
+	      #f)
+	  (any (lambda (ex)
+		 (find-string-before-swank-cursor-marker ex))
+	       expr))
+      #f))
+
 (define (swank:autodoc socket expr . params)
   socket params
-  (list ':not-available 't))
+  (let* ((op-string (find-string-before-swank-cursor-marker expr)))
+    (if op-string
+	(let* ((op (string->symbol op-string))
+	       (type (environment-reference-type (buffer-env) op)))
+	  (let ((ans (procedure-parameters op (buffer-env))))
+	    (let ((answer (if ans (with-output-to-string (lambda () (write ans))) ':not-available)))
+	      (list answer 't))))
+	(list ':not-available 't))))
 
 (define (swank:quit-lisp socket)
   socket
