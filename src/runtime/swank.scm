@@ -370,6 +370,13 @@ USA.
       (compiler:disassemble
        (eval (read-from-string string)
 	     (buffer-env))))))
+
+;;;; Directory Functions
+(define (swank:default-directory socket)
+  (->namestring (working-directory-pathname)))
+
+(define (swank:set-default-directory socket directory)
+  (->namestring (set-working-directory-pathname! directory)))
 
 ;;;; Miscellaneous
 
