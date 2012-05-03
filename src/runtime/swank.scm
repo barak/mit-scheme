@@ -1040,3 +1040,5 @@ swank:xref
 	 '())
 	(else
 	 x)))
+
+(define swank:completions swank:simple-completions)
