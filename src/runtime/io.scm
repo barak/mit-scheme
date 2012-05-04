@@ -95,7 +95,9 @@ USA.
   (without-interrupts
    (lambda ()
      (if (channel-open? channel)
-	 (remove-from-gc-finalizer! open-channels channel)))))
+	 (begin
+	   (%deregister-io-descriptor (channel-descriptor-for-select channel))
+	   (remove-from-gc-finalizer! open-channels channel))))))
 
 (define-integrable (channel-open? channel)
   (if (channel-descriptor channel) #t #f))
@@ -170,22 +172,20 @@ USA.
 
 (define (channel-read channel buffer start end)
   (let loop ()
-    (let ((n (with-thread-events-blocked
+    (let ((n (without-interrupts
 	      (lambda ()
-		(%channel-read channel buffer start end)))))
+		(if (channel-closed? channel)
+		    0
+		    (%channel-read channel buffer start end))))))
       (if (eq? n #t)
 	  (begin
 	    (handle-subprocess-status-change)
-	    (if (channel-closed? channel)
-		0
-		(loop)))
+	    (if (channel-blocking? channel)
+		(loop)
+		#f))
 	  n))))
 
 (define (%channel-read channel buffer start end)
-  ;; Returns 0 (eof) or a fixnum (the number of octets written into
-  ;; BUFFER).  May also return #f if the channel is not blocking and
-  ;; there are no octets to read.  May also return #t if the operation
-  ;; was un-blocked by a thread-event, e.g. subprocess status change.
   (let ((do-read
 	 (lambda ()
 	   ((ucode-primitive channel-read 4)
@@ -197,19 +197,30 @@ USA.
 	    end))))
     (declare (integrate-operator do-read))
     (if (and have-select? (not (channel-type=file? channel)))
-	(let ((do-test
-	       (lambda (k)
-		 (let ((result (test-for-io-on-channel channel 'READ)))
-		   (case result
-		     ((READ HANGUP ERROR) (do-read))
-		     ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
-		     (else (k)))))))
-	  (if (channel-blocking? channel)
-	      (let loop () (do-test loop))
-	      (do-test (lambda () #f))))
+	(let ((result (test-for-io-on-channel channel 'READ)))
+	  (case result
+	    ((READ HANGUP ERROR) (do-read))
+	    ((#F) 0)
+	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-read))))
 
 (define (channel-write channel buffer start end)
+  (let loop ()
+    (let ((n (without-interrupts
+	      (lambda ()
+		(if (channel-closed? channel)
+		    0
+		    (%channel-write channel buffer start end))))))
+      (if (eq? n #t)
+	  (begin
+	    (handle-subprocess-status-change)
+	    (if (channel-blocking? channel)
+		(loop)
+		#f))
+	  n))))
+
+(define (%channel-write channel buffer start end)
   (let ((do-write
 	 (lambda ()
 	   ((ucode-primitive channel-write 4)
@@ -221,20 +232,12 @@ USA.
 	    end))))
     (declare (integrate-operator do-write))
     (if (and have-select? (not (channel-type=file? channel)))
-	(with-thread-events-blocked
-	  (lambda ()
-	    (let ((do-test
-		   (lambda (k)
-		     (let ((result (test-for-io-on-channel channel 'WRITE)))
-		       (case result
-			 ((WRITE HANGUP ERROR) (do-write))
-			 ((PROCESS-STATUS-CHANGE)
-			  (handle-subprocess-status-change)
-			  (if (channel-closed? channel) 0 (k)))
-			 (else (k)))))))
-	      (if (channel-blocking? channel)
-		  (let loop () (do-test loop))
-		  (do-test (lambda () #f))))))
+	(let ((result (test-for-io-on-channel channel 'WRITE)))
+	  (case result
+	    ((WRITE HANGUP ERROR) (do-write))
+	    ((#F) 0)
+	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
+	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-write))))
 
 (define (channel-read-block channel buffer start end)

@@ -578,6 +578,34 @@ USA.
 	     (else
 	      (loop (dentry/next dentry)))))
      (%maybe-toggle-thread-timer))))
+
+(define (%deregister-io-descriptor descriptor)
+  (let dloop ((dentry io-registrations))
+    (cond ((not dentry)
+	   unspecific)
+	  ((eqv? descriptor (dentry/descriptor dentry))
+	   (let tloop ((tentry (dentry/first-tentry dentry)))
+	     (if tentry
+		 (let ((thread (tentry/thread tentry))
+		       (event (tentry/event tentry)))
+		   (%signal-thread-event thread
+					 (and event
+					      (lambda () (event #f))))
+		   (tloop (tentry/next tentry)))))
+	   (remove-from-select-registry! io-registry
+					 (dentry/descriptor dentry)
+					 (dentry/mode dentry))
+	   (let ((prev (dentry/prev dentry))
+		 (next (dentry/next dentry)))
+	     (if prev
+		 (set-dentry/next! prev next)
+		 (set! io-registrations next))
+	     (if next
+		 (set-dentry/prev! next prev)))
+	   (dloop (dentry/next dentry)))
+	  (else
+	   (dloop (dentry/next dentry)))))
+  (%maybe-toggle-thread-timer))
 
 (define (%register-io-thread-event descriptor mode thread event permanent?
 				   front?)
