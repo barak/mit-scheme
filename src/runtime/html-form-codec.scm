@@ -34,20 +34,19 @@ USA.
 ;;;; Decoder
 
 (define (decode-www-form-urlencoded octets start end)
-  (call-with-input-octets octets start end
-    (lambda (input)
-      (port/set-coding input 'us-ascii)
-      (port/set-line-ending input 'crlf)
-      (let loop ((data '()))
-	(let ((char (read-char input)))
-	  (if (eof-object? char)
-	      (reverse! data)
-	      (begin
-		(unread-char char input)
-		(let ((name (decode-segment input #t)))
-		  (loop
-		   (cons (cons name (decode-segment input #f))
-			 data))))))))))
+  (let ((input (open-input-octets octets start end)))
+    (port/set-coding input 'us-ascii)
+    (port/set-line-ending input 'crlf)
+    (let loop ((data '()))
+      (let ((char (read-char input)))
+	(if (eof-object? char)
+	    (reverse! data)
+	    (begin
+	      (unread-char char input)
+	      (let ((name (decode-segment input #t)))
+		(loop
+		 (cons (cons name (decode-segment input #f))
+		       data)))))))))
 
 (define (decode-segment input name?)
   (call-with-output-string
