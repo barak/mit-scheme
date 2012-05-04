@@ -524,9 +524,14 @@ USA.
 	  (%suspend-current-thread)
 	  result)
 	(lambda ()
-	  (%deregister-io-thread-event registration-2)
-	  (%deregister-io-thread-event registration-1)
+	  (%maybe-deregister-io-thread-event registration-2)
+	  (%maybe-deregister-io-thread-event registration-1)
 	  (%maybe-toggle-thread-timer)))))))
+
+(define (%maybe-deregister-io-thread-event tentry)
+  ;; Ensure that another thread does not unwind our registration.
+  (if (eq? (current-thread) (tentry/thread tentry))
+      (delete-tentry! tentry)))
 
 (define (permanently-register-io-thread-event descriptor mode thread event)
   (register-io-thread-event-1 descriptor mode thread event
