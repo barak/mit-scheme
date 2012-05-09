@@ -76,6 +76,7 @@ USA.
 
 (define (match-component pattern instance)
   (or (eq? pattern 'WILD)
+      (eq? pattern #F)
       (equal? pattern instance)))
 
 (define (pathname<? x y)
