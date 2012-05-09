@@ -212,7 +212,7 @@
 
 (define (assert-integral-quotient n d q r)
   n d r                                 ;ignore
-  (assert integer? "integer" q))
+  (value-assert integer? "integer" q))
 
 (define-test 'INTEGRAL-QUOTIENT-TESTS:CEILING
   (lambda () (randomly-test-properties ceiling/ assert-integral-quotient)))
