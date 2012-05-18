@@ -65,21 +65,21 @@ Documentation License.''
 @end ifnottex
 
 @menu
-* Introduction::                
-* Installation::                
-* Running Scheme::              
-* Using Scheme::                
-* Compiling Programs::          
-* Debugging::                   
-* Profiling::                   
-* GNU Emacs Interface::         
-* Edwin::                       
-* Release Notes::               
-* GNU Free Documentation License::  
-* Environment-variable Index::  
-* Option Index::                
-* Variable Index::              
-* Concept Index::               
+* Introduction::
+* Installation::
+* Running Scheme::
+* Using Scheme::
+* Compiling Programs::
+* Debugging::
+* Profiling::
+* GNU Emacs Interface::
+* Edwin::
+* Release Notes::
+* GNU Free Documentation License::
+* Environment-variable Index::
+* Option Index::
+* Variable Index::
+* Concept Index::
 @end menu
 
 @node Introduction, Installation, Top, Top
@@ -142,8 +142,8 @@ section detailing the installation for the operating system that you are
 using.
 
 @menu
-* Unix Installation::           
-* Windows Installation::        
+* Unix Installation::
+* Windows Installation::
 * Portable C Installation::
 @end menu
 
@@ -312,14 +312,14 @@ describes how you can customize the behavior of MIT/GNU Scheme
 using command-line options and environment variables.
 
 @menu
-* Basics of Starting Scheme::   
-* Customizing Scheme::          
-* Memory Usage::                
-* Command-Line Options::        
-* Custom Command-line Options::  
-* Environment Variables::       
-* Starting Scheme from Microsoft Windows::  
-* Leaving Scheme::              
+* Basics of Starting Scheme::
+* Customizing Scheme::
+* Memory Usage::
+* Command-Line Options::
+* Custom Command-line Options::
+* Environment Variables::
+* Starting Scheme from Microsoft Windows::
+* Leaving Scheme::
 @end menu
 
 @node Basics of Starting Scheme, Customizing Scheme, Running Scheme, Running Scheme
@@ -738,10 +738,10 @@ procedure, e.g.@:
 @end example
 
 @menu
-* Microcode Environment Variables::  
-* Runtime Environment Variables::  
-* Edwin Environment Variables::  
-* Windows Environment Variables::  
+* Microcode Environment Variables::
+* Runtime Environment Variables::
+* Edwin Environment Variables::
+* Windows Environment Variables::
 @end menu
 
 @node Microcode Environment Variables, Runtime Environment Variables, Environment Variables, Environment Variables
@@ -771,15 +771,15 @@ The size of constant space, in 1024-word blocks; overridden by
 @option{--constant}.  The default value is computed to be the correct
 size for the band being loaded.
 
-@item MITSCHEME_HEAP
-@nvindex MITSCHEME_HEAP
+@item MITSCHEME_HEAP_SIZE
+@nvindex MITSCHEME_HEAP_SIZE
 The size of the heap, in 1024-word blocks; overridden by
 @option{--heap}.  The default value depends on the architecture: for
 32-bit machines the default is @samp{4096}, and for 64-bit machines
 the default is @samp{16384}.
 
-@item MITSCHEME_STACK
-@nvindex MITSCHEME_STACK
+@item MITSCHEME_STACK_SIZE
+@nvindex MITSCHEME_STACK_SIZE
 The size of the stack, in 1024-word blocks; overridden by
 @option{--stack}.  The default value is @samp{128}.
 @end table
@@ -1067,10 +1067,10 @@ and how to control the garbage collector.  Subsequent chapters will
 describe how to use the compiler, and how to debug your programs.
 
 @menu
-* REPL::                        
-* Loading Files::               
-* World Images::                
-* Garbage Collection::          
+* REPL::
+* Loading Files::
+* World Images::
+* Garbage Collection::
 @end menu
 
 @node REPL, Loading Files, Using Scheme, Using Scheme
@@ -1085,10 +1085,10 @@ whenever it is waiting for input.  You then type an expression
 prints the result, and gives you another prompt.
 
 @menu
-* The Prompt and Level Number::  
-* Interrupting::                
-* Restarting::                  
-* The Current REPL Environment::  
+* The Prompt and Level Number::
+* Interrupting::
+* Restarting::
+* The Current REPL Environment::
 @end menu
 
 @node The Prompt and Level Number, Interrupting, REPL, REPL
@@ -1117,7 +1117,7 @@ Scheme:
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-2 error> 
+2 error>
 @end group
 @end example
 
@@ -1267,7 +1267,7 @@ in the case of an error @acronym{REPL}, this list is printed when the
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-2 error> 
+2 error>
 @end group
 @end example
 
@@ -1667,9 +1667,9 @@ Note: the procedures described in this section are only available when
 the @option{--compiler} command-line option is specified.
 
 @menu
-* Compilation Procedures::      
-* Declarations::                
-* Efficiency Tips::             
+* Compilation Procedures::
+* Declarations::
+* Efficiency Tips::
 @end menu
 
 @node Compilation Procedures, Declarations, Compiling Programs, Compiling Programs
@@ -1821,10 +1821,10 @@ Several declarations can be added to your programs to help @code{cf} and
 @code{sf} make them more efficient.
 
 @menu
-* Standard Names::              
-* In-line Coding::              
-* Replacement of Operators::    
-* Reduction of Operators::      
+* Standard Names::
+* In-line Coding::
+* Replacement of Operators::
+* Reduction of Operators::
 @end menu
 
 @node Standard Names, In-line Coding, Declarations, Declarations
@@ -2360,11 +2360,11 @@ hope that you find the following grab-bag of tips, hints and
 explanations useful.
 
 @menu
-* Coding style::                
-* Global variables::            
+* Coding style::
+* Global variables::
 * Type and range checking::
-* Fixnum arithmetic::           
-* Flonum arithmetic::           
+* Fixnum arithmetic::
+* Flonum arithmetic::
 @end menu
 
 @node Coding style, Global variables, Efficiency Tips, Efficiency Tips
@@ -2454,7 +2454,7 @@ optimizations.  Consider the following two procedures, where
 
 (define (f2)
   (define v (compute-100))
-  (lambda () v))  
+  (lambda () v))
 @end group
 @end example
 
@@ -2610,7 +2610,7 @@ For example, to ignore reference traps on all the variables except
 @c true block scoping, thus the declaration takes effect only within the
 @c procedure or @code{let} in which the declaration occurs.  This makes
 @c it possible to control individual variable references, for example:
-@c 
+@c
 @c @example
 @c @group
 @c (let ()
@@ -2618,9 +2618,9 @@ For example, to ignore reference traps on all the variables except
 @c   x)
 @c @end group
 @c @end example
-@c 
+@c
 @c In earlier versions, a declaration affects all uses of the variable.
-@c 
+@c
 @c In all versions, top level declarations affect the whole source file.
 
 @node Type and range checking, Fixnum arithmetic, Global variables, Efficiency Tips
@@ -2753,22 +2753,22 @@ single arithmetic expression.  If the expression contains conditionals
 or calls to procedures then the values tend to get boxed anyway.
 @c
 @c @subsubheading A safer alternative
-@c 
+@c
 @c An alternative to putting in @code{flo:} operations yourself is to let
 @c the compiler try.
 @c In the next definition of @code{distance}, the programmer explicitly
 @c tests for flonum arguments and duplicates the expression.
-@c 
+@c
 @c The compiler compiles the expressions differently: for the first
 @c expression it knows from the conditional that @var{x} and @var{y} are
 @c flonums and will replace both @code{*} and the @code{+} operators with
 @c flonum operators.
 @c It doesn't replace the @code{sqrt} operator, though, as it doesn't know
 @c that sums of squares of reals are non-negative.
-@c 
+@c
 @c This approach has the advantage of being completely safe, and
 @c @code{distance} will still work for other kinds of number.
-@c 
+@c
 @c @example
 @c @group
 @c (define (distance x y)
@@ -2777,7 +2777,7 @@ or calls to procedures then the values tend to get boxed anyway.
 @c       (sqrt (+ (* x x) (* y y)))))
 @c @end group
 @c @end example
-@c 
+@c
 @c This approach is effective only for MIT/GNU Scheme version 8.0
 @c and later.  Earlier versions do not do this kind of type analysis.
 
@@ -2910,7 +2910,7 @@ will cause Scheme to respond
 ; (RESTART 2) => Define foo to a given value.
 ; (RESTART 1) => Return to read-eval-print level 1.
 
-2 error> 
+2 error>
 @end group
 @end example
 
@@ -2945,10 +2945,10 @@ Planning ahead is the best way to ward off bugs, but when bugs do
 appear, be prepared to attack them with all the tools available.
 
 @menu
-* Subproblems and Reductions::  
-* Command-Line Debugger::       
-* Debugging Aids::              
-* Advising Procedures::         
+* Subproblems and Reductions::
+* Command-Line Debugger::
+* Debugging Aids::
+* Advising Procedures::
 @end menu
 
 @node Subproblems and Reductions, Command-Line Debugger, Debugging, Debugging
@@ -3042,7 +3042,7 @@ information necessary to continue running the Scheme program that caused
 the error; the debugger provides you with the means to inspect this
 information.  For this reason, the debugger is sometimes called a
 @dfn{continuation browser}.
- 
+
 Here is the transcript of a typical Scheme session, showing a user
 evaluating the expression @samp{(fib 10)}, Scheme responding with an
 unbound variable error for the variable @code{fob}, and the user
@@ -3070,7 +3070,7 @@ Environment created by the procedure: FIB
 The execution history for this subproblem contains 1 reduction.
 You are now in the debugger.  Type q to quit, ? for commands.
 
-3 debug> 
+3 debug>
 @end group
 @end example
 
@@ -3827,13 +3827,13 @@ MIT/GNU Scheme, while GNU Emacs extensions are written
 in Emacs Lisp.  This manual does not discuss customization of Edwin.
 
 @menu
-* Starting Edwin::              
-* Leaving Edwin::               
-* Edwin Scheme Mode::           
-* Edwin Scheme Evaluation::     
-* Edwin REPL Mode::             
-* Edwin Debugger::              
-* Last Resorts::                
+* Starting Edwin::
+* Leaving Edwin::
+* Edwin Scheme Mode::
+* Edwin Scheme Evaluation::
+* Edwin REPL Mode::
+* Edwin Debugger::
+* Last Resorts::
 @end menu
 
 @node Starting Edwin, Leaving Edwin, Edwin, Edwin
