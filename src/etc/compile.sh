@@ -29,14 +29,19 @@ set -e
 run_cmd "${@}" <<EOF
 (begin
   (load "etc/compile.scm")
-  (compile-cref compile-dir)
-  (for-each compile-dir '("runtime" "star-parser" "sf")))
+  (show-time
+    (lambda ()
+      (compile-cref compile-dir)
+      (for-each compile-dir '("runtime" "star-parser" "sf"))))
+  (newline))
 EOF
 
 get_fasl_file
 run_cmd_in_dir runtime ../microcode/scheme --batch-mode		\
 	--library ../lib --fasl "${FASL}" <<EOF
-(disk-save "../lib/runtime.com")
+(begin
+  (disk-save "../lib/runtime.com")
+  (newline))
 EOF
 
 # Syntax the new compiler in fresh (compiler) packages.  Use the new sf too.
@@ -44,17 +49,26 @@ run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
   (load-option 'SF)
   (with-working-directory-pathname "compiler/"
-    (lambda () (load "compiler.sf"))))
+    (lambda ()
+      (show-time
+        (lambda () (load "compiler.sf")))
+      (newline))))
 EOF
 
 run_cmd "${@}" <<EOF
 (with-working-directory-pathname "compiler/"
-  (lambda () (load "compiler.cbf")))
+  (lambda ()
+    (show-time
+      (lambda () (load "compiler.cbf")))
+    (newline)))
 EOF
 
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
   (load-option 'COMPILER)
   (load "etc/compile.scm")
-  (compile-remaining-dirs compile-dir))
+  (show-time
+    (lambda ()
+      (compile-remaining-dirs compile-dir)))
+  (newline))
 EOF
