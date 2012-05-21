@@ -604,6 +604,6 @@ USA.
 
 (define-syntax :assert
   (syntax-rules ()
-    ((ASSERT condition)
+    ((ASSERT condition . extra)
      (IF (NOT condition)
-         (ERROR "Assertion failed:" 'condition)))))
+         (ERROR "Assertion failed:" 'condition . extra)))))
