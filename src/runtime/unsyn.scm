@@ -199,7 +199,13 @@ USA.
       `(LOCAL-DECLARE ,text ,(unsyntax-object expression)))))
 
 (define (unsyntax-SEQUENCE-object seq)
-  `(BEGIN ,@(unsyntax-sequence-actions seq)))
+  (let ((first-action (sequence-immediate-first seq)))
+    (if (block-declaration? first-action)
+	`(BEGIN
+	  (DECLARE ,@(block-declaration-text first-action))
+	  ,@(unsyntax-sequence (sequence-immediate-second seq)))
+	`(BEGIN
+	  ,@(unsyntax-sequence-actions seq)))))
 
 (define (unsyntax-sequence seq)
   (if (sequence? seq)
@@ -227,9 +233,7 @@ USA.
   (if (eq? #t unsyntaxer:macroize?)
       (open-block-components open-block
 	(lambda (auxiliary declarations expression)
-	  `(OPEN-BLOCK ,auxiliary
-		       ,declarations
-		       ,@(unsyntax-sequence expression))))
+	  (unsyntax-object (unscan-defines auxiliary declarations expression))))
       (unsyntax-SEQUENCE-object open-block)))
 
 (define (unsyntax-DELAY-object object)
