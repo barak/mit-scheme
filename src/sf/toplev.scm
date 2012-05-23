@@ -152,6 +152,16 @@ USA.
 		  (with-notification message do-it)))
 	    (do-it))))))
 
+;; If not #F, should be a string file type.  SF will pretty print
+;; the macro-expanded, but unoptimized file content to the output
+;; directory in a file with this extension.
+(define macroexpanded-pathname-type #f)
+
+;; If not #F, should be a string file type.  SF will pretty print
+;; the optimized file content to the output directory in a file
+;; with this extension.
+(define optimized-pathname-type #f)
+
 (define (sf/file->scode input-pathname output-pathname
 			environment declarations)
   (fluid-let ((sf/default-externs-pathname
@@ -162,12 +172,23 @@ USA.
 			      externs-pathname-type
 			      'NEWEST)))
     (receive (expression externs-block externs)
-	(integrate/file input-pathname environment declarations)
+	(integrate/file input-pathname
+			(and output-pathname
+			     macroexpanded-pathname-type
+			     (pathname-new-type output-pathname
+						macroexpanded-pathname-type))
+			environment declarations)
       (if output-pathname
 	  (write-externs-file (pathname-new-type output-pathname
 						 externs-pathname-type)
 			      externs-block
 			      externs))
+      (if (and output-pathname
+	       optimized-pathname-type)
+	  (call-with-output-file
+	      (pathname-new-type output-pathname optimized-pathname-type)
+	    (lambda (port)
+	      (pp expression port))))
       expression)))
 
 (define externs-pathname-type
@@ -228,12 +249,17 @@ USA.
 
 ;;;; Optimizer Top Level
 
-(define (integrate/file file-name environment declarations)
+(define (integrate/file file-name macroexpanded-file-name environment declarations)
   (integrate/kernel
    (lambda ()
-     (phase:syntax (phase:read file-name)
-		   environment
-		   declarations))))
+     (let ((scode (phase:syntax (phase:read file-name)
+				environment
+				declarations)))
+       (if macroexpanded-file-name
+	   (call-with-output-file macroexpanded-file-name
+	     (lambda (port)
+	       (pp scode port))))
+       scode))))
 
 (define (integrate/simple preprocessor input receiver)
   (call-with-values
