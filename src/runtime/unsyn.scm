@@ -81,11 +81,16 @@ USA.
   (and (pair? substitutions)
        (assq object substitutions)))
 
-(define (with-bindings environment required optional rest receiver)
+(define (with-bindings environment lambda receiver)
   (if (and unsyntaxer:elide-global-accesses?
 	   unsyntaxer:macroize?)
-      (receiver (append (if rest (list rest) '()) required optional environment))
+      (receiver (cons lambda environment))
       (receiver environment)))
+
+(define (is-bound? name environment)
+  (there-exists? environment
+		 (lambda (binding-lambda)
+		   (lambda-bound? binding-lambda name))))
 
 (define (unsyntax scode)
   (unsyntax-object '()
@@ -140,7 +145,7 @@ USA.
 			(and (variable? access-environment)
 			     (eq? (variable-name access-environment)
 				  'system-global-environment)))
-		    (not (memq name environment))
+		    (not (is-bound? name environment))
 		    name))))
       `(ACCESS ,@(unexpand-access environment object))))
 
@@ -176,7 +181,7 @@ USA.
 	   (lambda (lambda-name required optional rest body)
 	     (if (eq? lambda-name name)
 		 `(DEFINE (,name . ,(make-lambda-list required optional rest '()))
-		    ,@(with-bindings environment required optional rest
+		    ,@(with-bindings environment value
 				     (lambda (environment*)
 				       (unsyntax-lambda-body environment* body))))
 		 `(DEFINE ,name ,@(unexpand-binding-value environment value))))))
@@ -362,7 +367,7 @@ USA.
     (lambda (name required optional rest body)
       (collect-lambda name
 		      (make-lambda-list required optional rest '())
-		      (with-bindings environment required optional rest
+		      (with-bindings environment expression
 				     (lambda (environment*)
 				       (unsyntax-lambda-body environment* body)))))))
 
@@ -429,7 +434,7 @@ USA.
 			(if (or (eq? name lambda-tag:unnamed)
 				(eq? name lambda-tag:let))
 			    `(LET ,(unsyntax-let-bindings environment required operands)
-			       ,@(with-bindings environment required '() #F
+			       ,@(with-bindings environment operator
 						(lambda (environment*)
 						  (unsyntax-lambda-body environment* body))))
 			    (ordinary-combination))
