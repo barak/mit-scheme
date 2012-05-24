@@ -32,7 +32,7 @@ run_cmd "${@}" <<EOF
   (show-time
     (lambda ()
       (compile-cref compile-dir)
-      (for-each compile-dir '("runtime" "star-parser" "sf"))))
+      (for-each compile-dir (quote ("runtime" "star-parser" "sf")))))
   (newline))
 EOF
 
@@ -47,7 +47,7 @@ EOF
 # Syntax the new compiler in fresh (compiler) packages.  Use the new sf too.
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
-  (load-option 'SF)
+  (load-option (quote SF))
   (with-working-directory-pathname "compiler/"
     (lambda ()
       (show-time
@@ -65,7 +65,7 @@ EOF
 
 run_cmd ./microcode/scheme --batch-mode --library lib --band runtime.com <<EOF
 (begin
-  (load-option 'COMPILER)
+  (load-option (quote COMPILER))
   (load "etc/compile.scm")
   (show-time
     (lambda ()
