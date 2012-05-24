@@ -32,6 +32,7 @@ USA.
 (define lambda-body)
 (define set-lambda-body!)
 (define lambda-bound)
+(define lambda-bound?)
 (define lambda-interface)
 (define lambda-name)
 
@@ -106,6 +107,11 @@ USA.
 		    clambda-bound
 		    clexpr-bound
 		    xlambda-bound))
+  (set! lambda-bound?
+	(dispatch-1 'LAMBDA-BOUND?
+		    clambda-bound?
+		    clexpr-bound?
+		    xlambda-bound?))
   (set! lambda-immediate-body
 	(dispatch-0 'LAMBDA-IMMEDIATE-BODY
 		    slambda-body
@@ -251,6 +257,10 @@ USA.
       name
       (append required (lambda-body-auxiliary body)))))
 
+(define (clambda-bound? clambda symbol)
+  (or (slambda-bound? clambda symbol)
+      (auxiliary-bound? (slambda-body clambda) symbol)))
+
 (define (clambda-has-internal-lambda? clambda)
   (lambda-body-has-internal-lambda? (slambda-body clambda)))
 
@@ -267,6 +277,12 @@ USA.
        (let ((operator (combination-operator body)))
 	 (and (internal-lambda? operator)
 	      operator))))
+
+(define (auxiliary-bound? body symbol)
+  (and (combination? body)
+       (let ((operator (combination-operator body)))
+	 (and (internal-lambda? operator)
+	      (internal-lambda-bound? operator symbol)))))
 
 (define clambda-wrap-body!)
 (define clambda-wrapper-components)
@@ -308,6 +324,10 @@ USA.
 		(slambda-auxiliary internal)
 		(lambda-body-auxiliary (slambda-body internal)))))))
 
+(define (clexpr-bound? clexpr symbol)
+  (or (slexpr-bound? clexpr symbol)
+      (clexpr-internal-bound? clexpr symbol)))
+
 (define (clexpr-interface clexpr)
   (slexpr-components clexpr
     (lambda (name required body)
@@ -320,6 +340,13 @@ USA.
   (let ((internal (combination-operator (slexpr-body clexpr))))
     (or (lambda-body-has-internal-lambda? (slambda-body internal))
 	internal)))
+
+(define (clexpr-internal-bound? clexpr symbol)
+  (let ((body (slexpr-body clexpr)))
+    (and (combination? body)
+	 (let ((operator (combination-operator body)))
+	   (and (internal-lambda? operator)
+		(internal-lambda-bound? operator symbol))))))
 
 (define (clexpr/physical-body clexpr)
   (slambda-body (clexpr-has-internal-lambda? clexpr)))
@@ -427,6 +454,12 @@ USA.
   (append (let ((names (%xlambda-names-vector xlambda)))
 	    (subvector->list names 1 (vector-length names)))
 	  (lambda-body-auxiliary (%xlambda-body xlambda))))
+
+(define (xlambda-bound? xlambda symbol)
+  (guarantee-xlambda xlambda 'xlambda-bound?)
+  (or (let ((bound (%xlambda-names-vector xlambda)))
+	(subvector-find-next-element bound 1 (vector-length bound) symbol))
+      (auxiliary-bound? (%xlambda-body xlambda) symbol)))
 
 (define (xlambda-has-internal-lambda? xlambda)
   (lambda-body-has-internal-lambda? (&triple-first xlambda)))
@@ -592,6 +625,10 @@ USA.
      #f
      '())))
 
+(define (slambda-bound? slambda symbol)
+  (let ((bound (%slambda-names-vector slambda)))
+    (subvector-find-next-element bound 1 (vector-length bound) symbol)))
+
 (define-integrable (%slambda-name slambda)
   (vector-ref (%slambda-names-vector slambda) 0))
 
@@ -629,6 +666,10 @@ USA.
 (define (slexpr-names-vector slexpr)
   (&pair-cdr slexpr))
 
+(define (slexpr-bound? slexpr symbol)
+  (let ((bound (&pair-cdr slexpr)))
+    (subvector-find-next-element bound 1 (vector-length bound) symbol)))
+
 (define-integrable (slexpr-name slexpr)
   (vector-ref (&pair-cdr slexpr) 0))
 
@@ -656,6 +697,10 @@ USA.
   (and (slambda? *lambda)
        (or (eq? (slambda-name *lambda) lambda-tag:internal-lambda)
 	   (eq? (slambda-name *lambda) lambda-tag:internal-lexpr))))
+
+(define (internal-lambda-bound? *lambda symbol)
+  (and (slambda? *lambda)
+       (slambda-bound? *lambda symbol)))
 
 (define (make-unassigned auxiliary)
   (map (lambda (auxiliary)

@@ -2420,6 +2420,7 @@ USA.
 	  lambda?
 	  lambda-body
 	  lambda-bound
+	  lambda-bound?
 	  lambda-components
 	  lambda-interface
 	  lambda-name
