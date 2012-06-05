@@ -253,6 +253,45 @@ USA.
 	      `(,let-keyword ,bindings ,@body)))
 	`(,let-keyword ,bindings ,@body))))
 
+(define-syntax :letrec
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (let ((bindings (cadr form))
+	   (r-lambda (rename 'LAMBDA))
+	   (r-named-lambda (rename 'NAMED-LAMBDA))
+	   (r-set!   (rename 'SET!)))
+       (let ((temps (map (lambda (binding)
+			   (make-synthetic-identifier
+			    (identifier->symbol (car binding)))) bindings)))
+	 `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+			    ((,r-lambda ,temps
+					,@(map (lambda (binding temp)
+						 `(,r-set! ,(car binding) ,temp)) bindings temps))
+			     ,@(map cadr bindings))
+			    ((,r-lambda () ,@(cddr form))))
+	   ,@(map (lambda (binding)
+		    (declare (ignore binding))
+		    (unassigned-expression)) bindings)))))))
+
+(define-syntax :letrec*
+  (er-macro-transformer
+   (lambda (form rename compare)
+     (declare (ignore compare))
+     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form)
+     (let ((bindings (cadr form))
+	   (r-lambda (rename 'LAMBDA))
+	   (r-named-lambda (rename 'NAMED-LAMBDA))
+	   (r-set!   (rename 'SET!)))
+       `((,r-named-lambda (,lambda-tag:unnamed ,@(map car bindings))
+			  ,@(map (lambda (binding)
+				   `(,r-set! ,@binding)) bindings)
+			  ((,r-lambda () ,@(cddr form))))
+	 ,@(map (lambda (binding)
+		  (declare (ignore binding))
+		  (unassigned-expression)) bindings))))))
+
 (define-syntax :and
   (er-macro-transformer
    (lambda (form rename compare)
@@ -555,7 +594,10 @@ USA.
 	      `(,r-begin
 		(,r-declare (INTEGRATE-OPERATOR ,(caadr form)))
 		(,r-define ,(cadr form)
-			   (,r-declare (INTEGRATE ,@(cdadr form)))
+			   ,@(let ((arguments (cdadr form)))
+			       (if (null? arguments)
+				   '()
+				   `((,r-declare (INTEGRATE ,@arguments)))))
 			   ,@(cddr form))))
 	     (else
 	      (ill-formed-syntax form)))))))
