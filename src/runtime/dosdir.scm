@@ -107,7 +107,7 @@ USA.
 ;;; "*foo?bar*" matching "foogbazfoogbar".
 
 (define (component-matcher pattern)
-  (cond ((eq? pattern 'WILD)
+  (cond ((or (eq? pattern 'WILD) (eq? pattern '#F))
 	 (lambda (instance)
 	   instance			; ignored
 	   true))

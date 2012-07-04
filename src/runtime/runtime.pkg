@@ -2420,6 +2420,7 @@ USA.
 	  lambda?
 	  lambda-body
 	  lambda-bound
+	  lambda-bound?
 	  lambda-components
 	  lambda-interface
 	  lambda-name
@@ -4695,7 +4696,6 @@ USA.
 	  output/lambda
 	  output/let
 	  output/letrec
-	  output/letrec*
 	  output/local-declare
 	  output/named-lambda
 	  output/post-process-expression
@@ -4738,8 +4738,6 @@ USA.
 	  classifier:define-syntax
 	  classifier:er-macro-transformer
 	  classifier:let-syntax
-	  classifier:letrec
-	  classifier:letrec*
 	  classifier:letrec-syntax
 	  classifier:local-declare
 	  classifier:non-hygienic-macro-transformer
@@ -4782,6 +4780,8 @@ USA.
 	  (let :let)
 	  (let* :let*)
 	  (let*-syntax :let*-syntax)
+	  (letrec :letrec)
+	  (letrec* :letrec*)
 	  (quasiquote :quasiquote)
 	  (receive :receive)
 	  supported-srfi-features)

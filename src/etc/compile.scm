@@ -72,8 +72,19 @@ USA.
       (if (file-exists? (pathname-new-type name "sf"))
 	  (begin
 	    (load (pathname-new-type name "sf"))
+	    (echo-cref-output name)
 	    (load (pathname-new-type name "cbf")))
 	  (load "compile")))))
+
+(define (echo-cref-output name)
+  (let ((cref-output-file (pathname-new-type (package-set-pathname name) "crf")))
+    (if (file-exists? cref-output-file)
+	(call-with-input-file cref-output-file
+	  (lambda (inport)
+	    (do ((line (read-line inport) (read-line inport)))
+		((eof-object? line))
+	      (write-string line)
+	      (newline)))))))
 
 (define (compile-bootstrap-1)
   (load-option 'SF)

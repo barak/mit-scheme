@@ -367,7 +367,8 @@ USA.
 	  (and (char-set-member? char-set/number-leaders (string-ref s 0))
 	       (string->number s))
 	  (and (fix:> (string-length s) 1)
-	       (looks-like-keyword? s)))
+	       (or (looks-special? s)
+		   (looks-like-keyword? s))))
       (begin
 	(*unparse-char #\|)
 	(let ((end (string-length s)))
@@ -386,6 +387,9 @@ USA.
 		      (*unparse-substring s start end))))))
 	(*unparse-char #\|))
       (*unparse-string s)))
+
+(define (looks-special? string)
+  (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
   (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)

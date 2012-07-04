@@ -200,7 +200,7 @@ USA.
 	(let ((result (test-for-io-on-channel channel 'READ)))
 	  (case result
 	    ((READ HANGUP ERROR) (do-read))
-	    ((#F) 0)
+	    ((#F) #f)
 	    ((PROCESS-STATUS-CHANGE INTERRUPT) #t)
 	    (else (error "Unexpected test-for-io-on-channel value:" result))))
 	(do-read))))

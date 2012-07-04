@@ -108,17 +108,6 @@ USA.
 		   (output/let '() '() body)
 		   body))))))))
 
-(define (output/letrec* names values body)
-  (output/let
-   names (map (lambda (name) name (output/unassigned)) names)
-   (make-sequence
-    (append! (map make-assignment names values)
-	     (list
-	      (let ((body (scan-defines body make-open-block)))
-		(if (open-block? body)
-		    (output/let '() '() body)
-		    body)))))))
-
 (define (output/body declarations body)
   (scan-defines (let ((declarations (apply append declarations)))
 		  (if (pair? declarations)

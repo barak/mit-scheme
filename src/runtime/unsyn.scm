@@ -57,7 +57,7 @@ USA.
 
 (define unsyntaxer:macroize? #t)
 
-(define unsyntaxer:elide-global-accesses? #f)
+(define unsyntaxer:elide-global-accesses? #t)
 (define unsyntaxer:fold-sequence-tail? #t)
 (define unsyntaxer:show-comments? #f)
 
@@ -71,45 +71,43 @@ USA.
   (fluid-let ((substitutions alist))
     (unsyntax scode)))
 
-(define (maybe-substitute object action)
+(define-integrable (maybe-substitute object thunk)
   (let ((association (has-substitution? object)))
     (if association
 	(cdr association)
-	(action object))))
+	(thunk))))
 
 (define-integrable (has-substitution? object)
   (and (pair? substitutions)
        (assq object substitutions)))
 
-(define bound (list #F '()))
-
-(define (with-bindings required optional rest action argument)
+(define (with-bindings environment lambda receiver)
   (if (and unsyntaxer:elide-global-accesses?
 	   unsyntaxer:macroize?)
-      (let* ((bound bound)
-	     (old   (cdr bound)))
-	(set-cdr! bound
-		  (append (if rest (list rest) '()) required optional old))
-	(let ((value (action argument)))
-	  (set-cdr! bound old)
-	  value))
-      (action argument)))
+      (receiver (cons lambda environment))
+      (receiver environment)))
+
+(define (is-bound? name environment)
+  (there-exists? environment
+		 (lambda (binding-lambda)
+		   (lambda-bound? binding-lambda name))))
 
 (define (unsyntax scode)
-  (fluid-let ((bound (list #F '())))
-    (unsyntax-object (if (procedure? scode) (procedure-lambda scode) scode))))
+  (unsyntax-object '()
+		   (if (procedure? scode) (procedure-lambda scode) scode)))
 
-(define (unsyntax-object object)
+(define (unsyntax-object environment object)
   (maybe-substitute
    object
-   (lambda (object) ((scode-walk unsyntaxer/scode-walker object) object))))
+   (lambda ()
+     ((scode-walk unsyntaxer/scode-walker object) environment object))))
 
 (define unsyntaxer/scode-walker)
 
 
 ;;;; Unsyntax Quanta
 
-(define (unsyntax-constant object)
+(define (unsyntax-constant environment object)
   (cond ((or (boolean? object)
 	     (number? object)
 	     (char? object)
@@ -126,27 +124,32 @@ USA.
 	 (let ((scode (compiled-expression/scode object)))
 	   (if (eq? scode object)
 	       `(SCODE-QUOTE ,object)
-	       (unsyntax-object scode))))
+	       (unsyntax-object environment scode))))
 	(else
 	 object)))
 
-(define (unsyntax-QUOTATION quotation)
-  `(SCODE-QUOTE ,(unsyntax-object (quotation-expression quotation))))
+(define (unsyntax-QUOTATION environment quotation)
+  `(SCODE-QUOTE
+    ,(unsyntax-object environment (quotation-expression quotation))))
 
-(define (unsyntax-VARIABLE-object object)
+(define (unsyntax-VARIABLE-object environment object)
+  (declare (ignore environment))
   (variable-name object))
 
-(define (unsyntax-ACCESS-object object)
+(define (unsyntax-ACCESS-object environment object)
   (or (and unsyntaxer:elide-global-accesses?
 	   unsyntaxer:macroize?
 	   (access-components object
-	     (lambda (environment name)
-	       (and (eq? environment system-global-environment)
-		    (not (memq name (cdr bound)))
+	     (lambda (access-environment name)
+	       (and (or (eq? access-environment system-global-environment)
+			(and (variable? access-environment)
+			     (eq? (variable-name access-environment)
+				  'system-global-environment)))
+		    (not (is-bound? name environment))
 		    name))))
-      `(ACCESS ,@(unexpand-access object))))
+      `(ACCESS ,@(unexpand-access environment object))))
 
-(define (unexpand-access object)
+(define (unexpand-access environment object)
   (let loop ((object object) (separate? #t))
     (if (and separate?
 	     (access? object)
@@ -154,142 +157,163 @@ USA.
 	(access-components object
 	  (lambda (environment name)
 	    `(,name ,@(loop environment (eq? #t unsyntaxer:macroize?)))))
-	`(,(unsyntax-object object)))))
+	`(,(unsyntax-object environment object)))))
 
-(define (unsyntax-DEFINITION-object definition)
-  (definition-components definition unexpand-definition))
+(define (unsyntax-DEFINITION-object environment definition)
+  (definition-components definition
+    (lambda (name value) (unexpand-definition environment name value))))
 
-(define (unsyntax-ASSIGNMENT-object assignment)
+(define (unsyntax-ASSIGNMENT-object environment assignment)
   (assignment-components assignment
     (lambda (name value)
-      `(SET! ,name ,@(unexpand-binding-value value)))))
+      `(SET! ,name ,@(unexpand-binding-value environment value)))))
 
-(define (unexpand-definition name value)
+(define (unexpand-definition environment name value)
   (cond ((macro-reference-trap-expression? value)
 	 `(DEFINE-SYNTAX ,name
 	    ,(unsyntax-object
+	      environment
 	      (macro-reference-trap-expression-transformer value))))
 	((and (eq? #t unsyntaxer:macroize?)
 	      (lambda? value)
 	      (not (has-substitution? value)))
-	 (lambda-components** value
+	 (lambda-components* value
 	   (lambda (lambda-name required optional rest body)
 	     (if (eq? lambda-name name)
 		 `(DEFINE (,name . ,(make-lambda-list required optional rest '()))
-		    ,@(with-bindings required optional rest
-				     unsyntax-lambda-body body))
-		 `(DEFINE ,name ,@(unexpand-binding-value value))))))
+		    ,@(with-bindings environment value
+				     (lambda (environment*)
+				       (unsyntax-lambda-body environment* body))))
+		 `(DEFINE ,name ,@(unexpand-binding-value environment value))))))
 	(else
-	 `(DEFINE ,name ,@(unexpand-binding-value value)))))
+	 `(DEFINE ,name ,@(unexpand-binding-value environment value)))))
 
-(define (unexpand-binding-value value)
+(define (unexpand-binding-value environment value)
   (if (unassigned-reference-trap? value)
       '()
-      `(,(unsyntax-object value))))
+      `(,(unsyntax-object environment value))))
 
-(define (unsyntax-COMMENT-object comment)
-  (let ((expression (unsyntax-object (comment-expression comment))))
+(define (unsyntax-COMMENT-object environment comment)
+  (let ((expression
+	 (unsyntax-object environment (comment-expression comment))))
     (if unsyntaxer:show-comments?
 	`(COMMENT ,(comment-text comment) ,expression)
 	expression)))
 
-(define (unsyntax-DECLARATION-object declaration)
+(define (unsyntax-DECLARATION-object environment declaration)
   (declaration-components declaration
     (lambda (text expression)
-      `(LOCAL-DECLARE ,text ,(unsyntax-object expression)))))
+      `(LOCAL-DECLARE ,text ,(unsyntax-object environment expression)))))
 
-(define (unsyntax-SEQUENCE-object seq)
-  `(BEGIN ,@(unsyntax-sequence-actions seq)))
+(define (unsyntax-SEQUENCE-object environment seq)
+  (let ((first-action (sequence-immediate-first seq)))
+    (if (block-declaration? first-action)
+	`(BEGIN
+	  (DECLARE ,@(block-declaration-text first-action))
+	  ,@(unsyntax-sequence environment (sequence-immediate-second seq)))
+	`(BEGIN
+	  ,@(unsyntax-sequence-actions environment seq)))))
 
-(define (unsyntax-sequence seq)
+(define (unsyntax-sequence environment seq)
   (if (sequence? seq)
       (if (eq? #t unsyntaxer:macroize?)
-	  (unsyntax-sequence-actions seq)
-	  `((BEGIN ,@(unsyntax-sequence-actions seq))))
-      (list (unsyntax-object seq))))
+	  (unsyntax-sequence-actions environment seq)
+	  `((BEGIN ,@(unsyntax-sequence-actions environment seq))))
+      (list (unsyntax-object environment seq))))
 
-(define (unsyntax-sequence-actions seq)
+(define (unsyntax-sequence-actions environment seq)
   (let ((tail (if (and unsyntaxer:fold-sequence-tail?
 		       (sequence? (sequence-immediate-second seq)))
-		  (unsyntax-sequence-actions (sequence-immediate-second seq))
-		  (list (unsyntax-object (sequence-immediate-second seq))))))
+		  (unsyntax-sequence-actions environment (sequence-immediate-second seq))
+		  (list (unsyntax-object environment (sequence-immediate-second seq))))))
    (let ((substitution (has-substitution? (sequence-immediate-first seq))))
      (cond (substitution
 	    (cons (cdr substitution) tail))
 	   ((and (eq? #t unsyntaxer:macroize?)
 		 (sequence? (sequence-immediate-first seq)))
-	    (append (unsyntax-sequence-actions (sequence-immediate-first seq))
+	    (append (unsyntax-sequence-actions environment
+					       (sequence-immediate-first seq))
 		    tail))
 	   (else
-	    (cons (unsyntax-object (sequence-immediate-first seq)) tail))))))
+	    (cons (unsyntax-object environment
+				   (sequence-immediate-first seq)) tail))))))
 
-(define (unsyntax-OPEN-BLOCK-object open-block)
+(define (unsyntax-OPEN-BLOCK-object environment open-block)
   (if (eq? #t unsyntaxer:macroize?)
       (open-block-components open-block
 	(lambda (auxiliary declarations expression)
-	  `(OPEN-BLOCK ,auxiliary
-		       ,declarations
-		       ,@(unsyntax-sequence expression))))
-      (unsyntax-SEQUENCE-object open-block)))
+	  (unsyntax-object environment
+			   (unscan-defines auxiliary declarations expression))))
+      (unsyntax-SEQUENCE-object environment open-block)))
 
-(define (unsyntax-DELAY-object object)
-  `(DELAY ,(unsyntax-object (delay-expression object))))
+(define (unsyntax-DELAY-object environment object)
+  `(DELAY ,(unsyntax-object environment (delay-expression object))))
 
-(define (unsyntax-THE-ENVIRONMENT-object object)
-  object
+(define (unsyntax-THE-ENVIRONMENT-object environment object)
+  (declare (ignore environment object))
   `(THE-ENVIRONMENT))
 
-(define (unsyntax-DISJUNCTION-object object)
+(define (unsyntax-DISJUNCTION-object environment object)
   `(OR ,@(disjunction-components object
 	   (if (eq? #t unsyntaxer:macroize?)
-	       unexpand-disjunction
 	       (lambda (predicate alternative)
-		 (list (unsyntax-object predicate)
-		       (unsyntax-object alternative)))))))
+		 (unexpand-disjunction environment predicate alternative))
+	       (lambda (predicate alternative)
+		 (list (unsyntax-object environment predicate)
+		       (unsyntax-object environment alternative)))))))
 
-(define (unexpand-disjunction predicate alternative)
-  `(,(unsyntax-object predicate)
+(define (unexpand-disjunction environment predicate alternative)
+  `(,(unsyntax-object environment predicate)
     ,@(if (disjunction? alternative)
-	  (disjunction-components alternative unexpand-disjunction)
-	  `(,(unsyntax-object alternative)))))
+	  (disjunction-components alternative
+	    (lambda (predicate alternative)
+	      (unexpand-disjunction environment predicate alternative)))
+	  `(,(unsyntax-object environment alternative)))))
 
-(define (unsyntax-CONDITIONAL-object conditional)
+(define (unsyntax-CONDITIONAL-object environment conditional)
   (conditional-components conditional
     (if (eq? #t unsyntaxer:macroize?)
-	unsyntax-conditional
-	unsyntax-conditional/default)))
+	(lambda (predicate consequent alternative)
+	  (unsyntax-conditional environment predicate consequent alternative))
+	(lambda (predicate consequent alternative)
+	  (unsyntax-conditional/default
+	   environment predicate consequent alternative)))))
 
-(define (unsyntax-conditional/default predicate consequent alternative)
-  `(IF ,(unsyntax-object predicate)
-       ,(unsyntax-object consequent)
-       ,(unsyntax-object alternative)))
+(define (unsyntax-conditional/default environment
+				      predicate consequent alternative)
+  `(IF ,(unsyntax-object environment predicate)
+       ,(unsyntax-object environment consequent)
+       ,(unsyntax-object environment alternative)))
 
-(define (unsyntax-conditional predicate consequent alternative)
+(define (unsyntax-conditional environment predicate consequent alternative)
   (cond ((not alternative)
-	 `(AND ,@(unexpand-conjunction predicate consequent)))
+	 `(AND ,@(unexpand-conjunction environment predicate consequent)))
 	((eq? alternative undefined-conditional-branch)
-	 `(IF ,(unsyntax-object predicate)
-	      ,(unsyntax-object consequent)))
+	 `(IF ,(unsyntax-object environment predicate)
+	      ,(unsyntax-object environment consequent)))
 	((eq? consequent undefined-conditional-branch)
-	 `(IF (,(ucode-primitive not) ,(unsyntax-object predicate))
-	      ,(unsyntax-object alternative)))
+	 `(IF (,(ucode-primitive not) ,(unsyntax-object environment predicate))
+	      ,(unsyntax-object environment alternative)))
 	((and (conditional? alternative)
 	      (not (has-substitution? alternative)))
-	 `(COND ,@(unsyntax-cond-conditional predicate
+	 `(COND ,@(unsyntax-cond-conditional environment predicate
 					     consequent
 					     alternative)))
 	(else
-	 (unsyntax-conditional/default predicate consequent alternative))))
+	 (unsyntax-conditional/default environment
+				       predicate consequent alternative))))
 
-(define (unsyntax-cond-conditional predicate consequent alternative)
-  `((,(unsyntax-object predicate) ,@(unsyntax-sequence consequent))
-    ,@(unsyntax-cond-alternative alternative)))
+(define (unsyntax-cond-conditional environment
+				   predicate consequent alternative)
+  `((,(unsyntax-object environment predicate)
+     ,@(unsyntax-sequence environment consequent))
+    ,@(unsyntax-cond-alternative environment alternative)))
 
-(define (unsyntax-cond-disjunction predicate alternative)
-  `((,(unsyntax-object predicate))
-    ,@(unsyntax-cond-alternative alternative)))
+(define (unsyntax-cond-disjunction environment predicate alternative)
+  `((,(unsyntax-object environment predicate))
+    ,@(unsyntax-cond-alternative environment alternative)))
 
-(define (unsyntax-cond-alternative alternative)
+(define (unsyntax-cond-alternative environment alternative)
   (cond ((eq? alternative undefined-conditional-branch)
 	 '())
 	((has-substitution? alternative)
@@ -297,48 +321,55 @@ USA.
 	 (lambda (substitution)
 	   `((ELSE ,substitution))))
 	((disjunction? alternative)
-	 (disjunction-components alternative unsyntax-cond-disjunction))
+	 (disjunction-components alternative
+	   (lambda (predicate alternative)
+	     (unsyntax-cond-disjunction environment predicate alternative))))
 	((conditional? alternative)
-	 (conditional-components alternative unsyntax-cond-conditional))
+	 (conditional-components alternative
+	   (lambda (predicate consequent alternative)
+	     (unsyntax-cond-conditional environment
+					predicate consequent alternative))))
 	(else
-	 `((ELSE ,@(unsyntax-sequence alternative))))))
+	 `((ELSE ,@(unsyntax-sequence environment alternative))))))
 
-(define (unexpand-conjunction predicate consequent)
+(define (unexpand-conjunction environment predicate consequent)
   (if (and (conditional? consequent)
 	   (not (has-substitution? consequent)))
-      `(,(unsyntax-object predicate)
+      `(,(unsyntax-object environment predicate)
 	,@(conditional-components consequent
 	    (lambda (predicate consequent alternative)
 	      (if (not alternative)
-		  (unexpand-conjunction predicate consequent)
-		  `(,(unsyntax-conditional predicate
+		  (unexpand-conjunction environment predicate consequent)
+		  `(,(unsyntax-conditional environment predicate
 					   consequent
 					   alternative))))))
-      `(,(unsyntax-object predicate) ,(unsyntax-object consequent))))
+      `(,(unsyntax-object environment predicate)
+	,(unsyntax-object environment consequent))))
 
 ;;;; Lambdas
 
-(define (unsyntax-EXTENDED-LAMBDA-object expression)
+(define (unsyntax-EXTENDED-LAMBDA-object environment expression)
   (if unsyntaxer:macroize?
-      (unsyntax-lambda expression)
+      (unsyntax-lambda environment expression)
       `(&XLAMBDA (,(lambda-name expression) ,@(lambda-interface expression))
-		 ,(unsyntax-object (lambda-immediate-body expression)))))
+		 ,(unsyntax-object environment (lambda-immediate-body expression)))))
 
-(define (unsyntax-LAMBDA-object expression)
+(define (unsyntax-LAMBDA-object environment expression)
   (if unsyntaxer:macroize?
-      (unsyntax-lambda expression)
+      (unsyntax-lambda environment expression)
       (collect-lambda (lambda-name expression)
 		      (lambda-interface expression)
-		      (list (unsyntax-object
+		      (list (unsyntax-object environment
 			     (lambda-immediate-body expression))))))
 
-(define (unsyntax-lambda expression)
-  (lambda-components** expression
+(define (unsyntax-lambda environment expression)
+  (lambda-components* expression
     (lambda (name required optional rest body)
       (collect-lambda name
 		      (make-lambda-list required optional rest '())
-		      (with-bindings required optional rest
-				     unsyntax-lambda-body body)))))
+		      (with-bindings environment expression
+				     (lambda (environment*)
+				       (unsyntax-lambda-body environment* body)))))))
 
 (define (collect-lambda name bvl body)
   (if (eq? name lambda-tag:unnamed)
@@ -349,54 +380,40 @@ USA.
   (if (not (lambda? expression))
       (error:wrong-type-argument expression "SCode lambda"
 				 'UNSYNTAX-LAMBDA-LIST))
-  (lambda-components** expression
+  (lambda-components* expression
     (lambda (name required optional rest body)
       name body
       (make-lambda-list required optional rest '()))))
 
-(define (lambda-components** expression receiver)
-  (lambda-components expression
-    (lambda (name required optional rest auxiliary declarations body)
-      (define (bind-auxilliaries aux body*)
-	(with-bindings aux '() #F
-			   (lambda (body*)
-			     (receiver name required optional rest body*))
-			   body*))
-      (if (and (null? auxiliary)
-	       (null? declarations))
-	  (scan-defines body
-			(lambda (internal-defines declarations* body*)
-			  declarations* body*
-			  (bind-auxilliaries internal-defines body)))
-	  (bind-auxilliaries auxiliary
-			     (unscan-defines auxiliary declarations body))))))
-
-(define (unsyntax-lambda-body body)
+(define (unsyntax-lambda-body environment body)
   (if (open-block? body)
       (open-block-components body
 	(lambda (names declarations open-block-body)
-	  (unsyntax-lambda-body-sequence
+	  (unsyntax-lambda-body-sequence environment
 	   (unscan-defines names declarations open-block-body))))
-      (unsyntax-lambda-body-sequence body)))
+      (unsyntax-lambda-body-sequence environment body)))
 
-(define (unsyntax-lambda-body-sequence body)
+(define (unsyntax-lambda-body-sequence environment body)
   (if (sequence? body)
       (let ((first-action (sequence-immediate-first body)))
 	(if (block-declaration? first-action)
 	    `((DECLARE ,@(block-declaration-text first-action))
-	      ,@(unsyntax-sequence (sequence-immediate-second body)))
-	    (unsyntax-sequence body)))
-      (list (unsyntax-object body))))
+	      ,@(unsyntax-sequence environment (sequence-immediate-second body)))
+	    (unsyntax-sequence environment body)))
+      (list (unsyntax-object environment body))))
 
 ;;;; Combinations
 
-(define (unsyntax-COMBINATION-object combination)
+(define (unsyntax-COMBINATION-object environment combination)
   (rewrite-named-let
    (combination-components combination
      (lambda (operator operands)
        (let ((ordinary-combination
 	      (lambda ()
-		`(,(unsyntax-object operator) ,@(map unsyntax-object operands)))))
+		`(,(unsyntax-object environment operator)
+		  ,@(map (lambda (operand)
+			   (unsyntax-object environment operand))
+			 operands)))))
 	 (cond ((or (not (eq? #t unsyntaxer:macroize?))
 		    (has-substitution? operator))
 		(ordinary-combination))
@@ -405,30 +422,33 @@ USA.
 		     (= (length operands) 2)
 		     (delay? (cadr operands))
 		     (not (has-substitution? (cadr operands))))
-		`(CONS-STREAM ,(unsyntax-object (car operands))
-			      ,(unsyntax-object
+		`(CONS-STREAM ,(unsyntax-object environment (car operands))
+			      ,(unsyntax-object environment
 				(delay-expression (cadr operands)))))
 	       ((lambda? operator)
-		(lambda-components** operator
+		(lambda-components* operator
 		  (lambda (name required optional rest body)
 		    (if (and (null? optional)
 			     (not rest)
 			     (= (length required) (length operands)))
 			(if (or (eq? name lambda-tag:unnamed)
 				(eq? name lambda-tag:let))
-			    `(LET ,(unsyntax-let-bindings required operands)
-			       ,@(with-bindings required '() #F
-						unsyntax-lambda-body body))
+			    `(LET ,(unsyntax-let-bindings environment required operands)
+			       ,@(with-bindings environment operator
+						(lambda (environment*)
+						  (unsyntax-lambda-body environment* body))))
 			    (ordinary-combination))
 			(ordinary-combination)))))
 	       (else
 		(ordinary-combination))))))))
 
-(define (unsyntax-let-bindings names values)
-  (map unsyntax-let-binding names values))
+(define (unsyntax-let-bindings environment names values)
+  (map (lambda (name value)
+	 (unsyntax-let-binding environment name value))
+       names values))
 
-(define (unsyntax-let-binding name value)
-  `(,name ,@(unexpand-binding-value value)))
+(define (unsyntax-let-binding environment name value)
+  `(,name ,@(unexpand-binding-value environment value)))
 
 (define (rewrite-named-let expression)
   (if (and (pair? expression)

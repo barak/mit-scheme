@@ -336,7 +336,7 @@ USA.
 		  (condition/restarts condition)
 		  (list 'FAILURE failure)))
 
-(define-for-tests (assert predicate description value . properties)
+(define-for-tests (value-assert predicate description value . properties)
   (%assert predicate value description properties))
 
 (define-for-tests (predicate-assertion predicate description)

@@ -164,6 +164,11 @@ AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
 	[Use a termcap library if available [[yes]]]))
 : ${with_termcap='yes'}
+if test "x${with_termcap}" = xno; then
+    dnl On Unix (in uxtty.c) primitives like tty-command-clear require
+    dnl some kind of termcap.  A build without-termcap is not possible.
+    AC_MSG_ERROR([--without-termcap is not supported on Unix systems])
+fi
 
 dnl For reasons I don't understand, it is necessary to use
 dnl quadigraphs here instead of [[ ... ]].
