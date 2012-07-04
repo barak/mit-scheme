@@ -721,32 +721,13 @@ static void * mmap_heap_malloc_search
 void *
 mmap_heap_malloc (unsigned long requested_length)
 {
+  unsigned long pagesize = (UX_getpagesize ());
   unsigned long min_result = MMAP_BASE_ADDRESS;
   unsigned long max_result = (1UL << DATUM_LENGTH);
   unsigned long request;
   void * result;
 
-  {
-    unsigned long ps = (UX_getpagesize ());
-    request = (((requested_length + (ps - 1)) / ps) * ps);
-  }
-
-#ifdef __linux__
-  /* AppArmor can specify a minimum usable address.  In that case we
-     need to detect it and compensate.  */
-  {
-    FILE * s = (fopen ("/proc/sys/vm/mmap_min_addr", "r"));
-    if (s != 0)
-      {
-	unsigned long new_min_result;
-	int rc = (fscanf (s, "%lu", (&new_min_result)));
-	fclose (s);
-	if ((rc == 1) && (new_min_result > min_result))
-	  min_result = new_min_result;
-      }
-  }
-#endif
-
+  request = (((requested_length + (pagesize - 1)) / pagesize) * pagesize);
   result = (mmap_heap_malloc_search (request, min_result, max_result));
 
   if (result != 0)
@@ -761,39 +742,52 @@ mmap_heap_malloc (unsigned long requested_length)
 	}
       munmap (result, request);
     }
+
   return (OS_malloc (requested_length));
 }
 
-static void *
-mmap_heap_malloc_try (unsigned long address, unsigned long request, int fixedp)
-{
-  void * addr
-    = (mmap (((void *) address),
-	     request,
-	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
-	     /* Ignored by GNU/Linux, required by FreeBSD and Solaris.  */
-	     (-1),
-	     0));
-  return ((addr == MAP_FAILED) ? 0 : addr);
-}
-
 #ifndef __linux__
+
+/* Try to use our low addresses even if the OS has a tendency to choose
+   high ones.  (What if we're on a 64-bit system?  Why do we care?)  */
+
+#  ifndef MAP_TRYFIXED
+#    define MAP_TRYFIXED 0
+#  endif
 
 static void *
 mmap_heap_malloc_search (unsigned long request,
                          unsigned long min_result,
                          unsigned long max_result)
 {
-  void * addr = (mmap_heap_malloc_try (min_result, request, true));
-  if (addr == 0)
-    addr = (mmap_heap_malloc_try (min_result, request, false));
-  return addr;
+  void * addr
+    = (mmap (((void *) min_result),
+             request,
+             (PROT_EXEC | PROT_READ | PROT_WRITE),
+             (MAP_PRIVATE | MAP_ANONYMOUS | MAP_TRYFIXED),
+             (-1),
+             0));
+  return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
 #else /* defined (__linux__) */
 
-/* Grovel through this process's memory maps to appease SELinux. */
+/* Use /proc/self/maps to find the lowest available space.  */
+
+static void *
+mmap_heap_malloc_try (unsigned long address, unsigned long request, int fixedp)
+{
+  /* MAP_FIXED clobbers any existing mappings, so fixedp may be true
+     only if the caller has already verified that there are none.  */
+  void * addr
+    = (mmap (((void *) address),
+	     request,
+	     (PROT_EXEC | PROT_READ | PROT_WRITE),
+	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
+	     (-1),
+	     0));
+  return ((addr == MAP_FAILED) ? 0 : addr);
+}
 
 static int
 discard_line (FILE * s)
@@ -817,7 +811,19 @@ mmap_heap_malloc_search (unsigned long request,
   FILE * s;
   unsigned long start = min_result;
 
-  snprintf (fn, 64, "/proc/%d/maps", (getpid ()));
+  /* AppArmor can specify a minimum usable address.  In that case we
+     need to detect it and compensate.  */
+  s = (fopen ("/proc/sys/vm/mmap_min_addr", "r"));
+  if (s != 0)
+    {
+      unsigned long new_min_result;
+      int rc = (fscanf (s, "%lu", (&new_min_result)));
+      fclose (s);
+      if ((rc == 1) && (new_min_result > min_result))
+        min_result = new_min_result;
+    }
+
+  snprintf (fn, (sizeof fn), "/proc/%d/maps", (getpid ()));
   s = (fopen (fn, "r"));
   if (s == 0)
     goto no_address;
@@ -840,6 +846,7 @@ mmap_heap_malloc_search (unsigned long request,
       if ((start + request) <= end)
         {
           fclose (s);
+          /* The space is known to be free, so we can request it fixed.  */
           return (mmap_heap_malloc_try (start, request, true));
         }
       start = next_start;
