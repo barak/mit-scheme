@@ -743,7 +743,21 @@ mmap_heap_malloc (unsigned long requested_length)
       munmap (result, request);
     }
 
+  /* XXX We need to make the pages executable for native-code systems.  */
   return (OS_malloc (requested_length));
+}
+
+static void *
+mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
+{
+  void * addr
+    = (mmap (((void *) address),
+	     request,
+	     (PROT_EXEC | PROT_READ | PROT_WRITE),
+	     (MAP_PRIVATE | MAP_ANONYMOUS | flags),
+	     (-1),
+	     0));
+  return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
 #ifndef __linux__
@@ -751,43 +765,26 @@ mmap_heap_malloc (unsigned long requested_length)
 /* Try to use our low addresses even if the OS has a tendency to choose
    high ones.  (What if we're on a 64-bit system?  Why do we care?)  */
 
-#  ifndef MAP_TRYFIXED
-#    define MAP_TRYFIXED 0
-#  endif
-
 static void *
 mmap_heap_malloc_search (unsigned long request,
                          unsigned long min_result,
                          unsigned long max_result)
 {
-  void * addr
-    = (mmap (((void *) min_result),
-             request,
-             (PROT_EXEC | PROT_READ | PROT_WRITE),
-             (MAP_PRIVATE | MAP_ANONYMOUS | MAP_TRYFIXED),
-             (-1),
-             0));
-  return ((addr == MAP_FAILED) ? 0 : addr);
+  (void)max_result;             /* ignore */
+
+#ifdef MAP_TRYFIXED
+  {
+    void * addr = (mmap_heap_malloc_try (min_result, request, MAP_TRYFIXED));
+    return (addr ? addr : (mmap_heap_malloc_try (0, request, 0)));
+  }
+#else
+  return (mmap_heap_malloc_try (min_result, request, 0));
+#endif
 }
 
 #else /* defined (__linux__) */
 
 /* Use /proc/self/maps to find the lowest available space.  */
-
-static void *
-mmap_heap_malloc_try (unsigned long address, unsigned long request, int fixedp)
-{
-  /* MAP_FIXED clobbers any existing mappings, so fixedp may be true
-     only if the caller has already verified that there are none.  */
-  void * addr
-    = (mmap (((void *) address),
-	     request,
-	     (PROT_EXEC | PROT_READ | PROT_WRITE),
-	     (MAP_PRIVATE | MAP_ANONYMOUS | (fixedp ? MAP_FIXED : 0)),
-	     (-1),
-	     0));
-  return ((addr == MAP_FAILED) ? 0 : addr);
-}
 
 static int
 discard_line (FILE * s)
@@ -846,15 +843,15 @@ mmap_heap_malloc_search (unsigned long request,
       if ((start + request) <= end)
         {
           fclose (s);
-          /* The space is known to be free, so we can request it fixed.  */
-          return (mmap_heap_malloc_try (start, request, true));
+          /* The space is known free, so we can safely request it fixed.  */
+          return (mmap_heap_malloc_try (start, request, MAP_FIXED));
         }
       start = next_start;
     }
 
   fclose (s);
  no_address:
-  return (mmap_heap_malloc_try (min_result, request, false));
+  return (mmap_heap_malloc_try (min_result, request, 0));
 }
 
 #endif
