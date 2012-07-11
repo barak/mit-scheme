@@ -459,7 +459,7 @@ USA.
 (define (load-char-into-register type source target)
   (let ((target (target-register-reference target)))
     (cond ((zero? type)
-	   (LAP (MOVZX B ,target ,source)))
+	   (LAP (MOVZX Q ,target B ,source)))
 	  (else
 	   (LAP ,@(load-non-pointer target type 0)
 		(MOV B ,target ,source))))))
