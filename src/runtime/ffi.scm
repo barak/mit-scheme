@@ -394,7 +394,9 @@ USA.
 		     (begin
 		       (alien-null! alien)
 		       ((ucode-primitive c-free 1) copy)
-		       (alien-null! copy))))))))))
+		       (alien-null! copy)
+		       (set! malloced-aliens
+			     (delq! weak malloced-aliens)))))))))))
 
 (define (weak-assq obj alist)
   (let loop ((alist alist))
