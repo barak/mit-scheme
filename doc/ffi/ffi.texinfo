@@ -10,8 +10,7 @@
 @ifhtml
  =>
 @end ifhtml
-@ifnothtml
- @result{}
+@ifnothtml @result{}
 @end ifnothtml
 @end macro
 
@@ -90,21 +89,21 @@ Examples of the new syntax:
 @myresult{} #[alien 42 0x081afc60]
 @end group
 
+(C->= @verb{"#@42"} "GdkEvent any type" 14)
+
 @group
 (C-> @verb{"#@42"} "GdkEvent any type")
-@myresult{} 14
-@end group
-
-(C->= @verb{"#@42"} "GdkEvent any type" 13)
-
-@group
-(C-enum "GDK_MAP")
 @myresult{} 14
 @end group
 
 @group
 (C-enum "GdkEventType" 14)
 @myresult{} |GDK_MAP|
+@end group
+
+@group
+(C-enum "GDK_MAP")
+@myresult{} 14
 @end group
 
 @group
@@ -305,8 +304,7 @@ returned value is @code{#f}.
 @smallexample
 @group
 (C-enum "GdkEventType" (C-> @verb{"#@42"} "GdkEvent any type"))
-@myresult{}
-|GDK_MAP|
+@myresult{} |GDK_MAP|
 @end group
 @end smallexample
 
@@ -322,8 +320,7 @@ examples in the synopsis might expand as shown here.
                               (C-enum "GTK_STATE_NORMAL")))
 @expansion{}
 (alien-byte-increment @verb{"#@43"} 0)
-@myresult{}
-@verb{"#@44"}
+@myresult{} @verb{"#@44"}
 
 (C-array-loc! @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_PRELIGHT"))
 @expansion{}
@@ -331,8 +328,7 @@ examples in the synopsis might expand as shown here.
                                (C-enum "GTK_STATE_PRELIGHT")))
 @expansion{}
 (alien-byte-increment! @verb{"#@43"} 24)
-@myresult{}
-@verb{"#@43"}
+@myresult{} @verb{"#@43"}
 @end smallexample
 
 A simple scan of characters in the wide string @code{alien} might
@@ -470,8 +466,7 @@ at syntax time.
 (C-> alien "struct _GdkEvent any window" window-alien)
 @expansion{}
 (#[primitive c-peek-pointer] alien 0 window-alien)
-@myresult{}
-#[alien 44 (* GdkWindow) 0x081afc60]
+@myresult{} #[alien 44 (* GdkWindow) 0x081afc60]
 @end group
 @end smallexample
 
