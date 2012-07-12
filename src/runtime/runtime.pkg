@@ -1817,6 +1817,7 @@ USA.
 	  format-error-message
 	  hook/invoke-condition-handler
 	  ignore-errors
+	  warn-errors?
 	  invoke-restart
 	  invoke-restart-interactively
 	  make-condition

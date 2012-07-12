@@ -1230,6 +1230,14 @@ USA.
 					   'IGNORE-ERRORS)))
        thunk))))
 
+(define warn-errors?
+  (let ((ok "ok"))
+    (lambda (thunk)
+      (let ((v (ignore-errors (lambda () (thunk) ok))))
+	(cond ((eq? v ok) #f)
+	      ((condition? v) (warn v) #t)
+	      (else (error "Unexpected value:" v)))))))
+
 (define (format-error-message message irritants port)
   (fluid-let ((*unparser-list-depth-limit* 2)
 	      (*unparser-list-breadth-limit* 5))
