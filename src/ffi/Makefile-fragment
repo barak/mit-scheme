@@ -28,8 +28,9 @@ ffi-test-shim.o: ffi-test-shim.c ffi-test.h
 	$(COMPILE_SHIM) -c $*.c
 
 ffi-test-shim.c ffi-test-const.c ffi-test-types.bin: ffi-test.cdecl
-	(echo "(load-option 'FFI)"; \
-	 echo '(C-generate "ffi-test" "#include \"ffi-test.h\"")') \
+	(echo "(begin"; \
+	 echo "  (load-option 'FFI)"; \
+	 echo '  (C-generate "ffi-test" "#include \"ffi-test.h\""))') \
 	| ../microcode/scheme --library ../lib --batch-mode
 
 ffi-test-const.bin: ffi-test-const.scm
