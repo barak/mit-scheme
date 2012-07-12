@@ -52,7 +52,7 @@ USA.
       (reverse! *registered-tests*))))
 
 (define (register-test name test)
-  (guarantee-test test 'ADD-TEST-DEFINITION)
+  (guarantee-test test 'REGISTER-TEST)
   (set! *registered-tests* (cons (cons name test) *registered-tests*))
   unspecific)
 
@@ -148,6 +148,7 @@ USA.
 (define (report-result test-name elapsed-time sub-test-results port)
   (let ((n-sub-test-results (length sub-test-results))
 	(n-failed (count failing-sub-test? sub-test-results)))
+    (fresh-line port)
     (write test-name port)
     (write-string ": " port)
     (if (> n-failed 0)
