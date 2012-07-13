@@ -806,7 +806,7 @@ mmap_heap_malloc_search (unsigned long request,
 {
   char fn [64];
   FILE * s;
-  unsigned long start = min_result;
+  unsigned long start;
 
   /* AppArmor can specify a minimum usable address.  In that case we
      need to detect it and compensate.  */
@@ -825,6 +825,7 @@ mmap_heap_malloc_search (unsigned long request,
   if (s == 0)
     goto no_address;
 
+  start = min_result;
   while ((start + request) <= max_result)
     {
       unsigned long end;
