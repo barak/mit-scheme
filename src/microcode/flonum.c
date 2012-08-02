@@ -81,6 +81,24 @@ DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
   }
 }
 
+DEFINE_PRIMITIVE ("FLONUM-MODULO", Prim_flonum_modulo, 2, 2, 0)
+#ifdef HAVE_FMOD
+{
+  PRIMITIVE_HEADER (2);
+  {
+    double denominator = (arg_flonum (2));
+    if (denominator == 0)
+      error_bad_range_arg (2);
+    FLONUM_RESULT (fmod ((arg_flonum (1)), denominator));
+  }
+}
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
+
 DEFINE_PRIMITIVE ("FLONUM-NEGATE", Prim_flonum_negate, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);

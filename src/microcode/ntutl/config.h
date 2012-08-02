@@ -121,6 +121,9 @@ typedef unsigned char cc_t;
 /* Define if you have the floor function.  */
 #define HAVE_FLOOR 1
 
+/* Define if you have the fmod function.  */
+#define HAVE_FMOD 1
+
 /* Define if you have the frexp function.  */
 #define HAVE_FREXP 1
 
