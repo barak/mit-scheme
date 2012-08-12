@@ -179,7 +179,7 @@ USA.
   /* 0x31 */	"generic-trampoline-remainder",				\
   /* 0x32 */	"generic-trampoline-modulo",				\
   /* 0x33 */	"arity-dispatcher-tag",					\
-  /* 0x34 */	"pc-sample/builtin-table"				\
+  /* 0x34 */	"pc-sample/builtin-table",				\
   /* 0x35 */	"pc-sample/utility-table",				\
   /* 0x36 */	"pc-sample/primitive-table",				\
   /* 0x37 */	"pc-sample/code-block-table",				\
