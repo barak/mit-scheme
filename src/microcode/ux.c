@@ -763,7 +763,7 @@ mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
 #ifndef __linux__
 
 /* Try to use our low addresses even if the OS has a tendency to choose
-   high ones.  (What if we're on a 64-bit system?  Why do we care?)  */
+   high ones.  */
 
 #ifdef __x86_64__
 #  define MMAP_EXTRA_FLAGS 0
