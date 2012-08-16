@@ -991,12 +991,7 @@ USA.
       (standard-entry variable)
       (dispatch-entries (lambda lexpr extended-lambda) generate/lambda)
       (dispatch-entry sequence-2 generate/sequence)
-      (dispatch-entries (combination-1 combination-2 combination
-				       primitive-combination-0
-				       primitive-combination-1
-				       primitive-combination-2
-				       primitive-combination-3)
-			generate/combination)
+      (dispatch-entry combination generate/combination)
       (dispatch-entry comment generate/comment))
     (named-lambda (generate/expression block continuation context expression)
       ((vector-ref dispatch-vector (object-type expression))

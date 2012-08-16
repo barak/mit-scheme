@@ -115,12 +115,6 @@ USA.
 	    undefined-environment
 	    (validate-subexpression frame (select-subexpression expression)))))
 
-(define (method/primitive-combination-3-first-operand frame)
-  (let ((expression (stack-frame/ref frame 1)))
-    (values expression
-	    (stack-frame/ref frame 3)
-	    (validate-subexpression frame (&vector-ref expression 2)))))
-
 (define (method/combination-save-value frame)
   (let ((expression (stack-frame/ref frame 1)))
     (values expression
@@ -276,28 +270,12 @@ USA.
     (record-method 'SEQUENCE-2-SECOND method))
   (let ((method (method/standard &pair-cdr)))
     (record-method 'ASSIGNMENT-CONTINUE method)
-    (record-method 'COMBINATION-1-PROCEDURE method)
     (record-method 'DEFINITION-CONTINUE method))
   (let ((method (method/standard &triple-first)))
     (record-method 'CONDITIONAL-DECIDE method))
-  (let ((method (method/standard &triple-second)))
-    (record-method 'COMBINATION-2-PROCEDURE method))
-  (let ((method (method/standard &triple-third)))
-    (record-method 'COMBINATION-2-FIRST-OPERAND method)
-    (record-method 'PRIMITIVE-COMBINATION-2-FIRST-OPERAND method))
-  (record-method 'PRIMITIVE-COMBINATION-3-SECOND-OPERAND
-		 (method/standard &vector-fourth))
   (let ((method (method/expression-only &pair-car)))
     (record-method 'ACCESS-CONTINUE method))
-  (record-method 'PRIMITIVE-COMBINATION-1-APPLY
-		 (method/expression-only &pair-cdr))
-  (record-method 'PRIMITIVE-COMBINATION-2-APPLY
-		 (method/expression-only &triple-second))
-  (record-method 'PRIMITIVE-COMBINATION-3-APPLY
-		 (method/expression-only &vector-second))
   (record-method 'COMBINATION-SAVE-VALUE method/combination-save-value)
-  (record-method 'PRIMITIVE-COMBINATION-3-FIRST-OPERAND
-		 method/primitive-combination-3-first-operand)
   (record-method 'EVAL-ERROR method/eval-error)
   (record-method 'FORCE-SNAP-THUNK method/force-snap-thunk)
   (let ((method (method/application-frame 3)))

@@ -867,12 +867,7 @@ ARBITRARY:	The expression may be executed more than once.  It
       (binary-entry disjunction)
       (standard-entry variable)
       (standard-entry the-environment)
-      (dispatch-entries (combination-1 combination-2 combination
-				       primitive-combination-0
-				       primitive-combination-1
-				       primitive-combination-2
-				       primitive-combination-3)
-			canonicalize/combination)
+      (dispatch-entry combination canonicalize/combination)
       (dispatch-entries (lambda lexpr extended-lambda) canonicalize/lambda)
       (dispatch-entry sequence-2 canonicalize/sequence))
     (named-lambda (canonicalize/expression expression bound context)

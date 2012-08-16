@@ -111,14 +111,7 @@ USA.
 			    (kernel (car entry)))))
 		    `((ACCESS ,walk/access)
 		      (ASSIGNMENT ,walk/assignment)
-		      ((COMBINATION
-			COMBINATION-1
-			COMBINATION-2
-			PRIMITIVE-COMBINATION-0
-			PRIMITIVE-COMBINATION-1
-			PRIMITIVE-COMBINATION-2
-			PRIMITIVE-COMBINATION-3)
-		       ,walk/combination)
+		      (COMBINATION ,walk/combination)
 		      (COMMENT ,walk/comment)
 		      (CONDITIONAL ,walk/conditional)
 		      (DEFINITION ,walk/definition)

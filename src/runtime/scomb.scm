@@ -150,79 +150,34 @@ USA.
 ;;;; Combination
 
 (define (combination? object)
-  (or (object-type? (ucode-type combination) object)
-      (object-type? (ucode-type combination-1) object)
-      (object-type? (ucode-type combination-2) object)
-      (object-type? (ucode-type primitive-combination-0) object)
-      (object-type? (ucode-type primitive-combination-1) object)
-      (object-type? (ucode-type primitive-combination-2) object)
-      (object-type? (ucode-type primitive-combination-3) object)))
+  (object-type? (ucode-type combination) object))
 
 (define-guarantee combination "SCode combination")
 
 (define (make-combination operator operands)
   (&typed-vector-cons (ucode-type combination)
 		      (cons operator operands)))
-
-(define-syntax combination-dispatch
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((name (list-ref form 1))
-	   (combination (close-syntax (list-ref form 2) environment))
-	   (case-0 (close-syntax (list-ref form 3) environment))
-	   (case-1 (close-syntax (list-ref form 4) environment))
-	   (case-2 (close-syntax (list-ref form 5) environment))
-	   (case-n (close-syntax (list-ref form 6) environment)))
-       `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
-			     ,combination)
-	       ,case-0)
-	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
-		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
-				 ,combination))
-	       ,case-1)
-	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
-		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
-				 ,combination))
-	       ,case-2)
-	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
-		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
-				 ,combination))
-	       ,case-n)
-	      (ELSE
-	       (ERROR:NOT-COMBINATION ,combination ',name)))))))
 
 (define (combination-size combination)
-  (combination-dispatch combination-size combination
-			1 2 3 (&vector-length combination)))
+  (guarantee-combination combination 'COMBINATION-SIZE)
+  (&vector-length combination))
 
 (define (combination-operator combination)
-  (combination-dispatch combination-operator combination
-			(object-new-type (ucode-type primitive) combination)
-			(&pair-car combination)
-			(&triple-first combination)
-			(&vector-ref combination 0)))
+  (guarantee-combination combination 'COMBINATION-OPERATOR)
+  (&vector-ref combination 0))
 
 (define (combination-operands combination)
-  (combination-dispatch
-   combination-operands combination
-   '()
-   (list (&pair-cdr combination))
-   (list (&triple-second combination) (&triple-third combination))
-   (&subvector->list combination 1 (&vector-length combination))))
+  (guarantee-combination combination 'COMBINATION-OPERANDS)
+  (&subvector->list combination 1 (&vector-length combination)))
 
 (define (combination-components combination receiver)
-  (combination-dispatch
-   combination-components combination
-   (receiver (object-new-type (ucode-type primitive) combination) '())
-   (receiver (&pair-car combination) (list (&pair-cdr combination)))
-   (receiver (&triple-first combination)
-	     (list (&triple-second combination) (&triple-third combination)))
-   (receiver (&vector-ref combination 0)
-	     (&subvector->list combination 1 (&vector-length combination)))))
+  (guarantee-combination combination 'COMBINATION-OPERANDS)
+  (receiver (&vector-ref combination 0)
+	    (&subvector->list combination 1 (&vector-length combination))))
 
 (define (combination-subexpressions expression)
   (combination-components expression cons))
-
+
 ;;;; Unassigned?
 
 (define (make-unassigned? name)
