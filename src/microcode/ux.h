@@ -129,6 +129,9 @@ USA.
 #ifdef HAVE_SYS_MMAN_H
 #  include <sys/mman.h>
 #endif
+#ifdef __APPLE__
+#  define USE_MAP_FIXED 1
+#endif
 
 /* GNU C library defines environ if __USE_GNU is defined.  */
 #ifndef __USE_GNU

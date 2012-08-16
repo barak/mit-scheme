@@ -765,6 +765,20 @@ mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
 /* Try to use our low addresses even if the OS has a tendency to choose
    high ones.  (What if we're on a 64-bit system?  Why do we care?)  */
 
+#ifdef __x86_64__
+#  define MMAP_EXTRA_FLAGS 0
+#else
+#ifdef MAP_TRYFIXED
+#  define MMAP_EXTRA_FLAGS MAP_TRYFIXED
+#else
+#if defined(USE_MAP_FIXED) && defined(MAP_FIXED)
+#  define MMAP_EXTRA_FLAGS MAP_FIXED
+#else
+#  define MMAP_EXTRA_FLAGS 0
+#endif
+#endif
+#endif
+
 static void *
 mmap_heap_malloc_search (unsigned long request,
                          unsigned long min_result,
@@ -772,9 +786,9 @@ mmap_heap_malloc_search (unsigned long request,
 {
   (void)max_result;             /* ignore */
 
-#ifdef MAP_TRYFIXED
+#if MMAP_EXTRA_FLAGS != 0
   {
-    void * addr = (mmap_heap_malloc_try (min_result, request, MAP_TRYFIXED));
+    void * addr = (mmap_heap_malloc_try (min_result, request, MMAP_EXTRA_FLAGS));
     return (addr ? addr : (mmap_heap_malloc_try (0, request, 0)));
   }
 #else
