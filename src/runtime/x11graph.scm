@@ -314,12 +314,13 @@ USA.
 
 (define (%read-and-process-event display)
   (let ((event
-	 (and (eq? 'READ
-		   (test-for-io-on-descriptor
-		    (x-display-descriptor (x-display/xd display))
-		    #t
-		    'READ))
-	      (x-display-process-events (x-display/xd display) 1))))
+	 (or (x-display-process-events (x-display/xd display) 2)
+	     (and (eq? 'READ
+		       (test-for-io-on-descriptor
+			(x-display-descriptor (x-display/xd display))
+			#t
+			'READ))
+		  (x-display-process-events (x-display/xd display) 1)))))
     (if event
 	(process-event display event))))
 
