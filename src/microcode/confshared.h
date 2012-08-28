@@ -219,7 +219,8 @@ typedef enum
   FASL_PPC32,
   FASL_X86_64,
   FASL_PPC64,
-  FASL_IA64
+  FASL_IA64,
+  FASL_ARM,
 } fasl_arch_t;
 
 /* Possible values for COMPILER_PROCESSOR_TYPE.  This identifies the
@@ -634,6 +635,11 @@ extern void win32_stack_reset (void);
 #ifdef __ia64__
 #  define MACHINE_TYPE		"ia64"
 #  define CURRENT_FASL_ARCH	FASL_IA64
+#endif
+
+#ifdef __arm__
+#  define MACHINE_TYPE		"arm"
+#  define CURRENT_FASL_ARCH	FASL_ARM
 #endif
 
 #ifdef sonyrisc
