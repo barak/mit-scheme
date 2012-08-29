@@ -294,11 +294,13 @@ USA.
 		      (deregister-io-thread-event registration)
 		      (continuation unspecific))
 		  (lambda ()
-		    (let ((event
-			   (x-display-process-events (x-display/xd display)
-						     2)))
-		      (if event
-			  (process-event display event))))))))))
+		    (let loop ()
+		      (let ((event
+			     (x-display-process-events (x-display/xd display)
+						       2)))
+			(if event
+			    (begin (process-event display event)
+				   (loop))))))))))))
     registration))
 
 (define (read-event display)

@@ -576,9 +576,11 @@ USA.
 	 (lambda (mode)
 	   mode
 	   (if (not reading-event?)
-	       (let ((event (x-display-process-events x-display-data 2)))
-		 (if event
-		     (preview-event event)))))))
+	       (let loop ()
+		 (let ((event (x-display-process-events x-display-data 2)))
+		   (if event
+		       (begin (preview-event event)
+			      (loop)))))))))
   unspecific)
 
 (define (wait-for-event interval predicate process-event)
