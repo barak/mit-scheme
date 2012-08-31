@@ -2732,6 +2732,7 @@ USA.
 	  (load-noisily load)
 	  argument-command-line-parser
 	  built-in-object-file
+	  command-line
 	  condition-type:not-loading
 	  current-eval-unit
 	  current-load-environment

@@ -658,6 +658,27 @@ following it on the command line, up to (but not including) the next
 argument that starts with a hyphen.  The files are loaded in the
 @code{user-initial-environment}.  Unless explicitly handled, errors
 during loading are silently ignored.
+
+@noindent
+The following options allow arguments to be passed to scripts via the
+@code{command-line} procedure.
+
+@deffn procedure command-line
+Returns a list of arguments (strings) gathered from the command-line
+by options like @code{--args} or @code{--}.
+@end deffn
+
+@item --args @var{argument} @dots{}
+@opindex --args
+This option causes Scheme to append the @var{argument}s, up
+to (but not including) the next argument that starts with a hyphen, to
+the list returned by the @bref{command-line} procedure.
+
+@item -- @var{argument} @dots{}
+@opindex --
+This option causes Scheme to append the rest of the command-line
+arguments (even those starting with a hyphen) to the list returned by
+the @varref{command-line} procedure.
 @end table
 
 @noindent
@@ -716,8 +737,14 @@ option that is defined by @var{procedure}.  When @var{keyword} is seen,
 @var{procedure} is called with all of the command-line arguments,
 starting with @var{keyword}, as a single list argument.  @var{Procedure}
 must return two values (using the @code{values} procedure): the unused
-command-line arguments (as a list), and a thunk that is executed to
-implement the behavior of the option.
+command-line arguments (as a list), and
+either @code{#f} or a thunk to invoke after the whole command line has
+been parsed (and the init file loaded).  Thus @var{procedure} has the option
+of executing the appropriate action at parsing time, or delaying it
+until after the parsing is complete.  The execution of the procedures
+(or their associated delayed actions) is strictly left-to-right,
+with the init file loaded between the end of parsing and the
+delayed actions.
 @end deffn
 
 @node Environment Variables, Starting Scheme from Microsoft Windows, Custom Command-line Options, Running Scheme
@@ -1778,7 +1805,7 @@ minutes).
 @end defvr
 
 @defvr variable load-debugging-info-on-demand?
-If this variable is @file{#f}, then printing a compiled procedure
+If this variable is @code{#f}, then printing a compiled procedure
 will print the procedure's name only if the debugging information for
 that procedure is already loaded.  Otherwise, it will force
 loading of the debugging information.
