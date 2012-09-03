@@ -487,7 +487,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #  endif
    extern char * getenv (const char *);
 #endif
-
+
 #define UX_abort abort
 #define UX_accept accept
 #define UX_access access
@@ -536,6 +536,8 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_open open
 #define UX_pause pause
 #define UX_pipe pipe
+#define UX_poll poll
+#define UX_pselect pselect
 #define UX_read read
 #define UX_readlink readlink
 #define UX_realloc realloc
@@ -656,6 +658,17 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #    define FD_CLR(n, p) ((*(p)) &= ~(1 << (n)))
 #    define FD_ISSET(n, p) (((*(p)) & (1 << (n))) != 0)
 #    define FD_ZERO(p) ((*(p)) = 0)
+#  endif
+#endif
+
+/* ppoll is Linux's newer name for what was called pollts on BSD.  */
+
+#ifdef HAVE_PPOLL
+#  define UX_ppoll ppoll
+#else
+#  ifdef HAVE_POLLTS
+#    define HAVE_PPOLL
+#    define UX_ppoll pollts
 #  endif
 #endif
 

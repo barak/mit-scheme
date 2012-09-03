@@ -78,7 +78,7 @@ do_connect (int s, struct sockaddr * address, socklen_t addr_len)
 
 	    (fds . fd) = s;
 	    (fds . events) = (POLLIN | POLLOUT);
-	    nfds = (poll ((&fds), 1, 0));
+	    nfds = (UX_poll ((&fds), 1, 0));
 	    if ((nfds > 0) && (((fds . revents) & (POLLIN | POLLOUT)) != 0))
 	      break;
 	    if ((nfds < 0) && (errno != EINTR))

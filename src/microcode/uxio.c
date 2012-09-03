@@ -557,7 +557,7 @@ safe_poll (struct pollfd *fds, nfds_t nfds, int blockp)
 #ifdef HAVE_PPOLL
   if (!blockp)
     {
-      n = poll (fds, nfds, 0);
+      n = (UX_poll (fds, nfds, 0));
     }
   else
     {
@@ -573,7 +573,7 @@ safe_poll (struct pollfd *fds, nfds_t nfds, int blockp)
 	}
       else
 	{
-	  n = ppoll (fds, nfds, NULL, &old);
+	  n = (UX_ppoll (fds, nfds, NULL, &old));
 	}
       UX_sigprocmask (SIG_SETMASK, &old, NULL);
     }
@@ -583,7 +583,7 @@ safe_poll (struct pollfd *fds, nfds_t nfds, int blockp)
     (n, (((OS_process_any_status_change ())
 	  || (pending_interrupts_p ()))
 	 ? ((errno = EINTR), (-1))
-	 : (poll (fds, nfds, (blockp ? INFTIM : 0)))));
+	 : (UX_poll (fds, nfds, (blockp ? INFTIM : 0)))));
 #endif
 
   return (n);
@@ -595,7 +595,7 @@ OS_test_select_registry (select_registry_t registry, int blockp)
   struct select_registry_s * r = registry;
   while (1)
     {
-      int nfds = safe_poll ((SR_ENTRIES (r)), (SR_N_FDS (r)), blockp);
+      int nfds = (safe_poll ((SR_ENTRIES (r)), (SR_N_FDS (r)), blockp));
       if (nfds >= 0)
 	return (nfds);
       if (errno != EINTR)
@@ -615,7 +615,7 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
   ((pfds [0]) . events) = (DECODE_MODE (mode));
   while (1)
     {
-      int nfds = safe_poll (pfds, 1, blockp);
+      int nfds = (safe_poll (pfds, 1, blockp));
       if (nfds > 0)
 	return (ENCODE_MODE ((pfds [0]) . revents));
       if (nfds == 0)
@@ -751,7 +751,7 @@ safe_select (int nfds, SELECT_TYPE *readfds, SELECT_TYPE *writefds, int blockp)
 #ifdef HAVE_PSELECT
   if (!blockp)
     {
-      n = UX_select (nfds, readfds, writefds, NULL, &zero_timeout);
+      n = (UX_select (nfds, readfds, writefds, NULL, &zero_timeout));
     }
   else
     {
@@ -767,7 +767,7 @@ safe_select (int nfds, SELECT_TYPE *readfds, SELECT_TYPE *writefds, int blockp)
 	}
       else
 	{
-	  n = pselect (nfds, readfds, writefds, NULL, NULL, &old);
+	  n = (UX_pselect (nfds, readfds, writefds, NULL, NULL, &old));
 	}
       UX_sigprocmask (SIG_SETMASK, &old, NULL);
     }
@@ -794,10 +794,10 @@ OS_test_select_registry (select_registry_t registry, int blockp)
   (* (SR_RWRITERS (r))) = (* (SR_QWRITERS (r)));
   while (1)
     {
-      int nfds = safe_select (FD_SETSIZE,
-			      (SR_RREADERS (r)),
-			      (SR_RWRITERS (r)),
-			      blockp);
+      int nfds = (safe_select (FD_SETSIZE,
+			       (SR_RREADERS (r)),
+			       (SR_RWRITERS (r)),
+			       blockp));
       if (nfds >= 0)
 	return (nfds);
       if (errno != EINTR)
@@ -830,7 +830,7 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 
   while (1)
     {
-      int nfds = safe_select (fd + 1, &readable, &writeable, blockp);
+      int nfds = (safe_select (fd + 1, &readable, &writeable, blockp));
       if (nfds > 0)
 	return
 	  (((FD_ISSET (fd, (&readable))) ? SELECT_MODE_READ : 0)
