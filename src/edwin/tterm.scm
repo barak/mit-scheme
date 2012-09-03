@@ -515,6 +515,7 @@ USA.
 (define (console-enter! screen)
   (add-event-receiver! event:console-resize resize-screen)
   (maybe-output screen (ts-enter-termcap-mode (screen-description screen)))
+  (maybe-output screen (ts-enter-keypad-mode (screen-description screen)))
   (set-screen-cursor-x! screen false)
   (set-screen-cursor-y! screen false))
 
@@ -524,6 +525,7 @@ USA.
     (move-cursor screen 0 (fix:-1+ (screen-y-size screen)))
     (exit-standout-mode screen)
     (exit-insert-mode screen)
+    (maybe-output screen (ts-exit-keypad-mode description))
     (maybe-output screen (ts-exit-termcap-mode description)))
   (output-port/flush-output console-i/o-port))
 
