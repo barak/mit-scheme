@@ -549,16 +549,53 @@ OS_select_registry_result (select_registry_t registry,
   (*mode_r) = (ENCODE_MODE ((SR_ENTRY (r, index)) -> revents));
 }
 
+static int
+safe_poll (struct pollfd *fds, nfds_t nfds, int blockp)
+{
+  int n;
+
+#ifdef HAVE_PPOLL
+  if (!blockp)
+    {
+      n = poll (fds, nfds, 0);
+    }
+  else
+    {
+      sigset_t old, new;
+
+      UX_sigfillset (&new);
+      UX_sigprocmask (SIG_SETMASK, &new, &old);
+      if ((OS_process_any_status_change ())
+	  || (pending_interrupts_p ()))
+	{
+	  errno = EINTR;
+	  n = -1;
+	}
+      else
+	{
+	  n = ppoll (fds, nfds, NULL, &old);
+	}
+      UX_sigprocmask (SIG_SETMASK, &old, NULL);
+    }
+#else /* not HAVE_PPOLL */
+  /* There is a signal "hole" here, but what can we do without ppoll()? */
+  INTERRUPTABLE_EXTENT
+    (n, (((OS_process_any_status_change ())
+	  || (pending_interrupts_p ()))
+	 ? ((errno = EINTR), (-1))
+	 : (poll (fds, nfds, (blockp ? INFTIM : 0)))));
+#endif
+
+  return (n);
+}
+
 int
 OS_test_select_registry (select_registry_t registry, int blockp)
 {
   struct select_registry_s * r = registry;
   while (1)
     {
-      int nfds
-	= (poll ((SR_ENTRIES (r)),
-		 (SR_N_FDS (r)),
-		 (blockp ? INFTIM : 0)));
+      int nfds = safe_poll ((SR_ENTRIES (r)), (SR_N_FDS (r)), blockp);
       if (nfds >= 0)
 	return (nfds);
       if (errno != EINTR)
@@ -578,7 +615,7 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
   ((pfds [0]) . events) = (DECODE_MODE (mode));
   while (1)
     {
-      int nfds = (poll (pfds, 1, (blockp ? INFTIM : 0)));
+      int nfds = safe_poll (pfds, 1, blockp);
       if (nfds > 0)
 	return (ENCODE_MODE ((pfds [0]) . revents));
       if (nfds == 0)
@@ -706,26 +743,61 @@ OS_select_registry_result (select_registry_t registry,
     }
 }
 
+static int
+safe_select (int nfds, SELECT_TYPE *readfds, SELECT_TYPE *writefds, int blockp)
+{
+  int n;
+
+#ifdef HAVE_PSELECT
+  if (!blockp)
+    {
+      n = UX_select (nfds, readfds, writefds, NULL, &zero_timeout);
+    }
+  else
+    {
+      sigset_t old, new;
+
+      UX_sigfillset (&new);
+      UX_sigprocmask (SIG_SETMASK, &new, &old);
+      if ((OS_process_any_status_change ())
+	  || (pending_interrupts_p ()))
+	{
+	  errno = EINTR;
+	  n = -1;
+	}
+      else
+	{
+	  n = pselect (nfds, readfds, writefds, NULL, NULL, &old);
+	}
+      UX_sigprocmask (SIG_SETMASK, &old, NULL);
+    }
+#else /* not HAVE_PSELECT */
+  /* There is a signal "hole" here, but what can we do without pselect()? */
+  INTERRUPTABLE_EXTENT
+    (n, (((OS_process_any_status_change ())
+	  || (pending_interrupts_p ()))
+	 ? ((errno = EINTR), (-1))
+	 : (UX_select (nfds, readfds, writefds, NULL,
+		       (blockp ? NULL : &zero_timeout)))));
+#endif
+
+  return (n);
+}
+
 int
 OS_test_select_registry (select_registry_t registry, int blockp)
 {
 #ifdef HAVE_SELECT
   struct select_registry_s * r = registry;
+
+  (* (SR_RREADERS (r))) = (* (SR_QREADERS (r)));
+  (* (SR_RWRITERS (r))) = (* (SR_QWRITERS (r)));
   while (1)
     {
-      int nfds;
-
-      (* (SR_RREADERS (r))) = (* (SR_QREADERS (r)));
-      (* (SR_RWRITERS (r))) = (* (SR_QWRITERS (r)));
-      INTERRUPTABLE_EXTENT
-	(nfds,
-	 ((OS_process_any_status_change ())
-	  ? ((errno = EINTR), (-1))
-	  : (UX_select (FD_SETSIZE,
-			(SR_RREADERS (r)),
-			(SR_RWRITERS (r)),
-			0,
-			(blockp ? 0 : (&zero_timeout))))));
+      int nfds = safe_select (FD_SETSIZE,
+			      (SR_RREADERS (r)),
+			      (SR_RWRITERS (r)),
+			      blockp);
       if (nfds >= 0)
 	return (nfds);
       if (errno != EINTR)
@@ -745,29 +817,20 @@ int
 OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 {
 #ifdef HAVE_SELECT
+  SELECT_TYPE readable;
+  SELECT_TYPE writeable;
+
+  FD_ZERO (&readable);
+  if ((mode & SELECT_MODE_READ) != 0)
+    FD_SET (fd, (&readable));
+
+  FD_ZERO (&writeable);
+  if ((mode & SELECT_MODE_WRITE) != 0)
+    FD_SET (fd, (&writeable));
+
   while (1)
     {
-      SELECT_TYPE readable;
-      SELECT_TYPE writeable;
-      int nfds;
-
-      FD_ZERO (&readable);
-      if ((mode & SELECT_MODE_READ) != 0)
-	FD_SET (fd, (&readable));
-
-      FD_ZERO (&writeable);
-      if ((mode & SELECT_MODE_WRITE) != 0)
-	FD_SET (fd, (&writeable));
-
-      INTERRUPTABLE_EXTENT
-	(nfds,
-	 ((OS_process_any_status_change ())
-	  ? ((errno = EINTR), (-1))
-	  : (UX_select ((fd + 1),
-			(&readable),
-			(&writeable),
-			0,
-			(blockp ? 0 : (&zero_timeout))))));
+      int nfds = safe_select (fd + 1, &readable, &writeable, blockp);
       if (nfds > 0)
 	return
 	  (((FD_ISSET (fd, (&readable))) ? SELECT_MODE_READ : 0)
