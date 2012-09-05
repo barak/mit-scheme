@@ -851,3 +851,29 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
 }
 
 #endif /* not HAVE_POLL */
+
+int
+OS_pause (void)
+{
+#ifdef HAVE_SIGSUSPEND
+  sigset_t old, new;
+
+  UX_sigfillset (&new);
+  UX_sigprocmask (SIG_SETMASK, &new, &old);
+  if (OS_process_any_status_change ())
+    return (SELECT_PROCESS_STATUS_CHANGE);
+  if (pending_interrupts_p ())
+    return (SELECT_INTERRUPT);
+  UX_sigsuspend (&old);
+  UX_sigprocmask (SIG_SETMASK, &old, NULL);
+  if (OS_process_any_status_change ())
+    return (SELECT_PROCESS_STATUS_CHANGE);
+  return (SELECT_INTERRUPT);
+#else
+  /* Wait-for-io must spin. */
+  return
+    ((OS_process_any_status_change ())
+     ? SELECT_PROCESS_STATUS_CHANGE
+     : SELECT_INTERRUPT);
+#endif
+}

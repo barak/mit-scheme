@@ -109,5 +109,6 @@ extern int OS_test_select_registry
   (select_registry_t registry, int blockp);
 extern int OS_test_select_descriptor
   (int fd, int blockp, unsigned int mode);
+extern int OS_pause (void);
 
 #endif /* SCM_OSIO_H */

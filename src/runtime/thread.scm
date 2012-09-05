@@ -454,28 +454,19 @@ USA.
 			  condition
 			  (within-continuation k thunk))
 		      thunk))))))))
-    (if (not io-registrations)
-	(begin
-	  ;; Busy-waiting here is a bad idea -- should implement a
-	  ;; primitive to block the Scheme process while waiting for a
-	  ;; signal.
-	  (catch-errors
-	   (lambda ()
-	     (set-interrupt-enables! interrupt-mask/all)
-	     (do () (#f)))))
-	(let ((result
-	       (catch-errors
-		(lambda ()
-		  (set-interrupt-enables! interrupt-mask/all)
-		  (test-select-registry io-registry #t)))))
-	  (set-interrupt-enables! interrupt-mask/gc-ok)
-	  (signal-select-result result)
-	  (let ((thread first-running-thread))
-	    (if thread
-		(if (thread/continuation thread)
-		    (run-thread thread)
-		    (%maybe-toggle-thread-timer))
-		(wait-for-io)))))))
+    (let ((result
+	   (catch-errors
+	    (lambda ()
+	      (set-interrupt-enables! interrupt-mask/all)
+	      (test-select-registry io-registry #t)))))
+      (set-interrupt-enables! interrupt-mask/gc-ok)
+      (signal-select-result result)
+      (let ((thread first-running-thread))
+	(if thread
+	    (if (thread/continuation thread)
+		(run-thread thread)
+		(%maybe-toggle-thread-timer))
+	    (wait-for-io))))))
 
 (define (signal-select-result result)
   (cond ((vector? result)

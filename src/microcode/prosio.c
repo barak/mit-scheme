@@ -331,7 +331,9 @@ DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
       error_bad_range_arg (3);
     if ((VECTOR_LENGTH (vmode)) < rl)
       error_bad_range_arg (4);
-    result = (OS_test_select_registry (r, blockp));
+    result = ((rl == 0)
+	      ? (blockp ? (OS_pause ()) : SELECT_INTERRUPT)
+	      : (OS_test_select_registry (r, blockp)));
     if (result > 0)
       {
 	unsigned int i = 0;

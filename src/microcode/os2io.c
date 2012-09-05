@@ -564,3 +564,13 @@ OS_test_select_registry (select_registry_t registry, int blockp)
 	interruptp = 1;
     }
 }
+
+int
+OS_pause (void)
+{
+  /* Wait-for-io must spin. */
+  return
+    ((OS_process_any_status_change ())
+     ? SELECT_PROCESS_STATUS_CHANGE
+     : SELECT_INTERRUPT);
+}
