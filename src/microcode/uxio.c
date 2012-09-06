@@ -857,18 +857,24 @@ OS_pause (void)
 {
 #ifdef HAVE_SIGSUSPEND
   sigset_t old, new;
+  int n;
 
   UX_sigfillset (&new);
   UX_sigprocmask (SIG_SETMASK, &new, &old);
   if (OS_process_any_status_change ())
-    return (SELECT_PROCESS_STATUS_CHANGE);
-  if (pending_interrupts_p ())
-    return (SELECT_INTERRUPT);
-  UX_sigsuspend (&old);
+    n = SELECT_PROCESS_STATUS_CHANGE;
+  else if (pending_interrupts_p ())
+    n = SELECT_INTERRUPT;
+  else
+    {
+      UX_sigsuspend (&old);
+      if (OS_process_any_status_change ())
+	n = SELECT_PROCESS_STATUS_CHANGE;
+      else
+	n = SELECT_INTERRUPT;
+    }
   UX_sigprocmask (SIG_SETMASK, &old, NULL);
-  if (OS_process_any_status_change ())
-    return (SELECT_PROCESS_STATUS_CHANGE);
-  return (SELECT_INTERRUPT);
+  return (n);
 #else
   /* Wait-for-io must spin. */
   return
