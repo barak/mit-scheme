@@ -117,10 +117,11 @@ USA.
 	    #f)
 	(%queue! queue item))))
 
-(define (thread-queue/dequeue-no-hang queue timeout)
+(define (thread-queue/dequeue-no-hang queue msec)
   (guarantee-thread-queue queue 'thread-queue/dequeue-no-hang)
-  (guarantee-non-negative-fixnum timeout 'thread-queue/dequeue-no-hang)
-  (thread-queue/dequeue-until queue (+ (real-time-clock) timeout)))
+  (guarantee-non-negative-fixnum msec 'thread-queue/dequeue-no-hang)
+  (thread-queue/dequeue-until
+   queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 
 (define (thread-queue/dequeue-until queue time)
   (guarantee-thread-queue queue 'thread-queue/dequeue-until)
@@ -153,10 +154,11 @@ USA.
 		       (list (current-thread))))
        (suspend-current-thread)))))
 
-(define (thread-queue/peek-no-hang queue timeout)
+(define (thread-queue/peek-no-hang queue msec)
   (guarantee-thread-queue queue 'thread-queue/peek-no-hang)
-  (guarantee-non-negative-fixnum timeout 'thread-queue/peek-no-hang)
-  (thread-queue/peek-until queue (+ (real-time-clock) timeout)))
+  (guarantee-non-negative-fixnum msec 'thread-queue/peek-no-hang)
+  (thread-queue/peek-until
+   queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 
 (define (thread-queue/peek-until queue time)
   (guarantee-thread-queue queue 'thread-queue/peek-until)
@@ -254,31 +256,3 @@ USA.
 				      (1+ (%thread-queue/element-count queue)))
     (%resume-dequeuers queue)
     item))
-
-(define (test)
-  ;; Sets up a "producer" thread that puts the letters of the alphabet
-  ;; into a thread-queue, one each 2-3 seconds.  A "consumer" thread
-  ;; waits on the queue, printing what it reads.
-  (outf-error ";Thread Queue Test\n")
-  (let ((queue (make-thread-queue)))
-    (create-thread
-     #f
-     (lambda ()
-       (outf-error ";    Consumer: "(current-thread)"\n")
-       (let loop ()
-	 (outf-error ";    Consumer reads.\n")
-	 (let ((item (thread-queue/dequeue! queue)))
-	   (outf-error ";    Consumer read "item"\n")
-	   (loop)))))
-    (create-thread
-     #f
-     (lambda ()
-       (outf-error ";    Producer: "(current-thread)"\n")
-       (for-each (lambda (item)
-		   (outf-error ";    Producer: sleeping...\n")
-		   (sleep-current-thread 2000)
-		   (outf-error ";    Producer: queuing "item"...\n")
-		   (thread-queue/queue! queue item)
-		   (outf-error ";    Producer: queued "item"\n"))
-		 '(#\a #\b #\c #\d #\e))
-       (outf-error ";    Producer done.\n")))))

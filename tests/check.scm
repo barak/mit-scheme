@@ -47,6 +47,7 @@ USA.
     "runtime/test-floenv"
     "runtime/test-hash-table"
     "runtime/test-integer-bits"
+    "runtime/test-thread-queue"
     "runtime/test-process"
     "runtime/test-regsexp"
     ("runtime/test-wttree" (runtime wt-tree))
