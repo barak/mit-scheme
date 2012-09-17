@@ -83,6 +83,7 @@ USA.
   (flo:- flonum-subtract 2)
   (flo:* flonum-multiply 2)
   (flo:/ flonum-divide 2)
+  (flo:modulo flonum-modulo 2)
   (flo:negate flonum-negate 1)
   (flo:abs flonum-abs 1)
   (flo:exp flonum-exp 1)
