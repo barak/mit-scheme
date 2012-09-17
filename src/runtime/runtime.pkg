@@ -238,6 +238,7 @@ USA.
 	  flo:log1p
 	  flo:max
 	  flo:min
+	  flo:modulo
 	  flo:negate
 	  flo:negative?
 	  flo:positive?
