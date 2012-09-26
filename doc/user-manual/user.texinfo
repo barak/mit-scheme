@@ -663,6 +663,7 @@ during loading are silently ignored.
 The following options allow arguments to be passed to scripts via the
 @code{command-line} procedure.
 
+@
 @deffn procedure command-line
 Returns a list of arguments (strings) gathered from the command-line
 by options like @code{--args} or @code{--}.
@@ -672,13 +673,13 @@ by options like @code{--args} or @code{--}.
 @opindex --args
 This option causes Scheme to append the @var{argument}s, up
 to (but not including) the next argument that starts with a hyphen, to
-the list returned by the @bref{command-line} procedure.
+the list returned by the @code{command-line} procedure.
 
 @item -- @var{argument} @dots{}
 @opindex --
 This option causes Scheme to append the rest of the command-line
 arguments (even those starting with a hyphen) to the list returned by
-the @varref{command-line} procedure.
+the @code{command-line} procedure.
 @end table
 
 @noindent
