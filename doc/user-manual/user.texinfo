@@ -663,7 +663,6 @@ during loading are silently ignored.
 The following options allow arguments to be passed to scripts via the
 @code{command-line} procedure.
 
-@
 @deffn procedure command-line
 Returns a list of arguments (strings) gathered from the command-line
 by options like @code{--args} or @code{--}.
