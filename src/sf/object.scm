@@ -453,8 +453,8 @@ USA.
           ;; Check that the arguments are constant.
        (for-all? operands constant?)))
 
-;; An operator is reducable if we can safely rewrite its argument list.
-(define (reducable-operator? operator)
+;; An operator is reducible if we can safely rewrite its argument list.
+(define (reducible-operator? operator)
   (and (procedure? operator)
        ;; if the block is not safe, then random code can be
        ;; injected and it will expect to see all the arguments.
@@ -477,7 +477,7 @@ USA.
                                     (constant/value operator)
                                     (map constant/value operands)))
 
-        ((and (reducable-operator? operator)
+        ((and (reducible-operator? operator)
               (noisy-test sf:enable-argument-deletion? "Delete argument"))
          (call-with-values (lambda () (partition-operands operator operands))
            (lambda (new-argument-list new-operand-list other-operands)
