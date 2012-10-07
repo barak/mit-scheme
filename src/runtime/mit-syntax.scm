@@ -332,17 +332,6 @@ USA.
    (lambda ()
      (classify/declarations (cdr form) environment))))
 
-(define (classifier:local-declare form environment definition-environment)
-  (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
-  (let ((body
-	 (classify/body (cddr form)
-			environment
-			definition-environment)))
-    (make-expression-item
-     (lambda ()
-       (output/local-declare (classify/declarations (cadr form) environment)
-			     (compile-body-item body))))))
-
 (define (classify/declarations declarations environment)
   (map (lambda (declaration)
 	 (classify/declaration declaration environment))

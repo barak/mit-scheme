@@ -4699,7 +4699,6 @@ USA.
 	  output/lambda
 	  output/let
 	  output/letrec
-	  output/local-declare
 	  output/named-lambda
 	  output/post-process-expression
 	  output/runtime-reference
@@ -4742,7 +4741,6 @@ USA.
 	  classifier:er-macro-transformer
 	  classifier:let-syntax
 	  classifier:letrec-syntax
-	  classifier:local-declare
 	  classifier:non-hygienic-macro-transformer
 	  classifier:rsc-macro-transformer
 	  classifier:sc-macro-transformer
@@ -4785,6 +4783,7 @@ USA.
 	  (let*-syntax :let*-syntax)
 	  (letrec :letrec)
 	  (letrec* :letrec*)
+	  (local-declare :local-declare)
 	  (quasiquote :quasiquote)
 	  (receive :receive)
 	  supported-srfi-features)

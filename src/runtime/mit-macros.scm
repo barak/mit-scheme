@@ -631,6 +631,17 @@ USA.
 	      ,r-unspecific)
 	    (,r-shallow-fluid-bind ,swap! ,body ,swap!)))))))
 
+(define-syntax :local-declare
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare
+     (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
+     (let ((r-let (rename 'LET))
+	   (r-declare (rename 'DECLARE)))
+       `(,r-let ()
+		(,r-declare ,@(cadr form))
+		,@(cddr form))))))
+
 (define (unspecific-expression)
   `(,keyword:unspecific))
 

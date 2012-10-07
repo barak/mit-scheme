@@ -150,9 +150,6 @@ USA.
 (define (output/runtime-reference name)
   (output/access-reference name system-global-environment))
 
-(define (output/local-declare declarations body)
-  (make-declaration declarations body))
-
 (define lambda-tag:unnamed '|#[unnamed-procedure]|)
 (define lambda-tag:let '|#[let-procedure]|)
 (define lambda-tag:fluid-let '|#[fluid-let-procedure]|)
