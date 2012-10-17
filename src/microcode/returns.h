@@ -39,9 +39,9 @@ USA.
 #define RC_EXECUTE_DEFINITION_FINISH	0x09
 #define RC_EXECUTE_ACCESS_FINISH	0x0A
 /* unused				0x0B */
-#define RC_SEQ_2_DO_2			0x0C
-#define RC_SEQ_3_DO_2			0x0D
-#define RC_SEQ_3_DO_3			0x0E
+#define RC_EXECUTE_SEQUENCE_FINISH	0x0C
+/* unused				0x0D */
+/* unused				0x0E */
 #define RC_CONDITIONAL_DECIDE		0x0F
 #define RC_DISJUNCTION_DECIDE		0x10
 #define RC_COMB_1_PROCEDURE		0x11
@@ -108,9 +108,9 @@ USA.
 /* 0x09 */		"definition-continue",				\
 /* 0x0a */		"access-continue",				\
 /* 0x0b */		0,						\
-/* 0x0c */		"sequence-2-second",				\
-/* 0x0d */		"sequence-3-second",				\
-/* 0x0e */		"sequence-3-third",				\
+/* 0x0c */		"sequence-continue",				\
+/* 0x0d */		0,						\
+/* 0x0e */		0,						\
 /* 0x0f */		"conditional-decide",				\
 /* 0x10 */		"disjunction-decide",				\
 /* 0x11 */		"combination-1-procedure",			\

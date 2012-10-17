@@ -811,7 +811,7 @@ USA.
     (standard-subproblem 'DISJUNCTION-DECIDE 3)
     (standard-subproblem 'EVAL-ERROR 3)
     (standard-subproblem 'FORCE-SNAP-THUNK 2)
-    (standard-subproblem 'SEQUENCE-2-SECOND 3)
+    (standard-subproblem 'SEQUENCE-CONTINUE 3)
 
     (standard-subproblem 'COMBINATION-SAVE-VALUE length/combination-save-value)
 

@@ -51,7 +51,7 @@ USA.
 #define TC_NON_MARKED_VECTOR		0x16
 #define TC_LAMBDA			0x17
 #define TC_PRIMITIVE			0x18
-#define TC_SEQUENCE_2			0x19
+#define TC_SEQUENCE			0x19
 #define TC_FIXNUM			0x1A
 #define TC_PCOMB1			0x1B
 #define TC_CONTROL_POINT		0x1C
@@ -77,7 +77,7 @@ USA.
 #define TC_PCOMB0			0x30
 #define TC_VECTOR_16B			0x31
 #define TC_REFERENCE_TRAP		0x32
-#define TC_SEQUENCE_3			0x33
+/* #define TC_UNUSED_33			0x33 */
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
 #define TC_CELL				0x36
@@ -129,7 +129,7 @@ USA.
   /* 0x16 */			"non-marked-vector",			\
   /* 0x17 */			"lambda",				\
   /* 0x18 */			"primitive",				\
-  /* 0x19 */			"sequence-2",				\
+  /* 0x19 */			"sequence",				\
   /* 0x1A */			"fixnum",				\
   /* 0x1B */			"primitive-combination-1",		\
   /* 0x1C */			"control-point",			\
@@ -155,7 +155,7 @@ USA.
   /* 0x30 */			"primitive-combination-0",		\
   /* 0x31 */			"vector-16b",				\
   /* 0x32 */			"reference-trap",			\
-  /* 0x33 */			"sequence-3",				\
+  /* 0x33 */			0,					\
   /* 0x34 */			"conditional",				\
   /* 0x35 */			"disjunction",				\
   /* 0x36 */			"cell",					\

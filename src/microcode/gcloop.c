@@ -1272,7 +1272,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_VECTOR,			/* TC_NON_MARKED_VECTOR */
   GC_PAIR,			/* TC_LAMBDA */
   GC_NON_POINTER,		/* TC_PRIMITIVE */
-  GC_PAIR,			/* TC_SEQUENCE_2 */
+  GC_PAIR,			/* TC_SEQUENCE */
   GC_NON_POINTER,		/* TC_FIXNUM */
   GC_PAIR,			/* TC_PCOMB1 */
   GC_VECTOR,			/* TC_CONTROL_POINT */
@@ -1298,7 +1298,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_NON_POINTER,		/* TC_PCOMB0 */
   GC_VECTOR,			/* TC_VECTOR_16B */
   GC_SPECIAL,			/* TC_REFERENCE_TRAP */
-  GC_TRIPLE,			/* TC_SEQUENCE_3 */
+  GC_UNDEFINED,			/* 0x33 */
   GC_TRIPLE,			/* TC_CONDITIONAL */
   GC_PAIR,			/* TC_DISJUNCTION */
   GC_CELL,			/* TC_CELL */

@@ -167,10 +167,9 @@ USA.
 #define SCODE_QUOTE_OBJECT	0
 #define SCODE_QUOTE_IGNORED	1
 
-/* SEQUENCE operations (two forms: SEQUENCE_2 and SEQUENCE_3) */
+/* SEQUENCE operations */
 #define SEQUENCE_1		0
 #define SEQUENCE_2		1
-#define SEQUENCE_3		2
 
 /* VARIABLE operation.
  * Corresponds to a variable lookup or variable reference. Contains the

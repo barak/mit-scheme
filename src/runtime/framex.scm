@@ -218,7 +218,7 @@ USA.
 			       frame
 			       (select-subexp expression))))))
 		     (case (vector-ref source-code 0)
-		       ((SEQUENCE-2-SECOND)
+		       ((SEQUENCE-CONTINUE)
 			(win &pair-car))
 		       ((ASSIGNMENT-CONTINUE
 			 DEFINITION-CONTINUE)
@@ -267,7 +267,7 @@ USA.
   (record-method 'REENTER-COMPILED-CODE method/null)
   (let ((method (method/standard &pair-car)))
     (record-method 'DISJUNCTION-DECIDE method)
-    (record-method 'SEQUENCE-2-SECOND method))
+    (record-method 'SEQUENCE-CONTINUE method))
   (let ((method (method/standard &pair-cdr)))
     (record-method 'ASSIGNMENT-CONTINUE method)
     (record-method 'DEFINITION-CONTINUE method))

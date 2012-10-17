@@ -146,13 +146,30 @@ USA.
 (define returns-slot)
 
 (define (microcode-return/name->code name)
-  (microcode-table-search returns-slot name))
+  (microcode-table-search returns-slot
+			  (let ((p
+				 (find (lambda (p)
+					 (memq name (cdr p)))
+				       returns-aliases)))
+			    (if p
+				(car p)
+				name))))
 
 (define (microcode-return/code->name code)
   (microcode-table-ref returns-slot code))
 
+(define (microcode-return/code->names code)
+  (let ((name (microcode-table-entry types-slot code)))
+    (if name
+	(or (assq name returns-aliases)
+	    (list name))
+	'())))
+
 (define (microcode-return/code-limit)
   (vector-length (vector-ref (get-fixed-objects-vector) returns-slot)))
+
+(define returns-aliases
+  '((sequence-continue sequence-2-second)))
 
 (define errors-slot)
 
@@ -240,6 +257,7 @@ USA.
     (BIGNUM BIG-FIXNUM)
     (PROMISE DELAYED)
     (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM)
+    (SEQUENCE SEQUENCE-2)
     (STRING CHARACTER-STRING VECTOR-8B)
     (HUNK3-A UNMARKED-HISTORY)
     (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)

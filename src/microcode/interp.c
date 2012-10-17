@@ -555,15 +555,10 @@ Interpret (int pop_return_p)
       SET_VAL (MEMORY_REF (GET_EXP, SCODE_QUOTE_OBJECT));
       break;
 
-    case TC_SEQUENCE_2:
+    case TC_SEQUENCE:
       Will_Push (CONTINUATION_SIZE + 1);
       PUSH_ENV ();
-      PUSH_NTH_THEN (RC_SEQ_2_DO_2, SEQUENCE_1);
-
-    case TC_SEQUENCE_3:
-      Will_Push (CONTINUATION_SIZE + 1);
-      PUSH_ENV ();
-      PUSH_NTH_THEN (RC_SEQ_3_DO_2, SEQUENCE_1);
+      PUSH_NTH_THEN (RC_EXECUTE_SEQUENCE_FINISH, SEQUENCE_1);
 
     case TC_SYNTAX_ERROR:
       EVAL_ERROR (ERR_SYNTAX_ERROR);
@@ -1276,19 +1271,10 @@ Interpret (int pop_return_p)
       stack_pointer = (STACK_LOCATIVE_OFFSET (stack_pointer, 1));
       break;
 
-    case RC_SEQ_2_DO_2:
+    case RC_EXECUTE_SEQUENCE_FINISH:
       END_SUBPROBLEM ();
       POP_ENV ();
       REDUCES_TO_NTH (SEQUENCE_2);
-
-    case RC_SEQ_3_DO_2:
-      SET_ENV (STACK_REF (0));
-      DO_ANOTHER_THEN (RC_SEQ_3_DO_3, SEQUENCE_2);
-
-    case RC_SEQ_3_DO_3:
-      END_SUBPROBLEM ();
-      POP_ENV ();
-      REDUCES_TO_NTH (SEQUENCE_3);
 
     case RC_SNAP_NEED_THUNK:
       /* Don't snap thunk twice; evaluation of the thunk's body might

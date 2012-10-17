@@ -507,7 +507,7 @@ USA.
       (let ((first-action
 	     (generate/subproblem/effect
 	      block continuation context
-	      (scode/sequence-immediate-first expression) 'SEQUENCE-2-SECOND
+	      (scode/sequence-immediate-first expression) 'SEQUENCE-CONTINUE
 	      expression)))
 	((scfg*ctype->ctype! continuation)
 	 first-action
