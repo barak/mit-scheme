@@ -517,10 +517,6 @@ Interpret (int pop_return_p)
       Free += 2;
       break;
 
-    case TC_IN_PACKAGE:
-      Will_Push (CONTINUATION_SIZE);
-      PUSH_NTH_THEN (RC_EXECUTE_IN_PACKAGE_CONTINUE, IN_PACKAGE_ENVIRONMENT);
-
     case TC_LAMBDA:
     case TC_LEXPR:
       /* Deliberately omitted: EVAL_GC_CHECK (2); */
@@ -841,15 +837,6 @@ Interpret (int pop_return_p)
 	SET_VAL (value);
         POP_RETURN_ERROR (result);
       }
-
-    case RC_EXECUTE_IN_PACKAGE_CONTINUE:
-      if (ENVIRONMENT_P (GET_VAL))
-	{
-	  END_SUBPROBLEM ();
-	  SET_ENV (GET_VAL);
-	  REDUCES_TO_NTH (IN_PACKAGE_EXPRESSION);
-	}
-      POP_RETURN_ERROR (ERR_BAD_FRAME);
 
     case RC_HALT:
       Microcode_Termination (TERM_TERM_HANDLER);

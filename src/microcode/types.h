@@ -63,7 +63,7 @@ USA.
 #define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
 #define TC_HUNK3_B			0x24
-#define TC_IN_PACKAGE			0x25
+/* #define TC_UNUSED_25			0x25 */
 #define TC_COMBINATION			0x26
 #define TC_MANIFEST_NM_VECTOR		0x27
 #define TC_COMPILED_ENTRY		0x28
@@ -141,7 +141,7 @@ USA.
   /* 0x22 */			"broken-heart",				\
   /* 0x23 */			"assignment",				\
   /* 0x24 */			"triple",				\
-  /* 0x25 */			"in-package",				\
+  /* 0x25 */			0,					\
   /* 0x26 */			"combination",				\
   /* 0x27 */			"manifest-nm-vector",			\
   /* 0x28 */			"compiled-entry",			\

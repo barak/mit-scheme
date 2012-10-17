@@ -122,10 +122,6 @@ USA.
 #define Elambda_Rest_Flag(Addr) \
      ((((long) Addr) & EL_REST_MASK) >> EL_REST_SHIFT)
 
-/* IN-PACKAGE operation: */
-#define IN_PACKAGE_ENVIRONMENT	0
-#define IN_PACKAGE_EXPRESSION	1
-
 /* LAMBDA operation:
  * Object representing a LAMBDA expression with a fixed number of
  * arguments.  It consists of a list of the names of the arguments

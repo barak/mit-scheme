@@ -1284,7 +1284,7 @@ gc_type_t gc_type_map [N_TYPE_CODES] =
   GC_SPECIAL,			/* TC_BROKEN_HEART */
   GC_PAIR,			/* TC_ASSIGNMENT */
   GC_TRIPLE,			/* TC_HUNK3_B */
-  GC_PAIR,			/* TC_IN_PACKAGE */
+  GC_UNDEFINED,			/* unused */
   GC_VECTOR,			/* TC_COMBINATION */
   GC_SPECIAL,			/* TC_MANIFEST_NM_VECTOR */
   GC_COMPILED,			/* TC_COMPILED_ENTRY */

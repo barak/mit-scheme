@@ -38,7 +38,7 @@ USA.
 #define RC_EXECUTE_ASSIGNMENT_FINISH	0x08
 #define RC_EXECUTE_DEFINITION_FINISH	0x09
 #define RC_EXECUTE_ACCESS_FINISH	0x0A
-#define RC_EXECUTE_IN_PACKAGE_CONTINUE  0x0B
+/* unused				0x0B */
 #define RC_SEQ_2_DO_2			0x0C
 #define RC_SEQ_3_DO_2			0x0D
 #define RC_SEQ_3_DO_3			0x0E
@@ -107,7 +107,7 @@ USA.
 /* 0x08 */		"assignment-continue",				\
 /* 0x09 */		"definition-continue",				\
 /* 0x0a */		"access-continue",				\
-/* 0x0b */		"in-package-continue",				\
+/* 0x0b */		0,						\
 /* 0x0c */		"sequence-2-second",				\
 /* 0x0d */		"sequence-3-second",				\
 /* 0x0e */		"sequence-3-third",				\
