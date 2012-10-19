@@ -85,6 +85,7 @@ USA.
 		 (e-name (symbol 'error:not- root)))
 	     `(BEGIN
 		(DEFINE (,g-name OBJECT #!OPTIONAL CALLER)
+		  (DECLARE (INTEGRATE CALLER))
 		  (IF (NOT (,(close-syntax p-name environment) OBJECT))
 		      (,(close-syntax e-name environment) OBJECT CALLER)))
 		(DEFINE (,e-name OBJECT #!OPTIONAL CALLER)
