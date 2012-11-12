@@ -143,9 +143,22 @@ darwin*)
     else
 	SDK=MacOSX${MACOSX}
     fi
-    MACOSX_SYSROOT=/Developer/SDKs/${SDK}.sdk
-    if test ! -d "${MACOSX_SYSROOT}"; then
-	AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+    MACOSX_SYSROOT=
+    for dir in /Developer/SDKs \
+    	/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs
+    do
+	if test -d "${dir}"; then
+	    MACOSX_SYSROOT=${dir}
+	    break
+	fi
+    done
+    if test -z "${MACOSX_SYSROOT}"; then
+	AC_MSG_WARN([Can't find SDKs directory, not checking for SDK])
+    else	
+	MACOSX_SYSROOT=${MACOSX_SYSROOT}/${SDK}.sdk
+	if test ! -d "${MACOSX_SYSROOT}"; then
+	    AC_MSG_ERROR([No MacOSX SDK for version: ${MACOSX}])
+	fi
     fi
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -isysroot ${MACOSX_SYSROOT}"
     MACOSX_CFLAGS="${MACOSX_CFLAGS} -fconstant-cfstrings"
