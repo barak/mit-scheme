@@ -183,3 +183,36 @@ USA.
   (do ((bits bits (cdr bits))
        (integer 0 (bitwise-ior (shift-left integer 1) (if (car bits) 1 0))))
       ((not (pair? bits)) integer)))
+
+;;; NetBSD-style bit field operations.  We desperately need some
+;;; constant folding for these...
+;;;
+;;;   (define frotz-field:fidgets (bits 0 4))
+;;;   (define frotz-field:widgets (bits 5 7))
+;;;
+;;;   (define (frotz-fidgets frotz)
+;;;     (shiftout frotz frotz-field:fidgets))
+;;;
+;;;   (define (frotz-widgets frotz)
+;;;     (shiftout frotz frotz-field:widgets))
+;;;
+;;;   (define (make-frotz fidgets widgets)
+;;;     (bitwise-ior (shiftin fidgets frotz-field:fidgets)
+;;;                  (shiftin widgets frotz-field:widgets)))
+
+(define (bit n)
+  (shift-left 1 n))
+
+(define (bits n m)
+  (define (%bits n m)
+    (bit-mask (+ (- n m) 1) n))
+  (if (<= n m)
+      (%bits n m)
+      (%bits m n)))
+
+(define (shiftout x mask)
+  (shift-right (bitwise-and x mask) (first-set-bit mask)))
+
+(define (shiftin x mask)
+  ;; (bitwise-and ... mask)?
+  (shift-left x (first-set-bit mask)))

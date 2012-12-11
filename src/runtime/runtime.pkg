@@ -336,11 +336,13 @@ USA.
 	  all-bits-set?
 	  any-bits-set?
 	  arithmetic-shift
+	  bit
 	  bit-antimask
 	  bit-clear?
 	  bit-count
 	  bit-mask
 	  bit-set?
+	  bits
 	  bitwise-merge
 	  bitwise-not
 	  clear-bit
@@ -354,6 +356,8 @@ USA.
 	  set-bit
 	  shift-left
 	  shift-right
+	  shiftin
+	  shiftout
 	  splice-bit-field
 	  test-bit-field
 	  test-bit-field?
