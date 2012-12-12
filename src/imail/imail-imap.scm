@@ -1336,10 +1336,20 @@ USA.
 	       (lambda (keywords messages)
 		 (imap:command:fetch-set/for-each
 		  (lambda (response)
-		    (if (zero? (remainder count 10))
-			(imail-ui:progress-meter count total-count))
-		    (set! count (+ count 1))
-		    (cache-preload-response folder keywords response))
+                    ;; Some IMAP servers (I'm looking at you, Dovecot)
+                    ;; return untagged non-FETCH responses here, namely
+                    ;; untagged OK messages, perhaps to indicate some
+                    ;; kind of progress.
+		    (cond ((imap:response:fetch? response)
+                           (if (zero? (remainder count 10))
+                               (imail-ui:progress-meter count total-count))
+                           (set! count (+ count 1))
+                           (cache-preload-response folder keywords response))
+                          ((imap:response:status-response? response)
+                           (imail-ui:message
+                            (string-append
+                             "Server message: "
+                             (imap:response:response-text-string response))))))
 		  connection
 		  (message-list->set (reverse! messages))
 		  keywords)))))))))
