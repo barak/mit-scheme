@@ -209,12 +209,13 @@ USA.
        (bind-condition-handler (list condition-type:serious-condition)
 	   (lambda (condition)
 	     (dynamic-wind
-		 (lambda ()
-		   #f)
-		 (lambda ()
-		   (invoke-sldb socket (+ level 1) condition))
-		 (lambda ()
-		   (write-message `(:return (:abort ,(condition/report-string condition)) ,id) socket))))
+	      (lambda () #f)
+	      (lambda () (invoke-sldb socket (+ level 1) condition))
+	      (lambda ()
+		(write-message
+		 `(:return (:abort ,(condition/report-string condition)) ,id)
+		 socket))
+	      (k unspecific)))
 	 (lambda ()
 	   (write-message `(:return (:ok ,(emacs-rex socket sexp pstring id))
 				    ,id)
@@ -386,13 +387,16 @@ USA.
 
 ;;;; Directory Functions
 (define (swank:default-directory socket)
+  socket
   (->namestring (working-directory-pathname)))
 
 (define (swank:set-default-directory socket directory)
+  socket
   (->namestring (set-working-directory-pathname! directory)))
 
 ;;;; Describe
 (define (swank:describe-symbol socket symbol)
+  socket
   (let* ((env (buffer-env))
 	 (package (env->pstring env))
 	 (symbol (string->symbol symbol))
@@ -550,13 +554,12 @@ USA.
 
 (define (swank:autodoc socket expr . params)
   socket params
-  (let* ((op-string (find-string-before-swank-cursor-marker expr)))
+  (let ((op-string (find-string-before-swank-cursor-marker expr)))
     (if op-string
 	(let* ((op (string->symbol op-string))
-	       (type (environment-reference-type (buffer-env) op)))
-	  (let ((ans (procedure-parameters op (buffer-env))))
-	    (let ((answer (if ans (with-output-to-string (lambda () (write ans))) ':not-available)))
-	      (list answer 't))))
+	       (ans (procedure-parameters op (buffer-env)))
+	       (answer (if ans (write-to-string ans) ':not-available)))
+	  (list answer 't))
 	(list ':not-available 't))))
 
 (define (swank:quit-lisp socket)
@@ -694,7 +697,7 @@ swank:xref
   (continue (sldb-state.restarts *sldb-state*)))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
-  socket sldb-level
+  sldb-level
   (write-message `(:return (:abort "NIL") ,*index*) socket)
   (invoke-restart (list-ref (sldb-state.restarts *sldb-state*) n)))
 
