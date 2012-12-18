@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; Syntax Expanders
-;;; package: (ffi syntax)
+;;; package: (ffi)
 
 
 ;;; C-include Syntax

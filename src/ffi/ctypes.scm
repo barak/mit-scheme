@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; C Types and C Type Simplification
-;;; package: (ffi syntax)
+;;; package: (ffi)
 
 
 ;;; C Types

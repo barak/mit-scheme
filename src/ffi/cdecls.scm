@@ -25,7 +25,7 @@ USA.
 |#
 
 ;;;; C Declarations
-;;; package: (ffi syntax)
+;;; package: (ffi)
 
 
 (define-structure (c-includes (conc-name c-includes/)
