@@ -75,15 +75,11 @@ OS_initialize (void)
 {
   initialize_interruptable_extent ();
   {
-    if (option_force_interactive)
-      interactive = true;
-    else if (option_batch_mode)
-      interactive = false;
-    else
-      interactive
-	= ((isatty (STDIN_FILENO))
-	   || (isatty (STDOUT_FILENO))
-	   || (isatty (STDERR_FILENO)));
+    interactive =
+      (option_force_interactive
+       || (isatty (STDIN_FILENO))
+       || (isatty (STDOUT_FILENO))
+       || (isatty (STDERR_FILENO)));
     /* If none of the stdio streams is a terminal, disassociate us
        from the controlling terminal so that we're not affected by
        keyboard interrupts or hangup signals.  However, if we're
@@ -91,6 +87,8 @@ OS_initialize (void)
        to receive a hangup signal if Emacs dies. */
     if ((!interactive) && (!option_emacs_subprocess))
       UX_setsid ();
+    if (option_batch_mode)
+      interactive = false;
     /* The argument passed to `UX_ctty_initialize' says whether to
        permit interrupt control, i.e. whether to attempt to setup the
        keyboard interrupt characters. */
