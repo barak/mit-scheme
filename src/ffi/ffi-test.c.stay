@@ -34,3 +34,17 @@ test_string (char *stri, TestStruct *stru)
   snprintf (s, 3, "%d", l1 + l2);
   return (s);
 }
+
+extern TestStruct
+test_struct (TestStruct s)
+{
+  s.second += strlen (s.fourth);
+  return (s);
+}
+
+extern TestUnion
+test_union (TestUnion u)
+{
+  u.d += 1.0;
+  return (u);
+}

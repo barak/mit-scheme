@@ -9,6 +9,11 @@
     (third char)
     (fourth (* char))))
 
+(typedef TestUnion
+  (union
+    (s TestStruct)
+    (d double)))
+
 (extern double test_double
 	(d double)
 	(s (* TestStruct)))
@@ -25,3 +30,9 @@
 (callback double test_double_callback
 	  (d double)
 	  (ID (* void)))
+
+(extern TestStruct test_struct
+	(s TestStruct))
+
+(extern TestUnion test_union
+	(u TestUnion))

@@ -76,6 +76,7 @@ extern SCM long_to_scm (const long i);
 extern SCM ulong_to_scm (const unsigned long i);
 extern SCM double_to_scm (const double d);
 extern SCM pointer_to_scm (const void* p);
+extern SCM struct_to_scm (const void* p, int size);
 
 extern SCM cons_alien (const void* p);
 

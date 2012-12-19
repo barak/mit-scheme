@@ -359,13 +359,6 @@ A shim between Scheme and a C toolkit is specified by a case sensitive
 toolkit types, constants, and functions.  Callback functions to be
 passed to the toolkit are also specified here.
 
-There are some limitations on the C types that can be declared.
-Basic, struct, union, enum and pointer types are allowed, but
-bit-field members are not supported.  C function parameters can be
-basic, enum or pointer types.  The return type of a C function is the
-same plus @code{void}.  Basically, no struct or union argument or
-return types, at the moment.
-
 Each top-level form in the C declaration file must look like one of
 these:
 
@@ -375,14 +368,27 @@ these:
 (struct Name (Member @var{type}) @dots{})
 (union Name (Member @var{type}) @dots{})
 (enum @i{Name} (Member) @dots{})
-(extern @var{return-type} Name (param1 @var{arg-type}) @dots{})
-(callback @var{return-type} Name (param1 @var{arg-type}) @dots{})
+(extern @var{function-type} Name (param1 @var{arg-type}) @dots{})
+(callback @var{callback-type} Name (param1 @var{callback-arg-type}) @dots{})
 @end smallexample
 
-An enum's @i{@var{Name}} is optional.
+The @code{include} expression includes another @file{.cdecl} file in
+the current @file{.cdecl} file.  The string argument is interpreted
+relative to the current file's directory.
 
-@var{arg-type} is currently restricted to the following forms.  It is
-assumed that a lone @var{Name} is defined as a type on this list:
+@var{any} can be a @var{type} or the word @code{void}.
+
+@var{arg-type} can be any @var{type} @emph{except} anonymous structs
+and unions.
+
+@var{function-type} can be any @var{arg-type} or @code{void}.
+
+@var{callback-arg-type} can be any @var{type} @emph{except} struct and
+union types.
+
+@var{callback-type} can be any @var{callback-arg-type} or @code{void}.
+
+@var{type} can look like any of these:
 
 @smallexample
 Name
@@ -390,36 +396,26 @@ Name
 (* @var{any})
 (enum Name)
 (enum @i{Name} (Member) @dots{})
-@end smallexample
-
-@var{return-type} can be either @var{arg-type} or the word @code{void}.
-
-@var{basics} can be any of the words: @code{char}, @code{uchar},
-@code{short}, @code{ushort}, @code{int}, @code{uint}, @code{long},
-@code{ulong}, @code{float}, or @code{double} (all lowercase).
-
-@var{type} includes structs and unions:
-
-@smallexample
-@var{arg-type}
 (struct Name)
 (struct @i{Name} (Member @var{type}) @dots{})
 (union Name)
 (union @i{Name} (Member @var{type}) @dots{})
 @end smallexample
 
-@var{any} is any @var{type} @emph{or} @code{void}.
+@var{Name} should be defined via a @code{typedef} form somewhere in
+the (included) file(s).  It does not have to be defined before it is
+referenced.  It does not have to be defined @emph{at all} if it is
+only the target of a pointer type.
 
-The @code{include} expression includes another @file{.cdecl} file in
-the current @file{.cdecl} file.  The string argument is interpreted
-relative to the current file's directory.
+@var{basics} can be any of the words: @code{char}, @code{uchar},
+@code{short}, @code{ushort}, @code{int}, @code{uint}, @code{long},
+@code{ulong}, @code{float}, or @code{double} (all lowercase).
 
-While the informal grammar above allows anonymous structs to be
-specified for argument or member types, they are of little use outside
-top-level, @i{named} struct or union declarations.  The peek and poke
-(@code{C->} and @code{C->=}) syntax expects a type name (e.g.
-@code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before any
-member names.
+While the informal grammar above allows anonymous structs to be member
+types, they are useless outside a named type declaration.  The peek
+and poke (@code{C->} and @code{C->=}) syntaxes require a type name
+(e.g.  @code{"GdkEventAny"} or @code{"struct _GdkEventAny"}) before
+any member names.
 
 @smallexample
 (C-include "prhello")
@@ -509,12 +505,28 @@ alien function has cached the entry address, @code{call-alien} can
 invoke the trampoline (via @code{#[primitive c-call]}).  The
 trampoline gets its arguments off the Scheme stack, converts them to C
 values, calls the C function, conses a result, and returns it to
-Scheme.  As a special case a function returning a pointer type
-expects an extra first argument.  If this argument is @code{#f}, the
-return value is discarded.  If the argument is an alien, the
-function's return value clobbers the alien's address.  This makes it
-easy to grab pointers to toolkit resources without dropping them, or
-avoid unnecessary consing of aliens.
+Scheme.
+
+A function returning a pointer type is treated specially.
+Its trampoline expects an extra (first) argument.
+If the argument is @code{#f}, the return value is ignored.
+If the argument is an alien, the function's return value clobbers the
+alien's address.  This makes it easy to grab pointers to toolkit
+resources without dropping them, and to avoid unnecessary consing of
+aliens.
+
+A function returning a struct or union type is treated similarly.
+Its trampoline expects an extra (first) argument.
+If the argument is @code{#f}, the return value is ignored.
+If the argument is an alien, the returned struct or union is copied to
+that address.
+
+Struct and union type parameters of a function are treated similarly.
+The function's trampoline expects an alien argument for each such
+parameter and copies the struct or union from the argument address
+into a local variable.  Callbacks currently cannot receive struct or
+union type arguments, though they @emph{can} receive pointer type
+arguments (consing an alien for each).
 
 The @code{alien-function} structures are fasdumpable.  The caching
 mechanism invalidates the cache when a band is restored, or a

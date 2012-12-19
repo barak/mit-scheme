@@ -886,6 +886,27 @@ pointer_to_scm (const void * p)
 }
 
 SCM
+struct_to_scm (const void *p, int size)
+{
+  /* Return a struct or union from a callout.  Expect the first real
+     argument (the 2nd) to be either #F or the alien address to
+     which the struct or union should be copied. */
+
+  SCM arg = ARG_REF (2);
+  if (arg == SHARP_F)
+    return (UNSPECIFIC);
+  if (is_alien (arg))
+    {
+      memcpy(alien_address (arg), p, size);
+      return (arg);
+    }
+
+  error_wrong_type_arg (2);
+  /* NOTREACHED */
+  return (SHARP_F);
+}
+
+SCM
 cons_alien (const void * addr)
 {
   /* Construct an alien.  Used by callback kernels to construct
