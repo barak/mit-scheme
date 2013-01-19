@@ -291,11 +291,12 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	      (select-buffer buffer)
 	      (set-current-major-mode! (ref-mode-object fundamental))
 	      (disable-buffer-auto-save! buffer)
-	      (let ((mark
-		     (line-start (search-forward "\n<<"
-						 (buffer-start buffer)
-						 (buffer-end buffer))
-				 0)))
+	      (let* ((mark
+		      (or (search-forward "\n<<"
+					  (buffer-start buffer)
+					  (buffer-end buffer))
+			  (error "Edwin tutorial is corrupted")))
+		     (mark (line-start mark 0)))
 		(delete-string (line-end mark -1) (line-end mark 0))
 		(let ((wanted-newlines
 		       (- (window-y-size (current-window))
