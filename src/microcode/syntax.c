@@ -244,13 +244,12 @@ DEFINE_PRIMITIVE ("CHAR->SYNTAX-CODE", Prim_char_to_syntax_code, 2, 2, 0)
 
 #define SCAN_LIST_INITIALIZATION(initialization)			\
   long depth, min_depth;						\
-  bool sexp_flag, ignore_comments, math_exit;				\
+  bool sexp_flag, math_exit;						\
   int c;								\
   initialization (7);							\
   depth = (arg_integer (5));						\
   min_depth = ((depth >= 0) ? 0 : depth);				\
   sexp_flag = (BOOLEAN_ARG (6));					\
-  ignore_comments = (BOOLEAN_ARG (7));					\
   math_exit = false
 
 /* Parse Scanning */
@@ -586,6 +585,7 @@ DEFINE_PRIMITIVE ("SCAN-LIST-FORWARD", Prim_scan_list_forward, 7, 7, 0)
 DEFINE_PRIMITIVE ("SCAN-LIST-BACKWARD", Prim_scan_list_backward, 7, 7, 0)
 {
   bool quoted;
+  bool ignore_comments = (BOOLEAN_ARG (7));
   SCAN_LIST_INITIALIZATION (NORMAL_INITIALIZATION_BACKWARD);
 
   while (true)

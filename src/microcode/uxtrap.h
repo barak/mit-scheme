@@ -608,7 +608,7 @@ typedef struct
    minus 1 long.  */
 
 #      define DECLARE_SIGCONTEXT(scp, arg)				\
-  SIGCONTEXT_T * scp;							\
+  SIGCONTEXT_T * scp ATTRIBUTE((unused));				\
   scp = ((SIGCONTEXT_T *) (((unsigned long *) (& (arg))) - 1))
 
 #    endif /* __IA32__ */
@@ -760,7 +760,7 @@ typedef struct
 
 #ifndef DECLARE_SIGCONTEXT
 #  define DECLARE_SIGCONTEXT(scp, arg)					\
-     SIGCONTEXT_T * scp;						\
+     SIGCONTEXT_T * scp ATTRIBUTE ((unused));				\
      scp = ((SIGCONTEXT_T *) (arg))
 #endif
 
