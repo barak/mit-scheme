@@ -362,7 +362,8 @@ USA.
 	       (string->number s))
 	  (and (fix:> (string-length s) 1)
 	       (or (looks-special? s)
-		   (looks-like-keyword? s))))
+		   (looks-like-keyword? s)))
+	  (string=? s "."))
       (begin
 	(*unparse-char #\|)
 	(let ((end (string-length s)))
