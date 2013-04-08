@@ -33,10 +33,10 @@ USA.
 ;;;; Sequence
 
 (define-integrable (%make-sequence first second)
-  (&typed-pair-cons (ucode-type sequence-2) first second))
+  (&typed-pair-cons (ucode-type sequence) first second))
 
 (define-integrable (sequence? object)
-  (object-type? (ucode-type sequence-2) object))
+  (object-type? (ucode-type sequence) object))
 
 (define-integrable (%sequence-immediate-first sequence) (&pair-car sequence))
 (define-integrable (%sequence-immediate-second sequence) (&pair-cdr sequence))

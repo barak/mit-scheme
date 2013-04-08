@@ -869,7 +869,7 @@ ARBITRARY:	The expression may be executed more than once.  It
       (standard-entry the-environment)
       (dispatch-entry combination canonicalize/combination)
       (dispatch-entries (lambda lexpr extended-lambda) canonicalize/lambda)
-      (dispatch-entry sequence-2 canonicalize/sequence))
+      (dispatch-entry sequence canonicalize/sequence))
     (named-lambda (canonicalize/expression expression bound context)
       ((vector-ref dispatch-vector (object-type expression))
        expression bound context))))

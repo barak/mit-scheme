@@ -120,7 +120,7 @@ USA.
 		      (EXTENDED-LAMBDA ,walk/extended-lambda)
 		      ((LAMBDA LEXPR) ,walk/lambda)
 		      (QUOTATION ,walk/quotation)
-		      (SEQUENCE-2 ,walk/sequence)
+		      (SEQUENCE ,walk/sequence)
 		      (THE-ENVIRONMENT ,walk/the-environment)
 		      (VARIABLE ,walk/variable)))
 	  table)))

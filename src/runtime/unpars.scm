@@ -295,8 +295,7 @@ USA.
     (EXTENDED-PROCEDURE . PROCEDURE)
     (PRIMITIVE . PRIMITIVE-PROCEDURE)
     (LEXPR . LAMBDA)
-    (EXTENDED-LAMBDA . LAMBDA)
-    (SEQUENCE-2 . SEQUENCE)))
+    (EXTENDED-LAMBDA . LAMBDA)))
 
 (define (unparse/false object)
   (if (eq? object #f)

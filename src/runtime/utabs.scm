@@ -168,8 +168,7 @@ USA.
 (define (microcode-return/code-limit)
   (vector-length (vector-ref (get-fixed-objects-vector) returns-slot)))
 
-(define returns-aliases
-  '((sequence-continue sequence-2-second)))
+(define returns-aliases '())
 
 (define errors-slot)
 
@@ -257,7 +256,6 @@ USA.
     (BIGNUM BIG-FIXNUM)
     (PROMISE DELAYED)
     (FIXNUM ADDRESS POSITIVE-FIXNUM NEGATIVE-FIXNUM)
-    (SEQUENCE SEQUENCE-2)
     (STRING CHARACTER-STRING VECTOR-8B)
     (HUNK3-A UNMARKED-HISTORY)
     (TRIPLE HUNK3 HUNK3-B MARKED-HISTORY)

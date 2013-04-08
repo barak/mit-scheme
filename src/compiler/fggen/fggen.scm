@@ -990,7 +990,7 @@ USA.
       (standard-entry the-environment)
       (standard-entry variable)
       (dispatch-entries (lambda lexpr extended-lambda) generate/lambda)
-      (dispatch-entry sequence-2 generate/sequence)
+      (dispatch-entry sequence generate/sequence)
       (dispatch-entry combination generate/combination)
       (dispatch-entry comment generate/comment))
     (named-lambda (generate/expression block continuation context expression)

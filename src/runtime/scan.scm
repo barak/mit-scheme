@@ -49,7 +49,7 @@ USA.
   ((ucode-primitive string->symbol) "#[open-block]"))
 
 (define-integrable sequence-type
-  (ucode-type sequence-2))
+  (ucode-type sequence))
 
 (define null-sequence
   '(NULL-SEQUENCE))
