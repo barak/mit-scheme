@@ -251,7 +251,7 @@ USA.
 	  'WIN))
       (assert-eqv (hash-table/get hash-table 0 'LOSE-2) 'WIN))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT:0
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT/0
   (lambda ()
     (let ((hash-table
 	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))
@@ -266,7 +266,7 @@ USA.
         'LOSE-2)
       (assert-eqv (hash-table/get hash-table 0 'LOSE-3) 'WIN))))
 
-(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT:1
+(define-test 'REGRESSION:MODIFICATION-DURING-SRFI-69-UPDATE/DEFAULT/1
   (lambda ()
     (let ((hash-table
 	   ((strong-hash-table/constructor (lambda (k m) k m 0) eqv?))))

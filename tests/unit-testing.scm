@@ -149,6 +149,7 @@ USA.
   (let ((n-sub-test-results (length sub-test-results))
 	(n-failed (count failing-sub-test? sub-test-results)))
     (fresh-line port)
+    (write-char #\; port)
     (write test-name port)
     (write-string ": " port)
     (if (> n-failed 0)

@@ -88,59 +88,59 @@ USA.
 
 ;;;; Shift
 
-(define-test 'SHIFT-LEFT:0
+(define-test 'SHIFT-LEFT/0
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-left 0 i) 0))))
 
-(define-test 'SHIFT-LEFT:+1
+(define-test 'SHIFT-LEFT/+1
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-left 1 i) (expt 2 i)))))
 
-(define-test 'SHIFT-LEFT:-1
+(define-test 'SHIFT-LEFT/-1
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-left -1 i) (* -1 (expt 2 i))))))
 
-(define-test 'SHIFT-LEFT:POSITIVE
+(define-test 'SHIFT-LEFT/POSITIVE
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x10))
       (let ((n (random-integer #x1000)))
         (do ((i 0 (+ i 1))) ((>= i #x100))
           (assert-eqv (shift-left n i) (* n (expt 2 i))))))))
 
-(define-test 'SHIFT-LEFT:NEGATIVE
+(define-test 'SHIFT-LEFT/NEGATIVE
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x10))
       (let ((n (- -1 (random-integer #x1000))))
         (do ((i 0 (+ i 1))) ((>= i #x100))
           (assert-eqv (shift-left n i) (* n (expt 2 i))))))))
 
-(define-test 'SHIFT-RIGHT:0
+(define-test 'SHIFT-RIGHT/0
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-right 0 i) 0))))
 
-(define-test 'SHIFT-RIGHT:1
+(define-test 'SHIFT-RIGHT/1
   (lambda ()
     (assert-eqv (shift-right 1 0) 1)
     (do ((i 1 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-right 0 i) 0))))
 
-(define-test 'SHIFT-RIGHT:-1
+(define-test 'SHIFT-RIGHT/-1
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x1000))
       (assert-eqv (shift-right -1 i) -1))))
 
-(define-test 'SHIFT-LEFT-THEN-RIGHT:POSITIVE
+(define-test 'SHIFT-LEFT-THEN-RIGHT/POSITIVE
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x10))
       (let ((n (random-integer #x1000)))
         (do ((i 0 (+ i 1))) ((>= i #x100))
           (assert-eqv (shift-right (shift-left n i) i) n))))))
 
-(define-test 'SHIFT-LEFT-THEN-RIGHT:NEGATIVE
+(define-test 'SHIFT-LEFT-THEN-RIGHT/NEGATIVE
   (lambda ()
     (do ((i 0 (+ i 1))) ((>= i #x10))
       (let ((n (- -1 (random-integer #x1000))))
@@ -149,22 +149,22 @@ USA.
 
 ;;;; Bitwise NOT
 
-(define-test 'BITWISE-NOT:0
+(define-test 'BITWISE-NOT/0
   (lambda ()
     (assert-eqv (bitwise-not 0) -1)
     (assert-eqv (bitwise-not -1) 0)))
 
-(define-test 'BITWISE-NOT:1
+(define-test 'BITWISE-NOT/1
   (lambda ()
     (assert-eqv (bitwise-not 1) -2)
     (assert-eqv (bitwise-not -2) 1)))
 
-(define-test 'BITWISE-NOT:EXTREME-FIXNUM
+(define-test 'BITWISE-NOT/EXTREME-FIXNUM
   (lambda ()
     (assert-eqv (bitwise-not (largest-fixnum)) (smallest-fixnum))
     (assert-eqv (bitwise-not (smallest-fixnum)) (largest-fixnum))))
 
-(define-random-unary-fixnum-test 'BITWISE-NOT:FIXNUM
+(define-random-unary-fixnum-test 'BITWISE-NOT/FIXNUM
   (lambda (n)
     (assert-eqv (bitwise-not n) (- -1 n))
     (assert-eqv (bitwise-not (bitwise-not n)) n)
@@ -179,7 +179,7 @@ USA.
 ;;;; Binary Bitwise Operators
 
 (define (define-bitwise/fixnum-test name general-operator fixnum-operator)
-  (define-random-binary-fixnum-test (symbol name ': 'FIXNUM)
+  (define-random-binary-fixnum-test (symbol name '/ 'FIXNUM)
     (lambda (a b)
       (assert-eqv (general-operator a b) (fixnum-operator a b)))))
 
@@ -214,7 +214,7 @@ USA.
                   (loop a b a*b))))))))
   (define (define-trivial-test subname a b)
     (define (signum x) (cond ((< x 0) -1) ((< 0 x) +1) (else 0)))
-    (define-test (symbol name ': subname ': (signum a) ': (signum b))
+    (define-test (symbol name '/ subname '/ (signum a) '/ (signum b))
       (lambda ()
         (check-integer a b))))
   (define-trivial-test 'TRIVIAL-FIXNUM 0 0)
@@ -228,7 +228,7 @@ USA.
     (define-trivial-test 'TRIVIAL-BIGNUM 0 s)
     (define-trivial-test 'TRIVIAL-BIGNUM s 0)
     (define-trivial-test 'TRIVIAL-BIGNUM s s))
-  (define-random-binary-integer-test (symbol name ': 'RANDOM) check-integer))
+  (define-random-binary-integer-test (symbol name '/ 'RANDOM) check-integer))
 
 ;; (define-binary-bitwise-test 'BITWISE-CLEAR bitwise-clear 0 0 0 0)
 (define-binary-bitwise-test 'BITWISE-AND bitwise-and 0 0 0 1)
@@ -250,7 +250,7 @@ USA.
 ;;;;; Binary Bitwise Identities
 
 (define (define-bitwise-identity-test name operator identity)
-  (define-random-unary-integer-test (symbol name ': 'IDENTITY)
+  (define-random-unary-integer-test (symbol name '/ 'IDENTITY)
     (lambda (n)
       (assert-eqv (operator n identity) n)
       (assert-eqv (operator identity n) n))))
@@ -261,7 +261,7 @@ USA.
 (define-bitwise-identity-test 'BITWISE-EQV bitwise-eqv -1)
 
 (define (define-bitwise-commutativity-test name operator)
-  (define-random-binary-integer-test (symbol name ': 'COMMUTATIVITY)
+  (define-random-binary-integer-test (symbol name '/ 'COMMUTATIVITY)
     (lambda (a b)
       (assert-eqv (operator a b) (operator b a)))))
 
@@ -272,41 +272,41 @@ USA.
 (define-bitwise-commutativity-test 'BITWISE-EQV bitwise-eqv)
 (define-bitwise-commutativity-test 'BITWISE-NAND bitwise-nand)
 
-(define-random-binary-integer-test 'BITWISE-AND:DEMORGAN
+(define-random-binary-integer-test 'BITWISE-AND/DEMORGAN
   (lambda (a b)
     (assert-eqv (bitwise-and a b)
                 (bitwise-not (bitwise-ior (bitwise-not a) (bitwise-not b))))))
 
-(define-random-binary-integer-test 'BITWISE-ANDC2:AND-NOT2
+(define-random-binary-integer-test 'BITWISE-ANDC2/AND-NOT2
   (lambda (a b)
     (assert-eqv (bitwise-andc2 a b) (bitwise-and a (bitwise-not b)))))
 
-(define-random-binary-integer-test 'BITWISE-ANDC1:AND-NOT1
+(define-random-binary-integer-test 'BITWISE-ANDC1/AND-NOT1
   (lambda (a b)
     (assert-eqv (bitwise-andc1 a b) (bitwise-and (bitwise-not a) b))))
 
-(define-random-binary-integer-test 'BITWISE-NOR:NOT-IOR
+(define-random-binary-integer-test 'BITWISE-NOR/NOT-IOR
   (lambda (a b)
     (assert-eqv (bitwise-nor a b) (bitwise-not (bitwise-ior a b)))))
 
-(define-random-binary-integer-test 'BITWISE-XOR:AND-NAND-IOR
+(define-random-binary-integer-test 'BITWISE-XOR/AND-NAND-IOR
   (lambda (a b)
     (assert-eqv (bitwise-xor a b)
                 (bitwise-and (bitwise-nand a b) (bitwise-ior a b)))))
 
-(define-random-binary-integer-test 'BITWISE-EQV:NOT-XOR
+(define-random-binary-integer-test 'BITWISE-EQV/NOT-XOR
   (lambda (a b)
     (assert-eqv (bitwise-eqv a b) (bitwise-not (bitwise-xor a b)))))
 
-(define-random-binary-integer-test 'BITWISE-ORC1:IOR-NOT1
+(define-random-binary-integer-test 'BITWISE-ORC1/IOR-NOT1
   (lambda (a b)
     (assert-eqv (bitwise-orc1 a b) (bitwise-ior (bitwise-not a) b))))
 
-(define-random-binary-integer-test 'BITWISE-ORC2:IOR-NOT2
+(define-random-binary-integer-test 'BITWISE-ORC2/IOR-NOT2
   (lambda (a b)
     (assert-eqv (bitwise-orc2 a b) (bitwise-ior a (bitwise-not b)))))
 
-(define-random-binary-integer-test 'BITWISE-NAND:NOT-AND
+(define-random-binary-integer-test 'BITWISE-NAND/NOT-AND
   (lambda (a b)
     (assert-eqv (bitwise-nand a b) (bitwise-not (bitwise-and a b)))))
 
@@ -338,17 +338,17 @@ USA.
                   (integer-length-in-bits
                    (if (negative? n) (bitwise-not n) n))))))
 
-(define-test 'FIRST-SET-BIT:0 (lambda () (assert-eqv (first-set-bit 0) -1)))
-(define-test 'FIRST-SET-BIT:+1 (lambda () (assert-eqv (first-set-bit +1) 0)))
-(define-test 'FIRST-SET-BIT:-1 (lambda () (assert-eqv (first-set-bit -1) 0)))
+(define-test 'FIRST-SET-BIT/0 (lambda () (assert-eqv (first-set-bit 0) -1)))
+(define-test 'FIRST-SET-BIT/+1 (lambda () (assert-eqv (first-set-bit +1) 0)))
+(define-test 'FIRST-SET-BIT/-1 (lambda () (assert-eqv (first-set-bit -1) 0)))
 
-(define-random-unary-integer-test 'FIRST-SET-BIT:ODD
+(define-random-unary-integer-test 'FIRST-SET-BIT/ODD
   (lambda (n)
     (if (not (zero? n))
         (let ((i (random-integer #x1000)))
           (assert-eqv (first-set-bit (shift-left (bitwise-ior n 1) i)) i)))))
 
-(define-random-unary-integer-test 'FIRST-SET-BIT:RANDOM
+(define-random-unary-integer-test 'FIRST-SET-BIT/RANDOM
   (lambda (n)
     (if (not (zero? n))
         (let ((i (random-integer #x1000)))
@@ -362,7 +362,7 @@ USA.
                (-1 0 . -1)
                (-1 -1 . 0))))
  (lambda (a b a*b)
-   (define-test (symbol 'HAMMING-DISTANCE ': a ': b)
+   (define-test (symbol 'HAMMING-DISTANCE '/ a '/ b)
      (lambda ()
        (assert-eqv (hamming-distance a b) a*b)))))
 
