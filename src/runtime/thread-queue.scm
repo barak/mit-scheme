@@ -75,12 +75,14 @@ USA.
     (%make-thread-queue #f #f 0 max '() '())))
 
 (define (thread-queue/empty? queue)
+  (guarantee-thread-queue queue 'thread-queue/empty?)
   (%empty? queue))
 
 (define-integrable (%empty? queue)
   (zero? (%thread-queue/element-count queue)))
 
 (define (thread-queue/empty! queue)
+  (guarantee-thread-queue queue 'thread-queue/empty!)
   (without-interrupts
    (lambda ()
      (if (not (%empty? queue))
@@ -92,6 +94,7 @@ USA.
   unspecific)
 
 (define (thread-queue/queue! queue item)
+  (guarantee-thread-queue queue 'thread-queue/queue!)
   (if (not item) (error "Cannot queue #F:" queue))
   (without-interrupts
    (lambda ()
@@ -104,6 +107,7 @@ USA.
 
 (define (thread-queue/queue-no-hang! queue item)
   ;; Returns #F when QUEUE is maxed out.
+  (guarantee-thread-queue queue 'thread-queue/queue-no-hang!)
   (if (not item) (error "Cannot queue #F:" queue))
   (without-interrupts
    (lambda ()
@@ -117,15 +121,13 @@ USA.
 	    #f)
 	(%queue! queue item))))
 
-(define (thread-queue/dequeue-no-hang queue msec)
-  (guarantee-thread-queue queue 'thread-queue/dequeue-no-hang)
-  (guarantee-non-negative-fixnum msec 'thread-queue/dequeue-no-hang)
+(define (thread-queue/dequeue-no-hang! queue msec)
+  (guarantee-thread-queue queue 'thread-queue/dequeue-no-hang!)
+  (guarantee-non-negative-fixnum msec 'thread-queue/dequeue-no-hang!)
   (thread-queue/dequeue-until
    queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 
-(define (thread-queue/dequeue-until queue time)
-  (guarantee-thread-queue queue 'thread-queue/dequeue-until)
-  (guarantee-integer time 'thread-queue/dequeue-until)
+(define (thread-queue/dequeue-until! queue time)
   (when-non-empty-before time queue %dequeue!))
 
 (declare (integrate-operator when-non-empty-before))
@@ -139,11 +141,15 @@ USA.
 	     (if (<= time now)
 		 #f
 		 (begin
+		   (set-%thread-queue/waiting-dequeuers!
+		    queue (append! (%thread-queue/waiting-dequeuers queue)
+				   (list (current-thread))))
 		   (register-timer-event (- time now) (lambda () unspecific))
 		   (suspend-current-thread)
 		   (loop)))))))))
 
 (define (thread-queue/dequeue! queue)
+  (guarantee-thread-queue queue 'thread-queue/dequeue!)
   (without-interrupts
    (lambda ()
      (do ()
@@ -161,11 +167,10 @@ USA.
    queue (+ (real-time-clock) (internal-time/seconds->ticks (/ msec 1000)))))
 
 (define (thread-queue/peek-until queue time)
-  (guarantee-thread-queue queue 'thread-queue/peek-until)
-  (guarantee-integer time 'thread-queue/peek-until)
   (when-non-empty-before time queue %peek))
 
 (define (thread-queue/peek queue)
+  (guarantee-thread-queue queue 'thread-queue/peek)
   (without-interrupts
    (lambda ()
      (do ()
@@ -222,6 +227,7 @@ USA.
 
 (define (thread-queue/push! queue item)
   ;; Place ITEM at the head of the queue, instead of the end.
+  (guarantee-thread-queue queue 'thread-queue/push!)
   (if (not item) (error "Cannot queue #F:" queue))
   (without-interrupts
    (lambda ()

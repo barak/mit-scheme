@@ -577,9 +577,9 @@ USA.
 	  thread-queue/queue-no-hang!
 	  thread-queue/push!
 	  thread-queue/dequeue!
-	  thread-queue/peek-no-hang
-	  thread-queue/peek-until
-	  thread-queue/peek))
+	  thread-queue/dequeue-no-hang!
+	  thread-queue/peek
+	  thread-queue/peek-no-hang))
 
 (define-package (runtime simple-file-ops)
   (files "sfile")
