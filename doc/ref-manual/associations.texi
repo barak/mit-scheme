@@ -761,7 +761,7 @@ the invoked procedure, i.e.@: calls it tail-recursively).  The average
 time required by this operation is bounded by a constant.
 @end deffn
 
-@deffn procedure hash-table/modify! hash-table key procedure default
+@deffn procedure hash-table/modify! hash-table key default procedure
 @var{Procedure} must be a procedure of one argument.  Applies
 @var{procedure} to the datum associated with @var{key} in
 @var{hash-table} or to @var{default} if there is no association for
