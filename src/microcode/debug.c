@@ -431,32 +431,6 @@ do_printing (outf_channel stream, SCHEME_OBJECT Expr, bool Detailed)
 	}
       return;
 
-    case TC_COMBINATION_1:
-      outf (stream, "[COMBINATION_1 0x%lx]", ((long) Temp_Address));
-      if (Detailed)
-	{
-	  outf (stream, " (");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_FN)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_1_ARG_1)), false);
-	  outf (stream, ")");
-	}
-      return;
-
-    case TC_COMBINATION_2:
-      outf (stream, "[COMBINATION_2 0x%lx]", ((long) Temp_Address));
-      if (Detailed)
-	{
-	  outf (stream, " (");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_FN)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_1)), false);
-	  outf (stream, ", ");
-	  do_printing (stream, (MEMORY_REF (Expr, COMB_2_ARG_2)), false);
-	  outf (stream, ")");
-	}
-      return;
-
     case TC_ENVIRONMENT:
       {
 	SCHEME_OBJECT procedure;

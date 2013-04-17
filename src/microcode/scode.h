@@ -47,20 +47,10 @@ USA.
 #define ASSIGN_NAME		0
 #define ASSIGN_VALUE		1
 
-/* COMBINATIONS come in several formats */
-
-/* General combinations are vector-like: */
+/* COMBINATIONS are vector-like: */
 #define COMB_VECTOR_HEADER	0
 #define COMB_FN_SLOT		1
 #define COMB_ARG_1_SLOT		2
-
-/* Short non-primitive combinations: */
-#define COMB_1_FN		0
-#define COMB_1_ARG_1		1
-
-#define COMB_2_FN		0
-#define COMB_2_ARG_1		1
-#define COMB_2_ARG_2		2
 
 /* COMMENT operation: */
 #define COMMENT_EXPRESSION	0
@@ -145,23 +135,6 @@ USA.
  * Same as LAMBDA (q.v.) except additional arguments are permitted
  * beyond those indicated in the LAMBDA_FORMALS list.
  */
-
-/* Primitive combinations with 0 arguments are not pointers */
-
-/* Primitive combinations, 1 argument: */
-#define PCOMB1_FN_SLOT		0
-#define PCOMB1_ARG_SLOT		1
-
-/* Primitive combinations, 2 arguments: */
-#define PCOMB2_FN_SLOT		0
-#define PCOMB2_ARG_1_SLOT	1
-#define PCOMB2_ARG_2_SLOT	2
-
-/* Primitive combinations, 3 arguments are vector-like: */
-#define PCOMB3_FN_SLOT		1
-#define PCOMB3_ARG_1_SLOT	2
-#define PCOMB3_ARG_2_SLOT	3
-#define PCOMB3_ARG_3_SLOT	4
 
 /* SCODE_QUOTE returns itself */
 #define SCODE_QUOTE_OBJECT	0

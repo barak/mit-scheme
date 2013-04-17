@@ -30,15 +30,15 @@ USA.
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
 #define	TC_SCODE_QUOTE			0x03
-#define TC_PCOMB2			0x04
+/* #define TC_PCOMB2			0x04 */
 #define TC_UNINTERNED_SYMBOL		0x05
 #define TC_BIG_FLONUM			0x06
-#define TC_COMBINATION_1		0x07
+/* #define TC_COMBINATION_1		0x07 */
 #define TC_CONSTANT			0x08
 #define TC_EXTENDED_PROCEDURE		0x09
 #define TC_VECTOR			0x0A
 #define TC_RETURN_CODE			0x0B
-#define TC_COMBINATION_2		0x0C
+/* #define TC_COMBINATION_2		0x0C */
 #define TC_MANIFEST_CLOSURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
@@ -53,7 +53,7 @@ USA.
 #define TC_PRIMITIVE			0x18
 #define TC_SEQUENCE			0x19
 #define TC_FIXNUM			0x1A
-#define TC_PCOMB1			0x1B
+/* #define TC_PCOMB1			0x1B */
 #define TC_CONTROL_POINT		0x1C
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
@@ -68,13 +68,13 @@ USA.
 #define TC_MANIFEST_NM_VECTOR		0x27
 #define TC_COMPILED_ENTRY		0x28
 #define TC_LEXPR			0x29
-#define TC_PCOMB3			0x2A
+/* #define TC_PCOMB3			0x2A */
 #define TC_EPHEMERON			0x2B
 #define TC_VARIABLE			0x2C
 #define TC_THE_ENVIRONMENT		0x2D
 #define TC_SYNTAX_ERROR			0x2E
 #define TC_VECTOR_1B			0x2F
-#define TC_PCOMB0			0x30
+/* #define TC_PCOMB0			0x30 */
 #define TC_VECTOR_16B			0x31
 #define TC_REFERENCE_TRAP		0x32
 /* #define TC_UNUSED_33			0x33 */
@@ -108,15 +108,15 @@ USA.
   /* 0x01 */			"pair",					\
   /* 0x02 */			"character",				\
   /* 0x03 */			"quotation",				\
-  /* 0x04 */			"primitive-combination-2",		\
+  /* 0x04 */			0,					\
   /* 0x05 */			"uninterned-symbol",			\
   /* 0x06 */			"flonum",				\
-  /* 0x07 */			"combination-1",			\
+  /* 0x07 */			0,					\
   /* 0x08 */			"constant",				\
   /* 0x09 */			"extended-procedure",			\
   /* 0x0A */			"vector",				\
   /* 0x0B */			"return-code",				\
-  /* 0x0C */			"combination-2",			\
+  /* 0x0C */			0,					\
   /* 0x0D */			"manifest-closure",			\
   /* 0x0E */			"bignum",				\
   /* 0x0F */			"procedure",				\
@@ -131,7 +131,7 @@ USA.
   /* 0x18 */			"primitive",				\
   /* 0x19 */			"sequence",				\
   /* 0x1A */			"fixnum",				\
-  /* 0x1B */			"primitive-combination-1",		\
+  /* 0x1B */			0,					\
   /* 0x1C */			"control-point",			\
   /* 0x1D */			"interned-symbol",			\
   /* 0x1e */			"string",				\
@@ -146,13 +146,13 @@ USA.
   /* 0x27 */			"manifest-nm-vector",			\
   /* 0x28 */			"compiled-entry",			\
   /* 0x29 */			"lexpr",				\
-  /* 0x2a */			"primitive-combination-3",		\
+  /* 0x2a */			0,					\
   /* 0x2b */			"ephemeron",				\
   /* 0x2c */			"variable",				\
   /* 0x2d */			"the-environment",			\
   /* 0x2e */			"syntax-error",				\
   /* 0x2f */			"vector-1b",				\
-  /* 0x30 */			"primitive-combination-0",		\
+  /* 0x30 */			0,					\
   /* 0x31 */			"vector-16b",				\
   /* 0x32 */			"reference-trap",			\
   /* 0x33 */			0,					\

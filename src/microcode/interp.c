@@ -467,16 +467,6 @@ Interpret (int pop_return_p)
 	DO_NTH_THEN (RC_COMB_SAVE_VALUE, (length + 1));
       }
 
-    case TC_COMBINATION_1:
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
-      PUSH_ENV ();
-      DO_NTH_THEN (RC_COMB_1_PROCEDURE, COMB_1_ARG_1);
-
-    case TC_COMBINATION_2:
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      PUSH_ENV ();
-      DO_NTH_THEN (RC_COMB_2_FIRST_OPERAND, COMB_2_ARG_2);
-
     case TC_COMMENT:
       REDUCES_TO_NTH (COMMENT_EXPRESSION);
 
@@ -528,28 +518,6 @@ Interpret (int pop_return_p)
 
     case TC_MANIFEST_NM_VECTOR:
       EVAL_ERROR (ERR_EXECUTE_MANIFEST_VECTOR);
-
-    case TC_PCOMB0:
-      /* The argument to Will_Eventually_Push is determined by how
-	 much will be on the stack if we back out of the primitive.  */
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      SET_EXP (OBJECT_NEW_TYPE (TC_PRIMITIVE, GET_EXP));
-      goto primitive_internal_apply;
-
-    case TC_PCOMB1:
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 1);
-      DO_NTH_THEN (RC_PCOMB1_APPLY, PCOMB1_ARG_SLOT);
-
-    case TC_PCOMB2:
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 2);
-      PUSH_ENV ();
-      DO_NTH_THEN (RC_PCOMB2_DO_1, PCOMB2_ARG_2_SLOT);
-
-    case TC_PCOMB3:
-      Will_Eventually_Push (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG + 3);
-      PUSH_ENV ();
-      DO_NTH_THEN (RC_PCOMB3_DO_2, PCOMB3_ARG_3_SLOT);
 
     case TC_SCODE_QUOTE:
       SET_VAL (MEMORY_REF (GET_EXP, SCODE_QUOTE_OBJECT));
@@ -627,27 +595,6 @@ Interpret (int pop_return_p)
 
   switch (OBJECT_DATUM (GET_RET))
     {
-    case RC_COMB_1_PROCEDURE:
-      POP_ENV ();
-      PUSH_VAL ();		/* Arg. 1 */
-      STACK_PUSH (SHARP_F);	/* Operator */
-      PUSH_APPLY_FRAME_HEADER (1);
-      Finished_Eventual_Pushing (CONTINUATION_SIZE);
-      DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_1_FN);
-
-    case RC_COMB_2_FIRST_OPERAND:
-      POP_ENV ();
-      PUSH_VAL ();
-      PUSH_ENV ();
-      DO_ANOTHER_THEN (RC_COMB_2_PROCEDURE, COMB_2_ARG_1);
-
-    case RC_COMB_2_PROCEDURE:
-      POP_ENV ();
-      PUSH_VAL ();		/* Arg 1, just calculated */
-      STACK_PUSH (SHARP_F);	/* Function */
-      PUSH_APPLY_FRAME_HEADER (2);
-      Finished_Eventual_Pushing (CONTINUATION_SIZE);
-      DO_ANOTHER_THEN (RC_COMB_APPLY_FUNCTION, COMB_2_FN);
 
     case RC_COMB_APPLY_FUNCTION:
       END_SUBPROBLEM ();
@@ -977,17 +924,13 @@ Interpret (int pop_return_p)
 	    goto pop_return;
 
 	    /* After checking the number of arguments, remove the
-	       frame header since primitives do not expect it.
-
-	       NOTE: This code must match the application code which
-	       follows primitive_internal_apply.  */
+	       frame header since primitives do not expect it. */
 
 	  case TC_PRIMITIVE:
 	    if (!IMPLEMENTED_PRIMITIVE_P (Function))
 	      APPLICATION_ERROR (ERR_UNIMPLEMENTED_PRIMITIVE);
 	    {
 	      unsigned long n_args = (APPLY_FRAME_N_ARGS ());
-
 
 	      /* Note that the first test below will fail for lexpr
 		 primitives.  */
@@ -1139,76 +1082,6 @@ Interpret (int pop_return_p)
       gc_space_needed = 0;
       EXIT_CRITICAL_SECTION ({ SAVE_CONT (); });
       break;
-
-    case RC_PCOMB1_APPLY:
-      END_SUBPROBLEM ();
-      PUSH_VAL ();		/* Argument value */
-      Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      SET_EXP (MEMORY_REF (GET_EXP, PCOMB1_FN_SLOT));
-
-    primitive_internal_apply:
-
-#ifdef COMPILE_STEPPER
-      if (trapping
-	  && (!WITHIN_CRITICAL_SECTION_P ())
-	  && ((FETCH_APPLY_TRAPPER ()) != SHARP_F))
-	{
-	  Will_Push (3);
-	  PUSH_EXP ();
-	  STACK_PUSH (FETCH_APPLY_TRAPPER ());
-	  PUSH_APPLY_FRAME_HEADER (1 + (PRIMITIVE_N_PARAMETERS (GET_EXP)));
-	  Pushed ();
-	  trapping = false;
-	  goto Apply_Non_Trapping;
-	}
-#endif /* COMPILE_STEPPER */
-
-      /* NOTE: This code must match the code in the TC_PRIMITIVE
-	 case of internal_apply.
-	 This code is simpler because:
-	 1) The arity was checked at syntax time.
-	 2) We don't have to deal with "lexpr" primitives.
-	 3) We don't need to worry about unimplemented primitives because
-	 unimplemented primitives will cause an error at invocation.  */
-      {
-	SCHEME_OBJECT primitive = GET_EXP;
-	APPLY_PRIMITIVE_FROM_INTERPRETER (primitive);
-	POP_PRIMITIVE_FRAME (PRIMITIVE_ARITY (primitive));
-	break;
-      }
-
-    case RC_PCOMB2_APPLY:
-      END_SUBPROBLEM ();
-      PUSH_VAL ();		/* Value of arg. 1 */
-      Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      SET_EXP (MEMORY_REF (GET_EXP, PCOMB2_FN_SLOT));
-      goto primitive_internal_apply;
-
-    case RC_PCOMB2_DO_1:
-      POP_ENV ();
-      PUSH_VAL ();		/* Save value of arg. 2 */
-      DO_ANOTHER_THEN (RC_PCOMB2_APPLY, PCOMB2_ARG_1_SLOT);
-
-    case RC_PCOMB3_APPLY:
-      END_SUBPROBLEM ();
-      PUSH_VAL ();		/* Save value of arg. 1 */
-      Finished_Eventual_Pushing (CONTINUATION_SIZE + STACK_ENV_FIRST_ARG);
-      SET_EXP (MEMORY_REF (GET_EXP, PCOMB3_FN_SLOT));
-      goto primitive_internal_apply;
-
-    case RC_PCOMB3_DO_1:
-      {
-	SCHEME_OBJECT Temp = (STACK_POP ()); /* Value of arg. 3 */
-	POP_ENV ();
-	STACK_PUSH (Temp);	/* Save arg. 3 again */
-	PUSH_VAL ();		/* Save arg. 2 */
-	DO_ANOTHER_THEN (RC_PCOMB3_APPLY, PCOMB3_ARG_1_SLOT);
-      }
-
-    case RC_PCOMB3_DO_2:
-      SET_ENV (STACK_REF (0));
-      PUSH_VAL ();		/* Save value of arg. 3 */
-      DO_ANOTHER_THEN (RC_PCOMB3_DO_1, PCOMB3_ARG_2_SLOT);
 
     case RC_POP_RETURN_ERROR:
     case RC_RESTORE_VALUE:

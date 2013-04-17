@@ -496,7 +496,6 @@ relocate_block_table (void)
       (GCT_ENTRY ((&table), TC_WEAK_CONS)) = gc_handle_pair;
       (GCT_ENTRY ((&table), TC_EPHEMERON)) = gc_handle_unaligned_vector;
       (GCT_ENTRY ((&table), TC_PRIMITIVE)) = handle_primitive;
-      (GCT_ENTRY ((&table), TC_PCOMB0)) = handle_primitive;
       (GCT_ENTRY ((&table), TC_BROKEN_HEART)) = gc_handle_non_pointer;
 
       initialized_p = true;
