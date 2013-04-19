@@ -49,12 +49,7 @@ USA.
 
 extern SCHEME_OBJECT * sp_register;
 
-#ifdef __GNUC__
-/* Add attributes to avoid warnings from -Wall for unreferenced labels */
-#  define DEFLABEL(name) name : __attribute__((unused))
-#else
-#  define DEFLABEL(name) name :
-#endif
+#define DEFLABEL(name) name : ATTRIBUTE((unused))
 
 union machine_word_u
 {

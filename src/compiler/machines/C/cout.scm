@@ -248,7 +248,7 @@ USA.
 		 (c:decl 'sobj* 'current_block)
 		 (c:scall "DECLARE_VARIABLES")
 		 ;; dlink is initialized right before perform_dispatch.
-		 (c:decl 'sobj* (c:dlink-reg))
+		 (c:decl-unused 'sobj* (c:dlink-reg))
 		 (register-declarations)
 		 extra-decls
 		 (c:line)

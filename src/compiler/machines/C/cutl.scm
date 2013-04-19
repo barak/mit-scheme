@@ -398,6 +398,11 @@ USA.
 	  (if (default-object? val) "" (string-append " = " (c:expr val)))
 	  ";"))
 
+(define (c:decl-unused type var #!optional val)
+  (c:line (c:type type) " " (c:var var)
+	  (if (default-object? val) "" (string-append " = " (c:expr val)))
+	  " ATTRIBUTE((unused));"))
+
 (define (c:var item)
   (cond ((string? item) item)
 	((symbol? item) (symbol-name item))
