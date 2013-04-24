@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
-    of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -53,7 +53,7 @@ USA.
 (define-integrable (set-package/children! package children)
   (%record-set! package 2 children))
 
-(define-integrable (package/%name package)
+(define-integrable (package/name package)
   (%record-ref package 3))
 
 (define-integrable (package/environment package)
@@ -70,38 +70,24 @@ USA.
 
 (define (finalize-package-record-type!)
   (let ((rtd
-	 (make-record-type "package" '(PARENT CHILDREN %NAME ENVIRONMENT))))
+	 (make-record-type "package" '(PARENT CHILDREN NAME ENVIRONMENT))))
     (let ((tag (record-type-dispatch-tag rtd)))
       (set! package-tag tag)
-      (let loop ((package system-global-package))
-	(%record-set! package 0 tag)
-	(for-each loop (package/children package))))
+      (for-each (lambda (p) (%record-set! p 0 tag)) *packages*))
     (set-record-type-unparser-method! rtd
       (standard-unparser-method 'PACKAGE
 	(lambda (package port)
 	  (write-char #\space port)
 	  (write (package/name package) port))))))
 
-(define (package/child package name)
-  (let loop ((children (package/children package)))
-    (and (pair? children)
-	 (if (eq? name (package/%name (car children)))
-	     (car children)
-	     (loop (cdr children))))))
-
-(define (package/name package)
-  (let loop ((package package) (result '()))
-    (if (package/parent package)
-	(loop (package/parent package) (cons (package/%name package) result))
-	result)))
-
 (define (name->package name)
-  (let loop ((path name) (package system-global-package))
-    (if (pair? path)
-	(let ((child (package/child package (car path))))
-	  (and child
-	       (loop (cdr path) child)))
-	package)))
+  (find-package name #f))
+
+(define (all-packages)
+  (let loop ((packages *packages*))
+    (if (pair? packages)
+	(cons (car packages) (loop (cdr packages)))
+	'())))
 
 (define (environment->package environment)
   (and (interpreter-environment? environment)
@@ -118,29 +104,30 @@ USA.
   ((ucode-primitive string->symbol) "#[(package)package-name-tag]"))
 
 (define (find-package name #!optional error?)
-  (let loop ((path name) (package system-global-package))
-    (if (pair? path)
-	(loop (cdr path)
-	      (let ((child (package/child package (car path))))
-		(if (and (not child) error?)
-		    (error "Unable to find package:"
-			   (list-difference name (cdr path))))
-		child))
-	package)))
+  (let package-loop ((packages *packages*))
+    (if (null? packages)
+	(if error?
+	    (error "Unable to find package:" name)
+	    #f)
+	(if (let name-loop ((name1 name)
+			    (name2 (package/name (car packages))))
+	      (cond ((and (null? name1) (null? name2)) #t)
+		    ((or (null? name1) (null? name2)) #f)
+		    ((eq? (car name1) (car name2))
+		     (name-loop (cdr name1) (cdr name2)))
+		    (else #f)))
+	    (car packages)
+	    (package-loop (cdr packages))))))
 
-(define (list-difference list tail)
-  (let loop ((list list))
-    (if (eq? list tail)
-	'()
-	(cons (car list) (loop (cdr list))))))
+(define (name-append name package)
+  (let loop ((names (package/name package)))
+    (if (pair? names)
+	(cons (car names) (loop (cdr names)))
+	(cons name '()))))
 
 (define (package/add-child! package name environment #!optional force?)
-  (let ((child (package/child package name))
-	(finish
-	 (lambda (child)
-	   (if (not (interpreter-environment->package environment))
-	       (local-assignment environment package-name-tag child))
-	   child)))
+  (let* ((real-name (name-append name package))
+	 (child (find-package real-name #f)))
     (if child
 	(begin
 	  (if (not (if (default-object? force?)
@@ -149,20 +136,17 @@ USA.
 	      (error "Package already has child of given name:" package name))
 	  (set-package/environment! child environment)
 	  (set-package/children! child '())
-	  (finish child))
-	(let ((child (make-package package name environment)))
-	  (set-package/children! package
-				 (cons child (package/children package)))
-	  (finish child)))))
+	  (if (not (interpreter-environment->package environment))
+	      (local-assignment environment package-name-tag child))
+	  child)
+	(package/create real-name package environment))))
 
-(define system-global-package)
+(define *packages* '())
 (define *allow-package-redefinition?* #f)
 
 (define (initialize-package!)
-  (set! system-global-package (make-package #f #f system-global-environment))
-  (local-assignment system-global-environment
-		    package-name-tag
-		    system-global-package))
+  (set! *packages* '())
+  (package/create '() #f system-global-environment))
 
 (define (load-package-set filename #!optional options)
   (let ((pathname (merge-pathnames filename))
@@ -288,8 +272,9 @@ USA.
        (vector? (load-description/initializations object))
        (vector? (load-description/finalizations object))))
 
-;; CONSTRUCT-PACKAGES-FROM-FILE is called from the cold load and must
-;; only use procedures that are inline-coded by the compiler.
+;; CONSTRUCT-PACKAGES-FROM-FILE is called from the cold load before
+;; the runtime system is loaded.  Thus it must only call procedures
+;; that are defined in this file.
 
 (define (construct-packages-from-file file)
   (let ((descriptions (package-file/descriptions file))
@@ -304,8 +289,12 @@ USA.
 	  ((fix:= i n))
 	(let ((description (vector-ref descriptions i)))
 	  (let ((name (package-description/name description)))
-	    (if (not (skip-package? name))
-		(construct-normal-package-from-description description)))))
+	    (if (and (not (skip-package? name))
+		     (not (package-description/extension? description))
+		     ;; If there is an existing package, treat this as
+		     ;; though an extension.
+		     (not (find-package name #f)))
+		(create-package-from-description description)))))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
 	(let ((description (vector-ref descriptions i)))
@@ -313,29 +302,29 @@ USA.
 	    (if (not (skip-package? name))
 		(create-links-from-description description))))))))
 
-(define (construct-normal-package-from-description description)
-  (let ((name (package-description/name description))
-	(extension? (package-description/extension? description))
-	(environment
-	 (extend-package-environment
-	  (let ((ancestors (package-description/ancestors description)))
-	    (if (pair? ancestors)
-		(package/environment (find-package (car ancestors)))
-		null-environment))
-	  (cons (package-description/internal-names description)
-		(lambda (name) name))
-	  (cons (package-description/exports description)
-		(lambda (binding) (vector-ref binding 0)))
-	  (cons (package-description/imports description)
-		(lambda (binding) (vector-ref binding 0))))))
-    (let loop ((path name) (package system-global-package))
-      (if (pair? (cdr path))
-	  (loop (cdr path)
-		(or (package/child package (car path))
-		    (error "Unable to find package:"
-			   (list-difference name (cdr path)))))
-	  (if (not (and extension? (package/child package (car path))))
-	      (package/add-child! package (car path) environment))))))
+(define (create-package-from-description description)
+  (let* ((parent (let ((ancestors (package-description/ancestors description)))
+		   (if (pair? ancestors)
+		       (find-package (car ancestors))
+		       #f)))
+	 (environment
+	  (extend-package-environment
+	   (if parent (package/environment parent) null-environment)
+	   (cons (package-description/internal-names description)
+		 (lambda (name) name))
+	   (cons (package-description/exports description)
+		 (lambda (binding) (vector-ref binding 0)))
+	   (cons (package-description/imports description)
+		 (lambda (binding) (vector-ref binding 0))))))
+    (package/create (package-description/name description) parent environment)))
+
+(define (package/create name parent environment)
+  (let ((new (make-package parent name environment)))
+    (local-assignment environment package-name-tag new)
+    (if parent
+	(set-package/children! parent (cons new (package/children parent))))
+    (set! *packages* (cons new *packages*))
+    new))
 
 (define (create-links-from-description description)
   (let ((environment

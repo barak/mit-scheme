@@ -2,8 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012 Massachusetts Institute
-    of Technology
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Massachusetts
+    Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,13 +36,15 @@ USA.
 	   (map cdr
 		(sort (append!
 		       (map (lambda (package)
-			      (cons package (package->external package #f)))
+			      (cons (package/ancestry package)
+				    (package->external package #f)))
 			    (pmodel/packages pmodel))
 		       (map (lambda (package)
-			      (cons package (package->external package #t)))
+			      (cons (package/ancestry package)
+				    (package->external package #t)))
 			    (new-extension-packages pmodel)))
 		      (lambda (a b)
-			(package-structure<? (car a) (car b))))))
+			(package-ancestry<? (car a) (car b))))))
 	  (list->vector
 	   (map package-load->external
 		(list-transform-positive (pmodel/loads pmodel)
@@ -65,18 +67,20 @@ USA.
 		(lambda (link)
 		  (eq? (link/owner link) package)))))))
 
-(define (package-structure<? x y)
-  (cond ((package/topological<? x y) #t)
-	((package/topological<? y x) #f)
-	(else (package<? x y))))
+(define (package/ancestry package)
+  (let loop ((parent (package/parent package))
+	     (ancestors (list (package/name package))))
+    (if parent
+	(loop (package/parent parent)
+	      (cons (package/name parent) ancestors))
+	ancestors)))
 
-(define (package/topological<? x y)
-  (and (not (eq? x y))
-       (let loop ((y (package/parent y)))
-	 (and (package? y)
-	      (if (eq? x y)
-		  #t
-		  (loop (package/parent y)))))))
+(define (package-ancestry<? x y)
+  (cond ((symbol-list<? (car x) (car y)) #t)
+	((symbol-list<? (car y) (car x)) #f)
+	((null? (cdr x)) (not (null? (cdr y))))
+	((null? (cdr y)) #f)
+	(else (package-ancestry<? (cdr x) (cdr y)))))
 
 (define (package->external package extension?)
   (call-with-values (lambda () (split-links package))
