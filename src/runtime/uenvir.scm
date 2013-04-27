@@ -159,6 +159,12 @@ USA.
 	   (error:macro-binding environment name))
 	  (else value))))
 
+(define (environment-lookup-or environment name no-value)
+  (case (environment-reference-type environment name)
+    ((UNBOUND UNASSIGNED) (no-value))
+    ((MACRO) (error:macro-binding environment name))
+    (else (environment-lookup environment name))))
+
 (define (environment-lookup-macro environment name)
   (and (eq? 'MACRO (environment-reference-type environment name))
        (let ((value (environment-safe-lookup environment name)))

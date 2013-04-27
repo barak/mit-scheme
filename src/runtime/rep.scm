@@ -466,7 +466,11 @@ USA.
 
 (define hook/repl-eval)
 (define (default/repl-eval s-expression environment repl)
-  (%repl-scode-eval (syntax s-expression environment) environment repl))
+  (if (and (pair? s-expression)
+	   (eq? 'UNQUOTE (car s-expression)))
+      (let ((env (->environment '(user))))
+	(%repl-scode-eval (syntax (cadr s-expression) env) env repl))
+      (%repl-scode-eval (syntax s-expression environment) environment repl)))
 
 (define (repl-scode-eval scode #!optional environment repl)
   (receive (environment repl) (optional-er environment repl 'REPL-SCODE-EVAL)

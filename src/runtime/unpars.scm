@@ -183,7 +183,7 @@ USA.
 	      (*dispatch-table*
 	       (unparser-table/dispatch-vector
 		(let ((table
-		       (environment-lookup environment '*UNPARSER-TABLE*)))
+		       (repl-environment-value environment '*UNPARSER-TABLE*)))
 		  (guarantee-unparser-table table #f)
 		  table))))
     (*unparse-object object)))
@@ -337,7 +337,7 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -352,8 +352,8 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
 	   s
-	   (if (environment-lookup *environment*
-				   '*PARSER-CANONICALIZE-SYMBOLS?*)
+	   (if (repl-environment-value *environment*
+				       '*PARSER-CANONICALIZE-SYMBOLS?*)
 	       canon-symbol-quoted
 	       non-canon-symbol-quoted))
 	  (fix:= (string-length s) 0)
@@ -386,7 +386,7 @@ USA.
   (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
-  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)

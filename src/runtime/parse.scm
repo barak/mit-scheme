@@ -797,12 +797,12 @@ USA.
 		(guarantee-environment environment #f)
 		environment)))
 	 (atom-delimiters
-	  (environment-lookup environment '*PARSER-ATOM-DELIMITERS*))
+	  (repl-environment-value environment '*PARSER-ATOM-DELIMITERS*))
 	 (constituents
-	  (environment-lookup environment '*PARSER-CONSTITUENTS*)))
+	  (repl-environment-value environment '*PARSER-CONSTITUENTS*)))
     (guarantee-char-set atom-delimiters #f)
     (guarantee-char-set constituents #f)
-    (make-db (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+    (make-db (repl-environment-value environment '*PARSER-ASSOCIATE-POSITIONS?*)
 	     atom-delimiters
 	     (overridable-value
 	      port environment '*PARSER-CANONICALIZE-SYMBOLS?*)
@@ -810,8 +810,8 @@ USA.
 	     (overridable-value
 	      port environment '*PARSER-ENABLE-FILE-ATTRIBUTES-PARSING?*)
 	     (overridable-value port environment '*PARSER-KEYWORD-STYLE*)
-	     (environment-lookup environment '*PARSER-RADIX*)
-	     (environment-lookup environment '*PARSER-TABLE*)
+	     (repl-environment-value environment '*PARSER-RADIX*)
+	     (repl-environment-value environment '*PARSER-TABLE*)
 	     (make-shared-objects)
 	     (port/operation port 'DISCRETIONARY-WRITE-CHAR)
 	     (position-operation port environment)
@@ -820,14 +820,27 @@ USA.
 	     (port/operation port 'READ-CHAR)
 	     '())))
 
+(define (repl-environment-value environment name)
+  (environment-lookup-or
+   environment name
+   (lambda ()
+     (environment-lookup-or
+      (->environment '(USER)) name
+      (lambda ()
+	(environment-lookup environment name))))))
+
 (define (overridable-value port environment name)
   ;; Check the port property list for the name, and then the
   ;; environment.  This way a port can override the default.
-  (port/get-property port name (environment-lookup environment name)))
+  (let* ((nope "no-overridden-value")
+	 (v (port/get-property port name nope)))
+    (if (eq? v nope)
+	(repl-environment-value environment name)
+	v)))
 
 (define (position-operation port environment)
   (let ((default (lambda (port) port #f)))
-    (if (environment-lookup environment '*PARSER-ASSOCIATE-POSITIONS?*)
+    (if (repl-environment-value environment '*PARSER-ASSOCIATE-POSITIONS?*)
 	(or (port/operation port 'POSITION)
 	    default)
 	default)))

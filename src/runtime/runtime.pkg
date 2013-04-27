@@ -1698,6 +1698,7 @@ USA.
 	  environment-has-parent?
 	  environment-lambda
 	  environment-lookup
+	  environment-lookup-or
 	  environment-lookup-macro
 	  environment-macro-names
 	  environment-parent
@@ -3036,7 +3037,8 @@ USA.
   (export (runtime unparser)
 	  char-set/atom-delimiters
 	  char-set/number-leaders
-	  char-set/symbol-quotes)
+	  char-set/symbol-quotes
+	  repl-environment-value)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser file-attributes)
