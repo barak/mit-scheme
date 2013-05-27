@@ -779,11 +779,15 @@ if test "${with_libpq}" != no; then
 	    libpq_lib=/usr/lib
 	fi
     fi
-    if test "${libpq_inc}" != /usr/include; then
-	CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
+    if test "x${libpq_inc}" != x; then
+	if test "${libpq_inc}" != /usr/include; then
+	    CPPFLAGS="${CPPFLAGS} -I${libpq_inc}"
+	fi
     fi
-    if test "${libpq_lib}" != /usr/lib; then
-	LDFLAGS="${LDFLAGS} -L${libpq_lib}"
+    if test "x${libpq_lib}" != x; then
+	if test "${libpq_lib}" != /usr/lib; then
+	    LDFLAGS="${LDFLAGS} -L${libpq_lib}"
+	fi
     fi
     AC_CHECK_HEADER([libpq-fe.h],
 	[
