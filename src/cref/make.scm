@@ -28,6 +28,14 @@ USA.
 
 (declare (usual-integrations))
 
+;; Temporarily: ensure host knows new type code SEQUENCE.  Older hosts
+;; have an equivalent SEQUENCE-2 and type-aliases.
+(if (not (microcode-type/name->code 'sequence))
+    (let ((env (->environment '(runtime microcode-tables))))
+      (set! (access type-aliases env)
+	    (cons '(sequence-2 sequence)
+		  (access type-aliases env)))))
+
 (with-loader-base-uri (system-library-uri "cref/")
   (lambda ()
     (load-package-set "cref")))
