@@ -44,7 +44,7 @@ Documentation License.''
 @end direntry
 
 @titlepage
-@title{MIT/GNU Scheme Reference Manual}
+@title MIT/GNU Scheme Reference Manual
 @subtitle Edition @value{EDITION} for release @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson

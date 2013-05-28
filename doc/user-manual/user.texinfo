@@ -44,7 +44,7 @@ Documentation License.''
 @end direntry
 
 @titlepage
-@title{MIT/GNU Scheme User's Manual}
+@title MIT/GNU Scheme User's Manual
 @subtitle Edition @value{EDITION} for MIT/GNU Scheme @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Stephen Adams

@@ -36,7 +36,7 @@ Documentation License.''
 @end direntry
 
 @titlepage
-@title{IMAIL User's Manual}
+@title IMAIL User's Manual
 @subtitle Edition @value{EDITION} for IMAIL @value{VERSION}
 @subtitle @value{UPDATED}
 @author by Chris Hanson

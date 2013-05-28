@@ -6,13 +6,14 @@
 @settitle FFI @value{VERSION}
 @comment %**end of header
 
-@macro myresult{}
 @ifhtml
+@macro myresult{}
  =>
-@end ifhtml
-@ifnothtml @result{}
-@end ifnothtml
 @end macro
+@end ifhtml
+@ifnothtml
+@alias myresult = result
+@end ifnothtml
 
 @copying
 This manual documents @acronym{FFI} @value{VERSION}.
