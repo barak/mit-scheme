@@ -101,6 +101,14 @@ lib/runtime.com: microcode/scheme
 	       | ../microcode/scheme --batch-mode --library ../lib \
 	           --fasl "$${FASL}"))
 
+lib/compiler.com: compile-compiler
+lib/compiler.com: lib/runtime.com
+lib/compiler.com: microcode/scheme
+	(echo '(begin' && \
+	 echo '  (load-option (quote COMPILER))' && \
+	 echo '  (disk-save "lib/compiler.com"))') \
+	| ./microcode/scheme --batch-mode --library lib --band runtime.com
+
 lib/all.com: compile-compiler
 lib/all.com: compile-edwin
 lib/all.com: compile-sf
@@ -165,13 +173,10 @@ compile-compiler: syntax-compiler
 	| '$(MIT_SCHEME_EXE)' --batch-mode
 
 .PHONY: bootstrap-toolchain
-bootstrap-toolchain: compile-compiler
-bootstrap-toolchain: compile-runtime
-bootstrap-toolchain: lib/runtime.com
+bootstrap-toolchain: lib/compiler.com
 bootstrap-toolchain: microcode/scheme
 BOOTSTRAP_TOOLCHAIN = \
-	./microcode/scheme --batch-mode --library lib --band runtime.com \
-	  --eval '(load-option (quote COMPILER))' \
+	./microcode/scheme --batch-mode --library lib --band compiler.com \
 	  --eval '(load "etc/compile.scm")'
 
 .PHONY: compile-edwin
