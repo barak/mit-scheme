@@ -217,10 +217,6 @@ compile-imail: syntax-edwin
 	(echo '(begin' && \
 	 echo '  (construct-packages-from-file' && \
 	 echo '   (fasload (package-set-pathname "edwin/edwin")))' && \
-	 echo '  (with-working-directory-pathname "sos"' && \
-	 echo '    (lambda () (load "load")))' && \
-	 echo '  (with-working-directory-pathname "star-parser"' && \
-	 echo '    (lambda () (load "load")))' && \
 	 echo '  (compile-dir "imail"))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
 
@@ -241,13 +237,7 @@ compile-win32: bootstrap-toolchain
 compile-xml: bootstrap-toolchain
 compile-xml: compile-sos
 compile-xml: compile-star-parser
-	(echo '(begin' && \
-	 echo '  (with-working-directory-pathname "sos"' && \
-	 echo '    (lambda () (load "load")))' && \
-	 echo '  (with-working-directory-pathname "star-parser"' && \
-	 echo '    (lambda () (load "load")))' && \
-	 echo '  (compile-dir "xml"))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	echo '(compile-dir "xml")' | $(BOOTSTRAP_TOOLCHAIN)
 
 all-svm: microcode/svm1-defns.h
 	$(MAKE) compile-microcode
