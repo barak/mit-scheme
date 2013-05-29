@@ -188,10 +188,21 @@ BOOTSTRAP_TOOLCHAIN = \
 	./microcode/scheme --batch-mode --library lib --band compiler.com \
 	  --eval '(load "etc/compile.scm")'
 
+.PHONY: syntax-edwin
+syntax-edwin: bootstrap-toolchain
+syntax-edwin: compile-xml
+	(echo '(with-working-directory-pathname "edwin"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (load "edwin.sf")' && \
+	 echo '    (echo-cref-output "edwin")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
 .PHONY: compile-edwin
 compile-edwin: bootstrap-toolchain
-compile-edwin: compile-xml
-	echo '(compile-dir "edwin")' | $(BOOTSTRAP_TOOLCHAIN)
+compile-edwin: syntax-edwin
+	(echo '(with-working-directory-pathname "edwin"' && \
+	 echo '  (lambda () (load "edwin.cbf")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
 
 .PHONY: compile-ffi
 compile-ffi: bootstrap-toolchain
@@ -200,9 +211,9 @@ compile-ffi: compile-cref
 
 .PHONY: compile-imail
 compile-imail: bootstrap-toolchain
-compile-imail: compile-edwin
 compile-imail: compile-sos
 compile-imail: compile-star-parser
+compile-imail: syntax-edwin
 	(echo '(begin' && \
 	 echo '  (construct-packages-from-file' && \
 	 echo '   (fasload (package-set-pathname "edwin/edwin")))' && \
