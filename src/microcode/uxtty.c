@@ -33,10 +33,12 @@ USA.
 #include "uxterm.h"
 
 extern Tchannel OS_open_fd (int fd);
+#ifdef USE_TERMCAP
 extern int tgetent (void *, const char *);
 extern int tgetnum (const char *);
 extern const char * tgetstr (const char *, char **);
 extern void tputs (const char *, int, void (*) (char));
+#endif
 
 /* Standard Input and Output */
 
@@ -112,6 +114,7 @@ OS_tty_command_clear (void)
 #endif /* not TIOCGWINSZ */
 #endif /* TIOCGSIZE */
 
+#ifdef USE_TERMCAP
 static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
@@ -142,6 +145,7 @@ UX_synchronize_tty_size_with_termcap (void)
   tty_x_size = (tgetnum ("co"));
   tty_y_size = (tgetnum ("li"));
 }
+#endif /* USE_TERMCAP */
 
 static void
 UX_synchronize_tty_size (void)
@@ -183,8 +187,10 @@ UX_synchronize_tty_size (void)
 	}
     }
 
+#ifdef USE_TERMCAP
   if ((tty_x_size <= 0) || (tty_y_size <= 0))
     UX_tty_with_termcap (&UX_synchronize_tty_size_with_termcap);
+#endif
 
   if ((tty_x_size <= 0) || (tty_y_size <= 0))
     {
@@ -195,6 +201,7 @@ UX_synchronize_tty_size (void)
   tty_size_synchronized_p = true;
 }
 
+#ifdef USE_TERMCAP
 static void
 UX_initialize_tty_with_termcap (void)
 {
@@ -202,6 +209,7 @@ UX_initialize_tty_with_termcap (void)
   char *tbp = tgetstr_buffer;
   tty_command_clear = (tgetstr ("cl", (&tbp)));
 }
+#endif
 
 void
 UX_initialize_tty (void)
@@ -213,6 +221,9 @@ UX_initialize_tty (void)
   tty_size_synchronized_p = false;
   UX_synchronize_tty_size ();
   tty_command_beep = ALERT_STRING;
+#ifndef USE_TERMCAP
+  tty_command_clear = "\f";
+#else
   tty_command_clear = 0;
   UX_tty_with_termcap (&UX_initialize_tty_with_termcap);
   if (tty_command_clear == 0)
@@ -224,6 +235,7 @@ UX_initialize_tty (void)
       (*tputs_output_scan++) = '\0';
       tty_command_clear = command;
     }
+#endif
 }
 
 void

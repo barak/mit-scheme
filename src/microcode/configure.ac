@@ -164,11 +164,6 @@ AC_ARG_WITH([termcap],
     AS_HELP_STRING([--with-termcap],
 	[Use a termcap library if available [[yes]]]))
 : ${with_termcap='yes'}
-if test "x${with_termcap}" = xno; then
-    dnl On Unix (in uxtty.c) primitives like tty-command-clear require
-    dnl some kind of termcap.  A build without-termcap is not possible.
-    AC_MSG_ERROR([--without-termcap is not supported on Unix systems])
-fi
 
 dnl For reasons I don't understand, it is necessary to use
 dnl quadigraphs here instead of [[ ... ]].
@@ -561,11 +556,10 @@ dnl database, we can emulate `tparam' -- either in terms of `tparm' or
 dnl by pretending we know the format -- without bringing in the local
 dnl termcap reimplementation.
 
-dnl Go for whatever header files we can.
-AC_CHECK_HEADERS([ncurses.h curses.h term.h termcap.h])
-
 if test "x${with_termcap}" = xyes; then
 
+    AC_DEFINE([USE_TERMCAP], [1], [Define if termcap should be used.])
+    AC_CHECK_HEADERS([ncurses.h curses.h term.h termcap.h])
     AC_CHECK_LIB([ncurses], [tgetent], [have_ncurses=yes])
     AC_CHECK_LIB([ncurses], [tparm], [have_ncurses_tparm=yes])
     AC_CHECK_LIB([ncurses], [tparam], [have_ncurses_tparam=yes])
@@ -596,6 +590,8 @@ if test "x${with_termcap}" = xyes; then
 
 elif test "x${with_termcap}" != xno; then
 
+    AC_DEFINE([USE_TERMCAP], [1], [Define if termcap should be used.])
+    AC_CHECK_HEADERS([ncurses.h curses.h term.h termcap.h])
     lib=${with_termcap}
     AC_CHECK_LIB([${lib}], [tgetent], [eval have_${lib}=yes])
     AC_CHECK_LIB([${lib}], [tparm], [eval have_${lib}_tparm=yes])
@@ -610,9 +606,11 @@ fi
 case "${with_termcap}" in
 yes)
     AC_MSG_WARN([No termcap library found; will emulate it])
-    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam"
+    OPTIONAL_BASES="${OPTIONAL_BASES} termcap tparam tterm"
     ;;
-no) ;;
+no)
+    AC_MSG_NOTICE([Termcap disabled.])
+    ;;
 *)
     LIBS="-l${with_termcap} ${LIBS}"
     eval have_tparam=\$have_${with_termcap}_tparam
@@ -620,10 +618,10 @@ no) ;;
 	eval have_tparm=\$have_${with_termcap}_tparm
 	if test "x${have_tparm}" = xyes; then
 	    AC_MSG_WARN([No tparam found; will emulate it from terminfo tparm])
-	    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} terminfo tterm"
 	else
 	    AC_MSG_WARN([No tparam found; will emulate it])
-	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam"
+	    OPTIONAL_BASES="${OPTIONAL_BASES} tparam tterm"
 	fi
     fi
     ;;

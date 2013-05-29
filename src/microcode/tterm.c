@@ -102,15 +102,23 @@ DEFINE_PRIMITIVE ("TERMCAP-GET-NUMBER", Prim_termcap_get_number, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
   {
+#ifdef USE_TERMCAP
     int result = (tgetnum (STRING_ARG (1)));
     PRIMITIVE_RETURN ((result < 0) ? SHARP_F : (long_to_integer (result)));
+#else
+    PRIMITIVE_RETURN (SHARP_F);
+#endif
   }
 }
 
 DEFINE_PRIMITIVE ("TERMCAP-GET-FLAG", Prim_termcap_get_flag, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
+#ifdef USE_TERMCAP
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT ((tgetflag (STRING_ARG (1))) != 0));
+#else
+  PRIMITIVE_RETURN (SHARP_F);
+#endif
 }
 
 DEFINE_PRIMITIVE ("TERMCAP-GET-STRING", Prim_termcap_get_string, 1, 1, 0)

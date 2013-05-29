@@ -76,7 +76,6 @@ USA.
 "sysprim"
 "term"
 "transact"
-"tterm"
 "utabmd"
 "utils"
 "vector"

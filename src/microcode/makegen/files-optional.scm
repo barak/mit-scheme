@@ -38,6 +38,7 @@ USA.
 "pruxffi"
 "prx11"
 "svm1-interp"
+"tterm"
 "termcap"
 "terminfo"
 "tparam"
