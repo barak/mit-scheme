@@ -127,18 +127,27 @@ compile-cref:
 	echo '(begin (load "etc/compile.scm") (compile-dir "cref"))' \
 	| '$(MIT_SCHEME_EXE)' --batch-mode
 
-.PHONY: compile-runtime
-compile-runtime: compile-cref
+.PHONY: syntax-runtime
+syntax-runtime: compile-cref
 	(echo '(begin' && \
 	 echo '  (load "etc/compile.scm")' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
 	 echo '    (lambda () (load "make")))' && \
-	 echo '  (compile-dir "runtime"))') \
+	 echo '  (with-working-directory-pathname "runtime"' && \
+	 echo '    (lambda ()' && \
+	 echo '      (load "runtime.sf")' && \
+	 echo '      (echo-cref-output "runtime"))))') \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: compile-runtime
+compile-runtime: syntax-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.cbf")))') \
 	| '$(MIT_SCHEME_EXE)' --batch-mode
 
 .PHONY: compile-sf
 compile-sf: compile-cref
-compile-sf: compile-runtime
+compile-sf: syntax-runtime
 	(echo '(begin' && \
 	 echo '  (load "etc/compile.scm")' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
@@ -148,7 +157,7 @@ compile-sf: compile-runtime
 
 .PHONY: compile-star-parser
 compile-star-parser: compile-cref
-compile-star-parser: compile-runtime
+compile-star-parser: syntax-runtime
 	(echo '(begin' && \
 	 echo '  (load "etc/compile.scm")' && \
 	 echo '  (with-working-directory-pathname "cref"' && \
