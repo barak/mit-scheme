@@ -80,9 +80,149 @@ check:
 	./microcode/scheme --library lib --batch-mode \
 	  --load ../tests/check.scm --eval '(%exit)'
 
-all-native: compile-microcode
-	@$(top_srcdir)/etc/compile.sh "$(MIT_SCHEME_EXE)" --batch-mode
-	$(MAKE) build-bands #build-ffis
+all-native: lib/runtime.com
+all-native: lib/all.com
+all-native: compile-compiler
+all-native: compile-cref
+all-native: compile-ffi
+all-native: compile-imail
+all-native: compile-runtime
+all-native: compile-sf
+all-native: compile-sos
+all-native: compile-ssp
+all-native: compile-star-parser
+all-native: compile-win32
+all-native: compile-xml
+
+lib/runtime.com: compile-runtime
+lib/runtime.com: microcode/scheme
+	(. etc/functions.sh && get_fasl_file && cd runtime \
+	  && (echo '(disk-save "../lib/runtime.com")' \
+	       | ../microcode/scheme --batch-mode --library ../lib \
+	           --fasl "$${FASL}"))
+
+lib/all.com: compile-compiler
+lib/all.com: compile-edwin
+lib/all.com: compile-sf
+lib/all.com: lib/runtime.com
+lib/all.com: microcode/scheme
+	(echo '(begin' && \
+	 echo '  (load-option (quote COMPILER))' && \
+	 echo '  (load-option (quote EDWIN))' && \
+	 echo '  (disk-save "lib/all.com"))') \
+	| ./microcode/scheme --batch-mode --library lib --band runtime.com
+
+microcode/scheme: compile-microcode
+
+.PHONY: compile-cref
+compile-cref:
+	echo '(begin (load "etc/compile.scm") (compile-dir "cref"))' \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: compile-runtime
+compile-runtime: compile-cref
+	(echo '(begin' && \
+	 echo '  (load "etc/compile.scm")' && \
+	 echo '  (with-working-directory-pathname "cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (compile-dir "runtime"))') \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: compile-sf
+compile-sf: compile-cref
+compile-sf: compile-runtime
+	(echo '(begin' && \
+	 echo '  (load "etc/compile.scm")' && \
+	 echo '  (with-working-directory-pathname "cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (compile-dir "sf"))') \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: compile-star-parser
+compile-star-parser: compile-cref
+compile-star-parser: compile-runtime
+	(echo '(begin' && \
+	 echo '  (load "etc/compile.scm")' && \
+	 echo '  (with-working-directory-pathname "cref"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (compile-dir "star-parser"))') \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: syntax-compiler
+syntax-compiler: compile-sf
+syntax-compiler: lib/runtime.com
+syntax-compiler: microcode/scheme
+	(echo '(begin' && \
+	 echo '  (load-option (quote SF))' && \
+	 echo '  (with-working-directory-pathname "compiler"' && \
+	 echo '    (lambda () (load "compiler.sf"))))') \
+	| ./microcode/scheme --batch-mode --library lib --band runtime.com
+
+.PHONY: compile-compiler
+compile-compiler: syntax-compiler
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda () (load "compiler.cbf")))') \
+	| '$(MIT_SCHEME_EXE)' --batch-mode
+
+.PHONY: bootstrap-toolchain
+bootstrap-toolchain: compile-compiler
+bootstrap-toolchain: compile-runtime
+bootstrap-toolchain: lib/runtime.com
+bootstrap-toolchain: microcode/scheme
+BOOTSTRAP_TOOLCHAIN = \
+	./microcode/scheme --batch-mode --library lib --band runtime.com \
+	  --eval '(load-option (quote COMPILER))' \
+	  --eval '(load "etc/compile.scm")'
+
+.PHONY: compile-edwin
+compile-edwin: bootstrap-toolchain
+compile-edwin: compile-xml
+	echo '(compile-dir "edwin")' | $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-ffi
+compile-ffi: bootstrap-toolchain
+compile-ffi: compile-cref
+	echo '(compile-dir "ffi")' | $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-imail
+compile-imail: bootstrap-toolchain
+compile-imail: compile-edwin
+compile-imail: compile-sos
+compile-imail: compile-star-parser
+	(echo '(begin' && \
+	 echo '  (construct-packages-from-file' && \
+	 echo '   (fasload (package-set-pathname "edwin/edwin")))' && \
+	 echo '  (with-working-directory-pathname "sos"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (with-working-directory-pathname "star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (compile-dir "imail"))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-sos
+compile-sos: bootstrap-toolchain
+	echo '(compile-dir "sos")' | $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-ssp
+compile-ssp: bootstrap-toolchain
+compile-ssp: compile-xml
+	echo '(compile-dir "ssp")' | $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-win32
+compile-win32: bootstrap-toolchain
+	echo '(compile-dir "win32")' | $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: compile-xml
+compile-xml: bootstrap-toolchain
+compile-xml: compile-sos
+compile-xml: compile-star-parser
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "sos"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (with-working-directory-pathname "star-parser"' && \
+	 echo '    (lambda () (load "load")))' && \
+	 echo '  (compile-dir "xml"))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
 
 all-svm: microcode/svm1-defns.h
 	$(MAKE) compile-microcode
