@@ -191,6 +191,7 @@ BOOTSTRAP_TOOLCHAIN = \
 .PHONY: syntax-edwin
 syntax-edwin: bootstrap-toolchain
 syntax-edwin: compile-xml
+syntax-edwin: compile-win32
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (load "edwin.sf")' && \
