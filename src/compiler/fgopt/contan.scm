@@ -124,12 +124,14 @@ may change if call-with-current-continuation is handled specially.
 	     parent
 
 	     ;; Acceptable substitute: we're a subproblem of someone
-	     ;; who is a child of the parent.
+	     ;; who is a child of the parent (but not a subproblem of
+	     ;; ourselves!).
 	     (let ((value (lvalue-known-value lvalue)))
 	       (and value
-		    (let ((block (continuation/block value)))
-		      (and (block-ancestor? block parent)
-			   block))))))))
+		    (let ((link (continuation/block value)))
+		      (and (block-ancestor? link parent)
+			   (not (block-ancestor-or-self? link block))
+			   link))))))))
 
 (define (setup-block-static-links! blocks)
   (for-each
