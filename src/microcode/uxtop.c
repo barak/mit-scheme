@@ -80,13 +80,6 @@ OS_initialize (void)
        || (isatty (STDIN_FILENO))
        || (isatty (STDOUT_FILENO))
        || (isatty (STDERR_FILENO)));
-    /* If none of the stdio streams is a terminal, disassociate us
-       from the controlling terminal so that we're not affected by
-       keyboard interrupts or hangup signals.  However, if we're
-       running under Emacs we don't want to do this, because we want
-       to receive a hangup signal if Emacs dies. */
-    if ((!interactive) && (!option_emacs_subprocess))
-      UX_setsid ();
     if (option_batch_mode)
       interactive = false;
     /* The argument passed to `UX_ctty_initialize' says whether to
