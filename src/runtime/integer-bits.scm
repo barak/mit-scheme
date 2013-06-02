@@ -205,7 +205,7 @@ USA.
 
 (define (bits n m)
   (define (%bits n m)
-    (bit-mask (+ (- n m) 1) n))
+    (bit-mask (- (+ m 1) n) n))
   (if (<= n m)
       (%bits n m)
       (%bits m n)))
