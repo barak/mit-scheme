@@ -325,22 +325,35 @@ USA.
 ;; not actually use.
 (define-declaration 'IGNORABLE
   (lambda (block names)
-    (for-each (lambda (variable)
-		(if variable
-		    (variable/may-ignore! variable)))
-	      (block/lookup-names block names #f))
-    '()))
+    (for-each (lambda (name)
+		(let ((variable (block/lookup-name block name #f)))
+		  (if variable
+		      (variable/may-ignore! variable)
+		      (warn "ignoring IGNORABLE declaration of free variable"
+			    name))))
+	      names)))
 
 ;; IGNORE causes warnings if an ignored variable actually ends
 ;; up being used.  Mentioning the variable in a sequence will
 ;; have the effect of marking it IGNORED.
 (define-declaration 'IGNORE
   (lambda (block names)
-    (let ((variables (block/lookup-names block names #f)))
-      (for-each (lambda (variable)
-		  (if variable
-		      (variable/must-ignore! variable)))
-		variables)
+    (let ((variables
+	   (let loop
+	       ((names names)
+		(variables '()))
+	     (if (pair? names)
+		 (let* ((name (car names))
+			(variable (block/lookup-name block name #f)))
+		   (if variable
+		       (begin
+			 (variable/must-ignore! variable)
+			 (loop (cdr names) (cons variable variables)))
+		       (begin
+			 (warn "ignoring IGNORE declaration of free variable"
+			       name)
+			 (loop (cdr names) variables))))
+		 variables))))
       (make-declarations 'IGNORE
 			 variables
 			 'NO-VALUES
