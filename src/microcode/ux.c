@@ -717,39 +717,49 @@ UX_getpagesize (void)
 
 static void * mmap_heap_malloc_search
   (unsigned long, unsigned long, unsigned long);
+static void * mmap_heap_malloc_search_procfs
+  (unsigned long, unsigned long, unsigned long);
 
 void *
 mmap_heap_malloc (unsigned long requested_length)
 {
-  unsigned long pagesize = (UX_getpagesize ());
-  unsigned long min_result = MMAP_BASE_ADDRESS;
-  unsigned long max_result = (1UL << DATUM_LENGTH);
-  unsigned long request;
-  void * result;
+  const unsigned long pagesize = (UX_getpagesize ());
+  const unsigned long min_result = MMAP_BASE_ADDRESS;
+  const unsigned long max_result = (1UL << DATUM_LENGTH);
+  const unsigned long request =
+    (((requested_length + (pagesize - 1)) / pagesize) * pagesize);
+  void * const addr =
+    (mmap_heap_malloc_search (request, min_result, max_result));
 
-  request = (((requested_length + (pagesize - 1)) / pagesize) * pagesize);
-  result = (mmap_heap_malloc_search (request, min_result, max_result));
-
-  if (result != 0)
+  if (addr != 0)
     {
-      if ((((unsigned long) result) >= min_result)
-	  && ((((unsigned long) result) + request) <= max_result))
+      if ((((unsigned long) addr) >= min_result)
+	  && ((((unsigned long) addr) + request) <= max_result))
 	{
 #ifdef VALGRIND_MODE
-	  VALGRIND_MALLOCLIKE_BLOCK (result, request, 0, 0);
+	  VALGRIND_MALLOCLIKE_BLOCK (addr, request, 0, 0);
 #endif
-	  return (result);
+	  return (addr);
 	}
-      munmap (result, request);
+      if ((munmap (addr, request)) == -1)
+	  outf_error ("unable to unmap heap: %lx bytes at %p", request, addr);
     }
 
-  /* XXX We need to make the pages executable for native-code systems.  */
+#ifdef CC_IS_NATIVE
+  outf_error
+    ("unable to mmap executable heap -- native code will probably fail");
+#endif
   return (OS_malloc (requested_length));
 }
+
+#ifndef MAP_TRYFIXED
+#  define MAP_TRYFIXED 0
+#endif
 
 static void *
 mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
 {
+  assert ((address == 0) || ((flags & (MAP_TRYFIXED | MAP_FIXED)) != 0));
   void * addr
     = (mmap (((void *) address),
 	     request,
@@ -760,43 +770,41 @@ mmap_heap_malloc_try (unsigned long address, unsigned long request, int flags)
   return ((addr == MAP_FAILED) ? 0 : addr);
 }
 
-#ifndef __linux__
-
-/* Try to use our low addresses even if the OS has a tendency to choose
-   high ones.  */
-
-#ifdef __x86_64__
-#  define MMAP_EXTRA_FLAGS 0
-#else
-#ifdef MAP_TRYFIXED
-#  define MMAP_EXTRA_FLAGS MAP_TRYFIXED
-#else
-#if defined(USE_MAP_FIXED) && defined(MAP_FIXED)
-#  define MMAP_EXTRA_FLAGS MAP_FIXED
-#else
-#  define MMAP_EXTRA_FLAGS 0
-#endif
-#endif
-#endif
-
 static void *
 mmap_heap_malloc_search (unsigned long request,
-                         unsigned long min_result,
-                         unsigned long max_result)
+			 unsigned long min_result,
+			 unsigned long max_result)
 {
-  (void)max_result;             /* ignore */
+  void * addr;
 
-#if MMAP_EXTRA_FLAGS != 0
-  {
-    void * addr = (mmap_heap_malloc_try (min_result, request, MMAP_EXTRA_FLAGS));
-    return (addr ? addr : (mmap_heap_malloc_try (0, request, 0)));
-  }
+  assert (0 < request);
+  assert (0 < min_result);
+  assert (min_result < max_result);
+  assert (request <= (max_result - min_result));
+
+#ifdef USE_MAP_FIXED
+  (void) max_result;		/* ignore */
+  addr = (mmap_heap_malloc_try (min_result, request, MAP_FIXED));
 #else
-  return (mmap_heap_malloc_try (min_result, request, 0));
+  addr = (mmap_heap_malloc_search_procfs (request, min_result, max_result));
+  if (addr == 0)
+    addr = (mmap_heap_malloc_try (min_result, request, MAP_TRYFIXED));
+  if (addr == 0)
+    addr = (mmap_heap_malloc_try (0, request, 0));
 #endif
+
+  return (addr);
 }
 
-#else /* defined (__linux__) */
+#ifdef __linux__
+#  define TRY_PROCFS_MAPS 1
+#endif
+
+#ifdef __NetBSD__
+#  define TRY_PROCFS_MAPS 1
+#endif
+
+#ifdef TRY_PROCFS_MAPS
 
 /* Use /proc/self/maps to find the lowest available space.  */
 
@@ -814,9 +822,9 @@ discard_line (FILE * s)
 }
 
 static void *
-mmap_heap_malloc_search (unsigned long request,
-                         unsigned long min_result,
-                         unsigned long max_result)
+mmap_heap_malloc_search_procfs (unsigned long request,
+				unsigned long min_result,
+				unsigned long max_result)
 {
   char fn [64];
   FILE * s;
@@ -837,7 +845,7 @@ mmap_heap_malloc_search (unsigned long request,
   snprintf (fn, (sizeof fn), "/proc/%d/maps", (getpid ()));
   s = (fopen (fn, "r"));
   if (s == 0)
-    goto no_address;
+    return (0);
 
   start = min_result;
   while ((start + request) <= max_result)
@@ -848,12 +856,12 @@ mmap_heap_malloc_search (unsigned long request,
       if (rc == EOF)
         {
           fclose (s);
-          return 0;
+          return (0);
         }
       if (! ((rc == 2) && (end <= next_start) && (discard_line (s))))
         {
           fclose (s);
-          goto no_address;
+          return (0);
         }
       if ((start + request) <= end)
         {
@@ -865,10 +873,23 @@ mmap_heap_malloc_search (unsigned long request,
     }
 
   fclose (s);
- no_address:
-  return (mmap_heap_malloc_try (min_result, request, 0));
+  return (0);
 }
 
-#endif
+#else /* !defined(USE_PROCFS_MAPS) */
+
+static void *
+mmap_heap_malloc_search_procfs (unsigned long request,
+				unsigned long min_result,
+				unsigned long max_result)
+{
+  (void) request;		/* ignore */
+  (void) min_result;		/* ignore */
+  (void) max_result;		/* ignore */
+
+  return (0);
+}
+
+#endif /* USE_PROCFS_MAPS */
 
 #endif /* USE_MMAP_HEAP_MALLOC && HEAP_IN_LOW_MEMORY */
