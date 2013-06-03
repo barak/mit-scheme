@@ -129,7 +129,11 @@ USA.
 #ifdef HAVE_SYS_MMAN_H
 #  include <sys/mman.h>
 #endif
-#ifdef __APPLE__
+
+/* On Mac OS X/i386, we instruct the linker to reserve all the usable
+   low virtual address space for us, so we can safely use
+   mmap(MAP_FIXED) to map the heap.  */
+#if ((defined (__APPLE__)) && (defined (__IA32__)))
 #  define USE_MAP_FIXED 1
 #endif
 
