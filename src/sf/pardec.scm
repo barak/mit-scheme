@@ -331,7 +331,8 @@ USA.
 		      (variable/may-ignore! variable)
 		      (warn "ignoring IGNORABLE declaration of free variable"
 			    name))))
-	      names)))
+	      names)
+    '()))
 
 ;; IGNORE causes warnings if an ignored variable actually ends
 ;; up being used.  Mentioning the variable in a sequence will
