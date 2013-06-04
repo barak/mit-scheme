@@ -212,11 +212,14 @@ USA.
 (define-fpe-elicitor 'UNDERFLOW 'LEAST-POSITIVE-NUMBER-OVER-TWO
   (let ((flo:shift (make-primitive-procedure 'FLONUM-DENORMALIZE 2)))
     (lambda ()
-      ;; Problem: On every machine I tested (several different models
-      ;; of each of x87, amd64, and sparc), if this doesn't trap, it
-      ;; doesn't set the underflow exception flag either.  So all tests
-      ;; relying on the exception flag will fail.
-      (flo:* (no-op .5) (flo:shift (no-op 1.) -1022)))))
+      ;; For some reason, on every architecture I tested (x87, amd64,
+      ;; sparc), if underflow is not trapped then when the result is
+      ;; exact it is not raised either.  Multiplying by .50000001, as
+      ;; suggested by Bill Kahan, forces the result to be inexact and
+      ;; thereby forces the machine to raise the underflow exception.
+      ;; (Note that if underflow is trapped, then the machine traps
+      ;; whether or not the result is exact.  Go figure.)
+      (flo:* (no-op .5000001) (flo:shift (no-op 1.) -1022)))))
 
 (define (for-each-trappable-exception receiver)
   (for-each-exception
