@@ -188,10 +188,23 @@ DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
 }
 #endif
 
+DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
+{
+  double x;
+  double result;
+  PRIMITIVE_HEADER (1);
+  x = (arg_flonum (1));
+  if (! (x >= 0))
+    error_bad_range_arg (1);
+  errno = 0;
+  result = (log (x));
+  if ((errno != 0) && ((x != 0) || (errno != ERANGE)))
+    error_bad_range_arg (1);
+  FLONUM_RESULT (result);
+}
+
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
-DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
-     RESTRICTED_TRANSCENDENTAL_FUNCTION (log, (x > 0))
 DEFINE_PRIMITIVE ("FLONUM-SIN", Prim_flonum_sin, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (sin)
 DEFINE_PRIMITIVE ("FLONUM-COS", Prim_flonum_cos, 1, 1, 0)
