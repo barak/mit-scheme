@@ -79,7 +79,8 @@ not much different to numbers within a few orders of magnitude of 1.
 		     (string-copy "#[-inf]")
 		     (string-append "-" (x>0 x)))))
 	      ((flo:zero? x)
-	       (string-copy "0."))
+	       ;; XXX Kludgey test for zero sign.
+	       (string-copy (if (flo:negative? (flo:atan2 x -1.)) "-0." "0.")))
 	      (else
 	       (string-copy "#[NaN]"))))))
 
