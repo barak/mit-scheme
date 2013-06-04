@@ -138,7 +138,7 @@ datum_to_object (datum d)
 }
 
 static void
-gdbm_fatal_error (char * msg)
+gdbm_fatal_error (const char * msg)
 {
   outf_error ("\ngdbm: %s\n", msg);
   outf_flush_error ();
