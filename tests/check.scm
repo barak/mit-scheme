@@ -41,6 +41,7 @@ USA.
     "microcode/test-flonum-casts.scm"
     "microcode/test-flonum-casts.com"
     "microcode/test-lookup"
+    "runtime/test-arith"
     ("runtime/test-char-set" (runtime character-set))
     "runtime/test-division"
     "runtime/test-ephemeron"
