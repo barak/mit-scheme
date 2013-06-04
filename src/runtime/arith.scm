@@ -1058,6 +1058,14 @@ USA.
 	     x
 	     (flo:/ (rat:->inexact x) y)))
 	(else ((copy rat:/) x y))))
+
+(define (real:eqv? x y)
+  (if (flonum? x)
+      (and (flonum? y)
+	   (flo:eqv? x y))
+      (and (not (flonum? y))
+	   ;; Both are exact, so RAT:= will DTRT.
+	   ((copy rat:=) x y))))
 
 (define (real:= x y)
   (if (flonum? x)
@@ -1335,6 +1343,18 @@ USA.
       (error:wrong-type-argument x #f name))
   (rec:real-part x))
 
+(define (complex:eqv? z1 z2)
+  (if (recnum? z1)
+      (if (recnum? z2)
+	  (and (real:eqv? (rec:real-part z1) (rec:real-part z2))
+	       (real:eqv? (rec:imag-part z1) (rec:imag-part z2)))
+	  (and (real:exact0= (rec:imag-part z1))
+	       (real:eqv? (rec:real-part z1) z2)))
+      (if (recnum? z2)
+	  (and (real:exact0= (rec:imag-part z2))
+	       (real:eqv? z1 (rec:imag-part z2)))
+	  ((copy real:eqv?) z1 z2))))
+
 (define (complex:= z1 z2)
   (if (recnum? z1)
       (if (recnum? z2)

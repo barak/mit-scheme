@@ -227,6 +227,7 @@ USA.
 	  flo:ceiling
 	  flo:ceiling->exact
 	  flo:cos
+	  flo:eqv?
 	  flo:exp
 	  flo:expm1
 	  flo:expt
@@ -2881,6 +2882,7 @@ USA.
 	  (make-polar complex:make-polar)
 	  (make-rectangular complex:make-rectangular)
 	  (negative? complex:negative?)
+	  (number:eqv? complex:eqv?)
 	  (number? complex:complex?)
 	  (numerator complex:numerator)
 	  (numerator->exact complex:numerator->exact)

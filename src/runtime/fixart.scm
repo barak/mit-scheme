@@ -167,10 +167,22 @@ USA.
 	((flo:= x y) y)
 	(else (error:bad-range-argument (if (flo:finite? x) x y) 'FLO:MAX))))
 
+;;; XXX FLO:FINITE?, FLO:NAN?, FLO:EQV?, &c., are cute, but should be
+;;; replaced by primitives.
+
 (define (flo:finite? x)
   (if (or (flo:> x 1.) (flo:< x -1.))
       (not (flo:= x (flo:/ x 2.)))
       (and (flo:<= x 1.) (flo:>= x -1.))))
+
+(define (flo:eqv? x y)
+  ;; (bit-string=? (flo:->bit-string x) (flo:->bit-string y))
+  (if (flo:= x y)
+      (or (not (flo:zero? x))
+          ;; XXX Kludgey but expedient test for zero sign.
+          (flo:= (flo:atan2 x -1.) (flo:atan2 y -1.)))
+      ;; XXX (and (flo:nan? x) (flo:nan? y) ...)
+      #f))
 
 (define-integrable (int:->flonum n)
   ((ucode-primitive integer->flonum 2) n #b10))
