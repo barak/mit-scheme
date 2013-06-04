@@ -783,6 +783,10 @@ asm_generic_$1_flo:
 	OP(and,q)	TW(rmask,REG(rbx))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rdx)),REG(xmm0))
 	ucomisd		TW(QOF(FLONUM_DATA_OFFSET,REG(rbx)),REG(xmm0))
+	# ucomisd sets the parity bit if the operands are incomparable,
+	# i.e. either one is NaN; in that case, return #F.  Otherwise,
+	# return #T if $4 is met, or #F otherwise.
+	jp	asm_generic_return_sharp_f
 	$4	asm_generic_return_sharp_t
 	jmp	asm_generic_return_sharp_f
 
@@ -852,9 +856,11 @@ asm_generic_divide_fix_by_flo:
 
 asm_generic_divide_zero_by_flo:
 	# rcx contains zero, representing a numerator exactly zero.
-	# Defer division of 0 by 0.0; otherwise, yield exactly zero.
+	# Defer division of 0 by 0.0 or NaN; otherwise, yield exactly
+	# zero.
 	OP(cvtsi2sd,q)	TW(REG(rcx),REG(xmm0))
 	ucomisd		TW(REG(xmm1),REG(xmm0))
+	jp	asm_generic_divide_fail
 	je	asm_generic_divide_fail
 	OP(and,q)	TW(rmask,IND(REG(rsp)))
 	OP(mov,q)	TW(IMM_FIXNUM_0,REG(rax))
@@ -870,6 +876,7 @@ asm_generic_divide_flo_by_flo:
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rax)),REG(xmm0))
 	movsd		TW(QOF(FLONUM_DATA_OFFSET,REG(rcx)),REG(xmm1))
 	ucomisd		TW(ABS(EVR(flonum_zero)),REG(xmm1))
+	jp	asm_generic_divide_fail
 	je	asm_generic_divide_fail
 	divsd		TW(REG(xmm1),REG(xmm0))
 	jmp	asm_generic_flonum_result
