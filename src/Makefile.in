@@ -191,7 +191,7 @@ BOOTSTRAP_TOOLCHAIN = \
 .PHONY: syntax-edwin
 syntax-edwin: bootstrap-toolchain
 syntax-edwin: compile-xml
-syntax-edwin: compile-win32
+syntax-edwin: syntax-win32
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (load "edwin.sf")' && \
@@ -230,9 +230,20 @@ compile-ssp: bootstrap-toolchain
 compile-ssp: compile-xml
 	echo '(compile-dir "ssp")' | $(BOOTSTRAP_TOOLCHAIN)
 
+.PHONY: syntax-win32
+syntax-win32: bootstrap-toolchain
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (load "win32.sf")' && \
+	 echo '    (echo-cref-output "win32")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
 .PHONY: compile-win32
 compile-win32: bootstrap-toolchain
-	echo '(compile-dir "win32")' | $(BOOTSTRAP_TOOLCHAIN)
+compile-win32: syntax-win32
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.cbf")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
 
 .PHONY: compile-xml
 compile-xml: bootstrap-toolchain
