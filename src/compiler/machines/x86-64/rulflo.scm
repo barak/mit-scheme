@@ -353,12 +353,14 @@ USA.
     (else
      (error "flonum-branch!: Unknown predicate" predicate)))
   (LAP (UCOMIF S D ,source1 ,source2)))
-                                   
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
   (cond ((not (flo:flonum? fp-value))
          (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
-        ((flo:= fp-value 0.0)
+        ((and (flo:= fp-value 0.0)
+              ;; XXX Kludgey but expedient test for zero sign.
+              (not (flo:negative? (flo:atan2 x -1.))))
          (let ((target (flonum-target-reference! target)))
            (LAP (XORF P D ,target ,target))))
         (else

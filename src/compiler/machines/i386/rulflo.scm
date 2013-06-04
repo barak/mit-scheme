@@ -809,12 +809,14 @@ USA.
   (flonum->label fp-value 'SINGLE-FLOATS 4 0
 		 (LAP ,@(lap:comment `(SINGLE-FLOAT ,fp-value))
 		      (LONG U ,(flo:32-bit-representation-exact? fp-value)))))
-				     
+
 (define-rule statement
   (ASSIGN (REGISTER (? target)) (OBJECT->FLOAT (CONSTANT (? fp-value))))
   (cond ((not (flo:flonum? fp-value))
 	 (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
-	((flo:= fp-value 0.0)
+	((and (flo:= fp-value 0.0)
+              ;; XXX Kludgey but expedient test for zero sign.
+              (not (flo:negative? (flo:atan2 x -1.))))
 	 (let ((target (flonum-target! target)))
 	   (LAP (FLDZ)
 		(FSTP (ST ,(1+ target))))))
