@@ -816,7 +816,7 @@ USA.
 	 (error "OBJECT->FLOAT: Not a floating-point value" fp-value))
 	((and (flo:= fp-value 0.0)
               ;; XXX Kludgey but expedient test for zero sign.
-              (not (flo:negative? (flo:atan2 x -1.))))
+              (not (flo:negative? (flo:atan2 fp-value -1.))))
 	 (let ((target (flonum-target! target)))
 	   (LAP (FLDZ)
 		(FSTP (ST ,(1+ target))))))
