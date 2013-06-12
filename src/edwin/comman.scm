@@ -84,7 +84,7 @@ USA.
 		    name
 		    "undefined command"
 		    '()
-		    (lambda () (editor-error "Undefined command:" name)))))
+		    (lambda () (editor-error "Undefined command: " name)))))
 	   command))
 	(else
 	 (error:bad-range-argument if-undefined 'NAME->COMMAND)))))
