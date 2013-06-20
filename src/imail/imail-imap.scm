@@ -1014,7 +1014,7 @@ USA.
 ;;; operation atomically.
 
 (define (update-imap-folder-length! folder count)
-  (with-interrupt-mask interrupt-mask/gc-ok
+  (with-limited-interrupts interrupt-mask/gc-ok
     (lambda (interrupt-mask)
       (cond ((or (imap-folder-messages-synchronized? folder 'FLAGS)
 		 (zero? (folder-length folder)))
