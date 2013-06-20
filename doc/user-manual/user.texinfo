@@ -112,7 +112,7 @@ line termination, and (potentially) the hideous 8.3 short filenames.
 The primary distribution site for this software is
 
 @example
-@uref{http://www.gnu.org/mit-scheme/}
+@uref{http://www.gnu.org/software/mit-scheme/}
 @end example
 
 @noindent
