@@ -117,7 +117,7 @@ dld_load (const char * path)
       cleanup_registered_p = true;
     }
 
-  handle = (dlopen (path, (RTLD_LAZY | RTLD_GLOBAL)));
+  handle = (dlopen (path, (RTLD_NOW | RTLD_GLOBAL)));
   if (handle == 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
