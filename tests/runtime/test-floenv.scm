@@ -57,9 +57,10 @@ USA.
    (define-test (symbol-append 'FLO:SET-ROUNDING-MODE ': mode)
      (lambda ()
        (let ((mode* (flo:rounding-mode)))
-	 (dynamic-wind (lambda () (flo:set-rounding-mode! mode))
-		       (lambda () (assert-eqv (flo:rounding-mode) mode))
-		       (lambda () (flo:set-rounding-mode! mode*)))
+         (flo:preserving-environment
+          (lambda ()
+            (flo:set-rounding-mode! mode)
+            (assert-eqv (flo:rounding-mode) mode)))
 	 (assert-eqv (flo:rounding-mode) mode*))))))
 
 (for-each-rounding-mode
@@ -187,8 +188,7 @@ USA.
   (lambda () (flo:raise-exceptions! (flo:exception:invalid-operation))))
 
 (define-fpe-elicitor 'INVALID-OPERATION 'ZERO-OVER-ZERO
-  (lambda ()
-    (flo:/ (no-op 0.) (no-op 0.))))
+  (lambda () (flo:/ (no-op 0.) (no-op 0.))))
 
 (define-fpe-descriptor 'OVERFLOW #t flo:exception:overflow
   condition-type:floating-point-overflow)
@@ -275,12 +275,10 @@ USA.
     (lambda ()
       (let ((exceptions (to-trap))
 	    (trapped (flo:trapped-exceptions)))
-	(dynamic-wind
-	 (lambda () unspecific)
-	 (lambda ()
+        (flo:preserving-environment
+         (lambda ()
 	   (assert-eqv (flo:set-trapped-exceptions! exceptions) trapped)
-	   (assert-eqv (flo:trapped-exceptions) exceptions))
-	 (lambda () (flo:set-trapped-exceptions! trapped)))))))
+	   (assert-eqv (flo:trapped-exceptions) exceptions)))))))
 
 (define (define-with-trapped-exceptions-test name to-trap)
   (define-test (symbol-append 'FLO:WITH-TRAPPED-EXCEPTIONS ': name)
@@ -410,7 +408,9 @@ USA.
 
 (define-test 'FLO:SET-ENVIRONMENT
   (lambda ()
-    (flo:set-environment! (flo:environment))))
+    (flo:preserving-environment
+     (lambda ()
+       (flo:set-environment! (flo:environment))))))
 
 (define-test 'FLO:DEFAULT-ENVIRONMENT
   (lambda ()
@@ -418,11 +418,9 @@ USA.
 
 (define-test 'FLO:SET-DEFAULT-ENVIRONMENT
   (lambda ()
-    (let ((environment (flo:environment)))
-      (dynamic-wind
-       (lambda () unspecific)
-       (lambda () (flo:set-environment! (flo:default-environment)))
-       (lambda () (flo:set-environment! environment))))))
+    (flo:preserving-environment
+     (lambda ()
+       (flo:set-environment! (flo:default-environment))))))
 
 (define-test 'FLO:WITH-DEFAULT-ENVIRONMENT
   (lambda ()
