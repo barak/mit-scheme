@@ -70,7 +70,10 @@ USA.
   ;; unwind the thread's state space when it is exited.
 
   (floating-point-environment #f)
-  ;; Thread-local floating-point environment.
+  ;; A floating-point environment descriptor, or #T if the thread is
+  ;; running and has modified its floating-point environment since it
+  ;; was last cached.  While a thread is running, this is a cache of
+  ;; the machine's floating-point environment.
 
   (mutexes '())
   ;; List of mutexes that this thread owns or is waiting to own.  Used
@@ -110,7 +113,6 @@ USA.
 (define (make-thread continuation)
   (let ((thread (%make-thread)))
     (set-thread/continuation! thread continuation)
-    (set-thread/floating-point-environment! thread (flo:default-environment))
     (set-thread/root-state-point! thread
 				  (current-state-point state-space:local))
     (add-to-population!/unsafe thread-population thread)
@@ -226,10 +228,9 @@ USA.
   (let ((continuation (thread/continuation thread))
 	(fp-env (thread/floating-point-environment thread)))
     (set-thread/continuation! thread #f)
-    (set-thread/floating-point-environment! thread #f)
     (%within-continuation continuation #t
       (lambda ()
-	(flo:set-environment! fp-env)
+	(enter-float-environment fp-env)
 	(%resume-current-thread thread)))))
 
 (define (%resume-current-thread thread)
@@ -245,8 +246,7 @@ USA.
 (define (%suspend-current-thread)
   (call-with-current-thread #f
     (lambda (thread)
-      (let ((fp-env (flo:environment))
-	    (block-events? (thread/block-events? thread)))
+      (let ((block-events? (thread/block-events? thread)))
 	(set-thread/block-events?! thread #f)
 	(maybe-signal-io-thread-events)
 	(let ((any-events? (handle-thread-events thread)))
@@ -256,7 +256,7 @@ USA.
 	      (call-with-current-continuation
 	       (lambda (continuation)
 		 (set-thread/continuation! thread continuation)
-		 (set-thread/floating-point-environment! thread fp-env)
+		 (maybe-save-thread-float-environment! thread)
 		 (set-thread/block-events?! thread #f)
 		 (thread-not-running thread 'WAITING)))))))))
 
@@ -268,7 +268,7 @@ USA.
 	 (call-with-current-continuation
 	  (lambda (continuation)
 	    (set-thread/continuation! thread continuation)
-	    (set-thread/floating-point-environment! thread (flo:environment))
+	    (maybe-save-thread-float-environment! thread)
 	    (thread-not-running thread 'STOPPED))))))))
 
 (define (restart-thread thread discard-events? event)
@@ -296,8 +296,7 @@ USA.
   ;; Preserve the floating-point environment here to guarantee that the
   ;; thread timer won't raise or clear exceptions (particularly the
   ;; inexact result exception) that the interrupted thread cares about.
-  (let ((fp-env (flo:environment)))
-    (flo:set-environment! (flo:default-environment))
+  (let ((fp-env (enter-default-float-environment)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
     (deliver-timer-events)
@@ -311,7 +310,7 @@ USA.
 		       (thread/execution-state thread)))
 	     (yield-thread thread fp-env))
 	    (else
-	     (flo:set-environment! fp-env)
+	     (restore-float-environment-from-default fp-env)
 	     (%resume-current-thread thread))))))
 
 (define (yield-current-thread)
@@ -329,20 +328,23 @@ USA.
     (if (not next)
 	(begin
 	  (if (not (default-object? fp-env))
-	      (flo:set-environment! fp-env))
+	      (restore-float-environment-from-default fp-env))
 	  (%resume-current-thread thread))
 	(call-with-current-continuation
 	 (lambda (continuation)
 	   (set-thread/continuation! thread continuation)
-	   (set-thread/floating-point-environment! thread
-						   (if (default-object? fp-env)
-						       (flo:environment)
-						       fp-env))
+	   (maybe-save-thread-float-environment! thread fp-env)
 	   (set-thread/next! thread #f)
 	   (set-thread/next! last-running-thread thread)
 	   (set! last-running-thread thread)
 	   (set! first-running-thread next)
 	   (run-thread next))))))
+
+(define (thread-float-environment thread)
+  (thread/floating-point-environment thread))
+
+(define (set-thread-float-environment! thread fp-env)
+  (set-thread/floating-point-environment! thread fp-env))
 
 (define (exit-current-thread value)
   (let ((thread (current-thread)))

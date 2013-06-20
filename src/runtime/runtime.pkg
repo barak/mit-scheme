@@ -328,6 +328,11 @@ USA.
 	  flo:with-exceptions-untrapped
 	  flo:with-rounding-mode
 	  flo:with-trapped-exceptions)
+  (export (runtime thread)
+	  enter-default-float-environment
+	  enter-float-environment
+	  maybe-save-thread-float-environment!
+	  restore-float-environment-from-default)
   (initialization (initialize-package!)))
 
 (define-package (runtime integer-bits)
@@ -5015,6 +5020,9 @@ USA.
   (export (runtime continuation)
 	  get-thread-event-block
 	  set-thread-event-block!)
+  (export (runtime floating-point-environment)
+	  set-thread-float-environment!
+	  thread-float-environment)
   (initialization (initialize-package!)))
 
 (define-package (runtime rb-tree)
