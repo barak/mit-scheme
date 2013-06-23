@@ -102,11 +102,12 @@ use abbreviations to refer to some operating systems.  When the text
 uses the term @dfn{unix}, this means any of the unix systems that we
 support, including GNU/Linux and the BSD variants.  We use the term
 @dfn{Windows} to collectively refer to the modern Microsoft Windows
-32-bit operating systems: Windows NT, Windows 2000, and Windows XP.  We
-use the term @dfn{PC} to refer to any computer running Windows.  Thus we
-consider a PC to be a system with a @acronym{DOS}-like file system,
-using backslashes for directory separators, drive letters, @sc{cr-lf}
-line termination, and (potentially) the hideous 8.3 short filenames.
+32-bit operating systems: Windows XP, Windows Vista, Windows 7, and
+Windows 8.  We use the term @dfn{PC} to refer to any computer running
+Windows.  Thus we consider a PC to be a system with a @acronym{DOS}-like
+file system, using backslashes for directory separators, drive letters,
+@sc{cr-lf} line termination, and (potentially) the hideous 8.3 short
+filenames.
 
 @cindex Web site
 The primary distribution site for this software is
