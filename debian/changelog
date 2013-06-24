@@ -1,3 +1,15 @@
+mit-scheme (9.1.1-1) unstable; urgency=low
+
+  * New upstream
+  * update packaging scripts: dh9, bump policy version, etc
+  * support amd64 (closes: #714887)
+  * support multiarch, so i386 and amd64 can co-exist
+  * allow parallel build
+  * engage autoreconf
+  * reduce lintian clutter from debian/control and debian/copyright
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 13 Aug 2013 09:32:08 +0200
+
 mit-scheme (9.1-1) unstable; urgency=low
 
   * New upstream.
