@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.91 2007/07/08 06:37:31 riastradh Exp $
+$Id: sendmail.scm,v 1.92 2007/09/09 16:36:50 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -89,7 +89,7 @@ so you can remove or alter the BCC field to override the default."
   "Name of file to write all outgoing messages in, or #f for none."
   #f
   string-or-false?)
-
+
 (define-variable mail-relay-host
   "Name of host to which all outgoing mail should be sent.
 Can be a host name (a string) or #F.
@@ -97,6 +97,17 @@ If #F, mail is passed to sendmail for handling.
 Otherwise, mail is sent directly to the named host using SMTP."
   #f
   string-or-false?)
+
+(define-variable mail-relay-service
+  "Service to connect to on the mail relay host.
+Can be a service name (a string), a service number, or #F.
+If #F, service \"smtp\" is used.
+This is used only of `mail-relay-host' is set."
+  #f
+  (lambda (service)
+    (or (not service)
+        (exact-positive-integer? service)
+        (string? service))))
 
 (define-variable smtp-trace
   "If true, direct SMTP transmissions are traced in a buffer."
@@ -108,6 +119,20 @@ Otherwise, mail is sent directly to the named host using SMTP."
 Otherwise, only one valid recipient is required."
   #t
   boolean?)
+
+(define-variable sendmail-program
+  "Filename of sendmail program."
+  #f
+  string-or-false?)
+
+(define-variable send-mail-procedure
+  "Procedure to call to send the current buffer as mail.
+The headers are delimited by a string found in mail-header-separator."
+  (lambda () (sendmail-send-it))
+  (lambda (object)
+    (and (procedure? object)
+	 (procedure-arity-valid? object 0))))
+(variable-permanent-local! (ref-variable-object send-mail-procedure))
 
 (define-variable mail-yank-ignored-headers
   "Delete these headers from old message when it's inserted in a reply."
@@ -147,20 +172,6 @@ is ignored."
     (or (false? object)
 	(and (procedure? object)
 	     (procedure-arity-valid? object 1)))))
-
-(define-variable sendmail-program
-  "Filename of sendmail program."
-  #f
-  string-or-false?)
-
-(define-variable send-mail-procedure
-  "Procedure to call to send the current buffer as mail.
-The headers are delimited by a string found in mail-header-separator."
-  (lambda () (sendmail-send-it))
-  (lambda (object)
-    (and (procedure? object)
-	 (procedure-arity-valid? object 0))))
-(variable-permanent-local! (ref-variable-object send-mail-procedure))
 
 (define-variable mail-reply-buffer
   ""
@@ -921,6 +932,8 @@ the user from the mailer."
 	(editor-error "No recipients specified for mail."))
     (let ((responses
 	   (call-with-smtp-socket (ref-variable mail-relay-host lookup-context)
+                                  (ref-variable mail-relay-service
+                                                lookup-context)
 				  trace-buffer
 	     (lambda (port banner)
 	       banner
@@ -963,12 +976,13 @@ the user from the mailer."
 		   "done"
 		   "aborted")))))
 
-(define (call-with-smtp-socket host-name trace-buffer receiver)
+(define (call-with-smtp-socket host-name service trace-buffer receiver)
   (let ((port #f))
     (dynamic-wind
      (lambda ()
        (set! port
-	     (make-smtp-port (open-tcp-stream-socket host-name "smtp")
+	     (make-smtp-port (open-tcp-stream-socket host-name
+                                                     (or service "smtp"))
 			     trace-buffer))
        unspecific)
      (lambda ()

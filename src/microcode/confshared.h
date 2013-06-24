@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: confshared.h,v 11.12 2007/04/22 16:31:22 cph Exp $
+$Id: confshared.h,v 11.13 2007/09/04 03:35:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -90,7 +90,7 @@ USA.
 #  endif
 #endif
 
-#if HAVE_STDBOOL_H
+#ifdef HAVE_STDBOOL_H
 #  include <stdbool.h>
 #else
 #  if !HAVE__BOOL
@@ -359,7 +359,7 @@ typedef enum
 
 #endif /* hp9000s500 */
 
-#ifdef sparc
+#ifdef __sparc
 #  define MACHINE_TYPE		"sun4"
 #  define CURRENT_FASL_ARCH	FASL_SPARC
 #  define FLOATING_ALIGNMENT	0x7

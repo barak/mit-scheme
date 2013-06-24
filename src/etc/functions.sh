@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: functions.sh,v 1.9 2007/06/15 03:40:17 cph Exp $
+# $Id: functions.sh,v 1.10 2007/09/04 03:35:19 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -64,14 +64,14 @@ get_fasl_file ()
 
 maybe_mkdir ()
 {
-    if [ ! -e "${1}" ]; then
+    if [ ! -d "${1}" ]; then
 	run_cmd mkdir "${1}"
     fi
 }
 
 maybe_link ()
 {
-    if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
+    if [ ! -f "${1}" ] && [ ! -L "${1}" ]; then
 	run_cmd ln -s "${2}" "${1}"
     fi
 }
@@ -88,7 +88,12 @@ maybe_unlink_p ()
     (
     cd `dirname "${1}"`
     BN=`basename "${1}"`
-    [ -L "${BN}" ] && [ "${BN}" -ef "${2}" ]
+    # What a wretched hack this is!  I can find no standard way to
+    # compare two pathnames for identity of the file they name.  There
+    # is a non-standard `-ef' option to `test', `test f1 -ef f2', but
+    # Solaris does not support this option.  Ugh!  --TRC
+    [ -L "${BN}" ] && [ -f "${2}" ] &&	\
+	(ls -l "${BN}" | grep -- " -> ${2}\$" >/dev/null)
     )
 }
 
