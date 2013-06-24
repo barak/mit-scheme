@@ -19,8 +19,6 @@
  * makes no representations about the suitability of this
  * software for any purpose.  It is provided "as is" without
  * express or implied warranty.
- *
- * $Id: tclUnix.h,v 1.2 2002/11/27 02:09:30 cph Exp $ SPRITE (Berkeley)
  */
 
 #ifndef _TCLUNIX

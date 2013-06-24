@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.25 2008/06/09 01:39:28 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -351,13 +349,9 @@ USA.
 (define compiler:primitives-with-no-open-coding
   '(DIVIDE-FIXNUM GCD-FIXNUM &/
 		  ;; Disabled: trig instructions are limited to an
-		  ;; input range of 0 <= X <= pi*2^62.
+		  ;; input range of 0 <= |X| <= pi*2^62, and yield
+		  ;; inaccurate answers for an input range of 0 <= |X|
+		  ;; <= pi/4.  Correct argument reduction requires a
+		  ;; better approximation of pi than the i387 has.
 		  FLONUM-SIN FLONUM-COS FLONUM-TAN
-		  ;; The rewriting rules in rulrew.scm don't work.
-		  ;; Treat as not available.
-		  FLONUM-ASIN FLONUM-ACOS
-		  ;; Disabled for now.  The F2XM1 instruction is
-		  ;; broken on the 387 (or at least some of them), and
-		  ;; in general has a very limited input range.
-		  FLONUM-EXP
 		  VECTOR-CONS STRING-ALLOCATE FLOATING-VECTOR-CONS))

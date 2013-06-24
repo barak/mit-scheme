@@ -1,10 +1,9 @@
 #!/bin/sh
 #
-# $Id: install-bin-symlinks.sh,v 1.4 2008/01/30 20:02:08 cph Exp $
-#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -37,10 +36,24 @@ else
     exit 1
 fi
 
-if [ "${EXE}" != mit-scheme ] && [ ! -f "${DIR}/mit-scheme" ]; then
-    run_cmd rm -f "${DIR}"/mit-scheme
-    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme
-fi
+case ${EXE} in
+    mit-scheme-c|mit-scheme-native)
+	if test ! -f "${DIR}"/mit-scheme; then
+	    run_cmd rm -f "${DIR}"/mit-scheme
+	    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme
+	fi
+	;;
+    mit-scheme-*)
+	if test ! -f "${DIR}"/mit-scheme-native; then
+	    run_cmd rm -f "${DIR}"/mit-scheme-native
+	    run_cmd ln -s "${EXE}" "${DIR}"/mit-scheme-native
+	fi
+	if test ! -f "${DIR}"/mit-scheme; then
+	    run_cmd rm -f "${DIR}"/mit-scheme
+	    run_cmd ln -s mit-scheme-native "${DIR}"/mit-scheme
+	fi
+	;;
+esac
 
 run_cmd rm -f "${DIR}"/scheme "${DIR}"/bchscheme
 run_cmd ln -s mit-scheme "${DIR}"/scheme

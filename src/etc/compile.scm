@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.28 2008/01/30 20:02:08 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -85,8 +83,7 @@ USA.
       (load "make")))
   (in-liarc
    (lambda ()
-     (compile-boot-dirs c-compile-dir)
-     (cf-conditionally "microcode/utabmd"))))
+     (compile-boot-dirs c-compile-dir))))
 
 (define (native-prepare)
   (load-option 'SF)
@@ -97,8 +94,7 @@ USA.
 	(load "compiler.so")
 	(load make-file))))
   (fluid-let ((compiler:cross-compiling? #t))
-    (compile-boot-dirs compile-dir)
-    (sf-conditionally "microcode/utabmd")))
+    (compile-boot-dirs compile-dir)))
 
 (define (compiler-make-file)
   (string-append
@@ -110,7 +106,6 @@ USA.
   (in-liarc
    (lambda ()
      (compile-all-dirs c-compile-dir)
-     (cf-conditionally "microcode/utabmd")
      (cbf-conditionally "edwin/edwin.bld"))))
 
 (define (in-liarc thunk)

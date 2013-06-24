@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.38 2008/05/17 02:18:27 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1410,7 +1408,8 @@ USA.
 ;;; redundant paths to the ancestors of a header.
 
 (define (convert-header-graphs-to-trees headers)
-  (let ((tables (cons (make-eq-hash-table) (make-eq-hash-table))))
+  (let ((tables
+	 (cons (make-strong-eq-hash-table) (make-strong-eq-hash-table))))
     (for-each (lambda (header)
 		(if (eq? (hash-table/get (car tables) header 'NONE) 'NONE)
 		    (eliminate-redundant-relatives tables header)))
@@ -1724,7 +1723,7 @@ USA.
 ;;; common references.
 
 (define (build-equivalence-classes threads subject-alist)
-  (let ((equivalences (make-eq-hash-table)))
+  (let ((equivalences (make-strong-eq-hash-table)))
     (for-each (lambda (thread)
 		(hash-table/put! equivalences
 				 thread

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.12 2008/09/08 03:55:18 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 Copyright (C) 2005, 2006, 2007, 2008 Taylor R. Campbell
 
 This file is part of MIT/GNU Scheme.
@@ -520,34 +518,37 @@ USA.
 
 (define-mime-media-parser 'MULTIPART #f
   (lambda (header-fields string start end type subtype parameters)
-    type                                ;ignore
-    (mime:parse-multipart header-fields string start end subtype parameters)))
+    (mime:parse-multipart header-fields string start end
+                          type subtype parameters)))
 
 (define-mime-media-parser 'MULTIPART 'DIGEST
   (lambda (header-fields string start end type subtype parameters)
-    type                                ;ignore
     (fluid-let ((mime:default-content-type '(MESSAGE RFC822)))
       (mime:parse-multipart header-fields string start end
-                            subtype parameters))))
+                            type subtype parameters))))
 
 (define (mime:parse-multipart header-fields string start end
-                              subtype parameters)
-  (let ((boundary (mime:get-boundary parameters)))
-    (and boundary
-         (let ((parts
-                (mime:parse-multipart-parts header-fields string start end
-                                            boundary)))
-           (and parts
-                (let* ((enclosure
-                        (make-mime-body-multipart-substring
-                         header-fields string start end
-			 subtype parameters parts
-                         (mime:get-content-disposition header-fields)
-                         (mime:get-content-language header-fields))))
-                  (for-each (lambda (part)
-                              (set-mime-body-enclosure! part enclosure))
-                            parts)
-                  enclosure))))))
+                              type subtype parameters)
+  (or (let ((boundary (mime:get-boundary parameters)))
+        (and boundary
+             (let ((parts
+                    (mime:parse-multipart-parts header-fields string start end
+                                                boundary)))
+               (and parts
+                    (let* ((enclosure
+                            (make-mime-body-multipart-substring
+                             header-fields string start end
+                             subtype parameters parts
+                             (mime:get-content-disposition header-fields)
+                             (mime:get-content-language header-fields))))
+                      (for-each (lambda (part)
+                                  (set-mime-body-enclosure! part enclosure))
+                                parts)
+                      enclosure)))))
+      ;++ This is not quite right, but at least it will preserve the
+      ;++ octets in the malformed part and not crash IMAIL.
+      (mime:basic-media-parser header-fields string start end
+                               type subtype parameters)))
 
 (define (mime:parse-multipart-parts header-fields string start end boundary)
   (let ((encoding
@@ -578,8 +579,8 @@ USA.
                     (if (boundary-start? boundary-start)
                         (continue part-start
                                   ;; Slurp in the preceding newline.
-                                  (if (= boundary-start start)
-                                      start
+                                  (if (= boundary-start part-start)
+                                      part-start
                                       (- boundary-start 1))
                                   boundary-end
                                   parts)
@@ -732,7 +733,9 @@ USA.
               (let ((attribute (car tokens)) (tokens (cdr tokens)))
                 (if (pair? tokens)
                     (let ((equals (car tokens)) (tokens (cdr tokens)))
-                      (if (and (eqv? equals #\=) (pair? tokens))
+                      (if (and (eqv? equals #\=)
+                               (pair? tokens)
+                               (string? (car tokens)))
                           (cons (cons (intern attribute)
                                       (rfc822:unquote-string (car tokens)))
                                 (recur (cdr tokens)))
@@ -765,7 +768,7 @@ USA.
 (define-guarantee mime-encoding "MIME codec")
 
 (define mime-encodings
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (define-mime-encoding name
           encode:initialize encode:finalize encode:update

@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: pruxenv.c,v 1.28 2008/01/30 20:02:19 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,6 +28,7 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
+#include "uxtop.h"
 #include "uxtrap.h"
 
 extern const char * OS_current_user_name (void);
@@ -232,6 +231,34 @@ DEFINE_PRIMITIVE ("INSTRUCTION-ADDRESS->COMPILED-CODE-BLOCK",
 	pc = ((unsigned long) (CC_ENTRY_ADDRESS (object)));
       }
     PRIMITIVE_RETURN (find_ccblock (pc));
+  }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+DEFINE_PRIMITIVE ("MACOSX-MAIN-BUNDLE-DIR",
+		  Prim_macosx_main_bundle_dir, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+#ifdef __APPLE__
+  {
+    const char * path = (macosx_main_bundle_dir ());
+    unsigned int n_words;
+    SCHEME_OBJECT result;
+
+    if (path == 0)
+      PRIMITIVE_RETURN (SHARP_F);
+    n_words = (1 + (STRING_LENGTH_TO_GC_LENGTH (strlen (path))));
+    if (GC_NEEDED_P (n_words))
+      {
+	UX_free ((void *) path);
+	Primitive_GC (n_words);
+      }
+    result = (char_pointer_to_string_no_gc (path));
+    UX_free ((void *) path);
+    PRIMITIVE_RETURN (result);
   }
 #else
   error_unimplemented_primitive ();

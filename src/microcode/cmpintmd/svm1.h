@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: svm1.h,v 1.3 2008/01/30 20:02:24 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,6 +43,14 @@ typedef byte_t insn_t;
 /* Number of insn_t units preceding entry header in which GC trap
    instructions are stored.  */
 #define CC_ENTRY_GC_TRAP_SIZE 0
+
+/* Size of closure count in insn_t units.  Only first two bytes
+   contain the count, but we must add padding to move the first entry
+   to a word boundary.  */
+#define CLOSURE_COUNT_SIZE SIZEOF_SCHEME_OBJECT
+
+/* Size of closure entry in insn_t units.  */
+#define CLOSURE_ENTRY_SIZE 3
 
 /* Size of execution cache in SCHEME_OBJECTS.  */
 #define UUO_LINK_SIZE 2

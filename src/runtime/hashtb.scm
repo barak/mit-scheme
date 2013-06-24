@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.40 2008/08/21 01:00:41 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -220,7 +218,7 @@ USA.
 		      (cond ((exact-integer? x) (< 0 x))
 			    ((real? x) (< 1 x))
 			    (else #f)))
-		    "real number < 1 or exact integer >= 1"
+		    "real number > 1 or exact integer >= 1"
 		    'SET-HASH-TABLE/REHASH-SIZE!)))
     (with-table-locked! table
       (lambda ()
@@ -294,7 +292,11 @@ USA.
 					    %weak-entry-datum)))
 
 (define-integrable (%weak-make-entry key datum)
-  (if (or (not key) (number? key))	;Keep numbers in table.
+  ;; Use an ordinary pair for objects that aren't pointers or that
+  ;; have unbounded extent.
+  (if (or (object-non-pointer? key)
+	  (number? key)
+	  (interned-symbol? key))
       (cons key datum)
       (system-pair-cons (ucode-type weak-cons) key datum)))
 
@@ -315,7 +317,7 @@ USA.
 	    ((scan-head
 	      (lambda (p)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(begin
 			  (vector-set! buckets i p)
 			  (scan-tail (cdr p) p))
@@ -326,13 +328,13 @@ USA.
 	     (scan-tail
 	      (lambda (p q)
 		(if (pair? p)
-		    (if (%weak-entry-key (car p))
+		    (if (%weak-entry-valid? (car p))
 			(scan-tail (cdr p) p)
 			(begin
 			  (decrement-table-count! table)
 			  (let loop ((p (cdr p)))
 			    (if (pair? p)
-				(if (%weak-entry-key (car p))
+				(if (%weak-entry-valid? (car p))
 				    (begin
 				      (set-cdr! q p)
 				      (scan-tail (cdr p) p))
@@ -778,23 +780,32 @@ USA.
   (cond ((and (eq? key=? eq?)
 	      (or (eq? key-hash eq-hash-mod)
 		  (eq? key-hash hash-by-identity)))
-	 (make-weak-rehash-type eq-hash-mod eq?))
+	 strong-eq-hash-table-type)
 	((and (eq? key=? eqv?)
 	      (eq? key-hash eqv-hash-mod))
-	 (make-weak-rehash-type eqv-hash-mod eqv?))
+	 strong-eqv-hash-table-type)
 	((and (eq? key=? equal?)
 	      (or (eq? key-hash equal-hash-mod)
 		  (eq? key-hash hash)))
-	 (make-strong-rehash-type equal-hash-mod equal?))
+	 equal-hash-table-type)
+	((and (eq? key=? string=?)
+	      (or (eq? key-hash string-hash-mod)
+		  (eq? key-hash string-hash)
+		  (eq? key-hash hash)))
+	 string-hash-table-type)
 	((and (or (eq? key=? string=?)
 		  (eq? key=? string-ci=?))
 	      (or (eq? key-hash string-hash-mod)
 		  (eq? key-hash string-hash)
+		  (eq? key-hash hash)
 		  (eq? key-hash string-ci-hash)))
-	 (make-strong-no-rehash-type (if (eq? key-hash string-hash)
-					 string-hash-mod
-					 key-hash)
-				     key=?))
+	 ;; This LET avoids copying the IF in the integrated body of
+	 ;; MAKE-STRONG-NO-REHASH-TYPE, which does no good.
+	 (let ((key-hash
+		(if (eq? key-hash string-hash)
+		    string-hash-mod
+		    key-hash)))
+	   (make-strong-no-rehash-type key-hash key=?)))
 	(else
 	 (make-strong-rehash-type key-hash key=?))))
 
@@ -829,19 +840,16 @@ USA.
 	datum)))
 
 (define (hash-table-update! table key procedure #!optional get-default)
-  (hash-table/modify! table
-		      key
-		      (if (default-object? get-default)
-			  (lambda (datum)
-			    (if (eq? datum default-marker)
-				(error:bad-range-argument key
-							  'HASH-TABLE-UPDATE!))
-			    (procedure datum))
-			  (lambda (datum)
-			    (procedure (if (eq? datum default-marker)
-					   (get-default)
-					   datum))))
-		      default-marker))
+  (hash-table-set!
+   table
+   key
+   (procedure
+    (hash-table-ref table
+		    key
+		    (if (default-object? get-default)
+			(lambda ()
+			  (error:bad-range-argument key 'HASH-TABLE-UPDATE!))
+			get-default)))))
 
 (define (hash-table-copy table)
   (guarantee-hash-table table 'HASH-TABLE-COPY)
@@ -869,30 +877,28 @@ USA.
 
 (define address-hash-tables)
 
-(define eq-hash-table-type)
+(define weak-eq-hash-table-type)
 (define strong-eq-hash-table-type)
-(define eqv-hash-table-type)
+(define weak-eqv-hash-table-type)
 (define strong-eqv-hash-table-type)
 (define equal-hash-table-type)
 (define string-hash-table-type)
 
-(define make-eq-hash-table)
+(define make-weak-eq-hash-table)
 (define make-strong-eq-hash-table)
-(define make-eqv-hash-table)
+(define make-weak-eqv-hash-table)
 (define make-strong-eqv-hash-table)
 (define make-equal-hash-table)
 (define make-string-hash-table)
-(define make-symbol-hash-table)
-(define make-object-hash-table)
 
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
-  (set! eq-hash-table-type
+  (set! weak-eq-hash-table-type
 	(make-weak-rehash-type eq-hash-mod eq?))
   (set! strong-eq-hash-table-type
 	(make-strong-rehash-type eq-hash-mod eq?))
-  (set! eqv-hash-table-type
+  (set! weak-eqv-hash-table-type
 	(make-weak-rehash-type eqv-hash-mod eqv?))
   (set! strong-eqv-hash-table-type
 	(make-strong-rehash-type eqv-hash-mod eqv?))
@@ -900,11 +906,11 @@ USA.
 	(make-strong-rehash-type equal-hash-mod equal?))
   (set! string-hash-table-type
 	(make-strong-no-rehash-type string-hash-mod string=?))
-  (set! make-eq-hash-table
+  (set! make-weak-eq-hash-table
 	(hash-table-constructor eq-hash-table-type))
   (set! make-strong-eq-hash-table
 	(hash-table-constructor strong-eq-hash-table-type))
-  (set! make-eqv-hash-table
+  (set! make-weak-eqv-hash-table
 	(hash-table-constructor eqv-hash-table-type))
   (set! make-strong-eqv-hash-table
 	(hash-table-constructor strong-eqv-hash-table-type))
@@ -912,9 +918,6 @@ USA.
 	(hash-table-constructor equal-hash-table-type))
   (set! make-string-hash-table
 	(hash-table-constructor string-hash-table-type))
-  ;; Define old names for compatibility:
-  (set! make-symbol-hash-table make-eq-hash-table)
-  (set! make-object-hash-table make-eqv-hash-table)
   unspecific)
 
 (define (mark-address-hash-tables!)

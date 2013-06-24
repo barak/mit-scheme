@@ -1,10 +1,9 @@
 #!/bin/sh
 
-# $Id: configure,v 1.20 2008/01/30 20:01:41 cph Exp $
-#
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
+#     Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -25,38 +24,37 @@
 
 set -e
 
-MACHINE=
-while test $# -gt 0; do
-    case "${1}" in
-    --enable-native-code=*)
-	MACHINE=`echo "${1}" | sed -e 's/--enable-native-code=//'`
-	shift
-	;;
-    --disable-native-code)
-	MACHINE=no
-	shift
-	;;
-    *)
-	shift
-	;;
-    esac
-done
-MACHINE=`./choose-machine.sh "${MACHINE}"`
+if test ${#} != 1; then
+    echo "usage: ${0} TARGET_ARCH" >&2
+    exit 1
+fi
 
-CMD="rm -f machine"
-echo "${CMD}"; eval "${CMD}"
+cd `dirname "${0}"`
+TARGET_ARCH=${1}
 
-CMD="ln -s machines/${MACHINE} machine"
-echo "${CMD}"; eval "${CMD}"
+MACHINE=`./choose-machine.sh "${TARGET_ARCH}"`
+
+if test -z "${MACHINE}"; then
+    echo "Unknown target arch: ${TARGET_ARCH}" >&2
+    exit 1
+fi
 
 LINKS="compiler.cbf compiler.pkg compiler.sf make.com"
-if test "${MACHINE}" = C; then
+if test x${MACHINE} = xC; then
     LINKS="${LINKS} make.so"
 fi
 
-for FN in ${LINKS}; do
-    if [ ! -f "${FN}" ]; then
-	CMD="ln -s machine/${FN} ."
-	echo "${CMD}"; eval "${CMD}"
+for FN in machine ${LINKS}; do
+    if test -e ${FN} && test ! -L ${FN}; then
+	echo "${FN} is not a symbolic link; refusing to clobber it." >&2
+	exit 1
     fi
+done
+
+CMDS="rm -f machine && ln -s machines/${MACHINE} machine"
+echo "${CMDS}"; eval "${CMDS}"
+
+for FN in ${LINKS}; do
+    CMDS="rm -f ${FN} && ln -s machine/${FN} ${FN}"
+    echo "${CMDS}"; eval "${CMDS}"
 done

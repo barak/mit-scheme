@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: thread.scm,v 1.50 2008/09/12 10:26:18 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -853,7 +851,8 @@ USA.
 		 (if prev
 		     (set-timer-record/next! prev new-record)
 		     (set! timer-records new-record)))
-	       (loop (timer-record/next record) record)))))
+	       (loop (timer-record/next record) record)))
+	 (%maybe-toggle-thread-timer)))
       new-record)))
 
 (define (sleep-current-thread interval)

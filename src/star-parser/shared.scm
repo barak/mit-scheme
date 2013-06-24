@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: shared.scm,v 1.35 2008/01/30 20:02:40 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -159,11 +157,13 @@ USA.
 (define (make-parser-macros parent)
   (if parent (guarantee-parser-macros parent 'MAKE-PARSER-MACROS))
   (%make-parser-macros (or parent *global-parser-macros*)
-		       (make-eq-hash-table)
-		       (make-eq-hash-table)))
+		       (make-strong-eq-hash-table)
+		       (make-strong-eq-hash-table)))
 
 (define *global-parser-macros*
-  (%make-parser-macros #f (make-eq-hash-table) (make-eq-hash-table)))
+  (%make-parser-macros #f
+		       (make-strong-eq-hash-table)
+		       (make-strong-eq-hash-table)))
 
 (define (guarantee-parser-macros object procedure)
   (if (not (parser-macros? object))

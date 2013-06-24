@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: vector.scm,v 14.29 2008/02/10 06:14:19 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,35 +28,17 @@ USA.
 
 (declare (usual-integrations))
 
-(define-integrable vector
-  (ucode-primitive vector))
-
-(define-integrable (vector? object)
-  ((ucode-primitive vector?) object))
-
-(define-integrable (vector-length v)
-  ((ucode-primitive vector-length) v))
-
-(define-integrable (vector-ref v i)
-  ((ucode-primitive vector-ref) v i))
-
-(define-integrable (vector-set! v i x)
-  ((ucode-primitive vector-set!) v i x))
-
-(define-integrable (list->vector list)
-  ((ucode-primitive list->vector) list))
-
-(define-integrable (subvector->list v s e)
-  ((ucode-primitive subvector->list) v s e))
-
-(define-integrable (subvector-fill! v s e x)
-  ((ucode-primitive subvector-fill!) v s e x))
-
-(define-integrable (subvector-move-left! v1 s1 e1 v2 s2)
-  ((ucode-primitive subvector-move-left!) v1 s1 e1 v2 s2))
-
-(define-integrable (subvector-move-right! v1 s1 e1 v2 s2)
-  ((ucode-primitive subvector-move-right!) v1 s1 e1 v2 s2))
+(define-primitives
+  (list->vector 1)
+  (subvector->list 3)
+  (subvector-fill! 4)
+  (subvector-move-left! 5)
+  (subvector-move-right! 5)
+  (vector -1)
+  (vector-length 1)
+  (vector-ref 2)
+  (vector-set! 3)
+  (vector? 1))
 
 (define-integrable (guarantee-vector object procedure)
   (if (not (vector? object))
@@ -236,7 +216,7 @@ USA.
       (sc-macro-transformer
        (lambda (form environment)
 	 `(DEFINE-INTEGRABLE (,(cadr form) VECTOR)
-	    (GUARANTEE-VECTOR VECTOR 'SAFE-VECTOR-REF)
+	    (GUARANTEE-VECTOR VECTOR ',(cadr form))
 	    (VECTOR-REF VECTOR ,(caddr form)))))))
   (iref vector-first 0)
   (iref vector-second 1)

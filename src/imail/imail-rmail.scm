@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-rmail.scm,v 1.79 2008/08/31 23:02:17 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -239,7 +237,8 @@ USA.
       (write-rmail-file-header (rmail-folder-header-fields folder) port)
       (for-each-vector-element (file-folder-messages folder)
 	(lambda (message)
-	  (write-rmail-message message port))))))
+	  (write-rmail-message message port)))
+      (output-port/synchronize-output port))))
 
 (define-method append-message-to-file (message url (type <rmail-folder-type>))
   type
@@ -280,18 +279,18 @@ USA.
 (define (write-rmail-attributes-line message formatted? port)
   (write-char (if formatted? #\1 #\0) port)
   (write-char #\, port)
-  (call-with-values (lambda () (flags->rmail-markers (message-flags message)))
-    (lambda (attributes labels)
-      (let ((write-markers
-	     (lambda (markers)
-	       (for-each (lambda (marker)
-			   (write-char #\space port)
-			   (write-string marker port)
-			   (write-char #\, port))
-			 markers))))
-	(write-markers attributes)
-	(write-char #\, port)
-	(write-markers labels))))
+  (receive (attributes labels)
+      (flags->rmail-markers (message-permanent-flags message))
+    (let ((write-markers
+	   (lambda (markers)
+	     (for-each (lambda (marker)
+			 (write-char #\space port)
+			 (write-string marker port)
+			 (write-char #\, port))
+		       markers))))
+      (write-markers attributes)
+      (write-char #\, port)
+      (write-markers labels)))
   (newline port))
 
 ;;;; Attributes and labels

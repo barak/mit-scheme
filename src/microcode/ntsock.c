@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.23 2008/01/30 20:02:15 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,13 +26,16 @@ USA.
 /* This conditional encompasses the entire file.  */
 #ifndef DISABLE_SOCKET_SUPPORT
 
+/* Needed for winsock2 include below.  */
+#define WIN32_LEAN_AND_MEAN
+
 #include "scheme.h"
 #include "prims.h"
 #include "nt.h"
 #include "ntio.h"
 #include "uxsock.h"
 
-#include <winsock.h>
+#include <winsock2.h>
 
 channel_class_t * NT_channel_class_tcp_stream_socket;
 channel_class_t * NT_channel_class_tcp_server_socket;

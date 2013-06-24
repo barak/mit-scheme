@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.82 2008/01/30 20:01:56 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1633,8 +1631,6 @@ USA.
     ((integer-add &+) 'plus-fixnum)
     ((integer-subtract &-) 'minus-fixnum)
     ((integer-multiply &*) 'multiply-fixnum)
-    ((integer-quotient quotient) 'fixnum-quotient)
-    ((integer-remainder remainder) 'fixnum-remainder)
     ((integer-add-1 1+) 'one-plus-fixnum)
     ((integer-subtract-1 -1+) 'minus-one-plus-fixnum)
     ((integer-negate) 'fixnum-negate)
@@ -1648,9 +1644,9 @@ USA.
 
 (for-each (lambda (generic-op)
 	    (generic-binary-operator generic-op))
-	  '(&+ &- &* #| &/ |# QUOTIENT REMAINDER
-	       INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY
-	       INTEGER-QUOTIENT INTEGER-REMAINDER))
+	  ;; Don't add any division operators here.  The open-coding
+	  ;; doesn't test for divide-by-zero.
+	  '(&+ &- &* INTEGER-ADD INTEGER-SUBTRACT INTEGER-MULTIPLY))
 
 (for-each (lambda (generic-op)
 	    (generic-binary-predicate generic-op))

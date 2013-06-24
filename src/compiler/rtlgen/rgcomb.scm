@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rgcomb.scm,v 4.26 2008/01/30 20:01:56 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -157,13 +155,10 @@ USA.
   model					; ignored
   (scfg*scfg->scfg!
    (prefix frame-size 0)
-   (let* ((primitive (constant-value (rvalue-known-value operator)))
-	  (arity (primitive-procedure-arity primitive)))
-     (if (not (or (= arity -1)
-		  (= arity frame-size)))
+   (let ((primitive (constant-value (rvalue-known-value operator))))
+     (if (not (primitive-arity-correct? primitive frame-size))
 	 (error "Primitive called with incorrect number of arguments."
 		primitive
-		arity
 		frame-size))
      ((or (special-primitive-handler primitive)
 	  rtl:make-invocation:primitive)

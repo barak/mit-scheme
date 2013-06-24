@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: stream.scm,v 14.23 2008/01/30 20:02:35 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -298,11 +296,8 @@ USA.
     (reset-primes!)
     (add-secondary-gc-daemon! reset-primes!)))
 
-(define (error:illegal-stream-element stream operator operand)
-  (error (make-illegal-stream-element "stream" stream operator operand)))
-
-(define make-illegal-stream-element)
 (define condition-type:illegal-stream-element)
+(define error:illegal-stream-element)
 
 (define (initialize-conditions!)
   (set! condition-type:illegal-stream-element
@@ -312,14 +307,18 @@ USA.
 	  (lambda (condition port)
 	    (write-string "The object " port)
 	    (write (access-condition condition 'DATUM) port)
-	    (write-string ", occurring in the " port)
+	    (write-string ", passed as the " port)
 	    (write-string (ordinal-number-string
 			   (+ (access-condition condition 'OPERAND) 1))
 			  port)
 	    (write-string " argument to " port)
 	    (write-operator (access-condition condition 'OPERATOR) port)
 	    (write-string ", is not a stream." port))))
-  (set! make-illegal-stream-element
-	(condition-constructor condition-type:illegal-stream-element
-			       '(TYPE DATUM OPERATOR OPERAND)))
+  (set! error:illegal-stream-element
+	(let ((signaller
+	       (condition-signaller condition-type:illegal-stream-element
+				    '(TYPE DATUM OPERATOR OPERAND)
+				    standard-error-handler)))
+	  (named-lambda (error:illegal-stream-element stream operator operand)
+	    (signaller "stream" stream operator operand))))
   unspecific)

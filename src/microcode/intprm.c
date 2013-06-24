@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: intprm.c,v 1.16 2008/01/30 20:02:13 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -144,20 +142,10 @@ DEFINE_PRIMITIVE ("INTEGER->FLONUM", Prim_integer_to_flonum, 2, 2, 0)
     SCHEME_OBJECT integer = (ARG_REF (1));
     long control = (arg_index_integer (2, 4));
     if (FIXNUM_P (integer))
-    {
-      long X = (FIXNUM_TO_LONG (integer));
-      double Y = ((double) X);
-
-      if (((long) Y) == X)
-	PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
-      if ((control & 2) != 0)
-	error_bad_range_arg (1);
-      PRIMITIVE_RETURN (SHARP_F);
-    }
-    if (bignum_fits_in_word_p
-	(integer,
-	 (((control & 1) != 0) ? DBL_MANT_DIG : DBL_MAX_EXP),
-	 0))
+      PRIMITIVE_RETURN (FIXNUM_TO_FLONUM (integer));
+    if (((control & 1) != 0)
+	? (LOSSLESS_BIGNUM_TO_DOUBLE_P (integer))
+	: (BIGNUM_TO_DOUBLE_P (integer)))
       PRIMITIVE_RETURN (BIGNUM_TO_FLONUM (integer));
     if ((control & 2) != 0)
       error_bad_range_arg (1);

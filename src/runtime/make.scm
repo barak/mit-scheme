@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.119 2008/09/15 05:15:20 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -175,11 +173,16 @@ USA.
   (cond ((let ((package (find-package package-name #f)))
 	   (and package
 		(let ((env (package/environment package)))
-		  (and (not (lexical-unreferenceable? env procedure-name))
-		       (lexical-reference env procedure-name)))))
+		  (if (not procedure-name)
+		      (if (lexical-unreferenceable? env 'INITIALIZE-PACKAGE!)
+			  (lambda () ((access run-boot-inits! boot-defs) env))
+			  (lexical-reference env 'INITIALIZE-PACKAGE!))
+		      (and (not (lexical-unreferenceable? env procedure-name))
+			   (lexical-reference env procedure-name))))))
 	 => (lambda (procedure)
 	      (print-name "initialize:")
-	      (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+	      (if (not (or (not procedure-name)
+			   (eq? procedure-name 'INITIALIZE-PACKAGE!)))
 		  (begin
 		    (tty-write-string " [")
 		    (tty-write-string (system-pair-car procedure-name))
@@ -191,21 +194,29 @@ USA.
 	 ;; Missing mandatory package! Report it and die.
 	 (print-name "Package")
 	 (tty-write-string " is missing initialization procedure ")
-	 (tty-write-string (system-pair-car procedure-name))
+	 (if procedure-name
+	     (tty-write-string (system-pair-car procedure-name)))
 	 (fatal-error "Could not initialize a required package."))))
 
 (define (package-reference name)
   (package/environment (find-package name)))
 
 (define (package-initialization-sequence specs)
-  (let loop ((specs specs))
-    (if (pair? specs)
-	(let ((spec (car specs)))
-	  (if (or (not (pair? spec))
-		  (symbol? (car spec)))
-	      (package-initialize spec 'INITIALIZE-PACKAGE! #f)
-	      (package-initialize (car spec) (cadr spec) (caddr spec)))
-	  (loop (cdr specs))))))
+  (do ((specs specs (cdr specs)))
+      ((not (pair? specs)) unspecific)
+    (let ((spec (car specs)))
+      (cond ((eq? (car spec) 'OPTIONAL)
+	     (package-initialize (cadr spec)
+				 (and (pair? (cddr spec))
+				      (caddr spec))
+				 #f))
+	    ((pair? (car spec))
+	     (package-initialize (car spec)
+				 (and (pair? (cdr spec))
+				      (cadr spec))
+				 #t))
+	    (else
+	     (package-initialize spec #f #t))))))
 
 (define (remember-to-purify purify? filename value)
   (if purify?
@@ -343,6 +354,7 @@ USA.
  packages-file)
 
 ;;; Global databases.  Load, then initialize.
+(define boot-defs)
 (let ((files1
        '(("gcdemn" . (RUNTIME GC-DAEMONS))
 	 ("gc" . (RUNTIME GARBAGE-COLLECTOR))
@@ -356,10 +368,11 @@ USA.
 	 ("random" . (RUNTIME RANDOM-NUMBER))
 	 ("gentag" . (RUNTIME GENERIC-PROCEDURE))
 	 ("poplat" . (RUNTIME POPULATION))
-	 ("record" . (RUNTIME RECORD))
-	 ("syntax-transforms" . (RUNTIME SYNTACTIC-CLOSURES))))
+	 ("record" . (RUNTIME RECORD))))
       (files2
-       '(("prop1d" . (RUNTIME 1D-PROPERTY))
+       '(("syntax-items" . (RUNTIME SYNTAX ITEMS))
+	 ("syntax-transforms" . (RUNTIME SYNTAX TRANSFORMS))
+	 ("prop1d" . (RUNTIME 1D-PROPERTY))
 	 ("events" . (RUNTIME EVENT-DISTRIBUTOR))
 	 ("gdatab" . (RUNTIME GLOBAL-DATABASE))
 	 ("gcfinal" . (RUNTIME GC-FINALIZER))
@@ -371,24 +384,24 @@ USA.
 	   (eval (file->object (car (car files)) #t #t)
 		 (package-reference (cdr (car files))))))))
   (load-files files1)
-  (package-initialize '(RUNTIME GC-DAEMONS) 'INITIALIZE-PACKAGE! #t)
-  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) 'INITIALIZE-PACKAGE! #t)
-  (package-initialize '(RUNTIME RANDOM-NUMBER) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME GC-DAEMONS) #f #t)
+  (package-initialize '(RUNTIME GARBAGE-COLLECTOR) #f #t)
+  (package-initialize '(RUNTIME RANDOM-NUMBER) #f #t)
   (package-initialize '(RUNTIME GENERIC-PROCEDURE) 'INITIALIZE-TAG-CONSTANTS!
 		      #t)
-  (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME POPULATION) #f #t)
   (package-initialize '(RUNTIME RECORD) 'INITIALIZE-RECORD-TYPE-TYPE! #t)
-  (package-initialize '(RUNTIME SYNTACTIC-CLOSURES)
-		      'INITIALIZE-SYNTAX-TRANSFORMS!
-		      #t)
   (load-files files2)
-  (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-PACKAGE! #t)
-  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) 'INITIALIZE-PACKAGE! #t)
-  (package-initialize '(RUNTIME GLOBAL-DATABASE) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME 1D-PROPERTY) #f #t)
+  (package-initialize '(RUNTIME EVENT-DISTRIBUTOR) #f #t)
+  (package-initialize '(RUNTIME GLOBAL-DATABASE) #f #t)
   (package-initialize '(RUNTIME POPULATION) 'INITIALIZE-UNPARSER! #t)
   (package-initialize '(RUNTIME 1D-PROPERTY) 'INITIALIZE-UNPARSER! #t)
-  (package-initialize '(RUNTIME GC-FINALIZER) 'INITIALIZE-PACKAGE! #t)
-  (package-initialize '(RUNTIME STRING) 'INITIALIZE-PACKAGE! #t)
+  (package-initialize '(RUNTIME GC-FINALIZER) #f #t)
+  (package-initialize '(RUNTIME STRING) #f #t)
+
+  (set! boot-defs
+	(package/environment (name->package '(RUNTIME BOOT-DEFINITIONS))))
 
   ;; Load everything else.
   ((lexical-reference environment-for-package 'LOAD-PACKAGES-FROM-FILE)
@@ -401,9 +414,7 @@ USA.
 	    (let loop ((files files))
 	      (and (pair? files)
 		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files)))))))
-	 (boot-defs
-	  (package/environment (name->package '(RUNTIME BOOT-DEFINITIONS)))))
+		       (loop (cdr files))))))))
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
@@ -420,16 +431,16 @@ USA.
 (package-initialization-sequence
  '(
    ;; Microcode interface
-   ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES! #t)
+   ((RUNTIME MICROCODE-TABLES) READ-MICROCODE-TABLES!)
    (RUNTIME STATE-SPACE)
    (RUNTIME APPLY)
    (RUNTIME HASH)			; First GC daemon!
    (RUNTIME PRIMITIVE-IO)
    (RUNTIME SYSTEM-CLOCK)
-   ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS! #t)
+   ((RUNTIME GC-FINALIZER) INITIALIZE-EVENTS!)
    ;; Basic data structures
    (RUNTIME NUMBER)
-   ((RUNTIME NUMBER) INITIALIZE-DRAGON4! #t)
+   ((RUNTIME NUMBER) INITIALIZE-DRAGON4!)
    (RUNTIME MISCELLANEOUS-GLOBAL)
    (RUNTIME CHARACTER)
    (RUNTIME CHARACTER-SET)
@@ -437,6 +448,7 @@ USA.
    (RUNTIME STREAM)
    (RUNTIME 2D-PROPERTY)
    (RUNTIME HASH-TABLE)
+   (RUNTIME REGULAR-SEXPRESSION)
    ;; Microcode data structures
    (RUNTIME HISTORY)
    (RUNTIME LAMBDA-ABSTRACTION)
@@ -446,23 +458,24 @@ USA.
    (RUNTIME CONTINUATION-PARSER)
    (RUNTIME PROGRAM-COPIER)
    ;; Generic Procedures
-   ((RUNTIME GENERIC-PROCEDURE EQHT) INITIALIZE-ADDRESS-HASHING! #t)
-   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-GENERIC-PROCEDURES! #t)
-   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-MULTIPLEXER! #t)
-   ((RUNTIME TAGGED-VECTOR) INITIALIZE-TAGGED-VECTOR! #t)
-   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-RECORD-SLOT-ACCESS! #t)
-   ((RUNTIME RECORD) INITIALIZE-RECORD-PROCEDURES! #t)
-   ((PACKAGE) FINALIZE-PACKAGE-RECORD-TYPE! #t)
-   ((RUNTIME RANDOM-NUMBER) FINALIZE-RANDOM-STATE-TYPE! #t)
+   ((RUNTIME GENERIC-PROCEDURE EQHT) INITIALIZE-ADDRESS-HASHING!)
+   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-GENERIC-PROCEDURES!)
+   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-MULTIPLEXER!)
+   ((RUNTIME TAGGED-VECTOR) INITIALIZE-TAGGED-VECTOR!)
+   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-RECORD-SLOT-ACCESS!)
+   ((RUNTIME RECORD) INITIALIZE-RECORD-PROCEDURES!)
+   ((PACKAGE) FINALIZE-PACKAGE-RECORD-TYPE!)
+   ((RUNTIME RANDOM-NUMBER) FINALIZE-RANDOM-STATE-TYPE!)
    ;; Condition System
    (RUNTIME ERROR-HANDLER)
    (RUNTIME MICROCODE-ERRORS)
-   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS! #t)
-   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS! #t)
-   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS! #t)
-   ((RUNTIME STREAM) INITIALIZE-CONDITIONS! #t)
+   ((RUNTIME GENERIC-PROCEDURE) INITIALIZE-CONDITIONS!)
+   ((RUNTIME GENERIC-PROCEDURE MULTIPLEXER) INITIALIZE-CONDITIONS!)
+   ((RUNTIME RECORD-SLOT-ACCESS) INITIALIZE-CONDITIONS!)
+   ((RUNTIME STREAM) INITIALIZE-CONDITIONS!)
+   ((RUNTIME REGULAR-SEXPRESSION) INITIALIZE-CONDITIONS!)
    ;; System dependent stuff
-   ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES! #t)
+   ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES!)
    ;; Threads
    (RUNTIME THREAD)
    ;; I/O
@@ -482,15 +495,16 @@ USA.
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
    (RUNTIME SIMPLE-FILE-OPS)
-   ((RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES! #f)
+   (OPTIONAL (RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES!)
    ;; Syntax
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
-   ((RUNTIME PATHNAME) INITIALIZE-PARSER-METHOD! #t)
+   ((RUNTIME PATHNAME) INITIALIZE-PARSER-METHOD!)
    (RUNTIME UNPARSER)
    (RUNTIME UNSYNTAXER)
    (RUNTIME PRETTY-PRINTER)
    (RUNTIME EXTENDED-SCODE-EVAL)
+   (RUNTIME SYNTAX DEFINITIONS)
    ;; REP Loops
    (RUNTIME INTERRUPT-HANDLER)
    (RUNTIME GC-STATISTICS)
@@ -509,19 +523,19 @@ USA.
    ;; Graphics.  The last type initialized is the default for
    ;; MAKE-GRAPHICS-DEVICE, only the types that are valid for the
    ;; operating system are actually loaded and initialized.
-   (RUNTIME STARBASE-GRAPHICS)
-   (RUNTIME X-GRAPHICS)
-   (RUNTIME OS2-GRAPHICS)
+   (OPTIONAL (RUNTIME STARBASE-GRAPHICS))
+   (OPTIONAL (RUNTIME X-GRAPHICS))
+   (OPTIONAL (RUNTIME OS2-GRAPHICS))
    ;; Emacs -- last because it installs hooks everywhere which must be initted.
    (RUNTIME EMACS-INTERFACE)
    ;; More debugging
-   ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
+   (OPTIONAL (RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES!)
    (RUNTIME URI)
    (RUNTIME RFC2822-HEADERS)
    (RUNTIME HTTP-SYNTAX)
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
-   (RUNTIME WIN32-REGISTRY)))
+   (OPTIONAL (RUNTIME WIN32-REGISTRY))))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.54 2008/01/30 20:02:33 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -592,21 +590,21 @@ these rules:
     ((host-type/operation/init-file-pathname (host/type host)) host)))
 
 (define (system-library-pathname pathname #!optional required?)
-  (let ((pathname* (merge-pathnames pathname (%find-library-directory)))
-	(required? (if (default-object? required?) #t required?)))
-    (if (and required? (not (file-exists? pathname*)))
-	(system-library-pathname
-	 (error:file-operation pathname*
-			       "find"
-			       "file"
-			       "no such file in system library path"
-			       system-library-pathname
-			       (list pathname required?)))
-	pathname*)))
+  (if (if (default-object? required?) #t required?)
+      (or (%find-library-file pathname)
+	  (system-library-pathname
+	   (error:file-operation pathname
+				 "find"
+				 "file"
+				 "no such file in system library path"
+				 system-library-pathname
+				 (list pathname required?))
+	   required?))
+      (merge-pathnames pathname (%find-library-directory))))
 
 (define (system-library-directory-pathname #!optional pathname required?)
   (if (if (default-object? pathname) #f pathname)
-      (let ((dir (system-library-pathname pathname #f)))
+      (let ((dir (%find-library-file pathname)))
 	(cond ((file-directory? dir)
 	       (pathname-as-directory dir))
 	      ((if (default-object? required?) #f required?)
@@ -626,6 +624,14 @@ these rules:
   (pathname-simplify
    (or (find-matching-item library-directory-path file-directory?)
        (error "Can't find library directory."))))
+
+(define (%find-library-file pathname)
+  (let loop ((path library-directory-path))
+    (and (pair? path)
+	 (let ((p (merge-pathnames pathname (car path))))
+	   (if (file-exists? p)
+	       p
+	       (loop (cdr path)))))))
 
 (define library-directory-path)
 

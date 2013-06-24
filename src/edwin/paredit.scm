@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id: paredit.scm,v 1.10 2007/02/23 11:38:32 riastradh Exp $
-
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
 

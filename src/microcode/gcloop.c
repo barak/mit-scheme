@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: gcloop.c,v 9.56 2008/02/13 23:26:23 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -121,8 +119,8 @@ static SCHEME_OBJECT * weak_chain;
 
 static void run_gc_loop (SCHEME_OBJECT * , SCHEME_OBJECT **);
 static SCHEME_OBJECT gc_transport_weak_pair (SCHEME_OBJECT);
-static void tospace_closed (void);
-static void tospace_open (void);
+static void tospace_closed (void) NORETURN;
+static void tospace_open (void) NORETURN;
 
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
 #  ifndef GC_SCAN_HISTORY_SIZE
@@ -878,8 +876,7 @@ tospace_closed (void)
 static void
 tospace_open (void)
 {
-  if (tospace_next != 0)
-    std_gc_death ("tospace is open, should be closed");
+  std_gc_death ("tospace is open, should be closed");
 }
 
 void

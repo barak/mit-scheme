@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: bignum.c,v 9.60 2008/01/30 20:02:10 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -427,13 +425,6 @@ bignum_remainder (bignum_type numerator, bignum_type denominator)
     }
 }
 
-/* These procedures depend on the non-portable type `unsigned long'.
-   If your compiler doesn't support this type, either define the
-   switch `BIGNUM_NO_ULONG' to disable them (in "bignum.h"), or write
-   new versions that don't use this type. */
-
-#ifndef BIGNUM_NO_ULONG
-
 bignum_type
 long_to_bignum (long n)
 {
@@ -515,6 +506,7 @@ bignum_to_ulong (bignum_type bignum)
 {
   if (BIGNUM_ZERO_P (bignum))
     return (0);
+  BIGNUM_ASSERT (BIGNUM_POSITIVE_P (bignum));
   {
     unsigned long accumulator = 0;
     bignum_digit_type * start = (BIGNUM_START_PTR (bignum));
@@ -524,8 +516,6 @@ bignum_to_ulong (bignum_type bignum)
     return (accumulator);
   }
 }
-
-#endif /* not BIGNUM_NO_ULONG */
 
 #define DTB_WRITE_DIGIT(n_bits) do					\
 {									\
@@ -613,7 +603,7 @@ bignum_to_double (bignum_type bignum)
   {
     bignum_length_type length = (BIGNUM_LENGTH (bignum));
     bignum_length_type index = length - 1;
-    bignum_length_type scale_words = length - 1;
+    bignum_length_type scale_words;
     bignum_digit_type msd = (BIGNUM_REF (bignum, (index)));
 #if (FLT_RADIX == 2)
     int bits_to_get = DBL_MANT_DIG; /* includes implicit 1 */
@@ -749,7 +739,17 @@ int
 bignum_fits_in_word_p (bignum_type bignum, long word_length,
 		       int twos_complement_p)
 {
-  unsigned int n_bits = (twos_complement_p ? (word_length - 1) : word_length);
+  unsigned int n_bits;
+
+  if (twos_complement_p)
+    n_bits = (word_length - 1);
+  else
+    {
+      if (BIGNUM_NEGATIVE_P (bignum))
+	return (0);
+      n_bits = word_length;
+    }
+
   BIGNUM_ASSERT (n_bits > 0);
   {
     bignum_length_type length = (BIGNUM_LENGTH (bignum));
@@ -1603,8 +1603,8 @@ bignum_digit_divide (bignum_digit_type uh, bignum_digit_type ul,
 {
   bignum_digit_type guess;
   bignum_digit_type comparand;
-  bignum_digit_type v1 = (HD_HIGH (v));
-  bignum_digit_type v2 = (HD_LOW (v));
+  bignum_digit_type v1;
+  bignum_digit_type v2;
   bignum_digit_type uj;
   bignum_digit_type uj_uj1;
   bignum_digit_type q1;

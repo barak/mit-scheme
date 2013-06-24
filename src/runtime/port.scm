@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.59 2008/08/18 06:40:18 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,13 +105,17 @@ USA.
 		  (list (car entry) (cdr entry)))
 		(port-type/custom-operations type))))
 
-(define (port-type/operation type name)
-  (guarantee-port-type type 'PORT-TYPE/OPERATION)
+;; Assumes type is a PORT-TYPE
+(define (port-type/%operation type name)
   (let ((entry
 	 (or (assq name (port-type/custom-operations type))
 	     (assq name (port-type/standard-operations type)))))
     (and entry
 	 (cdr entry))))
+
+(define (port-type/operation type name)
+  (guarantee-port-type type 'PORT-TYPE/OPERATION)
+  (port-type/%operation type name))
 
 ;;;; Constructors
 
@@ -391,7 +393,8 @@ USA.
   (%thread-mutex (make-thread-mutex))
   (unread? #f)
   (previous #f)
-  (properties '()))
+  (properties '())
+  (transcript #f))
 
 (define (make-port type state)
   (guarantee-port-type type 'MAKE-PORT)
@@ -403,6 +406,7 @@ USA.
 
 (define (set-port/type! port type)
   (guarantee-port port 'SET-PORT/TYPE!)
+  (guarantee-port-type type 'SET-PORT/TYPE!)
   (set-port/%type! port type))
 
 (define (port/state port)
@@ -428,8 +432,12 @@ USA.
 (define (port/operation-names port)
   (port-type/operation-names (port/type port)))
 
+(define-integrable (port/%operation port name)
+  (port-type/%operation (port/%type port) name))
+
 (define (port/operation port name)
-  (port-type/operation (port/type port) name))
+  (guarantee-port port 'port/operation)
+  (port/%operation port name))
 
 (define-syntax define-port-operation
   (sc-macro-transformer
@@ -451,11 +459,29 @@ USA.
 (define-port-operation flush-output)
 (define-port-operation discretionary-flush-output)
 
+;;; These operations assume that the port is in fact a port.
+(define-syntax define-unsafe-port-operation
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form)))
+       `(DEFINE-INTEGRABLE (,(symbol-append 'PORT/%OPERATION/ name) PORT)
+	  (,(close-syntax (symbol-append 'PORT-TYPE/ name) environment)
+	   (PORT/%TYPE PORT)))))))
+
+(define-unsafe-port-operation discretionary-flush-output)
+(define-unsafe-port-operation read-char)
+(define-unsafe-port-operation peek-char)
+(define-unsafe-port-operation write-char)
+
 (define (port-position port)
-  ((port/operation port 'POSITION) port))
+  ((or (port/operation port 'POSITION)
+       (error:bad-range-argument port 'PORT-POSITION))
+   port))
 
 (define (set-port-position! port position)
-  ((port/operation port 'SET-POSITION!) port position))
+  ((or (port/operation port 'SET-POSITION!)
+       (error:bad-range-argument port 'SET-PORT-POSITION!))
+   port position))
 
 (set-record-type-unparser-method! <port>
   (lambda (state port)
@@ -511,7 +537,7 @@ USA.
        (%input-open? port)))
 
 (define (%input-open? port)
-  (let ((open? (port/operation port 'INPUT-OPEN?)))
+  (let ((open? (port/%operation port 'INPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
@@ -521,7 +547,7 @@ USA.
        (%output-open? port)))
 
 (define (%output-open? port)
-  (let ((open? (port/operation port 'OUTPUT-OPEN?)))
+  (let ((open? (port/%operation port 'OUTPUT-OPEN?)))
     (if open?
 	(open? port)
 	#t)))
@@ -565,18 +591,10 @@ USA.
   (guarantee-symbol name 'PORT/REMOVE-PROPERTY!)
   (set-port/properties! port (del-assq! name (port/properties port))))
 
-(define (port/transcript port)
-  (port/get-property port 'TRANSCRIPT #f))
-
-(define (set-port/transcript! port tport)
-  (if tport
-      (port/set-property! port 'TRANSCRIPT tport)
-      (port/remove-property! port 'TRANSCRIPT)))
-
 (define (transcribe-char char port)
   (let ((tport (port/transcript port)))
     (if tport
-	(write-char char tport))))
+	(%write-char char tport))))
 
 (define (transcribe-substring string start end port)
   (let ((tport (port/transcript port)))
@@ -595,17 +613,17 @@ USA.
 
 (define (input-port? object)
   (and (port? object)
-       (port-type/supports-input? (port/type object))
+       (port-type/supports-input? (port/%type object))
        #t))
 
 (define (output-port? object)
   (and (port? object)
-       (port-type/supports-output? (port/type object))
+       (port-type/supports-output? (port/%type object))
        #t))
 
 (define (i/o-port? object)
   (and (port? object)
-       (let ((type (port/type object)))
+       (let ((type (port/%type object)))
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)
 	      #t))))

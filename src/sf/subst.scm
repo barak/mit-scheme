@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: subst.scm,v 4.25 2008/02/13 06:21:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,6 +122,7 @@ USA.
 		(lambda ()
 		  (integrate/name-if-safe expression expression
 					  environment operations
+					  '(INTEGRATE INTEGRATE-SAFELY)
 					  integration-success
 					  integration-failure))))
 	(operations/lookup operations variable
@@ -145,14 +144,15 @@ USA.
 	       (integration-failure))))))))
 
 (define (integrate/name-if-safe expr reference environment
-				operations if-win if-fail)
+				operations safe-operations if-win if-fail)
   (let ((variable (reference/variable reference)))
     (if (or (variable/side-effected variable)
 	    (not (block/safe? (variable/block variable))))
 	(if-fail)
 	(let ((finish
 	       (lambda (value)
-		 (if (constant-value? value environment operations)
+		 (if (safely-integrable-value? value environment operations
+					       safe-operations)
 		     (if-win
 		      (reassign
 		       expr
@@ -175,29 +175,34 @@ USA.
       (with-new-scode (object/scode expr) object)
       object))
 
-(define (constant-value? value environment operations)
+(define (safely-integrable-value? value environment operations safe-operations)
   (let check ((value value) (top? #t))
     (or (constant? value)
 	(and (reference? value)
 	     (or (not top?)
-		 (let ((var (reference/variable value)))
-		   (and (not (variable/side-effected var))
-			(block/safe? (variable/block var))
-			(environment/lookup environment var
-			  (lambda (value*)
-			    (check value* #f))
-			  (lambda ()
-			    ;; unknown value
-			    (operations/lookup operations var
-			      (lambda (operation info)
-				operation info
-				#f)
+		 (let ((variable (reference/variable value)))
+		   (or (operations/lookup operations variable
+			 (lambda (operation info)
+			   info		;ignore
+			   (memq operation safe-operations))
+			 (lambda () #f))
+		       (and (not (variable/side-effected variable))
+			    (block/safe? (variable/block variable))
+			    (environment/lookup environment variable
+			      (lambda (value*)
+				(check value* #f))
 			      (lambda ()
-				;; No operations
-				#t)))
-			  (lambda ()
-			    ;; not found variable
-			    #t)))))))))
+				;; unknown value
+				(operations/lookup operations variable
+				  (lambda (operation info)
+				    operation info
+				    #f)
+				  (lambda ()
+				    ;; No operations
+				    #t)))
+			      (lambda ()
+				;; not found variable
+				#t))))))))))
 
 (define (integrate/reference-operator expression operations environment
 				      block operator operands)
@@ -219,6 +224,8 @@ USA.
 	      (lambda ()
 		(integrate/name-if-safe expression operator
 					environment operations
+					'(EXPAND INTEGRATE INTEGRATE-OPERATOR
+						 INTEGRATE-SAFELY)
 					integration-success
 					integration-failure))))
       (operations/lookup operations variable
@@ -438,7 +445,7 @@ you ask for.
 				       block operator operands))
 	((and (access? operator)
 	      (constant/system-global-environment?
-	       (access/environment operator)))
+	       (integrate/expression operations environment (access/environment operator))))
 	 (integrate/access-operator expression operations environment
 				    block operator operands))
 	((and (constant? operator)
@@ -455,15 +462,23 @@ you ask for.
 	 (combination/optimizing-make
 	  expression
 	  block
-	  (if (procedure? operator)
-	      (integrate/procedure-operator operations environment
-					    block operator operands)
-	      (let ((operator
-		     (integrate/expression operations environment operator)))
-		(if (procedure? operator)
+	  (let* ((integrate-procedure
+		  (lambda (operator)
 		    (integrate/procedure-operator operations environment
-						  block operator operands)
-		    operator)))
+						  block operator operands)))
+		 (operator
+		  (if (procedure? operator)
+		      (integrate-procedure operator)
+		      (let ((operator
+			     (integrate/expression operations
+						   environment
+						   operator)))
+			(if (procedure? operator)
+			    (integrate-procedure operator)
+			    operator)))))
+	    (cond ((integrate/compound-operator operator operands)
+		   => integrate-procedure)
+		  (else operator)))
 	  operands))))
 
 (define (integrate/procedure-operator operations environment
@@ -491,6 +506,133 @@ you ask for.
 		 block))
 	  (else (error "Unknown operation" operation))))
       integration-failure)))
+
+;;; ((let ((a (foo)) (b (bar)))
+;;;    (lambda (receiver)
+;;;      ...body...))
+;;;  (lambda (x y z)
+;;;    ...))
+;;;
+;;; =>
+;;;
+;;; (let ((receiver (lambda (x y z) ...)))
+;;;   (let ((a (foo)) (b (bar)))
+;;;     ...))
+;;;
+;;; We do this transformation conservatively, only if the operands of
+;;; the original combination have no side effects, so that this
+;;; transformation does not have the consequence of committing to a
+;;; particular order of evaluation when the original program didn't
+;;; request one.  Omitting the NON-SIDE-EFFECTING? test would transform
+;;;
+;;; ((let ((a (foo)) (b (bar)))
+;;;    (lambda (x y)
+;;;      ...body...))
+;;;  (mumble)
+;;;  (frotz))
+;;;
+;;; =>
+;;;
+;;; (let ((x (mumble)) (y (frotz)))
+;;;   (let ((a (foo)) (b (bar)))
+;;;     ...body...))
+;;;
+;;; Here, the input program required that (foo) and (bar) be evaluated
+;;; in some sequence without (mumble) or (frotz) intervening, and
+;;; otherwise requested no particular order of evaluation.  The output
+;;; of the more aggressive transformation evaluates both (mumble) and
+;;; (frotz) in some sequence before evaluating (foo) and (bar) in some
+;;; sequence.
+;;;
+;;; INTEGRATE/COMPOUND-OPERATOR takes any expression (usually from an
+;;; operator position), and, if it is a nested sequence of LETs,
+;;; BEGINs, or DECLAREs followed by a LAMBDA, returns a LAMBDA that is
+;;; equivalent to the expression if used in an operator position; or
+;;; otherwise returns #F.
+
+(define (integrate/compound-operator operator operands)
+  (define (scan-body body encloser)
+    (if (procedure? body)
+	(and (not (open-block? (procedure/body body)))
+	     (procedure-with-body body (encloser (procedure/body body))))
+	(scan-operator body encloser)))
+  (define (scan-operator operator encloser)
+    (cond ((sequence? operator)
+	   (let ((reversed-actions (reverse (sequence/actions operator))))
+	     (scan-body (car reversed-actions)
+			(let ((commands (cdr reversed-actions)))
+			  (lambda (expression)
+			    (encloser
+			     (sequence-with-actions
+			      operator
+			      (reverse (cons expression commands)))))))))
+	  ((combination? operator)
+	   (let ((descend
+		  (lambda (operator*)
+		    (and (not (open-block? (procedure/body operator*)))
+			 (scan-body
+			  (procedure/body operator*)
+			  (lambda (body*)
+			    (encloser
+			     (combination-with-operator
+			      operator
+			      (procedure-with-body operator* body*))))))))
+		 (operator* (combination/operator operator)))
+	     (cond ((procedure? operator*) (descend operator*))
+		   ((integrate/compound-operator
+		     operator*
+		     (combination/operands operator))
+		    => descend)
+		   (else #f))))
+	  ((declaration? operator)
+	   (scan-body (declaration/expression operator)
+		      (lambda (expression)
+			(encloser
+			 (declaration-with-expression operator expression)))))
+	  (else #f)))
+  (and (for-all? operands non-side-effecting?)
+       (scan-operator operator (lambda (body) body))))
+
+(define (combination-with-operator combination operator)
+  (combination/make (combination/scode combination)
+		    (combination/block combination)
+		    operator
+		    (combination/operands combination)))
+
+(define (declaration-with-expression declaration expression)
+  (declaration/make (declaration/scode declaration)
+		    (declaration/declarations declaration)
+		    expression))
+
+;;; Replacing the body may cause variables from outside the original
+;;; body to be shadowed, so we use a sleazy stupid hack to work around
+;;; this, because cgen doesn't do alphatization itself.  (This is the
+;;; same hack as used in copy.scm to copy integrated expressions that
+;;; have free variables.)
+
+(define (procedure-with-body procedure body)
+  (for-each hackify-variable (procedure/required procedure))
+  (for-each hackify-variable (procedure/optional procedure))
+  (cond ((procedure/rest procedure) => hackify-variable))
+  (procedure/make (procedure/scode procedure)
+		  (procedure/block procedure)
+		  (procedure/name procedure)
+		  (procedure/required procedure)
+		  (procedure/optional procedure)
+		  (procedure/rest procedure)
+		  body))
+
+(define (hackify-variable variable)
+  (set-variable/name!
+   variable
+   (string->uninterned-symbol (symbol-name (variable/name variable)))))
+
+(define (sequence-with-actions sequence actions)
+  (sequence/make (sequence/scode sequence) actions))
+
+(define (non-side-effecting? expression)
+  (or (reference? expression)
+      (non-side-effecting-in-sequence? expression)))
 
 (define-method/integrate 'DECLARATION
   (lambda (operations environment declaration)
@@ -522,8 +664,10 @@ you ask for.
     operations
     environment
     (integrate/quotation expression)))
-
+
 ;; Optimize (if #f a b) => b; (if #t a b) => a
+;;   (if (let (...) t) a b) => (let (...) (if t a b))
+;;   (if (begin ... t) a b) => (begin ... (if t a b))
 
 (define-method/integrate 'CONDITIONAL
   (lambda (operations environment expression)
@@ -536,12 +680,31 @@ you ask for.
 	  (alternative (integrate/expression
 			operations environment
 			(conditional/alternative expression))))
-      (if (constant? predicate)
-	  (if (constant/value predicate)
-	      consequent
-	      alternative)
-	  (conditional/make (conditional/scode expression)
-			    predicate consequent alternative)))))
+      (let loop ((predicate predicate))
+	(cond ((constant? predicate)
+	       (if (constant/value predicate)
+		   consequent
+		   alternative))
+	      ((sequence? predicate)
+	       (sequence-with-actions
+		predicate
+		(let ((actions (reverse (sequence/actions predicate))))
+		  (reverse
+		   (cons (loop (car actions))
+			 (cdr actions))))))
+	      ((and (combination? predicate)
+		    (procedure? (combination/operator predicate))
+		    (not
+		     (open-block?
+		      (procedure/body (combination/operator predicate)))))
+	       (combination-with-operator
+		predicate
+		(procedure-with-body
+		 (combination/operator predicate)
+		 (loop (procedure/body (combination/operator predicate))))))
+	      (else
+	       (conditional/make (conditional/scode expression)
+				 predicate consequent alternative)))))))
 
 ;; Optimize (or #f a) => a; (or #t a) => #t
 
@@ -616,19 +779,16 @@ you ask for.
 
 (define-method/integrate 'ACCESS
   (lambda (operations environment expression)
-    (let ((environment* (access/environment expression))
+    (let ((environment* (integrate/expression operations environment
+					      (access/environment expression)))
 	  (name (access/name expression)))
-      (if (constant/system-global-environment? environment*)
-	  (let ((entry (assq name usual-integrations/constant-alist)))
-	    (if entry
-		(constant/make (access/scode expression)
-			       (constant/value (cdr entry)))
-		(access/make (access/scode expression)
-			     environment* name)))
-	  (access/make (access/scode expression)
-		       (integrate/expression operations environment
-					     environment*)
-		       name)))))
+      (cond ((and (constant/system-global-environment? environment*)
+		  (assq name usual-integrations/constant-alist))
+	     => (lambda (entry)
+		  (constant/make (access/scode expression)
+				 (constant/value (cdr entry)))))
+	    (else (access/make (access/scode expression)
+			       environment* name))))))
 
 (define (constant/system-global-environment? expression)
   (and (constant? expression)
@@ -656,8 +816,11 @@ you ask for.
   (let ((name (access/name operator))
 	(dont-integrate
 	 (lambda ()
-	   (combination/make (and expression (object/scode expression))
-			     block operator operands))))
+	   (combination/make
+	    (and expression (object/scode expression))
+	    block
+	    (integrate/expression operations environment operator)
+	    (integrate/expressions operations environment operands)))))
     (cond ((and (eq? name 'APPLY)
 		(integrate/hack-apply? operands))
 	   => (lambda (operands*)
@@ -783,7 +946,7 @@ you ask for.
 	(let ((arg-list (append (procedure/required procedure)
 				(if (null? (procedure/optional procedure))
 				    '()
-				    (cons lambda-optional-tag
+				    (cons lambda-tag:optional
 					  (procedure/optional procedure)))
 				(if (not (procedure/rest procedure))
 				    '()

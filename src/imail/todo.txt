@@ -1,5 +1,4 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.139 2003/01/10 21:29:10 cph Exp $
 
 Bug fixes
 ---------

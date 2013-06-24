@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: bufwiu.scm,v 1.41 2008/01/30 20:01:59 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -403,6 +401,19 @@ USA.
   (or (window-needs-redisplay? window)
       (not (%window-saved-screen window))
       (screen-needs-update? (%window-saved-screen window))))
+
+(define (buffer-window/direct-output-cursor! window)
+  (if (%window-debug-trace window)
+      ((%window-debug-trace window) 'window window 'direct-output-cursor!))
+  (let ((mask (set-interrupt-enables! interrupt-mask/gc-ok)))
+    (let ((x-start (inferior-x-start (%window-cursor-inferior window)))
+	  (y-start (inferior-y-start (%window-cursor-inferior window))))
+      (screen-direct-output-move-cursor
+       (%window-saved-screen window)
+       (fix:+ (%window-saved-x-start window) x-start)
+       (fix:+ (%window-saved-y-start window) y-start)))
+    (set-interrupt-enables! mask)
+    unspecific))
 
 (define (buffer-window/direct-output-forward-char! window)
   (if (%window-debug-trace window)

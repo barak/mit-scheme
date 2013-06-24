@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.84 2008/09/13 09:31:36 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -866,17 +864,19 @@ USA.
 
 (define built-in-atoms-table
   (let ((n (vector-length built-in-atoms)))
-    (let ((table (make-eq-hash-table n)))
+    (let ((table (make-strong-eq-hash-table n)))
       (do ((i 0 (fix:+ i 1)))
 	  ((fix:= i n))
 	(hash-table/put! table (vector-ref built-in-atoms i) i))
       table)))
 
 (define display/cached-atoms-tables
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table/get table display #f)
-	  (let ((result (cons (make-eq-hash-table) (make-eqv-hash-table))))
+	  (let ((result
+		 (cons (make-strong-eq-hash-table)
+		       (make-strong-eqv-hash-table))))
 	    (hash-table/put! table display result)
 	    result)))))
 
@@ -1046,10 +1046,10 @@ In either case, it is copied to the primary selection."
 	 #t)))
 
 (define display/selection-records
-  (let ((table (make-eq-hash-table)))
+  (let ((table (make-weak-eq-hash-table)))
     (lambda (display)
       (or (hash-table/get table display #f)
-	  (let ((result (make-eq-hash-table)))
+	  (let ((result (make-strong-eq-hash-table)))
 	    (hash-table/put! table display result)
 	    result)))))
 

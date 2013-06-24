@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: closan.scm,v 4.35 2008/01/30 20:01:44 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -305,15 +303,18 @@ USA.
   ;; if it was an ancestor before procedure-drifting took place, don't
   ;; close, just undrift.
   (let ((procedure (condition-procedure condition)))
-    (cond ((block-ancestor-or-self? block block*)
-	   unspecific)
-	  ((and (original-block-ancestor? block block*)
-		(not (procedure-closure-context procedure)))
-	   (undrifting-constraint! block block* condition))
-	  (else
-	   (close-procedure! procedure
-			     (condition-keyword condition)
-			     (condition-argument condition))))))
+    (define (close)
+      (close-procedure! procedure
+			(condition-keyword condition)
+			(condition-argument condition)))
+    (cond ((and (ic-block? block*)
+		(not (eq? block block*)))
+	   (close))
+	  ((not (block-ancestor-or-self? block block*))
+	   (if (and (original-block-ancestor? block block*)
+		    (not (procedure-closure-context procedure)))
+	       (undrifting-constraint! block block* condition)
+	       (close))))))
 
 (define (close-procedure! procedure keyword argument)
   (add-closure-reason! procedure keyword argument)

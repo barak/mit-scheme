@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.h,v 1.88 2008/01/30 20:02:21 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -457,9 +455,12 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_ctime ctime
 #define UX_dup dup
 #define UX_fcntl fcntl
+#define UX_fdatasync fdatasync
 #define UX_free free
 #define UX_fstat fstat
 #define UX_fstatfs fstatfs
+#define UX_fsync fsync
+#define UX_fsync_range fsync_range
 #define UX_ftruncate ftruncate
 #define UX_getegid getegid
 #define UX_getenv getenv
@@ -499,6 +500,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_stat stat
 #define UX_statfs statfs
 #define UX_symlink symlink
+#define UX_sync_file_range sync_file_range
 #define UX_system system
 #define UX_time time
 #define UX_times times
@@ -707,17 +709,17 @@ extern int UX_terminal_set_state (int, Ttty_state *);
 #    ifdef SETPGRP_VOID
 #      define UX_setsid setpgrp
 #    else
-         extern pid_t UX_setsid (void);
-#        define EMULATE_SETSID
+	 extern pid_t UX_setsid (void);
+#	 define EMULATE_SETSID
 #    endif
 #    ifdef HAVE_SETPGRP2
 #      define UX_setpgid setpgrp2
 #    else
 #      ifdef SETPGRP_VOID
-         extern int UX_setpgid (pid_t, pid_t);
-#        define EMULATE_SETPGID
+	 extern int UX_setpgid (pid_t, pid_t);
+#	 define EMULATE_SETPGID
 #      else
-#        define UX_setpgid setpgrp
+#	define UX_setpgid setpgrp
 #      endif
 #    endif
 #  endif
@@ -848,26 +850,39 @@ extern int UX_sigsuspend (const sigset_t *);
 #endif /* not _POSIX_VERSION */
 
 extern void UX_prim_check_errno (enum syscall_names name);
+extern void UX_prim_check_fd_errno (enum syscall_names name);
+extern bool UX_out_of_files_p;
 
-#define STD_VOID_SYSTEM_CALL(name, expression)				\
-{									\
-  while ((expression) < 0)						\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
-}
+#define STD_VOID_SYSTEM_CALL(name, expression)	\
+  do {						\
+    while ((expression) < 0)			\
+      UX_prim_check_errno (name);		\
+  } while (0)
 
-#define STD_UINT_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) < 0)					\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
-}
+#define STD_UINT_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) < 0)		\
+      UX_prim_check_errno (name);			\
+  } while (0)
 
-#define STD_PTR_SYSTEM_CALL(name, result, expression)			\
-{									\
-  while (((result) = (expression)) == 0)				\
-    if (errno != EINTR)							\
-      error_system_call (errno, (name));				\
-}
+#define STD_PTR_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) == 0)		\
+      UX_prim_check_errno (name);			\
+  } while (0)
+
+#define STD_FD_SYSTEM_CALL(name, result, expression)	\
+  do {							\
+    while (((result) = (expression)) < 0)		\
+      UX_prim_check_fd_errno (name);			\
+    UX_out_of_files_p = false;				\
+  } while (0)
+
+#define STD_FD_VOID_SYSTEM_CALL(name, expression)	\
+  do {							\
+    while ((expression) < 0)				\
+      UX_prim_check_fd_errno (name);			\
+    UX_out_of_files_p = false;				\
+  } while (0)
 
 #endif /* SCM_UX_H */

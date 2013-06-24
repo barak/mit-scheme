@@ -2,8 +2,6 @@
 
 (DECLARE (USUAL-INTEGRATIONS))	; MIT Scheme-ism: promise not to redefine prims
 
-;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
 ;;  TEST-WABBIT -- Harey test of wabbit hunting / headhunting g.c.	     ;;
@@ -22,8 +20,6 @@
 ;;	- Document dependencies
 ;;	- [SCREWS] see last page
 
-;;; $Id: test-wabbit.scm,v 1.4 2002/02/03 03:38:58 cph Exp $
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;									     ;;
 ;;  TEST-WABBIT -- Harey test of wabbit hunting / headhunting g.c.	     ;;

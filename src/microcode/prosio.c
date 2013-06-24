@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.30 2008/01/30 20:02:19 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -65,6 +63,16 @@ DEFINE_PRIMITIVE ("CHANNEL-CLOSE", Prim_channel_close, 1, 1,
 	OS_channel_close (channel);
       }
   }
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("CHANNEL-SYNCHRONIZE", Prim_channel_synchronize, 1, 1,
+  "(CHANNEL)\n\
+Synchronize CHANNEL with any permanent storage associated with it,\n\
+forcing any buffered data to be written permanently.")
+{
+  PRIMITIVE_HEADER (1);
+  OS_channel_synchronize (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
@@ -196,7 +204,7 @@ If it cannot, 0 is returned.")
        : (BOOLEAN_TO_OBJECT (result == 0)));
   }
 }
-
+
 DEFINE_PRIMITIVE ("CHANNEL-NONBLOCKING", Prim_channel_nonblocking, 1, 1,
   "Put CHANNEL in non-blocking mode.")
 {
@@ -225,6 +233,22 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
     SET_PAIR_CAR (result, (long_to_integer (reader)));
     SET_PAIR_CDR (result, (long_to_integer (writer)));
     PRIMITIVE_RETURN (result);
+  }
+}
+
+DEFINE_PRIMITIVE ("NEW-MAKE-PIPE", Prim_new_make_pipe, 2, 2,
+  "Store the reader and writer of a new pipe in the cdrs of weak pairs.")
+{
+  PRIMITIVE_HEADER (2);
+  CHECK_ARG (1, WEAK_PAIR_P);
+  CHECK_ARG (2, WEAK_PAIR_P);
+  {
+    Tchannel reader;
+    Tchannel writer;
+    OS_make_pipe ((&reader), (&writer));
+    SET_PAIR_CDR ((ARG_REF (1)), (long_to_integer (reader)));
+    SET_PAIR_CDR ((ARG_REF (2)), (long_to_integer (writer)));
+    PRIMITIVE_RETURN (UNSPECIFIC);
   }
 }
 

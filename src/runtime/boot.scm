@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: boot.scm,v 14.32 2008/09/17 03:36:54 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -160,11 +158,12 @@ USA.
     ((ucode-primitive local-assignment) environment saved-boot-inits inits)))
 
 (define (run-boot-inits! environment)
-  (let ((inits
-	 ((ucode-primitive lexical-reference) environment saved-boot-inits)))
-    ((ucode-primitive unbind-variable) environment saved-boot-inits)
-    (for-each (lambda (init) (init))
-	      inits)))
+  (and (not (lexical-unreferenceable? environment saved-boot-inits))
+       (let ((inits
+	      ((ucode-primitive lexical-reference) environment saved-boot-inits)))
+	 ((ucode-primitive unbind-variable) environment saved-boot-inits)
+	 (for-each (lambda (init) (init))
+		   inits))))
 
 (define boot-inits #f)
 (define saved-boot-inits '|#[saved-boot-inits]|)

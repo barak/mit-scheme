@@ -1,11 +1,9 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.70 2008/04/25 01:19:04 cph Exp $
-;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-;;;     2004, 2005, 2006, 2007, 2008 Massachusetts Institute of
-;;;     Technology
+;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+;;;     Institute of Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -132,7 +130,11 @@
 	.data
 	align 2
 	extrn _Free:dword
+	extrn _heap_alloc_limit:dword
+	extrn _heap_end:dword
+	extrn _stack_guard:dword
 	extrn _stack_pointer:dword
+	extrn _stack_start:dword
 	extrn _utility_table:dword
 	extrn _RegistersPtr:dword
 	public _i387_presence
@@ -622,6 +624,48 @@ asm_sc_apply_generic_8:
 	mov	edx,8
 	mov	al,014H
 	jmp	scheme_to_interface
+; On entry, the tagged interrupt mask is at the top of the stack,
+; below which is a tagged return address.  This implementation is not
+; very clever about avoiding unnecessary writes.
+	public _asm_set_interrupt_enables
+_asm_set_interrupt_enables:
+	; Store the old interrupt mask in the value register.
+	mov	eax,dword ptr 4[esi]
+	or	eax,1744830464
+	mov	dword ptr 8[esi],eax
+	; Store the new one in the interrupt mask register.
+	pop	ecx
+	and	ecx,ebp
+	mov	dword ptr 4[esi],ecx
+set_interrupt_enables_determine_memtop:
+	; If there is an interrupt pending, set memtop to 0.
+	test	ecx,dword ptr 48[esi]
+	jz	set_interrupt_enables_memtop_1
+	xor	edx,edx
+	jmp	set_interrupt_enables_set_memtop
+set_interrupt_enables_memtop_1:
+	; If GC is enabled, set memtop to the heap allocation limit.
+	test	ecx,04H
+	jz	set_interrupt_enables_memtop_2
+	mov	edx,dword ptr _heap_alloc_limit
+	jmp	set_interrupt_enables_set_memtop
+set_interrupt_enables_memtop_2:
+	; Otherwise, there is no interrupt pending, and GC is not
+	; enabled, so set memtop to the absolute heap end.
+	mov	edx,dword ptr _heap_end
+set_interrupt_enables_set_memtop:
+	mov	dword ptr 0[esi],edx
+set_interrupt_enables_determine_stack_guard:
+	test	ecx,01H
+	jz	set_interrupt_enables_stack_guard_1
+	mov	edx,dword ptr _stack_guard
+	jmp	set_interrupt_enables_set_stack_guard
+set_interrupt_enables_stack_guard_1:
+	mov	edx,dword ptr _stack_start
+set_interrupt_enables_set_stack_guard:
+	mov	dword ptr 44[esi],edx
+	and	dword ptr [esp],ebp
+	ret
 ;;;	The following code is used by generic arithmetic
 ;;;	whether the fixnum case is open-coded in line or not.
 ;;;	This takes care of fixnums and flonums so that the common
@@ -865,7 +909,7 @@ asm_generic_add_fail:
 asm_generic_add_fix:
 	mov	eax,edx
 	mov	ecx,ebx
-	shl	eax,6
+	shl	eax,6						; Set up eax.
 	shl	ecx,6
 	add	eax,ecx		; subl
 	jo	asm_generic_add_fail
@@ -899,7 +943,7 @@ asm_generic_subtract_fail:
 asm_generic_subtract_fix:
 	mov	eax,edx
 	mov	ecx,ebx
-	shl	eax,6
+	shl	eax,6						; Set up eax.
 	shl	ecx,6
 	sub	eax,ecx		; subl
 	jo	asm_generic_subtract_fail
@@ -910,6 +954,9 @@ asm_generic_subtract_flo:
 	fld	qword ptr 4[edx]			; fldd
 	fsub	qword ptr 4[ebx]			; fsubl
 	jmp	asm_generic_flonum_result
+; To set up eax, kill its tag, but leave it unshifted; the other
+; operand will be shifted already, so that it will already include the
+; factor of 2^6 desired in the product.
 	align 2
 	public _asm_generic_multiply
 _asm_generic_multiply:
@@ -933,7 +980,7 @@ asm_generic_multiply_fail:
 asm_generic_multiply_fix:
 	mov	eax,edx
 	mov	ecx,ebx
-	shl	eax,6
+	and	eax,ebp						; Set up eax.
 	shl	ecx,6
 	imul	eax,ecx		; subl
 	jo	asm_generic_multiply_fail
@@ -1090,6 +1137,43 @@ _asm_nofp_remainder:
 _asm_nofp_modulo:
 	mov	al,039H
 	jmp	scheme_to_interface
+; Input and output in eax, shift count in ecx, all detagged fixnums.
+; Return address is at the top of the stack, untagged.  This hook must
+; not use any registers other than eax and ecx; if it does, the code
+; to generate calls to it, in compiler/machines/i386/rulfix.scm, must
+; clear the register map first.
+	public _asm_fixnum_shift
+_asm_fixnum_shift:
+	sar	ecx,6
+	js	asm_fixnum_shift_negative
+asm_fixnum_lsh:
+	cmp	ecx,26
+	jge	asm_fixnum_lsh_overflow
+	shl	eax,cl
+	ret
+asm_fixnum_lsh_overflow:
+	xor	eax,eax
+	ret
+asm_fixnum_shift_negative:
+	neg	ecx
+asm_fixnum_rsh:
+	cmp	ecx,26
+	jge	asm_fixnum_rsh_overflow
+	sar	eax,cl
+	; Turn eax back into a detagged fixnum by masking off the low
+	; six bits.  -1 has all bits set, but its detagged format has
+	; the low six bits clear.
+	and	eax,-64
+	ret
+asm_fixnum_rsh_overflow:
+	cmp	eax,0
+	js	asm_fixnum_rsh_overflow_negative
+asm_fixnum_rsh_overflow_nonnegative:
+	xor	eax,eax
+	ret
+asm_fixnum_rsh_overflow_negative:
+	mov	eax,-64
+	ret
 end
 ;;; Edwin Variables:
 ;;; comment-column: 56

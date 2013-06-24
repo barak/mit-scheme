@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: findprim.c,v 9.62 2008/01/30 20:02:12 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -419,7 +417,7 @@ scan (void)
 		  else
 		    {
 		      ungetc (c, input);
-		      (*scan_buffer++) = '\0';
+		      (*scan_buffer) = '\0';
 		      break;
 		    }
 		}
@@ -521,11 +519,8 @@ print_procedure (FILE * output,
 void
 print_primitives (FILE * output, int limit)
 {
-  int last;
   int count;
   char * table_entry;
-
-  last = (limit - 1);
 
   /* Print the procedure table. */
   fprintf

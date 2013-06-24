@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: input.scm,v 14.41 2008/07/26 05:12:20 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,18 +26,25 @@ USA.
 ;;;; Input
 ;;; package: (runtime input-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+         (integrate-external "port"))
 
 ;;;; Low level
 
 (define (input-port/char-ready? port)
   ((port/operation/char-ready? port) port))
 
+(define-integrable (input-port/%read-char port)
+  ((port/%operation/read-char port) port))
+
 (define (input-port/read-char port)
   ((port/operation/read-char port) port))
 
 (define (input-port/unread-char port char)
   ((port/operation/unread-char port) port char))
+
+(define-integrable (input-port/%peek-char port)
+  ((port/%operation/peek-char port) port))
 
 (define (input-port/peek-char port)
   ((port/operation/peek-char port) port))
@@ -55,41 +60,44 @@ USA.
 (define (input-port/read-line port)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let loop ((a (make-accum 128)))
-	(let ((char (input-port/read-char port)))
-	  (cond ((eof-object? char)
-		 (if (fix:> (accum-count a) 0)
-		     (accum->string a)
-		     char))
-		((char=? char #\newline) (accum->string a))
-		(else (loop (accum char a)))))))))
+      (let ((read-char (port/operation/read-char port)))
+	(let loop ((a (make-accum 128)))
+	  (let ((char (read-char port)))
+	    (cond ((eof-object? char)
+		   (if (fix:> (accum-count a) 0)
+		       (accum->string a)
+		       char))
+		  ((char=? char #\newline) (accum->string a))
+		  (else (loop (accum char a))))))))))
 
 (define (input-port/read-string port delimiters)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let loop ((a (make-accum 128)))
-	(let ((char (input-port/read-char port)))
-	  (cond ((eof-object? char)
-		 (if (fix:> (accum-count a) 0)
-		     (accum->string a)
-		     char))
-		((char-set-member? delimiters char)
-		 (input-port/unread-char port char)
-		 (accum->string a))
-		(else
-		 (loop (accum char a)))))))))
+      (let ((read-char (port/operation/read-char port)))
+	(let loop ((a (make-accum 128)))
+	  (let ((char (read-char port)))
+	    (cond ((eof-object? char)
+		   (if (fix:> (accum-count a) 0)
+		       (accum->string a)
+		       char))
+		  ((char-set-member? delimiters char)
+		   (input-port/unread-char port char)
+		   (accum->string a))
+		  (else
+		   (loop (accum char a))))))))))
 
 (define (input-port/discard-chars port delimiters)
   (port/with-input-blocking-mode port 'BLOCKING
     (lambda ()
-      (let loop ()
-	(let ((char (input-port/read-char port)))
-	  (cond ((eof-object? char)
-		 unspecific)
-		((char-set-member? delimiters char)
-		 (input-port/unread-char port char))
-		(else
-		 (loop))))))))
+      (let ((read-char (port/operation/read-char port)))
+	(let loop ()
+	  (let ((char (read-char port)))
+	    (cond ((eof-object? char)
+		   unspecific)
+		  ((char-set-member? delimiters char)
+		   (input-port/unread-char port char))
+		  (else
+		   (loop)))))))))
 
 (define-integrable (make-accum n)
   (cons (make-string n) 0))
@@ -104,21 +112,20 @@ USA.
   a)
 
 (define-integrable (accum->string a)
-  (set-string-maximum-length! (car a) (cdr a))
-  (car a))
+  (string-head! (car a) (cdr a)))
 
 (define-integrable (accum-count a)
   (cdr a))
 
-(define (make-eof-object port)
+(define-integrable (make-eof-object port)
   port
   (eof-object))
 
-(define (eof-object)
-  (object-new-type (ucode-type constant) 6))
+(define-integrable (eof-object)
+  ((ucode-primitive primitive-object-set-type) (ucode-type constant) 6))
 
-(define (eof-object? object)
-  (eq? object (object-new-type (ucode-type constant) 6)))
+(define-integrable (eof-object? object)
+  (eq? object (eof-object)))
 
 (define (input-port/eof? port)
   (let ((eof? (port/operation port 'EOF?)))
@@ -143,21 +150,25 @@ USA.
 		  (else #f))))
 	(input-port/char-ready? port))))
 
+(define (%read-char port)
+  (let loop ()
+    (or (input-port/%read-char port)
+	(loop))))
+
 (define (read-char #!optional port)
-  (let ((port (optional-input-port port 'READ-CHAR)))
-    (let loop ()
-      (or (input-port/read-char port)
-	  (loop)))))
+  (%read-char (optional-input-port port 'READ-CHAR)))
 
 (define (unread-char char #!optional port)
   (guarantee-char char 'UNREAD-CHAR)
   (input-port/unread-char (optional-input-port port 'UNREAD-CHAR) char))
 
+(define (%peek-char port)
+  (let loop ()
+    (or (input-port/%peek-char port)
+	(loop))))
+
 (define (peek-char #!optional port)
-  (let ((port (optional-input-port port 'PEEK-CHAR)))
-    (let loop ()
-      (or (input-port/peek-char port)
-	  (loop)))))
+  (%peek-char (optional-input-port port 'PEEK-CHAR)))
 
 (define (read-char-no-hang #!optional port)
   (let ((port (optional-input-port port 'READ-CHAR-NO-HANG)))

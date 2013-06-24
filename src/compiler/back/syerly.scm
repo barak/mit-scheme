@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syerly.scm,v 1.18 2008/02/14 02:12:52 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,7 +96,7 @@ USA.
 				   (list (list 'UNQUOTE-SPLICING component))))
 			     operands))
 		(else (list 'UNQUOTE exp))))
-	    (cond ((eq? operator cons)
+	    (cond ((eq? operator (ucode-primitive cons))
 		   ;; integrations
 		   (kernel 'CONS))
 		  ((scode/absolute-reference? operator)
@@ -176,7 +174,9 @@ USA.
 	   (scode/combination-components (cadr operands)
 	     (lambda (operator inner-operands)
 	       (if (and (or (is-operator? operator 'CONS-SYNTAX false)
-			    (is-operator? operator 'CONS cons))
+			    (is-operator? operator
+					  'CONS
+					  (ucode-primitive cons)))
 			(scode/constant? (car inner-operands))
 			(bit-string?
 			 (scode/constant-value (car inner-operands))))
@@ -201,7 +201,9 @@ USA.
 	  (receiver false false false)
 	  (scode/combination-components expression
 	    (lambda (operator operands)
-	      (cond ((and (not (is-operator? operator 'CONS cons))
+	      (cond ((and (not (is-operator? operator
+					     'CONS
+					     (ucode-primitive cons)))
 			  (not (is-operator? operator 'CONS-SYNTAX false)))
 		     (receiver false false false))
 		    ((scode/constant? (cadr operands))

@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: mod-lisp.scm,v 1.40 2008/07/26 05:45:36 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -649,7 +647,7 @@ USA.
 	(else
 	 (error:wrong-type-argument type "MIME type" 'DEFINE-MIME-HANDLER))))
 
-(define mime-handlers (make-eq-hash-table))
+(define mime-handlers (make-strong-eq-hash-table))
 (define mime-extensions (make-string-hash-table))
 
 (define (html-content-type)

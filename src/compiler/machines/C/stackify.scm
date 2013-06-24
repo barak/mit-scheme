@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: stackify.scm,v 1.4 2008/01/30 20:01:46 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -71,7 +69,7 @@ USA.
 ;; This version uses an eq hash table
 
 (define-integrable (stackify/make-table)
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-integrable (stackify/table/lookup key)
   (hash-table/get *stackify/table* key #f))
@@ -135,7 +133,7 @@ USA.
       (symbol? obj)
       (string? obj)
       (bit-string? obj)
-      (primitive-procedure? obj)
+      (scode/primitive-procedure? obj)
       ;; The runtime system needs the following
       (interpreter-return-address? obj)))
 
@@ -508,7 +506,7 @@ USA.
 			 (bit-string->unsigned-integer obj)
 			 16))
 		       (build/push-nat (bit-string-length obj) prog)))
-	((primitive-procedure? obj)
+	((scode/primitive-procedure? obj)
 	 (let ((arity (primitive-procedure-arity obj))
 	       (name (symbol-name (primitive-procedure-name obj))))
 	   (cond ((fix:< arity 0)

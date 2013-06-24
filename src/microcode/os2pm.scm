@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: os2pm.scm,v 1.19 2008/01/30 20:02:17 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -154,7 +152,7 @@ USA.
   (hash-table/put! type-abbreviations name type))
 
 (define type-abbreviations
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-type-abbreviation 'boolean 'int)
 (define-type-abbreviation 'uchar '(unsigned char))
@@ -192,7 +190,7 @@ USA.
   (hash-table/get id-external-roots (id-type-name type) #f))
 
 (define id-external-roots
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define (id-external-type type)
   (list (id-external-root type) "_t"))
@@ -250,7 +248,7 @@ USA.
 ;;;; PM Procedures
 
 (define pm-procedures
-  (make-eq-hash-table))
+  (make-strong-eq-hash-table))
 
 (define-structure pmp
   (root-name #f read-only #t)

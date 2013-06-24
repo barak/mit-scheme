@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.h,v 1.9 2008/01/30 20:02:22 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,5 +29,10 @@ USA.
 #include "ostop.h"
 
 extern void UX_dump_core (void);
+
+#ifdef __APPLE__
+   extern bool macosx_in_app_p (void);
+   extern const char * macosx_main_bundle_dir (void);
+#endif
 
 #endif /* SCM_UXTOP_H */

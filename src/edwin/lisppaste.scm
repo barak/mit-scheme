@@ -1,7 +1,5 @@
 #| -*-Scheme-*-
 
-$Id: lisppaste.scm,v 1.2 2008/10/18 21:20:25 riastradh Exp $
-
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.
 
@@ -358,5 +356,5 @@ With a prefix argument, list pastes starting at a certain number."
                 (window-x-size (typein-window)))))
       (message string)
       (string->temporary-buffer string
-                                " *lisppaste-error*"
+                                " *lisppaste*"
                                 '(READ-ONLY SHRINK-WINDOW FLUSH-ON-SPACE))))

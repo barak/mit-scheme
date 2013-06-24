@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.70 2008/09/17 06:24:32 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,7 +26,8 @@ USA.
 ;;;; Generic I/O Ports
 ;;; package: (runtime generic-i/o-port)
 
-(declare (usual-integrations))
+(declare (usual-integrations)
+	 (integrate-external "port"))
 
 (define (make-generic-i/o-port source sink #!optional type . extra-state)
   (if (not (or source sink))
@@ -96,15 +95,15 @@ USA.
 		(list->vector extra)))
 
 (define-integrable (port-input-buffer port)
-  (gstate-input-buffer (port/state port)))
+  (gstate-input-buffer (port/%state port)))
 
 (define-integrable (port-output-buffer port)
-  (gstate-output-buffer (port/state port)))
+  (gstate-output-buffer (port/%state port)))
 
 (define (generic-i/o-port-accessor index)
   (guarantee-index-fixnum index 'GENERIC-I/O-PORT-ACCESSOR)
   (lambda (port)
-    (let ((extra (gstate-extra (port/state port))))
+    (let ((extra (gstate-extra (port/%state port))))
       (if (not (fix:< index (vector-length extra)))
 	  (error "Accessor index out of range:" index))
       (vector-ref extra index))))
@@ -112,7 +111,7 @@ USA.
 (define (generic-i/o-port-modifier index)
   (guarantee-index-fixnum index 'GENERIC-I/O-PORT-MODIFIER)
   (lambda (port object)
-    (let ((extra (gstate-extra (port/state port))))
+    (let ((extra (gstate-extra (port/%state port))))
       (if (not (fix:< index (vector-length extra)))
 	  (error "Accessor index out of range:" index))
       (vector-set! extra index object))))
@@ -147,7 +146,8 @@ USA.
 	   (OUTPUT-CHANNEL ,generic-io/output-channel)
 	   (OUTPUT-TERMINAL-MODE ,generic-io/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,generic-io/set-output-blocking-mode)
-	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)))
+	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)
+	   (SYNCHRONIZE-OUTPUT ,generic-io/synchronize-output)))
 	(other-operations
 	 `((CLOSE ,generic-io/close)
 	   (CODING ,generic-io/coding)
@@ -317,6 +317,11 @@ USA.
 	  ((#F) unspecific)
 	  (else (error:wrong-type-datum mode "terminal mode"))))))
 
+(define (generic-io/synchronize-output port)
+  (let ((channel (generic-io/output-channel port)))
+    (if channel
+	(channel-synchronize channel))))
+
 (define (generic-io/buffered-output-bytes port)
   (output-buffer-start (port-output-buffer port)))
 
@@ -401,10 +406,10 @@ USA.
   #t)
 
 (define (generic-io/coding port)
-  (gstate-coding (port/state port)))
+  (gstate-coding (port/%state port)))
 
 (define (generic-io/set-coding port name)
-  (let ((state (port/state port)))
+  (let ((state (port/%state port)))
     (let ((ib (gstate-input-buffer state)))
       (if ib
 	  (set-input-buffer-coding! ib name)))
@@ -426,10 +431,10 @@ USA.
 	(else '())))
 
 (define (generic-io/line-ending port)
-  (gstate-line-ending (port/state port)))
+  (gstate-line-ending (port/%state port)))
 
 (define (generic-io/set-line-ending port name)
-  (let ((state (port/state port)))
+  (let ((state (port/%state port)))
     (let ((ib (gstate-input-buffer state)))
       (if ib
 	  (set-input-buffer-line-ending!
@@ -551,14 +556,14 @@ USA.
 (define (initialize-name-maps!)
   (let ((convert-reverse
 	 (lambda (alist)
-	   (let ((table (make-eq-hash-table)))
+	   (let ((table (make-strong-eq-hash-table)))
 	     (for-each (lambda (n.d)
 			 (hash-table/put! table (cdr n.d) (car n.d)))
 		       alist)
 	     table)))
 	(convert-forward
 	 (lambda (alist)
-	   (let ((table (make-eq-hash-table)))
+	   (let ((table (make-strong-eq-hash-table)))
 	     (for-each (lambda (n.d)
 			 (hash-table/put! table (car n.d) (cdr n.d)))
 		       alist)
@@ -1026,7 +1031,8 @@ USA.
 		    ob
 		    (cond ((char=? char #\tab)
 			   (fix:+ column (fix:- 8 (fix:remainder column 8))))
-			  ((<= #x20 (char->integer char) #x7E)
+			  ((and (fix:<= #x20 (char->integer char))
+				(fix:<= (char->integer char) #x7E))
 			   (fix:+ column 1))
 			  (else #f))))))
 	 #t)))
@@ -1853,7 +1859,7 @@ USA.
 		     (* (get-byte bv bs 1) #x10000)
 		     (* (get-byte bv bs 2) #x100)
 		     (get-byte bv bs 3))))
-	     (if (unicode-code-point? cp)
+	     (if (unicode-scalar-value? cp)
 		 (begin
 		   (set-input-buffer-start! ib (fix:+ bs 4))
 		   cp)
@@ -1869,7 +1875,7 @@ USA.
 		     (* (get-byte bv bs 2) #x10000)
 		     (* (get-byte bv bs 1) #x100)
 		     (get-byte bv bs 0))))
-	     (if (unicode-code-point? cp)
+	     (if (unicode-scalar-value? cp)
 		 (begin
 		   (set-input-buffer-start! ib (fix:+ bs 4))
 		   cp)

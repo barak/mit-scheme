@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.52 2008/08/30 19:55:59 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -353,7 +351,7 @@ USA.
       (make-combination expr block (ucode-primitive cons)
 			(list (car rest)
 			      (list-expansion-loop #f block (cdr rest))))))
-
+
 (define (values-expansion expr operands if-expanded if-not-expanded block)
   if-not-expanded
   (if-expanded
@@ -375,12 +373,18 @@ USA.
 	   (let ((variable (variable/make&bind! block 'RECEIVER)))
 	     (procedure/make
 	      #f block lambda-tag:unnamed (list variable) '() #f
-	      (combination/make #f
-				block
-				(reference/make #f block variable)
-				(map (lambda (variable)
-				       (reference/make #f block variable))
-				     variables))))))
+	      (declaration/make
+	       #f
+	       ;; The receiver is used only once, and all its operand
+	       ;; expressions are effect-free, so integrating here is
+	       ;; safe.
+	       (declarations/parse block '((INTEGRATE-OPERATOR RECEIVER)))
+	       (combination/make #f
+				 block
+				 (reference/make #f block variable)
+				 (map (lambda (variable)
+					(reference/make #f block variable))
+				      variables)))))))
 	operands)))))
 
 (define (call-with-values-expansion expr operands

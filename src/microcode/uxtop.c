@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.39 2008/01/30 20:02:22 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,12 +26,19 @@ USA.
 #include "ux.h"
 #include "uxtop.h"
 #include "osctty.h"
+#include "osenv.h"
 #include "uxutil.h"
 #include "errors.h"
 #include "option.h"
 #include "config.h"
 #include "object.h"
 #include "extern.h"
+
+#ifdef __APPLE__
+#  include <CoreServices/CoreServices.h>
+   extern const char * OS_current_user_home_directory (void);
+   static CFURLRef macosx_default_band_url (void);
+#endif
 
 extern void UX_initialize_channels (void);
 extern void UX_initialize_ctty (int interactive);
@@ -100,6 +105,16 @@ OS_initialize (void)
 #if defined(_SUNOS) || defined(_SUNOS3) || defined(_SUNOS4)
   vadvise (VA_ANOM);		/* Anomalous paging, don't try to guess. */
 #endif
+#ifdef __APPLE__
+  /* If in MacOS X application bundle, force working directory to
+     user's home directory.  */
+  if (macosx_in_app_p ())
+    {
+      const char * home_dir = OS_current_user_home_directory ();
+      if (home_dir != 0)
+	OS_set_working_dir_pathname (home_dir);
+    }
+#endif
 }
 
 void
@@ -115,11 +130,8 @@ OS_announcement (void)
 void
 OS_reset (void)
 {
-  /*
-    There should really be a reset for each initialize above,
-    but the rest seem innocuous.
-   */
-
+  /* There should really be a reset for each initialize above, but the
+     rest seem innocuous.  */
   UX_reset_channels ();
   UX_reset_terminals ();
   UX_reset_processes ();
@@ -181,6 +193,63 @@ OS_restore_external_state (void)
 {
   UX_ctty_restore_external_state ();
 }
+
+#ifdef __APPLE__
+
+const char *
+macosx_main_bundle_dir (void)
+{
+  CFURLRef url = (macosx_default_band_url ());
+  UInt8 buffer [4096];
+  char * bp;
+  char * result;
+
+  if (url == 0)
+    return (0);
+
+  if (!CFURLGetFileSystemRepresentation (url, true, buffer, (sizeof (buffer))))
+    {
+      CFRelease (url);
+      return (0);
+    }
+  CFRelease (url);
+  bp = ((char *) buffer);
+
+  /* Discard everything after the final slash.  */
+  {
+    char * slash = (strrchr (bp, '/'));
+    if (slash != 0)
+      (*slash) = '\0';
+  }
+
+  result = (UX_malloc ((strlen (bp)) + 1));
+  if (result != 0)
+    strcpy (result, bp);
+
+  return (result);
+}
+
+bool
+macosx_in_app_p (void)
+{
+  CFURLRef url = (macosx_default_band_url ());
+  if (url == 0)
+    return (false);
+  CFRelease (url);
+  return (true);
+}
+
+static CFURLRef
+macosx_default_band_url (void)
+{
+  CFBundleRef bundle = (CFBundleGetMainBundle());
+  return
+    ((bundle != 0)
+     ? (CFBundleCopyResourceURL (bundle, (CFSTR ("all")), (CFSTR ("com")), 0))
+     : 0);
+}
+
+#endif
 
 enum syserr_names
 OS_error_code_to_syserr (int code)
@@ -362,9 +431,14 @@ static const char * syscall_names_table [] =
   "close",
   "connect",
   "fcntl-getfl",
+  "fcntl-fullfsync",
   "fcntl-setfl",
+  "fdatasync",
   "fork",
   "fstat",
+  "fstatfs",
+  "fsync",
+  "fsync_range",
   "ftruncate",
   "getcwd",
   "gethostname",
@@ -377,8 +451,10 @@ static const char * syscall_names_table [] =
   "listen",
   "localtime",
   "lseek",
+  "lstat",
   "malloc",
   "mkdir",
+  "mktime",
   "open",
   "opendir",
   "pause",
@@ -391,13 +467,17 @@ static const char * syscall_names_table [] =
   "select",
   "setitimer",
   "setpgid",
+  "setsockopt",
   "shutdown",
   "sighold",
   "sigprocmask",
   "sigsuspend",
   "sleep",
   "socket",
+  "stat",
+  "statfs",
   "symlink",
+  "sync_file_range",
   "tcdrain",
   "tcflush",
   "tcgetpgrp",
@@ -410,13 +490,6 @@ static const char * syscall_names_table [] =
   "utime",
   "vfork",
   "write",
-  "stat",
-  "lstat",
-  "mktime",
-  "dynamic-load",
-  "statfs",
-  "fstatfs",
-  "setsockopt"
 };
 
 void

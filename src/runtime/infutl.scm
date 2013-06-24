@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.78 2008/09/03 19:36:59 riastradh Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,7 +36,6 @@ USA.
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
-  (set! wrappers-with-memoized-debugging-info (make-population))
   (add-secondary-gc-daemon! discard-debugging-info!)
   (initialize-uncompressed-files!)
   (add-event-receiver! event:after-restore initialize-uncompressed-files!)
@@ -91,18 +88,22 @@ USA.
   (without-interrupts
    (lambda ()
      (set-debugging-wrapper/info! wrapper info)
+     (if (not wrappers-with-memoized-debugging-info)
+	 (set! wrappers-with-memoized-debugging-info (make-population)))
      (add-to-population! wrappers-with-memoized-debugging-info wrapper))))
 
 (define (discard-debugging-info!)
   (without-interrupts
    (lambda ()
-     (map-over-population! wrappers-with-memoized-debugging-info
-       (lambda (wrapper)
-	 (set-debugging-wrapper/info! wrapper #f)))
-     (set! wrappers-with-memoized-debugging-info (make-population))
+     (if wrappers-with-memoized-debugging-info
+	 (begin
+	   (map-over-population! wrappers-with-memoized-debugging-info
+	     (lambda (wrapper)
+	       (set-debugging-wrapper/info! wrapper #f)))
+	   (set! wrappers-with-memoized-debugging-info #f)))
      unspecific)))
 
-(define wrappers-with-memoized-debugging-info)
+(define wrappers-with-memoized-debugging-info #f)
 
 (define (compiled-entry/dbg-object entry #!optional demand-load?)
   (let ((block (compiled-entry/block entry))
@@ -163,25 +164,6 @@ USA.
 
 (define (dbg-labels/find-offset labels offset)
   (vector-binary-search labels < dbg-label/offset offset))
-
-(define (dbg-info-vector/blocks-vector info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) items)
-	  ((and (pair? items)
-		(pair? (cdr items))
-		(vector? (cadr items)))
-	   (cadr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
-
-(define (dbg-info-vector/purification-root info)
-  (let ((items (dbg-info-vector/items info)))
-    (cond ((vector? items) #f)
-	  ((and (pair? items)
-		(eq? (car items) 'COMPILED-BY-PROCEDURES)
-		(pair? (cdr items))
-		(pair? (cddr items)))
-	   (caddr items))
-	  (else (error "Illegal dbg-info-vector" info)))))
 
 (define (fasload/update-debugging-info! value com-pathname)
   (cond ((compiled-code-address? value)
@@ -680,7 +662,7 @@ USA.
 				    condition-type:file-error
 				    condition-type:bad-range-argument)
 	  (lambda (condition) condition (if-fail #f))
-        (lambda () (fasload filename #t))))))
+	(lambda () (fasload filename #t))))))
 
 (define (compressed-loader uncompressed-type)
   (lambda (compressed-file)
@@ -753,11 +735,11 @@ USA.
        (cond ((null? entries)
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
-                   (cddar entries)
-                   (or (file-exists? (cadar entries))
-                       (begin
-                         (set-cdr! (cdar entries) #f)
-                         #f)))
+		   (cddar entries)
+		   (or (file-exists? (cadar entries))
+		       (begin
+			 (set-cdr! (cdar entries) #f)
+			 #f)))
 	      (dynamic-wind
 	       (lambda () unspecific)
 	       (lambda ()

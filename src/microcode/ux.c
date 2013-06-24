@@ -1,10 +1,8 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.36 2008/05/04 07:13:37 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,6 +38,32 @@ UX_prim_check_errno (enum syscall_names name)
   deliver_pending_interrupts ();
 }
 
+bool UX_out_of_files_p = false;
+
+void
+UX_prim_check_fd_errno (enum syscall_names name)
+{
+  switch (errno)
+    {
+    case EINTR:
+      deliver_pending_interrupts ();
+      break;
+
+    case EMFILE:
+    case ENFILE:
+      if (!UX_out_of_files_p)
+	{
+	  UX_out_of_files_p = true;
+	  REQUEST_GC (0);
+	  deliver_pending_interrupts ();
+	}
+      /* Fall through */
+
+    default:
+      error_system_call (errno, name);
+    }
+}
+
 #ifdef HAVE_TERMIOS_H
 
 int

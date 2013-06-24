@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: cgen.scm,v 4.11 2008/01/30 20:02:37 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -87,12 +85,17 @@ USA.
   ;; Declarations which are not handled by SF but are known to be handled
   ;; by the compiler so SF ignores then silently.
   '(
-    IGNORE-REFERENCE-TRAPS
+    CONSTANT
     IGNORE-ASSIGNMENT-TRAPS
-    TYPE-CHECKS
-    NO-TYPE-CHECKS
-    RANGE-CHECKS
+    IGNORE-REFERENCE-TRAPS
     NO-RANGE-CHECKS
+    NO-TYPE-CHECKS
+    PURE-FUNCTION
+    RANGE-CHECKS
+    SIDE-EFFECT-FREE
+    TYPE-CHECKS
+    USUAL-DEFINITION
+    UUO-LINK
     ))
 
 (define (known-compiler-declaration? declaration)

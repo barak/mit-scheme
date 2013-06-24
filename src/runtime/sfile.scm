@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sfile.scm,v 14.46 2008/08/31 07:36:21 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -317,7 +315,11 @@ USA.
 
 (define (initialize-package!)
   (set! interned-mime-types
-	(vector-map (lambda (token) token (make-eq-hash-table))
+	;; We really want each of these hash tables to be a
+	;; datum-weak hash table, but the hash table abstraction
+	;; doesn't support that.  Using a key-weak hash table does no
+	;; good because each datum has a strong reference to its key.
+	(vector-map (lambda (token) token (make-strong-eq-hash-table))
 		    top-level-mime-types))
   (set! unusual-interned-mime-types (make-equal-hash-table))
   (set! char-set:mime-token

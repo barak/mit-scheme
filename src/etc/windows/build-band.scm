@@ -1,0 +1,11 @@
+(begin
+  (cd "../win32")
+  (load "make")
+  (cd "../sf")
+  (load "make")
+  (cd "../compiler")
+  (load "machines/i386/make")
+  (cd "../edwin")
+  (load "make")
+  (disk-save "../all.com")
+  (%exit))

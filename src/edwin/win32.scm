@@ -1,10 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: win32.scm,v 1.23 2008/02/14 03:34:05 cph Exp $
-
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -419,7 +417,7 @@ USA.
 	 (handler screen event))))
 
 (define event-handlers
-  (make-eq-hash-table))
+  (make-strong-eqv-hash-table))
 
 (define (define-event-handler event-type handler)
   (hash-table/put! event-handlers event-type handler))
