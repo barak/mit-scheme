@@ -1,9 +1,8 @@
 [Desktop Entry]
 Version=1.0
-Encoding=UTF-8
 Name=MIT/GNU Scheme
-Exec=/usr/bin/mit-scheme-i386 --edit
-TryExec=mit-scheme-i386
+Exec=/usr/bin/mit-scheme --edit
+TryExec=mit-scheme
 Terminal=false
 Type=Application
-Categories=Development;IDE;TextEditor
+Categories=Development;IDE;Utility;TextEditor;

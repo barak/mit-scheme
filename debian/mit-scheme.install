@@ -1,8 +1,8 @@
 usr/bin
-usr/lib/mit-scheme-i386/*/*.com
-usr/lib/mit-scheme-i386/*/*.pkd
-usr/lib/mit-scheme-i386/*/*.scm
-usr/lib/mit-scheme-i386/all.com
-usr/lib/mit-scheme-i386/edwin/TUTORIAL
-usr/lib/mit-scheme-i386/lib
-usr/lib/mit-scheme-i386/optiondb.scm
+usr/lib/mit-scheme-*/*/*.com
+usr/lib/mit-scheme-*/*/*.pkd
+usr/lib/mit-scheme-*/*/*.scm
+usr/lib/mit-scheme-*/all.com
+usr/lib/mit-scheme-*/edwin/TUTORIAL
+usr/lib/mit-scheme-*/lib
+usr/lib/mit-scheme-*/optiondb.scm

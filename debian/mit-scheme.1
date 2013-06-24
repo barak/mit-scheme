@@ -1,7 +1,7 @@
 .TH "mit\-scheme" "1" "9.0" "MIT/GNU Scheme Team" ""
 .SH "NAME"
 .LP
-mit-scheme-i386 \- Scheme development environment
+mit-scheme \- Scheme development environment
 .SH "SYNOPSIS"
 .LP 
 .B mit\-scheme
@@ -55,8 +55,20 @@ Load the specified files after starting Scheme.
 .br 
 Print a summary of the command\-line options, including default values.
 .SH "FILES"
-.LP 
-\fI/usr/lib/mit\-scheme-i386\fP 
+.TP 
+\fI/usr/lib/mit\-scheme\-\fB<architecture>\fI/\fP
+.br
+Support files.
+.TP
+\fI/usr/bin/mit\-scheme\-\fB<architecture>\fP
+.br
+Architecture-specific executable.
+.TP
+\fI/usr/bin/mit\-scheme\fP
+.br
+Link to architecture-specific executable, to allow multiarch
+installation.  When multiple architectures are installed, use
+\fBupdate-alternatives\fP(8) to choose.
 .SH "ENVIRONMENT VARIABLES"
 .LP 
 MIT/GNU Scheme refers to a large number of environment variables.  See
@@ -65,11 +77,11 @@ the Texinfo documentation for details.
 .LP 
 To use the evaluator in a command-line interface, type:
 .LP 
-.B mit\-scheme-i386
+.B mit\-scheme
 .LP 
 To start the editor and use it as a front-end to the evaluator, type:
 .LP 
-.B mit\-scheme-i386
+.B mit\-scheme
 \-\-edit
 .SH "AUTHORS"
 .LP 

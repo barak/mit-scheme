@@ -9,18 +9,18 @@ AUTOTOOLS := /usr/share/misc
 DESTDIR_LOCAL := debian/tmp
 DESTDIR := $(shell pwd)/$(DESTDIR_LOCAL)
 
+INSTALL = install --preserve-timestamps
+
+export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
 PREFIX = /usr
-LIBDIR = $(PREFIX)/lib/mit-scheme-i386
+LIBDIR = $(PREFIX)/lib/mit-scheme-$(DEB_HOST_GNU_TYPE)
 INFODIR = $(PREFIX)/share/info
 MANDIR = $(PREFIX)/share/man
 DOCDIR = $(PREFIX)/share/doc/mit-scheme-doc
 HTMLDIR = $(DOCDIR)/html
 PDFDIR = $(DOCDIR)/pdf
-
-INSTALL = install --preserve-timestamps
-
-export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
   CONF_FLAGS := --build $(DEB_HOST_GNU_TYPE)
@@ -55,7 +55,7 @@ build-arch: build-stamp
 build-indep: build-stamp
 build-stamp:
 	dh_testdir
-	SCHEME_COMPILER="mit-scheme-i386" $(MAKE)
+	SCHEME_COMPILER=mit-scheme $(MAKE)
 	touch build-stamp
 
 clean:

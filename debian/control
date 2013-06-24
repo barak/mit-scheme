@@ -9,7 +9,7 @@ Standards-Version: 3.9.2
 Homepage: http://www.gnu.org/software/mit-scheme/
 
 Package: mit-scheme
-Architecture: i386
+Architecture: i386 amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: mime-support
 Suggests: mit-scheme-dbg, mit-scheme-doc
@@ -25,7 +25,7 @@ Description: MIT/GNU Scheme development environment
 Package: mit-scheme-dbg
 Section: debug
 Priority: extra
-Architecture: i386
+Architecture: i386 amd64
 Depends: mit-scheme (= ${binary:Version}), ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
 Breaks: mit-scheme (<< 7.7.90+20060414-0)

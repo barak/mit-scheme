@@ -2,4 +2,4 @@
   needs="X11"\
   section="Applications/Programming"\
   title="MIT/GNU Scheme"\
-  command="/usr/bin/mit-scheme-i386 --edit"
+  command="/usr/bin/mit-scheme --edit"
