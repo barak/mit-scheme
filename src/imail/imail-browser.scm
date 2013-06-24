@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-browser.scm,v 1.11 2003/02/14 18:28:14 cph Exp $
+$Id: imail-browser.scm,v 1.12 2003/10/31 05:31:15 cph Exp $
 
-Copyright 2001 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -537,8 +537,7 @@ When renaming multiple or marked folders, you specify a container."
 					    " folders into")
 					   #f
 					   'HISTORY 'IMAIL-BROWSER-TRANSFER-N
-					   'HISTORY-INDEX 0
-					   'REQUIRE-MATCH? #t))))
+					   'HISTORY-INDEX 0))))
 	       (for-each
 		(lambda (url)
 		  (operation url

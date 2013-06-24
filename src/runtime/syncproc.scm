@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: syncproc.scm,v 1.10 2003/02/14 18:28:34 cph Exp $
+$Id: syncproc.scm,v 1.11 2004/02/16 05:38:55 cph Exp $
 
-Copyright (c) 1999 Massachusetts Institute of Technology
+Copyright 1999,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,15 +36,11 @@ USA.
   ;; Where to get input data to send to the subprocess.  Either an
   ;; input port, or #F meaning that nothing is to be sent.
   (input #f read-only #t)
-  ;; How to do line translation on data sent to the subprocess.
-  (input-line-translation 'DEFAULT read-only #t)
   ;; What size is the input buffer?
   (input-buffer-size 512 read-only #t)
   ;; Where to put output data that is received from the subprocess.
   ;; Either an output port, or #F meaning to discard any output.
   (output (current-output-port) read-only #t)
-  ;; How to do line translation on data received from the subprocess.
-  (output-line-translation 'DEFAULT read-only #t)
   ;; What size is the output buffer?
   (output-buffer-size 512 read-only #t)
   ;; A thunk that is periodically called while the subprocess is
@@ -60,7 +56,9 @@ USA.
   ;; the operating system).
   (use-pty? #f read-only #t)
   ;; The name of the shell interpreter.
-  (shell-file-name (os/shell-file-name) read-only #t))
+  (shell-file-name (os/shell-file-name) read-only #t)
+  ;; How lines are terminated when talking to the subprocess.
+  (line-ending #f read-only #t))
 
 (define (run-shell-command command . options)
   (let ((context (apply make-subprocess-context options)))
@@ -151,12 +149,13 @@ USA.
   (condition-signaller condition-type:subprocess-signalled
 		       '(SUBPROCESS REASON)
 		       standard-error-handler))
-
+
 (define (synchronous-process-wait process context)
-  ;; Initialize the subprocess line-translation appropriately.
-  (subprocess-i/o-port process
-		       (subprocess-context/output-line-translation context)
-		       (subprocess-context/input-line-translation context))
+  ;; Initialize the subprocess I/O.
+  (let ((port (subprocess-i/o-port process))
+	(line-ending (subprocess-context/line-ending context)))
+    (if line-ending
+	(port/set-line-ending port line-ending)))
   (let ((redisplay-hook (subprocess-context/redisplay-hook context)))
     (call-with-input-copier process
 			    (subprocess-context/input context)
@@ -178,10 +177,13 @@ USA.
 			(let ((n (copy-output)))
 			  (cond ((not n)
 				 (loop))
-				((> n 0)
+				((fix:> n 0)
 				 (if redisplay-hook (redisplay-hook))
 				 (loop))))))
-		    (do () ((eqv? (copy-input) 0))))
+		    (do ()
+			((let ((n (copy-input)))
+			   (and n
+				(not (fix:> n 0)))))))
 		(if copy-output
 		    (begin
 		      (if redisplay-hook (redisplay-hook))
@@ -200,17 +202,19 @@ USA.
 		  ((port/operation port 'SET-OUTPUT-BLOCKING-MODE)
 		   port 'NONBLOCKING))
 	      (receiver
-	       (let ((buffer (make-string bsize)))
+	       (let ((buffer (make-wide-string bsize)))
 		 (lambda ()
 		   (port/with-input-blocking-mode process-input 'BLOCKING
 		     (lambda ()
 		       (let ((n
-			      (input-port/read-string! process-input buffer)))
-			 (if (> n 0)
-			     (output-port/write-substring port buffer 0 n)
-			     (begin
-			       (output-port/close port)
-			       0))))))))))
+			      (input-port/read-wide-string! process-input
+							    buffer)))
+			 (if n
+			     (if (fix:> n 0)
+				 (output-port/write-wide-substring port
+								   buffer 0 n)
+				 (output-port/close port)))
+			 n))))))))
 	  (begin
 	    (output-port/close port)
 	    (receiver #f))))))
@@ -237,15 +241,15 @@ USA.
     (let ((input-port/open? (port/operation port 'INPUT-OPEN?))
 	  (input-port/close (port/operation port 'CLOSE-INPUT)))
       (if process-output
-	  (let ((buffer (make-string bsize)))
+	  (let ((buffer (make-wide-string bsize)))
 	    (let ((copy-output
 		   (lambda ()
-		     (let ((n (input-port/read-string! port buffer)))
-		       (if (and n (> n 0))
+		     (let ((n (input-port/read-wide-string! port buffer)))
+		       (if (and n (fix:> n 0))
 			   (port/with-output-blocking-mode process-output
 							   'BLOCKING
 			     (lambda ()
-			       (output-port/write-substring
+			       (output-port/write-wide-substring
 				process-output buffer 0 n))))
 		       n))))
 	      (if nonblock? (port/set-input-blocking-mode port 'NONBLOCKING))
@@ -253,7 +257,7 @@ USA.
 		(if (and nonblock? (input-port/open? port))
 		    (begin
 		      (port/set-input-blocking-mode port 'BLOCKING)
-		      (do () ((= (copy-output) 0)))
+		      (do () ((not (fix:> (copy-output) 0))))
 		      (input-port/close port)))
 		status)))
 	  (receiver #f)))))

@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.457 2003/09/19 00:39:32 cph Exp $
+$Id: runtime.pkg,v 14.563 2005/09/08 19:12:49 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -51,7 +51,6 @@ USA.
 	  package/name
 	  package/parent
 	  package/reference
-	  package/system-loader
 	  package?
 	  system-global-package)
   (export (runtime environment)
@@ -137,8 +136,12 @@ USA.
   (files "boot")
   (parent (runtime))
   (export ()
+	  default-object
+	  default-object?
+	  error:not-unparser-method
 	  future?
-	  get-next-constant
+	  gc-space-status
+	  guarantee-unparser-method
 	  interrupt-bit/after-gc
 	  interrupt-bit/gc
 	  interrupt-bit/global-1
@@ -150,7 +153,6 @@ USA.
 	  interrupt-bit/timer
 	  interrupt-mask/all
 	  interrupt-mask/gc-ok
-	  interrupt-mask/no-background
 	  interrupt-mask/none
 	  interrupt-mask/timer-ok
 	  object-constant?
@@ -159,7 +161,7 @@ USA.
 	  unparser-method?
 	  unparser/standard-method
 	  with-absolutely-no-interrupts
-	  without-background-interrupts
+	  with-limited-interrupts
 	  without-interrupts))
 
 (define-package (runtime equality)
@@ -272,7 +274,9 @@ USA.
   (export ()
 	  %exit
 	  %quit
-	  *the-non-printing-object*
+	  (*the-non-printing-object* unspecific)
+	  <hook-list>
+	  append-hook-to-list
 	  apply
 	  bind-cell-contents!
 	  call-with-values
@@ -281,15 +285,19 @@ USA.
 	  cell?
 	  default/exit
 	  default/quit
-	  enable-interrupts!
 	  environment-link-name
 	  eq?
 	  error-procedure
+	  error:not-hook-list
 	  eval
 	  exit
 	  false-procedure
 	  fasdump
 	  get-fixed-objects-vector
+	  get-interrupt-enables
+	  guarantee-hook-list
+	  hook-in-list?
+	  hook-list?
 	  hook/exit
 	  hook/quit
 	  hook/scode-eval
@@ -302,10 +310,13 @@ USA.
 	  lexical-unassigned?
 	  lexical-unbound?
 	  lexical-unreferenceable?
+	  limit-interrupts!
 	  link-variables
 	  local-assignment
 	  make-cell
+	  make-hook-list
 	  make-non-pointer-object
+	  non-pointer-type-code?
 	  null-procedure
 	  obarray->list
 	  object-component-binder
@@ -317,10 +328,13 @@ USA.
 	  object-type
 	  object-type?
 	  pa
+	  pointer-type-code?
 	  primitive-procedure-arity
 	  primitive-procedure-documentation
 	  pwd
 	  quit
+	  remove-hook-from-list
+	  run-hooks-in-list
 	  scode-eval
 	  set-cell-contents!
 	  set-interrupt-enables!
@@ -345,6 +359,7 @@ USA.
 	  system-vector-set!
 	  system-vector?
 	  true-procedure
+	  type-code->gc-type
 	  unbind-variable
 	  undefined-value?
 	  unspecific
@@ -410,7 +425,9 @@ USA.
   (files "sfile")
   (parent (runtime))
   (export ()
+	  <mime-type>
 	  allocate-temporary-file
+	  associate-pathname-type-with-mime-type
 	  call-with-temporary-file-pathname
 	  call-with-temporary-filename
 	  current-file-time
@@ -419,6 +436,11 @@ USA.
 	  delete-file
 	  delete-file-no-errors
 	  directory-file-names
+	  disassociate-pathname-type-from-mime-type
+	  error:not-mime-token
+	  error:not-mime-token-string
+	  error:not-mime-type
+	  error:not-mime-type-string
 	  file-access
 	  file-directory?
 	  file-eq?
@@ -440,13 +462,29 @@ USA.
 	  file-writeable?
 	  guarantee-init-file-directory
 	  guarantee-init-file-specifier
+	  guarantee-mime-token
+	  guarantee-mime-token-string
+	  guarantee-mime-type
+	  guarantee-mime-type-string
 	  hard-link-file
 	  init-file-specifier?
 	  make-directory
+	  make-mime-type
+	  mime-token-string?
+	  mime-token?
+	  mime-type->string
+	  mime-type-string?
+	  mime-type/subtype
+	  mime-type/top-level
+	  mime-type?
 	  open-input-init-file
 	  open-output-init-file
+	  pathname-mime-type
+	  pathname-type->mime-type
 	  rename-file
-	  soft-link-file))
+	  soft-link-file
+	  string->mime-type)
+  (initialization (initialize-package!)))
 
 (define-package (runtime symbol)
   (files "symbol")
@@ -460,14 +498,22 @@ USA.
 	  interned-symbol?
 	  string->symbol
 	  string->uninterned-symbol
+	  string-head->symbol
+	  string-tail->symbol
+	  substring->symbol
+	  symbol
 	  symbol->string
+	  symbol->utf8-string
+	  symbol->wide-string
 	  symbol-append
 	  symbol-hash
 	  symbol-hash-mod
 	  symbol-name
 	  symbol<?
 	  symbol?
-	  uninterned-symbol?))
+	  uninterned-symbol?
+	  utf8-string->symbol
+	  utf8-string->uninterned-symbol))
 
 (define-package (runtime microcode-data)
   (files "udata")
@@ -531,6 +577,8 @@ USA.
 	  for-each-vector-element
 	  guarantee-subvector
 	  guarantee-vector
+	  guarantee-vector-of-type
+	  guarantee-vector-of-unique-symbols
 	  list->vector
 	  make-initialized-vector
 	  make-vector
@@ -557,6 +605,7 @@ USA.
 	  vector-find-next-element
 	  vector-find-previous-element
 	  vector-first
+	  vector-for-each
 	  vector-fourth
 	  vector-grow
 	  vector-head
@@ -564,6 +613,7 @@ USA.
 	  vector-map
 	  vector-move!
 	  vector-of-type?
+	  vector-of-unique-symbols?
 	  vector-ref
 	  vector-second
 	  vector-set!
@@ -582,6 +632,7 @@ USA.
 	  current-user-name
 	  decode-file-time
 	  decoded-time->file-time
+	  default-line-ending
 	  encode-file-time
 	  file-access-time
 	  file-access-time-direct
@@ -597,6 +648,7 @@ USA.
 	  file-attributes/n-links
 	  file-attributes/type
 	  file-length
+	  file-line-ending
 	  file-modes
 	  file-modification-time
 	  file-modification-time-direct
@@ -606,15 +658,14 @@ USA.
 	  file-time->universal-time
 	  get-environment-variable
 	  init-file-specifier->pathname
-	  os/default-end-of-line-translation
 	  os/exec-path
 	  os/executable-pathname-types
-	  os/file-end-of-line-translation
 	  os/find-program
 	  os/form-shell-command
 	  os/make-subprocess
 	  os/parse-path-string
 	  os/shell-file-name
+	  os/suffix-mime-type
 	  set-file-modes!
 	  set-file-times!
 	  temporary-directory-pathname
@@ -699,6 +750,12 @@ USA.
   (files "string")
   (parent (runtime))
   (export ()
+	  (guarantee-vector-8b guarantee-string)
+	  (set-vector-8b-length! set-string-length!)
+	  (set-vector-8b-maximum-length! set-string-maximum-length!)
+	  (vector-8b-length string-length)
+	  (vector-8b-maximum-length string-maximum-length)
+	  (vector-8b? string?)
 	  allocate-external-string
 	  burst-string
 	  char->string
@@ -710,8 +767,10 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
+	  hexadecimal->vector-8b
 	  list->string
 	  make-string
+	  make-vector-8b
 	  reverse-string
 	  reverse-string!
 	  reverse-substring
@@ -816,6 +875,7 @@ USA.
 	  substring<?
 	  substring=?
 	  substring?
+	  vector-8b->hexadecimal
 	  vector-8b-fill!
 	  vector-8b-find-next-char
 	  vector-8b-find-next-char-ci
@@ -829,6 +889,8 @@ USA.
 	  xsubstring-move!)
   (export (runtime primitive-io)
 	  external-string-descriptor)
+  (export (runtime generic-i/o-port)
+	  %substring-move!)
   (initialization (initialize-package!)))
 
 (define-package (runtime 1d-property)
@@ -923,6 +985,8 @@ USA.
 	  chars->ascii
 	  code->char
 	  digit->char
+	  error:not-char
+	  error:not-radix
 	  guarantee-char
 	  guarantee-radix
 	  integer->char
@@ -1058,12 +1122,12 @@ USA.
   (parent (runtime))
   (export ()
 	  console-i/o-port
+	  console-i/o-port?
 	  console-input-port
 	  console-output-port
 	  set-console-i/o-port!)
   (export (runtime emacs-interface)
-	  the-console-port
-	  the-console-port-type)
+	  the-console-port)
   (initialization (initialize-package!)))
 
 (define-package (runtime continuation)
@@ -1074,11 +1138,10 @@ USA.
 	  continuation/block-thread-events?
 	  continuation/control-point
 	  continuation/dynamic-state
-	  continuation/type
 	  continuation?
+	  error:not-continuation
 	  guarantee-continuation
 	  make-continuation
-	  non-reentrant-call-with-current-continuation
 	  within-continuation)
   (export (runtime thread)
 	  %within-continuation))
@@ -1139,8 +1202,6 @@ USA.
 	  control-point/next-control-point
 	  control-point/previous-history-control-point
 	  control-point/previous-history-offset
-	  control-point/reusable?
-	  control-point/unused-length
 	  control-point?
 	  make-control-point))
 
@@ -1155,6 +1216,7 @@ USA.
 	  day-of-week/short-string
 	  decode-universal-time
 	  decoded-time->ctime-string
+	  decoded-time->iso8601-string
 	  decoded-time->string
 	  decoded-time->universal-time
 	  decoded-time/date-string
@@ -1168,16 +1230,22 @@ USA.
 	  decoded-time/time-string
 	  decoded-time/year
 	  decoded-time/zone
+	  decoded-time?
 	  encode-universal-time
 	  epoch
 	  file-time->global-ctime-string
+	  file-time->global-iso8601-string
 	  file-time->global-time-string
 	  file-time->local-ctime-string
+	  file-time->local-iso8601-string
 	  file-time->local-time-string
 	  file-time->string
 	  get-decoded-time
 	  get-universal-time
 	  global-decoded-time
+	  iso8601-string->decoded-time
+	  iso8601-string->file-time
+	  iso8601-string->universal-time
 	  local-decoded-time
 	  make-decoded-time
 	  month/long-string
@@ -1193,9 +1261,11 @@ USA.
 	  time-zone?
 	  universal-time->global-ctime-string
 	  universal-time->global-decoded-time
+	  universal-time->global-iso8601-string
 	  universal-time->global-time-string
 	  universal-time->local-ctime-string
 	  universal-time->local-decoded-time
+	  universal-time->local-iso8601-string
 	  universal-time->local-time-string
 	  universal-time->string))
 
@@ -1292,22 +1362,34 @@ USA.
 	  entity-extra
 	  entity-procedure
 	  entity?
+	  error:not-compiled-procedure
+	  error:not-compound-procedure
+	  error:not-primitive-procedure
+	  error:not-procedure
+	  error:not-procedure-arity
 	  guarantee-compiled-procedure
 	  guarantee-compound-procedure
 	  guarantee-primitive-procedure
 	  guarantee-procedure
+	  guarantee-procedure-arity
+	  guarantee-procedure-of-arity
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
 	  make-entity
 	  make-primitive-procedure
+	  make-procedure-arity
 	  primitive-procedure-name
 	  primitive-procedure?
 	  procedure-arity
+	  procedure-arity-max
+	  procedure-arity-min
 	  procedure-arity-valid?
+	  procedure-arity?
 	  procedure-components
 	  procedure-environment
 	  procedure-lambda
+	  procedure-of-arity?
 	  procedure?
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
@@ -1379,6 +1461,7 @@ USA.
 	  break-on-signals
 	  condition-accessor
 	  condition-constructor
+	  condition-of-type?
 	  condition-predicate
 	  condition-signaller
 	  condition-type/error?
@@ -1405,6 +1488,7 @@ USA.
 	  condition-type:illegal-pathname-component
 	  condition-type:macro-binding
 	  condition-type:no-such-restart
+	  condition-type:not-8-bit-char
 	  condition-type:port-error
 	  condition-type:serious-condition
 	  condition-type:simple-condition
@@ -1443,6 +1527,7 @@ USA.
 	  error:file-operation
 	  error:illegal-pathname-component
 	  error:no-such-restart
+	  error:not-8-bit-char
 	  error:wrong-number-of-arguments
 	  error:wrong-type-argument
 	  error:wrong-type-datum
@@ -1528,7 +1613,6 @@ USA.
 	  open-i/o-file
 	  open-input-file
 	  open-output-file
-	  pathname-newline-translation
 	  with-input-from-binary-file
 	  with-input-from-file
 	  with-output-to-binary-file
@@ -1541,11 +1625,6 @@ USA.
   (export ()
 	  transcript-off
 	  transcript-on)
-  (export (runtime rep)
-	  make-transcriptable-port)
-  (export (runtime emacs-interface)
-	  make-transcriptable-port
-	  transcriptable-port?)
   (initialization (initialize-package!)))
 
 (define-package (runtime format)
@@ -1643,16 +1722,21 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
-	  make-generic-i/o-port
-	  make-generic-input-port
-	  make-generic-output-port)
+	  make-generic-i/o-port)
   (export (runtime console-i/o-port)
 	  generic-i/o-type
-	  operation/flush-output)
+	  generic-io/char-ready?
+	  generic-io/flush-output
+	  generic-io/read-char
+	  input-buffer-contents
+	  make-gstate
+	  port-input-buffer
+	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
 	  generic-i/o-type
 	  generic-input-type
-	  generic-output-type)
+	  generic-output-type
+	  make-gstate)
   (initialization (initialize-package!)))
 
 (define-package (runtime gensym)
@@ -1706,14 +1790,8 @@ USA.
 	  hash-table->alist
 	  hash-table/clean!
 	  hash-table/clear!
-	  hash-table/constructor
 	  hash-table/count
 	  hash-table/datum-list
-	  hash-table/entries-list
-	  hash-table/entries-vector
-	  hash-table/entry-datum
-	  hash-table/entry-key
-	  hash-table/entry-value
 	  hash-table/for-each
 	  hash-table/get
 	  hash-table/intern!
@@ -1721,13 +1799,10 @@ USA.
 	  hash-table/key-list
 	  hash-table/key=?
 	  hash-table/lookup
-	  hash-table/make-entry
 	  hash-table/put!
 	  hash-table/rehash-size
 	  hash-table/rehash-threshold
 	  hash-table/remove!
-	  hash-table/set-entry-datum!
-	  hash-table/set-entry-value!
 	  hash-table/size
 	  hash-table?
 	  make-eq-hash-table
@@ -1735,6 +1810,8 @@ USA.
 	  make-eqv-hash-table
 	  make-object-hash-table
 	  make-string-hash-table
+	  make-strong-eq-hash-table
+	  make-strong-eqv-hash-table
 	  make-symbol-hash-table
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
@@ -1782,10 +1859,7 @@ USA.
 	  close-port
 	  current-input-port
 	  current-output-port
-	  encapsulated-port/port
-	  encapsulated-port/state
-	  encapsulated-port?
-	  guarantee-encapsulated-port
+	  guarantee-8-bit-char
 	  guarantee-i/o-port
 	  guarantee-input-port
 	  guarantee-output-port
@@ -1794,61 +1868,67 @@ USA.
 	  i/o-port-type?
 	  i/o-port?
 	  input-port-type?
-	  input-port/channel
-	  input-port/copy
-	  input-port/custom-operation
-	  input-port/operation
-	  input-port/operation-names
-	  input-port/state
 	  input-port?
 	  interaction-i/o-port
-	  make-encapsulated-port
-	  make-i/o-port
-	  make-input-port
-	  make-output-port
 	  make-port
 	  make-port-type
 	  notification-output-port
 	  output-port-type?
-	  output-port/channel
-	  output-port/copy
-	  output-port/custom-operation
-	  output-port/operation
-	  output-port/operation-names
-	  output-port/state
 	  output-port?
+	  port-type/char-ready?
+	  port-type/discard-char
+	  port-type/discretionary-flush-output
+	  port-type/flush-output
+	  port-type/fresh-line
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
+	  port-type/peek-char
+	  port-type/read-char
+	  port-type/read-external-substring
+	  port-type/read-substring
+	  port-type/read-wide-substring
+	  port-type/unread-char
+	  port-type/write-char
+	  port-type/write-external-substring
+	  port-type/write-substring
+	  port-type/write-wide-substring
 	  port-type?
+	  port/coding
 	  port/copy
 	  port/input-blocking-mode
 	  port/input-channel
 	  port/input-terminal-mode
+	  port/known-coding?
+	  port/known-codings
+	  port/known-line-ending?
+	  port/known-line-endings
+	  port/line-ending
 	  port/operation
 	  port/operation-names
 	  port/output-blocking-mode
 	  port/output-channel
 	  port/output-terminal-mode
+	  port/set-coding
 	  port/set-input-blocking-mode
 	  port/set-input-terminal-mode
+	  port/set-line-ending
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
 	  port/state
+	  port/supports-coding?
 	  port/thread-mutex
 	  port/type
 	  port/with-input-blocking-mode
 	  port/with-input-terminal-mode
 	  port/with-output-blocking-mode
 	  port/with-output-terminal-mode
+	  port=?
 	  port?
 	  set-current-input-port!
 	  set-current-output-port!
-	  set-encapsulated-port/state!
-	  set-input-port/state!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
-	  set-output-port/state!
 	  set-port/state!
 	  set-trace-output-port!
 	  trace-output-port
@@ -1858,19 +1938,25 @@ USA.
 	  with-output-to-port
 	  with-trace-output-port)
   (export (runtime input-port)
-	  input-port/operation/char-ready?
-	  input-port/operation/discard-char
-	  input-port/operation/discard-chars
-	  input-port/operation/peek-char
-	  input-port/operation/read-char
-	  input-port/operation/read-string
-	  input-port/operation/read-substring)
+	  port/operation/char-ready?
+	  port/operation/discard-char
+	  port/operation/peek-char
+	  port/operation/read-char
+	  port/operation/read-external-substring
+	  port/operation/read-substring
+	  port/operation/read-wide-substring
+	  port/operation/unread-char)
   (export (runtime output-port)
-	  output-port/operation/discretionary-flush
-	  output-port/operation/flush-output
-	  output-port/operation/fresh-line
-	  output-port/operation/write-char
-	  output-port/operation/write-substring)
+	  port/operation/discretionary-flush-output
+	  port/operation/flush-output
+	  port/operation/fresh-line
+	  port/operation/write-char
+	  port/operation/write-external-substring
+	  port/operation/write-substring
+	  port/operation/write-wide-substring)
+  (export (runtime transcript)
+	  port/transcript
+	  set-port/transcript!)
   (export (runtime rep)
 	  *current-input-port*
 	  *current-output-port*
@@ -1879,6 +1965,7 @@ USA.
 	  *trace-output-port*)
   (export (runtime emacs-interface)
 	  set-port/thread-mutex!
+	  set-port/type!
 	  standard-port-accessors))
 
 (define-package (runtime input-port)
@@ -1886,6 +1973,7 @@ USA.
   (parent (runtime))
   (export ()
 	  char-ready?
+	  discard-char
 	  eof-object?
 	  input-port/char-ready?
 	  input-port/discard-char
@@ -1894,8 +1982,13 @@ USA.
 	  input-port/read-char
 	  input-port/read-line
 	  input-port/read-string
+	  input-port/read-external-string!
+	  input-port/read-external-substring!
 	  input-port/read-string!
 	  input-port/read-substring!
+	  input-port/read-wide-string!
+	  input-port/read-wide-substring!
+	  input-port/unread-char
 	  make-eof-object
 	  peek-char
 	  read
@@ -1904,9 +1997,8 @@ USA.
 	  read-line
 	  read-string
 	  read-string!
-	  read-substring!)
-  (export (runtime primitive-io)
-	  eof-object))
+	  read-substring!
+	  unread-char))
 
 (define-package (runtime output-port)
   (files "output")
@@ -1924,8 +2016,12 @@ USA.
 	  output-port/fresh-line
 	  output-port/write-char
 	  output-port/write-object
+	  output-port/write-external-string
+	  output-port/write-external-substring
 	  output-port/write-string
 	  output-port/write-substring
+	  output-port/write-wide-string
+	  output-port/write-wide-substring
 	  output-port/x-size
 	  output-port/y-size
 	  write
@@ -1976,7 +2072,12 @@ USA.
   (files "list")
   (parent (runtime))
   (export ()
+	  (list-search-negative find-non-matching-item)
+	  (list-search-positive find-matching-item)
+	  (list-transform-negative delete-matching-items)
+	  (list-transform-positive keep-matching-items)
 	  add-member-procedure
+	  alist->keyword-list
 	  alist-copy
 	  alist?
 	  append
@@ -2022,6 +2123,8 @@ USA.
 	  circular-list
 	  cons
 	  cons*
+	  count-matching-items
+	  count-non-matching-items
 	  del-assoc
 	  del-assoc!
 	  del-assq
@@ -2039,23 +2142,38 @@ USA.
 	  delv
 	  delv!
 	  eighth
+	  error:not-alist
+	  error:not-keyword-list
+	  error:not-list
+	  error:not-pair
+	  error:not-restricted-keyword-list
+	  error:not-unique-keyword-list
+	  error:not-weak-list
 	  except-last-pair
 	  except-last-pair!
 	  fifth
 	  find-matching-item
+	  find-non-matching-item
 	  first
 	  fold-left
 	  fold-right
 	  for-each
 	  fourth
 	  general-car-cdr
+	  get-keyword-value
 	  guarantee-alist
+	  guarantee-keyword-list
 	  guarantee-list
 	  guarantee-list->length
 	  guarantee-list-of-type
 	  guarantee-list-of-type->length
 	  guarantee-pair
+	  guarantee-restricted-keyword-list
+	  guarantee-unique-keyword-list
+	  guarantee-weak-list
 	  keep-matching-items
+	  keyword-list->alist
+	  keyword-list?
 	  last-pair
 	  length
 	  list
@@ -2067,11 +2185,7 @@ USA.
 	  list-of-type?
 	  list-of-type?->length
 	  list-ref
-	  list-search-negative
-	  list-search-positive
 	  list-tail
-	  list-transform-negative
-	  list-transform-positive
 	  list?
 	  list?->length
 	  make-circular-list
@@ -2090,8 +2204,11 @@ USA.
 	  pair?
 	  reduce
 	  reduce-right
+	  restricted-keyword-list?
 	  reverse
 	  reverse!
+	  reverse*
+	  reverse*!
 	  second
 	  set-car!
 	  set-cdr!
@@ -2101,17 +2218,18 @@ USA.
 	  tenth
 	  third
 	  tree-copy
+	  unique-keyword-list?
 	  weak-car
 	  weak-cdr
 	  weak-cons
 	  weak-delq!
 	  weak-list->list
+	  weak-list?
 	  weak-memq
 	  weak-pair/car?
 	  weak-pair?
 	  weak-set-car!
-	  weak-set-cdr!)
-  (initialization (initialize-package!)))
+	  weak-set-cdr!))
 
 (define-package (runtime load)
   (files "load")
@@ -2202,6 +2320,7 @@ USA.
 	  microcode-termination/code-limit
 	  microcode-termination/name->code
 	  microcode-type/code->name
+	  microcode-type/code->names
 	  microcode-type/code-limit
 	  microcode-type/name->code)
   (export (runtime save/restore)
@@ -2273,6 +2392,17 @@ USA.
 	  >
 	  >=
 	  atan
+	  error:not-complex
+	  error:not-exact
+	  error:not-exact-integer
+	  error:not-exact-nonnegative-integer
+	  error:not-exact-positive-integer
+	  error:not-exact-rational
+	  error:not-inexact
+	  error:not-integer
+	  error:not-number
+	  error:not-rational
+	  error:not-real
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
 	  flo:significand-digits-base-10
@@ -2296,6 +2426,7 @@ USA.
 	  inexact?
 	  integer-divide-quotient
 	  integer-divide-remainder
+	  largest-fixnum
 	  lcm
 	  max
 	  min
@@ -2304,6 +2435,7 @@ USA.
 	  odd?
 	  quotient
 	  remainder
+	  smallest-fixnum
 	  square)
   (initialization
    (begin
@@ -2350,11 +2482,18 @@ USA.
   (files "parse")
   (parent (runtime))
   (export ()
+	  *parser-associate-positions?*
 	  *parser-canonicalize-symbols?*
 	  *parser-radix*
+	  *parser-table*
 	  parse-object
 	  parse-objects
 	  system-global-parser-table)
+  (export (runtime)
+	  (*parser-associate-positions?* runtime-parser-associate-positions?)
+	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
+	  (*parser-radix* runtime-parser-radix)
+	  (*parser-table* runtime-parser-table))
   (export (runtime character)
 	  char-set/atom-delimiters)
   (export (runtime syntactic-closures)
@@ -2364,36 +2503,30 @@ USA.
 	  char-set/atom-delimiters
 	  char-set/number-leaders
 	  char-set/symbol-quotes
-	  lambda-auxiliary-tag
+	  lambda-aux-tag
+	  lambda-key-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime unsyntaxer)
-	  lambda-auxiliary-tag
+	  lambda-aux-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
-  (export (runtime parser-table)
-	  collect-list-wrapper)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser-table)
   (files "partab")
   (parent (runtime))
   (export ()
-	  current-parser-table
+	  error:not-parser-table
 	  guarantee-parser-table
 	  make-parser-table
 	  parser-table/copy
 	  parser-table/entry
 	  parser-table/set-entry!
-	  parser-table?
-	  set-current-parser-table!
-	  with-current-parser-table)
+	  parser-table?)
   (export (runtime parser)
-	  parser-table/collect-list
-	  parser-table/collect-list-special
-	  parser-table/parse-object
-	  parser-table/parse-object-special)
-  (initialization (initialize-package!)))
+	  parser-table/initial
+	  parser-table/special))
 
 (define-package (runtime pathname)
   (files "pathnm")
@@ -2409,8 +2542,10 @@ USA.
 	  directory-pathname?
 	  enough-namestring
 	  enough-pathname
+	  error:not-pathname
 	  file-namestring
 	  file-pathname
+	  guarantee-pathname
 	  host-namestring
 	  host/type-name
 	  host=?
@@ -2430,7 +2565,6 @@ USA.
 	  pathname-default-version
 	  pathname-device
 	  pathname-directory
-	  pathname-end-of-line-string
 	  pathname-host
 	  pathname-name
 	  pathname-new-device
@@ -2438,6 +2572,7 @@ USA.
 	  pathname-new-name
 	  pathname-new-type
 	  pathname-new-version
+	  pathname-relative?
 	  pathname-simplify
 	  pathname-type
 	  pathname-version
@@ -2507,6 +2642,8 @@ USA.
 	  channel-file-length
 	  channel-file-position
 	  channel-file-set-position
+	  channel-file-truncate
+	  channel-has-input?
 	  channel-nonblocking
 	  channel-open?
 	  channel-port
@@ -2520,8 +2657,6 @@ USA.
 	  channel-type=unknown?
 	  channel-write
 	  channel-write-block
-	  channel-write-char-block
-	  channel-write-string-block
 	  channel?
 	  close-all-open-channels
 	  close-all-open-files
@@ -2543,6 +2678,7 @@ USA.
 	  pty-master-quit
 	  pty-master-send-signal
 	  pty-master-stop
+	  set-channel-port!
 	  set-terminal-input-baud-rate!
 	  set-terminal-output-baud-rate!
 	  terminal-cooked-input
@@ -2563,6 +2699,8 @@ USA.
 	  tty-input-channel
 	  tty-output-channel
 	  with-channel-blocking)
+  (export (runtime emacs-interface)
+	  channel-descriptor)
   (export (runtime load)
 	  channel-descriptor)
   (export (runtime socket)
@@ -2570,63 +2708,6 @@ USA.
 	  open-channel)
   (export (runtime subprocess)
 	  channel-descriptor)
-  (export (runtime generic-i/o-port)
-	  input-buffer/buffered-chars
-	  input-buffer/channel
-	  input-buffer/char-ready?
-	  input-buffer/chars-remaining
-	  input-buffer/close
-	  input-buffer/discard-char
-	  input-buffer/discard-until-delimiter
-	  input-buffer/eof?
-	  input-buffer/open?
-	  input-buffer/peek-char
-	  input-buffer/read-char
-	  input-buffer/read-substring
-	  input-buffer/read-until-delimiter
-	  input-buffer/set-size
-	  input-buffer/size
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/buffered-chars
-	  output-buffer/channel
-	  output-buffer/close
-	  output-buffer/column
-	  output-buffer/drain-block
-	  output-buffer/open?
-	  output-buffer/set-size
-	  output-buffer/size
-	  output-buffer/write-char-block
-	  output-buffer/write-substring
-	  output-buffer/write-substring-block
-	  set-channel-port!)
-  (export (runtime file-i/o-port)
-	  input-buffer/chars-remaining
-	  input-buffer/read-substring
-	  make-input-buffer
-	  make-output-buffer
-	  set-channel-port!)
-  (export (runtime console-i/o-port)
-	  input-buffer/buffer-contents
-	  input-buffer/buffered-chars
-	  input-buffer/channel
-	  input-buffer/char-ready?
-	  input-buffer/eof?
-	  input-buffer/peek-char
-	  input-buffer/read-char
-	  input-buffer/set-buffer-contents
-	  input-buffer/set-size
-	  input-buffer/size
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/buffered-chars
-	  output-buffer/channel
-	  output-buffer/drain-block
-	  output-buffer/set-size
-	  output-buffer/size
-	  output-buffer/write-char-block
-	  output-buffer/write-substring-block
-	  set-channel-port!)
   (export (runtime microcode-errors)
 	  port-error-test)
   (export (runtime x-graphics)
@@ -2652,13 +2733,24 @@ USA.
   (files "random")
   (parent (runtime))
   (export ()
+	  (random-source-state-ref export-random-state)
+	  (random-source? random-state?)
 	  *random-state*
+	  default-random-source
 	  export-random-state
 	  flo:random-unit
 	  import-random-state
+	  make-random-source
 	  make-random-state
 	  random
 	  random-byte-vector
+	  random-integer
+	  random-real
+	  random-source-make-integers
+	  random-source-make-reals
+	  random-source-pseudo-randomize!
+	  random-source-randomize!
+	  random-source-state-set!
 	  random-state?)
   (initialization (initialize-package!)))
 
@@ -2681,6 +2773,9 @@ USA.
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
 	  define-structure/vector-modifier
+	  error:not-list-of-unique-symbols
+	  error:not-record
+	  error:not-record-type
 	  guarantee-list-of-unique-symbols
 	  guarantee-record
 	  guarantee-record-type
@@ -2700,12 +2795,14 @@ USA.
 	  record-type-default-value
 	  record-type-descriptor
 	  record-type-dispatch-tag
+	  record-type-extension
 	  record-type-field-names
 	  record-type-name
 	  record-type?
 	  record-updater
 	  record?
 	  set-record-type-default-inits!
+	  set-record-type-extension!
 	  set-record-type-unparser-method!
 	  unparse-record)
   (export (runtime record-slot-access)
@@ -2743,7 +2840,9 @@ USA.
 	  make-macro-reference-trap-expression)
   (export (runtime unsyntaxer)
 	  macro-reference-trap-expression-transformer
-	  macro-reference-trap-expression?))
+	  macro-reference-trap-expression?)
+  (export (runtime miscellaneous-global)
+	  trap-max-immediate))
 
 (define-package (runtime rep)
   (files "rep")
@@ -2779,7 +2878,14 @@ USA.
 	  cmdl?
 	  condition-type:breakpoint
 	  condition/breakpoint?
+	  error:not-cmdl
+	  error:not-repl
 	  ge
+	  guarantee-cmdl
+	  guarantee-repl
+	  hook/repl-eval
+	  hook/repl-read
+	  hook/repl-write
 	  in
 	  initial-top-level-repl
 	  make-cmdl
@@ -2800,12 +2906,16 @@ USA.
 	  push-repl
 	  re
 	  read-eval-print
+	  repl-eval
+	  repl-eval/write
 	  repl-history/read
 	  repl-history/record!
 	  repl-history/size
 	  repl-printer-history-size
+	  repl-read
 	  repl-reader-history-size
 	  repl-scode-eval
+	  repl-write
 	  repl/base
 	  repl/condition
 	  repl/environment
@@ -2818,6 +2928,7 @@ USA.
 	  repl:write-result-hash-numbers?
 	  repl?
 	  restart
+	  run-in-nearest-repl
 	  set-cmdl/state!
 	  set-repl/environment!
 	  set-repl/printer-history!
@@ -2828,14 +2939,10 @@ USA.
 	  standard-breakpoint-hook
 	  ve
 	  with-repl-eval-boundary)
-  (export (runtime load)
-	  hook/repl-eval
-	  hook/repl-write)
+  (export (runtime load))
   (export (runtime emacs-interface)
 	  hook/error-decision
 	  set-cmdl/port!)
-  (export (runtime user-interface)
-	  hook/repl-eval)
   (export (runtime debugger)
 	  write-restarts)
   (export (runtime working-directory)
@@ -3765,6 +3872,8 @@ USA.
   (export ()
 	  condition-type:illegal-stream-element
 	  empty-stream?
+	  error:not-stream-pair
+	  guarantee-stream-pair
 	  head
 	  list->stream
 	  make-prime-numbers-stream
@@ -3773,12 +3882,14 @@ USA.
 	  stream->list
 	  stream-accumulate
 	  stream-append
+	  stream-append-map
 	  stream-car
 	  stream-cdr
 	  stream-filter
 	  stream-first
 	  stream-for-each
 	  stream-head
+	  stream-last-pair
 	  stream-length
 	  stream-map
 	  stream-null?
@@ -3805,8 +3916,9 @@ USA.
   (parent (runtime))
   (export ()
 	  call-with-output-string
-	  (get-output-from-accumulator get-output-string)
+	  (get-output-from-accumulator get-output-string!)
 	  get-output-string
+	  get-output-string!
 	  (make-accumulator-output-port open-output-string)
 	  open-output-string
 	  (with-string-output-port call-with-output-string)
@@ -3875,6 +3987,7 @@ USA.
   (files "sysmac")
   (parent (runtime))
   (export (runtime)
+	  define-guarantee
 	  define-primitives
 	  ucode-primitive
 	  ucode-return-address
@@ -3884,7 +3997,6 @@ USA.
   (files "system")
   (parent (runtime))
   (export ()
-	  add-identification!
 	  add-subsystem-identification!
 	  get-subsystem-identification-string
 	  get-subsystem-names
@@ -3921,8 +4033,6 @@ USA.
   (export ()
 	  *unparse-abbreviate-quotations?*
 	  *unparse-compound-procedure-names?*
-	  *unparse-disambiguate-null-as-itself?*
-	  *unparse-disambiguate-null-lambda-list?*
 	  *unparse-primitives-by-name?*
 	  *unparse-uninterned-symbols-by-name?*
 	  *unparse-with-datum?*
@@ -3931,19 +4041,17 @@ USA.
 	  *unparser-list-depth-limit*
 	  *unparser-radix*
 	  *unparser-string-length-limit*
-	  current-unparser-table
+	  *unparser-table*
+	  error:not-unparser-state
+	  error:not-unparser-table
 	  guarantee-unparser-state
 	  guarantee-unparser-table
-	  make-unparser-state
 	  make-unparser-table
 	  system-global-unparser-table
 	  unparse-char
 	  unparse-object
 	  unparse-string
-	  unparser-state/list-depth
 	  unparser-state/port
-	  unparser-state/slashify?
-	  unparser-state/unparser-table
 	  unparser-state?
 	  unparser-table/copy
 	  unparser-table/entry
@@ -3951,9 +4059,12 @@ USA.
 	  unparser-table?
 	  user-object-type
 	  with-current-unparser-state)
+  (export (runtime record)
+	  rtd:unparser-state)
   (export (runtime output-port)
 	  unparse-object/top-level)
   (export (runtime pretty-printer)
+	  make-unparser-state
 	  unparse-list/prefix-pair?
 	  unparse-list/unparser
 	  unparse-vector/unparser)
@@ -4214,11 +4325,8 @@ USA.
 	  dispatch-tag?
 	  guarantee-dispatch-tag
 	  make-dispatch-tag
-	  set-dispatch-tag-contents!
 
 	  ;; generic.scm:
-	  arity-max
-	  arity-min
 	  built-in-dispatch-tag
 	  built-in-dispatch-tags
 	  condition-type:no-applicable-methods
@@ -4226,6 +4334,8 @@ USA.
 	  error:no-applicable-methods
 	  generic-procedure-applicable?
 	  generic-procedure-arity
+	  generic-procedure-arity-max
+	  generic-procedure-arity-min
 	  generic-procedure-name
 	  generic-procedure?
 	  guarantee-generic-procedure
@@ -4397,6 +4507,7 @@ USA.
   (export ()
 	  rexp*
 	  rexp+
+	  rexp-*n
 	  rexp->regexp
 	  rexp-alternatives
 	  rexp-any-char
@@ -4405,6 +4516,9 @@ USA.
 	  rexp-group
 	  rexp-line-end
 	  rexp-line-start
+	  rexp-n*
+	  rexp-n*m	  
+	  rexp-n*n
 	  rexp-not-syntax-char
 	  rexp-not-word-char
 	  rexp-not-word-edge
@@ -4448,6 +4562,7 @@ USA.
 	  call-with-decode-base64-output-port
 	  call-with-decode-binhex40-output-port
 	  call-with-decode-quoted-printable-output-port
+	  call-with-decode-uue-output-port
 	  decode-base64:finalize
 	  decode-base64:initialize
 	  decode-base64:update
@@ -4457,6 +4572,9 @@ USA.
 	  decode-quoted-printable:finalize
 	  decode-quoted-printable:initialize
 	  decode-quoted-printable:update
+	  decode-uue:finalize
+	  decode-uue:initialize
+	  decode-uue:update
 	  encode-base64:finalize
 	  encode-base64:initialize
 	  encode-base64:update
@@ -4465,12 +4583,14 @@ USA.
 	  encode-quoted-printable:update
 	  make-decode-base64-port
 	  make-decode-binhex40-port
-	  make-decode-quoted-printable-port))
+	  make-decode-quoted-printable-port
+	  make-decode-uue-port))
 
 (define-package (runtime parser-buffer)
   (files "parser-buffer")
   (parent (runtime))
   (export ()
+	  call-with-parser-buffer-tail
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
 	  get-parser-buffer-tail
@@ -4478,9 +4598,15 @@ USA.
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
 	  match-parser-buffer-char-ci-no-advance
+	  match-parser-buffer-char-in-alphabet
+	  match-parser-buffer-char-in-alphabet-no-advance
 	  match-parser-buffer-char-in-set
 	  match-parser-buffer-char-in-set-no-advance
 	  match-parser-buffer-char-no-advance
+	  match-parser-buffer-char-not-in-alphabet
+	  match-parser-buffer-char-not-in-alphabet-no-advance
+	  match-parser-buffer-char-not-in-set
+	  match-parser-buffer-char-not-in-set-no-advance
 	  match-parser-buffer-not-char
 	  match-parser-buffer-not-char-ci
 	  match-parser-buffer-not-char-ci-no-advance
@@ -4493,20 +4619,19 @@ USA.
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
-	  match-utf8-char-in-alphabet
+	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
 	  parser-buffer-line
 	  parser-buffer-pointer-index
 	  parser-buffer-pointer-line
 	  parser-buffer-pointer?
+	  parser-buffer-port
 	  parser-buffer-position-string
 	  parser-buffer-ref
 	  parser-buffer?
 	  peek-parser-buffer-char
 	  read-parser-buffer-char
 	  set-parser-buffer-pointer!
-	  source->parser-buffer
-	  string->parser-buffer
-	  substring->parser-buffer))
+	  string->parser-buffer))
 
 (define-package (runtime unicode)
   (files "unicode")
@@ -4522,18 +4647,60 @@ USA.
 	  alphabet->code-points
 	  alphabet->string
 	  alphabet?
+	  call-with-utf16-be-output-string
+	  call-with-utf16-le-output-string
+	  call-with-utf16-output-string
+	  call-with-utf32-be-output-string
+	  call-with-utf32-le-output-string
+	  call-with-utf32-output-string
+	  call-with-utf8-output-string
 	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
 	  code-points->alphabet
+	  error:not-8-bit-alphabet
+	  error:not-alphabet
+	  error:not-unicode-code-point
+	  error:not-utf16-be-string
+	  error:not-utf16-le-string
+	  error:not-utf16-string
+	  error:not-utf32-be-string
+	  error:not-utf32-le-string
+	  error:not-utf32-string
+	  error:not-utf8-string
+	  error:not-well-formed-code-point-list
+	  error:not-wide-char
+	  error:not-wide-string
 	  guarantee-8-bit-alphabet
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
+	  guarantee-utf16-be-string
+	  guarantee-utf16-le-string
+	  guarantee-utf16-string
+	  guarantee-utf32-be-string
+	  guarantee-utf32-le-string
+	  guarantee-utf32-string
+	  guarantee-utf8-string
 	  guarantee-well-formed-code-point-list
 	  guarantee-wide-char
 	  guarantee-wide-string
 	  guarantee-wide-string-index
+	  guarantee-wide-substring
 	  make-wide-string
+	  open-utf16-be-input-string
+	  open-utf16-be-output-string
+	  open-utf16-input-string
+	  open-utf16-le-input-string
+	  open-utf16-le-output-string
+	  open-utf16-output-string
+	  open-utf32-be-input-string
+	  open-utf32-be-output-string
+	  open-utf32-input-string
+	  open-utf32-le-input-string
+	  open-utf32-le-output-string
+	  open-utf32-output-string
+	  open-utf8-input-string
+	  open-utf8-output-string
 	  open-wide-input-string
 	  open-wide-output-string
 	  read-utf16-be-char
@@ -4544,29 +4711,37 @@ USA.
 	  read-utf32-le-char
 	  read-utf8-char
 	  string->alphabet
+	  string->utf8-string
 	  string->wide-string
 	  unicode-code-point?
 	  utf16-be-string->wide-string
 	  utf16-be-string-length
 	  utf16-be-string-valid?
+	  utf16-be-string?
 	  utf16-le-string->wide-string
 	  utf16-le-string-length
 	  utf16-le-string-valid?
+	  utf16-le-string?
 	  utf16-string->wide-string
 	  utf16-string-length
 	  utf16-string-valid?
+	  utf16-string?
 	  utf32-be-string->wide-string
 	  utf32-be-string-length
 	  utf32-be-string-valid?
+	  utf32-be-string?
 	  utf32-le-string->wide-string
 	  utf32-le-string-length
 	  utf32-le-string-valid?
+	  utf32-le-string?
 	  utf32-string->wide-string
 	  utf32-string-length
 	  utf32-string-valid?
+	  utf32-string?
 	  utf8-string->wide-string
 	  utf8-string-length
 	  utf8-string-valid?
+	  utf8-string?
 	  well-formed-code-point-list?
 	  wide-char?
 	  wide-string
@@ -4583,6 +4758,7 @@ USA.
 	  wide-string-ref
 	  wide-string-set!
 	  wide-string?
+	  wide-substring
 	  write-utf16-be-char
 	  write-utf16-char
 	  write-utf16-le-char
@@ -4591,33 +4767,141 @@ USA.
 	  write-utf32-le-char
 	  write-utf8-char)
   (export (runtime parser-buffer)
-	  read-utf8-char-from-source))
+	  %wide-string-length
+	  %wide-string-ref
+	  %wide-substring
+	  wide-string-contents)
+  (export (runtime generic-i/o-port)
+	  wide-string-contents)
+  (export (runtime input-port)
+	  wide-string-contents))
 
-(define-package (runtime url)
+(define-package (runtime uri)
   (files "url")
   (parent (runtime))
   (export ()
-	  url:char-set:escaped
-	  url:char-set:extra
-	  url:char-set:national
-	  url:char-set:punctuation
-	  url:char-set:reserved
-	  url:char-set:safe
-	  url:char-set:unescaped
+	  (url:decode-string decode-component)
+	  (url:match:escape matcher:pct-encoded)
+	  (url:parse:hostport parser:hostport)
+	  ->absolute-uri
+	  ->relative-uri
+	  ->uri
+	  absolute-uri?
+	  char-set:uri-alpha
+	  char-set:uri-digit
+	  char-set:uri-fragment
+	  char-set:uri-hex
+	  char-set:uri-ipvfuture
+	  char-set:uri-opaque-auth
+	  char-set:uri-query
+	  char-set:uri-reg-name
+	  char-set:uri-scheme
+	  char-set:uri-segment
+	  char-set:uri-segment-nc
+	  char-set:uri-userinfo
+	  error:not-absolute-uri
+	  error:not-partial-uri
+	  error:not-relative-uri
+	  error:not-uri
+	  error:not-uri-authority
+	  error:not-uri-host
+	  error:not-uri-path
+	  error:not-uri-port
+	  error:not-uri-scheme
+	  error:not-uri-userinfo
+	  guarantee-absolute-uri
+	  guarantee-partial-uri
+	  guarantee-relative-uri
+	  guarantee-uri
+	  guarantee-uri-authority
+	  guarantee-uri-host
+	  guarantee-uri-path
+	  guarantee-uri-port
+	  guarantee-uri-scheme
+	  guarantee-uri-userinfo
+	  make-uri
+	  make-uri-authority
+	  merge-uris
+	  parse-absolute-uri
+	  parse-partial-absolute-uri
+	  parse-partial-uri
+	  parse-relative-uri
+	  parse-uri
+	  partial-uri->string
+	  partial-uri-authority
+	  partial-uri-extra
+	  partial-uri-fragment
+	  partial-uri-path
+	  partial-uri-query
+	  partial-uri-scheme
+	  partial-uri-state-name
+	  partial-uri?
+	  relative-uri?
+	  string->absolute-uri
+	  string->partial-absolute-uri
+	  string->partial-uri
+	  string->relative-uri
+	  string->uri
+	  test-merge-uris
+	  uri->alist
+	  uri->string
+	  uri->symbol
+	  uri-absolute?
+	  uri-authority
+	  uri-authority-host
+	  uri-authority-port
+	  uri-authority-userinfo
+	  uri-authority=?
+	  uri-authority?
+	  uri-fragment
+	  uri-host?
+	  uri-path
+	  uri-path-absolute?
+	  uri-path-relative?
+	  uri-path?
+	  uri-port?
+	  uri-query
+	  uri-relative?
+	  uri-rexp:absolute-uri
+	  uri-rexp:authority
+	  uri-rexp:dec-octet
+	  uri-rexp:fragment
+	  uri-rexp:h16
+	  uri-rexp:hier-part
+	  uri-rexp:host
+	  uri-rexp:ip-literal
+	  uri-rexp:ipv4-address
+	  uri-rexp:ipv6-address
+	  uri-rexp:ipvfuture
+	  uri-rexp:ls32
+	  uri-rexp:opaque-auth
+	  uri-rexp:path
+	  uri-rexp:path-abempty
+	  uri-rexp:path-absolute
+	  uri-rexp:path-empty
+	  uri-rexp:path-noscheme
+	  uri-rexp:path-rootless
+	  uri-rexp:pct-encoded
+	  uri-rexp:port
+	  uri-rexp:query
+	  uri-rexp:reg-name
+	  uri-rexp:relative-part
+	  uri-rexp:relative-ref
+	  uri-rexp:scheme
+	  uri-rexp:segment
+	  uri-rexp:segment-nz
+	  uri-rexp:segment-nz-nc
+	  uri-rexp:uri
+	  uri-rexp:uri-reference
+	  uri-rexp:userinfo
+	  uri-scheme
+	  uri-scheme?
+	  uri=?
+	  uri?
 	  url:char-set:unreserved
-	  url:decode-string
-	  url:decode-substring
 	  url:encode-string
-	  url:encode-substring
-	  url:match:escape
-	  url:match:host
-	  url:match:hostname
-	  url:match:hostnumber
-	  url:match:uchar
-	  url:match:xchar
-	  url:parse:hostport
-	  url:string-encoded?
-	  url:substring-encoded?))
+	  write-partial-uri
+	  write-uri))
 
 (define-package (runtime postgresql)
   (file-case options
@@ -4625,9 +4909,16 @@ USA.
     (else))
   (parent (runtime))
   (export ()
+	  call-with-pgsql-conn
 	  close-pgsql-conn
+	  condition-type:pgsql-connection-error
+	  condition-type:pgsql-error
+	  condition-type:pgsql-query-error
+	  decode-pgsql-bytea
+	  encode-pgsql-bytea
 	  escape-pgsql-string
 	  exec-pgsql-query
+	  guarantee-pgsql-available
 	  make-empty-pgsql-result
 	  open-pgsql-conn
 	  pgsql-available?
@@ -4639,6 +4930,7 @@ USA.
 	  pgsql-conn-db
 	  pgsql-conn-error-message
 	  pgsql-conn-host
+	  pgsql-conn-open?
 	  pgsql-conn-options
 	  pgsql-conn-pass
 	  pgsql-conn-port
@@ -4660,6 +4952,7 @@ USA.
 	  pgsql-fatal-error
 	  pgsql-field-name
 	  pgsql-get-is-null?
+	  pgsql-get-line
 	  pgsql-get-value
 	  pgsql-n-fields
 	  pgsql-n-tuples
@@ -4669,9 +4962,32 @@ USA.
 	  pgsql-polling-ok
 	  pgsql-polling-reading
 	  pgsql-polling-writing
+	  pgsql-put-line
 	  pgsql-result-error-message
 	  pgsql-result-status
-	  pgsql-result-status-string
 	  pgsql-tuples-ok
 	  poll-pgsql-conn
 	  poll-pgsql-reset))
+
+
+(os-type-case
+ ((nt)
+  (define-package (runtime win32-registry)
+    (files "win32-registry")
+    (parent (runtime))
+    (export ()
+	    win32-registry/add-subkey
+	    win32-registry/delete-subkey
+	    win32-registry/delete-value
+	    win32-registry/get-value
+	    win32-registry/key-full-name
+	    win32-registry/key-name
+	    win32-registry/key-parent
+	    win32-registry/key?
+	    win32-registry/open-key
+	    win32-registry/set-value
+	    win32-registry/subkey
+	    win32-registry/subkeys
+	    win32-registry/value-names
+	    win32/expand-environment-strings)
+    (initialization (initialize-package!)))))

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.69 2003/02/14 18:28:32 cph Exp $
+$Id: infutl.scm,v 1.70 2004/01/16 20:31:06 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -455,7 +457,7 @@ USA.
   (uncompress-kernel-by-blocks
    input-port output-port
    (if (default-object? buffer-size) 4096 buffer-size)
-   (input-port/operation input-port 'READ-SUBSTRING)))
+   input-port/read-substring!))
 
 (define (uncompress-read-substring port buffer start end)
   (let loop ((i start))

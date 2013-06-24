@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntio.c,v 1.30 2003/04/08 01:11:54 cph Exp $
+$Id: ntio.c,v 1.31 2003/09/26 13:34:10 cph Exp $
 
 Copyright 1993,1997,1998,2000,2001,2003 Massachusetts Institute of Technology
 
@@ -934,7 +934,7 @@ test_single_object_1 (Tchannel channel, unsigned int qmode)
   unsigned int rmode = (qmode & SELECT_MODE_WRITE);
   if (((qmode & SELECT_MODE_READ) != 0)
       && ((channel == (OS_tty_input_channel ()))
-	  ? ((Screen_pending_events_p ()) || (test_for_pending_event ()))
+	  ? (test_for_pending_event ())
 	  : ((NT_channel_n_read (channel)) > 0)))
     rmode |= SELECT_MODE_READ;
   return (rmode);
@@ -943,14 +943,8 @@ test_single_object_1 (Tchannel channel, unsigned int qmode)
 static int
 test_for_pending_event (void)
 {
-  while (1)
-    {
-      MSG m;
-      int mp = (PeekMessage ((&m), 0, 0, 0, PM_NOREMOVE));
-      if (!mp)
-	return (0);
-      if ((m . message) != WM_SCHEME_INTERRUPT)
-	return (1);
-      PeekMessage ((&m), 0, 0, 0, PM_REMOVE);
-    }
+  MSG m;
+  while (PeekMessage ((&m), 0, 0, 0, PM_REMOVE))
+    DispatchMessage (&m);
+  return (Screen_pending_events_p ());
 }

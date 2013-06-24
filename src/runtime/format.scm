@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: format.scm,v 14.8 2003/02/14 18:28:32 cph Exp $
+$Id: format.scm,v 14.9 2004/12/06 21:17:03 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1991,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -149,15 +149,17 @@ USA.
 
 ;;;; Formatters
 
-(define (((format-insert-character character) modifiers #!optional n)
-	 port string arguments)
-  (if (default-object? n)
-      (output-port/write-char port character)
-      (let loop ((i 0))
-	(if (not (= i n))
-	    (begin (output-port/write-char port character)
-		   (loop (1+ i))))))
-  (format-loop port string arguments))
+(define (format-insert-character character)
+  (lambda (modifiers #!optional n)
+    modifiers
+    (lambda (port string arguments)
+      (if (default-object? n)
+	  (output-port/write-char port character)
+	  (let loop ((i 0))
+	    (if (not (= i n))
+		(begin (output-port/write-char port character)
+		       (loop (1+ i))))))
+      (format-loop port string arguments))))
 
 (define ((format-ignore-comment modifiers) port string arguments)
   modifiers				;ignore

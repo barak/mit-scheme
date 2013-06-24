@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: sf.sf,v 4.13 2003/02/14 18:28:35 cph Exp $
+$Id: sf.sf,v 4.14 2005/01/11 03:13:23 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1995,1996,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,4 +43,4 @@ USA.
   (sf-directory "."))
 
 (load-option 'CREF)
-(cref/generate-constructors "sf")
+(cref/generate-constructors "sf" 'ALL)

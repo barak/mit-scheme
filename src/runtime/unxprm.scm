@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.65 2003/02/14 18:28:34 cph Exp $
+$Id: unxprm.scm,v 1.72 2005/03/31 05:08:51 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -116,7 +116,10 @@ USA.
   (inode-number #f read-only #t))
 
 (define (file-length filename)
-  (file-attributes/length (file-attributes-direct filename)))
+  (let ((attrs (file-attributes-direct filename)))
+    (if (not attrs)
+	(error:bad-range-argument filename 'FILE-LENGTH))
+    (file-attributes/length attrs)))
 
 (define (file-modification-time-direct filename)
   ((ucode-primitive file-mod-time 1)
@@ -147,51 +150,118 @@ USA.
      (or access-time (file-access-time-direct filename))
      (or modification-time (file-modification-time-direct filename)))))
 
-(define get-environment-variable)
-(define set-environment-variable!)
-(define delete-environment-variable!)
-(define reset-environment-variables!)
+;;;; Environment variables
 
-(let ((environment-variables '()))
-  ;; Kludge: since getenv returns #f for unbound,
-  ;; that can also be the marker for a deleted variable
-  (define-integrable *variable-deleted* #f)
+(define environment-variables)
 
-  (set! get-environment-variable
-	(lambda (variable)
-	  (cond ((not (string? variable))
-		 (error "GET-ENVIRONMENT-VARIABLE: Variable must be a string"
-			variable))
-		((assoc variable environment-variables)
-		 =>
-		 cdr)
-		(else ((ucode-primitive get-environment-variable 1)
-		       variable)))))
+(define (get-environment-variable name)
+  (guarantee-string name 'GET-ENVIRONMENT-VARIABLE)
+  (let ((value (hash-table/get environment-variables name 'NONE)))
+    (if (eq? value 'NONE)
+	(let ((value ((ucode-primitive get-environment-variable 1) name)))
+	  (hash-table/put! environment-variables name value)
+	  value)
+	value)))
 
-  (set! set-environment-variable!
-	(lambda (variable value)
-	  (cond ((not (string? variable))
-		 (error "SET-ENVIRONMENT-VARIABLE!: Variable must be a string"
-			variable value))
-		((assoc variable environment-variables)
-		 =>
-		 (lambda (pair)
-		   (set-cdr! pair value)))
-		(else
-		 (set! environment-variables
-		       (cons (cons variable value)
-			     environment-variables))))
-	  unspecific))
+(define (set-environment-variable! name value)
+  (guarantee-string name 'SET-ENVIRONMENT-VARIABLE!)
+  (if value
+      (guarantee-string value 'SET-ENVIRONMENT-VARIABLE!))
+  (hash-table/put! environment-variables name value))
 
-  (set! delete-environment-variable!
-	(lambda (variable)
-	  (set-environment-variable! variable *variable-deleted*)))
+(define (delete-environment-variable! name)
+  (guarantee-string name 'DELETE-ENVIRONMENT-VARIABLE!)
+  (hash-table/remove! environment-variables name))
 
-  (set! reset-environment-variables!
-	(lambda () (set! environment-variables '()))))
+(define (reset-environment-variables!)
+  (hash-table/clear! environment-variables))
 
 (define (initialize-system-primitives!)
+  (set! environment-variables (make-string-hash-table))
   (add-event-receiver! event:after-restart reset-environment-variables!))
+
+;;;; MIME types
+
+(define (os/suffix-mime-type suffix)
+  (import-mime-types)
+  (hash-table/get mime-types suffix #f))
+
+(define (initialize-mime-types!)
+  (set! mime-types (make-string-hash-table))
+  (set! mime.types-files (make-vector (length mime.types-pathnames) (list #f)))
+  unspecific)
+
+(define mime-types)
+(define mime.types-files)
+
+(define mime.types-pathnames
+  '("/etc/mime.types" "~/.mime.types"))
+
+(define (import-mime-types)
+  (if (let loop ((pathnames mime.types-pathnames) (index 0) (changed? #f))
+	(if (pair? pathnames)
+	    (loop (cdr pathnames)
+		  (fix:+ index 1)
+		  (boolean/or (import-mime.types-file (car pathnames) index)
+			      changed?))
+	    changed?))
+      (with-thread-events-blocked
+	(lambda ()
+	  (hash-table/clear! mime-types)
+	  (for-each-vector-element mime.types-files
+	    (lambda (p)
+	      (for-each (lambda (entry)
+			  (let ((type (car entry)))
+			    (for-each (lambda (suffix)
+					(hash-table/put! mime-types
+							 suffix
+							 type))
+				      (cdr entry))))
+			(cdr p))))))))
+
+(define (import-mime.types-file pathname index)
+  (let ((changed? #f))
+    (let loop ((t (file-modification-time pathname)))
+      (with-thread-events-blocked
+	(lambda ()
+	  (let ((t* (car (vector-ref mime.types-files index))))
+	    (cond ((eqv? t* t)
+		   unspecific)
+		  (t
+		   (vector-set! mime.types-files
+				index
+				(cons t (read-mime.types-file pathname)))
+		   (set! changed? #t))
+		  (t*
+		   (vector-set! mime.types-files
+				index
+				(list #f))
+		   (set! changed? #t))))))
+      (let ((t* (file-modification-time pathname)))
+	(if (not (eqv? t* t))
+	    (loop t*))))
+    changed?))
+
+(define (read-mime.types-file pathname)
+  (call-with-input-file pathname
+    (lambda (port)
+      (let loop ((entries '()))
+	(let ((line (read-line port)))
+	  (if (eof-object? line)
+	      (reverse! entries)
+	      (loop (let ((entry (parse-mime.types-line line)))
+		      (if entry
+			  (cons entry entries)
+			  entries)))))))))
+
+(define (parse-mime.types-line line)
+  (if (and (fix:> (string-length line) 0)
+	   (char=? (string-ref line 0) #\#))
+      #f
+      (let ((parts (burst-string line char-set:whitespace #t)))
+	(and (pair? parts)
+	     (mime-type-string? (car parts))
+	     parts))))
 
 (define (user-home-directory user-name)
   (let ((directory ((ucode-primitive get-user-home-directory 1) user-name)))
@@ -258,7 +328,7 @@ USA.
        (set! ti-outside)
        unspecific))))
 
-(define (os/file-end-of-line-translation pathname)
+(define (file-line-ending pathname)
   ;; This works because the line translation is harmless when not
   ;; needed.  We can't tell when it is needed, because FAT and HPFS
   ;; filesystems can be mounted with automatic translation (in the
@@ -276,11 +346,11 @@ USA.
 	    (string-ci=? "iso9660" type)
 	    (string-ci=? "ntfs" type)
 	    (string-ci=? "smb" type))
-	"\r\n"
-	#f)))
+	'CRLF
+	'LF)))
 
-(define (os/default-end-of-line-translation)
-  #f)
+(define (default-line-ending)
+  'LF)
 
 (define (copy-file from to)
   (let ((input-filename (->namestring (merge-pathnames from)))

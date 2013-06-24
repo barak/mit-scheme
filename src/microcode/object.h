@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: object.h,v 9.54 2003/02/28 04:34:38 cph Exp $
+$Id: object.h,v 9.59 2005/07/24 05:10:03 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
 Copyright 1993,1995,1997,1998,2000,2001 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -120,7 +120,7 @@ USA.
 /* Machine dependencies */
 
 #ifndef HEAP_MALLOC
-#  define HEAP_MALLOC malloc
+#  define HEAP_MALLOC OS_malloc
 #endif
 
 #ifdef HEAP_IN_LOW_MEMORY	/* Storing absolute addresses */
@@ -139,11 +139,11 @@ typedef long relocation_type;	/* Used to relocate pointers on fasload */
 } while (0)
 
 #ifndef DATUM_TO_ADDRESS
-#define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
+#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) (datum))
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
+#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) (address))
 #endif
 
 #else /* not HEAP_IN_LOW_MEMORY (portable version) */
@@ -164,11 +164,11 @@ extern SCHEME_OBJECT * memory_base;
 } while (0)
 
 #ifndef DATUM_TO_ADDRESS
-#define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
+#  define DATUM_TO_ADDRESS(datum) ((SCHEME_OBJECT *) ((datum) + memory_base))
 #endif
 
 #ifndef ADDRESS_TO_DATUM
-#define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
+#  define ADDRESS_TO_DATUM(address) ((SCHEME_OBJECT) ((address) - memory_base))
 #endif
 
 #endif /* HEAP_IN_LOW_MEMORY */
@@ -198,7 +198,7 @@ extern SCHEME_OBJECT * memory_base;
 #define PRIMITIVE_P(object) ((OBJECT_TYPE (object)) == TC_PRIMITIVE)
 #define FUTURE_P(object) ((OBJECT_TYPE (object)) == TC_FUTURE)
 #define PROMISE_P(object) ((OBJECT_TYPE (object)) == TC_DELAYED)
-#define APPARENT_LIST_P(object) (((object) == EMPTY_LIST) || (PAIR_P (object)))
+#define APPARENT_LIST_P(object) ((EMPTY_LIST_P (object)) || (PAIR_P (object)))
 #define CONTROL_POINT_P(object) ((OBJECT_TYPE (object)) == TC_CONTROL_POINT)
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define GC_NON_POINTER_P(object) ((GC_Type (object)) == GC_Non_Pointer)
@@ -396,11 +396,16 @@ extern SCHEME_OBJECT * memory_base;
    - ((long) ((((unsigned long) TC_FIXNUM) << DATUM_LENGTH)		\
 	      | FIXNUM_SIGN_BIT)))
 
+#define ULONG_TO_FIXNUM_P(value) (((value) & SIGN_MASK) == 0)
+#define ULONG_TO_FIXNUM(value) (FIXNUM_ZERO + (value))
+#define FIXNUM_TO_ULONG_P(fixnum) (((OBJECT_DATUM (fixnum)) & SIGN_MASK) == 0)
+#define FIXNUM_TO_ULONG(fixnum) (OBJECT_DATUM (fixnum))
+
 #define FIXNUM_TO_DOUBLE(fixnum) ((double) (FIXNUM_TO_LONG (fixnum)))
 
 #define DOUBLE_TO_FIXNUM_P(number)					\
-  (((number) > (((double) SMALLEST_FIXNUM) - 0.5)) &&			\
-   ((number) < (((double) BIGGEST_FIXNUM) + 0.5)))
+  (((number) > ((double) (SMALLEST_FIXNUM - 1)))			\
+   && ((number) < ((double) (BIGGEST_FIXNUM + 1))))
 
 #ifdef HAVE_DOUBLE_TO_LONG_BUG
 #define DOUBLE_TO_FIXNUM double_to_fixnum
@@ -501,16 +506,16 @@ if ((ADDRESS_CONSTANT_P (OBJECT_ADDRESS (Old_Pointer))) &&		\
   signal_error_from_primitive (ERR_WRITE_INTO_PURE_SPACE);		\
 
 #ifndef FLOATING_ALIGNMENT
-#define FLOATING_ALIGNMENT	0
-#endif /* not FLOATING_ALIGNMENT */
+#  define FLOATING_ALIGNMENT 0
+#endif
 
 #define FLOATING_ALIGNED_P(ptr)						\
   ((((unsigned long) ((ptr) + 1)) & FLOATING_ALIGNMENT) == 0)
 
 #define ALIGN_FLOAT(Where) do						\
 {									\
-  while (! (FLOATING_ALIGNED_P (Where)))				\
-    *Where++ = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
+  while (!FLOATING_ALIGNED_P (Where))					\
+    (*(Where)++) = (MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, 0));		\
 } while (0)
 
 #endif /* SCM_OBJECT_H */

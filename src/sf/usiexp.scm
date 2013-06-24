@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: usiexp.scm,v 4.43 2003/02/14 18:28:35 cph Exp $
+$Id: usiexp.scm,v 4.46 2005/06/30 17:39:12 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1997,2000,2001 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -505,7 +507,7 @@ USA.
 	    (make-type-test #f block (ucode-type big-flonum) operand)
 	    (make-type-test #f block (ucode-type recnum) operand)))))
       (if-not-expanded)))
-
+
 (define (symbol?-expansion expr operands if-expanded if-not-expanded block)
   (if (and (pair? operands)
 	   (null? (cdr operands)))
@@ -518,7 +520,17 @@ USA.
 	    (make-type-test #f block (ucode-type uninterned-symbol)
 			    operand)))))
       (if-not-expanded)))
-
+
+(define (default-object?-expansion expr operands if-expanded if-not-expanded
+	  block)
+  (if (and (pair? operands)
+	   (null? (cdr operands)))
+      (if-expanded
+       (make-combination expr block (ucode-primitive eq?)
+			 (list (car operands)
+			       (constant/make #f (default-object)))))
+      (if-not-expanded)))
+
 (define (make-disjunction expr . clauses)
   (let loop ((clauses clauses))
     (if (null? (cdr clauses))
@@ -563,36 +575,6 @@ USA.
 			 block
 			 (ucode-primitive integer->flonum 2)
 			 (list (car operands) (constant/make #f #b10))))
-      (if-not-expanded)))
-
-(define (flo:<=-expansion expr operands if-expanded if-not-expanded block)
-  (if (and (pair? operands)
-	   (pair? (cdr operands))
-	   (null? (cddr operands)))
-      (if-expanded
-       (make-combination
-	expr
-	block
-	(ucode-primitive not)
-	(list (make-combination #f
-				block
-				(ucode-primitive flonum-greater?)
-				operands))))
-      (if-not-expanded)))
-
-(define (flo:>=-expansion expr operands if-expanded if-not-expanded block)
-  (if (and (pair? operands)
-	   (pair? (cdr operands))
-	   (null? (cddr operands)))
-      (if-expanded
-       (make-combination
-	expr
-	block
-	(ucode-primitive not)
-	(list (make-combination #f
-				block
-				(ucode-primitive flonum-less?)
-				operands))))
       (if-not-expanded)))
 
 ;;;; Tables
@@ -643,6 +625,7 @@ USA.
     char=?
     complex?
     cons*
+    default-object?
     eighth
     exact-integer?
     exact-rational?
@@ -652,14 +635,13 @@ USA.
     fix:<=
     fix:=
     fix:>=
-    flo:<=
-    flo:>=
     fourth
     int:->flonum
     int:integer?
     intern
     list
     make-string
+    make-vector-8b
     ;; modulo	; Compiler does not currently open-code it.
     negative?
     number?
@@ -724,6 +706,7 @@ USA.
    char=?-expansion
    complex?-expansion
    cons*-expansion
+   default-object?-expansion
    eighth-expansion
    exact-integer?-expansion
    exact-rational?-expansion
@@ -733,13 +716,12 @@ USA.
    fix:<=-expansion
    fix:=-expansion
    fix:>=-expansion
-   flo:<=-expansion
-   flo:>=-expansion
    fourth-expansion
    int:->flonum-expansion
    exact-integer?-expansion
    intern-expansion
    list-expansion
+   make-string-expansion
    make-string-expansion
    ;; modulo-expansion
    negative?-expansion

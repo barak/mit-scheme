@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: numpar.scm,v 14.19 2003/02/14 18:28:33 cph Exp $
+$Id: numpar.scm,v 14.20 2005/01/10 17:55:15 cph Exp $
 
-Copyright (c) 1989-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,14 +29,12 @@ USA.
 
 (declare (usual-integrations))
 
-(define (string->number string #!optional radix)
+(define (string->number string #!optional radix error?)
   (if (not (string? string))
       (error:wrong-type-argument string "string" 'STRING->NUMBER))
-  (parse-number string 0 (string-length string)
-		(if (default-object? radix) #f radix)
-		'STRING->NUMBER))
+  (parse-number string 0 (string-length string) radix error? 'STRING->NUMBER))
 
-(define (substring->number string start end #!optional radix)
+(define (substring->number string start end #!optional radix error?)
   (if (not (string? string))
       (error:wrong-type-argument string "string" 'SUBSTRING->NUMBER))
   (if (not (index-fixnum? start))
@@ -46,11 +45,18 @@ USA.
       (error:bad-range-argument end 'SUBSTRING->NUMBER))
   (if (not (fix:<= start end))
       (error:bad-range-argument start 'SUBSTRING->NUMBER))
-  (parse-number string start end
-		(if (default-object? radix) #f radix)
-		'SUBSTRING->NUMBER))
+  (parse-number string start end radix error? 'SUBSTRING->NUMBER))
 
-(define (parse-number string start end default-radix name)
+(define (parse-number string start end radix error? caller)
+  (let ((z
+	 (parse-number-1 string start end
+			 (if (default-object? radix) #f radix)
+			 caller)))
+    (if (and (not z) (if (default-object? error?) #f error?))
+	(error:bad-range-argument string caller))
+    z))
+
+(define (parse-number-1 string start end default-radix name)
   (if (not (or (eq? #f default-radix) (eq? 2 default-radix)
 	       (eq? 8 default-radix) (eq? 10 default-radix)
 	       (eq? 16 default-radix)))

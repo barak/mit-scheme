@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.286 2003/04/25 03:10:00 cph Exp $
+$Id: edwin.pkg,v 1.290 2005/06/24 17:34:31 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -102,14 +102,11 @@ USA.
 	 )
 
   (parent ())
-  (import (runtime rep)
-	  hook/repl-eval)
-  (import (runtime primitive-io)
-	  input-buffer/read-substring
-	  make-input-buffer
-	  make-output-buffer
-	  output-buffer/drain-block
-	  output-buffer/write-substring-block)
+  (import (runtime parser)
+	  (*parser-associate-positions?* runtime-parser-associate-positions?)
+	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
+	  (*parser-radix* runtime-parser-radix)
+	  (*parser-table* runtime-parser-table))
   (import (runtime character)
 	  bucky-bits->prefix)
   (import (runtime char-syntax)
@@ -539,9 +536,13 @@ USA.
   (files "bufinp")
   (parent (edwin))
   (export (edwin)
+	  call-with-input-mark
+	  call-with-input-region
 	  make-buffer-input-port
 	  with-input-from-mark
-	  with-input-from-region))
+	  with-input-from-region)
+  (import (runtime port)
+	  port/unread))
 
 (define-package (edwin buffer-output-port)
   (files "bufout")

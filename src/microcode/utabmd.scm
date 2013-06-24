@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utabmd.scm,v 9.87 2003/02/14 18:28:24 cph Exp $
+$Id: utabmd.scm,v 9.88 2005/04/16 03:12:24 cph Exp $
 
-Copyright 1987-2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -114,7 +115,7 @@ USA.
 
 (vector-set! (get-fixed-objects-vector)
 	     4 ;(fixed-objects-vector-slot 'MICROCODE-TYPES-VECTOR)
-	     #((NULL FALSE MANIFEST-VECTOR GLOBAL-ENVIRONMENT) ;00
+	     #((FALSE MANIFEST-VECTOR GLOBAL-ENVIRONMENT) ;00
 	       (PAIR LIST)				;01
 	       CHARACTER		       		;02
 	       QUOTATION				;03
@@ -610,4 +611,4 @@ USA.
 
 ;;; This identification string is saved by the system.
 
-"$Id: utabmd.scm,v 9.87 2003/02/14 18:28:24 cph Exp $"
+"$Id: utabmd.scm,v 9.88 2005/04/16 03:12:24 cph Exp $"

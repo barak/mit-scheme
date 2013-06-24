@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: dosfile.scm,v 1.43 2003/07/14 20:23:43 cph Exp $
+$Id: dosfile.scm,v 1.45 2004/02/16 05:43:14 cph Exp $
 
 Copyright 1995,1996,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -425,38 +426,8 @@ Switches may be concatenated, e.g. `-lt' is equivalent to `-l -t'."
    	     (lambda (extension)
 	       (string-suffix? extension filename))))))
 
-(define (os/file-type-to-major-mode)
-  (alist-copy
-   `(("article" . text)
-     ("asm" . midas)
-     ("bat" . text)
-     ("bib" . text)
-     ("c" . c)
-     ("cc" . c)
-     ("h" . c)
-     ("htm" . html)
-     ("html" . html)
-     ("inc" . php)
-     ("java" . java)
-     ("pas" . pascal)
-     ("php" . php)
-     ("php3" . php)
-     ("s" . scheme)
-     ("scm" . scheme)
-     ("text" . text)
-     ("txi" . texinfo)
-     ("txt" . text)
-     ("xht" . html)
-     ("xhtml" . html)
-     ("xml" . html)
-     ("xsl" . html)
-     ("y" . c))))
-
-(define (os/init-file-name)
-  "~/edwin.ini")
-
-(define (os/abbrev-file-name)
-  "~/abbrevs.scm")
+(define (os/init-file-name) "~/edwin.ini")
+(define (os/abbrev-file-name) "~/abbrevs.scm")
 
 (define (os/find-file-initialization-filename pathname)
   (or (and (equal? "scm" (pathname-type pathname))
@@ -566,8 +537,7 @@ filename suffix \".gz\"."
 				  (list pathname mark)))
 	(group-insert-file! (mark-group mark)
 			    (mark-index mark)
-			    temporary
-			    (pathname-newline-translation pathname)))))))
+			    temporary))))))
 
 (define (write-compressed-file program arguments region pathname)
   ((message-wrapper #f "Compressing file " (->namestring pathname))

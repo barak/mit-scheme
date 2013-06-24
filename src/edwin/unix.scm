@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: unix.scm,v 1.116 2003/07/14 20:23:47 cph Exp $
+$Id: unix.scm,v 1.118 2004/02/16 05:44:05 cph Exp $
 
 Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -308,35 +309,6 @@ Includes the new backup.  Must be > 0."
 	     (and (string? extension)
 		  (not (string-null? extension))))))))
 
-(define (os/file-type-to-major-mode)
-  (alist-copy
-   `(("article" . text)
-     ("asm" . midas)
-     ("bat" . text)
-     ("bib" . text)
-     ("c" . c)
-     ("cc" . c)
-     ("h" . c)
-     ("htm" . html)
-     ("html" . html)
-     ("inc" . php)
-     ("java" . java)
-     ("pas" . pascal)
-     ("php" . php)
-     ("php3" . php)
-     ("s" . scheme)
-     ("scm" . scheme)
-     ("text" . text)
-     ("texi" . texinfo)
-     ("texinfo" . texinfo)
-     ("txi" . texinfo)
-     ("txt" . text)
-     ("xht" . html)
-     ("xhtml" . html)
-     ("xml" . html)
-     ("xsl" . html)
-     ("y" . c))))
-
 (define (os/init-file-name) "~/.edwin")
 (define (os/abbrev-file-name) "~/.abbrev_defs")
 
@@ -430,8 +402,7 @@ of the filename suffixes \".gz\", \".bz2\", or \".Z\"."
 				  (list pathname mark)))
 	(group-insert-file! (mark-group mark)
 			    (mark-index mark)
-			    temporary
-			    (pathname-newline-translation pathname)))))))
+			    temporary))))))
 
 (define (write-compressed-file program region pathname)
   ((message-wrapper #f "Compressing file " (->namestring pathname))

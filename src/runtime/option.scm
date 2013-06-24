@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.43 2003/02/14 18:28:33 cph Exp $
+$Id: option.scm,v 14.48 2005/08/05 20:03:01 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,12 +59,13 @@ USA.
 	find-option))
 
     (define (make-load-environment)
-      (extend-top-level-environment system-global-environment))
+      (let ((e (extend-top-level-environment system-global-environment)))
+	(environment-define e '*PARSER-CANONICALIZE-SYMBOLS?* #t)
+	e))
 
-    (fluid-let ((*parser-canonicalize-symbols?* #t))
-      (if (memq name loaded-options)
-	  name
-	  (find-option *options* *parent*)))))
+    (if (memq name loaded-options)
+	name
+	(find-option *options* *parent*))))
 
 (define (define-load-option name . loaders)
   (set! *options* (cons (cons name loaders) *options*))
@@ -74,7 +77,9 @@ USA.
 
 (define (initial-load-options)
   (or *initial-options-file*
-      (get-environment-variable "MITSCHEME_LOAD_OPTIONS")
+      (let ((s (get-environment-variable "MITSCHEME_LOAD_OPTIONS")))
+	(and s
+	     (confirm-pathname (merge-pathnames s (user-homedir-pathname)))))
       (local-load-options)))
 
 (define (local-load-options)
@@ -87,16 +92,16 @@ USA.
       "optiondb"))
 
 (define (library-file? library-internal-path)
-  (let* ((library (library-directory-pathname ""))
-	 (pathname (merge-pathnames library-internal-path library)))
-    (let loop ((file-types load/default-types))
-      (and (not (null? file-types))
-	   (let ((full-pathname
-		  (pathname-new-type pathname (caar file-types))))
-	     (if (file-exists? full-pathname)
-		 ;; not full-pathname to allow load-latest
-		 pathname		
-		 (loop (cdr file-types))))))))
+  (confirm-pathname
+   (merge-pathnames library-internal-path (library-directory-pathname ""))))
+
+(define (confirm-pathname pathname)
+  (let loop ((file-types load/default-types))
+    (and (pair? file-types)
+	 (let ((full-pathname (pathname-new-type pathname (caar file-types))))
+	   (if (file-exists? full-pathname)
+	       pathname			; not FULL-PATHNAME
+	       (loop (cdr file-types)))))))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
@@ -112,24 +117,17 @@ USA.
 	  (runtime (pathname-as-directory "runtime")))
       (for-each (lambda (file)
 		  (let ((file (force* file)))
-		    (cond 
-		     (((ucode-primitive initialize-c-compiled-block 1)
-		       (string-append "runtime_" file))
-		      => (lambda (obj)
-			   (purify obj)
-			   (scode-eval obj environment)))
-		     (else
-		      (let* ((options (library-directory-pathname "options"))
-			     (pathname (merge-pathnames file options)))
-			(with-directory-rewriting-rule options runtime
-			  (lambda ()
-			    (with-working-directory-pathname
-				(directory-pathname pathname)
-			      (lambda ()
-				(load pathname
-				      environment
-				      'DEFAULT
-				      #t))))))))))
+		    (let* ((options (library-directory-pathname "options"))
+			   (pathname (merge-pathnames file options)))
+		      (with-directory-rewriting-rule options runtime
+			(lambda ()
+			  (with-working-directory-pathname
+			      (directory-pathname pathname)
+			    (lambda ()
+			      (load pathname
+				    environment
+				    'DEFAULT
+				    #t))))))))
 		files)
       (flush-purification-queue!)
       (eval init-expression environment))))

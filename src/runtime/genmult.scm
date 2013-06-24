@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: genmult.scm,v 1.5 2003/02/14 18:28:32 cph Exp $
+$Id: genmult.scm,v 1.6 2005/04/12 18:36:35 cph Exp $
 
-Copyright 1995-1999 Massachusetts Institute of Technology
+Copyright 1996,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,16 +64,26 @@ USA.
     (if (multiplexer? m)
 	(begin
 	  (purge-generic-procedure-cache generic)
-	  (set-multiplexer-list! m (delq! generator (multiplexer-list m)))
+	  (do ((this (multiplexer-list m) (cdr this))
+	       (prev #f
+		     (if (eq? (car this) generator)
+			 (begin
+			   (if prev
+			       (set-cdr! prev (cdr this))
+			       (set-multiplexer-list! m (cdr this)))
+			   prev)
+			 this)))
+	      ((not (pair? this))))
 	  (maybe-deinstall-multiplexer generic))
 	(if (eq? generator m)
 	    (set-generic-procedure-generator! generic #f)))))
 
 (define (remove-generic-procedure-generators generic tags)
-  (for-each (lambda (generator)
-	      (if (generator generic tags)
-		  (remove-generic-procedure-generator generic generator)))
-	    (generic-procedure-generator-list generic)))
+  (do ((gens (generic-procedure-generator-list generic) (cdr gens)))
+      ((not (pair? gens)))
+    (let ((generator (car gens)))
+      (if (generator generic tags)
+	  (remove-generic-procedure-generator generic generator)))))
 
 (define (generic-procedure-default-generator generic)
   (let ((m (generic-procedure-generator generic)))
@@ -104,10 +114,10 @@ USA.
 (define (maybe-deinstall-multiplexer generic)
   (let* ((m (generic-procedure-generator generic))
 	 (generators (multiplexer-list m)))
-    (cond ((and (null? generators)
+    (cond ((and (not (pair? generators))
 		(not (multiplexer-default m)))
 	   (set-generic-procedure-generator! generic #f))
-	  ((and (null? (cdr generators))
+	  ((and (not (pair? (cdr generators)))
 		(not (multiplexer-default m)))
 	   (set-generic-procedure-generator! generic (car generators))))))
 
@@ -138,28 +148,29 @@ USA.
 
 (define (multiplexer-dispatch multiplexer generic tags)
   (let loop ((generators (multiplexer-list multiplexer)))
-    (if (null? generators)
+    (if (pair? generators)
+	(let ((procedure ((car generators) generic tags)))
+	  (if procedure
+	      (if (let find-extra ((generators (cdr generators)))
+		    (if (pair? generators)
+			(if ((car generators) generic tags)
+			    #t
+			    (find-extra (cdr generators)))
+			#f))
+		  (lambda args
+		    (error:extra-applicable-methods generic args))
+		  procedure)
+	      (loop (cdr generators))))
 	(let ((default (multiplexer-default multiplexer)))
 	  (and default
-	       (default generic tags)))
-	(let ((procedure ((car generators) generic tags)))
-	  (cond ((not procedure)
-		 (loop (cdr generators)))
-		((there-exists? (cdr generators)
-		   (lambda (generator)
-		     (generator generic tags)))
-		 (lambda args
-		   (error:extra-applicable-methods generic args)))
-		(else procedure))))))
+	       (default generic tags))))))
 
 (define multiplexer-tag)
-(define del-rassq)
 (define condition-type:extra-applicable-methods)
 (define error:extra-applicable-methods)
 
 (define (initialize-multiplexer!)
   (set! multiplexer-tag (list 'GENERIC-PROCEDURE-MULTIPLEXER))
-  (set! del-rassq (delete-association-procedure list-deletor eq? cdr))
   unspecific)
 
 (define (initialize-conditions!)

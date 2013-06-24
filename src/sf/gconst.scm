@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: gconst.scm,v 4.29 2003/02/14 18:28:34 cph Exp $
+$Id: gconst.scm,v 4.32 2005/07/31 02:55:18 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1997,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -69,7 +70,6 @@ USA.
     COMPILED-CODE-ADDRESS->BLOCK
     COMPILED-CODE-ADDRESS->OFFSET
     CONS
-    ENABLE-INTERRUPTS!
     EQ?
     ERROR-PROCEDURE
     FALSE
@@ -134,7 +134,7 @@ USA.
     FLO:ZERO?
     GENERAL-CAR-CDR
     GET-FIXED-OBJECTS-VECTOR
-    GET-NEXT-CONSTANT
+    GET-INTERRUPT-ENABLES
     HUNK3-CONS
     INDEX-FIXNUM?
     INT:*
@@ -183,7 +183,6 @@ USA.
     NULL?
     OBJECT-CONSTANT?
     OBJECT-DATUM
-    OBJECT-GC-TYPE
     OBJECT-NEW-TYPE
     OBJECT-PURE?
     OBJECT-TYPE

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gentag.scm,v 1.5 2003/02/14 18:28:32 cph Exp $
+$Id: gentag.scm,v 1.6 2005/04/14 04:42:37 cph Exp $
 
-Copyright 1993-1999 Massachusetts Institute of Technology
+Copyright 1996,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -59,10 +59,6 @@ USA.
 (define (dispatch-tag-contents tag)
   (guarantee-dispatch-tag tag 'DISPATCH-TAG-CONTENTS)
   (%record-ref tag 1))
-
-(define (set-dispatch-tag-contents! tag contents)
-  (guarantee-dispatch-tag tag 'SET-DISPATCH-TAG-CONTENTS!)
-  (%record-set! tag 1 contents))
 
 (define-integrable (guarantee-dispatch-tag tag caller)
   (if (not (dispatch-tag? tag))

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: unpars.scm,v 14.55 2003/07/30 17:25:51 cph Exp $
+$Id: unpars.scm,v 14.64 2005/07/19 03:49:26 cph Exp $
 
 Copyright 1986,1987,1990,1991,1992,1995 Massachusetts Institute of Technology
-Copyright 1996,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1996,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,16 +41,19 @@ USA.
   (set! *unparse-primitives-by-name?* #f)
   (set! *unparse-uninterned-symbols-by-name?* #f)
   (set! *unparse-with-maximum-readability?* #f)
-  (set! *unparse-disambiguate-null-as-itself?* #t)
-  (set! *unparse-disambiguate-null-lambda-list?* #f)
   (set! *unparse-compound-procedure-names?* #t)
   (set! *unparse-with-datum?* #f)
   (set! *unparse-abbreviate-quotations?* #f)
   (set! system-global-unparser-table (make-system-global-unparser-table))
-  (set! *default-list-depth* 0)
-  (set! quoted-symbol-chars
-	(char-set-union char-set/atom-delimiters char-set:upper-case))
-  (set-current-unparser-table! system-global-unparser-table))
+  (set! *unparser-table* system-global-unparser-table)
+  (set! *default-unparser-state* #f)
+  (set! non-canon-symbol-quoted
+	(char-set-union char-set/atom-delimiters
+			char-set/symbol-quotes))
+  (set! canon-symbol-quoted
+	(char-set-union non-canon-symbol-quoted
+			char-set:upper-case))
+  unspecific)
 
 (define *unparser-radix*)
 (define *unparser-list-breadth-limit*)
@@ -59,23 +62,14 @@ USA.
 (define *unparse-primitives-by-name?*)
 (define *unparse-uninterned-symbols-by-name?*)
 (define *unparse-with-maximum-readability?*)
-(define *unparse-disambiguate-null-as-itself?*)
-(define *unparse-disambiguate-null-lambda-list?*)
 (define *unparse-compound-procedure-names?*)
 (define *unparse-with-datum?*)
 (define *unparse-abbreviate-quotations?*)
 (define system-global-unparser-table)
-(define *default-list-depth*)
-(define quoted-symbol-chars)
-(define *current-unparser-table*)
-
-(define (current-unparser-table)
-  *current-unparser-table*)
-
-(define (set-current-unparser-table! table)
-  (guarantee-unparser-table table 'SET-CURRENT-UNPARSER-TABLE!)
-  (set! *current-unparser-table* table)
-  unspecific)
+(define *unparser-table*)
+(define *default-unparser-state*)
+(define non-canon-symbol-quoted)
+(define canon-symbol-quoted)
 
 (define (make-system-global-unparser-table)
   (let ((table (make-unparser-table unparse/default)))
@@ -89,11 +83,10 @@ USA.
 		(ENTITY ,unparse/entity)
 		(EXTENDED-PROCEDURE ,unparse/compound-procedure)
 		(FLONUM ,unparse/flonum)
-		(FUTURE ,unparse/future)
 		(INTERNED-SYMBOL ,unparse/interned-symbol)
 		(LIST ,unparse/pair)
 		(NEGATIVE-FIXNUM ,unparse/number)
-		(NULL ,unparse/null)
+		(FALSE ,unparse/false)
 		(POSITIVE-FIXNUM ,unparse/number)
 		(PRIMITIVE ,unparse/primitive-procedure)
 		(PROCEDURE ,unparse/compound-procedure)
@@ -113,10 +106,7 @@ USA.
 				  (conc-name unparser-table/))
   (dispatch-vector #f read-only #t))
 
-(define (guarantee-unparser-table table procedure)
-  (if (not (unparser-table? table))
-      (error:wrong-type-argument table "unparser table" procedure))
-  table)
+(define-guarantee unparser-table "unparser table")
 
 (define (make-unparser-table default-method)
   (%make-unparser-table
@@ -138,18 +128,13 @@ USA.
   (port #f read-only #t)
   (list-depth #f read-only #t)
   (slashify? #f read-only #t)
-  (unparser-table #f read-only #t))
+  (environment #f read-only #t))
 
-(define (guarantee-unparser-state state procedure)
-  (if (not (unparser-state? state))
-      (error:wrong-type-argument state "unparser state" procedure))
-  state)
+(define-guarantee unparser-state "unparser state")
 
 (define (with-current-unparser-state state procedure)
   (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
-  (fluid-let
-      ((*default-list-depth* (unparser-state/list-depth state))
-       (*current-unparser-table* (unparser-state/unparser-table state)))
+  (fluid-let ((*default-unparser-state* state))
     (procedure (unparser-state/port state))))
 
 ;;;; Top Level
@@ -168,33 +153,52 @@ USA.
 			   (unparser-state/port state)
 			   (unparser-state/list-depth state)
 			   (unparser-state/slashify? state)
-			   (unparser-state/unparser-table state)))
+			   (unparser-state/environment state)))
 
-(define (unparse-object/top-level object port slashify? table)
-  (unparse-object/internal object port *default-list-depth* slashify? table))
+(define (unparse-object/top-level object port slashify? environment)
+  (unparse-object/internal
+   object
+   port
+   (if *default-unparser-state*
+       (unparser-state/list-depth *default-unparser-state*)
+       0)
+   slashify?
+   (if (or (default-object? environment)
+	   (unparser-table? environment))
+       (if *default-unparser-state*
+	   (unparser-state/environment *default-unparser-state*)
+	   (nearest-repl/environment))
+       (begin
+	 (guarantee-environment environment #f)
+	 environment))))
 
-(define (unparse-object/internal object port list-depth slashify? table)
+(define (unparse-object/internal object port list-depth slashify? environment)
   (fluid-let ((*output-port* port)
 	      (*list-depth* list-depth)
 	      (*slashify?* slashify?)
-	      (*unparser-table* table)
-	      (*dispatch-vector* (unparser-table/dispatch-vector table)))
+	      (*environment* environment)
+	      (*dispatch-table*
+	       (unparser-table/dispatch-vector
+		(let ((table
+		       (environment-lookup environment '*UNPARSER-TABLE*)))
+		  (guarantee-unparser-table table #f)
+		  table))))
     (*unparse-object object)))
 
 (define-integrable (invoke-user-method method object)
   (method (make-unparser-state *output-port*
 			       *list-depth*
 			       *slashify?*
-			       *unparser-table*)
+			       *environment*)
 	  object))
 
 (define *list-depth*)
 (define *slashify?*)
-(define *unparser-table*)
-(define *dispatch-vector*)
+(define *environment*)
+(define *dispatch-table*)
 
 (define (*unparse-object object)
-  ((vector-ref *dispatch-vector*
+  ((vector-ref *dispatch-table*
 	       ((ucode-primitive primitive-object-type 1) object))
    object))
 
@@ -251,14 +255,14 @@ USA.
 
 (define (unparse/default object)
   (let ((type (user-object-type object)))
-    (case ((ucode-primitive primitive-object-gc-type 1) object)
-      ((1 2 3 4 -3 -4)		; cell pair triple quad vector compiled
+    (case (object-gc-type object)
+      ((CELL PAIR TRIPLE QUADRUPLE VECTOR COMPILED-ENTRY)
        (*unparse-with-brackets type object #f))
-      ((0)			; non pointer
+      ((NON-POINTER)
        (*unparse-with-brackets type object
 	 (lambda ()
 	   (*unparse-datum object))))
-      (else			; undefined, gc special
+      (else				;UNDEFINED, GC-INTERNAL
        (*unparse-with-brackets type #f
 	 (lambda ()
 	   (*unparse-datum object)))))))
@@ -298,25 +302,21 @@ USA.
     (SEQUENCE-2 . SEQUENCE)
     (SEQUENCE-3 . SEQUENCE)))
 
-(define (unparse/null object)
-  (if (eq? object '())
-      (if (and (eq? object #f)
-	       (not *unparse-disambiguate-null-as-itself?*))
-	  (*unparse-string "#f")
-	  (*unparse-string "()"))
-      (if (eq? object #f)
-	  (*unparse-string "#f")
-	  (unparse/default object))))
+(define (unparse/false object)
+  (if (eq? object #f)
+      (*unparse-string "#f")
+      (unparse/default object)))
 
 (define (unparse/constant object)
-  (cond ((not object) (*unparse-string "#f"))
-	((null? object) (*unparse-string "()"))
+  (cond ((null? object) (*unparse-string "()"))
 	((eq? object #t) (*unparse-string "#t"))
-	((undefined-value? object)
-	 (*unparse-string "#[unspecified-return-value]"))
-	((eq? object lambda-auxiliary-tag) (*unparse-string "#!aux"))
+	((default-object? object) (*unparse-string "#!default"))
+	((eof-object? object) (*unparse-string "#!eof"))
+	((eq? object lambda-aux-tag) (*unparse-string "#!aux"))
+	((eq? object lambda-key-tag) (*unparse-string "#!key"))
 	((eq? object lambda-optional-tag) (*unparse-string "#!optional"))
 	((eq? object lambda-rest-tag) (*unparse-string "#!rest"))
+	((eq? object unspecific) (*unparse-string "#!unspecific"))
 	(else (unparse/default object))))
 
 (define (unparse/return-address return-address)
@@ -338,10 +338,12 @@ USA.
 
 (define (unparse-symbol symbol)
   (let ((s (symbol-name symbol)))
-    (if (or (string-find-next-char-in-set s
-					  (if *parser-canonicalize-symbols?*
-					      quoted-symbol-chars
-					      char-set/atom-delimiters))
+    (if (or (string-find-next-char-in-set
+	     s
+	     (if (environment-lookup *environment*
+				     '*PARSER-CANONICALIZE-SYMBOLS?*)
+		 canon-symbol-quoted
+		 non-canon-symbol-quoted))
 	    (fix:= (string-length s) 0)
 	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
 		 (string->number s)))
@@ -429,10 +431,11 @@ USA.
 
 (define (unparse/bit-string bit-string)
   (*unparse-string "#*")
-  (let loop ((index (-1+ (bit-string-length bit-string))))
-    (if (not (negative? index))
-	(begin (*unparse-char (if (bit-string-ref bit-string index) #\1 #\0))
-	       (loop (-1+ index))))))
+  (let loop ((index (fix:- (bit-string-length bit-string) 1)))
+    (if (fix:>= index 0)
+	(begin
+	  (*unparse-char (if (bit-string-ref bit-string index) #\1 #\0))
+	  (loop (fix:- index 1))))))
 
 (define (unparse/vector vector)
   (let ((method (unparse-vector/unparser vector)))
@@ -441,7 +444,7 @@ USA.
 	(unparse-vector/normal vector))))
 
 (define (unparse-vector/unparser vector)
-  (and (not (zero? (vector-length vector)))
+  (and (fix:> (vector-length vector) 0)
        (let ((tag (safe-vector-ref vector 0)))
 	 (or (structure-tag/unparser-method tag 'VECTOR)
 	     ;; Check the global tagging table too.
@@ -451,13 +454,12 @@ USA.
   (limit-unparse-depth
    (lambda ()
      (let ((length (vector-length vector)))
-       (if (zero? length)
-	   (*unparse-string "#()")
+       (if (fix:> length 0)
 	   (begin
 	     (*unparse-string "#(")
 	     (*unparse-object (safe-vector-ref vector 0))
 	     (let loop ((index 1))
-	       (cond ((= index length)
+	       (cond ((fix:= index length)
 		      (*unparse-char #\)))
 		     ((and *unparser-list-breadth-limit*
 			   (>= index *unparser-list-breadth-limit*))
@@ -465,7 +467,8 @@ USA.
 		     (else
 		      (*unparse-char #\space)
 		      (*unparse-object (safe-vector-ref vector index))
-		      (loop (1+ index)))))))))))
+		      (loop (fix:+ index 1))))))
+	   (*unparse-string "#()"))))))
 
 (define (safe-vector-ref vector index)
   (if (with-absolutely-no-interrupts
@@ -474,8 +477,8 @@ USA.
 			   (vector-ref vector index))
 	     (object-type? (ucode-type manifest-special-nm-vector)
 			   (vector-ref vector index)))))
-      (error "Attempt to unparse partially marked vector"))
-  (vector-ref vector index))
+      (error "Attempt to unparse partially marked vector."))
+  (map-reference-trap (lambda () (vector-ref vector index))))
 
 (define (unparse/record record)
   (if *unparse-with-maximum-readability?*
@@ -483,38 +486,24 @@ USA.
       (invoke-user-method unparse-record record)))
 
 (define (unparse/pair pair)
-  (let ((prefix (unparse-list/prefix-pair? pair)))
-    (if prefix
-	(unparse-list/prefix-pair prefix pair)
-	(let ((method (unparse-list/unparser pair)))
-	  (cond (method
-		 (invoke-user-method method pair))
-		((and *unparse-disambiguate-null-lambda-list?*
-		      (eq? (car pair) 'LAMBDA)
-		      (pair? (cdr pair))
-		      (null? (cadr pair))
-		      (pair? (cddr pair)))
-		 (limit-unparse-depth
-		  (lambda ()
-		    (*unparse-char #\()
-		    (*unparse-object (car pair))
-		    (*unparse-string " ()")
-		    (unparse-tail (cddr pair) 3)
-		    (*unparse-char #\)))))
-		(else
-		 (unparse-list pair)))))))
+  (cond ((unparse-list/prefix-pair? pair)
+	 => (lambda (prefix) (unparse-list/prefix-pair prefix pair)))
+	((unparse-list/unparser pair)
+	 => (lambda (method) (invoke-user-method method pair)))
+	(else
+	 (unparse-list pair))))
 
 (define (unparse-list list)
   (limit-unparse-depth
    (lambda ()
      (*unparse-char #\()
-     (*unparse-object (car list))
-     (unparse-tail (cdr list) 2)
+     (*unparse-object (safe-car list))
+     (unparse-tail (safe-cdr list) 2)
      (*unparse-char #\)))))
 
 (define (limit-unparse-depth kernel)
   (if *unparser-list-depth-limit*
-      (fluid-let ((*list-depth* (1+ *list-depth*)))
+      (fluid-let ((*list-depth* (+ *list-depth* 1)))
 	(if (> *list-depth* *unparser-list-depth-limit*)
 	    (*unparse-string "...")
 	    (kernel)))
@@ -529,37 +518,42 @@ USA.
 		 (invoke-user-method method l))
 	       (begin
 		 (*unparse-char #\space)
-		 (*unparse-object (car l))
+		 (*unparse-object (safe-car l))
 		 (if (and *unparser-list-breadth-limit*
 			  (>= n *unparser-list-breadth-limit*)
-			  (not (null? (cdr l))))
+			  (pair? (safe-cdr l)))
 		     (*unparse-string " ...")
-		     (unparse-tail (cdr l) (1+ n)))))))
+		     (unparse-tail (safe-cdr l) (+ n 1)))))))
 	((not (null? l))
 	 (*unparse-string " . ")
 	 (*unparse-object l))))
 
 (define (unparse-list/unparser pair)
-  (let ((tag (car pair)))
+  (let ((tag (safe-car pair)))
     (or (structure-tag/unparser-method tag 'LIST)
 	;; Check the global tagging table too.
 	(unparser/tagged-pair-method tag))))
 
 (define (unparse-list/prefix-pair prefix pair)
   (*unparse-string prefix)
-  (*unparse-object (cadr pair)))
+  (*unparse-object (safe-car (safe-cdr pair))))
 
 (define (unparse-list/prefix-pair? object)
   (and *unparse-abbreviate-quotations?*
-       (not (future? (car object)))
-       (pair? (cdr object))
-       (null? (cddr object))
-       (case (car object)
+       (pair? (safe-cdr object))
+       (null? (safe-cdr (safe-cdr object)))
+       (case (safe-car object)
 	 ((QUOTE) "'")
 	 ((QUASIQUOTE) "`")
 	 ((UNQUOTE) ",")
 	 ((UNQUOTE-SPLICING) ",@")
 	 (else #f))))
+
+(define (safe-car pair)
+  (map-reference-trap (lambda () (car pair))))
+
+(define (safe-cdr pair)
+  (map-reference-trap (lambda () (cdr pair))))
 
 ;;;; Procedures
 
@@ -689,11 +683,6 @@ USA.
 		 (unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
 	       (if (< limit length)
 		   (*unparse-string " ..."))))))))
-
-(define (unparse/future future)
-  (*unparse-with-brackets 'FUTURE #f
-    (lambda ()
-      (*unparse-hex ((ucode-primitive primitive-object-datum 1) future)))))
 
 (define (unparse/entity entity)
 

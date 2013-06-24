@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.36 2003/02/14 18:28:33 cph Exp $
+$Id: pathnm.scm,v 14.42 2004/11/26 05:04:27 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -98,8 +100,7 @@ these rules:
 
 (define-structure (pathname
 		   (type vector)
-		   (named ((ucode-primitive string->symbol)
-			   "#[(runtime pathname)pathname]"))
+		   (named '|#[(runtime pathname)pathname]|)
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
@@ -113,6 +114,13 @@ these rules:
   (name #f read-only #t)
   (type #f read-only #t)
   (version #f read-only #t))
+
+(define (guarantee-pathname object caller)
+  (if (not (pathname? object))
+      (error:not-pathname object caller)))
+
+(define (error:not-pathname object caller)
+  (error:wrong-type-argument object "pathname" caller))
 
 (define (->pathname object)
   (pathname-arg object #f '->PATHNAME))
@@ -144,12 +152,6 @@ these rules:
 
 (define (pathname-version pathname)
   (%pathname-version (->pathname pathname)))
-
-(define (pathname-end-of-line-string pathname)
-  (let ((pathname (->pathname pathname)))
-    ((host-type/operation/end-of-line-string
-      (host/type (%pathname-host pathname)))
-     pathname)))
 
 (define (pathname=? x y)
   (let ((x (->pathname x))
@@ -165,6 +167,11 @@ these rules:
   (let ((directory (pathname-directory pathname)))
     (and (pair? directory)
 	 (eq? (car directory) 'ABSOLUTE))))
+
+(define (pathname-relative? pathname)
+  (let ((directory (pathname-directory pathname)))
+    (and (pair? directory)
+	 (eq? (car directory) 'RELATIVE))))
 
 (define (pathname-wild? pathname)
   (let ((pathname (->pathname pathname)))
@@ -458,8 +465,7 @@ these rules:
   (operation/pathname->truename #f read-only #t)
   (operation/user-homedir-pathname #f read-only #t)
   (operation/init-file-pathname #f read-only #t)
-  (operation/pathname-simplify #f read-only #t)
-  (operation/end-of-line-string #f read-only #t))
+  (operation/pathname-simplify #f read-only #t))
 
 (define-structure (host (type vector)
 			(named ((ucode-primitive string->symbol)
@@ -596,7 +602,7 @@ these rules:
 	   (lambda arguments
 	     (error "Unimplemented host type:" name arguments))))
       (make-host-type index name fail fail fail fail fail fail fail fail fail
-		      fail fail fail fail fail))))
+		      fail fail fail fail))))
 
 (define (reset-package!)
   (let ((host-type (host-name->type microcode-id/operating-system))

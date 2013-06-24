@@ -57,7 +57,7 @@ _obstack_begin (h, size, alignment, chunkfun, freefun)
      struct obstack *h;
      int size;
      long alignment;
-     POINTER EXFUN ((*chunkfun), (long));
+     POINTER EXFUN ((*chunkfun), (size_t));
      void EXFUN ((*freefun), (PTR));
 {
   register struct _obstack_chunk* chunk; /* points to new chunk */

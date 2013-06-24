@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.43 2003/04/25 03:49:30 cph Exp $
+$Id: load.scm,v 1.44 2004/01/16 20:40:36 cph Exp $
 
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,4 +31,4 @@ USA.
   (lambda ()
     (fluid-let ((*allow-package-redefinition?* #t))
       (load-package-set "imail"))))
-(add-subsystem-identification! "IMAIL" '(1 20))
+(add-subsystem-identification! "IMAIL" '(1 21))

@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 4.20 2003/02/14 18:28:07 cph Exp $
+$Id: lapgen.scm,v 4.21 2004/07/01 01:19:59 cph Exp $
 
-Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1992,1998,2002 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -58,9 +59,6 @@ USA.
   ;; r10 - r13 are taken up by Scheme.
   ;; r14 is sp and r15 is pc.
   (list r0 r1 r2 r3 r4 r5 r6 r7 r8))
-
-(define (register-types-compatible? type1 type2)
-  (boolean=? (eq? type1 'FLOAT) (eq? type2 'FLOAT)))
 
 (define (register-type register)
   ;; This will have to be changed when floating point support is added.

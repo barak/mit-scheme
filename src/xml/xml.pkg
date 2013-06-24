@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml.pkg,v 1.25 2003/09/17 03:20:41 cph Exp $
+$Id: xml.pkg,v 1.58 2005/03/25 18:43:09 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -32,14 +32,69 @@ USA.
 (define-package (runtime xml)
   (parent (runtime)))
 
+(define-package (runtime xml names)
+  (files "xml-names")
+  (parent (runtime xml))
+  (export ()
+	  <xml-namespace-iri>
+	  error:not-xml-name
+	  error:not-xml-namespace-iri
+	  error:not-xml-nmtoken
+	  error:not-xml-qname
+	  guarantee-xml-name
+	  guarantee-xml-namespace-iri
+	  guarantee-xml-nmtoken
+	  guarantee-xml-qname
+	  make-xml-name
+	  make-xml-name-hash-table
+	  make-xml-namespace-iri
+	  make-xml-nmtoken
+	  make-xml-qname
+	  null-xml-name-prefix
+	  null-xml-name-prefix?
+	  null-xml-namespace-iri
+	  null-xml-namespace-iri?
+	  string-is-xml-name?
+	  string-is-xml-nmtoken?
+	  xml-iri
+	  xml-name-hash
+	  xml-name-iri
+	  xml-name-iri=?
+	  xml-name-local
+	  xml-name-local=?
+	  xml-name-prefix
+	  xml-name-prefix=?
+	  xml-name-qname
+	  xml-name-qname=?
+	  xml-name-string
+	  xml-name=?
+	  xml-name?
+	  xml-namespace-iri-string
+	  xml-namespace-iri?
+	  xml-nmtoken-string
+	  xml-nmtoken?
+	  xml-qname-local
+	  xml-qname-prefix
+	  xml-qname-string
+	  xml-qname?
+	  xmlns-iri)
+  (export (runtime xml)
+	  %make-xml-name
+	  string-composed-of?
+	  substring-composed-of?))
+
 (define-package (runtime xml structure)
   (files "xml-struct")
   (parent (runtime xml))
   (export ()
+	  (flatten-xml-element-contents flatten-xml-element-content)
+	  (set-xml-element-contents! set-xml-element-content!)
+	  (xml-element-contents xml-element-content)
 	  <xml-!attlist>
 	  <xml-!element>
 	  <xml-!entity>
 	  <xml-!notation>
+	  <xml-attribute>
 	  <xml-comment>
 	  <xml-declaration>
 	  <xml-document>
@@ -51,11 +106,44 @@ USA.
 	  <xml-parameter-entity-ref>
 	  <xml-processing-instructions>
 	  <xml-unparsed-!entity>
-	  guarantee-xml-name
+	  error:not-xml-!attlist
+	  error:not-xml-!element
+	  error:not-xml-!entity
+	  error:not-xml-!notation
+	  error:not-xml-attribute
+	  error:not-xml-comment
+	  error:not-xml-declaration
+	  error:not-xml-document
+	  error:not-xml-dtd
+	  error:not-xml-element
+	  error:not-xml-entity-ref
+	  error:not-xml-external-id
+	  error:not-xml-parameter-!entity
+	  error:not-xml-parameter-entity-ref
+	  error:not-xml-processing-instructions
+	  error:not-xml-unparsed-!entity
+	  flatten-xml-element-content
+	  guarantee-xml-!attlist
+	  guarantee-xml-!element
+	  guarantee-xml-!entity
+	  guarantee-xml-!notation
+	  guarantee-xml-attribute
+	  guarantee-xml-comment
+	  guarantee-xml-declaration
+	  guarantee-xml-document
+	  guarantee-xml-dtd
+	  guarantee-xml-element
+	  guarantee-xml-entity-ref
+	  guarantee-xml-external-id
+	  guarantee-xml-parameter-!entity
+	  guarantee-xml-parameter-entity-ref
+	  guarantee-xml-processing-instructions
+	  guarantee-xml-unparsed-!entity
 	  make-xml-!attlist
 	  make-xml-!element
 	  make-xml-!entity
 	  make-xml-!notation
+	  make-xml-attribute
 	  make-xml-comment
 	  make-xml-declaration
 	  make-xml-document
@@ -63,7 +151,6 @@ USA.
 	  make-xml-element
 	  make-xml-entity-ref
 	  make-xml-external-id
-	  make-xml-name-hash-table
 	  make-xml-parameter-!entity
 	  make-xml-parameter-entity-ref
 	  make-xml-processing-instructions
@@ -76,6 +163,8 @@ USA.
 	  set-xml-!entity-value!
 	  set-xml-!notation-id!
 	  set-xml-!notation-name!
+	  set-xml-attribute-name!
+	  set-xml-attribute-value!
 	  set-xml-comment-text!
 	  set-xml-declaration-encoding!
 	  set-xml-declaration-standalone!
@@ -90,11 +179,11 @@ USA.
 	  set-xml-dtd-internal!
 	  set-xml-dtd-root!
 	  set-xml-element-attributes!
-	  set-xml-element-contents!
+	  set-xml-element-content!
 	  set-xml-element-name!
 	  set-xml-entity-ref-name!
 	  set-xml-external-id-id!
-	  set-xml-external-id-uri!
+	  set-xml-external-id-iri!
 	  set-xml-parameter-!entity-name!
 	  set-xml-parameter-!entity-value!
 	  set-xml-parameter-entity-ref-name!
@@ -103,6 +192,8 @@ USA.
 	  set-xml-unparsed-!entity-id!
 	  set-xml-unparsed-!entity-name!
 	  set-xml-unparsed-!entity-notation!
+	  standard-xml-element-constructor
+	  standard-xml-element-predicate
 	  xml-!attlist-definitions
 	  xml-!attlist-name
 	  xml-!attlist?
@@ -116,10 +207,13 @@ USA.
 	  xml-!notation-name
 	  xml-!notation?
 	  xml-attribute-list?
-	  xml-attribute-value-item?
-	  xml-attribute-value?
+	  xml-attribute-name
+	  xml-attribute-namespace-decl?
+	  xml-attribute-value
 	  xml-attribute?
+	  xml-attrs
 	  xml-char-data?
+	  xml-comment
 	  xml-comment-text
 	  xml-comment?
 	  xml-content-item?
@@ -140,24 +234,17 @@ USA.
 	  xml-dtd-root
 	  xml-dtd?
 	  xml-element-attributes
-	  xml-element-contents
+	  xml-element-content
 	  xml-element-name
+	  xml-element-namespace-decls
 	  xml-element?
 	  xml-entity-ref-name
 	  xml-entity-ref?
 	  xml-external-id-id
-	  xml-external-id-uri
+	  xml-external-id-iri
 	  xml-external-id?
-	  xml-intern
-	  xml-name-hash
-	  xml-name-local
-	  xml-name-prefix
-	  xml-name-simple
-	  xml-name-string
-	  xml-name-uri
-	  xml-name=?
-	  xml-name?
-	  xml-nmtoken?
+	  xml-misc-content-item?
+	  xml-misc-content?
 	  xml-parameter-!entity-name
 	  xml-parameter-!entity-value
 	  xml-parameter-!entity?
@@ -171,22 +258,39 @@ USA.
 	  xml-unparsed-!entity-notation
 	  xml-unparsed-!entity?
 	  xml-whitespace-string?)
-  (export (runtime xml parser)
-	  %make-xml-name))
+  (export (runtime xml)
+	  %make-xml-!attlist
+	  %make-xml-!element
+	  %make-xml-!entity
+	  %make-xml-!notation
+	  %make-xml-attribute
+	  %make-xml-comment
+	  %make-xml-declaration
+	  %make-xml-document
+	  %make-xml-dtd
+	  %make-xml-element
+	  %make-xml-entity-ref
+	  %make-xml-external-id
+	  %make-xml-parameter-!entity
+	  %make-xml-parameter-entity-ref
+	  %make-xml-processing-instructions
+	  %make-xml-unparsed-!entity))
 
 (define-package (runtime xml parser)
   (files "xml-chars" "xml-parser")
   (parent (runtime xml))
   (export ()
+	  alphabet:xml-char
 	  char-set:xml-whitespace
-	  parse-xml-document
 	  read-xml
 	  read-xml-file
 	  string->xml
-	  substring->xml)
-  (export (runtime xml structure)
+	  xml-processing-instructions-handlers)
+  (export (runtime xml)
 	  alphabet:name-initial
-	  alphabet:name-subsequent))
+	  alphabet:name-subsequent
+	  coding-requires-bom?
+	  normalize-coding))
 
 (define-package (runtime xml output)
   (files "xml-output")
@@ -196,3 +300,222 @@ USA.
 	  write-xml-file
 	  xml->string
 	  xml->wide-string))
+
+(define-package (runtime xml html)
+  (files "xhtml" "xhtml-entities")
+  (parent (runtime xml))
+  (export ()
+	  (html-document html-1.0-document)
+	  (html-dtd html-1.0-dtd)
+	  (html-external-id html-1.0-external-id)
+	  error:not-html-element
+	  error:not-html-element-name
+	  guarantee-html-element
+	  guarantee-html-element-name
+	  html-1.0-document
+	  html-1.0-dtd
+	  html-1.0-external-id
+	  html-1.1-document
+	  html-1.1-dtd
+	  html-1.1-external-id
+	  html-dtd?
+	  html-element-context
+	  html-element-name-context
+	  html-element-name?
+	  html-element-names
+	  html-element?
+	  html-external-id?
+	  html-iri
+	  html:a
+	  html:a?
+	  html:abbr
+	  html:abbr?
+	  html:acronym
+	  html:acronym?
+	  html:address
+	  html:address?
+	  html:area
+	  html:area?
+	  html:b
+	  html:b?
+	  html:base
+	  html:base?
+	  html:bdo
+	  html:bdo?
+	  html:big
+	  html:big?
+	  html:blockquote
+	  html:blockquote?
+	  html:body
+	  html:body?
+	  html:br
+	  html:br?
+	  html:button
+	  html:button?
+	  html:caption
+	  html:caption?
+	  html:cite
+	  html:cite?
+	  html:code
+	  html:code?
+	  html:col
+	  html:col?
+	  html:colgroup
+	  html:colgroup?
+	  html:dd
+	  html:dd?
+	  html:del
+	  html:del?
+	  html:dfn
+	  html:dfn?
+	  html:div
+	  html:div?
+	  html:dl
+	  html:dl?
+	  html:dt
+	  html:dt?
+	  html:em
+	  html:em?
+	  html:fieldset
+	  html:fieldset?
+	  html:form
+	  html:form?
+	  html:h1
+	  html:h1?
+	  html:h2
+	  html:h2?
+	  html:h3
+	  html:h3?
+	  html:h4
+	  html:h4?
+	  html:h5
+	  html:h5?
+	  html:h6
+	  html:h6?
+	  html:head
+	  html:head?
+	  html:hr
+	  html:hr?
+	  html:href
+	  html:html
+	  html:html?
+	  html:http-equiv
+	  html:i
+	  html:i?
+	  html:id-def
+	  html:id-ref
+	  html:img
+	  html:img?
+	  html:input
+	  html:input?
+	  html:ins
+	  html:ins?
+	  html:kbd
+	  html:kbd?
+	  html:label
+	  html:label?
+	  html:legend
+	  html:legend?
+	  html:li
+	  html:li?
+	  html:link
+	  html:link?
+	  html:map
+	  html:map?
+	  html:meta
+	  html:meta?
+	  html:noscript
+	  html:noscript?
+	  html:object
+	  html:object?
+	  html:ol
+	  html:ol?
+	  html:optgroup
+	  html:optgroup?
+	  html:option
+	  html:option?
+	  html:p
+	  html:p?
+	  html:param
+	  html:param?
+	  html:pre
+	  html:pre?
+	  html:q
+	  html:q?
+	  html:rb
+	  html:rb?
+	  html:rbc
+	  html:rbc?
+	  html:rel-link
+	  html:rp
+	  html:rp?
+	  html:rt
+	  html:rt?
+	  html:rtc
+	  html:rtc?
+	  html:ruby
+	  html:ruby?
+	  html:samp
+	  html:samp?
+	  html:script
+	  html:script?
+	  html:select
+	  html:select?
+	  html:small
+	  html:small?
+	  html:span
+	  html:span?
+	  html:strong
+	  html:strong?
+	  html:style
+	  html:style-attr
+	  html:style-link
+	  html:style?
+	  html:sub
+	  html:sub?
+	  html:sup
+	  html:sup?
+	  html:table
+	  html:table?
+	  html:tbody
+	  html:tbody?
+	  html:td
+	  html:td?
+	  html:textarea
+	  html:textarea?
+	  html:tfoot
+	  html:tfoot?
+	  html:th
+	  html:th?
+	  html:thead
+	  html:thead?
+	  html:title
+	  html:title?
+	  html:tr
+	  html:tr?
+	  html:tt
+	  html:tt?
+	  html:ul
+	  html:ul?
+	  html:var
+	  html:var?)
+  (export (runtime xml parser)
+	  html-entities)
+  (export (runtime xml output)
+	  html-char->name-map))
+
+(define-package (runtime xml xml-rpc)
+  (files "xml-rpc")
+  (parent (runtime xml))
+  (export ()
+	  *xml-rpc:decode-value-handler*
+	  *xml-rpc:encode-value-handler*
+	  condition-type:bad-xml-rpc-message
+	  condition-type:xml-rpc-fault
+	  xml-rpc:condition->fault
+	  xml-rpc:fault
+	  xml-rpc:parse-request
+	  xml-rpc:parse-response
+	  xml-rpc:request
+	  xml-rpc:response
+	  xml-rpc:simple-fault))

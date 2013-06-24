@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: compiler.sf,v 1.20 2003/02/14 18:28:03 cph Exp $
+$Id: compiler.sf,v 1.21 2005/01/11 03:13:23 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,2000 Massachusetts Institute of Technology
+Copyright 2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -76,4 +77,4 @@ USA.
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "compiler")
+(cref/generate-constructors "compiler" 'ALL)

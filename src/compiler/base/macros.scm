@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.31 2003/02/14 18:28:01 cph Exp $
+$Id: macros.scm,v 4.32 2004/07/05 03:59:36 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
-Copyright 1993,1995,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 1993,1995,2001,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -313,22 +313,29 @@ USA.
   (rsc-macro-transformer
    (lambda (form environment)
      (if (syntax-match? '(IDENTIFIER DATUM + DATUM) (cdr form))
-	 (let ((type (cadr form))
-	       (pattern (caddr form))
-	       (body (cdddr form)))
-	   (call-with-values (lambda () (parse-rule pattern body))
-	     (lambda (pattern variables qualifiers actions)
-	       `(,(case type
-		    ((STATEMENT PREDICATE)
-		     (close-syntax 'ADD-STATEMENT-RULE! environment))
-		    ((REWRITING)
-		     (close-syntax 'ADD-REWRITING-RULE! environment))
-		    (else type))
-		 ',pattern
-		 ,(rule-result-expression variables
-					  qualifiers
-					  `(BEGIN ,@actions)
-					  environment)))))
+	 (receive (pattern matcher)
+	     (rule->matcher (caddr form) (cdddr form) environment)
+	   `(,(case (cadr form)
+		((STATEMENT PREDICATE)
+		 (close-syntax 'ADD-STATEMENT-RULE! environment))
+		((REWRITING)
+		 (close-syntax 'ADD-REWRITING-RULE! environment))
+		((PRE-CSE-REWRITING)
+		 (close-syntax 'ADD-PRE-CSE-REWRITING-RULE! environment))
+		(else
+		 (error "Unknown rule type:" (cadr form))))
+	     ',pattern
+	     ,matcher))
+	 (ill-formed-syntax form)))))
+
+(define-syntax rule-matcher
+  (rsc-macro-transformer
+   (lambda (form environment)
+     (if (syntax-match? '(DATUM + DATUM) (cdr form))
+	 (receive (pattern matcher)
+	     (rule->matcher (cadr form) (cddr form) environment)
+	   pattern
+	   matcher)
 	 (ill-formed-syntax form)))))
 
 (define-syntax lap

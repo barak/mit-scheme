@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.13 2003/04/25 03:54:44 cph Exp $
+$Id: win_ffi.scm,v 1.14 2004/06/07 19:49:15 cph Exp $
 
 Copyright 1993,1994,1998,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -145,13 +146,7 @@ USA.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define make-integer-hash-table
-        (hash-table/constructor  modulo
-				 int:=
-				 cons
-				 true
-				 car
-				 cdr
-				 set-cdr!))
+  (strong-hash-table/constructor modulo int:= #f))
 
 (define (initialize-wndproc-registry)
   (set! wndproc-registry (make-integer-hash-table)))

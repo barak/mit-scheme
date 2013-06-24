@@ -125,7 +125,7 @@ interp.o: interp.c ansidecl.h bignum.h bkpt.h cmpint.h config.h confshared.h \
 	futures.h gc.h history.h interp.h intrpt.h locks.h lookup.h object.h \
 	obstack.h outf.h prim.h prmcon.h returns.h scheme.h scode.h sdata.h \
 	stack.h trap.h types.h winder.h zones.h
-intext.o: intext.c ansidecl.h dstack.h intext.h
+intext.o: intext.c ansidecl.h config.h confshared.h dstack.h intext.h
 intprm.o: intprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
@@ -250,7 +250,7 @@ pruxenv.o: pruxenv.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osio.h \
 	osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	stack.h syscall.h types.h ux.h uxsock.h
+	stack.h syscall.h types.h ux.h uxsock.h uxtrap.h
 pruxfs.o: pruxfs.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osfs.h \
@@ -328,8 +328,10 @@ utils.o: utils.c ansidecl.h bignum.h bkpt.h cmpint.h config.h confshared.h \
 	futures.h gc.h history.h interp.h intrpt.h object.h obstack.h outf.h \
 	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h syscall.h \
 	types.h winder.h
-ux.o: ux.c ansidecl.h config.h confshared.h dstack.h intext.h os.h osscheme.h \
-	outf.h syscall.h ux.h
+ux.o: ux.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h critsec.h \
+	default.h dstack.h errors.h extern.h fixobj.h futures.h gc.h interp.h \
+	intext.h intrpt.h object.h obstack.h os.h osscheme.h outf.h prim.h \
+	returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h
 uxctty.o: uxctty.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
 	osctty.h osscheme.h ossig.h outf.h syscall.h ux.h
 uxenv.o: uxenv.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
@@ -343,9 +345,9 @@ uxio.o: uxio.c ansidecl.h config.h confshared.h dstack.h intext.h os.h osio.h \
 uxproc.o: uxproc.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
 	osio.h osproc.h osscheme.h osterm.h ostop.h outf.h syscall.h ux.h \
 	uxio.h uxproc.h
-uxsig.o: uxsig.c ansidecl.h config.h confshared.h critsec.h dstack.h intext.h \
-	os.h osctty.h osscheme.h ossig.h ostop.h ostty.h outf.h syscall.h \
-	ux.h uxsig.h uxtrap.h uxutil.h
+uxsig.o: uxsig.c ansidecl.h cmpintmd.h cmptype.h config.h confshared.h \
+	critsec.h dstack.h intext.h os.h osctty.h osscheme.h ossig.h ostop.h \
+	ostty.h outf.h syscall.h ux.h uxsig.h uxtrap.h uxutil.h
 uxsock.o: uxsock.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
 	osio.h osscheme.h outf.h prims.h syscall.h ux.h uxio.h uxsock.h
 uxterm.o: uxterm.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \

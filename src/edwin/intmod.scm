@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.119 2003/02/14 18:28:12 cph Exp $
+$Id: intmod.scm,v 1.121 2005/04/01 05:07:13 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -854,15 +854,13 @@ If this is an error, the debugger examines the error condition."
 ;;; Output operations
 
 (define (operation/write-char port char)
-  (enqueue-output-string! port (string char)))
+  (guarantee-8-bit-char char)
+  (enqueue-output-string! port (string char))
+  1)
 
 (define (operation/write-substring port string start end)
-  (enqueue-output-string! port (substring string start end)))
-
-(define (operation/fresh-line port)
-  (enqueue-output-operation!
-   port
-   (lambda (mark transcript?) transcript? (guarantee-newline mark) #t)))
+  (enqueue-output-string! port (substring string start end))
+  (fix:- end start))
 
 (define (operation/beep port)
   (enqueue-output-operation!
@@ -876,7 +874,7 @@ If this is an error, the debugger examines the error condition."
 	   (and (not (null? windows))
 		(apply min (map window-x-size windows)))))))
 
-(define (operation/write-result port expression value hash-number)
+(define (operation/write-result port expression value hash-number environment)
   (let ((buffer (port/buffer port))
 	(other-buffer?
 	 (memq (operation/current-expression-context port expression)
@@ -887,7 +885,7 @@ If this is an error, the debugger examines the error condition."
 			  (and (ref-variable enable-transcript-buffer buffer)
 			       (transcript-buffer)))
 	(begin
-	  (default/write-result port expression value hash-number)
+	  (default/write-result port expression value hash-number environment)
 	  (if (and other-buffer? (not (mark-visible? (port/mark port))))
 	      (transcript-write value #f))))))
 
@@ -958,9 +956,6 @@ If this is an error, the debugger examines the error condition."
 
 ;;; Input operations
 
-(define (operation/peek-char port)
-  (error "PEEK-CHAR not supported on this port:" port))
-
 (define (operation/read-char port)
   (error "READ-CHAR not supported on this port:" port))
 
@@ -1018,8 +1013,11 @@ If this is an error, the debugger examines the error condition."
 
 ;;; Prompting
 
-(define (operation/prompt-for-expression port prompt)
-  (unsolicited-prompt port prompt-for-expression prompt))
+(define (operation/prompt-for-expression port environment prompt)
+  (unsolicited-prompt port
+		      (lambda (prompt)
+			(prompt-for-expression prompt #!default environment))
+		      prompt))
 
 (define (operation/prompt-for-confirmation port prompt)
   (unsolicited-prompt port prompt-for-confirmation? prompt))
@@ -1062,7 +1060,7 @@ If this is an error, the debugger examines the error condition."
 	  (cond ((eq? value wait-value) (suspend-current-thread) (loop))
 		((eq? value abort-value) (abort->nearest))
 		(else value)))))))
-
+
 (define (when-buffer-selected buffer thunk)
   (if (current-buffer? buffer)
       (thunk)
@@ -1073,7 +1071,8 @@ If this is an error, the debugger examines the error condition."
 			     (remove-select-buffer-hook buffer hook))))))
 	(add-select-buffer-hook buffer hook))))
 
-(define (operation/prompt-for-command-expression port prompt level)
+(define (operation/prompt-for-command-expression port environment prompt level)
+  environment
   (parse-command-prompt port prompt)
   (read-expression port level))
 
@@ -1120,7 +1119,6 @@ If this is an error, the debugger examines the error condition."
   (make-port-type
    `((WRITE-CHAR ,operation/write-char)
      (WRITE-SUBSTRING ,operation/write-substring)
-     (FRESH-LINE ,operation/fresh-line)
      (BEEP ,operation/beep)
      (X-SIZE ,operation/x-size)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
@@ -1132,7 +1130,6 @@ If this is an error, the debugger examines the error condition."
      (PROMPT-FOR-COMMAND-CHAR ,operation/prompt-for-command-char)
      (SET-DEFAULT-DIRECTORY ,operation/set-default-directory)
      (SET-DEFAULT-ENVIRONMENT ,operation/set-default-environment)
-     (PEEK-CHAR ,operation/peek-char)
      (READ-CHAR ,operation/read-char)
      (READ ,operation/read)
      (CURRENT-EXPRESSION-CONTEXT ,operation/current-expression-context)

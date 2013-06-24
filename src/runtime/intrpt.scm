@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: intrpt.scm,v 14.24 2003/02/14 18:28:32 cph Exp $
+$Id: intrpt.scm,v 14.25 2004/10/01 03:39:02 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1994,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,7 +124,7 @@ USA.
 (define ((illegal-interrupt-handler interrupt-bit)
 	 interrupt-code interrupt-enables)
   (clear-interrupts! interrupt-bit)
-  (error "Illegal interrupt" interrupt-code interrupt-enables))
+  (error "Illegal interrupt:" interrupt-bit interrupt-code interrupt-enables))
 
 ;;;; Keyboard Interrupts
 

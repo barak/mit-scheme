@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.18 2003/07/22 02:40:31 cph Exp $
+$Id: utabs.scm,v 14.19 2005/04/14 04:42:53 cph Exp $
 
 Copyright 1986,1987,1988,1991,1992,1994 Massachusetts Institute of Technology
-Copyright 2001,2003 Massachusetts Institute of Technology
+Copyright 2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,23 +37,20 @@ USA.
 	  (let ((new-vector (vector-copy new-identification))
 		(old-vector (vector-copy identification-vector)))
 	    (let loop ((fields '(CONSOLE-WIDTH CONSOLE-HEIGHT)))
-	      (if (not (null? fields))
+	      (if (pair? fields)
 		  (let ((slot
 			 (microcode-identification-vector-slot (car fields))))
-		    (vector-set! old-vector slot false)
-		    (vector-set! new-vector slot false)
+		    (vector-set! old-vector slot #f)
+		    (vector-set! new-vector slot #f)
 		    (loop (cdr fields)))))
 	    (if (not (equal? new-vector old-vector))
-		(error
-		 "re-read-microcode-tables!: Missing microcode description"
-		 file-name)
-		(begin
-		  (set! identification-vector new-identification)
-		  (set! microcode-id/tty-x-size
-			(microcode-identification-item 'CONSOLE-WIDTH))
-		  (set! microcode-id/tty-y-size
-			(microcode-identification-item 'CONSOLE-HEIGHT))
-		  unspecific)))))))
+		(error "Missing microcode description:" file-name))
+	    (set! identification-vector new-identification)
+	    (set! microcode-id/tty-x-size
+		  (microcode-identification-item 'CONSOLE-WIDTH))
+	    (set! microcode-id/tty-y-size
+		  (microcode-identification-item 'CONSOLE-HEIGHT))
+	    unspecific)))))
 
 (define (read-microcode-tables! #!optional filename)
   (set! microcode-tables-identification
@@ -96,7 +93,7 @@ USA.
 	(let ((string (microcode-identification-item 'STACK-TYPE-STRING)))
 	  (cond ((string? string) (intern string))
 		((not string) 'STANDARD)
-		(else (error "illegal stack type" string)))))
+		(else (error "Illegal stack type:" string)))))
   (set! microcode-id/tty-x-size
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
@@ -144,7 +141,7 @@ USA.
 
 (define (fixed-objects-vector-slot name)
   (or (fixed-object/name->code name)
-      (error "FIXED-OBJECTS-VECTOR-SLOT: Unknown name" name)))
+      (error:bad-range-argument name 'FIXED-OBJECTS-VECTOR-SLOT)))
 
 (define (fixed-objects-item name)
   (vector-ref (get-fixed-objects-vector) (fixed-objects-vector-slot name)))
@@ -155,23 +152,25 @@ USA.
 (define (microcode-table-search slot name)
   (let ((vector (vector-ref (get-fixed-objects-vector) slot)))
     (let ((end (vector-length vector)))
-      (define (loop i)
-	(and (not (= i end))
+      (let loop ((i 0))
+	(and (fix:< i end)
 	     (let ((entry (vector-ref vector i)))
 	       (if (if (pair? entry)
 		       (memq name entry)
 		       (eq? name entry))
 		   i
-		   (loop (1+ i))))))
-      (loop 0))))
+		   (loop (fix:+ i 1)))))))))
+
+(define (microcode-table-entry slot index)
+  (let ((vector (vector-ref (get-fixed-objects-vector) slot)))
+    (and (fix:< index (vector-length vector))
+	 (vector-ref vector index))))
 
 (define (microcode-table-ref slot index)
-  (let ((vector (vector-ref (get-fixed-objects-vector) slot)))
-    (and (< index (vector-length vector))
-	 (let ((entry (vector-ref vector index)))
-	   (if (pair? entry)
-	       (car entry)
-	       entry)))))
+  (let ((entry (microcode-table-entry slot index)))
+    (if (pair? entry)
+	(car entry)
+	entry)))
 
 (define returns-slot)
 
@@ -214,6 +213,12 @@ USA.
 (define (microcode-type/code->name code)
   (microcode-table-ref types-slot code))
 
+(define (microcode-type/code->names code)
+  (let ((entry (microcode-table-entry types-slot code)))
+    (cond ((not entry) '())
+	  ((list? entry) entry)
+	  (else (list entry)))))
+
 (define (microcode-type/code-limit)
   (vector-length (vector-ref (get-fixed-objects-vector) types-slot)))
 
@@ -222,7 +227,7 @@ USA.
 
 (define (microcode-identification-vector-slot name)
   (or (microcode-table-search identifications-slot name)
-      (error "Unknown microcode identification item" name)))
+      (error:bad-range-argument name 'MICROCODE-IDENTIFICATION-VECTOR-SLOT)))
 
 (define (microcode-identification-item name)
   (vector-ref identification-vector

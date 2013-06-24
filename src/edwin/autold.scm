@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: autold.scm,v 1.65 2003/02/14 18:28:10 cph Exp $
+$Id: autold.scm,v 1.66 2005/03/30 03:52:58 cph Exp $
 
-Copyright 1986, 1989-2001 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1992,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -226,6 +227,5 @@ Second arg PURIFY? means purify the file's contents after loading;
      (bind-condition-handler (list condition-type:error)
 	 evaluation-error-handler
        (lambda ()
-	 (fluid-let ((load/suppress-loading-message? #t)
-		     (*parser-canonicalize-symbols?* #t))
+	 (fluid-let ((load/suppress-loading-message? #t))
 	   (load filename environment 'DEFAULT purify?)))))))

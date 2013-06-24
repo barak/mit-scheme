@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: bufout.scm,v 1.16 2003/02/14 18:28:11 cph Exp $
+$Id: bufout.scm,v 1.17 2004/02/16 05:42:55 cph Exp $
 
-Copyright 1986, 1989-1999 Massachusetts Institute of Technology
+Copyright 1989,1991,1992,1993,1998,1999 Massachusetts Institute of Technology
+Copyright 2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -67,18 +68,18 @@ USA.
 			(window-direct-update! window #f)))
 		  (buffer-windows buffer)))))
 
-(define (operation/fresh-line port)
-  (guarantee-newline (port/mark port)))
-
-(define (operation/print-self state port)
-  (unparse-string state "to buffer at ")
-  (unparse-object state (port/mark port)))
+(define (operation/write-self port output)
+  (write-string " to buffer at " output)
+  (write (port/mark port) output))
 
 (define (operation/write-char port char)
-  (region-insert-char! (port/mark port) char))
+  (guarantee-8-bit-char char)
+  (region-insert-char! (port/mark port) char)
+  1)
 
 (define (operation/write-substring port string start end)
-  (region-insert-substring! (port/mark port) string start end))
+  (region-insert-substring! (port/mark port) string start end)
+  (fix:- end start))
 
 (define (operation/close port)
   (mark-temporary! (port/mark port)))
@@ -89,9 +90,8 @@ USA.
 (define mark-output-port-type
   (make-port-type `((CLOSE ,operation/close)
 		    (FLUSH-OUTPUT ,operation/flush-output)
-		    (FRESH-LINE ,operation/fresh-line)
-		    (PRINT-SELF ,operation/print-self)
 		    (WRITE-CHAR ,operation/write-char)
+		    (WRITE-SELF ,operation/write-self)
 		    (WRITE-SUBSTRING ,operation/write-substring)
 		    (X-SIZE ,operation/x-size))
 		  #f))

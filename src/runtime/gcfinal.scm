@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: gcfinal.scm,v 14.7 2003/06/08 04:21:56 cph Exp $
+$Id: gcfinal.scm,v 14.10 2004/12/28 06:41:10 cph Exp $
 
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,58 +31,82 @@ USA.
 
 (declare (usual-integrations))
 
-(define-structure (gc-finalizer (constructor %make-gc-finalizer
-					     (procedure reset-on-restore?)))
+(define-structure (gc-finalizer (constructor %make-gc-finalizer))
   (procedure #f read-only #t)
-  (reset-on-restore? #f read-only #t)
+  (object? #f read-only #t)
+  (object-context #f read-only #t)
+  (set-object-context! #f read-only #t)
   (items '()))
 
 (define (guarantee-gc-finalizer object procedure)
   (if (not (gc-finalizer? object))
       (error:wrong-type-argument object "GC finalizer" procedure)))
 
-(define (make-gc-finalizer procedure #!optional reset-on-restore?)
+(define (make-gc-finalizer procedure
+			   object?
+			   object-context
+			   set-object-context!)
   (if (not (procedure? procedure))
       (error:wrong-type-argument procedure "procedure" 'MAKE-GC-FINALIZER))
   (if (not (procedure-arity-valid? procedure 1))
       (error:bad-range-argument procedure 'MAKE-GC-FINALIZER))
   (let ((finalizer
 	 (%make-gc-finalizer procedure
-			     (if (default-object? reset-on-restore?)
-				 #t
-				 reset-on-restore?))))
+			     object?
+			     object-context
+			     set-object-context!
+			     '())))
     (set! gc-finalizers (weak-cons finalizer gc-finalizers))
     finalizer))
 
-(define (add-to-gc-finalizer! finalizer object context)
+(define (add-to-gc-finalizer! finalizer object)
   (guarantee-gc-finalizer finalizer 'ADD-TO-GC-FINALIZER!)
-  (if (object-pointer? object)
-      (without-interrupts
-       (lambda ()
-	 (set-gc-finalizer-items!
-	  finalizer
-	  (cons (weak-cons object context)
-		(gc-finalizer-items finalizer)))))))
+  (if (not ((gc-finalizer-object? finalizer) object))
+      (error:wrong-type-argument object
+				 "finalized object"
+				 'ADD-TO-GC-FINALIZER!))
+  (without-interrupts
+   (lambda ()
+     (let ((context ((gc-finalizer-object-context finalizer) object)))
+       (if (not context)
+	   (error:bad-range-argument object 'ADD-TO-GC-FINALIZER!))
+       (set-gc-finalizer-items! finalizer
+				(cons (weak-cons object context)
+				      (gc-finalizer-items finalizer))))))
+  object)
 
 (define (remove-from-gc-finalizer! finalizer object)
   (guarantee-gc-finalizer finalizer 'REMOVE-FROM-GC-FINALIZER!)
-  (and (object-pointer? object)
-       (let ((procedure (gc-finalizer-procedure finalizer)))
-	 (without-interrupts
-	  (lambda ()
-	    (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
-	      (and (pair? items)
-		   (if (eq? object (weak-car (car items)))
-		       (let ((next (cdr items)))
-			 (if prev
-			     (set-cdr! prev next)
-			     (set-gc-finalizer-items! finalizer next))
-			 (procedure (weak-cdr (car items))))
-		       (loop (cdr items) items)))))))))
+  (let ((procedure (gc-finalizer-procedure finalizer))
+	(object? (gc-finalizer-object? finalizer))
+	(object-context (gc-finalizer-object-context finalizer))
+	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
+    (if (not (object? object))
+	(error:wrong-type-argument object
+				   "finalized object"
+				   'REMOVE-FROM-GC-FINALIZER!))
+    (without-interrupts
+     (lambda ()
+       (let ((context (object-context object)))
+	 (if (not context)
+	     (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	 (let loop ((items (gc-finalizer-items finalizer)) (prev #f))
+	   (if (not (pair? items))
+	       (error:bad-range-argument object 'REMOVE-FROM-GC-FINALIZER!))
+	   (if (eq? object (weak-car (car items)))
+	       (let ((next (cdr items)))
+		 (if prev
+		     (set-cdr! prev next)
+		     (set-gc-finalizer-items! finalizer next))
+		 (set-object-context! object #f)
+		 (procedure context))
+	       (loop (cdr items) items))))))))
 
 (define (remove-all-from-gc-finalizer! finalizer)
   (guarantee-gc-finalizer finalizer 'REMOVE-ALL-FROM-GC-FINALIZER!)
-  (let ((procedure (gc-finalizer-procedure finalizer)))
+  (let ((procedure (gc-finalizer-procedure finalizer))
+	(object-context (gc-finalizer-object-context finalizer))
+	(set-object-context! (gc-finalizer-set-object-context! finalizer)))
     (without-interrupts
      (lambda ()
        (let loop ()
@@ -90,8 +114,13 @@ USA.
 	   (if (pair? items)
 	       (let ((item (car items)))
 		 (set-gc-finalizer-items! finalizer (cdr items))
-		 (if (weak-pair/car? item)
-		     (procedure (weak-cdr item)))
+		 (let ((object (weak-car item)))
+		   (let ((context (object-context object)))
+		     (if context
+			 (begin
+			   (if object
+			       (set-object-context! object #f))
+			   (procedure context)))))
 		 (loop)))))))))
 
 (define (search-gc-finalizer finalizer predicate)
@@ -128,16 +157,16 @@ USA.
     (dynamic-wind
      (lambda () unspecific)
      (lambda ()
-       (and (get-context p)
-	    (let ((context (weak-cdr p)))
-	      (let ((object (context->object context)))
-		(without-interrupts
-		 (lambda ()
-		   (weak-set-car! p object)
-		   (set-gc-finalizer-items!
-		    finalizer
-		    (cons p (gc-finalizer-items finalizer)))))
-		object))))
+       (get-context p)
+       (let ((context (weak-cdr p)))
+	 (let ((object (context->object context)))
+	   (without-interrupts
+	    (lambda ()
+	      (weak-set-car! p object)
+	      (set-gc-finalizer-items!
+	       finalizer
+	       (cons p (gc-finalizer-items finalizer)))))
+	   object)))
      (lambda ()
        (if (and (not (weak-pair/car? p)) (weak-cdr p))
 	   (begin
@@ -151,8 +180,7 @@ USA.
    (lambda ()
      (walk-gc-finalizers-list
       (lambda (finalizer)
-	(if (gc-finalizer-reset-on-restore? finalizer)
-	    (set-gc-finalizer-items! finalizer '())))))))
+	(set-gc-finalizer-items! finalizer '()))))))
 
 (define (run-gc-finalizers)
   (walk-gc-finalizers-list

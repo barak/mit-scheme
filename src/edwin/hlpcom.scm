@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hlpcom.scm,v 1.127 2003/07/31 02:33:01 cph Exp $
+$Id: hlpcom.scm,v 1.128 2004/10/14 03:08:14 cph Exp $
 
 Copyright 1986,1989,1990,1991,1993,1998 Massachusetts Institute of Technology
-Copyright 2000,2002,2003 Massachusetts Institute of Technology
+Copyright 2000,2002,2003,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -63,7 +63,7 @@ W  where-is.  Type a command name and get its key binding."
 		     (buffer-point buffer))
 		    (set-buffer-point! buffer (buffer-start buffer))
 		    (buffer-not-modified! buffer)
-		    (pop-up-buffer buffer false)
+		    (pop-up-buffer buffer #f)
 		    (let ((window (get-buffer-window buffer)))
 		      (let loop ()
 			(let ((char
@@ -80,7 +80,7 @@ W  where-is.  Type a command name and get its key binding."
 				   (scroll-window
 				    window
 				    (standard-scroll-window-argument
-				     window false 1)
+				     window #f 1)
 				    editor-beep)
 				   (loop))
 				  ((or (test-for #\rubout)
@@ -88,7 +88,7 @@ W  where-is.  Type a command name and get its key binding."
 				   (scroll-window
 				    window
 				    (standard-scroll-window-argument
-				     window false -1)
+				     window #f -1)
 				    editor-beep)
 				   (loop))
 				  (else char)))))))))
@@ -139,10 +139,10 @@ Prints the full documentation for the given command."
   (lambda (name)
     (let ((command (name->command name)))
       (let ((bindings (comtab-key-bindings (current-comtabs) command)))
-	(if (null? bindings)
-	    (message (command-name-string command) " is not on any keys")
+	(if (pair? bindings)
 	    (message (command-name-string command) " is on "
-		     (xkey->name (car bindings))))))))
+		     (xkey->name (car bindings)))
+	    (message (command-name-string command) " is not on any keys"))))))
 
 (define-command describe-key-briefly
   "Prompts for a key, and describes the command it is bound to.
@@ -284,9 +284,9 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	(if buffer
 	    (select-buffer buffer)
 	    (let ((buffer (new-buffer (pathname->buffer-name pathname))))
-	      (read-buffer buffer (edwin-tutorial-pathname) true)
+	      (read-buffer buffer (edwin-tutorial-pathname) #t)
 	      (set-buffer-pathname! buffer pathname)
-	      (set-buffer-truename! buffer false)
+	      (set-buffer-truename! buffer #f)
 	      (select-buffer buffer)
 	      (set-current-major-mode! (ref-mode-object fundamental))
 	      (disable-buffer-auto-save! buffer)
@@ -326,11 +326,11 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 
 (define (key-list-string xkeys)
   (let loop ((xkeys (sort xkeys xkey<?)))
-    (if (null? (cdr xkeys))
-	(xkey->name (car xkeys))
+    (if (pair? (cdr xkeys))
 	(string-append (xkey->name (car xkeys))
 		       ", "
-		       (loop (cdr xkeys))))))
+		       (loop (cdr xkeys)))
+	(xkey->name (car xkeys)))))
 
 (define (print-variable-binding variable #!optional port)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -392,11 +392,11 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	    (cons (let ((command (name->command argument #f)))
 		    (if command
 			(let ((bindings (comtab-key-bindings comtabs command)))
-			  (if (null? bindings)
+			  (if (pair? bindings)
+			      (xkey->name (car bindings))
 			      (string-append "M-x "
-					     (command-name-string command))
-			      (xkey->name (car bindings))))
-			(string-append "M-x " argument)))
+					     (command-name-string command))))
+			(string-append "M-x " (symbol-name argument))))
 		  (find-escape next comtabs))))
 	 (show-bindings
 	  (lambda (argument next comtabs)

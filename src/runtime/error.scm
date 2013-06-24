@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.62 2003/03/10 20:53:34 cph Exp $
+$Id: error.scm,v 14.69 2005/04/16 04:16:05 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003 Massachusetts Institute of Technology
+Copyright 2003,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,10 +48,18 @@ USA.
   (reporter #f read-only #t)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee condition-type "condition type")
+
+(define-integrable (guarantee-condition-types object caller)
+  (guarantee-list-of-type object
+			  condition-type?
+			  "list of condition types"
+			  caller))
+
 (define (make-condition-type name generalization field-names reporter)
   (if generalization
       (guarantee-condition-type generalization 'MAKE-CONDITION-TYPE))
-  (guarantee-list-of-symbols field-names 'MAKE-CONDITION-TYPE)
+  (guarantee-list-of-unique-symbols field-names 'MAKE-CONDITION-TYPE)
   (let ((type
 	 (call-with-values
 	     (lambda ()
@@ -159,6 +167,8 @@ USA.
   (field-values #f read-only #t)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee condition "condition")
+
 (define (%make-condition type continuation restarts)
   (%%make-condition type continuation restarts
 		    (make-vector (%condition-type/number-of-fields type) #f)))
@@ -166,7 +176,7 @@ USA.
 (define (make-condition type continuation restarts field-alist)
   (guarantee-condition-type type 'MAKE-CONDITION)
   (guarantee-continuation continuation 'MAKE-CONDITION)
-  (guarantee-keyword-association-list field-alist 'MAKE-CONDITION)
+  (guarantee-unique-keyword-list field-alist 'MAKE-CONDITION)
   (let ((condition
 	 (%make-condition type
 			  continuation
@@ -182,7 +192,7 @@ USA.
 
 (define (condition-constructor type field-names)
   (guarantee-condition-type type 'CONDITION-CONSTRUCTOR)
-  (guarantee-list-of-symbols field-names 'CONDITION-CONSTRUCTOR)
+  (guarantee-list-of-unique-symbols field-names 'CONDITION-CONSTRUCTOR)
   (let ((indexes
 	 (map (lambda (field-name)
 		(%condition-type/field-index type field-name
@@ -210,7 +220,7 @@ USA.
 		  (vector-set! values (car i) (car v))))
 	      condition))))
       constructor)))
-
+
 (define-integrable (%restarts-argument restarts operator)
   (cond ((eq? 'BOUND-RESTARTS restarts)
 	 *bound-restarts*)
@@ -219,13 +229,18 @@ USA.
 	(else
 	 (guarantee-restarts restarts operator)
 	 (list-copy restarts))))
-
+
+(define (condition-of-type? object type)
+  (guarantee-condition-type type 'CONDITION-OF-TYPE?)
+  (%condition-of-type? object type))
+
 (define (condition-predicate type)
   (guarantee-condition-type type 'CONDITION-PREDICATE)
-  (lambda (object)
-    (and (condition? object)
-	 (memq type
-	       (%condition-type/generalizations (%condition/type object))))))
+  (lambda (object) (%condition-of-type? object type)))
+
+(define (%condition-of-type? object type)
+  (and (condition? object)
+       (memq type (%condition-type/generalizations (%condition/type object)))))
 
 (define (condition-accessor type field-name)
   (guarantee-condition-type type 'CONDITION-ACCESSOR)
@@ -304,6 +319,11 @@ USA.
   (interactor #f)
   (properties (make-1d-table) read-only #t))
 
+(define-guarantee restart "restart")
+
+(define-integrable (guarantee-restarts object caller)
+  (guarantee-list-of-type object restart? "list of restarts" caller))
+
 (define (with-restart name reporter effector interactor thunk)
   (if name (guarantee-symbol name 'WITH-RESTART))
   (if (not (or (string? reporter) (procedure-of-arity? reporter 1)))
@@ -356,12 +376,12 @@ USA.
   (if (eq? key 'INTERACTIVE)
       (set-%restart/interactor! restart datum)
       (1d-table/put! (restart/properties restart) key datum)))
-
+
 (define (bind-restart name reporter effector receiver)
   (with-restart name reporter effector #f
     (lambda ()
       (receiver (car *bound-restarts*)))))
-
+
 (define (invoke-restart restart . arguments)
   (guarantee-restart restart 'INVOKE-RESTART)
   (hook/invoke-restart (%restart/effector restart) arguments))
@@ -419,21 +439,6 @@ USA.
 	 (if (eq? name (%restart/name (car restarts)))
 	     (car restarts)
 	     (loop (cdr restarts))))))
-
-(define-syntax restarts-default
-  (sc-macro-transformer
-   (lambda (form environment)
-     (let ((restarts (close-syntax (cadr form) environment))
-	   (name (close-syntax (caddr form) environment)))
-       ;; This is a macro because DEFAULT-OBJECT? is.
-       `(COND ((OR (DEFAULT-OBJECT? ,restarts)
-		   (EQ? 'BOUND-RESTARTS ,restarts))
-	       *BOUND-RESTARTS*)
-	      ((CONDITION? ,restarts)
-	       (%CONDITION/RESTARTS ,restarts))
-	      (ELSE
-	       (GUARANTEE-RESTARTS ,restarts ,name)
-	       ,restarts))))))
 
 (define (find-restart name #!optional restarts)
   (guarantee-symbol name 'FIND-RESTART)
@@ -478,6 +483,16 @@ USA.
 			(restarts-default restarts 'USE-VALUE))))
     (if restart
 	((%restart/effector restart) datum))))
+
+(define (restarts-default restarts name)
+  (cond ((or (default-object? restarts)
+	     (eq? 'BOUND-RESTARTS restarts))
+	 *bound-restarts*)
+	((condition? restarts)
+	 (%condition/restarts restarts))
+	(else
+	 (guarantee-restarts restarts name)
+	 restarts)))
 
 ;;;; Condition Signalling and Handling
 
@@ -499,11 +514,8 @@ USA.
 	       (cons (cons types handler) dynamic-handler-frames)))
     (thunk)))
 
-(define (ignore-errors thunk)
-  (call-with-current-continuation
-   (lambda (continuation)
-     (bind-condition-handler (list condition-type:error) continuation
-       thunk))))
+(define-integrable (guarantee-condition-handler object caller)
+  (guarantee-procedure-of-arity object 1 caller))
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
@@ -635,7 +647,7 @@ USA.
     (letrec
 	((constructor
 	  (lambda field-values
-	    (if (not (= arity (length field-values)))
+	    (if (not (fix:= arity (length field-values)))
 		(error:wrong-number-of-arguments constructor
 						 arity
 						 field-values))
@@ -690,6 +702,7 @@ USA.
 (define condition-type:illegal-pathname-component)
 (define condition-type:macro-binding)
 (define condition-type:no-such-restart)
+(define condition-type:not-8-bit-char)
 (define condition-type:port-error)
 (define condition-type:serious-condition)
 (define condition-type:simple-condition)
@@ -717,6 +730,7 @@ USA.
 (define error:derived-thread)
 (define error:illegal-pathname-component)
 (define error:macro-binding)
+(define error:not-8-bit-char)
 (define error:unassigned-variable)
 (define error:unbound-variable)
 (define error:wrong-number-of-arguments)
@@ -873,24 +887,22 @@ USA.
 		(pluralize-argument count))
 	      (write-string "; it requires " port)
 	      (let ((arity (access-condition condition 'TYPE)))
-		(cond ((not (pair? arity))
-		       (write-string "exactly " port)
-		       (write arity port)
-		       (pluralize-argument arity))
-		      ((not (cdr arity))
-		       (write-string "at least " port)
-		       (write (car arity) port)
-		       (pluralize-argument (car arity)))
-		      ((= (car arity) (cdr arity))
-		       (write-string "exactly " port)
-		       (write (car arity) port)
-		       (pluralize-argument (car arity)))
-		      (else
-		       (write-string "between " port)
-		       (write (car arity) port)
-		       (write-string " and " port)
-		       (write (cdr arity) port)
-		       (write-string " arguments" port))))
+		(let ((arity-min (procedure-arity-min arity))
+		      (arity-max (procedure-arity-max arity)))
+		  (cond ((eqv? arity-min arity-max)
+			 (write-string "exactly " port)
+			 (write arity port)
+			 (pluralize-argument arity))
+			((not arity-max)
+			 (write-string "at least " port)
+			 (write (car arity) port)
+			 (pluralize-argument (car arity)))
+			(else
+			 (write-string "between " port)
+			 (write arity-min port)
+			 (write-string " and " port)
+			 (write arity-max port)
+			 (write-string " arguments" port)))))
 	      (write-char #\. port)))))
 
   (set! condition-type:illegal-pathname-component
@@ -1108,6 +1120,13 @@ USA.
 	      condition-type:arithmetic-error
 	      '()
 	    (arithmetic-error-report "Floating-point underflow"))))
+
+  (set! condition-type:not-8-bit-char
+	(make-condition-type 'NOT-8-BIT-CHAR condition-type:error '(CHAR)
+	  (lambda (condition port)
+	    (write-string "Character too large for 8-bit string: " port)
+	    (write (access-condition condition 'CHAR) port)
+	    (newline port))))
 
   (set! make-simple-error
 	(condition-constructor condition-type:simple-error
@@ -1160,10 +1179,30 @@ USA.
 	(condition-signaller condition-type:macro-binding
 			     '(ENVIRONMENT LOCATION)
 			     standard-error-handler))
-
+  (set! error:not-8-bit-char
+	(condition-signaller condition-type:not-8-bit-char
+			     '(CHAR)
+			     standard-error-handler))
   unspecific)
 
 ;;;; Utilities
+
+(define (ignore-errors thunk #!optional map-error)
+  (call-with-current-continuation
+   (lambda (k)
+     (bind-condition-handler (list condition-type:error)
+	 (cond ((or (default-object? map-error)
+		    (not map-error))
+		k)
+	       ((and (procedure? map-error)
+		     (procedure-arity-valid? map-error 1))
+		(lambda (condition)
+		  (k (map-error condition))))
+	       (else
+		(error:wrong-type-argument map-error
+					   "map-error procedure"
+					   'IGNORE-ERRORS)))
+       thunk))))
 
 (define (format-error-message message irritants port)
   (fluid-let ((*unparser-list-depth-limit* 2)
@@ -1214,64 +1253,3 @@ USA.
 	     (primitive-procedure-name operator)
 	     operator)
 	 port))
-
-(define-integrable (guarantee-list-of-symbols object operator)
-  (if (not (list-of-symbols? object))
-      (error:wrong-type-argument object "list of unique symbols" operator)))
-
-(define (list-of-symbols? object)
-  (and (list? object)
-       (let loop ((field-names object))
-	 (or (not (pair? field-names))
-	     (and (symbol? (car field-names))
-		  (not (memq (car field-names) (cdr field-names)))
-		  (loop (cdr field-names)))))))
-
-(define-integrable (guarantee-keyword-association-list object operator)
-  (if (not (keyword-association-list? object))
-      (error:wrong-type-argument object "keyword association list" operator)))
-
-(define (keyword-association-list? object)
-  (and (list? object)
-       (let loop ((l object) (symbols '()))
-	 (or (not (pair? l))
-	     (and (symbol? (car l))
-		  (not (memq (car l) symbols))
-		  (pair? (cdr l))
-		  (loop (cddr l) (cons (car l) symbols)))))))
-
-(define-integrable (procedure-of-arity? object arity)
-  (and (procedure? object)
-       (procedure-arity-valid? object arity)))
-
-(define-integrable (guarantee-symbol object operator)
-  (if (not (symbol? object))
-      (error:wrong-type-argument object "symbol" operator)))
-
-(define-integrable (guarantee-continuation object operator)
-  (if (not (continuation? object))
-      (error:wrong-type-argument object "continuation" operator)))
-
-(define-integrable (guarantee-condition-type object operator)
-  (if (not (condition-type? object))
-      (error:wrong-type-argument object "condition type" operator)))
-
-(define-integrable (guarantee-condition-types object operator)
-  (if (not (and (list? object) (for-all? object condition-type?)))
-      (error:wrong-type-argument object "list of condition types" operator)))
-
-(define-integrable (guarantee-condition object operator)
-  (if (not (condition? object))
-      (error:wrong-type-argument object "condition" operator)))
-
-(define-integrable (guarantee-condition-handler object operator)
-  (if (not (procedure-of-arity? object 1))
-      (error:wrong-type-argument object "procedure of one argument" operator)))
-
-(define-integrable (guarantee-restart object operator)
-  (if (not (restart? object))
-      (error:wrong-type-argument object "restart" operator)))
-
-(define-integrable (guarantee-restarts object operator)
-  (if (not (and (list? object) (for-all? object restart?)))
-      (error:wrong-type-argument object "list of restarts" operator)))

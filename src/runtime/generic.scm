@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: generic.scm,v 1.7 2003/07/22 02:12:56 cph Exp $
+$Id: generic.scm,v 1.13 2005/04/16 04:26:35 cph Exp $
 
-Copyright 1996,2003 Massachusetts Institute of Technology
+Copyright 1996,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,29 +37,17 @@ USA.
     (if (and name (not (symbol? name)))
 	(error:wrong-type-argument name "symbol" 'MAKE-GENERIC-PROCEDURE))
     (if tag (guarantee-dispatch-tag tag 'MAKE-GENERIC-PROCEDURE))
-    (if (not (or (and (exact-integer? arity)
-		      (> arity 0))
-		 (and (pair? arity)
-		      (exact-integer? (car arity))
-		      (> (car arity) 0)
-		      (or (not (cdr arity))
-			  (and (exact-integer? (cdr arity))
-			       (>= (cdr arity) (car arity)))))))
-	(error:wrong-type-argument arity "arity"
-				   'MAKE-GENERIC-PROCEDURE))
+    (guarantee-procedure-arity arity 'MAKE-GENERIC-PROCEDURE)
+    (if (not (fix:> (procedure-arity-min arity) 0))
+	(error:bad-range-argument arity 'MAKE-GENERIC-PROCEDURE))
     (guarantee-generator generator 'MAKE-GENERIC-PROCEDURE)
     (let ((record
 	   (make-generic-record (or tag standard-generic-procedure-tag)
-				(if (and (pair? arity)
-					 (eqv? (car arity) (cdr arity)))
-				    (car arity)
-				    arity)
+				(procedure-arity-min arity)
+				(procedure-arity-max arity)
 				generator
 				name
-				(new-cache
-				 (if (pair? arity)
-				     (car arity)
-				     arity)))))
+				(new-cache (procedure-arity-min arity)))))
       (let ((generic (compute-apply-generic record)))
 	(set-generic-record/procedure! record generic)
 	(eqht/put! generic-procedure-records generic record)
@@ -68,32 +56,35 @@ USA.
 (define-structure (generic-record
 		   (conc-name generic-record/)
 		   (constructor make-generic-record
-				(tag arity generator name cache)))
+				(tag arity-min arity-max generator name
+				     cache)))
   (tag #f read-only #t)
-  (arity #f read-only #t)
+  (arity-min #f read-only #t)
+  (arity-max #f read-only #t)
   (generator #f)
   (name #f read-only #t)
   cache
   procedure)
 
-(define (generic-record/min-arity record)
-  (arity-min (generic-record/arity record)))
-
-(define (generic-record/max-arity record)
-  (arity-max (generic-record/arity record)))
-
-(define (arity-min arity)
-  (if (pair? arity) (car arity) arity))
-
-(define (arity-max arity)
-  (if (pair? arity) (cdr arity) arity))
-
 (define (generic-procedure? object)
   (if (eqht/get generic-procedure-records object #f) #t #f))
+
+(define (generic-record/arity record)
+  (make-procedure-arity (generic-record/arity-min record)
+			(generic-record/arity-max record)
+			#t))
 
 (define (generic-procedure-arity generic)
   (generic-record/arity
    (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY)))
+
+(define (generic-procedure-arity-min generic)
+  (generic-record/arity-min
+   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY-MIN)))
+
+(define (generic-procedure-arity-max generic)
+  (generic-record/arity-max
+   (guarantee-generic-procedure generic 'GENERIC-PROCEDURE-ARITY-MAX)))
 
 (define (generic-procedure-name generic)
   (generic-record/name
@@ -131,7 +122,7 @@ USA.
 
 (define (%reset-generic-procedure-cache! record)
   (set-generic-record/cache! record
-			     (new-cache (generic-record/min-arity record))))
+			     (new-cache (generic-record/arity-min record))))
 
 (define (%purge-generic-procedure-cache! generic record filter)
   ;; This might have interrupts locked for a long time, and thus is an
@@ -158,38 +149,41 @@ USA.
 ;;;; Generic Procedure Application
 
 (define (compute-apply-generic record)
-  (let ((arity (generic-record/arity record)))
-    (cond ((pair? arity) (apply-generic record))
-	  ((= 1 arity) (apply-generic-1 record))
-	  ((= 2 arity) (apply-generic-2 record))
-	  ((= 3 arity) (apply-generic-3 record))
-	  ((= 4 arity) (apply-generic-4 record))
-	  (else (apply-generic record)))))
+  (let ((arity (generic-record/arity-min record)))
+    (if (and (eqv? arity (generic-record/arity-max record))
+	     (fix:<= arity 4))
+	(case arity
+	  ((1) (apply-generic-1 record))
+	  ((2) (apply-generic-2 record))
+	  ((3) (apply-generic-3 record))
+	  (else (apply-generic-4 record)))
+	(apply-generic record))))
 
 (define (apply-generic record)
-  (let ((min-arity (generic-record/min-arity record))
-	(max-arity (generic-record/max-arity record)))
-    (let ((extra (and max-arity (- max-arity min-arity))))
+  (let ((arity-min (generic-record/arity-min record))
+	(arity-max (generic-record/arity-max record)))
+    (let ((extra (and arity-max (fix:- arity-max arity-min))))
       (letrec
 	  ((generic
 	    (lambda args
-	      (let loop ((args* args) (n min-arity) (tags '()))
+	      (let loop ((args* args) (n arity-min) (tags '()))
 		(if (fix:= n 0)
 		    (begin
 		      (if (and extra
 			       (let loop ((args* args*) (n extra))
-				 (and (not (null? args*))
+				 (and (pair? args*)
 				      (or (fix:= n 0)
 					  (loop (cdr args*)
 						(fix:- n 1))))))
 			  (wna args))
 		      (let ((procedure
-			     (probe-cache (generic-record/cache record) tags)))
+			     (probe-cache (generic-record/cache record)
+					  tags)))
 			(if procedure
 			    (apply procedure args)
 			    (compute-method-and-store record args))))
 		    (begin
-		      (if (null? args*)
+		      (if (not (pair? args*))
 			  (wna args))
 		      (loop (cdr args*)
 			    (fix:- n 1)
@@ -207,20 +201,16 @@ USA.
 				      'GENERIC-PROCEDURE-APPLICABLE?))
 	(tags (map dispatch-tag arguments)))
     (let ((generator (generic-record/generator record))
-	  (arity (generic-record/arity record))
+	  (arity-min (generic-record/arity-min record))
+	  (arity-max (generic-record/arity-max record))
 	  (n-args (length tags)))
       (and generator
-	   (if (pair? arity)
-	       (let ((min-arity (arity-min arity))
-		     (max-arity (arity-max arity)))
-		 (if (fix:= n-args min-arity)
-		     (generator procedure tags)
-		     (and (fix:> n-args min-arity)
-			  (or (not max-arity)
-			      (fix:<= n-args max-arity))
-			  (generator procedure (list-head tags min-arity)))))
-	       (and (fix:= arity n-args)
-		    (generator procedure tags)))))))
+	   (if (fix:= n-args arity-min)
+	       (generator procedure tags)
+	       (and (fix:> n-args arity-min)
+		    (or (not arity-max)
+			(fix:<= n-args arity-max))
+		    (generator procedure (list-head tags arity-min))))))))
 
 (define (apply-generic-1 record)
   (lambda (a1)
@@ -269,7 +259,13 @@ USA.
 	  (compute-method-and-store record (list a1 a2 a3 a4))))))
 
 (define (compute-method-and-store record args)
-  (let ((tags (map dispatch-tag args)))
+  (let ((tags
+	 (let ((p (list 'TAGS)))
+	   (do ((args args (cdr args))
+		(p p (cdr p)))
+	       ((not (pair? args)))
+	     (set-cdr! p (list (dispatch-tag (car args)))))
+	   (cdr p))))
     (let ((procedure
 	   (let ((generator (generic-record/generator record))
 		 (generic (generic-record/procedure record)))
@@ -296,25 +292,38 @@ USA.
 	   (%record? (%record-ref object 0))
 	   (eq? dispatch-tag-marker (%record-ref (%record-ref object 0) 0)))
       (%record-ref object 0)
-      (or (vector-ref microcode-type-tag-table (object-type object))
+      (if (vector-ref microcode-type-tag-table (object-type object))
+	  (vector-ref microcode-type-tag-table (object-type object))
 	  ((vector-ref microcode-type-method-table (object-type object))
 	   object))))
 
-(define (make-built-in-tag name)
-  (let ((entry (assq name built-in-tag-table)))
-    (if entry
-	(cdr entry)
-	(let ((tag (make-dispatch-tag name)))
-	  (set! built-in-tag-table (cons (cons name tag) built-in-tag-table))
+(define (make-built-in-tag names)
+  (let ((tags (map built-in-dispatch-tag names)))
+    (if (there-exists? tags (lambda (tag) tag))
+	(let ((tag (car tags)))
+	  (if (not (and (for-all? (cdr tags)
+			  (lambda (tag*)
+			    (eq? tag* tag)))
+			(let ((names* (dispatch-tag-contents tag)))
+			  (and (for-all? names
+				 (lambda (name)
+				   (memq name names*)))
+			       (for-all? names*
+				 (lambda (name)
+				   (memq name names)))))))
+	      (error "Illegal built-in tag redefinition:" names))
+	  tag)
+	(let ((tag (make-dispatch-tag (list-copy names))))
+	  (set! built-in-tags (cons tag built-in-tags))
 	  tag))))
 
 (define (built-in-dispatch-tags)
-  (map cdr built-in-tag-table))
+  (list-copy built-in-tags))
 
 (define (built-in-dispatch-tag name)
-  (let ((entry (assq name built-in-tag-table)))
-    (and entry
-	 (cdr entry))))
+  (find-matching-item built-in-tags
+    (lambda (tag)
+      (memq name (dispatch-tag-contents tag)))))
 
 (define condition-type:no-applicable-methods)
 (define error:no-applicable-methods)
@@ -339,7 +348,7 @@ USA.
 
 (define standard-generic-procedure-tag)
 (define generic-procedure-records)
-(define built-in-tag-table)
+(define built-in-tags)
 (define microcode-type-tag-table)
 (define microcode-type-method-table)
 
@@ -349,12 +358,15 @@ USA.
   (set! generic-procedure-records (make-eqht))
 
   ;; Initialize the built-in tag tables.
-  (set! built-in-tag-table '())
+  (set! built-in-tags '())
   (set! microcode-type-tag-table
 	(make-initialized-vector (microcode-type/code-limit)
 	  (lambda (code)
 	    (make-built-in-tag
-	     (or (microcode-type/code->name code) 'OBJECT)))))
+	     (let ((names (microcode-type/code->names code)))
+	       (if (pair? names)
+		   names
+		   '(OBJECT)))))))
   (set! microcode-type-method-table
 	(make-vector (microcode-type/code-limit) #f))
   (let ((assign-type
@@ -377,9 +389,9 @@ USA.
       (assign-type 'PROCEDURE procedure-type))
     (assign-type
      'COMPILED-ENTRY
-     (let ((procedure-tag (make-built-in-tag 'COMPILED-PROCEDURE))
-	   (return-address-tag (make-built-in-tag 'COMPILED-RETURN-ADDRESS))
-	   (expression-tag (make-built-in-tag 'COMPILED-EXPRESSION)))
+     (let ((procedure-tag (make-built-in-tag '(COMPILED-PROCEDURE)))
+	   (return-address-tag (make-built-in-tag '(COMPILED-RETURN-ADDRESS)))
+	   (expression-tag (make-built-in-tag '(COMPILED-EXPRESSION))))
        (lambda (default-tag)
 	 (lambda (object)
 	   (case (system-hunk3-cxr0
@@ -388,37 +400,37 @@ USA.
 	     ((1) return-address-tag)
 	     ((2) expression-tag)
 	     (else default-tag))))))
-    (let ((boolean-tag (make-built-in-tag 'BOOLEAN)))
-      (if (fix:= (object-type #f) (object-type #t))
-	  (assign-type 'CONSTANT
-		       (lambda (default-tag)
-			 (lambda (object)
-			   (if (or (eq? #f object) (eq? #t object))
-			       boolean-tag
-			       default-tag))))
-	  (begin
-	    (assign-type 'FALSE
-			 (lambda (default-tag)
-			   (lambda (object)
-			     (if (eq? #f object)
-				 boolean-tag
-				 default-tag))))
-	    (assign-type 'CONSTANT
-			 (lambda (default-tag)
-			   (lambda (object)
-			     (if (eq? #t object)
-				 boolean-tag
-				 default-tag)))))))
+    (let ((boolean-tag (make-built-in-tag '(BOOLEAN))))
+      (assign-type 'FALSE
+		   (lambda (default-tag)
+		     (lambda (object)
+		       (if (eq? object #f)
+			   boolean-tag
+			   default-tag))))
+      (assign-type 'CONSTANT
+		   (let ((null-tag (make-built-in-tag '(NULL)))
+			 (eof-tag (make-built-in-tag '(EOF)))
+			 (default-tag (make-built-in-tag '(DEFAULT)))
+			 (keyword-tag (make-built-in-tag '(LAMBDA-KEYWORD))))
+		     (lambda (constant-tag)
+		       (lambda (object)
+			 (cond ((eq? object #t) boolean-tag)
+			       ((null? object) null-tag)
+			       ((eof-object? object) eof-tag)
+			       ((default-object? object) default-tag)
+			       ((memq object '(#!optional #!rest #!key #!aux))
+				keyword-tag)
+			       (else constant-tag)))))))
     (assign-type 'FLONUM
 		 (let ((flonum-vector-tag
-			(make-built-in-tag 'FLONUM-VECTOR)))
+			(make-built-in-tag '(FLONUM-VECTOR))))
 		   (lambda (default-tag)
 		     (lambda (object)
 		       (if (fix:= 2 (system-vector-length object))
 			   default-tag
 			   flonum-vector-tag)))))
     (assign-type 'RECORD
-		 (let ((dt-tag (make-built-in-tag 'DISPATCH-TAG)))
+		 (let ((dt-tag (make-built-in-tag '(DISPATCH-TAG))))
 		   (lambda (default-tag)
 		     (lambda (object)
 		       (if (eq? dispatch-tag-marker (%record-ref object 0))

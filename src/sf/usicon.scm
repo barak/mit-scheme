@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: usicon.scm,v 4.7 2003/02/14 18:28:35 cph Exp $
+$Id: usicon.scm,v 4.8 2005/04/16 04:30:51 cph Exp $
 
-Copyright (c) 1987-1999, 2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1991,1993,2001,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -48,10 +48,10 @@ USA.
 				 (object-type object))
 				'(BIGNUM
 				  CHARACTER
+				  FALSE
 				  FIXNUM
 				  FLONUM
 				  INTERNED-SYMBOL
-				  NULL
 				  PAIR
 				  PRIMITIVE
 				  QUAD

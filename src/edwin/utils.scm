@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 1.54 2003/02/14 18:28:13 cph Exp $
+$Id: utils.scm,v 1.55 2005/07/31 02:59:37 cph Exp $
 
 Copyright 1986, 1989-2002 Massachusetts Institute of Technology
 
@@ -65,8 +65,7 @@ USA.
      ;; This is written as a macro so that the shift will be a constant
      ;; in the compiled code.
      ;; It does not work when cross-compiled!
-     (let ((chars-per-word
-	    (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
+     (let ((chars-per-word (vector-ref (gc-space-status) 0)))
        (case chars-per-word
 	 ((4) -2)
 	 ((8) -3)

@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: uxtrap.h,v 1.32 2003/02/14 18:28:24 cph Exp $
+$Id: uxtrap.h,v 1.35 2005/06/27 06:03:43 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1993,1996,1998 Massachusetts Institute of Technology
+Copyright 2000,2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -36,16 +37,13 @@ USA.
 #include <machine/sendsig.h>
 #include <machine/reg.h>
 
-#define HAVE_FULL_SIGCONTEXT
-#define PROCESSOR_NREGS			16
-#define FULL_SIGCONTEXT_NREGS		GPR_REGS /* Missing sp */
-
-#define RFREE				AR5
-#define SIGCONTEXT			full_sigcontext
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct full_sigcontext
+#define SIGCONTEXT_NREGS		GPR_REGS /* Missing sp */
+#define SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[GPR_START]))
 #define SIGCONTEXT_SP(scp)		((scp)->fs_context.sc_sp)
 #define SIGCONTEXT_PC(scp)		((scp)->fs_context.sc_pc)
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->fs_regs[RFREE])
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[GPR_START]))
+#define SIGCONTEXT_RFREE(scp)		((scp)->fs_regs[AR5])
 
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -87,7 +85,7 @@ USA.
    They should be masked away before looking at the PC.
  */
 
-#define PC_VALUE_MASK			((~0) << 2)
+#define PC_VALUE_MASK ((~0) << 2)
 
 /* pcoq is the offset (32 bit in 64 bit virtual address space)
    in the space included in the corresponding sc_pcsq.
@@ -100,33 +98,31 @@ USA.
 
 #ifdef __HPUX__
 
-/* HPUX 09.x does not have siginfo, but HPUX 10.x does.  This can be
-tested by the definition of SA_SIGINFO.  Since we want to support
-both, we use the no-siginfo way */
+/* HPUX 9.x does not have siginfo, but HPUX 10.x does.  This can be
+   tested by the definition of SA_SIGINFO.  Since we want to support
+   both, we use the no-siginfo way.  */
 
 #ifdef SA_SIGINFO
-#undef SA_SIGINFO
+#  undef SA_SIGINFO
 #endif
 
-# include <sys/sysmacros.h>
+#include <sys/sysmacros.h>
 
 /* See <machine/save_state.h> included by <signal.h> */
+#ifndef sc_pc
+#  define sc_pc sc_pcoq_head
+#endif
 
-# define HAVE_FULL_SIGCONTEXT
+#define ss_gr0 ss_flags		/* not really true */
 
-# ifndef sc_pc
-#  define sc_pc				sc_pcoq_head
-# endif /* sc_pc */
-
-# define ss_gr0				ss_flags	/* not really true */
-# define ss_rfree			ss_gr21		/* or some such */
-# define ss_schsp			ss_gr22
-
-# define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_sl.sl_ss.ss_rfree)
-# define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_sl.sl_ss.ss_schsp)
-# define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
-# define FULL_SIGCONTEXT_NREGS		32
-# define PROCESSOR_NREGS		32
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_NREGS		32
+#define SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_sl.sl_ss.ss_gr0))
+#define SIGCONTEXT_SP(scp)		((scp) -> sc_sp)
+#define SIGCONTEXT_PC(scp)		((scp) -> sc_pc)
+#define SIGCONTEXT_RFREE(scp)		((scp)->sc_sl.sl_ss.ss_gr21)
+#define SIGCONTEXT_SCHSP(scp)		((scp)->sc_sl.sl_ss.ss_gr22)
 
 # define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -195,72 +191,59 @@ both, we use the no-siginfo way */
 
 #ifdef sun3
 
-#define HAVE_FULL_SIGCONTEXT
-#define PROCESSOR_NREGS			16
-#define FULL_SIGCONTEXT_NREGS		15		/* missing sp */
-
 struct full_sigcontext
 {
   struct sigcontext * fs_original;
-  int fs_regs[FULL_SIGCONTEXT_NREGS];
+  unsigned long fs_regs [SIGCONTEXT_NREGS];
 };
 
-#define RFREE				(8 + 5)		/* A5 */
-#define FULL_SIGCONTEXT			full_sigcontext
-#define FULL_SIGCONTEXT_SP(scp)		(scp->fs_original->sc_sp)
-#define FULL_SIGCONTEXT_PC(scp)		(scp->fs_original->sc_pc)
-#define FULL_SIGCONTEXT_RFREE(scp)	(scp->fs_regs[RFREE])
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[0]))
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_T			struct full_sigcontext
+#define SIGCONTEXT_NREGS		15 /* missing sp */
+#define SIGCONTEXT_FIRST_REG(scp)	(& (((scp) -> fs_regs) [0]))
+#define SIGCONTEXT_SP(scp)		((scp)->fs_original->sc_sp)
+#define SIGCONTEXT_PC(scp)		((scp)->fs_original->sc_pc)
+#define SIGCONTEXT_RFREE(scp)		(((scp) -> fs_regs) [8 + 5]) /* A5 */
 
-#define DECLARE_FULL_SIGCONTEXT(name)					\
-  struct FULL_SIGCONTEXT name [1]
-
-#define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
-{									\
-  static void EXFUN (sun3_save_regs, (int * regs));			\
-  sun3_save_regs (& ((((full) [0]) . fs_regs) [0]));			\
-  (((full) [0]) . fs_original) = (partial);				\
-}
+#define DECLARE_SIGCONTEXT(scp, arg)					\
+  SIGCONTEXT_T scp [1];							\
+  static void EXFUN (sun3_save_regs, (int *));				\
+  sun3_save_regs (& ((((scp) [0]) . fs_regs) [0]));			\
+  (((scp) [0]) . fs_original) = (arg)
 
 #endif /* sun3 */
 
 #ifdef vax
 
-#define HAVE_FULL_SIGCONTEXT
-#define PROCESSOR_NREGS			16
-#define FULL_SIGCONTEXT_NREGS		16
-
 struct full_sigcontext
 {
   struct sigcontext * fs_original;
-  int fs_regs [FULL_SIGCONTEXT_NREGS];
+  int fs_regs [SIGCONTEXT_NREGS];
 };
 
-#define RFREE				12		/* fp */
-#define FULL_SIGCONTEXT			full_sigcontext
-#define FULL_SIGCONTEXT_SP(scp)		((scp)->fs_original->sc_sp)
-#define FULL_SIGCONTEXT_PC(scp)		((scp)->fs_original->sc_pc)
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->fs_regs[RFREE])
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[0]))
-
-#define DECLARE_FULL_SIGCONTEXT(name)					\
-  struct FULL_SIGCONTEXT name [1]
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_T			struct full_sigcontext
+#define SIGCONTEXT_NREGS		16
+#define SIGCONTEXT_FIRST_REG(scp)	(&((scp)->fs_regs[0]))
+#define SIGCONTEXT_SP(scp)		((scp)->fs_original->sc_sp)
+#define SIGCONTEXT_PC(scp)		((scp)->fs_original->sc_pc)
+#define SIGCONTEXT_RFREE(scp)		((scp)->fs_regs[12]) /* fp */
 
 /* r0 has to be kludged. */
-
-#define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
-{									\
+#define DECLARE_SIGCONTEXT(partial, full)				\
+  SIGCONTEXT_T scp [1];							\
   static int EXFUN (vax_get_r0, (void));				\
-  static int * EXFUN (vax_save_start, (int * regs, int r0));		\
+  static int * EXFUN (vax_save_start, (int *, int));			\
   static void EXFUN							\
-    (vax_save_finish, (int * fp,					\
-		       struct sigcontext * pscp,			\
-		       struct full_sigcontext * scp));			\
+    (vax_save_finish, (int *,						\
+		       struct sigcontext *,				\
+		       struct full_sigcontext *));			\
   vax_save_finish ((vax_save_start ((& ((((full) [0]) . fs_regs) [0])),	\
 				    (vax_get_r0 ()))),			\
 		   (partial),						\
-		   (&(full)[0]));					\
-}
+		   (&(full)[0]))
 
 #endif /* vax */
 
@@ -269,19 +252,14 @@ struct full_sigcontext
 
 /* Information on sigcontext structure in signal.h */
 
-#ifndef sc_sp
-#define sc_sp				sc_regs[29]
-#endif
-
-#define sc_rfree			sc_regs[9]
-#define sc_schsp			sc_regs[3]
-
-#define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_rfree)
-#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
-#define FULL_SIGCONTEXT_NREGS		32
-#define PROCESSOR_NREGS			32
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_NREGS		32
+#define SIGCONTEXT_FIRST_REG(scp)	(& (((scp) -> sc_regs) [0]))
+#define SIGCONTEXT_SP(scp)		(((scp) -> sc_regs) [29])
+#define SIGCONTEXT_PC(scp)		((scp) -> sc_pc)
+#define SIGCONTEXT_RFREE(scp)		(((scp) -> sc_regs) [9])
+#define SIGCONTEXT_SCHSP(scp)		(((scp) -> sc_regs) [3])
 
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -304,21 +282,14 @@ struct full_sigcontext
 #else /* not __IRIX__ */
 #ifndef _SYSV4
 
-/* Information on sigcontext structure in signal.h */
-
-#ifndef sc_sp
-#define sc_sp				sc_regs[29]
-#endif
-
-#define sc_rfree			sc_regs[9]
-#define sc_schsp			sc_regs[3]
-
-#define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_rfree)
-#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
-#define FULL_SIGCONTEXT_NREGS		32
-#define PROCESSOR_NREGS			32
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_NREGS		32
+#define SIGCONTEXT_FIRST_REG(scp)	(& (((scp) -> sc_regs) [0]))
+#define SIGCONTEXT_SP(scp)		(((scp) -> sc_regs) [29])
+#define SIGCONTEXT_PC(scp)		((scp) -> sc_pc)
+#define SIGCONTEXT_RFREE(scp)		(((scp) -> sc_regs) [9])
+#define SIGCONTEXT_SCHSP(scp)		(((scp) -> sc_regs) [3])
 
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -359,23 +330,24 @@ struct full_sigcontext
 
 /* For Sony NEWS-OS 5.0.1 and earlier: */
 #if defined(sonyrisc) && !defined(_CFE)
-#define gregs gpregs
+#  define gregs gpregs
 #endif
 
 #define SIGINFO_T siginfo_t *
 #define SIGINFO_VALID_P(info) ((info) != 0)
 #define SIGINFO_CODE(info) ((info) -> si_code)
 
-#define SIGCONTEXT ucontext
-#define SIGCONTEXT_SP(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_SP])
-#define SIGCONTEXT_PC(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_EPC])
+#define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
 
-#define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_T1])
-#define FULL_SIGCONTEXT_SCHSP(scp) ((((scp) -> uc_mcontext) . gregs) [CXT_V1])
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(((scp) -> uc_mcontext) . gregs)
-#define FULL_SIGCONTEXT_NREGS		NGREG
-#define PROCESSOR_NREGS			NGREG
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T void
+#define SIGCONTEXT_T ucontext_t
+#define SIGCONTEXT_NREGS NGREG
+#define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, 0)))
+#define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, CXT_SP))
+#define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, CXT_EPC))
+#define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, CXT_T1))
+#define SIGCONTEXT_SCHSP(scp) (__SIGCONTEXT_REG (scp, CXT_V1))
 
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -421,20 +393,19 @@ struct full_sigcontext
 
 #ifdef __linux__
 
-#define SIGINFO_T siginfo_t *
-#define SIGINFO_VALID_P(info) ((info) != 0)
-#define SIGINFO_CODE(info) ((info) -> si_code)
+/* This isn't really the right test: what we really want to know is if
+   the kernel supports the newer signal-delivery mechanism.  */
 
-#define SIGCONTEXT			sigcontext
-#define SIGCONTEXT_SP(scp)		((scp) -> esp)
-#define SIGCONTEXT_PC(scp)		((scp) -> eip)
+#ifdef _POSIX_REALTIME_SIGNALS
 
-#define HAVE_FULL_SIGCONTEXT
-/* Grab them all.  Nobody looks at them, but grab them anyway. */
-#define PROCESSOR_NREGS			19
-#define FULL_SIGCONTEXT_NREGS		19
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(scp)
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp) -> edi)
+#define __SIGCONTEXT_REG(scp, ir) ((((scp) -> uc_mcontext) . gregs) [(ir)])
+
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_NREGS NGREG
+#define SIGCONTEXT_FIRST_REG(scp) (& (__SIGCONTEXT_REG (scp, REG_GS)))
+#define SIGCONTEXT_SP(scp) (__SIGCONTEXT_REG (scp, REG_ESP))
+#define SIGCONTEXT_PC(scp) (__SIGCONTEXT_REG (scp, REG_EIP))
+#define SIGCONTEXT_RFREE(scp) (__SIGCONTEXT_REG (scp, REG_EDI))
 
 #define INITIALIZE_UX_SIGNAL_CODES()					\
 {									\
@@ -472,53 +443,61 @@ struct full_sigcontext
     (SIGILL, (~ 0L), ILL_BADSTK, "bad stack trap");			\
 }
 
-#if 0
-/* In versions of Linux prior to 2.2 (?), signal handlers are called
-   with one argument -- the `signo'.  There's an alleged "iBCS signal
-   stack" register dump just above it.  Thus, the fictitious `info'
-   argument to the handler is actually the first member of this
-   register dump (described by struct linux_sigcontext, below).
-   Unfortunately, kludging SIGINFO_CODE to access the sc_trapno will
-   fail later on when looking at the saved_info. */
-#define SIGINFO_T long
-#define SIGINFO_VALID_P(info) (0)
-#define SIGINFO_CODE(info) (0)
+#else /* not _POSIX_REALTIME_SIGNALS */
 
-/* Here's the "iBCS signal stack", whatever that means. */
-struct linux_sigcontext {
-  long sc_gs, sc_fs, sc_es, sc_ds, sc_edi, sc_esi, sc_ebp, sc_esp, sc_ebx;
-  long sc_edx, sc_ecx, sc_eax, sc_trapno, sc_err, sc_eip, sc_cs, sc_eflags;
-  long sc_esp_again, sc_ss;
-};
+/* In Linux 2.0 and earlier, signal handlers are called with one
+   argument.  There's an "iBCS2 signal stack" register dump just above
+   it.  Thus, the fictitious `info' argument to the handler is
+   actually the first member of this register dump (described by
+   linux_sigcontext_t, below).  Unfortunately, kludging SIGINFO_CODE
+   to access the sc_trapno will fail later on when looking at the
+   saved_info.  */
 
-/* INITIALIZE_FULL_SIGCONTEXT gives us a chance to generate a pointer to
-   the register dump, since it is used at the beginning of STD_HANDLER's.
-   In terms of the expected arguments to the STD_ signal HANDLER's, the
-   register dump is right above `signo', at `info', one long below `pscp',
-   which is what INITIALIZE_FULL_SIGCONTEXT is getting for `partial'.
-   Thus, our pointer to a `full'_SIGCONTEXT is initialized to the address
-   of `partial' minus 1 long. */
-#define HAVE_FULL_SIGCONTEXT
-#define DECLARE_FULL_SIGCONTEXT(name)					\
-  struct FULL_SIGCONTEXT * name
-#define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
-  ((full) = ((struct FULL_SIGCONTEXT *) (((long *)&(partial))-1)))
+typedef struct
+{
+  unsigned short gs, __gsh;
+  unsigned short fs, __fsh;
+  unsigned short es, __esh;
+  unsigned short ds, __dsh;
+  unsigned long edi;
+  unsigned long esi;
+  unsigned long ebp;
+  unsigned long esp;
+  unsigned long ebx;
+  unsigned long edx;
+  unsigned long ecx;
+  unsigned long eax;
+  unsigned long trapno;
+  unsigned long err;
+  unsigned long eip;
+  unsigned short cs, __csh;
+  unsigned long eflags;
+  unsigned long esp_at_signal;
+  unsigned short ss, __ssh;
+  void * fpstate;
+} linux_sigcontext_t;
 
-/* Grab them all.  Nobody looks at them, but grab them anyway. */
-#define PROCESSOR_NREGS			19
-#define FULL_SIGCONTEXT_NREGS		19
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(scp)
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_T linux_sigcontext_t
+#define SIGCONTEXT_NREGS 19
+#define SIGCONTEXT_FIRST_REG(scp) (scp)
+#define SIGCONTEXT_SP(scp) ((scp) -> esp)
+#define SIGCONTEXT_PC(scp) ((scp) -> eip)
+#define SIGCONTEXT_RFREE(scp) ((scp) -> edi)
 
-#define SIGCONTEXT			linux_sigcontext
-#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
-#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
+/* DECLARE_SIGCONTEXT gives us a chance to generate a pointer to the
+   register dump, since it is used at the beginning of STD_HANDLER's.
+   In terms of the expected arguments to the STD_ signal HANDLER's,
+   the register dump is right above `signo', at `info', one long below
+   `pscp', which is what DECLARE_SIGCONTEXT is getting for `arg'.
+   Thus, our pointer to a scp is initialized to the address of `arg'
+   minus 1 long.  */
 
-#define FULL_SIGCONTEXT SIGCONTEXT
-#define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
-#define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
+#define DECLARE_SIGCONTEXT(scp, arg)					\
+  SIGCONTEXT_T * scp;							\
+  scp = ((SIGCONTEXT_T *) (((unsigned long *) (& (arg))) - 1))
 
-#endif /* 0 */
+#endif /* not _POSIX_REALTIME_SIGNALS */
 
 #endif /* __linux__ */
 
@@ -526,15 +505,13 @@ struct linux_sigcontext {
 /* The following are true for Mach (BSD 4.3 compatible).
    I don't know about SCO or other versions.  */
 
-#define HAVE_FULL_SIGCONTEXT
-#define PROCESSOR_NREGS			8
-#define FULL_SIGCONTEXT_NREGS		8
-
-#define SIGCONTEXT			sigcontext
-#define SIGCONTEXT_SP(scp)		((scp)->sc_esp)
-#define SIGCONTEXT_PC(scp)		((scp)->sc_eip)
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_edi)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_edi))
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_NREGS		8
+#define SIGCONTEXT_FIRST_REG(scp)	(& ((scp) -> sc_edi))
+#define SIGCONTEXT_SP(scp)		((scp) -> sc_esp)
+#define SIGCONTEXT_PC(scp)		((scp) -> sc_eip)
+#define SIGCONTEXT_RFREE(scp)		((scp) -> sc_edi)
 
 /* INITIALIZE_UX_SIGNAL_CODES should be defined. */
 
@@ -544,17 +521,14 @@ struct linux_sigcontext {
 
 #ifdef __alpha
 
-#define sc_sp				sc_regs[30]
-#define sc_rfree			sc_regs[4]
-#define sc_schsp			sc_regs[2]
-
-#define HAVE_FULL_SIGCONTEXT
-#define FULL_SIGCONTEXT_RFREE(scp)	((scp)->sc_rfree)
-#define FULL_SIGCONTEXT_SCHSP(scp)	((scp)->sc_schsp)
-#define FULL_SIGCONTEXT_FIRST_REG(scp)	(&((scp)->sc_regs[0]))
-#define FULL_SIGCONTEXT_NREGS		32
-
-#define PROCESSOR_NREGS			32
+#define HAVE_SIGCONTEXT
+#define SIGCONTEXT_ARG_T		struct sigcontext
+#define SIGCONTEXT_NREGS		32
+#define SIGCONTEXT_FIRST_REG(scp)	(& (((scp) -> sc_regs) [0]))
+#define SIGCONTEXT_SP(scp)		(((scp) -> sc_regs) [30])
+#define SIGCONTEXT_PC(scp)		((scp) -> sc_pc)
+#define SIGCONTEXT_RFREE(scp)		(((scp) -> sc_regs) [4])
+#define SIGCONTEXT_SCHSP(scp)		(((scp) -> sc_regs) [2])
 
 #ifdef FPE_COMPLETE_FAULT
 #define STUPID_FIRST_SIGNAL()						\
@@ -584,50 +558,57 @@ struct linux_sigcontext {
 }
 
 #endif /* __alpha */
-
-#ifdef _AIX
-/* For now */
-#  define SIGCONTEXT		sigcontext
-#  define SIGCONTEXT_SP(scp)	0
-#  define SIGCONTEXT_PC(scp)	0
-#endif /* _AIX */
 
+#ifdef _POSIX_REALTIME_SIGNALS
+#  define SIGINFO_T siginfo_t *
+#  define SIGINFO_VALID_P(info) (1)
+#  define SIGINFO_CODE(info) ((info) -> si_code)
+#  define SIGCONTEXT_ARG_T void
+#  define SIGCONTEXT_T ucontext_t
+#endif
+
 #ifndef SIGINFO_T
 #  define SIGINFO_T int
-#  define SIGINFO_VALID_P(info) (1)
-#  define SIGINFO_CODE(info) (info)
+#  define SIGINFO_VALID_P(info) (0)
+#  define SIGINFO_CODE(info) (0)
 #endif
 
-#ifndef HAVE_STRUCT_SIGCONTEXT
-   struct sigcontext { long sc_sp; long sc_pc; };
+#ifndef SIGCONTEXT_ARG_T
+#  define SIGCONTEXT_ARG_T int
 #endif
 
-#ifndef SIGCONTEXT
-#  define SIGCONTEXT		sigcontext
-#  define SIGCONTEXT_SP(scp)	((scp) -> sc_sp)
-#  define SIGCONTEXT_PC(scp)	((scp) -> sc_pc)
+#ifndef SIGCONTEXT_T
+#  define SIGCONTEXT_T SIGCONTEXT_ARG_T
 #endif
 
-#ifndef FULL_SIGCONTEXT
-#  define FULL_SIGCONTEXT SIGCONTEXT
-#  define FULL_SIGCONTEXT_SP SIGCONTEXT_SP
-#  define FULL_SIGCONTEXT_PC SIGCONTEXT_PC
-#  define DECLARE_FULL_SIGCONTEXT(name) struct FULL_SIGCONTEXT * name
-#  define INITIALIZE_FULL_SIGCONTEXT(partial, full)			\
-     ((full) = ((struct FULL_SIGCONTEXT *) (partial)))
+#ifndef DECLARE_SIGCONTEXT
+#  define DECLARE_SIGCONTEXT(scp, arg)					\
+     SIGCONTEXT_T * scp;						\
+     scp = ((SIGCONTEXT_T *) (arg))
 #endif
 
-#ifndef FULL_SIGCONTEXT_NREGS
-#  define FULL_SIGCONTEXT_NREGS 0
-#  define FULL_SIGCONTEXT_FIRST_REG(scp) ((int *) 0)
+#ifndef SIGCONTEXT_NREGS
+#  define SIGCONTEXT_NREGS (0)
 #endif
 
-#ifndef PROCESSOR_NREGS
-#  define PROCESSOR_NREGS 0
+#ifndef SIGCONTEXT_FIRST_REG
+#  define SIGCONTEXT_FIRST_REG(scp) (0)
 #endif
 
-#ifndef FULL_SIGCONTEXT_SCHSP
-#  define FULL_SIGCONTEXT_SCHSP FULL_SIGCONTEXT_SP
+#ifndef SIGCONTEXT_SP
+#  define SIGCONTEXT_SP(scp) (0)
+#endif
+
+#ifndef SIGCONTEXT_PC
+#  define SIGCONTEXT_PC(scp) (0)
+#endif
+
+#ifndef SIGCONTEXT_RFREE
+#  define SIGCONTEXT_RFREE ((unsigned long) MemTop)
+#endif
+
+#ifndef SIGCONTEXT_SCHSP
+#  define SIGCONTEXT_SCHSP SIGCONTEXT_SP
 #endif
 
 #ifndef INITIALIZE_UX_SIGNAL_CODES
@@ -636,36 +617,31 @@ struct linux_sigcontext {
 
 /* PCs must be aligned according to this. */
 
-#define PC_ALIGNMENT_MASK		((1 << PC_ZERO_BITS) - 1)
+#define PC_ALIGNMENT_MASK ((1 << PC_ZERO_BITS) - 1)
 
-/* But they may have bits that can be masked by this. */
-
-#ifndef PC_VALUE_MASK
-#define PC_VALUE_MASK			(~0)
+#ifndef HAS_COMPILER_SUPPORT
+#  define PLAUSIBLE_CC_BLOCK_P(block) 0
 #endif
 
-#ifdef HAS_COMPILER_SUPPORT
-# define ALLOW_ONLY_C 0
-#else
-# define ALLOW_ONLY_C 1
-# define PLAUSIBLE_CC_BLOCK_P(block) 0
-#endif
-
-#ifndef _NEXTOS
 #ifdef _AIX
-extern int _etext;
-#define get_etext() (&_etext)
-#else /* not _AIX */
-#ifdef __linux__
-extern unsigned int etext;
-#else
-extern int etext;
+   extern int _etext;
 #endif
-#endif /* _AIX */
-#ifndef get_etext
-#  define get_etext() (&etext)
-#endif /* get_etext */
-#endif /* _NEXTOS */
+
+#ifdef __linux__
+   extern unsigned int _init;
+   extern unsigned int etext;
+#  define ADDRESS_UCODE_P(addr)						\
+     ((((unsigned int *) (addr)) >= (&_init))				\
+      && (((unsigned int *) (addr)) <= (&etext)))
+#endif
+
+#ifdef __CYGWIN__
+   extern unsigned int end;
+#endif
+
+#ifndef ADDRESS_UCODE_P
+#  define ADDRESS_UCODE_P(addr) (0)
+#endif
 
 /* Machine/OS-independent section */
 
@@ -680,16 +656,13 @@ enum trap_state
   trap_state_exitting_hard
 };
 
-extern void EXFUN (initialize_trap_recovery, (char * C_sp));
+extern void EXFUN (UX_initialize_trap_recovery, (void));
 extern enum trap_state EXFUN (OS_set_trap_state, (enum trap_state state));
-extern void EXFUN
-  (trap_handler,
-   (CONST char * message,
-    int signo,
-    SIGINFO_T info,
-    struct FULL_SIGCONTEXT * scp));
-extern void EXFUN (hard_reset, (struct FULL_SIGCONTEXT * scp));
+extern void EXFUN (hard_reset, (SIGCONTEXT_T * scp));
 extern void EXFUN (soft_reset, (void));
+extern void EXFUN
+  (trap_handler, (CONST char *, int, SIGINFO_T, SIGCONTEXT_T *));
+extern SCHEME_OBJECT find_ccblock (unsigned long);
 
 #define STATE_UNKNOWN		(LONG_TO_UNSIGNED_FIXNUM (0))
 #define STATE_PRIMITIVE		(LONG_TO_UNSIGNED_FIXNUM (1))
@@ -705,8 +678,5 @@ struct trap_recovery_info
   SCHEME_OBJECT pc_info_2;
   SCHEME_OBJECT extra_trap_info;
 };
-
-extern SCHEME_OBJECT * EXFUN
-  (find_block_address, (char * pc_value, SCHEME_OBJECT * area_start));
 
 #endif /* SCM_UXTRAP_H */

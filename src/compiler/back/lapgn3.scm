@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: lapgn3.scm,v 4.17 2003/02/14 18:28:00 cph Exp $
+$Id: lapgn3.scm,v 4.18 2004/12/06 03:31:51 cph Exp $
 
-Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1991,1992,2001 Massachusetts Institute of Technology
+Copyright 2002,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,7 +50,15 @@ USA.
   (allocate-named-label "CONSTANT-"))
 
 (define (warning-assoc obj pairs)
-  (let ((pair (assoc obj pairs)))
+  (let ((pair
+	 (call-with-current-continuation
+	  (lambda (k)
+	    (bind-condition-handler (list condition-type:unassigned-variable)
+		(lambda (condition)
+		  condition
+		  (k #f))
+	      (lambda ()
+		(assoc obj pairs)))))))
     (if (and compiler:coalescing-constant-warnings?
 	     (pair? pair)
 	     (not (let ((obj* (car pair)))
@@ -68,7 +77,7 @@ USA.
 	(let ((label (allocate-label object)))
 	  (write (cons (cons object label) (read)))
 	  label))))
-
+
 (let-syntax
     ((->label
       (sc-macro-transformer

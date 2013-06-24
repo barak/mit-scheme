@@ -1,5 +1,5 @@
 @c This file is part of the MIT/GNU Scheme Reference Manual.
-@c $Id: win32-packaging.texi,v 1.1 2003/04/15 03:30:25 cph Exp $
+@c $Id: win32-packaging.texi,v 1.2 2003/11/10 21:33:07 cph Exp $
 
 @c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
 @c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
@@ -609,20 +609,9 @@ rectangle of width @var{w} and height @var{h} is copied from position
 combined but I don't think I got this right so stick to @code{SRCCOPY}.
 @end deffn
 
-@deffn procedure %delete-dib (dib-handle handle)
-Return type: @var{bool}.
-Calls the @code{DeleteDIB} entry of @file{DIBUTILS.DLL}.
-Note that the parameter is a @var{handle}, and not a @var{dib}.
-This allows us to destroy a DIB and reclaim its memory by knowing only
-the handle value, and not needing the @code{dib} record.
-The importance of this is that if the @code{dib} record is GC-ed then a
-GC hook can reclaim the storage knowing only the handle.
-@end deffn
-
 @deffn procedure delete-dib (dib dib)
 Return type: @var{bool}.
-This procedure calls @code{%delete-dib} to reclaim the storage occupied
-by a DIB.
+This procedure reclaims the storage occupied by a DIB.
 After being deleted, the DIB should not be used.
 This procedure allows the programmer to reclaim external heap storage
 rather than risking it running out before the next garbage collection.

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: undo.scm,v 1.62 2003/02/14 18:28:13 cph Exp $
+$Id: undo.scm,v 1.63 2005/07/31 02:59:32 cph Exp $
 
 Copyright 1985, 1989-2000 Massachusetts Institute of Technology
 
@@ -181,8 +181,7 @@ which includes both the saved text and other data."
   ;; the editor does not exist or is not running.  It would actually
   ;; prefer to be run *before* the GC, but that's not possible now.
   (if edwin-editor
-      (let ((bytes/word
-	     (vector-ref ((ucode-primitive gc-space-status 0)) 0)))
+      (let ((bytes/word (vector-ref (gc-space-status) 0)))
 	(let ((words->bytes
 	       (lambda (words)
 		 (round (/ words bytes/word)))))

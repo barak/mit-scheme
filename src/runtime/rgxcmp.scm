@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: rgxcmp.scm,v 1.124 2003/02/14 18:28:33 cph Exp $
+$Id: rgxcmp.scm,v 1.125 2005/06/27 06:12:45 cph Exp $
 
-Copyright 1986, 1989-2002 Massachusetts Institute of Technology
+Copyright 1987,1989,1990,1991,1995,1997 Massachusetts Institute of Technology
+Copyright 1999,2001,2002,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -674,6 +675,8 @@ USA.
 	   (and (input-match? (input-peek) #\^)
 		(begin (input-discard!) #t)))
 	  (charset (make-string 32 (ascii->char 0))))
+      (if (input-end?)
+	  (premature-end))
       (let loop
 	  ((chars
 	    (if (input-match? (input-peek) #\])

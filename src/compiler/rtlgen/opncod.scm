@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: opncod.scm,v 4.72 2003/02/14 18:28:08 cph Exp $
+$Id: opncod.scm,v 4.73 2004/12/06 21:33:30 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2001,2004 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -629,7 +630,7 @@ USA.
   (simple-open-coder
    (lambda (combination expressions finish)
      combination
-     (finish (rtl:make-false-test (car expressions))))
+     (finish (rtl:make-eq-test (car expressions) (rtl:make-constant '()))))
    '(0)
    false))
 
