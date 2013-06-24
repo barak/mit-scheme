@@ -69,14 +69,6 @@ USA.
 	(microcode-identification-item 'CONSOLE-HEIGHT))
   unspecific)
 
-(define (re-read-microcode-tables!)
-  (set! identification-vector ((ucode-primitive microcode-identify)))
-  (set! microcode-id/tty-x-size
-	(microcode-identification-item 'CONSOLE-WIDTH))
-  (set! microcode-id/tty-y-size
-	(microcode-identification-item 'CONSOLE-HEIGHT))
-  unspecific)
-
 (define (intern string)
   ((ucode-primitive string->symbol)
    (let ((size (string-length string)))
