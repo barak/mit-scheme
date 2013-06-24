@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -273,10 +274,7 @@ USA.
   (set! stack-frame-type/pop-return-error
 	(microcode-return/name->type 'POP-RETURN-ERROR))
   (record-method 'COMBINATION-APPLY method/null)
-  (record-method 'GC-CHECK method/null)
-  (record-method 'MOVE-TO-ADJACENT-POINT method/null)
   (record-method 'REENTER-COMPILED-CODE method/null)
-  (record-method 'REPEAT-DISPATCH method/environment-only)
   (let ((method (method/standard &pair-car)))
     (record-method 'DISJUNCTION-DECIDE method)
     (record-method 'SEQUENCE-2-SECOND method))

@@ -1,8 +1,9 @@
-#| -*-Scheme-*-
+#| -*- Mode: Scheme; keyword-style: none -*-
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -166,6 +167,7 @@ USA.
 	  without-interrupts)
   (export (runtime)
 	  add-boot-init!
+	  load-with-boot-inits!
 	  run-boot-inits!))
 
 (define-package (runtime equality)
@@ -226,12 +228,14 @@ USA.
 	  flo:ceiling->exact
 	  flo:cos
 	  flo:exp
+	  flo:expm1
 	  flo:expt
 	  flo:finite?
 	  flo:flonum?
 	  flo:floor
 	  flo:floor->exact
 	  flo:log
+	  flo:log1p
 	  flo:max
 	  flo:min
 	  flo:negate
@@ -239,9 +243,6 @@ USA.
 	  flo:positive?
 	  flo:round
 	  flo:round->exact
-	  flo:rounding-mode
-	  flo:rounding-modes
-	  flo:set-rounding-mode!
 	  flo:sin
 	  flo:sqrt
 	  flo:tan
@@ -251,10 +252,14 @@ USA.
 	  flo:vector-length
 	  flo:vector-ref
 	  flo:vector-set!
-	  flo:with-rounding-mode
 	  flo:zero?
+	  guarantee-fixnum
 	  guarantee-index-fixnum
 	  guarantee-limited-index-fixnum
+	  guarantee-negative-fixnum
+	  guarantee-non-negative-fixnum
+	  guarantee-non-positive-fixnum
+	  guarantee-positive-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -274,7 +279,124 @@ USA.
 	  int:positive?
 	  int:quotient
 	  int:remainder
-	  int:zero?))
+	  int:zero?
+	  negative-fixnum?
+	  non-negative-fixnum?
+	  non-positive-fixnum?
+	  positive-fixnum?))
+
+(define-package (runtime floating-point-environment)
+  (files "floenv")
+  (parent (runtime))
+  (export ()
+	  flo:clear-exceptions!
+	  flo:default-environment
+	  flo:default-rounding-mode
+	  flo:default-trapped-exceptions
+	  flo:defer-exception-traps!
+	  flo:deferring-exception-traps
+	  flo:environment
+	  flo:exception:divide-by-zero
+	  flo:exception:inexact-result
+	  flo:exception:invalid-operation
+	  flo:exception:overflow
+	  flo:exception:underflow
+	  flo:exceptions->names
+	  flo:ignoring-exception-traps
+	  flo:names->exceptions
+	  flo:preserving-environment
+	  flo:raise-exceptions!
+	  flo:restore-exception-flags!
+	  flo:rounding-mode
+	  flo:rounding-modes
+	  flo:save-exception-flags
+	  flo:set-environment!
+	  flo:set-rounding-mode!
+	  flo:set-trapped-exceptions!
+	  flo:supported-exceptions
+	  flo:test-exception-flags
+	  flo:test-exceptions
+	  flo:trap-exceptions!
+	  flo:trappable-exceptions
+	  flo:trapped-exceptions
+	  flo:untrap-exceptions!
+	  flo:update-environment!
+	  flo:with-default-environment
+	  flo:with-exceptions-trapped
+	  flo:with-exceptions-untrapped
+	  flo:with-rounding-mode
+	  flo:with-trapped-exceptions)
+  (initialization (initialize-package!)))
+
+(define-package (runtime integer-bits)
+  (files "integer-bits")
+  (parent (runtime))
+  (export ()
+	  all-bits-set?
+	  any-bits-set?
+	  arithmetic-shift
+	  bit-antimask
+	  bit-clear?
+	  bit-count
+	  bit-mask
+	  bit-set?
+	  bitwise-merge
+	  bitwise-not
+	  clear-bit
+	  edit-bit-field
+	  extract-bit
+	  extract-bit-field
+	  first-set-bit
+	  hamming-distance
+	  integer-length
+	  replace-bit-field
+	  set-bit
+	  shift-left
+	  shift-right
+	  splice-bit-field
+	  test-bit-field
+	  test-bit-field?
+	  toggle-bit
+
+	  ;; Truth table order
+	  bitwise-and
+	  bitwise-andc1
+	  bitwise-andc2
+	  bitwise-xor
+	  bitwise-ior
+	  bitwise-nor
+	  bitwise-eqv
+	  bitwise-orc2
+	  bitwise-orc1
+	  bitwise-nand))
+
+(define-package (runtime integer-division)
+  (files "division")
+  (parent (runtime))
+  (export ()
+          ceiling-quotient
+          ceiling-remainder
+          ceiling/
+          euclidean-quotient
+          euclidean-remainder
+          euclidean/
+          floor-quotient
+          floor-remainder
+          floor/
+          round-quotient
+          round-remainder
+          round/
+          truncate-quotient
+          truncate-remainder
+          truncate/))
+
+(define-package (runtime keyword)
+  (files "keyword")
+  (parent (runtime))
+  (export ()
+	  keyword?
+	  keyword->string
+	  string->keyword))
 
 (define-package (runtime miscellaneous-global)
   (files "global")
@@ -291,9 +413,14 @@ USA.
 	  cd
 	  cell-contents
 	  cell?
+	  constant-procedure
 	  default/exit
 	  default/quit
 	  environment-link-name
+	  ephemeron-broken?
+	  ephemeron-datum
+	  ephemeron-key
+	  ephemeron?
 	  eq?
 	  error-procedure
 	  error:not-hook-list
@@ -323,6 +450,7 @@ USA.
 	  link-variables
 	  local-assignment
 	  make-cell
+	  make-ephemeron
 	  make-hook-list
 	  make-non-pointer-object
 	  non-pointer-type-code?
@@ -342,10 +470,13 @@ USA.
 	  primitive-procedure-documentation
 	  pwd
 	  quit
+	  (reference-barrier identity-procedure)
 	  remove-hook-from-list
 	  run-hooks-in-list
 	  scode-eval
 	  set-cell-contents!
+	  set-ephemeron-datum!
+	  set-ephemeron-key!
 	  set-interrupt-enables!
 	  show-time
 	  system-hunk3-cons
@@ -530,6 +661,7 @@ USA.
 	  symbol-hash-mod
 	  symbol-name
 	  symbol<?
+	  symbol>?
 	  symbol?
 	  uninterned-symbol?
 	  utf8-string->symbol
@@ -569,6 +701,7 @@ USA.
 	  environment-extension-procedure
 	  environment-extension?
 	  force
+	  guarantee-promise
 	  interpreter-return-address?
 	  make-return-address
 	  microcode-error
@@ -629,6 +762,7 @@ USA.
 	  vector-fourth
 	  vector-grow
 	  vector-head
+	  vector-head!
 	  vector-length
 	  vector-map
 	  vector-move!
@@ -994,6 +1128,9 @@ USA.
   (files "char")
   (parent (runtime))
   (export ()
+	  (error:not-wide-char error:not-unicode-char)
+	  (guarantee-wide-char guarantee-unicode-char)
+	  (wide-char? unicode-char?)
 	  8-bit-char?
 	  ascii->char
 	  char->ascii
@@ -1031,14 +1168,20 @@ USA.
 	  digit->char
 	  error:not-char
 	  error:not-radix
+	  error:not-unicode-char
+	  error:not-unicode-scalar-value
 	  guarantee-8-bit-char
 	  guarantee-char
 	  guarantee-radix
+	  guarantee-unicode-char
+	  guarantee-unicode-scalar-value
 	  integer->char
 	  make-char
 	  name->char
 	  radix?
-	  set-char-bits)
+	  set-char-bits
+	  unicode-char?
+	  unicode-scalar-value?)
   (export (runtime string)
 	  %char<?
 	  downcase-table
@@ -1046,25 +1189,49 @@ USA.
   (export (runtime parser)
 	  downcase-table
 	  identity-table)
+  (export (runtime unicode)
+	  legal-code-16?
+	  legal-code-32?)
   (initialization (initialize-package!)))
 
 (define-package (runtime character-set)
   (files "chrset")
   (parent (runtime))
   (export ()
+	  (8-bit-alphabet? 8-bit-char-set?)
+	  (<alphabet> <char-set>)
+	  (alphabet char-set)
+	  (alphabet+ char-set-union)
+	  (alphabet- char-set-difference)
+	  (alphabet->string char-set->string)
+	  (alphabet-predicate char-set-predicate)
+	  (alphabet? char-set?)
+	  (error:not-8-bit-alphabet error:not-8-bit-char-set)
+	  (error:not-alphabet error:not-char-set)
+	  (guarantee-8-bit-alphabet guarantee-8-bit-char-set)
+	  (guarantee-alphabet guarantee-char-set)
+	  (string->alphabet string->char-set)
+	  8-bit-char-set?
+	  <char-set>
+	  alphabet->char-set
+	  alphabet->scalar-values
 	  ascii-range->char-set
 	  char-alphabetic?
 	  char-alphanumeric?
 	  char-ctl?
 	  char-graphic?
+	  char-in-alphabet?
 	  char-lower-case?
 	  char-numeric?
 	  char-set
+	  char-set->alphabet
+	  char-set->scalar-values
 	  char-set-difference
 	  char-set-intersection
 	  char-set-invert
 	  char-set-member?
 	  char-set-members
+	  char-set-predicate
 	  char-set-union
 	  char-set:alphabetic
 	  char-set:alphanumeric
@@ -1093,17 +1260,22 @@ USA.
 	  char-whitespace?
 	  char-wsp?
 	  chars->char-set
+	  error:not-8-bit-char-set
+	  error:not-char-set
+	  error:not-well-formed-scalar-value-list
+	  error:not-well-formed-scalar-value-range
+	  guarantee-8-bit-char-set
 	  guarantee-char-set
-	  predicate->char-set
-	  string->char-set)
+	  guarantee-well-formed-scalar-value-list
+	  guarantee-well-formed-scalar-value-range
+	  scalar-value-in-char-set?
+	  scalar-values->alphabet
+	  scalar-values->char-set
+	  string->char-set
+	  well-formed-scalar-value-list?
+	  well-formed-scalar-value-range?)
   (export (runtime string)
-	  %char-set-member?
-	  char-set-table)
-  (export (runtime parser)
-	  %char-set-member?)
-  (export (runtime regular-expression-compiler)
-	  make-char-set)
-  (initialization (initialize-package!)))
+	  (char-set-table %char-set-table)))
 
 (define-package (runtime compiler-info)
   (files "infstr" "infutl")
@@ -1130,6 +1302,8 @@ USA.
   (export (runtime program-copier)
 	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
+	  special-form-procedure-name?)
+  (export (runtime stack-sampler)
 	  special-form-procedure-name?)
   (export (runtime environment)
 	  dbg-block/find-name
@@ -1554,6 +1728,7 @@ USA.
 	  condition-type/field-names
 	  condition-type/generalizations
 	  condition-type/get
+	  condition-type/name
 	  condition-type/properties
 	  condition-type/put!
 	  condition-type:arithmetic-error
@@ -1568,10 +1743,14 @@ USA.
 	  condition-type:error
 	  condition-type:file-error
 	  condition-type:file-operation-error
+	  condition-type:floating-point-divide-by-zero
 	  condition-type:floating-point-overflow
 	  condition-type:floating-point-underflow
 	  condition-type:illegal-datum
 	  condition-type:illegal-pathname-component
+	  condition-type:inexact-floating-point-result
+	  condition-type:integer-divide-by-zero
+	  condition-type:invalid-floating-point-operation
 	  condition-type:macro-binding
 	  condition-type:no-such-restart
 	  condition-type:not-8-bit-char
@@ -1885,8 +2064,8 @@ USA.
   (files "hashtb")
   (parent (runtime))
   (export ()
-	  (eq-hash-table-type weak-eq-hash-table-type)
-	  (eqv-hash-table-type weak-eqv-hash-table-type)
+	  (eq-hash-table-type key-weak-eq-hash-table-type)
+	  (eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  (hash-table-delete! hash-table/remove!)
 	  (hash-table-equivalence-function hash-table/key=?)
 	  (hash-table-hash-function hash-table/key-hash)
@@ -1894,13 +2073,16 @@ USA.
 	  (hash-table-ref/default hash-table/get)
 	  (hash-table-set! hash-table/put!)
 	  (hash-table-size hash-table/count)
-	  (hash-table-update!/default hash-table/modify!)
 	  (hash-table-values hash-table/datum-list)
 	  (hash-table-walk hash-table/for-each)
-	  (make-eq-hash-table make-weak-eq-hash-table)
-	  (make-eqv-hash-table make-weak-eqv-hash-table)
-	  (make-object-hash-table make-weak-eqv-hash-table)
-	  (make-symbol-hash-table make-weak-eq-hash-table)
+	  (make-eq-hash-table make-key-weak-eq-hash-table)
+	  (make-eqv-hash-table make-key-weak-eqv-hash-table)
+	  (make-object-hash-table make-key-weak-eqv-hash-table)
+	  (make-symbol-hash-table make-strong-eq-hash-table)
+	  (make-weak-eq-hash-table make-key-weak-eq-hash-table)
+	  (make-weak-eqv-hash-table make-key-weak-eqv-hash-table)
+	  (weak-eq-hash-table-type key-weak-eq-hash-table-type)
+	  (weak-eqv-hash-table-type key-weak-eqv-hash-table-type)
 	  alist->hash-table
 	  eq-hash
 	  eq-hash-mod
@@ -1914,13 +2096,23 @@ USA.
 	  hash-by-identity
 	  hash-table->alist
 	  hash-table-copy
+	  hash-table-entry-type:datum-ephemeral
+	  hash-table-entry-type:datum-weak
+	  hash-table-entry-type:key&datum-ephemeral
+	  hash-table-entry-type:key-ephemeral
+	  hash-table-entry-type:key-weak
+	  hash-table-entry-type:key/datum-weak
+	  hash-table-entry-type:strong
 	  hash-table-exists?
 	  hash-table-fold
 	  hash-table-merge!
 	  hash-table-ref
+	  hash-table-type?
 	  hash-table-update!
+	  hash-table-update!/default
 	  hash-table/clean!
 	  hash-table/clear!
+	  hash-table/constructor
 	  hash-table/count
 	  hash-table/datum-list
 	  hash-table/for-each
@@ -1940,19 +2132,17 @@ USA.
 	  hash-table?
 	  make-equal-hash-table
 	  make-hash-table
+	  make-hash-table*
+	  make-hash-table-type
 	  make-string-hash-table
 	  make-strong-eq-hash-table
 	  make-strong-eqv-hash-table
-	  make-weak-eq-hash-table
-	  make-weak-eqv-hash-table
 	  set-hash-table/rehash-size!
 	  set-hash-table/rehash-threshold!
 	  string-hash-table-type
 	  strong-eq-hash-table-type
 	  strong-eqv-hash-table-type
 	  strong-hash-table/constructor
-	  weak-eq-hash-table-type
-	  weak-eqv-hash-table-type
 	  weak-hash-table/constructor)
   (initialization (initialize-package!)))
 
@@ -2134,6 +2324,7 @@ USA.
 	  input-port/%read-char
 	  input-port/%peek-char
 	  input-port/char-ready?
+	  input-port/line
 	  input-port/discard-chars
 	  input-port/eof?
 	  input-port/peek-char
@@ -2194,12 +2385,14 @@ USA.
   (files "intrpt")
   (parent (runtime))
   (export ()
-          event:console-resize)
+	  event:console-resize)
   (export (runtime emacs-interface)
 	  hook/^G-interrupt
 	  hook/clean-input/flush-typeahead)
   (export (runtime load)
 	  generate-suspend-file?)
+  (export (runtime swank)
+	  keyboard-interrupt-vector)
   (initialization (initialize-package!)))
 
 (define-package (runtime lambda-abstraction)
@@ -2225,6 +2418,9 @@ USA.
 	  lambda-names-vector
 	  make-slambda)
   (export (runtime compiler-info)
+	  lambda-tag:internal-lambda
+	  lambda-tag:internal-lexpr)
+  (export (runtime lambda-list)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
   (initialization (initialize-package!)))
@@ -2296,6 +2492,7 @@ USA.
 	  cons*
 	  count-matching-items
 	  count-non-matching-items
+	  decode-general-car-cdr
 	  del-assoc
 	  del-assoc!
 	  del-assq
@@ -2314,6 +2511,7 @@ USA.
 	  delv!
 	  dotted-list?			;SRFI-1
 	  eighth
+	  encode-general-car-cdr
 	  error:not-alist
 	  error:not-circular-list
 	  error:not-dotted-list
@@ -2358,6 +2556,7 @@ USA.
 	  last				;SRFI-1
 	  last-pair
 	  length
+	  length=?
 	  list
 	  list->weak-list
 	  list-copy
@@ -2367,6 +2566,7 @@ USA.
 	  list-of-type?
 	  list-of-type?->length
 	  list-ref
+	  list-set!
 	  list-tail
 	  list=				;SRFI-1
 	  list?
@@ -2420,10 +2620,15 @@ USA.
   (files "lambda-list")
   (parent (runtime))
   (export ()
+	  error:not-mit-lambda-list
+	  error:not-r4rs-lambda-list
+	  guarantee-mit-lambda-list
+	  guarantee-r4rs-lambda-list
 	  lambda-tag:aux
 	  lambda-tag:key
 	  lambda-tag:optional
 	  lambda-tag:rest
+	  lambda-tag?
 	  map-mit-lambda-list
 	  map-r4rs-lambda-list
 	  mit-lambda-list?
@@ -2547,6 +2752,7 @@ USA.
 	  condition-type:out-of-file-handles
 	  condition-type:primitive-io-error
 	  condition-type:primitive-procedure-error
+	  condition-type:process-terminated-error
 	  condition-type:system-call-error
 	  condition-type:unimplemented-primitive
 	  condition-type:unimplemented-primitive-for-os
@@ -2616,6 +2822,7 @@ USA.
 	  (conjugate complex:conjugate)
 	  (cos complex:cos)
 	  (denominator complex:denominator)
+	  (denominator->exact complex:denominator->exact)
 	  (even? complex:even?)
 	  (exact->inexact complex:exact->inexact)
 	  (exact-rational? rat:rational?)
@@ -2639,6 +2846,7 @@ USA.
 	  (negative? complex:negative?)
 	  (number? complex:complex?)
 	  (numerator complex:numerator)
+	  (numerator->exact complex:numerator->exact)
 	  (positive? complex:positive?)
 	  (rational? complex:rational?)
 	  (rationalize complex:rationalize)
@@ -2673,11 +2881,16 @@ USA.
 	  error:not-exact-rational
 	  error:not-inexact
 	  error:not-integer
+	  error:not-negative
+	  error:not-non-negative
+	  error:not-non-positive
 	  error:not-number
+	  error:not-positive
 	  error:not-rational
 	  error:not-real
 	  exact-nonnegative-integer?
 	  exact-positive-integer?
+	  flo:nan?
 	  flo:significand-digits-base-10
 	  flo:significand-digits-base-2
 	  flonum-unparser-cutoff
@@ -2693,7 +2906,11 @@ USA.
 	  guarantee-exact-rational
 	  guarantee-inexact
 	  guarantee-integer
+	  guarantee-negative
+	  guarantee-non-negative
+	  guarantee-non-positive
 	  guarantee-number
+	  guarantee-positive
 	  guarantee-rational
 	  guarantee-real
 	  inexact?
@@ -2704,6 +2921,8 @@ USA.
 	  max
 	  min
 	  modulo
+	  non-negative?
+	  non-positive?
 	  number->string
 	  odd?
 	  quotient
@@ -2755,7 +2974,11 @@ USA.
   (parent (runtime))
   (export ()
 	  *parser-associate-positions?*
+	  *parser-atom-delimiters*
 	  *parser-canonicalize-symbols?*
+	  *parser-constituents*
+	  *parser-enable-file-attributes-parsing?*
+	  *parser-keyword-style*
 	  *parser-radix*
 	  *parser-table*
 	  define-bracketed-object-parser-method
@@ -2764,7 +2987,12 @@ USA.
 	  system-global-parser-table)
   (export (runtime)
 	  (*parser-associate-positions?* runtime-parser-associate-positions?)
+	  (*parser-atom-delimiters* runtime-parser-atom-delimiters)
 	  (*parser-canonicalize-symbols?* runtime-parser-canonicalize-symbols?)
+	  (*parser-constituents* runtime-parser-constituents)
+	  (*parser-enable-file-attributes-parsing?*
+	   runtime-parser-enable-file-attributes-parsing?)
+	  (*parser-keyword-style* runtime-parser-keyword-style)
 	  (*parser-radix* runtime-parser-radix)
 	  (*parser-table* runtime-parser-table))
   (export (runtime character)
@@ -2773,6 +3001,13 @@ USA.
 	  char-set/atom-delimiters
 	  char-set/number-leaders
 	  char-set/symbol-quotes)
+  (initialization (initialize-package!)))
+
+(define-package (runtime parser file-attributes)
+  (files "file-attributes")
+  (parent (runtime parser))
+  (export (runtime parser)
+	  parse-file-attributes-line)
   (initialization (initialize-package!)))
 
 (define-package (runtime parser-table)
@@ -2870,6 +3105,8 @@ USA.
 	  map-over-population!
 	  population?
 	  remove-from-population!)
+  (export (runtime)
+	  add-to-population!/unsafe)
   (initialization (initialize-package!)))
 
 (define-package (runtime pretty-printer)
@@ -2894,7 +3131,7 @@ USA.
   (initialization (initialize-package!)))
 
 (define-package (runtime primitive-io)
-  (files "io") 
+  (files "io")
   (parent (runtime))
   (export ()
 	  all-dld-handles
@@ -3005,6 +3242,49 @@ USA.
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
 
+(define-package (runtime ffi)
+  (parent (runtime))
+  (files "ffi")
+  (export ()
+	  make-alien
+	  copy-alien
+	  alien/ctype
+	  set-alien/ctype!
+	  c-cast
+	  alien?
+	  alien-null?
+	  alien-null!
+	  alien/address-string
+	  null-alien
+	  alien=?
+	  alien-hash
+	  copy-alien-address!
+	  alien-function?
+	  alien-function/name
+	  alien-byte-increment
+	  alien-byte-increment!
+	  error:not-alien
+	  guarantee-alien-function
+	  error:not-alien-function
+	  guarantee-alien
+	  c-peek-cstring
+	  c-peek-cstring!
+	  c-peek-cstringp
+	  c-peek-cstringp!
+	  c-poke-pointer
+	  c-poke-pointer!
+	  c-poke-string
+	  c-poke-string!
+	  c-enum-name
+	  call-alien
+	  make-alien-to-free
+	  malloc
+	  free
+	  register-c-callback
+	  de-register-c-callback
+	  outf-console)
+  (initialization (initialize-package!)))
+
 (define-package (runtime program-copier)
   (files "prgcop")
   (parent (runtime))
@@ -3072,6 +3352,7 @@ USA.
 	  record-constructor
 	  record-copy
 	  record-description
+	  record-entity-unparser
 	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
@@ -3087,12 +3368,15 @@ USA.
 	  record-updater
 	  record?
 	  set-record-type-default-inits!
+	  set-record-type-entity-unparser-method!
 	  set-record-type-extension!
 	  set-record-type-unparser-method!
-	  unparse-record)
+	  unparse-record
+	  unparse-record-entity)
   (export (runtime record-slot-access)
 	  record-type-field-index)
   (export (runtime unparser)
+	  structure-tag/entity-unparser-method
 	  structure-tag/unparser-method)
   (initialization (initialize-package!)))
 
@@ -3539,6 +3823,7 @@ USA.
 	  graphics-set-drawing-mode
 	  graphics-set-line-style
 	  graphics-type
+	  (graphics-type? graphics-device-type?)
 	  graphics-type-available?
 	  graphics-type-name
 	  graphics-type-properties
@@ -4450,6 +4735,7 @@ USA.
 	  (access :access)
 	  (and :and)
 	  (and-let* :and-let*)
+	  (begin0 :begin0)
 	  (case :case)
 	  (cond :cond)
 	  (cond-expand :cond-expand)
@@ -4613,6 +4899,8 @@ USA.
   (export (runtime emacs-interface)
 	  port/read-finish
 	  port/read-start)
+  (export (runtime swank)
+	  port/write-result)
   (initialization (initialize-package!)))
 
 (define-package (runtime thread)
@@ -4747,6 +5035,7 @@ USA.
           wt-tree/subset?
           wt-tree/union
           wt-tree/union-merge
+          wt-tree/valid?                ; Debugging utility only.
           wt-tree?))
 
 (define-package (runtime apropos)
@@ -5005,6 +5294,7 @@ USA.
 	  compiled-regexp/byte-stream
 	  compiled-regexp/translation-table
 	  condition-type:re-compile-pattern
+	  re-char-pattern->scalar-values
 	  re-compile-char
 	  re-compile-char-set
 	  re-compile-pattern
@@ -5031,7 +5321,7 @@ USA.
 	  rexp-line-end
 	  rexp-line-start
 	  rexp-n*
-	  rexp-n*m	  
+	  rexp-n*m
 	  rexp-n*n
 	  rexp-not-syntax-char
 	  rexp-not-word-char
@@ -5105,7 +5395,14 @@ USA.
   (files "parser-buffer")
   (parent (runtime))
   (export ()
-	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
+	  (match-parser-buffer-char-in-alphabet match-parser-buffer-char-in-set)
+	  (match-parser-buffer-char-in-alphabet-no-advance
+	   match-parser-buffer-char-in-set-no-advance)
+	  (match-parser-buffer-char-not-in-alphabet
+	   match-parser-buffer-char-not-in-set)
+	  (match-parser-buffer-char-not-in-alphabet-no-advance
+	   match-parser-buffer-char-not-in-set-no-advance)
+	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-set)
 	  *match-string
 	  *match-symbol
 	  *match-utf8-string
@@ -5122,13 +5419,9 @@ USA.
 	  match-parser-buffer-char
 	  match-parser-buffer-char-ci
 	  match-parser-buffer-char-ci-no-advance
-	  match-parser-buffer-char-in-alphabet
-	  match-parser-buffer-char-in-alphabet-no-advance
 	  match-parser-buffer-char-in-set
 	  match-parser-buffer-char-in-set-no-advance
 	  match-parser-buffer-char-no-advance
-	  match-parser-buffer-char-not-in-alphabet
-	  match-parser-buffer-char-not-in-alphabet-no-advance
 	  match-parser-buffer-char-not-in-set
 	  match-parser-buffer-char-not-in-set-no-advance
 	  match-parser-buffer-not-char
@@ -5162,9 +5455,6 @@ USA.
   (files "unicode")
   (parent (runtime))
   (export ()
-	  (error:not-wide-char error:not-unicode-char)
-	  (guarantee-wide-char guarantee-unicode-char)
-	  (wide-char? unicode-char?)
 	  (wide-string->utf16-be-string string->utf16-be-string)
 	  (wide-string->utf16-le-string string->utf16-le-string)
 	  (wide-string->utf16-string string->utf16-string)
@@ -5172,17 +5462,7 @@ USA.
 	  (wide-string->utf32-le-string string->utf32-le-string)
 	  (wide-string->utf32-string string->utf32-string)
 	  (wide-string->utf8-string string->utf8-string)
-	  8-bit-alphabet?
-	  <alphabet>
 	  <wide-string>
-	  alphabet
-	  alphabet+
-	  alphabet-
-	  alphabet->char-set
-	  alphabet->scalar-values
-	  alphabet->string
-	  alphabet-predicate
-	  alphabet?
 	  call-with-utf16-be-input-string
 	  call-with-utf16-be-output-string
 	  call-with-utf16-input-string
@@ -5197,13 +5477,7 @@ USA.
 	  call-with-utf32-output-string
 	  call-with-utf8-input-string
 	  call-with-utf8-output-string
-	  char-in-alphabet?
-	  char-set->alphabet
 	  combine-utf16-surrogates
-	  error:not-8-bit-alphabet
-	  error:not-alphabet
-	  error:not-unicode-char
-	  error:not-unicode-scalar-value
 	  error:not-utf16-be-string
 	  error:not-utf16-high-surrogate
 	  error:not-utf16-le-string
@@ -5213,15 +5487,9 @@ USA.
 	  error:not-utf32-le-string
 	  error:not-utf32-string
 	  error:not-utf8-string
-	  error:not-well-formed-scalar-value-list
-	  error:not-well-formed-scalar-value-range
 	  error:not-wide-string
 	  for-all-chars-in-string?
 	  for-any-char-in-string?
-	  guarantee-8-bit-alphabet
-	  guarantee-alphabet
-	  guarantee-unicode-char
-	  guarantee-unicode-scalar-value
 	  guarantee-utf16-be-string
 	  guarantee-utf16-high-surrogate
 	  guarantee-utf16-le-string
@@ -5231,8 +5499,6 @@ USA.
 	  guarantee-utf32-le-string
 	  guarantee-utf32-string
 	  guarantee-utf8-string
-	  guarantee-well-formed-scalar-value-list
-	  guarantee-well-formed-scalar-value-range
 	  guarantee-wide-string
 	  guarantee-wide-string-index
 	  guarantee-wide-substring
@@ -5251,9 +5517,7 @@ USA.
 	  open-utf32-output-string
 	  open-utf8-input-string
 	  open-utf8-output-string
-	  scalar-values->alphabet
 	  split-into-utf16-surrogates
-	  string->alphabet
 	  string->utf16-be-string
 	  string->utf16-le-string
 	  string->utf16-string
@@ -5263,8 +5527,6 @@ USA.
 	  string->utf8-string
 	  string->utf8-string
 	  string->wide-string
-	  unicode-char?
-	  unicode-scalar-value?
 	  utf16-be-string->wide-string
 	  utf16-be-string-length
 	  utf16-be-string-valid?
@@ -5296,8 +5558,6 @@ USA.
 	  utf8-string-length
 	  utf8-string-valid?
 	  utf8-string?
-	  well-formed-scalar-value-list?
-	  well-formed-scalar-value-range?
 	  wide-string
 	  wide-string->string
 	  wide-string-index?
@@ -5333,13 +5593,13 @@ USA.
 	  char-set:uri-fragment
 	  char-set:uri-hex
 	  char-set:uri-ipvfuture
-	  char-set:uri-opaque-auth
 	  char-set:uri-query
 	  char-set:uri-reg-name
 	  char-set:uri-scheme
 	  char-set:uri-segment
 	  char-set:uri-segment-nc
 	  char-set:uri-userinfo
+	  encode-uri-path-segment
 	  error:not-partial-uri
 	  error:not-uri
 	  error:not-uri-authority
@@ -5412,7 +5672,6 @@ USA.
 	  uri-rexp:ipv6-address
 	  uri-rexp:ipvfuture
 	  uri-rexp:ls32
-	  uri-rexp:opaque-auth
 	  uri-rexp:path
 	  uri-rexp:path-abempty
 	  uri-rexp:path-absolute
@@ -5698,3 +5957,19 @@ USA.
 	    win32-registry/value-names
 	    win32/expand-environment-strings)
     (initialization (initialize-package!)))))
+
+(define-package (runtime swank)
+  (files "swank")
+  (parent (runtime))
+  (export ()
+	  start-swank)
+  (initialization (initialize-package!)))
+
+(define-package (runtime stack-sampler)
+  (files "stack-sample")
+  (parent (runtime))
+  (export ()
+	  stack-sampler:debug-internal-errors?
+	  stack-sampler:show-expressions?
+	  with-stack-sampling)
+  (initialization (initialize-package!)))

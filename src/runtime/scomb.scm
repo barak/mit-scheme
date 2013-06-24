@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -105,6 +106,7 @@ USA.
 	       NEGATIVE-FIXNUM?
 	       NEGATIVE?
 	       NOT
+	       NULL?
 	       OBJECT-TYPE
 	       OBJECT-TYPE?
 	       ONE-PLUS-FIXNUM
@@ -113,10 +115,11 @@ USA.
 	       POSITIVE-FIXNUM?
 	       POSITIVE?
 	       PRIMITIVE-PROCEDURE-ARITY
-	       ;; STRING->SYMBOL is a special case.  Strings have can
+	       ;; STRING->SYMBOL is a special case.  Strings can
 	       ;; be side-effected, but it is useful to be able to
 	       ;; constant fold this primitive anyway.
 	       STRING->SYMBOL
+	       STRING-LENGTH
 	       ZERO-FIXNUM?
 	       ZERO?
 	       ))))
@@ -127,17 +130,11 @@ USA.
   (if (null? actions)
       (error "MAKE-SEQUENCE: No actions"))
   (let loop ((actions actions))
-    (cond ((null? (cdr actions))
-	   (car actions))
-	  ((null? (cddr actions))
-	   (&typed-pair-cons (ucode-type sequence-2)
-			     (car actions)
-			     (cadr actions)))
-	  (else
-	   (&typed-triple-cons (ucode-type sequence-3)
-			       (car actions)
-			       (cadr actions)
-			       (loop (cddr actions)))))))
+    (if (null? (cdr actions))
+	(car actions)
+	(&typed-pair-cons (ucode-type sequence-2)
+			  (car actions)
+			  (loop (cdr actions))))))
 
 (define (sequence? object)
   (or (object-type? (ucode-type sequence-2) object)

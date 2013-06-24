@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,10 +32,6 @@ USA.
 #include "osscheme.h"
 #include "ostty.h"
 #include "ostop.h"
-
-#ifdef HAVE_FENV_H
-#  include <fenv.h>
-#endif
 
 extern long OS_set_trap_state (long);
 extern double arg_flonum (int);
@@ -203,114 +200,4 @@ DEFINE_PRIMITIVE ("CC-BLOCK-LINKAGE-INFO", Prim_cc_block_linkage_info, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, CC_BLOCK_P);
   PRIMITIVE_RETURN (cc_block_linkage_info (ARG_REF (1)));
-}
-
-#ifndef __GNUC__
-#  pragma STDC FENV_ACCESS ON
-#endif
-
-enum { FRMODE_NEAREST, FRMODE_TOWARD_ZERO, FRMODE_DOWNWARD, FRMODE_UPWARD };
-
-DEFINE_PRIMITIVE ("FLOAT-ROUNDING-MODES", Prim_float_rounding_modes, 0, 0, 0)
-{
-  unsigned int modes = 0;
-  PRIMITIVE_HEADER (0);
-#ifdef HAVE_FEGETROUND
-#  ifdef FE_TONEAREST
-  modes |= (1 << FRMODE_NEAREST);
-#  endif
-#  ifdef FE_TOWARDZERO
-  modes |= (1 << FRMODE_TOWARD_ZERO);
-#  endif
-#  ifdef FE_DOWNWARD
-  modes |= (1 << FRMODE_DOWNWARD);
-#  endif
-#  ifdef FE_UPWARD
-  modes |= (1 << FRMODE_UPWARD);
-#  endif
-#endif
-  PRIMITIVE_RETURN (ulong_to_integer (modes));
-}
-
-DEFINE_PRIMITIVE ("GET-FLOAT-ROUNDING-MODE", Prim_get_float_rounding_mode, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-#ifdef HAVE_FEGETROUND
-  {
-    int mode = (fegetround ());
-    if (mode < 0)
-      error_external_return ();
-    switch (mode)
-      {
-#ifdef FE_TONEAREST
-      case FE_TONEAREST: PRIMITIVE_RETURN (ulong_to_integer (FRMODE_NEAREST));
-#endif
-#ifdef FE_TOWARDZERO
-      case FE_TOWARDZERO: PRIMITIVE_RETURN (ulong_to_integer (FRMODE_TOWARD_ZERO));
-#endif
-#ifdef FE_DOWNWARD
-      case FE_DOWNWARD: PRIMITIVE_RETURN (ulong_to_integer (FRMODE_DOWNWARD));
-#endif
-#ifdef FE_UPWARD
-      case FE_UPWARD: PRIMITIVE_RETURN (ulong_to_integer (FRMODE_UPWARD));
-#endif
-      default: PRIMITIVE_RETURN (SHARP_F);
-      }
-  }
-#else
-  error_unimplemented_primitive ();
-  PRIMITIVE_RETURN (UNSPECIFIC);
-#endif
-}
-
-#ifdef HAVE_FESETROUND
-static int float_rounding_mode = (-1);
-#endif
-
-DEFINE_PRIMITIVE ("SET-FLOAT-ROUNDING-MODE", Prim_set_float_rounding_mode, 1, 1, 0)
-{
-  PRIMITIVE_HEADER (1);
-#ifdef HAVE_FESETROUND
-  {
-    int mode = (-1);
-    switch (arg_ulong_integer (1))
-      {
-#ifdef FE_TONEAREST
-      case FRMODE_NEAREST: mode = FE_TONEAREST; break;
-#endif
-#ifdef FE_TOWARDZERO
-      case FRMODE_TOWARD_ZERO: mode = FE_TOWARDZERO; break;
-#endif
-#ifdef FE_DOWNWARD
-      case FRMODE_DOWNWARD: mode = FE_DOWNWARD; break;
-#endif
-#ifdef FE_UPWARD
-      case FRMODE_UPWARD: mode = FE_UPWARD; break;
-#endif
-      default: error_bad_range_arg (1); break;
-      }
-    if ((fesetround (mode)) != 0)
-      {
-	float_rounding_mode = (-1);
-	error_bad_range_arg (1);
-      }
-    else
-      float_rounding_mode = mode;
-  }
-#else
-  error_unimplemented_primitive ();
-#endif
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
-/* This kludge is to work around the fact that setjmp saves the
-    floating-point rounding mode and longjmp restores it.  */
-
-void
-fixup_float_rounding_mode (void)
-{
-#ifdef HAVE_FESETROUND
-  if (float_rounding_mode >= 0)
-    fesetround (float_rounding_mode);
-#endif
 }

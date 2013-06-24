@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +30,28 @@ reference:
 
   Stephen Adams, Implemeting Sets Efficiently in a Functional
      Language, CSTR 92-10, Department of Electronics and Computer
-     Science, University of Southampton, 1992
+     Science, University of Southampton, 1992.
+
+The data structure was originally introduced in
+
+  J. Nievergelt and E.M. Reingold, `Binary search trees of bounded
+     balance', Proceedings of the fourth ACM Symposium on Theory of
+     Computing, pp. 137--142, 1972.
+
+The balance parameters, Delta and Gamma, proposed by Nievergelt and
+Reingold were irrational, making the balance condition complicated to
+express exactly.  In his paper, Adams used a different definition of a
+node's weight, which introduced more complicated edge cases, and used
+Delta = 4 and Gamma = 1, which do not preserve balance for deletion.
+This implementation formerly used Delta = 5 and Gamma = 1, which was
+also buggy.
+
+Yoichi Hirai and Kazuhiko Yamamoto proposed, in `Balance Conditions on
+Weight-Balanced Trees' (to appear in the Journal of Functional
+Programming), Nievergelt and Reingold's definition of a node's weight,
+with Delta = 3 and Gamma = 2, based on analysis of the algorithms and
+parameters assisted by Coq.  This is what we use here now.
+
 |#
 
 ;;;; Weight-balanced tree (wt-tree) Operations
@@ -38,7 +60,7 @@ reference:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare (usual-integrations))
-
+
 
 ;;;  A tree type is a collection of those procedures that depend on the ordering
 ;;;  relation.
@@ -64,7 +86,7 @@ reference:
   (difference  #F read-only true)
   (subset?     #F read-only true)
   (rank        #F read-only true)
-)  
+)
 
 ;;;  Tree representation
 ;;;
@@ -92,6 +114,9 @@ reference:
 (define-integrable (node/size node)
   (if (empty? node) 0  (node/w node)))
 
+(define-integrable (node/weight node)
+  (+ 1 (node/size node)))
+
 (define-integrable (node/singleton k v) (make-node k v empty empty 1))
 
 (define-integrable (with-n-node node receiver)
@@ -103,7 +128,7 @@ reference:
 ;;;
 
 (define (n-join k v l r)
-  (make-node k v l r (fix:+ 1 (fix:+ (node/size l) (node/size r)))))
+  (make-node k v l r (+ 1 (node/size l) (node/size r))))
 (declare (integrate-operator n-join))
 
 (define (single-l a.k a.v x r)
@@ -132,29 +157,27 @@ reference:
 		  (n-join a.k a.v x y1)
 		  (n-join c.k c.v y2 z)))))))
 
-(define-integrable wt-tree-ratio 5)
+(define-integrable wt-tree-delta 3)
+(define-integrable wt-tree-gamma 2)
 
 (define (t-join k v l r)
-  (define (simple-join) (n-join k v l r))
-  (let ((l.n  (node/size l))
-	(r.n  (node/size r)))
-    (cond ((fix:< (fix:+ l.n r.n) 2)   (simple-join))
-	  ((fix:> r.n (fix:* wt-tree-ratio l.n))
+  (let ((l.w (node/weight l))
+	(r.w (node/weight r)))
+    (cond ((> r.w (* wt-tree-delta l.w))
 	   ;; right is too big
-	   (let ((r.l.n  (node/size (node/l r)))
-		 (r.r.n  (node/size (node/r r))))
-	     (if (fix:< r.l.n r.r.n)
+	   (let ((r.l.w (node/weight (node/l r)))
+		 (r.r.w (node/weight (node/r r))))
+	     (if (< r.l.w (* wt-tree-gamma r.r.w))
 		 (single-l k v l r)
 		 (double-l k v l r))))
-	  ((fix:> l.n (fix:* wt-tree-ratio r.n))
+	  ((> l.w (* wt-tree-delta r.w))
 	   ;; left is too big
-	   (let ((l.l.n  (node/size (node/l l)))
-		 (l.r.n  (node/size (node/r l))))
-	     (if (fix:< l.r.n l.l.n)
+	   (let ((l.l.w (node/weight (node/l l)))
+		 (l.r.w (node/weight (node/r l))))
+	     (if (< l.r.w (* wt-tree-gamma l.l.w))
 		 (single-r k v l r)
 		 (double-r k v l r))))
-	  (else
-	   (simple-join)))))
+	  (else (n-join k v l r)))))
 
 ;;;
 ;;;  Node tree Procedures that are independent of key<?
@@ -199,21 +222,18 @@ reference:
 (define (node/height node)
   (if (empty? node)
       0
-      (1+ (max (node/height (node/l node)) (node/height (node/r node))))))
+      (+ 1 (max (node/height (node/l node)) (node/height (node/r node))))))
 
-(define (node/index node index)
+(define (node/index node index caller)
   (define (loop node index)
     (let ((size.l  (node/size (node/l node))))
-      (cond ((fix:< index size.l)  (loop (node/l node) index))
-	    ((fix:> index size.l)  (loop (node/r node)
-					 (fix:- index (fix:+ 1 size.l))))
-	    (else                  node))))
+      (cond ((< index size.l)  (loop (node/l node) index))
+	    ((> index size.l)  (loop (node/r node) (- index (+ 1 size.l))))
+	    (else              node))))
   (let ((bound  (node/size node)))
-    (if (or (< index 0)
-	    (>= index bound)
-	    (not (fix:fixnum? index)))
-	(error:bad-range-argument index 'node/index)
-	(loop node index))))
+    (if (not (and (<= 0 index) (< index bound)))
+	(error:bad-range-argument index caller))
+    (loop node index)))
 
 (define (error:empty owner)
   ((access error system-global-environment)
@@ -243,10 +263,9 @@ reference:
   (define (node/rank k node rank)
     (cond ((empty? node)             #f)
 	  ((key<? k (node/k node))  (node/rank k (node/l node) rank))
-	  ((key>? k (node/k node))  
-	   (node/rank k (node/r node)
-		        (fix:+ 1 (fix:+ rank (node/size (node/l node))))))
-	  (else                     (fix:+ rank (node/size (node/l node))))))
+	  ((key>? k (node/k node))
+	   (node/rank k (node/r node) (+ 1 rank (node/size (node/l node)))))
+	  (else                     (+ rank (node/size (node/l node))))))
 
   (define (node/add node k v)
     (if (empty? node)
@@ -278,13 +297,13 @@ reference:
     (cond ((empty? l)   (node/add r k v))
 	  ((empty? r)   (node/add l k v))
 	  (else
-	   (let ((n1  (node/size l))
-		 (n2  (node/size r)))
-	     (cond ((fix:< (fix:* wt-tree-ratio n1) n2)
+	   (let ((w1  (node/weight l))
+		 (w2  (node/weight r)))
+	     (cond ((< (* wt-tree-delta w1) w2)
 		    (with-n-node r
 				 (lambda (k2 v2 l2 r2)
 				   (t-join k2 v2 (node/concat3 k v l l2) r2))))
-		   ((fix:< (fix:* wt-tree-ratio n2) n1)
+		   ((< (* wt-tree-delta w2) w1)
 		    (with-n-node l
 				 (lambda (k1 v1 l1 r1)
 				   (t-join k1 v1 l1 (node/concat3 k v r1 r)))))
@@ -305,7 +324,7 @@ reference:
 	  ((key<? (node/k node) x)
 	   (node/split-gt (node/r node) x))
 	  ((key<? x (node/k node))
-	   (node/concat3 (node/k node) (node/v node) 
+	   (node/concat3 (node/k node) (node/v node)
 			 (node/split-gt (node/l node) x) (node/r node)))
 	  (else (node/r node))))
 
@@ -363,9 +382,9 @@ reference:
 
   (define (node/subset? tree1 tree2)
     (or (empty? tree1)
-	(and (fix:<= (node/size tree1) (node/size tree2))
+	(and (<= (node/size tree1) (node/size tree2))
 	     (with-n-node tree1
-               (lambda (k v l r)
+	       (lambda (k v l r)
 		 v
 		 (cond ((key<? k (node/k tree2))
 			(and (node/subset? l (node/l tree2))
@@ -431,7 +450,7 @@ reference:
       (cond ((null? alist)  node)
 	    ((pair? alist)  (loop (cdr alist)
 				  (node/add node (caar alist) (cdar alist))))
-	    (else           
+	    (else
 	     (error:wrong-type-argument alist "alist" 'alist->tree))))
     (%make-wt-tree my-type (loop alist empty)))
 
@@ -468,7 +487,7 @@ reference:
      ))
 
   my-type)
-	
+
 
 
 ;;;
@@ -590,17 +609,17 @@ reference:
 
 (define (wt-tree/index tree index)
   (guarantee-tree tree 'wt-tree/index)
-  (let ((node  (node/index (tree/root tree) index)))
+  (let ((node  (node/index (tree/root tree) index 'wt-tree/index)))
     (and node (node/k node))))
 
 (define (wt-tree/index-datum tree index)
   (guarantee-tree tree 'wt-tree/index-datum)
-  (let ((node  (node/index (tree/root tree) index)))
+  (let ((node  (node/index (tree/root tree) index 'wt-tree/index-datum)))
     (and node (node/v node))))
 
 (define (wt-tree/index-pair tree index)
   (guarantee-tree tree 'wt-tree/index-pair)
-  (let ((node  (node/index (tree/root tree) index)))
+  (let ((node  (node/index (tree/root tree) index 'wt-tree/index-pair)))
     (and node (cons (node/k node) (node/v node)))))
 
 (define (wt-tree/rank tree key)
@@ -627,6 +646,31 @@ reference:
 (define (wt-tree/delete-min! tree)
   (guarantee-tree tree 'wt-tree/delete-min!)
   (set-tree/root! tree (node/delmin (tree/root tree))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (wt-tree/valid? tree)
+  (guarantee-tree tree 'wt-tree/valid?)
+  (let ((key<? (tree-type/key<? (tree/type tree))))
+    (define (balanced? node)
+      (or (empty? node)
+	  (let ((l (node/l node)) (r (node/r node)))
+	    (let ((lw (node/weight l)) (rw (node/weight r)))
+	      (and (<= lw (* wt-tree-delta rw))
+		   (<= rw (* wt-tree-delta lw))
+		   (balanced? l)
+		   (balanced? r))))))
+    (define (ordered? node not-too-low? not-too-high?)
+      (or (empty? node)
+	  (let ((k (node/k node)) (l (node/l node)) (r (node/r node)))
+	    (and (not-too-low? k)
+		 (not-too-high? k)
+		 (ordered? l not-too-low? (lambda (k*) (key<? k* k)))
+		 (ordered? r (lambda (k*) (key<? k k*)) not-too-high?)))))
+    (let ((root (tree/root tree)))
+      (and (balanced? root)
+	   (ordered? root (lambda (k) k #t) (lambda (k) k #t))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -643,55 +687,3 @@ reference:
   ((lambda()
      (declare (integrate-operator make-wt-tree-type))
      (make-wt-tree-type  string<?))))
-
-;;;
-;;;
-;;;
-
-#|
-
-Test code, using maps from digit strings to the numbers they represent.
-
-(load-option 'wt-tree)
-
-(define (make-map lo hi step)
-  (let loop ((i lo) (map (make-wt-tree string-wt-type)))
-    (if (> i hi)
-	map
-	(loop (+ i step) (wt-tree/add map (number->string i) i)))))
-
-(define t1 (make-map 0 99 2))   ; 0,2,4,...,98
-(define t2 (make-map 1 100 2))  ; 1,3,5,...,99
-(define t3 (make-map 0 100 3))  ; 0,3,6,...,99
-
-(define (wt-tree->alist t)
-  (wt-tree/fold (lambda (k d r) (cons (cons k d) r)) '() t))
-
-(wt-tree->alist t3);
-  => (("0" . 0) ("12" . 12) ("15" . 15) ("18" . 18) ("21" . 21) ("24" . 24) ("27" . 27) ("3" . 3) ("30" . 30) ("33" . 33) ("36" . 36) ("39" . 39) ("42" . 42) ("45" . 45) ("48" . 48) ("51" . 51) ("54" . 54) ("57" . 57) ("6" . 6) ("60" . 60) ("63" . 63) ("66" . 66) ("69" . 69) ("72" . 72) ("75" . 75) ("78" . 78) ("81" . 81) ("84" . 84) ("87" . 87) ("9" . 9) ("90" . 90) ("93" . 93) ("96" . 96) ("99" . 99))
-
-(define (try-all operation trees)
-  (map (lambda (t1)
-	 (map (lambda (t2)
-		(operation t1 t2))
-	      trees))
-       trees))
-
-(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/union t1 t2)))
-	 (list t1 t2 t3))
-  => ((50 100 67) (100 50 67) (67 67 34))
-
-(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/difference t1 t2)))
-	 (list t1 t2 t3))
-  => ((0 50 33) (50 0 33) (17 17 0))
-
-(try-all (lambda (t1 t2) (wt-tree/size (wt-tree/intersection t1 t2)))
-	 (list t1 t2 t3))
-  => ((50 0 17) (0 50 17) (17 17 34))
-
-(try-all (lambda (t1 t2) (wt-tree/set-equal? (wt-tree/difference t1 t2)
-					     (wt-tree/difference t2 t1)))
-	 (list t1 t2 t3))
-  => ((#t #f #f) (#f #t #f) (#f #f #t))
-
-|#

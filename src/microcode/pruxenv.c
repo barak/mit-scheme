@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,7 +45,7 @@ DEFINE_PRIMITIVE ("FILE-TIME->STRING", Prim_file_time_to_string, 1, 1,
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, INTEGER_P);
   {
-    time_t clock = (arg_integer (1));
+    time_t clock = (arg_index_integer_to_intmax (1, TIME_T_MAX));
     char * time_string = (UX_ctime (&clock));
     (time_string[24]) = '\0';
     PRIMITIVE_RETURN (char_pointer_to_string (time_string));

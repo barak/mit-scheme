@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -142,16 +143,16 @@ char external_variable [] = "MAX_EXTERNAL_PRIMITIVE";
 
 FILE * input;
 FILE * output;
-char * name;
-char * file_name;
+const char * name;
+const char * file_name;
 
 struct descriptor
   {
-    char * c_name;		/* The C name of the function */
-    char * arity;		/* Number of arguments */
-    char * scheme_name;		/* Scheme name of the primitive */
-    char * documentation;	/* Documentation string */
-    char * file_name;		/* File where found. */
+    const char * c_name;	/* The C name of the function */
+    const char * arity;		/* Number of arguments */
+    const char * scheme_name;	/* Scheme name of the primitive */
+    const char * documentation;	/* Documentation string */
+    const char * file_name;	/* File where found. */
   };
 
 int buffer_index;
@@ -183,8 +184,8 @@ char inexistent_error_string [] =
 TOKEN_PROCESSOR scan (void);
 bool whitespace (int c);
 int compare_descriptors (struct descriptor * d1, struct descriptor * d2);
-int read_index (char * arg, char * identification);
-int strcmp_ci (char * s1, char * s2);
+int read_index (const char * arg, const char * identification);
+int strcmp_ci (const char * s1, const char * s2);
 pseudo_void create_alternate_entry (void);
 pseudo_void create_builtin_entry (void);
 pseudo_void create_normal_entry (void);
@@ -206,7 +207,7 @@ void print_spaces (FILE * output, int how_many);
 void print_entry (FILE * output, int index,
 			  struct descriptor * primitive_descriptor);
 void process (void);
-void process_argument (char * fn);
+void process_argument (const char * fn);
 void scan_to_token_start (void);
 void skip_token (void);
 void sort (void);
@@ -318,7 +319,7 @@ main (int argc, char ** argv)
 }
 
 void
-process_argument (char * fn)
+process_argument (const char * fn)
 {
   file_name = fn;
   if ((strcmp ("-", file_name)) == 0)
@@ -520,7 +521,7 @@ void
 print_primitives (FILE * output, int limit)
 {
   int count;
-  char * table_entry;
+  const char * table_entry;
 
   /* Print the procedure table. */
   fprintf
@@ -697,7 +698,7 @@ enum tokentype
   };
 
 void
-copy_token (char ** target, int * size, enum tokentype token_type)
+copy_token (const char ** target, int * size, enum tokentype token_type)
 {
   int c;
   TOKEN_BUFFER_DECLS ();
@@ -999,7 +1000,7 @@ create_builtin_entry (void)
   struct descriptor desc;
   int length;
   int index;
-  char * index_buffer;
+  const char * index_buffer;
 
   COPY_C_NAME (desc);
   COPY_ARITY (desc);
@@ -1040,7 +1041,7 @@ create_builtin_entry (void)
 }
 
 int
-read_index (char * arg, char * identification)
+read_index (const char * arg, const char * identification)
 {
   int result = 0;
   if (((arg [0]) == '0') && ((arg [1]) == 'x'))
@@ -1181,7 +1182,7 @@ compare_descriptors (struct descriptor * d1, struct descriptor * d2)
 }
 
 int
-strcmp_ci (char * s1, char * s2)
+strcmp_ci (const char * s1, const char * s2)
 {
   int length1 = (strlen (s1));
   int length2 = (strlen (s2));

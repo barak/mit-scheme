@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -82,11 +83,18 @@ find_symbol_internal (unsigned long length, const char * string)
 static void
 replace_symbol_bucket_type (SCHEME_OBJECT symbol, unsigned int type)
 {
-  SCHEME_OBJECT obarray = (VECTOR_REF (fixed_objects, OBARRAY));
-  SCHEME_OBJECT string = (MEMORY_REF (symbol, SYMBOL_NAME));
-  long length = (STRING_LENGTH (string));
-  const char *char_pointer = (STRING_POINTER (string));
-  SCHEME_OBJECT *bucket
+  SCHEME_OBJECT obarray, string, *bucket;
+  long length;
+  const char *char_pointer;
+
+  if (UNINTERNED_SYMBOL_P (symbol)) return;
+  assert (INTERNED_SYMBOL_P (symbol));
+
+  obarray = (VECTOR_REF (fixed_objects, OBARRAY));
+  string = (MEMORY_REF (symbol, SYMBOL_NAME));
+  length = (STRING_LENGTH (string));
+  char_pointer = (STRING_POINTER (string));
+  bucket
     = (VECTOR_LOC (obarray,
                    ((string_hash (length, char_pointer))
                     % (VECTOR_LENGTH (obarray)))));

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -336,34 +337,61 @@ USA.
 	  (unparse-symbol symbol)))))
 
 (define (unparse-symbol symbol)
-  (let ((s (symbol-name symbol)))
-    (if (or (string-find-next-char-in-set
-	     s
-	     (if (environment-lookup *environment*
-				     '*PARSER-CANONICALIZE-SYMBOLS?*)
-		 canon-symbol-quoted
-		 non-canon-symbol-quoted))
-	    (fix:= (string-length s) 0)
-	    (and (char-set-member? char-set/number-leaders (string-ref s 0))
-		 (string->number s)))
-	(begin
-	  (*unparse-char #\|)
-	  (let ((end (string-length s)))
-	    (let loop ((start 0))
-	      (if (fix:< start end)
-		  (let ((i
-			 (substring-find-next-char-in-set
-			  s start end
-			  char-set/symbol-quotes)))
-		    (if i
-			(begin
-			  (*unparse-substring s start i)
-			  (*unparse-char #\\)
-			  (*unparse-char (string-ref s i))
-			  (loop (fix:+ i 1)))
-			(*unparse-substring s start end))))))
-	  (*unparse-char #\|))
-	(*unparse-string s))))
+  (if (keyword? symbol)
+      (unparse-keyword-name (keyword->string symbol))
+      (unparse-symbol-name (symbol-name symbol))))
+
+(define (unparse-keyword-name s)
+  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+    ((PREFIX)
+     (*unparse-char #\:)
+     (unparse-symbol-name s))
+    ((SUFFIX)
+     (unparse-symbol-name s)
+     (*unparse-char #\:))
+    (else
+     (*unparse-string "#[keyword ")
+     (unparse-symbol-name s)
+     (*unparse-char #\]))))
+
+(define (unparse-symbol-name s)
+  (if (or (string-find-next-char-in-set
+	   s
+	   (if (environment-lookup *environment*
+				   '*PARSER-CANONICALIZE-SYMBOLS?*)
+	       canon-symbol-quoted
+	       non-canon-symbol-quoted))
+	  (fix:= (string-length s) 0)
+	  (and (char-set-member? char-set/number-leaders (string-ref s 0))
+	       (string->number s))
+	  (and (fix:> (string-length s) 1)
+	       (looks-like-keyword? s)))
+      (begin
+	(*unparse-char #\|)
+	(let ((end (string-length s)))
+	  (let loop ((start 0))
+	    (if (fix:< start end)
+		(let ((i
+		       (substring-find-next-char-in-set
+			s start end
+			char-set/symbol-quotes)))
+		  (if i
+		      (begin
+			(*unparse-substring s start i)
+			(*unparse-char #\\)
+			(*unparse-char (string-ref s i))
+			(loop (fix:+ i 1)))
+		      (*unparse-substring s start end))))))
+	(*unparse-char #\|))
+      (*unparse-string s)))
+
+(define (looks-like-keyword? string)
+  (case (environment-lookup *environment* '*PARSER-KEYWORD-STYLE*)
+    ((PREFIX)
+     (char=? (string-ref string 0) #\:))
+    ((SUFFIX)
+     (char=? (string-ref string (- (string-length string) 1)) #\:))
+    (else #f)))
 
 (define (unparse/character character)
   (if (or *slashify?*
@@ -449,6 +477,11 @@ USA.
 	     ;; Check the global tagging table too.
 	     (unparser/tagged-vector-method tag)))))
 
+(define (unparse-vector/entity-unparser vector)
+  (and (fix:> (vector-length vector) 0)
+       (structure-tag/entity-unparser-method (safe-vector-ref vector 0)
+					     'VECTOR)))
+
 (define (unparse-vector/normal vector)
   (limit-unparse-depth
    (lambda ()
@@ -530,6 +563,9 @@ USA.
     (or (structure-tag/unparser-method tag 'LIST)
 	;; Check the global tagging table too.
 	(unparser/tagged-pair-method tag))))
+
+(define (unparse-list/entity-unparser pair)
+  (structure-tag/entity-unparser-method (safe-car pair) 'LIST))
 
 (define (unparse-list/prefix-pair prefix pair)
   (*unparse-string prefix)
@@ -680,7 +716,7 @@ USA.
 		 (unparse/flonum ((ucode-primitive floating-vector-ref) v i)))
 	       (if (< limit length)
 		   (*unparse-string " ..."))))))))
-
+
 (define (unparse/entity entity)
 
   (define (plain name)
@@ -702,5 +738,18 @@ USA.
 		       (compiled-procedure/name proc))
 		  => named-arity-dispatched-procedure)
 		 (else (plain 'ARITY-DISPATCHED-PROCEDURE)))))
-	(else
-	 (plain 'ENTITY))))
+	(*unparse-with-maximum-readability?*
+	 (*unparse-readable-hash entity))
+	((record? (entity-extra entity))
+	 ;; Kludge to make the generic dispatch mechanism work.
+	 (invoke-user-method
+	  (lambda (state entity)
+	    ((record-entity-unparser (entity-extra entity)) state entity))
+	  entity))
+	((or (and (vector? (entity-extra entity))
+		  (unparse-vector/entity-unparser (entity-extra entity)))
+	     (and (pair? (entity-extra entity))
+		  (unparse-list/entity-unparser (entity-extra entity))))
+	 => (lambda (method)
+	      (invoke-user-method method entity)))
+	(else (plain 'ENTITY))))

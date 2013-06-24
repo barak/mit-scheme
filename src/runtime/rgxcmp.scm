@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -191,7 +192,7 @@ USA.
 	  (if (fix:zero? n)
 	      (make-compiled-regexp string case-fold?)
 	      (let ((result
-		     (string-allocate 
+		     (string-allocate
 		      (let ((qr (integer-divide n 255)))
 			(fix:+ (fix:* 257 (integer-divide-quotient qr))
 			       (let ((r (integer-divide-remainder qr)))
@@ -218,36 +219,37 @@ USA.
 			   (substring-move! string i j result (fix:+ p 2))
 			   (loop (fix:- n 255) j (fix:+ p 257)))))))))))))
 
-(define re-quote-string
-  (let ((special (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$)))
-    (lambda (string)
-      (let ((end (string-length string)))
-	(let ((n
-	       (let loop ((start 0) (n 0))
-		 (let ((index
-			(substring-find-next-char-in-set string start end
-							 special)))
-		   (if index
-		       (loop (1+ index) (1+ n))
-		       n)))))
-	  (if (zero? n)
-	      string
-	      (let ((result (string-allocate (+ end n))))
-		(let loop ((start 0) (i 0))
-		  (let ((index
-			 (substring-find-next-char-in-set string start end
-							  special)))
-		    (if index
-			(begin
-			  (substring-move! string start index result i)
-			  (let ((i (+ i (- index start))))
-			    (string-set! result i #\\)
-			    (string-set! result
-					 (1+ i)
-					 (string-ref string index))
-			    (loop (1+ index) (+ i 2))))
-			(substring-move! string start end result i))))
-		result)))))))
+(define char-set:re-special
+  (char-set #\[ #\] #\* #\. #\\ #\? #\+ #\^ #\$))
+
+(define (re-quote-string string)
+  (let ((end (string-length string)))
+    (let ((n
+	   (let loop ((start 0) (n 0))
+	     (let ((index
+		    (substring-find-next-char-in-set string start end
+						     char-set:re-special)))
+	       (if index
+		   (loop (1+ index) (1+ n))
+		   n)))))
+      (if (zero? n)
+	  string
+	  (let ((result (string-allocate (+ end n))))
+	    (let loop ((start 0) (i 0))
+	      (let ((index
+		     (substring-find-next-char-in-set string start end
+						      char-set:re-special)))
+		(if index
+		    (begin
+		      (substring-move! string start index result i)
+		      (let ((i (+ i (- index start))))
+			(string-set! result i #\\)
+			(string-set! result
+				     (1+ i)
+				     (string-ref string index))
+			(loop (1+ index) (+ i 2))))
+		    (substring-move! string start end result i))))
+	    result)))))
 
 ;;;; Char-Set Compiler
 
@@ -258,43 +260,33 @@ USA.
 ;;; #\^ must appear anywhere except as the first character in the set.
 
 (define (re-compile-char-set pattern negate?)
-  (let ((length (string-length pattern))
-	(table (string-allocate 256)))
-    (let ((kernel
-	   (lambda (start background foreground)
-	     (let ((adjoin!
-		    (lambda (ascii)
-		      (vector-8b-set! table ascii foreground))))
-	       (vector-8b-fill! table 0 256 background)
-	       (let loop
-		   ((pattern (substring->list pattern start length)))
-		 (if (pair? pattern)
-		     (if (and (pair? (cdr pattern))
-			      (char=? (cadr pattern) #\-)
-			      (pair? (cddr pattern)))
-			 (begin
-			   (let ((end (char->ascii (caddr pattern))))
-			     (let loop
-				 ((index (char->ascii (car pattern))))
-			       (if (fix:<= index end)
-				   (begin
-				     (vector-8b-set! table
-						     index
-						     foreground)
-				     (loop (fix:+ index 1))))))
-			   (loop (cdddr pattern)))
-			 (begin
-			   (adjoin! (char->ascii (car pattern)))
-			   (loop (cdr pattern))))))))))
-      (if (and (not (fix:zero? length))
-	       (char=? (string-ref pattern 0) #\^))
-	  (if negate?
-	      (kernel 1 0 1)
-	      (kernel 1 1 0))
-	  (if negate?
-	      (kernel 0 1 0)
-	      (kernel 0 0 1))))
-    (make-char-set table)))
+  (receive (scalar-values negate?*)
+      (re-char-pattern->scalar-values pattern)
+    (let ((char-set (scalar-values->char-set scalar-values)))
+      (if (if negate? (not negate?*) negate?*)
+	  (char-set-invert char-set)
+	  char-set))))
+
+(define (re-char-pattern->scalar-values pattern)
+  (define (loop pattern scalar-values)
+    (if (pair? pattern)
+	(if (and (pair? (cdr pattern))
+		 (char=? (cadr pattern) #\-)
+		 (pair? (cddr pattern)))
+	    (loop (cdddr pattern)
+		  (cons (cons (char->integer (car pattern))
+			      (fix:+ (char->integer (caddr pattern)) 1))
+			scalar-values))
+	    (loop (cdr pattern)
+		  (cons (char->integer (car pattern))
+			scalar-values)))
+	scalar-values))
+
+  (let ((pattern (string->list pattern)))
+    (if (and (pair? pattern)
+	     (char=? (car pattern) #\^))
+	(values (loop (cdr pattern) '()) #t)
+	(values (loop pattern '()) #f))))
 
 ;;;; Translation Tables
 

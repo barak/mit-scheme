@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,7 +108,14 @@ USA.
     base)
 
   (define-code-sequence (offset (_ base word-register)
-				(_ offset unsigned-8)
+				(_ offset signed-8)
+				(_ oscale scale-factor))
+    base
+    offset
+    oscale)
+
+  (define-code-sequence (offset (_ base word-register)
+				(_ offset signed-16)
 				(_ oscale scale-factor))
     base
     offset
@@ -430,7 +438,6 @@ USA.
 
 (define-code-sequence instruction (interrupt-test-procedure))
 (define-code-sequence instruction (interrupt-test-dynamic-link))
-(define-code-sequence instruction (interrupt-test-closure))
 (define-code-sequence instruction (interrupt-test-ic-procedure))
 (define-code-sequence instruction (interrupt-test-continuation))
 

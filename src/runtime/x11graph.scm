@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -206,6 +207,7 @@ USA.
   (initialize-colormap-datatype))
 
 (define (x-graphics/available?)
+  (load-library-object-file "prx11" #f)
   (implemented-primitive-procedure?
    (ucode-primitive x-graphics-open-window 3)))
 
@@ -367,7 +369,6 @@ USA.
 
 (define-event-handler event-type:configure
   (lambda (window event)
-    window
     (x-graphics-reconfigure (vector-ref event 1)
 			    (vector-ref event 2)
 			    (vector-ref event 3))
@@ -485,7 +486,7 @@ USA.
 	(let ((xw
 	       (x-graphics-open-window
 		 (x-display/xd display)
-		 (if (default-object? geometry) 
+		 (if (default-object? geometry)
 		     x-graphics-default-geometry
 		     geometry)
 		 (vector #f resource class))))
@@ -669,7 +670,7 @@ USA.
 		       (->flonum angle-start)
 		       (->flonum angle-sweep)
 		       fill?))
-   
+
 (define (x-graphics/draw-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
 		       (->flonum x)
@@ -679,7 +680,7 @@ USA.
 		       0.
 		       360.
 		       #f))
-   
+
 (define (x-graphics/fill-circle device x y radius)
   (x-graphics-draw-arc (x-graphics-device/xw device)
 		       (->flonum x)
@@ -689,11 +690,11 @@ USA.
 		       0.
 		       360.
 		       #t))
-   
+
 (define (x-graphics/fill-polygon device point-vector)
   (x-graphics-fill-polygon (x-graphics-device/xw device)
 			   (vector-map ->flonum point-vector)))
-   
+
 (define (x-graphics/copy-area device source-x-left source-y-top width height
 			      destination-x-left destination-y-top)
   (let ((xw (x-graphics-device/xw device)))

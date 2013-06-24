@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -72,6 +73,10 @@ USA.
 
 #if defined(__netbsd__) || defined(__NetBSD__)
 #  define SYSTEM_VARIANT "NetBSD"
+#  include <sys/param.h>
+#  if defined(__NetBSD_Version__) && __NetBSD_Version__ >= 200000000
+#    define HAVE_SIGACTION_SIGINFO_SIGNALS
+#  endif
 #endif
 
 #ifdef _NEXTOS
@@ -209,6 +214,35 @@ USA.
 #  endif
 #endif
 
+#ifdef HAVE_SYS_TIMEX_H
+#  include <sys/timex.h>
+#endif
+
+/* This detects both the NTP system calls found in BSD systems (NetBSD,
+   FreeBSD) and the NTP system calls found in Linux systems.  What is
+   found on other systems, I don't know.  We use this to get at the
+   system's record of the UTC - TAI offset.  */
+
+#ifdef HAVE_NTP_GETTIME
+#ifdef HAVE_STRUCT_NTPTIMEVAL
+#ifdef HAVE_NTPTIMEVAL_TAI
+#ifdef HAVE_NTPTIMEVAL_TIME_TV_NSEC
+#  define HAVE_BSD_NTP
+#endif
+#endif
+#endif
+#endif
+
+#ifdef HAVE_NTP_ADJTIME
+#ifdef HAVE_STRUCT_TIMEX
+#ifdef HAVE_TIMEX_TAI
+#ifdef HAVE_TIMEX_TIME_TV_USEC
+#  define HAVE_LINUX_NTP
+#endif
+#endif
+#endif
+#endif
+
 #ifdef HAVE_UTIME_H
 #  include <utime.h>
 #else
@@ -270,6 +304,10 @@ USA.
 typedef RETSIGTYPE Tsignal_handler_result;
 
 #ifdef _POSIX_REALTIME_SIGNALS
+#  define HAVE_SIGACTION_SIGINFO_SIGNALS
+#endif
+
+#ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
    typedef void (*Tsignal_handler) (int, siginfo_t *, void *);
 #else
    typedef RETSIGTYPE (*Tsignal_handler) (int);
@@ -450,6 +488,7 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_bind bind
 #define UX_chdir chdir
 #define UX_chmod chmod
+#define UX_clock_gettime clock_gettime
 #define UX_close close
 #define UX_connect connect
 #define UX_ctime ctime
@@ -485,6 +524,8 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #define UX_malloc malloc
 #define UX_mknod mknod
 #define UX_mktime mktime
+#define UX_ntp_adjtime ntp_adjtime
+#define UX_ntp_gettime ntp_gettime
 #define UX_open open
 #define UX_pause pause
 #define UX_pipe pipe
@@ -580,6 +621,13 @@ typedef RETSIGTYPE Tsignal_handler_result;
 #else
    extern unsigned long UX_getpagesize (void);
 #  define EMULATE_GETPAGESIZE
+#endif
+
+#ifdef HAVE_CLOSEFROM
+#  define UX_closefrom closefrom
+#else
+   extern int UX_closefrom (int);
+#  define EMULATE_CLOSEFROM
 #endif
 
 /* poll is somewhat busted on Mac OSX 10.4 (Tiger), so use select.  */

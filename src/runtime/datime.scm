@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -113,7 +114,7 @@ USA.
     (check-range day 1 (month/max-days month))
     (check-range hour 0 23)
     (check-range minute 0 59)
-    (check-range second 0 59)))
+    (check-range second 0 60)))
 
 (define (compute-day-of-week day month year)
   ;; This implements Zeller's Congruence.
@@ -334,7 +335,7 @@ USA.
 (define parse-rfc2822-year (number-parser 4 4 1900 9999))
 (define parse-rfc2822-hour (number-parser 2 2 0 23))
 (define parse-rfc2822-minute (number-parser 2 2 0 59))
-(define parse-rfc2822-second (number-parser 2 2 0 59))
+(define parse-rfc2822-second (number-parser 2 2 0 60))
 
 (define match-lws
   (*matcher (+ (char-set char-set:wsp))))
@@ -507,7 +508,7 @@ USA.
 
 (define parse-ctime-hour (number-parser 2 2 0 23))
 (define parse-ctime-minute (number-parser 2 2 0 59))
-(define parse-ctime-second (number-parser 2 2 0 59))
+(define parse-ctime-second (number-parser 2 2 0 60))
 (define parse-ctime-day1 (number-parser 1 1 1 9))
 (define parse-ctime-day2 (number-parser 2 2 10 31))
 (define parse-ctime-year (number-parser 4 4 1900 9999))
@@ -827,7 +828,7 @@ USA.
 (define parse-8601-hour (number-parser 2 2 0 24))
 (define parse-8601-zone-hour (number-parser 2 2 0 24))
 (define parse-8601-minute (number-parser 2 2 0 59))
-(define parse-8601-second (number-parser 2 2 0 59))
+(define parse-8601-second (number-parser 2 2 0 60))
 
 (define parse-8601-sign
   (*parser
@@ -864,7 +865,7 @@ USA.
 (define parse-rfc850-day (number-parser 2 2 1 31))
 (define parse-rfc850-hour (number-parser 2 2 0 23))
 (define parse-rfc850-minute (number-parser 2 2 0 59))
-(define parse-rfc850-second (number-parser 2 2 0 59))
+(define parse-rfc850-second (number-parser 2 2 0 60))
 
 ;;;; Utilities
 

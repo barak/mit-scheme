@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -74,11 +75,15 @@ OS_initialize (void)
 {
   initialize_interruptable_extent ();
   {
-    interactive =
-      (option_force_interactive
-       || (isatty (STDIN_FILENO))
-       || (isatty (STDOUT_FILENO))
-       || (isatty (STDERR_FILENO)));
+    if (option_force_interactive)
+      interactive = true;
+    else if (option_batch_mode)
+      interactive = false;
+    else
+      interactive
+	= ((isatty (STDIN_FILENO))
+	   || (isatty (STDOUT_FILENO))
+	   || (isatty (STDERR_FILENO)));
     /* If none of the stdio streams is a terminal, disassociate us
        from the controlling terminal so that we're not affected by
        keyboard interrupts or hangup signals.  However, if we're
@@ -232,6 +237,8 @@ macosx_main_bundle_dir (void)
 bool
 macosx_in_app_p (void)
 {
+  if (!option_macosx_application)
+    return (false);
   CFURLRef url = (macosx_default_band_url ());
   if (url == 0)
     return (false);
@@ -428,6 +435,7 @@ static const char * syscall_names_table [] =
   "bind",
   "chdir",
   "chmod",
+  "clock_gettime",
   "close",
   "connect",
   "fcntl-getfl",
@@ -455,6 +463,8 @@ static const char * syscall_names_table [] =
   "malloc",
   "mkdir",
   "mktime",
+  "ntp_adjtime",
+  "ntp_gettime",
   "open",
   "opendir",
   "pause",
@@ -552,4 +562,104 @@ OS_syserr_names (unsigned long * length, const char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
   (*names) = syserr_names_table;
+}
+
+static unsigned long
+round_up (unsigned long n, unsigned long factor)
+{
+  return (((n + (factor - 1)) / factor) * factor);
+}
+
+static unsigned long
+round_down (unsigned long n, unsigned long factor)
+{
+  return ((n / factor) * factor);
+}
+
+static void
+estimate_pages (void *start, void *end,
+                unsigned long (*round_start) (unsigned long, unsigned long),
+                unsigned long (*round_end) (unsigned long, unsigned long),
+                void **addr, size_t *len)
+{
+  if (end <= start)
+    {
+      (*addr) = start;
+      (*len) = 0;
+      return;
+    }
+
+  {
+    unsigned long page_size = (UX_getpagesize ());
+    char *page_start
+      = ((char *) ((*round_start) (((unsigned long) start), page_size)));
+    char *page_end
+      = ((char *) ((*round_end) (((unsigned long) end), page_size)));
+    (*addr) = ((void *) page_start);
+    (*len) = ((page_start < page_end) ? (page_end - page_start) : 0);
+  }
+}
+
+static void
+underestimate_pages (void *start, void *end, void **addr, size_t *len)
+{
+  estimate_pages (start, end, (&round_up), (&round_down), addr, len);
+}
+
+static void
+overestimate_pages (void *start, void *end, void **addr, size_t *len)
+{
+  estimate_pages (start, end, (&round_down), (&round_up), addr, len);
+}
+
+void
+OS_expect_sequential_access (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  overestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_POSIX_MADVISE)) && (defined (POSIX_MADV_SEQUENTIAL)))
+  (void) posix_madvise (addr, len, POSIX_MADV_SEQUENTIAL);
+#elif ((defined (HAVE_MADVISE)) && (defined (MADV_SEQUENTIAL)))
+  (void) madvise (addr, len, MADV_SEQUENTIAL);
+#endif
+}
+
+void
+OS_expect_normal_access (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  overestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_POSIX_MADVISE)) && (defined (POSIX_MADV_NORMAL)))
+  (void) posix_madvise (addr, len, POSIX_MADV_NORMAL);
+#elif ((defined (HAVE_MADVISE)) && (defined (MADV_NORMAL)))
+  (void) madvise (addr, len, MADV_NORMAL);
+#endif
+}
+
+/* Brain-damaged Linux uses MADV_DONTNEED to mean the destructive
+   operation that everyone else means by MADV_FREE.  Everywhere else,
+   (POSIX_)MADV_DONTNEED is a nondestructive operation which is useless
+   here.  Fortunately, if Linux ever changes its meaning of
+   MADV_DONTNEED to match the rest of the world, the consequences here
+   are harmless, and if Linux additionally defines MADV_FREE like
+   everyone else in the world, then everything here will be
+   hunky-dory.  */
+
+#if ((defined (__linux__)) && (defined (HAVE_MADVISE)))
+#  if ((! (defined (MADV_FREE))) && (defined (MADV_DONTNEED)))
+#    define MADV_FREE MADV_DONTNEED
+#  endif
+#endif
+
+void
+OS_free_pages (void *start, void *end)
+{
+  void *addr;
+  size_t len;
+  underestimate_pages (start, end, (&addr), (&len));
+#if ((defined (HAVE_MADVISE)) && (defined (MADV_FREE)))
+  (void) madvise (addr, len, MADV_FREE);
+#endif
 }

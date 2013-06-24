@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -64,7 +65,7 @@ USA.
   (pq-tty 1)
   (pq-unescape-bytea 1)
   (pq-user 1))
-
+
 (define-syntax define-enum
   (sc-macro-transformer
    (lambda (form environment)
@@ -262,7 +263,7 @@ USA.
 (define (poll-pgsql-reset connection)
   (index->name (pq-reset-poll (connection->handle connection))
 	       postgres-polling-status))
-
+
 (define-syntax define-connection-accessor
   (sc-macro-transformer
    (lambda (form environment)

@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -43,7 +44,7 @@ USA.
 ;;   $MITSCHEME_LIBRARY_PATH/runtime/) into the environment of the
 ;;   package named PACKAGE-NAME, and then evaluates EXPR in that load
 ;;   environment. If EXPR is #F of course evaluating it has no effect.
-;; 
+;;
 ;; (FURTHER-LOAD-OPTIONS EXPR)
 ;;   EXPR is the place to look next for the load options.  Useful objects
 ;;   are STANDARD-LOAD-OPTIONS (load options supplied with the
@@ -65,7 +66,7 @@ USA.
  '((COMPRESS	(RUNTIME COMPRESS)	#F			"cpress")
    (DOSPROCESS	()			#F			"dosproc")
    (FORMAT	(RUNTIME FORMAT)	(INITIALIZE-PACKAGE!)	"format")
-   (GDBM	(RUNTIME GDBM)		(INITIALIZE-PACKAGE!)	"gdbm")
+   (GDBM	(RUNTIME GDBM)		#F			"gdbm")
    (KRYPT	(RUNTIME KRYPT)		#F			"krypt")
    (MIME-CODEC	(RUNTIME MIME-CODEC)	#F			"mime-codec")
    (ORDERED-VECTOR (RUNTIME ORDERED-VECTOR) #F			"ordvec")

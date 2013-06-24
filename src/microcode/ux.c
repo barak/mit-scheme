@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -205,8 +206,8 @@ UX_setsid (void)
   int fd = (UX_open ("/dev/tty", O_RDWR, 0));
   if (fd >= 0)
     {
-      UX_ioctl (fd, TIOCNOTTY, 0);
-      UX_close (fd);
+      (void) UX_ioctl (fd, TIOCNOTTY, 0);
+      (void) UX_close (fd);
     }
 #endif
   return (setpgrp (0, 0));
@@ -365,7 +366,7 @@ int
 UX_dup2 (int fd, int fd2)
 {
   if (fd != fd2)
-    UX_close (fd2);
+    (void) UX_close (fd2);
   {
     int result = (UX_fcntl (fd, F_DUPFD, fd2));
     if ((result < 0) && (errno == EINVAL))
@@ -623,6 +624,35 @@ fpathconf (int filedes, int parameter)
   }
 }
 #endif /* EMULATE_FPATHCONF */
+
+#ifdef EMULATE_CLOSEFROM
+
+int
+UX_closefrom (int fd)
+{
+#if ((defined (HAVE_FCNTL)) && (defined (F_CLOSEM)))
+  return (UX_fcntl (fd, F_CLOSEM));
+#elif ((defined (HAVE_FCNTL)) && (defined (F_MAXFD)))
+  int max_fd = (UX_fcntl ((-1), F_MAXFD));
+  int status = 0, error = 0;
+  if (max_fd < 0) return (max_fd);
+  while (fd <= max_fd)
+    if (((UX_close (fd++)) < 0) && (errno != EBADF))
+      status = (-1), error = errno;
+  errno = error;
+  return (status);
+#else
+  int fd_limit = (UX_SC_OPEN_MAX ());
+  int status = 0, error = 0;
+  while (fd < fd_limit)
+    if (((UX_close (fd++)) < 0) && (errno != EBADF))
+      status = (-1), error = errno;
+  errno = error;
+  return (status);
+#endif
+}
+
+#endif
 
 void *
 OS_malloc_init (size_t size)

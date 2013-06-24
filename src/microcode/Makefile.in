@@ -1,11 +1,11 @@
-# This file automatically generated at 2010-03-09T18:30:12-08.
+# This file automatically generated at 2011-10-15T20:14:42-07.
 
 # -*- Makefile -*-
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -71,7 +71,7 @@ AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
 CCLD = @CCLD@
-M4 = $(srcdir)/makegen/m4.sh
+M4 = $(srcdir)/makegen/m4.sh @M4@
 AS = as
 TAR = tar
 GZIP_ENV = --best
@@ -93,12 +93,12 @@ ASSEMBLE = $(AS) $(AS_FLAGS)
 
 STD_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c boot.c \
 	  char.c daemon.c debug.c dfloat.c error.c extern.c fasdump.c fasl.c \
-	  fasload.c fixnum.c flonum.c gcloop.c generic.c hooks.c hunk.c \
-	  intern.c interp.c intprm.c list.c lookprm.c lookup.c memmag.c \
-	  missing.c obstack.c option.c osscheme.c ostty.c outf.c prim.c \
-	  primutl.c ptrvec.c purify.c purutl.c regex.c rgxprim.c step.c \
-	  storage.c string.c syntax.c sysprim.c term.c transact.c tterm.c \
-	  utabmd.c utils.c vector.c wind.c \
+	  fasload.c fixnum.c floenv.c flonum.c gcloop.c generic.c hooks.c \
+	  hunk.c intern.c interp.c intprm.c list.c lookprm.c lookup.c \
+	  memmag.c missing.c obstack.c option.c osscheme.c ostty.c outf.c \
+	  prim.c primutl.c ptrvec.c purify.c purutl.c regex.c rgxprim.c \
+	  step.c storage.c string.c syntax.c sysprim.c term.c transact.c \
+	  tterm.c utabmd.c utils.c vector.c wind.c \
 	prosenv.c prosfile.c prosfs.c prosio.c prosproc.c prospty.c \
 	  prosterm.c prostty.c pruxsock.c \
 	intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c uxenv.c uxfile.c \
@@ -107,12 +107,12 @@ STD_SOURCES = artutl.c avltree.c bkpt.c bignum.c bigprm.c bitstr.c boot.c \
 	$(OPTIONAL_SOURCES)
 STD_OBJECTS = artutl.o avltree.o bkpt.o bignum.o bigprm.o bitstr.o boot.o \
 	  char.o daemon.o debug.o dfloat.o error.o extern.o fasdump.o fasl.o \
-	  fasload.o fixnum.o flonum.o gcloop.o generic.o hooks.o hunk.o \
-	  intern.o interp.o intprm.o list.o lookprm.o lookup.o memmag.o \
-	  missing.o obstack.o option.o osscheme.o ostty.o outf.o prim.o \
-	  primutl.o ptrvec.o purify.o purutl.o regex.o rgxprim.o step.o \
-	  storage.o string.o syntax.o sysprim.o term.o transact.o tterm.o \
-	  utabmd.o utils.o vector.o wind.o \
+	  fasload.o fixnum.o floenv.o flonum.o gcloop.o generic.o hooks.o \
+	  hunk.o intern.o interp.o intprm.o list.o lookprm.o lookup.o \
+	  memmag.o missing.o obstack.o option.o osscheme.o ostty.o outf.o \
+	  prim.o primutl.o ptrvec.o purify.o purutl.o regex.o rgxprim.o \
+	  step.o storage.o string.o syntax.o sysprim.o term.o transact.o \
+	  tterm.o utabmd.o utils.o vector.o wind.o \
 	prosenv.o prosfile.o prosfs.o prosio.o prosproc.o prospty.o \
 	  prosterm.o prostty.o pruxsock.o \
 	intext.o pruxenv.o pruxfs.o pruxio.o ux.o uxctty.o uxenv.o uxfile.o \
@@ -129,6 +129,7 @@ PRMD5_LIBS = @PRMD5_LIBS@
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
 MODULE_LDFLAGS = @MODULE_LDFLAGS@
+MODULE_LOADER = @MODULE_LOADER@
 COMPILE_MODULE = $(COMPILE) -DCOMPILE_AS_MODULE $(MODULE_CFLAGS)
 LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
 MODULE_LIBS = -lc
@@ -212,32 +213,39 @@ extract-liarc-decls: extract-liarc-decls.o
 macosx-starter: macosx-starter.o
 	$(LINK) macosx-starter.o
 
-prbfish.so: prbfish.o scheme
+prbfish.so: prbfish.o @MODULE_LOADER@
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
-prmd5.so: prmd5.o scheme
+prmd5.so: prmd5.o @MODULE_LOADER@
 	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
-prmhash.so: prmhash.o scheme
+prmhash.so: prmhash.o @MODULE_LOADER@
 	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
-prmcrypt.so: prmcrypt.o scheme
-	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
+prmcrypt.so: prmcrypt.o @MODULE_LOADER@
+	$(LINK_MODULE) prmcrypt.o -lmcrypt $(MODULE_LIBS)
 
-prgdbm.so: prgdbm.o scheme
+prgdbm.so: prgdbm.o @MODULE_LOADER@
 	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
-prdb4.so: prdb4.o scheme
+prdb4.so: prdb4.o @MODULE_LOADER@
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
-prpgsql.so: prpgsql.o scheme
+prpgsql.so: prpgsql.o @MODULE_LOADER@
 	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
+
+prx11.so: prx11.o x11base.o x11color.o x11graph.o x11term.o @MODULE_LOADER@
+	$(LINK_MODULE) prx11.o x11base.o x11color.o x11graph.o x11term.o \
+	  -lX11 $(MODULE_LIBS)
 
 @MODULE_RULES@
 
 tags: TAGS
 TAGS:
 	etags -r '/^DEF[A-Z0-9_]*[ \t]*(\("[^"]+"\|[a-zA-Z_][a-zA-Z0-9_]*\)/' \
+	    *.[ch] */*.[ch]						      \
+	|| etags							      \
+       --regex-C='/^DEF[A-Z0-9_]*[ \t]*\(("[^"]+"|[a-zA-Z_][a-zA-Z0-9_]+)/\1/'\
 	    *.[ch] */*.[ch]
 
 mostlyclean:
@@ -291,6 +299,7 @@ install-auxDATA: $(aux_DATA)
 		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
 	    fi; \
 	done
+	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
@@ -308,16 +317,17 @@ install-include:
 
 # **** File dependencies ****
 
-artutl.o: artutl.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
-	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
-	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
-	  prim.h returns.h scheme.h scode.h sdata.h stack.h types.h
-avltree.o: avltree.c avltree.h cmpintmd-config.h config.h confshared.h
-bignum.o: bignum.c bignmint.h bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+artutl.o: artutl.c bignum.h bits.h bkpt.h cmpint.h cmpintmd-config.h \
 	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
 	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
-	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	  stack.h types.h
+	  obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h \
+	  types.h
+avltree.o: avltree.c avltree.h cmpintmd-config.h config.h confshared.h
+bignum.o: bignum.c bignmint.h bignum.h bits.h bkpt.h cmpint.h \
+	  cmpintmd-config.h cmpintmd.h config.h confshared.h const.h \
+	  critsec.h dstack.h errors.h extern.h fixobj.h gc.h interp.h \
+	  intrpt.h memmag.h object.h obstack.h outf.h prim.h prims.h \
+	  returns.h scheme.h scode.h sdata.h stack.h types.h
 bigprm.o: bigprm.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
@@ -389,12 +399,18 @@ fixnum.o: fixnum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h mul.c object.h obstack.h \
 	  outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h \
 	  types.h
+floenv.o: floenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
+	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
+	  fixobj.h floenv.h gc.h interp.h intrpt.h memmag.h object.h \
+	  obstack.h os.h osscheme.h outf.h prim.h prims.h returns.h scheme.h \
+	  scode.h sdata.h stack.h types.h
 flonum.o: flonum.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
 	  prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 gcloop.o: gcloop.c cmpgc.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
-	  confshared.h fasl.h gc.h gccode.h object.h outf.h types.h
+	  confshared.h fasl.h gc.h gccode.h object.h os.h ostop.h outf.h \
+	  sdata.h types.h
 generic.o: generic.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
@@ -403,7 +419,7 @@ hooks.o: hooks.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h history.h interp.h intrpt.h memmag.h object.h \
 	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	  stack.h types.h winder.h
+	  stack.h types.h
 hunk.o: hunk.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
 	  gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h prim.h \
@@ -417,7 +433,7 @@ interp.o: interp.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h history.h interp.h intrpt.h lookup.h memmag.h \
 	  object.h obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h \
-	  stack.h trap.h types.h winder.h
+	  stack.h trap.h types.h
 intext.o: intext.c cmpintmd-config.h config.h confshared.h dstack.h intext.h
 intprm.o: intprm.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
@@ -440,8 +456,8 @@ lookup.o: lookup.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 memmag.o: memmag.c bignum.h bkpt.h cmpgc.h cmpint.h cmpintmd-config.h \
 	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
 	  errors.h extern.h fasl.h fixobj.h gc.h gccode.h history.h interp.h \
-	  intrpt.h memmag.h object.h obstack.h os.h osscheme.h outf.h prim.h \
-	  prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+	  intrpt.h memmag.h object.h obstack.h os.h osscheme.h ostop.h outf.h \
+	  prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 missing.o: missing.c cmpintmd-config.h config.h confshared.h
 obstack.o: obstack.c cmpintmd-config.h config.h confshared.h obstack.h
 option.o: option.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
@@ -549,22 +565,29 @@ pruxenv.o: pruxenv.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  obstack.h os.h osio.h osscheme.h ostop.h outf.h prim.h prims.h \
 	  returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h \
 	  uxsock.h uxtop.h uxtrap.h
+pruxffi.o: pruxffi.c bignmint.h bignum.h bkpt.h cmpint.h cmpintmd-config.h \
+	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
+	  errors.h extern.h fixobj.h floenv.h gc.h history.h interp.h \
+	  intrpt.h memmag.h object.h obstack.h outf.h prim.h prims.h \
+	  pruxffi.h returns.h scheme.h scode.h sdata.h stack.h types.h
 pruxfs.o: pruxfs.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \
-	  obstack.h os.h osfs.h osscheme.h outf.h prim.h prims.h returns.h \
-	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h
+	  obstack.h os.h osfs.h osio.h osscheme.h outf.h prim.h prims.h \
+	  returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h \
+	  uxio.h
 pruxio.o: pruxio.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \
 	  obstack.h os.h osio.h osproc.h osscheme.h outf.h prim.h prims.h \
 	  returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h \
-	  uxproc.h uxselect.h
+	  uxproc.h
 pruxsock.o: pruxsock.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \
 	  obstack.h os.h osio.h osscheme.h outf.h prim.h prims.h returns.h \
 	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h uxsock.h
+prx11.o: prx11.c
 ptrvec.o: ptrvec.c cmpintmd-config.h config.h confshared.h dstack.h os.h \
 	  outf.h
 purify.o: purify.c bignum.h bkpt.h cmpgc.h cmpint.h cmpintmd-config.h \
@@ -599,10 +622,10 @@ string.o: string.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \
 	  prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
 svm1-interp.o: svm1-interp.c bignum.h bkpt.h cmpint.h cmpintmd-config.h \
-	  cmpintmd.h config.h confshared.h const.h critsec.h dstack.h \
-	  errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
-	  obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h \
-	  svm1-defns.h types.h
+	  cmpintmd.h cmpintmd/svm1.h config.h confshared.h const.h critsec.h \
+	  dstack.h errors.h extern.h fixobj.h gc.h interp.h intrpt.h memmag.h \
+	  object.h obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h \
+	  stack.h svm1-defns.h types.h
 syntax.o: syntax.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h edwin.h errors.h \
 	  extern.h fixobj.h gc.h interp.h intrpt.h memmag.h object.h \
@@ -638,7 +661,7 @@ utils.o: utils.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h history.h interp.h intrpt.h memmag.h object.h \
 	  obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
-	  stack.h syscall.h types.h winder.h
+	  stack.h syscall.h types.h
 ux.o: ux.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
 	  gc.h interp.h intext.h intrpt.h memmag.h object.h obstack.h os.h \
@@ -666,8 +689,7 @@ uxio.o: uxio.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h errors.h extern.h fixobj.h \
 	  gc.h interp.h intext.h intrpt.h memmag.h object.h obstack.h os.h \
 	  osio.h osproc.h osscheme.h outf.h prim.h prims.h returns.h scheme.h \
-	  scode.h sdata.h stack.h syscall.h types.h ux.h uxio.h uxproc.h \
-	  uxselect.h
+	  scode.h sdata.h stack.h syscall.h types.h ux.h uxio.h uxproc.h
 uxproc.o: uxproc.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \
@@ -722,8 +744,7 @@ x11base.o: x11base.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intext.h intrpt.h memmag.h object.h \
 	  obstack.h os.h osio.h osscheme.h outf.h prim.h prims.h returns.h \
-	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h uxselect.h \
-	  x11.h
+	  scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h x11.h
 x11color.o: x11color.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h outf.h \

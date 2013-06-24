@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -334,6 +335,29 @@ extern bool store_trampoline_insns (insn_t *, byte_t);
 /* Give the address of a trampoline block, returns a pointer to the
    start of the trampoline's storage area.  */
 extern SCHEME_OBJECT * trampoline_storage (SCHEME_OBJECT *);
+
+typedef enum
+{
+  TRAMPOLINE_K_RETURN_TO_INTERPRETER,
+  TRAMPOLINE_K_APPLY,
+  TRAMPOLINE_K_ARITY,		/* unused */
+  TRAMPOLINE_K_ENTITY,		/* unused */
+  TRAMPOLINE_K_INTERPRETED,	/* unused */
+  TRAMPOLINE_K_LEXPR_PRIMITIVE,
+  TRAMPOLINE_K_PRIMITIVE,
+  TRAMPOLINE_K_LOOKUP,
+  TRAMPOLINE_K_1_0,
+  TRAMPOLINE_K_2_1,
+  TRAMPOLINE_K_2_0,
+  TRAMPOLINE_K_3_2,
+  TRAMPOLINE_K_3_1,
+  TRAMPOLINE_K_3_0,
+  TRAMPOLINE_K_4_3,
+  TRAMPOLINE_K_4_2,
+  TRAMPOLINE_K_4_1,
+  TRAMPOLINE_K_4_0,
+  TRAMPOLINE_K_REFLECT_TO_INTERFACE = 0x3A
+} trampoline_type_t;
 
 #ifndef UTILITY_RESULT_DEFINED
 #ifdef CMPINT_USE_STRUCS

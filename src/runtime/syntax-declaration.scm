@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -24,6 +25,7 @@ USA.
 |#
 
 ;;;; Declarations
+;;; package: (runtime syntax declaration)
 
 (declare (usual-integrations))
 
@@ -40,7 +42,14 @@ USA.
 (define (map-declaration-identifiers procedure declaration)
   (if (not (pair? declaration))
       (error "Ill-formed declaration:" declaration))
-  (let ((entry (assq (car declaration) known-declarations)))
+  (let* ((declaration
+	  ;++ This is a kludge -- rather than strip syntactic closures,
+	  ;++ it should be aware of the environment.
+	  (if (symbol? (car declaration))
+	      declaration
+	      (cons (strip-syntactic-closures (car declaration))
+		    (cdr declaration))))
+	 (entry (assq (car declaration) known-declarations)))
     (if (and entry (syntax-match? (cadr entry) (cdr declaration)))
 	((cddr entry) declaration procedure)
 	(begin
@@ -50,18 +59,6 @@ USA.
 (define known-declarations '())
 
 (for-each (lambda (keyword)
-	    (define-declaration keyword '()
-	      (lambda (declaration procedure)
-		procedure
-		declaration)))
-	  '(AUTOMAGIC-INTEGRATIONS
-	    NO-AUTOMAGIC-INTEGRATIONS
-	    ETA-SUBSTITUTION
-	    NO-ETA-SUBSTITUTION
-	    OPEN-BLOCK-OPTIMIZATIONS
-	    NO-OPEN-BLOCK-OPTIMIZATIONS))
-
-(for-each (lambda (keyword)
 	    (define-declaration keyword '(* IDENTIFIER)
 	      (lambda (declaration procedure)
 		(cons (car declaration)
@@ -69,10 +66,11 @@ USA.
 	  ;; The names in USUAL-INTEGRATIONS are always global.
 	  '(
 	    USUAL-INTEGRATIONS
+	    IGNORABLE
+	    IGNORE
 	    INTEGRATE
 	    INTEGRATE-OPERATOR
 	    INTEGRATE-SAFELY
-	    IGNORE
 	    TYPE-CHECKS
 	    NO-TYPE-CHECKS
 	    RANGE-CHECKS

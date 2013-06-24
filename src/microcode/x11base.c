@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,7 +29,6 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 #include "ux.h"
-#include "uxselect.h"
 #include "osio.h"
 #include "x11.h"
 #include <X11/Xmd.h>
@@ -331,7 +331,7 @@ any_x_errors_p (Display * display)
 static int
 x_decode_color (Display * display,
 		Colormap color_map,
-		char * color_name,
+		const char * color_name,
 		unsigned long * color_return)
 {
   XColor cdef;
@@ -386,15 +386,15 @@ x_set_mouse_colors (Display * display,
   XRecolorCursor (display, mouse_cursor, (&mouse_color), (&background_color));
 }
 
-char *
+const char *
 x_get_default (Display * display,
 	       const char * resource_name,
 	       const char * resource_class,
 	       const char * property_name,
 	       const char * property_class,
-	       char * sdefault)
+	       const char * sdefault)
 {
-  char * result = (XGetDefault (display, resource_name, property_name));
+  const char * result = (XGetDefault (display, resource_name, property_name));
   if (result != 0)
     return (result);
   result = (XGetDefault (display, resource_class, property_name));
@@ -417,7 +417,7 @@ x_default_color (Display * display,
 		 const char * property_class,
 		 unsigned long default_color)
 {
-  char * color_name
+  const char * color_name
     = (x_get_default (display, resource_name, resource_class,
 		      property_name, property_class, 0));
   unsigned long result;
@@ -450,7 +450,7 @@ x_default_attributes (Display * display,
   if ((attributes->font) == 0)
     error_external_return ();
   {
-    char * s
+    const char * s
       = (x_get_default (display,
 			resource_name, resource_class,
 			"borderWidth", "BorderWidth",
@@ -458,7 +458,7 @@ x_default_attributes (Display * display,
     (attributes->border_width) = ((s == 0) ? 0 : (atoi (s)));
   }
   {
-    char * s
+    const char * s
       = (x_get_default (display,
 			resource_name, resource_class,
 			"internalBorder", "BorderWidth",
@@ -569,7 +569,7 @@ x_make_window (struct xdisplay * xd,
 	       int y_size,
 	       struct drawing_attributes * attributes,
 	       struct xwindow_methods * methods,
-	       unsigned int extra)
+	       unsigned int size)
 {
   GC normal_gc;
   GC reverse_gc;
@@ -591,9 +591,9 @@ x_make_window (struct xdisplay * xd,
      background_pixel);
   XDefineCursor (display, window, mouse_cursor);
   XSelectInput (display, window, 0);
-  xw
-    = (x_malloc (((sizeof (struct xwindow)) - (sizeof (xw->extra)))
-		 + extra));
+  if (size < (sizeof (struct xwindow)))
+    error_external_return ();
+  xw = (x_malloc (size));
   (XW_ALLOCATION_INDEX (xw)) = (allocate_table_index ((&x_window_table), xw));
   (XW_XD (xw)) = xd;
   (XW_WINDOW (xw)) = window;
@@ -893,7 +893,7 @@ xw_process_event (struct xwindow * xw, XEvent * event)
 {
   if (x_debug > 0)
     {
-      char * type_name;
+      const char * type_name;
       fprintf (stderr, "\nX event on 0x%lx: ", ((event->xany) . window));
       switch (event->type)
 	{
@@ -1295,7 +1295,7 @@ x_event_to_object (XEvent * event)
 		  {
 		    result
 		      = (make_event_object (xw, event_type_take_focus, 1));
-		    EVENT_INTEGER
+		    EVENT_ULONG_INTEGER
 		      (result, EVENT_0, (((event->xclient) . data . l) [1]));
 		  }
 	      }
@@ -1461,64 +1461,28 @@ ping_server (struct xdisplay * xd)
    cooperate with this strategy.  */
 
 static SCHEME_OBJECT
-xd_process_events (struct xdisplay * xd, int non_block_p, int use_select_p)
+xd_process_events (struct xdisplay * xd)
 {
   Display * display = (XD_DISPLAY (xd));
   unsigned int events_queued;
-  SCHEME_OBJECT result;
+  XEvent event;
+  SCHEME_OBJECT result = SHARP_F;
   if (x_debug > 1)
     {
-      fprintf (stderr, "Enter xd_process_events (%s)\n",
-	       (non_block_p ? "non-blocking" : "blocking"));
+      fprintf (stderr, "Enter xd_process_events\n");
       fflush (stderr);
     }
-  if (!OS_have_select_p)
-    use_select_p = 0;
   if (XD_CACHED_EVENT_P (xd))
     {
       events_queued = (XEventsQueued (display, QueuedAlready));
+      event = (XD_CACHED_EVENT (xd));
       goto restart;
     }
-  if (use_select_p)
-    events_queued = (XEventsQueued (display, QueuedAlready));
-  else if (non_block_p)
+  ping_server (xd);
+  events_queued = (XEventsQueued (display, QueuedAfterReading));
+  while (0 < events_queued)
     {
-      ping_server (xd);
-      events_queued = (XEventsQueued (display, QueuedAfterReading));
-    }
-  else
-    events_queued = 0;
-  while (1)
-    {
-      XEvent event;
-      if (events_queued > 0)
-	events_queued -= 1;
-      else
-	{
-	  if (use_select_p)
-	    switch (UX_select_input ((ConnectionNumber (display)),
-				     (!non_block_p)))
-	      {
-	      case select_input_none:
-		result = SHARP_F; goto done;
-	      case select_input_other:
-		result = (LONG_TO_FIXNUM (-2)); goto done;
-	      case select_input_process_status:
-		result = (LONG_TO_FIXNUM (-3)); goto done;
-	      case select_input_interrupt:
-		result = (LONG_TO_FIXNUM (-4)); goto done;
-	      case select_input_argument:
-		ping_server (xd);
-		events_queued = (XEventsQueued (display, QueuedAfterReading));
-		continue;
-	      }
-	  else if (non_block_p)
-	    {
-	      result = SHARP_F;
-	      goto done;
-	    }
-	  ping_server (xd);
-	}
+      events_queued -= 1;
       XNextEvent (display, (&event));
       if ((event.type) == KeymapNotify)
 	continue;
@@ -1540,18 +1504,17 @@ xd_process_events (struct xdisplay * xd, int non_block_p, int use_select_p)
       result = (x_event_to_object (&event));
       (XD_CACHED_EVENT_P (xd)) = 0;
       if (result != SHARP_F)
-	goto done;
+	break;
     }
- done:
   if (x_debug > 1)
     {
       fprintf (stderr, "Return from xd_process_events: ");
       if (result == SHARP_F)
 	fprintf (stderr, "#f");
-      else if (FIXNUM_P (result))
-	fprintf (stderr, "%ld", (FIXNUM_TO_LONG (result)));
-      else
+      else if (VECTOR_P (result))
 	fprintf (stderr, "[vector]");
+      else
+	fprintf (stderr, "[other: 0x%lx]", ((unsigned long) result));
       fprintf (stderr, "\n");
       fflush (stderr);
     }
@@ -1571,7 +1534,9 @@ initialize_once (void)
   (x_error_info.code) = 0;
   XSetErrorHandler (x_error_handler);
   XSetIOErrorHandler (x_io_error_handler);
+#ifndef COMPILE_AS_MODULE
   add_reload_cleanup (x_close_all_displays);
+#endif
   initialization_done = 1;
 }
 
@@ -1716,14 +1681,16 @@ DEFINE_PRIMITIVE ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 
   {
     struct xdisplay * xd = (x_display_arg (1));
     SCHEME_OBJECT how = (ARG_REF (2));
-    if (how == SHARP_F)
-      PRIMITIVE_RETURN (xd_process_events (xd, 0, 1));
-    else if (how == (LONG_TO_UNSIGNED_FIXNUM (0)))
-      PRIMITIVE_RETURN (xd_process_events (xd, 1, 1));
-    else if (how == (LONG_TO_UNSIGNED_FIXNUM (1)))
-      PRIMITIVE_RETURN (xd_process_events (xd, 0, 0));
-    else
-      PRIMITIVE_RETURN (xd_process_events (xd, 1, 0));
+    /* Previously, the `how' argument could be #F (block, select), 0
+       (don't block, select), 1 (block, don't select), 2 (don't block,
+       don't select).  Now we never select or block -- it is up to the
+       caller to do that.  #F and 0 have been unused for a long time,
+       and the only caller that used 1 in the system already selected
+       and blocked anyway.  */
+    if ((how != (LONG_TO_UNSIGNED_FIXNUM (1)))
+	&& (how != (LONG_TO_UNSIGNED_FIXNUM (2))))
+      error_bad_range_arg (2);
+    PRIMITIVE_RETURN (xd_process_events (xd));
   }
 }
 
@@ -2434,8 +2401,8 @@ FONT is either a font name or a font ID.")
   }
 }
 
-DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure,
-		  1, 1, "(X-WINDOW)\n\
+DEFINE_PRIMITIVE ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1,
+  "(X-WINDOW)\n\
 Returns the font-structure for the font currently associated with X-WINDOW.")
 {
   XFontStruct *font;
@@ -2738,3 +2705,88 @@ DEFINE_PRIMITIVE ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 6, 6,
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
+
+#ifdef COMPILE_AS_MODULE
+
+/* sed -n -e 's/^DEFINE_PRIMITIVE *(\([^)]*\))$/  declare_primitive (\1);/pg' \
+     -e 's/^DEFINE_PRIMITIVE *(\([^)]*\)$/  declare_primitive (\1 0);/pg' */
+
+void
+dload_initialize_x11base (void)
+{
+  declare_primitive ("X-CHANGE-PROPERTY", Prim_x_change_property, 7, 7, 0);
+  declare_primitive ("X-CLOSE-ALL-DISPLAYS", Prim_x_close_all_displays, 0, 0, 0);
+  declare_primitive ("X-CLOSE-DISPLAY", Prim_x_close_display, 1, 1, 0);
+  declare_primitive ("X-CLOSE-WINDOW", Prim_x_close_window, 1, 1, 0);
+  declare_primitive ("X-CONVERT-SELECTION", Prim_x_convert_selection, 6, 6, 0);
+  declare_primitive ("X-DEBUG", Prim_x_debug, 1, 1, 0);
+  declare_primitive ("X-DELETE-PROPERTY", Prim_x_delete_property, 3, 3, 0);
+  declare_primitive ("X-DISPLAY-DESCRIPTOR", Prim_x_display_descriptor, 1, 1, 0);
+  declare_primitive ("X-DISPLAY-FLUSH", Prim_x_display_flush, 1, 1, 0);
+  declare_primitive ("X-DISPLAY-GET-DEFAULT", Prim_x_display_get_default, 3, 3, 0);
+  declare_primitive ("X-DISPLAY-GET-SIZE", Prim_x_display_get_size, 2, 2, 0);
+  declare_primitive ("X-DISPLAY-PROCESS-EVENTS", Prim_x_display_process_events, 2, 2, 0);
+  declare_primitive ("X-DISPLAY-SYNC", Prim_x_display_sync, 2, 2, 0);
+  declare_primitive ("X-FONT-STRUCTURE", Prim_x_font_structure, 2, 2, 0);
+  declare_primitive ("X-GET-ATOM-NAME", Prim_x_get_atom_name, 2, 2, 0);
+  declare_primitive ("X-GET-SELECTION-OWNER", Prim_x_get_selection_owner, 2, 2, 0);
+  declare_primitive ("X-GET-WINDOW-PROPERTY", Prim_x_get_window_property, 7, 7, 0);
+  declare_primitive ("X-ID->WINDOW", Prim_x_id_to_window, 2, 2, 0);
+  declare_primitive ("X-INTERN-ATOM", Prim_x_intern_atom, 3, 3, 0);
+  declare_primitive ("X-LIST-FONTS", Prim_x_list_fonts, 3, 3, 0);
+  declare_primitive ("X-MAX-REQUEST-SIZE", Prim_x_max_request_size, 1, 1, 0);
+  declare_primitive ("X-OPEN-DISPLAY", Prim_x_open_display, 1, 1, 0);
+  declare_primitive ("X-SELECT-INPUT", Prim_x_select_input, 3, 3, 0);
+  declare_primitive ("X-SEND-SELECTION-NOTIFY", Prim_x_send_selection_notify, 6, 6, 0);
+  declare_primitive ("X-SET-DEFAULT-FONT", Prim_x_set_default_font, 2, 2, 0);
+  declare_primitive ("X-SET-SELECTION-OWNER", Prim_x_set_selection_owner, 4, 4, 0);
+  declare_primitive ("X-WINDOW-ANDC-EVENT-MASK", Prim_x_window_andc_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-BEEP", Prim_x_window_beep, 1, 1, 0);
+  declare_primitive ("X-WINDOW-CLEAR", Prim_x_window_clear, 1, 1, 0);
+  declare_primitive ("X-WINDOW-COORDS-LOCAL->ROOT", Prim_x_window_coords_local2root, 3, 3, 0);
+  declare_primitive ("X-WINDOW-COORDS-ROOT->LOCAL", Prim_x_window_coords_root2local, 3, 3, 0);
+  declare_primitive ("X-WINDOW-DISPLAY", Prim_x_window_display, 1, 1, 0);
+  declare_primitive ("X-WINDOW-EVENT-MASK", Prim_x_window_event_mask, 1, 1, 0);
+  declare_primitive ("X-WINDOW-FLUSH", Prim_x_window_flush, 1, 1, 0);
+  declare_primitive ("X-WINDOW-FONT-STRUCTURE", Prim_x_window_font_structure, 1, 1, 0);
+  declare_primitive ("X-WINDOW-GET-POSITION", Prim_x_window_get_position, 1, 1, 0);
+  declare_primitive ("X-WINDOW-GET-SIZE", Prim_x_window_get_size, 1, 1, 0);
+  declare_primitive ("X-WINDOW-ICONIFY", Prim_x_window_iconify, 1, 1, 0);
+  declare_primitive ("X-WINDOW-ID", Prim_x_window_id, 1, 1, 0);
+  declare_primitive ("X-WINDOW-LOWER", Prim_x_window_lower, 1, 1, 0);
+  declare_primitive ("X-WINDOW-MAP", Prim_x_window_map, 1, 1, 0);
+  declare_primitive ("X-WINDOW-OR-EVENT-MASK", Prim_x_window_or_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-QUERY-POINTER", Prim_x_window_query_pointer, 1, 1, 0);
+  declare_primitive ("X-WINDOW-RAISE", Prim_x_window_raise, 1, 1, 0);
+  declare_primitive ("X-WINDOW-SET-BACKGROUND-COLOR", Prim_x_window_set_background_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-BORDER-COLOR", Prim_x_window_set_border_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-BORDER-WIDTH", Prim_x_window_set_border_width, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-CLASS-HINT", Prim_x_window_set_class_hint, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-CURSOR-COLOR", Prim_x_window_set_cursor_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-EVENT-MASK", Prim_x_window_set_event_mask, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-FONT", Prim_x_window_set_font, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-FOREGROUND-COLOR", Prim_x_window_set_foreground_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-ICON-NAME", Prim_x_window_set_icon_name, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INPUT-FOCUS", Prim_x_window_set_input_focus, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INPUT-HINT", Prim_x_window_set_input_hint, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-INTERNAL-BORDER-WIDTH", Prim_x_window_set_internal_border_width, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-MOUSE-COLOR", Prim_x_window_set_mouse_color, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-MOUSE-SHAPE", Prim_x_window_set_mouse_shape, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-NAME", Prim_x_window_set_name, 2, 2, 0);
+  declare_primitive ("X-WINDOW-SET-POSITION", Prim_x_window_set_position, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-SIZE", Prim_x_window_set_size, 3, 3, 0);
+  declare_primitive ("X-WINDOW-SET-TRANSIENT-FOR-HINT", Prim_x_window_set_transient_for, 2, 2, 0);
+  declare_primitive ("X-WINDOW-UNMAP", Prim_x_window_unmap, 1, 1, 0);
+  declare_primitive ("X-WINDOW-WITHDRAW", Prim_x_window_withdraw, 1, 1, 0);
+  declare_primitive ("X-WINDOW-X-SIZE", Prim_x_window_x_size, 1, 1, 0);
+  declare_primitive ("X-WINDOW-Y-SIZE", Prim_x_window_y_size, 1, 1, 0);
+}
+
+void
+dload_finalize_x11base (void)
+{
+  if (initialization_done)
+    x_close_all_displays ();
+}
+
+#endif /* defined (COMPILE_AS_MODULE) */

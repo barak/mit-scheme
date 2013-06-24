@@ -1,0 +1,757 @@
+@node Procedures, Environments, Associations, Top
+@chapter Procedures
+
+@cindex procedure
+@cindex primitive procedure (defn)
+@cindex built-in procedure
+@findex lambda
+@cindex application hook (defn)
+@cindex hook, application (defn)
+Procedures are created by evaluating @code{lambda} expressions
+(@pxref{Lambda Expressions}); the @code{lambda} may either be explicit
+or may be implicit as in a ``procedure @code{define}''
+(@pxref{Definitions}).  Also there are special built-in procedures,
+called @dfn{primitive procedures}, such as @code{car}; these procedures
+are not written in Scheme but in the language used to implement the
+Scheme system.  MIT/GNU Scheme also provides @dfn{application hooks}, which
+support the construction of data structures that act like procedures.
+
+@cindex procedure, type
+@cindex procedure, primitive
+@cindex procedure, interpreted
+@cindex procedure, compiled
+@cindex type, of procedure
+@cindex primitive, procedure type
+@cindex interpreted, procedure type
+@cindex compiled, procedure type
+@cindex external representation, for procedure
+In MIT/GNU Scheme, the written representation of a procedure tells you
+the type of the procedure (compiled, interpreted, or primitive):
+
+@example
+@group
+pp
+     @result{}  #[compiled-procedure 56 ("pp" #x2) #x10 #x307578]
+(lambda (x) x)
+     @result{}  #[compound-procedure 57]
+(define (foo x) x)
+foo
+     @result{}  #[compound-procedure 58 foo]
+car
+     @result{}  #[primitive-procedure car]
+(call-with-current-continuation (lambda (x) x))
+     @result{}  #[continuation 59]
+@end group
+@end example
+
+@noindent
+@cindex compound procedure
+@cindex procedure, compound
+Note that interpreted procedures are called ``compound'' procedures
+(strictly speaking, compiled procedures are also compound procedures).
+The written representation makes this distinction for historical
+reasons, and may eventually change.
+
+@menu
+* Procedure Operations::        
+* Arity::                       
+* Primitive Procedures::        
+* Continuations::               
+* Application Hooks::           
+* Generic Dispatch::            
+@end menu
+
+@node Procedure Operations, Arity, Procedures, Procedures
+@section Procedure Operations
+
+@deffn procedure apply procedure object object @dots{}
+@cindex application, of procedure
+Calls @var{procedure} with the elements of the following list as
+arguments:
+
+@example
+(cons* @var{object} @var{object} @dots{})
+@end example
+
+@noindent
+The initial @var{object}s may be any objects, but the last @var{object}
+(there must be at least one @var{object}) must be a list.
+
+@example
+@group
+(apply + (list 3 4 5 6))                @result{}  18
+(apply + 3 4 '(5 6))                    @result{}  18
+
+(define compose
+  (lambda (f g)
+    (lambda args
+      (f (apply g args)))))
+((compose sqrt *) 12 75)                @result{}  30
+@end group
+@end example
+@end deffn
+
+@deffn procedure procedure? object
+@cindex type predicate, for procedure
+Returns @code{#t} if @var{object} is a procedure; otherwise returns
+@code{#f}.  If @code{#t} is returned, exactly one of the following
+predicates is satisfied by @var{object}: @code{compiled-procedure?},
+@code{compound-procedure?}, or @code{primitive-procedure?}.
+@end deffn
+
+@deffn procedure compiled-procedure? object
+@cindex type predicate, for compiled procedure
+Returns @code{#t} if @var{object} is a compiled procedure; otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure compound-procedure? object
+@cindex type predicate, for compound procedure
+Returns @code{#t} if @var{object} is a compound (i.e.@: interpreted)
+procedure; otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure primitive-procedure? object
+@cindex type predicate, for primitive procedure
+Returns @code{#t} if @var{object} is a primitive procedure; otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure procedure-environment procedure
+Returns the closing environment of @var{procedure}.  Signals an error if
+@var{procedure} is a primitive procedure, or if @var{procedure} is a
+compiled procedure for which the debugging information is unavailable.
+@end deffn
+
+@node Arity, Primitive Procedures, Procedure Operations, Procedures
+@section Arity
+
+@cindex arity
+Each procedure has an @dfn{arity}, which is the minimum and
+(optionally) maximum number of arguments that it will accept.  MIT/GNU
+Scheme provides an abstraction that represents arity, and tests for
+the apparent arity of a procedure.
+
+Arity objects come in two forms: the simple form, an exact
+non-negative integer, represents a fixed number of arguments.  The
+general form is a pair whose @code{car} represents the minimum number
+of arguments and whose @code{cdr} is the maximum number of arguments.
+
+@deffn procedure make-procedure-arity min [max [simple-ok?]]
+Returns an arity object made from @var{min} and @var{max}.  @var{Min}
+must be an exact non-negative integer.  @var{Max} must be an exact
+non-negative integer at least as large as @var{min}.  Alternatively,
+@var{max} may be omitted or given as @samp{#f}, which represents an
+arity with no upper bound.
+
+If @var{simple-ok?} is true, the returned arity is in the simple form
+(an exact non-negative integer) when possible, and otherwise is always
+in the general form.  @var{Simple-ok?} defaults to @samp{#f}.
+@end deffn
+
+@deffn procedure procedure-arity? object
+Returns @samp{#t} if @var{object} is an arity object, and @samp{#f}
+otherwise.
+@end deffn
+
+@deffn procedure guarantee-procedure-arity object caller
+Signals an error if @var{object} is not an arity object.  @var{Caller}
+is a symbol that is printed as part of the error message and is
+intended to be the name of the procedure where the error occurs.
+@end deffn
+
+@deffn procedure procedure-arity-min arity
+@deffnx procedure procedure-arity-max arity
+Return the lower and upper bounds of @var{arity}, respectively.
+@end deffn
+
+@findex condition-type:wrong-number-of-arguments
+The following procedures test for the apparent arity of a procedure.
+The results of the test may be less restrictive than the effect of
+calling the procedure.  In other words, these procedures may indicate
+that the procedure will accept a given number of arguments, but if you
+call the procedure it may signal a
+@code{condition-type:wrong-number-of-arguments} error.  For example,
+here is a procedure that appears to accept any number of arguments,
+but when called will signal an error if the number of arguments is not
+one:
+
+@example
+(lambda arguments (apply car arguments))
+@end example
+
+@deffn procedure procedure-arity procedure
+Returns the arity that @var{procedure} accepts.  The result may be in
+either simple or general form.
+
+@example
+@group
+(procedure-arity (lambda () 3))         @result{}  (0 . 0)
+(procedure-arity (lambda (x) x))        @result{}  (1 . 1)
+(procedure-arity car)                   @result{}  (1 . 1)
+(procedure-arity (lambda x x))          @result{}  (0 . #f)
+(procedure-arity (lambda (x . y) x))    @result{}  (1 . #f)
+(procedure-arity (lambda (x #!optional y) x))
+                                        @result{}  (1 . 2)
+@end group
+@end example
+@end deffn
+
+@deffn procedure procedure-arity-valid? procedure arity
+Returns @samp{#t} if @var{procedure} accepts @var{arity}, and
+@samp{#f} otherwise.
+@end deffn
+
+@deffn procedure procedure-of-arity? object arity
+Returns @samp{#t} if @var{object} is a procedure that accepts
+@var{arity}, and @samp{#f} otherwise.  Equivalent to:
+
+@example
+@group
+(and (procedure? @var{object})
+     (procedure-arity-valid? @var{object} @var{arity}))
+@end group
+@end example
+@end deffn
+
+@deffn procedure guarantee-procedure-of-arity object arity caller
+Signals an error if @var{object} is not a procedure accepting
+@var{arity}.  @var{Caller} is a symbol that is printed as part of the
+error message and is intended to be the name of the procedure where
+the error occurs.
+@end deffn
+
+@deffn procedure thunk? object
+Returns @samp{#t} if @var{object} is a procedure that accepts
+zero arguments, and @samp{#f} otherwise.  Equivalent to:
+
+@example
+@group
+(procedure-of-arity? @var{object} 0)
+@end group
+@end example
+@end deffn
+
+@deffn procedure guarantee-thunk object caller
+Signals an error if @var{object} is not a procedure accepting zero
+arguments.  @var{Caller} is a symbol that is printed as part of the
+error message and is intended to be the name of the procedure where
+the error occurs.
+@end deffn
+
+
+@node Primitive Procedures, Continuations, Arity, Procedures
+@section Primitive Procedures
+
+@deffn procedure make-primitive-procedure name [arity]
+@var{Name} must be a symbol.  @var{Arity} must be an exact non-negative
+integer, @code{-1}, @code{#f}, or @code{#t}; if not supplied it defaults
+to @code{#f}.  Returns the primitive procedure called @var{name}.  May
+perform further actions depending on @var{arity}:
+
+@table @asis
+@item @code{#f}
+If the primitive procedure is not implemented, signals an error.
+
+@item @code{#t}
+If the primitive procedure is not implemented, returns @code{#f}.
+
+@item integer
+If the primitive procedure is implemented, signals an error if its arity
+is not equal to @var{arity}.  If the primitive procedure is not
+implemented, returns an unimplemented primitive procedure object that
+accepts @var{arity} arguments.  An @var{arity} of @code{-1} means it
+accepts any number of arguments.
+@end table
+@end deffn
+
+@deffn procedure primitive-procedure-name primitive-procedure
+Returns the name of @var{primitive-procedure}, a symbol.
+
+@example
+(primitive-procedure-name car)          @result{}  car
+@end example
+@end deffn
+
+@deffn procedure implemented-primitive-procedure? primitive-procedure
+Returns @code{#t} if @var{primitive-procedure} is implemented; otherwise
+returns @code{#f}.  Useful because the code that implements a particular
+primitive procedure is not necessarily linked into the executable Scheme
+program.
+@end deffn
+
+@node Continuations, Application Hooks, Primitive Procedures, Procedures
+@section Continuations
+
+@deffn procedure call-with-current-continuation procedure
+@cindex continuation
+@cindex construction, of continuation
+@cindex procedure, escape (defn)
+@cindex escape procedure (defn)
+@var{Procedure} must be a procedure of one argument.  Packages up the
+current continuation (see below) as an @dfn{escape procedure} and passes
+it as an argument to @var{procedure}.  The escape procedure is a Scheme
+procedure of one argument that, if it is later passed a value, will
+ignore whatever continuation is in effect at that later time and will
+give the value instead to the continuation that was in effect when the
+escape procedure was created.  The escape procedure created by
+@code{call-with-current-continuation} has unlimited extent just like any
+other procedure in Scheme.  It may be stored in variables or data
+structures and may be called as many times as desired.
+
+The following examples show only the most common uses of this procedure.
+If all real programs were as simple as these examples, there would be no
+need for a procedure with the power of
+@code{call-with-current-continuation}.
+
+@example
+@group
+(call-with-current-continuation
+  (lambda (exit)
+    (for-each (lambda (x)
+                (if (negative? x)
+                    (exit x)))
+              '(54 0 37 -3 245 19))
+    #t))                                @result{}  -3
+@end group
+
+@group
+(define list-length
+  (lambda (obj)
+    (call-with-current-continuation
+      (lambda (return)
+        (letrec ((r
+                  (lambda (obj)
+                    (cond ((null? obj) 0)
+                          ((pair? obj) (+ (r (cdr obj)) 1))
+                          (else (return #f))))))
+          (r obj))))))
+(list-length '(1 2 3 4))                @result{}  4
+(list-length '(a b . c))                @result{}  #f
+@end group
+@end example
+
+@cindex non-local exit
+@cindex exit, non-local
+A common use of @code{call-with-current-continuation} is for structured,
+non-local exits from loops or procedure bodies, but in fact
+@code{call-with-current-continuation} is quite useful for implementing a
+wide variety of advanced control structures.
+
+Whenever a Scheme expression is evaluated a continuation exists that
+wants the result of the expression.  The continuation represents an
+entire (default) future for the computation.  If the expression is
+evaluated at top level, for example, the continuation will take the
+result, print it on the screen, prompt for the next input, evaluate it,
+and so on forever.  Most of the time the continuation includes actions
+specified by user code, as in a continuation that will take the result,
+multiply it by the value stored in a local variable, add seven, and give
+the answer to the top-level continuation to be printed.  Normally these
+ubiquitous continuations are hidden behind the scenes and programmers
+don't think much about them.  On the rare occasions that you may need to
+deal explicitly with continuations,
+@code{call-with-current-continuation} lets you do so by creating a
+procedure that acts just like the current continuation.
+@end deffn
+
+@deffn procedure continuation? object
+@cindex type predicate, for continuation
+Returns @code{#t} if @var{object} is a continuation; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure within-continuation continuation thunk
+@cindex continuation, alternate invocation
+@cindex escape procedure, alternate invocation
+@var{Thunk} must be a procedure of no arguments.  Conceptually,@*
+@code{within-continuation} invokes @var{continuation} on the result of
+invoking @var{thunk}, but @var{thunk} is executed in the dynamic context
+of @var{continuation}.  In other words, the ``current'' continuation is
+abandoned before @var{thunk} is invoked.
+@end deffn
+
+@deffn procedure dynamic-wind before thunk after
+Calls @var{thunk} without arguments, returning the result(s) of this
+call.  @var{Before} and @var{after} are called, also without arguments,
+as required by the following rules (note that in the absence of calls to
+continuations captured using @code{call-with-current-continuation} the
+three arguments are called once each, in order).  @var{Before} is called
+whenever execution enters the dynamic extent of the call to @var{thunk}
+and @var{after} is called whenever it exits that dynamic extent.  The
+dynamic extent of a procedure call is the period between when the call
+is initiated and when it returns.  In Scheme, because of
+@code{call-with-current-continuation}, the dynamic extent of a call may
+not be a single, connected time period.  It is defined as follows:
+
+@itemize @bullet
+@item
+The dynamic extent is entered when execution of the body of the called
+procedure begins.
+
+@item
+The dynamic extent is also entered when execution is not within the
+dynamic extent and a continuation is invoked that was captured (using
+@code{call-with-current-continuation}) during the dynamic extent.
+
+@item
+It is exited when the called procedure returns.
+
+@item
+It is also exited when execution is within the dynamic extent and a
+continuation is invoked that was captured while not within the dynamic
+extent.
+@end itemize
+
+If a second call to @code{dynamic-wind} occurs within the dynamic extent
+of the call to @var{thunk} and then a continuation is invoked in such a
+way that the @var{after}s from these two invocations of
+@code{dynamic-wind} are both to be called, then the @var{after}
+associated with the second (inner) call to @code{dynamic-wind} is called
+first.
+
+If a second call to @code{dynamic-wind} occurs within the dynamic extent
+of the call to @var{thunk} and then a continuation is invoked in such a
+way that the @var{before}s from these two invocations of
+@code{dynamic-wind} are both to be called, then the @var{before}
+associated with the first (outer) call to @code{dynamic-wind} is called
+first.
+
+If invoking a continuation requires calling the @var{before} from one
+call to @code{dynamic-wind} and the @var{after} from another, then the
+@var{after} is called first.
+
+The effect of using a captured continuation to enter or exit the dynamic
+extent of a call to @var{before} or @var{after} is undefined.
+
+@example
+@group
+(let ((path '())
+      (c #f))
+  (let ((add (lambda (s)
+               (set! path (cons s path)))))
+    (dynamic-wind
+      (lambda () (add 'connect))
+      (lambda ()
+        (add (call-with-current-continuation
+               (lambda (c0)
+                 (set! c c0)
+                 'talk1))))
+      (lambda () (add 'disconnect)))
+    (if (< (length path) 4)
+        (c 'talk2)
+        (reverse path))))
+
+@result{} (connect talk1 disconnect connect talk2 disconnect)
+@end group
+@end example
+@end deffn
+
+The following two procedures support multiple values.
+
+@deffn procedure call-with-values thunk procedure
+@cindex multiple values, from procedure
+@cindex values, multiple
+@var{Thunk} must be a procedure of no arguments, and @var{procedure}
+must be a procedure.  @var{Thunk} is invoked with a continuation that
+expects to receive multiple values; specifically, the continuation
+expects to receive the same number of values that @var{procedure}
+accepts as arguments.  @var{Thunk} must return multiple values using the
+@code{values} procedure.  Then @var{procedure} is called with the
+multiple values as its arguments.  The result yielded by @var{procedure}
+is returned as the result of @code{call-with-values}.
+@end deffn
+
+@deffn procedure values object @dots{}
+Returns multiple values.  The continuation in effect when this procedure
+is called must be a multiple-value continuation that was created by
+@code{call-with-values}.  Furthermore it must accept as many values as
+there are @var{object}s.
+@end deffn
+
+@node Application Hooks, Generic Dispatch, Continuations, Procedures
+@section Application Hooks
+
+@cindex application hook (defn)
+@cindex procedure, of application hook
+@cindex extra object, of application hook
+@dfn{Application hooks} are objects that can be applied like procedures.
+Each application hook has two parts: a @dfn{procedure} that specifies
+what to do when the application hook is applied, and an arbitrary
+object, called @dfn{extra}.  Often the procedure uses the extra object
+to determine what to do.
+
+@cindex apply hook (defn)
+@cindex entity (defn)
+There are two kinds of application hooks, which differ in what arguments
+are passed to the procedure.  When an @dfn{apply hook} is applied, the
+procedure is passed exactly the same arguments that were passed to the
+apply hook.  When an @dfn{entity} is applied, the entity itself is
+passed as the first argument, followed by the other arguments that were
+passed to the entity.
+
+Both apply hooks and entities satisfy the predicate @code{procedure?}.
+Each satisfies either @code{compiled-procedure?},
+@code{compound-procedure?}, or @code{primitive-procedure?}, depending on
+its procedure component.  An apply hook is considered to accept the same
+number of arguments as its procedure, while an entity is considered to
+accept one less argument than its procedure.
+
+@deffn procedure make-apply-hook procedure object
+Returns a newly allocated apply hook with a procedure component of
+@var{procedure} and an extra component of @var{object}.
+@end deffn
+
+@deffn procedure apply-hook? object
+@cindex type predicate, for apply hook
+Returns @code{#t} if @var{object} is an apply hook; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure apply-hook-procedure apply-hook
+Returns the procedure component of @var{apply-hook}.
+@end deffn
+
+@deffn procedure set-apply-hook-procedure! apply-hook procedure
+Changes the procedure component of @var{apply-hook} to be
+@var{procedure}.  Returns an unspecified value.
+@end deffn
+
+@deffn procedure apply-hook-extra apply-hook
+Returns the extra component of @var{apply-hook}.
+@end deffn
+
+@deffn procedure set-apply-hook-extra! apply-hook object
+Changes the extra component of @var{apply-hook} to be @var{object}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure make-entity procedure object
+Returns a newly allocated entity with a procedure component of
+@var{procedure} and an extra component of @var{object}.
+@end deffn
+
+@deffn procedure entity? object
+@cindex type predicate, for entity
+Returns @code{#t} if @var{object} is an entity; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure entity-procedure entity
+Returns the procedure component of @var{entity}.
+@end deffn
+
+@deffn procedure set-entity-procedure! entity procedure
+Changes the procedure component of @var{entity} to be @var{procedure}.
+Returns an unspecified value.
+@end deffn
+
+@deffn procedure entity-extra entity
+Returns the extra component of @var{entity}.
+@end deffn
+
+@deffn procedure set-entity-extra! entity object
+Changes the extra component of @var{entity} to be @var{object}.  Returns
+an unspecified value.
+@end deffn
+
+@node Generic Dispatch,  , Application Hooks, Procedures
+@section Generic Dispatch
+
+@cindex generic procedure
+@cindex procedure, generic
+MIT/GNU Scheme provides a generic dispatch mechanism that can choose
+an action to take based on the types of a set of objects.  Performance
+is guaranteed by the use of a hash-based method cache.
+
+This is @emph{not} an object-oriented programming system, although it
+can provide the basis for such systems.  The difference is that the
+generic dispatch doesn't have any model for the relationship between
+object types.  Instead, there is a flat space of types and methods are
+selected by procedural examination of the given operand types.
+
+@menu
+* Generic Procedures::          
+* Method Generators::           
+* Dispatch Tags::               
+@end menu
+
+@node Generic Procedures, Method Generators, Generic Dispatch, Generic Dispatch
+@subsection Generic Procedures
+
+@cindex method, of generic procedure
+The core of the dispatch mechanism is the @dfn{generic procedure}.
+This is a procedure that is called in the usual way, but which
+dispatches to a particular @dfn{method} based on the types of its
+arguments.
+
+@deffn procedure make-generic-procedure arity [name]
+Returns a new generic procedure accepting @var{arity}.  @var{Arity}
+must specify a minimum of one argument.
+
+@var{Name} is used for debugging: it is a symbol that has no role in
+the semantics of the generic procedure.  @var{Name} may be @code{#f}
+to indicate that the generic procedure is anonymous.  If @var{name} is
+not specified, it defaults to @samp{#f}.
+
+Examples:
+
+@lisp
+(define foo-bar (make-generic-procedure 2 'bar))
+
+(define foo-baz (make-generic-procedure '(1 . 2) 'foo-baz))
+
+(define foo-mum (make-generic-procedure '(1 . #f)))
+@end lisp
+@end deffn
+
+@deffn procedure generic-procedure? object
+Returns @samp{#t} if @var{object} is a generic procedure,
+and @samp{#f} otherwise.
+@end deffn
+
+@deffn procedure guarantee-generic-procedure object caller
+Signals an error if @var{object} is not a generic procedure.
+@var{Caller} is a symbol that is printed as part of the error message
+and is intended to be the name of the procedure where the error
+occurs.
+@end deffn
+
+@deffn procedure generic-procedure-arity generic
+Returns the arity of @var{generic}, as given to
+@code{make-generic-procedure}.
+@end deffn
+
+@deffn procedure generic-procedure-name generic
+Returns the name of @var{generic}, as given to
+@code{make-generic-procedure}.
+@end deffn
+
+@deffn procedure generic-procedure-applicable? generic operands
+Returns @samp{#t} if @var{generic} is applicable to @var{operands}
+(which must be a list of objects), and @samp{#f} otherwise.
+@end deffn
+
+@deffn {condition type} condition-type:no-applicable-methods operator operands
+This condition type is signalled when a generic procedure is applied
+and there are no applicable methods for the given operands.  The condition's
+@var{operator} field contains the generic procedure and the
+@var{operands} field contains the given operands.
+@end deffn
+
+@deffn {condition type} condition-type:extra-applicable-methods operator operands
+This condition type is signalled when a generic procedure is applied
+and there are more than one applicable methods for the given operands.
+The condition's @var{operator} field contains the generic procedure
+and the @var{operands} field contains the given operands.
+@end deffn
+
+@node Method Generators, Dispatch Tags, Generic Procedures, Generic Dispatch
+@subsection Method Generators
+
+Generic-procedure methods are dynamically chosen by @dfn{generators},
+which are procedures of two arguments.  Each generic procedure has a
+set of associated generators.  Whenever the procedure is applied, each
+associated generator is applied to two arguments: the generic
+procedure and a list of the dispatch tags for the operands.  The
+return value from the generator is either a @dfn{method} (a procedure
+accepting that number of arguments) or @samp{#f}.  In order for the
+application to succeed, exactly one of the generic procedure's
+generators must return a method.
+
+Once a method has been chosen, it is cached.  A subsequent call to the
+generic procedure with operands of the same types will reuse that
+cached method.  Consequently, it is important that generators be
+@dfn{functional}: they must always compute the same value from the
+same arguments.
+
+@deffn procedure add-generic-procedure-generator generic generator
+Adds @var{generator} to @var{generic}'s set of generators and returns
+an unspecified value.
+@end deffn
+
+@deffn procedure remove-generic-procedure-generator generic generator
+Removes @var{generator} from @var{generic}'s set of generators and
+returns an unspecified value.
+@end deffn
+
+@deffn procedure remove-generic-procedure-generators generic tags
+Calls each of @var{generic}'s set of generators on @var{tags} and
+removes each generator that returns a method.  Returns an unspecified
+value.
+@end deffn
+
+@deffn procedure generic-procedure-generator-list generic
+Returns a list of @var{generic}'s generators.
+@end deffn
+
+As a convenience, each generic procedure can have a @dfn{default
+generator}, which is called only when all of the other generators have
+returned @samp{#f}.  When created, a generic procedure has no default
+generator.
+
+@deffn procedure generic-procedure-default-generator generic
+Returns @var{generic}'s default generator.
+@end deffn
+
+@deffn procedure set-generic-procedure-default-generator! generic generator
+Sets @var{generic}'s default generator to @var{generator} and returns
+an unspecified value.
+@end deffn
+
+@node Dispatch Tags,  , Method Generators, Generic Dispatch
+@subsection Dispatch Tags
+
+@cindex dispatch tag
+@cindex tag, dispatch
+A dispatch tag is an object that represents the ``type'' of an
+object, for the purposes of generic dispatch.  Every object has an
+associated dispatch tag.  Built-in objects like pairs or booleans have
+predefined tags, while dynamically typed objects like records have
+tags that are created as needed.
+
+@deffn procedure dispatch-tag object
+Returns the dispatch tag for @var{object}.
+
+@example
+@group
+(dispatch-tag #f)       @result{} #[dispatch-tag 17 (boolean)]
+(dispatch-tag #t)       @result{} #[dispatch-tag 17 (boolean)]
+(dispatch-tag (list))   @result{} #[dispatch-tag 18 (null)]
+(dispatch-tag (list 3)) @result{} #[dispatch-tag 19 (pair list)]
+@end group
+@end example
+@end deffn
+
+@deffn procedure built-in-dispatch-tag name
+Returns the built-in dispatch tag called @var{name}.  @var{Name} must
+be a symbol that is the name of a known built-in dispatch tag.
+
+@example
+@group
+(built-in-dispatch-tag 'boolean) @result{} #[dispatch-tag 17 (boolean)]
+(built-in-dispatch-tag 'null)    @result{} #[dispatch-tag 18 (null)]
+(built-in-dispatch-tag 'pair)    @result{} #[dispatch-tag 19 (pair list)]
+(built-in-dispatch-tag 'list)    @result{} #[dispatch-tag 19 (pair list)]
+@end group
+@end example
+@end deffn
+
+@deffn procedure built-in-dispatch-tags
+Returns a list of the built-in dispatch tags.
+@end deffn
+
+@deffn procedure record-type-dispatch-tag record-type
+Returns the dispatch tag associate with @var{record-type}.  See
+@xref{Records}, for more information about record types.
+@end deffn
+
+@deffn procedure dispatch-tag? object
+Returns @samp{#t} if @var{object} is a dispatch tag, and @samp{#f}
+otherwise.
+@end deffn
+
+@deffn procedure guarantee-dispatch-tag object caller
+Signals an error if @var{object} is not a dispatch tag.  @var{Caller}
+is a symbol that is printed as part of the error message and is
+intended to be the name of the procedure where the error occurs.
+@end deffn

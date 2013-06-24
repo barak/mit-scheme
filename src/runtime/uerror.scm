@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -41,6 +42,7 @@ USA.
 (define condition-type:out-of-file-handles)
 (define condition-type:primitive-io-error)
 (define condition-type:primitive-procedure-error)
+(define condition-type:process-terminated-error)
 (define condition-type:system-call-error)
 (define condition-type:unimplemented-primitive)
 (define condition-type:unimplemented-primitive-for-os)
@@ -318,26 +320,32 @@ USA.
 	  (string-replace (symbol-name error-type) #\- #\space)
 	  (string-append "error " (write-to-string error-type)))))
 
+;++ Whattakludge!
+
 (define (normalize-trap-code-name name)
-  (let loop ((prefixes '("floating-point " "integer ")))
-    (if (not (null? prefixes))
-	(if (string-prefix-ci? (car prefixes) name)
-	    (set! name (string-tail name (string-length (car prefixes))))
-	    (loop (cdr prefixes)))))
-  (let loop ((suffixes '(" trap" " fault")))
-    (if (not (null? suffixes))
-	(if (string-suffix-ci? (car suffixes) name)
-	    (set! name
-		  (string-head name
-			       (- (string-length name)
-				  (string-length (car suffixes)))))
-	    (loop (cdr suffixes)))))
-  (cond ((string-ci=? "underflow" name) 'UNDERFLOW)
-	((string-ci=? "overflow" name) 'OVERFLOW)
-	((or (string-ci=? "divide by 0" name)
-	     (string-ci=? "divide by zero" name))
+  (cond ((or (string-prefix-ci? "integer divide by 0" name)
+	     (string-prefix-ci? "integer divide by zero" name))
+	 'INTEGER-DIVIDE-BY-ZERO)
+	((or (string-prefix-ci? "floating-point divide by 0" name)
+	     (string-prefix-ci? "floating-point divide by zero" name))
+	 'FLOATING-POINT-DIVIDE-BY-ZERO)
+	((or (string-prefix-ci? "divide by 0" name)
+	     (string-prefix-ci? "divide by zero" name))
 	 'DIVIDE-BY-ZERO)
-	(else false)))
+	((or (string-prefix-ci? "inexact result" name)
+	     (string-prefix-ci? "inexact operation" name)
+	     (string-prefix-ci? "floating-point inexact result" name))
+	 'INEXACT-RESULT)
+	((or (string-prefix-ci? "invalid operation" name)
+	     (string-prefix-ci? "invalid floating-point operation" name))
+	 'INVALID-OPERATION)
+	((or (string-prefix-ci? "overflow" name)
+	     (string-prefix-ci? "floating-point overflow" name))
+	 'OVERFLOW)
+	((or (string-prefix-ci? "underflow" name)
+	     (string-prefix-ci? "floating-point underflow" name))
+	 'UNDERFLOW)
+	(else #f)))
 
 (define (file-primitive-description primitive)
   (cond ((or (eq? primitive (ucode-primitive file-exists? 1))
@@ -724,6 +732,21 @@ USA.
 		  (signal-file-operation continuation operator operands 0
 					 "open" "file" "channel table full")
 		  (signal continuation operator operands))))))))
+
+;++ This should identify the process, but that requires reverse lookup
+;++ in the subprocess GC finalizer, and I'm lazy.
+
+(set! condition-type:process-terminated-error
+  (make-condition-type 'PROCESS-TERMINATED
+      condition-type:primitive-procedure-error
+      '()
+    (lambda (condition port)
+      (write-string "The primitive " port)
+      (write-operator (access-condition condition 'OPERATOR) port)
+      (write-string " was given a process that has terminated."))))
+
+(define-primitive-error 'PROCESS-TERMINATED
+  condition-type:process-terminated-error)
 
 (set! condition-type:system-call-error
   (make-condition-type 'SYSTEM-CALL-ERROR
@@ -910,11 +933,20 @@ USA.
     (lambda (continuation)
       (let ((frame (continuation/first-subproblem continuation)))
 	(if (apply-frame? frame)
-	    (let ((operator (apply-frame/operator frame)))
-	      (signal continuation
-		      operator
-		      (procedure-arity operator)
-		      (apply-frame/operands frame))))))))
+	    ;; This is a heuristic kludge.  It can break down:
+	    ;;   (let ((p (lambda (x y) 0)))
+	    ;;     (p (make-entity p 0)))
+	    ;; But without the kludge, (min) gives a confusing error,
+	    ;; which is probably more common than this pathological
+	    ;; case.
+	    (let loop ((operator (apply-frame/operator frame))
+		       (operands (apply-frame/operands frame)))
+	      (if (and (pair? operands)
+		       (entity? (car operands))
+		       (eq? operator (entity-procedure (car operands))))
+		  (loop (car operands) (cdr operands))
+		  (let ((arity (procedure-arity operator)))
+		    (signal continuation operator arity operands)))))))))
 
 (define-error-handler 'FLOATING-OVERFLOW
   (let ((signal
@@ -969,10 +1001,14 @@ USA.
     "User microcode reset"))
 
 (set! hook/hardware-trap
-      (let ((signal-user-microcode-reset
-	     (condition-signaller condition-type:user-microcode-reset '()))
+      (let ((signal-arithmetic-error
+	     (condition-signaller condition-type:arithmetic-error
+				  '(OPERATOR OPERANDS)))
 	    (signal-divide-by-zero
 	     (condition-signaller condition-type:divide-by-zero
+				  '(OPERATOR OPERANDS)))
+	    (signal-floating-point-divide-by-zero
+	     (condition-signaller condition-type:floating-point-divide-by-zero
 				  '(OPERATOR OPERANDS)))
 	    (signal-floating-point-overflow
 	     (condition-signaller condition-type:floating-point-overflow
@@ -980,11 +1016,20 @@ USA.
 	    (signal-floating-point-underflow
 	     (condition-signaller condition-type:floating-point-underflow
 				  '(OPERATOR OPERANDS)))
-	    (signal-arithmetic-error
-	     (condition-signaller condition-type:arithmetic-error
-				  '(OPERATOR OPERANDS)))
 	    (signal-hardware-trap
-	     (condition-signaller condition-type:hardware-trap '(NAME CODE))))
+	     (condition-signaller condition-type:hardware-trap '(NAME CODE)))
+	    (signal-inexact-floating-point-result
+	     (condition-signaller condition-type:inexact-floating-point-result
+				  '(OPERATOR OPERANDS)))
+	    (signal-integer-divide-by-zero
+	     (condition-signaller condition-type:integer-divide-by-zero
+				  '(OPERATOR OPERANDS)))
+	    (signal-invalid-floating-point-operation
+	     (condition-signaller
+	      condition-type:invalid-floating-point-operation
+	      '(OPERATOR OPERANDS)))
+	    (signal-user-microcode-reset
+	     (condition-signaller condition-type:user-microcode-reset '())))
 	(lambda (name)
 	  (call-with-current-continuation
 	   (lambda (k)
@@ -997,12 +1042,15 @@ USA.
 			  ((or (string=? "XCPT_FLOAT_OVERFLOW" name)
 			       (string=? "XCPT_INTEGER_OVERFLOW" name))
 			   (signal-floating-point-overflow k #f '()))
-			  ((or (string=? "XCPT_FLOAT_DIVIDE_BY_ZERO" name)
-			       (string=? "XCPT_INTEGER_DIVIDE_BY_ZERO" name))
-			   (signal-divide-by-zero k #f '()))
+			  ((string=? "XCPT_FLOAT_DIVIDE_BY_ZERO" name)
+			   (signal-floating-point-divide-by-zero k #f '()))
+			  ((string=? "XCPT_INTEGER_DIVIDE_BY_ZERO" name)
+			   (signal-integer-divide-by-zero k #f '()))
+			  ((string=? "XCPT_FLOAT_INEXACT_RESULT" name)
+			   (signal-inexact-floating-point-result k #f '()))
+			  ((string=? "XCPT_FLOAT_INVALID_OPERATION" name)
+			   (signal-invalid-floating-point-operation k #f '()))
 			  ((or (string=? "XCPT_FLOAT_DENORMAL_OPERAND" name)
-			       (string=? "XCPT_FLOAT_INEXACT_RESULT" name)
-			       (string=? "XCPT_FLOAT_INVALID_OPERATION" name)
 			       (string=? "XCPT_FLOAT_STACK_CHECK" name)
 			       (string=? "XCPT_B1NPX_ERRATA_02" name))
 			   (signal-arithmetic-error k #f '()))
@@ -1016,14 +1064,20 @@ USA.
 		      (if (string=? "SIGFPE" name)
 			  ((case (and (string? code)
 				      (normalize-trap-code-name code))
-			     ((UNDERFLOW) signal-floating-point-underflow)
-			     ((OVERFLOW) signal-floating-point-overflow)
 			     ((DIVIDE-BY-ZERO) signal-divide-by-zero)
+			     ((FLOATING-POINT-DIVIDE-BY-ZERO)
+			      signal-floating-point-divide-by-zero)
+			     ((INEXACT-RESULT)
+			      signal-inexact-floating-point-result)
+			     ((INTEGER-DIVIDE-BY-ZERO)
+			      signal-integer-divide-by-zero)
+			     ((INVALID-OPERATION)
+			      signal-invalid-floating-point-operation)
+			     ((OVERFLOW) signal-floating-point-overflow)
+			     ((UNDERFLOW) signal-floating-point-underflow)
 			     (else signal-arithmetic-error))
-			   k false '())
-			  (signal-hardware-trap k
-						name
-						code)))))))))))
+			   k #f '())
+			  (signal-hardware-trap k name code)))))))))))
 
 ;;; end INITIALIZE-PACKAGE!.
 )

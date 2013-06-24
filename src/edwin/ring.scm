@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -39,18 +40,6 @@ USA.
 (define ring-ref)
 (define ring-set!)
 (let ()
-
-(define (list-ref l i)
-  (cond ((null? l) (error "Index too large" 'LIST-REF))
-	((zero? i) (car l))
-	(else (list-ref (cdr l) (-1+ i)))))
-
-(define (list-set! l i o)
-  (let loop ((l l) (i i))
-    (cond ((null? l) (error "index too large" i))
-	  ((zero? i) (set-car! l o))
-	  (else (list-ref (cdr l) (-1+ i)))))
-  unspecific)
 
 (define (list-truncate! l i)
   (cond ((null? l) unspecific)

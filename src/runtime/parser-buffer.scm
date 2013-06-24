@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -239,18 +240,6 @@ USA.
 (define-integrable (char-in-set? char set)
   (char-set-member? set char))
 
-(define (match-parser-buffer-char-in-alphabet buffer alphabet)
-  (match-char buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-not-in-alphabet buffer alphabet)
-  (match-char-not buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-in-alphabet-no-advance buffer alphabet)
-  (match-char-no-advance buffer alphabet char-in-alphabet?))
-
-(define (match-parser-buffer-char-not-in-alphabet-no-advance buffer alphabet)
-  (match-char-not-no-advance buffer alphabet char-in-alphabet?))
-
 (define-integrable (match-char buffer reference compare)
   (and (guarantee-buffer-chars buffer 1)
        (let ((char
@@ -327,6 +316,7 @@ USA.
 	(else
 	 (error:wrong-type-argument string "string" #f))))
 
+
 (define-integrable (match-substring-loop buffer string start end
 					 compare extract)
   (and (guarantee-buffer-chars buffer (fix:- end start))
@@ -356,7 +346,7 @@ USA.
 	       (and (compare (extract string i) (wide-string-ref bs bi))
 		    (loop (fix:+ i 1) (fix:+ bi 1)))
 	       #t)))))
-
+
 (define-integrable (increment-buffer-index! buffer char)
   (set-parser-buffer-index! buffer (fix:+ (parser-buffer-index buffer) 1))
   (if (char=? char #\newline)

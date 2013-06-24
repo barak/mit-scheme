@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -596,7 +597,7 @@ USA.
       (define (refill-input-buffer-and-retry needed)
 	(short-substring-move! input-buffer ip ip-end input-buffer 0)
 	(let* ((left (fix:- ip-end ip))
-	       (count (read-substring input-port input-buffer 
+	       (count (read-substring input-port input-buffer
 				      left input-size))
 	       (total (fix:+ count left)))
 	  (if (fix:= count 0)
@@ -609,7 +610,7 @@ USA.
       (define (finished)
 	(output-port/write-substring output-port buffer 0 bp)
 	bp)
-  
+
       (define (literal-command byte)
 	(let ((length (fix:+ byte 1))
 	      (ip*    (fix:+ ip 1)))
@@ -712,7 +713,7 @@ USA.
 
 (define (uncompress-internal ifile ofile if-fail)
   (call-with-binary-input-file (merge-pathnames ifile)
-    (lambda (input)			       
+    (lambda (input)
       (let* ((file-marker "Compressed-B1-1.00")
 	     (marker-size (string-length file-marker))
 	     (actual-marker (make-string marker-size)))
@@ -722,7 +723,7 @@ USA.
 			marker-size)
 		 (string=? file-marker actual-marker))
 	    (call-with-binary-output-file (merge-pathnames ofile)
-   	      (lambda (output)					  
+   	      (lambda (output)
 		(uncompress-ports input output (fix:* (file-length ifile) 2))))
 	    (if-fail "Not a recognized compressed file:" ifile))))))
 
@@ -736,7 +737,8 @@ USA.
 	      (if-not-found))
 	     ((and (pathname=? (caar entries) compressed-file)
 		   (cddar entries)
-		   (or (file-exists? (cadar entries))
+		   (or (file-modification-time<? compressed-file
+						 (cadar entries))
 		       (begin
 			 (set-cdr! (cdar entries) #f)
 			 #f)))

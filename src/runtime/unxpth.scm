@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,7 +61,7 @@ USA.
 	  (%make-pathname host
 			  'UNSPECIFIC
 			  (let ((components (except-last-pair components)))
-			    (and (not (null? components))
+			    (and (pair? components)
 				 (simplify-directory
 				  (if (string=? "" (car components))
 				      (cons 'ABSOLUTE
@@ -77,15 +78,8 @@ USA.
   (let ((string (car components))
 	(replace-head
 	 (lambda (string)
-	   ;; If STRING has a trailing slash, and it's followed by a
-	   ;; slash, drop the trailing slash to avoid doubling.
-	   (let ((head (string-components string #\/)))
-	     (append (if (and (pair? (cdr components))
-			      (pair? (cdr head))
-			      (string-null? (car (last-pair head))))
-			 (except-last-pair head)
-			 head)
-		     (cdr components))))))
+	   (append (string-components string #\/)
+		   (cdr components)))))
     (let ((end (string-length string)))
       (if (or (= 0 end)
 	      (not *expand-directory-prefixes?*))
@@ -117,9 +111,8 @@ USA.
       directory))
 
 (define (parse-directory-components components)
-  (if (there-exists? components string-null?)
-      (error "Directory contains null component:" components))
-  (map parse-directory-component components))
+  (map parse-directory-component
+       (delete-matching-items components string-null?)))
 
 (define (parse-directory-component component)
   (if (string=? ".." component)
@@ -169,7 +162,7 @@ USA.
 	 (string-append
 	  (if (eq? (car directory) 'ABSOLUTE) "/" "")
 	  (let loop ((directory (cdr directory)))
-	    (if (null? directory)
+	    (if (not (pair? directory))
 		""
 		(string-append (unparse-directory-component (car directory))
 			       "/"
@@ -276,7 +269,7 @@ USA.
 	(error:bad-range-argument pathname 'DIRECTORY-PATHNAME-AS-FILE))
     (if (or (%pathname-name pathname)
 	    (%pathname-type pathname)
-	    (null? (cdr directory)))
+	    (not (pair? (cdr directory))))
 	;; Root directory can't be represented as a file, because the
 	;; name field of a pathname must be a non-null string.  We
 	;; could signal an error here, but instead we'll just return

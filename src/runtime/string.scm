@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -421,7 +422,7 @@ USA.
 		     (if (and allow-runs? (fix:= start index))
 			 result
 			 (cons (%substring string start index) result))))
-		   ((%char-set-member? delimiter (string-ref string index))
+		   ((char-set-member? delimiter (string-ref string index))
 		    (loop (fix:+ index 1)
 			  (fix:+ index 1)
 			  (if (and allow-runs? (fix:= start index))
@@ -487,12 +488,14 @@ USA.
 	 (lambda ()
 	   (error:bad-range-argument string 'HEXADECIMAL->VECTOR-8B))))
     (define-integrable (hex-digit char)
-      (let ((d
-	     (fix:- (char->integer char)
-		    (char->integer #\0))))
-	(if (not (and (fix:<= 0 d) (fix:< d 16)))
-	    (lose))
-	d))
+      (let ((integer (char->integer char)))
+	(let ((numeric-digit (fix:- integer (char->integer #\0)))
+	      (lowercase-digit (fix:- integer (char->integer #\a)))
+	      (uppercase-digit (fix:- integer (char->integer #\A))))
+	  (cond ((fix:< numeric-digit #d10) numeric-digit)
+		((fix:< lowercase-digit 6) (fix:+ lowercase-digit #d10))
+		((fix:< uppercase-digit 6) (fix:+ uppercase-digit #d10))
+		(else (lose))))))
     (if (not (fix:= (fix:and end 1) 0))
 	(lose))
     (let ((bytes (make-vector-8b (fix:lsh end -1))))
@@ -1290,14 +1293,14 @@ USA.
 (define (string-search-all pattern text)
   (guarantee-string pattern 'STRING-SEARCH-ALL)
   (guarantee-string text 'STRING-SEARCH-ALL)
-  (%bm-substring-search-all text 0 (string-length text)
-			    pattern 0 (string-length pattern)))
+  (%substring-search-all text 0 (string-length text)
+			 pattern 0 (string-length pattern)))
 
 (define (substring-search-all pattern text tstart tend)
   (guarantee-string pattern 'SUBSTRING-SEARCH-ALL)
   (guarantee-substring text tstart tend 'SUBSTRING-SEARCH-ALL)
-  (%bm-substring-search-all text tstart tend
-			    pattern 0 (string-length pattern)))
+  (%substring-search-all text tstart tend
+			 pattern 0 (string-length pattern)))
 
 (define (%substring-search-forward text tstart tend pattern pstart pend)
   ;; Returns index of first matched char, or #F.
@@ -1349,6 +1352,27 @@ USA.
 				  pattern pstart pend-1)
 		     tend
 		     (loop (fix:- tend 1)))))))))
+
+(define (%substring-search-all text tstart tend pattern pstart pend)
+  (let ((plen (fix:- pend pstart)))
+    (cond ((fix:= plen 1)
+	   (let ((c (string-ref pattern pstart)))
+	     (let loop ((ti tend) (occurrences '()))
+	       (let ((index (%substring-find-previous-char text tstart ti c)))
+		 (if index
+		     (loop index (cons index occurrences))
+		     occurrences)))))
+	  #;    ;This may not be worthwhile -- I have no measurements.
+	  ((fix:< plen 4)
+	   (let loop ((ti tend) (occurrences '()))
+	     (let ((index
+		    (%dumb-substring-search-backward text tstart ti
+						     pattern pstart pend)))
+	       (if index
+		   (loop (fix:+ index (fix:- plen 1)) (cons index occurrences))
+		   occurrences))))
+	  (else
+	   (%bm-substring-search-all text tstart tend pattern pstart pend)))))
 
 ;;;; Boyer-Moore String Search
 
@@ -1633,6 +1657,7 @@ USA.
 ;; meaningful message.  Structuring the code this way significantly
 ;; reduces code bloat from large integrated procedures.
 
+(declare (integrate-operator guarantee-string guarantee-xstring))
 (define-guarantee string "string")
 (define-guarantee xstring "xstring")
 

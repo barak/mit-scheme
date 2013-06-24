@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -24,6 +24,10 @@
 
 # Utility for MIT/GNU Scheme compiler staging.
 
+set -e
+
+. ../etc/functions.sh
+
 if [ $# -ne 2 ]; then
     echo "usage: $0 <command> <tag>"
     exit 1
@@ -35,12 +39,29 @@ S="STAGE${2}"
 case "${1}" in
 make)
     for D in ${SUBDIRS}; do
-	(cd ${D} && mkdir "${S}" && mv -f *.com *.bci "${S}") || exit 1
+	( cd "${D}"
+	  mkdir "${S}"
+	  maybe_mv *.com "${S}/."
+	  maybe_mv *.bci "${S}/." )
+    done
+    ;;
+make-cross)
+    for D in $SUBDIRS; do
+	( cd $D
+	  mkdir "$S"
+	  maybe_mv *.com "$S"
+	  maybe_mv *.bci "$S"
+	  maybe_mv *.moc "$S"
+	  maybe_mv *.fni "$S" )
     done
     ;;
 unmake)
     for D in ${SUBDIRS}; do
-	(cd ${D} && mv -f "${S}"/* . && rmdir "${S}") || exit 1
+	( cd "${D}"
+	  if [ -d "${S}" ]; then
+	      maybe_mv "${S}"/* .
+	      rmdir "${S}"
+	  fi )
     done
     ;;
 remove)

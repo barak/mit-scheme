@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -192,6 +193,7 @@ extern SCHEME_OBJECT * memory_base;
 #define CONTROL_POINT_P(object) ((OBJECT_TYPE (object)) == TC_CONTROL_POINT)
 #define BROKEN_HEART_P(object) ((OBJECT_TYPE (object)) == TC_BROKEN_HEART)
 #define RETURN_CODE_P(object) ((OBJECT_TYPE (object)) == TC_RETURN_CODE)
+#define EPHEMERON_P(object) ((OBJECT_TYPE (object)) == TC_EPHEMERON)
 
 #define NON_MARKED_VECTOR_P(object)					\
   ((OBJECT_TYPE (object)) == TC_NON_MARKED_VECTOR)
@@ -385,6 +387,12 @@ extern SCHEME_OBJECT * memory_base;
 
 #define BIGNUM_TO_ULONG_P(bignum)					\
   (bignum_fits_in_word_p ((bignum), ((sizeof (unsigned long)) * CHAR_BIT), 0))
+
+#define BIGNUM_TO_INTMAX_P(bignum)					\
+  (bignum_fits_in_word_p ((bignum), ((sizeof (intmax_t)) * CHAR_BIT), 1))
+
+#define BIGNUM_TO_UINTMAX_P(bignum)					\
+  (bignum_fits_in_word_p ((bignum), ((sizeof (uintmax_t)) * CHAR_BIT), 0))
 
 #define BIGNUM_TO_DOUBLE_P(bignum)					\
   (bignum_fits_in_word_p ((bignum), (DBL_MAX_EXP + 1), 1))

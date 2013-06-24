@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -22,6 +23,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
+
+#ifndef SCHEME_X11_H
+#define SCHEME_X11_H
 
 #include <X11/Xlib.h>
 #include <X11/cursorfont.h>
@@ -195,12 +199,6 @@ struct xwindow
   /* The offset we need to add to compensate for type A WMs.  */
   int move_offset_x;
   int move_offset_y;
-
-#ifdef __GNUC__
-  void * extra [0];
-#else
-  void * extra [1];
-#endif
 };
 
 #define XW_ALLOCATION_INDEX(xw) ((xw) -> allocation_index)
@@ -306,13 +304,13 @@ extern int x_debug;
 extern void * x_malloc (unsigned int size);
 extern void * x_realloc (void * ptr, unsigned int size);
 
-extern char * x_get_default
+extern const char * x_get_default
   (Display * display,
    const char * resource_name,
    const char * resource_class,
    const char * property_name,
    const char * property_class,
-   char * sdefault);
+   const char * sdefault);
 
 extern void x_default_attributes
   (Display * display,
@@ -327,7 +325,7 @@ extern struct xwindow * x_make_window
    int y_size,
    struct drawing_attributes * attributes,
    struct xwindow_methods * methods,
-   unsigned int extra);
+   unsigned int size);
 
 extern void xw_set_wm_input_hint (struct xwindow * xw, int input_hint);
 extern void xw_set_wm_name (struct xwindow * xw, const char * name);
@@ -344,3 +342,5 @@ extern void xw_make_window_map
    const char * resource_name,
    const char * resource_class,
    int map_p);
+
+#endif /* defined (SCHEME_X11_H) */

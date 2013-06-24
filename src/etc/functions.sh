@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -42,9 +42,11 @@ run_make ()
 
 run_cmd_in_dir ()
 (
-    cd "${1}"
+    D="${1}"
     shift
-    run_cmd "${@}"
+    cd "${D}"
+    echo "run_cmd in ${D}/:" "${@}"
+    "${@}"
 )
 
 get_fasl_file ()
@@ -101,12 +103,12 @@ maybe_rm ()
     FILES=
     DIRS=
     for FN in "${@}"; do
-	if [ ! -L "${FN}" ]; then
-	    if [ -f "${FN}" ]; then
-		FILES="${FILES} ${FN}"
-	    elif [ -d "${FN}" ]; then
-		DIRS="${DIRS} ${FN}"
-	    fi
+	if [ -L "${FN}" ]; then
+	    FILES="${FILES} ${FN}"
+	elif [ -f "${FN}" ]; then
+	    FILES="${FILES} ${FN}"
+	elif [ -d "${FN}" ]; then
+	    DIRS="${DIRS} ${FN}"
 	fi
     done
     if [ "${FILES}" ]; then
@@ -115,4 +117,10 @@ maybe_rm ()
     if [ "${DIRS}" ]; then
 	run_cmd rm -rf ${DIRS}
     fi
+}
+
+maybe_mv ()
+{
+    # When $1 is e.g. *.com, punt.
+    if [ -e "$1" ]; then mv "${@}"; fi
 }

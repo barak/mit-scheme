@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -107,7 +108,7 @@ Prim_unimplemented (void)
 }
 
 static void
-initialization_error (char * reason, char * item)
+initialization_error (const char * reason, const char * item)
 {
   outf_fatal ("initialize_primitives: Error %s %s.\n", reason, item);
   termination_init_error ();
@@ -329,10 +330,9 @@ make_primitive (const char * name, int arity)
 }
 
 SCHEME_OBJECT
-find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
+find_primitive_cname (const char * name, bool intern_p, bool allow_p, int arity)
 {
-  tree_node prim
-    = (tree_lookup (prim_procedure_tree, (STRING_POINTER (sname))));
+  tree_node prim = (tree_lookup (prim_procedure_tree, name));
   if (prim != 0)
     {
       SCHEME_OBJECT primitive = (MAKE_PRIMITIVE_OBJECT (prim->value));
@@ -359,9 +359,9 @@ find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
     return (SHARP_F);
 
   {
-    size_t n_bytes = ((STRING_LENGTH (sname)) + 1);
+    size_t n_bytes = ((strlen (name)) + 1);
     char * cname = (OS_malloc (n_bytes));
-    memcpy (cname, (STRING_POINTER (sname)), n_bytes);
+    memcpy (cname, name, n_bytes);
     {
       SCHEME_OBJECT primitive
 	= (declare_primitive (cname,
@@ -374,6 +374,13 @@ find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
       return (primitive);
     }
   }
+}
+
+SCHEME_OBJECT
+find_primitive (SCHEME_OBJECT sname, bool intern_p, bool allow_p, int arity)
+{
+  return (find_primitive_cname (STRING_POINTER (sname),
+				intern_p, allow_p, arity));
 }
 
 /* These are used by fasdump to renumber primitives on the way out.

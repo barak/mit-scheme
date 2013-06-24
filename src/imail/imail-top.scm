@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1373,32 +1374,6 @@ ADDRESSES is a string consisting of several addresses separated by commas."
       (set-buffer-point! buffer point)
       (mark-temporary! point)
       value)))
-
-(define (message-subject message)
-  (let ((subject (get-first-header-field-value message "subject" #f)))
-    (if subject
-	(strip-subject-re subject)
-	"")))
-
-(define (strip-subject-re subject)
-  (if (string-prefix-ci? "re:" subject)
-      (strip-subject-re (string-trim-left (string-tail subject 3)))
-      subject))
-
-(define (message-author message)
-  (or (get-first-header-field-address message "from" #f)
-      (get-first-header-field-address message "sender" #f)
-      ""))
-
-(define (message-recipient message)
-  (or (get-first-header-field-address message "to" #f)
-      (get-first-header-field-address message "apparently-to" #f)
-      ""))
-
-(define (get-first-header-field-address message name error?)
-  (let ((v (get-first-header-field-value message name error?)))
-    (and v
-	 (rfc822:first-address v))))
 
 ;;;; Folder Operations
 
@@ -2567,7 +2542,7 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define-method insert-mime-body-inline*
     (entity (body <mime-body>) selector context mark)
-  entity body selector context		;ignore
+  entity selector			;ignore
   (call-with-auto-wrapped-output-mark
    mark
    (walk-mime-context-left-margin context)
@@ -2618,7 +2593,6 @@ WARNING: With a prefix argument, this command may take a very long
 
 (define-method compute-mime-body-outline
     ((body <mime-body-one-part>) name context)
-  context
   (append (call-next-method body name context)
 	  (list (let ((encoding (mime-body-one-part-encoding body)))
 		  (and (not (known-mime-encoding? encoding))

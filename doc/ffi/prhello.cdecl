@@ -1,0 +1,85 @@
+#| -*-Scheme-*-
+
+C declarations for prhello.scm. |#
+
+(typedef gint int)
+(typedef guint uint)
+(typedef gchar char)
+(typedef gboolean gint)
+(typedef gpointer (* mumble))
+
+(extern void
+	gtk_init
+	(argc (* int))
+	(argv (* (* (* char)))))
+
+(extern (* GtkWidget)
+	gtk_window_new
+	(type GtkWindowType))
+
+(typedef GtkWindowType
+	 (enum
+	  (GTK_WINDOW_TOPLEVEL)
+	  (GTK_WINDOW_POPUP)))
+
+(extern (* GtkWidget)
+	gtk_button_new)
+
+(extern (* GtkWidget)
+	gtk_label_new
+	(str (* (const char))))
+
+(extern void
+	gtk_container_add
+	(container (* GtkContainer))
+	(widget    (* GtkWidget)))
+
+(extern void
+	gtk_window_set_title
+	(window (* GtkWindow))
+	(title  (* (const gchar))))
+
+(extern void
+	gtk_container_set_border_width
+	(container (* GtkContainer))
+	(border_width guint))
+
+(extern void
+	gtk_widget_show_all
+	(widget (* GtkWidget)))
+
+(extern void
+	g_signal_connect
+	(object (* GtkObject))
+	(name (* gchar))
+	(CALLBACK GtkSignalFunc)
+	(ID gpointer))
+
+(typedef GtkSignalFunc (* mumble))
+
+(callback gboolean
+	  delete_event
+	  (window (* GtkWidget))
+	  (event (* GdkEventAny))
+	  (ID gpointer))
+
+(callback void
+	  clicked
+	  (widget (* GtkWidget))
+	  (ID gpointer))
+
+(extern void
+	gtk_widget_destroy
+	(widget (* GtkWidget)))
+
+(extern (* (const gchar))
+	gtk_label_get_text
+	(label (* GtkLabel)))
+
+(extern void
+	gtk_label_set_text
+	(label (* GtkLabel))
+	(str (* (const char))))
+
+(extern void gtk_main)
+(extern void gtk_main_quit)

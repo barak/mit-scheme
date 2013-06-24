@@ -2,8 +2,8 @@
 
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -47,9 +47,9 @@ run_cmd rm -f compiler/machine compiler/compiler.pkg
 run_cmd ln -s machines/"${MDIR}" compiler/machine
 run_cmd ln -s machine/compiler.pkg compiler/.
 
-BUNDLES="6001 compiler cref edwin imail sf sos ssp star-parser xdoc xml"
+BUNDLES="6001 compiler cref edwin ffi imail sf sos ssp star-parser xdoc xml"
 
-run_cmd ${HOST_SCHEME_EXE} --heap 4000 <<EOF
+run_cmd ${HOST_SCHEME_EXE} --batch-mode --heap 4000 <<EOF
 (begin
   (load "etc/utilities")
   (generate-c-bundles (quote (${BUNDLES})) "${MDIR}"))
@@ -60,8 +60,8 @@ run_cmd rm -f compiler/machine compiler/compiler.pkg
 for SUBDIR in ${BUNDLES} runtime win32; do
     echo "creating ${SUBDIR}/Makefile.in"
     rm -f ${SUBDIR}/Makefile.in
-    cat etc/std-makefile-prefix > ${SUBDIR}/Makefile.in
-    cat ${SUBDIR}/Makefile-fragment >> ${SUBDIR}/Makefile.in
+    cat etc/std-makefile-prefix ${SUBDIR}/Makefile-fragment	\
+	> ${SUBDIR}/Makefile.in
     if test -f ${SUBDIR}/Makefile-bundle; then
 	cat ${SUBDIR}/Makefile-bundle >> ${SUBDIR}/Makefile.in
 	rm -f ${SUBDIR}/Makefile-bundle

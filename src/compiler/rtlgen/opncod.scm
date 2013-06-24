@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -617,14 +618,14 @@ USA.
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-LSH
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant -1))
 		false)))
 	    (lambda (locative)
 	      (rtl:make-fixnum->object
 	       (rtl:make-fixnum-2-args
 		'FIXNUM-QUOTIENT
-		(rtl:make-object->fixnum (rtl:make-fetch locative))
+		(rtl:make-object->fixnum (rtl:vector-length-fetch locative))
 		(rtl:make-object->fixnum (rtl:make-constant quantum))
 		false)))))))
 
@@ -1404,8 +1405,8 @@ USA.
       '(0)
       internal-close-coding-for-type-checks)))
  '(FLONUM-NEGATE FLONUM-ABS FLONUM-SIN FLONUM-COS FLONUM-TAN FLONUM-ASIN
-   FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-LOG FLONUM-SQRT FLONUM-ROUND
-   FLONUM-TRUNCATE FLONUM-CEILING FLONUM-FLOOR))
+   FLONUM-ACOS FLONUM-ATAN FLONUM-EXP FLONUM-EXPM1 FLONUM-LOG FLONUM-LOG1P
+   FLONUM-SQRT FLONUM-ROUND FLONUM-TRUNCATE FLONUM-CEILING FLONUM-FLOOR))
 
 (for-each
  (lambda (flonum-operator)

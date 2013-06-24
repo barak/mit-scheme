@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -1359,8 +1360,10 @@ Otherwise, it is copied from the primary selection."
   ;; X-OPEN-DISPLAY hangs, uninterruptibly, when the X server is
   ;; running the login loop of xdm.  Can this be fixed?
   (or x-display-data
-      (and (implemented-primitive-procedure?
-	    (ucode-primitive x-open-display 1))
+      (and (begin
+	     (load-library-object-file "prx11" #f)
+	     (implemented-primitive-procedure?
+	      (ucode-primitive x-open-display 1)))
 	   (or x-display-name (get-environment-variable "DISPLAY"))
 	   (let ((display (x-open-display x-display-name)))
 	     (set! x-display-data display)

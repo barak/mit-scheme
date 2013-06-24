@@ -2,8 +2,8 @@
 
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -25,17 +25,42 @@
 # Program to set up MIT/GNU Scheme microcode from CVS for distribution.
 # Requires `gcc' and `scheme'.
 
-set -e
+set -eu
+
+autoheader=done
+autoconf=done
+makeinit=done
+
+clean ()
+{
+    if [ "x${autoheader}" != xdone ]; then
+	rm -f config.h.in
+    fi
+    if [ "x${autoconf}" != xdone ]; then
+	rm -f configure
+    fi
+    if [ "x${makeinit}" != xdone ]; then
+	rm -f Makefile.deps Makefile.in
+    fi
+}
+
+trap clean EXIT INT TERM
 
 if [ ! -f config.h.in ]; then
+    autoheader=clean
     echo "autoheader"
     autoheader
+    autoheader=done
 fi
 if [ ! -x configure ]; then
+    autoconf=clean
     echo "autoconf"
     autoconf
+    autoconf=done
 fi
-( cd cmpauxmd && make "${@}" )
+( cd cmpauxmd && make ${@:+"${@}"} )
 if [ ! -f Makefile.in ]; then
-    makegen/makeinit.sh "${@}"
+    makeinit=clean
+    makegen/makeinit.sh ${@:+"${@}"}
+    makeinit=done
 fi

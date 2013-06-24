@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -44,13 +45,17 @@ typedef byte_t insn_t;
    instructions are stored.  */
 #define CC_ENTRY_GC_TRAP_SIZE 0
 
-/* Size of closure count in insn_t units.  Only first two bytes
-   contain the count, but we must add padding to move the first entry
-   to a word boundary.  */
-#define CLOSURE_COUNT_SIZE SIZEOF_SCHEME_OBJECT
+/* Size of closure count in insn_t units. */
+#define CLOSURE_COUNT_SIZE 2
+
+/* Offset of first (canonical) closure entry point in insn_t units. */
+#define CLOSURE_ENTRY_OFFSET SIZEOF_SCHEME_OBJECT
+
+/* Offset to start of first closure entry -- the entry type (format) word. */
+#define CLOSURE_ENTRY_START (CLOSURE_ENTRY_OFFSET - CC_ENTRY_TYPE_SIZE)
 
 /* Size of closure entry in insn_t units.  */
-#define CLOSURE_ENTRY_SIZE 3
+#define CLOSURE_ENTRY_SIZE 5
 
 /* Size of execution cache in SCHEME_OBJECTS.  */
 #define UUO_LINK_SIZE 2
@@ -83,5 +88,6 @@ typedef struct
 extern long C_to_interface (void *);
 extern void initialize_svm1 (void);
 extern insn_t * read_uuo_target (SCHEME_OBJECT *);
+extern unsigned int read_u16 (insn_t *);
 
 #endif /* !SCM_CMPINTMD_H_INCLUDED */

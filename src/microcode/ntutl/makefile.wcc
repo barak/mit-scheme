@@ -2,7 +2,7 @@
 ###
 ###     Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ###         1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002,
-###         2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010
+###         2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
 ###         Massachusetts Institute of Technology
 ###
 ###     This file is part of MIT/GNU Scheme.
@@ -55,6 +55,7 @@ AS = wasm
 # /ox		enable various optimizations [OPTIMIZE]
 # /s		remove stack overflow checks
 # /w1		set warning-message level
+# /za99		undocumented option to enable partial C99 support
 # /zc		place literal strings in code segment
 # /ze		enable language extensions (default)
 # /zp4		use 4-byte alignment (required for MS compatibility)
@@ -62,12 +63,13 @@ AS = wasm
 #
 # /DMIT_SCHEME	required to specialize some code
 # /DGUI		configure a console window
+# /DHAVE_CONFIG_H we have config.h
 # omitted: /DNO_CONST /Di386
 #
 # For debugging, uncomment next line and comment one following.
 #UTIL_CFLAGS = /6r /d2 /ei /op /s /w1 /zc /zp4 /zq
-UTIL_CFLAGS = /6r /d1+ /ei /oe /op /ox /s /w1 /zc /zp4 /zq
-CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /i=.
+UTIL_CFLAGS = /6r /d1+ /ei /oe /op /ox /s /w1 /za99 /zc /zp4 /zq
+CFLAGS = $(UTIL_CFLAGS) /bm /DMIT_SCHEME /DGUI /DHAVE_CONFIG_H /i=.
 
 # Linker options.
 #
@@ -132,6 +134,7 @@ fasdump.c &
 fasl.c &
 fasload.c &
 fixnum.c &
+floenv.c &
 flonum.c &
 gcloop.c &
 generic.c &
@@ -219,6 +222,7 @@ fasdump.obj &
 fasl.obj &
 fasload.obj &
 fixnum.obj &
+floenv.obj &
 flonum.obj &
 gcloop.obj &
 generic.obj &

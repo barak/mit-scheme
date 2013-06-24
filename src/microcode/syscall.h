@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -49,6 +50,7 @@ enum syscall_names
   syscall_bind,
   syscall_chdir,
   syscall_chmod,
+  syscall_clock_gettime,
   syscall_close,
   syscall_connect,
   syscall_fcntl_GETFL,
@@ -76,6 +78,8 @@ enum syscall_names
   syscall_malloc,
   syscall_mkdir,
   syscall_mktime,
+  syscall_ntp_adjtime,
+  syscall_ntp_gettime,
   syscall_open,
   syscall_opendir,
   syscall_pause,

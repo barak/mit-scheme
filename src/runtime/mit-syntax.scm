@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -323,7 +324,6 @@ USA.
      (compile-item/expression (access-item/environment item)))))
 
 (define (compiler:the-environment form environment)
-  environment
   (syntax-check '(KEYWORD) form)
   (if (not (syntactic-environment/top-level? environment))
       (syntax-error "This form allowed only at top level:" form))
@@ -345,13 +345,13 @@ USA.
 
 (define (classifier:declare form environment definition-environment)
   definition-environment
-  (syntax-check '(KEYWORD * (SYMBOL * DATUM)) form)
+  (syntax-check '(KEYWORD * (IDENTIFIER * DATUM)) form)
   (make-declaration-item
    (lambda ()
      (classify/declarations (cdr form) environment))))
 
 (define (classifier:local-declare form environment definition-environment)
-  (syntax-check '(KEYWORD (* (SYMBOL * DATUM)) + FORM) form)
+  (syntax-check '(KEYWORD (* (IDENTIFIER * DATUM)) + FORM) form)
   (let ((body
 	 (classify/body (cddr form)
 			environment

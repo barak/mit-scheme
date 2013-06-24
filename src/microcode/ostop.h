@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -38,5 +39,8 @@ extern void OS_save_internal_state (void);
 extern void OS_restore_internal_state (void);
 extern void OS_restore_external_state (void);
 extern const char * OS_error_code_to_message (unsigned int code);
+extern void OS_expect_sequential_access (void *start, void *end);
+extern void OS_expect_normal_access (void *start, void *end);
+extern void OS_free_pages (void *start, void *end);
 
 #endif /* SCM_OSTOP_H */

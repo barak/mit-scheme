@@ -2,8 +2,8 @@
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007, 2008, 2009, 2010 Massachusetts Institute of
-#     Technology
+#     2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute
+#     of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -48,8 +48,12 @@ done
 
 case ${1} in
 distclean | maintainer-clean)
-    echo "rm -f machine compiler.cbf compiler.pkg compiler.sf make.com make.so"
-    rm -f machine compiler.cbf compiler.pkg compiler.sf make.com make.so
+    maybe_rm machine compiler.cbf compiler.pkg compiler.sf
+    maybe_rm make.com make.bin make.so
+    maybe_rm machines/svm/assembler-db.scm
+    maybe_rm machines/svm/assembler-rules.exp
+    maybe_rm machines/svm/svm1-defns.h
+    maybe_rm machines/svm/svm1-opcodes.scm
     ;;
 esac
 

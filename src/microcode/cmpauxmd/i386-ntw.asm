@@ -2,7 +2,7 @@
 ;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010 Massachusetts
+;;;     2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Massachusetts
 ;;;     Institute of Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
@@ -111,6 +111,8 @@
 ;;;	what you're doing.
 ;;; DISABLE_387
 ;;;	If defined, do not generate 387 floating-point instructions.
+;;; DISABLE_SSE
+;;;	If defined, do not generate SSE media instructions.
 ;;; VALGRIND_MODE
 ;;;	If defined, modify code to make it work with valgrind.
 ;;;;	Utility macros and definitions
@@ -139,6 +141,8 @@
 	extrn _RegistersPtr:dword
 	public _i387_presence
 _i387_presence dd 0
+	public _sse_presence
+_sse_presence dd 0
 	public _C_Stack_Pointer
 _C_Stack_Pointer dd 0
 	public _C_Frame_Pointer
@@ -171,6 +175,11 @@ _i386_interface_initialize:
 	fldcw		word ptr -2[ebp]
 i386_initialize_no_fp:
 	mov	dword ptr _i387_presence,eax
+; FIXME: Some IA-32 systems have SSE support, and since the microcode
+; might use SSE instructions, we need to determine, using CPUID,
+; whether the CPU supports SSE instructions, so that we can save and
+; restore the SSE MXCSR in the floating-point environment.
+	mov	dword ptr _sse_presence,0
 ; Do a bunch of hair to determine if we need to do cache synchronization.
 ; See if the CPUID instruction is supported.
 	xor	eax,eax
@@ -261,6 +270,49 @@ done_setting_up_cpuid:
 no_cpuid_instr:
 	leave
 	ret
+; Call a function (esp[1]) with an argument (esp[2]) and a stack
+; pointer and frame pointer from inside C.  When it returns, restore
+; the original stack pointer.  This kludge is necessary for operating
+; system libraries (notably NetBSD's libpthread) that store important
+; information in the stack pointer, and get confused when they are
+; called in a signal handler for a signal delivered while Scheme has
+; set esp to something funny.
+	public _within_c_stack
+_within_c_stack:
+	mov	eax,_C_Stack_Pointer
+	; Are we currently in C, signalled by having no saved C stack pointer?
+	cmp	eax,0
+	; Yes: just call the function without messing with esp.
+	je		within_c_stack_from_c
+	; No: we have to switch esp to point into the C stack.
+	push	ebp			; Save frame pointer
+	mov	ebp,esp
+	mov	esp,eax		; Switch to C stack
+	mov	_C_Stack_Pointer,0
+	push	0				; Align sp to 16 bytes
+	push	ebp			; Save stack pointer
+	push	dword ptr 0cH[ebp]		; Push argument
+	call		dword ptr 8[ebp]		; Call function
+	public within_c_stack_restore
+within_c_stack_restore:
+	pop	eax			; Pop argument
+	mov	eax,esp		; Restore C stack ptr
+	add	eax,8
+	mov	_C_Stack_Pointer,eax
+	pop	esp			; Restore stack pointer
+							;   and switch back to
+							;   Scheme stack
+	pop	ebp			; Restore frame pointer
+	ret
+	public within_c_stack_from_c
+within_c_stack_from_c:
+	push	ebp			; Save a frame pointer,
+	mov	ebp,esp		;   for debuggers.
+	push	0				; Align sp to 16 bytes
+	push	dword ptr 0cH[ebp]		; Push argument
+	call		dword ptr 8[ebp]
+	leave
+	ret
 	public _C_to_interface
 _C_to_interface:
 	push	ebp			; Link according
@@ -311,6 +363,8 @@ scheme_to_interface:
 scheme_to_interface_proceed:
 	mov	esp,_C_Stack_Pointer
 	mov	ebp,_C_Frame_Pointer
+	; Signal to within_c_stack that we are now in C land.
+	mov	_C_Stack_Pointer,0
 	sub	esp,8	; alloc struct return
 	push	dword ptr 36[esi] ; push utility args
 	push	ebx
@@ -345,6 +399,9 @@ interface_to_scheme_proceed:
 	mov	edi,_Free		; Free pointer = %edi
 	mov	eax,dword ptr 8[esi] ; Value/dynamic link
 	mov	ebp,67108863	; = %ebp
+	; Restore the C stack pointer, which we zeroed back in
+	; scheme_to_interface, for within_c_stack.
+	mov	_C_Stack_Pointer,esp
 	mov	esp,_stack_pointer
 	mov	ecx,eax		; Preserve if used
 	and	ecx,ebp		; Restore potential dynamic link
@@ -1174,7 +1231,53 @@ asm_fixnum_rsh_overflow_nonnegative:
 asm_fixnum_rsh_overflow_negative:
 	mov	eax,-64
 	ret
+	public _sse_read_mxcsr
+_sse_read_mxcsr:
+	ret
+	public _sse_write_mxcsr
+_sse_write_mxcsr:
+	ret
+	public _x87_clear_exceptions
+_x87_clear_exceptions:
+	fnclex
+	ret
+	public _x87_trap_exceptions
+_x87_trap_exceptions:
+	fwait
+	ret
+	public _x87_read_control_word
+_x87_read_control_word:
+	enter		4,0
+	fnstcw		dword ptr [esp]
+	mov	ax,word ptr [esp]
+	leave
+	ret
+	public _x87_write_control_word
+_x87_write_control_word:
+	fldcw		dword ptr 4[esp]
+	ret
+	public _x87_read_status_word
+_x87_read_status_word:
+	enter		4,0
+	fnstsw		dword ptr [esp]
+	mov	ax,word ptr [esp]
+	leave
+	ret
+	public _x87_read_environment
+_x87_read_environment:
+	mov	eax,dword ptr 4[esp]
+	fnstenv		dword ptr [eax]
+	; fnstenv masks all exceptions (go figure), so we must load
+	; the control word back in order to undo that.
+	fldcw		dword ptr [eax]
+	ret
+	public _x87_write_environment
+_x87_write_environment:
+	mov	eax,dword ptr 4[esp]
+	fldenv		dword ptr [eax]
+	ret
 end
+; Mark the C stack nonexecutable.
 ;;; Edwin Variables:
 ;;; comment-column: 56
 ;;; End:

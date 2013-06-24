@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -60,14 +61,7 @@ USA.
 		       (package/files (car packages)))
 		 (package/name (car packages))
 		 (loop (cdr packages)))
-	     (error "No package for file" file))))))
-
-  (define (init-packages pmodel)
-    (let* ((pathname (pmodel/pathname pmodel))
-	   (package-set (package-set-pathname pathname)))
-      (if (not (file-exists? package-set))
-	  (cref/generate-trivial-constructor pathname))
-      (construct-packages-from-file (fasload package-set))))
+	     (error "No package for file" filename))))))
 
   (set! source-hash (make-string-hash-table))
   (set! source-nodes

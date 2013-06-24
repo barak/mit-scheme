@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -123,6 +124,26 @@ USA.
 (define lambda-tag:rest (object-new-type (ucode-type constant) 4))
 (define lambda-tag:key (object-new-type (ucode-type constant) 5))
 (define lambda-tag:aux (object-new-type (ucode-type constant) 8))
+
+(define (lambda-tag? object)
+  (or (eq? object lambda-tag:aux)
+      (eq? object lambda-tag:key)
+      (eq? object lambda-tag:optional)
+      (eq? object lambda-tag:rest)
+
+      ;; The following ones are called `lambda-tag', but they are
+      ;; semantically quite different from lambda list keywords.
+      ;; This should be fixed some day.
+
+      ;; From lambda.scm
+      (eq? object lambda-tag:internal-lambda)
+      (eq? object lambda-tag:internal-lexpr)
+
+      ;; From syntax-output.scm
+      (eq? object lambda-tag:fluid-let)
+      (eq? object lambda-tag:let)
+      (eq? object lambda-tag:unnamed)
+      ))
 
 (define (parse-mit-lambda-list lambda-list)
   (let ((required (list '()))

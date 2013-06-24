@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,14 +28,12 @@ USA.
 #include "prims.h"
 #include "ux.h"
 #include "uxio.h"
-#include "uxselect.h"
 #include "uxproc.h"
 
 Tchannel OS_channel_table_size;
 struct channel * channel_table;
 
 #ifndef HAVE_POLL
-static SELECT_TYPE input_descriptors;
 #ifdef HAVE_SELECT
 static struct timeval zero_timeout;
 #endif
@@ -68,7 +67,6 @@ UX_initialize_channels (void)
   }
   add_reload_cleanup (UX_channel_close_all);
 #ifndef HAVE_POLL
-  FD_ZERO (&input_descriptors);
 #ifdef HAVE_SELECT
   (zero_timeout . tv_sec) = 0;
   (zero_timeout . tv_usec) = 0;
@@ -126,8 +124,12 @@ OS_channel_close (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      STD_VOID_SYSTEM_CALL
-	(syscall_close, (UX_close (CHANNEL_DESCRIPTOR (channel))));
+      if (0 > (UX_close (CHANNEL_DESCRIPTOR (channel))))
+	switch (errno)
+	  {
+	  case EINTR:	deliver_pending_interrupts ();			break;
+	  case EBADF:	error_system_call (errno, syscall_close);	break;
+	  }
       MARK_CHANNEL_CLOSED (channel);
     }
 }
@@ -137,7 +139,7 @@ OS_channel_close_noerror (Tchannel channel)
 {
   if (! (CHANNEL_INTERNAL (channel)))
     {
-      UX_close (CHANNEL_DESCRIPTOR (channel));
+      (void) UX_close (CHANNEL_DESCRIPTOR (channel));
       MARK_CHANNEL_CLOSED (channel);
     }
 }
@@ -782,308 +784,6 @@ OS_test_select_descriptor (int fd, int blockp, unsigned int mode)
   error_system_call (ENOSYS, syscall_select);
   return (1);
 #endif
-}
-
-#endif /* not HAVE_POLL */
-
-#ifdef HAVE_POLL
-
-/* poll(2) */
-
-unsigned int
-UX_select_registry_size (void)
-{
-  return ((sizeof (struct pollfd)) * OS_channel_table_size);
-}
-
-unsigned int
-UX_select_registry_lub (void)
-{
-  return (OS_channel_table_size);
-}
-
-void
-UX_select_registry_clear_all (void * fds)
-{
-  struct pollfd * scan = fds;
-  struct pollfd * end = (scan + OS_channel_table_size);
-  for (; (scan < end); scan += 1)
-    {
-      (scan -> fd) = (-1);
-      (scan -> events) = 0;
-    }
-}
-
-void
-UX_select_registry_set (void * fds, unsigned int fd)
-{
-  struct pollfd * scan = fds;
-  struct pollfd * end = (scan + OS_channel_table_size);
-  for (; (scan < end); scan += 1)
-    if (((scan -> fd) == (-1)) || ((scan -> fd) == fd))
-      {
-	(scan -> fd) = fd;
-	(scan -> events) = POLLIN;
-	break;
-      }
-}
-
-void
-UX_select_registry_clear (void * fds, unsigned int fd)
-{
-  struct pollfd * scan = fds;
-  struct pollfd * end = (scan + OS_channel_table_size);
-  for (; (scan < end); scan += 1)
-    if ((scan -> fd) == fd)
-      {
-	/* Shift any subsequent entries down.  */
-	for (; (((scan + 1) < end) && ((scan -> fd) != (-1))); scan += 1)
-	  (*scan) = (* (scan + 1));
-	(scan -> fd) = (-1);
-	(scan -> events) = 0;
-	return;
-      }
-}
-
-int
-UX_select_registry_is_set (void * fds, unsigned int fd)
-{
-  struct pollfd * scan = fds;
-  struct pollfd * end = (scan + OS_channel_table_size);
-  for (; (scan < end); scan += 1)
-    if ((scan -> fd) == fd)
-      return (1);
-  return (0);
-}
-
-static unsigned int
-count_select_registry_entries (struct pollfd * pfds)
-{
-  struct pollfd * end = (pfds + OS_channel_table_size);
-  struct pollfd * scan;
-  for (scan = pfds; (scan < end); scan += 1)
-    if ((scan -> fd) == (-1))
-      break;
-  return (scan - pfds);
-}
-
-enum select_input
-UX_select_registry_test (void * input_fds,
-			 int blockp,
-			 unsigned int * output_fds,
-			 unsigned int * output_nfds)
-{
-  struct pollfd * pfds = input_fds;
-  unsigned int n_pfds = (count_select_registry_entries (pfds));
-  while (1)
-    {
-      int nfds = (poll (pfds, n_pfds, (blockp ? INFTIM : 0)));
-      if (nfds > 0)
-	{
-	  if (output_nfds != 0)
-	    (*output_nfds) = nfds;
-	  if (output_fds != 0)
-	    {
-	      struct pollfd * scan = pfds;
-	      struct pollfd * end = (scan + n_pfds);
-	      while (scan < end)
-		{
-		  if (((scan -> fd) != (-1)) && ((scan -> revents) != 0))
-		    {
-		      (*output_fds++) = (scan -> fd);
-		      if ((--nfds) == 0)
-			break;
-		    }
-		  scan += 1;
-		}
-	    }
-	  return (select_input_argument);
-	}
-      else if (nfds == 0)
-	{
-	  if (!blockp)
-	    return (select_input_none);
-	}
-      else if (! ((errno == EINTR) || (errno == EAGAIN)))
-	error_system_call (errno, syscall_select);
-      else if (OS_process_any_status_change ())
-	return (select_input_process_status);
-      if (pending_interrupts_p ())
-	return (select_input_interrupt);
-    }
-}
-
-enum select_input
-UX_select_descriptor (unsigned int fd, int blockp)
-{
-  struct pollfd pfds [1];
-  int nfds;
-
-  ((pfds [0]) . fd) = fd;
-  ((pfds [0]) . events) = POLLIN;
-  while (1)
-    {
-      nfds = (poll (pfds, 1, (blockp ? INFTIM : 0)));
-      if (nfds > 0)
-	return (select_input_argument);
-      else if (nfds == 0)
-	{
-	  if (!blockp)
-	    return (select_input_none);
-	}
-      else if (errno != EINTR)
-	error_system_call (errno, syscall_select);
-      else if (OS_process_any_status_change ())
-	return (select_input_process_status);
-      if (pending_interrupts_p ())
-	return (select_input_interrupt);
-    }
-}
-
-enum select_input
-UX_select_input (int fd, int blockp)
-{
-  return (UX_select_descriptor (fd, blockp));
-}
-
-#else /* not HAVE_POLL */
-
-/* select(2) */
-
-unsigned int
-UX_select_registry_size (void)
-{
-  return (sizeof (SELECT_TYPE));
-}
-
-unsigned int
-UX_select_registry_lub (void)
-{
-  return (FD_SETSIZE);
-}
-
-void
-UX_select_registry_clear_all (void * fds)
-{
-  FD_ZERO ((SELECT_TYPE *) fds);
-}
-
-void
-UX_select_registry_set (void * fds, unsigned int fd)
-{
-  FD_SET (fd, ((SELECT_TYPE *) fds));
-}
-
-void
-UX_select_registry_clear (void * fds, unsigned int fd)
-{
-  FD_CLR (fd, ((SELECT_TYPE *) fds));
-}
-
-int
-UX_select_registry_is_set (void * fds, unsigned int fd)
-{
-  return (FD_ISSET (fd, ((SELECT_TYPE *) fds)));
-}
-
-enum select_input
-UX_select_registry_test (void * input_fds,
-			 int blockp,
-			 unsigned int * output_fds,
-			 unsigned int * output_nfds)
-{
-#ifdef HAVE_SELECT
-  while (1)
-    {
-      SELECT_TYPE readable;
-      int nfds;
-
-      readable = (* ((SELECT_TYPE *) input_fds));
-      INTERRUPTABLE_EXTENT
-	(nfds,
-	 ((OS_process_any_status_change ())
-	  ? ((errno = EINTR), (-1))
-	  : (UX_select (FD_SETSIZE,
-			(&readable),
-			((SELECT_TYPE *) 0),
-			((SELECT_TYPE *) 0),
-			(blockp
-			 ? ((struct timeval *) 0)
-			 : (&zero_timeout))))));
-      if (nfds > 0)
-	{
-	  unsigned int i = 0;
-	  if (output_nfds != 0)
-	    (*output_nfds) = nfds;
-	  if (output_fds != 0)
-	    while (1)
-	      {
-		if (FD_ISSET (i, (&readable)))
-		  {
-		    (*output_fds++) = i;
-		    if ((--nfds) == 0)
-		      break;
-		  }
-		i += 1;
-	      }
-	  return (select_input_argument);
-	}
-      else if (nfds == 0)
-	{
-	  if (!blockp)
-	    return (select_input_none);
-	}
-      else if (errno != EINTR)
-	error_system_call (errno, syscall_select);
-      else if (OS_process_any_status_change ())
-	return (select_input_process_status);
-      if (pending_interrupts_p ())
-	return (select_input_interrupt);
-    }
-#else
-  error_system_call (ENOSYS, syscall_select);
-  return (select_input_argument);
-#endif
-}
-
-enum select_input
-UX_select_descriptor (unsigned int fd, int blockp)
-{
-#ifdef HAVE_SELECT
-  SELECT_TYPE readable;
-
-  FD_ZERO (&readable);
-  FD_SET (fd, (&readable));
-  return (UX_select_registry_test ((&readable), blockp, 0, 0));
-#else
-  error_system_call (ENOSYS, syscall_select);
-  return (select_input_argument);
-#endif
-}
-
-enum select_input
-UX_select_input (int fd, int blockp)
-{
-  SELECT_TYPE readable;
-  unsigned int fds [FD_SETSIZE];
-  unsigned int nfds;
-
-  readable = input_descriptors;
-  FD_SET (fd, (&readable));
-  {
-    enum select_input s =
-      (UX_select_registry_test ((&readable), blockp, fds, (&nfds)));
-    if (s != select_input_argument)
-      return (s);
-  }
-  {
-    unsigned int * scan = fds;
-    unsigned int * end = (scan + nfds);
-    while (scan < end)
-      if ((*scan++) == fd)
-	return (select_input_argument);
-  }
-  return (select_input_other);
 }
 
 #endif /* not HAVE_POLL */

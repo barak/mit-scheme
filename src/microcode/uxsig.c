@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -46,7 +47,7 @@ extern void UX_reinitialize_tty (void);
 
 #ifdef HAVE_POSIX_SIGNALS
 
-#ifdef _POSIX_REALTIME_SIGNALS
+#ifdef HAVE_SIGACTION_SIGINFO_SIGNALS
 #  define SIGACT_HANDLER(act) ((act) -> sa_sigaction)
 #else
 #  define SIGACT_HANDLER(act) ((act) -> sa_handler)
@@ -541,17 +542,13 @@ DEFUN_STD_HANDLER (sighnd_terminate,
     ? (find_signal_name (signo))
     : 0)))
 
-#ifndef FPE_RESET_TRAPS
-#  define FPE_RESET_TRAPS()
-#endif
-
 #ifdef HAVE_SIGFPE
+extern void clear_float_exceptions (void);
+
 static
 DEFUN_STD_HANDLER (sighnd_fpe,
 {
-  if (executing_scheme_primitive_p ())
-    error_floating_point_exception ();
-  FPE_RESET_TRAPS ();
+  clear_float_exceptions ();
   trap_handler ("floating-point exception", signo, info, scp);
 })
 #endif

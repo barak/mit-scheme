@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,13 +28,6 @@ USA.
 
 #ifndef SCM_BIGNUM_H_INCLUDED
 #define SCM_BIGNUM_H_INCLUDED 1
-
-/* The `unsigned long' type is used for the conversion procedures
-   `bignum_to_long' and `long_to_bignum'.  Older implementations of C
-   don't support this type; if you have such an implementation you can
-   disable these procedures using the following flag (alternatively
-   you could write alternate versions that don't require this type). */
-/* #define BIGNUM_NO_ULONG */
 
 #ifdef MIT_SCHEME
 
@@ -70,20 +64,46 @@ extern int bignum_divide
 		   bignum_type * remainder);
 extern bignum_type bignum_quotient (bignum_type, bignum_type);
 extern bignum_type bignum_remainder (bignum_type, bignum_type);
-#ifndef BIGNUM_NO_ULONG
 extern bignum_type long_to_bignum (long);
 extern bignum_type ulong_to_bignum (unsigned long);
 extern long bignum_to_long (bignum_type);
 extern unsigned long bignum_to_ulong (bignum_type);
-#endif /* not BIGNUM_NO_ULONG */
+extern bignum_type intmax_to_bignum (intmax_t);
+extern bignum_type uintmax_to_bignum (uintmax_t);
+extern intmax_t bignum_to_intmax (bignum_type);
+extern uintmax_t bignum_to_uintmax (bignum_type);
 extern bignum_type double_to_bignum (double);
 extern double bignum_to_double (bignum_type);
-extern int bignum_fits_in_word_p
-  (bignum_type,
-			   long word_length,
-			   int twos_complement_p);
-extern bignum_type bignum_length_in_bits (bignum_type);
-extern bignum_type bignum_length_upper_limit (void);
+extern int bignum_fits_in_word_p (bignum_type, long, int);
+extern unsigned long bignum_length_in_bits (bignum_type);
+extern unsigned long bignum_integer_length (bignum_type);
+extern long bignum_first_set_bit (bignum_type);
+extern unsigned long bignum_bit_count (bignum_type);
+extern long bignum_hamming_distance (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_not (bignum_type);
+extern bignum_type bignum_bitwise_and (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_andc2 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_andc1 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_xor (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_ior (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_nor (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_eqv (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_orc2 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_orc1 (bignum_type, bignum_type);
+extern bignum_type bignum_bitwise_nand (bignum_type, bignum_type);
+#if 0
+extern bignum_type bignum_edit_bit_field
+  (bignum_type, unsigned long,
+   bignum_type, unsigned long,
+   bignum_type, unsigned long);
+extern bignum_type bignum_splice_bit_field
+  (bignum_type, unsigned long,
+   bignum_type, unsigned long,
+   unsigned long);
+#endif
+extern bignum_type bignum_nonnegative_one_bits (unsigned long, unsigned long);
+extern bignum_type bignum_negative_zero_bits (unsigned long, unsigned long);
+extern bignum_type bignum_shift_right (bignum_type, unsigned long);
 extern bignum_type bignum_shift_left (bignum_type, unsigned long);
 extern bignum_type unsigned_long_to_shifted_bignum
   (unsigned long, unsigned long, int);

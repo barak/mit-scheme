@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -146,6 +147,28 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
   FLONUM_RESULT (result);						\
 }
 
+DEFINE_PRIMITIVE ("FLONUM-EXPM1", Prim_flonum_expm1, 1, 1, 0)
+#ifdef HAVE_EXPM1
+     RESTRICTED_TRANSCENDENTAL_FUNCTION
+       (expm1, ((x >= - M_LN2) && (x <= M_LN2)))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
+
+DEFINE_PRIMITIVE ("FLONUM-LOG1P", Prim_flonum_log1p, 1, 1, 0)
+#ifdef HAVE_LOG1P
+     RESTRICTED_TRANSCENDENTAL_FUNCTION
+       (log1p, ((x >= (M_SQRT1_2 - 1.0)) && (x <= (1.0 - M_SQRT1_2))))
+#else
+{
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+#endif
+
 DEFINE_PRIMITIVE ("FLONUM-EXP", Prim_flonum_exp, 1, 1, 0)
      SIMPLE_TRANSCENDENTAL_FUNCTION (exp)
 DEFINE_PRIMITIVE ("FLONUM-LOG", Prim_flonum_log, 1, 1, 0)
@@ -252,4 +275,88 @@ DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
   CHECK_ARG (1, finite_flonum_p);
   CHECK_ARG (2, INTEGER_P);
   PRIMITIVE_RETURN (flonum_denormalize ((ARG_REF (1)), (ARG_REF (2))));
+}
+
+/* These conversion primitives don't require IEEE 754, but they do
+ * make assumptions about the sizes of doubles and floats.  If we want
+ * to support using these primitives with non-IEEE 754 floating-point
+ * numbers, we may have to adjust them.
+ */
+
+#if defined UINT64_MAX || defined uint64_t
+typedef
+union
+{
+  double dbl;
+  uint64_t u64;
+} double_uint64_t_cast;
+#endif
+
+DEFINE_PRIMITIVE ("CAST-IEEE754-DOUBLE-TO-INTEGER", Prim_cast_ieee754_double_to_integer, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+#if defined UINT64_MAX || defined uint64_t
+  CHECK_ARG (1, FLONUM_P);
+  {
+    double_uint64_t_cast cast;
+
+    cast.dbl = FLONUM_TO_DOUBLE (ARG_REF (1));
+
+    PRIMITIVE_RETURN (uintmax_to_integer (cast.u64));
+  }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-DOUBLE", Prim_cast_integer_to_ieee754_double, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+#if defined UINT64_MAX || defined uint64_t
+  CHECK_ARG (1, INTEGER_P);
+  {
+    double_uint64_t_cast cast;
+
+    cast.u64 = integer_to_uintmax (ARG_REF (1));
+
+    PRIMITIVE_RETURN (double_to_flonum (cast.dbl));
+  }
+#else
+  error_unimplemented_primitive ();
+  PRIMITIVE_RETURN (UNSPECIFIC);
+#endif
+}
+
+typedef
+union
+{
+  float f;
+  uint32_t u32;
+} float_uint32_t_cast;
+
+DEFINE_PRIMITIVE ("CAST-IEEE754-SINGLE-TO-INTEGER", Prim_cast_ieee754_single_to_integer, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, FLONUM_P);
+  {
+    float_uint32_t_cast cast;
+
+    cast.f = (float) FLONUM_TO_DOUBLE (ARG_REF (1));
+
+    PRIMITIVE_RETURN (uintmax_to_integer (cast.u32));
+  }
+}
+
+DEFINE_PRIMITIVE ("CAST-INTEGER-TO-IEEE754-SINGLE", Prim_cast_integer_to_ieee754_single, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  CHECK_ARG (1, INTEGER_P);
+  {
+    float_uint32_t_cast cast;
+
+    cast.u32 = integer_to_uintmax (ARG_REF (1));
+
+    PRIMITIVE_RETURN (double_to_flonum ((double) cast.f));
+  }
 }

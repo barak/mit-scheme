@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -174,17 +175,25 @@ USA.
   window type				; ignored
   (set-screen-redisplay-title?! screen #t))
 
+;; (define (win32-screen/scroll-lines-down! screen xl xu yl yu amount)
+;;   (and #f
+;;        (win32-screen-vertical-scroll! (screen->handle screen)
+;; 				      xl xu yl yu (fix:+ yl amount))))
+
 (define (win32-screen/scroll-lines-down! screen xl xu yl yu amount)
-  (and #f
-       (win32-screen-vertical-scroll! (screen->handle screen)
-				      xl xu yl yu (fix:+ yl amount))))
+  (declare (ignore screen xl xu yl yu amount))
+  #f)
+
+;; (define (win32-screen/scroll-lines-up! screen xl xu yl yu amount)
+;;   (and #f
+;;        (win32-screen-vertical-scroll! (screen->handle screen)
+;; 				      xl xu amount yu 0)
+;;        (win32-screen-vertical-scroll! (screen->handle screen)
+;; 				      xl xu yl yu (fix:- yl amount))))
 
 (define (win32-screen/scroll-lines-up! screen xl xu yl yu amount)
-  (and #f
-       (win32-screen-vertical-scroll! (screen->handle screen)
-				      xl xu amount yu 0)
-       (win32-screen-vertical-scroll! (screen->handle screen)
-				      xl xu yl yu (fix:- yl amount))))
+  (declare (ignore screen xl xu yl yu amount))
+  #f)
 
 (define (win32-screen/flush! screen)
   ;; Win32 API call causes any pending painting to be done

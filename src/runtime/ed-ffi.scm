@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,6 +57,7 @@ USA.
     ("equals"	(runtime equality))
     ("error"	(runtime error-handler))
     ("events"	(runtime event-distributor))
+    ("ffi"	(runtime ffi))
     ("fileio"	(runtime file-i/o-port))
     ("fixart"	(runtime fixnum-arithmetic))
     ("format"	(runtime format))
@@ -149,6 +151,7 @@ USA.
     ("string"	(runtime string))
     ("stringio"	(runtime string-i/o-port))
     ("structure-parser" (runtime structure-parser))
+    ("swank"	(runtime swank))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntax"	(runtime syntax top-level))

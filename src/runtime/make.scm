@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -476,6 +477,8 @@ USA.
    ((RUNTIME REGULAR-SEXPRESSION) INITIALIZE-CONDITIONS!)
    ;; System dependent stuff
    ((RUNTIME OS-PRIMITIVES) INITIALIZE-SYSTEM-PRIMITIVES!)
+   ;; Floating-point environment -- needed by threads.
+   (RUNTIME FLOATING-POINT-ENVIRONMENT)
    ;; Threads
    (RUNTIME THREAD)
    ;; I/O
@@ -487,7 +490,7 @@ USA.
    (RUNTIME TRANSCRIPT)
    (RUNTIME STRING-I/O-PORT)
    (RUNTIME USER-INTERFACE)
-   ;; These MUST be done before (RUNTIME PATHNAME) 
+   ;; These MUST be done before (RUNTIME PATHNAME)
    ;; Typically only one of them is loaded.
    (RUNTIME PATHNAME UNIX)
    (RUNTIME PATHNAME DOS)
@@ -497,8 +500,10 @@ USA.
    (RUNTIME SIMPLE-FILE-OPS)
    (OPTIONAL (RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES!)
    ;; Syntax
+   (RUNTIME KEYWORD)
    (RUNTIME NUMBER-PARSER)
    (RUNTIME PARSER)
+   (RUNTIME PARSER FILE-ATTRIBUTES)
    ((RUNTIME PATHNAME) INITIALIZE-PARSER-METHOD!)
    (RUNTIME UNPARSER)
    (RUNTIME UNSYNTAXER)
@@ -535,7 +540,10 @@ USA.
    (RUNTIME HTTP-SYNTAX)
    (RUNTIME HTTP-CLIENT)
    (RUNTIME HTML-FORM-CODEC)
-   (OPTIONAL (RUNTIME WIN32-REGISTRY))))
+   (OPTIONAL (RUNTIME WIN32-REGISTRY))
+   (OPTIONAL (RUNTIME FFI))
+   (RUNTIME SWANK)
+   (RUNTIME STACK-SAMPLER)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj
@@ -577,5 +585,8 @@ USA.
 )
 
 (package/add-child! system-global-package 'USER user-initial-environment)
+;; Might be better to do this sooner, to trap on floating-point
+;; mistakes earlier in the cold load.
+(flo:set-environment! (flo:default-environment))
 (start-thread-timer)
 (initial-top-level-repl)

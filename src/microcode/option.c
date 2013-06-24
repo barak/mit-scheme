@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -104,6 +105,9 @@ bool option_disable_core_dump;
 bool option_batch_mode;
 bool option_show_version;
 bool option_show_help;
+#ifdef __APPLE__
+  bool option_macosx_application;
+#endif
 
 /* String options */
 const char ** option_library_path = 0;
@@ -186,7 +190,17 @@ for the band.\n\
 --nocore\n\
   Specifies that Scheme should not generate a core dump under any\n\
   circumstances.\n\
-\n\
+"
+#ifdef __APPLE__
+"\n\
+--macosx-application\n\
+  Specifies that Scheme is running as a Mac OS X application.\n\
+  This option is automatically supplied when the application is\n\
+  launched from an icon, and should not be given under other\n\
+  circumstances.\n\
+"
+#endif /* __APPLE__ */
+"\n\
 Please report bugs to %s.\n\
 \n\
 Additional options may be supported by the band (and described below).\n\
@@ -291,6 +305,8 @@ string_copy_limited (const char * s, const char * e)
   return (result);
 }
 
+#ifdef __APPLE__
+
 static bool
 must_quote_char_p (int c)
 {
@@ -331,6 +347,8 @@ quote_string (const char * s)
   (*scan_out) = '\0';
   return result;
 }
+
+#endif /* __APPLE__ */
 
 static unsigned int
 strlen_after_unquoting (const char * s)
@@ -475,6 +493,9 @@ parse_standard_options (int argc, const char ** argv)
   option_argument ("help", false, (&option_show_help));
   option_argument ("interactive", false, (&option_force_interactive));
   option_argument ("library", true, (&option_raw_library));
+#ifdef __APPLE__
+  option_argument ("macosx-application", false, (&option_macosx_application));
+#endif
   option_argument ("nocore", false, (&option_disable_core_dump));
   option_argument ("option-summary", false, (&option_summary));
   option_argument ("quiet", false, (&option_batch_mode));
@@ -658,6 +679,8 @@ free_parsed_path (const char ** path)
   xfree (path);
 }
 
+#ifdef __APPLE__
+
 static char *
 add_to_library_path (const char * new_dir, const char * library_path)
 {
@@ -671,6 +694,8 @@ add_to_library_path (const char * new_dir, const char * library_path)
   xfree (quoted_dir);
   return (result);
 }
+
+#endif /* __APPLE__ */
 
 const char *
 search_for_library_file (const char * filename)
@@ -980,7 +1005,10 @@ read_command_line_options (int argc, const char ** argv)
 				STACK_SIZE_VARIABLE,
 				DEFAULT_STACK_SIZE));
   if (option_show_version)
-    outf_console ("%s", PACKAGE_STRING);
+    {
+      outf_console ("%s\n", PACKAGE_STRING);
+      outf_flush_console ();
+    }
   if (option_show_help)
     print_help ();
   if (option_summary)

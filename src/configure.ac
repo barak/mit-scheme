@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme], [9.0.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_INIT([MIT/GNU Scheme], [9.1], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([microcode/boot.c])
 AC_CONFIG_AUX_DIR([microcode])
 AC_PROG_MAKE_SET
@@ -8,7 +8,8 @@ AC_PROG_MAKE_SET
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -28,6 +29,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 ])
 
+AC_ARG_ENABLE([debugging],
+    AS_HELP_STRING([--enable-debugging],
+	[Compile with debugging support [[no]]]))
+: ${enable_debugging='no'}
+
 AC_ARG_ENABLE([native-code],
     AS_HELP_STRING([--enable-native-code],
 	[Support native compiled code if available [[yes]]]))
@@ -35,8 +41,12 @@ AC_ARG_ENABLE([native-code],
 
 AC_ARG_ENABLE([host-scheme-test],
     AS_HELP_STRING([--enable-host-scheme-test],
-	[Test for working scheme on build host [[no]]]))
-: ${enable_host_scheme_test=no}
+	[Test for working scheme on build host [[if necessary]]]))
+if test -f lib/all.com; then
+  : ${enable_host_scheme_test=no}
+else
+  : ${enable_host_scheme_test=yes}
+fi
 
 AC_CANONICAL_HOST
 
@@ -47,6 +57,11 @@ c)
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
     ;;
+svm1)
+    ALL_TARGET=all-svm
+    INSTALL_COM='$(INSTALL_DATA)'
+    INSTALL_LIARC_BUNDLES=
+    ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
@@ -56,30 +71,70 @@ esac
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
 AUXDIR='$(libdir)'/${AUXDIR_NAME}
 
-: ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
-if test x"${enable_host_scheme_test}" = xyes; then
+# Please keep the following messages synchronized with the messages in
+# these files:
+#
+#   src/Setup.sh
+#   src/configure.ac
+#   src/etc/make-native.sh
+
+if test x"${enable_host_scheme_test}" = xno; then
+    : ${MIT_SCHEME_EXE:=mit-scheme-${mit_scheme_native_code}}
+else
     AC_MSG_CHECKING([for an existing MIT/GNU Scheme installation])
-    if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
-	:
+    # Kinda hairy logic to detect this: (1) Use MIT_SCHEME_EXE, and
+    # don't try to detect anything automagically, if it's set -- this
+    # will make broken scripts that set MIT_SCHEME_EXE brokenly fail
+    # early.  (2) Otherwise, use mit-scheme-ARCH if we can, because
+    # it's guaranteed to have the right compiler.  (3) Try mit-scheme
+    # if that fails.  (Will mit-scheme and not mit-scheme-ARCH ever be
+    # the right thing?)
+    found_p=no
+    env_p=no
+    native_exe="mit-scheme-${mit_scheme_native_code}"
+    if test x"${MIT_SCHEME_EXE:+set}" = xset; then
+	env_p=yes
+	if "${MIT_SCHEME_EXE}" --batch-mode --eval '(%exit)' >/dev/null 2>&1;
+	then
+	    found_p=yes
+	fi
+    elif "${native_exe}" --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
+	MIT_SCHEME_EXE="${native_exe}"
+	found_p=yes
     elif mit-scheme --batch-mode --eval '(%exit)' >/dev/null 2>&1; then
 	MIT_SCHEME_EXE=mit-scheme
+	found_p=yes
+    fi
+    if test x"${found_p}" = xyes; then
+	AC_MSG_RESULT([yes])
     else
-	AC_MSG_ERROR([
-This script needs an existing MIT/GNU Scheme installation to function.
+	message=
+	if test x"${env_p}" = xyes; then
+	    message="the MIT_SCHEME_EXE environment variable does not run it:
 
-If you have installed MIT/GNU Scheme in an unusual location, or with
-an unusual name, set the environment variable MIT_SCHEME_EXE to the
-name or pathname of the MIT/GNU Scheme executable, which is usually
-\`mit-scheme' or \`/usr/local/bin/mit-scheme', and set the environment
-variable MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme
-library directory, which is usually
-\`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
+   MIT_SCHEME_EXE=${MIT_SCHEME_EXE}"
+	else
+	    message="the following programs do not run it:
+
+   mit-scheme-${mit_scheme_native_code}
+   mit-scheme"
+	fi
+	AC_MSG_ERROR([
+This script needs an existing MIT/GNU Scheme installation to function,
+but ${message}
+
+If you have installed MIT/GNU Scheme in an unusual location, set the
+environment variable MIT_SCHEME_EXE to the name or pathname of the
+MIT/GNU Scheme executable, which is usually \`mit-scheme' or
+\`/usr/local/bin/mit-scheme', and set the environment variable
+MITSCHEME_LIBRARY_PATH to the pathname of the MIT/GNU Scheme library
+directory, which is usually \`/usr/local/lib/mit-scheme-${mit_scheme_native_code}'.
 ])
     fi
-    AC_MSG_RESULT([yes])
 fi
 
 AC_SUBST([ALL_TARGET])
+AC_SUBST([FFIS])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
@@ -88,21 +143,32 @@ AC_SUBST([AUXDIR])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
-if test "`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`"
-then
-    INSTALL="${INSTALL} --preserve-timestamps"
-fi
 
-etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
-compiler/configure "${mit_scheme_native_code}"
+echo etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}"
+etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}" \
+  || exit $?
+compiler/configure "${mit_scheme_native_code}" || exit $?
 
 AC_CONFIG_SUBDIRS([microcode])
+
+m4_include(microcode/achost.ac)
+
+AC_SUBST([CCLD])
+AC_SUBST([DEFS])
+AC_SUBST([CFLAGS])
+AC_SUBST([CPPFLAGS])
+AC_SUBST([LDFLAGS])
+AC_SUBST([MODULE_CFLAGS])
+AC_SUBST([MODULE_LDFLAGS])
+AC_SUBST([MODULE_LOADER])
+
 AC_CONFIG_FILES([
 Makefile
 6001/Makefile
 compiler/Makefile
 cref/Makefile
 edwin/Makefile
+ffi/Makefile
 imail/Makefile
 runtime/Makefile
 sf/Makefile
@@ -123,8 +189,8 @@ if test x"${mit_scheme_native_code}" = xc; then
     for BN in star-parser; do
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
-    for BUNDLE in 6001 compiler cref edwin imail sf sos ssp star-parser \
-            xdoc xml; do
+    for BUNDLE in 6001 compiler cref edwin ffi imail sf sos ssp star-parser \
+		  xdoc xml $FFIS; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)
     done

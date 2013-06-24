@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,7 +28,6 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "winder.h"
 #include "history.h"
 #include "syscall.h"
 
@@ -39,7 +39,7 @@ SCHEME_OBJECT * history_register;
 unsigned long prev_restore_history_offset;
 
 static SCHEME_OBJECT copy_history (SCHEME_OBJECT);
-static void error_death (long, char *) NORETURN;
+static void error_death (long, const char *) NORETURN;
 
 /* Helper procedures for setup_interrupt, which follows. */
 
@@ -182,7 +182,7 @@ err_print (long error_code, outf_channel where)
 long death_blow;
 
 static void
-error_death (long code, char * message)
+error_death (long code, const char * message)
 {
   death_blow = code;
   outf_fatal ("\nMicrocode Error: %s.\n", message);
@@ -380,6 +380,17 @@ arg_integer (int arg_number)
   return (integer_to_long (object));
 }
 
+intmax_t
+arg_integer_to_intmax (int arg_number)
+{
+  SCHEME_OBJECT object = (ARG_REF (arg_number));
+  if (! (INTEGER_P (object)))
+    error_wrong_type_arg (arg_number);
+  if (! (integer_to_intmax_p (object)))
+    error_bad_range_arg (arg_number);
+  return (integer_to_intmax (object));
+}
+
 long
 arg_nonnegative_integer (int arg_number)
 {
@@ -393,6 +404,15 @@ long
 arg_index_integer (int arg_number, long upper_limit)
 {
   long result = (arg_integer (arg_number));
+  if ((result < 0) || (result >= upper_limit))
+    error_bad_range_arg (arg_number);
+  return (result);
+}
+
+intmax_t
+arg_index_integer_to_intmax (int arg_number, intmax_t upper_limit)
+{
+  intmax_t result = (arg_integer_to_intmax (arg_number));
   if ((result < 0) || (result >= upper_limit))
     error_bad_range_arg (arg_number);
   return (result);
@@ -900,128 +920,6 @@ record_primitive_entry (SCHEME_OBJECT primitive)
 }
 
 #endif /* ENABLE_PRIMITIVE_PROFILING */
-
-/* Dynamic Winder support code */
-
-SCHEME_OBJECT
-Find_State_Space (SCHEME_OBJECT State_Point)
-{
-  long How_Far =
-    (UNSIGNED_FIXNUM_TO_LONG
-     (MEMORY_REF (State_Point, STATE_POINT_DISTANCE_TO_ROOT)));
-  long i;
-  SCHEME_OBJECT Point = State_Point;
-
-  for (i=0; i <= How_Far; i++)
-  {
-#ifdef ENABLE_DEBUGGING_TOOLS
-    if (Point == SHARP_F)
-    {
-      outf_fatal("\nState_Point %#lx wrong: count was %ld, #F at %ld\n",
-	      ((long) State_Point), ((long) How_Far), ((long) i));
-      Microcode_Termination(TERM_EXIT);
-      /*NOTREACHED*/
-    }
-#endif /* ENABLE_DEBUGGING_TOOLS */
-    Point = MEMORY_REF (Point, STATE_POINT_NEARER_POINT);
-  }
-  return (Point);
-}
-
-/* Assumptions:
-
-     (1) On a single processor, things should work with multiple state
-	 spaces.  The microcode variable current_state_point tracks
-	 the location in the "boot" space (i.e. the one whose space is
-	 #F) and the state spaces themselves (roots of the space
-	 trees) track the other spaces.
-     (2) On multi-processors, multiple spaces DO NOT work.  Only the
-	 initial space (#F) is tracked by the microcode (it is
-	 swapped on every task switch), but no association with trees
-	 is kept.  This will work since the initial tree has no space
-	 at the root, indicating that the microcode variable rather
-	 than the state space contains the current state space
-	 location.
-
-   NOTE: This procedure is invoked both by primitives and the interpreter
-   itself.  As such, it is using the pun that PRIMITIVE_ABORT is just a
-   (non-local) return to the interpreter.  This should be cleaned up.
-   NOTE: Any primitive that invokes this procedure must do a
-   canonicalize_primitive_context() first!  */
-
-void
-Translate_To_Point (SCHEME_OBJECT Target)
-{
-  SCHEME_OBJECT State_Space, Current_Location, *Path;
-  SCHEME_OBJECT Path_Point, *Path_Ptr;
-  long Distance, Merge_Depth, From_Depth, i;
-
-  State_Space = Find_State_Space(Target);
-  Path = Free;
-  Distance =
-    (UNSIGNED_FIXNUM_TO_LONG
-     (MEMORY_REF (Target, STATE_POINT_DISTANCE_TO_ROOT)));
-  if (State_Space == SHARP_F)
-    Current_Location = current_state_point;
-  else
-    Current_Location = MEMORY_REF (State_Space, STATE_SPACE_NEAREST_POINT);
-
-  if (Target == Current_Location)
-  {
-    PRIMITIVE_ABORT (PRIM_POP_RETURN);
-    /*NOTREACHED*/
-  }
-
-  for (Path_Ptr = (&(Path[Distance])), Path_Point = Target, i = 0;
-       i <= Distance;
-       i++)
-  {
-    *Path_Ptr-- = Path_Point;
-    Path_Point = MEMORY_REF (Path_Point, STATE_POINT_NEARER_POINT);
-  }
-
-  From_Depth =
-    (UNSIGNED_FIXNUM_TO_LONG
-     (MEMORY_REF (Current_Location, STATE_POINT_DISTANCE_TO_ROOT)));
-
-  for (Path_Point = Current_Location, Merge_Depth = From_Depth;
-       Merge_Depth > Distance;
-       Merge_Depth--)
-    Path_Point = MEMORY_REF (Path_Point, STATE_POINT_NEARER_POINT);
-
-  for (Path_Ptr = (&(Path[Merge_Depth]));
-       Merge_Depth >= 0;
-       Merge_Depth--, Path_Ptr--)
-  {
-    if (*Path_Ptr == Path_Point)
-      break;
-    Path_Point = MEMORY_REF (Path_Point, STATE_POINT_NEARER_POINT);
-  }
-
-#ifdef ENABLE_DEBUGGING_TOOLS
-  if (Merge_Depth < 0)
-  {
-    outf_fatal ("\nMerge_Depth went negative: %ld\n", Merge_Depth);
-    Microcode_Termination (TERM_EXIT);
-  }
-#endif /* ENABLE_DEBUGGING_TOOLS */
-
-  preserve_interrupt_mask ();
- Will_Push(CONTINUATION_SIZE + 4);
-  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((Distance - Merge_Depth)));
-  STACK_PUSH (Target);
-  STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM((From_Depth - Merge_Depth)));
-  STACK_PUSH (Current_Location);
-  SET_EXP (State_Space);
-  SET_RC(RC_MOVE_TO_ADJACENT_POINT);
-  SAVE_CONT();
- Pushed();
-
-  /* Disable lower than GC level */
-  SET_INTERRUPT_MASK (GET_INT_MASK & ((INT_GC << 1) - 1));
-  PRIMITIVE_ABORT (PRIM_POP_RETURN);
-  /*NOTREACHED*/
-}
 
 #ifdef __WIN32__
 

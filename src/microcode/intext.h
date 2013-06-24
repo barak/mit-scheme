@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -42,7 +43,7 @@ extern struct interruptable_extent * enter_interruptable_extent (void);
 extern int enter_interruption_extent (void);
 extern void exit_interruption_extent (void);
 
-#define INTERRUPTABLE_EXTENT(result, expression)			\
+#define INTERRUPTABLE_EXTENT(result, expression) do			\
 {									\
   int saved_errno;							\
   struct interruptable_extent * INTERRUPTABLE_EXTENT_frame =		\
@@ -60,6 +61,6 @@ extern void exit_interruption_extent (void);
   saved_errno = errno;							\
   dstack_set_position (current_interruptable_extent -> position);	\
   errno = saved_errno;							\
-}
+} while (0)
 
 #endif /* SCM_INTEXT_H */

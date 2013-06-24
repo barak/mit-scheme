@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -27,6 +28,7 @@ USA.
 
 (global-definitions "../runtime/runtime")
 (global-definitions "../sf/sf")
+(global-definitions "../cref/cref")
 
 (define-package (compiler)
   (files "base/switch"
@@ -668,10 +670,7 @@ USA.
   (export (compiler top-level) register-allocation))
 
 (define-package (compiler lap-syntaxer)
-  (files "machines/svm/assembler-runtime" ;ea:*, inst:* procedures
-	 "machines/svm/assembler-db"
-	 "machines/svm/svm1-opcodes"
-	 "back/lapgn1"			;LAP generator
+  (files "back/lapgn1"			;LAP generator
 	 "back/lapgn2"			; "      "
 	 "back/lapgn3"			; "      "
 	 "back/regmap"			;Hardware register allocator
@@ -731,18 +730,24 @@ USA.
 	  optimize-linear-lap))
 
 (define-package (compiler assembler)
-  (files "back/bitutl"			;Assembly blocks
+  (files "machines/svm/assembler-runtime"
+	 "machines/svm/assembler-db"
+	 "machines/svm/svm1-opcodes"
+	 "back/symtab"			;Symbol tables.
+	 "back/bitutl"			;Assembly blocks
 	 "back/bittop"			;Assembler top level
 	 )
   (parent (compiler))
   (export (compiler)
 	  instruction-append)
+  (import (compiler lap-syntaxer)
+	  instructions)
   (export (compiler top-level)
 	  assemble))
 
 (define-package (compiler disassembler)
   (files "machines/svm/disassembler")
-  (parent (compiler))
+  (parent (compiler assembler))
   (export ()
 	  compiler:write-lap-file
 	  compiler:disassemble)

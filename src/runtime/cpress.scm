@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -99,7 +100,7 @@ USA.
   (call-with-binary-input-file (merge-pathnames ifile)
     (lambda (input)
       (call-with-binary-output-file (merge-pathnames ofile)
-        (lambda (output)				      
+        (lambda (output)
 	  (write-string "Compressed-B1-1.00" output)
 	  (compress-ports input output))))))
 
@@ -553,6 +554,7 @@ USA.
   ;; If necessary, invalidate old commands until this is true.  If the
   ;; buffer size is optimal, this is never necessary, because the
   ;; buffer is big enough to hold all of the commands in the window.
+  (declare (ignorable nb))
   (if (and (not buffer-size-optimal?)
 	   oldest-node)
       (let ((end (bb-end byte-buffer)))

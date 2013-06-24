@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -146,8 +147,20 @@ dld_load (const char * path)
 }
 
 static void
+dld_finalize (void * handle)
+{
+  void * address = (dlsym (handle, "dld_finalize_file"));
+  if (address != 0)
+    {
+      void (*finalize) (void) = address;
+      (*finalize) ();
+    }
+}
+
+static void
 dld_unload (void * handle)
 {
+  dld_finalize (handle);
   if ((dlclose (handle)) != 0)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
@@ -177,7 +190,11 @@ dld_unload_all (void)
       void ** scan = loaded_handles;
       void ** end = (scan + n_loaded_handles);
       while (scan < end)
-	dlclose (*scan++);
+	{
+	  void * handle = (*scan++);
+	  dld_finalize (handle);
+	  dlclose (handle);
+	}
 
       OS_free (loaded_handles);
       loaded_handles_size = 0;
@@ -199,7 +216,7 @@ dld_lookup (void * handle, const char * symbol)
     {
       SCHEME_OBJECT v = (allocate_marked_vector (TC_VECTOR, 3, 1));
       VECTOR_SET (v, 0, (LONG_TO_UNSIGNED_FIXNUM (ERR_IN_SYSTEM_CALL)));
-      VECTOR_SET (v, 1, (char_pointer_to_string ("dlopen")));
+      VECTOR_SET (v, 1, (char_pointer_to_string ("dlsym")));
       VECTOR_SET (v, 2, (char_pointer_to_string (error_string)));
       error_with_argument (v);
     }

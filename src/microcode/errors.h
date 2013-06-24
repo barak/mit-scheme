@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -95,10 +96,11 @@ USA.
 #define ERR_ILLEGAL_CONTINUATION		0x3C
 #define ERR_STACK_HAS_SLIPPED			0x3D
 #define ERR_CANNOT_RECURSE			0x3E
+#define ERR_PROCESS_TERMINATED			0x3F
 
 /* If you add any error codes here, add them to the table below.  */
 
-#define MAX_ERROR				0x3E
+#define MAX_ERROR				0x3F
 
 #define ERROR_NAME_TABLE						\
 {									\
@@ -164,7 +166,8 @@ USA.
 /* 0x3b */		"unknown-primitive-continuation",		\
 /* 0x3c */		"illegal-continuation",				\
 /* 0x3d */		"stack-has-slipped",				\
-/* 0x3e */		"cannot-recurse"				\
+/* 0x3e */		"cannot-recurse",				\
+/* 0x3f */		"process-terminated",				\
 }
 
 /* Termination codes: the interpreter halts on these */
@@ -237,7 +240,7 @@ USA.
 
 #define TERM_MESSAGE_TABLE						\
 {									\
-/* 0x00 */		"Happy Happy Joy Joy",				\
+/* 0x00 */		"Moriturus te saluto",				\
 /* 0x01 */		"Unrecoverable error while loading a band",	\
 /* 0x02 */		"Broken heart encountered",			\
 /* 0x03 */		"Non pointer relocation",			\

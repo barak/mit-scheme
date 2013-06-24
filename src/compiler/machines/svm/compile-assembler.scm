@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,24 +27,9 @@ USA.
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
     (let ((environment (make-top-level-environment)))
-      #;
-      (environment-define-macro environment 'LAP
-	(rsc-macro-transformer
-	 (lambda (form environment)
-	   (if (syntax-match? '(* DATUM) (cdr form))
-	       `(,(close-syntax 'QUASIQUOTE environment) ,(cdr form))
-	       (ill-formed-syntax form)))))
-
-      ;; The 20090107 snapshot does not have write-mit-scheme-copyright.
-      (if (not (environment-bound? environment 'WRITE-MIT-SCHEME-COPYRIGHT))
-	  (begin
-	    (eval '(define inits '()) environment)
-	    (eval '(define (add-boot-init! thunk)
-		     (set! inits (cons thunk inits))) environment)
-	    (load "../../../runtime/version" environment)
-	    (eval '(for-each (lambda (thunk) (thunk)) inits) environment)))
-
       (load "machine" environment)
-      (load "assembler-runtime" environment)
+      ;; Load assembler-compiler before -runtime.
+      ;; It needs to create RULE-MATCHER anti-syntax.
       (load "assembler-compiler" environment)
+      (load "assembler-runtime" environment)
       ((access compile-assembler-rules environment) "assembler-rules.scm"))))

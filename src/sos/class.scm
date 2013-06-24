@@ -2,7 +2,8 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010 Massachusetts Institute of Technology
+    2006, 2007, 2008, 2009, 2010, 2011 Massachusetts Institute of
+    Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -348,8 +349,20 @@ USA.
     class))
 
 (define built-in-class-table
-  (make-eq-hash-table))
-
+  ;; This should be an ephemeral hash table of some flavour (either
+  ;; key-ephemeral or key-and-datum-ephemeral), so that, e.g., dispatch
+  ;; tags can be garbage-collected if you redefine record types.  There
+  ;; are two reasons it is not now:
+  ;;
+  ;; 1. 9.0.1 doesn't have ephemeral hash tables, and this definition
+  ;;    figures into bootstrapping, so we can't use them here until 9.1
+  ;;    is released.
+  ;;
+  ;; 2. Methods' specializers currently hold only strong references to
+  ;;    classes anyway, which have strong references to dispatch tags,
+  ;;    so they need to be changed to hold weak references.
+  (make-strong-eq-hash-table))
+
 (let ((assign-type
        (lambda (name class)
 	 (hash-table/put! built-in-class-table
