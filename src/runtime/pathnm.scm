@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: pathnm.scm,v 14.43 2006/01/31 18:50:02 cph Exp $
+$Id: pathnm.scm,v 14.49 2006/03/09 19:20:58 cph Exp $
 
 Copyright 1987,1988,1989,1990,1991,1992 Massachusetts Institute of Technology
 Copyright 1993,1994,1995,1996,2000,2001 Massachusetts Institute of Technology
@@ -104,10 +104,9 @@ these rules:
 		   (constructor %make-pathname)
 		   (conc-name %pathname-)
 		   (print-procedure
-		    (standard-unparser-method 'PATHNAME
-		      (lambda (pathname port)
-			(write-char #\space port)
-			(write (->namestring pathname) port)))))
+		    (simple-unparser-method 'PATHNAME
+		      (lambda (pathname)
+			(list (->namestring pathname))))))
   (host #f read-only #t)
   (device #f read-only #t)
   (directory #f read-only #t)
@@ -115,12 +114,13 @@ these rules:
   (type #f read-only #t)
   (version #f read-only #t))
 
-(define (guarantee-pathname object caller)
-  (if (not (pathname? object))
-      (error:not-pathname object caller)))
+(define-guarantee pathname "pathname")
 
-(define (error:not-pathname object caller)
-  (error:wrong-type-argument object "pathname" caller))
+(define pathname-parser-method
+  (simple-parser-method
+   (lambda (objects)
+     (and (pair? objects)
+	  (->pathname (car objects))))))
 
 (define (->pathname object)
   (pathname-arg object #f '->PATHNAME))
@@ -298,41 +298,83 @@ these rules:
 		    (or (%pathname-name pathname) name)
 		    (or (%pathname-type pathname) type)
 		    (or (%pathname-version pathname) version))))
-
+
 (define (pathname->uri pathname)
   (let ((pathname (->pathname pathname)))
-    (receive (scheme authority)
-	(if (pathname-absolute? pathname)
-	    (values 'file (make-uri-authority #f "" #f))
-	    (values #f #f))
-      (make-uri scheme
-		authority
-		(map (lambda (x)
-		       (if (eq? x 'WILD)
-			   "*"
-			   (string->utf8-string x)))
-		     (let ((missing?
-			    (lambda (x)
-			      (or (not x)
-				  (eq? x 'UNSPECIFIC)))))
-		       (append (if (pathname-absolute? pathname)
-				   (list "")
-				   '())
-			       (let ((device (pathname-device pathname))
-				     (directory (pathname-directory pathname)))
-				 (if (missing? device)
-				     (if (missing? directory)
-					 '()
-					 (cdr directory))
-				     (cons device (cdr directory))))
-			       (let ((name (file-namestring pathname)))
-				 (if (missing? name)
-				     (if (pathname-absolute? pathname)
-					 (list "")
-					 '())
-				     (list name))))))
-		#f
-		#f))))
+    (make-uri (if (pathname-absolute? pathname) 'file #f)
+	      #f
+	      (map (lambda (x)
+		     (cond ((eq? x 'WILD) "*")
+			   ((eq? x 'UP) "..")
+			   (else (string->utf8-string x))))
+		   (append (if (pathname-absolute? pathname)
+			       (list "")
+			       '())
+			   (let ((device (pathname-device pathname))
+				 (directory (pathname-directory pathname)))
+			     (if (missing-component? device)
+				 (if (missing-component? directory)
+				     '()
+				     (cdr directory))
+				 (cons device (cdr directory))))
+			   (let ((name (file-namestring pathname)))
+			     (if (missing-component? name)
+				 (if (pathname-absolute? pathname)
+				     (list "")
+				     '())
+				 (list name)))))
+	      #f
+	      #f)))
+
+(define (uri->pathname uri #!optional error?)
+  (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
+	(defaults *default-pathname-defaults*)
+	(finish
+	 (lambda (device path keyword)
+	   (receive (directory name type)
+	       (if (pair? path)
+		   (let ((d (cons keyword (except-last-pair path)))
+			 (s (car (last-pair path))))
+		     (if (string-null? s)
+			 (values d #f #f)
+			 (let ((pn (parse-namestring s)))
+			   (values d
+				   (pathname-name pn)
+				   (pathname-type pn)))))
+		   (values (list keyword) #f #f))
+	     (make-pathname #f device directory name type #f)))))
+    (let ((scheme (uri-scheme uri))
+	  (path
+	   (map (lambda (x)
+		  (cond ((string=? x "*") 'WILD)
+			((string=? x "..") 'UP)
+			(else (utf8-string->string x))))
+		(uri-path uri)))
+	  (lose
+	   (lambda ()
+	     (if error? (error:bad-range-argument uri 'URI->PATHNAME))
+	     #f)))
+      (case scheme
+	((file)
+	 (if (and (pair? path)
+		  (string-null? (car path)))
+	     (let ((path (cdr path)))
+	       (receive (device path)
+		   (let ((device (pathname-device defaults)))
+		     (if (and (pair? path)
+			      (not (missing-component? device)))
+			 (values (car path) (cdr path))
+			 (values device path)))
+		 (if (pair? path)
+		     (finish device path 'ABSOLUTE)
+		     (lose))))
+	     (lose)))
+	((#f) (finish #f path 'RELATIVE))
+	(else (lose))))))
+
+(define (missing-component? x)
+  (or (not x)
+      (eq? x 'UNSPECIFIC)))
 
 ;;;; Pathname Syntax
 
@@ -661,3 +703,6 @@ these rules:
 (define (initialize-package!)
   (reset-package!)
   (add-event-receiver! event:after-restore reset-package!))
+
+(define (initialize-parser-method!)
+  (define-bracketed-object-parser-method 'PATHNAME pathname-parser-method))

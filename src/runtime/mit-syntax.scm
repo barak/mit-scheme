@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: mit-syntax.scm,v 14.24 2005/12/09 20:25:59 riastradh Exp $
+$Id: mit-syntax.scm,v 14.25 2006/02/26 03:00:43 cph Exp $
 
 Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -341,7 +341,8 @@ USA.
     SRFI-9
     SRFI-23
     SRFI-27
-    SRFI-30))
+    SRFI-30
+    SRFI-69))
 
 (define-er-macro-transformer 'RECEIVE system-global-environment
   (lambda (form rename compare)

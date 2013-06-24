@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: compile.scm,v 1.9 2004/12/07 03:21:55 cph Exp $
+$Id: compile.scm,v 1.10 2006/02/02 05:27:01 cph Exp $
 
-Copyright 2000,2001,2002,2004 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,7 +40,7 @@ USA.
 		(lambda ()
 		  (load (pathname-new-type name "sf"))
 		  (load (pathname-new-type name "cbf")))))
-	    '("runtime" "sf" "compiler" "edwin" "6001"))
+	    '("runtime" "win32" "sf" "compiler" "edwin" "6001"))
   (with-working-directory-pathname "cref"
     (lambda ()
       (if (not (file-exists? "cref.con"))

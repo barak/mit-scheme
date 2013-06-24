@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.74 2005/11/12 22:31:01 cph Exp $
+$Id: xterm.scm,v 1.75 2006/02/15 05:10:00 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2005 Massachusetts Institute of Technology
+Copyright 2003,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -696,9 +696,9 @@ USA.
 			(let ((xterm (screen-xterm screen))
 			      (x-size (vector-ref event 2))
 			      (y-size (vector-ref event 3)))
-			  (xterm-reconfigure xterm x-size y-size)
 			  (let ((x-size (xterm-map-x-size xterm x-size))
 				(y-size (xterm-map-y-size xterm y-size)))
+			    (xterm-reconfigure xterm x-size y-size)
 			    (if (not (and (= x-size (screen-x-size screen))
 					  (= y-size (screen-y-size screen))))
 				(begin

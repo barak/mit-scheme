@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.72 2005/07/19 03:48:44 cph Exp $
+$Id: load.scm,v 14.75 2006/03/07 20:40:16 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -45,7 +45,7 @@ USA.
 	`(("com" ,fasload/internal)
 	  ("bin" ,fasload/internal)))
   (set! load/default-find-pathname-with-type search-types-in-order)
-  (set! load/current-pathname)
+  (set! *eval-unit* #f)
   (set! condition-type:not-loading
 	(make-condition-type 'NOT-LOADING condition-type:error '()
 	  "No file being loaded."))
@@ -60,7 +60,7 @@ USA.
 (define load/suppress-loading-message?)
 (define load/default-types)
 (define load/after-load-hooks)
-(define load/current-pathname)
+(define *eval-unit*)
 (define condition-type:not-loading)
 (define load/default-find-pathname-with-type)
 (define fasload/default-types)
@@ -83,10 +83,10 @@ USA.
      (lambda ()
        (let ((kernel
 	      (lambda (filename last-file?)
-		(call-with-values
-		    (lambda () (find-pathname filename load/default-types))
-		  (lambda (pathname loader)
-		    (fluid-let ((load/current-pathname pathname))
+		(receive (pathname loader)
+		    (find-pathname filename load/default-types)
+		  (with-eval-unit (pathname->uri pathname)
+		    (lambda ()
 		      (let ((load-it
 			     (lambda ()
 			       (loader pathname
@@ -106,16 +106,26 @@ USA.
 	     (kernel filename/s #t)))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
-  (call-with-values (lambda () (find-pathname filename fasload/default-types))
-    (lambda (pathname loader)
-      (loader pathname
-	      (if (default-object? suppress-loading-message?)
-		  load/suppress-loading-message?
-		  suppress-loading-message?)))))
+  (receive (pathname loader)
+      (find-pathname filename fasload/default-types)
+    (loader pathname
+	    (if (default-object? suppress-loading-message?)
+		load/suppress-loading-message?
+		suppress-loading-message?))))
+
+(define (current-eval-unit #!optional error?)
+  (or *eval-unit*
+      (begin
+	(if error? (error condition-type:not-loading))
+	#f)))
+
+(define (with-eval-unit uri thunk)
+  (fluid-let ((*eval-unit* (->absolute-uri uri 'WITH-EVAL-UNIT)))
+    (thunk)))
 
 (define (current-load-pathname)
-  (if (not load/loading?) (error condition-type:not-loading))
-  load/current-pathname)
+  (or (uri->pathname (current-eval-unit) #f)
+      (error condition-type:not-loading)))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))
@@ -123,15 +133,13 @@ USA.
   unspecific)
 
 (define (handle-load-hooks thunk)
-  (call-with-values
-      (lambda ()
-	(fluid-let ((load/loading? #t)
-		    (load/after-load-hooks '()))
-	  (let ((result (thunk)))
-	    (values result (reverse load/after-load-hooks)))))
-    (lambda (result hooks)
-      (for-each (lambda (hook) (hook)) hooks)
-      result)))
+  (receive (result hooks)
+      (fluid-let ((load/loading? #t)
+		  (load/after-load-hooks '()))
+	(let ((result (thunk)))
+	  (values result (reverse load/after-load-hooks))))
+    (for-each (lambda (hook) (hook)) hooks)
+    result))
 
 (define (load-noisily filename #!optional environment syntax-table purify?)
   (fluid-let ((load-noisily? #t))
@@ -170,13 +178,11 @@ USA.
 	  ((pathname-type pathname)
 	   (fail))
 	  (else
-	   (call-with-values
-	       (lambda ()
-		 (load/default-find-pathname-with-type pathname default-types))
-	     (lambda (pathname loader)
-	       (if (not pathname)
-		   (fail)
-		   (values pathname loader))))))))
+	   (receive (pathname loader)
+	       (load/default-find-pathname-with-type pathname default-types)
+	     (if (not pathname)
+		 (fail)
+		 (values pathname loader)))))))
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
@@ -389,12 +395,11 @@ USA.
 	    (if (option-keyword? keyword)
 		(let ((parser (find-keyword-parser keyword)))
 		  (if parser
-		      (call-with-values (lambda () (parser command-line))
-			(lambda (next tail-action)
-			  (if tail-action
-			      (set! after-parsing-actions
-				    (cons tail-action after-parsing-actions)))
-			  (process-keyword next unused)))
+		      (receive (next tail-action) (parser command-line)
+			(if tail-action
+			    (set! after-parsing-actions
+				  (cons tail-action after-parsing-actions)))
+			(process-keyword next unused))
 		      (find-next-keyword command-line unused)))
 		(begin
 		  (warn "Invalid keyword:" keyword)

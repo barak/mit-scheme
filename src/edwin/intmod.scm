@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.121 2005/04/01 05:07:13 cph Exp $
+$Id: intmod.scm,v 1.122 2006/03/09 18:48:59 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1999 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -443,7 +444,9 @@ The REPL may be controlled by the following commands:
 \\[inferior-cmdl-abort-top-level] aborts evaluation, returns to top level.
 \\[inferior-cmdl-abort-nearest] aborts evaluation, returns to current level.
 \\[inferior-cmdl-abort-previous] aborts evaluation, goes up one level.
-\\[inferior-cmdl-breakpoint] interrupts evaluation, enters a breakpoint."
+\\[inferior-cmdl-breakpoint] interrupts evaluation, enters a breakpoint.
+
+\\{inferior-repl}"
   (lambda (buffer)
     (event-distributor/invoke! (ref-variable inferior-repl-mode-hook buffer)
 			       buffer)))

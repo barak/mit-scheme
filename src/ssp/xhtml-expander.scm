@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.6 2006/01/26 03:53:46 cph Exp $
+$Id: xhtml-expander.scm,v 1.9 2006/02/02 20:53:23 cph Exp $
 
 Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
 
@@ -35,12 +35,25 @@ USA.
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))
-    (if (in-mod-lisp?)
-	(http-response-header 'content-type
-			      (string-append (html-content-type)
-					     "; charset="
-					     (xml-document-charset document))))
+    (if (not (xml-document-declaration document))
+	(begin
+	  (set-xml-document-declaration! document
+					 (make-xml-declaration "1.0" #f #f))
+	  (set-xml-document-misc-1! document
+				    (cons "\n"
+					  (xml-document-misc-1 document)))))
+    (if (not (xml-document-dtd document))
+	(begin
+	  (set-xml-document-dtd! document html-1.0-dtd)
+	  (set-xml-document-misc-2! document
+				    (cons "\n"
+					  (xml-document-misc-2 document)))))
     (let ((root (xml-document-root document)))
+      (if (not (find-xml-attr 'xmlns root))
+	  (set-xml-element-attributes!
+	   root
+	   (cons (make-xml-attribute 'xmlns html-uri)
+		 (xml-element-attributes root))))
       (set-xml-element-contents!
        root
        (cons* "\n"
@@ -52,6 +65,11 @@ USA.
 		(universal-time->local-time-string (get-universal-time))
 		". "))
 	      (xml-element-contents root))))
+    (if (in-mod-lisp?)
+	(http-response-header 'content-type
+			      (string-append (html-content-type)
+					     "; charset="
+					     (xml-document-charset document))))
     (write-xml document port 'INDENT-DTD? #t)))
 
 (define (xml-document-charset document)
@@ -68,7 +86,7 @@ USA.
 		       `((scheme ,(pi-expander environment))
 			 (svar ,svar-expander)
 			 (sabbr ,sabbr-expander)))))))
-
+
 (define (make-expansion-environment pathname)
   (let ((pathname (merge-pathnames pathname))
 	(environment (extend-top-level-environment expander-environment)))
@@ -91,7 +109,7 @@ USA.
 		(expander-eval expression environment)
 		(loop))))))
     (car *outputs*)))
-
+
 (define expander-eval eval)
 
 (define (svar-expander text)

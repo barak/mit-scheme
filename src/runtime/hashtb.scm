@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.33 2005/09/29 19:15:54 cph Exp $
+$Id: hashtb.scm,v 1.34 2006/02/26 03:00:38 cph Exp $
 
 Copyright 1990,1991,1993,1994,1995,2003 Massachusetts Institute of Technology
-Copyright 2004,2005 Massachusetts Institute of Technology
+Copyright 2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,23 +40,20 @@ USA.
   (rehash-after-gc? #f read-only #t)
   (method:get #f read-only #t)
   (method:put! #f read-only #t)
-  (method:intern! #f read-only #t)
+  (method:modify! #f read-only #t)
   (method:remove! #f read-only #t)
   (method:clean! #f read-only #t)
   (method:rehash! #f read-only #t)
-  (method:get-list #f read-only #t))
+  (method:fold #f read-only #t)
+  (method:copy-bucket #f read-only #t))
 
-(define-integrable (guarantee-hash-table-type object procedure)
-  (if (not (hash-table-type? object))
-      (error:not-hash-table-type object procedure)))
-
-(define (error:not-hash-table-type object procedure)
-  (error:wrong-type-argument object "hash table type" procedure))
+(define-guarantee hash-table-type "hash-table type")
 
 (define-structure (hash-table
 		   (type-descriptor <hash-table>)
 		   (constructor make-table (type))
-		   (conc-name table-))
+		   (conc-name table-)
+		   (copier copy-table))
   (type #f read-only #t)
 
   ;; Parameters of the hash table.
@@ -72,6 +69,8 @@ USA.
   (needs-rehash? #f)
   (initial-size-in-effect? #f))
 
+(define-guarantee hash-table "hash table")
+
 (define-integrable (increment-table-count! table)
   (set-table-count! table (fix:+ (table-count table) 1)))
 
@@ -81,27 +80,20 @@ USA.
 (define-integrable minimum-size 4)
 (define-integrable default-rehash-threshold 1)
 (define-integrable default-rehash-size 2.)
-
-(define-integrable (guarantee-hash-table object procedure)
-  (if (not (hash-table? object))
-      (error:not-hash-table object procedure)))
-
-(define (error:not-hash-table object procedure)
-  (error:wrong-type-argument object "hash table" procedure))
 
 ;;;; Table operations
 
 (define ((hash-table-constructor type) #!optional initial-size)
-  (make-hash-table type (if (default-object? initial-size) #f initial-size)))
+  (%make-hash-table type initial-size))
 
-(define (make-hash-table type #!optional initial-size)
-  (guarantee-hash-table-type type 'MAKE-HASH-TABLE)
+(define (%make-hash-table type #!optional initial-size)
+  (guarantee-hash-table-type type '%MAKE-HASH-TABLE)
   (let ((initial-size
 	 (if (or (default-object? initial-size) (not initial-size))
 	     #f
 	     (begin
 	       (guarantee-exact-nonnegative-integer initial-size
-						    'MAKE-HASH-TABLE)
+						    '%MAKE-HASH-TABLE)
 	       initial-size))))
     (let ((table (make-table type)))
       (if (and initial-size (> initial-size minimum-size))
@@ -130,21 +122,28 @@ USA.
   (guarantee-hash-table table 'HASH-TABLE/GET)
   ((table-type-method:get (table-type table)) table key default))
 
-(define hash-table/lookup
-  (let ((default (list #f)))
-    (lambda (table key if-found if-not-found)
-      (let ((datum (hash-table/get table key default)))
-	(if (eq? datum default)
-	    (if-not-found)
-	    (if-found datum))))))
+(define (hash-table/lookup table key if-found if-not-found)
+  (let ((datum (hash-table/get table key default-marker)))
+    (if (eq? datum default-marker)
+	(if-not-found)
+	(if-found datum))))
 
 (define (hash-table/put! table key datum)
   (guarantee-hash-table table 'HASH-TABLE/PUT!)
   ((table-type-method:put! (table-type table)) table key datum))
 
+(define (hash-table/modify! table key procedure default)
+  (guarantee-hash-table table 'HASH-TABLE/MODIFY!)
+  ((table-type-method:modify! (table-type table)) table key procedure default))
+
 (define (hash-table/intern! table key get-datum)
-  (guarantee-hash-table table 'HASH-TABLE/INTERN!)
-  ((table-type-method:intern! (table-type table)) table key get-datum))
+  (hash-table/modify! table
+		      key
+		      (lambda (datum)
+			(if (eq? datum default-marker)
+			    (get-datum)
+			    datum))
+		      default-marker))
 
 (define (hash-table/remove! table key)
   (guarantee-hash-table table 'HASH-TABLE/REMOVE!)
@@ -164,23 +163,24 @@ USA.
   (for-each (lambda (p) (procedure (car p) (cdr p)))
 	    (hash-table->alist table)))
 
+(define (hash-table-fold table procedure initial-value)
+  (guarantee-hash-table table 'HASH-TABLE-FOLD)
+  ((table-type-method:fold (table-type table)) table procedure initial-value))
+
 (define (hash-table->alist table)
-  (guarantee-hash-table table 'HASH-TABLE->ALIST)
-  ((table-type-method:get-list (table-type table))
-   table
-   (lambda (key datum) (cons key datum))))
+  (hash-table-fold table
+		   (lambda (key datum alist) (cons (cons key datum) alist))
+		   '()))
 
 (define (hash-table/key-list table)
-  (guarantee-hash-table table 'HASH-TABLE/KEY-LIST)
-  ((table-type-method:get-list (table-type table))
-   table
-   (lambda (key datum) datum key)))
+  (hash-table-fold table
+		   (lambda (key datum alist) datum (cons key alist))
+		   '()))
 
 (define (hash-table/datum-list table)
-  (guarantee-hash-table table 'HASH-TABLE/DATUM-LIST)
-  ((table-type-method:get-list (table-type table))
-   table
-   (lambda (key datum) key datum)))
+  (hash-table-fold table
+		   (lambda (key datum alist) key (cons datum alist))
+		   '()))
 
 (define (hash-table/rehash-threshold table)
   (guarantee-hash-table table 'HASH-TABLE/REHASH-THRESHOLD)
@@ -274,14 +274,19 @@ USA.
 				    %weak-entry-datum)
 		   (make-method:put! compute-hash! key=? %weak-make-entry
 				     %weak-entry-key %weak-set-entry-datum!)
-		   (make-method:intern! compute-hash! key=? %weak-make-entry
-					%weak-entry-key %weak-entry-datum)
+		   (make-method:modify! compute-hash! key=? %weak-make-entry
+					%weak-entry-key %weak-entry-datum
+					%weak-set-entry-datum!)
 		   (make-method:remove! compute-hash! key=? %weak-entry-key)
 		   weak-method:clean!
 		   (make-method:rehash! key-hash %weak-entry-valid?
 					%weak-entry-key)
-		   (make-method:get-list %weak-entry-valid? %weak-entry-key
-					 %weak-entry-datum)))
+		   (make-method:fold %weak-entry-valid? %weak-entry-key
+				     %weak-entry-datum)
+		   (make-method:copy-bucket %weak-entry-valid?
+					    %weak-make-entry
+					    %weak-entry-key
+					    %weak-entry-datum)))
 
 (define-integrable (%weak-make-entry key datum)
   (if (or (not key) (number? key))	;Keep numbers in table.
@@ -361,17 +366,22 @@ USA.
 		   (make-method:put! compute-hash! key=? %strong-make-entry
 				     %strong-entry-key
 				     %strong-set-entry-datum!)
-		   (make-method:intern! compute-hash! key=?
+		   (make-method:modify! compute-hash! key=?
 					%strong-make-entry %strong-entry-key
-					%strong-entry-datum)
+					%strong-entry-datum
+					%strong-set-entry-datum!)
 		   (make-method:remove! compute-hash! key=?
 					%strong-entry-key)
 		   (lambda (table) table unspecific)
 		   (make-method:rehash! key-hash %strong-entry-valid?
 					%strong-entry-key)
-		   (make-method:get-list %strong-entry-valid?
-					 %strong-entry-key
-					 %strong-entry-datum)))
+		   (make-method:fold %strong-entry-valid?
+				     %strong-entry-key
+				     %strong-entry-datum)
+		   (make-method:copy-bucket %strong-entry-valid?
+					    %strong-make-entry
+					    %strong-entry-key
+					    %strong-entry-datum)))
 
 (define-integrable %strong-make-entry cons)
 (define-integrable (%strong-entry-valid? entry) entry #t)
@@ -409,16 +419,20 @@ USA.
 		(increment-table-count! table)
 		(maybe-grow-table! table))))))))
 
-(define-integrable (make-method:intern! compute-hash! key=? make-entry
-					entry-key entry-datum)
-  (lambda (table key get-datum)
+(define-integrable (make-method:modify! compute-hash! key=? make-entry
+					entry-key entry-datum set-entry-datum!)
+  (lambda (table key procedure default)
     (let ((hash (compute-hash! table key)))
       (let loop ((p (vector-ref (table-buckets table) hash)) (q #f))
 	(if (pair? p)
 	    (if (key=? (entry-key (car p)) key)
-		(entry-datum (car p))
+		(with-table-locked! table
+		  (lambda ()
+		    (let ((datum (procedure (entry-datum (car p)))))
+		      (set-entry-datum! (car p) datum)
+		      datum)))
 		(loop (cdr p) p))
-	    (let ((datum (get-datum)))
+	    (let ((datum (procedure default)))
 	      (with-table-locked! table
 		(lambda ()
 		  (let ((r (cons (make-entry key datum) '())))
@@ -458,22 +472,47 @@ USA.
 		    (decrement-table-count! table))
 		(loop q))))))))
 
-(define-integrable (make-method:get-list entry-valid? entry-key entry-datum)
-  (lambda (table ->item)
+(define-integrable (make-method:fold entry-valid? entry-key entry-datum)
+  (lambda (table procedure initial-value)
     (let ((buckets (table-buckets table)))
       (let ((n-buckets (vector-length buckets)))
-	(do ((i 0 (fix:+ i 1))
-	     (items '()
-		    (let loop ((p (vector-ref buckets i)) (items items))
-		      (if (pair? p)
-			  (loop (cdr p)
-				(if (entry-valid? (car p))
-				    (cons (->item (entry-key (car p))
-						  (entry-datum (car p)))
-					  items)
-				    items))
-			  items))))
-	    ((not (fix:< i n-buckets)) items))))))
+	(let per-bucket ((i 0) (value initial-value))
+	  (if (fix:< i n-buckets)
+	      (let per-entry ((p (vector-ref buckets i)) (value value))
+		(if (pair? p)
+		    (per-entry (cdr p)
+			       (if (entry-valid? (car p))
+				   (procedure (entry-key (car p))
+					      (entry-datum (car p))
+					      value)
+				   value))
+		    (per-bucket (fix:+ i 1) value)))
+	      value))))))
+
+(define-integrable (make-method:copy-bucket entry-valid? make-entry
+					    entry-key entry-datum)
+  (lambda (bucket)
+    (let find-head ((p bucket))
+      (if (pair? p)
+	  (if (entry-valid? (car p))
+	      (let ((head
+		     (cons (make-entry (entry-key (car p))
+				       (entry-datum (car p)))
+			   '())))
+		(let loop ((p (cdr p)) (previous head))
+		  (if (pair? p)
+		      (loop (cdr p)
+			    (if (entry-valid? (car p))
+				(let ((p*
+				       (cons (make-entry (entry-key (car p))
+							 (entry-datum (car p)))
+					     '())))
+				  (set-cdr! previous p*)
+				  p*)
+				previous))))
+		head)
+	      (find-head (cdr p)))
+	  p))))
 
 ;;;; Resizing
 
@@ -718,6 +757,102 @@ USA.
 (define (int:abs n)
   (if (int:negative? n) (int:negate n) n))
 
+;;;; SRFI-69 compatability
+
+(define (make-hash-table #!optional key=? key-hash initial-size)
+  (%make-hash-table (custom-table-type key=? key-hash) initial-size))
+
+(define (custom-table-type key=? key-hash)
+  (cond ((and (eq? key=? eq?)
+	      (or (eq? key-hash eq-hash-mod)
+		  (eq? key-hash hash-by-identity)))
+	 (make-weak-rehash-type eq-hash-mod eq?))
+	((and (eq? key=? eqv?)
+	      (eq? key-hash eqv-hash-mod))
+	 (make-weak-rehash-type eqv-hash-mod eqv?))
+	((and (eq? key=? equal?)
+	      (or (eq? key-hash equal-hash-mod)
+		  (eq? key-hash hash)))
+	 (make-strong-rehash-type equal-hash-mod equal?))
+	((and (or (eq? key=? string=?)
+		  (eq? key=? string-ci=?))
+	      (or (eq? key-hash string-hash-mod)
+		  (eq? key-hash string-hash)
+		  (eq? key-hash string-ci-hash)))
+	 (make-strong-no-rehash-type (if (eq? key-hash string-hash)
+					 string-hash-mod
+					 key-hash)
+				     key=?))
+	(else
+	 (make-strong-rehash-type key-hash key=?))))
+
+(define (alist->hash-table alist #!optional key=? key-hash)
+  (guarantee-alist alist 'ALIST->HASH-TABLE)
+  (let ((table (make-hash-table key=? key-hash)))
+    (for-each (lambda (p)
+		(hash-table/put! table (car p) (cdr p)))
+	      alist)
+    table))
+
+(define (hash key #!optional modulus)
+  (if (default-object? modulus)
+      (equal-hash key)
+      (equal-hash-mod key modulus)))
+
+(define (hash-by-identity key #!optional modulus)
+  (if (default-object? modulus)
+      (eq-hash key)
+      (eq-hash-mod key modulus)))
+
+(define (hash-table-exists? table key)
+  (not (eq? (hash-table/get table key default-marker) default-marker)))
+
+(define (hash-table-ref table key #!optional get-default)
+  (let ((datum (hash-table/get table key default-marker)))
+    (if (eq? datum default-marker)
+	(begin
+	  (if (default-object? get-default)
+	      (error:bad-range-argument key 'HASH-TABLE-REF))
+	  (get-default))
+	datum)))
+
+(define (hash-table-update! table key procedure #!optional get-default)
+  (hash-table/modify! table
+		      key
+		      (if (default-object? get-default)
+			  (lambda (datum)
+			    (if (eq? datum default-marker)
+				(error:bad-range-argument key
+							  'HASH-TABLE-UPDATE!))
+			    (procedure datum))
+			  (lambda (datum)
+			    (procedure (if (eq? datum default-marker)
+					   (get-default)
+					   datum))))
+		      default-marker))
+
+(define (hash-table-copy table)
+  (guarantee-hash-table table 'HASH-TABLE-COPY)
+  (with-table-locked! table
+    (lambda ()
+      (let ((table* (copy-table table))
+	    (type (table-type table)))
+	(set-table-buckets! table*
+			    (vector-map (table-type-method:copy-bucket type)
+					(table-buckets table)))
+	(if (table-type-rehash-after-gc? type)
+	    (set! address-hash-tables (weak-cons table* address-hash-tables)))
+	table*))))
+
+(define (hash-table-merge! table1 table2)
+  (if (not (eq? table2 table1))
+      (hash-table-fold table2
+		       (lambda (key datum ignore)
+			 ignore
+			 (hash-table/put! table1 key datum))
+		       unspecific))
+  table1)
+
 ;;;; Miscellany
 
 (define address-hash-tables)
@@ -780,3 +915,6 @@ USA.
     (let ((value (thunk)))
       (set-interrupt-enables! interrupt-mask)
       value)))
+
+(define default-marker
+  (list 'DEFAULT-MARKER))

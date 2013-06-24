@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: regexp.scm,v 1.83 2004/11/19 16:54:18 cph Exp $
+$Id: regexp.scm,v 1.84 2006/02/18 04:56:22 cph Exp $
 
 Copyright 1986,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
 Copyright 1996,1997,1999,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -215,24 +215,26 @@ USA.
 	   (make-mark group index)))))
 
 (define (re-search-buffer-forward regexp syntax-table group start end)
-  (let ((index
-	 ((ucode-primitive re-search-buffer-forward)
-	  (compiled-regexp/byte-stream regexp)
-	  (compiled-regexp/translation-table regexp)
-	  (syntax-table-argument syntax-table)
-	  registers group start end)))
-    (set! match-group (compute-match-group group index))
-    index))
+  (and (fix:< start end)
+       (let ((index
+	      ((ucode-primitive re-search-buffer-forward)
+	       (compiled-regexp/byte-stream regexp)
+	       (compiled-regexp/translation-table regexp)
+	       (syntax-table-argument syntax-table)
+	       registers group start end)))
+	 (set! match-group (compute-match-group group index))
+	 index)))
 
 (define (re-search-buffer-backward regexp syntax-table group start end)
-  (let ((index
-	 ((ucode-primitive re-search-buffer-backward)
-	  (compiled-regexp/byte-stream regexp)
-	  (compiled-regexp/translation-table regexp)
-	  (syntax-table-argument syntax-table)
-	  registers group start end)))
-    (set! match-group (compute-match-group group index))
-    index))
+  (and (fix:< start end)
+       (let ((index
+	      ((ucode-primitive re-search-buffer-backward)
+	       (compiled-regexp/byte-stream regexp)
+	       (compiled-regexp/translation-table regexp)
+	       (syntax-table-argument syntax-table)
+	       registers group start end)))
+	 (set! match-group (compute-match-group group index))
+	 index)))
 
 (define (re-match-buffer-forward regexp syntax-table group start end)
   (let ((index

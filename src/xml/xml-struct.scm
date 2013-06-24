@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-struct.scm,v 1.53 2006/01/31 06:14:29 cph Exp $
+$Id: xml-struct.scm,v 1.54 2006/02/02 20:50:26 cph Exp $
 
 Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
@@ -168,6 +168,8 @@ USA.
 	((and (string? object)
 	      (utf8-string-valid? object))
 	 object)
+	((uri? object)
+	 (uri->string object))
 	(else (error:wrong-type-datum object "an XML char data"))))
 
 (define-xml-type element

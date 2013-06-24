@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.573 2006/02/02 01:02:07 cph Exp $
+$Id: runtime.pkg,v 14.582 2006/03/10 01:46:20 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -158,6 +158,8 @@ USA.
 	  interrupt-mask/timer-ok
 	  object-constant?
 	  object-pure?
+	  simple-parser-method
+	  simple-unparser-method
 	  standard-unparser-method
 	  unparser-method?
 	  unparser/standard-method
@@ -785,6 +787,7 @@ USA.
 	  string-capitalize
 	  string-capitalize!
 	  string-capitalized?
+	  string-ci-hash
 	  string-ci<=?
 	  string-ci<?
 	  string-ci=?
@@ -1792,13 +1795,35 @@ USA.
   (files "hashtb")
   (parent (runtime))
   (export ()
+	  (hash-table-delete! hash-table/remove!)
+	  (hash-table-equivalence-function hash-table/key=?)
+	  (hash-table-hash-function hash-table/key-hash)
+	  (hash-table-keys hash-table/key-list)
+	  (hash-table-ref/default hash-table/get)
+	  (hash-table-set! hash-table/put!)
+	  (hash-table-size hash-table/count)
+	  (hash-table-update!/default hash-table/modify!)
+	  (hash-table-values hash-table/datum-list)
+	  (hash-table-walk hash-table/for-each)
+	  alist->hash-table
 	  eq-hash
 	  eq-hash-mod
 	  equal-hash
 	  equal-hash-mod
 	  eqv-hash
 	  eqv-hash-mod
+	  error:not-hash-table
+	  guarantee-hash-table
+	  ;name conflict:
+	  ;hash
+	  hash-by-identity
 	  hash-table->alist
+	  hash-table-copy
+	  hash-table-exists?
+	  hash-table-fold
+	  hash-table-merge!
+	  hash-table-ref
+	  hash-table-update!
 	  hash-table/clean!
 	  hash-table/clear!
 	  hash-table/count
@@ -1810,6 +1835,7 @@ USA.
 	  hash-table/key-list
 	  hash-table/key=?
 	  hash-table/lookup
+	  hash-table/modify!
 	  hash-table/put!
 	  hash-table/rehash-size
 	  hash-table/rehash-threshold
@@ -1819,6 +1845,7 @@ USA.
 	  make-eq-hash-table
 	  make-equal-hash-table
 	  make-eqv-hash-table
+	  make-hash-table
 	  make-object-hash-table
 	  make-string-hash-table
 	  make-strong-eq-hash-table
@@ -1907,6 +1934,7 @@ USA.
 	  port-type?
 	  port/coding
 	  port/copy
+	  port/get-property
 	  port/input-blocking-mode
 	  port/input-channel
 	  port/input-terminal-mode
@@ -1920,12 +1948,14 @@ USA.
 	  port/output-blocking-mode
 	  port/output-channel
 	  port/output-terminal-mode
+	  port/remove-property!
 	  port/set-coding
 	  port/set-input-blocking-mode
 	  port/set-input-terminal-mode
 	  port/set-line-ending
 	  port/set-output-blocking-mode
 	  port/set-output-terminal-mode
+	  port/set-property!
 	  port/state
 	  port/supports-coding?
 	  port/thread-mutex
@@ -2253,6 +2283,7 @@ USA.
   (export ()
 	  argument-command-line-parser
 	  condition-type:not-loading
+	  current-eval-unit
 	  current-load-pathname
 	  fasload
 	  fasload-latest
@@ -2270,7 +2301,8 @@ USA.
 	  load/suppress-loading-message?
 	  read-file
 	  set-command-line-parser!
-	  simple-command-line-parser)
+	  simple-command-line-parser
+	  with-eval-unit)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2502,6 +2534,7 @@ USA.
 	  *parser-canonicalize-symbols?*
 	  *parser-radix*
 	  *parser-table*
+	  define-bracketed-object-parser-method
 	  parse-object
 	  parse-objects
 	  system-global-parser-table)
@@ -2598,6 +2631,7 @@ USA.
 	  pathname?
 	  system-library-directory-pathname
 	  system-library-pathname
+	  uri->pathname
 	  user-homedir-pathname)
   (initialization (initialize-package!)))
 
@@ -4729,6 +4763,7 @@ USA.
 	  utf32-string-length
 	  utf32-string-valid?
 	  utf32-string?
+	  utf8-string->string
 	  utf8-string->wide-string
 	  utf8-string-length
 	  utf8-string-valid?
@@ -4828,7 +4863,6 @@ USA.
 	  string->partial-uri
 	  string->relative-uri
 	  string->uri
-	  test-merge-uris
 	  uri->alist
 	  uri->string
 	  uri->symbol
