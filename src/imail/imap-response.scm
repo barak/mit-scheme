@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: imap-response.scm,v 1.50 2007/01/05 21:19:25 cph Exp $
+$Id: imap-response.scm,v 1.53 2008/01/30 20:02:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -81,7 +81,10 @@ USA.
 
 (define (read-flags-response port)
   (discard-known-char #\space port)
-  (read-list port read-flag))
+  ;; Work around bug in Gmail IMAP server: FLAGS response improperly
+  ;; contains the \* flag.
+  ;;(read-list port read-flag)
+  (delq! '|\\*| (read-list port read-pflag)))
 
 (define (read-list-response port)
   (discard-known-char #\space port)
@@ -535,13 +538,15 @@ USA.
 
 (define (read-char-internal port)
   (let ((char (read-char port)))
-    (if imap-transcript-port
+    (if (and (not (eof-object? char))
+             imap-transcript-port)
 	(write-char char imap-transcript-port))
     char))
 
 (define (read-string-internal delimiters port)
   (let ((s (read-string delimiters port)))
-    (if imap-transcript-port
+    (if (and (not (eof-object? s))
+             imap-transcript-port)
 	(write-string s imap-transcript-port))
     s))
 

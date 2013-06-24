@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.97 2007/07/23 04:52:48 cph Exp $
+$Id: load.scm,v 14.102 2008/01/30 20:02:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -56,9 +56,7 @@ USA.
   syntax-table				;ignored
   (let ((environment
 	 (if (default-object? environment)
-	     (if (eq? *current-load-environment* 'NONE)
-		 (nearest-repl/environment)
-		 *current-load-environment*)
+	     (current-load-environment)
 	     (->environment environment)))
 	(purify?
 	 (if (default-object? purify?)
@@ -124,10 +122,11 @@ USA.
 (define (wrap-loader pathname loader)
   (lambda (environment purify?)
     (lambda ()
-      (fluid-let ((*current-load-environment* environment))
-	(with-eval-unit (pathname->uri pathname)
-	  (lambda ()
-	    (loader environment purify?)))))))
+      (with-load-environment environment
+	(lambda ()
+	  (with-eval-unit (pathname->uri pathname)
+	    (lambda ()
+	      (loader environment purify?))))))))
 
 (define (fasload pathname #!optional suppress-notifications?)
   (receive (pathname* loader notifier) (choose-fasload-method pathname)
@@ -264,6 +263,24 @@ USA.
 (define (current-load-pathname)
   (or (uri->pathname (current-eval-unit) #f)
       (error condition-type:not-loading)))
+
+(define (current-load-environment)
+  (let ((env *current-load-environment*))
+    (if (eq? env 'NONE)
+	(nearest-repl/environment)
+	env)))
+
+(define (set-load-environment! environment)
+  (guarantee-environment environment 'SET-LOAD-ENVIRONMENT!)
+  (if (not (eq? *current-load-environment* 'NONE))
+      (begin
+	(set! *current-load-environment* environment)
+	unspecific)))
+
+(define (with-load-environment environment thunk)
+  (guarantee-environment environment 'WITH-LOAD-ENVIRONMENT)
+  (fluid-let ((*current-load-environment* environment))
+    (thunk)))
 
 (define (load/push-hook! hook)
   (if (not load/loading?) (error condition-type:not-loading))

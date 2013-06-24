@@ -1216,9 +1216,19 @@ the remaining input.")
 
 (defun xscheme-prompt-for-expression-exit ()
   (interactive)
-  (if (eq (xscheme-region-expression-p (point-min) (point-max)) 'one)
-      (exit-minibuffer)
-      (error "input must be a single, complete expression")))
+  (let (
+	;; In Emacs 21, during a minibuffer read the minibuffer
+	;; contains the prompt as buffer text and that text is
+	;; read only.  So we can no longer assume that (point-min)
+	;; is where the user-entered text starts and we must avoid
+	;; modifying that prompt text.  The value we want instead
+	;; of (point-min) is (minibuffer-prompt-end).
+	(point-min (if (fboundp 'minibuffer-prompt-end)
+		       (minibuffer-prompt-end)
+		       (point-min))))
+    (if (eq (xscheme-region-expression-p point-min (point-max)) 'one)
+        (exit-minibuffer)
+	(error "input must be a single, complete expression"))))
 
 (defun xscheme-region-expression-p (start end)
   (save-excursion

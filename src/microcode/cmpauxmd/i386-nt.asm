@@ -1,10 +1,11 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.67 2007/04/22 16:31:24 cph Exp $
+;;; $Id: i386.m4,v 1.69 2008/01/30 20:02:23 cph Exp $
 ;;;
 ;;; Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993,
 ;;;     1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003,
-;;;     2004, 2005, 2006, 2007 Massachusetts Institute of Technology
+;;;     2004, 2005, 2006, 2007, 2008 Massachusetts Institute of
+;;;     Technology
 ;;;
 ;;; This file is part of MIT/GNU Scheme.
 ;;;
@@ -839,8 +840,8 @@ asm_generic_zero_fail:
 	push	edx
 	mov	al,02dH
 	jmp	scheme_to_interface
-; define_binary_operation(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
-; define_binary_operation(  $1,   $2,     $3,     $4,     $5,     $6)
+; define_binary_operation(name,index,fix*fix,flo*flo)
+; define_binary_operation(  $1,   $2,     $3,     $4)
 	align 2
 	public _asm_generic_add
 _asm_generic_add:
@@ -850,50 +851,30 @@ _asm_generic_add:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_add_fail
 	cmp	al,26
 	je	asm_generic_add_fix
 	cmp	al,6
-	jne	asm_generic_add_fail
-	cmp	cl,6
-	je	asm_generic_add_flo_flo
-	cmp	cl,26
-	jne	asm_generic_add_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	fiadd	dword ptr [edi]				; fisubl
-	jmp	asm_generic_flonum_result
-asm_generic_add_fix:
-	cmp	cl,6
-	je	asm_generic_add_fix_flo
-	cmp	cl,26
-	jne	asm_generic_add_fail
-	mov	eax,edx
-	mov	ecx,ebx
-	shl	eax,6
-	shl	ecx,6
-	add	eax,ecx		; subl
-	jno	asm_generic_fixnum_result
+	je	asm_generic_add_flo
 asm_generic_add_fail:
 	push	ebx
 	push	edx
 	mov	al,02bH
 	jmp	scheme_to_interface
-asm_generic_add_flo_flo:
+asm_generic_add_fix:
+	mov	eax,edx
+	mov	ecx,ebx
+	shl	eax,6
+	shl	ecx,6
+	add	eax,ecx		; subl
+	jo	asm_generic_add_fail
+	jmp	asm_generic_fixnum_result
+asm_generic_add_flo:
 	and	edx,ebp
 	and	ebx,ebp
 	fld	qword ptr 4[edx]			; fldd
 	fadd	qword ptr 4[ebx]			; fsubl
-	jmp	asm_generic_flonum_result	
-asm_generic_add_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	fld	qword ptr 4[ebx]			; fldd
-	mov	dword ptr [edi],edx
-	fiadd	dword ptr [edi]			; fisubrl
 	jmp	asm_generic_flonum_result
 	align 2
 	public _asm_generic_subtract
@@ -904,50 +885,30 @@ _asm_generic_subtract:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_subtract_fail
 	cmp	al,26
 	je	asm_generic_subtract_fix
 	cmp	al,6
-	jne	asm_generic_subtract_fail
-	cmp	cl,6
-	je	asm_generic_subtract_flo_flo
-	cmp	cl,26
-	jne	asm_generic_subtract_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	fisub	dword ptr [edi]				; fisubl
-	jmp	asm_generic_flonum_result
-asm_generic_subtract_fix:
-	cmp	cl,6
-	je	asm_generic_subtract_fix_flo
-	cmp	cl,26
-	jne	asm_generic_subtract_fail
-	mov	eax,edx
-	mov	ecx,ebx
-	shl	eax,6
-	shl	ecx,6
-	sub	eax,ecx		; subl
-	jno	asm_generic_fixnum_result
+	je	asm_generic_subtract_flo
 asm_generic_subtract_fail:
 	push	ebx
 	push	edx
 	mov	al,028H
 	jmp	scheme_to_interface
-asm_generic_subtract_flo_flo:
+asm_generic_subtract_fix:
+	mov	eax,edx
+	mov	ecx,ebx
+	shl	eax,6
+	shl	ecx,6
+	sub	eax,ecx		; subl
+	jo	asm_generic_subtract_fail
+	jmp	asm_generic_fixnum_result
+asm_generic_subtract_flo:
 	and	edx,ebp
 	and	ebx,ebp
 	fld	qword ptr 4[edx]			; fldd
 	fsub	qword ptr 4[ebx]			; fsubl
-	jmp	asm_generic_flonum_result	
-asm_generic_subtract_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	fld	qword ptr 4[ebx]			; fldd
-	mov	dword ptr [edi],edx
-	fisubr	dword ptr [edi]			; fisubrl
 	jmp	asm_generic_flonum_result
 	align 2
 	public _asm_generic_multiply
@@ -958,53 +919,33 @@ _asm_generic_multiply:
 	mov	ecx,ebx
 	shr	eax,26
 	shr	ecx,26
+	cmp	cl,al
+	jne	asm_generic_multiply_fail
 	cmp	al,26
 	je	asm_generic_multiply_fix
 	cmp	al,6
-	jne	asm_generic_multiply_fail
-	cmp	cl,6
-	je	asm_generic_multiply_flo_flo
-	cmp	cl,26
-	jne	asm_generic_multiply_fail
-	shl	ebx,6
-	and	edx,ebp
-	sar	ebx,6
-	fld	qword ptr 4[edx]			; fldd
-	mov	dword ptr [edi],ebx
-	fimul	dword ptr [edi]				; fisubl
-	jmp	asm_generic_flonum_result
-asm_generic_multiply_fix:
-	cmp	cl,6
-	je	asm_generic_multiply_fix_flo
-	cmp	cl,26
-	jne	asm_generic_multiply_fail
-	mov	eax,edx
-	mov	ecx,ebx
-	shl	eax,6
-	shl	ecx,6
-	imul	eax,ecx		; subl
-	jno	asm_generic_fixnum_result
+	je	asm_generic_multiply_flo
 asm_generic_multiply_fail:
 	push	ebx
 	push	edx
 	mov	al,029H
 	jmp	scheme_to_interface
-asm_generic_multiply_flo_flo:
+asm_generic_multiply_fix:
+	mov	eax,edx
+	mov	ecx,ebx
+	shl	eax,6
+	shl	ecx,6
+	imul	eax,ecx		; subl
+	jo	asm_generic_multiply_fail
+	jmp	asm_generic_fixnum_result
+asm_generic_multiply_flo:
 	and	edx,ebp
 	and	ebx,ebp
 	fld	qword ptr 4[edx]			; fldd
 	fmul	qword ptr 4[ebx]			; fsubl
-	jmp	asm_generic_flonum_result	
-asm_generic_multiply_fix_flo:
-	shl	edx,6
-	and	ebx,ebp
-	sar	edx,6
-	fld	qword ptr 4[ebx]			; fldd
-	mov	dword ptr [edi],edx
-	fimul	dword ptr [edi]			; fisubrl
 	jmp	asm_generic_flonum_result
 ; Divide needs to check for 0, so we cant really use the following
-; define_binary_operation(divide,23,NONE,fidivr,fidiv,fdiv)
+; define_binary_operation(divide,23,NONE,fdiv)
 ; define_binary_predicate(name,index,fix*fix,fix*flo,flo*fix,flo*flo)
 	align 2
 	public _asm_generic_equal

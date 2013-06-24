@@ -1,10 +1,10 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.60 2007/06/23 05:47:44 cph Exp $
+# $Id: Makefile.in.in,v 1.64 2008/01/30 20:02:25 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-#     2005, 2006, 2007 Massachusetts Institute of Technology
+#     2005, 2006, 2007, 2008 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -129,6 +129,7 @@ scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
 scheme_DEPENDENCIES = 
 scheme_LDFLAGS = @SCHEME_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(LIBS)
+SCHEME_EXE = scheme
 
 findprim_SOURCES = findprim.c
 findprim_OBJECTS = findprim.o
@@ -196,25 +197,25 @@ extract-liarc-decls: extract-liarc-decls.o
 utabmd.bin: utabmd.scm
 	./utabmd.sh
 
-prbfish.so: prbfish.o
+prbfish.so: prbfish.o scheme
 	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
-prmd5.so: prmd5.o
+prmd5.so: prmd5.o scheme
 	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
-prmhash.so: prmhash.o
+prmhash.so: prmhash.o scheme
 	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
-prmcrypt.so: prmcrypt.o
+prmcrypt.so: prmcrypt.o scheme
 	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
 
-prgdbm.so: prgdbm.o
+prgdbm.so: prgdbm.o scheme
 	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
-prdb4.so: prdb4.o
+prdb4.so: prdb4.o scheme
 	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
-prpgsql.so: prpgsql.o
+prpgsql.so: prpgsql.o scheme
 	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
 
 @MODULE_RULES@
@@ -278,7 +279,10 @@ install-auxDATA: $(aux_DATA)
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_PROGRAM) liarc-cc liarc-ld $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_PROGRAM) liarc-cc $(DESTDIR)$(AUXDIR)/.
+	sed -e "s&^SCHEME_EXE=.*&SCHEME_EXE=$(bindir)/$(EXE_NAME)&" < liarc-ld > liarc-ld.install
+	$(INSTALL_PROGRAM) liarc-ld.install $(DESTDIR)$(AUXDIR)/liarc-ld
+	rm -f liarc-ld.install
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/include
 	$(INSTALL_DATA) *.h $(DESTDIR)$(AUXDIR)/include/.
 

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.56 2007/09/04 03:35:19 riastradh Exp $])
+AC_REVISION([$Id: configure.ac,v 1.60 2008/01/30 20:02:11 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -9,7 +9,7 @@ AC_PROG_MAKE_SET
 AC_COPYRIGHT(
 [Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,7 +33,7 @@ AH_TOP([/*
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007 Massachusetts Institute of Technology
+    2006, 2007, 2008 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -199,6 +199,10 @@ INSTALL_INCLUDE=
 
 AC_CANONICAL_HOST
 
+dnl Save these prior to running AC_PROG_CC.
+SAVED_CFLAGS=${CFLAGS}
+SAVED_LDFLAGS=${LDFLAGS}
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_C_BACKSLASH_A
@@ -212,11 +216,17 @@ AC_C_PROTOTYPES
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+
 if test ${GCC} = yes; then
+
+    dnl Discard flags computed by AC_PROG_CC; we'll use our own.
+    CFLAGS=${SAVED_CFLAGS}
+    LDFLAGS=${SAVED_LDFLAGS}
+
     if test ${enable_debugging} = no; then
-	CFLAGS="-O3"
+	CFLAGS="${CFLAGS} -O3"
     else
-	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS"
+	CFLAGS="${CFLAGS} -O0 -g -DENABLE_DEBUGGING_TOOLS"
 	LDFLAGS="${LDFLAGS} -g"
     fi
     CFLAGS="${CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
@@ -272,8 +282,15 @@ dragonfly*)
     GNU_LD=yes
     ;;
 darwin*)
-    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
+    MACOSX=yes
+    MACOSX_SYSROOT=/Developer/SDKs/MacOSX10.4u.sdk
+    if test -d ${MACOSX_SYSROOT}; then
+	MACOSX_CFLAGS="-mmacosx-version-min=10.4 -isysroot ${MACOSX_SYSROOT}"
+	MACOSX_LDFLAGS="${MACOSX_CFLAGS} -Wl,-syslibroot,${MACOSX_SYSROOT}"
+	CFLAGS="${CFLAGS} ${MACOSX_CFLAGS}"
+	LDFLAGS="${LDFLAGS} ${MACOSX_LDFLAGS}"
+    fi
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -bundle_loader "'${SCHEME_EXE}'
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
@@ -997,6 +1014,10 @@ if test "x${MODULE_BASES}" != x; then
 	echo ${BASE}.o: ${BASE}.c >> ${MODULE_RULES}
 	echo "	" '$(COMPILE_MODULE)' -c '$*.c' >> ${MODULE_RULES}
     done
+fi
+
+if test x${MACOSX} = xyes && test ${SCM_ARCH} = i386; then
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
 fi
 
 AC_SUBST([AS_FLAGS])
