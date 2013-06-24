@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.28 2006/06/11 03:04:17 cph Exp $
+$Id: socket.scm,v 1.32 2007/01/07 09:11:23 cph Exp $
 
-Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -94,15 +95,15 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-generic-i/o-port channel channel))))
+	 (make-socket-port channel))))
 
 (define (open-tcp-stream-socket host-name service)
   (let ((channel (open-tcp-stream-socket-channel host-name service)))
-    (make-generic-i/o-port channel channel)))
+    (make-socket-port channel)))
 
 (define (open-unix-stream-socket filename)
   (let ((channel (open-unix-stream-socket-channel filename)))
-    (make-generic-i/o-port channel channel)))
+    (make-socket-port channel)))
 
 (define (open-tcp-stream-socket-channel host-name service)
   (let ((host
@@ -125,6 +126,31 @@ USA.
        (lambda ()
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
+(define (make-socket-port channel)
+  (make-generic-i/o-port channel channel socket-port-type))
+
+(define socket-port-type)
+(define (initialize-package!)
+  (set! socket-port-type
+	(make-port-type `((CLOSE-INPUT ,socket/close-input)
+			  (CLOSE-OUTPUT ,socket/close-output))
+			(generic-i/o-port-type 'CHANNEL 'CHANNEL)))
+  unspecific)
+
+(define (socket/close-input port)
+  (if (port/open? port)
+      ((ucode-primitive shutdown-socket 2)
+       (channel-descriptor (port/input-channel port))
+       1))
+  (generic-io/close-input port))
+
+(define (socket/close-output port)
+  (if (port/open? port)
+      ((ucode-primitive shutdown-socket 2)
+       (channel-descriptor (port/input-channel port))
+       2))
+  (generic-io/close-output port))
+
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped
     (lambda ()

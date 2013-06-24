@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.16 2003/02/14 18:28:24 cph Exp $
+$Id: tterm.c,v 1.20 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1990-2002 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -102,8 +104,7 @@ DEFINE_PRIMITIVE ("TERMCAP-GET-STRING", Prim_termcap_get_string, 1, 1, 0)
   {
     char * result = (tgetstr ((STRING_ARG (1)), (&tgetstr_pointer)));
     PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F
-       : (char_pointer_to_string ((unsigned char *) result)));
+      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
   }
 }
 
@@ -112,13 +113,17 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
   PRIMITIVE_HEADER (5);
   {
     char s [4096];
+#if defined(__netbsd__)
+    PRIMITIVE_RETURN (char_pointer_to_string (0));
+#else
     (void) tparam
       ((STRING_ARG (1)), s, (sizeof (s)),
        (arg_nonnegative_integer (2)),
        (arg_nonnegative_integer (3)),
        (arg_nonnegative_integer (4)),
        (arg_nonnegative_integer (5)));
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) s));
+    PRIMITIVE_RETURN (char_pointer_to_string (s));
+#endif
   }
 }
 
@@ -130,10 +135,9 @@ DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
     PRIMITIVE_RETURN
       (char_pointer_to_string
-       ((unsigned char *)
-	(tgoto ((STRING_ARG (1)),
-		(arg_nonnegative_integer (2)),
-		(arg_nonnegative_integer (3))))));
+       (tgoto ((STRING_ARG (1)),
+	       (arg_nonnegative_integer (2)),
+	       (arg_nonnegative_integer (3)))));
   }
 }
 

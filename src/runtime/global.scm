@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.72 2004/11/19 07:14:30 cph Exp $
+$Id: global.scm,v 14.78 2007/01/09 06:36:21 cph Exp $
 
-Copyright 1988,1989,1991,1992,1993,1995 Massachusetts Institute of Technology
-Copyright 1998,2000,2001,2003,2004 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -265,7 +266,7 @@ USA.
   (%encode-gc-type ((ucode-primitive object-gc-type 1) object)))
 
 (define (type-code->gc-type code)
-  (%encode-gc-type ((ucode-primitive type-code->gc-type 1) code)))
+  (%encode-gc-type ((ucode-primitive type->gc-type 1) code)))
 
 (define (%encode-gc-type t)
   (if (not (and (fix:fixnum? t)
@@ -281,7 +282,6 @@ USA.
     ((NON-POINTER) #t)
     ((GC-INTERNAL)
      (or (object-type? (ucode-type manifest-nm-vector) object)
-	 (object-type? (ucode-type manifest-special-nm-vector) object)
 	 (and (object-type? (ucode-type reference-trap) object)
 	      (<= (object-datum object) trap-max-immediate))))
     (else #f)))
@@ -298,9 +298,7 @@ USA.
 (define (non-pointer-type-code? code)
   (case (type-code->gc-type code)
     ((NON-POINTER) #t)
-    ((GC-INTERNAL)
-     (or (fix:= (ucode-type manifest-nm-vector) code)
-	 (fix:= (ucode-type manifest-special-nm-vector) code)))
+    ((GC-INTERNAL) (fix:= (ucode-type manifest-nm-vector) code))
     (else #f)))
 
 (define (pointer-type-code? code)
@@ -313,10 +311,7 @@ USA.
   ;; Note: the unparser takes advantage of the fact that objects
   ;; satisfying this predicate also satisfy:
   ;; (object-type? (ucode-type constant) object)
-  (or (eq? object undefined-conditional-branch)
-      ;; same as `undefined-conditional-branch'.
-      ;; (eq? object *the-non-printing-object*)
-      ;; (eq? object unspecific)
+  (or (eq? object unspecific)
       (eq? object (object-new-type (ucode-type constant) 2))))
 
 (define unspecific
@@ -344,37 +339,27 @@ USA.
       ((ucode-primitive primitive-impurify) object))
   object)
 
-(define (fasdump object filename
-		 #!optional suppress-messages? dump-option)
-  (let* ((filename (->namestring (merge-pathnames filename)))
-	 (do-it
-	  (lambda (start-message end-message)
-	    (start-message)
-	    (let loop ()
-	      (if ((ucode-primitive primitive-fasdump)
-		   object filename
-		   (if (default-object? dump-option)
-		       #f
-		       dump-option))
-		  (end-message)
-		  (begin
-		    (with-simple-restart 'RETRY "Try again."
-		      (lambda ()
-			(error "FASDUMP: Object is too large to be dumped:"
-			       object)))
-		    (loop))))))
-	 (no-print (lambda () unspecific)))
-    (if (or (default-object? suppress-messages?)
-	    (not suppress-messages?))
-	(let ((port (notification-output-port)))
-	  (do-it (lambda ()
-		   (fresh-line port)
-		   (write-string ";Dumping " port)
-		   (write (enough-namestring filename) port))
-		 (lambda ()
-		   (write-string " -- done" port)
-		   (newline port))))
-	(do-it no-print no-print))))
+(define (fasdump object filename #!optional quiet? dump-option)
+  (let ((filename (->namestring (merge-pathnames filename)))
+	(quiet? (if (default-object? quiet?) #f quiet?))
+	(dump-option (if (default-object? dump-option) #f dump-option)))
+    (let ((do-it
+	   (lambda ()
+	     (let loop ()
+	       (if (not ((ucode-primitive primitive-fasdump)
+			 object filename dump-option))
+		   (begin
+		     (with-simple-restart 'RETRY "Try again."
+		       (lambda ()
+			 (error "FASDUMP: Object is too large to be dumped:"
+				object)))
+		     (loop)))))))
+    (if quiet?
+	(do-it)
+	(with-notification (lambda (port)
+			     (write-string "Dumping " port)
+			     (write (enough-namestring filename) port))
+	  do-it)))))
 
 ;;;; Hook lists
 

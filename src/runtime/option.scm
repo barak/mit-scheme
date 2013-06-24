@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: option.scm,v 14.48 2005/08/05 20:03:01 cph Exp $
+$Id: option.scm,v 14.52 2007/01/05 21:19:28 cph Exp $
 
-Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1995,1997,1998,2001,2002 Massachusetts Institute of Technology
-Copyright 2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -87,7 +87,8 @@ USA.
       (standard-load-options)))
 
 (define (standard-load-options)
-  (or (library-file? "options/optiondb")
+  (or (library-file? "runtime/optiondb") ; for C back end
+      (library-file? "options/optiondb")
       (error "Cannot locate a load-option database")
       "optiondb"))
 
@@ -96,12 +97,10 @@ USA.
    (merge-pathnames library-internal-path (library-directory-pathname ""))))
 
 (define (confirm-pathname pathname)
-  (let loop ((file-types load/default-types))
-    (and (pair? file-types)
-	 (let ((full-pathname (pathname-new-type pathname (caar file-types))))
-	   (if (file-exists? full-pathname)
-	       pathname			; not FULL-PATHNAME
-	       (loop (cdr file-types)))))))
+  (receive (pathname* loader)
+      (search-types-in-order pathname load/default-types)
+    pathname*
+    (and loader pathname)))
 
 (define loaded-options '())
 (define *options* '())			; Current options.
@@ -117,17 +116,24 @@ USA.
 	  (runtime (pathname-as-directory "runtime")))
       (for-each (lambda (file)
 		  (let ((file (force* file)))
-		    (let* ((options (library-directory-pathname "options"))
-			   (pathname (merge-pathnames file options)))
-		      (with-directory-rewriting-rule options runtime
-			(lambda ()
-			  (with-working-directory-pathname
-			      (directory-pathname pathname)
-			    (lambda ()
-			      (load pathname
-				    environment
-				    'DEFAULT
-				    #t))))))))
+		    (cond 
+		     (((ucode-primitive initialize-c-compiled-block 1)
+		       (string-append "runtime_" file))
+		      => (lambda (obj)
+			   (purify obj)
+			   (scode-eval obj environment)))
+		     (else
+		      (let* ((options (library-directory-pathname "options"))
+			     (pathname (merge-pathnames file options)))
+			(with-directory-rewriting-rule options runtime
+			  (lambda ()
+			    (with-working-directory-pathname
+				(directory-pathname pathname)
+			      (lambda ()
+				(load pathname
+				      environment
+				      'DEFAULT
+				      #t))))))))))
 		files)
       (flush-purification-queue!)
       (eval init-expression environment))))

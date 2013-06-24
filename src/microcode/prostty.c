@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: prostty.c,v 1.9 2003/02/14 18:28:23 cph Exp $
+$Id: prostty.c,v 1.12 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -64,16 +66,14 @@ DEFINE_PRIMITIVE ("TTY-COMMAND-BEEP", Prim_tty_command_beep, 0, 0,
   "Return a string that, when written to the display, will make it beep.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) (OS_tty_command_beep ())));
+  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_beep ()));
 }
 
 DEFINE_PRIMITIVE ("TTY-COMMAND-CLEAR", Prim_tty_command_clear, 0, 0,
   "Return a string that, when written to the display, will clear it.")
 {
   PRIMITIVE_HEADER (0);
-  PRIMITIVE_RETURN
-    (char_pointer_to_string ((unsigned char *) (OS_tty_command_clear ())));
+  PRIMITIVE_RETURN (char_pointer_to_string (OS_tty_command_clear ()));
 }
 
 DEFINE_PRIMITIVE ("TTY-NEXT-INTERRUPT-CHAR", Prim_tty_next_interrupt_char, 0, 0,

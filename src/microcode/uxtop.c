@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: uxtop.c,v 1.30 2003/07/09 22:53:55 cph Exp $
+$Id: uxtop.c,v 1.34 2007/01/12 03:45:55 cph Exp $
 
-Copyright 1990,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
-Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -363,6 +364,7 @@ static char * syscall_names_table [] =
   "select",
   "setitimer",
   "setpgid",
+  "shutdown",
   "sighold",
   "sigprocmask",
   "sigsuspend",
@@ -391,10 +393,10 @@ static char * syscall_names_table [] =
 };
 
 void
-OS_syscall_names (unsigned int * length, unsigned char *** names)
+OS_syscall_names (unsigned int * length, char *** names)
 {
   (*length) = ((sizeof (syscall_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syscall_names_table);
+  (*names) = syscall_names_table;
 }
 
 static char * syserr_names_table [] =
@@ -441,8 +443,8 @@ static char * syserr_names_table [] =
 };
 
 void
-OS_syserr_names (unsigned int * length, unsigned char *** names)
+OS_syserr_names (unsigned int * length, char *** names)
 {
   (*length) = ((sizeof (syserr_names_table)) / (sizeof (char *)));
-  (*names) = ((unsigned char **) syserr_names_table);
+  (*names) = syserr_names_table;
 }

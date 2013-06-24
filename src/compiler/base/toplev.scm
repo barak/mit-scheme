@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 4.64 2003/02/14 18:28:01 cph Exp $
+$Id: toplev.scm,v 4.70 2007/01/05 21:19:20 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -33,11 +35,13 @@ USA.
 (define compile-file:override-usual-integrations '())
 (define compile-file:sf-only? #f)
 (define compile-file:force? #f)
+(define compiler:compile-data-files-as-expressions? #t)
 (define compile-file)
 (let ((scm-pathname (lambda (path) (pathname-new-type path "scm")))
       (bin-pathname (lambda (path) (pathname-new-type path "bin")))
       (ext-pathname (lambda (path) (pathname-new-type path "ext")))
-      (com-pathname (lambda (path) (pathname-new-type path "com"))))
+      (com-pathname (lambda (path)
+		      (pathname-new-type path compiled-output-extension))))
 
   (define (process-file input-file output-file dependencies processor)
     (let ((doit (lambda () (processor input-file output-file dependencies))))
@@ -56,17 +60,17 @@ USA.
 				 (warn "Missing dependency:"
 				       (->namestring dependency))
 				 #f)))))))))
-	  (if (not (null? reasons))
+	  (if (pair? reasons)
 	      (begin
-		(fresh-line)
-		(write-string ";Generating ")
-		(write (->namestring output-file))
-		(write-string " because of:")
-		(for-each (lambda (reason)
-			    (write-char #\space)
-			    (write (->namestring reason)))
-			  reasons)
-		(newline)
+		(write-notification-line
+		 (lambda (port)
+		   (write-string "Generating " port)
+		   (write (->namestring output-file) port)
+		   (write-string " because of:" port)
+		   (for-each (lambda (reason)
+			       (write-char #\space port)
+			       (write (->namestring reason) port))
+			     reasons)))
 		(doit)))))))
 
   (set! compile-file
@@ -108,15 +112,14 @@ USA.
 (define (cf input #!optional output)
   (let ((kernel
 	 (lambda (source-file)
-	   (with-values
-	       (lambda () (sf/pathname-defaulting source-file #f #f))
-	     (lambda (source-pathname bin-pathname spec-pathname)
-	       ;; Maybe this should be done only if scode-file
-	       ;; does not exist or is older than source-file.
-	       (sf source-pathname bin-pathname spec-pathname)
-	       (if (default-object? output)
-		   (compile-bin-file bin-pathname)
-		   (compile-bin-file bin-pathname output)))))))
+	   (receive (source-pathname bin-pathname spec-pathname)
+	       (sf/pathname-defaulting source-file #f #f)
+	     ;; Maybe this should be done only if scode-file
+	     ;; does not exist or is older than source-file.
+	     (sf source-pathname bin-pathname spec-pathname)
+	     (if (default-object? output)
+		 (compile-bin-file bin-pathname)
+		 (compile-bin-file bin-pathname output))))))
     (if (pair? input)
 	(for-each kernel input)
 	(kernel input))))
@@ -136,20 +139,25 @@ USA.
 	 (and (not (default-object? output-string)) output-string)
 	 (make-pathname #f #f #f #f "bin" 'NEWEST)
 	 (lambda (input-pathname output-pathname)
-	   (maybe-open-file
-	    compiler:generate-rtl-files?
-	    (pathname-new-type output-pathname "rtl")
-	    (lambda (rtl-output-port)
-	      (maybe-open-file compiler:generate-lap-files?
-			       (pathname-new-type output-pathname "lap")
-			       (lambda (lap-output-port)
-				 (fluid-let ((*debugging-key*
-					      (random-byte-vector 32)))
-				   (compile-scode/internal
-				    (compiler-fasload input-pathname)
-				    (pathname-new-type output-pathname "inf")
-				    rtl-output-port
-				    lap-output-port))))))))
+	   (let ((scode (compiler-fasload input-pathname)))
+	     (if (and (scode/constant? scode)
+		      (not compiler:compile-data-files-as-expressions?))
+		 (compile-data-from-file scode output-pathname)
+		 (maybe-open-file
+		  compiler:generate-rtl-files?
+		  (pathname-new-type output-pathname "rtl")
+		  (lambda (rtl-output-port)
+		    (maybe-open-file
+		     compiler:generate-lap-files?
+		     (pathname-new-type output-pathname "lap")
+		     (lambda (lap-output-port)
+		       (fluid-let ((*debugging-key*
+				    (random-byte-vector 32)))
+			 (compile-scode/internal
+			  scode
+			  (pathname-new-type output-pathname "inf")
+			  rtl-output-port
+			  lap-output-port))))))))))
 	unspecific)))
 
 (define *debugging-key*)
@@ -170,17 +178,20 @@ USA.
 		       (if output-string
 			   (merge-pathnames output-string output-pathname)
 			   output-pathname))))
-		(if compiler:noisy?
-		    (begin
-		      (fresh-line)
-		      (write-string "Compile File: ")
-		      (write (enough-namestring input-pathname))
-		      (write-string " => ")
-		      (write (enough-namestring output-pathname))
-		      (newline)))
-		(compiler-file-output
-		 (transform input-pathname output-pathname)
-				      output-pathname)))))
+		(let ((do-it
+		       (lambda ()
+			 (compiler-file-output
+			  (transform input-pathname output-pathname)
+			  output-pathname))))
+		  (if compiler:noisy?
+		      (with-notification
+			  (lambda (port)
+			    (write-string "Compiling file: " port)
+			    (write (enough-namestring input-pathname) port)
+			    (write-string " => " port)
+			    (write (enough-namestring output-pathname) port))
+			do-it)
+		      (do-it)))))))
 	 (kernel
 	  (if compiler:batch-mode?
 	      (batch-kernel core)
@@ -195,17 +206,22 @@ USA.
 	   (if (scode/comment? scode)
 	       (scode/comment-expression scode)
 	       scode))))
-    (if (scode/open-block? scode)
-	(scode/open-block-components scode
-	  (lambda (names declarations body)
-	    (if (null? names)
-		(scan-defines body
-		  (lambda (names declarations* body)
-		    (make-open-block names
-				     (append declarations declarations*)
-				     body)))
-		scode)))
-	(scan-defines scode make-open-block))))
+    (cond ((scode/constant? scode)
+	   scode)
+	  ((scode/open-block? scode)
+	   (scode/open-block-components
+	    scode
+	    (lambda (names declarations body)
+	      (if (null? names)
+		  (scan-defines
+		   body
+		   (lambda (names declarations* body)
+		     (make-open-block names
+				      (append declarations declarations*)
+				      body)))
+		  scode))))
+	  (else
+	   (scan-defines scode make-open-block)))))
 
 ;;;; Alternate Entry Points
 
@@ -253,7 +269,7 @@ USA.
   (if (not compiler:abort-handled?)
       (error "Not set up to abort" value))
   (fresh-line)
-  (write-string "*** Aborting...")
+  (write-string ";*** Aborting...")
   (newline)
   (compiler:abort-continuation value))
 
@@ -273,63 +289,55 @@ USA.
   ;; Used by the compiler when it wants to compile subexpressions as
   ;; separate code-blocks.
   ;; The rtl output should be fixed.
-  (let ((my-number *recursive-compilation-count*)
-	(output?
-	 (and compiler:show-phases?
-	      (not compiler:show-procedures?))))
-    (set! *recursive-compilation-count* (1+ my-number))
-    (if output?
-	(begin
-	  (fresh-line)
-	  (newline)
-	  (write-string *output-prefix*)
-	  (write-string "*** Recursive compilation ")
-	  (write my-number)
-	  (write-string " ***")
-	  (newline)))
-    (let ((value
-	   ((let ((do-it
-		   (lambda ()
-		     (fluid-let ((*recursive-compilation-number* my-number)
-				 (compiler:package-optimization-level 'NONE)
-				 (*procedure-result?* procedure-result?))
-		       (compile-scode/internal
-			scode
-			(and *info-output-filename*
-			     (if (eq? *info-output-filename* 'KEEP)
-				 'KEEP
-				 'RECURSIVE))
-			*rtl-output-port*
-			*lap-output-port*
-			bind-compiler-variables)))))
-	      (if procedure-result?
-		  (let ((do-it
-			 (lambda ()
-			   (let ((result (do-it)))
-			     (set! *remote-links*
-				   (cons (cdr result) *remote-links*))
-			     (car result)))))
-		    (if compiler:show-procedures?
-			(lambda ()
-			  (compiler-phase/visible
-			   (string-append
-			    "Compiling procedure: "
-			    (write-to-string procedure-name))
-			   do-it))
-			do-it))
-		  (lambda ()
-		    (fluid-let ((*remote-links* '()))
-		      (do-it))))))))
-      (if output?
-	  (begin
-	    (fresh-line)
-	    (write-string *output-prefix*)
-	    (write-string "*** Done with recursive compilation ")
-	    (write my-number)
-	    (write-string " ***")
-	    (newline)
-	    (newline)))
-      value)))
+  (let ((my-number *recursive-compilation-count*))
+    (set! *recursive-compilation-count* (+ my-number 1))
+    (let ((do-it
+	   (lambda ()
+	     (compile-recursively-1 scode
+				    procedure-result?
+				    procedure-name
+				    my-number))))
+      (if (and compiler:show-phases?
+	       (not compiler:show-procedures?))
+	  (with-notification (lambda (port)
+			       (write-string "*** Recursive compilation " port)
+			       (write my-number port))
+	    do-it)
+	  (do-it)))))
+
+(define (compile-recursively-1 scode procedure-result? procedure-name
+			       my-number)
+  (let ((do-it
+	 (lambda ()
+	   (fluid-let ((*recursive-compilation-number* my-number)
+		       (compiler:package-optimization-level 'NONE)
+		       (*procedure-result?* procedure-result?))
+	     (compile-scode/internal
+	      scode
+	      (and *info-output-filename*
+		   (if (eq? *info-output-filename* 'KEEP)
+		       'KEEP
+		       'RECURSIVE))
+	      *rtl-output-port*
+	      *lap-output-port*
+	      bind-compiler-variables)))))
+    (if procedure-result?
+	(let ((do-it
+	       (lambda ()
+		 (let ((result (do-it)))
+		   (set! *remote-links*
+			 (cons (cdr result) *remote-links*))
+		   (car result)))))
+	  (if compiler:show-procedures?
+	      (compiler-phase/visible
+	       (call-with-output-string
+		 (lambda (port)
+		   (write-string "Compiling procedure: " port)
+		   (write procedure-name port)))
+	       do-it)
+	      (do-it)))
+	(fluid-let ((*remote-links* '()))
+	  (do-it)))))
 
 ;;;; Global variables
 
@@ -575,23 +583,20 @@ USA.
       (compiler-phase/invisible thunk)))
 
 (define (compiler-phase/visible name thunk)
-  (fluid-let ((*output-prefix* (string-append "    " *output-prefix*)))
-    (fresh-line)
-    (write-string *output-prefix*)
-    (write-string name)
-    (write-string "...")
-    (newline)
+  (let ((thunk
+	 (lambda ()
+	   (with-notification (lambda (port) (write-string name port))
+	     thunk))))
     (if compiler:show-time-reports?
 	(let ((process-start *process-time*)
 	      (real-start *real-time*))
 	  (let ((value (thunk)))
-	    (compiler-time-report "  Time taken"
+	    (compiler-time-report "Time taken"
 				  (- *process-time* process-start)
 				  (- *real-time* real-start))
 	    value))
 	(thunk))))
 
-(define *output-prefix* "")
 (define *phase-level* 0)
 
 (define (compiler-phase/invisible thunk)
@@ -612,14 +617,14 @@ USA.
 	  (do-it)))))
 
 (define (compiler-time-report prefix process-time real-time)
-  (write-string *output-prefix*)
-  (write-string prefix)
-  (write-string ": ")
-  (write (/ (exact->inexact process-time) 1000))
-  (write-string " (process time); ")
-  (write (/ (exact->inexact real-time) 1000))
-  (write-string " (real time)")
-  (newline))
+  (write-notification-line
+   (lambda (port)
+     (write-string prefix port)
+     (write-string ": " port)
+     (write (/ (exact->inexact process-time) 1000) port)
+     (write-string " (process time); " port)
+     (write (/ (exact->inexact real-time) 1000) port)
+     (write-string " (real time)" port))))
 
 (define (phase/fg-generation)
   (compiler-superphase "Flow Graph Generation"
@@ -823,15 +828,13 @@ USA.
     (lambda ()
       (set! *ic-procedure-headers* '())
       (initialize-machine-register-map!)
-      (with-values
-	  (lambda ()
-	    (generate/top-level (last-reference *root-expression*)))
-	(lambda (expression procedures continuations rgraphs)
-	  (set! *rtl-expression* expression)
-	  (set! *rtl-procedures* procedures)
-	  (set! *rtl-continuations* continuations)
-	  (set! *rtl-graphs* rgraphs)
-	  unspecific))
+      (receive (expression procedures continuations rgraphs)
+	  (generate/top-level (last-reference *root-expression*))
+	(set! *rtl-expression* expression)
+	(set! *rtl-procedures* procedures)
+	(set! *rtl-continuations* continuations)
+	(set! *rtl-graphs* rgraphs)
+	unspecific)
       (if *procedure-result?*
 	  (set! *rtl-expression* #f))
       (set! label->object
@@ -854,16 +857,17 @@ USA.
 			(- (rgraph-n-registers rgraph)
 			   number-of-machine-registers))
 		      *rtl-graphs*)))
-	    (write-string *output-prefix*)
-	    (write-string "  Registers used: ")
-	    (write (apply max n-registers))
-	    (write-string " max, ")
-	    (write (apply min n-registers))
-	    (write-string " min, ")
-	    (write
-	     (exact->inexact (/ (apply + n-registers) (length n-registers))))
-	    (write-string " mean")
-	    (newline))))))
+	    (write-notification-line
+	     (lambda (port)
+	       (write-string "Registers used: " port)
+	       (write (apply max n-registers) port)
+	       (write-string " max, " port)
+	       (write (apply min n-registers) port)
+	       (write-string " min, " port)
+	       (write (exact->inexact (/ (apply + n-registers)
+					 (length n-registers)))
+		      port)
+	       (write-string " mean" port))))))))
 
 (define (phase/rtl-optimization)
   (compiler-superphase "RTL Optimization"
@@ -946,7 +950,7 @@ USA.
       (write-string "RTL for object " port)
       (write *recursive-compilation-number* port)
       (newline port)
-      (pp scode port #T 4)
+      (pp scode port #t 4)
       (newline port)
       (newline port)
       (write-rtl-instructions (linearize-rtl *rtl-root*
@@ -989,16 +993,14 @@ USA.
 		       (linearize-lap *rtl-root*
 				      *rtl-procedures*
 				      *rtl-continuations*))))
-      (with-values
-	  (lambda ()
-	    (info-generation-phase-2 *rtl-expression*
-				     *rtl-procedures*
-				     *rtl-continuations*))
-	(lambda (expression procedures continuations)
-	  (set! *dbg-expression* expression)
-	  (set! *dbg-procedures* procedures)
-	  (set! *dbg-continuations* continuations)
-	  unspecific))
+      (receive (expression procedures continuations)
+	  (info-generation-phase-2 *rtl-expression*
+				   *rtl-procedures*
+				   *rtl-continuations*)
+	(set! *dbg-expression* expression)
+	(set! *dbg-procedures* procedures)
+	(set! *dbg-continuations* continuations)
+	unspecific)
       (if (not compiler:preserve-data-structures?)
 	  (begin
 	    (set! *rtl-expression*)
@@ -1019,7 +1021,7 @@ USA.
 	    (write-string "LAP for object ")
 	    (write *recursive-compilation-number*)
 	    (newline)
-	    (pp scode (current-output-port) #T 4)
+	    (pp scode (current-output-port) #t 4)
 	    (newline)
 	    (newline)
 	    (newline)

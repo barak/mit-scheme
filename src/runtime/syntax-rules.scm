@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: syntax-rules.scm,v 14.6 2003/03/07 21:13:29 cph Exp $
+$Id: syntax-rules.scm,v 14.11 2007/02/04 00:17:12 riastradh Exp $
 
-Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -41,7 +43,7 @@ USA.
        (expand/syntax-rules form rename compare syntax-error)))))
 
 (define (expand/syntax-rules form rename compare syntax-error)
-  (if (syntax-match? '((* IDENTIFIER) + ((IDENTIFIER . DATUM) EXPRESSION))
+  (if (syntax-match? '((* IDENTIFIER) * ((IDENTIFIER . DATUM) EXPRESSION))
 		     (cdr form))
       (let ((keywords (cadr form))
 	    (clauses (cddr form)))
@@ -155,21 +157,19 @@ USA.
 		(r-l (rename 'L))
 		(r-lambda (rename 'LAMBDA)))
 	    `(((,r-lambda
-		(,r-loop)
-		(,(rename 'BEGIN)
-		 (,(rename 'SET!)
-		  ,r-loop
-		  (,r-lambda
-		   (,r-l)
-		   (,(rename 'IF)
-		    (,(rename 'NULL?) ,r-l)
-		    #T
-		    ,(conjunction
-		      `(,(rename 'PAIR?) ,r-l)
-		      (conjunction (loop pattern `(,(rename 'CAR) ,r-l))
-				   `(,r-loop (,(rename 'CDR) ,r-l)))))))
-		 ,r-loop))
-	       #F)
+		()
+		(,(rename 'DEFINE)
+		 ,r-loop
+		 (,r-lambda
+		  (,r-l)
+		  (,(rename 'IF)
+		   (,(rename 'NULL?) ,r-l)
+		   #T
+		   ,(conjunction
+		     `(,(rename 'PAIR?) ,r-l)
+		     (conjunction (loop pattern `(,(rename 'CAR) ,r-l))
+				  `(,r-loop (,(rename 'CDR) ,r-l)))))))
+		,r-loop))
 	      ,expression))))
        (conjunction
 	(lambda (predicate consequent)
@@ -223,9 +223,7 @@ USA.
 			  (error "illegal control/ellipsis combination"
 				 control sids))))
 		 (syntax-error "Missing ellipsis in expansion." #f))
-	     (loop control (cdr ellipses)))
-	    ((pair? ellipses)
-	     (syntax-error "Extra ellipsis in expansion." #f))))))
+	     (loop control (cdr ellipses)))))))
 
 (define (generate-ellipsis rename ellipsis body syntax-error)
   (let ((sids (ellipsis-sids ellipsis)))

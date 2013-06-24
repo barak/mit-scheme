@@ -1,11 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.593 2006/09/06 04:49:53 cph Exp $
+$Id: runtime.pkg,v 14.612 2007/01/17 03:39:42 cph Exp $
 
-Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
-Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
-Copyright 2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -21,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -973,8 +972,14 @@ USA.
 	  char->integer
 	  char->name
 	  char-ascii?
+	  char-bit:control
+	  char-bit:hyper
+	  char-bit:meta
+	  char-bit:super
 	  char-bits
+	  char-bits-clear?
 	  char-bits-limit
+	  char-bits-set?
 	  char-ci<=?
 	  char-ci<?
 	  char-ci=?
@@ -992,6 +997,7 @@ USA.
 	  char>?
 	  char?
 	  chars->ascii
+	  clear-char-bits
 	  code->char
 	  digit->char
 	  error:not-char
@@ -1001,7 +1007,8 @@ USA.
 	  integer->char
 	  make-char
 	  name->char
-	  radix?)
+	  radix?
+	  set-char-bits)
   (export (runtime string)
 	  %char<?
 	  downcase-table
@@ -1732,29 +1739,34 @@ USA.
   (files "genio")
   (parent (runtime))
   (export ()
-	  make-generic-i/o-port)
-  (export (runtime console-i/o-port)
 	  generic-i/o-port-type
 	  generic-io/char-ready?
+	  generic-io/close-input
+	  generic-io/close-output
 	  generic-io/flush-output
 	  generic-io/read-char
+	  make-generic-i/o-port)
+  (export (runtime console-i/o-port)
 	  input-buffer-contents
 	  make-gstate
 	  port-input-buffer
 	  set-input-buffer-contents!)
   (export (runtime file-i/o-port)
-	  generic-i/o-port-type
-	  make-gstate)
+	  clear-input-buffer
+	  input-buffer-encoded-character-size
+	  input-buffer-free-bytes
+	  input-buffer-using-binary-normalizer?
+	  make-gstate
+	  output-buffer-using-binary-denormalizer?
+	  port-input-buffer
+	  port-output-buffer)
   (export (runtime string-input)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-source)
   (export (runtime string-output)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-sink)
   (export (runtime truncated-string-output)
-	  generic-i/o-port-type
 	  make-gstate
 	  make-non-channel-sink)
   (initialization (initialize-package!)))
@@ -1919,11 +1931,12 @@ USA.
 	  notification-output-port
 	  output-port-type?
 	  output-port?
+	  port-position
 	  port-type/char-ready?
-	  port-type/discard-char
 	  port-type/discretionary-flush-output
 	  port-type/flush-output
 	  port-type/fresh-line
+	  port-type/line-start?
 	  port-type/operation
 	  port-type/operation-names
 	  port-type/operations
@@ -1943,16 +1956,20 @@ USA.
 	  port/get-property
 	  port/input-blocking-mode
 	  port/input-channel
+	  port/input-open?
 	  port/input-terminal-mode
+	  port/intern-property!
 	  port/known-coding?
 	  port/known-codings
 	  port/known-line-ending?
 	  port/known-line-endings
 	  port/line-ending
+	  port/open?
 	  port/operation
 	  port/operation-names
 	  port/output-blocking-mode
 	  port/output-channel
+	  port/output-open?
 	  port/output-terminal-mode
 	  port/remove-property!
 	  port/set-coding
@@ -1976,6 +1993,7 @@ USA.
 	  set-current-output-port!
 	  set-interaction-i/o-port!
 	  set-notification-output-port!
+	  set-port-position!
 	  set-port/state!
 	  set-trace-output-port!
 	  trace-output-port
@@ -1984,9 +2002,10 @@ USA.
 	  with-notification-output-port
 	  with-output-to-port
 	  with-trace-output-port)
+  (export (runtime file-i/o-port)
+	  port/unread)
   (export (runtime input-port)
 	  port/operation/char-ready?
-	  port/operation/discard-char
 	  port/operation/peek-char
 	  port/operation/read-char
 	  port/operation/read-external-substring
@@ -1997,6 +2016,7 @@ USA.
 	  port/operation/discretionary-flush-output
 	  port/operation/flush-output
 	  port/operation/fresh-line
+	  port/operation/line-start?
 	  port/operation/write-char
 	  port/operation/write-external-substring
 	  port/operation/write-substring
@@ -2019,18 +2039,18 @@ USA.
   (files "input")
   (parent (runtime))
   (export ()
+	  (discard-char read-char)
+	  (input-port/discard-char input-port/read-char)
 	  char-ready?
-	  discard-char
 	  eof-object?
 	  input-port/char-ready?
-	  input-port/discard-char
 	  input-port/discard-chars
 	  input-port/peek-char
 	  input-port/read-char
-	  input-port/read-line
-	  input-port/read-string
 	  input-port/read-external-string!
 	  input-port/read-external-substring!
+	  input-port/read-line
+	  input-port/read-string
 	  input-port/read-string!
 	  input-port/read-substring!
 	  input-port/read-wide-string!
@@ -2057,10 +2077,12 @@ USA.
 	  flush-output
 	  fresh-line
 	  newline
+	  output-port/bytes-written
 	  output-port/column
 	  output-port/discretionary-flush
 	  output-port/flush-output
 	  output-port/fresh-line
+	  output-port/line-start?
 	  output-port/write-char
 	  output-port/write-object
 	  output-port/write-external-string
@@ -2394,7 +2416,10 @@ USA.
 	  read-file
 	  set-command-line-parser!
 	  simple-command-line-parser
+	  with-loading-message
 	  with-eval-unit)
+  (export (runtime options)
+	  search-types-in-order)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2440,6 +2465,7 @@ USA.
 	  microcode-error/name->code
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
+	  microcode-id/machine-type
 	  microcode-id/operating-system
 	  microcode-id/operating-system-name
 	  microcode-id/operating-system-variant
@@ -3098,7 +3124,6 @@ USA.
   (export ()
 	  disk-restore
 	  disk-save
-	  dump-world
 	  identify-world)
   (export (runtime gc-daemons)
 	  *within-restore-window?*)
@@ -3302,7 +3327,8 @@ USA.
 	  open-unix-stream-socket
 	  open-unix-stream-socket-channel
 	  os/hostname
-	  tcp-server-connection-accept))
+	  tcp-server-connection-accept)
+  (initialization (initialize-package!)))
 
 (define-package (runtime subprocess)
   (file-case options
@@ -4065,7 +4091,6 @@ USA.
 	  get-output-string!
 	  (make-accumulator-output-port open-output-string)
 	  open-output-string
-	  port-position
 	  (with-string-output-port call-with-output-string)
 	  with-output-to-string)
   (initialization (initialize-package!)))
@@ -4245,7 +4270,9 @@ USA.
 	  prompt-for-command-expression
 	  prompt-for-confirmation
 	  prompt-for-evaluated-expression
-	  prompt-for-expression)
+	  prompt-for-expression
+	  with-notification
+	  write-notification-line)
   (export (runtime rep)
 	  port/set-default-environment
 	  port/write-result)
@@ -4738,7 +4765,15 @@ USA.
   (parent (runtime))
   (export ()
 	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
+	  *match-string
+	  *match-symbol
+	  *match-utf8-string
+	  *parse-string
+	  *parse-symbol
+	  *parse-utf8-string
 	  call-with-parser-buffer-tail
+	  complete-*match
+	  complete-*parse
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
 	  get-parser-buffer-tail
@@ -4779,7 +4814,8 @@ USA.
 	  peek-parser-buffer-char
 	  read-parser-buffer-char
 	  set-parser-buffer-pointer!
-	  string->parser-buffer))
+	  string->parser-buffer
+	  utf8-string->parser-buffer))
 
 (define-package (runtime unicode)
   (files "unicode")
@@ -5026,6 +5062,7 @@ USA.
   (files "http-client")
   (parent (runtime))
   (export ()
+	  adjoin-http-header-fields
 	  call-with-http-connection
 	  call-with-http-response:entity-request
 	  call-with-http-response:get
@@ -5062,6 +5099,7 @@ USA.
 	  read-http-response
 	  receive-http-response
 	  send-http-request
+	  valid-http-header-field?
 	  write-http-request
 	  ))
 

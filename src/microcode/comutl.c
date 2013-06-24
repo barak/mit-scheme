@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: comutl.c,v 1.33 2003/02/14 18:28:18 cph Exp $
+$Id: comutl.c,v 1.37 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -143,7 +145,7 @@ DEFINE_PRIMITIVE ("UTILITY-INDEX->NAME", Prim_utility_index_to_name, 1, 1,
   if (result == ((char *) NULL))
     PRIMITIVE_RETURN (SHARP_F);
   else
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+    PRIMITIVE_RETURN (char_pointer_to_string (result));
 }
 
 DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
@@ -157,7 +159,7 @@ DEFINE_PRIMITIVE ("BUILTIN-INDEX->NAME", Prim_builtin_index_to_name, 1, 1,
   if (result == ((char *) NULL))
     PRIMITIVE_RETURN (SHARP_F);
   else
-    PRIMITIVE_RETURN (char_pointer_to_string ((unsigned char *) result));
+    PRIMITIVE_RETURN (char_pointer_to_string (result));
 }
 
 /* This is only meaningful for the C back end. */
@@ -167,13 +169,10 @@ DEFINE_PRIMITIVE ("INITIALIZE-C-COMPILED-BLOCK",
   "Given the tag of a compiled object, return the object.")
 {
 #ifdef NATIVE_CODE_IS_C
-  extern SCHEME_OBJECT * EXFUN (initialize_C_compiled_block, (int, char *));
-  SCHEME_OBJECT * block, val;
-  
-  block = (initialize_C_compiled_block (1, (STRING_ARG (1))));
-  val = ((block == ((SCHEME_OBJECT *) NULL))
-	 ? SHARP_F
-	 : (MAKE_POINTER_OBJECT (TC_COMPILED_ENTRY, block)));
+  extern SCHEME_OBJECT EXFUN (initialize_C_compiled_block, (int, char *));
+  SCHEME_OBJECT val;
+
+  val = (initialize_C_compiled_block (1, (STRING_ARG (1))));
   PRIMITIVE_RETURN (val);
 #else
   PRIMITIVE_RETURN (SHARP_F);

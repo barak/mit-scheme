@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: xhtml-expander.scm,v 1.10 2006/07/26 19:04:41 cph Exp $
+$Id: xhtml-expander.scm,v 1.13 2007/01/05 21:19:29 cph Exp $
 
-Copyright 2002,2003,2004,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -35,13 +37,6 @@ USA.
   (let ((document
 	 (read/expand-xml-file pathname
 			       (make-expansion-environment pathname))))
-    (if (not (xml-document-declaration document))
-	(begin
-	  (set-xml-document-declaration! document
-					 (make-xml-declaration "1.0" #f #f))
-	  (set-xml-document-misc-1! document
-				    (cons "\n"
-					  (xml-document-misc-1 document)))))
     (if (not (xml-document-dtd document))
 	(begin
 	  (set-xml-document-dtd! document html-1.0-dtd)

@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: prims.h,v 9.52 2003/02/14 18:28:22 cph Exp $
+$Id: prims.h,v 9.55 2007/01/12 03:45:55 cph Exp $
 
-Copyright (c) 1987-2002 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -103,7 +105,7 @@ extern long EXFUN (arg_ascii_integer, (int));
 
 #define STRING_ARG(arg)							\
   ((STRING_P (ARG_REF (arg)))						\
-   ? ((char *) (STRING_LOC ((ARG_REF (arg)), 0)))			\
+   ? (STRING_POINTER (ARG_REF (arg)))					\
    : ((error_wrong_type_arg (arg)), ((char *) 0)))
 
 extern PTR EXFUN (arg_extended_string, (unsigned int, unsigned long *));

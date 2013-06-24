@@ -1,9 +1,10 @@
 /* -*-C-*-
 
-$Id: intern.c,v 9.61 2005/01/01 05:44:12 cph Exp $
+$Id: intern.c,v 9.66 2007/01/12 03:45:55 cph Exp $
 
-Copyright 1987,1988,1989,1992,1994,1996 Massachusetts Institute of Technology
-Copyright 2000,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -19,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -38,24 +39,19 @@ USA.
 
 /* Hashing strings */
 
-#define STRING_HASH_BITS 16
+/* The FNV hash, short for Fowler/Noll/Vo in honor of its creators.  */
 
 static unsigned int
 DEFUN (string_hash, (length, string),
        unsigned long length AND
        CONST char * string)
 {
-  CONST char * scan = string;
-  CONST char * end = (scan + length);
-  unsigned int result = 0;
+  CONST unsigned char * scan = ((unsigned char *) string);
+  CONST unsigned char * end = (scan + length);
+  unsigned int result = 0x811c9dc5;
   while (scan < end)
-    {
-      result <<= 1;
-      result |= (result >> STRING_HASH_BITS);
-      result ^= (*scan++);
-      result &= ((1 << STRING_HASH_BITS) - 1);
-    }
-  return (result);
+    result = ((result * 0x1000193) + (*scan++));
+  return (result & ((unsigned int) BIGGEST_FIXNUM));
 }
 
 static SCHEME_OBJECT *
@@ -85,14 +81,14 @@ CONST char *
 DEFUN (arg_symbol, (n), int n)
 {
   CHECK_ARG (n, SYMBOL_P);
-  return (STRING_LOC ((FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)), 0));
+  return (STRING_POINTER (FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
 }
 
 CONST char *
 DEFUN (arg_interned_symbol, (n), int n)
 {
   CHECK_ARG (n, SYMBOL_P);
-  return (STRING_LOC ((FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)), 0));
+  return (STRING_POINTER (FAST_MEMORY_REF ((ARG_REF (n)), SYMBOL_NAME)));
 }
 
 SCHEME_OBJECT
@@ -143,7 +139,7 @@ DEFUN (string_to_symbol, (string), SCHEME_OBJECT string)
 {
   SCHEME_OBJECT * cell
     = (find_symbol_internal ((STRING_LENGTH (string)),
-			     (STRING_LOC (string, 0))));
+			     (STRING_POINTER (string))));
   return ((EMPTY_LIST_P (*cell)) ? (make_symbol (string, cell)) : (*cell));
 }
 
@@ -152,7 +148,7 @@ DEFUN (intern_symbol, (symbol), SCHEME_OBJECT symbol)
 {
   SCHEME_OBJECT name = (FAST_MEMORY_REF (symbol, SYMBOL_NAME));
   SCHEME_OBJECT * cell
-    = (find_symbol_internal ((STRING_LENGTH (name)), (STRING_LOC (name, 0))));
+    = (find_symbol_internal ((STRING_LENGTH (name)), (STRING_POINTER (name))));
   if (!EMPTY_LIST_P (*cell))
     return (*cell);
   else
@@ -172,7 +168,7 @@ Returns the symbol whose name is STRING, or #F if no such symbol exists.")
   {
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
-      (find_symbol ((STRING_LENGTH (string)), (STRING_LOC (string, 0))));
+      (find_symbol ((STRING_LENGTH (string)), (STRING_POINTER (string))));
   }
 }
 
@@ -197,7 +193,7 @@ the reader in creating interned symbols.")
     SCHEME_OBJECT string = (ARG_REF (1));
     PRIMITIVE_RETURN
       (LONG_TO_UNSIGNED_FIXNUM (string_hash ((STRING_LENGTH (string)),
-					     (STRING_LOC (string, 0)))));
+					     (STRING_POINTER (string)))));
   }
 }
 
@@ -213,7 +209,7 @@ Equivalent to (MODULO (STRING-HASH STRING) DENOMINATOR).")
     PRIMITIVE_RETURN
       (LONG_TO_UNSIGNED_FIXNUM
        ((string_hash ((STRING_LENGTH (string)),
-		      (STRING_LOC (string, 0))))
+		      (STRING_POINTER (string))))
 	% (arg_ulong_integer (2))));
   }
 }

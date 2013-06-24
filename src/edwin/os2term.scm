@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: os2term.scm,v 1.25 2003/02/14 18:28:12 cph Exp $
+$Id: os2term.scm,v 1.29 2007/01/05 21:19:24 cph Exp $
 
-Copyright 1994,1995,1996,1997,2000,2003 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -805,16 +807,17 @@ USA.
 (define (translate-key-event event)
   (let ((code (key-event/code event))
 	(flags (key-event/flags event)))
-    (let ((control (if (fix:= 0 (fix:and flags KC_CTRL)) 0 2))
-	  (meta (if (fix:= 0 (fix:and flags KC_ALT)) 0 1)))
+    (let ((bits (flags->bucky-bits flags)))
       (let ((process-code
 	     (lambda (code)
-	       (if (and (fix:<= #o100 code) (fix:< code #o140)
-			(not (fix:= 0 control)))
-		   (make-char (fix:and code #o037) meta)
-		   (make-char code (fix:or meta control))))))
+	       (if (and (fix:<= #x40 code) (fix:< code #x60)
+			(fix:= (fix:and bits char-bit:control)
+			       char-bit:control))
+		   (make-char (fix:and code #x1F)
+			      (fix:andc bits char-bit:control))
+		   (make-char code bits)))))
 	(if (fix:= 0 (fix:and flags KC_VIRTUALKEY))
-	    (and (fix:< code #o200)
+	    (and (fix:< code #x80)
 		 (process-code code))
 	    (let ((key
 		   (and (fix:< code (vector-length virtual-key-table))
@@ -822,7 +825,7 @@ USA.
 	      (and key
 		   (if (fix:fixnum? key)
 		       (process-code key)
-		       (make-special-key key (fix:or meta control))))))))))
+		       (make-special-key key bits)))))))))
 
 (define (process-change-event event)
   (cond ((fix:= event event:process-output) (accept-process-output))
@@ -895,12 +898,14 @@ USA.
   (lambda (screen event)
     (and (eq? button-event-type:down (button-event/type event))
 	 (if (os2win-focus? (screen-wid screen))
-	     (make-input-event 'BUTTON
-			       execute-button-command
-			       screen
-			       (make-down-button (button-event/number event))
-			       (x->cx screen (button-event/x event))
-			       (y->cy screen (button-event/y event)))
+	     (make-input-event
+	      'BUTTON
+	      execute-button-command
+	      screen
+	      (make-down-button (button-event/number event)
+				(flags->bucky-bits (button-event/flags event)))
+	      (x->cx screen (button-event/x event))
+	      (y->cy screen (button-event/y event)))
 	     (begin
 	       (os2win-activate (screen-wid screen))
 	       #f)))))
@@ -1027,3 +1032,7 @@ USA.
     (vector-set! table VK_EREOF		'EREOF)
     (vector-set! table VK_PA1		'PA1)
     table))
+
+(define (flags->bucky-bits flags)
+  (fix:or (if (fix:= 0 (fix:and flags KC_CTRL)) #x2 #x0)
+	  (if (fix:= 0 (fix:and flags KC_ALT))  #x1 #x0)))

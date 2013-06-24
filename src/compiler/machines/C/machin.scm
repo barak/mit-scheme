@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: machin.scm,v 1.10 2003/02/14 18:28:02 cph Exp $
+$Id: machin.scm,v 1.14 2007/01/05 21:19:20 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -50,9 +52,10 @@ USA.
 
 ;; We expect a C long to be at least 32 bits wide,
 ;; but not necessarily two's complement.
+;; Tags won't be wider than 6 bits
 
 (define-integrable min-long-width 32)
-(define-integrable max-tag-width 8)
+(define-integrable max-tag-width 6)
 
 (define-integrable guaranteed-long/upper-limit
   (expt 2 (-1+ min-long-width)))
@@ -63,6 +66,9 @@ USA.
   (expt 2 (- min-long-width (1+ max-tag-width))))
 (define signed-fixnum/lower-limit
   (- signed-fixnum/upper-limit))
+
+(define-integrable unsigned-fixnum/upper-limit
+  (* 2 signed-fixnum/upper-limit))
 
 (define-integrable (stack->memory-offset offset) offset)
 (define-integrable ic-block-first-parameter-offset 2)
@@ -105,10 +111,7 @@ USA.
   (let ((entry-delta (- entry* entry)))
     (if (zero? entry-delta)
 	0
-	(string-append "(CLOSURE_ENTRY_DELTA * "
-		       (number->string
-			(* closure-entry-size entry-delta))
-		       ")"))))
+	(c:* "CLOSURE_ENTRY_DELTA" (* closure-entry-size entry-delta)))))
 
 ;; Bump to the canonical entry point.  On a RISC (which forces
 ;; longword alignment for entry points anyway) there is no need to
@@ -132,19 +135,16 @@ USA.
 
 ;;; Fixed-use registers due to architecture or OS calling conventions.
 
-(define machine-register-value-class
-  (let ((special-registers
-	 `((,regnum:stack-pointer . ,value-class=address)
-	   (,regnum:regs . ,value-class=unboxed)
-	   (,regnum:free . ,value-class=address)
-	   (,regnum:dynamic-link . ,value-class=address)
-	   (,regnum:value . ,value-class=object))))
-
-    (lambda (register)
-      (let ((lookup (assv register special-registers)))
-	(cond
-	 ((not (null? lookup)) (cdr lookup))
-	 (else (error "illegal machine register" register)))))))
+(define (machine-register-value-class register)
+  (cond ((or (= register regnum:regs)
+	     (= register regnum:stack-pointer)
+	     (= register regnum:free)
+	     (= register regnum:dynamic-link))
+	 value-class=address)
+	((= register regnum:value)
+	 value-class=object)
+	(else
+	 (error "illegal machine register" register))))
 
 (define-integrable (machine-register-known-value register)
   register				;ignore
@@ -153,6 +153,7 @@ USA.
 ;;;; Interpreter Registers
 
 (define-integrable register-block/memtop-offset 0)
+(define-integrable register-block/int-mask-offset 1)
 (define-integrable register-block/value-offset 2)
 (define-integrable register-block/environment-offset 3)
 (define-integrable register-block/dynamic-link-offset 4) ; compiler temp
@@ -264,6 +265,8 @@ USA.
   (case rtl-register
     ((MEMORY-TOP)
      register-block/memtop-offset)
+    ((INT-MASK)
+     register-block/int-mask-offset)
     ((STACK-GUARD)
      register-block/stack-guard-offset)
     ((ENVIRONMENT)

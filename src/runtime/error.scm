@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: error.scm,v 14.70 2006/01/07 02:20:57 cph Exp $
+$Id: error.scm,v 14.73 2007/01/19 05:03:42 riastradh Exp $
 
-Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
-Copyright 1992,1993,1995,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2004,2005 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -890,8 +890,8 @@ USA.
 		      (arity-max (procedure-arity-max arity)))
 		  (cond ((eqv? arity-min arity-max)
 			 (write-string "exactly " port)
-			 (write arity port)
-			 (pluralize-argument arity))
+			 (write arity-min port)
+			 (pluralize-argument arity-min))
 			((not arity-max)
 			 (write-string "at least " port)
 			 (write (car arity) port)

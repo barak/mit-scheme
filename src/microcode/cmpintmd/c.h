@@ -1,8 +1,10 @@
 /* -*-C-*-
 
-$Id: c.h,v 1.9 2003/02/14 18:28:31 cph Exp $
+$Id: c.h,v 1.12 2007/01/05 21:19:26 cph Exp $
 
-Copyright (c) 1992-1999 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -31,12 +33,16 @@ USA.
 
 #define COMPILER_PROCESSOR_TYPE			COMPILER_LOSING_C_TYPE
 
+#ifndef NATIVE_CODE_IS_C
+#define NATIVE_CODE_IS_C
+#endif
+
 #define WRITE_LABEL_DESCRIPTOR(entry,kind,offset) do			\
 {									\
-  SCHEME_OBJECT * ent = ((SCHEME_OBJECT *) (entry));			\
+  SCHEME_OBJECT * _ent = ((SCHEME_OBJECT *) (entry));			\
 									\
-  COMPILED_ENTRY_FORMAT_WORD (entry) = (kind);				\
-  COMPILED_ENTRY_OFFSET_WORD (entry) =					\
+  COMPILED_ENTRY_FORMAT_WORD (_ent) = (kind);				\
+  COMPILED_ENTRY_OFFSET_WORD (_ent) =					\
     (WORD_OFFSET_TO_OFFSET_WORD (offset));				\
 } while (0)
 

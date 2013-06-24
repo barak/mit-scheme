@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: url.scm,v 1.46 2006/03/10 01:46:26 cph Exp $
+$Id: url.scm,v 1.51 2007/01/17 21:01:59 cph Exp $
 
-Copyright 2000,2001,2003,2004,2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -111,7 +113,7 @@ USA.
 
 (define (uri-scheme? object)
   (and (interned-symbol? object)
-       (complete-match matcher:scheme (symbol-name object))))
+       (*match-symbol matcher:scheme object)))
 
 ;;; A well-formed path is a list of N segments which is equivalent to
 ;;; a string in which there is a slash between each adjacent pair of
@@ -182,11 +184,11 @@ USA.
 
 (define (uri-userinfo? object)
   (and (string? object)
-       (complete-match parser:userinfo object)))
+       (*match-string parser:userinfo object)))
 
 (define (uri-host? object)
   (and (string? object)
-       (complete-match matcher:host object)))
+       (*match-string matcher:host object)))
 
 (define (uri-port? object)
   (exact-nonnegative-integer? object))
@@ -197,11 +199,6 @@ USA.
 (define-guarantee uri-userinfo "URI userinfo")
 (define-guarantee uri-host "URI host")
 (define-guarantee uri-port "URI port")
-
-(define (complete-match matcher string #!optional start end)
-  (let ((buffer (string->parser-buffer string start end)))
-    (and (matcher buffer)
-	 (not (peek-parser-buffer-char buffer)))))
 
 (define (uri=? u1 u2)
   (eq? (->uri u1 'URI=?)
@@ -336,10 +333,10 @@ USA.
   ;; Kludge: take advantage of fact that (NOT (NOT #!DEFAULT)).
   (let* ((do-parse
 	  (lambda (string)
-	    (let ((uri (complete-parse parser (string->parser-buffer string))))
-	      (if (and (not uri) caller)
+	    (let ((v (*parse-string parser string)))
+	      (if (and (not v) caller)
 		  (error:bad-range-argument object caller))
-	      uri)))
+	      (vector-ref v 0))))
 	 (do-string
 	  (lambda (string)
 	    (or (hash-table/get interned-uris string #f)
@@ -372,14 +369,10 @@ USA.
 	   (default-object? start)
 	   (default-object? end)
 	   (hash-table/get interned-uris string #f))
-      (complete-parse parser (string->parser-buffer string start end))
+      (let ((v (*parse-string parser string start end)))
+	(and v
+	     (vector-ref v 0)))
       (error:bad-range-argument string caller)))
-
-(define (complete-parse parser buffer)
-  (let ((v (parser buffer)))
-    (and v
-	 (not (peek-parser-buffer-char buffer))
-	 (vector-ref v 0))))
 
 (define parse-uri
   (*parser (encapsulate encapsulate-uri parser:uri-reference)))

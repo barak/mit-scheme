@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.104 2006/01/29 06:37:30 cph Exp $
+$Id: cmpint.c,v 1.108 2007/02/04 21:55:45 riastradh Exp $
 
-Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
-Copyright 1995,1996,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 */
@@ -240,7 +240,7 @@ EXTENTRY (interface_to_scheme);
 
 #define ENTER_SCHEME(ep) return (C_to_interface ((PTR) (ep)))
 
-#else /* CMPINT_USE_STRUCS */
+#else /* not CMPINT_USE_STRUCS */
 
 typedef instruction * utility_result;
 
@@ -256,14 +256,14 @@ long C_return_value;
 
 #define RETURN_TO_C(code) do						\
 {									\
-  (*DSU_result) = interface_to_C_hook;					\
+  (*DSU_result) = ((instruction *) interface_to_C_hook);		\
   C_return_value = (code);						\
   return;								\
 } while (0)
 
 #define RETURN_TO_SCHEME(ep) do						\
 {									\
-  (*DSU_result) = (ep);							\
+  (*DSU_result) = ((instruction *) (ep));				\
   return;								\
 } while (0)
 
@@ -839,13 +839,6 @@ DEFINE_SCHEME_UTILITY_1 (comutil_return_to_interpreter, tramp_data_raw)
   RETURN_TO_C (PRIM_DONE);
 }
 
-#if (COMPILER_PROCESSOR_TYPE != COMPILER_IA32_TYPE)
-
-#define INVOKE_RETURN_ADDRESS()					\
-  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
-
-#else /* COMPILER_IA32_TYPE */
-
 static void EXFUN
   (compiler_interrupt_common, (utility_result *, SCHEME_ADDR, SCHEME_OBJECT));
 
@@ -854,6 +847,13 @@ static void EXFUN
   compiler_interrupt_common (DSU_result, (a1), (a2));			\
   return;								\
 } while (0)
+
+#if (COMPILER_PROCESSOR_TYPE != COMPILER_IA32_TYPE)
+
+#define INVOKE_RETURN_ADDRESS()					\
+  RETURN_TO_SCHEME (OBJECT_ADDRESS (STACK_POP ()))
+
+#else /* COMPILER_IA32_TYPE */
 
 #define INVOKE_RETURN_ADDRESS() do					\
 {									\
@@ -1817,7 +1817,7 @@ DEFINE_SCHEME_UTILITY_2 (name, return_address_raw, cache_addr_raw)	\
 C_TO_SCHEME long							\
 DEFUN_VOID (restart)							\
 {									\
-  SCHEME_OBJECT name = exp_register;					\
+  SCHEME_OBJECT name = (STACK_POP ());					\
   SCHEME_OBJECT environment = (STACK_POP ());				\
   long code = (c_lookup (environment, name, (&val_register)));		\
   if (code == PRIM_DONE)						\

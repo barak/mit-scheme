@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: xterm.scm,v 1.75 2006/02/15 05:10:00 cph Exp $
+$Id: xterm.scm,v 1.80 2007/01/05 21:19:24 cph Exp $
 
-Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
-Copyright 1996,1998,1999,2000,2001,2002 Massachusetts Institute of Technology
-Copyright 2003,2005,2006 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -20,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -412,11 +412,8 @@ USA.
 					(vector-ref event 3)))
 		   ((fix:= end 1)
 		    (let ((char
-			   (if (or (fix:= (vector-ref event 3) 0)
-				   (fix:= (vector-ref event 3) 2))
-			       (string-ref string 0)
-			       (make-char (char-code (string-ref string 0))
-					  (fix:andc (vector-ref event 3) 2)))))
+			   (merge-bucky-bits (string-ref string 0)
+					     (vector-ref event 3))))
 		      (if (and signal-interrupts? (char=? char #\BEL))
 			  (begin
 			    (signal-interrupt!)
@@ -669,7 +666,9 @@ USA.
 	   'BUTTON
 	   execute-button-command
 	   screen
-	   (make-down-button (vector-ref event 4))
+	   (let ((n (vector-ref event 4)))
+	     (make-down-button (fix:and n #x0FF)
+			       (fix:lsh (fix:and n #xF00) -8)))
 	   (xterm-map-x-coordinate xterm (vector-ref event 2))
 	   (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 
@@ -685,7 +684,9 @@ USA.
 	   'BUTTON
 	   execute-button-command
 	   screen
-	   (make-up-button (vector-ref event 4))
+	   (let ((n (vector-ref event 4)))
+	     (make-up-button (fix:and n #x0FF)
+			     (fix:lsh (fix:and n #xF00) -8)))
 	   (xterm-map-x-coordinate xterm (vector-ref event 2))
 	   (xterm-map-y-coordinate xterm (vector-ref event 3)))))))
 

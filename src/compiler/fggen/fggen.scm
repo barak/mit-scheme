@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: fggen.scm,v 4.39 2003/02/14 18:28:01 cph Exp $
+$Id: fggen.scm,v 4.42 2007/01/05 21:19:20 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +20,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 USA.
 
 |#
@@ -28,6 +30,15 @@ USA.
 
 (declare (usual-integrations))
 
+;; Note: The C back end cannot dump objects, and instead generates
+;; code to construct the objects.
+;; Thus the unmapping of reference traps must be done late, 
+;; when generating such code, and not early, since the code
+;; that destructures object will otherwise run into actual
+;; reference traps.
+
+(define compiler:fggen-unmap-reference-traps-early? true)
+
 (define-structure (context (conc-name context/)
 			   (constructor context/make))
   (unconditional? #f read-only #t type boolean)
@@ -847,8 +858,10 @@ USA.
 	 block continuation context
 	 (list->vector
 	  (map (lambda (subpr)
-		 (unmap-reference-trap
-		  (constant-value (subproblem-rvalue subpr))))
+		 (let ((temp (constant-value (subproblem-rvalue subpr))))
+		   (if compiler:fggen-unmap-reference-traps-early?
+		       (unmap-reference-trap temp)
+		       temp)))
 	       operands)))
 	(generate/operator block continuation context expression
 			   (ucode-primitive vector)
