@@ -1,0 +1,100 @@
+[File ~ziggy/Thesis/PhD/BreakPoint/headhunt.text]
+-----
+Goal: Find all Scheme objects that point to any element of a target vector of
+      objects, returning the result in a specified buffer. If there are more
+      pointing objects than slots in the buffer, return a status flag
+      indicating that there may be more pointing objects (so the caller can
+      frob the pointers already found then call findptrs again).
+
+----------
+Interface:
+
+  Given: TARGET-VECTOR  - a vector of target objects, and 
+         POINTER-BUFFER - a buffer for accumulating objects that point to
+                            elements of the TARGET-VECTOR
+         [RTN-AGG-VECT? - optional flag requesting ptr to vector of all
+                            aggregates live after GC]
+
+  Effect: Fills POINTER-BUFFER with objects that point to elements of
+                TARGET-VECTOR.
+
+  Returns: Three values
+             - A flag indicates whether all pointers to TARGET-VECTOR elements
+               could fit in POINTER-BUFFER.
+	     - A flag indicating if more pointers to TARGET-VECTOR elements may
+               exist but could not be isolated in this GC pass.  Next pass may
+               succeed in isolating them all (? compression after-effect) or it
+               may always fail into more objects are released.
+             - Either false when RTN-AGG-VECT? is false (i.e., not requested)
+               otherwise it is a vector of all aggregates or false if the
+               vector was too big to fit in available memory.
+-------------
+Idea [Jinx's]
+
+Embed hack in a copying GC-like memory sweep as follows:
+
+   FROM SPACE: .-----------------------------.
+               |                             | FROM TOP (hi addr)
+               `-----------------------------'
+
+     TO SPACE: .-----------------------------.
+               |                             |   TO TOP (hi addr)
+               `-----------------------------'
+                 ^      ^                ^
+                 | ->   | ->          <- |
+                 |      |                |
+                Scan   Free             Heads
+
+ Scan and Free move as w/ a normal copying GC.
+ Each aggregate datum [e.g., pair, vector, cell, code block, closure, etc] that
+  is encountered has a pointer to its head copied into Heads.  Whenever one of
+  the elements in the TARGET-VECTOR is encountered, some object whose head is
+  right of Heads must have pointed to it. Scan through head space to find it.
+ NB: This Scan through head space can be conducted as a binary search since the
+  pointers to aggregate heads (in TO space) are in order R->L monotonically
+  increasing (because they are copied as Free drifts to the right). When
+  a target datum is sighted, the aggregate pointing to that target has To-space
+  address that is the lesser of the two consecutive entries in head space which
+  straddle the Scan pointer.
+ If Free collides w/ Heads, continue the copying GC as normal, abandonning any
+  further findptr hackery, but set the ALL-FIT-IN-PTR-BUFF flag to false (to
+  return).
+ Extra boon: if the GC completes w/o encrouchment then Heads points to
+  the first element of a L->R consecutive array containing ptrs to all
+  aggregate objects in TO space. By plopping down a VECTOR header left of Head
+  (if there is a free slot to the left of Heads), this array can be instantly
+  reified into a Scheme vector. Free cells are then those between Free and
+  Heads (or the Heads vector could be btblt'd left into the Free cells. Such a
+  vector handle may be useful for various statistics and bookkeeping frobs, so
+  it could be returned to the user if a handle on this vector is requested
+  (otherwise, the array can just be abandonned in TO space and treated as free
+  cells). Naturally, such a vector should not be retained long, however, since
+  it stands to consume a fair fraction of space in TO space. If not desired,
+  Heads can be set to TO-space TOP when the GC completes, and again the free
+  cells are those between Free and Heads.
+
+ --*--
+
+ Ziggy observation 1: actually, even after Free has encroached on Heads, we can
+  still keep an eye out for TARGET-VECTOR elts and scan from right of Free
+  into remaining heads. If we find the head we seek, we win and keep going. We
+  need set the MAYBE-MORE flag only if/when we scan through all heads and
+  fail to find the appropriate head. If we are moby lucky, we may just win when
+  we might otherwise have wimped out... though it may be hard to anticipate or
+  otherwise characterize under what conditions this extension may pay off.
+  Nevertheless, it somewhat simplifies the algorithm: if Free encroaches Heads
+  then scan right of Free to end; otherwise scan right of Heads to end. Never
+  give up the hunt.
+
+ Ziggy observation 2: even when Free is about to encrouch on Heads, we may be
+  able to safely shift all Heads entries to the right (dropping rightmost head
+  space elements) as follows: binary search for the head space object left of
+  the Scan straddle. The next smaller head space entry is already fully scanned
+  so it cannot possibly be needed any longer to locate pointing aggr heads.
+  Thus every elt to the right of the lesser Scan straddle head are no longer
+  needed in head space so head space elts can be shifted right to truncate head
+  space. This hack, however, obliterates head space as a potential reified
+  vector of ALL-AGGS-VECT, but then again if the encroachment were not avoided
+  then the obliteration already occurs by virtue of the Free/Heads encroachment
+  anyway, so nothing is lost. Upshot: always do the right shift truncation so
+  we don't lose potential pointing obj isolations due to head space overflow.

@@ -1,0 +1,145 @@
+#| -*-Scheme-*-
+
+$Id: sf.pkg,v 4.17 2002/02/03 03:38:58 cph Exp $
+
+Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
+
+;;;; SF Packaging
+
+(global-definitions "../runtime/runtime")
+
+(define-package (scode-optimizer)
+  (files "lsets"
+	 "table"
+	 "pthmap"
+	 "object"
+	 "emodel"
+	 "gconst"
+	 "usicon"
+	 "tables")
+  (parent ()))
+
+(define-package (scode-optimizer global-imports)
+  (files "gimprt")
+  (parent ())
+  (export (scode-optimizer)
+	  scode-assignment?
+	  scode-open-block?
+	  scode-sequence?))
+
+(define-package (scode-optimizer top-level)
+  (files "toplev")
+  (parent (scode-optimizer))
+  (export ()
+	  sf
+	  sf/default-declarations
+	  sf/default-syntax-table
+	  sf/pathname-defaulting
+	  sf/set-usual-integrations-default-deletions!
+	  sf/top-level-definitions
+	  sf/usual-integrations-default-deletions
+	  sf:noisy?
+	  syntax&integrate)
+  (export (scode-optimizer)
+	  integrate/procedure
+	  integrate/file
+	  integrate/sexp
+	  integrate/scode
+	  read-externs-file))
+
+(define-package (scode-optimizer transform)
+  (files "xform")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  transform/top-level
+	  transform/recursive))
+
+(define-package (scode-optimizer integrate)
+  (files "subst")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  integrate/top-level
+	  integrate/get-top-level-block
+	  reassign
+	  variable/final-value)
+  (import (runtime parser)
+	  lambda-optional-tag))
+
+(define-package (scode-optimizer cgen)
+  (files "cgen")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  *sf-associate*
+	  cgen/external)
+  (export (scode-optimizer expansion)
+	  cgen/external-with-declarations))
+
+(define-package (scode-optimizer expansion)
+  (files "usiexp" "reduct")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  reducer/make
+	  replacement/make
+	  usual-integrations/expansion-names
+	  usual-integrations/expansion-values
+	  usual-integrations/expansion-alist)
+  (export (scode-optimizer declarations)
+	  expander-evaluation-environment))
+
+(define-package (scode-optimizer declarations)
+  (files "pardec")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  declarations/bind
+	  declarations/known?
+	  declarations/make-null
+	  declarations/map
+	  declarations/original
+	  declarations/parse
+	  operations->external))
+
+(define-package (scode-optimizer copy)
+  (files "copy")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  copy/expression/intern
+	  copy/expression/extern))
+
+(define-package (scode-optimizer free)
+  (files "free")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  free/expression))
+
+(define-package (scode-optimizer change-type)
+  (files "chtype")
+  (parent (scode-optimizer))
+  (export (scode-optimizer)
+	  change-type/block
+	  change-type/expression))
+
+(define-package (scode-optimizer build-utilities)
+  (files "butils")
+  (parent ())
+  (export ()
+	  compile-directory
+	  compile-directory?
+	  sf-conditionally
+	  sf-directory
+	  sf-directory?))

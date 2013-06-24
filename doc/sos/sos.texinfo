@@ -1,0 +1,1578 @@
+\input texinfo @c -*-Texinfo-*-
+@iftex
+@finalout
+@end iftex
+@comment %**start of header
+@setfilename sos.info
+@settitle @value{TITLE}
+@comment %**end of header
+@setchapternewpage odd
+@syncodeindex ky fn
+@syncodeindex vr fn
+@syncodeindex pg fn
+@syncodeindex tp fn
+
+@c $Id: sos.texinfo,v 2.11 2002/03/07 06:26:11 cph Exp $
+
+@set TITLE The SOS Reference Manual
+@set EDITION 2.9
+@set UPDATED 7 March 2002
+
+@dircategory Programming Languages
+@direntry
+* SOS: (mit-scheme-sos).		MIT Scheme Object System
+@end direntry
+
+@ifinfo
+Copyright @copyright{} 1993-2002 Massachusetts Institute of Technology
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled "GNU
+Free Documentation License".
+@end ifinfo
+
+@titlepage
+@title @value{TITLE}
+@subtitle Edition @value{EDITION}
+@subtitle @value{UPDATED}
+@author by Chris Hanson
+
+@page
+
+@vskip 0pt plus 1filll
+Copyright @copyright{} 1993-2002 Massachusetts Institute of Technology
+
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1 or
+any later version published by the Free Software Foundation; with no
+Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
+Texts.  A copy of the license is included in the section entitled "GNU
+Free Documentation License".
+@end titlepage
+
+@node Top, Introduction, (dir), (dir)
+
+@ifinfo
+This is Edition @value{EDITION}, last updated @value{UPDATED}, of
+@cite{The SOS Reference Manual}.
+@end ifinfo
+
+@menu
+* Introduction::                
+* Classes::                     
+* Instances::                   
+* Slots::                       
+* Generic Procedures::          
+* Methods::                     
+* Printing::                    
+* GNU Free Documentation License::  
+* Binding Index::               
+* Concept Index::               
+@end menu
+
+@node Introduction, Classes, Top, Top
+@unnumbered Introduction
+
+@sc{sos} is a Scheme @dfn{object system} derived from Tiny @sc{clos}
+@footnote{Tiny @sc{clos} was written by Gregor Kiczales of Xerox
+@sc{parc}; @sc{sos} is derived from version 1.2 of Tiny @sc{clos}.},
+which in turn was loosely derived from @sc{clos}, the Common Lisp Object
+System.  Its basic design and philosophy is closely related to Tiny
+@sc{clos}, but there are differences in naming and interface.
+
+This document is a reference manual, and as such does not attempt to
+teach the reader about object-oriented programming.  It is assumed that
+you already have a passing familiarity with @sc{clos} and with Scheme.
+
+In the procedure descriptions that follow, certain argument names imply
+restrictions on the corresponding argument.  Here is a table of those
+names.  The parenthesised name in each entry is the name of the
+predicate procedure that the argument must satisfy.
+
+@table @var
+@item class
+The argument must be a @dfn{class} (@code{class?}).
+
+@item instance
+The argument must be an @dfn{instance} (@code{instance?}).
+
+@item name
+The argument must be a symbol (@code{symbol?}); sometimes this is also
+allowed to be @code{#f} (@code{false?}).
+
+@item generic-procedure
+The argument must be a @dfn{generic procedure}
+(@code{generic-procedure?}).
+
+@item method
+The argument must be a @dfn{method} (@code{method?}).
+
+@item specializer
+The argument must be a @dfn{method specializer} (@code{specializer?}).
+
+@item procedure
+The argument must be a procedure (@code{procedure?}).
+
+@item slot
+The argument must be a @dfn{slot descriptor} (@code{slot-descriptor?}).
+@end table
+
+@menu
+* Classes::                     
+* Instances::                   
+* Slots::                       
+* Generic Procedures::          
+* Methods::                     
+* Printing::                    
+@end menu
+
+@node Classes, Instances, Introduction, Top
+@chapter Classes
+
+@cindex class
+@cindex instance
+A @dfn{class} is an object that determines the structure and behavior of
+a set of other objects, which are called its @dfn{instances}.  However,
+in this document, the word @dfn{instance} usually means an instance of
+the class @code{<instance>}.
+
+@cindex subclass
+@cindex superclass
+A class can inherit structure and behavior from other classes.  A class
+whose definition refers to other classes for the purpose of inheriting
+from them is said to be a @dfn{subclass} of each of those classes.  The
+classes that are designated for purposes of inheritance are said to be
+@dfn{superclasses} of the inheriting class.
+
+@cindex class name
+@cindex name, of class
+A class can have a @dfn{name}.  The procedure @code{class-name} takes a
+class object and returns its name.  The name of an anonymous class is
+@code{#f}.
+
+@cindex direct superclass
+@cindex superclass, direct
+@cindex direct subclass
+@cindex subclass, direct
+A class @var{C_1} is a @dfn{direct superclass} of a class @var{C_2} if
+@var{C_2} explicitly designates @var{C_1} as a superclass in its
+definition.  In this case, @var{C_2} is a @dfn{direct subclass} of
+@var{C_1}.  A class @var{C_n} is a @dfn{superclass} of a class @var{C_1}
+if there exists a series of classes @var{C_2}, @dots{}, @var{C_n-1} such
+that @var{C_i+1} is a direct superclass of @var{C_i} for all @var{i}
+between @var{1} and @var{n}.  In this case, @var{C_1} is a
+@dfn{subclass} of @var{C_n}.  A class is considered neither a superclass
+nor a subclass of itself.  That is, if @var{C_1} is a superclass of
+@var{C_2}, then @var{C_1} is different from @var{C_2}.  The set of
+classes consisting of some given class @var{C} along with all of its
+superclasses is called ``@var{C} and its superclasses.''
+
+@cindex class precedence list
+@cindex precedence list, class
+Each class has a @dfn{class precedence list}, which is a total ordering
+on the set of the given class and its superclasses.  The total ordering
+is expressed as a list ordered from the most specific to the least
+specific.  The class precedence list is used in several ways.  In
+general, more specific classes can @dfn{shadow}, or override, features
+that would otherwise be inherited from less specific classes.  The
+method selection and combination process uses the class precedence list
+to order methods from most specific to least specific.
+
+@cindex local precedence order
+@cindex precedence order, local
+@cindex order, local precedence
+When a class is defined, the order in which its direct superclasses are
+mentioned in the defining form is important.  Each class has a
+@dfn{local precedence order}, which is a list consisting of the class
+followed by its direct superclasses in the order mentioned in the
+defining form.
+
+A class precedence list is always consistent with the local precedence
+order of each class in the list.  The classes in each local precedence
+order appear within the class precedence list in the same order.  If the
+local precedence orders are inconsistent with each other, no class
+precedence list can be constructed, and an error is signalled.
+
+Classes are organized into a @dfn{directed acyclic graph}.  There are
+two distinguished classes, named @code{<object>} and @code{<instance>}.
+The class named @code{<object>} has no superclasses.  It is a superclass
+of every class except itself.  The class named @code{<instance>} is a
+direct subclass of @code{<object>} and is the base class for
+@dfn{instance} objects.  Instances are special because @sc{sos} has
+efficient mechanisms for dispatching on them and for accessing their
+slots.
+
+@menu
+* Class Datatype::              
+* Predefined Classes::          
+* Record Classes::              
+* Specializers::                
+@end menu
+
+@node Class Datatype, Predefined Classes, Classes, Classes
+@section Class Datatype
+
+The procedures in this section may be used to construct and inspect
+classes.
+
+@deffn Procedure make-class name direct-superclasses direct-slots
+Creates and returns a new class object.
+
+@var{Name} is used for debugging: it is a symbol that appears in the
+printed representation of the class and has no role in the semantics of
+the class.  Alternatively, @var{name} may be @code{#f} to indicate that
+the class is anonymous.
+
+@var{Direct-superclasses} must be a list of class objects.  The new
+class inherits both methods and slots from the classes in this list.
+Specifying the empty list for @var{direct-superclasses} is equivalent to
+specifying @code{(list <instance>)}.
+
+@var{Direct-slots} describes additional slots that instances of this
+class will have.  It is a list, each element of which must have one of
+the following forms:
+
+@example
+@var{name}
+(@var{name} . @var{plist})
+@end example
+
+@noindent
+where @var{name} is a symbol, and @var{plist} is a property list.  The
+first of these two forms is equivalent to the second with an empty
+@var{plist}.
+
+Each of the elements of @var{direct-slots} defines one slot named
+@var{name}.  @var{Plist} is used to describe additional properties of
+that slot.  The following properties are recognized:
+
+@table @code
+@item initial-value
+This property specifies the default initial value for the slot, i.e.@:
+the value stored in the slot when an instance is created and no value is
+explicitly specified by the instance constructor.  If neither the
+@code{initial-value} nor the @code{initializer} property is specified,
+the slot has no default initial value.
+
+@item initializer
+This property specifies a procedure of no arguments that is called by an
+instance constructor whenever an instance containing this slot is
+created.  The value returned by the @code{initializer} procedure is the
+initial value of the slot.
+
+@item accessor
+This property specifies a generic procedure; @code{make-class} will add
+an accessor method for this slot to the procedure.  @xref{Slots}.
+
+@item modifier
+This property specifies a generic procedure; @code{make-class} will add
+a modifier method for this slot to the procedure.  @xref{Slots}.
+
+@item initpred
+This property specifies a generic procedure; @code{make-class} will add
+an ``initialized?''@: predicate method for this slot to the procedure.
+@xref{Slots}.
+@end table
+
+Slot properties are combined in slightly complicated ways.
+
+@itemize @bullet
+@item
+It is not allowed to specify both @code{initial-value} and
+@code{initializer} for a slot in a given call to @code{make-class}; at
+most one of these properties may be given.
+
+@item
+If a slot is specified for a given class, and a slot of the same name is
+inherited from a superclass, then the slot properties for the two slots
+are combined.  Slot properties from the subclass shadow those of the
+superclass.  However, if a superclass has a slot property, and the
+subclass does not, the property is inherited.  The resulting class never
+has more than one slot of a given name.
+
+@item
+When combining superclass and subclass slots, @code{initial-value} and
+@code{initializer} shadow one another.  In other words, regardless of
+the inherited slot properties, the resulting slot has at most one of
+these two properties.
+@end itemize
+
+Examples of @code{make-class}:
+
+@lisp
+@group
+(define <cell>
+  (make-class '<cell> '() '()))
+@end group
+
+@group
+(define <contact>
+  (make-class '<contact>
+              (list <cell>)
+              `((name accessor ,cell-name))))
+@end group
+
+@group
+(define <compound-cell>
+  (make-class '<compound-cell>
+              (list <cell>)
+              `((width accessor ,cell-width)
+                (height accessor ,cell-height)
+                (components accessor ,cell-components
+                            modifier ,set-cell-components!
+                            initial-value ()))))
+@end group
+@end lisp
+@end deffn
+
+@deffn Syntax define-class name direct-superclasses direct-slot @dots{}
+Define @var{name} to be a class.  In its basic form, @code{define-class}
+might have been defined by
+
+@lisp
+@group
+(define-syntax define-class
+  (syntax-rules ()
+    ((define-class name (class ...) slot ...)
+     (define name
+       (make-class (quote name)
+                   (list class ...)
+                   (quote (slot ...)))))))
+@end group
+@end lisp
+
+Note that slot properties are handled specially by @code{define-class}.
+If a @var{direct-slot} specifies a slot properties property list, the
+keys of the property list (i.e.@: the even-numbered elements) are not
+evaluated, while the datums of the property list @emph{are} evaluated.
+The expansion above does not show the proper treatment of slot
+properties.
+
+In addition to the slot properties recognized by @code{make-class},
+@code{define-class} recognizes a special slot property, called
+@code{define}.  The @code{define} property specifies that some or all of
+the slot accessors should be defined here; that is, generic procedures
+should be constructed and bound to variables, and then the accessor
+methods added to them.
+
+The argument to the @code{define} property is a list containing any
+combination of the symbols @code{accessor}, @code{modifier}, and
+@code{initpred}.  As an abbreviation, the argument may be one of these
+symbols by itself, which is equivalent to the list containing that
+symbol.  Also, the argument may be the symbol @code{standard}, which is
+equivalent to @code{(accessor modifier)}.
+
+The argument to @code{define} specifies the accessors that will be
+defined by this form.  The accessors are defined using default names,
+unless the names are overridden by the corresponding slot property.  The
+default names for a class @code{<foo>} and a slot @code{bar} are
+@code{foo-bar}, @code{set-foo-bar!}, and @code{foo-bar-initialized?},
+respectively for the accessor, modifier, and initpred.  For example,
+
+@lisp
+@group
+(define-class foo
+  (bar define accessor))
+@end group
+@end lisp
+
+@noindent
+defines an accessor called @code{foo-bar}, but
+
+@lisp
+@group
+(define-class foo
+  (bar define accessor accessor foo/bar))
+@end group
+@end lisp
+
+@noindent
+instead defines an accessor called @code{foo/bar}.  Finally,
+
+@lisp
+@group
+(define-class foo
+  (bar accessor foo/bar))
+@end group
+@end lisp
+
+@noindent
+doesn't define any accessor, but assumes that @code{foo/bar} is a
+previously-defined generic procedure and adds an accessor method to it.
+
+@cindex class options
+@code{define-class} permits the specification of @dfn{class options},
+which are options that pertain to the class as a whole.  Class options
+are specified by overloading @var{name}: instead of a symbol, specify a
+pair whose @sc{car} is a symbol and whose @sc{cdr} is an alist.  The
+following class options are recognized:
+
+@table @code
+@item (predicate [@var{name}])
+@findex predicate
+@cindex predicate, class option
+Specifies that a predicate procedure should be defined for this class.
+@var{Name} must be either a symbol or @code{#f}: a symbol specifies the
+name that will be bound to the predicate procedure, and @code{#f}
+specifies that no predicate procedure should be defined.  If @var{name}
+is omitted, or if no @code{predicate} option is specified, a predicate
+procedure is defined by appending @code{?} to the name of the class.  If
+the class name is surrounded by angle brackets, they are stripped off
+first.  For example, the default predicate name for the class
+@code{<foo>} is @code{foo?}.
+
+@item (constructor [@var{name}] @var{slot-names} [@var{n-init-args}])
+@findex constructor
+@cindex constructor, class option
+Specifies that a constructor procedure should be defined for this class.
+@var{Name} must be a symbol, which is the name that will be bound to the
+constructor procedure; if omitted, a default name is formed by
+prepending @code{make-} to the name of the class.  If the class name is
+surrounded by angle brackets, they are stripped off first.  For example,
+the default constructor name for the class @code{<foo>} is
+@code{make-foo}.
+
+@var{Slot-names} and @var{n-init-args} correspond to the arguments of
+the respective names accepted by @code{instance-constructor}, and can
+take any of the allowed forms for those arguments.
+
+@item (separator @var{string})
+@findex separator
+@cindex separator, class option
+Specifies how names for slot accessors are constructed.  If this option
+isn't given, the name of a slot accessor is formed by concatenating the
+name of the class with the name of the slot, with a hyphen between them.
+When this option is given, @var{string} is used instead of the hyphen.
+For example, normally a slot accessor for the slot @code{bar} in the
+class @code{foo} is called @code{foo-bar}.  A class option
+@code{(separator ".")} will cause the slot accessor to be called
+@code{foo.bar}, the modifier to be called @code{set-foo.bar!}, and the
+initialization predicate to be called @code{foo.bar?}.
+@end table
+
+Examples of @code{define-class} (compare these to the similar examples
+for @code{make-class}):
+
+@lisp
+(define-class <cell> ())
+
+@group
+(define-class (<contact> (constructor (name) no-init)) (<cell>)
+  (name accessor cell-name))
+@end group
+
+@group
+(define-class (<compound-cell> (constructor ())) (<cell>)
+  (width accessor cell-width)
+  (height accessor cell-height)
+  (components accessor cell-components
+              modifier set-cell-components!
+              initial-value '()))
+@end group
+@end lisp
+@end deffn
+
+@deffn Procedure make-trivial-subclass superclass1 superclass2 @dots{}
+This convenience procedure makes a subclass that defines no new slots,
+and that inherits from the given superclasses.  It is equivalent to the
+following
+
+@lisp
+@group
+(make-class (class-name @var{superclass1})
+            (list @var{superclass1} @var{superclass2} @dots{})
+            '())
+@end group
+@end lisp
+@end deffn
+
+@deffn Procedure class? object
+Returns @code{#t} if @var{object} is a class, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn Procedure subclass? class specializer
+Returns @code{#t} if @var{class} is a subclass of @var{specializer},
+otherwise returns @code{#f}.  If @var{specializer} is a class, the
+result follows from the above definition of subclass, except that a
+class is a subclass of itself.  If @var{specializer} is a record type,
+it is equivalent to having used the @code{record-type-class} of the
+record type.  Finally, if @var{specializer} is a union specializer,
+@code{subclass?} is true if @var{class} is a subclass of one or more of
+the component classes of @var{specializer}.
+@end deffn
+
+@deffn Procedure object-class object
+Returns the class of @var{object}.  @var{Object} may be any Scheme
+object; if @var{object} is known to be an instance,
+@code{instance-class} is faster than @code{object-class}.
+@end deffn
+
+@deffn Procedure class-name class
+Returns the name of @var{class}.  This is the @var{name} argument passed
+to @code{make-class} when @var{class} was created.
+@end deffn
+
+@deffn Procedure class-direct-superclasses class
+Returns a list of the direct superclasses of @var{class}.  If a
+non-empty @var{direct-superclasses} argument was passed to
+@code{make-class} when @var{class} was created, this list is
+@code{equal?} to that argument.  The returned value must not be
+modified.
+@end deffn
+
+@deffn Procedure class-direct-slot-names class
+Returns a list of symbols that are the names of the direct slots of
+@var{class}.  This list contains only those slots that were defined in
+the call to @code{make-class} that created @var{class}; it does not
+contain slots that were inherited.  The returned value must not be
+modified.
+@end deffn
+
+@deffn Procedure class-precedence-list class
+Returns a list of the superclasses of @var{class}.  The order of this
+list is significant: it is the method resolution order.  This list will
+always have @var{class} as its first element, and @code{<object>} as its
+last element.  The returned value must not be modified.
+@end deffn
+
+@node Predefined Classes, Record Classes, Class Datatype, Classes
+@section Predefined Classes
+
+@cindex predefined classes
+@sc{sos} provides a rich set of predefined classes that can be used to
+specialize methods to any of Scheme's built-in datatypes.
+
+@defvr Class <object>
+This is the class of all Scheme objects.  It has no direct superclasses,
+and all other classes are subclasses of this class.
+@end defvr
+
+@defvr Class <instance>
+This is the class of instances.  It is a direct subclass of
+@code{<object>}.  The members of this class are the objects that satisfy
+the predicate @code{instance?}.
+@end defvr
+
+@defvr Class <boolean>
+@defvrx Class <char>
+@defvrx Class <entity>
+@defvrx Class <pair>
+@defvrx Class <procedure>
+@defvrx Class <record>
+@defvrx Class <string>
+@defvrx Class <symbol>
+@defvrx Class <vector>
+These are the classes of their respective Scheme objects.  They are all
+direct subclasses of @code{<object>}.  The members of each class are the
+objects that satisfy the corresponding predicate; for example, the
+members of @code{<procedure>} are the objects that satisfy
+@code{procedure?}.
+@end defvr
+
+@defvr Class <generic-procedure>
+This is the class of generic procedure instances.  It is a direct
+subclass of @code{<procedure>}.
+@end defvr
+
+@defvr Class <method>
+This is the class of method objects.  It is a direct subclass of
+@code{<instance>}.
+@end defvr
+
+@defvr Class <chained-method>
+@defvrx Class <computed-method>
+@defvrx Class <computed-emp>
+These classes specify additional method objects with special properties.
+Each class is a subclass of @code{<method>}.
+@end defvr
+
+The following are the classes of Scheme numbers.  Note that
+@code{object-class} will never return one of these classes; instead it
+returns an implementation-specific class that is associated with a
+particular numeric representation.  The implementation-specific class is
+a subclass of one or more of these implementation-independent classes,
+so you should use these classes for specialization.
+
+@defvr Class <number>
+@defvrx Class <complex>
+@defvrx Class <real>
+@defvrx Class <rational>
+@defvrx Class <integer>
+These are the classes of the Scheme numeric tower.  @code{<number>} is a
+direct subclass of @code{<math-object>}, @code{<complex>} is a direct
+subclass of @code{<number>}, @code{<real>} is a direct subclass of
+@code{<complex>}, etc.
+@end defvr
+
+@defvr Class <exact>
+@defvrx Class <exact-complex>
+@defvrx Class <exact-real>
+@defvrx Class <exact-rational>
+@defvrx Class <exact-integer>
+These are the classes of exact numbers.  @code{<exact>} is a direct
+subclass of @code{<number>}, @code{<exact-complex>} is a direct
+subclass of @code{<exact>} and @code{<complex>}, and in general, each is
+a direct subclass of preceding class and of the class without the
+@code{exact-} prefix.
+@end defvr
+
+@defvr Class <inexact>
+@defvrx Class <inexact-complex>
+@defvrx Class <inexact-real>
+@defvrx Class <inexact-rational>
+@defvrx Class <inexact-integer>
+These are the classes of inexact numbers.  @code{<inexact>} is a direct
+subclass of @code{<number>}, @code{<inexact-complex>} is a direct
+subclass of @code{<inexact>} and @code{<complex>}, and in general, each
+is a direct subclass of preceding class and of the class without the
+@code{inexact-} prefix.
+@end defvr
+
+@node Record Classes, Specializers, Predefined Classes, Classes
+@section Record Classes
+
+@cindex record class
+@sc{sos} allows generic procedures to discriminate on record types.
+This means that a record structure defined by means of
+@code{make-record-type} or @code{define-structure} can be passed as an
+argument to a generic procedure, and the generic procedure can use the
+record's type to determine which method to be invoked.@footnote{If the
+@code{type} option of @code{define-structure} is used, the resulting
+data structure is @emph{not} a record and thus cannot be used in this
+manner.}
+
+In order to support this, @sc{sos} accepts record type descriptors in
+all contexts that accept classes.  Additionally, every record type
+descriptor has an associated @sc{sos} class; either the class or the
+record type can be used with equivalent results.
+
+@deffn Procedure record-type-class record-type
+@var{Record-type} must be a record type descriptor (in other words, it
+must satisfy the predicate @code{record-type?}).  Returns the class
+associated with @var{record-type}.
+@end deffn
+
+@deffn Procedure record-class record
+@var{Record} must be a record (in other words, it must satisfy the
+predicate @code{record?}).  Returns the class associated with
+@var{record}.  This is equivalent to
+
+@lisp
+(record-type-class (record-type-descriptor @var{record}))
+@end lisp
+@end deffn
+
+@node Specializers,  , Record Classes, Classes
+@section Specializers
+
+@cindex specializer
+A @dfn{specializer} is a generalization of a class.  A specializer is
+any one of the following:
+
+@itemize @bullet
+@item
+A class.
+
+@item
+A record type, which is equivalent to its associated class.
+
+@item
+A union specializer, which is a set of classes.
+@end itemize
+
+A specializer may be used in many contexts where a class is required,
+specifically, as a method specializer (hence the name), as the second
+argument to @code{subclass?}, and elsewhere.
+
+@deffn Procedure specializer? object
+Returns @code{#t} if @var{object} is a specializer, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn Procedure specializer-classes specializer
+Returns a list of the classes in @var{specializer}.  If
+@var{specializer} is a class, the result is a list of that class.  If
+@var{specializer} is a record type, the result is a list of the record
+type's class.  If @var{specializer} is a union specializer, the result
+is a list of the component classes of the specializer.
+@end deffn
+
+@deffn Procedure specializer=? specializer1 specializer2
+Returns @code{#t} if @var{specializer1} and @var{specializer2} are
+equivalent, otherwise returns @code{#f}.  Two specializers are
+equivalent if the lists returned by @code{specializer-classes} contain
+the same elements.
+@end deffn
+
+@deffn Procedure union-specializer specializer @dots{}
+Returns a union specializer consisting of the union of the classes of
+the arguments.  This is equivalent to converting all of the specializer
+arguments to sets of classes, then taking the union of those sets.
+@end deffn
+
+@deffn Procedure union-specializer? object
+Returns @code{#t} if @var{object} is a union specializer, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn Procedure specializers? object
+Returns @code{#t} if @var{object} is a list of specializers, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn Procedure specializers=? specializers1 specializers2
+@var{Specializers1} and @var{specializers2} must be lists of
+specializers.  Returns @code{#t} if @var{specializers1} and
+@var{specializers2} are equivalent, otherwise returns @code{#f}.
+Two specializers lists are equivalent if each of their corresponding
+elements is equivalent.
+@end deffn
+
+@node Instances, Slots, Classes, Top
+@chapter Instances
+
+@cindex instance
+An @dfn{instance} is a compound data structure much like a record,
+except that it is defined by a class rather than a record type
+descriptor.  Instances are more powerful than records, because their
+representation is designed to support inheritance, while the
+representation of records is not.
+
+@deffn Procedure instance-constructor class slot-names [n-init-args]
+Creates and returns a procedure that, when called, will create and
+return a newly allocated instance of @var{class}.
+
+@var{Class} must be a subclass of @code{<instance>}.  @var{Slot-names}
+must be a list of symbols, each of which must be the name of a slot in
+@var{class}.  @var{N-init-args} will be described below.
+
+In its basic operation, @code{instance-constructor} works much like
+@code{record-constructor}: the @var{slot-names} argument specifies how
+many arguments the returned constructor accepts, and each of those
+arguments is stored in the corresponding slot of the returned instance.
+Any slots that are not specified in @var{slot-names} are given their
+initial values, as specified by the @code{initial-value} or
+@code{initializer} slot properties; otherwise they are left
+uninitialized.
+
+@cindex initialize-instance
+@findex initialize-instance
+After the new instance is created and its slots filled in, but before it
+is returned, it is passed to the generic procedure
+@code{initialize-instance}.  Normally, @code{initialize-instance} does
+nothing, but because it is always called, the programmer can add methods
+to it to specify an initialization that is to be performed on every
+instance of the class.
+
+By default, @code{initialize-instance} is called with one argument, the
+newly created instance.  However, the optional argument
+@var{n-init-args} can be used to specify additional arguments that will
+be passed to @code{initialize-instance}.
+
+The way this works is that the returned constructor procedure accepts
+additional arguments after the specified number of slot values, and
+passes these extra arguments to @code{initialize-instance}.  When
+@var{n-init-args} is not supplied or is @code{#t}, any number of extra
+arguments are accepted and passed along.  When @var{n-init-args} is an
+exact non-negative integer, exactly that number of extra arguments must
+be supplied when the constructor is called.  Finally, if
+@var{n-init-args} is the symbol @code{no-initialize-instance}, then the
+constructor accepts no extra arguments and does not call
+@code{initialize-instance} at all; this is desirable when
+@code{initialize-instance} is not needed, because it makes the
+constructor significantly faster.
+
+For notational convenience, @var{n-init-args} may take two other forms.
+First, it may be a list of symbols, which is equivalent to the integer
+that is the length of the list.  Second, it may be the symbol
+@code{no-init}, which is an abbreviation for
+@code{no-initialize-instance}.
+
+Note that the default method on @code{initialize-instance} accepts no
+extra arguments and does nothing.
+
+Examples of @code{instance-constructor}:
+
+@lisp
+@group
+(define-class <simple-reference> (<reference>)
+  (from accessor reference-from)
+  (to accessor reference-to)
+  (cx accessor reference-cx)
+  (cy accessor reference-cy))
+@end group
+
+@group
+(define make-simple-reference
+  (instance-constructor <simple-reference>
+                        '(from to cx cy)
+                        'no-init))
+@end group
+
+@group
+(define-class <simple-wirenet> (<wirenet>)
+  (cell accessor wirenet-cell)
+  (wires accessor wirenet-wires
+         modifier set-wirenet-wires!
+         initial-value '()))
+@end group
+
+@group
+(define make-simple-wirenet
+  (instance-constructor <simple-wirenet> '(cell)))
+@end group
+@end lisp
+@end deffn
+
+@deffn Procedure instance? object
+Returns @code{#t} if @var{object} is an instance, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn Procedure instance-class instance
+Returns the class of @var{instance}.  This is faster than
+@code{object-class}, but it works only for instances, and not for other
+objects.
+@end deffn
+
+@deffn Procedure instance-of? object specializer
+Returns @code{#t} if @var{object} is a general instance of
+@var{specializer}, otherwise returns @code{#f}.  This is equivalent to
+
+@lisp
+(subclass? (object-class @var{object}) @var{specializer})
+@end lisp
+@end deffn
+
+@deffn Procedure instance-predicate specializer
+Returns a predicate procedure for @var{specializer}.  The returned
+procedure accepts one argument and returns @code{#t} if the argument is
+an instance of @var{specializer} and @code{#f} otherwise.
+@end deffn
+
+@node Slots, Generic Procedures, Instances, Top
+@chapter Slots
+
+@cindex slot
+An instance has zero or more named slots; the name of a slot is a
+symbol.  The slots of an instance are determined by its class.
+
+@cindex uninitialized slot
+@cindex slot, uninitialized
+Each slot can hold one value.  When a slot does not have a value, the
+slot is said to be @dfn{uninitialized}.  The default initial value for a
+slot is defined by the @code{initial-value} and @code{initializer} slot
+properties.
+
+@cindex accessibility of slots
+A slot is said to be @dfn{accessible} in an instance of a class if the
+slot is defined by the class of the instance or is inherited from a
+superclass of that class.  At most one slot of a given name can be
+accessible in an instance.  Slots are accessed by means of slot-access
+methods (usually generated by @code{make-class}).
+
+@menu
+* Slot Descriptors::            
+* Slot Access Methods::         
+* Slot Access Constructors::    
+* Slot Access Procedures::      
+@end menu
+
+@node Slot Descriptors, Slot Access Methods, Slots, Slots
+@section Slot Descriptors
+
+@cindex slot descriptor
+Slots are represented by @dfn{slot descriptors}, which are data
+structures providing information about the slots, such as their name.
+Slot descriptors are stored inside of classes, and may be retrieved from
+there and subsequently inspected.
+
+@deffn Procedure class-slots class
+Returns a list of the slot descriptors for @var{class}.  This contains
+all slots for @var{class}, both direct slots and inherited slots.  The
+returned value must not be modified.
+@end deffn
+
+@deffn Procedure class-slot class name error?
+Returns the slot descriptor for the slot named @var{name} in
+@var{class}.  If there is no such slot: if @var{error?} is @code{#f},
+returns @code{#f}, otherwise signals an error of type
+@code{condition-type:no-such-slot}.
+@end deffn
+
+@deffn Procedure slot-descriptor? object
+Returns @code{#t} if @var{object} is a slot descriptor, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn Procedure slot-name slot
+Returns the name of @var{slot}.
+@end deffn
+
+@deffn Procedure slot-class slot
+Returns the class of @var{slot}.  This is the class with which
+@var{slot} is associated.  This is not necessarily the class that
+defines @var{slot}; it could also be a subclass of that class.  If the
+slot was returned from @code{class-slots} or @code{class-slot}, then
+this class is the argument passed to that procedure.
+@end deffn
+
+@deffn Procedure slot-properties slot
+Returns an alist of the properties of @var{slot}.  This list must not be
+modified.
+@end deffn
+
+@deffn Procedure slot-property slot name default
+If @var{slot} has a property named @var{name}, it is returned; otherwise
+@var{default} is returned.
+@end deffn
+
+@deffn Procedure slot-initial-value? slot
+Returns @code{#t} if @var{slot} has an initial value, and @code{#f}
+otherwise.  The initial value is specified by the @code{initial-value}
+slot property when a class is made.
+@end deffn
+
+@deffn Procedure slot-initial-value slot
+Returns the initial value for @var{slot}, if it has one; otherwise it
+returns an unspecified value.  The initial value is specified by the
+@code{initial-value} slot property when a class is made.
+@end deffn
+
+@deffn Procedure slot-initializer slot
+Returns the initializer for @var{slot}; the initializer is specified by
+the @code{initializer} slot property when a class is made.  This is a
+procedure of no arguments that is called to produce an initial value for
+@var{slot}.  The result may also be @code{#f} meaning that the slot has
+no initializer.
+@end deffn
+
+@node Slot Access Methods, Slot Access Constructors, Slot Descriptors, Slots
+@section Slot Access Methods
+
+@cindex accessor, for slot
+@cindex slot accessor
+@cindex modifier, for slot
+@cindex slot modifier
+The procedure @code{make-class} provides slot properties that generate
+methods to read and write slots.  If an @dfn{accessor} is requested, a
+method is automatically generated for reading the value of the slot.  If
+a @dfn{modifier} is requested, a method is automatically generated for
+storing a value into the slot.  When an accessor or modifier is
+specified for a slot, the generic procedure to which the generated
+method belongs is directly specified.  The procedure specified for the
+accessor takes one argument, the instance.  The procedure specified for
+the modifier takes two arguments, the instance and the new value, in
+that order.
+
+All of the procedures described here signal an error of type
+@code{condition-type:no-such-slot} if the given class or object does not
+have a slot of the given name.
+
+Slot-access methods can be generated by the procedures
+@code{slot-accessor-method}, @code{slot-modifier-method}, and
+@code{slot-initpred-method}.  These methods may be added to a generic
+procedure by passing them as arguments to @code{add-method}.  The
+methods generated by these procedures are equivalent to those generated
+by the slot properties in @code{make-class}.
+
+@deffn Procedure slot-accessor-method class name
+Returns an accessor method for the slot @var{name} in @var{class}.  The
+returned method has one required argument, an instance of @var{class},
+and the specializer for that argument is @var{class}.  When invoked, the
+method returns the contents of the slot specified by @var{name} in the
+instance; if the slot is uninitialized, an error of type
+@code{condition-type:uninitialized-slot} is signalled.
+
+@lisp
+@group
+(define-generic get-bar (object))
+
+(add-method get-bar
+  (slot-accessor-method <foo> 'bar))
+@end group
+@end lisp
+@end deffn
+
+@deffn Procedure slot-modifier-method class name
+Returns a modifier method for the slot @var{name} in @var{class}.  The
+returned method has two required arguments, an instance of @var{class}
+and an object.  The specializer for the first argument is @var{class}
+and the second argument is not specialized.  When invoked, the method
+stores the second argument in the slot specified by @var{name} in the
+instance.
+
+@lisp
+@group
+(define-generic set-bar! (object bar))
+
+(add-method set-bar!
+  (slot-modifier-method <foo> 'bar))
+@end group
+@end lisp
+@end deffn
+
+@deffn Procedure slot-initpred-method class name
+Returns an ``initialized?''@: predicate method for the slot @var{name}
+in @var{class}.  The returned method has one required argument, an
+instance of @var{class}, and the specializer for that argument is
+@var{class}.  When invoked, the method returns @code{#t} if the slot
+specified by @var{name} is initialized in the instance; otherwise it
+returns @code{#f}.
+
+@lisp
+@group
+(define-generic has-bar? (object))
+
+(add-method has-bar?
+  (slot-initpred-method <foo> 'bar))
+@end group
+@end lisp
+@end deffn
+
+@node Slot Access Constructors, Slot Access Procedures, Slot Access Methods, Slots
+@section Slot Access Constructors
+
+For convenience, and for consistency with the record-accessor procedures
+@code{record-accessor} and @code{record-modifier}, each of the above
+method-generating procedures has a corresponding accessor-generator.
+Each of these procedures creates a generic procedure, adds an
+appropriate method to it by calling the corresponding method-generating
+procedure, and returns the generic procedure.  Thus, for example, the
+following are equivalent:
+
+@lisp
+@group
+(slot-accessor <foo> 'bar)
+
+(let ((g (make-generic-procedure 1)))
+  (add-method g (slot-accessor-method <foo> 'bar))
+  g)
+@end group
+@end lisp
+
+@deffn Procedure slot-accessor class name
+Returns a generic procedure of one argument that is an accessor for the
+slot @var{name} in @var{class}.  The argument to the returned procedure
+must be an instance of @var{class}.  When the procedure is called, it
+returns the contents of the slot @var{name} in that instance; if the
+slot is uninitialized, an error of type
+@code{condition-type:uninitialized-slot} is signalled.
+@end deffn
+
+@deffn Procedure slot-modifier class name
+Returns a generic procedure of two arguments that is a modifier for the
+slot @var{name} in @var{class}.  The first argument to the returned
+procedure must be an instance of @var{class}, and the second argument
+may be any object.  When the procedure is called, it modifies the slot
+@var{name} in the instance to contain the second argument.
+@end deffn
+
+@deffn Procedure slot-initpred class name
+Returns a generic procedure of one argument that is an
+``initialized?''@: predicate for the slot @var{name} in @var{class}.
+The argument to the returned procedure must be an instance of
+@var{class}.  When the procedure is called, it returns @code{#t} if the
+slot @var{name} in that instance is initialized, otherwise it returns
+@code{#f}.
+@end deffn
+
+@node Slot Access Procedures,  , Slot Access Constructors, Slots
+@section Slot Access Procedures
+
+Finally, there is another set of three procedures, which access the
+contents of a slot directly, given an instance and a slot name.  These
+procedures are very slow by comparison with the above.
+
+However, note the following.  You can use these procedures in the body
+of a @code{define-method} special form in an efficient way.  If the
+@code{define-method} specifies the correct number of arguments, the body
+of the form contains a call to one of these procedures and nothing else,
+and the specified slot name is quoted, the form is rewritten during
+macro-expansion time as a call to the corresponding method-generating
+procedure.  For example, the following are equivalent:
+
+@lisp
+@group
+(define-method p ((v <foo>))
+  (slot-value v 'bar))
+
+(add-method p
+            (slot-accessor-method <foo> 'bar))
+@end group
+@end lisp
+
+@deffn Procedure slot-value instance name
+Returns the contents of the slot @var{name} in @var{instance}; if the
+slot is uninitialized, an error of type
+@code{condition-type:uninitialized-slot} is signalled.
+@end deffn
+
+@deffn Procedure set-slot-value! instance name object
+Modifies the slot @var{name} in @var{instance} to contain @var{object}.
+@end deffn
+
+@deffn Procedure slot-initialized? instance name
+Returns @code{#t} if the slot @var{name} in @var{instance} is
+initialized, otherwise returns @code{#f}.
+@end deffn
+
+@node Generic Procedures, Methods, Slots, Top
+@chapter Generic Procedures
+
+@cindex generic procedure
+Like an ordinary Scheme procedure, a generic procedure takes arguments,
+performs a series of operations, and perhaps returns useful values.  An
+ordinary procedure has a single body of code that is always executed
+when the procedure is called.  A generic procedure has a set of multiple
+bodies of code, called methods, from which a subset is selected for
+execution.  The selected bodies of code and the manner of their
+combination are determined by the classes of one or more of the
+arguments to the generic procedure.
+
+Ordinary procedures and generic procedures are called with identical
+procedure-call syntax.
+
+Generic procedures are true procedures that can be passed as arguments,
+returned as values, and otherwise used in all the ways an ordinary
+procedure may be used.  In particular, generic procedures satisfy the
+predicate @code{procedure?}.
+
+@menu
+* Generic Procedure Datatype::  
+* Method Storage::              
+* Effective Method Procedure::  
+@end menu
+
+@node Generic Procedure Datatype, Method Storage, Generic Procedures, Generic Procedures
+@section Generic Procedure Datatype
+
+The following definitions are used to construct and inspect generic
+procedures.
+
+@deffn Procedure make-generic-procedure arity [name]
+Creates and returns a new generic procedure.  The generic procedure
+requires @var{arity} arguments.
+
+@var{Arity} may take one of the following forms.  An exact positive
+integer specifies that the procedure will accept exactly that number of
+arguments.  A pair of two exact positive integers specifies inclusive
+lower and upper bounds, respectively, on the number of arguments
+accepted; the @sc{cdr} may be @code{#f} indicating no upper bound.
+
+@var{Name} is used for debugging: it is a symbol that has no role in the
+semantics of the generic procedure.  @var{Name} may be @code{#f} to
+indicate that the generic procedure is anonymous.  If @var{name} is not
+specified, it defaults to @code{#f}.
+
+Examples:
+
+@lisp
+(define foo-bar (make-generic-procedure 2))
+
+(define foo-baz (make-generic-procedure '(1 . 2) 'foo-baz))
+
+(define foo-mum (make-generic-procedure '(1 . #f)))
+@end lisp
+@end deffn
+
+@deffn Syntax define-generic name lambda-list
+Defines @var{name} to be a generic procedure.  @var{Lambda-list} is an
+ordinary parameter list, which is exactly like the parameter list in a
+@code{lambda} special form.  This expands into
+
+@lisp
+@group
+(define @var{name}
+  (make-generic-procedure @var{arity}
+                          (quote @var{name})))
+@end group
+@end lisp
+
+@noindent
+where @var{arity} is determined from @var{lambda-list}.
+
+Examples (compare to examples of @code{make-generic-procedure}):
+
+@lisp
+(define-generic foo-bar (x y))
+
+(define-generic foo-baz (x #!optional y))
+
+(define-generic foo-mum (x . y))
+@end lisp
+@end deffn
+
+@deffn Procedure generic-procedure? object
+Returns @code{#t} if @var{object} is a generic procedure, otherwise
+returns @code{#f}.  Note that every generic procedure satisfies the
+predicate @code{procedure?}.
+@end deffn
+
+@deffn Procedure generic-procedure-arity generic-procedure
+Returns the arity of @var{generic-procedure}, as specified in the call
+to @code{make-generic-procedure}.  The returned arity must not be
+modified.
+@end deffn
+
+@deffn Procedure generic-procedure-name generic-procedure
+Returns the name of @var{generic-procedure}, as specified in the call to
+@code{make-generic-procedure}.
+@end deffn
+
+@node Method Storage, Effective Method Procedure, Generic Procedure Datatype, Generic Procedures
+@section Method Storage
+
+Methods are stored in generic procedures.  When a generic procedure is
+called, it selects a subset of its stored methods (using
+@code{method-applicable?}), and arranges to invoke one or more of the
+methods as necessary.  The following definitions provide the means for
+adding methods to and removing them from a generic procedure.
+
+@deffn Procedure add-method generic-procedure method
+Adds @var{method} to @var{generic-procedure}.  If
+@var{generic-procedure} already has a method with the same specializers
+as @var{method}, then the old method is discarded and @var{method} is
+used in its place.
+@end deffn
+
+@deffn Procedure delete-method generic-procedure method
+Removes @var{method} from @var{generic-procedure}.  Does nothing if
+@var{generic-procedure} does not contain @var{method}.
+@end deffn
+
+@deffn Procedure add-methods generic-procedure methods
+Adds @var{methods}, which must be a list of methods, to
+@var{generic-procedure}.  Equivalent to calling @code{add-method} on
+each method in @var{methods}.
+@end deffn
+
+@deffn Procedure generic-procedure-methods generic-procedure
+Returns a list of the methods contained in @var{generic-procedure}.  The
+returned list must not be modified.
+@end deffn
+
+@node Effective Method Procedure,  , Method Storage, Generic Procedures
+@section Effective Method Procedure
+
+@cindex effective method procedure
+@cindex emp
+When a generic procedure is called, it arranges to invoke a subset of
+its methods.  This is done by @dfn{combining} the selected methods into
+an @dfn{effective method procedure}, or @sc{emp}, then tail-recursively
+invoking the @sc{emp}.  @code{compute-effective-method-procedure} is the
+procedure that is called to select the applicable methods and combine
+them into an @sc{emp}.
+
+@deffn Procedure compute-effective-method-procedure generic-procedure classes
+Collects the applicable methods of @var{generic-procedure} by calling
+@code{method-applicable?} on each method and on @var{classes}.  Combines
+the resulting methods together into an effective method procedure, and
+returns that @sc{emp}.
+@end deffn
+
+@deffn Procedure compute-method generic-procedure classes
+This procedure is like @code{compute-effective-method-procedure}, except
+that it returns the result as a method whose specializers are
+@var{classes}.
+
+@code{compute-method} is equivalent to
+
+@lisp
+@group
+(make-method @var{classes}
+             (compute-effective-method-procedure @var{generic-procedure}
+                                                 @var{classes}))
+@end group
+@end lisp
+@end deffn
+
+@node Methods, Printing, Generic Procedures, Top
+@chapter Methods
+
+@cindex method
+A method contains a method procedure and a sequence of @dfn{parameter
+specializers} that specify when the given method is applicable.
+
+A method is not a procedure and cannot be invoked as a procedure.
+Methods are invoked by the effective method procedure when a generic
+procedure is called.
+
+@menu
+* Method Datatype::             
+* Method Syntax::               
+* Chained Methods::             
+* Computed Methods::            
+@end menu
+
+@node Method Datatype, Method Syntax, Methods, Methods
+@section Method Datatype
+
+The following procedures are used to construct and inspect methods.
+
+@deffn Procedure make-method specializers procedure
+Creates and returns a new method.  Note that @var{specializers} may have
+fewer elements than the number of required parameters in
+@var{procedure}; the trailing parameters are considered to be
+specialized by @code{<object>}.
+
+After the returned method is stored in a generic procedure,
+@var{Procedure} is called by the effective method procedure of the
+generic procedure when the generic procedure is called with arguments
+satisfying @var{specializers}.  In simple cases, when no method
+combination occurs, @var{procedure} @emph{is} the effective method
+procedure.
+@end deffn
+
+@deffn Procedure method? object
+Returns @code{#t} iff @var{object} is a method, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn {Generic Procedure} method-specializers method
+Returns the specializers of @var{method}.  This list must not be
+modified.
+@end deffn
+
+@deffn {Generic Procedure} method-procedure method
+Returns the procedure of @var{method}.
+@end deffn
+
+@deffn Procedure method-applicable? method classes
+This predicate is used to determine the applicability of @var{method}.
+When a method is contained in a generic procedure, and the procedure is
+applied to some arguments, the method is @dfn{applicable} if each
+argument is an instance of the corresponding method specializer, or
+equivalently, if each argument's class is a subclass of the
+corresponding method specializer.
+
+@code{method-applicable?} determines whether @var{method} would be
+applicable if the given arguments had the classes specified by
+@var{classes}.  It returns @code{#t} if each element of @var{classes} is
+a subclass of the corresponding specializer of @var{method}, and
+@code{#f} otherwise.
+@end deffn
+
+@node Method Syntax, Chained Methods, Method Datatype, Methods
+@section Method Syntax
+
+The following syntactic form greatly simplifies the definition of
+methods, and of adding them to generic procedures.
+
+@deffn Syntax define-method generic-procedure lambda-list body @dots{}
+Defines a method of @var{generic-procedure}.  @var{Lambda-list} is like
+the parameter list of a @code{lambda} special form, except that the
+required parameters may have associated specializers.  A parameter with
+an associated specializer is written as a list of two elements: the
+first element is the parameter's name, and the second element is an
+expression that evaluates to a class.
+
+@var{Lambda-list} must contain at least one required parameter, and at
+least one required parameter must be specialized.
+
+A @code{define-method} special form expands into the following:
+
+@lisp
+@group
+(add-method @var{generic-procedure}
+  (make-method (list @var{specializer} @dots{})
+    (lambda (call-next-method . @var{stripped-lambda-list})
+      @var{body} @dots{})))
+@end group
+@end lisp
+
+@noindent
+where @var{stripped-lambda-list} is @var{lambda-list} with the
+specialized parameters replaced by their names, and the
+@var{specializer}s are the corresponding expressions from the
+specialized parameters.  If necessary, the @var{specializer}s are
+interspersed with references to @code{<object>} in order to make them
+occur in the correct position in the sequence.
+
+For example,
+
+@lisp
+(define-method add ((x <integer>) (y <rational>)) ...)
+@end lisp
+
+@noindent
+expands into
+
+@lisp
+@group
+(add-method add
+  (make-method (list <integer> <rational>)
+    (lambda (call-next-method x y) ...)))
+@end group
+@end lisp
+
+Note that the list of specializers passed to @code{make-method} will
+correspond to the required parameters of the method; the specializer
+corresponding to a non-specialized required parameter is
+@code{<object>}.
+
+Further note that, within the body of a @code{define-method} special
+form, the free variable @code{call-next-method} is bound to a
+``call-next-method'' procedure (see @code{make-chained-method} for
+details).  If the @code{define-method} body refers to this variable, the
+defined method is a chained method, otherwise it is an ordinary method.
+@end deffn
+
+@node Chained Methods, Computed Methods, Method Syntax, Methods
+@section Chained Methods
+
+@cindex chained method
+Sometimes it is useful to have a method that adds functionality to
+existing methods.  @dfn{Chained methods} provide a mechanism to
+accomplish this.  A chained method, when invoked, can call the method
+that would have been called had this method not been defined: it is
+passed a procedure that will call the inherited method.  The chained
+method can run arbitrary code both before and after calling the
+inherited method.
+
+@deffn Procedure make-chained-method specializers procedure
+Create and return a chained method.  @var{Procedure} must be a procedure
+of one argument that returns a procedure.  When the chained method is
+combined, its procedure will be called with one argument, a
+``call-next-method'' procedure; it must then return another procedure
+that will be called when the method is invoked.  The
+``call-next-method'' procedure may called by the method procedure at any
+time, which will invoke the next less-specific method.  The
+``call-next-method'' procedure must be called with the same number of
+arguments as the method procedure; normally these are the same
+arguments, but that is not required.
+@end deffn
+
+@deffn Procedure chained-method? object
+Returns @code{#t} if @var{object} is a chained method, otherwise returns
+@code{#f}.  Note that every chained method satisfies @code{method?}.
+@end deffn
+
+@node Computed Methods,  , Chained Methods, Methods
+@section Computed Methods
+
+@cindex computed method
+A @dfn{computed method} is a powerful mechanism that provides the
+ability to generate methods ``on the fly''.  A computed method is like
+an ordinary method, except that its procedure is called during method
+combination, and is passed the classes of the arguments in place of the
+arguments themselves.  Based on these classes, the computed method
+returns an ordinary method, which is combined in the usual way.
+
+Note that computed methods and computed @sc{emp}s both satisfy the
+predicate @code{method?}.  They are not really methods in that they
+cannot be combined with other methods to form an effective method
+procedure; however, they are treated as methods by procedures such as
+@code{add-method} and @code{method-specializers}.
+
+@deffn Procedure make-computed-method specializers procedure
+Create and return a computed method.  @var{Procedure} will be called
+during method combination with the classes of the generic-procedure
+arguments as its arguments.  It must return one of the following:
+
+@itemize @bullet
+@item
+An ordinary method (as returned by @code{make-method} or
+@code{make-chained-method}).  The returned method's specializers must be
+restrictions of @var{specializers}, i.e.@: each specializer in the
+returned method must be a subclass of the corresponding specializer in
+@var{specializers}.  In the usual case, the returned method's
+specializers are the same as @var{specializers}.
+
+@item
+A procedure, which is converted into an ordinary method by calling
+@code{make-method} on @var{specializers} and the returned procedure.
+
+@item
+@code{#f}, which means that the computed method declines to generate a
+method.
+@end itemize
+@end deffn
+
+@deffn Procedure computed-method? object
+Returns @code{#t} if @var{object} is a computed method, otherwise
+returns @code{#f}.
+@end deffn
+
+@cindex computed emps
+A @dfn{computed @sc{emp}} takes the computed-method mechanism one step
+further.  A computed @sc{emp} is like a computed method, except that it
+returns an effective method procedure rather than a method.
+@code{compute-effective-method-procedure} tries each of the applicable
+computed @sc{emp}s, and if exactly one of them returns an @sc{emp}, that
+is the resulting effective method procedure.
+
+@deffn Procedure make-computed-emp key specializers procedure
+Create and return a computed @sc{emp}.  @var{Procedure} will be called
+during method combination with the classes of the generic-procedure
+arguments as its arguments.  It must return either an @sc{emp} or
+@code{#f}.
+
+@var{Key} is an arbitrary object that is used to identify the computed
+@sc{emp}.  The @var{key} is used by @code{add-method} and
+@code{delete-method} to decide whether two computed @sc{emp}s are
+the same; they are the same if their @var{key}s are @code{equal?}.  This
+is necessary because a generic procedure may have more than one computed
+@sc{emp} with the same specializers.
+@end deffn
+
+@deffn Procedure computed-emp? object
+Returns @code{#t} if @var{object} is a computed @sc{emp}, otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn {Generic Procedure} computed-emp-key computed-emp
+Returns the key for @var{computed-emp}.
+@end deffn
+
+@node Printing, GNU Free Documentation License, Methods, Top
+@chapter Printing
+
+@cindex printing instances
+The following procedures can be used to define a custom printed
+representation for an instance.  It is highly recommended that instances
+be printed by @code{write-instance-helper}, as this ensures a uniform
+appearance for all objects.
+
+@deffn {Generic Procedure} write-instance instance port
+This is called by the runtime system to generate the printed
+representation of @var{instance}.  The methods of this procedure should
+write the representation to @var{port}.
+@end deffn
+
+@deffn Procedure write-instance-helper name instance port thunk
+This writes a standardized ``frame'' for a printed representation
+method.  It generates the following output on @var{port}:
+
+@lisp
+#[@var{name} @var{hash-number}@dots{}]
+@end lisp
+
+@noindent
+where @var{hash-number} is the result of calling @code{hash} on
+@var{instance}, and @dots{} is the output generated by @var{thunk}.
+@end deffn
+
+@node GNU Free Documentation License, Binding Index, Printing, Top
+@unnumbered GNU Free Documentation License
+@include gfdl.texinfo
+
+@node Binding Index, Concept Index, GNU Free Documentation License, Top
+@unnumbered Binding Index
+@printindex fn
+
+@node Concept Index,  , Binding Index, Top
+@unnumbered Concept Index
+@printindex cp
+
+@contents
+@bye
+
+@c Local Variables:
+@c selective-display: t
+@c truncate-lines: t
+@c End:

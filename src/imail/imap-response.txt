@@ -1,0 +1,404 @@
+$Id: imap-response.txt,v 1.6 2000/06/01 04:56:42 cph Exp $
+
+Notes on IMAP server responses
+
++ <resp-text>			;continuation response
++ <base64>			;continuation response
+
+* OK <resp-text>		;status condition
+* NO <resp-text>		;status condition
+* BAD <resp-text>		;status condition
+* BYE <resp-text>		;fatal if not response to LOGOUT
+
+* FLAGS (#<flag>)
+* LIST (#<flag>) <delim> <mailbox>
+* LSUB (#<flag>) <delim> <mailbox>
+* SEARCH <nz-number> ...
+* STATUS <mailbox> (<status-attribute> <number> ...)
+* <number> EXISTS
+* <number> RECENT
+* <nz-number> EXPUNGE
+* <nz-number> FETCH (<message-attribute> <message-attribute> ...)
+* CAPABILITY <capability> ... IMAP4rev1 <capability> ...
+
+<tag> OK <resp-text>		;end of response to tagged command
+<tag> NO <resp-text>		;end of response to tagged command
+<tag> BAD <resp-text>		;end of response to tagged command
+
+
+<resp-text>
+	= <text>
+	= <text-mime2>
+	= [<resp-text-code>] <text>
+	= [<resp-text-code>] <text-mime2>
+
+<resp-text-code>
+	= ALERT
+	= PARSE
+	= PERMANENTFLAGS (#<pflag>)
+	= READ-ONLY
+	= READ-WRITE
+	= TRYCREATE
+	= UIDVALIDITY <nz-number>
+	= UNSEEN <nz-number>
+	= <atom>
+	= <atom> <text-except-close-bracket>
+
+<pflag>
+	= <flag>
+	= \*
+
+<flag>
+	= \<atom>
+	= <atom>
+
+<delim>
+	= "<quoted-char>"
+	= NIL
+
+<mailbox>
+	= INBOX
+	= <astring>
+
+<status-attribute>
+	= MESSAGES
+	= RECENT
+	= UIDNEXT
+	= UIDVALIDITY
+	= UNSEEN
+
+<message-attribute>
+	= ENVELOPE <envelope>
+	= FLAGS (<flag> ...)
+	= INTERNALDATE <date-time>
+	= RFC822 <nstring>
+	= RFC822.HEADER <nstring>
+	= RFC822.TEXT <nstring>
+	= RFC822.SIZE <number>
+	= BODY <body>
+	= BODYSTRUCTURE <body>
+	= BODY[<section>] <nstring>
+	= BODY[<section>]<<number>> <nstring>
+	= UID <nz-number>
+
+<envelope>
+	= (<nstring>		;date
+	   <nstring>		;subject
+	   <address-list>	;from
+	   <address-list>	;sender
+	   <address-list>	;reply-to
+	   <address-list>	;to
+	   <address-list>	;cc
+	   <address-list>	;bcc
+	   <nstring>		;in-reply-to
+	   <nstring>		;message-id
+	   )
+
+<address-list>
+	= (<address> <address> ...)
+	= NIL
+
+<address>
+	= (<nstring>		;name
+	   <nstring>		;route-addr
+	   <nstring>		;local-part
+	   <nstring>		;domain-name
+	  )
+
+<date-time> = "<date-day-fixed>-<month>-<4digit> <time> <zone>"
+<date-day-fixed>
+	=  <digit>
+	= <2digit>
+<month>
+	= Jan
+	= Feb
+	= Mar
+	= Apr
+	= May
+	= Jun
+	= Jul
+	= Aug
+	= Sep
+	= Oct
+	= Nov
+	= Dec
+
+<time> = <2digit>:<2digit>:<2digit>
+<zone> = <sign><4digit>
+
+<body>
+	= (<body-type-1part>)
+	= (<body-type-mpart>)
+
+<body-type-mpart>
+	= <body><body> ... <string>
+	= <body><body> ... <string> <body-ext-mpart>
+<body-ext-mpart>
+	= <body-field-param>
+	= <body-field-param> <body-field-dsp> <body-field-lang> <body-extension> ...
+
+<body-type-1part>
+	= <body-type-basic>
+	= <body-type-basic> <body-ext-1part>
+	= <body-type-msg>
+	= <body-type-msg> <body-ext-1part>
+	= <body-type-text>
+	= <body-type-text> <body-ext-1part>
+<body-type-basic> = <string> <string> <body-fields>
+<body-type-msg> = "MESSAGE" "RFC822" <body-fields> <envelope> <body> <number>
+<body-type-text> = "TEXT" <string> <body-fields> <number>
+<body-ext-1part>
+	= <nstring>
+	= <nstring> <body-field-dsp>
+	= <nstring> <body-field-dsp> <body-field-lang> <body-extension> ...
+<body-field-dsp>
+	= (<string> <body-field-param>)
+	= NIL
+<body-field-lang>
+	= <nstring>
+	= (<astring> <astring> ...)
+<body-extension>
+	= <nstring>
+	= <number>
+	= (<body-extension> <body-extension> ...)
+<body-fields> = <body-field-param> <nstring> <nstring> <string> <number>
+<body-field-param>
+	= (<string> <string> ...)		;even number of <string>s
+	= NIL
+
+
+<section>
+	= [<section-text>]
+	= [<nz-number>.<nz-number>. ... <section-text>]
+	= [<nz-number>.<nz-number>. ... MIME]
+<section-text>
+	= HEADER
+	= HEADER.FIELDS <header-list>
+	= HEADER.FIELDS.NOT <header-list>
+	= TEXT
+<header-list> = (<astring> <astring> ...)
+
+
+
+<capability>
+	= AUTH=<atom>
+	= <atom>
+
+
+
+<astring>
+	= <atom>
+	= <string>
+
+<nstring>
+	= NIL
+	= <string>
+
+<string>
+	= <quoted-string>
+	= <literal>
+
+
+;;; Base syntax types:
+
+<quoted-string> = "<quoted-char>..."
+<literal> = {<number>}\r\n<byte>...
+<atom> = <atom-char><atom-char>...
+<text> = <text-char><text-char>...
+<text-mime2> = =?<charset>?<encoding>?<encoded-text>?=
+<base64> = ;base64 characters
+<number> = <digit><digit>...
+<nz-number> = <number>		;not 0
+
+<server-response>
+	= (BAD <string-or-false> <response-text>)
+	| (BYE <response-text>)
+	| (CAPABILITY <symbol>*)
+	| (CONTINUE <response-text>)
+	| (EXISTS <nonnegative-exact-integer>)
+	| (EXPUNGE <positive-exact-integer>)
+	| (FETCH <positive-exact-integer> <fetch-response>+)
+	| (FLAGS <symbol>*)
+	| (LIST <string-or-false> <string> <symbol>*)
+	| (LSUB <string-or-false> <string> <symbol>*)
+	| (NO <string-or-false> <response-text>)
+	| (OK <string-or-false> <response-text>)
+	| (PREAUTH <response-text>)
+	| (RECENT <nonnegative-exact-integer>)
+	| (SEARCH <positive-exact-integer>+)
+	| (STATUS <string> (<symbol> . <positive-exact-integer>)*)
+
+<response-text>
+	= <response-text-code> <string>
+	| <response-text-code>
+	  (<string>			;charset
+	   <string>			;encoding
+	   <string>)			;encoded text
+
+<response-text-code>
+	= #F
+	| (ALERT)
+	| (BADCHARSET <string>*)
+	| (NEWNAME <string> <string>)	;old-name new-name
+	| (PARSE)
+	| (READ-ONLY)
+	| (READ-WRITE)
+	| (TRYCREATE)
+	| (UIDNEXT <positive-exact-integer>)
+	| (UIDVALIDITY <positive-exact-integer>)
+	| (UNSEEN <positive-exact-integer>)
+	| (PERMANENTFLAGS <symbol>*)
+	| (<symbol>)
+	| (<symbol> <string>)
+
+<fetch-response>
+	= (ENVELOPE <envelope>)
+	| (FLAGS (<symbol>*))
+	| (INTERNALDATE <nonnegative-exact-integer>)
+	| (RFC822 <string-or-false>)
+	| (RFC822.HEADER <string-or-false>)
+	| (RFC822.TEXT <string-or-false>)
+	| (RFC822.SIZE <nonnegative-exact-integer>)
+	| (BODY <section> <number-or-false> <string-or-false>)
+	| (BODY <body>)
+	| (BODYSTRUCTURE <body>)
+	| (UID <positive-exact-integer>)
+
+<section>
+	= (<positive-exact-integer>+)
+	| (<positive-exact-integer>+ MIME)
+	| (<positive-exact-integer>* HEADER)
+	| (<positive-exact-integer>* TEXT)
+	| (<positive-exact-integer>* HEADER.FIELDS <header>+)
+	| (<positive-exact-integer>* HEADER.FIELDS.NOT <header>+)
+
+<envelope>
+	= (<string-or-false>		;date
+	   <string-or-false>		;subject
+	   <addr-list>			;from
+	   <addr-list>			;sender
+	   <addr-list>			;reply-to
+	   <addr-list>			;to
+	   <addr-list>			;cc
+	   <addr-list>			;bcc
+	   <string-or-false>		;in-reply-to
+	   <string-or-false>		;message-id
+	   )
+<addr-list>
+	= (<address>+)
+	| #f
+
+<address>
+	= (<string-or-false>		;personal name
+	   <string-or-false>		;source route
+	   <string>			;mailbox name
+	   <string>			;host name
+	   )
+	| (#f #f <string> #f)		;start of group
+	| (#f #f #f #f)			;end of group
+
+<body>					;too complicated to describe
+
+<string-or-false>
+	= <string>
+	| #F
+
+<number-or-false
+	= <nonnegative-exact-integer>
+	| #F
+
+Notes about handling responses:
+
+* Check CAPABILITY for IMAP4rev1 and refuse to deal if not present.
+
+* MUST record the following: FLAGS, EXISTS, RECENT, EXPUNGE.  However,
+  we won't use RECENT, so ignore it.
+
+* Setup sequence:
+
+  1. Select mailbox.  Record FLAGS, PERMANENTFLAGS, EXISTS, and
+     UIDVALIDITY.
+
+  2. For each message in mailbox, do FETCH ALL and record the results.
+
+  3. Build summary buffer based on this information.
+
+* When user selects a message, do FETCH RFC822 and present it in the
+  buffer.
+
+* When EXISTS is received and doesn't match the current length, or
+  When UIDVALIDITY received and doesn't match the current value,
+  rebuild our model of the mailbox.  Redo #1, #2, #3.  Match up the
+  UID numbers with the stored message objects and adjust as needed.
+
+* When FLAGS or PERMANENTFLAGS received, record them.
+
+* When EXPUNGE received, delete the corresponding message object.
+
+* Probably should do something with READ-ONLY and READ-WRITE; ignore
+  them for now.
+
+(define conn (open-imap-socket "localhost" "cph-imap" "foobar"))
+* OK zurich Cyrus IMAP4 v1.5.19 server ready
+A0000 LOGIN cph-imap foobar
+(ok "A0000" () "User logged in")
+;Value: conn
+
+(imap-command conn "select" "inbox")
+A0001 select inbox
+(flags \answered \flagged \draft \deleted \seen)
+(ok () (permanentflags \answered \flagged \draft \deleted \seen \*) "")
+(exists 4)
+(recent 0)
+(ok () (uidvalidity 947120402) "")
+(ok "A0001" read-write "Completed")
+;Unspecified return value
+
+(imap-command conn "fetch" "1" "envelope")
+*** output flushed ***
+;Unspecified return value
+
+(imap-command conn "fetch" "1" "(envelope uid)")
+*** output flushed ***
+;Unspecified return value
+
+(imap-command conn "fetch" "1" "(envelope uid rfc822.size)")
+A0004 fetch 1 (envelope uid rfc822.size)
+(fetch
+ (uid 1)
+ (rfc822.size 639)
+ (envelope "Wed, 05 Jan 2000 20:01:10 -0500"
+           "test 1"
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           ((() () "cph-imap" "zurich.ai.mit.edu"))
+           ()
+           ()
+           ()
+           "<E1261Ic-0001M8-00@flenser.ai.mit.edu>"))
+(ok "A0004" () "Completed")
+;Unspecified return value
+
+(imap-command conn "fetch" "1" "rfc822.header")
+*** output flushed ***
+;Unspecified return value
+
+(imap-command conn "fetch" "1" "all")
+A0006 fetch 1 all
+(fetch
+ (flags \answered \seen)
+ (internaldate " 5-Jan-2000 20:01:10 -0500")
+ (rfc822.size 639)
+ (envelope "Wed, 05 Jan 2000 20:01:10 -0500"
+           "test 1"
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           (("Chris Hanson" () "cph" "zurich.ai.mit.edu"))
+           ((() () "cph-imap" "zurich.ai.mit.edu"))
+           ()
+           ()
+           ()
+           "<E1261Ic-0001M8-00@flenser.ai.mit.edu>"))
+(ok "A0006" () "Completed")
+;Unspecified return value

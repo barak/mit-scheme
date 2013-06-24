@@ -1,0 +1,67 @@
+#| -*-Scheme-*-
+
+$Id: asm.scm,v 1.3 1999/01/02 06:06:43 cph Exp $
+
+Copyright (c) 1989-1999 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+|#
+
+;;;; Source (lap) assembler
+
+(declare (usual-integrations))
+
+;; To be loaded in (compiler top-level)
+
+;;; Example of `lap->code' usage:
+
+(define bar
+  ;; defines bar to be a procedure that adds 1 to its argument
+  ;; with no type or range checks.
+  (scode-eval
+   (lap->code
+    'start
+    `((pea (@pcr proc))
+      (or b (& ,(* (microcode-type 'compiled-entry) 4)) (@a 7))
+      (mov l (@a+ 7) (@ao 6 8))
+      (and b (& #x3) (@a 7))
+      (rts)
+      (dc uw #x0202)
+      (block-offset proc)
+      (label proc)
+      (mov l (@a+ 7) (d 0))
+      (addq l (& 1) (d 0))
+      (mov l (d 0) (@ao 6 8))
+      (and b (& #x3) (@a 7))
+      (rts)))
+   '()))
+
+(define (lap->code label lap)
+  (in-compiler
+   (lambda ()
+     (set! *lap* lap)
+     (set! *entry-label* label)
+     (set! *current-label-number* 0)
+     (set! *next-constant* 0)
+     (set! *interned-constants* '())
+     (set! *interned-variables* '())
+     (set! *interned-assignments* '())
+     (set! *interned-uuo-links* '())
+     (set! *block-label* (generate-label))
+     (set! *external-labels* '())
+     (set! *ic-procedure-headers* '())
+     (phase/assemble)
+     (phase/link)
+     *result*)))

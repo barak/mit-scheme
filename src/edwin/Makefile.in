@@ -1,0 +1,95 @@
+# $Id: Makefile.in,v 1.4 2001/02/06 04:15:35 cph Exp $
+#
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# Standard Makefile for Scheme subsystem directories.
+# This makefile supports some utilities for Scheme subsystems.
+# Tools to rebuild these subsystems are written in Scheme and do not
+# use `make'.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+AUXDIR = @AUXDIR@
+EDDIR = $(AUXDIR)/edwin
+EODIR = $(EDDIR)/autoload
+EDOPTS = debian-changelog eystep manual midas nntp pasmod print pwedit \
+	 pwparse snr sort techinfo telnet tximod verilog vhdl webster
+
+all:
+	echo "No ALL action"
+
+mostlyclean clean distclean maintainer-clean:
+	./Clean.sh $@
+
+tags TAGS:
+	./Tags.sh
+
+install:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/SRC/edwin
+	$(mkinstalldirs) $(DESTDIR)$(EDDIR)
+	$(INSTALL_DATA) *.bci $(DESTDIR)$(AUXDIR)/SRC/edwin/.
+
+	-rm -rf $(DESTDIR)$(EODIR)
+	$(mkinstalldirs) $(DESTDIR)$(EODIR)
+	@for F in $(EDOPTS); do \
+	    echo "$(INSTALL_DATA) $${F}.com $(DESTDIR)$(EODIR)/.";\
+	    $(INSTALL_DATA) $${F}.com $(DESTDIR)$(EODIR)/.;\
+	done
+	@for F in $(EDOPTS); do \
+	    REL="../../SRC/edwin/$${F}.bci";\
+	    echo "( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . )";\
+	    ( cd $(DESTDIR)$(EODIR); $(LN_S) $${REL} . );\
+	done
+
+.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install

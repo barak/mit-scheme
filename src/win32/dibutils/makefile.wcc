@@ -1,0 +1,83 @@
+###
+### $Id: makefile.wcc,v 1.4 2002/01/27 06:34:26 cph Exp $
+###
+### Copyright (c) 1993-1999, 2002 Massachusetts Institute of Technology
+###
+### This program is free software; you can redistribute it and/or
+### modify it under the terms of the GNU General Public License as
+### published by the Free Software Foundation; either version 2 of the
+### License, or (at your option) any later version.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+### General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+### 02111-1307, USA.
+
+CC = wcc386
+
+# Compiler options.
+# [DEBUG] marks options used for debugging.
+# [OPTIMIZE] marks options used for optimization.
+#
+# /4r		386 instructions, 486 timings, register-based args
+# /bd		build NT DLL
+# /bt=nt	build NT binary (default when host is NT)
+# /d1+		generate debug info [OPTIMIZE]
+# /d2		generate debug info [DEBUG]
+# /ei		generate enum `int'-sized (required for MS compatibility)
+# /fpi		generate in-line 387 insns, emulate if none (default)
+# /fp3		generate in-line 387 insns (default)
+# /hw		generate Watcom debug info (default)
+# /mf		use flat memory model (default)
+# /od		disable optimization (default with /d2)
+# /oe		enable in-line user-code expansion [OPTIMIZE]
+# /op		force IEEE floating-point semantics
+# /ox		enable various optimizations [OPTIMIZE]
+# /s		remove stack overflow checks
+# /w0		disable warning messages
+# /zc		place literal strings in code segment
+# /ze		enable language extensions (default)
+# /zp4		use 4-byte alignment (required for MS compatibility)
+# /zq		operate quietly
+CFLAGS = /6r /bd /d2 /ei /fpi /fp3 /op /s /w1 /zc /zp4 /zq
+
+# Linker options.
+#
+# debug all		include debug info in executable
+# option caseexact	use case-sensitive comparison for identifiers
+# option map		create a .map file
+# option quiet		operate quietly
+# option symfile	put debug info in .sym file
+LDFLAGS = debug all option caseexact option map option quiet
+
+# Library Manager options.
+#
+# /b		Suppress backup file
+# /c		case-sensitive comparison
+# /n		produce a new output file
+# /q		operate quietly
+WLIB_FLAGS = /b /c /n /q
+
+WRCFLAGS_SYSTEM = /i=$(%NT_INCLUDE)
+
+all : dibutils.dll
+
+.c.obj :
+	$(CC) $(CFLAGS) $[@
+
+dibutils.dll : dibutils.obj dibutils.lnk dibutils.lbc dibutils.res
+	wlink $(LDFLAGS) @dibutils.lnk
+	wrc /q /ad /bt=nt dibutils.res $^@
+
+dibutils.lib : dibutils.dll
+	wlib $(WLIB_FLAGS) $^@ +$[@
+
+dibutils.res : dibutils.rc
+	wrc /q /ad /bt=nt /r /x /D__WATCOMC__ $(WRCFLAGS_SYSTEM) $[@
+
+dibutils.obj : dibutils.c dibutils.h

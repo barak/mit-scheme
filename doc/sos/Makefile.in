@@ -1,0 +1,127 @@
+
+# $Id: Makefile.in,v 2.4 2001/02/23 04:36:10 cph Exp $
+#
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+htmldir = @htmldir@
+pdfdir = @pdfdir@
+psdir = @psdir@
+
+INFO_TARGET = mit-scheme-sos.info
+
+all: $(INFO_TARGET) sos.html sos.pdf sos.ps
+
+$(INFO_TARGET): sos.texinfo gfdl.texinfo
+	rm -f $(INFO_TARGET)*
+	makeinfo --output=$(INFO_TARGET) sos.texinfo
+
+sos.html: sos.texinfo gfdl.texinfo
+	rm -f sos*.html
+	texi2html -split_chapter sos.texinfo
+
+sos.pdf: sos.texinfo gfdl.texinfo
+	texi2pdf sos.texinfo
+
+sos.ps: sos.dvi
+	dvips -o $@ $^
+
+sos.dvi: sos.texinfo gfdl.texinfo
+	texi2dvi sos.texinfo
+
+AUX_SUFFIXES = aux log toc
+INDEX_SUFFIXES = cp fn ky pg tp vr
+
+mostlyclean:
+	@for S in $(AUX_SUFFIXES); do \
+	    echo "rm -f sos.$${S}";\
+	    rm -f sos.$${S};\
+	done
+	@for S in $(INDEX_SUFFIXES); do \
+	    echo "rm -f sos.$${S}";\
+	    rm -f sos.$${S};\
+	    echo "rm -f sos.$${S}s";\
+	    rm -f sos.$${S}s;\
+	done
+	rm -f sos.dvi
+
+clean: mostlyclean
+	rm -f $(INFO_TARGET)* sos*.html sos.pdf sos.ps
+
+distclean: clean
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install-info: $(INFO_TARGET)
+	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+
+install-info-gz: install-info
+	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+
+install-html: sos.html
+	$(INSTALL_DATA) sos*.html $(DESTDIR)$(htmldir)/.
+
+install-pdf: sos.pdf
+	$(INSTALL_DATA) sos.pdf $(DESTDIR)$(pdfdir)/.
+
+install-ps: sos.ps
+	$(INSTALL_DATA) sos.ps $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps

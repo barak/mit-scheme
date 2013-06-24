@@ -1,0 +1,328 @@
+;;; -*-Scheme-*-
+;;;
+;;; $Id: imail.pkg,v 1.95 2001/12/18 21:35:40 cph Exp $
+;;;
+;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
+;;;
+;;; This program is free software; you can redistribute it and/or
+;;; modify it under the terms of the GNU General Public License as
+;;; published by the Free Software Foundation; either version 2 of the
+;;; License, or (at your option) any later version.
+;;;
+;;; This program is distributed in the hope that it will be useful,
+;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;;; General Public License for more details.
+;;;
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program; if not, write to the Free Software
+;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+;;; 02111-1307, USA.
+
+;;;; IMAIL mail reader: packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../sos/sos")
+(global-definitions "../edwin/edwin")
+(global-definitions "../star-parser/parser")
+
+(define-package (runtime url)
+  (files "url")
+  (parent (runtime))
+  (export ()
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
+	  url:decode-string
+	  url:decode-substring
+	  url:encode-string
+	  url:encode-substring
+	  url:match:escape
+	  url:match:host
+	  url:match:hostname
+	  url:match:hostnumber
+	  url:match:uchar
+	  url:match:xchar
+	  url:parse:hostport
+	  url:string-encoded?
+	  url:substring-encoded?))
+
+(define-package (edwin imail)
+  (files "imail-util"
+	 "imail-core")
+  (parent (edwin)))
+
+(define-package (edwin imail file-folder)
+  (files "imail-file")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  directory-url?
+	  file-folder-pathname
+	  file-folder?
+	  file-message?
+	  file-url?
+	  make-directory-url
+	  make-file-url))
+
+(define-package (edwin imail file-folder rmail-folder)
+  (files "imail-rmail")
+  (parent (edwin imail file-folder))
+  (export (edwin imail)
+	  rmail-folder?
+	  rmail-message?))
+
+(define-package (edwin imail file-folder umail-folder)
+  (files "imail-umail")
+  (parent (edwin imail file-folder))
+  (export (edwin imail)
+	  umail-folder?
+	  umail-message?)
+  (export (edwin imail file-folder rmail-folder)
+	  read-umail-message
+	  umail-delimiter?))
+
+(define-package (edwin imail imap-syntax)
+  (files "imap-syntax")
+  (parent (edwin imail))
+  (export (edwin imail imap-folder)
+	  imap:decode-mailbox-name
+	  imap:encode-mailbox-name
+	  imap:parse:enc-mailbox
+	  imap:server-parser
+	  imap:string-may-be-quoted?
+	  imap:universal-time->date-time
+	  imap:write-literal-string-body
+	  imap:write-literal-string-header
+	  imap:write-quoted-string)
+  (export (edwin imail imap-response)
+	  imap:atom-char?
+	  imap:char-set:atom-char
+	  imap:char-set:tag-char
+	  imap:char-set:text-char
+	  imap:parse:section
+	  imap:quoted-char?
+	  imap:quoted-special?
+	  imap:tag-string?))
+
+(define-package (edwin imail imap-response)
+  (files "imap-response")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  imap-transcript-flush-output
+	  imap-transcript-write
+	  imap-transcript-write-char
+	  imap-transcript-write-string
+	  imap-transcript-write-substring
+	  start-imap-transcript
+	  stop-imap-transcript)
+  (export (edwin imail imap-folder)
+	  imap:bind-fetch-body-part-port
+	  imap:read-literal-progress-hook
+	  imap:read-server-response
+	  imap:response-code:alert?
+	  imap:response-code:permanentflags
+	  imap:response-code:permanentflags?
+	  imap:response-code:read-only?
+	  imap:response-code:read-write?
+	  imap:response-code:trycreate?
+	  imap:response-code:uidnext
+	  imap:response-code:uidnext?
+	  imap:response-code:uidvalidity
+	  imap:response-code:uidvalidity?
+	  imap:response-code:unseen
+	  imap:response-code:unseen?
+	  imap:response:bad?
+	  imap:response:bye?
+	  imap:response:capabilities
+	  imap:response:capability?
+	  imap:response:continue?
+	  imap:response:exists-count
+	  imap:response:exists?
+	  imap:response:expunge-index
+	  imap:response:expunge?
+	  imap:response:fetch-attribute
+	  imap:response:fetch-attribute-keywords
+	  imap:response:fetch-body-part
+	  imap:response:fetch-index
+	  imap:response:fetch?
+	  imap:response:flags
+	  imap:response:flags?
+	  imap:response:list-delimiter
+	  imap:response:list-flags
+	  imap:response:list-mailbox
+	  imap:response:list?
+	  imap:response:lsub?
+	  imap:response:namespace-other
+	  imap:response:namespace-personal
+	  imap:response:namespace-shared
+	  imap:response:namespace?
+	  imap:response:no?
+	  imap:response:ok?
+	  imap:response:preauth?
+	  imap:response:recent?
+	  imap:response:response-text-code
+	  imap:response:response-text-string
+	  imap:response:search-indices
+	  imap:response:search?
+	  imap:response:status-response?
+	  imap:response:status?
+	  imap:response:tag))
+
+(define-package (edwin imail imap-folder)
+  (files "imail-imap")
+  (parent (edwin imail))
+  (export (edwin imail)
+	  imap-folder?
+	  imap-message?
+	  imap-trace-port
+	  imap-url?
+	  make-imap-url
+	  start-imap-trace
+	  stop-imap-trace))
+
+(define-package (edwin imail front-end)
+  (files "imail-top")
+  (parent (edwin imail))
+  (export (edwin)
+	  edwin-command$imail
+	  edwin-command$imail-add-flag
+	  edwin-command$imail-bury
+	  edwin-command$imail-continue
+	  edwin-command$imail-copy-folder
+	  edwin-command$imail-create-folder
+	  edwin-command$imail-delete-backward
+	  edwin-command$imail-delete-folder
+	  edwin-command$imail-delete-forward
+	  edwin-command$imail-delete-message
+	  edwin-command$imail-disconnect
+	  edwin-command$imail-expunge
+	  edwin-command$imail-first-message
+	  edwin-command$imail-first-unseen-message
+	  edwin-command$imail-forward
+	  edwin-command$imail-get-new-mail
+	  edwin-command$imail-input
+	  edwin-command$imail-input-from-folder
+	  edwin-command$imail-kill-flag
+	  edwin-command$imail-last-message
+	  edwin-command$imail-mail
+	  edwin-command$imail-mouse-save-mime-entity
+	  edwin-command$imail-next-flagged-message
+	  edwin-command$imail-next-message
+	  edwin-command$imail-next-same-subject
+	  edwin-command$imail-next-undeleted-message
+	  edwin-command$imail-output
+	  edwin-command$imail-previous-flagged-message
+	  edwin-command$imail-previous-message
+	  edwin-command$imail-previous-same-subject
+	  edwin-command$imail-previous-undeleted-message
+	  edwin-command$imail-quit
+	  edwin-command$imail-rename-folder
+	  edwin-command$imail-reply
+	  edwin-command$imail-resend
+	  edwin-command$imail-save-attachment
+	  edwin-command$imail-save-folder
+	  edwin-command$imail-save-mime-entity
+	  edwin-command$imail-search
+	  edwin-command$imail-select-message
+	  edwin-command$imail-toggle-header
+	  edwin-command$imail-toggle-message
+	  edwin-command$imail-toggle-mime-entity
+	  edwin-command$imail-undelete-backward
+	  edwin-command$imail-undelete-forward
+	  edwin-command$imail-undelete-previous-message
+	  edwin-mode$imail
+	  edwin-variable$imail-auto-wrap
+	  edwin-variable$imail-body-cache-limit
+	  edwin-variable$imail-default-dont-reply-to-names
+	  edwin-variable$imail-default-imap-mailbox
+	  edwin-variable$imail-default-imap-server
+	  edwin-variable$imail-default-user-id
+	  edwin-variable$imail-delete-after-output
+	  edwin-variable$imail-dont-reply-to-names
+	  edwin-variable$imail-expunge-confirmation
+	  edwin-variable$imail-forward-all-headers
+	  edwin-variable$imail-forward-using-mime
+	  edwin-variable$imail-global-mail-notification
+	  edwin-variable$imail-ignored-headers
+	  edwin-variable$imail-inline-mime-text-subtypes
+	  edwin-variable$imail-kept-headers
+	  edwin-variable$imail-known-mime-charsets
+	  edwin-variable$imail-message-filter
+	  edwin-variable$imail-mime-attachment-directory
+	  edwin-variable$imail-mime-boundary-style
+	  edwin-variable$imail-mime-collapse-digest
+	  edwin-variable$imail-mime-show-alternatives
+	  edwin-variable$imail-mode-hook
+	  edwin-variable$imail-output-default
+	  edwin-variable$imail-pass-phrase-retention-time
+	  edwin-variable$imail-primary-folder
+	  edwin-variable$imail-reply-with-re
+	  edwin-variable$imail-update-interval)
+  (export (edwin imail)
+	  imail-ui:body-cache-limit
+	  imail-ui:call-with-pass-phrase
+	  imail-ui:clear-message
+	  imail-ui:delete-stored-pass-phrase
+	  imail-ui:message
+	  imail-ui:message-wrapper
+	  imail-ui:present-user-alert
+	  imail-ui:progress-meter
+	  imail-ui:prompt-for-alist-value
+	  imail-ui:prompt-for-yes-or-no?
+	  imail-ui:sit-for))
+
+(define-package (edwin imail front-end summary)
+  (files "imail-summary")
+  (parent (edwin imail front-end))
+  (export (edwin)
+	  edwin-command$imail-summary
+	  edwin-command$imail-summary-by-flags
+	  edwin-command$imail-summary-by-recipients
+	  edwin-command$imail-summary-by-regexp
+	  edwin-command$imail-summary-by-topic
+	  edwin-command$imail-summary-first-message
+	  edwin-command$imail-summary-last-message
+	  edwin-command$imail-summary-next-message
+	  edwin-command$imail-summary-previous-message
+	  edwin-command$imail-summary-select-message
+	  edwin-mode$imail-summary
+	  edwin-variable$imail-summary-auto-select
+	  edwin-variable$imail-summary-fixed-layout
+	  edwin-variable$imail-summary-height
+	  edwin-variable$imail-summary-highlight-message
+	  edwin-variable$imail-summary-mode-hook
+	  edwin-variable$imail-summary-pop-up-message
+	  edwin-variable$imail-summary-show-date
+	  edwin-variable$imail-summary-subject-width)
+  (export (edwin imail front-end)
+	  write-imail-summary-line!))
+
+(define-package (edwin imail front-end folder-browser)
+  (files "imail-browser")
+  (parent (edwin imail front-end))
+  (export (edwin imail front-end)
+	  imail-browse-container)
+  (export (edwin)
+	  edwin-command$imail-browser-do-copy
+	  edwin-command$imail-browser-do-delete
+	  edwin-command$imail-browser-do-flagged-delete
+	  edwin-command$imail-browser-do-rename
+	  edwin-command$imail-browser-flag-folder-deletion
+	  edwin-command$imail-browser-mark
+	  edwin-command$imail-browser-mouse-toggle-container
+	  edwin-command$imail-browser-quit
+	  edwin-command$imail-browser-revert
+	  edwin-command$imail-browser-toggle-container
+	  edwin-command$imail-browser-unmark
+	  edwin-command$imail-browser-unmark-all-folders
+	  edwin-command$imail-browser-unmark-backward
+	  edwin-command$imail-browser-view-container
+	  edwin-command$imail-browser-view-selected-container
+	  edwin-command$imail-browser-view-selected-folder
+	  edwin-mode$imail-browser
+	  edwin-variable$imail-browser-mode-hook))

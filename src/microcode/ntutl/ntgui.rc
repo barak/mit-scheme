@@ -1,0 +1,59 @@
+#include "windows.h"
+#include "ntgui.h"
+#include "ntdialog.h"
+#include "version.h"
+
+SHIELD3_ICON ICON shield3.ico
+SHIELD4_ICON ICON shield4.ico
+SHIELD2_ICON ICON shield2.ico
+SHIELD1_ICON ICON shield1.ico
+LAMBDA_ICON ICON lambda.ico
+LAMBDA2_ICON ICON lambda2.ico
+EDWIN_ICON ICON edwin.ico
+LIAR1_ICON ICON liar1.ico
+LIAR2_ICON ICON liar2.ico
+LIAR3_ICON ICON liar3.ico
+GRAPHICS_ICON ICON graphics.ico
+CONSES_ICON ICON conses.ico
+ENVIRONMENT_ICON ICON envir1.ico
+COFFEE_ICON ICON coffee.ico
+MINCER_ICON ICON mincer.ico
+BCH_ICO ICON bch.ico
+
+GC_CURSOR  CURSOR gc.cur
+
+#define MAKEFILEVERSIONSTRINGHELPER(a,b,c) #a b #c
+#define MAKEFILEVERSIONSTRING(v,s) MAKEFILEVERSIONSTRINGHELPER(##v,".",##s)
+
+1 VERSIONINFO
+	FILEVERSION	0,0,0,65
+	PRODUCTVERSION	7,2,0,65
+	FILEOS		VOS__WINDOWS32
+	FILETYPE	VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+	VALUE "CompanyName", "Artifical Intelligence Lab, MIT"
+	VALUE "FileDescription", "MIT Scheme Microcode"
+	VALUE "FileVersion", MAKEFILEVERSIONSTRING(SCHEME_VERSION,SCHEME_SUBVERSION)
+	VALUE "InternalName", "SCHEME"
+	VALUE "LegalCopyright", "Copyright Massachusetts Institute of Technology 1993-2000"
+	VALUE "OriginalFilename", "SCHEME.EXE"
+	VALUE "ProductName", "MIT Scheme"
+	VALUE "ProductVersion", SCHEME_RELEASE
+    END
+  END
+
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1251
+  END
+END
+
+#ifdef __WATCOMC__
+#include "ntdialog.dlg"
+#else
+RCINCLUDE NTDIALOG.DLG
+#endif

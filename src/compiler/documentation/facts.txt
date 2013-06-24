@@ -1,0 +1,28 @@
+Some useful facts:
+
+* A canonical subproblem has a `continuation' component that satisfies
+the predicate `continuation?'.  The `prefix' component is never null,
+and always terminates in a return whose operator is `continuation', or
+a combination with that continuation.  The `rvalue' component is
+always a reference to the parameter of `continuation'.
+
+* A non-canonical subproblem has a `continuation' component that is a
+virtual continuation; this continuation is never reified.  The
+`rvalue' component is arbitrary.  The `prefix' component may or may
+not be null.
+
+* Every non-canonical subproblem is eventually translated into a
+virtual return node.  The exception to this rule is that subproblems
+whose values are unused or known are usually translated into null
+sequences.  In either case the prefix is output.
+
+* A continuation which is the operator of the
+`application-continuation-push' of some application satisfies
+`continuation/always-known-operator?'.  Furthermore, it has precisely
+one application: the one of which it is the associated
+continuation-push.
+
+* A return node can only have a `continuation-push' if it was created
+by `combination/constant!' (i.e. was the result of constant-folding).
+In this case the `continuation-push' is guaranteed to be of type
+`effect', so that the continuation is not pushed at all.

@@ -1,0 +1,547 @@
+@c -*- TeXInfo -*-
+
+This is file: /scheme/documentation/README.wabbit
+
+@node Top
+
+What's up, Doc?
+---------------
+
+ The MIT C-Scheme garbage collector has been extended w/ an alternative gc-loop
+which supports ``wabbit hunting'' and ``headhunting'' garbage collection.
+
+
+To enable wabbit hunting, evaluate: (load-option 'wabbit)  [@xref{Wabbit Hunt}]
+
+``Wabbit hunting'' is when you have a reference to an object and you want to
+collect all other references to that same object. For instance, several data
+structures may share (alias) the same sub-datum. Wabbit hunting allows you to
+collect all such sharers, presumably to update them all in an interesting way
+or just to collect sharing statitistics or a sharing histogram.
+
+
+To enable headhunting, evaluate: (load-option 'headhunt)  [@xref{Headhunt}]
+
+``Headhunting'' is when you wish to reify all ``headed'' objects in storage
+(heap *and* constant space) into one moby vector. Note that base objects such
+qas fixnums, Booleans, and characters, etc are not ``headed'': they are not
+referenced by an object pointer. Presumably, it is interesting to go
+headhunting to gather usage statistics and histograms and to do delicate memory
+surgery. For this reason, great care must be taken in groveling over a
+``headhunt collection'' (the result of a headhunting GC).
+
+
+
+@menu
+
+* Wabbit Descwiptor::	  	Data abstraction: descriptor of target wabbits
+
+* Wabbit Buffer::		The buffer for recording wabbit sightings
+
+* Wabbit Hole::			The format of wabbit sighting records
+
+* Fudd Thunk::		        A thunk to invoke after targets are gathered
+
+* Headhunt Collection::		The format of headhunt results
+
+* Swabbing Wabbit Descwiptors::	Automagic swabbing upon return from the hunt
+
+* Procedures Summary::		Utilities for wabbit hunting and headhunting
+
+* Examples::			A few sample wabbit hunts and headhunts.
+
+@end menu
+
+
+@node Wabbit Descwiptor
+
+A ``Wabbit Descwiptor'' is a 4-element vector:
+
+    ------------------------------------------------------------------------
+    0. Boolean hunt disable flag -- (a.k.a. ``duck season'' flag)
+                                    avoid wabbit hunting and/or headhunting
+                                    upon the next GC flip.
+                                    (@pxref{Wabbit Season and Duck Season,
+                                            Duck Season})
+
+    1. Wabbit vector -- vector of object references to target objects
+                        (a.k.a. ``wabbits'')
+
+    2. Wabbit buffer -- vector into which wabbit sightings are recorded.
+                        This must be of length (2 + twice wabbit vect len).
+                        (For details of wabbit sightings, @pxref{Wabbit Holes})
+
+    3. Boolean headhunt enable flag -- if FALSE, no headhunt is performed.
+                                       else this slot will be replaced by a
+                                         headhunt collection upon completion
+                                         of the headhunting wabbit hunt.
+                                       (@xref{Headhunt Collection})
+    ------------------------------------------------------------------------
+ 
+ ****
+  NB  a) Both the WABBIT-VECTOR and the WABBIT-BUFFER must reside in the heap
+ ****      i.e., they may *not* reside in constant space or on the stack.
+
+      b) Both the wabbit buffer and the headhunt collection slots are zeroed
+          upon return, since they may contain unsafe pointers. Moreover, it
+          is unsafe for the FUDD-THUNK (@ref{Fudd Thunk}) return them or
+          otherwise close over them. Consider them only to be very fluid
+          parameter sources for the FUDD-THUNK.
+
+
+@node Fudd Thunk
+
+What's a Fudd Thunk?
+--------------------
+
+   After the hunt has concluded, all the target wabbits (if any) will reside in
+the wabbit buffer of the wabbit descwiptor and all heads collected (if any)
+will reside in the headhunt-collection slot of the wabbit descwiptor. It is at
+this point that the FUDD-THUNK is invoked.
+
+   A ``FUDD-THUNK'' is a procedure of no arguments. Whatever result it returns
+is the result of the call to WABBIT-HUNT or HEADHUNT, whichever was called. It
+is therefore imperative that the FUDD-THUNK not return unsafe values (wabbit
+holes that might reference the stack).
+
+ Normally, you will write Fudd thunks which use (GET-WABBIT-DESCWIPTOR) and the
+wabbit buffer and headhunt collection accessors on wabbit descwiptors. See the
+example section below for a few samples of how the Fudd thunks are used. Most
+important, note the upon exit from a call to WABBIT-HUNT or HEADHUNT, the
+wabbit buffer and headhunt collection in the wabbit descwiptor are ``swabbed''
+soas to release wascally wabit holes and the moby headhunt collection. See the
+``swabbing'' section below.
+
+
+Default Fudd Thunks
+-------------------
+
+  The default Fudd-thunk for wabbit hunting is fluid-bound to the global
+variable *DEFAULT-FUDD-THUNK*.  The default Fudd thunk merely returns the
+wabbit buffer, which will have been swabbed in the return process. That is, its
+wabbit holes will have been nullified.
+
+  The default Fudd-thunk for headhunting is fluid-bound to the global variable
+*DEFAULT-HEADHUNT-FUDD-THUNK* The default headhunt Fudd thunk returns the
+headhunt collection. This will *not* have been swabbed out (but the headhunt
+collection slot in the wabbit descwiptor will have been swabbed), so you must
+be careful what you do with the result of HEADHUNT called with the default
+headhunt Fudd thunk. It is best to simply drop it, being careful not to let the
+printer hash it as the result of an interactive REPL call.
+
+ @xref{Default Fudd Thunks} for more details.
+
+
+@node Wabbit Buffer
+
+ The ``Wabbit Buffer'' should be a vector of FALSEs before the wabbit hunting
+is initiated. At the end of the wabbit hunt, the wabbit buffer contents will
+be laid out as follows:
+
+  --------------------------------------------------------------------------
+  slot 0 = Boolean flag: TRUE  if all wabbit sightings were recorded in the
+                                  wabbit buffer
+                         FALSE if the wabbit buffer was too small to accomo-
+                                  date a record for each wabbit sighting.
+                                  (In this case, the FUDD-THUNK should do a
+                                     bit of cleanup work so the same wabbit
+                                     hunt can be re-initiated later.)
+
+  slot 1 = Fixnum: number of wabbit sightings recorded in the wabbit buffer
+
+  slot 2 = Object reference: cite of first wabbit sighting (``wabbit hole'')
+
+  slot 3 = Number: offset into first sighting object where wabbit is hiding
+  --------------------------------------------------------------------------
+
+...and so on, with even-index slots containing wabbit holes and odd-index
+slots, indices. Note that slot 1 should hold the index of the first even
+slot that holds FALSE and all slots thereafter should likewise hold FALSE.
+
+It is not really essential that the wabbit buffer be cleared before a hunt
+since the slot 1 indicates the index of the first garbage slot. Nonetheless, it
+is poor form to supply a populated vector.
+
+Note also that the wabbit buffer will be ``swabbed'' upon return from the hunt.
+(@xref{Swabbing Wabbit Descwiptors}).
+
+
+@node Wabbit Hole
+
+ A ``Wabbit Hole'' is normally a headed object reference (a pointer) but it
+may in very rare circumstances be a ``wascally wabbit hole''. There are only
+three kinds of wascally wabbit holes:
+
+ ---------------------------------------------------------------------------
+ 1. Characters: these indicate references to wabbit holes in constant space.
+                To reify the character into a cell whose contents holds the
+                wabbit, apply CELLIFY (@ref{Cellify}) to the slot ref that
+                holds the char.
+ 
+                (NB: the char as printed holds only part of the addr; you
+                     must vector-ref into the wabbit buffer to get all the
+                     addr bits. This is incredible magic.)
+
+ 2. Null  Refs: these indicate headless objects. They should never appear.
+
+ 3. Stack Refs: these indicate objects on the control stack. Since we reify
+                the stack into the heap as part of the call to WABBIT-HUNT and
+                HEADHUNT, these too should never appear unless you are doing
+                something painfully obscure (and dangerous!).
+ ---------------------------------------------------------------------------
+
+If you ever encounter Null or Stack wabbit holes, you may want to send a
+friendly bug report (?) to bug-cscheme@zurich.ai.mit.edu with a reproducable
+test script. (If we cannot reproduce it, we cannot fix it.)
+
+
+@node Headhunt Collection
+
+The ``Headhunt Collection'' is a vector of arbitrary (fixnum) length. It is
+intended to contain a pointer to the head of every object in the heap which has
+an object header (spec., numbers, Booleans, etc not included). If all headed
+heap objects fit in the space available after the GC flip, then slot 0 of this
+headhunt collection is TRUE. If not, slot 0 is FALSE and the vector contains as
+many object head references as actually did fit.
+
+
+************ Be verwy verwy careful when headhunting... if you are not careful
+** CAVEAT ** to release the headhunt collection (e.g., don't let it escape) or
+************ if you gobble up too much intermediate state in traversing it, you
+             will exhaust the available heap space and go down in flames. This
+             is a very fragile system memory feature intended for only the
+             most ginger-fingered discriminating systems wizards. For instance
+             it may someday lead to a post-GC garbage scavenger. Nonetheless,
+             it readily lends itself to self abuse if not treated reverently.
+
+
+@node Swabbing Wabbit Descwiptors
+
+Swabbing Wabbit Descwiptors
+---------------------------
+
+  Upon exit from WABBIT-HUNT or HEADHUNT, the wabbit descwiptor with repsect to
+which the hunt was performed will be ``swabbed'' so as to release the wabbit
+holes and the headhunt collection. Specifically, the first two slots of the
+WABBIT-BUFFER (indicating all-found? and index-of-first-null) are left
+unmolested. The remainder of the WABBIT-BUFFER is cleared back to all be #F.
+This way no dangerous wabbit holes (e.g., stack refs) will be left dangling in
+the wabbit descwiptor after the hunt. In addition, the HEADHUNT-COLLECTION slot
+of the wabbit descwiptor is set to the number of heads collected, which is then
+negated if not all heads were accomodated by the heap. That is, if say
+314159264 were found but more heads existed but could not fit in the
+headhhunt-collection, then the headhunt-collection slot of the wabbit
+descwiptor will be set to -314159264.
+
+  Note that the HEADHUNT-COLLECTION vector itself is not cleared: this could
+waste a lot of time and would not really free up significant space since the
+vector would still exist in the heap. It is therefore important that you not
+carelessly return the HEADHUNT-COLLECTION from the thunk since this could allow
+its subsequent capture, from instance by the hashing printer in the interactive
+REPL. Moreover, this HEADHUNT-COLLECTION may contain entries that were moved
+into the heap from the stack by the nature of the WABBIT-HUNT/HEADHUNT calls
+(they do a call-with-current-continuation to reify the control stack onto the
+heap). Thus, the HEADHUNT-COLLECTION may contain dangerous pointers after the
+return from the hunt call. You can crash your Scheme in a very nasty way if you
+do not take heed of this danger.
+
+[Implementors' note: this swabbing is accomplished via an unwind protect which
+                     calls gc-wabbit::%swab-wad upon exit from the hunt.]
+
+
+@node Procedures Summary
+
+@menu
+
+* Wabbit Hunt::
+* Wabbit Season and Duck Season::
+* Wabbit Descwiptors::
+* Default Fudd Thunks::
+* Cellify::
+* Headhunt::
+
+@end menu
+
+
+@node Wabbit Hunt
+
+(WABBIT-HUNT WABBIT-DESCWIPTOR #!optional FUDD-THUNK)
+
+   Open wabbit season on wabbits matching WABBIT-DESCWIPTOR (@ref{Wabbit
+   Descwiptor}) and go wabbit hunting. Once all the wabbits have been wounded
+   up, invoke FUDD-THUNK (@ref{Fudd Thunk}), weturning the wesult of FUDD-THUNK
+   as the wesult of the wabbit hunt. 
+   
+   The optional FUDD-THUNK pawameter defaults to the value of the fluid
+   vawiable: *DEFAULT-FUDD-THUNK* (@ref{Default Fudd Thunks}), which defaults
+   to just weturning the wabbit buffer (which will have been swabbed upon
+   return!).
+
+
+@node Wabbit Season and Duck Season
+
+(WABBIT-SEASON! WABBIT-DESCWIPTOR)
+
+   Declare open season on wabbits matching our target descwiptor.
+   Returns the old wabbit descwiptor (possibly FALSE).
+
+(DUCK-SEASON!)
+
+   Disable wabbit hunting... returns descwiptor from latest wabbit hunt.
+
+****
+ NB  WABBIT/DUCK-SEASON! both mutate the system wabbit descwiptor accessed via
+****                     calls to (GET-WABBIT-DESCWIPTOR).
+
+
+(WABBIT-SEASON?)
+(  DUCK-SEASON?)
+
+  It is wabbit season if the value returned by (GET-WABBIT-DESCWIPTOR) is a
+valid wabbit descwiptor with the hunt-disable flag disabled (i.e., hunt is
+enabled). Otherwise, it is duck season.
+
+
+@node Wabbit Descwiptors 
+
+(GET-WABBIT-DESCWIPTOR)
+
+  Returns the current wabbit descwiptor as installed by WABBIT/DUCK-SEASON!
+(which are implicitly called from WABBIt-HUNT and HEADHUNT). This may *not*
+always be a valid instance of a WABBIT-DESCWIPTOR so it is best to check the
+result using (WABBIT-DESCWIPTOR object).
+
+
+(WABBIT-DESCWIPTOR? object)
+
+  Returns TRUE if OBJECT is a 4-element vector; FALSE otherwise. That is, the
+WABBIT-DESCWIPTOR is a transparent type (non-opaque).
+
+
+The painfully obvious creator, selectors and mutators are as follows:
+
+(MAKE-WABBIT-DESCWIPTOR hunt-disable-flag 
+                        wabbit-vector
+                        wabbit-buffer
+                        headhunt-enable-flag)
+
+
+    (WABBIT-DESCWIPTOR/HUNT-DISABLE-FLAG     wabbit-descwiptor)
+    (WABBIT-DESCWIPTOR/WABBIT-VECTOR         wabbit-descwiptor)
+    (WABBIT-DESCWIPTOR/WABBIT-BUFFER         wabbit-descwiptor)
+    (WABBIT-DESCWIPTOR/HEADHUNT-ENABLE-FLAG  wabbit-descwiptor)
+
+(SET-WABBIT-DESCWIPTOR/HUNT-DISABLE-FLAG!    wabbit-descwiptor new-value)
+(SET-WABBIT-DESCWIPTOR/WABBIT-VECTOR!        wabbit-descwiptor new-value)
+(SET-WABBIT-DESCWIPTOR/WABBIT-BUFFER!        wabbit-descwiptor new-value)
+(SET-WABBIT-DESCWIPTOR/HEADHUNT-ENABLE-FLAG! wabbit-descwiptor new-value)
+
+
+In addition, the following aliases were thought to be handy:
+
+     WABBIT-DESCWIPTOR/HEADHUNT-COLLECTION  =
+     WABBIT-DESCWIPTOR/HEADHUNT-ENABLE-FLAG
+
+ SET-WABBIT-DESCWIPTOR/HEADHUNT-COLLECTION! =
+ SET-WABBIT-DESCWIPTOR/HEADHUNT-ENABLE-FLAG!
+
+
+@xref{Wabbit Descwiptor} for details of the components' types and formats.
+
+
+@node Default Fudd Thunks
+
+The default Fudd thunks (@ref{Fudd Thunk}) for the various hunts are as follows:
+
+Wabbit Hunting
+--------------
+
+*DEFAULT-FUDD-THUNK*
+
+Global fluid variable bound to a procedure of no arguments that is called upon
+collection of all the wabbit holes into the wabbit buffer (and heads into the
+HEADHUNT-COLLECTION if headhunting is enabled)
+
+
+
+Headhunting
+-----------
+
+*DEFAULT-HEADHUNT-FUDD-THUNK*
+
+Global fluid variable bound to a procedure of no arguments that is called upon
+collection of all heads during HEADHUNTing (and upon collection of all wabbit
+holes into the wabbit buffer if the wabbit vector is non-empty).
+
+
+*DEFAULT-HEADHUNT-WABBIT-DESCWIPTOR*
+
+The default wabbit descwiptor used by calls to HEADHUNT. It contains a null
+wabbit-vector and a wabbit buffer of only two slots (for the flag and index).
+This is a global variable that can be fluid bound to any valid wabbit
+descwiptor instance.
+
+
+@node Cellify
+
+(CELLIFY CONSTANTSPACE-WABBIT-HOLE) ;; c-space wabbit holes print as characters
+
+  This is a *very* precarious hack. It returns a cell whose contents point to
+the wabbit hole in constant space (@xref{Wabbit Hole}). This cell should not be
+permitted to escape from the Fudd thunk where (presumably) it was created, else
+a spurious pointer into constant space would result and who knows how it might
+piss off the garbage collector. Specifically, don't go pretty-printing these
+cells 'cause the printer hashes output so the display hashtable will capture
+the cell.
+
+  In general, you should go have a nice calm discussion with a system wizard
+before frobbing with CELLIFY. It can save you a *lot* of trouble, believe me.
+
+
+@node Headhunt
+
+(HEADHUNT #!optional HEADHUNT-FUDD-THUNK HEADHUNT-WABBIT-DESCWIPTOR)
+
+The HEADHUNT-WABBIT-DESCWIPTOR is installed, which declares open season on no
+wabbits but does call for headhunting to commence. Afterward, the
+HEADHUNT-FUDD-THUNK is invoked (on no arguments) and its result it the result
+of the call to HEADHUNT.
+
+The optional HEADHUNT-FUDD-THUNK parameter default to the value of
+*DEFAULT-HEADHUNT-FUDD-THUNK* (@ref{Default Fudd Thunks}. Similarly for
+HEADHUNT-WABBIT-DESCWIPTOR.
+
+As with WABBIT-HUNTing Fudd thunks, the HEADHUNT-FUDD-THUNK is free to access
+the wabbit descwiptors wabbit-buffer and headhunt-collection slots, but should
+be careful in doing so. Letting dangerous bits escape can be treacherous.
+
+Also, as with WABBIT-HUNTing, the wabbit descwiptor is swabbed (@ref{Swabbing
+Wabbit Descwiptors}) upon completion of the hunt. (In fact, this is just an
+alternative caller interface to the WABBIT-HUNT procedure for those more
+interested in headhunting than in wabbit hunting. To each his own.)
+
+
+
+@node Examples
+
+;;;
+;;; Sample usage (and mis-usage)
+;;;
+
+@menu
+
+* Wreckless::      Wabbit Hunt -  mis-use / abuse
+* Non-Wreckless::  Wabbit Hunt - good use
+* Dangerous::      Wabbit Hunt - poor use
+* Semi-Wreckless::    Headhunt - fair use
+
+@end menu
+
+
+@node Wreckless
+
+#| Sample wreckless wabbit hunt... (does not swab the wabbit buffer)
+  --------------------------------
+(define foobarbaz (cons 'a 'b))
+
+(begin
+  (wabbit-season!
+   (make-wabbit-descwiptor false	       ; hunt	 disable flag disabled
+			   (vector foobarbaz)  ; wabbit vector
+			   (make-vector 10 #f) ; wabbit buffer
+			   false	       ; headhunt enable flag disabled
+			   ))
+  'be-careful!)
+
+(gc-flip)
+
+(define done (duck-season!))
+
+(pp done)  ; lookin' for trouble
+
+;returns: #(#t #((a . b)) #(#t 4 (foobarbaz a . b) 1 () () () () () ()) ())
+|#
+
+
+@node Non-Wreckless
+
+#| Sample non-wreckless wabbit hunt... (safe wabbit hole count)
+  ------------------------------------
+(wabbit-hunt
+ (make-wabbit-descwiptor false		     ; hunt    disable flag disabled
+			 (vector foobarbaz)  ; wabbit vector
+			 (make-vector 10 #f) ; wabbit buffer
+			 false		     ; headhunt enable flag disabled
+			 ))
+
+; evaluated repeatedly... (stable wabbit hole count... holes swabbed upon exit)
+;
+;Value 31: #(#t 6 () () () () () () () ())  ; - 6 = wabbit hole count + 2
+;Value 32: #(#t 6 () () () () () () () ())
+;Value 33: #(#t 6 () () () () () () () ())
+|#
+
+
+@node Dangerous
+
+#| Sample dangerous wabbit hunt... (fudd thunk exposes the wabbit holes...hash)
+  -----------------------------
+(wabbit-hunt
+ (make-wabbit-descwiptor false		     ; hunt    disable flag disabled
+			 (vector foobarbaz)  ; wabbit vector
+			 (make-vector 10 #f) ; wabbit buffer
+			 false		     ; headhunt enable flag disabled
+			 )
+ (named-lambda (exposing-fudd-thunk)
+   (let* ((wabbuf (wabbit-descwiptor/wabbit-buffer (get-wabbit-descwiptor)))
+	  (got-em-all?	   (vector-ref wabbuf 0))
+	  (last-hole-index (vector-ref wabbuf 1)))
+     (display "\n; #(")
+     (do ((index 2 (1+ index)))
+	 ((>= index last-hole-index)
+	  (if got-em-all?
+	      (display ")\n; Th-th-th-that's all folks!")
+	      (display ")\n; And many more.... maybe?!?"))
+	  (newline))
+       (write (vector-ref wabbuf index)) ; DANGER! WRITE hashes output.
+       (write-char #\Space)))))
+
+; evaluated repeatedly... (stable display)
+
+; #((foobarbaz a . b) 1 #((a . b)) 1 )
+; Th-th-th-that's all folks!
+;No value
+
+; #((foobarbaz a . b) 1 #((a . b)) 1 )
+; Th-th-th-that's all folks!
+;No value
+
+; #((foobarbaz a . b) 1 #((a . b)) 1 )
+; Th-th-th-that's all folks!
+;No value
+
+; #((foobarbaz a . b) 1 #((a . b)) 1 )
+; Th-th-th-that's all folks!
+;No value
+|#
+
+
+@node Semi-Wreckless
+
+#| Sample semi-wreckless headhunt... (default headhunt-fudd-thunk exposes coll)
+  -------------------------------
+
+(begin (headhunt)
+       (wabbit-descwiptor/headhunt-enable-flag (get-wabbit-descwiptor)))
+
+; evaluated repeatedly... (stable head count... if negative, partial count)
+;
+;Value: 23648
+;Value: 23648
+;Value: 23648
+|#
+
+
+@c Local Variables:
+@c compile-command: "simple-make-info /scheme/documentation/README.wabbit wabbit"
+@c End:

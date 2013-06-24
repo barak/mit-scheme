@@ -1,0 +1,68 @@
+### -*- Fundamental -*-
+###
+### $Id: makefile.emx,v 1.9 2000/12/05 21:23:51 cph Exp $
+###
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
+###
+### This program is free software; you can redistribute it and/or
+### modify it under the terms of the GNU General Public License as
+### published by the Free Software Foundation; either version 2 of the
+### License, or (at your option) any later version.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+### General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+###
+
+#### Makefile for Scheme under OS/2 using EMX/GCC
+
+# This makefile is configured for use with GNU make, the EMX/GCC
+# development system (compiler, assembler, linker, etc.), the GNU m4
+# macro preprocessor, and the RC program included with the IBM OS/2
+# Toolkit.
+
+GCCFLAGS := -Zmt -O
+ifeq ($(debug_mode),debug)
+GCCFLAGS := $(GCCFLAGS) -g
+endif
+
+OBJ = o
+ASM = s
+CC = gcc
+CFLAGS = $(GCCFLAGS) -DMIT_SCHEME -D__OS2__
+LDFLAGS = $(GCCFLAGS)
+M4 = m4
+M4FLAGS = -DTYPE_CODE_LENGTH=6
+AS = as
+ASFLAGS =
+
+%.o : %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.s : %.m4
+	$(M4) $(M4FLAGS) < $< > $@
+
+%.o : %.s
+	$(AS) $(ASFLAGS) -o $@ $<
+
+%.exe :
+	$(CC) $(LDFLAGS) -o $(basename $@) $^
+	emxbind -b -q $(basename $@)
+	del $(basename $@)
+
+include os2utl\makefile.cmn
+
+scheme.exe : $(OBJECTS) scheme.res
+	$(CC) $(LDFLAGS) -o $(basename $@) $(OBJECTS) $(SCHEME_LIB)
+	emxbind -b -p -q -r$(basename $@).res $(basename $@)
+	del $(basename $@)
+
+bchschem.exe : $(BCHOBJECTS) bchschem.res
+	$(CC) $(LDFLAGS) -o $(basename $@) $(BCHOBJECTS) $(SCHEME_LIB)
+	emxbind -b -p -q -r$(basename $@).res $(basename $@)
+	del $(basename $@)

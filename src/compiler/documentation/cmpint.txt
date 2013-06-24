@@ -1,0 +1,1093 @@
+-*- Text -*-
+
+$Id: cmpint.txt,v 1.12 2000/03/21 04:29:53 cph Exp $
+
+
+Copyright (c) 1991-1992 Massachusetts Institute of Technology
+
+
+		Documentation of the C interface to
+		    MIT Scheme compiled code
+			     *DRAFT*
+
+
+
+	Remarks:
+
+In the following, whenever Scheme is used, unless otherwise specified,
+we refer to the MIT Scheme dialect and its CScheme implementation.
+
+This file describes the compiled-code data structures and macros
+defined in cmpint-md.h and required by cmpint.c and cmpgc.h .
+
+cmpaux.txt describes the assembly language code that must be written
+to get all of this to work.
+
+cmpint-md.h is the machine dependent header file that defines many of
+these parameters.  A new version must be written for each
+architecture.
+
+The "settable" fields in cmpint-md.h are described in the paragraphs
+marked with "=>".
+
+In the following, word and longword are the size of an item that fills
+a processor register, typically 32 bits.  Halfword is half this size,
+and byte is typically 8 bits.
+
+	Description of compiled-code objects and relevant types:
+
+The Scheme compiler compiles scode expressions (often procedure
+definitions) into native code.  As its output, it produces Scheme
+objects that represent compiled expressions.  To execute these
+expressions, they are passed as arguments to scode-eval together with
+an environment.
+
+Typically these expressions will construct some pointers to compiled
+procedures and define them in the environment.  These procedures can
+then be invoked normally from the read-eval-print loop, from
+interpreted code, or from other compiled code.
+
+In the course of their computation, these procedures will need to
+call other procedures and then proceed the computation.  In order to
+accomplish this, they will push compiled return addresses on the
+stack, and these will eventually be popped and "jumped through" to
+return.
+
+Compiled code and objects referenced by it are collected into
+"vector-like" objects called compiled-code blocks.
+
+The above four classes of objects (compiled expressions, compiled
+procedures, compiled return addresses, and compiled-code blocks) are
+implemented using two microcode types:
+
+TC_COMPILED_CODE_BLOCK is used to implement compiled-code blocks.  It
+is a vector type, that is, it is a pointer type, the word addressed by
+the pointer contains the length of the vector (not including the
+length header word), and the rest of the words (length) follow at
+increasing addresses in memory.  Typically the first word after the
+header is a non-marked-vector header, and the instructions follow it.
+The non-marked-vector header covers all the instructions, but the
+vector may contain arbitrary objects after the instructions, covered
+only by the normal vector header.  The optional, additional space at
+the end of the block is called the "constants" section, since it is
+used, among other things, to keep copies of constant objects used by
+the compiled code.  See the picture below for a diagram of the typical
+layout.
+
+TC_COMPILED_ENTRY is used to implement compiled expressions,
+compiled return addresses, compiled procedures, and some other entry
+points that the compiler and the compiled-code interface need.  A
+compiled entry is a non-standard pointer type described below. 
+
+	Description of compiled entries:
+
+The address portion of a compiled entry object points to an
+instruction in the "middle" of a compiled-code block.
+
+In order for the garbage collector to be able to move the whole
+block as a unit it must be able to determine the address of the
+first word.  Note that this word contains the length of the whole
+block, so this need not be specified again.
+
+The address of the first word of the block can be found from the
+address of the instruction, and a few bytes, currently a halfword
+preceding the instruction.  These bytes are called the offset field of
+a compiled entry object, and typically encode the distance (in bytes)
+between the beginning of the block and the compiled entry.
+
+A few bytes preceding the offset field are called the format field and
+encode the type of compiled entry (procedure vs. expression, etc.) and
+some type-specific information (number of arguments, offset to next
+return address on the stack, etc.).
+
+The gc-offset field and the format field must be the same size, and
+their size is determined by the C typedef of format_word at the
+beginning of cmpint-md.h.  Note that, to date, the compiler has only
+been ported to systems where this size is 2 bytes (for each), but it
+should be possible to port it to systems where these fields are
+larger.
+
+	Encoding of the offset field:
+
+The offset field is decoded as follows:
+
+If the low order bit is 0 the offset is a simple offset, ie.
+subtracting the offset from the address of the compiled entry
+results in the address of the compiled-code block that contains the
+entry.
+
+If the low order bit is 1, it is a continued offset, ie. subtracting
+the offset from the address of the compiled entry results in the
+address of another compiled entry whose offset may or may not have a
+low bit of 0.
+
+The rest of the bits (typically 15) are some encoding of the offset:
+
+- If instructions can appear at arbitrary byte addresses (including
+odd addresses), this field is the offset itself.
+
+- If instructions have alignment constraints (ie. halfword alignment
+on MC68K, or longword alignment on many RISCs), this field is the
+offset shifted appropriately.  In this way, no bits are wasted, and
+the range of offsets is increased.
+
+For example,
+
+The DEC VAX can have instructions at any byte location.  The 15 bits
+are the offset.
+
+The MC68020 can have instructions only at halfword boundaries.  The 15
+bit field shifted left by 1 is the real offset.  Note that in this
+case, if the low bit of the offset field is 0, the offset field is the
+real offset.
+
+The HP Precision Architecture, and many other RISCs, can have
+instructions only at longword boundaries.  The 15 bit field shifted
+left by 2 is the real offset.
+
+	Encoding of the format field:
+
+The preceding bytes encode the kind of compiled entry in the following
+way:
+
+The format field is further subdivided into two equal sized halves,
+used, roughly, for the minimum (high order half) and maximum (low
+order half) number of arguments that a compiled procedure will accept.
+Inappropriate values for these numbers of arguments imply that the
+entry is not a procedure, and then the two halves may be combined to
+generate information appropriate to the entry type.  The examples
+below assume that the format field is 2 bytes long.
+
+- For compiled expressions it is always -1 (0xffff)
+
+- For compiled entries it is always -3 or -2 (0xfff[d-e]).  It is -2
+for compiler generated entries, -3 for compiler-interface generated
+entries.
+
+- For compiled return addresses with saved dynamic links it is always
+-4 (0xfffc).  The next item on the stack is then a dynamic link.
+
+- For the special return address `return_to_interpreter' it is
+always -5 (0xfffb).
+
+- For all other compiled return addresses, both halves (bytes) must
+have their sign bit set, that is, they must appear negative when
+sign-extended.  The remaining bits of the high-order half of the field
+(all but the sign bit) and all but the two most significant bits of
+the low-order half of the field (sign bit and adjacent bit), when
+concatenated, form the offset in the stack to the previous (earlier)
+return address.  This information is used by the debugger to "parse"
+the stack into frames.  The sub-fields are actually concatenated
+backwards, with the bits from the high order half being the low order
+bits in the result.  If the format field is two bytes long, each half
+is a single byte, and the valid range for the high-order half is
+0x80-0xff, while the valid range for the low-order half is 0x80-0xdf
+
+- For compiled procedures, the format field describes the arity
+(number of parameters) and the format of the frame on the stack:
+
+The high order half of the field is (1+ REQ) where REQ is the number
+of required arguments.  Note that REQ must such that the resulting
+half of the format field does not appear negative!  If the format
+field is two bytes long, REQ must be less than 127.
+
+The low order half of the field is given by the expression
+(* (EXPT -1 REST?) FRAME-SIZE)
+where FRAME-SIZE is (+ 1 REQ OPT REST?), REQ is as above, OPT
+is the number of named optional arguments, and REST? is 1 if
+the procedure has a rest parameter (ie. it is a "lexpr"), or 0
+otherwise.  FRAME-SIZE must not appear negative, thus if the format
+field is two bytes long, FRAME-SIZE must be less than 127.
+
+	Picture of typical compiled-code block and entry:
+						   
+		  ----------------------------------------	     
+  start_address	  | MANIFEST-VECTOR |		      tl |	     
+		  ----------------------------------------<---------\
+		  | NM-HEADER	    |		      il |	     \
+		  ----------------------------------------<---\	      |
+		  |					 |     \      |
+		  |					 |	|     |
+		  |					 |	|     |
+		  |					 |	|     |
+		  |	     some instructions		 |	|     |
+		  |					 |	|     |
+		  |					 |	|     |
+		  |					 |	|     |
+		  |					 |	|     |
+		  ----------------------------------------	|     |
+		  |   format_field_1 |	offset_field_1	 |	|     |
+		  ----------------------------------------	|     |
+  entry_address_1 |	      movel arg0,reg0		 |	|     |
+		  ----------------------------------------	|     |
+		  |					 |	|     |
+		  |					 |	|     |
+		  |					 |	 > il |
+		  |					 |	|     |
+		  |	      more instructions		 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  ----------------------------------------	|      > tl
+		  |   format_field_2 |	offset_field_2	 |	|     |	   
+		  ----------------------------------------	|     |	   
+  entry_address_2 |	andl pointer_mask,arg0,reg0	 |	|     |	   
+		  ----------------------------------------	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  |	      more instructions		 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |	|     |	   
+		  |					 |     /      |	   
+	     /--->----------------------------------------<---/	      |	   
+	    /	  |	      Scheme object		 |	      |
+	   |	  ----------------------------------------	      |
+  "cons-   |	  |					 |	      |
+   tants"  |	  |					 |	      |	
+	   |	  |					 |	      |	
+	  <	  |					 |	      |	
+	   |	  |	   more Scheme objects		 |	      | 
+  section  |	  |					 |	      |
+	   |	  |					 |	      |
+	   |	  |					 |	      |
+	    \	  |					 |	      /
+	     \--->----------------------------------------<----------/
+
+Note: The picture above assumes that each machine instruction takes the same
+space as a scheme object, and that this is also the combined length of
+the gc-offset and format fields.  The type tags are always at the most
+significant end of the word, which depending on endianness may be at
+the lowest or highest addressed part of the word in memory.  The
+picture above depicts them on the left.
+		   
+	Description of picture:
+
+[TC_COMPILED_CODE_BLOCK | start_address] would be the object
+representing the compiled-code block.
+
+[TC_COMPILED_ENTRY | entry_address_1] would represent entry1.
+
+[TC_COMPILED_ENTRY | entry_address_2] would represent entry2.
+
+1) Assuming that instructions are longword aligned and that
+entry_address_1 is close enough to start_address not to need an
+extension, but entry_address_2 is not, then
+
+offset_field_1 = ((entry_address_1 - start_address) >> 1)
+offset_field_2 = (((entry_address_2 - entry_address_1) >> 1) | 1)
+
+note that entry_address_1 - start_address is a multiple of 4 because
+of the alignment assumption.
+
+2) Assuming that instructions are halfword aligned and that
+entry_address_1 is close enough to start_address not to need an
+extension, but entry_address_2 is not, then
+
+offset_field_1 = (entry_address_1 - start_address)
+offset_field_2 = ((entry_address_2 - entry_address_1) | 1)
+
+note that entry_address_1 - start_address is a multiple of 2 because
+of the alignment assumption.
+
+3) Assuming that instructions are byte aligned and that
+entry_address_1 is close enough to start_address not to need an
+extension, but entry_address_2 is not, then
+
+offset_field_1 = ((entry_address_1 - start_address) << 1)
+offset_field_2 = (((entry_address_2 - entry_address_1) << 1) | 1)
+
+The length of the "constants" section is (tl - il).
+There are (tl + 1) total words in the object.
+
+=> Macro PC_ZERO_BITS should be defined to be the number of bits in
+instruction addresses that are always 0 (0 if no alignment
+constraints, 1 if halfword, etc.).
+
+=> format_word should be 'typedefd' to be the size of the descriptor
+fields.  It is assumed that the offset field and the format field are
+the same size.  This definition is unlikely to need modification.
+
+	Compiled closures:
+
+Most compiled procedures are represented as a simple compiled entry
+pointing to the compiled-code block generated by the compiler.
+
+Some procedures, called closures, have free variables whose locations
+cannot be determined statically by the compiler or the linker.  The
+compiler will generate code to construct a tiny compiled-code block on
+the fly and make the compiled procedure be an entry point pointing to
+this dynamically allocated compiled-code block.
+
+For example, consider the following code, appearing at top level,
+
+    (define foo
+      (lambda (x)
+	(lambda (y) (+ x y))))		;lambda-1
+
+The outer LAMBDA will be represented as a compiled entry pointing to
+the appropriate block.  The inner LAMBDA cannot be since there may be
+more than one instance, each with its independent value for X:
+
+    (define foo1 (foo 1))
+    (define foo2 (foo 2))
+
+Compiled closures are implemented in the following way: The entry
+corresponding to the procedure points to a jump-to-subroutine (or
+branch-and-link) instruction.  The target of this jump is the code
+corresponding to the body of the procedure.  This code resides in the
+compiled-code block that the compiler generated.  The free variables
+follow the jump-to-subroutine instruction (after aligning to longword).
+
+Using this representation, the caller need not know whether it is
+invoking a "normal" compiled procedure or a compiled closure.  When
+the closure is invoked normally, it jumps to the real code for the
+procedure, after leaving a "return address" into the closure object in
+a standard place (stack or link register).  This "return address" is
+the address of the free variables of the procedure, so the code can
+reference them by using indirect loads through the "return address".
+
+Here is a stylized picture of the situation, where the procedure
+object (closure entry point) is a pointer to <1>.
+
+closure object:
+	+-------------------------------+
+	|				|
+	|    <header>			|
+	|				|
+	+-------------------------------+
+<1>	|    jsr instruction to <2>	|
+	+-------------------------------+
+	|    <value of X>		|
+	+-------------------------------+
+
+compiled code blok produced by the compiler:
+
+	+-------------------------------+
+	|				|
+	|    ...			|
+	|				|
+	+-------------------------------+
+<2>	|    <code for inner lambda>	|
+	|		|		|
+	|    		V		|
+	|				|
+	+-------------------------------+
+
+The code above could be compiled as (in pseudo-assembly language, in
+which & denotes an immediate value):
+
+	const	format-word:0x0202;gc-offset:??
+foo:	
+	mov	rfree,reg0
+	mov	&[TC_MANIFEST_CLOSURE | 4],reg1	; gc header
+	mov	reg1,0(reg0)
+	mov	&[format_field | offset_field],reg1	; entry descriptor
+	mov	reg1,NEXT_WORD(reg0)
+	mov	&[JSR absolute opcode],reg1	; jsr absolute opcode/prefix
+	mov	reg1,2*NEXT_WORD(reg0)
+	mova	lambda-1,reg1			; entry point
+	mov	reg1,3*NEXT_WORD(reg0)
+	mov	arg1,4*NEXT_WORD(reg0)		; x
+	mov	&5*NEXT_WORD,reg1
+	add	reg0,reg1,rfree
+	mov	&[TC_COMPILED_ENTRY | 2*NEXT_WORD],reg1
+	add	reg0,reg1,retval
+	ret
+
+	const	format-word:0xfffe;gc-offset:??
+lambda-1:
+	mov	arg1,reg0			; y
+	mov	x_offset(retlnk),reg1		; x	x_offset = 0
+	add	reg1,reg0,reg0
+	mov	reg0,retval
+	ret
+
+A more detailed picture of the closure object would be:
+
+	----------------------------------------
+	| MANIFEST-CLOSURE |                 4 |
+	----------------------------------------
+	|   format_field   |  gc_offset_field  |	;format = 0x0202
+	----------------------------------------	;offset = encode(8)
+entry	|   JSR absolute opcode                |
+	----------------------------------------
+	|   address of lambda-1                |
+	----------------------------------------	;address of retadd
+retadd	|   value of x                         |	; -> retlnk before
+	----------------------------------------	; entering lambda-1
+
+The following macros are used to manipulate closure objects:
+
+=> COMPILED_CLOSURE_ENTRY_SIZE specifies the size of a compiled
+closure entry (there may be many in a single compiled closure block)
+in bytes.  In the example above this would be 12 bytes (4 total for
+the format and gc offset fields, 4 for JSR opcode, and 4 for the
+address of the real entry point).
+
+=> EXTRACT_CLOSURE_ENTRY_ADDRESS is used to extract the real address
+of the entry point from a closure object when given the address of the
+closure entry.  Note that the real entry point may be smeared out over
+multiple instructions.  In the example above, given the address the
+word labeled ENTRY, it would extract the address of LAMBDA-1.
+
+=> STORE_CLOSURE_ENTRY_ADDRESS is the inverse of
+EXTRACT_CLOSURE_ENTRY_ADDRESS.  That is, given the address of a
+closure entry point, and a real entry point, it stores the real entry
+point in the closure object.  In the example above, given the address
+of the word labeled ENTRY, and a different entry point, say for
+LAMBDA-2, it would make the closure jump to LAMBDA-2 instead. This is
+used to relocate closures after garbage collection and similar
+processes.
+
+	Some caveats:
+
+- The code for lambda-1 described above does not match what the compiler
+would currently generate.
+
+The current parameter-passing convention specifies that all the state
+needed to continue the computation at a procedure's entry point must
+be on the stack and all the information on the stack must be valid
+objects (for GC correctness in case of interrupt, more on this below).
+Thus the contents of retlnk must be pushed on the stack as a valid
+object, and this is done by reconstructing the closure object whose
+datum field encodes the address of entry and whose type tag is
+TC_COMPILED_ENTRY, and then pushing it onto the stack.  Note that on
+some machines, the return address for the subroutine-call instruction
+is pushed on the stack by the hardware, and thus this value might have
+to be popped, adjusted, and re-pushed if it cannot be adjusted in
+place.
+
+The code for lambda-1 would then be closer to:
+
+lambda-1:
+	sub	retlnk,&retadd-entry,retlnk
+	or	&[TC_COMPILED_ENTRY | 0],retlnk,retlnk ; set type code
+	push	retlnk
+	<interrupt check>				; more on this below
+	mov	arg1,reg0
+	mov	top_of_stack,reg1
+	and	&[0 | -1],reg1,reg1			; remove type code
+	mov	x_offset+retadd-entry(reg1),reg1
+	add	reg1,reg0,retval
+	pop						; the closure object
+	ret
+
+Note that (retadd-entry) is a constant known at compile time, and is the
+same for the first entry point of all closures.  On many machines, the
+combination sub/or can be obtained with a single add instruction:
+	add	&([TC_COMPILED_ENTRY | 0]-(retadd-entry)),retlnk,retlnk
+
+This value is called the "magic constant", encoded in the first few
+instructions of a closure's code.
+
+- Multiple closures sharing free variables can share storage by having
+multiple entry points (multiple JSR instructions) in the closure
+object.  The compiler occasionally merges multiple related closures
+into single objects.
+
+A complication arises when closure entry points are not necessarily
+long-word aligned, since the compiler expects all variable offsets
+(like x_offset above) to be long-word offsets.
+
+This problem only occurs on machines where instructions are not all
+long-word aligned and for closures with multiple entry points, since
+the first entry point is guaranteed to be aligned on a long-word
+boundary on all machines.
+
+The current solution to this problem, on those machines on which it is
+a problem, is to choose a canonical entry point (the first one)
+guaranteed to be aligned properly, and push that on the stack on entry
+to a closure's code.  The compiler keeps track of what actual entry
+point the code belongs to even though the value on the stack may
+correspond to a different entry point.
+
+The "magic constant" becomes an entry-point dependent value, since each
+return address may have to be bumped back to the first entry point in
+the closure object rather than to the immediately preceding entry point.
+
+	Interrupts:
+
+Scheme polls for interrupts.  That is, interrupt processing is divided
+into two stages:
+
+- When an asynchronous interrupt arrives, the handler (written in C)
+invoked by the operating system sets a bit in a pending-interrupts
+mask, stores the relevant information (if any) in a queue, and
+proceeds the computation where it was interrupted.
+
+- The interpreter and compiled code periodically check whether an
+interrupt is pending and if so, invoke an interrupt handler written in
+Scheme to process the interrupt.  The interpreter checks for
+interrupts at the apply point.  Compiled code currently checks at
+every procedure entry (including loops) and at every continuation
+invocation.  This may change in the future, although it will always be
+the case that interrupts will be checked at least once in each
+iteration of a loop or recursion.
+
+Compiled code does not actually check the bits in the mask to
+determine whether an interrupt is pending.  It assumes that the
+first-level interrupt handler (the handler written in C) not only sets
+the bits, but also changes the copy of the MemTop (top of consing
+area) pointer used by the compiler so that it will appear that we have
+run out of consing room.  Thus compiled code merely checks whether the
+Free pointer (pointer into the heap) is numerically larger than the
+MemTop pointer, and if so it invokes an assembly-language or C utility
+that decides whether a garbage collection is needed or an interrupt
+must be processed.  Sometimes this utility will decide that the
+interrupt need not be processed (it is disabled, for example), and
+will need to return to the compiled code skipping the interrupt check
+since otherwise we will get into an infinite loop.
+
+The interrupt check code is fixed (so that the handler can determine
+how much code to skip) and comes in two varieties: closure interrupt
+code, and normal-entry (other) interrupt code.  Normal-entry interrupt
+code is always the first code in an entry point (procedure or
+continuation, but not closure code) and merely compares the Free and
+MemTop pointers and branches.  Closure code does this comparison after
+setting up the closure object.  Closure code assumes that the closure
+object is in the first parameter location (the closure itself is
+argument 0) so that free variables can be fetched.  Thus a closure
+label must first set this up correctly, and then check for interrupts.
+
+In pseudo-assembly language, a "normal" entry might look like
+
+gc_or_int	LOADI	#interrupt-handler-index,rindex
+		LOADA	entry,rentry
+		JMP	scheme-to-interface
+		format word and gc word for the entry
+entry		CMP	Free,MemTop
+		BGE	gc_or_int
+after_entry	<actual code for the entry>
+
+a "closure" entry might look like (this is not in the closure object,
+but in the code block at which the closure object points)
+
+gc_or_int	LOADI	#interrupt-handler-index,rindex
+		LOADA	entry,rentry
+		JMP	scheme-to-interface
+		format word and gc word for the entry
+entry		ADDI	offset,retadd,ret_add	; bump ret. add. to entry point
+		ORI	#[TC_CLOSURE | 0],ret_add
+		PUSH	ret_add			; arguments on the stack
+		CMP	Free,MemTop
+		BGE	gc_or_int
+after_entry	<actual code for the entry>
+
+The following macros are used by the C utility and handler to
+determine how much code to skip:
+
+=> ENTRY_SKIPPED_CHECK_OFFSET is the number of bytes between
+entry and after_entry in a normal entry.
+
+=> CLOSURE_SKIPPED_CHECK_OFFSET is the number of bytes
+between entry and after_entry in a closure entry.
+
+=> ENTRY_PREFIX_LENGTH is the number of bytes between gc_or_int and
+entry in a normal entry, not counting those taken up by the format
+word and the gc word.
+
+	Important considerations:
+
+The Scheme compiled code register set includes the current copy of the
+Free pointer, but does not include the copy of MemTop, although it is
+mostly constant.  The reason is that the C-level interrupt handler
+does not have convenient access to the register set at the point of
+the interrupt, and thus would have a hard time changing the version of
+MemTop used by compiled code at the point of the interrupt.  Thus the
+copy of MemTop used by compiled code is kept in memory.
+
+On machines where register-to-memory comparisons can be done directly
+this is no problem, but on load/store architectures (most RISCs for
+example), this is not feasible.  Furthermore, most RISCs have a few
+cycles of delay for memory loads, and adjacent instructions may not be
+interlocked by the hardware.  Thus a sequence like
+
+	LOAD	Memory_MemTop,Rtemp
+	CMP	Rfree,Rtemp
+	BGE	gc_or_int
+
+may be very slow and NOPs may have to be inserted explicitly between
+the LOAD and CMP instructions to make the code work.
+
+Since Scheme's interrupt response is not immediate, and polling is
+frequent, the following sequence can be used instead:
+
+	CMP	Rfree,Rmemtop
+	BGE	gc_or_int
+	LOAD	Memory_MemTop,Rmemtop
+
+Where Rmemtop is a register that holds a recent value of MemTop and is
+reloaded at every interrupt check.  Thus interrupt processing will
+start at the second interrupt check after the actual interrupt comes
+in.  In other words, if the sequence of entry points executed
+dynamically is ep1, ep2, ep3, and an asynchronous interrupt occurs
+between ep1 and ep2, the interrupt handler will not be invoked until
+ep3, rather than ep2.
+
+This instruction sequence eliminates the need to wait for the LOAD to
+complete, and the LOAD will have completed (or will be handled by the
+hardware's interlock mechanism) by the next check since at least one
+instruction (a branch instruction), and often many more, will
+intervene.
+
+Note that this delayed checking does not affect garbage collection
+interruptions since MemTop is constant between garbage collections,
+and thus the value being loaded is always the same, in the absence of
+asynchronous interrupts.
+
+Various operating systems allow the signal handler convenient access
+to the interrupted code's register set.  In such a situation, the LOAD
+instruction can be eliminated and the C-level interrupt handler can
+modify Rmemtop directly.  Rmemtop should be chosen from the
+caller-saves convention (super-temporary) registers if possible, since
+these registers must be explicitly saved by the signal handler, rather
+than implicitly by the calling convention.
+
+	Interrupts and closures that share storage:
+
+If an interrupt arrives on entry to the closure, the correct closure
+object must be reconstructed so that the computation will continue
+correctly on return from the interrupt.  The code to reconstruct the
+correct closure is also issued by the compiler, which at compile time
+maintains the identity of each closure and the distance to the
+canonical closure used for environment purposes.
+
+If the interrupt is dismissed, instead of processed, we need to
+continue the computation bypassing the interrupt checking code in
+order to avoid an infinite loop.  This is what the macro
+CLOSURE_SKIPPED_CHECK_OFFSET is used for.  We must skip the preamble
+of the closure code and emulate part of it, that is, adjust the object
+on top of the stack to be the closure object that the code expects to
+have there.  This can be done by extracting the magic constant from
+the entry point, and bumping the corresponding return address by this
+value.  The macro ADJUST_CLOSURE_AT_CALL accomplishes this feat on
+those machines where it is needed.
+
+=> ADJUST_CLOSURE_AT_CALL, when given an entry point and a location,
+adjusts the closure object stored at location so that it is the
+closure object that the entry point expects on top of the stack.  On
+machines where all instructions are long-word aligned, it is a NOP, on
+other machines (eg. 68k, VAX), it extracts the magic constant from the
+closure's code, and uses it to construct the appropriate closure
+object.
+
+	External calls from compiled code:
+
+Many calls in scheme code (and particularly in large programs) are
+calls to independently compiled procedures or procedures appearing at
+the top level of a file.  All these calls are calls to potentially
+unknown procedures since the names to which they are bound can be
+unbound or redefined dynamically at run time.  
+
+The code issued by the compiler for such an external call must take
+into account the possibility of the lack of a valid value, run-time
+definition, and run-time assignment.  This is done as follows:
+
+For each external procedure called with a fixed number of arguments
+(more on this below), a small contiguous space is allocated in the
+"constants" section of the compiled-code block.
+
+This space initially contains the name of the external variable
+whose value is being invoked, and the number of arguments (+ 1 for
+technical reasons) being passed to the procedure.
+
+These locations will be replaced at load time by an absolute jump to
+the correct entry point of the called procedure if the number of
+arguments matches and the callee (target procedure) is compiled, or by
+an absolute jump to some utility code generated on the fly to
+interface the caller and the callee (called a trampoline procedure).
+Note that both procedures need not be in the same compiled-code block.
+
+The fixed code in the code section of the compiled-code block contains
+a pc-relative branch instruction to this space allocated in the
+"constants" section.
+
+When the compiled-code block is loaded, a linker that resolves these
+references and replaces the name and arguments with machine-specific
+code to do the absolute jump is invoked.  The linker also records the
+locations of all such jump instructions so that a subsequent
+redefinition or assigment of the same name will cause the jump
+instruction to be replaced by a new one to the correct value.  Note
+that the number of arguments needs to be checked only by the linker,
+so no instructions are issued to check it at run time.  It is for this
+reason that the number of arguments is part of the information left by
+the compiler in the "constants" section.
+
+These entries in the "constants" section are called execute caches,
+operator links, or "UUO" links for historical reasons.  They must be
+large enough to contain the instructions required for an absolute jump
+(and possibly some delay slot instructions in a RISC-style machine),
+and the number of arguments passed in the call.  This number of
+arguments is not used in the call sequence, but is used by the linker
+when initially linking and when relinking.
+
+Execute caches are contiguous in the "constants" section, and the
+whole lot is preceded by a GC header of type TC_LINKAGE_SECTION which
+contains two fields.  The least-significant halfword of the header
+contains the size in longwords of the execute-cache section (note that
+each cache entry may take up more than one longword).  The remaining
+bits (ignoring the type code) MUST be 0.  If a file makes enough
+external calls that this halfword field cannot hold the size, the
+links caches must be separated into multiple blocks each with its own
+header.
+
+Occasionally a procedure is called with more than one number of
+arguments within the same file.  For example, the LIST procedure may
+be called with three and seven arguments in the same file.  In this
+case there would be two execute caches for LIST.  One would correspond
+to the argument count of three, and the other to seven.
+
+As an example, consider the code generated for
+
+(sort <some list> <some predicate>)
+
+where sort is the "global" procedure sort.
+
+The code section would contain
+	
+	<compute some predicate>
+	push	<some predicate>
+	<compute some list>
+	push	<some list>
+	branch	sort-uuo-link
+
+In the constants section there would be a label that would contain the
+following after linking
+	
+sort-uuo-link:
+	jump	sort		; Absolute address for sort
+	3			; Number of arguments + 1
+
+Before linking it would contain
+
+sort-uuo-link:
+	SORT			; The symbol SORT
+	3			; Number of arguments + 1
+
+This assumes that the absolute jump instruction takes one word.  If it
+takes more, the appropriate padding would have to be inserted between
+the symbol SORT and the number 3.  On machines where instructions are
+not necessarily longword aligned (MC68020 and VAX, for example), the
+padding bits for the instruction can be used to contain the argument
+count.  Note that the order of the instructions and the count are
+machine dependent, although typically the instructions precede the
+count.
+
+The following macros are used to manipulate execute caches:
+
+=> EXECUTE_CACHE_ENTRY_SIZE specifies the length (in longwords) of an
+execute-cache entry.  This includes the size of the instructions and
+the argument count.  For the example above it would be 3, assuming
+that the jump instruction and the absolute address take two words
+together (the third is for the argument count).  Note that on RISC
+machines, this size may have to include the size of the branch delay
+slot instruction.
+
+=> EXTRACT_EXECUTE_CACHE_ARITY specifies how to read the argument
+count from an execute-cache entry when given the address of the entry.
+In the above example, it would extract 3 from the address labeled
+sort-uuo-link.
+
+=> EXTRACT_EXECUTE_CACHE_SYMBOL specifies how to read the symbol from
+an execute-cache entry (before it is actually linked) when given the
+address of an entry.  In the above example, it would extract the
+symbol SORT from sort-uuo-link.
+
+=> EXTRACT_EXECUTE_CACHE_ADDRESS fetches the real entry point stored
+in an execute-cache entry when given the address of the entry.  In the
+above example, it would extract the entry point of the sort procedure
+when given the address of the jump instruction (labeled as
+sort-uuo-link).
+
+=> STORE_EXECUTE_CACHE_ADDRESS is the inverse of this, ie. when given a
+target entry point and the address of an execute cache entry, it
+stores the entry point there.  In the above example, given a new entry
+point for sort, and sort-uuo-link, it would modify the jump
+instruction to jump to the new location.
+
+=> STORE_EXECUTE_CACHE_CODE stores the fixed instructions (opcodes),
+if any, in an execute cache cell.  If the opcodes depend on the actual
+target address, this macro should be a NOP, and all the work should be
+done by STORE_EXECUTE_CACHE_ADDRESS.  These two macros are separated
+to avoid extra work at garbage collection time on architectures where
+some or all of the code need not change.  In the example above, this
+macro would store the jump opcode.
+
+
+	Trampolines:
+
+Trampolines are the linker-generated procedures that interface the
+caller and the callee when they are not directly compatible.  They may
+not be directly compatible because the callee may not exist, may not
+be a compiled procedure, or may expect arguments in different
+locations.  Trampolines typically call a C or assembly-language
+procedure to reformat the argument list or invoke the error handler.
+C procedures are invoked using the scheme_to_interface (and
+trampoline_to_interface) code described below.
+
+A trampoline is similar to a compiled closure in that it is a small
+compiled-code block with some additional storage needed by the
+trampoline handler (like the actual procedure being invoked, the
+variable that is unbound, or the number of arguments being passed).
+The code typically invokes an out-of-line handler passing it the
+address of the storage section, and an index into a table of C or
+assembly language procedures that handle the actual transfer.
+
+A typical trampoline looks like
+
+	----------------------------------------
+block	| MANIFEST-VECTOR  |                 6 | (4 + words of storage)
+	----------------------------------------
+	| NM-HEADER        |                 3 | (fixed)
+	----------------------------------------
+	|   format_field   |    offset_field   | (fixed)
+	----------------------------------------
+entry	|   LOADI   #index,rindex              | (index varies)
+	----------------------------------------
+	|   JSR     trampoline_to_interface    | (fixed)
+	----------------------------------------
+retadd	|   first word of storage              | (variable)
+	----------------------------------------
+	|   second word of storage             | (variable)
+	----------------------------------------
+
+=> TRAMPOLINE_ENTRY_SIZE is the size in longwords of the compiled-code
+portion of a trampoline.  It is similar to COMPILED_CLOSURE_ENTRY_SIZE
+but in longwords, and will typically represent less storage since an
+absolute address is not needed (or desirable).  It must include the
+format word and the GC offset for the entry.  In the example above it
+would be 3.  Note that it must be an integer number of longwords, so the
+code should be padded if necessary.
+
+=> TRAMPOLINE_ENTRY_POINT returns the address of the entry point of a
+trampoline when given the address of a trampoline's block, i.e. the
+address of the word that will contain the manifest vector header.  In
+the picture above, when given the address of the byte labeled `block',
+it will return the address of the byte labeled `entry'.
+
+=> TRAMPOLINE_STORAGE returns the address of the first storage word in
+a trampoline when given the addres of the first instruction (the entry
+point of the trampoline).  In the picture above it would return the
+address of the word labeled `retadd' when given the address of the
+word labeled `entry'.
+
+Most versions of cmpint-md.h define the last two macros in the same
+way, in terms of TRAMPOLINE_BLOCK_TO_ENTRY, which is used only for
+this purpose.  The definitions that use TRAMPOLINE_BLOCK_TO_ENTRY
+assume that the first instruction of a trampoline is aligned on a
+longword boundary.  If this is the case, you can define
+TRAMPOLINE_BLOCK_TO_ENTRY appropriately and use the definitions of
+TRAMPOLINE_ENTRY_POINT and TRAMPOLINE_STORAGE from another machine.
+TRAMPOLINE_BLOCK_TO_ENTRY is the number of longwords from the start
+of a trampoline's block (the manifest vector header in the picture
+above), to the first instruction, which must be longword aligned.
+This will typically be 3 since there are two scheme header words, and
+the gc and format word typically take one longword together.
+
+=> STORE_TRAMPOLINE_ENTRY stores the "compiled" code into an "empty"
+trampoline.  It is given the address of the entry point, and the index
+of the C procedure to invoke (they are all in a table), and stores the
+machine code necessary to invoke scheme_to_interface (or
+trampoline_to_interface), passing the index and the address of the
+trampoline storage area as parameters.  In the example above this
+macro would store the LOADI (load immediate) and JSR instructions.
+
+	Compiled code and processor caches:
+	
+Many modern computers have processor caches that speed up the average
+memory reference if the code exhibits sufficient locality in its
+reference patterns.  In order to obtain increased performance at a
+lower cost, many processors have split caches for instructions and
+data that are not guaranteed to be consistent, ie. they are not
+necessarily invisible to the programmer.
+
+This presents problems for self-modifying code and for dynamic loaders
+and linkers, since instructions are stored using data references (and
+therefore the data cache), but the instruction cache may not reflect
+the updates.  Modern hardware with split caches often provides some
+way to synchronize both caches so that the operating system can
+guarantee correct operation of newly-loaded programs.
+
+The Scheme compiled code support performs some of the same tasks that
+operating systems do, and therefore runs into these problems.
+
+The ways in which the consistency problem arises in the Scheme system
+are:
+
+- Newly allocated instructions.  The compiler can be invoked
+dynamically, compiled code can be loaded dynamically into freshly
+allocated storage, and compiled closures are created dynamically.  The
+instruction cache must reflect the changes made to memory through the
+data cache.  The operating system's program loader must solve
+precisely this problem.
+
+- Execute caches may change their contents.  Execute caches contain
+jump instructions to the appropriate code, but these instructions may
+change when the corresponding variables are assigned.  If the
+instruction cache is not updated, the wrong code may be entered on
+subsequent calls.  Operating systems with dynamic linking must solve
+this problem as well.
+
+- Code is moved by the garbage collector, since code space is not
+separate from data space and static.  If the caches are not
+synchronized after a garbage collection, subsequent instruction
+fetches may result in the execution of incorrect instructions.
+The operating system must solve this problem when it re-allocates
+virtual memory pages.
+
+The problem can be solved by synchronizing the caches in the
+appropriate places.  The relevant places in the Scheme system have
+been identified, and use two machine-dependent macros to
+synchronize both caches or flush the instruction cache.
+
+=> FLUSH_I_CACHE is used to flush the portion of the I-cache that
+Scheme code addresses may be in, or alternatively, to guarantee that
+the I-cache contains only valid data.  It may flush/synchronize the
+entire I-cache instead, if it is easier.  It is used after garbage
+collections and image loads.
+
+=> FLUSH_I_CACHE_REGION is used to flush or synchronize a region of
+the address space from the I-cache.  It is given the base address and
+the number of long-words of the region of memory that has just been
+modified and whose new contents must be copied into the I-cache for
+correct execution.
+
+It is used after updating an execute cache while running between
+garbage collections.  It is not used during garbage collection since
+FLUSH_I_CACHE will be used afterwards.
+
+These macros need not be defined if it is not needed to flush the
+cache.  A NOP version is provided by the code when they are not
+defined in cmpint-md.h
+
+Note that on some machine/OS combinations, all system calls cause a
+cache flush, thus an innocuous system call (eg., a time reading call)
+may be used to achieve this purpose.
+
+Many modern machines only make their cache flushing instructions
+available to the operating system (they are priviledged instructions),
+and some operating systems provide no system calls to perform this
+task.  In the absence of information on the structure and
+characteristics of the cache (the information could be used to write
+flushing routines), the Scheme compiler and system may have to be
+changed in order to run on such machines.  Here is a set of changes
+that will bypass the problem, at the expense of some functionality and
+perhaps performance:
+
+- Change the entry code for closures and execute caches.
+
+The code in execute caches can be changed from
+
+	jump	target
+
+to
+
+	jsr	fixed-utility-routine
+	target address
+
+where fixed-utility-routine extracts target address from the return
+address and invokes it.  The same change can be made to the closure
+entry code.
+
+This solves the problem of assignment to variables with execute
+caches.
+
+This change can be done quite easily since the format of closures and
+execute caches is already machine dependent, and all the accessors,
+constructors, and mutators have been abstracted into macros or can
+be easily rewritten in the compiler.
+
+- Change the storage management scheme to accomodate a code area that
+is never garbage collected so that code, once placed there, never
+moves.
+
+This would constitue a major change to the system.  The main problem
+that this change would present is the following:
+
+Closures are data structures created and dropped on the fly, thus they
+cannot be allocated from a region of memory that is never reclaimed.
+Thus closures would have to be allocated from data space, and could no
+longer contain instructions.  This implies that the format of entry
+points would have to change, since the relevant information would no
+longer consist of a single address, but two, ie.  the address of the
+code in code space and the address of the data in data space.  This
+would imply many changes to the compiler for there are implicit
+assumptions throughout that compiled entry points take no space
+besides the space taken by the code.  In particular, simple closures
+would disappear, and multi-closures would have to be redesigned.
+
+	Implementation registers and utilities
+
+The C runtime support maintains some state variables that Scheme code
+may need to access.  In order to make these variables easily
+accessible to both languages, all these variables are collected into a
+contiguous vector (the register block) accesible by both.  The C
+variable "Registers" holds the address of this vector, and while
+compiled Scheme code is being executed, a processor register also
+holds the address of the vector.  Among other data, the register block
+contains the memory version of MemTop, the interpreter's expression
+and environment registers, the interrupt mask and pending interrupt
+words.
+
+In addition, the compiler occasionally needs static memory locations
+into which it can spill the values contained in processor registers.
+Rather than using another register to hold the address of the spill
+locations, these are allocated on the same vector as the register
+block, and the register that holds the address of the register block
+can be used to access the spill locations as well.
+
+Compiled code also needs to invoke assembly language and C utilities
+to perform certain tasks that would take too much space to code
+in-line.  Rather than choosing fixed addresses for these routines, or
+having to update them every time a piece of code is loaded or dumped,
+a register is reserved to hold the address of one of them, and the
+distance between them is pre-determined, so that compiled code can
+invoke any of them by adding an offset to the value in the register
+and jumping there.
+
+On processors with few registers (eg. 68k), it would be wasteful to
+reserve two registers in this fashion.  Both registers are therefore
+merged.  Yet another section of the register block array is reserved
+for utility procedures, and appropriate jump instructions are placed
+there so that compiled code can invoke the utilities by jumping into
+the register block array.
+
+The following macros define the sizes of the various areas of the
+array.  None of them need to be defined except to override the
+default.  The default assumes that there are enough processor
+registers that another one can be reserved to point to the utility
+handles.
+
+=> COMPILER_REGBLOCK_N_FIXED is the size of the register block
+section of the array.  It must accomodate at least as many locations
+as the interpreter expects to have.
+
+=> COMPILER_REGBLOCK_N_TEMPS is the number of spill locations.
+
+=> COMPILER_TEMP_SIZE is the size (in long words) of the contents of a
+floating point register if different from a double.  For example, an
+MC68881 saves registers in 96 bit (3 longword) blocks.  The default is
+fine for most machines.
+
+=> COMPILER_REGBLOCK_EXTRA_SIZE is the additional size (in longwords)
+to be reserved for utility handles.  It is typically defined the
+following way as (COMPILER_REGBLOCK_N_HOOKS * COMPILER_HOOK_SIZE).
+
+=> COMPILER_REGBLOCK_N_HOOKS is the maximum number of utility handles.
+
+=> COMPILER_HOOK_SIZE is the size in longwords of a utility handle (an
+absolute jump instruction).
+
+=> Macro ASM_RESET_HOOK can be used to initialize the register block
+array.  It is invoked at boot time.
+
+	Miscellany:
+
+Macro IN_CMPINT_C, defined in cmpint.c, can be used to conditionally
+include code (extern procedures) needed by the port.  It is only
+defined when cmpint-md.h is included by cmpint.c .
+
+=> Macro COMPILER_PROCESSOR_TYPE identifies the processor type.  It
+should be unique for each kind of processor.

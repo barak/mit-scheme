@@ -1,0 +1,12 @@
+++_OpenDIB@4.dibapi.OpenDIB
+++_WriteDIB@8.dibapi.WriteDIB
+++_BitmapFromDib@8.dibapi.BitmapFromDib
+++_DibFromBitmap@16.dibapi.DibFromBitmap
+++_CreateDIB@20.dibapi.CreateDIB
+++_DeleteDIB@4.dibapi.DeleteDIB
+++_DibBlt@36.dibapi.DibBlt
+++_DibWidth@4.dibapi.DibWidth
+++_DibHeight@4.dibapi.DibHeight
+++_CopyBitmap@4.dibapi.CopyBitmap
+++_CropBitmap@20.dibapi.CropBitmap
+++_DIBSetPixelsUnaligned@8.dibapi.DIBSetPixelsUnaligned

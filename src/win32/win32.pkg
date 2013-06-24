@@ -1,0 +1,89 @@
+#| -*-Scheme-*-
+
+$Id: win32.pkg,v 1.15 2001/12/23 17:21:00 cph Exp $
+
+Copyright (c) 1993-2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
+
+;;;; WIN32 Packaging
+
+(global-definitions "../runtime/runtime")
+
+(define-package (win32)
+  (parent ())
+  (files "winuser"
+	 "wt_user"
+	 "wf_user"
+	 "wingdi"
+	 "win_ffi"
+	 "module"
+	 "protect"
+	 "clipbrd")
+  (export ()
+	  %call-foreign-function
+	  parameterize-with-module-entry
+	  module-entry/machine-address
+	  module-entry/attempt-linkage
+          start-message-polling-thread
+	  win32-clipboard-read-text
+	  win32-clipboard-write-text
+	  win32-screen-height
+	  win32-screen-width)
+  (import (runtime)
+	  ucode-primitive)
+  (initialization
+   (begin
+     (initialize-protection-list-package!)
+     (initialize-module-package!)
+     (initialize-package!)
+     (init-wf_user!))))
+
+(define-package (win32 ffi-macro)
+  (files "ffimacro")
+  (parent (win32))
+  (export ()
+	    define-similar-windows-type
+	    define-windows-type
+	    windows-procedure))
+
+(define-package (win32 scheme-graphics)
+  (files "graphics")
+  (parent (win32))
+  (export ()
+	  win32/define-color
+	  win32/find-color)
+  (import (win32 dib)
+	  create-dib
+	  open-dib
+	  write-dib
+	  dib-height
+	  dib-width
+	  dib-blt
+	  dib-from-bitmap
+	  bitmap-from-dib
+	  dib-set-pixels-unaligned
+	  delete-dib)
+  (import (runtime graphics)
+	  graphics-device/buffer?
+	  make-image-type)
+  (initialization (initialize-package!)))
+
+(define-package (win32 dib)
+  (files "dib")
+  (parent (win32))
+  (initialization (initialize-package!)))

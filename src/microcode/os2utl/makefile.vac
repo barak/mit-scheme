@@ -1,0 +1,68 @@
+### -*- Fundamental -*-
+###
+### $Id: makefile.vac,v 1.7 2000/12/05 21:23:51 cph Exp $
+###
+### Copyright (c) 1994-2000 Massachusetts Institute of Technology
+###
+### This program is free software; you can redistribute it and/or
+### modify it under the terms of the GNU General Public License as
+### published by the Free Software Foundation; either version 2 of the
+### License, or (at your option) any later version.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+### General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+###
+
+#### Makefile for Scheme under OS/2 using IBM Visual Age C++
+
+# This makefile is configured for use with GNU make, the IBM Visual
+# Age C++ compiler (or IBM C Set++/2), GNU m4, the GNU assembler
+# included with the EMX/GCC package, and the RC program included with
+# the IBM OS/2 Toolkit.
+
+ICCFLAGS := /Gm+ /Q+ /W2 /Wall+
+ifeq ($(debug_mode),debug)
+ICCFLAGS := $(ICCFLAGS) /Ti+
+else
+ifeq ($(debug_mode),optimize)
+ICCFLAGS := $(ICCFLAGS) /O+
+endif
+endif
+
+OBJ = obj
+ASM = asm
+CC = icc
+CFLAGS = $(ICCFLAGS) /DMIT_SCHEME
+LDFLAGS = $(ICCFLAGS) /B"/EXEPACK"
+M4 = m4
+M4FLAGS = -DOS2
+AS = as
+ASFLAGS = -Zomf
+
+%.obj : %.c
+	$(CC) $(CFLAGS) /C $<
+
+%.asm : %.m4
+	$(M4) $(M4FLAGS) < $< > $@
+
+%.obj : %.asm
+	$(AS) $(ASFLAGS) -o $@ $<
+
+%.exe :
+	$(CC) $(LDFLAGS) /Fe$@ $^
+
+include os2utl\makefile.cmn
+
+scheme.exe : $(OBJECTS) scheme.res
+	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ $(OBJECTS) $(SCHEME_LIB)
+	rc scheme.res $@
+
+bchschem.exe : $(BCHOBJECTS) bchschem.res
+	$(CC) $(LDFLAGS) /B"/PMTYPE:PM" /Fe$@ $(BCHOBJECTS) $(SCHEME_LIB)
+	rc bchschem.res $@

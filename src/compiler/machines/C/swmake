@@ -1,0 +1,4 @@
+#!/bin/csh -f
+
+make $*
+rm -f *.sync

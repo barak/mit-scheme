@@ -1,0 +1,317 @@
+# $Id: Makefile.in.in,v 1.20 2002/01/29 20:43:14 cph Exp $
+#
+# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+# **** Tool configuration ****
+
+AUXDIR = $(libdir)/mit-scheme
+
+CC = @CC@
+M4 = $(srcdir)/makegen/m4.sh
+AS = as
+TAR = tar
+GZIP_ENV = --best
+
+DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
+       @SCHEME_DEFS@ -I. -I$(srcdir) -I.
+CFLAGS = @CFLAGS@
+X_CFLAGS = @X_CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+M4_FLAGS = @M4_FLAGS@
+AS_FLAGS = @AS_FLAGS@
+
+COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) $(X_CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
+EXPAND = $(M4) $(M4_FLAGS)
+ASSEMBLE = $(AS) $(AS_FLAGS)
+
+# **** Configured files ****
+
+GC_HEAD_FILES = @GC_HEAD_FILES@
+OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
+OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
+STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
+X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
+PRBFISH_LIBS = @PRBFISH_LIBS@
+PRMD5_LIBS = @PRMD5_LIBS@
+
+MODULE_TARGETS = @MODULE_TARGETS@
+MODULE_CFLAGS = @MODULE_CFLAGS@
+MODULE_LDFLAGS = @MODULE_LDFLAGS@
+COMPILE_MODULE = $(COMPILE) $(MODULE_CFLAGS)
+LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
+MODULE_LIBS = -lc
+
+# **** Non-configured files ****
+
+CORE_SOURCES = @(write-sources "files-core")@
+OS_PRIM_SOURCES = @(write-sources "files-os-prim")@
+UNIX_SOURCES =  @(write-sources "files-unix")@
+STD_GC_SOURCES = @(write-sources "files-gc-std")@
+BCH_GC_SOURCES = @(write-sources "files-gc-bch")@
+
+CORE_OBJECTS = @(write-objects "files-core")@
+OS_PRIM_OBJECTS = @(write-objects "files-os-prim")@
+UNIX_OBJECTS =  @(write-objects "files-unix")@
+STD_GC_OBJECTS = @(write-objects "files-gc-std")@
+BCH_GC_OBJECTS = @(write-objects "files-gc-bch")@
+
+SHARED_SOURCES = $(CORE_SOURCES) $(OS_PRIM_SOURCES) $(UNIX_SOURCES) \
+	$(OPTIONAL_SOURCES)
+
+SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
+	$(OPTIONAL_OBJECTS)
+
+# **** Program definitions ****
+
+bin_PROGRAMS = scheme bchscheme
+aux_PROGRAMS = gcdrone
+aux_LIBS = $(MODULE_TARGETS)
+aux_DATA = utabmd.bin
+EXTRA_PROGRAMS = findprim bintopsb psbtobin
+
+scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
+scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
+scheme_DEPENDENCIES = 
+scheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
+bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
+bchscheme_DEPENDENCIES = 
+bchscheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchdrn_SOURCES = bchdrn.c bchutl.c
+bchdrn_OBJECTS = bchdrn.o bchutl.o
+bchdrn_DEPENDENCIES = 
+bchdrn_LDFLAGS = 
+bchdrn_LIBS = $(LIBS)
+
+findprim_SOURCES = findprim.c
+findprim_OBJECTS = findprim.o
+findprim_DEPENDENCIES = 
+findprim_LDFLAGS = 
+findprim_LIBS = $(LIBS)
+
+bintopsb_SOURCES = bintopsb.c missing.c
+bintopsb_OBJECTS = bintopsb.o missing.o
+bintopsb_DEPENDENCIES = 
+bintopsb_LDFLAGS = 
+bintopsb_LIBS = $(LIBS)
+
+psbtobin_SOURCES = psbtobin.c missing.c
+psbtobin_OBJECTS = psbtobin.o missing.o
+psbtobin_DEPENDENCIES = 
+psbtobin_LDFLAGS = 
+psbtobin_LIBS = $(LIBS)
+
+ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_LIBS = $(aux_LIBS)
+ALL_DATA = $(aux_DATA)
+
+MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
+
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+
+DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
+	cmpauxmd.m4 cmpintmd.h TAGS
+
+MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
+
+# **** Implicit rules ****
+
+.SUFFIXES:
+.SUFFIXES: .c .o .s .m4
+
+.c.o:
+	$(COMPILE) -c $*.c
+
+.m4.s:
+	$(EXPAND) $*.m4 > $*.s
+
+.s.o:
+	$(ASSEMBLE) -o $*.o $*.s
+
+# **** Main rules ****
+
+default-target: $(ALL_PROGRAMS) $(ALL_LIBS)
+
+all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
+
+scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+
+usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim
+	-rm -f $@
+	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
+
+bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
+
+bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim
+	-rm -f $@
+	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
+
+gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
+
+findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
+
+bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
+
+psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+utabmd.bin: utabmd.scm
+	./utabmd.sh
+
+prbfish.so: prbfish.o
+	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
+
+prmd5.so: prmd5.o
+	$(LINK_MODULE) $^ $(PRMD5_LIBS) $(MODULE_LIBS)
+
+prmhash.so: prmhash.o
+	$(LINK_MODULE) $^ -lmhash $(MODULE_LIBS)
+
+prmcrypt.so: prmcrypt.o
+	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
+
+@MODULE_RULES@
+
+tags: TAGS
+TAGS:
+	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
+
+mostlyclean:
+	-rm -f $(MOSTLYCLEAN_FILES)
+
+clean: mostlyclean
+	-rm -f $(CLEAN_FILES)
+
+distclean: clean
+	-rm -f $(DISTCLEAN_FILES)
+
+maintainer-clean: distclean
+	-rm -f $(MAINTAINER_CLEAN_FILES)
+	( cd cmpauxmd && $(MAKE) $@ )
+
+install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
+	install-auxDATA
+
+install-binPROGRAMS: $(bin_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	@list='$(bin_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
+	    fi; \
+	done
+
+install-auxPROGRAMS: $(aux_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	@list='$(aux_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
+
+install-auxLIBS: $(aux_LIBS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
+	@list='$(aux_LIBS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
+	    fi; \
+	done
+
+install-auxDATA: $(aux_DATA)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	@list='$(aux_DATA)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
+
+.PHONY: default-target
+.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
+.PHONY: install install_binPROGRAMS install_auxPROGRAMS install_auxDATA
+
+# **** File dependencies ****
+
+@(write-dependencies)@
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

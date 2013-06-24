@@ -1,0 +1,9 @@
+LIBRARY		scheme31
+DESCRIPTION	"MIT Scheme Win32S DLL"
+
+VERSION		0.5
+
+CODE		PRELOAD MOVEABLE DISCARDABLE
+DATA		NONE
+
+EXPORTS		install_win32_system_utilities  @ 1

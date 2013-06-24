@@ -1,0 +1,178 @@
+#| -*-Scheme-*-
+
+$Id: sos.pkg,v 1.11 2001/12/23 17:21:00 cph Exp $
+
+Copyright (c) 1995-2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
+|#
+
+;;;; Packaging for Scheme Object System
+
+(global-definitions "../runtime/runtime")
+
+(define-package (sos)
+  (parent ()))
+
+(define-package (sos slot)
+  (files "slot")
+  (parent (sos))
+  (export ()
+	  set-slot-value!
+	  slot-accessor
+	  slot-accessor-method
+	  slot-class
+	  slot-descriptor?
+	  slot-index
+	  slot-initial-value
+	  slot-initial-value?
+	  slot-initialized?
+	  slot-initializer
+	  slot-initpred
+	  slot-initpred-method
+	  slot-modifier
+	  slot-modifier-method
+	  slot-name
+	  slot-properties
+	  slot-property
+	  slot-value)
+  (export (sos class)
+	  canonicalize-slot-argument
+	  compute-slot-descriptor
+	  install-slot-accessor-methods)
+  (import (runtime record-slot-access)
+	  error:no-such-slot))
+
+(define-package (sos class)
+  (files "class")
+  (parent (sos))
+  (export ()
+	  <%record>
+	  <bignum>
+	  <boolean>
+	  <char>
+	  <class>
+	  <complex>
+	  <dispatch-tag>
+	  <entity>
+	  <exact-complex>
+	  <exact-integer>
+	  <exact-rational>
+	  <exact-real>
+	  <exact>
+	  <fixnum>
+	  <flonum-vector>
+	  <flonum>
+	  <generic-procedure>
+	  <inexact-complex>
+	  <inexact-integer>
+	  <inexact-rational>
+	  <inexact-real>
+	  <inexact>
+	  <instance>
+	  <integer>
+	  <number>
+	  <object>
+	  <pair>
+	  <procedure>
+	  <rational>
+	  <ratnum>
+	  <real>
+	  <recnum>
+	  <record>
+	  <string>
+	  <symbol>
+	  <vector>
+	  class->dispatch-tag
+	  class-direct-slot-names
+	  class-direct-superclasses
+	  class-name
+	  class-precedence-list
+	  class-slot
+	  class-slots
+	  class?
+	  dispatch-tag->class
+	  make-class
+	  make-trivial-subclass
+	  object-class
+	  record-class
+	  record-type-class
+	  subclass?)
+  (import (runtime record-slot-access)
+	  error:no-such-slot))
+
+(define-package (sos instance)
+  (files "instance")
+  (parent (sos))
+  (export ()
+	  initialize-instance
+	  instance-class
+	  instance-constructor
+	  instance-of?
+	  instance-predicate
+	  instance?))
+
+(define-package (sos method)
+  (files "method")
+  (parent (sos))
+  (export ()
+	  <chained-method>
+	  <computed-emp>
+	  <computed-method>
+	  <method>
+	  add-method
+	  add-methods
+	  chained-method?
+	  compute-effective-method-procedure
+	  compute-method
+	  computed-emp-key
+	  computed-emp?
+	  computed-method?
+	  delete-method
+	  generic-procedure-methods
+	  make-chained-method
+	  make-computed-emp
+	  make-computed-method
+	  make-method
+	  method-applicable?
+	  method-procedure
+	  method-specializers
+	  method?
+	  sort-methods
+	  specializer-classes
+	  specializer=?
+	  specializer?
+	  specializers=?
+	  specializers?
+	  union-specializer
+	  union-specializer?))
+
+(define-package (sos printer)
+  (files "printer")
+  (parent (sos))
+  (export ()
+	  write-instance
+	  write-instance-helper))
+
+(define-package (sos macros)
+  (files "macros")
+  (parent (sos))
+  (export ()
+	  define-class
+	  define-computed-emp
+	  define-computed-method
+	  define-generic
+	  define-method))

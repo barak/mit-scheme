@@ -1,0 +1,127 @@
+
+# $Id: Makefile.in,v 1.4 2001/02/23 04:36:46 cph Exp $
+#
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+htmldir = @htmldir@
+pdfdir = @pdfdir@
+psdir = @psdir@
+
+INFO_TARGET = mit-scheme-ref.info
+
+all: $(INFO_TARGET) scheme.html scheme.pdf scheme.ps
+
+$(INFO_TARGET): scheme.texinfo gfdl.texinfo
+	rm -f $(INFO_TARGET)*
+	makeinfo --output=$(INFO_TARGET) scheme.texinfo
+
+scheme.html: scheme.texinfo gfdl.texinfo
+	rm -f scheme*.html
+	texi2html -split_chapter scheme.texinfo
+
+scheme.pdf: scheme.texinfo gfdl.texinfo
+	texi2pdf scheme.texinfo
+
+scheme.ps: scheme.dvi
+	dvips -o $@ $^
+
+scheme.dvi: scheme.texinfo gfdl.texinfo
+	texi2dvi scheme.texinfo
+
+AUX_SUFFIXES = aux log toc
+INDEX_SUFFIXES = cp fn ky pg tp vr
+
+mostlyclean:
+	@for S in $(AUX_SUFFIXES); do \
+	    echo "rm -f scheme.$${S}";\
+	    rm -f scheme.$${S};\
+	done
+	@for S in $(INDEX_SUFFIXES); do \
+	    echo "rm -f scheme.$${S}";\
+	    rm -f scheme.$${S};\
+	    echo "rm -f scheme.$${S}s";\
+	    rm -f scheme.$${S}s;\
+	done
+	rm -f scheme.dvi
+
+clean: mostlyclean
+	rm -f $(INFO_TARGET)* scheme*.html scheme.pdf scheme.ps
+
+distclean: clean
+
+maintainer-clean: distclean
+
+# The install rules depend on macro variables passwd down from the
+# makefile in the top-level documentation directory.
+
+install-info: $(INFO_TARGET)
+	-rm -f $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+	$(INSTALL_DATA) $(INFO_TARGET)* $(DESTDIR)$(infodir)/.
+
+install-info-gz: install-info
+	gzip -v $(DESTDIR)$(infodir)/$(INFO_TARGET)*
+
+install-html: scheme.html
+	$(INSTALL_DATA) scheme*.html $(DESTDIR)$(htmldir)/.
+
+install-pdf: scheme.pdf
+	$(INSTALL_DATA) scheme.pdf $(DESTDIR)$(pdfdir)/.
+
+install-ps: scheme.ps
+	$(INSTALL_DATA) scheme.ps $(DESTDIR)$(psdir)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean
+.PHONY: install-info install-html install-pdf install-ps

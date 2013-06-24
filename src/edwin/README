@@ -1,0 +1,22 @@
+Notes on the Edwin sources:
+
+If you want to add a new file to the source tree, you need to 
+modify the following three files:
+
+	decls.scm
+	ed-ffi.scm
+	edwin.pkg
+
+If the file should be loaded into the default edwin band, you must also
+edit the file:
+
+	edwin.ldr
+
+If the file is to be autoloaded, you must edit the file:
+
+	loadef.scm
+
+So, in either case, you have to change four files in
+"/scheme/v8/src/edwin".  Of course, you also have to put a copy of
+your file in "/scheme/v8/src/edwin", too, and you have to put a link
+to the new file in "/scheme/v7/linux/edwin".

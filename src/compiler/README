@@ -1,0 +1,50 @@
+
+This directory contains LIAR, the MIT Scheme compiler.
+
+
+Here is a brief summary of the subdirectory contents:
+
+"base" contains the common base on which the rest of the compiler is
+built.  A good place to start reading the compiler is
+"base/toplev.scm" which is the top-level driver of the program.
+
+"fggen" contains the Flow Graph (FG) generator.  This converts SCode
+to the internal FG format which is used in the front end of the
+compiler.
+
+"fgopt" contains a number of passes that analyze and optimize the FG
+intermediate representation.  Most of the Scheme-specific technology
+is here.
+
+"rtlbase" contains the definition of the Register Transfer Language
+(RTL) data abstractions.  This is a second intermediate language which
+is a fairly standard intermediate representation for compilers.
+
+"rtlgen" contains the pass that converts the FG format to RTL.  This
+corresponds directly to what most compilers consider the "code
+generator".
+
+"rtlopt" contains several passes that analyze and optimize the RTL
+representation.  Such things as common subexpression elimination,
+lifetime analysis, dead code elimination, and register allocation and
+assignment are all performed here.  This is almost exclusively
+standard compiler technology which is not Scheme-specific.
+
+"back" contains the "back end" of the compiler.  This consists of a
+pass to convert RTL into assembly code for the target machine, and an
+assembler/linker for that machine.
+
+"machines" contains a subdirectory for each target machine; these
+subdirectories contain all of the machine-specific code for the
+compiler.
+
+
+The following subdirectories are not parts of the compiler per se:
+
+"documentation" contains a little bit of descriptive material.
+
+"etc" contains some programs which are used for developing and
+debugging the compiler.
+
+"improvements" contains some code which has been designed but, for
+various reasons, not yet installed in the compiler.

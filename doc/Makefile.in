@@ -1,0 +1,133 @@
+# $Id: Makefile.in,v 1.6 2001/02/23 04:37:15 cph Exp $
+#
+# Copyright (c) 2000-2001 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+htmldir = @htmldir@
+pdfdir = @pdfdir@
+psdir = @psdir@
+INST_TARGETS = @INST_TARGETS@
+
+SUBDIRS = imail ref-manual sos user-manual
+DISTCLEAN_FILES = Makefile */Makefile config.cache config.log config.status \
+	ref-manual/gfdl.texinfo sos/gfdl.texinfo user-manual/gfdl.texinfo
+
+all:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+mostlyclean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+clean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+distclean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+	rm -f $(DISTCLEAN_FILES)
+
+maintainer-clean:
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+	rm -f $(DISTCLEAN_FILES) configure
+
+tags TAGS:
+
+install: install-info-gz $(INST_TARGETS)
+
+install-info-gz install-info:
+	$(mkinstalldirs) $(DESTDIR)$(infodir)
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+install-html:
+	$(mkinstalldirs) $(DESTDIR)$(htmldir)
+	$(INSTALL_DATA) index.html $(DESTDIR)$(htmldir)/.
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+install-pdf:
+	$(mkinstalldirs) $(DESTDIR)$(pdfdir)
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+install-ps:
+	$(mkinstalldirs) $(DESTDIR)$(psdir)
+	@for D in $(SUBDIRS); do \
+	    echo "making $@ in $${D}";\
+	    ( cd $${D} && $(MAKE) $@ ) || exit 1;\
+	done
+
+.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS
+.PHONY: install install-info install-html install-pdf install-ps

@@ -1,0 +1,108 @@
+#| -*-Scheme-*-
+
+$Id: contin.scm,v 4.9 1999/01/02 06:06:43 cph Exp $
+
+Copyright (c) 1988, 1989, 1999 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+|#
+
+;;;; Continuation datatype
+
+(declare (usual-integrations))
+
+;;; Continuations are a subtype of procedures, whose `type' is
+;;; something other than PROCEDURE.
+
+(define (make-continuation block continuation type)
+  continuation
+  (let ((block (make-block block 'CONTINUATION)))
+    (let ((required (list (make-value-variable block))))
+      (set-block-bound-variables! block required)
+      (make-procedure type block 'CONTINUATION required '() false '() '()
+		      (snode->scfg (make-fg-noop))))))
+
+(define-enumeration continuation-type
+  (effect predicate procedure push register value))
+
+(define-integrable (procedure-continuation? procedure)
+  (not (eq? (procedure-type procedure) continuation-type/procedure)))
+
+(define (rvalue/continuation? rvalue)
+  (and (rvalue/procedure? rvalue)
+       (procedure-continuation? rvalue)))
+
+(define-integrable continuation/type procedure-type)
+(define-integrable set-continuation/type! set-procedure-type!)
+(define-integrable continuation/block procedure-block)
+(define-integrable continuation/closing-block procedure-closing-block)
+(define-integrable continuation/entry-node procedure-entry-node)
+(define-integrable set-continuation/entry-node! set-procedure-entry-node!)
+(define-integrable continuation/combinations procedure-original-rest)
+(define-integrable set-continuation/combinations! set-procedure-original-rest!)
+(define-integrable continuation/label procedure-label)
+(define-integrable continuation/returns procedure-applications)
+(define-integrable set-continuation/returns! set-procedure-applications!)
+(define-integrable continuation/ever-known-operator?
+  procedure-always-known-operator?)
+(define-integrable continuation/offset procedure-closure-offset)
+(define-integrable set-continuation/offset! set-procedure-closure-offset!)
+(define-integrable continuation/passed-out? procedure-passed-out?)
+(define-integrable set-continuation/passed-out?! set-procedure-passed-out?!)
+(define-integrable continuation/debugging-info procedure-debugging-info)
+(define-integrable set-continuation/debugging-info!
+  set-procedure-debugging-info!)
+
+(define (continuation/register continuation)
+  (or (procedure-register continuation)
+      (let ((register (rtl:make-pseudo-register)))
+	(set-procedure-register! continuation register)
+	register)))
+
+(define-integrable (continuation/always-known-operator? continuation)
+  (eq? (continuation/ever-known-operator? continuation) 'ALWAYS))
+
+(define-integrable (continuation/parameter continuation)
+  (car (procedure-original-required continuation)))
+
+(define-integrable return-operator/subproblem? rvalue/procedure?)
+(define-integrable return-operator/reduction? rvalue/reference?)
+(define-integrable reduction-continuation/lvalue reference-lvalue)
+
+(define (continuation/frame-size continuation)
+  (let ((closing-block (continuation/closing-block continuation)))
+    (+ (if (ic-block? closing-block) 1 0)
+       (if (and (stack-block? closing-block)
+		(stack-block/dynamic-link? closing-block))
+	   1
+	   0)
+       (if (continuation/always-known-operator? continuation)
+	   0
+	   1))))
+
+(define (uni-continuation? rvalue)
+  (and (rvalue/procedure? rvalue)
+       (procedure-arity-correct? rvalue 1)))
+
+(define-integrable (uni-continuation/parameter continuation)
+  (car (procedure-original-required continuation)))
+
+(define (delete-continuation/combination! continuation combination)
+  (let ((combinations
+	 (delq! combination (continuation/combinations continuation))))
+    (set-continuation/combinations! continuation combinations)
+    (if (and (null? combinations)
+	     (null? (continuation/returns continuation)))
+	(set-procedure-always-known-operator?! continuation false))))

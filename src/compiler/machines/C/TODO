@@ -1,0 +1,12 @@
+-*- Indented-Text -*-
+
+* Short documentation (how to compile files and add them to the microcode).
+
+* Implement compile-procedure and compile-scode.
+
+* Make fasdump work on compiled code by doing something similar to what
+  happens with primitives.  Right now it is difficult because there is
+  nothing to map back entry numbers to block numbers.
+
+* Add ability to unload unneeded shared libraries (e.g. after
+  disk-restore).

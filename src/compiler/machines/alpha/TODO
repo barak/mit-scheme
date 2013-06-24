@@ -1,0 +1,10 @@
+- Debug disassembler.
+
+- Update disassembler to match structure of others (not so many
+  assignments in dassm2.).
+
+- Eliminate warning from lapgen about 64-bit constants.
+
+- Teach lapgen how to generate #x1A00000000010000 and similar things.
+
+- Add stack check option.

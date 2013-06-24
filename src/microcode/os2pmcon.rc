@@ -1,0 +1,79 @@
+/* -*-C-*-
+
+$Id: os2pmcon.rc,v 1.5 1999/01/02 06:11:34 cph Exp $
+
+Copyright (c) 1995, 1999 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
+
+/* Resource IDs for OS/2 PM Console Window */
+
+#include <os2.h>
+#include "os2pmcon.h"
+
+#ifdef SCHEME
+ICON ID_PMCON_RESOURCES "os2utl\\lambda2.ico"
+#else
+#ifdef BCHSCHEM
+ICON ID_PMCON_RESOURCES "os2utl\\bch.ico"
+#endif
+#endif
+
+ICON IDI_BCH      "os2utl\\bch.ico"
+ICON IDI_COFFEE   "os2utl\\coffee.ico"
+ICON IDI_CONSES   "os2utl\\conses.ico"
+ICON IDI_EDWIN    "os2utl\\edwin.ico"
+ICON IDI_ENVIR1   "os2utl\\envir1.ico"
+ICON IDI_GRAPHICS "os2utl\\graphics.ico"
+ICON IDI_LAMBDA   "os2utl\\lambda.ico"
+ICON IDI_LAMBDA2  "os2utl\\lambda2.ico"
+ICON IDI_LIAR1    "os2utl\\liar1.ico"
+ICON IDI_LIAR2    "os2utl\\liar2.ico"
+ICON IDI_LIAR3    "os2utl\\liar3.ico"
+ICON IDI_MINCER   "os2utl\\mincer.ico"
+ICON IDI_SHIELD1  "os2utl\\shield1.ico"
+ICON IDI_SHIELD2  "os2utl\\shield2.ico"
+ICON IDI_SHIELD3  "os2utl\\shield3.ico"
+ICON IDI_SHIELD4  "os2utl\\shield4.ico"
+
+MENU ID_PMCON_RESOURCES
+{
+  SUBMENU "~File", IDM_FILE
+  {
+    MENUITEM "E~xit", IDM_EXIT
+  }
+  SUBMENU "~Edit", IDM_EDIT
+  {
+    MENUITEM "Cu~t\tShift+Delete", IDM_CUT, 0, MIA_DISABLED
+    MENUITEM "~Copy\tCtrl+Insert", IDM_COPY
+    MENUITEM "~Paste\tShift+Insert", IDM_PASTE
+  }
+  SUBMENU "~Options", IDM_OPTIONS
+  {
+    MENUITEM "Set ~font...", IDM_FONT
+  }
+  SUBMENU "~Help", IDM_HELP
+  {
+    MENUITEM "~About...", IDM_ABOUT
+  }
+}
+
+ACCELTABLE ID_PMCON_RESOURCES
+{
+  VK_DELETE, IDM_CUT, AF_VIRTUALKEY | AF_SHIFT
+  VK_INSERT, IDM_COPY, AF_VIRTUALKEY | AF_CONTROL
+  VK_INSERT, IDM_PASTE, AF_VIRTUALKEY | AF_SHIFT
+}

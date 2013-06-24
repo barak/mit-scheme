@@ -1,0 +1,141 @@
+#| -*-Scheme-*-
+
+$Id: 6001.pkg,v 1.14 2001/12/20 03:16:08 cph Exp $
+
+Copyright (c) 1991-1999, 2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
+
+;;;; 6.001 packaging
+
+(global-definitions "../runtime/runtime")
+(global-definitions "../edwin/edwin")
+
+(define-package (student)
+  (parent ()))
+
+(define-package (student scode-rewriting)
+  (files "nodefs")
+  (parent (student))
+  (import (runtime rep)
+	  hook/repl-eval)
+  (initialization (initialize-package!)))
+
+(define-package (student number)
+  (files "arith")
+  (parent (runtime))
+  (import (runtime number)
+	  flo:->rational
+	  flo:rationalize
+	  int:abs
+	  int:even?
+	  int:expt
+	  int:gcd
+	  int:lcm
+	  int:modulo
+	  rat:denominator
+	  rat:numerator
+	  reduce-comparator
+	  reduce-max/min)
+  (export (student)
+	  *
+	  +
+	  -
+	  /
+	  <
+	  <=
+	  =
+	  >
+	  >=
+	  abs
+	  acos
+	  asin
+	  atan
+	  ceiling
+	  complex?
+	  cos
+	  dec
+	  denominator
+	  even?
+	  exact->inexact
+	  exact?
+	  exp
+	  expt
+	  floor
+	  gcd
+	  inc
+	  inexact->exact
+	  inexact?
+	  integer?
+	  lcm
+	  log
+	  max
+	  min
+	  modulo
+	  negative?
+	  number?
+	  numerator
+	  odd?
+	  positive?
+	  quotient
+	  rational?
+	  rationalize
+	  real?
+	  remainder
+	  round
+	  sin
+	  sqrt
+	  tan
+	  truncate
+	  zero?))
+
+(define-package (student pictures)
+  (files "picture"
+	 "pic-reco"
+	 "pic-read"
+	 "pic-imag"
+	 "pic-ops")
+  (parent (student))
+  (import (runtime x-graphics)
+	  x-graphics-device/xw)
+  (export (student)
+	  make-picture
+	  make-window
+	  pgm-file->picture
+	  picture->pgm-file
+	  picture-display
+	  picture-height
+	  picture-map
+	  picture-max
+	  picture-min
+	  picture-ref
+	  picture-width
+	  picture?
+	  procedure->picture
+	  show-window-size
+	  ;picture-cut
+	  ;picture-h-reflect
+	  ;picture-overlap
+	  ;picture-paste!
+	  ;picture-rotate
+	  ;picture-scale
+	  ;picture-set!
+	  ;picture-v-reflect
+	  ))
+
+(extend-package (edwin)
+  (files "edextra"))

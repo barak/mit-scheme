@@ -1,0 +1,35 @@
+#| -*-Scheme-*-
+
+$Id: cref.sf,v 1.15 2001/12/20 03:35:56 cph Exp $
+
+Copyright (c) 1988-2001 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+|#
+
+(fluid-let ((sf/default-syntax-table (->environment '())))
+  (sf-conditionally "object")
+  (sf-directory "."))
+
+(let ((package-set (package-set-pathname "cref")))
+  (if (not (file-exists? package-set))
+      (fasdump (load "triv.pkg") package-set)))
+
+(if (file-exists? (package-set-pathname "../runtime/runtime"))
+    (begin
+      (if (not (name->package '(CROSS-REFERENCE)))
+	  (load "make"))
+      (cref/generate-constructors "cref")))

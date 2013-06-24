@@ -1,0 +1,61 @@
+#| -*-Scheme-*-
+
+$Id: site.scm.unix,v 1.15 1999/01/02 06:19:10 cph Exp $
+
+Copyright (c) 1988-1999 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+|#
+
+;;;; Switzerland site specific stuff
+;;;; call/cc is used by the C back end!
+
+(declare (usual-integrations))
+
+;;; Local hacks
+
+(define *call/cc-warn?* true)
+(define *call/cc-c-compiler* "cc")
+
+(define (call/cc . args)
+  (let ((command-line
+	 (with-output-to-string
+	   (lambda ()
+	     (write-string *call/cc-c-compiler*)
+	     (let loop ((args args))
+	       (if (not (null? args))
+		   (begin
+		     (write-string " ")
+		     (display (car args))
+		     (loop (cdr args)))))))))
+    (if *call/cc-warn?*
+	(warn "call/cc: Invoking the C compiler:" command-line))
+    (system command-line)))
+
+(define (system command-line)
+  (let ((inside (->namestring
+		 (directory-pathname-as-file (working-directory-pathname))))
+	(outside false))
+    (dynamic-wind
+     (lambda ()
+       (stop-thread-timer)
+       (set! outside ((ucode-primitive working-directory-pathname 0)))
+       ((ucode-primitive set-working-directory-pathname! 1) inside))
+     (lambda ()
+       ((ucode-primitive system 1) command-line))
+     (lambda ()
+       (set! inside ((ucode-primitive working-directory-pathname 0)))
+       ((ucode-primitive set-working-directory-pathname! 1) outside)
+       (start-thread-timer)))))

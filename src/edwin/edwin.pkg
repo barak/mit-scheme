@@ -1,0 +1,1989 @@
+#| -*-Scheme-*-
+
+$Id: edwin.pkg,v 1.281 2002/03/06 20:05:22 cph Exp $
+
+Copyright (c) 1989-2002 Massachusetts Institute of Technology
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+02111-1307, USA.
+|#
+
+;;;; Edwin Packaging
+
+(global-definitions "../runtime/runtime")
+
+(define-package (edwin)
+  (files "utils"
+	 "nvector"
+	 "ring"
+	 "strtab"
+	 "strpad"
+	 "class"
+
+	 "paths"
+	 "struct"			; low-level data structures
+	 "regops"			; low-level editing operations
+	 "motion"			; low-level mark movement
+	 "search"			; search/match chars and strings
+	 "comatch"			; combinatoric matcher
+	 "image"			; character-display imaging
+	 "comman"			; editor command/variable abstractions
+	 "docstr"			; out-of-core documentation support
+	 "modes"			; editor mode abstraction
+	 "buffer"			; buffer abstraction
+	 "bufset"			; buffer-set abstraction
+	 "winren"			; window-system rename targets
+
+	 "edtstr"			; editor abstraction
+	 "editor"			; editor top level
+	 "curren"			; current state
+	 "simple"			; simple editing operations
+	 "debuge"			; edwin debugging tools
+	 "calias"			; character aliasing
+	 "things"			; generic text objects
+	 "tparse"			; text parsing
+	 "syntax"			; word and list parsing
+	 "fileio"			; file <-> buffer
+
+	 "abbrev"			; abbrevs
+	 "autold"			; autoloaded definitions
+	 "autosv"			; auto save
+	 "basic"			; basic commands
+	 "bufcom"			; buffer commands
+	 "comhst"			; command history
+	 "dabbrev"			; M-x dabbrev-expand
+	 "evlcom"			; evaluation commands
+	 "filcom"			; file commands
+	 "fill"				; text-fill commands
+	 "hlpcom"			; help commands
+	 "kilcom"			; kill commands
+	 "kmacro"			; keyboard macros
+	 "lincom"			; line commands
+	 "lspcom"			; lisp commands
+	 "motcom"			; motion commands
+	 "mousecom"                     ; mouse commands
+	 "replaz"			; replace commands
+	 "schmod"			; scheme mode
+	 "scrcom"			; frame commands
+	 "sercom"			; search commands
+	 "texcom"			; text commands
+	 "wincom"			; window commands
+
+	 "modefs"			; fundamental mode
+
+	 "loadef"			; auto-load definitions
+	 "c-mode"			; C mode
+	 "javamode"			; Java mode
+	 "htmlmode"			; HTML mode
+	 "midas"			; MIDAS mode
+	 "pasmod"			; Pascal mode
+	 "tximod"			; Texinfo mode
+	 "notify"			; mode-line notifications
+	 "outline"			; outline minor mode
+	 "sort"				; sorting commands
+	 "webster"			; access a Webster server
+	 )
+
+  (parent ())
+  (import (runtime rep)
+	  hook/repl-eval)
+  (import (runtime primitive-io)
+	  input-buffer/read-substring
+	  make-input-buffer
+	  make-output-buffer
+	  output-buffer/drain-block
+	  output-buffer/write-substring-block)
+  (import (runtime char-syntax)
+	  char-syntax-table/entries)
+  (import (runtime)
+	  define-primitives
+	  ucode-primitive
+	  ucode-type)
+  (export (edwin class-macros)
+	  class-instance-transforms)
+  (export ()
+	  create-editor
+	  create-editor-args
+	  edit
+	  edwin
+	  inhibit-editor-init-file?
+	  reset-editor
+	  reset-editor-windows
+	  (save-editor-files debug-save-files)))
+
+(define-package (edwin class-macros)
+  (files "clsmac")
+  (parent (edwin))
+  (export (edwin window)
+	  ==>
+	  define-class
+	  define-method
+	  usual==>
+	  with-instance-variables)
+  (import (runtime syntactic-closures)
+	  compile/subexpression
+	  make-compiler-item
+	  select-caddr
+	  select-cddddr))
+
+(define-package (edwin class-macros transform-instance-variables)
+  (files "xform")
+  (parent (edwin class-macros))
+  (export (edwin class-macros)
+	  transform-instance-variables)
+  (import ()
+	  (make-scode-variable make-variable)
+	  (scode-variable-name variable-name)))
+
+(define-package (edwin class-constructor)
+  (files "clscon")
+  (parent (edwin))
+  (export (edwin)
+	  class?
+	  make-class
+	  name->class)
+  (export (edwin class-macros)
+	  make-class
+	  name->class))
+
+(define-package (edwin macros)
+  (files "macros")
+  (parent (edwin))
+  (export (edwin)
+	  command-defined?
+	  command-name->scheme-name
+	  define-command
+	  define-major-mode
+	  define-minor-mode
+	  define-variable
+	  define-variable-per-buffer
+	  edwin-syntax-table
+	  local-set-variable!
+	  mode-name->scheme-name
+	  ref-command
+	  ref-command-object
+	  ref-mode-object
+	  ref-variable
+	  ref-variable-object
+	  set-variable!
+	  variable-name->scheme-name))
+
+(define-package (edwin group-operations)
+  (files "grpops")
+  (parent (edwin))
+  (export (edwin)
+	  finish-group-insert!
+	  group-copy-substring!
+	  group-delete!
+	  group-delete-left-char!
+	  group-delete-right-char!
+	  group-extract-and-delete-string!
+	  group-extract-string
+	  group-insert-char!
+	  group-insert-chars!
+	  group-insert-string!
+	  group-insert-substring!
+	  group-left-char
+	  group-replace-char!
+	  group-replace-string!
+	  group-replace-substring!
+	  group-right-char
+	  prepare-gap-for-insert!))
+
+(define-package (edwin comtab)
+  (files "comtab")
+  (parent (edwin))
+  (export (edwin)
+	  comtab->alist
+	  comtab-entry
+	  comtab-key-bindings
+	  comtab-key?
+	  comtab?
+	  define-key
+	  define-prefix-key
+	  local-comtab-entry
+	  make-comtab
+	  prefix-key-list?))
+
+(define-package (edwin undo)
+  (files "undo")
+  (parent (edwin))
+  (export (edwin)
+	  disable-group-undo!
+	  edwin-command$undo
+	  edwin-variable$undo-limit
+	  edwin-variable$undo-strong-limit
+	  enable-group-undo!
+	  undo-boundary!
+	  undo-done!
+	  undo-leave-window!
+	  undo-more
+	  undo-record-deletion!
+	  undo-record-insertion!
+	  undo-record-property-changes!
+	  undo-record-replacement!
+	  undo-start
+	  with-group-undo-disabled))
+
+(define-package (edwin display-type)
+  (files "display")
+  (parent (edwin))
+  (export ()
+	  editor-display-types)
+  (export (edwin)
+	  display-type?
+	  display-type/available?
+	  display-type/get-input-operations
+	  display-type/make-screen
+	  display-type/multiple-screens?
+	  display-type/name
+	  display-type/with-display-grabbed
+	  display-type/with-interrupts-disabled
+	  display-type/with-interrupts-enabled
+	  make-display-type
+	  name->display-type))
+
+(define-package (edwin screen)
+  (files "screen")
+  (parent (edwin))
+  (export (edwin)
+	  default-face
+	  default-face?
+	  guarantee-screen
+	  highlight-face
+	  initialize-screen-root-window!
+	  screen-beep
+	  screen-clear-rectangle
+	  screen-deleted?
+	  screen-direct-output-char
+	  screen-direct-output-move-cursor
+	  screen-direct-output-substring
+	  screen-discard!
+	  screen-enter!
+	  screen-exit!
+	  screen-force-update
+	  screen-get-output-line
+	  screen-in-update?
+	  screen-line-draw-cost
+	  screen-modeline-event!
+	  screen-move-cursor
+	  screen-needs-update?
+	  screen-output-char
+	  screen-output-substring
+	  screen-root-window
+	  screen-scroll-lines-down
+	  screen-scroll-lines-up
+	  screen-select-cursor!
+	  screen-select-window!
+	  screen-selected-window
+	  screen-state
+	  screen-typein-window
+	  screen-visibility
+	  screen-visible?
+	  screen-window-list
+	  screen-window0
+	  screen-x-size
+	  screen-y-size
+	  screen?
+	  set-screen-debug-trace!
+	  set-screen-root-window!
+	  update-screen!
+	  window-screen
+	  with-screen-in-update))
+
+(define-package (edwin window)
+  (files "window"
+	 "utlwin"
+	 "bufwin"
+	 "bufwfs"
+	 "bufwiu"
+	 "bufwmc"
+	 "modwin"
+	 "buffrm"
+	 "edtfrm")
+  (parent (edwin))
+  (export (edwin)
+	  display-style/discard-screen-contents?
+	  display-style/ignore-input?
+	  display-style/ignore-redisplay-flags?
+	  display-style/no-screen-output?
+	  dont-restore-saved-configuration
+	  edwin-variable$cursor-centering-point
+	  edwin-variable$mode-line-inverse-video
+	  edwin-variable$scroll-step
+	  edwin-variable$char-image-strings
+	  edwin-variable$tab-width
+	  edwin-variable$truncate-lines
+	  edwin-variable$truncate-partial-width-windows
+	  screen-window-configuration
+	  set-screen-window-configuration!
+	  set-window-buffer!
+	  set-window-debug-trace!
+	  set-window-point!
+	  set-window-start-mark!
+	  window-buffer
+	  window-char->image
+	  window-clear-override-message!
+	  window-configuration?
+	  window-coordinates->mark
+	  window-direct-output-backward-char!
+	  window-direct-output-forward-char!
+	  window-direct-output-insert-char!
+	  window-direct-output-insert-newline!
+	  window-direct-output-insert-substring!
+	  window-direct-update!
+	  window-home-cursor!
+	  window-mark->coordinates
+	  window-mark->x
+	  window-mark->y
+	  window-mark-visible?
+	  window-modeline-event!
+	  (window-needs-redisplay? buffer-frame-needs-redisplay?)
+	  window-override-message
+	  window-point
+	  window-point-coordinates
+	  window-point-x
+	  window-point-y
+	  window-root-window
+	  window-redraw!
+	  window-scroll-y-absolute!
+	  window-scroll-y-relative!
+	  window-select-time
+	  window-set-override-message!
+	  window-start-mark
+	  (window-x-size buffer-frame-x-size)
+	  window-y-center
+	  (window-y-size buffer-frame-y-size)
+	  (window? buffer-frame?)
+	  with-saved-configuration)
+  (export (edwin screen)
+	  editor-frame-screen
+	  editor-frame-select-cursor!
+	  editor-frame-select-window!
+	  editor-frame-selected-window
+	  editor-frame-typein-window
+	  editor-frame-update-display!
+	  editor-frame-window0
+	  editor-frame-windows
+	  make-editor-frame))
+
+(define-package (edwin window combination)
+  (files "comwin")
+  (parent (edwin window))
+  (export (edwin)
+	  window+
+	  window-
+	  window-1+
+	  window-delete!
+	  window-grow-horizontally!
+	  window-grow-vertically!
+	  window-has-down-neighbor?
+	  window-has-horizontal-neighbor?
+	  window-has-left-neighbor?
+	  window-has-no-neighbors?
+	  window-has-right-neighbor?
+	  window-has-up-neighbor?
+	  window-has-vertical-neighbor?
+	  window-split-horizontally!
+	  window-split-vertically!
+	  window1+)
+  (export (edwin window)
+	  combination-child
+	  combination-leaf-window
+	  combination-vertical?
+	  combination?
+	  window-next
+	  window0))
+
+(define-package (edwin modeline-string)
+  (files "modlin")
+  (parent (edwin))
+  (export (edwin)
+	  add-minor-mode-line-entry!
+	  edwin-variable$global-mode-string
+	  edwin-variable$minor-mode-alist
+	  edwin-variable$mode-line-buffer-identification
+	  edwin-variable$mode-line-format
+	  edwin-variable$mode-line-modified
+	  edwin-variable$mode-line-procedure
+	  edwin-variable$mode-line-process
+	  edwin-variable$mode-name
+	  format-modeline-string
+	  modeline-string!
+	  remove-minor-mode-line-entry!))
+
+(define-package (edwin command-reader)
+  (files "comred")
+  (parent (edwin))
+  (export (edwin)
+	  abort-current-command
+	  add-command-suffix!
+	  auto-argument-mode?
+	  command-argument
+	  command-history-list
+	  command-message-receive
+	  command-reader
+	  current-command
+	  current-command-key
+	  dispatch-on-key
+	  dispatch-on-command
+	  execute-button-command
+	  execute-key
+	  execute-command
+	  execute-command-history-entry
+	  keyboard-keys-read
+	  last-command
+	  last-command-key
+	  maybe-add-command-suffix!
+	  override-next-command!
+	  read-and-dispatch-on-key
+	  return-to-command-loop
+	  set-command-argument!
+	  set-command-message!
+	  set-current-command!
+	  top-level-command-reader))
+
+(define-package (edwin keyboard)
+  (files "input")
+  (parent (edwin))
+  (export (edwin)
+	  append-command-prompt!
+	  append-message
+	  char-base
+	  char-control-metafy
+	  char-controlify
+	  char-metafy
+	  clear-message
+	  command-prompt
+	  keyboard-read
+	  keyboard-peek
+	  keyboard-peek-no-hang
+	  keyboard-read-char
+	  message
+	  message-args->string
+	  message-wrapper
+	  reset-command-prompt!
+	  set-command-prompt!
+	  temporary-message))
+
+(define-package (edwin prompt)
+  (files "prompt")
+  (parent (edwin))
+  (export (edwin)
+	  call-with-confirmed-pass-phrase
+	  call-with-pass-phrase
+	  completion-message
+	  edwin-command$exit-minibuffer
+	  edwin-command$exit-minibuffer-yes-or-no
+	  edwin-command$minibuffer-complete
+	  edwin-command$minibuffer-complete-and-exit
+	  edwin-command$minibuffer-complete-word
+	  edwin-command$minibuffer-completion-help
+	  edwin-command$minibuffer-yank-default
+	  edwin-command$repeat-complex-command
+	  edwin-mode$minibuffer-local
+	  edwin-mode$minibuffer-local-completion
+	  edwin-mode$minibuffer-local-must-match
+	  edwin-mode$minibuffer-local-yes-or-no
+	  edwin-variable$enable-recursive-minibuffers
+	  edwin-variable$completion-auto-help
+	  lookup-prompt-option
+	  pop-up-completions-list
+	  pop-up-generated-completions
+	  prompt-for-alist-value
+	  prompt-for-char
+	  prompt-for-command
+	  prompt-for-completed-string
+	  prompt-for-confirmation?
+	  prompt-for-key
+	  prompt-for-number
+	  prompt-for-string
+	  prompt-for-string-table-name
+	  prompt-for-string-table-value
+	  prompt-for-string/prompt
+	  prompt-for-typein
+	  prompt-for-variable
+	  prompt-for-yes-or-no?
+	  prompt-history-strings
+	  prompt-options-default-string
+	  set-prompt-history-strings!
+	  standard-completion
+	  temporary-typein-message
+	  typein-edit-other-window
+	  within-typein-edit
+	  within-typein-edit?
+	  write-completions-list)
+  (export (edwin screen)
+	  make-typein-buffer-name))
+
+(define-package (edwin buffer-input-port)
+  (files "bufinp")
+  (parent (edwin))
+  (export (edwin)
+	  make-buffer-input-port
+	  with-input-from-mark
+	  with-input-from-region))
+
+(define-package (edwin buffer-output-port)
+  (files "bufout")
+  (parent (edwin))
+  (export (edwin)
+	  call-with-output-mark
+	  mark->output-port
+	  output-port->mark
+	  with-output-to-mark))
+
+(define-package (edwin window-output-port)
+  (files "winout")
+  (parent (edwin))
+  (export (edwin)
+	  window-output-port
+	  with-output-to-current-point
+	  with-output-to-window-point))
+
+(define-package (edwin regular-expression)
+  (files "regexp")
+  (parent (edwin))
+  (export (edwin)
+	  delete-match
+	  preserving-match-data
+	  re-match-buffer-forward
+	  re-match-data
+	  re-match-end
+	  re-match-extract-string
+	  re-match-forward
+	  re-match-start
+	  re-search-backward
+	  re-search-buffer-backward
+	  re-search-buffer-forward
+	  re-search-forward
+	  re-substitute-registers
+	  replace-match
+	  search-backward
+	  search-forward
+	  set-re-match-data!)
+  (import (runtime regular-expression)
+	  registers))
+
+(define-package (edwin lisp-indentation)
+  (files "linden")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-variable$lisp-body-indent
+	  edwin-variable$lisp-indent-hook
+	  edwin-variable$lisp-indent-methods
+	  edwin-variable$lisp-indent-offset
+	  edwin-variable$lisp-indent-regexps
+	  indent-code-rigidly
+	  lisp-comment-indentation
+	  lisp-comment-locate
+	  lisp-indent-definition
+	  lisp-indent-line
+	  lisp-indent-sexp
+	  lisp-indent-special-form
+	  standard-lisp-indent-hook))
+
+(define-package (edwin command-argument)
+  (files "argred")
+  (parent (edwin))
+  (export (edwin)
+	  command-argument-multiplier-only?
+	  command-argument-negative-only?
+	  command-argument-numeric-value
+	  command-argument-prompt
+	  command-argument-self-insert?
+	  command-argument-value
+	  edwin-command$auto-argument
+	  edwin-command$auto-digit-argument
+	  edwin-command$auto-negative-argument
+	  edwin-command$digit-argument
+	  edwin-command$negative-argument
+	  edwin-command$universal-argument))
+
+(define-package (edwin buffer-menu)
+  (files "bufmnu")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-variable$buffer-menu-kill-on-quit))
+
+(define-package (edwin register-command)
+  (files "regcom")
+  (parent (edwin)))
+
+(define-package (edwin c-indentation)
+  (files "cinden")
+  (parent (edwin))
+  (export (edwin)
+	  c-compute-indentation
+	  c-indent-expression
+	  c-indent-line
+	  edwin-variable$c-argdecl-indent
+	  edwin-variable$c-brace-imaginary-offset
+	  edwin-variable$c-brace-offset
+	  edwin-variable$c-continued-brace-offset
+	  edwin-variable$c-continued-statement-offset
+	  edwin-variable$c-indent-level
+	  edwin-variable$c-label-offset))
+
+(define-package (edwin incremental-search)
+  (files "iserch")
+  (parent (edwin))
+  (export (edwin)
+	  isearch))
+
+(define-package (edwin command-summary)
+  (files "keymap")
+  (parent (edwin))
+  (export (edwin)
+	  describe-bindings
+	  edwin-command$describe-bindings
+	  edwin-command$make-command-summary
+	  make-command-summary))
+
+(define-package (edwin inferior-repl)
+  (files "intmod")
+  (parent (edwin))
+  (export (edwin)
+	  buffer/inferior-cmdl
+	  current-repl-buffer
+	  current-repl-buffer*
+	  edwin-command$inferior-cmdl-abort-nearest
+	  edwin-command$inferior-cmdl-abort-previous
+	  edwin-command$inferior-cmdl-abort-top-level
+	  edwin-command$inferior-cmdl-breakpoint
+	  edwin-command$inferior-cmdl-self-insert
+	  edwin-command$inferior-repl-eval-defun
+	  edwin-command$inferior-repl-eval-last-sexp
+	  edwin-command$inferior-repl-eval-region
+	  edwin-command$repl
+	  edwin-command$set-inferior-repl-buffer
+	  edwin-mode$inferior-cmdl
+	  edwin-mode$inferior-repl
+	  edwin-variable$inferior-repl-write-results
+	  edwin-variable$repl-enable-transcript-buffer
+	  edwin-variable$repl-error-decision
+	  global-repl-buffer
+	  inferior-repl-eval-expression
+	  inferior-repl-eval-region
+	  local-repl-buffer
+	  repl-buffer-list
+	  repl-buffer?
+	  set-local-repl-buffer!
+	  start-inferior-repl!)
+  (import (runtime user-interface)
+	  default/write-result))
+
+(define-package (edwin dired)
+  (files "dired")
+  (parent (edwin))
+  (export (edwin)
+	  dired-filename-start
+	  dired-mark-files!
+	  dired-marked-files
+	  dired-next-files
+	  dired-pathname
+	  dired-this-file
+	  edwin-command$dired
+	  edwin-command$dired-abort
+	  edwin-command$dired-backup-unmark
+	  edwin-command$dired-clean-directory
+	  edwin-command$dired-do-copy
+	  edwin-command$dired-do-deletions
+	  edwin-command$dired-do-rename
+	  edwin-command$dired-encrypt/decrypt-file
+	  edwin-command$dired-find-file
+	  edwin-command$dired-find-file-other-window
+	  edwin-command$dired-flag-auto-save-files
+	  edwin-command$dired-flag-backup-files
+	  edwin-command$dired-flag-file-deletion
+	  edwin-command$dired-mark
+	  edwin-command$dired-next-line
+	  edwin-command$dired-other-window
+	  edwin-command$dired-previous-line
+	  edwin-command$dired-quit
+	  edwin-command$dired-revert
+	  edwin-command$dired-summary
+	  edwin-command$dired-unmark
+	  edwin-command$dired-unmark-all-files
+	  edwin-command$list-directory
+	  edwin-mode$dired
+	  edwin-variable$dired-backup-overwrite
+	  edwin-variable$dired-kept-versions
+	  edwin-variable$dired-mode-hook
+	  edwin-variable$dired-trivial-filenames
+	  for-each-dired-mark
+	  insert-dired-entry!
+	  make-dired-buffer))
+
+(define-package (edwin info)
+  (files "info")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$info
+	  edwin-command$info-cease-edit
+	  edwin-command$info-current-menu-item
+	  edwin-command$info-directory
+	  edwin-command$info-edit
+	  edwin-command$info-exit
+	  edwin-command$info-fifth-menu-item
+	  edwin-command$info-first-menu-item
+	  edwin-command$info-follow-reference
+	  edwin-command$info-fourth-menu-item
+	  edwin-command$info-goto-node
+	  edwin-command$info-help
+	  edwin-command$info-last
+	  edwin-command$info-menu
+	  edwin-command$info-next
+	  edwin-command$info-previous
+	  edwin-command$info-search
+	  edwin-command$info-second-menu-item
+	  edwin-command$info-summary
+	  edwin-command$info-tagify
+	  edwin-command$info-third-menu-item
+	  edwin-command$info-up
+	  edwin-command$info-validate
+	  edwin-variable$info-current-file
+	  edwin-variable$info-current-node
+	  edwin-variable$info-current-subfile
+	  edwin-variable$info-default-directory-list
+	  edwin-variable$info-directory
+	  edwin-variable$info-directory-list
+	  edwin-variable$info-enable-active-nodes
+	  edwin-variable$info-enable-edit
+	  edwin-variable$info-history
+	  edwin-variable$info-previous-search
+	  edwin-variable$info-selection-key
+	  edwin-variable$info-suffix-list
+	  edwin-variable$info-tag-table-end
+	  edwin-variable$info-tag-table-start))
+
+(define-package (edwin rectangle)
+  (files "reccom")
+  (parent (edwin)))
+
+(define-package (edwin tags)
+  (files "tagutl")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$find-tag
+	  edwin-command$find-tag-other-window
+	  edwin-command$tags-loop-continue
+	  edwin-command$tags-query-replace
+	  edwin-command$tags-search
+	  edwin-command$visit-additional-tags-table
+	  edwin-command$visit-tags-table
+	  edwin-variable$new-tags-behavior?
+	  edwin-variable$tags-table-pathnames))
+
+(define-package (edwin occurrence)
+  (files "occur")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$count-matches
+	  edwin-command$delete-matching-lines
+	  edwin-command$delete-non-matching-lines
+	  edwin-command$flush-lines
+	  edwin-command$how-many
+	  edwin-command$keep-lines
+	  edwin-command$list-matching-lines
+	  edwin-command$occur
+	  edwin-command$occur-mode-goto-occurrence
+	  edwin-mode$occur
+	  edwin-variable$list-matching-lines-default-context-lines
+	  pop-up-occur-buffer))
+
+;; This package is set up to handle two versions of the debugger.
+;; Therefore, please don't remove variables just because they aren't
+;; referenced by the standard debugger. -- Arthur
+
+(define-package (edwin debugger)
+  (files "debug")
+  (parent (edwin))
+  (export ()
+	  with-break-on
+	  call-with-break)
+  (export (edwin)
+	  debug-scheme-error
+	  edwin-command$browse-continuation
+	  edwin-command$browse-environment
+	  edwin-command$browser-evaluator
+	  edwin-command$browser-next-line
+	  edwin-command$browser-previous-line
+	  edwin-command$browser-quit
+	  edwin-command$browser-select-line
+	  edwin-command$browser-where
+	  edwin-mode$continuation-browser
+	  edwin-mode$environment-browser
+	  edwin-variable$debugger-confirm-return?
+	  edwin-variable$debugger-expand-reductions?
+	  edwin-variable$debugger-hide-system-code?
+	  edwin-variable$debugger-max-subproblems
+	  edwin-variable$debugger-one-at-a-time?
+	  edwin-variable$debugger-open-markers?
+	  edwin-variable$debugger-quit-on-restart?
+	  edwin-variable$debugger-quit-on-return?
+	  edwin-variable$debugger-show-help-message?
+	  edwin-variable$debugger-split-window?
+	  edwin-variable$debugger-start-new-frame?
+	  edwin-variable$debugger-start-new-screen?
+	  edwin-variable$debugger-start-on-error?
+	  edwin-variable$debugger-verbose-mode?
+	  edwin-variable$environment-package-limit
+	  maybe-debug-scheme-error)
+  (import (runtime debugger)
+	  command/condition-restart
+	  command/frame
+	  command/print-environment-procedure
+	  command/print-expression
+	  command/show-all-frames
+	  command/show-current-frame
+	  debugger-pp
+	  dstate/condition
+	  dstate/environment-list
+	  dstate/expression
+	  dstate/number-of-reductions
+	  dstate/previous-subproblems
+	  dstate/reduction
+	  dstate/reduction-number
+	  dstate/subexpression
+	  dstate/subproblem
+	  dstate/subproblem-number
+	  dstate/using-history?
+	  expression-indentation
+	  improper-list-length
+	  make-initial-dstate
+	  print-reduction-expression
+	  print-subproblem-environment
+	  print-subproblem-expression
+	  reduction-environment
+	  reduction-expression
+	  set-current-subproblem!
+	  set-dstate/environment-list!
+	  set-dstate/reduction-number!)
+  (import (runtime debugger-utilities)
+	  print-binding
+	  output-to-string
+	  write-dbg-name
+	  print-user-friendly-name)
+  (import (runtime error-handler)
+	  hook/invoke-restart)
+  (import (edwin buffer-output-port)
+	  port/mark)
+  (import (runtime rep)
+	  default/repl-eval
+	  write-restarts))
+
+(define-package (edwin text-properties)
+  (files "txtprp")
+  (parent (edwin))
+  (export (edwin)
+	  add-text-property
+	  get-text-properties
+	  get-text-property
+	  highlight-region
+	  highlight-region-excluding-indentation
+	  highlight-subgroup
+	  local-comtabs
+	  next-property-change
+	  next-specific-property-change
+	  previous-property-change
+	  previous-specific-property-change
+	  region-read-only
+	  region-writeable
+	  remove-text-property
+	  set-region-local-comtabs!
+	  set-subgroup-local-comtabs!
+	  subgroup-read-only
+	  subgroup-writeable)
+  (export (edwin group-operations)
+	  text-not-deleteable?
+	  text-not-insertable?
+	  text-not-replaceable?
+	  update-intervals-for-deletion!
+	  update-intervals-for-insertion!
+	  update-intervals-for-replacement!)
+  (export (edwin undo)
+	  group-extract-properties
+	  group-reinsert-properties!
+	  reinsert-properties-size))
+
+(define-package (edwin process)
+  (parent (edwin))
+  (export (edwin)
+	  accept-process-output
+	  add-process-filter
+	  buffer-processes			; always present
+	  continue-process
+	  delete-process			; always present
+	  edwin-command$list-processes
+	  edwin-command$shell-command
+	  edwin-command$shell-command-on-region
+	  edwin-variable$delete-exited-processes
+	  edwin-variable$exec-path
+	  edwin-variable$process-connection-type
+	  edwin-variable$shell-file-name
+	  get-buffer-process			; always present
+	  get-process-by-name
+	  handle-process-status-changes
+	  hangup-process
+	  interrupt-process
+	  kill-process
+	  process-arguments
+	  process-arguments->string
+	  process-buffer
+	  process-exit-reason
+	  process-filter
+	  process-kill-without-query
+	  process-list				; always present
+	  process-mark
+	  process-name
+	  process-output-available?		; always present
+	  process-runnable?
+	  process-send-char
+	  process-send-eof
+	  process-send-string
+	  process-send-substring
+	  process-sentinel
+	  process-status
+	  process-status-changes?		; always present
+	  process-status-message
+	  quit-process
+	  remove-process-filter
+	  run-synchronous-process
+	  run-synchronous-process-1
+	  set-process-buffer!
+	  set-process-filter!
+	  set-process-kill-without-query!
+	  set-process-sentinel!
+	  shell-command
+	  standard-process-filter
+	  start-process
+	  stop-process
+	  subprocesses-available?		; always present
+	  ))
+
+(os-type-case
+ ((dos)
+  (define-package (edwin dosjob)
+    (files "doscom" "dosshell")
+    (parent (edwin)))))
+
+(os-type-case
+ ((unix dos nt)
+  (define-package (edwin screen console-screen)
+    (files "termcap" "tterm")
+    (parent (edwin screen))
+    (export (edwin)
+	    resize-screen)
+    (import (runtime primitive-io)
+	    channel-type=terminal?
+	    have-select?
+	    terminal-get-state
+	    terminal-output-baud-rate
+	    terminal-raw-input
+	    terminal-raw-output
+	    terminal-set-state)
+    (initialization (initialize-package!)))))
+
+(os-type-case
+ ((unix)
+  (extend-package (edwin)
+    (files "unix"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   "techinfo"			; techinfo commands
+	   "telnet"			; telnet subprocess commands
+	   "xmodef"			; x bindings for fundamental mode
+	   "manual"			; man page display
+	   "print"			; printer output
+	   ))
+
+  (extend-package (edwin dired)
+    (files "dirunx")
+    (export (edwin)
+	    edwin-command$dired-chgrp
+	    edwin-command$dired-chmod
+	    edwin-command$dired-chown
+	    edwin-command$dired-do-compress))
+
+  (extend-package (edwin process)
+    (files "process"))
+  
+  (define-package (edwin screen x-screen)
+    (files "xterm")
+    (parent (edwin screen))
+    (export (edwin)
+	    edwin-variable$x-cut-to-clipboard
+	    edwin-variable$x-paste-from-clipboard
+	    os/interprogram-cut
+	    os/interprogram-paste
+	    x-root-window-size
+	    x-screen-ignore-focus-button?
+	    x-selection-timeout
+	    xterm-screen/flush!
+	    xterm-screen/grab-focus!)
+    (export (edwin x-commands)
+	    screen-display
+	    screen-xterm
+	    xterm-screen/set-icon-name
+	    xterm-screen/set-name)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin x-keys)
+    (files "key-x11")
+    (parent (edwin))
+    (export (edwin screen x-screen)
+	    x-make-special-key))
+
+  (define-package (edwin x-commands)
+    (files "xcom")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$lower-frame
+	    edwin-command$raise-frame
+	    edwin-command$set-background-color
+	    edwin-command$set-border-color
+	    edwin-command$set-border-width
+	    edwin-command$set-cursor-color
+	    edwin-command$set-default-font
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-icon-name
+	    edwin-command$set-frame-name
+	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
+	    edwin-command$set-internal-border-width
+	    edwin-command$set-mouse-color
+	    edwin-command$set-mouse-shape
+	    edwin-command$show-frame-position
+	    edwin-command$show-frame-size
+	    edwin-command$x-lower-screen
+	    edwin-command$x-mouse-ignore
+	    edwin-command$x-mouse-keep-one-window
+	    edwin-command$x-mouse-select
+	    edwin-command$x-mouse-select-and-split
+	    edwin-command$x-mouse-set-mark
+	    edwin-command$x-mouse-set-point
+	    edwin-command$x-mouse-show-event
+	    edwin-command$x-raise-screen
+	    edwin-command$x-set-background-color
+	    edwin-command$x-set-border-color
+	    edwin-command$x-set-border-width
+	    edwin-command$x-set-cursor-color
+	    edwin-command$x-set-font
+	    edwin-command$x-set-foreground-color
+	    edwin-command$x-set-icon-name
+	    edwin-command$x-set-internal-border-width
+	    edwin-command$x-set-mouse-color
+	    edwin-command$x-set-mouse-shape
+	    edwin-command$x-set-position
+	    edwin-command$x-set-size
+	    edwin-command$x-set-window-name
+	    edwin-variable$frame-icon-name-format
+	    edwin-variable$frame-icon-name-length
+	    edwin-variable$frame-name-format
+	    edwin-variable$frame-name-length
+	    edwin-variable$x-screen-icon-name-format
+	    edwin-variable$x-screen-icon-name-length
+	    edwin-variable$x-screen-name-format
+	    edwin-variable$x-screen-name-length
+	    x-button1-down
+	    x-button1-up
+	    x-button2-down
+	    x-button2-up
+	    x-button3-down
+	    x-button3-up
+	    x-button4-down
+	    x-button4-up
+	    x-button5-down
+	    x-button5-up)
+    (export (edwin screen x-screen)
+	    update-xterm-screen-names!))
+
+  (define-package (edwin vc)
+    (files "vc")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$vc-diff
+	    edwin-command$vc-directory
+	    edwin-command$vc-dired
+	    edwin-command$vc-finish-logentry
+	    edwin-command$vc-insert-headers
+	    edwin-command$vc-next-action
+	    edwin-command$vc-print-log
+	    edwin-command$vc-register
+	    edwin-command$vc-revert-buffer
+	    edwin-command$vc-toggle-read-only
+	    edwin-command$vc-version-diff
+	    edwin-command$vc-version-other-window
+	    edwin-mode$vc-log
+	    edwin-variable$diff-switches
+	    edwin-variable$vc-checkin-hooks
+	    edwin-variable$vc-checkout-carefully
+	    edwin-variable$vc-command-messages
+	    edwin-variable$vc-default-init-version
+	    edwin-variable$vc-delete-logbuf-window
+	    edwin-variable$vc-display-status
+	    edwin-variable$vc-follow-symlinks
+	    edwin-variable$vc-initial-comment
+	    edwin-variable$vc-keep-workfiles
+	    edwin-variable$vc-log-mode-hook
+	    edwin-variable$vc-make-backup-files
+	    edwin-variable$vc-mode-line-status
+	    edwin-variable$vc-rcs-preserve-mod-times
+	    edwin-variable$vc-suppress-confirm))
+
+  (define-package (edwin rcs-parse)
+    (files "rcsparse")
+    (parent (edwin))
+    (export (edwin)
+	    parse-rcs-admin
+	    rcs-admin/access-list
+	    rcs-admin/branch
+	    rcs-admin/comment
+	    rcs-admin/description
+	    rcs-admin/expand
+	    rcs-admin/head
+	    rcs-admin/locks
+	    rcs-admin/strict?
+	    rcs-admin/symbols
+	    rcs-admin?
+	    rcs-delta/author
+	    rcs-delta/branches
+	    rcs-delta/date
+	    rcs-delta/next
+	    rcs-delta/number
+	    rcs-delta/state
+	    rcs-delta?
+	    rcs-find-delta
+	    rcs-number-head
+	    rcs-number-length)))
+
+ ((nt)
+  (global-definitions "../win32/win32")
+
+  (extend-package (edwin)
+    (files "dos"
+	   "dosfile"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   )
+    (import (win32)
+	    get-module-file-name
+	    get-module-handle))
+
+  (extend-package (edwin dired)
+    (files "dirw32")
+    (export (edwin)
+	    edwin-command$dired-chmod
+	    edwin-command$dired-hidden-toggle))
+
+  (extend-package (edwin screen console-screen)
+    (files "ansi" "bios"))
+
+  (extend-package (edwin process)
+    (files "process"))
+
+  (define-package (edwin screen win32)
+    (files "win32")
+    (parent (edwin screen))
+    (import (win32)
+	    adjust-window-rect
+	    destroy-window
+	    get-client-rect
+	    get-handle
+	    get-menu
+	    get-system-metrics
+	    get-window-rect
+	    load-icon
+	    make-rect
+	    mb_ok
+	    message-beep
+	    rect/bottom
+	    rect/left
+	    rect/right
+	    rect/top
+	    send-message
+	    set-active-window
+	    set-focus
+	    set-window-pos
+	    set-window-text
+	    show-window
+	    sleep
+	    sm_cxframe
+	    sm_cycaption
+	    sm_cyframe
+	    sm_cymenu
+	    sw_showminnoactive
+	    swp_nomove
+	    swp_nosize
+	    swp_nozorder
+	    update-window
+	    ws_overlappedwindow)
+    (export (edwin win-commands)
+	    win32-screen/get-client-size
+	    win32-screen/get-position
+	    win32-screen/set-background-color!
+	    win32-screen/set-font!
+	    win32-screen/set-foreground-color!
+	    win32-screen/set-icon!
+	    win32-screen/set-name!
+	    win32-screen/set-position!
+	    win32-screen/set-size!)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin win32-keys)
+    (files "key-w32")
+    (parent (edwin))
+    (export (edwin screen win32)
+	    win32-make-special-key)
+    (export (edwin)
+	    ;; the END key
+	    end)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin win-commands)
+    (files "win32com")
+    (parent (edwin))
+    (import (win32)
+	    load-icon
+	    get-handle)
+    (export (edwin)
+	    edwin-command$set-background-color
+	    edwin-command$set-default-font
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
+	    edwin-command$set-icon
+	    edwin-command$show-frame-position
+	    edwin-command$show-frame-size)
+    (export (edwin screen win32)
+	    update-win32-screen-name!)))
+
+ ((os/2)
+  (extend-package (edwin)
+    (files "os2"
+	   "dosfile"
+	   "comint"			; command interpreter process stuff
+	   "compile"			; compilation subprocess
+	   "shell"			; shell subprocess commands
+	   "telnet"			; telnet subprocess commands
+	   )
+    (import (runtime os2-window-primitives)
+	    os2-clipboard-read-text
+	    os2-clipboard-write-text))
+
+  (extend-package (edwin dired)
+    (files "diros2")
+    (export (edwin)
+	    edwin-command$dired-chmod
+	    edwin-command$dired-do-compress
+	    edwin-command$dired-hidden-toggle))
+
+  (extend-package (edwin process)
+    (files "process"))
+
+  (define-package (edwin screen os2-screen)
+    (files "os2term")
+    (parent (edwin screen))
+    (export (edwin)
+	    os2-screen/get-frame-size
+	    os2-screen/get-position
+	    os2-screen/activate!
+	    os2-screen/deactivate!
+	    os2-screen/hide!
+	    os2-screen/lower!
+	    os2-screen/maximize!
+	    os2-screen/minimize!
+	    os2-screen/raise!
+	    os2-screen/restore!
+	    os2-screen/show!
+	    os2-screen/set-background-color!
+	    os2-screen/set-font!
+	    os2-screen/set-foreground-color!
+	    os2-screen/set-position!
+	    os2-screen/set-size!
+	    os2-screen/set-title!
+	    os2/desktop-width
+	    os2/desktop-height
+	    screen-char-width
+	    screen-char-height
+	    screen-pel-width
+	    screen-pel-height)
+    (import (runtime os2-window-primitives)
+	    button-event-type:down
+	    button-event/number
+	    button-event/type
+	    button-event/x
+	    button-event/y
+	    cursor_flash
+	    cursor_solid
+	    event-type
+	    event-type:button
+	    event-type:close
+	    event-type:command
+	    event-type:focus
+	    event-type:help
+	    event-type:key
+	    event-type:paint
+	    event-type:resize
+	    event-type:visibility
+	    event-wid
+	    focus-event/gained?
+	    font-metrics/descender
+	    font-metrics/height
+	    font-metrics/width
+	    hwnd_desktop
+	    idi_edwin
+	    kc_alt
+	    kc_ctrl
+	    kc_virtualkey
+	    key-event/code
+	    key-event/flags
+	    key-event/repeat
+	    nullhandle
+	    number-of-event-types
+	    os2ps-clear
+	    os2ps-set-colors
+	    os2ps-set-font
+	    os2ps-write
+	    os2win-activate
+	    os2win-alarm
+	    os2win-close
+	    os2win-close-event-qid
+	    os2win-console-wid
+	    os2win-desktop-height
+	    os2win-desktop-width
+	    os2win-destroy-pointer
+	    os2win-event-ready?
+	    os2win-focus?
+	    os2win-get-event
+	    os2win-get-frame-size
+	    os2win-get-pos
+	    os2win-get-size
+	    os2win-invalidate
+	    os2win-load-pointer
+	    os2win-move-cursor
+	    os2win-open
+	    os2win-open-event-qid
+	    os2win-ps
+	    os2win-scroll
+	    os2win-set-grid
+	    os2win-set-icon
+	    os2win-set-pos
+	    os2win-set-size
+	    os2win-set-state
+	    os2win-set-title
+	    os2win-shape-cursor
+	    os2win-show
+	    os2win-show-cursor
+	    paint-event/xh
+	    paint-event/xl
+	    paint-event/yh
+	    paint-event/yl
+	    resize-event/height
+	    resize-event/width
+	    virtual-key-supremum
+	    visibility-event/shown?
+	    vk_backspace
+	    vk_backtab
+	    vk_break
+	    vk_button1
+	    vk_button2
+	    vk_button3
+	    vk_clear
+	    vk_delete
+	    vk_down
+	    vk_end
+	    vk_enddrag
+	    vk_enter
+	    vk_ereof
+	    vk_esc
+	    vk_f1
+	    vk_f10
+	    vk_f11
+	    vk_f12
+	    vk_f13
+	    vk_f14
+	    vk_f15
+	    vk_f16
+	    vk_f17
+	    vk_f18
+	    vk_f19
+	    vk_f2
+	    vk_f20
+	    vk_f21
+	    vk_f22
+	    vk_f23
+	    vk_f24
+	    vk_f3
+	    vk_f4
+	    vk_f5
+	    vk_f6
+	    vk_f7
+	    vk_f8
+	    vk_f9
+	    vk_home
+	    vk_insert
+	    vk_left
+	    vk_newline
+	    vk_pa1
+	    vk_pagedown
+	    vk_pageup
+	    vk_pause
+	    vk_printscrn
+	    vk_right
+	    vk_space
+	    vk_sysrq
+	    vk_tab
+	    vk_up
+	    wa_error
+	    window-state:bottom
+	    window-state:hide
+	    window-state:maximize
+	    window-state:minimize
+	    window-state:restore
+	    window-state:top)
+    (initialization (initialize-package!)))
+
+  (define-package (edwin os2-commands)
+    (files "os2com")
+    (parent (edwin))
+    (export (edwin)
+	    edwin-command$define-color-name
+	    edwin-command$set-background-color
+	    edwin-command$set-font
+	    edwin-command$set-foreground-color
+	    edwin-command$set-frame-name
+	    edwin-command$set-frame-position
+	    edwin-command$set-frame-size
+	    edwin-command$set-screen-position
+	    edwin-command$set-screen-size
+	    edwin-command$show-frame-position
+	    edwin-command$show-frame-size
+	    edwin-command$show-screen-position
+	    edwin-command$show-screen-size)
+    (export (edwin screen os2-screen)
+	    update-os2-screen-names!))))
+
+(define-package (edwin sendmail)
+  (files "sendmail")
+  (parent (edwin))
+  (export (edwin)
+	  add-buffer-mime-attachment!
+	  buffer-mime-attachments
+	  buffer-mime-processing-enabled?
+	  disable-buffer-mime-processing!
+	  edwin-command$add-mime-file-attachment
+	  edwin-command$kill-mime-attachment
+	  edwin-command$mail
+	  edwin-command$mail-bcc
+	  edwin-command$mail-browse-attachments
+	  edwin-command$mail-cc
+	  edwin-command$mail-fill-yanked-message
+	  edwin-command$mail-other-window
+	  edwin-command$mail-send
+	  edwin-command$mail-send-and-exit
+	  edwin-command$mail-signature
+	  edwin-command$mail-subject
+	  edwin-command$mail-to
+	  edwin-command$mail-yank-original
+	  edwin-command$mime-attachments-quit
+	  edwin-mode$mail
+	  edwin-mode$mime-attachments
+	  edwin-variable$file-type-to-mime-type
+	  edwin-variable$mail-abbreviate-mime
+	  edwin-variable$mail-archive-file-name
+	  edwin-variable$mail-default-reply-to
+	  edwin-variable$mail-from-style
+	  edwin-variable$mail-full-name
+	  edwin-variable$mail-header-function
+	  edwin-variable$mail-header-separator
+	  edwin-variable$mail-host-address
+	  edwin-variable$mail-identify-reader
+	  edwin-variable$mail-interactive
+	  edwin-variable$mail-mode-hook
+	  edwin-variable$mail-organization
+	  edwin-variable$mail-relay-host
+	  edwin-variable$mail-reply-buffer
+	  edwin-variable$mail-self-blind
+	  edwin-variable$mail-setup-hook
+	  edwin-variable$mail-yank-ignored-headers
+	  edwin-variable$mime-attachments-mode-hook
+	  edwin-variable$send-mail-procedure
+	  edwin-variable$sendmail-program
+	  edwin-variable$smtp-require-valid-recipients
+	  edwin-variable$smtp-trace
+	  edwin-variable$user-mail-address
+	  enable-buffer-mime-processing!
+	  finish-preparing-mail-buffer
+	  global-mailer-version-string
+	  mail-field-end
+	  mail-field-end!
+	  mail-field-region
+	  mail-field-start
+	  mail-from-string
+	  mail-full-name
+	  mail-header-end
+	  mail-insert-field
+	  mail-insert-field-value
+	  mail-insert-field-value!
+	  mail-match-header-separator
+	  mail-new-field!
+	  mail-organization-string
+	  mail-position-on-field
+	  mail-position-on-cc-field
+	  mail-setup
+	  mailer-version-string
+	  make-mail-buffer
+	  prepare-mail-buffer-for-sending
+	  random-mime-boundary-string
+	  set-buffer-mime-attachments!
+	  user-mail-address))
+
+(define-package (edwin mail-alias)
+  (files "malias")
+  (parent (edwin))
+  (export (edwin)
+	  define-mail-alias
+	  expand-mail-aliases
+	  guarantee-mail-aliases))
+
+(define-package (edwin rmail)
+  (files "rmail"
+	 "rmailsrt"
+	 "rmailsum")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$rmail
+	  edwin-command$rmail-delete-backward
+	  edwin-command$rmail-delete-forward
+	  edwin-command$rmail-delete-message
+	  edwin-command$rmail-expunge
+	  edwin-command$rmail-get-new-mail
+	  edwin-command$rmail-input
+	  edwin-command$rmail-last-message
+	  edwin-command$rmail-next-message
+	  edwin-command$rmail-next-undeleted-message
+	  edwin-command$rmail-output
+	  edwin-command$rmail-output-to-rmail-file
+	  edwin-command$rmail-previous-message
+	  edwin-command$rmail-previous-undeleted-message
+	  edwin-command$rmail-reply
+	  edwin-command$rmail-show-message
+	  edwin-command$rmail-sort-by-author
+	  edwin-command$rmail-sort-by-date
+	  edwin-command$rmail-sort-by-recipient
+	  edwin-command$rmail-sort-by-size-lines
+	  edwin-command$rmail-sort-by-subject
+	  edwin-command$rmail-summary
+	  edwin-command$rmail-summary-beginning-of-buffer
+	  edwin-command$rmail-summary-by-recipients
+	  edwin-command$rmail-summary-delete-message
+	  edwin-command$rmail-summary-delete-message-backward
+	  edwin-command$rmail-summary-delete-message-forward
+	  edwin-command$rmail-summary-exit
+	  edwin-command$rmail-summary-expunge
+	  edwin-command$rmail-summary-expunge-and-save
+	  edwin-command$rmail-summary-get-new-mail
+	  edwin-command$rmail-summary-input
+	  edwin-command$rmail-summary-mail
+	  edwin-command$rmail-summary-next-message
+	  edwin-command$rmail-summary-next-undeleted-message
+	  edwin-command$rmail-summary-output
+	  edwin-command$rmail-summary-output-to-rmail-file
+	  edwin-command$rmail-summary-previous-message
+	  edwin-command$rmail-summary-previous-undeleted-message
+	  edwin-command$rmail-summary-quit
+	  edwin-command$rmail-summary-reply
+	  edwin-command$rmail-summary-scroll-message-down
+	  edwin-command$rmail-summary-scroll-message-up
+	  edwin-command$rmail-summary-show-message
+	  edwin-command$rmail-summary-toggle-header
+	  edwin-command$rmail-summary-undelete-message
+	  edwin-command$rmail-summary-undelete-message-backward
+	  edwin-command$rmail-summary-undelete-message-forward
+	  edwin-command$rmail-toggle-header
+	  edwin-command$rmail-undelete-previous-message
+	  edwin-mode$rmail
+	  edwin-mode$rmail-summary
+	  edwin-variable$rmail-buffer
+	  edwin-variable$rmail-default-dont-reply-to-names
+	  edwin-variable$rmail-delete-after-output
+	  edwin-variable$rmail-dont-reply-to-names
+	  edwin-variable$rmail-file-name
+	  edwin-variable$rmail-ignored-headers
+	  edwin-variable$rmail-inbox-list
+	  edwin-variable$rmail-last-file
+	  edwin-variable$rmail-last-rmail-file
+	  edwin-variable$rmail-message-filter
+	  edwin-variable$rmail-mode-hook
+	  edwin-variable$rmail-new-mail-hook
+	  edwin-variable$rmail-pop-accounts
+	  edwin-variable$rmail-pop-procedure
+	  edwin-variable$rmail-primary-inbox-list
+	  edwin-variable$rmail-primary-pop-server
+	  edwin-variable$rmail-reply-with-re
+	  edwin-variable$rmail-summary-buffer
+	  edwin-variable$rmail-summary-mode-hook
+	  edwin-variable$rmail-summary-vector
+	  edwin-variable$rmailsum-rcs-header
+	  fetch-all-fields
+	  fetch-first-field
+	  fetch-last-field
+	  guarantee-rmail-variables-initialized
+	  make-in-reply-to-field
+	  prompt-for-rmail-output-filename
+	  rfc822-region->babyl
+	  rfc822-region-reply-headers
+	  rmail-output-to-rmail-file
+	  rmail-output-to-unix-mail-file
+	  rmail-spool-directory
+	  with-buffer-open))
+
+(define-package (edwin rfc822)
+  (files "rfc822")
+  (parent (edwin))
+  (export (edwin)
+	  rfc822:addresses->string
+	  rfc822:canonicalize-address-string
+	  rfc822:first-address
+	  rfc822:header-field-name?
+	  rfc822:parse-addr-spec
+	  rfc822:parse-domain
+	  rfc822:parse-list
+	  rfc822:parse-msg-id
+	  rfc822:parse-word
+	  rfc822:quote-string
+	  rfc822:received-header-components
+	  rfc822:string->addresses
+	  rfc822:string->tokens
+	  rfc822:strip-comments
+	  rfc822:strip-quoted-names
+	  rfc822:tokens->string))
+
+(define-package (edwin stepper)
+  (files "eystep")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$step-defun
+	  edwin-command$step-expression
+	  edwin-command$step-last-sexp
+	  edwin-command$stepper-contract
+	  edwin-command$stepper-expand
+	  edwin-command$stepper-run
+	  edwin-command$stepper-step
+	  edwin-command$stepper-step-over
+	  edwin-command$stepper-step-until
+	  edwin-command$stepper-step-until-visibly
+	  edwin-command$stepper-summary
+	  edwin-mode$stepper)
+  (import (runtime debugger)
+	  debugger-pp)
+  (import (runtime stepper)
+	  step-output
+	  step-output-final-result
+	  step-output-initialize
+	  stepper-last-event
+	  stepper-root-node
+	  ynode-children
+	  ynode-contract!
+	  ynode-doesnt-need-redisplay!
+	  ynode-exp
+	  ynode-exp-special
+	  ynode-expand!
+	  ynode-hidden-children?
+	  ynode-needs-redisplay?
+	  ynode-result
+	  ynode-result-special
+	  ynode-type
+	  ynode-value-node)
+  (initialization (initialize-package!)))
+
+(define-package (edwin news-reader)
+  (files "snr")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$news-all-groups
+	  edwin-command$news-catch-up-group
+	  edwin-command$news-clear-read-messages
+	  edwin-command$news-collapse-threads
+	  edwin-command$news-compose-article
+	  edwin-command$news-compose-article-other-window
+	  edwin-command$news-compose-followup-article
+	  edwin-command$news-delete-article
+	  edwin-command$news-delete-thread
+	  edwin-command$news-expand-threads
+	  edwin-command$news-expunge-group
+	  edwin-command$news-forward-article
+	  edwin-command$news-group-next-thread
+	  edwin-command$news-group-next-thread-article
+	  edwin-command$news-group-next-unread-article
+	  edwin-command$news-group-next-unread-header
+	  edwin-command$news-group-previous-thread
+	  edwin-command$news-group-previous-thread-article
+	  edwin-command$news-group-previous-unread-article
+	  edwin-command$news-group-previous-unread-header
+	  edwin-command$news-group-quit
+	  edwin-command$news-group-show-header
+	  edwin-command$news-group-show-subject
+	  edwin-command$news-ignore-article-thread
+	  edwin-command$news-ignore-thread
+	  edwin-command$news-kill-current-buffer
+	  edwin-command$news-mark-article
+	  edwin-command$news-mark-thread
+	  edwin-command$news-move-to-distribution
+	  edwin-command$news-move-to-followup-to
+	  edwin-command$news-move-to-keywords
+	  edwin-command$news-move-to-newsgroups
+	  edwin-command$news-move-to-summary
+	  edwin-command$news-new-groups
+	  edwin-command$news-next-article
+	  edwin-command$news-next-thread-article
+	  edwin-command$news-next-unread-article
+	  edwin-command$news-next-unread-article-in-thread
+	  edwin-command$news-output-article
+	  edwin-command$news-output-article-to-rmail-file
+	  edwin-command$news-previous-article
+	  edwin-command$news-previous-thread-article
+	  edwin-command$news-previous-unread-article
+	  edwin-command$news-previous-unread-article-in-thread
+	  edwin-command$news-read-group-headers
+	  edwin-command$news-read-marked-bodies
+	  edwin-command$news-read-subscribed-group-headers
+	  edwin-command$news-refresh-group
+	  edwin-command$news-refresh-groups
+	  edwin-command$news-reply-to-article
+	  edwin-command$news-revert-group
+	  edwin-command$news-save-server-data
+	  edwin-command$news-select-article
+	  edwin-command$news-select-group
+	  edwin-command$news-subscribe-group
+	  edwin-command$news-subscribe-group-by-name
+	  edwin-command$news-toggle-article-context
+	  edwin-command$news-toggle-article-header
+	  edwin-command$news-toggle-online
+	  edwin-command$news-toggle-thread
+	  edwin-command$news-unmark-article
+	  edwin-command$news-unmark-article-backwards
+	  edwin-command$news-unmark-thread
+	  edwin-command$news-unsubscribe-group
+	  edwin-command$news-unsubscribe-group-backwards
+	  edwin-command$read-newsrc-file
+	  edwin-command$rnews
+	  edwin-command$write-newsrc-file
+	  edwin-mode$compose-news
+	  edwin-mode$news-article
+	  edwin-mode$news-common
+	  edwin-mode$news-group
+	  edwin-mode$news-server
+	  edwin-variable$compose-news-mode-hook
+	  edwin-variable$news-article-context-lines
+	  edwin-variable$news-article-highlight-selected
+	  edwin-variable$news-article-mode-hook
+	  edwin-variable$news-automatically-collapse-threads
+	  edwin-variable$news-common-mode-hook
+	  edwin-variable$news-group-author-columns
+	  edwin-variable$news-group-cache-policy
+	  edwin-variable$news-group-ignore-hidden-subjects
+	  edwin-variable$news-group-ignored-subject-retention
+	  edwin-variable$news-group-keep-ignored-headers
+	  edwin-variable$news-group-keep-seen-headers
+	  edwin-variable$news-group-mode-hook
+	  edwin-variable$news-group-show-author-name
+	  edwin-variable$news-group-show-context-headers
+	  edwin-variable$news-group-show-seen-headers
+	  edwin-variable$news-hide-groups
+	  edwin-variable$news-initially-collapse-threads
+	  edwin-variable$news-join-threads-with-same-subject
+	  edwin-variable$news-refresh-group-when-selected
+	  edwin-variable$news-server
+	  edwin-variable$news-server-initial-refresh
+	  edwin-variable$news-server-mode-hook
+	  edwin-variable$news-server-name-appearance
+	  edwin-variable$news-server-offline-timeout
+	  edwin-variable$news-server-proxy-alist
+	  edwin-variable$news-show-nonexistent-groups
+	  edwin-variable$news-show-unsubscribed-groups
+	  edwin-variable$news-sort-groups
+	  edwin-variable$news-split-threads-on-subject-changes))
+
+(define-package (edwin nntp)
+  (files "nntp")
+  (parent (edwin))
+#|
+  ;; This program doesn't need to be part of Edwin except for these
+  ;; two bindings.  MESSAGE could be easily implemented in any
+  ;; interface.  OS/FIND-PROGRAM has nothing to do with Edwin in the
+  ;; first place, and should be in the runtime system.
+  (parent ())
+  (import (edwin)
+	  message
+	  os/find-program)
+|#
+  (export (edwin news-reader)
+	  canonicalize-subject
+	  compare-subjects
+	  find-active-news-group
+	  find-news-group
+	  make-news-group
+	  make-nntp-connection
+	  news-group:<
+	  news-group:active?
+	  news-group:cached-header
+	  news-group:cached-headers
+	  news-group:close-database
+	  news-group:connection
+	  news-group:discard-cached-header!
+	  news-group:estimated-n-articles
+	  news-group:first-article
+	  news-group:header
+	  news-group:headers
+	  news-group:id->header
+	  news-group:last-article
+	  news-group:name
+	  news-group:pre-read-headers
+	  news-group:purge-header-cache
+	  news-group:purge-pre-read-headers
+	  news-group:reader-hook
+	  news-group:server
+	  news-group:server-info
+	  news-group:update-server-info!
+	  news-group:use-gdbm?
+	  news-group?
+	  news-header:<
+	  news-header:field-value
+	  news-header:followup-to
+	  news-header:followups
+	  news-header:from
+	  news-header:group
+	  news-header:guarantee-full-text!
+	  news-header:message-id
+	  news-header:n-lines
+	  news-header:number
+	  news-header:pre-read-body
+	  news-header:pre-read-body?
+	  news-header:read-body
+	  news-header:reader-hook
+	  news-header:real?
+	  news-header:references
+	  news-header:subject
+	  news-header:text
+	  news-header:thread
+	  news-header:xref
+	  news-header?
+	  news-thread:<
+	  news-thread:for-each-header
+	  news-thread:reader-hook
+	  news-thread:root
+	  news-thread?
+	  nntp-connection:active-groups
+	  nntp-connection:close
+	  nntp-connection:closed?
+	  nntp-connection:new-groups
+	  nntp-connection:post-article
+	  nntp-connection:purge-group-cache
+	  nntp-connection:reader-hook
+	  nntp-connection:reopen
+	  nntp-connection:server
+	  nntp-connection?
+	  organize-headers-into-threads
+	  set-news-group:reader-hook!
+	  set-news-group:server-info!
+	  set-news-group:use-gdbm!
+	  set-news-header:reader-hook!
+	  set-news-thread:reader-hook!
+	  set-nntp-connection:reader-hook!
+	  token->number))
+
+(define-package (edwin keyparser)
+  (files "keyparse")
+  (parent (edwin))
+  (export (edwin)
+	  define-keyparser-pattern
+	  define-keyparser-statement-leader
+	  delete-keyparser-pattern
+	  delete-keyparser-statement-leader
+	  edwin-command$complete-keyword
+	  edwin-command$keyparser-indent-line
+	  edwin-command$keyparser-indent-region
+	  edwin-variable$keyparser-description
+	  edwin-variable$keyword-table
+	  keyparse-forward
+	  keyparse-initial
+	  keyparse-partial
+	  keyparser-compute-indentation
+	  keyparser-compute-indentation-1
+	  keyparser-fragment/indent-body
+	  keyparser-fragment/indent-header
+	  keyparser-fragment/keyword
+	  keyparser-fragment/match-header
+	  keyparser-fragment/parse-body
+	  keyparser-fragment/parse-header
+	  keyparser-fragment/pop-container
+	  keyparser-fragment?
+	  keyparser-patterns
+	  keyparser-stack-entry/end?
+	  keyparser-stack-entry/fragment
+	  keyparser-stack-entry/index
+	  keyparser-stack-entry/keyword
+	  keyparser-stack-entry/pattern
+	  keyparser-stack-entry/start
+	  keyparser-stack-entry?
+	  keyparser-statement-leaders
+	  make-keyparser-description
+	  make-keyparser-fragment))
+
+(define-package (edwin verilog)
+  (files "verilog")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$verilog-mode
+	  edwin-mode$verilog))
+
+(define-package (edwin vhdl)
+  (files "vhdl")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$vhdl-mode
+	  edwin-mode$vhdl))
+
+(define-package (edwin password-edit)
+  (files "pwedit" "pwparse")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$mouse-toggle-pw-form
+	  edwin-command$toggle-pw-form
+	  edwin-command$view-password-file
+	  edwin-mode$password-view))
+
+(define-package (edwin debian-changelog)
+  (files "debian-changelog")
+  (parent (edwin))
+  (export (edwin)
+	  edwin-command$debian-changelog-add-entry
+	  edwin-command$debian-changelog-add-version
+	  edwin-command$debian-changelog-distribution
+	  edwin-command$debian-changelog-finalize-and-save
+	  edwin-command$debian-changelog-finalize-last-version
+	  edwin-command$debian-changelog-unfinalize-last-version
+	  edwin-command$debian-changelog-urgency
+	  edwin-mode$debian-changelog
+	  edwin-variable$add-log-full-name
+	  edwin-variable$add-log-mailing-address
+	  edwin-variable$debian-changelog-mode-hook))

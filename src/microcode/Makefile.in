@@ -1,0 +1,727 @@
+# This file automatically generated from Makefile.in.in
+# on Thu, 14 Mar 2002 23:19:01 -0500.
+
+# $Id: Makefile.in.in,v 1.20 2002/01/29 20:43:14 cph Exp $
+#
+# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+# **** Tool configuration ****
+
+AUXDIR = $(libdir)/mit-scheme
+
+CC = @CC@
+M4 = $(srcdir)/makegen/m4.sh
+AS = as
+TAR = tar
+GZIP_ENV = --best
+
+DEFS = -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\" @DEFS@ \
+       @SCHEME_DEFS@ -I. -I$(srcdir) -I.
+CFLAGS = @CFLAGS@
+X_CFLAGS = @X_CFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+M4_FLAGS = @M4_FLAGS@
+AS_FLAGS = @AS_FLAGS@
+
+COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) $(X_CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
+EXPAND = $(M4) $(M4_FLAGS)
+ASSEMBLE = $(AS) $(AS_FLAGS)
+
+# **** Configured files ****
+
+GC_HEAD_FILES = @GC_HEAD_FILES@
+OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
+OPTIONAL_OBJECTS = @OPTIONAL_OBJECTS@
+STATIC_LIBS = @STATIC_PREFIX@ @STATIC_LIBS@ @STATIC_SUFFIX@
+X_LIBS = @X_PRE_LIBS@ @LIB_X11@ @X_EXTRA_LIBS@
+PRBFISH_LIBS = @PRBFISH_LIBS@
+PRMD5_LIBS = @PRMD5_LIBS@
+
+MODULE_TARGETS = @MODULE_TARGETS@
+MODULE_CFLAGS = @MODULE_CFLAGS@
+MODULE_LDFLAGS = @MODULE_LDFLAGS@
+COMPILE_MODULE = $(COMPILE) $(MODULE_CFLAGS)
+LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
+MODULE_LIBS = -lc
+
+# **** Non-configured files ****
+
+CORE_SOURCES = artutl.c avltree.c bignum.c bigprm.c bitstr.c boot.c char.c \
+	comutl.c daemon.c debug.c dfloat.c error.c extern.c fasload.c \
+	fixnum.c flonum.c generic.c hooks.c hunk.c intern.c interp.c intprm.c \
+	list.c lookprm.c lookup.c missing.c obstack.c option.c osscheme.c \
+	ostty.c outf.c prim.c primutl.c prmcon.c ptrvec.c purutl.c regex.c \
+	rgxprim.c step.c storage.c string.c syntax.c sysprim.c term.c tterm.c \
+	transact.c utils.c vector.c wind.c
+OS_PRIM_SOURCES = prosenv.c prosfile.c prosfs.c prosio.c prosproc.c prospty.c \
+	prosterm.c prostty.c pruxsock.c
+UNIX_SOURCES =  intext.c pruxenv.c pruxfs.c pruxio.c ux.c uxctty.c uxenv.c \
+	uxfile.c uxfs.c uxio.c uxproc.c uxsig.c uxsock.c uxterm.c uxtop.c \
+	uxtrap.c uxtty.c uxutil.c
+STD_GC_SOURCES = fasdump.c gcloop.c memmag.c purify.c wabbit.c
+BCH_GC_SOURCES = bchdmp.c bchgcl.c bchmmg.c bchpur.c bchutl.c
+
+CORE_OBJECTS = artutl.o avltree.o bignum.o bigprm.o bitstr.o boot.o char.o \
+	comutl.o daemon.o debug.o dfloat.o error.o extern.o fasload.o \
+	fixnum.o flonum.o generic.o hooks.o hunk.o intern.o interp.o intprm.o \
+	list.o lookprm.o lookup.o missing.o obstack.o option.o osscheme.o \
+	ostty.o outf.o prim.o primutl.o prmcon.o ptrvec.o purutl.o regex.o \
+	rgxprim.o step.o storage.o string.o syntax.o sysprim.o term.o tterm.o \
+	transact.o utils.o vector.o wind.o
+OS_PRIM_OBJECTS = prosenv.o prosfile.o prosfs.o prosio.o prosproc.o prospty.o \
+	prosterm.o prostty.o pruxsock.o
+UNIX_OBJECTS =  intext.o pruxenv.o pruxfs.o pruxio.o ux.o uxctty.o uxenv.o \
+	uxfile.o uxfs.o uxio.o uxproc.o uxsig.o uxsock.o uxterm.o uxtop.o \
+	uxtrap.o uxtty.o uxutil.o
+STD_GC_OBJECTS = fasdump.o gcloop.o memmag.o purify.o wabbit.o
+BCH_GC_OBJECTS = bchdmp.o bchgcl.o bchmmg.o bchpur.o bchutl.o
+
+SHARED_SOURCES = $(CORE_SOURCES) $(OS_PRIM_SOURCES) $(UNIX_SOURCES) \
+	$(OPTIONAL_SOURCES)
+
+SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
+	$(OPTIONAL_OBJECTS)
+
+# **** Program definitions ****
+
+bin_PROGRAMS = scheme bchscheme
+aux_PROGRAMS = gcdrone
+aux_LIBS = $(MODULE_TARGETS)
+aux_DATA = utabmd.bin
+EXTRA_PROGRAMS = findprim bintopsb psbtobin
+
+scheme_SOURCES = $(SHARED_SOURCES) $(STD_GC_SOURCES) usrdef.c
+scheme_OBJECTS = $(SHARED_OBJECTS) $(STD_GC_OBJECTS) usrdef.o
+scheme_DEPENDENCIES = 
+scheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+scheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchscheme_SOURCES = $(SHARED_SOURCES) $(BCH_GC_SOURCES) bchdef.c
+bchscheme_OBJECTS = $(SHARED_OBJECTS) $(BCH_GC_OBJECTS) bchdef.o
+bchscheme_DEPENDENCIES = 
+bchscheme_LDFLAGS = @X_LIBS@ @DLD_LDFLAGS@
+bchscheme_LIBS = $(STATIC_LIBS) $(X_LIBS) $(LIBS)
+
+bchdrn_SOURCES = bchdrn.c bchutl.c
+bchdrn_OBJECTS = bchdrn.o bchutl.o
+bchdrn_DEPENDENCIES = 
+bchdrn_LDFLAGS = 
+bchdrn_LIBS = $(LIBS)
+
+findprim_SOURCES = findprim.c
+findprim_OBJECTS = findprim.o
+findprim_DEPENDENCIES = 
+findprim_LDFLAGS = 
+findprim_LIBS = $(LIBS)
+
+bintopsb_SOURCES = bintopsb.c missing.c
+bintopsb_OBJECTS = bintopsb.o missing.o
+bintopsb_DEPENDENCIES = 
+bintopsb_LDFLAGS = 
+bintopsb_LIBS = $(LIBS)
+
+psbtobin_SOURCES = psbtobin.c missing.c
+psbtobin_OBJECTS = psbtobin.o missing.o
+psbtobin_DEPENDENCIES = 
+psbtobin_LDFLAGS = 
+psbtobin_LIBS = $(LIBS)
+
+ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_LIBS = $(aux_LIBS)
+ALL_DATA = $(aux_DATA)
+
+MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c bchdef.c
+
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+
+DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
+	cmpauxmd.m4 cmpintmd.h TAGS
+
+MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps config.h.in configure
+
+# **** Implicit rules ****
+
+.SUFFIXES:
+.SUFFIXES: .c .o .s .m4
+
+.c.o:
+	$(COMPILE) -c $*.c
+
+.m4.s:
+	$(EXPAND) $*.m4 > $*.s
+
+.s.o:
+	$(ASSEMBLE) -o $*.o $*.s
+
+# **** Main rules ****
+
+default-target: $(ALL_PROGRAMS) $(ALL_LIBS)
+
+all: $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA)
+
+scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
+
+usrdef.c: $(SHARED_SOURCES) $(STD_GC_SOURCES) findprim
+	-rm -f $@
+	./findprim $(SHARED_SOURCES) $(STD_GC_SOURCES) > usrdef.c
+
+bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
+
+bchdef.c: $(SHARED_SOURCES) $(BCH_GC_SOURCES) findprim
+	-rm -f $@
+	./findprim $(SHARED_SOURCES) $(BCH_GC_SOURCES) > bchdef.c
+
+gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
+
+findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
+
+bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
+
+psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+utabmd.bin: utabmd.scm
+	./utabmd.sh
+
+prbfish.so: prbfish.o
+	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
+
+prmd5.so: prmd5.o
+	$(LINK_MODULE) $^ $(PRMD5_LIBS) $(MODULE_LIBS)
+
+prmhash.so: prmhash.o
+	$(LINK_MODULE) $^ -lmhash $(MODULE_LIBS)
+
+prmcrypt.so: prmcrypt.o
+	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
+
+@MODULE_RULES@
+
+tags: TAGS
+TAGS:
+	etags -r '/^DEF[A-Za-z_ \t(]+"\([^"]+\)"/' *.[ch]
+
+mostlyclean:
+	-rm -f $(MOSTLYCLEAN_FILES)
+
+clean: mostlyclean
+	-rm -f $(CLEAN_FILES)
+
+distclean: clean
+	-rm -f $(DISTCLEAN_FILES)
+
+maintainer-clean: distclean
+	-rm -f $(MAINTAINER_CLEAN_FILES)
+	( cd cmpauxmd && $(MAKE) $@ )
+
+install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
+	install-auxDATA
+
+install-binPROGRAMS: $(bin_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(bindir)
+	@list='$(bin_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
+	    fi; \
+	done
+
+install-auxPROGRAMS: $(aux_PROGRAMS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	@list='$(aux_PROGRAMS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
+
+install-auxLIBS: $(aux_LIBS)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/lib
+	@list='$(aux_LIBS)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/lib/.; \
+	    fi; \
+	done
+
+install-auxDATA: $(aux_DATA)
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	@list='$(aux_DATA)'; \
+	for p in $$list; do \
+	    if test -f $$p; then \
+		echo "  $(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/."; \
+		$(INSTALL_DATA) $$p $(DESTDIR)$(AUXDIR)/.; \
+	    fi; \
+	done
+
+.PHONY: default-target
+.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
+.PHONY: install install_binPROGRAMS install_auxPROGRAMS install_auxDATA
+
+# **** File dependencies ****
+
+artutl.o: artutl.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h returns.h \
+	scheme.h scode.h sdata.h stack.h types.h
+avltree.o: avltree.c ansidecl.h avltree.h config.h confshared.h
+bchdmp.o: bchdmp.c ansidecl.h bchgcc.h bignum.h bkpt.h cmpgc.h cmpintmd.h \
+	cmptype.h config.h confshared.h const.h critsec.h default.h dstack.h \
+	dump.c errors.h extern.h fasl.h fixobj.h futures.h gc.h gccode.h \
+	interp.h intext.h intrpt.h lookup.h object.h obstack.h os.h osfile.h \
+	osfs.h osio.h osscheme.h outf.h prim.h prims.h returns.h scheme.h \
+	scode.h sdata.h stack.h syscall.h trap.h types.h ux.h uxio.h
+bchdrn.o: bchdrn.c ansidecl.h bchdrn.h config.h confshared.h dstack.h \
+	intext.h os.h osscheme.h outf.h syscall.h ux.h
+bchgcl.o: bchgcl.c ansidecl.h bchgcc.h bignum.h bkpt.h cmpgc.h cmpintmd.h \
+	cmptype.h config.h confshared.h const.h critsec.h default.h dstack.h \
+	errors.h extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h \
+	object.h obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h
+bchmmg.o: bchmmg.c ansidecl.h bchdrn.h bchgcc.h bignum.h bkpt.h cmpgc.h \
+	cmpintmd.h cmptype.h config.h confshared.h const.h critsec.h \
+	default.h dstack.h errors.h extern.h fixobj.h futures.h gc.h gccode.h \
+	interp.h intext.h intrpt.h memmag.h object.h obstack.h option.h os.h \
+	osenv.h osfs.h osscheme.h outf.h prim.h prims.h returns.h scheme.h \
+	scode.h sdata.h stack.h syscall.h types.h ux.h
+bchpur.o: bchpur.c ansidecl.h bchgcc.h bignum.h bkpt.h cmpgc.h cmpintmd.h \
+	cmptype.h config.h confshared.h const.h critsec.h default.h dstack.h \
+	errors.h extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h \
+	object.h obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h types.h zones.h
+bchutl.o: bchutl.c ansidecl.h config.h confshared.h
+bignum.o: bignum.c ansidecl.h bignmint.h bignum.h bkpt.h config.h \
+	confshared.h const.h critsec.h default.h dstack.h errors.h extern.h \
+	fixobj.h futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+bigprm.o: bigprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h zones.h
+bintopsb.o: bintopsb.c ansidecl.h bignmint.h bignum.h bitstr.h bltdef.h \
+	cmpgc.h cmpintmd.h cmptype.h comlin.c comlin.h config.h confshared.h \
+	const.h fasl.h gccode.h load.c object.h prims.h psbmap.h sdata.h \
+	trap.h types.h
+bitstr.o: bitstr.c ansidecl.h bignum.h bitstr.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+boot.o: boot.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h option.h os.h ostop.h \
+	ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h version.h
+char.o: char.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+cmpint.o: cmpint.c ansidecl.h cmpgc.h cmpintmd.h cmptype.h config.h \
+	confshared.h const.h default.h dstack.h errors.h extern.h fixobj.h \
+	gc.h interp.h intrpt.h lookup.h object.h outf.h prim.h prims.h \
+	returns.h sdata.h stack.h trap.h types.h
+comutl.o: comutl.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+daemon.o: daemon.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osio.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+debug.o: debug.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h lookup.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h trap.h types.h
+dfloat.o: dfloat.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+error.o: error.c ansidecl.h config.h confshared.h dstack.h outf.h
+extern.o: extern.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+fasdump.o: fasdump.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h dump.c \
+	errors.h extern.h fasl.h fixobj.h futures.h gc.h gccode.h interp.h \
+	intrpt.h lookup.h object.h obstack.h os.h osfile.h osfs.h osio.h \
+	osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h trap.h types.h
+fasload.o: fasload.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fasl.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h \
+	load.c object.h obstack.h option.h os.h osfile.h osio.h osscheme.h \
+	outf.h prim.h prims.h prmcon.h returns.h scheme.h scode.h sdata.h \
+	stack.h trap.h types.h
+findprim.o: findprim.c ansidecl.h config.h confshared.h
+fixnum.o: fixnum.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h mul.c object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+flonum.o: flonum.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h zones.h
+gcloop.o: gcloop.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h object.h \
+	obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+generic.o: generic.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+hooks.o: hooks.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h history.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h winder.h
+hunk.o: hunk.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+intern.o: intern.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h trap.h types.h
+interp.o: interp.c ansidecl.h bignum.h bkpt.h cmpint.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h history.h interp.h intrpt.h locks.h lookup.h object.h \
+	obstack.h outf.h prim.h prmcon.h returns.h scheme.h scode.h sdata.h \
+	stack.h trap.h types.h winder.h zones.h
+intext.o: intext.c ansidecl.h dstack.h intext.h
+intprm.o: intprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h zones.h
+list.o: list.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+lookprm.o: lookprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h locks.h lookup.h object.h obstack.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h trap.h \
+	types.h
+lookup.o: lookup.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h lookup.h object.h obstack.h outf.h prim.h \
+	returns.h scheme.h scode.h sdata.h stack.h trap.h types.h
+memmag.o: memmag.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h memmag.h \
+	object.h obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h types.h
+missing.o: missing.c ansidecl.h config.h confshared.h
+obstack.o: obstack.c ansidecl.h config.h confshared.h obstack.h
+option.o: option.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fasl.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osenv.h \
+	osfs.h outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+osscheme.o: osscheme.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osscheme.h \
+	outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+ostty.o: ostty.c ansidecl.h config.h confshared.h os.h osscheme.h ostty.h \
+	outf.h
+outf.o: outf.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h returns.h \
+	scheme.h scode.h sdata.h stack.h types.h
+prbfish.o: prbfish.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+prgdbm.o: prgdbm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+prim.o: prim.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+primutl.o: primutl.c ansidecl.h avltree.h bignum.h bkpt.h cmpgc.h cmpintmd.h \
+	cmptype.h config.h confshared.h const.h critsec.h default.h dstack.h \
+	errors.h extern.h fixobj.h futures.h gc.h interp.h intrpt.h object.h \
+	obstack.h os.h outf.h prename.h prim.h prims.h returns.h scheme.h \
+	scode.h sdata.h stack.h syscall.h types.h usrdef.h
+prmcon.o: prmcon.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	prmcon.h returns.h scheme.h scode.h sdata.h stack.h types.h
+prmcrypt.o: prmcrypt.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h \
+	usrdef.h
+prmd5.o: prmd5.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+prmhash.o: prmhash.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h usrdef.h
+prosenv.o: prosenv.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osenv.h ostop.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+prosfile.o: prosfile.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osfile.h \
+	outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+prosfs.o: prosfs.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osfile.h osfs.h osio.h \
+	outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+prosio.o: prosio.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osio.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+prosproc.o: prosproc.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osio.h \
+	osproc.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h
+prospty.o: prospty.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osio.h ospty.h \
+	osterm.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h
+prosterm.o: prosterm.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osio.h \
+	osterm.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h
+prostty.o: prostty.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osctty.h osfile.h \
+	osio.h ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h types.h
+pruxdld.o: pruxdld.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h usrdef.h
+pruxenv.o: pruxenv.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osio.h \
+	osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h syscall.h types.h ux.h uxsock.h
+pruxfs.o: pruxfs.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osfs.h \
+	osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h syscall.h types.h ux.h
+pruxio.o: pruxio.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osio.h \
+	osproc.h osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h syscall.h types.h ux.h uxproc.h uxselect.h
+pruxsock.o: pruxsock.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intext.h intrpt.h object.h obstack.h os.h \
+	osio.h osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h syscall.h types.h ux.h uxsock.h
+psbtobin.o: psbtobin.c ansidecl.h bignmint.h bignum.h bitstr.h cmpgc.h \
+	cmpintmd.h cmptype.h comlin.c comlin.h config.h confshared.h const.h \
+	dump.c fasl.h gccode.h object.h prims.h psbmap.h sdata.h types.h
+ptrvec.o: ptrvec.c ansidecl.h config.h confshared.h dstack.h outf.h
+purify.o: purify.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h object.h \
+	obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h types.h zones.h
+purutl.o: purutl.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpint.h cmpintmd.h \
+	cmptype.h config.h confshared.h const.h critsec.h default.h dstack.h \
+	errors.h extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h \
+	object.h obstack.h outf.h prim.h prims.h returns.h scheme.h scode.h \
+	sdata.h stack.h types.h zones.h
+regex.o: regex.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h regex.h \
+	returns.h scheme.h scode.h sdata.h stack.h syntax.h types.h
+rgxprim.o: rgxprim.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h edwin.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h regex.h returns.h scheme.h scode.h sdata.h stack.h syntax.h \
+	types.h
+step.o: step.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+storage.o: storage.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h gctype.c interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+string.o: string.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+syntax.o: syntax.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h edwin.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h syntax.h types.h
+sysprim.o: sysprim.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h ostop.h ostty.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+term.o: term.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h edwin.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h os.h osfile.h \
+	osfs.h osio.h ostop.h outf.h prim.h returns.h scheme.h scode.h \
+	sdata.h stack.h types.h
+termcap.o: termcap.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osscheme.h outf.h syscall.h ux.h
+terminfo.o: terminfo.c ansidecl.h config.h confshared.h
+tparam.o: tparam.c ansidecl.h
+transact.o: transact.c ansidecl.h config.h confshared.h dstack.h outf.h
+tterm.o: tterm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h os.h osterm.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h
+utils.o: utils.c ansidecl.h bignum.h bkpt.h cmpint.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h history.h interp.h intrpt.h object.h obstack.h outf.h \
+	prim.h prims.h returns.h scheme.h scode.h sdata.h stack.h syscall.h \
+	types.h winder.h
+ux.o: ux.c ansidecl.h config.h confshared.h dstack.h intext.h os.h osscheme.h \
+	outf.h syscall.h ux.h
+uxctty.o: uxctty.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osctty.h osscheme.h ossig.h outf.h syscall.h ux.h
+uxenv.o: uxenv.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osenv.h osscheme.h outf.h syscall.h ux.h
+uxfile.o: uxfile.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osfile.h osio.h osscheme.h outf.h syscall.h ux.h uxio.h
+uxfs.o: uxfs.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osfile.h osfs.h osio.h osscheme.h outf.h syscall.h ux.h
+uxio.o: uxio.c ansidecl.h config.h confshared.h dstack.h intext.h os.h osio.h \
+	osproc.h osscheme.h outf.h syscall.h ux.h uxio.h uxproc.h uxselect.h
+uxproc.o: uxproc.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osio.h osproc.h osscheme.h osterm.h ostop.h outf.h syscall.h ux.h \
+	uxio.h uxproc.h
+uxsig.o: uxsig.c ansidecl.h config.h confshared.h critsec.h dstack.h intext.h \
+	os.h osctty.h osscheme.h ossig.h ostop.h ostty.h outf.h syscall.h \
+	ux.h uxsig.h uxtrap.h uxutil.h
+uxsock.o: uxsock.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osio.h osscheme.h outf.h prims.h syscall.h ux.h uxio.h uxsock.h
+uxterm.o: uxterm.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osio.h ospty.h osscheme.h osterm.h outf.h prims.h syscall.h ux.h \
+	uxio.h uxterm.h
+uxtop.o: uxtop.c ansidecl.h config.h confshared.h default.h dstack.h errors.h \
+	extern.h intext.h option.h os.h osctty.h osscheme.h ostop.h outf.h \
+	syscall.h ux.h uxtop.h uxutil.h
+uxtrap.o: uxtrap.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fixobj.h futures.h gc.h gccode.h interp.h intext.h intrpt.h \
+	object.h obstack.h option.h os.h osscheme.h ostop.h outf.h prim.h \
+	returns.h scheme.h scode.h sdata.h stack.h syscall.h types.h ux.h \
+	uxtrap.h uxutil.h
+uxtty.o: uxtty.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osenv.h osio.h osscheme.h osterm.h ostty.h outf.h syscall.h ux.h \
+	uxio.h uxterm.h
+uxutil.o: uxutil.c ansidecl.h config.h confshared.h dstack.h intext.h os.h \
+	osscheme.h outf.h syscall.h ux.h uxutil.h
+vector.o: vector.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h
+wabbit.o: wabbit.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fixobj.h futures.h gc.h gccode.h interp.h intrpt.h object.h \
+	obstack.h outf.h prim.h returns.h scheme.h scode.h sdata.h stack.h \
+	types.h
+wind.o: wind.c ansidecl.h config.h confshared.h dstack.h obstack.h outf.h
+x11base.o: x11base.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intext.h intrpt.h object.h obstack.h os.h osio.h \
+	osscheme.h outf.h prim.h prims.h returns.h scheme.h scode.h sdata.h \
+	stack.h syscall.h types.h ux.h uxselect.h x11.h
+x11color.o: x11color.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h x11.h
+x11graph.o: x11graph.c ansidecl.h bignum.h bkpt.h config.h confshared.h \
+	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
+	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
+	prims.h returns.h scheme.h scode.h sdata.h stack.h types.h x11.h
+x11term.o: x11term.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
+	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
+	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \
+	returns.h scheme.h scode.h sdata.h stack.h types.h x11.h
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

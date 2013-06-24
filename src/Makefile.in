@@ -1,0 +1,91 @@
+# $Id: Makefile.in,v 1.19 2002/01/29 05:16:57 cph Exp $
+#
+# Copyright (c) 2000-2002 Massachusetts Institute of Technology
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or (at
+# your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
+
+# **** BEGIN BOILERPLATE ****
+
+SHELL = @SHELL@
+
+@SET_MAKE@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+top_builddir = .
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+
+LN_S = @LN_S@
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+
+# **** END BOILERPLATE ****
+
+SUBDIRS = 6001 compiler rcs runtime-check sf win32 $(INSTALLED_SUBDIRS)
+INSTALLED_SUBDIRS = microcode runtime cref edwin imail sos star-parser xml
+
+AUXDIR = @AUXDIR@
+EDETC = $(AUXDIR)/edwin/etc
+
+
+all:
+	( cd microcode && $(MAKE) all )
+	$(srcdir)/etc/compile.sh $(srcdir)
+	$(srcdir)/etc/build-bands.sh
+
+mostlyclean clean distclean maintainer-clean:
+	$(srcdir)/Clean.sh $@ $(SUBDIRS)
+
+tags TAGS:
+	$(srcdir)/Tags.sh $(SUBDIRS)
+
+install:
+	@for SUBDIR in $(INSTALLED_SUBDIRS); do \
+	    echo "Making $@ in $${SUBDIR}";\
+	    ( cd $${SUBDIR}; $(MAKE) $@ ) || exit 1;\
+	done
+
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(INSTALL_DATA) $(srcdir)/lib/optiondb.scm $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_DATA) $(srcdir)/lib/*.com $(DESTDIR)$(AUXDIR)/.
+
+	$(mkinstalldirs) $(DESTDIR)$(EDETC)
+	$(INSTALL_DATA) $(srcdir)/etc/TUTORIAL $(DESTDIR)$(EDETC)/.
+	$(INSTALL_DATA) $(srcdir)/etc/mime.types $(DESTDIR)$(EDETC)/.
+
+.PHONY: all mostlyclean clean distclean maintainer-clean tags TAGS install
