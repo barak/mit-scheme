@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: motcom.scm,v 1.51 2003/02/25 20:53:12 cph Exp $
+$Id: motcom.scm,v 1.52 2005/11/24 00:00:59 riastradh Exp $
 
 Copyright 1987,1989,1991,1993,2003 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -122,10 +123,20 @@ Only \\[previous-line] and \\[next-line] are affected."
 	identity-procedure
 	current-column)))
 
+(define-variable next-line-add-newlines
+  "Controls whether `next-line' may add newlines at buffer end.
+If true, when `next-line' is run at the end of a buffer, it will
+  insert a new line to travel onto.
+If false, when `next-line' is run at the end of a buffer, it will
+  beep and do nothing."
+  #t
+  boolean?)
+
 (define-command next-line
   "Move down vertically to next real line.
-Continuation lines are skipped.  If given after the
-last newline in the buffer, makes a new one at the end."
+Continuation lines are skipped.
+If `next-line-add-newlines' is true and this command is given after
+  the last newline in the buffer, make a new one at the end."
   "P"
   (lambda (argument)
     (let ((argument (command-argument-value argument))
@@ -136,7 +147,9 @@ last newline in the buffer, makes a new one at the end."
 		   (set-current-point! (move-to-column mark column))
 		   (begin
 		     (set-current-point! (group-end (current-point)))
-		     (insert-newlines 1)))))
+		     (if (ref-variable next-line-add-newlines)
+                         (insert-newline)
+                         (editor-failure))))))
 	    ((not (zero? argument))
 	     (set-current-point!
 	      (move-to-column (line-start (current-point) argument 'FAILURE)

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.35 2004/10/15 18:34:20 cph Exp $
+$Id: xml-output.scm,v 1.40 2006/01/31 06:14:20 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -37,6 +37,17 @@ USA.
       (set-coding xml port)
       (write-xml-1 xml port options))))
 
+(define (xml->string xml . options)
+  (call-with-output-string
+    (lambda (port)
+      (set-coding xml port)
+      (write-xml-1 xml port options))))
+
+(define (xml->wide-string xml . options)
+  (call-with-wide-output-string
+   (lambda (port)
+     (write-xml-1 xml port options))))
+
 (define (set-coding xml port)
   (let ((coding
 	 (or (normalize-coding port
@@ -47,14 +58,6 @@ USA.
     (port/set-line-ending port 'TEXT)
     (if (coding-requires-bom? coding)
 	(write-char #\U+FEFF port))))
-
-(define (xml->wide-string xml . options)
-  (call-with-wide-output-string
-   (lambda (port)
-     (write-xml-1 xml port options))))
-
-(define (xml->string xml . options)
-  (wide-string->utf8-string (apply xml->wide-string xml options)))
 
 (define (write-xml-1 xml port options)
   (%write-xml xml
@@ -160,8 +163,13 @@ USA.
 (define-method %write-xml ((pi <xml-processing-instructions>) ctx)
   (emit-string "<?" ctx)
   (write-xml-name (xml-processing-instructions-name pi) ctx)
-  (emit-string " " ctx)
-  (emit-string (xml-processing-instructions-text pi) ctx)
+  (let ((text (xml-processing-instructions-text pi)))
+    (if (fix:> (string-length text) 0)
+	(begin
+	  (if (not (char-set-member? char-set:xml-whitespace
+				     (string-ref text 0)))
+	      (emit-string " " ctx))
+	  (emit-string text ctx))))
   (emit-string "?>" ctx))
 
 (define-method %write-xml ((dtd <xml-dtd>) ctx)
@@ -453,15 +461,15 @@ USA.
 	  (write-indent col ctx)
 	  (emit-string "PUBLIC " ctx)
 	  (quoted-string (xml-external-id-id id))
-	  (if (xml-external-id-iri id)
+	  (if (xml-external-id-uri id)
 	      (begin
 		(write-indent col ctx)
-		(quoted-string (xml-external-id-iri id)))))
+		(quoted-string (uri->string (xml-external-id-uri id))))))
 	(begin
 	  (write-indent col ctx)
 	  (emit-string "SYSTEM" ctx)
 	  (emit-string " " ctx)
-	  (quoted-string (xml-external-id-iri id))))))
+	  (quoted-string (uri->string (xml-external-id-uri id)))))))
 
 (define (write-indent col ctx)
   (if col
@@ -492,8 +500,9 @@ USA.
 
 (define (for-each-wide-char string procedure)
   (let ((port (open-input-string string)))
+    (port/set-coding port 'UTF-8)
     (let loop ()
-      (let ((char (read-utf8-char port)))
+      (let ((char (read-char port)))
 	(if (not (eof-object? char))
 	    (begin
 	      (procedure char)

@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.26 2003/02/14 18:48:12 cph Exp $
+$Id: nttrap.c,v 1.27 2006/01/29 06:37:30 cph Exp $
 
-Copyright 1992-2002 Massachusetts Institute of Technology
+Copyright 1993,1997,1998,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -31,6 +32,10 @@ USA.
 #include "gccode.h"
 #include "ntscmlib.h"
 #include <windows.h>
+
+#ifdef __OPEN_WATCOM_14__
+#  include <excpt.h>
+#endif
 
 #ifdef W32_TRAP_DEBUG
 extern char * AskUser (char *, int);

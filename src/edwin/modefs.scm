@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: modefs.scm,v 1.166 2004/01/16 19:11:09 cph Exp $
+$Id: modefs.scm,v 1.167 2006/01/02 04:20:59 riastradh Exp $
 
 Copyright 1987,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1998,1999,2000 Massachusetts Institute of Technology
@@ -273,6 +273,7 @@ Like Fundamental mode, but no self-inserting characters.")
 (define-key 'fundamental '(#\c-x #\2) 'split-window-vertically)
 (define-key 'fundamental '(#\c-x #\3) 'split-window-horizontally)
 (define-prefix-key 'fundamental '(#\c-x #\4))
+(define-key 'fundamental '(#\C-x #\4 #\0) 'kill-buffer-and-window)
 (define-key 'fundamental '(#\c-x #\4 #\c-f) 'find-file-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\.) 'find-tag-other-window)
 (define-key 'fundamental '(#\c-x #\4 #\b) 'switch-to-buffer-other-window)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-top.scm,v 1.291 2005/09/07 19:24:28 cph Exp $
+$Id: imail-top.scm,v 1.294 2005/12/16 02:04:59 riastradh Exp $
 
 Copyright 1999,2000,2001,2002,2003,2004 Massachusetts Institute of Technology
 Copyright 2005 Massachusetts Institute of Technology
@@ -19,7 +19,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -165,7 +165,7 @@ Otherwise, they are inserted into the message body."
   "List of regular expressions matching character-set names.
 Text messages using these character sets are displayed inline;
  when other character sets are used, the text is treated as an attachment."
-  (list "us-ascii" "iso-8859-[0-9]+" "utf-?[78]"
+  (list "us-ascii" "iso-?8859-[0-9]+" "utf-?[78]"
 	"unicode-[0-9]+-[0-9]+-utf-[78]" ; RFC 1641
 	"windows-[0-9]+" "unknown-8bit")
   list-of-strings?)
@@ -2307,8 +2307,10 @@ Negative argument means search in reverse."
     (insert-header-fields message (and raw? (not (eq? raw? 'BODY-ONLY))) mark)
     (cond ((and raw? (not (eq? raw? 'HEADERS-ONLY)))
 	   (insert-message-body message mark))
-	  ((folder-supports-mime? (message-folder message))
-	   (insert-mime-message-body message mark inline-only? left-margin))
+	  ((mime-message-body-structure message)
+	   => (lambda (body-structure)
+                (insert-mime-message-body message body-structure
+                                          mark inline-only? left-margin)))
 	  (else
 	   (call-with-auto-wrapped-output-mark mark left-margin message
 	     (lambda (port)
@@ -2380,10 +2382,11 @@ Negative argument means search in reverse."
 
 ;;;; MIME message formatting
 
-(define (insert-mime-message-body message mark inline-only? left-margin)
+(define (insert-mime-message-body message body-structure
+                                  mark inline-only? left-margin)
   (walk-mime-message-part
    message
-   (mime-message-body-structure message)
+   body-structure
    '()
    (make-walk-mime-context inline-only? left-margin #f '())
    mark))
@@ -2702,19 +2705,6 @@ Negative argument means search in reverse."
   (body #f read-only #t)
   (selector #f read-only #t)
   (context #f read-only #t))
-
-(define (call-with-mime-decoding-output-port encoding port text? generator)
-  (case encoding
-    ((QUOTED-PRINTABLE)
-     (call-with-decode-quoted-printable-output-port port text? generator))
-    ((BASE64)
-     (call-with-decode-base64-output-port port text? generator))
-    ((BINHEX40)
-     (call-with-decode-binhex40-output-port port text? generator))
-    ((X-UUENCODE)
-     (call-with-decode-uue-output-port port text? generator))
-    (else
-     (generator port))))
 
 ;;;; Automatic wrap/fill
 

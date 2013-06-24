@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.32 2004/05/27 16:06:31 cph Exp $
+$Id: genio.scm,v 1.38 2006/02/01 06:13:07 cph Exp $
 
 Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
-Copyright 2003,2004 Massachusetts Institute of Technology
+Copyright 2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,32 +29,70 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-generic-i/o-port input-channel output-channel)
-  (if (not (or input-channel output-channel))
-      (error "Missing channel arguments."))
+(define (make-generic-i/o-port source sink)
+  (if (not (or source sink))
+      (error "Missing arguments."))
   (let ((port
-	 (make-port (cond ((not input-channel) generic-output-type)
-			  ((not output-channel) generic-input-type)
-			  (else generic-i/o-type))
-		    (make-gstate input-channel output-channel 'TEXT))))
-    (if input-channel (set-channel-port! input-channel port))
-    (if output-channel (set-channel-port! output-channel port))
+	 (make-port (generic-i/o-port-type (source-type source)
+					   (sink-type sink))
+		    (make-gstate source sink 'TEXT 'TEXT))))
+    (let ((ib (port-input-buffer port)))
+      (if ib
+	  ((source/set-port (input-buffer-source ib)) port)))
+    (let ((ob (port-output-buffer port)))
+      (if ob
+	  ((sink/set-port (output-buffer-sink ob)) port)))
     port))
+
+(define (source-type source)
+  (cond ((not source) #f)
+	((or (channel? source) ((source/get-channel source))) 'CHANNEL)
+	(else #t)))
+
+(define (sink-type sink)
+  (cond ((not sink) #f)
+	((or (channel? sink) ((sink/get-channel sink))) 'CHANNEL)
+	(else #t)))
+
+(define (generic-i/o-port-type source sink)
+  (case source
+    ((#F)
+     (case sink
+       ((#F) generic-type00)
+       ((CHANNEL) generic-type02)
+       (else generic-type01)))
+    ((CHANNEL)
+     (case sink
+       ((#F) generic-type20)
+       ((CHANNEL) generic-type22)
+       (else generic-type21)))
+    (else
+     (case sink
+       ((#F) generic-type10)
+       ((CHANNEL) generic-type12)
+       (else generic-type11)))))
 
 (define-structure (gstate (type vector) (constructor #f))
   ;; Changes to this structure must be copied to "fileio.scm" and
-  ;; "ttyio.scm".
+  ;; "ttyio.scm", "strnin.scm", "strout.scm", and "strott.scm".
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
-  line-ending)
+  line-ending
+  column)
 
-(define (make-gstate input-channel output-channel type . extra)
+(define (make-gstate source sink coder-name normalizer-name . extra)
   (list->vector
-   (cons* (and input-channel (make-input-buffer-1 input-channel type))
-	  (and output-channel (make-output-buffer-1 output-channel type))
-	  type
-	  type
+   (cons* (and source
+	       (make-input-buffer (->source source 'MAKE-GSTATE)
+				  coder-name
+				  normalizer-name))
+	  (and sink
+	       (make-output-buffer (->sink sink 'MAKE-GSTATE)
+				   coder-name
+				   normalizer-name))
+	  coder-name
+	  normalizer-name
 	  extra)))
 
 (define-integrable (port-input-buffer port)
@@ -64,34 +102,37 @@ USA.
   (gstate-output-buffer (port/state port)))
 
 (define (initialize-package!)
-  (let ((input-operations
+  (let ((ops:in1
 	 `((CHAR-READY? ,generic-io/char-ready?)
 	   (CLOSE-INPUT ,generic-io/close-input)
 	   (EOF? ,generic-io/eof?)
-	   (INPUT-BLOCKING-MODE ,generic-io/input-blocking-mode)
-	   (INPUT-CHANNEL ,generic-io/input-channel)
 	   (INPUT-OPEN? ,generic-io/input-open?)
-	   (INPUT-TERMINAL-MODE ,generic-io/input-terminal-mode)
 	   (READ-CHAR ,generic-io/read-char)
 	   (READ-EXTERNAL-SUBSTRING ,generic-io/read-external-substring)
 	   (READ-SUBSTRING ,generic-io/read-substring)
-	   (READ-WIDE-SUBSTRING ,generic-io/read-wide-substring)
+	   (READ-WIDE-SUBSTRING ,generic-io/read-wide-substring)))
+	(ops:in2
+	 `((INPUT-BLOCKING-MODE ,generic-io/input-blocking-mode)
+	   (INPUT-CHANNEL ,generic-io/input-channel)
+	   (INPUT-TERMINAL-MODE ,generic-io/input-terminal-mode)
 	   (SET-INPUT-BLOCKING-MODE ,generic-io/set-input-blocking-mode)
 	   (SET-INPUT-TERMINAL-MODE ,generic-io/set-input-terminal-mode)))
-	(output-operations
+	(ops:out1
 	 `((BUFFERED-OUTPUT-BYTES ,generic-io/buffered-output-bytes)
 	   (CLOSE-OUTPUT ,generic-io/close-output)
 	   (FLUSH-OUTPUT ,generic-io/flush-output)
-	   (OUTPUT-BLOCKING-MODE ,generic-io/output-blocking-mode)
-	   (OUTPUT-CHANNEL ,generic-io/output-channel)
+	   (OUTPUT-COLUMN ,generic-io/output-column)
 	   (OUTPUT-OPEN? ,generic-io/output-open?)
-	   (OUTPUT-TERMINAL-MODE ,generic-io/output-terminal-mode)
-	   (SET-OUTPUT-BLOCKING-MODE ,generic-io/set-output-blocking-mode)
-	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)
 	   (WRITE-CHAR ,generic-io/write-char)
 	   (WRITE-EXTERNAL-SUBSTRING ,generic-io/write-external-substring)
 	   (WRITE-SUBSTRING ,generic-io/write-substring)
 	   (WRITE-WIDE-SUBSTRING ,generic-io/write-wide-substring)))
+	(ops:out2
+	 `((OUTPUT-BLOCKING-MODE ,generic-io/output-blocking-mode)
+	   (OUTPUT-CHANNEL ,generic-io/output-channel)
+	   (OUTPUT-TERMINAL-MODE ,generic-io/output-terminal-mode)
+	   (SET-OUTPUT-BLOCKING-MODE ,generic-io/set-output-blocking-mode)
+	   (SET-OUTPUT-TERMINAL-MODE ,generic-io/set-output-terminal-mode)))
 	(other-operations
 	 `((CLOSE ,generic-io/close)
 	   (CODING ,generic-io/coding)
@@ -104,25 +145,32 @@ USA.
 	   (SET-LINE-ENDING ,generic-io/set-line-ending)
 	   (SUPPORTS-CODING? ,generic-io/supports-coding?)
 	   (WRITE-SELF ,generic-io/write-self))))
-    (set! generic-input-type
-	  (make-port-type (append input-operations
-				  other-operations)
-			  #f))
-    (set! generic-output-type
-	  (make-port-type (append output-operations
-				  other-operations)
-			  #f))
-    (set! generic-i/o-type
-	  (make-port-type (append input-operations
-				  output-operations
-				  other-operations)
-			  #f)))
+    (let ((make-type
+	   (lambda ops
+	     (make-port-type (append (apply append ops)
+				     other-operations)
+			     #f))))
+      (set! generic-type00 (make-type))
+      (set! generic-type10 (make-type ops:in1))
+      (set! generic-type20 (make-type ops:in1 ops:in2))
+      (set! generic-type01 (make-type ops:out1))
+      (set! generic-type02 (make-type ops:out1 ops:out2))
+      (set! generic-type11 (make-type ops:in1 ops:out1))
+      (set! generic-type21 (make-type ops:in1 ops:in2 ops:out1))
+      (set! generic-type12 (make-type ops:in1 ops:out1 ops:out2))
+      (set! generic-type22 (make-type ops:in1 ops:in2 ops:out1 ops:out2))))
   (initialize-name-maps!)
   (initialize-conditions!))
 
-(define generic-input-type)
-(define generic-output-type)
-(define generic-i/o-type)
+(define generic-type00)
+(define generic-type10)
+(define generic-type20)
+(define generic-type01)
+(define generic-type02)
+(define generic-type11)
+(define generic-type21)
+(define generic-type12)
+(define generic-type22)
 
 ;;;; Input operations
 
@@ -159,31 +207,33 @@ USA.
     (input-buffer-channel ib)))
 
 (define (generic-io/input-blocking-mode port)
-  (if (channel-blocking? (generic-io/input-channel port))
-      'BLOCKING
-      'NONBLOCKING))
+  (let ((channel (generic-io/input-channel port)))
+    (if channel
+	(if (channel-blocking? channel) 'BLOCKING 'NONBLOCKING)
+	#f)))
 
 (define (generic-io/set-input-blocking-mode port mode)
-  (case mode
-    ((BLOCKING) (channel-blocking (generic-io/input-channel port)))
-    ((NONBLOCKING) (channel-nonblocking (generic-io/input-channel port)))
-    (else (error:wrong-type-datum mode "blocking mode"))))
+  (let ((channel (generic-io/input-channel port)))
+    (if channel
+	(case mode
+	  ((BLOCKING) (channel-blocking channel))
+	  ((NONBLOCKING) (channel-nonblocking channel))
+	  (else (error:wrong-type-datum mode "blocking mode"))))))
 
 (define (generic-io/input-terminal-mode port)
   (let ((channel (generic-io/input-channel port)))
-    (cond ((not (channel-type=terminal? channel)) #f)
-	  ((terminal-cooked-input? channel) 'COOKED)
-	  (else 'RAW))))
+    (if (and channel (channel-type=terminal? channel))
+	(if (terminal-cooked-input? channel) 'COOKED 'RAW)
+	#f)))
 
 (define (generic-io/set-input-terminal-mode port mode)
   (let ((channel (generic-io/input-channel port)))
-    (if (channel-type=terminal? channel)
+    (if (and channel (channel-type=terminal? channel))
 	(case mode
 	  ((COOKED) (terminal-cooked-input channel))
 	  ((RAW) (terminal-raw-input channel))
 	  ((#F) unspecific)
-	  (else (error:wrong-type-datum mode "terminal mode")))
-	unspecific)))
+	  (else (error:wrong-type-datum mode "terminal mode"))))))
 
 ;;;; Output operations
 
@@ -209,6 +259,10 @@ USA.
 (define (generic-io/flush-output port)
   (force-drain-output-buffer (port-output-buffer port)))
 
+
+(define (generic-io/output-column port)
+  (output-buffer-column (port-output-buffer port)))
+
 (define (generic-io/output-channel port)
   (let ((ob (port-output-buffer port)))
     (if (not ob)
@@ -216,31 +270,33 @@ USA.
     (output-buffer-channel ob)))
 
 (define (generic-io/output-blocking-mode port)
-  (if (channel-blocking? (generic-io/output-channel port))
-      'BLOCKING
-      'NONBLOCKING))
+  (let ((channel (generic-io/output-channel port)))
+    (if channel
+	(if (channel-blocking? channel) 'BLOCKING 'NONBLOCKING)
+	#f)))
 
 (define (generic-io/set-output-blocking-mode port mode)
-  (case mode
-    ((BLOCKING) (channel-blocking (generic-io/output-channel port)))
-    ((NONBLOCKING) (channel-nonblocking (generic-io/output-channel port)))
-    (else (error:wrong-type-datum mode "blocking mode"))))
+  (let ((channel (generic-io/output-channel port)))
+    (if channel
+	(case mode
+	  ((BLOCKING) (channel-blocking channel))
+	  ((NONBLOCKING) (channel-nonblocking channel))
+	  (else (error:wrong-type-datum mode "blocking mode"))))))
 
 (define (generic-io/output-terminal-mode port)
   (let ((channel (generic-io/output-channel port)))
-    (cond ((not (channel-type=terminal? channel)) #f)
-	  ((terminal-cooked-output? channel) 'COOKED)
-	  (else 'RAW))))
+    (if (and channel (channel-type=terminal? channel))
+	(if (terminal-cooked-output? channel) 'COOKED 'RAW)
+	#f)))
 
 (define (generic-io/set-output-terminal-mode port mode)
   (let ((channel (generic-io/output-channel port)))
-    (if (channel-type=terminal? channel)
+    (if (and channel (channel-type=terminal? channel))
 	(case mode
-	  ((COOKED) (terminal-cooked-output (generic-io/output-channel port)))
-	  ((RAW) (terminal-raw-output (generic-io/output-channel port)))
+	  ((COOKED) (terminal-cooked-output channel))
+	  ((RAW) (terminal-raw-output channel))
 	  ((#F) unspecific)
-	  (else (error:wrong-type-datum mode "terminal mode")))
-	unspecific)))
+	  (else (error:wrong-type-datum mode "terminal mode"))))))
 
 (define (generic-io/buffered-output-bytes port)
   (output-buffer-start (port-output-buffer port)))
@@ -282,9 +338,7 @@ USA.
 	 (write (generic-io/input-channel port) output-port))
 	((output-port? port)
 	 (write-string " for channel: " output-port)
-	 (write (generic-io/output-channel port) output-port))
-	(else
-	 (write-string " for channel" output-port))))
+	 (write (generic-io/output-channel port) output-port))))
 
 (define (generic-io/supports-coding? port)
   port
@@ -312,19 +366,20 @@ USA.
 	 (eq-intersection (known-input-codings)
 			  (known-output-codings)))
 	((input-port? port) (known-input-codings))
-	(else (known-output-codings))))
+	((output-port? port) (known-output-codings))
+	(else '())))
 
 (define (generic-io/line-ending port)
   (gstate-line-ending (port/state port)))
 
 (define (generic-io/set-line-ending port name)
   (let ((state (port/state port)))
-    (let ((ib (gstate-input-buffer state))
-	  (ob (gstate-output-buffer state)))
+    (let ((ib (gstate-input-buffer state)))
       (if ib
 	  (set-input-buffer-line-ending!
 	   ib
-	   (line-ending (input-buffer-channel ib) name #f)))
+	   (line-ending (input-buffer-channel ib) name #f))))
+    (let ((ob (gstate-output-buffer state)))
       (if ob
 	  (set-output-buffer-line-ending!
 	   ob
@@ -340,7 +395,8 @@ USA.
 	 (eq-intersection (known-input-line-endings)
 			  (known-output-line-endings)))
 	((input-port? port) (known-input-line-endings))
-	(else (known-output-line-endings))))
+	((output-port? port) (known-output-line-endings))
+	(else '())))
 
 (define (line-ending channel name for-output?)
   (guarantee-symbol name #f)
@@ -348,7 +404,7 @@ USA.
 	  (and for-output?
 	       (known-input-line-ending? name)
 	       (not (known-output-line-ending? name))))
-      (if (eq? 'TCP-STREAM-SOCKET (channel-type channel))
+      (if (and channel (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
 	  'CRLF
 	  (default-line-ending))
       name))
@@ -367,11 +423,11 @@ USA.
      environment
      (if (syntax-match? '(SYMBOL) (cdr form))
 	 (let ((sing (cadr form)))
-	   (let ((plur (symbol-append sing 'S))
-		 (proc (symbol-append 'DEFINE- sing)))
-	     (let ((rev (symbol-append plur '-REVERSE))
-		   (aliases (symbol-append sing '-ALIASES))
-		   (aproc (symbol-append proc '-ALIAS)))
+	   (let ((plur (symbol sing 'S))
+		 (proc (symbol 'DEFINE- sing)))
+	     (let ((rev (symbol plur '-REVERSE))
+		   (aliases (symbol sing '-ALIASES))
+		   (aproc (symbol proc '-ALIAS)))
 	       `(BEGIN
 		  (DEFINE ,plur '())
 		  (DEFINE ,rev)
@@ -379,17 +435,18 @@ USA.
 		  (DEFINE (,proc NAME ,sing)
 		    (SET! ,plur (CONS (CONS NAME ,sing) ,plur))
 		    NAME)
-		  (DEFINE (,(symbol-append proc '/POST-BOOT) NAME ,sing)
+		  (DEFINE (,(symbol proc '/POST-BOOT) NAME ,sing)
 		    (LET ((OLD (HASH-TABLE/GET ,plur NAME #F)))
 		      (IF OLD
 			  (HASH-TABLE/REMOVE! ,rev OLD)))
-		    (HASH-TABLE/PUT! ,plur NAME ,sing))
+		    (HASH-TABLE/PUT! ,plur NAME ,sing)
+		    (HASH-TABLE/PUT! ,rev ,sing NAME))
 		  (DEFINE (,aproc NAME ALIAS)
 		    (SET! ,aliases (CONS (CONS NAME ALIAS) ,aliases))
 		    NAME)
-		  (DEFINE (,(symbol-append aproc '/POST-BOOT) NAME ALIAS)
+		  (DEFINE (,(symbol aproc '/POST-BOOT) NAME ALIAS)
 		    (HASH-TABLE/PUT! ,aliases NAME ALIAS))
-		  (DEFINE (,(symbol-append 'NAME-> sing) NAME)
+		  (DEFINE (,(symbol 'NAME-> sing) NAME)
 		    (LET LOOP ((NAME NAME))
 		      (LET ((ALIAS (HASH-TABLE/GET ,aliases NAME #F)))
 			(COND ((SYMBOL? ALIAS) (LOOP ALIAS))
@@ -457,17 +514,17 @@ USA.
 	     environment
 	     (if (syntax-match? '(SYMBOL) (cdr form))
 		 (let ((sing (cadr form)))
-		   (let ((plur (symbol-append sing 'S))
-			 (aliases (symbol-append sing '-ALIASES))
-			 (proc (symbol-append 'DEFINE- sing)))
-		     (let ((aproc (symbol-append proc '-ALIAS)))
+		   (let ((plur (symbol sing 'S))
+			 (aliases (symbol sing '-ALIASES))
+			 (proc (symbol 'DEFINE- sing)))
+		     (let ((aproc (symbol proc '-ALIAS)))
 		       `(BEGIN
-			  (SET! ,(symbol-append plur '-REVERSE)
+			  (SET! ,(symbol plur '-REVERSE)
 				(CONVERT-REVERSE ,plur))
 			  (SET! ,plur (CONVERT-FORWARD ,plur))
-			  (SET! ,proc ,(symbol-append proc '/POST-BOOT))
+			  (SET! ,proc ,(symbol proc '/POST-BOOT))
 			  (SET! ,aliases (CONVERT-FORWARD ,aliases))
-			  (SET! ,aproc ,(symbol-append aproc '/POST-BOOT))))))
+			  (SET! ,aproc ,(symbol aproc '/POST-BOOT))))))
 		 (ill-formed-syntax form))))))
       (initialize-name-map decoder)
       (initialize-name-map encoder)
@@ -484,6 +541,81 @@ USA.
 (define binary-normalizer)
 (define binary-denormalizer)
 
+(define-structure (source (constructor make-gsource) (conc-name source/))
+  (get-channel #f read-only #t)
+  (get-port #f read-only #t)
+  (set-port #f read-only #t)
+  (open? #f read-only #t)
+  (close #f read-only #t)
+  (has-input? #f read-only #t)
+  (read #f read-only #t))
+
+(define-guarantee source "byte source")
+
+(define (->source object #!optional caller)
+  (if (channel? object)
+      (make-channel-source object)
+      (begin
+	(guarantee-source object caller)
+	object)))
+
+(define (make-channel-source channel)
+  (make-gsource (lambda () channel)
+		(lambda () (channel-port channel))
+		(lambda (port) (set-channel-port! channel port))
+		(lambda () (channel-open? channel))
+		(lambda () (channel-close channel))
+		(lambda () (channel-has-input? channel))
+		(lambda (string start end)
+		  (channel-read channel string start end))))
+
+(define (make-non-channel-source has-input? read-substring)
+  (let ((port #f)
+	(open? #t))
+    (make-gsource (lambda () #f)
+		  (lambda () port)
+		  (lambda (port*) (set! port port*) unspecific)
+		  (lambda () open?)
+		  (lambda () (set! open? #f) unspecific)
+		  has-input?
+		  read-substring)))
+
+(define-structure (sink (constructor make-gsink) (conc-name sink/))
+  (get-channel #f read-only #t)
+  (get-port #f read-only #t)
+  (set-port #f read-only #t)
+  (open? #f read-only #t)
+  (close #f read-only #t)
+  (write #f read-only #t))
+
+(define-guarantee sink "byte sink")
+
+(define (->sink object #!optional caller)
+  (if (channel? object)
+      (make-channel-sink object)
+      (begin
+	(guarantee-sink object caller)
+	object)))
+
+(define (make-channel-sink channel)
+  (make-gsink (lambda () channel)
+	      (lambda () (channel-port channel))
+	      (lambda (port) (set-channel-port! channel port))
+	      (lambda () (channel-open? channel))
+	      (lambda () (channel-close channel))
+	      (lambda (string start end)
+		(channel-write channel string start end))))
+
+(define (make-non-channel-sink write-substring)
+  (let ((port #f)
+	(open? #t))
+    (make-gsink (lambda () #f)
+		(lambda () port)
+		(lambda (port*) (set! port port*) unspecific)
+		(lambda () open?)
+		(lambda () (set! open? #f) unspecific)
+		write-substring)))
+
 ;;;; Input buffer
 
 (define-integrable page-size #x1000)
@@ -494,37 +626,37 @@ USA.
 	 (fix:- (fix:* max-char-bytes 2) 1)))
 
 (define-structure (input-buffer (constructor %make-input-buffer))
-  (channel #f read-only #t)
+  (source #f read-only #t)
   (bytes #f read-only #t)
   start
   end
   decode
   normalize)
 
-(define (make-input-buffer channel)
-  (make-input-buffer-1 channel 'TEXT))
-
-(define (make-binary-input-buffer channel)
-  (make-input-buffer-1 channel 'BINARY))
-
-(define (make-input-buffer-1 channel type)
-  (%make-input-buffer channel
+(define (make-input-buffer source coder-name normalizer-name)
+  (%make-input-buffer source
 		      (make-string byte-buffer-length)
 		      byte-buffer-length
 		      byte-buffer-length
-		      (name->decoder type)
-		      (name->normalizer (line-ending channel type #f))))
+		      (name->decoder coder-name)
+		      (name->normalizer
+		       (line-ending ((source/get-channel source))
+				    normalizer-name
+				    #f))))
 
-(define-integrable (input-buffer-open? ib)
-  (channel-open? (input-buffer-channel ib)))
+(define (input-buffer-open? ib)
+  ((source/open? (input-buffer-source ib))))
 
 (define (close-input-buffer ib)
   (set-input-buffer-start! ib 0)
   (set-input-buffer-end! ib 0)
-  (channel-close (input-buffer-channel ib)))
+  ((source/close (input-buffer-source ib))))
 
-(define-integrable (input-buffer-port ib)
-  (channel-port (input-buffer-channel ib)))
+(define (input-buffer-channel ib)
+  ((source/get-channel (input-buffer-source ib))))
+
+(define (input-buffer-port ib)
+  ((source/get-port (input-buffer-source ib))))
 
 (define-integrable (input-buffer-at-eof? ib)
   (fix:= (input-buffer-end ib) 0))
@@ -559,7 +691,7 @@ USA.
 	  (set-input-buffer-start! ib bs)
 	  #t)
 	(and (not (input-buffer-at-eof? ib))
-	     (channel-has-input? (input-buffer-channel ib))
+	     ((source/has-input? (input-buffer-source ib)))
 	     (begin
 	       (justify-input-buffer ib)
 	       (read-bytes ib)
@@ -585,10 +717,10 @@ USA.
 (define (read-bytes ib)
   (let ((available (input-buffer-byte-count ib)))
     (let ((n
-	   (channel-read (input-buffer-channel ib)
-			 (input-buffer-bytes ib)
-			 available
-			 (fix:+ available page-size))))
+	   ((source/read (input-buffer-source ib))
+	    (input-buffer-bytes ib)
+	    available
+	    (fix:+ available page-size))))
       (if n
 	  (begin
 	    (set-input-buffer-start! ib 0)
@@ -644,7 +776,7 @@ USA.
 		(%substring-move! bv bs be string start)
 		(set-input-buffer-start! ib be)
 		n))
-	    (channel-read (input-buffer-channel ib) string start end)))
+	    ((source/read (input-buffer-source ib)) string start end)))
       (read-to-8-bit ib string start end)))
 
 (define (read-substring:external-string ib string start end)
@@ -658,12 +790,12 @@ USA.
 		(xsubstring-move! bv bs be string start)
 		(set-input-buffer-start! ib be)
 		n))
-	    (channel-read (input-buffer-channel ib) string start end)))
+	    ((source/read (input-buffer-source ib)) string start end)))
       (let ((bounce (make-string page-size))
 	    (be (min page-size (- end start))))
 	(let ((n (read-to-8-bit ib bounce 0 be)))
 	  (if (and n (fix:> n 0))
-	      (substring-move! bounce 0 n string start))
+	      (xsubstring-move! bounce 0 n string start))
 	  n))))
 
 (define (input-buffer-in-8-bit-mode? ib)
@@ -695,36 +827,45 @@ USA.
 ;;;; Output buffer
 
 (define-structure (output-buffer (constructor %make-output-buffer))
-  (channel #f read-only #t)
+  (sink #f read-only #t)
   (bytes #f read-only #t)
   start
   encode
-  denormalize)
+  denormalize
+  column)
 
-(define (make-output-buffer channel)
-  (make-output-buffer-1 channel 'TEXT))
-
-(define (make-binary-output-buffer channel)
-  (make-output-buffer-1 channel 'BINARY))
-
-(define (make-output-buffer-1 channel type)
-  (%make-output-buffer channel
+(define (make-output-buffer sink coder-name normalizer-name)
+  (%make-output-buffer sink
 		       (make-string byte-buffer-length)
 		       0
-		       (name->encoder type)
-		       (name->denormalizer (line-ending channel type #t))))
+		       (name->encoder coder-name)
+		       (name->denormalizer
+			(line-ending ((sink/get-channel sink))
+				     normalizer-name
+				     #t))
+		       (and (column-tracking-coder? coder-name) 0)))
 
-(define-integrable (output-buffer-open? ob)
-  (channel-open? (output-buffer-channel ob)))
+(define (column-tracking-coder? coder-name)
+  (or (eq? coder-name 'TEXT)
+      (eq? coder-name 'US-ASCII)
+      (eq? coder-name 'ASCII)
+      (string-prefix-ci? "ISO-8859-" (symbol-name coder-name))))
+
+(define (output-buffer-open? ob)
+  ((sink/open? (output-buffer-sink ob))))
 
 (define (close-output-buffer ob)
-  (if (output-buffer-open? ob)
-      (begin
-	(force-drain-output-buffer ob)
-	(channel-close (output-buffer-channel ob)))))
+  (let ((sink (output-buffer-sink ob)))
+    (if ((sink/open? sink))
+	(begin
+	  (force-drain-output-buffer ob)
+	  ((sink/close sink))))))
 
-(define-integrable (output-buffer-port ob)
-  (channel-port (output-buffer-channel ob)))
+(define (output-buffer-channel ob)
+  ((sink/get-channel (output-buffer-sink ob))))
+
+(define (output-buffer-port ob)
+  ((sink/get-port (output-buffer-sink ob))))
 
 (define-integrable (output-buffer-end ob)
   (string-length (output-buffer-bytes ob)))
@@ -733,22 +874,26 @@ USA.
   (set-output-buffer-start! buffer 0))
 
 (define (force-drain-output-buffer ob)
-  (with-channel-blocking (output-buffer-channel ob) #t
-    (lambda ()
-      (let loop ()
-	(drain-output-buffer ob)
-	(if (fix:> (output-buffer-start ob) 0)
-	    (loop))))))
+  (let ((channel (output-buffer-channel ob))
+	(drain-buffer
+	 (lambda ()
+	   (let loop ()
+	     (drain-output-buffer ob)
+	     (if (fix:> (output-buffer-start ob) 0)
+		 (loop))))))
+    (if channel
+	(with-channel-blocking channel #t drain-buffer)
+	(drain-buffer))))
 
 (define (drain-output-buffer ob)
   (let ((bs (output-buffer-start ob)))
     (if (fix:> bs 0)
 	(let ((bv (output-buffer-bytes ob)))
 	  (let ((n
-		 (channel-write (output-buffer-channel ob)
-				bv
-				0
-				(fix:min bs page-size))))
+		 ((sink/write (output-buffer-sink ob))
+		  bv
+		  0
+		  (fix:min bs page-size))))
 	    (if (and n (fix:> n 0))
 		(do ((bi n (fix:+ bi 1))
 		     (bj 0 (fix:+ bj 1)))
@@ -762,6 +907,14 @@ USA.
   (and (fix:< (output-buffer-start ob) page-size)
        (begin
 	 ((output-buffer-denormalize ob) ob char)
+	 (let ((column (output-buffer-column ob)))
+	   (if column
+	       (set-output-buffer-column!
+		ob
+		(case char
+		  ((#\newline) 0)
+		  ((#\tab) (fix:+ column (fix:- 8 (fix:remainder column 8))))
+		  (else (fix:+ column 1))))))
 	 #t)))
 
 (define (output-buffer-in-8-bit-mode? ib)
@@ -774,11 +927,16 @@ USA.
    (fix:+ (output-buffer-start ob)
 	  ((output-buffer-encode ob) ob (char->integer char)))))
 
-(define (set-output-buffer-coding! ib coding)
-  (set-output-buffer-encode! ib (name->encoder coding)))
+(define (set-output-buffer-coding! ob coding)
+  (set-output-buffer-encode! ob (name->encoder coding))
+  (if (column-tracking-coder? coding)
+      (if (not (output-buffer-column ob))
+	  (set! ob 0))
+      (set! ob #f))
+  unspecific)
 
-(define (set-output-buffer-line-ending! ib name)
-  (set-output-buffer-denormalize! ib (name->denormalizer name)))
+(define (set-output-buffer-line-ending! ob name)
+  (set-output-buffer-denormalize! ob (name->denormalizer name)))
 
 (define (write-substring:string ob string start end)
   (if (output-buffer-in-8-bit-mode? ob)
@@ -868,8 +1026,8 @@ USA.
 	 (let ((name
 		(intern
 		 (string-append "iso-8859-" (number->string (cadr form))))))
-	   (let ((decoding-map (symbol-append 'DECODING-MAP: name))
-		 (encoding-map (symbol-append 'ENCODING-MAP: name)))
+	   (let ((decoding-map (symbol 'DECODING-MAP: name))
+		 (encoding-map (symbol 'ENCODING-MAP: name)))
 	     `(BEGIN
 		(DEFINE-DECODER ',name
 		  (LET ((,decoding-map

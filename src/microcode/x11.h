@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: x11.h,v 1.19 2003/02/14 18:28:24 cph Exp $
+$Id: x11.h,v 1.20 2005/11/12 22:53:29 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,2000 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -40,6 +41,19 @@ struct xdisplay
   Atom wm_take_focus;
   XEvent cached_event;
   char cached_event_p;
+
+  /* The type of window manager we have.  If we move FRAME_OUTER_WINDOW
+     to x/y 0/0, some window managers (type A) puts the window manager
+     decorations outside the screen and FRAME_OUTER_WINDOW exactly at 0/0.
+     Other window managers (type B) puts the window including decorations
+     at 0/0, so FRAME_OUTER_WINDOW is a bit below 0/0.
+     Record the type of WM in use so we can compensate for type A WMs.  */
+  enum
+    {
+      X_WMTYPE_UNKNOWN,
+      X_WMTYPE_A,
+      X_WMTYPE_B
+    } wm_type;
 };
 
 #define XD_ALLOCATION_INDEX(xd) ((xd) -> allocation_index)
@@ -50,6 +64,7 @@ struct xdisplay
 #define XD_WM_TAKE_FOCUS(xd) ((xd) -> wm_take_focus)
 #define XD_CACHED_EVENT(xd) ((xd) -> cached_event)
 #define XD_CACHED_EVENT_P(xd) ((xd) -> cached_event_p)
+#define XD_WM_TYPE(xd) ((xd) -> wm_type)
 #define XD_TO_OBJECT(xd) (LONG_TO_UNSIGNED_FIXNUM (XD_ALLOCATION_INDEX (xd)))
 
 extern struct xdisplay * EXFUN (x_display_arg, (unsigned int arg));
@@ -130,6 +145,26 @@ struct xwindow
 
   unsigned long event_mask;
 
+  /* Geometry parameters for window-manager decoration window.  */
+  int wm_decor_x;
+  int wm_decor_y;
+  unsigned int wm_decor_pixel_width;
+  unsigned int wm_decor_pixel_height;
+  unsigned int wm_decor_border_width;
+
+  /* The latest move we made to the window.  Saved so we can
+     compensate for type A WMs (see wm_type above).  */
+  int expected_x;
+  int expected_y;
+
+  /* Nonzero if we have made a move and need to check if the WM placed
+     us at the right position.  */
+  int check_expected_move_p;
+
+  /* The offset we need to add to compensate for type A WMs.  */
+  int move_offset_x;
+  int move_offset_y;
+
 #ifdef __GNUC__
   PTR extra [0];
 #else
@@ -165,13 +200,24 @@ struct xwindow
 #define XW_Y_COORDINATE_MAP(xw) (((xw) -> methods) . y_coordinate_map)
 #define XW_UPDATE_NORMAL_HINTS(xw) (((xw) -> methods) . update_normal_hints)
 #define XW_EVENT_MASK(xw) ((xw) -> event_mask)
+#define XW_WM_DECOR_X(xw) ((xw) -> wm_decor_x)
+#define XW_WM_DECOR_Y(xw) ((xw) -> wm_decor_y)
+#define XW_WM_DECOR_PIXEL_WIDTH(xw) ((xw) -> wm_decor_pixel_width)
+#define XW_WM_DECOR_PIXEL_HEIGHT(xw) ((xw) -> wm_decor_pixel_height)
+#define XW_WM_DECOR_BORDER_WIDTH(xw) ((xw) -> wm_decor_border_width)
+#define XW_EXPECTED_X(xw) ((xw) -> expected_x)
+#define XW_EXPECTED_Y(xw) ((xw) -> expected_y)
+#define XW_CHECK_EXPECTED_MOVE_P(xw) ((xw) -> check_expected_move_p)
+#define XW_MOVE_OFFSET_X(xw) ((xw) -> move_offset_x)
+#define XW_MOVE_OFFSET_Y(xw) ((xw) -> move_offset_y)
 
 #define XW_TO_OBJECT(xw) (LONG_TO_UNSIGNED_FIXNUM (XW_ALLOCATION_INDEX (xw)))
 #define XW_DISPLAY(xw) (XD_DISPLAY (XW_XD (xw)))
+#define XW_WM_TYPE(xw) (XD_WM_TYPE (XW_XD (xw)))
 
-#define FONT_WIDTH(f)	(((f) -> max_bounds) . width)
-#define FONT_HEIGHT(f)	(((f) -> ascent) + ((f) -> descent))
-#define FONT_BASE(f)    ((f) -> ascent)
+#define FONT_WIDTH(f) (((f) -> max_bounds) . width)
+#define FONT_HEIGHT(f) (((f) -> ascent) + ((f) -> descent))
+#define FONT_BASE(f) ((f) -> ascent)
 
 extern struct xwindow * EXFUN (x_window_arg, (unsigned int arg));
 

@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: strott.scm,v 14.12 2004/02/16 05:38:42 cph Exp $
+$Id: strott.scm,v 14.15 2005/12/14 05:44:45 cph Exp $
 
-Copyright 1988,1993,1999,2004 Massachusetts Institute of Technology
+Copyright 1988,1993,1999,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -23,64 +23,112 @@ USA.
 
 |#
 
-;;;; String Output Ports (Truncated)
+;;;; String output ports (truncated)
 ;;; package: (runtime truncated-string-output)
 
 (declare (usual-integrations))
 
-(define (with-output-to-truncated-string max thunk)
+(define (call-with-truncated-output-string limit generator)
   (call-with-current-continuation
    (lambda (k)
-     (let ((state (make-astate k max (make-string (fix:min max 128)) 0)))
-       (with-output-to-port (make-port output-string-port-type state)
-	 thunk)
-       (cons #f
-	     (without-interrupts
-	      (lambda ()
-		(string-head (astate-chars state)
-			     (astate-index state)))))))))
+     (let ((port
+	    (make-port output-string-port-type
+		       (receive (sink extract extract!)
+			   (make-accumulator-sink limit k)
+			 (make-gstate #f
+				      sink
+				      'ISO-8859-1
+				      'NEWLINE
+				      extract
+				      extract!)))))
+       (generator port)
+       (cons #f (get-output-string port))))))
+
+(define (with-output-to-truncated-string max thunk)
+  (call-with-truncated-output-string max
+    (lambda (port)
+      (with-output-to-port port thunk))))
+
+(define-structure (astate (type vector)
+			  (initial-offset 4) ;must match "genio.scm"
+			  (constructor #f))
+  extract
+  extract!)
 
 (define output-string-port-type)
 (define (initialize-package!)
   (set! output-string-port-type
 	(make-port-type
-	 `((WRITE-CHAR
-	    ,(lambda (port char)
-	       (guarantee-8-bit-char char)
-	       (let ((state (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (let* ((n (astate-index state)))
-		      (if (fix:< n (astate-max-length state))
-			  (let ((n* (fix:+ n 1)))
-			    (if (fix:= n (string-length (astate-chars state)))
-				(grow-accumulator! state n*))
-			    (string-set! (astate-chars state) n char)
-			    (set-astate-index! state n*))
-			  ((astate-return state)
-			   (cons #t (string-copy (astate-chars state)))))))))
-	       1))
+	 `((EXTRACT-OUTPUT
+	    ,(lambda (port)
+	       (output-port/flush-output port)
+	       ((astate-extract (port/state port)))))
+	   (EXTRACT-OUTPUT!
+	    ,(lambda (port)
+	       (output-port/flush-output port)
+	       ((astate-extract! (port/state port)))))
 	   (WRITE-SELF
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " to string (truncating)" output-port))))
-	 #f))
+	 (generic-i/o-port-type #f #t)))
   unspecific)
+
+(define (make-accumulator-sink limit k)
+  (let ((chars #f)
+	(index 0))
 
-(define-structure (astate (type vector))
-  (return #f read-only #t)
-  (max-length #f read-only #t)
-  chars
-  index)
+    (define (normal-case string start end n)
+      (cond ((not chars)
+	     (set! chars (new-chars 128 n)))
+	    ((fix:> n (string-length chars))
+	     (let ((new (new-chars (string-length chars) n)))
+	       (substring-move! chars 0 index new 0)
+	       (set! chars new))))
+      (substring-move! string start end chars index)
+      (set! index n)
+      (fix:- end start))
 
-(define (grow-accumulator! state min-size)
-  (let* ((old (astate-chars state))
-	 (n (string-length old))
-	 (new
-	  (make-string
-	   (let loop ((n (fix:+ n n)))
-	     (if (fix:>= n min-size)
-		 (fix:min n (astate-max-length state))
-		 (loop (fix:+ n n)))))))
-    (substring-move! old 0 n new 0)
-    (set-astate-chars! state new)))
+    (define (new-chars start min-length)
+      (make-string
+       (let loop ((n start))
+	 (cond ((fix:>= n limit) limit)
+	       ((fix:>= n min-length) n)
+	       (else (loop (fix:+ n n)))))))
+
+    (define (limit-case string start)
+      (let ((s
+	     (cond ((not chars) (make-string limit))
+		   ((fix:> limit (string-length chars))
+		    (let ((s (make-string limit)))
+		      (substring-move! chars 0 index s 0)
+		      s))
+		   (else chars))))
+	(substring-move! string start (fix:+ start (fix:- limit index))
+			 s index)
+	(set! chars #f)
+	(set! index 0)
+	(k (cons #t s))))
+
+    (values (make-non-channel-sink
+	     (lambda (string start end)
+	       (without-interrupts
+		(lambda ()
+		  (let ((n (fix:+ index (fix:- end start))))
+		    (if (fix:<= n limit)
+			(normal-case string start end n)
+			(limit-case string start)))))))
+	    (lambda ()
+	      (if chars
+		  (string-head chars index)
+		  (make-string 0)))
+	    (lambda ()
+	      (without-interrupts
+	       (lambda ()
+		 (if chars
+		     (let ((s chars))
+		       (set! chars #f)
+		       (set! index 0)
+		       (set-string-maximum-length! s index)
+		       s)
+		     (make-string 0))))))))

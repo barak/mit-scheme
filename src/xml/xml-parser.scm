@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: xml-parser.scm,v 1.64 2004/10/12 23:20:58 cph Exp $
+$Id: xml-parser.scm,v 1.68 2006/01/31 06:14:25 cph Exp $
 
-Copyright 2001,2002,2003,2004 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -566,28 +566,33 @@ USA.
 		    (tail (loop (cdr attrs))))
 		(let ((qname (car uname))
 		      (p (cdr uname)))
-		  (let ((get-iri (lambda () (make-xml-namespace-iri value)))
-			(forbidden-iri
-			 (lambda (iri)
-			   (perror p "Forbidden namespace IRI" iri))))
-		    (let ((guarantee-legal-iri
-			   (lambda (iri)
-			     (if (or (eq? iri xml-iri)
-				     (eq? iri xmlns-iri))
-				 (forbidden-iri iri)))))
+		  (let ((get-uri
+			 (lambda ()
+			   (if (string-null? value)
+			       (null-xml-namespace-uri)
+			       (string->absolute-uri value))))
+			(forbidden-uri
+			 (lambda (uri)
+			   (perror p "Forbidden namespace URI"
+				   (uri->string uri)))))
+		    (let ((guarantee-legal-uri
+			   (lambda (uri)
+			     (if (or (uri=? uri xml-uri)
+				     (uri=? uri xmlns-uri))
+				 (forbidden-uri uri)))))
 		      (cond ((xml-name=? qname 'xmlns)
-			     (let ((iri (get-iri)))
-			       (guarantee-legal-iri iri)
-			       (cons (cons (null-xml-name-prefix) iri) tail)))
+			     (let ((uri (get-uri)))
+			       (guarantee-legal-uri uri)
+			       (cons (cons (null-xml-name-prefix) uri) tail)))
 			    ((xml-name-prefix=? qname 'xmlns)
 			     (if (xml-name=? qname 'xmlns:xmlns)
 				 (perror p "Illegal namespace prefix" qname))
-			     (let ((iri (get-iri)))
+			     (let ((uri (get-uri)))
 			       (if (xml-name=? qname 'xmlns:xml)
-				   (if (not (eq? iri xml-iri))
-				       (forbidden-iri iri))
-				   (guarantee-legal-iri iri))
-			       (cons (cons (xml-name-local qname) iri) tail)))
+				   (if (not (uri=? uri xml-uri))
+				       (forbidden-uri uri))
+				   (guarantee-legal-uri uri))
+			       (cons (cons (xml-name-local qname) uri) tail)))
 			    (else tail))))))
 	      *prefix-bindings*)))
   unspecific)
@@ -600,20 +605,20 @@ USA.
 	(p (cdr uname)))
     (if *in-dtd?*
 	qname
-	(let ((iri (lookup-namespace-prefix qname p attribute-name?)))
-	  (if (null-xml-namespace-iri? iri)
+	(let ((uri (lookup-namespace-prefix qname p attribute-name?)))
+	  (if (null-xml-namespace-uri? uri)
 	      qname
-	      (%make-xml-name qname iri))))))
+	      (%make-xml-name qname uri))))))
 
 (define (lookup-namespace-prefix qname p attribute-name?)
   (let ((prefix (xml-qname-prefix qname)))
     (cond ((eq? prefix 'xmlns)
-	   xmlns-iri)
+	   xmlns-uri)
 	  ((eq? prefix 'xml)
-	   xml-iri)
+	   xml-uri)
 	  ((and attribute-name?
 		(null-xml-name-prefix? prefix))
-	   (null-xml-namespace-iri))
+	   (null-xml-namespace-uri))
 	  (else
 	   (let ((entry (assq prefix *prefix-bindings*)))
 	     (if entry
@@ -621,7 +626,7 @@ USA.
 		 (begin
 		   (if (not (null-xml-name-prefix? prefix))
 		       (perror p "Undeclared XML prefix" prefix))
-		   (null-xml-namespace-iri))))))))
+		   (null-xml-namespace-uri))))))))
 
 ;;;; Processing instructions
 
@@ -683,7 +688,8 @@ USA.
 		   (perror p "Disallowed Unicode character" char))
 	       (call-with-output-string
 		 (lambda (port)
-		   (write-utf8-char char port))))))))
+		   (port/set-coding port 'UTF-8)
+		   (write-char char port))))))))
     (*parser
      (with-pointer p
        (sbracket "character reference" "&#" ";"
@@ -1026,10 +1032,10 @@ USA.
 (define *general-entities*)
 (define *entity-expansion-nesting* '())
 
-(define (make-external-id id iri p)
+(define (make-external-id id uri p)
   (if *standalone?*
       (perror p "Illegal external reference in standalone document"))
-  (make-xml-external-id id iri))
+  (make-xml-external-id id uri))
 
 ;;;; Document-type declarations
 

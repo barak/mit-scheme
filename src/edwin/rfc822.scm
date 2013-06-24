@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: rfc822.scm,v 3.6 2003/02/14 18:28:13 cph Exp $
+$Id: rfc822.scm,v 3.7 2005/12/09 20:34:15 riastradh Exp $
 
-Copyright 1999,2000,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -57,6 +57,14 @@ USA.
 			    result)))))
       string))
 
+(define (rfc822:unquote-string string)
+  (let ((length (string-length string)))
+    (if (and (>= length 2)
+             (char=? (string-ref string 0) #\")
+             (char=? (string-ref string (- length 1)) #\"))
+        (substring string 1 (- length 1))
+        string)))
+
 (define (rfc822:first-address string)
   (let ((addresses (rfc822:string->addresses string)))
     (and (pair? addresses)
@@ -68,7 +76,7 @@ USA.
 (define (rfc822:string->addresses string)
   (let ((address-list
 	 (rfc822:strip-quoted-names
-	  (rfc822:strip-whitespace! (rfc822:string->tokens string)))))
+          (rfc822:string->non-ignored-tokens string))))
     (if (and address-list (null? (cdr address-list)))
 	(car address-list)
 	(map (lambda (string)
@@ -98,8 +106,7 @@ USA.
 	(id #f)
 	(for #f)
 	(lose (lambda () (error "Malformed Received header:" string))))
-    (let loop ((tokens
-		(rfc822:strip-whitespace! (rfc822:string->tokens string))))
+    (let loop ((tokens (rfc822:string->non-ignored-tokens string)))
       (cond ((not (pair? tokens))
 	     (lose))
 	    ((eqv? #\; (car tokens))
@@ -304,13 +311,6 @@ USA.
 	     (else
 	      (error "Malformed RFC-822 token stream:" tokens)))))))
 
-(define rfc822:strip-whitespace!
-  (list-deletor!
-   (lambda (token)
-     (cond ((char? token) (eqv? #\space token))
-	   ((string? token) (char=? #\( (string-ref token 0)))
-	   (else #f)))))
-
 (define (rfc822:strip-quoted-names tokens)
   (rfc822:parse-list tokens #\,
     (lambda (tokens)
@@ -356,139 +356,198 @@ USA.
 
 ;;;; Tokenizer
 
-(define rfc822:string->tokens
-  (let* ((special-chars
-	  (char-set #\( #\) #\[ #\] #\< #\> #\@ #\, #\; #\: #\\ #\" #\.))
-	 (atom-chars
-	  (char-set-difference (ascii-range->char-set #x21 #x7F)
-			       special-chars))
-	 (special-char?
-	  (lambda (char) (char-set-member? special-chars char)))
-	 (atom-char? (lambda (char) (char-set-member? atom-chars char)))
-	 (loser
-	  (lambda (chars)
-	    (list (cons 'UNTERMINATED (apply string (reverse! chars))))))
-	 (next-lwsp?
-	  (lambda (port)
-	    (let ((char (input-port/peek-char port)))
-	      (and (not (eof-object? char))
-		   (char-lwsp? char))))))
+;;; This is generalized with a special character set parameter because
+;;; IMAIL's MIME parser uses a different character set.
+
+(define (rfc822:string-tokenizer special-chars keep-whitespace?)
+  (let ((atom-chars
+         (char-set-difference (ascii-range->char-set #x21 #x7F)
+                              special-chars)))
+    (define (special-char? char) (char-set-member? special-chars char))
+    (define    (atom-char? char) (char-set-member?    atom-chars char))
+
+    (define (lose chars char-count)
+      (list (cons 'UNTERMINATED
+                  (reverse-list->string chars 0 char-count))))
+
+    (define (next-lwsp? port)
+      (let ((char (input-port/peek-char port)))
+        (and (not (eof-object? char))
+             (char-lwsp? char))))
+
+    (define (read-atom char port)
+      (let loop ((chars (list char))
+                 (char-count 1))
+        (let ((char (input-port/peek-char port)))
+          (cond ((and (not (eof-object? char))
+                      (atom-char? char))
+                 (input-port/discard-char port)
+                 (loop (cons char chars)
+                       (fix:+ char-count 1)))
+                (else
+                 (cons (reverse-list->string chars 0 char-count)
+                       (dispatch port)))))))
+
+    (define (read-quoted-string port)
+      (let loop ((chars '(#\"))
+                 (char-count 1))
+        (let ((char (input-port/read-char port)))
+          (cond ((eof-object? char)
+                 (lose chars char-count))
+                ((char=? #\" char)
+                 (cons (reverse-list->string (cons #\" chars)
+                                             0
+                                             (fix:+ char-count 1))
+                       (dispatch port)))
+                ((char=? #\\ char)
+                 (let ((chars (cons #\\ chars))
+                       (char (input-port/read-char port)))
+                   (if (eof-object? char)
+                       (lose chars (fix:+ char-count 1))
+                       (loop (cons char chars)
+                             (fix:+ char-count 2)))))
+                (else
+                 (loop (cons char chars)
+                       (fix:+ char-count 1)))))))
+
+    (define (read-parenthesis-comment port)
+      (let loop ((level 1)
+                 (chars '(#\())
+                 (char-count 1))
+        (let ((char (input-port/read-char port)))
+          (cond ((eof-object? char)
+                 (lose chars char-count))
+                ((char=? #\( char)
+                 (loop (fix:+ level 1)
+                       (cons #\( chars)
+                       (fix:+ char-count 1)))
+                ((char=? #\) char)
+                 (let ((chars (cons #\) chars))
+                       (char-count (fix:+ char-count 1)))
+                   (cond ((fix:> level 1)
+                          (loop (fix:- level 1) chars char-count))
+                         (keep-whitespace?
+                          (cons (reverse-list->string chars 0
+                                                      char-count)
+                                (dispatch port)))
+                         (else
+                          (dispatch port)))))
+                ((char=? #\\ char)
+                 (let ((chars (cons #\\ chars))
+                       (char (input-port/read-char port)))
+                   (if (eof-object? char)
+                       (lose chars (fix:+ char-count 1))
+                       (loop level
+                             (cons char chars)
+                             (fix:+ char-count 2)))))
+                ((char=? #\newline char)
+                 (if (next-lwsp? port)
+                     (loop level chars char-count)
+                     (lose chars char-count)))
+                (else
+                 (loop level
+                       (cons char chars)
+                       (fix:+ char-count 1)))))))
+
+    (define (read-domain-literal port)
+      (let loop ((chars '(#\[))
+                 (char-count 1))
+        (let ((char (input-port/peek-char port)))
+          (cond ((or (eof-object? char)
+                     (char=? #\[ char))
+                 (lose chars char-count))
+                ((char=? #\] char)
+                 (input-port/discard-char port)
+                 (cons (reverse-list->string (cons #\] chars)
+                                             0
+                                             (fix:+ char-count 1))
+                       (dispatch port)))
+                ((char=? #\\ char)
+                 (input-port/discard-char port)
+                 (let ((chars (cons #\\ chars))
+                       (char (input-port/read-char port)))
+                   (if (eof-object? char)
+                       (lose chars (fix:+ char-count 1))
+                       (loop (cons char chars)
+                             (fix:+ char-count 2)))))
+                ((char=? #\newline char)
+                 (input-port/discard-char port)
+                 (if (next-lwsp? char)
+                     (loop chars char-count)
+                     (lose chars char-count)))
+                (else
+                 (input-port/discard-char port)
+                 (loop (cons char chars)
+                       (fix:+ char-count 1)))))))
+
+    (define (dispatch port)
+      (let ((char (input-port/read-char port)))
+        (cond ((eof-object? char)
+               '())
+              ((or (char-lwsp? char)
+                   (char=? #\newline char))
+               (if keep-whitespace?
+                   (cons #\space (skip-whitespace port))
+                   (skip-whitespace port)))
+              ((atom-char? char)
+               (read-atom char port))
+              ((char=? #\" char)
+               (read-quoted-string port))
+              ((char=? #\( char)
+               (read-parenthesis-comment port))
+              ((char=? #\[ char)
+               (read-domain-literal port))
+              (else
+               (cons (if (special-char? char)
+                         char
+                         (cons 'ILLEGAL char))
+                     (dispatch port))))))
+
+    (define (skip-whitespace port)
+      (let ((char (input-port/peek-char port)))
+        (cond ((eof-object? char)
+               '())
+              ((char-lwsp? char)
+               (input-port/discard-char port)
+               (skip-whitespace port))
+              ((char=? #\newline char)
+               (input-port/discard-char port)
+               (if (next-lwsp? port)
+                   (skip-whitespace port)
+                   (lose '() 0)))       ;?
+              (else
+               (dispatch port)))))
+
     (lambda (input-string)
-      (let ((port (open-input-string input-string)))
-	(define (dispatch)
-	  (let ((char (input-port/read-char port)))
-	    (cond ((eof-object? char)
-		   '())
-		  ((char-lwsp? char)
-		   (cons #\space (skip-whitespace)))
-		  ((char=? #\newline char)
-		   (if (next-lwsp? port)
-		       (cons #\space (skip-whitespace))
-		       (loser '())))
-		  ((atom-char? char)
-		   ;; atom
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/peek-char port)))
-		       (if (and (not (eof-object? char))
-				(atom-char? char))
-			   (begin
-			     (input-port/discard-char port)
-			     (loop (cons char chars)))
-			   (cons (apply string (reverse! chars))
-				 (dispatch))))))
-		  ((char=? #\" char)
-		   ;; quoted string
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/read-char port)))
-		       (cond ((eof-object? char)
-			      (loser chars))
-			     ((char=? #\" char)
-			      (cons (apply string (reverse! (cons char chars)))
-				    (dispatch)))
-			     ((char=? #\\ char)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop (cons char chars)))))
-			     ((char=? #\newline char)
-			      (if (next-lwsp? port)
-				  (loop chars)
-				  (loser chars)))
-			     (else
-			      (loop (cons char chars)))))))
-		  ((char=? #\( char)
-		   ;; comment
-		   (let loop ((level 1) (chars (list char)))
-		     (let ((char (input-port/read-char port)))
-		       (cond ((eof-object? char)
-			      (loser chars))
-			     ((char=? #\( char)
-			      (loop (+ level 1) (cons char chars)))
-			     ((char=? #\) char)
-			      (let ((chars (cons char chars)))
-				(if (= level 1)
-				    (cons (apply string (reverse! chars))
-					  (dispatch))
-				    (loop (- level 1) chars))))
-			     ((char=? #\\ char)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop level (cons char chars)))))
-			     ((char=? #\newline char)
-			      (if (next-lwsp? port)
-				  (loop level chars)
-				  (loser chars)))
-			     (else
-			      (loop level (cons char chars)))))))
-		  ((char=? #\[ char)
-		   ;; domain literal
-		   (let loop ((chars (list char)))
-		     (let ((char (input-port/peek-char port)))
-		       (cond ((or (eof-object? char)
-				  (char=? #\[ char))
-			      (loser chars))
-			     ((char=? #\] char)
-			      (input-port/discard-char port)
-			      (cons (apply string (reverse! (cons char chars)))
-				    (dispatch)))
-			     ((char=? #\\ char)
-			      (input-port/discard-char port)
-			      (let ((char (input-port/read-char port))
-				    (chars (cons char chars)))
-				(if (eof-object? char)
-				    (loser chars)
-				    (loop (cons char chars)))))
-			     ((char=? #\newline char)
-			      (input-port/discard-char port)
-			      (if (next-lwsp? char)
-				  (loop chars)
-				  (loser chars)))
-			     (else
-			      (input-port/discard-char port)
-			      (loop (cons char chars)))))))
-		  (else
-		   (cons (if (special-char? char) char (cons 'ILLEGAL char))
-			 (dispatch))))))
+      (dispatch (open-input-string input-string)))))
+
+(define rfc822:char-set:special-chars
+        (char-set #\( #\) #\[ #\] #\< #\>
+                  #\@ #\, #\; #\: #\\ #\" #\.))
 
-	(define (skip-whitespace)
-	  (let ((char (input-port/peek-char port)))
-	    (cond ((eof-object? char)
-		   '())
-		  ((char-lwsp? char)
-		   (input-port/discard-char port)
-		   (skip-whitespace))
-		  ((char=? #\newline char)
-		   (input-port/discard-char port)
-		   (if (next-lwsp? port)
-		       (skip-whitespace)
-		       (loser '())))
-		  (else
-		   (dispatch)))))
+(define rfc822:string->tokens
+        (rfc822:string-tokenizer rfc822:char-set:special-chars #t))
 
-	(dispatch)))))
+(define rfc822:string->non-ignored-tokens
+        (rfc822:string-tokenizer rfc822:char-set:special-chars #f))
+
+(define (reverse-list->string list start end)
+  (let* ((length (fix:- end start))
+         (string (string-allocate length)))
+    (let loop ((list (list-tail list start))
+               (index length))
+      (cond ((fix:zero? index)
+             string)
+            ((pair? list)
+             (let ((index (fix:- index 1)))
+               (string-set! string index (car list))
+               (loop (cdr list) index)))
+            (else
+             ;; This should use BAD-RANGE-ARGUMENT errors or something,
+             ;; but to those you can supply only one datum, while there
+             ;; are three involved here.
+             (error "Invalid arguments:"
+                    `(REVERSE-LIST->STRING ',list ,start ,end)))))))
 
 (define (char-lwsp? char)
   (or (char=? #\space char)

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtty.c,v 1.12 2003/02/14 18:28:24 cph Exp $
+$Id: uxtty.c,v 1.13 2005/12/31 20:02:16 riastradh Exp $
 
 Copyright (c) 1990-1999 Massachusetts Institute of Technology
 
@@ -107,14 +107,10 @@ DEFUN (tputs_write_char, (c), char c)
 }
 
 void
-DEFUN_VOID (UX_initialize_tty)
+DEFUN_VOID (UX_reinitialize_tty)
 {
   extern int EXFUN (atoi, (CONST char *));
-  extern Tchannel EXFUN (OS_open_fd, (int fd));
-  input_channel = (OS_open_fd (STDIN_FILENO));
-  (CHANNEL_INTERNAL (input_channel)) = 1;
-  output_channel = (OS_open_fd (STDOUT_FILENO));
-  (CHANNEL_INTERNAL (output_channel)) = 1;
+
   tty_x_size = (-1);
   tty_y_size = (-1);
   tty_command_beep = ALERT_STRING;
@@ -185,4 +181,15 @@ DEFUN_VOID (UX_initialize_tty)
       (*tputs_output_scan++) = '\0';
       tty_command_clear = command;
     }
+}
+
+void
+DEFUN_VOID (UX_initialize_tty)
+{
+  extern Tchannel EXFUN (OS_open_fd, (int fd));
+  input_channel = (OS_open_fd (STDIN_FILENO));
+  (CHANNEL_INTERNAL (input_channel)) = 1;
+  output_channel = (OS_open_fd (STDOUT_FILENO));
+  (CHANNEL_INTERNAL (output_channel)) = 1;
+  UX_reinitialize_tty ();
 }

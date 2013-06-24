@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.37 2005/02/17 17:52:08 cph Exp $
+$Id: port.scm,v 1.41 2005/12/31 15:43:42 cph Exp $
 
 Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
 Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
@@ -366,11 +366,12 @@ USA.
 			 (transcribe-char char port)))
 		   char)))))
 	(discard-char
-	 (lambda (port)
-	   (if (not (port/unread port))
-	       (error "No character to discard:" port))
-	   (set-port/unread! port #f)
-	   unspecific))
+	 (let ((defer (op 'READ-CHAR)))
+           (lambda (port)
+             (if (port/unread port)
+                 (set-port/unread! port #f)
+                 (defer port))
+             unspecific)))
 	(read-substring
 	 (let ((defer (op 'READ-SUBSTRING)))
 	   (lambda (port string start end)
@@ -381,7 +382,9 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (transcribe-substring string start (fix:+ start n) port)
+		   (if (and n (fix:> n 0))
+		       (transcribe-substring string start (fix:+ start n)
+					     port))
 		   n)))))
 	(read-wide-substring
 	 (let ((defer (op 'READ-WIDE-SUBSTRING)))
@@ -407,7 +410,8 @@ USA.
 		   (set-port/unread! port #f)
 		   1)
 		 (let ((n (defer port string start end)))
-		   (transcribe-substring string start (+ start n) port)
+		   (if (and n (fix:> n 0))
+		       (transcribe-substring string start (+ start n) port))
 		   n))))))
     (lambda (name)
       (case name
@@ -452,7 +456,7 @@ USA.
 		   (begin
 		     (set-port/previous!
 		      port
-		      (string-ref string (fix:+ start (fix:- n 1))))
+		      (wide-string-ref string (fix:+ start (fix:- n 1))))
 		     (transcribe-substring string start (fix:+ start n) port)))
 	       n))))
 	(write-external-substring
@@ -659,17 +663,20 @@ USA.
 
 (define (input-port? object)
   (and (port? object)
-       (port-type/supports-input? (port/type object))))
+       (port-type/supports-input? (port/type object))
+       #t))
 
 (define (output-port? object)
   (and (port? object)
-       (port-type/supports-output? (port/type object))))
+       (port-type/supports-output? (port/type object))
+       #t))
 
 (define (i/o-port? object)
   (and (port? object)
        (let ((type (port/type object)))
 	 (and (port-type/supports-input? type)
-	      (port-type/supports-output? type)))))
+	      (port-type/supports-output? type)
+	      #t))))
 
 (define-integrable (guarantee-port port caller)
   (if (not (port? port))

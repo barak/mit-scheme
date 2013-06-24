@@ -1,10 +1,10 @@
 \input texinfo @c -*-texinfo-*-
-@comment $Id: scheme.texinfo,v 1.134 2005/05/20 02:15:49 cph Exp $
+@comment $Id: scheme.texinfo,v 1.135 2005/12/09 20:25:58 riastradh Exp $
 @comment %**start of header
 @setfilename mit-scheme-ref
 @set EDITION 1.103
 @set VERSION 7.7.90+
-@set UPDATED 2005-05-19
+@set UPDATED 2005-12-09
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -179,6 +179,7 @@ SRFI syntax
 
 * cond-expand (SRFI 0)::        
 * receive (SRFI 8)::            
+* and-let* (SRFI 2)::
 * define-record-type (SRFI 9)::  
 
 Numbers

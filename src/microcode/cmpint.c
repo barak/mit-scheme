@@ -1,10 +1,10 @@
 /* -*-C-*-
 
-$Id: cmpint.c,v 1.103 2004/11/19 04:18:44 cph Exp $
+$Id: cmpint.c,v 1.104 2006/01/29 06:37:30 cph Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,2000,2001,2002,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -192,7 +192,11 @@ typedef char instruction;
 #  define VARENTRY(name) instruction * name
 #  define EXTENTRY(name) extern instruction * name
 #else
-#  define REFENTRY(name) ((void EXFUN ((*), (void))) name)
+#  ifdef __OPEN_WATCOM_14__
+#    define REFENTRY(name) ((void *) name)
+#  else
+#    define REFENTRY(name) ((void EXFUN ((*), (void))) name)
+#  endif
 #  define VARENTRY(name) void EXFUN ((*name), (void))
 #  define EXTENTRY(name) extern void EXFNX (name, (void))
 #endif

@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.22 2004/02/16 05:36:25 cph Exp $
+$Id: fileio.scm,v 1.27 2005/12/14 05:44:31 cph Exp $
 
 Copyright 1991,1993,1994,1995,1996,1999 Massachusetts Institute of Technology
-Copyright 2001,2004 Massachusetts Institute of Technology
+Copyright 2001,2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -30,21 +30,18 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (let ((input-operations
-	 `((LENGTH ,operation/length)))
-	(other-operations
+  (let ((other-operations
 	 `((WRITE-SELF ,operation/write-self)
+	   (LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
 	   (TRUENAME ,operation/truename))))
-    (set! input-file-type
-	  (make-port-type (append input-operations other-operations)
-			  generic-input-type))
-    (set! output-file-type
-	  (make-port-type other-operations
-			  generic-output-type))
-    (set! i/o-file-type
-	  (make-port-type (append input-operations other-operations)
-			  generic-i/o-type)))
+    (let ((make-type
+	   (lambda (source sink)
+	     (make-port-type other-operations
+			     (generic-i/o-port-type source sink)))))
+      (set! input-file-type (make-type 'CHANNEL #f))
+      (set! output-file-type (make-type #f 'CHANNEL))
+      (set! i/o-file-type (make-type 'CHANNEL 'CHANNEL))))
   unspecific)
 
 (define input-file-type)
@@ -57,7 +54,9 @@ USA.
   (pathname #f read-only #t))
 
 (define (operation/length port)
-  (channel-file-length (port/input-channel port)))
+  (channel-file-length
+   (or (port/input-channel port)
+       (port/output-channel port))))
 
 (define (operation/pathname port)
   (fstate-pathname (port/state port)))
@@ -70,14 +69,14 @@ USA.
 
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
-  (write (operation/truename port) output-port))
+  (write (->namestring (operation/truename port)) output-port))
 
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
 	  (make-port input-file-type
-		     (make-gstate channel #f 'TEXT pathname))))
+		     (make-gstate channel #f 'TEXT 'TEXT pathname))))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -91,7 +90,7 @@ USA.
 		(file-open-output-channel filename))))
 	 (port
 	  (make-port output-file-type
-		     (make-gstate #f channel 'TEXT pathname))))
+		     (make-gstate #f channel 'TEXT 'TEXT pathname))))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -101,7 +100,7 @@ USA.
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port
 	  (make-port i/o-file-type
-		     (make-gstate channel channel 'TEXT pathname))))
+		     (make-gstate channel channel 'TEXT 'TEXT pathname))))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -111,7 +110,7 @@ USA.
 	 (channel (file-open-input-channel (->namestring pathname)))
 	 (port
 	  (make-port input-file-type
-		     (make-gstate channel #f 'BINARY pathname))))
+		     (make-gstate channel #f 'BINARY 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -124,7 +123,7 @@ USA.
 		(file-open-output-channel filename))))
 	 (port
 	  (make-port output-file-type
-		     (make-gstate #f channel 'BINARY pathname))))
+		     (make-gstate #f channel 'BINARY 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 
@@ -133,7 +132,7 @@ USA.
 	 (channel (file-open-io-channel (->namestring pathname)))
 	 (port
 	  (make-port i/o-file-type
-		     (make-gstate channel channel 'BINARY pathname))))
+		     (make-gstate channel channel 'BINARY 'BINARY pathname))))
     (set-channel-port! channel port)
     port))
 

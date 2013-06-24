@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.151 2003/03/08 02:40:14 cph Exp $
+$Id: imail-core.scm,v 1.154 2005/12/18 03:25:29 cph Exp $
 
-Copyright 1999,2000,2001,2003 Massachusetts Institute of Technology
+Copyright 1999,2000,2001,2003,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -18,7 +18,7 @@ General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with MIT/GNU Scheme; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02111-1301,
 USA.
 
 |#
@@ -575,11 +575,6 @@ USA.
 (define-generic disconnect-folder (folder))
 
 ;; -------------------------------------------------------------------
-;; Return #T if FOLDER supports MIME parsing.
-
-(define-generic folder-supports-mime? (folder))
-
-;; -------------------------------------------------------------------
 ;; Preload outline information about each message in the folder.
 ;; Normally used prior to generating a folder summary, to accelerate
 ;; the downloading of this information from the server.  This
@@ -600,7 +595,7 @@ USA.
 	 initial-value #f))
 
 (define-method write-instance ((message <message>) port)
-  (write-instance-helper 'MESSAGE message port 
+  (write-instance-helper 'MESSAGE message port
     (lambda ()
       (write-char #\space port)
       (write (message-folder message) port)
@@ -615,6 +610,13 @@ USA.
 (define-generic set-message-flags! (message flags))
 (define-generic message-internal-time (message))
 (define-generic message-length (message))
+
+(define-generic message-body (message))
+(define-method message-body ((message <message>))
+  (let ((string (call-with-output-string
+                  (lambda (output-port)
+                    (write-message-body message output-port)))))
+    (values string 0 (string-length string))))
 
 (define (message-index message)
   (let ((index (%message-index message))
@@ -1006,6 +1008,28 @@ USA.
 
 (define (get-all-header-field-values headers name)
   (map header-field-value (get-all-header-fields headers name)))
+
+(define (parse-first-named-header headers name default parser)
+  (cond ((get-first-header-field-value headers name #f)
+         => (header-parser parser name default))
+        (else default)))
+
+(define (parse-last-named-header headers name default parser)
+  (cond ((get-last-header-field-value headers name #f)
+         => (header-parser parser name default))
+        (else default)))
+
+(define (parse-all-named-headers headers name default parser)
+  (map (header-parser parser name default)
+       (get-all-header-field-values headers name)))
+
+(define-integrable (header-parser parser name default)
+  (lambda (value)
+    (or (parser value)
+        (begin
+          (warn (string-append "Malformed " name " field value:")
+                value)
+          default))))
 
 (define (string->header-fields string)
   (lines->header-fields (string->lines string)))
@@ -1079,7 +1103,7 @@ USA.
 		(cdr entry))))))
 
 (define-method write-instance ((body <mime-body>) port)
-  (write-instance-helper 'MIME-BODY body port 
+  (write-instance-helper 'MIME-BODY body port
     (lambda ()
       (write-char #\space port)
       (write-string (mime-body-type-string body) port))))
@@ -1155,3 +1179,124 @@ USA.
   (source-route define accessor)
   (mailbox define accessor)
   (host define accessor))
+
+;;;; MIME Encoding Registry
+;;; This should probably be moved to the runtime's MIME codec package.
+
+(define-structure (mime-encoding
+                   (conc-name mime-encoding/)
+                   (print-procedure
+                    (standard-unparser-method 'MIME-ENCODING
+                      (lambda (encoding output-port)
+                        (write-char #\space output-port)
+                        (write (mime-encoding/name encoding) output-port))))
+                   (constructor %make-mime-encoding))
+  (name                          #f read-only #t)
+  (identity?                     #f read-only #t)
+  (encoder-initializer           #f read-only #t)
+  (encoder-finalizer             #f read-only #t)
+  (encoder-updater               #f read-only #t)
+  (decoder-initializer           #f read-only #t)
+  (decoder-finalizer             #f read-only #t)
+  (decoder-updater               #f read-only #t)
+  (decoding-port-maker           #f read-only #t)
+  (caller-with-decoding-port     #f read-only #t))
+
+(define-guarantee mime-encoding "MIME codec")
+
+(define mime-encodings
+  (make-eq-hash-table))
+
+(define (define-mime-encoding name
+			      encode:initialize encode:finalize encode:update
+			      decode:initialize decode:finalize decode:update
+			      make-port call-with-port)
+  (hash-table/put!
+   mime-encodings
+   name
+   (%make-mime-encoding name #f
+			encode:initialize encode:finalize encode:update
+			decode:initialize decode:finalize decode:update
+			make-port call-with-port))
+  name)
+
+(define (define-identity-mime-encoding name)
+  (hash-table/put! mime-encodings
+		   name
+		   (%make-mime-encoding name #t
+
+					(lambda (port text?) text? port)
+					output-port/flush-output
+					output-port/write-string
+
+					(lambda (port text?) text? port)
+					output-port/flush-output
+					output-port/write-string
+
+					(lambda (port text?) text? port)
+					(lambda (port text? generator)
+					  text?
+					  (generator port)))))
+
+(define (named-mime-encoding name)
+  (or (hash-table/get mime-encodings name #f)
+      (let ((encoding (make-unknown-mime-encoding name)))
+	(hash-table/put! mime-encodings name encoding)
+	encoding)))
+
+(define (make-unknown-mime-encoding name)
+  (let ((lose (lambda args args (error "Unknown MIME encoding name:" name))))
+    (%make-mime-encoding name #f
+			 lose lose lose
+			 lose lose lose
+			 lose lose)))
+
+(define (call-with-mime-decoding-output-port encoding port text? generator)
+  ((mime-encoding/caller-with-decoding-port
+    (if (symbol? encoding)
+	(named-mime-encoding encoding)
+	(begin
+	  (guarantee-mime-encoding encoding
+				   'CALL-WITH-MIME-DECODING-OUTPUT-PORT)
+	  encoding)))
+   port text? generator))
+
+(define-identity-mime-encoding '7BIT)
+(define-identity-mime-encoding '8BIT)
+(define-identity-mime-encoding 'BINARY)
+;; Next two are random values sometimes used by Outlook.
+(define-identity-mime-encoding '7-BIT)
+(define-identity-mime-encoding '8-BIT)
+
+(define-mime-encoding 'QUOTED-PRINTABLE
+  encode-quoted-printable:initialize
+  encode-quoted-printable:finalize
+  encode-quoted-printable:update
+  decode-quoted-printable:initialize
+  decode-quoted-printable:finalize
+  decode-quoted-printable:update
+  make-decode-quoted-printable-port
+  call-with-decode-quoted-printable-output-port)
+
+(define-mime-encoding 'BASE64
+  encode-base64:initialize
+  encode-base64:finalize
+  encode-base64:update
+  decode-base64:initialize
+  decode-base64:finalize
+  decode-base64:update
+  make-decode-base64-port
+  call-with-decode-base64-output-port)
+
+(define-mime-encoding 'BINHEX40
+  #f #f #f                              ;No BinHex encoder.
+  decode-binhex40:initialize
+  decode-binhex40:finalize
+  decode-binhex40:update
+  make-decode-binhex40-port
+  call-with-decode-binhex40-output-port)
+
+;;; Edwin Variables:
+;;; lisp-indent/select-mime-encoding: 1
+;;; lisp-indent/select-mime-encoding*: 2
+;;; End:

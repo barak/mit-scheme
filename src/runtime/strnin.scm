@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.13 2004/02/16 05:38:37 cph Exp $
+$Id: strnin.scm,v 14.17 2005/12/20 15:53:04 cph Exp $
 
 Copyright 1988,1990,1993,1999,2003,2004 Massachusetts Institute of Technology
+Copyright 2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -33,47 +34,42 @@ USA.
 
 (define (open-input-string string #!optional start end)
   (guarantee-string string 'OPEN-INPUT-STRING)
-  (let ((end
-	 (if (or (default-object? end) (not end))
-	     (string-length string)
-	     (guarantee-substring-end-index end (string-length string)
-					    'OPEN-INPUT-STRING))))
+  (let* ((end
+	  (if (or (default-object? end) (not end))
+	      (string-length string)
+	      (guarantee-substring-end-index end (string-length string)
+					     'OPEN-INPUT-STRING)))
+	 (start
+	  (if (or (default-object? start) (not start))
+	      0
+	      (guarantee-substring-start-index start end 'OPEN-INPUT-STRING))))
     (make-port input-string-port-type
-	       (make-istate
-		string
-		(if (or (default-object? start) (not start))
-		    0
-		    (guarantee-substring-start-index start end
-						     'OPEN-INPUT-STRING))
-		end))))
+	       (make-gstate (make-string-source string start end)
+			    #f
+			    'ISO-8859-1
+			    'NEWLINE))))
+
+(define (make-string-source string start end)
+  (let ((index start))
+    (make-non-channel-source
+     (lambda ()
+       (fix:< index end))
+     (lambda (string* start* end*)
+       (let ((n
+	      (fix:min (fix:- end index)
+		       (fix:- end* start*))))
+	 (let ((limit (fix:+ index n)))
+	   (substring-move! string index limit string* start*)
+	   (set! index limit))
+	 n)))))
 
 (define input-string-port-type)
 (define (initialize-package!)
   (set! input-string-port-type
 	(make-port-type
-	 `((CHAR-READY?
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (fix:< (istate-start s) (istate-end s)))))
-	   (READ-CHAR
-	    ,(lambda (port)
-	       (let ((s (port/state port)))
-		 (without-interrupts
-		  (lambda ()
-		    (let ((start (istate-start s)))
-		      (if (fix:< start (istate-end s))
-			  (begin
-			    (set-istate-start! s (fix:+ start 1))
-			    (string-ref (istate-string s) start))
-			  (make-eof-object port))))))))
-	   (WRITE-SELF
+	 `((WRITE-SELF
 	    ,(lambda (port output-port)
 	       port
 	       (write-string " from string" output-port))))
-	 #f))
+	 (generic-i/o-port-type #t #f)))
   unspecific)
-
-(define-structure (istate (type vector))
-  (string #f read-only #t)
-  start
-  (end #f read-only #t))

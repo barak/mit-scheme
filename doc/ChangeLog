@@ -1,41 +1,85 @@
-2005-05-24 15:19  Chris Hanson <cph@csail.mit.edu>
+2006-01-31 01:30  Chris Hanson <edu/mit/csail/cph>
+
+	* ref-manual/io.texi (1.15):
+
+	Fix various minor problems with XML section.
+
+2006-01-31 01:15  Chris Hanson <edu/mit/csail/cph>
+
+	* ref-manual/io.texi (1.14):
+
+	Use URI records for for namespace URIs.
+
+2006-01-30 16:05  Chris Hanson <edu/mit/csail/cph>
+
+	* ref-manual/io.texi (1.13):
+
+	Change representation of namespace URIs to use the URI data
+	abstraction.
+
+2006-01-30 15:22  Chris Hanson <edu/mit/csail/cph>
+
+	* ref-manual/io.texi (1.12):
+
+	Change all references from IRI to URI.
+
+2006-01-13 00:27  Chris Hanson <edu/mit/csail/cph>
+
+	* user-manual/user.texinfo (1.106):
+
+	Tweak to eliminate texinfo warning.
+
+2005-12-13 10:31  Chris Hanson <edu/mit/csail/cph>
+
+	* ref-manual/characters.texi (1.7):
+
+	Eliminate UTF-xx string ports; use corresponding coding on standard
+	string ports instead.
+
+2005-12-09 15:25  Taylor Campbell <net/mumble/campbell>
+
+	* ref-manual/: scheme.texinfo (1.135), special-forms.texi (1.3):
+
+	Implement SRFI 2: AND-LET*
+
+2005-05-24 15:19  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: procedures.texi (1.2), procedures.texi (1.3):
 
 	Document procedure arity and generic procedures.
 
-2005-05-19 22:15  Chris Hanson <cph@csail.mit.edu>
+2005-05-19 22:15  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.134):
 
 	Bump version and date.
 
-2005-05-19 22:14  Chris Hanson <cph@csail.mit.edu>
+2005-05-19 22:14  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.11):
 
 	Document how READ now takes an optional environment argument and uses
 	it to resolve control variables.
 
-2004-12-06 23:58  Chris Hanson <cph@csail.mit.edu>
+2004-12-06 23:58  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/overview.texi (1.3):
 
 	Remove note about empty list being the same as #f.
 
-2004-11-19 11:41  Chris Hanson <cph@csail.mit.edu>
+2004-11-19 11:41  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/overview.texi (1.2):
 
 	DEFAULT-OBJECT? is no longer a special form.
 
-2004-10-16 23:06  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 23:06  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.132):
 
 	Don't generate @shortcontents or @detailmenu in HTML.
 
-2004-10-16 22:44  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 22:44  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.37), imail/imail.texinfo (1.38),
 	  imail/imail.texinfo (1.39), sos/sos.texinfo (2.19),
@@ -43,49 +87,49 @@
 
 	Tweak.
 
-2004-10-16 22:43  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 22:43  Chris Hanson <edu/mit/csail/cph>
 
 	* make-common.in (1.2):
 
 	Add EXTRA_TEX_OPTIONS so that includer can modify tex behavior.
 
-2004-10-16 22:41  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 22:41  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.18):
 
 	Tweaks.
 
-2004-10-16 22:11  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 22:11  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.17), user-manual/user.texinfo (1.105):
 
 	Update prologue to GNU standard form.
 
-2004-10-16 22:10  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 22:10  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.36), ref-manual/scheme.texinfo (1.131):
 
 	Don't use @noindent in @copying.
 
-2004-10-16 19:43  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 19:43  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.35):
 
 	Set page headings and contents correctly.
 
-2004-10-16 09:32  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 09:32  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.130):
 
 	Tweak title page slightly.
 
-2004-10-16 09:31  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 09:31  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.34):
 
 	Update prologue to GNU standard form.
 
-2004-10-16 02:02  Chris Hanson <cph@csail.mit.edu>
+2004-10-16 02:02  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.12), configure.ac (1.4), index.html (1.3),
 	  make-common.in (1.1), imail/Makefile.in (1.8),
@@ -96,20 +140,20 @@
 
 	Make output names and compilation consistent.  Assumes GNU Make.
 
-2004-10-15 02:00  Chris Hanson <cph@csail.mit.edu>
+2004-10-15 02:00  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.9):
 
 	Some minor tweaks to previous changeset.
 
-2004-10-15 01:58  Chris Hanson <cph@csail.mit.edu>
+2004-10-15 01:58  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.128):
 
 	Update using new @copying directive, and reword the copying
 	information to meet GNU recommendations.
 
-2004-10-15 01:52  Chris Hanson <cph@csail.mit.edu>
+2004-10-15 01:52  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/Makefile.in (1.9):
 
@@ -117,25 +161,25 @@
 	Use makeinfo rather than texi2html.  Use various newer options to
 	improve compilation.
 
-2004-10-15 01:23  Chris Hanson <cph@csail.mit.edu>
+2004-10-15 01:23  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/characters.texi (1.6):
 
 	Fix some awkward grammar.
 
-2004-10-14 13:15  Chris Hanson <cph@csail.mit.edu>
+2004-10-14 13:15  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.8):
 
 	Add description of XHTML named-character support.
 
-2004-10-14 00:10  Chris Hanson <cph@csail.mit.edu>
+2004-10-14 00:10  Chris Hanson <edu/mit/csail/cph>
 
 	* configure.ac (1.3), Makefile.in (1.11):
 
 	Update to remove gfdl.texinfo references.
 
-2004-10-13 23:54  Chris Hanson <cph@csail.mit.edu>
+2004-10-13 23:54  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: acknowledgements.texi (1.1), associations.texi
 	  (1.3), binding-index.texi (1.1), characters.texi (1.5),
@@ -144,13 +188,13 @@
 
 	Reorganize in order to use texinfo-multiple-files-update.
 
-2004-10-13 23:53  Chris Hanson <cph@csail.mit.edu>
+2004-10-13 23:53  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.7):
 
 	Do another pass on the XML documentation.
 
-2004-10-13 23:49  Chris Hanson <cph@csail.mit.edu>
+2004-10-13 23:49  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.103), sos/sos.texinfo (2.15),
 	  imail/imail.texinfo (1.32), imail/gfdl.texinfo (1.8),
@@ -159,86 +203,86 @@
 
 	Integrate GFDL directly into document.
 
-2004-10-12 19:33  Chris Hanson <cph@csail.mit.edu>
+2004-10-12 19:33  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.6):
 
 	Initial pass on new XML interface.
 
-2004-06-15 21:55  Chris Hanson <cph@csail.mit.edu>
+2004-06-15 21:55  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.126):
 
 	Update menu: delete missing section in hash-table docs.
 
-2004-06-07 15:48  Chris Hanson <cph@csail.mit.edu>
+2004-06-07 15:48  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/associations.texi (1.2):
 
 	Reflect new hash-table implementation.
 
-2004-02-06 13:15  Chris Hanson <cph@csail.mit.edu>
+2004-02-06 13:15  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.5):
 
 	Fix typo.
 
-2004-01-16 15:47  Chris Hanson <cph@csail.mit.edu>
+2004-01-16 15:47  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.4):
 
 	Eliminate obsolete references to INPUT-PORT/OPERATION and
 	OUTPUT-PORT/OPERATION.
 
-2003-11-10 16:33  Chris Hanson <cph@csail.mit.edu>
+2003-11-10 16:33  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/win32-packaging.texi (1.2):
 
 	Remove references to %DELETE-DIB.
 
-2003-09-25 12:51  Chris Hanson <cph@csail.mit.edu>
+2003-09-25 12:51  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.3):
 
 	Change URI -> IRI in remaining places.
 
-2003-09-18 12:51  Chris Hanson <cph@csail.mit.edu>
+2003-09-18 12:51  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.125):
 
 	Change release version to 7.7.90 for test release.
 
-2003-09-08 23:47  Chris Hanson <cph@csail.mit.edu>
+2003-09-08 23:47  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/characters.texi (1.4):
 
 	Document #\U+ syntax and CHAR-SET=?.
 
-2003-07-03 21:45  Chris Hanson <cph@csail.mit.edu>
+2003-07-03 21:45  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/characters.texi (1.3):
 
 	Finish filling in Unicode procedure descriptions.
 
-2003-06-20 02:50  Chris Hanson <cph@csail.mit.edu>
+2003-06-20 02:50  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/characters.texi (1.2):
 
 	First draft of new Unicode support.
 
-2003-04-25 22:43  Chris Hanson <cph@csail.mit.edu>
+2003-04-25 22:43  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/io.texi (1.2):
 
 	Change names of string I/O ports to conform to SRFI 6.
 
-2003-04-25 16:49  Chris Hanson <cph@csail.mit.edu>
+2003-04-25 16:49  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/misc-datatypes.texi (1.2):
 
 	Document RECORD-KEYWORD-CONSTRUCTOR.
 
-2003-04-25 16:40  Chris Hanson <cph@csail.mit.edu>
+2003-04-25 16:40  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/special-forms.texi (1.2):
 
@@ -246,19 +290,19 @@
 	`RTD:foo'.  Enumerate possible values for transformer-spec, which now
 	includes a reference to a bound keyword.
 
-2003-04-24 23:38  Chris Hanson <cph@csail.mit.edu>
+2003-04-24 23:38  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.10), scheme.1 (1.1):
 
 	Include manual page, slightly modified from Debian.
 
-2003-04-14 23:35  Chris Hanson <cph@csail.mit.edu>
+2003-04-14 23:35  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.124):
 
 	Put appropriate line breaks on the copyright statements.
 
-2003-04-14 23:29  Chris Hanson <cph@csail.mit.edu>
+2003-04-14 23:29  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: Makefile.in (1.7), associations.texi (1.1),
 	  bit-strings.texi (1.1), characters.texi (1.1), environments.texi
@@ -272,19 +316,19 @@
 	Break up document into chapters.  The 900kB single file was getting
 	too big to edit comfortably.
 
-2003-03-07 21:10  Chris Hanson <cph@csail.mit.edu>
+2003-03-07 21:10  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.122):
 
 	Use angle notation for type descriptor.
 
-2003-03-07 01:18  Chris Hanson <cph@csail.mit.edu>
+2003-03-07 01:18  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.121):
 
 	Fix typo.
 
-2003-02-14 14:22  Chris Hanson <cph@csail.mit.edu>
+2003-02-14 14:22  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.9), configure.ac (1.2), index.html (1.2),
 	  imail/Makefile.in (1.6), imail/imail.texinfo (1.31),
@@ -294,25 +338,25 @@
 
 	Change program name to MIT/GNU Scheme.
 
-2002-12-30 01:08  Chris Hanson <cph@csail.mit.edu>
+2002-12-30 01:08  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.101):
 
 	Fix typo.
 
-2002-12-30 00:31  Chris Hanson <cph@csail.mit.edu>
+2002-12-30 00:31  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: user.texinfo (1.99), user.texinfo (1.100):
 
 	Fix bug-reporting info.
 
-2002-12-30 00:28  Chris Hanson <cph@csail.mit.edu>
+2002-12-30 00:28  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.98):
 
 	Undo usage of @acronym for MIT and GNU; it doesn't look good in print.
 
-2002-12-30 00:23  Chris Hanson <cph@csail.mit.edu>
+2002-12-30 00:23  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.97):
 
@@ -321,26 +365,26 @@
 	texinfo standards, using newer code-marking commands such as @acronym
 	and @email.
 
-2002-12-29 23:33  Chris Hanson <cph@csail.mit.edu>
+2002-12-29 23:33  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.8):
 
 	Clean "autom4te.cache".
 
-2002-12-29 23:29  Chris Hanson <cph@csail.mit.edu>
+2002-12-29 23:29  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.7), imail/Makefile.in (1.5),
 	  ref-manual/Makefile.in (1.5), sos/Makefile.in (2.5):
 
 	Update license statement.
 
-2002-12-29 23:27  Chris Hanson <cph@csail.mit.edu>
+2002-12-29 23:27  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/Makefile.in (1.5):
 
 	Add new index suffixes; update license statement.
 
-2002-12-29 22:35  Chris Hanson <cph@csail.mit.edu>
+2002-12-29 22:35  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.30), sos/sos.texinfo (2.13),
 	  ref-manual/scheme.texinfo (1.119), user-manual/user.texinfo
@@ -348,13 +392,13 @@
 
 	Fix version number of FDL.
 
-2002-12-28 19:24  Chris Hanson <cph@csail.mit.edu>
+2002-12-28 19:24  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.7):
 
 	Fix problem with sectioning that caused PDF generation to fail.
 
-2002-12-28 19:19  Chris Hanson <cph@csail.mit.edu>
+2002-12-28 19:19  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.12), user-manual/user.texinfo (1.95),
 	  imail/imail.texinfo (1.28), ref-manual/scheme.texinfo (1.118),
@@ -362,120 +406,120 @@
 
 	Update for GFDL 1.2.
 
-2002-12-02 14:06  Chris Hanson <cph@csail.mit.edu>
+2002-12-02 14:06  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.6):
 
 	Update to version 1.2.
 
-2002-11-26 22:15  Chris Hanson <cph@csail.mit.edu>
+2002-11-26 22:15  Chris Hanson <edu/mit/csail/cph>
 
 	* configure.ac (1.1), configure.in (1.6):
 
 	Update to autoconf 2.5.
 
-2002-11-20 13:10  Chris Hanson <cph@csail.mit.edu>
+2002-11-20 13:10  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.117):
 
 	Document new optional LINE-TRANSLATION argument to
 	TCP-SERVER-CONNECTION-ACCEPT.  Document new SRFI special forms.
 
-2002-06-17 14:49  Chris Hanson <cph@csail.mit.edu>
+2002-06-17 14:49  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.94):
 
 	Update for 7.7.1 release.
 
-2002-03-13 00:56  Chris Hanson <cph@csail.mit.edu>
+2002-03-13 00:56  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.93):
 
 	Update for release 7.7.0.
 
-2002-03-13 00:47  Chris Hanson <cph@csail.mit.edu>
+2002-03-13 00:47  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.116):
 
 	Add definitions for LINK-VARIABLES and UNBIND-VARIABLE.
 
-2002-03-07 01:24  Chris Hanson <cph@csail.mit.edu>
+2002-03-07 01:24  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/: sos.texinfo (2.10), sos.texinfo (2.11):
 
 	Remove description of METHOD macro; it hasn't been supported in a long
 	time.
 
-2002-02-28 22:23  Chris Hanson <cph@csail.mit.edu>
+2002-02-28 22:23  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.115):
 
 	Hash-table abstraction is now always loaded.  It's no longer necessary
 	to use LOAD-OPTION prior to use.
 
-2002-02-12 20:00  Chris Hanson <cph@csail.mit.edu>
+2002-02-12 20:00  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.114):
 
 	Add descriptions of new environment operations.
 
-2002-02-12 16:50  Chris Hanson <cph@csail.mit.edu>
+2002-02-12 16:50  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.113):
 
 	Add descriptions of new environment operations.
 
-2002-02-12 09:54  Chris Hanson <cph@csail.mit.edu>
+2002-02-12 09:54  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.92):
 
 	Make changes related to new syntax engine.
 
-2002-02-05 13:12  Chris Hanson <cph@csail.mit.edu>
+2002-02-05 13:12  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.112):
 
 	Add notes regarding anonymous macro transformers and the dual action
 	of top-level define-syntax.
 
-2002-02-05 00:28  Chris Hanson <cph@csail.mit.edu>
+2002-02-05 00:28  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.111):
 
 	Second draft of macro documentation includes section on explicit
 	renaming, plus a bunch of fixes to previous draft.
 
-2002-02-04 16:49  Chris Hanson <cph@csail.mit.edu>
+2002-02-04 16:49  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.109), scheme.texinfo (1.110):
 
 	Initial draft of macro documentation.
 
-2002-01-28 20:33  Chris Hanson <cph@csail.mit.edu>
+2002-01-28 20:33  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.91.2.2):
 
 	Fix typo.
 
-2002-01-27 21:12  Chris Hanson <cph@csail.mit.edu>
+2002-01-27 21:12  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.91.2.1):
 
 	Update for release 7.6.1.
 
-2001-12-17 13:21  Chris Hanson <cph@csail.mit.edu>
+2001-12-17 13:21  Chris Hanson <edu/mit/csail/cph>
 
 	* configure.in (1.5):
 
 	Use "install --preserve-timestamps" if it is available.
 
-2001-11-26 14:52  Chris Hanson <cph@csail.mit.edu>
+2001-11-26 14:52  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: user.texinfo (1.90), user.texinfo (1.91):
 
 	Distribution no longer includes "compiler.com" or "edwin.com" bands.
 
-2001-11-26 14:48  Chris Hanson <cph@csail.mit.edu>
+2001-11-26 14:48  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.89):
 
@@ -483,38 +527,38 @@
 	references; update list of supported Windows versions; tweak wording
 	that describes how to start Scheme under Windows.
 
-2001-11-26 14:14  Chris Hanson <cph@csail.mit.edu>
+2001-11-26 14:14  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/: imail.texinfo (1.25), imail.texinfo (1.26), imail.texinfo
 	  (1.27):
 
 	Document M-o command.  Add section describing new sort commands.
 
-2001-11-26 13:16  Chris Hanson <cph@csail.mit.edu>
+2001-11-26 13:16  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.108):
 
 	Write first draft of XML section.
 
-2001-11-20 21:01  Chris Hanson <cph@csail.mit.edu>
+2001-11-20 21:01  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.107):
 
 	Write first draft of Unicode section.
 
-2001-11-20 17:27  Chris Hanson <cph@csail.mit.edu>
+2001-11-20 17:27  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.106):
 
 	Write first draft of parser-macro section.
 
-2001-11-20 16:48  Chris Hanson <cph@csail.mit.edu>
+2001-11-20 16:48  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.105):
 
 	Write first drafter of *PARSER section.
 
-2001-11-20 14:37  Chris Hanson <cph@csail.mit.edu>
+2001-11-20 14:37  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.103), scheme.texinfo (1.104):
 
@@ -524,33 +568,33 @@
 	First partial draft of parser-language section.  This covers the
 	introduction and the subsection on *MATCHER.
 
-2001-11-17 01:01  Chris Hanson <cph@csail.mit.edu>
+2001-11-17 01:01  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.102):
 
 	Fix missing "Unicode" reference.
 
-2001-11-17 00:54  Chris Hanson <cph@csail.mit.edu>
+2001-11-17 00:54  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.101):
 
 	Write documentation for parser-buffer abstraction.
 
-2001-11-16 16:02  Chris Hanson <cph@csail.mit.edu>
+2001-11-16 16:02  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.98), scheme.texinfo (1.99),
 	  scheme.texinfo (1.100):
 
 	Document the REXP abstraction.
 
-2001-11-16 15:04  Chris Hanson <cph@csail.mit.edu>
+2001-11-16 15:04  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.97):
 
 	Change ASCII to ISO-8859-1 where needed.  Document FLO:FINITE?.
 	Update edition/version/date in header.
 
-2001-11-14 00:53  Chris Hanson <cph@csail.mit.edu>
+2001-11-14 00:53  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.96):
 
@@ -560,88 +604,88 @@
 	    list-transform-negative => delete-matching-items
 	    list-search-positive    => find-matching-item
 
-2001-07-18 01:11  Chris Hanson <cph@csail.mit.edu>
+2001-07-18 01:11  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.88):
 
 	Update references to 7.5.16 in the document body.
 
-2001-07-18 00:46  Chris Hanson <cph@csail.mit.edu>
+2001-07-18 00:46  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.87):
 
 	Release notes for 7.5.17.
 
-2001-07-18 00:18  Chris Hanson <cph@csail.mit.edu>
+2001-07-18 00:18  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.24):
 
 	Document the folder browser.
 
-2001-07-16 22:47  Chris Hanson <cph@csail.mit.edu>
+2001-07-16 22:47  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.23):
 
 	The key bindings for toggle- commands have been changed.
 
-2001-07-16 22:36  Chris Hanson <cph@csail.mit.edu>
+2001-07-16 22:36  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.95):
 
 	Modify to reflect changes to server-socket code, and for
 	implementation of procedures to support file links and file types.
 
-2001-03-19 23:30  Chris Hanson <cph@csail.mit.edu>
+2001-03-19 23:30  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.86):
 
 	Update for release 7.5.16.
 
-2001-03-08 16:24  Chris Hanson <cph@csail.mit.edu>
+2001-03-08 16:24  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.85):
 
 	Document changes for supporting dynamically-loaded crypto primitives.
 
-2001-03-01 13:39  Chris Hanson <cph@csail.mit.edu>
+2001-03-01 13:39  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.84):
 
 	Release notes for 7.5.14.
 
-2001-02-26 14:15  Chris Hanson <cph@csail.mit.edu>
+2001-02-26 14:15  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.83):
 
 	Fix typo.
 
-2001-02-23 13:01  Chris Hanson <cph@csail.mit.edu>
+2001-02-23 13:01  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.82):
 
 	Release notes for 7.5.13.
 
-2001-02-23 12:46  Chris Hanson <cph@csail.mit.edu>
+2001-02-23 12:46  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.22), user-manual/user.texinfo (1.81),
 	  sos/sos.texinfo (2.9), ref-manual/scheme.texinfo (1.94):
 
 	Add @dircategory/@direntry so that install-info will work.
 
-2001-02-23 11:09  Chris Hanson <cph@csail.mit.edu>
+2001-02-23 11:09  Chris Hanson <edu/mit/csail/cph>
 
 	* configure.in (1.4):
 
 	Handle configuration arguments correctly; previously was ignoring
 	user's arguments.
 
-2001-02-22 23:37  Chris Hanson <cph@csail.mit.edu>
+2001-02-22 23:37  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.6):
 
 	Fix typo.
 
-2001-02-22 23:36  Chris Hanson <cph@csail.mit.edu>
+2001-02-22 23:36  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/Makefile.in (2.4), user-manual/Makefile.in (1.4),
 	  imail/Makefile.in (1.4), ref-manual/Makefile.in (1.4):
@@ -650,19 +694,19 @@
 	This allows them to appear in a common shared directory and not
 	conflict with other programs.
 
-2000-12-28 22:56  Chris Hanson <cph@csail.mit.edu>
+2000-12-28 22:56  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/: imail.texinfo (1.20), imail.texinfo (1.21):
 
 	Document changes to IMAIL version 1.8.
 
-2000-12-23 22:59  Chris Hanson <cph@csail.mit.edu>
+2000-12-23 22:59  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.80):
 
 	Update for release 7.5.12.
 
-2000-12-23 00:14  Chris Hanson <cph@csail.mit.edu>
+2000-12-23 00:14  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.5), imail/Makefile.in (1.3),
 	  ref-manual/Makefile.in (1.3), user-manual/Makefile.in (1.3),
@@ -670,51 +714,51 @@
 
 	Add "install-info-gz" rule.
 
-2000-12-23 00:09  Chris Hanson <cph@csail.mit.edu>
+2000-12-23 00:09  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.4):
 
 	Extend "install-html" rule to install "index.html".
 
-2000-12-23 00:08  Chris Hanson <cph@csail.mit.edu>
+2000-12-23 00:08  Chris Hanson <edu/mit/csail/cph>
 
 	* index.html (1.1):
 
 	Initial revision.
 
-2000-12-21 00:49  Chris Hanson <cph@csail.mit.edu>
+2000-12-21 00:49  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.19):
 
 	Document a few new features, and finish documenting things that were
 	left out in the first round.  This is now nearly complete.
 
-2000-12-19 16:14  Chris Hanson <cph@csail.mit.edu>
+2000-12-19 16:14  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/Makefile.in (1.2), imail/Makefile.in (1.2),
 	  sos/Makefile.in (2.2), ref-manual/Makefile.in (1.2):
 
 	Compress info files when installing them.
 
-2000-12-08 22:42  Chris Hanson <cph@csail.mit.edu>
+2000-12-08 22:42  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.3):
 
 	Clean up links to "gfdl.texinfo" that are made by configuration.
 
-2000-12-08 16:32  Chris Hanson <cph@csail.mit.edu>
+2000-12-08 16:32  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.79), sos/sos.texinfo (2.8):
 
 	Fix some broken formatting commands.
 
-2000-12-08 16:15  Chris Hanson <cph@csail.mit.edu>
+2000-12-08 16:15  Chris Hanson <edu/mit/csail/cph>
 
 	* configure.in (1.3):
 
 	Rewrite makefiles for new regime.
 
-2000-12-08 15:14  Chris Hanson <cph@csail.mit.edu>
+2000-12-08 15:14  Chris Hanson <edu/mit/csail/cph>
 
 	* Makefile.in (1.1), configure.in (1.1), imail/Makefile (1.10),
 	  ref-manual/Makefile (1.5), sos/Makefile (2.6),
@@ -726,62 +770,62 @@
 
 	Rewrite makefiles for new regime.
 
-2000-11-28 13:46  Chris Hanson <cph@csail.mit.edu>
+2000-11-28 13:46  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.78):
 
 	Update for release 7.5.11.
 
-2000-11-28 13:42  Chris Hanson <cph@csail.mit.edu>
+2000-11-28 13:42  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.18):
 
 	Document variable imail-default-output.
 
-2000-10-16 16:29  Chris Hanson <cph@csail.mit.edu>
+2000-10-16 16:29  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.77):
 
 	Update for 7.5.10 release.
 
-2000-09-04 20:10  Chris Hanson <cph@csail.mit.edu>
+2000-09-04 20:10  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.93):
 
 	Change quotation example to reflect exact output from MIT Scheme.
 
-2000-08-06 21:37  Chris Hanson <cph@csail.mit.edu>
+2000-08-06 21:37  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.17):
 
 	Changed key binding of imail-summary-select-message to #\e.
 
-2000-07-26 12:36  Chris Hanson <cph@csail.mit.edu>
+2000-07-26 12:36  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.16):
 
 	Finish last section of Commands chapter.  The manual is now
 	more-or-less complete.
 
-2000-07-25 23:36  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 23:36  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.5):
 
 	Fix broken spacing around example.
 
-2000-07-25 23:30  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 23:30  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.4):
 
 	Use @copyright.
 
-2000-07-25 23:27  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 23:27  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.15):
 
 	Numerous small changes.
 
-2000-07-25 23:01  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 23:01  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.9), ref-manual/Makefile (1.4),
 	  user-manual/Makefile (1.7), sos/Makefile (2.5):
@@ -789,39 +833,39 @@
 	Fix rules: dependency on gfdl.texinfo shouldn't cause that filename to
 	appear in the command line.
 
-2000-07-25 22:55  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 22:55  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.14):
 
 	Write section on Message Display.
 
-2000-07-25 22:29  Chris Hanson <cph@csail.mit.edu>
+2000-07-25 22:29  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.13):
 
 	Another pass on the MIME section; all MIME commands are now documented.
 
-2000-07-23 21:10  Chris Hanson <cph@csail.mit.edu>
+2000-07-23 21:10  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.3):
 
 	Add blank lines, which shouldn't matter, to work around bug in texi2html.
 
-2000-07-21 16:51  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 16:51  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.12):
 
 	Integrate more variables into the Commands chapter.  First incomplete
 	draft of MIME section.
 
-2000-07-21 14:37  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 14:37  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.76):
 
 	Fix some minor formatting problems in the release notes, and use
 	@acronym where appropriate.
 
-2000-07-21 14:23  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 14:23  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.7), user-manual/user.texinfo (1.74),
 	  sos/Makefile (2.4), user-manual/Makefile (1.6),
@@ -829,13 +873,13 @@
 
 	Add GFDL chapter.
 
-2000-07-21 14:10  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 14:10  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.8), ref-manual/Makefile (1.3):
 
 	Add gfdl.texinfo to dependencies.
 
-2000-07-21 13:59  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 13:59  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.92):
 
@@ -843,152 +887,152 @@
 	antique @deffnexample; there's no point tracking this, and it is just
 	asking for trouble in the future.
 
-2000-07-21 13:35  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 13:35  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.2):
 
 	Change list in section MODIFICATIONS to be an enumeration.  Use
 	@acronym and @uref where appropriate.
 
-2000-07-21 13:24  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 13:24  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.11):
 
 	Move GFDL to separate file.
 
-2000-07-21 13:21  Chris Hanson <cph@csail.mit.edu>
+2000-07-21 13:21  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/gfdl.texinfo (1.1):
 
 	Initial registration; this is the version I obtained from RMS.
 
-2000-07-19 22:57  Chris Hanson <cph@csail.mit.edu>
+2000-07-19 22:57  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.10):
 
 	Fix node structure from previous change.
 
-2000-07-19 22:56  Chris Hanson <cph@csail.mit.edu>
+2000-07-19 22:56  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.9):
 
 	Integrate some more variables into the command documentation.  Use
 	Texinfo version of GFDL.
 
-2000-07-12 00:06  Chris Hanson <cph@csail.mit.edu>
+2000-07-12 00:06  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.8):
 
 	Write Multiple Folders section.
 
-2000-07-11 18:06  Chris Hanson <cph@csail.mit.edu>
+2000-07-11 18:06  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.7):
 
 	Add Summaries section.
 
-2000-07-11 17:04  Chris Hanson <cph@csail.mit.edu>
+2000-07-11 17:04  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.6):
 
 	Extensive editing of Commands chapter.  Most of this is blatant theft
 	of corresponding portions of the Emacs manual.
 
-2000-07-11 16:17  Chris Hanson <cph@csail.mit.edu>
+2000-07-11 16:17  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.7):
 
 	New texi2html generates foo.html file rather than foo_toc.html.
 
-2000-07-11 12:59  Chris Hanson <cph@csail.mit.edu>
+2000-07-11 12:59  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.6):
 
 	New texi2html generates foo.html file rather than foo_toc.html.
 
-2000-07-10 22:50  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 22:50  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.5):
 
 	Assorted tweaks.
 
-2000-07-10 22:29  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 22:29  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.4):
 
 	Add section about server connections.  Write outline and introductory
 	text for Commands chapter.
 
-2000-07-10 21:43  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 21:43  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.3):
 
 	Add more structure to the Concepts chapter, and move many of the RFC
 	references into footnotes.
 
-2000-07-10 18:19  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:19  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/Makefile (2.3):
 
 	Fix thinko.
 
-2000-07-10 18:14  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:14  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/Makefile (1.2), sos/Makefile (2.2):
 
 	Add PDF and clean rules.
 
-2000-07-10 18:09  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:09  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.5):
 
 	Add code to install info files.
 
-2000-07-10 18:09  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:09  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.4), user-manual/Makefile (1.5):
 
 	Add rule to make PDF file.
 
-2000-07-10 18:08  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:08  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.3):
 
 	Fix typo.
 
-2000-07-10 18:06  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:06  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: Makefile (1.3), Makefile (1.4):
 
 	Add "clean" rule.
 
-2000-07-10 18:05  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:05  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/re-tex (1.2), ref-manual/re-tex (1.3), sos/re-tex
 	  (2.2):
 
 	No longer needed.
 
-2000-07-10 18:04  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:04  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/Makefile (1.2):
 
 	Don't use re-tex.  Add rule to generate PDF.
 
-2000-07-10 18:03  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 18:03  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/Makefile (1.1), ref-manual/Makefile (1.1),
 	  sos/Makefile (2.1):
 
 	Initial registration.
 
-2000-07-10 17:56  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 17:56  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.73):
 
 	Fix out-of-date URLs, and use new @uref command.
 
-2000-07-10 17:41  Chris Hanson <cph@csail.mit.edu>
+2000-07-10 17:41  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.2):
 
@@ -998,131 +1042,131 @@
 	Debian 2.1 and 2.2.  It does work right in texi2html 1.64, which I've
 	locally installed on the Project MAC machines.)
 
-2000-07-08 23:46  Chris Hanson <cph@csail.mit.edu>
+2000-07-08 23:46  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.72):
 
 	Add release notes for release 7.5.9.
 
-2000-07-08 21:36  Chris Hanson <cph@csail.mit.edu>
+2000-07-08 21:36  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.2):
 
 	Add "clean" rule.
 
-2000-07-08 21:19  Chris Hanson <cph@csail.mit.edu>
+2000-07-08 21:19  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/Makefile (1.1):
 
 	Initial registration.
 
-2000-07-08 21:15  Chris Hanson <cph@csail.mit.edu>
+2000-07-08 21:15  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/make-docs.sh (1.3):
 
 	Removed; use Makefile instead.
 
-2000-07-07 17:15  Chris Hanson <cph@csail.mit.edu>
+2000-07-07 17:15  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/make-docs.sh (1.2):
 
 	Delete previous doc-files directory before regenerating.
 
-2000-07-07 17:15  Chris Hanson <cph@csail.mit.edu>
+2000-07-07 17:15  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/make-docs.sh (1.1):
 
 	Initial registration.
 
-2000-07-07 16:53  Chris Hanson <cph@csail.mit.edu>
+2000-07-07 16:53  Chris Hanson <edu/mit/csail/cph>
 
 	* imail/imail.texinfo (1.1):
 
 	First partial draft.
 
-2000-04-30 23:17  Chris Hanson <cph@csail.mit.edu>
+2000-04-30 23:17  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.71):
 
 	Changes for 7.5.8.
 
-2000-04-20 17:03  Chris Hanson <cph@csail.mit.edu>
+2000-04-20 17:03  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.70):
 
 	Changes for release 7.5.7.
 
-2000-04-11 20:40  Chris Hanson <cph@csail.mit.edu>
+2000-04-11 20:40  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.91):
 
 	CHAR-SET-UNION and CHAR-SET-INTERSECTION now take any number of
 	arguments.
 
-2000-04-04 14:20  Chris Hanson <cph@csail.mit.edu>
+2000-04-04 14:20  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.69):
 
 	Update for 7.5.6.
 
-2000-03-21 12:17  Chris Hanson <cph@csail.mit.edu>
+2000-03-21 12:17  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/re-tex (2.1):
 
 	Initial registration with CVS.
 
-2000-03-21 12:16  Chris Hanson <cph@csail.mit.edu>
+2000-03-21 12:16  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/pictures.texinfo (1.2):
 
 	Delete obsolete file.
 
-2000-03-17 13:08  Chris Hanson <cph@csail.mit.edu>
+2000-03-17 13:08  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.68):
 
 	Add "Recent Changes" section to release notes.
 
-2000-03-17 12:57  Chris Hanson <cph@csail.mit.edu>
+2000-03-17 12:57  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.6), ref-manual/scheme.texinfo (1.90),
 	  user-manual/user.texinfo (1.67):
 
 	Change license to FDL.
 
-2000-01-07 13:11  Chris Hanson <cph@csail.mit.edu>
+2000-01-07 13:11  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.89):
 
 	Clarify the section on pathname components, and detail how each
 	component is used for the currently supported file systems.
 
-2000-01-04 22:00  Chris Hanson <cph@csail.mit.edu>
+2000-01-04 22:00  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.88):
 
 	Another round of changes for the release.
 
-2000-01-04 21:43  Chris Hanson <cph@csail.mit.edu>
+2000-01-04 21:43  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.87):
 
 	Change "writable" to "writeable".  Document optional argument to
 	TEMPORARY-FILE-PATHNAME.
 
-2000-01-04 00:25  Chris Hanson <cph@csail.mit.edu>
+2000-01-04 00:25  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.86):
 
 	Add definition of new SAFE-ACCESSORS option to DEFINE-STRUCTURE.
 
-1999-12-27 16:03  Chris Hanson <cph@csail.mit.edu>
+1999-12-27 16:03  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.66):
 
 	Update the OS/2 installation instructions.
 
-1999-12-22 15:42  Chris Hanson <cph@csail.mit.edu>
+1999-12-22 15:42  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.85):
 
@@ -1130,409 +1174,409 @@
 	The text showed erroneous output, which was not Scheme's fault but was
 	due to a bug in glibc 2.0.7.  This bug doesn't appear in glibc 2.1.2.
 
-1999-12-21 16:00  Chris Hanson <cph@csail.mit.edu>
+1999-12-21 16:00  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.84):
 
 	Another round of editing changes in preparation for the upcoming
 	release.
 
-1999-12-20 18:21  Chris Hanson <cph@csail.mit.edu>
+1999-12-20 18:21  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.83):
 
 	Change definition of WRITE-LINE so that the newline is emitted after
 	the object, rather than before it as previously.
 
-1999-11-23 23:51  Chris Hanson <cph@csail.mit.edu>
+1999-11-23 23:51  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.65):
 
 	Update canonical FTP site URL.
 
-1999-11-23 23:43  Chris Hanson <cph@csail.mit.edu>
+1999-11-23 23:43  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.64):
 
 	Edit the release notes, adding some new material, reorganizing, making
 	phrasing more consistent and easier to read.
 
-1999-11-08 13:23  Chris Hanson <cph@csail.mit.edu>
+1999-11-08 13:23  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.81), scheme.texinfo (1.82):
 
 	Change order of arguments to VECTOR-MAP.
 
-1999-08-20 16:52  Chris Hanson <cph@csail.mit.edu>
+1999-08-20 16:52  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.80):
 
 	Update regular-expression documentation to reflect new implementation
 	in which the match registers are returned as the value of the match.
 
-1999-08-19 18:17  Chris Hanson <cph@csail.mit.edu>
+1999-08-19 18:17  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.79):
 
 	Fix version number.
 
-1999-08-19 11:08  Chris Hanson <cph@csail.mit.edu>
+1999-08-19 11:08  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.78):
 
 	Tweak description of characters to account for changed representation.
 
-1999-08-19 10:50  Chris Hanson <cph@csail.mit.edu>
+1999-08-19 10:50  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.77):
 
 	Replace description of dynamic-wind with text from R5RS.
 
-1999-08-13 17:25  Chris Hanson <cph@csail.mit.edu>
+1999-08-13 17:25  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.76):
 
 	Update socket/host-name stuff.
 
-1999-08-12 20:24  Chris Hanson <cph@csail.mit.edu>
+1999-08-12 20:24  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.63):
 
 	Don't mention encapsulation; this feature will probably go away.
 
-1999-08-09 14:12  Chris Hanson <cph@csail.mit.edu>
+1999-08-09 14:12  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.75):
 
 	Add new procedure WRITE-SUBSTRING.
 
-1999-08-09 12:49  Chris Hanson <cph@csail.mit.edu>
+1999-08-09 12:49  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.5):
 
 	Update copyright; restructure to have multiple chapters.
 
-1999-08-03 21:42  Chris Hanson <cph@csail.mit.edu>
+1999-08-03 21:42  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.74):
 
 	Document interface to TCP sockets.
 
-1999-08-03 21:12  Chris Hanson <cph@csail.mit.edu>
+1999-08-03 21:12  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.62):
 
 	A final round of changes for the release.  This should be the final
 	version.
 
-1999-07-16 14:07  Chris Hanson <cph@csail.mit.edu>
+1999-07-16 14:07  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: user.texinfo (1.59), user.texinfo (1.60),
 	  user.texinfo (1.61):
 
 	More changes for release.
 
-1999-07-06 11:11  Chris Hanson <cph@csail.mit.edu>
+1999-07-06 11:11  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.58):
 
 	More changes for the upcoming release.
 
-1999-07-02 22:30  Chris Hanson <cph@csail.mit.edu>
+1999-07-02 22:30  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.57):
 
 	Fix typo in previous change.
 
-1999-07-02 22:28  Chris Hanson <cph@csail.mit.edu>
+1999-07-02 22:28  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.56):
 
 	Many changes in preparation for the upcoming 7.5 release.  There's
 	still a fair amount left to do.
 
-1999-06-22 14:31  Chris Hanson <cph@csail.mit.edu>
+1999-06-22 14:31  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.73):
 
 	Document optional argument to re-match-start-index and
 	re-match-end-index.
 
-1999-06-21 20:47  Chris Hanson <cph@csail.mit.edu>
+1999-06-21 20:47  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.72):
 
 	Change info filename to "scheme.info".
 
-1999-06-21 20:42  Chris Hanson <cph@csail.mit.edu>
+1999-06-21 20:42  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.71):
 
 	Add documentation for regular-expression procedures.  Change
 	string-search documentation to reflect rationalization of procedures.
 
-1999-05-28 01:02  Chris Hanson <cph@csail.mit.edu>
+1999-05-28 01:02  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.70):
 
 	Add documentation for subprocesses, machine time, and operating-system
 	identifiers.
 
-1999-05-07 22:57  Chris Hanson <cph@csail.mit.edu>
+1999-05-07 22:57  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.69):
 
 	Document new string-search procedures and string-reversal procedures.
 
-1999-04-29 18:21  Chris Hanson <cph@csail.mit.edu>
+1999-04-29 18:21  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.68):
 
 	Change documentation for time procedures to match new regularized
 	implementation.
 
-1999-03-30 21:59  Chris Hanson <cph@csail.mit.edu>
+1999-03-30 21:59  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.67):
 
 	Document time procedures.
 
-1999-03-16 01:21  Chris Hanson <cph@csail.mit.edu>
+1999-03-16 01:21  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.66):
 
 	Document parser/unparser control variables and mode-bit definitions.
 
-1999-02-26 00:49  Chris Hanson <cph@csail.mit.edu>
+1999-02-26 00:49  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.65):
 
 	Extensive changes to adjust for new release, fix formatting problems,
 	and change copyright.
 
-1999-02-26 00:39  Chris Hanson <cph@csail.mit.edu>
+1999-02-26 00:39  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.55):
 
 	Numerous formatting changes to eliminate TeX errors.  Adjust for minor
 	changes since last release.
 
-1999-02-25 23:09  Chris Hanson <cph@csail.mit.edu>
+1999-02-25 23:09  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.54):
 
 	Update BKPT to reflect current implementation.
 
-1998-03-19 15:28  Chris Hanson <cph@csail.mit.edu>
+1998-03-19 15:28  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.4):
 
 	Document SEPARATOR option to DEFINE-CLASS.
 
-1998-02-21 15:24  Chris Hanson <cph@csail.mit.edu>
+1998-02-21 15:24  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (2.3):
 
 	Fix typo.
 
-1997-06-25 03:22  Chris Hanson <cph@csail.mit.edu>
+1997-06-25 03:22  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/: sos.texinfo (2.1), sos.texinfo (2.2):
 
 	Extensive changes corresponding to new release of SOS that uses
 	generic procedure support provided by the runtime system.
 
-1997-02-12 21:24  Chris Hanson <cph@csail.mit.edu>
+1997-02-12 21:24  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.64):
 
 	Update documentation for FLONUM-UNPARSER-CUTOFF.  Change names for
 	x-graphics procedures to match code.
 
-1996-11-05 12:00  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-11-05 12:00  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.53):
 
 	Revised Wdinows installation instructions.
 
-1996-07-12 14:51  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-07-12 14:51  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.63):
 
 	Added X-graphics documentation about DRAW-CIRCLE and FILL-CIRCLE.
 
-1996-04-16 16:17  Chris Hanson <cph@csail.mit.edu>
+1996-04-16 16:17  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.51), ref-manual/scheme.texinfo
 	  (1.62), user-manual/user.texinfo (1.52):
 
 	Final editing for release 7.4.2.
 
-1996-04-15 17:43  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-04-15 17:43  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.61):
 
 	Fix typo in WIN32 section.
 
-1996-04-15 15:33  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-04-15 15:33  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.50):
 
 	More Windows-specific edits.
 
-1996-04-10 16:03  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-04-10 16:03  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.49):
 
 	Some updates to windows installation.
 
-1996-04-08 17:18  Chris Hanson <cph@csail.mit.edu>
+1996-04-08 17:18  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.48):
 
 	Fix some typos.
 
-1996-04-08 17:11  Chris Hanson <cph@csail.mit.edu>
+1996-04-08 17:11  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: user.texinfo (1.46), user.texinfo (1.47):
 
 	Add information about our FTP site and also how to report bugs.
 
-1996-04-08 17:03  Chris Hanson <cph@csail.mit.edu>
+1996-04-08 17:03  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.45):
 
 	Add a short introduction.  Document `load-option' and the `purify?'
 	argument to `load'.
 
-1996-04-07 17:01  Chris Hanson <cph@csail.mit.edu>
+1996-04-07 17:01  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.44):
 
 	Extensive editing for 7.4.2 release.
 
-1996-04-07 14:32  Chris Hanson <cph@csail.mit.edu>
+1996-04-07 14:32  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.60):
 
 	Fix broken instances of cross-reference commands.
 
-1996-04-07 12:24  Chris Hanson <cph@csail.mit.edu>
+1996-04-07 12:24  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.58), scheme.texinfo (1.59):
 
 	Fix minor typesetting error.
 
-1996-04-04 18:25  Chris Hanson <cph@csail.mit.edu>
+1996-04-04 18:25  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.57):
 
 	Extensive edit to update document for 7.4.2 release.
 
-1996-03-21 10:54  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-03-21 10:54  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.43):
 
 	Indexed `fonts'
 
-1996-03-21 10:35  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-03-21 10:35  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.42):
 
 	Added info on MITSCHEME_FONT (Windows 3.1/95/NT)
 
-1996-03-13 21:55  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-03-13 21:55  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.41):
 
 	Added documentation for APROPOS, PP and PA under `Debugging Aids'.
 
-1996-03-10 16:34  Chris Hanson <cph@csail.mit.edu>
+1996-03-10 16:34  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.40):
 
 	Update version numbers and dates.
 
-1996-02-22 17:47  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-02-22 17:47  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.39):
 
 	TYpo
 
-1996-02-22 17:12  Stephen Adams <adams@zurich.csail.mit.edu>
+1996-02-22 17:12  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.38):
 
 	Added efficiency tip on intercation between internal definitions and
 	CALL-WITH-CURRENT-CONTINUATION.
 
-1996-02-15 17:30  Chris Hanson <cph@csail.mit.edu>
+1996-02-15 17:30  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.56):
 
 	Fix typo and update revision numbers.
 
-1995-11-29 02:08  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-11-29 02:08  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.37):
 
 	Added 7.? vs 8.0 clarifications.
 
-1995-11-20 18:24  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-11-20 18:24  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.36):
 
 	Fixed typo in example.
 
-1995-11-06 23:45  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-11-06 23:45  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.55):
 
 	Added STRING->CHAR-SET.
 
-1995-11-01 11:51  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-11-01 11:51  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.35):
 
 	Extended the flonum efficiency tip.
 
-1995-10-30 21:21  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-10-30 21:21  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.34):
 
 	Fixed more typos.
 
-1995-10-30 21:18  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-10-30 21:18  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.33):
 
 	Fixed typo.
 
-1995-10-30 21:14  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-10-30 21:14  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.32):
 
 	Added some effiency tips about flonums.
 
-1995-10-30 19:51  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-10-30 19:51  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.54):
 
 	Improved `largest fixnum' code.
 
-1995-10-30 16:37  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-10-30 16:37  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.31):
 
 	Fixed typo.
 
-1995-09-04 10:00  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-09-04 10:00  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.30):
 
 	Added an efficiency tip.
 
-1995-08-27 14:52  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-08-27 14:52  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.29):
 
@@ -1540,321 +1584,321 @@
 	pretty unstructured, but at least this information is finding its way
 	onto paper.
 
-1995-08-21 09:14  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-08-21 09:14  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.28):
 
 	Fixed units.
 
-1995-07-12 17:10  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-07-12 17:10  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.53):
 
 	Added a sentence about structure option (print-procedure #F).
 
-1995-05-30 09:53  Chris Hanson <cph@csail.mit.edu>
+1995-05-30 09:53  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.27):
 
 	Fix some typos.
 
-1995-05-30 09:46  Chris Hanson <cph@csail.mit.edu>
+1995-05-30 09:46  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.52):
 
 	Fix some typos in the OS/2 graphics section.
 
-1995-05-30 09:30  Chris Hanson <cph@csail.mit.edu>
+1995-05-30 09:30  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.26):
 
 	Update title page and dates.
 
-1995-05-21 04:52  Chris Hanson <cph@csail.mit.edu>
+1995-05-21 04:52  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.51):
 
 	Add documentation for OS/2 graphics.
 
-1995-04-28 09:47  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-04-28 09:47  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.25):
 
 	Added some (incomplete) documantation about garbage collection.
 
-1995-04-20 12:03  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-04-20 12:03  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.50):
 
 	Added documentation for BIT-SUBSTRING-FIND-NEXT-SET-BIT.
 
-1995-03-01 23:56  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-03-01 23:56  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.49):
 
 	Documented WT-TREE/UNION-MERGE.
 
-1995-02-23 08:58  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-02-23 08:58  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.24):
 
 	Added a useful tip under integration declarations.
 
-1995-01-19 01:15  Stephen Adams <adams@zurich.csail.mit.edu>
+1995-01-19 01:15  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.48):
 
 	Fixed example in vector-map
 
-1994-10-20 15:00  Stephen Adams <adams@zurich.csail.mit.edu>
+1994-10-20 15:00  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.47):
 
 	Documented VECTOR-BINARY-SEARCH.
 
-1994-10-17 12:08  Stephen Adams <adams@zurich.csail.mit.edu>
+1994-10-17 12:08  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.46):
 
 	Corrected small detail in Win32 package reference.
 
-1994-10-13 19:24  Stephen Adams <adams@zurich.csail.mit.edu>
+1994-10-13 19:24  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.45):
 
 	Fixed small errors in WT-TREE documentation.
 	Added description of VECTOR-MAP.
 
-1994-09-09 17:54  Chris Hanson <cph@csail.mit.edu>
+1994-09-09 17:54  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.23):
 
 	Update installation instructions to include description of HPPA cache
 	stuff.
 
-1994-08-14 15:38  Chris Hanson <cph@csail.mit.edu>
+1994-08-14 15:38  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.44):
 
 	Another round of changes to the Error System chapter.  This should
 	finish the major editing needed for this chapter.
 
-1994-08-12 03:56  Chris Hanson <cph@csail.mit.edu>
+1994-08-12 03:56  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.43):
 
 	Insert new error system documentation.
 
-1994-08-11 01:09  Chris Hanson <cph@csail.mit.edu>
+1994-08-11 01:09  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.42):
 
 	Fix bug in examples for FOLD-LEFT.
 
-1994-06-01 16:15  Chris Hanson <cph@csail.mit.edu>
+1994-06-01 16:15  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.6):
 
 	Update to describe several recent changes.
 
-1993-12-17 17:36  Chris Hanson <cph@csail.mit.edu>
+1993-12-17 17:36  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.22):
 
 	Fix typo.
 
-1993-12-17 17:20  Chris Hanson <cph@csail.mit.edu>
+1993-12-17 17:20  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.21):
 
 	Numerous low-level changes.  Fix capitalization of titles, rewrite
 	long titles to make them shorter.
 
-1993-12-16 17:44  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-16 17:44  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.20):
 
 	[no log message]
 
-1993-12-15 19:04  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-15 19:04  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.19):
 
 	[no log message]
 
-1993-12-06 19:19  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-06 19:19  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.18):
 
 	[no log message]
 
-1993-12-06 15:37  Chris Hanson <cph@csail.mit.edu>
+1993-12-06 15:37  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.41):
 
 	Eliminate contents of error-system chapter.
 
-1993-12-06 15:37  Chris Hanson <cph@csail.mit.edu>
+1993-12-06 15:37  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.17):
 
 	Add "News" section to release notes.  Also many small changes.
 
-1993-12-05 11:17  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-05 11:17  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.16), ref-manual/scheme.texinfo
 	  (1.40):
 
 	[no log message]
 
-1993-12-03 18:31  Guillermo J. Rozas <gjr@zurich.csail.mit.edu>
+1993-12-03 18:31  Guillermo J. Rozas <edu/mit/csail/zurich/gjr>
 
 	* user-manual/user.texinfo (1.15):
 
 	Add C back end information.
 
-1993-12-03 17:44  Chris Hanson <cph@csail.mit.edu>
+1993-12-03 17:44  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.14):
 
 	Patch a few typos.
 
-1993-12-03 17:12  Chris Hanson <cph@csail.mit.edu>
+1993-12-03 17:12  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.13):
 
 	Fix node references from last change.
 
-1993-12-03 17:07  Chris Hanson <cph@csail.mit.edu>
+1993-12-03 17:07  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/user.texinfo (1.12):
 
 	Merge the indices.
 
-1993-12-03 16:45  Chris Hanson <cph@csail.mit.edu>
+1993-12-03 16:45  Chris Hanson <edu/mit/csail/cph>
 
 	* user-manual/: user.texinfo (1.10), user.texinfo (1.11):
 
 	Numerous small changes.
 
-1993-12-03 16:23  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-03 16:23  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.9):
 
 	[no log message]
 
-1993-12-01 22:25  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-01 22:25  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/: user.texinfo (1.7), user.texinfo (1.8):
 
 	[no log message]
 
-1993-12-01 01:17  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-12-01 01:17  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.6):
 
 	incorporated s    DOS instructions
 
-1993-11-28 21:56  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-28 21:56  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.5):
 
 	Mended Windows installation section.
 	Incorporated Win32 Package documentation.
 
-1993-11-27 00:12  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-27 00:12  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.4):
 
 	Partly added windows installation blurb
 
-1993-11-23 22:24  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-23 22:24  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.3):
 
 	augmented and re-arranged environment variables and command-line
 	options.  Added info on memory sizing.
 
-1993-11-22 20:44  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-22 20:44  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/user.texinfo (1.2):
 
 	Added environment variables
 
-1993-11-22 17:45  Nick Papadakis <nick@zurich.csail.mit.edu>
+1993-11-22 17:45  Nick Papadakis <edu/mit/csail/zurich/nick>
 
 	* ref-manual/scheme.texinfo (1.39):
 
 	Minor images typo
 
-1993-11-22 14:47  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-22 14:47  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* user-manual/re-tex (1.1):
 
 	Initial revision
 
-1993-11-16 16:59  Nick Papadakis <nick@zurich.csail.mit.edu>
+1993-11-16 16:59  Nick Papadakis <edu/mit/csail/zurich/nick>
 
 	* ref-manual/scheme.texinfo (1.38):
 
 	Minor typo, weak-pairs xref in hash table intro
 
-1993-11-12 15:16  Nick Papadakis <nick@zurich.csail.mit.edu>
+1993-11-12 15:16  Nick Papadakis <edu/mit/csail/zurich/nick>
 
 	* ref-manual/scheme.texinfo (1.37):
 
 	Minor typos
 
-1993-11-03 18:29  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-03 18:29  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.36):
 
 	[no log message]
 
-1993-11-03 18:02  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-03 18:02  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.35):
 
 	fixed more typos
 
-1993-11-03 17:57  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-03 17:57  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.34):
 
 	Fixed typos in wt-tree documentation
 
-1993-11-02 22:37  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-11-02 22:37  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.33):
 
 	Added weight balanced tree documentation
 
-1993-10-25 17:35  Chris Hanson <cph@csail.mit.edu>
+1993-10-25 17:35  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.32):
 
 	More changes all over the place.  Remove the picture documentation to
 	a separate file and conditionalize its inclusion.
 
-1993-10-25 17:32  Chris Hanson <cph@csail.mit.edu>
+1993-10-25 17:32  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/pictures.texinfo (1.1):
 
 	Initial revision
 
-1993-10-22 23:01  Chris Hanson <cph@csail.mit.edu>
+1993-10-22 23:01  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.31):
 
 	Numerous small changes.
 
-1993-10-19 19:46  Chris Hanson <cph@csail.mit.edu>
+1993-10-19 19:46  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.30):
 
 	Various minor edits.
 
-1993-10-19 04:03  Chris Hanson <cph@csail.mit.edu>
+1993-10-19 04:03  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.28), scheme.texinfo (1.29):
 
@@ -1862,19 +1906,19 @@
 	documentation of the PROMPT-FOR-COMMAND- procedures to indicate that
 	they print the REP level number.
 
-1993-10-16 04:48  Chris Hanson <cph@csail.mit.edu>
+1993-10-16 04:48  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.27):
 
 	Document prompting procedures.
 
-1993-10-16 01:31  Jason Wilson <jawilson@zurich.csail.mit.edu>
+1993-10-16 01:31  Jason Wilson <edu/mit/csail/zurich/jawilson>
 
 	* ref-manual/scheme.texinfo (1.26):
 
 	I examples for the list-transform-mumble functions.
 
-1993-10-14 06:41  Chris Hanson <cph@csail.mit.edu>
+1993-10-14 06:41  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.25):
 
@@ -1887,14 +1931,14 @@
 
 	* Merge the two indices into one.
 
-1993-10-14 02:42  Chris Hanson <cph@csail.mit.edu>
+1993-10-14 02:42  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.24):
 
 	Rewrite "Input/Output" chapter to incorporate many changes that have
 	been implemented since the 7.1 release.
 
-1993-10-13 04:53  Chris Hanson <cph@csail.mit.edu>
+1993-10-13 04:53  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.23):
 
@@ -1902,153 +1946,153 @@
 	object-hashing mechanism.  Plus many small fixes and updates
 	throughout.
 
-1993-10-12 21:36  Chris Hanson <cph@csail.mit.edu>
+1993-10-12 21:36  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/re-tex (1.2):
 
 	[no log message]
 
-1993-10-12 21:33  Chris Hanson <cph@csail.mit.edu>
+1993-10-12 21:33  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.22):
 
 	Update documentation of hash tables to reflect new implementation.
 	Update node pointers and menus throughout the document.
 
-1993-10-05 12:30  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-10-05 12:30  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.21):
 
 	Fixed a few typos.
 
-1993-09-30 18:42  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-09-30 18:42  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.20):
 
 	Documentsed FOLD-LEFT and FOLD-RIGHT
 
-1993-09-24 16:06  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-09-24 16:06  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.19):
 
 	Fixed typos in new graphics documentations.
 
-1993-09-15 22:33  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-09-15 22:33  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.18):
 
 	Oops!
 	Fixed a fnord found after last check-in
 
-1993-09-15 21:38  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-09-15 21:38  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.17):
 
 	Documented scheme graphcis for windows NT
 	Documented new Images type
 
-1993-08-02 20:51  Chris Hanson <cph@csail.mit.edu>
+1993-08-02 20:51  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.15), scheme.texinfo (1.16):
 
 	Update edition and date information.
 
-1993-07-06 23:20  Chris Hanson <cph@csail.mit.edu>
+1993-07-06 23:20  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.14):
 
 	Fix typo in definition of MAKE-POLAR.
 
-1993-03-17 17:47  Chris Hanson <cph@csail.mit.edu>
+1993-03-17 17:47  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.13):
 
 	Reformat DEFINE-STRUCTURE definition slightly to follow standard
 	Texinfo guidelines.
 
-1993-03-17 16:04  Arthur Gleckler <arthur@zurich.csail.mit.edu>
+1993-03-17 16:04  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* ref-manual/scheme.texinfo (1.12):
 
 	Added Dave Espinosa's DEFINE-STRUCTURE documentation.
 
-1993-03-15 20:52  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-03-15 20:52  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/re-tex (1.1):
 
 	Initial revision
 
-1993-03-15 19:23  Chris Hanson <cph@csail.mit.edu>
+1993-03-15 19:23  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/scheme.texinfo (1.11):
 
 	Fix some typos.
 
-1993-03-15 16:39  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-03-15 16:39  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.10):
 
 	Added more examples in the strings section.
 
-1993-03-11 15:20  Stephen Adams <adams@zurich.csail.mit.edu>
+1993-03-11 15:20  Stephen Adams <edu/mit/csail/zurich/adams>
 
 	* ref-manual/scheme.texinfo (1.9):
 
 	Amended pathname documentation to conform to implementation
 
-1993-03-10 17:16  Chris Hanson <cph@csail.mit.edu>
+1993-03-10 17:16  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.5):
 
 	Add documentation for record classes and the METHOD special form.
 
-1993-02-28 18:24  Chris Hanson <cph@csail.mit.edu>
+1993-02-28 18:24  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.4):
 
 	Adjustments so that TeX output is good.  Add new stuff: extension to
 	DEFINE-GENERIC-PROCEDURE, new class <MATH-OBJECT>.
 
-1993-02-24 02:45  Chris Hanson <cph@csail.mit.edu>
+1993-02-24 02:45  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.3):
 
 	Change INSTANCE-OF? to accept any object as its first arg.
 
-1993-02-24 00:52  Chris Hanson <cph@csail.mit.edu>
+1993-02-24 00:52  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.2):
 
 	Update to match revision 1.7 of "sos.scm".  Flesh out part of the
 	meta-object protocol by stealing text from the CLOS spec.
 
-1993-02-23 18:09  Chris Hanson <cph@csail.mit.edu>
+1993-02-23 18:09  Chris Hanson <edu/mit/csail/cph>
 
 	* sos/sos.texinfo (1.1):
 
 	Initial revision
 
-1992-07-24 19:39  Chris Hanson <cph@csail.mit.edu>
+1992-07-24 19:39  Chris Hanson <edu/mit/csail/cph>
 
 	* ref-manual/: scheme.texinfo (1.7), scheme.texinfo (1.8):
 
 	Define STREAM-FIRST and STREAM-REST.  Rewrite Pictures section of
 	Graphics chapter.
 
-1992-07-20 11:53  Jason Wilson <jawilson@zurich.csail.mit.edu>
+1992-07-20 11:53  Jason Wilson <edu/mit/csail/zurich/jawilson>
 
 	* ref-manual/scheme.texinfo (1.6):
 
 	fixed a misplaced {} in the new picture code.
 
-1992-07-20 10:03  Jason Wilson <jawilson@zurich.csail.mit.edu>
+1992-07-20 10:03  Jason Wilson <edu/mit/csail/zurich/jawilson>
 
 	* ref-manual/scheme.texinfo (1.5):
 
 	Added the 6.001 picture documentation in the chapter on graphics.
 	Updated the menu in that node and updated every node.
 
-1992-03-13 12:16  Arthur Gleckler <arthur@zurich.csail.mit.edu>
+1992-03-13 12:16  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* ref-manual/scheme.texinfo (1.4):
 
@@ -2056,20 +2100,20 @@
 	said that CHAR-SET argument defaulted to char-set:whitespace, but it
 	really defaults to char-set:not-whitespace.
 
-1991-12-20 19:17  Arthur Gleckler <arthur@zurich.csail.mit.edu>
+1991-12-20 19:17  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* ref-manual/scheme.texinfo (1.3):
 
 	Fix typos in previous changes.
 
-1991-12-20 11:04  Arthur Gleckler <arthur@zurich.csail.mit.edu>
+1991-12-20 11:04  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* ref-manual/scheme.texinfo (1.2):
 
 	Finish documenting the new X graphics operations COPY-AREA and
 	FONT-STRUCTURE and the extractor procedures associated with the latter.
 
-1991-12-20 10:42  Arthur Gleckler <arthur@zurich.csail.mit.edu>
+1991-12-20 10:42  Arthur Gleckler <edu/mit/csail/zurich/arthur>
 
 	* ref-manual/scheme.texinfo (1.1), user-manual/user.texinfo (1.1):
 

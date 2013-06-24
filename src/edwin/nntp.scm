@@ -1,9 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: nntp.scm,v 1.29 2004/06/07 19:49:38 cph Exp $
+$Id: nntp.scm,v 1.32 2005/12/27 06:22:06 riastradh Exp $
 
 Copyright 1995,1996,1997,1998,1999,2003 Massachusetts Institute of Technology
-Copyright 2004 Massachusetts Institute of Technology
+Copyright 2004,2005 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -341,7 +341,11 @@ USA.
       '(RESPONSE)
     (lambda (condition port)
       (write-string "NNTP error: " port)
-      (write-string (nntp-error/response condition) port))))
+      (let ((response (nntp-error/response condition)))
+        (write-string (if (eof-object? response)
+                          "connection lost"
+                          response)
+                      port)))))
 
 (define nntp-error/response
   (condition-accessor condition-type:nntp-error 'RESPONSE))
@@ -373,9 +377,11 @@ USA.
 	   (lambda (condition)
 	     ;; If the server closed the connection, try again.  This
 	     ;; should automatically re-open the connection.
-	     (case (nntp-response-number (nntp-error/response condition))
-	       ((205 503)
-		(within-continuation k try))))
+             (let ((response (nntp-error/response condition)))
+               (if (or (eof-object? response)
+                       (memv (nntp-response-number response)
+                             '(205 503)))
+                   (within-continuation k try))))
 	 try)))))
 
 ;;;; NNTP I/O
@@ -403,7 +409,10 @@ USA.
   (output-port/flush-output (nntp-connection:port connection)))
 
 (define (nntp-read-line connection)
-  (input-port/read-line (nntp-connection:port connection)))
+  (let ((line (input-port/read-line (nntp-connection:port connection))))
+    (if (eof-object? line)
+        (nntp-error line))
+    line))
 
 (define (nntp-response-number line)
   (if (fix:< (string-length line) 3)
@@ -1770,12 +1779,6 @@ USA.
       thread)))
 
 ;;;; Miscellaneous
-
-(define (input-port/read-line port)
-  (let ((line (input-port/read-string port char-set:newline)))
-    ;; Discard delimiter, if any -- this is a no-op at EOF.
-    (input-port/discard-char port)
-    line))
 
 (define (input-port/discard-line port)
   (input-port/discard-chars port char-set:newline)

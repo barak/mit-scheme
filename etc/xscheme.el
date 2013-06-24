@@ -1,4 +1,4 @@
-;;; xscheme.el --- run MIT Scheme under Emacs
+;;; xscheme.el --- run MIT/GNU Scheme under Emacs
 
 ;; Copyright (C) 1986, 1987, 1989, 1990, 2001, 2002 Free Software Foundation, Inc.
 
@@ -24,7 +24,7 @@
 
 ;;; Commentary:
 
-;; A major mode for interacting with MIT Scheme.
+;; A major mode for interacting with MIT/GNU Scheme.
 ;;
 ;; Requires MIT Scheme release 5 or later.
 ;; Changes to Control-G handler require runtime version 13.85 or later.
@@ -34,7 +34,7 @@
 (require 'scheme)
 
 (defgroup xscheme nil
-  "Major mode for editing Scheme and interacting with MIT's C-Scheme."
+  "Major mode for editing Scheme and interacting with MIT/GNU Scheme."
   :group 'lisp)
 
 (if (or (string-match "XEmacs\\|Lucid" emacs-version)
@@ -103,7 +103,7 @@ When called, the current buffer will be the Scheme process-buffer."
 (xscheme-interrupt-commands scheme-mode-map)
 
 (defun run-scheme (command-line)
-  "Run MIT Scheme in an inferior process.
+  "Run MIT/GNU Scheme in an inferior process.
 Output goes to the buffer `*scheme*'.
 With argument, asks for a command line."
   (interactive (list (xscheme-read-command-line current-prefix-arg)))
@@ -242,7 +242,7 @@ With argument, asks for a command line."
 ;;;; Interaction Mode
 
 (defun scheme-interaction-mode (&optional preserve)
-  "Major mode for interacting with an inferior MIT Scheme process.
+  "Major mode for interacting with an inferior MIT/GNU Scheme process.
 Like  scheme-mode  except that:
 
 \\[advertised-xscheme-send-previous-expression] sends the expression before point to the Scheme process as input
