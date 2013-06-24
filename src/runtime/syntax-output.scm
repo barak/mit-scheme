@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: syntax-output.scm,v 14.5 2002/03/02 04:31:41 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: syntax-output.scm,v 14.10 2003/03/14 01:12:39 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Syntaxer Output Interface
 
@@ -55,6 +59,9 @@
 (define (output/conditional predicate consequent alternative)
   (make-conditional predicate consequent alternative))
 
+(define (output/disjunction predicate alternative)
+  (make-disjunction predicate alternative))
+
 (define (output/sequence expressions)
   (make-sequence expressions))
 
@@ -65,17 +72,9 @@
   (output/named-lambda lambda-tag:unnamed lambda-list body))
 
 (define (output/named-lambda name lambda-list body)
-  (output/lambda-internal name lambda-list '() body))
-
-(define (output/lambda-internal name lambda-list declarations body)
   (call-with-values (lambda () (parse-mit-lambda-list lambda-list))
     (lambda (required optional rest)
-      (make-lambda* name required optional rest
-		    (let ((declarations (apply append declarations)))
-		      (if (pair? declarations)
-			  (make-sequence (make-block-declaration declarations)
-					 body)
-			  body))))))
+      (make-lambda* name required optional rest body))))
 
 (define (output/delay expression)
   (make-delay expression))
@@ -94,10 +93,13 @@
 
 (define (output/letrec names values body)
   (output/let '() '()
-	      (output/body '()
-			   (make-sequence
-			    (append! (map make-definition names values)
-				     (list body))))))
+	      (make-sequence
+	       (append! (map make-definition names values)
+			(list
+			 (let ((body (scan-defines body make-open-block)))
+			   (if (open-block? body)
+			       (output/let '() '() body)
+			       body)))))))
 
 (define (output/body declarations body)
   (scan-defines (let ((declarations (apply append declarations)))

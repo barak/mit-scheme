@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: scomb.scm,v 14.20 2002/03/01 17:02:40 cph Exp $
+$Id: scomb.scm,v 14.23 2003/02/14 18:28:33 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
+Copyright 1992,1995,1997,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; SCode Combinator Abstractions
@@ -203,7 +207,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (conditional-subexpressions expression)
   (conditional-components expression list))
-
+
 ;;;; Disjunction
 
 (define (make-disjunction predicate alternative)
@@ -285,34 +289,33 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	      (ucode-type combination))
 	  (cons operator operands)))))
 
-(let-syntax
-    ((combination-dispatch
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (list-ref form 1))
-	       (combination (close-syntax (list-ref form 2) environment))
-	       (case-0 (close-syntax (list-ref form 3) environment))
-	       (case-1 (close-syntax (list-ref form 4) environment))
-	       (case-2 (close-syntax (list-ref form 5) environment))
-	       (case-n (close-syntax (list-ref form 6) environment)))
-	   `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
-				 ,combination)
-		   ,case-0)
-		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
-		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
-				     ,combination))
-		   ,case-1)
-		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
-		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
-				     ,combination))
-		   ,case-2)
-		  ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
-		       (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
-				     ,combination))
-		   ,case-n)
-		  (ELSE
-		   (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
-					      ',name))))))))
+(define-syntax combination-dispatch
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (list-ref form 1))
+	   (combination (close-syntax (list-ref form 2) environment))
+	   (case-0 (close-syntax (list-ref form 3) environment))
+	   (case-1 (close-syntax (list-ref form 4) environment))
+	   (case-2 (close-syntax (list-ref form 5) environment))
+	   (case-n (close-syntax (list-ref form 6) environment)))
+       `(COND ((OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-0)
+			     ,combination)
+	       ,case-0)
+	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-1) ,combination)
+		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-1)
+				 ,combination))
+	       ,case-1)
+	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION-2) ,combination)
+		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-2)
+				 ,combination))
+	       ,case-2)
+	      ((OR (OBJECT-TYPE? (UCODE-TYPE COMBINATION) ,combination)
+		   (OBJECT-TYPE? (UCODE-TYPE PRIMITIVE-COMBINATION-3)
+				 ,combination))
+	       ,case-n)
+	      (ELSE
+	       (ERROR:WRONG-TYPE-ARGUMENT ,combination "SCode combination"
+					  ',name)))))))
 
 (define (combination-size combination)
   (combination-dispatch combination-size combination
@@ -343,11 +346,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
    (receiver (&vector-ref combination 0)
 	     (&subvector->list combination 1 (&vector-length combination)))))
 
-)
-
 (define (combination-subexpressions expression)
   (combination-components expression cons))
-
+
 ;;;; Unassigned?
 
 (define (make-unassigned? name)

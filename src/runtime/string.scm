@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: string.scm,v 14.47 2002/02/03 03:38:57 cph Exp $
+$Id: string.scm,v 14.53 2003/02/26 00:24:29 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1997,1999,2000,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Character String Operations
@@ -88,7 +93,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;;; Basic Operations
 
 (define (make-string length #!optional char)
-  (guarantee-index/string length 'MAKE-STRING)
+  (guarantee-string-index length 'MAKE-STRING)
   (if (default-object? char)
       (string-allocate length)
       (begin
@@ -131,12 +136,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (string-head string end)
   (guarantee-string string 'STRING-HEAD)
-  (guarantee-index/string end 'STRING-HEAD)
+  (guarantee-string-index end 'STRING-HEAD)
   (%substring string 0 end))
 
 (define (string-tail string start)
   (guarantee-string string 'STRING-TAIL)
-  (guarantee-index/string start 'STRING-TAIL)
+  (guarantee-string-index start 'STRING-TAIL)
   (%substring string start (string-length string)))
 
 (define (list->string chars)
@@ -185,7 +190,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (string-move! string1 string2 start2)
   (guarantee-string string1 'STRING-MOVE!)
   (guarantee-string string2 'STRING-MOVE!)
-  (guarantee-index/string start2 'STRING-MOVE!)
+  (guarantee-string-index start2 'STRING-MOVE!)
   (let ((end1 (string-length string1)))
     (if (not (fix:<= (fix:+ start2 end1) (string-length string2)))
 	(error:bad-range-argument start2 'STRING-MOVE!))
@@ -194,7 +199,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (substring-move! string1 start1 end1 string2 start2)
   (guarantee-substring string1 start1 end1 'SUBSTRING-MOVE!)
   (guarantee-string string2 'SUBSTRING-MOVE!)
-  (guarantee-index/string start2 'SUBSTRING-MOVE!)
+  (guarantee-string-index start2 'SUBSTRING-MOVE!)
   (if (not (fix:<= (fix:+ start2 (fix:- end1 start1)) (string-length string2)))
       (error:bad-range-argument start2 'SUBSTRING-MOVE!))
   (%substring-move! string1 start1 end1 string2 start2))
@@ -974,7 +979,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (string-pad-right string n #!optional char)
   (guarantee-string string 'STRING-PAD-RIGHT)
-  (guarantee-index/string n 'STRING-PAD-RIGHT)
+  (guarantee-string-index n 'STRING-PAD-RIGHT)
   (let ((length (string-length string)))
     (if (fix:= length n)
 	string
@@ -993,7 +998,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (string-pad-left string n #!optional char)
   (guarantee-string string 'STRING-PAD-LEFT)
-  (guarantee-index/string n 'STRING-PAD-LEFT)
+  (guarantee-string-index n 'STRING-PAD-LEFT)
   (let ((length (string-length string)))
     (if (fix:= length n)
 	string
@@ -1397,36 +1402,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	((not (string? object2))
 	 (error:wrong-type-argument object2 "string" procedure))))
 
-(define-integrable (guarantee-index/string object procedure)
+(define-integrable (guarantee-string-index object caller)
   (if (not (index-fixnum? object))
-      (guarantee-index/string/fail object procedure)))
+      (error:wrong-type-argument object "string index" caller)))
 
-(define (guarantee-index/string/fail object procedure)
-  (error:wrong-type-argument object "valid string index"
-			     procedure))
-
-(define-integrable (guarantee-substring string start end procedure)
+(define-integrable (guarantee-substring string start end caller)
   (if (not (and (string? string)
 		(index-fixnum? start)
 		(index-fixnum? end)
 		(fix:<= start end)
 		(fix:<= end (string-length string))))
-      (guarantee-substring/fail string start end procedure)))
+      (guarantee-substring/fail string start end caller)))
+
+(define (guarantee-substring/fail string start end caller)
+  (guarantee-string string caller)
+  (guarantee-substring-end-index end (string-length string) caller)
+  (guarantee-substring-start-index start end caller))
+
+(define-integrable (guarantee-substring-end-index end length caller)
+  (guarantee-string-index end caller)
+  (if (not (fix:<= end length))
+      (error:bad-range-argument end caller))
+  end)
+
+(define-integrable (guarantee-substring-start-index start end caller)
+  (guarantee-string-index start caller)
+  (if (not (fix:<= start end))
+      (error:bad-range-argument start caller))
+  end)
 
 (define-integrable (guarantee-2-substrings string1 start1 end1
 					   string2 start2 end2
 					   procedure)
   (guarantee-substring string1 start1 end1 procedure)
   (guarantee-substring string2 start2 end2 procedure))
-
-(define (guarantee-substring/fail string start end procedure)
-  (guarantee-string string procedure)
-  (guarantee-index/string start procedure)
-  (guarantee-index/string end procedure)
-  (if (not (fix:<= end (string-length string)))
-      (error:bad-range-argument end procedure))
-  (if (not (fix:<= start end))
-      (error:bad-range-argument start procedure)))
 
 (define-integrable (guarantee-char-set object procedure)
   (if (not (char-set? object))

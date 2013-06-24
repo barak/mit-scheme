@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: char.scm,v 14.13 2001/09/25 05:17:00 cph Exp $
+$Id: char.scm,v 14.23 2003/08/03 05:52:54 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1991,1995,1997 Massachusetts Institute of Technology
+Copyright 1998,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Character Abstraction
@@ -30,36 +34,31 @@ USA.
   char->integer
   integer->char)
 
-(define-integrable char-code-limit #x10000)
-(define-integrable char-bits-limit #x20)
-(define-integrable char-integer-limit #x200000)
+(define-integrable char-code-limit #x110000)
+(define-integrable char-bits-limit #x10)
+(define-integrable char-integer-limit #x2000000)
 
 (define-integrable (%make-char code bits)
-  (integer->char (fix:or (fix:lsh bits 16) code)))
+  (integer->char (fix:or (fix:lsh bits 21) code)))
 
 (define-integrable (%char-code char)
-  (fix:and (char->integer char) #xFFFF))
+  (fix:and (char->integer char) #x1FFFFF))
 
 (define-integrable (%char-bits char)
-  (fix:lsh (fix:and (char->integer char) #x1F0000) -16))
+  (fix:lsh (char->integer char) -21))
 
 (define-integrable (guarantee-char char procedure)
   (if (not (char? char))
       (error:wrong-type-argument char "character" procedure)))
 
 (define (make-char code bits)
-  (if (not (index-fixnum? code))
-      (error:wrong-type-argument code "index fixnum" 'MAKE-CHAR))
-  (if (not (fix:< code char-code-limit))
-      (error:bad-range-argument code 'MAKE-CHAR))
-  (if (not (index-fixnum? bits))
-      (error:wrong-type-argument bits "index fixnum" 'MAKE-CHAR))
-  (if (not (fix:< bits char-bits-limit))
-      (error:bad-range-argument bits 'MAKE-CHAR))
+  (guarantee-limited-index-fixnum code char-code-limit 'MAKE-CHAR)
+  (guarantee-limited-index-fixnum bits char-bits-limit 'MAKE-CHAR)
   (%make-char code bits))
 
 (define (code->char code)
-  (make-char code 0))
+  (guarantee-limited-index-fixnum code char-code-limit 'CODE->CHAR)
+  (integer->char code))
 
 (define (char-code char)
   (guarantee-char char 'CHAR-CODE)
@@ -82,12 +81,9 @@ USA.
 	(error:bad-range-argument char 'CHAR->ASCII))
     n))
 
-(define (ascii->char n)
-  (if (not (index-fixnum? n))
-      (error:wrong-type-argument n "index fixnum" 'ASCII->CHAR))
-  (if (not (fix:< n 256))
-      (error:bad-range-argument n 'ASCII->CHAR))
-  (%make-char n 0))
+(define (ascii->char code)
+  (guarantee-limited-index-fixnum code 256 'ASCII->CHAR)
+  (%make-char code 0))
 
 (define (chars->ascii chars)
   (map char->ascii chars))
@@ -200,19 +196,24 @@ USA.
   (set! lower-a-code (fix:- (char->integer #\a) 10))
   (initialize-case-conversions!))
 
+(define (radix? object)
+  (and (index-fixnum? object)
+       (fix:<= 2 object)
+       (fix:<= object 36)))
+
+(define (guarantee-radix object caller)
+  (if (not (radix? object))
+      (error:wrong-type-argument object "radix" caller)))
+
 (define (digit->char digit #!optional radix)
-  (if (not (index-fixnum? digit))
-      (error:wrong-type-argument digit "digit" 'DIGIT->CHAR))
-  (and (fix:<= 0 digit)
-       (fix:< digit
-	      (cond ((default-object? radix)
-		     10)
-		    ((and (fix:fixnum? radix)
-			  (fix:<= 2 radix) (fix:<= radix 36))
-		     radix)
-		    (else
-		     (error:wrong-type-argument radix "radix" 'DIGIT->CHAR))))
-       (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit)))
+  (guarantee-limited-index-fixnum digit
+				  (if (default-object? radix)
+				      10
+				      (begin
+					(guarantee-radix radix 'DIGIT->CHAR)
+					radix))
+				  'DIGIT->CHAR)
+  (string-ref "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ" digit))
 
 (define (char->digit char #!optional radix)
   (guarantee-char char 'CHAR->DIGIT)
@@ -240,155 +241,118 @@ USA.
 
 (define (name->char string)
   (let ((end (string-length string))
-	(bits '()))
-    (define (loop start)
-      (let ((left (fix:- end start)))
-	(cond ((fix:= 0 left)
-	       (error "Missing character name"))
-	      ((fix:= 1 left)
-	       (let ((char (string-ref string start)))
-		 (if (char-graphic? char)
-		     (char-code char)
-		     (error "Non-graphic character" char))))
-	      (else
-	       (let ((hyphen
-		      (substring-find-next-char string start end #\-)))
-		 (if (not hyphen)
-		     (name->code string start end)
-		     (let ((bit (-map-> named-bits string start hyphen)))
-		       (if (not bit)
-			   (name->code string start end)
-			   (begin (if (not (memv bit bits))
-				      (set! bits (cons bit bits)))
-				  (loop (fix:+ hyphen 1)))))))))))
-    (let ((code (loop 0)))
-      (make-char code (apply + bits)))))
+	(lose (lambda () (error:bad-range-argument string 'NAME->CHAR))))
+    (let loop ((start 0) (bits 0))
+      (case (fix:- end start)
+	((0)
+	 (lose))
+	((1)
+	 (let ((char (string-ref string start)))
+	   (if (not (char-graphic? char))
+	       (lose))
+	   (make-char (char-code char) bits)))
+	(else
+	 (let ((hyphen (substring-find-next-char string start end #\-)))
+	   (if hyphen
+	       (let ((bit (->code named-bits string start hyphen)))
+		 (if (not (and bit (fix:= 0 (fix:and bit bits))))
+		     (lose))
+		 (loop (fix:+ hyphen 1) (fix:or bit bits)))
+	       (make-char
+		(or (->code named-codes string start end)
+		    (and (substring-prefix-ci? "U+" 0 1 string start end)
+			 (substring->number string (fix:+ start 2) end 16))
+		    (lose))
+		bits))))))))
 
-(define (name->code string start end)
-  (if (substring-ci=? string start end "Newline" 0 7)
-      (char-code char:newline)
-      (or (-map-> named-codes string start end)
-	  (numeric-name->code string start end)
-	  (error "Unknown character name" (substring string start end)))))
-
-(define (numeric-name->code string start end)
-  (and (> (- end start) 6)
-       (substring-ci=? string start (+ start 5) "<code" 0 5)
-       (substring-ci=? string (- end 1)  end    ">" 0 1)
-       (string->number (substring string (+ start 5) (- end 1)) 10)))
-
 (define (char->name char #!optional slashify?)
-  (if (default-object? slashify?) (set! slashify? false))
-  (define (loop weight bits)
-    (if (fix:= 0 bits)
-	(let ((code (char-code char)))
-	  (let ((base-char (code->char code)))
-	    (cond ((<-map- named-codes code))
-		  ((and slashify?
-			(not (fix:= 0 (char-bits char)))
-			(or (char=? base-char #\\)
-			    (char-set-member? char-set/atom-delimiters
-					      base-char)))
-		   (string-append "\\" (string base-char)))
-		  ((char-graphic? base-char)
-		   (string base-char))
-		  (else
-		   (string-append "<code"
-				  (number->string code 10)
-				  ">")))))
-	(let ((qr (integer-divide bits 2)))
-	  (let ((rest (loop (fix:* weight 2) (integer-divide-quotient qr))))
-	    (if (fix:= 0 (integer-divide-remainder qr))
-		rest
-		(string-append (or (<-map- named-bits weight)
-				   (string-append "<bits-"
-						  (number->string weight 10)
-						  ">"))
-			       "-"
-			       rest))))))
-  (loop 1 (char-bits char)))
+  (let ((code (char-code char))
+	(bits (char-bits char)))
+    (string-append
+     (bucky-bits->prefix bits)
+     (let ((base-char (if (fix:= 0 bits) char (integer->char code))))
+       (cond ((->name named-codes code))
+	     ((and (if (default-object? slashify?) #f slashify?)
+		   (not (fix:= 0 bits))
+		   (or (char=? base-char #\\)
+		       (char-set-member? char-set/atom-delimiters base-char)))
+	      (string-append "\\" (string base-char)))
+	     ((char-graphic? base-char)
+	      (string base-char))
+	     (else
+	      (string-append "U+"
+			     (let ((s (number->string code 16)))
+			       (string-pad-left s
+						(let ((l (string-length s)))
+						  (let loop ((n 2))
+						    (if (fix:<= l n)
+							n
+							(loop (fix:* 2 n)))))
+						#\0)))))))))
 
-(define (-map-> alist string start end)
-  (and (not (null? alist))
-       (let ((key (caar alist)))
-	 (if (substring-ci=? string start end
-			     key 0 (string-length key))
-	     (cdar alist)
-	     (-map-> (cdr alist) string start end)))))
-
-(define (<-map- alist n)
-  (and (not (null? alist))
-       (if (fix:= n (cdar alist))
-	   (caar alist)
-	   (<-map- (cdr alist) n))))
+;; This procedure used by Edwin.
+(define (bucky-bits->prefix bits)
+  (let loop ((entries named-bits))
+    (if (pair? entries)
+	(if (fix:= 0 (fix:and (caar entries) bits))
+	    (loop (cdr entries))
+	    (string-append (cadar entries) "-" (loop (cdr entries))))
+	"")))
 
+(define (->code entries string start end)
+  (let ((entry
+	 (find-matching-item entries
+	   (lambda (entry)
+	     (there-exists? (if (cadr entry) (cdr entry) (cddr entry))
+	       (lambda (key)
+		 (substring-ci=? string start end
+				 key 0 (string-length key))))))))
+    (and entry
+	 (car entry))))
+
+(define (->name entries n)
+  (let ((entry (assv n entries)))
+    (and entry
+	 (cadr entry))))
+
 (define named-codes
-  '(
-    ;; Some are aliases for previous definitions, and will not appear
-    ;; as output.
-
-    ("Backspace" . #x08)
-    ("Tab" . #x09)
-    ("Linefeed" . #x0A)
-    ("Newline" . #x0A)
-    ("Page" . #x0C)
-    ("Return" . #x0D)
-    ("Call" . #x1A)
-    ("Altmode" . #x1B)
-    ("Escape" . #x1B)
-    ("Backnext" . #x1F)
-    ("Space" . #x20)
-    ("Rubout" . #x7F)
-
-    ;; ASCII codes
-
-    ("NUL" . #x0)			; ^@
-    ("SOH" . #x1)			; ^A
-    ("STX" . #x2)			; ^B
-    ("ETX" . #x3)			; ^C
-    ("EOT" . #x4)			; ^D
-    ("ENQ" . #x5)			; ^E
-    ("ACK" . #x6)			; ^F
-    ("BEL" . #x7)			; ^G
-    ("BS" . #x8)			; ^H <Backspace>
-    ("HT" . #x9)			; ^I <Tab>
-    ("LF" . #xA)			; ^J <Linefeed> <Newline>
-    ("NL" . #xA)			; ^J <Linefeed> <Newline>
-    ("VT" . #xB)			; ^K
-    ("FF" . #xC)			; ^L <Page>
-    ("NP" . #xC)			; ^L <Page>
-    ("CR" . #xD)			; ^M <Return>
-    ("SO" . #xE)			; ^N
-    ("SI" . #xF)			; ^O
-    ("DLE" . #x10)			; ^P
-    ("DC1" . #x11)			; ^Q
-    ("DC2" . #x12)			; ^R
-    ("DC3" . #x13)			; ^S
-    ("DC4" . #x14)			; ^T
-    ("NAK" . #x15)			; ^U
-    ("SYN" . #x16)			; ^V
-    ("ETB" . #x17)			; ^W
-    ("CAN" . #x18)			; ^X
-    ("EM" . #x19)			; ^Y
-    ("SUB" . #x1A)			; ^Z <Call>
-    ("ESC" . #x1B)			; ^[ <Altmode> <Escape>
-    ("FS" . #x1C)			; ^\
-    ("GS" . #x1D)			; ^]
-    ("RS" . #x1E)			; ^^
-    ("US" . #x1F)			; ^_ <Backnext>
-    ("SP" . #x20)			; <Space>
-    ("DEL" . #x7F)			; ^? <Rubout>
-    ))
+  '((#x00 #f "null" "nul")
+    (#x01 #f "soh")
+    (#x02 #f "stx")
+    (#x03 #f "etx")
+    (#x04 #f "eot")
+    (#x05 #f "enq")
+    (#x06 #f "ack")
+    (#x07 #f "bel")
+    (#x08 "backspace" "bs")
+    (#x09 "tab" "ht")
+    (#x0A "newline" "linefeed" "lfd" "lf")
+    (#x0B #f "vt")
+    (#x0C "page" "ff" "np")
+    (#x0D "return" "ret" "cr")
+    (#x0E #f "so")
+    (#x0F #f "si")
+    (#x10 #f "dle")
+    (#x11 #f "dc1")
+    (#x12 #f "dc2")
+    (#x13 #f "dc3")
+    (#x14 #f "dc4")
+    (#x15 #f "nak")
+    (#x16 #f "syn")
+    (#x17 #f "etb")
+    (#x18 #f "can")
+    (#x19 #f "em")
+    (#x1A #f "sub" "call")
+    (#x1B "escape" "esc" "altmode")
+    (#x1C #f "fs")
+    (#x1D #f "gs")
+    (#x1E #f "rs")
+    (#x1F #f "us" "backnext")
+    (#x20 "space" "spc" "sp")
+    (#x7F "delete" "del" "rubout")))
 
 (define named-bits
-  '(("M" . #x01)
-    ("Meta" . #x01)
-    ("C" . #x02)
-    ("Control" . #x02)
-    ("S" . #x04)
-    ("Super" . #x04)
-    ("H" . #x08)
-    ("Hyper" . #x08)
-    ("T" . #x10)
-    ("Top" . #x10)
-    ))
+  '((#x01 "M" "meta")
+    (#x02 "C" "control" "ctrl")
+    (#x04 "S" "super")
+    (#x08 "H" "hyper")))

@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.412 2002/03/01 17:02:46 cph Exp $
+$Id: runtime.pkg,v 14.457 2003/09/19 00:39:32 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Runtime System Packaging
@@ -168,6 +173,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "fixart")
   (parent (runtime))
   (export ()
+	  (exact-integer? int:integer?)
 	  ->flonum
 	  fix:*
 	  fix:+
@@ -237,6 +243,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  flo:vector-ref
 	  flo:vector-set!
 	  flo:zero?
+	  guarantee-index-fixnum
+	  guarantee-limited-index-fixnum
 	  index-fixnum?
 	  int:*
 	  int:+
@@ -285,6 +293,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  hook/exit
 	  hook/quit
 	  hook/scode-eval
+	  host-big-endian?
 	  hunk3-cons
 	  identity-procedure
 	  impurify
@@ -346,7 +355,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  with-history-disabled
 	  with-interrupt-mask
 	  with-values
-	  write-to-string))
+	  write-to-string)
+  (initialization (initialize-package!)))
 
 (define-package (runtime alternative-lambda)
   (files "lambdx")
@@ -416,6 +426,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  file-exists-direct?
 	  file-exists-indirect?
 	  file-exists?
+	  file-modification-time<=?
 	  file-modification-time<?
 	  file-processed?
 	  file-readable?
@@ -441,6 +452,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "symbol")
   (parent (runtime))
   (export ()
+	  guarantee-interned-symbol
+	  guarantee-symbol
+	  guarantee-uninterned-symbol
 	  intern
 	  intern-soft
 	  interned-symbol?
@@ -563,7 +577,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-package (runtime os-primitives)
   (parent (runtime))
   (export ()
-	  add-to-select-registry!
 	  copy-file
 	  current-home-directory
 	  current-user-name
@@ -593,7 +606,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  file-time->universal-time
 	  get-environment-variable
 	  init-file-specifier->pathname
-	  make-select-registry
 	  os/default-end-of-line-translation
 	  os/exec-path
 	  os/executable-pathname-types
@@ -603,9 +615,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  os/make-subprocess
 	  os/parse-path-string
 	  os/shell-file-name
-	  remove-from-select-registry!
-	  select-descriptor
-	  select-registry-test
 	  set-file-modes!
 	  set-file-times!
 	  temporary-directory-pathname
@@ -697,7 +706,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  external-string-length
 	  external-string?
 	  guarantee-string
+	  guarantee-string-index
 	  guarantee-substring
+	  guarantee-substring-end-index
+	  guarantee-substring-start-index
 	  list->string
 	  make-string
 	  reverse-string
@@ -912,9 +924,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  code->char
 	  digit->char
 	  guarantee-char
+	  guarantee-radix
 	  integer->char
 	  make-char
-	  name->char)
+	  name->char
+	  radix?)
   (export (runtime string)
 	  %char<?
 	  downcase-table
@@ -955,6 +969,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  char-set:standard
 	  char-set:upper-case
 	  char-set:whitespace
+	  char-set=?
 	  char-set?
 	  char-standard?
 	  char-upper-case?
@@ -1277,6 +1292,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  entity-extra
 	  entity-procedure
 	  entity?
+	  guarantee-compiled-procedure
+	  guarantee-compound-procedure
+	  guarantee-primitive-procedure
+	  guarantee-procedure
 	  implemented-primitive-procedure?
 	  make-apply-hook
 	  make-arity-dispatched-procedure
@@ -1293,7 +1312,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  set-apply-hook-extra!
 	  set-apply-hook-procedure!
 	  set-entity-extra!
-	  set-entity-procedure!)
+	  set-entity-procedure!
+	  thunk?)
   (export (runtime continuation-parser)
 	  compiled-procedure-frame-size))
 
@@ -1329,6 +1349,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  interpreter-environment?
 	  (make-null-interpreter-environment make-root-top-level-environment)
 	  make-root-top-level-environment
+	  make-top-level-environment
 	  system-global-environment?
 	  (top-level-environment? interpreter-environment?))
   (export (runtime advice)
@@ -1578,6 +1599,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  add-to-gc-finalizer!
 	  gc-finalizer-elements
 	  gc-finalizer?
+	  make-gc-finalized-object
 	  make-gc-finalizer
 	  remove-all-from-gc-finalizer!
 	  remove-from-gc-finalizer!
@@ -1694,6 +1716,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  hash-table/entry-value
 	  hash-table/for-each
 	  hash-table/get
+	  hash-table/intern!
 	  hash-table/key-hash
 	  hash-table/key-list
 	  hash-table/key=?
@@ -1895,6 +1918,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  flush-output
 	  fresh-line
 	  newline
+	  output-port/column
 	  output-port/discretionary-flush
 	  output-port/flush-output
 	  output-port/fresh-line
@@ -1908,6 +1932,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  write-char
 	  write-line
 	  write-string
+	  write-strings-in-columns
 	  write-substring))
 
 (define-package (runtime interrupt-handler)
@@ -1939,7 +1964,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  lambda-wrap-body!
 	  lambda-wrapper-components)
   (export (runtime environment)
-	  internal-lambda?)
+	  internal-lambda?
+	  lambda-names-vector
+	  make-slambda)
   (export (runtime compiler-info)
 	  lambda-tag:internal-lambda
 	  lambda-tag:internal-lexpr)
@@ -2022,6 +2049,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  for-each
 	  fourth
 	  general-car-cdr
+	  guarantee-alist
+	  guarantee-list
+	  guarantee-list->length
+	  guarantee-list-of-type
+	  guarantee-list-of-type->length
+	  guarantee-pair
 	  keep-matching-items
 	  last-pair
 	  length
@@ -2032,6 +2065,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  list-deletor!
 	  list-head
 	  list-of-type?
+	  list-of-type?->length
 	  list-ref
 	  list-search-negative
 	  list-search-positive
@@ -2039,9 +2073,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  list-transform-negative
 	  list-transform-positive
 	  list?
-	  make-list
+	  list?->length
 	  make-circular-list
 	  make-initialized-list
+	  make-list
 	  map
 	  map*
 	  mapcan
@@ -2140,20 +2175,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  fixed-object/name->code
 	  fixed-objects-item
 	  fixed-objects-vector-slot
+	  get-microcode-version-numbers
+	  get-microcode-version-string
 	  microcode-error/code->name
 	  microcode-error/code-limit
 	  microcode-error/name->code
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
-	  microcode-id/modification
 	  microcode-id/operating-system
 	  microcode-id/operating-system-name
 	  microcode-id/operating-system-variant
-	  microcode-id/release-string
 	  microcode-id/stack-type
 	  microcode-id/tty-x-size
 	  microcode-id/tty-y-size
-	  microcode-id/version
 	  microcode-identification-item
 	  microcode-identification-vector-slot
 	  microcode-object/unassigned
@@ -2178,86 +2212,99 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "arith" "dragon4")
   (parent (runtime))
   (export ()
+	  (-1+ complex:-1+)
+	  (1+ complex:1+)
+	  (abs complex:abs)
+	  (acos complex:acos)
+	  (angle complex:angle)
+	  (asin complex:asin)
+	  (ceiling complex:ceiling)
+	  (ceiling->exact complex:ceiling->exact)
+	  (complex? complex:complex?)
+	  (conjugate complex:conjugate)
+	  (cos complex:cos)
+	  (denominator complex:denominator)
+	  (even? complex:even?)
+	  (exact->inexact complex:exact->inexact)
+	  (exact-rational? rat:rational?)
+	  (exact? complex:exact?)
+	  (exp complex:exp)
+	  (expt complex:expt)
+	  (floor complex:floor)
+	  (floor->exact complex:floor->exact)
+	  (imag-part complex:imag-part)
+	  (inexact->exact complex:inexact->exact)
+	  (integer-ceiling complex:integer-ceiling)
+	  (integer-divide complex:divide)
+	  (integer-floor complex:integer-floor)
+	  (integer-round complex:integer-round)
+	  (integer-truncate complex:quotient)
+	  (integer? complex:integer?)
+	  (log complex:log)
+	  (magnitude complex:magnitude)
+	  (make-polar complex:make-polar)
+	  (make-rectangular complex:make-rectangular)
+	  (negative? complex:negative?)
+	  (number? complex:complex?)
+	  (numerator complex:numerator)
+	  (positive? complex:positive?)
+	  (rational? complex:rational?)
+	  (rationalize complex:rationalize)
+	  (rationalize->exact complex:rationalize->exact)
+	  (real-part complex:real-part)
+	  (real? complex:real?)
+	  (round complex:round)
+	  (round->exact complex:round->exact)
+	  (simplest-exact-rational complex:simplest-exact-rational)
+	  (simplest-rational complex:simplest-rational)
+	  (sin complex:sin)
+	  (sqrt complex:sqrt)
+	  (tan complex:tan)
+	  (truncate complex:truncate)
+	  (truncate->exact complex:truncate->exact)
+	  (zero? complex:zero?)
 	  *
 	  +
 	  -
-	  -1+
 	  /
-	  1+
 	  <
 	  <=
 	  =
 	  >
 	  >=
-	  abs
-	  acos
-	  angle
-	  asin
 	  atan
-	  ceiling
-	  ceiling->exact
-	  complex?
-	  conjugate
-	  cos
-	  denominator
-	  even?
-	  exact->inexact
-	  exact-integer?
 	  exact-nonnegative-integer?
-	  exact-rational?
-	  exact?
-	  exp
-	  expt
+	  exact-positive-integer?
+	  flo:significand-digits-base-10
+	  flo:significand-digits-base-2
 	  flonum-unparser-cutoff
 	  flonum-unparser:engineering-output
 	  flonum-unparser:normal-output
 	  flonum-unparser:scientific-output
-	  floor
-	  floor->exact
 	  gcd
-	  imag-part
-	  inexact->exact
+	  guarantee-complex
+	  guarantee-exact
+	  guarantee-exact-integer
+	  guarantee-exact-nonnegative-integer
+	  guarantee-exact-positive-integer
+	  guarantee-exact-rational
+	  guarantee-inexact
+	  guarantee-integer
+	  guarantee-number
+	  guarantee-rational
+	  guarantee-real
 	  inexact?
-	  integer-ceiling
-	  integer-divide
 	  integer-divide-quotient
 	  integer-divide-remainder
-	  integer-floor
-	  integer-round
-	  integer-truncate
-	  integer?
 	  lcm
-	  log
-	  magnitude
-	  make-polar
-	  make-rectangular
 	  max
 	  min
 	  modulo
-	  negative?
 	  number->string
-	  number?
-	  numerator
 	  odd?
-	  positive?
 	  quotient
-	  rational?
-	  rationalize
-	  rationalize->exact
-	  real-part
-	  real?
 	  remainder
-	  round
-	  round->exact
-	  simplest-exact-rational
-	  simplest-rational
-	  sin
-	  square
-	  sqrt
-	  tan
-	  truncate
-	  truncate->exact
-	  zero?)
+	  square)
   (initialization
    (begin
      (initialize-package!)
@@ -2314,6 +2361,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  lambda-optional-tag
 	  lambda-rest-tag)
   (export (runtime unparser)
+	  char-set/atom-delimiters
+	  char-set/number-leaders
+	  char-set/symbol-quotes
 	  lambda-auxiliary-tag
 	  lambda-optional-tag
 	  lambda-rest-tag)
@@ -2508,8 +2558,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  terminal-raw-input
 	  terminal-raw-output
 	  terminal-set-state
-	  test-for-input-on-channel
-	  test-for-input-on-descriptor
+	  test-for-io-on-channel
+	  test-for-io-on-descriptor
 	  tty-input-channel
 	  tty-output-channel
 	  with-channel-blocking)
@@ -2541,8 +2591,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  output-buffer/buffered-chars
 	  output-buffer/channel
 	  output-buffer/close
+	  output-buffer/column
 	  output-buffer/drain-block
-	  output-buffer/line-start?
 	  output-buffer/open?
 	  output-buffer/set-size
 	  output-buffer/size
@@ -2572,7 +2622,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  output-buffer/buffered-chars
 	  output-buffer/channel
 	  output-buffer/drain-block
-	  output-buffer/line-start?
 	  output-buffer/set-size
 	  output-buffer/size
 	  output-buffer/write-char-block
@@ -2583,7 +2632,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export (runtime x-graphics)
 	  have-select?)
   (export (runtime thread)
-	  have-select?)
+	  add-to-select-registry!
+	  have-select?
+	  make-select-registry
+	  remove-from-select-registry!
+	  test-select-registry)
   (export (runtime directory)
 	  directory-channel/descriptor)
   (initialization (initialize-package!)))
@@ -2600,7 +2653,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (parent (runtime))
   (export ()
 	  *random-state*
+	  export-random-state
 	  flo:random-unit
+	  import-random-state
 	  make-random-state
 	  random
 	  random-byte-vector
@@ -2611,18 +2666,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "record")
   (parent (runtime))
   (export ()
+	  %copy-record
 	  %make-record
 	  %record
-	  %record-copy
 	  %record-length
 	  %record-ref
 	  %record-set!
+	  %record-tag
 	  %record?
-	  define-structure/keyword-parser
+	  copy-record
+	  define-structure/default-value
+	  define-structure/keyword-constructor
 	  define-structure/list-accessor
 	  define-structure/list-modifier
 	  define-structure/vector-accessor
 	  define-structure/vector-modifier
+	  guarantee-list-of-unique-symbols
+	  guarantee-record
+	  guarantee-record-type
+	  list-of-unique-symbols?
 	  make-define-structure-type
 	  make-record-type
 	  named-structure/description
@@ -2631,8 +2693,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  record-constructor
 	  record-copy
 	  record-description
+	  record-keyword-constructor
 	  record-modifier
 	  record-predicate
+	  record-type-default-inits
+	  record-type-default-value
 	  record-type-descriptor
 	  record-type-dispatch-tag
 	  record-type-field-names
@@ -2640,6 +2705,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  record-type?
 	  record-updater
 	  record?
+	  set-record-type-default-inits!
 	  set-record-type-unparser-method!
 	  unparse-record)
   (export (runtime record-slot-access)
@@ -2700,6 +2766,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  cmdl-message/null
 	  cmdl-message/strings
 	  cmdl/base
+	  cmdl/batch-mode?
 	  cmdl/driver
 	  cmdl/level
 	  cmdl/operation
@@ -2720,6 +2787,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  make-repl-history
 	  make-repl-message
 	  nearest-cmdl
+	  nearest-cmdl/batch-mode?
 	  nearest-cmdl/level
 	  nearest-cmdl/port
 	  nearest-repl
@@ -2968,13 +3036,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (parent (runtime))
   (export ()
 	  allocate-host-address
+	  bind-tcp-server-socket
 	  canonical-host-name
 	  close-tcp-server-socket
+	  create-tcp-server-socket
 	  get-host-by-address
 	  get-host-by-name
 	  get-host-name
 	  host-address-any
 	  host-address-loopback
+	  listen-tcp-server-socket
 	  open-tcp-server-socket
 	  open-tcp-stream-socket
 	  open-tcp-stream-socket-channel
@@ -3165,6 +3236,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  x-graphics/move-cursor
 	  x-graphics/move-window
 	  x-graphics/open-display
+	  x-graphics/open-display?
+	  x-graphics/open-window?
 	  x-graphics/query-pointer
 	  x-graphics/raise-window
 	  x-graphics/read-button
@@ -3722,7 +3795,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "strnin")
   (parent (runtime))
   (export ()
-	  string->input-port
+	  open-input-string
+	  (string->input-port open-input-string)
 	  with-input-from-string)
   (initialization (initialize-package!)))
 
@@ -3730,9 +3804,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (files "strout")
   (parent (runtime))
   (export ()
-	  get-output-from-accumulator
-	  make-accumulator-output-port
-	  with-string-output-port
+	  call-with-output-string
+	  (get-output-from-accumulator get-output-string)
+	  get-output-string
+	  (make-accumulator-output-port open-output-string)
+	  open-output-string
+	  (with-string-output-port call-with-output-string)
 	  with-output-to-string)
   (initialization (initialize-package!)))
 
@@ -3745,10 +3822,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 "syntax-check")
   (parent (runtime))
   (export ()
+	  <syntactic-closure>
 	  call-with-syntax-error-procedure
 	  capture-syntactic-environment
 	  close-syntax
 	  er-macro-transformer->expander
+	  guarantee-syntactic-environment
 	  identifier->symbol
 	  identifier=?
 	  identifier?
@@ -3762,19 +3841,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  non-hygienic-macro-transformer->expander
 	  parse-mit-lambda-list
 	  r4rs-lambda-list?
-	  sc-macro-transformer->expander
 	  reverse-syntactic-environments
 	  rsc-macro-transformer->expander
+	  sc-macro-transformer->expander
 	  strip-syntactic-closures
-	  syntactic-closure-rtd
+	  supported-srfi-features
 	  syntactic-closure/environment
-	  syntactic-closure/free-names
 	  syntactic-closure/form
+	  syntactic-closure/free-names
 	  syntactic-closure?
-	  synthetic-identifier?
+	  syntactic-environment->environment
+	  syntactic-environment/lookup
+	  syntactic-environment/top-level?
+	  syntactic-environment?
+	  syntactic-keyword->item
 	  syntax
 	  syntax*
-	  syntax-match?)
+	  syntax-match?
+	  synthetic-identifier?
+	  )
   (export (runtime defstruct)
 	  define-expander
 	  parse-mit-lambda-list))
@@ -3934,8 +4019,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  create-thread-continuation
 	  current-thread
 	  deregister-all-events
-	  deregister-input-descriptor-events
-	  deregister-input-thread-event
+	  deregister-io-descriptor-events
+	  deregister-io-thread-event
 	  deregister-timer-event
 	  detach-thread
 	  exit-current-thread
@@ -3943,8 +4028,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  lock-thread-mutex
 	  make-thread-mutex
 	  other-running-threads?
-	  permanently-register-input-thread-event
-	  register-input-thread-event
+	  permanently-register-io-thread-event
+	  register-io-thread-event
 	  register-timer-event
 	  restart-thread
 	  set-thread-timer-interval!
@@ -3973,7 +4058,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (export (runtime interrupt-handler)
 	  thread-timer-interrupt-handler)
   (export (runtime primitive-io)
-	  block-on-input-descriptor)
+	  block-on-io-descriptor)
   (export (runtime continuation)
 	  get-thread-event-block
 	  set-thread-event-block!)
@@ -4428,21 +4513,165 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (parent (runtime))
   (export ()
 	  8-bit-alphabet?
+	  <alphabet>
+	  <wide-string>
+	  alphabet
 	  alphabet+
 	  alphabet-
 	  alphabet->char-set
 	  alphabet->code-points
 	  alphabet->string
 	  alphabet?
+	  call-with-wide-output-string
 	  char-in-alphabet?
 	  char-set->alphabet
-	  code-point->utf8-string
-	  code-point-in-alphabet?
 	  code-points->alphabet
-	  read-utf8-code-point
-	  read-utf8-code-point-from-source
+	  guarantee-8-bit-alphabet
+	  guarantee-alphabet
+	  guarantee-unicode-code-point
+	  guarantee-well-formed-code-point-list
+	  guarantee-wide-char
+	  guarantee-wide-string
+	  guarantee-wide-string-index
+	  make-wide-string
+	  open-wide-input-string
+	  open-wide-output-string
+	  read-utf16-be-char
+	  read-utf16-char
+	  read-utf16-le-char
+	  read-utf32-be-char
+	  read-utf32-char
+	  read-utf32-le-char
+	  read-utf8-char
 	  string->alphabet
+	  string->wide-string
 	  unicode-code-point?
-	  utf8-string->code-point
-	  well-formed-code-points-list?
-	  write-utf8-code-point))
+	  utf16-be-string->wide-string
+	  utf16-be-string-length
+	  utf16-be-string-valid?
+	  utf16-le-string->wide-string
+	  utf16-le-string-length
+	  utf16-le-string-valid?
+	  utf16-string->wide-string
+	  utf16-string-length
+	  utf16-string-valid?
+	  utf32-be-string->wide-string
+	  utf32-be-string-length
+	  utf32-be-string-valid?
+	  utf32-le-string->wide-string
+	  utf32-le-string-length
+	  utf32-le-string-valid?
+	  utf32-string->wide-string
+	  utf32-string-length
+	  utf32-string-valid?
+	  utf8-string->wide-string
+	  utf8-string-length
+	  utf8-string-valid?
+	  well-formed-code-point-list?
+	  wide-char?
+	  wide-string
+	  wide-string->string
+	  wide-string->utf16-be-string
+	  wide-string->utf16-le-string
+	  wide-string->utf16-string
+	  wide-string->utf32-be-string
+	  wide-string->utf32-le-string
+	  wide-string->utf32-string
+	  wide-string->utf8-string
+	  wide-string-index?
+	  wide-string-length
+	  wide-string-ref
+	  wide-string-set!
+	  wide-string?
+	  write-utf16-be-char
+	  write-utf16-char
+	  write-utf16-le-char
+	  write-utf32-be-char
+	  write-utf32-char
+	  write-utf32-le-char
+	  write-utf8-char)
+  (export (runtime parser-buffer)
+	  read-utf8-char-from-source))
+
+(define-package (runtime url)
+  (files "url")
+  (parent (runtime))
+  (export ()
+	  url:char-set:escaped
+	  url:char-set:extra
+	  url:char-set:national
+	  url:char-set:punctuation
+	  url:char-set:reserved
+	  url:char-set:safe
+	  url:char-set:unescaped
+	  url:char-set:unreserved
+	  url:decode-string
+	  url:decode-substring
+	  url:encode-string
+	  url:encode-substring
+	  url:match:escape
+	  url:match:host
+	  url:match:hostname
+	  url:match:hostnumber
+	  url:match:uchar
+	  url:match:xchar
+	  url:parse:hostport
+	  url:string-encoded?
+	  url:substring-encoded?))
+
+(define-package (runtime postgresql)
+  (file-case options
+    ((load) "pgsql")
+    (else))
+  (parent (runtime))
+  (export ()
+	  close-pgsql-conn
+	  escape-pgsql-string
+	  exec-pgsql-query
+	  make-empty-pgsql-result
+	  open-pgsql-conn
+	  pgsql-available?
+	  pgsql-bad-response
+	  pgsql-clear
+	  pgsql-cmd-status
+	  pgsql-cmd-tuples
+	  pgsql-command-ok
+	  pgsql-conn-db
+	  pgsql-conn-error-message
+	  pgsql-conn-host
+	  pgsql-conn-options
+	  pgsql-conn-pass
+	  pgsql-conn-port
+	  pgsql-conn-reset
+	  pgsql-conn-reset-start
+	  pgsql-conn-status
+	  pgsql-conn-tty
+	  pgsql-conn-user
+	  pgsql-connection-auth-ok
+	  pgsql-connection-awaiting-response
+	  pgsql-connection-bad
+	  pgsql-connection-made
+	  pgsql-connection-ok
+	  pgsql-connection-setenv
+	  pgsql-connection-started
+	  pgsql-copy-in
+	  pgsql-copy-out
+	  pgsql-empty-query
+	  pgsql-fatal-error
+	  pgsql-field-name
+	  pgsql-get-is-null?
+	  pgsql-get-value
+	  pgsql-n-fields
+	  pgsql-n-tuples
+	  pgsql-nonfatal-error
+	  pgsql-polling-active
+	  pgsql-polling-failed
+	  pgsql-polling-ok
+	  pgsql-polling-reading
+	  pgsql-polling-writing
+	  pgsql-result-error-message
+	  pgsql-result-status
+	  pgsql-result-status-string
+	  pgsql-tuples-ok
+	  poll-pgsql-conn
+	  poll-pgsql-reset))

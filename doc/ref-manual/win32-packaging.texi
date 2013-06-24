@@ -1,0 +1,698 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: win32-packaging.texi,v 1.1 2003/04/15 03:30:25 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Win32 Package Reference, GNU Free Documentation License, Graphics, Top
+@chapter Win32 Package Reference
+
+@ifinfo
+The Win32 implementation is still in a state of development.  It is
+expected that changes will be necessary when MIT/GNU Scheme is ported to
+Windows NT on the DEC Alpha architecture.  In particular, the
+current system is not arranged in a way that adequately distinguishes 
+between issues that are a consequence of the NT operating system and
+those which are a consequence of the Intel x86 architecture.
+@end ifinfo
+
+@menu
+* Win32 Package Overview::      
+* Foreign function interface::  
+* Device Independent Bitmap Utilities::  
+@end menu
+
+
+@node Win32 Package Overview, Foreign function interface, Win32 Package Reference, Win32 Package Reference
+@section Overview
+
+
+The Win32 implementation is still in a state of development.  It is
+expected that changes will be necessary when MIT/GNU Scheme is ported to
+Windows NT on the DEC Alpha architecture.  In particular, the
+current system is not arranged in a way that adequately distinguishes
+between issues that are a consequence of the NT operating system and
+those which are a consequence of the Intel x86 architecture.
+@cindex limitations
+
+Thus this documentation is not definitive, it merely outlines how the
+current system works.  Parts of the system will change and any project
+implemented using the win32 system must plan for a re-implementation
+stage.
+
+
+The Win32 implementation has several components:
+
+@itemize @bullet
+
+@item
+Special microcode primitives.
+
+@item
+A foreign function interface (FFI) for calling procedures in dynamically
+linked libraries (DLLs).
+
+@item
+An interface for Edwin.
+
+@item
+The Win32 package provides support for using the features of the
+Windows 3.1 and Windows NT 3.1 environments.
+
+@item
+Device Independent Bitmap utilities.  These are used by the win32 Scheme
+Graphics implementation.  (The Scheme Graphics implementation is
+described in the Reference Manual).
+
+@end itemize
+
+Note that all the names in the Win32 support are part of the
+@code{win32} package.  The names are bound in the @code{(win32)}
+environment, and do not appear as bindings in the user or root
+environments.
+An effect of this is that it is far easier to develop Win32 software in
+the @code{(win32)} package environment or a child environment.
+
+@node Foreign function interface, Device Independent Bitmap Utilities, Win32 Package Overview, Win32 Package Reference
+@section Foreign Function Interface
+
+The Win32 foreign function interface (FFI) is a primitive and fairly
+simple system for calling procedures written in C in a
+dynamically linked library (DLL).  Both user's procedures from a custom
+DLL and system procedures (e.g.@: MessageBox) are called using the same
+mechanism.
+
+@cindex limitations
+@strong{Warning}: The FFI as it stands has several flaws which make it
+difficult to use reliably.  It is expected that both the interface to
+and the mechanisms used by the FFI will be changed in the future.  We
+provide it, and this documentation, only to give people an early start
+in accessing some of the features of Win32 from Scheme.  Should you use
+it in an experiment we welcome any feedback.
+
+The FFI is designed for calling C procedures that use C data types
+rather than Scheme data objects.  Thus it is not possible to write and
+call a C procedure that returns, for example, a Scheme list.  The object
+returned will always be an integer (which may represent the address of a
+C data structure).
+
+@cindex warning
+@strong{Warning}: It is extremely dangerous to try to pass Scheme
+callback procedures to C procedures.  It is only possible by passing
+integer `handles' rather than the actual procedures, and even so, if a
+garbage collection occurs during the execution of the callback procedure
+objects in Scheme's heap will have moved.  Thus in a foreign procedure
+that has a callback and a string, after calling the callback the string
+value may no longer be valid.  Playing this game requires a profound
+knowledge of the implementation.
+
+
+The interface to the FFI has two main components: a language for
+declaring the types of values passed to and returned from the foreign
+procedures and a form for declaring foreign procedures.
+
+@menu
+* Windows Types::               
+* Windows Foreign Procedures::  
+* Win32 API names and procedures::  
+@end menu
+
+@node  Windows Types, Windows Foreign Procedures, Foreign function interface, Foreign function interface
+@subsection Windows Types
+
+@cindex Windows types
+@cindex foreign type declarations
+@cindex types, Windows
+@cindex defining foreign types
+Foreign types are designed to represent a correspondence between a
+Scheme data type that is used to represent an object within the Scheme
+world and a C data type that represents the data object in the C world.
+Thus we cannot manipulate true C objects in Scheme, nor can we
+manipulate Scheme objects in C.
+
+Each foreign type has four aspects that together ensure that the
+correspondence between the Scheme and C objects is maintained.  These
+aspects are all encoded as procedures that either check for validity or
+convert between representations.  Thus a foreign type is not a
+declarative type so much as a procedural description of how to pass the
+type.  The underlying foreign procedure call mechanism can pass integers
+and vector-like Scheme objects, and returns integer values.  All other
+objects must be translated into integers or some other basic type, and
+must be recovered from integers.
+
+The aspects are:
+
+@table @var
+
+@item check
+A predicate that returns @code{#t} if the argument is of an acceptable
+Scheme type, otherwise returns @code{#f}.
+The @var{check} procedure is used for type-checking.
+
+@item convert
+A procedure of one argument which returns a Scheme object of one of the
+basic types.
+It is used to convert an object into a `simpler' object that will
+eventually be converted into a C object.
+The legal simpler objects are integers and strings.
+
+@item return-convert
+A procedure of one argument that, given an integer, returns a Scheme
+object of a type satisfying @var{check}.
+Its purpose is to convert the result returned by the foreign procedure
+into a Scheme value.
+
+@item revert
+Some C procedures modify one or more of their arguments.  These
+arguments are passed by reference, i.e.@: as a pointer to their address.
+Since a Scheme object might have a different memory layout and storage
+conventions, it must be passed by copy-in and copy-out rather than by
+reference.
+@var{Revert} is a procedure of two parameters, the original object
+passed and the result of @var{convert} on that object.
+@var{Revert} may then inspect the converted object and copy back the
+changes to the original.
+
+@end table
+
+@deffn {special form} define-windows-type name check convert return revert
+@deffnx {special form} define-similar-windows-type name model [check [convert [return [revert]]]]
+@cindex defining foreign types
+Both forms define a windows type.
+The first form defines a type in terms of its aspects as described
+above.
+The second defines the type as being like another type, except for
+certain aspects, which are redefined.
+@var{Name} is the name of the type.
+@var{Model} is the name of a type.
+@var{Check}, @var{convert}, @var{return} and @var{revert} are
+procedures or the value @code{#f}.
+A @code{#f} means use the default value, which in the second form means
+use the definition provided for @var{model}.
+The defaults are
+
+@table @var
+@item check
+@code{(lambda (x) #t)}, i.e.@: unchecked.
+@item convert
+@code{(lambda (x) x)}, i.e.@: no translation performed.
+@item return
+@code{(lambda (x) x)}, i.e.@: no translation performed.
+@item revert
+@code{(lambda (x y) unspecific)}, i.e.@: no update performed
+@end table
+
+The @code{unchecked} windows type (see below) is defined as:
+
+@example
+(define-windows-type unchecked #f #f #f #f)
+@end example
+
+Windows types are @emph{not} first class values, so they cannot be
+stored in variables or defined using @code{define}:
+
+@example
+@group
+(define my-type unchecked)            @error{}  Unbound variable
+(define-similar-windows-type my-type unchecked)
+                                      @r{;; the correct way}
+@end group
+@end example
+
+Scheme characters must be converted to integers.  This is accomplished
+as follows:
+
+@example
+@group
+(define-windows-type char
+   char?          @r{; check}
+   char->integer  @r{; convert}
+   integer->char  @r{; convert return value}
+   #f             @r{; cannot be passed by reference}
+)
+@end group
+@end example
+@end deffn
+
+@deffn {windows type} unchecked
+The type which is not checked and undergoes only the basic conversion
+from a Scheme integer to a C integer or from a Scheme string to a C
+pointer to the first byte of the string.
+Returned @code{unchecked} values are returned as integers.
+@end deffn
+
+@deffn {windows type} bool
+Scheme booleans are analogous to C integers @code{0} and @code{1}.
+Windows type @code{bool} have been defined as:
+
+@example
+@group
+(define-windows-type bool
+   boolean?
+   (lambda (x) (if x 1 0))
+   (lambda (x) (if (eq? x 0) #f #t))
+   #f)
+@end group
+@end example
+@end deffn
+
+@deffn {windows type} char
+Scheme characters are converted into C objects of type @code{char},
+which are indistinguishable from small integers.
+@end deffn
+
+@deffn {windows type} int
+@deffnx {windows type} uint
+@deffnx {windows type} long
+@deffnx {windows type} ulong
+@deffnx {windows type} short
+@deffnx {windows type} ushort
+@deffnx {windows type} word
+@deffnx {windows type} byte
+Various integer types that are passed without conversion.
+@end deffn
+
+@deffn {windows type} string
+A string that is passed as a C pointer of type @code{char*} to the first
+character in the string.
+@end deffn
+
+@deffn {windows type} char*
+A string or @code{#f}.  The string is passed as a pointer to characters.
+The string is correctly null-terminated.  @code{#f} is passed as the null
+pointer.  This is an example where there is a more complex mapping
+between C objects and Scheme objects.  C's @code{char*} type is
+represented as one of two Scheme types depending on its value.  This
+allows us us to distinguish between the C string (pointer) that points
+to the empty sequence of characters and the null pointer (which doesnt
+point anywhere).
+@end deffn
+
+@deffn {windows type} handle
+@deffnx {windows type} hbitmap
+@deffnx {windows type} hbrush
+@deffnx {windows type} hcursor
+@deffnx {windows type} hdc
+@deffnx {windows type} hicon
+@deffnx {windows type} hinstance
+@deffnx {windows type} hmenu
+@deffnx {windows type} hpalette
+@deffnx {windows type} hpen
+@deffnx {windows type} hrgn
+@deffnx {windows type} hwnd
+Various kinds of Win32 handle.  These names correspond to the same, but
+all uppercase, names in the Windows C language header files.  Win32 API
+calls are the source of values of this type and the values are
+meaningless except as arguments to other Win32 API calls.  Currently
+these values are represented as integers but we expect that Win32
+handles will in future be represented by allocated Scheme objects
+(e.g.@: records) that will allow predicates (e.g.@: @code{hmenu?}) and
+sensible interlocking with the garbage collector to free the programmer
+of the current tedious allocation and deallocation of handles.
+@end deffn
+
+@deffn {windows type} resource-id
+A Windows resource identifier is either a small integer or a string.
+In C, this distinction is possible because pointers look like
+larger integers, so a machine word representing a small integer can be
+distinguished from a machine word that is a pointer to the text of the
+name of the resource.
+@end deffn
+
+
+@node Windows Foreign Procedures, Win32 API names and procedures, Windows Types, Foreign function interface
+@subsection Windows Foreign Procedures
+
+Foreign procedures are declared as callable entry-points in a module,
+usually a dynamically linked library (DLL).
+
+
+@deffn procedure find-module name
+@cindex loading DLLs
+@cindex DLL, loading
+Returns a module suitable for use in creating procedures with
+@code{windows-procedure}.  @var{Name} is a string which is the name of a
+DLL file.  Internally, @code{find-module} uses the @code{LoadLibrary}
+Win32 API, so @var{name} should conform to the specifications for this
+call.  @var{Name} should be either a full path name of a DLL, or the
+name of a DLL that resides in the same directory as the Scheme binary
+@file{SCHEME.EXE} or in the system directory.
+
+The module returned is a description for the DLL, and the DLL need not
+necessarily be linked at or immediately after this call.  DLL modules
+are linked on need and unlinked before Scheme exits and when there
+are no remaining references to entry points after a garbage-collection.
+This behavior ensures that the Scheme system can run when a DLL is
+absent, provided the DLL is not actually used (i.e.@: no attempt is made
+to call a procedure in the DLL).
+@end deffn
+
+
+@defvr variable gdi32.dll
+@cindex DLL, GDI32.DLL
+This variable is bound to the module describing the @file{GDI32.DLL}
+library, which contains the Win32 API graphics calls, e.g.@:
+@code{LineTo}.
+@end defvr
+
+@defvr variable kernel32.dll
+@cindex DLL, KERNEL32.DLL
+This variable is bound to the module describing the @file{KERNEL32.DLL}
+library.
+@end defvr
+
+@defvr variable user32.dll
+@cindex DLL, USER32.DLL
+This variable is bound to the module describing the @file{USER32.DLL}
+library.  This module contains many useful Win32 API procedures, like
+@code{MessageBox} and @code{SetWindowText}.
+@end defvr
+
+
+@deffn {special form} windows-procedure (name (parameter type) @dots{}) return-type module entry-name [options]
+@cindex defining foreign procedures
+This form creates a procedure, and could be thought of as
+``foreign-named-lambda''.  The form creates a Scheme procedure that
+calls the C procedure identified by the exported entry point
+@var{entry-name} in the module identified by the value of @var{module}.
+Both @var{entry-name} and @var{module} are evaluated at procedure
+creation time, so either may be expression.  @var{Entry-name} must
+evaluate to a string and @var{module} must evaluate to a module as
+returned by @code{find-module}.
+These are the only parts of the form that are evaluated at procedure
+creation time.
+
+@var{Name} is the name of the procedure and is for documentation
+purposes only.  This form @emph{does not} define a procedure called
+@var{name}.  It is more like @code{lambda}.  The name might be used for
+debugging and pretty-printing.
+
+A windows procedure has a fixed number of parameters (i.e.@: no `rest'
+parameters or `varargs'), each of which is named and associated with a
+windows type @var{type}.  Both the name @var{parameter} and the windows
+type @var{type} must be symbols and are not evaluated.  The procedure
+returns a value of the windows type @var{return-type}.
+
+The following example creates a procedure that takes a window handle
+(@code{hwnd}) and a string and returns a boolean (@code{bool}) result.
+The procedure does this by calling the @code{SetWindowText} entry in the
+module that is the value of the variable @code{user32.dll}.  The
+variable @code{set-window-title} is defined to have this procedure as
+it's value.
+
+@example
+@group
+(define set-window-title
+  (windows-procedure
+   (set-window-text (window hwnd) (text string))
+   bool user32.dll "SetWindowText"))
+
+(set-window-title my-win "Hi")
+                         @result{}  #t
+                         @r{;; Changes window's title/text}
+
+set-window-title         @result{}  #[compiled-procedure  @dots{}]
+set-window-text          @error{}  Unbound variable
+@end group
+@end example
+
+
+When there are no @var{options} the created procedure will (a) check its
+arguments against the types, (b) convert the arguments, (c) call the C
+procedure and (d) convert the returned value.  No reversion is
+performed, even if one of the @var{types} has a reversion defined.
+(Reverted types are rare [I have never used one], so paying a cost for
+this unless it is used seems silly).
+
+The following options are allowed:
+
+@table @asis
+@item @code{with-reversions}
+The reversions are included in the type conversions.
+
+@item @code{expand}
+A synonym for @code{with-reversions}.
+
+@item @var{Scheme code}
+The @var{Scheme code} is placed between steps (a) and (b) in the default
+process.  The Scheme code can enforce constraints on the arguments,
+including constraints between arguments such as checking that an index
+refers to a valid position in a string.
+@end table
+
+If both options (i.e.@: @code{with-reversions} and Scheme code) are used,
+@code{with-reversions} must appear first.  There can be arbitrarily many
+Scheme expression.
+@end deffn
+
+@node Win32 API names and procedures,  , Windows Foreign Procedures, Foreign function interface
+@subsection Win32 API names and procedures
+
+This section is a moving target.
+@cindex Win32 API names
+@cindex naming conventions
+
+The @code{#define} values from @file{wingdi.h} and @file{winuser.h} are
+available as bindings in the @code{(win32)} package environment.  The
+@code{#define} symbols are all uppercase; these have been translated to
+all lowercase Scheme identifiers, thus @code{WM_LBUTTONUP} is the scheme
+variable @code{wm_lbuttonup}.  As Scheme is case insensitive, the
+upper-case version may be used and probably should to make the code look
+more like conventional Windows code.  The Scheme bindings have been
+produced automagically.  Most of the @code{#define}-symbols contain an
+underscore so there are not many name clashes.  There is one very
+notable name clash, however: @code{ERROR} is @code{#define}d to 0, which
+shadows the scheme procedure @code{error} in the root package
+environment.  To signal an error, use @code{access} to get @code{error}
+from the system global environment:
+
+@example
+@group
+(declare (usual-integrations))
+@dots{}
+((access error system-global-environment) "Complain" @dots{})
+@end group
+@end example
+
+
+The set of procedures is incomplete because procedures have been added
+on a by-need basis for the implementation of other parts of the system,
+e.g.@:  Scheme Graphics.  Look in the implementation for further details.
+
+Win32 API procedure names have been uniformly converted into Scheme
+identifiers as follows:
+
+@itemize @bullet
+@item
+A leading uppercase letter is translated into a lowercase letter.
+@item
+Subsequent sequences of uppercase letters are translated into lowercase
+letters preceeded by a hyphen (minus symbol), i.e.@: hyphens are inserted
+at a lowercase to uppercase transition.
+@item
+Predicates beginning with @code{Is} finally have a
+question-mark appended.
+@end itemize
+
+@noindent
+Example: applying these rules to @code{IsWindow} yields
+@code{is-window?}, and @code{GetDC} is translated into @code{get-dc}.
+
+
+@c [It might be worthwhile just keeping the same names.  As the
+@c Win32 API procedure names are uniformly `WordWordWordACRONYMWord', case
+@c insensitivity is unlikely to be a problem.  The only problem is the
+@c potential for a clash between a procedure name and a type
+@c name.]
+
+
+@node Device Independent Bitmap Utilities,  , Foreign function interface, Win32 Package Reference
+@section Device Independent Bitmap Utilities
+
+
+The Device Independent Bitmap (DIB) utilities library @file{DIBUTILS.DLL}
+and the associated procedures in @file{dib.scm} in the Win32 system
+source is an example of how to use the foreign function interface to
+access and manipulate non-Scheme objects.
+@cindex DLL, DIBUTILS.DLL
+
+@deffn {windows type} dib
+In the C world a DIB is a @dfn{handle} to a piece of memory containing
+the bits that represent information about the image and the pixels of
+the image.  The handle is a machine-word sized piece of data which may
+be thought of as a 32 bit integer.  The handle may be null (i.e.@: zero),
+indicating that there is no block of memory describing the DIB.  The
+null value is usually returned by C functions that are supposed to
+create a DIB but failed, for some reason like the memory could not be
+allocated or a file could not be opened.
+
+In the Scheme world a DIB is a structure containing information
+about the bitmap (specifically the integer that represents the handle).
+We also include @code{#f} in the @code{dib} windows type to mirror the
+null handle error value.
+
+@example
+@group
+(define dib-result
+  (lambda (handle)
+    (if (= handle 0)
+        #f
+        (make-dib handle))))
+
+(define dib-arg
+  (lambda (dib)
+    (if dib
+        (cell-contents (dib-handle dib))
+        0)))  
+
+(define-windows-type dib
+  (lambda (thing) (or (dib? thing) (eq? thing #f)))
+  dib-arg
+  dib-result)
+@end group
+@end example
+@end deffn
+
+
+@menu
+* DIB procedures::              
+* Other parts of the DIB Utilities implementation::  
+@end menu
+
+@node DIB procedures, Other parts of the DIB Utilities implementation, Device Independent Bitmap Utilities, Device Independent Bitmap Utilities
+@subsection DIB procedures
+
+The following procedures have typed parameters, using the same
+convention as @code{windows-procedure}.
+
+@deffn procedure open-dib (filename string)
+Return type: @var{dib}.  Calls the @code{OpenDIB} entry of
+@file{DIBUTILS.DLL}.  If the return value is not @code{#f} then the file
+@var{filename} was found, successfully opened, and the contents were
+suitable for loading into memory as a device independent bitmap.
+@end deffn
+
+@deffn procedure write-dib (filename string) (dib dib) 
+Return type: @var{bool}.  Calls the @code{WriteDIB} entry of
+@file{DIBUTILS.DLL}.  Returns @code{#t} if the file @var{filename} could
+be opened and written to.  After this operation the file contains the
+bitmap data in a standard format that is understood by @code{open-dib}
+and various system utilities like the bitmap editor.  Any problems
+resulting in failure are signalled by a @code{#f} return value.
+@end deffn
+
+@deffn procedure bitmap-from-dib (dib dib) (palette hpalette)
+Return type: @var{hbitmap}.
+Calls the @code{BitmapFromDib} entry of @file{DIBUTILS.DLL}.  The returned
+value is a device dependent bitmap.  The colours from the DIB are
+matched against colors in @var{palette}.
+@end deffn
+
+@deffn procedure dib-from-bitmap (bitmap hbitmap) (style dword) (bits word) (palette hpalette)
+Return type: @var{dib}.
+Returns a DIB containing the same image as the device dependent bitmap
+@var{bitmap}.
+@var{Style} determines the kind of DIB, e.g.@: compression style.
+Calls the @code{DibFromBitmap} entry of @file{DIBUTILS.DLL}.
+@end deffn
+
+@deffn procedure dib-blt (dest hdc) (x int) (y int) (w int) (h int) (src dib) (src-x int) (src-y int) (raster-op long)
+Return type: @var{bool}.  Calls the @code{DibBlt} entry of
+@file{DIBUTILS.DLL}.  Similar to the Win32 API @code{BitBlt} call, but
+draws a DIB rather than a piece of another device context.  Draws the
+@var{dib} on device context @var{hdc} at position (@var{x},@var{y}).  A
+rectangle of width @var{w} and height @var{h} is copied from position
+(@var{src-x},@var{src-y}) of @var{dib}.
+@var{Raster-op} is supposed to allow the source and destination to be
+combined but I don't think I got this right so stick to @code{SRCCOPY}.
+@end deffn
+
+@deffn procedure %delete-dib (dib-handle handle)
+Return type: @var{bool}.
+Calls the @code{DeleteDIB} entry of @file{DIBUTILS.DLL}.
+Note that the parameter is a @var{handle}, and not a @var{dib}.
+This allows us to destroy a DIB and reclaim its memory by knowing only
+the handle value, and not needing the @code{dib} record.
+The importance of this is that if the @code{dib} record is GC-ed then a
+GC hook can reclaim the storage knowing only the handle.
+@end deffn
+
+@deffn procedure delete-dib (dib dib)
+Return type: @var{bool}.
+This procedure calls @code{%delete-dib} to reclaim the storage occupied
+by a DIB.
+After being deleted, the DIB should not be used.
+This procedure allows the programmer to reclaim external heap storage
+rather than risking it running out before the next garbage collection.
+@end deffn
+
+@deffn procedure dib-height (dib dib)
+Return type: @var{int}.
+Calls the @code{DibHeight} expand entry of @file{DIBUTILS.DLL}, which returns
+the height of the bitmap in pixels.
+@end deffn
+
+@deffn procedure dib-width (dib dib)
+Return type: @var{int}.
+Calls the @code{DibWidth} entry of @file{DIBUTILS.DLL}, which returns
+the width of the bitmap in pixels.
+@end deffn
+
+@deffn procedure copy-bitmap (bm hbitmap)
+Return type: @var{hbitmap}.
+Calls the @code{CopyBitmap} of @file{DIBUTILS.DLL}, which creates a new
+bitmap with the same size and contents as the original.
+@end deffn
+
+@deffn procedure create-dib (width int) (height int) (style int) (depth int) (palette hpalette)
+Return type: @var{dib}.
+Calls the @code{CreateDIB} entry of @file{DIBUTILS.DLL}.
+Creates a DIB of @var{width} by @var{height} pixels and @var{depth} bits
+of colour information.
+The @var{style} parameter determines how the bitmap is stored.
+I have only ever used @code{BI_RGB}.
+If @var{depth}<=8 then the @var{palette} determines the DIB's colour table.
+@end deffn
+
+@deffn procedure crop-bitmap (bm hbitmap) (left int) (top int) (right int) (bottom int)
+Return type: @var{hbitmap}.
+Calls the @code{CropBitmap} entry of @file{DIBUTILS.DLL}.
+Returns a new bitmap containing the image from a region of the original.
+@end deffn
+
+@deffn procedure dib-set-pixels-unaligned dib (pixels string)
+Return type: @var{bool}.
+Calls the @code{DIBSetPixelsUnaligned} entry of@* @file{DIBUTILS.DLL}.  Stuffs
+bytes from @var{pixels} into the bitmap.  There are no alignment
+constraints on @var{pixels} (the usual way of doing this is to use the
+@code{SetDIBits} function which requires that every scan line of the
+bitmap is 32-bit word aligned, even if the scan lines are not a multiple
+of 4 bytes long).  doing this
+@end deffn
+
+@node Other parts of the DIB Utilities implementation,  , DIB procedures, Device Independent Bitmap Utilities
+@subsection Other parts of the DIB Utilities implementation
+
+
+The @file{DIBUTILS.DLL} library is an ordinary DLL.  See the standard
+Microsoft Windows documentation on how to create DLLs.  Look at the code
+in the @file{WIN32/DIBUTILS} directory of the Scheme source.
+
+Please note:
+@itemize @bullet
+@item
+@cindex DLL, exports
+For the foreign function interface to find the procedures they must be
+declared as exports in the @file{.DEF} definition file.
+
+@item
+To load the @file{.DLL} file use the @code{find-module} Scheme function.
+Look at @file{WIN32/DIB.SCM} to see how this is done.
+
+@item
+The current system works with C procedures with the @code{__stdcall} and
+@code{__cdecl} calling conventions but @emph{not} the @code{__fastcall}
+calling convention.
+@end itemize

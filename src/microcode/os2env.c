@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: os2env.c,v 1.12 1999/04/07 04:01:45 cph Exp $
+$Id: os2env.c,v 1.16 2003/02/14 18:28:22 cph Exp $
 
-Copyright (c) 1994-1999 Massachusetts Institute of Technology
+Copyright (c) 1994-1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #include "scheme.h"
@@ -26,22 +30,26 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #include <sys\types.h>
 
 #ifdef __IBMC__
-#include <sys\timeb.h>
-#define NC_TIMEZONE _timezone
-#define NC_DAYLIGHT _daylight
-#define NC_FTIME _ftime
+#  include <sys\timeb.h>
+#  define NC_TIMEZONE _timezone
+#  define NC_DAYLIGHT _daylight
+#  if (__IBMC__ >= 360)
+#    define NC_FTIME ftime
+#  else
+#    define NC_FTIME _ftime
+#  endif
 #endif
 
 #if defined(__WATCOMC__) || defined(__EMX__)
-#include <sys\timeb.h>
-#define NC_TIMEZONE timezone
-#define NC_DAYLIGHT daylight
-#define NC_FTIME ftime
+#  include <sys\timeb.h>
+#  define NC_TIMEZONE timezone
+#  define NC_DAYLIGHT daylight
+#  define NC_FTIME ftime
 #endif
 
 #ifdef __GCC2__
-#include <errno.h>
-#include <sys/times.h>
+#  include <errno.h>
+#  include <sys/times.h>
 #endif
 
 static void initialize_real_time_clock (void);

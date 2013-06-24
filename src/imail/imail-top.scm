@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imail-top.scm,v 1.282 2002/02/22 16:07:34 cph Exp $
-;;;
-;;; Copyright (c) 1999-2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imail-top.scm,v 1.287 2003/02/14 18:28:14 cph Exp $
+
+Copyright 1999,2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; IMAIL mail reader: top level
 
@@ -190,7 +194,7 @@ Otherwise, only one of the parts is shown."
 
 (define-variable imail-mime-collapse-digest
   "If true, component messages of a MIME digest are shown as attachments."
-  #t
+  #f
   boolean?)
 
 (define-variable imail-mime-boundary-style
@@ -259,40 +263,40 @@ regardless of the folder type."
 
 (define-major-mode imail read-only "IMAIL"
   (lambda ()
-    (with-string-output-port
-      (lambda (port)
-	(write-string imail-mode-description port)
-	(newline port)
-	(newline port)
-	(write-string (make-string 70 #\-) port)
-	(newline port)
-	(write-string "These variables customize the behavior of IMAIL:" port)
-	(newline port)
-	(newline port)
-	(for-each
-	 (let ((buffer (selected-buffer)))
-	   (lambda (variable)
-	     (let ((name (variable-name-string variable)))
-	       (if (not (string-prefix-ci? "imail-summary-" name))
-		   (begin
-		     (write-string name port)
-		     (newline port)
-		     (write-string "  " port)
-		     (write-description
-		      (description-first-line (variable-description variable))
-		      port)
-		     (newline port)
-		     (write-string "  Value: " port)
-		     (write (variable-local-value buffer variable) port)
-		     (newline port)
-		     (newline port))))))
-	 (string-table-apropos editor-variables "^imail-"))
-	(write-string (make-string 70 #\-) port)
-	(newline port)
-	(write-string "These are all the key bindings for IMAIL mode:" port)
-	(newline port)
-	(newline port)
-	(write-string "\\{imail}" port))))
+    (call-with-output-string
+     (lambda (port)
+       (write-string imail-mode-description port)
+       (newline port)
+       (newline port)
+       (write-string (make-string 70 #\-) port)
+       (newline port)
+       (write-string "These variables customize the behavior of IMAIL:" port)
+       (newline port)
+       (newline port)
+       (for-each
+	(let ((buffer (selected-buffer)))
+	  (lambda (variable)
+	    (let ((name (variable-name-string variable)))
+	      (if (not (string-prefix-ci? "imail-summary-" name))
+		  (begin
+		    (write-string name port)
+		    (newline port)
+		    (write-string "  " port)
+		    (write-description
+		     (description-first-line (variable-description variable))
+		     port)
+		    (newline port)
+		    (write-string "  Value: " port)
+		    (write (variable-local-value buffer variable) port)
+		    (newline port)
+		    (newline port))))))
+	(string-table-apropos editor-variables "^imail-"))
+       (write-string (make-string 70 #\-) port)
+       (newline port)
+       (write-string "These are all the key bindings for IMAIL mode:" port)
+       (newline port)
+       (newline port)
+       (write-string "\\{imail}" port))))
   (lambda (buffer)
     (buffer-put! buffer 'REVERT-BUFFER-METHOD imail-revert-buffer)
     (add-kill-buffer-hook buffer imail-kill-buffer)
@@ -877,21 +881,26 @@ This command writes the message to the output file in human-readable format,
 			   'HISTORY-INDEX 0)
 	  (command-argument)))
   (lambda (pathname argument)
-    (let ((write-separator? (file-exists? pathname)))
-      (call-with-temporary-buffer " *imail-file-message*"
-	(lambda (buffer)
-	  (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
-	    (move-relative-undeleted argument
-	      (lambda (message)
-		(if write-separator?
-		    (begin
-		      (insert-newline mark)
-		      (insert-chars #\= 79 mark)
-		      (insert-newlines 2 mark))
-		    (set! write-separator? #t))
-		(insert-message message #f 0 mark)))
-	    (mark-temporary! mark))
-	  (append-to-file (buffer-region buffer) pathname #t 'DEFAULT))))))
+    (let ((exists? (file-exists? pathname)))
+      (if (and exists? (file-folder-type pathname))
+	  ((ref-command imail-output)
+	   (url->string (make-pathname-url pathname))
+	   argument)
+	  (call-with-temporary-buffer " *imail-file-message*"
+	    (lambda (buffer)
+	      (let ((mark (mark-left-inserting-copy (buffer-start buffer))))
+		(move-relative-undeleted argument
+		  (lambda (message)
+		    (if exists?
+			(begin
+			  (insert-newline mark)
+			  (insert-chars #\= 79 mark)
+			  (insert-newlines 2 mark))
+			(set! exists? #t))
+		    (insert-message message #f 0 mark)))
+		(mark-temporary! mark))
+	      (append-to-file (buffer-region buffer) pathname #t
+			      'DEFAULT)))))))
 
 ;;;; Attachments
 
@@ -1766,7 +1775,7 @@ Negative argument means search in reverse."
 			    port
 			    (ref-variable imail-default-imap-mailbox
 					  #f)))))
-	((string-ci=? protocol "file") (make-file-url "~/RMAIL"))
+	((string-ci=? protocol "file") (make-pathname-url "~/RMAIL"))
 	(else (error:bad-range-argument protocol))))
 
 (define (imail-default-container)
@@ -2589,12 +2598,12 @@ Negative argument means search in reverse."
 
 (define-method insert-mime-message-inline*
     (message (body <mime-body-message>) selector context mark)
-  (insert-header-fields (with-string-output-port
-			  (lambda (port)
-			    (write-mime-message-body-part message
-							  `(,@selector HEADER)
-							  #t
-							  port)))
+  (insert-header-fields (call-with-output-string
+			 (lambda (port)
+			   (write-mime-message-body-part message
+							 `(,@selector HEADER)
+							 #t
+							 port)))
 			#f
 			mark)
   (walk-mime-message-part message

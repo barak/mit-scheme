@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: prmcon.c,v 1.3 1999/01/02 06:11:34 cph Exp $
+$Id: prmcon.c,v 1.7 2003/02/14 18:28:22 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright (c) 1990-1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 #define SCM_PRMCON_C
@@ -42,7 +46,7 @@ DEFUN (suspend_primitive,
     /* NOTREACHED */
   }
 
-  primitive = (Regs[REGBLOCK_PRIMITIVE]);
+  primitive = (Registers[REGBLOCK_PRIMITIVE]);
   if (!PRIMITIVE_P (primitive))
   {
     outf_fatal ("\nsuspend_primitive invoked when not in primitive!\n");
@@ -62,7 +66,7 @@ DEFUN (suspend_primitive,
      STACK_PUSH (reentry_record[i]);
    }
    STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (reentry_record_length));
-   Store_Expression (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
+   exp_register = (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
    Store_Return (RC_PRIMITIVE_CONTINUE);
    Save_Cont ();
   Pushed ();
@@ -77,10 +81,10 @@ DEFUN_VOID (continue_primitive)
   int continuation, record_length;
   SCHEME_OBJECT primitive, *buffer, result;
 
-  continuation = ((int) (UNSIGNED_FIXNUM_TO_LONG (Fetch_Expression ())));
+  continuation = ((int) (UNSIGNED_FIXNUM_TO_LONG (exp_register)));
   if (continuation > CONT_MAX_INDEX)
   {
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
+    exp_register = (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
     Store_Return (RC_PRIMITIVE_CONTINUE);
     Save_Cont ();
     immediate_error (ERR_UNKNOWN_PRIMITIVE_CONTINUATION);
@@ -91,7 +95,7 @@ DEFUN_VOID (continue_primitive)
   {
     Request_GC (record_length);
     STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM ((long) record_length));
-    Store_Expression (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
+    exp_register = (LONG_TO_UNSIGNED_FIXNUM ((long) continuation));
     Store_Return (RC_PRIMITIVE_CONTINUE);
     Save_Cont ();
     immediate_interrupt ();
@@ -130,12 +134,12 @@ DEFUN_VOID (continue_primitive)
       STACK_PUSH (LONG_TO_UNSIGNED_FIXNUM (nargs));
       immediate_error (ERR_WRONG_NUMBER_OF_ARGUMENTS);
     }
-    Regs[REGBLOCK_LEXPR_ACTUALS] = ((SCHEME_OBJECT) nargs);
+    (Registers[REGBLOCK_LEXPR_ACTUALS]) = ((SCHEME_OBJECT) nargs);
   }
-  Store_Expression (primitive);
-  Regs[REGBLOCK_PRIMITIVE] = primitive;
+  exp_register = primitive;
+  (Registers[REGBLOCK_PRIMITIVE]) = primitive;
   result = (*(continuation_procedures[continuation]))(buffer);
-  Regs[REGBLOCK_PRIMITIVE] = SHARP_F;
+  (Registers[REGBLOCK_PRIMITIVE]) = SHARP_F;
   POP_PRIMITIVE_FRAME (nargs);
   return (result);
 }

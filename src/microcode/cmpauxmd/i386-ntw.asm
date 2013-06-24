@@ -1,21 +1,24 @@
 ;;; -*-Midas-*-
 ;;;
-;;; $Id: i386.m4,v 1.57 2002/03/11 21:39:18 cph Exp $
+;;; $Id: i386.m4,v 1.62 2003/05/17 20:55:45 cph Exp $
 ;;;
-;;; Copyright (c) 1992-2002 Massachusetts Institute of Technology
+;;; Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
+;;; Copyright 2002,2003 Massachusetts Institute of Technology
 ;;;
-;;; This program is free software; you can redistribute it and/or
+;;; This file is part of MIT/GNU Scheme.
+;;;
+;;; MIT/GNU Scheme is free software; you can redistribute it and/or
 ;;; modify it under the terms of the GNU General Public License as
 ;;; published by the Free Software Foundation; either version 2 of the
 ;;; License, or (at your option) any later version.
 ;;;
-;;; This program is distributed in the hope that it will be useful,
+;;; MIT/GNU Scheme is distributed in the hope that it will be useful,
 ;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;;; General Public License for more details.
 ;;;
 ;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
+;;; along with MIT/GNU Scheme; if not, write to the Free Software
 ;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; 02111-1307, USA.
 ;;; Intel IA-32 assembly language part of the compiled code interface.
@@ -94,43 +97,22 @@
 ;;;
 ;;; WIN32
 ;;;	If defined, expand to run under Win32; implies DASM.
-;;; OS2
-;;;	If defined, expand to run under OS/2.  This macro does nothing
-;;;	more than define SUPPRESS_LEADING_UNDERSCORE and
-;;;	CALLER_ALLOCS_STRUCT_RETURN, which are the conventions used to
-;;;	call OS/2 API procedures; note that EMX/GCC doesn't define
-;;;	these symbols because it thinks it's running under unix.
-;;;
-;;; If none of { WIN32, OS2 } is defined, expansion is for unix.
 ;;;
 ;;; SUPPRESS_LEADING_UNDERSCORE
 ;;;	If defined, external symbol names are generated as written;
 ;;;	otherwise, they have an underscore prepended to them.
-;;; CALLER_ALLOCS_STRUCT_RETURN
-;;; STATIC_STRUCT_RETURN
-;;;	Controls the conventions used to return 8-byte structs from C
-;;;	procedures.  If CALLER_ALLOCS_STRUCT_RETURN is defined, the
-;;;	caller allocates space on the stack and passes a pointer to
-;;;	that space on the top of the stack.  If STATIC_STRUCT_RETURN
-;;;	is defined, the callee returns a pointer to a static struct in
-;;;	EAX.  Otherwise, the callee returns the struct in EAX/EDX.
-;;; CALLEE_POPS_STRUCT_RETURN
-;;;	Modifies the CALLER_ALLOCS_STRUCT_RETURN calling convention.
-;;;	Under the modified convention, the callee pops the pointer to
-;;;	the allocated space, so the caller doesn't have to.  This
-;;;	convention is used by GCC 2.9.x.
 ;;; WCC386
 ;;;	Should be defined when using Watcom assembler.
 ;;; WCC386R
 ;;;	Should be defined when using Watcom assembler and generating
 ;;;	code to use the Watcom register-based argument conventions.
-;;; LINUX_ELF
-;;;	If defined, expand to run under Linux ELF.
 ;;; TYPE_CODE_LENGTH
 ;;;	Normally defined to be 6.  Don't change this unless you know
 ;;;	what you're doing.
 ;;; DISABLE_387
 ;;;	If defined, do not generate 387 floating-point instructions.
+;;; VALGRIND_MODE
+;;;	If defined, modify code to make it work with valgrind.
 ;;;;	Utility macros and definitions
 ; GAS doesn't implement these, for no obvious reason.
 ; When using the Watcom C compiler with register-based calling
@@ -148,7 +130,7 @@
 	.data
 	align 2
 	extrn _Free:dword
-	extrn _Ext_Stack_Pointer:dword
+	extrn _sp_register:dword
 	extrn _utility_table:dword
 	extrn _RegistersPtr:dword
 	public _i387_presence
@@ -306,13 +288,17 @@ scheme_to_interface:
 	ffree	st(6)
 	ffree	st(7)
 scheme_to_interface_proceed:
-	mov	_Ext_Stack_Pointer,esp
+	mov	_sp_register,esp
 	mov	_Free,edi
 	mov	esp,_C_Stack_Pointer
 	mov	ebp,_C_Frame_Pointer
-	push	dword ptr 36[esi] ; Utility args
+	sub	esp,8	; alloc struct return
+	push	dword ptr 36[esi] ; push utility args
 	push	ebx
 	push	edx
+	push	ecx
+	mov	ecx,esp	; push ptr to struct return
+	add	ecx,16
 	push	ecx
 	xor	ecx,ecx
 	mov	cl,al
@@ -320,10 +306,10 @@ scheme_to_interface_proceed:
 	call		eax
 	public scheme_to_interface_return
 scheme_to_interface_return:
-	add	esp,16		; Pop utility args
-	mov	edx,dword ptr 4[eax]
-	mov	eax,dword ptr [eax]
-	jmp		eax			; Invoke handler
+	add	esp,20	; pop utility args
+	pop	eax		; pop struct return
+	pop	edx
+	jmp		eax		; Invoke handler
 	public _interface_to_scheme
 _interface_to_scheme:
 	cmp	dword ptr _i387_presence,0
@@ -340,7 +326,7 @@ interface_to_scheme_proceed:
 	mov	edi,_Free		; Free pointer = %edi
 	mov	eax,dword ptr 8[esi] ; Value/dynamic link
 	mov	ebp,67108863	; = %ebp
-	mov	esp,_Ext_Stack_Pointer
+	mov	esp,_sp_register
 	mov	ecx,eax		; Preserve if used
 	and	ecx,ebp		; Restore potential dynamic link
 	mov	dword ptr 16[esi],ecx

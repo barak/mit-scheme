@@ -1,7 +1,7 @@
 /* Copyright (C) 1990 Free Software Foundation, Inc.
 This file is part of the GNU C Library.
 
-$Id: ansidecl.h,v 1.7 2000/12/05 21:23:42 cph Exp $
+$Id: ansidecl.h,v 1.8 2002/11/26 05:32:30 cph Exp $
 
 The GNU C Library is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,7 +15,8 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with the GNU C Library; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.  */
 
 /* ANSI and traditional C compatibility macros
 

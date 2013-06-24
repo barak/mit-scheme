@@ -2,7 +2,7 @@
 @iftex
 @finalout
 @end iftex
-@comment $Id: imail.texinfo,v 1.27 2001/11/26 19:21:37 cph Exp $
+@comment $Id: imail.texinfo,v 1.31 2003/02/14 19:22:43 cph Exp $
 @comment %**start of header (This is for running Texinfo on a region.)
 @setfilename imail.info
 @settitle IMAIL User's Manual
@@ -14,16 +14,16 @@
 
 @dircategory Programming Languages
 @direntry
-* IMAIL: (mit-scheme-imail).		IMAP/MIME mail reader for MIT Scheme
+* IMAIL: (mit-scheme-imail).		IMAP/MIME mail reader for MIT/GNU Scheme
 @end direntry
 
 @ifinfo
-This file documents the use of MIT Scheme.
+This file documents the use of MIT/GNU Scheme.
 
-Copyright @copyright{} 2000, 2001 Massachusetts Institute of Technology
+Copyright @copyright{} 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.2 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
@@ -32,16 +32,16 @@ Free Documentation License".
 
 @titlepage
 @title{IMAIL User's Manual}
-@subtitle Edition 1.6 for IMAIL Version 1.16
-@subtitle 26 November 2001
+@subtitle Edition 1.8 for IMAIL Version 1.19
+@subtitle 14 February 2003
 @author by Chris Hanson
 
 @page
 @vskip 0pt plus 1filll
-Copyright @copyright{} 2000, 2001 Massachusetts Institute of Technology
+Copyright @copyright{} 2000,2001,2002,2003 Massachusetts Institute of Technology
 
 Permission is granted to copy, distribute and/or modify this document
-under the terms of the GNU Free Documentation License, Version 1.1 or
+under the terms of the GNU Free Documentation License, Version 1.2 or
 any later version published by the Free Software Foundation; with no
 Invariant Sections, with no Front-Cover Texts, and with no Back-Cover
 Texts.  A copy of the license is included in the section entitled "GNU
@@ -52,9 +52,10 @@ Free Documentation License".
 @node Top, Introduction, (dir), (dir)
 @top IMAIL
 
-@acronym{IMAIL} is an email-reading program for MIT Scheme.  This manual
-describes how to use @acronym{IMAIL}, what features it provides for
-viewing and editing email, and how to customize its optional behavior.
+@acronym{IMAIL} is an email-reading program for MIT/GNU Scheme.  This
+manual describes how to use @acronym{IMAIL}, what features it provides
+for viewing and editing email, and how to customize its optional
+behavior.
 @end ifnottex
 
 @menu
@@ -2037,24 +2038,24 @@ during casual browsing through memory structures, but this does
 the password.
 
 @node GNU Free Documentation License, Key Index, Commands, Top
-@unnumbered GNU Free Documentation License
+@appendix GNU Free Documentation License
 
 @include gfdl.texinfo
 
 @node Key Index, Command Index, GNU Free Documentation License, Top
-@unnumbered Key Index
+@appendix Key Index
 @printindex ky
 
 @node Command Index, Variable Index, Key Index, Top
-@unnumbered Command Index
+@appendix Command Index
 @printindex fn
 
 @node Variable Index, Concept Index, Command Index, Top
-@unnumbered Variable Index
+@appendix Variable Index
 @printindex vr
 
 @node Concept Index,  , Variable Index, Top
-@unnumbered Concept Index
+@appendix Concept Index
 @printindex cp
 
 @contents

@@ -1,0 +1,1712 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: error.texi,v 1.1 2003/04/15 03:29:39 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Error System, Graphics, Operating-System Interface, Top
+@chapter Error System
+
+@findex error
+The MIT/GNU Scheme error system provides a uniform mechanism for the
+signalling of errors and other exceptional conditions.  The simplest and
+most generally useful procedures in the error system are:
+
+@table @code
+@item error
+is used to signal simple errors, specifying a message and some irritant
+objects (@pxref{Condition Signalling}).  Errors are usually handled by
+stopping the computation and putting the user in an error @sc{repl}.
+
+@item warn
+is used to signal warnings (@pxref{Condition Signalling}).  Warnings are
+usually handled by printing a message on the console and continuing the
+computation normally.
+
+@item ignore-errors
+is used to suppress the normal handling of errors within a given dynamic
+extent (@pxref{Condition Handling}).  Any error that occurs within the
+extent is trapped, returning immediately to the caller of
+@code{ignore-errors}.
+@end table
+
+More demanding applications require more powerful facilities.  To give a
+concrete example, suppose you want floating-point division to return a very
+large number whenever the denominator is zero.  This behavior can be
+implemented using the error system.
+
+The Scheme arithmetic system can signal many different kinds of errors,
+including floating-point divide by zero.  In our example, we would like to
+handle this particular condition specially, allowing the system to handle
+other arithmetic errors in its usual way.
+
+The error system supports this kind of application by providing
+mechanisms for distinguishing different types of error conditions and
+for specifying where control should be transferred should a given
+condition arise.  In this example, there is a specific object that
+represents the ``floating-point divide by zero'' condition type, and it
+is possible to dynamically specify an arbitrary Scheme procedure to be
+executed when a condition of that type is signalled.  This procedure
+then finds the stack frame containing the call to the division operator,
+and returns the appropriate value from that frame.
+
+Another useful kind of behavior is the ability to specify uniform
+handling for related classes of conditions.  For example, it might be
+desirable, when opening a file for input, to gracefully handle a variety of
+different conditions associated with the file system.  One such condition
+might be that the file does not exist, in which case the program will try
+some other action, perhaps opening a different file instead.  Another
+related condition is that the file exists, but is read protected, so it
+cannot be opened for input.  If these or any other related conditions
+occur, the program would like to skip this operation and move on to
+something else.
+
+At the same time, errors unrelated to the file system should be treated in
+their usual way.  For example, calling @code{car} on the argument @code{3}
+should signal an error.  Or perhaps the name given for the file is
+syntactically incorrect, a condition that probably wants to be handled
+differently from the case of the file not existing.
+
+@cindex taxonomical link, of condition type (defn)
+@cindex specialization, of condition types (defn)
+@cindex generalization, of condition types (defn)
+To facilitate the handling of classes of conditions, the error system
+taxonomically organizes all condition types.  The types are related to one
+another by @dfn{taxonomical links}, which specify that one type is a ``kind
+of'' another type.  If two types are linked this way, one is considered to
+be a @dfn{specialization} of the other; or vice-versa, the second is a
+@dfn{generalization} of the first.  In our example, all of the errors
+associated with opening an input file would be specializations of the
+condition type ``cannot open input file''.
+
+@vindex condition-type:simple-condition
+@vindex condition-type:warning
+@vindex condition-type:breakpoint
+@vindex condition-type:serious-condition
+The taxonomy of condition types permits any condition type to have no
+more than one immediate generalization.  Thus, the condition types form
+a forest (set of trees).  While users can create new trees, the standard
+taxonomy (@pxref{Taxonomy}) is rooted at
+@code{condition-type:serious-condition}, @code{condition-type:warning},
+@code{condition-type:simple-condition}, and
+@code{condition-type:breakpoint}; users are encouraged to add new
+subtypes to these condition types rather than create new trees in the
+forest.
+
+To summarize, the error system provides facilities for the following tasks.
+The sections that follow will describe these facilities in more
+detail.
+
+@table @asis
+@item Signalling a condition
+@findex signal-condition
+A condition may be signalled in a number of different ways.  Simple
+errors may be signalled, without explicitly defining a condition type,
+using @code{error}.  The @code{signal-condition} procedure provides the
+most general signalling mechanism.
+
+@item Handling a condition
+@findex bind-condition-handler
+The programmer can dynamically specify handlers for particular condition
+types or for classes of condition types, by means of the
+@code{bind-condition-handler} procedure.  Individual handlers have
+complete control over the handling of a condition, and additionally may
+decide not to handle a particular condition, passing it on to previously
+bound handlers.
+
+@item Restarting from a handler
+@findex with-restart
+The @code{with-restart} procedure provides a means for
+condition-signalling code to communicate to condition-handling code what
+must be done to proceed past the condition.  Handlers can examine the
+restarts in effect when a condition was signalled, allowing a structured
+way to continue an interrupted computation.
+
+@item Packaging condition state
+Each condition is represented by an explicit object.  Condition objects
+contain information about the nature of the condition, information that
+describes the state of the computation from which the condition arose,
+and information about the ways the computation can be restarted.
+
+@item Classification of conditions
+@cindex condition type
+@cindex type, condition
+@cindex specialization, of condition types
+@cindex generalization, of condition types
+Each condition has a type, represented by a condition type object.  Each
+condition type may be a specialization of some other condition types.  A
+group of types that share a common generalization can be handled
+uniformly by specifying a handler for the generalization.
+@end table
+
+@menu
+* Condition Signalling::        
+* Error Messages::              
+* Condition Handling::          
+* Restarts::                    
+* Condition Instances::         
+* Condition Types::             
+* Taxonomy::                    
+@end menu
+
+@node Condition Signalling, Error Messages, Error System, Error System
+@section Condition Signalling
+
+@cindex condition signalling (defn)
+@cindex signalling, of condition (defn)
+@findex make-condition
+Once a condition instance has been created using @code{make-condition}
+(or any condition constructor), it can be @dfn{signalled}.  The act of
+signalling a condition is separated from the act of creating the
+condition to allow more flexibility in how conditions are handled.  For
+example, a condition instance could be returned as the value of a
+procedure, indicating that something unusual has happened, to allow the
+caller to clean up some state.  The caller could then signal the
+condition once it is ready.
+
+A more important reason for having a separate condition-signalling
+mechanism is that it allows @emph{resignalling}.  When a signalled
+condition has been caught by a particular handler, and the handler decides
+that it doesn't want to process that particular condition, it can signal
+the condition again.  This is one way to allow other handlers to get a
+chance to see the condition.
+
+@deffn procedure error reason argument @dots{}
+@cindex REP loop
+@findex signal-condition
+@findex warn
+This is the simplest and most common way to signal a condition that
+requires intervention before a computation can proceed (when
+intervention is not required, @code{warn} is more appropriate).
+@code{error} signals a condition (using @code{signal-condition}), and if
+no handler for that condition alters the flow of control (by invoking a
+restart, for example) it calls the procedure
+@code{standard-error-handler}, which normally prints an error message
+and stops the computation, entering an error @sc{repl}.  Under normal
+circumstances @code{error} will not return a value (although an
+interactive debugger can be used to force this to occur).
+
+@findex make-condition
+@vindex condition-type:simple-error
+Precisely what condition is signalled depends on the first argument to
+@code{error}.  If @var{reason} is a condition, then that condition is
+signalled and the @var{argument}s are ignored.  If @var{reason} is a
+condition type, then a new instance of this type is generated and
+signalled; the @var{argument}s are used to generate the values of the
+fields for this condition type (they are passed as the @var{field-plist}
+argument to @code{make-condition}).  In the most common case, however,
+@var{reason} is neither a condition nor a condition type, but rather a
+string or symbol.  In this case a condition of type
+@code{condition-type:simple-error} is created with the @var{message}
+field containing the @var{reason} and the @var{irritants} field
+containing the @var{argument}s.
+@end deffn
+
+@deffn procedure warn reason argument @dots{}
+@findex error
+@findex signal-condition
+@vindex condition-type:simple-warning
+When a condition is not severe enough to warrant intervention, it is
+appropriate to signal the condition with @code{warn} rather than
+@code{error}.  As with @code{error}, @code{warn} first calls
+@code{signal-condition}; the condition that is signalled is chosen
+exactly as in @code{error} except that a condition of type
+@code{condition-type:simple-warning} is signalled if @var{reason} is
+neither a condition nor a condition type.  If the condition is not
+handled, @code{warn} calls the procedure
+@code{standard-warning-handler}, which normally prints a warning message
+and continues the computation by returning from @code{warn}.
+
+@findex muffle-warning
+@code{warn} establishes a restart named @code{muffle-warning} before
+calling @code{signal-condition}.  This allows a signal handler to
+prevent the generation of the warning message by calling
+@code{muffle-warning}.  The value of a call to @code{warn} is
+unspecified.
+@end deffn
+
+@deffn procedure signal-condition condition
+@cindex generalization, of condition types
+@cindex specialization, of condition types
+@findex break-on-signals
+@findex bind-default-condition-handler
+@findex bind-condition-handler
+This is the fundamental operation for signalling a condition.  The
+precise operation of @code{signal-condition} depends on the condition
+type of which @var{condition} is an instance, the condition types set by
+@code{break-on-signals}, and the handlers established by
+@code{bind-condition-handler} and @code{bind-default-condition-handler}.
+
+@cindex REP loop
+If the @var{condition} is an instance of a type that is a specialization
+of any of the types specified by @code{break-on-signals}, then a
+breakpoint @sc{repl} is initiated.  Otherwise (or when that @sc{repl}
+returns), the handlers established by @code{bind-condition-handler} are
+checked, most recent first.  Each applicable handler is invoked, and the
+search for a handler continues if the handler returns normally.  If all
+applicable handlers return, then the applicable handlers established by
+@code{bind-default-condition-handler} are checked, again most recent
+first.  Finally, if no handlers apply (or all return in a normal
+manner), @code{signal-condition} returns an unspecified value.
+
+@emph{Note:} unlike many other systems, the MIT/GNU Scheme runtime library
+does @emph{not} establish handlers of any kind.  (However, the Edwin
+text editor uses condition handlers extensively.)  Thus, calls to
+@code{signal-condition} will return to the caller unless there are user
+supplied condition handlers, as the following example shows:
+
+@example
+@group
+(signal-condition
+ (make-condition
+  condition-type:error
+  (call-with-current-continuation (lambda (x) x))
+  '()    @r{; no restarts}
+  '()))  @r{; no fields}
+@result{}  @r{unspecified}
+@end group
+@end example
+@end deffn
+
+@node Error Messages, Condition Handling, Condition Signalling, Error System
+@section Error Messages
+
+@cindex error messages, conventions
+@cindex conventions for error messages
+By convention, error messages (and in general, the reports generated by
+@code{write-condition-report}) should consist of one or more complete
+sentences.  The usual rules for sentences should be followed: the first
+word of the sentence should be capitalized, and the sentence should be
+terminated by a period.  The message should not contain extraneous
+whitespace such as line breaks or indentation.
+
+
+The error system provides a simple formatting language that allows the
+programmer to have some control over the printing of error messages.
+This formatting language will probably be redesigned in a future
+release.
+
+@findex display
+@findex write
+Error messages typically consist of a string describing the error,
+followed by some irritant objects.  The string is printed using
+@code{display}, and the irritants are printed using @code{write},
+typically with a space between each irritant.  To allow simple
+formatting, we introduce a @dfn{noise} object, printed using
+@code{display}.  The irritant list may contain ordinary objects
+interspersed with noise objects.  Each noise object is printed using
+@code{display}, with no extra whitespace, while each normal object is
+printed using @code{write}, prefixed by a single space character.
+
+Here is an example:
+
+@example
+@group
+(define (error-within-procedure message irritant procedure)
+  (error message
+         irritant
+         (error-irritant/noise "within procedure")    
+         procedure      
+         (error-irritant/noise ".")))
+@end group
+@end example
+
+@noindent
+This would format as follows:
+
+@example
+@group
+(error-within-procedure "Bad widget" 'widget-32 'invert-widget) @error{}
+
+Bad widget widget-32 within procedure invert-widget.
+@end group
+@end example
+
+Here are the operations supporting error messages:
+
+@deffn procedure format-error-message message irritants port
+@var{Message} is typically a string (although this is not required),
+@var{irritants} a list of irritant objects, and @var{port} an output
+port.  Formats @var{message} and @var{irritants} to @var{port} in the
+standard way.  Note that, during the formatting process, the depth and
+breadth to which lists are printed are each limited to small numbers, to
+guarantee that the output from each irritant is not arbitrarily large.
+@end deffn
+
+@deffn procedure error-irritant/noise value
+Creates and returns a noise object whose value is @var{value}.
+@end deffn
+
+@node Condition Handling, Restarts, Error Messages, Error System
+@section Condition Handling
+
+@cindex handler, condition (defn)
+@cindex condition handler (defn)
+@findex bind-condition-handler
+@findex bind-default-condition-handler
+The occurrence of a condition is signalled using
+@code{signal-condition}.  @code{signal-condition} attempts to locate and
+invoke a @dfn{condition handler} that is prepared to deal with the type
+of condition that has occurred.  A condition handler is a procedure of
+one parameter, the condition that is being signalled.  A procedure is
+installed as a condition handler by calling
+@code{bind-condition-handler} (to establish a handler that is in effect
+only while a particular thunk is executing) or
+@code{bind-default-condition-handler} (to establish a handler that is in
+effect permanently).  As implied by the name, handlers created by
+@code{bind-default-condition-handler} are invoked only after all other
+applicable handlers have been invoked.
+
+A @var{handler} may process a signal in any way it deems appropriate,
+but the common patterns are:
+
+@table @asis
+@item Ignore the condition.
+By returning from the handler in the usual manner.
+
+@item Handle the condition.
+By doing some processing and then invoking a restart (or, less
+preferably, a continuation) that was established at some point prior to
+the call to @code{signal-condition}.
+
+@item Resignal a condition.
+By doing some processing and calling @code{signal-condition} with either
+the same condition or a newly created one.  In order to support this,
+@code{signal-condition} runs @var{handler} in such a way that a
+subsequent call to @code{signal-condition} sees only the handlers that
+were established prior to this one.
+@end table
+
+@cindex REP loop
+@findex break-on-signals
+As an aid to debugging condition handlers, Scheme maintains a set of
+condition types that will cause an interactive breakpoint to occur prior
+to normal condition signalling.  That is, @code{signal-condition}
+creates a new @sc{repl} prior to its normal operation when its argument
+is a condition that is a specialization of any of these types.  The
+procedure @code{break-on-signals} establishes this set of condition
+types.
+
+@deffn procedure ignore-errors thunk
+@findex error
+@vindex condition-type:error
+Executes @var{thunk} with a condition handler that intercepts the
+signalling of any specialization of @code{condition-type:error}
+(including those produced by calls to @code{error}) and immediately
+terminates the execution of @var{thunk} and returns from the call to
+@code{ignore-errors} with the signalled condition as its value.  If
+@var{thunk} returns normally, its value is returned from
+@code{ignore-errors}.
+
+Notice that @code{ignore-errors} does not ``turn off signalling'' or
+condition handling.  Condition handling takes place in the normal manner
+but conditions specialized from @code{condition-type:error} are trapped
+rather than propogated as they would be by default.
+@end deffn
+
+@deffn procedure bind-condition-handler condition-types handler thunk
+@findex signal-condition
+Invokes @var{thunk} after adding @var{handler} as a condition handler
+for the conditions specified by @var{condition-types}.
+@var{Condition-types} must be a list of condition types; signalling a
+condition whose type is a specialization of any of these types will
+cause the @var{handler} to be invoked.  See @code{signal-condition} for
+a description of the mechanism used to invoke handlers.
+
+By special extension, if @var{condition-types} is the empty list then
+the @var{handler} is called for all conditions.
+@end deffn
+
+@deffn procedure bind-default-condition-handler condition-types handler
+@findex signal-condition
+Installs @var{handler} as a (permanent) condition handler for the
+conditions specified by @var{condition-types}.  @var{Condition-types}
+must be a list of condition types; signalling a condition whose type is
+a specialization of any of these types will cause the @var{handler} to
+be invoked.  See @code{signal-condition} for a description of the
+mechanism used to invoke handlers.
+
+By special extension, if @var{condition-types} is the empty list then
+the @var{handler} is called for all conditions.
+@end deffn
+
+@deffn procedure break-on-signals condition-types
+@findex signal-condition
+@cindex REP loop
+Arranges for @code{signal-condition} to create an interactive @sc{repl}
+before it signals a condition that is a specialization of any of the
+types in the list of @var{condition-types}.  This can be extremely
+helpful when trying to debug code that uses custom condition handlers.
+In order to create a @sc{repl} when @emph{any} condition type is
+signalled it is best to actually put a breakpoint on entry to
+@code{signal-condition}.
+@end deffn
+
+@deffn procedure standard-error-handler condition
+@findex error
+@findex ignore-error
+@vindex standard-error-hook
+@cindex REP loop
+Called internally by @code{error} after it calls
+@code{signal-condition}.  Normally creates creates a new @sc{repl} with
+the prompt @code{"error>"} (but see @code{standard-error-hook}).  In
+order to simulate the effect of calling @code{error}, code may call
+@code{signal-condition} directly and then call
+@code{standard-error-handler} if @code{signal-condition} returns.
+@end deffn
+
+@defvr variable standard-error-hook
+@findex standard-error-handler
+@cindex fluid binding
+@cindex dynamic binding
+@cindex REP loop
+This variable controls the behavior of the procedure
+@code{standard-error-handler}, and hence @code{error}.  It is intended
+to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+changed to a procedure of one argument and will then be invoked (with
+@code{standard-error-hook} rebound to @code{#f}) by
+@code{standard-error-handler} just prior to starting the error
+@sc{repl}.  It is passed one argument, the condition being signalled.
+@end defvr
+
+@deffn procedure standard-warning-handler condition
+@vindex standard-warning-hook
+@findex signal-condition
+@findex notification-output-port
+@findex write-condition-report
+This is the procedure called internally by @code{warn} after it calls
+@code{signal-condition}.  The normal behavior of
+@code{standard-warning-handler} is to print a message (but see
+@code{standard-warning-hook}).  More precisely, the message is printed
+to the port returned by @code{notification-output-port}.  The message is
+formed by first printing the string @code{"Warning: "} to this port, and
+then calling @code{write-condition-report} on @var{condition} and the port.
+
+@findex muffle-warning
+In order to simulate the effect of calling @code{warn}, code may call
+@code{signal-condition} directly and then call
+@code{standard-warning-handler} if @code{signal-condition} returns.
+(This is not sufficient to implement the @code{muffle-warning} protocol,
+however.  For that purpose an explicit restart must be provided.)
+@end deffn
+
+@defvr variable standard-warning-hook
+@findex standard-warning-handler
+@cindex fluid binding
+@cindex dynamic binding
+This variable controls the behavior of the procedure
+@code{standard-warning-handler}, and hence @code{warn}.  It is intended
+to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+changed to a procedure of one argument and will then be invoked (with
+@code{standard-warning-hook} rebound to @code{#f}) by
+@code{standard-warning-handler} in lieu of writing the warning message.
+It is passed one argument, the condition being signalled.
+@end defvr
+
+@node Restarts, Condition Instances, Condition Handling, Error System
+@section Restarts
+
+@cindex restart effector (defn)
+@cindex effector, restart (defn)
+@cindex restart (defn)
+@findex with-restart
+@findex with-simple-restart
+The Scheme error system provides a mechanism, known as @dfn{restarts},
+that helps coordinate condition-signalling code with condition-handling
+code.  A module of code that detects and signals conditions can provide
+procedures (using @code{with-simple-restart} or @code{with-restart}) to
+be invoked by handlers that wish to continue, abort, or restart the
+computation.  These procedures, called @dfn{restart effectors}, are
+encapsulated in restart objects.
+
+@findex find-restart
+@findex invoke-restart
+@findex invoke-restart-interactively
+When a condition object is created, it contains a set of restart
+objects, each of which contains a restart effector.  Condition handlers
+can inspect the condition they are handling (using @code{find-restart}
+to find restarts by name, or @code{condition/restarts} to see the entire
+set), and they can invoke the associated effectors (using
+@code{invoke-restart} or @code{invoke-restart-interactively}).
+Effectors can take arguments, and these may be computed directly by the
+condition-handling code or by gathering them interactively from the
+user.
+
+@findex abort
+@findex continue
+@findex muffle-warning
+@findex retry
+@findex store-value
+@findex use-value
+@cindex protocol, restart (defn)
+@cindex restart protocol
+The names of restarts can be chosen arbitrarily, but the choice of name
+is significant.  These names are used to coordinate between the
+signalling code (which supplies names for restarts) and the handling
+code (which typically chooses a restart effector by the name of its
+restart).  Thus, the names specify the @dfn{restart protocol}
+implemented by the signalling code and invoked by the handling code.
+The protocol indicates the number of arguments required by the effector
+code as well as the semantics of the arguments.
+
+Scheme provides a conventional set of names (hence, protocols) for
+common use.  By choosing the names of restarts from this set, signalling
+code can indicate that it is able to perform a small set of fairly
+common actions (@code{abort}, @code{continue}, @code{muffle-warning},
+@code{retry}, @code{store-value}, @code{use-value}).  In turn, simple
+condition-handling code can look for the kind of action it wishes to
+perform and simply invoke it by name.  All of Scheme's conventional
+names are symbols, although in general restart names are not restricted
+to any particular data type.  In addition, the object @code{#f} is
+reserved to indicate the ``not for automated use'' protocol: these
+restarts should be activated only under human control.
+
+@findex with-simple-restart
+Restarts themselves are first-class objects.  They encapsulate their
+name, a procedure (known as the @var{effector}) to be executed if they
+are invoked, and a thunk (known as the @var{reporter}) that can be
+invoked to display a description of the restart (used, for example, by
+the interactive debugger).  Invoking a restart is an indication that a
+handler has chosen to accept control for a condition; as a consequence,
+the @var{effector} of the restart should not return, since this would
+indicate that the handler declined to handle the condition.  Thus, the
+@var{effector} should call a continuation captured before the
+condition-signalling process began.  The most common pattern of usage by
+signalling code is encapsulated in @code{with-simple-restart}.
+
+Within this chapter, a parameter named @var{restarts} will accept any of
+the following values:
+
+@itemize @bullet
+@item
+A list of restart objects.
+
+@item
+A condition.  The procedure @code{condition/restarts} is called on the
+condition, and the resulting list of restarts is used in place of the
+condition.
+
+@item
+The symbol @code{bound-restarts}.  The procedure @code{bound-restarts}
+is called (with no arguments), and the resulting list of restarts is
+used in place of the symbol.
+
+@item
+If the @var{restarts} parameter is optional and is not supplied, it is
+equivalent to having specified the symbol @code{bound-restarts}.
+@end itemize
+
+@menu
+* Establishing Restart Code::   
+* Invoking Standard Restart Code::  
+* Finding and Invoking General Restart Code::  
+* The Named Restart Abstraction::  
+@end menu
+
+@node Establishing Restart Code, Invoking Standard Restart Code, Restarts, Restarts
+@subsection Establishing Restart Code
+
+@deffn procedure with-simple-restart name reporter thunk
+Invokes @var{thunk} in a dynamic environment created by adding a restart
+named @var{name} to the existing named restarts.  @var{Reporter} may be
+used during the execution of @var{thunk} to produce a description of the
+newly created restart; it must either be a procedure of one argument (a
+port) or a string.  By convention, the description generated by
+@var{reporter} should be a short complete sentence, with first word
+capitalized and terminated by a period.  The sentence should fit on one
+line with a little room to spare (see the examples below); usually this
+means that the sentence should be 70 characters or less in length.
+
+If the restart created by @code{with-simple-restart} is invoked it
+simply aborts the computation in progress by returning an unspecified
+value from the call to @code{with-simple-restart}.  Otherwise
+@code{with-simple-restart} returns the value computed by @var{thunk}.
+@end deffn
+
+@example
+@group
+(with-simple-restart 'george "This restart is named george."
+  (lambda () 3)) @result{} 3
+  
+(with-simple-restart 'george "This restart is named george."
+  (lambda ()
+    (invoke-restart (find-restart 'george)))) @result{} @code{unspecific}
+
+(with-simple-restart 'george "This restart is named george."
+  (lambda () (car 3)))
+;The object 3, passed as the first argument to car,
+; is not the correct type.
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify an argument to use in its place.
+; (RESTART 2) => This restart is named george.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure with-restart name reporter effector interactor thunk
+@findex invoke-restart
+Invokes @var{thunk} in a dynamic environment created by adding a restart
+named @var{name} to the existing named restarts.  @var{Reporter} may be
+used during the execution of @var{thunk} to produce a description of the
+newly created restart; it must either be a procedure of one argument (a
+port) or a string.  @var{Effector} is a procedure which will be called
+when the restart is invoked by @code{invoke-restart}.  @var{Interactor}
+specifies the arguments that are to be passed to @var{effector} when it
+is invoked interactively; it may be either a procedure of no arguments,
+or @code{#f}.  If @var{interactor} is @code{#f}, this restart is not
+meant to be invoked interactively.
+
+The value returned by @code{with-restart} is the value returned by
+@var{thunk}.  Should the restart be invoked by a condition handler,
+however, the @var{effector} will not return back to the handler that
+invoked it.  Instead, the @var{effector} should call a continuation
+created before the condition-signalling process began, and
+@code{with-restart} will therefore not return in the normal manner.
+@end deffn
+
+@example
+@group
+(define (by-george! thunk)
+  @r{; This code handles conditions that arise while executing @var{thunk}}
+  @r{; by invoking the GEORGE restart, passing 1 and 2 to the restart's}
+  @r{; @var{effector} code.}
+  (bind-condition-handler '() ; All conditions
+   (lambda (condition)
+     (invoke-restart (find-restart 'george) 1 2))
+   thunk))
+@end group
+
+@group
+(define (can-george! thunk)
+  @r{; This code provides a way of handling errors: the GEORGE restart.}
+  @r{; In order to GEORGE you must supply two values.}
+  (lambda ()
+    (call-with-current-continuation
+     (lambda (kappa)
+       (with-restart
+        'george                         @r{; Name}
+        "This restart is named george." @r{; Reporter}
+        (lambda (a b)                   @r{; Effector}
+          (kappa (list 'george a b)))
+        values                          @r{; Interactor}
+        thunk)))))                      @r{; Thunk}
+@end group
+
+@group
+(by-george! (can-george! (lambda () -3))        @result{} -3
+(by-george! (can-george! (lambda () (car 'x)))) @result{} (george 1 2)
+@end group
+@end example
+
+@node Invoking Standard Restart Code, Finding and Invoking General Restart Code, Establishing Restart Code, Restarts
+@subsection Invoking Standard Restart Code
+
+Scheme supports six standard protocols for restarting from a condition,
+each encapsulated using a named restart (for use by condition-signalling
+code) and a simple procedure (for use by condition-handling code).
+Unless otherwise specified, if one of these procedures is unable to find
+its corresponding restart, it returns immediately with an unspecified
+value.
+
+Each of these procedures accepts an optional argument @var{restarts},
+which is described above in @ref{Restarts}.
+
+@deffn procedure abort [restarts]
+@cindex REP loop
+Abort the computation, using the restart named @code{abort}.  The
+corresponding effector takes no arguments and abandons the current line
+of computation.  This is the restart provided by Scheme's @sc{repl}.
+
+@vindex condition-type:no-such-restart
+If there is no restart named @code{abort}, this procedure signals an
+error of type @code{condition-type:no-such-restart}.
+@end deffn
+
+@deffn procedure continue [restarts]
+Continue the current computation, using the restart named
+@code{continue}.  The corresponding effector takes no arguments and
+continues the computation beyond the point at which the condition was
+signalled.
+@end deffn
+
+@deffn procedure muffle-warning [restarts]
+@findex warn
+Continue the current computation, using the restart named
+@code{muffle-warning}.  The corresponding effector takes no arguments
+and continues the computation beyond the point at which any warning
+message resulting from the condition would be presented to the user.
+The procedure @code{warn} establishes a @code{muffle-warning} restart
+for this purpose.
+
+@vindex condition-type:no-such-restart
+If there is no restart named @code{muffle-warning}, this procedure
+signals an error of type @code{condition-type:no-such-restart}.
+@end deffn
+
+@deffn procedure retry [restarts]
+Retry the current computation, using the restart named @code{retry}.
+The corresponding effector takes no arguments and simply retries the
+same computation that triggered the condition.  The condition may
+reoccur, of course, if the root cause has not been eliminated.  The code
+that signals a ``file does not exist'' error can be expected to supply a
+@code{retry} restart.  The restart would be invoked after first creating
+the missing file, since the computation is then likely to succeed if it
+is simply retried.
+@end deffn
+
+@deffn procedure store-value new-value [restarts]
+Retry the current computation, using the restart named
+@code{store-value}, after first storing @var{new-value}.  The
+corresponding effector takes one argument, @var{new-value}, and stores
+it away in a restart-dependent location, then retries the same
+computation that triggered the condition.  The condition may reoccur, of
+course, if the root cause has not been eliminated.  The code that
+signals an ``unassigned variable'' error can be expected to supply a
+@code{store-value} restart; this would store the value in the variable
+and continue the computation.
+@end deffn
+
+@deffn procedure use-value new-value [restarts]
+@findex retry
+@findex store-value
+Retry the current computation, using the restart named @code{use-value},
+but substituting @var{new-value} for a value that previously caused a
+failure.  The corresponding effector takes one argument,
+@var{new-value}, and retries the same computation that triggered the
+condition with the new value substituted for the failing value.  The
+condition may reoccur, of course, if the new value also induces the
+condition.
+
+The code that signals an ``unassigned variable'' error can be expected
+to supply a @code{use-value} restart; this would simply continue the
+computation with @var{new-value} instead of the value of the variable.
+Contrast this with the @code{retry} and @code{store-value} restarts.  If
+the @code{retry} restart is used it will fail because the variable still
+has no value.  The @code{store-value} restart could be used, but it
+would alter the value of the variable, so that future references to the
+variable would not be detected.
+@end deffn
+
+@node Finding and Invoking General Restart Code, The Named Restart Abstraction, Invoking Standard Restart Code, Restarts
+@subsection Finding and Invoking General Restart Code
+
+@findex with-restart
+@findex with-simple-restart
+@findex bound-restart
+@findex find-restart
+@findex invoke-restart
+@findex invoke-restart-interactively
+Restarts are a general mechanism for establishing a protocol between
+condition-signalling and condition-handling code.  The Scheme error
+system provides ``packaging'' for a number of common protocols.  It also
+provides lower-level hooks that are intended for implementing customized
+protocols.  The mechanism used by signalling code (@code{with-restart}
+and @code{with-simple-restart}) is used for both purposes.
+
+Four additional operations are provided for the use of
+condition-handling code.  Two operations (@code{bound-restarts} and
+@code{find-restart}) allow condition-handling code to locate active
+restarts.  The other two operations (@code{invoke-restart} and
+@code{invoke-restart-interactively}) allow restart effectors to be
+invoked once the restart object has been located.
+
+In addition, there is a data abstraction that provides access to the
+information encapsulated in restart objects.
+
+@deffn procedure bound-restarts
+Returns a list of all currently active restart objects, most recently
+installed first.  @code{bound-restarts} should be used with caution by
+condition-handling code, since it reveals all restarts that are active
+at the time it is called, rather than at the time the condition was
+signalled.  It is useful, however, for collecting the list of restarts
+for inclusion in newly generated condition objects or for inspecting the
+current state of the system.
+@end deffn
+
+@deffn procedure find-restart name [restarts]
+Returns the first restart object named @var{name} in the list of
+@var{restarts} (permissible values for @var{restarts} are described
+above in @ref{Restarts}).  When used in a condition handler,
+@code{find-restart} is usually passed the name of a particular restart
+@emph{and} the condition object that has been signalled.  In this way
+the handler finds only restarts that were available when the condition
+was created (usually the same as when it was signalled).  If
+@var{restarts} is omitted, the currently active restarts would be used,
+and these often include restarts added after the condition ocurred.
+@end deffn
+
+@deffn procedure invoke-restart restart argument @dots{}
+@findex invoke-restart-interactively
+Calls the restart effector encapsulated in @var{restart}, passing the
+specified @var{argument}s to it.  @code{invoke-restart} is intended for
+use by condition-handling code that understands the protocol implemented
+by @var{restart}, and can therefore calculate and pass an appropriate
+set of arguments.
+
+If a condition handler needs to interact with a user to gather the
+arguments for an effector (e.g.@: if it does not understand the protocol
+implemented by @var{restart}) @code{invoke-restart-interactively} should
+be used instead of @code{invoke-restart}.
+@end deffn
+
+@deffn procedure invoke-restart-interactively restart
+First calls the interactor encapsulated in @var{restart} to
+interactively gather the arguments needed for @var{restart}'s effector.
+It then calls the effector, passing these arguments to it.
+
+@findex restart/interactor
+@code{invoke-restart-interactively} is intended for calling interactive
+restarts (those for which @code{restart/interactor} is not @code{#f}).
+For convenience, @code{invoke-restart-interactively} will call the
+restart's effector with no arguments if the restart has no interactor;
+this behavior may change in the future.
+@end deffn
+
+@node The Named Restart Abstraction,  , Finding and Invoking General Restart Code, Restarts
+@subsection The Named Restart Abstraction
+
+A restart object is very simple, since it encapsulates only a name,
+effector, interactor, and description.
+
+@deffn procedure restart? object
+Returns @code{#f} if and only if @var{object} is not a restart.
+@end deffn
+
+@deffn procedure restart/name restart
+@findex eq?
+Returns the name of @var{restart}.  While the Scheme error system uses
+only symbols and the object @code{#f} for its predefined names, programs
+may use arbitrary objects (name equivalence is tested using @code{eq?}).
+@end deffn
+
+@deffn procedure restart/effector restart
+@findex invoke-restart
+@findex invoke-restart-interactively
+Returns the effector encapsulated in @var{restart}.  Normally this
+procedure is not used since @code{invoke-restart} and
+@code{invoke-restart-interactively} capture the most common invocation
+patterns.
+@end deffn
+
+@deffn procedure restart/interactor restart
+@findex invoke-restart-interactively
+Returns the interactor encapsulated in @var{restart}.  This is either a
+procedure of no arguments or the object @code{#f}.  Normally this
+procedure is not used since @code{invoke-restart-interactively} captures
+the most common usage.  Thus @code{restart/interactor} is most useful as
+a predicate to determine if @var{restart} is intended to be invoked
+interactively.
+@end deffn
+
+@deffn procedure write-restart-report restart port
+Writes a description of @var{restart} to @var{port}.  This works by
+either displaying (if it is a string) or calling (if it is a procedure)
+the @var{reporter} that was supplied when the restart was created.
+@end deffn
+
+@node Condition Instances, Condition Types, Restarts, Error System
+@section Condition Instances
+
+@cindex condition (defn)
+@cindex condition instance (defn)
+@cindex instance, of condition (defn)
+A @dfn{condition}, in addition to the information associated with its
+type, usually contains other information that is not shared with other
+conditions of the same type.  For example, the condition type associated
+with ``unbound variable'' errors does not specify the name of the
+variable that was unbound.  The additional information is captured in a
+@dfn{condition} object, also called a @dfn{condition instance}.
+
+In addition to information that is specific to a given type of condition
+(such as the variable name for ``unbound variable'' conditions), every
+condition instance also contains a continuation that encapsulates the
+state of the computation in which the condition occurred.  This
+continuation is used for analyzing the computation to learn more about
+the context in which the condition occurred. It is @emph{not} intended
+to provide a mechanism for continuing the computation; that mechanism is
+provided by restarts.
+
+@menu
+* Generating Operations on Conditions::  
+* Condition State::             
+* Simple Condition Instance Operations::  
+@end menu
+
+@node Generating Operations on Conditions, Condition State, Condition Instances, Condition Instances
+@subsection Generating Operations on Conditions
+
+@findex condition-constructor
+@findex condition-accessor
+@findex condition-signaller
+@findex condition-predicate
+Scheme provides four procedures that take a condition type as input and
+produce operations on the corresponding condition object.  These are
+reminiscent of the operations on record types that produce record
+operators (@pxref{Records}).  Given a condition type it is possible to
+generate: a constructor for instances of the type (using
+@code{condition-constructor}); an accessor to extract the contents of a
+field in instances of the type (using @code{condition-accessor}); a
+predicate to test for instances of the type (using
+@code{condition-predicate}); and a procedure to create and signal an
+instance of the type (using @code{condition-signaller}).
+
+Notice that the creation of a condition object is distinct from
+signalling an occurrence of the condition.  Condition objects are
+first-class; they may be created and never signalled, or they may be
+signalled more than once.  Further notice that there are no procedures
+for modifying conditions; once created, a condition cannot be altered.
+
+@deffn procedure condition-constructor condition-type field-names
+@findex condition/restarts
+@cindex bound-restarts
+@cindex restarts, bound
+Returns a constructor procedure that takes as arguments values for the
+fields specified in @var{field-names} and creates a condition of type
+@var{condition-type}.  @var{Field-names} must be a list of symbols that
+is a subset of the @var{field-names} in @var{condition-type}.  The
+constructor procedure returned by @code{condition-constructor} has
+signature
+
+@example
+(lambda (@var{continuation} @var{restarts} . @var{field-values}) @dots{})
+@end example
+
+@noindent
+where the @var{field-names} correspond to the @var{field-values}.  The
+constructor argument @var{restarts} is described in @ref{Restarts}.
+Conditions created by the constructor procedure have @code{#f} for the
+values of all fields other than those specified by @var{field-names}.
+
+For example, the following procedure @code{make-simple-warning}
+constructs a condition of type @code{condition-type:simple-warning}
+given a continuation (where the condition occurred), a description of
+the restarts to be made available, a warning message, and a list of
+irritants that caused the warning:
+
+@example
+@group
+(define make-simple-warning
+  (condition-constructor condition-type:simple-warning
+                         '(message irritants)))
+@end group
+@end example
+@end deffn
+
+@deffn procedure condition-accessor condition-type field-name
+@cindex specialization, of condition types
+Returns a procedure that takes as input a condition object of type
+@var{condition-type} and extracts the contents of the specified
+@var{field-name}.  @code{condition-accessor} signals
+@code{error:bad-range-argument} if the @var{field-name} isn't one of the
+named fields of @var{condition-type}; the returned procedure will signal
+@code{error:wrong-type-argument} if passed an object other than a
+condition of type @var{condition-type} or one of its specializations.
+
+@findex access-condition
+If it is known in advance that a particular field of a condition will be
+accessed repeatedly it is worth constructing an accessor for the field
+using @code{condition-accessor} rather than using the (possibly more
+convenient, but slower) @code{access-condition} procedure.
+@end deffn
+
+@deffn procedure condition-predicate condition-type
+@cindex specialization, of condition types
+Returns a predicate procedure for testing whether an object is a
+condition of type @var{condition-type} or one of its specializations
+(there is no predefined way to test for a condition of a given type but
+@emph{not} a specialization of that type).
+@end deffn
+
+@deffn procedure condition-signaller condition-type field-names default-handler
+Returns a signalling procedure with parameters @var{field-names}.  When
+the signalling procedure is called it creates and signals a condition of
+type @var{condition-type}.  If the condition isn't handled (i.e.@: if no
+handler is invoked that causes an escape from the current continuation)
+the signalling procedure reduces to a call to @var{default-handler} with
+the condition as its argument.
+
+There are several standard procedures that are conventionally used for
+@var{default-handler}.  If @var{condition-type} is a specialization of
+@code{condition-type:error}, @var{default-handler} should be the
+procedure@* @code{standard-error-handler}.  If @var{condition-type} is a
+specialization of @code{condition-type:warning}, @var{default-handler}
+should be the procedure @code{standard-warning-handler}.  If
+@var{condition-type} is a specialization of
+@code{condition-type:breakpoint}, @var{default-handler} should be the
+procedure @code{standard-breakpoint-handler}.
+@end deffn
+
+@node Condition State, Simple Condition Instance Operations, Generating Operations on Conditions, Condition Instances
+@subsection Condition Abstraction
+
+The condition data type is abstracted through a predicate
+@code{condition?} and a set of accessor procedures.
+
+@deffn procedure condition? object
+Returns @code{#f} if and only if @var{object} is not a condition.
+@end deffn
+
+@deffn procedure condition/type condition
+Returns the condition type of which @var{condition} is an instance.
+@end deffn
+
+@deffn procedure condition/error? condition
+@vindex condition-type:error
+@cindex specialization, of condition types
+Returns @code{#t} if the @var{condition} is an instance of condition
+type @code{condition-type:error} or a specialization of it, @code{#f}
+otherwise.
+@end deffn
+
+@deffn procedure condition/restarts condition
+Returns the list of restarts specified when @var{condition} was created.
+@end deffn
+
+@deffn procedure condition/continuation condition
+Returns the continuation specified when @var{condition} was created.
+This is provided for inspecting the state of the system when the
+condition occurred, @emph{not} for continuing or restarting the
+computation.
+@end deffn
+
+@deffn procedure write-condition-report condition port
+Writes a description of @var{condition} to @var{port}, using the
+reporter function from the condition type associated with
+@var{condition}.  See also @code{condition/report-string}.
+@end deffn
+
+@node Simple Condition Instance Operations,  , Condition State, Condition Instances
+@subsection Simple Operations on Condition Instances
+
+The simple procedures described in this section are built on top of the
+more detailed abstraction of condition objects described above.  While
+these procedures are sometimes easier to use, they are often less
+efficient.
+
+@deffn procedure make-condition condition-type continuation restarts field-plist
+@findex condition/restarts
+@cindex bound-restarts
+@cindex restarts, bound
+Create a new condition object as an instance of @var{condition-type},
+associated with @var{continuation}.  The @var{continuation} is provided
+for inspection purposes only, @emph{not} for restarting the computation.
+The @var{restarts} argument is described in @ref{Restarts}.  The
+@var{field-plist} is an alternating list of field names and values for
+those fields, where the field names are those that would be returned by
+@code{(condition-type/field-names @var{condition-type})}.  It is used to
+provide values for fields in the condition object; fields with no value
+specified are set to @code{#f}.  Once a condition object has been
+created there is no way to alter the values of these fields.
+@end deffn
+
+@deffn procedure access-condition condition field-name
+@findex condition-accessor
+Returns the value stored in the field @var{field-name} within
+@var{condition}.  @var{Field-name} must be one of the names returned by
+@code{(condition-type/field-names (condition/type @var{condition}))}.
+@code{access-condition} looks up the @var{field-name} at runtime, so it
+is more efficient to use @code{condition-accessor} to create an access
+function if the same field is to be extracted from several instances of
+the same condition type.
+@end deffn
+
+@deffn procedure condition/report-string condition
+@findex write-condition-report
+Returns a string containing a report of the @var{condition}.  This is
+generated by calling @code{write-condition-report} on @var{condition}
+and a string output port, and returning the output collected by the port
+as a string.
+@end deffn
+
+@node Condition Types, Taxonomy, Condition Instances, Error System
+@section Condition Types
+
+@cindex condition type
+@cindex type, of condition
+Each condition has a @dfn{condition type} object associated with it.
+These objects are used as a means of focusing on related classes of
+conditions, first by concentrating all of the information about a
+specific class of condition in a single place, and second by specifying
+an inheritance relationship between types.  This inheritance
+relationship forms the taxonomic structure of the condition hierarchy
+(@pxref{Taxonomy}).
+
+The following procedures consititute the abstraction for condition
+types.
+
+@deffn procedure make-condition-type name generalization field-names reporter
+@cindex generalization, of condition types
+Creates and returns a (new) condition type that is a specialization of
+@var{generalization} (if it is a condition type) or is the root of a new
+tree of condition types (if @var{generalization} is @code{#f}).  For
+debugging purposes, the condition type has a @var{name}, and instances
+of this type contain storage for the fields specified by
+@var{field-names} (a list of symbols) in addition to the fields common
+to all conditions (@var{type}, @var{continuation} and @var{restarts}).
+
+@var{Reporter} is used to produce a description of a particular
+condition of this type.  It may be a string describing the condition, a
+procedure of arity two (the first argument will be a condition of this
+type and the second a port) that will @code{write} the message to the
+given port, or @code{#f} to specify that the reporter should be taken
+from the condition type @var{generalization} (or produce an
+``undocumented condition of type @dots{}'' message if @var{generalization}
+is @code{#f}).  The conventions used to form descriptions are spelled
+out in @ref{Error Messages}.
+@end deffn
+
+@deffn procedure condition-type/error? condition-type
+@vindex condition-type:error
+@cindex specialization, of condition types
+Returns @code{#t} if the @var{condition-type} is
+@code{condition-type:error} or a specialization of it, @code{#f}
+otherwise.
+@end deffn
+
+@deffn procedure condition-type/field-names condition-type
+@cindex generalization, of condition types
+Returns a list of all of the field names for a condition of type
+@var{condition-type}.  This is the set union of the fields specified
+when this @var{condition-type} was created with the
+@code{condition-type/field-names} of the generalization of this
+@var{condition-type}.
+@end deffn
+
+@deffn procedure condition-type/generalizations condition-type
+@cindex generalization, of condition types
+Returns a list of all of the generalizations of @var{condition-type}.
+Notice that every condition type is considered a generalization of
+itself.
+@end deffn
+
+@deffn procedure condition-type? object
+Returns @code{#f} if and only if @var{object} is not a condition type.
+@end deffn
+
+@node Taxonomy,  , Condition Types, Error System
+@section Condition-Type Taxonomy
+
+The MIT/GNU Scheme error system provides a rich set of predefined condition
+types.  These are organized into a forest through taxonomic links
+providing the relationships for ``specializes'' and ``generalizes''.
+The chart appearing below shows these relationships by indenting all the
+specializations of a given type relative to the type.  Note that the
+variables that are bound to these condition types are prefixed by
+@samp{condition-type:}; for example, the type appearing in the following
+table as @samp{simple-error} is stored in the variable
+@code{condition-type:simple-error}.  Users are encouraged to add new
+condition types by creating specializations of existing ones.
+
+Following the chart are detailed descriptions of the predefined
+condition types.  Some of these types are marked as @dfn{abstract}
+types.  Abstract types are not intended to be used directly as the type
+of a condition; they are to be used as generalizations of other types,
+and for binding condition handlers.  Types that are not marked as
+abstract are @dfn{concrete}; they are intended to be explicitly used as
+a condition's type.
+
+@page
+@example
+@group
+serious-condition 
+    error 
+        simple-error
+        illegal-datum
+            wrong-type-datum
+                wrong-type-argument
+                wrong-number-of-arguments
+            datum-out-of-range 
+                bad-range-argument
+            inapplicable-object
+        file-error
+            file-operation-error
+            derived-file-error
+        port-error
+            derived-port-error
+        variable-error
+            unbound-variable
+            unassigned-variable
+        arithmetic-error
+            divide-by-zero
+            floating-point-overflow
+            floating-point-underflow
+        control-error
+            no-such-restart
+        not-loading 
+        primitive-procedure-error
+            system-call-error
+warning
+    simple-warning
+simple-condition
+breakpoint
+@end group
+@end example
+
+@deffn {condition type} condition-type:serious-condition 
+This is an abstract type.  All serious conditions that require some form
+of intervention should inherit from this type.  In particular, all
+errors inherit from this type.
+@end deffn
+
+@deffn {condition type} condition-type:error 
+This is an abstract type.  All errors should inherit from this type.
+@end deffn
+
+@deffn {condition type} condition-type:simple-error message irritants
+This is the condition generated by the @code{error} procedure when its
+first argument is not a condition or condition type.  The fields
+@var{message} and @var{irritants} are taken directly from the arguments
+to @code{error}; @var{message} contains an object (usually a string) and
+@var{irritants} contains a list of objects.  The reporter for this type
+uses @code{format-error-message} to generate its output from
+@var{message} and @var{irritants}.
+@end deffn
+
+@deffn {condition type} condition-type:illegal-datum datum
+This is an abstract type.  This type indicates the class of errors in
+which a program discovers an object that lacks specific required
+properties.  Most commonly, the object is of the wrong type or is
+outside a specific range.  The @var{datum} field contains the offending
+object.
+@end deffn
+
+@deffn {condition type} condition-type:wrong-type-datum datum type
+This type indicates the class of errors in which a program discovers an
+object that is of the wrong type.  The @var{type} field contains a
+string describing the type that was expected, and the @var{datum} field
+contains the object that is of the wrong type.
+@end deffn
+
+@example
+@group
+(error:wrong-type-datum 3.4 "integer")  @error{}
+;The object 3.4 is not an integer.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:wrong-type-datum datum type
+This procedure signals a condition of type
+@code{condition-type:wrong-type-datum}.  The @var{datum} and @var{type}
+fields of the condition are filled in from the corresponding arguments
+to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:wrong-type-argument datum type operator operand
+This type indicates that a procedure was passed an argument of the wrong
+type.  The @var{operator} field contains the procedure (or a symbol
+naming the procedure), the @var{operand} field indicates the argument
+position that was involved (this field contains either a symbol, a
+non-negative integer, or @code{#f}), the @var{type} field contains a
+string describing the type that was expected, and the @var{datum} field
+contains the offending argument.
+@end deffn
+
+@example
+@group
+(+ 'a 3)                                @error{}
+;The object a, passed as the first argument to integer-add,
+; is not the correct type.
+;To continue, call RESTART with an option number:
+; (RESTART 2) => Specify an argument to use in its place.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+
+@group
+(list-copy 3)
+;The object 3, passed as an argument to list-copy, is not a list.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:wrong-type-argument datum type operator
+This procedure signals a condition of type
+@code{condition-type:wrong-type-argument}.  The @var{datum}, @var{type}
+and @var{operator} fields of the condition are filled in from the
+corresponding arguments to the procedure; the @var{operand} field of the
+condition is set to @code{#f}.
+@end deffn
+
+@deffn {condition type} condition-type:wrong-number-of-arguments datum type operands
+This type indicates that a procedure was called with the wrong number of
+arguments.  The @var{datum} field contains the procedure being called,
+the @var{type} field contains the number of arguments that the procedure
+accepts, and the @var{operands} field contains a list of the arguments
+that were passed to the procedure.
+@end deffn
+
+@example
+@group
+(car 3 4)                               @error{}
+;The procedure car has been called with 2 arguments;
+; it requires exactly 1 argument.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:wrong-number-of-arguments datum type operands
+This procedure signals a condition of type
+@code{condition-type:wrong-number-of-arguments}.  The @var{datum},
+@var{type} and @var{operands} fields of the condition are filled in from
+the corresponding arguments to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:datum-out-of-range datum
+This type indicates the class of errors in which a program discovers an
+object that is of the correct type but is otherwise out of range.  Most
+often, this type indicates that an index to some data structure is
+outside of the range of indices for that structure.  The @var{datum}
+field contains the offending object.
+@end deffn
+
+@example
+@group
+(error:datum-out-of-range 3)            @error{}
+;The object 3 is not in the correct range.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:datum-out-of-range datum
+This procedure signals a condition of type
+@code{condition-type:datum-out-of-range}.  The @var{datum} field of the
+condition is filled in from the corresponding argument to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:bad-range-argument datum operator operand
+This type indicates that a procedure was passed an argument that is of
+the correct type but is otherwise out of range.  Most often, this type
+indicates that an index to some data structure is outside of the range
+of indices for that structure.  The @var{operator} field contains the
+procedure (or a symbol naming the procedure), the @var{operand} field
+indicates the argument position that was involved (this field contains
+either a symbol, a non-negative integer, or @code{#f}), and the
+@var{datum} field is the offending argument.
+@end deffn
+
+@example
+@group
+(string-ref "abc" 3)                    @error{}
+;The object 3, passed as the second argument to string-ref,
+; is not in the correct range.
+;To continue, call RESTART with an option number:
+; (RESTART 2) => Specify an argument to use in its place.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:bad-range-argument datum operator
+This procedure signals a condition of type
+@code{condition-type:bad-range-argument}.  The @var{datum} and
+@var{operator} fields of the condition are filled in from the
+corresponding arguments to the procedure; the @var{operand} field of the
+condition is set to @code{#f}.
+@end deffn
+
+@deffn {condition type} condition-type:inapplicable-object datum operands
+This type indicates an error in which a program attempted to apply an
+object that is not a procedure.  The object being applied is saved in
+the @var{datum} field, and the arguments being passed to the object are
+saved as a list in the @var{operands} field.
+@end deffn
+
+@example
+@group
+(3 4)                                   @error{}
+;The object 3 is not applicable.
+;To continue, call RESTART with an option number:
+; (RESTART 2) => Specify a procedure to use in its place.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn {condition type} condition-type:file-error filename
+This is an abstract type.  It indicates that an error associated with a
+file has occurred.  For example, attempting to delete a nonexistent file
+will signal an error.  The @var{filename} field contains a filename or
+pathname associated with the operation that failed.
+@end deffn
+
+@deffn {condition type} condition-type:file-operation-error filename verb noun reason operator operands
+This is the most common condition type for file system errors.  The
+@var{filename} field contains the filename or pathname that was being
+operated on.  The @var{verb} field contains a string which is the verb
+or verb phrase describing the operation being performed, and the
+@var{noun} field contains a string which is a noun or noun phrase
+describing the object being operated on.  The @var{reason} field
+contains a string describing the error that occurred.  The
+@var{operator} field contains the procedure performing the operation (or
+a symbol naming that procedure), and the @var{operands} field contains a
+list of the arguments that were passed to that procedure.  For example,
+an attempt to delete a nonexistent file would have the following field
+values:
+
+@example
+@group
+filename        "/zu/cph/tmp/no-such-file"
+verb            "delete"
+noun            "file"
+reason          "no such file or directory"
+operator        file-remove
+operands        ("/zu/cph/tmp/no-such-file")
+@end group
+@end example
+
+@noindent
+and would generate a message like this:
+
+@example
+@group
+(delete-file "/zu/cph/tmp/no-such-file") @error{}
+;Unable to delete file "/zu/cph/tmp/no-such-file" because:
+; No such file or directory.
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Try to delete the same file again.
+; (RESTART 2) => Try to delete a different file.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+@end deffn
+
+@deffn procedure error:file-operation-error filename verb noun reason operator operands
+This procedure signals a condition of type
+@code{condition-type:file-operation-error}.  The fields of the condition
+are filled in from the corresponding arguments to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:derived-file-error filename condition
+This is another kind of file error, which is generated by obscure
+file-system errors that do not fit into the standard categories.  The
+@var{filename} field contains the filename or pathname that was being
+operated on, and the @var{condition} field contains a condition
+describing the error in more detail.  Usually the @var{condition} field
+contains a condition of type @code{condition-type:system-call-error}.
+@end deffn
+
+@deffn procedure error:derived-file filename condition
+This procedure signals a condition of type
+@code{condition-type:derived-file-error}.  The @var{filename} and
+@var{condition} fields of the condition are filled in from the
+corresponding arguments to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:port-error port
+This is an abstract type.  It indicates that an error associated with a
+I/O port has occurred.  For example, writing output to a file port can
+signal an error if the disk containing the file is full; that error
+would be signalled as a port error.  The @var{port} field contains the
+associated port.
+@end deffn
+
+@deffn {condition type} condition-type:derived-port-error port condition
+This is a concrete type that is signalled when port errors occur.  The
+@var{port} field contains the port associated with the error, and the
+@var{condition} field contains a condition object that describes the
+error in more detail.  Usually the @var{condition} field contains a
+condition of type @code{condition-type:system-call-error}.
+@end deffn
+
+@deffn procedure error:derived-port port condition
+This procedure signals a condition of type
+@code{condition-type:derived-port-error}.  The @var{port} and
+@var{condition} fields of the condition are filled in from the
+corresponding arguments to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:variable-error location environment
+This is an abstract type.  It indicates that an error associated with a
+variable has occurred.  The @var{location} field contains the name of
+the variable, and the @var{environment} field contains the environment
+in which the variable was referenced.
+@end deffn
+
+@deffn {condition type} condition-type:unbound-variable location environment
+This type is generated when a program attempts to access or modify a
+variable that is not bound.  The @var{location} field contains the name
+of the variable, and the @var{environment} field contains the
+environment in which the reference occurred.
+@end deffn
+
+@example
+@group
+foo                                     @error{}
+;Unbound variable: foo
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of foo.
+; (RESTART 2) => Define foo to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn {condition type} condition-type:unassigned-variable location environment
+This type is generated when a program attempts to access a variable that
+is not assigned.  The @var{location} field contains the name of the
+variable, and the @var{environment} field contains the environment in
+which the reference occurred.
+@end deffn
+
+@example
+@group
+foo                                     @error{}
+;Unassigned variable: foo
+;To continue, call RESTART with an option number:
+; (RESTART 3) => Specify a value to use instead of foo.
+; (RESTART 2) => Set foo to a given value.
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn {condition type} condition-type:arithmetic-error operator operands
+This is an abstract type.  It indicates that a numerical operation was
+unable to complete because of an arithmetic error.  (For example,
+division by zero.)  The @var{operator} field contains the procedure that
+implements the operation (or a symbol naming the procedure), and the
+@var{operands} field contains a list of the arguments that were passed
+to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:divide-by-zero operator operands
+This type is generated when a program attempts to divide by zero.  The
+@var{operator} field contains the procedure that implements the failing
+operation (or a symbol naming the procedure), and the @var{operands}
+field contains a list of the arguments that were passed to the
+procedure.
+@end deffn
+
+@example
+@group
+(/ 1 0)
+;Division by zero signalled by /.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:divide-by-zero operator operands
+This procedure signals a condition of type
+@code{condition-type:divide-by-zero}.  The @var{operator} and
+@var{operands} fields of the condition are filled in from the
+corresponding arguments to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:floating-point-overflow operator operands
+This type is generated when a program performs an arithmetic operation
+that results in a floating-point overflow.  The @var{operator} field
+contains the procedure that implements the operation (or a symbol naming
+the procedure), and the @var{operands} field contains a list of the
+arguments that were passed to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:floating-point-underflow operator operands
+This type is generated when a program performs an arithmetic operation
+that results in a floating-point underflow.  The @var{operator} field
+contains the procedure that implements the operation (or a symbol naming
+the procedure), and the @var{operands} field contains a list of the
+arguments that were passed to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:primitive-procedure-error operator operands
+This is an abstract type.  It indicates that an error was generated by a
+primitive procedure call.  Primitive procedures are distinguished from
+ordinary procedures in that they are not written in Scheme but instead
+in the underlying language of the Scheme implementation.  The
+@var{operator} field contains the procedure that implements the
+operation (or a symbol naming the procedure), and the @var{operands}
+field contains a list of the arguments that were passed to the
+procedure.
+@end deffn
+
+@deffn {condition type} condition-type:system-call-error operator operands system-call error-type
+This is the most common condition type generated by primitive
+procedures.  A condition of this type indicates that the primitive made
+a system call to the operating system, and that the system call
+signalled an error.  The system-call error is reflected back to Scheme
+as a condition of this type, except that many common system-call errors
+are automatically translated by the Scheme implementation into more
+useful forms; for example, a system-call error that occurs while trying
+to delete a file will be translated into a condition of type
+@code{condition-type:file-operation-error}.  The @var{operator} field
+contains the procedure that implements the operation (or a symbol naming
+the procedure), and the @var{operands} field contains a list of the
+arguments that were passed to the procedure.  The @var{system-call} and
+@var{error-type} fields contain symbols that describe the specific
+system call that was being made and the error that occurred,
+respectively; these symbols are completely operating-system dependent.
+@end deffn
+
+@deffn {condition type} condition-type:control-error 
+This is an abstract type.  It describes a class of errors relating to
+program control flow.
+@end deffn
+
+@deffn {condition type} condition-type:no-such-restart name
+This type indicates that a named restart was not active when it was
+expected to be.  Conditions of this type are signalled by several
+procedures that look for particular named restarts, for example
+@code{muffle-warning}.  The @var{name} field contains the name that was
+being searched for.
+@end deffn
+
+@example
+@group
+(muffle-warning)                        @error{}
+;The restart named muffle-warning is not bound.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn procedure error:no-such-restart name
+This procedure signals a condition of type
+@code{condition-type:no-such-restart}.  The @var{name} field of the
+condition is filled in from the corresponding argument to the procedure.
+@end deffn
+
+@deffn {condition type} condition-type:not-loading
+A condition of this type is generated when the procedure
+@code{current-load-pathname} is called from somewhere other than inside
+a file being loaded.
+@end deffn
+
+@example
+@group
+(current-load-pathname)                 @error{}
+;No file being loaded.
+;To continue, call RESTART with an option number:
+; (RESTART 1) => Return to read-eval-print level 1.
+@end group
+@end example
+
+@deffn {condition type} condition-type:warning
+This is an abstract type.  All warnings should inherit from this type.
+Warnings are a class of conditions that are usually handled by informing
+the user of the condition and proceeding the computation normally.
+@end deffn
+
+@deffn {condition type} condition-type:simple-warning message irritants
+This is the condition generated by the @code{warn} procedure.  The
+fields @var{message} and @var{irritants} are taken directly from the
+arguments to @code{warn}; @var{message} contains an object (usually a
+string) and @var{irritants} contains a list of objects.  The reporter
+for this type uses @code{format-error-message} to generate its output
+from @var{message} and @var{irritants}.
+@end deffn
+
+@deffn {condition type} condition-type:simple-condition message irritants
+This is an unspecialized condition that does not fall into any of the
+standard condition classes.  The @var{message} field contains an object
+(usually a string) and @var{irritants} contains a list of objects.  The
+reporter for this type uses @code{format-error-message} to generate its
+output from @var{message} and @var{irritants}.
+@end deffn
+
+@deffn {condition type} condition-type:breakpoint environment message prompt
+A condition of this type is generated by the breakpoint mechanism.  The
+contents of its fields are beyond the scope of this document.
+@end deffn

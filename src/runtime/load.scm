@@ -1,30 +1,34 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 14.60 2001/12/19 05:21:42 cph Exp $
+$Id: load.scm,v 14.66 2003/09/05 20:51:14 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1999,2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Code Loader
 ;;; package: (runtime load)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (set! *purification-root-marker* (intern "#[PURIFICATION-ROOT]"))
   (set! load-noisily? #f)
@@ -95,11 +99,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			      (else (load-it) unspecific)))))))))
 	 (if (pair? filename/s)
 	     (let loop ((filenames filename/s))
-	       (if (null? (cdr filenames))
-		   (kernel (car filenames) #t)
+	       (if (pair? (cdr filenames))
 		   (begin
 		     (kernel (car filenames) #f)
-		     (loop (cdr filenames)))))
+		     (loop (cdr filenames)))
+		   (kernel (car filenames) #t)))
 	     (kernel filename/s #t)))))))
 
 (define (fasload filename #!optional suppress-loading-message?)
@@ -187,12 +191,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define (search-types-in-order pathname default-types)
   (let loop ((types default-types))
-    (if (null? types)
-	(values #f #f)
-	 (let ((pathname (pathname-new-type pathname (caar types))))
-	   (if (file-exists? pathname)
-	       (values pathname (cadar types))
-	       (loop (cdr types)))))))
+    (if (pair? types)
+	(let ((pathname (pathname-new-type pathname (caar types))))
+	  (if (file-exists? pathname)
+	      (values pathname (cadar types))
+	      (loop (cdr types))))
+	(values #f #f))))
 
 (define (find-latest-file pathname default-types)
   (let loop ((types default-types)
@@ -239,12 +243,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 				(lambda (exp&value) exp&value #f)))))))))
 
 (define (fasload/internal pathname suppress-loading-message?)
-  (let ((value
-	 (loading-message suppress-loading-message? pathname
-	   (lambda ()
-	     ((ucode-primitive binary-fasload) (->namestring pathname))))))
-    (fasload/update-debugging-info! value pathname)
-    value))
+  (let ((namestring (->namestring pathname)))
+    (if (and (not suppress-loading-message?)
+	     (file-modification-time<? pathname
+				       (pathname-new-type pathname "scm")))
+	(warn "Source file newer than binary:" namestring))
+    (let ((value
+	   (loading-message suppress-loading-message? pathname
+	     (lambda ()
+	       ((ucode-primitive binary-fasload) namestring)))))
+      (fasload/update-debugging-info! value pathname)
+      value)))
 
 (define (load-object-file pathname environment purify? load-noisily?)
   load-noisily?		; ignored
@@ -272,7 +281,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			   (nearest-repl/environment)
 			   environment)))
 
-(define (load-library-object-file name errors?)
+(define (load-library-object-file name errors? #!optional noisy?)
   (let ((directory (system-library-directory-pathname "lib"))
 	(nsf
 	 (lambda ()
@@ -295,7 +304,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		       (find "sl")))))
 	    (cond ((not pathname*)
 		   (nsf))
-		  ((ignore-errors (lambda () (load pathname*)))
+		  ((ignore-errors
+		    (lambda ()
+		      (fluid-let ((load/suppress-loading-message?
+				   (if (default-object? noisy?) #f noisy?)))
+			(load pathname*))))
 		   => (lambda (condition)
 			(if errors?
 			    (signal-condition condition)
@@ -380,58 +393,48 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! generate-suspend-file? #f)
   (hook/process-command-line ((ucode-primitive get-unused-command-line 0))))
 
-(define hook/process-command-line)
-
 (define *unused-command-line*)
-(define *command-line-parsers* '())
-
+(define *command-line-parsers*)
 (define *load-init-file?*)
 
+(define hook/process-command-line)
 (define (default/process-command-line unused-command-line)
   (let ((after-parsing-actions '()))
 
-    (define (process-keyword command-line unused-options)
-      (if (not (null? command-line))
-	  (let* ((keyword (car command-line))
-		 (place (assoc keyword *command-line-parsers*)))
-	    (cond (place
-		   (call-with-values
-		       (lambda () ((cdr place) command-line))
-		     (lambda (next tail-action)
-		       (if tail-action
-			   (set! after-parsing-actions
-				 (cons tail-action after-parsing-actions)))
-		       (process-keyword next unused-options))))
-		  ((zero? (string-length keyword))
-		   (process-keyword (cdr command-line)
-				    unused-options))
-		  (else
-		   (if (or (not (char=? (string-ref keyword 0) #\-))
-			   (= (string-length keyword) 1))
-		       (warn "process-command-line: Invalid keyword" keyword))
-		   (find-next-keyword (cdr command-line)
-				      (cons (car command-line)
-					    unused-options)))))
-	  (let ((unused (reverse unused-options)))
-	    (if (not (null? unused))
-		(warn "Unhandled command line options:" unused))
-	    unused)))
-
-    (define (find-next-keyword command-line unused-options)
-      (if (null? command-line)
-	  (process-keyword '() unused-options)
+    (define (process-keyword command-line unused)
+      (if (pair? command-line)
 	  (let ((keyword (car command-line)))
-	    (if (or (< (string-length keyword) 2)
-		    (not (char=? (string-ref keyword 0) #\-)))
-		(find-next-keyword (cdr command-line)
-				   (cons keyword unused-options))
-		(process-keyword command-line unused-options)))))
+	    (if (option-keyword? keyword)
+		(let ((parser (find-keyword-parser keyword)))
+		  (if parser
+		      (call-with-values (lambda () (parser command-line))
+			(lambda (next tail-action)
+			  (if tail-action
+			      (set! after-parsing-actions
+				    (cons tail-action after-parsing-actions)))
+			  (process-keyword next unused)))
+		      (find-next-keyword command-line unused)))
+		(begin
+		  (warn "Invalid keyword:" keyword)
+		  (find-next-keyword command-line unused))))
+	  (done unused)))
 
-    (if (not unused-command-line)
-	(begin
-	  (set! *unused-command-line* #f)
-	  (load-init-file))
+    (define (find-next-keyword command-line unused)
+      (let ((unused (cons (car command-line) unused))
+	    (command-line (cdr command-line)))
+	(if (pair? command-line)
+	    (if (option-keyword? (car command-line))
+		(process-keyword command-line unused)
+		(find-next-keyword command-line unused))
+	    (done unused))))
 
+    (define (done unused)
+      (let ((unused (reverse! unused)))
+	(if (pair? unused)
+	    (warn "Unhandled command line options:" unused))
+	unused))
+
+    (if unused-command-line
 	(begin
 	  (set! *unused-command-line*)
 	  (fluid-let ((*load-init-file?* #t))
@@ -439,7 +442,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		  (process-keyword (vector->list unused-command-line) '()))
 	    (for-each (lambda (act) (act))
 		      (reverse after-parsing-actions))
-	    (if *load-init-file?* (load-init-file)))))))
+	    (if *load-init-file?* (load-init-file))))
+	(begin
+	  (set! *unused-command-line* #f)
+	  (load-init-file)))))
+
+(define (find-keyword-parser keyword)
+  (let ((entry (assoc (strip-leading-hyphens keyword) *command-line-parsers*)))
+    (and entry
+	 (cdr entry))))
+
+(define (option-keyword? argument)
+  (and (fix:> (string-length argument) 1)
+       (char=? #\- (string-ref argument 0))
+       (or (not (char=? #\- (string-ref argument 1)))
+	   (and (fix:> (string-length argument) 2)
+		(not (char=? #\- (string-ref argument 2)))))))
 
 (define (load-init-file)
   (let ((pathname (init-file-pathname)))
@@ -447,12 +465,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(load pathname user-initial-environment)))
   unspecific)
 
-;;   KEYWORD must be a string with at least two characters and the first
-;; being a dash (#\-).
-;;   PROC is a procedure of one argument.  It will be invoked on the
+;; KEYWORD must be a string with at least one character.  For
+;; backwards compatibility, the string may have a leading hyphen,
+;; which is stripped.
+;;
+;; PROC is a procedure of one argument.  It will be invoked on the
 ;; list of command line elements extending to the right of the keyword
 ;; (and including it).
-;;   PROC returns two values: the sublist starting with the first
+;;
+;; PROC returns two values: the sublist starting with the first
 ;; non-handled command-line element (typically the next keyword), and
 ;; either #F or a procedure to invoke after the whole command line has
 ;; been parsed (and the init file loaded).  Thus PROC has the option
@@ -463,80 +484,87 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;; delayed actions.
 
 (define (set-command-line-parser! keyword proc)
-  (if (not (and (string? keyword)
-		(>= (string-length keyword) 2)
-		(char=? #\- (string-ref keyword 0))))
-      (error:wrong-type-argument keyword
-				 "command-line option keyword"
-				 'SET-COMMAND-LINE-PARSER!))
-  (let ((place (assoc keyword *command-line-parsers*)))
-    (if place
-	(set-cdr! place proc)
-	(begin
-	  (set! *command-line-parsers*
-		(cons (cons keyword proc)
-		      *command-line-parsers*))
-	  unspecific))))
+  (guarantee-string keyword 'SET-COMMAND-LINE-PARSER!)
+  (let ((keyword (strip-leading-hyphens keyword)))
+    (if (string-null? keyword)
+	(error:bad-range-argument keyword 'SET-COMMAND-LINE-PARSER!))
+    (let ((place (assoc keyword *command-line-parsers*)))
+      (if place
+	  (set-cdr! place proc)
+	  (begin
+	    (set! *command-line-parsers*
+		  (cons (cons keyword proc)
+			*command-line-parsers*))
+	    unspecific)))))
+
+(define (strip-leading-hyphens keyword)
+  (let ((end (string-length keyword)))
+    (let loop ((start 0))
+      (cond ((and (fix:< start end)
+		  (char=? #\- (string-ref keyword start)))
+	     (loop (fix:+ start 1)))
+	    ((fix:= start 0)
+	     keyword)
+	    (else
+	     (substring keyword start end))))))
 
 (define (simple-command-line-parser keyword thunk)
   (set-command-line-parser! keyword
-			    (lambda (command-line)
-			      (values (cdr command-line) thunk))))
+    (lambda (command-line)
+      (values (cdr command-line) thunk))))
 
 ;; Upwards compatibility.
 (define simple-option-parser simple-command-line-parser)
-
+
 (define (argument-command-line-parser keyword multiple? procedure)
-  (set-command-line-parser!
-   keyword
-   (if multiple?
-       (lambda (command-line)
-	 (for-each-non-keyword (cdr command-line) procedure))
-       (lambda (command-line)
-	 (if (null? (cdr command-line))
-	     (values '()
-		     (lambda ()
-		       (warn "Missing argument to command-line option:"
-			     keyword)))
-	     (values (cddr command-line)
-		     (lambda () (procedure (cadr command-line)))))))))
+  (set-command-line-parser! keyword
+    (if multiple?
+	(lambda (command-line)
+	  (for-each-non-keyword (cdr command-line) procedure))
+	(lambda (command-line)
+	  (if (pair? (cdr command-line))
+	      (values (cddr command-line)
+		      (lambda () (procedure (cadr command-line))))
+	      (values '()
+		      (lambda ()
+			(warn "Missing argument to command-line option:"
+			      (string-append "--" keyword)))))))))
 
 (define (for-each-non-keyword command-line processor)
   (let ((end
 	 (lambda (command-line accum)
-	   (if (null? accum)
-	       (values command-line #f)
-	       (let ((objects (reverse accum)))
+	   (if (pair? accum)
+	       (let ((objects (reverse! accum)))
 		 (values command-line
-			 (lambda () (for-each processor objects))))))))
+			 (lambda () (for-each processor objects))))
+	       (values command-line #f)))))
     (let loop ((command-line command-line) (accum '()))
-      (if (null? command-line)
-	  (end '() accum)
+      (if (pair? command-line)
 	  (let ((next (car command-line)))
-	    (if (and (> (string-length next) 0)
-		     (char=? #\- (string-ref next 0)))
+	    (if (option-keyword? next)
 		(end command-line accum)
-		(loop (cdr command-line) (cons next accum))))))))
-
+		(loop (cdr command-line) (cons next accum))))
+	  (end '() accum)))))
+
 (define (initialize-command-line-parsers)
-  (simple-command-line-parser "-no-init-file"
-			      (lambda ()
-				(set! *load-init-file?* #f)
-				unspecific))
+  (set! *command-line-parsers* '())
+  (simple-command-line-parser "no-init-file"
+    (lambda ()
+      (set! *load-init-file?* #f)
+      unspecific))
   (set! generate-suspend-file? #f)
-  (simple-command-line-parser "-suspend-file"
-			      (lambda ()
-				(set! generate-suspend-file? #t)
-				unspecific))
-  (simple-command-line-parser "-no-suspend-file"
-			      (lambda ()
-				(set! generate-suspend-file? #f)
-				unspecific))
-  (argument-command-line-parser "-load" #t load)
-  (argument-command-line-parser "-eval" #t
-				(lambda (arg)
-				  (eval (with-input-from-string arg read)
-					user-initial-environment))))
+  (simple-command-line-parser "suspend-file"
+    (lambda ()
+      (set! generate-suspend-file? #t)
+      unspecific))
+  (simple-command-line-parser "no-suspend-file"
+    (lambda ()
+      (set! generate-suspend-file? #f)
+      unspecific))
+  (argument-command-line-parser "load" #t load)
+  (argument-command-line-parser "eval" #t
+    (lambda (arg)
+      (eval (with-input-from-string arg read) user-initial-environment))))
 
 ;;;; Loader for packed binaries
 
@@ -618,7 +646,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
   (define (search-alist path alist predicate?)
     (let loop ((alist alist))
-      (and (not (null? alist))
+      (and (pair? alist)
 	   (if (predicate? path (cadar alist))
 	       (car alist)
 	       (loop (cdr alist))))))

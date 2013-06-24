@@ -1,0 +1,1456 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: graphics.texi,v 1.1 2003/04/15 03:29:42 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Graphics, Win32 Package Reference, Error System, Top
+@chapter Graphics
+@cindex graphics
+
+MIT/GNU Scheme has a simple two-dimensional line-graphics interface
+that is suitable for many graphics applications.  In particular it is
+often used for plotting data points from experiments.  The interface is
+generic in that it can support different types of graphics devices in a
+uniform manner.  At the present time only one type of graphics device
+is implemented on each operating system.
+
+Procedures are available for drawing points, lines, and text; defining
+the coordinate system; clipping graphics output; controlling some of the
+drawing characteristics; and controlling the output buffer (for devices
+that perform buffering).  Additionally, devices may support custom
+operations, such as control of colors.
+
+There are some constraints on the arguments to the procedures described
+in this chapter.  Any argument named @var{graphics-device} must be a
+graphics device object that was returned from a call to
+@code{make-graphics-device}.  Any argument that is a coordinate must be
+either an exact integer or an inexact real.
+
+@menu
+* Opening and Closing of Graphics Devices::  
+* Coordinates for Graphics::    
+* Drawing Graphics::            
+* Characteristics of Graphics Output::  
+* Buffering of Graphics Output::  
+* Clipping of Graphics Output::  
+* Custom Graphics Operations::  
+* Images::                      
+* X Graphics::                  Graphics on the X Window System
+* Win32 Graphics::              Graphics on Microsoft Windows and Windows NT
+* OS/2 Graphics::               Graphics on IBM OS/2
+@end menu
+
+@node Opening and Closing of Graphics Devices, Coordinates for Graphics, Graphics, Graphics
+@section Opening and Closing of Graphics Devices
+@cindex graphics, opening and closing devices
+
+@deffn procedure graphics-type-available? graphics-device-type
+This predicate returns @code{#t} if the graphics system named by the
+symbol @var{graphics-device-type} is implemented by the Scheme system.
+Otherwise it returns @code{#f}, in which case it is an error to attempt
+to make a graphics device using @var{graphics-device-type}.
+@end deffn
+
+@deffn procedure enumerate-graphics-types
+This procedure returns a list of symbols which are the names of all the
+graphics device types that are supported by the Scheme system.  The
+result is useful in deciding what additional arguments to supply to
+@code{make-graphics-device}, as each device type typically has a unique
+way of specifying the initial size, shape and other attributes.
+@end deffn
+
+@deffn procedure make-graphics-device graphics-device-type object @dots{}
+This operation creates and returns a graphics device object.
+@var{Graphics-device-type} is a symbol naming a graphics device type,
+and both the number and the meaning of the remaining arguments is
+determined by that type (see the description of each device type for
+details); @var{graphics-device-type} must satisfy
+@code{graphics-type-available?}.  @var{Graphics-device-type} may also be
+@code{#f}, in which case the graphics device type is chosen by the
+system from what is available.  This allows completely portable graphics
+programs to be written provided no custom graphics operations are used.
+When @var{graphics-device-type} is @code{#f} no further arguments may be
+given; each graphics device type will use some ``sensible'' defaults.
+If more control is required then the program should use one of the two
+procedures above to dispatch on the available types.
+
+This procedure opens and initializes the device, which remains valid
+until explicitly closed by the procedure @code{graphics-close}.
+Depending on the implementation of the graphics device, if this object
+is reclaimed by the garbage collector, the graphics device may remain
+open or it may be automatically closed.  While a graphics device remains
+open the resources associated with it are not released.
+@end deffn
+
+@deffn procedure graphics-close graphics-device
+Closes @var{graphics-device}, releasing its resources.  Subsequently it
+is an error to use @var{graphics-device}.
+@end deffn
+
+@node Coordinates for Graphics, Drawing Graphics, Opening and Closing of Graphics Devices, Graphics
+@section Coordinates for Graphics
+@cindex graphics, coordinate systems
+
+@cindex coordinates, graphics
+@cindex device coordinates, graphics (defn)
+@cindex graphics, device coordinates (defn)
+@cindex virtual coordinates, graphics (defn)
+@cindex graphics, virtual coordinates (defn)
+Each graphics device has two different coordinate systems associated
+with it: @dfn{device coordinates} and @dfn{virtual coordinates}.  Device
+coordinates are generally defined by low-level characteristics of the
+device itself, and often cannot be changed.  Most device coordinate
+systems are defined in terms of pixels, and usually the upper-left-hand
+corner is the origin of the coordinate system, with @var{x} coordinates
+increasing to the right and @var{y} coordinates increasing downwards.
+
+In contrast, virtual coordinates are more flexible in the units
+employed, the position of the origin, and even the direction in which
+the coordinates increase.  A virtual coordinate system is defined by
+assigning coordinates to the edges of a device.  Because these edge
+coordinates are arbitrary real numbers, any Cartesian coordinate system
+can be defined.
+
+All graphics procedures that use coordinates are defined on virtual
+coordinates.  For example, to draw a line at a particular place on a
+device, the virtual coordinates for the endpoints of that line are
+given.
+
+When a graphics device is initialized, its virtual coordinate system is
+reset so that the left edge corresponds to an x-coordinate of @code{-1},
+the right edge to x-coordinate @code{1}, the bottom edge to y-coordinate
+@code{-1}, and the top edge to y-coordinate @code{1}.
+
+@deffn procedure graphics-device-coordinate-limits graphics-device
+Returns (as multiple values) the device coordinate limits for
+@var{graphics-device}.  The values, which are exact non-negative
+integers, are: @var{x-left}, @var{y-bottom}, @var{x-right}, and
+@var{y-top}.
+@end deffn
+
+@deffn procedure graphics-coordinate-limits graphics-device
+Returns (as multiple values) the virtual coordinate limits for
+@var{graphics-device}.  The values, which are real numbers, are:
+@var{x-left}, @var{y-bottom}, @var{x-right}, and @var{y-top}.
+@end deffn
+
+@deffn procedure graphics-set-coordinate-limits graphics-device x-left y-bottom x-right y-top
+Changes the virtual coordinate limits of @var{graphics-device} to the
+given arguments.  @var{X-left}, @var{y-bottom}, @var{x-right}, and
+@var{y-top} must be real numbers.  Subsequent calls to
+@code{graphics-coordinate-limits} will return the new limits.  This
+operation has no effect on the device's displayed contents.
+
+Note: This operation usually resets the clip rectangle, although it is
+not guaranteed to do so.  If a clip rectangle is in effect when this
+procedure is called, it is necessary to redefine the clip rectangle
+afterwards.
+@end deffn
+
+@node Drawing Graphics, Characteristics of Graphics Output, Coordinates for Graphics, Graphics
+@section Drawing Graphics
+@cindex graphics, drawing
+
+The procedures in this section provide the basic drawing capabilities of
+Scheme's graphics system.
+
+@deffn procedure graphics-clear graphics-device
+Clears the display of @var{graphics-device}.  Unaffected by the current
+drawing mode.
+@end deffn
+
+@deffn procedure graphics-draw-point graphics-device x y
+Draws a single point on @var{graphics-device} at the virtual coordinates
+given by @var{x} and @var{y}, using the current drawing mode.
+@end deffn
+
+@deffn procedure graphics-erase-point graphics-device x y
+Erases a single point on @var{graphics-device} at the virtual
+coordinates given by @var{x} and @var{y}.  This procedure is unaffected
+by the current drawing mode.
+@end deffn
+
+@noindent
+This is equivalent to
+
+@example
+@group
+(lambda (device x y)
+  (graphics-bind-drawing-mode device 0
+    (lambda ()
+      (graphics-draw-point device x y))))
+@end group
+@end example
+
+@deffn procedure graphics-draw-line graphics-device x-start y-start x-end y-end
+@var{X-start}, @var{y-start}, @var{x-end}, and @var{y-end} must be real
+numbers.  Draws a line on @var{graphics-device} that connects the points
+(@var{x-start}, @var{y-start}) and (@var{x-end}, @var{y-end}).  The line
+is drawn using the current drawing mode and line style.
+@end deffn
+
+@deffn procedure graphics-draw-text graphics-device x y string
+Draws the characters of @var{string} at the point (@var{x}, @var{y}) on
+@var{graphics-device}, using the current drawing mode.  The
+characteristics of the characters drawn are device-dependent, but all
+devices are initialized so that the characters are drawn upright, from
+left to right, with the leftmost edge of the leftmost character at
+@var{x}, and the baseline of the characters at @var{y}.
+@end deffn
+
+@cindex graphics, cursor (defn)
+@cindex cursor, graphics (defn)
+The following two procedures provide an alternate mechanism for drawing
+lines, which is more akin to using a plotter.  They maintain a
+@dfn{cursor}, which can be positioned to a particular point and then
+dragged to another point, producing a line.  Sequences of connected line
+segments can be drawn by dragging the cursor from point to point.
+
+Many graphics operations have an unspecified effect on the cursor.  The
+following exceptions are guaranteed to leave the cursor unaffected:
+
+@example
+@group
+graphics-device-coordinate-limits
+graphics-coordinate-limits
+graphics-enable-buffering
+graphics-disable-buffering
+graphics-flush
+graphics-bind-drawing-mode
+graphics-set-drawing-mode
+graphics-bind-line-style
+graphics-set-line-style
+@end group
+@end example
+
+The initial state of the cursor is unspecified.
+
+@deffn procedure graphics-move-cursor graphics-device x y
+Moves the cursor for @var{graphics-device} to the point (@var{x},
+@var{y}).  The contents of the device's display are unchanged.
+@end deffn
+
+@deffn procedure graphics-drag-cursor graphics-device x y
+Draws a line from @var{graphics-device}'s cursor to the point (@var{x},
+@var{y}), simultaneously moving the cursor to that point.  The line is
+drawn using the current drawing mode and line style.
+@end deffn
+
+@node Characteristics of Graphics Output, Buffering of Graphics Output, Drawing Graphics, Graphics
+@section Characteristics of Graphics Output
+
+@cindex graphics, output characteristics
+Two characteristics of graphics output are so useful that they are
+supported uniformly by all graphics devices: @dfn{drawing mode} and
+@dfn{line style}.  A third characteristic, @dfn{color}, is equally
+useful (if not more so), but implementation restrictions prohibit a
+uniform interface.
+
+@cindex drawing mode, graphics (defn)
+@cindex graphics, drawing mode (defn)
+The @dfn{drawing mode}, an exact integer in the range @code{0} to
+@code{15} inclusive, determines how the figure being drawn is combined
+with the background over which it is drawn to generate the final result.
+Initially the drawing mode is set to ``source'', so that the new output
+overwrites whatever appears in that place.  Useful alternative drawing
+modes can, for example, erase what was already there, or invert it.
+
+Altogether 16 boolean operations are available for combining the source
+(what is being drawn) and the destination (what is being drawn over).
+The source and destination are combined by the device on a
+pixel-by-pixel basis as follows:
+
+@example
+@group
+Mode    Meaning
+----    -------
+0       ZERO @r{[erase; use background color]}
+1       source AND destination
+2       source AND (NOT destination)
+3       source
+4       (NOT source) AND destination
+5       destination
+6       source XOR destination
+7       source OR destination
+8       NOT (source OR destination)
+9       NOT (source XOR destination)
+10      NOT destination
+11      source OR (NOT destination)
+12      NOT source
+13      (NOT source) OR destination
+14      (NOT source) OR (NOT destination)
+15      ONE @r{[use foreground color]}
+@end group
+@end example
+
+@cindex line style, graphics (defn)
+@cindex graphics, line style (defn)
+The @dfn{line style}, an exact integer in the range @code{0} to @code{7}
+inclusive, determines which parts of a line are drawn in the foreground
+color, and which in the background color.  The default line style,
+``solid'', draws the entire line in the foreground color.
+Alternatively, the ``dash'' style alternates between foreground and
+background colors to generate a dashed line.  This capability is useful
+for plotting several things on the same graph.
+
+Here is a table showing the name and approximate pattern of the
+different styles.  A @samp{1} in the pattern represents a foreground
+pixel, while a @samp{-} represents a background pixel.  Note that the
+precise output for each style will vary from device to device.  The only
+style that is guaranteed to be the same for every device is ``solid''.
+
+@example
+@group
+Style   Name                    Pattern
+-----   -------                 -------
+0       solid                   1111111111111111
+1       dash                    11111111--------
+2       dot                     1-1-1-1-1-1-1-1-
+3       dash dot                1111111111111-1-
+4       dash dot dot            11111111111-1-1-
+5       long dash               11111111111-----
+6       center dash             111111111111-11-
+7       center dash dash        111111111-11-11-
+@end group
+@end example
+
+@deffn procedure graphics-bind-drawing-mode graphics-device drawing-mode thunk
+@deffnx procedure graphics-bind-line-style graphics-device line-style thunk
+These procedures bind the drawing mode or line style, respectively, of
+@var{graphics-device}, invoke the procedure @var{thunk} with no
+arguments, then undo the binding when @var{thunk} returns.  The value of
+each procedure is the value returned by @var{thunk}.  Graphics
+operations performed during @var{thunk}'s dynamic extent will see the
+newly bound mode or style as current.
+@end deffn
+
+@deffn procedure graphics-set-drawing-mode graphics-device drawing-mode
+@deffnx procedure graphics-set-line-style graphics-device line-style
+These procedures change the drawing mode or line style, respectively, of
+@var{graphics-device}.  The mode or style will remain in effect until
+subsequent changes or bindings.
+@end deffn
+
+@node Buffering of Graphics Output, Clipping of Graphics Output, Characteristics of Graphics Output, Graphics
+@section Buffering of Graphics Output
+@cindex buffering, of graphics output
+@cindex graphics, buffering of output
+
+To improve performance of graphics output, most graphics devices provide
+some form of buffering.  By default, Scheme's graphics procedures flush
+this buffer after every drawing operation.  The procedures in this
+section allow the user to control the flushing of the output
+buffer.
+
+@deffn procedure graphics-enable-buffering graphics-device
+Enables buffering for @var{graphics-device}.  In other words, after this
+procedure is called, graphics operations are permitted to buffer their
+drawing requests.  This usually means that the drawing is delayed until
+the buffer is flushed explicitly by the user, or until it fills up and
+is flushed by the system.
+@end deffn
+
+@deffn procedure graphics-disable-buffering graphics-device
+Disables buffering for @var{graphics-device}.  By default, all graphics
+devices are initialized with buffering disabled.  After this procedure
+is called, all drawing operations perform their output immediately,
+before returning.
+
+Note: @code{graphics-disable-buffering} flushes the output buffer if
+necessary.
+@end deffn
+
+@deffn procedure graphics-flush graphics-device
+Flushes the graphics output buffer for @var{graphics-device}.  This
+operation has no effect for devices that do not support buffering, or if
+buffering is disabled for the device.
+@end deffn
+
+@node Clipping of Graphics Output, Custom Graphics Operations, Buffering of Graphics Output, Graphics
+@section Clipping of Graphics Output
+@cindex graphics, clipping
+@cindex clipping, of graphics
+
+@cindex clip rectangle, graphics (defn)
+Scheme provides a rudimentary mechanism for restricting graphics output
+to a given rectangular subsection of a graphics device.  By default,
+graphics output that is drawn anywhere within the device's virtual
+coordinate limits will appear on the device.  When a @dfn{clip
+rectangle} is specified, however, output that would have appeared
+outside the clip rectangle is not drawn.
+
+Note that changing the virtual coordinate limits for a device will
+usually reset the clip rectangle for that device, as will any operation
+that affects the size of the device (such as a window resizing
+operation).  However, programs should not depend on this.
+
+@deffn procedure graphics-set-clip-rectangle graphics-device x-left y-bottom x-right y-top
+Specifies the clip rectangle for @var{graphics-device} in virtual
+coordinates.  @var{X-left}, @var{y-bottom}, @var{x-right}, and
+@var{y-top} must be real numbers.  Subsequent graphics output is clipped
+to the intersection of this rectangle and the device's virtual
+coordinate limits.
+@end deffn
+
+@deffn procedure graphics-reset-clip-rectangle graphics-device
+Eliminates the clip rectangle for @var{graphics-device}.  Subsequent
+graphics output is clipped to the virtual coordinate limits of the
+device.
+@end deffn
+
+@node Custom Graphics Operations, Images, Clipping of Graphics Output, Graphics
+@section Custom Graphics Operations
+@cindex custom operations, on graphics device
+@cindex graphics, custom operations
+
+In addition to the standard operations, a graphics device may support
+@dfn{custom operations}.  For example, most devices have custom
+operations to control color.  @code{graphics-operation} is used to
+invoke custom operations.
+
+@deffn procedure graphics-operation graphics-device name object @dots{}
+Invokes the graphics operation on @var{graphics-device} whose name is
+the symbol @var{name}, passing it the remaining arguments.  This
+procedure can be used to invoke the standard operations, as well as
+custom operations that are specific to a particular graphics device
+type.  The names of the standard graphics operations are formed by
+removing the @code{graphics-} prefix from the corresponding procedure.
+For example, the following are equivalent:
+
+@example
+@group
+(graphics-draw-point device x y)
+(graphics-operation device 'draw-point x y)
+@end group
+@end example
+
+For information on the custom operations for a particular device, see
+the documentation for its type.
+@end deffn
+
+@node Images, X Graphics, Custom Graphics Operations, Graphics
+@section Images
+@cindex graphics, images
+@cindex images, graphics
+@cindex graphics, bitmaps
+@cindex bitmaps, graphics
+
+Some graphics device types support images, which are rectangular pieces
+of picture that may be drawn into a graphics device.  Images are often
+called something else in the host graphics system, such as bitmaps or
+pixmaps.  The operations supported vary between devices, so look under
+the different device types to see what operations are available.  All
+devices that support images support the following operations.
+
+@defop operation graphics-device create-image width height
+Images are created using the @code{create-image} graphics operation,
+specifying the @var{width} and @var{height} of the image in device
+coordinates (pixels).
+
+@example
+(graphics-operation device 'create-image 200 100)
+@end example
+
+@noindent
+The initial contents of an image are unspecified.
+
+@code{create-image} is a graphics operation rather than a procedure
+because the kind of image returned depends on the kind of graphics
+device used and the options specified in its creation.  The image may be
+used freely with other graphics devices created with the same
+attributes, but the effects of using an image with a graphics device
+with different attributes (for example, different colors) is undefined.
+Under X, the image is display dependent.
+@end defop
+
+@defop operation graphics-device draw-image x y image
+The image is copied into the graphics device at the specified position.
+@end defop
+
+@defop operation graphics-device draw-subimage x y image im-x im-y w h
+Part of the image is copied into the graphics device at the specified
+(@var{x}, @var{y}) position.  The part of the image that is copied is the
+rectangular region at @var{im-x} and @var{im-y} and of width @var{w} and
+height @var{h}.  These four numbers are given in device coordinates
+(pixels).
+@end defop
+
+@deffn procedure image? object
+Returns @code{#t} if @var{object} is an image, otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure image/destroy image
+This procedure destroys @var{image}, returning storage to the system.
+Programs should destroy images after they have been used because even
+modest images may use large amounts of memory.  Images are reclaimed by
+the garbage collector, but they may be implemented using memory outside
+of Scheme's heap.  If an image is reclaimed before being destroyed, the
+implementation might not deallocate that non-heap memory, which can
+cause a subsequent call to @code{create-image} to fail because it is
+unable to allocate enough memory.
+@end deffn
+
+@c @deffn procedure image/descriptor image
+@c The procedure returns the implementation dependent image.  Its use is
+@c discouraged as it is non-portable.
+@c @end deffn
+
+@deffn procedure image/height image
+Returns the height of the image in device coordinates.
+@end deffn
+
+@deffn procedure image/width image
+Returns the width of the image in device coordinates.
+@end deffn
+
+@deffn procedure image/fill-from-byte-vector image bytes
+The contents of @var{image} are set in a device-dependent way, using one
+byte per pixel from @var{bytes} (a string).  Pixels are filled row by
+row from the top of the image to the bottom, with each row being filled
+from left to right.  There must be at least @code{(* (image/height
+@var{image}) (image/width @var{image}))} bytes in @var{bytes}.
+@end deffn
+
+@node X Graphics, Win32 Graphics, Images, Graphics
+@section X Graphics
+@cindex X graphics
+
+@cindex X window system
+MIT/GNU Scheme supports graphics in the X window system (version 11).
+Arbitrary numbers of displays may be opened, and arbitrary numbers of
+graphics windows may be created for each display.  A variety of
+operations is available to manipulate various aspects of the windows, to
+control their size, position, colors, and mapping.  The X graphics
+device type supports images, which are implemented as Xlib @code{XImage}
+objects.  X display, window, and image objects are automatically closed
+if they are reclaimed by the garbage collector.
+
+@menu
+* X Graphics Type::             
+* Utilities for X Graphics::    
+* Custom Operations on X Graphics Devices::  
+@end menu
+
+@node X Graphics Type, Utilities for X Graphics, X Graphics, X Graphics
+@subsection X Graphics Type
+
+
+A graphics device for X windows is created by passing the symbol
+@code{x} as the graphics device type name to
+@code{make-graphics-device}:
+
+@example
+(make-graphics-device 'x #!optional @var{display} @var{geometry} @var{suppress-map?})
+@end example
+
+@noindent
+where @var{display} is either a display object, @code{#f}, or a string;
+@var{geometry} is either @code{#f} or a string; and @var{suppress-map?}
+is a boolean or a vector (see below).  A new window is created on the
+appropriate display, and a graphics device representing that window is
+returned.
+
+@findex x-open-display
+@var{Display} specifies which X display the window is to be opened on;
+if it is @code{#f} or a string, it is passed as an argument to
+@code{x-open-display}, and the value returned by that procedure is used
+in place of the original argument.  @var{Geometry} is an X geometry
+string, or @code{#f} which means to use the default geometry (which is
+specified as a resource).
+
+@var{Suppress-map?}, if given, may take two forms.  First, it may be a
+boolean: if @code{#f} (the default), the window is automatically mapped
+after it is created; otherwise, @code{#t} means to suppress this
+automatic mapping.  The second form is a vector of three elements.  The
+first element is a boolean with the same meaning as the boolean form of
+@var{suppress-map?}.  The second element is a string, which specifies an
+alternative resource name to be used for looking up the window's
+resources.  The third element is also a string, which specifies a class
+name for looking up the window's resources.  The default value for
+@var{suppress-map?} is @code{#f}.
+
+The default resource and class names are @code{"schemeGraphics"} and
+@code{"SchemeGraphics"} respectively.
+
+@cindex resources, X graphics
+@cindex X resources, graphics
+The window is initialized using the resource and class names specified
+by @var{suppress-map?}, and is sensitive to the following resource
+properties:
+
+@example
+@group
+Property        Class           Default
+--------        -----           -------
+geometry        Geometry        512x384+0+0
+font            Font            fixed
+borderWidth     BorderWidth     2
+internalBorder  BorderWidth     @r{[border width]}
+background      Background      white
+foreground      Foreground      black
+borderColor     BorderColor     @r{[foreground color]}
+cursorColor     Foreground      @r{[foreground color]}
+pointerColor    Foreground      @r{[foreground color]}
+@end group
+@end example
+
+The window is created with a @code{backing_store} attribute of
+@code{Always}.  The window's name and icon name are initialized to
+@code{"scheme-graphics"}.
+
+
+@node Utilities for X Graphics, Custom Operations on X Graphics Devices, X Graphics Type, X Graphics
+@subsection Utilities for X Graphics
+
+@deffn procedure x-graphics/open-display display-name
+@cindex display, X graphics
+@cindex X display, graphics
+Opens a connection to the display whose name is @var{display-name},
+returning a display object.  If unable to open a connection, @code{#f}
+is returned.  @var{Display-name} is normally a string, which is an X
+display name in the usual form; however, @code{#f} is also allowed,
+meaning to use the value of the unix environment variable
+@code{DISPLAY}.
+@end deffn
+
+@deffn procedure x-graphics/close-display display
+Closes @var{display}; after calling this procedure, it is an error to
+use @var{display} for any purpose.  Any windows that were previously
+opened on @var{display} are destroyed and their resources returned to
+the operating system.
+@end deffn
+
+@deffn procedure x-close-all-displays
+Closes all open connections to X displays.  Equivalent to calling
+@code{x-close-display} on all open displays.
+@end deffn
+
+@deffn procedure x-geometry-string x y width height
+@cindex geometry string, X graphics
+@cindex X geometry string, graphics
+This procedure creates and returns a standard X geometry string from the
+given arguments.  @var{X} and @var{y} must be either exact integers or
+@code{#f}, while @var{width} and @var{height} must be either exact
+non-negative integers or @code{#f}.  Usually either @var{x} and @var{y}
+are both specified or both @code{#f}; similarly for @var{width} and
+@var{height}.  If only one of the elements of such a pair is specified,
+it is ignored.
+
+Examples:
+
+@example
+@group
+(x-geometry-string #f #f 100 200) @result{} "100x200"
+(x-geometry-string 2 -3 100 200) @result{} "100x200+2-3"
+(x-geometry-string 2 -3 #f #f) @result{} "+2-3"
+@end group
+@end example
+
+Note that the @var{x} and @var{y} arguments cannot distinguish between
+@code{+0} and @code{-0}, even though these have different meanings in X.
+If either of those arguments is @code{0}, it means @code{+0} in X
+terminology.  If you need to distinguish these two cases you must create
+your own geometry string using Scheme's string and number primitives.
+@end deffn
+
+@node Custom Operations on X Graphics Devices,  , Utilities for X Graphics, X Graphics
+@subsection Custom Operations on X Graphics Devices
+
+Custom operations are invoked using the procedure
+@code{graphics-operation}.  For example,
+
+@example
+(graphics-operation device 'set-foreground-color "blue")
+@end example
+
+@defop operation x-graphics-device set-background-color color-name
+@defopx operation x-graphics-device set-foreground-color color-name
+@defopx operation x-graphics-device set-border-color color-name
+@defopx operation x-graphics-device set-mouse-color color-name
+@findex graphics-clear
+These operations change the colors associated with a window.
+@var{Color-name} must be a string, which is the X server's name for the
+desired color.  @code{set-border-color} and @code{set-mouse-color}
+immediately change the border and mouse-cursor colors.
+@code{set-background-color} and @code{set-foreground-color} change the
+colors to be used when drawing, but have no effect on anything drawn
+prior to their invocation.  Because changing the background color
+affects the entire window, we recommend calling @code{graphics-clear} on
+the window's device afterwards.  Color names include both mnemonic
+names, like @code{"red"}, and intensity names specified in the
+@code{"#@var{rrggbb}"} notation.
+@end defop
+
+@defop operation x-graphics-device draw-arc x y radius-x radius-y angle-start angle-sweep fill?
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-arc
+
+Operation @code{draw-arc} draws or fills an arc.  An arc is a segment of
+a circle, which may have been stretched along the x- or y- axis to form
+an ellipse.
+
+The parameters @var{x}, @var{y}, @var{radius-x} and @var{radius-y}
+describe the circle and @var{angle-start} and @var{angle-sweep} choose
+which part of the circle is drawn.  The arc is drawn on the graphics
+device with the center of the circle at the virtual coordinates given by
+@var{x} and @var{y}.  @var{radius-x} and @var{radius-y} determine the
+size of the circle in virtual coordinate units.
+
+The parameter @var{angle-start} determines where the arc starts.  It is
+measured in degrees in an anti-clockwise direction, starting at 3
+o'clock.  @var{angle-sweep} determines how much of the circle is drawn.
+It too is measured anti-clockwise in degrees.  A negative value means
+the measurement is in a clockwise direction.
+
+Note that the angles are determined on a unit circle before it is
+stretched into an ellipse, so the actual angles that you will see on the
+computer screen depends on all of: @var{radius-x} and @var{radius-y},
+the window size, and the virtual coordinates.
+
+If @var{fill?} is @code{#f} then just the segment of the circle is
+drawn, otherwise the arc is filled in a pie-slice fashion.
+
+This draws a quarter circle pie slice, standing on its point, with point
+at virtual coordinates (3,5):
+
+@example
+(graphics-opereration g 'draw-arc 3 5 .5 .5 45 90 #t)
+@end example
+
+@end defop
+
+@defop operation x-graphics-device draw-circle x y radius
+@defopx operation x-graphics-device fill-circle x y radius
+@cindex drawing arcs and circles, graphics
+@cindex graphics, drawing arcs and circles
+@cindex circles, drawing
+@findex draw-circle
+@findex fill-circle
+These operations draw a circle (outline) or a filled circle (solid) at
+on the graphics device at the virtual coordinates given by @var{x} and
+@var{y}.  These operations could be implemented trivially interms of the
+@code{draw-arc} operation.
+@end defop
+
+@defop operation x-graphics-device set-border-width width
+@defopx operation x-graphics-device set-internal-border-width width
+@findex graphics-clear
+These operations change the external and internal border widths of a
+window.  @var{Width} must be an exact non-negative integer, specified in
+pixels.  The change takes place immediately.  Note that changing the
+internal border width can cause displayed graphics to be garbled; we
+recommend calling @code{graphics-clear} on the window's device after
+doing so.
+@end defop
+
+@defop operation x-graphics-device set-font font-name
+Changes the font used when drawing text in a window.  @var{Font-name}
+must be a string that is a font name known to the X server.  This
+operation does not affect text drawn prior to its invocation.
+@end defop
+
+@defop operation x-graphics-device set-mouse-shape shape-number
+Changes the shape of the mouse cursor.  @var{Shape-number} is an exact
+non-negative integer that is used as an index into the mouse-shape font;
+when multiplied by 2 this number corresponds to an index in the file@*
+@file{/usr/include/X11/cursorfont.h}.
+@end defop
+
+@defop operation x-graphics-device map-window
+@defopx operation x-graphics-device withdraw-window
+These operations control the mapping of windows.  They correspond
+directly to Xlib's @code{XMapWindow} and @code{XWithdrawWindow}.
+@end defop
+
+@defop operation x-graphics-device resize-window width height
+Changes the size of a window.  @var{Width} and @var{height} must be
+exact non-negative integers.  The operation corresponds directly to
+Xlib's @code{XResizeWindow}.
+
+This operation resets the virtual coordinate system and the clip
+rectangle.
+@end defop
+
+@defop operation x-graphics-device move-window x y
+Changes the position of a window on the display.  @var{X} and @var{y}
+must be exact integers.  The operation corresponds directly to Xlib's
+@code{XMoveWindow}.  Note that the coordinates @var{x} and @var{y} do
+not take the external border into account, and therefore will not
+position the window as you might like.  The only reliable way to
+position a window is to ask a window manager to do it for you.
+@end defop
+
+@defop operation x-graphics-device get-default resource property
+This operation corresponds directly to Xlib's @code{XGetDefault}.
+@var{Resource} and @var{property} must be strings.  The operation
+returns the character string corresponding to the association of
+@var{resource} and @var{property}; if no such association exists,
+@code{#f} is returned.
+@end defop
+
+@defop operation x-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
+This operation copies the contents of the rectangle specified by
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height} to
+the rectangle of the same dimensions at @var{destination-x-left} and
+@var{destination-y-top}.
+@end defop
+
+@defop operation x-graphics-device font-structure font-name
+Returns a Scheme equivalent of the X font structure for the font named
+@var{font-name}.  If the string @var{font-name} does not name a font
+known to the X server, or names a 16-bit font, @code{#f} is returned.
+@end defop
+
+@deffn procedure x-font-structure/name font-structure
+@deffnx procedure x-font-structure/direction font-structure
+@deffnx procedure x-font-structure/all-chars-exist font-structure
+@deffnx procedure x-font-structure/default-char font-structure
+@deffnx procedure x-font-structure/min-bounds font-structure
+@deffnx procedure x-font-structure/max-bounds font-structure
+@deffnx procedure x-font-structure/start-index font-structure
+@deffnx procedure x-font-structure/character-bounds font-structure
+@deffnx procedure x-font-structure/max-ascent font-structure
+@deffnx procedure x-font-structure/max-descent font-structure
+These procedures extract the components of the font description
+structure returned by the X graphics operation @code{font-structure}.  A
+more complete description of these components appears in documentation
+of the @code{XLoadQueryFont} Xlib call.  @code{start-index} is the index
+of the first character available in the font.  The @code{min-bounds} and
+@code{max-bounds} components are structures of type
+@code{x-character-bounds}, and the @code{character-bounds} component is
+a vector of the same type.
+@end deffn
+
+@deffn procedure x-character-bounds/lbearing character-bounds
+@deffnx procedure x-character-bounds/rbearing character-bounds
+@deffnx procedure x-character-bounds/width character-bounds
+@deffnx procedure x-character-bounds/ascent character-bounds
+@deffnx procedure x-character-bounds/descent character-bounds
+These procedures extract components of objects of type
+@code{x-character-bounds}.  A more complete description of them appears
+in documentation of the@* @code{XLoadQueryFont} Xlib call.
+@end deffn
+
+@node Win32 Graphics, OS/2 Graphics, X Graphics, Graphics
+@section Win32 Graphics
+@cindex Win32 graphics
+
+MIT/GNU Scheme supports graphics on Microsoft Windows 95, Windows 98, and
+Windows NT.  In addition to the usual operations, there are operations
+to control the size, position and colors of a graphics window.  Win32
+devices support images, which are implemented as device independent
+bitmaps (@sc{dib}s).
+
+The Win32 graphics device type is implemented as a top level window.
+@code{graphics-enable-buffering} is implemented and gives a 2x to 4x
+speedup on many graphics operations.  As a convenience, when buffering
+is enabled clicking on the graphics window's title bar effects a
+@code{graphics-flush} operation.  The user has the benefit of the
+increased performance and the ability to view the progress in drawing at
+the click of a mouse button.
+
+
+@menu
+* Win32 Graphics Type::         
+* Custom Operations for Win32 Graphics::  Custom Operations for Win32 Graphics Devices
+@end menu
+
+@node Win32 Graphics Type, Custom Operations for Win32 Graphics, Win32 Graphics, Win32 Graphics
+@subsection Win32 Graphics Type
+
+Win32 graphics devices are created by specifying the symbol @code{win32}
+as the @var{graphics-device-type} argument to
+@code{make-graphics-device}.  The Win32 graphics device type is
+implemented as a top-level window and supports color drawing in addition
+to the standard Scheme graphics operations.
+
+Graphics devices are opened as follows:
+
+@example
+(make-graphics-device 'win32 #!optional @var{width} @var{height} @var{palette})
+@end example
+
+@noindent
+where @var{width} and @var{height} specify the size, in pixels, of the
+drawing area in the graphics window (i.e.@: excluding the frame).
+@var{Palette} determines the colors available for drawing in the window.
+
+When a color is specified for drawing, the nearest color available in
+the palette is used.  Permitted values for @var{palette} are
+
+@table @asis
+@item @code{'grayscale}
+The window allocates colors from a grayscale palette
+of approximately 236 shades of gray.
+
+@item @code{'grayscale-128}
+The window allocates colors from a grayscale palette of 128 shades of
+gray.
+
+@item @code{'standard}
+The standard palette has good selection of colors and grays.
+
+@item @code{#f} or @code{'system}
+The colors available are those in the system palette.  There are usually
+16 to 20 colors in the system palette and these are usually sufficent
+for simple applications like line drawings and x-vs-y graphs of
+mathematical functions.  Drawing with the system palette can be more
+efficient.
+
+@end table
+@noindent
+If @var{palette} is not specified then the @code{standard} palette is
+used.
+
+
+
+@node Custom Operations for Win32 Graphics,  , Win32 Graphics Type, Win32 Graphics
+@subsection Custom Operations for Win32 Graphics
+
+Custom operations are invoked using the procedure
+@code{graphics-operation}.  For example,
+
+@example
+(graphics-operation device 'set-foreground-color "blue")
+@end example
+
+@defop operation win32-graphics-device set-background-color color-name
+@defopx operation win32-graphics-device set-foreground-color color-name
+@findex set-background-color
+@findex set-foreground-color
+@cindex color
+These operations change the colors associated with a window.
+@var{Color-name} must be of one of the valid color specification forms
+listed below.  @code{set-background-color} and
+@code{set-foreground-color} change the colors to be used when drawing,
+but have no effect on anything drawn prior to their invocation.  Because
+changing the background color affects the entire window, we recommend
+calling @code{graphics-clear} on the window's device afterwards.
+
+The foreground color affects the drawing of text, points, lines,
+ellipses and filled polygons.
+
+Colors are specified in one of three ways:
+
+@table @asis
+@item An integer
+This is the Win32 internal RGB value.
+
+@item By name
+A limited number of names are understood by the system.
+Names are strings, e.g.@: @code{"red"}, @code{"blue"}, @code{"black"}.
+More names can be registered with the @code{define-color} operation.
+
+@item RGB (Red-Green-Blue) triples
+A triple is either a vector or list of three integers in the range
+0--255 inclusive which specify the intensity of the red, green and blue
+components of the color.  Thus @code{#(0 0 0)} is black, @code{(0 0
+128)} is dark blue and @code{#(255 255 255)} is white.
+@end table
+
+@noindent
+If the color is not available in the graphics device then the nearest
+available color is used instead.
+@end defop
+
+
+@defop operation win32-graphics-device define-color name spec
+Define the string @var{name} to be the color specified by @var{spec}.
+@var{Spec} may be any acceptable color specification.  Note that the
+color names defined this way are available to any Win32 graphics device,
+and the names do @emph{not} have to be defined for each device.
+
+
+Color names defined by this interface may also be used when setting the
+colors of the Scheme console window, or the colors of Edwin editor
+windows.
+@end defop
+
+@defop operation win32-graphics-device find-color name
+Looks up a color previously defined by @code{define-color}.  This returns
+the color in its most efficient form for operations
+@code{set-foreground-color} or @code{set-background-color}.
+@end defop
+
+
+@defop operation win32-graphics-device draw-ellipse left top right bottom
+@cindex ellipse, graphics
+@cindex circle, graphics
+@cindex graphics, ellipse
+@cindex graphics, circle
+Draw an ellipse.  @var{Left}, @var{top}, @var{right} and @var{bottom}
+indicate the coordinates of the bounding rectangle of the ellipse.
+Circles are merely ellipses with equal width and height.  Note that the
+bounding rectangle has horizontal and vertical sides.  Ellipses with
+rotated axes cannot be drawn.  The rectangle applies to the center of the
+line used to draw the ellipse; if the line width has been set to greater
+than 1 then the ellipse will spill outside the bounding rectange by half
+of the line width.
+@end defop
+
+
+@defop operation win32-graphics-device fill-polygon points
+@findex fill-polygon
+Draws a filled polygon using the current foreground color.
+@var{Points} is a vector of real numbers.
+The numbers are in the order x1 y1 x2 y2 @dots{} xn yn.
+For example,
+
+@example
+(graphics-operation device 'fill-polygon #(0 0 0 1 1 0))
+@end example
+
+@noindent
+draws a solid triangular region between the points (0, 0), (0, 1) and
+(1, 0).
+@end defop
+
+
+@defop operation win32-graphics-device load-bitmap pathname
+@cindex bitmaps
+The graphics device contents and size are initialized from the windows
+bitmap file specified by @var{pathname}.  If no file type is supplied
+then a @code{".BMP"} extension is added.  If a clip rectangle is in
+effect when this procedure is called, it is necessary to redefine the
+clip rectangle afterwards.
+@end defop
+
+@defop operation win32-graphics-device save-bitmap pathname
+@cindex printing graphics output
+The graphics device contents are saved as a bitmap to the file specified
+by @var{pathname}.  If no file type is supplied then a @code{".BMP"}
+extension is added.  The saved bitmap may be incorporated into documents
+or printed.
+@end defop
+
+@defop operation win32-graphics-device move-window x y
+The graphics device window is moved to the screen position specified by
+@var{x} and @var{y}.
+@end defop
+
+@defop operation win32-graphics-device resize-window width height
+The graphics device window is resized to the specified @var{width} and
+@var{height} in device coordinates (pixels).  If a clip rectangle is in effect
+when this procedure is called, it is necessary to redefine the clip
+rectangle afterwards.
+@end defop
+
+@defop operation win32-graphics-device set-line-width width
+This operation sets the line width for future drawing of lines, points
+and ellipses.  It does not affect existing lines and has no effect on
+filled polygons.  The line width is specified in device units.  The
+default and initial value of this parameter is 1 pixel.
+@end defop
+
+@defop operation win32-graphics-device set-window-name name
+This sets the window title to the string @var{name}.  The window is
+given the name @code{"Scheme Graphics"} at creation.
+@end defop
+
+@defop operation win32-graphics-device set-font handle
+Sets the font for drawing text.  Currently not well supported.  If you
+can get a Win32 font handle it can be used here.
+@end defop
+
+@defop operation win32-graphics-device copy-area source-x-left source-y-top width height destination-x-left destination-y-top
+This operation copies the contents of the rectangle specified by
+@var{source-x-left}, @var{source-y-top}, @var{width}, and @var{height}
+to the rectangle of the same dimensions at @var{destination-x-left} and
+@var{destination-y-top}.
+@end defop
+
+@node OS/2 Graphics,  , Win32 Graphics, Graphics
+@section OS/2 Graphics
+@cindex OS/2 graphics
+
+MIT/GNU Scheme supports graphics under the OS/2 Presentation Manager in
+OS/2 version 2.1 and later.  The OS/2 graphics device type is
+implemented as a top level window.  In addition to the usual operations,
+there are operations to control the size, position, and colors of a
+graphics window.  OS/2 graphics devices support images, which are
+implemented as memory presentation spaces.
+
+The custom graphics operations defined in this section are invoked using
+the procedure @code{graphics-operation}.  For example,
+
+@example
+(graphics-operation device 'set-foreground-color "blue")
+@end example
+
+@menu
+* OS/2 Graphics Type::          
+* Color Operations for OS/2 Graphics::  
+* Window Operations for OS/2 Graphics::  
+* Event Operations for OS/2 Graphics::  
+* Miscellaneous Operations for OS/2 Graphics::  
+@end menu
+
+@node OS/2 Graphics Type, Color Operations for OS/2 Graphics, OS/2 Graphics, OS/2 Graphics
+@subsection OS/2 Graphics Type
+
+OS/2 graphics devices are created by specifying the symbol
+@code{os/2} as the @var{graphics-device-type} argument to
+@code{make-graphics-device}.  The OS/2 graphics device type is
+implemented as a top-level window and supports color drawing in addition
+to the standard Scheme graphics operations.
+
+Graphics devices are opened as follows:
+
+@example
+(make-graphics-device 'os/2 #!optional @var{width} @var{height})
+@end example
+
+@noindent
+where @var{width} and @var{height} specify the size, in pixels, of the
+drawing area in the graphics window (i.e.@: excluding the frame).
+
+@node Color Operations for OS/2 Graphics, Window Operations for OS/2 Graphics, OS/2 Graphics Type, OS/2 Graphics
+@subsection Color Operations for OS/2 Graphics
+
+These operations control the colors used when drawing on an OS/2
+graphics device.
+
+@defop operation os2-graphics-device color?
+@findex color?
+This operation returns @code{#t} if the display supports color.
+@end defop
+
+@defop operation os2-graphics-device set-background-color color-name
+@defopx operation os2-graphics-device set-foreground-color color-name
+@findex set-background-color
+@findex set-foreground-color
+@cindex color
+These operations change the colors associated with a window.
+@var{Color-name} must be one of the valid color specification forms
+listed below.  @code{set-background-color} and
+@code{set-foreground-color} change the colors to be used when drawing,
+but have no effect on anything drawn prior to their invocation.  Because
+changing the background color affects the entire window, we recommend
+calling @code{graphics-clear} on the window's device afterwards.
+
+The foreground color affects the drawing of text, points, and lines.
+Colors are specified in one of these ways:
+
+@table @asis
+@item An integer between @code{0} and @code{#xffffff} inclusive
+This is the OS/2 internal RGB value.
+
+@item By name
+A limited number of names are understood by the system.  Names are
+strings, e.g.@: @code{"red"}, @code{"blue"}, @code{"black"}.  More names
+can be registered with the @code{define-color} operation.
+
+@item RGB (Red-Green-Blue) triples
+A triple is a list of three integers between @code{0} and @code{#xff}
+inclusive which specify the intensity of the red, green and blue
+components of the color.  Thus @code{(0 0 0)} is black, @code{(0 0 128)}
+is dark blue and @code{(255 255 255)} is white.
+@end table
+
+@noindent
+If the color is not available in the graphics device then the nearest
+available color is used instead.
+@end defop
+
+@defop operation os2-graphics-device define-color name spec
+Define the string @var{name} to be the color specified by @var{spec}.
+@var{Spec} may be any acceptable color specification.  Note that the
+color names defined this way are available to any OS/2 graphics
+device, and the names do @emph{not} have to be defined for each device.
+
+Color names defined by this interface may also be used when setting the
+colors of the Scheme console window, or the colors of Edwin editor
+windows.
+@end defop
+
+@defop operation os2-graphics-device find-color name
+Looks up a color previously defined by @code{define-color}.  This
+returns the color in its most efficient form for operations
+@code{set-foreground-color} or @code{set-background-color}.
+@end defop
+
+@node Window Operations for OS/2 Graphics, Event Operations for OS/2 Graphics, Color Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Window Operations for OS/2 Graphics
+
+These operations control the window that contains the OS/2 graphics
+device.  They provide facilities to change the window's size and
+position; to raise and lower the window relative to other windows on the
+desktop; to hide or minimize the window, and to restore it from the
+hidden or minimized state; to activate or deactivate the window (that
+is, control the keyboard focus); and to control the text that appears in
+the window's title bar.
+
+@defop operation os2-graphics-device window-position
+This operation returns the position of the graphics-device window on the
+desktop.  The position is returned as two values
+(@pxref{Continuations}), which are the x and y coordinates of the
+position.  These coordinates are in units of pels (pixels), and measure
+the distance between the lower left hand corner of the desktop and the
+lower left hand corner of the graphics device window's frame.
+@end defop
+
+@defop operation os2-graphics-device set-window-position x y
+The graphics-device window is moved to the screen position specified by
+@var{x} and @var{y}.  The coordinates @var{x} and @var{y} are in units
+of pels (pixels), and measure the distance between the lower left hand
+corner of the desktop and the lower left hand corner of the graphics
+device window's frame.
+@end defop
+
+@defop operation os2-graphics-device window-size
+This operation returns the size of the client area of the
+graphics-device window.  The client area is the part of the window that
+you draw on; it does not include the window frame, title bar, etc.  The
+size is returned as two values (@pxref{Continuations}), which are the
+width and height of the client area in units of pels (pixels).
+@end defop
+
+@defop operation os2-graphics-device set-window-size width height
+This operation sets the size of the client area of the graphics-device
+window to the specified @var{width} and @var{height}, which are in units
+of pels (pixels).  The client area is the part of the window that you
+draw on; it does not include the window frame, title bar, etc.
+@end defop
+
+@defop operation os2-graphics-device window-frame-size
+This operation returns the size of the graphics-device window's frame.
+This includes the client area, as well as the border, title bar, etc.
+The size is returned as two values (@pxref{Continuations}), which are
+the width and height of the frame in units of pels (pixels).
+
+The frame size is useful in conjunction with the window position and the
+desktop size to determine relative placement of the window or to
+guarantee that the entire window is visible on the desktop.
+@end defop
+
+@defop operation os2-graphics-device desktop-size
+This operation returns the size of the OS/2 desktop.  The size is
+returned as two values (@pxref{Continuations}), which are the width and
+height of the frame in units of pels (pixels).
+@end defop
+
+@defop operation os2-graphics-device raise-window
+This operation raises the graphics-device window so that it is on top of
+any other windows on the desktop.
+@end defop
+
+@defop operation os2-graphics-device lower-window
+This operation lowers the graphics-device window so that it is below all
+other windows on the desktop.
+@end defop
+
+@defop operation os2-graphics-device hide-window
+This operation hides the graphics-device window.  The window disappears
+from the desktop, but still appears in the window list.
+@end defop
+
+@defop operation os2-graphics-device minimize-window
+This operation minimizes the graphics-device window.  The window
+disappears from the desktop, but still appears in the window list.
+Depending on how you have configured your desktop, the window may appear
+as an icon, either on the desktop or in the minimized window viewer.
+@end defop
+
+@defop operation os2-graphics-device maximize-window
+This operation maximizes the graphics-device window.  This causes the
+window to fill the entire desktop.
+@end defop
+
+@defop operation os2-graphics-device restore-window
+This operation restores the graphics-device window to its normal state.
+If the window is hidden or minimized, it is shown again, at its former
+position on the desktop.  If the window is maximized, it is returned to
+its normal size.
+@end defop
+
+@defop operation os2-graphics-device activate-window
+This operation makes the graphics-device window be the active window.
+This causes the window to be put in front of all other windows on the
+desktop, highlights its frame, and gives it the keyboard focus.
+@end defop
+
+@defop operation os2-graphics-device deactivate-window
+This operation deactivates the graphics-device window if it was active
+(otherwise it has no effect).  This causes some other window to be
+chosen to be active in its place.
+@end defop
+
+@defop operation os2-graphics-device set-window-title title
+This operation changes the text that appears in the graphics device
+window's title bar.  The new text is given by @var{title}, which must be
+a string.
+@end defop
+
+@node Event Operations for OS/2 Graphics, Miscellaneous Operations for OS/2 Graphics, Window Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Event Operations for OS/2 Graphics
+
+These operations allow you to read some of the events that are generated
+by the Presentation Manager and put in the message queue of a
+graphics-device window.
+
+@defop operation os2-graphics-device read-button
+This operation waits for the user to push a mouse button inside the
+client area of the graphics-device window.  It then returns four values
+(@pxref{Continuations}) which are: the button number; the x and y
+coordinates of the mouse pointer at the time the button was pressed, in
+pels (pixels) relative to the lower left hand corner of the client area;
+and the graphics device that the mouse pointer was over at the time the
+button was pressed.
+
+Note that this operation only works when button events are selected
+(which is the default).
+@end defop
+
+@defop operation os2-graphics-device select-user-events mask
+This operation sets the event-selection mask for the graphics device to
+@var{mask}.  The event-selection mask is an exact non-negative integer
+that specifies which types of incoming events are to be saved in the
+user-event queue for later retrieval by the @code{read-user-event}
+operation.  The mask is specified by setting the bits corresponding to
+the event types that you are interested in, as follows:
+
+@example
+@group
+Number  Mask    Description
+------  -----   -----------
+0       #x001   Button press/release
+1       #x002   Close (close the window) [WM_CLOSE]
+2       #x004   Focus change [WM_SETFOCUS]
+3       #x008   Key press/release [WM_CHAR]
+4       #x010   Paint [WM_PAINT]
+5       #x020   Size change [WM_SIZE]
+6       #x040   Visibility change [WM_SHOW]
+7       #x080   Command [WM_COMMAND]
+8       #x100   Help [WM_HELP]
+9       #x200   Mouse-move [WM_MOUSEMOVE]
+@end group
+@end example
+
+@noindent
+Note that this operation does not affect any events that are already in
+the user-event queue.  Changing the mask only affects what events will
+be added to the queue in the future.
+@end defop
+
+@defop operation os2-graphics-device read-user-event
+This operation returns the next user event available from the user-event
+queue.  If there are no events in the queue, the operation waits for an
+event to arrive before returning.
+@end defop
+
+An event is a vector whose first element is the event-type number, whose
+second element is the graphics device that the event refers to, and
+whose remaining elements provide information about the event.  Here is a
+table of the possible event types and their vector layout:
+
+@table @code
+@item #(0 @var{device} @var{number} @var{type} @var{x} @var{y} @var{flags})
+A button event.  @var{Number} is the button number, for example button
+number @code{0} is usually the left mouse button, @code{1} is usually
+the right button, etc.  @var{Type} specifies what occurred: @code{0}
+means the button was pressed, @code{1} means the button was released,
+@code{2} means the button was clicked, and @code{3} means the button was
+double clicked.  @var{X} and @var{y} are the position of the mouse
+pointer at the time of the event, in units of pels (pixels) measured
+from the lower left corner of the client area of the associated window.
+Finally, @var{flags} specifies what shift keys were pressed at the time
+of the button event; it is a mask word created by combining zero or more
+of the following flags: @code{#x08} means the shift key was pressed,
+@code{#x10} means the control key was pressed, and @code{#x20} means the
+alt key was pressed.
+
+@item #(1 @var{device})
+A close event.  The user has selected the close button from the system
+menu, or typed @key{Alt-f4}.
+
+@item #(2 @var{device} @var{gained?})
+A focus event.  If @var{gained?} is @code{#t}, the keyboard focus is
+being gained, and if @var{gained?} is @code{#f}, it is being lost.
+
+@item #(3 @var{device} @var{code} @var{flags} @var{repeat})
+A keyboard event.  This is much too complicated to describe here.  See
+the OS/2 toolkit documentation for details.
+
+@item #(4 @var{device} @var{xl} @var{xh} @var{yl} @var{yh})
+A paint event.  Part of the graphics-device window that was obscured has
+been revealed and the Presentation Manager is informing the window that
+it must repaint that area.  Scheme will take care of the painting for
+you, so this event isn't very useful.
+
+@item #(5 @var{device} @var{width} @var{height})
+A size-change event.  The size of the graphics-device window has
+changed, and @var{width} and @var{height} specify the new size in pels
+(pixels).
+
+@item #(6 @var{device} @var{shown?})
+A visibility event.  Indicates that the graphics-device window has been
+hidden or revealed.  If @var{shown?} is @code{#f}, the window is hidden,
+and if it is @code{#t}, the window is shown.
+
+@item #(7 @var{device} @var{source} @var{mouse?})
+@itemx #(8 @var{device} @var{source} @var{mouse?})
+A menu command.  @var{Source} specifies which menu item was selected to
+cause this event, and @var{mouse?} is a boolean indicating whether the
+item was selected with the mouse or the keyboard.  The event-type number
+@code{7} indicates a command from a @samp{WM_COMMAND} message, while
+@code{8} is a command from a @samp{WM_HELP} message.
+
+@item #(9 @var{device} @var{x} @var{y} @var{hit-test} @var{flags})
+The mouse was moved.  @var{X} and @var{y} specify the position of the
+mouse, @var{hit-test} contains the hit-test information, and @var{flags}
+specifies the modifier keys that were pressed at the time.
+@end table
+
+@defop operation os2-graphics-device discard-events
+This operation discards any events that are in the user-event queue.
+This is sometimes useful when you want to prompt the user for some input
+and don't want to consider any previous input.
+@end defop
+
+@node Miscellaneous Operations for OS/2 Graphics,  , Event Operations for OS/2 Graphics, OS/2 Graphics
+@subsection Miscellaneous Operations for OS/2 Graphics
+
+These operations allow you to: change the font used for drawing text in
+a graphics-device window; take a snapshot of a graphics-device window
+and return it as an image object; and draw multiple lines efficiently.
+
+@defop operation os2-graphics-device set-font font-name
+This operation sets the font used for drawing text in the
+graphics-device window.  @var{Font-name} is a string describing the
+font; this string is in the form "<point-size>.<family-name>", for
+example, @code{"10.Courier"}.  You may specify any fixed-pitch font
+family, in any point size that is supported for that font family.  This
+includes both image fonts and outline fonts.
+@end defop
+
+@defop operation os2-graphics-device capture-image x-left y-bottom x-right y-top
+This operation creates and returns an image that contains part of the
+client area of the graphics-device window.  The portion of the client
+area that is selected is specified by the four coordinate arguments,
+which are given in the current virtual coordinates for the device.
+@xref{Images}, for more information about manipulating images.
+@end defop
+
+@defop operation os2-graphics-device draw-lines xv yv
+This operation draws multiple disjoint lines; it is like multiple calls
+to @code{graphics-draw-line} but much faster.  The arguments @var{xv}
+and @var{yv} are vectors of coordinates; these vectors must be the same
+length, and the length must be a multiple of two.  The contents of the
+vectors are alternating start/end pairs.  For example, the following are
+equivalent:
+
+@example
+@group
+(graphics-draw-line device xs ys xe ye)
+(graphics-operation device 'draw-lines
+                    (vector xs xe)
+                    (vector ys ye))
+@end group
+@end example
+@end defop

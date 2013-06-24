@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: ntapi.h,v 1.12 2000/05/20 18:59:11 cph Exp $
+$Id: ntapi.h,v 1.16 2003/07/12 03:22:08 cph Exp $
 
-Copyright (c) 1997, 1999 Massachusetts Institute of Technology
+Copyright 1997,1999,2000,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* This flag, defined by "syscall.h", means to define the syscall
@@ -80,10 +84,13 @@ enum syscall_names
   apicall_connect,
   apicall_gethostbyname,
   apicall_gethostname,
+  apicall_getsockopt,
   apicall_ioctlsocket,
   apicall_listen,
   apicall_recv,
+  apicall_select,
   apicall_send,
+  apicall_setsockopt,
   apicall_socket,
 
   /* C Library's unix-style procedures: */
@@ -938,10 +945,13 @@ static char * syscall_names_table [] =
   "connect",
   "get-host-by-name",
   "get-host-name",
+  "get-socket-option",
   "ioctl-socket",
   "listen",
   "recv",
   "send",
+  "select",
+  "set-socket-option",
   "socket",
 
   /* C Library's unix-style procedures: */

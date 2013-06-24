@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: clscon.scm,v 1.8 2002/02/03 03:38:54 cph Exp $
-;;;
-;;; Copyright (c) 1986-1999, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: clscon.scm,v 1.14 2003/03/14 20:46:23 cph Exp $
+
+Copyright 1989,1990,1991,1993,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Class/Object System: Class Constructor
 
@@ -45,13 +49,16 @@
 				 (cons '()
 				       (and superclass
 					    (class-methods superclass))))))
-	       (named-structure/set-tag-description!
-		class
-		(make-define-structure-type 'VECTOR
-					    name
-					    (map car transforms)
-					    (map cdr transforms)
-					    (unparser/standard-method name)))
+	       (named-structure/set-tag-description! class
+		 (make-define-structure-type
+		  'VECTOR
+		  name
+		  (list->vector (map car transforms))
+		  (list->vector (map cdr transforms))
+		  (make-vector (length transforms) (lambda () #f))
+		  (standard-unparser-method name #f)
+		  class
+		  object-size))
 	       class))))
       (if (not entry)
 	  (let ((class (make-class)))

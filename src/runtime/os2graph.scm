@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: os2graph.scm,v 1.18 2001/03/21 05:39:53 cph Exp $
+$Id: os2graph.scm,v 1.23 2003/03/10 20:53:34 cph Exp $
 
-Copyright (c) 1995-2001 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; OS/2 PM Graphics Interface
@@ -57,6 +61,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (minimize-window ,os2-graphics/minimize-window)
 	   (move-cursor ,os2-graphics/move-cursor)
 	   (open ,os2-graphics/open)
+	   (open? ,os2-graphics/open-window?)
 	   (raise-window ,os2-graphics/raise-window)
 	   (read-button ,os2-graphics/read-button)
 	   (read-user-event ,os2-graphics/read-user-event)
@@ -116,7 +121,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(set! graphics-window-icon)
 	(remove-all-from-gc-finalizer! window-finalizer)
 	(remove-all-from-gc-finalizer! image-finalizer)
-	(deregister-input-thread-event event-previewer-registration)
+	(deregister-io-thread-event event-previewer-registration)
 	(set! event-previewer-registration #f)
 	(set! user-event-mask user-event-mask:default)
 	(flush-queue! user-event-queue)
@@ -128,7 +133,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define-structure (window
 		   (conc-name window/)
-		   (constructor %make-window (wid pel-width pel-height)))
+		   (constructor %make-window
+				(wid pel-width pel-height x-slope y-slope)))
   wid
   pel-width
   pel-height
@@ -140,8 +146,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (y-bottom -1)
   (x-right 1)
   (y-top 1)
-  (x-slope (exact->inexact (/ (- pel-width 1) 2)))
-  (y-slope (exact->inexact (/ (- pel-height 1) 2)))
+  x-slope
+  y-slope
   font-specifier
   font-metrics
   (foreground-color #xFFFFFF)
@@ -149,7 +155,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   device)
 
 (define (make-window wid width height)
-  (let ((window (%make-window wid width height)))
+  (let ((window
+	 (%make-window wid width height
+		       (exact->inexact (/ (- width 1) 2))
+		       (exact->inexact (/ (- height 1) 2)))))
     (set-window/backing-image! window (create-image width height))
     (add-to-gc-finalizer! window-finalizer window wid)
     window))
@@ -204,10 +213,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (begin
 	(set! event-descriptor (os2win-open-event-qid))
 	(set! event-previewer-registration
-	      (permanently-register-input-thread-event
+	      (permanently-register-io-thread-event
 	       event-descriptor
+	       'READ
 	       (current-thread)
-	       read-and-process-event))
+	       (lambda (mode)
+		 mode
+		 (read-and-process-event))))
 	(set! graphics-window-icon
 	      (os2win-load-pointer HWND_DESKTOP NULLHANDLE IDI_GRAPHICS))))
   (open-window descriptor->device
@@ -230,6 +242,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(os2-graphics/clear device)
 	(set-window/device! window device)
 	device))))
+
+(define (os2-graphics/open-window? device)
+  (if (os2-graphics-device/wid device) #t #f))
 
 (define (os2-graphics/close device)
   (let ((window (graphics-device/descriptor device)))
@@ -844,8 +859,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
      (let loop ()
        (if (queue-empty? user-event-queue)
 	   (begin
-	     (if (eq? 'INPUT-AVAILABLE
-		      (test-for-input-on-descriptor event-descriptor #t))
+	     (if (eq? 'READ
+		      (test-for-io-on-descriptor event-descriptor #t 'READ))
 		 (read-and-process-event))
 	     (loop))
 	   (dequeue! user-event-queue))))))

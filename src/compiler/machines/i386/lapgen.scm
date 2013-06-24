@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: lapgen.scm,v 1.31 2002/02/12 05:58:02 cph Exp $
+$Id: lapgen.scm,v 1.34 2003/02/14 18:28:03 cph Exp $
 
-Copyright (c) 1992-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1992,1993,1998,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; RTL Rules utilities for i386 and family.
@@ -567,30 +570,31 @@ USA.
 		    register-block/stack-guard-offset))
 
 
-(let-syntax ((define-codes
-	       (sc-macro-transformer
-		(lambda (form environment)
-		  environment
-		  `(BEGIN
-		     ,@(let loop ((names (cddr form)) (index (cadr form)))
-			 (if (pair? names)
-			     (cons `(DEFINE-INTEGRABLE
-				      ,(symbol-append 'CODE:COMPILER-
-						      (car names))
-				      ,index)
-				   (loop (cdr names) (+ index 1)))
-			     '())))))))
-  (define-codes #x012
-    primitive-apply primitive-lexpr-apply
-    apply error lexpr-apply link
-    interrupt-closure interrupt-dlink interrupt-procedure 
-    interrupt-continuation interrupt-ic-procedure
-    assignment-trap cache-reference-apply
-    reference-trap safe-reference-trap unassigned?-trap
-    -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
-    access lookup safe-lookup unassigned? unbound?
-    set! define lookup-apply primitive-error
-    quotient remainder modulo))
+(define-syntax define-codes
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(BEGIN
+	,@(let loop ((names (cddr form)) (index (cadr form)))
+	    (if (pair? names)
+		(cons `(DEFINE-INTEGRABLE
+			 ,(symbol-append 'CODE:COMPILER-
+					 (car names))
+			 ,index)
+		      (loop (cdr names) (+ index 1)))
+		'()))))))
+
+(define-codes #x012
+  primitive-apply primitive-lexpr-apply
+  apply error lexpr-apply link
+  interrupt-closure interrupt-dlink interrupt-procedure 
+  interrupt-continuation interrupt-ic-procedure
+  assignment-trap cache-reference-apply
+  reference-trap safe-reference-trap unassigned?-trap
+  -1+ &/ &= &> 1+ &< &- &* negative? &+ positive? zero?
+  access lookup safe-lookup unassigned? unbound?
+  set! define lookup-apply primitive-error
+  quotient remainder modulo)
 
 (define-integrable (invoke-hook entry)
   (LAP (JMP ,entry)))
@@ -606,73 +610,73 @@ USA.
   (LAP (MOV B (R ,eax) (& ,code))
        ,@(invoke-hook/call entry:compiler-scheme-to-interface/call)))
 
-(let-syntax
-    ((define-entries
-       (sc-macro-transformer
-	(lambda (form environment)
-	  environment
-	  `(BEGIN
-	     ,@(let loop
-		   ((names (cdddr form))
-		    (index (cadr form))
-		    (high (caddr form)))
-		 (if (pair? names)
-		     (if (< index high)
-			 (cons `(DEFINE-INTEGRABLE
-				  ,(symbol-append 'ENTRY:COMPILER-
-						  (car names))
-				  (byte-offset-reference regnum:regs-pointer
-							 ,index))
-			       (loop (cdr names) (+ index 4) high))
-			 (begin
-			   (warn "define-entries: Too many for byte offsets.")
-			   (loop names index (+ high 32000))))
-		     '())))))))
-  (define-entries #x40 #x80		; (* 16 4)
-    scheme-to-interface			; Main entry point (only one necessary)
-    scheme-to-interface/call		; Used by rules3&4, for convenience.
-    trampoline-to-interface		; Used by trampolines, for convenience.
-    interrupt-procedure
-    interrupt-continuation
-    interrupt-closure
-    interrupt-dlink
-    primitive-apply
-    primitive-lexpr-apply
-    assignment-trap
-    reference-trap
-    safe-reference-trap
-    link
-    error
-    primitive-error
-    short-primitive-apply)
+(define-syntax define-entries
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(BEGIN
+	,@(let loop
+	      ((names (cdddr form))
+	       (index (cadr form))
+	       (high (caddr form)))
+	    (if (pair? names)
+		(if (< index high)
+		    (cons `(DEFINE-INTEGRABLE
+			     ,(symbol-append 'ENTRY:COMPILER-
+					     (car names))
+			     (byte-offset-reference regnum:regs-pointer
+						    ,index))
+			  (loop (cdr names) (+ index 4) high))
+		    (begin
+		      (warn "define-entries: Too many for byte offsets.")
+		      (loop names index (+ high 32000))))
+		'()))))))
 
-  (define-entries #x-80 0
-    &+
-    &-
-    &*
-    &/
-    &=
-    &<
-    &>
-    1+
-    -1+
-    zero?
-    positive?
-    negative?
-    quotient
-    remainder
-    modulo
-    shortcircuit-apply			; Used by rules3, for speed.
-    shortcircuit-apply-size-1		; Small frames, save time and space.
-    shortcircuit-apply-size-2
-    shortcircuit-apply-size-3
-    shortcircuit-apply-size-4
-    shortcircuit-apply-size-5
-    shortcircuit-apply-size-6
-    shortcircuit-apply-size-7
-    shortcircuit-apply-size-8
-    interrupt-continuation-2
-    conditionally-serialize))
+(define-entries #x40 #x80		; (* 16 4)
+  scheme-to-interface			; Main entry point (only one necessary)
+  scheme-to-interface/call		; Used by rules3&4, for convenience.
+  trampoline-to-interface		; Used by trampolines, for convenience.
+  interrupt-procedure
+  interrupt-continuation
+  interrupt-closure
+  interrupt-dlink
+  primitive-apply
+  primitive-lexpr-apply
+  assignment-trap
+  reference-trap
+  safe-reference-trap
+  link
+  error
+  primitive-error
+  short-primitive-apply)
+
+(define-entries #x-80 0
+  &+
+  &-
+  &*
+  &/
+  &=
+  &<
+  &>
+  1+
+  -1+
+  zero?
+  positive?
+  negative?
+  quotient
+  remainder
+  modulo
+  shortcircuit-apply			; Used by rules3, for speed.
+  shortcircuit-apply-size-1		; Small frames, save time and space.
+  shortcircuit-apply-size-2
+  shortcircuit-apply-size-3
+  shortcircuit-apply-size-4
+  shortcircuit-apply-size-5
+  shortcircuit-apply-size-6
+  shortcircuit-apply-size-7
+  shortcircuit-apply-size-8
+  interrupt-continuation-2
+  conditionally-serialize)
 
 ;; Operation tables
 

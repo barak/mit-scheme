@@ -1,23 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: schmod.scm,v 1.59 2002/02/03 03:38:54 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: schmod.scm,v 1.67 2003/08/01 19:23:23 cph Exp $
+
+Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Scheme Mode
 
@@ -106,7 +111,7 @@ The following commands evaluate Scheme expressions:
 (set-char-syntax! scheme-mode:syntax-table #\] ")[")
 (set-char-syntax! scheme-mode:syntax-table #\{ "(}")
 (set-char-syntax! scheme-mode:syntax-table #\} "){")
-(set-char-syntax! scheme-mode:syntax-table #\| "  23")
+(set-char-syntax! scheme-mode:syntax-table #\| "\" 23")
 
 (set-char-syntax! scheme-mode:syntax-table #\; "< ")
 (set-char-syntax! scheme-mode:syntax-table #\newline "> ")
@@ -158,12 +163,16 @@ The following commands evaluate Scheme expressions:
 	    (1 CALL-WITH-INPUT-FILE WITH-INPUT-FROM-FILE
 	       CALL-WITH-OUTPUT-FILE WITH-OUTPUT-TO-FILE)
 
-	    ;; MIT Scheme keywords:
+	    ;; SRFI keywords:
+	    (2 RECEIVE)
+	    (3 DEFINE-RECORD-TYPE)
+
+	    ;; MIT/GNU Scheme keywords:
 	    (1 DEFINE-STRUCTURE FLUID-LET LET*-SYNTAX LOCAL-DECLARE
 	       NAMED-LAMBDA)
 
-	    ;; MIT Scheme procedures:
-	    (0 WITH-OUTPUT-TO-STRING)
+	    ;; MIT/GNU Scheme procedures:
+	    (0 CALL-WITH-OUTPUT-STRING WITH-OUTPUT-TO-STRING)
 	    (1 CALL-WITH-APPEND-FILE CALL-WITH-BINARY-APPEND-FILE
 	       CALL-WITH-BINARY-INPUT-FILE CALL-WITH-BINARY-OUTPUT-FILE
 	       WITH-INPUT-FROM-PORT WITH-INPUT-FROM-STRING WITH-OUTPUT-TO-PORT
@@ -172,7 +181,7 @@ The following commands evaluate Scheme expressions:
 	       DELETE-MATCHING-ITEMS! FIND-MATCHING-ITEM
 	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
 	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
-	       FOR-ALL? THERE-EXISTS?)
+	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?)
 	    (2 WITH-SIMPLE-RESTART BIND-CONDITION-HANDLER)
 	    (3 MAKE-CONDITION-TYPE)
 	    (4 WITH-RESTART)))

@@ -1,22 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: dosprm.scm,v 1.43 2000/01/05 02:40:31 cph Exp $
+$Id: dosprm.scm,v 1.46 2003/02/14 18:28:32 cph Exp $
 
-Copyright (c) 1992-2000 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,1998 Massachusetts Institute of Technology
+Copyright 1999,2000,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Miscellaneous DOS Primitives (emulation of unxprm version 1.16)
@@ -400,92 +405,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		 (close-port port)
 		 (set! port #f)
 		 unspecific))))))))
-
-(define (select-internal console? handles block?)
-  (let* ((nt/qs-allinput #xff)
-	 (select
-	  (if console?
-	      (lambda (period)
-		((ucode-primitive nt:msgwaitformultipleobjects 4)
-		 handles #f period nt/qs-allinput))
-	      (lambda (period)
-		((ucode-primitive nt:waitformultipleobjects 3)
-		 handles #f period)))))
-    (if (not block?)
-	(select 0)
-	(let loop ()
-	  (let ((res (select 20)))
-	    (if (zero? res)
-		(loop)
-		res))))))
 	       
 (define console-channel-descriptor)
 
 (define (cache-console-channel-descriptor!)
   (set! console-channel-descriptor -1)
   unspecific)
-
-(define (select-descriptor descriptor block?)
-  (define (select-result result)
-    (cond ((fix:> result 0)
-	   'INPUT-AVAILABLE)
-	  ((fix:< result 0)
-	   (error "Illegal result from select-internal" result))
-	  (else
-	   #f)))
-
-  (select-result
-   (if (= descriptor console-channel-descriptor)
-       (select-internal true '#() block?)
-       (select-internal false (vector descriptor) block?))))
-
-(define-structure (nt-select-registry
-		   (conc-name nt-select-registry/)
-		   (constructor nt-select-registry/make))
-  console
-  descriptors)
-
-(define-integrable (find-descriptor df dl)
-  (list-search-positive dl
-    (lambda (d)
-      (= d df))))
-
-(define (make-select-registry . descriptors)
-  (cond ((find-descriptor console-channel-descriptor descriptors)
-	 => (lambda (ccd)
-	      (nt-select-registry/make console-channel-descriptor
-				       (delq! ccd descriptors))))
-	(else
-	 (nt-select-registry/make false descriptors))))
-
-(define (add-to-select-registry! registry descriptor)
-  (cond ((= descriptor console-channel-descriptor)
-	 (set-nt-select-registry/console! registry console-channel-descriptor))
-	((not (find-descriptor descriptor
-			       (nt-select-registry/descriptors registry)))
-	 (set-nt-select-registry/descriptors!
-	  registry
-	  (cons descriptor (nt-select-registry/descriptors registry))))))
-
-(define (remove-from-select-registry! registry descriptor)
-  (cond ((= descriptor console-channel-descriptor)
-	 (set-nt-select-registry/console! registry false))
-	((find-descriptor descriptor (nt-select-registry/descriptors registry))
-	 => (lambda (dr)
-	      (set-nt-select-registry/descriptors!
-	       registry
-	       (delq! dr (nt-select-registry/descriptors registry)))))))
-
-(define (select-registry-test registry block?)
-  (let* ((handles (list->vector (nt-select-registry/descriptors registry)))
-	 (result (select-internal (nt-select-registry/console registry)
-				  handles
-				  block?)))
-    (cond ((fix:< result 0)
-	   (error "Illegal result from select-internal" result))
-	  ((fix:= result 0)
-	   #f)
-	  ((fix:> result (vector-length handles))
-	   (list (nt-select-registry/console registry)))
-	  (else
-	   (list (vector-ref handles (fix:- result 1)))))))

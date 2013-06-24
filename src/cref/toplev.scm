@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: toplev.scm,v 1.18 2002/03/15 01:42:41 cph Exp $
+$Id: toplev.scm,v 1.21 2003/09/05 20:51:44 cph Exp $
 
-Copyright (c) 1988-2002 Massachusetts Institute of Technology
+Copyright 1988,1989,1991,1993,1995,1996 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Package Model: Top Level
@@ -73,18 +77,16 @@ USA.
 (define (write-external-descriptions pathname pmodel changes? os-type)
   (let ((package-set (package-set-pathname pathname os-type)))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  package-set)))
+	    (file-modification-time<? package-set
+				      (pathname-default-type pathname "pkg")))
 	(fasdump (construct-external-descriptions pmodel) package-set))))
 
 (define (write-cref pathname pmodel changes? os-type)
   (let ((cref-pathname
 	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  cref-pathname)))
+	    (file-modification-time<? cref-pathname
+				      (pathname-default-type pathname "pkg")))
 	(with-output-to-file cref-pathname
 	  (lambda ()
 	    (format-packages pmodel))))))
@@ -93,9 +95,8 @@ USA.
   (let ((cref-pathname
 	 (pathname-new-type (package-set-pathname pathname os-type) "crf")))
     (if (or changes?
-	    (not (file-modification-time<?
-		  (pathname-default-type pathname "pkg")
-		  cref-pathname)))
+	    (file-modification-time<? cref-pathname
+				      (pathname-default-type pathname "pkg")))
 	(with-output-to-file cref-pathname
 	  (lambda ()
 	    (format-packages-unusual pmodel))))))

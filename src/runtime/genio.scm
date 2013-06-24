@@ -1,22 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.15 1999/02/24 21:36:33 cph Exp $
+$Id: genio.scm,v 1.19 2003/03/21 17:50:58 cph Exp $
 
-Copyright (c) 1991-1999 Massachusetts Institute of Technology
+Copyright 1991,1993,1995,1996,1999,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Generic I/O Ports
@@ -53,6 +58,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (OUTPUT-BLOCKING-MODE ,operation/output-blocking-mode)
 	   (OUTPUT-BUFFER-SIZE ,operation/output-buffer-size)
 	   (OUTPUT-CHANNEL ,operation/output-channel)
+	   (OUTPUT-COLUMN ,operation/output-column)
 	   (OUTPUT-OPEN? ,operation/output-open?)
 	   (OUTPUT-TERMINAL-MODE ,operation/output-terminal-mode)
 	   (SET-OUTPUT-BLOCKING-MODE ,operation/set-output-blocking-mode)
@@ -212,11 +218,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (else 'RAW))))
 
 (define (operation/set-input-terminal-mode port mode)
-  (case mode
-    ((COOKED) (terminal-cooked-input (operation/input-channel port)))
-    ((RAW) (terminal-raw-input (operation/input-channel port)))
-    ((#F) unspecific)
-    (else (error:wrong-type-datum mode "terminal mode"))))
+  (let ((channel (operation/input-channel port)))
+    (if (channel-type=terminal? channel)
+	(case mode
+	  ((COOKED) (terminal-cooked-input channel))
+	  ((RAW) (terminal-raw-input channel))
+	  ((#F) unspecific)
+	  (else (error:wrong-type-datum mode "terminal mode")))
+	unspecific)))
 
 (define (operation/flush-output port)
   (output-buffer/drain-block (port/output-buffer port)))
@@ -229,8 +238,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 				       string start end))
 
 (define (operation/fresh-line port)
-  (if (not (output-buffer/line-start? (port/output-buffer port)))
+  (if (not (fix:= 0 (output-buffer/column (port/output-buffer port))))
       (operation/write-char port #\newline)))
+
+(define (operation/output-column port)
+  (output-buffer/column (port/output-buffer port)))
 
 (define (operation/output-buffer-size port)
   (output-buffer/size (port/output-buffer port)))
@@ -262,11 +274,14 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (else 'RAW))))
 
 (define (operation/set-output-terminal-mode port mode)
-  (case mode
-    ((COOKED) (terminal-cooked-output (operation/output-channel port)))
-    ((RAW) (terminal-raw-output (operation/output-channel port)))
-    ((#F) unspecific)
-    (else (error:wrong-type-datum mode "terminal mode"))))
+  (let ((channel (operation/output-channel port)))
+    (if (channel-type=terminal? channel)
+	(case mode
+	  ((COOKED) (terminal-cooked-output (operation/output-channel port)))
+	  ((RAW) (terminal-raw-output (operation/output-channel port)))
+	  ((#F) unspecific)
+	  (else (error:wrong-type-datum mode "terminal mode")))
+	unspecific)))
 
 (define (operation/close port)
   (operation/close-input port)

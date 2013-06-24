@@ -1,25 +1,31 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: win32.scm,v 1.15 2000/12/25 05:25:31 cph Exp $
-;;;
-;;; Copyright (c) 1994-2000 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
 
-;;;;Win32 Terminal
-;;; package (edwin screen win32)
+$Id: win32.scm,v 1.18 2003/02/14 18:28:14 cph Exp $
+
+Copyright 1994,1995,1996,1997,1999,2000 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; Win32 Terminal
+;;; package: (edwin screen win32)
 
 (declare (usual-integrations))
 
@@ -328,7 +334,7 @@
     (dynamic-wind
      (lambda () (preview-event-stream))
      (lambda () (receiver (lambda (thunk) (thunk)) '()))
-     (lambda () (deregister-input-thread-event previewer-registration)))))
+     (lambda () (deregister-io-thread-event previewer-registration)))))
 
 (define (with-win32-interrupts-enabled thunk)
   (with-signal-interrupts #t thunk))
@@ -447,10 +453,10 @@
 		 event:process-status)
 		(else
 		 (let ((flag
-			(test-for-input-on-descriptor
+			(test-for-io-on-descriptor
 			 ;; console-channel-descriptor here
 			 ;; means "input from message queue".
-			 console-channel-descriptor block?)))
+			 console-channel-descriptor block? 'READ)))
 		   (set-interrupt-enables! mask)
 		   (case flag
 		     ((#F) #f)
@@ -472,10 +478,12 @@
 
 (define (preview-event-stream)
   (set! previewer-registration
-	(permanently-register-input-thread-event
+	(permanently-register-io-thread-event
 	 console-channel-descriptor
+	 'READ
 	 (current-thread)
-	 (lambda ()
+	 (lambda (mode)
+	   mode
 	   (if (not reading-event?)
 	       (let ((event (read-event-2)))
 		 (if event

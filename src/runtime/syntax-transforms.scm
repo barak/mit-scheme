@@ -1,25 +1,29 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: syntax-transforms.scm,v 14.1 2002/02/03 03:38:57 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
 
-;;;; MIT Scheme syntax
+$Id: syntax-transforms.scm,v 14.7 2003/04/17 02:52:20 cph Exp $
+
+Copyright 1989-1991, 2001, 2002 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; MIT/GNU Scheme syntax
 
 ;;; Procedures to convert transformers to internal form.  Required
 ;;; during cold load, so must be loaded very early in the sequence.
@@ -38,20 +42,20 @@
     (lambda arguments
       (apply constructor #f arguments))))
 
-(define item-rtd)
+(define <item>)
 (define make-item)
-(define expander-item-rtd)
+(define <expander-item>)
 (define make-expander-item)
 
 (define (initialize-syntax-transforms!)
-  (set! item-rtd
+  (set! <item>
 	(make-record-type "item" '(HISTORY RECORD)))
   (set! make-item
-	(record-constructor item-rtd '(HISTORY RECORD)))
-  (set! expander-item-rtd
+	(record-constructor <item> '(HISTORY RECORD)))
+  (set! <expander-item>
 	(make-record-type "expander-item" '(EXPANDER ENVIRONMENT)))
   (set! make-expander-item
-	(keyword-constructor expander-item-rtd '(EXPANDER ENVIRONMENT)))
+	(keyword-constructor <expander-item> '(EXPANDER ENVIRONMENT)))
   unspecific)
 
 (define (sc-macro-transformer->expander transformer closing-environment)
@@ -93,3 +97,9 @@
 			(make-syntactic-closure environment '()
 			  (apply transformer (cdr form))))
 		      closing-environment))
+
+(define (syntactic-keyword->item keyword environment)
+  (let ((item (environment-lookup-macro environment keyword)))
+    (if (not item)
+	(error:bad-range-argument keyword 'SYNTACTIC-KEYWORD->ITEM))
+    item))

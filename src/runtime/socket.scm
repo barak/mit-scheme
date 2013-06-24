@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: socket.scm,v 1.17 2001/06/05 02:46:59 cph Exp $
+$Id: socket.scm,v 1.24 2003/07/09 22:28:18 cph Exp $
 
-Copyright (c) 1990-2001 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 |#
 
 ;;;; Socket Support
@@ -61,19 +65,30 @@ USA.
 	 ((ucode-primitive new-open-unix-stream-socket 2) filename p))))))
 
 (define (open-tcp-server-socket service #!optional host)
+  (let ((server-socket (create-tcp-server-socket)))
+    (bind-tcp-server-socket server-socket
+			    service
+			    (if (or (default-object? host) (not host))
+				((ucode-primitive host-address-any 0))
+				host))
+    (listen-tcp-server-socket server-socket)
+    server-socket))
+
+(define (create-tcp-server-socket)
   (open-channel
    (lambda (p)
-     (with-thread-timer-stopped
-       (lambda ()
-	 (let ((channel ((ucode-primitive create-tcp-server-socket 0))))
-	   (system-pair-set-cdr! p channel)
-	   ((ucode-primitive bind-tcp-server-socket 3)
-	    channel
-	    (if (or (default-object? host) (not host))
-		((ucode-primitive host-address-any 0))
-		host)
-	    (tcp-service->port service))
-	   ((ucode-primitive listen-tcp-server-socket 1) channel)))))))
+     (system-pair-set-cdr! p ((ucode-primitive create-tcp-server-socket 0)))
+     #t)))
+
+(define (bind-tcp-server-socket server-socket service host)
+  ((ucode-primitive bind-tcp-server-socket 3)
+   (channel-descriptor server-socket)
+   host
+   (tcp-service->port service)))
+
+(define (listen-tcp-server-socket server-socket)
+  ((ucode-primitive listen-tcp-server-socket 1)
+   (channel-descriptor server-socket)))
 
 (define (tcp-service->port service)
   (if (exact-nonnegative-integer? service)
@@ -83,15 +98,17 @@ USA.
 (define (close-tcp-server-socket server-socket)
   (channel-close server-socket))
 
-(define (tcp-server-connection-accept server-socket block? peer-address)
+(define (tcp-server-connection-accept server-socket block? peer-address
+				      #!optional line-translation)
   (let ((channel
 	 (with-thread-events-blocked
 	   (lambda ()
 	     (let ((do-test
 		    (lambda (k)
-		      (let ((result (test-for-input-on-channel server-socket)))
+		      (let ((result
+			     (test-for-io-on-channel server-socket 'READ)))
 			(case result
-			  ((INPUT-AVAILABLE)
+			  ((READ)
 			   (open-channel
 			    (lambda (p)
 			      (with-thread-timer-stopped
@@ -111,7 +128,13 @@ USA.
 		   (let loop () (do-test loop))
 		   (do-test (lambda () #f))))))))
     (and channel
-	 (make-generic-i/o-port channel channel 4096 4096))))
+	 (let ((line-translation
+		(if (or (default-object? line-translation)
+			(not line-translation))
+		    'DEFAULT
+		    line-translation)))
+	   (make-generic-i/o-port channel channel 4096 4096
+				  line-translation line-translation)))))
 
 (define (get-host-by-name host-name)
   (with-thread-timer-stopped

@@ -1,43 +1,27 @@
-### -*- Fundamental -*-
-###
-###	$Id: scheme16.mak,v 1.4 1996/03/23 19:24:14 adams Exp $
-###
-###	Copyright (c) 1996 Massachusetts Institute of Technology
-###
-###	This material as developed by the Scheme project at the
-###	Massachusetts Institute of Technology, Department of
-###	Electrical Engineering and Computer Science.  Permission to
-###	copy this software, to redistribute it, and to use it for any
-###	purpose is granted, subject to the following restrictions and
-###	understandings.
-###
-###	1. Any copy made of this software must include this copyright
-###	notice in full.
-###
-###	2. Users of this software agree to make their best efforts (a)
-###	to return to the MIT Scheme project any improvements or
-###	extensions that they make, so that these may be included in
-###	future releases; and (b) to inform MIT of noteworthy uses of
-###	this software.
-###
-###	3. All materials developed as a consequence of the use of this
-###	software shall duly acknowledge such use, in accordance with
-###	the usual standards of acknowledging credit in academic
-###	research.
-###
-###	4. MIT has made no warrantee or representation that the
-###	operation of this software will be error-free, and MIT is
-###	under no obligation to provide any services, by way of
-###	maintenance, update, or otherwise.
-###
-###	5. In conjunction with products arising from the use of this
-###	material, there shall be no use of the name of the
-###	Massachusetts Institute of Technology nor of any adaptation
-###	thereof in any advertising, promotional, or sales literature
-###	without prior written consent from MIT in each case.
-###
+# -*- Fundamental -*-
+#
+# $Id: scheme16.mak,v 1.5 2003/02/14 18:48:12 cph Exp $
+#
+# Copyright 1996 Massachusetts Institute of Technology
+#
+# This file is part of MIT/GNU Scheme.
+#
+# MIT/GNU Scheme is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# MIT/GNU Scheme is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MIT/GNU Scheme; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+# 02111-1307, USA.
 
-####	Makefile for the 16-bit component of the MIT Scheme Win32 support
+# Makefile for the 16-bit component of the MIT/GNU Scheme Win32 support
 
 all: scheme16.dll
 

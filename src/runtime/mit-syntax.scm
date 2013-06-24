@@ -1,25 +1,29 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: mit-syntax.scm,v 14.5 2002/03/01 03:09:54 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
 
-;;;; MIT Scheme Syntax
+$Id: mit-syntax.scm,v 14.19 2003/04/17 02:52:08 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
+
+;;;; MIT/GNU Scheme Syntax
 
 (declare (usual-integrations))
 
@@ -33,19 +37,19 @@
   (lambda (form environment definition-environment history)
     definition-environment		;ignore
     (syntax-check '(KEYWORD EXPRESSION) form history)
-    (expression->transformer-item (classify/subexpression (cadr form)
-							  environment
-							  history
-							  select-cadr)
-				  environment
-				  history
-				  transformer->expander-name
-				  transformer->expander)))
+    (expression->keyword-value-item (classify/subexpression (cadr form)
+							    environment
+							    history
+							    select-cadr)
+				    environment
+				    history
+				    transformer->expander-name
+				    transformer->expander)))
 
-(define (expression->transformer-item item environment history
-				      transformer->expander-name
-				      transformer->expander)
-  (make-transformer-item
+(define (expression->keyword-value-item item environment history
+					transformer->expander-name
+					transformer->expander)
+  (make-keyword-value-item
    (transformer->expander
     (transformer-eval (compile-item/expression item)
 		      (syntactic-environment->environment environment))
@@ -240,9 +244,10 @@
 
 (define (classify/define form environment definition-environment history
 			 binding-theory)
-  (syntactic-environment/define definition-environment
-				(cadr form)
-				(make-reserved-name-item history))
+  (if (not (syntactic-environment/top-level? definition-environment))
+      (syntactic-environment/define definition-environment
+				    (cadr form)
+				    (make-reserved-name-item history)))
   (binding-theory definition-environment
 		  (cadr form)
 		  (classify/subexpression (caddr form)
@@ -252,27 +257,16 @@
 		  history))
 
 (define (syntactic-binding-theory environment name item history)
-  (let ((item
-	 (if (expression-item? item)
-	     ;; Kludge to support old syntax -- treat procedure
-	     ;; argument as non-hygienic transformer.
-	     (expression->transformer-item
-	      item environment history
-	      'NON-HYGIENIC-MACRO-TRANSFORMER->EXPANDER
-	      non-hygienic-macro-transformer->expander)
-	     item)))
-    (if (not (keyword-item? item))
-	(let ((history (item/history item)))
-	  (syntax-error history
-			"Syntactic binding value must be a keyword:"
-			(history/original-form history))))
-    (overloaded-binding-theory environment name item history)))
+  (if (not (keyword-item? item))
+      (let ((history (item/history item)))
+	(syntax-error history "Syntactic binding value must be a keyword:"
+		      (history/original-form history))))
+  (overloaded-binding-theory environment name item history))
 
 (define (variable-binding-theory environment name item history)
   (if (keyword-item? item)
       (let ((history (item/history item)))
-	(syntax-error history
-		      "Binding value may not be a keyword:"
+	(syntax-error history "Binding value may not be a keyword:"
 		      (history/original-form history))))
   (overloaded-binding-theory environment name item history))
 
@@ -283,11 +277,111 @@
 				      name
 				      (item/new-history item #f))
 	;; User-defined macros at top level are preserved in the output.
-	(if (and (transformer-item? item)
+	(if (and (keyword-value-item? item)
 		 (syntactic-environment/top-level? environment))
 	    (make-binding-item history name item)
 	    (make-null-binding-item history)))
       (make-binding-item history (bind-variable! environment name) item)))
+
+;;;; SRFI features
+
+(define-er-macro-transformer 'COND-EXPAND system-global-environment
+  (lambda (form rename compare)
+    (let ((if-error (lambda () (ill-formed-syntax form))))
+      (if (syntax-match? '(+ (DATUM * FORM)) (cdr form))
+	  (let loop ((clauses (cdr form)))
+	    (let ((req (caar clauses))
+		  (if-true (lambda () `(,(rename 'BEGIN) ,@(cdar clauses)))))
+	      (if (and (identifier? req)
+		       (compare (rename 'ELSE) req))
+		  (if (null? (cdr clauses))
+		      (if-true)
+		      (if-error))
+		  (let req-loop
+		      ((req req)
+		       (if-true if-true)
+		       (if-false
+			(lambda ()
+			  (if (null? (cdr clauses))
+			      (if-error)
+			      (loop (cdr clauses))))))
+		    (cond ((identifier? req)
+			   (if (there-exists? supported-srfi-features
+				 (lambda (feature)
+				   (compare (rename feature) req)))
+			       (if-true)
+			       (if-false)))
+			  ((and (syntax-match? '(IDENTIFIER DATUM) req)
+				(compare (rename 'NOT) (car req)))
+			   (req-loop (cadr req)
+				     if-false
+				     if-true))
+			  ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+				(compare (rename 'AND) (car req)))
+			   (let and-loop ((reqs (cdr req)))
+			     (if (pair? reqs)
+				 (req-loop (car reqs)
+					   (lambda () (and-loop (cdr reqs)))
+					   if-false)
+				 (if-true))))
+			  ((and (syntax-match? '(IDENTIFIER * DATUM) req)
+				(compare (rename 'OR) (car req)))
+			   (let or-loop ((reqs (cdr req)))
+			     (if (pair? reqs)
+				 (req-loop (car reqs)
+					   if-true
+					   (lambda () (or-loop (cdr reqs))))
+				 (if-false))))
+			  (else
+			   (if-error)))))))
+	  (if-error)))))
+
+(define supported-srfi-features
+  '(SRFI-0
+    SRFI-6
+    SRFI-8
+    SRFI-9
+    SRFI-23
+    SRFI-30))
+
+(define-er-macro-transformer 'RECEIVE system-global-environment
+  (lambda (form rename compare)
+    compare				;ignore
+    (if (syntax-match? '(R4RS-BVL FORM + FORM) (cdr form))
+	`(,(rename 'CALL-WITH-VALUES)
+	  (,(rename 'LAMBDA) () ,(caddr form))
+	  (,(rename 'LAMBDA) ,(cadr form) ,@(cdddr form)))
+	(ill-formed-syntax form))))
+
+(define-er-macro-transformer 'DEFINE-RECORD-TYPE system-global-environment
+  (lambda (form rename compare)
+    compare				;ignore
+    (if (syntax-match? '(IDENTIFIER
+			 (IDENTIFIER * IDENTIFIER)
+			 IDENTIFIER
+			 * (IDENTIFIER IDENTIFIER ? IDENTIFIER))
+		       (cdr form))
+	(let ((type (cadr form))
+	      (constructor (car (caddr form)))
+	      (c-tags (cdr (caddr form)))
+	      (predicate (cadddr form))
+	      (fields (cddddr form))
+	      (de (rename 'DEFINE)))
+	  `(,(rename 'BEGIN)
+	    (,de ,type (,(rename 'MAKE-RECORD-TYPE) ',type ',(map car fields)))
+	    (,de ,constructor (,(rename 'RECORD-CONSTRUCTOR) ,type ',c-tags))
+	    (,de ,predicate (,(rename 'RECORD-PREDICATE) ,type))
+	    ,@(append-map
+	       (lambda (field)
+		 (let ((name (car field)))
+		   (cons `(,de ,(cadr field)
+			       (,(rename 'RECORD-ACCESSOR) ,type ',name))
+			 (if (pair? (cddr field))
+			     `((,de ,(caddr field)
+				    (,(rename 'RECORD-MODIFIER) ,type ',name)))
+			     '()))))
+	       fields)))
+	(ill-formed-syntax form))))
 
 ;;;; LET-like
 
@@ -296,11 +390,13 @@
 	 (classifier->keyword
 	  (lambda (form environment definition-environment history)
 	    definition-environment
-	    (let ((body-environment
-		   (make-internal-syntactic-environment environment)))
+	    (let* ((binding-environment
+		    (make-internal-syntactic-environment environment))
+		   (body-environment
+		    (make-internal-syntactic-environment binding-environment)))
 	      (classify/let-like form
 				 environment
-				 body-environment
+				 binding-environment
 				 body-environment
 				 history
 				 variable-binding-theory
@@ -334,16 +430,19 @@
   (lambda (form environment definition-environment history)
     definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER ? EXPRESSION)) + FORM) form history)
-    (let ((body-environment (make-internal-syntactic-environment environment)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
       (for-each (let ((item (make-reserved-name-item history)))
 		  (lambda (binding)
-		    (syntactic-environment/define body-environment
+		    (syntactic-environment/define binding-environment
 						  (car binding)
 						  item)))
 		(cadr form))
       (classify/let-like form
-			 body-environment
-			 body-environment
+			 binding-environment
+			 binding-environment
 			 body-environment
 			 history
 			 variable-binding-theory
@@ -361,13 +460,17 @@
   (lambda (form environment definition-environment history)
     definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
-    (classify/let-like form
-		       environment
-		       definition-environment
-		       (make-internal-syntactic-environment environment)
-		       history
-		       syntactic-binding-theory
-		       output/let)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
+      (classify/let-like form
+			 environment
+			 binding-environment
+			 body-environment
+			 history
+			 syntactic-binding-theory
+			 output/let))))
 
 (define-er-macro-transformer 'LET*-SYNTAX system-global-environment
   (lambda (form rename compare)
@@ -378,36 +481,44 @@
   (lambda (form environment definition-environment history)
     definition-environment
     (syntax-check '(KEYWORD (* (IDENTIFIER EXPRESSION)) + FORM) form history)
-    (let ((body-environment (make-internal-syntactic-environment environment)))
+    (let* ((binding-environment
+	    (make-internal-syntactic-environment environment))
+	   (body-environment
+	    (make-internal-syntactic-environment binding-environment)))
       (for-each (let ((item (make-reserved-name-item history)))
 		  (lambda (binding)
-		    (syntactic-environment/define body-environment
+		    (syntactic-environment/define binding-environment
 						  (car binding)
 						  item)))
 		(cadr form))
       (classify/let-like form
-			 body-environment
-			 definition-environment
+			 binding-environment
+			 binding-environment
 			 body-environment
 			 history
 			 syntactic-binding-theory
 			 output/letrec))))
 
-(define (classify/let-like form environment definition-environment
-			   body-environment history binding-theory output/let)
+(define (classify/let-like form
+			   value-environment
+			   binding-environment
+			   body-environment
+			   history
+			   binding-theory
+			   output/let)
   ;; Classify right-hand sides first, in order to catch references to
   ;; reserved names.  Then bind names prior to classifying body.
   (let* ((bindings
 	  (delete-matching-items!
 	      (map (lambda (binding item)
-		     (binding-theory body-environment
+		     (binding-theory binding-environment
 				     (car binding)
 				     item
 				     history))
 		   (cadr form)
 		   (select-map (lambda (binding selector)
 				 (classify/subexpression (cadr binding)
-							 environment
+							 value-environment
 							 history
 							 (selector/add-cadr
 							  selector)))
@@ -417,7 +528,7 @@
 	 (body
 	  (classify/body (cddr form)
 			 body-environment
-			 definition-environment
+			 body-environment
 			 history
 			 select-cddr)))
     (if (eq? binding-theory syntactic-binding-theory)
@@ -474,25 +585,22 @@
 		     (car operands))))
 	     `#T))))))
 
-(define-er-macro-transformer 'OR system-global-environment
-  (lambda (form rename compare)
-    compare				;ignore
-    (capture-expansion-history
-     (lambda (history)
-       (syntax-check '(KEYWORD * EXPRESSION) form history)
-       (let ((operands (cdr form)))
-	 (if (pair? operands)
-	     (let ((let-keyword (rename 'LET))
-		   (if-keyword (rename 'IF))
-		   (temp (rename 'TEMP)))
-	       (let loop ((operands operands))
-		 (if (pair? (cdr operands))
-		     `(,let-keyword ((,temp ,(car operands)))
-				    (,if-keyword ,temp
-						 ,temp
-						 ,(loop (cdr operands))))
-		     (car operands))))
-	     `#F))))))
+(define-compiler 'OR system-global-environment
+  (lambda (form environment history)
+    (syntax-check '(KEYWORD * EXPRESSION) form history)
+    (if (pair? (cdr form))
+	(let loop ((expressions (cdr form)) (selector select-cdr))
+	  (let ((compiled
+		 (compile/subexpression (car expressions)
+					environment
+					history
+					(selector/add-car selector))))
+	    (if (pair? (cdr expressions))
+		(output/disjunction compiled
+				    (loop (cdr expressions)
+					  (selector/add-cdr selector)))
+		compiled)))
+	`#F)))
 
 (define-er-macro-transformer 'CASE system-global-environment
   (lambda (form rename compare)
@@ -726,7 +834,7 @@
 	    (else
 	     (ill-formed-syntax form))))))
 
-(define access-item-rtd
+(define <access-item>
   (make-item-type "access-item" '(NAME ENVIRONMENT)
     (lambda (item)
       (output/access-reference
@@ -734,16 +842,16 @@
        (compile-item/expression (access-item/environment item))))))
 
 (define make-access-item
-  (item-constructor access-item-rtd '(NAME ENVIRONMENT)))
+  (item-constructor <access-item> '(NAME ENVIRONMENT)))
 
 (define access-item?
-  (item-predicate access-item-rtd))
+  (item-predicate <access-item>))
 
 (define access-item/name
-  (item-accessor access-item-rtd 'NAME))
+  (item-accessor <access-item> 'NAME))
 
 (define access-item/environment
-  (item-accessor access-item-rtd 'ENVIRONMENT))
+  (item-accessor <access-item> 'ENVIRONMENT))
 
 (define-er-macro-transformer 'CONS-STREAM system-global-environment
   (lambda (form rename compare)

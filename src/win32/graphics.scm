@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: graphics.scm,v 1.16 1999/01/02 06:19:10 cph Exp $
+$Id: graphics.scm,v 1.20 2003/02/14 18:28:35 cph Exp $
 
-Copyright (c) 1993-1999 Massachusetts Institute of Technology
+Copyright (c) 1993-1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -467,12 +471,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (- (win32-device/y-bottom window) (win32-device/y-top window)))))
     
 (define (win32-translate-drawing-mode mode)
-  ;; I am not sure what values should be used here...
-  (cond
-    ((= mode 0 #|drawing-mode:erase|#)         R2_XORPEN)
-    ((= mode 1 #|drawing-mode:non-dominant|#)  R2_COPYPEN)
-    ((= mode 2 #|drawing-mode:compliment|#)    R2_XORPEN)
-    ((= mode 3 #|drawing-mode:dominant|#)      R2_COPYPEN)))
+  (case mode				;X11 function names:
+    (( 0) R2_BLACK)			;GXclear
+    (( 1) R2_MASKPEN)			;GXand
+    (( 2) R2_MASKPENNOT)		;GXandReverse
+    (( 3) R2_COPYPEN)			;GXcopy
+    (( 4) R2_MASKNOTPEN)		;GXandInverted
+    (( 5) R2_NOP)			;GXnoop
+    (( 6) R2_XORPEN)			;GXxor
+    (( 7) R2_MERGEPEN)			;GXor
+    (( 8) R2_NOTMERGEPEN)		;GXnor
+    (( 9) R2_NOTXORPEN)			;GXequiv
+    ((10) R2_NOT)			;GXinvert
+    ((11) R2_MERGEPENNOT)		;GXorReverse
+    ((12) R2_NOTCOPYPEN)		;GXcopyInverted
+    ((13) R2_MERGENOTPEN)		;GXorInverted
+    ((14) R2_NOTMASKPEN)		;GXnand
+    ((15) R2_WHITE)			;GXset
+    (else (error:bad-range-argument mode 'WIN32-TRANSLATE-DRAWING-MODE))))
 
 (define (win32-graphics/set-drawing-mode device mode)
   (let* ((window (graphics-device/descriptor device))
@@ -491,8 +507,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (set-win32-device/line-width! window width)
     (set-win32-device/pen-valid?! window #f)
     unspecific))
-
-
 
 (define-integrable (win32-device/invalidate! window)
   (set-win32-device/invalid?!  window #t))
@@ -679,13 +693,15 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     (win32-device/invalidate! window)
     unspecific))
 
+(define (win32-graphics/open? device)
+  (if (win32-device/hwnd (graphics-device/descriptor device)) #t #f))
+
+(define (win32-graphics/close device)
+  (close-descriptor (graphics-device/descriptor device)))
 
 (define (close-descriptor descriptor)
   (if (and descriptor (win32-device/hwnd descriptor))
       (destroy-window (win32-device/hwnd descriptor))))
-
-(define (win32-graphics/close device)
-  (close-descriptor (graphics-device/descriptor device)))
 
 (define (win32-graphics/set-clip-rectangle device
            x-left y-bottom x-right y-top)
@@ -949,7 +965,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(make-graphics-device-type
 	 'WIN32
 	 `((available? ,win32-graphics/available?)
-	   (open  ,win32-graphics/open)
+	   (open ,win32-graphics/open)
+	   (open? ,win32-graphics/open?)
 	   (clear ,win32-graphics/clear)
 	   (close ,win32-graphics/close)
 	   (coordinate-limits ,win32-graphics/coordinate-limits)
@@ -964,8 +981,8 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (draw-point ,win32-graphics/draw-point)
 	   (draw-text ,win32-graphics/draw-text)
 	   (draw-ellipse ,win32-graphics/draw-ellipse)
-	   (fill-polygon   ,win32-graphics/fill-polygon)
-	   (find-color   ,win32-graphics/find-color)
+	   (fill-polygon ,win32-graphics/fill-polygon)
+	   (find-color ,win32-graphics/find-color)
 	   (flush ,win32-graphics/flush)
 	   (image-depth ,win32-graphics/image-depth)
 	   (load-bitmap ,win32-graphics/load-bitmap)
@@ -982,8 +999,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (set-line-width ,win32-graphics/set-line-width)
 	   (set-foreground-color ,win32-graphics/set-foreground-color)
 	   (set-background-color ,win32-graphics/set-background-color)
-	   (set-window-name ,win32-graphics/set-window-name)
-          )))
+	   (set-window-name ,win32-graphics/set-window-name))))
 
   (set! dib-image-type
 	(make-image-type

@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: fasload.c,v 9.91 2001/12/16 06:01:32 cph Exp $
+$Id: fasload.c,v 9.96 2003/02/14 18:28:19 cph Exp $
 
-Copyright (c) 1987-2001 Massachusetts Institute of Technology
+Copyright (c) 1987-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* The "fast loader" which reads in and relocates binary files and then
@@ -936,7 +939,7 @@ DEFUN (abort_band_load, (ap), PTR ap)
   Free_Constant = mp->free_constant;
   Constant_Space = mp->constant_space;
   Constant_Top = mp->constant_top;
-  Stack_Pointer = mp->stack_pointer;
+  sp_register = mp->stack_pointer;
   Stack_Bottom = mp->stack_bottom;
   Stack_Top = mp->stack_top;
   Stack_Guard = mp->stack_guard;
@@ -1003,7 +1006,7 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
       mp->free_constant = Free_Constant;
       mp->constant_space = Constant_Space;
       mp->constant_top = Constant_Top;
-      mp->stack_pointer = Stack_Pointer;
+      mp->stack_pointer = sp_register;
       mp->stack_bottom = Stack_Bottom;
       mp->stack_top = Stack_Top;
       mp->stack_guard = Stack_Guard;
@@ -1056,14 +1059,14 @@ DEFINE_PRIMITIVE ("LOAD-BAND", Prim_band_load, 1, 1, 0)
   Current_State_Point = SHARP_F;
   /* Setup initial program */
   Store_Return (RC_END_OF_COMPUTATION);
-  Store_Expression (SHARP_F);
+  exp_register = SHARP_F;
   Save_Cont ();
-  Store_Expression (MEMORY_REF (result, 0));
-  Store_Env (THE_GLOBAL_ENV);
+  exp_register = (MEMORY_REF (result, 0));
+  env_register = THE_GLOBAL_ENV;
   /* Clear various interpreter state parameters. */
   Trapping = false;
   Return_Hook_Address = 0;
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
   Prev_Restore_History_Stacklet = 0;
   Prev_Restore_History_Offset = 0;
   COMPILER_TRANSPORT_END ();

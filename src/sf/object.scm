@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: object.scm,v 4.15 2002/02/22 01:34:04 cph Exp $
+$Id: object.scm,v 4.19 2003/03/13 03:22:48 cph Exp $
 
-Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1992,1993,1997 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; SCode Optimizer: Data Types
@@ -63,40 +67,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (enumeration/name->index enumeration name)
   (enumerand/index (enumeration/name->enumerand enumeration name)))
 
-(let-syntax
-    ((define-enumeration
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((enumeration-name (cadr form))
-	       (enumerand-names (caddr form)))
-	   `(BEGIN
-	      (DEFINE ,enumeration-name
-		(ENUMERATION/MAKE ',enumerand-names))
-	      ,@(map (lambda (enumerand-name)
-		       `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
-			  (ENUMERATION/NAME->ENUMERAND
-			   ,(close-syntax enumeration-name environment)
-			   ',enumerand-name)))
-		     enumerand-names)))))))
-  (define-enumeration enumeration/random
-    (block
-     delayed-integration
-     variable))
-  (define-enumeration enumeration/expression
-    (access
-     assignment
-     combination
-     conditional
-     constant
-     declaration
-     delay
-     disjunction
-     open-block
-     procedure
-     quotation
-     reference
-     sequence
-     the-environment)))
+(define-syntax define-enumeration
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((enumeration-name (cadr form))
+	   (enumerand-names (caddr form)))
+       `(BEGIN
+	  (DEFINE ,enumeration-name
+	    (ENUMERATION/MAKE ',enumerand-names))
+	  ,@(map (lambda (enumerand-name)
+		   `(DEFINE ,(symbol-append enumerand-name '/ENUMERAND)
+		      (ENUMERATION/NAME->ENUMERAND
+		       ,(close-syntax enumeration-name environment)
+		       ',enumerand-name)))
+		 enumerand-names))))))
+
+(define-enumeration enumeration/random
+  (block
+   delayed-integration
+   variable))
+(define-enumeration enumeration/expression
+  (access
+   assignment
+   combination
+   conditional
+   constant
+   declaration
+   delay
+   disjunction
+   open-block
+   procedure
+   quotation
+   reference
+   sequence
+   the-environment))
 
 ;;;; Records
 
@@ -122,39 +126,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   operations
   value)
 
-(let-syntax
-    ((define-simple-type
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((name (cadr form))
-	       (slots (caddr form))
-	       (scode? (if (pair? (cdddr form)) (cadddr form) #t)))
-	   `(DEFINE-STRUCTURE
-		(,name
-		 (TYPE VECTOR)
-		 (NAMED
-		  ,(close-syntax (symbol-append name '/ENUMERAND) environment))
-		 (CONC-NAME ,(symbol-append name '/))
-		 (CONSTRUCTOR ,(symbol-append name '/MAKE)))
-	      ,@(if scode?
-		    `((scode #f read-only #t))
-		    `())
-	      ,@slots))))))
-  (define-simple-type variable (block name flags) #F)
-  (define-simple-type access (environment name))
-  (define-simple-type assignment (block variable value))
-  (define-simple-type combination (block operator operands))
-  (define-simple-type conditional (predicate consequent alternative))
-  (define-simple-type constant (value))
-  (define-simple-type declaration (declarations expression))
-  (define-simple-type delay (expression))
-  (define-simple-type disjunction (predicate alternative))
-  (define-simple-type open-block (block variables values actions optimized))
-  (define-simple-type procedure (block name required optional rest body))
-  (define-simple-type quotation (block expression))
-  (define-simple-type reference (block variable))
-  (define-simple-type sequence (actions))
-  (define-simple-type the-environment (block)))
+(define-syntax define-simple-type
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form))
+	   (slots (caddr form))
+	   (scode? (if (pair? (cdddr form)) (cadddr form) #t)))
+       `(DEFINE-STRUCTURE
+	    (,name
+	     (TYPE VECTOR)
+	     (NAMED
+	      ,(close-syntax (symbol-append name '/ENUMERAND) environment))
+	     (TYPE-DESCRIPTOR ,(symbol-append 'RTD: name))
+	     (CONC-NAME ,(symbol-append name '/))
+	     (CONSTRUCTOR ,(symbol-append name '/MAKE)))
+	  ,@(if scode?
+		`((scode #f read-only #t))
+		`())
+	  ,@slots)))))
+
+(define-simple-type variable (block name flags) #F)
+(define-simple-type access (environment name))
+(define-simple-type assignment (block variable value))
+(define-simple-type combination (block operator operands))
+(define-simple-type conditional (predicate consequent alternative))
+(define-simple-type constant (value))
+(define-simple-type declaration (declarations expression))
+(define-simple-type delay (expression))
+(define-simple-type disjunction (predicate alternative))
+(define-simple-type open-block (block variables values actions optimized))
+(define-simple-type procedure (block name required optional rest body))
+(define-simple-type quotation (block expression))
+(define-simple-type reference (block variable))
+(define-simple-type sequence (actions))
+(define-simple-type the-environment (block))
 
 ;; Abstraction violations
 
@@ -174,26 +179,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Miscellany
 
-(let-syntax
-    ((define-flag
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let ((name (cadr form))
-	       (tester (caddr form))
-	       (setter (cadddr form)))
-	   `(BEGIN
-	      (DEFINE (,tester VARIABLE)
-		(MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-	      (DEFINE (,setter VARIABLE)
-		(IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
-		    (SET-VARIABLE/FLAGS!
-		     VARIABLE
-		     (CONS ',name (VARIABLE/FLAGS VARIABLE)))))))))))
-  (define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
-  (define-flag REFERENCED    variable/referenced    variable/reference!)
-  (define-flag INTEGRATED    variable/integrated    variable/integrated!)
-  (define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!))
+(define-syntax define-flag
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (let ((name (cadr form))
+	   (tester (caddr form))
+	   (setter (cadddr form)))
+       `(BEGIN
+	  (DEFINE (,tester VARIABLE)
+	    (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+	  (DEFINE (,setter VARIABLE)
+	    (IF (NOT (MEMQ ',name (VARIABLE/FLAGS VARIABLE)))
+		(SET-VARIABLE/FLAGS!
+		 VARIABLE
+		 (CONS ',name (VARIABLE/FLAGS VARIABLE))))))))))
+
+(define-flag SIDE-EFFECTED variable/side-effected variable/side-effect!)
+(define-flag REFERENCED    variable/referenced    variable/reference!)
+(define-flag INTEGRATED    variable/integrated    variable/integrated!)
+(define-flag CAN-IGNORE    variable/can-ignore?   variable/can-ignore!)
 
 (define open-block/value-marker
   ;; This must be an interned object because we will fasdump it and

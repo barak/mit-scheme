@@ -1,25 +1,29 @@
 #| -*-Scheme-*-
 
-$Id: strnin.scm,v 14.8 1999/02/24 21:36:21 cph Exp $
+$Id: strnin.scm,v 14.12 2003/02/27 21:27:58 cph Exp $
 
-Copyright (c) 1988-1999 Massachusetts Institute of Technology
+Copyright 1988,1990,1993,1999,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
-;;;; String I/O Ports
+;;;; String Input Ports (SRFI-6)
 ;;; package: (runtime string-input)
 
 (declare (usual-integrations))
@@ -37,27 +41,23 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   unspecific)
 
 (define (with-input-from-string string thunk)
-  (with-input-from-port (string->input-port string) thunk))
+  (with-input-from-port (open-input-string string) thunk))
 
-(define (string->input-port string #!optional start end)
+(define (open-input-string string #!optional start end)
+  (guarantee-string string 'OPEN-INPUT-STRING)
   (let ((end
-	 (if (default-object? end)
+	 (if (or (default-object? end) (not end))
 	     (string-length string)
-	     (check-index end (string-length string) 'STRING->INPUT-PORT))))
-    (make-port
-     input-string-port-type
-     (make-input-string-state string
-			      (if (default-object? start)
-				  0
-				  (check-index start end 'STRING->INPUT-PORT))
-			      end))))
-
-(define (check-index index limit procedure)
-  (if (not (exact-nonnegative-integer? index))
-      (error:wrong-type-argument index "exact non-negative integer" procedure))
-  (if (not (<= index limit))
-      (error:bad-range-argument index procedure))
-  index)
+	     (guarantee-substring-end-index end (string-length string)
+					    'OPEN-INPUT-STRING))))
+    (make-port input-string-port-type
+	       (make-input-string-state
+		string
+		(if (or (default-object? start) (not start))
+		    0
+		    (guarantee-substring-start-index start end
+						     'OPEN-INPUT-STRING))
+		end))))
 
 (define input-string-port-type)
 

@@ -1,0 +1,306 @@
+@c This file is part of the MIT/GNU Scheme Reference Manual.
+@c $Id: bit-strings.texi,v 1.1 2003/04/15 03:29:26 cph Exp $
+
+@c Copyright 1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+@c Copyright 1996,1997,1999,2000,2001 Massachusetts Institute of Technology
+@c Copyright 2002,2003 Massachusetts Institute of Technology
+@c See file scheme.texinfo for copying conditions.
+
+@node Bit Strings, Miscellaneous Datatypes, Vectors, Top
+@chapter Bit Strings
+
+@cindex bit string (defn)
+@cindex string, of bits (defn)
+A @dfn{bit string} is a sequence of bits.  Bit strings can be used to
+represent sets or to manipulate binary data.  The elements of a bit
+string are numbered from zero up to the number of bits in the string
+less one, in @emph{right to left order}, (the rightmost bit is numbered
+zero).  When you convert from a bit string to an integer, the zero-th
+bit is associated with the zero-th power of two, the first bit is
+associated with the first power, and so on.
+
+Bit strings are encoded very densely in memory.  Each bit occupies
+exactly one bit of storage, and the overhead for the entire bit string
+is bounded by a small constant.  However, accessing a bit in a bit
+string is slow compared to accessing an element of a vector or character
+string.  If performance is of overriding concern, it is better to use
+character strings to store sets of boolean values even though they
+occupy more space.
+
+@cindex length, of bit string (defn)
+@cindex index, of bit string (defn)
+@cindex valid index, of bit string (defn)
+@cindex bit string length (defn)
+@cindex bit string index (defn)
+The @dfn{length} of a bit string is the number of bits that it contains.
+This number is an exact non-negative integer that is fixed when the bit
+string is created.  The @dfn{valid indexes} of a bit string are the
+exact non-negative integers less than the length of the bit string.
+
+@cindex external representation, for bit string
+@cindex #* as external representation
+@cindex asterisk, as external representation
+Bit strings may contain zero or more bits.  They are not limited by the
+length of a machine word.  In the printed representation of a bit
+string, the contents of the bit string are preceded by @samp{#*}.  The
+contents are printed starting with the most significant bit (highest
+index).
+
+Note that the external representation of bit strings uses a bit ordering
+that is the reverse of the representation for bit strings in Common
+Lisp.  It is likely that MIT/GNU Scheme's representation will be
+changed in the future, to be compatible with Common Lisp.  For the time
+being this representation should be considered a convenience for viewing
+bit strings rather than a means of entering them as data.
+
+@example
+@group
+#*11111
+#*1010
+#*00000000
+#*
+@end group
+@end example
+
+All of the bit-string procedures are MIT/GNU Scheme extensions.
+
+@menu
+* Construction of Bit Strings::  
+* Selecting Bit String Components::  
+* Cutting and Pasting Bit Strings::  
+* Bitwise Operations on Bit Strings::  
+* Modification of Bit Strings::  
+* Integer Conversions of Bit Strings::  
+@end menu
+
+@node Construction of Bit Strings, Selecting Bit String Components, Bit Strings, Bit Strings
+@section Construction of Bit Strings
+@cindex construction, of bit string
+
+@deffn procedure make-bit-string k initialization
+Returns a newly allocated bit string of length @var{k}.  If
+@var{initialization} is @code{#f}, the bit string is filled with 0 bits;
+otherwise, the bit string is filled with 1 bits.
+
+@example
+(make-bit-string 7 #f)                  @result{}  #*0000000
+@end example
+@end deffn
+
+@deffn procedure bit-string-allocate k
+Returns a newly allocated bit string of length @var{k}, but does not
+initialize it.
+@end deffn
+
+@deffn procedure bit-string-copy bit-string
+@cindex copying, of bit string
+Returns a newly allocated copy of @var{bit-string}.
+@end deffn
+
+@node Selecting Bit String Components, Cutting and Pasting Bit Strings, Construction of Bit Strings, Bit Strings
+@section Selecting Bit String Components
+
+@deffn procedure bit-string? object
+@cindex type predicate, for bit string
+Returns @code{#t} if @var{object} is a bit string; otherwise returns
+@code{#f}.
+@end deffn
+
+@deffn procedure bit-string-length bit-string
+@cindex length, of bit string
+Returns the length of @var{bit-string}.
+@end deffn
+
+@deffn procedure bit-string-ref bit-string k
+@cindex selection, of bit string component
+@cindex component selection, of bit string
+Returns @code{#t} if the @var{k}th bit is 1; otherwise returns
+@code{#f}.  @var{K} must be a valid index of @var{bit-string}.
+@end deffn
+
+@deffn procedure bit-string-set! bit-string k
+Sets the @var{k}th bit in @var{bit-string} to 1 and returns an
+unspecified value.  @var{K} must be a valid index of @var{bit-string}.
+@end deffn
+
+@deffn procedure bit-string-clear! bit-string k
+Sets the @var{k}th bit in @var{bit-string} to 0 and returns an
+unspecified value.  @var{K} must be a valid index of @var{bit-string}.
+@end deffn
+
+@deffn procedure bit-substring-find-next-set-bit bit-string start end
+@cindex searching, of bit string
+Returns the index of the first occurrence of a set bit in the substring
+of @var{bit-string} from @var{start} (inclusive) to @var{end}
+(exclusive).  If none of the bits in the substring are set @code{#f} is
+returned.  The index returned is relative to the whole bit string, not
+substring.
+
+The following procedure uses @code{bit-substring-find-next-set-bit} to
+find all the set bits and display their indexes:
+
+@example
+@group
+(define (scan-bitstring bs)
+  (let ((end (bit-string-length bs)))
+    (let loop ((start 0))
+      (let ((next
+             (bit-substring-find-next-set-bit bs start end)))
+        (if next
+            (begin
+              (write-line next)
+              (if (< next end)
+                  (loop (+ next 1)))))))))
+@end group
+@end example
+@end deffn
+
+@node Cutting and Pasting Bit Strings, Bitwise Operations on Bit Strings, Selecting Bit String Components, Bit Strings
+@section Cutting and Pasting Bit Strings
+@cindex cutting, of bit string
+@cindex pasting, of bit strings
+
+@deffn procedure bit-string-append bit-string-1 bit-string-2
+@cindex appending, of bit strings
+Appends the two bit string arguments, returning a newly allocated bit
+string as its result.  In the result, the bits copied from
+@var{bit-string-1} are less significant (smaller indices) than those
+copied from @var{bit-string-2}.
+@end deffn
+
+@deffn procedure bit-substring bit-string start end
+@cindex substring, of bit string
+Returns a newly allocated bit string whose bits are copied from
+@var{bit-string}, starting at index @var{start} (inclusive) and ending
+at @var{end} (exclusive).
+@end deffn
+
+@node Bitwise Operations on Bit Strings, Modification of Bit Strings, Cutting and Pasting Bit Strings, Bit Strings
+@section Bitwise Operations on Bit Strings
+
+@deffn procedure bit-string-zero? bit-string
+Returns @code{#t} if @var{bit-string} contains only 0 bits; otherwise
+returns @code{#f}.
+@end deffn
+
+@deffn procedure bit-string=? bit-string-1 bit-string-2
+@cindex equivalence predicate, for bit strings
+@cindex comparison, of bit strings
+Compares the two bit string arguments and returns @code{#t} if they are the
+same length and contain the same bits; otherwise returns @code{#f}.
+@end deffn
+
+@deffn procedure bit-string-not bit-string
+@cindex inverse, of bit string
+Returns a newly allocated bit string that is the bitwise-logical
+negation of @var{bit-string}.
+@end deffn
+
+@deffn procedure bit-string-movec! target-bit-string bit-string
+The destructive version of @code{bit-string-not}.  The arguments
+@var{target-bit-string} and @var{bit-string} must be bit strings of the
+same length.  The bitwise-logical negation of @var{bit-string} is
+computed and the result placed in @var{target-bit-string}.  The value of
+this procedure is unspecified.
+@end deffn
+
+@deffn procedure bit-string-and bit-string-1 bit-string-2
+Returns a newly allocated bit string that is the bitwise-logical ``and''
+of the arguments.  The arguments must be bit strings of identical
+length.
+@end deffn
+
+@deffn procedure bit-string-andc bit-string-1 bit-string-2
+Returns a newly allocated bit string that is the bitwise-logical ``and''
+of @var{bit-string-1} with the bitwise-logical negation of
+@var{bit-string-2}.  The arguments must be bit strings of identical
+length.
+@end deffn
+
+@deffn procedure bit-string-or bit-string-1 bit-string-2
+Returns a newly allocated bit string that is the bitwise-logical
+``inclusive or'' of the arguments.  The arguments must be bit strings of
+identical length.
+@end deffn
+
+@deffn procedure bit-string-xor bit-string-1 bit-string-2
+Returns a newly allocated bit string that is the bitwise-logical
+``exclusive or'' of the arguments.  The arguments must be bit strings of
+identical length.
+@end deffn
+
+@deffn procedure bit-string-and! target-bit-string bit-string
+@deffnx procedure bit-string-or! target-bit-string bit-string
+@deffnx procedure bit-string-xor! target-bit-string bit-string
+@deffnx procedure bit-string-andc! target-bit-string bit-string
+These are destructive versions of the above operations.  The arguments
+@var{target-bit-string} and @var{bit-string} must be bit strings of the
+same length.  Each of these procedures performs the corresponding
+bitwise-logical operation on its arguments, places the result into
+@var{target-bit-string}, and returns an unspecified result.
+@end deffn
+
+@node Modification of Bit Strings, Integer Conversions of Bit Strings, Bitwise Operations on Bit Strings, Bit Strings
+@section Modification of Bit Strings
+@cindex modification, of bit string
+@cindex filling, of bit string
+@cindex moving, of bit string elements
+
+@deffn procedure bit-string-fill! bit-string initialization
+Fills @var{bit-string} with zeroes if @var{initialization} is @code{#f};
+otherwise fills @var{bit-string} with ones.  Returns an unspecified
+value.
+@end deffn
+
+@deffn procedure bit-string-move! target-bit-string bit-string
+Moves the contents of @var{bit-string} into @var{target-bit-string}.  Both
+arguments must be bit strings of the same length.  The results of the
+operation are undefined if the arguments are the same bit string.
+@end deffn
+
+@deffn procedure bit-substring-move-right! bit-string-1 start1 end1 bit-string-2 start2
+Destructively copies the bits of @var{bit-string-1}, starting at index
+@var{start1} (inclusive) and ending at @var{end1} (exclusive), into
+@var{bit-string-2} starting at index @var{start2} (inclusive).
+@var{Start1} and @var{end1} must be valid substring indices for
+@var{bit-string-1}, and @var{start2} must be a valid index for
+@var{bit-string-2}.  The length of the source substring must not exceed
+the length of @var{bit-string-2} minus the index @var{start2}.
+
+The bits are copied starting from the MSB and working towards the LSB; the
+direction of copying only matters when @var{bit-string-1} and
+@var{bit-string-2} are @code{eqv?}.
+@end deffn
+
+@need 1000
+@node Integer Conversions of Bit Strings,  , Modification of Bit Strings, Bit Strings
+@section Integer Conversions of Bit Strings
+@cindex integer, converting to bit string
+
+@deffn procedure unsigned-integer->bit-string length integer
+Both @var{length} and @var{integer} must be exact non-negative integers.
+Converts @var{integer} into a newly allocated bit string of @var{length}
+bits.  Signals an error of type @code{condition-type:bad-range-argument}
+if @var{integer} is too large to be represented in @var{length} bits.
+@findex condition-type:bad-range-argument
+@end deffn
+
+@deffn procedure signed-integer->bit-string length integer
+@var{Length} must be an exact non-negative integer, and @var{integer}
+may be any exact integer.  Converts @var{integer} into a newly allocated
+bit string of @var{length} bits, using two's complement encoding for
+negative numbers.  Signals an error of type
+@code{condition-type:bad-range-argument} if @var{integer} is too large
+to be represented in @var{length} bits.
+@findex condition-type:bad-range-argument
+@end deffn
+
+@deffn procedure bit-string->unsigned-integer bit-string
+@deffnx procedure bit-string->signed-integer bit-string
+Converts @var{bit-string} into an exact integer.
+@code{bit-string->signed-integer} regards @var{bit-string} as a two's
+complement representation of a signed integer, and produces an integer
+of like sign and absolute value.  @code{bit-string->unsigned-integer}
+regards @var{bit-string} as an unsigned quantity and converts to an
+integer accordingly.
+@end deffn

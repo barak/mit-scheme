@@ -1,23 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.50 2002/02/09 06:09:39 cph Exp $
+$Id: arith.scm,v 1.58 2003/04/19 04:23:41 cph Exp $
 
-Copyright (c) 1989-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1999,2001,2002 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Scheme Arithmetic
@@ -533,37 +538,37 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;; this is generally important only for bignums, and the bignum
 ;;; quotient already performs that check.
 
-(let-syntax
-    ((define-addition-operator
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((name (list-ref form 1))
-		(int:op (close-syntax (list-ref form 2) environment)))
-	    `(DEFINE (,name U/U* V/V*)
-	       (RAT:BINARY-OPERATOR U/U* V/V*
-		 ,int:op
-		 (LAMBDA (U V V*)
-		   (MAKE-RATIONAL (,int:op (INT:* U V*) V) V*))
-		 (LAMBDA (U U* V)
-		   (MAKE-RATIONAL (,int:op U (INT:* V U*)) U*))
-		 (LAMBDA (U U* V V*)
-		   (LET ((D1 (INT:GCD U* V*)))
-		     (IF (INT:= D1 1)
-			 (MAKE-RATIONAL (,int:op (INT:* U V*) (INT:* V U*))
-					(INT:* U* V*))
-			 (LET* ((U*/D1 (INT:QUOTIENT U* D1))
-				(T
-				 (,int:op (INT:* U (INT:QUOTIENT V* D1))
-					  (INT:* V U*/D1))))
-			   (IF (INT:ZERO? T)
-			       0	;(MAKE-RATIONAL 0 1)
-			       (LET ((D2 (INT:GCD T D1)))
-				 (MAKE-RATIONAL
-				  (INT:QUOTIENT T D2)
-				  (INT:* U*/D1
-					 (INT:QUOTIENT V* D2))))))))))))))))
-  (define-addition-operator rat:+ int:+)
-  (define-addition-operator rat:- int:-))
+(define-syntax define-addition-operator
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (list-ref form 1))
+	   (int:op (close-syntax (list-ref form 2) environment)))
+       `(DEFINE (,name U/U* V/V*)
+	  (RAT:BINARY-OPERATOR U/U* V/V*
+	    ,int:op
+	    (LAMBDA (U V V*)
+	      (MAKE-RATIONAL (,int:op (INT:* U V*) V) V*))
+	    (LAMBDA (U U* V)
+	      (MAKE-RATIONAL (,int:op U (INT:* V U*)) U*))
+	    (LAMBDA (U U* V V*)
+	      (LET ((D1 (INT:GCD U* V*)))
+		(IF (INT:= D1 1)
+		    (MAKE-RATIONAL (,int:op (INT:* U V*) (INT:* V U*))
+				   (INT:* U* V*))
+		    (LET* ((U*/D1 (INT:QUOTIENT U* D1))
+			   (T
+			    (,int:op (INT:* U (INT:QUOTIENT V* D1))
+				     (INT:* V U*/D1))))
+		      (IF (INT:ZERO? T)
+			  0	;(MAKE-RATIONAL 0 1)
+			  (LET ((D2 (INT:GCD T D1)))
+			    (MAKE-RATIONAL
+			     (INT:QUOTIENT T D2)
+			     (INT:* U*/D1
+				    (INT:QUOTIENT V* D2)))))))))))))))
+
+(define-addition-operator rat:+ int:+)
+(define-addition-operator rat:- int:-)
 
 (define (rat:1+ v/v*)
   (if (ratnum? v/v*)
@@ -696,24 +701,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	((int:integer? q) 1)
 	(else (error:wrong-type-argument q false 'DENOMINATOR))))
 
-(let-syntax
-    ((define-integer-coercion
-       (sc-macro-transformer
-	(lambda (form environment)
-	  `(DEFINE (,(list-ref form 1) Q)
-	     (COND ((RATNUM? Q)
-		    (,(close-syntax (list-ref form 3) environment)
-		     (RATNUM-NUMERATOR Q)
-		     (RATNUM-DENOMINATOR Q)))
-		   ((INT:INTEGER? Q) Q)
-		   (ELSE
-		    (ERROR:WRONG-TYPE-ARGUMENT Q
-					       "real number"
-					       ',(list-ref form 2)))))))))
-  (define-integer-coercion rat:floor floor int:floor)
-  (define-integer-coercion rat:ceiling ceiling int:ceiling)
-  (define-integer-coercion rat:truncate truncate int:quotient)
-  (define-integer-coercion rat:round round int:round))
+(define-syntax define-integer-coercion
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(list-ref form 1) Q)
+	(COND ((RATNUM? Q)
+	       (,(close-syntax (list-ref form 3) environment)
+		(RATNUM-NUMERATOR Q)
+		(RATNUM-DENOMINATOR Q)))
+	      ((INT:INTEGER? Q) Q)
+	      (ELSE
+	       (ERROR:WRONG-TYPE-ARGUMENT Q
+					  "real number"
+					  ',(list-ref form 2))))))))
+
+(define-integer-coercion rat:floor floor int:floor)
+(define-integer-coercion rat:ceiling ceiling int:ceiling)
+(define-integer-coercion rat:truncate truncate int:quotient)
+(define-integer-coercion rat:round round int:round)
 
 (define (rat:rationalize q e)
   (rat:simplest-rational (rat:- q e) (rat:+ q e)))
@@ -930,7 +935,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        (real:= 1 x)))
 
 (define (real:rational? x)
-  (or (flonum? x) (rat:rational? x)))
+  (if (flonum? x) #t (rat:rational? x)))
 
 (define (real:integer? x)
   (if (flonum? x) (flo:integer? x) ((copy rat:integer?) x)))
@@ -944,7 +949,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (if (flonum? x) (flo:zero? x) ((copy rat:zero?) x)))
 
 (define (real:exact0= x)
-  (and (not (flonum? x)) ((copy rat:zero?) x)))
+  (if (flonum? x) #f ((copy rat:zero?) x)))
 
 (define (real:negative? x)
   (if (flonum? x) (flo:negative? x) ((copy rat:negative?) x)))
@@ -952,63 +957,63 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (real:positive? x)
   (if (flonum? x) (flo:positive? x) ((copy rat:positive?) x)))
 
-(let-syntax
-    ((define-standard-unary
-       (sc-macro-transformer
-	(lambda (form environment)
-	  `(DEFINE (,(list-ref form 1) X)
-	     (IF (FLONUM? X)
-		 (,(close-syntax (list-ref form 2) environment) X)
-		 (,(close-syntax (list-ref form 3) environment) X)))))))
-  (define-standard-unary real:1+ (lambda (x) (flo:+ x flo:1)) (copy rat:1+))
-  (define-standard-unary real:-1+ (lambda (x) (flo:- x flo:1)) (copy rat:-1+))
-  (define-standard-unary real:negate flo:negate (copy rat:negate))
-  (define-standard-unary real:invert (lambda (x) (flo:/ flo:1 x)) rat:invert)
-  (define-standard-unary real:abs flo:abs rat:abs)
-  (define-standard-unary real:square (lambda (x) (flo:* x x)) rat:square)
-  (define-standard-unary real:floor flo:floor rat:floor)
-  (define-standard-unary real:ceiling flo:ceiling rat:ceiling)
-  (define-standard-unary real:truncate flo:truncate rat:truncate)
-  (define-standard-unary real:round flo:round rat:round)
-  (define-standard-unary real:floor->exact flo:floor->exact rat:floor)
-  (define-standard-unary real:ceiling->exact flo:ceiling->exact rat:ceiling)
-  (define-standard-unary real:truncate->exact flo:truncate->exact rat:truncate)
-  (define-standard-unary real:round->exact flo:round->exact rat:round)
-  (define-standard-unary real:exact->inexact (lambda (x) x) rat:->inexact)
-  (define-standard-unary real:inexact->exact flo:->rational
-    (lambda (q)
-      (if (rat:rational? q)
-	  q
-	  (error:wrong-type-argument q false 'INEXACT->EXACT)))))
+(define-syntax define-standard-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(list-ref form 1) X)
+	(IF (FLONUM? X)
+	    (,(close-syntax (list-ref form 2) environment) X)
+	    (,(close-syntax (list-ref form 3) environment) X))))))
+
+(define-standard-unary real:1+ (lambda (x) (flo:+ x flo:1)) (copy rat:1+))
+(define-standard-unary real:-1+ (lambda (x) (flo:- x flo:1)) (copy rat:-1+))
+(define-standard-unary real:negate flo:negate (copy rat:negate))
+(define-standard-unary real:invert (lambda (x) (flo:/ flo:1 x)) rat:invert)
+(define-standard-unary real:abs flo:abs rat:abs)
+(define-standard-unary real:square (lambda (x) (flo:* x x)) rat:square)
+(define-standard-unary real:floor flo:floor rat:floor)
+(define-standard-unary real:ceiling flo:ceiling rat:ceiling)
+(define-standard-unary real:truncate flo:truncate rat:truncate)
+(define-standard-unary real:round flo:round rat:round)
+(define-standard-unary real:floor->exact flo:floor->exact rat:floor)
+(define-standard-unary real:ceiling->exact flo:ceiling->exact rat:ceiling)
+(define-standard-unary real:truncate->exact flo:truncate->exact rat:truncate)
+(define-standard-unary real:round->exact flo:round->exact rat:round)
+(define-standard-unary real:exact->inexact (lambda (x) x) rat:->inexact)
+(define-standard-unary real:inexact->exact flo:->rational
+  (lambda (q)
+    (if (rat:rational? q)
+	q
+	(error:wrong-type-argument q false 'INEXACT->EXACT))))
 
-(let-syntax
-    ((define-standard-binary
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((flo:op (close-syntax (list-ref form 2) environment))
-		(rat:op (close-syntax (list-ref form 3) environment)))
-	    `(DEFINE (,(list-ref form 1) X Y)
-	       (IF (FLONUM? X)
-		   (IF (FLONUM? Y)
-		       (,flo:op X Y)
-		       (,flo:op X (RAT:->INEXACT Y)))
-		   (IF (FLONUM? Y)
-		       (,flo:op (RAT:->INEXACT X) Y)
-		       (,rat:op X Y)))))))))
-  (define-standard-binary real:+ flo:+ (copy rat:+))
-  (define-standard-binary real:- flo:- (copy rat:-))
-  (define-standard-binary real:rationalize
-    flo:rationalize
-    rat:rationalize)
-  (define-standard-binary real:rationalize->exact
-    flo:rationalize->exact
-    rat:rationalize)
-  (define-standard-binary real:simplest-rational
-    flo:simplest-rational
-    rat:simplest-rational)
-  (define-standard-binary real:simplest-exact-rational
-    flo:simplest-exact-rational
-    rat:simplest-rational))
+(define-syntax define-standard-binary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((flo:op (close-syntax (list-ref form 2) environment))
+	   (rat:op (close-syntax (list-ref form 3) environment)))
+       `(DEFINE (,(list-ref form 1) X Y)
+	  (IF (FLONUM? X)
+	      (IF (FLONUM? Y)
+		  (,flo:op X Y)
+		  (,flo:op X (RAT:->INEXACT Y)))
+	      (IF (FLONUM? Y)
+		  (,flo:op (RAT:->INEXACT X) Y)
+		  (,rat:op X Y))))))))
+
+(define-standard-binary real:+ flo:+ (copy rat:+))
+(define-standard-binary real:- flo:- (copy rat:-))
+(define-standard-binary real:rationalize
+  flo:rationalize
+  rat:rationalize)
+(define-standard-binary real:rationalize->exact
+  flo:rationalize->exact
+  rat:rationalize)
+(define-standard-binary real:simplest-rational
+  flo:simplest-rational
+  rat:simplest-rational)
+(define-standard-binary real:simplest-exact-rational
+  flo:simplest-exact-rational
+  rat:simplest-rational)
 
 (define (real:= x y)
   (if (flonum? x)
@@ -1068,66 +1073,66 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	   (error:wrong-type-argument n false 'EVEN?))
        n)))
 
-(let-syntax
-    ((define-integer-binary
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((operator (close-syntax (list-ref form 3) environment))
-	       (flo->int
-		(lambda (n)
-		  `(IF (FLO:INTEGER? ,n)
-		       (FLO:->INTEGER ,n)
-		       (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
-						  ',(list-ref form 2))))))
-	   `(DEFINE (,(list-ref form 1) N M)
-	      (IF (FLONUM? N)
-		  (INT:->INEXACT
-		   (,operator ,(flo->int 'N)
-			      (IF (FLONUM? M)
-				  ,(flo->int 'M)
-				  M)))
-		  (IF (FLONUM? M)
-		      (INT:->INEXACT (,operator N ,(flo->int 'M)))
-		      (,operator N M)))))))))
-  (define-integer-binary real:quotient quotient int:quotient)
-  (define-integer-binary real:remainder remainder int:remainder)
-  (define-integer-binary real:modulo modulo int:modulo)
-  (define-integer-binary real:integer-floor integer-floor int:floor)
-  (define-integer-binary real:integer-ceiling integer-ceiling int:ceiling)
-  (define-integer-binary real:integer-round integer-round int:round)
-  (define-integer-binary real:divide integer-divide int:divide)
-  (define-integer-binary real:gcd gcd int:gcd)
-  (define-integer-binary real:lcm lcm int:lcm))
+(define-syntax define-integer-binary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((operator (close-syntax (list-ref form 3) environment))
+	   (flo->int
+	    (lambda (n)
+	      `(IF (FLO:INTEGER? ,n)
+		   (FLO:->INTEGER ,n)
+		   (ERROR:WRONG-TYPE-ARGUMENT ,n "integer"
+					      ',(list-ref form 2))))))
+       `(DEFINE (,(list-ref form 1) N M)
+	  (IF (FLONUM? N)
+	      (INT:->INEXACT
+	       (,operator ,(flo->int 'N)
+			  (IF (FLONUM? M)
+			      ,(flo->int 'M)
+			      M)))
+	      (IF (FLONUM? M)
+		  (INT:->INEXACT (,operator N ,(flo->int 'M)))
+		  (,operator N M))))))))
 
-(let-syntax
-    ((define-rational-unary
-      (sc-macro-transformer
-       (lambda (form environment)
-	 (let ((operator (close-syntax (list-ref form 2) environment)))
-	   `(DEFINE (,(list-ref form 1) Q)
-	      (IF (FLONUM? Q)
-		  (RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
-		  (,operator Q))))))))
-  (define-rational-unary real:numerator rat:numerator)
-  (define-rational-unary real:denominator rat:denominator))
+(define-integer-binary real:quotient quotient int:quotient)
+(define-integer-binary real:remainder remainder int:remainder)
+(define-integer-binary real:modulo modulo int:modulo)
+(define-integer-binary real:integer-floor integer-floor int:floor)
+(define-integer-binary real:integer-ceiling integer-ceiling int:ceiling)
+(define-integer-binary real:integer-round integer-round int:round)
+(define-integer-binary real:divide integer-divide int:divide)
+(define-integer-binary real:gcd gcd int:gcd)
+(define-integer-binary real:lcm lcm int:lcm)
+
+(define-syntax define-rational-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((operator (close-syntax (list-ref form 2) environment)))
+       `(DEFINE (,(list-ref form 1) Q)
+	  (IF (FLONUM? Q)
+	      (RAT:->INEXACT (,operator (FLO:->RATIONAL Q)))
+	      (,operator Q)))))))
+
+(define-rational-unary real:numerator rat:numerator)
+(define-rational-unary real:denominator rat:denominator)
 
-(let-syntax
-    ((define-transcendental-unary
-      (sc-macro-transformer
-       (lambda (form environment)
-	 `(DEFINE (,(list-ref form 1) X)
-	    (IF (,(close-syntax (list-ref form 2) environment) X)
-		,(close-syntax (list-ref form 3) environment)
-		(,(close-syntax (list-ref form 4) environment)
-		 (REAL:->INEXACT X))))))))
-  (define-transcendental-unary real:exp real:exact0= 1 flo:exp)
-  (define-transcendental-unary real:log real:exact1= 0 flo:log)
-  (define-transcendental-unary real:sin real:exact0= 0 flo:sin)
-  (define-transcendental-unary real:cos real:exact0= 1 flo:cos)
-  (define-transcendental-unary real:tan real:exact0= 0 flo:tan)
-  (define-transcendental-unary real:asin real:exact0= 0 flo:asin)
-  (define-transcendental-unary real:acos real:exact1= 0 flo:acos)
-  (define-transcendental-unary real:atan real:exact0= 0 flo:atan))
+(define-syntax define-transcendental-unary
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(list-ref form 1) X)
+	(IF (,(close-syntax (list-ref form 2) environment) X)
+	    ,(close-syntax (list-ref form 3) environment)
+	    (,(close-syntax (list-ref form 4) environment)
+	     (REAL:->INEXACT X)))))))
+
+(define-transcendental-unary real:exp real:exact0= 1 flo:exp)
+(define-transcendental-unary real:log real:exact1= 0 flo:log)
+(define-transcendental-unary real:sin real:exact0= 0 flo:sin)
+(define-transcendental-unary real:cos real:exact0= 1 flo:cos)
+(define-transcendental-unary real:tan real:exact0= 0 flo:tan)
+(define-transcendental-unary real:asin real:exact0= 0 flo:asin)
+(define-transcendental-unary real:acos real:exact1= 0 flo:acos)
+(define-transcendental-unary real:atan real:exact0= 0 flo:atan)
 
 (define (real:atan2 y x)
   (if (and (real:exact0= y)
@@ -1668,39 +1673,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	 ((copy real:sqrt) z))))
 
 (define (complex:expt z1 z2)
-  (let ((general-case
-	 (lambda ()
-	   (complex:exp (complex:* (complex:log z1) z2)))))
-    (cond ((recnum? z1)
-	   (if (and (rec:exact? z1)
-		    (int:integer? z2))
-	       (let ((exact-method
-		      (lambda (z2)
-			(if (int:= 1 z2)
-			    z1
-			    (let loop ((z1 z1) (z2 z2) (answer 1))
-			      (let ((qr (int:divide z2 2)))
-				(let ((z1 (complex:* z1 z1))
-				      (z2 (integer-divide-quotient qr))
-				      (answer
-				       (if (int:zero?
-					    (integer-divide-remainder qr))
-					   answer
-					   (complex:* answer z1))))
-				  (if (int:= 1 z2)
-				      (complex:* answer z1)
-				      (loop z1 z2 answer)))))))))
-		 (cond ((int:positive? z2) (exact-method z2))
-		       ((int:negative? z2)
-			(complex:/ 1 (exact-method (int:negate z2))))
-		       (else 1)))
-	       (general-case)))
-	  ((or (recnum? z2)
-	       (and (real:negative? z1)
-		    (not (real:integer? z2))))
-	   (general-case))
-	  (else
-	   (real:expt z1 z2)))))
+  (cond ((complex:zero? z1)
+	 (cond ((complex:zero? z2)
+		(if (complex:exact? z2)
+		    1
+		    (error:bad-range-argument z2 'EXPT)))
+	       ((complex:positive? z2) (real:0 (complex:exact? z1)))
+	       (else (error:divide-by-zero 'EXPT (list z1 z2)))))
+	((and (recnum? z1)
+	      (int:integer? z2))
+	 (let ((exact-method
+		(lambda (z2)
+		  (if (int:= 1 z2)
+		      z1
+		      (let loop ((z1 z1) (z2 z2) (answer 1))
+			(let ((qr (int:divide z2 2)))
+			  (let ((z1 (complex:* z1 z1))
+				(z2 (integer-divide-quotient qr))
+				(answer
+				 (if (int:zero?
+				      (integer-divide-remainder qr))
+				     answer
+				     (complex:* answer z1))))
+			    (if (int:= 1 z2)
+				(complex:* answer z1)
+				(loop z1 z2 answer)))))))))
+	   (cond ((int:positive? z2) (exact-method z2))
+		 ((int:negative? z2)
+		  (complex:/ 1 (exact-method (int:negate z2))))
+		 (else 1))))
+	((or (recnum? z1)
+	     (recnum? z2)
+	     (and (real:negative? z1)
+		  (not (real:integer? z2))))
+	 (complex:exp (complex:* (complex:log z1) z2)))
+	(else
+	 (real:expt z1 z2))))
 
 (define (complex:make-rectangular real imag)
   (let ((check-arg
@@ -1769,23 +1777,77 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 (define imaginary-unit-j? #f)
 
-(define number? complex:complex?)
-(define complex? complex:complex?)
-(define real? complex:real?)
-(define rational? complex:rational?)
-(define integer? complex:integer?)
-(define exact? complex:exact?)
-(define exact-rational? rat:rational?)
-(define exact-integer? int:integer?)
+(define (inexact? z)
+  (not (complex:exact? z)))
 
 (define (exact-nonnegative-integer? object)
   (and (int:integer? object)
        (not (int:negative? object))))
 
-(define (inexact? z)
-  (not (complex:exact? z)))
+(define (exact-positive-integer? object)
+  (and (int:integer? object)
+       (int:positive? object)))
 
-;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
+(define-syntax define-guarantee
+  (sc-macro-transformer
+   (lambda (form environment)
+     `(DEFINE (,(symbol-append 'GUARANTEE- (cadr form)) OBJECT OPERATOR)
+	(IF (NOT (,(symbol-append (cadr form) '?) OBJECT))
+	    (ERROR:WRONG-TYPE-ARGUMENT OBJECT
+				       ,(close-syntax (caddr form)
+						      environment)
+				       OPERATOR))
+	OBJECT))))
+
+(define-guarantee number "number")
+(define-guarantee complex "complex number")
+(define-guarantee real "real number")
+(define-guarantee rational "rational number")
+(define-guarantee integer "integer")
+(define-guarantee exact "exact number")
+(define-guarantee exact-rational "exact rational number")
+(define-guarantee exact-integer "exact integer")
+(define-guarantee inexact "inexact number")
+(define-guarantee exact-nonnegative-integer "exact non-negative integer")
+(define-guarantee exact-positive-integer "exact positive integer")
+
+;;; The following three procedures were originally just renamings of
+;;; their COMPLEX: equivalents.  They have been rewritten this way to
+;;; cause the compiler to generate better code for them.
+
+(define (quotient n d)
+  ((ucode-primitive quotient 2) n d))
+
+(define (remainder n d)
+  ((ucode-primitive remainder 2) n d))
+
+(define (modulo n d)
+  (let ((r ((ucode-primitive remainder 2) n d)))
+    (if (or (zero? r)
+	    (if (negative? n)
+		(negative? d)
+		(not (negative? d))))
+	r
+	(+ r d))))
+
+(define-integrable integer-divide-quotient car)
+(define-integrable integer-divide-remainder cdr)
+
+(define (gcd . integers)
+  (fold-left complex:gcd 0 integers))
+
+(define (lcm . integers)
+  (fold-left complex:lcm 1 integers))
+
+(define (atan z #!optional x)
+  (if (default-object? x)
+      (complex:atan z)
+      (complex:atan2 z x)))
+
+(define (square z)
+  (complex:* z z))
+
+;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define =)
 (define <)
@@ -1807,17 +1869,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 		 (and (binary-comparator x y)
 		      (loop y (cdr rest)))))))))
 
-(define zero? complex:zero?)
-(define positive? complex:positive?)
-(define negative? complex:negative?)
-
 (define (odd? n)
   (not (complex:even? n)))
 
-(define even? complex:even?)
-
-
-;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!
+;;; Replaced with arity-dispatched version in INITIALIZE-PACKAGE!.
 
 (define +)
 (define *)
@@ -1839,87 +1894,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	  (if (null? xs)
 	      x1
 	      (loop x1 xs))))))
-
-(define 1+ complex:1+)
-(define -1+ complex:-1+)
-
-(define conjugate complex:conjugate)
-
-(define abs complex:abs)
-
-;;; The following three procedures were originally just renamings of
-;;; their COMPLEX: equivalents.  They have been rewritten this way to
-;;; cause the compiler to generate better code for them.
-
-(define (quotient n d)
-  ((ucode-primitive quotient 2) n d))
-
-(define (remainder n d)
-  ((ucode-primitive remainder 2) n d))
-
-(define (modulo n d)
-  (let ((r ((ucode-primitive remainder 2) n d)))
-    (if (or (zero? r)
-	    (if (negative? n)
-		(negative? d)
-		(not (negative? d))))
-	r
-	(+ r d))))
-
-(define integer-floor complex:integer-floor)
-(define integer-ceiling complex:integer-ceiling)
-(define integer-truncate complex:quotient)
-(define integer-round complex:integer-round)
-(define integer-divide complex:divide)
-(define-integrable integer-divide-quotient car)
-(define-integrable integer-divide-remainder cdr)
-
-(define (gcd . integers)
-  (fold-left complex:gcd 0 integers))
-
-(define (lcm . integers)
-  (fold-left complex:lcm 1 integers))
-
-(define numerator complex:numerator)
-(define denominator complex:denominator)
-(define floor complex:floor)
-(define ceiling complex:ceiling)
-(define truncate complex:truncate)
-(define round complex:round)
-(define floor->exact complex:floor->exact)
-(define ceiling->exact complex:ceiling->exact)
-(define truncate->exact complex:truncate->exact)
-(define round->exact complex:round->exact)
-(define rationalize complex:rationalize)
-(define rationalize->exact complex:rationalize->exact)
-(define simplest-rational complex:simplest-rational)
-(define simplest-exact-rational complex:simplest-exact-rational)
-(define exp complex:exp)
-(define log complex:log)
-(define sin complex:sin)
-(define cos complex:cos)
-(define tan complex:tan)
-(define asin complex:asin)
-(define acos complex:acos)
-
-(define (atan z #!optional x)
-  (if (default-object? x)
-      (complex:atan z)
-      (complex:atan2 z x)))
-
-(define sqrt complex:sqrt)
-(define expt complex:expt)
-(define make-rectangular complex:make-rectangular)
-(define make-polar complex:make-polar)
-(define real-part complex:real-part)
-(define imag-part complex:imag-part)
-(define magnitude complex:magnitude)
-(define angle complex:angle)
-(define exact->inexact complex:exact->inexact)
-(define inexact->exact complex:inexact->exact)
-
-(define (square z)
-  (complex:* z z))
 
 (define (number->string z #!optional radix)
   (complex:->string

@@ -1,23 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: calias.scm,v 1.25 2002/02/09 05:55:09 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: calias.scm,v 1.31 2003/04/25 03:09:55 cph Exp $
+
+Copyright 1986,1989,1991,1992,1994,1995 Massachusetts Institute of Technology
+Copyright 1998,2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Alias Keys
 
@@ -87,7 +92,7 @@
 	((char? key) (char->name (unmap-alias-key key)))
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
-        (else (error "Unknown key type:" key))))
+        (else (error:wrong-type-argument key "key" 'KEY-NAME))))
 
 (define (button-name button)
   (string-append "button-"
@@ -146,36 +151,49 @@
 		  (char->name (unmap-alias-key key))))))
 	((special-key? key) (special-key/name key))
 	((button? key) (button-name key))
-        (else (error "Unknown key type:" key))))
+        (else (error:wrong-type-argument key "key" 'EMACS-KEY-NAME))))
 
 (define (key? object)
   (or (char? object)
-      (special-key? object)))
+      (special-key? object)
+      (button? object)))
+
+(define (key-bucky-bits key)
+  (cond ((char? key) (char-bits key))
+	((special-key? key) (special-key/bucky-bits key))
+	((button? key) (button/bucky-bits key))
+        (else (error:wrong-type-argument key "key" 'KEY-BUCKY-BITS))))
 
 (define (key<? key1 key2)
-  (if (char? key1)
-      (if (char? key2)
-	  (char<? key1 key2)
-	  (<= (char-bits key1) (special-key/bucky-bits key2)))
-      (let ((bits1 (special-key/bucky-bits key1)))
-	(if (char? key2)
-	    (< bits1 (char-bits key2))
-	    (let ((bits2 (special-key/bucky-bits key2)))
-	      (or (< bits1 bits2)
-		  (and (= bits1 bits2)
-		       (string<? (special-key/name key1)
-				 (special-key/name key2)))))))))
+  (or (< (key-bucky-bits key1) (key-bucky-bits key2))
+      (and (= (key-bucky-bits key1) (key-bucky-bits key2))
+	   (cond ((char? key1)
+		  (or (not (char? key2))
+		      (char<? key1 key2)))
+		 ((special-key? key1)
+		  (if (special-key? key2)
+		      (string<? (special-key/name key1)
+				(special-key/name key2))
+		      (button? key2)))
+		 ((button? key1)
+		  (and (button? key2)
+		       (string<? (button-name key1) (button-name key2))))
+		 (else
+		  (error:wrong-type-argument key1 "key" 'KEY<?))))))
 
 (define (key=? key1 key2)
-  (if (and (char? key1)
-	   (char? key2))
-      (char=? key1 key2)
-      (and (special-key? key1)
-	   (special-key? key2)
-	   (string=? (special-key/name key1)
-		     (special-key/name key2))
-	   (= (special-key/bucky-bits key1)
-	      (special-key/bucky-bits key2)))))
+  (and (= (key-bucky-bits key1) (key-bucky-bits key2))
+       (cond ((char? key1)
+	      (and (char? key2)
+		   (char=? key1 key2)))
+	     ((special-key? key1)
+	      (and (special-key? key2)
+		   (string=? (special-key/name key1) (special-key/name key2))))
+	     ((button? key1)
+	      (and (button? key2)
+		   (string<? (button-name key1) (button-name key2))))
+	     (else
+	      (error:wrong-type-argument key1 "key" 'KEY=?)))))
 
 (define (xkey<? x y)
   (let loop ((x (xkey->list x)) (y (xkey->list y)))
@@ -227,67 +245,51 @@
 			  (cdr hashed-keys)))
 	  new-key))))
 
-(define hashed-keys
-  (list 'HASHED-KEYS))
-
 (define (special-key/name special-key)
-  (string-append (bucky-bits->name (special-key/bucky-bits special-key))
+  (string-append (bucky-bits->prefix (special-key/bucky-bits special-key))
 		 (symbol-name (special-key/symbol special-key))))
 
-(define (bucky-bits->name bits)
-  (let ((bucky-bit-map '#("M-" "C-" "S-" "H-" "T-")))
-    (let loop ((n (fix:- (vector-length bucky-bit-map) 1))
-	       (bit (fix:lsh 1 (fix:- (vector-length bucky-bit-map) 1)))
-	       (name ""))
-      (cond ((fix:< n 0)
-	     name)
-	    ((fix:= 0 (fix:and bit bits))
-	     (loop (fix:- n 1) (fix:lsh bit -1) name))
-	    (else
-	     (loop (fix:- n 1)
-		   (fix:lsh bit -1)
-		   (string-append (vector-ref bucky-bit-map n) name)))))))
-
 (define (make-special-key name bits)
   (hook/make-special-key name bits))
 
-(define hook/make-special-key
-  intern-special-key)
+(define hashed-keys (list 'HASHED-KEYS))
+(define hook/make-special-key intern-special-key)
 
 ;; Predefined special keys
-(let-syntax ((make-key
-	      (sc-macro-transformer
-	       (lambda (form environment)
-		 environment
-		 `(DEFINE ,(cadr form)
-		    (INTERN-SPECIAL-KEY ',(cadr form) 0))))))
-  (make-key backspace)
-  (make-key stop)
-  (make-key f1)
-  (make-key f2)
-  (make-key f3)
-  (make-key f4)
-  (make-key menu)
-  (make-key system)
-  (make-key user)
-  (make-key f5)
-  (make-key f6)
-  (make-key f7)
-  (make-key f8)
-  (make-key f9)
-  (make-key f10)
-  (make-key f11)
-  (make-key f12)
-  (make-key insertline)
-  (make-key deleteline)
-  (make-key insertchar)
-  (make-key deletechar)
-  (make-key home)
-  (make-key prior)
-  (make-key next)
-  (make-key up)
-  (make-key down)
-  (make-key left)
-  (make-key right)
-  (make-key select)
-  (make-key print))
+(define-syntax define-special-key
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(DEFINE ,(cadr form)
+	(INTERN-SPECIAL-KEY ',(cadr form) 0)))))
+
+(define-special-key backspace)
+(define-special-key stop)
+(define-special-key f1)
+(define-special-key f2)
+(define-special-key f3)
+(define-special-key f4)
+(define-special-key menu)
+(define-special-key system)
+(define-special-key user)
+(define-special-key f5)
+(define-special-key f6)
+(define-special-key f7)
+(define-special-key f8)
+(define-special-key f9)
+(define-special-key f10)
+(define-special-key f11)
+(define-special-key f12)
+(define-special-key insertline)
+(define-special-key deleteline)
+(define-special-key insertchar)
+(define-special-key deletechar)
+(define-special-key home)
+(define-special-key prior)
+(define-special-key next)
+(define-special-key up)
+(define-special-key down)
+(define-special-key left)
+(define-special-key right)
+(define-special-key select)
+(define-special-key print)

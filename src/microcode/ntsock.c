@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: ntsock.c,v 1.11 2001/07/19 00:44:37 cph Exp $
+$Id: ntsock.c,v 1.18 2003/07/12 03:39:29 cph Exp $
 
-Copyright (c) 1997-2001 Massachusetts Institute of Technology
+Copyright 1997,1998,1999,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This conditional encompasses the entire file.  */
@@ -189,6 +192,7 @@ Tchannel
 OS_create_tcp_server_socket (void)
 {
   SOCKET s;
+  transaction_begin ();
   SOCKET_SOCKET_CALL (socket, (PF_INET, SOCK_STREAM, 0), s);
   RETURN_SOCKET (s, NT_channel_class_tcp_server_socket);
 }
@@ -197,10 +201,19 @@ void
 OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 {
   struct sockaddr_in address;
+  BOOL one = 1;
+
   memset ((&address), 0, (sizeof (address)));
   (address . sin_family) = AF_INET;
   memcpy ((& (address . sin_addr)), host, (sizeof (address . sin_addr)));
   (address . sin_port) = port;
+
+  VOID_SOCKET_CALL
+    (setsockopt, ((CHANNEL_SOCKET (channel)),
+		  SOL_SOCKET,
+		  SO_REUSEADDR,
+		  ((void *) (&one)),
+		  (sizeof (one))));
   VOID_SOCKET_CALL
     (bind, ((CHANNEL_SOCKET (channel)),
 	    ((struct sockaddr *) (&address)),
@@ -208,7 +221,7 @@ OS_bind_tcp_server_socket (Tchannel channel, void * host, unsigned int port)
 }
 
 #ifndef SOCKET_LISTEN_BACKLOG
-#define SOCKET_LISTEN_BACKLOG 5
+#  define SOCKET_LISTEN_BACKLOG 5
 #endif
 
 void
@@ -291,8 +304,7 @@ socket_channel_n_read (Tchannel channel)
 {
   unsigned long n;
   VOID_SOCKET_CALL (ioctlsocket, ((CHANNEL_SOCKET (channel)), FIONREAD, (&n)));
-  /* Zero bytes available means "read would block", so return -1.  */
-  return ((n == 0) ? (-1) : n);
+  return ((n == 0) ? CHANNEL_N_READ_WOULD_BLOCK : n);
 }
 
 static long
@@ -310,11 +322,24 @@ server_channel_write (Tchannel channel, const void * buffer,
   return (0);
 }
 
+/* The runtime system uses this procedure to decide whether an
+   accept() call will block.  So test the socket with select() and
+   return a one-bit answer.  */
+
 static long
 server_channel_n_read (Tchannel channel)
 {
-  error_external_return ();
-  return (0);
+  fd_set fds;
+  struct timeval tv;
+  int ret;
+
+  FD_ZERO (&fds);
+  FD_SET ((CHANNEL_SOCKET (channel)), (&fds));
+  (tv . tv_sec) = 0;
+  (tv . tv_usec) = 0;
+  VALUE_SOCKET_CALL (select, (1, (&fds), 0, 0, (&tv)), ret);
+  /* Zero bytes available means "accept would block", so return -1.  */
+  return ((ret == 0) ? (-1) : 1);
 }
 
 void

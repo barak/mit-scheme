@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: nttrap.c,v 1.19 2001/12/16 06:01:32 cph Exp $
+$Id: nttrap.c,v 1.26 2003/02/14 18:48:12 cph Exp $
 
-Copyright (c) 1992-2001 Massachusetts Institute of Technology
+Copyright 1992-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 #include <stdarg.h>
@@ -107,7 +110,7 @@ DEFUN (trap_noise_end, (style), UINT style)
 
   value = (MessageBox (NULL,
 		       trap_output,
-		       "MIT Scheme Exception Information",
+		       "MIT/GNU Scheme Exception Information",
 		       style));
   free (trap_output);
   trap_output = ((char *) NULL);
@@ -373,9 +376,9 @@ DEFUN (display_exception_information, (info, context, flags),
 			  "\nContext contains floating-point registers."));
     bufptr += (sprintf (bufptr, "\ncontext->Eip        = 0x%lx.", context->Eip));
     bufptr += (sprintf (bufptr, "\ncontext->Esp        = 0x%lx.", context->Esp));
-    bufptr += (sprintf (bufptr, "\nStack_Pointer       = 0x%lx.", Stack_Pointer));
-    bufptr += (sprintf (bufptr, "\nadj (Stack_Pointer) = 0x%lx.",
-			(ADDR_TO_SCHEME_ADDR (Stack_Pointer))));
+    bufptr += (sprintf (bufptr, "\nsp_register         = 0x%lx.", sp_register));
+    bufptr += (sprintf (bufptr, "\nadj (sp_register) = 0x%lx.",
+			(ADDR_TO_SCHEME_ADDR (sp_register))));
   }
 #endif /* W32_TRAP_DEBUG */
 
@@ -395,7 +398,7 @@ DEFUN (display_exception_information, (info, context, flags),
 #endif /* W32_TRAP_DEBUG */
 
   value = (MessageBox (NULL, &msgbuf[0],
-		       "MIT Scheme Exception Info",
+		       "MIT/GNU Scheme Exception Info",
 		       (flags | MB_ICONSTOP)));
   return (value);
 }
@@ -424,7 +427,7 @@ WinntExceptionTransferHook (void)
   static int size;
   static SCHEME_OBJECT * temp_stack_ptr, * new_sp;
 
-  temp_stack_ptr = Stack_Pointer;
+  temp_stack_ptr = sp_register;
   size = (temp_stack_limit - temp_stack_ptr);
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "WinntExceptionTransferHook."));
 
@@ -432,14 +435,14 @@ WinntExceptionTransferHook (void)
     INITIALIZE_STACK ();
   else
   {
-    Stack_Pointer = real_stack_pointer;
+    sp_register = real_stack_pointer;
     Stack_Guard = real_stack_guard;
   }
     
   new_sp = (real_stack_pointer - size);
   if (new_sp != temp_stack_ptr)
     memcpy (new_sp, temp_stack_ptr, (size * (sizeof (SCHEME_OBJECT))));
-  Stack_Pointer = new_sp;
+  sp_register = new_sp;
   SET_INTERRUPT_MASK ((FETCH_INTERRUPT_MASK ()));
   if (return_by_aborting)
     abort_to_interpreter (PRIM_APPLY);
@@ -495,9 +498,9 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
     if (! stack_recovered_p)
       INITIALIZE_STACK ();
     clear_real_stack = FALSE;
-    real_stack_pointer = Stack_Pointer;
+    real_stack_pointer = sp_register;
     real_stack_guard = Stack_Guard;
-    temp_stack_limit = Stack_Pointer;
+    temp_stack_limit = sp_register;
   }
   else
   {
@@ -505,7 +508,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
     real_stack_pointer = new_stack_pointer;
     real_stack_guard = Stack_Guard;
     temp_stack_limit = temp_stack_end;
-    Stack_Pointer = temp_stack_end;
+    sp_register = temp_stack_end;
     Stack_Guard = temp_stack;
   }
 
@@ -518,7 +521,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
   STACK_PUSH (trap_code);
   STACK_PUSH (trap_name);
   Store_Return (RC_HARDWARE_TRAP);
-  Store_Expression (long_to_integer (code));
+  exp_register = (long_to_integer (code));
   Save_Cont ();
  Pushed ();
   if (stack_recovered_p
@@ -526,7 +529,7 @@ DEFUN (setup_trap_frame, (code, context, trinfo, new_stack_pointer),
       && (trinfo->state == STATE_COMPILED_CODE))
     Stop_History ();
 
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
  Will_Push (STACK_ENV_EXTRA_SLOTS + 2);
   STACK_PUSH (trap_name);
   STACK_PUSH (handler);
@@ -621,8 +624,8 @@ DEFUN (continue_from_trap, (code, context),
     IFVERBOSE
       (TellUserEx
        (MB_OKCANCEL,
-	"continue_from_trap: SS = C DS; Stack_Pointer = 0x%lx; Esp = 0x%lx.",
-	Stack_Pointer, context->Esp));
+	"continue_from_trap: SS = C DS; sp_register = 0x%lx; Esp = 0x%lx.",
+	sp_register, context->Esp));
     scheme_sp = (context->Esp);
   }
   else
@@ -683,9 +686,9 @@ pc_in_hyperspace:
     (scheme_sp_valid
      ? ((SCHEME_OBJECT *) scheme_sp)
      : ((pc_in_C
-	&& (Stack_Pointer < Stack_Top)
-	&& (Stack_Pointer > Stack_Bottom))
-        ? Stack_Pointer
+	&& (sp_register < Stack_Top)
+	&& (sp_register > Stack_Bottom))
+        ? sp_register
         : ((SCHEME_OBJECT *) 0)));
 
   IFVERBOSE (TellUserEx (MB_OKCANCEL, "continue_from_trap 3"));
@@ -758,7 +761,7 @@ pc_in_hyperspace:
   {
     /* In the interpreter, a primitive, or a compiled code utility. */
 
-    SCHEME_OBJECT primitive = (Regs[REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
 
     if (pc_in_utility)
     {
@@ -778,7 +781,7 @@ pc_in_hyperspace:
       (trinfo . state) = STATE_PRIMITIVE;
       (trinfo . pc_info_1) = primitive;
       (trinfo . pc_info_2) =
-	(LONG_TO_UNSIGNED_FIXNUM (Regs[REGBLOCK_LEXPR_ACTUALS]));
+	(LONG_TO_UNSIGNED_FIXNUM (Registers[REGBLOCK_LEXPR_ACTUALS]));
     }
     if ((new_stack_pointer == 0)
 	|| ((((unsigned long) Free) & SCHEME_ALIGNMENT_MASK) != 0)
@@ -1123,7 +1126,8 @@ DEFUN (tinyexcpdebug, (code, info),
   unsigned long * addr;
   char responsebuf[256], * response;
  
-  if ((MessageBox (NULL, "Debug?", "MIT Scheme Exception Debugger", MB_YESNO))
+  if ((MessageBox
+       (NULL, "Debug?", "MIT/GNU Scheme Exception Debugger", MB_YESNO))
       != IDYES)
     return;
 

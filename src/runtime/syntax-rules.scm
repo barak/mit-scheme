@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: syntax-rules.scm,v 14.1 2002/02/03 03:38:57 cph Exp $
-;;;
-;;; Copyright (c) 1989-1991, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: syntax-rules.scm,v 14.6 2003/03/07 21:13:29 cph Exp $
+
+Copyright 1989,1990,1991,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Rule-based Syntactic Expanders
 
@@ -54,10 +58,7 @@
 		 (,r-form ,r-rename ,r-compare)
 		 ,r-compare		;prevent compiler warnings
 		 ,(let loop ((clauses clauses))
-		    (if (null? clauses)
-			`(,(rename 'BEGIN)
-			  ,r-rename	;prevent compiler warnings
-			  (,(rename 'ILL-FORMED-SYNTAX) ,r-form))
+		    (if (pair? clauses)
 			(let ((pattern (caar clauses)))
 			  (let ((sids
 				 (parse-pattern rename compare keywords
@@ -69,7 +70,10 @@
 			      ,(generate-output rename compare r-rename
 						sids (cadar clauses)
 						syntax-error)
-			      ,(loop (cdr clauses))))))))))))
+			      ,(loop (cdr clauses)))))
+			`(,(rename 'BEGIN)
+			  ,r-rename	;prevent compiler warnings
+			  (,(rename 'ILL-FORMED-SYNTAX) ,r-form)))))))))
       (syntax-error "Ill-formed special form:" form)))
 
 (define (parse-pattern rename compare keywords pattern expression)
@@ -179,7 +183,7 @@
     (cond ((identifier? template)
 	   (let ((sid
 		  (let loop ((sids sids))
-		    (and (not (null? sids))
+		    (and (pair? sids)
 			 (if (eq? (sid-name (car sids)) template)
 			     (car sids)
 			     (loop (cdr sids)))))))
@@ -196,7 +200,8 @@
 						  ellipsis
 						  (loop (car template)
 							(cons ellipsis
-							      ellipses))))
+							      ellipses))
+						  syntax-error))
 			     (loop (cddr template) ellipses)))
 	  ((pair? template)
 	   (optimized-cons rename compare
@@ -222,22 +227,25 @@
 	    ((pair? ellipses)
 	     (syntax-error "Extra ellipsis in expansion." #f))))))
 
-(define (generate-ellipsis rename ellipsis body)
+(define (generate-ellipsis rename ellipsis body syntax-error)
   (let ((sids (ellipsis-sids ellipsis)))
-    (let ((name (sid-name (car sids)))
-	  (expression (sid-expression (car sids))))
-      (cond ((and (null? (cdr sids))
-		  (eq? body name))
-	     expression)
-	    ((and (null? (cdr sids))
-		  (pair? body)
-		  (pair? (cdr body))
-		  (eq? (cadr body) name)
-		  (null? (cddr body)))
-	     `(,(rename 'MAP) ,(car body) ,expression))
-	    (else
-	     `(,(rename 'MAP) (,(rename 'LAMBDA) ,(map sid-name sids) ,body)
-			      ,@(map sid-expression sids)))))))
+    (if (pair? sids)
+	(let ((name (sid-name (car sids)))
+	      (expression (sid-expression (car sids))))
+	  (cond ((and (null? (cdr sids))
+		      (eq? body name))
+		 expression)
+		((and (null? (cdr sids))
+		      (pair? body)
+		      (pair? (cdr body))
+		      (eq? (cadr body) name)
+		      (null? (cddr body)))
+		 `(,(rename 'MAP) ,(car body) ,expression))
+		(else
+		 `(,(rename 'MAP) (,(rename 'LAMBDA) ,(map sid-name sids)
+						     ,body)
+				  ,@(map sid-expression sids)))))
+	(syntax-error "Missing ellipsis in expansion." #f))))
 
 (define (zero-or-more? pattern rename compare)
   (and (pair? pattern)
@@ -284,35 +292,15 @@
       x
       `(,(rename 'APPEND) ,x ,y)))
 
-(define sid-type
-  (make-record-type "sid" '(NAME EXPRESSION CONTROL OUTPUT-EXPRESSION)))
+(define-record-type <sid>
+    (make-sid name expression control)
+    sid?
+  (name sid-name)
+  (expression sid-expression)
+  (control sid-control)
+  (output-expression sid-output-expression set-sid-output-expression!))
 
-(define make-sid
-  (record-constructor sid-type '(NAME EXPRESSION CONTROL)))
-
-(define sid-name
-  (record-accessor sid-type 'NAME))
-
-(define sid-expression
-  (record-accessor sid-type 'EXPRESSION))
-
-(define sid-control
-  (record-accessor sid-type 'CONTROL))
-
-(define sid-output-expression
-  (record-accessor sid-type 'OUTPUT-EXPRESSION))
-
-(define set-sid-output-expression!
-  (record-updater sid-type 'OUTPUT-EXPRESSION))
-
-(define ellipsis-type
-  (make-record-type "ellipsis" '(SIDS)))
-
-(define make-ellipsis
-  (record-constructor ellipsis-type '(SIDS)))
-
-(define ellipsis-sids
-  (record-accessor ellipsis-type 'SIDS))
-
-(define set-ellipsis-sids!
-  (record-updater ellipsis-type 'SIDS))
+(define-record-type <ellipsis>
+    (make-ellipsis sids)
+    ellipsis?
+  (sids ellipsis-sids set-ellipsis-sids!))

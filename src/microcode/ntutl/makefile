@@ -1,30 +1,34 @@
 ### -*- Fundamental -*-
 ###
-###     $Id: makefile,v 1.28 2001/07/19 01:13:53 cph Exp $
+###     $Id: makefile,v 1.31 2003/07/22 02:19:51 cph Exp $
 ###
-###     Copyright (c) 1992-2001 Massachusetts Institute of Technology
+###     Copyright 1993,1994,1995,1996 Massachusetts Institute of Technology
+###     Copyright 1998,1999,2001,2003 Massachusetts Institute of Technology
 ###
-###     This program is free software; you can redistribute it and/or
-###     modify it under the terms of the GNU General Public License as
-###     published by the Free Software Foundation; either version 2 of
-###     the License, or (at your option) any later version.
+###     This file is part of MIT/GNU Scheme.
 ###
-###     This program is distributed in the hope that it will be
+###     MIT/GNU Scheme is free software; you can redistribute it
+###     and/or modify it under the terms of the GNU General Public
+###     License as published by the Free Software Foundation; either
+###     version 2 of the License, or (at your option) any later
+###     version.
+###
+###     MIT/GNU Scheme is distributed in the hope that it will be
 ###     useful, but WITHOUT ANY WARRANTY; without even the implied
 ###     warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 ###     PURPOSE.  See the GNU General Public License for more details.
 ###
 ###     You should have received a copy of the GNU General Public
-###     License along with this program; if not, write to the Free
+###     License along with MIT/GNU Scheme; if not, write to the Free
 ###     Software Foundation, Inc., 59 Temple Place - Suite 330,
 ###     Boston, MA 02111-1307, USA.
 
 #### Makefile for Scheme under Win32 compiled by Microsoft Visual C++.
 !include <win32.mak>
 
-#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c
-#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj
-#USER_LIBS = blowfish.lib gdbm.lib md5.lib
+#USER_PRIM_SOURCES = prbfish.c prgdbm.c prmd5.c prpgsql.c
+#USER_PRIM_OBJECTS = prbfish.obj prgdbm.obj prmd5.obj prpgsql.obj
+#USER_LIBS = blowfish.lib gdbm.lib md5.lib pq.lib
 
 # **** Microsoft supplies their assembler as a separate product, and
 # **** we don't currently have a copy, so use the Watcom assembler.
@@ -417,7 +421,6 @@ TRAP_H = trap.h
 TYPES_H = types.h
 USRDEF_H = usrdef.h $(SCHEME_H) $(PRIMS_H)
 UXSOCK_H = uxsock.h $(OSIO_H)
-VERSION_H = version.h
 WINDER_H = winder.h
 ZONES_H = zones.h
 
@@ -442,8 +445,7 @@ avltree.obj: avltree.c $(AVLTREE_H)
 bignum.obj: bignum.c $(SCHEME_H) $(BIGNMINT_H) $(LIMITS_H)
 bigprm.obj: bigprm.c $(SCHEME_H) $(PRIMS_H) $(ZONES_H)
 bitstr.obj: bitstr.c $(SCHEME_H) $(PRIMS_H) $(BITSTR_H)
-boot.obj: boot.c $(SCHEME_H) $(PRIMS_H) $(VERSION_H) $(OPTION_H) $(OSTOP_H) \
-	$(OSTTY_H)
+boot.obj: boot.c $(SCHEME_H) $(PRIMS_H) $(OPTION_H) $(OSTOP_H) $(OSTTY_H)
 char.obj: char.c $(SCHEME_H) $(PRIMS_H)
 cmpauxmd.obj: cmpauxmd.asm
 cmpint.obj: cmpint.c $(CONFIG_H) $(DSTACK_H) $(OUTF_H) $(TYPES_H) $(CONST_H) \
@@ -502,6 +504,7 @@ wind.obj: wind.c $(OBSTACK_H) $(DSTACK_H) $(OUTF_H)
 prbfish.obj: prbfish.c $(SCHEME_H) $(PRIMS_H)
 prgdbm.obj: prgdbm.c $(SCHEME_H) $(PRIMS_H) $(OS_H)
 prmd5.obj: prmd5.c $(SCHEME_H) $(PRIMS_H)
+prpgsql.obj: prpgsql.c $(SCHEME_H) $(PRIMS_H) $(USRDEF_H) $(OS_H)
 prosenv.obj: prosenv.c $(SCHEME_H) $(PRIMS_H) $(OSENV_H) $(OSTOP_H) $(LIMITS_H)
 prosfile.obj: prosfile.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H)
 prosfs.obj: prosfs.c $(SCHEME_H) $(PRIMS_H) $(OSFILE_H) $(OSFS_H) $(OSIO_H)

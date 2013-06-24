@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: intercom.c,v 9.31 1999/01/02 06:11:34 cph Exp $
+$Id: intercom.c,v 9.35 2003/02/14 18:28:19 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright (c) 1987-1999, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Single-processor simulation of locking, propagating, and
@@ -63,7 +67,7 @@ DEFINE_PRIMITIVE ("GLOBAL-INTERRUPT", Prim_send_global_interrupt, 3, 3, 0)
   POP_PRIMITIVE_FRAME (3);
  Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
   Store_Return (RC_FINISH_GLOBAL_INT);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (Which_Level));
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (Which_Level));
   Save_Cont ();
   STACK_PUSH (test);
   STACK_PUSH (STACK_FRAME_HEADER);
@@ -163,7 +167,7 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     /* This gets this primitive's code which is in the expression register. */
-    SCHEME_OBJECT primitive = (Regs [REGBLOCK_PRIMITIVE]);
+    SCHEME_OBJECT primitive = (Registers[REGBLOCK_PRIMITIVE]);
     SCHEME_OBJECT queue = (Get_Fixed_Obj_Slot (The_Work_Queue));
     SCHEME_OBJECT queue_head =
       ((queue == EMPTY_LIST) ? EMPTY_LIST : (PAIR_CAR (queue)));
@@ -183,7 +187,7 @@ DEFINE_PRIMITIVE ("GET-WORK", Prim_get_work, 1, 1, 0)
 	STACK_PUSH (SHARP_F);
 	STACK_PUSH (primitive);
 	STACK_PUSH (STACK_FRAME_HEADER + 1);
-	Store_Expression (SHARP_F);
+	exp_register = SHARP_F;
 	Store_Return (RC_INTERNAL_APPLY);
 	Save_Cont ();
 	/* Invoke the thunk. */

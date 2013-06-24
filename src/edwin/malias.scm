@@ -1,22 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: malias.scm,v 1.5 1999/08/20 20:35:45 cph Exp $
-;;;
-;;; Copyright (c) 1991-1999 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: malias.scm,v 1.10 2003/08/07 01:46:34 cph Exp $
+
+Copyright 1991,1997,1999,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Mail Aliases
 
@@ -25,11 +30,11 @@
 (define-command define-mail-alias
   "Define NAME as a mail-alias that translates to DEFINITION."
   (lambda ()
-    (let ((alias (prompt-for-string "Define mail alias" false)))
+    (let ((alias (prompt-for-string "Define mail alias" #f)))
       (list alias
 	    (prompt-for-string
 	     (string-append "Define " alias " as mail alias for")
-	     false))))
+	     #f))))
   (lambda (alias definition)
     (let ((definition (parse-mailrc-line definition 0)))
       (guarantee-mail-aliases)
@@ -53,34 +58,31 @@
 	       (append-map! (lambda (definition)
 			      (loop definition disabled))
 			    (cdr entry))))
-	    ((null? disabled)
-	     false)
-	    (else
-	     (list alias))))))
+	    ((null? disabled) #f)
+	    (else (list alias))))))
 
 (define (find-mail-alias alias mail-aliases)
   (let loop ((mail-aliases mail-aliases))
-    (and (not (null? mail-aliases))
+    (and (pair? mail-aliases)
 	 (if (string-ci=? alias (caar mail-aliases))
 	     (car mail-aliases)
 	     (loop (cdr mail-aliases))))))
-
+
 (define (expand-mail-aliases start end)
   (guarantee-mail-aliases)
   (let loop ((start start))
-    (let ((hs
-	   (re-search-forward "^\\(to\\|cc\\|bcc\\):[ \t]*" start end true)))
+    (let ((hs (re-search-forward "^\\(to\\|cc\\|bcc\\):[ \t]*" start end #t)))
       (if hs
 	  (let ((he
 		 (mark-left-inserting-copy
 		  (skip-chars-backward
 		   " \t\n"
-		   (if (re-search-forward "^[^ \t]" hs end false)
+		   (if (re-search-forward "^[^ \t]" hs end #f)
 		       (re-match-start 0)
 		       end)
 		   hs))))
 	    (let loop ((hs hs))
-	      (cond ((re-search-forward "[ \t]*[\n,][ \t]*" hs he false)
+	      (cond ((re-search-forward "[ \t]*[\n,][ \t]*" hs he #f)
 		     (let ((e (mark-left-inserting-copy (re-match-end 0))))
 		       (expand-region hs (re-match-start 0))
 		       (mark-temporary! e)
@@ -97,22 +99,24 @@
 	  (delete-string point end)
 	  (let loop ((strings strings))
 	    (insert-string (car strings) point)
-	    (if (not (null? (cdr strings)))
+	    (if (pair? (cdr strings))
 		(begin
 		  (insert-string ", " point)
 		  (loop (cdr strings)))))
 	  (mark-temporary! point)))))
 
-(define mail-aliases true)
+(define mail-aliases '())
+(define mail-aliases-time #f)
 
 (define (guarantee-mail-aliases)
-  (if (eq? mail-aliases true)
-      (begin
-	(set! mail-aliases '())
-	(if (file-exists? "~/.mailrc")
+  (let ((filename "~/.mailrc"))
+    (let ((t (file-modification-time filename)))
+      (if (and t (not (eqv? t mail-aliases-time)))
+	  (begin
+	    (set! mail-aliases-time t)
 	    (for-each (lambda (entry)
 			(define-mail-alias (car entry) (cdr entry)))
-		      (parse-mailrc-file "~/.mailrc"))))))
+		      (parse-mailrc-file filename)))))))
 
 (define (parse-mailrc-file filename)
   (call-with-input-file filename

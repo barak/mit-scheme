@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: hooks.c,v 9.60 2001/07/31 03:11:31 cph Exp $
+$Id: hooks.c,v 9.65 2003/02/14 18:28:19 cph Exp $
 
-Copyright (c) 1988-2001 Massachusetts Institute of Technology
+Copyright (c) 1988-2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file contains various hooks and handles that connect the
@@ -99,7 +102,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 #else
   /* Don't use Will_Push for this -- if the length of the list is too
      large to fit on the stack, it could cause Scheme to terminate.  */
-  if ((Stack_Pointer - (number_of_args + STACK_ENV_EXTRA_SLOTS + 1))
+  if ((sp_register - (number_of_args + STACK_ENV_EXTRA_SLOTS + 1))
       <= Stack_Guard)
     error_bad_range_arg (2);
   POP_PRIMITIVE_FRAME (2);
@@ -127,7 +130,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
       TOUCH_IN_PRIMITIVE ((PAIR_CDR (scan_list)), scan_list);
     }
   }
-  Stack_Pointer = (STACK_LOC (- number_of_args));
+  sp_register = (STACK_LOC (- number_of_args));
   STACK_PUSH (procedure);
   STACK_PUSH (STACK_FRAME_HEADER + number_of_args);
 #ifdef USE_STACKLETS
@@ -166,7 +169,7 @@ Invoke PROCEDURE on the arguments contained in list-of-ARGS.")
 #else /* not USE_STACKLETS */
 
 #define CWCC_STACK_SIZE()						\
-  ((Stack_Top - Stack_Pointer) + STACKLET_HEADER_SIZE			\
+  ((Stack_Top - sp_register) + STACKLET_HEADER_SIZE			\
    + CONTINUATION_SIZE + HISTORY_SIZE)
 
 /* When there are no stacklets, the two versions of CWCC are identical. */
@@ -236,7 +239,8 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
 
 	if ((ret_code == RC_RESTORE_HISTORY) || (ret_code == return_code))
 	{
-	  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
+	  history_register
+	    = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
 	  STACK_RESET ();
 	  /* Will_Push(3); */
 	  STACK_PUSH (control_point);
@@ -272,7 +276,7 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
   }
 #else /* not USE_STACKLETS */
   {
-    fast long n_words = (Stack_Top - Stack_Pointer);
+    fast long n_words = (Stack_Top - sp_register);
     control_point = (allocate_marked_vector
 		     (TC_CONTROL_POINT,
 		      (n_words + (STACKLET_HEADER_SIZE - 1)),
@@ -287,13 +291,13 @@ DEFUN (CWCC, (return_code, reuse_flag, receiver),
       while ((n_words--) > 0)
 	(*scan++) = (STACK_POP ());
     }
-    if (Consistency_Check && (Stack_Pointer != Stack_Top))
+    if (Consistency_Check && (sp_register != Stack_Top))
       Microcode_Termination (TERM_BAD_STACK);
     CLEAR_INTERRUPT (INT_Stack_Overflow);
     STACK_RESET ();
     Will_Push (CONTINUATION_SIZE);
     Store_Return (RC_JOIN_STACKLETS);
-    Store_Expression (control_point);
+    exp_register = control_point;
     Save_Cont ();
     Pushed ();
   }
@@ -373,14 +377,14 @@ Invoke THUNK with CONTROL-POINT as its control stack.")
   thunk = (ARG_REF (2));
 
   /* This KNOWS the direction of stack growth. */
-  Stack_Pointer = (Get_End_Of_Stacklet ());
+  sp_register = (Get_End_Of_Stacklet ());
   /* We've discarded the history with the stack contents.  */
   Prev_Restore_History_Stacklet = NULL;
   Prev_Restore_History_Offset = 0;
   CLEAR_INTERRUPT (INT_Stack_Overflow);
 
  Will_Push (CONTINUATION_SIZE);
-  Store_Expression (control_point);
+  exp_register = control_point;
   Store_Return (RC_JOIN_STACKLETS);
   Save_Cont ();
  Pushed ();
@@ -434,8 +438,8 @@ Evaluate SCODE-EXPRESSION in ENVIRONMENT.")
     fast SCHEME_OBJECT expression = (ARG_REF (1));
     fast SCHEME_OBJECT environment = (ARG_REF (2));
     POP_PRIMITIVE_FRAME (2);
-    Store_Env (environment);
-    Store_Expression (expression);
+    env_register = environment;
+    exp_register = expression;
   }
   PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
   /*NOTREACHED*/
@@ -461,7 +465,7 @@ memoized yet.")
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE + STACK_ENV_EXTRA_SLOTS + 1);
       Store_Return (RC_SNAP_NEED_THUNK);
-      Store_Expression (thunk);
+      exp_register = thunk;
       Save_Cont ();
       STACK_PUSH (MEMORY_REF (thunk, THUNK_VALUE));
       STACK_PUSH (STACK_FRAME_HEADER);
@@ -477,11 +481,11 @@ memoized yet.")
       POP_PRIMITIVE_FRAME (1);
      Will_Push (CONTINUATION_SIZE);
       Store_Return (RC_SNAP_NEED_THUNK);
-      Store_Expression (thunk);
+      exp_register = thunk;
       Save_Cont ();
      Pushed ();
-      Store_Env (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
-      Store_Expression (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
+      env_register = (FAST_MEMORY_REF (thunk, THUNK_ENVIRONMENT));
+      exp_register = (FAST_MEMORY_REF (thunk, THUNK_PROCEDURE));
       PRIMITIVE_ABORT (PRIM_DO_EXPRESSION);
       /*NOTREACHED*/
       PRIMITIVE_RETURN (UNSPECIFIC);
@@ -531,7 +535,7 @@ space is used as the starting point.")
     Will_Push((2 * CONTINUATION_SIZE) + (STACK_ENV_EXTRA_SLOTS + 1));
       /* Push a continuation to go back to the current state after the
 	 body is evaluated */
-      Store_Expression (old_point);
+      exp_register = old_point;
       Store_Return (RC_RESTORE_TO_STATE_POINT);
       Save_Cont ();
       /* Push a stack frame which will call the body after we have moved
@@ -539,7 +543,7 @@ space is used as the starting point.")
       STACK_PUSH (during_thunk);
       STACK_PUSH (STACK_FRAME_HEADER);
       /* Push the continuation to go with the stack frame */
-      Store_Expression (SHARP_F);
+      exp_register = SHARP_F;
       Store_Return (RC_INTERNAL_APPLY);
       Save_Cont ();
     Pushed ();
@@ -739,8 +743,8 @@ identified by the continuation parser.")
     {
       SCHEME_OBJECT thunk = (STACK_POP ());
       STACK_PUSH (STACK_FRAME_HEADER + (nargs - 2));
-      Store_Env (THE_NULL_ENV);
-      Store_Expression (SHARP_F);
+      env_register = THE_NULL_ENV;
+      exp_register = SHARP_F;
       Store_Return (RC_INTERNAL_APPLY);
       Save_Cont ();
     Will_Push (STACK_ENV_EXTRA_SLOTS + 1);
@@ -859,7 +863,7 @@ SCHEME_OBJECT
 initialize_history ()
 {
   /* Dummy History Structure */
-  History = (Make_Dummy_History ());
+  history_register = (Make_Dummy_History ());
   return
     (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, (Make_Dummy_History ())));
 }
@@ -871,11 +875,11 @@ Set the interpreter's history object to HISTORY.")
   PRIMITIVE_HEADER (1);
   PRIMITIVE_CANONICALIZE_CONTEXT ();
   CHECK_ARG (1, HUNK3_P);
-  Val = (*History);
+  val_register = (*history_register);
 #ifndef DISABLE_HISTORY
-  History = (OBJECT_ADDRESS (ARG_REF (1)));
+  history_register = (OBJECT_ADDRESS (ARG_REF (1)));
 #else
-  History = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
+  history_register = (OBJECT_ADDRESS (Get_Fixed_Obj_Slot (Dummy_History)));
 #endif
   POP_PRIMITIVE_FRAME (1);
   PRIMITIVE_ABORT (PRIM_POP_RETURN);
@@ -891,7 +895,7 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
   {
     SCHEME_OBJECT thunk = (ARG_REF (1));
     /* Remove one reduction from the history before saving it */
-    SCHEME_OBJECT * first_rib = (OBJECT_ADDRESS (History [HIST_RIB]));
+    SCHEME_OBJECT * first_rib = (OBJECT_ADDRESS (history_register [HIST_RIB]));
     SCHEME_OBJECT * second_rib =
       (OBJECT_ADDRESS (first_rib [RIB_NEXT_REDUCTION]));
     if ((first_rib != second_rib) &&
@@ -908,9 +912,10 @@ DEFINE_PRIMITIVE ("WITH-HISTORY-DISABLED", Prim_with_history_disabled, 1, 1,
 		break;
 	      rib = next_rib;
 	    }
-	  /* This maintains the mark in (History [HIST_RIB]). */
-	  (History [HIST_RIB]) =
-	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (History [HIST_RIB])), rib));
+	  /* This maintains the mark in (history_register [HIST_RIB]). */
+	  (history_register [HIST_RIB]) =
+	    (MAKE_POINTER_OBJECT ((OBJECT_TYPE (history_register [HIST_RIB])),
+				  rib));
 	}
       }
     POP_PRIMITIVE_FRAME (1);

@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: ystep.scm,v 1.3 1999/01/02 06:19:10 cph Exp $
+$Id: ystep.scm,v 1.7 2003/03/13 03:11:12 cph Exp $
 
-Copyright (c) 1994, 1999 Massachusetts Institute of Technology
+Copyright 1994,1997,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; YStep - a step away from ZStep
@@ -284,15 +288,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Stepper nodes
 
-(define-structure (ynode (constructor make-ynode-1 (parent type exp)))
+(define-structure (ynode
+		   (constructor make-ynode-1
+				(parent type exp redisplay-flags)))
   ;; Could easily store environment as well.
   parent
   type
   (exp #f read-only #t)
   (children '())
   (result #f)
-  (redisplay-flags (cons #t (if parent (ynode-redisplay-flags parent) '()))
-		   read-only #t))
+  (redisplay-flags #f read-only #t))
 
 (define ynode-exp:top-level (list 'STEPPER-TOP-LEVEL))
 (define ynode-exp:proceed   (list 'STEPPER-PROCEED))
@@ -318,7 +323,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (eq? (ynode-result node) ynode-result:reduced))
 
 (define (make-ynode parent type exp)
-  (let ((node (make-ynode-1 parent type exp)))
+  (let ((node
+	 (make-ynode-1 parent type exp
+		       (cons #t
+			     (if parent (ynode-redisplay-flags parent) '())))))
     (set-ynode-result! node ynode-result:waiting)
     (if parent
 	(set-ynode-children! parent (cons node (ynode-children parent))))
@@ -327,22 +335,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (ynode-previous node)
   (let loop ((sibs (ynode-children (ynode-parent node))))
-    (cond ((null? sibs)
-	   #f)
-	  ((eq? (car sibs) node)
-	   (and (not (null? (cdr sibs)))
-		(cadr sibs)))
-	  (else
-	   (loop (cdr sibs))))))
+    (and (pair? sibs)
+	 (if (eq? (car sibs) node)
+	     (and (pair? (cdr sibs))
+		  (cadr sibs))
+	     (loop (cdr sibs))))))
 
 (define (ynode-next node)
   (let loop ((sibs (ynode-children (ynode-parent node))))
-    (cond ((or (null? sibs) (null? (cdr sibs)))
-	   #f)
-	  ((eq? (cadr sibs) node)
-	   (car sibs))
-	  (else
-	   (loop (cdr sibs))))))
+    (and (pair? sibs)
+	 (pair? (cdr sibs))
+	 (if (eq? (cadr sibs) node)
+	     (car sibs)
+	     (loop (cdr sibs))))))
 
 (define (ynode-value-node node)
   (if (ynode-reduced? node)
@@ -366,7 +371,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
       (set-ynode-children! new-node children)
       (for-each (lambda (c) (set-ynode-parent! c new-node)) children)
       (let loop ((node new-node))
-	(ynode-needs-redisplay! ynode)
+	(ynode-needs-redisplay! node)
 	(for-each loop (ynode-children node)))
       new-node)))
 

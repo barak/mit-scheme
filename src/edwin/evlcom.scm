@@ -1,23 +1,29 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: evlcom.scm,v 1.65 2001/12/19 05:25:29 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: evlcom.scm,v 1.68 2003/02/14 18:28:12 cph Exp $
+
+Copyright 1986,1989,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Evaluation Commands
 ;;; Package: (edwin)
@@ -67,10 +73,12 @@ If 'DEFAULT, use the default (REP loop) environment."
 	      (define-variable-local-value! buffer run-light #f))))))
 
 (define-variable debug-on-evaluation-error
-  "True means enter debugger if error is signalled while evaluating.
-This does not affect editor errors."
-  #t
-  boolean?)
+  "True means enter debugger if an evaluation error is signalled.
+False means ignore the error and resume editing.
+The symbol ASK means ask what to do (this is the default value).
+This does not affect editor errors or internal errors."
+  'ASK
+  (lambda (x) (or (boolean? x) (eq? x 'ASK))))
 
 (define-variable evaluation-input-recorder
   "A procedure that receives each input region before evaluation.
@@ -416,10 +424,8 @@ Set by Scheme evaluation code to update the mode line."
       (hook/repl-eval #f expression environment))))
 
 (define (evaluation-error-handler condition)
-  (maybe-debug-scheme-error (ref-variable-object debug-on-evaluation-error)
-			    condition
-			    "evaluation")
-  (standard-error-report condition "evaluation" #f)
+  (maybe-debug-scheme-error 'EVALUATION condition)
+  (standard-error-report 'EVALUATION condition #f)
   (editor-beep)
   (return-to-command-loop condition))
 

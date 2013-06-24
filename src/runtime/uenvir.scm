@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: uenvir.scm,v 14.56 2002/02/13 01:02:55 cph Exp $
+$Id: uenvir.scm,v 14.60 2003/02/14 18:28:34 cph Exp $
 
 Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Microcode Environments
@@ -340,7 +343,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	(append! (do-frame environment) (do-frame external)))))
 
 (define (walk-ic-procedure-args frame procedure keep? map-entry)
-  (let ((name-vector (system-pair-cdr (procedure-lambda procedure))))
+  (let ((name-vector (lambda-names-vector (procedure-lambda procedure))))
     (let loop ((index (vector-length name-vector)) (result '()))
       (if (fix:> index 1)
 	  (let ((index (fix:- index 1)))
@@ -415,18 +418,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define (extend-top-level-environment environment #!optional names values)
   (if (not (interpreter-environment? environment))
       (illegal-environment environment 'EXTEND-TOP-LEVEL-ENVIRONMENT))
-  (%extend-top-level-environment
-   environment
-   (if (default-object? names) '() names)
-   (if (default-object? values) 'DEFAULT values)
-   'EXTEND-TOP-LEVEL-ENVIRONMENT))
+  (%extend-top-level-environment environment
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'EXTEND-TOP-LEVEL-ENVIRONMENT))
+
+(define (make-top-level-environment #!optional names values)
+  (%extend-top-level-environment system-global-environment
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'MAKE-TOP-LEVEL-ENVIRONMENT))
 
 (define (make-root-top-level-environment #!optional names values)
-  (%extend-top-level-environment
-   (object-new-type (object-type #f) (fix:xor (object-datum #f) 1))
-   (if (default-object? names) '() names)
-   (if (default-object? values) 'DEFAULT values)
-   'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
+  (%extend-top-level-environment (object-new-type (object-type #f)
+						  (fix:xor (object-datum #f)
+							   1))
+				 (if (default-object? names) '() names)
+				 (if (default-object? values) 'DEFAULT values)
+				 'MAKE-ROOT-TOP-LEVEL-ENVIRONMENT))
 
 (define (%extend-top-level-environment environment names values procedure)
   (if (not (list-of-type? names symbol?))
@@ -434,10 +443,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (system-list->vector
    (ucode-type environment)
    (cons (system-pair-cons (ucode-type procedure)
-			   (system-pair-cons (ucode-type lambda)
-					     unspecific
-					     (list->vector
-					      (cons lambda-tag:unnamed names)))
+			   (make-slambda lambda-tag:unnamed names unspecific)
 			   environment)
 	 (if (eq? values 'DEFAULT)
 	     (let ((values (make-list (length names))))

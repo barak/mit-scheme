@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: utils.scm,v 4.24 2002/02/08 03:07:11 cph Exp $
+$Id: utils.scm,v 4.27 2003/02/14 18:28:01 cph Exp $
 
-Copyright (c) 1987-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1994,2001,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Compiler Utilities
@@ -107,7 +111,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
     (if (null? sets)
 	(eq-set-union set accum)
 	(loop (car sets) (cdr sets) (eq-set-union set accum)))))
-
+
 (package (transitive-closure enqueue-node! enqueue-nodes!)
 
 (define *queue*)
@@ -136,21 +140,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 
 ;;;; Type Codes
 
-(let-syntax ((define-type-code
-	       (sc-macro-transformer
-		(lambda (form environment)
-		  environment
-		  `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
-		     ',(microcode-type (cadr form)))))))
-  (define-type-code lambda)
-  (define-type-code extended-lambda)
-  (define-type-code procedure)
-  (define-type-code extended-procedure)
-  (define-type-code cell)
-  (define-type-code environment)
-  (define-type-code unassigned)
-  (define-type-code stack-environment)
-  (define-type-code compiled-entry))
+(define-syntax define-type-code
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     `(DEFINE-INTEGRABLE ,(symbol-append 'TYPE-CODE: (cadr form))
+	',(microcode-type (cadr form))))))
+
+(define-type-code lambda)
+(define-type-code extended-lambda)
+(define-type-code procedure)
+(define-type-code extended-procedure)
+(define-type-code cell)
+(define-type-code environment)
+(define-type-code unassigned)
+(define-type-code stack-environment)
+(define-type-code compiled-entry)
 
 (define (scode/procedure-type-code *lambda)
   (cond ((object-type? type-code:lambda *lambda)
@@ -172,7 +177,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
       (let ((arity (primitive-procedure-arity primitive)))
 	(or (= arity -1)
 	    (= arity argument-count)))))
-
+
 ;;;; Special Compiler Support
 
 (define compiled-error-procedure
@@ -350,17 +355,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define procedure-object?
   (lexical-reference system-global-environment 'PROCEDURE?))
 
-;;!(define (careful-object-datum object)
-;;!  ;; This works correctly when cross-compiling.
-;;!  (if (and (object-type? (ucode-type fixnum) object)
-;;!	   (negative? object))
-;;!      (+ object unsigned-fixnum/upper-limit)
-;;!      (object-datum object)))
-
 (define (careful-object-datum object)
   ;; This works correctly when cross-compiling.
   (if (and (fix:fixnum? object)
 	   (negative? object))
       (+ object unsigned-fixnum/upper-limit)
       (object-datum object)))
-

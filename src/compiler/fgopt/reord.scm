@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: reord.scm,v 1.2 1999/01/02 06:06:43 cph Exp $
+$Id: reord.scm,v 1.5 2003/03/10 20:51:48 cph Exp $
 
-Copyright (c) 1988, 1999 Massachusetts Institute of Technology
+Copyright 1988,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Parallel assignment problem
@@ -62,12 +66,7 @@ number of assignments of any ordering.
 
 ;;;; Graph Abstraction
 
-(define-structure (node
-		   (constructor make-node
-				(target
-				 value
-				 original-dependencies
-				 original-dependents)))
+(define-structure (node (constructor %make-node))
   ;; An assignment representing a target variable (or static link) and
   ;; an expression which will be assigned to the target.
   (target false read-only true)
@@ -82,8 +81,16 @@ number of assignments of any ordering.
   original-dependents
 
   ;; Copies of the above; modified during the reordering algorithm.
-  (dependencies (list-copy original-dependencies))
-  (dependents (list-copy original-dependents)))
+  dependencies
+  dependents)
+
+(define (make-node target value original-dependencies original-dependents)
+  (%make-node target
+	      value
+	      original-dependencies
+	      original-dependents
+	      (list-copy original-dependencies)
+	      (list-copy original-dependents)))
 
 (define (make-node-set targets values dependency-sets)
   (map (lambda (target value dependencies)

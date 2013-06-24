@@ -1,23 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: win_ffi.scm,v 1.9 2002/02/03 03:38:58 cph Exp $
+$Id: win_ffi.scm,v 1.13 2003/04/25 03:54:44 cph Exp $
 
-Copyright (c) 1993, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1993,1994,1998,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Foreign function interface
@@ -104,17 +107,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 	    ((14) (call-case 14))
 	    ((15) (call-case 15))
 	    (else
-	     (lambda args
-	       (if (= (length args) arg-count)
-		   (result-type
-		    (apply %call-foreign-function
-			   (module-entry/machine-address module-entry)
-			   (map (lambda (f x) (f x)) arg-types args)))
-		   ((access error system-global-environment)
-                    "Wrong arg count for foreign function" 
-		    name
-		    (length args)
-		    (list 'requires arg-count))))))))
+	     (lambda (module-entry)
+	       (lambda args
+		 (if (= (length args) arg-count)
+		     (result-type
+		      (apply %call-foreign-function
+			     (module-entry/machine-address module-entry)
+			     (map (lambda (f x) (f x)) arg-types args)))
+		     ((access error system-global-environment)
+		      "Wrong arg count for foreign function" 
+		      name
+		      (length args)
+		      (list 'requires arg-count)))))))))
     (parameterize-with-module-entry procedure lib name)))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -139,8 +143,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ;;  in other cases?  Ugh.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(load-option 'hash-table)
 
 (define make-integer-hash-table
         (hash-table/constructor  modulo

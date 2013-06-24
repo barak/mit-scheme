@@ -1,23 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: hlpcom.scm,v 1.123 2002/02/21 18:56:38 cph Exp $
-;;;
-;;; Copyright (c) 1986, 1989-2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: hlpcom.scm,v 1.127 2003/07/31 02:33:01 cph Exp $
+
+Copyright 1986,1989,1990,1991,1993,1998 Massachusetts Institute of Technology
+Copyright 2000,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Help Commands
 
@@ -246,7 +251,7 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 
 (define (mode-apropos regexp)
   (for-each (lambda (mode)
-	      (write (mode-name mode))
+	      (write-string (symbol-name (mode-name mode)))
 	      (newline)
 	      (print-short-description "Mode" (mode-description mode)))
 	    (string-table-apropos editor-modes regexp)))
@@ -396,13 +401,13 @@ If you want VALUE to be a string, you must surround it with doublequotes."
 	 (show-bindings
 	  (lambda (argument next comtabs)
 	    comtabs
-	    (cons (let ((port (make-accumulator-output-port)))
-		    (describe-bindings
-		     (mode-comtabs (name->mode argument 'ERROR))
-		     #f
-		     port)
-		    (newline port)
-		    (get-output-from-accumulator port))
+	    (cons (call-with-output-string
+		   (lambda (port)
+		     (describe-bindings
+		      (mode-comtabs (name->mode argument 'ERROR))
+		      #f
+		      port)
+		     (newline port)))
 		  (find-escape next comtabs))))
 	 (new-mode
 	  (lambda (argument next comtabs)

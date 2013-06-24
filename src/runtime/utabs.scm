@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: utabs.scm,v 14.14 2001/09/25 05:08:40 cph Exp $
+$Id: utabs.scm,v 14.18 2003/07/22 02:40:31 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1991,1992,1994 Massachusetts Institute of Technology
+Copyright 2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Microcode Name <-> Code Maps
@@ -69,12 +73,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
   (set! non-object-slot (fixed-object/name->code 'NON-OBJECT))
   (set! system-call-names-slot (fixed-object/name->code 'SYSTEM-CALL-NAMES))
   (set! system-call-errors-slot (fixed-object/name->code 'SYSTEM-CALL-ERRORS))
-  (set! microcode-id/version
-	(microcode-identification-item 'MICROCODE-VERSION))
-  (set! microcode-id/modification
-	(microcode-identification-item 'MICROCODE-MODIFICATION))
-  (set! microcode-id/release-string
-	(microcode-identification-item 'SYSTEM-RELEASE-STRING))
+  (set! microcode-version-string
+	(let ((version (microcode-identification-item 'MICROCODE-VERSION)))
+	  (if (string? version)
+	      version
+	      (string-append
+	       (number->string version)
+	       "."
+	       (number->string
+		(microcode-identification-item 'MICROCODE-MODIFICATION))))))
   (set! char:newline (microcode-identification-item 'NEWLINE-CHAR))
   (set! microcode-id/floating-mantissa-bits
 	(microcode-identification-item 'FLONUM-MANTISSA-LENGTH))
@@ -104,10 +111,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
        ((ucode-primitive substring-downcase!) result 0 size)
        result))))
 
+(define (get-microcode-version-string)
+  microcode-version-string)
+
+(define (get-microcode-version-numbers)
+  (map (lambda (s) (or (string->number s) s))
+       (burst-string microcode-version-string #\. #f)))
+
 (define microcode-tables-identification)
-(define microcode-id/version)
-(define microcode-id/modification)
-(define microcode-id/release-string)
+(define microcode-version-string)
 (define char:newline)
 (define microcode-id/tty-x-size)
 (define microcode-id/tty-y-size)

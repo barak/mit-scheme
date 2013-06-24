@@ -1,22 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: unix.scm,v 1.109 2000/07/28 15:15:35 cph Exp $
-;;;
-;;; Copyright (c) 1989-2000 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: unix.scm,v 1.116 2003/07/14 20:23:47 cph Exp $
+
+Copyright 1989,1991,1992,1993,1994,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1999,2000,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Unix Customizations for Edwin
 
@@ -216,7 +222,7 @@ Includes the new backup.  Must be > 0."
 		 (if version
 		     (string-append ".~" (number->string version) suffix)
 		     suffix)))
-
+
 (define (os/directory-list directory)
   (let ((channel (directory-channel-open directory)))
     (let loop ((result '()))
@@ -313,6 +319,7 @@ Includes the new backup.  Must be > 0."
      ("h" . c)
      ("htm" . html)
      ("html" . html)
+     ("inc" . php)
      ("java" . java)
      ("pas" . pascal)
      ("php" . php)
@@ -320,15 +327,18 @@ Includes the new backup.  Must be > 0."
      ("s" . scheme)
      ("scm" . scheme)
      ("text" . text)
+     ("texi" . texinfo)
+     ("texinfo" . texinfo)
      ("txi" . texinfo)
      ("txt" . text)
+     ("xht" . html)
+     ("xhtml" . html)
+     ("xml" . html)
+     ("xsl" . html)
      ("y" . c))))
 
-(define (os/init-file-name)
-  "~/.edwin")
-
-(define (os/abbrev-file-name)
-  "~/.abbrev_defs")
+(define (os/init-file-name) "~/.edwin")
+(define (os/abbrev-file-name) "~/.abbrev_defs")
 
 (define (os/find-file-initialization-filename pathname)
   (or (and (equal? "scm" (pathname-type pathname))

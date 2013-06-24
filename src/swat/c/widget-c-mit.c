@@ -1,4 +1,4 @@
-/* Cover routines to make MIT Scheme primitives out of the procedures */
+/* Cover routines to make MIT/GNU Scheme primitives out of the procedures */
 /* in button-c.c. */
 
 #include "scheme.h"

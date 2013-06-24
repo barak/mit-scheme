@@ -1,22 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: port.scm,v 1.23 2002/02/09 06:09:55 cph Exp $
+$Id: port.scm,v 1.30 2003/03/08 02:03:47 cph Exp $
 
-Copyright (c) 1991-2002 Massachusetts Institute of Technology
+Copyright 1991,1992,1993,1994,1997,1999 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; I/O Ports
@@ -24,7 +29,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (declare (usual-integrations))
 
-(define-structure (port-type (type-descriptor port-type-rtd)
+(define-structure (port-type (type-descriptor <port-type>)
 			     (conc-name port-type/)
 			     (constructor %make-port-type (custom-operations)))
   custom-operations
@@ -43,7 +48,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (flush-output #f read-only #t)
   (discretionary-flush-output #f read-only #t))
 
-(set-record-type-unparser-method! port-type-rtd
+(set-record-type-unparser-method! <port-type>
   (lambda (state type)
     ((standard-unparser-method
       (if (port-type/supports-input? type)
@@ -94,11 +99,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     READ-SUBSTRING))
 
 (define input-operation-accessors
-  (map (lambda (name) (record-accessor port-type-rtd name))
+  (map (lambda (name) (record-accessor <port-type> name))
        input-operation-names))
 
 (define input-operation-modifiers
-  (map (lambda (name) (record-modifier port-type-rtd name))
+  (map (lambda (name) (record-modifier <port-type> name))
        input-operation-names))
 
 (define output-operation-names
@@ -109,11 +114,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
     WRITE-SUBSTRING))
 
 (define output-operation-accessors
-  (map (lambda (name) (record-accessor port-type-rtd name))
+  (map (lambda (name) (record-accessor <port-type> name))
        output-operation-names))
 
 (define output-operation-modifiers
-  (map (lambda (name) (record-modifier port-type-rtd name))
+  (map (lambda (name) (record-modifier <port-type> name))
        output-operation-names))
 
 (define (port-type/operation-names type)
@@ -163,21 +168,18 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	  (and accessor
 	       (accessor type))))))
 
-(define port-rtd (make-record-type "port" '(TYPE STATE THREAD-MUTEX)))
-(define %make-port (record-constructor port-rtd '(TYPE STATE THREAD-MUTEX)))
-(define port? (record-predicate port-rtd))
-(define port/type (record-accessor port-rtd 'TYPE))
-(define %port/state (record-accessor port-rtd 'STATE))
-(define port/thread-mutex (record-accessor port-rtd 'THREAD-MUTEX))
-(define set-port/thread-mutex! (record-modifier port-rtd 'THREAD-MUTEX))
+(define-record-type <port>
+    (%make-port type state thread-mutex)
+    port?
+  (type port/type)
+  (state %port/state %set-port/state!)
+  (thread-mutex port/thread-mutex set-port/thread-mutex!))
 
 (define (port/state port)
   (%port/state (base-port port)))
 
-(define set-port/state!
-  (let ((modifier (record-modifier port-rtd 'STATE)))
-    (lambda (port state)
-      (modifier (base-port port) state))))
+(define (set-port/state! port state)
+  (%set-port/state! (base-port port) state))
 
 (define (base-port port)
   (let ((state (%port/state port)))
@@ -212,7 +214,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (output-port/operation/discretionary-flush port)
   (port-type/discretionary-flush-output (port/type port)))
 
-(set-record-type-unparser-method! port-rtd
+(set-record-type-unparser-method! <port>
   (lambda (state port)
     ((let ((name
 	    (cond ((i/o-port? port) 'I/O-PORT)
@@ -231,7 +233,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
      port)))
 
 (define (port/copy port state)
-  (let ((port (record-copy port)))
+  (let ((port (copy-record port)))
     (set-port/state! port state)
     (set-port/thread-mutex! port (make-thread-mutex))
     port))
@@ -299,24 +301,24 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	 (and (port-type/supports-input? type)
 	      (port-type/supports-output? type)))))
 
-(define (guarantee-port port)
+(define (guarantee-port port procedure)
   (if (not (port? port))
-      (error:wrong-type-argument port "port" #f))
+      (error:wrong-type-argument port "port" procedure))
   port)
 
-(define (guarantee-input-port port)
+(define (guarantee-input-port port procedure)
   (if (not (input-port? port))
-      (error:wrong-type-argument port "input port" #f))
+      (error:wrong-type-argument port "input port" procedure))
   port)
 
-(define (guarantee-output-port port)
+(define (guarantee-output-port port procedure)
   (if (not (output-port? port))
-      (error:wrong-type-argument port "output port" #f))
+      (error:wrong-type-argument port "output port" procedure))
   port)
 
-(define (guarantee-i/o-port port)
+(define (guarantee-i/o-port port procedure)
   (if (not (i/o-port? port))
-      (error:wrong-type-argument port "I/O port" #f))
+      (error:wrong-type-argument port "I/O port" procedure))
   port)
 
 ;;;; Encapsulation
@@ -331,7 +333,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
        (encapsulated-port-state? (%port/state object))))
 
 (define (guarantee-encapsulated-port object procedure)
-  (guarantee-port object)
+  (guarantee-port object procedure)
   (if (not (encapsulated-port-state? (%port/state object)))
       (error:wrong-type-argument object "encapsulated port" procedure)))
 
@@ -348,7 +350,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (set-encapsulated-port-state/state! (%port/state port) state))
 
 (define (make-encapsulated-port port state rewrite-operation)
-  (guarantee-port port)
+  (guarantee-port port 'MAKE-ENCAPSULATED-PORT)
   (%make-port (let ((type (port/type port)))
 		(make-port-type
 		 (append-map
@@ -456,7 +458,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define extract-operation!
   (let ((set-port-type/custom-operations!
-	 (record-modifier port-type-rtd 'CUSTOM-OPERATIONS)))
+	 (record-modifier <port-type> 'CUSTOM-OPERATIONS)))
     (lambda (type name)
       (let ((operation (assq name (port-type/custom-operations type))))
 	(and operation
@@ -638,55 +640,65 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (or *current-input-port* (nearest-cmdl/port)))
 
 (define (set-current-input-port! port)
-  (set! *current-input-port* (guarantee-input-port port))
+  (set! *current-input-port*
+	(guarantee-input-port port 'SET-CURRENT-INPUT-PORT!))
   unspecific)
 
 (define (with-input-from-port port thunk)
-  (fluid-let ((*current-input-port* (guarantee-input-port port)))
+  (fluid-let ((*current-input-port*
+	       (guarantee-input-port port 'WITH-INPUT-FROM-PORT)))
     (thunk)))
 
 (define (current-output-port)
   (or *current-output-port* (nearest-cmdl/port)))
 
 (define (set-current-output-port! port)
-  (set! *current-output-port* (guarantee-output-port port))
+  (set! *current-output-port*
+	(guarantee-output-port port 'SET-CURRENT-OUTPUT-PORT!))
   unspecific)
 
 (define (with-output-to-port port thunk)
-  (fluid-let ((*current-output-port* (guarantee-output-port port)))
+  (fluid-let ((*current-output-port*
+	       (guarantee-output-port port 'WITH-OUTPUT-TO-PORT)))
     (thunk)))
 
 (define (notification-output-port)
   (or *notification-output-port* (nearest-cmdl/port)))
 
 (define (set-notification-output-port! port)
-  (set! *notification-output-port* (guarantee-output-port port))
+  (set! *notification-output-port*
+	(guarantee-output-port port 'SET-NOTIFICATION-OUTPUT-PORT!))
   unspecific)
 
 (define (with-notification-output-port port thunk)
-  (fluid-let ((*notification-output-port* (guarantee-output-port port)))
+  (fluid-let ((*notification-output-port*
+	       (guarantee-output-port port 'WITH-NOTIFICATION-OUTPUT-PORT)))
     (thunk)))
 
 (define (trace-output-port)
   (or *trace-output-port* (nearest-cmdl/port)))
 
 (define (set-trace-output-port! port)
-  (set! *trace-output-port* (guarantee-output-port port))
+  (set! *trace-output-port*
+	(guarantee-output-port port 'SET-TRACE-OUTPUT-PORT!))
   unspecific)
 
 (define (with-trace-output-port port thunk)
-  (fluid-let ((*trace-output-port* (guarantee-output-port port)))
+  (fluid-let ((*trace-output-port*
+	       (guarantee-output-port port 'WITH-TRACE-OUTPUT-PORT)))
     (thunk)))
 
 (define (interaction-i/o-port)
   (or *interaction-i/o-port* (nearest-cmdl/port)))
 
 (define (set-interaction-i/o-port! port)
-  (set! *interaction-i/o-port* (guarantee-i/o-port port))
+  (set! *interaction-i/o-port*
+	(guarantee-i/o-port port 'SET-INTERACTION-I/O-PORT!))
   unspecific)
 
 (define (with-interaction-i/o-port port thunk)
-  (fluid-let ((*interaction-i/o-port* (guarantee-i/o-port port)))
+  (fluid-let ((*interaction-i/o-port*
+	       (guarantee-i/o-port port 'WITH-INTERACTION-I/O-PORT)))
     (thunk)))
 
 (define standard-port-accessors

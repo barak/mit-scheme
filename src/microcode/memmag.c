@@ -1,22 +1,26 @@
 /* -*-C-*-
 
-$Id: memmag.c,v 9.66 2000/12/05 21:23:45 cph Exp $
+$Id: memmag.c,v 9.71 2003/02/14 18:28:20 cph Exp $
 
-Copyright (c) 1987-2000 Massachusetts Institute of Technology
+Copyright (c) 1987-2000, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Memory management top level.
@@ -88,9 +92,8 @@ oo
 
 #define CONSTANT_SPACE_FUDGE	128
 
-/* Initialize free pointers within areas. Stack_Pointer is
-   special: it always points to a cell which is in use.
- */
+/* Initialize free pointers within areas.  sp_register is
+   special: it always points to a cell that is in use.  */
 
 static long saved_heap_size, saved_constant_size, saved_stack_size;
 extern void EXFUN (reset_allocator_parameters, (void));
@@ -474,7 +477,7 @@ DEFUN_VOID (GC)
 
   Root = Free;
   *Free++ = Fixed_Objects;
-  *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, History));
+  *Free++ = (MAKE_POINTER_OBJECT (UNMARKED_HISTORY_TYPE, history_register));
   *Free++ = Get_Current_Stacklet ();
   *Free++ =
     ((Prev_Restore_History_Stacklet == NULL)
@@ -572,7 +575,7 @@ DEFUN_VOID (GC)
   Set_Fixed_Obj_Slot
     (Lost_Objects_Base, (LONG_TO_UNSIGNED_FIXNUM (ADDRESS_TO_DATUM (Root2))));
 
-  History = (OBJECT_ADDRESS (*Root++));
+  history_register = (OBJECT_ADDRESS (*Root++));
 
   Set_Current_Stacklet (*Root);
   Root += 1;
@@ -612,9 +615,8 @@ DEFUN_VOID (GC)
    the GC daemon if there is one.
 
    This primitive never returns normally.  It always escapes into
-   the interpreter because some of its cached registers (eg. History)
-   have changed.
-*/
+   the interpreter because some of its cached registers (e.g.
+   history_register) have changed.  */
 
 DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 {
@@ -645,7 +647,7 @@ DEFINE_PRIMITIVE ("GARBAGE-COLLECT", Prim_garbage_collect, 1, 1, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
+  exp_register = (LONG_TO_UNSIGNED_FIXNUM (MemTop - Free));
   Save_Cont ();
  Pushed ();
 

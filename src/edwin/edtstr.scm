@@ -1,39 +1,44 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: edtstr.scm,v 1.23 1999/01/02 06:11:34 cph Exp $
-;;;
-;;; Copyright (c) 1989-1999 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: edtstr.scm,v 1.31 2003/03/06 05:14:21 cph Exp $
+
+Copyright 1989,1990,1991,1992,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Editor Data Abstraction
 
 (declare (usual-integrations))
 
 (define-structure (editor (constructor %make-editor))
-  (name false read-only true)
-  (display-type false read-only true)
+  (name #f read-only #t)
+  (display-type #f read-only #t)
   (screens '())
-  (selected-screen false)
-  (bufferset false read-only true)
-  (char-history false read-only true)
-  (halt-update? false read-only true)
-  (peek-no-hang false read-only true)
-  (peek false read-only true)
-  (read false read-only true)
-  (button-event false)
+  (selected-screen #f)
+  (bufferset #f read-only #t)
+  (char-history #f read-only #t)
+  (halt-update? #f read-only #t)
+  (peek-no-hang #f read-only #t)
+  (peek #f read-only #t)
+  (read #f read-only #t)
+  (button-event #f)
   (select-time 1))
 
 (define (make-editor name display-type make-screen-args)
@@ -57,7 +62,7 @@
 			peek-no-hang
 			peek
 			read
-			false
+			#f
 			1))))))
 
 (define-integrable (current-display-type)
@@ -83,9 +88,9 @@
 ;;;; Buttons
 
 (define-structure (button-event (conc-name button-event/))
-  (window false read-only true)
-  (x false read-only true)
-  (y false read-only true))
+  (window #f read-only #t)
+  (x #f read-only #t)
+  (y #f read-only #t))
 
 (define (current-button-event)
   (or (editor-button-event current-editor)
@@ -98,66 +103,42 @@
 
 (define (with-current-button-event button-event thunk)
   (let ((old-button-event))
-    (unwind-protect
+    (dynamic-wind
      (lambda ()
        (set! old-button-event (editor-button-event current-editor))
        (set-editor-button-event! current-editor button-event)
-       (set! button-event false)
+       (set! button-event #f)
        unspecific)
      thunk
      (lambda ()
        (set-editor-button-event! current-editor old-button-event)))))
 
-(define button-record-type
-  (make-record-type 'BUTTON '(NUMBER DOWN?)))
-
+(define-record-type <button>
+  (%%make-button number down?)
+  button?
+  (number button/number)
+  (down? button/down?))
+
 (define make-down-button)
 (define make-up-button)
 (let ((%make-button
-       (let ((constructor
-	      (record-constructor button-record-type '(NUMBER DOWN?))))
-	 (lambda (buttons number down?)
-	   (or (vector-ref buttons number)
-	       (let ((button (constructor number down?)))
-		 (vector-set! buttons number button)
-		 button)))))
+       (lambda (buttons number down?)
+	 (or (vector-ref buttons number)
+	     (let ((button (%%make-button number down?)))
+	       (vector-set! buttons number button)
+	       button))))
       (down-buttons '#())
       (up-buttons '#()))
   (set! make-down-button
 	(lambda (number)
 	  (if (>= number (vector-length down-buttons))
-	      (set! down-buttons (vector-grow down-buttons (1+ number))))
-	  (%make-button down-buttons number true)))
+	      (set! down-buttons (vector-grow down-buttons (+ number 1) #f)))
+	  (%make-button down-buttons number #t)))
   (set! make-up-button
 	(lambda (number)
 	  (if (>= number (vector-length up-buttons))
-	      (set! up-buttons (vector-grow up-buttons (1+ number))))
-	  (%make-button up-buttons number false))))
-
-(define (make-modified-button modifier button-number up-or-down)
-  (let ((button
-	 (+ button-number
-	    (case modifier
-	      ((shift) 5)
-	      ((control) 10)
-	      ((meta) 20)
-	      (else (error "make-modified-button: Bad button modifier"
-			   modifier))))))
-    (cond ((eq? up-or-down 'DOWN)
-	   (make-down-button button))
-	  ((eq? up-or-down 'UP)
-	   (make-up-button button))
-	  (else (error "make-modified-button: Must specify UP or DOWN"
-		       up-or-down)))))
-
-(define button?
-  (record-predicate button-record-type))
-
-(define button/number
-  (record-accessor button-record-type 'NUMBER))
-
-(define button/down?
-  (record-accessor button-record-type 'DOWN?))
+	      (set! up-buttons (vector-grow up-buttons (+ number 1) #f)))
+	  (%make-button up-buttons number #f))))
 
 (define (down-button? object)
   (and (button? object)
@@ -167,9 +148,13 @@
   (and (button? object)
        (not (button/down? object))))
 
-(set-record-type-unparser-method! button-record-type
-  (unparser/standard-method (record-type-name button-record-type)
-    (lambda (state button)
-      (unparse-string state (if (button/down? button) "down" "up"))
-      (unparse-char state #\space)
-      (unparse-object state (button/number button)))))
+(define (button/bucky-bits button)
+  button
+  0)
+
+(set-record-type-unparser-method! <button>
+  (standard-unparser-method (record-type-name <button>)
+    (lambda (button port)
+      (write-string (if (button/down? button) "down" "up") port)
+      (write-char #\space port)
+      (write (button/number button) port))))

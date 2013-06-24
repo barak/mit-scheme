@@ -1,23 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: imap-response.scm,v 1.44 2001/10/10 04:26:43 cph Exp $
-;;;
-;;; Copyright (c) 2000-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: imap-response.scm,v 1.48 2003/02/14 18:28:14 cph Exp $
+
+Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; IMAP Server Response Reader
 
@@ -26,7 +30,7 @@
 (define (imap:read-server-response port)
   (let ((tag (read-string-internal char-set:space port)))
     (if (eof-object? tag)
-	tag
+	(error "IMAP server unexpectedly disconnected.")
 	(let ((response
 	       (if (string=? "+" tag)
 		   (cons 'CONTINUE (read-response-text port))
@@ -260,9 +264,9 @@
 	  (else (error "Illegal astring syntax:" char)))))
 
 (define (read-nstring input)
-  (let ((output (make-accumulator-output-port)))
+  (let ((output (open-output-string)))
     (and (read-nstring-to-port input output)
-	 (get-output-from-accumulator output))))
+	 (get-output-string output))))
 
 (define (read-nstring-to-port input output)
   (let ((char (peek-char-no-eof input)))
@@ -280,9 +284,9 @@
 	  (else (error "Illegal astring syntax:" char)))))
 
 (define (read-quoted input)
-  (with-string-output-port
-    (lambda (output)
-      (read-quoted-to-port input output))))
+  (call-with-output-string
+   (lambda (output)
+     (read-quoted-to-port input output))))
 
 (define (read-quoted-to-port input output)
   (discard-known-char #\" input)
@@ -303,9 +307,9 @@
 	       (lose)))))))
 
 (define (read-literal input)
-  (with-string-output-port
-    (lambda (output)
-      (read-literal-to-port input output))))
+  (call-with-output-string
+   (lambda (output)
+     (read-literal-to-port input output))))
 
 (define (read-literal-to-port input output)
   (discard-known-char #\{ input)

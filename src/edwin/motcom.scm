@@ -1,22 +1,27 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: motcom.scm,v 1.47 1999/01/02 06:11:34 cph Exp $
-;;;
-;;; Copyright (c) 1985, 1989-1999 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#| -*-Scheme-*-
+
+$Id: motcom.scm,v 1.51 2003/02/25 20:53:12 cph Exp $
+
+Copyright 1987,1989,1991,1993,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Motion Commands
 
@@ -158,12 +163,6 @@ Continuation lines are skipped."
   (lambda ()
     (message "Sorry, but superluminal travel is not available now.")))
 
-(define-command top-hat
-  "Deliver tophat joke."
-  ()
-  (lambda ()
-    (message "No party in progress.")))
-
 (define-command super-man
   "Deliver super man joke."
   ()
@@ -175,9 +174,3 @@ Continuation lines are skipped."
   ()
   (lambda ()
     (message "Big Mac, Medium Fries, Small Coke")))
-
-(define-command top-dollar
-  "Deliver top dollar joke."
-  ()
-  (lambda ()
-    (message "Real Estate in Monaco.")))

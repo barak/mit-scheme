@@ -1,22 +1,26 @@
 #| -*-Scheme-*-
 
-$Id: uproc.scm,v 1.11 1999/01/02 06:19:10 cph Exp $
+$Id: uproc.scm,v 1.15 2003/03/14 20:02:18 cph Exp $
 
-Copyright (c) 1990-1999 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1995,1996,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Microcode Procedures
@@ -32,38 +36,60 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	(%primitive-procedure? object)
 	(%compiled-procedure? object))))
 
+(define (guarantee-procedure object procedure)
+  (if (not (procedure? object))
+      (error:wrong-type-argument object "procedure" procedure)))
+
+(define (guarantee-compound-procedure object procedure)
+  (if (not (compound-procedure? object))
+      (error:wrong-type-argument object "compound procedure" procedure)))
+
+(define (guarantee-primitive-procedure object procedure)
+  (if (not (primitive-procedure? object))
+      (error:wrong-type-argument object "primitive procedure" procedure)))
+
+(define (guarantee-compiled-procedure object procedure)
+  (if (not (compiled-procedure? object))
+      (error:wrong-type-argument object "compiled procedure" procedure)))
+
 (define (procedure-lambda procedure)
   (discriminate-procedure procedure
-			  (lambda (procedure) procedure false)
+			  (lambda (procedure) procedure #f)
 			  %compound-procedure-lambda
-			  compiled-procedure/lambda))
+			  compiled-procedure/lambda
+			  'PROCEDURE-LAMBDA))
 
 (define (procedure-environment procedure)
-  (discriminate-procedure
-   procedure
-   (lambda (procedure)
-     (error "primitive procedures have no closing environment" procedure))
-   %compound-procedure-environment
-   compiled-procedure/environment))
+  (discriminate-procedure procedure
+			  (lambda (procedure)
+			    (error:bad-range-argument procedure
+						      'PROCEDURE-ENVIRONMENT))
+			  %compound-procedure-environment
+			  compiled-procedure/environment
+			  'PROCEDURE-ENVIRONMENT))
 
 (define (procedure-components procedure receiver)
-  (discriminate-procedure
-   procedure
-   (lambda (procedure)
-     (error "primitive procedures have no components" procedure))
-   (lambda (procedure)
-     (receiver (%compound-procedure-lambda procedure)
-	       (%compound-procedure-environment procedure)))
-   (lambda (procedure)
-     (receiver (compiled-procedure/lambda procedure)
-	       (compiled-procedure/environment procedure)))))
+  (discriminate-procedure procedure
+			  (lambda (procedure)
+			    (error:bad-range-argument procedure
+						      'PROCEDURE-COMPONENTS))
+			  (lambda (procedure)
+			    (receiver
+			     (%compound-procedure-lambda procedure)
+			     (%compound-procedure-environment procedure)))
+			  (lambda (procedure)
+			    (receiver
+			     (compiled-procedure/lambda procedure)
+			     (compiled-procedure/environment procedure)))
+			  'PROCEDURE-COMPONENTS))
 
-(define (discriminate-procedure procedure if-primitive if-compound if-compiled)
+(define (discriminate-procedure procedure if-primitive if-compound if-compiled
+				caller)
   (let ((procedure* (skip-entities procedure)))
     (cond ((%primitive-procedure? procedure*) (if-primitive procedure*))
 	  ((%compound-procedure? procedure*) (if-compound procedure*))
 	  ((%compiled-procedure? procedure*) (if-compiled procedure*))
-	  (else (error:wrong-type-argument procedure "procedure" #F)))))
+	  (else (error:wrong-type-argument procedure "procedure" caller)))))
 
 (define (skip-entities object)
   (if (%entity? object)
@@ -76,51 +102,55 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (let loop ((p procedure) (e 0))
     (cond ((%primitive-procedure? p)
 	   (let ((arity (primitive-procedure-arity p)))
-	     (cond ((negative? arity)
-		    (cons 0 false))
-		   ((<= e arity)
-		    (let ((arity (- arity e)))
+	     (cond ((fix:< arity 0)
+		    (cons 0 #f))
+		   ((fix:<= e arity)
+		    (let ((arity (fix:- arity e)))
 		      (cons arity arity)))
 		   (else
-		    (error "illegal arity for entity" procedure)))))
+		    (error "Illegal arity for entity:" procedure)))))
 	  ((%compound-procedure? p)
 	   (lambda-components (%compound-procedure-lambda p)
 	     (lambda (name required optional rest auxiliary decl body)
 	       name auxiliary decl body
-	       (let ((r (- (length required) e)))
+	       (let ((r (fix:- (length required) e)))
 		 (cond (rest
-			(cons (if (negative? r) 0 r) false))
-		       ((not (negative? r))
-			(cons r (+ r (length optional))))
+			(cons (fix:max 0 r) #f))
+		       ((fix:>= r 0)
+			(cons r (fix:+ r (length optional))))
 		       (else
-			(error "illegal arity for entity" procedure)))))))
+			(error "Illegal arity for entity:" procedure)))))))
 	  ((%compiled-procedure? p)
 	   (let ((info (compiled-entry-kind p))
-		 (e+1 (1+ e)))
+		 (e+1 (fix:+ e 1)))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; min = (1 + req)
-	     (let ((min (- (system-hunk3-cxr1 info) e+1))
+	     (let ((min (fix:- (system-hunk3-cxr1 info) e+1))
 		   (max (system-hunk3-cxr2 info)))
-	       (cond ((negative? max)
-		      (cons (if (negative? min) 0 min) false))
-		     ((not (negative? min))
-		      (cons min (- max e+1)))
+	       (cond ((fix:< max 0)
+		      (cons (if (fix:< min 0) 0 min) #f))
+		     ((fix:>= min 0)
+		      (cons min (fix:- max e+1)))
 		     (else
-		      (error "illegal arity for entity" procedure))))))
+		      (error "Illegal arity for entity:" procedure))))))
 	  ((%entity? p)
 	   (if (%entity-is-apply-hook? p)
 	       (loop (apply-hook-procedure p) e)
-	       (loop (entity-procedure p) (1+ e))))
+	       (loop (entity-procedure p) (fix:+ e 1))))
 	  (else
 	   (error:wrong-type-argument procedure "procedure"
 				      'PROCEDURE-ARITY)))))
 
 (define (procedure-arity-valid? procedure n-arguments)
+  (guarantee-index-fixnum n-arguments 'PROCEDURE-ARITY-VALID?)
   (let ((arity (procedure-arity procedure)))
     (and (<= (car arity) n-arguments)
-	 (if (cdr arity)
-	     (<= n-arguments (cdr arity))
-	     true))))
+	 (or (not (cdr arity))
+	     (<= n-arguments (cdr arity))))))
+
+(define (thunk? object)
+  (and (procedure? object)
+       (procedure-arity-valid? object 0)))
 
 ;;;; Interpreted Procedures
 
@@ -133,36 +163,38 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-integrable (%primitive-procedure-implemented? procedure)
   ((ucode-primitive get-primitive-address)
    (%primitive-procedure-name procedure)
-   false))
+   #f))
 
 (define (primitive-procedure? object)
   (%primitive-procedure? (skip-entities object)))
 
 (define (make-primitive-procedure name #!optional arity)
-  (let ((arity (if (default-object? arity) false arity)))
+  (let ((arity (if (default-object? arity) #f arity)))
     (let ((result ((ucode-primitive get-primitive-address) name arity)))
       (if (not (or (object-type? (ucode-type primitive) result)
-		   (eq? arity true)))
-	  (if (false? result)
-	      (error "MAKE-PRIMITIVE-PROCEDURE: unknown name" name)
+		   (eq? arity #t)))
+	  (if result
 	      (error "MAKE-PRIMITIVE-PROCEDURE: inconsistent arity" name
 		     (error-irritant/noise " new:") arity
-		     (error-irritant/noise " old:") result)))
+		     (error-irritant/noise " old:") result)
+	      (error "MAKE-PRIMITIVE-PROCEDURE: unknown name" name)))
       result)))
 
 (define (primitive-procedure-name procedure)
-  (%primitive-procedure-name (%primitive-procedure-arg procedure)))
+  (%primitive-procedure-name
+   (%primitive-procedure-arg procedure 'PRIMITIVE-PROCEDURE-NAME)))
 
 (define (implemented-primitive-procedure? procedure)
-  (%primitive-procedure-implemented? (%primitive-procedure-arg procedure)))
+  (%primitive-procedure-implemented?
+   (%primitive-procedure-arg procedure 'IMPLEMENTED-PRIMITIVE-PROCEDURE?)))
 
-(define (%primitive-procedure-arg procedure)
+(define (%primitive-procedure-arg procedure caller)
   (let ((procedure* (skip-entities procedure)))
-    (if (not (%primitive-procedure? procedure*))
-	(error:wrong-type-datum  procedure "primitive procedure"))
+    (guarantee-primitive-procedure procedure* caller)
     procedure*))
 
-(define-integrable (%compound-procedure? object)
+(declare (integrate-operator %compound-procedure?))
+(define (%compound-procedure? object)
   (or (object-type? (ucode-type procedure) object)
       (object-type? (ucode-type extended-procedure) object)))
 
@@ -173,8 +205,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (system-pair-cdr procedure))
 
 (define (compound-procedure? object)
-  (let ((object (skip-entities object)))
-    (%compound-procedure? object)))
+  (%compound-procedure? (skip-entities object)))
 
 ;;;; Compiled Procedures
 
@@ -195,13 +226,13 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (let ((max (system-hunk3-cxr2 (compiled-entry-kind p))))
 	     ;; max = (-1)^tail? * (1 + req + opt + tail?)
 	     ;; frame = req + opt + tail?
-	     (if (negative? max)
+	     (if (< max 0)
 		 (- -1 max)
-		 (-1+ max))))
+		 (- max 1))))
 	  ((%entity? p)
 	   (if (%entity-is-apply-hook? p)
 	       (loop (apply-hook-procedure p))
-	       (1+ (loop (entity-procedure p)))))
+	       (+ (loop (entity-procedure p)) 1)))
 	  (else
 	   (error:wrong-type-argument procedure "compiled procedure"
 				      'COMPILED-PROCEDURE-FRAME-SIZE)))))
@@ -287,7 +318,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   (%entity-extra/apply-hook? (entity-extra object)))
 
 (define (%entity-extra/apply-hook? extra)
-  ;; Ziggy cares about this one.
+  ;; The wabbit cares about this one.
   (and (object-type? (ucode-type hunk3) extra)
        (eq? apply-hook-tag (system-hunk3-cxr0 extra))))
 
@@ -305,7 +336,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (set-apply-hook-extra! apply-hook procedure)
   (system-hunk3-set-cxr2! (entity-extra apply-hook) procedure))
-
+
 ;;;; Arity dispatched entities
 
 (define (make-arity-dispatched-procedure default . dispatched-cases)
@@ -320,6 +351,6 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define (arity-dispatched-procedure? object)
   (and (%entity? object)
        (vector? (entity-extra object))
-       (< 0 (vector-length (entity-extra object)))
+       (fix:< 0 (vector-length (entity-extra object)))
        (eq? (vector-ref (entity-extra object) 0)
 	    (fixed-objects-item 'ARITY-DISPATCHER-TAG))))

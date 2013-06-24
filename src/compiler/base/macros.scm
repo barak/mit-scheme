@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: macros.scm,v 4.28 2002/02/14 15:57:10 cph Exp $
+$Id: macros.scm,v 4.31 2003/02/14 18:28:01 cph Exp $
 
-Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,2001,2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Compiler Macros
@@ -126,51 +130,51 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 			(DESCRIPTOR-LIST OBJECT ,type ,@slots)))))))
 	   (ill-formed-syntax form))))))
 
-(let-syntax
-    ((define-type-definition
-       (sc-macro-transformer
-	(lambda (form environment)
-	  (let ((name (cadr form))
-		(reserved (caddr form))
-		(enumeration (close-syntax (cadddr form) environment)))
-	    (let ((parent
-		   (close-syntax (symbol-append name '-TAG) environment)))
-	      `(define-syntax ,(symbol-append 'DEFINE- name)
-		 (sc-macro-transformer
-		  (let ((pattern
-			 `(SYMBOL * ,(lambda (x)
-				       (or (symbol? x)
-					   (and (pair? x)
-						(list-of-type? x symbol?)))))))
-		    (lambda (form environment)
-		      (if (syntax-match? pattern (cdr form))
-			  (let ((type (cadr form))
-				(slots (cddr form)))
-			    (let ((tag-name (symbol-append type '-TAG)))
-			      (let ((tag-ref
-				     (close-syntax tag-name environment)))
-				`(BEGIN
-				   (DEFINE ,tag-name
-				     (MAKE-VECTOR-TAG ,',parent ',type
-						      ,',enumeration))
-				   (DEFINE ,(symbol-append type '?)
-				     (TAGGED-VECTOR/PREDICATE ,tag-ref))
-				   (DEFINE-VECTOR-SLOTS ,type ,,reserved
-				     ,@slots)
-				   (SET-VECTOR-TAG-DESCRIPTION!
-				    ,tag-name
-				    (LAMBDA (OBJECT)
-				      (APPEND!
-				       ((VECTOR-TAG-DESCRIPTION ,',parent)
-					OBJECT)
-				       (DESCRIPTOR-LIST OBJECT
-							,type
-							,@slots))))))))
-			  (ill-formed-syntax form))))))))))))
-  (define-type-definition snode 5 #f)
-  (define-type-definition pnode 6 #f)
-  (define-type-definition rvalue 2 rvalue-types)
-  (define-type-definition lvalue 14 #f))
+(define-syntax define-type-definition
+  (sc-macro-transformer
+   (lambda (form environment)
+     (let ((name (cadr form))
+	   (reserved (caddr form))
+	   (enumeration (close-syntax (cadddr form) environment)))
+       (let ((parent
+	      (close-syntax (symbol-append name '-TAG) environment)))
+	 `(define-syntax ,(symbol-append 'DEFINE- name)
+	    (sc-macro-transformer
+	     (let ((pattern
+		    `(SYMBOL * ,(lambda (x)
+				  (or (symbol? x)
+				      (and (pair? x)
+					   (list-of-type? x symbol?)))))))
+	       (lambda (form environment)
+		 (if (syntax-match? pattern (cdr form))
+		     (let ((type (cadr form))
+			   (slots (cddr form)))
+		       (let ((tag-name (symbol-append type '-TAG)))
+			 (let ((tag-ref
+				(close-syntax tag-name environment)))
+			   `(BEGIN
+			      (DEFINE ,tag-name
+				(MAKE-VECTOR-TAG ,',parent ',type
+						 ,',enumeration))
+			      (DEFINE ,(symbol-append type '?)
+				(TAGGED-VECTOR/PREDICATE ,tag-ref))
+			      (DEFINE-VECTOR-SLOTS ,type ,,reserved
+				,@slots)
+			      (SET-VECTOR-TAG-DESCRIPTION!
+			       ,tag-name
+			       (LAMBDA (OBJECT)
+				 (APPEND!
+				  ((VECTOR-TAG-DESCRIPTION ,',parent)
+				   OBJECT)
+				  (DESCRIPTOR-LIST OBJECT
+						   ,type
+						   ,@slots))))))))
+		     (ill-formed-syntax form)))))))))))
+
+(define-type-definition snode 5 #f)
+(define-type-definition pnode 6 #f)
+(define-type-definition rvalue 2 rvalue-types)
+(define-type-definition lvalue 14 #f)
 
 (define-syntax descriptor-list
   (sc-macro-transformer

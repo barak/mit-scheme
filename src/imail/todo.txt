@@ -1,12 +1,8 @@
 IMAIL To-Do List
-$Id: todo.txt,v 1.136 2002/01/12 02:57:38 cph Exp $
+$Id: todo.txt,v 1.139 2003/01/10 21:29:10 cph Exp $
 
 Bug fixes
 ---------
-
-* Change M-o command to act like o if the output file is in a known
-  format.  Maybe make the o command act like M-o if it is _not_ in a
-  known format?  In that case there would be only one output command.
 
 * Remove cache for folders that aren't on server any more.
 
@@ -21,16 +17,6 @@ Bug fixes
   to the new URL rather than the old.  The operation must close the
   folder if it is open, then discard all the state, and finally
   reinitialize it to be a closed reference to the new URL.
-
-* When network connection gets wedged, Edwin locks up and can't be
-  interrupted with C-g.  This is fundamentally an Edwin problem, but
-  it occurs much more frequently with IMAIL.  See if there's a better
-  way to handle this -- if Edwin were running under a terminal window,
-  it would have a real interrupt character, which would do what we
-  want.  This should happen under X as well.
-
-  [I think this should be improved now that I've fixed the problem
-  with `poll' not handling errors right.]
 
 * When Rmail parser encounters corruption, tell the user what message
   is corrupted and attempt to recover the parse by looking for the
@@ -71,11 +57,18 @@ New features
 * Implement decoder for uuencoded attachments.  Agnes recently sent me
   a message with a uuencoded attachment.
 
-* Allow the user to specify that elements of a MIME digest are to be
+* [partially done]
+  Allow the user to specify that elements of a MIME digest are to be
   treated as out-of-line rather than inline.  In this case the
   attachment summaries need to show the "from" and "subject" headers
   so that the digest can be browsed.  We will also need commands to
   toggle all of the elements between in-line and out-of-line.
+
+* Add ability to treat a MIME digest as a folder, so that it can be
+  visited and browsed like any other folder.  Obviously, deleting
+  individual messages in the folder can't work, but this could be
+  simulated, using client-side markers, or perhaps flags such as
+  "digest-message-1-deleted".
 
 * Implement generic operation to say whether a folder rename can work.
   Use this to extend M-x imail-rename-folder to work in all cases by

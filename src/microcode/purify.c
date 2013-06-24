@@ -1,23 +1,26 @@
 /* -*-C-*-
 
-$Id: purify.c,v 9.61 2001/12/16 06:01:33 cph Exp $
+$Id: purify.c,v 9.65 2003/02/14 18:28:23 cph Exp $
 
-Copyright (c) 1988-1999, 2001 Massachusetts Institute of Technology
+Copyright (c) 1988-1999, 2001, 2002 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
+along with MIT/GNU Scheme; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
 USA.
+
 */
 
 /* This file contains the code that copies objects into pure
@@ -482,8 +485,8 @@ purification_failure:
    everyone else halted.
 
    This primitive always "returns" by escaping to the interpreter
-   because some of its cached registers (eg. History) have changed.
-*/
+   because some of its cached registers (e.g. history_register) have
+   changed.  */
 
 DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 {
@@ -517,7 +520,7 @@ DEFINE_PRIMITIVE ("PRIMITIVE-PURIFY", Prim_primitive_purify, 3, 3, 0)
 
  Will_Push (CONTINUATION_SIZE);
   Store_Return (RC_NORMAL_GC_DONE);
-  Store_Expression (result);
+  exp_register = result;
   Save_Cont ();
  Pushed ();
 

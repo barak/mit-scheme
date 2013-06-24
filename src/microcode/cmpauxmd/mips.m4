@@ -1,23 +1,25 @@
 /* #define DEBUG_INTERFACE */ /* -*-Midas-*- */
  ###
- ### $Id: mips.m4,v 1.15 1999/01/02 06:11:34 cph Exp $
+ ### $Id: mips.m4,v 1.18 2003/02/14 18:28:25 cph Exp $
  ###
- ### Copyright (c) 1989-1999 Massachusetts Institute of Technology
+ ### Copyright (c) 1989-1999, 2002 Massachusetts Institute of Technology
  ###
- ### This program is free software; you can redistribute it and/or
+ ### This file is part of MIT/GNU Scheme.
+ ###
+ ### MIT/GNU Scheme is free software; you can redistribute it and/or
  ### modify it under the terms of the GNU General Public License as
  ### published by the Free Software Foundation; either version 2 of
  ### the License, or (at your option) any later version.
  ###
- ### This program is distributed in the hope that it will be useful,
+ ### MIT/GNU Scheme is distributed in the hope that it will be useful,
  ### but WITHOUT ANY WARRANTY; without even the implied warranty of
  ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  ### General Public License for more details.
  ###
  ### You should have received a copy of the GNU General Public License
- ### along with this program; if not, write to the Free Software
- ### Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- ###
+ ### along with MIT/GNU Scheme; if not, write to the Free Software
+ ### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ ### 02111-1307, USA.
 
  #### MIPS Architecture assembly language part of the compiled
  #### code interface. See cmpint.txt, cmpint.c, cmpint-mips.h, and
@@ -197,7 +199,7 @@ C_to_interface:
 interface_to_scheme:
 	lw	$value,8($registers)
 	lw	$memtop,0($registers)
-	lw	$stack,Ext_Stack_Pointer
+	lw	$stack,sp_register
 	lw	$free,Free
 	and	$dynlink,$addr_mask,$value
 	or	$dynlink,$heap_bits,$dynlink
@@ -301,7 +303,7 @@ after_overflow:
 	la	$24,utility_table	# Find table
 	add	$25,$24,$25		# Address of entry
 	lw	$25,0($25)		# gr25 <- Entry
-	la	$24,Ext_Stack_Pointer
+	la	$24,sp_register
 	sw	$stack,0($24)		# Save Scheme stack pointer
 	la	$24,Free
 	sw	$free,0($24)		# Save Free

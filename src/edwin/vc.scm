@@ -1,23 +1,28 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: vc.scm,v 1.79 2001/06/07 17:48:19 cph Exp $
-;;;
-;;; Copyright (c) 1994-2001 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: vc.scm,v 1.84 2003/03/14 01:30:46 cph Exp $
+
+Copyright 1994,1995,1996,1997,1998,2000 Massachusetts Institute of Technology
+Copyright 2001,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Version Control
 
@@ -126,6 +131,12 @@ Otherwise, not displayed."
 (define-variable vc-rcs-preserve-mod-times
   "If true, files checked out from RCS use checkin time for mod time.
 Otherwise, the mod time of the file is the checkout time."
+  #t
+  boolean?)
+
+(define-variable vc-cvs-stay-local
+  "If true, use only the CVS timestamp to tell if a file has been modified.
+Otherwise, VC will compare the file to the copy in the repository."
   #t
   boolean?)
 
@@ -979,14 +990,13 @@ Normally shows only locked files; prefix arg says to show all files."
 		    (cond ((not master)
 			   #f)
 			  ((cvs-master? master)
-			   (and (vc-workfile-modified? master)
-				(case (cvs-status master)
-				  ((LOCALLY-MODIFIED) "modified")
-				  ((LOCALLY-ADDED) "added")
-				  ((NEEDS-CHECKOUT) "patch")
-				  ((NEEDS-MERGE) "merge")
-				  ((UNRESOLVED-CONFLICT) "conflict")
-				  (else #f))))
+			   (case (cvs-status master)
+			     ((LOCALLY-MODIFIED) "modified")
+			     ((LOCALLY-ADDED) "added")
+			     ((NEEDS-CHECKOUT) "patch")
+			     ((NEEDS-MERGE) "merge")
+			     ((UNRESOLVED-CONFLICT) "conflict")
+			     (else #f)))
 			  (else
 			   (vc-backend-locking-user master #f))))))
 	     (if (or status all-files?)
@@ -1647,12 +1657,16 @@ the value of vc-log-mode-hook."
 			(loop)))))))))
 
 (define (cvs-status master)
-  (get-cvs-status master
-    (lambda (m)
-      (if (re-search-forward "^File: [^ \t]+[ \t]+Status: \\(.*\\)" m)
-	  (convert-cvs-status
-	   (extract-string (re-match-start 1) (re-match-end 1)))
-	  'UNKNOWN))))
+  (if (vc-cvs-stay-local? master)
+      (if (vc-workfile-modified? master)
+	  'LOCALLY-MODIFIED
+	  'UP-TO-DATE)
+      (get-cvs-status master
+	(lambda (m)
+	  (if (re-search-forward "^File: [^ \t]+[ \t]+Status: \\(.*\\)" m)
+	      (convert-cvs-status
+	       (extract-string (re-match-start 1) (re-match-end 1)))
+	      'UNKNOWN)))))
 
 (define (cvs-default-revision master)
   (get-cvs-status master
@@ -2121,10 +2135,14 @@ the value of vc-log-mode-hook."
 		     (and ts
 			  (string=? ts (file-time->global-ctime-string tw)))))
 	      #f
-	      (let ((modified? (vc-backend-diff master #f #f #t)))
-		(set-vc-cvs-workfile-mtime-string! master tm tw modified?)
-		modified?))
+	      (or (vc-cvs-stay-local? master)
+		  (let ((modified? (vc-backend-diff master #f #f #t)))
+		    (set-vc-cvs-workfile-mtime-string! master tm tw modified?)
+		    modified?)))
 	  (vc-backend-diff master #f #f #t)))))
+
+(define (vc-cvs-stay-local? master)
+  (ref-variable vc-cvs-stay-local (vc-workfile-buffer master #f)))
 
 (define (vc-cvs-workfile-mtime-string master)
   (read-cached-value-2 master 'CVS-MTIME-STRING

@@ -1,22 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: process.scm,v 1.26 2000/05/14 03:31:11 cph Exp $
+$Id: process.scm,v 1.29 2003/03/10 20:53:34 cph Exp $
 
-Copyright (c) 1989-2000 Massachusetts Institute of Technology
+Copyright 1990,1991,1992,1995,1997,1998 Massachusetts Institute of Technology
+Copyright 1999,2000,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Subprocess Support
@@ -49,7 +54,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 (define-structure (subprocess
 		   (constructor %make-subprocess
 				(filename arguments index pty-master
-					  input-channel output-channel))
+					  input-channel output-channel id))
 		   (conc-name subprocess-))
   (filename #f read-only #t)
   (arguments #f read-only #t)
@@ -57,7 +62,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   pty-master
   input-channel
   output-channel
-  (id ((ucode-primitive process-id 1) index) read-only #t)
+  (id #f read-only #t)
   (%i/o-port #f)
   (%status #f)
   (exit-reason #f)
@@ -179,8 +184,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 					   working-directory ctty
 					   stdin stdout stderr)))
 		  (let ((process
-			 (%make-subprocess filename arguments index pty-master
-					   input-channel output-channel)))
+			 (%make-subprocess
+			  filename arguments index pty-master
+			  input-channel output-channel
+			  ((ucode-primitive process-id 1) index))))
 		    (set-subprocess-%status!
 		     process
 		     ((ucode-primitive process-status 1) index))

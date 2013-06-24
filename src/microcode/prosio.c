@@ -1,22 +1,27 @@
 /* -*-C-*-
 
-$Id: prosio.c,v 1.18 2001/01/04 22:07:42 cph Exp $
+$Id: prosio.c,v 1.24 2003/03/25 01:12:29 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1987,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1996,1997,2001,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 */
 
 /* Primitives to perform I/O to and from files. */
@@ -34,11 +39,11 @@ DEFUN (arg_to_channel, (argument, arg_number),
        SCHEME_OBJECT argument AND
        int arg_number)
 {
-  if (! ((INTEGER_P (argument)) && (integer_to_long_p (argument))))
+  if (! ((INTEGER_P (argument)) && (integer_to_ulong_p (argument))))
     error_wrong_type_arg (arg_number);
   {
-    fast long channel = (integer_to_long (argument));
-    if (! ((channel >= 0) || (channel < ((long) OS_channel_table_size))))
+    unsigned long channel = (integer_to_ulong (argument));
+    if (! (channel < OS_channel_table_size))
       error_wrong_type_arg (arg_number);
     return (channel);
   }
@@ -47,9 +52,8 @@ DEFUN (arg_to_channel, (argument, arg_number),
 Tchannel
 DEFUN (arg_channel, (arg_number), int arg_number)
 {
-  fast Tchannel channel =
-    (arg_to_channel ((ARG_REF (arg_number)), arg_number));
-  if (! (OS_channel_open_p (channel)))
+  Tchannel channel = (arg_to_channel ((ARG_REF (arg_number)), arg_number));
+  if (!OS_channel_open_p (channel))
     error_bad_range_arg (arg_number);
   return (channel);
 }
@@ -214,7 +218,7 @@ DEFINE_PRIMITIVE ("CHANNEL-BLOCKING", Prim_channel_blocking, 1, 1,
   OS_channel_blocking (arg_channel (1));
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
-
+
 DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
   "Return a cons of two channels, the reader and writer of a pipe.")
 {
@@ -229,9 +233,115 @@ DEFINE_PRIMITIVE ("MAKE-PIPE", Prim_make_pipe, 0, 0,
     PRIMITIVE_RETURN (result);
   }
 }
+
+/* Select registry */
+
+static select_registry_t
+DEFUN (arg_select_registry, (arg_number), int arg_number)
+{
+  return ((select_registry_t) (arg_ulong_integer (arg_number)));
+}
+
+static unsigned int
+DEFUN (arg_sr_mode, (arg_number), int arg_number)
+{
+  unsigned long n = (arg_ulong_integer (arg_number));
+  if (! ((n >= 1) && (n <= 3)))
+    error_bad_range_arg (arg_number);
+  return (n);
+}
 
 DEFINE_PRIMITIVE ("HAVE-SELECT?", Prim_have_select_p, 0, 0, 0)
 {
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (OS_have_select_p));
+}
+
+DEFINE_PRIMITIVE ("ALLOCATE-SELECT-REGISTRY", Prim_alloc_selreg, 0, 0, 0)
+{
+  PRIMITIVE_HEADER (0);
+  PRIMITIVE_RETURN
+    (ulong_to_integer
+     ((unsigned long) (OS_allocate_select_registry ())));
+}
+
+DEFINE_PRIMITIVE ("DEALLOCATE-SELECT-REGISTRY", Prim_dealloc_selreg, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  OS_deallocate_select_registry (arg_select_registry (1));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("ADD-TO-SELECT-REGISTRY", Prim_add_to_selreg, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS_add_to_select_registry ((arg_select_registry (1)),
+			     (arg_nonnegative_integer (2)),
+			     (arg_sr_mode (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("REMOVE-FROM-SELECT-REGISTRY", Prim_rem_from_selreg, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  OS_remove_from_select_registry ((arg_select_registry (1)),
+				  (arg_nonnegative_integer (2)),
+				  (arg_sr_mode (3)));
+  PRIMITIVE_RETURN (UNSPECIFIC);
+}
+
+DEFINE_PRIMITIVE ("SELECT-REGISTRY-LENGTH", Prim_selreg_length, 1, 1, 0)
+{
+  PRIMITIVE_HEADER (1);
+  PRIMITIVE_RETURN
+    (ulong_to_integer (OS_select_registry_length (arg_select_registry (1))));
+}
+
+DEFINE_PRIMITIVE ("TEST-SELECT-REGISTRY", Prim_test_selreg, 4, 4, 0)
+{
+  PRIMITIVE_HEADER (4);
+  {
+    select_registry_t r = (arg_select_registry (1));
+    unsigned int rl = (OS_select_registry_length (r));
+    int blockp = (BOOLEAN_ARG (2));
+    SCHEME_OBJECT vfd = (VECTOR_ARG (3));
+    SCHEME_OBJECT vmode = (VECTOR_ARG (4));
+    int result;
+
+    if ((VECTOR_LENGTH (vfd)) < rl)
+      error_bad_range_arg (3);
+    if ((VECTOR_LENGTH (vmode)) < rl)
+      error_bad_range_arg (4);
+    result = (OS_test_select_registry (r, blockp));
+    if (result > 0)
+      {
+	unsigned int i = 0;
+	unsigned int iv = 0;
+	while (i < rl)
+	  {
+	    int fd;
+	    unsigned int mode;
+
+	    OS_select_registry_result (r, i, (&fd), (&mode));
+	    if (mode > 0)
+	      {
+		VECTOR_SET (vfd, iv, (long_to_integer (fd)));
+		VECTOR_SET (vmode, iv, (ulong_to_integer (mode)));
+		iv += 1;
+	      }
+	    i += 1;
+	  }
+      }
+    PRIMITIVE_RETURN (long_to_integer (result));
+  }
+}
+
+DEFINE_PRIMITIVE ("TEST-SELECT-DESCRIPTOR", Prim_test_sel_desc, 3, 3, 0)
+{
+  PRIMITIVE_HEADER (3);
+  PRIMITIVE_RETURN
+    (long_to_integer
+     (OS_test_select_descriptor ((arg_nonnegative_integer (1)),
+				 (BOOLEAN_ARG (2)),
+				 (arg_sr_mode (3)))));
 }

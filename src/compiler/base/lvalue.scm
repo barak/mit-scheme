@@ -1,23 +1,27 @@
 #| -*-Scheme-*-
 
-$Id: lvalue.scm,v 4.25 2002/02/07 05:58:14 cph Exp $
+$Id: lvalue.scm,v 4.28 2003/02/14 18:28:01 cph Exp $
 
-Copyright (c) 1988-1990, 1999, 2001, 2002 Massachusetts Institute of Technology
+Copyright 1987,1988,1989,1990,1993,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-02111-1307, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; Left (Hand Side) Values
@@ -101,25 +105,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 (define-integrable (lvalue/variable? lvalue)
   (eq? (tagged-vector/tag lvalue) variable-tag))
 
-(let-syntax
-    ((define-named-variable
-      (sc-macro-transformer
-       (lambda (form environment)
-	 environment
-	 (let* ((name (cadr form))
-		(symbol
-		 (intern (string-append "#[" (symbol->string name) "]"))))
-	   `(BEGIN (DEFINE-INTEGRABLE
-		     (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
-		     (MAKE-VARIABLE BLOCK ',symbol))
-		   (DEFINE-INTEGRABLE
-		     (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
-		     (EQ? (VARIABLE-NAME LVALUE) ',symbol))
-		   (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
-		     (AND (VARIABLE? LVALUE)
-			  (EQ? (VARIABLE-NAME LVALUE) ',symbol)))))))))
-  (define-named-variable continuation)
-  (define-named-variable value))
+(define-syntax define-named-variable
+  (sc-macro-transformer
+   (lambda (form environment)
+     environment
+     (let* ((name (cadr form))
+	    (symbol
+	     (intern (string-append "#[" (symbol->string name) "]"))))
+       `(BEGIN (DEFINE-INTEGRABLE
+		 (,(symbol-append 'MAKE- name '-VARIABLE) BLOCK)
+		 (MAKE-VARIABLE BLOCK ',symbol))
+	       (DEFINE-INTEGRABLE
+		 (,(symbol-append 'VARIABLE/ name '-VARIABLE?) LVALUE)
+		 (EQ? (VARIABLE-NAME LVALUE) ',symbol))
+	       (DEFINE (,(symbol-append name '-VARIABLE?) LVALUE)
+		 (AND (VARIABLE? LVALUE)
+		      (EQ? (VARIABLE-NAME LVALUE) ',symbol))))))))
+
+(define-named-variable continuation)
+(define-named-variable value)
 
 (define (variable/register variable)
   (let ((maybe-delayed-register (variable-register variable)))

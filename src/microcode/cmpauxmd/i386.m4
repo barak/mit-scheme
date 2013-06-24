@@ -1,21 +1,24 @@
 ### -*-Midas-*-
 ###
-### $Id: i386.m4,v 1.57 2002/03/11 21:39:18 cph Exp $
+### $Id: i386.m4,v 1.62 2003/05/17 20:55:45 cph Exp $
 ###
-### Copyright (c) 1992-2002 Massachusetts Institute of Technology
+### Copyright 1992,1997,1998,2000,2001 Massachusetts Institute of Technology
+### Copyright 2002,2003 Massachusetts Institute of Technology
 ###
-### This program is free software; you can redistribute it and/or
+### This file is part of MIT/GNU Scheme.
+###
+### MIT/GNU Scheme is free software; you can redistribute it and/or
 ### modify it under the terms of the GNU General Public License as
 ### published by the Free Software Foundation; either version 2 of the
 ### License, or (at your option) any later version.
 ###
-### This program is distributed in the hope that it will be useful,
+### MIT/GNU Scheme is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ### General Public License for more details.
 ###
 ### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
+### along with MIT/GNU Scheme; if not, write to the Free Software
 ### Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 ### 02111-1307, USA.
 
@@ -96,57 +99,28 @@
 ###
 ### WIN32
 ###	If defined, expand to run under Win32; implies DASM.
-### OS2
-###	If defined, expand to run under OS/2.  This macro does nothing
-###	more than define SUPPRESS_LEADING_UNDERSCORE and
-###	CALLER_ALLOCS_STRUCT_RETURN, which are the conventions used to
-###	call OS/2 API procedures; note that EMX/GCC doesn't define
-###	these symbols because it thinks it's running under unix.
-###
-### If none of { WIN32, OS2 } is defined, expansion is for unix.
 ###
 ### SUPPRESS_LEADING_UNDERSCORE
 ###	If defined, external symbol names are generated as written;
 ###	otherwise, they have an underscore prepended to them.
-### CALLER_ALLOCS_STRUCT_RETURN
-### STATIC_STRUCT_RETURN
-###	Controls the conventions used to return 8-byte structs from C
-###	procedures.  If CALLER_ALLOCS_STRUCT_RETURN is defined, the
-###	caller allocates space on the stack and passes a pointer to
-###	that space on the top of the stack.  If STATIC_STRUCT_RETURN
-###	is defined, the callee returns a pointer to a static struct in
-###	EAX.  Otherwise, the callee returns the struct in EAX/EDX.
-### CALLEE_POPS_STRUCT_RETURN
-###	Modifies the CALLER_ALLOCS_STRUCT_RETURN calling convention.
-###	Under the modified convention, the callee pops the pointer to
-###	the allocated space, so the caller doesn't have to.  This
-###	convention is used by GCC 2.9.x.
 ### WCC386
 ###	Should be defined when using Watcom assembler.
 ### WCC386R
 ###	Should be defined when using Watcom assembler and generating
 ###	code to use the Watcom register-based argument conventions.
-### LINUX_ELF
-###	If defined, expand to run under Linux ELF.
 ### TYPE_CODE_LENGTH
 ###	Normally defined to be 6.  Don't change this unless you know
 ###	what you're doing.
 ### DISABLE_387
 ###	If defined, do not generate 387 floating-point instructions.
+### VALGRIND_MODE
+###	If defined, modify code to make it work with valgrind.
 
 ####	Utility macros and definitions
 
 ifdef(`WIN32',
       `define(IF_WIN32,`$1')',
       `define(IF_WIN32,`')')
-
-ifdef(`OS2',
-      `define(IFOS2,`$1')',
-      `define(IFOS2,`')')
-
-ifdef(`LINUX_ELF',
-      `define(IF_LINUX_ELF,`$1')',
-      `define(IF_LINUX_ELF,`')')
 
 ifdef(`DISABLE_387',
       `define(IF387,`')',
@@ -187,14 +161,9 @@ IFNDASM(`define(popad,`popa')')
 IFNDASM(`define(pushfd,`pushf')')
 IFNDASM(`define(popfd,`popf')')
 
-IFOS2(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-IF_LINUX_ELF(`define(`SUPPRESS_LEADING_UNDERSCORE',1)')
-
-ifdef(`WCC386R',
-      `define(EVR,`_$1')',
-      `ifdef(`SUPPRESS_LEADING_UNDERSCORE',
-	     `define(EVR,`$1')',
-	     `define(EVR,`_$1')')')
+ifdef(`SUPPRESS_LEADING_UNDERSCORE',
+       `define(EVR,`$1')',
+       `define(EVR,`_$1')')
 
 # When using the Watcom C compiler with register-based calling
 # conventions, source-code function names normally expand to `FOO_',
@@ -360,7 +329,7 @@ DECLARE_DATA_SEGMENT()
 declare_alignment(2)
 
 use_external_data(EVR(Free))
-use_external_data(EVR(Ext_Stack_Pointer))
+use_external_data(EVR(sp_register))
 use_external_data(EVR(utility_table))
 
 ifdef(`WIN32',`
@@ -382,11 +351,6 @@ allocate_longword(C_Stack_Pointer)
 define_data(C_Frame_Pointer)
 allocate_longword(C_Frame_Pointer)
 
-IFOS2(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
-IF_LINUX_ELF(`define(CALLER_ALLOCS_STRUCT_RETURN,1)')
-
-IF_WIN32(`ifdef(`WCC386', `define(`STATIC_STRUCT_RETURN',1)')')
-
 define_data(ia32_cpuid_supported)
 allocate_longword(ia32_cpuid_supported)
 
@@ -406,11 +370,13 @@ define_c_label(i386_interface_initialize)
 
 IF387(`
 #	OP(mov,l)	TW(REG(cr0),REG(ecx))		# Test for 387 presence
+ifdef(`VALGRIND_MODE',`',`
 	smsw		REG(cx)
 	OP(mov,l)	TW(IMM(HEX(12)),REG(edx))
 	OP(and,l)	TW(REG(edx),REG(ecx))
 	OP(cmp,l)	TW(REG(edx),REG(ecx))
 	jne	i386_initialize_no_fp
+')
 	OP(inc,l)	REG(eax)			# 387 available
 	OP(sub,l)	TW(IMM(4),REG(esp))
 	fclex
@@ -566,26 +532,22 @@ IF387(`
 	ffree	ST(7)
 scheme_to_interface_proceed:
 ')
-	OP(mov,l)	TW(REG(esp),EVR(Ext_Stack_Pointer))
+	OP(mov,l)	TW(REG(esp),EVR(sp_register))
 	OP(mov,l)	TW(rfree,EVR(Free))
 
 	OP(mov,l)	TW(EVR(C_Stack_Pointer),REG(esp))
 	OP(mov,l)	TW(EVR(C_Frame_Pointer),REG(ebp))
 
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc space for struct return
-')
-	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # Utility args
+	OP(sub,l)	TW(IMM(8),REG(esp))	# alloc struct return
 
+	OP(push,l)	LOF(REGBLOCK_UTILITY_ARG4(),regs) # push utility args
 	OP(push,l)	REG(ebx)
 	OP(push,l)	REG(edx)
 	OP(push,l)	REG(ecx)
 
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(mov,l)	TW(REG(esp),REG(ecx))	# push pointer to struct return
+	OP(mov,l)	TW(REG(esp),REG(ecx))	# push ptr to struct return
 	OP(add,l)	TW(IMM(16),REG(ecx))
 	OP(push,l)	REG(ecx)
-')
 
 	OP(xor,l)	TW(REG(ecx),REG(ecx))
 	OP(mov,b)	TW(REG(al),REG(cl))
@@ -593,22 +555,10 @@ ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
 	call		IJMP(REG(eax))
 
 define_debugging_label(scheme_to_interface_return)
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-ifdef(`CALLEE_POPS_STRUCT_RETURN',`',`
-	OP(add,l)	TW(IMM(4),REG(esp))	# pop pointer to struct return
-')')
-	OP(add,l)	TW(IMM(16),REG(esp))		# Pop utility args
-
-ifdef(`STATIC_STRUCT_RETURN',`
-	OP(mov,l)	TW(LOF(4,REG(eax)),REG(edx))
-	OP(mov,l)	TW(IND(REG(eax)),REG(eax))
-')
-
-ifdef(`CALLER_ALLOCS_STRUCT_RETURN',`
-	OP(pop,l)	REG(eax)	# Pop struct return into registers
+	OP(add,l)	TW(IMM(20),REG(esp))	# pop utility args
+	OP(pop,l)	REG(eax)		# pop struct return
 	OP(pop,l)	REG(edx)
-')
-	jmp		IJMP(REG(eax))			# Invoke handler
+	jmp		IJMP(REG(eax))		# Invoke handler
 
 define_c_label(interface_to_scheme)
 IF387(`
@@ -628,7 +578,7 @@ interface_to_scheme_proceed:
 	OP(mov,l)	TW(LOF(REGBLOCK_VAL(),regs),REG(eax)) # Value/dynamic link
 	OP(mov,l)	TW(IMM(ADDRESS_MASK),rmask)	# = %ebp
 
-	OP(mov,l)	TW(EVR(Ext_Stack_Pointer),REG(esp))
+	OP(mov,l)	TW(EVR(sp_register),REG(esp))
 	OP(mov,l)	TW(REG(eax),REG(ecx))		# Preserve if used
 	OP(and,l)	TW(rmask,REG(ecx))		# Restore potential dynamic link
 	OP(mov,l)	TW(REG(ecx),LOF(REGBLOCK_DLINK(),regs))

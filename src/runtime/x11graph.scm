@@ -1,22 +1,28 @@
 #| -*-Scheme-*-
 
-$Id: x11graph.scm,v 1.51 2001/02/11 00:09:07 cph Exp $
+$Id: x11graph.scm,v 1.56 2003/03/07 20:48:09 cph Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1995 Massachusetts Institute of Technology
+Copyright 1996,1997,1998,1999,2000,2001 Massachusetts Institute of Technology
+Copyright 2002,2003 Massachusetts Institute of Technology
 
-This program is free software; you can redistribute it and/or modify
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or (at
 your option) any later version.
 
-This program is distributed in the hope that it will be useful, but
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
 |#
 
 ;;;; X Graphics Interface
@@ -169,6 +175,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (move-cursor ,x-graphics/move-cursor)
 	   (move-window ,x-graphics/move-window)
 	   (open ,x-graphics/open)
+	   (open? ,x-graphics/open-window?)
 	   (query-pointer ,x-graphics/query-pointer)
 	   (raise-window ,x-graphics/raise-window)
 	   (reset-clip-rectangle ,x-graphics/reset-clip-rectangle)
@@ -254,14 +261,19 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 	   (remove-all-from-gc-finalizer! (x-display/window-finalizer display))
 	   (remove-from-gc-finalizer! display-finalizer display)
 	   (set-x-display/xd! display #f))))))
+
+(define (x-graphics/open-display? display)
+  (if (x-display/xd display) #t #f))
 
 (define (make-event-previewer display)
   (let ((registration))
     (set! registration
-	  (permanently-register-input-thread-event
+	  (permanently-register-io-thread-event
 	   (x-display-descriptor (x-display/xd display))
+	   'READ
 	   (current-thread)
-	   (lambda ()
+	   (lambda (mode)
+	     mode
 	     (call-with-current-continuation
 	      (lambda (continuation)
 		(bind-condition-handler
@@ -273,7 +285,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 		      ;; on its display argument, that means the
 		      ;; display has been closed.
 		      condition
-		      (deregister-input-thread-event registration)
+		      (deregister-io-thread-event registration)
 		      (continuation unspecific))
 		  (lambda ()
 		    (let ((event
@@ -296,10 +308,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define (%read-and-process-event display)
   (let ((event
-	 (and (eq? 'INPUT-AVAILABLE
-		   (test-for-input-on-descriptor
+	 (and (eq? 'READ
+		   (test-for-io-on-descriptor
 		    (x-display-descriptor (x-display/xd display))
-		    #t))
+		    #t
+		    'READ))
 	      (x-display-process-events (x-display/xd display) 1))))
     (if event
 	(process-event display event))))
@@ -420,6 +433,9 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 (define-integrable (x-graphics-device/visibility device)
   (x-window/visibility (graphics-device/descriptor device)))
+
+(define (x-graphics/open-window? device)
+  (if (x-graphics-device/xw device) #t #f))
 
 (define (x-graphics/close-window device)
   (without-interrupts
@@ -916,17 +932,16 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ;;;; Colormaps
 
-(define x-colormap?)
-(define %make-colormap)
-(define colormap/descriptor)
+(define-record-type <colormap>
+    (%make-colormap descriptor)
+    x-colormap?
+  (descriptor colormap/descriptor))
+
 (define colormap-list)
 
 (define (initialize-colormap-datatype)
-  (let ((rtd (make-record-type "colormap" '(DESCRIPTOR))))
-    (set! x-colormap? (record-predicate rtd))
-    (set! %make-colormap (record-constructor rtd))
-    (set! colormap/descriptor (record-accessor rtd 'DESCRIPTOR)))
-  (set! colormap-list (make-gc-finalizer x-free-colormap)))
+  (set! colormap-list (make-gc-finalizer x-free-colormap))
+  unspecific)
 
 (define (make-colormap descriptor)
   (let ((colormap (%make-colormap descriptor)))

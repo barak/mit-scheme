@@ -1,29 +1,34 @@
-;;; -*-Scheme-*-
-;;;
-;;; $Id: class.scm,v 1.12 2002/02/03 03:38:58 cph Exp $
-;;;
-;;; Copyright (c) 1995-1999, 2001, 2002 Massachusetts Institute of Technology
-;;;
-;;; This program is free software; you can redistribute it and/or
-;;; modify it under the terms of the GNU General Public License as
-;;; published by the Free Software Foundation; either version 2 of the
-;;; License, or (at your option) any later version.
-;;;
-;;; This program is distributed in the hope that it will be useful,
-;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-;;; General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU General Public License
-;;; along with this program; if not, write to the Free Software
-;;; Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
-;;; 02111-1307, USA.
+#| -*-Scheme-*-
+
+$Id: class.scm,v 1.17 2003/07/22 02:35:06 cph Exp $
+
+Copyright 1995,1997,2002,2002,2003 Massachusetts Institute of Technology
+
+This file is part of MIT/GNU Scheme.
+
+MIT/GNU Scheme is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+MIT/GNU Scheme is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with MIT/GNU Scheme; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+USA.
+
+|#
 
 ;;;; Classes
 
 (declare (usual-integrations))
 
-(define-structure (class (conc-name class/)
+(define-structure (class (type-descriptor class-rtd)
+			 (conc-name class/)
 			 (constructor %make-class
 				      (name direct-superclasses direct-slots))
 			 (print-procedure
@@ -42,8 +47,7 @@
   dispatch-tag)
 
 (define (make-class name direct-superclasses direct-slots)
-  (if (not (and (list? direct-superclasses)
-		(for-all? direct-superclasses class?)))
+  (if (not (list-of-type? direct-superclasses class?))
       (error:wrong-type-argument direct-superclasses
 				 "list of classes"
 				 'MAKE-CLASS))
@@ -118,41 +122,41 @@
      (build-constraints class/direct-superclasses elements)
      (lambda (partial-cpl elements)
        (let loop ((partial-cpl (reverse partial-cpl)))
-	 (if (null? partial-cpl)
+	 (if (not (pair? partial-cpl))
 	     (error:bad-range-argument class 'COMPUTE-PRECEDENCE-LIST))
-	 (let ((ds-of-ce
-		(class/direct-superclasses (car partial-cpl))))
+	 (let ((ds-of-ce (class/direct-superclasses (car partial-cpl))))
 	   (let find-common ((elements elements))
-	     (cond ((null? elements) (loop (cdr partial-cpl)))
-		   ((memq (car elements) ds-of-ce) (car elements))
-		   (else (find-common (cdr elements)))))))))))
+	     (if (pair? elements)
+		 (if (memq (car elements) ds-of-ce)
+		     (car elements)
+		     (find-common (cdr elements)))
+		 (loop (cdr partial-cpl))))))))))
 
 (define (compute-slots class)
   (let loop
       ((slots (append-map class/direct-slots (class/precedence-list class)))
        (index 1)
        (descriptors '()))
-    (if (null? slots)
-	(reverse! descriptors)
+    (if (pair? slots)
 	(let ((slot (car slots)))
 	  (let ((name (car slot)))
 	    (let inner ((slots (cdr slots)) (same '()) (diff '()))
-	      (cond ((null? slots)
-		     (loop (reverse! diff)
-			   (+ index 1)
-			   (cons (compute-slot-descriptor
-				  class
-				  (cons slot (reverse! same))
-				  index)
-				 descriptors)))
-		    ((eq? name (caar slots))
-		     (inner (cdr slots)
-			    (cons (car slots) same)
-			    diff))
-		    (else
-		     (inner (cdr slots)
-			    same
-			    (cons (car slots) diff))))))))))
+	      (if (pair? slots)
+		  (if (eq? name (caar slots))
+		      (inner (cdr slots)
+			     (cons (car slots) same)
+			     diff)
+		      (inner (cdr slots)
+			     same
+			     (cons (car slots) diff)))
+		  (loop (reverse! diff)
+			(+ index 1)
+			(cons (compute-slot-descriptor
+			       class
+			       (cons slot (reverse! same))
+			       index)
+			      descriptors))))))
+	(reverse! descriptors))))
 
 ;;;; Topological Sort
 
@@ -179,7 +183,7 @@
 	    (let ((minimal
 		   (remove-if (lambda (element)
 				(let loop ((constraints constraints))
-				  (and (not (null? constraints))
+				  (and (pair? constraints)
 				       (or (eq? (cdar constraints) element)
 					   (loop (cdr constraints))))))
 			      elements)))
@@ -206,26 +210,25 @@
 
 (define (build-transitive-closure get-follow-ons element)
   (let loop ((result '()) (pending (list element)))
-    (cond ((null? pending)
-	   result)
-	  ((memq (car pending) result)
-	   (loop result (cdr pending)))
-	  (else
-	   (loop (cons (car pending) result)
-		 (append (get-follow-ons (car pending)) (cdr pending)))))))
+    (if (pair? pending)
+	(if (memq (car pending) result)
+	    (loop result (cdr pending))
+	    (loop (cons (car pending) result)
+		  (append (get-follow-ons (car pending)) (cdr pending))))
+	result)))
 
 (define (build-constraints get-follow-ons elements)
   (let loop ((elements elements) (result '()))
-    (if (null? elements)
-	result
+    (if (pair? elements)
 	(loop (cdr elements)
 	      (let loop
 		  ((element (car elements))
 		   (follow-ons (get-follow-ons (car elements))))
-		(if (null? follow-ons)
-		    result
+		(if (pair? follow-ons)
 		    (cons (cons element (car follow-ons))
-			  (loop (car follow-ons) (cdr follow-ons)))))))))
+			  (loop (car follow-ons) (cdr follow-ons)))
+		    result)))
+	result)))
 
 (define (remove-if predicate items)
   (let loop ((items items))
@@ -255,28 +258,27 @@
     (trim-initial-segment items)))
 
 (define (remove-item! item items)
-  (cond ((null? items)
-	 items)
-	((eq? item (car items))
-	 (cdr items))
-	(else
-	 (let loop ((last items) (this (cdr items)))
-	   (if (not (null? this))
-	       (if (eq? item (car this))
-		   (set-cdr! last (cdr this))
-		   (loop this (cdr this)))))
-	 items)))
+  (if (pair? items)
+      (if (eq? item (car items))
+	  (cdr items)
+	  (begin
+	    (let loop ((last items) (this (cdr items)))
+	      (if (pair? this)
+		  (if (eq? item (car this))
+		      (set-cdr! last (cdr this))
+		      (loop this (cdr this)))))
+	    items))
+      items))
 
 ;;;; Built-in Classes
 
 (define <instance> (make-class '<INSTANCE> (list <object>) '()))
 
-(let-syntax
-    ((define-primitive-class
-      (syntax-rules ()
-	((define-primitive-class name superclass ...)
-	 (define name
-	   (make-class 'name (list superclass ...) '()))))))
+(define-syntax define-primitive-class
+  (syntax-rules ()
+    ((define-primitive-class name superclass ...)
+     (define name
+       (make-class 'name (list superclass ...) '())))))
 
 (define-primitive-class <boolean> <object>)
 (define-primitive-class <char> <object>)
@@ -316,8 +318,6 @@
 (define-primitive-class <procedure> <object>)
 (define-primitive-class <generic-procedure> <procedure>)
 (define-primitive-class <entity> <procedure>)
-
-)
 
 (define (object-class object)
   (dispatch-tag->class (dispatch-tag object)))
@@ -375,11 +375,11 @@
   (assign-type 'PROCEDURE <procedure>)
   (assign-type 'ENTITY <entity>)
 
-  (if (> microcode-id/version 11)
+  (if (fix:= (object-type 1) (object-type -1))
+      (assign-type 'FIXNUM <fixnum>)
       (begin
 	(assign-type 'POSITIVE-FIXNUM <fixnum>)
-	(assign-type 'NEGATIVE-FIXNUM <fixnum>))
-      (assign-type 'FIXNUM <fixnum>))
+	(assign-type 'NEGATIVE-FIXNUM <fixnum>)))
   (assign-type 'BIGNUM <bignum>)
   (assign-type 'RATNUM <ratnum>)
   (assign-type 'FLONUM <flonum>)
