@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paths.scm,v 1.21 2007/06/09 01:22:31 cph Exp $
+$Id: paths.scm,v 1.22 2007/07/07 17:20:12 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,7 +35,7 @@ USA.
 	(pathname-as-directory (merge-pathnames envval))
 	(or (system-library-directory-pathname "edwin")
 	    (and required?
-		 (error "Can't find edwin library directory:" name))))))
+		 (error "Can't find edwin library directory."))))))
 
 (define (edwin-binary-directory)
   (edwin-library-directory-pathname "EDWIN_BINARY_DIRECTORY" #t))

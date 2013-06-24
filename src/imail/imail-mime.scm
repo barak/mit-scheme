@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-mime.scm,v 1.5 2007/01/05 15:33:06 cph Exp $
+$Id: imail-mime.scm,v 1.6 2007/08/05 08:26:00 riastradh Exp $
 
 Copyright 2005 Taylor Campbell
 
@@ -44,16 +44,8 @@ USA.
             (else #f))))
 
 (define (mime:parse-body-structure message)
-  (let ((content-type
-         (parse-first-named-header message "Content-Type"
-                                   mime:default-content-type
-                                   mime:parse-content-type))
-        (encoding
-	 (named-mime-encoding
-	  (or (parse-first-named-header message "Content-Transfer-Encoding"
-					mime:default-encoding
-					mime:parse-encoding)
-	      '7BIT))))
+  (let ((content-type (mime:get-content-type message))
+        (encoding (mime:get-content-transfer-encoding message)))
     (let ((type (car content-type))
           (subtype (cadr content-type))
           (parameters (cddr content-type)))
@@ -65,43 +57,61 @@ USA.
 	       (else default)))
        message type subtype parameters encoding))))
 
+(define (mime:get-content-type message)
+  (parse-first-named-header message
+                            "Content-Type"
+                            mime:default-content-type
+                            mime:parse-content-type))
+
+(define (mime:get-content-transfer-encoding message)
+  (named-mime-encoding
+   (or (parse-first-named-header message
+                                 "Content-Transfer-Encoding"
+                                 mime:default-encoding
+                                 mime:parse-encoding)
+       '7BIT)))
+
 (define-method write-mime-message-body-part
     ((message <message>) selector cache? port)
   cache?
-  (let loop ((sel selector)
-             (part (mime-message-body-structure message)))
-    (let ((item (car sel))
-          (sel (cdr sel)))
-      (cond ((exact-nonnegative-integer? item)
-             (if (mime-body-multipart? part)
-                 (let ((subpart
-                        (list-ref (mime-body-multipart-parts part)
-                                  item)))
-                   (if (null? sel)
-                       (begin
-                         (if (message? subpart)
-                             (begin
-                               (write-header-fields
-                                (message-header-fields subpart)
-                                port)
-                               (newline port)))
-                         (write-message-body subpart port))
-                       (loop sel subpart)))
-                 (error "Selecting part of non-multipart:" part sel)))
-            ((null? sel)
-             (case item
-               ((TEXT)
-                (write-message-body part port))
-               ((HEADER)
-                (write-header-fields part port))
-               (else
-                (error "Invalid message MIME body selector tail:"
-                       sel
-                       message))))
-            (else
-             (error "Invalid message MIME body selector:"
-                    selector
-                    message))))))
+  (if (not (pair? selector))
+      (write-message-body message port)
+      (let ((lose
+             (lambda ()
+               (error "Invalid message MIME body selector:"
+                      selector
+                      message))))
+        (let loop ((selector selector)
+                   (part (mime-message-body-structure message)))
+          (let ((item (car selector))
+                (selector (cdr selector)))
+            (cond ((exact-nonnegative-integer? item)
+                   (if (not (mime-body-multipart? part))
+                       (error "Selecting part of non-multipart:"
+                              part
+                              selector))
+                   (let ((subpart
+                          (list-ref (mime-body-multipart-parts part)
+                                    item)))
+                     (if (pair? selector)
+                         (loop selector subpart)
+                         (begin
+                           (if (message? subpart)
+                               (begin
+                                 (write-header-fields
+                                  (message-header-fields subpart)
+                                  port)
+                                 (newline port)))
+                           (write-message-body subpart port)))))
+                  ((not (pair? selector))
+                   (case item
+                     ((TEXT)
+                      (write-message-body part port))
+                     ((HEADER)
+                      (write-header-fields (message-header-fields part)
+                                           port))
+                     (else (lose))))
+                  (else (lose))))))))
 
 ;;;; MIME-Version Header Field
 

@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: liarc.h,v 1.31 2007/06/06 19:42:40 cph Exp $
+$Id: liarc.h,v 1.32 2007/07/17 04:40:19 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -404,23 +404,26 @@ dload_initialize_data (void)						\
 #define DECLARE_DYNAMIC_INITIALIZATION(name, nonce)			\
 const char dload_nonce [] = nonce;					\
 									\
-char *									\
+const char *								\
 dload_initialize_file (void)						\
 {									\
   return								\
     ((((dload_initialize_code ()) == 0)					\
       && ((dload_initialize_data ()) == 0))				\
-     ? name								\
+     ? (liarc_object_file_name (name))					\
      : 0);								\
 }
 
 #define DECLARE_DYNAMIC_OBJECT_INITIALIZATION(name, nonce)		\
 const char dload_nonce [] = nonce;					\
 									\
-char *									\
+const char *								\
 dload_initialize_file (void)						\
 {									\
-  return (((dload_initialize_data ()) == 0) ? name : 0);		\
+  return                                                                \
+    (((dload_initialize_data ()) == 0)                                  \
+     ? (liarc_object_file_name (name))					\
+     : 0);                                                              \
 }
 
 #else /* !ENABLE_LIARC_FILE_INIT */
@@ -452,6 +455,8 @@ extern int declare_compiled_data_ns (const char *, liarc_data_proc_t *);
 extern int declare_data_object (const char *, liarc_object_proc_t *);
 extern int declare_compiled_code_mult (unsigned, const struct liarc_code_S *);
 extern int declare_compiled_data_mult (unsigned, const struct liarc_data_S *);
+
+extern const char * liarc_object_file_name (const char *);
 
 extern SCHEME_OBJECT unstackify (unsigned char *, size_t, entry_count_t);
 

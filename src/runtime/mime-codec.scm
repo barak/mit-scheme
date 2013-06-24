@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: mime-codec.scm,v 14.18 2007/01/05 21:19:28 cph Exp $
+$Id: mime-codec.scm,v 14.19 2007/08/05 08:08:40 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -582,7 +582,7 @@ USA.
 (define (decode-base64-char input index)
   (let ((digit (vector-8b-ref base64-char-table (vector-8b-ref input index))))
     (if (fix:> digit #x40)
-	(error "Misplaced #\= in BASE64 input."))
+	(error "Misplaced #\\= in BASE64 input."))
     digit))
 
 (define base64-char-table)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.126 2007/03/26 23:54:26 riastradh Exp $
+$Id: intmod.scm,v 1.127 2007/08/17 02:34:29 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -808,12 +808,6 @@ If this is an error, the debugger examines the error condition."
 		   (make-interface-port-state
 		    thread
 		    (mark-right-inserting-copy (buffer-end buffer))
-		    (make-ring (ref-variable comint-input-ring-size))
-		    (make-queue)
-		    #f
-		    #f
-		    (make-queue)
-		    '()
 		    (register-inferior-thread!
 		     thread
 		     (lambda () (process-output-queue port)))))))
@@ -823,16 +817,20 @@ If this is an error, the debugger examines the error condition."
   (and (port? object)
        (interface-port-state? (port/state object))))
 
-(define-structure (interface-port-state (conc-name interface-port-state/))
+(define-structure (interface-port-state
+		   (conc-name interface-port-state/)
+		   (constructor make-interface-port-state
+				(thread mark output-registration)))
   (thread #f read-only #t)
   (mark #f read-only #t)
-  (input-ring #f read-only #t)
-  (expression-queue #f read-only #t)
-  current-queue-element
-  command-char
-  (output-queue #f read-only #t)
-  output-strings
-  (output-registration #f read-only #t))
+  (input-ring (make-ring (ref-variable comint-input-ring-size)) read-only #t)
+  (expression-queue (make-queue) read-only #t)
+  (current-queue-element #f)
+  (command-char #f)
+  (output-queue (make-queue) read-only #t)
+  (output-strings '())
+  (output-registration #f read-only #t)
+  (bytes-written 0))
 
 (define-integrable (port/thread port)
   (interface-port-state/thread (port/state port)))
@@ -872,6 +870,12 @@ If this is an error, the debugger examines the error condition."
 
 (define-integrable (port/output-registration port)
   (interface-port-state/output-registration (port/state port)))
+
+(define-integrable (port/bytes-written port)
+  (interface-port-state/bytes-written (port/state port)))
+
+(define-integrable (set-port/bytes-written! port n)
+  (set-interface-port-state/bytes-written! (port/state port) n))
 
 ;;; Output operations
 
@@ -919,9 +923,17 @@ If this is an error, the debugger examines the error condition."
 (define (enqueue-output-string! port string)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
     (set-port/output-strings! port (cons string (port/output-strings port)))
+    (set-port/bytes-written! port
+			     (+ (port/bytes-written port)
+				(string-length string)))
     (inferior-thread-output!/unsafe (port/output-registration port))
     (set-interrupt-enables! interrupt-mask)
     unspecific))
+
+;;; We assume here that none of the OPERATORs passed to this procedure
+;;; generate any output in the REPL buffer, and consequently we don't
+;;; need to update bytes-written here.  Review of the current usage of
+;;; this procedure confirms the assumption. 
 
 (define (enqueue-output-operation! port operator)
   (let ((interrupt-mask (set-interrupt-enables! interrupt-mask/gc-ok)))
@@ -1143,6 +1155,7 @@ If this is an error, the debugger examines the error condition."
      (WRITE-SUBSTRING ,operation/write-substring)
      (BEEP ,operation/beep)
      (X-SIZE ,operation/x-size)
+     (BYTES-WRITTEN ,port/bytes-written)
      (DEBUGGER-FAILURE ,operation/debugger-failure)
      (DEBUGGER-MESSAGE ,operation/debugger-message)
      (DEBUGGER-PRESENTATION ,operation/debugger-presentation)

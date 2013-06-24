@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: rdf-struct.scm,v 1.27 2007/01/17 21:00:48 cph Exp $
+$Id: rdf-struct.scm,v 1.34 2007/08/17 03:41:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,24 +27,68 @@ USA.
 
 ;;;; RDF data structures
 
+;;; Interning mechanisms used here hold onto the interned objects
+;;; strongly.  They should be changed to hold them weakly.
+
 (declare (usual-integrations))
 
+;;;; Triples
+
 (define-record-type <rdf-triple>
-    (%make-rdf-triple subject predicate object)
+    (%make-rdf-triple subject predicate object index)
     rdf-triple?
   (subject rdf-triple-subject)
   (predicate rdf-triple-predicate)
-  (object rdf-triple-object))
+  (object rdf-triple-object)
+  (index rdf-triple-index))
 
 (define-guarantee rdf-triple "RDF triple")
 
 (define (make-rdf-triple subject predicate object)
-  (%make-rdf-triple (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE)
-		    (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE)
-		    (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
+  (let ((subject (canonicalize-rdf-subject subject 'MAKE-RDF-TRIPLE))
+	(predicate (canonicalize-rdf-predicate predicate 'MAKE-RDF-TRIPLE))
+	(object (canonicalize-rdf-object object 'MAKE-RDF-TRIPLE)))
+    (hash-table/intern! rdf-triples (vector subject predicate object)
+      (lambda ()
+	(let ((triple
+	       (%make-rdf-triple subject predicate object (next-index))))
+	  (event-distributor/invoke! event:new-rdf-triple triple)
+	  triple)))))
+
+(define (for-each-rdf-triple procedure)
+  (for-each procedure
+	    (hash-table/datum-list rdf-triples)))
+
+(define next-index
+  (let ((counter 0))
+    (lambda ()
+      (let ((index counter))
+	(set! counter (+ counter 1))
+	index))))
+
+(define rdf-triples (make-equal-hash-table))
+(define event:new-rdf-triple (make-event-distributor))
+
+(define (rdf-subject? thing)
+  (or (absolute-uri? thing)
+      (rdf-bnode? thing)
+      (rdf-graph? thing)))
+
+(define (rdf-predicate? thing)
+  (absolute-uri? thing))
+
+(define (rdf-object? thing)
+  (or (absolute-uri? thing)
+      (rdf-bnode? thing)
+      (rdf-graph? thing)
+      (rdf-literal? thing)))
+
+(define-guarantee rdf-subject "RDF subject")
+(define-guarantee rdf-predicate "RDF predicate")
+(define-guarantee rdf-object "RDF object")
 
 (define (canonicalize-rdf-subject subject #!optional caller)
-  (cond ((rdf-bnode? subject) subject)
+  (cond ((or (rdf-bnode? subject) (rdf-graph? subject)) subject)
 	((%decode-bnode-uri subject))
 	(else (canonicalize-rdf-uri subject caller))))
 
@@ -60,6 +104,45 @@ USA.
   (if (rdf-qname? uri)
       (rdf-qname->uri uri)
       (->absolute-uri uri caller)))
+
+;;;; Graphs
+
+(define-record-type <rdf-graph>
+    (%make-rdf-graph triples)
+    rdf-graph?
+  (triples rdf-graph-triples))
+
+(define-guarantee rdf-graph "RDF graph")
+
+(define (make-rdf-graph triples)
+  (guarantee-list-of-type triples rdf-triple? "list of RDF triples"
+			  'MAKE-RDF-GRAPH)
+  (let ((triples
+	 (if (pair? triples)
+	     (let ((head
+		    (cons 'DUMMY
+			  (sort triples
+			    (lambda (t1 t2)
+			      (< (rdf-triple-index t1)
+				 (rdf-triple-index t2)))))))
+	       (let loop ((this (cdr head)) (prev head))
+		 (let ((next (cdr this)))
+		   (if (pair? next)
+		       (if (eq? (car this) (car next))
+			   (begin
+			     (set-cdr! prev next)
+			     (loop next prev))
+			   (loop next this)))))
+	       (cdr head))
+	     '())))
+    (hash-table/intern! rdf-graphs triples
+      (lambda ()
+	(let ((graph (%make-rdf-graph triples)))
+	  (event-distributor/invoke! event:new-rdf-graph graph)
+	  graph)))))
+
+(define rdf-graphs (make-equal-hash-table))
+(define event:new-rdf-graph (make-event-distributor))
 
 ;;;; Blank nodes
 
@@ -101,20 +184,15 @@ USA.
 	       (match (+ (char-set digits))))
 	  (noise (end-of-input))))))
 
-(define (make-rdf-bnode-registry)
-  (make-string-hash-table))
+(define (with-rdf-input-port port thunk)
+  (fluid-let ((*rdf-bnode-registry*
+	       (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
+		   (let ((table (make-string-hash-table)))
+		     (port/set-property! port 'RDF-BNODE-REGISTRY table)
+		     table))))
+    (thunk)))
 
-(define *rdf-bnode-registry*
-  (make-rdf-bnode-registry))
-
-(define (port/rdf-bnode-registry port)
-  (or (port/get-property port 'RDF-BNODE-REGISTRY #f)
-      (let ((table (make-rdf-bnode-registry)))
-	(port/set-property! port 'RDF-BNODE-REGISTRY table)
-	table)))
-
-(define (port/drop-rdf-bnode-registry port)
-  (port/remove-property! port 'RDF-BNODE-REGISTRY))
+(define *rdf-bnode-registry*)
 
 ;;;; Literals
 
@@ -126,29 +204,19 @@ USA.
 
 (define-guarantee rdf-literal "RDF literal")
 
-(set-record-type-unparser-method! <rdf-literal>
-  (standard-unparser-method 'RDF-LITERAL
-    (lambda (literal port)
-      (write-char #\space port)
-      (write-rdf/nt-literal literal port))))
-
 (define (make-rdf-literal text type)
-  (guarantee-utf8-string text 'RDF-LITERAL)
-  (%make-rdf-literal text
-		     (if (or (not type)
-			     (and (interned-symbol? type)
-				  (*match-symbol match-language type)))
-			 type
-			 (->absolute-uri type 'RDF-LITERAL))))
+  (guarantee-utf8-string text 'MAKE-RDF-LITERAL)
+  (let ((type
+	 (if (or (not type)
+		 (language? type))
+	     type
+	     (->absolute-uri type 'MAKE-RDF-LITERAL))))
+    (hash-table/intern! rdf-literals (cons text type)
+      (lambda ()
+	(%make-rdf-literal text type)))))
 
-(define match-language
-  (let* ((language-head (ascii-range->char-set #x61 #x7B))
-	 (language-tail
-	  (char-set-union language-head
-			  (ascii-range->char-set #x30 #x3A))))
-    (*matcher
-     (seq (+ (char-set language-head))
-	  (* (seq #\- (+ (char-set language-tail))))))))
+(define rdf-literals
+  (make-equal-hash-table))
 
 (define (rdf-literal-type literal)
   (let ((type (%rdf-literal-type literal)))
@@ -160,40 +228,27 @@ USA.
     (and (not (absolute-uri? type))
 	 type)))
 
+(set-record-type-unparser-method! <rdf-literal>
+  (standard-unparser-method 'RDF-LITERAL
+    (lambda (literal port)
+      (write-char #\space port)
+      (write-rdf/nt-literal literal port))))
+
 (define (rdf-literal=? l1 l2)
-  (and (string=? (rdf-literal-text l1) (rdf-literal-text l2))
-       (eq? (%rdf-literal-type l1) (%rdf-literal-type l2))))
-
-;;;; Triples index (deprecated)
+  (eq? l1 l2))
 
-(define-record-type <rdf-index>
-    (%make-rdf-index subjects predicates objects)
-    rdf-index?
-  (subjects rdf-index-subjects)
-  (predicates rdf-index-predicates)
-  (objects rdf-index-objects))
+(define (language? object)
+  (and (interned-symbol? object)
+       (*match-symbol match-language object)))
 
-(define-guarantee rdf-index "RDF index")
-
-(define (make-rdf-index)
-  (%make-rdf-index (make-eq-hash-table)
-		   (make-eq-hash-table)
-		   (make-eq-hash-table)))
-
-(define (add-to-rdf-index triple index)
-  (let ((add
-	 (lambda (key index)
-	   (hash-table/put! index
-			    key
-			    (cons triple
-				  (hash-table/get index
-						  key
-						  '()))))))
-    (add (rdf-triple-subject triple) (rdf-index-subjects index))
-    (add (rdf-triple-predicate triple) (rdf-index-predicates index))
-    (let ((o (rdf-triple-object triple)))
-      (if (not (rdf-literal? o))
-	  (add o (rdf-index-objects index))))))
+(define match-language
+  (let* ((language-head (ascii-range->char-set #x61 #x7B))
+	 (language-tail
+	  (char-set-union language-head
+			  (ascii-range->char-set #x30 #x3A))))
+    (*matcher
+     (seq (+ (char-set language-head))
+	  (* (seq #\- (+ (char-set language-tail))))))))
 
 ;;;; Qnames
 
@@ -209,7 +264,8 @@ USA.
   (guarantee-rdf-prefix-registry from-registry 'MERGE-RDF-PREFIX-REGISTRY!)
   (let ((to-registry (check-registry to-registry 'MERGE-RDF-PREFIX-REGISTRY!)))
     (for-each (lambda (p1)
-		(%register-rdf-prefix (car p1) (cdr p1) to-registry))
+		(if (not (eq? (car p1) ':))
+		    (%register-rdf-prefix (car p1) (cdr p1) to-registry)))
 	      (registry-bindings from-registry))))
 
 (define (%register-rdf-prefix prefix expansion registry)
@@ -313,7 +369,7 @@ USA.
 (define-guarantee rdf-prefix "RDF prefix")
 
 (define match-prefix
-  (*matcher (seq (? match:prefix-name) ":")))
+  (*matcher (seq match:prefix-name ":")))
 
 (define-record-type <rdf-prefix-registry>
     (make-rdf-prefix-registry bindings)
