@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gdbm.scm,v 1.11 2008/01/30 20:02:30 cph Exp $
+$Id: gdbm.scm,v 1.12 2008/03/11 04:00:52 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -57,7 +57,7 @@ USA.
 
 (define (gdbm-open filename block-size flags mode)
   (if (not (gdbm-available?))
-      (error "No gdbm support in this sytem."))
+      (error "This Scheme system was built without gdbm support."))
   (let ((filename (->namestring (merge-pathnames filename))))
     (without-interrupts
      (lambda ()

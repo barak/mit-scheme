@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: starbase.scm,v 1.23 2008/01/30 20:02:35 cph Exp $
+$Id: starbase.scm,v 1.24 2008/02/14 03:34:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -137,7 +137,7 @@ USA.
 (define-accessors-and-mutators text-rotation)
 
 (define (operation/available?)
-  (implemented-primitive-procedure? starbase-open-device))
+  (implemented-primitive-procedure? (ucode-primitive starbase-open-device 2)))
 
 (define (operation/open descriptor->device device-name driver-name)
   (let ((identifier (starbase-open-device device-name driver-name)))

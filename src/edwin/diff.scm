@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: diff.scm,v 1.2 2006/06/16 18:33:21 riastradh Exp $
+$Id: diff.scm,v 1.4 2008/09/02 22:46:04 riastradh Exp $
 
 This code is written by Taylor R. Campbell and placed in the Public
 Domain.  All warranties are disclaimed.
@@ -55,7 +55,7 @@ Domain.  All warranties are disclaimed.
            (pathname (buffer-pathname buffer)))
       (if (not (and pathname (file-exists? pathname)))
           (editor-error "Buffer has no associated file."))
-      (diff-buffer buffer pathname
+      (diff-buffer buffer
                    (lambda (temporary-pathname)
                      ;; PATHNAME is the buffer's usual storage on the
                      ;; disk; TEMPORARY-PATHNAME contains the buffer's
@@ -71,24 +71,22 @@ Domain.  All warranties are disclaimed.
            (auto-save (os/auto-save-pathname pathname buffer)))
       (if (not (file-exists? auto-save))
           (editor-error "Buffer has no auto-save file."))
-      (diff-buffer buffer pathname
+      (diff-buffer buffer
                    (lambda (temporary-pathname)
                      ;; PATHNAME is irrelevant; TEMPORARY-PATHNAME
                      ;; contains the buffer's current contents; and
                      ;; AUTO-SAVE contains the auto-saved contents.
                      (diff-to-buffer temporary-pathname auto-save))))))
 
-(define (diff-buffer buffer pathname receiver)
+(define (diff-buffer buffer receiver)
   (select-buffer
-   (if (buffer-modified? buffer)
-       (call-with-temporary-file-pathname
-        (lambda (temporary-pathname)
-          (write-region (buffer-region buffer)
-                        temporary-pathname
-                        #f              ;No message
-                        #f)             ;No line ending translation
-          (receiver temporary-pathname)))
-       (receiver pathname))))
+   (call-with-temporary-file-pathname
+     (lambda (temporary-pathname)
+       (write-region (buffer-region buffer)
+                     temporary-pathname
+                     #f                 ;No message
+                     #f)                ;No line ending translation
+       (receiver temporary-pathname)))))
 
 (define (diff-to-buffer old-filename new-filename #!optional buffer)
   (let ((buffer (diff-to-buffer-argument buffer)))

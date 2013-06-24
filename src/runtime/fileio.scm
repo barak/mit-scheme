@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: fileio.scm,v 1.35 2008/01/30 20:02:30 cph Exp $
+$Id: fileio.scm,v 1.38 2008/07/11 05:26:42 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -31,12 +31,13 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! operation/pathname (generic-i/o-port-accessor 0))
   (let ((other-operations
 	 `((LENGTH ,operation/length)
 	   (PATHNAME ,operation/pathname)
 	   (POSITION ,operation/position)
 	   (SET-POSITION! ,operation/set-position!)
-	   (TRUENAME ,operation/truename)
+	   (TRUENAME ,operation/pathname)
 	   (WRITE-SELF ,operation/write-self))))
     (let ((make-type
 	   (lambda (source sink)
@@ -50,29 +51,16 @@ USA.
 (define input-file-type)
 (define output-file-type)
 (define i/o-file-type)
-
-(define-structure (fstate (type vector)
-			  (initial-offset 4) ;must match "genio.scm"
-			  (constructor #f))
-  (pathname #f read-only #t))
+(define operation/pathname)
 
 (define (operation/length port)
   (channel-file-length
    (or (port/input-channel port)
        (port/output-channel port))))
 
-(define (operation/pathname port)
-  (fstate-pathname (port/state port)))
-
-(define operation/truename
-  ;; This works for unix because truename and pathname are the same.
-  ;; On operating system where they differ, there must be support to
-  ;; determine the truename.
-  operation/pathname)
-
 (define (operation/write-self port output-port)
   (write-string " for file: " output-port)
-  (write (->namestring (operation/truename port)) output-port))
+  (write (->namestring (operation/pathname port)) output-port))
 
 (define (operation/position port)
   (guarantee-positionable-port port 'OPERATION/POSITION)
@@ -81,11 +69,7 @@ USA.
   (if (input-port? port)
       (let ((input-buffer (port-input-buffer port)))
 	(- (channel-file-position (port/input-channel port))
-	   (input-buffer-free-bytes input-buffer)
-	   (let ((unread-char (port/unread port)))
-	     (if unread-char
-		 (input-buffer-encoded-character-size input-buffer unread-char)
-		 0))))
+	   (input-buffer-free-bytes input-buffer)))
       (channel-file-position (port/output-channel port))))
 
 (define (operation/set-position! port position)
@@ -117,9 +101,7 @@ USA.
 (define (open-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port
-	  (make-port input-file-type
-		     (make-gstate channel #f 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -131,9 +113,7 @@ USA.
 	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
-	 (port
-	  (make-port output-file-type
-		     (make-gstate #f channel 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -141,9 +121,7 @@ USA.
 (define (open-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port
-	  (make-port i/o-file-type
-		     (make-gstate channel channel 'TEXT 'TEXT pathname))))
+	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
     (set-channel-port! channel port)
     (port/set-line-ending port (file-line-ending pathname))
     port))
@@ -151,10 +129,10 @@ USA.
 (define (open-binary-input-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-input-channel (->namestring pathname)))
-	 (port
-	  (make-port input-file-type
-		     (make-gstate channel #f 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port channel #f input-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define (open-binary-output-file filename #!optional append?)
@@ -164,19 +142,19 @@ USA.
 	    (if (if (default-object? append?) #f append?)
 		(file-open-append-channel filename)
 		(file-open-output-channel filename))))
-	 (port
-	  (make-port output-file-type
-		     (make-gstate #f channel 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port #f channel output-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define (open-binary-i/o-file filename)
   (let* ((pathname (merge-pathnames filename))
 	 (channel (file-open-io-channel (->namestring pathname)))
-	 (port
-	  (make-port i/o-file-type
-		     (make-gstate channel channel 'BINARY 'BINARY pathname))))
+	 (port (make-generic-i/o-port channel channel i/o-file-type pathname)))
     (set-channel-port! channel port)
+    (port/set-coding port 'BINARY)
+    (port/set-line-ending port 'BINARY)
     port))
 
 (define ((make-call-with-file open) input-specifier receiver)

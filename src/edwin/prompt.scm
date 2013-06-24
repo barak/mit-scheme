@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: prompt.scm,v 1.205 2008/01/30 20:02:04 cph Exp $
+$Id: prompt.scm,v 1.206 2008/02/10 10:06:51 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1046,3 +1046,89 @@ it is added to the front of the command history."
 	  (if (not (string=? p1 p2))
 	      (editor-error "Pass phrases do not match."))))
       (receiver p1))))
+
+;;;;; Stored Pass Phrases
+
+(define-variable pass-phrase-retention-time
+  "The amount of time, in minutes, that Edwin retains pass phrases.
+The pass phrase is deleted if unused for this long.
+Set this to zero if you don't want pass-phrase retention."
+  30
+  exact-nonnegative-integer?)
+
+(define (call-with-stored-pass-phrase key receiver)
+  (let ((retention-time (ref-variable pass-phrase-retention-time #f)))
+    (let ((entry (hash-table/get stored-pass-phrases key #f)))
+      (if entry
+	  (begin
+	    (without-interrupts
+	     (lambda ()
+	       (deregister-timer-event (vector-ref entry 1))
+	       (set-up-pass-phrase-timer! entry key retention-time)))
+	    (call-with-unobscured-pass-phrase (vector-ref entry 0) receiver))
+	  (call-with-pass-phrase
+	   (string-append "Pass phrase for " key)
+	   (lambda (pass-phrase)
+	     (if (> retention-time 0)
+		 (hash-table/put!
+		  stored-pass-phrases
+		  key
+		  (let ((entry
+			 (vector (obscure-pass-phrase pass-phrase) #f #f)))
+		    (set-up-pass-phrase-timer! entry key retention-time)
+		    entry)))
+	     (receiver pass-phrase)))))))
+
+(define (delete-stored-pass-phrase key)
+  (hash-table/remove! stored-pass-phrases key))
+
+(define (set-up-pass-phrase-timer! entry key retention-time)
+  ;; A race condition can occur when the timer event is re-registered.
+  ;; If the previous timer event is queued but not executed before
+  ;; being deregistered, then it will run after the re-registration
+  ;; and try to delete the record.  By matching on ID, the previous
+  ;; event sees that it has been superseded and does nothing.
+  (let ((id (list 'ID)))
+    (vector-set! entry 2 id)
+    (vector-set! entry 1
+      (register-timer-event (* retention-time 60000)
+	(lambda ()
+	  (without-interrupts
+	   (lambda ()
+	     (let ((entry (hash-table/get stored-pass-phrases key #f)))
+	       (if (and entry (eq? (vector-ref entry 2) id))
+		   (hash-table/remove! stored-pass-phrases key))))))))))
+
+(define stored-pass-phrases
+  (make-string-hash-table))
+
+(define (obscure-pass-phrase clear-text)
+  (let ((n (string-length clear-text)))
+    (let ((noise (random-byte-vector n)))
+      (let ((obscured-text (make-string (* 2 n))))
+	(string-move! noise obscured-text 0)
+	(do ((i 0 (fix:+ i 1)))
+	    ((fix:= i n))
+	  (vector-8b-set! obscured-text (fix:+ i n)
+			  (fix:xor (vector-8b-ref clear-text i)
+				   (vector-8b-ref noise i))))
+	obscured-text))))
+
+(define (call-with-unobscured-pass-phrase obscured-text receiver)
+  (let ((n (quotient (string-length obscured-text) 2))
+	(clear-text))
+    (dynamic-wind
+     (lambda ()
+       (set! clear-text (make-string n))
+       unspecific)
+     (lambda ()
+       (do ((i 0 (fix:+ i 1)))
+	   ((fix:= i n))
+	 (vector-8b-set! clear-text i
+			 (fix:xor (vector-8b-ref obscured-text i)
+				  (vector-8b-ref obscured-text (fix:+ i n)))))
+       (receiver clear-text))
+     (lambda ()
+       (string-fill! clear-text #\NUL)
+       (set! clear-text)
+       unspecific))))

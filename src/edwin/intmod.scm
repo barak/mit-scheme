@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: intmod.scm,v 1.129 2008/01/30 20:02:02 cph Exp $
+$Id: intmod.scm,v 1.130 2008/07/26 05:12:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -882,8 +882,11 @@ If this is an error, the debugger examines the error condition."
   1)
 
 (define (operation/write-substring port string start end)
-  (enqueue-output-string! port (substring string start end))
-  (fix:- end start))
+  (if (string? string)
+      (begin
+	(enqueue-output-string! port (substring string start end))
+	(fix:- end start))
+      (generic-port-operation:write-substring port string start end)))
 
 (define (operation/beep port)
   (enqueue-output-operation!

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-file.scm,v 1.93 2008/01/30 20:02:09 cph Exp $
+$Id: imail-file.scm,v 1.97 2008/09/25 14:58:06 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -349,9 +349,11 @@ USA.
 		       (let ((m (vector-ref messages i)))
 			 (if (message-deleted? m)
 			     (begin
-			       (let ((key (message-order-key m)))
-                                 (detach-message! m)
-                                 (object-modified! folder 'EXPUNGE i* key))
+			       (let ((index (message-index m))
+                                     (key (message-order-key m)))
+				 (detach-message! m)
+				 (object-modified! folder 'EXPUNGE
+						   m i* index key))
 			       (loop (fix:+ i 1) i*))
 			     (begin
 			       (set-message-index! m i*)
@@ -404,9 +406,21 @@ USA.
 	     (and (eq? status 'BOTH-MODIFIED)
 		  (imail-ui:prompt-for-yes-or-no?
 		   "Disk file has changed since last read.  Save anyway"))))
-       (begin
-	 (synchronize-file-folder-write folder write-file-folder)
-	 #t)))
+       (call-with-current-continuation
+	 (lambda (k)
+	   (bind-condition-handler (list condition-type:error)
+	       (lambda (condition)
+		 ;; Can this be done in a pop-up buffer?  It doesn't
+		 ;; work just to use IMAIL-UI:PRESENT-USER-ALERT
+		 ;; because that futzes with the kill-buffer hooks.
+		 (imail-ui:message
+		  (call-with-output-string
+		    (lambda (output-port)
+		      (write-condition-report condition output-port))))
+		 (k #f))
+	     (lambda ()
+	       (synchronize-file-folder-write folder write-file-folder)
+	       #t))))))
 
 (define-generic write-file-folder (folder pathname))
 
@@ -464,8 +478,9 @@ USA.
   folder
   unspecific)
 
-(define-method preload-folder-outlines ((folder <file-folder>))
-  folder
+(define-method preload-folder-outlines
+    ((folder <file-folder>) #!optional messages)
+  folder messages
   unspecific)
 
 (define-method first-unseen-message-index ((folder <file-folder>))
@@ -518,7 +533,8 @@ USA.
 (define-file-external-message-method message-header-fields
   <file-message>
   'HEADER-FIELDS
-  string->header-fields)
+  (lambda (s)
+    (remove! internal-header-field? (string->header-fields s))))
 
 (define-generic file-message-body (message))
 
@@ -587,22 +603,9 @@ USA.
 	     (file-time->universal-time t)))
       (get-universal-time)))
 
-(define (file-folder-strip-internal-headers folder ref)
-  (call-with-input-xstring (file-folder-xstring folder)
-			   (file-external-ref/start ref)
-    (lambda (port)
-      (let loop ((header-lines '()))
-	(let ((line (read-line port))
-	      (finish
-	       (lambda (offset)
-		 (values (make-file-external-ref
-			  (- (xstring-port/position port)
-			     offset)
-			  (file-external-ref/end ref))
-			 (lines->header-fields (reverse! header-lines))))))
-	  (cond ((eof-object? line)
-		 (finish 0))
-		((re-string-match "X-IMAIL-[^:]+:\\|[ \t]" line)
-		 (loop (cons line header-lines)))
-		(else
-		 (finish (+ (string-length line) 1)))))))))
+(define (file-folder-internal-headers folder ref)
+  (filter! internal-header-field?
+	   (string->header-fields
+	    (xsubstring (file-folder-xstring folder)
+			(file-external-ref/start ref)
+			(file-external-ref/end ref)))))

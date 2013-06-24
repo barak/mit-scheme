@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ux.c,v 1.35 2008/01/30 20:02:21 cph Exp $
+$Id: ux.c,v 1.36 2008/05/04 07:13:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -676,6 +676,22 @@ mmap_heap_malloc (unsigned long requested_length)
     unsigned long ps = (UX_getpagesize ());
     request = (((requested_length + (ps - 1)) / ps) * ps);
   }
+
+#ifdef __linux__
+  /* AppArmor can specify a minimum usable address.  In that case we
+     need to detect it and compensate.  */
+  {
+    FILE * s = (fopen ("/proc/sys/vm/mmap_min_addr", "r"));
+    if (s != 0)
+      {
+	unsigned long new_min_result;
+	int rc = (fscanf (s, "%lu", (&new_min_result)));
+	fclose (s);
+	if ((rc == 1) && (new_min_result > min_result))
+	  min_result = new_min_result;
+      }
+  }
+#endif
 
   result = (mmap_heap_malloc_search (request, min_result, max_result));
 

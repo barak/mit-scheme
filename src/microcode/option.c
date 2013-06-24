@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.66 2008/01/30 20:02:16 cph Exp $
+$Id: option.c,v 1.67 2008/09/26 08:30:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -77,13 +77,9 @@ USA.
 #define FILE_READABLE(filename) (OS_file_access ((filename), 4))
 
 static bool option_summary;
-static bool option_large_sizes;
-static bool option_compiler_defaults;
-static bool option_edwin_defaults;
 
 static const char * option_raw_library;
 static const char * option_raw_utabmd;
-static const char * option_raw_utab;
 static const char * option_raw_band;
 static const char * option_raw_heap;
 static const char * option_raw_constant;
@@ -99,7 +95,6 @@ const char ** option_unused_argv;
 bool option_emacs_subprocess;
 bool option_force_interactive;
 bool option_disable_core_dump;
-bool option_band_specified;
 bool option_batch_mode;
 
 /* String options */
@@ -149,22 +144,6 @@ arguments on the command line.
   defined, "utabmd.bin"; in these cases the library directories are
   searched, but not the working directory.
 
---utab FILENAME
-  An alternate name for the "--utabmd" option.  At most one of these
-  options may be given.
-
---large
-  Specifies that large heap, constant, and stack default sizes should
-  be used.  These are specified by the environment variables
-  MITSCHEME_LARGE_HEAP, MITSCHEME_LARGE_CONSTANT, and
-  MITSCHEME_LARGE_STACK.  If this option isn't given, the small sizes
-  are used, specified by the environment variables
-  MITSCHEME_SMALL_HEAP, MITSCHEME_SMALL_CONSTANT, and
-  MITSCHEME_SMALL_STACK.  There are reasonable built-in defaults for
-  these environment variables, should any of them be undefined.  [The
-  Scheme procedure `(print-gc-statistics)' shows how much heap and
-  constant space is available and in use.]
-
 --heap BLOCKS
   Specifies the size of the heap in 1024-word blocks.  Overrides any
   default.  Normally two such heaps are allocated; `bchscheme'
@@ -197,21 +176,6 @@ arguments on the command line.
   Specifies that Scheme should not generate a core dump under any
   circumstances.
 
-The following options are available only on machines with
-compiled-code support:
-
---compiler
-  This option specifies defaults appropriate for loading the compiler.
-  It changes the defaults for "--band": the environment variable
-  MITSCHEME_COMPILER_BAND is used, otherwise "compiler.com" is used.
-  It also specifies the use of large sizes, exactly like "--large".
-
---edwin
-  This option specifies defaults appropriate for loading the editor.
-  It changes the defaults for "--band": the environment variable
-  MITSCHEME_EDWIN_BAND is used, otherwise "edwin.com" is used.  It
-  also specifies the use of large sizes, exactly like "--large".
-
 */
 
 #ifndef LIBRARY_PATH_VARIABLE
@@ -230,32 +194,8 @@ compiled-code support:
 #  define BAND_VARIABLE "MITSCHEME_BAND"
 #endif
 
-#ifndef DEFAULT_BAND
-#  define DEFAULT_BAND "runtime.com"
-#endif
-
-#ifndef COMPILER_BAND_VARIABLE
-#  define COMPILER_BAND_VARIABLE "MITSCHEME_COMPILER_BAND"
-#endif
-
-#ifndef COMPILER_DEFAULT_BAND
-#  define COMPILER_DEFAULT_BAND "compiler.com"
-#endif
-
-#ifndef EDWIN_BAND_VARIABLE
-#  define EDWIN_BAND_VARIABLE "MITSCHEME_EDWIN_BAND"
-#endif
-
-#ifndef EDWIN_DEFAULT_BAND
-#  define EDWIN_DEFAULT_BAND "edwin.com"
-#endif
-
-#ifndef ALL_BAND_VARIABLE
-#  define ALL_BAND_VARIABLE "MITSCHEME_ALL_BAND"
-#endif
-
-#ifndef ALL_DEFAULT_BAND
-#  define ALL_DEFAULT_BAND "all.com"
+#ifndef DEFAULT_STD_BAND
+#  define DEFAULT_STD_BAND "all.com"
 #endif
 
 #ifndef UTABMD_FILE_VARIABLE
@@ -266,52 +206,28 @@ compiled-code support:
 #  define DEFAULT_UTABMD_FILE "utabmd.bin"
 #endif
 
-#ifndef DEFAULT_SMALL_HEAP
-#  define DEFAULT_SMALL_HEAP 250
+#ifndef DEFAULT_HEAP_SIZE
+#  define DEFAULT_HEAP_SIZE 4096
 #endif
 
-#ifndef SMALL_HEAP_VARIABLE
-#  define SMALL_HEAP_VARIABLE "MITSCHEME_SMALL_HEAP"
+#ifndef HEAP_SIZE_VARIABLE
+#  define HEAP_SIZE_VARIABLE "MITSCHEME_HEAP_SIZE"
 #endif
 
-#ifndef DEFAULT_SMALL_CONSTANT
-#  define DEFAULT_SMALL_CONSTANT 450
+#ifndef DEFAULT_CONSTANT_SIZE
+#  define DEFAULT_CONSTANT_SIZE 1024
 #endif
 
-#ifndef SMALL_CONSTANT_VARIABLE
-#  define SMALL_CONSTANT_VARIABLE "MITSCHEME_SMALL_CONSTANT"
+#ifndef MINIMUM_FASL_CONSTANT
+#  define MINIMUM_FASL_CONSTANT (DEFAULT_CONSTANT_SIZE * 2)
 #endif
 
-#ifndef DEFAULT_SMALL_STACK
-#  define DEFAULT_SMALL_STACK 100
+#ifndef DEFAULT_STACK_SIZE
+#  define DEFAULT_STACK_SIZE 128
 #endif
 
-#ifndef SMALL_STACK_VARIABLE
-#  define SMALL_STACK_VARIABLE "MITSCHEME_SMALL_STACK"
-#endif
-
-#ifndef DEFAULT_LARGE_HEAP
-#  define DEFAULT_LARGE_HEAP 1000
-#endif
-
-#ifndef LARGE_HEAP_VARIABLE
-#  define LARGE_HEAP_VARIABLE "MITSCHEME_LARGE_HEAP"
-#endif
-
-#ifndef DEFAULT_LARGE_CONSTANT
-#  define DEFAULT_LARGE_CONSTANT 1000
-#endif
-
-#ifndef LARGE_CONSTANT_VARIABLE
-#  define LARGE_CONSTANT_VARIABLE "MITSCHEME_LARGE_CONSTANT"
-#endif
-
-#ifndef DEFAULT_LARGE_STACK
-#  define DEFAULT_LARGE_STACK DEFAULT_SMALL_STACK
-#endif
-
-#ifndef LARGE_STACK_VARIABLE
-#  define LARGE_STACK_VARIABLE "MITSCHEME_LARGE_STACK"
+#ifndef STACK_SIZE_VARIABLE
+#  define STACK_SIZE_VARIABLE "MITSCHEME_STACK_SIZE"
 #endif
 
 static int
@@ -381,9 +297,9 @@ parse_options (int argc, const char ** argv)
 {
   const char ** scan_argv = (argv + 1);
   const char ** end_argv = (scan_argv + (argc - 1));
-  unsigned int n_descriptors =
-    ((obstack_object_size (&scratch_obstack))
-     / (sizeof (struct option_descriptor)));
+  unsigned int n_descriptors
+    = ((obstack_object_size (&scratch_obstack))
+       / (sizeof (struct option_descriptor)));
   struct option_descriptor * descriptors = (obstack_finish (&scratch_obstack));
   struct option_descriptor * end_desc = (descriptors + n_descriptors);
   struct option_descriptor * scan_desc;
@@ -391,12 +307,14 @@ parse_options (int argc, const char ** argv)
     if (scan_desc->argument_p)
       {
 	const char ** value_cell = (scan_desc->value_cell);
-	(*value_cell) = 0;
+	if (value_cell != 0)
+	  (*value_cell) = 0;
       }
     else
       {
 	bool * value_cell = (scan_desc->value_cell);
-	(*value_cell) = false;
+	if (value_cell != 0)
+	  (*value_cell) = false;
       }
   while (scan_argv < end_argv)
     {
@@ -417,7 +335,10 @@ parse_options (int argc, const char ** argv)
 	      {
 		const char ** value_cell = (scan_desc->value_cell);
 		if (scan_argv < end_argv)
-		  (*value_cell) = (*scan_argv++);
+		  {
+		    if (value_cell != 0)
+		      (*value_cell) = (*scan_argv++);
+		  }
 		else
 		  {
 		    outf_fatal ("%s: option --%s requires an argument.\n",
@@ -428,7 +349,8 @@ parse_options (int argc, const char ** argv)
 	    else
 	      {
 		bool * value_cell = (scan_desc->value_cell);
-		(*value_cell) = true;
+		if (value_cell != 0)
+		  (*value_cell) = true;
 	      }
 	    break;
 	  }
@@ -449,21 +371,24 @@ static void
 parse_standard_options (int argc, const char ** argv)
 {
   option_argument ("band", true, (&option_raw_band));
+  option_argument ("batch-mode", false, (&option_batch_mode));
   option_argument ("constant", true, (&option_raw_constant));
   option_argument ("emacs", false, (&option_emacs_subprocess));
   option_argument ("fasl", true, (&option_fasl_file));
   option_argument ("heap", true, (&option_raw_heap));
   option_argument ("interactive", false, (&option_force_interactive));
-  option_argument ("large", false, (&option_large_sizes));
   option_argument ("library", true, (&option_raw_library));
   option_argument ("nocore", false, (&option_disable_core_dump));
   option_argument ("option-summary", false, (&option_summary));
   option_argument ("stack", true, (&option_raw_stack));
-  option_argument ("utab", true, (&option_raw_utab));
   option_argument ("utabmd", true, (&option_raw_utabmd));
-  option_argument ("batch-mode", false, (&option_batch_mode));
-  option_argument ("compiler", false, (&option_compiler_defaults));
-  option_argument ("edwin", false, (&option_edwin_defaults));
+
+  /* These are deprecated: */
+  option_argument ("compiler", false, 0);
+  option_argument ("edwin", false, 0);
+  option_argument ("large", false, 0);
+  option_argument ("utab", true, (&option_raw_utabmd));
+
   parse_options (argc, argv);
 }
 
@@ -498,21 +423,23 @@ standard_numeric_option (const char * option,
 	}
       return (n);
     }
-  {
-    const char * t = (getenv (variable));
-    if (t != 0)
-      {
-	char * end;
-	unsigned long n = (strtoul (t, (&end), 0));;
-	if ((end == t) || ((*end) != '\0'))
-	  {
-	    outf_fatal ("%s: illegal value for environment variable %s: %s\n",
-			scheme_program_name, variable, t);
-	    termination_init_error ();
-	  }
-	return (n);
-      }
-  }
+  if (variable != 0)
+    {
+      const char * t = (getenv (variable));
+      if (t != 0)
+	{
+	  char * end;
+	  unsigned long n = (strtoul (t, (&end), 0));;
+	  if ((end == t) || ((*end) != '\0'))
+	    {
+	      outf_fatal
+		("%s: illegal value for environment variable %s: %s\n",
+		 scheme_program_name, variable, t);
+	      termination_init_error ();
+	    }
+	  return (n);
+	}
+    }
   return (defval);
 }
 
@@ -567,8 +494,8 @@ parse_path_string (const char * path)
 	{
 	  int absolute = (FILE_ABSOLUTE (start));
 	  {
-	    char * element =
-	      (OS_malloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
+	    char * element
+	      = (OS_malloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
 	    char * scan_element = element;
 	    if (!absolute)
 	      {
@@ -842,141 +769,92 @@ read_command_line_options (int argc, const char ** argv)
   parse_standard_options (argc, argv);
   if (option_library_path != 0)
     free_parsed_path (option_library_path);
-  option_library_path =
-    (parse_path_string
-     (standard_string_option (option_raw_library,
-			      LIBRARY_PATH_VARIABLE,
-			      DEFAULT_LIBRARY_PATH)));
-  {
-    const char * band_variable = BAND_VARIABLE;
-    const char * default_band = DEFAULT_BAND;
+  option_library_path
+    = (parse_path_string
+       (standard_string_option (option_raw_library,
+				LIBRARY_PATH_VARIABLE,
+				DEFAULT_LIBRARY_PATH)));
 
-    struct band_descriptor
-      {
-	const char * band;
-	const char * envvar;
-	int large_p;
-	int compiler_support_p;
-	int edwin_support_p;
-      };
-    struct band_descriptor available_bands [] =
-      {
-	{ DEFAULT_BAND, BAND_VARIABLE, 0, 0, 0 },
-	{ COMPILER_DEFAULT_BAND, COMPILER_BAND_VARIABLE, 1, 1, 0 },
-	{ EDWIN_DEFAULT_BAND, EDWIN_BAND_VARIABLE, 1, 0, 1 },
-	{ ALL_DEFAULT_BAND, ALL_BAND_VARIABLE, 1, 1, 1 },
-	{ "6001.com", EDWIN_BAND_VARIABLE, 1, 0, 1 },
-	{ "mechanics.com", COMPILER_BAND_VARIABLE, 1, 1, 0 },
-	{ "edwin-mechanics.com", ALL_BAND_VARIABLE, 1, 1, 1 },
-	{ 0, 0, 0, 0, 0 }
-      };
-    struct band_descriptor * scan = available_bands;
-
-    option_band_specified = false;
-    if (option_band_file != 0)
+  if (option_band_file != 0)
+    {
       xfree (option_band_file);
-
-    while ((scan -> band) != 0)
-      {
-	if ((option_compiler_defaults ? (scan -> compiler_support_p) : 1)
-	    && (option_edwin_defaults ? (scan -> edwin_support_p) : 1)
-	    && (search_for_library_file (scan -> band)))
+      option_band_file = 0;
+    }
+  if (option_fasl_file != 0)
+    {
+      if (option_raw_band != 0)
+	conflicting_options ("fasl", "band");
+#ifndef CC_IS_C
+      if (!FILE_READABLE (option_fasl_file))
+	{
+	  /* Kludge; FILE_READABLE doesn't work right for this case.  */
+	  outf_fatal ("%s: can't read option file: --fasl %s\n",
+		   scheme_program_name, option_fasl_file);
+	  termination_init_error ();
+	}
+#endif
+    }
+  else
+    {
+      const char * default_band = DEFAULT_STD_BAND;
+      const char * bands [] =
+	{
+	  DEFAULT_STD_BAND,
+	  "runtime.com",
+	  "mechanics.com",
+	  "edwin-mechanics.com",
+	  0
+	};
+      unsigned int i = 0;
+      for ( ; ((bands[i]) != 0); i += 1)
+	if (search_for_library_file (bands[i]))
 	  {
-	    option_band_specified = true;
-	    band_variable = (scan -> envvar);
-	    default_band = (scan -> band);
-	    if (scan -> large_p)
-	      option_large_sizes = true;
+	    default_band = (bands[i]);
 	    break;
 	  }
-	scan += 1;
-      }
-
-    if (option_fasl_file != 0)
-      {
-	if (option_raw_band != 0)
-	  conflicting_options ("fasl", "band");
-#ifndef CC_IS_C
-	if (!FILE_READABLE (option_fasl_file))
-	  {
-	    /* Kludge; FILE_READABLE doesn't work right for this case.  */
-	    outf_fatal ("%s: can't read option file: --fasl %s\n",
-		     scheme_program_name, option_fasl_file);
-	    termination_init_error ();
-	  }
-#endif
-	option_large_sizes = true;
-	option_band_specified = true;
-	option_band_file = 0;
-      }
-    else
-      {
-	if (option_raw_band != 0)
-	  option_band_specified = true;
-	option_band_file =
-	  (standard_filename_option ("band",
+      option_band_file
+	= (standard_filename_option ("band",
 				     option_raw_band,
-				     band_variable,
+				     BAND_VARIABLE,
 				     default_band,
 				     true));
-      }
-  }
+    }
   if (option_band_file != 0)
     band_sizes_valid
       = (read_band_sizes (option_band_file,
 			  (&band_constant_size),
 			  (&band_heap_size)));
+
   option_heap_size
-    = ((standard_numeric_option ("heap",
-				 option_raw_heap,
-				 (option_large_sizes
-				  ? LARGE_HEAP_VARIABLE
-				  : SMALL_HEAP_VARIABLE),
-				 (option_large_sizes
-				  ? DEFAULT_LARGE_HEAP
-				  : DEFAULT_SMALL_HEAP)))
-       + (band_sizes_valid
-	  ? band_heap_size
-	  : (option_fasl_file != 0)
-	  ? DEFAULT_LARGE_CONSTANT
-	  : 0));
+    = (standard_numeric_option ("heap",
+				option_raw_heap,
+				HEAP_SIZE_VARIABLE,
+				DEFAULT_HEAP_SIZE));
+  if (band_sizes_valid)
+    option_heap_size += band_heap_size;
+  else if ((option_fasl_file != 0)
+	   && (option_heap_size < MINIMUM_FASL_CONSTANT))
+    option_heap_size = MINIMUM_FASL_CONSTANT;
   option_constant_size
     = (standard_numeric_option ("constant",
 				option_raw_constant,
-				(option_large_sizes
-				 ? LARGE_CONSTANT_VARIABLE
-				 : SMALL_CONSTANT_VARIABLE),
+				0,
 				(band_sizes_valid
 				 ? band_constant_size
-				 : option_large_sizes
-				 ? DEFAULT_LARGE_CONSTANT
-				 : DEFAULT_SMALL_CONSTANT)));
+				 : DEFAULT_CONSTANT_SIZE)));
   option_stack_size
     = (standard_numeric_option ("stack",
 				option_raw_stack,
-				(option_large_sizes
-				 ? LARGE_STACK_VARIABLE
-				 : SMALL_STACK_VARIABLE),
-				(option_large_sizes
-				 ? DEFAULT_LARGE_STACK
-				 : DEFAULT_SMALL_STACK)));
+				STACK_SIZE_VARIABLE,
+				DEFAULT_STACK_SIZE));
   if (option_utabmd_file != 0)
-    xfree (option_utabmd_file);
-  if (option_raw_utabmd != 0)
     {
-      if (option_raw_utab != 0)
-	conflicting_options ("utabmd", "utab");
-      option_utabmd_file =
-	(standard_filename_option ("utabmd",
-				   option_raw_utabmd,
-				   UTABMD_FILE_VARIABLE,
-				   DEFAULT_UTABMD_FILE,
-				   (option_fasl_file != 0)));
+      xfree (option_utabmd_file);
+      option_utabmd_file = 0;
     }
-  else
-    option_utabmd_file =
-      (standard_filename_option ("utab",
-				 option_raw_utab,
+  option_utabmd_file
+    = (standard_filename_option ("utabmd",
+				 option_raw_utabmd,
 				 UTABMD_FILE_VARIABLE,
 				 DEFAULT_UTABMD_FILE,
 #ifdef CC_IS_C

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: parser.scm,v 1.39 2008/01/30 20:02:40 cph Exp $
+$Id: parser.scm,v 1.40 2008/08/31 07:53:07 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -134,6 +134,20 @@ USA.
 	       ,@(if ptr (list v) '())
 	       (PARSER-BUFFER-ERROR ,(or ptr v) ,msg ,@irritants))))))
 
+(define-*parser-expander 'ENCAPSULATE*
+  (lambda (procedure expression)
+    `(ENCAPSULATE (LAMBDA (V) (APPLY ,procedure (VECTOR->LIST V)))
+		  ,expression)))
+
+(define-*parser-expander 'TRANSFORM*
+  (lambda (procedure expression)
+    `(TRANSFORM (LAMBDA (V)
+		  (CALL-WITH-VALUES
+		      (LAMBDA ()
+			(APPLY ,procedure (VECTOR->LIST V)))
+		    VECTOR))
+		,expression)))
+
 (define-parser-preprocessor '(ALT SEQ)
   (lambda (expression external-bindings internal-bindings)
     `(,(car expression)

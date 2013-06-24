@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: turtle.scm,v 1.43 2008/01/30 20:02:42 cph Exp $
+$Id: turtle.scm,v 1.46 2008/10/12 06:31:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -132,7 +132,9 @@ USA.
 	  ;; This notation should probably accept whitespace between the
 	  ;; brackets, but the spec is written like this:
 	  (encapsulate (lambda (v) v (make-rdf-bnode))
-	    "[]")
+	    (seq "["
+		 parse:ws*
+		 (alt "]" (error p "Malformed blank node"))))
 	  (map (lambda (pols) (cons 'BLANK-NODE pols))
 	       (seq "["
 		    parse:ws*
@@ -328,7 +330,7 @@ USA.
 (define (delimited-region-parser name start-delim end-delim
 				 alphabet parse-escapes)
   (lambda (buffer)
-    (let ((output (open-output-string))
+    (let ((output (open-utf8-output-string))
 	  (start (get-parser-buffer-pointer buffer)))
 
       (define (read-head)
@@ -373,7 +375,6 @@ USA.
       (define (finish)
 	(vector (get-output-string output)))
 
-      (port/set-coding output 'UTF-8)
       (and (match-parser-buffer-string buffer start-delim)
 	   (read-head)))))
 
@@ -511,11 +512,10 @@ USA.
 	       pols))
 
 (define (post-process-resource resource prefixes base-uri)
-  (cond ((or (absolute-uri? resource)
-	     (rdf-bnode? resource)
+  (cond ((or (rdf-bnode? resource)
 	     (rdf-literal? resource))
 	 (values resource '()))
-	((relative-uri? resource)
+	((uri? resource)
 	 (values (merge-uris resource base-uri) '()))
 	((pair? resource)
 	 (case (car resource)
@@ -771,18 +771,18 @@ USA.
 		    (else #f))))
 	((rdf-bnode? o)
 	 (and (not (inline-bnode o))
-	      (call-with-output-string
+	      (call-with-utf8-output-string
 		(lambda (port)
 		  (write-rdf/nt-bnode o port)))))
 	((uri? o)
-	 (call-with-output-string
+	 (call-with-utf8-output-string
 	   (lambda (port*)
 	     (write-uri o (port/rdf-prefix-registry port) port*))))
 	((rdf-graph? o)
 	 (and (null? (rdf-graph-triples o))
 	      "{}"))
 	((rdf-literal? o)
-	 (call-with-output-string
+	 (call-with-utf8-output-string
 	   (lambda (port)
 	     (write-rdf/turtle-literal o port))))
 	(else
@@ -917,8 +917,7 @@ USA.
 
 (define (write-literal-text text port)
   (if (string-find-next-char text #\newline)
-      (let ((tport (open-input-string text)))
-	(port/set-coding tport 'UTF-8)
+      (let ((tport (open-utf8-input-string text)))
 	(write-string "\"\"\"" port)
 	(let loop ()
 	  (let ((char (read-char tport)))

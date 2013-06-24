@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sysmac.scm,v 14.17 2008/01/30 20:02:36 cph Exp $
+$Id: sysmac.scm,v 14.20 2008/08/31 07:27:37 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,8 +36,18 @@ USA.
      environment
      (let ((primitive-definition
 	    (lambda (variable-name primitive-args)
-	      `(DEFINE-INTEGRABLE ,variable-name
-		 ,(apply make-primitive-procedure primitive-args)))))
+	      (let ((primitive
+		     (apply make-primitive-procedure primitive-args)))
+		(let ((arity (procedure-arity primitive)))
+		  (if (eqv? (procedure-arity-min arity)
+			    (procedure-arity-max arity))
+		      (let ((names
+			     (map (lambda (n) (symbol 'a n))
+				  (iota (procedure-arity-min arity) 1))))
+			`(DEFINE-INTEGRABLE (,variable-name ,@names)
+			   (,primitive ,@names)))
+		      `(DEFINE-INTEGRABLE ,variable-name
+			 ,primitive)))))))
        `(BEGIN ,@(map (lambda (name)
 			(cond ((not (pair? name))
 			       (primitive-definition name (list name)))
@@ -85,3 +95,15 @@ USA.
 						 #F
 						 CALLER))))))
 	 (ill-formed-syntax form)))))
+
+(define-syntax define-deferred
+  (er-macro-transformer
+   (lambda (form rename compare)
+     compare
+      (receive (name value) (parse-define-form form rename)
+	`(,(rename 'BEGIN)
+	  (,(rename 'DEFINE) ,name)
+	  (,(rename 'ADD-BOOT-INIT!)
+	   (,(rename 'LAMBDA) ()
+			      (,(rename 'SET!) ,name ,value)
+			      ,(rename 'UNSPECIFIC))))))))

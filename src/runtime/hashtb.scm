@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: hashtb.scm,v 1.38 2008/01/30 20:02:31 cph Exp $
+$Id: hashtb.scm,v 1.40 2008/08/21 01:00:41 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -110,6 +110,10 @@ USA.
       (if (table-type-rehash-after-gc? type)
 	  (set! address-hash-tables (weak-cons table address-hash-tables)))
       table)))
+
+(define (hash-table/type table)
+  (guarantee-hash-table table 'HASH-TABLE/TYPE)
+  (table-type table))
 
 (define (hash-table/key-hash table)
   (guarantee-hash-table table 'HASH-TABLE/KEY-HASH)
@@ -864,6 +868,14 @@ USA.
 ;;;; Miscellany
 
 (define address-hash-tables)
+
+(define eq-hash-table-type)
+(define strong-eq-hash-table-type)
+(define eqv-hash-table-type)
+(define strong-eqv-hash-table-type)
+(define equal-hash-table-type)
+(define string-hash-table-type)
+
 (define make-eq-hash-table)
 (define make-strong-eq-hash-table)
 (define make-eqv-hash-table)
@@ -876,24 +888,30 @@ USA.
 (define (initialize-package!)
   (set! address-hash-tables '())
   (add-primitive-gc-daemon! mark-address-hash-tables!)
+  (set! eq-hash-table-type
+	(make-weak-rehash-type eq-hash-mod eq?))
+  (set! strong-eq-hash-table-type
+	(make-strong-rehash-type eq-hash-mod eq?))
+  (set! eqv-hash-table-type
+	(make-weak-rehash-type eqv-hash-mod eqv?))
+  (set! strong-eqv-hash-table-type
+	(make-strong-rehash-type eqv-hash-mod eqv?))
+  (set! equal-hash-table-type
+	(make-strong-rehash-type equal-hash-mod equal?))
+  (set! string-hash-table-type
+	(make-strong-no-rehash-type string-hash-mod string=?))
   (set! make-eq-hash-table
-	(hash-table-constructor
-	 (make-weak-rehash-type eq-hash-mod eq?)))
+	(hash-table-constructor eq-hash-table-type))
   (set! make-strong-eq-hash-table
-	(hash-table-constructor
-	 (make-strong-rehash-type eq-hash-mod eq?)))
+	(hash-table-constructor strong-eq-hash-table-type))
   (set! make-eqv-hash-table
-	(hash-table-constructor
-	 (make-weak-rehash-type eqv-hash-mod eqv?)))
+	(hash-table-constructor eqv-hash-table-type))
   (set! make-strong-eqv-hash-table
-	(hash-table-constructor
-	 (make-strong-rehash-type eqv-hash-mod eqv?)))
+	(hash-table-constructor strong-eqv-hash-table-type))
   (set! make-equal-hash-table
-	(hash-table-constructor
-	 (make-strong-rehash-type equal-hash-mod equal?)))
+	(hash-table-constructor equal-hash-table-type))
   (set! make-string-hash-table
-	(hash-table-constructor
-	 (make-strong-no-rehash-type string-hash-mod string=?)))
+	(hash-table-constructor string-hash-table-type))
   ;; Define old names for compatibility:
   (set! make-symbol-hash-table make-eq-hash-table)
   (set! make-object-hash-table make-eqv-hash-table)

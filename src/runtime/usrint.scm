@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: usrint.scm,v 1.28 2008/01/30 20:02:37 cph Exp $
+$Id: usrint.scm,v 1.34 2008/09/13 09:50:18 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,6 +42,7 @@ USA.
       (if operation
 	  (operation port environment prompt level)
 	  (begin
+	    (guarantee-i/o-port port 'PROMPT-FOR-COMMAND-EXPRESSION)
 	    (write-command-prompt port prompt level)
 	    (port/with-input-terminal-mode port 'COOKED
 	      (lambda ()
@@ -51,21 +52,27 @@ USA.
   (%prompt-for-expression
    (optional-port port 'PROMPT-FOR-EXPRESSION)
    (optional-environment environment 'PROMPT-FOR-EXPRESSION)
-   prompt))
+   prompt
+   'PROMPT-FOR-EXPRESSION))
 
 (define (prompt-for-evaluated-expression prompt #!optional environment port)
   (let ((environment
 	 (optional-environment environment 'PROMPT-FOR-EVALUATED-EXPRESSION))
 	(port (optional-port port 'PROMPT-FOR-EVALUATED-EXPRESSION)))
-    (repl-eval (%prompt-for-expression port environment prompt)
-	       environment)))
+    (repl-eval
+     (%prompt-for-expression port
+			     environment
+			     prompt
+			     'PROMPT-FOR-EVALUATED-EXPRESSION)
+     environment)))
 
-(define (%prompt-for-expression port environment prompt)
+(define (%prompt-for-expression port environment prompt caller)
   (let ((prompt (canonicalize-prompt prompt ": ")))
     (let ((operation (port/operation port 'PROMPT-FOR-EXPRESSION)))
       (if operation
 	  (operation port environment prompt)
 	  (begin
+	    (guarantee-i/o-port port caller)
 	    (port/with-output-terminal-mode port 'COOKED
 	      (lambda ()
 		(fresh-line port)
@@ -80,7 +87,7 @@ USA.
   (if (default-object? port)
       (interaction-i/o-port)
       (begin
-	(guarantee-i/o-port port caller)
+	(guarantee-port port caller)
 	port)))
 
 (define (optional-environment environment caller)
@@ -292,46 +299,104 @@ USA.
 
 ;;;; Activity notification
 
-(define *notification-depth* 0)
+(define (with-notification message #!optional thunk)
+  (if (or (default-object? thunk) (not thunk))
+      (let ((port (notification-output-port)))
+	(fresh-line port)
+	(write-notification-prefix port)
+	(message (wrap-notification-port port)))
+      (let ((done? #f)
+	    (n))
+	(dynamic-wind
+	 (lambda ()
+	   (let ((port (notification-output-port)))
+	     (fresh-line port)
+	     (write-notification-prefix port)
+	     (message (wrap-notification-port port))
+	     (write-string "... " port)
+	     (set! n (output-port/bytes-written port))
+	     unspecific))
+	 (lambda ()
+	   (let ((v
+		  (fluid-let ((*notification-depth*
+			       (+ *notification-depth* 1)))
+		    (thunk))))
+	     (set! done? #t)
+	     v))
+	 (lambda ()
+	   (if done?
+	       (let ((port (notification-output-port)))
+		 (if (if n
+			 (> (output-port/bytes-written port) n)
+			 (output-port/line-start? port))
+		     (begin
+		       (fresh-line port)
+		       (write-notification-prefix port)
+		       (write-string "... " port)))
+		 (set! n)
+		 (write-string "done" port)
+		 (newline port))))))))
+
+(define (wrap-notification-port port)
+  (make-port wrapped-notification-port-type port))
 
-(define (with-notification message thunk)
-  (let ((port (notification-output-port))
-	(done? #f)
-	(n))
-    (dynamic-wind
-     (lambda ()
-       (start-notification-line)
-       (message port)
-       (write-string "... " port)
-       (set! n (output-port/bytes-written port))
-       unspecific)
-     (lambda ()
-       (let ((v
-	      (fluid-let ((*notification-depth* (+ *notification-depth* 1)))
-		(thunk))))
-	 (set! done? #t)
-	 v))
-     (lambda ()
-       (if done?
-	   (begin
-	     (if (if n
-		     (> (output-port/bytes-written port) n)
-		     (output-port/line-start? port))
-		 (begin
-		   (start-notification-line)
-		   (write-string "... " port)))
-	     (set! n)
-	     (write-string "done" port)
-	     (newline port)))))))
+(define (make-wrapped-notification-port-type)
+  (make-port-type `((WRITE-CHAR ,operation/write-char)
+		    (X-SIZE ,operation/x-size)
+		    (COLUMN ,operation/column)
+		    (FLUSH-OUTPUT ,operation/flush-output)
+		    (DISCRETIONARY-FLUSH-OUTPUT
+		     ,operation/discretionary-flush-output))
+		  #f))
 
-(define (write-notification-line message)
-  (start-notification-line)
-  (message (notification-output-port)))
+(define (operation/write-char port char)
+  (let ((port* (port/state port)))
+    (let ((n (output-port/write-char port* char)))
+      (if (char=? char #\newline)
+	  (write-notification-prefix port*))
+      n)))
 
-(define (start-notification-line)
-  (let ((port (notification-output-port)))
-    (fresh-line port)
-    (write-string ";" port)
-    (do ((i 0 (+ i 1)))
-	((not (< i *notification-depth*)))
-      (write-string "  " port))))
+(define (operation/x-size port)
+  (let ((port* (port/state port)))
+    (let ((op (port/operation port* 'X-SIZE)))
+      (and op
+	   (let ((n (op port*)))
+	     (and n
+		  (max (- n (notification-prefix-length))
+		       0)))))))
+
+(define (operation/column port)
+  (let ((port* (port/state port)))
+    (let ((op (port/operation port* 'COLUMN)))
+      (and op
+	   (let ((n (op port*)))
+	     (and n
+		  (max (- n (notification-prefix-length))
+		       0)))))))
+
+(define (operation/flush-output port)
+  (output-port/flush-output (port/state port)))
+
+(define (operation/discretionary-flush-output port)
+  (output-port/discretionary-flush (port/state port)))
+
+(define (write-notification-prefix port)
+  (write-string ";" port)
+  (do ((i 0 (+ i 1)))
+      ((not (< i *notification-depth*)))
+    (write-string indentation-atom port)))
+
+(define (notification-prefix-length)
+  (+ 1
+     (* (string-length indentation-atom)
+	*notification-depth*)))
+
+(define *notification-depth*)
+(define indentation-atom)
+(define wrapped-notification-port-type)
+
+(define (initialize-package!)
+  (set! *notification-depth* 0)
+  (set! indentation-atom "  ")
+  (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
+  unspecific)

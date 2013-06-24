@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: imail-core.scm,v 1.166 2008/01/30 20:02:09 cph Exp $
+$Id: imail-core.scm,v 1.178 2008/09/25 15:16:08 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,82 +28,6 @@ USA.
 ;;;; IMAIL mail reader: core definitions
 
 (declare (usual-integrations))
-
-;;;; Properties
-
-(define-class <property-mixin> ()
-  (alist define (accessor modifier)
-	 accessor object-properties
-	 modifier set-object-properties!
-	 initial-value '()))
-
-(define (get-property object key default)
-  (let ((entry (assq key (object-properties object))))
-    (if entry
-	(cdr entry)
-	default)))
-
-(define (store-property! object key datum)
-  (let ((alist (object-properties object)))
-    (let ((entry (assq key alist)))
-      (if entry
-	  (set-cdr! entry datum)
-	  (set-object-properties! object (cons (cons key datum) alist))))))
-
-(define (remove-property! object key)
-  (set-object-properties! object (del-assq! key (object-properties object))))
-
-;;;; Modification events
-
-(define-class <modification-event-mixin> ()
-  (modification-count define (accessor modifier)
-		      accessor object-modification-count
-		      modifier set-object-modification-count!
-		      initial-value 0)
-  (modification-event define accessor
-		      accessor object-modification-event
-		      initializer make-event-distributor))
-
-(define (receive-modification-events object procedure)
-  (add-event-receiver! (object-modification-event object) procedure))
-
-(define (ignore-modification-events object procedure)
-  (remove-event-receiver! (object-modification-event object) procedure))
-
-(define (object-modified! object type . arguments)
-  (without-interrupts
-   (lambda ()
-     (set-object-modification-count!
-      object
-      (+ (object-modification-count object) 1))))
-  (apply signal-modification-event object type arguments))
-
-(define (signal-modification-event object type . arguments)
-  (if *deferred-modification-events*
-      (set-cdr! *deferred-modification-events*
-		(cons (cons* object type arguments)
-		      (cdr *deferred-modification-events*)))
-      (begin
-	(if imap-trace-port
-	    (begin
-	      (write-line (cons* 'OBJECT-EVENT object type arguments)
-			  imap-trace-port)
-	      (flush-output imap-trace-port)))
-	(event-distributor/invoke! (object-modification-event object)
-				   object
-				   type
-				   arguments))))
-
-(define (with-modification-events-deferred thunk)
-  (let ((events (list 'EVENTS)))
-    (let ((v
-	   (fluid-let ((*deferred-modification-events* events))
-	     (thunk))))
-      (for-each (lambda (event) (apply signal-modification-event event))
-		(reverse! (cdr events)))
-      v)))
-
-(define *deferred-modification-events* #f)
 
 ;;;; URL type
 
@@ -592,9 +516,33 @@ USA.
 ;; Normally used prior to generating a folder summary, to accelerate
 ;; the downloading of this information from the server.  This
 ;; operation need not be implemented, as it is just a performance
-;; enhancement.
+;; enhancement.  With an optional list of messages, it preloads
+;; outlines only for those messages.
 
-(define-generic preload-folder-outlines (folder))
+(define-generic preload-folder-outlines (folder #!optional messages))
+
+(define-method preload-folder-outlines
+    ((folder <folder>) #!optional messages)
+  folder messages			;ignore
+  unspecific)
+
+;; -------------------------------------------------------------------
+;; Cache the entire contents of the folder locally, including the
+;; outline and body text.  For messages that have MIME body
+;; structures, CACHE-FOLDER-CONTENTS passes the message, its body
+;; structure and a procedure to WALK-MIME-BODY, which should apply the
+;; procedure to each section of the message that should be cached.
+;;
+;; This is like PRELOAD-FOLDER-OUTLINES, and also need not be
+;; implemented.  CACHE-FOLDER-CONTENTS should fetch at least what
+;; PRELOAD-FOLDER-OUTLINES fetches, so that subsequent calls to
+;; PRELOAD-FOLDER-OUTLINES will be fast.
+
+(define-generic cache-folder-contents (folder walk-mime-body))
+
+(define-method cache-folder-contents ((folder <folder>) walk-mime-body)
+  folder walk-mime-body                 ;ignore
+  unspecific)
 
 ;;;; Message type
 
@@ -624,13 +572,6 @@ USA.
 (define-generic message-internal-time (message))
 (define-generic message-length (message))
 
-(define-generic message-body (message))
-(define-method message-body ((message <message>))
-  (let ((string (call-with-output-string
-                  (lambda (output-port)
-                    (write-message-body message output-port)))))
-    (values string 0 (string-length string))))
-
 (define (message-index message)
   (let ((index (%message-index message))
 	(folder (message-folder message)))
@@ -638,6 +579,18 @@ USA.
 	(unmap-folder-index folder index)
 	index)))
 
+;;; Messages are MIME entities.
+
+(define-method mime-entity? ((message <message>))
+  message                               ;ignore
+  #t)
+
+(define-method mime-entity-header-fields ((message <message>))
+  (message-header-fields message))
+
+(define-method write-mime-entity-body ((message <message>) port)
+  (write-message-body message port))
+
 (define %set-message-flags!
   (let ((modifier (slot-modifier <message> 'FLAGS)))
     (lambda (message flags)
@@ -645,6 +598,14 @@ USA.
       (let ((folder (message-folder message)))
 	(if folder
 	    (object-modified! folder 'FLAGS message))))))
+
+(define (message-permanent-flags message)
+  (flags-delete "deleted" (%message-permanent-flags message)))
+
+(define-generic %message-permanent-flags (message))
+
+(define-method %message-permanent-flags ((message <message>))
+  (message-flags message))
 
 (define (message-attached? message #!optional folder)
   (let ((folder (if (default-object? folder) #f folder)))
@@ -735,10 +696,22 @@ USA.
 
 (define-structure (folder-order
 		   (type-descriptor <folder-order>)
-		   (constructor make-folder-order (predicate selector)))
+		   (constructor %make-folder-order (predicate selector cache)))
   (predicate #f read-only #t)
   (selector #f read-only #t)
+  (cache #f read-only #t)
   (tree #f))
+
+(define (make-folder-order predicate selector #!optional cache?)
+  (%make-folder-order predicate
+		      selector
+		      (and (or (default-object? cache?) cache?)
+			   (make-integer-hash-table))))
+
+(define (reset-folder-order! order)
+  (set-folder-order-tree! order #f)
+  (let ((cache (folder-order-cache order)))
+    (if cache (hash-table/clear! cache))))
 
 (define (map-folder-index folder index)
   (let ((order (folder-order folder)))
@@ -757,19 +730,31 @@ USA.
 	(begin
 	  (memoize-folder-order order folder)
           (or (wt-tree/rank (folder-order-tree order)
-                            (cons ((folder-order-selector order)
-                                   (%get-message folder index))
-                                  index))
+                            (index-order-key folder order index))
               index))
 	index)))
 
-(define (make-wt-message-tree key<?)
+(define (make-message-wt-tree key<?)
   (make-wt-tree
    (make-wt-tree-type
     (lambda (a b)
       (or (key<? (car a) (car b))
           (and (not (key<? (car b) (car a)))
                (< (cdr a) (cdr b))))))))
+
+(define make-integer-hash-table
+  (strong-hash-table/constructor int:remainder int:=))
+
+(define (%message-order-key message order index)
+  (let ((compute-key
+	 (lambda () (cons ((folder-order-selector order) message) index)))
+	(cache (folder-order-cache order)))
+    (if cache
+	(hash-table/intern! cache index compute-key)
+	(compute-key))))
+
+(define (index-order-key folder order index)
+  (%message-order-key (%get-message folder index) order index))
 
 (define (message-order-key message)
   (let ((folder (message-folder message)))
@@ -778,37 +763,43 @@ USA.
     (let ((order (folder-order folder)))
       (if (not order)
           #f
-          (cons ((folder-order-selector order) message)
-                (%message-index message))))))
+          (%message-order-key message order (%message-index message))))))
 
 (define (memoize-folder-order order folder)
   (let loop ((modification-count (object-modification-count folder)))
     (if (not (folder-order-tree order))
-        (begin
-          (set-folder-order-tree!
-           order
-           (build-folder-order-tree order folder))
-          (let ((modification-count* (object-modification-count folder)))
-            (if (not (= modification-count modification-count*))
-                (begin
-                  (imail-ui:message "Folder changed; resorting")
-                  (loop modification-count*))))))))
+	(begin
+	  (set-folder-order-tree!
+	   order
+	   (build-folder-order-tree order folder))
+	  (let ((modification-count* (object-modification-count folder)))
+	    (if (not (= modification-count modification-count*))
+		(begin
+		  (imail-ui:message "Folder changed; re-sorting")
+		  (reset-folder-order! order)
+		  (loop modification-count*))))))))
 
 (define (build-folder-order-tree order folder)
   (preload-folder-outlines folder)
   ((imail-ui:message-wrapper "Sorting folder")
    (lambda ()
      (let ((length (folder-length folder))
-           (selector (folder-order-selector order))
-           (tree (make-wt-message-tree (folder-order-predicate order))))
-       (do ((index 0 (+ index 1)))
-           ((= index length))
-         (if (zero? (remainder index 100))
-             (imail-ui:progress-meter index #f))
-         (let ((message (%get-message folder index)))
-           (wt-tree/add! tree
-                         (cons (selector message) index)
-                         message)))
+	   (tree (make-message-wt-tree (folder-order-predicate order)))
+	   (selector (folder-order-selector order))
+	   (cache (folder-order-cache order)))
+       (let ((compute-key
+	      (if cache
+		  (lambda (message index)
+		    (hash-table/intern! cache index
+		      (lambda () (cons (selector message) index))))
+		  (lambda (message index)
+		    (cons (selector message) index)))))
+	 (do ((index 0 (+ index 1)))
+	     ((= index length))
+	   (if (zero? (remainder index 10))
+	       (imail-ui:progress-meter index length))
+	   (let ((message (%get-message folder index)))
+	     (wt-tree/add! tree (compute-key message index) message))))
        tree))))
 
 (define (update-folder-order folder modification-type arguments)
@@ -816,26 +807,27 @@ USA.
    (lambda ()
      (let ((order (folder-order folder)))
        (if order
-           (case modification-type
-             ((SET-LENGTH)
-              (set-folder-order-tree! order #f))
-             ((INCREASE-LENGTH)
-              (let ((tree (folder-order-tree order)))
-                (if tree
-                    (let ((index (car arguments))
-                          (count (cadr arguments))
-                          (selector (folder-order-selector order)))
-                      (do ((index index (+ index 1)))
-                          ((= index count))
-                        (let ((message (%get-message folder index)))
-                          (wt-tree/add! tree
-                                        (cons (selector message) index)
-                                        message)))))))
-             ((EXPUNGE)
-              (let ((tree (folder-order-tree order)))
-                (if tree
-                    (let ((key (cadr arguments)))
-                      (wt-tree/delete! tree key)))))))))))
+	   (case modification-type
+	     ((SET-LENGTH)
+	      (reset-folder-order! order))
+	     ((INCREASE-LENGTH)
+	      (let ((tree (folder-order-tree order)))
+		(if tree
+		    (let ((index (car arguments))
+			  (count (cadr arguments)))
+		      (do ((index index (+ index 1)))
+			  ((= index count))
+			(let ((message (%get-message folder index)))
+			  (wt-tree/add!
+			   tree
+			   (%message-order-key message order index)
+			   message)))))))
+	     ((EXPUNGE)
+	      ;; Expunging a message may change the indices of
+	      ;; existing messages, which invalidates our data
+	      ;; structures, which were designed with UIDs, not
+	      ;; sequence numbers, in mind.
+	      (reset-folder-order! order))))))))
 
 ;;;; Message flags
 
@@ -885,33 +877,18 @@ USA.
   '("answered" "deleted" "filed" "forwarded" "resent" "seen"))
 
 (define (message-flags->header-field flags)
-  (make-header-field message-flags:name
-		     (decorated-string-append "" " " "" flags)))
+  (make-internal-header-field "FLAGS"
+			      (decorated-string-append "" " " "" flags)))
 
-(define (header-field->message-flags header)
-  (and (string-ci=? message-flags:name (header-field-name header))
-       ;; Extra pair needed to distinguish #F from ().
-       (cons #f
-	     (burst-string (header-field-value header)
-			   char-set:whitespace
-			   #t))))
-
-(define message-flags:name "X-IMAIL-FLAGS")
-
-(define (parse-imail-header-fields headers)
-  (let loop ((headers headers) (headers* '()) (flags '()))
-    (cond ((not (pair? headers))
-	   (values (reverse! headers*)
-		   (remove-duplicates! (reverse! flags) string-ci=?)))
-	  ((header-field->message-flags (car headers))
-	   => (lambda (flags*)
-		(loop (cdr headers)
-		      headers*
-		      (append! (reverse! (cdr flags*)) flags))))
-	  (else
-	   (loop (cdr headers)
-		 (cons (car headers) headers*)
-		 flags)))))
+(define (header-fields->message-flags headers)
+  (delete-duplicates
+   (append-map (lambda (header)
+                 (burst-string (header-field-value header)
+                               char-set:whitespace
+                               #t))
+               (filter (internal-header-field-predicate "FLAGS")
+                       headers))
+   string-ci=?))
 
 (define (message-deleted? msg) (message-flagged? msg "deleted"))
 (define (message-undeleted? msg) (not (message-flagged? msg "deleted")))
@@ -1134,229 +1111,25 @@ USA.
   (let ((colon (string-find-next-char line #\:)))
     (and colon
 	 (rfc822:header-field-name? line 0 colon))))
-
-;;;; MIME structure
 
-(define-generic mime-message-body-structure (message))
-(define-generic write-mime-message-body-part (message selector cache? port))
+(define (internal-header-field? header)
+  (string-prefix-ci? internal-header-field-prefix (header-field-name header)))
 
-(define-class <mime-body> (<property-mixin>)
-  (parameters define accessor)
-  (disposition define accessor)
-  (language define accessor)
-  (enclosure define standard initial-value #f))
+(define (make-internal-header-field name value)
+  (make-header-field (string-append internal-header-field-prefix name)
+		     value))
 
-(define-generic mime-body-type (body))
-(define-generic mime-body-subtype (body))
+(define (internal-header-field-name header)
+  (string-tail (header-field-name header)
+	       internal-header-field-prefix-length))
 
-(define (mime-body-type-string body)
-  (string-append (symbol->string (mime-body-type body))
-		 "/"
-		 (symbol->string (mime-body-subtype body))))
+(define (internal-header-field-predicate name)
+  (lambda (header)
+    (and (internal-header-field? header)
+	 (string-ci=? (internal-header-field-name header) name))))
 
-(define (mime-body-parameter body key default)
-  (let ((entry (assq key (mime-body-parameters body))))
-    (if entry
-	(cdr entry)
-	default)))
+(define internal-header-field-prefix
+  "X-IMAIL-")
 
-(define (mime-body-disposition-filename body)
-  (let ((disposition (mime-body-disposition body)))
-    (and disposition
-	 (let ((entry (assq 'FILENAME (cdr disposition))))
-	   (and entry
-		(cdr entry))))))
-
-(define-method write-instance ((body <mime-body>) port)
-  (write-instance-helper 'MIME-BODY body port
-    (lambda ()
-      (write-char #\space port)
-      (write-string (mime-body-type-string body) port))))
-
-(define (mime-body-enclosed? b1 b2)
-  (or (eq? b1 b2)
-      (let ((enclosure (mime-body-enclosure b1)))
-	(and enclosure
-	     (mime-body-enclosed? enclosure b2)))))
-
-(define-class <mime-body-one-part> (<mime-body>)
-  (id define accessor)
-  (description define accessor)
-  (encoding define accessor)
-  (n-octets define accessor)
-  (md5 define accessor))
-
-(define-class (<mime-body-message>
-	       (constructor (parameters id description encoding n-octets
-					envelope body n-lines
-					md5 disposition language)))
-    (<mime-body-one-part>)
-  (envelope define accessor)		;<mime-envelope> instance
-  (body define accessor)		;<mime-body> instance
-  (n-lines define accessor))
-
-(define-method mime-body-type ((body <mime-body-message>)) body 'MESSAGE)
-(define-method mime-body-subtype ((body <mime-body-message>)) body 'RFC822)
-
-(define-class (<mime-body-text>
-	       (constructor (subtype parameters id description encoding
-				     n-octets n-lines
-				     md5 disposition language)))
-    (<mime-body-one-part>)
-  (subtype accessor mime-body-subtype)
-  (n-lines define accessor))
-
-(define-method mime-body-type ((body <mime-body-text>)) body 'TEXT)
-
-(define-class (<mime-body-basic>
-	       (constructor (type subtype parameters id description encoding
-				  n-octets md5 disposition language)))
-    (<mime-body-one-part>)
-  (type accessor mime-body-type)
-  (subtype accessor mime-body-subtype))
-
-(define-class (<mime-body-multipart>
-	       (constructor (subtype parameters parts disposition language)))
-    (<mime-body>)
-  (subtype accessor mime-body-subtype)
-  (parts define accessor))
-
-(define-method mime-body-type ((body <mime-body-multipart>)) body 'MULTIPART)
-
-(define-class (<mime-envelope>
-	       (constructor (date subject from sender reply-to to cc bcc
-				  in-reply-to message-id)))
-    ()
-  (date define accessor)
-  (subject define accessor)
-  (from define accessor)
-  (sender define accessor)
-  (reply-to define accessor)
-  (to define accessor)
-  (cc define accessor)
-  (bcc define accessor)
-  (in-reply-to define accessor)
-  (message-id define accessor))
-
-(define-class (<mime-address> (constructor (name source-route mailbox host)))
-    ()
-  (name define accessor)
-  (source-route define accessor)
-  (mailbox define accessor)
-  (host define accessor))
-
-;;;; MIME Encoding Registry
-;;; This should probably be moved to the runtime's MIME codec package.
-
-(define-structure (mime-encoding
-                   (conc-name mime-encoding/)
-                   (print-procedure
-                    (standard-unparser-method 'MIME-ENCODING
-                      (lambda (encoding output-port)
-                        (write-char #\space output-port)
-                        (write (mime-encoding/name encoding) output-port))))
-                   (constructor %make-mime-encoding))
-  (name                          #f read-only #t)
-  (identity?                     #f read-only #t)
-  (encoder-initializer           #f read-only #t)
-  (encoder-finalizer             #f read-only #t)
-  (encoder-updater               #f read-only #t)
-  (decoder-initializer           #f read-only #t)
-  (decoder-finalizer             #f read-only #t)
-  (decoder-updater               #f read-only #t)
-  (decoding-port-maker           #f read-only #t)
-  (caller-with-decoding-port     #f read-only #t))
-
-(define-guarantee mime-encoding "MIME codec")
-
-(define mime-encodings
-  (make-eq-hash-table))
-
-(define (define-mime-encoding name
-			      encode:initialize encode:finalize encode:update
-			      decode:initialize decode:finalize decode:update
-			      make-port call-with-port)
-  (hash-table/put!
-   mime-encodings
-   name
-   (%make-mime-encoding name #f
-			encode:initialize encode:finalize encode:update
-			decode:initialize decode:finalize decode:update
-			make-port call-with-port))
-  name)
-
-(define (define-identity-mime-encoding name)
-  (hash-table/put! mime-encodings
-		   name
-		   (%make-mime-encoding name #t
-
-					(lambda (port text?) text? port)
-					output-port/flush-output
-					output-port/write-string
-
-					(lambda (port text?) text? port)
-					output-port/flush-output
-					output-port/write-string
-
-					(lambda (port text?) text? port)
-					(lambda (port text? generator)
-					  text?
-					  (generator port)))))
-
-(define (named-mime-encoding name)
-  (or (hash-table/get mime-encodings name #f)
-      (let ((encoding (make-unknown-mime-encoding name)))
-	(hash-table/put! mime-encodings name encoding)
-	encoding)))
-
-(define (make-unknown-mime-encoding name)
-  (let ((lose (lambda args args (error "Unknown MIME encoding name:" name))))
-    (%make-mime-encoding name #f
-			 lose lose lose
-			 lose lose lose
-			 lose lose)))
-
-(define (call-with-mime-decoding-output-port encoding port text? generator)
-  ((mime-encoding/caller-with-decoding-port
-    (if (symbol? encoding)
-	(named-mime-encoding encoding)
-	(begin
-	  (guarantee-mime-encoding encoding
-				   'CALL-WITH-MIME-DECODING-OUTPUT-PORT)
-	  encoding)))
-   port text? generator))
-
-(define-identity-mime-encoding '7BIT)
-(define-identity-mime-encoding '8BIT)
-(define-identity-mime-encoding 'BINARY)
-;; Next two are random values sometimes used by Outlook.
-(define-identity-mime-encoding '7-BIT)
-(define-identity-mime-encoding '8-BIT)
-
-(define-mime-encoding 'QUOTED-PRINTABLE
-  encode-quoted-printable:initialize
-  encode-quoted-printable:finalize
-  encode-quoted-printable:update
-  decode-quoted-printable:initialize
-  decode-quoted-printable:finalize
-  decode-quoted-printable:update
-  make-decode-quoted-printable-port
-  call-with-decode-quoted-printable-output-port)
-
-(define-mime-encoding 'BASE64
-  encode-base64:initialize
-  encode-base64:finalize
-  encode-base64:update
-  decode-base64:initialize
-  decode-base64:finalize
-  decode-base64:update
-  make-decode-base64-port
-  call-with-decode-base64-output-port)
-
-(define-mime-encoding 'BINHEX40
-  #f #f #f                              ;No BinHex encoder.
-  decode-binhex40:initialize
-  decode-binhex40:finalize
-  decode-binhex40:update
-  make-decode-binhex40-port
-  call-with-decode-binhex40-output-port)
+(define internal-header-field-prefix-length
+  (string-length internal-header-field-prefix))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: malias.scm,v 1.13 2008/01/30 20:02:03 cph Exp $
+$Id: malias.scm,v 1.14 2008/10/10 23:59:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -73,7 +73,9 @@ USA.
 (define (expand-mail-aliases start end)
   (guarantee-mail-aliases)
   (let loop ((start start))
-    (let ((hs (re-search-forward "^\\(to\\|cc\\|bcc\\):[ \t]*" start end #t)))
+    (let ((hs
+	   (re-search-forward "^\\(resent-\\)?\\(to\\|cc\\|bcc\\):[ \t]*"
+			      start end #t)))
       (if hs
 	  (let ((he
 		 (mark-left-inserting-copy

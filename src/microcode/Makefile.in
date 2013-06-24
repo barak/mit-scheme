@@ -1,8 +1,8 @@
-# This file automatically generated at 2008-01-30T21:23:14-0500.
+# This file automatically generated at 2009-01-07T15:49:12-05.
 
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.64 2008/01/30 20:02:25 cph Exp $
+# $Id: Makefile.in.in,v 1.65 2008/09/17 16:36:28 riastradh Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -301,9 +301,9 @@ install-auxDATA: $(aux_DATA)
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
-	$(INSTALL_PROGRAM) liarc-cc $(DESTDIR)$(AUXDIR)/.
+	$(INSTALL_SCRIPT) liarc-cc $(DESTDIR)$(AUXDIR)/.
 	sed -e "s&^SCHEME_EXE=.*&SCHEME_EXE=$(bindir)/$(EXE_NAME)&" < liarc-ld > liarc-ld.install
-	$(INSTALL_PROGRAM) liarc-ld.install $(DESTDIR)$(AUXDIR)/liarc-ld
+	$(INSTALL_SCRIPT) liarc-ld.install $(DESTDIR)$(AUXDIR)/liarc-ld
 	rm -f liarc-ld.install
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/include
 	$(INSTALL_DATA) *.h $(DESTDIR)$(AUXDIR)/include/.
@@ -618,8 +618,8 @@ syntax.o: syntax.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 sysprim.o: sysprim.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h \
 	  config.h confshared.h const.h critsec.h dstack.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h os.h \
-	  ostop.h ostty.h outf.h prim.h prims.h returns.h scheme.h scode.h \
-	  sdata.h stack.h types.h
+	  osscheme.h ostop.h ostty.h outf.h prim.h prims.h returns.h scheme.h \
+	  scode.h sdata.h stack.h types.h
 term.o: term.c bignum.h bkpt.h cmpint.h cmpintmd-config.h cmpintmd.h config.h \
 	  confshared.h const.h critsec.h dstack.h edwin.h errors.h extern.h \
 	  fixobj.h gc.h interp.h intrpt.h memmag.h object.h obstack.h \

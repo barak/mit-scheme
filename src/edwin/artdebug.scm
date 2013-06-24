@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: artdebug.scm,v 1.39 2008/01/30 20:01:58 cph Exp $
+$Id: artdebug.scm,v 1.40 2008/07/26 05:12:19 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -1304,7 +1304,9 @@ Prefix argument means do not kill the debugger buffer."
   (region-insert-char! (port/state port) char))
 
 (define (operation/write-substring port string start end)
-  (region-insert-substring! (port/state port) string start end))
+  (if (string? string)
+      (region-insert-substring! (port/state port) string start end)
+      (generic-port-operation:write-substring port string start end)))
 
 (define (operation/x-size port)
   (let ((buffer (mark-buffer (port/state port))))

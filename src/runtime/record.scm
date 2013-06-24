@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: record.scm,v 1.60 2008/01/30 20:02:34 cph Exp $
+$Id: record.scm,v 1.61 2008/02/10 06:14:14 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,18 +34,29 @@ USA.
 (declare (usual-integrations))
 
 (define-primitives
-  (%record? 1)
   (%record -1)
-  (%record-length 1)
-  (%record-ref 2)
-  (%record-set! 3)
   (primitive-object-ref 2)
   (primitive-object-set! 3)
-  (primitive-object-set-type 2)
-  (vector-cons 2))
+  (primitive-object-set-type 2))
+
+(define-integrable (%record? object)
+  ((ucode-primitive %record?) object))
+
+(define-integrable (%record-length record)
+  ((ucode-primitive %record-length) record))
+
+(define-integrable (%record-ref record index)
+  ((ucode-primitive %record-ref) record index))
+
+(define-integrable (%record-set! record index value)
+  ((ucode-primitive %record-set!) record index value))
+
+(define-integrable (vector-cons length object)
+  ((ucode-primitive vector-cons) length object))
 
 (define-integrable (%make-record length object)
-  (object-new-type (ucode-type record) (vector-cons length object)))
+  ((ucode-primitive object-set-type) (ucode-type record)
+				     (vector-cons length object)))
 
 (define-integrable (%record-tag record)
   (%record-ref record 0))
@@ -131,7 +142,7 @@ USA.
 			  #!optional default-inits unparser-method)
   (let ((caller 'MAKE-RECORD-TYPE))
     (guarantee-list-of-unique-symbols field-names caller)
-    (let* ((names (list->vector field-names))
+    (let* ((names ((ucode-primitive list->vector) field-names))
 	   (n (vector-length names))
 	   (record-type
 	    (%record record-type-type-tag
@@ -190,7 +201,7 @@ USA.
   (guarantee-record-type record-type 'RECORD-TYPE-FIELD-NAMES)
   ;; Can't use VECTOR->LIST here because it isn't available at cold load.
   (let ((v (%record-type-field-names record-type)))
-    (subvector->list v 0 (vector-length v))))
+    ((ucode-primitive subvector->list) v 0 (vector-length v))))
 
 (define (record-type-default-inits record-type)
   (guarantee-record-type record-type 'RECORD-TYPE-DEFAULT-INITS)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: edwin.pkg,v 1.304 2008/01/30 20:02:01 cph Exp $
+$Id: edwin.pkg,v 1.310 2008/08/15 20:46:12 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -485,8 +485,10 @@ USA.
   (parent (edwin))
   (export (edwin)
 	  call-with-confirmed-pass-phrase
+	  call-with-stored-pass-phrase
 	  call-with-pass-phrase
 	  completion-message
+	  delete-stored-pass-phrase
 	  edwin-command$exit-minibuffer
 	  edwin-command$exit-minibuffer-yes-or-no
 	  edwin-command$minibuffer-complete
@@ -538,9 +540,7 @@ USA.
 	  call-with-input-region
 	  make-buffer-input-port
 	  with-input-from-mark
-	  with-input-from-region)
-  (import (runtime port)
-	  port/unread))
+	  with-input-from-region))
 
 (define-package (edwin buffer-output-port)
   (files "bufout")
@@ -1523,6 +1523,7 @@ USA.
 	  edwin-variable$file-type-to-mime-type
 	  edwin-variable$mail-abbreviate-mime
 	  edwin-variable$mail-archive-file-name
+	  edwin-variable$mail-authentication
 	  edwin-variable$mail-default-reply-to
 	  edwin-variable$mail-from-style
 	  edwin-variable$mail-full-name
@@ -1539,11 +1540,14 @@ USA.
 	  edwin-variable$mail-self-blind
 	  edwin-variable$mail-setup-hook
 	  edwin-variable$mail-yank-ignored-headers
+	  edwin-variable$mail-yank-prefix
 	  edwin-variable$mime-attachments-mode-hook
 	  edwin-variable$send-mail-procedure
 	  edwin-variable$sendmail-program
+	  edwin-variable$smtp-greeting-hostname
 	  edwin-variable$smtp-require-valid-recipients
 	  edwin-variable$smtp-trace
+	  edwin-variable$smtp-user-name
 	  edwin-variable$user-mail-address
 	  enable-buffer-mime-processing!
 	  finish-preparing-mail-buffer
@@ -1565,6 +1569,7 @@ USA.
 	  mail-position-on-cc-field
 	  mail-setup
 	  mailer-version-string
+	  make-initialized-mail-buffer
 	  make-mail-buffer
 	  prepare-mail-buffer-for-sending
 	  random-mime-boundary-string
@@ -1677,6 +1682,7 @@ USA.
   (export (edwin)
 	  rfc822:addresses->string
 	  rfc822:canonicalize-address-string
+	  rfc822:canonicalize-named-address-string
 	  rfc822:first-address
 	  rfc822:header-field-name?
 	  rfc822:parse-addr-spec
@@ -1685,11 +1691,12 @@ USA.
 	  rfc822:parse-msg-id
 	  rfc822:parse-word
 	  rfc822:quote-string
-          rfc822:unquote-string
+	  rfc822:unquote-string
 	  rfc822:received-header-components
 	  rfc822:string->addresses
+	  rfc822:string->named-addresses
 	  rfc822:string->tokens
-          rfc822:string-tokenizer
+	  rfc822:string-tokenizer
 	  rfc822:strip-comments
 	  rfc822:strip-quoted-names
 	  rfc822:tokens->string))

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: prdb4.scm,v 1.2 2008/01/30 20:02:18 cph Exp $
+$Id: prdb4.scm,v 1.3 2008/02/21 03:52:10 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -84,7 +84,7 @@ USA.
 		  ((removed) "<")
 		  (else (error "Unknown action:" action)))
 		port)
-  (write-string " " port)
+  (write-string " 0x" port)
   (write-string version port)
   (write-string ")" port))
 

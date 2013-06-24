@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: make.scm,v 14.112 2008/01/30 20:02:32 cph Exp $
+$Id: make.scm,v 14.119 2008/09/15 05:15:20 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,13 @@ USA.
 
 (declare (usual-integrations))
 
-(set-interrupt-enables! 0)
+((ucode-primitive set-interrupt-enables!) 0)
 
 ;; This must be defined as follows so that it is no part of a multi-define
 ;; itself.  It must also precede any other top-level definitions in this file
 ;; that are not performed directly using LOCAL-ASSIGNMENT.
 
-(local-assignment
+((ucode-primitive local-assignment)
  #f ;global environment
  'DEFINE-MULTIPLE
  (lambda (env names values)
@@ -48,9 +48,9 @@ USA.
      (let loop ((i 0) (val unspecific))
        (if (fix:< i len)
 	   (loop (fix:+ i 1)
-		 (local-assignment env
-				   (vector-ref names i)
-				   (vector-ref values i)))
+		 ((ucode-primitive local-assignment) env
+						     (vector-ref names i)
+						     (vector-ref values i)))
 	   val)))))
 
 (define system-global-environment #f)
@@ -60,36 +60,19 @@ USA.
 ;; *MAKE-ENVIRONMENT is referred to by compiled code.  It must go
 ;; before the uses of the-environment later, and after apply above.
 (define (*make-environment parent names . values)
-  (let-syntax
-      ((ucode-type
-	(sc-macro-transformer
-	 (lambda (form environment)
-	   environment
-	   (microcode-type (cadr form))))))
-    (system-list->vector
-     (ucode-type environment)
-     (cons (system-pair-cons (ucode-type procedure)
-			     (system-pair-cons (ucode-type lambda)
-					       unspecific
-					       names)
-			     parent)
-	   values))))
+  ((ucode-primitive system-list-to-vector)
+   (ucode-type environment)
+   (cons ((ucode-primitive system-pair-cons)
+	  (ucode-type procedure)
+	  ((ucode-primitive system-pair-cons) (ucode-type lambda)
+					      unspecific
+					      names)
+	  parent)
+	 values)))
 
 (let ((environment-for-package
        (*make-environment system-global-environment
 			  (vector lambda-tag:unnamed))))
-
-(define-syntax ucode-primitive
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (apply make-primitive-procedure (cdr form)))))
-
-(define-syntax ucode-type
-  (sc-macro-transformer
-   (lambda (form environment)
-     environment
-     (microcode-type (cadr form)))))
 
 (define-integrable + (ucode-primitive integer-add))
 (define-integrable - (ucode-primitive integer-subtract))
@@ -189,23 +172,27 @@ USA.
 	    (loop (cdr name)))))
     (tty-write-string ")"))
 
-  (let ((env (package-reference package-name)))
-    (cond ((not (lexical-unreferenceable? env procedure-name))
-	   (print-name "initialize:")
-	   (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
-	       (begin
-		 (tty-write-string " [")
-		 (tty-write-string (system-pair-car procedure-name))
-		 (tty-write-string "]")))
-	   ((lexical-reference env procedure-name)))
-	  ((not mandatory?)
-	   (print-name "* skipping:"))
-	  (else
-	   ;; Missing mandatory package! Report it and die.
-	   (print-name "Package")
-	   (tty-write-string " is missing initialization procedure ")
-	   (tty-write-string (system-pair-car procedure-name))
-	   (fatal-error "Could not initialize a required package.")))))
+  (cond ((let ((package (find-package package-name #f)))
+	   (and package
+		(let ((env (package/environment package)))
+		  (and (not (lexical-unreferenceable? env procedure-name))
+		       (lexical-reference env procedure-name)))))
+	 => (lambda (procedure)
+	      (print-name "initialize:")
+	      (if (not (eq? procedure-name 'INITIALIZE-PACKAGE!))
+		  (begin
+		    (tty-write-string " [")
+		    (tty-write-string (system-pair-car procedure-name))
+		    (tty-write-string "]")))
+	      (procedure)))
+	((not mandatory?)
+	 (print-name "* skipping:"))
+	(else
+	 ;; Missing mandatory package! Report it and die.
+	 (print-name "Package")
+	 (tty-write-string " is missing initialization procedure ")
+	 (tty-write-string (system-pair-car procedure-name))
+	 (fatal-error "Could not initialize a required package."))))
 
 (define (package-reference name)
   (package/environment (find-package name)))
@@ -296,7 +283,8 @@ USA.
 
 (define (implemented-primitive-procedure? primitive)
   ((ucode-primitive get-primitive-address)
-   (intern ((ucode-primitive get-primitive-name) (object-datum primitive)))
+   (intern ((ucode-primitive get-primitive-name)
+	    ((ucode-primitive object-datum) primitive)))
    #f))
 
 (define initialize-c-compiled-block
@@ -413,14 +401,19 @@ USA.
 	    (let loop ((files files))
 	      (and (pair? files)
 		   (or (string=? (car (car files)) filename)
-		       (loop (cdr files))))))))
+		       (loop (cdr files)))))))
+	 (boot-defs
+	  (package/environment (name->package '(RUNTIME BOOT-DEFINITIONS)))))
      (lambda (filename environment)
        (if (not (or (string=? filename "make")
 		    (string=? filename "packag")
 		    (file-member? filename files1)
 		    (file-member? filename files2)))
-	   (eval (file->object filename #t #t)
-		 environment))
+	   (begin
+	     ((access init-boot-inits! boot-defs))
+	     (eval (file->object filename #t #t)
+		   environment)
+	     ((access save-boot-inits! boot-defs) environment)))
        unspecific))))
 
 ;;; Funny stuff is done.  Rest of sequence is standardized.
@@ -473,14 +466,14 @@ USA.
    ;; Threads
    (RUNTIME THREAD)
    ;; I/O
+   (RUNTIME OUTPUT-PORT)
    (RUNTIME GENERIC-I/O-PORT)
    (RUNTIME FILE-I/O-PORT)
    (RUNTIME CONSOLE-I/O-PORT)
    (RUNTIME SOCKET)
    (RUNTIME TRANSCRIPT)
-   (RUNTIME STRING-INPUT)
-   (RUNTIME STRING-OUTPUT)
-   (RUNTIME TRUNCATED-STRING-OUTPUT)
+   (RUNTIME STRING-I/O-PORT)
+   (RUNTIME USER-INTERFACE)
    ;; These MUST be done before (RUNTIME PATHNAME) 
    ;; Typically only one of them is loaded.
    (RUNTIME PATHNAME UNIX)
@@ -488,7 +481,6 @@ USA.
    (RUNTIME PATHNAME)
    (RUNTIME WORKING-DIRECTORY)
    (RUNTIME LOAD)
-   (RUNTIME UNICODE)
    (RUNTIME SIMPLE-FILE-OPS)
    ((RUNTIME OS-PRIMITIVES) INITIALIZE-MIME-TYPES! #f)
    ;; Syntax
@@ -525,10 +517,11 @@ USA.
    ;; More debugging
    ((RUNTIME CONTINUATION-PARSER) INITIALIZE-SPECIAL-FRAMES! #f)
    (RUNTIME URI)
-   (RUNTIME HTTP-CLIENT)))
-
-(if (eq? os-name 'NT)
-    (package-initialize '(RUNTIME WIN32-REGISTRY) 'INITIALIZE-PACKAGE! #f))
+   (RUNTIME RFC2822-HEADERS)
+   (RUNTIME HTTP-SYNTAX)
+   (RUNTIME HTTP-CLIENT)
+   (RUNTIME HTML-FORM-CODEC)
+   (RUNTIME WIN32-REGISTRY)))
 
 (let ((obj (file->object "site" #t #f)))
   (if obj

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: berkeley-db.scm,v 1.7 2008/01/30 20:02:28 cph Exp $
+$Id: berkeley-db.scm,v 1.9 2008/03/11 04:00:30 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -184,7 +184,7 @@ USA.
 
 (define (bdb-available?)
   (load-library-object-file "prdb4" #f)
-  (and (implemented-primitive-procedure? db4:db-create)
+  (and (implemented-primitive-procedure? (ucode-primitive db4:db-create 3))
        (begin
 	 (if (not interface-initialized?)
 	     (begin
@@ -210,7 +210,7 @@ USA.
 
 (define (guarantee-bdb-available)
   (if (not (bdb-available?))
-      (error "No Berkeley DB support in this sytem.")))
+      (error "This Scheme system was built without Berkeley DB support.")))
 
 (define (create-bdb env flags)
   (guarantee-bdb-available)

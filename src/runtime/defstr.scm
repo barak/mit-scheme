@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: defstr.scm,v 14.58 2008/01/30 20:02:29 cph Exp $
+$Id: defstr.scm,v 14.59 2008/02/14 00:45:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -593,7 +593,7 @@ differences:
 ;;;; Code Generation
 
 (define (absolute name context)
-  (close-syntax `(ACCESS ,name #F)
+  (close-syntax `(ACCESS ,name SYSTEM-GLOBAL-ENVIRONMENT)
 		(parser-context/closing-environment context)))
 
 (define (close name context)

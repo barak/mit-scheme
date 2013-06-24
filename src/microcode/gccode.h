@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: gccode.h,v 9.64 2008/01/30 20:02:13 cph Exp $
+$Id: gccode.h,v 9.65 2008/02/13 23:26:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -201,6 +201,7 @@ extern SCHEME_OBJECT * get_newspace_ptr (void);
 extern void * tospace_to_newspace (void *);
 extern void * newspace_to_tospace (void *);
 extern bool save_tospace (gc_walk_proc_t *, void *);
+extern void discard_tospace (void);
 
 extern void initialize_weak_chain (void);
 extern void update_weak_pointers (void);

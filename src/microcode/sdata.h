@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: sdata.h,v 9.46 2008/01/30 20:02:20 cph Exp $
+$Id: sdata.h,v 9.47 2008/02/02 17:26:27 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -396,7 +396,11 @@ USA.
 #define GET_TRAP_EXTRA(object)						\
   (MEMORY_REF ((object), TRAP_EXTRA))
 
+#define SET_TRAP_EXTRA(object, extra)					\
+  MEMORY_SET ((object), TRAP_EXTRA, (extra))
+
 #define GET_TRAP_CACHE GET_TRAP_EXTRA
+#define SET_TRAP_CACHE SET_TRAP_EXTRA
 
 #define CACHE_CELL				HUNK3_CXR0
 #define CACHE_CLONE				HUNK3_CXR1

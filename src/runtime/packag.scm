@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: packag.scm,v 14.56 2008/01/30 20:02:33 cph Exp $
+$Id: packag.scm,v 14.60 2008/08/24 23:34:31 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -118,13 +118,15 @@ USA.
 (define-integrable package-name-tag
   ((ucode-primitive string->symbol) "#[(package)package-name-tag]"))
 
-(define (find-package name)
+(define (find-package name #!optional error?)
   (let loop ((path name) (package system-global-package))
     (if (pair? path)
 	(loop (cdr path)
-	      (or (package/child package (car path))
-		  (error "Unable to find package:"
-			 (list-difference name (cdr path)))))
+	      (let ((child (package/child package (car path))))
+		(if (and (not child) error?)
+		    (error "Unable to find package:"
+			   (list-difference name (cdr path))))
+		child))
 	package)))
 
 (define (list-difference list tail)
@@ -181,12 +183,7 @@ USA.
 		   (lookup-option 'ALTERNATE-PACKAGE-LOADER options))
 		  (load-component
 		   (lambda (name environment)
-		     (let ((value (filename->compiled-object dir name)))
-		       (if value
-			   (begin
-			     (purify (load/purification-root value))
-			     (scode-eval value environment))
-			   (load name environment 'DEFAULT #t))))))
+		     (load name environment 'DEFAULT #t))))
 	      (if alternate-loader
 		  (alternate-loader load-component options)
 		  (begin
@@ -213,16 +210,6 @@ USA.
 				       ((UNIX) "unx")
 				       (else "unk"))))
    "pkd"))
-
-(define (filename->compiled-object directory name)
-  (let ((pathname (merge-pathnames name directory)))
-    (let ((value (built-in-object-file pathname)))
-      (if (and value (not load/suppress-loading-message?))
-	  (write-notification-line
-	   (lambda (port)
-	     (write-string "Initialized " port)
-	     (write (enough-namestring pathname) port))))
-      value)))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))
@@ -381,40 +368,51 @@ USA.
 			      source-environment source-name))))))))
 
 (define (extend-package-environment environment . name-sources)
-  (let ((n
-	 (let loop ((name-sources name-sources) (n 1))
-	   (if (pair? name-sources)
-	       (loop (cdr name-sources)
-		     (fix:+ n (vector-length (car (car name-sources)))))
-	       n))))
-    (let ((vn ((ucode-primitive vector-cons) n #f))
-	  (vv
-	   ((ucode-primitive vector-cons)
-	    n
-	    (make-unmapped-unassigned-reference-trap))))
-      (let loop ((name-sources name-sources) (i 1))
-	(if (pair? name-sources)
-	    (let ((v (car (car name-sources)))
-		  (p (cdr (car name-sources))))
-	      (let ((n (vector-length v)))
-		(let do-source ((j 0) (i i))
-		  (if (fix:< j n)
-		      (begin
-			(vector-set! vn i (p (vector-ref v j)))
-			(do-source (fix:+ j 1) (fix:+ i 1)))
-		      (loop (cdr name-sources) i)))))))
-      (vector-set! vn 0 'DUMMY-PROCEDURE)
-      (vector-set! vv 0
-		   (system-pair-cons (ucode-type procedure)
-				     (system-pair-cons (ucode-type lambda)
-						       #f
-						       vn)
-				     environment))
-      (object-new-type (ucode-type environment) vv))))
+  (let ((names
+	 (do ((name-sources name-sources (cdr name-sources))
+	      (names '()
+		     (let ((v (car (car name-sources)))
+			   (p (cdr (car name-sources))))
+		       (let ((end (vector-length v)))
+			 (do ((j 0 (fix:+ j 1))
+			      (names names
+				     (let ((name (p (vector-ref v j))))
+				       (if (let find ((names names))
+					     (if (pair? names)
+						 (if (eq? (car names) name)
+						     #t
+						     (find (cdr names)))
+						 #f))
+					   names
+					   (cons name names)))))
+			     ((not (fix:< j end)) names))))))
+	     ((not (pair? name-sources)) names))))
+    (let ((n
+	   (do ((names names (cdr names))
+		(n 1 (fix:+ n 1)))
+	       ((not (pair? names)) n))))
+      (let ((vn ((ucode-primitive vector-cons) n #f))
+	    (vv
+	     ((ucode-primitive vector-cons)
+	      n
+	      (make-unmapped-unassigned-reference-trap))))
+	(vector-set! vn 0 'DUMMY-PROCEDURE)
+	(do ((names names (cdr names))
+	     (j 1 (fix:+ j 1)))
+	    ((not (pair? names)))
+	  (vector-set! vn j (car names)))
+	(vector-set! vv 0
+		     (system-pair-cons (ucode-type procedure)
+				       (system-pair-cons (ucode-type lambda)
+							 #f
+							 vn)
+				       environment))
+	((ucode-primitive object-set-type) (ucode-type environment) vv)))))
 
 (define null-environment
-  (object-new-type (object-type #f)
-		   (fix:xor (object-datum #F) 1)))
+  ((ucode-primitive object-set-type)
+   ((ucode-primitive object-type) #f)
+   (fix:xor ((ucode-primitive object-datum) #F) 1)))
 
 (define (find-package-environment name)
   (package/environment (find-package name)))
@@ -429,7 +427,9 @@ USA.
   (primitive-object-set-type (ucode-type reference-trap) 0))
 
 (define-primitives
+  lexical-reference
   lexical-unbound?
+  lexical-unreferenceable?
   link-variables
   local-assignment
   primitive-object-set-type)

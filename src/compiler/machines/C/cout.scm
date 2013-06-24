@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cout.scm,v 1.43 2008/01/30 20:01:45 cph Exp $
+$Id: cout.scm,v 1.49 2008/10/19 01:56:01 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -53,12 +53,12 @@ USA.
 
 (define *subblocks*)			;referenced by stackify
 
-(define (stringify-data object output-pathname)
+(define (stringify-data object)
   (if (not *use-stackify?*)
-      (stringify-data/traditional object output-pathname)
-      (stringify-data/stackify object output-pathname)))
+      (stringify-data/traditional object)
+      (stringify-data/stackify object)))
 
-(define (stringify-data/stackify object output-pathname)
+(define (stringify-data/stackify object)
   (let* ((str (stackify 0 object))
 	 (handle (default-file-handle))
 	 (data-name
@@ -66,7 +66,6 @@ USA.
 	   (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (stackify-output->data-decl 'prog str)
 	      (c:line)
@@ -76,9 +75,11 @@ USA.
 		(c:return (c:ecall 'unstackify
 				   (c:cast 'uchar* (c:aptr 'prog 0))
 				   (c:ecall 'sizeof 'prog)
-				   0)))))))
+				   0))))
+	     (c:line)
+	     (declare-data-object handle data-name))))
 
-(define (stringify-data/traditional object output-pathname)
+(define (stringify-data/traditional object)
   (let*/mv (((vars prefix suffix) (handle-top-level-data/traditional object))
 	    (handle (default-file-handle))
 	    (data-name
@@ -86,7 +87,6 @@ USA.
 	      (string-append handle "_data_" (make-nonce)))))
     (c:group (file-prefix)
 	     (c:line)
-	     (declare-data-object handle data-name)
 	     (c:data-section
 	      (c:fn #f 'sobj data-name '()
 		(c:decl 'sobj 'top_level_object)
@@ -95,20 +95,14 @@ USA.
 		(c:line)
 		(c:group* prefix)
 		(c:group* suffix)
-		(c:return 'top_level_object))))))
+		(c:return 'top_level_object)))
+	     (c:line)
+	     (declare-data-object handle data-name))))
 
 (define (declare-data-object handle proc)
   (c:group (c:data-section (declare-object handle proc))
 	   (c:line)
 	   (declare-dynamic-object-initialization handle)))
-
-(define (default-file-handle)
-  (file-namestring
-   (pathname-new-type *compiler-output-pathname*
-		      (let ((t (pathname-type *compiler-input-pathname*)))
-			(if (equal? t "bin")
-			    (c-output-extension)
-			    t)))))
 
 (define (stringify suffix initial-label lap-code info-output-pathname)
   ;; returns <code-name data-name ntags symbol-table code proxy>
@@ -128,15 +122,17 @@ USA.
 	     (if (or *disable-nonces?* (and handle? top-level?))
 		 ""
 		 (string-append "_" nonce))))
-	(if info-output-pathname
-	    (string-append (let ((name (default-file-handle)))
-			     (if handle?
-				 (C-quotify-string name)
-				 (canonicalize-label-name name)))
-			   (if top-level?
-			       (string-append midfix nsuffix)
-			       (string-append "_" default suffix)))
-	    (string-append default suffix nsuffix))))
+	(string-append
+	 (let ((name (default-file-handle)))
+	   (if handle?
+	       (C-quotify-string name)
+	       (canonicalize-label-name name)))
+	 (cond ((not info-output-pathname)
+		(string-append default suffix nsuffix))
+	       (top-level?
+		(string-append midfix nsuffix))
+	       (else
+		(string-append "_" default suffix))))))
 
     (define (subroutine-information)
       (let*/mv (((decls-1 code-1) (subroutine-information-1))
@@ -421,7 +417,7 @@ USA.
 	   (c:line (c:comment "generated "
 			      (get-decoded-time)
 			      " by Liar version "
-			      (or (get-subsystem-version-string "liar")
+			      (or (get-subsystem-version-string "liar/c")
 				  "UNKNOWN")
 			      "."))
 	   (c:line)

@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: genio.scm,v 1.57 2008/01/30 20:02:31 cph Exp $
+$Id: genio.scm,v 1.70 2008/09/17 06:24:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,7 +30,7 @@ USA.
 
 (declare (usual-integrations))
 
-(define (make-generic-i/o-port source sink #!optional type)
+(define (make-generic-i/o-port source sink #!optional type . extra-state)
   (if (not (or source sink))
       (error "Missing arguments."))
   (let ((port
@@ -38,7 +38,7 @@ USA.
 			(generic-i/o-port-type (source-type source)
 					       (sink-type sink))
 			type)
-		    (make-gstate source sink 'TEXT 'TEXT))))
+		    (apply make-gstate source sink 'TEXT 'TEXT extra-state))))
     (let ((ib (port-input-buffer port)))
       (if ib
 	  ((source/set-port (input-buffer-source ib)) port)))
@@ -74,34 +74,48 @@ USA.
        ((#F) generic-type10)
        ((CHANNEL) generic-type12)
        (else generic-type11)))))
-
-(define-structure (gstate (type vector) (constructor #f))
-  ;; Changes to this structure must be copied to "fileio.scm" and
-  ;; "ttyio.scm", "strnin.scm", "strout.scm", and "strott.scm".
+
+(define-structure (gstate (constructor %make-gstate))
   (input-buffer #f read-only #t)
   (output-buffer #f read-only #t)
   coding
-  line-ending)
+  line-ending
+  (extra #f read-only #t))
 
 (define (make-gstate source sink coder-name normalizer-name . extra)
-  (list->vector
-   (cons* (and source
-	       (make-input-buffer (->source source 'MAKE-GSTATE)
-				  coder-name
-				  normalizer-name))
-	  (and sink
-	       (make-output-buffer (->sink sink 'MAKE-GSTATE)
-				   coder-name
-				   normalizer-name))
-	  coder-name
-	  normalizer-name
-	  extra)))
+  (%make-gstate (and source
+		     (make-input-buffer (->source source 'MAKE-GSTATE)
+					coder-name
+					normalizer-name))
+		(and sink
+		     (make-output-buffer (->sink sink 'MAKE-GSTATE)
+					 coder-name
+					 normalizer-name))
+		coder-name
+		normalizer-name
+		(list->vector extra)))
 
 (define-integrable (port-input-buffer port)
   (gstate-input-buffer (port/state port)))
 
 (define-integrable (port-output-buffer port)
   (gstate-output-buffer (port/state port)))
+
+(define (generic-i/o-port-accessor index)
+  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-ACCESSOR)
+  (lambda (port)
+    (let ((extra (gstate-extra (port/state port))))
+      (if (not (fix:< index (vector-length extra)))
+	  (error "Accessor index out of range:" index))
+      (vector-ref extra index))))
+
+(define (generic-i/o-port-modifier index)
+  (guarantee-index-fixnum index 'GENERIC-I/O-PORT-MODIFIER)
+  (lambda (port object)
+    (let ((extra (gstate-extra (port/state port))))
+      (if (not (fix:< index (vector-length extra)))
+	  (error "Accessor index out of range:" index))
+      (vector-set! extra index object))))
 
 (define (initialize-package!)
   (let ((ops:in1
@@ -109,10 +123,10 @@ USA.
 	   (CLOSE-INPUT ,generic-io/close-input)
 	   (EOF? ,generic-io/eof?)
 	   (INPUT-OPEN? ,generic-io/input-open?)
+	   (PEEK-CHAR ,generic-io/peek-char)
 	   (READ-CHAR ,generic-io/read-char)
-	   (READ-EXTERNAL-SUBSTRING ,generic-io/read-external-substring)
 	   (READ-SUBSTRING ,generic-io/read-substring)
-	   (READ-WIDE-SUBSTRING ,generic-io/read-wide-substring)))
+	   (UNREAD-CHAR ,generic-io/unread-char)))
 	(ops:in2
 	 `((INPUT-BLOCKING-MODE ,generic-io/input-blocking-mode)
 	   (INPUT-CHANNEL ,generic-io/input-channel)
@@ -127,9 +141,7 @@ USA.
 	   (OUTPUT-COLUMN ,generic-io/output-column)
 	   (OUTPUT-OPEN? ,generic-io/output-open?)
 	   (WRITE-CHAR ,generic-io/write-char)
-	   (WRITE-EXTERNAL-SUBSTRING ,generic-io/write-external-substring)
-	   (WRITE-SUBSTRING ,generic-io/write-substring)
-	   (WRITE-WIDE-SUBSTRING ,generic-io/write-wide-substring)))
+	   (WRITE-SUBSTRING ,generic-io/write-substring)))
 	(ops:out2
 	 `((OUTPUT-BLOCKING-MODE ,generic-io/output-blocking-mode)
 	   (OUTPUT-CHANNEL ,generic-io/output-channel)
@@ -181,8 +193,16 @@ USA.
 (define (generic-io/char-ready? port)
   (buffer-has-input? (port-input-buffer port)))
 
+(define (generic-io/peek-char port)
+  (let ((char (generic-io/read-char port)))
+    (if (char? char)
+	(let ((ib (port-input-buffer port)))
+	  (set-input-buffer-start! ib (input-buffer-prev ib))))
+    char))
+
 (define (generic-io/read-char port)
   (let ((ib (port-input-buffer port)))
+    (reset-prev-char ib)
     (let loop ()
       (or (read-next-char ib)
 	  (let ((r (fill-input-buffer ib)))
@@ -192,16 +212,18 @@ USA.
 	      ((EOF) (eof-object))
 	      (else (error "Unknown result:" r))))))))
 
+(define (generic-io/unread-char port char)
+  char					;ignored
+  (let ((ib (port-input-buffer port)))
+    (let ((bp (input-buffer-prev ib)))
+      (if (not (fix:< bp (input-buffer-start ib)))
+	  (error "No char to unread:" port))
+      (set-input-buffer-start! ib bp))))
+
 (define (generic-io/read-substring port string start end)
-  (read-substring:string (port-input-buffer port) string start end))
-
-(define (generic-io/read-wide-substring port string start end)
-  (read-substring:wide-string (port-input-buffer port) string start end))
-
-(define (generic-io/read-external-substring port string start end)
-  (read-substring:external-string (port-input-buffer port) string start end))
-
-(define-integrable (generic-io/eof? port)
+  (read-substring (port-input-buffer port) string start end))
+
+(define (generic-io/eof? port)
   (input-buffer-at-eof? (port-input-buffer port)))
 
 (define (generic-io/input-channel port)
@@ -252,13 +274,7 @@ USA.
 		n))))))
 
 (define (generic-io/write-substring port string start end)
-  (write-substring:string (port-output-buffer port) string start end))
-
-(define (generic-io/write-wide-substring port string start end)
-  (write-substring:wide-string (port-output-buffer port) string start end))
-
-(define (generic-io/write-external-substring port string start end)
-  (write-substring:external-string (port-output-buffer port) string start end))
+  (write-substring (port-output-buffer port) string start end))
 
 (define (generic-io/flush-output port)
   (force-drain-output-buffer (port-output-buffer port)))
@@ -398,15 +414,15 @@ USA.
     (set-gstate-coding! state name)))
 
 (define (generic-io/known-coding? port coding)
-  (and (if (input-port? port) (known-input-coding? coding) #t)
-       (if (output-port? port) (known-output-coding? coding) #t)))
+  (and (if (input-port? port) (known-input-port-coding? coding) #t)
+       (if (output-port? port) (known-output-port-coding? coding) #t)))
 
 (define (generic-io/known-codings port)
   (cond ((i/o-port? port)
-	 (eq-intersection (known-input-codings)
-			  (known-output-codings)))
-	((input-port? port) (known-input-codings))
-	((output-port? port) (known-output-codings))
+	 (eq-intersection (known-input-port-codings)
+			  (known-output-port-codings)))
+	((input-port? port) (known-input-port-codings))
+	((output-port? port) (known-output-port-codings))
 	(else '())))
 
 (define (generic-io/line-ending port)
@@ -440,10 +456,9 @@ USA.
 
 (define (line-ending channel name for-output?)
   (guarantee-symbol name #f)
-  (if (or (eq? name 'TEXT)
-	  (and for-output?
-	       (known-input-line-ending? name)
-	       (not (known-output-line-ending? name))))
+  (if (and for-output?
+	   (known-input-line-ending? name)
+	   (not (known-output-line-ending? name)))
       (if (and channel (eq? (channel-type channel) 'TCP-STREAM-SOCKET))
 	  'CRLF
 	  (default-line-ending))
@@ -501,19 +516,19 @@ USA.
 (define-name-map normalizer)
 (define-name-map denormalizer)
 
-(define (known-input-coding? name)
+(define (known-input-port-coding? name)
   (or (hash-table/get decoder-aliases name #f)
       (hash-table/get decoders name #f)))
 
-(define (known-input-codings)
+(define (known-input-port-codings)
   (append (hash-table/key-list decoder-aliases)
 	  (hash-table/key-list decoders)))
 
-(define (known-output-coding? name)
+(define (known-output-port-coding? name)
   (or (hash-table/get encoder-aliases name #f)
       (hash-table/get encoders name #f)))
 
-(define (known-output-codings)
+(define (known-output-port-codings)
   (append (hash-table/key-list encoder-aliases)
 	  (hash-table/key-list encoders)))
 
@@ -584,14 +599,29 @@ USA.
 (define binary-sizer)
 (define binary-normalizer)
 (define binary-denormalizer)
+
+(define (define-coding-aliases name aliases)
+  (for-each (lambda (alias)
+	      (define-decoder-alias alias name)
+	      (define-encoder-alias alias name)
+	      (define-sizer-alias alias name))
+	    aliases))
+
+(define (primary-input-port-codings)
+  (cons 'US-ASCII (hash-table/key-list decoders)))
+
+(define (primary-output-port-codings)
+  (cons 'US-ASCII (hash-table/key-list encoders)))
 
+;;;; Byte sources
+
 (define-structure (source (constructor make-gsource) (conc-name source/))
   (get-channel #f read-only #t)
   (get-port #f read-only #t)
   (set-port #f read-only #t)
   (open? #f read-only #t)
   (close #f read-only #t)
-  (has-input? #f read-only #t)
+  (has-bytes? #f read-only #t)
   (read #f read-only #t))
 
 (define-guarantee source "byte source")
@@ -613,7 +643,7 @@ USA.
 		(lambda (string start end)
 		  (channel-read channel string start end))))
 
-(define (make-non-channel-source has-input? read-substring)
+(define (make-non-channel-port-source has-bytes? read-bytes)
   (let ((port #f)
 	(open? #t))
     (make-gsource (lambda () #f)
@@ -621,8 +651,10 @@ USA.
 		  (lambda (port*) (set! port port*) unspecific)
 		  (lambda () open?)
 		  (lambda () (set! open? #f) unspecific)
-		  has-input?
-		  read-substring)))
+		  has-bytes?
+		  read-bytes)))
+
+;;;; Byte Sinks
 
 (define-structure (sink (constructor make-gsink) (conc-name sink/))
   (get-channel #f read-only #t)
@@ -650,7 +682,7 @@ USA.
 	      (lambda (string start end)
 		(channel-write channel string start end))))
 
-(define (make-non-channel-sink write-substring)
+(define (make-non-channel-port-sink write-bytes)
   (let ((port #f)
 	(open? #t))
     (make-gsink (lambda () #f)
@@ -658,7 +690,7 @@ USA.
 		(lambda (port*) (set! port port*) unspecific)
 		(lambda () open?)
 		(lambda () (set! open? #f) unspecific)
-		write-substring)))
+		write-bytes)))
 
 ;;;; Input buffer
 
@@ -667,11 +699,12 @@ USA.
 
 (define-integrable byte-buffer-length
   (fix:+ page-size
-	 (fix:- (fix:* max-char-bytes 2) 1)))
+	 (fix:- (fix:* max-char-bytes 4) 1)))
 
 (define-structure (input-buffer (constructor %make-input-buffer))
   (source #f read-only #t)
   (bytes #f read-only #t)
+  prev
   start
   end
   decode
@@ -681,6 +714,7 @@ USA.
 (define (make-input-buffer source coder-name normalizer-name)
   (%make-input-buffer source
 		      (make-string byte-buffer-length)
+		      byte-buffer-length
 		      byte-buffer-length
 		      byte-buffer-length
 		      (name->decoder coder-name)
@@ -698,24 +732,25 @@ USA.
   (fix:>= (input-buffer-end ib) 0))
 
 (define (clear-input-buffer ib)
+  (set-input-buffer-prev! ib byte-buffer-length)
   (set-input-buffer-start! ib byte-buffer-length)
   (set-input-buffer-end! ib byte-buffer-length))
 
 (define (close-input-buffer ib)
+  (set-input-buffer-prev! ib -1)
   (set-input-buffer-start! ib -1)
   (set-input-buffer-end! ib -1))
-
+
 (define (input-buffer-channel ib)
   ((source/get-channel (input-buffer-source ib))))
 
 (define (input-buffer-port ib)
   ((source/get-port (input-buffer-source ib))))
 
-(define-integrable (input-buffer-at-eof? ib)
-  (fix:<= (input-buffer-end ib) 0))
-
-(define-integrable (input-buffer-byte-count ib)
-  (fix:- (input-buffer-end ib) (input-buffer-start ib)))
+(define (input-buffer-at-eof? ib)
+  (or (fix:<= (input-buffer-end ib) 0)
+      (and (fix:= (input-buffer-prev ib) 0)
+	   (fix:= (input-buffer-start ib) (input-buffer-end ib)))))
 
 (define (input-buffer-encoded-character-size ib char)
   ((input-buffer-compute-encoded-character-size ib) ib char))
@@ -728,66 +763,20 @@ USA.
        (let ((cp ((input-buffer-decode ib) ib)))
 	 (and cp
 	      (integer->char cp)))))
-
-(define (fill-input-buffer ib)
-  (if (input-buffer-at-eof? ib)
-      'EOF
-      (begin
-	(justify-input-buffer ib)
-	(let loop ()
-	  (let ((n (read-bytes ib)))
-	    (cond ((not n) 'WOULD-BLOCK)
-		  ((fix:> n 0) 'OK)
-		  (else 'EOF)))))))
 
-(define (buffer-has-input? ib)
-  (let ((bs (input-buffer-start ib)))
-    (cond ((read-next-char ib)
-	   (set-input-buffer-start! ib bs)
-	   #t)
-	  ((input-buffer-at-eof? ib) #t)
-	  (else
-	   (and ((source/has-input? (input-buffer-source ib)))
-		(begin
-		  (justify-input-buffer ib)
-		  (read-bytes ib)
-		  (let ((bs (input-buffer-start ib)))
-		    (and (read-next-char ib)
-			 (begin
-			   (set-input-buffer-start! ib bs)
-			   #t)))))))))
-
-(define (justify-input-buffer ib)
-  (let ((bs (input-buffer-start ib))
-	(be (input-buffer-end ib)))
-    (if (and (fix:< 0 bs) (fix:< bs be))
-	(let ((bv (input-buffer-bytes ib)))
-	  (do ((i bs (fix:+ i 1))
-	       (j 0 (fix:+ j 1)))
-	      ((not (fix:< i be))
-	       (set-input-buffer-start! ib 0)
-	       (set-input-buffer-end! ib j)
-	       j)
-	    (string-set! bv j (string-ref bv i)))))))
-
-(define (read-bytes ib)
-  (let ((available (input-buffer-byte-count ib)))
-    (let ((n
-	   ((source/read (input-buffer-source ib))
-	    (input-buffer-bytes ib)
-	    available
-	    (fix:+ available page-size))))
-      (if n
-	  (begin
-	    (set-input-buffer-start! ib 0)
-	    (set-input-buffer-end! ib (fix:+ available n))))
-      n)))
+(define (reset-prev-char ib)
+  (set-input-buffer-prev! ib (input-buffer-start ib)))
 
 (define (set-input-buffer-coding! ib coding)
+  (reset-prev-char ib)
   (set-input-buffer-decode! ib (name->decoder coding)))
 
 (define (set-input-buffer-line-ending! ib name)
+  (reset-prev-char ib)
   (set-input-buffer-normalize! ib (name->normalizer name)))
+
+(define (input-buffer-using-binary-normalizer? ib)
+  (eq? (input-buffer-normalize ib) binary-normalizer))
 
 (define (input-buffer-contents ib)
   (substring (input-buffer-bytes ib)
@@ -799,68 +788,128 @@ USA.
   (let ((bv (input-buffer-bytes ib)))
     (let ((n (fix:min (string-length contents) (string-length bv))))
       (substring-move! contents 0 n bv 0)
+      (set-input-buffer-prev! ib 0)
       (set-input-buffer-start! ib 0)
       (set-input-buffer-end! ib n))))
 
 (define (input-buffer-free-bytes ib)
   (fix:- (input-buffer-end ib)
 	 (input-buffer-start ib)))
-
-(define (input-buffer-using-binary-normalizer? ib)
-  (eq? (input-buffer-normalize ib) binary-normalizer))
 
-(define (read-substring:wide-string ib string start end)
-  (let ((v (wide-string-contents string)))
-    (let loop ((i start))
-      (cond ((not (fix:< i end))
-	     (fix:- i start))
-	    ((read-next-char ib)
-	     => (lambda (char)
-		  (vector-set! v i char)
-		  (loop (fix:+ i 1))))
-	    ((fix:> i start)
-	     (fix:- i start))
-	    (else
-	     (let ((r (fill-input-buffer ib)))
-	       (case r
-		 ((OK) (loop i))
-		 ((WOULD-BLOCK) #f)
-		 ((EOF) 0)
-		 (else (error "Unknown result:" r)))))))))
+(define (fill-input-buffer ib)
+  (if (input-buffer-at-eof? ib)
+      'EOF
+      (let ((n (read-bytes ib)))
+	(cond ((not n) 'WOULD-BLOCK)
+	      ((fix:> n 0) 'OK)
+	      (else 'EOF)))))
 
-(define (read-substring:string ib string start end)
-  (if (input-buffer-in-8-bit-mode? ib)
-      (let ((bv (input-buffer-bytes ib))
-	    (bs (input-buffer-start ib))
+(define (buffer-has-input? ib)
+  (or (next-char-ready? ib)
+      (input-buffer-at-eof? ib)
+      (and ((source/has-bytes? (input-buffer-source ib)))
+	   (begin
+	     (read-bytes ib)
+	     (next-char-ready? ib)))))
+
+(define (next-char-ready? ib)
+  (let ((bs (input-buffer-start ib)))
+    (and (read-next-char ib)
+	 (begin
+	   (set-input-buffer-start! ib bs)
+	   #t))))
+
+(define (read-bytes ib)
+  ;; assumption: (not (input-buffer-at-eof? ib))
+  (reset-prev-char ib)
+  (let ((bv (input-buffer-bytes ib)))
+    (let ((do-read
+	   (lambda (be)
+	     (let ((be* (fix:+ be page-size)))
+	       (if (not (fix:<= be* (vector-8b-length bv)))
+		   (error "Input buffer overflow:" ib))
+	       ((source/read (input-buffer-source ib)) bv be be*)))))
+      (let ((bs (input-buffer-start ib))
 	    (be (input-buffer-end ib)))
 	(if (fix:< bs be)
-	    (let ((n (fix:min (fix:- be bs) (fix:- end start))))
-	      (let ((be (fix:+ bs n)))
-		(%substring-move! bv bs be string start)
-		(set-input-buffer-start! ib be)
-		n))
-	    ((source/read (input-buffer-source ib)) string start end)))
-      (read-to-8-bit ib string start end)))
-
-(define (read-substring:external-string ib string start end)
-  (if (input-buffer-in-8-bit-mode? ib)
-      (let ((bv (input-buffer-bytes ib))
-	    (bs (input-buffer-start ib))
-	    (be (input-buffer-end ib)))
-	(if (fix:< bs be)
-	    (let ((n (min (fix:- be bs) (- end start))))
-	      (let ((be (fix:+ bs n)))
-		(xsubstring-move! bv bs be string start)
-		(set-input-buffer-start! ib be)
-		n))
-	    ((source/read (input-buffer-source ib)) string start end)))
-      (let ((bounce (make-string page-size))
-	    (be (min page-size (- end start))))
-	(let ((n (read-to-8-bit ib bounce 0 be)))
-	  (if (and n (fix:> n 0))
-	      (xsubstring-move! bounce 0 n string start))
-	  n))))
-
+	    (begin
+	      (if (fix:> bs 0)
+		  (do ((i bs (fix:+ i 1))
+		       (j 0 (fix:+ j 1)))
+		      ((not (fix:< i be))
+		       (set-input-buffer-prev! ib 0)
+		       (set-input-buffer-start! ib 0)
+		       (set-input-buffer-end! ib j))
+		    (string-set! bv j (string-ref bv i))))
+	      (let ((be (input-buffer-end ib)))
+		(let ((n (do-read be)))
+		  (if n
+		      (set-input-buffer-end! ib (fix:+ be n)))
+		  n)))
+	    (let ((n (do-read 0)))
+	      (if n
+		  (begin
+		    (set-input-buffer-prev! ib 0)
+		    (set-input-buffer-start! ib 0)
+		    (set-input-buffer-end! ib n)))
+	      n))))))
+
+(define (read-substring ib string start end)
+  (reset-prev-char ib)
+  (cond ((string? string)
+	 (if (input-buffer-in-8-bit-mode? ib)
+	     (let ((bv (input-buffer-bytes ib))
+		   (bs (input-buffer-start ib))
+		   (be (input-buffer-end ib)))
+	       (if (fix:< bs be)
+		   (let ((n (fix:min (fix:- be bs) (fix:- end start))))
+		     (let ((be (fix:+ bs n)))
+		       (%substring-move! bv bs be string start)
+		       (set-input-buffer-prev! ib be)
+		       (set-input-buffer-start! ib be)
+		       n))
+		   ((source/read (input-buffer-source ib)) string start end)))
+	     (read-to-8-bit ib string start end)))
+	((wide-string? string)
+	 (let ((v (wide-string-contents string)))
+	   (let loop ((i start))
+	     (cond ((not (fix:< i end))
+		    (fix:- i start))
+		   ((read-next-char ib)
+		    => (lambda (char)
+			 (vector-set! v i char)
+			 (loop (fix:+ i 1))))
+		   ((fix:> i start)
+		    (fix:- i start))
+		   (else
+		    (let ((r (fill-input-buffer ib)))
+		      (case r
+			((OK) (loop i))
+			((WOULD-BLOCK) #f)
+			((EOF) 0)
+			(else (error "Unknown result:" r)))))))))
+	((external-string? string)
+	 (if (input-buffer-in-8-bit-mode? ib)
+	     (let ((bv (input-buffer-bytes ib))
+		   (bs (input-buffer-start ib))
+		   (be (input-buffer-end ib)))
+	       (if (fix:< bs be)
+		   (let ((n (min (fix:- be bs) (- end start))))
+		     (let ((be (fix:+ bs n)))
+		       (xsubstring-move! bv bs be string start)
+		       (set-input-buffer-prev! ib be)
+		       (set-input-buffer-start! ib be)
+		       n))
+		   ((source/read (input-buffer-source ib)) string start end)))
+	     (let ((bounce (make-string page-size))
+		   (be (min page-size (- end start))))
+	       (let ((n (read-to-8-bit ib bounce 0 be)))
+		 (if (and n (fix:> n 0))
+		     (xsubstring-move! bounce 0 n string start))
+		 n))))
+	(else
+	 (error:not-string string 'INPUT-PORT/READ-SUBSTRING!))))
+
 (define (input-buffer-in-8-bit-mode? ib)
   (and (eq? (input-buffer-decode ib) binary-decoder)
        (eq? (input-buffer-normalize ib) binary-normalizer)))
@@ -1000,45 +1049,46 @@ USA.
 (define (set-output-buffer-line-ending! ob name)
   (set-output-buffer-denormalize! ob (name->denormalizer name)))
 
-(define (write-substring:string ob string start end)
-  (let loop ((i start))
-    (if (fix:< i end)
-	(if (write-next-char ob (string-ref string i))
-	    (loop (fix:+ i 1))
-	    (let ((n (drain-output-buffer ob)))
-	      (cond ((not n) (and (fix:> i start) (fix:- i start)))
-		    ((fix:> n 0) (loop i))
-		    (else (fix:- i start)))))
-	(fix:- end start))))
-
-(define (write-substring:wide-string ob string start end)
-  (let ((v (wide-string-contents string)))
-    (let loop ((i start))
-      (if (fix:< i end)
-	  (if (write-next-char ob (vector-ref v i))
-	      (loop (fix:+ i 1))
-	      (let ((n (drain-output-buffer ob)))
-		(cond ((not n) (and (fix:> i start) (fix:- i start)))
-		      ((fix:> n 0) (loop i))
-		      (else (fix:- i start)))))
-	  (fix:- end start)))))
-
-(define (write-substring:external-string ob string start end)
-  (let ((bounce (make-string #x1000)))
-    (let loop ((i start))
-      (if (< i end)
-	  (let ((n (min (- end i) #x1000)))
-	    (xsubstring-move! string i (+ i n) bounce 0)
-	    (let ((m (write-substring:string ob bounce 0 n)))
-	      (cond ((not m)
-		     (and (> i start)
-			  (- i start)))
-		    ((fix:> m 0)
-		     (if (fix:< m n)
-			 (- (+ i m) start)
-			 (loop (+ i n))))
-		    (else (- i start)))))
-	  (- end start)))))
+(define (write-substring ob string start end)
+  (cond ((string? string)
+	 (let loop ((i start))
+	   (if (fix:< i end)
+	       (if (write-next-char ob (string-ref string i))
+		   (loop (fix:+ i 1))
+		   (let ((n (drain-output-buffer ob)))
+		     (cond ((not n) (and (fix:> i start) (fix:- i start)))
+			   ((fix:> n 0) (loop i))
+			   (else (fix:- i start)))))
+	       (fix:- end start))))
+	((wide-string? string)
+	 (let ((v (wide-string-contents string)))
+	   (let loop ((i start))
+	     (if (fix:< i end)
+		 (if (write-next-char ob (vector-ref v i))
+		     (loop (fix:+ i 1))
+		     (let ((n (drain-output-buffer ob)))
+		       (cond ((not n) (and (fix:> i start) (fix:- i start)))
+			     ((fix:> n 0) (loop i))
+			     (else (fix:- i start)))))
+		 (fix:- end start)))))
+	((external-string? string)
+	 (let ((bounce (make-string #x1000)))
+	   (let loop ((i start))
+	     (if (< i end)
+		 (let ((n (min (- end i) #x1000)))
+		   (xsubstring-move! string i (+ i n) bounce 0)
+		   (let ((m (write-substring ob bounce 0 n)))
+		     (cond ((not m)
+			    (and (> i start)
+				 (- i start)))
+			   ((fix:> m 0)
+			    (if (fix:< m n)
+				(- (+ i m) start)
+				(loop (+ i n))))
+			   (else (- i start)))))
+		 (- end start)))))
+	(else
+	 (error:not-string string 'OUTPUT-PORT/WRITE-SUBSTRING))))
 
 ;;;; 8-bit codecs
 
@@ -1060,15 +1110,16 @@ USA.
     ib cp
     1))
 
-(define-decoder-alias 'BINARY 'ISO-8859-1)
-(define-encoder-alias 'BINARY 'ISO-8859-1)
-(define-sizer-alias 'BINARY 'ISO-8859-1)
-(define-decoder-alias 'TEXT 'ISO-8859-1)
-(define-encoder-alias 'TEXT 'ISO-8859-1)
-(define-sizer-alias 'TEXT 'ISO-8859-1)
-(define-decoder-alias 'US-ASCII 'ISO-8859-1)
-(define-encoder-alias 'ASCII 'ISO-8859-1)
-(define-sizer-alias 'US-ASCII 'ISO-8859-1)
+(define-coding-aliases 'ISO-8859-1
+  '(ISO_8859-1:1987 ISO-IR-100 ISO_8859-1 LATIN1 L1 IBM819 CP819 CSISOLATIN1))
+
+(define-coding-aliases 'ISO-8859-1
+  '(BINARY TEXT))
+
+(define-coding-aliases 'ISO-8859-1
+  ;; Treat US-ASCII like ISO-8859-1.
+  '(US-ASCII ANSI_X3.4-1968 ISO-IR-6 ANSI_X3.4-1986 ISO_646.IRV:1991 ASCII
+	     ISO646-US US IBM367 CP367 CSASCII))
 
 (define-syntax define-8-bit-codecs
   (sc-macro-transformer
@@ -1156,6 +1207,9 @@ USA.
   #x0144 #x0148 #x00F3 #x00F4 #x0151 #x00F6 #x00F7 #x0159
   #x016F #x00FA #x0171 #x00FC #x00FD #x0163 #x02D9)
 
+(define-coding-aliases 'ISO-8859-2
+  '(ISO_8859-2:1987 ISO-IR-101 ISO_8859-2 LATIN2 L2 CSISOLATIN2))
+
 (define-8-bit-codecs iso-8859-3 #xA1
   #x0126 #x02D8 #x00A3 #x00A4 #f     #x0124 #x00A7 #x00A8
   #x0130 #x015E #x011E #x0134 #x00AD #f     #x017B #x00B0
@@ -1169,6 +1223,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #f    
   #x00F1 #x00F2 #x00F3 #x00F4 #x0121 #x00F6 #x00F7 #x011D
   #x00F9 #x00FA #x00FB #x00FC #x016D #x015D #x02D9)
+
+(define-coding-aliases 'ISO-8859-3
+  '(ISO_8859-3:1988 ISO-IR-109 ISO_8859-3 LATIN3 L3 CSISOLATIN3))
 
 (define-8-bit-codecs iso-8859-4 #xA1
   #x0104 #x0138 #x0156 #x00A4 #x0128 #x013B #x00A7 #x00A8
@@ -1184,6 +1241,9 @@ USA.
   #x0146 #x014D #x0137 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x0169 #x016B #x02D9)
 
+(define-coding-aliases 'ISO-8859-4
+  '(ISO_8859-4:1988 ISO-IR-110 ISO_8859-4 LATIN4 L4 CSISOLATIN4))
+
 (define-8-bit-codecs iso-8859-5 #xA1
   #x0401 #x0402 #x0403 #x0404 #x0405 #x0406 #x0407 #x0408
   #x0409 #x040A #x040B #x040C #x00AD #x040E #x040F #x0410
@@ -1198,6 +1258,9 @@ USA.
   #x0451 #x0452 #x0453 #x0454 #x0455 #x0456 #x0457 #x0458
   #x0459 #x045A #x045B #x045C #x00A7 #x045E #x045F)
 
+(define-coding-aliases 'ISO-8859-5
+  '(ISO_8859-5:1988 ISO-IR-144 ISO_8859-5 CYRILLIC CSISOLATINCYRILLIC))
+
 (define-8-bit-codecs iso-8859-6 #xA1
   #f     #f     #f     #x00A4 #f     #f     #f     #f    
   #f     #f     #f     #x060C #x00AD #f     #f     #f    
@@ -1211,7 +1274,11 @@ USA.
   #x0649 #x064A #x064B #x064C #x064D #x064E #x064F #x0650
   #x0651 #x0652 #f     #f     #f     #f     #f     #f    
   #f     #f     #f     #f     #f     #f     #f)
-
+
+(define-coding-aliases 'ISO-8859-6
+  '(ISO_8859-6:1987 ISO-IR-127 ISO_8859-6 ECMA-114 ASMO-708 ARABIC
+		    CSISOLATINARABIC))
+
 (define-8-bit-codecs iso-8859-7 #xA1
   #x2018 #x2019 #x00A3 #f     #f     #x00A6 #x00A7 #x00A8
   #x00A9 #f     #x00AB #x00AC #x00AD #f     #x2015 #x00B0
@@ -1225,6 +1292,10 @@ USA.
   #x03B9 #x03BA #x03BB #x03BC #x03BD #x03BE #x03BF #x03C0
   #x03C1 #x03C2 #x03C3 #x03C4 #x03C5 #x03C6 #x03C7 #x03C8
   #x03C9 #x03CA #x03CB #x03CC #x03CD #x03CE #f)
+
+(define-coding-aliases 'ISO-8859-7
+  '(ISO_8859-7:1987 ISO-IR-126 ISO_8859-7 ELOT_928 ECMA-118 GREEK GREEK8
+		    CSISOLATINGREEK))
 
 (define-8-bit-codecs iso-8859-8 #xA1
   #f     #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
@@ -1240,6 +1311,9 @@ USA.
   #x05E1 #x05E2 #x05E3 #x05E4 #x05E5 #x05E6 #x05E7 #x05E8
   #x05E9 #x05EA #f     #f     #x200E #x200F #f)
 
+(define-coding-aliases 'ISO-8859-8
+  '(ISO_8859-8:1988 ISO-IR-138 ISO_8859-8 HEBREW CSISOLATINHEBREW))
+
 (define-8-bit-codecs iso-8859-9 #xA1
   #x00A1 #x00A2 #x00A3 #x00A4 #x00A5 #x00A6 #x00A7 #x00A8
   #x00A9 #x00AA #x00AB #x00AC #x00AD #x00AE #x00AF #x00B0
@@ -1253,6 +1327,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x011F
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x0131 #x015F #x00FF)
+
+(define-coding-aliases 'ISO-8859-9
+  '(ISO_8859-9:1989 ISO-IR-148 ISO_8859-9 LATIN5 L5 CSISOLATIN5))
 
 (define-8-bit-codecs iso-8859-10 #xA1
   #x0104 #x0112 #x0122 #x012A #x0128 #x0136 #x00A7 #x013B
@@ -1268,6 +1345,9 @@ USA.
   #x0146 #x014D #x00F3 #x00F4 #x00F5 #x00F6 #x0169 #x00F8
   #x0173 #x00FA #x00FB #x00FC #x00FD #x00FE #x0138)
 
+(define-coding-aliases 'ISO-8859-10
+  '(ISO-IR-157 L6 ISO_8859-10:1992 CSISOLATIN6 LATIN6))
+
 (define-8-bit-codecs iso-8859-11 #xA1
   #x0E01 #x0E02 #x0E03 #x0E04 #x0E05 #x0E06 #x0E07 #x0E08
   #x0E09 #x0E0A #x0E0B #x0E0C #x0E0D #x0E0E #x0E0F #x0E10
@@ -1281,7 +1361,7 @@ USA.
   #x0E49 #x0E4A #x0E4B #x0E4C #x0E4D #x0E4E #x0E4F #x0E50
   #x0E51 #x0E52 #x0E53 #x0E54 #x0E55 #x0E56 #x0E57 #x0E58
   #x0E59 #x0E5A #x0E5B #f     #f     #f     #f)
-
+
 (define-8-bit-codecs iso-8859-13 #xA1
   #x201D #x00A2 #x00A3 #x00A4 #x201E #x00A6 #x00A7 #x00D8
   #x00A9 #x0156 #x00AB #x00AC #x00AD #x00AE #x00C6 #x00B0
@@ -1295,7 +1375,7 @@ USA.
   #x00E9 #x017A #x0117 #x0123 #x0137 #x012B #x013C #x0161
   #x0144 #x0146 #x00F3 #x014D #x00F5 #x00F6 #x00F7 #x0173
   #x0142 #x015B #x016B #x00FC #x017C #x017E #x2019)
-
+
 (define-8-bit-codecs iso-8859-14 #xA1
   #x1E02 #x1E03 #x00A3 #x010A #x010B #x1E0A #x00A7 #x1E80
   #x00A9 #x1E82 #x1E0B #x1EF2 #x00AD #x00AE #x0178 #x1E1E
@@ -1309,6 +1389,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x0175
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x1E6B #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x0177 #x00FF)
+
+(define-coding-aliases 'ISO-8859-14
+  '(ISO-IR-199 ISO_8859-14:1998 ISO_8859-14 LATIN8 ISO-CELTIC L8))
 
 (define-8-bit-codecs iso-8859-15 #xA1
   #x00A1 #x00A2 #x00A3 #x20AC #x00A5 #x0160 #x00A7 #x0161
@@ -1324,6 +1407,9 @@ USA.
   #x00F1 #x00F2 #x00F3 #x00F4 #x00F5 #x00F6 #x00F7 #x00F8
   #x00F9 #x00FA #x00FB #x00FC #x00FD #x00FE #x00FF)
 
+(define-coding-aliases 'ISO-8859-15
+  '(ISO_8859-15 LATIN-9))
+
 (define-8-bit-codecs iso-8859-16 #xA1
   #x0104 #x0105 #x0141 #x20AC #x201E #x0160 #x00A7 #x0161
   #x00A9 #x0218 #x00AB #x0179 #x00AD #x017A #x017B #x00B0
@@ -1337,6 +1423,9 @@ USA.
   #x00E9 #x00EA #x00EB #x00EC #x00ED #x00EE #x00EF #x0111
   #x0144 #x00F2 #x00F3 #x00F4 #x0151 #x00F6 #x015B #x0171
   #x00F9 #x00FA #x00FB #x00FC #x0119 #x021B #x00FF)
+
+(define-coding-aliases 'ISO-8859-16
+  '(ISO-IR-226 ISO_8859-16:2001 ISO_8859-16 LATIN10 L10))
 
 (define-8-bit-codecs windows-1250 #x80
   #x20ac #f     #x201a #f     #x201e #x2026 #x2020 #x2021
@@ -1696,13 +1785,13 @@ USA.
 	 (let ((d0
 		(combine (get-byte bv bs 0)
 			 (get-byte bv bs 1))))
-	   (if (high-surrogate? d0)
+	   (if (utf16-high-surrogate? d0)
 	       (and (fix:<= (fix:+ bs 4) (input-buffer-end ib))
 		    (let ((d1
 			   (combine (get-byte bv bs 2)
 				    (get-byte bv bs 3))))
-		      (if (low-surrogate? d1)
-			  (done (combine-surrogates d0 d1) (fix:+ bs 4))
+		      (if (utf16-low-surrogate? d1)
+			  (done (combine-utf16-surrogates d0 d1) (fix:+ bs 4))
 			  (error:char-decoding ib))))
 	       (if (illegal-low? d0)
 		   (error:char-decoding ib)
@@ -1724,8 +1813,7 @@ USA.
 	   (put-byte bv bs 1 (second-byte cp))
 	   2)
 	  ((fix:< cp #x110000)
-	   (let ((h (fix:or (fix:lsh (fix:- cp #x10000) -10) #xD800))
-		 (l (fix:or (fix:and (fix:- cp #x10000) #x3FF) #xDC00)))
+	   (receive (h l) (split-into-utf16-surrogates cp)
 	     (put-byte bv bs 0 (first-byte h))
 	     (put-byte bv bs 1 (second-byte h))
 	     (put-byte bv bs 2 (first-byte l))
@@ -1746,13 +1834,6 @@ USA.
 (define-integrable (le-bytes->digit16 b0 b1) (fix:or b0 (fix:lsh b1 8)))
 (define-integrable (high-byte d) (fix:lsh d -8))
 (define-integrable (low-byte d) (fix:and d #xFF))
-(define-integrable (high-surrogate? n) (fix:= (fix:and #xFC00 n) #xD800))
-(define-integrable (low-surrogate? n) (fix:= (fix:and #xFC00 n) #xDC00))
-
-(define-integrable (combine-surrogates n0 n1)
-  (fix:+ (fix:or (extract n0 #x3FF 10)
-		 (extract n1 #x3FF 0))
-	 #x10000))
 
 (let ((alias
        (lambda ()
@@ -1835,11 +1916,6 @@ USA.
   (lambda (ob char)
     (encode-char ob char)))
 
-(define-normalizer-alias 'LF 'NEWLINE)
-(define-denormalizer-alias 'LF 'NEWLINE)
-(define-normalizer-alias 'BINARY 'NEWLINE)
-(define-denormalizer-alias 'BINARY 'NEWLINE)
-
 (define-normalizer 'CR
   (lambda (ib)
     (let ((c0 (decode-char ib)))
@@ -1915,6 +1991,14 @@ USA.
 	      #\U+000A))))
 	((#\U+0085 #\U+2028) #\U+000A)
 	(else c0)))))
+
+(define-normalizer-alias 'TEXT 'XML-1.0)
+(define-normalizer-alias 'LF 'NEWLINE)
+(define-denormalizer-alias 'LF 'NEWLINE)
+(define-normalizer-alias 'BINARY 'NEWLINE)
+(define-denormalizer-alias 'BINARY 'NEWLINE)
+(define-normalizer-alias 'HTTP 'XML-1.0)
+(define-denormalizer-alias 'HTTP 'CRLF)
 
 ;;;; Conditions
 

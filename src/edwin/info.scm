@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: info.scm,v 1.144 2008/01/30 20:02:02 cph Exp $
+$Id: info.scm,v 1.145 2008/08/28 15:26:51 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -768,7 +768,7 @@ The name may be an abbreviation of the reference name."
 		   (not (equal? pathname
 				(ref-variable info-current-file buffer))))
 	      (begin
-		(read-buffer buffer pathname #t)
+		(read-buffer buffer pathname #f)
 		(initialize-info-buffer buffer pathname))
 	      (begin
 		(if (not (eq? (buffer-major-mode buffer)
@@ -805,7 +805,7 @@ The name may be an abbreviation of the reference name."
   (let ((pathnames (find-dir-node-files buffer)))
     (if (null? pathnames)
 	(editor-error "Can't find the Info directory node."))
-    (read-buffer buffer (car pathnames) #t)
+    (read-buffer buffer (car pathnames) #f)
     (set-variable! info-tag-table-start #f)
     (set-variable! info-tag-table-end #f)
     (let ((submenus (append-map find-dir-node-menus (cdr pathnames))))
@@ -1225,7 +1225,7 @@ The name may be an abbreviation of the reference name."
 (define (set-current-subfile! pathname)
   (if (not (equal? pathname (ref-variable info-current-subfile)))
       (begin
-	(read-buffer (current-buffer) pathname true)
+	(read-buffer (current-buffer) pathname #f)
 	(set-variable! info-current-subfile pathname))))
 
 (define-integrable subfile-filename car)

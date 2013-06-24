@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unxprm.scm,v 1.75 2008/01/30 20:02:36 cph Exp $
+$Id: unxprm.scm,v 1.76 2008/09/10 14:55:49 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -40,7 +40,7 @@ USA.
 
 (define unix/file-access file-access)	;upwards compatability
 
-(define (temporary-file-pathname #!optional directory)
+(define (temporary-file-pathname #!optional directory transformer)
   (let ((root-string
 	 (string-append
 	  "sch"
@@ -49,11 +49,19 @@ USA.
 	(directory
 	 (if (or (default-object? directory) (not directory))
 	     (temporary-directory-pathname)
-	     (pathname-as-directory directory))))
+	     (pathname-as-directory directory)))
+	(transformer
+	 (if (or (default-object? transformer) (not transformer))
+	     identity-procedure
+	     (begin
+	       (guarantee-procedure-of-arity transformer 1
+					     'TEMPORARY-FILE-PATHNAME)
+	       transformer))))
     (let loop ((ext 0))
       (let ((pathname
-	     (merge-pathnames (string-append root-string (number->string ext))
-			      directory)))
+	     (transformer
+	      (merge-pathnames (string-append root-string (number->string ext))
+			       directory))))
 	(if (allocate-temporary-file pathname)
 	    (begin
 	      ;; Make sure file isn't readable or writeable by anyone

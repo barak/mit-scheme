@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: arith.scm,v 1.66 2008/01/30 20:02:28 cph Exp $
+$Id: arith.scm,v 1.67 2008/04/25 01:20:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -945,6 +945,11 @@ USA.
       (let ((p flo:significand-digits-base-2))
 	(rat:* (flo:->integer (flo:denormalize f p))
 	       (rat:expt 2 (int:- e-p p)))))))
+
+(define (flo:nan? x)
+  (not (or (flo:positive? x)
+	   (flo:negative? x)
+	   (flo:zero? x))))
 
 (define (real:real? object)
   (or (flonum? object)
@@ -1038,42 +1043,6 @@ USA.
   flo:simplest-exact-rational
   rat:simplest-rational)
 
-(define (real:= x y)
-  (if (flonum? x)
-      (if (flonum? y)
-	  (flo:= x y)
-	  (rat:= (flo:->rational x) y))
-      (if (flonum? y)
-	  (rat:= x (flo:->rational y))
-	  ((copy rat:=) x y))))
-
-(define (real:< x y)
-  (if (flonum? x)
-      (if (flonum? y)
-	  (flo:< x y)
-	  (rat:< (flo:->rational x) y))
-      (if (flonum? y)
-	  (rat:< x (flo:->rational y))
-	  ((copy rat:<) x y))))
-
-(define (real:max x y)
-  (if (flonum? x)
-      (if (flonum? y)
-	  (if (flo:< x y) y x)
-	  (if (rat:< (flo:->rational x) y) (rat:->inexact y) x))
-      (if (flonum? y)
-	  (if (rat:< x (flo:->rational y)) y (rat:->inexact x))
-	  (if (rat:< x y) y x))))
-
-(define (real:min x y)
-  (if (flonum? x)
-      (if (flonum? y)
-	  (if (flo:< x y) x y)
-	  (if (rat:< (flo:->rational x) y) x (rat:->inexact y)))
-      (if (flonum? y)
-	  (if (rat:< x (flo:->rational y)) (rat:->inexact x) y)
-	  (if (rat:< x y) x y))))
-
 (define (real:* x y)
   (cond ((flonum? x)
 	 (cond ((flonum? y) (flo:* x y))
@@ -1087,6 +1056,60 @@ USA.
   (cond ((flonum? x) (flo:/ x (if (flonum? y) y (rat:->inexact y))))
 	((flonum? y) (if (rat:zero? x) x (flo:/ (rat:->inexact x) y)))
 	(else ((copy rat:/) x y))))
+
+(define (real:= x y)
+  (if (flonum? x)
+      (if (flonum? y)
+	  (flo:= x y)
+	  (compare-flo/rat rat:= x y))
+      (if (flonum? y)
+	  (compare-rat/flo rat:= x y)
+	  ((copy rat:=) x y))))
+
+(define (real:< x y)
+  (if (flonum? x)
+      (if (flonum? y)
+	  (flo:< x y)
+	  (compare-flo/rat rat:< x y))
+      (if (flonum? y)
+	  (compare-rat/flo rat:< x y)
+	  ((copy rat:<) x y))))
+
+(define (real:max x y)
+  (if (flonum? x)
+      (if (flonum? y)
+	  (if (flo:< x y) y x)
+	  (if (compare-flo/rat rat:< x y)
+	      (rat:->inexact y)
+	      x))
+      (if (flonum? y)
+	  (if (compare-rat/flo rat:< x y)
+	      y
+	      (rat:->inexact x))
+	  (if (rat:< x y) y x))))
+
+(define (real:min x y)
+  (if (flonum? x)
+      (if (flonum? y)
+	  (if (flo:< x y) x y)
+	  (if (compare-flo/rat rat:< x y)
+	      x
+	      (rat:->inexact y)))
+      (if (flonum? y)
+	  (if (compare-rat/flo rat:< x y)
+	      (rat:->inexact x)
+	      y)
+	  (if (rat:< x y) x y))))
+
+(define-integrable (compare-flo/rat predicate x y)
+  (if (flo:nan? x)
+      #f
+      (predicate (flo:->rational x) y)))
+
+(define-integrable (compare-rat/flo predicate x y)
+  (if (flo:nan? y)
+      #f
+      (predicate x (flo:->rational y))))
 
 (define (real:even? n)
   ((copy int:even?)

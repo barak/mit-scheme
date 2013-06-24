@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: unstackify.c,v 11.7 2008/01/30 20:02:21 cph Exp $
+$Id: unstackify.c,v 11.8 2008/11/12 03:14:33 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -601,8 +601,8 @@ stackify_push_cons_ratnum (stackify_opcode_t op)
 static void
 stackify_push_cons_recnum (stackify_opcode_t op)
 {
-  SCHEME_OBJECT real = (unstackify_pop ());
   SCHEME_OBJECT imag = (unstackify_pop ());
+  SCHEME_OBJECT real = (unstackify_pop ());
   unstackify_push (MAKE_COMPLEX (real, imag));
 }
 

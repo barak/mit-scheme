@@ -1,6 +1,6 @@
 #| -*- Scheme -*-
 
-$Id: ed-ffi.scm,v 1.40 2008/01/30 20:02:30 cph Exp $
+$Id: ed-ffi.scm,v 1.45 2008/09/15 05:15:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -81,6 +81,10 @@ USA.
     ("hash"	(runtime hash))
     ("hashtb"	(runtime hash-table))
     ("histry"	(runtime history))
+    ("html-form-codec" (runtime html-form-codec))
+    ("http-client" (runtime http-client))
+    ("http-syntax" (runtime http-syntax))
+    ("httpio"	(runtime http-i/o))
     ("illdef"	(runtime illegal-definitions))
     ("infstr"	(runtime compiler-info))
     ("infutl"	(runtime compiler-info))
@@ -130,6 +134,7 @@ USA.
     ("regexp"	(runtime regular-expression))
     ("rep"	(runtime rep))
     ("rexp"	(runtime rexp))
+    ("rfc2822-headers" (runtime rfc2822-headers))
     ("rgxcmp"	(runtime regular-expression-compiler))
     ("savres"	(runtime save/restore))
     ("scan"	(runtime scode-scan))
@@ -141,9 +146,8 @@ USA.
     ("starbase"	(runtime starbase-graphics))
     ("stream"	(runtime stream))
     ("string"	(runtime string))
-    ("strnin"	(runtime string-input))
-    ("strott"	(runtime truncated-string-output))
-    ("strout"	(runtime string-output))
+    ("stringio"	(runtime string-i/o-port))
+    ("structure-parser" (runtime structure-parser))
     ("symbol"	(runtime symbol))
     ("syncproc"	(runtime synchronous-subprocess))
     ("syntactic-closures" (runtime syntactic-closures))

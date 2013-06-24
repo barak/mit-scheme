@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: xml-output.scm,v 1.43 2008/01/30 20:02:42 cph Exp $
+$Id: xml-output.scm,v 1.47 2008/10/26 23:35:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,11 +39,11 @@ USA.
       (set-coding xml port)
       (write-xml-1 xml port options))))
 
-(define (xml->string xml . options)
-  (call-with-output-string
-    (lambda (port)
-      (set-coding xml port)
-      (write-xml-1 xml port options))))
+(define (xml->octets xml . options)
+  (call-with-output-octets
+   (lambda (port)
+     (set-coding xml port)
+     (write-xml-1 xml port options))))
 
 (define (xml->wide-string xml . options)
   (call-with-wide-output-string
@@ -51,15 +51,16 @@ USA.
      (write-xml-1 xml port options))))
 
 (define (set-coding xml port)
-  (let ((coding
-	 (or (normalize-coding port
-			       (and (xml-document? xml)
-				    (xml-document-declaration xml)))
-	     'UTF-8)))
-    (port/set-coding port coding)
-    (port/set-line-ending port 'TEXT)
-    (if (coding-requires-bom? coding)
-	(write-char #\U+FEFF port))))
+  (if (port/supports-coding? port)
+      (let ((coding
+	     (or (normalize-coding port
+				   (and (xml-document? xml)
+					(xml-document-declaration xml)))
+		 'UTF-8)))
+	(port/set-coding port coding)
+	(port/set-line-ending port 'TEXT)
+	(if (coding-requires-bom? coding)
+	    (write-char #\U+FEFF port)))))
 
 (define (write-xml-1 xml port options)
   (%write-xml xml
@@ -501,8 +502,7 @@ USA.
 	     (emit-char char ctx))))))
 
 (define (for-each-wide-char string procedure)
-  (let ((port (open-input-string string)))
-    (port/set-coding port 'UTF-8)
+  (let ((port (open-utf8-input-string string)))
     (let loop ()
       (let ((char (read-char port)))
 	(if (not (eof-object? char))

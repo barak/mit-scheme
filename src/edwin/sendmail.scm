@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: sendmail.scm,v 1.93 2008/01/30 20:02:05 cph Exp $
+$Id: sendmail.scm,v 1.100 2008/10/23 19:07:03 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -109,6 +109,24 @@ This is used only of `mail-relay-host' is set."
         (exact-positive-integer? service)
         (string? service))))
 
+(define-variable mail-authentication
+  "SMTP authentication method (SASL mechanism) as a string.
+Set this to #F to disable authentication and to #T to use whatever
+  method is accepted by server, or no authentication if the server
+  accepts none.
+Currently only \"LOGIN\" and \"PLAIN\" are supported, so use this form
+  of authentication only over a secure channel."
+  #f
+  (lambda (method)
+    (member method '(#f #t "LOGIN" "PLAIN"))))
+
+(define-variable smtp-user-name
+  "User name to use for simple SMTP authentication.
+#F means prompt for the name each time."
+  #f
+  (lambda (object)
+    (or (not object) (string? object))))
+
 (define-variable smtp-trace
   "If true, direct SMTP transmissions are traced in a buffer."
   #f
@@ -119,6 +137,15 @@ This is used only of `mail-relay-host' is set."
 Otherwise, only one valid recipient is required."
   #t
   boolean?)
+
+(define-variable smtp-greeting-hostname
+  "Hostname for HELO (or EHLO) messages when sending mail by SMTP.
+This may be a string or a procedure.
+Default is whatever the OS reports."
+  os/hostname
+  (lambda (object)
+    (or (string? object)
+	(procedure? object))))
 
 (define-variable sendmail-program
   "Filename of sendmail program."
@@ -150,6 +177,12 @@ The headers are delimited by a string found in mail-header-separator."
 		"^in-reply-to:"
 		"^return-path:")
   string?)
+
+(define-variable mail-yank-prefix
+  "Prefix to insert on lines of yanked message being replied to.
+#F means use indentation."
+  #f
+  string-or-false?)
 
 (define-variable mail-interactive
   "True means when sending a message wait for and display errors.
@@ -225,6 +258,13 @@ is inserted."
 
 (define (make-mail-buffer headers reply-buffer #!optional
 			  selector handle-previous buffer-name mode)
+  (make-initialized-mail-buffer headers reply-buffer
+				(lambda (buffer) buffer unspecific)
+				selector handle-previous buffer-name mode))
+
+(define (make-initialized-mail-buffer headers reply-buffer initializer
+				      #!optional selector handle-previous
+				      buffer-name mode)
   (let ((selector (if (default-object? selector) #f selector))
 	(handle-previous
 	 (if (default-object? handle-previous)
@@ -244,6 +284,7 @@ is inserted."
 					      (default-homedir-pathname))
 	       (setup-buffer-auto-save! buffer)
 	       (mail-setup buffer headers reply-buffer mode)
+	       (initializer buffer)
 	       (if (and select? selector) (selector buffer))
 	       buffer))))
       (cond ((not buffer)
@@ -273,12 +314,7 @@ is inserted."
 			      (ref-mode-object mail)))
   (local-set-variable! mail-reply-buffer reply-buffer buffer)
   (let ((headers (add-standard-headers headers buffer))
-	(point (mark-left-inserting-copy (buffer-start buffer)))
-	(fill
-	 (lambda (start end)
-	   (fill-region-as-paragraph start end
-				     "\t" (ref-variable fill-column buffer)
-				     #f))))
+	(point (mark-left-inserting-copy (buffer-start buffer))))
     (let ((start (mark-right-inserting-copy point)))
       (for-each
        (lambda (header)
@@ -310,7 +346,7 @@ is inserted."
 			      (or (string-ci=? key "to")
 				  (string-ci=? key "cc"))
 			      (caddr header)))
-		     (fill start point))
+		     (fill-mail-addresses start point))
 		 (insert-newline point)))))
        headers)
       (mark-temporary! start))
@@ -341,6 +377,27 @@ is inserted."
 	  (buffer-not-modified! buffer))))
   (event-distributor/invoke! (ref-variable mail-setup-hook buffer) buffer))
 
+(define (fill-mail-addresses start end)
+  ;; This totally loses on quoted or commented names, which it
+  ;; probably shouldn't split up.
+  (let ((column (ref-variable fill-column start))
+	(mark (char-search-forward #\, start end)))
+    (if mark
+	(let loop ((start start) (mark mark))
+	  (let ((mark* (char-search-forward #\, mark end)))
+	    (if mark*
+		(if (< (mark-column mark*) column)
+		    (loop start mark*)
+		    (let ((mark
+			   (mark-permanent-copy
+			    ;; Skip addresses that are too long.
+			    (if (mark= mark start) mark* mark))))
+		      (delete-horizontal-space mark)
+		      (insert-newline mark)
+		      (insert-char #\tab mark)
+		      (mark-temporary! mark)
+		      (loop mark mark)))))))))
+
 (define (add-standard-headers headers buffer)
   (let ((add
 	 (lambda (key value)
@@ -563,20 +620,32 @@ Here are commands that move to a header field (and create it if there isn't):
   (insert-string value (mail-new-field! header-start header-end field)))
 
 (define-command mail-yank-original
-  "Insert the message being replied to, if any (in rmail).
+  "Insert the message being replied to, if any (in rmail or imail).
 Puts point after the text and mark before.
-Indents each nonblank line ARG spaces (default 3).
-Just \\[universal-argument] as argument means don't indent
+Normally, indents each nonblank line ARG spaces (default 3).
+However, if `mail-yank-prefix' is a string, insert that prefix on each line.
+Just \\[universal-argument] as argument means don't indent, insert no prefix,
 and don't delete any header fields."
   "P"
   (lambda (argument)
-    (let ((mail-reply-buffer (ref-variable mail-reply-buffer))
-	  (left-margin
-	   (if (command-argument-multiplier-only? argument)
-	       0
-	       (or (command-argument-value argument) 3))))
+    (let ((mail-reply-buffer (ref-variable mail-reply-buffer)))
       (if mail-reply-buffer
-	  (begin
+	  (receive (prefix left-margin)
+	      (cond ((command-argument-multiplier-only? argument)
+		     (values #f 0))
+		    ((command-argument-value argument)
+		     => (lambda (v)
+			  (values #f (max 0 v))))
+		    ((ref-variable mail-yank-prefix)
+		     => (lambda (prefix)
+			  (values prefix
+				  (string-columns
+				   prefix
+				   0
+				   (ref-variable tab-width)
+				   default-char-image-strings))))
+		    (else
+		     (values #f 3)))
 	    (for-each (lambda (window)
 			(if (not (window-has-no-neighbors? window))
 			    (window-delete! window)))
@@ -597,12 +666,16 @@ and don't delete any header fields."
 		(if (not (command-argument-multiplier-only? argument))
 		    (begin
 		      (mail-yank-clear-headers start end)
-		      (indent-rigidly start end left-margin)))
+		      (if prefix
+			  (for-each-line-in-region start end
+			    (lambda (mark)
+			      (insert-string prefix mark)))
+			  (indent-rigidly start end left-margin))))
 		(mark-temporary! start)
 		(mark-temporary! end)
 		(push-current-mark! start)
 		(set-current-point! end))))))))
-
+
 (define (mail-yank-clear-headers start end)
   (let ((start (mark-left-inserting-copy start))
 	(end
@@ -637,7 +710,7 @@ Numeric argument means justify as well."
 				  (ref-variable fill-column)
 				  justify?
 				  #t))))
-
+
 (define-command mail-send-and-exit
   "Send message like mail-send, then, if no errors, exit from mail buffer.
 Prefix arg means don't delete this window."
@@ -918,46 +991,24 @@ the user from the mailer."
 
 (define (send-mail-using-smtp message-pathname recipients lookup-context)
   (message "Sending...")
-  (let ((from
-	 (rfc822:canonicalize-address-string
-	  (mail-from-string lookup-context)))
-	(trace-buffer
+  (if (null? recipients)
+      (editor-error "No recipients specified for mail."))
+  (let ((trace-buffer
 	 (and (ref-variable smtp-trace lookup-context)
-	      (temporary-buffer "*SMTP-trace*")))
-	(require-valid?
-	 (ref-variable smtp-require-valid-recipients lookup-context))
-	(valid-response?
-	 (lambda (response) (= 250 (smtp-response-number response)))))
-    (if (null? recipients)
-	(editor-error "No recipients specified for mail."))
+	      (temporary-buffer "*SMTP-trace*"))))
     (let ((responses
-	   (call-with-smtp-socket (ref-variable mail-relay-host lookup-context)
-                                  (ref-variable mail-relay-service
-                                                lookup-context)
-				  trace-buffer
-	     (lambda (port banner)
-	       banner
-	       (smtp-command/helo port)
-	       (smtp-command/mail port from)
-	       (let ((responses
-		      (map (lambda (recipient)
-			     (smtp-command/rcpt port recipient))
-			   recipients)))
-		 (if (if require-valid?
-			 (for-all? responses valid-response?)
-			 (there-exists? responses valid-response?))
-		     (smtp-command/data port message-pathname)
-		     (smtp-command/rset port))
-		 (smtp-command/quit port)
-		 responses)))))
-      (cond ((not (for-all? responses valid-response?))
+	   (transact-smtp recipients
+                          message-pathname
+                          trace-buffer
+                          lookup-context)))
+      (cond ((not (for-all? responses smtp-response-valid?))
 	     (pop-up-temporary-buffer "*SMTP-invalid*"
 				      '(READ-ONLY FLUSH-ON-SPACE)
 	       (lambda (buffer window)
 		 window
 		 (let ((m (mark-left-inserting-copy (buffer-start buffer))))
 		   (for-each (lambda (recipient response)
-			       (if (not (valid-response? response))
+			       (if (not (smtp-response-valid? response))
 				   (begin
 				     (insert-string recipient m)
 				     (insert-char #\tab m)
@@ -970,11 +1021,38 @@ the user from the mailer."
 	     (buffer-not-modified! trace-buffer)
 	     (pop-up-buffer trace-buffer #f)))
       (message "Sending..."
-	       (if (if require-valid?
-		       (for-all? responses valid-response?)
-		       (there-exists? responses valid-response?))
+	       (if (smtp-responses-ok? responses lookup-context)
 		   "done"
 		   "aborted")))))
+
+(define (transact-smtp recipients message-pathname trace-buffer lookup-context)
+  (call-with-smtp-socket (ref-variable mail-relay-host lookup-context)
+			 (ref-variable mail-relay-service lookup-context)
+			 trace-buffer
+    (lambda (port banner)
+      banner				;ignore
+      (let ((capabilities
+	     (smtp-command/ehlo port (smtp-greeting-hostname lookup-context))))
+	(smtp-authenticate port capabilities lookup-context)
+	(smtp-command/mail port (rfc822:canonicalize-address-string
+				 (mail-from-string lookup-context)))
+	(let ((responses
+	       (map (lambda (recipient)
+		      (smtp-command/rcpt port recipient))
+		    recipients)))
+	  (if (smtp-responses-ok? responses lookup-context)
+	      (smtp-command/data port message-pathname)
+	      (smtp-command/rset port))
+	  (smtp-command/quit port)
+	  responses)))))
+
+(define (smtp-response-valid? response)
+  (= 250 (smtp-response-number response)))
+
+(define (smtp-responses-ok? responses lookup-context)
+  (if (ref-variable smtp-require-valid-recipients lookup-context)
+      (for-all? responses smtp-response-valid?)
+      (there-exists? responses smtp-response-valid?)))
 
 (define (call-with-smtp-socket host-name service trace-buffer receiver)
   (let ((port #f))
@@ -982,7 +1060,7 @@ the user from the mailer."
      (lambda ()
        (set! port
 	     (make-smtp-port (open-tcp-stream-socket host-name
-                                                     (or service "smtp"))
+						     (or service "smtp"))
 			     trace-buffer))
        unspecific)
      (lambda ()
@@ -1000,6 +1078,8 @@ the user from the mailer."
 
 (define (smtp-read-line port)
   (let ((line (read-line (smtp-port-port port))))
+    (if (eof-object? line)
+	(editor-error "Premature end of input from SMTP server: " port))
     (smtp-trace-write-string line port)
     (smtp-trace-newline port)
     line))
@@ -1025,8 +1105,15 @@ the user from the mailer."
     (if trace-buffer
 	(insert-newline (buffer-end trace-buffer)))))
 
-(define (smtp-command/helo port)
-  (smtp-write-line port "HELO " (os/hostname))
+(define (smtp-command/ehlo port hostname)
+  ;++ This should probably fall back on HELO if the server answers
+  ;++ non-250, but honestly, how many non-ESMTP servers are there out
+  ;++ there?
+  (smtp-write-line port "EHLO " hostname)
+  (smtp-read-response port 250))
+
+(define (smtp-command/helo port hostname)
+  (smtp-write-line port "HELO " hostname)
   (smtp-read-response port 250))
 
 (define (smtp-command/mail port from)
@@ -1062,6 +1149,12 @@ the user from the mailer."
   (smtp-write-line port "QUIT")
   (smtp-read-response port 221))
 
+(define (smtp-greeting-hostname lookup-context)
+  (let ((hostname (ref-variable smtp-greeting-hostname lookup-context)))
+    (if (procedure? hostname)
+	(hostname)
+	hostname)))
+
 (define (smtp-read-response port . numbers)
   (smtp-drain-output port)
   (let ((response (smtp-read-line port)))
@@ -1097,7 +1190,121 @@ the user from the mailer."
 			    responses)))
 		  (cons (car lines)
 			(append-map (lambda (line) (list "\n" line))
-				    lines))))))
+				    (cdr lines)))))))
+
+;;;;; SMTP Authentication
+
+(define (smtp-authenticate port capabilities lookup-context)
+  (define (authenticate method)
+    (smtp-authenticate-with-method port method lookup-context))
+  (let ((method (ref-variable mail-authentication lookup-context)))
+    (if method
+	(let ((accepted-methods
+	       (smtp-accepted-authentication-methods capabilities)))
+	  (if (not (pair? accepted-methods))
+	      (editor-failure "No accepted authentication methods.")
+	      (cond ((and (eq? method #t)
+			  (or (member "LOGIN" accepted-methods)
+			      (member "PLAIN" accepted-methods)))
+		     => (lambda (tail)
+			  (authenticate (car tail))))
+		    ((member method accepted-methods)
+		     (authenticate method))
+		    (else
+		     (editor-failure "Authentication method not accepted:"
+				     method))))))))
+
+(define rexp:sasl-mechanism		;RFC 2222, Section 3, par. 2
+  (let ((char-set
+	 (char-set-union char-set:upper-case
+			 char-set:numeric
+			 (char-set #\- #\_))))
+    ;; The regexp compiler loses on this, unfortunately.  Fortunately,
+    ;; it doesn't matter, because if there were an excessively long
+    ;; name, it would have already caused any harm it could by the
+    ;; time we try to examine it here.
+    ;;	 (rexp-n*m 1 20 char-set)
+    (rexp+ char-set)))
+
+(define regexp:sasl-mechanism (rexp->regexp rexp:sasl-mechanism))
+
+(define rexp:smtp-auth-keywords
+  (rexp-sequence (rexp-line-start)
+		 "AUTH"
+		 (rexp-group (rexp* " " rexp:sasl-mechanism))))
+
+(define regexp:smtp-auth-keywords (rexp->regexp rexp:smtp-auth-keywords))
+
+(define (smtp-accepted-authentication-methods capabilities)
+  (let ((match
+	 (re-string-search-forward regexp:smtp-auth-keywords capabilities)))
+    (if match
+	(cdr (burst-string (re-match-extract capabilities match 1) #\space #f))
+	'())))
+
+(define (smtp-authenticate-with-method port method lookup-context)
+  (smtp-write-line port "AUTH " method)
+  (smtp-read-response port 334)
+  (let* ((user-name
+	  (or (ref-variable smtp-user-name lookup-context)
+	      (prompt-for-string "User name" #f)))
+	 (pass-phrase-key
+	  (smtp-server-pass-phrase-key user-name lookup-context)))
+    (cond ((string=? method "LOGIN")
+	   (smtp-auth:login port user-name pass-phrase-key))
+	  ((string=? method "PLAIN")
+	   (smtp-auth:plain port user-name pass-phrase-key))
+	  (else (error "Unknown SMTP authentication method:" method)))
+    (bind-condition-handler
+	(list condition-type:editor-error)
+	(lambda (condition)
+	  condition			;ignore
+	  (delete-stored-pass-phrase pass-phrase-key))
+      (lambda ()
+	(smtp-read-response port 235)))))
+
+(define (smtp-auth:login port user-name pass-phrase-key)
+  (define (base64 string)
+    (string-trim
+     (call-with-output-string
+       (lambda (port)
+	 (let ((context (encode-base64:initialize port #f)))
+	   (encode-base64:update context string 0 (string-length string))
+	   (encode-base64:finalize context))))))
+  (smtp-write-line port (base64 user-name))
+  (smtp-read-response port 334)
+  (smtp-write-line port (call-with-stored-pass-phrase pass-phrase-key base64)))
+
+(define (smtp-auth:plain port user-name pass-phrase-key)
+  ((lambda (string)
+     (smtp-write-line port (string-trim string)))
+   (call-with-output-string
+     (lambda (port)
+       (let ((context (encode-base64:initialize port)))
+	 (encode-base64:update context "\000" 0 1)
+	 (encode-base64:update context user-name 0 (string-length user-name))
+	 (encode-base64:update context "\000" 0 1)
+	 (call-with-stored-pass-phrase pass-phrase-key
+	   (lambda (pass)
+	     (encode-base64:update context pass 0 (string-length pass))))
+	 (encode-base64:finalize context))))))
+
+(define (smtp-server-pass-phrase-key user-name lookup-context)
+  ;++ Should this include `SMTP' anywhere?  Generating
+  ;++ `smtp://<user-name>@<host>:<port>' is disgusting, but it would
+  ;++ do the trick...
+  (string-append user-name
+		 "@"
+		 (ref-variable mail-relay-host lookup-context)
+		 (let ((service
+			(ref-variable mail-relay-service lookup-context)))
+		   (if (or (eqv? service 25)
+			   (equal? service "smtp"))
+		       ""
+		       (string-append ":"
+				      (if (string? service)
+					  service
+					  (number->string service #d10)))))))
 
 ;;;; MIME
 
@@ -1597,8 +1804,25 @@ Otherwise, the MIME type is determined from the file's suffix;
 			      (else (editor-beep) (loop))))))))))))
     (values mime-type
 	    (if (eq? (mime-type/top-level mime-type) 'TEXT)
-		'((CHARSET "iso-8859-1"))
+		(let ((charset
+		       (ref-variable default-mime-text-charset buffer)))
+		  (if (not charset)
+		      '()
+		      `((CHARSET
+			 ,(if (eq? charset 'PROMPT)
+			      (prompt-for-string "Charset:" "ISO-8859-1")
+			      charset)))))
 		'()))))
+
+(define-variable default-mime-text-charset
+  "Default charset for MIME text/plain entities, as a string.
+If #F, no charset is included.
+If the symbol PROMPT, prompt for a charset."
+  "ISO-8859-1"
+  (lambda (object)
+    (or (string? object)
+	(eq? object 'PROMPT)
+	(eq? object #f))))
 
 (define-variable file-type-to-mime-type
   "Specifies the MIME type/subtype for files with a given type.
