@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.582 2006/03/10 01:46:20 cph Exp $
+$Id: runtime.pkg,v 14.593 2006/09/06 04:49:53 cph Exp $
 
 Copyright 1988,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
 Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
@@ -140,7 +140,6 @@ USA.
 	  default-object
 	  default-object?
 	  error:not-unparser-method
-	  future?
 	  gc-space-status
 	  guarantee-unparser-method
 	  interrupt-bit/after-gc
@@ -493,6 +492,9 @@ USA.
   (files "symbol")
   (parent (runtime))
   (export ()
+	  error:not-interned-symbol
+	  error:not-symbol
+	  error:not-uninterned-symbol
 	  guarantee-interned-symbol
 	  guarantee-symbol
 	  guarantee-uninterned-symbol
@@ -763,6 +765,8 @@ USA.
 	  burst-string
 	  char->string
 	  decorated-string-append
+	  error:not-string
+	  error:not-xstring
 	  external-string-length
 	  external-string?
 	  guarantee-string
@@ -770,6 +774,7 @@ USA.
 	  guarantee-substring
 	  guarantee-substring-end-index
 	  guarantee-substring-start-index
+	  guarantee-xstring
 	  hexadecimal->vector-8b
 	  list->string
 	  make-string
@@ -932,7 +937,7 @@ USA.
 	  advice
 	  advise-entry
 	  advise-exit
-	  break
+	  ;;break
 	  break-both
 	  break-entry
 	  break-exit
@@ -1285,7 +1290,8 @@ USA.
 	  debugger:print-return-values?
 	  debugger:string-length-limit
 	  debugger:student-walk?
-	  debugger:use-history?)
+	  debugger:use-history?
+	  stack-trace)
   (initialization (initialize-package!)))
 
 (define-package (runtime debugger-command-loop)
@@ -2115,13 +2121,21 @@ USA.
   (files "list")
   (parent (runtime))
   (export ()
+	  (improper-list? dotted-list?)
 	  (list-search-negative find-non-matching-item)
 	  (list-search-positive find-matching-item)
+	  (list-tabulate make-initialized-list)	;SRFI-1
 	  (list-transform-negative delete-matching-items)
 	  (list-transform-positive keep-matching-items)
+	  (mapcan append-map!)
+	  (mapcan* append-map*!)
+	  (proper-list? list?)		;SRFI-1
 	  add-member-procedure
 	  alist->keyword-list
+	  alist-cons
 	  alist-copy
+	  alist-delete
+	  alist-delete!
 	  alist?
 	  append
 	  append!
@@ -2148,6 +2162,7 @@ USA.
 	  caddr
 	  cadr
 	  car
+	  car+cdr			;SRFI-1
 	  cdaaar
 	  cdaadr
 	  cdaar
@@ -2164,6 +2179,7 @@ USA.
 	  cddr
 	  cdr
 	  circular-list
+	  circular-list?		;SRFI-1
 	  cons
 	  cons*
 	  count-matching-items
@@ -2184,8 +2200,11 @@ USA.
 	  delq!
 	  delv
 	  delv!
+	  dotted-list?			;SRFI-1
 	  eighth
 	  error:not-alist
+	  error:not-circular-list
+	  error:not-dotted-list
 	  error:not-keyword-list
 	  error:not-list
 	  error:not-pair
@@ -2200,6 +2219,7 @@ USA.
 	  find-unique-matching-item
 	  find-unique-non-matching-item
 	  first
+	  fold
 	  fold-left
 	  fold-right
 	  for-each
@@ -2207,6 +2227,8 @@ USA.
 	  general-car-cdr
 	  get-keyword-value
 	  guarantee-alist
+	  guarantee-circular-list
+	  guarantee-dotted-list
 	  guarantee-keyword-list
 	  guarantee-list
 	  guarantee-list->length
@@ -2216,10 +2238,12 @@ USA.
 	  guarantee-restricted-keyword-list
 	  guarantee-unique-keyword-list
 	  guarantee-weak-list
+	  iota				;SRFI-1
 	  keep-matching-items
 	  keep-matching-items!
 	  keyword-list->alist
 	  keyword-list?
+	  last				;SRFI-1
 	  last-pair
 	  length
 	  list
@@ -2232,6 +2256,7 @@ USA.
 	  list-of-type?->length
 	  list-ref
 	  list-tail
+	  list=				;SRFI-1
 	  list?
 	  list?->length
 	  make-circular-list
@@ -2239,13 +2264,13 @@ USA.
 	  make-list
 	  map
 	  map*
-	  mapcan
-	  mapcan*
 	  member
 	  member-procedure
 	  memq
 	  memv
 	  ninth
+	  not-pair?			;SRFI-1
+	  null-list?			;SRFI-1
 	  null?
 	  pair?
 	  reduce
@@ -2275,7 +2300,74 @@ USA.
 	  weak-pair/car?
 	  weak-pair?
 	  weak-set-car!
-	  weak-set-cdr!))
+	  weak-set-cdr!
+	  xcons))
+
+(define-package (runtime srfi-1)
+  (files "srfi-1")
+  (parent (runtime))
+  (export ()
+	  any
+	  append-reverse
+	  append-reverse!
+	  break
+	  break!
+	  concatenate
+	  concatenate!
+	  count
+	  delete-duplicates
+	  delete-duplicates!
+	  drop
+	  drop-right
+	  drop-right!
+	  drop-while
+	  every
+	  filter
+	  filter!
+	  filter-map
+	  find
+	  find-tail
+	  length+
+	  list-index
+	  lset-adjoin
+	  lset-diff+intersection
+	  lset-diff+intersection!
+	  lset-difference
+	  lset-difference!
+	  lset-intersection
+	  lset-intersection!
+	  lset-union
+	  lset-union!
+	  lset-xor
+	  lset-xor!
+	  lset<=
+	  lset=
+	  map!
+	  map-in-order
+	  pair-fold
+	  pair-fold-right
+	  pair-for-each
+	  partition
+	  partition!
+	  remove
+	  remove!
+	  span
+	  span!
+	  split-at
+	  split-at!
+	  take
+	  take!
+	  take-right
+	  take-while
+	  take-while!
+	  unfold
+	  unfold-right
+	  unzip1
+	  unzip2
+	  unzip3
+	  unzip4
+	  unzip5
+	  zip))
 
 (define-package (runtime load)
   (files "load")
@@ -3957,6 +4049,7 @@ USA.
   (files "strnin")
   (parent (runtime))
   (export ()
+	  call-with-input-string
 	  open-input-string
 	  (string->input-port open-input-string)
 	  with-input-from-string)
@@ -3972,6 +4065,7 @@ USA.
 	  get-output-string!
 	  (make-accumulator-output-port open-output-string)
 	  open-output-string
+	  port-position
 	  (with-string-output-port call-with-output-string)
 	  with-output-to-string)
   (initialization (initialize-package!)))
@@ -4643,6 +4737,7 @@ USA.
   (files "parser-buffer")
   (parent (runtime))
   (export ()
+	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
 	  call-with-parser-buffer-tail
 	  discard-parser-buffer-head!
 	  get-parser-buffer-pointer
@@ -4672,7 +4767,7 @@ USA.
 	  match-parser-buffer-substring-ci
 	  match-parser-buffer-substring-ci-no-advance
 	  match-parser-buffer-substring-no-advance
-	  (match-utf8-char-in-alphabet match-parser-buffer-char-in-alphabet)
+	  parser-buffer-error
 	  parser-buffer-line
 	  parser-buffer-pointer-index
 	  parser-buffer-pointer-line
@@ -4699,6 +4794,7 @@ USA.
 	  alphabet->char-set
 	  alphabet->code-points
 	  alphabet->string
+	  alphabet-predicate
 	  alphabet?
 	  call-with-wide-output-string
 	  char-in-alphabet?
@@ -4717,6 +4813,8 @@ USA.
 	  error:not-well-formed-code-point-list
 	  error:not-wide-char
 	  error:not-wide-string
+	  for-all-chars-in-string?
+	  for-any-char-in-string?
 	  guarantee-8-bit-alphabet
 	  guarantee-alphabet
 	  guarantee-unicode-code-point
@@ -4923,6 +5021,49 @@ USA.
 	  write-partial-uri
 	  write-uri)
   (initialization (initialize-package!)))
+
+(define-package (runtime http-client)
+  (files "http-client")
+  (parent (runtime))
+  (export ()
+	  call-with-http-connection
+	  call-with-http-response:entity-request
+	  call-with-http-response:get
+	  call-with-http-response:post
+	  close-http-connection
+	  guarantee-http-version
+	  http-connection?
+	  http-connection/host
+	  http-connection/host-string
+	  http-connection/port
+	  http-connection/socket
+	  http-connection-open?
+	  http-get
+	  http-head
+	  http-post
+	  http-parser:status-code
+	  http-parser:status-line
+	  http-parser:version
+	  http-response?
+	  http-response/first-header-field
+	  http-response/all-header-fields
+	  http-response/header-fields
+	  http-response/reason
+	  http-response/status-code
+	  http-response/status-type
+	  http-response/version
+	  http-version
+	  http-version?
+	  http-version=?
+	  http-version<?
+	  make-http-version
+	  open-http-connection
+	  read-http-entity
+	  read-http-response
+	  receive-http-response
+	  send-http-request
+	  write-http-request
+	  ))
 
 (define-package (runtime postgresql)
   (file-case options

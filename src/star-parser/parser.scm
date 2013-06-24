@@ -1,8 +1,8 @@
 #| -*-Scheme-*-
 
-$Id: parser.scm,v 1.35 2003/02/14 18:28:35 cph Exp $
+$Id: parser.scm,v 1.36 2006/06/10 04:12:32 cph Exp $
 
-Copyright 2001,2002,2003 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -124,6 +124,13 @@ USA.
 (define-*parser-expander 'TOP-LEVEL
   (lambda (expression)
     `(SEQ ,expression (DISCARD-MATCHED))))
+
+(define-*parser-expander 'ERROR
+  (lambda (ptr msg . irritants)
+    (let ((v (generate-uninterned-symbol)))
+      `(SEXP (LAMBDA (,v)
+	       ,@(if ptr (list v) '())
+	       (PARSER-BUFFER-ERROR ,(or ptr v) ,msg ,@irritants))))))
 
 (define-parser-preprocessor '(ALT SEQ)
   (lambda (expression external-bindings internal-bindings)

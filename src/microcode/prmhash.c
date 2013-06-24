@@ -1,8 +1,8 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.7 2006/03/11 04:13:10 cph Exp $
+$Id: prmhash.c,v 11.9 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 2000-2001 Massachusetts Institute of Technology
+Copyright 2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -29,7 +29,15 @@ USA.
 #include "prims.h"
 #include "usrdef.h"
 #include "os.h"
-#include <mhash.h>
+
+#ifdef HAVE_MHASH_H
+#  include <mhash.h>
+#else
+/*
+** Hack:  Dependency suppressed to appease "makegen/makegen.scm".
+**        This is OK since it cannot link w/o the library anyway.
+*/
+#endif
 
 #define UNARY_OPERATION(name, get_arg, cvt_val)				\
 {									\

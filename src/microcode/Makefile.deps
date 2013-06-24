@@ -38,8 +38,8 @@ bigprm.o: bigprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	returns.h scheme.h scode.h sdata.h stack.h types.h zones.h
 bintopsb.o: bintopsb.c ansidecl.h bignmint.h bignum.h bitstr.h bltdef.h \
 	cmpgc.h cmpintmd.h cmptype.h comlin.c comlin.h config.h confshared.h \
-	const.h fasl.h gccode.h load.c object.h prims.h psbmap.h sdata.h \
-	trap.h types.h
+	const.h fasl.h gccode.h load.c object.h outf.h prims.h psbmap.h \
+	sdata.h trap.h types.h
 bitstr.o: bitstr.c ansidecl.h bignum.h bitstr.h bkpt.h config.h confshared.h \
 	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
 	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
@@ -166,6 +166,11 @@ outf.o: outf.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h returns.h \
 	scheme.h scode.h sdata.h stack.h types.h
+ppband.o: ppband.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fasl.h fixobj.h futures.h gc.h gccode.h gctype.c interp.h \
+	intrpt.h load.c object.h obstack.h outf.h prim.h returns.h scheme.h \
+	scode.h sdata.h stack.h storage.c types.h
 prbfish.o: prbfish.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \

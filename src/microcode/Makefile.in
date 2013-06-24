@@ -1,9 +1,11 @@
 # This file automatically generated from Makefile.in.in
-# on Fri, 14 Apr 2006 14:32:22 -0400.
+# on Wed, 6 Sep 2006 15:27:49 -0400.
 
-# $Id: Makefile.in.in,v 1.25 2005/06/26 05:36:52 cph Exp $
+# -*- Makefile -*-
 #
-# Copyright 2000,2001,2002,2003 Massachusetts Institute of Technology
+# $Id: Makefile.in.in,v 1.29 2006/06/10 05:38:02 cph Exp $
+#
+# Copyright 2000,2001,2002,2003,2005,2006 Massachusetts Institute of Technology
 #
 # This file is part of MIT/GNU Scheme.
 #
@@ -37,6 +39,7 @@ exec_prefix = @exec_prefix@
 bindir = @bindir@
 sbindir = @sbindir@
 libexecdir = @libexecdir@
+datarootdir = @datarootdir@
 datadir = @datadir@
 sysconfdir = @sysconfdir@
 sharedstatedir = @sharedstatedir@
@@ -144,7 +147,7 @@ SHARED_OBJECTS = $(CORE_OBJECTS) $(OS_PRIM_OBJECTS) $(UNIX_OBJECTS) \
 # **** Program definitions ****
 
 bin_PROGRAMS = scheme bchscheme
-aux_PROGRAMS = gcdrone
+aux_PROGRAMS = gcdrone ppband
 aux_LIBS = $(MODULE_TARGETS)
 aux_DATA = utabmd.bin
 EXTRA_PROGRAMS = findprim bintopsb psbtobin
@@ -184,6 +187,12 @@ psbtobin_OBJECTS = psbtobin.o missing.o
 psbtobin_DEPENDENCIES = 
 psbtobin_LDFLAGS = 
 psbtobin_LIBS = $(LIBS)
+
+ppband_SOURCES = ppband.c outf.c
+ppband_OBJECTS = ppband.o outf.o
+ppband_DEPENDENCIES = load.c storage.c
+ppband_LDFLAGS = 
+ppband_LIBS = $(LIBS)
 
 ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
 ALL_LIBS = $(aux_LIBS)
@@ -249,6 +258,10 @@ bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
 psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
+
+ppband: $(ppband_OBJECTS) $(ppband_DEPENDENCIES)
+	-rm -f $@
+	$(LINK) $(ppband_LDFLAGS) $(ppband_OBJECTS) $(ppband_LIBS)
 
 utabmd.bin: utabmd.scm
 	./utabmd.sh
@@ -383,8 +396,8 @@ bigprm.o: bigprm.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	returns.h scheme.h scode.h sdata.h stack.h types.h zones.h
 bintopsb.o: bintopsb.c ansidecl.h bignmint.h bignum.h bitstr.h bltdef.h \
 	cmpgc.h cmpintmd.h cmptype.h comlin.c comlin.h config.h confshared.h \
-	const.h fasl.h gccode.h load.c object.h prims.h psbmap.h sdata.h \
-	trap.h types.h
+	const.h fasl.h gccode.h load.c object.h outf.h prims.h psbmap.h \
+	sdata.h trap.h types.h
 bitstr.o: bitstr.c ansidecl.h bignum.h bitstr.h bkpt.h config.h confshared.h \
 	const.h critsec.h default.h dstack.h errors.h extern.h fixobj.h \
 	futures.h gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h \
@@ -511,6 +524,11 @@ outf.o: outf.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h returns.h \
 	scheme.h scode.h sdata.h stack.h types.h
+ppband.o: ppband.c ansidecl.h bignum.h bkpt.h cmpgc.h cmpintmd.h cmptype.h \
+	config.h confshared.h const.h critsec.h default.h dstack.h errors.h \
+	extern.h fasl.h fixobj.h futures.h gc.h gccode.h gctype.c interp.h \
+	intrpt.h load.c object.h obstack.h outf.h prim.h returns.h scheme.h \
+	scode.h sdata.h stack.h storage.c types.h
 prbfish.o: prbfish.c ansidecl.h bignum.h bkpt.h config.h confshared.h const.h \
 	critsec.h default.h dstack.h errors.h extern.h fixobj.h futures.h \
 	gc.h interp.h intrpt.h object.h obstack.h outf.h prim.h prims.h \

@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: loadef.scm,v 1.48 2003/02/14 18:28:12 cph Exp $
+$Id: loadef.scm,v 1.49 2006/06/16 19:02:27 riastradh Exp $
 
-Copyright 1986, 1989-2001 Massachusetts Institute of Technology
+Copyright 1986,1989,1990,1991,1992,1993 Massachusetts Institute of Technology
+Copyright 1994,1995,1996,1997,1998,1999 Massachusetts Institute of Technology
+Copyright 2000,2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -225,6 +227,15 @@ variable's value is #F, the text is printed using LPR-COMMAND."
 
 (define-autoload-command 'step-defun 'STEPPER
   "Single-step the definition that the point is in or before.")
+
+(define-library 'PAREDIT
+  '("paredit" (EDWIN PAREDIT)))
+
+(define-autoload-minor-mode 'paredit "Paredit" 'PAREDIT
+  "Minor mode for pseudo-structurally editing Lisp code.")
+
+(define-autoload-command 'paredit-mode 'PAREDIT
+  "Toggle pseudo-structural editing of Lisp code.")
 
 ;;; ****************
 

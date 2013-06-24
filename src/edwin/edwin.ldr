@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: edwin.ldr,v 1.76 2005/11/30 04:52:52 cph Exp $
+$Id: edwin.ldr,v 1.77 2006/06/16 17:55:27 riastradh Exp $
 
 Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
 Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
-Copyright 2001,2005 Massachusetts Institute of Technology
+Copyright 2001,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -250,6 +250,7 @@ USA.
 	(load "tagutl" (->environment '(EDWIN TAGS)))
 	(load "texcom" environment)
 	(load "htmlmode" environment)
+        (load "diff" (->environment '(EDWIN DIFF)))
 	(load "rcsparse" (->environment '(EDWIN RCS-PARSE)))
 	(load "vc" (->environment '(EDWIN VC)))
 	(load "wincom" environment)

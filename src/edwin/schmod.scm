@@ -1,9 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: schmod.scm,v 1.73 2005/12/09 20:25:59 riastradh Exp $
+$Id: schmod.scm,v 1.74 2006/07/28 04:10:54 cph Exp $
 
 Copyright 1986,1989,1990,1991,1992,1998 Massachusetts Institute of Technology
 Copyright 2000,2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -198,7 +199,8 @@ The following commands evaluate Scheme expressions:
 	       COUNT-MATCHING-ITEMS COUNT-NON-MATCHING-ITEMS
 	       LIST-TRANSFORM-POSITIVE LIST-TRANSFORM-NEGATIVE
 	       LIST-SEARCH-POSITIVE LIST-SEARCH-NEGATIVE
-	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?)
+	       FOR-ALL? THERE-EXISTS? LIST-OF-TYPE? VECTOR-OF-TYPE?
+	       CALL-WITH-INPUT-STRING)
 	    (2 WITH-SIMPLE-RESTART BIND-CONDITION-HANDLER)
 	    (3 MAKE-CONDITION-TYPE)
 	    (4 WITH-RESTART)))

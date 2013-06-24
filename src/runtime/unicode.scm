@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: unicode.scm,v 1.26 2006/03/07 19:56:25 cph Exp $
+$Id: unicode.scm,v 1.27 2006/07/27 00:00:13 cph Exp $
 
 Copyright 2001,2003,2004,2005 Massachusetts Institute of Technology
 
@@ -1144,6 +1144,45 @@ USA.
 
 (define-integrable (%valid-trailer? n)
   (fix:= #x80 (fix:and #xC0 n)))
+
+;;;; Per-character combination predicates
+
+(define (for-all-chars-in-string? predicate string #!optional start end coding)
+  (let ((port (open-string string start end coding 'FOR-ALL-CHARS-IN-STRING?)))
+    (let loop ()
+      (let ((char (read-char port)))
+	(cond ((eof-object? char) #t)
+	      ((predicate char) (loop))
+	      (else #f))))))
+
+(define (for-any-char-in-string? predicate string #!optional start end coding)
+  (let ((port (open-string string start end coding 'FOR-ANY-CHAR-IN-STRING?)))
+    (let loop ()
+      (let ((char (read-char port)))
+	(cond ((eof-object? char) #f)
+	      ((predicate char) #t)
+	      (else (loop)))))))
+
+(define (open-string string start end coding caller)
+  (cond ((string? string)
+	 (let ((port (open-input-string string start end)))
+	   (if (not (default-object? coding))
+	       (port/set-coding port coding))
+	   port))
+	((wide-string? string)
+	 (if (not (default-object? coding))
+	     (error "Coding not allowed with wide strings:" coding))
+	 (open-wide-input-string string start end))
+	(else
+	 (error:wrong-type-argument string "string" caller))))
+
+(define (alphabet-predicate alphabet)
+  (cond ((alphabet? alphabet)
+	 (lambda (char) (char-in-alphabet? char alphabet)))
+	((char-set? alphabet)
+	 (lambda (char) (char-set-member? alphabet char)))
+	(else
+	 (error:not-alphabet alphabet 'ALPHABET-PREDICATE))))
 
 ;;;; Wide string ports
 

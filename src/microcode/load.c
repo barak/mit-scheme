@@ -1,8 +1,9 @@
 /* -*-C-*-
 
-$Id: load.c,v 9.41 2003/02/14 18:28:19 cph Exp $
+$Id: load.c,v 9.43 2006/06/10 05:24:54 cph Exp $
 
-Copyright (c) 1987-1999 Massachusetts Institute of Technology
+Copyright 1986,1987,1988,1989,1990,1992 Massachusetts Institute of Technology
+Copyright 1993,1995,1997,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -26,6 +27,8 @@ USA.
 /* This file contains common code for reading internal
    format binary files. */
 
+#include "outf.h"	/* Formatted output for errors */
+
 #include "fasl.h"
 
 #define FASL_FILE_FINE			0
@@ -69,8 +72,12 @@ static long
   dumped_processor_type, dumped_interface_version,
   dumped_memory_base;
 
-static unsigned long
-  dumped_checksum, computed_checksum;
+static unsigned long dumped_checksum;
+
+#ifndef INHIBIT_CHECKSUMS
+static unsigned long computed_checksum;
+#endif /* INHIBIT_CHECKSUMS */
+
 
 static SCHEME_OBJECT
   Ext_Prim_Vector,

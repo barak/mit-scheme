@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ed-ffi.scm,v 1.9 2006/02/18 04:31:38 cph Exp $
+$Id: ed-ffi.scm,v 1.10 2006/06/23 18:49:17 cph Exp $
 
 Copyright 2001,2005,2006 Massachusetts Institute of Technology
 
@@ -28,6 +28,7 @@ USA.
 (standard-scheme-find-file-initialization
  '#(("rdf-nt" (runtime rdf nt))
     ("rdf-struct" (runtime rdf structures))
+    ("turtle" (runtime rdf turtle))
     ("xhtml" (runtime xml html))
     ("xhtml-entities" (runtime xml html))
     ("xml-chars" (runtime xml parser))

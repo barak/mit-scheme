@@ -1,8 +1,9 @@
 #| -*-Scheme-*-
 
-$Id: notify.scm,v 1.23 2003/02/14 18:28:12 cph Exp $
+$Id: notify.scm,v 1.24 2006/06/12 04:19:43 cph Exp $
 
-Copyright 1992-2001 Massachusetts Institute of Technology
+Copyright 1992,1993,1994,1995,1996,2001 Massachusetts Institute of Technology
+Copyright 2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -185,14 +186,14 @@ which can show various things including time, load average, and mail status."
 
 (define (notifier)
   (update-notifier-strings!
-   (reduce string-append-separated
-	   ""
-	   (map (lambda (element)
-		  (if (and (car element)
-			   (variable-value (car element)))
-		      ((cdr element))
-		      ""))
-		notifier-elements))
+   (reduce-right string-append-separated
+		 ""
+		 (map (lambda (element)
+			(if (and (car element)
+				 (variable-value (car element)))
+			    ((cdr element))
+			    ""))
+		      notifier-elements))
    (if (and mail-notify-hook-installed?
 	    (ref-variable notify-show-mail))
        (notifier:mail-present)

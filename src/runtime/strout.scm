@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: strout.scm,v 14.23 2005/12/14 05:44:49 cph Exp $
+$Id: strout.scm,v 14.24 2006/08/09 05:48:53 savannah-arthur Exp $
 
 Copyright 1988,1990,1993,1999,2000,2001 Massachusetts Institute of Technology
 Copyright 2003,2004,2005 Massachusetts Institute of Technology
@@ -31,14 +31,23 @@ USA.
 
 (define (open-output-string)
   (make-port accumulator-output-port-type
-	     (receive (sink extract extract!) (make-accumulator-sink)
-	       (make-gstate #f sink 'ISO-8859-1 'NEWLINE extract extract!))))
+	     (receive (sink extract extract! position) (make-accumulator-sink)
+	       (make-gstate #f
+			    sink
+			    'ISO-8859-1
+			    'NEWLINE
+			    extract
+			    extract!
+			    position))))
 
 (define (get-output-string port)
   ((port/operation port 'EXTRACT-OUTPUT) port))
 
 (define (get-output-string! port)
   ((port/operation port 'EXTRACT-OUTPUT!) port))
+
+(define (port-position port)
+  ((port/operation port 'POSITION) port))
 
 (define (call-with-output-string generator)
   (let ((port (open-output-string)))
@@ -54,7 +63,8 @@ USA.
 			  (initial-offset 4) ;must match "genio.scm"
 			  (constructor #f))
   extract
-  extract!)
+  extract!
+  position)
 
 (define accumulator-output-port-type)
 (define (initialize-package!)
@@ -68,6 +78,10 @@ USA.
 	    ,(lambda (port)
 	       (output-port/flush-output port)
 	       ((astate-extract! (port/state port)))))
+	   (POSITION
+	    ,(lambda (port)
+	       (output-port/flush-output port)
+	       ((astate-position (port/state port)))))
 	   (WRITE-SELF
 	    ,(lambda (port output-port)
 	       port
@@ -119,4 +133,7 @@ USA.
 		       (set! index 0)
 		       (set-string-maximum-length! s index)
 		       s)
-		     (make-string 0))))))))
+		     (make-string 0)))))
+	    (lambda ()
+	      (without-interrupts
+	       (lambda () index))))))

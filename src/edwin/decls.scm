@@ -1,8 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: decls.scm,v 1.73 2003/02/14 18:28:11 cph Exp $
+$Id: decls.scm,v 1.76 2006/06/16 19:02:27 riastradh Exp $
 
-Copyright (c) 1989-2001 Massachusetts Institute of Technology
+Copyright 1989,1990,1991,1992,1993,1994 Massachusetts Institute of Technology
+Copyright 1995,1996,1997,1998,1999,2000 Massachusetts Institute of Technology
+Copyright 2001,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -131,6 +133,7 @@ USA.
 		"debian-changelog"
 		"debug"
 		"debuge"
+		"diff"
 		"dired"
 		"diros2"
 		"dirunx"
@@ -178,6 +181,7 @@ USA.
 		"occur"
 		"os2"
 		"os2com"
+		"paredit"
 		"pasmod"
 		"print"
 		"process"

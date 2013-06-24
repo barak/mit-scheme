@@ -1,10 +1,10 @@
 #| -*-Scheme-*-
 
-$Id: parse.scm,v 14.61 2006/03/09 19:18:31 cph Exp $
+$Id: parse.scm,v 14.63 2006/06/21 13:45:52 cph Exp $
 
 Copyright 1986,1987,1988,1989,1990,1991 Massachusetts Institute of Technology
 Copyright 1992,1993,1994,1997,1998,1999 Massachusetts Institute of Technology
-Copyright 2001,2002,2003,2004,2005 Massachusetts Institute of Technology
+Copyright 2001,2002,2003,2004,2005,2006 Massachusetts Institute of Technology
 
 This file is part of MIT/GNU Scheme.
 
@@ -497,26 +497,27 @@ USA.
 
 (define (handler:char port db ctx char1 char2)
   db ctx char1 char2
-  (name->char (read-char-name port)))
-
-(define (read-char-name port)
-  (call-with-output-string
-    (lambda (port*)
-      (let ((char (read-char/no-eof port)))
-	(guarantee-constituent char)
-	(write-char char port*)
-	(let loop ()
-	  (let ((char (peek-char port)))
-	    (if (not (or (eof-object? char)
-			 (atom-delimiter? char)))
-		(begin
-		  (guarantee-constituent char)
-		  (discard-char port)
-		  (write-char (if (char=? char #\\)
-				  (read-char/no-eof port)
-				  char)
-			      port*)
-		  (loop)))))))))
+  (let ((char (read-char/no-eof port))
+	(at-end?
+	 (lambda ()
+	   (let ((char (peek-char port)))
+	     (or (eof-object? char)
+		 (atom-delimiter? char))))))
+    (if (or (atom-delimiter? char)
+	    (at-end?))
+	char
+	(name->char
+	 (call-with-output-string
+	   (lambda (port*)
+	     (write-char char port*)
+	     (let loop ()
+	       (write-char (let ((char (read-char/no-eof port)))
+			     (if (char=? char #\\)
+				 (read-char/no-eof port)
+				 char))
+			   port*)
+	       (if (not (at-end?))
+		   (loop)))))))))
 
 (define (handler:named-constant port db ctx char1 char2)
   ctx char1 char2
