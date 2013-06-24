@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: runtime.pkg,v 14.612 2007/01/17 03:39:42 cph Exp $
+$Id: runtime.pkg,v 14.619 2007/06/07 15:12:17 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -766,6 +766,7 @@ USA.
 	  decorated-string-append
 	  error:not-string
 	  error:not-xstring
+	  external-string-descriptor
 	  external-string-length
 	  external-string?
 	  guarantee-string
@@ -891,12 +892,21 @@ USA.
 	  vector-8b-find-previous-char-ci
 	  vector-8b-ref
 	  vector-8b-set!
+	  xstring-fill!
 	  xstring-length
 	  xstring-move!
+	  xstring-ref
+	  xstring-set!
 	  xstring?
+	  xsubstring
+	  xsubstring-fill!
+	  xsubstring-find-next-char
+	  xsubstring-find-next-char-ci
+	  xsubstring-find-next-char-in-set
+	  xsubstring-find-previous-char
+	  xsubstring-find-previous-char-ci
+	  xsubstring-find-previous-char-in-set
 	  xsubstring-move!)
-  (export (runtime primitive-io)
-	  external-string-descriptor)
   (export (runtime generic-i/o-port)
 	  %substring-move!)
   (initialization (initialize-package!)))
@@ -1085,7 +1095,8 @@ USA.
   (export (runtime load)
 	  dbg-info-vector/purification-root
 	  dbg-info-vector?
-	  fasload/update-debugging-info!)
+	  fasload/update-debugging-info!
+	  with-directory-rewriting-rule)
   (export (runtime program-copier)
 	  dbg-info-vector?)
   (export (runtime debugger-command-loop)
@@ -1129,8 +1140,6 @@ USA.
 	  uncompress-internal)
   (export (runtime options)
 	  with-directory-rewriting-rule)
-  (export (runtime continuation-parser)
-	  )
   (initialization (initialize-package!)))
 
 (define-package (runtime console-i/o-port)
@@ -1675,15 +1684,10 @@ USA.
   (export ()
 	  add-gc-daemon!
 	  add-gc-daemon!/no-restore
+	  add-primitive-gc-daemon!
 	  add-secondary-gc-daemon!
 	  gc-clean
 	  trigger-secondary-gc-daemons!)
-  (export (runtime hash)
-	  add-primitive-gc-daemon!)
-  (export (runtime hash-table)
-	  add-primitive-gc-daemon!)
-  (export (runtime generic-procedure eqht)
-	  add-primitive-gc-daemon!)
   (export (runtime interrupt-handler)
 	  trigger-gc-daemons!)
   (initialization (initialize-package!)))
@@ -2061,6 +2065,7 @@ USA.
 	  read
 	  read-char
 	  read-char-no-hang
+	  read-file
 	  read-line
 	  read-string
 	  read-string!
@@ -2296,6 +2301,7 @@ USA.
 	  null?
 	  pair?
 	  reduce
+	  reduce-left
 	  reduce-right
 	  restricted-keyword-list?
 	  reverse
@@ -2395,31 +2401,30 @@ USA.
   (files "load")
   (parent (runtime))
   (export ()
+	  (load-latest load)
+	  (load-noisily load)
 	  argument-command-line-parser
+	  built-in-object-file
 	  condition-type:not-loading
 	  current-eval-unit
 	  current-load-pathname
+	  fasl-file?
 	  fasload
-	  fasload-latest
-	  fasload/default-types
+	  file-fasloadable?
+	  file-loadable?
 	  load
-	  load-latest
 	  load-library-object-file
-	  load-noisily
 	  load-noisily?
-	  load/default-find-pathname-with-type
-	  load/default-types
 	  load/loading?
 	  load/purification-root
 	  load/push-hook!
 	  load/suppress-loading-message?
-	  read-file
 	  set-command-line-parser!
 	  simple-command-line-parser
-	  with-loading-message
-	  with-eval-unit)
-  (export (runtime options)
-	  search-types-in-order)
+	  system-library-uri
+	  system-uri
+	  with-eval-unit
+	  with-loader-base-uri)
   (initialization (initialize-package!)))
 
 (define-package (runtime microcode-errors)
@@ -2435,7 +2440,6 @@ USA.
 	  condition-type:fasload-band
 	  condition-type:fasload-error
 	  condition-type:hardware-trap
-	  condition-type:impurify-object-too-large
 	  condition-type:inapplicable-object
 	  condition-type:out-of-file-handles
 	  condition-type:primitive-io-error
@@ -2463,6 +2467,7 @@ USA.
 	  microcode-error/code->name
 	  microcode-error/code-limit
 	  microcode-error/name->code
+	  microcode-id/compiled-code-type
 	  microcode-id/floating-epsilon
 	  microcode-id/floating-mantissa-bits
 	  microcode-id/machine-type
@@ -2635,7 +2640,6 @@ USA.
   (parent (runtime))
   (export ()
 	  *initial-options-file*
-	  declare-shared-library
 	  define-load-option
 	  dummy-option-loader
 	  further-load-options
@@ -2802,6 +2806,7 @@ USA.
   (files "io") 
   (parent (runtime))
   (export ()
+	  all-dld-handles
 	  all-open-channels
 	  channel-blocking
 	  channel-blocking?
@@ -2834,10 +2839,26 @@ USA.
 	  directory-channel-read
 	  directory-channel-read-matching
 	  directory-channel?
+	  dld-get-scheme-handle
+	  dld-handle-pathname
+	  dld-handle-valid?
+	  dld-handle?
+	  dld-load-file
+	  dld-loaded-file?
+	  dld-lookup-symbol
+	  dld-unload-file
+	  error:not-channel
+	  error:not-directory-channel
+	  error:not-dld-handle
 	  file-open-append-channel
 	  file-open-input-channel
 	  file-open-io-channel
 	  file-open-output-channel
+	  find-dld-handle
+	  guarantee-channel
+	  guarantee-directory-channel
+	  guarantee-dld-handle
+	  guarantee-valid-dld-handle
 	  make-pipe
 	  open-pty-master
 	  pty-master-continue

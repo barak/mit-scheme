@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: tterm.c,v 1.20 2007/01/12 03:45:55 cph Exp $
+$Id: tterm.c,v 1.21 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -43,15 +43,15 @@ USA.
 #  include <curses.h>
 #  include <term.h>
 #else
-   extern int EXFUN (tgetent, (char *, CONST char *));
-   extern int EXFUN (tgetnum, (CONST char *));
-   extern int EXFUN (tgetflag, (CONST char *));
-   extern char * EXFUN (tgetstr, (CONST char *, char **));
-   extern char * EXFUN (tgoto, (CONST char *, int, int));
-   extern int EXFUN (tputs, (CONST char *, int, void (*) (int)));
+   extern int tgetent (char *, const char *);
+   extern int tgetnum (const char *);
+   extern int tgetflag (const char *);
+   extern char * tgetstr (const char *, char **);
+   extern char * tgoto (const char *, int, int);
+   extern int tputs (const char *, int, void (*) (int));
 #endif
 
-extern char * EXFUN (tparam, (CONST char *, PTR, int, ...));
+extern char * tparam (const char *, void *, int, ...);
 extern char * BC;
 extern char * UP;
 extern char PC;
@@ -69,7 +69,7 @@ static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
 static int
-DEFUN (tputs_write_char, (c), int c)
+tputs_write_char (int c)
 {
   (*tputs_output_scan++) = c;
   return (c);
@@ -103,8 +103,9 @@ DEFINE_PRIMITIVE ("TERMCAP-GET-STRING", Prim_termcap_get_string, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     char * result = (tgetstr ((STRING_ARG (1)), (&tgetstr_pointer)));
-    PRIMITIVE_RETURN
-      ((result == 0) ? SHARP_F : (char_pointer_to_string (result)));
+    PRIMITIVE_RETURN ((result == 0)
+		      ? SHARP_F
+		      : (char_pointer_to_string (result)));
   }
 }
 
@@ -134,10 +135,9 @@ DEFINE_PRIMITIVE ("TERMCAP-GOTO-STRING", Prim_termcap_goto_string, 5, 5, 0)
     BC = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     UP = (((ARG_REF (5)) == SHARP_F) ? 0 : (STRING_ARG (5)));
     PRIMITIVE_RETURN
-      (char_pointer_to_string
-       (tgoto ((STRING_ARG (1)),
-	       (arg_nonnegative_integer (2)),
-	       (arg_nonnegative_integer (3)))));
+      (char_pointer_to_string (tgoto ((STRING_ARG (1)),
+				      (arg_nonnegative_integer (2)),
+				      (arg_nonnegative_integer (3)))));
   }
 }
 

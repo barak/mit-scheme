@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: search.scm,v 1.161 2007/01/05 21:19:24 cph Exp $
+$Id: search.scm,v 1.162 2007/04/01 17:33:07 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -64,11 +64,11 @@ USA.
 				    (GROUP-GAP-LENGTH GROUP))))))))))))
 
 (define-next-char-search group-find-next-char
-  substring-find-next-char)
+  xsubstring-find-next-char)
 (define-next-char-search group-find-next-char-ci
-  substring-find-next-char-ci)
+  xsubstring-find-next-char-ci)
 (define-next-char-search group-find-next-char-in-set
-  substring-find-next-char-in-set)
+  xsubstring-find-next-char-in-set)
 
 (define-syntax define-prev-char-search
   (sc-macro-transformer
@@ -102,11 +102,11 @@ USA.
 				      CHAR)))))))))
 
 (define-prev-char-search group-find-previous-char
-  substring-find-previous-char)
+  xsubstring-find-previous-char)
 (define-prev-char-search group-find-previous-char-ci
-  substring-find-previous-char-ci)
+  xsubstring-find-previous-char-ci)
 (define-prev-char-search group-find-previous-char-in-set
-  substring-find-previous-char-in-set)
+  xsubstring-find-previous-char-in-set)
 
 (define-integrable (%find-next-newline group start end)
   (group-find-next-char group start end #\newline))
@@ -127,7 +127,7 @@ USA.
 	     (let loop ((i1 s1) (i2 s2))
 	       (if (or (fix:= i1 e1)
 		       (fix:= i2 string-end)
-		       (not (char=? (string-ref text i1)
+		       (not (char=? (xstring-ref text i1)
 				    (string-ref string i2))))
 		   i1
 		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
@@ -155,7 +155,7 @@ USA.
     (let ((match
 	   (lambda (s1 e1 e2)
 	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
-	       (cond ((not (char=? (string-ref text i1)
+	       (cond ((not (char=? (xstring-ref text i1)
 				   (string-ref string i2)))
 		      (fix:+ i1 1))
 		     ((or (fix:= i1 s1) (fix:= i2 string-start))
@@ -193,7 +193,7 @@ USA.
 	     (let loop ((i1 s1) (i2 s2))
 	       (if (or (fix:= i1 e1)
 		       (fix:= i2 string-end)
-		       (not (char-ci=? (string-ref text i1)
+		       (not (char-ci=? (xstring-ref text i1)
 				       (string-ref string i2))))
 		   i1
 		   (loop (fix:+ i1 1) (fix:+ i2 1)))))))
@@ -221,7 +221,7 @@ USA.
     (let ((match
 	   (lambda (s1 e1 e2)
 	     (let loop ((i1 (fix:- e1 1)) (i2 (fix:- e2 1)))
-	       (cond ((not (char-ci=? (string-ref text i1)
+	       (cond ((not (char-ci=? (xstring-ref text i1)
 				      (string-ref string i2)))
 		      (fix:+ i1 1))
 		     ((or (fix:= i1 s1) (fix:= i2 string-start))

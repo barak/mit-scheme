@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: bkpt.c,v 9.36 2007/01/05 21:19:25 cph Exp $
+$Id: bkpt.c,v 9.37 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,13 +30,13 @@ USA.
 
 #include "scheme.h"
 
-#ifdef ENABLE_DEBUGGING_FLAGS
+#ifdef ENABLE_DEBUGGING_TOOLS
 
 #define sp_nil ((struct sp_record *) 0)
 
 sp_record_list SP_List = sp_nil;
 
-extern Boolean EXFUN (Add_a_Pop_Return_Breakpoint, (SCHEME_OBJECT *));
+extern bool Add_a_Pop_Return_Breakpoint (SCHEME_OBJECT *);
 
 static struct sp_record One_Before =
 {
@@ -44,8 +44,8 @@ static struct sp_record One_Before =
   sp_nil
 };
 
-Boolean
-DEFUN (Add_a_Pop_Return_Breakpoint, (SP), SCHEME_OBJECT * SP)
+bool
+Add_a_Pop_Return_Breakpoint (SCHEME_OBJECT * SP)
 {
   sp_record_list old = SP_List;
   SP_List = ((sp_record_list) (malloc (sizeof(struct sp_record))));
@@ -65,23 +65,22 @@ DEFUN (Add_a_Pop_Return_Breakpoint, (SP), SCHEME_OBJECT * SP)
 /* A breakpoint can be placed here from a C debugger to examine
    the state of the world. */
 
-extern Boolean EXFUN (Print_One_Continuation_Frame, (SCHEME_OBJECT));
+extern bool Print_One_Continuation_Frame (SCHEME_OBJECT);
 
 void
-DEFUN_VOID (Handle_Pop_Return_Break)
+Handle_Pop_Return_Break (void)
 {
-  SCHEME_OBJECT *Old_Stack = sp_register;
+  SCHEME_OBJECT *Old_Stack = stack_pointer;
 
-  printf ("Pop Return Break: SP = 0x%lx\n", ((long) sp_register));
-  (void) (Print_One_Continuation_Frame (ret_register));
-  sp_register = Old_Stack;
-  return;
+  printf ("Pop Return Break: SP = %#lx\n", ((unsigned long) stack_pointer));
+  (void) (Print_One_Continuation_Frame (GET_RET));
+  stack_pointer = Old_Stack;
 }
 
 void
-DEFUN_VOID (Pop_Return_Break_Point)
+Pop_Return_Break_Point (void)
 {
-  SCHEME_OBJECT * SP = sp_register;
+  SCHEME_OBJECT * SP = stack_pointer;
   sp_record_list previous = &One_Before;
   sp_record_list this = previous->next; /* = SP_List */
 
@@ -97,9 +96,6 @@ DEFUN_VOID (Pop_Return_Break_Point)
     }
   }
   SP_List = One_Before.next;
-  return;
 }
 
-#else
-/* Not ENABLE_DEBUGGING_FLAGS */
-#endif
+#endif /* ENABLE_DEBUGGING_TOOLS */

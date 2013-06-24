@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ntscreen.c,v 1.54 2007/01/05 21:19:25 cph Exp $
+$Id: ntscreen.c,v 1.55 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,7 +25,6 @@ USA.
 
 */
 
-#include <stdlib.h>
 #include "nt.h"
 #include "ntscreen.h"
 #include "ntgui.h"
@@ -1873,7 +1872,7 @@ record_modifier_transition (WPARAM wparam, LPARAM lparam, int down_p)
 }
 
 /* We can lose focus while a modifier key has been pressed.  When
-   we regain focus, be conservative and clear all modifiers since 
+   we regain focus, be conservative and clear all modifiers since
    we cannot reconstruct the left and right modifier state.  */
 
 static void
@@ -2067,7 +2066,7 @@ process_keydown (HWND handle, UINT message, WPARAM wparam, LPARAM lparam)
     case VK_NUMLOCK:
     case VK_SCROLL:
     case VK_CAPITAL:
-    case VK_CONTROL: 
+    case VK_CONTROL:
     case VK_SHIFT:
       /* Let Windows handle the modifier keys.  */
       use_translate_message (handle, message, wparam, lparam);
@@ -3171,8 +3170,7 @@ SelectScreenFont (SCREEN  screen,  HWND owner)
    cfTTYFont.hDC            = NULL;
    cfTTYFont.rgbColors      = screen->rgbFGColour;
    cfTTYFont.lpLogFont      = &screen->lfFont;
-   cfTTYFont.Flags          = (
-			         CF_FIXEDPITCHONLY
+   cfTTYFont.Flags          = (CF_FIXEDPITCHONLY
 			       | CF_SCREENFONTS
 			       | CF_EFFECTS
 			       | CF_INITTOLOGFONTSTRUCT

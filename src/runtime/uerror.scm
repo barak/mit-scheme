@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: uerror.scm,v 14.55 2007/01/05 21:19:28 cph Exp $
+$Id: uerror.scm,v 14.57 2007/04/29 19:25:32 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -39,7 +39,6 @@ USA.
 (define condition-type:fasload-band)
 (define condition-type:fasload-error)
 (define condition-type:hardware-trap)
-(define condition-type:impurify-object-too-large)
 (define condition-type:inapplicable-object)
 (define condition-type:out-of-file-handles)
 (define condition-type:primitive-io-error)
@@ -344,10 +343,13 @@ USA.
 	(else false)))
 
 (define (file-primitive-description primitive)
-  (cond ((eq? primitive (ucode-primitive file-exists? 1))
+  (cond ((or (eq? primitive (ucode-primitive file-exists? 1))
+	     (eq? primitive (ucode-primitive file-exists-direct? 1)))
 	 (values "determine existence of" "file"))
 	((or (eq? primitive (ucode-primitive file-directory? 1))
-	     (eq? primitive (ucode-primitive file-soft-link? 1)))
+	     (eq? primitive (ucode-primitive file-soft-link? 1))
+	     (eq? primitive (ucode-primitive file-type-direct 1))
+	     (eq? primitive (ucode-primitive file-type-indirect 1)))
 	 (values "determine type of" "file"))
 	((or (eq? primitive (ucode-primitive file-open-append-channel 1))
 	     (eq? primitive (ucode-primitive file-open-input-channel 1))
@@ -789,15 +791,13 @@ USA.
 		      ((and (primitive-procedure? operator)
 			    (not (null? operands))
 			    (string? (car operands)))
-		       (with-values
-			   (lambda ()
-			     (file-primitive-description operator))
-			 (lambda (verb noun)
-			   (if verb
-			       (signal-file-operation
-				continuation operator operands 0 verb noun
-				(error-type->string error-type))
-			       (error (make-condition))))))
+		       (receive (verb noun)
+			   (file-primitive-description operator)
+			 (if verb
+			     (signal-file-operation
+			      continuation operator operands 0 verb noun
+			      (error-type->string error-type))
+			     (error (make-condition)))))
 		      (else
 		       (error (make-condition)))))))))))
 
@@ -929,39 +929,6 @@ USA.
 	    (signal continuation
 		    (apply-frame/operator frame)
 		    (apply-frame/operands frame)))))))
-
-(define-error-handler 'WRITE-INTO-PURE-SPACE
-  (lambda (continuation)
-    (let ((frame (continuation/first-subproblem continuation)))
-      (if (apply-frame? frame)
-	  (let ((object (apply-frame/operand frame 0)))
-	    (let ((port (notification-output-port)))
-	      (fresh-line port)
-	      (write-string ";Automagically impurifying an object..." port))
-	    (impurify object)
-	    (continuation object))))))
-
-(set! condition-type:impurify-object-too-large
-  (make-condition-type 'IMPURIFY-OBJECT-TOO-LARGE
-      condition-type:bad-range-argument
-      '()
-    (lambda (condition port)
-      (write-string "Object is too large to be impurified: " port)
-      (write (access-condition condition 'DATUM) port))))
-
-(define-error-handler 'IMPURIFY-OBJECT-TOO-LARGE
-  (let ((signal
-	 (condition-signaller condition-type:impurify-object-too-large
-			      '(DATUM OPERATOR OPERAND))))
-    (lambda (continuation)
-      (let ((frame (continuation/first-subproblem continuation)))
-	(if (apply-frame? frame)
-	    (let ((operator (apply-frame/operator frame)))
-	      (if (eq? (ucode-primitive primitive-impurify) operator)
-		  (signal continuation
-			  (apply-frame/operand frame 0)
-			  operator
-			  0))))))))
 
 (set! condition-type:fasdump-environment
   (make-condition-type 'FASDUMP-ENVIRONMENT condition-type:bad-range-argument

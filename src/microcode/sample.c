@@ -1,5 +1,7 @@
 /* -*-C-*-
 
+$Id: sample.c,v 9.31 2007/04/22 16:31:23 cph Exp $
+
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
     2006, 2007 Massachusetts Institute of Technology
@@ -23,8 +25,6 @@ USA.
 
 */
 
-/* $Id: sample.c,v 9.30 2007/01/05 21:19:25 cph Exp $ */
-
 /* This file is intended to help you find out how to write primitives.
    Many concepts needed to write primitives can be found by looking
    at actual primitives in the system.  Hence this file will often
@@ -35,10 +35,10 @@ USA.
 #include "scheme.h"
 #include "prims.h"
 
-/* Scheme.h supplies useful macros that are used throughout the
-   system, and prims.h supplies macros that are used in defining
+/* "scheme.h" supplies useful macros that are used throughout the
+   system, and "prims.h" supplies macros that are used in defining
    primitives.  */
-
+
 /* To make a primitive, you must use the macro DEFINE_PRIMITIVE
    with six arguments, followed by the body of C source code
    that you want the primitive to execute.

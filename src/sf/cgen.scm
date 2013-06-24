@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: cgen.scm,v 4.9 2007/01/05 21:19:29 cph Exp $
+$Id: cgen.scm,v 4.10 2007/04/14 22:00:09 riastradh Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -86,7 +86,14 @@ USA.
 (define *known-compiler-declarations*
   ;; Declarations which are not handled by SF but are known to be handled
   ;; by the compiler so SF ignores then silently.
-  '(IGNORE-REFERENCE-TRAPS IGNORE-ASSIGNMENT-TRAPS))
+  '(
+    IGNORE-REFERENCE-TRAPS
+    IGNORE-ASSIGNMENT-TRAPS
+    TYPE-CHECKS
+    NO-TYPE-CHECKS
+    RANGE-CHECKS
+    NO-RANGE-CHECKS
+    ))
 
 (define (known-compiler-declaration? declaration)
   (memq (car declaration) *known-compiler-declarations*))

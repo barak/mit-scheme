@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prmhash.c,v 11.11 2007/01/05 21:19:25 cph Exp $
+$Id: prmhash.c,v 11.12 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,13 +32,11 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
+/* If mhash.h unavailable, ignore it.  This helps
+   "makegen/makegen.scm" work properly on systems lacking this
+   library.  */
 #ifdef HAVE_MHASH_H
 #  include <mhash.h>
-#else
-/*
-** Hack:  Dependency suppressed to appease "makegen/makegen.scm".
-**        This is OK since it cannot link w/o the library anyway.
-*/
 #endif
 
 #define UNARY_OPERATION(name, get_arg, cvt_val)				\
@@ -200,7 +198,7 @@ DEFINE_PRIMITIVE ("MHASH_HMAC_INIT", Prim_mhash_hmac_init, 3, 3, 0)
     SCHEME_OBJECT key = (ARG_REF (2));
     PRIMITIVE_RETURN
       (store_context ((mhash_hmac_init (id,
-					(STRING_LOC (key, 0)),
+					(STRING_POINTER (key)),
 					(STRING_LENGTH (key)),
 					(arg_ulong_integer (3)))),
 		      id));
@@ -233,7 +231,7 @@ DEFINE_PRIMITIVE ("MHASH_END", Prim_mhash_end, 1, 1, 0)
     SCHEME_OBJECT sd = (allocate_string (block_size));
     void * digest = (mhash_end (context));
     forget_context (index);
-    memcpy ((STRING_LOC (sd, 0)), digest, block_size);
+    memcpy ((STRING_POINTER (sd)), digest, block_size);
     free (digest);
     PRIMITIVE_RETURN (sd);
   }
@@ -251,7 +249,7 @@ DEFINE_PRIMITIVE ("MHASH_HMAC_END", Prim_mhash_hmac_end, 1, 1, 0)
     SCHEME_OBJECT sd = (allocate_string (block_size));
     void * digest = (mhash_hmac_end (context));
     forget_context (index);
-    memcpy ((STRING_LOC (sd, 0)), digest, block_size);
+    memcpy ((STRING_POINTER (sd)), digest, block_size);
     free (digest);
     PRIMITIVE_RETURN (sd);
   }
@@ -343,7 +341,7 @@ DEFINE_PRIMITIVE ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0)
 	  if ((salt_size != 0) && ((STRING_LENGTH (salt)) != salt_size))
 	    error_bad_range_arg (2);
 	}
-	(cparms . salt) = (STRING_LOC (salt, 0));
+	(cparms . salt) = (STRING_BYTE_PTR (salt));
 	(cparms . salt_size) = (STRING_LENGTH (salt));
       }
     else if (salt != SHARP_F)
@@ -376,9 +374,9 @@ DEFINE_PRIMITIVE ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0)
     PRIMITIVE_RETURN
       (BOOLEAN_TO_OBJECT
        ((mhash_keygen_ext (id, cparms,
-			   (STRING_LOC (keyword, 0)),
+			   (STRING_POINTER (keyword)),
 			   (STRING_LENGTH (keyword)),
-			   (STRING_LOC (passphrase, 0)),
+			   (STRING_BYTE_PTR (passphrase)),
 			   (STRING_LENGTH (passphrase))))
 	== 0));
   }
@@ -387,7 +385,7 @@ DEFINE_PRIMITIVE ("MHASH_KEYGEN", Prim_mhash_keygen, 4, 4, 0)
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive
     ("MHASH_COUNT", Prim_mhash_count, 0, 0, 0);

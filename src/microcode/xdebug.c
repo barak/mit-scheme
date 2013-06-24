@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: xdebug.c,v 9.39 2007/01/05 21:19:25 cph Exp $
+$Id: xdebug.c,v 9.40 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,13 +37,12 @@ USA.
 #define DATUM_EQ	3
 
 static SCHEME_OBJECT *
-DEFUN (Find_Occurrence, (From, To, What, Mode),
-       fast SCHEME_OBJECT * From
-       AND fast SCHEME_OBJECT * To
-       AND SCHEME_OBJECT What
-       AND int Mode)
+Find_Occurrence (SCHEME_OBJECT * From,
+		 SCHEME_OBJECT * To,
+		 SCHEME_OBJECT What,
+		 int Mode)
 {
-  fast SCHEME_OBJECT Obj;
+  SCHEME_OBJECT Obj;
 
   switch (Mode)
   { default:
@@ -73,11 +72,9 @@ DEFUN (Find_Occurrence, (From, To, What, Mode),
 	{
 	  From += OBJECT_DATUM (*From);
 	}
-	else if ((OBJECT_DATUM (*From) == Obj) &&
-		 (!(GC_Type_Non_Pointer(*From))))
-	{
+	else if ((OBJECT_DATUM (*From) == Obj)
+		 && (!GC_TYPE_NON_POINTER (*From)))
 	  return From;
-	}
       }
       return To;
     }
@@ -104,14 +101,13 @@ DEFUN (Find_Occurrence, (From, To, What, Mode),
 #define STORE_P		2
 
 static long
-DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
-       char * Name
-       AND SCHEME_OBJECT * From AND SCHEME_OBJECT * To AND SCHEME_OBJECT Obj
-       AND int Mode
-       AND Boolean print_p AND Boolean store_p)
+Find_In_Area (char * Name,
+	      SCHEME_OBJECT * From, SCHEME_OBJECT * To, SCHEME_OBJECT Obj,
+	      int Mode,
+	      bool print_p, bool store_p)
 {
-  fast SCHEME_OBJECT *Where;
-  fast long occurrences = 0;
+  SCHEME_OBJECT *Where;
+  long occurrences = 0;
 
   if (print_p)
   {
@@ -137,14 +133,12 @@ DEFUN (Find_In_Area, (Name, From, To, Obj, Mode, print_p, store_p),
 }
 
 SCHEME_OBJECT
-DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
-       SCHEME_OBJECT Obj
-       AND int Find_Mode AND int Collect_Mode)
+Find_Who_Points (SCHEME_OBJECT Obj, int Find_Mode, int Collect_Mode)
 {
   long n = 0;
   SCHEME_OBJECT *Saved_Free = Free;
-  Boolean print_p = (Collect_Mode & PRINT_P);
-  Boolean store_p = (Collect_Mode & STORE_P);
+  bool print_p = (Collect_Mode & PRINT_P);
+  bool store_p = (Collect_Mode & STORE_P);
 
   /* No overflow check done. Hopefully referenced few times, or invoked before
      to find the count and insure that there is enough space. */
@@ -164,16 +158,14 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
 #endif
   }
   n += Find_In_Area("Constant Space",
-		    Constant_Space, Free_Constant, Obj,
+		    constant_start, constant_alloc_next, Obj,
 		    Find_Mode, print_p, store_p);
   n += Find_In_Area("the Heap",
-		    Heap_Bottom, Saved_Free, Obj,
+		    heap_start, Saved_Free, Obj,
 		    Find_Mode, print_p, store_p);
-#ifndef USE_STACKLETS
   n += Find_In_Area("the Stack",
-		    sp_register, Stack_Top, Obj,
+		    stack_pointer, stack_end, Obj,
 		    Find_Mode, print_p, store_p);
-#endif
   if (print_p)
   {
     outf_console("Done.\n");
@@ -190,11 +182,9 @@ DEFUN (Find_Who_Points, (Obj, Find_Mode, Collect_Mode),
 }
 
 void
-DEFUN (Print_Memory, (Where, How_Many),
-       SCHEME_OBJECT * Where
-       AND long How_Many)
+Print_Memory (SCHEME_OBJECT * Where, long How_Many)
 {
-  fast SCHEME_OBJECT *End   = &Where[How_Many];
+  SCHEME_OBJECT *End   = &Where[How_Many];
 
 #if (SIZEOF_UNSIGNED_LONG == 4)
   outf_console ("\n*** Memory from 0x%08lx to 0x%08lx (excluded) ***\n",
@@ -217,15 +207,6 @@ DEFUN (Print_Memory, (Where, How_Many),
 
 /* Primitives to give scheme a handle on utilities from DEBUG.C */
 
-DEFINE_PRIMITIVE ("DEBUG-SHOW-PURE", Prim_debug_show_pure, 0, 0, 0)
-{
-  PRIMITIVE_HEADER (0);
-
-  outf_console ("\n*** Constant & Pure Space: ***\n");
-  Show_Pure ();
-  PRIMITIVE_RETURN (UNSPECIFIC);
-}
-
 DEFINE_PRIMITIVE ("DEBUG-SHOW-ENV", Prim_debug_show_env, 1, 1, 0)
 {
   SCHEME_OBJECT environment;
@@ -242,20 +223,19 @@ DEFINE_PRIMITIVE ("DEBUG-STACK-TRACE", Prim_debug_stack_trace, 0, 0, 0)
   PRIMITIVE_HEADER (0);
 
   outf_console ("\n*** Back Trace: ***\n");
-  Back_Trace (console_output);
+  Back_Trace (CONSOLE_OUTPUT);
   PRIMITIVE_RETURN (UNSPECIFIC);
 }
 
 DEFINE_PRIMITIVE ("DEBUG-FIND-SYMBOL", Prim_debug_find_symbol, 1, 1, 0)
 {
-  extern SCHEME_OBJECT EXFUN (find_symbol, (long, unsigned char *));
   PRIMITIVE_HEADER (1);
 
   CHECK_ARG (1, STRING_P);
   {
-    fast SCHEME_OBJECT string = (ARG_REF (1));
-    fast SCHEME_OBJECT symbol = (find_symbol ((STRING_LENGTH (string)),
-					      (STRING_LOC (string, 0))));
+    SCHEME_OBJECT string = (ARG_REF (1));
+    SCHEME_OBJECT symbol = (find_symbol ((STRING_LENGTH (string)),
+					 (STRING_POINTER (string))));
     if (symbol == SHARP_F)
       outf_console ("\nNot interned.\n");
     else
@@ -293,7 +273,7 @@ DEFINE_PRIMITIVE ("DEBUG-PRINT-MEMORY", Prim_debug_print_memory, 2, 2, 0)
   PRIMITIVE_HEADER (2);
   object = (ARG_REF (1));
   Print_Memory
-    (((GC_Type_Non_Pointer (object))
+    (((GC_TYPE_NON_POINTER (object))
       ? ((SCHEME_OBJECT *) (OBJECT_DATUM (object)))
       : (OBJECT_ADDRESS (object))),
      (OBJECT_DATUM (ARG_REF (2))));

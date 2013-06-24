@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: x11color.c,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: x11color.c,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -142,7 +142,7 @@ DEFINE_PRIMITIVE("X-GET-VISUAL-INFO", Prim_x_get_visual_info, 10, 10, 0)
     if (ARG_REF(3) == SHARP_F)
     { struct xwindow * xw = x_window_arg (1);
       XWindowAttributes attrs;
-      
+
       dpy = XW_DISPLAY(xw);
       XGetWindowAttributes(dpy, XW_WINDOW(xw), &attrs);
       ScreenNumber = XScreenNumberOfScreen(attrs.screen);
@@ -163,8 +163,8 @@ DEFINE_PRIMITIVE("X-GET-VISUAL-INFO", Prim_x_get_visual_info, 10, 10, 0)
     LOAD_IF(10, (int), bits_per_rgb, VisualBitsPerRGBMask);
     VIList = XGetVisualInfo(dpy, VIMask, &VI, &AnswerCount);
     AnswerSize = (AnswerCount + 1) + (11 * AnswerCount);
-    if (GC_Check (AnswerSize))
-    { XFree((PTR) VIList);
+    if (GC_NEEDED_P (AnswerSize))
+    { XFree((void *) VIList);
       Primitive_GC (AnswerSize);
     }
     Result = allocate_marked_vector (TC_VECTOR, AnswerCount, false);
@@ -182,7 +182,7 @@ DEFINE_PRIMITIVE("X-GET-VISUAL-INFO", Prim_x_get_visual_info, 10, 10, 0)
       VECTOR_SET(This_Vector, 9, long_to_integer(ThisVI->bits_per_rgb));
       VECTOR_SET(Result, i, This_Vector);
     }
-    XFree((PTR) VIList);
+    XFree((void *) VIList);
     PRIMITIVE_RETURN(Result);
   }
 }
@@ -241,7 +241,8 @@ If third arg WRITEABLE is true, returned colormap may be modified.")
   }
 }
 
-DEFINE_PRIMITIVE ("X-COPY-COLORMAP-AND-FREE", Prim_x_copy_colormap_and_free, 1, 1,
+DEFINE_PRIMITIVE ("X-COPY-COLORMAP-AND-FREE", Prim_x_copy_colormap_and_free,
+		  1, 1,
   "Return a new copy of COLORMAP.")
 {
   PRIMITIVE_HEADER (1);
@@ -378,11 +379,11 @@ DEFINE_PRIMITIVE ("X-FREE-COLORS", Prim_x_free_colors, 1, -1, 0)
 {
   /* Input: colormap, pixel ... */
   PRIMITIVE_HEADER (LEXPR);
-  if ((LEXPR_N_ARGUMENTS ()) < 1)
+  if (GET_LEXPR_ACTUALS < 1)
     signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   {
     struct xcolormap * xcm = (x_colormap_arg (1));
-    unsigned int n_pixels = ((LEXPR_N_ARGUMENTS ()) - 1);
+    unsigned int n_pixels = (GET_LEXPR_ACTUALS - 1);
     unsigned long * pixels =
       (dstack_alloc ((sizeof (unsigned long)) * n_pixels));
     unsigned int i;
@@ -417,11 +418,11 @@ DEFINE_PRIMITIVE ("X-QUERY-COLORS", Prim_x_query_colors, 1, -1, 0)
   /* Input: colormap, pixel ...
      Output: a vector of vectors, each with #(red, green, blue)  */
   PRIMITIVE_HEADER (LEXPR);
-  if ((LEXPR_N_ARGUMENTS ()) < 1)
+  if (GET_LEXPR_ACTUALS < 1)
     signal_error_from_primitive (ERR_WRONG_NUMBER_OF_ARGUMENTS);
   {
     struct xcolormap * xcm = (x_colormap_arg (1));
-    unsigned int n_colors = ((LEXPR_N_ARGUMENTS ()) - 1);
+    unsigned int n_colors = (GET_LEXPR_ACTUALS - 1);
     XColor * colors = (dstack_alloc ((sizeof (XColor)) * n_colors));
     unsigned int i;
     for (i = 0; (i < n_colors); i += 1)

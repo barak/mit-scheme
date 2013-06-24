@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: ostop.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: ostop.h,v 1.10 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -30,15 +30,15 @@ USA.
 
 #include "os.h"
 
-extern int EXFUN (OS_under_emacs_p, (void));
-extern void EXFUN (OS_initialize, (void));
-extern void EXFUN (OS_reset, (void));
-extern void EXFUN (OS_quit, (int code, int abnormal_p));
-extern void EXFUN (OS_restartable_exit, (void));
-extern void EXFUN (OS_save_external_state, (void));
-extern void EXFUN (OS_save_internal_state, (void));
-extern void EXFUN (OS_restore_internal_state, (void));
-extern void EXFUN (OS_restore_external_state, (void));
-extern CONST char * EXFUN (OS_error_code_to_message, (unsigned int code));
+extern int OS_under_emacs_p (void);
+extern void OS_initialize (void);
+extern void OS_reset (void);
+extern void OS_quit (int code, int abnormal_p);
+extern void OS_restartable_exit (void);
+extern void OS_save_external_state (void);
+extern void OS_save_internal_state (void);
+extern void OS_restore_internal_state (void);
+extern void OS_restore_external_state (void);
+extern const char * OS_error_code_to_message (unsigned int code);
 
 #endif /* SCM_OSTOP_H */

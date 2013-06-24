@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prosterm.c,v 1.20 2007/01/05 21:19:25 cph Exp $
+$Id: prosterm.c,v 1.21 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,11 +29,12 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
+#include "osscheme.h"
 #include "osterm.h"
 #include "osio.h"
 
 Tchannel
-DEFUN (arg_terminal, (argument_number), int argument_number)
+arg_terminal (int argument_number)
 {
   Tchannel channel = (arg_channel (argument_number));
   enum channel_type type = (OS_channel_type (channel));
@@ -95,7 +96,7 @@ DEFINE_PRIMITIVE ("TERMINAL-GET-STATE", Prim_terminal_get_state, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   {
     SCHEME_OBJECT result = (allocate_string (OS_terminal_state_size ()));
-    OS_terminal_get_state ((arg_terminal (1)), (STRING_LOC (result, 0)));
+    OS_terminal_get_state ((arg_terminal (1)), (STRING_POINTER (result)));
     PRIMITIVE_RETURN (result);
   }
 }
@@ -109,7 +110,7 @@ DEFINE_PRIMITIVE ("TERMINAL-SET-STATE", Prim_terminal_set_state, 2, 2, 0)
     if (((unsigned int) (STRING_LENGTH (state)))
 	!= (OS_terminal_state_size ()))
       error_bad_range_arg (2);
-    OS_terminal_set_state ((arg_terminal (1)), (STRING_LOC (state, 0)));
+    OS_terminal_set_state ((arg_terminal (1)), (STRING_POINTER (state)));
   }
   PRIMITIVE_RETURN (UNSPECIFIC);
 }

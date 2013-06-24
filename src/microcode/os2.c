@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: os2.c,v 1.13 2007/01/05 21:19:25 cph Exp $
+$Id: os2.c,v 1.14 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -72,7 +72,7 @@ guarantee_valid_malloc_pointer (void * ptr)
 }
 
 void *
-OS2_malloc_noerror (unsigned int size)
+OS2_malloc_noerror (unsigned long size)
 {
   PVOID result;
   APIRET rc
@@ -108,9 +108,9 @@ OS_free (void * ptr)
 }
 
 void *
-OS2_realloc_noerror (void * ptr, unsigned int size)
+OS2_realloc_noerror (void * ptr, unsigned long size)
 {
-  unsigned int osize = ((guarantee_valid_malloc_pointer (ptr)) -> size);
+  unsigned long osize = ((guarantee_valid_malloc_pointer (ptr)) -> size);
   if (osize == size)
     return (ptr);
   {
@@ -138,13 +138,13 @@ OS2_initialize_malloc (void)
 }
 
 void *
-OS2_malloc_noerror (unsigned int size)
+OS2_malloc_noerror (unsigned long size)
 {
   return (malloc (size));
 }
 
 void *
-OS2_realloc_noerror (void * ptr, unsigned int size)
+OS2_realloc_noerror (void * ptr, unsigned long size)
 {
   return (realloc (ptr, size));
 }
@@ -157,19 +157,14 @@ OS_free (void * ptr)
 
 #endif /* not OS2_USE_SUBHEAP_MALLOC */
 
-/* This is called during initialization, when the error system is not
-   set up.
-*/
-
 void *
-OS_malloc_init (unsigned int size)
+OS_malloc_init (size_t size)
 {
-  void * result = (OS2_malloc_noerror (size));
-  return (result);
+  return (OS2_malloc_noerror (size));
 }
 
 void *
-OS_malloc (unsigned int size)
+OS_malloc (size_t size)
 {
   void * result = (OS2_malloc_noerror (size));
   if (result == 0)
@@ -178,7 +173,7 @@ OS_malloc (unsigned int size)
 }
 
 void *
-OS_realloc (void * ptr, unsigned int size)
+OS_realloc (void * ptr, size_t size)
 {
   void * result = (OS2_realloc_noerror (ptr, size));
   if (result == 0)

@@ -1,6 +1,6 @@
 # -*- Makefile -*-
 #
-# $Id: Makefile.in.in,v 1.43 2007/01/12 06:30:04 cph Exp $
+# $Id: Makefile.in.in,v 1.60 2007/06/23 05:47:44 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -50,7 +50,7 @@ includedir = @includedir@
 oldincludedir = /usr/include
 
 DESTDIR =
-top_builddir = .
+top_builddir = @top_builddir@
 
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -64,15 +64,18 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 
 # **** Tool configuration ****
 
-AUXDIR = $(libdir)/mit-scheme
+AUXDIR_NAME = @AUXDIR_NAME@
+EXE_NAME = @EXE_NAME@
+AUXDIR = $(libdir)/$(AUXDIR_NAME)
 
 CC = @CC@
+CCLD = @CCLD@
 M4 = $(srcdir)/makegen/m4.sh
 AS = as
 TAR = tar
 GZIP_ENV = --best
 
-DEFS = @DEFS@ @SCHEME_DEFS@ -DMIT_SCHEME -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\"
+DEFS = @DEFS@ @SCHEME_DEFS@ -DDEFAULT_LIBRARY_PATH=\"$(AUXDIR)\"
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
 LDFLAGS = @LDFLAGS@
@@ -81,27 +84,20 @@ M4_FLAGS = @M4_FLAGS@
 AS_FLAGS = @AS_FLAGS@
 
 COMPILE = $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS)
-CCLD = $(CC)
 LINK = $(CCLD) $(LDFLAGS) -o $@
 EXPAND = $(M4) $(M4_FLAGS)
 ASSEMBLE = $(AS) $(AS_FLAGS)
 
 # **** File configuration ****
 
-SHARED_SOURCES = @(write-sources "files-core")@ \
+STD_SOURCES = @(write-sources "files-core")@ \
 	@(write-sources "files-os-prim")@ \
 	@(write-sources "files-unix")@ \
 	$(OPTIONAL_SOURCES)
-SHARED_OBJECTS = @(write-objects "files-core")@ \
+STD_OBJECTS = @(write-objects "files-core")@ \
 	@(write-objects "files-os-prim")@ \
 	@(write-objects "files-unix")@ \
 	$(OPTIONAL_OBJECTS)
-
-STD_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-std")@
-STD_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-std")@
-
-BCH_SOURCES = $(SHARED_SOURCES) @(write-sources "files-gc-bch")@
-BCH_OBJECTS = $(SHARED_OBJECTS) @(write-objects "files-gc-bch")@
 
 GC_HEAD_FILES = @GC_HEAD_FILES@
 OPTIONAL_SOURCES = @OPTIONAL_SOURCES@
@@ -113,39 +109,26 @@ PRMD5_LIBS = @PRMD5_LIBS@
 MODULE_TARGETS = @MODULE_TARGETS@
 MODULE_CFLAGS = @MODULE_CFLAGS@
 MODULE_LDFLAGS = @MODULE_LDFLAGS@
-COMPILE_MODULE = $(COMPILE) $(MODULE_CFLAGS)
+COMPILE_MODULE = $(COMPILE) -DCOMPILE_AS_MODULE $(MODULE_CFLAGS)
 LINK_MODULE = $(LINK) $(MODULE_LDFLAGS)
 MODULE_LIBS = -lc
 
-# **** Rules for C back end (part 1) ****
+# **** Rules for C back end (part 1, variables) ****
 
-@LIARC_RULES_1@
+@LIARC_VARS@
 
 # **** Program definitions ****
 
-bin_PROGRAMS = scheme bchscheme
-aux_PROGRAMS = gcdrone ppband
+aux_PROGRAMS = @AUX_PROGRAMS@
 aux_LIBS = $(MODULE_TARGETS)
-aux_DATA = utabmd.bin
-EXTRA_PROGRAMS = findprim bintopsb psbtobin
+aux_DATA = @AUX_DATA@
+EXTRA_PROGRAMS = findprim
 
 scheme_SOURCES = $(STD_SOURCES) usrdef.c $(LIARC_SOURCES)
 scheme_OBJECTS = $(STD_OBJECTS) usrdef.o $(LIARC_OBJECTS)
 scheme_DEPENDENCIES = 
-scheme_LDFLAGS = @DLD_LDFLAGS@
+scheme_LDFLAGS = @SCHEME_LDFLAGS@
 scheme_LIBS = $(STATIC_LIBS) $(LIBS)
-
-bchscheme_SOURCES = $(BCH_SOURCES) bchdef.c $(LIARC_SOURCES)
-bchscheme_OBJECTS = $(BCH_OBJECTS) bchdef.o $(LIARC_OBJECTS)
-bchscheme_DEPENDENCIES = 
-bchscheme_LDFLAGS = @DLD_LDFLAGS@
-bchscheme_LIBS = $(STATIC_LIBS) $(LIBS)
-
-bchdrn_SOURCES = bchdrn.c bchutl.c
-bchdrn_OBJECTS = bchdrn.o bchutl.o
-bchdrn_DEPENDENCIES = 
-bchdrn_LDFLAGS = 
-bchdrn_LIBS = $(LIBS)
 
 findprim_SOURCES = findprim.c
 findprim_OBJECTS = findprim.o
@@ -153,38 +136,24 @@ findprim_DEPENDENCIES =
 findprim_LDFLAGS = 
 findprim_LIBS = $(LIBS)
 
-bintopsb_SOURCES = bintopsb.c missing.c
-bintopsb_OBJECTS = bintopsb.o missing.o
-bintopsb_DEPENDENCIES = 
-bintopsb_LDFLAGS = 
-bintopsb_LIBS = $(LIBS)
-
-psbtobin_SOURCES = psbtobin.c missing.c
-psbtobin_OBJECTS = psbtobin.o missing.o
-psbtobin_DEPENDENCIES = 
-psbtobin_LDFLAGS = 
-psbtobin_LIBS = $(LIBS)
-
-ppband_SOURCES = ppband.c outf.c
-ppband_OBJECTS = ppband.o outf.o
-ppband_DEPENDENCIES = load.c storage.c
-ppband_LDFLAGS = 
-ppband_LIBS = $(LIBS)
-
-ALL_PROGRAMS = $(bin_PROGRAMS) $(aux_PROGRAMS)
+ALL_PROGRAMS = $(aux_PROGRAMS) scheme
 ALL_LIBS = $(aux_LIBS)
 ALL_DATA = $(aux_DATA)
 
-MOSTLYCLEAN_FILES = *.o cmpauxmd.s usrdef.c compinit.h utabmd.c utabmd.bci \
-	bchdef.c $(LIARC_OBJECTS)
+MOSTLYCLEAN_FILES = *.o usrdef.c compinit.c compinit.h cmpauxmd.s \
+	$(LIARC_OBJECTS)
 
-CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
+CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS) \
+	utabmd.bin
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
-	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc
+	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
+	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
 
-MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-rules-1 \
+MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS
+
+C_CLEAN_FILES = utabmd.c utabmd.bci
 
 # **** Implicit rules ****
 
@@ -214,57 +183,39 @@ usrdef.c: $(STD_SOURCES) findprim Makefile
 	-rm -f $@
 	./findprim $(STD_SOURCES) > usrdef.c
 
-bchscheme: $(bchscheme_OBJECTS) $(bchscheme_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bchscheme_LDFLAGS) $(bchscheme_OBJECTS) $(bchscheme_LIBS)
-
-bchdef.c: $(BCH_SOURCES) findprim Makefile
-	-rm -f $@
-	./findprim $(BCH_SOURCES) > bchdef.c
-
-gcdrone: $(bchdrn_OBJECTS) $(bchdrn_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bchdrn_LDFLAGS) $(bchdrn_OBJECTS) $(bchdrn_LIBS)
-
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
 	$(LINK) $(findprim_LDFLAGS) $(findprim_OBJECTS) $(findprim_LIBS)
 
-bintopsb: $(bintopsb_OBJECTS) $(bintopsb_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(bintopsb_LDFLAGS) $(bintopsb_OBJECTS) $(bintopsb_LIBS)
+gen-nonce: gen-nonce.o
+	$(LINK) gen-nonce.o
 
-psbtobin: $(psbtobin_OBJECTS) $(psbtobin_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(psbtobin_LDFLAGS) $(psbtobin_OBJECTS) $(psbtobin_LIBS)
-
-ppband: $(ppband_OBJECTS) $(ppband_DEPENDENCIES)
-	-rm -f $@
-	$(LINK) $(ppband_LDFLAGS) $(ppband_OBJECTS) $(ppband_LIBS)
+extract-liarc-decls: extract-liarc-decls.o
+	$(LINK) extract-liarc-decls.o
 
 utabmd.bin: utabmd.scm
 	./utabmd.sh
 
 prbfish.so: prbfish.o
-	$(LINK_MODULE) $^ $(PRBFISH_LIBS) $(MODULE_LIBS)
+	$(LINK_MODULE) prbfish.o $(PRBFISH_LIBS) $(MODULE_LIBS)
 
 prmd5.so: prmd5.o
-	$(LINK_MODULE) $^ $(PRMD5_LIBS) $(MODULE_LIBS)
+	$(LINK_MODULE) prmd5.o $(PRMD5_LIBS) $(MODULE_LIBS)
 
 prmhash.so: prmhash.o
-	$(LINK_MODULE) $^ -lmhash $(MODULE_LIBS)
+	$(LINK_MODULE) prmhash.o -lmhash $(MODULE_LIBS)
 
 prmcrypt.so: prmcrypt.o
-	$(LINK_MODULE) $^ -lmcrypt -lltdl $(MODULE_LIBS)
+	$(LINK_MODULE) prmcrypt.o -lmcrypt -lltdl $(MODULE_LIBS)
 
 prgdbm.so: prgdbm.o
-	$(LINK_MODULE) $^ -lgdbm $(MODULE_LIBS)
+	$(LINK_MODULE) prgdbm.o -lgdbm $(MODULE_LIBS)
 
 prdb4.so: prdb4.o
-	$(LINK_MODULE) $^ -ldb-4 $(MODULE_LIBS)
+	$(LINK_MODULE) prdb4.o -ldb-4 $(MODULE_LIBS)
 
 prpgsql.so: prpgsql.o
-	$(LINK_MODULE) $^ -lpq $(MODULE_LIBS)
+	$(LINK_MODULE) prpgsql.o -lpq $(MODULE_LIBS)
 
 @MODULE_RULES@
 
@@ -283,22 +234,17 @@ distclean: clean
 	-rm -f $(DISTCLEAN_FILES)
 	-rm -rf autom4te.cache
 
-maintainer-clean: distclean
+maintainer-clean: c-clean distclean
 	-rm -f $(MAINTAINER_CLEAN_FILES)
 	( cd cmpauxmd && $(MAKE) $@ )
 
-install: install-binPROGRAMS install-auxPROGRAMS install-auxLIBS \
-	install-auxDATA
+c-clean: clean
+	-rm -f $(C_CLEAN_FILES)
 
-install-binPROGRAMS: $(bin_PROGRAMS)
+install: install-auxPROGRAMS install-auxLIBS install-auxDATA @INSTALL_INCLUDE@
 	$(mkinstalldirs) $(DESTDIR)$(bindir)
-	@list='$(bin_PROGRAMS)'; \
-	for p in $$list; do \
-	    if test -f $$p; then \
-		echo "$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/."; \
-		$(INSTALL_PROGRAM) $$p $(DESTDIR)$(bindir)/.; \
-	    fi; \
-	done
+	$(INSTALL_PROGRAM) scheme $(DESTDIR)$(bindir)/$(EXE_NAME)
+	../etc/install-bin-symlinks.sh $(DESTDIR)$(bindir) $(EXE_NAME)
 
 install-auxPROGRAMS: $(aux_PROGRAMS)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
@@ -330,17 +276,24 @@ install-auxDATA: $(aux_DATA)
 	    fi; \
 	done
 
+install-include:
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
+	$(INSTALL_PROGRAM) liarc-cc liarc-ld $(DESTDIR)$(AUXDIR)/.
+	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)/include
+	$(INSTALL_DATA) *.h $(DESTDIR)$(AUXDIR)/include/.
+
 .PHONY: default-target
-.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean
-.PHONY: install install_binPROGRAMS install_auxPROGRAMS install_auxDATA
+.PHONY: all tags TAGS mostlyclean clean distclean maintainer-clean c-clean
+.PHONY: install install-auxPROGRAMS install-auxLIBS install-auxDATA
+.PHONY: install-include
 
 # **** File dependencies ****
 
 @(write-dependencies)@
 
-# **** Rules for C back end (part 2) ****
+# **** Rules for C back end (part 2, rules) ****
 
-@LIARC_RULES_2@
+@LIARC_RULES@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

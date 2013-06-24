@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxio.c,v 1.12 2007/01/05 21:19:25 cph Exp $
+$Id: pruxio.c,v 1.13 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,15 +34,11 @@ USA.
 #include "uxselect.h"
 #include "uxproc.h"
 
-#ifndef __hp9000s700
-/* Blows up HP 9000/700 compiler (HP-UX 8.05)!  */
-extern Tchannel EXFUN (arg_channel, (int arg_number));
-extern int EXFUN (UX_channel_descriptor, (Tchannel channel));
-#endif
+extern int UX_channel_descriptor (Tchannel channel);
 
-static CONST char ** EXFUN (string_vector_arg, (int arg));
-static int EXFUN (string_vector_p, (SCHEME_OBJECT vector));
-static CONST char ** EXFUN (convert_string_vector, (SCHEME_OBJECT vector));
+static const char ** string_vector_arg (int arg);
+static int string_vector_p (SCHEME_OBJECT vector);
+static const char ** convert_string_vector (SCHEME_OBJECT vector);
 
 DEFINE_PRIMITIVE ("SELECT-REGISTRY-SIZE", Prim_selreg_size, 0, 0, 0)
 {
@@ -117,7 +113,7 @@ DEFINE_PRIMITIVE ("SELECT-REGISTRY-TEST", Prim_selreg_test, 3, 3, 0)
   PRIMITIVE_HEADER (3);
   CHECK_ARG (3, VECTOR_P);
   {
-    PTR position = dstack_position;
+    void * position = dstack_position;
     unsigned int lub = (UX_select_registry_lub ());
     unsigned int * fds = (dstack_alloc ((sizeof (unsigned int)) * lub));
     unsigned int nfds;
@@ -200,12 +196,12 @@ STDERR is the error channel for the subprocess.\n\
 {
   PRIMITIVE_HEADER (8);
   {
-    PTR position = dstack_position;
-    CONST char * filename = (STRING_ARG (1));
-    CONST char ** argv = (string_vector_arg (2));
-    CONST char ** env
+    void * position = dstack_position;
+    const char * filename = (STRING_ARG (1));
+    const char ** argv = (string_vector_arg (2));
+    const char ** env
       = (((ARG_REF (3)) == SHARP_F) ? 0 : (string_vector_arg (3)));
-    CONST char * working_directory
+    const char * working_directory
       = (((ARG_REF (4)) == SHARP_F) ? 0 : (STRING_ARG (4)));
     enum process_ctty_type ctty_type;
     char * ctty_name = 0;
@@ -244,8 +240,8 @@ STDERR is the error channel for the subprocess.\n\
   }
 }
 
-static CONST char **
-DEFUN (string_vector_arg, (arg), int arg)
+static const char **
+string_vector_arg (int arg)
 {
   SCHEME_OBJECT vector = (ARG_REF (arg));
   if (!string_vector_p (vector))
@@ -254,7 +250,7 @@ DEFUN (string_vector_arg, (arg), int arg)
 }
 
 static int
-DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
+string_vector_p (SCHEME_OBJECT vector)
 {
   if (! (VECTOR_P (vector)))
     return (0);
@@ -269,8 +265,8 @@ DEFUN (string_vector_p, (vector), SCHEME_OBJECT vector)
   return (1);
 }
 
-static CONST char **
-DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
+static const char **
+convert_string_vector (SCHEME_OBJECT vector)
 {
   unsigned long length = (VECTOR_LENGTH (vector));
   char ** result = (dstack_alloc ((length + 1) * (sizeof (char *))));
@@ -278,7 +274,7 @@ DEFUN (convert_string_vector, (vector), SCHEME_OBJECT vector)
   SCHEME_OBJECT * end = (scan + length);
   char ** scan_result = result;
   while (scan < end)
-    (*scan_result++) = ((char *) (STRING_LOC ((*scan++), 0)));
+    (*scan_result++) = (STRING_POINTER (*scan++));
   (*scan_result) = 0;
-  return ((CONST char **) result);
+  return ((const char **) result);
 }

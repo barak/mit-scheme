@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Setup.sh,v 1.12 2007/01/05 21:19:25 cph Exp $
+# $Id: Setup.sh,v 1.14 2007/05/14 16:50:47 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,15 +26,14 @@
 # Utility to set up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
 
+set -e
+
 . ../etc/functions.sh
 
-if [ ! -f Makefile.in ]; then
-    maybe_link Makefile ../Makefile.std
-fi
 for FN in Clean.sh Stage.sh Tags.sh; do
     maybe_link ${FN} ../etc/${FN}
 done
 
-[ -e ed-ffi.scm ] && maybe_link .edwin-ffi ed-ffi.scm
-
-exit 0
+if [ -e ed-ffi.scm ]; then
+    maybe_link .edwin-ffi ed-ffi.scm
+fi

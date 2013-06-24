@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: nt.h,v 1.13 2007/01/05 21:19:25 cph Exp $
+$Id: nt.h,v 1.14 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -36,8 +36,6 @@ USA.
 #include <io.h>
 #include <conio.h>
 #include <sys/stat.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <direct.h>
 #include <signal.h>
 #include <errno.h>
@@ -48,21 +46,19 @@ enum windows_type { wintype_unknown, wintype_31, wintype_95, wintype_nt };
 extern enum windows_type NT_windows_type;
 
 #ifndef ERRNO_NONBLOCK
-#define ERRNO_NONBLOCK	1998
+#  define ERRNO_NONBLOCK 1998
 #endif
 #ifndef EINTR
-#define EINTR		1999
+#  define EINTR 1999
 #endif
 
 #include "config.h"
-
 #include "intext.h"
 #include "dstack.h"
 #include "osscheme.h"
 #include "ntsys.h"
 #include "syscall.h"
 #include "ntapi.h"
-#include <limits.h>
 #include <time.h>
 
 /* Crufty, but it will work here. */
@@ -126,7 +122,7 @@ extern enum windows_type NT_windows_type;
 #endif
 
 #ifndef DECL_GETLOGIN
-extern char * EXFUN (getlogin, (void));
+extern char * getlogin (void);
 #endif
 
 #ifdef _NFILE

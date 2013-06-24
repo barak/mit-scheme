@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.10 2007/01/05 21:19:20 cph Exp $
+# $Id: Clean.sh,v 1.18 2007/06/17 18:45:13 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,21 +26,24 @@
 # Utility for cleaning up MIT/GNU Scheme build directories.
 # The working directory must be the top-level source directory.
 
-if [ $# -le 1 ]; then
-    echo "usage: $0 <command> <directory> ..."
+set -e
+
+if [ ${#} -le 1 ]; then
+    echo "usage: ${0} <command> <directory> ..."
     exit 1
 fi
 
-COMMAND=$1
+COMMAND=${1}
 shift
+SUBDIRS=${@}
 
 FULL=no
 DIST=no
 MAINTAINER=no
-case "${COMMAND}" in
+case ${COMMAND} in
 mostlyclean)
     ;;
-clean)
+clean | c-clean)
     FULL=yes
     ;;
 distclean)
@@ -53,29 +56,30 @@ maintainer-clean)
     MAINTAINER=yes
     ;;
 *)
-    echo "$0: Unknown command ${COMMAND}"
+    echo "${0}: Unknown command ${COMMAND}"
     exit 1
     ;;
 esac
 
+. etc/functions.sh
+
+maybe_rm c-boot-compiler.com native-boot-compiler.com
+
 if [ ${FULL} = yes ]; then
-    echo "rm -f lib/*.com"
-    rm -f lib/*.com
+    maybe_rm lib/*.com
 fi
 
 if [ ${DIST} = yes ]; then
-    echo "rm -f Makefile config.cache config.log config.status"
-    rm -f Makefile config.cache config.log config.status
+    maybe_rm Makefile boot-lib config.cache config.log config.status
 fi
 
 if [ ${MAINTAINER} = yes ]; then
-    echo "rm -rf configure lib autom4te.cache"
-    rm -rf configure lib autom4te.cache
+    maybe_rm autom4te.cache configure lib stamp_* boot-root makefiles_created
 fi
 
-for SUBDIR; do
+for SUBDIR in ${SUBDIRS}; do
     if test -x ${SUBDIR}/Clean.sh; then
 	echo "making ${COMMAND} in ${SUBDIR}"
-	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} ) || exit 1
+	( cd ${SUBDIR} && ./Clean.sh ${COMMAND} )
     fi
 done

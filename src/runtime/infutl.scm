@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: infutl.scm,v 1.72 2007/01/05 21:19:28 cph Exp $
+$Id: infutl.scm,v 1.73 2007/06/09 01:22:38 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -291,15 +291,12 @@ USA.
   (->namestring (canonicalize-debug-info-pathname filename)))
 
 (define (canonicalize-debug-info-pathname pathname)
-  (if (pathname-absolute? pathname)
-      pathname
-      (merge-pathnames
-       pathname
-       (let ((value
-	      (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
-	 (if value
-	     (pathname-as-directory value)
-	     (system-library-directory-pathname "SRC"))))))
+  (merge-pathnames
+   pathname
+   (let ((value (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
+     (if value
+	 (pathname-as-directory value)
+	 (system-library-directory-pathname)))))
 
 (define-integrable (dbg-block/layout-first-offset block)
   (let ((layout (dbg-block/layout block)))

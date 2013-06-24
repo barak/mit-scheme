@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
-AC_INIT([MIT/GNU Scheme microcode], [14.18], [bug-mit-scheme@gnu.org], [mit-scheme])
-AC_REVISION([$Id: configure.ac,v 1.36 2007/01/22 08:35:02 riastradh Exp $])
+AC_INIT([MIT/GNU Scheme microcode], [15.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+AC_REVISION([$Id: configure.ac,v 1.54 2007/06/23 05:47:43 cph Exp $])
 AC_CONFIG_SRCDIR([boot.c])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
@@ -164,6 +164,11 @@ AC_ARG_WITH([libpq],
 	[Use PostgreSQL libpq library if available [[yes]]]))
 : ${with_libpq='yes'}
 
+if test ${enable_static_libs} != no && test ${enable_native_code} = c; then
+    AC_MSG_ERROR(
+	[--enable-native-code=c incompatible with --enable-static-libs])
+fi
+
 dnl Substitution variables to be filled in below.
 AS_FLAGS=
 GC_HEAD_FILES=
@@ -176,36 +181,72 @@ STATIC_PREFIX=
 STATIC_SUFFIX=
 PRBFISH_LIBS=
 PRMD5_LIBS=
-SCHEME_DEFS=
-DLD_LDFLAGS=
+SCHEME_DEFS=-DMIT_SCHEME
+SCHEME_LDFLAGS=
 MODULE_BASES=
 MODULE_LIBS=
 MODULE_TARGETS=
 MODULE_RULES=/dev/null
-MODULE_CFLAGS="-DCOMPILE_AS_MODULE"
+MODULE_CFLAGS=
 MODULE_LDFLAGS=
-LIARC_RULES_1=/dev/null
-LIARC_RULES_2=/dev/null
+LIARC_VARS=/dev/null
+LIARC_RULES=/dev/null
+AUX_PROGRAMS=
+AUX_DATA=utabmd.bin
+AUXDIR_NAME=mit-scheme
+EXE_NAME=mit-scheme-native
+INSTALL_INCLUDE=
 
 dnl Checks for programs.
 AC_PROG_CC
-AC_PROG_GCC_TRADITIONAL
+AC_C_BACKSLASH_A
+AC_C_BIGENDIAN
+AC_C_CONST
+AC_C_RESTRICT
+AC_C_VOLATILE
+AC_C_INLINE
+AC_C_STRINGIZE
+AC_C_PROTOTYPES
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
 if test ${GCC} = yes; then
     if test ${enable_debugging} = no; then
-	CFLAGS=-O3
+	CFLAGS="-O3"
     else
-	CFLAGS="-O0 -g"
+	CFLAGS="-O0 -g -DENABLE_DEBUGGING_TOOLS"
 	LDFLAGS="${LDFLAGS} -g"
     fi
-    CFLAGS="${CFLAGS} -Wall"
+    CFLAGS="${CFLAGS} -Wall -Wundef -Wpointer-arith -Winline"
+    CFLAGS="${CFLAGS} -Wstrict-prototypes -Wnested-externs -Wredundant-decls"
+
+    AC_MSG_CHECKING([for GCC>=4])
+    AC_COMPILE_IFELSE(
+	[AC_LANG_PROGRAM(
+	    [[
+	    #if __GNUC__ >= 4
+	    ;
+	    #else
+	    #error "gcc too old"
+	    #endif
+	    ]],
+	    [[]]
+	)],
+	[
+	AC_MSG_RESULT([yes])
+        CFLAGS="${CFLAGS} -Wextra -Wno-sign-compare -Wno-unused-parameter"
+        CFLAGS="${CFLAGS} -Wold-style-definition"
+	],
+	[AC_MSG_RESULT([no])])
+
+    # other possibilities:
+    # -Wmissing-prototypes -Wunreachable-code -Wwrite-strings
 fi
 FOO=`${INSTALL} --help 2> /dev/null | fgrep -e --preserve-timestamps`
 if test "x${FOO}" != x; then
     INSTALL="${INSTALL} --preserve-timestamps"
 fi
+CCLD=${CC}
 
 dnl Checks for libraries.
 AC_CHECK_LIB([m], [exp])
@@ -285,15 +326,42 @@ AC_TYPE_SIGNAL
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
 
-#AC_TYPE_INT8_T
-#AC_TYPE_INT16_T
-#AC_TYPE_INT32_T
-#AC_TYPE_INTPTR_T
+dnl These macros are too new; we'll handle this by hand for now.
 
-#AC_TYPE_UINT8_T
-#AC_TYPE_UINT16_T
-#AC_TYPE_UINT32_T
-#AC_TYPE_UINTPTR_T
+dnl AC_TYPE_INT8_T
+dnl AC_TYPE_INT16_T
+dnl AC_TYPE_INT32_T
+dnl AC_TYPE_INTPTR_T
+dnl AC_TYPE_UINT8_T
+dnl AC_TYPE_UINT16_T
+dnl AC_TYPE_UINT32_T
+dnl AC_TYPE_UINTPTR_T
+
+define([SCM_STDINT_MSG], [Define replacement if no <stdint.h>.])dnl
+
+AC_CHECK_TYPE([int8_t],,
+    [AC_DEFINE_UNQUOTED([int8_t], [signed char], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([int16_t],,
+    [AC_DEFINE_UNQUOTED([int16_t], [short], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([int32_t],,
+    [AC_DEFINE_UNQUOTED([int32_t], [int], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint8_t],,
+    [AC_DEFINE_UNQUOTED([uint8_t], [unsigned char], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint16_t],,
+    [AC_DEFINE_UNQUOTED([uint16_t], [unsigned short], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uint32_t],,
+    [AC_DEFINE_UNQUOTED([uint32_t], [unsigned int], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([intptr_t],,
+    [AC_DEFINE_UNQUOTED([intptr_t], [long], SCM_STDINT_MSG)])
+
+AC_CHECK_TYPE([uintptr_t],,
+    [AC_DEFINE_UNQUOTED([uintptr_t], [unsigned long], SCM_STDINT_MSG)])
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
@@ -304,8 +372,8 @@ AC_CHECK_SIZEOF([unsigned short])
 AC_CHECK_SIZEOF([unsigned int])
 AC_CHECK_SIZEOF([unsigned long])
 AC_CHECK_SIZEOF([void *])
-#AC_CHECK_SIZEOF([intptr_t])
-#AC_CHECK_SIZEOF([uintptr_t])
+AC_CHECK_SIZEOF([intptr_t])
+AC_CHECK_SIZEOF([uintptr_t])
 
 if test ${ac_cv_sizeof_char} -ne 1; then
     AC_MSG_ERROR([SIZEOF_CHAR is not 1])
@@ -570,6 +638,9 @@ if test "${with_mhash}" != no; then
 	    [
 	    AC_DEFINE([HAVE_LIBMHASH], [1],
 		[Define to 1 if you have the `mhash' library (-lmhash).])
+	    if test ${enable_debugging} != no; then
+	       LIBS="-lmhash ${LIBS}"
+	    fi
 	    MODULE_LIBS="-lmhash ${MODULE_LIBS}"
 	    MODULE_BASES="${MODULE_BASES} prmhash"
 	    if test "x${PRMD5_LIBS}" = x; then
@@ -707,7 +778,13 @@ if test "${enable_static_libs}" = no; then
 		[Define to 1 if you have the `dl' library (-ldl).])
 	    LIBS="${STATIC_LIBS} -ldl ${LIBS}"
 	    ],
-	    [enable_static_libs=yes])
+	    [
+	    if test ${enable_native_code} = c; then
+		AC_MSG_ERROR(
+		    [--enable-native-code=c requires dynamic loader support])
+	    fi
+	    enable_static_libs=yes
+	    ])
 	])
 fi
 if test ${enable_static_libs} != no; then
@@ -715,6 +792,8 @@ if test ${enable_static_libs} != no; then
 else
     STATIC_LIBS=
     OPTIONAL_BASES="${OPTIONAL_BASES} pruxdld"
+    AC_DEFINE([UX_DLD_ENABLED], [1],
+	[Define to 1 if unix dynamic loading support is enabled.])
 fi
 
 if test ${enable_valgrind_mode} != no; then
@@ -744,10 +823,11 @@ linux-gnu)
     ;;
 freebsd*)
     M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
     ;;
 darwin*)
-    DLD_LDFLAGS="${DLD_LDFLAGS} -Wl,-pagezero_size,04000000"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -dynamiclib -flat_namespace -undefined suppress"
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -Wl,-pagezero_size,04000000"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -bundle -flat_namespace -undefined suppress"
     ;;
 netbsd*)
     DO_GCC_TESTS=yes
@@ -756,6 +836,10 @@ netbsd*)
 	FOO=-Wl,-rpath,`echo ${x_libraries} | sed -e "s/:/ -Wl,-rpath,/g"`
 	LDFLAGS="${LDFLAGS} ${FOO}"
     fi
+    ;;
+openbsd*)
+    M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
+    DO_GCC_TESTS=yes
     ;;
 solaris*)
     if test ${GCC} = yes; then
@@ -770,9 +854,9 @@ if test ${DO_GCC_TESTS} = yes; then
 	STATIC_PREFIX="-Xlinker -Bstatic"
 	STATIC_SUFFIX="-Xlinker -Bdynamic"
     fi
-    DLD_LDFLAGS="${DLD_LDFLAGS} -export-dynamic"
+    SCHEME_LDFLAGS="${SCHEME_LDFLAGS} -export-dynamic"
     MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
-    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared"
+    MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
     AC_RUN_IFELSE(
 	[AC_LANG_PROGRAM(
@@ -792,8 +876,8 @@ if test ${DO_GCC_TESTS} = yes; then
 fi
 
 AC_MSG_CHECKING([for native-code support])
-OPTIONAL_BASES="${OPTIONAL_BASES} cmpint"
-GC_HEAD_FILES="gccode.h cmpgc.h"
+OPTIONAL_BASES="${OPTIONAL_BASES} cmpint cmpintmd comutl"
+GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
 SCM_ARCH=none
 ECN_WARNP=no
 
@@ -829,6 +913,9 @@ yes)
 c)
     SCM_ARCH=c
     ;;
+svm)
+    SCM_ARCH=svm1
+    ;;
 no|none)
     ;;
 *)
@@ -842,14 +929,23 @@ none)
     ;;
 c)
     AC_MSG_RESULT([yes, using portable C code])
-    AC_DEFINE([NATIVE_CODE_IS_C], [1],
-        [Define that the compiler outputs C code instead of binaries.])
     AC_CONFIG_LINKS([cmpauxmd.c:cmpauxmd/c.c])
-    AC_DEFINE([COMPILE_FOR_STATIC_LINKING], [1],
-	[Define to 1 for static compilation of C native code.])
+    AC_CONFIG_FILES([liarc-cc], [chmod +x liarc-cc])
+    AC_CONFIG_FILES([liarc-ld], [chmod +x liarc-ld])
     OPTIONAL_BASES="${OPTIONAL_BASES} cmpauxmd unstackify compinit"
-    LIARC_RULES_1=liarc-rules-1
-    LIARC_RULES_2=makegen/liarc-rules-2
+    LIARC_VARS=liarc-vars
+    LIARC_RULES=liarc-rules
+    AUX_PROGRAMS="gen-nonce extract-liarc-decls"
+    AUX_DATA=
+    AUXDIR_NAME=mit-scheme-c
+    EXE_NAME=mit-scheme-c
+    INSTALL_INCLUDE=install-include
+    ;;
+svm1)
+    AC_MSG_RESULT([yes, using portable SVM code])
+    OPTIONAL_BASES="${OPTIONAL_BASES} svm1-interp"
+    AUXDIR_NAME=mit-scheme-svm
+    EXE_NAME=mit-scheme-svm
     ;;
 *)
     AC_MSG_RESULT([yes, for ${SCM_ARCH}])
@@ -863,12 +959,11 @@ if test ${ECN_WARNP} = yes; then
     AC_MSG_WARN([illegal --enable-native-code value: ${enable_native_code}])
 fi
 
-if test ${SCM_ARCH} != none; then
-    AC_DEFINE([HAS_COMPILER_SUPPORT], [1],
-	[Define if architecture has native-code compiler support.])
-    AC_CONFIG_LINKS([cmpintmd.h:cmpintmd/${SCM_ARCH}.h])
-    GC_HEAD_FILES="${GC_HEAD_FILES} cmpintmd.h"
-fi
+AC_CONFIG_LINKS([
+    cmpintmd.h:cmpintmd/${SCM_ARCH}.h
+    cmpintmd.c:cmpintmd/${SCM_ARCH}.c
+    cmpintmd-config.h:cmpintmd/${SCM_ARCH}-config.h
+    ])
 
 for base in ${OPTIONAL_BASES}; do
     OPTIONAL_SOURCES="${OPTIONAL_SOURCES} ${base}.c"
@@ -897,13 +992,19 @@ AC_SUBST([STATIC_SUFFIX])
 AC_SUBST([PRBFISH_LIBS])
 AC_SUBST([PRMD5_LIBS])
 AC_SUBST([SCHEME_DEFS])
-AC_SUBST([DLD_LDFLAGS])
+AC_SUBST([SCHEME_LDFLAGS])
 AC_SUBST([MODULE_TARGETS])
 AC_SUBST_FILE([MODULE_RULES])
 AC_SUBST([MODULE_CFLAGS])
 AC_SUBST([MODULE_LDFLAGS])
-AC_SUBST_FILE([LIARC_RULES_1])
-AC_SUBST_FILE([LIARC_RULES_2])
+AC_SUBST_FILE([LIARC_VARS])
+AC_SUBST_FILE([LIARC_RULES])
+AC_SUBST([AUX_PROGRAMS])
+AC_SUBST([AUX_DATA])
+AC_SUBST([AUXDIR_NAME])
+AC_SUBST([EXE_NAME])
+AC_SUBST([INSTALL_INCLUDE])
+AC_SUBST([CCLD])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

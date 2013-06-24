@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: trap.h,v 9.53 2007/01/05 21:19:25 cph Exp $
+$Id: trap.h,v 9.54 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,7 +26,7 @@ USA.
 */
 
 #ifndef SCM_TRAP_H
-#define SCM_TRAP_H
+#define SCM_TRAP_H 1
 
 /* Kinds of traps:
 
@@ -43,7 +43,7 @@ typedef unsigned long trap_kind_t;
 #define TRAP_UNASSIGNED				0
 #define TRAP_UNBOUND				2
 #define TRAP_EXPENSIVE				6
-/* TRAP_MAX_IMMEDIATE is defined in const.h */
+/* TRAP_MAX_IMMEDIATE is defined in object.h */
 
 /* The following are non-immediate traps: */
 #define TRAP_COMPILER_CACHED			14

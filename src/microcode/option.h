@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.h,v 1.18 2007/01/05 21:19:25 cph Exp $
+$Id: option.h,v 1.19 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -28,50 +28,36 @@ USA.
 #ifndef SCM_OPTION_H
 #define SCM_OPTION_H
 
-#include "ansidecl.h"
+#include "config.h"
 
 extern int option_saved_argc;
-extern CONST char ** option_saved_argv;
+extern const char ** option_saved_argv;
 extern int option_unused_argc;
-extern CONST char ** option_unused_argv;
+extern const char ** option_unused_argv;
 
 /* Boolean options */
-extern int option_emacs_subprocess;
-extern int option_force_interactive;
-extern int option_disable_core_dump;
-extern int option_empty_list_eq_false;
-extern int option_batch_mode;
+extern bool option_emacs_subprocess;
+extern bool option_force_interactive;
+extern bool option_disable_core_dump;
+extern bool option_batch_mode;
+extern bool option_band_specified;
 
 /* String options */
-extern CONST char ** option_library_path;
-extern CONST char * option_band_file;
-extern CONST char * option_fasl_file;
-extern int option_band_specified;
-extern CONST char * option_utabmd_file;
+extern const char ** option_library_path;
+extern const char * option_band_file;
+extern const char * option_fasl_file;
+extern const char * option_utabmd_file;
 
 /* Numeric options */
-extern unsigned int option_heap_size;
-extern unsigned int option_constant_size;
-extern unsigned int option_stack_size;
+extern unsigned long option_heap_size;
+extern unsigned long option_constant_size;
+extern unsigned long option_stack_size;
 
-/* Meaningful only to bchscheme */
+extern void read_command_line_options (int argc, const char ** argv);
 
-extern CONST char * option_gc_directory;
-extern CONST char * option_gc_drone;
-extern CONST char * option_gc_file;
-extern int option_gc_keep;
-extern int option_gc_read_overlap;
-extern int option_gc_window_size;
-extern int option_gc_write_overlap;
-extern long option_gc_start_position;
-extern long option_gc_end_position;
+extern const char * search_for_library_file (const char *);
 
-extern void EXFUN (read_command_line_options, (int argc, CONST char ** argv));
-
-extern CONST char * EXFUN (search_for_library_file, (CONST char *));
-
-extern CONST char * EXFUN
-  (search_path_for_file,
-   (CONST char * option, CONST char * filename, int default_p, int fail_p));
+extern const char * search_path_for_file
+  (const char * option, const char * filename, bool default_p, bool fail_p);
 
 #endif /* SCM_OPTION_H */

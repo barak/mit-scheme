@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: optiondb.scm,v 1.19 2007/01/05 21:19:28 cph Exp $
+$Id: optiondb.scm,v 1.20 2007/06/09 01:22:50 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -42,7 +42,7 @@ USA.
 ;;
 ;; (STANDARD-OPTION-LOADER 'PACKAGE-NAME 'EXPR file file ...)
 ;;   Creates a loader that loads the files (strings relative to
-;;   $MITSCHEME_LIBRARY_PATH/options) into the environment of the
+;;   $MITSCHEME_LIBRARY_PATH/runtime/) into the environment of the
 ;;   package named PACKAGE-NAME, and then evaluates EXPR in that load
 ;;   environment. If EXPR is #F of course evaluating it has no effect.
 ;; 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: functions.sh,v 1.6 2007/01/05 21:19:25 cph Exp $
+# $Id: functions.sh,v 1.9 2007/06/15 03:40:17 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -25,26 +25,90 @@
 
 # Functions for shell scripts.
 
+run_cmd ()
+{
+    echo "run_cmd:" "${@}"
+    "${@}"
+}
+
+run_configure ()
+{
+    run_cmd ./configure "${@}"
+}
+
+run_make ()
+{
+    run_cmd make "${@}"
+}
+
+run_cmd_in_dir ()
+(
+    cd "${1}"
+    shift
+    run_cmd "${@}"
+)
+
+get_fasl_file ()
+{
+    if [ -f runtime/make.o ]; then
+	echo "http://www.gnu.org/software/mit-scheme/lib/runtime/make.so"
+	return 0
+    elif [ -f runtime/make.com ]; then
+	echo "make.com"
+	return 0
+    else
+	echo "Can't find argument for --fasl." >&2
+	return 1
+    fi
+}
+
 maybe_mkdir ()
 {
     if [ ! -e "${1}" ]; then
-	echo "mkdir ${1}"
-	mkdir "${1}"
+	run_cmd mkdir "${1}"
     fi
 }
 
 maybe_link ()
 {
     if [ ! -e "${1}" ] && [ ! -L "${1}" ]; then
-	echo "ln -s ${2} ${1}"
-	ln -s "${2}" "${1}"
+	run_cmd ln -s "${2}" "${1}"
     fi
 }
 
 maybe_unlink ()
 {
-    if [ -L "${1}" ] && [ "${1}" -ef "${2}" ]; then
-	echo "rm ${1}"
-	rm "${1}"
+    if maybe_unlink_p "${1}" "${2}"; then
+	run_cmd rm "${1}"
+    fi
+}
+
+maybe_unlink_p ()
+{
+    (
+    cd `dirname "${1}"`
+    BN=`basename "${1}"`
+    [ -L "${BN}" ] && [ "${BN}" -ef "${2}" ]
+    )
+}
+
+maybe_rm ()
+{
+    FILES=
+    DIRS=
+    for FN in "${@}"; do
+	if [ ! -L "${FN}" ]; then
+	    if [ -f "${FN}" ]; then
+		FILES="${FILES} ${FN}"
+	    elif [ -d "${FN}" ]; then
+		DIRS="${DIRS} ${FN}"
+	    fi
+	fi
+    done
+    if [ "${FILES}" ]; then
+	run_cmd rm -f ${FILES}
+    fi
+    if [ "${DIRS}" ]; then
+	run_cmd rm -rf ${DIRS}
     fi
 }

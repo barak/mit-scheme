@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: gc.scm,v 14.25 2007/01/05 21:19:28 cph Exp $
+$Id: gc.scm,v 14.26 2007/04/29 19:25:16 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -37,7 +37,6 @@ USA.
   (set! hook/stack-overflow default/stack-overflow)
   (set! hook/hardware-trap default/hardware-trap)
   (set! default-safety-margin 4500)
-  (set! pure-space-queue (list 'PURE-SPACE-QUEUE))
   (set! constant-space-queue (list 'CONSTANT-SPACE-QUEUE))
   (set! hook/gc-start default/gc-start)
   (set! hook/gc-finish default/gc-finish)
@@ -87,26 +86,24 @@ USA.
 				 (set-cdr! queue (cdr items))
 				 (queued-purification-failure)))
 			   (cdr result)))))))))
-    (or (try-queue pure-space-queue #t)
-	(try-queue constant-space-queue #f)
+    (or (try-queue constant-space-queue #f)
 	(gc-flip-internal safety-margin))))
 
 (define (queued-purification-failure)
   (warn "Unable to purify all queued items; dequeuing one."))
 
 (define (default/purify item pure-space? queue?)
-  (if (not (if pure-space? (object-pure? item) (object-constant? item)))
+  pure-space?
+  (if (not (object-constant? item))
       (if queue?
-	  (let ((queue (if pure-space? pure-space-queue constant-space-queue)))
-	    (with-absolutely-no-interrupts
-	      (lambda ()
-		(set-cdr! queue (cons item (cdr queue)))
-		unspecific)))
+	  (with-absolutely-no-interrupts
+	    (lambda ()
+	      (set-cdr! constant-space-queue
+			(cons item (cdr constant-space-queue)))
+	      unspecific))
 	  (let loop ()
 	    (let ((result
-		   (purify-internal item
-				    pure-space?
-				    default-safety-margin)))
+		   (purify-internal item #f default-safety-margin)))
 	      (cond ((not (pair? result))
 		     ;; Wrong phase -- try again.
 		     (gc-flip)
@@ -122,7 +119,6 @@ USA.
   escape-code
   (abort->nearest "Aborting!: the hardware trapped"))
 
-(define pure-space-queue)
 (define constant-space-queue)
 (define hook/gc-start)
 (define hook/gc-finish)
@@ -134,11 +130,10 @@ USA.
       space-remaining)))
 
 (define (purify-internal item pure-space? safety-margin)
+  pure-space?
   (let ((start-value (hook/gc-start)))
     (let ((result
-	   ((ucode-primitive primitive-purify) item
-					       pure-space?
-					       safety-margin)))
+	   ((ucode-primitive primitive-purify) item #f safety-margin)))
       (if result
 	  (gc-finish start-value (cdr result)))
       result)))
@@ -194,8 +189,7 @@ USA.
 		       safety-margin)))))
 
 (define (flush-purification-queue!)
-  (if (or (pair? (cdr pure-space-queue))
-	  (pair? (cdr constant-space-queue)))
+  (if (pair? (cdr constant-space-queue))
       (begin
 	(gc-flip)
 	(flush-purification-queue!))))
@@ -203,9 +197,8 @@ USA.
 (define (purify item #!optional pure-space? queue?)
   ;; Purify an item -- move it into pure space and clean everything by
   ;; doing a gc-flip.
-  (hook/purify item
-	       (if (default-object? pure-space?) #t pure-space?)
-	       (if (default-object? queue?) #t queue?))
+  pure-space?
+  (hook/purify item #f (if (default-object? queue?) #t queue?))
   item)
 
 (define (constant-space/in-use)

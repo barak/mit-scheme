@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: blktyp.scm,v 4.20 2007/01/05 21:19:20 cph Exp $
+$Id: blktyp.scm,v 4.21 2007/04/29 20:16:05 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -133,9 +133,11 @@ USA.
 	  (if previously-trivial?
 	      (if (not (procedure/trivial-closure? procedure))
 		  (error "trivial procedure becoming non-trivial" procedure))
+	      #|
 	      (if (procedure/trivial-closure? procedure)
 		  (warn "non-trivial procedure becoming trivial"
-			procedure)))))))
+			procedure))
+	      |#)))))
 
 (define (attempt-child-graft block procedure update?)
   (let ((block* (block-nearest-closure-ancestor

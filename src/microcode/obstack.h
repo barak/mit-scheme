@@ -1,6 +1,10 @@
 /* obstack.h - object stack macros
    Copyright (C) 1988 Free Software Foundation, Inc.
 
+Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
+    1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
+    2006, 2007 Massachusetts Institute of Technology
+
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
 Free Software Foundation; either version 1, or (at your option) any
@@ -103,27 +107,21 @@ Summary:
 
 /* Don't do the contents of this file more than once.  */
 
-#ifndef __OBSTACKS__
-#define __OBSTACKS__
+#ifndef SCM_OBSTACK_H
+#define SCM_OBSTACK_H 1
 
 #include "config.h"
-#include "ansidecl.h"
-
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#  include <string.h>
-#endif
 
 /* We use subtraction of (char *)0 instead of casting to int
    because on word-addressable machines a simple cast to int
    may ignore the byte-within-word field of the pointer.  */
 
 #ifndef __PTR_TO_INT
-#define __PTR_TO_INT(P) ((P) - (char *)0)
+#  define __PTR_TO_INT(P) (((char *) (P)) - ((char *) 0))
 #endif
 
 #ifndef __INT_TO_PTR
-#define __INT_TO_PTR(P) ((PTR) ((P) + (char *)0))
+#  define __INT_TO_PTR(P) ((void *) (((char *) 0) + (P)))
 #endif
 
 struct _obstack_chunk		/* Lives at front of each chunk. */
@@ -143,26 +141,18 @@ struct obstack		/* control current object in current chunk */
   long	temp;			/* Temporary for some macros.  */
   long  alignment_mask;		/* Mask of alignment for each object. */
 				 /* User's fcn to allocate a chunk.  */
-  struct _obstack_chunk * EXFUN ((*chunkfun), (long));
+  struct _obstack_chunk * (*chunkfun) (long);
 				/* User's function to free a chunk.  */
-  void EXFUN ((*freefun), (PTR));
+  void (*freefun) (void *);
 };
 
 /* Declare the external functions we use; they are in obstack.c.  */
 
-#ifdef HAVE_STDC
-  extern void _obstack_newchunk (struct obstack *, int);
-  extern void _obstack_free (struct obstack *, void *);
-  extern void _obstack_begin (struct obstack *, int, long,
-			      void * (*) (size_t), void (*) (void *));
-#else
-  extern void _obstack_newchunk ();
-  extern void _obstack_free ();
-  extern void _obstack_begin ();
-#endif
+extern void _obstack_newchunk (struct obstack *, int);
+extern void _obstack_free (struct obstack *, void *);
+extern void _obstack_begin
+  (struct obstack *, int, long, void * (*) (size_t), void (*) (void *));
 
-#ifdef HAVE_STDC
-
 /* Do the function-declarations after the structs
    but before defining the macros.  */
 
@@ -198,11 +188,6 @@ void * obstack_base (struct obstack *obstack);
 void * obstack_next_free (struct obstack *obstack);
 int obstack_alignment_mask (struct obstack *obstack);
 int obstack_chunk_size (struct obstack *obstack);
-
-#endif /* HAVE_STDC */
-
-/* Non-ANSI C cannot really support alternative functions for these macros,
-   so we do not declare them.  */
 
 /* Pointer to beginning of object being allocated or to be allocated next.
    Note that this might not be the final address of the object
@@ -232,7 +217,7 @@ int obstack_chunk_size (struct obstack *obstack);
 
 #define obstack_blank_fast(h,n) ((h)->next_free += (n))
 
-#if defined (__GNUC__) && defined (__STDC__)
+#ifdef __GNUC__
 
 /* For GNU C, if not -traditional,
    we can define these macros to compute all args only once
@@ -276,7 +261,7 @@ int obstack_chunk_size (struct obstack *obstack);
 /* These assume that the obstack alignment is good enough for pointers or ints,
    and that the data added so far to the current object
    shares that much alignment.  */
-   
+
 #define obstack_ptr_grow(OBSTACK,datum)					\
 ({ struct obstack *__o = (OBSTACK);					\
    ((__o->next_free + sizeof (void *) > __o->chunk_limit)		\
@@ -343,7 +328,7 @@ int obstack_chunk_size (struct obstack *obstack);
      __o->next_free = __o->object_base = __obj;				\
    else (obstack_free) (__o, __obj); })
 
-#else /* not __GNUC__ or not __STDC__ */
+#else /* not __GNUC__ */
 
 #define obstack_object_size(h) \
  (unsigned) ((h)->next_free - (h)->object_base)
@@ -410,22 +395,13 @@ int obstack_chunk_size (struct obstack *obstack);
   (h)->object_base = (h)->next_free,					\
   __INT_TO_PTR ((h)->temp))
 
-#ifdef HAVE_STDC
 #define obstack_free(h,obj)						\
 ( (h)->temp = (char *)(obj) - (char *) (h)->chunk,			\
   (((h)->temp >= 0 && (h)->temp < (h)->chunk_limit - (char *) (h)->chunk)\
    ? (int) ((h)->next_free = (h)->object_base				\
 	    = (h)->temp + (char *) (h)->chunk)				\
    : (((obstack_free) ((h), (h)->temp + (char *) (h)->chunk), 0), 0)))
-#else
-#define obstack_free(h,obj)						\
-( (h)->temp = (char *)(obj) - (char *) (h)->chunk,			\
-  (((h)->temp >= 0 && (h)->temp < (h)->chunk_limit - (char *) (h)->chunk)\
-   ? (int) ((h)->next_free = (h)->object_base				\
-	    = (h)->temp + (char *) (h)->chunk)				\
-   : (_obstack_free ((h), (h)->temp + (char *) (h)->chunk), 0)))
-#endif
 
-#endif /* not __GNUC__ or not __STDC__ */
+#endif /* not __GNUC__ */
 
-#endif /* not __OBSTACKS__ */
+#endif /* not SCM_OBSTACK_H */

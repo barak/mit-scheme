@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: build-bands.sh,v 1.6 2007/01/05 21:19:25 cph Exp $
+# $Id: build-bands.sh,v 1.13 2007/06/15 03:40:10 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -23,34 +23,17 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 # 02110-1301, USA.
 
-(
-    cd runtime
-    ../microcode/scheme --library ../lib --fasl make.com <<EOF
-(disk-save "../lib/runtime.com")
-EOF
-)
+set -e
 
-microcode/scheme --library lib --large <<EOF
-(load-option 'SF)
-(load-option 'COMPILER)
-(disk-save "lib/compiler.com")
-EOF
+. etc/functions.sh
 
-microcode/scheme --library lib --compiler <<EOF
-(load-option 'EDWIN)
-(disk-save "lib/all.com")
-EOF
+FASL=`get_fasl_file`
 
-microcode/scheme --library lib --large <<EOF
-(load-option 'EDWIN)
-(disk-save "lib/edwin.com")
+run_cmd_in_dir runtime ../microcode/scheme --library ../lib --heap 6000 \
+    --fasl "${FASL}" <<EOF
+(begin
+  (disk-save "../lib/runtime.com")
+  (load-option (quote compiler))
+  (load-option (quote edwin))
+  (disk-save "../lib/all.com"))
 EOF
-
-(
-    cd runtime-check
-    ../microcode/scheme --library ../lib --fasl make.com <<EOF
-(load-option 'EDWIN)
-(load-option 'STUDENT)
-(disk-save "../lib/6001.com")
-EOF
-)

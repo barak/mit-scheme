@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: wrkdir.scm,v 14.12 2007/01/05 21:19:28 cph Exp $
+$Id: wrkdir.scm,v 14.13 2007/06/06 02:53:48 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,7 +29,7 @@ USA.
 ;;; package: (runtime working-directory)
 
 (declare (usual-integrations))
-
+
 (define (initialize-package!)
   (reset!)
   (add-event-receiver! event:after-restore reset!))
@@ -49,26 +49,19 @@ USA.
   *working-directory-pathname*)
 
 (define (set-working-directory-pathname! name)
-  (let ((pathname
-	 (pathname-as-directory
-	  (merge-pathnames name *working-directory-pathname*))))
-    (if (not (file-directory? pathname))
-	(error "Not a valid directory:" pathname))
-    (let ((pathname (pathname-simplify pathname)))
-      (set! *working-directory-pathname* pathname)
-      (set! *default-pathname-defaults*
-	    (merge-pathnames pathname *default-pathname-defaults*))
-      (cmdl/set-default-directory (nearest-cmdl) pathname)
-      pathname)))
+  (let ((pathname (new-pathname name)))
+    (set! *working-directory-pathname* pathname)
+    (set! *default-pathname-defaults* pathname)
+    (cmdl/set-default-directory (nearest-cmdl) pathname)
+    pathname))
 
 (define (with-working-directory-pathname name thunk)
-  (let ((pathname
-	 (pathname-as-directory
-	  (merge-pathnames name *working-directory-pathname*))))
-    (if (not (file-directory? pathname))
-	(error "Not a valid directory:" pathname))
-    (let ((pathname (pathname-simplify pathname)))
-      (fluid-let ((*working-directory-pathname* pathname)
-		  (*default-pathname-defaults*
-		   (merge-pathnames pathname *default-pathname-defaults*)))
-	(thunk)))))
+  (let ((pathname (new-pathname name)))
+    (fluid-let ((*working-directory-pathname* pathname)
+		(*default-pathname-defaults* pathname))
+      (thunk))))
+
+(define (new-pathname name)
+  (pathname-simplify
+   (pathname-as-directory
+    (merge-pathnames name *working-directory-pathname*))))

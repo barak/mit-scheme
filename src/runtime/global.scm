@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: global.scm,v 14.78 2007/01/09 06:36:21 cph Exp $
+$Id: global.scm,v 14.79 2007/04/29 19:25:21 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -335,8 +335,6 @@ USA.
 		(per-bucket (fix:- index 1) accumulator)))))))
 
 (define (impurify object)
-  (if (and (object-pointer? object) (object-pure? object))
-      ((ucode-primitive primitive-impurify) object))
   object)
 
 (define (fasdump object filename #!optional quiet? dump-option)

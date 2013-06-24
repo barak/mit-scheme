@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: types.h,v 9.42 2007/01/05 21:19:25 cph Exp $
+$Id: types.h,v 9.43 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,10 +25,8 @@ USA.
 
 */
 
-/* Type code definitions, numerical order */
+/* Type code definitions */
 
-/*	Name				Value	Previous Name */
-
 #define TC_NULL	                	0x00
 #define TC_LIST				0x01
 #define TC_CHARACTER			0x02
@@ -45,7 +43,7 @@ USA.
 #define TC_MANIFEST_CLOSURE		0x0D
 #define TC_BIG_FIXNUM			0x0E
 #define TC_PROCEDURE			0x0F
-#define TC_ENTITY			0x10 /* PRIMITIVE_EXTERNAL */
+#define TC_ENTITY			0x10
 #define TC_DELAY			0x11
 #define TC_ENVIRONMENT			0x12
 #define TC_DELAYED			0x13
@@ -61,7 +59,7 @@ USA.
 #define TC_INTERNED_SYMBOL		0x1D
 #define TC_CHARACTER_STRING		0x1E
 #define TC_ACCESS			0x1F
-#define TC_HUNK3_A			0x20 /* EXTENDED_FIXNUM */
+#define TC_HUNK3_A			0x20
 #define TC_DEFINITION			0x21
 #define TC_BROKEN_HEART			0x22
 #define TC_ASSIGNMENT			0x23
@@ -72,14 +70,14 @@ USA.
 #define TC_COMPILED_ENTRY		0x28
 #define TC_LEXPR			0x29
 #define TC_PCOMB3  			0x2A
-#define TC_MANIFEST_SPECIAL_NM_VECTOR	0x2B
+/* #define TC_UNUSED			0x2B */
 #define TC_VARIABLE			0x2C
 #define TC_THE_ENVIRONMENT		0x2D
-#define TC_FUTURE			0x2E
+/* #define TC_UNUSED			0x2E */
 #define TC_VECTOR_1B			0x2F
 #define TC_PCOMB0			0x30
 #define TC_VECTOR_16B			0x31
-#define TC_REFERENCE_TRAP		0x32 /* UNASSIGNED */
+#define TC_REFERENCE_TRAP		0x32
 #define TC_SEQUENCE_3			0x33
 #define TC_CONDITIONAL			0x34
 #define TC_DISJUNCTION			0x35
@@ -87,22 +85,22 @@ USA.
 #define TC_WEAK_CONS			0x37
 #define TC_QUAD				0x38
 #define TC_LINKAGE_SECTION		0x39
-#define TC_RATNUM			0x3A /* COMPILER_LINK */
+#define TC_RATNUM			0x3A
 #define TC_STACK_ENVIRONMENT		0x3B
 #define TC_COMPLEX			0x3C
 #define TC_COMPILED_CODE_BLOCK		0x3D
 #define TC_RECORD			0x3E
+/* #define TC_UNUSED			0x3F */
 
-/* If you add a new type, don't forget to update gccode.h, gctype.c,
-   and the type name table below. */
+/* If you add a new type, don't forget to update "gcloop.c"
+   and TYPE_NAME_TABLE below. */
 
-#define LAST_TYPE_CODE			0x3E
-#define MIN_TYPE_CODE_LENGTH		6
+#define MIN_TYPE_CODE_LENGTH 6
+#define TYPE_CODE_LIMIT (1 << MIN_TYPE_CODE_LENGTH)
+#define LAST_TYPE_CODE (TYPE_CODE_LIMIT - 1)
 
-#ifdef TYPE_CODE_LENGTH
-#if (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
-#include ";; inconsistency between object.h and types.h: MIN_TYPE_CODE_LENGTH"
-#endif
+#if defined (TYPE_CODE_LENGTH) && (TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH)
+#  include ";; inconsistency: TYPE_CODE_LENGTH < MIN_TYPE_CODE_LENGTH"
 #endif
 
 #define TYPE_NAME_TABLE							\
@@ -150,10 +148,10 @@ USA.
   /* 0x28 */			"COMPILED-ENTRY",			\
   /* 0x29 */			"LEXPR",				\
   /* 0x2A */  			"PCOMB3",				\
-  /* 0x2B */			"MANIFEST-SPECIAL-NM-VECTOR",		\
+  /* 0x2B */			0,					\
   /* 0x2C */			"VARIABLE",				\
   /* 0x2D */			"THE-ENVIRONMENT",			\
-  /* 0x2E */			"FUTURE",				\
+  /* 0x2E */			0,					\
   /* 0x2F */			"VECTOR-1B",				\
   /* 0x30 */			"PCOMB0",				\
   /* 0x31 */			"VECTOR-16B",				\
@@ -169,14 +167,9 @@ USA.
   /* 0x3B */			"STACK-ENVIRONMENT",			\
   /* 0x3C */			"COMPLEX",				\
   /* 0x3D */			"COMPILED-CODE-BLOCK",			\
-  /* 0x3E */			"RECORD"				\
-  }
-
-/* Flags and aliases */
-
-/* Type code 0x10 (used to be TC_PRIMITIVE_EXTERNAL) has been reused. */
-
-#define PRIMITIVE_EXTERNAL_REUSED
+  /* 0x3E */			"RECORD",				\
+  /* 0x3F */			0					\
+}
 
 /* Aliases */
 
@@ -188,5 +181,3 @@ USA.
 
 #define UNMARKED_HISTORY_TYPE		TC_HUNK3_A
 #define MARKED_HISTORY_TYPE		TC_HUNK3_B
-
-#define case_TC_FIXNUMs case TC_FIXNUM

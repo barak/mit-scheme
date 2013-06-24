@@ -1,3 +1,2036 @@
+2007-06-23 01:56  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.47):
+
+	Explicitly specify mit-scheme-native when that's intended.
+
+2007-06-23 01:47  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.19), microcode/configure.ac (1.54),
+	  microcode/makegen/Makefile.in.in (1.60):
+
+	For native system, install executable as mit-scheme-native rather than
+	just mit-scheme.
+
+2007-06-22 17:25  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/ux.c (1.34):
+
+	Fix thinko in recent change: || in C yields 1 or 0, not the first
+	non-zero value.
+
+2007-06-22 16:18  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/ux.c (1.33):
+
+	Rework mmap_heap_malloc so that it checks /proc/<pid>/maps only on
+	Linux, and on other systems just goes ahead and tries a fixed map.
+
+	Previously, mmap_heap_malloc would try a fixed map, and if it failed,
+	try an unfixed map; then it was changed so that it would try a fixed
+	map only if it knew there was a good address.  I think that this only
+	affects Linux, so on other systems it will again try a fixed map first,
+	and an unfixed map only if that fails.
+
+2007-06-22 14:46  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.53):
+
+	Fix typo in recent change for OpenBSD: DO_GCC_TESTS, not DO_GCC_TEST.
+
+2007-06-22 04:09  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: configure.ac (1.52), ux.h (1.84):
+
+	Add initial trivial configuration for OpenBSD.
+
+	This works well enough to build Scheme with liarc; whether there are
+	other bugs lurking, I don't know, but I imagine that it is probably OK.
+
+2007-06-22 01:18  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.46):
+
+	Use --library option with boot compiler to override an environment
+	variable that misidentifies the library directory.
+
+2007-06-21 22:31  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/utilities.scm (1.8), microcode/configure.ac (1.51),
+	  microcode/makegen/Makefile.in.in (1.59):
+
+	Eliminate the use of the (non-POSIX) make variable $^.  Prevent
+	"utabmd.bin" from being a microcode "make all" dependency when
+	configured for liarc.
+
+2007-06-21 22:29  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: create-makefiles.sh (1.4), make-native.sh (1.3):
+
+	Force the use of mit-scheme-c when configuring for liarc-to-native
+	compilation.
+
+2007-06-21 22:27  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/crsend.scm (1.19):
+
+	Don't use ASSQ with all interrupts off -- it can generate an unbounded
+	amount of garbage and overflow the heap.
+
+2007-06-21 18:39  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.18):
+
+	Fix typo: "liarcc" -> "liarc".
+
+2007-06-21 12:55  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasdump.c (9.72):
+
+	Don't align heap_start and constant_start when doing DISK-SAVE.  This
+	is totally wrong -- I can't imagine why it ever worked.
+
+2007-06-21 02:17  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/configure.ac (1.50):
+
+	On OS X, for dynamically loadable modules, use `-bundle', not
+	`-dynamiclib' when invoking `ld'.  The main difference is that dylibs
+	don't work for our purposes on older versions of OS X, whereas bundles
+	do, and are generally recommended for these purposes.  I've forgotten
+	the technical details.
+
+2007-06-18 19:58  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: compile.scm (1.26), compile.scm (1.27):
+
+	Prevent liarc from recompiling files that are up to date.
+
+2007-06-18 13:31  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/: machines/C/rules2.scm (1.10), rtlgen/opncod.scm
+	  (4.81):
+
+	Fix two bugs in the implementation of index-fixnum type checks.
+
+2007-06-17 14:45  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.18):
+
+	Remove makefiles_created on maintainer-clean.
+
+2007-06-17 12:54  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/: base/make.scm (4.130), machines/C/make.scm (1.12),
+	  machines/alpha/make.scm (1.9), machines/i386/make.scm (1.11),
+	  machines/spectrum/make.scm (4.95), machines/vax/make.scm (4.94):
+
+	Change system ID for LIAR to show arch.
+
+2007-06-15 22:32  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpintmd/none.h (1.3):
+
+	Remove obsolete #defines that cause trouble for older gcc.
+
+2007-06-15 22:14  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/create-makefiles.sh (1.3):
+
+	Don't regenerate makefiles if they are already present and correct.
+
+2007-06-15 14:09  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.45), etc/compile.sh (1.14), etc/make-in-subdirs.sh
+	  (1.1), etc/make-liarc.sh (1.3), etc/make-native.sh (1.2):
+
+	Make changes to support maintenance of liarc with installed liarc.
+	Simplify top-level makefile.  Clean up boot-root and stamp files after
+	finishing cross compilation.
+
+2007-06-15 14:07  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/utilities.scm (1.7):
+
+	If using installed liarc compiler, also use its utilities.
+
+2007-06-15 14:05  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.17):
+
+	Eliminate now-unneeded "sos" link in "lib/".
+
+2007-06-14 23:41  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.44), etc/make-native.sh (1.1):
+
+	Get native-from-liarc compilation working (finally).
+
+2007-06-14 23:40  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: build-bands.sh (1.13), build-boot-compiler.sh (1.3),
+	  c-compile.sh (1.8), compile-boot-compiler.sh (1.2), compile.sh
+	  (1.13), c-prepare.sh (1.10), create-makefiles.sh (1.2),
+	  functions.sh (1.9), install-bin-symlinks.sh (1.2),
+	  make-liarc-dist.sh (1.2), make-liarc.sh (1.2), native-prepare.sh
+	  (1.3):
+
+	Create more flexible set of command functions in "etc/functions.sh",
+	and change the shell files to use them.
+
+2007-06-14 13:41  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/crstop.scm (1.19):
+
+	Eliminate now-unused procedures to finish cross compilation.
+
+2007-06-14 13:39  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/crsend.scm (1.18):
+
+	Rename top-level procedures to FINISH-CROSS-COMPILATION:foo, and add
+	new procedure FINISH-CROSS-COMPILATION:DIRECTORY.  Rewrite to update
+	and style.
+
+2007-06-14 09:31  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: fasl.c (11.2), fasl.h (9.45), fasload.c (9.104):
+
+	Eliminate requirement that fasload files have the same
+	HEAP_IN_LOW_MEMORY state as the microcode loading them.
+
+2007-06-13 09:36  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.43), etc/compile.scm (1.25):
+
+	Change SOS so that it's not a boot bundle.  Use cross compiler when
+	building native system with liarc.
+
+2007-06-13 09:34  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.96):
+
+	Fix thinko: OBJECT-FILE-PREFIX must always be a URI.
+
+2007-06-13 09:33  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/asstop.scm (1.20), compiler/base/crstop.scm (1.18),
+	  compiler/base/toplev.scm (4.75), compiler/machines/C/compiler.pkg
+	  (1.29), compiler/machines/C/ctop.scm (1.31),
+	  compiler/machines/i386/compiler.pkg (1.35), sf/butils.scm (4.17),
+	  etc/Clean.sh (1.24):
+
+	Resurrect the cross compiler.
+
+2007-06-10 14:29  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/make-liarc-dist.sh (1.1):
+
+	Initial revision.
+
+2007-06-08 22:42  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: compile.scm (1.24), utilities.scm (1.6):
+
+	Implement COMPILER-MAKE-FILE to determine the correct "make" file to
+	load based on the contents of the "compiler/machine" symlink.
+
+2007-06-08 22:37  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: compile.scm (1.23), c-prepare.sh (1.9), native-prepare.sh
+	  (1.2):
+
+	Eliminate COMPILE-BOOTSTRAP-3 by moving its contents into C-PREPARE
+	and NATIVE-PREPARE, each of which needs more specific initialization.
+
+2007-06-08 21:22  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.42), Setup.sh (1.27), edwin/Makefile-fragment
+	  (1.4), edwin/paths.scm (1.21), runtime/infutl.scm (1.73),
+	  runtime/Makefile-fragment (1.4), runtime/optiondb.scm (1.20),
+	  runtime/option.scm (14.57):
+
+	Rationalize arrangement of library directory.  Rename "options" to
+	"runtime"; move contents of "edwin/autoload" and "edwin/etc" to
+	"edwin" and eliminate those now-empty directories; and eliminate "SRC"
+	by moving its contents into "edwin" and "runtime".
+
+2007-06-08 21:19  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.scm (1.22):
+
+	Make sure "sos" is consistently treated as a boot dir.
+
+2007-06-08 21:19  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-prepare.sh (1.8):
+
+	Add "--stack 200" to compiler options.
+
+2007-06-08 02:03  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.17), configure.ac (1.16), Makefile.in (1.41),
+	  compiler/choose-machine.sh (1.2), etc/build-boot-compiler.sh
+	  (1.2), etc/compile.scm (1.21), etc/make-liarc.sh (1.1),
+	  etc/optiondb.scm (1.22), etc/utilities.scm (1.5),
+	  microcode/configure.ac (1.49):
+
+	Redesign the liarc compilation strategy again.  The new strategy has
+	two features: (1) it uses a shell script to control the compilation
+	sequence, rather than trying to get make to do the job; and (2) it
+	creates the second bootstrap compiler by installing it into a
+	subdirectory, which isolates it from the state of the build tree.
+
+2007-06-08 01:58  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/make.scm (4.129):
+
+	Don't use WITH-LOADER-BASE-URI here -- it doesn't work correctly.  For
+	the moment, I'm reverting the change, until I figure out the right
+	fix.
+
+2007-06-07 11:12  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/runtime.pkg (14.619):
+
+	Export ADD-PRIMITIVE-GC-DAEMON! to global.
+
+2007-06-07 11:11  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/gcdemn.scm (14.13):
+
+	Eliminate trailing whitespace.
+
+2007-06-06 16:03  Chris Hanson <edu/mit/csail/cph>
+
+	* 6001/make.scm (15.41), compiler/base/make.scm (4.128),
+	  cref/make.scm (1.33), imail/load.scm (1.50), rcs/load.scm (1.9),
+	  sf/make.scm (4.49), sos/load.scm (1.21), ssp/load.scm (1.11),
+	  star-parser/load.scm (1.23), win32/make.scm (1.19), xdoc/load.scm
+	  (1.8), xml/load.scm (1.22):
+
+	Use WITH-LOADER-BASE-URI in all the subsystem loaders.
+
+2007-06-06 15:42  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.40), Setup.sh (1.26), configure.ac (1.15),
+	  compiler/choose-machine.sh (1.1), compiler/configure (1.18),
+	  compiler/machines/C/compiler.pkg (1.28),
+	  compiler/machines/C/cout.scm (1.41), compiler/machines/C/ctop.scm
+	  (1.30), compiler/machines/C/make.scm (1.11), cref/make.scm
+	  (1.32), edwin/make.scm (3.124), etc/build-bands.sh (1.12),
+	  etc/build-boot-compiler.sh (1.1), etc/c-boot-compiler-2.sh (1.2),
+	  etc/c-boot-compiler.sh (1.8), etc/c-bundle.sh (1.6),
+	  etc/c-prepare.sh (1.7), etc/compile-boot-compiler.sh (1.1),
+	  etc/compile.scm (1.20), etc/create-makefiles.sh (1.1),
+	  etc/native-prepare.sh (1.1), etc/optiondb.scm (1.21),
+	  etc/std-makefile-prefix (1.3), etc/utilities.scm (1.4),
+	  imail/load.scm (1.49), microcode/comutl.c (1.39),
+	  microcode/configure.ac (1.48), microcode/extract-liarc-decls.c
+	  (9.1), microcode/fasload.c (9.103), microcode/liarc.h (1.31),
+	  microcode/pruxdld.c (1.25), microcode/cmpauxmd/c.c (1.23),
+	  microcode/cmpintmd/c.h (1.14), microcode/makegen/Makefile.in.in
+	  (1.58), microcode/makegen/liarc-base-rules (1.5),
+	  runtime/input.scm (14.35), runtime/io.scm (14.87),
+	  runtime/load.scm (14.95), runtime/make.scm (14.111),
+	  runtime/option.scm (14.56), runtime/packag.scm (14.55),
+	  runtime/pathnm.scm (14.53), runtime/runtime.pkg (14.618),
+	  runtime/utabs.scm (14.26), sf/make.scm (4.48), sos/load.scm
+	  (1.20), ssp/load.scm (1.10), star-parser/load.scm (1.22),
+	  xdoc/load.scm (1.7), xml/load.scm (1.21):
+
+	Reorganize the Scheme loader to simplify it so that I can understand
+	what it's doing.  In the process, the LOAD-NOISILY and LOAD-NEWEST
+	_features_ have been eliminated, although the procedures remain as
+	aliases for LOAD.
+
+	New procedures FILE-LOADABLE? and FILE-FASLOADABLE? test whether a
+	particular file is one that LOAD or FASLOAD (respectively) knows how
+	to handle.  New procedures SYSTEM-URI, SYSTEM-LIBRARY-URI, and
+	WITH-LOADER-BASE-URI provide a standard mechanism to refer to files in
+	the system library directory.
+
+	Eliminate DECLARE-SHARED-LIBRARY; register every .so file that's
+	loaded, and reload it on disk-restore.
+
+	Change the dynamic-loader interface to support unloading object files.
+	Make sure that all loaded object files are unloaded on DISK-RESTORE.
+	Implement low-level interface to the dynamic loader in
+	"runtime/io.scm" and use that in "runtime/load.scm".  Implement new
+	primitive LIARC-COMPILED-BLOCKS, to simplify examination of the
+	compiled_blocks table.
+
+	Change registration of .so files to use URIs rather than ad-hoc
+	abbreviations.  Standard URIs refer to parts of the system, and are
+	independent of the file-system details; file URIs refer to .so files
+	stored in particular locations.
+
+	Add an 8-byte random nonce to each .c file generated by liarc, so that
+	the loader can tell if it's the same file as a previously loaded one.
+	Write new program gen-nonce for use by c-bundle.sh.
+
+	Move makefile creation from Setup.sh to configure, so that it can
+	depend on the architecture.
+
+	Rewrite parts of "Makefile.in" and "etc/compile.scm" to support
+	compiling a native-code system using liarc.  Change
+	"etc/utilities.scm" to support liarc when it is installed as well as
+	when it is being built.
+
+	Write new program extract-liarc-decls for c-bundle.sh to use, in place
+	of of grep.  This program rewrites each declaration to specialize it
+	for bundling.
+
+2007-06-06 15:41  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/uxfs.c (1.31):
+
+	Make sure that all open directory handles are closed on DISK-RESTORE.
+
+2007-06-06 15:39  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unxpth.scm (14.34):
+
+	Rewrite PATHNAME-SIMPLIFY so that it better handles the case where
+	part of the pathname refers to non-existing file structure.
+
+2007-06-06 15:29  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/utils.c (9.91):
+
+	Change error_with_argument() to signal ERR_IN_SYSTEM_CALL when
+	appropriate.
+
+2007-06-06 15:14  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/toplev.scm (4.74):
+
+	Make sure that the values of *COMPILER-INPUT-PATHNAME* and
+	*COMPILER-OUTPUT-PATHNAME* are absolute pathnames.
+
+2007-06-05 22:53  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/wrkdir.scm (14.13):
+
+	Don't signal error if new working directory doesn't exist.  This can
+	sometimes be OK.
+
+2007-06-02 23:49  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/boole.scm (14.9):
+
+	Signal error if THERE-EXISTS? or FOR-ALL? is given a non-list
+	argument.
+
+2007-05-23 13:18  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gen-nonce.c (1.1):
+
+	Initial revision.
+
+2007-05-21 13:33  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: option.scm (14.55), pathnm.scm (14.52):
+
+	Add optional REQUIRED? arguments to SYSTEM-LIBRARY-PATHNAME and
+	SYSTEM-LIBRARY-DIRECTORY-PATHNAME.  When new arg not supplied, each
+	behaves as it used to.
+
+2007-05-19 22:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/pruxdld.c (1.24):
+
+	While loading a shared object file, remember the file name so that it
+	can be used by liarc declarations.
+
+2007-05-19 21:55  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.94):
+
+	Make sure that notifications for built-in object files are
+	"initialized" rather than "loaded".
+
+2007-05-19 21:52  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/packag.scm (14.54):
+
+	Don't bother calling BUILT-IN-OBJECT-FILE; it's already being done by
+	FASLOAD.
+
+2007-05-19 21:51  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/ctop.scm (1.29):
+
+	Change notification messages for liarc-cc and liarc-ld to reduce
+	clutter.
+
+2007-05-16 15:24  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/mit-syntax.scm (14.31):
+
+	Add SRFI-62 to the list of features, and add an identifying comment to
+	each SRFI feature.
+
+2007-05-15 01:23  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/utilities.scm (1.3):
+
+	Fix bug: edwin bundle was missing "make".
+
+2007-05-15 01:15  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.57):
+
+	Make sure liarc-cc and liarc-ld get installed.
+
+2007-05-15 01:02  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.14), Makefile.in (1.39), etc/utilities.scm (1.2):
+
+	Fix bug: "make install" wasn't installing liarc bundles.
+
+2007-05-14 21:49  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/Makefile-fragment (1.2), imail/Makefile-fragment (1.2),
+	  sf/Makefile-fragment (1.2), sos/Makefile-fragment (1.2),
+	  ssp/Makefile-fragment (1.2), star-parser/Makefile-fragment (1.2),
+	  xdoc/Makefile-fragment (1.2), xml/Makefile-fragment (1.2):
+
+	Eliminate misguided whitespace formatting.
+
+2007-05-14 21:46  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/Makefile-fragment (1.3), runtime/Makefile-fragment (1.3):
+
+	Fix mis-quoted variable references in install rules.
+
+2007-05-14 21:27  Chris Hanson <edu/mit/csail/cph>
+
+	* sos/class.scm (1.20):
+
+	<number> should be subclass of <object>, not <instance>.  Thanks
+	Taylor.
+
+2007-05-14 12:50  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.16), configure.ac (1.13), Makefile.in (1.38),
+	  Setup.sh (1.25), 6001/Makefile-fragment (1.1),
+	  compiler/Makefile-fragment (1.1), compiler/machines/C/ctop.scm
+	  (1.28), edwin/Clean.sh (1.16), edwin/Makefile-fragment (1.2),
+	  etc/build-bands.sh (1.11), etc/c-boot-compiler-2.sh (1.1),
+	  etc/c-bundle.sh (1.5), etc/c-compile.sh (1.7), etc/Clean.sh
+	  (1.23), etc/compile.scm (1.19), etc/functions.sh (1.8),
+	  etc/Setup.sh (1.14), etc/std-makefile-prefix (1.2),
+	  etc/std-makefile-suffix (1.2), etc/utilities.scm (1.1),
+	  microcode/configure.ac (1.47), microcode/liarc-cc.in (1.3),
+	  microcode/liarc.h (1.30), microcode/liarc-ld.in (1.2),
+	  microcode/makegen/liarc-base-rules (1.4),
+	  microcode/makegen/Makefile.in.in (1.56),
+	  microcode/makegen/makegen.scm (1.24), runtime/Makefile-fragment
+	  (1.2), sf/Makefile-fragment (1.1), win32/Makefile-fragment (1.1),
+	  Makefile.std (1.16), etc/build-runtime.sh (1.3):
+
+	Move building of LIARC bundles into their respective directories.
+	Create bundle file lists from .pkg files rather than from directory
+	listings.
+
+	Change "make c" to "make liarc-dist".  Restructure top-level makefile
+	to generate "liarc-dist" in distinct stages: (1) build a compiler in
+	the directory "boot-lib"; (2) run c-clean to discard all .c files; and
+	(3) rebuild everything using boot-lib compiler.
+
+	Delete "Makefile.std"; generate all subdirectory makefiles (except
+	microcode) using "Makefile-fragment" and standard prefix/suffix.
+	Rename COMPILE_FOR_DYNAMIC_LOADING to ENABLE_LIARC_FILE_INIT.  Don't
+	build 6001 or xdoc subdirs.  Use -fPIC only for shared objects, not
+	for scheme executable.  Make sure -fPIC is given to linker as well as
+	compiler.
+
+2007-05-14 12:49  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: compiler.pkg (1.27), cout.scm (1.40):
+
+	Simplify naming; guarantee that nonces are present in all exported
+	symbols.
+
+2007-05-13 08:22  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/Clean.sh (1.22):
+
+	Fix bug: "Makefile.in" is cleaned by maintainer-clean, not by
+	distclean.
+
+2007-05-10 12:44  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-boot-compiler.sh (1.7):
+
+	Fix copyright statement.
+
+2007-05-09 23:45  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/triv.pkg (1.12):
+
+	Forgot to update "triv.pkg" to match change to "cref.pkg".
+
+2007-05-09 23:45  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/redpkg.scm (1.33):
+
+	A couple of tweaks so that CREF/PACKAGE-FILES doesn't generate errors.
+
+2007-05-09 16:01  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.37), Setup.sh (1.24), cref/Makefile-fragment
+	  (1.1), cref/Makefile.in (1.10), edwin/Makefile-fragment (1.1),
+	  edwin/Makefile.in (1.14), etc/Clean.sh (1.21),
+	  etc/std-makefile-prefix (1.1), etc/std-makefile-suffix (1.1),
+	  imail/Makefile-fragment (1.1), imail/Makefile.in (1.10),
+	  microcode/makegen/Makefile.in.in (1.55),
+	  runtime/Makefile-fragment (1.1), runtime/Makefile.in (1.14),
+	  sos/Makefile-fragment (1.1), sos/Makefile.in (1.10),
+	  ssp/Makefile-fragment (1.1), ssp/Makefile.in (1.7),
+	  star-parser/Makefile-fragment (1.1), star-parser/Makefile.in
+	  (1.9), xdoc/Makefile-fragment (1.1), xdoc/Makefile.in (1.6),
+	  xml/Makefile-fragment (1.1), xml/Makefile.in (1.10):
+
+	Generate most of the Makefile.in files from fragments and boilerplate.
+	Replace "top_builddir = ." with "top_builddir = @top_builddir@" in all
+	configured makefiles, since autoconf now provides a reasonable default
+	for these.
+
+2007-05-09 15:12  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/liarc-cc.in (1.2):
+
+	Fix typo: missing "-c".
+
+2007-05-08 22:05  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.12), Setup.sh (1.23),
+	  compiler/machines/C/compiler.pkg (1.26),
+	  compiler/machines/C/ctop.scm (1.27), microcode/configure.ac
+	  (1.46), microcode/liarc-cc.in (1.1), microcode/liarc-ld.in (1.1),
+	  microcode/makegen/Makefile.in.in (1.54):
+
+	Restructure liarc to use shell scripts to compile and link its C
+	output files.  These scripts are customized by the microcode's
+	configure script to have the right invocations.  Removing this
+	knowledge from the compiler eliminates redundancy.
+
+2007-05-08 21:56  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/toplev.scm (1.29):
+
+	Forgot to change calls to FORMAT-PACKAGES and FORMAT-PACKAGES-UNUSUAL.
+
+2007-05-08 21:55  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/: cref.pkg (1.15), forpkg.scm (1.15), toplev.scm (1.28):
+
+	Implement CREF/PACKAGE-FILES to extract a list of filenames from a
+	.pkg file.  Update some of the code, particularly in "forpkg.scm".
+
+2007-05-08 08:54  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.36), configure.ac (1.11), etc/c-boot-compiler.sh
+	  (1.6), etc/c-prepare.sh (1.6):
+
+	Restructure top-level makefile to have different targets for C and
+	native compilation.
+
+2007-05-07 01:32  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unicode.scm (1.33):
+
+	Fix bug: CODE-POINTS->ALPHABET wasn't storing high-valued code points
+	correctly.  This had no effect on correctness, but had a space and
+	time cost.
+
+2007-05-06 10:16  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.15), Makefile.in (1.35), etc/c-boot-compiler.sh
+	  (1.5), etc/c-compile.sh (1.6), etc/compile.scm (1.18),
+	  etc/compile.sh (1.12), etc/c-prepare.sh (1.5):
+
+	Restructure the build scripts to allow building a native system from a
+	liarc system.  More work needs to be done, but these changes don't
+	break the other builds.
+
+2007-05-06 00:45  Chris Hanson <edu/mit/csail/cph>
+
+	* Setup.sh (1.22):
+
+	Create "lib/include" to allow liarc compilation outside of the
+	microcode directory.
+
+2007-05-06 00:43  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.45), makegen/Makefile.in.in (1.53):
+
+	Add "install-include" rule to create the "lib/include" directory for
+	liarc.
+
+2007-05-05 20:01  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makegen.scm (1.23):
+
+	Fix typo.
+
+2007-05-04 15:34  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: c-compile.sh (1.5), c-bundle.sh (1.4), c-prepare.sh (1.4):
+
+	Fix FSF address.
+
+2007-05-04 14:51  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-bundle.sh (1.3):
+
+	Eliminate support for microcode v14.
+
+2007-05-03 21:27  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.10), Makefile.in (1.34):
+
+	Fix typo: we no longer have "etc/c-build-bands.sh".
+
+2007-05-03 21:26  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.scm (1.17):
+
+	Fix several bugs in the "etc/compile.scm" rewrite.
+
+2007-05-03 21:26  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/build-runtime.sh (1.2):
+
+	Fix typo: missing value for --fasl option.
+
+2007-05-03 21:24  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/configure (1.17):
+
+	Make sure "compiler/machine" link is made properly.
+
+2007-05-03 14:53  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.scm (1.16):
+
+	C-PREPARE must compile "microcode/utabmd".
+
+2007-05-03 08:49  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.scm (1.15):
+
+	Conditionally compile .pkd files.  Fix typos.
+
+2007-05-03 08:48  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/configure (1.16):
+
+	Link "make.com" even for liarc.
+
+2007-05-03 08:48  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/Clean.sh (1.19):
+
+	Tweak echo line to be more specific.
+
+2007-05-02 23:49  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/: liarc-base-rules (1.3), makegen.scm (1.22):
+
+	"etc/c-bundle.sh" is now executable, so we can call it directly rather
+	than invoking it via the shell.
+
+2007-05-02 23:45  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: build-bands.sh (1.10), build-runtime.sh (1.1),
+	  c-boot-compiler.sh (1.4), c-build-bands.sh (1.4), c-compile.scm
+	  (1.2), c-compile.sh (1.4), c-initial-bands.sh (1.7),
+	  c-prepare.scm (1.2), c-prepare.sh (1.3), compile.scm (1.14),
+	  compile.sh (1.11):
+
+	Rewrite code to compile Scheme files; now "etc/compile.scm" contains
+	all of the compilation programs.  Each shell script loads
+	"etc/compile.scm" and invokes the appropriate entry point.
+	Additionally, differences between native compilation and liarc
+	compilation have been integrated, so that there are now fewer
+	necessary scripts.
+
+2007-05-02 23:40  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.14), Makefile.in (1.33), compiler/Clean.sh (1.18),
+	  edwin/Clean.sh (1.15), etc/Clean.sh (1.20), etc/functions.sh
+	  (1.7):
+
+	Change "Clean.sh" files to use common shell function to manage file removal.
+
+2007-05-02 23:35  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/configure (1.15):
+
+	Don't clean "make.dylib"; we don't generate it any more.
+
+2007-05-02 09:51  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/install-bin-symlinks.sh (1.1),
+	  microcode/makegen/Makefile.in.in (1.52):
+
+	Set up "scheme" and "bchscheme" symlinks properly when installing.
+
+2007-05-02 09:50  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: c-initial-bands.sh (1.6), optiondb.scm (1.20):
+
+	Fix "(load-option 'compiler)" to work right with liarc.
+
+2007-05-02 09:50  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-compile.sh (1.3):
+
+	Simplify: no need for SCHEME_COMPILER variable since this script
+	should always use the compiler we just built.
+
+2007-05-02 09:49  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/build-bands.sh (1.9):
+
+	Eliminate unnecessary "(load-option 'sf)".
+
+2007-05-01 23:58  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.13), Setup.sh (1.21), compiler/Clean.sh (1.17),
+	  compiler/Setup.sh (1.10), edwin/Clean.sh (1.14), etc/Clean.sh
+	  (1.19), etc/Setup.sh (1.13), microcode/Clean.sh (1.8),
+	  microcode/Setup.sh (1.12), microcode/makegen/Makefile.in.in
+	  (1.51):
+
+	Change meaning of "make c-clean" to delete only those files created by
+	"make c".  Clean up "Setup.sh" and "Clean.sh" scripts to use "set -e",
+	to avoid gratuitous uses of "exit", and to have consistent quoting.
+
+2007-05-01 20:11  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: runtime.pkg (14.617), utabs.scm (14.25):
+
+	Add new variable MICROCODE-ID/COMPILED-CODE-TYPE.  Add optional ERROR?
+	argument to MICROCODE-IDENTIFICATION-VECTOR-SLOT and
+	MICROCODE-IDENTIFICATION-ITEM.
+
+2007-05-01 20:09  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/boot.c (9.129):
+
+	Handle case where cc-arch isn't known.  Change cc-arch names to match
+	the names used in "cmpintmd/".
+
+2007-05-01 20:07  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/string.c (9.55):
+
+	Simplify char_pointer_to_string.
+
+2007-05-01 15:52  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: boot.c (9.128), utabmd.scm (9.94):
+
+	Add identification item for compiled-code architecture.
+
+2007-05-01 10:12  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/genio.scm (1.52):
+
+	Eliminate output optimization for binary; it was breaking column
+	tracking.
+
+2007-05-01 10:09  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makegen.scm (1.21):
+
+	Use output port's column tracking rather than computing it ourselves.
+	Simplify organization of code.
+
+2007-05-01 00:54  Chris Hanson <edu/mit/csail/cph>
+
+	* Setup.sh (1.20), etc/c-initial-bands.sh (1.5), etc/optiondb.scm
+	  (1.19), microcode/makegen/liarc-base-rules (1.2),
+	  microcode/makegen/Makefile.in.in (1.50),
+	  microcode/makegen/makegen.scm (1.20), runtime/option.scm (14.54):
+
+	Eliminate "lib/shared"; move contents to "lib/lib".
+
+2007-04-30 03:08  Chris Hanson <edu/mit/csail/cph>
+
+	* configure.ac (1.9), microcode/configure.ac (1.44),
+	  microcode/makegen/Makefile.in.in (1.49):
+
+	Change liarc system to use "mit-scheme-c" as name of executable and of
+	library directory.  Otherwise "mit-scheme" is used as before.  The
+	installer needs some work to deal with symlinks for the "scheme" and
+	"bchscheme" names.
+
+2007-04-29 21:49  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-boot-compiler.sh (1.3):
+
+	Increase heap size to eliminate weird compilation error.
+
+2007-04-29 21:42  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/: build-bands.sh (1.8), c-build-bands.sh (1.3):
+
+	Build only two bands: "runtime.com" and "all.com".  Others aren't
+	nearly as useful as those two.
+
+2007-04-29 21:36  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makeinit.sh (1.17):
+
+	Pass --disable-native-code when setting up.
+
+2007-04-29 21:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makegen.scm (1.19):
+
+	Eliminate use of $(^:.o=.c) which is a GNU make extension.
+
+2007-04-29 16:46  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-prepare.sh (1.2):
+
+	Bump heap size so that compilation finishes.
+
+2007-04-29 16:19  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/: i386/decls.scm (1.18), C/decls.scm (1.14):
+
+	"base/scode" no longer produces a .ext file.
+
+2007-04-29 16:17  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/fgopt/simapp.scm (4.15):
+
+	Fix typo in previous change.
+
+2007-04-29 16:16  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/: back/linear.scm (4.22), fgopt/blktyp.scm (4.21),
+	  fgopt/simapp.scm (4.14), rtlgen/rgproc.scm (4.19):
+
+	Eliminate useless compiler warnings.
+
+2007-04-29 15:48  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/redpkg.scm (1.32):
+
+	Fix typo: reverse sense of flag passed to FASLOAD.
+
+2007-04-29 15:25  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/boot.scm (14.28), runtime/gc.scm (14.26),
+	  runtime/global.scm (14.79), runtime/runtime.pkg (14.616),
+	  runtime/uerror.scm (14.57), sf/gconst.scm (4.36):
+
+	Eliminate runtime support for pure space, which no longer exists.
+
+2007-04-29 15:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/utabmd.scm (9.93):
+
+	Eliminate now-unused error code.
+
+2007-04-29 14:39  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/: i386/decls.scm (1.17), C/decls.scm (1.13):
+
+	Clean up output; use WITH-NOTIFICATION-LINE to normalize it.
+
+2007-04-29 14:38  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/configure (1.14), microcode/configure.ac (1.43):
+
+	More tweaks to make liarc.stamp work right.
+
+2007-04-29 14:26  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/boot.scm (14.27):
+
+	Fix typos in previous change.
+
+2007-04-29 14:24  Chris Hanson <edu/mit/csail/cph>
+
+	* cref/: anfile.scm (1.12), redpkg.scm (1.31):
+
+	Suppress loading/dumping messages for most files.
+
+2007-04-29 14:01  Chris Hanson <edu/mit/csail/cph>
+
+	* Clean.sh (1.12), Makefile.in (1.32), configure.ac (1.8):
+
+	After "make c" completes, generate a file "liarc.stamp" and use that
+	file to change the default value of "--enable-native-code" in
+	"./configure".
+
+2007-04-29 13:56  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/Clean.sh (1.18):
+
+	Eliminate unused ${FULL}.
+
+2007-04-27 21:58  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/configure.ac (1.42):
+
+	Signal error if liarc used without dynamic library support.
+
+2007-04-25 10:06  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/boot.scm (14.26):
+
+	Eliminate distinction between pure and constant.
+
+2007-04-24 01:31  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.110), cmpint.h (10.16), extern.h (9.70),
+	  ntapi.h (1.21), ntgui.c (1.35), ntsig.c (1.28), nttrap.c (1.31),
+	  outf.c (1.18), cmpintmd/i386.h (1.41), ntutl/makefile.wcc (1.25),
+	  ntutl/wconfig.bat (1.6):
+
+	Changes to get v15 working in win32.
+
+2007-04-22 14:04  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.41), ntutl/config.h (1.15),
+	  os2utl/config.h (1.13):
+
+	Bump version number.
+
+2007-04-22 12:41  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.48):
+
+	When installing, create symlink from bchscheme to scheme.
+
+2007-04-22 12:40  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasload.c (9.102):
+
+	Must conditionalize references to memory_base.
+
+2007-04-22 12:31  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: ansidecl.h (1.10), array.c (9.51), array.h (9.41),
+	  artutl.c (1.21), avltree.c (1.11), avltree.h (1.10), bchdmp.c
+	  (9.95), bchdrn.c (1.15), bchdrn.h (1.15), bchgcc.h (9.68),
+	  bchgcl.c (9.59), bchmmg.c (9.110), bchpur.c (9.77), bchutl.c
+	  (1.18), bignmint.h (1.11), bignum.c (9.57), bignum.h (9.36),
+	  bigprm.c (1.11), bintopsb.c (9.82), bitstr.c (9.69), bitstr.h
+	  (1.15), bkpt.c (9.37), bkpt.h (9.39), bltdef.h (1.9), boot.c
+	  (9.127), breakup.c (9.30), char.c (9.38), cmpgc.h (1.37),
+	  cmpint.c (1.109), cmpint.h (10.15), cmptype.h (1.9), comlin.c
+	  (1.15), comlin.h (1.12), comutl.c (1.38), config.sub (11.7),
+	  configure.ac (1.40), confshared.h (11.12), const.h (9.56),
+	  copyrigh.c (1.8), critsec.h (1.9), daemon.c (9.37), debug.c
+	  (9.61), default.h (9.50), dfloat.c (1.11), dmpwrld.c (9.46),
+	  dstack.h (1.16), dump.c (9.45), edwin.h (1.15), error.c (1.13),
+	  errors.h (9.49), extern.c (9.44), extern.h (9.69), fasdump.c
+	  (9.71), fasl.c (11.1), fasl.h (9.44), fasload.c (9.101), fft.c
+	  (9.38), fhooks.c (9.40), findprim.c (9.61), fixnum.c (9.49),
+	  fixobj.h (9.43), flonum.c (9.48), foreign.c (1.10), foreign.h
+	  (1.8), future.c (9.34), futures.h (9.35), gc.h (9.39), gccode.h
+	  (9.63), gcloop.c (9.54), gctype.c (9.39), generic.c (9.44),
+	  getpgsz.h (1.2), gpio.c (1.16), hard-par.c (1.3), history.h
+	  (9.37), hooks.c (9.69), hppacach.c (1.18), hunk.c (9.34), image.c
+	  (9.40), image.h (9.30), intercom.c (9.39), intern.c (9.67),
+	  interp.c (9.106), interp.h (9.53), intext.c (1.10), intext.h
+	  (1.10), intprm.c (1.15), intrpt.h (1.27), liarc.h (1.29), list.c
+	  (9.38), load.c (9.48), locks.h (9.31), lookprm.c (1.24), lookup.c
+	  (9.75), memmag.c (9.77), memmag.h (1.13), missing.c (9.38), mul.c
+	  (9.40), nt.h (1.14), ntenv.c (1.24), ntfs.c (1.34), ntgui.c
+	  (1.34), ntio.c (1.35), ntio.h (1.17), ntscmlib.h (1.15),
+	  ntscreen.c (1.55), ntscreen.h (1.26), ntsig.c (1.27), ntsys.c
+	  (1.14), nttop.c (1.40), nttrap.c (1.30), nttrap.h (1.10),
+	  nttterm.c (1.10), nttty.c (1.13), object.h (9.65), obstack.c
+	  (1.10), obstack.h (1.16), option.c (1.65), option.h (1.19), os.h
+	  (1.13), os2.c (1.14), os2.h (1.13), os2env.c (1.19), os2fs.c
+	  (1.19), os2msg.c (1.20), os2msg.h (1.21), os2pmcon.c (1.34),
+	  os2term.c (1.9), os2top.c (1.26), os2tty.c (1.7), os2xcpt.c
+	  (1.19), osctty.h (1.9), osenv.h (1.15), osfile.h (1.9), osfs.h
+	  (1.15), osio.h (1.22), osproc.h (1.15), ospty.h (1.9), osscheme.c
+	  (1.18), osscheme.h (1.17), osterm.h (1.16), ostop.h (1.10),
+	  ostty.c (1.9), ostty.h (1.10), outf.c (1.17), outf.h (1.10),
+	  pagesize.h (9.39), ppband.c (9.69), prbfish.c (1.17), prdb4.c
+	  (1.8), prgdbm.c (1.11), prim.c (9.49), prim.h (9.53), prims.h
+	  (9.57), primutl.c (9.84), prmcon.c (1.10), prmcon.h (1.9),
+	  prmcrypt.c (1.10), prmd5.c (1.12), prmhash.c (11.12), prntenv.c
+	  (1.16), prntfs.c (1.22), prntio.c (1.18), pros2fs.c (1.23),
+	  pros2io.c (1.16), pros2pm.c (1.27), prosenv.c (1.23), prosfile.c
+	  (1.15), prosfs.c (1.23), prosio.c (1.28), prosproc.c (1.25),
+	  prospty.c (1.10), prosterm.c (1.21), prostty.c (1.13), prpgsql.c
+	  (1.14), pruxdld.c (1.23), pruxenv.c (1.27), pruxfs.c (9.62),
+	  pruxio.c (1.13), pruxsock.c (1.28), psbmap.h (9.50), psbtobin.c
+	  (9.67), ptrvec.c (1.9), purify.c (9.68), purutl.c (9.57), regex.c
+	  (1.25), regex.h (1.12), returns.h (9.48), rgxprim.c (1.19),
+	  sample.c (9.31), scheme.h (9.45), scode.h (9.32), sdata.h (9.45),
+	  sgraph.h (1.12), sgraph_a.c (1.22), sgx.c (1.14), sgx11.c (1.9),
+	  stack.h (9.47), stackops.h (11.4), starbase.c (1.12), starbasx.c
+	  (1.11), step.c (9.42), storage.c (9.63), string.c (9.54),
+	  svm1-defns.h (11.1), svm1-interp.c (11.1), syntax.c (1.39),
+	  syntax.h (1.17), syscall.h (1.21), sysprim.c (9.55), term.c
+	  (1.24), termcap.c (1.10), terminfo.c (1.9), tparam.c (1.10),
+	  transact.c (1.10), trap.h (9.54), tterm.c (1.21), types.h (9.43),
+	  unexec.c (9.27), unexhppa.c (1.2), unstackify.c (11.5), usrdef.h
+	  (9.49), utabmd.scm (9.92), utils.c (9.90), ux.c (1.32), ux.h
+	  (1.83), uxctty.c (1.19), uxenv.c (1.26), uxfile.c (1.16), uxfs.c
+	  (1.30), uxio.c (1.57), uxio.h (1.10), uxproc.c (1.35), uxselect.h
+	  (1.11), uxsig.c (1.49), uxsig.h (1.13), uxsock.c (1.36), uxsock.h
+	  (1.16), uxterm.c (1.34), uxterm.h (1.10), uxtop.c (1.36), uxtop.h
+	  (1.8), uxtrap.c (1.46), uxtrap.h (1.39), uxtty.c (1.16), uxutil.c
+	  (1.12), uxutil.h (1.8), uxyp.c (1.8), uxyp.h (1.2), vector.c
+	  (9.45), wabbit.c (1.14), wind.c (1.12), winder.h (9.31), wsize.c
+	  (9.39), x11.h (1.24), x11base.c (1.94), x11color.c (1.10),
+	  x11graph.c (1.46), x11term.c (1.35), xdebug.c (9.40), zones.h
+	  (9.31), cmpauxmd/c.c (1.22), cmpauxmd/i386.m4 (1.67),
+	  cmpintmd/alpha.h (1.9), cmpintmd/c-config.h (1.2), cmpintmd/c.c
+	  (1.2), cmpintmd/c.h (1.13), cmpintmd/hppa.h (1.57),
+	  cmpintmd/i386-config.h (1.2), cmpintmd/i386.c (1.2),
+	  cmpintmd/i386.h (1.40), cmpintmd/mc68k.h (1.41), cmpintmd/mips.h
+	  (1.28), cmpintmd/none-config.h (1.2), cmpintmd/none.c (1.2),
+	  cmpintmd/none.h (1.2), cmpintmd/svm1-config.h (1.2),
+	  cmpintmd/svm1.c (1.2), cmpintmd/svm1.h (1.2), cmpintmd/vax.h
+	  (1.14), makegen/Makefile.in.in (1.47), makegen/files-core.scm
+	  (1.7), makegen/files-gc-bch.scm (1.7), makegen/files-gc-std.scm
+	  (1.7), makegen/files-optional.scm (1.9), makegen/files-other.scm
+	  (1.9), ntutl/config.h (1.14), ntutl/ntgui.rc (1.14),
+	  os2utl/config.h (1.12):
+
+	Final merge from pre-v15 branch.
+
+2007-04-20 22:51  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.15.2.11):
+
+	Fix typo in previous change.
+
+2007-04-20 22:19  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.19), cmpint.h (10.12.2.11),
+	  fasload.c (9.96.2.21), gccode.h (9.60.2.14), gcloop.c
+	  (9.51.2.23), cmpintmd/c.c (1.1.2.4), cmpintmd/c.h (1.9.2.6),
+	  cmpintmd/i386.c (1.1.2.6), cmpintmd/i386.h (1.37.2.11),
+	  cmpintmd/svm1.c (1.1.2.5), cmpintmd/svm1.h (1.1.2.12):
+
+	Simplify initialization/reset sequences for compiled-code interface;
+	revert previous change that caused disk-restore to fail on liarc.
+
+	Change raw-address operations (e.g. read_uuo_target) to work directly
+	with addresses rather than translating to and from objects.  This
+	translation is different for fasload.
+
+	The GC now has customizable operations for translating raw addresses
+	to and from objects.  This allows LOAD-BAND to override the read
+	translation so as to get the right behavior.
+
+	LOAD-BAND must relocate addresses if memory_base is different in the
+	band.  It also now reads pointers using the memory_base from the file,
+	and writes them using memory_base from the microcode.
+
+2007-04-20 22:04  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.15.2.10):
+
+	Fix two bugs: (1) declare_compiled_code_ns wasn't initializing the
+	CODE_PROC field right, and (2) store_trampoline_insns was completely
+	wrong due to my misunderstanding of the original design.
+
+2007-04-20 22:01  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.15.2.9):
+
+	A bunch of name changes and some code reorganization to improve
+	readability.
+
+2007-04-20 21:44  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasdump.c (9.68.2.20):
+
+	Fix bug: DUMP-BAND was setting FASLHDR_HEAP_END to the wrong value.
+
+2007-04-19 00:44  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gccode.h (9.60.2.13):
+
+	Remove extra parens.
+
+2007-04-18 16:27  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/lspcom.scm (1.166):
+
+	Handle definitions that start at the beginning of the buffer in
+	MARK-DEFUN command.
+
+2007-04-17 10:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/gcloop.c (9.51.2.22):
+
+	Fix typo.
+
+2007-04-17 08:30  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: cmpint.c (1.103.2.18), cmpauxmd/c.c (1.15.2.8),
+	  cmpintmd/c.c (1.1.2.3), cmpintmd/c.h (1.9.2.5), cmpintmd/i386.c
+	  (1.1.2.5):
+
+	Fix several problems with liarc compiled-code interface.
+
+2007-04-17 08:23  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: liarc.h (1.21.2.6), unstackify.c (11.1.2.3):
+
+	Improve debugging support.
+
+2007-04-17 08:22  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasdump.c (9.68.2.19):
+
+	Put back code to dump C code table.
+
+2007-04-17 08:21  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/: bundles-liarc.scm (1.1.2.2), Makefile.in.in
+	  (1.25.2.20), makegen.scm (1.7.2.7):
+
+	Update for new build strategy.
+
+2007-04-17 08:19  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/primutl.c (9.80.2.5):
+
+	In make_primitive, make sure to copy the name if we will be keeping
+	it.
+
+2007-04-17 08:18  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/boot.c (9.118.2.10):
+
+	Eliminate now-unused FILE_READABLE.
+
+2007-04-17 02:02  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.39), microcode/liarc.h (1.28),
+	  microcode/unstackify.c (11.4):
+
+	Tell unstackify how large the bytes block is.
+
+2007-04-15 15:21  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.38):
+
+	Use .so extension only when input file is a .bin file; otherwise use
+	input file's extension.
+
+2007-04-15 15:21  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-initial-bands.sh (1.4):
+
+	Adapt to another change in built-in object handle naming.
+
+2007-04-15 14:02  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/compiler.pkg (1.25):
+
+	Forgot to export C-OUTPUT-EXTENSION.
+
+2007-04-15 13:50  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.93):
+
+	In FIND-PATHNAME, don't do built-in test for pathnames without types;
+	that will be handled by LOAD/DEFAULT-FIND-PATHNAME-WITH-TYPE.
+
+2007-04-15 13:43  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/unxpth.scm (14.33):
+
+	Tweak.
+
+2007-04-15 13:38  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.92):
+
+	Ignore .sl and .dylib file extensions; we're now using .so for all
+	systems.
+
+2007-04-15 13:36  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/cout.scm (1.37):
+
+	Use correct output extension for built-in object handles.
+
+2007-04-15 13:36  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/: compiler.pkg (1.24), ctop.scm (1.26):
+
+	Force use of .so suffix independent of operating system.
+
+2007-04-15 11:49  Chris Hanson <edu/mit/csail/cph>
+
+	* edwin/decls.scm (1.82):
+
+	Suppress "because of" messages.
+
+2007-04-15 11:42  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.90):
+
+	Back out last change; shouldn't be necessary with change to compiler.
+
+2007-04-15 11:41  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/toplev.scm (4.73), compiler/machines/C/compiler.pkg
+	  (1.23), compiler/machines/C/cout.scm (1.36), runtime/load.scm
+	  (14.91), runtime/make.scm (14.110), runtime/utabs.scm (14.24):
+
+	Change handles for liarc files to use output pathname, not input
+	pathname.
+
+2007-04-15 04:16  Taylor R. Campbell <net/mumble/campbell>
+
+	* etc/c-compile.sh (1.2):
+
+	Bump the stack size to two hundred blocks, rather than the default of
+	one hundred blocks, when compiling Scheme with liarc.  One hundred
+	blocks is insufficient to compile sos/instance.scm with liarc.
+
+2007-04-15 03:49  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/load.scm (14.89):
+
+	Use liarc built-in objects only for LOAD, not for FASLOAD.  When we're
+	actually loading code for execution, we need them; when we're loading
+	code for data (e.g., when loading scode for the compiler -- especially
+	when it is compiling itself, or other parts of the system that are
+	loaded into the compiler image), we need the file and not the compiled
+	expression statically linked into the microcode.
+
+	This is a kludge, but it is necessary for bootstrapping liarc.  I
+	don't know whether there is any code that relies on FASLOAD yielding
+	built-in objects, however; I suspect not.
+
+2007-04-14 18:00  Taylor R. Campbell <net/mumble/campbell>
+
+	* compiler/base/blocks.scm (4.20), compiler/fggen/declar.scm
+	  (1.11), compiler/fggen/fggen.scm (4.43),
+	  compiler/rtlgen/opncod.scm (4.80), runtime/syntax-output.scm
+	  (14.14), sf/cgen.scm (4.10):
+
+	New declarations (TYPE-CHECKS), (RANGE-CHECKS), (NO-TYPE-CHECKS),
+	(NO-RANGE-CHECKS) for local scopes.  I wrote a much longer
+	description, but it was eaten by CVS, which left no trace of it, and
+	I am now disinclined to rewrite it.
+
+2007-04-14 10:23  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/machines/C/ctop.scm (1.25):
+
+	Suppress "loading" and "dumping" messages for compiler.
+
+2007-04-14 10:06  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasl.c (1.1.2.9):
+
+	Fix typo.
+
+2007-04-14 10:02  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/bundles-liarc.scm (1.5):
+
+	Tweak whitespace.
+
+2007-04-14 01:52  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/asstop.scm (1.18), compiler/base/toplev.scm (4.72),
+	  sf/toplev.scm (4.32), compiler/base/asstop.scm (1.19):
+
+	Suppress "loading" and "dumping" messages for compiler.
+
+2007-04-14 01:39  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/load.c (9.47):
+
+	Fix previous tweak to work when HEAP_IN_LOW_MEMORY defined.
+
+2007-04-13 23:55  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/Clean.sh (1.16):
+
+	Don't delete compiler-unx.c for c-clean rule.
+
+2007-04-13 23:54  Chris Hanson <edu/mit/csail/cph>
+
+	* Setup.sh (1.19), compiler/machines/C/make.scm (1.10),
+	  cref/make.scm (1.31), etc/c-initial-bands.sh (1.3),
+	  microcode/makegen/bundles-liarc.scm (1.4),
+	  microcode/makegen/makegen.scm (1.18), sf/make.scm (4.47),
+	  star-parser/load.scm (1.21):
+
+	Restructure bundling so that each subsystem has its own bundle.  Add
+	necessary shared-library declarations in a few places.
+
+2007-04-13 23:53  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/fasload.c (9.100):
+
+	Fix old typo.
+
+2007-04-13 23:52  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/toplev.scm (4.71), compiler/machines/C/compiler.pkg
+	  (1.22), compiler/machines/C/cout.scm (1.35),
+	  compiler/machines/C/ctop.scm (1.24), edwin/autold.scm (1.70),
+	  runtime/load.scm (14.88), runtime/make.scm (14.109),
+	  runtime/option.scm (14.53), runtime/packag.scm (14.53),
+	  runtime/runtime.pkg (14.615), runtime/utabs.scm (14.23):
+
+	Redesign interface to built-in object files, so that (1) they include
+	the pathname type of the file, and (2) the mapping from pathnames to
+	handles is specified in fewer places.
+
+2007-04-13 23:45  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/load.c (9.46):
+
+	Add error check for case where FASL file and microcode have different
+	settings for HEAP_IN_LOW_MEMORY.
+
+2007-04-11 15:33  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/bundles-liarc.scm (1.3):
+
+	Fix typo.
+
+2007-04-11 15:32  Chris Hanson <edu/mit/csail/cph>
+
+	* sf/xform.scm (4.16):
+
+	Use standard formatting for usual-integrations warning.
+
+2007-04-09 12:44  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-initial-bands.sh (1.2):
+
+	Initial compiler should have cref support.
+
+2007-04-09 12:43  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/makegen.scm (1.17):
+
+	Generate "cref.so" for boot bundles.
+
+2007-04-09 12:43  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/Makefile.in.in (1.46):
+
+	Clean up "microcode/compinit.c".
+
+2007-04-09 12:42  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/makegen/bundles-liarc.scm (1.2):
+
+	Fix thinkos: "make" files are sometimes compiled.
+
+2007-04-09 12:41  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.87):
+
+	Reorder LOAD types for consistency with FASLOAD.
+
+2007-04-07 15:53  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/boot.c (9.126):
+
+	Fix typo in previous change.
+
+2007-04-07 08:43  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/boot.c (9.125):
+
+	Add missing #include "osfs.h".
+
+2007-04-07 08:38  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: Clean.sh (1.4.2.3), compinit.c (1.6.2.5),
+	  configure.ac (1.6.2.33), make-compinit (1.1.2.2),
+	  makegen/Makefile.in.in (1.25.2.19), makegen/bundles-liarc.scm
+	  (1.1.2.1), makegen/dirs-liarc.scm (1.1.2.3),
+	  makegen/liarc-base-rules (1.1.2.1), makegen/liarc-rules-2
+	  (1.1.2.2), makegen/makegen.scm (1.7.2.6), makegen/pkds-liarc.scm
+	  (1.1.2.1):
+
+	Port liarc build changes to pre-v15 branch.
+
+2007-04-07 08:37  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/option.c (1.61.2.11):
+
+	For liarc, don't test for existence of --fasl file.
+
+2007-04-07 08:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/cmpauxmd/c.c (1.15.2.7):
+
+	Fix thinko.
+
+2007-04-07 08:35  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: boot.c (9.118.2.9), const.h (9.52.2.7):
+
+	Put back liarc --fasl support; simplify startup code.
+
+2007-04-07 00:05  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.86):
+
+	Back out previous change; it's the right behavior but too disruptive
+	right now.
+
+2007-04-07 00:03  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-bundle.sh (1.2):
+
+	Changes to support microcode's pre-v15 branch.
+
+2007-04-07 00:03  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/c-boot-compiler.sh (1.2):
+
+	Fix syntax error (quoting problem).  Rewrite hereis documents to be
+	single Scheme expressions so that an error prevents any subsequent
+	expressions from being evaluated.
+
+2007-04-07 00:02  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/Clean.sh (1.15):
+
+	Delete "compiler-unx.*".
+
+2007-04-07 00:02  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.31):
+
+	All clean rules must delete "boot-compiler.com".
+
+2007-04-05 18:42  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-top.scm (1.301):
+
+	Use BUFFER-REMOVE!, rather than (BUFFER-PUT! ... #F).
+
+2007-04-05 18:36  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/utils.scm (1.62):
+
+	Tweak EDWIN-SET-STRING-MAXIMUM-LENGTH!, too.
+
+2007-04-05 18:24  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/utils.scm (1.61):
+
+	Tweak EDWIN-STRING-ALLOCATE so that it doesn't rely on range-checking
+	being disabled when NUL-terminating the string.
+
+2007-04-05 15:52  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/switch.scm (4.33):
+
+	Don't show compilation of individual procedures.
+
+2007-04-05 13:49  Chris Hanson <edu/mit/csail/cph>
+
+	* Makefile.in (1.30), Setup.sh (1.18), etc/c-build-bands.sh (1.2):
+
+	Eliminate runtime-check directory and 6.001 band.
+
+2007-04-05 13:49  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/load.scm (14.85):
+
+	When loading a file, change the working directory to that of the file,
+	so that relative pathnames work right.
+
+2007-04-05 13:43  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/build-bands.sh (1.7):
+
+	Don't build 6.001 band.
+
+2007-04-05 13:42  Chris Hanson <edu/mit/csail/cph>
+
+	* etc/compile.scm (1.13):
+
+	Eliminate separate runtime-check.
+
+2007-04-05 13:36  Chris Hanson <edu/mit/csail/cph>
+
+	* compiler/base/switch.scm (4.32):
+
+	Tweak defaults to enable type and range checking by default.
+
+2007-04-04 23:23  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-imap.scm (1.212):
+
+	Fix three problems in completion of IMAP mailbox names and listing of
+	the contents of IMAP containers:
+
+	1. Some IMAP servers refuse a pattern of `/%' for the LIST command, or
+	   yield an empty list of results, so send `%' if we're examining the
+	   root mailbox.
+
+	2. Some IMAP servers return the container itself that we're trying to
+	   list the contents of, so filter that out if we see it.
+
+	3. Some IMAP servers hand out folder URLs and container URLs, so
+	   canonicalize them appropriately in order that RUN-LIST-COMMAND may
+	   return only folder URLs.
+
+2007-04-04 22:35  Taylor R. Campbell <net/mumble/campbell>
+
+	* sos/macros.scm (1.21):
+
+	Associate names with generic procedures generated by DEFINE {ACCESSOR,
+	MODIFIER, INITPRED} clauses for slots in DEFINE-CLASS.
+
+2007-04-04 21:56  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-top.scm (1.300):
+
+	Remember when MIME entities are collapsed or expanded, in a hash table
+	per IMAIL folder buffer.  (This information will still be forgotten
+	when the buffer is killed and the folder reopened, but that probably
+	doesn't matter.)
+
+2007-04-04 20:25  Taylor R. Campbell <net/mumble/campbell>
+
+	* compiler/Clean.sh (1.14):
+
+	Use `pwd`, rather than $(pwd), which standard sh does not support.
+
+2007-04-04 14:35  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/packag.scm (14.52):
+
+	Use WITH-NOTIFICATION to notify of initialization and finalization of
+	packages, rather than formatting the message to the notification
+	output port directly.
+
+2007-04-04 01:08  Taylor R. Campbell <net/mumble/campbell>
+
+	* Clean.sh (1.11), Makefile.in (1.29), Setup.sh (1.17),
+	  configure.ac (1.7), compiler/Clean.sh (1.13), compiler/configure
+	  (1.13), cref/Makefile.in (1.9), edwin/Clean.sh (1.13),
+	  edwin/Makefile.in (1.13), edwin/autold.scm (1.69), etc/Clean.sh
+	  (1.17), etc/c-boot-compiler.sh (1.1), etc/c-build-bands.sh (1.1),
+	  etc/c-bundle.sh (1.1), etc/c-compile.scm (1.1), etc/c-compile.sh
+	  (1.1), etc/c-initial-bands.sh (1.1), etc/c-prepare.scm (1.1),
+	  etc/c-prepare.sh (1.1), etc/optiondb.scm (1.18), etc/script.scm
+	  (1.5), imail/Makefile.in (1.9), imail/load.scm (1.48),
+	  microcode/Clean.sh (1.7), microcode/compinit.c (1.11),
+	  microcode/configure.ac (1.39), microcode/make-compinit (1.3),
+	  microcode/makegen/Makefile.in.in (1.45),
+	  microcode/makegen/bundles-liarc.scm (1.1),
+	  microcode/makegen/dirs-liarc.scm (1.3),
+	  microcode/makegen/liarc-base-rules (1.1),
+	  microcode/makegen/liarc-rules-2 (1.3),
+	  microcode/makegen/makegen.scm (1.16),
+	  microcode/makegen/pkds-liarc.scm (1.1), runtime/Makefile.in
+	  (1.13), runtime/packag.scm (14.51), sos/Makefile.in (1.9),
+	  sos/load.scm (1.19), ssp/Makefile.in (1.6), ssp/load.scm (1.9),
+	  star-parser/Makefile.in (1.8), xdoc/Makefile.in (1.5),
+	  xdoc/load.scm (1.6), xml/Makefile.in (1.9), xml/load.scm (1.20):
+
+	Very belatedly, many changes to smooth many rough edges with the C back
+	end.  It should now be possible to bootstrap and install the system
+	using the C back end much more cleanly, by the following steps:
+
+	  # Prepare the tree for compiling from C.
+	  ./Setup.sh
+	  ./configure --enable-native-code=c
+	  make c
+
+	  # Optionally, clean everything except the bare minimum of the C code
+	  # to generate a distribution tree.  Doing so requires reconfiguring.
+	  make c-clean
+	  # ...distribute the tree..
+	  ./configure --enable-native-code=c
+
+	  # Make the system from C, without needing an existing Scheme
+	  # installation for bootstrapping.
+	  make
+
+	  # Install.
+	  make install
+
+2007-04-03 20:06  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/ux.c (1.27.2.5):
+
+	Forward-port long-delayed hack of mmap_heap_malloc for OS X.
+
+2007-04-03 01:27  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: edwin.h (1.11.2.4), extern.h (9.65.2.12), prims.h
+	  (9.52.2.5), prosio.c (1.24.2.4), rgxprim.c (1.15.2.4), string.c
+	  (9.49.2.4), syntax.c (1.30.2.5), term.c (1.20.2.5):
+
+	Port edwin-buffer changes to pre-v15 branch.
+
+2007-04-03 00:11  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/uerror.scm (14.56):
+
+	Add a few missing primitives to FILE-PRIMITIVE-DESCRIPTION.
+
+2007-04-02 23:58  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: uxtop.c (1.35), uxtop.c (1.30.2.6):
+
+	Don't return error message for syserr_unknown.
+
+2007-04-01 13:51  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/string.scm (14.64):
+
+	Commit forgotten changes to runtime/string.scm in the last checkin (to
+	make Edwin buffers use external strings).
+
+2007-04-01 13:33  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/bufwin.scm (1.319), edwin/fileio.scm (1.171),
+	  edwin/grpops.scm (1.34), edwin/image.scm (1.143),
+	  edwin/search.scm (1.162), edwin/struct.scm (1.104),
+	  edwin/utils.scm (1.60), imail/imail-util.scm (1.49),
+	  microcode/edwin.h (1.14), microcode/prims.h (9.56),
+	  microcode/rgxprim.c (1.18), microcode/string.c (9.53),
+	  microcode/syntax.c (1.38), microcode/term.c (1.23),
+	  runtime/runtime.pkg (14.614):
+
+	Use external strings to store the contents of Edwin buffers.  Edwin can
+	now edit files and buffers up to 32 MB without occupying more than a
+	small and (roughly) constant amount of space in the Scheme heap.
+
+	New procedures in the system global environment:
+
+	  EXTERNAL-STRING-DESCRIPTOR (Edwin needs this to initialize the group
+	    structure so that the microcode can get at it.)
+	  XSTRING-FILL!
+	  XSTRING-REF
+	  XSTRING-SET!
+	  XSUBSTRING (This was in imail/imail-util.scm.)
+	  XSUBSTRING-FILL!
+	  XSUBSTRING-FIND-NEXT-CHAR
+	  XSUBSTRING-FIND-NEXT-CHAR-CI
+	  XSUBSTRING-FIND-NEXT-CHAR-IN-SET
+	  XSUBSTRING-FIND-PREVIOUS-CHAR
+	  XSUBSTRING-FIND-PREVIOUS-CHAR-CI
+	  XSUBSTRING-FIND-PREVIOUS-CHAR-IN-SET
+
+	(There is probably a better way to deal with most of the above
+	procedures -- I expect that wouldn't hurt just to fold them into the
+	string operations by similar names, since we already check argument
+	types in those operations.  This kludginess works for now, though.)
+
+2007-03-30 04:17  Taylor R. Campbell <net/mumble/campbell>
+
+	* runtime/genio.scm (1.51):
+
+	Use XSUBSTRING-MOVE! in WRITE-SUBSTRING:EXTERNAL-SUBSTRING, not
+	SUBSTRING-MOVE! -- the latter does not accept external strings.
+
+2007-03-27 22:29  Taylor R. Campbell <net/mumble/campbell>
+
+	* compiler/rtlgen/opncod.scm (4.79):
+
+	Use true or false pcfgs, as appropriate, instead of null cfgs, when
+	generating disabled open-coded checks.  Although OPEN-CODE:WITH-CHECKS
+	filters out true pcfgs and null cfgs, these cfgs may be used directly
+	in pcfg predicates, as in OPEN-CODE:INDEX-CHECK, which permits only
+	pcfgs, not null cfgs.
+
+2007-03-26 19:54  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/intmod.scm (1.126):
+
+	When evaluating a region, if the region is from the REPL buffer, set
+	the buffer's point to the line start after the region, not the end of
+	the region.
+
+2007-03-26 19:33  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/intmod.scm (1.125):
+
+	When switching between Inferior REPL and Inferior CMDL modes, adjust
+	the comtabs more carefully, so that only the major modes' comtabs are
+	affected, leaving any minor modes' untouched.
+
+	This allows minor modes that bind keys to be used in the REPL even
+	after errors occur; before, the keys they bound would be forgotten
+	after errors.  Paredit Mode can be now used in the REPL as a result.
+
+2007-03-21 11:06  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/: list.scm (14.55), runtime.pkg (14.613):
+
+	Implement REDUCE-LEFT, which has semantics of old REDUCE.
+
+2007-03-11 18:38  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/: imail-core.scm (1.165), imail-file.scm (1.91),
+	  imail-imap.scm (1.211):
+
+	Unmap the message indices returned by SEARCH-FOLDER.  Define
+	%SEARCH-FOLDER as a generic procedure which the non-generic procedure
+	SEARCH-FOLDER calls.
+
+2007-03-11 18:30  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-top.scm (1.299):
+
+	Bump the default size limit for in-line display of MIME text parts to
+	65536, since we by default cache message bodies of that size anyway.
+
+2007-03-11 18:26  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-top.scm (1.298):
+
+	New Edwin variable IMAIL-INLINE-MIME-TEXT-LIMIT, to prevent gargantuan
+	text parts that satisfy all the other rules for in-line display from
+	screwing Edwin.
+
+	This affects the main body of the message, too, however.  We could
+	work around this easily for unipart messges, although anything else
+	would require a little more effort.  In any case, although it is a
+	minor annoyance to have to type `C-c C-t C-e' to show the body of a
+	very long message, it is a much more major annoyance for Edwin to lose
+	spectacularly for a message too large to fit in its heap.
+
+2007-03-11 13:33  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/: imail-core.scm (1.164), imail-file.scm (1.90),
+	  imail-imap.scm (1.210):
+
+	Don't record the folder's cached modification count in folder orders;
+	simply check that it has not changed since we built the tree.
+
+	New procedure MESSAGE-ORDER-KEY computes a message's key into the
+	folder order tree, if the message's folder is ordered.  This must be
+	computed before a message is actually expunged, because the key may
+	require information that is destroyed when expunging the message.
+	EXPUNGE modification events on folders now accept an extra parameter,
+	the key of the message being expunged.
+
+2007-03-11 11:49  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.163):
+
+	Remove Edwin indentation settings for no longer used forms.
+
+2007-03-11 11:48  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.162):
+
+	Fix thinko in previous commit: if the folder's modification count has
+	changed, unconditionally build the order's tree, instead of building a
+	tree only if there is none already there.
+
+2007-03-11 11:35  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.161):
+
+	Preload folder outlines before memoizing folder order.  This improves
+	the performance of sorting IMAIL folders dramatically.
+
+2007-03-11 11:04  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.160):
+
+	Use a modification count cache to verify and commit memoized folder
+	orders, instead of blocking interrupts, so that MEMOIZE-FOLDER-ORDER
+	may now be interrupted.
+
+	Memoize the folder order immediately before it is assigned to a folder
+	in SET-FOLDER-ORDER!.  This means that it can no longer be delayed
+	until actually needed, but also that if it is interrupted it won't
+	actually set the folder's order and thereby wedge IMAIL until the
+	messages are sorted.
+
+	Allow message indices to fall outside the range of folder orders, and
+	leave them as they are, in case the folder order has not been updated
+	yet to reflect them.
+
+2007-03-10 23:32  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.159):
+
+	Fix another bug, with receiving and ignoring modification events for ordering.
+
+2007-03-10 22:59  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-core.scm (1.158):
+
+	Fix bug in previous commit with modification event arguments.
+
+2007-03-10 20:11  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/: imail-core.scm (1.157), imail-top.scm (1.297), load.scm
+	  (1.47):
+
+	New implementation of folder orders that uses AVL trees instead of
+	sorted vectors to store the order of messages.  Modifications to the
+	folder are now reflected in incremental updates to the folder order by
+	AVL insertions, instead of rebuilding the order vector for every
+	modification to the folder.  Also, the key by which the message is
+	sorted is now computed once per message in the order record, instead
+	of every time that the message comparison predicate is called.
+
+2007-03-10 12:35  Taylor R. Campbell <net/mumble/campbell>
+
+	* imail/imail-imap.scm (1.209):
+
+	Use %MESSAGE-INDEX instead of MESSAGE-INDEX in FETCH-MESSAGE-ITEMS.
+	This will give the correct index in the mailbox's sequence to the IMAP
+	server, and if the folder is sorted it will also not cause an infinite
+	loop, because in that case MESSAGE-INDEX may require fetching the
+	message to determine how to sort it, which may require calling
+	MESSAGE-INDEX.
+
+2007-03-05 23:43  Taylor R. Campbell <net/mumble/campbell>
+
+	* etc/usermap (1.8):
+
+	Include middle initial in `Taylor R. Campbell', to disambiguate from
+	the large-breasted porn star that will turn up by Googling `Taylor
+	Campbell'...
+
+2007-03-05 19:30  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/xcom.scm (1.28):
+
+	Implement rudimentary font name completion and apropos.
+
+	This does not handle gracefully the deluge of available fonts (over
+	five thousand on my machine) by presenting common groups in palatable
+	ways, and it does not attempt to cache the huge string tables, but it
+	works.
+
+2007-02-24 12:10  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.6.2.32), memmag.c (9.71.2.11),
+	  prdb4.c (1.2.2.6), prgdbm.c (1.6.2.4), prpgsql.c (1.9.2.4),
+	  pruxenv.c (1.22.2.5), purify.c (9.65.2.13), uxtrap.h (1.35.2.6):
+
+	Forward-port Taylor's changes from trunk.
+
+2007-02-24 12:09  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/: configure.ac (1.38), makegen/Makefile.in.in (1.44):
+
+	Backport changes from pre-v15 branch.
+
+2007-02-23 18:45  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: configure.ac (1.37), uxtrap.h (1.38):
+
+	Incorporate changes from Jesper Louis Andersen to make the microcode
+	build on FreeBSD again.
+
+2007-02-23 06:38  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.10):
+
+	In the double-quote command, actually insert an escaped double-quote
+	if inside a string, not an escaped space.
+
+2007-02-23 06:37  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/paredit.scm (1.9):
+
+	After inserting newlines, reindent the following expression only if it
+	starts on the same line as the point is now on.
+
+2007-02-22 13:41  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/turtle.scm (1.23):
+
+	Eliminate debugging statement.
+
+2007-02-22 13:39  Chris Hanson <edu/mit/csail/cph>
+
+	* xml/: turtle.scm (1.21), turtle.scm (1.22):
+
+	Change WRITE-RDF/TURTLE-TRIPLES to elide unreferenced bnodes.
+
+2007-02-20 11:29  Chris Hanson <edu/mit/csail/cph>
+
+	* runtime/rgxcmp.scm (1.128):
+
+	Fix type error in RE-DISASSEMBLE-PATTERN.  Eliminate unused
+	HACK-FASTMAP.
+
+2007-02-13 14:25  Chris Hanson <edu/mit/csail/cph>
+
+	* microcode/ntutl/makefile.wcc (1.24):
+
+	Don't build with optional libraries.
+
+2007-02-12 15:47  Taylor R. Campbell <net/mumble/campbell>
+
+	* edwin/dired.scm (1.202):
+
+	Bind RET to DIRED-FIND-FILE.
+
+2007-02-11 13:42  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/pruxenv.c (1.26):
+
+	In HOSTNAME primitive, move PRIMITIVE_RETURN outside the conditional,
+	since we return whether we have sockets or not.
+
+2007-02-11 00:55  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: prdb4.c (1.7), prgdbm.c (1.10), prpgsql.c (1.13):
+
+	Conditionalize inclusion of optional modules' header files to appease makegen.
+
+2007-02-10 14:22  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: bchmmg.c (9.109), memmag.c (9.76):
+
+	Oops: because the available space after subtracting the space the
+	primitive requested may be negative, use LONG_TO_FIXNUM instead of
+	LONG_TO_UNSIGNED_FIXNUM.
+
+2007-02-10 14:16  Taylor R. Campbell <net/mumble/campbell>
+
+	* microcode/: memmag.c (9.71.2.10), bchmmg.c (9.108), memmag.c
+	  (9.75):
+
+	In the GARBAGE-COLLECT primitive, return the available heap space
+	minus gc_space_needed, in case it was called by a primitive that
+	requested a certain amount of space for allocation.  If we report only
+	the newly available heap space and ignore gc_space_needed, then
+	GC-FINISH will consider there to be ample space to proceed (more than
+	4096 bytes), and the primitive will be restarted only to repeat the
+	call to the GC, looping endlessly.
+
+2007-02-07 22:36  Chris Hanson <edu/mit/csail/cph>
+
+	* ssp/mod-lisp.scm (1.35):
+
+	Tweak cookie parsing to allow #\= in RHS of binding.  Don't signal an
+	error if there's a bad cookie; just ignore it and emit a warning.
+
 2007-02-05 13:43  Chris Hanson <edu/mit/csail/cph>
 
 	* compiler/configure (1.12):
@@ -16,14 +2049,14 @@
 
 	File conflicts with Clean.sh on win32.
 
-2007-02-04 16:55  Taylor Campbell <net/mumble/campbell>
+2007-02-04 16:55  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/cmpint.c (1.108):
 
 	Fix bug in compiler reference trap restarts: the name will be at the
 	top of the stack, not in the expression register.
 
-2007-02-04 13:39  Taylor Campbell <net/mumble/campbell>
+2007-02-04 13:39  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/x11base.c (1.93):
 
@@ -31,34 +2064,34 @@
 	requests in MappingNotify events, so that the user can reconfigure
 	modifier masks on the fly without confusing Scheme programs.
 
-2007-02-04 13:36  Taylor Campbell <net/mumble/campbell>
+2007-02-04 13:36  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/x11base.c (1.92):
 
 	Eliminate compiler warning about non-return from non-void function
 	x_close_window_io_error, which calls longjmp instead.
 
-2007-02-03 19:17  Taylor Campbell <net/mumble/campbell>
+2007-02-03 19:17  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/syntax-rules.scm (14.11):
 
 	Permit (SYNTAX-RULES ()), which is the only portable way to define a
 	SYNTACTIC-ERROR macro.
 
-2007-01-28 18:03  Taylor Campbell <net/mumble/campbell>
+2007-01-28 18:03  Taylor R. Campbell <net/mumble/campbell>
 
 	* compiler/machines/C/ctop.scm (1.23):
 
 	ld on OS X wants `-dylib', not `-dynamiclib', now that we're actually
 	using it instead of the C compiler executable.
 
-2007-01-25 21:38  Taylor Campbell <net/mumble/campbell>
+2007-01-25 21:38  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/mit-syntax.scm (14.30):
 
 	Use NAMED-LAMBDA in the output of named LET.
 
-2007-01-22 13:30  Taylor Campbell <net/mumble/campbell>
+2007-01-22 13:30  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/: boot.c (9.124), boot.c (9.118.2.8):
 
@@ -84,14 +2117,14 @@
 
 	Rename DLD_LDFLAGS to SCHEME_LDFLAGS.
 
-2007-01-22 03:43  Taylor Campbell <net/mumble/campbell>
+2007-01-22 03:43  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/: boot.c (9.123), interp.c (9.105), boot.c (9.118.2.7),
 	  interp.c (9.102.2.8):
 
 	Eliminate compiler warnings for obstack_chunk_alloc.
 
-2007-01-22 03:35  Taylor Campbell <net/mumble/campbell>
+2007-01-22 03:35  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/configure.ac (1.36):
 
@@ -99,14 +2132,14 @@
 	so that it is passed only when building the `scheme' and `bchscheme'
 	binaries, not when compiling all object files.
 
-2007-01-22 03:12  Taylor Campbell <net/mumble/campbell>
+2007-01-22 03:12  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/configure.ac (1.6.2.28):
 
 	Comment out unused C99 fixed-width integer type tests, as in the new
 	microcode.
 
-2007-01-22 02:47  Taylor Campbell <net/mumble/campbell>
+2007-01-22 02:47  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/ux.c (1.31):
 
@@ -158,13 +2191,13 @@
 
 	Forward-port riastradh's changes from trunk.
 
-2007-01-21 18:19  Taylor Campbell <net/mumble/campbell>
+2007-01-21 18:19  Taylor R. Campbell <net/mumble/campbell>
 
 	* compiler/machines/C/cutl.scm (1.10):
 
 	Fix up C comments so that */ inside them will not destroy the output.
 
-2007-01-21 17:19  Taylor Campbell <net/mumble/campbell>
+2007-01-21 17:19  Taylor R. Campbell <net/mumble/campbell>
 
 	* compiler/machines/C/cout.scm (1.34):
 
@@ -173,7 +2206,7 @@
 	that it puts comments in the C output instead of signalling an obscure
 	error, even though the resulting *.lap files are not very useful.
 
-2007-01-21 06:29  Taylor Campbell <net/mumble/campbell>
+2007-01-21 06:29  Taylor R. Campbell <net/mumble/campbell>
 
 	* compiler/rtlgen/opncod.scm (4.78):
 
@@ -184,34 +2217,34 @@
 	predicate CFG.  Now, like other predicate open-coders,
 	HEAP-AVAILABLE?'s wraps the expression in a true test.
 
-2007-01-21 00:15  Taylor Campbell <net/mumble/campbell>
+2007-01-21 00:15  Taylor R. Campbell <net/mumble/campbell>
 
 	* compiler/machines/C/ctop.scm (1.22):
 
 	In C-COMPILER-NAME, read from and write to the variable
 	COMPILER:C-COMPILER-NAME, not COMPILER:C-LINKER-NAME.
 
-2007-01-20 20:10  Taylor Campbell <net/mumble/campbell>
+2007-01-20 20:10  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/debuge.scm (1.61):
 
 	Make DEBUG-SHOW-STANDARD-MARKS work again.  It doesn't show quite the
 	same information as before, but at least it doesn't fail horribly now.
 
-2007-01-20 18:49  Taylor Campbell <net/mumble/campbell>
+2007-01-20 18:49  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/pruxsock.c (1.27):
 
 	Wrap the new SHUTDOWN-SOCKET primitive's body in SOCKET_CODE.
 
-2007-01-20 16:59  Taylor Campbell <net/mumble/campbell>
+2007-01-20 16:59  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/configure.ac (1.33):
 
 	Enclose the argument to `test -n' in double-quotes in the tests for
 	the `struct tm' member `tm_gmtoff' and the `timezone' variable.
 
-2007-01-19 22:08  Taylor Campbell <net/mumble/campbell>
+2007-01-19 22:08  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/configure.ac (1.32):
 
@@ -220,7 +2253,7 @@
 	mask errors about absent system headers, but with `-MG' it uses the
 	old semantics.
 
-2007-01-19 00:03  Taylor Campbell <net/mumble/campbell>
+2007-01-19 00:03  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/error.scm (14.73):
 
@@ -228,14 +2261,14 @@
 	arguments is equal to the maximum number of arguments, write that
 	number, not the confusing arity object, in the condition report.
 
-2007-01-17 21:30  Taylor Campbell <net/mumble/campbell>
+2007-01-17 21:30  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/record.scm (1.59):
 
 	Initialize newly constructed records in keyword constructors to have
 	the proper dispatch tag.
 
-2007-01-17 21:15  Taylor Campbell <net/mumble/campbell>
+2007-01-17 21:15  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/verilog.scm (1.15):
 
@@ -246,7 +2279,7 @@
 	constructor or something instead of exposing the representation of
 	patterns as lists.
 
-2007-01-17 21:03  Taylor Campbell <net/mumble/campbell>
+2007-01-17 21:03  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/evlcom.scm (1.74):
 
@@ -254,7 +2287,7 @@
 	WRITE-TO-STRING before handing it to PROMPT-FOR-STRING, because
 	PROMPT-FOR-STRING already does that.
 
-2007-01-17 19:19  Taylor Campbell <net/mumble/campbell>
+2007-01-17 19:19  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/keyparse.scm (1.9):
 
@@ -359,7 +2392,7 @@
 	fixed-width integer type tests which are (a) not used, and (b) only in
 	the latest version of autoconf.
 
-2007-01-12 05:23  Taylor Campbell <net/mumble/campbell>
+2007-01-12 05:23  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/load.scm (14.84):
 
@@ -2134,14 +4167,14 @@
 	declaration is equivalent to its presence, and avoids confusing
 	non-XML browsers.
 
-2006-12-28 23:32  Taylor Campbell <net/mumble/campbell>
+2006-12-28 23:32  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/char.scm (14.28):
 
 	Fix case conversion tables for high ISO-8859-1 characters so that they
 	are not reversed.
 
-2006-12-28 17:28  Taylor Campbell <net/mumble/campbell>
+2006-12-28 17:28  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/paredit.scm (1.8):
 
@@ -2176,7 +4209,7 @@
 	Define PC_ZERO_BITS for non-native architectures, but only when
 	needed.
 
-2006-12-27 03:32  Taylor Campbell <net/mumble/campbell>
+2006-12-27 03:32  Taylor R. Campbell <net/mumble/campbell>
 
 	* etc/compile.sh (1.8), microcode/utabmd.sh (1.8):
 
@@ -2184,19 +4217,19 @@
 	compiler loaded, so that they fit in the absurdly small limits on OS
 	X/Intel.  3000 seems to be the largest number of blocks we can rely on.
 
-2006-12-27 03:10  Taylor Campbell <net/mumble/campbell>
+2006-12-27 03:10  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/edwin.pkg (1.299):
 
 	Argh!  Add long-forgotten (EDWIN LISPPASTE) package...
 
-2006-12-27 02:01  Taylor Campbell <net/mumble/campbell>
+2006-12-27 02:01  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/syntax-rules.scm (14.8):
 
 	Update copyright date.
 
-2006-12-27 01:53  Taylor Campbell <net/mumble/campbell>
+2006-12-27 01:53  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/syntax-rules.scm (14.7):
 
@@ -2237,14 +4270,14 @@
 	ports.  This restriction was unnecessary and the change had a bug
 	anyway.
 
-2006-12-08 21:02  Taylor Campbell <net/mumble/campbell>
+2006-12-08 21:02  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/edtstr.scm (1.33):
 
 	Fix unparser method for buttons: the procedure given to
 	SIMPLE-UNPARSER-METHOD must return a list of components.
 
-2006-11-27 17:52  Taylor Campbell <net/mumble/campbell>
+2006-11-27 17:52  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/Makefile.in (1.10):
 
@@ -2267,7 +4300,7 @@
 
 	Eliminate win32 compiler warnings.
 
-2006-11-22 23:56  Taylor Campbell <net/mumble/campbell>
+2006-11-22 23:56  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/info.scm (1.141):
 
@@ -2369,7 +4402,7 @@
 	Change bnode mechanism so that user-supplied names are used only for
 	parsing.
 
-2006-11-04 15:25  Taylor Campbell <net/mumble/campbell>
+2006-11-04 15:25  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: decls.scm (1.78), ed-ffi.scm (1.56), lisppaste.scm (1.1),
 	  loadef.scm (1.50):
@@ -2377,13 +4410,13 @@
 	New Edwin library: a front end for lisppaste, using its XML-RPC interface.
 	See <http://paste.lisp.org/> for details.
 
-2006-11-04 15:23  Taylor Campbell <net/mumble/campbell>
+2006-11-04 15:23  Taylor R. Campbell <net/mumble/campbell>
 
 	* xml/: xml-rpc.scm (1.8), xml.pkg (1.87):
 
 	Implement a simple XML-RPC client.
 
-2006-11-04 15:16  Taylor Campbell <net/mumble/campbell>
+2006-11-04 15:16  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/: http-client.scm (14.3), runtime.pkg (14.604):
 
@@ -2448,7 +4481,7 @@
 	fully-loaded band has about 28500 interned symbols, so this value
 	should provide for very small buckets.
 
-2006-10-29 12:25  Taylor Campbell <net/mumble/campbell>
+2006-10-29 12:25  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/: ux.h (1.80), uxproc.c (1.31):
 
@@ -2457,7 +4490,7 @@
 	since it should work on OS X now that we use fork there instead of
 	vfork.
 
-2006-10-29 12:22  Taylor Campbell <net/mumble/campbell>
+2006-10-29 12:22  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/ux.h (1.78.2.4):
 
@@ -2465,7 +4498,7 @@
 	ignores the value of `setsid' and always returns zero.  `setsid' is
 	correct; it just isn't allowed in vforked processes.
 
-2006-10-29 11:43  Taylor Campbell <net/mumble/campbell>
+2006-10-29 11:43  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/: uxio.c (1.54), uxio.c (1.53.2.3):
 
@@ -2656,7 +4689,7 @@
 	Store bucky bits in variables, and provide operations to test and set
 	them.  This should provide a little more abstraction than at present.
 
-2006-10-23 17:48  Taylor Campbell <net/mumble/campbell>
+2006-10-23 17:48  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/bitstr.c (9.65.2.4):
 
@@ -2700,7 +4733,7 @@
 	Change x_modifier_mask_to_bucky_bits and x_key_button_mask_to_scheme
 	to use unsigned long rather than long for computing result.
 
-2006-10-21 17:16  Taylor Campbell <net/mumble/campbell>
+2006-10-21 17:16  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/xterm.scm (1.76):
 
@@ -2709,7 +4742,7 @@
 	that other characters can be control-modified without using the
 	clumsier C-z or C-^ prefix key bindings.
 
-2006-10-21 12:05  Taylor Campbell <net/mumble/campbell>
+2006-10-21 12:05  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/: object.h (9.61), x11.h (1.21), x11base.c (1.86),
 	  object.h (9.59.2.9), x11.h (1.19.2.4), x11base.c (1.81.2.7):
@@ -3843,7 +5876,7 @@
 
 	  1 ]=>
 
-2006-08-03 00:00  Taylor Campbell <net/mumble/campbell>
+2006-08-03 00:00  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/syntax.c (1.33):
 
@@ -3856,7 +5889,7 @@
 
 	Fix various compiler warnings.
 
-2006-08-02 12:27  Taylor Campbell <net/mumble/campbell>
+2006-08-02 12:27  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/: http-client.scm (14.1), make.scm (14.103), runtime.pkg
 	  (14.590):
@@ -3900,7 +5933,7 @@
 	Round out the RDF QName abstraction a bit.  Change RDF-QNAME? to be a
 	syntactic test that doesn't check any registry.
 
-2006-07-31 14:55  Taylor Campbell <net/mumble/campbell>
+2006-07-31 14:55  Taylor R. Campbell <net/mumble/campbell>
 
 	* xml/xml-struct.scm (1.55):
 
@@ -3921,7 +5954,7 @@
 	Fix bug in parsing of booleans; they were matched but treated as
 	noise, causing triples containing them to be elided.
 
-2006-07-28 12:23  Taylor Campbell <net/mumble/campbell>
+2006-07-28 12:23  Taylor R. Campbell <net/mumble/campbell>
 
 	* xml/xml-rpc.scm (1.6):
 
@@ -3961,7 +5994,7 @@
 
 	Update copyright dates.
 
-2006-07-26 20:42  Taylor Campbell <net/mumble/campbell>
+2006-07-26 20:42  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/Makefile.in (1.7):
 
@@ -3995,7 +6028,7 @@
 	Allow LOAD in expander environment to take optional target
 	environment.
 
-2006-07-25 14:21  Taylor Campbell <net/mumble/campbell>
+2006-07-25 14:21  Taylor R. Campbell <net/mumble/campbell>
 
 	* xml/xml-rpc.scm (1.5):
 
@@ -4003,7 +6036,7 @@
 	wrapped in `base64' elements, and so that non-base64-encoded strings
 	are not wrapped in superfluous `string' elements.
 
-2006-07-20 13:09  Taylor Campbell <net/mumble/campbell>
+2006-07-20 13:09  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/debug.scm (14.47), runtime/runtime.pkg (14.587),
 	  ssp/mod-lisp.scm (1.31), ssp/ssp.pkg (1.21):
@@ -4016,7 +6049,7 @@
 
 	Make sure that base URI is absolute.
 
-2006-07-03 15:41  Taylor Campbell <net/mumble/campbell>
+2006-07-03 15:41  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: curren.scm (1.148), buffrm.scm (1.63), paredit.scm (1.7):
 
@@ -4031,13 +6064,13 @@
 	Remove PAREDIT-SAVE-EXCURSION, whose functionality is now subsumed by
 	the new SAVE-EXCURSION.
 
-2006-07-03 15:28  Taylor Campbell <net/mumble/campbell>
+2006-07-03 15:28  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/syntax.scm (1.95), microcode/syntax.c (1.32):
 
 	Update copyright years.
 
-2006-07-03 15:05  Taylor Campbell <net/mumble/campbell>
+2006-07-03 15:05  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/paredit.scm (1.6), edwin/syntax.scm (1.94),
 	  microcode/syntax.c (1.31):
@@ -4047,7 +6080,7 @@
 	standing bug in paredit whereby character deletion in strings that
 	were the first elements of lists would cause segmentation faults.
 
-2006-06-27 14:43  Taylor Campbell <net/mumble/campbell>
+2006-06-27 14:43  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/paredit.scm (1.5):
 
@@ -4055,13 +6088,13 @@
 	and `paredit-split-sexp' commands, so that their undoing works as
 	expected.
 
-2006-06-27 14:39  Taylor Campbell <net/mumble/campbell>
+2006-06-27 14:39  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/paredit.scm (1.4):
 
 	Implement paredit-split-sexp (M-S) and paredit-join-sexps (M-J).
 
-2006-06-26 12:16  Taylor Campbell <net/mumble/campbell>
+2006-06-26 12:16  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/ed-ffi.scm (1.55):
 
@@ -4152,27 +6185,27 @@
 
 	Eliminate compiler warning.
 
-2006-06-16 15:02  Taylor Campbell <net/mumble/campbell>
+2006-06-16 15:02  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: decls.scm (1.76), edwin.pkg (1.296), loadef.scm (1.49),
 	  paredit.scm (1.1):
 
 	New Edwin library Paredit.
 
-2006-06-16 14:35  Taylor Campbell <net/mumble/campbell>
+2006-06-16 14:35  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/decls.scm (1.75):
 
 	Move diff.scm to proper alphabetical location in syntaxed filename list.
 
-2006-06-16 14:33  Taylor Campbell <net/mumble/campbell>
+2006-06-16 14:33  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/diff.scm (1.2):
 
 	Fix Edwin command DIFF-BACKUP for case wherein selected buffer has no
 	associated file.
 
-2006-06-16 13:55  Taylor Campbell <net/mumble/campbell>
+2006-06-16 13:55  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: decls.scm (1.74), diff.scm (1.1), edwin.ldr (1.77),
 	  edwin.pkg (1.295), vc.scm (1.94):
@@ -4188,7 +6221,7 @@
 	  diff-buffer-with-file (compare buffer with its underlying file)
 	  diff-auto-save (compare buffer with its auto-save file)
 
-2006-06-12 16:46  Taylor Campbell <net/mumble/campbell>
+2006-06-12 16:46  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: edwin.pkg (1.294), snr.scm (1.66):
 
@@ -4620,7 +6653,7 @@
 
 	Bump copyright dates.
 
-2006-05-14 21:50  Taylor Campbell <net/mumble/campbell>
+2006-05-14 21:50  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/unix.scm (1.119):
 
@@ -4630,7 +6663,7 @@
 	hacker, and I need this only for a diff front end, which won't run on
 	DOS anyway.
 
-2006-04-30 00:11  Taylor Campbell <net/mumble/campbell>
+2006-04-30 00:11  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/editor.scm (1.261):
 
@@ -5169,13 +7202,13 @@
 
 	Mangle the email addresses for obscurity.
 
-2006-01-01 23:20  Taylor Campbell <net/mumble/campbell>
+2006-01-01 23:20  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: modefs.scm (1.167), wincom.scm (1.136):
 
 	Implement KILL-BUFFER-AND-WINDOW command (C-x 4 0) as in GNU Emacs.
 
-2005-12-31 15:02  Taylor Campbell <net/mumble/campbell>
+2005-12-31 15:02  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/uxsig.c (1.44), microcode/uxtty.c (1.13),
 	  runtime/intrpt.scm (14.27):
@@ -5202,14 +7235,14 @@
 	Don't provide support for a special DISCARD-CHAR operation; always use
 	READ-CHAR instead.
 
-2005-12-27 01:22  Taylor Campbell <net/mumble/campbell>
+2005-12-27 01:22  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/nntp.scm (1.32):
 
 	Eliminate redundant and incorrect definition of INPUT-PORT/READ-LINE,
 	which the run-time system has provided for some time now.
 
-2005-12-25 12:43  Taylor Campbell <net/mumble/campbell>
+2005-12-25 12:43  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/nntp.scm (1.31):
 
@@ -5220,7 +7253,7 @@
 	Edwin error.  The response field of NNTP errors can now be either a
 	string or an EOF object.
 
-2005-12-25 12:04  Taylor Campbell <net/mumble/campbell>
+2005-12-25 12:04  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/tterm.scm (1.42), microcode/osscheme.c (1.15),
 	  microcode/osscheme.h (1.14), microcode/uxsig.c (1.43),
@@ -5240,7 +7273,7 @@
 	    EVENT:CONSOLE-RESIZE whenever an Edwin console screen is entered,
 	    and removing it whenever a console screen is exited.
 
-2005-12-25 00:59  Taylor Campbell <net/mumble/campbell>
+2005-12-25 00:59  Taylor R. Campbell <net/mumble/campbell>
 
 	* microcode/configure.ac (1.7):
 
@@ -5249,14 +7282,14 @@
 	superfluous but also, if absent, cause errors to be silently inserted
 	into the resultant Makefiles, which make then chokes on.
 
-2005-12-25 00:56  Taylor Campbell <net/mumble/campbell>
+2005-12-25 00:56  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/nntp.scm (1.30):
 
 	Protect against EOF in NNTP-READ-LINE, which causes segfaults
 	elsewhere if unchecked.
 
-2005-12-25 00:10  Taylor Campbell <net/mumble/campbell>
+2005-12-25 00:10  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/port.scm (1.40):
 
@@ -5346,7 +7379,7 @@
 
 	Add missing initialization for (RUNTIME URI).
 
-2005-12-15 21:04  Taylor Campbell <net/mumble/campbell>
+2005-12-15 21:04  Taylor R. Campbell <net/mumble/campbell>
 
 	* imail/: imail-core.scm (1.153), imail-file.scm (1.87),
 	  imail-imap.scm (1.206), imail-mime.scm (1.3), imail-top.scm
@@ -5397,7 +7430,7 @@
 	aren't backed by channels.  Reimplement string I/O ports to work this
 	way, so that they can take advantage of all the nice codecs.
 
-2005-12-10 01:45  Taylor Campbell <net/mumble/campbell>
+2005-12-10 01:45  Taylor R. Campbell <net/mumble/campbell>
 
 	* imail/: compile.scm (1.22), ed-ffi.scm (1.23), imail-core.scm
 	  (1.152), imail-file.scm (1.86), imail-mime.scm (1.1),
@@ -5413,7 +7446,7 @@
 	  - coherent error handling
 	  - efficiency of performance
 
-2005-12-09 15:34  Taylor Campbell <net/mumble/campbell>
+2005-12-09 15:34  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/: edwin.pkg (1.292), rfc822.scm (3.7):
 
@@ -5427,13 +7460,13 @@
 	    longer necessary.
 	  - RFC822:UNQUOTE-STRING is the inverse of RFC822:QUOTE-STRING.
 
-2005-12-09 15:25  Taylor Campbell <net/mumble/campbell>
+2005-12-09 15:25  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/schmod.scm (1.73), runtime/mit-syntax.scm (14.24):
 
 	Implement SRFI 2: AND-LET*
 
-2005-12-09 02:06  Taylor Campbell <net/mumble/campbell>
+2005-12-09 02:06  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/editor.scm (1.260), runtime/genio.scm (1.34),
 	  runtime/port.scm (1.39), runtime/unicode.scm (1.24):
@@ -5462,7 +7495,7 @@
 
 	Add support for codings and line endings to string ports.
 
-2005-11-27 01:40  Taylor Campbell <net/mumble/campbell>
+2005-11-27 01:40  Taylor R. Campbell <net/mumble/campbell>
 
 	* imail/imail-file.scm (1.85):
 
@@ -5471,7 +7504,7 @@
 	accessed if it is not a file external reference, instead of calling the
 	next method in that case.
 
-2005-11-27 01:35  Taylor Campbell <net/mumble/campbell>
+2005-11-27 01:35  Taylor R. Campbell <net/mumble/campbell>
 
 	* imail/imail-util.scm (1.45):
 
@@ -5479,7 +7512,7 @@
 	whereby STRING-LENGTH was passed the default object (#!DEFAULT), not
 	the default line-ending string.
 
-2005-11-23 19:00  Taylor Campbell <net/mumble/campbell>
+2005-11-23 19:00  Taylor R. Campbell <net/mumble/campbell>
 
 	* edwin/motcom.scm (1.52):
 
@@ -5488,7 +7521,7 @@
 	by the new variable NEXT-LINE-ADD-NEWLINES, which is by default set to
 	#T so as to preserve the old behaviour.
 
-2005-11-19 23:12  Taylor Campbell <net/mumble/campbell>
+2005-11-19 23:12  Taylor R. Campbell <net/mumble/campbell>
 
 	* runtime/mit-syntax.scm (14.23):
 
@@ -5570,7 +7603,7 @@
 
 	Eliminate some unnecessary integrations.
 
-2005-11-09 16:26  Taylor Campbell <net/mumble/campbell>
+2005-11-09 16:26  Taylor R. Campbell <net/mumble/campbell>
 
 	* star-parser/test-parser.scm (1.7):
 
@@ -5657,7 +7690,7 @@
 	Fix bug: explicitly-defined record unparsers installed during cold
 	load weren't being seen.
 
-2005-10-24 01:07  Taylor Campbell <net/mumble/campbell>
+2005-10-24 01:07  Taylor R. Campbell <net/mumble/campbell>
 
 	* star-parser/shared.scm (1.32):
 

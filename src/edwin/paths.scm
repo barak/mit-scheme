@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: paths.scm,v 1.20 2007/01/05 21:19:24 cph Exp $
+$Id: paths.scm,v 1.21 2007/06/09 01:22:31 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,23 +29,22 @@ USA.
 
 (declare (usual-integrations))
 
-(define (edwin-library-directory-pathname envvar name required?)
+(define (edwin-library-directory-pathname envvar required?)
   (let ((envval (get-environment-variable envvar)))
     (if envval
 	(pathname-as-directory (merge-pathnames envval))
-	(or (system-library-directory-pathname
-	     (merge-pathnames name (pathname-as-directory "edwin")))
+	(or (system-library-directory-pathname "edwin")
 	    (and required?
 		 (error "Can't find edwin library directory:" name))))))
 
 (define (edwin-binary-directory)
-  (edwin-library-directory-pathname "EDWIN_BINARY_DIRECTORY" "autoload" #t))
+  (edwin-library-directory-pathname "EDWIN_BINARY_DIRECTORY" #t))
 
 (define (edwin-info-directory)
-  (edwin-library-directory-pathname "EDWIN_INFO_DIRECTORY" "info" #f))
+  (edwin-library-directory-pathname "EDWIN_INFO_DIRECTORY" #f))
 
 (define (edwin-etc-directory)
-  (edwin-library-directory-pathname "EDWIN_ETC_DIRECTORY" "etc" #t))
+  (edwin-library-directory-pathname "EDWIN_ETC_DIRECTORY" #t))
 
 (define (edwin-etc-pathname filename)
   (let ((pathname (merge-pathnames filename (edwin-etc-directory))))

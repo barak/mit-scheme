@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: option.c,v 1.64 2007/01/05 21:19:25 cph Exp $
+$Id: option.c,v 1.65 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -34,22 +34,10 @@ USA.
 #include "osfs.h"
 #include <sys/stat.h>
 
-extern char * getenv ();
-extern void free ();
-#define xfree(p) free ((PTR) (p))
-extern int atoi ();
+#define xfree(p) OS_free ((void *) (p))
 
 #ifdef HAVE_UNISTD_H
 #  include <unistd.h>
-#endif
-
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#  include <string.h>
-#endif
-
-#ifdef HAVE_MALLOC_H
-#  include <malloc.h>
 #endif
 
 #ifdef __WIN32__
@@ -61,10 +49,6 @@ extern int atoi ();
 #if defined(__WIN32__) || defined(__OS2__)
 #  define DOS_LIKE_FILENAMES
 #endif
-
-extern struct obstack scratch_obstack;
-extern CONST char * scheme_program_name;
-extern void EXFUN (termination_init_error, (void));
 
 #ifndef SUB_DIRECTORY_DELIMITER
 #  ifdef DOS_LIKE_FILENAMES
@@ -92,64 +76,45 @@ extern void EXFUN (termination_init_error, (void));
 
 #define FILE_READABLE(filename) (OS_file_access ((filename), 4))
 
-static int option_summary;
-static int option_large_sizes;
+static bool option_summary;
+static bool option_large_sizes;
+static bool option_compiler_defaults;
+static bool option_edwin_defaults;
 
-#ifdef HAS_COMPILER_SUPPORT
-static int option_compiler_defaults;
-static int option_edwin_defaults;
-#endif
-
-static CONST char * option_raw_library = 0;
-static CONST char * option_raw_utabmd = 0;
-static CONST char * option_raw_utab = 0;
-static CONST char * option_raw_band = 0;
-static CONST char * option_raw_heap = 0;
-static CONST char * option_raw_constant = 0;
-static CONST char * option_raw_stack = 0;
+static const char * option_raw_library;
+static const char * option_raw_utabmd;
+static const char * option_raw_utab;
+static const char * option_raw_band;
+static const char * option_raw_heap;
+static const char * option_raw_constant;
+static const char * option_raw_stack;
 
 /* Command-line arguments */
 int option_saved_argc;
-CONST char ** option_saved_argv;
+const char ** option_saved_argv;
 int option_unused_argc;
-CONST char ** option_unused_argv;
+const char ** option_unused_argv;
 
 /* Boolean options */
-int option_emacs_subprocess;
-int option_force_interactive;
-int option_disable_core_dump;
-int option_band_specified;
-int option_empty_list_eq_false;
-int option_batch_mode;
+bool option_emacs_subprocess;
+bool option_force_interactive;
+bool option_disable_core_dump;
+bool option_band_specified;
+bool option_batch_mode;
 
 /* String options */
-CONST char ** option_library_path = 0;
-CONST char * option_band_file = 0;
-CONST char * option_fasl_file = 0;
-CONST char * option_utabmd_file = 0;
+const char ** option_library_path = 0;
+const char * option_band_file = 0;
+const char * option_fasl_file = 0;
+const char * option_utabmd_file = 0;
 
 /* Numeric options */
-unsigned int option_heap_size;
-unsigned int option_constant_size;
-unsigned int option_stack_size;
+unsigned long option_heap_size;
+unsigned long option_constant_size;
+unsigned long option_stack_size;
+
+/*
 
-/* These only matter for bchscheme */
-static CONST char * option_raw_gc_end_position = 0;
-static CONST char * option_raw_gc_file = 0;
-static CONST char * option_raw_gc_read_overlap = 0;
-static CONST char * option_raw_gc_start_position = 0;
-static CONST char * option_raw_gc_window_size = 0;
-static CONST char * option_raw_gc_write_overlap = 0;
-CONST char * option_gc_directory = 0;
-CONST char * option_gc_drone = 0;
-CONST char * option_gc_file = 0;
-int option_gc_keep;
-int option_gc_read_overlap;
-int option_gc_window_size;
-int option_gc_write_overlap;
-long option_gc_start_position;
-long option_gc_end_position;
-/*
 Scheme accepts the following command-line options.  The options may
 appear in any order, but they must all appear before any other
 arguments on the command line.
@@ -215,7 +180,7 @@ arguments on the command line.
 
 --option-summary
   Causes Scheme to write option information to standard error.
-
+
 --emacs
   Specifies that Scheme is running as a subprocess of GNU Emacs.
   This option is automatically supplied by GNU Emacs, and should not
@@ -247,39 +212,6 @@ compiled-code support:
   MITSCHEME_EDWIN_BAND is used, otherwise "edwin.com" is used.  It
   also specifies the use of large sizes, exactly like "--large".
 
-The following options are only meaningful to bchscheme:
-
---gc-directory DIRECTORY
-  Specifies what directory to use to allocate the garbage collection file.
-
---gc-drone FILENAME
-  Specifies the program to use as the gc drones for overlapped I/O.
-
---gc-end-position N
-  Specifies a position into the gc file past which bchscheme should not use.
-
---gc-file FILENAME
-  Specifies that FILENAME should be used garbage collection.  Overrides
-  -gc-directory if it is an absolute pathname.  -gcfile means the same thing,
-  but is deprecated.
-
---gc-keep
-  Specifles that newly allocated gc files should be kept rather than deleted.
-
---gc-read-overlap N
-  Specifies the number of additional GC windows to use when reading
-  for overlapped I/O.  Each implies a drone process to manage it,
-  if supported.
-
---gc-start-position N
-  Specifies a position into the gc file before which bchscheme should not use.
-
---gc-window-size BLOCKS
-  Specifies the size in 1024-word blocks of each GC window.
-
---gc-write-overlap N
-  Specifies the number of additional GC windows to use when writing for
-  overlapped I/O.  Each implies a drone process to manage it, if supported.
 */
 
 #ifndef LIBRARY_PATH_VARIABLE
@@ -333,49 +265,6 @@ The following options are only meaningful to bchscheme:
 #ifndef DEFAULT_UTABMD_FILE
 #  define DEFAULT_UTABMD_FILE "utabmd.bin"
 #endif
-
-#ifdef HAS_COMPILER_SUPPORT
-
-#  if defined(hp9000s800) || defined(__hp9000s800)
-/* HPPA compiled binaries are large! */
-
-#    ifndef DEFAULT_SMALL_CONSTANT
-#      define DEFAULT_SMALL_CONSTANT 600
-#    endif
-
-#    ifndef DEFAULT_LARGE_CONSTANT
-#      define DEFAULT_LARGE_CONSTANT 1400
-#    endif
-
-#  endif /* hp9000s800 */
-
-#  ifdef mips
-/* MIPS compiled binaries are large! */
-
-#    ifndef DEFAULT_SMALL_CONSTANT
-#      define DEFAULT_SMALL_CONSTANT 700
-#    endif
-
-#    ifndef DEFAULT_LARGE_CONSTANT
-#      define DEFAULT_LARGE_CONSTANT 1500
-#    endif
-
-#  endif /* mips */
-
-#  ifdef __IA32__
-/* 386 code is large too! */
-
-#    ifndef DEFAULT_SMALL_CONSTANT
-#      define DEFAULT_SMALL_CONSTANT 600
-#    endif
-
-#    ifndef DEFAULT_LARGE_CONSTANT
-#      define DEFAULT_LARGE_CONSTANT 1200
-#    endif
-
-#  endif /* __IA32__ */
-
-#endif /* HAS_COMPILER_SUPPORT */
 
 #ifndef DEFAULT_SMALL_HEAP
 #  define DEFAULT_SMALL_HEAP 250
@@ -394,7 +283,7 @@ The following options are only meaningful to bchscheme:
 #endif
 
 #ifndef DEFAULT_SMALL_STACK
-#  define	DEFAULT_SMALL_STACK 100
+#  define DEFAULT_SMALL_STACK 100
 #endif
 
 #ifndef SMALL_STACK_VARIABLE
@@ -425,88 +314,16 @@ The following options are only meaningful to bchscheme:
 #  define LARGE_STACK_VARIABLE "MITSCHEME_LARGE_STACK"
 #endif
 
-/* These are only meaningful for bchscheme */
-
-#ifndef DEFAULT_GC_DIRECTORY
-#  ifdef DOS_LIKE_FILENAMES
-#    define DEFAULT_GC_DIRECTORY "\\tmp"
-#  else
-#    define DEFAULT_GC_DIRECTORY "/tmp"
-#  endif
-#endif
-
-#ifndef GC_DIRECTORY_VARIABLE
-#  define GC_DIRECTORY_VARIABLE "MITSCHEME_GC_DIRECTORY"
-#endif
-
-#ifndef DEFAULT_GC_DRONE
-#  define DEFAULT_GC_DRONE "gcdrone"
-#endif
-
-#ifndef GC_DRONE_VARIABLE
-#  define GC_DRONE_VARIABLE "MITSCHEME_GC_DRONE"
-#endif
-
-#ifndef DEFAULT_GC_END_POSITION
-#  define DEFAULT_GC_END_POSITION (-1)
-#endif
-
-#ifndef GC_END_POSITION_VARIABLE
-#  define GC_END_POSITION_VARIABLE "MITSCHEME_GC_END_POSITION"
-#endif
-
-#ifndef DEFAULT_GC_FILE
-#  define DEFAULT_GC_FILE "GCXXXXXX"
-#endif
-
-#ifndef GC_FILE_VARIABLE
-#  define GC_FILE_VARIABLE "MITSCHEME_GC_FILE"
-#endif
-
-#ifndef DEFAULT_GC_READ_OVERLAP
-#  define DEFAULT_GC_READ_OVERLAP 0
-#endif
-
-#ifndef GC_READ_OVERLAP_VARIABLE
-#  define GC_READ_OVERLAP_VARIABLE "MITSCHEME_GC_READ_OVERLAP"
-#endif
-
-#ifndef DEFAULT_GC_START_POSITION
-#  define DEFAULT_GC_START_POSITION 0
-#endif
-
-#ifndef GC_START_POSITION_VARIABLE
-#  define GC_START_POSITION_VARIABLE "MITSCHEME_GC_START_POSITION"
-#endif
-
-#ifndef DEFAULT_GC_WINDOW_SIZE
-#  define DEFAULT_GC_WINDOW_SIZE 16
-#endif
-
-#ifndef GC_WINDOW_SIZE_VARIABLE
-#  define GC_WINDOW_SIZE_VARIABLE "MITSCHEME_GC_WINDOW_SIZE"
-#endif
-
-#ifndef DEFAULT_GC_WRITE_OVERLAP
-#  define DEFAULT_GC_WRITE_OVERLAP 0
-#endif
-
-#ifndef GC_WRITE_OVERLAP_VARIABLE
-#  define GC_WRITE_OVERLAP_VARIABLE "MITSCHEME_GC_WRITE_OVERLAP"
-#endif
-
 static int
-DEFUN (string_compare_ci, (string1, string2),
-       CONST char * string1 AND
-       CONST char * string2)
+string_compare_ci (const char * string1, const char * string2)
 {
-  CONST char * scan1 = string1;
+  const char * scan1 = string1;
   unsigned int length1 = (strlen (string1));
-  CONST char * scan2 = string2;
+  const char * scan2 = string2;
   unsigned int length2 = (strlen (string2));
   unsigned int length = ((length1 < length2) ? length1 : length2);
-  CONST char * end1 = (scan1 + length);
-  CONST char * end2 = (scan2 + length);
+  const char * end1 = (scan1 + length);
+  const char * end2 = (scan2 + length);
   while ((scan1 < end1) && (scan2 < end2))
     {
       int c1 = (*scan1++);
@@ -530,25 +347,12 @@ DEFUN (string_compare_ci, (string1, string2),
      : ((length1 < length2) ? (-1) : 1));
 }
 
-static PTR
-DEFUN (xmalloc, (n), unsigned long n)
-{
-  PTR result = (malloc (n));
-  if (result == 0)
-    {
-      outf_fatal ("%s: unable to allocate space while parsing options.\n",
-	       scheme_program_name);
-      termination_init_error ();
-    }
-  return (result);
-}
-
 static char *
-DEFUN (string_copy, (s), CONST char * s)
+string_copy (const char * s)
 {
-  char * result = (xmalloc ((strlen (s)) + 1));
+  char * result = (OS_malloc ((strlen (s)) + 1));
   {
-    CONST char * s1 = s;
+    const char * s1 = s;
     char * s2 = result;
     while (((*s2++) = (*s1++)) != '\0') ;
   }
@@ -557,29 +361,26 @@ DEFUN (string_copy, (s), CONST char * s)
 
 struct option_descriptor
 {
-  CONST char * option;
-  int argument_p;
-  PTR value_cell;
+  const char * option;
+  bool argument_p;
+  void * value_cell;
 };
 
 static void
-DEFUN (option_argument, (option, argument_p, value_cell),
-       CONST char * option AND
-       int argument_p AND
-       CONST PTR value_cell)
+option_argument (const char * option, bool argument_p, void * value_cell)
 {
   struct option_descriptor descriptor;
   (descriptor . option) = option;
   (descriptor . argument_p) = argument_p;
-  (descriptor . value_cell) = ((PTR) value_cell);
+  (descriptor . value_cell) = value_cell;
   obstack_grow ((&scratch_obstack), (&descriptor), (sizeof (descriptor)));
 }
 
 static void
-DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
+parse_options (int argc, const char ** argv)
 {
-  CONST char ** scan_argv = (argv + 1);
-  CONST char ** end_argv = (scan_argv + (argc - 1));
+  const char ** scan_argv = (argv + 1);
+  const char ** end_argv = (scan_argv + (argc - 1));
   unsigned int n_descriptors =
     ((obstack_object_size (&scratch_obstack))
      / (sizeof (struct option_descriptor)));
@@ -587,19 +388,19 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
   struct option_descriptor * end_desc = (descriptors + n_descriptors);
   struct option_descriptor * scan_desc;
   for (scan_desc = descriptors; (scan_desc < end_desc); scan_desc += 1)
-    if (scan_desc -> argument_p)
+    if (scan_desc->argument_p)
       {
-	CONST char ** value_cell = (scan_desc -> value_cell);
+	const char ** value_cell = (scan_desc->value_cell);
 	(*value_cell) = 0;
       }
     else
       {
-	int * value_cell = (scan_desc -> value_cell);
-	(*value_cell) = 0;
+	bool * value_cell = (scan_desc->value_cell);
+	(*value_cell) = false;
       }
   while (scan_argv < end_argv)
     {
-      CONST char * option = (*scan_argv++);
+      const char * option = (*scan_argv++);
       if ((strncmp ("--", option, 2)) == 0)
 	option += 2;
       else if ((strncmp ("-", option, 1)) == 0)
@@ -610,24 +411,24 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
 	  break;
 	}
       for (scan_desc = descriptors; (scan_desc < end_desc); scan_desc += 1)
-	if ((string_compare_ci (option, (scan_desc -> option))) == 0)
+	if ((string_compare_ci (option, (scan_desc->option))) == 0)
 	  {
-	    if (scan_desc -> argument_p)
+	    if (scan_desc->argument_p)
 	      {
-		CONST char ** value_cell = (scan_desc -> value_cell);
+		const char ** value_cell = (scan_desc->value_cell);
 		if (scan_argv < end_argv)
 		  (*value_cell) = (*scan_argv++);
 		else
 		  {
 		    outf_fatal ("%s: option --%s requires an argument.\n",
-			     scheme_program_name, option);
+				scheme_program_name, option);
 		    termination_init_error ();
 		  }
 	      }
 	    else
 	      {
-		int * value_cell = (scan_desc -> value_cell);
-		(*value_cell) = 1;
+		bool * value_cell = (scan_desc->value_cell);
+		(*value_cell) = true;
 	      }
 	    break;
 	  }
@@ -645,134 +446,68 @@ DEFUN (parse_options, (argc, argv), int argc AND CONST char ** argv)
 }
 
 static void
-DEFUN (parse_standard_options, (argc, argv), int argc AND CONST char ** argv)
+parse_standard_options (int argc, const char ** argv)
 {
-  option_argument ("band", 1, (&option_raw_band));
-  option_argument ("constant", 1, (&option_raw_constant));
-  option_argument ("emacs", 0, (&option_emacs_subprocess));
-  option_argument ("fasl", 1, (&option_fasl_file));
-  option_argument ("heap", 1, (&option_raw_heap));
-  option_argument ("interactive", 0, (&option_force_interactive));
-  option_argument ("large", 0, (&option_large_sizes));
-  option_argument ("library", 1, (&option_raw_library));
-  option_argument ("nocore", 0, (&option_disable_core_dump));
-  option_argument ("option-summary", 0, (&option_summary));
-  option_argument ("stack", 1, (&option_raw_stack));
-  option_argument ("utab", 1, (&option_raw_utab));
-  option_argument ("utabmd", 1, (&option_raw_utabmd));
-  option_argument ("empty-list-eq-false", 0, (&option_empty_list_eq_false));
-  option_argument ("batch-mode", 0, (&option_batch_mode));
-#ifdef HAS_COMPILER_SUPPORT
-  option_argument ("compiler", 0, (&option_compiler_defaults));
-  option_argument ("edwin", 0, (&option_edwin_defaults));
-#endif
-  /* The following options are only meaningful to bchscheme. */
-  option_argument ("gc-directory", 1, (&option_gc_directory));
-  option_argument ("gc-drone", 1, (&option_gc_drone));
-  option_argument ("gc-end-position", 1, (&option_raw_gc_end_position));
-  option_argument ("gc-file", 1, (&option_gc_file));
-  option_argument ("gc-keep", 0, (&option_gc_keep));
-  option_argument ("gc-start-position", 1, (&option_raw_gc_start_position));
-  option_argument ("gc-read-overlap", 1, (&option_raw_gc_read_overlap));
-  option_argument ("gc-window-size", 1, (&option_raw_gc_window_size));
-  option_argument ("gc-write-overlap", 1, (&option_raw_gc_write_overlap));
-  option_argument ("gcfile", 1, (&option_raw_gc_file)); /* Obsolete */
+  option_argument ("band", true, (&option_raw_band));
+  option_argument ("constant", true, (&option_raw_constant));
+  option_argument ("emacs", false, (&option_emacs_subprocess));
+  option_argument ("fasl", true, (&option_fasl_file));
+  option_argument ("heap", true, (&option_raw_heap));
+  option_argument ("interactive", false, (&option_force_interactive));
+  option_argument ("large", false, (&option_large_sizes));
+  option_argument ("library", true, (&option_raw_library));
+  option_argument ("nocore", false, (&option_disable_core_dump));
+  option_argument ("option-summary", false, (&option_summary));
+  option_argument ("stack", true, (&option_raw_stack));
+  option_argument ("utab", true, (&option_raw_utab));
+  option_argument ("utabmd", true, (&option_raw_utabmd));
+  option_argument ("batch-mode", false, (&option_batch_mode));
+  option_argument ("compiler", false, (&option_compiler_defaults));
+  option_argument ("edwin", false, (&option_edwin_defaults));
   parse_options (argc, argv);
 }
-
-static CONST char *
-DEFUN (string_option, (option, defval),
-       CONST char * option AND
-       CONST char * defval)
-{
-  return ((option == 0) ? defval : option);
-}
 
-static CONST char *
-DEFUN (environment_default, (variable, defval),
-       CONST char * variable AND
-       CONST char * defval)
-{
-  CONST char * temp = (getenv (variable));
-  return ((temp == 0) ? defval : temp);
-}
-
-static CONST char *
-DEFUN (standard_string_option, (option, variable, defval),
-       CONST char * option AND
-       CONST char * variable AND
-       CONST char * defval)
+static const char *
+standard_string_option (const char * option,
+			const char * variable,
+			const char * defval)
 {
   if (option != 0)
     return (option);
   {
-    CONST char * t = (getenv (variable));
+    const char * t = (getenv (variable));
     return ((t != 0) ? t : defval);
   }
 }
 
-static long
-DEFUN (non_negative_numeric_option, (option, optval, variable, defval),
-       CONST char * option AND
-       CONST char * optval AND
-       CONST char * variable AND
-       long defval)
+static unsigned long
+standard_numeric_option (const char * option,
+			 const char * optval,
+			 const char * variable,
+			 unsigned long defval)
 {
   if (optval != 0)
     {
-      long n = (strtol (optval, 0, 0));
-      if (n < 0)
+      char * end;
+      unsigned long n = (strtoul (optval, (&end), 0));;
+      if ((end == optval) || ((*end) != '\0'))
 	{
-	  outf_fatal ("%s: illegal argument %s for option --%s.\n",
-		   scheme_program_name, optval, option);
+	  outf_fatal ("%s: illegal argument for option --%s: %s\n",
+		      scheme_program_name, option, optval);
 	  termination_init_error ();
 	}
       return (n);
     }
   {
-    CONST char * t = (getenv (variable));
+    const char * t = (getenv (variable));
     if (t != 0)
       {
-	long n = (strtol (t, 0, 0));
-	if (n < 0)
+	char * end;
+	unsigned long n = (strtoul (t, (&end), 0));;
+	if ((end == t) || ((*end) != '\0'))
 	  {
-	    outf_fatal ("%s: illegal value %s for variable %s.\n",
-		     scheme_program_name, t, variable);
-	    termination_init_error ();
-	  }
-	return (n);
-      }
-  }
-  return (defval);
-}
-
-static unsigned int
-DEFUN (standard_numeric_option, (option, optval, variable, defval),
-       CONST char * option AND
-       CONST char * optval AND
-       CONST char * variable AND
-       unsigned int defval)
-{
-  if (optval != 0)
-    {
-      int n = (atoi (optval));
-      if (n <= 0)
-	{
-	  outf_fatal ("%s: illegal argument %s for option --%s.\n",
-		   scheme_program_name, optval, option);
-	  termination_init_error ();
-	}
-      return (n);
-    }
-  {
-    CONST char * t = (getenv (variable));
-    if (t != 0)
-      {
-	int n = (atoi (t));
-	if (n <= 0)
-	  {
-	    outf_fatal ("%s: illegal value %s for variable %s.\n",
-		     scheme_program_name, t, variable);
+	    outf_fatal ("%s: illegal value for environment variable %s: %s\n",
+			scheme_program_name, variable, t);
 	    termination_init_error ();
 	  }
 	return (n);
@@ -781,18 +516,18 @@ DEFUN (standard_numeric_option, (option, optval, variable, defval),
   return (defval);
 }
 
-static CONST char *
-DEFUN_VOID (get_wd)
+static const char *
+get_wd (void)
 {
-  CONST char * wd = (OS_working_dir_pathname ());
+  const char * wd = (OS_working_dir_pathname ());
   unsigned int len = (strlen (wd));
   if ((wd [len - 1]) == SUB_DIRECTORY_DELIMITER)
     len -= 1;
   {
-    char * result = (xmalloc (len + 1));
+    char * result = (OS_malloc (len + 1));
     char * scan_result = result;
-    CONST char * scan_wd = wd;
-    CONST char * end_wd = (scan_wd + len);
+    const char * scan_wd = wd;
+    const char * end_wd = (scan_wd + len);
     while (scan_wd < end_wd)
       (*scan_result++) = (*scan_wd++);
     (*scan_result) = '\0';
@@ -800,21 +535,21 @@ DEFUN_VOID (get_wd)
   }
 }
 
-static CONST char **
-DEFUN (parse_path_string, (path), CONST char * path)
+static const char **
+parse_path_string (const char * path)
 {
-  CONST char * start = path;
+  const char * start = path;
   /* It is important that this get_wd be called here to make sure that
      the the unix getcwd is called now, before it allocates heap space
      This is because getcwd forks off a new process and we want to do
      that before the scheme process gets too big
   */
-  CONST char * wd = (get_wd ());
+  const char * wd = (get_wd ());
   unsigned int lwd = (strlen (wd));
   while (1)
     {
-      CONST char * scan = start;
-      CONST char * end;
+      const char * scan = start;
+      const char * end;
       while (1)
 	{
 	  int c = (*scan++);
@@ -833,18 +568,18 @@ DEFUN (parse_path_string, (path), CONST char * path)
 	  int absolute = (FILE_ABSOLUTE (start));
 	  {
 	    char * element =
-	      (xmalloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
+	      (OS_malloc ((absolute ? 0 : (lwd + 1)) + (end - start) + 1));
 	    char * scan_element = element;
 	    if (!absolute)
 	      {
-		CONST char * s = wd;
-		CONST char * e = (wd + lwd);
+		const char * s = wd;
+		const char * e = (wd + lwd);
 		while (s < e)
 		  (*scan_element++) = (*s++);
 		(*scan_element++) = SUB_DIRECTORY_DELIMITER;
 	      }
 	    {
-	      CONST char * s = start;
+	      const char * s = start;
 	      while (s < end)
 		(*scan_element++) = (*s++);
 	    }
@@ -861,11 +596,11 @@ DEFUN (parse_path_string, (path), CONST char * path)
     xfree (wd);
   {
     unsigned int n_bytes = (obstack_object_size (&scratch_obstack));
-    CONST char ** elements = (obstack_finish (&scratch_obstack));
-    CONST char ** scan = elements;
-    CONST char ** end = (scan + (n_bytes / (sizeof (char *))));
-    CONST char ** result = (xmalloc (n_bytes));
-    CONST char ** scan_result = result;
+    const char ** elements = (obstack_finish (&scratch_obstack));
+    const char ** scan = elements;
+    const char ** end = (scan + (n_bytes / (sizeof (char *))));
+    const char ** result = (OS_malloc (n_bytes));
+    const char ** scan_result = result;
     while (scan < end)
       (*scan_result++) = (*scan++);
     obstack_free ((&scratch_obstack), elements);
@@ -874,12 +609,12 @@ DEFUN (parse_path_string, (path), CONST char * path)
 }
 
 static void
-DEFUN (free_parsed_path, (path), CONST char ** path)
+free_parsed_path (const char ** path)
 {
-  CONST char ** scan = path;
+  const char ** scan = path;
   while (1)
     {
-      CONST char * element = (*scan++);
+      const char * element = (*scan++);
       if (element == 0)
 	break;
       xfree (element);
@@ -887,16 +622,16 @@ DEFUN (free_parsed_path, (path), CONST char ** path)
   xfree (path);
 }
 
-CONST char *
-DEFUN (search_for_library_file, (filename), CONST char * filename)
+const char *
+search_for_library_file (const char * filename)
 {
   unsigned int flen = (strlen (filename));
-  CONST char ** scan_path = option_library_path;
+  const char ** scan_path = option_library_path;
   while (1)
     {
-      CONST char * directory = (*scan_path++);
+      const char * directory = (*scan_path++);
       unsigned int dlen;
-      CONST char * fullname;
+      const char * fullname;
       if (directory == 0)
 	return (0);
       dlen = (strlen (directory));
@@ -910,7 +645,7 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
       fullname = (obstack_finish (&scratch_obstack));
       if (FILE_READABLE (fullname))
 	{
-	  CONST char * result = (string_copy (fullname));
+	  const char * result = (string_copy (fullname));
 	  obstack_free ((&scratch_obstack), ((char *) fullname));
 	  return (result);
 	}
@@ -918,21 +653,20 @@ DEFUN (search_for_library_file, (filename), CONST char * filename)
     }
 }
 
-CONST char *
-DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
-       CONST char * option AND
-       CONST char * filename AND
-       int default_p AND
-       int fail_p)
+const char *
+search_path_for_file (const char * option,
+		      const char * filename,
+		      bool default_p,
+		      bool fail_p)
 {
-  CONST char * result = (search_for_library_file (filename));
+  const char * result = (search_for_library_file (filename));
   if (result != 0)
     return (result);
   if (!fail_p)
     return (filename);
   else
     {
-      CONST char ** scan_path = option_library_path;
+      const char ** scan_path = option_library_path;
       outf_fatal ("%s: can't find a readable %s",
 		  scheme_program_name,
 		  (default_p ? "default" : "file"));
@@ -944,7 +678,7 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
 	outf_fatal ("\t.\n");
       while (1)
 	{
-	  CONST char * element = (*scan_path++);
+	  const char * element = (*scan_path++);
 	  if (element == 0)
 	    break;
 	  outf_fatal ("\t%s\n", element);
@@ -955,13 +689,12 @@ DEFUN (search_path_for_file, (option, filename, default_p, fail_p),
     }
 }
 
-static CONST char *
-DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
-       CONST char * option AND
-       CONST char * optval AND
-       CONST char * variable AND
-       CONST char * defval AND
-       int fail_p)
+static const char *
+standard_filename_option (const char * option,
+			  const char * optval,
+			  const char * variable,
+			  const char * defval,
+			  bool fail_p)
 {
   if (optval != 0)
     {
@@ -977,10 +710,10 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 	    }
 	  return (string_copy (optval));
 	}
-      return (search_path_for_file (option, optval, 0, fail_p));
+      return (search_path_for_file (option, optval, false, fail_p));
     }
   {
-    CONST char * filename = (getenv (variable));
+    const char * filename = (getenv (variable));
     if (filename == 0)
       filename = defval;
     if (FILE_ABSOLUTE (filename))
@@ -994,14 +727,12 @@ DEFUN (standard_filename_option, (option, optval, variable, defval, fail_p),
 	return (string_copy (filename));
       }
     else
-      return (search_path_for_file (option, filename, 1, fail_p));
+      return (search_path_for_file (option, filename, true, fail_p));
   }
 }
 
 static void
-DEFUN (conflicting_options, (option1, option2),
-       CONST char * option1 AND
-       CONST char * option2)
+conflicting_options (const char * option1, const char * option2)
 {
   outf_fatal ("%s: can't specify both options --%s and --%s.\n",
 	      scheme_program_name, option1, option2);
@@ -1011,122 +742,59 @@ DEFUN (conflicting_options, (option1, option2),
 #define SCHEME_WORDS_TO_BLOCKS(n) (((n) + 1023) / 1024)
 
 static int
-DEFUN (read_band_header, (filename, header),
-       CONST char * filename AND
-       SCHEME_OBJECT * header)
+read_band_sizes (const char * filename,
+		 unsigned long * constant_size,
+		 unsigned long * heap_size)
 {
-  int result = 1;
+  fasl_file_handle_t handle;
+  fasl_header_t h;
+  bool ok;
 
-#ifdef __WIN32__
-
-  HANDLE handle
-    = (CreateFile (filename,
-		   GENERIC_READ,
-		   (FILE_SHARE_READ | FILE_SHARE_WRITE),
-		   0,
-		   OPEN_EXISTING,
-		   (FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN),
-		   0));
-  DWORD bytes_to_read = ((sizeof (SCHEME_OBJECT)) * FASL_HEADER_LENGTH);
-  DWORD bytes_read;
-  if (handle == INVALID_HANDLE_VALUE)
+  if (!open_fasl_input_file (filename, (&handle)))
     return (0);
-
-  if (! ((ReadFile (handle, header, bytes_to_read, (&bytes_read), 0))
-	 && (bytes_read == bytes_to_read)))
-    result = 0;
-
-  CloseHandle (handle);
-
-#else /* not __WIN32__ */
-
-  FILE * stream = (fopen (filename, "r"));
-  if (stream == 0)
+  ok = (read_fasl_header ((&h), handle));
+  if (! ((close_fasl_input_file (handle)) && ok))
     return (0);
-  if ((fread (header, (sizeof (SCHEME_OBJECT)), FASL_HEADER_LENGTH, stream))
-      != FASL_HEADER_LENGTH)
-    result = 0;
-
-  fclose (stream);
-
-#endif /* not __WIN32__ */
-
-  /* Note: This is an approximation to whether the file can be loaded
-     as a band.
-     Mostly it catches wrong-format files (e.g. bands for another arch.)
-  */
-
-  if (((header[FASL_Offset_Marker]) != FASL_FILE_MARKER)
-      || ((The_Version (header[FASL_Offset_Version])) != FASL_READ_VERSION)
-      || ((The_Machine_Type (header[FASL_Offset_Version]))
-	  != FASL_INTERNAL_FORMAT))
-    result = 0;
-
-  return (result);
-}
-
-static int
-DEFUN (read_band_sizes, (filename, constant_size, heap_size),
-       CONST char * filename AND
-       unsigned long * constant_size AND
-       unsigned long * heap_size)
-{
-  SCHEME_OBJECT header [FASL_HEADER_LENGTH];
-  if (!read_band_header (filename, header))
+  if ((check_fasl_version (&h)) != FASL_FILE_FINE)
     return (0);
-  (*constant_size)
-    = (SCHEME_WORDS_TO_BLOCKS
-       (OBJECT_DATUM (header [FASL_Offset_Const_Count])));
-  (*heap_size)
-    = (SCHEME_WORDS_TO_BLOCKS
-       (OBJECT_DATUM (header [FASL_Offset_Heap_Count])));
+  if ((check_fasl_cc_version ((&h),
+			      COMPILER_INTERFACE_VERSION,
+			      COMPILER_PROCESSOR_TYPE))
+      != FASL_FILE_FINE)
+    return (0);
+  (*constant_size) = (SCHEME_WORDS_TO_BLOCKS (FASLHDR_CONSTANT_SIZE (&h)));
+  (*heap_size) = (SCHEME_WORDS_TO_BLOCKS (FASLHDR_HEAP_SIZE (&h)));
   return (1);
 }
 
 static void
-DEFUN (describe_boolean_option, (name, value),
-       CONST char * name AND
-       int value)
+describe_boolean_option (const char * name, int value)
 {
   outf_fatal ("  %s: %s\n", name, (value ? "yes" : "no"));
 }
 
 static void
-DEFUN (describe_string_option, (name, value),
-       CONST char * name AND
-       CONST char * value)
+describe_string_option (const char * name, const char * value)
 {
   outf_fatal ("  %s: %s\n", name, value);
 }
 
 static void
-DEFUN (describe_numeric_option, (name, value),
-       CONST char * name AND
-       int value)
-{
-  outf_fatal ("  %s: %d\n", name, value);
-}
-
-static void
-DEFUN (describe_size_option, (name, value),
-       CONST char * name AND
-       unsigned int value)
+describe_size_option (const char * name, unsigned int value)
 {
   outf_fatal ("  %s size: %d\n", name, value);
 }
 
 static void
-DEFUN (describe_path_option, (name, value),
-       CONST char * name AND
-       CONST char ** value)
+describe_path_option (const char * name, const char ** value)
 {
   outf_fatal ("  %s: ", name);
   {
-    CONST char ** scan = value;
+    const char ** scan = value;
     outf_fatal ("%s", (*scan++));
     while (1)
       {
-	CONST char * element = (*scan++);
+	const char * element = (*scan++);
 	if (element == 0) break;
 	outf_fatal (":%s", element);
       }
@@ -1135,7 +803,7 @@ DEFUN (describe_path_option, (name, value),
 }
 
 static void
-DEFUN_VOID (describe_options)
+describe_options (void)
 {
   outf_fatal ("Summary of configuration options:\n");
   describe_size_option ("heap", option_heap_size);
@@ -1147,27 +815,6 @@ DEFUN_VOID (describe_options)
   else
     describe_string_option ("band", option_band_file);
   describe_string_option ("microcode tables", option_utabmd_file);
-  {
-    /* These are only relevant to bchscheme. */
-    if (option_gc_directory != DEFAULT_GC_DIRECTORY)
-      describe_string_option ("GC directory", option_gc_directory);
-    if (option_gc_drone != DEFAULT_GC_DRONE)
-      describe_string_option ("GC drone program", option_gc_drone);
-    if (option_raw_gc_end_position)
-      describe_numeric_option ("GC end position", option_gc_end_position);
-    if (option_gc_file != DEFAULT_GC_FILE)
-      describe_string_option ("GC file", option_gc_file);
-    if (option_raw_gc_read_overlap)
-      describe_numeric_option ("GC read overlap", option_gc_read_overlap);
-    if (option_raw_gc_start_position)
-      describe_numeric_option ("GC start position", option_gc_start_position);
-    if (option_raw_gc_window_size)
-      describe_size_option ("GC window size", option_gc_window_size);
-    if (option_raw_gc_write_overlap)
-      describe_numeric_option ("GC write overlap", option_gc_write_overlap);
-    if (option_gc_keep)
-      describe_boolean_option ("keep GC file", option_gc_keep);
-  }
   describe_boolean_option ("emacs subprocess", option_emacs_subprocess);
   describe_boolean_option ("force interactive", option_force_interactive);
   describe_boolean_option ("disable core dump", option_disable_core_dump);
@@ -1176,8 +823,8 @@ DEFUN_VOID (describe_options)
     outf_fatal ("  no unused arguments\n");
   else
     {
-      CONST char ** scan = option_unused_argv;
-      CONST char ** end = (scan + option_unused_argc);
+      const char ** scan = option_unused_argv;
+      const char ** end = (scan + option_unused_argc);
       outf_fatal ("  unused arguments:");
       while (scan < end)
 	outf_fatal (" %s", (*scan++));
@@ -1186,14 +833,11 @@ DEFUN_VOID (describe_options)
 }
 
 void
-DEFUN (read_command_line_options, (argc, argv),
-       int argc AND
-       CONST char ** argv)
+read_command_line_options (int argc, const char ** argv)
 {
-  int band_sizes_valid = 0;
-  int fail_fasl_if_no_utab = 0;
-  unsigned long band_constant_size;
-  unsigned long band_heap_size;
+  bool band_sizes_valid = false;
+  unsigned long band_constant_size = 0;
+  unsigned long band_heap_size = 0;
 
   parse_standard_options (argc, argv);
   if (option_library_path != 0)
@@ -1204,14 +848,13 @@ DEFUN (read_command_line_options, (argc, argv),
 			      LIBRARY_PATH_VARIABLE,
 			      DEFAULT_LIBRARY_PATH)));
   {
-    CONST char * band_variable = BAND_VARIABLE;
-    CONST char * default_band = DEFAULT_BAND;
+    const char * band_variable = BAND_VARIABLE;
+    const char * default_band = DEFAULT_BAND;
 
-#ifdef HAS_COMPILER_SUPPORT
     struct band_descriptor
       {
-	CONST char * band;
-	CONST char * envvar;
+	const char * band;
+	const char * envvar;
 	int large_p;
 	int compiler_support_p;
 	int edwin_support_p;
@@ -1228,56 +871,54 @@ DEFUN (read_command_line_options, (argc, argv),
 	{ 0, 0, 0, 0, 0 }
       };
     struct band_descriptor * scan = available_bands;
-#endif
 
-    option_band_specified = 0;
+    option_band_specified = false;
     if (option_band_file != 0)
       xfree (option_band_file);
 
-#ifdef HAS_COMPILER_SUPPORT
     while ((scan -> band) != 0)
       {
 	if ((option_compiler_defaults ? (scan -> compiler_support_p) : 1)
 	    && (option_edwin_defaults ? (scan -> edwin_support_p) : 1)
 	    && (search_for_library_file (scan -> band)))
 	  {
-	    option_band_specified = 1;
+	    option_band_specified = true;
 	    band_variable = (scan -> envvar);
 	    default_band = (scan -> band);
 	    if (scan -> large_p)
-	      option_large_sizes = 1;
+	      option_large_sizes = true;
 	    break;
 	  }
 	scan += 1;
       }
-#endif
 
     if (option_fasl_file != 0)
       {
 	if (option_raw_band != 0)
 	  conflicting_options ("fasl", "band");
-#ifndef NATIVE_CODE_IS_C
-	if (! (FILE_READABLE (option_fasl_file)))
+#ifndef CC_IS_C
+	if (!FILE_READABLE (option_fasl_file))
 	  {
+	    /* Kludge; FILE_READABLE doesn't work right for this case.  */
 	    outf_fatal ("%s: can't read option file: --fasl %s\n",
 		     scheme_program_name, option_fasl_file);
 	    termination_init_error ();
 	  }
-#endif /* NATIVE_CODE_IS_C */
-	option_large_sizes = 1;
-	option_band_specified = 1;
+#endif
+	option_large_sizes = true;
+	option_band_specified = true;
 	option_band_file = 0;
       }
     else
       {
 	if (option_raw_band != 0)
-	  option_band_specified = 1;
+	  option_band_specified = true;
 	option_band_file =
 	  (standard_filename_option ("band",
 				     option_raw_band,
 				     band_variable,
 				     default_band,
-				     1));
+				     true));
       }
   }
   if (option_band_file != 0)
@@ -1294,7 +935,11 @@ DEFUN (read_command_line_options, (argc, argv),
 				 (option_large_sizes
 				  ? DEFAULT_LARGE_HEAP
 				  : DEFAULT_SMALL_HEAP)))
-       + (band_sizes_valid ? band_heap_size : 0));
+       + (band_sizes_valid
+	  ? band_heap_size
+	  : (option_fasl_file != 0)
+	  ? DEFAULT_LARGE_CONSTANT
+	  : 0));
   option_constant_size
     = (standard_numeric_option ("constant",
 				option_raw_constant,
@@ -1315,9 +960,6 @@ DEFUN (read_command_line_options, (argc, argv),
 				(option_large_sizes
 				 ? DEFAULT_LARGE_STACK
 				 : DEFAULT_SMALL_STACK)));
-
-  fail_fasl_if_no_utab = (option_fasl_file != 0);
-
   if (option_utabmd_file != 0)
     xfree (option_utabmd_file);
   if (option_raw_utabmd != 0)
@@ -1329,103 +971,24 @@ DEFUN (read_command_line_options, (argc, argv),
 				   option_raw_utabmd,
 				   UTABMD_FILE_VARIABLE,
 				   DEFAULT_UTABMD_FILE,
-				   fail_fasl_if_no_utab));
+				   (option_fasl_file != 0)));
     }
   else
-  {
-#ifdef NATIVE_CODE_IS_C
-    /* FIXME: This should check if we have "microcode_utabmd" compiled */
-    fail_fasl_if_no_utab = 0;
-#endif
-
     option_utabmd_file =
       (standard_filename_option ("utab",
 				 option_raw_utab,
 				 UTABMD_FILE_VARIABLE,
 				 DEFAULT_UTABMD_FILE,
-				 fail_fasl_if_no_utab));
-  }
-
-  /* These are only meaningful for bchscheme. */
-
-  if (option_raw_gc_file != ((char *) 0))
-  {
-    if (option_gc_file != ((char *) 0))
-      conflicting_options ("gcfile", "gc-file");
-    else
-      option_gc_file = option_raw_gc_file;
-  }
-
-  {
-    CONST char * dir = (environment_default (GC_DIRECTORY_VARIABLE, 0));
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      dir = (environment_default ("TMPDIR", 0));
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      dir = (environment_default ("TEMP", 0));
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      dir = (environment_default ("TMP", 0));
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      dir = (environment_default ("TMP", 0));
-#ifdef __unix__
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      {
-	if (OS_file_directory_p ("/var/tmp"))
-	  dir = "/var/tmp";
-	if (OS_file_directory_p ("/usr/tmp"))
-	  dir = "/usr/tmp";
-	if (OS_file_directory_p ("/tmp"))
-	  dir = "/tmp";
-      }
-#endif /* __unix__ */
-    if ((dir == 0) || (!OS_file_directory_p (dir)))
-      dir = DEFAULT_GC_DIRECTORY;
-    option_gc_directory = (string_option (option_gc_directory, dir));
-  }
-  option_gc_drone =
-    (standard_filename_option ("gc-drone",
-			       option_gc_drone,
-			       GC_DRONE_VARIABLE,
-			       DEFAULT_GC_DRONE,
-			       0));
-
-  option_gc_end_position =
-    (non_negative_numeric_option ("gc-end-position",
-				  option_raw_gc_end_position,
-				  GC_END_POSITION_VARIABLE,
-				  DEFAULT_GC_END_POSITION));
-
-  option_gc_file =
-    (standard_string_option (option_gc_file,
-			     GC_FILE_VARIABLE,
-			     DEFAULT_GC_FILE));
-
-  option_gc_read_overlap =
-    ((int)
-     (non_negative_numeric_option ("gc-read-overlap",
-				   option_raw_gc_read_overlap,
-				   GC_READ_OVERLAP_VARIABLE,
-				   DEFAULT_GC_READ_OVERLAP)));
-
-  option_gc_start_position =
-    (non_negative_numeric_option ("gc-start-position",
-				  option_raw_gc_start_position,
-				  GC_START_POSITION_VARIABLE,
-				  DEFAULT_GC_START_POSITION));
-
-  option_gc_window_size =
-    (standard_numeric_option ("gc-window-size",
-			      option_raw_gc_window_size,
-			      GC_WINDOW_SIZE_VARIABLE,
-			      DEFAULT_GC_WINDOW_SIZE));
-
-  option_gc_write_overlap =
-    ((int)
-     (non_negative_numeric_option ("gc-write-overlap",
-				   option_raw_gc_write_overlap,
-				   GC_WRITE_OVERLAP_VARIABLE,
-				   DEFAULT_GC_WRITE_OVERLAP)));
+#ifdef CC_IS_C
+				 /* FIXME: This should check if we
+				    have "microcode_utabmd"
+				    compiled */
+				 false
+#else
+				 (option_fasl_file != 0)
+#endif
+				 ));
 
   if (option_summary)
     describe_options ();
-
 }

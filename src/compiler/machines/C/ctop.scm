@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: ctop.scm,v 1.23 2007/01/28 23:03:06 riastradh Exp $
+$Id: ctop.scm,v 1.31 2007/06/13 13:33:55 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,14 +32,9 @@ USA.
 
 ;;;; Exports to the compiler
 
-(define compiled-output-extension "c")
-(define compiler:invoke-c-compiler? true)
-(define compiler:invoke-verbose? true)
-(define compiler:c-compiler-name #f)
-(define compiler:c-compiler-switches 'UNKNOWN)
-(define compiler:c-linker-name #f)
-(define compiler:c-linker-switches 'UNKNOWN)
-(define compiler:c-linker-output-extension #f)
+(define (compiler:compiled-code-pathname-type) "c")
+(define compiler:invoke-c-compiler? #t)
+(define compiler:invoke-verbose? #t)
 
 (define (compiler-file-output object pathname)
   (let ((pair (vector-ref object 1)))
@@ -60,21 +55,7 @@ USA.
      (load shared-library-pathname environment))))
 
 (define (compiler-output->compiled-expression compiler-output)
-  (finish-c-compilation
-   compiler-output
-   (lambda (pathname)
-     (let* ((handle ((ucode-primitive load-object-file 1)
-		     (->namestring pathname)))
-	    (cth ((ucode-primitive object-lookup-symbol 3)
-		  handle "dload_initialize_file" 0)))
-       (if (not cth)
-	   (error "compiler-output->compiled-expression:"
-		  "Cannot find init procedure"
-		  pathname))
-       ((ucode-primitive initialize-c-compiled-block 1)
-	((ucode-primitive address-to-string 1)
-	 ((ucode-primitive invoke-c-thunk 1)
-	  cth)))))))
+  (finish-c-compilation compiler-output fasload-object-file))
 
 (define (compile-scode/internal/hook action)
   (if (not (eq? *info-output-filename* 'KEEP))
@@ -83,10 +64,6 @@ USA.
 		   (pathname-new-type (compiler-temporary-file-pathname)
 				      "inf")))
 	(action))))
-
-(define (cross-compile-bin-file input . more)
-  input more				; ignored
-  (error "cross-compile-bin-file: Meaningless"))
 
 (define (optimize-linear-lap lap-program)
   lap-program)
@@ -97,7 +74,7 @@ USA.
 	(delete-file pathname))
     (if (pathname-type pathname)
 	(pathname-new-name
-	 (pathname-new-type pathname false)
+	 (pathname-new-type pathname #f)
 	 (string-append (pathname-name pathname)
 			"_"
 			(pathname-type pathname)))
@@ -107,9 +84,9 @@ USA.
   (let* ((file (compiler-temporary-file-pathname))
 	 (filec (pathname-new-type file "c")))
     (dynamic-wind
-     (lambda () false)
+     (lambda () #f)
      (lambda ()
-       (fluid-let ((compiler:invoke-c-compiler? true))
+       (fluid-let ((compiler:invoke-c-compiler? #t))
 	 (compiler-file-output compiler-output filec)
 	 (action (pathname-new-type file (c-output-extension)))))
      (lambda ()
@@ -122,211 +99,51 @@ USA.
 		       ;; (c-output-extension)
 		       ))))))
 
-(define (list->command-line l)
-  (let ((l (reverse l)))
-    (if (null? l)
-	""
-	(let loop ((res (car l))
-		   (l (cdr l)))
-	  (if (null? l)
-	      res
-	      (loop (string-append (car l) " " res)
-		    (cdr l)))))))  
-
 (define (c-compile pathname)
-  (let ((source (enough-namestring pathname))
-	(object (enough-namestring (pathname-new-type pathname "o")))
-	(call-program*
-	 (lambda (l)
-	   (let ((command-line (list->command-line l)))
-	     (if compiler:invoke-verbose?
-		 (begin
-		   (newline)
-		   (write-string ";Executing \"")
-		   (write-string command-line)
-		   (write-string "\"")))
-	     (let ((result (run-shell-command command-line)))
-	       #|
-	       ;; Some C compilers always fail
-	       (if (not (zero? result))
-		   (error "compiler: C compiler/linker failed"))
-	       |#
-	       result)))))
-    (if compiler:noisy?
-	(begin
-	  (newline)
-	  (display ";Compiling ")
-	  (display source)))
-    (call-program* (cons (c-compiler-name)
-			 (append (c-compiler-switches)
-				 (cons*
-				  "-DCOMPILE_FOR_DYNAMIC_LOADING"
-				  "-o"
-				  object
-				  (list source)))))
-    (if compiler:noisy?
-	(begin
-	  (newline)
-	  (display ";Linking ")
-	  (display object)))
-    (call-program*
-     (cons (c-linker-name)
-	   (append (list "-o")
-		   (list
-		    (enough-namestring
-		     (pathname-new-type pathname
-					(c-output-extension))))
-		   (c-linker-switches)
-		   (list object))))
-    (delete-file object)))
-
-(define c-compiler-switch-table
-  `(
-    ;; 32-bit PowerPC MacOSX
-    ("MacOSX"				; "MacOSX-PowerPC-32"
-     "dylib"
-     ("-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-dylib" "-flat_namespace" "-undefined" "suppress")
-     "cc"
-     "ld")
-    ;; 64-bit PowerPC MacOSX
-    ("MacOSX-PowerPC-64"
-     "dylib"
-     ("-m64" "-g" "-O2" "-fno-common" "-DPIC" "-c")
-     ("-m64" "-dylib" "-flat_namespace" "-undefined" "suppress")
-     "gcc-4.0"
-     "ld")
-    ;; 32-bit i386 Linux
-    ("GNU/Linux"			; "GNU/Linux-IA-32"
-     "so"
-     ("-m32" "-g" "-O2" "-fPIC" "-c")
-     ("-m32" "-shared")
-     "cc"
-     "ld")
-    ;; 64-bit x86_64 Linux
-    ("GNU/Linux-x86-64"
-     "so"
-     ("-m64" "-g" "-O2" "-fPIC" "-c")
-     ("-m64" "-shared")
-     "cc"
-     "ld")
-    ("GNU/Linux-ia64"
-     "so"
-     ("-g" "-O2" "-fPIC" "-c")
-     ("-shared")
-     "cc"
-     "ld")
-    ("NETBSD-x86-64"
-     "so"
-     ("-g" "-O2" "-fPIC" "-c")
-     ("-shared")
-     "cc"
-     "ld")
-    #|
-    ;; All the following are old stuff that probably no longer works
-    ("AIX"
-     "so"
-     ("-c" "-O" "-D_AIX")
-     ,(lambda (dir)
-	(list "-bM:SRE"
-	      (string-append "-bE:"
-			     (->namestring (merge-pathnames dir "liarc.exp")))
-	      (string-append "-bI:"
-			     (->namestring (merge-pathnames dir "scheme.imp")))
-	      "-edload_initialize_file"))
-     
-     "cc"
-     "cc")
-    ("HP-UX"
-     "sl"
-     ("-c" "+z" "-O" "-Ae" "-D_HPUX")
-     ("-b")
-     "cc"
-     "ld")
-    ("OSF"
-     "so"
-     ("-c" "-std1" "-O")
-     ("-shared" "-expect_unresolved" "'*'")
-     "cc"
-     "ld")
-    ("SunOS"
-     "so"
-     ("-c" "-pic" "-O" "-Dsun4" "-D_SUNOS4" "-w")
-     ()
-     "cc"
-     "ld")
-    |#
-    ))
+  (run-compiler (system-library-pathname "liarc-cc")
+		(pathname-new-type pathname "o")
+		pathname
+		"-DENABLE_LIARC_FILE_INIT"
+		(string-append
+		 "-I"
+		 (->namestring
+		  (directory-pathname-as-file
+		   (or (system-library-directory-pathname "include")
+		       (error "Unable to find C include directory."))))))
+  (run-compiler (system-library-pathname "liarc-ld")
+		(pathname-new-type pathname (c-output-extension))
+		(pathname-new-type pathname "o")))
 
-(define (find-switches fail-name)
-  (or (assoc (string-append microcode-id/operating-system-variant
-			    "-"
-			    microcode-id/machine-type)
-	     c-compiler-switch-table)
-      (assoc microcode-id/operating-system-variant
-	     c-compiler-switch-table)
-      (and fail-name
-	   (error fail-name "Unknown OS/machine"))))
-
+(define (run-compiler program . arguments)
+  (let ((port (open-output-string)))
+    (let ((rc
+	   (run-synchronous-subprocess
+	    program
+	    (map (lambda (arg)
+		   (cond ((pathname? arg) (->namestring arg))
+			 ((string? arg) arg)
+			 (else (error "Unknown argument:" arg))))
+		 arguments)
+	    'OUTPUT port))
+	  (copy
+	   (lambda ()
+	     (let ((port (open-input-string (get-output-string! port))))
+	       (let loop ()
+		 (let ((line (read-line port)))
+		   (if (not (eof-object? line))
+		       (begin
+			 (write-notification-line
+			  (lambda (port)
+			    (write-string line port)))
+			 (loop)))))))))
+      (cond ((not (= rc 0))
+	     (copy)
+	     (error "C compiler returned non-zero exit code:" rc))
+	    (compiler:invoke-verbose?
+	     (copy))))))
+
 (define (c-output-extension)
-  (or compiler:c-linker-output-extension
-      (let ((new (list-ref (find-switches 'c-output-extension) 1)))
-	(set! compiler:c-linker-output-extension new)
-	new)))
-
-(define (c-compiler-name)
-  (or compiler:c-compiler-name
-      (let ((new (let ((place (find-switches #f)))
-		   (if place
-		       (list-ref place 4)
-		       "cc"))))
-	(set! compiler:c-compiler-name new)
-	new)))
-
-(define (c-compiler-switches)
-  (if (not (eq? compiler:c-compiler-switches 'UNKNOWN))
-      compiler:c-compiler-switches
-      (let ((place (find-switches 'c-compiler-switches))
-	    (dir (system-library-directory-pathname "include")))
-	(if (not dir)
-	    (error 'c-compiler-switches
-		   "Cannot find \"include\" directory")
-	    (let ((result
-		   (append
-		    (list-ref place 2)
-		    (list
-		     (string-append
-		      "-I"
-		      (->namestring
-		       (directory-pathname-as-file dir)))))))
-	      (set! compiler:c-compiler-switches result)
-	      result)))))
-
-(define (c-linker-name)
-  (or compiler:c-linker-name
-      (let ((new (let ((place (find-switches #f)))
-		   (if place
-		       (list-ref place 5)
-		       "ld"))))
-	(set! compiler:c-linker-name new)
-	new)))
-
-(define (c-linker-switches)
-  (if (not (eq? compiler:c-linker-switches 'UNKNOWN))
-      compiler:c-linker-switches
-      (let* ((place (find-switches 'c-linker-switches))
-	     (switches
-	      (let ((switches (list-ref place 3)))
-		(if (not (procedure? switches))
-		    switches
-		    (let ((dir (system-library-directory-pathname
-				"include")))
-		      (if (not dir)
-			  (error 'c-linker-switches
-				 "Cannot find \"include\" directory"))
-		      (switches dir))))))
-	(set! compiler:c-linker-switches switches)
-	switches)))
+  "so")
 
 (define (recursive-compilation-results)
   (sort *recursive-compilation-results*
@@ -468,10 +285,10 @@ USA.
   (set! *external-labels* '())
   (set! *special-labels* (make-special-labels))
   (set! *invoke-interface* 'INFINITY)
-  (set! *used-invoke-primitive* false)
-  (set! *use-jump-execute-chache* false)
-  (set! *use-pop-return* false)
-  (set! *purification-root-object* false)
+  (set! *used-invoke-primitive* #f)
+  (set! *use-jump-execute-chache* #f)
+  (set! *use-pop-return* #f)
+  (set! *purification-root-object* #f)
   (set! *end-of-block-code* (LAP))
   unspecific)
 
@@ -574,7 +391,7 @@ USA.
 	       (set! *recursive-compilation-results*
 		     (cons (vector *recursive-compilation-number*
 				   info
-				   false)
+				   #f)
 			   *recursive-compilation-results*))
 	       unspecific)
 	      (else
@@ -591,18 +408,14 @@ USA.
 
 (define (compiler:dump-bci-file binf pathname)
   (let ((bci-path (pathname-new-type pathname "bci")))
-    (split-inf-structure! binf false)
+    (split-inf-structure! binf #f)
     (dump-compressed binf bci-path)))
 
 (define (dump-compressed object path)
-  (with-notification (lambda (port)
-		       (write-string "Dumping " port)
-		       (write (enough-namestring path) port))
-    (lambda ()
-      (call-with-temporary-filename
-	(lambda (temp)
-	  (fasdump object temp #t)
-	  (compress temp path))))))
+  (call-with-temporary-filename
+    (lambda (temp)
+      (fasdump object temp #t)
+      (compress temp path))))
 
 (define compiler:dump-info-file compiler:dump-bci-file)
 

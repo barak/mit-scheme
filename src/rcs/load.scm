@@ -1,6 +1,6 @@
 #| -*-Scheme-*-
 
-$Id: load.scm,v 1.8 2007/01/05 21:19:27 cph Exp $
+$Id: load.scm,v 1.9 2007/06/06 20:03:25 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -26,7 +26,7 @@ USA.
 |#
 
 (load-option 'REGULAR-EXPRESSION)
-(with-working-directory-pathname (directory-pathname (current-load-pathname))
+(with-loader-base-uri (system-library-uri "rcs/")
   (lambda ()
     (load-package-set "rcs")))
 (add-subsystem-identification! "RCS" '(2 2))

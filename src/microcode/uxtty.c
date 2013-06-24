@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: uxtty.c,v 1.15 2007/01/05 21:19:25 cph Exp $
+$Id: uxtty.c,v 1.16 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -25,11 +25,19 @@ USA.
 
 */
 
+#include "scheme.h"
+#include "option.h"
 #include "ux.h"
 #include "ostty.h"
 #include "osenv.h"
 #include "uxio.h"
 #include "uxterm.h"
+
+extern Tchannel OS_open_fd (int fd);
+extern int tgetent (void *, const char *);
+extern int tgetnum (const char *);
+extern const char * tgetstr (const char *, char **);
+extern void tputs (const char *, int, void (*) (char));
 
 /* Standard Input and Output */
 
@@ -37,41 +45,41 @@ static Tchannel input_channel;
 static Tchannel output_channel;
 static int tty_x_size;
 static int tty_y_size;
-static CONST char * tty_command_beep;
-static CONST char * tty_command_clear;
+static const char * tty_command_beep;
+static const char * tty_command_clear;
 
 Tchannel
-DEFUN_VOID (OS_tty_input_channel)
+OS_tty_input_channel (void)
 {
   return (input_channel);
 }
 
 Tchannel
-DEFUN_VOID (OS_tty_output_channel)
+OS_tty_output_channel (void)
 {
   return (output_channel);
 }
 
 unsigned int
-DEFUN_VOID (OS_tty_x_size)
+OS_tty_x_size (void)
 {
   return (tty_x_size);
 }
 
 unsigned int
-DEFUN_VOID (OS_tty_y_size)
+OS_tty_y_size (void)
 {
   return (tty_y_size);
 }
 
-CONST char *
-DEFUN_VOID (OS_tty_command_beep)
+const char *
+OS_tty_command_beep (void)
 {
   return (tty_command_beep);
 }
 
-CONST char *
-DEFUN_VOID (OS_tty_command_clear)
+const char *
+OS_tty_command_clear (void)
 {
   return (tty_command_clear);
 }
@@ -103,16 +111,14 @@ static char tputs_output [TERMCAP_BUFFER_SIZE];
 static char * tputs_output_scan;
 
 static void
-DEFUN (tputs_write_char, (c), char c)
+tputs_write_char (char c)
 {
   (*tputs_output_scan++) = c;
 }
 
 void
-DEFUN_VOID (UX_reinitialize_tty)
+UX_reinitialize_tty (void)
 {
-  extern int EXFUN (atoi, (CONST char *));
-
   tty_x_size = (-1);
   tty_y_size = (-1);
   tty_command_beep = ALERT_STRING;
@@ -133,8 +139,8 @@ DEFUN_VOID (UX_reinitialize_tty)
 #endif /* TIOCGWINSZ */
   if ((tty_x_size <= 0) || (tty_y_size <= 0))
     {
-      CONST char * columns = (UX_getenv ("COLUMNS"));
-      CONST char * lines = (UX_getenv ("LINES"));
+      const char * columns = (UX_getenv ("COLUMNS"));
+      const char * lines = (UX_getenv ("LINES"));
       if ((columns != 0) && (lines != 0))
 	{
 	  int x = (atoi (columns));
@@ -148,13 +154,10 @@ DEFUN_VOID (UX_reinitialize_tty)
     }
   tputs_output_scan = tputs_output;
   {
-    extern int EXFUN (tgetent, (PTR, CONST char *));
-    extern int EXFUN (tgetnum, (CONST char *));
-    extern CONST char * EXFUN (tgetstr, (CONST char *, char **));
     static char tgetstr_buffer [TERMCAP_BUFFER_SIZE];
     char termcap_buffer [TERMCAP_BUFFER_SIZE];
     char * tbp = tgetstr_buffer;
-    CONST char * term;
+    const char * term;
     if ((isatty (STDOUT_FILENO))
 	&& (!option_emacs_subprocess)
 	&& ((term = (getenv ("TERM"))) != 0)
@@ -177,7 +180,6 @@ DEFUN_VOID (UX_reinitialize_tty)
     tty_command_clear = "\f";
   else
     {
-      extern void EXFUN (tputs, (CONST char *, int, void (*) (char)));
       char * command = tputs_output_scan;
       tputs (tty_command_clear, tty_y_size, tputs_write_char);
       (*tputs_output_scan++) = '\0';
@@ -186,9 +188,8 @@ DEFUN_VOID (UX_reinitialize_tty)
 }
 
 void
-DEFUN_VOID (UX_initialize_tty)
+UX_initialize_tty (void)
 {
-  extern Tchannel EXFUN (OS_open_fd, (int fd));
   input_channel = (OS_open_fd (STDIN_FILENO));
   (CHANNEL_INTERNAL (input_channel)) = 1;
   output_channel = (OS_open_fd (STDOUT_FILENO));

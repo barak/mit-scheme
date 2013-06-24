@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prostty.c,v 1.12 2007/01/12 03:45:55 cph Exp $
+$Id: prostty.c,v 1.13 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -116,12 +116,12 @@ DEFINE_PRIMITIVE ("TTY-GET-INTERRUPT-CHARS", Prim_tty_get_interrupt_chars, 0, 0,
     SCHEME_OBJECT result = (allocate_string (num_chars * 2));
     cc_t * int_chars = (OS_ctty_get_int_chars ());
     cc_t * int_handlers = (OS_ctty_get_int_char_handlers ());
-    unsigned char * scan = (STRING_LOC (result, 0));
+    char * scan = (STRING_POINTER (result));
 
     for (i = 0; i < num_chars; i++)
     {
-      (*scan++) = ((unsigned char) int_chars[i]);
-      (*scan++) = ((unsigned char) int_handlers[i]);
+      (*scan++) = (int_chars[i]);
+      (*scan++) = (int_handlers[i]);
     }
     PRIMITIVE_RETURN (result);
   }
@@ -138,18 +138,18 @@ STRING must be in the correct form for this operating system.")
     cc_t * int_chars = (OS_ctty_get_int_chars ());
     cc_t * int_handlers = (OS_ctty_get_int_char_handlers ());
     SCHEME_OBJECT argument = (ARG_REF (1));
-    unsigned char * scan;
+    char * scan;
 
     if (! ((STRING_P (argument))
 	   && (((unsigned int) (STRING_LENGTH (argument)))
 	       == (num_chars * 2))))
       error_wrong_type_arg (1);
 
-    for (i = 0, scan = (STRING_LOC (argument, 0)); i < num_chars; i++)
-    {
-      int_chars[i] = (*scan++);
-      int_handlers[i] = (*scan++);
-    }
+    for (i = 0, scan = (STRING_POINTER (argument)); i < num_chars; i++)
+      {
+	(int_chars[i]) = (*scan++);
+	(int_handlers[i]) = (*scan++);
+      }
     OS_ctty_set_int_chars (int_chars);
     OS_ctty_set_int_char_handlers (int_handlers);
   }

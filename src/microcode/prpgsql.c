@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: prpgsql.c,v 1.12 2007/01/12 03:45:55 cph Exp $
+$Id: prpgsql.c,v 1.14 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -32,7 +32,9 @@ USA.
 #include "usrdef.h"
 #include "os.h"
 
-#include <libpq-fe.h>
+#ifdef HAVE_LIBPQ_FE_H
+#  include <libpq-fe.h>
+#endif
 
 #define ARG_CONN(n) ((PGconn *) (arg_ulong_integer (n)))
 #define ARG_RESULT(n) ((PGresult *) (arg_ulong_integer (n)))
@@ -229,10 +231,10 @@ DEFINE_PRIMITIVE ("PQ-ESCAPE-BYTEA", Prim_pq_escape_bytea, 1, 1, 0)
   {
     size_t escaped_length;
     unsigned char * escaped
-      = (PQescapeBytea ((STRING_LOC ((ARG_REF (1)), 0)),
+      = (PQescapeBytea ((STRING_BYTE_PTR (ARG_REF (1))),
 			(STRING_LENGTH (ARG_REF (1))),
 			(&escaped_length)));
-    SCHEME_OBJECT s = (char_pointer_to_string ((char *) escaped));
+    SCHEME_OBJECT s = (memory_to_string ((escaped_length - 1), escaped));
     PQfreemem (escaped);
     PRIMITIVE_RETURN (s);
   }
@@ -259,7 +261,7 @@ DEFINE_PRIMITIVE ("PQ-UNESCAPE-BYTEA", Prim_pq_unescape_bytea, 1, 1, 0)
 #ifdef COMPILE_AS_MODULE
 
 char *
-DEFUN_VOID (dload_initialize_file)
+dload_initialize_file (void)
 {
   declare_primitive ("PQ-CONNECT-DB", Prim_pq_connect_db, 2, 2, 0);
   declare_primitive ("PQ-CONNECT-START", Prim_pq_connect_start, 2, 2, 0);

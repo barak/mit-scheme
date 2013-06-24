@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: flonum.c,v 9.47 2007/01/05 21:19:25 cph Exp $
+$Id: flonum.c,v 9.48 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -29,11 +29,10 @@ USA.
 
 #include "scheme.h"
 #include "prims.h"
-#include "zones.h"
 #include <errno.h>
 
 double
-DEFUN (arg_flonum, (arg_number), int arg_number)
+arg_flonum (int arg_number)
 {
   SCHEME_OBJECT argument = (ARG_REF (arg_number));
   if (! (FLONUM_P (argument)))
@@ -45,7 +44,7 @@ DEFUN (arg_flonum, (arg_number), int arg_number)
 #define BOOLEAN_RESULT(x) PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (x))
 
 SCHEME_OBJECT
-DEFUN (double_to_flonum, (value), double value)
+double_to_flonum (double value)
 {
   ALIGN_FLOAT (Free);
   Primitive_GC_If_Needed (FLONUM_SIZE + 1);
@@ -61,7 +60,6 @@ DEFUN (double_to_flonum, (value), double value)
 #define FLONUM_BINARY_OPERATION(operator)				\
 {									\
   PRIMITIVE_HEADER (2);							\
-  Set_Time_Zone (Zone_Math);						\
   FLONUM_RESULT ((arg_flonum (1)) operator (arg_flonum (2)));		\
 }
 
@@ -75,9 +73,8 @@ DEFINE_PRIMITIVE ("FLONUM-MULTIPLY", Prim_flonum_multiply, 2, 2, 0)
 DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   {
-    fast double denominator = (arg_flonum (2));
+    double denominator = (arg_flonum (2));
     if (denominator == 0)
       error_bad_range_arg (2);
     FLONUM_RESULT ((arg_flonum (1)) / denominator);
@@ -87,16 +84,14 @@ DEFINE_PRIMITIVE ("FLONUM-DIVIDE", Prim_flonum_divide, 2, 2, 0)
 DEFINE_PRIMITIVE ("FLONUM-NEGATE", Prim_flonum_negate, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  Set_Time_Zone (Zone_Math);
   FLONUM_RESULT (- (arg_flonum (1)));
 }
 
 DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  Set_Time_Zone (Zone_Math);
   {
-    fast double x = (arg_flonum (1));
+    double x = (arg_flonum (1));
     FLONUM_RESULT ((x < 0) ? (-x) : x);
   }
 }
@@ -104,7 +99,6 @@ DEFINE_PRIMITIVE ("FLONUM-ABS", Prim_flonum_abs, 1, 1, 0)
 #define FLONUM_BINARY_PREDICATE(operator)				\
 {									\
   PRIMITIVE_HEADER (2);							\
-  Set_Time_Zone (Zone_Math);						\
   BOOLEAN_RESULT ((arg_flonum (1)) operator (arg_flonum (2)));		\
 }
 
@@ -118,7 +112,6 @@ DEFINE_PRIMITIVE ("FLONUM-GREATER?", Prim_flonum_greater_p, 2, 2, 0)
 #define FLONUM_UNARY_PREDICATE(operator)				\
 {									\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   BOOLEAN_RESULT ((arg_flonum (1)) operator 0);				\
 }
 
@@ -131,10 +124,8 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 
 #define SIMPLE_TRANSCENDENTAL_FUNCTION(function)			\
 {									\
-  extern double EXFUN (function, (double));				\
   double result;							\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   errno = 0;								\
   result = (function (arg_flonum (1)));					\
   if (errno != 0)							\
@@ -144,11 +135,9 @@ DEFINE_PRIMITIVE ("FLONUM-NEGATIVE?", Prim_flonum_negative_p, 1, 1, 0)
 
 #define RESTRICTED_TRANSCENDENTAL_FUNCTION(function, restriction)	\
 {									\
-  extern double EXFUN (function, (double));				\
   double x;								\
   double result;							\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   x = (arg_flonum (1));							\
   if (! (restriction))							\
     error_bad_range_arg (1);						\
@@ -178,11 +167,10 @@ DEFINE_PRIMITIVE ("FLONUM-ATAN", Prim_flonum_atan, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-ATAN2", Prim_flonum_atan2, 2, 2, 0)
 {
-  extern double EXFUN (atan2, (double, double));
   PRIMITIVE_HEADER (2);
   {
-    fast double y = (arg_flonum (1));
-    fast double x = (arg_flonum (2));
+    double y = (arg_flonum (1));
+    double x = (arg_flonum (2));
     if ((x == 0) && (y == 0))
       error_bad_range_arg (2);
     FLONUM_RESULT (atan2 (y, x));
@@ -194,7 +182,6 @@ DEFINE_PRIMITIVE ("FLONUM-SQRT", Prim_flonum_sqrt, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-EXPT", Prim_flonum_expt, 2, 2, 0)
 {
-  extern double EXFUN (pow, (double, double));
   PRIMITIVE_HEADER (2);
   FLONUM_RESULT (pow ((arg_flonum (1)), (arg_flonum (2))));
 }
@@ -207,7 +194,6 @@ DEFINE_PRIMITIVE ("FLONUM?", Prim_flonum_p, 1, 1, 0)
 
 DEFINE_PRIMITIVE ("FLONUM-INTEGER?", Prim_flonum_integer_p, 1, 1, 0)
 {
-  extern Boolean EXFUN (flonum_integer_p, (SCHEME_OBJECT));
   PRIMITIVE_HEADER (1);
   CHECK_ARG (1, FLONUM_P);
   PRIMITIVE_RETURN (BOOLEAN_TO_OBJECT (flonum_integer_p (ARG_REF (1))));
@@ -216,7 +202,6 @@ DEFINE_PRIMITIVE ("FLONUM-INTEGER?", Prim_flonum_integer_p, 1, 1, 0)
 #define FLONUM_CONVERSION(converter)					\
 {									\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, FLONUM_P);						\
   PRIMITIVE_RETURN (converter (ARG_REF (1)));				\
 }
@@ -233,15 +218,13 @@ DEFINE_PRIMITIVE ("FLONUM-ROUND", Prim_flonum_round, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-TRUNCATE->EXACT", Prim_flonum_truncate_to_exact, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, FLONUM_P);
-  PRIMITIVE_RETURN (FLONUM_TO_INTEGER (ARG_REF (1))); 
+  PRIMITIVE_RETURN (FLONUM_TO_INTEGER (ARG_REF (1)));
 }
 
 #define FLONUM_EXACT_CONVERSION(converter)				\
 {									\
   PRIMITIVE_HEADER (1);							\
-  Set_Time_Zone (Zone_Math);						\
   CHECK_ARG (1, FLONUM_P);						\
   PRIMITIVE_RETURN (FLONUM_TO_INTEGER (converter (ARG_REF (1))));	\
 }
@@ -255,7 +238,6 @@ DEFINE_PRIMITIVE ("FLONUM-ROUND->EXACT", Prim_flonum_round_to_exact, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-NORMALIZE", Prim_flonum_normalize, 1, 1, 0)
 {
   PRIMITIVE_HEADER (1);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, FLONUM_P);
   PRIMITIVE_RETURN (flonum_normalize (ARG_REF (1)));
 }
@@ -263,7 +245,6 @@ DEFINE_PRIMITIVE ("FLONUM-NORMALIZE", Prim_flonum_normalize, 1, 1, 0)
 DEFINE_PRIMITIVE ("FLONUM-DENORMALIZE", Prim_flonum_denormalize, 2, 2, 0)
 {
   PRIMITIVE_HEADER (2);
-  Set_Time_Zone (Zone_Math);
   CHECK_ARG (1, FLONUM_P);
   CHECK_ARG (2, INTEGER_P);
   PRIMITIVE_RETURN (flonum_denormalize ((ARG_REF (1)), (ARG_REF (2))));

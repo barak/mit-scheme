@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: Clean.sh,v 1.16 2007/01/05 21:19:25 cph Exp $
+# $Id: Clean.sh,v 1.24 2007/06/13 13:35:38 cph Exp $
 #
 # Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
 #     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
@@ -26,79 +26,80 @@
 # Utility for cleaning up an MIT/GNU Scheme build directory.
 # The working directory must be the build directory.
 
-if [ $# -eq 1 ]; then
-    COMMAND="${1}"
+set -e
+
+if [ ${#} -eq 1 ]; then
+    COMMAND=${1}
     KEYWORDS="rm-bin rm-com rm-pkg"
-elif [ $# -ge 2 ]; then
-    COMMAND="${1}"
+    case ${COMMAND} in
+    c-clean | maintainer-clean)
+	KEYWORDS="${KEYWORDS} rm-c"
+	;;
+    esac
+elif [ ${#} -ge 2 ]; then
+    COMMAND=${1}
     shift
-    KEYWORDS="$*"
+    KEYWORDS=${*}
 else
-    echo "usage: $0 <command> <keyword> ..."
+    echo "usage: ${0} <command> <keyword> ..."
     exit 1
 fi
 
-FULL="no"
-DIST="no"
-MAINTAINER="no"
-case "${COMMAND}" in
-mostlyclean)
-    ;;
-clean)
-    FULL="yes"
+DIST=no
+MAINTAINER=no
+case ${COMMAND} in
+mostlyclean | clean | c-clean)
     ;;
 distclean)
-    FULL="yes"
-    DIST="yes"
+    DIST=yes
     ;;
 maintainer-clean)
-    FULL="yes"
-    DIST="yes"
-    MAINTAINER="yes"
+    DIST=yes
+    MAINTAINER=yes
     ;;
 *)
-    echo "$0: Unknown command ${COMMAND}"
+    echo "${0}: Unknown command ${COMMAND}"
     exit 1
     ;;
 esac
 
-TOPDIR="${TOPDIR:-..}"
+TOPDIR=${TOPDIR:-..}
 . "${TOPDIR}/etc/functions.sh"
 
-if [ "${DIST}" = "yes" ]; then
-    if [ -f Makefile.in ] && [ -f Makefile ]; then
-	echo "rm Makefile"
-	rm Makefile
+maybe_rm *-init.c *-init.h *-init.o
+
+if [ ${DIST} = yes ]; then
+    if [ -f Makefile.in ]; then
+	maybe_rm Makefile
     fi
 fi
 
-if [ "${MAINTAINER}" = "yes" ]; then
-    maybe_unlink Makefile "${TOPDIR}/Makefile.std"
+if [ ${MAINTAINER} = yes ]; then
     maybe_unlink .edwin-ffi ed-ffi.scm
     for FN in Clean.sh Setup.sh Stage.sh Tags.sh; do
 	maybe_unlink "${FN}" "${TOPDIR}/etc/${FN}"
     done
+    if [ -f Makefile-fragment ]; then
+	maybe_rm Makefile.in
+	maybe_rm Makefile-bundle
+    fi
 fi
 
 for KEYWORD in ${KEYWORDS}; do
-    case "${KEYWORD}" in
+    case ${KEYWORD} in
     rm-bin)
-	echo "rm -f *.bin *.ext"
-	rm -f *.bin *.ext
+	maybe_rm *.bin *.ext
 	;;
     rm-com)
-	echo "rm -f *.com *.bci *.c *.o *.so *.sl *.dylib"
-	rm -f *.com *.bci *.c *.o *.so *.sl *.dylib
-	;;
-    rm-old-pkg)
-	echo "rm -f *.bco *.bld *.glo *.con *.ldr"
-	rm -f *.bco *.bld *.glo *.con *.ldr
+	maybe_rm *.com *.bci *.moc *.fni *.o *.so *.sl *.dylib
 	;;
     rm-pkg)
-	echo "rm -f *-unx.* *-w32.* *-os2.*"
-	rm -f *-unx.* *-w32.* *-os2.*
+	maybe_rm *-unx.crf *-unx.fre *-unx.pkd
+	maybe_rm *-w32.crf *-w32.fre *-w32.pkd
+	maybe_rm *-os2.crf *-os2.fre *-os2.pkd
 	;;
+    rm-c)
+	maybe_rm *.c
+        ;;
     esac
 done
-
-exit 0

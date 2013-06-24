@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: avltree.h,v 1.9 2007/01/05 21:19:25 cph Exp $
+$Id: avltree.h,v 1.10 2007/04/22 16:31:22 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -35,8 +35,8 @@ USA.
 
 #include "config.h"
 
-extern CONST char * tree_error_message;
-extern CONST char * tree_error_noise;
+extern const char * tree_error_message;
+extern const char * tree_error_noise;
 
 typedef struct tree_node_s * tree_node;
 
@@ -45,14 +45,13 @@ struct tree_node_s
   int height;
   tree_node left;
   tree_node rite;
-  CONST char * name;
+  const char * name;
   unsigned long value;
 };
 
-extern tree_node EXFUN
-  (tree_build, (unsigned long, CONST char **, unsigned long));
-extern tree_node EXFUN (tree_lookup, (tree_node, CONST char *));
-extern tree_node EXFUN (tree_insert, (tree_node, CONST char *, unsigned long));
-extern void EXFUN (tree_free, (tree_node));
+extern tree_node tree_build (unsigned long, const char **, unsigned long);
+extern tree_node tree_lookup (tree_node, const char *);
+extern tree_node tree_insert (tree_node, const char *, unsigned long);
+extern void tree_free (tree_node);
 
 #endif /* AVLTREE_H */

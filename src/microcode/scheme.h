@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: scheme.h,v 9.44 2007/01/05 21:19:25 cph Exp $
+$Id: scheme.h,v 9.45 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -27,66 +27,32 @@ USA.
 
 /* General declarations for the SCode interpreter.  This
    file is INCLUDED by others and contains declarations only. */
-
+
 #ifndef SCM_SCHEME_H
 #define SCM_SCHEME_H 1
 
-/* Don't use this any more -- trust the compiler.  */
-#define fast
-
-/* For forward references */
-#define forward extern
-
-#ifndef __GNUC__
-#  define __inline__
-#endif
-
-#ifdef ENABLE_DEBUGGING_TOOLS
-#  define Consistency_Check (1)
-#  define ENABLE_PRIMITIVE_PROFILING
-#else
-#  define Consistency_Check (0)
-#  undef ENABLE_PRIMITIVE_PROFILING
-#endif
-
 #include "config.h"
-
-#include <stdio.h>
-#ifdef STDC_HEADERS
-#  include <stdlib.h>
-#endif
-
-#include "dstack.h"	/* Dynamic stack support package */
-#include "obstack.h"	/* Obstack package */
-#include "types.h"	/* Type code numbers */
-#include "const.h"	/* Various named constants */
-#include "object.h"	/* Scheme object representation */
-#include "intrpt.h"	/* Interrupt processing macros */
-#include "critsec.h"	/* Critical sections */
-#include "gc.h"		/* Memory management related macros */
-#include "scode.h"	/* Scheme scode representation */
-#include "sdata.h"	/* Scheme user data representation */
-#include "futures.h"	/* Support macros, etc. for FUTURE */
-#include "errors.h"	/* Error code numbers */
-#include "returns.h"	/* Return code numbers */
-#include "fixobj.h"	/* Format of fixed objects vector */
-#include "stack.h"	/* Macros for stack (stacklet) manipulation */
-#include "interp.h"	/* Macros for interpreter */
-
-#ifdef butterfly
-#  include "butterfly.h"
-#endif
-
-#include "outf.h"	/* Formatted output for errors */
-#include "bkpt.h"	/* Shadows some defaults */
-#include "default.h"	/* Defaults for various hooks. */
-#include "extern.h"	/* External declarations */
-#include "bignum.h"	/* Bignum declarations */
-#include "prim.h"	/* Declarations for primitives. */
-#include "float.h"	/* Floating-point parameters */
-
-#if (FLT_RADIX != 2)
-#  include "error: floating point radix not 2!  Arithmetic won't work."
-#endif
+#include "dstack.h"		/* Dynamic stack support package */
+#include "obstack.h"		/* Obstack package */
+#include "types.h"		/* Type code numbers */
+#include "const.h"		/* Various named constants */
+#include "object.h"		/* Scheme object representation */
+#include "intrpt.h"		/* Interrupt processing macros */
+#include "critsec.h"		/* Critical sections */
+#include "gc.h"			/* Memory management related macros */
+#include "memmag.h"
+#include "scode.h"		/* Scheme scode representation */
+#include "sdata.h"		/* Scheme user data representation */
+#include "errors.h"		/* Error code numbers */
+#include "returns.h"		/* Return code numbers */
+#include "fixobj.h"		/* Format of fixed objects vector */
+#include "stack.h"		/* Macros for stack (stacklet) manipulation */
+#include "interp.h"		/* Macros for interpreter */
+#include "outf.h"		/* Formatted output for errors */
+#include "bkpt.h"		/* Shadows some defaults */
+#include "extern.h"		/* External declarations */
+#include "bignum.h"		/* Bignum declarations */
+#include "prim.h"		/* Declarations for primitives. */
+#include "cmpint.h"		/* compiled-code interface */
 
 #endif /* SCM_SCHEME_H */

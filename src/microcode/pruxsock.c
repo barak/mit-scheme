@@ -1,6 +1,6 @@
 /* -*-C-*-
 
-$Id: pruxsock.c,v 1.27 2007/01/20 23:49:18 riastradh Exp $
+$Id: pruxsock.c,v 1.28 2007/04/22 16:31:23 cph Exp $
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
@@ -56,19 +56,19 @@ USA.
 #include "uxsock.h"
 #define SOCKET_CODE(code) code
 
-static PTR
-DEFUN (arg_host, (arg), unsigned int arg)
+static void *
+arg_host (unsigned int arg)
 {
   CHECK_ARG (arg, STRING_P);
   if ((STRING_LENGTH (ARG_REF (arg))) != (OS_host_address_length ()))
     error_bad_range_arg (arg);
-  return (STRING_LOC ((ARG_REF (arg)), 0));
+  return (STRING_POINTER (ARG_REF (arg)));
 }
 
 static Tchannel
-DEFUN (arg_client_socket, (arg), unsigned int arg)
+arg_client_socket (unsigned int arg)
 {
-  Tchannel socket = (arg_nonnegative_integer (arg));
+  Tchannel socket = (arg_ulong_integer (arg));
   if (! (((OS_channel_type (socket)) == channel_type_tcp_stream_socket)
 	 || ((OS_channel_type (socket)) == channel_type_unix_stream_socket)))
     error_bad_range_arg (arg);
@@ -76,7 +76,7 @@ DEFUN (arg_client_socket, (arg), unsigned int arg)
 }
 
 static Tchannel
-DEFUN (arg_server_socket, (arg), unsigned int arg)
+arg_server_socket (unsigned int arg)
 {
   Tchannel server_socket = (arg_nonnegative_integer (arg));
   if ((OS_channel_type (server_socket)) != channel_type_tcp_server_socket)
@@ -161,12 +161,12 @@ DEFINE_PRIMITIVE ("GET-HOST-NAME", Prim_get_host_name, 0, 0, 0)
   PRIMITIVE_HEADER (0);
   SOCKET_CODE
     ({
-      CONST char * host_name = (OS_get_host_name ());
+      const char * host_name = (OS_get_host_name ());
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
 	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
-	OS_free ((PTR) host_name);
+	OS_free ((void *) host_name);
 	PRIMITIVE_RETURN (result);
       }
     });
@@ -177,12 +177,12 @@ DEFINE_PRIMITIVE ("CANONICAL-HOST-NAME", Prim_canonical_host_name, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   SOCKET_CODE
     ({
-      CONST char * host_name = (OS_canonical_host_name (STRING_ARG (1)));
+      const char * host_name = (OS_canonical_host_name (STRING_ARG (1)));
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
 	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
-	OS_free ((PTR) host_name);
+	OS_free ((void *) host_name);
 	PRIMITIVE_RETURN (result);
       }
     });
@@ -193,12 +193,12 @@ DEFINE_PRIMITIVE ("GET-HOST-BY-ADDRESS", Prim_get_host_by_address, 1, 1, 0)
   PRIMITIVE_HEADER (1);
   SOCKET_CODE
     ({
-      CONST char * host_name = (OS_get_host_by_address (STRING_ARG (1)));
+      const char * host_name = (OS_get_host_by_address (STRING_ARG (1)));
       if (host_name == 0)
 	PRIMITIVE_RETURN (SHARP_F);
       {
 	SCHEME_OBJECT result = (char_pointer_to_string (host_name));
-	OS_free ((PTR) host_name);
+	OS_free ((void *) host_name);
 	PRIMITIVE_RETURN (result);
       }
     });
@@ -210,7 +210,7 @@ DEFINE_PRIMITIVE ("HOST-ADDRESS-ANY", Prim_host_address_any, 0, 0, 0)
   SOCKET_CODE
     ({
       SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
-      OS_host_address_any (STRING_LOC (result, 0));
+      OS_host_address_any (STRING_POINTER (result));
       PRIMITIVE_RETURN (result);
     });
 }
@@ -221,7 +221,7 @@ DEFINE_PRIMITIVE ("HOST-ADDRESS-LOOPBACK", Prim_host_address_loopback, 0, 0, 0)
   SOCKET_CODE
     ({
       SCHEME_OBJECT result = (allocate_string (OS_host_address_length ()));
-      OS_host_address_loopback (STRING_LOC (result, 0));
+      OS_host_address_loopback (STRING_POINTER (result));
       PRIMITIVE_RETURN (result);
     });
 }
@@ -265,7 +265,7 @@ DEFINE_PRIMITIVE ("SHUTDOWN-SOCKET", Prim_shutdown_socket, 2, 2, "")
   SOCKET_CODE
     ({
       OS_shutdown_socket ((arg_client_socket (1)),
-			  (arg_integer_in_range (2, 1, 4)));
+			  (arg_ulong_integer_in_range (2, 1, 4)));
       PRIMITIVE_RETURN (UNSPECIFIC);
     });
 }
@@ -279,7 +279,7 @@ The opened socket is stored in the cdr of WEAK-PAIR.")
   SOCKET_CODE
     ({
       Tchannel channel = (OS_create_tcp_server_socket ());
-      PTR address = (OS_malloc (OS_host_address_length ()));
+      void * address = (OS_malloc (OS_host_address_length ()));
       OS_host_address_any (address);
       OS_bind_tcp_server_socket
 	(channel, address, (arg_nonnegative_integer (1)));
@@ -334,7 +334,7 @@ It is filled with the peer's address if given.")
   SOCKET_CODE
     ({
       Tchannel server_socket = (arg_server_socket (1));
-      PTR peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
+      void * peer_host = (((ARG_REF (2)) == SHARP_F) ? 0 : (arg_host (2)));
       Tchannel connection =
 	(OS_server_connection_accept (server_socket, peer_host, 0));
       if (connection == NO_CHANNEL)

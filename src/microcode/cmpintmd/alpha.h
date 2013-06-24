@@ -1,6 +1,6 @@
 /* -*- C -*-
 
-$Id: alpha.h,v 1.8 2007/01/05 21:19:26 cph Exp $
+$Id: alpha.h,v 1.9 2007/04/22 16:31:24 cph Exp $
 
 Copyright (C) 1992, 1993 Digital Equipment Corporation (D.E.C.)
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
@@ -44,10 +44,9 @@ case. */
  * Specialized for the Alpha
  */
 
-#ifndef CMPINTMD_H_INCLUDED
-#define CMPINTMD_H_INCLUDED
+#ifndef SCM_CMPINTMD_H_INCLUDED
+#define SCM_CMPINTMD_H_INCLUDED
 
-#include "cmptype.h"
 
 /* Machine parameters to be set by the user. */
 
@@ -59,7 +58,7 @@ case. */
 /* Processor type.  Choose a number from the above list, or allocate your own.
  */
 
-#define COMPILER_PROCESSOR_TYPE			COMPILER_ALPHA_TYPE
+#define COMPILER_PROCESSOR_TYPE COMPILER_ALPHA_TYPE
 
 /* Size (in long words) of the contents of a floating point register if
    different from a double.  For example, an MC68881 saves registers
@@ -73,13 +72,6 @@ case. */
  */
 
 typedef unsigned short format_word; /* 16 bits */
-
-/* PC alignment constraint.
-   Change PC_ZERO_BITS to be how many low order bits of the pc are
-   guaranteed to be 0 always because of PC alignment constraints.
-*/
-
-#define PC_ZERO_BITS                    2
 
 /* Utilities for manipulating absolute subroutine calls.
    On the ALPHA this is done with either
@@ -110,14 +102,14 @@ typedef unsigned short format_word; /* 16 bits */
 #define STORE_ABSOLUTE_ADDRESS(entry_point, address)	\
   alpha_store_absolute_address (((void *) entry_point), ((void *) address))
 
-extern void EXFUN(alpha_store_absolute_address, (void *, void *));
+extern void alpha_store_absolute_address(void *, void *);
 
 #define opJMP			0x1A
 #define fnJMP			0x00
 #define JMP(linkage, dest, displacement)	\
   ((opJMP << 26) | ((linkage) << 21) |		\
    ((dest) << 16) | (fnJMP << 14) |		\
-   (((displacement)>>PC_ZERO_BITS) & ((1<<14)-1)))
+   (((displacement)>>2) & ((1<<14)-1)))
 
 /* Compiled Code Register Conventions */
 /* This must match the compiler and cmpaux-alpha.m4 */
@@ -138,13 +130,12 @@ extern void EXFUN(alpha_store_absolute_address, (void *, void *));
 
 #ifdef IN_CMPINT_C
 #define PC_FIELD_SIZE		21
-#define MAX_PC_DISPLACEMENT	(1<<(PC_FIELD_SIZE+PC_ZERO_BITS-1))
+#define MAX_PC_DISPLACEMENT	(1<<22)
 #define MIN_PC_DISPLACEMENT	(-MAX_PC_DISPLACEMENT)
 #define opBR			0x30
 
 void
-DEFUN (alpha_store_absolute_address, (entry_point, address),
-       void *entry_point AND void *address)
+alpha_store_absolute_address (void *entry_point, void *address)
 {
   extern void scheme_closure_hook (void);
   int *Instruction_Address = (int *) address;
@@ -156,7 +147,7 @@ DEFUN (alpha_store_absolute_address, (entry_point, address),
       (offset >= MIN_PC_DISPLACEMENT))
     *Instruction_Address =
       (opBR << 26) | (COMP_REG_LINKAGE << 21) |
-      ((offset>>PC_ZERO_BITS)  & ((1L<<PC_FIELD_SIZE)-1));
+      ((offset>>2)  & ((1L<<PC_FIELD_SIZE)-1));
   else
     *Instruction_Address =
       JMP(COMP_REG_LINKAGE, COMP_REG_LONGJUMP,
@@ -209,7 +200,7 @@ Code sequence 3 (test for interrupts):
    LDQ   MEMTOP,0(BLOCK)         -- Fill MemTop register
    BIS   CC_ENTRY_TYPE,temp,temp -- put tag on closure object
    STQ   temp,0(SP)              -- save closure on top of stack
-   BEQ   temp2,Interrupt         -- possible interrupt ...  
+   BEQ   temp2,Interrupt         -- possible interrupt ...
 
 Code sequence 4 (test for interrupts):
   *Note*: In most machines code sequence 3 and 4 are the same and are
@@ -440,8 +431,8 @@ do {									\
    processor might have old copies of.
  */
 
-extern long EXFUN(Synchronize_Caches, (void));
-extern void EXFUN(Flush_I_Cache, (void));
+extern long Synchronize_Caches(void);
+extern void Flush_I_Cache(void);
 
 #if 1
 #define FLUSH_I_CACHE() 		((void) Synchronize_Caches())
@@ -452,7 +443,7 @@ extern void EXFUN(Flush_I_Cache, (void));
 /* This flushes a region of the I-cache.
    It is used after updating an execute cache while running.
    Not needed during GC because FLUSH_I_CACHE will be used.
- */   
+ */
 
 #define FLUSH_I_CACHE_REGION(address, nwords) FLUSH_I_CACHE()
 #define PUSH_D_CACHE_REGION(address, nwords) FLUSH_I_CACHE()
@@ -464,7 +455,7 @@ extern void EXFUN(Flush_I_Cache, (void));
 
 #define VM_PROT_SCHEME (PROT_READ | PROT_WRITE | PROT_EXEC)
 
-#define ASM_RESET_HOOK() interface_initialize((PTR) &utility_table[0])
+#define ASM_RESET_HOOK() interface_initialize((void *) &utility_table[0])
 
 #define REGBLOCK_EXTRA_SIZE		8 /* See lapgen.scm */
 #define COMPILER_REGBLOCK_N_FIXED	16
@@ -475,9 +466,10 @@ extern void EXFUN(Flush_I_Cache, (void));
 #define REGBLOCK_ALLOCATE_CLOSURE		REGBLOCK_FIRST_EXTRA+3
 #define REGBLOCK_DIVQ				REGBLOCK_FIRST_EXTRA+4
 #define REGBLOCK_REMQ				REGBLOCK_FIRST_EXTRA+5
+#define COMPILER_REGBLOCK_N_TEMPS 256
 
 void *
-DEFUN (alpha_heap_malloc, (Size), long Size)
+alpha_heap_malloc (long Size)
 { int pagesize;
   caddr_t Heap_Start_Page;
   void *Area;
@@ -499,7 +491,7 @@ DEFUN (alpha_heap_malloc, (Size), long Size)
   return (void *) Heap_Start_Page;
 }
 
-/* ASSUMPTION: Direct mapped first level cache, with 
+/* ASSUMPTION: Direct mapped first level cache, with
    shared secondary caches.  Sizes in bytes.
 */
 #define DCACHE_SIZE		(8*1024)
@@ -507,13 +499,13 @@ DEFUN (alpha_heap_malloc, (Size), long Size)
 #define WRITE_BUFFER_SIZE	(4*DCACHE_LINE_SIZE)
 
 long
-DEFUN_VOID (Synchronize_Caches)
+Synchronize_Caches (void)
 { long Foo=0;
 
   Flush_I_Cache();
   { static volatile long Fake_Out[WRITE_BUFFER_SIZE/(sizeof (long))];
     volatile long *Ptr, *End, i=0;
-    
+
     for (End = &(Fake_Out[WRITE_BUFFER_SIZE/(sizeof (long))]),
 	   Ptr = &(Fake_Out[0]);
 	 Ptr < End;
@@ -526,7 +518,7 @@ DEFUN_VOID (Synchronize_Caches)
 #if 0
   { static volatile long Fake_Out[DCACHE_SIZE/(sizeof (long))];
     volatile long *Ptr, *End;
-    
+
     for (End = &(Fake_Out[DCACHE_SIZE/(sizeof (long))]),
 	   Ptr = &(Fake_Out[0]);
 	 Ptr < End;
@@ -537,16 +529,15 @@ DEFUN_VOID (Synchronize_Caches)
     return Foo;
 }
 
-extern char *EXFUN(allocate_closure, (long, char *));
+extern char *allocate_closure(long, char *);
 
 static void
-DEFUN (interface_initialize, (table),
-       PTR table)
+interface_initialize (void * table)
 { extern void __divq();
   extern void __remq();
 
   Registers[REGBLOCK_ADDRESS_OF_STACK_POINTER] =
-    ((SCHEME_OBJECT) &sp_register);
+    ((SCHEME_OBJECT) &stack_pointer);
   Registers[REGBLOCK_ADDRESS_OF_FREE] =
     ((SCHEME_OBJECT) &Free);
   Registers[REGBLOCK_ADDRESS_OF_UTILITY_TABLE] =
@@ -564,11 +555,8 @@ DEFUN (interface_initialize, (table),
 static long closure_chunk = (1024 * CLOSURE_ENTRY_WORDS);
 static long last_chunk_size;
 
-#define REGBLOCK_CLOSURE_LIMIT	REGBLOCK_CLOSURE_SPACE
-
 char *
-DEFUN (allocate_closure, (size, this_block),
-       long size AND char *this_block)
+allocate_closure (long size, char *this_block)
 /* size in Scheme objects of the block we need to allocate.
    this_block is a pointer to the first entry point in the block we
               didn't manage to allocate.
@@ -578,7 +566,7 @@ DEFUN (allocate_closure, (size, this_block),
 
   free_closure = (SCHEME_OBJECT *)
     (this_block-CLOSURE_OFFSET_OF_FIRST_ENTRY_POINT);
-  limit = ((SCHEME_OBJECT *) Registers[REGBLOCK_CLOSURE_LIMIT]);
+  limit = GET_CLOSURE_SPACE;
   space =  limit - free_closure;
   if (size > space)
   { SCHEME_OBJECT *ptr;
@@ -595,21 +583,21 @@ DEFUN (allocate_closure, (size, this_block),
       */
     }
     free_closure = Free;
-    if ((size <= closure_chunk) && (!(GC_Check (closure_chunk))))
+    if ((size <= closure_chunk) && (!GC_NEEDED_P (closure_chunk)))
     { limit = (free_closure + closure_chunk);
     }
     else
-    { if (GC_Check (size))
-      { if ((Heap_Top - Free) < size)
+    { if (GC_NEEDED_P (size))
+      { if ((heap_end - Free) < size)
 	{ /* No way to back out -- die. */
 	  fprintf (stderr, "\nC_allocate_closure (%d): No space.\n", size);
 	  Microcode_Termination (TERM_NO_SPACE);
 	  /* NOTREACHED */
 	}
-	Request_GC (0);
+	REQUEST_GC (0);
       }
       else if (size <= closure_chunk)
-      { Request_GC (0);
+      { REQUEST_GC (0);
       }
       limit = (free_closure + size);
     }
@@ -627,9 +615,9 @@ DEFUN (allocate_closure, (size, this_block),
       wptr += 1;
     }
     PUSH_D_CACHE_REGION (free_closure, last_chunk_size);
-    Registers[REGBLOCK_CLOSURE_LIMIT] = (SCHEME_OBJECT) limit;
+    SET_CLOSURE_SPACE (limit);
   }
-  Registers[REGBLOCK_CLOSURE_FREE] = (SCHEME_OBJECT) (free_closure+size);
+  SET_CLOSURE_FREE (free_closure + size);
   return (((char *) free_closure)+CLOSURE_OFFSET_OF_FIRST_ENTRY_POINT);
 }
 #endif /* IN_CMPINT_C */
@@ -647,29 +635,8 @@ DEFUN (allocate_closure, (size, this_block),
 #define CLEAR_LOW_BIT(word)                     ((word) & ((unsigned long) -2))
 #define OFFSET_WORD_CONTINUATION_P(word)        (((word) & 1) != 0)
 
-#if (PC_ZERO_BITS == 0)
-/* Instructions aligned on byte boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) << 1)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) >> 1)
-#endif
-
-#if (PC_ZERO_BITS == 1)
-/* Instructions aligned on word (16 bit) boundaries */
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      (offset)
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  (CLEAR_LOW_BIT(offset_word))
-#endif
-
-#if (PC_ZERO_BITS >= 2)
-/* Should be OK for =2, but bets are off for >2 because of problems
-   mentioned earlier!
-*/
-#define SHIFT_AMOUNT                            (PC_ZERO_BITS - 1)
-#define BYTE_OFFSET_TO_OFFSET_WORD(offset)      ((offset) >> (SHIFT_AMOUNT))
-#define OFFSET_WORD_TO_BYTE_OFFSET(offset_word)                         \
-  ((CLEAR_LOW_BIT(offset_word)) << (SHIFT_AMOUNT))
-#endif
+#define BYTE_OFFSET_TO_OFFSET_WORD(offset) ((offset) >> 1)
+#define OFFSET_WORD_TO_BYTE_OFFSET(word) ((CLEAR_LOW_BIT (word)) << 1)
 
 #define MAKE_OFFSET_WORD(entry, block, continue)                        \
   ((BYTE_OFFSET_TO_OFFSET_WORD(((char *) (entry)) -                     \
@@ -748,4 +715,4 @@ DEFUN (allocate_closure, (size, this_block),
 #define COMPILED_ENTRY_MAXIMUM_ARITY    COMPILED_ENTRY_FORMAT_LOW
 #define COMPILED_ENTRY_MINIMUM_ARITY    COMPILED_ENTRY_FORMAT_HIGH
 
-#endif /* CMPINTMD_H_INCLUDED */
+#endif /* !SCM_CMPINTMD_H_INCLUDED */
