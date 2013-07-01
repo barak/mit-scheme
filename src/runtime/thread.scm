@@ -296,7 +296,7 @@ USA.
   ;; Preserve the floating-point environment here to guarantee that the
   ;; thread timer won't raise or clear exceptions (particularly the
   ;; inexact result exception) that the interrupted thread cares about.
-  (let ((fp-env (enter-default-float-environment)))
+  (let ((fp-env (enter-default-float-environment first-running-thread)))
     (set! next-scheduled-timeout #f)
     (set-interrupt-enables! interrupt-mask/gc-ok)
     (deliver-timer-events)

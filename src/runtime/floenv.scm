@@ -59,8 +59,17 @@ USA.
 ;;; Save the floating-point environment and enter the default
 ;;; environment for the thread timer interrupt handler.
 
-(define (enter-default-float-environment)
-  (let ((fp-env (thread-float-environment (current-thread))))
+(define (enter-default-float-environment interrupted-thread)
+  (let ((fp-env
+	 (if interrupted-thread
+	     (let ((fp-env (thread-float-environment interrupted-thread)))
+	       (if (eqv? fp-env #t)
+		   (let ((fp-env ((ucode-primitive FLOAT-ENVIRONMENT 0))))
+		     (set-thread-float-environment! interrupted-thread fp-env)
+		     fp-env)
+		   fp-env))
+	     ;; No idea what environment we're in.  Assume the worst.
+	     ((ucode-primitive FLOAT-ENVIRONMENT 0)))))
     (if fp-env
 	((ucode-primitive SET-FLOAT-ENVIRONMENT 1) default-environment))
     fp-env))
