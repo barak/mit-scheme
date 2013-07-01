@@ -214,10 +214,9 @@ compile-ffi: compile-cref
 compile-imail: bootstrap-toolchain
 compile-imail: compile-sos
 compile-imail: compile-star-parser
-compile-imail: syntax-edwin
+compile-imail: compile-edwin
 	(echo '(begin' && \
-	 echo '  (construct-packages-from-file' && \
-	 echo '   (fasload (package-set-pathname "edwin/edwin")))' && \
+	 echo '  (load-option (quote EDWIN))' && \
 	 echo '  (compile-dir "imail"))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
 
