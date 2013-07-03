@@ -1,125 +1,39 @@
 #!/usr/bin/make -f
-# Sample debian/rules that uses debhelper.
-# GNU copyright 1997 to 1999 by Joey Hess.
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-AUTOTOOLS := /usr/share/misc
-DESTDIR_LOCAL := debian/tmp
-DESTDIR := $(shell pwd)/$(DESTDIR_LOCAL)
+%:
+	dh $@ --with autoreconf --parallel
 
-INSTALL = install --preserve-timestamps
+override_dh_autoreconf:
+	dh_autoreconf sh -- -e -x -c 'for d in src doc; do (cd $$d && autoreconf -f -i) done'
 
-export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+CONF_FLAGS += --docdir=/usr/share/doc/mit-scheme-doc
+CONF_FLAGS += --enable-html=/usr/share/doc/mit-scheme-doc/html
+CONF_FLAGS += --enable-pdf=/usr/share/doc/mit-scheme-doc/pdf
+CONF_FLAGS += --enable-ps=no
 
-PREFIX = /usr
-LIBDIR = $(PREFIX)/lib/mit-scheme-$(DEB_HOST_GNU_TYPE)
-INFODIR = $(PREFIX)/share/info
-MANDIR = $(PREFIX)/share/man
-DOCDIR = $(PREFIX)/share/doc/mit-scheme-doc
-HTMLDIR = $(DOCDIR)/html
-PDFDIR = $(DOCDIR)/pdf
+override_dh_auto_configure:
+	dh_auto_configure --sourcedirectory=src -- $(CONF_FLAGS)
+	dh_auto_configure --sourcedirectory=doc -- $(CONF_FLAGS)
 
-ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
-  CONF_FLAGS := --build $(DEB_HOST_GNU_TYPE)
+# override_dh_auto_build:
+# SCHEME_COMPILER=mit-scheme $(MAKE)
+
+DEB_HOST_GNU_CPU=$(shell dpkg-architecture -qDEB_HOST_GNU_CPU)
+ifeq ($(DEB_HOST_GNU_CPU),x86_64)
+BIN_ARCH=x86-64
 else
-  CONF_FLAGS := --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
+BIN_ARCH=$(DEB_HOST_GNU_CPU)
 endif
 
-CONF_FLAGS += --prefix=$(PREFIX) --mandir=$(MANDIR) --infodir=$(INFODIR) \
-	--enable-html=$(HTMLDIR) --enable-pdf=$(PDFDIR) --enable-ps=no
+override_dh_auto_install:
+	dh_auto_install --sourcedirectory=src
+	dh_auto_install --sourcedirectory=doc -- install-html install-pdf
+	cd debian/tmp/usr/bin && \
+	 rm --verbose -f scheme bchscheme mit-scheme mit-scheme-native
+	find debian/tmp/usr/lib -name runtime.com -delete
 
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-    CFLAGS := -O0
-else
-    CFLAGS := -O2
-endif
-CFLAGS += -g
-
-configure: configure-stamp autotools
-configure-stamp:
-	dh_testdir
-	cd src; CFLAGS="$(CFLAGS)" ./configure $(CONF_FLAGS)
-	cd doc; ./configure $(CONF_FLAGS)
-	touch configure-stamp
-
-autotools:
-	-rm -f src/config.sub src/config.guess
-	cp -a $(AUTOTOOLS)/config.sub src/.
-	cp -a $(AUTOTOOLS)/config.guess src/.
-
-build: configure-stamp build-stamp
-build-arch: build-stamp
-build-indep: build-stamp
-build-stamp:
-	dh_testdir
-	SCHEME_COMPILER=mit-scheme $(MAKE)
-	touch build-stamp
-
-clean:
-	dh_testdir
-	dh_testroot
-	[ ! -f src/Makefile ] || $(MAKE) distclean
-	rm -f build-stamp configure-stamp
-	dh_clean
-
-install: build
-	dh_testdir
-	dh_testroot
-	dh_prep
-	dh_installdirs --package=mit-scheme --tmpdir=$(DESTDIR_LOCAL)
-	cd src;$(MAKE) install DESTDIR=$(DESTDIR)
-	cd doc;$(MAKE) install-html DESTDIR=$(DESTDIR)
-	cd doc;$(MAKE) install-pdf DESTDIR=$(DESTDIR)
-	rm -f $(DESTDIR)$(PREFIX)/bin/scheme
-	rm -f $(DESTDIR)$(PREFIX)/bin/bchscheme
-	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme
-	rm -f $(DESTDIR)$(PREFIX)/bin/mit-scheme-native
-	rm -f $(DESTDIR)$(LIBDIR)/runtime.com
-	$(INSTALL) -m 644 debian/mit-scheme.desktop \
-	    $(DESTDIR)$(PREFIX)/share/applications/.
-	dh_install --sourcedir=$(DESTDIR_LOCAL)
-
-# Build architecture-independent files here.
-binary-indep: build install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs
-	dh_installdocs
-	dh_installexamples
-	dh_installinfo
-	dh_installman
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-# Build architecture-dependent files here.
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs changelog.txt
-	dh_installdocs
-	dh_installexamples
-	dh_installmenu
-	dh_installinfo
-	dh_installman
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install configure autotools
+override_dh_link:
+	dh_link /usr/share/man/man1/mit-scheme.1.gz /usr/share/man/man1/mit-scheme-$(BIN_ARCH).1.gz

@@ -1,0 +1,205 @@
+From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
+Date: Mon, 22 Jul 2013 19:58:13 +0200
+Subject: allow autoreconf force
+
+Recombobulate slightly to allow full regeneration via the command
+$ autoreconf --force
+
+- move src/microcode/aclocal.m4 to src/microcode/mit_scheme_native_code.m4
+
+- use single shared microcode/ subdir
+---
+ src/configure.ac                        |  1 +
+ src/microcode/aclocal.m4                | 75 ---------------------------------
+ src/microcode/configure.ac              |  1 +
+ src/microcode/mit_scheme_native_code.m4 | 75 +++++++++++++++++++++++++++++++++
+ 4 files changed, 77 insertions(+), 75 deletions(-)
+ delete mode 100644 src/microcode/aclocal.m4
+ create mode 100644 src/microcode/mit_scheme_native_code.m4
+
+diff --git a/src/configure.ac b/src/configure.ac
+index 3c79469..db9ead4 100644
+--- a/src/configure.ac
++++ b/src/configure.ac
+@@ -3,6 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
+ AC_INIT([MIT/GNU Scheme], [9.1.1], [bug-mit-scheme@gnu.org], [mit-scheme])
+ AC_CONFIG_SRCDIR([microcode/boot.c])
+ AC_CONFIG_AUX_DIR([microcode])
++AC_CONFIG_MACRO_DIR([microcode])
+ AC_PROG_MAKE_SET
+ 
+ AC_COPYRIGHT(
+diff --git a/src/microcode/aclocal.m4 b/src/microcode/aclocal.m4
+deleted file mode 100644
+index 3016efd..0000000
+--- a/src/microcode/aclocal.m4
++++ /dev/null
+@@ -1,75 +0,0 @@
+-# MIT_SCHEME_NATIVE_CODE(SPEC, HOST_CPU)
+-# ----------------------
+-AC_DEFUN([MIT_SCHEME_NATIVE_CODE],[
+-_mit_scheme_native_code_spec=$1
+-_mit_scheme_native_code_host_cpu=$2
+-case ${_mit_scheme_native_code_host_cpu} in
+-i?86)
+-    AC_CHECK_DECL([__x86_64__],[_mit_scheme_native_code_host_cpu=x86_64])
+-    ;;
+-esac
+-AC_MSG_CHECKING([for native-code support])
+-case ${_mit_scheme_native_code_spec} in
+-yes|YES|y|Y)
+-    case ${host_cpu} in
+-    alpha*)
+-	mit_scheme_native_code=alpha
+-	;;
+-    hppa*)
+-	mit_scheme_native_code=hppa
+-	;;
+-    i?86)
+-	mit_scheme_native_code=i386
+-	;;
+-    m68k|m680?0)
+-	mit_scheme_native_code=mc68k
+-	;;
+-    mips*)
+-	mit_scheme_native_code=mips
+-	;;
+-    vax)
+-	mit_scheme_native_code=vax
+-	;;
+-    x86_64)
+-	mit_scheme_native_code=x86-64
+-	;;
+-    *)
+-	AC_MSG_ERROR([unable to determine native-code type])
+-	;;
+-    esac
+-    ;;
+-c|C)
+-    mit_scheme_native_code=c
+-    ;;
+-svm|svm1)
+-    mit_scheme_native_code=svm1
+-    ;;
+-no|NO|none|NONE|n|N)
+-    mit_scheme_native_code=none
+-    ;;
+-i?86|x86)
+-    mit_scheme_native_code=i386
+-    ;;
+-x86-64|x86_64|amd64)
+-    mit_scheme_native_code=x86-64
+-    ;;
+-*)
+-    AC_MSG_ERROR([unknown native-code type: ${_mit_scheme_native_code_spec}])
+-    ;;
+-esac
+-
+-case ${mit_scheme_native_code} in
+-none)
+-    AC_MSG_RESULT([no])
+-    ;;
+-c)
+-    AC_MSG_RESULT([yes, using portable C code])
+-    ;;
+-svm1)
+-    AC_MSG_RESULT([yes, using portable SVM code])
+-    ;;
+-*)
+-    AC_MSG_RESULT([yes, for ${mit_scheme_native_code}])
+-    ;;
+-esac
+-])
+diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
+index 2a032ee..605a03c 100644
+--- a/src/microcode/configure.ac
++++ b/src/microcode/configure.ac
+@@ -2,6 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
+ 
+ AC_INIT([MIT/GNU Scheme microcode], [15.3], [bug-mit-scheme@gnu.org], [mit-scheme])
+ AC_CONFIG_SRCDIR([boot.c])
++AC_CONFIG_MACRO_DIR([../microcode])
+ AC_CONFIG_HEADERS([config.h])
+ AC_PROG_MAKE_SET
+ 
+diff --git a/src/microcode/mit_scheme_native_code.m4 b/src/microcode/mit_scheme_native_code.m4
+new file mode 100644
+index 0000000..3016efd
+--- /dev/null
++++ b/src/microcode/mit_scheme_native_code.m4
+@@ -0,0 +1,75 @@
++# MIT_SCHEME_NATIVE_CODE(SPEC, HOST_CPU)
++# ----------------------
++AC_DEFUN([MIT_SCHEME_NATIVE_CODE],[
++_mit_scheme_native_code_spec=$1
++_mit_scheme_native_code_host_cpu=$2
++case ${_mit_scheme_native_code_host_cpu} in
++i?86)
++    AC_CHECK_DECL([__x86_64__],[_mit_scheme_native_code_host_cpu=x86_64])
++    ;;
++esac
++AC_MSG_CHECKING([for native-code support])
++case ${_mit_scheme_native_code_spec} in
++yes|YES|y|Y)
++    case ${host_cpu} in
++    alpha*)
++	mit_scheme_native_code=alpha
++	;;
++    hppa*)
++	mit_scheme_native_code=hppa
++	;;
++    i?86)
++	mit_scheme_native_code=i386
++	;;
++    m68k|m680?0)
++	mit_scheme_native_code=mc68k
++	;;
++    mips*)
++	mit_scheme_native_code=mips
++	;;
++    vax)
++	mit_scheme_native_code=vax
++	;;
++    x86_64)
++	mit_scheme_native_code=x86-64
++	;;
++    *)
++	AC_MSG_ERROR([unable to determine native-code type])
++	;;
++    esac
++    ;;
++c|C)
++    mit_scheme_native_code=c
++    ;;
++svm|svm1)
++    mit_scheme_native_code=svm1
++    ;;
++no|NO|none|NONE|n|N)
++    mit_scheme_native_code=none
++    ;;
++i?86|x86)
++    mit_scheme_native_code=i386
++    ;;
++x86-64|x86_64|amd64)
++    mit_scheme_native_code=x86-64
++    ;;
++*)
++    AC_MSG_ERROR([unknown native-code type: ${_mit_scheme_native_code_spec}])
++    ;;
++esac
++
++case ${mit_scheme_native_code} in
++none)
++    AC_MSG_RESULT([no])
++    ;;
++c)
++    AC_MSG_RESULT([yes, using portable C code])
++    ;;
++svm1)
++    AC_MSG_RESULT([yes, using portable SVM code])
++    ;;
++*)
++    AC_MSG_RESULT([yes, for ${mit_scheme_native_code}])
++    ;;
++esac
++])

@@ -1,0 +1,21 @@
+From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
+Date: Mon, 12 Aug 2013 16:30:22 +0200
+Subject: sequentialize docs
+
+---
+ doc/make-common.in | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/doc/make-common.in b/doc/make-common.in
+index 7b998b5..5ab6fce 100644
+--- a/doc/make-common.in
++++ b/doc/make-common.in
+@@ -127,5 +127,8 @@ install-pdf: $(PDF_TARGET)
+ install-ps: $(PS_TARGET)
+ 	$(INSTALL_DATA) $(PS_TARGET) $(DESTDIR)$(psdir)/.
+ 
++# The above is not parallel build safe.
++.NOTPARALLEL:
++
+ .PHONY: all mostlyclean clean distclean maintainer-clean
+ .PHONY: install-info install-html install-pdf install-ps

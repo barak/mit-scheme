@@ -3,13 +3,23 @@ Section: lisp
 Priority: optional
 Maintainer: Chris Hanson <cph@debian.org>
 DM-Upload-Allowed: yes
-Build-Depends: debhelper (>> 8.0.0), m4, mit-scheme, autotools-dev, libssl-dev, libmhash-dev, libmcrypt-dev, libgdbm-dev, libpq-dev, libncurses5-dev, libx11-dev, libxt-dev, libdb-dev, libltdl-dev
+Uploaders: Barak A. Pearlmutter <bap@debian.org>
+Build-Depends: debhelper (>= 9), dh-autoreconf,
+		mit-scheme,
+		libssl-dev, libmhash-dev, libmcrypt-dev,
+		libgdbm-dev, libpq-dev,
+		libncurses5-dev,
+		libx11-dev, libxt-dev,
+		libdb-dev, libltdl-dev
 Build-Depends-Indep: texinfo, texlive
-Standards-Version: 3.9.2
+Standards-Version: 3.9.4
 Homepage: http://www.gnu.org/software/mit-scheme/
+Vcs-Git: git://anonscm.debian.org/collab-maint/mit-scheme.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/mit-scheme.git
 
 Package: mit-scheme
 Architecture: i386 amd64
+Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: mime-support
 Suggests: mit-scheme-dbg, mit-scheme-doc
@@ -26,6 +36,7 @@ Package: mit-scheme-dbg
 Section: debug
 Priority: extra
 Architecture: i386 amd64
+Multi-Arch: same
 Depends: mit-scheme (= ${binary:Version}), ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
 Breaks: mit-scheme (<< 7.7.90+20060414-0)
@@ -46,6 +57,7 @@ Package: mit-scheme-doc
 Section: doc
 Priority: optional
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Enhances: mit-scheme (= ${binary:Version})
 Breaks: mit-scheme (<< 7.7.90+20060414-0)
