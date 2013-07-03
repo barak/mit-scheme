@@ -1,0 +1,8 @@
+*.debhelper
+*.log
+*.substvars
+/files
+/mit-scheme-dbg/
+/mit-scheme-doc/
+/mit-scheme/
+/tmp/
