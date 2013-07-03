@@ -6,5 +6,4 @@ Exec=/usr/bin/mit-scheme-i386 --edit
 TryExec=mit-scheme-i386
 Terminal=false
 Type=Application
-Icon=/usr/share/pixmaps/mit-scheme/lambda2.png
 Categories=Development;IDE;TextEditor

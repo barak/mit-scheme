@@ -2,5 +2,4 @@
   needs="X11"\
   section="Applications/Programming"\
   title="MIT/GNU Scheme"\
-  icon="/usr/share/pixmaps/mit-scheme/lambda2.xpm" \
   command="/usr/bin/mit-scheme-i386 --edit"

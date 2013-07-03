@@ -80,8 +80,6 @@ install: build
 	rm -f $(DESTDIR)$(LIBDIR)/runtime.com
 	$(INSTALL) -m 644 debian/mit-scheme.desktop \
 	    $(DESTDIR)$(PREFIX)/share/applications/.
-	$(INSTALL) -m 644 icons/* \
-	    $(DESTDIR)$(PREFIX)/share/pixmaps/mit-scheme/.
 	dh_install --sourcedir=$(DESTDIR_LOCAL)
 
 # Build architecture-independent files here.
