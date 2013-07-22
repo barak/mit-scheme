@@ -2,6 +2,10 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT([MIT/GNU Scheme microcode], [15.3], [bug-mit-scheme@gnu.org], [mit-scheme])
 AC_CONFIG_SRCDIR([boot.c])
+# Would set m4 macro dir, but only works if automake or libtools in use.
+# Instead we include directly.
+# AC_CONFIG_MACRO_DIR([../microcode])
+m4_include([../microcode/mit_scheme_native_code.m4])
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_MAKE_SET
 
