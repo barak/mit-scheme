@@ -24,8 +24,6 @@
 ## USA.
 
 ACLOCAL_AMFLAGS = -I m4
-EXTRA_DIST = autogen.sh
-
 MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11
@@ -92,7 +90,7 @@ tags: tags-am $(sources) $(cdecls)
 	$(ETAGS) -a $(sources) -r '/^([^iI].*/' $(cdecls)
 	./tags-fix.sh
 
-EXTRA_DIST += $(sources) $(cdecls)
+EXTRA_DIST = $(sources) $(cdecls)
 EXTRA_DIST += compile.sh compile.scm x11.pkg
 EXTRA_DIST += x11-check.sh x11-test.scm
 EXTRA_DIST += make.scm optiondb.scm tags-fix.sh

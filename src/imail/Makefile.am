@@ -23,8 +23,6 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 ## USA.
 
-EXTRA_DIST = autogen.sh
-
 MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)imail
@@ -90,7 +88,7 @@ CLEANFILES += stamp-scheme
 
 TAGS_FILES = $(sources)
 
-EXTRA_DIST += $(sources) compile.sh make.scm compile.scm imail.pkg
+EXTRA_DIST = $(sources) compile.sh make.scm compile.scm imail.pkg
 
 install-data-hook:
 	( echo '(add-plugin "imail" "@MIT_SCHEME_PROJECT@"'; \

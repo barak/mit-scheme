@@ -23,8 +23,6 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 ## USA.
 
-EXTRA_DIST = autogen.sh
-
 MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)edwin
@@ -39,7 +37,36 @@ scmlib_sub_DATA += TUTORIAL
 #info_TEXINFOS = mit-scheme-edwin.texi
 #AM_MAKEINFOHTMLFLAGS = --no-split
 
-include $(srcdir)/source-dependencies.am
+sources = \
+	abbrev.scm adapters.scm ansi.scm argred.scm artdebug.scm autold.scm \
+	autosv.scm basic.scm bios.scm bufcom.scm buffer.scm buffrm.scm \
+	bufinp.scm bufmnu.scm bufout.scm bufset.scm bufwfs.scm bufwin.scm \
+	bufwiu.scm bufwmc.scm c-mode.scm calias.scm cinden.scm class.scm \
+	clscon.scm clsmac.scm comatch.scm comhst.scm comint.scm comman.scm \
+	compile.scm comred.scm comtab.scm comwin.scm curren.scm dabbrev.scm \
+	debian-changelog.scm debug.scm debuge.scm diff.scm dired.scm \
+	dirunx.scm dirw32.scm display.scm docstr.scm dos.scm doscom.scm \
+	dosfile.scm dosproc.scm dosshell.scm ed-ffi.scm editor.scm edtfrm.scm \
+	edtstr.scm evlcom.scm eystep.scm filcom.scm fileio.scm fill.scm \
+	grpops.scm hlpcom.scm htmlmode.scm image.scm info.scm input.scm \
+	intmod.scm iserch.scm javamode.scm key-w32.scm keymap.scm keyparse.scm \
+	kilcom.scm kmacro.scm lincom.scm linden.scm loadef.scm lspcom.scm \
+	macros.scm make.scm malias.scm manual.scm midas.scm modefs.scm \
+	modes.scm modlin.scm modwin.scm motcom.scm motion.scm mousecom.scm \
+	nntp.scm notify.scm nvector.scm occur.scm outline.scm paredit.scm \
+	pasmod.scm paths.scm print.scm process.scm prompt.scm pwedit.scm \
+	pwparse.scm rcsparse.scm reccom.scm regcom.scm regexp.scm regops.scm \
+	replaz.scm rfc822.scm ring.scm rmail.scm rmailsrt.scm rmailsum.scm \
+	schmod.scm scrcom.scm screen.scm search.scm sendmail.scm sercom.scm \
+	shell.scm simple.scm snr.scm sort.scm string.scm strpad.scm strtab.scm \
+	struct.scm syntax.scm tagutl.scm techinfo.scm telnet.scm termcap.scm \
+	texcom.scm things.scm tparse.scm tterm.scm tximod.scm txtprp.scm \
+	undo.scm unix.scm utils.scm utlwin.scm vc.scm vc-bzr.scm vc-cvs.scm \
+	vc-git.scm vc-rcs.scm vc-svn.scm verilog.scm vhdl.scm webster.scm \
+	win32.scm win32com.scm wincom.scm window.scm winout.scm \
+	world-monitor.scm xform.scm xterm.scm
+binaries = $(sources:.scm=.bci) $(sources:.scm=.com)
+$(binaries): stamp-scheme
 edwin.bld: stamp-scheme
 @MIT_SCHEME_PKD@: stamp-scheme
 stamp-scheme: $(sources) edwin.ldr edwin.pkg
@@ -53,7 +80,7 @@ CLEANFILES += stamp-scheme
 
 TAGS_FILES = $(sources) edwin.ldr
 
-EXTRA_DIST += $(sources) edwin.ldr
+EXTRA_DIST = $(sources) edwin.ldr
 EXTRA_DIST += TUTORIAL
-EXTRA_DIST += sources.scm sources.sh compile.sh decls.scm
+EXTRA_DIST += compile.sh decls.scm
 EXTRA_DIST += edwin.sf edwin.cbf edwin.pkg

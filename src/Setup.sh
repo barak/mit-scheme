@@ -30,20 +30,6 @@ set -eu
 
 : ${MIT_SCHEME_EXE:=mit-scheme}
 
-configure=done
-
-clean ()
-{
-    if [ "x${autoheader}" != xdone ]; then
-	rm -f config.h.in
-    fi
-    if [ "x${autoconf}" != xdone ]; then
-	rm -f configure
-    fi
-}
-
-trap clean EXIT INT TERM
-
 # Please keep the following messages synchronized with the messages in
 # these files:
 #
@@ -70,26 +56,13 @@ EOF
     exit 1
 fi
 
-if [ ! -f config.h.in ]; then
-    autoheader=clean
-    echo "autoheader"
-    autoheader
-    autoheader=done
-fi
-
-if [ ! -x configure \
-	-o configure.ac -nt configure \
-	-o microcode/aclocal.m4 -nt configure ]; then
-    autoconf=clean
-    echo "autoconf --include=microcode"
-    autoconf --include=microcode
-    autoconf=done
-fi
+# This covers microcode and the plugins too, via AC_CONFIG_SUBDIRS.
+echo "autoreconf -i"
+autoreconf -i
 
 . etc/functions.sh
 
 INSTALLED_SUBDIRS="cref ffi libraries sf sos ssp star-parser xml"
-PLUGIN_SUBDIRS="blowfish edwin gdbm imail pgsql x11 x11-screen"
 OTHER_SUBDIRS="6001 compiler runtime xdoc microcode"
 
 # lib
@@ -120,9 +93,4 @@ for SUBDIR in ${INSTALLED_SUBDIRS} ${OTHER_SUBDIRS}; do
     echo "setting up ${SUBDIR}"
     maybe_link ${SUBDIR}/Setup.sh ../etc/Setup.sh
     (cd ${SUBDIR} && ./Setup.sh ${1+"$@"})
-done
-
-for SUBDIR in ${PLUGIN_SUBDIRS}; do
-    echo "setting up ${SUBDIR}"
-    (cd ${SUBDIR} && ./autogen.sh)
 done

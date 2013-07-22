@@ -23,8 +23,6 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
 ## USA.
 
-EXTRA_DIST = autogen.sh
-
 MIT_SCHEME_EXE = @MIT_SCHEME_TOOLCHAIN_EXE@
 scmlibdir = @MIT_SCHEME_LIBDIR@
 scmlib_subdir = $(scmlibdir)x11-screen
@@ -53,6 +51,6 @@ TESTS = x11-screen-check.sh
 
 TAGS_FILES = $(sources)
 
-EXTRA_DIST += $(sources) compile.sh x11-screen.pkg
+EXTRA_DIST = $(sources) compile.sh x11-screen.pkg
 EXTRA_DIST += x11-screen-check.sh x11-screen-test.scm
 EXTRA_DIST += make.scm optiondb.scm compile.scm
