@@ -795,8 +795,6 @@ USA.
 (define-class <imap-folder> (<folder>)
   (connection define standard
 	      initial-value #f)
-  (cache-lock-state define standard
-		    initial-value 'UNKNOWN)
   (read-only? define standard)
   (allowed-flags define standard)
   (permanent-flags define standard)
@@ -2035,44 +2033,12 @@ USA.
       (delete-file-recursively (imap-message-cache-pathname message)))))
 
 (define (with-folder-locked folder if-locked #!optional if-not-locked)
-  (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
-      (if-locked)
-      (let ((if-not-locked
-	     (if (default-object? if-not-locked) #f if-not-locked))
-	    (pathname
-	     (imap-folder-lock-pathname folder)))
-	(guarantee-init-file-directory pathname)
-	(dynamic-wind
-	  (lambda () unspecific)
-	  (lambda ()
-	    (let loop ((i 0))
-	      (without-interrupts
-	       (lambda ()
-		 (if (allocate-temporary-file pathname)
-		     (set-imap-folder-cache-lock-state! folder 'LOCKED))
-		 unspecific))
-	      (cond ((eq? 'LOCKED (imap-folder-cache-lock-state folder))
-		     (if (> i 0)
-			 (imail-ui:clear-message))
-		     (if-locked))
-		    ((eq? 'FAILED (imap-folder-cache-lock-state folder))
-		     (if if-not-locked (if-not-locked)))
-		    ((= i 2)
-		     (imail-ui:clear-message)
-		     (set-imap-folder-cache-lock-state! folder 'FAILED)
-		     (if if-not-locked (if-not-locked)))
-		    (else
-		     (imail-ui:message "Waiting for folder lock..." i)
-		     (imail-ui:sit-for 1000)
-		     (loop (+ i 1))))))
-	  (lambda ()
-	    (if (eq? 'LOCKED (imap-folder-cache-lock-state folder))
-		(begin
-		  (deallocate-temporary-file pathname)
-		  (set-imap-folder-cache-lock-state! folder 'UNLOCKED))))))))
+  folder if-not-locked
+  (if-locked))
 
 (define (clear-lock-state-on-folder-close folder)
-  (set-imap-folder-cache-lock-state! folder 'UNKNOWN))
+  folder
+  unspecific)
 
 (define (message-item-pathname message keyword)
   (init-file-specifier->pathname
