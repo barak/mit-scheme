@@ -127,5 +127,8 @@ install-pdf: $(PDF_TARGET)
 install-ps: $(PS_TARGET)
 	$(INSTALL_DATA) $(PS_TARGET) $(DESTDIR)$(psdir)/.
 
+# The above is not parallel build safe.
+.NOTPARALLEL:
+
 .PHONY: all mostlyclean clean distclean maintainer-clean
 .PHONY: install-info install-html install-pdf install-ps
