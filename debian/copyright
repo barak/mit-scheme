@@ -13,9 +13,7 @@ Copyright:
    Institute of Technology, 77 Massachusetts Avenue, Cambridge MA
    02139, USA.  MIT/GNU Scheme is released under the GNU General
    Public License with the additional exemption that compiling,
-   linking, and/or using OpenSSL is allowed.  On Debian GNU/Linux
-   systems, the complete text of the GNU General Public License can be
-   found in `/usr/share/common-licenses/GPL'.
+   linking, and/or using OpenSSL is allowed.
 
    MIT/GNU Scheme is free software; you can redistribute it and/or
    modify it under the terms of the GNU General Public License as
@@ -32,6 +30,10 @@ Copyright:
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
    02110-1301, USA.
 
+   On Debian GNU/Linux systems, the complete text of the GNU General
+   Public License version 2 can be found in
+   `/usr/share/common-licenses/GPL-2'.
+
    ----------------------------------------------------------------
 
    The MIT/GNU Scheme Reference Manual and related manuals are
@@ -39,12 +41,14 @@ Copyright:
    2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011
    Massachusetts Institute of Technology, 77 Massachusetts Avenue,
    Cambridge MA 02139, USA.  They are released under the GNU Free
-   Documentation License.  On Debian GNU/Linux systems, the complete
-   text of the GNU Free Documentation License can be found in
-   `/usr/share/common-licenses/GFDL'.
+   Documentation License.
 
    Permission is granted to copy, distribute and/or modify these
    documents under the terms of the GNU Free Documentation License,
    Version 1.2 or any later version published by the Free Software
    Foundation; with no Invariant Sections, with no Front-Cover Texts
    and no Back-Cover Texts.
+
+   On Debian GNU/Linux systems, the complete text of the GNU Free
+   Documentation License version 1.2 can be found in
+   `/usr/share/common-licenses/GFDL-1.2'.
