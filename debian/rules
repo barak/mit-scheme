@@ -37,3 +37,9 @@ override_dh_auto_install:
 
 override_dh_link:
 	dh_link /usr/share/man/man1/mit-scheme.1.gz /usr/share/man/man1/mit-scheme-$(BIN_ARCH).1.gz
+
+override_dh_auto_clean:
+	-dh_auto_clean
+
+override_dh_clean:
+	dh_clean --exclude=TAGS
