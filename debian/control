@@ -55,7 +55,6 @@ Description: MIT/GNU Scheme debugging files
 
 Package: mit-scheme-doc
 Section: doc
-Priority: optional
 Architecture: all
 Multi-Arch: foreign
 Depends: ${misc:Depends}
