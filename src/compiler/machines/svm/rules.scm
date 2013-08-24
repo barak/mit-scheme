@@ -460,6 +460,20 @@ USA.
 			(else (error "Unknown flonum predicate:" predicate)))
 		      (float-source source1) temp)
     (inst:load-immediate temp constant)))
+
+(define-rule predicate
+  (FLONUM-PRED-2-ARGS (? predicate)
+		      (OBJECT->FLOAT (CONSTANT (? constant)))
+		      (REGISTER (? source)))
+  (QUALIFIER (flo:flonum? constant))
+  (let ((temp (float-temporary)))
+    (simple-branches! (case predicate
+			((FLONUM-EQUAL?) 'EQ)
+			((FLONUM-LESS?) 'LT)
+			((FLONUM-GREATER?) 'GT)
+			(else (error "Unknown flonum predicate:" predicate)))
+		      temp (float-source source))
+    (inst:load-immediate temp constant)))
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))

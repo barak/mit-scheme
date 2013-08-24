@@ -84,6 +84,7 @@ maybe_link lib/edwin ../edwin
 maybe_link lib/include ../microcode
 maybe_link lib/optiondb.scm ../etc/optiondb.scm
 maybe_link lib/runtime ../runtime
+maybe_link lib/compiler ../compiler
 maybe_link lib/mit-scheme.h ../microcode/pruxffi.h
 maybe_link lib/ffi ../ffi
 maybe_link lib/ffi-test-shim.so ../ffi/ffi-test-shim.so
