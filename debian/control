@@ -10,8 +10,8 @@ Build-Depends: debhelper (>= 9), dh-autoreconf,
 		libgdbm-dev, libpq-dev,
 		libncurses5-dev,
 		libx11-dev, libxt-dev,
-		libdb-dev, libltdl-dev
-Build-Depends-Indep: texinfo, texlive
+		libdb-dev, libltdl-dev,
+		texinfo, texlive
 Standards-Version: 3.9.4
 Homepage: http://www.gnu.org/software/mit-scheme/
 Vcs-Git: git://anonscm.debian.org/collab-maint/mit-scheme.git
