@@ -1,3 +1,9 @@
+mit-scheme (9.1.1-2) unstable; urgency=low
+
+  * build dependency on texinfo
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Wed, 28 Aug 2013 14:47:17 +0100
+
 mit-scheme (9.1.1-1) unstable; urgency=low
 
   * New upstream
