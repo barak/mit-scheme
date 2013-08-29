@@ -2,3 +2,4 @@
 0002-AUXDIR_NAME-sans-arch.patch
 0003-texinfo-strong-note.patch
 0004-sequentialize-docs.patch
+0005-makeinfo-5-fix.patch
