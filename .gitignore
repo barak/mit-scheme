@@ -34,10 +34,9 @@
 /doc/*/*.info
 /doc/*/*.info-*
 
+autom4te.cache/
 /build-stamp
 /configure-stamp
-/debian/mit-scheme/
-/debian/tmp/
 /doc/Makefile
 /doc/config.status
 /doc/ffi/Makefile
@@ -100,5 +99,3 @@
 /src/xdoc/Makefile.in
 /src/xml/Makefile
 /src/xml/Makefile.in
-
-!/debian/**/*
