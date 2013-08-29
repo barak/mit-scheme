@@ -7,25 +7,32 @@ $ autoreconf --force
 
 - move src/microcode/aclocal.m4 to src/microcode/mit_scheme_native_code.m4
 
-- use single shared microcode/ subdir
+- use single shared directory locally-defined macros (src/microcode/ for now)
+
+The necessary local m4 macro file is explicitly included.
+This is necessary because autoconf is not using automake or libtools,
+so  AC_CONFIG_MACRO_DIR([.../microcode]) won't work.  Gulp.
 ---
- src/configure.ac                        |  1 +
+ src/configure.ac                        |  4 ++
  src/microcode/aclocal.m4                | 75 ---------------------------------
- src/microcode/configure.ac              |  1 +
+ src/microcode/configure.ac              |  4 ++
  src/microcode/mit_scheme_native_code.m4 | 75 +++++++++++++++++++++++++++++++++
- 4 files changed, 77 insertions(+), 75 deletions(-)
+ 4 files changed, 83 insertions(+), 75 deletions(-)
  delete mode 100644 src/microcode/aclocal.m4
  create mode 100644 src/microcode/mit_scheme_native_code.m4
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 3c79469..db9ead4 100644
+index 3c79469..6326d2a 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -3,6 +3,7 @@ dnl Process this file with autoconf to produce a configure script.
+@@ -3,6 +3,10 @@ dnl Process this file with autoconf to produce a configure script.
  AC_INIT([MIT/GNU Scheme], [9.1.1], [bug-mit-scheme@gnu.org], [mit-scheme])
  AC_CONFIG_SRCDIR([microcode/boot.c])
  AC_CONFIG_AUX_DIR([microcode])
-+AC_CONFIG_MACRO_DIR([microcode])
++# Would set m4 macro dir, but only works if automake or libtools in use.
++# Instead we include directly.
++# AC_CONFIG_MACRO_DIR([microcode])
++m4_include([microcode/mit_scheme_native_code.m4])
  AC_PROG_MAKE_SET
  
  AC_COPYRIGHT(
@@ -111,14 +118,17 @@ index 3016efd..0000000
 -esac
 -])
 diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
-index 2a032ee..605a03c 100644
+index 2a032ee..825e5f9 100644
 --- a/src/microcode/configure.ac
 +++ b/src/microcode/configure.ac
-@@ -2,6 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
+@@ -2,6 +2,10 @@ dnl Process this file with autoconf to produce a configure script.
  
  AC_INIT([MIT/GNU Scheme microcode], [15.3], [bug-mit-scheme@gnu.org], [mit-scheme])
  AC_CONFIG_SRCDIR([boot.c])
-+AC_CONFIG_MACRO_DIR([../microcode])
++# Would set m4 macro dir, but only works if automake or libtools in use.
++# Instead we include directly.
++# AC_CONFIG_MACRO_DIR([../microcode])
++m4_include([../microcode/mit_scheme_native_code.m4])
  AC_CONFIG_HEADERS([config.h])
  AC_PROG_MAKE_SET
  

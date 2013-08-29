@@ -8,10 +8,10 @@ Subject: AUXDIR_NAME sans arch
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index db9ead4..7e77f46 100644
+index 6326d2a..b05877b 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
-@@ -85,7 +85,7 @@ svm1)
+@@ -88,7 +88,7 @@ svm1)
      INSTALL_LIARC_BUNDLES=
      ;;
  esac
