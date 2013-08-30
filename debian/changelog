@@ -1,3 +1,9 @@
+mit-scheme (9.1.1-5) unstable; urgency=low
+
+  * ${DPKG_MAINTSCRIPT_ARCH} i486 is i386
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Fri, 30 Aug 2013 16:31:28 +0100
+
 mit-scheme (9.1.1-4) unstable; urgency=low
 
   * use ${DPKG_MAINTSCRIPT_ARCH} in installation scripts as
