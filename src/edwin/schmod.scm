@@ -294,11 +294,13 @@ Otherwise, it is shown in the echo area."
     (let ((start
 	   (forward-down-list (backward-up-list point 1 'ERROR) 1 'ERROR))
 	  (buffer (mark-buffer point)))
-      (let ((end (forward-sexp start 1 'ERROR)))
+      (let* ((end (forward-sexp start 1 'ERROR))
+             (procedure-region (make-region start end))
+             (procedure-name (region->string procedure-region)))
 	(let ((procedure
 	       (let ((environment (evaluation-environment buffer)))
 		 (extended-scode-eval
-		  (syntax (with-input-from-region (make-region start end) read)
+		  (syntax (with-input-from-region procedure-region read)
 			  environment)
 		  environment))))
 	  (if (procedure? procedure)
@@ -326,7 +328,7 @@ Otherwise, it is shown in the echo area."
 			       (insert-string " . " point)
 			       (insert-string (symbol-name argl) point)))))
 		    (fluid-let ((*unparse-uninterned-symbols-by-name?* #t))
-		      (message argl))))
+		      (message procedure-name ": " argl))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 
