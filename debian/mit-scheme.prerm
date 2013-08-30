@@ -24,6 +24,9 @@ case "${1}" in
 	amd64|x86_64)
 	    BIN_ARCH=x86-64
 	    ;;
+	i486|i586)
+	    BIN_ARCH=i386
+	    ;;
     esac
     update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${BIN_ARCH}
     update-alternatives --remove scheme /usr/bin/mit-scheme-${BIN_ARCH}
