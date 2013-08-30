@@ -1,0 +1,14 @@
+Document: mit-scheme-ffi
+Title: The FFI Reference Manual
+Author: Matt Birkholz
+Abstract: The FFI Reference Manual: a Foreign Function Interface for MIT/GNU Scheme
+ FFI provides Scheme syntax for calling C functions and accessing
+ C data for MIT/GNU Scheme, using specifications in a .cdecl file.
+Section: Programming
+
+Format: HTML
+Index: /usr/share/doc/mit-scheme-doc/html/mit-scheme-ffi/index.html
+Files: /usr/share/doc/mit-scheme-doc/html/mit-scheme-ffi/*.html
+
+Format: PDF
+Files: /usr/share/doc/mit-scheme-doc/pdf/mit-scheme-ffi.pdf.gz
