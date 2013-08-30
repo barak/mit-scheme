@@ -1577,7 +1577,7 @@ storage available after collection, an exact non-negative integer.
 to system tasks after the need for a garbage collection is detected and
 before the garbage collector is started.  (An example of such a system
 task is changing the run-light to show ``gc'' when scheme is running
-under Emacs.)  @strong{Caution:} you should not specify
+under Emacs.)  @strong{Caution:} You should not specify
 @var{safety-margin} unless you know what you are doing.  If you specify
 a value that is too small, you can put Scheme in an unusable state.
 @end deffn
