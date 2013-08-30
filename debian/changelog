@@ -1,3 +1,10 @@
+mit-scheme (9.1.1-4) unstable; urgency=low
+
+  * use ${DPKG_MAINTSCRIPT_ARCH} in installation scripts as
+    dpkg-architecture might be unavailable (closes: #721230)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Fri, 30 Aug 2013 13:58:16 +0100
+
 mit-scheme (9.1.1-3) unstable; urgency=low
 
   * patch for bracing makeinfo 5 issues
