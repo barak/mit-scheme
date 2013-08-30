@@ -81,7 +81,7 @@ $(HTML_TARGET)/index.html: $(SOURCES)
 	makeinfo --html $(TEXINFO_ROOT).texinfo
 
 $(PDF_TARGET): $(SOURCES)
-	texi2pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
+	texi2dvi --pdf $(TEX_OPTIONS) --output=$@ $(TEXINFO_ROOT).texinfo
 
 $(PS_TARGET): $(SOURCES)
 	-rm -f $(DVI_TARGET)
