@@ -35,6 +35,14 @@ override_dh_auto_install:
 	 rm --verbose -f scheme bchscheme mit-scheme mit-scheme-native
 	find debian/tmp/usr/lib -name runtime.com -delete
 
+# Upstream changelog is over 5MB, leave a copy in the doc package but
+# remove it from the binary package to reduce bloat.
+# See http://dedup.debian.net/.
+override_dh_installchangelog:
+	dh_installchangelog
+	-rm --verbose debian/mit-scheme/usr/share/doc/mit-scheme/changelog
+	-rm --verbose debian/mit-scheme-dbg/usr/share/doc/mit-scheme-dbg/changelog
+
 override_dh_link:
 	dh_link /usr/share/man/man1/mit-scheme.1.gz /usr/share/man/man1/mit-scheme-$(BIN_ARCH).1.gz
 
