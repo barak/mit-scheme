@@ -24,13 +24,10 @@ set -e
 
 case "${1}" in
 (configure)
-    ARCH=$(dpkg-architecture -qDEB_HOST_GNU_CPU)
-    case ${ARCH} in
-	x86_64)
+    BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
+    case ${BIN_ARCH} in
+	amd64|x86_64)
 	    BIN_ARCH=x86-64
-	    ;;
-	*)
-	    BIN_ARCH=${ARCH}
 	    ;;
     esac
     update-alternatives \

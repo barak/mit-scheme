@@ -19,9 +19,14 @@ case "${1}" in
 (upgrade)
     ;;
 (remove|failed-upgrade|deconfigure)
-    ARCH=$(dpkg-architecture -qDEB_HOST_GNU_CPU)
-    update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${ARCH}
-    update-alternatives --remove scheme /usr/bin/mit-scheme-${ARCH}
+    BIN_ARCH=${DPKG_MAINTSCRIPT_ARCH}
+    case ${BIN_ARCH} in
+	amd64|x86_64)
+	    BIN_ARCH=x86-64
+	    ;;
+    esac
+    update-alternatives --remove mit-scheme /usr/bin/mit-scheme-${BIN_ARCH}
+    update-alternatives --remove scheme /usr/bin/mit-scheme-${BIN_ARCH}
     ;;
 (*)
     echo "prerm called with unknown argument \"${1}\"" >&2
