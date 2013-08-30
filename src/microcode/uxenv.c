@@ -182,7 +182,7 @@ OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
 #elif defined(HAVE_CLOCK_GETTIME)
 
 void
-OS_nanotime_since_utc_epoch (struct scheme_nanotime t)
+OS_nanotime_since_utc_epoch (struct scheme_nanotime *t)
 {
   struct timespec ts;
   STD_VOID_SYSTEM_CALL
