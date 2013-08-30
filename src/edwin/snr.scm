@@ -2128,22 +2128,26 @@ This unmarks the article indicated by point and any other articles in
 		(update-buffer-news-thread-status buffer thread)))))))
 
 (define-command news-select-article
-  "Select a buffer containing the News article indicated by point."
-  ()
-  (lambda ()
-    (select-buffer
-     (let ((buffer (selected-buffer)))
-       (cond ((news-article-buffer? buffer)
-	      buffer)
-	     ((news-group-buffer? buffer)
-	      (call-with-values
-		  (lambda ()
-		    (get-article-buffer buffer (current-news-header) #t))
-		(lambda (buffer new?)
-		  new?
-		  buffer)))
-	     (else
-	      (editor-error "No article selected.")))))))
+  "Select a buffer in the other window containing the News article at point.
+With prefix arg, select the buffer in the same window."
+  "P"
+  (lambda (same-window?)
+    (let ((proc (if same-window?
+                    select-buffer
+                    select-buffer-other-window)))
+      (proc
+       (let ((buffer (selected-buffer)))
+         (cond ((news-article-buffer? buffer)
+                buffer)
+               ((news-group-buffer? buffer)
+                (call-with-values
+                    (lambda ()
+                      (get-article-buffer buffer (current-news-header) #t))
+                  (lambda (buffer new?)
+                    new?
+                    buffer)))
+               (else
+                (editor-error "No article selected."))))))))
 
 (define-command news-toggle-thread
   "Expand or collapse the current thread."
