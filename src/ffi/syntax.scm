@@ -66,19 +66,22 @@ USA.
 	 (receiver (cadr form)))))
 
 (define (load-c-includes library)
-  (let* ((lib (merge-pathnames library (system-library-directory-pathname)))
-	 (name (pathname-name lib))
-	 (const (pathname-new-name lib (string-append name "-const")))
-	 (types (pathname-new-name lib (string-append name "-types")))
-	 (includes (fasload types (not c-include-noisily?)))
-	 (comment (fasload const (not c-include-noisily?)))
-	 (enums.struct-values
-	  (if (comment? comment) (comment-expression comment)
-	      (error:wrong-type-datum comment "a fasl comment"))))
-    (warn-new-cdecls includes)
-    (set-c-includes/enum-values! includes (car enums.struct-values))
-    (set-c-includes/struct-values! includes (cadr enums.struct-values))
-    includes))
+  (let ((lib (system-library-pathname (string-append library "-shim.so"))))
+    (let ((includes (fasload
+		     (pathname-new-name (pathname-new-type lib "bin")
+					(string-append library "-types"))
+		     (not c-include-noisily?)))
+	  (comment (fasload
+		    (pathname-new-name (pathname-new-type lib "bin")
+				       (string-append library "-const"))
+		    (not c-include-noisily?))))
+      (let ((enums.struct-values
+	     (if (comment? comment) (comment-expression comment)
+		 (error:wrong-type-datum comment "a fasl comment"))))
+	(warn-new-cdecls includes)
+	(set-c-includes/enum-values! includes (car enums.struct-values))
+	(set-c-includes/struct-values! includes (cadr enums.struct-values))
+	includes))))
 
 (define (warn-new-cdecls includes)
   (for-each

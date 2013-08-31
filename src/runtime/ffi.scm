@@ -245,9 +245,9 @@ USA.
       unspecific
       (let* ((library (%alien-function/library afunc))
 	     (name (%alien-function/name afunc))
-	     (pathname (merge-pathnames
-			(pathname-new-type (string-append library "-shim") "so")
-			(system-library-directory-pathname)))
+	     (pathname (system-library-pathname
+			(pathname-new-type (string-append library"-shim")
+					   "so")))
 	     (handle (or (find-dld-handle
 			  (lambda (h)
 			    (pathname=? pathname (dld-handle-pathname h))))
