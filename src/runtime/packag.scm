@@ -181,18 +181,28 @@ USA.
 (define system-loader/enable-query? #f)
 
 (define (package-set-pathname pathname #!optional os-type)
-  (pathname-new-type
-   (pathname-new-name pathname
-		      (string-append (pathname-name pathname)
-				     "-"
-				     (case (if (default-object? os-type)
-					       microcode-id/operating-system
-					       os-type)
-				       ((NT) "w32")
-				       ((OS/2) "os2")
-				       ((UNIX) "unx")
-				       (else "unk"))))
-   "pkd"))
+  (let ((p (->pathname pathname)))
+    (pathname-new-type
+     (pathname-new-name p
+			(string-append
+			 (or (pathname-name p)
+			     ;; Interpret dirname/ as dirname/dirname-OS.pkd.
+			     (let ((dir (pathname-directory p)))
+			       (if (pair? dir)
+				   (let ((name (last dir)))
+				     (if (string? name)
+					 name
+					 ""))
+				   "")))
+			 "-"
+			 (case (if (default-object? os-type)
+				   microcode-id/operating-system
+				   os-type)
+			   ((NT) "w32")
+			   ((OS/2) "os2")
+			   ((UNIX) "unx")
+			   (else "unk"))))
+     "pkd")))
 
 (define-integrable (make-package-file tag version descriptions loads)
   (vector tag version descriptions loads))
