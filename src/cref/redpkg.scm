@@ -37,26 +37,40 @@ USA.
        packages
        extensions
        loads
-       (map (lambda (pathname)
-	      (cons
-	       (->namestring pathname)
-	       (let ((pathname
-		      (package-set-pathname
-		       (merge-pathnames pathname model-pathname)
-		       os-type)))
-		 (if (file-exists? pathname)
-		     (let ((contents (fasload pathname #t)))
-		       (if (package-file? contents)
-			   contents
-			   (begin
-			     (warn "Malformed package-description file:"
-				   pathname)
-			     #f)))
-		     (begin
-		       (warn "Can't find package-description file:" pathname)
-		       #f)))))
+       (map (lambda (name)
+	      (let ((pathname (find-global-definitions name model-pathname
+						       os-type)))
+		(and pathname
+		     (cons (->namestring pathname)
+			   (let ((contents (fasload pathname #t)))
+			     (if (package-file? contents)
+				 contents
+				 (begin
+				   (warn "Malformed package-description file:"
+					 pathname)
+				   #f)))))))
 	    globals)
        model-pathname))))
+
+(define (find-global-definitions name model-pathname os-type)
+  (let* ((filename (->pathname
+		    (cond ((symbol? name) (symbol-name name))
+			  ((string? name) name)
+			  (else (error "Not a globals name:" name)))))
+	 (pkd (package-set-pathname filename os-type)))
+    (or
+     (if (symbol? name)
+	 (let ((pathname (ignore-errors
+			  (lambda ()
+			    (system-library-pathname pkd)))))
+	   (and (not (condition? pathname))
+		pathname))
+	 (let ((pathname (merge-pathnames pkd model-pathname)))
+	   (and (file-exists? pathname)
+		pathname)))
+     (begin
+       (warn "Could not find global definitions:" pkd)
+       #f))))
 
 (define (sort-descriptions descriptions)
   (letrec
@@ -265,9 +279,10 @@ USA.
 				      (cddr expression))))
       ((GLOBAL-DEFINITIONS)
        (let ((filenames (cdr expression)))
-	 (if (not (for-all? filenames string?))
+	 (if (not (for-all? filenames
+			    (lambda (f) (or (string? f) (symbol? f)))))
 	     (lose))
-	 (cons 'GLOBAL-DEFINITIONS (map parse-filename filenames))))
+	 (cons 'GLOBAL-DEFINITIONS filenames)))
       ((OS-TYPE-CASE)
        (if (not (and (list? (cdr expression))
 		     (for-all? (cdr expression)
@@ -465,7 +480,7 @@ USA.
 			   package)))))))
 	;; GLOBALS is a list of the bindings supplied externally.
 	(for-each (lambda (global)
-		    (if (cdr global)
+		    (if (and global (cdr global))
 			(process-globals-info (cdr global)
 					      (->namestring (car global))
 					      get-package)))
