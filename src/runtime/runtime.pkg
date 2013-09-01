@@ -3124,6 +3124,7 @@ USA.
 	  pathname?
 	  system-library-directory-pathname
 	  system-library-pathname
+	  with-system-library-directories
 	  uri->pathname
 	  user-homedir-pathname)
   (initialization (initialize-package!)))
@@ -3331,7 +3332,13 @@ USA.
 	  free
 	  register-c-callback
 	  de-register-c-callback
-	  outf-error)
+	  outf-error
+	  generate-shim
+	  compile-shim
+	  link-shim
+	  install-shim
+	  compile-bundle
+	  install-bundle)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

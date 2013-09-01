@@ -96,4 +96,5 @@ extern SCM cons (SCM car, SCM cdr);
 /* For debugging messages from shim code. */
 extern void outf_error (const char *, ...);
 extern void outf_flush_error (void);
+extern void error_external_return (void);
 #endif
