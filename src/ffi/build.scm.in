@@ -27,41 +27,45 @@ USA.
 ;;;; Build Utilities
 ;;; package: (ffi build)
 
-(define (compile-bundle)
-  (with-system-library-directories
-   '("./")
-   (lambda ()
-     (if (eq? microcode-id/compiled-code-type 'C)
-	 (fluid-let ((compiler:invoke-c-compiler? #f))
-	   (compile-dir)
-	   (c-compile-pkgs))
-	 (compile-dir)))))
-
 (define (compile-shim)
   (run-command (append cc-cmdline-prefix (command-line))))
 
 (define (link-shim)
   (run-command (append CCLD LDFLAGS (command-line) MODULE_LDFLAGS)))
 
-(define (install-bundle)
-  (let* ((name (working-directory-name))
-	 (target-dir (->namestring (system-library-pathname name #f))))
-    (run-command (list "rm" "-rf" target-dir))
-    (run-command (list "mkdir" target-dir))
-    (run-command (append (list "install" "-m" "644")
-			 (command-line)
-			 (list target-dir)))))
-
 (define (install-shim libname)
-  (run-command (list "install" "-m" "644"
-		     (string-append libname "-shim.so")
-		     (string-append libname "-types.bin")
-		     (string-append libname "-const.bin")
-		     (->namestring (system-library-directory-pathname)))))
+  (let ((library-dir (->namestring
+		      (system-library-directory-pathname libname))))
+    (run-command (list "rm" "-rf" library-dir))
+    (run-command (list "mkdir" library-dir))
+    (run-command (append (list "install" "-m" "644")
+			 (command-line) (list library-dir)))
+    (run-command (list "install" "-m" "644"
+		       (string-append libname "-shim.so")
+		       (string-append libname "-types.bin")
+		       (string-append libname "-const.bin")
+		       (->namestring
+			(pathname-new-directory
+			 library-dir
+			 (except-last-pair
+			  (pathname-directory library-dir))))))))
+
+(define (generate-shim library #!optional prefix)
+  (let ((-const (string-append library"-const"))
+	(-const.c (string-append library"-const.c"))
+	(-const.o (string-append library"-const.o")))
+    (c-generate library prefix)
+    (run-command (append CC CFLAGS (list "-c" -const.c)))
+    (run-command (append CC LDFLAGS (list "-o" -const -const.o)))
+    (run-command (list (->namestring
+			(merge-pathnames -const (working-directory-pathname)))))
+    (sf -const)))
 
 (define (parse-words string)
   (burst-string string char-set:whitespace #t))
 
+(define CC (parse-words "@CC@"))
+(define CFLAGS (parse-words "@CFLAGS@"))
 (define CCLD (parse-words "@CCLD@"))
 (define LDFLAGS (parse-words "@LDFLAGS@"))
 (define MODULE_LDFLAGS (parse-words "@MODULE_LDFLAGS@"))
@@ -93,32 +97,3 @@ USA.
 		  'working-directory (working-directory-pathname))))
        (if (not (zero? code))
 	   (error "Process exited with error code:" code command))))))
-
-(define (compile-dir)
-  (let ((name (working-directory-name)))
-    (if (file-exists? (pathname-new-type name "sf"))
-	(begin
-	  (load (pathname-new-type name "sf"))
-	  (load (pathname-new-type name "cbf")))
-	(load "compile"))))
-
-(define (c-compile-pkgs)
-  (let* ((name (working-directory-name))
-	 (root
-	     (if (string=? name "star-parser")
-		 "parser"
-		 name))
-	 (compile-pkg
-	  (lambda (os)
-	    (cbf-conditionally (string-append root "-" os ".pkd")))))
-    (compile-pkg "unx")
-    (compile-pkg "w32")
-    (compile-pkg "os2")))
-
-(define (cbf-conditionally pathname)
-  (let ((input (pathname-default-type pathname "bin"))
-	(file-type (if (eq? microcode-id/compiled-code-type 'C)
-		       "c" "com")))
-    (if (file-modification-time<? (pathname-new-type pathname file-type)
-				  input)
-	(compile-file input))))

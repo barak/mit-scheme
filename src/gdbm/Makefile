@@ -23,15 +23,14 @@
 MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
-build: gdbm-shim.so gdbm-types.bin gdbm-const.bin
-	echo "(compile-bundle)" | $(EXE)
+build: gdbm-shim.so
+	echo '(load "compile")' | $(EXE)
 
 check:
 	echo '(load "check")' | $(EXE)
 
 install: build
-	echo "(install-bundle)" | $(EXE) -- *.com *.bci *.pkd make.scm
-	echo '(install-shim "gdbm")' | $(EXE)
+	echo '(install-shim "gdbm")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f gdbm-const.scm gdbm-const gdbm-const.c gdbm-shim.c
@@ -49,19 +48,7 @@ gdbm-adapter.o: gdbm-adapter.c gdbm-shim.h
 gdbm-shim.o: gdbm-shim.c gdbm-shim.h
 	echo '(compile-shim)' | $(EXE) -- -c $<
 
-gdbm-shim.c gdbm-const.c gdbm-types.bin: gdbm-shim.h gdbm.cdecl
+gdbm-shim.c: gdbm.cdecl gdbm-shim.h
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' | $(EXE)
-
-gdbm-const.bin: gdbm-const.scm
-	echo '(sf "gdbm-const")' | $(EXE)
-
-gdbm-const.scm: gdbm-const
-	./gdbm-const
-
-gdbm-const: gdbm-const.o
-	$(CC) $(LDFLAGS) -o $@ $^
-
-gdbm-const.o: gdbm-const.c gdbm-shim.h
-	$(CC) $(CFLAGS) -c $<
 
 .PHONY: build install clean

@@ -73,6 +73,12 @@ The editor subsystem consists of two directories:
 * "edwin" contains our Emacs-like editor written in Scheme.
 
 * "imail" contains an email-reading program for Edwin.
+
+There is one C/Unix FFI wrapper thus far:
+
+* "gdbm" wraps libgdbm, the GNU dbm database routines, and provides a
+  drop-in replacement for the microcode module based package (runtime
+  gdbm).
 
 These are miscellaneous extras:
 

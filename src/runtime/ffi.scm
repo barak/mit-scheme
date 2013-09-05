@@ -527,7 +527,7 @@ USA.
 
 (define (generate-shim library #!optional prefix)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
+  ((environment-lookup (->environment '(ffi)) 'generate-shim) library prefix))
 
 (define (compile-shim)
   (load-ffi-quietly)
@@ -541,21 +541,16 @@ USA.
   (load-ffi-quietly)
   ((environment-lookup (->environment '(ffi)) 'install-shim) library))
 
-(define (compile-bundle)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'compile-bundle)))
-
-(define (install-bundle)
-  (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-bundle)))
-
 (define (load-ffi-quietly)
   (if (not (name->package '(FFI)))
-      (with-notification
-       (lambda (port) (write-string "Loading FFI option" port))
-       (lambda ()
-	 (fluid-let ((load/suppress-loading-message? #t))
-	   (load-option 'ffi))))))
+      (let ((kernel (lambda ()
+		      (fluid-let ((load/suppress-loading-message? #t))
+			(load-option 'FFI)))))
+	(if (nearest-cmdl/batch-mode?)
+	    (kernel)
+	    (with-notification (lambda (port)
+				 (write-string "Loading FFI option" port))
+			       kernel)))))
 
 
 (define calloutback-stack '())
