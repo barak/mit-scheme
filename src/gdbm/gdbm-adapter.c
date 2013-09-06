@@ -24,7 +24,7 @@ USA.
 
 */
 
-/* Interface to the gdbm database library */
+/* Adapters for the GDBM database library. */
 
 #include <mit-scheme.h>
 #include "gdbm-shim.h"

@@ -1,6 +1,6 @@
 #| -*-Scheme-*- |#
 
-;;;; Test the GDBM adapter.
+;;;; Test the GDBM wrapper.
 
 (load "make")
 (with-system-library-directories

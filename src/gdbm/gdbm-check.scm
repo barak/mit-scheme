@@ -24,10 +24,10 @@ USA.
 
 |#
 
-;;;; Test the GDBM adapter.
+;;;; Test the GDBM wrapper.
 
 (if (not (gdbm-available?))
-    (warn "gdbm adapter not found")
+    (warn "gdbm wrapper not found")
     (let ((filename.db "gdbm-check.db"))
       (ignore-errors (lambda () (delete-file filename.db)))
       (let ((dbf (gdbm-open filename.db 0 GDBM_WRCREAT #o660)))

@@ -24,11 +24,10 @@ USA.
 
 |#
 
-;;;; gdbm Database Library Interface
+;;;; GDBM wrapper
 ;;; package: (gdbm)
 
-(declare (usual-integrations)
-	 (integrate-external))
+(declare (usual-integrations))
 
 (C-include "gdbm")
 

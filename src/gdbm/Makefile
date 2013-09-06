@@ -23,16 +23,16 @@
 MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
-build: gdbm-shim.so
+all: gdbm-shim.so
 	echo '(load "compile")' | $(EXE)
 
-check:
+check: all
 	echo '(load "check")' | $(EXE)
 
-install: build
+install: all
 	echo '(install-shim "gdbm")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
-clean:
+clean distclean maintainer-clean:
 	rm -f gdbm-const.scm gdbm-const gdbm-const.c gdbm-shim.c
 	rm -f gdbm-*.crf gdbm-*.fre gdbm-*.pkd
 	rm -f *.o *.so *.bin *.ext *.com *.bci
@@ -51,4 +51,4 @@ gdbm-shim.o: gdbm-shim.c gdbm-shim.h
 gdbm-shim.c: gdbm.cdecl gdbm-shim.h
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' | $(EXE)
 
-.PHONY: build install clean
+.PHONY: all check install clean distclean maintainer-clean
