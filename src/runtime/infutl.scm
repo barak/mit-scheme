@@ -279,7 +279,20 @@ USA.
    (let ((value (get-environment-variable "MITSCHEME_INF_DIRECTORY")))
      (if value
 	 (pathname-as-directory value)
-	 (system-library-directory-pathname)))))
+	 (or (%find-library-directory pathname)
+	     (system-library-directory-pathname))))))
+
+(define (%find-library-directory pathname)
+  (let ((dir (pathname-directory pathname)))
+    (or (and (pair? dir)
+	     (eq? 'RELATIVE (car dir))
+	     (pair? (cdr dir))
+	     (string? (cadr dir))
+	     (let ((libdir (system-library-directory-pathname (cadr dir))))
+	       (and libdir
+		    (pathname-new-directory libdir
+					    (except-last-pair
+					     (pathname-directory libdir)))))))))
 
 (define-integrable (dbg-block/layout-first-offset block)
   (let ((layout (dbg-block/layout block)))

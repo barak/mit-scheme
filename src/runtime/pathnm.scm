@@ -622,6 +622,7 @@ these rules:
       (%find-library-directory)))
 
 (define (with-system-library-directories directories thunk)
+
   (define (existing-directory directory)
     (let ((dirpath (pathname-as-directory (merge-pathnames directory))))
       (if (file-directory? dirpath)
@@ -630,9 +631,10 @@ these rules:
 				"find" "directory" "no such directory"
 				'with-system-library-directories
 				directories))))
+
   (fluid-let ((library-directory-path
-	       (append library-directory-path
-		       (map existing-directory directories))))
+	       (append (map existing-directory directories)
+		       library-directory-path)))
     (thunk)))
 
 (define (%find-library-directory)
