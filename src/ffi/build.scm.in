@@ -34,8 +34,12 @@ USA.
   (run-command (append CCLD LDFLAGS (command-line) MODULE_LDFLAGS)))
 
 (define (install-shim libname)
-  (let ((library-dir (->namestring
-		      (system-library-directory-pathname libname))))
+  (let* ((pathname (pathname-as-directory libname))
+	 (library-dir
+	  (->namestring
+	   (or (system-library-directory-pathname pathname)
+	       (merge-pathnames pathname
+				(system-library-directory-pathname))))))
     (run-command (list "rm" "-rf" library-dir))
     (run-command (list "mkdir" library-dir))
     (run-command (append (list "install" "-m" "644")
@@ -76,7 +80,9 @@ USA.
    (filter
     (lambda (i) (not (string=? "-DMIT_SCHEME" i)))
     (parse-words "@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@"))
-   (list (string-append "-I" (->namestring (system-library-pathname ""))))
+   (list (string-append "-I" (->namestring
+			      (directory-pathname
+			       (system-library-pathname "mit-scheme.h")))))
    (parse-words "@CFLAGS@ @MODULE_CFLAGS@")))
 
 (define (working-directory-name)
