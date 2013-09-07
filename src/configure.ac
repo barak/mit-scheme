@@ -151,7 +151,6 @@ fi
 
 AC_SUBST([DEFAULT_TARGET])
 AC_SUBST([ALL_TARGET])
-AC_SUBST([FFIS])
 AC_SUBST([INSTALL_COM])
 AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
@@ -207,7 +206,7 @@ if test x"${mit_scheme_native_code}" = xc; then
         (cd lib; rm -f ${BN}; ${LN_S} ../${BN} .)
     done
     for BUNDLE in 6001 compiler cref edwin ffi imail sf sos ssp star-parser \
-		  xdoc xml $FFIS; do
+		  xdoc xml; do
     	SO=${BUNDLE}.so
 	(cd lib/lib; rm -f ${SO}; ${LN_S} ../../${BUNDLE}/${SO} .)
     done

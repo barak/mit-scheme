@@ -2,7 +2,14 @@
 
 (C-include "ffi-test")
 
-(define (test-ffi)
+(define test-ffi
+  (let ((libdir (merge-pathnames "./")))
+    (named-lambda (test-ffi)
+      (with-system-library-directories (list libdir)
+	(lambda ()
+	  (test-ffi*))))))
+
+(define (test-ffi*)
   (let* ((struct (malloc (c-sizeof "TestStruct") '|TestStruct|))
 	 (string "input string")
 	 (pi (* 4 (atan 1 1)))
