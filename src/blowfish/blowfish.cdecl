@@ -72,7 +72,7 @@ USA.
 	(length long)
 	(schedule (* BF_KEY))
 	(ivec (* uchar))
-	(num int)))
+	(num int))
 
 (extern (* (const char)) BF_options)
 

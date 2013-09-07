@@ -49,7 +49,7 @@ distclean: clean
 	rm -f Makefile config.h config.log config.status
 
 maintainer-clean: distclean
-	rm -f configure
+	rm -f configure config.h.in
 	rm -rf autom4te.cache
 
 blowfish-shim.so: blowfish-shim.o blowfish-adapter.o

@@ -91,9 +91,8 @@ USA.
   ;; Returned value is the new value of NUM.
   (guarantee-bfkey key 'BLOWFISH-CFB64)
   (guarantee-init-vector init-vector 'BLOWFISH-CFB64)
-  (guarantee-substring-indices input istart iend 'BLOWFISH-CFB64)
-  (guarantee-substring-indices output ostart (+ ostart (- iend istart))
-			       'BLOWFISH-CFB64)
+  (guarantee-substring input istart iend 'BLOWFISH-CFB64)
+  (guarantee-substring output ostart (+ ostart (- iend istart)) 'BLOWFISH-CFB64)
   (guarantee-init-index num 'BLOWFISH-CFB64)
   (let ((ilen (- iend istart)))
     (if (and (eq? input output)
@@ -121,9 +120,8 @@ USA.
   ;; Returned value is the new value of NUM.
   (guarantee-bfkey key 'BLOWFISH-OFB64)
   (guarantee-init-vector init-vector 'BLOWFISH-OFB64)
-  (guarantee-substring-indices input istart iend 'BLOWFISH-OFB64)
-  (guarantee-substring-indices output ostart (+ ostart (- iend istart))
-			       'BLOWFISH-OFB64)
+  (guarantee-substring input istart iend 'BLOWFISH-OFB64)
+  (guarantee-substring output ostart (+ ostart (- iend istart)) 'BLOWFISH-OFB64)
   (guarantee-init-index num 'BLOWFISH-OFB64)
   (let ((ilen (- iend istart)))
     (if (and (eq? input output)
@@ -152,16 +150,6 @@ USA.
       (error:bad-range-argument arg
 				"a multiple of 8 characters string"
 				operator)))
-
-(define (guarantee-substring-indices string start end operator)
-  (guarantee-string string operator)
-  (guarantee-fixnum start operator)
-  (guarantee-fixnum end operator)
-  (if (not (fix:<= 0 start))
-      (error:bad-range-argument start "a string index" operator))
-  (if (not (and (fix:<= start end)
-		(fix:<= end (string-length string))))
-      (error:bad-range-argument end "a string index" operator)))
 
 (define (guarantee-bfkey object operator)
   (if (not (and (string? object)
