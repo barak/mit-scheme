@@ -30,8 +30,8 @@ USA.
   (files "gdbm")
   (parent ())
   (initialization (initialize-package!))
-  ;; You'll have to import these from (gdbm).  They are currently
-  ;; bound in () by exports from (runtime gdbm).
+  ;; You'll have to import these from (global-definitions gdbm/).
+  ;; They are currently bound in () by exports from (runtime gdbm).
   #;(export #f
 	  gdbm-available?
 	  gdbm-close

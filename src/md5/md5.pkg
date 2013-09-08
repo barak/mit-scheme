@@ -29,8 +29,8 @@ USA.
 (define-package (md5)
   (files "md5")
   (parent ())
-  ;; You'll have to import these from (gdbm), after a (global-
-  ;; definitions gdbm/) declaration(?).
+  ;; You'll have to import these from (global-definitions md5/).  They
+  ;; are currently bound in () by exports from (runtime crypto).
   #;(export #f
 	  md5-available?
 	  md5-file

@@ -29,8 +29,8 @@ USA.
 (define-package (blowfish)
   (files "blowfish")
   (parent ())
-  ;; You'll have to import these from (gdbm), after a (global-
-  ;; definitions gdbm/) declaration(?).
+  ;; You'll have to import these from (global-definitions blowfish/).
+  ;; They are currently bound in () by exports from (runtime blowfish).
   #;(export #f
 	  blowfish-available?
 	  blowfish-cbc
