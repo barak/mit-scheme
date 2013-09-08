@@ -363,7 +363,12 @@ USA.
 			  (alien-null! args)))
 		    (loop next prev))))))))
 
+(define (reset-open-gdbfs)
+  (for-each (lambda (weak) (alien-null! (weak-cdr weak))) open-gdbfs)
+  (set! open-gdbfs '()))
+
 (define (initialize-package!)
   (set! open-gdbfs-mutex (make-thread-mutex))
   (set! open-gdbfs '())
-  (add-gc-daemon! cleanup-open-gdbfs))
+  (add-gc-daemon! cleanup-open-gdbfs)
+  (add-event-receiver! event:after-restart reset-open-gdbfs))
