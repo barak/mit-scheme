@@ -1,18 +1,23 @@
-mhash/ (prmhash.c):
-mhash 4
-mhash_count 0
-mhash_end 1
-mhash_get_block_size 1
-mhash_get_hash_name 1
-mhash_get_hash_pblock 1
-mhash_get_keygen_max_key_size 1
-mhash_get_keygen_name 1
-mhash_get_keygen_salt_size 1
-mhash_hmac_end 1
-mhash_hmac_init 3
-mhash_init 1
-mhash_keygen 4
-mhash_keygen_count 0
-mhash_keygen_uses_count 1
-mhash_keygen_uses_hash_algorithm 1
-mhash_keygen_uses_salt 1
+The mhash wrapper.
+
+This is a drop-in replacement for the mhash microcode module and the
+mhash-* procedures in runtime/crypto.scm.  It is not part of the core
+build and can be built outside the core build tree in the customary
+way:
+
+    ./configure [--with-mhash=directory]...
+    make all check install
+
+The install target copies a shared library shim and compiled Scheme
+files into the system library path.  You can override the default
+command name "mit-scheme" (and thus the system library path) by
+setting MIT_SCHEME_EXE.
+
+To load via load-option, install the following in your optiondb.scm:
+
+    (define-load-option 'MHASH
+      (guarded-system-loader '(mhash) "mhash"))
+
+You will need to import the bindings you want to use.  They are not
+exported to the global environment because they would conflict with
+the exports from (runtime crypto).

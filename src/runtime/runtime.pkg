@@ -3336,9 +3336,7 @@ USA.
 	  generate-shim
 	  compile-shim
 	  link-shim
-	  install-shim
-	  compile-bundle
-	  install-bundle)
+	  install-shim)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

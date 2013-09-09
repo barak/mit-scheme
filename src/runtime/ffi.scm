@@ -527,7 +527,7 @@ USA.
 
 (define (generate-shim library #!optional prefix)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'generate-shim) library prefix))
+  ((environment-lookup (->environment '(ffi)) 'c-generate) library prefix))
 
 (define (compile-shim)
   (load-ffi-quietly)

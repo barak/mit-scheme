@@ -23,20 +23,19 @@
 MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
-all: gdbm-shim.so
+all: gdbm-shim.so gdbm-types.bin gdbm-const.bin
 	echo '(load "compile")' | $(EXE)
 
-check: all
+check:
 	echo '(load "check")' | $(EXE)
 
-install: all
+install:
 	echo '(install-shim "gdbm")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
 clean distclean maintainer-clean:
 	rm -f gdbm-const.scm gdbm-const gdbm-const.c gdbm-shim.c
 	rm -f gdbm-*.crf gdbm-*.fre gdbm-*.pkd
-	rm -f *.o *.so *.bin *.ext *.com *.bci
-	rm -f *.moc *.fni *-init.c *-init.h *-init.o
+	rm -f *.o *.so *.bin *.ext *.com *.bci *.moc *.fni
 	rm -f gdbm-check.db
 
 gdbm-shim.so: gdbm-shim.o gdbm-adapter.o
@@ -48,7 +47,19 @@ gdbm-adapter.o: gdbm-adapter.c gdbm-shim.h
 gdbm-shim.o: gdbm-shim.c gdbm-shim.h
 	echo '(compile-shim)' | $(EXE) -- -c $<
 
-gdbm-shim.c: gdbm.cdecl gdbm-shim.h
+gdbm-shim.c gdbm-const.c gdbm-types.bin: gdbm.cdecl gdbm-shim.h
 	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' | $(EXE)
+
+gdbm-const.bin: gdbm-const.scm
+	echo '(sf "gdbm-const")' | $(EXE)
+
+gdbm-const.scm: gdbm-const
+	./gdbm-const
+
+gdbm-const: gdbm-const.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+gdbm-const.o: gdbm-const.c gdbm-shim.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .PHONY: all check install clean distclean maintainer-clean

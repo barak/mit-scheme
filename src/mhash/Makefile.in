@@ -24,24 +24,23 @@ MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
 CFLAGS = @CFLAGS@
-CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
+CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
-all: mhash-shim.so
+all: mhash-shim.so mhash-types.bin mhash-const.bin
 	echo '(load "compile")' | $(EXE)
 
-check: all
+check:
 	echo '(load "check")' | $(EXE)
 
-install: all
+install:
 	echo '(install-shim "mhash")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f mhash-const.scm mhash-const mhash-const.c mhash-shim.c
 	rm -f mhash-*.crf mhash-*.fre mhash-*.pkd
-	rm -f *.o *.so *.bin *.ext *.com *.bci
-	rm -f *.moc *.fni *-init.c *-init.h *-init.o
+	rm -f *.o *.so *.bin *.ext *.com *.bci *.moc *.fni
 	rm -f sample
 
 distclean: clean
@@ -60,8 +59,19 @@ mhash-adapter.o: mhash-adapter.c mhash-shim.h
 mhash-shim.o: mhash-shim.c mhash-shim.h
 	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
-mhash-shim.c: mhash.cdecl mhash-shim.h
-	echo '(generate-shim "mhash" "#include \"mhash-shim.h\"")' \
-	| $(EXE)
+mhash-shim.c mhash-const.c mhash-types.bin: mhash.cdecl mhash-shim.h
+	echo '(generate-shim "mhash" "#include \"mhash-shim.h\"")' | $(EXE)
+
+mhash-const.bin: mhash-const.scm
+	echo '(sf "mhash-const")' | $(EXE)
+
+mhash-const.scm: mhash-const
+	./mhash-const
+
+mhash-const: mhash-const.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+mhash-const.o: mhash-const.c mhash-shim.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .PHONY: all check install clean distclean maintainer-clean

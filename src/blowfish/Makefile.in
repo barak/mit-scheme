@@ -24,25 +24,24 @@ MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
 CFLAGS = @CFLAGS@
-CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
+CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
-all: blowfish-shim.so
+all: blowfish-shim.so blowfish-types.bin blowfish-const.bin
 	echo '(load "compile")' | $(EXE)
 
-check: all
+check:
 	echo '(load "check")' | $(EXE)
 
-install: all
+install:
 	echo '(install-shim "blowfish")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f blowfish-const.scm blowfish-const blowfish-const.c
 	rm -f blowfish-shim.c
 	rm -f blowfish-*.crf blowfish-*.fre blowfish-*.pkd
-	rm -f *.o *.so *.bin *.ext *.com *.bci
-	rm -f *.moc *.fni *-init.c *-init.h *-init.o
+	rm -f *.o *.so *.bin *.ext *.com *.bci *.moc *.fni
 	rm -f test
 
 distclean: clean
@@ -61,8 +60,21 @@ blowfish-adapter.o: blowfish-adapter.c blowfish-shim.h
 blowfish-shim.o: blowfish-shim.c blowfish-shim.h
 	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
-blowfish-shim.c: blowfish.cdecl blowfish-shim.h
+blowfish-shim.c blowfish-const.c blowfish-types.bin: \
+  blowfish.cdecl blowfish-shim.h
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
 	| $(EXE)
+
+blowfish-const.bin: blowfish-const.scm
+	echo '(sf "blowfish-const")' | $(EXE)
+
+blowfish-const.scm: blowfish-const
+	./blowfish-const
+
+blowfish-const: blowfish-const.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+blowfish-const.o: blowfish-const.c blowfish-shim.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .PHONY: all check install clean distclean maintainer-clean

@@ -53,17 +53,6 @@ USA.
 			 library-dir
 			 (except-last-pair
 			  (pathname-directory library-dir))))))))
-
-(define (generate-shim library #!optional prefix)
-  (let ((-const (string-append library"-const"))
-	(-const.c (string-append library"-const.c"))
-	(-const.o (string-append library"-const.o")))
-    (c-generate library prefix)
-    (run-command (append CC CFLAGS (list "-c" -const.c)))
-    (run-command (append CC LDFLAGS (list "-o" -const -const.o)))
-    (run-command (list (->namestring
-			(merge-pathnames -const (working-directory-pathname)))))
-    (sf -const)))
 
 (define (parse-words string)
   (burst-string string char-set:whitespace #t))

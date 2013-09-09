@@ -24,24 +24,23 @@ MIT_SCHEME_EXE = mit-scheme
 EXE = '$(MIT_SCHEME_EXE)' --batch-mode
 
 CFLAGS = @CFLAGS@
-CPPFLAGS = @CPPFLAGS@ -I. -I$(srcdir)
+CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
-all: md5-shim.so
+all: md5-shim.so md5-types.bin md5-const.bin
 	echo '(load "compile")' | $(EXE)
 
-check: all
+check:
 	echo '(load "check")' | $(EXE)
 
-install: all
+install:
 	echo '(install-shim "md5")' | $(EXE) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f md5-const.scm md5-const md5-const.c md5-shim.c
 	rm -f md5-*.crf md5-*.fre md5-*.pkd
-	rm -f *.o *.so *.bin *.ext *.com *.bci
-	rm -f *.moc *.fni *-init.c *-init.h *-init.o
+	rm -f *.o *.so *.bin *.ext *.com *.bci *.moc *.fni
 	rm -f sample
 
 distclean: clean
@@ -60,8 +59,19 @@ md5-adapter.o: md5-adapter.c md5-shim.h
 md5-shim.o: md5-shim.c md5-shim.h
 	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
-md5-shim.c: md5.cdecl md5-shim.h
-	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' \
-	| $(EXE)
+md5-shim.c md5-const.c md5-types.bin: md5.cdecl md5-shim.h
+	echo '(generate-shim "md5" "#include \"md5-shim.h\"")' | $(EXE)
+
+md5-const.bin: md5-const.scm
+	echo '(sf "md5-const")' | $(EXE)
+
+md5-const.scm: md5-const
+	./md5-const
+
+md5-const: md5-const.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+md5-const.o: md5-const.c md5-shim.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 .PHONY: all check install clean distclean maintainer-clean
