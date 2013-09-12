@@ -1607,14 +1607,20 @@ USA.
        ((ucode-primitive allocate-external-string) n-bytes)
        n-bytes)))))
 
-(define (external-string-ref string index)
+(define-integrable (external-string-ref string index)
   (ascii->char
-   ((ucode-primitive read-byte-from-memory)
-    (+ (external-string-descriptor string) index))))
+   (external-string-byte-ref string index)))
 
-(define (external-string-set! string index char)
+(define-integrable (external-string-byte-ref string index)
+  ((ucode-primitive read-byte-from-memory)
+   (+ (external-string-descriptor string) index)))
+
+(define-integrable (external-string-set! string index char)
+  (external-string-byte-set! string index (char->ascii char)))
+
+(define-integrable (external-string-byte-set! string index byte)
   ((ucode-primitive write-byte-to-memory)
-   (char->ascii char)
+   byte
    (+ (external-string-descriptor string) index)))
 
 (define-integrable (external-substring-fill! string start end char)
@@ -1640,11 +1646,24 @@ USA.
 	((external-string? string) (external-string-ref string index))
 	(else (error:not-xstring string 'XSTRING-REF))))
 
+(define (xstring-byte-ref string index)
+  (cond ((string? string) (vector-8b-ref string index))
+	((wide-string? string) (wide-string-ref string index))
+	((external-string? string) (external-string-byte-ref string index))
+	(else (error:not-xstring string 'XSTRING-BYTE-REF))))
+
 (define (xstring-set! string index char)
   (cond ((string? string) (string-set! string index char))
 	((wide-string? string) (wide-string-set! string index char))
 	((external-string? string) (external-string-set! string index char))
 	(else (error:not-xstring string 'XSTRING-SET!))))
+
+(define (xstring-byte-set! string index byte)
+  (cond ((string? string) (vector-8b-set! string index byte))
+	((wide-string? string) (wide-string-set! string index byte))
+	((external-string? string)
+	 (external-string-byte-set! string index byte))
+	(else (error:not-xstring string 'XSTRING-BYTE-SET!))))
 
 (define (xstring-move! xstring1 xstring2 start2)
   (xsubstring-move! xstring1 0 (xstring-length xstring1) xstring2 start2))
