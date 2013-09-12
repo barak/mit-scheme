@@ -180,9 +180,12 @@ USA.
       (if (eq? n #t)
 	  (begin
 	    (handle-subprocess-status-change)
-	    (if (channel-blocking? channel)
-		(loop)
-		#f))
+	    (without-interrupts
+	     (lambda ()
+	       (if (and (channel-open? channel)
+			(channel-blocking? channel))
+		   (loop)
+		   #f))))
 	  n))))
 
 (define (%channel-read channel buffer start end)
@@ -215,9 +218,12 @@ USA.
       (if (eq? n #t)
 	  (begin
 	    (handle-subprocess-status-change)
-	    (if (channel-blocking? channel)
-		(loop)
-		#f))
+	    (without-interrupts
+	     (lambda ()
+	       (if (and (channel-open? channel)
+			(channel-blocking? channel))
+		   (loop)
+		   #f))))
 	  n))))
 
 (define (%channel-write channel buffer start end)
