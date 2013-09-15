@@ -43,7 +43,6 @@ FFI System Packaging |#
   (import (runtime pathname)
 	  library-directory-path)
   (export (ffi)
-	  generate-shim
 	  compile-shim
 	  link-shim
 	  install-shim
