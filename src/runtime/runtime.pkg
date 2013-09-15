@@ -3013,7 +3013,8 @@ USA.
 	  load-option
 	  local-load-options
 	  standard-load-options
-	  standard-option-loader))
+	  standard-option-loader
+	  standard-system-loader))
 
 (define-package (runtime parser)
   (files "parse")
@@ -3338,7 +3339,8 @@ USA.
 	  generate-shim
 	  compile-shim
 	  link-shim
-	  install-shim)
+	  install-shim
+	  install-load-option)
   (initialization (initialize-package!)))
 
 (define-package (runtime program-copier)

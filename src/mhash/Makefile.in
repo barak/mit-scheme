@@ -21,7 +21,7 @@
 # 02110-1301, USA.
 
 MIT_SCHEME_EXE = mit-scheme
-EXE = '$(MIT_SCHEME_EXE)' --batch-mode
+exe = '$(MIT_SCHEME_EXE)' --batch-mode
 
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -29,13 +29,14 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
 all: mhash-shim.so mhash-types.bin mhash-const.bin
-	echo '(load "compile")' | $(EXE)
+	echo '(load "compile")' | $(exe)
 
 check:
-	echo '(load "check")' | $(EXE)
+	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "mhash")' | $(EXE) -- *.com *.bci *.pkd make.scm
+	echo '(install-shim "mhash")' | $(exe) -- *.com *.bci *.pkd make.scm
+	echo '(install-load-option "mhash")' | $(exe)
 
 clean:
 	rm -f mhash-const.scm mhash-const mhash-const.c mhash-shim.c
@@ -51,19 +52,19 @@ maintainer-clean: distclean
 	rm -rf autom4te.cache
 
 mhash-shim.so: mhash-shim.o mhash-adapter.o
-	echo "(link-shim)" | $(EXE) -- $(LDFLAGS) -o $@ $^ $(LIBS)
+	echo "(link-shim)" | $(exe) -- $(LDFLAGS) -o $@ $^ $(LIBS)
 
 mhash-adapter.o: mhash-adapter.c mhash-shim.h
-	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
+	echo '(compile-shim)' | $(exe) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
 mhash-shim.o: mhash-shim.c mhash-shim.h
-	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
+	echo '(compile-shim)' | $(exe) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
 mhash-shim.c mhash-const.c mhash-types.bin: mhash.cdecl mhash-shim.h
-	echo '(generate-shim "mhash" "#include \"mhash-shim.h\"")' | $(EXE)
+	echo '(generate-shim "mhash" "#include \"mhash-shim.h\"")' | $(exe)
 
 mhash-const.bin: mhash-const.scm
-	echo '(sf "mhash-const")' | $(EXE)
+	echo '(sf "mhash-const")' | $(exe)
 
 mhash-const.scm: mhash-const
 	./mhash-const

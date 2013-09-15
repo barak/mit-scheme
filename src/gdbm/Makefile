@@ -21,16 +21,17 @@
 # 02110-1301, USA.
 
 MIT_SCHEME_EXE = mit-scheme
-EXE = '$(MIT_SCHEME_EXE)' --batch-mode
+exe = '$(MIT_SCHEME_EXE)' --batch-mode
 
 all: gdbm-shim.so gdbm-types.bin gdbm-const.bin
-	echo '(load "compile")' | $(EXE)
+	echo '(load "compile")' | $(exe)
 
 check:
-	echo '(load "check")' | $(EXE)
+	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "gdbm")' | $(EXE) -- *.com *.bci *.pkd make.scm
+	echo '(install-shim "gdbm")' | $(exe) -- *.com *.bci *.pkd make.scm
+	echo '(install-load-option "gdbm2" "gdbm")' | $(exe)
 
 clean distclean maintainer-clean:
 	rm -f gdbm-const.scm gdbm-const gdbm-const.c gdbm-shim.c
@@ -39,19 +40,19 @@ clean distclean maintainer-clean:
 	rm -f gdbm-check.db
 
 gdbm-shim.so: gdbm-shim.o gdbm-adapter.o
-	echo "(link-shim)" | $(EXE) -- -o $@ $^ -lgdbm
+	echo "(link-shim)" | $(exe) -- -o $@ $^ -lgdbm
 
 gdbm-adapter.o: gdbm-adapter.c gdbm-shim.h
-	echo '(compile-shim)' | $(EXE) -- -c $<
+	echo '(compile-shim)' | $(exe) -- -c $<
 
 gdbm-shim.o: gdbm-shim.c gdbm-shim.h
-	echo '(compile-shim)' | $(EXE) -- -c $<
+	echo '(compile-shim)' | $(exe) -- -c $<
 
 gdbm-shim.c gdbm-const.c gdbm-types.bin: gdbm.cdecl gdbm-shim.h
-	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' | $(EXE)
+	echo '(generate-shim "gdbm" "#include \"gdbm-shim.h\"")' | $(exe)
 
 gdbm-const.bin: gdbm-const.scm
-	echo '(sf "gdbm-const")' | $(EXE)
+	echo '(sf "gdbm-const")' | $(exe)
 
 gdbm-const.scm: gdbm-const
 	./gdbm-const

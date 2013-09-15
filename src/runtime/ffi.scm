@@ -541,6 +541,11 @@ USA.
   (load-ffi-quietly)
   ((environment-lookup (->environment '(ffi)) 'install-shim) library))
 
+(define (install-load-option name #!optional directory)
+  (load-ffi-quietly)
+  ((environment-lookup (->environment '(ffi)) 'install-load-option)
+   name directory))
+
 (define (load-ffi-quietly)
   (if (not (name->package '(FFI)))
       (let ((kernel (lambda ()

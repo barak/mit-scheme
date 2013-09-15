@@ -9,15 +9,10 @@ way:
     make all check install
 
 The install target copies a shared library shim and compiled Scheme
-files into the system library path.  You can override the default
-command name "mit-scheme" (and thus the system library path) by
-setting MIT_SCHEME_EXE.
+files into the system library path, and re-writes the optiondb.scm
+found there.  You can override the default command name "mit-scheme"
+(and thus the system library path) by setting MIT_SCHEME_EXE.
 
-To load via load-option, install the following in your optiondb.scm:
-
-    (define-load-option 'MHASH
-      (guarded-system-loader '(mhash) "mhash"))
-
-You will need to import the bindings you want to use.  They are not
-exported to the global environment because they would conflict with
-the exports from (runtime crypto).
+To use: (load-option 'MHASH) and import the bindings you want.  They
+are not exported to the global environment because they would conflict
+with the exports from (runtime crypto).

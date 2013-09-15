@@ -131,3 +131,9 @@ USA.
   (cond ((procedure? value) (force* (value)))
 	((promise? value) (force* (force value)))
 	(else value)))
+
+(define (standard-system-loader name)
+  (let ((here (merge-pathnames (directory-pathname name)
+			       (directory-pathname (current-load-pathname)))))
+    (lambda ()
+      (with-working-directory-pathname here (lambda () (load "make"))))))

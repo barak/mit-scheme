@@ -21,7 +21,7 @@
 # 02110-1301, USA.
 
 MIT_SCHEME_EXE = mit-scheme
-EXE = '$(MIT_SCHEME_EXE)' --batch-mode
+exe = '$(MIT_SCHEME_EXE)' --batch-mode
 
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
@@ -29,13 +29,14 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
 all: blowfish-shim.so blowfish-types.bin blowfish-const.bin
-	echo '(load "compile")' | $(EXE)
+	echo '(load "compile")' | $(exe)
 
 check:
-	echo '(load "check")' | $(EXE)
+	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "blowfish")' | $(EXE) -- *.com *.bci *.pkd make.scm
+	echo '(install-shim "blowfish")' | $(exe) -- *.com *.bci *.pkd make.scm
+	echo '(install-load-option "blowfish")' | $(exe)
 
 clean:
 	rm -f blowfish-const.scm blowfish-const blowfish-const.c
@@ -52,21 +53,21 @@ maintainer-clean: distclean
 	rm -rf autom4te.cache
 
 blowfish-shim.so: blowfish-shim.o blowfish-adapter.o
-	echo "(link-shim)" | $(EXE) -- $(LDFLAGS) -o $@ $^ $(LIBS)
+	echo "(link-shim)" | $(exe) -- $(LDFLAGS) -o $@ $^ $(LIBS)
 
 blowfish-adapter.o: blowfish-adapter.c blowfish-shim.h
-	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
+	echo '(compile-shim)' | $(exe) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
 blowfish-shim.o: blowfish-shim.c blowfish-shim.h
-	echo '(compile-shim)' | $(EXE) -- $(CPPFLAGS) $(CFLAGS) -c $<
+	echo '(compile-shim)' | $(exe) -- $(CPPFLAGS) $(CFLAGS) -c $<
 
 blowfish-shim.c blowfish-const.c blowfish-types.bin: \
   blowfish.cdecl blowfish-shim.h
 	echo '(generate-shim "blowfish" "#include \"blowfish-shim.h\"")' \
-	| $(EXE)
+	| $(exe)
 
 blowfish-const.bin: blowfish-const.scm
-	echo '(sf "blowfish-const")' | $(EXE)
+	echo '(sf "blowfish-const")' | $(exe)
 
 blowfish-const.scm: blowfish-const
 	./blowfish-const

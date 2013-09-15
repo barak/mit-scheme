@@ -53,6 +53,37 @@ USA.
 			 library-dir
 			 (except-last-pair
 			  (pathname-directory library-dir))))))))
+
+(define (install-load-option name #!optional directory)
+  (guarantee-string name 'INSTALL-OPTION)
+  (let ((dir (if (default-object? directory) name directory)))
+    (guarantee-string dir 'INSTALL-OPTION)
+    (rewrite-file (system-library-pathname "optiondb.scm")
+		  (lambda (in out)
+		    (rewrite-optiondb name dir in out)))))
+
+(define (rewrite-file name rewriter)
+  (let ((tmp (pathname-new-type name "tmp")))
+    (call-with-exclusive-output-file tmp
+      (lambda (out)
+	(call-with-input-file name
+	  (lambda (in)
+	    (rewriter in out)))))
+    (rename-file tmp name)))
+
+(define (rewrite-optiondb name dirname in out)
+  (do ((line (read-line in) (read-line in)))
+      ((eof-object? line))
+    (write-string line out)
+    (newline out))
+  (fresh-line out)
+  (newline out)
+  (write-string "(define-load-option '" out)
+  (write-string name out)
+  (newline out)
+  (write-string "  (standard-system-loader \"" out)
+  (write-string dirname out)
+  (write-string "\"))" out))
 
 (define (parse-words string)
   (burst-string string char-set:whitespace #t))
@@ -73,13 +104,6 @@ USA.
 			      (directory-pathname
 			       (system-library-pathname "mit-scheme.h")))))
    (parse-words "@CFLAGS@ @MODULE_CFLAGS@")))
-
-(define (working-directory-name)
-  (let ((name (pathname-name (directory-pathname-as-file
-			      (working-directory-pathname)))))
-    (if (and (string? name) (not (string-null? name)))
-	name
-	(error "Could not find the current working directory name."))))
 
 (define (run-command command)
   (with-notification
