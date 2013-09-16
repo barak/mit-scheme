@@ -35,8 +35,10 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "md5")' | $(exe) -- *.com *.bci *.pkd make.scm
-	echo '(install-load-option "md5")' | $(exe)
+	( echo '(begin';
+	  echo '  (install-shim "md5")';
+	  echo '  (install-load-option "md5"))' ) \
+	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f md5-const.scm md5-const md5-const.c md5-shim.c

@@ -35,8 +35,10 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "mhash")' | $(exe) -- *.com *.bci *.pkd make.scm
-	echo '(install-load-option "mhash")' | $(exe)
+	( echo '(begin';
+	  echo '  (install-shim "mhash")';
+	  echo '  (install-load-option "mhash"))' ) \
+	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f mhash-const.scm mhash-const mhash-const.c mhash-shim.c

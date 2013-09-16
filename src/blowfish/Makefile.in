@@ -35,8 +35,10 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "blowfish")' | $(exe) -- *.com *.bci *.pkd make.scm
-	echo '(install-load-option "blowfish")' | $(exe)
+	( echo '(begin'; \
+	  echo '  (install-shim "blowfish")'; \
+	  echo '  (install-load-option "blowfish"))' ) \
+	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:
 	rm -f blowfish-const.scm blowfish-const blowfish-const.c

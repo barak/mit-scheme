@@ -30,8 +30,10 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	echo '(install-shim "gdbm")' | $(exe) -- *.com *.bci *.pkd make.scm
-	echo '(install-load-option "gdbm2" "gdbm")' | $(exe)
+	( echo '(begin'; \
+	  echo '  (install-shim "gdbm")'; \
+	  echo '  (install-load-option "gdbm2" "gdbm")' ) \
+	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean distclean maintainer-clean:
 	rm -f gdbm-const.scm gdbm-const gdbm-const.c gdbm-shim.c
