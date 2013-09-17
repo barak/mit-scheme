@@ -195,7 +195,7 @@ USA.
 		    (begin
 		      (if redisplay-hook (redisplay-hook))
 		      (do ()
-			  ((= (copy-output) 0))
+			  ((= (or (copy-output) 0) 0))
 			(if redisplay-hook (redisplay-hook)))))))))))
   (subprocess-wait* process))
 
