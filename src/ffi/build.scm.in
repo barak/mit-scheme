@@ -101,13 +101,11 @@ USA.
    (parse-words "@CFLAGS@ @MODULE_CFLAGS@")))
 
 (define (run-command command)
-  (with-notification
-   (lambda (port)
-     (write-string (decorated-string-append "" " " "" command) port)
-     (newline port))
-   (lambda ()
-     (let ((code (run-synchronous-subprocess
-		  (car command) (cdr command)
-		  'working-directory (working-directory-pathname))))
-       (if (not (zero? code))
-	   (error "Process exited with error code:" code command))))))
+  (fresh-line)
+  (write-string (decorated-string-append "" " " "" command))
+  (newline)
+  (let ((code (run-synchronous-subprocess
+	       (car command) (cdr command)
+	       'working-directory (working-directory-pathname))))
+    (if (not (zero? code))
+	(error "Process exited with error code:" code command))))
