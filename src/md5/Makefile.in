@@ -35,8 +35,8 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	( echo '(begin';
-	  echo '  (install-shim "md5")';
+	( echo '(begin'; \
+	  echo '  (install-shim "md5")'; \
 	  echo '  (install-load-option "md5"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 

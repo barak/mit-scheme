@@ -35,8 +35,8 @@ check:
 	echo '(load "check")' | $(exe)
 
 install:
-	( echo '(begin';
-	  echo '  (install-shim "mhash")';
+	( echo '(begin'; \
+	  echo '  (install-shim "mhash")'; \
 	  echo '  (install-load-option "mhash"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 
