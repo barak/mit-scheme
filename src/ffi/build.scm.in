@@ -34,13 +34,11 @@ USA.
   (run-command (append CCLD LDFLAGS (command-line) MODULE_LDFLAGS)))
 
 (define (install-shim libname)
-  (let ((library-dir (merge-pathnames (pathname-as-directory libname)
-				      (system-library-directory-pathname))))
-    (run-command (list "install" "-m" "644"
-		       (string-append libname "-shim.so")
-		       (string-append libname "-types.bin")
-		       (string-append libname "-const.bin")
-		       (->namestring library-dir)))))
+  (run-command (list "install" "-m" "644"
+		     (string-append libname "-shim.so")
+		     (string-append libname "-types.bin")
+		     (string-append libname "-const.bin")
+		     (->namestring (system-library-directory-pathname)))))
 
 (define (install-load-option name #!optional directory)
   (guarantee-string name 'INSTALL-OPTION)
