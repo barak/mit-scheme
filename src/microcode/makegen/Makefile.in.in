@@ -161,7 +161,8 @@ MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	$(COMPILE) -o $@ -c $<
 
 .m4.s:
-	$(EXPAND) $< > $@
+	-rm -f $@.tmp
+	$(EXPAND) $< > $@.tmp && mv -f $@.tmp $@
 
 .s.o:
 	$(ASSEMBLE) -o $@ $<
@@ -175,8 +176,8 @@ scheme: $(scheme_OBJECTS) $(scheme_DEPENDENCIES)
 	$(LINK) $(scheme_LDFLAGS) $(scheme_OBJECTS) $(scheme_LIBS)
 
 usrdef.c: $(STD_SOURCES) findprim Makefile
-	-rm -f $@
-	./findprim $(STD_SOURCES) > usrdef.c
+	-rm -f $@.tmp
+	./findprim $(STD_SOURCES) > $@.tmp && mv -f $@.tmp $@
 
 findprim: $(findprim_OBJECTS) $(findprim_DEPENDENCIES)
 	-rm -f $@
