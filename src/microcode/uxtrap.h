@@ -530,6 +530,8 @@ struct full_sigcontext
 
 #ifdef __linux__
 
+#  include <sys/ucontext.h>
+
 /* This isn't really the right test: what we really want to know is if
    the kernel supports the newer signal-delivery mechanism.  */
 
