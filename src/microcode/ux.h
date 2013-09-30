@@ -274,8 +274,8 @@ USA.
 #  endif
 #endif
 
-#ifdef HAVE_SYS_POLL_H
-#  include <sys/poll.h>
+#ifdef HAVE_POLL_H
+#  include <poll.h>
 #endif
 
 #if defined(HAVE_SOCKET) && defined(HAVE_GETHOSTBYNAME) && defined(HAVE_GETHOSTNAME)

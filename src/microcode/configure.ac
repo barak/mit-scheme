@@ -214,9 +214,9 @@ AC_HEADER_STDC
 AC_HEADER_STDBOOL
 AC_HEADER_SYS_WAIT
 AC_HEADER_TIME
-AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h limits.h malloc.h sgtty.h])
-AC_CHECK_HEADERS([stropts.h time.h])
-AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h sys/poll.h])
+AC_CHECK_HEADERS([bsdtty.h fcntl.h fenv.h ieeefp.h limits.h malloc.h poll.h])
+AC_CHECK_HEADERS([sgtty.h stropts.h time.h])
+AC_CHECK_HEADERS([sys/file.h sys/ioctl.h sys/mount.h sys/param.h])
 AC_CHECK_HEADERS([sys/ptyio.h sys/socket.h sys/time.h sys/timex.h sys/un.h])
 AC_CHECK_HEADERS([sys/vfs.h])
 AC_CHECK_HEADERS([termio.h termios.h unistd.h util.h utime.h])
