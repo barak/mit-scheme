@@ -180,6 +180,7 @@ AC_SUBST([MODULE_LOADER])
 
 AC_CONFIG_FILES([
 Makefile
+Makefile.boot
 6001/Makefile
 compiler/Makefile
 cref/Makefile

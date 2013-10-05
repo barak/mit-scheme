@@ -79,10 +79,12 @@ check:
 	./microcode/scheme --library lib --batch-mode \
 	  --load ../tests/check.scm --eval '(%exit)'
 
+all-native: microcode/scheme
 all-native: lib/runtime.com
 all-native: lib/all.com
 all-native: compile-compiler
 all-native: compile-cref
+all-native: compile-edwin
 all-native: compile-ffi
 all-native: compile-imail
 all-native: compile-runtime
@@ -93,19 +95,38 @@ all-native: compile-star-parser
 all-native: compile-win32
 all-native: compile-xml
 
+HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
+BOOTSTRAP_COMPILER = $(HOST_SCHEME) --band ./boot/compiler.com
+BOOTSTRAP_SYNTAXER = $(HOST_SCHEME) --band ./boot/syntaxer.com
+BOOTSTRAP_TOOLCHAIN = $(HOST_SCHEME) --band ./boot/compiler.com
+
+.PHONY: bootstrap-toolchain
+bootstrap-toolchain: boot/compiler.com
+
+boot/compiler.com:
+	@echo >&2 'Please run `make -f Makefile.boot'\'' first.'; exit 1
+
+boot/syntaxer.com:
+	@echo >&2 'Please run `make -f Makefile.boot'\'' first.'; exit 1
+
+microcode/scheme: compile-microcode
+
 lib/runtime.com: compile-runtime
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
-	  && (echo '(disk-save "../lib/runtime.com")' \
+	  && (echo '(disk-save "../$@")' \
 	       | ../microcode/scheme --batch-mode --library ../lib \
 	           --fasl "$${FASL}"))
 
 lib/compiler.com: compile-compiler
+lib/compiler.com: compile-edwin
+lib/compiler.com: compile-sf
 lib/compiler.com: lib/runtime.com
 lib/compiler.com: microcode/scheme
 	(echo '(begin' && \
 	 echo '  (load-option (quote COMPILER))' && \
-	 echo '  (disk-save "lib/compiler.com"))') \
+	 echo '  (load-option (quote SF))' && \
+	 echo '  (disk-save "$@"))') \
 	| ./microcode/scheme --batch-mode --library lib --band runtime.com
 
 lib/all.com: compile-compiler
@@ -115,87 +136,120 @@ lib/all.com: lib/runtime.com
 lib/all.com: microcode/scheme
 	(echo '(begin' && \
 	 echo '  (load-option (quote COMPILER))' && \
-	 echo '  (load-option (quote EDWIN))' && \
-	 echo '  (disk-save "lib/all.com"))') \
-	| ./microcode/scheme --batch-mode --library lib --band runtime.com
-
-microcode/scheme: compile-microcode
-
-.PHONY: compile-cref
-compile-cref:
-	echo '(begin (load "etc/compile.scm") (compile-dir "cref"))' \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
-
-.PHONY: syntax-runtime
-syntax-runtime: compile-cref
-	(echo '(begin' && \
-	 echo '  (load "etc/compile.scm")' && \
-	 echo '  (with-working-directory-pathname "cref"' && \
-	 echo '    (lambda () (load "make")))' && \
-	 echo '  (with-working-directory-pathname "runtime"' && \
-	 echo '    (lambda ()' && \
-	 echo '      (load "runtime.sf")' && \
-	 echo '      (echo-cref-output "runtime"))))') \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
-
-.PHONY: compile-runtime
-compile-runtime: syntax-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
-
-.PHONY: compile-sf
-compile-sf: compile-cref
-compile-sf: syntax-runtime
-	(echo '(begin' && \
-	 echo '  (load "etc/compile.scm")' && \
-	 echo '  (with-working-directory-pathname "cref"' && \
-	 echo '    (lambda () (load "make")))' && \
-	 echo '  (compile-dir "sf"))') \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
-
-.PHONY: compile-star-parser
-compile-star-parser: compile-cref
-compile-star-parser: syntax-runtime
-	(echo '(begin' && \
-	 echo '  (load "etc/compile.scm")' && \
-	 echo '  (with-working-directory-pathname "cref"' && \
-	 echo '    (lambda () (load "make")))' && \
-	 echo '  (compile-dir "star-parser"))') \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
-
-.PHONY: syntax-compiler
-syntax-compiler: compile-sf
-syntax-compiler: lib/runtime.com
-syntax-compiler: microcode/scheme
-	(echo '(begin' && \
 	 echo '  (load-option (quote SF))' && \
-	 echo '  (with-working-directory-pathname "compiler"' && \
-	 echo '    (lambda () (load "compiler.sf"))))') \
+	 echo '  (load-option (quote EDWIN))' && \
+	 echo '  (disk-save "$@"))') \
 	| ./microcode/scheme --batch-mode --library lib --band runtime.com
+
+.PHONY: save
+save:
+	@echo 'Saving objects...'
+	@rm -rf obj && \
+	mkdir obj && \
+	( \
+	  find $(SUBDIRS) -type f \
+	    \( \
+	      -name '*.bci' -o \
+	      -name '*.bin' -o \
+	      -name '*.com' -o \
+	      -name '*.crf' -o \
+	      -name '*.ext' -o \
+	      -name '*.fre' -o \
+	      -name '*.pkd' -o \
+	      -false
+	    \) \
+	    -print0 \
+	  | pax -rw -pe -l -v -d -0 obj/. \
+	) || rm -rf obj
+
+.PHONY: restore
+restore:
+	@echo 'Restoring objects...'
+	@if ! test -d obj; then exit 1; fi && \
+	(cd obj && pax -rw -pe -v . ../../.)
+
+### Stuff we build with the bootstrap compiler necessarily from scratch.
+
+# Compiler (LIAR)
 
 .PHONY: compile-compiler
+compile-compiler: bootstrap-toolchain
 compile-compiler: syntax-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.cbf")))') \
-	| '$(MIT_SCHEME_EXE)' --batch-mode
+	| $(BOOTSTRAP_COMPILER)
 
-.PHONY: bootstrap-toolchain
-bootstrap-toolchain: lib/compiler.com
-bootstrap-toolchain: microcode/scheme
-BOOTSTRAP_TOOLCHAIN = \
-	./microcode/scheme --batch-mode --library lib --band compiler.com \
-	  --eval '(load "etc/compile.scm")'
-
-.PHONY: syntax-edwin
-syntax-edwin: bootstrap-toolchain
-syntax-edwin: compile-xml
-syntax-edwin: syntax-win32
-	(echo '(with-working-directory-pathname "edwin"' && \
+.PHONY: syntax-compiler
+syntax-compiler: bootstrap-toolchain
+syntax-compiler: cref-runtime
+syntax-compiler: cref-sf
+	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda ()' && \
-	 echo '    (load "edwin.sf")' && \
-	 echo '    (echo-cref-output "edwin")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	 echo '    (load "compiler.sf")))') \
+	| $(BOOTSTRAP_SYNTAXER)
+
+.PHONY: cref-compiler
+cref-compiler: syntax-compiler
+
+# CREF
+
+.PHONY: compile-cref
+compile-cref: bootstrap-toolchain
+compile-cref: syntax-cref
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.cbf")))') \
+	| $(BOOTSTRAP_COMPILER)
+
+.PHONY: syntax-cref
+syntax-cref: bootstrap-toolchain
+syntax-cref: cref-runtime
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda () (load "cref.sf")))') \
+	| $(BOOTSTRAP_SYNTAXER)
+
+.PHONY: cref-cref
+cref-cref: syntax-cref
+
+# Runtime
+
+.PHONY: compile-runtime
+compile-runtime: bootstrap-toolchain
+compile-runtime: syntax-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(BOOTSTRAP_COMPILER)
+
+.PHONY: compile-runtime
+syntax-runtime: bootstrap-toolchain
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda () (load "runtime.sf")))') \
+	| $(BOOTSTRAP_SYNTAXER)
+
+.PHONY: cref-runtime
+cref-runtime: syntax-runtime
+
+.PHONY: compile-sf
+compile-sf: bootstrap-toolchain
+compile-sf: syntax-sf
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.cbf")))') \
+	| $(BOOTSTRAP_COMPILER)
+
+.PHONY: syntax-sf
+syntax-sf: bootstrap-toolchain
+syntax-sf: cref-runtime
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda () (load "sf.sf")))') \
+	| $(BOOTSTRAP_SYNTAXER)
+
+.PHONY: cref-sf
+cref-sf: syntax-sf
+
+### More stuff we build with the bootstrap toolchain.  We could build
+### it with the newly built compiler in the native case, but we want to
+### avoid having to do that.
+
+# Edwin
 
 .PHONY: compile-edwin
 compile-edwin: bootstrap-toolchain
@@ -204,50 +258,128 @@ compile-edwin: syntax-edwin
 	 echo '  (lambda () (load "edwin.cbf")))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
 
+.PHONY: syntax-edwin
+syntax-edwin: bootstrap-toolchain
+syntax-edwin: cref-xml
+syntax-edwin: cref-runtime
+syntax-edwin: cref-win32
+	(echo '(with-working-directory-pathname "edwin"' && \
+	 echo '  (lambda () (load "edwin.sf")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-edwin
+cref-edwin: syntax-edwin
+
+# FFI
+
 .PHONY: compile-ffi
 compile-ffi: bootstrap-toolchain
-compile-ffi: compile-cref
-	echo '(compile-dir "ffi")' | $(BOOTSTRAP_TOOLCHAIN)
-
-.PHONY: compile-imail
-compile-imail: bootstrap-toolchain
-compile-imail: compile-sos
-compile-imail: compile-star-parser
-compile-imail: compile-edwin
-	(echo '(begin' && \
-	 echo '  (load-option (quote EDWIN))' && \
-	 echo '  (compile-dir "imail"))') \
+compile-ffi: cref-runtime
+	(echo '(with-working-directory-pathname "ffi"' && \
+	 echo '  (lambda () (load "compile.scm")))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-ffi
+cref-ffi: compile-ffi
+
+# SOS
 
 .PHONY: compile-sos
 compile-sos: bootstrap-toolchain
-	echo '(compile-dir "sos")' | $(BOOTSTRAP_TOOLCHAIN)
+compile-sos: cref-runtime
+	(echo '(with-working-directory-pathname "sos"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-sos
+cref-sos: compile-sos
+
+# SSP
 
 .PHONY: compile-ssp
 compile-ssp: bootstrap-toolchain
-compile-ssp: compile-xml
-	echo '(compile-dir "ssp")' | $(BOOTSTRAP_TOOLCHAIN)
-
-.PHONY: syntax-win32
-syntax-win32: bootstrap-toolchain
-	(echo '(with-working-directory-pathname "win32"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (load "win32.sf")' && \
-	 echo '    (echo-cref-output "win32")))') \
+compile-ssp: cref-xml
+compile-ssp: cref-runtime
+	(echo '(with-working-directory-pathname "ssp"' && \
+	 echo '  (lambda () (load "compile")))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-ssp
+cref-ssp: compile-ssp
+
+# *PARSER
+
+.PHONY: compile-star-parser
+compile-star-parser: bootstrap-toolchain
+compile-star-parser: cref-runtime
+	(echo '(with-working-directory-pathname "star-parser"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-star-parser
+cref-star-parser: compile-star-parser
+
+# Windows FFI
 
 .PHONY: compile-win32
 compile-win32: bootstrap-toolchain
 compile-win32: syntax-win32
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.cbf")))') \
+	| $(BOOTSTRAP_COMPILER)
+
+# This has to use BOOTSTRAP_TOOLCHAIN, not just BOOTSTRAP_SYNTAXER,
+# because it compiles the macro file and then loads it.  (XXX WRONG!
+# Not gonna work for cross-compilation.)
+.PHONY: syntax-win32
+syntax-win32: bootstrap-toolchain
+syntax-win32: cref-runtime
+	(echo '(with-working-directory-pathname "win32"' && \
+	 echo '  (lambda () (load "win32.sf")))') \
 	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-win32
+cref-win32: syntax-win32
+
+# XML
 
 .PHONY: compile-xml
 compile-xml: bootstrap-toolchain
-compile-xml: compile-sos
-compile-xml: compile-star-parser
-	echo '(compile-dir "xml")' | $(BOOTSTRAP_TOOLCHAIN)
+compile-xml: cref-sos
+	(echo '(with-working-directory-pathname "xml"' && \
+	 echo '  (lambda () (load "compile")))') \
+	| $(BOOTSTRAP_TOOLCHAIN)
+
+.PHONY: cref-xml
+cref-xml: compile-xml
+
+### Stuff that depends on running the code we just compiled, because it
+### uses Edwin macros.  This is a kludge until we can fix macro phasing
+### and persuade the cross-compiler to load and run macros for the
+### target.
+
+# IMAIL
+
+.PHONY: compile-imail
+compile-imail: bootstrap-toolchain
+compile-imail: compile-edwin
+compile-imail: compile-runtime
+compile-imail: compile-sos
+compile-imail: compile-star-parser
+compile-imail: cref-edwin
+compile-imail: cref-runtime
+compile-imail: cref-sos
+compile-imail: cref-star-parser
+compile-imail: lib/compiler.com
+	(echo '(begin' && \
+	 echo '  (with-working-directory-pathname "edwin"' && \
+	 echo '    (lambda () (load "make")))' && \
+	 echo '  (with-working-directory-pathname "imail"' && \
+	 echo '    (lambda ()' && \
+	 echo '      (load "compile"))))') \
+	| ./microcode/scheme --library lib --band lib/compiler.com
+
+# **** Legacy serialized targets ****
 
 all-svm: microcode/svm1-defns.h
 	$(MAKE) compile-microcode
