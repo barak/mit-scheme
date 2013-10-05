@@ -94,9 +94,9 @@ all-native: compile-ssp
 all-native: compile-star-parser
 all-native: compile-win32
 all-native: compile-xml
-@CROSS@all-native: cross-end
+@IF_CROSS@all-native: cross-end
 
-@CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
+@IF_CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
 
 HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
 BOOTSTRAP_COMPILER = $(BOOTSTRAP_TOOLCHAIN)
@@ -116,7 +116,7 @@ boot/syntaxer.com:
 microcode/scheme: compile-microcode
 
 lib/runtime.com: compile-runtime
-@CROSS@lib/runtime.com: cross-end
+@IF_CROSS@lib/runtime.com: cross-end
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \

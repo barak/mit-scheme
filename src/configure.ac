@@ -59,9 +59,9 @@ AC_ARG_ENABLE([cross-compiling],
 	[Cross-compile scheme, even if to the same target]))
 : ${enable_cross_compiling=no}
 if test "x$enable_cross_compiling" = xyes; then
-    CROSS=
+    IF_CROSS=
 else
-    CROSS=\#
+    IF_CROSS=\#
 fi
 
 AC_ARG_WITH([default-target],
@@ -166,7 +166,8 @@ AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
-AC_SUBST([CROSS])
+AC_SUBST([IF_CROSS])
+AC_SUBST([IF_SVM])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
