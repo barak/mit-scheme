@@ -484,9 +484,9 @@ cross-barrier: syntax-runtime
 
 .PHONY: cross-end
 cross-end: cross-barrier
-	(echo '(begin' && \
-	 echo '  (load "../compiler/base/crsend")' && \
-	 echo '  (finish-cross-compilation:directory ".."))') \
+	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
+	 echo '  (load "../compiler/base/crsend" env)' && \
+	 echo '  ((access FINISH-CROSS-COMPILATION:DIRECTORY env) ".."))') \
 	| (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
 	    --fasl make.bin)
 
