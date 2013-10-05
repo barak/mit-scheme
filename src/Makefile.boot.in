@@ -144,10 +144,45 @@ boot/syntaxer.com: compile-kludgerous-star-parser
 # Compiler (LIAR)
 
 .PHONY: compile-cross-compiler
-compile-cross-compiler: syntax-cross-compiler
-	(echo '(with-working-directory-pathname "compiler"' && \
-	 echo '  (lambda () (load "compiler.cbf")))') \
-	| $(HOST_COMPILER)
+compile-cross-compiler: compile-cross-compiler-back
+compile-cross-compiler: compile-cross-compiler-base
+compile-cross-compiler: compile-cross-compiler-fggen
+compile-cross-compiler: compile-cross-compiler-fgopt
+compile-cross-compiler: compile-cross-compiler-machine
+compile-cross-compiler: compile-cross-compiler-rtlbase
+compile-cross-compiler: compile-cross-compiler-rtlgen
+
+.PHONY: compile-cross-compiler-back
+compile-cross-compiler-back: syntax-cross-compiler
+	echo '(compile-directory "compiler/back")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-base
+compile-cross-compiler-base: syntax-cross-compiler
+	echo '(compile-directory "compiler/base")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-fggen
+compile-cross-compiler-fggen: syntax-cross-compiler
+	echo '(compile-directory "compiler/fggen")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-fgopt
+compile-cross-compiler-fgopt: syntax-cross-compiler
+	echo '(compile-directory "compiler/fgopt")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-machine
+compile-cross-compiler-machine: syntax-cross-compiler
+	echo '(compile-directory "compiler/machine")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlbase
+compile-cross-compiler-rtlbase: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlbase")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlgen
+compile-cross-compiler-rtlgen: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlgen")' | $(HOST_COMPILER)
+
+.PHONY: compile-cross-compiler-rtlopt
+compile-cross-compiler-rtlopt: syntax-cross-compiler
+	echo '(compile-directory "compiler/rtlopt")' | $(HOST_COMPILER)
 
 # Must use HOST_SYNTAXER here because compiler.sf's (and, more
 # generally, CREF's) host/target distinction is bollocksed up, and will
