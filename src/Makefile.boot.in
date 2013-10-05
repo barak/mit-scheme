@@ -189,16 +189,19 @@ compile-cross-compiler-rtlopt: syntax-cross-compiler
 # do the wrong thing if there is already a compiler loaded into the
 # image.
 .PHONY: syntax-cross-compiler
-syntax-cross-compiler: cref-cross-cref
-syntax-cross-compiler: cref-cross-sf
-syntax-cross-compiler: cref-kludgerous-runtime
-	(echo '(begin' && \
-	 echo '  (with-working-directory-pathname "compiler"' && \
-	 echo '    (lambda () (load "compiler.sf"))))') \
+syntax-cross-compiler: cref-cross-compiler
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda () (load "compiler.sf")))') \
 	| $(HOST_SYNTAXER)
 
 .PHONY: cref-cross-compiler
-cref-cross-compiler: syntax-cross-compiler
+cref-cross-compiler: cref-cross-cref
+cref-cross-compiler: cref-cross-sf
+cref-cross-compiler: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "compiler"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "compiler")))') \
+	| $(HOST_SYNTAXER)
 
 # CREF
 
@@ -209,13 +212,17 @@ compile-cross-cref: syntax-cross-cref
 	| $(HOST_COMPILER)
 
 .PHONY: syntax-cross-cref
-syntax-cross-cref: cref-kludgerous-runtime
+syntax-cross-cref: cref-cross-cref
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda () (load "cref.sf")))') \
 	| $(HOST_SYNTAXER)
 
 .PHONY: cref-cross-cref
-cref-cross-cref: syntax-cross-cref
+cref-cross-cref: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "cref"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "cref")))') \
+	| $(HOST_SYNTAXER)
 
 # SF
 
@@ -226,13 +233,17 @@ compile-cross-sf: syntax-cross-sf
 	| $(HOST_COMPILER)
 
 .PHONY: syntax-cross-sf
-syntax-cross-sf: cref-kludgerous-runtime
+syntax-cross-sf: cref-cross-sf
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda () (load "sf.sf")))') \
 	| $(HOST_SYNTAXER)
 
 .PHONY: cref-cross-sf
-cref-cross-sf: syntax-cross-sf
+cref-cross-sf: cref-kludgerous-runtime
+	(echo '(with-working-directory-pathname "sf"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "sf")))') \
+	| $(HOST_SYNTAXER)
 
 # Kludges
 
