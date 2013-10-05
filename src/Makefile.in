@@ -94,13 +94,15 @@ all-native: compile-ssp
 all-native: compile-star-parser
 all-native: compile-win32
 all-native: compile-xml
-all-native: cross-end
+@CROSS@all-native: cross-end
+
+@CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
 
 HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
 BOOTSTRAP_COMPILER = $(BOOTSTRAP_TOOLCHAIN)
 BOOTSTRAP_SYNTAXER = $(HOST_SCHEME) --band ./boot/syntaxer.com
 BOOTSTRAP_TOOLCHAIN = $(HOST_SCHEME) --band ./boot/compiler.com \
-  --eval '(set! compiler:cross-compiling? true)'
+  --eval '(begin $(COMPILER_SETTINGS))'
 
 .PHONY: bootstrap-toolchain
 bootstrap-toolchain: boot/compiler.com
@@ -114,7 +116,7 @@ boot/syntaxer.com:
 microcode/scheme: compile-microcode
 
 lib/runtime.com: compile-runtime
-lib/runtime.com: cross-end
+@CROSS@lib/runtime.com: cross-end
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \

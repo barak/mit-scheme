@@ -54,6 +54,16 @@ else
     : ${enable_host_scheme_test=yes}
 fi
 
+AC_ARG_ENABLE([cross-compiling],
+    AS_HELP_STRING([--enable-cross-compiling],
+	[Cross-compile scheme, even if to the same target]))
+: ${enable_cross_compiling=no}
+if test "x$enable_cross_compiling" = xyes; then
+    CROSS=
+else
+    CROSS=\#
+fi
+
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
@@ -156,6 +166,7 @@ AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
+AC_SUBST([CROSS])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
