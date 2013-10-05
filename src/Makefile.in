@@ -425,15 +425,12 @@ compile-win32: syntax-win32
 	 echo '  (lambda () (load "win32.cbf")))') \
 	| $(BOOTSTRAP_COMPILER)
 
-# This has to use BOOTSTRAP_TOOLCHAIN, not just BOOTSTRAP_SYNTAXER,
-# because it compiles the macro file and then loads it.  (XXX WRONG!
-# Not gonna work for cross-compilation.)
 .PHONY: syntax-win32
 syntax-win32: bootstrap-toolchain
 syntax-win32: cref-win32
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.sf")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(BOOTSTRAP_SYNTAXER)
 
 .PHONY: cref-win32
 cref-win32: bootstrap-toolchain
