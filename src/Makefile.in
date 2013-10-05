@@ -94,11 +94,13 @@ all-native: compile-ssp
 all-native: compile-star-parser
 all-native: compile-win32
 all-native: compile-xml
+all-native: cross-end
 
 HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
-BOOTSTRAP_COMPILER = $(HOST_SCHEME) --band ./boot/compiler.com
+BOOTSTRAP_COMPILER = $(BOOTSTRAP_TOOLCHAIN)
 BOOTSTRAP_SYNTAXER = $(HOST_SCHEME) --band ./boot/syntaxer.com
-BOOTSTRAP_TOOLCHAIN = $(HOST_SCHEME) --band ./boot/compiler.com
+BOOTSTRAP_TOOLCHAIN = $(HOST_SCHEME) --band ./boot/compiler.com \
+  --eval '(set! compiler:cross-compiling? true)'
 
 .PHONY: bootstrap-toolchain
 bootstrap-toolchain: boot/compiler.com
@@ -112,6 +114,7 @@ boot/syntaxer.com:
 microcode/scheme: compile-microcode
 
 lib/runtime.com: compile-runtime
+lib/runtime.com: cross-end
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
@@ -293,7 +296,7 @@ cref-sf: syntax-sf
 
 ### More stuff we build with the bootstrap toolchain.  We could build
 ### it with the newly built compiler in the native case, but we want to
-### avoid having to do that.
+### avoid having to do that to encourage cross-compilation.
 
 # Edwin
 
@@ -399,6 +402,38 @@ compile-xml: cref-sos
 .PHONY: cref-xml
 cref-xml: compile-xml
 
+### Cross-compilation finish-up.
+
+# We split this up into two targets, cross-barrier and cross-end, so
+# that you can type `make cross-barrier' to do everything on the
+# cross-compilation host, transfer everything over, and then run `make'
+# to do the rest.  (Rsync should help iterating this process.)
+
+.PHONY: cross-barrier
+cross-barrier: compile-compiler
+cross-barrier: compile-cref
+cross-barrier: compile-edwin
+cross-barrier: compile-ffi
+#cross-barrier: compile-imail
+cross-barrier: compile-runtime
+cross-barrier: compile-sf
+cross-barrier: compile-sos
+cross-barrier: compile-ssp
+cross-barrier: compile-star-parser
+cross-barrier: compile-win32
+cross-barrier: compile-xml
+cross-barrier: microcode/scheme
+cross-barrier: syntax-compiler
+cross-barrier: syntax-runtime
+
+.PHONY: cross-end
+cross-end: cross-barrier
+	(echo '(begin' && \
+	 echo '  (load "../compiler/base/crsend")' && \
+	 echo '  (finish-cross-compilation:directory ".."))') \
+	| (cd runtime && ../microcode/scheme --batch-mode --library ../lib \
+	    --fasl make.bin)
+
 ### Stuff that depends on running the code we just compiled, because it
 ### uses Edwin macros.  This is a kludge until we can fix macro phasing
 ### and persuade the cross-compiler to load and run macros for the
@@ -416,6 +451,7 @@ compile-imail: cref-edwin
 compile-imail: cref-runtime
 compile-imail: cref-sos
 compile-imail: cref-star-parser
+compile-imail: cross-barrier
 compile-imail: lib/compiler.com
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "edwin"' && \
