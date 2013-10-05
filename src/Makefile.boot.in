@@ -189,10 +189,15 @@ compile-cross-compiler-rtlopt: syntax-cross-compiler
 # do the wrong thing if there is already a compiler loaded into the
 # image.
 .PHONY: syntax-cross-compiler
+@IF_SVM@syntax-cross-compiler: compiler/machines/svm/assembler-db.scm
 syntax-cross-compiler: cref-cross-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
 	| $(HOST_SYNTAXER)
+
+compiler/machines/svm/assembler-db.scm:
+	(cd compiler/machines/svm && \
+	 '$(MIT_SCHEME_EXE)' --batch-mode --load compile-assembler </dev/null)
 
 .PHONY: cref-cross-compiler
 cref-cross-compiler: cref-cross-cref

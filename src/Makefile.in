@@ -113,7 +113,9 @@ boot/compiler.com:
 boot/syntaxer.com:
 	@echo >&2 'Please run `make -f Makefile.boot'\'' first.'; exit 1
 
-microcode/scheme: compile-microcode
+@IF_SVM@microcode/scheme: microcode/svm1-defns.h
+microcode/scheme:
+	(cd microcode && $(MAKE) all)
 
 lib/runtime.com: compile-runtime
 @IF_CROSS@lib/runtime.com: cross-end
@@ -232,6 +234,7 @@ compile-compiler-rtlopt: syntax-compiler
 
 .PHONY: syntax-compiler
 syntax-compiler: bootstrap-toolchain
+@IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
 syntax-compiler: cref-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \

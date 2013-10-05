@@ -82,16 +82,19 @@ c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
+    IF_SVM=\#
     ;;
 svm1)
     ALL_TARGET=all-svm
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
+    IF_SVM=
     ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
+    IF_SVM=\#
     ;;
 esac
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
