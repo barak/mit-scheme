@@ -167,7 +167,7 @@ mangle_line (const char * line, const char * prefix)
 static const char *
 skip_name (const char * scan)
 {
-  while ((isalnum (*scan)) || ((*scan) == '_'))
+  while ((isalnum ((unsigned char) (*scan))) || ((*scan) == '_'))
     write_char (*scan++);
   return (scan);
 }
