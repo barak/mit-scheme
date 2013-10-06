@@ -99,19 +99,19 @@ all-native: compile-xml
 @IF_CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
 
 HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
-BOOTSTRAP_COMPILER = $(BOOTSTRAP_TOOLCHAIN)
-BOOTSTRAP_SYNTAXER = $(HOST_SCHEME) --band ./boot/syntaxer.com
-BOOTSTRAP_TOOLCHAIN = $(HOST_SCHEME) --band ./boot/compiler.com \
+TOOL_COMPILER = $(TOOL_TOOLCHAIN)
+TOOL_SYNTAXER = $(HOST_SCHEME) --band ./tools/syntaxer.com
+TOOL_TOOLCHAIN = $(HOST_SCHEME) --band ./tools/compiler.com \
   --eval '(begin $(COMPILER_SETTINGS))'
 
-.PHONY: bootstrap-toolchain
-bootstrap-toolchain: boot/compiler.com
+.PHONY: toolchain
+toolchain: tools/compiler.com
 
-boot/compiler.com:
-	@echo >&2 'Please run `make -f Makefile.boot'\'' first.'; exit 1
+tools/compiler.com:
+	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
 
-boot/syntaxer.com:
-	@echo >&2 'Please run `make -f Makefile.boot'\'' first.'; exit 1
+tools/syntaxer.com:
+	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
 
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
 microcode/scheme:
@@ -175,7 +175,7 @@ restore:
 	@if ! test -d obj; then exit 1; fi && \
 	(cd obj && pax -rw -pe -v . ../../.)
 
-### Stuff we build with the bootstrap compiler necessarily from scratch.
+### Stuff we build with the tools compiler necessarily from scratch.
 
 # Compiler (LIAR)
 
@@ -193,273 +193,273 @@ compile-compiler: compile-compiler-rtlbase
 compile-compiler: compile-compiler-rtlgen
 
 .PHONY: compile-compiler-back
-compile-compiler-back: bootstrap-toolchain
+compile-compiler-back: toolchain
 compile-compiler-back: syntax-compiler
-	echo '(compile-directory "compiler/back")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/back")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-base
-compile-compiler-base: bootstrap-toolchain
+compile-compiler-base: toolchain
 compile-compiler-base: syntax-compiler
-	echo '(compile-directory "compiler/base")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/base")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-fggen
-compile-compiler-fggen: bootstrap-toolchain
+compile-compiler-fggen: toolchain
 compile-compiler-fggen: syntax-compiler
-	echo '(compile-directory "compiler/fggen")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/fggen")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-fgopt
-compile-compiler-fgopt: bootstrap-toolchain
+compile-compiler-fgopt: toolchain
 compile-compiler-fgopt: syntax-compiler
-	echo '(compile-directory "compiler/fgopt")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/fgopt")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-machine
-compile-compiler-machine: bootstrap-toolchain
+compile-compiler-machine: toolchain
 compile-compiler-machine: syntax-compiler
-	echo '(compile-directory "compiler/machine")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/machine")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-rtlbase
-compile-compiler-rtlbase: bootstrap-toolchain
+compile-compiler-rtlbase: toolchain
 compile-compiler-rtlbase: syntax-compiler
-	echo '(compile-directory "compiler/rtlbase")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/rtlbase")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-rtlgen
-compile-compiler-rtlgen: bootstrap-toolchain
+compile-compiler-rtlgen: toolchain
 compile-compiler-rtlgen: syntax-compiler
-	echo '(compile-directory "compiler/rtlgen")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/rtlgen")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler-rtlopt
-compile-compiler-rtlopt: bootstrap-toolchain
+compile-compiler-rtlopt: toolchain
 compile-compiler-rtlopt: syntax-compiler
-	echo '(compile-directory "compiler/rtlopt")' | $(BOOTSTRAP_COMPILER)
+	echo '(compile-directory "compiler/rtlopt")' | $(TOOL_COMPILER)
 
 .PHONY: syntax-compiler
-syntax-compiler: bootstrap-toolchain
+syntax-compiler: toolchain
 @IF_SVM@syntax-compiler: compiler/machines/svm/svm1-defns.h
 syntax-compiler: cref-compiler
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda () (load "compiler.sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-compiler
-cref-compiler: bootstrap-toolchain
+cref-compiler: toolchain
 cref-compiler: cref-runtime
 cref-compiler: cref-sf
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "compiler")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # CREF
 
 .PHONY: compile-cref
-compile-cref: bootstrap-toolchain
+compile-cref: toolchain
 compile-cref: syntax-cref
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda () (load "cref.cbf")))') \
-	| $(BOOTSTRAP_COMPILER)
+	| $(TOOL_COMPILER)
 
 .PHONY: syntax-cref
-syntax-cref: bootstrap-toolchain
+syntax-cref: toolchain
 syntax-cref: cref-cref
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda () (load "cref.sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-cref
-cref-cref: bootstrap-toolchain
+cref-cref: toolchain
 cref-cref: cref-runtime
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "cref")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # Runtime
 
 .PHONY: compile-runtime
-compile-runtime: bootstrap-toolchain
+compile-runtime: toolchain
 compile-runtime: syntax-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(BOOTSTRAP_COMPILER)
+	| $(TOOL_COMPILER)
 
 .PHONY: compile-runtime
-syntax-runtime: bootstrap-toolchain
+syntax-runtime: toolchain
 syntax-runtime: cref-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda () (load "runtime.sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-runtime
-cref-runtime: bootstrap-toolchain
+cref-runtime: toolchain
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "runtime")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # SF
 
 .PHONY: compile-sf
-compile-sf: bootstrap-toolchain
+compile-sf: toolchain
 compile-sf: syntax-sf
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda () (load "sf.cbf")))') \
-	| $(BOOTSTRAP_COMPILER)
+	| $(TOOL_COMPILER)
 
 .PHONY: syntax-sf
-syntax-sf: bootstrap-toolchain
+syntax-sf: toolchain
 syntax-sf: cref-sf
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda () (load "sf.sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-sf
-cref-sf: bootstrap-toolchain
+cref-sf: toolchain
 cref-sf: cref-runtime
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
-### More stuff we build with the bootstrap toolchain.  We could build
-### it with the newly built compiler in the native case, but we want to
-### avoid having to do that to encourage cross-compilation.
+### More stuff we build with tools.  We could build it with the newly
+### built compiler in the native case, but we want to avoid having to
+### do that to encourage cross-compilation.
 
 # Edwin
 
 .PHONY: compile-edwin
-compile-edwin: bootstrap-toolchain
+compile-edwin: toolchain
 compile-edwin: syntax-edwin
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda () (load "edwin.cbf")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: syntax-edwin
-syntax-edwin: bootstrap-toolchain
+syntax-edwin: toolchain
 syntax-edwin: cref-edwin
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda () (load "edwin.sf")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-edwin
-cref-edwin: bootstrap-toolchain
+cref-edwin: toolchain
 cref-edwin: cref-runtime
 cref-edwin: cref-win32
 cref-edwin: cref-xml
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "edwin")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # FFI
 
 .PHONY: compile-ffi
-compile-ffi: bootstrap-toolchain
+compile-ffi: toolchain
 compile-ffi: cref-ffi
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-ffi
-cref-ffi: bootstrap-toolchain
+cref-ffi: toolchain
 cref-ffi: cref-runtime
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "ffi")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # SOS
 
 .PHONY: compile-sos
-compile-sos: bootstrap-toolchain
+compile-sos: toolchain
 compile-sos: cref-sos
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda () (load "compile")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-sos
-cref-sos: bootstrap-toolchain
+cref-sos: toolchain
 cref-sos: cref-runtime
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "sos")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # SSP
 
 .PHONY: compile-ssp
-compile-ssp: bootstrap-toolchain
+compile-ssp: toolchain
 compile-ssp: cref-ssp
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda () (load "compile")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-ssp
-cref-ssp: bootstrap-toolchain
+cref-ssp: toolchain
 cref-ssp: cref-runtime
 cref-ssp: cref-xml
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "ssp")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # *PARSER
 
 .PHONY: compile-star-parser
-compile-star-parser: bootstrap-toolchain
+compile-star-parser: toolchain
 compile-star-parser: cref-star-parser
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda () (load "compile")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-star-parser
-cref-star-parser: bootstrap-toolchain
+cref-star-parser: toolchain
 cref-star-parser: cref-runtime
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "parser")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # Windows FFI
 
 .PHONY: compile-win32
-compile-win32: bootstrap-toolchain
+compile-win32: toolchain
 compile-win32: syntax-win32
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.cbf")))') \
-	| $(BOOTSTRAP_COMPILER)
+	| $(TOOL_COMPILER)
 
 .PHONY: syntax-win32
-syntax-win32: bootstrap-toolchain
+syntax-win32: toolchain
 syntax-win32: cref-win32
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda () (load "win32.sf")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-win32
-cref-win32: bootstrap-toolchain
+cref-win32: toolchain
 cref-win32: cref-runtime
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "win32")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 # XML
 
 .PHONY: compile-xml
-compile-xml: bootstrap-toolchain
+compile-xml: toolchain
 compile-xml: cref-xml
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
-	| $(BOOTSTRAP_TOOLCHAIN)
+	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-xml
-cref-xml: bootstrap-toolchain
+cref-xml: toolchain
 cref-xml: cref-runtime
 cref-xml: cref-sos
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "xml")))') \
-	| $(BOOTSTRAP_SYNTAXER)
+	| $(TOOL_SYNTAXER)
 
 ### Cross-compilation finish-up.
 
@@ -501,7 +501,7 @@ cross-end: cross-barrier
 # IMAIL
 
 .PHONY: compile-imail
-compile-imail: bootstrap-toolchain
+compile-imail: toolchain
 compile-imail: compile-edwin
 compile-imail: compile-runtime
 compile-imail: compile-sos
