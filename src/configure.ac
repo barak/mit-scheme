@@ -54,6 +54,16 @@ else
     : ${enable_host_scheme_test=yes}
 fi
 
+AC_ARG_ENABLE([cross-compiling],
+    AS_HELP_STRING([--enable-cross-compiling],
+	[Cross-compile scheme, even if to the same target]))
+: ${enable_cross_compiling=no}
+if test "x$enable_cross_compiling" = xyes; then
+    IF_CROSS=
+else
+    IF_CROSS=\#
+fi
+
 AC_ARG_WITH([default-target],
     AS_HELP_STRING([--with-default-target],
 	[Set the default make target [[all]]]))
@@ -72,16 +82,19 @@ c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
+    IF_SVM=\#
     ;;
 svm1)
     ALL_TARGET=all-svm
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
+    IF_SVM=
     ;;
 *)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
+    IF_SVM=\#
     ;;
 esac
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
@@ -156,6 +169,8 @@ AC_SUBST([INSTALL_LIARC_BUNDLES])
 AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
+AC_SUBST([IF_CROSS])
+AC_SUBST([IF_SVM])
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -180,6 +195,7 @@ AC_SUBST([MODULE_LOADER])
 
 AC_CONFIG_FILES([
 Makefile
+Makefile.tools
 6001/Makefile
 compiler/Makefile
 cref/Makefile

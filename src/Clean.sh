@@ -69,7 +69,12 @@ if [ ${FULL} = yes ]; then
 fi
 
 if [ ${DIST} = yes ]; then
-    maybe_rm Makefile boot-lib config.cache config.log config.status
+    maybe_rm Makefile
+    maybe_rm Makefile.tools
+    maybe_rm boot-lib           # XXX What's this?
+    maybe_rm config.cache
+    maybe_rm config.log
+    maybe_rm config.status
 fi
 
 if [ ${MAINTAINER} = yes ]; then

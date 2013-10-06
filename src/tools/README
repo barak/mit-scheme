@@ -1,0 +1,3 @@
+This directory stores the objects for the toolchain that compiles
+Scheme.  It has no source code in it, but the makefiles want it to be
+here a priori, and Git wants it to be nonempty.

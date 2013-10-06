@@ -34,8 +34,6 @@ USA.
 
 (fluid-let ((sf/default-syntax-table (->environment '(WIN32))))
   (sf-conditionally "ffimacro")
-  (if (not (file-modification-time<? "ffimacro.bin" "ffimacro.com"))
-      (cbf "ffimacro"))
   (load "ffimacro" '(WIN32 FFI-MACRO))
 
   (sf-conditionally "winuser")
