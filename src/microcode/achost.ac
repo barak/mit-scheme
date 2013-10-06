@@ -215,16 +215,12 @@ if test "${DO_GCC_TESTS}" = yes; then
     MODULE_CFLAGS="${MODULE_CFLAGS} -fPIC"
     MODULE_LDFLAGS="${MODULE_LDFLAGS} -shared -fPIC"
     AC_MSG_CHECKING([for ELF binaries])
-    AC_RUN_IFELSE(
-	[AC_LANG_PROGRAM(
-	    [[]],
-	    [[
-	    #ifdef __ELF__
-	    return 0;
-	    #endif
-	    return 1;
-	    ]]
-	)],
+    AC_EGREP_CPP([yes],
+	[
+	#ifdef __ELF__
+	yes
+	#endif
+	],
 	[
 	AC_MSG_RESULT([yes])
 	M4_FLAGS="${M4_FLAGS} -P SUPPRESS_LEADING_UNDERSCORE,1"
