@@ -643,7 +643,8 @@ USA.
       (let ((subtract-one-typecode
 	     (- #x100000000 (make-non-pointer-literal (ucode-type fixnum) 0)))
 	    (mask-out-carry-into-typecode-lsb
-	     (make-non-pointer-literal (ucode-type fixnum) (object-datum -1))))
+	     (make-non-pointer-literal (ucode-type fixnum)
+				       (careful-object-datum -1))))
 	(LAP (LEA ,tgt (@ROI UW ,src ,subtract-one-typecode ,src 1))
 	     (AND W ,tgt (&U ,mask-out-carry-into-typecode-lsb)))))))
 
