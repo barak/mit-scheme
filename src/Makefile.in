@@ -197,6 +197,7 @@ compile-compiler: compile-compiler-fgopt
 compile-compiler: compile-compiler-machine
 compile-compiler: compile-compiler-rtlbase
 compile-compiler: compile-compiler-rtlgen
+compile-compiler: compile-compiler-rtlopt
 
 .PHONY: compile-compiler-back
 compile-compiler-back: toolchain
