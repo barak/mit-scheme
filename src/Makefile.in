@@ -96,7 +96,12 @@ all-native: compile-win32
 all-native: compile-xml
 @IF_CROSS@all-native: cross-target
 
-@IF_CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
+@IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
+@IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
+
+COMPILER_SETTINGS = \
+	$(COMPILER_SETTINGS_CROSS) \
+	$(COMPILER_SETTINGS_LIARC)
 
 HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
 TOOL_COMPILER = $(TOOL_TOOLCHAIN)
@@ -113,6 +118,7 @@ tools/compiler.com:
 tools/syntaxer.com:
 	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
 
+@IF_LIARC@microcode/scheme: compile-runtime
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
 microcode/scheme:
 	(cd microcode && $(MAKE) all)
@@ -277,9 +283,20 @@ cref-cref: cref-runtime
 
 .PHONY: compile-runtime
 compile-runtime: toolchain
+@IF_LIARC@compile-runtime: compile-runtime-pkd
 compile-runtime: syntax-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda () (load "runtime.cbf")))') \
+	| $(TOOL_COMPILER)
+
+.PHONY: compile-runtime-pkd
+compile-runtime-pkd: toolchain
+compile-runtime-pkd: cref-runtime
+	(echo '(with-working-directory-pathname "runtime"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cbf "runtime-os2.pkd")' && \
+	 echo '    (cbf "runtime-unx.pkd")' && \
+	 echo '    (cbf "runtime-w32.pkd")))') \
 	| $(TOOL_COMPILER)
 
 .PHONY: compile-runtime

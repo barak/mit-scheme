@@ -77,12 +77,14 @@ DEFAULT_TARGET=${with_default_target}
 AC_CANONICAL_HOST
 
 MIT_SCHEME_NATIVE_CODE([${enable_native_code}],[${host_cpu}])
+IF_LIARC=\#
+IF_SVM=\#
 case ${mit_scheme_native_code} in
 c)
     ALL_TARGET=all-liarc
     INSTALL_COM=:
     INSTALL_LIARC_BUNDLES=install-liarc-bundles
-    IF_SVM=\#
+    IF_LIARC=
     ;;
 svm1)
     ALL_TARGET=all-svm
@@ -94,7 +96,6 @@ svm1)
     ALL_TARGET=all-native
     INSTALL_COM='$(INSTALL_DATA)'
     INSTALL_LIARC_BUNDLES=
-    IF_SVM=\#
     ;;
 esac
 AUXDIR_NAME=mit-scheme-${mit_scheme_native_code}
@@ -170,6 +171,7 @@ AC_SUBST([MIT_SCHEME_EXE])
 AC_SUBST([AUXDIR_NAME])
 AC_SUBST([AUXDIR])
 AC_SUBST([IF_CROSS])
+AC_SUBST([IF_LIARC])
 AC_SUBST([IF_SVM])
 
 AC_PROG_INSTALL
