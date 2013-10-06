@@ -94,7 +94,7 @@ all-native: compile-ssp
 all-native: compile-star-parser
 all-native: compile-win32
 all-native: compile-xml
-@IF_CROSS@all-native: cross-end
+@IF_CROSS@all-native: cross-target
 
 @IF_CROSS@COMPILER_SETTINGS = (set! compiler:cross-compiling? true)
 
@@ -118,7 +118,7 @@ microcode/scheme:
 	(cd microcode && $(MAKE) all)
 
 lib/runtime.com: compile-runtime
-@IF_CROSS@lib/runtime.com: cross-end
+@IF_CROSS@lib/runtime.com: cross-target
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
@@ -463,30 +463,31 @@ cref-xml: cref-sos
 
 ### Cross-compilation finish-up.
 
-# We split this up into two targets, cross-barrier and cross-end, so
-# that you can type `make cross-barrier' to do everything on the
+# We split this up into two targets, cross-host and cross-target, so
+# that you can type `make cross-host' to do everything on the
 # cross-compilation host, transfer everything over, and then run `make'
-# to do the rest.  (Rsync should help iterating this process.)
+# to do the rest, since the default target depends on cross-target.
+# (Rsync should help iterating this process.)
 
-.PHONY: cross-barrier
-cross-barrier: compile-compiler
-cross-barrier: compile-cref
-cross-barrier: compile-edwin
-cross-barrier: compile-ffi
-#cross-barrier: compile-imail
-cross-barrier: compile-runtime
-cross-barrier: compile-sf
-cross-barrier: compile-sos
-cross-barrier: compile-ssp
-cross-barrier: compile-star-parser
-cross-barrier: compile-win32
-cross-barrier: compile-xml
-cross-barrier: microcode/scheme
-cross-barrier: syntax-compiler
-cross-barrier: syntax-runtime
+.PHONY: cross-host
+cross-host: compile-compiler
+cross-host: compile-cref
+cross-host: compile-edwin
+cross-host: compile-ffi
+#cross-host: compile-imail
+cross-host: compile-runtime
+cross-host: compile-sf
+cross-host: compile-sos
+cross-host: compile-ssp
+cross-host: compile-star-parser
+cross-host: compile-win32
+cross-host: compile-xml
+cross-host: microcode/scheme
+cross-host: syntax-compiler
+cross-host: syntax-runtime
 
-.PHONY: cross-end
-cross-end: cross-barrier
+.PHONY: cross-target
+cross-target: cross-host
 	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access FINISH-CROSS-COMPILATION:DIRECTORY env) ".."))') \
@@ -510,7 +511,7 @@ compile-imail: cref-edwin
 compile-imail: cref-runtime
 compile-imail: cref-sos
 compile-imail: cref-star-parser
-compile-imail: cross-end
+compile-imail: cross-target
 compile-imail: lib/compiler.com
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "edwin"' && \
