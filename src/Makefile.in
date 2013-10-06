@@ -510,7 +510,7 @@ compile-imail: cref-edwin
 compile-imail: cref-runtime
 compile-imail: cref-sos
 compile-imail: cref-star-parser
-compile-imail: cross-barrier
+compile-imail: cross-end
 compile-imail: lib/compiler.com
 	(echo '(begin' && \
 	 echo '  (with-working-directory-pathname "edwin"' && \
