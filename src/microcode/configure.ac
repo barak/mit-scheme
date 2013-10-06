@@ -177,9 +177,7 @@ AC_ARG_WITH([module-loader],
 : ${with_module_loader='yes'}
 
 dnl Substitution variables to be filled in below.
-AS_FLAGS=
 GC_HEAD_FILES="gccode.h cmpgc.h cmpintmd-config.h cmpintmd.h"
-M4_FLAGS=
 OPTIONAL_BASES=
 OPTIONAL_SOURCES=
 OPTIONAL_OBJECTS=
