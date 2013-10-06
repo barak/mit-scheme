@@ -103,7 +103,7 @@ save:
 	    \) \
 	    -print0 \
 	  | pax -rw -pe -l -v -d -0 tools/obj/. \
-	) || rm -rf tools/obj
+	) || { rm -rf tools/obj; exit 1; }
 
 .PHONY: restore
 restore:
