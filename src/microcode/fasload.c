@@ -603,7 +603,7 @@ relocate_address (void * vaddr)
 		  ((unsigned long) (FASLHDR_CONSTANT_END (fh))),
 		  ((unsigned long) (FASLHDR_STACK_START (fh))),
 		  ((unsigned long) (FASLHDR_STACK_END (fh))));
-      termination_init_error ();
+      signal_error_from_primitive (ERR_FASL_FILE_BAD_DATA);
     }
   return (result);
 }
