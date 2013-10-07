@@ -31,6 +31,24 @@ USA.
 #include "svm1-defns.h"
 #include "cmpintmd/svm1.h"
 
+#ifndef __GNUC__
+#  define GNUC_PREREQ(x, y) 0
+#else
+#  define GNUC_PREREQ(x, y)						\
+  ((__GNUC__ > (x)) || ((__GNUC__ == (x)) && (__GNUC_MINOR__ >= (y))))
+#endif
+
+/* Don't trust pre-C99 inline.  */
+#if __STDC_VERSION__ < 199901L
+#  define inline
+#endif
+
+#if GNUC_PREREQ(2,96)
+#  define predict_true(condition)	__builtin_expect(((condition) != 0), 1)
+#  define predict_false(condition)	__builtin_expect(((condition) != 0), 0)
+#else
+#endif
+
 typedef SCHEME_OBJECT word_t;	/* convenience abbreviation */
 
 #define N_WORD_REGISTERS 0x100
@@ -90,7 +108,7 @@ static inst_defn_t * inst_defns [256];
 
 #define COND_OFFSET_PC(p, o) do						\
 {									\
-  if (p) { PC = PC + (o); }						\
+  if (predict_false (p)) { PC = PC + (o); }				\
   return (1);								\
 } while (0)
 
@@ -108,9 +126,11 @@ static long svm1_result;
   return (0);								\
 } while (0)
 
+#define	ILL EXIT_VM (ERR_COMPILED_CODE_ERROR)
+
 typedef struct address_s address_t;
 typedef word_t address_value_t (address_t *);
-typedef void address_decoder_t (address_t *);
+typedef bool address_decoder_t (address_t *);
 static address_decoder_t * address_decoders [256];
 
 struct address_s
@@ -124,9 +144,11 @@ struct address_s
 #define ADDRESS_VALUE(name) ((name.value) (&name))
 
 #define DEFINE_ADDRESS_DECODER(name)					\
-  static void decode_addr_##name (address_t * address)
-#define DECODE_ADDRESS(name) address_t name; decode_address (&name)
-static void decode_address (address_t *);
+  static bool decode_addr_##name (address_t * address)
+#define ADDRESS_DECODED return (true)
+#define DECODE_ADDRESS(name)						\
+  address_t name; if (predict_false (! (decode_address (&name)))) ILL
+static bool decode_address (address_t *);
 
 typedef bool trap_0_t (void);
 typedef bool trap_1_t (wreg_t);
@@ -165,7 +187,7 @@ initialize_svm1 (void)
 {
   unsigned int i;
 
-  if (!initialized_p)
+  if (predict_false (!initialized_p))
     {
       compute_little_endian_p ();
       initialize_decoder_tables ();
@@ -201,7 +223,7 @@ C_to_interface (void * address)
 {
   IMPORT_REGS ();
   PC = address;
-  while ((* (inst_defns[NEXT_BYTE])) ());
+  while (predict_true ((* (inst_defns[NEXT_BYTE])) ()));
   EXPORT_REGS ();
   return (svm1_result);
 }
@@ -209,8 +231,7 @@ C_to_interface (void * address)
 static bool
 illegal_instruction (void)
 {
-  svm1_result = ERR_COMPILED_CODE_ERROR;
-  return (0);
+  ILL;
 }
 
 #define TO_SIGNED(n) ((long) (n))
@@ -231,7 +252,7 @@ illegal_instruction (void)
    work (in machines that use 2's complement).  */
 #define TO_SIGNED(n) (to_signed (n))
 
-static long
+static inline long
 to_signed (word_t n)
 {
   union { unsigned long n1; long n2; } us;
@@ -242,9 +263,9 @@ to_signed (word_t n)
 
 /* Primitive decoders */
 
-#define DECODE_WORD_REGISTER(name)  wreg_t name = (decode_wreg ())
-#define DECODE_FLOAT_REGISTER(name) freg_t name = (decode_freg ())
-#define DECODE_TYPE_WORD(name)        tc_t name = (decode_type_word ())
+#define DECODE_WORD_REGISTER(name)  wreg_t name; if (predict_false (! (decode_wreg (&name)))) ILL
+#define DECODE_FLOAT_REGISTER(name) freg_t name; if (predict_false (! (decode_freg (&name)))) ILL
+#define DECODE_TYPE_WORD(name)        tc_t name; if (predict_false (! (decode_type_word (&name)))) ILL
 #define DECODE_UNSIGNED_8(name)     word_t name = (decode_unsigned_8 ())
 #define DECODE_UNSIGNED_16(name)    word_t name = (decode_unsigned_16 ())
 #define DECODE_UNSIGNED_32(name)    word_t name = (decode_unsigned_32 ())
@@ -253,37 +274,43 @@ to_signed (word_t n)
 #define DECODE_SIGNED_32(name)        long name = (decode_signed_32 ())
 #define DECODE_FLOAT(name)          double name = (decode_float ())
 
-static wreg_t
-decode_wreg (void)
+static inline bool
+decode_wreg (wreg_t *wreg)
 {
   byte_t b = NEXT_BYTE;
-  assert (WORD_REGISTER_P (b));
-  return (b);
+  if (predict_false (! (WORD_REGISTER_P (b))))
+    return (false);
+  *wreg = b;
+  return (true);
 }
 
-static freg_t
-decode_freg (void)
+static inline bool
+decode_freg (freg_t *freg)
 {
   byte_t b = NEXT_BYTE;
-  assert (FLOAT_REGISTER_P (b));
-  return (b);
+  if (predict_false (! (FLOAT_REGISTER_P (b))))
+    return (false);
+  *freg = b;
+  return (true);
 }
 
-static tc_t
-decode_type_word (void)
+static inline bool
+decode_type_word (tc_t *tc)
 {
   byte_t b = NEXT_BYTE;
-  assert (b < N_TYPE_CODES);
-  return (b);
+  if (predict_false (! (b <= N_TYPE_CODES)))
+    return (false);
+  *tc = b;
+  return (true);
 }
 
-static word_t
+static inline word_t
 decode_unsigned_8 (void)
 {
   return (NEXT_BYTE);
 }
 
-static word_t
+static inline word_t
 decode_unsigned_16 (void)
 {
   word_t b0 = NEXT_BYTE;
@@ -291,7 +318,7 @@ decode_unsigned_16 (void)
   return ((b1 << 8) | b0);
 }
 
-static word_t
+static inline word_t
 decode_unsigned_32 (void)
 {
   word_t b0 = NEXT_BYTE;
@@ -301,7 +328,7 @@ decode_unsigned_32 (void)
   return ((b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
 }
 
-static uint64_t
+static inline uint64_t
 decode_unsigned_64 (void)
 {
   uint64_t b0, b1, b2, b3, b4, b5, b6, b7;
@@ -311,21 +338,21 @@ decode_unsigned_64 (void)
 	  | (b3 << 24) | (b2 << 16) | (b1 << 8) | b0);
 }
 
-static long
+static inline long
 decode_signed_8 (void)
 {
   long b = NEXT_BYTE;
   return ((b < 0x80) ? b : (b - 0x100));
 }
 
-static long
+static inline long
 decode_signed_16 (void)
 {
   long n = (decode_unsigned_16 ());
   return ((n < 0x8000) ? n : (n - 0x10000));
 }
 
-static long
+static inline long
 decode_signed_32 (void)
 {
   word_t n = (decode_unsigned_32 ());
@@ -344,7 +371,7 @@ decode_signed_32 (void)
 #endif
 }
 
-static int64_t
+static inline int64_t
 decode_signed_64 (void)
 {
   uint64_t n = (decode_unsigned_64 ());
@@ -359,7 +386,7 @@ decode_signed_64 (void)
   }
 }
 
-static double
+static inline double
 decode_float (void)
 {
   int64_t significand = (decode_signed_64 ());
@@ -606,7 +633,7 @@ DEFINE_INST (ijump_u32)
   IJUMP (offset);
 }
 
-static void
+static inline void
 push_object (SCHEME_OBJECT object)
 {
   stack_pointer = ((SCHEME_OBJECT *) (WREG_REF (SVM1_REG_STACK_POINTER)));
@@ -614,7 +641,7 @@ push_object (SCHEME_OBJECT object)
   WREG_SET (SVM1_REG_STACK_POINTER, ((SCHEME_OBJECT) stack_pointer));
 }
 
-static void
+static inline void
 push_entry (void)
 {
   push_object (MAKE_CC_ENTRY (PC + CC_ENTRY_HEADER_SIZE));
@@ -692,7 +719,7 @@ DEFINE_CJ_3 (pl, pu, fr, FR, 0.0, s32, S32)
 #define CMP_CMP(a, b) (cmp_cmp ((a), (b)))
 #define CMP_NCMP(a, b) (!cmp_cmp ((a), (b)))
 
-static int
+static inline int
 cmp_cmp (double a, double b)
 {
   return ((a < b) || (a > b) || (a == b));
@@ -750,8 +777,7 @@ DEFINE_INST (trap_trap_0)
 static bool
 illegal_trap_0 (void)
 {
-  svm1_result = ERR_COMPILED_CODE_ERROR;
-  return (0);
+  ILL;
 }
 
 DEFINE_INST (trap_trap_1_wr)
@@ -763,8 +789,7 @@ DEFINE_INST (trap_trap_1_wr)
 static bool
 illegal_trap_1 (wreg_t r1)
 {
-  svm1_result = ERR_COMPILED_CODE_ERROR;
-  return (0);
+  ILL;
 }
 
 DEFINE_INST (trap_trap_2_wr)
@@ -776,8 +801,7 @@ DEFINE_INST (trap_trap_2_wr)
 static bool
 illegal_trap_2 (wreg_t r1, wreg_t r2)
 {
-  svm1_result = ERR_COMPILED_CODE_ERROR;
-  return (0);
+  ILL;
 }
 
 DEFINE_INST (trap_trap_3_wr)
@@ -789,8 +813,7 @@ DEFINE_INST (trap_trap_3_wr)
 static bool
 illegal_trap_3 (wreg_t r1, wreg_t r2, wreg_t r3)
 {
-  svm1_result = ERR_COMPILED_CODE_ERROR;
-  return (0);
+  ILL;
 }
 
 #define TRAP_PREFIX(result)						\
@@ -986,7 +1009,7 @@ DEFINE_TRAMPOLINE (return_to_interpreter, return_to_interpreter)
 #define DEFINE_INTERRUPT_TEST(name, a1, a2)				\
 DEFINE_INST (interrupt_test_##name)					\
 {									\
-  if (INTERRUPT_TEST)							\
+  if (predict_false (INTERRUPT_TEST))					\
     {									\
       TRAP_PREFIX(result);						\
       compiler_interrupt_common ((&result), (a1), (a2));		\
@@ -1007,7 +1030,7 @@ DEFINE_INST (enter_closure)
 {
   DECODE_SVM1_INST_ENTER_CLOSURE (index);
 
-  if (INTERRUPT_TEST)
+  if (predict_false (INTERRUPT_TEST))
     {
       TRAP_PREFIX(result);
       compiler_interrupt_common ((&result), PC - 3, SHARP_F);
@@ -1211,22 +1234,17 @@ DEFINE_BINARY_FR (atan2, ATAN2, atan2)
 
 /* Address decoders */
 
-static void
+static inline bool
 decode_address (address_t * address)
 {
-  (* (address_decoders[NEXT_BYTE])) (address);
+  return ((* (address_decoders[NEXT_BYTE])) (address));
 }
 
-static word_t
-illegal_address_value (address_t * address)
-{
-  return (0);
-}
-
-static void
+static bool
 illegal_address (address_t * address)
 {
-  address->value = illegal_address_value;
+  (void) address;		/* ignore */
+  return (false);
 }
 
 static word_t
@@ -1241,6 +1259,7 @@ DEFINE_ADDRESS_DECODER (indir)
   (address->r1) = base;
   (address->n1) = 0;
   (address->value) = offset_address_value;
+  ADDRESS_DECODED;
 }
 
 #define MAKE_OFFSET_ADDRESS(base, offset, scale)			\
@@ -1254,54 +1273,63 @@ DEFINE_ADDRESS_DECODER (offset_s8_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s8_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s8_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 static word_t
@@ -1326,54 +1354,63 @@ DEFINE_ADDRESS_DECODER (index_b_b)
 {
   DECODE_SVM1_ADDR_INDEX_B_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_b_w)
 {
   DECODE_SVM1_ADDR_INDEX_B_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_b_f)
 {
   DECODE_SVM1_ADDR_INDEX_B_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_b)
 {
   DECODE_SVM1_ADDR_INDEX_W_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_w)
 {
   DECODE_SVM1_ADDR_INDEX_W_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_f)
 {
   DECODE_SVM1_ADDR_INDEX_W_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_b)
 {
   DECODE_SVM1_ADDR_INDEX_F_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_w)
 {
   DECODE_SVM1_ADDR_INDEX_F_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_f)
 {
   DECODE_SVM1_ADDR_INDEX_F_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 static word_t
@@ -1394,36 +1431,42 @@ DEFINE_ADDRESS_DECODER (predec_b)
 {
   DECODE_SVM1_ADDR_PREDEC_B (base);
   MAKE_PREINC_ADDRESS (base, (- SBYTE));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (predec_w)
 {
   DECODE_SVM1_ADDR_PREDEC_W (base);
   MAKE_PREINC_ADDRESS (base, (- SWORD));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (predec_f)
 {
   DECODE_SVM1_ADDR_PREDEC_F (base);
   MAKE_PREINC_ADDRESS (base, (- SFLOAT));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_b)
 {
   DECODE_SVM1_ADDR_PREINC_B (base);
   MAKE_PREINC_ADDRESS (base, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_w)
 {
   DECODE_SVM1_ADDR_PREINC_W (base);
   MAKE_PREINC_ADDRESS (base, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_f)
 {
   DECODE_SVM1_ADDR_PREINC_F (base);
   MAKE_PREINC_ADDRESS (base, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 static word_t
@@ -1445,36 +1488,42 @@ DEFINE_ADDRESS_DECODER (postdec_b)
 {
   DECODE_SVM1_ADDR_POSTDEC_B (base);
   MAKE_POSTINC_ADDRESS (base, (- SBYTE));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postdec_w)
 {
   DECODE_SVM1_ADDR_POSTDEC_W (base);
   MAKE_POSTINC_ADDRESS (base, (- SWORD));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postdec_f)
 {
   DECODE_SVM1_ADDR_POSTDEC_F (base);
   MAKE_POSTINC_ADDRESS (base, (- SFLOAT));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_b)
 {
   DECODE_SVM1_ADDR_POSTINC_B (base);
   MAKE_POSTINC_ADDRESS (base, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_w)
 {
   DECODE_SVM1_ADDR_POSTINC_W (base);
   MAKE_POSTINC_ADDRESS (base, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_f)
 {
   DECODE_SVM1_ADDR_POSTINC_F (base);
   MAKE_POSTINC_ADDRESS (base, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 static word_t
@@ -1493,18 +1542,21 @@ DEFINE_ADDRESS_DECODER (pcr_s8)
 {
   DECODE_SVM1_ADDR_PCR_S8 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (pcr_s16)
 {
   DECODE_SVM1_ADDR_PCR_S16 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (pcr_s32)
 {
   DECODE_SVM1_ADDR_PCR_S32 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 #define INITIALIZE_DECODER_TABLE(table, initial_value) do		\
