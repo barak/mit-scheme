@@ -111,6 +111,7 @@ TOOL_TOOLCHAIN = $(HOST_SCHEME) --band ./tools/compiler.com \
 
 .PHONY: toolchain
 toolchain: tools/compiler.com
+toolchain: tools/syntaxer.com
 
 tools/compiler.com:
 	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
