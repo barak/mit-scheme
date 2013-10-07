@@ -80,15 +80,15 @@ all: tools/syntaxer.com
 .PHONY: clean
 clean:
 	@for d in $(SUBDIRS); do (cd $$d && sh Clean.sh clean); done
-	-rm -rf tools/obj
+	-rm -rf tools/saved-objects
 	-rm -f tools/compiler.com
 	-rm -f tools/syntaxer.com
 
 .PHONY: save
 save:
 	@echo 'Saving tools objects...'
-	@rm -rf tools/obj && \
-	mkdir tools/obj && \
+	@rm -rf tools/saved-objects && \
+	mkdir tools/saved-objects && \
 	( \
 	  find $(SUBDIRS) -type f \
 	    \( \
@@ -102,14 +102,14 @@ save:
 	      -false \
 	    \) \
 	    -print0 \
-	  | pax -rw -pe -l -v -d -0 tools/obj/. \
-	) || { rm -rf tools/obj; exit 1; }
+	  | pax -rw -pe -l -v -d -0 tools/saved-objects/. \
+	) || { rm -rf tools/saved-objects; exit 1; }
 
 .PHONY: restore
 restore:
-	@echo 'Restoring tools objects...'
-	@if ! test -d tools/obj; then exit 1; fi && \
-	(cd tools/obj && pax -rw -pe -v . ../../.)
+	@echo 'Restoring tools saved-objectsects...'
+	@if ! test -d tools/saved-objects; then exit 1; fi && \
+	(cd tools/saved-objects && pax -rw -pe -v . ../../.)
 
 tools/compiler.com: tools/syntaxer.com
 tools/compiler.com: compile-cross-compiler

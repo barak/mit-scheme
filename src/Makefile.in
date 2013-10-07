@@ -184,8 +184,8 @@ lib/all.com: microcode/scheme
 .PHONY: save
 save:
 	@echo 'Saving objects...'
-	@rm -rf obj && \
-	mkdir obj && \
+	@rm -rf saved-objects && \
+	mkdir saved-objects && \
 	( \
 	  find $(SUBDIRS) -type f \
 	    \( \
@@ -199,14 +199,14 @@ save:
 	      -false \
 	    \) \
 	    -print0 \
-	  | pax -rw -pe -l -v -d -0 obj/. \
-	) || { rm -rf obj; exit 1; }
+	  | pax -rw -pe -l -v -d -0 saved-objects/. \
+	) || { rm -rf saved-objects; exit 1; }
 
 .PHONY: restore
 restore:
 	@echo 'Restoring objects...'
-	@if ! test -d obj; then exit 1; fi && \
-	(cd obj && pax -rw -pe -v . ../../.)
+	@if ! test -d saved-objects; then exit 1; fi && \
+	(cd saved-objects && pax -rw -pe -v . ../../.)
 
 ### Stuff we build with the tools compiler necessarily from scratch.
 
