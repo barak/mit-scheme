@@ -191,11 +191,15 @@ save:
 	    \( \
 	      -name '*.bci' -o \
 	      -name '*.bin' -o \
+	      -name '*.c' -o \
 	      -name '*.com' -o \
 	      -name '*.crf' -o \
 	      -name '*.ext' -o \
 	      -name '*.fre' -o \
+	      -name '*.moc' -o \
+	      -name '*.o' -o \
 	      -name '*.pkd' -o \
+	      -name '*.so' -o \
 	      -false \
 	    \) \
 	    -print0 \
