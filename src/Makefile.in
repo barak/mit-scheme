@@ -82,24 +82,24 @@ check:
 all-native: microcode/scheme
 all-native: lib/runtime.com
 all-native: lib/all.com
-all-native: compile-compiler
-all-native: compile-cref
-all-native: compile-edwin
-all-native: compile-ffi
-all-native: compile-imail
-all-native: compile-runtime
-all-native: compile-sf
-all-native: compile-sos
-all-native: compile-ssp
-all-native: compile-star-parser
-all-native: compile-win32
-all-native: compile-xml
-@IF_CROSS@all-native: cross-target
+all-native: all-compiler
+all-native: all-cref
+all-native: all-edwin
+all-native: all-ffi
+all-native: all-imail
+all-native: all-runtime
+all-native: all-sf
+all-native: all-sos
+all-native: all-ssp
+all-native: all-star-parser
+all-native: all-win32
+all-native: all-xml
+all-native: cross-target
 
 @IF_CROSS@COMPILER_SETTINGS_CROSS = (set! compiler:cross-compiling? true)
 @IF_LIARC@COMPILER_SETTINGS_LIARC = (set! compiler:invoke-c-compiler? false)
 
-COMPILER_SETTINGS = \
+TOOL_COMPILER_SETTINGS = \
 	$(COMPILER_SETTINGS_CROSS) \
 	$(COMPILER_SETTINGS_LIARC)
 
@@ -107,7 +107,7 @@ HOST_SCHEME = '$(MIT_SCHEME_EXE)' --batch-mode
 TOOL_COMPILER = $(TOOL_TOOLCHAIN)
 TOOL_SYNTAXER = $(HOST_SCHEME) --band ./tools/syntaxer.com
 TOOL_TOOLCHAIN = $(HOST_SCHEME) --band ./tools/compiler.com \
-  --eval '(begin $(COMPILER_SETTINGS))'
+  --eval '(begin $(TOOL_COMPILER_SETTINGS))'
 
 .PHONY: toolchain
 toolchain: tools/compiler.com
@@ -118,22 +118,48 @@ tools/compiler.com:
 tools/syntaxer.com:
 	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
 
+# This target toolchain crud is a kludge until the whole system can be
+# cross-compiled.  Currently only IMAIL can't be.
+TARGET_COMPILER_SETTINGS = \
+	$(COMPILER_SETTINGS_LIARC)
+
+TARGET_RUNTIME = ./microcode/scheme \
+	--library lib --band runtime.com --batch-mode
+TARGET_COMPILER = $(TARGET_RUNTIME) \
+	--eval '(load-option (quote COMPILER))' \
+	--eval '(begin $(TARGET_COMPILER_SETTINGS))'
+TARGET_SYNTAXER = $(TARGET_RUNTIME) \
+	--eval '(load-option (quote CREF))' \
+	--eval '(load-option (quote SF))'
+TARGET_TOOLCHAIN = $(TARGET_RUNTIME) \
+	--eval '(load-option (quote COMPILER))' \
+	--eval '(load-option (quote CREF))' \
+	--eval '(load-option (quote SF))' \
+	--eval '(begin $(TARGET_COMPILER_SETTINGS))'
+
+.PHONY: target-toolchain
+target-toolchain: all-compiler
+target-toolchain: all-cref
+target-toolchain: all-sf
+target-toolchain: cross-target
+target-toolchain: lib/runtime.com
+
 @IF_LIARC@microcode/scheme: compile-runtime
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
 microcode/scheme:
 	(cd microcode && $(MAKE) all)
 
-lib/runtime.com: compile-runtime
-@IF_CROSS@lib/runtime.com: cross-target
+lib/runtime.com: all-runtime
+lib/runtime.com: cross-target
 lib/runtime.com: microcode/scheme
 	(. etc/functions.sh && get_fasl_file && cd runtime \
 	  && (echo '(disk-save "../$@")' \
 	       | ../microcode/scheme --batch-mode --library ../lib \
 	           --fasl "$${FASL}"))
 
-lib/compiler.com: compile-compiler
-lib/compiler.com: compile-edwin
-lib/compiler.com: compile-sf
+lib/compiler.com: all-compiler
+lib/compiler.com: all-edwin
+lib/compiler.com: all-sf
 lib/compiler.com: lib/runtime.com
 lib/compiler.com: microcode/scheme
 	(echo '(begin' && \
@@ -142,9 +168,9 @@ lib/compiler.com: microcode/scheme
 	 echo '  (disk-save "$@"))') \
 	| ./microcode/scheme --batch-mode --library lib --band runtime.com
 
-lib/all.com: compile-compiler
-lib/all.com: compile-edwin
-lib/all.com: compile-sf
+lib/all.com: all-compiler
+lib/all.com: all-edwin
+lib/all.com: all-sf
 lib/all.com: lib/runtime.com
 lib/all.com: microcode/scheme
 	(echo '(begin' && \
@@ -188,6 +214,20 @@ restore:
 # The subdirectories can be compiled independently and in parallel, but
 # syntaxing the compiler is too hairy right now to do without the
 # compiler.sf script(s).
+
+.PHONY: all-compiler
+all-compiler: compile-compiler
+@IF_LIARC@all-compiler: bundle-compiler
+
+.PHONY: bundle-compiler
+bundle-compiler: compile-compiler
+bundle-compiler: compile-compiler-pkd
+	(cd compiler && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-compiler-pkd
+compile-compiler-pkd: toolchain
+compile-compiler-pkd: cref-compiler
+	echo '(cbf "compiler/compiler-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler
 compile-compiler: compile-compiler-back
@@ -258,6 +298,20 @@ cref-compiler: cref-sf
 
 # CREF
 
+.PHONY: all-cref
+all-cref: compile-cref
+@IF_LIARC@all-cref: bundle-cref
+
+.PHONY: bundle-cref
+bundle-cref: compile-cref
+bundle-cref: compile-cref-pkd
+	(cd cref && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-cref-pkd
+compile-cref-pkd: toolchain
+compile-cref-pkd: cref-cref
+	echo '(cbf "cref/cref-unx.pkd")' | $(TOOL_COMPILER)
+
 .PHONY: compile-cref
 compile-cref: toolchain
 compile-cref: syntax-cref
@@ -282,22 +336,20 @@ cref-cref: cref-runtime
 
 # Runtime
 
-.PHONY: compile-runtime
-compile-runtime: toolchain
-@IF_LIARC@compile-runtime: compile-runtime-pkd
-compile-runtime: syntax-runtime
-	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda () (load "runtime.cbf")))') \
-	| $(TOOL_COMPILER)
+.PHONY: all-runtime
+all-runtime: compile-runtime
+@IF_LIARC@all-runtime: compile-runtime-pkd
 
 .PHONY: compile-runtime-pkd
 compile-runtime-pkd: toolchain
 compile-runtime-pkd: cref-runtime
+	echo '(cbf "runtime/runtime-unx.pkd")' | $(TOOL_COMPILER)
+
+.PHONY: compile-runtime
+compile-runtime: toolchain
+compile-runtime: syntax-runtime
 	(echo '(with-working-directory-pathname "runtime"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cbf "runtime-os2.pkd")' && \
-	 echo '    (cbf "runtime-unx.pkd")' && \
-	 echo '    (cbf "runtime-w32.pkd")))') \
+	 echo '  (lambda () (load "runtime.cbf")))') \
 	| $(TOOL_COMPILER)
 
 .PHONY: compile-runtime
@@ -315,6 +367,20 @@ cref-runtime: toolchain
 	| $(TOOL_SYNTAXER)
 
 # SF
+
+.PHONY: all-sf
+all-sf: compile-sf
+@IF_LIARC@all-sf: bundle-sf
+
+.PHONY: bundle-sf
+bundle-sf: compile-sf
+bundle-sf: compile-sf-pkd
+	(cd sf && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-sf-pkd
+compile-sf-pkd: toolchain
+compile-sf-pkd: cref-sf
+	echo '(cbf "sf/sf-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-sf
 compile-sf: toolchain
@@ -344,6 +410,26 @@ cref-sf: cref-runtime
 
 # Edwin
 
+.PHONY: all-edwin
+all-edwin: compile-edwin
+@IF_LIARC@all-edwin: bundle-edwin
+
+.PHONY: bundle-edwin
+bundle-edwin: compile-edwin
+bundle-edwin: compile-edwin-bld
+bundle-edwin: compile-edwin-pkd
+	(cd edwin && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-edwin-bld
+compile-edwin-bld: toolchain
+compile-edwin-bld: syntax-edwin
+	echo '(cbf "edwin/edwin.bld")' | $(TOOL_COMPILER)
+
+.PHONY: compile-edwin-pkd
+compile-edwin-pkd: toolchain
+compile-edwin-pkd: cref-edwin
+	echo '(cbf "edwin/edwin-unx.pkd")' | $(TOOL_COMPILER)
+
 .PHONY: compile-edwin
 compile-edwin: toolchain
 compile-edwin: syntax-edwin
@@ -370,6 +456,20 @@ cref-edwin: cref-xml
 
 # FFI
 
+.PHONY: all-ffi
+all-ffi: compile-ffi
+@IF_LIARC@all-ffi: bundle-ffi
+
+.PHONY: bundle-ffi
+bundle-ffi: compile-ffi
+bundle-ffi: compile-ffi-pkd
+	(cd ffi && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-ffi-pkd
+compile-ffi-pkd: toolchain
+compile-ffi-pkd: cref-ffi
+	echo '(cbf "ffi/ffi-unx.pkd")' | $(TOOL_COMPILER)
+
 .PHONY: compile-ffi
 compile-ffi: toolchain
 compile-ffi: cref-ffi
@@ -387,6 +487,20 @@ cref-ffi: cref-runtime
 
 # SOS
 
+.PHONY: all-sos
+all-sos: compile-sos
+@IF_LIARC@all-sos: bundle-sos
+
+.PHONY: bundle-sos
+bundle-sos: compile-sos
+bundle-sos: compile-sos-pkd
+	(cd sos && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-sos-pkd
+compile-sos-pkd: toolchain
+compile-sos-pkd: cref-sos
+	echo '(cbf "sos/sos-unx.pkd")' | $(TOOL_COMPILER)
+
 .PHONY: compile-sos
 compile-sos: toolchain
 compile-sos: cref-sos
@@ -403,6 +517,20 @@ cref-sos: cref-runtime
 	| $(TOOL_SYNTAXER)
 
 # SSP
+
+.PHONY: all-ssp
+all-ssp: compile-ssp
+@IF_LIARC@all-ssp: bundle-ssp
+
+.PHONY: bundle-ssp
+bundle-ssp: compile-ssp
+bundle-ssp: compile-ssp-pkd
+	(cd ssp && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-ssp-pkd
+compile-ssp-pkd: toolchain
+compile-ssp-pkd: cref-ssp
+	echo '(cbf "ssp/ssp-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-ssp
 compile-ssp: toolchain
@@ -422,6 +550,20 @@ cref-ssp: cref-xml
 
 # *PARSER
 
+.PHONY: all-star-parser
+all-star-parser: compile-star-parser
+@IF_LIARC@all-star-parser: bundle-star-parser
+
+.PHONY: bundle-star-parser
+bundle-star-parser: compile-star-parser
+bundle-star-parser: compile-star-parser-pkd
+	(cd star-parser && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-star-parser-pkd
+compile-star-parser-pkd: toolchain
+compile-star-parser-pkd: cref-star-parser
+	echo '(cbf "star-parser/parser-unx.pkd")' | $(TOOL_COMPILER)
+
 .PHONY: compile-star-parser
 compile-star-parser: toolchain
 compile-star-parser: cref-star-parser
@@ -438,6 +580,9 @@ cref-star-parser: cref-runtime
 	| $(TOOL_SYNTAXER)
 
 # Windows FFI
+
+.PHONY: all-win32
+all-win32: compile-win32
 
 .PHONY: compile-win32
 compile-win32: toolchain
@@ -462,6 +607,20 @@ cref-win32: cref-runtime
 	| $(TOOL_SYNTAXER)
 
 # XML
+
+.PHONY: all-xml
+all-xml: compile-xml
+@IF_LIARC@all-xml: bundle-xml
+
+.PHONY: bundle-xml
+bundle-xml: compile-xml
+bundle-xml: compile-xml-pkd
+	(cd xml && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-xml-pkd
+compile-xml-pkd: toolchain
+compile-xml-pkd: cref-xml
+	echo '(cbf "xml/xml-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-xml
 compile-xml: toolchain
@@ -506,6 +665,10 @@ cross-host: syntax-runtime
 
 .PHONY: cross-target
 cross-target: cross-host
+@IF_CROSS@cross-target: cross-end
+
+.PHONY: cross-end
+cross-end: cross-host
 	(echo '(let ((env (->environment (quote (RUNTIME)))))' && \
 	 echo '  (load "../compiler/base/crsend" env)' && \
 	 echo '  ((access FINISH-CROSS-COMPILATION:DIRECTORY env) ".."))') \
@@ -519,25 +682,53 @@ cross-target: cross-host
 
 # IMAIL
 
+.PHONY: all-imail
+all-imail: compile-imail
+@IF_LIARC@all-imail: bundle-imail
+
+.PHONY: bundle-imail
+bundle-imail: compile-imail
+bundle-imail: compile-imail-pkd
+	(cd imail && $(MAKE) compile-liarc-bundle)
+
+.PHONY: compile-imail-pkd
+compile-imail-pkd: target-toolchain
+compile-imail-pkd: cref-imail
+	echo '(cbf "imail/imail-unx.pkd")' | $(TARGET_COMPILER)
+
 .PHONY: compile-imail
-compile-imail: toolchain
+compile-imail: target-toolchain
 compile-imail: compile-edwin
 compile-imail: compile-runtime
 compile-imail: compile-sos
 compile-imail: compile-star-parser
-compile-imail: cref-edwin
-compile-imail: cref-runtime
-compile-imail: cref-sos
-compile-imail: cref-star-parser
-@IF_CROSS@compile-imail: cross-target
-compile-imail: lib/compiler.com
+compile-imail: cref-imail
 	(echo '(begin' && \
-	 echo '  (with-working-directory-pathname "edwin"' && \
-	 echo '    (lambda () (load "make")))' && \
+	 echo '  (load-option (quote *PARSER))' && \
+	 echo '  (load-option (quote EDWIN))' && \
+	 echo '  (load-option (quote SOS))' && \
 	 echo '  (with-working-directory-pathname "imail"' && \
 	 echo '    (lambda ()' && \
 	 echo '      (load "compile"))))') \
-	| ./microcode/scheme --batch-mode --library lib --band lib/compiler.com
+	| $(TARGET_TOOLCHAIN)
+
+.PHONY: cref-imail
+cref-imail: target-toolchain
+cref-imail: compile-edwin-pkd	# Kludge to load pkds, which were fasdumped
+cref-imail: compile-sos-pkd	# by cross tools so target can't load them
+cref-imail: compile-star-parser-pkd	# on LIARC -- unless they're compiled.
+cref-imail: cref-edwin
+cref-imail: cref-runtime
+cref-imail: cref-sos
+cref-imail: cref-star-parser
+	(echo '(begin' && \
+	 echo '  (load-option (quote EDWIN))' && \
+	 echo '  (load-option (quote SOS))' && \
+	 echo '  (load-option (quote *PARSER))' && \
+	 echo '  (with-working-directory-pathname "imail"' && \
+	 echo '    (lambda ()' && \
+	 echo '      (cref/generate-trivial-constructor "imail"))))') \
+	| $(TARGET_SYNTAXER)
 
 # **** Legacy serialized targets ****
 
