@@ -214,6 +214,11 @@ restore:
 
 ### Stuff we build with the tools compiler necessarily from scratch.
 
+# This rule is for LIARC.
+.SUFFIXES: .bld .pkd .c
+.pkd.c .bld.c: toolchain
+	echo '(cbf "$<")' | $(TOOL_COMPILER)
+
 # Compiler (LIAR)
 
 # The subdirectories can be compiled independently and in parallel, but
@@ -226,14 +231,8 @@ all-compiler: compile-compiler
 
 .PHONY: bundle-compiler
 bundle-compiler: compile-compiler
-bundle-compiler: compile-compiler-pkd
+bundle-compiler: compiler/compiler-unx.c
 	(cd compiler && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-compiler-pkd
-compile-compiler-pkd: toolchain
-compile-compiler-pkd: cref-compiler
-	test compiler/compiler-unx.c -nt compiler/compiler-unx.pkd || \
-	echo '(cbf "compiler/compiler-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler
 compile-compiler: compile-compiler-back
@@ -294,9 +293,12 @@ syntax-compiler: cref-compiler
 	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-compiler
-cref-compiler: toolchain
-cref-compiler: cref-runtime
-cref-compiler: cref-sf
+cref-compiler: compiler/compiler-unx.pkd
+
+compiler/compiler-unx.pkd: toolchain
+compiler/compiler-unx.pkd: compiler/compiler.pkg
+compiler/compiler-unx.pkd: cref-runtime
+compiler/compiler-unx.pkd: cref-sf
 	(echo '(with-working-directory-pathname "compiler"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "compiler")))') \
@@ -310,14 +312,8 @@ all-cref: compile-cref
 
 .PHONY: bundle-cref
 bundle-cref: compile-cref
-bundle-cref: compile-cref-pkd
+bundle-cref: cref/cref-unx.c
 	(cd cref && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-cref-pkd
-compile-cref-pkd: toolchain
-compile-cref-pkd: cref-cref
-	test cref/cref-unx.c -nt cref/cref-unx.pkd || \
-	echo '(cbf "cref/cref-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-cref
 compile-cref: toolchain
@@ -334,8 +330,11 @@ syntax-cref: cref-cref
 	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-cref
-cref-cref: toolchain
-cref-cref: cref-runtime
+cref-cref: cref/cref-unx.pkd
+
+cref/cref-unx.pkd: toolchain
+cref/cref-unx.pkd: cref-runtime
+cref/cref-unx.pkd: cref/cref.pkg
 	(echo '(with-working-directory-pathname "cref"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "cref")))') \
@@ -345,13 +344,10 @@ cref-cref: cref-runtime
 
 .PHONY: all-runtime
 all-runtime: compile-runtime
-@IF_LIARC@all-runtime: compile-runtime-pkd
+@IF_LIARC@all-runtime: bundle-runtime
 
-.PHONY: compile-runtime-pkd
-compile-runtime-pkd: toolchain
-compile-runtime-pkd: cref-runtime
-	test runtime/runtime-unx.c -nt runtime/runtime-unx.pkd || \
-	echo '(cbf "runtime/runtime-unx.pkd")' | $(TOOL_COMPILER)
+.PHONY: bundle-runtime
+bundle-runtime: runtime/runtime-unx.c
 
 .PHONY: compile-runtime
 compile-runtime: toolchain
@@ -368,7 +364,10 @@ syntax-runtime: cref-runtime
 	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-runtime
-cref-runtime: toolchain
+cref-runtime: runtime/runtime-unx.pkd
+
+runtime/runtime-unx.pkd: toolchain
+runtime/runtime-unx.pkd: runtime/runtime.pkg
 	(echo '(with-working-directory-pathname "runtime"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "runtime")))') \
@@ -382,14 +381,8 @@ all-sf: compile-sf
 
 .PHONY: bundle-sf
 bundle-sf: compile-sf
-bundle-sf: compile-sf-pkd
+bundle-sf: sf/sf-unx.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-sf-pkd
-compile-sf-pkd: toolchain
-compile-sf-pkd: cref-sf
-	test sf/sf-unx.c -nt sf/sf-unx.pkd || \
-	echo '(cbf "sf/sf-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-sf
 compile-sf: toolchain
@@ -406,8 +399,11 @@ syntax-sf: cref-sf
 	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-sf
-cref-sf: toolchain
-cref-sf: cref-runtime
+cref-sf: sf/sf-unx.pkd
+
+sf/sf-unx.pkd: toolchain
+sf/sf-unx.pkd: cref-runtime
+sf/sf-unx.pkd: sf/sf.pkg
 	(echo '(with-working-directory-pathname "sf"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "sf")))') \
@@ -425,21 +421,11 @@ all-edwin: compile-edwin
 
 .PHONY: bundle-edwin
 bundle-edwin: compile-edwin
-bundle-edwin: compile-edwin-bld
-bundle-edwin: compile-edwin-pkd
+bundle-edwin: edwin/edwin.c
+bundle-edwin: edwin/edwin-unx.c
 	(cd edwin && $(MAKE) compile-liarc-bundle)
 
-.PHONY: compile-edwin-bld
-compile-edwin-bld: toolchain
-compile-edwin-bld: syntax-edwin
-	test edwin/edwin.c -nt edwin/edwin.bld || \
-	echo '(cbf "edwin/edwin.bld")' | $(TOOL_COMPILER)
-
-.PHONY: compile-edwin-pkd
-compile-edwin-pkd: toolchain
-compile-edwin-pkd: cref-edwin
-	test edwin/edwin-unx.c -nt edwin/edwin-unx.pkd || \
-	echo '(cbf "edwin/edwin-unx.pkd")' | $(TOOL_COMPILER)
+edwin/edwin.bld: syntax-edwin
 
 .PHONY: compile-edwin
 compile-edwin: toolchain
@@ -456,10 +442,13 @@ syntax-edwin: cref-edwin
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-edwin
-cref-edwin: toolchain
-cref-edwin: cref-runtime
-cref-edwin: cref-win32
-cref-edwin: cref-xml
+cref-edwin: edwin/edwin-unx.pkd
+
+edwin/edwin-unx.pkd: toolchain
+edwin/edwin-unx.pkd: cref-runtime
+edwin/edwin-unx.pkd: cref-win32
+edwin/edwin-unx.pkd: cref-xml
+edwin/edwin-unx.pkd: edwin/edwin.pkg
 	(echo '(with-working-directory-pathname "edwin"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "edwin")))') \
@@ -473,25 +462,23 @@ all-ffi: compile-ffi
 
 .PHONY: bundle-ffi
 bundle-ffi: compile-ffi
-bundle-ffi: compile-ffi-pkd
+bundle-ffi: ffi/ffi-unx.c
 	(cd ffi && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-ffi-pkd
-compile-ffi-pkd: toolchain
-compile-ffi-pkd: cref-ffi
-	test ffi/ffi-unx.c -nt ffi/ffi-unx.pkd || \
-	echo '(cbf "ffi/ffi-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-ffi
 compile-ffi: toolchain
 compile-ffi: cref-ffi
+compile-ffi: syntax-cref	# XXX Urgh!  Should not be here!
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda () (load "compile.scm")))') \
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-ffi
-cref-ffi: toolchain
-cref-ffi: cref-runtime
+cref-ffi: ffi/ffi-unx.pkd
+
+ffi/ffi-unx.pkd: toolchain
+ffi/ffi-unx.pkd: cref-runtime
+ffi/ffi-unx.pkd: ffi/ffi.pkg
 	(echo '(with-working-directory-pathname "ffi"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "ffi")))') \
@@ -505,14 +492,8 @@ all-sos: compile-sos
 
 .PHONY: bundle-sos
 bundle-sos: compile-sos
-bundle-sos: compile-sos-pkd
+bundle-sos: sos/sos-unx.c
 	(cd sos && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-sos-pkd
-compile-sos-pkd: toolchain
-compile-sos-pkd: cref-sos
-	test sos/sos-unx.c -nt sos/sos-unx.pkd || \
-	echo '(cbf "sos/sos-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-sos
 compile-sos: toolchain
@@ -522,8 +503,11 @@ compile-sos: cref-sos
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-sos
-cref-sos: toolchain
-cref-sos: cref-runtime
+cref-sos: sos/sos-unx.pkd
+
+sos/sos-unx.pkd: toolchain
+sos/sos-unx.pkd: cref-runtime
+sos/sos-unx.pkd: sos/sos.pkg
 	(echo '(with-working-directory-pathname "sos"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "sos")))') \
@@ -537,14 +521,8 @@ all-ssp: compile-ssp
 
 .PHONY: bundle-ssp
 bundle-ssp: compile-ssp
-bundle-ssp: compile-ssp-pkd
+bundle-ssp: ssp/ssp-unx.c
 	(cd ssp && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-ssp-pkd
-compile-ssp-pkd: toolchain
-compile-ssp-pkd: cref-ssp
-	test ssp/ssp-unx.c -nt ssp/ssp-unx.pkd || \
-	echo '(cbf "ssp/ssp-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-ssp
 compile-ssp: toolchain
@@ -554,9 +532,12 @@ compile-ssp: cref-ssp
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-ssp
-cref-ssp: toolchain
-cref-ssp: cref-runtime
-cref-ssp: cref-xml
+cref-ssp: ssp/ssp-unx.pkd
+
+ssp/ssp-unx.pkd: toolchain
+ssp/ssp-unx.pkd: cref-runtime
+ssp/ssp-unx.pkd: cref-xml
+ssp/ssp-unx.pkd: ssp/ssp.pkg
 	(echo '(with-working-directory-pathname "ssp"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "ssp")))') \
@@ -570,14 +551,8 @@ all-star-parser: compile-star-parser
 
 .PHONY: bundle-star-parser
 bundle-star-parser: compile-star-parser
-bundle-star-parser: compile-star-parser-pkd
+bundle-star-parser: star-parser/parser-unx.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-star-parser-pkd
-compile-star-parser-pkd: toolchain
-compile-star-parser-pkd: cref-star-parser
-	test star-parser/parser-unx.c -nt star-parser/parser-unx.pkd || \
-	echo '(cbf "star-parser/parser-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-star-parser
 compile-star-parser: toolchain
@@ -587,8 +562,11 @@ compile-star-parser: cref-star-parser
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-star-parser
-cref-star-parser: toolchain
-cref-star-parser: cref-runtime
+cref-star-parser: star-parser/parser-unx.pkd
+
+star-parser/parser-unx.pkd: toolchain
+star-parser/parser-unx.pkd: cref-runtime
+star-parser/parser-unx.pkd: star-parser/parser.pkg
 	(echo '(with-working-directory-pathname "star-parser"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "parser")))') \
@@ -614,8 +592,11 @@ syntax-win32: cref-win32
 	| $(TOOL_SYNTAXER)
 
 .PHONY: cref-win32
-cref-win32: toolchain
-cref-win32: cref-runtime
+cref-win32: win32/win32-unx.pkd		# XXX Er...
+
+win32/win32-unx.pkd: toolchain
+win32/win32-unx.pkd: cref-runtime
+win32/win32-unx.pkd: win32/win32.pkg
 	(echo '(with-working-directory-pathname "win32"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "win32")))') \
@@ -629,14 +610,8 @@ all-xml: compile-xml
 
 .PHONY: bundle-xml
 bundle-xml: compile-xml
-bundle-xml: compile-xml-pkd
+bundle-xml: xml/xml-unx.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
-
-.PHONY: compile-xml-pkd
-compile-xml-pkd: toolchain
-compile-xml-pkd: cref-xml
-	test xml/xml-unx.c -nt xml/xml-unx.pkd || \
-	echo '(cbf "xml/xml-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-xml
 compile-xml: toolchain
@@ -646,9 +621,12 @@ compile-xml: cref-xml
 	| $(TOOL_TOOLCHAIN)
 
 .PHONY: cref-xml
-cref-xml: toolchain
-cref-xml: cref-runtime
-cref-xml: cref-sos
+cref-xml: xml/xml-unx.pkd
+
+xml/xml-unx.pkd: toolchain
+xml/xml-unx.pkd: cref-runtime
+xml/xml-unx.pkd: cref-sos
+xml/xml-unx.pkd: xml/xml.pkg
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "xml")))') \
@@ -708,13 +686,12 @@ all-imail: compile-imail
 
 .PHONY: bundle-imail
 bundle-imail: compile-imail
-bundle-imail: compile-imail-pkd
+bundle-imail: imail/imail-unx.c
 	(cd imail && $(MAKE) compile-liarc-bundle)
 
-.PHONY: compile-imail-pkd
-compile-imail-pkd: target-toolchain
-compile-imail-pkd: cref-imail
-	test imail/imail-unx.c -nt imail/imail-unx.pkd || \
+# Must write this rule explicitly because we use TARGET_COMPILER, not
+# TOOL_COMPILER.
+imail/imail-unx.c: imail/imail-unx.pkd
 	echo '(cbf "imail/imail-unx.pkd")' | $(TARGET_COMPILER)
 
 .PHONY: compile-imail
@@ -734,11 +711,14 @@ compile-imail: cref-imail
 	| $(TARGET_TOOLCHAIN)
 
 .PHONY: cref-imail
-cref-imail: target-toolchain
-cref-imail: cref-edwin
-cref-imail: cref-runtime
-cref-imail: cref-sos
-cref-imail: cref-star-parser
+cref-imail: imail/imail-unx.pkd
+
+imail/imail-unx.pkd: target-toolchain
+imail/imail-unx.pkd: cref-edwin
+imail/imail-unx.pkd: cref-runtime
+imail/imail-unx.pkd: cref-sos
+imail/imail-unx.pkd: cref-star-parser
+imail/imail-unx.pkd: imail/imail.pkg
 	(echo '(with-working-directory-pathname "imail"' && \
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "imail")))') \

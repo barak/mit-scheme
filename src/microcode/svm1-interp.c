@@ -128,17 +128,27 @@ static long svm1_result;
 
 #define	ILL EXIT_VM (ERR_COMPILED_CODE_ERROR)
 
-typedef bool address_decoder_t (word_t *);
+typedef struct address_s address_t;
+typedef word_t address_value_t (address_t *);
+typedef bool address_decoder_t (address_t *);
 static address_decoder_t * address_decoders [256];
 
-#define ADDRESS_VALUE(name) name
+struct address_s
+{
+  wreg_t r1;
+  wreg_t r2;
+  word_t n1;
+  long n2;
+  address_value_t * value;
+};
+#define ADDRESS_VALUE(name) ((name.value) (&name))
 
 #define DEFINE_ADDRESS_DECODER(name)					\
-  static bool decode_addr_##name (word_t * address)
-#define ADDRESS_DECODED(addr) (*address) = (addr); return (true)
+  static bool decode_addr_##name (address_t * address)
+#define ADDRESS_DECODED return (true)
 #define DECODE_ADDRESS(name)						\
-  word_t name; if (predict_false (! (decode_address (&name)))) ILL
-static bool decode_address (word_t *);
+  address_t name; if (predict_false (! (decode_address (&name)))) ILL
+static bool decode_address (address_t *);
 
 typedef bool trap_0_t (void);
 typedef bool trap_1_t (wreg_t);
@@ -1225,273 +1235,328 @@ DEFINE_BINARY_FR (atan2, ATAN2, atan2)
 /* Address decoders */
 
 static inline bool
-decode_address (word_t * address)
+decode_address (address_t * address)
 {
   return ((* (address_decoders[NEXT_BYTE])) (address));
 }
 
 static bool
-illegal_address (word_t * address)
+illegal_address (address_t * address)
 {
   (void) address;		/* ignore */
   return (false);
 }
 
 static word_t
-offset_address_value (wreg_t base, word_t offset, unsigned int scale)
+offset_address_value (address_t * address)
 {
-  return ((WREG_REF (base)) + (offset * scale));
+  return ((WREG_REF (address->r1)) + (address->n1));
 }
-
-#define MAKE_OFFSET_ADDRESS(base, offset, scale)			\
-  ADDRESS_DECODED (offset_address_value ((base), (offset), (scale)))
 
 DEFINE_ADDRESS_DECODER (indir)
 {
   DECODE_SVM1_ADDR_INDIR (base);
-  MAKE_OFFSET_ADDRESS (base, 0, 0);
+  (address->r1) = base;
+  (address->n1) = 0;
+  (address->value) = offset_address_value;
+  ADDRESS_DECODED;
+}
+
+#define MAKE_OFFSET_ADDRESS(base, offset, scale)			\
+{									\
+  (address->r1) = (base);						\
+  (address->n1) = ((offset) * (scale));					\
+  (address->value) = offset_address_value;				\
 }
 
 DEFINE_ADDRESS_DECODER (offset_s8_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s8_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s8_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S8_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s16_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S16_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_b)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_B (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_w)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_W (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (offset_s32_f)
 {
   DECODE_SVM1_ADDR_OFFSET_S32_F (base, offset);
   MAKE_OFFSET_ADDRESS (base, offset, SFLOAT);
+  ADDRESS_DECODED;
 }
 
-static inline word_t
-indexed_address_value (wreg_t base, word_t offset, unsigned int oscale,
-		       wreg_t index, unsigned int iscale)
+static word_t
+indexed_address_value (address_t * address)
 {
   return
-    ((WREG_REF (base))
-     + (offset * oscale)
-     + ((WREG_REF (index)) * iscale));
+    ((WREG_REF (address->r1))
+     + (address->n1)
+     + ((WREG_REF (address->r2)) * (address->n2)));
 }
 
 #define MAKE_INDEXED_ADDRESS(base, offset, oscale, index, iscale)	\
-  ADDRESS_DECODED							\
-    (indexed_address_value ((base), (offset), (oscale), (index), (iscale)))
+{									\
+  (address->r1) = (base);						\
+  (address->n1) = ((offset) * (oscale));				\
+  (address->r2) = (index);						\
+  (address->n2) = (iscale);						\
+  (address->value) = indexed_address_value;				\
+}
 
 DEFINE_ADDRESS_DECODER (index_b_b)
 {
   DECODE_SVM1_ADDR_INDEX_B_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_b_w)
 {
   DECODE_SVM1_ADDR_INDEX_B_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_b_f)
 {
   DECODE_SVM1_ADDR_INDEX_B_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SBYTE, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_b)
 {
   DECODE_SVM1_ADDR_INDEX_W_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_w)
 {
   DECODE_SVM1_ADDR_INDEX_W_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_w_f)
 {
   DECODE_SVM1_ADDR_INDEX_W_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SWORD, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_b)
 {
   DECODE_SVM1_ADDR_INDEX_F_B (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_w)
 {
   DECODE_SVM1_ADDR_INDEX_F_W (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (index_f_f)
 {
   DECODE_SVM1_ADDR_INDEX_F_F (base, offset, index);
   MAKE_INDEXED_ADDRESS (base, offset, SFLOAT, index, SFLOAT);
+  ADDRESS_DECODED;
 }
 
-static inline word_t
-preinc_address_value (wreg_t reg, signed int incr)
+static word_t
+preinc_address_value (address_t * address)
 {
-  WREG_SET (reg, ((WREG_REF (reg)) + incr));
-  return (WREG_REF (reg));
+  WREG_SET ((address->r1), ((WREG_REF (address->r1)) + (address->n2)));
+  return (WREG_REF (address->r1));
 }
 
 #define MAKE_PREINC_ADDRESS(base, scale)				\
-  ADDRESS_DECODED (preinc_address_value ((base), (scale)))
+{									\
+  (address->r1) = (base);						\
+  (address->n2) = (scale);						\
+  (address->value) = preinc_address_value;				\
+}
 
 DEFINE_ADDRESS_DECODER (predec_b)
 {
   DECODE_SVM1_ADDR_PREDEC_B (base);
-  MAKE_PREINC_ADDRESS (base, (- ((signed) SBYTE)));
+  MAKE_PREINC_ADDRESS (base, (- SBYTE));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (predec_w)
 {
   DECODE_SVM1_ADDR_PREDEC_W (base);
-  MAKE_PREINC_ADDRESS (base, (- ((signed) SWORD)));
+  MAKE_PREINC_ADDRESS (base, (- SWORD));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (predec_f)
 {
   DECODE_SVM1_ADDR_PREDEC_F (base);
-  MAKE_PREINC_ADDRESS (base, (- ((signed) SFLOAT)));
+  MAKE_PREINC_ADDRESS (base, (- SFLOAT));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_b)
 {
   DECODE_SVM1_ADDR_PREINC_B (base);
   MAKE_PREINC_ADDRESS (base, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_w)
 {
   DECODE_SVM1_ADDR_PREINC_W (base);
   MAKE_PREINC_ADDRESS (base, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (preinc_f)
 {
   DECODE_SVM1_ADDR_PREINC_F (base);
   MAKE_PREINC_ADDRESS (base, SFLOAT);
+  ADDRESS_DECODED;
 }
 
-static inline word_t
-postinc_address_value (wreg_t reg, signed int incr)
+static word_t
+postinc_address_value (address_t * address)
 {
-  word_t value = (WREG_REF (reg));
-  WREG_SET (reg, ((WREG_REF (reg)) + incr));
+  word_t value = (WREG_REF (address->r1));
+  WREG_SET ((address->r1), ((WREG_REF (address->r1)) + (address->n2)));
   return (value);
 }
 
 #define MAKE_POSTINC_ADDRESS(base, scale)				\
-  ADDRESS_DECODED (postinc_address_value ((base), (scale)))
+{									\
+  (address->r1) = (base);						\
+  (address->n2) = (scale);						\
+  (address->value) = postinc_address_value;				\
+}
 
 DEFINE_ADDRESS_DECODER (postdec_b)
 {
   DECODE_SVM1_ADDR_POSTDEC_B (base);
-  MAKE_POSTINC_ADDRESS (base, (- ((signed) SBYTE)));
+  MAKE_POSTINC_ADDRESS (base, (- SBYTE));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postdec_w)
 {
   DECODE_SVM1_ADDR_POSTDEC_W (base);
-  MAKE_POSTINC_ADDRESS (base, (- ((signed) SWORD)));
+  MAKE_POSTINC_ADDRESS (base, (- SWORD));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postdec_f)
 {
   DECODE_SVM1_ADDR_POSTDEC_F (base);
-  MAKE_POSTINC_ADDRESS (base, (- ((signed) SFLOAT)));
+  MAKE_POSTINC_ADDRESS (base, (- SFLOAT));
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_b)
 {
   DECODE_SVM1_ADDR_POSTINC_B (base);
   MAKE_POSTINC_ADDRESS (base, SBYTE);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_w)
 {
   DECODE_SVM1_ADDR_POSTINC_W (base);
   MAKE_POSTINC_ADDRESS (base, SWORD);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (postinc_f)
 {
   DECODE_SVM1_ADDR_POSTINC_F (base);
   MAKE_POSTINC_ADDRESS (base, SFLOAT);
+  ADDRESS_DECODED;
 }
 
-static inline word_t
-pcr_value (word_t offset)
+static word_t
+pcr_value (address_t * address)
 {
-  return (((word_t) PC) + offset);
+  return (((word_t) PC) + (address->n2));
 }
 
 #define MAKE_PCR_ADDRESS(offset)					\
-  ADDRESS_DECODED (pcr_value (offset))
+{									\
+  (address->n2) = (offset);						\
+  (address->value) = pcr_value;						\
+}
 
 DEFINE_ADDRESS_DECODER (pcr_s8)
 {
   DECODE_SVM1_ADDR_PCR_S8 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (pcr_s16)
 {
   DECODE_SVM1_ADDR_PCR_S16 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 DEFINE_ADDRESS_DECODER (pcr_s32)
 {
   DECODE_SVM1_ADDR_PCR_S32 (offset);
   MAKE_PCR_ADDRESS (offset);
+  ADDRESS_DECODED;
 }
 
 #define INITIALIZE_DECODER_TABLE(table, initial_value) do		\
