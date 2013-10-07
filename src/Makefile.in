@@ -657,6 +657,10 @@ cref-xml: cref-sos
 # cross-compilation host, transfer everything over, and then run `make'
 # to do the rest, since the default target depends on cross-target.
 # (Rsync should help iterating this process.)
+#
+# Anything that depends on running the target code should depend on
+# cross-target, and there should be a plan for obviating the need to
+# run the target code.  Currently this is only IMAIL.
 
 .PHONY: cross-host
 cross-host: compile-compiler
