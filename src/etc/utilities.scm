@@ -64,8 +64,8 @@ USA.
 		    (write-rule port ".c.o")
 		    (write-command port
 				   (string-append "@" script-dir "/liarc-cc")
-				   "$*.o"
-				   "$*.c"
+				   "$@"
+				   "$<"
 				   (string-append "-I" include-dir))
 		    (newline port)
 		    (let ((init-root (string-append bundle "-init")))
