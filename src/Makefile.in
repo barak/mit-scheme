@@ -726,20 +726,13 @@ compile-imail: cref-imail
 
 .PHONY: cref-imail
 cref-imail: target-toolchain
-cref-imail: compile-edwin-pkd	# Kludge to load pkds, which were fasdumped
-cref-imail: compile-sos-pkd	# by cross tools so target can't load them
-cref-imail: compile-star-parser-pkd	# on LIARC -- unless they're compiled.
 cref-imail: cref-edwin
 cref-imail: cref-runtime
 cref-imail: cref-sos
 cref-imail: cref-star-parser
-	(echo '(begin' && \
-	 echo '  (load-option (quote EDWIN))' && \
-	 echo '  (load-option (quote SOS))' && \
-	 echo '  (load-option (quote *PARSER))' && \
-	 echo '  (with-working-directory-pathname "imail"' && \
-	 echo '    (lambda ()' && \
-	 echo '      (cref/generate-trivial-constructor "imail"))))') \
+	(echo '(with-working-directory-pathname "imail"' && \
+	 echo '  (lambda ()' && \
+	 echo '    (cref/generate-trivial-constructor "imail")))') \
 	| $(TARGET_SYNTAXER)
 
 # **** Legacy serialized targets ****
