@@ -227,6 +227,7 @@ bundle-compiler: compile-compiler-pkd
 .PHONY: compile-compiler-pkd
 compile-compiler-pkd: toolchain
 compile-compiler-pkd: cref-compiler
+	test compiler/compiler-unx.c -nt compiler/compiler-unx.pkd || \
 	echo '(cbf "compiler/compiler-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-compiler
@@ -310,6 +311,7 @@ bundle-cref: compile-cref-pkd
 .PHONY: compile-cref-pkd
 compile-cref-pkd: toolchain
 compile-cref-pkd: cref-cref
+	test cref/cref-unx.c -nt cref/cref-unx.pkd || \
 	echo '(cbf "cref/cref-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-cref
@@ -343,6 +345,7 @@ all-runtime: compile-runtime
 .PHONY: compile-runtime-pkd
 compile-runtime-pkd: toolchain
 compile-runtime-pkd: cref-runtime
+	test runtime/runtime-unx.c -nt runtime/runtime-unx.pkd || \
 	echo '(cbf "runtime/runtime-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-runtime
@@ -380,6 +383,7 @@ bundle-sf: compile-sf-pkd
 .PHONY: compile-sf-pkd
 compile-sf-pkd: toolchain
 compile-sf-pkd: cref-sf
+	test sf/sf-unx.c -nt sf/sf-unx.pkd || \
 	echo '(cbf "sf/sf-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-sf
@@ -428,6 +432,7 @@ compile-edwin-bld: syntax-edwin
 .PHONY: compile-edwin-pkd
 compile-edwin-pkd: toolchain
 compile-edwin-pkd: cref-edwin
+	test edwin/edwin-unx.c -nt edwin/edwin-unx.pkd || \
 	echo '(cbf "edwin/edwin-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-edwin
@@ -468,6 +473,7 @@ bundle-ffi: compile-ffi-pkd
 .PHONY: compile-ffi-pkd
 compile-ffi-pkd: toolchain
 compile-ffi-pkd: cref-ffi
+	test ffi/ffi-unx.c -nt ffi/ffi-unx.pkd || \
 	echo '(cbf "ffi/ffi-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-ffi
@@ -499,6 +505,7 @@ bundle-sos: compile-sos-pkd
 .PHONY: compile-sos-pkd
 compile-sos-pkd: toolchain
 compile-sos-pkd: cref-sos
+	test sos/sos-unx.c -nt sos/sos-unx.pkd || \
 	echo '(cbf "sos/sos-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-sos
@@ -530,6 +537,7 @@ bundle-ssp: compile-ssp-pkd
 .PHONY: compile-ssp-pkd
 compile-ssp-pkd: toolchain
 compile-ssp-pkd: cref-ssp
+	test ssp/ssp-unx.c -nt ssp/ssp-unx.pkd || \
 	echo '(cbf "ssp/ssp-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-ssp
@@ -562,6 +570,7 @@ bundle-star-parser: compile-star-parser-pkd
 .PHONY: compile-star-parser-pkd
 compile-star-parser-pkd: toolchain
 compile-star-parser-pkd: cref-star-parser
+	test star-parser/parser-unx.c -nt star-parser/parser-unx.pkd || \
 	echo '(cbf "star-parser/parser-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-star-parser
@@ -620,6 +629,7 @@ bundle-xml: compile-xml-pkd
 .PHONY: compile-xml-pkd
 compile-xml-pkd: toolchain
 compile-xml-pkd: cref-xml
+	test xml/xml-unx.c -nt xml/xml-unx.pkd || \
 	echo '(cbf "xml/xml-unx.pkd")' | $(TOOL_COMPILER)
 
 .PHONY: compile-xml
@@ -694,6 +704,7 @@ bundle-imail: compile-imail-pkd
 .PHONY: compile-imail-pkd
 compile-imail-pkd: target-toolchain
 compile-imail-pkd: cref-imail
+	test imail/imail-unx.c -nt imail/imail-unx.pkd || \
 	echo '(cbf "imail/imail-unx.pkd")' | $(TARGET_COMPILER)
 
 .PHONY: compile-imail
