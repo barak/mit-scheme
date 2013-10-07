@@ -120,7 +120,10 @@ USA.
 	  (lambda (file)
 	    (let ((env (file-environment file))
 		  (deps (file-dependencies file))
-		  (type (if compile-file:sf-only? "bin" #f)))
+		  (type
+		   (if (or compile-file:sf-only? compiler:cross-compiling?)
+		       "bin"
+		       #f)))
 	      (compile-file file deps env)
 	      (load (pathname-new-type file type) env)))
 	  (append-map package/files (pmodel/packages pmodel)))
