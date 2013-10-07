@@ -427,6 +427,7 @@ bundle-edwin: compile-edwin-pkd
 .PHONY: compile-edwin-bld
 compile-edwin-bld: toolchain
 compile-edwin-bld: syntax-edwin
+	test edwin/edwin.c -nt edwin/edwin.bld || \
 	echo '(cbf "edwin/edwin.bld")' | $(TOOL_COMPILER)
 
 .PHONY: compile-edwin-pkd
