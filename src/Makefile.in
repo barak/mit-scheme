@@ -537,7 +537,7 @@ compile-imail: lib/compiler.com
 	 echo '  (with-working-directory-pathname "imail"' && \
 	 echo '    (lambda ()' && \
 	 echo '      (load "compile"))))') \
-	| ./microcode/scheme --library lib --band lib/compiler.com
+	| ./microcode/scheme --batch-mode --library lib --band lib/compiler.com
 
 # **** Legacy serialized targets ****
 
