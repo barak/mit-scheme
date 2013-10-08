@@ -111,13 +111,9 @@ TOOL_TOOLCHAIN = $(HOST_SCHEME) --band ./tools/compiler.com \
 
 .PHONY: toolchain
 toolchain: tools/compiler.com
-toolchain: tools/syntaxer.com
 
 tools/compiler.com:
-	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
-
-tools/syntaxer.com:
-	@echo >&2 'Please run `make -f Makefile.tools'\'' first.'; exit 1
+	$(MAKE) -f Makefile.tools clean && $(MAKE) -f Makefile.tools allclean
 
 # This target toolchain crud is a kludge until the whole system can be
 # cross-compiled.  Currently only IMAIL can't be.

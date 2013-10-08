@@ -76,6 +76,10 @@ SUBDIRS = compiler cref runtime sf star-parser
 all: tools/compiler.com
 all: tools/syntaxer.com
 
+.PHONY: allclean
+allclean: all
+	@for d in $(SUBDIRS); do (cd $$d && sh Clean.sh clean); done
+
 # XXX This clean target is a cop-out.
 .PHONY: clean
 clean:
