@@ -2,11 +2,12 @@
 
 ;;;; Compile the GDBM wrapper.
 
-(fluid-let ((load/suppress-loading-message? #t))
-  (load-option 'CREF)
-  (load-option 'FFI))
-
-(with-system-library-directories
- '("./")
- (lambda ()
-   (compile-system "gdbm" (directory-pathname (current-load-pathname)))))
+(load-option 'CREF)
+(load-option 'FFI)
+(with-working-directory-pathname (directory-pathname (current-load-pathname))
+  (lambda ()
+    (with-system-library-directories
+	'("./")
+      (lambda ()
+	(compile-file "gdbm" '() (->environment '(RUNTIME)))))
+    (cref/generate-constructors "gdbm" 'ALL)))

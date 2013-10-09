@@ -53,10 +53,6 @@ USA.
 		      cref/generate-trivial-constructor
 		      cref/package-files)
 		    '())
-	   (package '(cross-reference build-utilities)
-		    '((cross-reference) ())
-		    '((compile-system))
-		    '())
 	   (package '(cross-reference analyze-file)
 		    '((cross-reference) ())
 		    '(analyze-file)
@@ -83,7 +79,6 @@ USA.
 		  '#()
 		  '#()))))
    (vector (files '(cross-reference) "mset" "object" "toplev")
-	   (files '(cross-reference build-utilities) "butils")
 	   (files '(cross-reference analyze-file) "anfile")
 	   (files '(cross-reference constructor) "conpkg")
 	   (files '(cross-reference formatter) "forpkg")

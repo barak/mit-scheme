@@ -43,18 +43,6 @@ USA.
       (load "load")))
   (for-each compile-dir '("xml" "win32" "edwin" "imail" "ssp" "ffi")))
 
-(define (compile-ffi dir)
-  (if (eq? microcode-id/compiled-code-type 'C)
-      (in-liarc
-       (lambda ()
-	 (c-compile-dir dir)
-	 (let* ((line '("make" "compile-liarc-bundle"))
-		(code (run-synchronous-subprocess
-		       (car line) (cdr line) 'working-directory dir)))
-	   (if (not (zero? code))
-	       (error "Process exited with error code:" code line)))))
-      (compile-dir dir)))
-
 (define (compile-boot-dirs compile-dir)
   (compile-cref compile-dir)
   (for-each compile-dir '("runtime" "cref" "sf" "compiler" "star-parser")))
