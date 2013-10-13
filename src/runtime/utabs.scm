@@ -68,6 +68,17 @@ USA.
 	(microcode-identification-item 'CONSOLE-WIDTH))
   (set! microcode-id/tty-y-size
 	(microcode-identification-item 'CONSOLE-HEIGHT))
+
+  ;; Temporarily: ensure host knows new type code SEQUENCE.  Older hosts
+  ;; have an equivalent SEQUENCE-2 and type-aliases.
+  (if (not (microcode-type/name->code 'sequence))
+      (set! type-aliases
+	    (cons '(SEQUENCE-2 SEQUENCE)
+		  type-aliases)))
+  (if (not (microcode-return/name->code 'sequence-continue))
+      (set! returns-aliases
+	    (cons '(SEQUENCE-2-SECOND SEQUENCE-CONTINUE)
+		  returns-aliases)))
   unspecific)
 
 (define (intern string)
