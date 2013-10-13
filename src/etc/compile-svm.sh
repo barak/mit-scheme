@@ -63,9 +63,7 @@ echo ""
 echo "# `date`:    Re-syntax cross-compiler using x-runtime.com."
 run_cmd_in_dir compiler \
     "${@}" --batch-mode --library ../lib --band x-runtime.com <<EOF
-(begin
-  (load "compiler.sf")
-  (sf "base/crsend"))
+(load "compiler.sf")
 EOF
 
 if [ -s compiler/compiler-unx.crf ]; then
@@ -87,7 +85,7 @@ run_cmd "${@}" --batch-mode --library lib --band x-runtime.com <<EOF
 EOF
 
 echo "# `date`: Remove host code to STAGEX/ subdirs."
-run_cmd ./Stage.sh make X
+run_cmd ./Stage.sh make-clean X
 
 echo "# `date`: Restore previously cross-compiled code."
 # (Replace "unmake" with "remove" to start from scratch with each
@@ -114,7 +112,8 @@ if [ "${FAST}" ]; then
   (fluid-let ((compiler:generate-lap-files? #t)
 	      (compiler:intersperse-rtl-in-lap? #t)
 	      (compiler:cross-compiling? #t))
-    (compile-everything)))
+    (compile-everything))
+  (sf "compiler/base/crsend"))
 EOF
 
     echo "# `date`: Finish-cross-compilation of everything."
@@ -147,7 +146,8 @@ run_cmd "${@}" --batch-mode --library lib \
   (fluid-let ((compiler:generate-lap-files? #f)
 	      (compiler:intersperse-rtl-in-lap? #f)
 	      (compiler:cross-compiling? #t))
-    (compile-boot-dirs compile-dir)))
+    (compile-boot-dirs compile-dir))
+  (sf "compiler/base/crsend"))
 EOF
 
 echo "# `date`: Finish-cross-compilation of boot-dirs."
@@ -170,7 +170,7 @@ run_cmd_in_dir runtime \
   (disk-save "../lib/boot-compiler.com"))
 EOF
 
-run_cmd ./Stage.sh make-cross 0
+run_cmd ./Stage.sh make-clean 0
 
 echo "# `date`: Use the new machine and compiler to re-compile everything."
 run_cmd ./microcode/scheme --batch-mode --library lib \
