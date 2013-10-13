@@ -137,6 +137,8 @@ else
     fi
     if test x"${found_p}" = xyes; then
 	AC_MSG_RESULT([yes, using ${MIT_SCHEME_EXE}])
+	# To get some version numbers into the build log:
+	${MIT_SCHEME_EXE} --version
     else
 	message=
 	if test x"${env_p}" = xyes; then
@@ -183,17 +185,6 @@ etc/create-makefiles.sh "${MIT_SCHEME_EXE}" "${mit_scheme_native_code}" \
 compiler/configure "${mit_scheme_native_code}" || exit $?
 
 AC_CONFIG_SUBDIRS([microcode])
-
-m4_include(microcode/achost.ac)
-
-AC_SUBST([CCLD])
-AC_SUBST([DEFS])
-AC_SUBST([CFLAGS])
-AC_SUBST([CPPFLAGS])
-AC_SUBST([LDFLAGS])
-AC_SUBST([MODULE_CFLAGS])
-AC_SUBST([MODULE_LDFLAGS])
-AC_SUBST([MODULE_LOADER])
 
 AC_CONFIG_FILES([
 Makefile
