@@ -612,6 +612,7 @@ bundle-xml: xml/xml-unx.c
 .PHONY: compile-xml
 compile-xml: toolchain
 compile-xml: cref-xml
+compile-xml: cref-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(TOOL_TOOLCHAIN)
