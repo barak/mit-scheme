@@ -52,7 +52,23 @@ make-cross)
 	  maybe_mv *.com "$S"
 	  maybe_mv *.bci "$S"
 	  maybe_mv *.moc "$S"
-	  maybe_mv *.fni "$S" )
+	  maybe_mv *.fni "$S"
+	  maybe_mv *.lap "$S"
+	  maybe_mv *.rtl "$S" )
+    done
+    ;;
+make-clean)
+    for D in $SUBDIRS; do
+	( cd $D
+	  mkdir "$S"
+	  maybe_mv *.bin "$S"
+	  maybe_mv *.ext "$S"
+	  maybe_mv *.com "$S"
+	  maybe_mv *.bci "$S"
+	  maybe_mv *.moc "$S"
+	  maybe_mv *.fni "$S"
+	  maybe_mv *.lap "$S"
+	  maybe_mv *.rtl "$S" )
     done
     ;;
 unmake)

@@ -70,5 +70,5 @@ run_cmd "${EXE}" --batch-mode --library lib --band x-runtime.com <<EOF
   (disk-save "lib/x-compiler.com"))
 EOF
 
-# Remove host (native) code to STAGEX/ subdirs.
-run_cmd ./Stage.sh make X
+# Remove host (native) code (.bins as well as .coms) to STAGEX/ subdirs.
+run_cmd ./Stage.sh make-clean X
