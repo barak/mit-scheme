@@ -69,7 +69,7 @@ plugin ()
 
 for plugin in $PLUGINS; do
     D="${DIST_DIR}"/src/$plugin
-    run_command "${DOC_OUT}"-$plugin-config "${DIST_DIR}"/src/$plugin plugin
+    run_command "${OUTPUT_DIR}"/$plugin-config "${DIST_DIR}"/src/$plugin plugin
 done
 
 # Clean up after autoconf
