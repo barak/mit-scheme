@@ -612,7 +612,6 @@ bundle-xml: xml/xml-unx.c
 .PHONY: compile-xml
 compile-xml: toolchain
 compile-xml: cref-xml
-compile-xml: cref-star-parser
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda () (load "compile")))') \
 	| $(TOOL_TOOLCHAIN)
@@ -623,6 +622,7 @@ cref-xml: xml/xml-unx.pkd
 xml/xml-unx.pkd: toolchain
 xml/xml-unx.pkd: cref-runtime
 xml/xml-unx.pkd: cref-sos
+xml/xml-unx.pkd: cref-star-parser
 xml/xml-unx.pkd: xml/xml.pkg
 	(echo '(with-working-directory-pathname "xml"' && \
 	 echo '  (lambda ()' && \
