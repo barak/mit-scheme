@@ -36,8 +36,8 @@ check:
 
 install:
 	( echo '(begin'; \
-	  echo '  (install-shim "md5")'; \
-	  echo '  (install-load-option "md5"))' ) \
+	  echo '  (install-shim "$(DESTDIR)" "md5")'; \
+	  echo '  (install-load-option "$(DESTDIR)" "md5"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:

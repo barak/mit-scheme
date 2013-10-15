@@ -36,8 +36,8 @@ check:
 
 install:
 	( echo '(begin'; \
-	  echo '  (install-shim "mhash")'; \
-	  echo '  (install-load-option "mhash"))' ) \
+	  echo '  (install-shim "$(DESTDIR)" "mhash")'; \
+	  echo '  (install-load-option "$(DESTDIR)" "mhash"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:

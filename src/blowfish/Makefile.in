@@ -36,8 +36,8 @@ check:
 
 install:
 	( echo '(begin'; \
-	  echo '  (install-shim "blowfish")'; \
-	  echo '  (install-load-option "blowfish"))' ) \
+	  echo '  (install-shim "$(DESTDIR)" "blowfish")'; \
+	  echo '  (install-load-option "$(DESTDIR)" "blowfish"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean:

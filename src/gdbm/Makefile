@@ -31,8 +31,8 @@ check:
 
 install:
 	( echo '(begin'; \
-	  echo '  (install-shim "gdbm")'; \
-	  echo '  (install-load-option "gdbm2" "gdbm"))' ) \
+	  echo '  (install-shim "$(DESTDIR)" "gdbm")'; \
+	  echo '  (install-load-option "$(DESTDIR)" "gdbm2" "gdbm"))' ) \
 	| $(exe) -- *.com *.bci *.pkd make.scm
 
 clean distclean maintainer-clean:

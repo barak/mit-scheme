@@ -33,27 +33,37 @@ USA.
 (define (link-shim)
   (run-command (append CCLD LDFLAGS (command-line) MODULE_LDFLAGS)))
 
-(define (install-shim libname)
+(define (install-shim destdir libname)
+  (guarantee-string destdir 'INSTALL-SHIM)
+  (guarantee-string libname 'INSTALL-SHIM)
   (run-command (list "install" "-m" "644"
 		     (string-append libname "-shim.so")
 		     (string-append libname "-types.bin")
 		     (string-append libname "-const.bin")
-		     (->namestring (system-library-directory-pathname)))))
+		     (string-append destdir
+				    (->namestring
+				     (system-library-directory-pathname))))))
 
-(define (install-load-option name #!optional directory)
-  (guarantee-string name 'INSTALL-OPTION)
+(define (install-load-option destdir name #!optional directory)
+  (guarantee-string destdir 'INSTALL-LOAD-OPTION)
+  (guarantee-string name 'INSTALL-LOAD-OPTION)
   (let ((dir (if (default-object? directory) name directory)))
-    (guarantee-string dir 'INSTALL-OPTION)
-    (let ((library-dir (->namestring
-			(merge-pathnames (pathname-as-directory dir)
-					 (system-library-directory-pathname)))))
+    (guarantee-string dir 'INSTALL-LOAD-OPTION)
+    (let ((library-dir
+	   (string-append destdir (->namestring
+				   (merge-pathnames
+				    (pathname-as-directory dir)
+				    (system-library-directory-pathname))))))
       (run-command (list "rm" "-rf" library-dir))
       (run-command (list "mkdir" library-dir))
       (run-command (list "chmod" "755" library-dir))
-      (run-command (append (list "install" "-m" "644")
+      (run-command (append (list "install" "-m644")
 			   (command-line) (list library-dir))))
-    (rewrite-file (merge-pathnames "optiondb.scm"
-				   (system-library-directory-pathname))
+    (rewrite-file (string-append
+		   destdir
+		   (->namestring
+		    (merge-pathnames "optiondb.scm"
+				     (system-library-directory-pathname))))
 		  (lambda (in out)
 		    (rewrite-optiondb name dir in out)))))
 

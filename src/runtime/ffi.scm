@@ -537,14 +537,14 @@ USA.
   (load-ffi-quietly)
   ((environment-lookup (->environment '(ffi)) 'link-shim)))
 
-(define (install-shim library)
+(define (install-shim destdir library)
   (load-ffi-quietly)
-  ((environment-lookup (->environment '(ffi)) 'install-shim) library))
+  ((environment-lookup (->environment '(ffi)) 'install-shim) destdir library))
 
-(define (install-load-option name #!optional directory)
+(define (install-load-option destdir name #!optional directory)
   (load-ffi-quietly)
   ((environment-lookup (->environment '(ffi)) 'install-load-option)
-   name directory))
+   destdir name directory))
 
 (define (load-ffi-quietly)
   (if (not (name->package '(FFI)))
