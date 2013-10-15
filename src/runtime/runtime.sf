@@ -24,14 +24,6 @@ USA.
 
 |#
 
-;; Temporarily: ensure host knows new type code SEQUENCE.  Older hosts
-;; have an equivalent SEQUENCE-2 and type-aliases.
-(if (not (microcode-type/name->code 'sequence))
-    (let ((env (->environment '(runtime microcode-tables))))
-      (set! (access type-aliases env)
-	    (cons '(sequence-2 sequence)
-		  (access type-aliases env)))))
-
 (load-option '*PARSER)			;for url.scm
 (fluid-let ((sf/default-syntax-table (->environment '(RUNTIME))))
   (sf-conditionally "char")
