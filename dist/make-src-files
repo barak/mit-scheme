@@ -57,6 +57,21 @@ notify "Configuring the distribution directory"
 run_command "${SRC_OUT}"-config "${DIST_DIR}"/src ./Setup.sh
 run_command "${DOC_OUT}"-config "${DIST_DIR}"/doc reconf
 
+plugin ()
+{
+    if [[ -f Makefile ]]; then
+	my_make distclean
+    else
+	[[ -f config.h.in ]] || cmd autoheader
+	cmd autoconf
+    fi
+}
+
+for plugin in $PLUGINS; do
+    D="${DIST_DIR}"/src/$plugin
+    run_command "${DOC_OUT}"-$plugin-config "${DIST_DIR}"/src/$plugin plugin
+done
+
 # Clean up after autoconf
 find "${DIST_DIR}" -type d -name autom4te.cache | xargs rm -rf
 fixup_perms "${DIST_DIR}"

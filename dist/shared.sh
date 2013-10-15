@@ -55,7 +55,13 @@ standard_args ()
     DIST_TYPE=${1:-standard}
 }
 
-[[ -d ${SOURCE_TREE} ]] || usage
+source_missing ()
+{
+    echo "${SOURCE_TREE}: directory not found"
+    exit 1
+}
+
+[[ -d ${SOURCE_TREE} ]] || source_missing
 
 ${ARGS_FUNCTION:-standard_args} "${@}"
 
@@ -93,6 +99,8 @@ DOC_OUT=${OUTPUT_DIR}/doc
 LIARC_OUT=${OUTPUT_DIR}/liarc
 NATIVE_OUT=${OUTPUT_DIR}/native
 MACOSX_OUT=${OUTPUT_DIR}/macosx
+
+PLUGINS="blowfish gdbm md5 mhash"
 
 notify ()
 {
