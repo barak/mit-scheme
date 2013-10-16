@@ -191,6 +191,17 @@ Configure the software:
 ./configure
 @end example
 
+By default, the software will be installed in @file{/usr/local}, in
+the subdirectories @file{bin} and @file{lib}.  If you want it
+installed somewhere else, for example @file{/opt/mit-scheme}, pass the
+@option{--prefix} option to the configure script, as in
+@kbd{./configure --prefix=/opt/mit-scheme}.
+
+The configure script accepts all the normal arguments for such
+scripts, and additionally accepts some that are specific to MIT/GNU
+Scheme.  To see all the possible arguments and their meanings, run the
+command @kbd{./configure --help}.
+
 @item
 Build the software:
 
@@ -209,23 +220,62 @@ Depending on configuration options and file-system permissions, you
 may need super-user privileges to do the installation step.
 @end enumerate
 
-After installing the software, you can delete the unpacked directory:
+@emph{After} you have installed Scheme, you can install a few
+dynamically loadable options.  These are configured, built and
+installed in the customary way.  To install the @code{GDBM2} and
+@code{MHASH} options:
+
+@smallexample
+(cd gdbm && ./configure && make && make install)
+(cd mhash && ./configure && make && make install)
+@end smallexample
+
+The @code{make install} command will attempt to create a subdirectory
+in the first directory on the host Scheme's library path.  If that
+directory is not writable by you, super-user privileges may be
+required.
+
+You can put a writable directory at the front of your host Scheme's
+library path by setting the @code{MITSCHEME_LIBRARY_PATH} environment
+variable
+
+@smallexample
+export MITSCHEME_LIBRARY_PATH=\
+	~/mit-scheme-plugins:/usr/local/lib/mit-scheme-x86-64
+@end smallexample
+
+or including the @code{--library} option on the command line.
+
+@smallexample
+mit-scheme --library ~/mit-scheme-plugins:/usr/local/lib/mit-scheme-svm
+@end smallexample
+
+A few of the included options wrap popular Unix libraries.  To compile
+and link them you often need ``developers' packages'' installed first.
+The following table lists the included options and an example
+developers' package name (and shared library name).  The package names
+can vary quite a bit among Unix distributions; the library names less
+so.  Please see the @file{README} file in each option's subdirectory
+for more information.
+
+@table @option
+@item BLOWFISH
+libssl-dev (-lcrypto)
+@item GDBM2
+libgdbm-dev (-lgdbm)
+@item MD5
+libssl-dev (-lcrypto)
+@item MHASH
+libmhash-dev (-lmhash)
+@end table
+
+After installing the software and any options, you can delete the
+unpacked directory:
 
 @example
 cd ../..
 rm -rf mit-scheme-@var{VERSION}
 @end example
-
-By default, the software will be installed in @file{/usr/local}, in
-the subdirectories @file{bin} and @file{lib}.  If you want it
-installed somewhere else, for example @file{/opt/mit-scheme}, pass the
-@option{--prefix} option to the configure script, as in
-@kbd{./configure --prefix=/opt/mit-scheme}.
-
-The configure script accepts all the normal arguments for such
-scripts, and additionally accepts some that are specific to MIT/GNU
-Scheme.  To see all the possible arguments and their meanings, run the
-command @kbd{./configure --help}.
 
 @node Windows Installation, Portable C Installation, Unix Installation, Installation
 @section Windows Installation
