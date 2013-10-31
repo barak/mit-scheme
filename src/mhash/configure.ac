@@ -57,26 +57,15 @@ USA.
 
 */])
 
-AC_ARG_WITH([mhash],
-    AS_HELP_STRING([--with-mhash],
-	[Use mhash library if available [[yes]]]))
-: ${with_mhash='yes'}
-
-if test "${with_mhash}" != no; then
-    if test "${with_mhash}" != yes; then
-	CPPFLAGS="${CPPFLAGS} -I${with_mhash}/include"
-	LDFLAGS="${LDFLAGS} -L${with_mhash}/lib"
-    fi
-    AC_CHECK_HEADER([mhash.h],[
-	AC_DEFINE([HAVE_MHASH_H], [1],
-	    [Define to 1 if you have the <mhash.h> header file.])
-	AC_CHECK_LIB([mhash], [mhash_count],[
-	    AC_DEFINE([HAVE_LIBMHASH], [1],
-		[Define to 1 if you have the `mhash' library (-lmhash).])
-	    LIBS="-lmhash"
-	    ])
+AC_CHECK_HEADER([mhash.h],[
+    AC_DEFINE([HAVE_MHASH_H], [1],
+	[Define to 1 if you have the <mhash.h> header file.])
+    AC_CHECK_LIB([mhash], [mhash_count],[
+	AC_DEFINE([HAVE_LIBMHASH], [1],
+	    [Define to 1 if you have the `mhash' library (-lmhash).])
+	LIBS="-lmhash"
 	])
-fi
+],[AC_MSG_ERROR([Header file <mhash.h> not found.])])
 
 AC_SUBST([LIBS])
 AC_SUBST([CPPFLAGS])
