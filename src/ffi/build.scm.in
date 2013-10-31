@@ -58,7 +58,7 @@ USA.
       (run-command (list "mkdir" library-dir))
       (run-command (list "chmod" "755" library-dir))
       (run-command (append (list "install" "-m644")
-			   (command-line) (list library-dir))))
+			   (files) (list library-dir))))
     (rewrite-file (string-append
 		   destdir
 		   (->namestring
@@ -66,6 +66,29 @@ USA.
 				     (system-library-directory-pathname))))
 		  (lambda (in out)
 		    (rewrite-optiondb name dir in out)))))
+
+(define (files)
+  (append-map!
+   (lambda (arg)
+     (let ((p (->pathname arg)))
+       (if (pathname-type p)
+	   (if (file-exists? p)
+	       (list arg)
+	       (error "Could not find file:" p))
+	   (let ((files
+		  (let ((com (pathname-new-type p "com")))
+		    (if (file-exists? com)
+			(list (->namestring com)
+			      (->namestring (pathname-new-type p "bci")))
+			(let ((bin (pathname-new-type p "bin")))
+			  (if (file-exists? bin)
+			      (list (->namestring bin))
+			      (error "Could not find .com nor .bin:" p))))))
+		 (ext (pathname-new-type p "ext")))
+	     (if (file-exists? ext)
+		 (cons (->namestring ext) files)
+		 files)))))
+   (command-line)))
 
 (define (rewrite-file name rewriter)
   (let ((tmp (pathname-new-type name "tmp")))
