@@ -697,6 +697,15 @@ DEFINE_PRIMITIVE ("RETURN-TO-C", Prim_return_to_c, 0, 0, 0)
   }
 }
 
+/* This is mainly for src/gtk/gtkio.c, so it does not need to include
+   prim.h, scheme.h and everything. */
+void
+abort_to_c (void)
+{
+  PRIMITIVE_ABORT (PRIM_RETURN_TO_C);
+  /* NOTREACHED */
+}
+
 char *
 callback_lunseal (CallbackKernel expected)
 {
@@ -824,11 +833,11 @@ arg_alien_entry (int argn)
 void *
 arg_pointer (int argn)
 {
-  /* Accept an alien, string, xstring handle (positive integer),
-     or zero (for a NULL pointer). */
+  /* Accept an alien, string, flovec, xstring handle (positive
+     integer), or zero (for a NULL pointer). */
 
   SCM arg = ARG_REF (argn);
-  if (integer_zero_p (arg))
+  if ((INTEGER_P (arg)) && (integer_zero_p (arg)))
     return ((void *)0);
   if (STRING_P (arg))
     return ((void *) (STRING_POINTER (arg)));
@@ -841,6 +850,8 @@ arg_pointer (int argn)
     }
   if (is_alien (arg))
     return (alien_address (arg));
+  if (FLONUM_P (arg))
+    return ((void *) (OBJECT_ADDRESS (arg)));
 
   error_wrong_type_arg (argn);
   /*NOTREACHED*/
@@ -1054,6 +1065,27 @@ SCM
 empty_list (void)
 {
   return (EMPTY_LIST);
+}
+
+int
+flovec_length (SCM vector)
+{
+  return (FLOATING_VECTOR_LENGTH (vector));
+}
+
+double*
+flovec_loc (SCM vector)
+{
+  return (FLOATING_VECTOR_LOC (vector, 0));
+}
+
+double
+flovec_ref (SCM vector, int index)
+{
+  int len = FLOATING_VECTOR_LENGTH (vector);
+  if (0 <= index && index < len)
+    return (FLOATING_VECTOR_REF (vector, index));
+  error_external_return ();
 }
 
 DEFINE_PRIMITIVE ("OUTF-ERROR", Prim_outf_error, 1, 1, 0)
