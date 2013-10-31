@@ -427,7 +427,7 @@ the corresponding @file{-types} and @file{-const} files at syntax
 time.  This makes the C types and constants available to the other
 @code{C-...} syntax expanders.  The form binds @code{c-includes} in
 the syntax environment @i{unless} it is already defined there.  Thus a
-@code{(C-includes "library")} form can be placed at the top of every
+@code{(C-include "library")} form can be placed at the top of every
 file with @code{C-...} syntax, @emph{or} loaded into the syntax-time
 environment of those files.
 
