@@ -158,6 +158,7 @@ compile-cross-compiler: compile-cross-compiler-fgopt
 compile-cross-compiler: compile-cross-compiler-machine
 compile-cross-compiler: compile-cross-compiler-rtlbase
 compile-cross-compiler: compile-cross-compiler-rtlgen
+compile-cross-compiler: compile-cross-compiler-rtlopt
 
 .PHONY: compile-cross-compiler-back
 compile-cross-compiler-back: syntax-cross-compiler
