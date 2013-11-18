@@ -40,9 +40,6 @@ if test -z "${MACHINE}"; then
 fi
 
 LINKS="compiler.cbf compiler.pkg compiler.sf make.com make.bin"
-if test x${MACHINE} = xC; then
-    LINKS="${LINKS} make.so"
-fi
 
 for FN in machine ${LINKS}; do
     if test -e ${FN} && test ! -L ${FN}; then
