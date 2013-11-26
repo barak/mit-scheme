@@ -129,7 +129,7 @@ Scm_continue_"name" (void)
       (let ((name (symbol-name name)))
 	(write-string
 	 (string-append "
-void
+SCM
 Scm_"name" (void)
 \{
   /* Declare. */" declares "
@@ -142,8 +142,7 @@ Scm_"name" (void)
   /* Save. */
   callout_unseal (&Scm_continue_"name");" saves "
 
-  callout_continue (&Scm_continue_"name");
-  /* NOTREACHED */
+  return callout_continue (&Scm_continue_"name");
 }
 "))))))
 

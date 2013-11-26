@@ -50,11 +50,11 @@ extern void cstack_pop (char* tos);
   TOS = cstack_lpop (TOS, sizeof (TYPE));				\
   VAR = *(TYPE *)TOS;
 
-typedef void (*CalloutTrampOut)(void);
+typedef SCM (*CalloutTrampOut)(void);
 typedef SCM (*CalloutTrampIn)(void);
 extern void callout_seal (CalloutTrampIn tramp);
 extern void callout_unseal (CalloutTrampIn expected);
-extern void callout_continue (CalloutTrampIn tramp);
+extern SCM callout_continue (CalloutTrampIn tramp);
 extern char* callout_lunseal (CalloutTrampIn expected);
 extern void callout_pop (char* tos);
 

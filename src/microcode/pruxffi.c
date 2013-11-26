@@ -418,13 +418,7 @@ DEFINE_PRIMITIVE ("C-CALL", Prim_c_call, 1, LEXPR, 0)
     CalloutTrampOut tramp;
 
     tramp = (CalloutTrampOut) arg_alien_entry (1);
-    tramp ();
-    /* NOTREACHED */
-    outf_error ("\ninternal error: Callout part1 trampoline returned.\n");
-    outf_flush_error ();
-    signal_error_from_primitive (ERR_EXTERNAL_RETURN);
-    /* really NOTREACHED */
-    PRIMITIVE_RETURN (UNSPECIFIC);
+    PRIMITIVE_RETURN (tramp ());
   }
 }
 
@@ -524,18 +518,33 @@ callout_unseal (CalloutTrampIn expected)
   cstack_pop (tos);
 }
 
-void
+SCM
 callout_continue (CalloutTrampIn tramp)
 {
   /* Re-seal the CStack frame over the C results (again, pushing the
      cstack_depth and callout-part2) and abort.  Restart as
      C-CALL-CONTINUE and run callout-part2. */
+  SCM val;
 
   CSTACK_PUSH (int, cstack_depth);
   CSTACK_PUSH (CalloutTrampIn, tramp);
 
-  PRIMITIVE_ABORT (PRIM_POP_RETURN);
-  /* NOTREACHED */
+  /* Just call; do not actually abort. */
+  /* PRIMITIVE_ABORT (PRIM_POP_RETURN); */
+
+  /* Remove stack sealant created by callout_seal (which used
+     back_out_of_primitive), as if removed by pop_return in Interp()
+     after the abort. */
+  SET_PRIMITIVE (SHARP_F); /* PROCEED_AFTER_PRIMITIVE (); */
+  RESTORE_CONT ();
+  assert (RC_INTERNAL_APPLY == (OBJECT_DATUM(GET_RET)));
+  SET_LEXPR_ACTUALS (APPLY_FRAME_N_ARGS ());
+  stack_pointer = (APPLY_FRAME_ARGS ());
+  SET_EXP (APPLY_FRAME_PROCEDURE ());
+  /* APPLY_PRIMITIVE_FROM_INTERPRETER (Function); */
+  /* Prim_c_call_continue(); */
+  val = tramp ();
+  return (val);
 }
 
 DEFINE_PRIMITIVE ("C-CALL-CONTINUE", Prim_c_call_continue, 1, LEXPR, 0)
