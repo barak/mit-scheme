@@ -47,10 +47,8 @@ USA.
 	(let ((com-file (pathname-new-type pathname "com")))
 	  (let ((object (fasload com-file)))
 	    (if (compiled-code-address? object)
-		(let ((block (compiled-code-address->block object)))
-		  (disassembler/write-compiled-code-block
-		   block
-		   (compiled-code-block/dbg-info block symbol-table?)))
+		(write-compiled-code-block (compiled-code-address->block object)
+					   symbol-table?)
 		(begin
 		  (if (not
 		       (and (scode/comment? object)
@@ -63,10 +61,7 @@ USA.
 		    (if (not (null? blocks))
 			(do ((blocks blocks (cdr blocks)))
 			    ((null? blocks) unspecific)
-			  (disassembler/write-compiled-code-block
-			   (car blocks)
-			   (compiled-code-block/dbg-info (car blocks)
-							 symbol-table?))
+			  (write-compiled-code-block (car blocks) symbol-table?)
 			  (if (not (null? (cdr blocks)))
 			      (begin
 				(write-char #\page)
@@ -76,16 +71,15 @@ USA.
 
 (define (compiler:disassemble entry)
   (let ((block (compiled-entry/block entry)))
-    (let ((info (compiled-code-block/dbg-info block #t)))
-      (fluid-let ((disassembler/write-offsets? #t)
-		  (disassembler/write-addresses? #t)
-		  (disassembler/base-address (object-datum block)))
-	(newline)
-	(newline)
-	(disassembler/write-compiled-code-block block info)))))
+    (fluid-let ((disassembler/write-offsets? #t)
+		(disassembler/write-addresses? #t)
+		(disassembler/base-address (object-datum block)))
+      (newline)
+      (newline)
+      (write-compiled-code-block block #t))))
 
-(define (disassembler/write-compiled-code-block block info)
-  (let ((symbol-table (and info (dbg-info/labels info))))
+(define (write-compiled-code-block block symbol-table?)
+  (let ((cursor (block-cursor block symbol-table?)))
     (write-string "Disassembly of ")
     (write block)
     (call-with-values
@@ -97,72 +91,156 @@ USA.
 	      (write index)
 	      (write-string " in ")
 	      (write-string filename)
-	      (write-string ")")))))
-    (write-string ":\n")
-    (write-string "Code:\n\n")
-    (disassembler/write-instruction-stream
-     symbol-table
-     (disassembler/instructions/compiled-code-block block symbol-table))
-    (write-string "\nConstants:\n\n")
-    (disassembler/write-constants-block block symbol-table)
+	      (write-string "):\n")))))
+    (write-string "\nCode:\n")
+    (write-instructions cursor)
+    (write-string "\nConstants:\n")
+    (write-constants cursor)
     (newline)))
 
-(define (disassembler/instructions/compiled-code-block block symbol-table)
-  (disassembler/instructions block
-			     (compiled-code-block/code-start block)
-			     (compiled-code-block/code-end block)
-			     symbol-table))
+(define-structure cursor
+  (block false read-only true)
+  (offset 0)
+  (symbol-table false read-only true))
 
-(define (disassembler/instructions/address start-address end-address)
-  (disassembler/instructions #f start-address end-address #f))
+(define (block-cursor block symbol-table?)
+  (let ((symbol-table
+	 (and symbol-table?
+	      (let ((info (compiled-code-block/dbg-info block symbol-table?)))
+		(and info (dbg-info/labels info)))))
+	(start (compiled-code-block/code-start block)))
+    (make-cursor block start symbol-table)))
 
-(define (disassembler/write-instruction-stream symbol-table instruction-stream)
+(define (write-instructions cursor)
   (fluid-let ((*unparser-radix* 16))
-    (disassembler/for-each-instruction instruction-stream
-      (lambda (offset instruction comment)
-	(disassembler/write-instruction
-	 symbol-table
-	 offset
-	 (lambda ()
-	   (if comment
-	       (let ((s (with-output-to-string
-			  (lambda () (display instruction)))))
-		 (if (< (string-length s) 40)
-		     (write-string (string-pad-right s 40))
-		     (write-string s))
-		 (write-string "; ")
-		 (display comment))
-	       (write instruction))))))))
+    (let ((end (compiled-code-block/code-end (cursor-block cursor))))
+      (let loop ()
+	(if (< (cursor-offset cursor) end)
+	    (begin
+	      (write-instruction cursor)
+	      (loop)))))))
 
-(define (disassembler/for-each-instruction instruction-stream procedure)
-  (let loop ((instruction-stream instruction-stream))
-    (if (not (disassembler/instructions/null? instruction-stream))
-	(disassembler/instructions/read instruction-stream
-	  (lambda (offset instruction comment instruction-stream)
-	    (procedure offset instruction comment)
-	    (loop (instruction-stream)))))))
+(define (write-instruction cursor)
+  (write-offset cursor)
+  (let* ((start (cursor-offset cursor))
+	 (entry (cursor-external-entry cursor)))
+    (if entry
+	(begin
+	  (write entry)
+	  (newline))
+	(let* ((start (cursor-offset cursor))
+	       (instruction
+		(ignore-errors
+		 (lambda ()
+		   (decode-rt-coding-type 'instruction
+					  (lambda ()
+					    (next-unsigned-byte cursor)))))))
+	  (if (not (condition? instruction))
+	      (begin
+		(write instruction)
+		(let ((comment (instruction-comment instruction cursor)))
+		  (if comment
+		      (begin
+			(write-string " ; ")
+			(write comment))))
+		(newline))
+	      (begin
+		(set-cursor-offset! cursor start)
+		(write `(BYTE U ,(next-unsigned-byte cursor)))
+		(newline)))))))
+
+(define (write-offset cursor)
+  (let ((label (cursor-label cursor)))
+    (if label
+	(begin
+	  (write-char #\Tab)
+	  (write-string label)
+	  (write-string ":\n"))))
+  (let ((offset (cursor-offset cursor)))
+    (if disassembler/write-addresses?
+	(write-string
+	 (number->string (+ offset disassembler/base-address) 16)))
+    (if disassembler/write-offsets?
+	(write-string (number->string offset 16)))
+    (write-char #\Tab)))
+
+(define (cursor-label cursor)
+  (and disassembler/symbolize-output?
+       (cursor-symbol-table cursor)
+       (disassembler/lookup-symbol
+	(cursor-symbol-table cursor)
+	(cursor-offset cursor))))
+
+(define (cursor-external-entry cursor)
+  ;; External entries come in two parts: an entry type, and a gc offset.
+  (let ((start (cursor-offset cursor)))
+    (or (let ((entry-type (cursor-entry-type cursor)))
+	  (and entry-type
+	       (cursor-gc-offset? cursor)
+	       `(ENTRY ,entry-type)))
+	(begin
+	  (set-cursor-offset! cursor start)
+	  #f))))
+
+(define (cursor-entry-type cursor)
+  (decipher-entry-type-code (next-unsigned-16-bit-word cursor)))
+
+(define (cursor-increment! cursor bytes)
+  (set-cursor-offset! cursor (+ (cursor-offset cursor) bytes)))
+
+(define (cursor-gc-offset? cursor)
+  (let ((symbol-table (cursor-symbol-table cursor))
+	(block (cursor-block cursor))
+	(offset (cursor-offset cursor)))
+
+    (define-integrable (offset-word->offset word)
+      (fix:quotient (bit-string->unsigned-integer word) 2))
+
+    (if symbol-table
+	(let ((label (dbg-labels/find-offset symbol-table (+ offset 2))))
+	  (and label
+	       (dbg-label/external? label)
+	       (begin
+		 (set-cursor-offset! cursor (+ offset 2))
+		 #t)))
+	(and block
+	     (let loop ((offset (+ offset 2)))
+	       (let ((contents (read-bits block (- offset 2) 16)))
+		 (if (bit-string-clear! contents 0)
+		     (let* ((delta (offset-word->offset contents))
+			    (offset (- offset delta)))
+		       (and (positive? delta)
+			    (positive? offset)
+			    (loop offset)))
+		     (= offset (offset-word->offset contents)))))
+	     (begin
+	       (set-cursor-offset! cursor (+ offset 2))
+	       #t)))))
 
-(define (disassembler/write-constants-block block symbol-table)
+(define (write-constants cursor)
   (fluid-let ((*unparser-radix* 16))
-    (let ((end (system-vector-length block)))
-      (let loop ((index (compiled-code-block/marked-start block)))
-	(cond ((not (< index end)) 'DONE)
-	      ((object-type? (ucode-type linkage-section)
-			     (system-vector-ref block index))
-	       (loop (disassembler/write-linkage-section block
-							 symbol-table
-							 index)))
-	      (else
-	       (disassembler/write-instruction
-		symbol-table
-		(compiled-code-block/index->offset index)
-		(lambda ()
-		  (write-constant block
-				  symbol-table
-				  (system-vector-ref block index))))
-	       (loop (1+ index))))))))
+    (let* ((block (cursor-block cursor))
+	   (end (* address-units-per-object (system-vector-length block))))
 
-(define (write-constant block symbol-table constant)
+      (set-cursor-offset! cursor (* address-units-per-object
+				    (compiled-code-block/marked-start block)))
+      (let loop ()
+	(let ((offset (cursor-offset cursor)))
+	  (if (< offset end)
+	      (let ((object (system-vector-ref block (offset->index offset))))
+		(if (object-type? (ucode-type linkage-section) object)
+		    (write-linkage-section object cursor)
+		    (begin
+		      (write-offset cursor)
+		      (write-constant object cursor)
+		      (set-cursor-offset! cursor
+					  (+ offset address-units-per-object))))
+		(loop))))))))
+
+(define-integrable (offset->index offset)
+  (fix:quotient offset address-units-per-object))
+
+(define (write-constant constant cursor)
   (write-string (cdr (write-to-string constant 60)))
   (cond ((lambda? constant)
 	 (let ((expression (lambda-body constant)))
@@ -172,7 +250,8 @@ USA.
 		 (write-string "  (")
 		 (let ((offset (compiled-code-address->offset expression)))
 		   (let ((label
-			  (disassembler/lookup-symbol symbol-table offset)))
+			  (disassembler/lookup-symbol
+			   (cursor-symbol-table cursor) offset)))
 		     (if label
 			 (write-string label)
 			 (write offset))))
@@ -182,68 +261,76 @@ USA.
 	 (write (compiled-code-address->offset constant))
 	 (write-string " in ")
 	 (write (compiled-code-address->block constant))
-	 (write-string ")"))
-	(else #f)))
+	 (write-string ")")))
+  (newline))
 
-(define (disassembler/write-linkage-section block symbol-table index)
-  (let* ((field (object-datum (system-vector-ref block index)))
+(define (write-linkage-section object cursor)
+  (let* ((field (object-datum object))
 	 (descriptor (integer-divide field #x10000)))
     (let ((kind (integer-divide-quotient descriptor))
 	  (length (integer-divide-remainder descriptor)))
 
-      (define (write-caches offset size writer)
-	(let loop ((index (1+ (+ offset index)))
-		   (how-many (quotient (- length offset) size)))
-	  (if (zero? how-many)
-	      'DONE
+      (define (write-caches size writer)
+	(let loop ((count (quotient length size)))
+	  (if (< 0 count)
 	      (begin
-		(disassembler/write-instruction
-		 symbol-table
-		 (compiled-code-block/index->offset index)
-		 (lambda ()
-		   (writer block index)))
-		(loop (+ size index) (-1+ how-many))))))
+		(write-offset cursor)
+		(writer (cursor-block cursor)
+			(offset->index (cursor-offset cursor)))
+		(newline)
+		(cursor-increment! cursor (* size address-units-per-object))
+		(loop (-1+ count))))))
 
-      (disassembler/write-instruction
-       symbol-table
-       (compiled-code-block/index->offset index)
-       (lambda ()
-	 (write-string "#[LINKAGE-SECTION ")
-	 (write kind) (write-string " ") (write length)
-	 (write-string "]")))
+      (write-offset cursor)
+      (write-string "#[LINKAGE-SECTION ")
+      (write (case kind
+	       ((0) 'OPERATOR)
+	       ((1) 'REFERENCE)
+	       ((2) 'ASSIGNMENT)
+	       ((3) 'GLOBAL-OPERATOR)
+	       (else (error "Unknown kind of linkage section:" kind))))
+      (write-string " ") (write length)
+      (write-string "]\n")
+      (cursor-increment! cursor address-units-per-object)
       (case kind
 	((0 3)
-	 (write-caches
-	  compiled-code-block/procedure-cache-offset
-	  compiled-code-block/objects-per-procedure-cache
-	  disassembler/write-procedure-cache))
-	((1)
-	 (write-caches
-	  0
-	  compiled-code-block/objects-per-variable-cache
-	  (lambda (block index)
-	    (disassembler/write-variable-cache "Reference" block index))))
-	((2)
-	 (write-caches
-	  0
-	  compiled-code-block/objects-per-variable-cache
-	  (lambda (block index)
-	    (disassembler/write-variable-cache "Assignment" block index))))
+	 (write-caches compiled-code-block/objects-per-procedure-cache
+		       write-procedure-cache))
+	((1 2)
+	 (write-caches compiled-code-block/objects-per-variable-cache
+		       (lambda (block index)
+			 (write-variable-cache kind block index))))
 	(else
-	 (error "disassembler/write-linkage-section: Unknown section kind"
-		kind)))
-       (1+ (+ index length)))))
+	 (error "Unknown kind of linkage section:" kind))))))
 
-(define-integrable (variable-cache-name cache)
-  ((ucode-primitive primitive-object-ref 2) cache 1))
+(define (write-variable-cache kind block index)
+  (let* ((cache ((ucode-primitive primitive-object-set-type 2)
+		 (ucode-type hunk3)
+		 (system-vector-ref block index)))
+	 (refs (system-hunk3-cxr2 cache))
+	 (entry
+	  (find-matching-item
+	   (case kind
+	     ((1) (system-hunk3-cxr0 refs))
+	     ((2) (system-hunk3-cxr1 refs))
+	     (else (error "Not a kind of variable cache:" kind)))
+	   (lambda (e)
+	     (weak-assq block (cdr e))))))
+    (write-string "variable cache for ")
+    (if (pair? entry)
+	(write (car entry))
+	(write-string "... not found!"))))
 
-(define (disassembler/write-variable-cache kind block index)
-  (write-string kind)
-  (write-string " cache to ")
-  (write (variable-cache-name (disassembler/read-variable-cache block index))))
+(define (weak-assq obj alist)
+  (let loop ((alist alist))
+    (if (null? alist) #f
+	(let* ((entry (car alist))
+	       (key (weak-car entry)))
+	  (if (eq? obj key) entry
+	      (loop (cdr alist)))))))
 
-(define (disassembler/write-procedure-cache block index)
-  (let ((result (disassembler/read-procedure-cache block index)))
+(define (write-procedure-cache block index)
+  (let ((result (read-procedure-cache block index)))
     (write (-1+ (vector-ref result 2)))
     (write-string " argument procedure cache to ")
     (case (vector-ref result 0)
@@ -253,127 +340,32 @@ USA.
        (write-string "variable ")
        (write (vector-ref result 1)))
       (else
-       (error "disassembler/write-procedure-cache: Unknown cache kind"
+       (error "write-procedure-cache: Unknown cache kind"
 	      (vector-ref result 0))))))
 
-(define (disassembler/write-instruction symbol-table offset write-instruction)
-  (if symbol-table
-      (let ((label (dbg-labels/find-offset symbol-table offset)))
-	(if label
-	    (begin
-	      (write-char #\Tab)
-	      (write-string (dbg-label/name label))
-	      (write-char #\:)
-	      (newline)))))
-
-  (if disassembler/write-addresses?
-      (begin
-	(write-string
-	 (number->string (+ offset disassembler/base-address) 16))
-	(write-char #\Tab)))
-  
-  (if disassembler/write-offsets?
-      (begin
-	(write-string (number->string offset 16))
-	(write-char #\Tab)))
-
-  (if symbol-table
-      (write-string "    "))
-  (write-instruction)
-  (newline))
-
-
-;;;; i386/dassm2.scm
-
-(define (disassembler/read-variable-cache block index)
-  ((ucode-primitive primitive-object-set-type 2)
-   (ucode-type quad)
-   (system-vector-ref block index)))
-
-(define (disassembler/read-procedure-cache block index)
-  (fluid-let ((*block block))
-    (let ((offset (compiled-code-block/index->offset index))
-	  (word (system-vector-ref block index)))
-      (if (object-type? (ucode-type fixnum) word)
-	  ;; Unlinked.
-	  (vector 'INTERPRETED (system-vector-ref block (1+ index)) word)
-	  ;; Linked;
-	  (let ((arity (read-unsigned-integer offset 16))
-		(opcode (read-unsigned-integer (+ offset 2) 8))
-		(operand (read-unsigned-integer (+ offset 3) 8)))
+(define (read-procedure-cache block index)
+  (let ((word (system-vector-ref block index)))
+    (if (object-type? (ucode-type fixnum) word)
+	;; Unlinked.
+	(vector 'INTERPRETED (system-vector-ref block (1+ index)) word)
+	;; Linked.
+	(let ((offset (compiled-code-block/index->offset index)))
+	  (let ((arity (read-unsigned-integer block offset 16))
+		(opcode (read-unsigned-integer block (+ offset 2) 8))
+		(operand (read-unsigned-integer block (+ offset 3) 8)))
 	    (if (and (= opcode svm1-inst:ijump-u8) (= operand 0))
-		(vector 'COMPILED (read-procedure (+ offset 4)) arity)
+		(vector 'COMPILED (read-procedure block (+ offset 4)) arity)
 		(error (string-append "disassembler/read-procedure-cache:"
 				      " Unexpected instruction")
 		       opcode operand)))))))
 
-(define (disassembler/instructions block start-offset end-offset symbol-table)
-  (let loop ((offset start-offset) (state (disassembler/initial-state)))
-    (if (and end-offset (< offset end-offset))
-	(disassemble-one-instruction
-	 block offset symbol-table state
-	 (lambda (offset* instruction comment state)
-	   (make-instruction offset
-			     instruction
-			     comment
-			     (lambda () (loop offset* state)))))
-	'())))
-
-(define-integrable (disassembler/instructions/null? obj)
-  (null? obj))
-
-(define (disassembler/instructions/read instruction-stream receiver)
-  (receiver (instruction-offset instruction-stream)
-	    (instruction-instruction instruction-stream)
-	    (instruction-comment instruction-stream)
-	    (instruction-next instruction-stream)))
-
-(define-structure (instruction (type vector))
-  (offset false read-only true)
-  (instruction false read-only true)
-  (comment false read-only true)
-  (next false read-only true))
-
-(define *block)
-(define *current-offset)
-(define *symbol-table)
-(define *valid?)
-
-(define (disassemble-one-instruction block offset symbol-table state receiver)
-  (fluid-let ((*block block)
-	      (*current-offset offset)
-	      (*symbol-table symbol-table)
-	      (*valid? true))
-    (let ((start-offset *current-offset))
-      ;; External label markers come in two parts:
-      ;; An entry type descriptor, and a gc offset.
-      (cond ((eq? state 'EXTERNAL-LABEL-OFFSET)
-	     (let* ((word (next-unsigned-16-bit-word))
-		    (label (find-label *current-offset)))
-	       (receiver *current-offset
-			 (if label
-			     `(BLOCK-OFFSET ,label)
-			     `(WORD U ,word))
-			 #F
-			 'INSTRUCTION)))
-	    ((external-label-marker? symbol-table offset state)
-	     (let ((word (next-unsigned-16-bit-word)))
-	       (receiver *current-offset
-			 `(ENTRY ,(decipher-entry-type-code word))
-			 #F
-			 'EXTERNAL-LABEL-OFFSET)))
-	    (else
-	     (let ((instruction (disassemble-next-instruction)))
-	       (if (or *valid? (not (eq? 'BYTE (car instruction))))
-		   (receiver *current-offset
-			     instruction
-			     (disassembler/guess-comment instruction state)
-			     (disassembler/next-state instruction state))
-		   (let ((inst `(BYTE U ,(caddr instruction))))
-		     (receiver (1+ start-offset)
-			       inst
-			       #F
-			       (disassembler/next-state inst state))))))))))
+(define (read-procedure block offset)
+  (with-absolutely-no-interrupts
+   (lambda ()
+     ((ucode-primitive primitive-object-set-type 2)
+      (ucode-type compiled-entry)
+      ((ucode-primitive make-non-pointer-object 1)
+       (read-unsigned-integer block offset (* address-units-per-object 8)))))))
 
 (define (decipher-entry-type-code code)
   (case code
@@ -391,30 +383,14 @@ USA.
 	       (rest? (not (fix:zero? (fix:and code #x4000)))))
 	   `(ARITY ,n-required ,n-optional ,rest?))))))
 
-(define (disassembler/initial-state)
-  'INSTRUCTION-NEXT)
-
-(define (disassembler/next-state instruction state)
-  state					; ignored
-  (cond ((and disassembler/compiled-code-heuristics?
-	      (memq (car instruction)
-		    '(trap-trap-0
-		      trap-trap-1-wr trap-trap-2-wr trap-trap-3-wr
-		      jump-pcr-s8 jump-pcr-s16 jump-pcr-s32
-		      jump-indir-wr)))
-	 'EXTERNAL-LABEL)
-	(else
-	 'INSTRUCTION)))
-
-(define (disassembler/guess-comment instruction state)
-  state ; ignored
+(define (instruction-comment instruction cursor)
   (let loop ((insn instruction))
     (and (pair? insn)
 	 (if (and (memq (car insn) '(PCR-S8 PCR-S16 PCR-S32))
 		  (pair? (cdr insn))
 		  (exact-integer? (cadr insn))
 		  (not (zero? (cadr insn))))
-	     (+ (cadr insn) *current-offset)
+	     (+ (cadr insn) (cursor-offset cursor))
 	     (or (loop (car insn))
 		 (loop (cdr insn)))))))
 
@@ -424,62 +400,27 @@ USA.
 	 (and label 
 	      (dbg-label/name label)))))
 
-(define (external-label-marker? symbol-table offset state)
-  (define-integrable (offset-word->offset word)
-    (fix:quotient (bit-string->unsigned-integer word) 2))
+(define (read-unsigned-integer block offset size)
+  (bit-string->unsigned-integer (read-bits block offset size)))
 
-  (if symbol-table
-      (let ((label (dbg-labels/find-offset symbol-table (+ offset 4))))
-	(and label
-	     (dbg-label/external? label)))
-      (and *block
-	   (not (eq? state 'INSTRUCTION))
-	   (let loop ((offset (+ offset 4)))
-	     (let ((contents (read-bits (- offset 2) 16)))
-	       (if (bit-string-clear! contents 0)
-		   (let ((offset (- offset (offset-word->offset contents))))
-		     (and (positive? offset)
-			  (loop offset)))
-		   (= offset (offset-word->offset contents))))))))
-
-(define (read-procedure offset)
-  (with-absolutely-no-interrupts
-   (lambda ()
-     ((ucode-primitive primitive-object-set-type 2)
-      (ucode-type compiled-entry)
-      ((ucode-primitive make-non-pointer-object 1)
-       (read-unsigned-integer offset 32))))))
-
-(define (read-unsigned-integer offset size)
-  (bit-string->unsigned-integer (read-bits offset size)))
-
-(define (read-signed-integer offset size)
-  (bit-string->signed-integer (read-bits offset size)))
-
-(define (read-bits offset size-in-bits)
+(define (read-bits block offset size-in-bits)
   (let ((word (bit-string-allocate size-in-bits))
 	(bit-offset (* offset addressing-granularity)))
     (with-absolutely-no-interrupts
      (lambda ()
-       (if *block
-	   (read-bits! *block bit-offset word)
-	   (read-bits! offset 0 word))))
+       (read-bits! block bit-offset word)))
     word))
 
 (define-integrable (make-unsigned-reader nbits)
-  (let ((nbytes (fix:quotient nbits 8)))
-    (lambda ()
-      (let ((offset *current-offset))
-	(let ((word (read-bits offset nbits)))
-	  (set! *current-offset (+ offset nbytes))
+  (let ((nbytes (fix:quotient nbits addressing-granularity)))
+    (lambda (cursor)
+      (let ((offset (cursor-offset cursor)))
+	(let ((word (read-bits (cursor-block cursor) offset nbits)))
+	  (set-cursor-offset! cursor (+ offset nbytes))
 	  (bit-string->unsigned-integer word))))))
 
 (define next-unsigned-byte (make-unsigned-reader 8))
 (define next-unsigned-16-bit-word (make-unsigned-reader 16))
-
-(define (find-label offset)
-  (and disassembler/symbolize-output?
-       (disassembler/lookup-symbol *symbol-table offset)))
 
 ;; These are used by dassm1.scm
 
@@ -490,14 +431,3 @@ USA.
 ;; global variable used by runtime/udata.scm -- Moby yuck!
 
 (set! compiled-code-block/bytes-per-object address-units-per-object)
-
-
-;;;; i386/dasm3.scm
-
-(define (disassemble-next-instruction)
-  (bind-condition-handler
-   (list condition-type:coding-error)
-   (lambda (condition)
-     (continue))
-   (lambda ()
-     (decode-rt-coding-type 'instruction next-unsigned-byte))))

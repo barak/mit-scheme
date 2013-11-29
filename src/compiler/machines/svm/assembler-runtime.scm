@@ -419,6 +419,7 @@ USA.
 					'(INVALID-CODE CODING-TYPE)
 					standard-error-handler)))
     (named-lambda (coding-error code type)
+      (flush-output)
       (call-with-current-continuation
        (lambda (continuation)
 	 (with-restart 'CONTINUE "Continue with the next byte."
