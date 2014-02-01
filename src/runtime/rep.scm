@@ -34,6 +34,7 @@ USA.
 
 (define (initialize-package!)
   (set! *nearest-cmdl* (make-fluid #f))
+  (set! standard-breakpoint-hook (make-fluid #f))
   (set! hook/repl-read default/repl-read)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
@@ -123,13 +124,13 @@ USA.
 	      *interaction-i/o-port* #f
 	      *working-directory-pathname* (fluid *working-directory-pathname*)
 	      *nearest-cmdl* cmdl
+	      standard-error-hook #f
+	      standard-warning-hook #f
+	      standard-breakpoint-hook #f
 	      (lambda ()
 		(fluid-let ((dynamic-handler-frames '())
 			    (*bound-restarts*
 			     (if (cmdl/parent cmdl) *bound-restarts* '()))
-			    (standard-error-hook #f)
-			    (standard-warning-hook #f)
-			    (standard-breakpoint-hook #f)
 			    (*default-pathname-defaults*
 			     *default-pathname-defaults*))
 		  (let loop ((message message))
@@ -944,14 +945,15 @@ USA.
   unspecific)
 
 (define (standard-breakpoint-handler condition)
-  (let ((hook standard-breakpoint-hook))
+  (let ((hook (fluid standard-breakpoint-hook)))
     (if hook
-	(fluid-let ((standard-breakpoint-hook #f))
-	  (hook condition))))
+	(let-fluid standard-breakpoint-hook #f
+		   (lambda ()
+		     (hook condition)))))
   (repl/start (push-repl (breakpoint/environment condition)
 			 condition
 			 '()
 			 (breakpoint/prompt condition))
 	      (breakpoint/message condition)))
 
-(define standard-breakpoint-hook #f)
+(define standard-breakpoint-hook)

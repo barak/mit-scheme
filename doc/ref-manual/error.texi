@@ -454,9 +454,9 @@ order to simulate the effect of calling @code{error}, code may call
 @cindex fluid binding
 @cindex dynamic binding
 @cindex REP loop
-This variable controls the behavior of the procedure
+This fluid controls the behavior of the procedure
 @code{standard-error-handler}, and hence @code{error}.  It is intended
-to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+to be bound with @code{let-fluid} and is normally @code{#f}.  It may be
 changed to a procedure of one argument and will then be invoked (with
 @code{standard-error-hook} rebound to @code{#f}) by
 @code{standard-error-handler} just prior to starting the error
@@ -488,9 +488,9 @@ however.  For that purpose an explicit restart must be provided.)
 @findex standard-warning-handler
 @cindex fluid binding
 @cindex dynamic binding
-This variable controls the behavior of the procedure
+This fluid controls the behavior of the procedure
 @code{standard-warning-handler}, and hence @code{warn}.  It is intended
-to be bound with @code{fluid-let} and is normally @code{#f}.  It may be
+to be bound with @code{let-fluid} and is normally @code{#f}.  It may be
 changed to a procedure of one argument and will then be invoked (with
 @code{standard-warning-hook} rebound to @code{#f}) by
 @code{standard-warning-handler} in lieu of writing the warning message.

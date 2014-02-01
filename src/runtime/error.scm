@@ -599,25 +599,27 @@ USA.
 	     (default-handler condition)))))))
 
 (define (standard-error-handler condition)
-  (let ((hook standard-error-hook))
+  (let ((hook (fluid standard-error-hook)))
     (if hook
-	(fluid-let ((standard-error-hook #f))
-	  (hook condition))))
+	(let-fluid standard-error-hook #f
+		   (lambda ()
+		     (hook condition)))))
   (repl/start (push-repl 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
-  (let ((hook standard-warning-hook))
+  (let ((hook (fluid standard-warning-hook)))
     (if hook
-	(fluid-let ((standard-warning-hook #f))
-	  (hook condition))
+	(let-fluid standard-warning-hook #f
+		   (lambda ()
+		     (hook condition)))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
 	  (write-condition-report condition port)
 	  (newline port)))))
 
-(define standard-error-hook #f)
-(define standard-warning-hook #f)
+(define standard-error-hook)
+(define standard-warning-hook)
 
 (define (condition-signaller type field-names default-handler)
   (guarantee-condition-handler default-handler 'CONDITION-SIGNALLER)
@@ -760,6 +762,8 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! standard-error-hook (make-fluid #f))
+  (set! standard-warning-hook (make-fluid #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
   ;; No eta conversion for bootstrapping and efficiency reasons.
   (set! hook/invoke-restart
