@@ -33,7 +33,7 @@ USA.
 (define repl:write-result-hash-numbers? #t)
 
 (define (initialize-package!)
-  (set! *nearest-cmdl* #f)
+  (set! *nearest-cmdl* (make-fluid #f))
   (set! hook/repl-read default/repl-read)
   (set! hook/repl-eval default/repl-eval)
   (set! hook/repl-write default/repl-write)
@@ -122,9 +122,9 @@ USA.
 	      *trace-output-port* #f
 	      *interaction-i/o-port* #f
 	      *working-directory-pathname* (fluid *working-directory-pathname*)
+	      *nearest-cmdl* cmdl
 	      (lambda ()
-		(fluid-let ((*nearest-cmdl* cmdl)
-			    (dynamic-handler-frames '())
+		(fluid-let ((dynamic-handler-frames '())
 			    (*bound-restarts*
 			     (if (cmdl/parent cmdl) *bound-restarts* '()))
 			    (standard-error-hook #f)
@@ -202,23 +202,24 @@ USA.
 (define *nearest-cmdl*)
 
 (define (nearest-cmdl)
-  (if (not *nearest-cmdl*) (error "NEAREST-CMDL: no cmdl"))
-  *nearest-cmdl*)
+  (let ((cmdl (fluid *nearest-cmdl*)))
+    (if (not cmdl) (error "NEAREST-CMDL: no cmdl"))
+    cmdl))
 
 (define (nearest-cmdl/port)
-  (let ((cmdl *nearest-cmdl*))
+  (let ((cmdl (fluid *nearest-cmdl*)))
     (if cmdl
 	(cmdl/port cmdl)
 	console-i/o-port)))
 
 (define (nearest-cmdl/level)
-  (let ((cmdl *nearest-cmdl*))
+  (let ((cmdl (fluid *nearest-cmdl*)))
     (if cmdl
 	(cmdl/level cmdl)
 	0)))
 
 (define (nearest-cmdl/batch-mode?)
-  (let ((cmdl *nearest-cmdl*))
+  (let ((cmdl (fluid *nearest-cmdl*)))
     (if cmdl
 	(cmdl/batch-mode? cmdl)
 	#f)))
