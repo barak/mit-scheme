@@ -105,12 +105,13 @@ USA.
   (disassembler/instructions false start-address end-address false))
 
 (define (disassembler/write-instruction-stream symbol-table instruction-stream)
-  (fluid-let ((*unparser-radix* 16))
-    (disassembler/for-each-instruction instruction-stream
-      (lambda (offset instruction)
-	(disassembler/write-instruction symbol-table
-					offset
-					(lambda () (display instruction)))))))
+  (let-fluid *unparser-radix* 16
+    (lambda ()
+      (disassembler/for-each-instruction instruction-stream
+	(lambda (offset instruction)
+	  (disassembler/write-instruction symbol-table
+					  offset
+	    (lambda () (display instruction))))))))
 
 (define (disassembler/for-each-instruction instruction-stream procedure)
   (let loop ((instruction-stream instruction-stream))
@@ -121,30 +122,31 @@ USA.
 	    (loop (instruction-stream)))))))
 
 (define (disassembler/write-constants-block block symbol-table)
-  (fluid-let ((*unparser-radix* 16))
-    (let ((end (system-vector-length block)))
-      (let loop ((index (compiled-code-block/constants-start block)))
-	(cond ((not (< index end)) 'DONE)
-	      ((object-type?
-		(let-syntax ((ucode-type
-			      (sc-macro-transformer
-			       (lambda (form environment)
-				 environment
-				 (apply microcode-type (cdr form))))))
-		  (ucode-type linkage-section))
-		(system-vector-ref block index))
-	       (loop (disassembler/write-linkage-section block
-							 symbol-table
-							 index)))
-	      (else
-	       (disassembler/write-instruction
-		symbol-table
-		(compiled-code-block/index->offset index)
-		(lambda ()
-		  (write-constant block
-				  symbol-table
-				  (system-vector-ref block index))))
-	       (loop (1+ index))))))))
+  (let-fluid *unparser-radix* 16
+    (lambda ()
+      (let ((end (system-vector-length block)))
+	(let loop ((index (compiled-code-block/constants-start block)))
+	  (cond ((not (< index end)) 'DONE)
+		((object-type?
+		  (let-syntax ((ucode-type
+				(sc-macro-transformer
+				 (lambda (form environment)
+				   environment
+				   (apply microcode-type (cdr form))))))
+		    (ucode-type linkage-section))
+		  (system-vector-ref block index))
+		 (loop (disassembler/write-linkage-section block
+							   symbol-table
+							   index)))
+		(else
+		 (disassembler/write-instruction
+		  symbol-table
+		  (compiled-code-block/index->offset index)
+		  (lambda ()
+		    (write-constant block
+				    symbol-table
+				    (system-vector-ref block index))))
+		 (loop (1+ index)))))))))
 
 (define (write-constant block symbol-table constant)
   (write-string (cdr (write-to-string constant 60)))

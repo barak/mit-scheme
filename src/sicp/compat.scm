@@ -154,14 +154,14 @@ USA.
   (let ((newval (if (default-object? newval) false newval)))
     (if (not (or (not newval) (and (exact-integer? newval) (> newval 0))))
 	(error:illegal-datum newval 'PRINT-DEPTH))
-    (set! *unparser-list-depth-limit* newval)
+    (set-fluid! *unparser-list-depth-limit* newval)
     unspecific))
 
 (define (print-breadth #!optional newval)
   (let ((newval (if (default-object? newval) false newval)))
     (if (not (or (not newval) (and (exact-integer? newval) (> newval 0))))
 	(error:illegal-datum newval 'PRINT-BREADTH))
-    (set! *unparser-list-breadth-limit* newval)
+    (set-fluid! *unparser-list-breadth-limit* newval)
     unspecific))
 
 (define (ceiling->exact number)

@@ -470,8 +470,9 @@ USA.
 	  (output-to-string
 	   50
 	   (lambda ()
-	     (fluid-let ((*unparse-primitives-by-name?* true))
-	       (write (unsyntax expression))))))
+	     (let-fluid *unparse-primitives-by-name?* true
+	       (lambda ()
+		 (write (unsyntax expression)))))))
 	 ((debugging-info/noise? expression)
 	  (output-to-string
 	   50
@@ -950,10 +951,11 @@ using the read-eval-print environment instead.")
   (string-capitalize (if reason (string-append reason "; " message) message)))
 
 (define (debugger-pp expression indentation port)
-  (fluid-let ((*unparser-list-depth-limit* debugger:list-depth-limit)
-	      (*unparser-list-breadth-limit* debugger:list-breadth-limit)
-	      (*unparser-string-length-limit* debugger:string-length-limit))
-    (pretty-print expression port true indentation)))
+  (let-fluids *unparser-list-depth-limit* debugger:list-depth-limit
+	      *unparser-list-breadth-limit* debugger:list-breadth-limit
+	      *unparser-string-length-limit* debugger:string-length-limit
+    (lambda ()
+      (pretty-print expression port true indentation))))
 
 (define expression-indentation 4)
 

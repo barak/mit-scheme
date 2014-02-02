@@ -104,17 +104,17 @@ USA.
   (newline))
 
 (define (write-instructions thunk)
-  (fluid-let ((*show-instruction* write)
-	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* #t))
-    (thunk)))
+  (fluid-let ((*show-instruction* write))
+    (let-fluids *unparser-radix* 16
+		*unparse-uninterned-symbols-by-name?* #t
+      thunk)))
 
 (define (pp-instructions thunk)
   (fluid-let ((*show-instruction* pretty-print)
-	      (*pp-primitives-by-name* #f)
-	      (*unparser-radix* 16)
-	      (*unparse-uninterned-symbols-by-name?* #t))
-    (thunk)))
+	      (*pp-primitives-by-name* #f))
+    (let-fluids *unparser-radix* 16
+		*unparse-uninterned-symbols-by-name?* #t
+      thunk)))
 
 (define *show-instruction*)
 

@@ -542,10 +542,11 @@ USA.
      (or message
 	 (and condition
 	      (cmdl-message/strings
-	       (fluid-let ((*unparser-list-depth-limit* 25)
-			   (*unparser-list-breadth-limit* 100)
-			   (*unparser-string-length-limit* 500))
-		 (condition/report-string condition)))))
+	       (let-fluids *unparser-list-depth-limit* 25
+			   *unparser-list-breadth-limit* 100
+			   *unparser-string-length-limit* 500
+		 (lambda ()
+		   (condition/report-string condition))))))
      (and condition
 	  repl:allow-restart-notifications?
 	  (condition-restarts-message condition))
@@ -947,8 +948,8 @@ USA.
   (let ((hook (fluid standard-breakpoint-hook)))
     (if hook
 	(let-fluid standard-breakpoint-hook #f
-		   (lambda ()
-		     (hook condition)))))
+	  (lambda ()
+	    (hook condition)))))
   (repl/start (push-repl (breakpoint/environment condition)
 			 condition
 			 '()

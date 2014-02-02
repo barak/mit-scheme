@@ -2,8 +2,8 @@
 
 ;; to make this possible to debug
 
-; (set! *unparser-list-breadth-limit* 10)
-; (set! *unparser-list-depth-limit* 10)
+; (set-fluid! *unparser-list-breadth-limit* 10)
+; (set-fluid! *unparser-list-depth-limit* 10)
 
 
 ;; GC stress test

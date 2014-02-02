@@ -602,16 +602,16 @@ USA.
   (let ((hook (fluid standard-error-hook)))
     (if hook
 	(let-fluid standard-error-hook #f
-		   (lambda ()
-		     (hook condition)))))
+	  (lambda ()
+	    (hook condition)))))
   (repl/start (push-repl 'INHERIT condition '() "error>")))
 
 (define (standard-warning-handler condition)
   (let ((hook (fluid standard-warning-hook)))
     (if hook
 	(let-fluid standard-warning-hook #f
-		   (lambda ()
-		     (hook condition)))
+	  (lambda ()
+	    (hook condition)))
 	(let ((port (notification-output-port)))
 	  (fresh-line port)
 	  (write-string ";Warning: " port)
@@ -1243,19 +1243,20 @@ USA.
 	      (else (error "Unexpected value:" v)))))))
 
 (define (format-error-message message irritants port)
-  (fluid-let ((*unparser-list-depth-limit* 2)
-	      (*unparser-list-breadth-limit* 5))
-    (for-each (lambda (irritant)
-		(if (and (pair? irritant)
-			 (eq? (car irritant) error-irritant/noise-tag))
-		    (display (cdr irritant) port)
-		    (begin
-		      (write-char #\space port)
-		      (write irritant port))))
-	      (cons (if (string? message)
-			(error-irritant/noise message)
-			message)
-		    irritants))))
+  (let-fluids *unparser-list-depth-limit* 2
+	      *unparser-list-breadth-limit* 5
+    (lambda ()
+      (for-each (lambda (irritant)
+		  (if (and (pair? irritant)
+			   (eq? (car irritant) error-irritant/noise-tag))
+		      (display (cdr irritant) port)
+		      (begin
+			(write-char #\space port)
+			(write irritant port))))
+		(cons (if (string? message)
+			  (error-irritant/noise message)
+			  message)
+		      irritants)))))
 
 (define-integrable (error-irritant/noise noise)
   (cons error-irritant/noise-tag noise))

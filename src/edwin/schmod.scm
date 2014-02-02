@@ -327,8 +327,9 @@ Otherwise, it is shown in the echo area."
 			      ((symbol? argl)
 			       (insert-string " . " point)
 			       (insert-string (symbol-name argl) point)))))
-		    (fluid-let ((*unparse-uninterned-symbols-by-name?* #t))
-		      (message procedure-name ": " argl))))
+		    (let-fluid *unparse-uninterned-symbols-by-name?* #t
+		      (lambda ()
+			(message procedure-name ": " argl)))))
 	      (editor-error "Expression does not evaluate to a procedure: "
 			    (extract-string start end))))))))
 

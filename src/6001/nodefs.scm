@@ -77,7 +77,8 @@ USA.
      (if (not (default-object? value))
 	 (begin
 	   (write-string " --> " port)
-	   (fluid-let ((*unparser-list-depth-limit* 2)
-		       (*unparser-list-breadth-limit* 10)
-		       (*unparser-string-length-limit* 30))
-	     (write value port)))))))
+	   (let-fluids *unparser-list-depth-limit* 2
+		       *unparser-list-breadth-limit* 10
+		       *unparser-string-length-limit* 30
+	     (lambda ()
+	       (write value port))))))))

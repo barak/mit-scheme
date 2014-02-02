@@ -882,74 +882,80 @@ The following variables may be dynamically bound to change the behavior
 of the @code{write} and @code{display} procedures.
 
 @defvr variable *unparser-radix*
-This variable specifies the default radix used to print numbers.  Its
+This fluid specifies the default radix used to print numbers.  Its
 value must be one of the exact integers @code{2}, @code{8}, @code{10},
 or @code{16}; the default is @code{10}.  If @code{*unparser-radix*} is
 not @code{10}, numbers are prefixed to indicate their radix.
 @end defvr
 
 @defvr variable *unparser-list-breadth-limit*
-This variable specifies a limit on the length of the printed
+This fluid specifies a limit on the length of the printed
 representation of a list or vector; for example, if the limit is
 @code{4}, only the first four elements of any list are printed, followed
 by ellipses to indicate any additional elements.  The value of this
-variable must be an exact non-negative integer, or @code{#f} meaning no
+fluid must be an exact non-negative integer, or @code{#f} meaning no
 limit; the default is @code{#f}.
 
 @example
 @group
-(fluid-let ((*unparser-list-breadth-limit* 4))
-  (write-to-string '(a b c d)))
+(let-fluid *unparser-list-breadth-limit* 4
+  (lambda ()
+    (write-to-string '(a b c d))))
                                 @result{} "(a b c d)"
-(fluid-let ((*unparser-list-breadth-limit* 4))
-  (write-to-string '(a b c d e)))
+(let-fluid *unparser-list-breadth-limit* 4
+  (lambda ()
+    (write-to-string '(a b c d e))))
                                 @result{} "(a b c d ...)"
 @end group
 @end example
 @end defvr
 
 @defvr variable *unparser-list-depth-limit*
-This variable specifies a limit on the nesting of lists and vectors in
+This fluid specifies a limit on the nesting of lists and vectors in
 the printed representation.  If lists (or vectors) are more deeply
 nested than the limit, the part of the representation that exceeds the
-limit is replaced by ellipses.  The value of this variable must be an
+limit is replaced by ellipses.  The value of this fluid must be an
 exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
 @group
-(fluid-let ((*unparser-list-depth-limit* 4))
-  (write-to-string '((((a))) b c d)))
+(let-fluid *unparser-list-depth-limit* 4
+  (lambda ()
+    (write-to-string '((((a))) b c d))))
                                 @result{} "((((a))) b c d)"
-(fluid-let ((*unparser-list-depth-limit* 4))
-  (write-to-string '(((((a)))) b c d)))
+(let-fluid *unparser-list-depth-limit* 4
+  (lambda ()
+    (write-to-string '(((((a)))) b c d))))
                                 @result{} "((((...))) b c d)"
 @end group
 @end example
 @end defvr
 
 @defvr variable *unparser-string-length-limit*
-This variable specifies a limit on the length of the printed
+This fluid specifies a limit on the length of the printed
 representation of strings.  If a string's length exceeds this limit, the
 part of the printed representation for the characters exceeding the
-limit is replaced by ellipses.  The value of this variable must be an
+limit is replaced by ellipses.  The value of this fluid must be an
 exact non-negative integer, or @code{#f} meaning no limit; the default
 is @code{#f}.
 
 @example
 @group
-(fluid-let ((*unparser-string-length-limit* 4))
-  (write-to-string "abcd"))
+(let-fluid *unparser-string-length-limit* 4
+  (lambda ()
+    (write-to-string "abcd")))
                                 @result{} "\"abcd\""
-(fluid-let ((*unparser-string-length-limit* 4))
-  (write-to-string "abcde"))
+(let-fluid *unparser-string-length-limit* 4
+  (lambda ()
+    (write-to-string "abcde")))
                                 @result{} "\"abcd...\""
 @end group
 @end example
 @end defvr
 
 @defvr variable *unparse-with-maximum-readability?*
-This variable, which takes a boolean value, tells the printer to use a
+This fluid, which takes a boolean value, tells the printer to use a
 special printed representation for objects that normally print in a form
 that cannot be recognized by @code{read}.  These objects are printed
 using the representation @code{#@@@var{n}}, where @var{n} is the result

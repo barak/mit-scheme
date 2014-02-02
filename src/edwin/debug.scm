@@ -1281,11 +1281,12 @@ it has been renamed, it will not be deleted automatically.")
 	    (cond ((debugging-info/compiled-code? expression)
 		   (write-string ";unknown compiled code" port))
 		  ((not (debugging-info/undefined-expression? expression))
-		   (fluid-let ((*unparse-primitives-by-name?* #t))
-		     (write
-		      (unsyntax (if (invalid-subexpression? subexpression)
-				    expression
-				    subexpression)))))
+		   (let-fluid *unparse-primitives-by-name?* #t
+		     (lambda ()
+		       (write
+			(unsyntax (if (invalid-subexpression? subexpression)
+				      expression
+				      subexpression))))))
 		  ((debugging-info/noise? expression)
 		   (write-string ";" port)
 		   (write-string ((debugging-info/noise expression) #f)
@@ -1371,8 +1372,9 @@ it has been renamed, it will not be deleted automatically.")
 	    (subproblem/number (reduction/subproblem reduction)))
 	   port)))
     (write-string " " port)
-    (fluid-let ((*unparse-primitives-by-name?* #t))
-      (write (unsyntax (reduction/expression reduction)) port))))
+    (let-fluid *unparse-primitives-by-name?* #t
+      (lambda ()
+	(write (unsyntax (reduction/expression reduction)) port)))))
 
 (define (reduction/write-description bline port)
   (let ((reduction (bline/object bline)))

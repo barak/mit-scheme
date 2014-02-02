@@ -216,23 +216,24 @@ USA.
 
 (define (pp-top-level expression port as-code? indentation list-depth)
   (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
-	      (output-port port)
-	      (*unparse-uninterned-symbols-by-name?*
-	       *pp-uninterned-symbols-by-name*)
-	      (*unparse-abbreviate-quotations?*
-	       (or as-code?
-		   *unparse-abbreviate-quotations?*)))
-    (let* ((numerical-walk
-	    (if *pp-avoid-circularity?*
-		numerical-walk-avoid-circularities
-		numerical-walk))
-	   (node (numerical-walk expression list-depth)))
-      (if (positive? indentation)
-	  (*unparse-string (make-string indentation #\space)))
-      (if as-code?
-	  (print-node node indentation list-depth)
-	  (print-non-code-node node indentation list-depth))
-      (output-port/discretionary-flush port))))
+	      (output-port port))
+    (let-fluids *unparse-uninterned-symbols-by-name?*
+		*pp-uninterned-symbols-by-name*
+		*unparse-abbreviate-quotations?*
+		(or as-code?
+		    (fluid *unparse-abbreviate-quotations?*))
+      (lambda ()
+	(let* ((numerical-walk
+		(if *pp-avoid-circularity?*
+		    numerical-walk-avoid-circularities
+		    numerical-walk))
+	       (node (numerical-walk expression list-depth)))
+	  (if (positive? indentation)
+	      (*unparse-string (make-string indentation #\space)))
+	  (if as-code?
+	      (print-node node indentation list-depth)
+	      (print-non-code-node node indentation list-depth))
+	  (output-port/discretionary-flush port))))))
 
 (define x-size)
 (define output-port)
@@ -697,15 +698,17 @@ USA.
 	       object))))
 
 (define (walk-pair pair list-depth)
-  (if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (fluid *unparser-list-depth-limit*)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (fluid *unparser-list-breadth-limit*)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
@@ -720,10 +723,11 @@ USA.
 			(make-list-node
 			 "."
 			 (make-singleton-list-node
-			  (if (and *unparser-list-breadth-limit*
-				   (>= list-breadth
-				       *unparser-list-breadth-limit*)
-				   (no-highlights? pair))
+			  (if (let ((limit
+				     (fluid *unparser-list-breadth-limit*)))
+				(and limit
+				     (>= list-breadth limit)
+				     (no-highlights? pair)))
 			      "..."
 			      (numerical-walk (cdr pair)
 					      list-depth)))))))))))))
@@ -745,19 +749,20 @@ USA.
 
 (define (walk-highlighted-object object list-depth numerical-walk)
   (let ((dl (pph/depth-limit object)))
-    (fluid-let ((*unparser-list-breadth-limit*
-		 (let ((bl (pph/breadth-limit object)))
-		   (if (eq? bl 'DEFAULT)
-		       *unparser-list-breadth-limit*
-		       bl)))
-		(*unparser-list-depth-limit*
-		 (if (eq? dl 'DEFAULT)
-		     *unparser-list-depth-limit*
-		     dl)))
-      (numerical-walk (pph/object object)
-		      (if (eq? dl 'DEFAULT)
-			  list-depth
-			  0)))))
+    (let-fluids *unparser-list-breadth-limit*
+		(let ((bl (pph/breadth-limit object)))
+		  (if (eq? bl 'DEFAULT)
+		      (fluid *unparser-list-breadth-limit*)
+		      bl))
+		*unparser-list-depth-limit*
+		(if (eq? dl 'DEFAULT)
+		    (fluid *unparser-list-depth-limit*)
+		    dl)
+      (lambda ()
+	(numerical-walk (pph/object object)
+			(if (eq? dl 'DEFAULT)
+			    list-depth
+			    0))))))
 
 
 ;;;     The following are circular list/vector handing procedures.  They allow
@@ -835,16 +840,18 @@ USA.
 ;;; The following two procedures walk lists and vectors, respectively.
 
 (define (walk-pair-terminating pair half-pointer/queue list-depth)
-	(if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (fluid *unparser-list-depth-limit*)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0)
 			       (half-pointer/queue half-pointer/queue))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (fluid *unparser-list-breadth-limit*)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
@@ -884,10 +891,10 @@ USA.
 		      "."
 		      (make-singleton-list-node
 		       (if
-			(and *unparser-list-breadth-limit*
-			     (>= list-breadth
-				 *unparser-list-breadth-limit*)
-			     (no-highlights? pair))
+			(let ((limit (fluid *unparser-list-breadth-limit*)))
+			  (and limit
+			       (>= list-breadth limit)
+			       (no-highlights? pair)))
 			"..."
 			(let ((half-pointer/queue
 			       (advance
@@ -901,15 +908,17 @@ USA.
 			       half-pointer/queue list-depth)))))))))))))))
 
 (define (walk-vector-terminating pair half-pointer/queue list-depth)
-  (if (and *unparser-list-depth-limit*
-	   (>= list-depth *unparser-list-depth-limit*)
-	   (no-highlights? pair))
+  (if (let ((limit (fluid *unparser-list-depth-limit*)))
+	(and limit
+	     (>= list-depth limit)
+	     (no-highlights? pair)))
       "..."
       (let ((list-depth (+ list-depth 1)))
 	(let loop ((pair pair) (list-breadth 0))
-	  (cond ((and *unparser-list-breadth-limit*
-		      (>= list-breadth *unparser-list-breadth-limit*)
-		      (no-highlights? pair))
+	  (cond ((let ((limit (fluid *unparser-list-breadth-limit*)))
+		   (and limit
+			(>= list-breadth limit)
+			(no-highlights? pair)))
 		 (make-singleton-list-node "..."))
 		((null? (cdr pair))
 		 (make-singleton-list-node
@@ -938,10 +947,11 @@ USA.
 			(make-list-node
 			 "."
 			 (make-singleton-list-node
-			  (if (and *unparser-list-breadth-limit*
-				   (>= list-breadth
-				       *unparser-list-breadth-limit*)
-				   (no-highlights? pair))
+			  (if (let ((limit
+				     (fluid *unparser-list-breadth-limit*)))
+				(and limit
+				     (>= list-breadth limit)
+				     (no-highlights? pair)))
 			      "..."
 			      (numerical-walk-terminating
 			       (cdr pair)

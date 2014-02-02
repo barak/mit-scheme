@@ -233,8 +233,9 @@ The values are printed in the typein window."
 		 (call-with-transcript-buffer
 		  (lambda (buffer)
 		    (insert-string
-		     (fluid-let ((*unparse-with-maximum-readability?* #t))
-		       (write-to-string expression))
+		     (let-fluid *unparse-with-maximum-readability?* #t
+		       (lambda ()
+			 (write-to-string expression)))
 		     (buffer-end buffer)))))
 	     (editor-eval buffer
 			  expression
@@ -526,11 +527,12 @@ Set by Scheme evaluation code to update the mode line."
 (define (transcript-value-string value)
   (if (undefined-value? value)
       ""
-      (fluid-let ((*unparser-list-depth-limit*
-		   (ref-variable transcript-list-depth-limit))
-		  (*unparser-list-breadth-limit*
-		   (ref-variable transcript-list-breadth-limit)))
-	(write-to-string value))))
+      (let-fluids *unparser-list-depth-limit*
+		  (ref-variable transcript-list-depth-limit)
+		  *unparser-list-breadth-limit*
+		  (ref-variable transcript-list-breadth-limit)
+	(lambda ()
+	  (write-to-string value)))))
 
 (define (call-with-transcript-buffer procedure)
   (let ((buffer (transcript-buffer)))

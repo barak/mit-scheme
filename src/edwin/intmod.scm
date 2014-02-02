@@ -728,8 +728,9 @@ If this is an error, the debugger examines the error condition."
     (lambda (mark)
       (if mark
 	  (insert-string
-	   (fluid-let ((*unparse-with-maximum-readability?* #t))
-	     (write-to-string expression))
+	   (let-fluid *unparse-with-maximum-readability?* #t
+	     (lambda ()
+	       (write-to-string expression)))
 	   mark))))
   (let ((port (buffer-interface-port buffer #t)))
     ;;(move-mark-to! (port/mark port) (buffer-end buffer))

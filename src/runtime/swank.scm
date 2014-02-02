@@ -749,14 +749,15 @@ swank:xref
     (cond ((debugging-info/compiled-code? expression)
 	   (write-string ";unknown compiled code" port))
 	  ((not (debugging-info/undefined-expression? expression))
-	   (fluid-let ((*unparse-primitives-by-name?* #t))
-	     (write
-	      (unsyntax
-	       (if (or (debugging-info/undefined-expression? subexpression)
-		       (debugging-info/unknown-expression? subexpression))
-		   expression
-		   subexpression))
-	      port)))
+	   (let-fluid *unparse-primitives-by-name?* #t
+	     (lambda ()
+	       (write
+		(unsyntax
+		 (if (or (debugging-info/undefined-expression? subexpression)
+			 (debugging-info/unknown-expression? subexpression))
+		     expression
+		     subexpression))
+		port))))
 	  ((debugging-info/noise? expression)
 	   (write-string ";" port)
 	   (write-string ((debugging-info/noise expression) #f)
@@ -1100,10 +1101,11 @@ swank:xref
 (define (pprint-to-string o)
   (call-with-output-string
     (lambda (p)
-      (fluid-let ((*unparser-list-breadth-limit* 10)
-		  (*unparser-list-depth-limit* 4)
-		  (*unparser-string-length-limit* 100))
-	(pp o p)))))
+      (let-fluids *unparser-list-breadth-limit* 10
+		  *unparser-list-depth-limit* 4
+		  *unparser-string-length-limit* 100
+	(lambda ()
+	  (pp o p))))))
 
 ;; quote keywords, t and nil
 (define (quote-special x)
