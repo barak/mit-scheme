@@ -498,15 +498,16 @@ USA.
 
 ;;;; Condition Signalling and Handling
 
-(define static-handler-frames '())
+(define static-handler-frames)
 (define dynamic-handler-frames '())
-(define break-on-signals-types '())
+(define break-on-signals-types)
 
 (define (bind-default-condition-handler types handler)
   (guarantee-condition-types types 'BIND-DEFAULT-CONDITION-HANDLER)
   (guarantee-condition-handler handler 'BIND-DEFAULT-CONDITION-HANDLER)
-  (set! static-handler-frames
-	(cons (cons types handler) static-handler-frames))
+  (set-fluid! static-handler-frames
+	      (cons (cons types handler)
+		    (fluid static-handler-frames)))
   unspecific)
 
 (define (bind-condition-handler types handler thunk)
@@ -521,7 +522,7 @@ USA.
 
 (define (break-on-signals types)
   (guarantee-condition-types types 'BREAK-ON-SIGNALS)
-  (set! break-on-signals-types types)
+  (set-fluid! break-on-signals-types types)
   unspecific)
 
 (define hook/invoke-condition-handler)
@@ -542,13 +543,14 @@ USA.
 			 (inner (cdr generalizations)))
 		     (and (pair? types)
 			  (outer (car types) (cdr types)))))))))
-      (if (let ((types break-on-signals-types))
+      (if (let ((types (fluid break-on-signals-types)))
 	    (and (pair? types)
 		 (intersect-generalizations? types)))
-	  (fluid-let ((break-on-signals-types '()))
-	    (breakpoint-procedure 'INHERIT
-				  "BKPT entered because of BREAK-ON-SIGNALS:"
-				  condition)))
+	  (let-fluid break-on-signals-types '()
+	    (lambda ()
+	      (breakpoint-procedure 'INHERIT
+				    "BKPT entered because of BREAK-ON-SIGNALS:"
+				    condition))))
       (do ((frames dynamic-handler-frames (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
@@ -556,14 +558,15 @@ USA.
 		  (intersect-generalizations? types)))
 	    (fluid-let ((dynamic-handler-frames (cdr frames)))
 	      (hook/invoke-condition-handler (cdar frames) condition))))
-      (do ((frames static-handler-frames (cdr frames)))
+      (do ((frames (fluid static-handler-frames) (cdr frames)))
 	  ((not (pair? frames)))
 	(if (let ((types (caar frames)))
 	      (or (not (pair? types))
 		  (intersect-generalizations? types)))
-	    (fluid-let ((static-handler-frames (cdr frames))
-			(dynamic-handler-frames '()))
-	      (hook/invoke-condition-handler (cdar frames) condition))))
+	    (fluid-let ((dynamic-handler-frames '()))
+	      (let-fluid static-handler-frames (cdr frames)
+		(lambda ()
+		  (hook/invoke-condition-handler (cdar frames) condition))))))
       unspecific)))
 
 ;;;; Standard Condition Signallers
@@ -762,6 +765,8 @@ USA.
   (memq condition-type:error (%condition-type/generalizations type)))
 
 (define (initialize-package!)
+  (set! static-handler-frames (make-fluid '()))
+  (set! break-on-signals-types (make-fluid '()))
   (set! standard-error-hook (make-fluid #f))
   (set! standard-warning-hook (make-fluid #f))
   (set! hook/invoke-condition-handler default/invoke-condition-handler)
