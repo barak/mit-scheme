@@ -328,7 +328,7 @@ these rules:
 
 (define (uri->pathname uri #!optional error?)
   (let ((uri (->uri uri (and error? 'URI->PATHNAME)))
-	(defaults *default-pathname-defaults*)
+	(defaults (fluid *default-pathname-defaults*))
 	(finish
 	 (lambda (device path keyword)
 	   (receive (directory name type)
@@ -389,7 +389,7 @@ these rules:
 	     (pathname-host
 	      (if (and (not (default-object? defaults)) defaults)
 		  defaults
-		  *default-pathname-defaults*)))))
+		  (fluid *default-pathname-defaults*))))))
     (cond ((string? namestring)
 	   ((host-type/operation/parse-namestring (host/type host))
 	    namestring host))
@@ -422,7 +422,7 @@ these rules:
   (let ((defaults
 	  (if (and (not (default-object? defaults)) defaults)
 	      (->pathname defaults)
-	      *default-pathname-defaults*)))
+	      (fluid *default-pathname-defaults*))))
     (let ((pathname (enough-pathname pathname defaults)))
       (let ((namestring (pathname->namestring pathname)))
 	(if (host=? (%pathname-host pathname) (%pathname-host defaults))
@@ -442,7 +442,7 @@ these rules:
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       *default-pathname-defaults*))
+	       (fluid *default-pathname-defaults*)))
 	 (pathname (pathname-arg pathname defaults 'MERGE-PATHNAMES)))
     (make-pathname
      (or (%pathname-host pathname) (%pathname-host defaults))
@@ -472,7 +472,7 @@ these rules:
   (let* ((defaults
 	   (if (and (not (default-object? defaults)) defaults)
 	       (->pathname defaults)
-	       *default-pathname-defaults*))
+	       (fluid *default-pathname-defaults*)))
 	 (pathname (pathname-arg pathname defaults 'ENOUGH-PATHNAME)))
     (let ((usual
 	   (lambda (component default)
@@ -717,7 +717,7 @@ these rules:
       (set! host-types types)
       (set! local-host (make-host host-type #f))))
   (set! *default-pathname-defaults*
-	(make-pathname local-host #f #f #f #f #f))
+	(make-fluid (make-pathname local-host #f #f #f #f #f)))
   (set! library-directory-path
 	(map pathname-as-directory
 	     (vector->list ((ucode-primitive microcode-library-path 0)))))

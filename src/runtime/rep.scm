@@ -127,12 +127,11 @@ USA.
 	      standard-error-hook #f
 	      standard-warning-hook #f
 	      standard-breakpoint-hook #f
+	      *default-pathname-defaults* (fluid *default-pathname-defaults*)
 	      (lambda ()
 		(fluid-let ((dynamic-handler-frames '())
 			    (*bound-restarts*
-			     (if (cmdl/parent cmdl) *bound-restarts* '()))
-			    (*default-pathname-defaults*
-			     *default-pathname-defaults*))
+			     (if (cmdl/parent cmdl) *bound-restarts* '())))
 		  (let loop ((message message))
 		    (loop
 		     (bind-abort-restart cmdl

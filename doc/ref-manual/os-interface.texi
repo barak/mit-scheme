@@ -543,11 +543,12 @@ from @var{defaults} together.
 
 @defvr variable *default-pathname-defaults*
 @cindex defaulting, of pathname
-This is the default pathname-defaults pathname; if any pathname
-primitive that needs a set of defaults is not given one, it uses this
-one.  @code{set-working-directory-pathname!} sets this variable to a new
-value, computed by merging the new working directory with the variable's
-old value.
+The value of this fluid (@pxref{Fluids}) is the default
+pathname-defaults pathname; if any pathname primitive that needs a set
+of defaults is not given one, it uses this one.
+@code{set-working-directory-pathname!} sets this fluid to a new value,
+computed by merging the new working directory with the fluid's old
+value.
 @end defvr
 
 @deffn procedure pathname-default pathname device directory name type version
@@ -840,16 +841,13 @@ directory, before changing the working directory.
 @end deffn
 
 @deffn procedure with-working-directory-pathname filename thunk
-This procedure temporarily rebinds the current working directory to
-@var{filename}, invokes @var{thunk} (a procedure of no arguments), then
-restores the previous working directory and returns the value yielded by
-@var{thunk}.  @var{Filename} is coerced to a pathname using
-@code{pathname-as-directory}.  In addition to binding the working
-directory, @code{with-working-directory-pathname} also binds the
-variable @code{*default-pathname-defaults*}, merging the old value of
-that variable with the new working directory pathname.  Both bindings
-are performed in exactly the same way as dynamic binding of a variable
-(@pxref{Dynamic Binding}).
+This procedure dynamically binds (@pxref{Dynamic Binding}) the current
+working directory to @var{filename} and returns the value of
+@var{thunk} (a procedure of no arguments).  @var{Filename} is coerced
+to a pathname using @code{pathname-as-directory}.  In addition to
+binding the working directory, @code{with-working-directory-pathname}
+also dynamically binds the @code{*default-pathname-defaults*} fluid,
+merging the old value with the new working directory pathname.
 @end deffn
 
 @node File Manipulation, Directory Reader, Working Directory, Operating-System Interface
