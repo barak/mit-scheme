@@ -681,8 +681,8 @@ Move to the last subproblem if the subproblem number is too high."
 			(if (or argument
 				(invalid-subexpression? sub))
 			    (pp exp)
-			    (fluid-let ((*pp-no-highlights?* #f))
-			      (do-hairy))))
+			    (let-fluid *pp-no-highlights?* #f
+			      do-hairy)))
 		       ((debugging-info/noise? exp)
 			(message ((debugging-info/noise exp) #t)))
 		       (else

@@ -243,8 +243,8 @@ USA.
 
 ;;; Debugging utility
 (define (pp-expression form #!optional port)
-  (fluid-let ((*pp-primitives-by-name* #f)
-	      (*pp-uninterned-symbols-by-name* #f))
-    (let-fluid *unparse-abbreviate-quotations?* #t
-      (lambda ()
-	(pp (cgen/external-with-declarations form) port)))))
+  (let-fluids *pp-primitives-by-name* #f
+	      *pp-uninterned-symbols-by-name* #f
+	      *unparse-abbreviate-quotations?* #t
+    (lambda ()
+      (pp (cgen/external-with-declarations form) port))))

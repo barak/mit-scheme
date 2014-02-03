@@ -39,8 +39,8 @@ USA.
 ;;; Customize the runtime system:
 (set! repl:allow-restart-notifications? #f)
 (set! repl:write-result-hash-numbers? #f)
-(set! *pp-default-as-code?* #t)
-(set! *pp-named-lambda->define?* 'LAMBDA)
+(set-fluid! *pp-default-as-code?* #t)
+(set-fluid! *pp-named-lambda->define?* 'LAMBDA)
 (set! x-graphics:auto-raise? #t)
 (set! (access write-result:undefined-value-is-special?
 	      (->environment '(RUNTIME USER-INTERFACE)))

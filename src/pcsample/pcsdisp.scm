@@ -141,8 +141,9 @@ USA.
 	     (display-sample-list displayee))))))
 
 (define (display-sample-list sample-list) ; not integrated so can play w/ it
-  (fluid-let ((*pp-default-as-code?* #T)) ; for now: just pp as code, but
-    (pp sample-list)))			  ; maybe opt for wizzy graphics later
+  (let-fluid *pp-default-as-code?* #T	  ; for now: just pp as code, but
+    (lambda ()				  ; maybe opt for wizzy graphics later
+      (pp sample-list))))
 
 (define (install-displayers)
   (set! pc-sample/builtin/display     (generate:pc-sample/table/displayer

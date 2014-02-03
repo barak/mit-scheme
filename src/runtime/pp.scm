@@ -30,6 +30,17 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! *pp-named-lambda->define?* (make-fluid #f))
+  (set! *pp-primitives-by-name* (make-fluid #t))
+  (set! *pp-uninterned-symbols-by-name* (make-fluid #t))
+  (set! *pp-no-highlights?* (make-fluid #t))
+  (set! *pp-save-vertical-space?* (make-fluid #f))
+  (set! *pp-lists-as-tables?* (make-fluid #t))
+  (set! *pp-forced-x-size* (make-fluid #f))
+  (set! *pp-avoid-circularity?* (make-fluid #f))
+  (set! *pp-default-as-code?* (make-fluid #t))
+  (set! *pp-auto-highlighter* (make-fluid #f))
+  (set! *pp-arity-dispatched-procedure-style* (make-fluid 'FULL))
   (set! x-size (make-fluid #f))
   (set! output-port (make-fluid #f))
   (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
@@ -62,16 +73,16 @@ USA.
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
-(define *pp-named-lambda->define?* #f)
-(define *pp-primitives-by-name* #t)
-(define *pp-uninterned-symbols-by-name* #t)
-(define *pp-no-highlights?* #t)
-(define *pp-save-vertical-space?* #f)
-(define *pp-lists-as-tables?* #t)
-(define *pp-forced-x-size* #f)
-(define *pp-avoid-circularity?* #f)
-(define *pp-default-as-code?* #t)
-(define *pp-auto-highlighter* #f)
+(define *pp-named-lambda->define?*)
+(define *pp-primitives-by-name*)
+(define *pp-uninterned-symbols-by-name*)
+(define *pp-no-highlights?*)
+(define *pp-save-vertical-space?*)
+(define *pp-lists-as-tables?*)
+(define *pp-forced-x-size*)
+(define *pp-avoid-circularity?*)
+(define *pp-default-as-code?*)
+(define *pp-auto-highlighter*)
 
 (define (pp object #!optional port . rest)
   (let ((port (if (default-object? port) (current-output-port) port)))
@@ -114,11 +125,11 @@ USA.
 ;;;  FULL:  full bodies of procedures
 ;;;  NAMED: just name if the procedure is a named lambda, like FULL if unnamed
 ;;;  SHORT: procedures appear in #[...] unparser syntax
-(define *pp-arity-dispatched-procedure-style* 'FULL)
+(define *pp-arity-dispatched-procedure-style*)
 
 (define (unsyntax-entity object)
   (define (unsyntax-entry procedure)
-    (case *pp-arity-dispatched-procedure-style*
+    (case (fluid *pp-arity-dispatched-procedure-style*)
       ((FULL)  (unsyntax-entity procedure))
       ((NAMED)
        (let ((text (unsyntax-entity procedure)))
@@ -155,7 +166,7 @@ USA.
 (define (pretty-print object #!optional port as-code? indentation)
   (let ((as-code?
 	 (if (default-object? as-code?)
-	     (let ((default *pp-default-as-code?*))
+	     (let ((default (fluid *pp-default-as-code?*)))
 	       (if (boolean? default)
 		   default
 		   (not (scode-constant? object))))
@@ -167,8 +178,9 @@ USA.
 		    (if (and as-code?
 			     (pair? sexp)
 			     (eq? (car sexp) 'NAMED-LAMBDA)
-			     *pp-named-lambda->define?*)
-			(if (and (eq? 'LAMBDA *pp-named-lambda->define?*)
+			     (fluid *pp-named-lambda->define?*))
+			(if (and (eq? 'LAMBDA
+				      (fluid *pp-named-lambda->define?*))
 				 (pair? (cdr sexp))
 				 (pair? (cadr sexp)))
 			    `(LAMBDA ,(cdadr sexp) ,@(cddr sexp))
@@ -218,16 +230,17 @@ USA.
 	0)))
 
 (define (pp-top-level expression port as-code? indentation list-depth)
-  (let-fluids x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1)
+  (let-fluids x-size (- (or (fluid *pp-forced-x-size*)
+			    (output-port/x-size port)) 1)
 	      output-port port
 	      *unparse-uninterned-symbols-by-name?*
-	      *pp-uninterned-symbols-by-name*
+	      (fluid *pp-uninterned-symbols-by-name*)
 	      *unparse-abbreviate-quotations?*
 	      (or as-code?
 		  (fluid *unparse-abbreviate-quotations?*))
     (lambda ()
       (let* ((numerical-walk
-	      (if *pp-avoid-circularity?*
+	      (if (fluid *pp-avoid-circularity?*)
 		  numerical-walk-avoid-circularities
 		  numerical-walk))
 	     (node (numerical-walk expression list-depth)))
@@ -262,7 +275,7 @@ USA.
 (define (print-non-code-node node column depth)
   (let-fluids dispatch-list '()
 	      dispatch-default
-	      (if *pp-lists-as-tables?*
+	      (if (fluid *pp-lists-as-tables?*)
 		  print-data-table
 		  print-data-column)
     (lambda ()
@@ -319,7 +332,7 @@ USA.
 	 (*unparse-string node))))
 
 (define (print-list-node node column depth)
-  (if (and *pp-save-vertical-space?*
+  (if (and (fluid *pp-save-vertical-space?*)
 	   (fits-within? node column depth))
       (print-guaranteed-list-node node)
       (let* ((subnodes (node-subnodes node))
@@ -649,7 +662,7 @@ USA.
 		       (walk-custom unparser object list-depth)
 		       (walk-pair object list-depth))))))
 	  ((symbol? object)
-	   (if (or *pp-uninterned-symbols-by-name*
+	   (if (or (fluid *pp-uninterned-symbols-by-name*)
 		   (interned-symbol? object))
 	       object
 	       (walk-custom unparse-object object list-depth)))
@@ -673,7 +686,7 @@ USA.
 				       (walk-pair (vector->list object)
 						  list-depth))))))
 	  ((primitive-procedure? object)
-	   (if *pp-primitives-by-name*
+	   (if (fluid *pp-primitives-by-name*)
 	       (primitive-procedure-name object)
 	       (walk-custom unparse-object object list-depth)))
 	  (else
@@ -686,9 +699,10 @@ USA.
   ;; otherwise we would get infinite recursion when the `unwrapped'
   ;; object REST is re-auto-highlighted by the test below.
 
-  (cond ((and *pp-auto-highlighter*
-	      (not (pretty-printer-highlight? object))
-	      (*pp-auto-highlighter* object))
+  (cond ((let ((highlighter (fluid *pp-auto-highlighter*)))
+	   (and highlighter
+		(not (pretty-printer-highlight? object))
+		(highlighter object)))
 	 => (lambda (highlighted)
 	      (numerical-walk-no-auto-highlight highlighted list-depth)))
 	(else
@@ -739,7 +753,7 @@ USA.
 					      list-depth)))))))))))))
 
 (define-integrable (no-highlights? object)
-  (or *pp-no-highlights?*
+  (or (fluid *pp-no-highlights?*)
       (not (partially-highlighted? object))))
 
 (define (partially-highlighted? object)
@@ -814,7 +828,7 @@ USA.
 		     (walk-pair-terminating object half-pointer/queue
 					    list-depth))))))
 	((symbol? object)
-	 (if (or *pp-uninterned-symbols-by-name*
+	 (if (or (fluid *pp-uninterned-symbols-by-name*)
 		 (interned-symbol? object))
 	     object
 	     (walk-custom unparse-object object list-depth)))
@@ -837,7 +851,7 @@ USA.
 		     (vector->list object)
 		     half-pointer/queue list-depth))))))
 	((primitive-procedure? object)
-	 (if *pp-primitives-by-name*
+	 (if (fluid *pp-primitives-by-name*)
 	     (primitive-procedure-name object)
 	     (walk-custom unparse-object object list-depth)))
 	(else

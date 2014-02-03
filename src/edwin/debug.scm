@@ -49,25 +49,26 @@ USA.
  					     indentation port)
   (let ((start-mark #f)
  	(end-mark #f))
-    (fluid-let ((*pp-no-highlights?* #f))
-      (debugger-pp
-       (unsyntax-with-substitutions
- 	expression
- 	(list (cons subexpression
- 		    (make-pretty-printer-highlight
- 		     (unsyntax subexpression)
- 		     (lambda (port)
- 		       (set! start-mark
- 			     (mark-right-inserting-copy
- 			      (output-port->mark port)))
- 		       unspecific)
- 		     (lambda (port)
- 		       (set! end-mark
- 			     (mark-right-inserting-copy
- 			      (output-port->mark port)))
- 		       unspecific)))))
-       indentation
-       port))
+    (let-fluid *pp-no-highlights?* #f
+      (lambda ()
+	(debugger-pp
+	 (unsyntax-with-substitutions
+	  expression
+	  (list (cons subexpression
+		      (make-pretty-printer-highlight
+		       (unsyntax subexpression)
+		       (lambda (port)
+			 (set! start-mark
+			       (mark-right-inserting-copy
+				(output-port->mark port)))
+			 unspecific)
+		       (lambda (port)
+			 (set! end-mark
+			       (mark-right-inserting-copy
+				(output-port->mark port)))
+			 unspecific)))))
+	 indentation
+	 port)))
     (if (and start-mark end-mark)
  	(highlight-region-excluding-indentation
 	 (make-region start-mark end-mark)
