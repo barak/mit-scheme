@@ -30,6 +30,8 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! x-size (make-fluid #f))
+  (set! output-port (make-fluid #f))
   (set! pp-description (make-generic-procedure 1 'PP-DESCRIPTION))
   (set-generic-procedure-default-generator! pp-description
     (lambda (generic tags)
@@ -41,21 +43,22 @@ USA.
   (set! print-let-expression (special-printer kernel/print-let-expression))
   (set! print-case-expression (special-printer kernel/print-case-expression))
   (set! code-dispatch-list
-	`((COND . ,forced-indentation)
-	  (CASE . ,print-case-expression)
-	  (IF . ,forced-indentation)
-	  (OR . ,forced-indentation)
-	  (AND . ,forced-indentation)
-	  (LET . ,print-let-expression)
-	  (LET* . ,print-let-expression)
-	  (LETREC . ,print-let-expression)
-	  (FLUID-LET . ,print-let-expression)
-	  (DEFINE . ,print-procedure)
-	  (DEFINE-INTEGRABLE . ,print-procedure)
-	  (LAMBDA . ,print-procedure)
-	  (NAMED-LAMBDA . ,print-procedure)))
-  (set! dispatch-list code-dispatch-list)
-  (set! dispatch-default print-combination)
+	(make-fluid
+	 `((COND . ,forced-indentation)
+	   (CASE . ,print-case-expression)
+	   (IF . ,forced-indentation)
+	   (OR . ,forced-indentation)
+	   (AND . ,forced-indentation)
+	   (LET . ,print-let-expression)
+	   (LET* . ,print-let-expression)
+	   (LETREC . ,print-let-expression)
+	   (FLUID-LET . ,print-let-expression)
+	   (DEFINE . ,print-procedure)
+	   (DEFINE-INTEGRABLE . ,print-procedure)
+	   (LAMBDA . ,print-procedure)
+	   (NAMED-LAMBDA . ,print-procedure))))
+  (set! dispatch-list (make-fluid (fluid code-dispatch-list)))
+  (set! dispatch-default (make-fluid print-combination))
   (set! cocked-object (generate-uninterned-symbol))
   unspecific)
 
@@ -197,7 +200,7 @@ USA.
 	 (lambda (s)
 	   (if (string? s)
 	       (*unparse-string s)
-	       (s output-port)))))
+	       (s (fluid output-port))))))
     (print-string (pph/start-string pph))
     (thunk)
     (print-string (pph/end-string pph))))
@@ -215,34 +218,34 @@ USA.
 	0)))
 
 (define (pp-top-level expression port as-code? indentation list-depth)
-  (fluid-let ((x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1))
-	      (output-port port))
-    (let-fluids *unparse-uninterned-symbols-by-name?*
-		*pp-uninterned-symbols-by-name*
-		*unparse-abbreviate-quotations?*
-		(or as-code?
-		    (fluid *unparse-abbreviate-quotations?*))
-      (lambda ()
-	(let* ((numerical-walk
-		(if *pp-avoid-circularity?*
-		    numerical-walk-avoid-circularities
-		    numerical-walk))
-	       (node (numerical-walk expression list-depth)))
-	  (if (positive? indentation)
-	      (*unparse-string (make-string indentation #\space)))
-	  (if as-code?
-	      (print-node node indentation list-depth)
-	      (print-non-code-node node indentation list-depth))
-	  (output-port/discretionary-flush port))))))
+  (let-fluids x-size (- (or *pp-forced-x-size* (output-port/x-size port)) 1)
+	      output-port port
+	      *unparse-uninterned-symbols-by-name?*
+	      *pp-uninterned-symbols-by-name*
+	      *unparse-abbreviate-quotations?*
+	      (or as-code?
+		  (fluid *unparse-abbreviate-quotations?*))
+    (lambda ()
+      (let* ((numerical-walk
+	      (if *pp-avoid-circularity?*
+		  numerical-walk-avoid-circularities
+		  numerical-walk))
+	     (node (numerical-walk expression list-depth)))
+	(if (positive? indentation)
+	    (*unparse-string (make-string indentation #\space)))
+	(if as-code?
+	    (print-node node indentation list-depth)
+	    (print-non-code-node node indentation list-depth))
+	(output-port/discretionary-flush port)))))
 
 (define x-size)
 (define output-port)
 
 (define-integrable (*unparse-char char)
-  (output-port/write-char output-port char))
+  (output-port/write-char (fluid output-port) char))
 
 (define-integrable (*unparse-string string)
-  (output-port/write-string output-port string))
+  (output-port/write-string (fluid output-port) string))
 
 (define-integrable (*unparse-open)
   (*unparse-char #\())
@@ -257,17 +260,19 @@ USA.
   (*unparse-char #\newline))
 
 (define (print-non-code-node node column depth)
-  (fluid-let ((dispatch-list '())
-	      (dispatch-default
-	       (if *pp-lists-as-tables?*
-		   print-data-table
-		   print-data-column)))
-    (print-node node column depth)))
+  (let-fluids dispatch-list '()
+	      dispatch-default
+	      (if *pp-lists-as-tables?*
+		  print-data-table
+		  print-data-column)
+    (lambda ()
+      (print-node node column depth))))
 
 (define (print-code-node node column depth)
-  (fluid-let ((dispatch-list code-dispatch-list)
-	      (dispatch-default print-combination))
-    (print-node node column depth)))
+  (let-fluids dispatch-list code-dispatch-list
+	      dispatch-default print-combination
+    (lambda ()
+      (print-node node column depth))))
 
 (define (print-data-column nodes column depth)
   (*unparse-open)
@@ -289,7 +294,7 @@ USA.
 	 (let ((new-column
 		(+ column (string-length (prefix-node-prefix node))))
 	       (subnode (prefix-node-subnode node)))
-	   (if (null? dispatch-list)
+	   (if (null? (fluid dispatch-list))
 	       (print-node subnode new-column depth)
 	       (print-non-code-node subnode new-column depth))))
 	((highlighted-node? node)
@@ -298,7 +303,8 @@ USA.
 	     (lambda ()
 	       (let ((handler
 		      (let ((as-code? (pph/as-code? highlight))
-			    (currently-as-code? (not (null? dispatch-list))))
+			    (currently-as-code? (not (null? (fluid
+							     dispatch-list)))))
 			(cond ((or (eq? as-code? 'DEFAULT)
 				   (eq? as-code? currently-as-code?))
 			       print-node)
@@ -319,13 +325,13 @@ USA.
       (let* ((subnodes (node-subnodes node))
 	     (association
 	      (and (not (null? (cdr subnodes)))
-		   (assq (unhighlight (car subnodes)) dispatch-list))))
+		   (assq (unhighlight (car subnodes)) (fluid dispatch-list)))))
 	(if (and (not association)
 		 (fits-within? node column depth))
 	    (print-guaranteed-list-node node)
 	    ((if association
 		 (cdr association)
-		 dispatch-default)
+		 (fluid dispatch-default))
 	     subnodes column depth)))))
 
 (define (print-guaranteed-node node)
@@ -391,7 +397,7 @@ USA.
   (define (default)
     (print-column nodes column depth))
 
-  (let* ((available-space (- x-size column))
+  (let* ((available-space (- (fluid x-size) column))
 	 (n-nodes (length nodes))
 	 (max-cols (quotient (+ n-nodes 1) 2)))
 
@@ -598,7 +604,7 @@ USA.
 ;;;; Alignment
 
 (define-integrable (fits-within? node column depth)
-  (> (- x-size depth)
+  (> (- (fluid x-size) depth)
      (+ column (node-size node))))
 
 ;;; Fits if each node fits when stacked vertically at the given column.
@@ -607,7 +613,7 @@ USA.
   (let loop ((nodes nodes))
     (if (null? (cdr nodes))
 	(fits-within? (car nodes) column depth)
-	(and (> x-size
+	(and (> (fluid x-size)
 		(+ column (node-size (car nodes))))
 	     (loop (cdr nodes))))))
 
@@ -616,7 +622,7 @@ USA.
 
 (define (two-on-first-line? nodes column depth)
   (let ((column (+ column (+ 1 (node-size (car nodes))))))
-    (and (> x-size column)
+    (and (> (fluid x-size) column)
 	 (fits-as-column? (cdr nodes) column depth))))
 
 ;;; Starts a new line with the specified indentation.
@@ -1138,7 +1144,7 @@ USA.
        (write symbol port)))))
 
 (define (*unparse-symbol symbol)
-  (write symbol output-port))
+  (write symbol (fluid output-port)))
 
 (define-structure (prefix-node
 		   (conc-name prefix-node-)
