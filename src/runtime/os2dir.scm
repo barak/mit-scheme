@@ -29,7 +29,10 @@ USA.
 
 (declare (usual-integrations))
 
-(define *expand-directory-prefixes?* #t)
+(define *expand-directory-prefixes?*)
+
+(define (initialize-package!)
+  (set! *expand-directory-prefixes?* (make-fluid #t)))
 
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) #t sort?)
@@ -42,8 +45,9 @@ USA.
 	   (lambda (pathname)
 	     (merge-pathnames pathname directory-path)))
 	 (let ((fnames (generate-directory-pathnames pattern)))
-	   (fluid-let ((*expand-directory-prefixes?* #f))
-	     (map ->pathname fnames))))))
+	   (let-fluid *expand-directory-prefixes?* #f
+	     (lambda ()
+	       (map ->pathname fnames)))))))
 
 (define (generate-directory-pathnames pathname)
   (let ((channel (directory-channel-open (->namestring pathname))))

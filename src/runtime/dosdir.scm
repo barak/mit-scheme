@@ -30,7 +30,10 @@ USA.
 (declare (usual-integrations))
 
 (define directory-read/adjust-patterns? true)
-(define *expand-directory-prefixes?* true)
+(define *expand-directory-prefixes?*)
+
+(define (initialize-package!)
+  (set! *expand-directory-prefixes?* (make-fluid true)))
 
 (define (directory-read pattern #!optional sort?)
   (if (if (default-object? sort?) true sort?)
@@ -53,8 +56,9 @@ USA.
 	     (merge-pathnames pathname directory-path))
 	   (let ((pathnames
 		  (let ((fnames (generate-directory-pathnames directory-path)))
-		    (fluid-let ((*expand-directory-prefixes?* false))
-		      (map ->pathname fnames)))))
+		    (let-fluid *expand-directory-prefixes?* false
+		      (lambda ()
+			(map ->pathname fnames))))))
 	     (if (and (eq? (pathname-name pattern) 'WILD)
 		      (eq? (pathname-type pattern) 'WILD))
 		 pathnames

@@ -1614,7 +1614,8 @@ USA.
   (export (runtime pathname)
 	  *expand-directory-prefixes?*)
   (export ()
-	  directory-read))
+	  directory-read)
+  (initialization (initialize-package!)))
 
 (os-type-case
  ((unix)
