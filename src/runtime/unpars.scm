@@ -46,7 +46,7 @@ USA.
   (set! *unparse-abbreviate-quotations?* (make-fluid #f))
   (set! system-global-unparser-table (make-system-global-unparser-table))
   (set! *unparser-table* (make-fluid system-global-unparser-table))
-  (set! *default-unparser-state* #f)
+  (set! *default-unparser-state* (make-fluid #f))
   (set! non-canon-symbol-quoted
 	(char-set-union char-set/atom-delimiters
 			char-set/symbol-quotes))
@@ -137,8 +137,9 @@ USA.
 
 (define (with-current-unparser-state state procedure)
   (guarantee-unparser-state state 'WITH-CURRENT-UNPARSER-STATE)
-  (fluid-let ((*default-unparser-state* state))
-    (procedure (unparser-state/port state))))
+  (let-fluid *default-unparser-state* state
+    (lambda ()
+      (procedure (unparser-state/port state)))))
 
 ;;;; Top Level
 
@@ -159,21 +160,22 @@ USA.
 			   (unparser-state/environment state)))
 
 (define (unparse-object/top-level object port slashify? environment)
-  (unparse-object/internal
-   object
-   port
-   (if *default-unparser-state*
-       (unparser-state/list-depth *default-unparser-state*)
-       0)
-   slashify?
-   (if (or (default-object? environment)
-	   (unparser-table? environment))
-       (if *default-unparser-state*
-	   (unparser-state/environment *default-unparser-state*)
-	   (nearest-repl/environment))
-       (begin
-	 (guarantee-environment environment #f)
-	 environment))))
+  (let ((state (fluid *default-unparser-state*)))
+    (unparse-object/internal
+     object
+     port
+     (if state
+	 (unparser-state/list-depth state)
+	 0)
+     slashify?
+     (if (or (default-object? environment)
+	     (unparser-table? environment))
+	 (if state
+	     (unparser-state/environment state)
+	     (nearest-repl/environment))
+	 (begin
+	   (guarantee-environment environment #f)
+	   environment)))))
 
 (define (unparse-object/internal object port list-depth slashify? environment)
   (fluid-let ((*output-port* port)
