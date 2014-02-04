@@ -33,6 +33,8 @@ USA.
   (object-new-type primitive-object-new-type 2))
 
 (define (initialize-package!)
+  (set! *copy-constants?* (make-fluid 'UNBOUND))
+  (set! *object-copies* (make-fluid 'UNBOUND))
   (set! copier/scode-walker
 	(make-scode-walker
 	 copy-constant
@@ -64,10 +66,10 @@ USA.
   (list '*OBJECT-COPIES*))
 
 (define-integrable (object-association object)
-  (assq object (cdr *object-copies*)))
+  (assq object (cdr (fluid *object-copies*))))
 
 (define (add-association! object other)
-  (let* ((table *object-copies*)
+  (let* ((table (fluid *object-copies*))
 	 (place (assq object (cdr table))))
     (cond ((not place)
 	   (set-cdr! table (cons (cons object other) (cdr table))))
@@ -81,13 +83,14 @@ USA.
   ;; do not have enough information to determine what the
   ;; variable name was.  The original block can be used for
   ;; this, but it may as well be copied then.
-  (fluid-let ((*copy-constants?*
-	       (if (default-object? copy-constants?)
-		   *default/copy-constants?*
-		   copy-constants?))
-	      (*object-copies*
-	       (make-object-association-table)))
-    (copy-object exp)))
+  (let-fluids *copy-constants?*
+	      (if (default-object? copy-constants?)
+		  *default/copy-constants?*
+		  copy-constants?)
+	      *object-copies*
+	      (make-object-association-table)
+    (lambda ()
+      (copy-object exp))))
 
 (define (copy-object obj)
   (let ((association (object-association obj)))
@@ -100,7 +103,7 @@ USA.
 	 (%copy-compiled-code-address obj))
 	((compiled-code-block? obj)
 	 (%copy-compiled-code-block obj))
-	((not *copy-constants?*)
+	((not (fluid *copy-constants?*))
 	 obj)
 	(else
 	 (%copy-constant obj))))
