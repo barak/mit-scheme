@@ -37,6 +37,7 @@ USA.
 	  (,lambda-tag:internal-lexpr . LAMBDA)
 	  (,lambda-tag:let . LET)
 	  (,lambda-tag:fluid-let . FLUID-LET)))
+  (set! directory-rewriting-rules (make-fluid '()))
   (add-secondary-gc-daemon! discard-debugging-info!)
   (initialize-uncompressed-files!)
   (add-event-receiver! event:after-restore initialize-uncompressed-files!)
@@ -219,33 +220,32 @@ USA.
 		 (pathname=? (debugging-wrapper/pathname wrapper) pathname))
 	    (set-debugging-wrapper/pathname! wrapper pathname*))))))
 
-(define directory-rewriting-rules
-  '())
+(define directory-rewriting-rules)
 
 (define (with-directory-rewriting-rule match replace thunk)
-  (fluid-let ((directory-rewriting-rules
-	       (cons (cons (pathname-as-directory (merge-pathnames match))
-			   replace)
-		     directory-rewriting-rules)))
-    (thunk)))
+  (let-fluid directory-rewriting-rules
+	     (cons (cons (pathname-as-directory (merge-pathnames match))
+			 replace)
+		   (fluid directory-rewriting-rules))
+    thunk))
 
 (define (add-directory-rewriting-rule! match replace)
   (let ((match (pathname-as-directory (merge-pathnames match))))
     (let ((rule
-	   (list-search-positive directory-rewriting-rules
+	   (list-search-positive (fluid directory-rewriting-rules)
 	     (lambda (rule)
 	       (equal? (pathname-directory (car rule))
 		       (pathname-directory match))))))
       (if rule
 	  (set-cdr! rule replace)
-	  (set! directory-rewriting-rules
-		(cons (cons match replace)
-		      directory-rewriting-rules)))))
+	  (set-fluid! directory-rewriting-rules
+		      (cons (cons match replace)
+			    (fluid directory-rewriting-rules))))))
   unspecific)
 
 (define (rewrite-directory pathname)
   (let ((rule
-	 (list-search-positive directory-rewriting-rules
+	 (list-search-positive (fluid directory-rewriting-rules)
 	   (lambda (rule)
 	     (directory-prefix? (pathname-directory pathname)
 				(pathname-directory (car rule)))))))
