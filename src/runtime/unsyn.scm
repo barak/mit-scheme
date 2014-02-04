@@ -30,6 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
+  (set! substitutions (make-fluid '()))
   (set! unsyntaxer/scode-walker
 	(make-scode-walker unsyntax-constant
 			   `((ACCESS ,unsyntax-ACCESS-object)
@@ -63,13 +64,14 @@ USA.
 
 ;;; The substitutions mechanism is for putting the '### marker in
 ;;; debugger output.
-(define substitutions '())
+(define substitutions)
 
 (define (unsyntax-with-substitutions scode alist)
   (if (not (alist? alist))
       (error:wrong-type-argument alist "alist" 'UNSYNTAX-WITH-SUBSTITUTIONS))
-  (fluid-let ((substitutions alist))
-    (unsyntax scode)))
+  (let-fluid substitutions alist
+    (lambda ()
+      (unsyntax scode))))
 
 (define-integrable (maybe-substitute object thunk)
   (let ((association (has-substitution? object)))
@@ -78,8 +80,8 @@ USA.
 	(thunk))))
 
 (define-integrable (has-substitution? object)
-  (and (pair? substitutions)
-       (assq object substitutions)))
+  (let ((substs (fluid substitutions)))
+    (and (pair? substs) (assq object substs))))
 
 (define (with-bindings environment lambda receiver)
   (if (and unsyntaxer:elide-global-accesses?
