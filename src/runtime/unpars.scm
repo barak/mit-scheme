@@ -53,6 +53,11 @@ USA.
   (set! canon-symbol-quoted
 	(char-set-union non-canon-symbol-quoted
 			char-set:upper-case))
+  (set! *list-depth* (make-fluid #f))
+  (set! *output-port* (make-fluid #f))
+  (set! *slashify?* (make-fluid #f))
+  (set! *environment* (make-fluid #f))
+  (set! *dispatch-table* (make-fluid #f))
   unspecific)
 
 (define *unparser-radix*)
@@ -178,22 +183,22 @@ USA.
 	   environment)))))
 
 (define (unparse-object/internal object port list-depth slashify? environment)
-  (fluid-let ((*output-port* port)
-	      (*list-depth* list-depth)
-	      (*slashify?* slashify?)
-	      (*environment* environment)
-	      (*dispatch-table*
-	       (unparser-table/dispatch-vector
-		(let ((table (fluid *unparser-table*)))
-		  (guarantee-unparser-table table #f)
-		  table))))
-    (*unparse-object object)))
+  (let-fluids *list-depth* list-depth
+	      *output-port* port
+	      *slashify?* slashify?
+	      *environment* environment
+	      *dispatch-table* (unparser-table/dispatch-vector
+				(let ((table (fluid *unparser-table*)))
+				  (guarantee-unparser-table table #f)
+				  table))
+    (lambda ()
+      (*unparse-object object))))
 
 (define-integrable (invoke-user-method method object)
-  (method (make-unparser-state *output-port*
-			       *list-depth*
-			       *slashify?*
-			       *environment*)
+  (method (make-unparser-state (fluid *output-port*)
+			       (fluid *list-depth*)
+			       (fluid *slashify?*)
+			       (fluid *environment*))
 	  object))
 
 (define *list-depth*)
@@ -202,7 +207,7 @@ USA.
 (define *dispatch-table*)
 
 (define (*unparse-object object)
-  ((vector-ref *dispatch-table*
+  ((vector-ref (fluid *dispatch-table*)
 	       ((ucode-primitive primitive-object-type 1) object))
    object))
 
@@ -211,13 +216,13 @@ USA.
 (define *output-port*)
 
 (define-integrable (*unparse-char char)
-  (output-port/write-char *output-port* char))
+  (output-port/write-char (fluid *output-port*) char))
 
 (define-integrable (*unparse-string string)
-  (output-port/write-string *output-port* string))
+  (output-port/write-string (fluid *output-port*) string))
 
 (define-integrable (*unparse-substring string start end)
-  (output-port/write-substring *output-port* string start end))
+  (output-port/write-substring (fluid *output-port*) string start end))
 
 (define-integrable (*unparse-datum object)
   (*unparse-hex (object-datum object)))
@@ -338,7 +343,7 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value (fluid *environment*) '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -353,7 +358,7 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
 	   s
-	   (if (repl-environment-value *environment*
+	   (if (repl-environment-value (fluid *environment*)
 				       '*PARSER-CANONICALIZE-SYMBOLS?*)
 	       canon-symbol-quoted
 	       non-canon-symbol-quoted))
@@ -387,7 +392,7 @@ USA.
   (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
-  (case (repl-environment-value *environment* '*PARSER-KEYWORD-STYLE*)
+  (case (repl-environment-value (fluid *environment*) '*PARSER-KEYWORD-STYLE*)
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)
@@ -395,7 +400,7 @@ USA.
     (else #f)))
 
 (define (unparse/character character)
-  (if (or *slashify?*
+  (if (or (fluid *slashify?*)
 	  (not (char-ascii? character)))
       (begin
 	(*unparse-string "#\\")
@@ -403,7 +408,7 @@ USA.
       (*unparse-char character)))
 
 (define (unparse/string string)
-  (if *slashify?*
+  (if (fluid *slashify?*)
       (let ((end (string-length string)))
 	(let ((end*
 	       (let ((limit (fluid *unparser-string-length-limit*)))
@@ -536,10 +541,12 @@ USA.
 (define (limit-unparse-depth kernel)
   (let ((limit (fluid *unparser-list-depth-limit*)))
     (if limit
-	(fluid-let ((*list-depth* (+ *list-depth* 1)))
-	  (if (> *list-depth* limit)
-	      (*unparse-string "...")
-	      (kernel)))
+	(let ((depth (fluid *list-depth*)))
+	  (let-fluid *list-depth* (1+ depth)
+	    (lambda ()
+	      (if (> (1+ depth) limit)
+		  (*unparse-string "...")
+		  (kernel)))))
 	(kernel))))
 
 (define (unparse-tail l n)
