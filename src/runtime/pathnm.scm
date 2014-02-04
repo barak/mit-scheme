@@ -634,18 +634,18 @@ these rules:
 				'with-system-library-directories
 				directories))))
 
-  (fluid-let ((library-directory-path
-	       (append (map existing-directory directories)
-		       library-directory-path)))
-    (thunk)))
+  (let-fluid library-directory-path
+	     (append (map existing-directory directories)
+		     (fluid library-directory-path))
+    thunk))
 
 (define (%find-library-directory)
   (pathname-simplify
-   (or (find-matching-item library-directory-path file-directory?)
+   (or (find-matching-item (fluid library-directory-path) file-directory?)
        (error "Can't find library directory."))))
 
 (define (%find-library-file pathname)
-  (let loop ((path library-directory-path))
+  (let loop ((path (fluid library-directory-path)))
     (and (pair? path)
 	 (let ((p (merge-pathnames pathname (car path))))
 	   (if (file-exists? p)
@@ -719,8 +719,9 @@ these rules:
   (set! *default-pathname-defaults*
 	(make-fluid (make-pathname local-host #f #f #f #f #f)))
   (set! library-directory-path
-	(map pathname-as-directory
-	     (vector->list ((ucode-primitive microcode-library-path 0)))))
+	(make-fluid
+	 (map pathname-as-directory
+	      (vector->list ((ucode-primitive microcode-library-path 0))))))
   unspecific)
 
 (define (initialize-package!)

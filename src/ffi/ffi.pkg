@@ -40,8 +40,6 @@ FFI System Packaging |#
 (define-package (ffi build)
   (parent ())
   (files "build")
-  (import (runtime pathname)
-	  library-directory-path)
   (export (ffi)
 	  compile-shim
 	  link-shim
