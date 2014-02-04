@@ -421,9 +421,9 @@ USA.
 	     unspecific))
 	 (lambda ()
 	   (let ((v
-		  (fluid-let ((*notification-depth*
-			       (+ *notification-depth* 1)))
-		    (thunk))))
+		  (let-fluid *notification-depth*
+			     (1+ (fluid *notification-depth*))
+		    thunk)))
 	     (set! done? #t)
 	     v))
 	 (lambda ()
@@ -484,21 +484,22 @@ USA.
 
 (define (write-notification-prefix port)
   (write-string ";" port)
-  (do ((i 0 (+ i 1)))
-      ((not (< i *notification-depth*)))
-    (write-string indentation-atom port)))
+  (let ((depth (fluid *notification-depth*)))
+    (do ((i 0 (+ i 1)))
+	((not (< i depth)))
+      (write-string indentation-atom port))))
 
 (define (notification-prefix-length)
   (+ 1
      (* (string-length indentation-atom)
-	*notification-depth*)))
+	(fluid *notification-depth*))))
 
 (define *notification-depth*)
 (define indentation-atom)
 (define wrapped-notification-port-type)
 
 (define (initialize-package!)
-  (set! *notification-depth* 0)
+  (set! *notification-depth* (make-fluid 0))
   (set! indentation-atom "  ")
   (set! wrapped-notification-port-type (make-wrapped-notification-port-type))
   unspecific)
