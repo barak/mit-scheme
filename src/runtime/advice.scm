@@ -35,20 +35,23 @@ USA.
 (define (initialize-package!)
   (set! entry-advice-population (make-population))
   (set! exit-advice-population (make-population))
-  unspecific)
+  (set! advice-continuation (make-fluid #f))
+  (set! the-arguments (make-fluid #f))
+  (set! the-procedure (make-fluid #f))
+  (set! the-result (make-fluid #f)))
 
 (define the-arguments)
 (define the-procedure)
 (define the-result)
 
 (define (*args*)
-  (list-copy the-arguments))
+  (list-copy (fluid the-arguments)))
 
 (define (*proc*)
-  the-procedure)
+  (fluid the-procedure))
 
 (define (*result*)
-  the-result)
+  (fluid the-result))
 
 (define (get-advice procedure)
   (lambda-advice (procedure-lambda procedure)))
@@ -80,32 +83,33 @@ USA.
       (lambda (original-body state)
 	(call-with-current-continuation
 	 (lambda (continuation)
-	   (fluid-let ((advice-continuation continuation))
-	     (with-restart 'USE-VALUE
-		 "Return a value from the advised procedure."
-		 continuation
+	   (let-fluid advice-continuation continuation
+	     (lambda ()
+	       (with-restart 'USE-VALUE
+		   "Return a value from the advised procedure."
+		   continuation
+		   (lambda ()
+		     (prompt-for-evaluated-expression "Procedure value"))
 		 (lambda ()
-		   (prompt-for-evaluated-expression "Procedure value"))
-	       (lambda ()
-		 (for-each (lambda (advice)
-			     (with-simple-restart 'CONTINUE
-				 "Continue with advised procedure."
-			       (lambda ()
-				 (advice procedure arguments environment))))
-			   (car state))
-		 (let ((value (scode-eval original-body environment)))
 		   (for-each (lambda (advice)
 			       (with-simple-restart 'CONTINUE
-				   "Return from advised procedure."
+				   "Continue with advised procedure."
 				 (lambda ()
-				   (advice procedure
-					   arguments
-					   value
-					   environment))))
-			     (cdr state))
-		   value))))))))))
+				   (advice procedure arguments environment))))
+			     (car state))
+		   (let ((value (scode-eval original-body environment)))
+		     (for-each (lambda (advice)
+				 (with-simple-restart 'CONTINUE
+				     "Return from advised procedure."
+				   (lambda ()
+				     (advice procedure
+					     arguments
+					     value
+					     environment))))
+			       (cdr state))
+		     value)))))))))))
 
-(define advice-continuation #f)
+(define advice-continuation)
 
 ;;;; Advisers
 
@@ -311,15 +315,17 @@ USA.
 ;;;; Break
 
 (define (break-entry-advice procedure arguments environment)
-  (fluid-let ((the-procedure procedure)
-	      (the-arguments arguments))
-    (break-rep environment "Breakpoint on entry" procedure arguments)))
+  (let-fluids the-procedure procedure
+	      the-arguments arguments
+    (lambda ()
+      (break-rep environment "Breakpoint on entry" procedure arguments))))
 
 (define (break-exit-advice procedure arguments result environment)
-  (fluid-let ((the-procedure procedure)
-	      (the-arguments arguments)
-	      (the-result result))
-    (break-rep environment "Breakpoint on exit" procedure arguments result))
+  (let-fluids the-procedure procedure
+	      the-arguments arguments
+	      the-result result
+    (lambda ()
+      (break-rep environment "Breakpoint on exit" procedure arguments result)))
   result)
 
 (define (break-rep environment message . info)
@@ -328,7 +334,7 @@ USA.
 				      (apply trace-display port info)))
 				   message)
 	      environment
-	      advice-continuation))
+	      (fluid advice-continuation)))
 
 (define (break-entry procedure)
   (advise-entry procedure break-entry-advice))
