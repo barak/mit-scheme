@@ -403,6 +403,9 @@ USA.
 
 (define *rename-database*)
 
+(define (initialize-package!)
+  (set! *rename-database* (make-fluid 'UNBOUND)))
+
 (define-structure (rename-database (constructor initial-rename-database ())
 				   (conc-name rename-database/))
   (frame-number 0)
@@ -412,22 +415,24 @@ USA.
 
 (define (make-rename-id)
   (delay
-    (let ((n (+ (rename-database/frame-number *rename-database*) 1)))
-      (set-rename-database/frame-number! *rename-database* n)
+    (let* ((renames (fluid *rename-database*))
+	   (n (+ (rename-database/frame-number renames) 1)))
+      (set-rename-database/frame-number! renames n)
       n)))
 
 (define (rename-identifier identifier rename-id)
   (let ((key (cons identifier rename-id))
-	(mapping-table (rename-database/mapping-table *rename-database*)))
-    (or (hash-table/get mapping-table key #f)
-	(let ((mapped-identifier
-	       (utf8-string->uninterned-symbol
-		(symbol-name (identifier->symbol identifier)))))
-	  (hash-table/put! mapping-table key mapped-identifier)
-	  (hash-table/put! (rename-database/unmapping-table *rename-database*)
-			   mapped-identifier
-			   key)
-	  mapped-identifier))))
+	(renames (fluid *rename-database*)))
+    (let ((mapping-table (rename-database/mapping-table renames)))
+      (or (hash-table/get mapping-table key #f)
+	  (let ((mapped-identifier
+		 (utf8-string->uninterned-symbol
+		  (symbol-name (identifier->symbol identifier)))))
+	    (hash-table/put! mapping-table key mapped-identifier)
+	    (hash-table/put! (rename-database/unmapping-table renames)
+			     mapped-identifier
+			     key)
+	    mapped-identifier)))))
 
 (define (rename-top-level-identifier identifier)
   (if (symbol? identifier)
@@ -453,7 +458,8 @@ USA.
 
 (define (unmap-identifier identifier)
   (let ((entry
-	 (hash-table/get (rename-database/unmapping-table *rename-database*)
+	 (hash-table/get (rename-database/unmapping-table
+			  (fluid *rename-database*))
 			 identifier
 			 #f)))
     (if entry
@@ -465,7 +471,8 @@ USA.
 
 (define (finalize-mapped-identifier identifier)
   (let ((entry
-	 (hash-table/get (rename-database/unmapping-table *rename-database*)
+	 (hash-table/get (rename-database/unmapping-table
+			  (fluid *rename-database*))
 			 identifier
 			 #f)))
     (if entry
@@ -484,7 +491,7 @@ USA.
   (symbol "." symbol-to-map "." frame-number))
 
 (define (map-uninterned-identifier identifier frame-number)
-  (let ((table (rename-database/id-table *rename-database*))
+  (let ((table (rename-database/id-table (fluid *rename-database*)))
 	(symbol (identifier->symbol identifier)))
     (let ((alist (hash-table/get table symbol '())))
       (let ((entry (assv frame-number alist)))

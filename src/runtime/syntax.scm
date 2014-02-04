@@ -49,13 +49,14 @@ USA.
 (define (syntax* forms environment)
   (guarantee-list forms 'SYNTAX*)
   (let ((senv (->syntactic-environment environment 'SYNTAX*)))
-    (fluid-let ((*rename-database* (initial-rename-database)))
-      (output/post-process-expression
-       (if (syntactic-environment/top-level? senv)
-	   (compile-body-item/top-level
-	    (let ((senv (make-top-level-syntactic-environment senv)))
-	      (classify/body forms senv senv)))
-	   (output/sequence (compile/expressions forms senv)))))))
+    (let-fluid *rename-database* (initial-rename-database)
+      (lambda ()
+	(output/post-process-expression
+	 (if (syntactic-environment/top-level? senv)
+	     (compile-body-item/top-level
+	      (let ((senv (make-top-level-syntactic-environment senv)))
+		(classify/body forms senv senv)))
+	     (output/sequence (compile/expressions forms senv))))))))
 
 (define (compile/expression expression environment)
   (compile-item/expression (classify/expression expression environment)))

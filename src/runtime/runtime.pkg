@@ -4764,7 +4764,8 @@ USA.
 	  output/variable
 	  rename-identifier
 	  rename-top-level-identifier
-	  transformer-eval))
+	  transformer-eval)
+  (initialization (initialize-package!)))
 
 (define-package (runtime syntax declaration)
   (files "syntax-declaration")
