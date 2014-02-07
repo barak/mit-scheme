@@ -162,6 +162,8 @@ USA.
   (stack-frame/reductions (dstate/subproblem dstate)))
 
 (define (initialize-package!)
+  (set! *dstate* (make-fluid 'UNBOUND))
+  (set! *port* (make-fluid 'UNBOUND))
   (set!
    command-set
    (make-command-set
@@ -232,8 +234,10 @@ USA.
 	 (let ((dstate (cadr (cadr form)))
 	       (port (caddr (cadr form))))
 	   `(DEFINE (,(car (cadr form)) #!OPTIONAL ,dstate ,port)
-	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate) *DSTATE* ,dstate))
-		    (,port (IF (DEFAULT-OBJECT? ,port) *PORT* ,port)))
+	      (LET ((,dstate (IF (DEFAULT-OBJECT? ,dstate)
+				 (FLUID *DSTATE*)
+				 ,dstate))
+		    (,port (IF (DEFAULT-OBJECT? ,port) (FLUID *PORT*) ,port)))
 		,@(map (let ((free (list dstate port)))
 			 (lambda (expression)
 			   (make-syntactic-closure environment free
@@ -806,11 +810,12 @@ USA.
 (define *port*)
 
 (define (command/internal dstate port)
-  (fluid-let ((*dstate* dstate)
-	      (*port* port))
-    (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
-			   "the debugger"
-			   "the debugger environment")))
+  (let-fluids *dstate* dstate
+	      *port* port
+    (lambda ()
+      (debug/read-eval-print (->environment '(RUNTIME DEBUGGER))
+			     "the debugger"
+			     "the debugger environment"))))
 
 (define-command (command/frame dstate port)
   (debugger-presentation port
