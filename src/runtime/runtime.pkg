@@ -3015,7 +3015,8 @@ USA.
 	  local-load-options
 	  standard-load-options
 	  standard-option-loader
-	  standard-system-loader))
+	  standard-system-loader)
+  (initialization (initialize-package!)))
 
 (define-package (runtime parser)
   (files "parse")

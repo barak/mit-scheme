@@ -46,12 +46,12 @@ USA.
     (define (search-parent pathname)
       (call-with-values
 	  (lambda ()
-	    (fluid-let ((*options* '())
-			(*parent* #f))
-	      (let-fluid load/suppress-loading-message? #t
-		(lambda ()
-		  (load pathname (make-load-environment))))
-	      (values *options* *parent*)))
+	    (let-fluids *options* '()
+			*parent* #f
+			load/suppress-loading-message? #t
+	      (lambda ()
+		(load pathname (make-load-environment))
+		(values (fluid *options*) (fluid *parent*)))))
 	find-option))
 
     (define (make-load-environment)
@@ -61,14 +61,14 @@ USA.
 
     (if (memq name loaded-options)
 	name
-	(find-option *options* *parent*))))
+	(find-option (fluid *options*) (fluid *parent*)))))
 
 (define (define-load-option name . loaders)
-  (set! *options* (cons (cons name loaders) *options*))
+  (set-fluid! *options* (cons (cons name loaders) (fluid *options*)))
   unspecific)
 
 (define (further-load-options place)
-  (set! *parent* place)
+  (set-fluid! *parent* place)
   unspecific)
 
 (define (initial-load-options)
@@ -94,9 +94,13 @@ USA.
        pathname))
 
 (define loaded-options '())
-(define *options* '())			; Current options.
-(define *parent* initial-load-options)	; A thunk or a pathname/string or #f.
+(define *options*)		 ; Current options.
+(define *parent*)		 ; A thunk or a pathname/string or #f.
 (define *initial-options-file* #f)
+
+(define (initialize-package!)
+  (set! *options* (make-fluid '()))
+  (set! *parent* (make-fluid initial-load-options)))
 
 (define (dummy-option-loader)
   unspecific)
