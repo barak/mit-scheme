@@ -825,7 +825,8 @@ swank:xref
 
 (define (all-completions prefix environment)
   (let ((prefix
-	 (if (environment-lookup environment '*PARSER-CANONICALIZE-SYMBOLS?*)
+	 (if (fluid (environment-lookup environment
+					'*PARSER-CANONICALIZE-SYMBOLS?*))
 	     (string-downcase prefix)
 	     prefix))
 	(completions '()))

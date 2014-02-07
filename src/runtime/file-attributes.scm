@@ -120,29 +120,30 @@ This file is part of MIT/GNU Scheme.
 
 (define (parse-file-attributes-item parse port)
   ;; Prepare the parser for first mode.
-  (fluid-let ((*parser-associate-positions?* #f)
-	      (*parser-atom-delimiters*
-	       char-set/file-attributes-atom-delimiters)
-	      (*parser-canonicalize-symbols?* #f)
-	      (*parser-constituents* char-set/file-attributes-constituents)
-	      (*parser-enable-file-attributes-parsing?* #f) ; no recursion!
-	      (*parser-keyword-style* #f)
-	      (*parser-radix* 10)
-	      (*parser-table* file-attributes-parser-table))
-    (parse port system-global-environment)))
+  (let-fluids *parser-associate-positions?* #f
+	      *parser-atom-delimiters* char-set/file-attributes-atom-delimiters
+	      *parser-canonicalize-symbols?* #f
+	      *parser-constituents* char-set/file-attributes-constituents
+	      *parser-enable-file-attributes-parsing?* #f ; no recursion!
+	      *parser-keyword-style* #f
+	      *parser-radix* 10
+	      *parser-table* file-attributes-parser-table
+    (lambda ()
+      (parse port system-global-environment))))
 
 (define (parse-file-attributes-value parse port)
   ;; Prepare the parser for second mode.
-  (fluid-let ((*parser-associate-positions?* #f)
-	      (*parser-atom-delimiters* char-set/atom-delimiters)
-	      (*parser-canonicalize-symbols?* #f)
-	      (*parser-constituents* char-set/constituents)
-	      (*parser-enable-file-attributes-parsing?* #f) ; no recursion!
+  (let-fluids *parser-associate-positions?* #f
+	      *parser-atom-delimiters* char-set/atom-delimiters
+	      *parser-canonicalize-symbols?* #f
+	      *parser-constituents* char-set/constituents
+	      *parser-enable-file-attributes-parsing?* #f ; no recursion!
 	      ;; enable prefix keywords
-	      (*parser-keyword-style* 'prefix)
-	      (*parser-radix* 10)
-	      (*parser-table* system-global-parser-table))
-    (parse port system-global-environment)))
+	      *parser-keyword-style* 'prefix
+	      *parser-radix* 10
+	      *parser-table* system-global-parser-table
+    (lambda ()
+      (parse port system-global-environment))))
 
 (define (parse-file-attributes-line port db multiline)
   (declare (ignore db))

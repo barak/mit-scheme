@@ -343,7 +343,8 @@ USA.
       (unparse-symbol-name (symbol-name symbol))))
 
 (define (unparse-keyword-name s)
-  (case (repl-environment-value (fluid *environment*) '*PARSER-KEYWORD-STYLE*)
+  (case (fluid (repl-environment-value (fluid *environment*)
+				       '*PARSER-KEYWORD-STYLE*))
     ((PREFIX)
      (*unparse-char #\:)
      (unparse-symbol-name s))
@@ -358,8 +359,8 @@ USA.
 (define (unparse-symbol-name s)
   (if (or (string-find-next-char-in-set
 	   s
-	   (if (repl-environment-value (fluid *environment*)
-				       '*PARSER-CANONICALIZE-SYMBOLS?*)
+	   (if (fluid (repl-environment-value (fluid *environment*)
+					      '*PARSER-CANONICALIZE-SYMBOLS?*))
 	       canon-symbol-quoted
 	       non-canon-symbol-quoted))
 	  (fix:= (string-length s) 0)
@@ -392,7 +393,8 @@ USA.
   (char=? (string-ref string 0) #\#))
 
 (define (looks-like-keyword? string)
-  (case (repl-environment-value (fluid *environment*) '*PARSER-KEYWORD-STYLE*)
+  (case (fluid (repl-environment-value (fluid *environment*)
+				       '*PARSER-KEYWORD-STYLE*))
     ((PREFIX)
      (char=? (string-ref string 0) #\:))
     ((SUFFIX)

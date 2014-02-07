@@ -583,8 +583,8 @@ but the written representation is incomplete and therefore not parsable,
 an error is signalled.
 
 @var{Environment} is used to look up the values of control variables
-such as @samp{*parser-radix*}.  If not supplied, it defaults to the
-@acronym{REP} environment.
+such as @samp{*parser-radix*} (@pxref{reader-controls}).  If not
+supplied, it defaults to the @acronym{REP} environment.
 @end deffn
 
 @deffn procedure eof-object? object
@@ -699,17 +699,22 @@ that they are both flexible and extremely fast, especially for large
 amounts of data.
 @end deffn
 
-The following variables may be bound or assigned to change the behavior
-of the @code{read} procedure.  They are looked up in the environment
-that is passed to @code{read}, and so may have different values in
-different environments.  It is recommended that the global bindings of
-these variables be left unchanged; make local changes by shadowing the
-global bindings in nested environments.
+@anchor{reader-controls}
+@subsection Reader Controls
+
+The following names control the behavior of the @code{read} procedure.
+They are looked up in the environment that is passed to @code{read},
+and so may have different fluids in different environments.  The
+global fluids (fluids assigned to the global bindings) may be
+dynamically bound by the @code{let-fluid} procedure, but should not be
+mutated by @code{fluid-set!}.  Make persistent, local changes by
+shadowing the global bindings in the local environment and assigning
+new fluids to them.
 
 @defvr variable *parser-radix*
-This variable defines the radix used by the reader when it parses
+This fluid defines the radix used by the reader when it parses
 numbers.  This is similar to passing a radix argument to
-@code{string->number}.  The value of this variable must be one of
+@code{string->number}.  The value of the fluid must be one of
 @code{2}, @code{8}, @code{10}, or @code{16}; any other value is ignored,
 and the reader uses radix @code{10}.
 
@@ -718,14 +723,14 @@ Note that much of the number syntax is invalid for radixes other than
 and signals an error.  However, problems can still occur when
 @code{*parser-radix*} is set to @code{16}, because syntax that normally
 denotes symbols can now denote numbers (e.g.@: @code{abc}).  Because of
-this, it is usually undesirable to set this variable to anything other
+this, it is usually undesirable to set this fluid to anything other
 than the default.
 
-The default value of this variable is @code{10}.
+The default value of this fluid is @code{10}.
 @end defvr
 
 @defvr variable *parser-canonicalize-symbols?*
-This variable controls how the parser handles case-sensitivity of
+This fluid controls how the parser handles case-sensitivity of
 symbols.  If it is bound to its default value of @code{#t}, symbols read
 by the parser are converted to lower case before being interned.
 Otherwise, symbols are interned without case conversion.

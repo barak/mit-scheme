@@ -69,6 +69,10 @@ USA.
 (define c-include-noisily? #f)
 (define current-filename)
 
+(define read-environment
+  (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*)
+			      (list (make-fluid #f))))
+
 (define (include-cdecl-file filename cwd twd includes)
   ;; Adds the C declarations in FILENAME to INCLUDES.  Interprets
   ;; FILENAME relative to CWD (current working directory).
@@ -110,9 +114,6 @@ USA.
       (cond ((fix:> count 100) (error "Could not simplify:" pathname))
 	    ((pathname=? again simpler) again)
 	    (else (loop again (fix:1+ count)))))))
-
-(define read-environment
-  (make-top-level-environment '(*PARSER-CANONICALIZE-SYMBOLS?*) '(#f)))
 
 (define (include-cdecl form cwd twd includes)
   ;; Add a top-level C declaration to INCLUDES.  If it is an

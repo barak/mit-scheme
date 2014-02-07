@@ -232,9 +232,10 @@ The following commands evaluate Scheme expressions:
 		 (let ((environment (evaluation-environment #f)))
 		   (obarray-completions
 		    (if (and bound-only?
-			     (environment-lookup
-			      environment
-			      '*PARSER-CANONICALIZE-SYMBOLS?*))
+			     (fluid
+			      (environment-lookup
+			       environment
+			       '*PARSER-CANONICALIZE-SYMBOLS?*)))
 			(string-downcase prefix)
 			prefix)
 		    (if bound-only?
