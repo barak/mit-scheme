@@ -117,8 +117,9 @@ USA.
   (do () (#f)
     (with-simple-restart 'ABORT "Return to SLIME top-level."
       (lambda ()
-	(fluid-let ((*top-level-restart* (find-restart 'ABORT)))
-	  (process-one-message socket 0))))))
+	(let-fluid *top-level-restart* (find-restart 'ABORT)
+	  (lambda ()
+	    (process-one-message socket 0)))))))
 
 (define *top-level-restart*)
 
@@ -129,13 +130,13 @@ USA.
   (set-repl/environment! (nearest-repl) environment))
 
 (define (top-level-abort)
-  (invoke-restart *top-level-restart*))
+  (invoke-restart (fluid *top-level-restart*)))
 
 (define (bound-restarts-for-emacs)
   (let loop ((restarts (bound-restarts)))
     (if (pair? restarts)
 	(cons (car restarts)
-	      (if (eq? (car restarts) *top-level-restart*)
+	      (if (eq? (car restarts) (fluid *top-level-restart*))
 		  '()
 		  (loop (cdr restarts))))
 	'())))
@@ -223,10 +224,11 @@ USA.
 (define *index*)
 
 (define (emacs-rex socket sexp pstring id)
-  (fluid-let ((*buffer-pstring* pstring)
-	      (*index* id))
-    (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
-	  swank-env)))
+  (let-fluids *buffer-pstring* pstring
+	      *index* id
+    (lambda ()
+      (eval (cons* (car sexp) socket (map quote-special (cdr sexp)))
+	    swank-env))))
 
 (define *buffer-pstring*)
 
@@ -234,12 +236,13 @@ USA.
   (the-environment))
 
 (define (buffer-env)
-  (pstring->env *buffer-pstring*))
+  (pstring->env (fluid *buffer-pstring*)))
 
 (define (pstring->env pstring)
   (cond ((or (not (string? pstring))
-	     (not (string? *buffer-pstring*))
-	     (string-ci=? *buffer-pstring* "COMMON-LISP-USER"))
+	     (let ((buffer-pstring (fluid *buffer-pstring*)))
+	       (or (not (string? buffer-pstring))
+		   (string-ci=? buffer-pstring "COMMON-LISP-USER"))))
 	 (get-current-environment))
 	((string-prefix? anonymous-package-prefix pstring)
 	 (let ((object
@@ -313,6 +316,10 @@ USA.
 
 (define repl-port-type)
 (define (initialize-package!)
+  (set! *top-level-restart* (make-fluid unspecific))
+  (set! *sldb-state* (make-fluid #f))
+  (set! *index* (make-fluid unspecific))
+  (set! *buffer-pstring* (make-fluid unspecific))
   (set! repl-port-type
 	(make-port-type
 	 `((WRITE-CHAR
@@ -645,19 +652,20 @@ swank:xref
   condition
   restarts)
 
-(define *sldb-state* #f)
+(define *sldb-state*)
 
 (define (invoke-sldb socket level condition)
-  (fluid-let ((*sldb-state*
-	       (make-sldb-state condition (bound-restarts-for-emacs))))
-    (dynamic-wind
+  (let-fluid *sldb-state*
+	     (make-sldb-state condition (bound-restarts-for-emacs))
+    (lambda ()
+      (dynamic-wind
 	(lambda () #f)
 	(lambda ()
-	  (write-message `(:debug 0 ,level ,@(sldb-info *sldb-state* 0 20))
+	  (write-message `(:debug 0 ,level ,@(sldb-info (fluid *sldb-state*) 0 20))
 			 socket)
 	  (sldb-loop level socket))
 	(lambda ()
-	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket)))))
+	  (write-message `(:debug-return 0 ,(- level 1) 'NIL) socket))))))
 
 (define (sldb-loop level socket)
   (write-message `(:debug-activate 0 ,level) socket)
@@ -675,7 +683,7 @@ swank:xref
 	  (sldb-restarts rs)
 	  (sldb-backtrace c start end)
 	  ;;'((0 "dummy frame"))
-	  (list *index*))))
+	  (list (fluid *index*)))))
 
 (define (sldb-restarts restarts)
   (map (lambda (r)
@@ -690,24 +698,24 @@ swank:xref
 
 (define (swank:sldb-abort socket . args)
   socket args
-  (abort (sldb-state.restarts *sldb-state*)))
+  (abort (sldb-state.restarts (fluid *sldb-state*))))
 
 (define (swank:sldb-continue socket . args)
   socket args
-  (continue (sldb-state.restarts *sldb-state*)))
+  (continue (sldb-state.restarts (fluid *sldb-state*))))
 
 (define (swank:invoke-nth-restart-for-emacs socket sldb-level n)
   sldb-level
-  (write-message `(:return (:abort "NIL") ,*index*) socket)
-  (invoke-restart (list-ref (sldb-state.restarts *sldb-state*) n)))
+  (write-message `(:return (:abort "NIL") ,(fluid *index*)) socket)
+  (invoke-restart (list-ref (sldb-state.restarts (fluid *sldb-state*)) n)))
 
 (define (swank:debugger-info-for-emacs socket from to)
   socket
-  (sldb-info *sldb-state* from to))
+  (sldb-info (fluid *sldb-state*) from to))
 
 (define (swank:backtrace socket from to)
   socket
-  (sldb-backtrace (sldb-state.condition *sldb-state*) from to))
+  (sldb-backtrace (sldb-state.condition (fluid *sldb-state*)) from to))
 
 (define (sldb-backtrace condition from to)
   (sldb-backtrace-aux (condition/continuation condition) from to))
@@ -802,7 +810,7 @@ swank:xref
 (define (sldb-get-frame index)
   (stream-ref (continuation->frames
 	       (condition/continuation
-		(sldb-state.condition *sldb-state*)))
+		(sldb-state.condition (fluid *sldb-state*))))
 	      index))
 
 (define (frame-var-value frame var)
