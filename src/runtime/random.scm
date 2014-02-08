@@ -373,14 +373,17 @@ USA.
 	(if (not (random-state? state))
 	    (error:wrong-type-argument state "random state" procedure))
 	state)
-      (let ((state *random-state*))
+      (let ((state (if *random-state*
+		       (fluid *random-state*)
+		       ;; For early in the cold-load...
+		       default-random-source)))
 	(if (not (random-state? state))
 	    (error "Invalid *random-state*:" state))
 	state)))
 
 ;;;; Initialization
 
-(define *random-state*)
+(define *random-state* #f)
 (define flimit.)
 (define flimit)
 (define default-random-source)
@@ -388,24 +391,25 @@ USA.
 (define random-real)
 
 (define (initialize-package!)
-  (set! *random-state* (simple-random-state))
   (set! flimit.
 	(let loop ((x 1.))
 	  (if (flo:= (flo:+ x 1.) 1.)
 	      (flo:/ 1. x)
 	      (loop (flo:/ x 2.)))))
   (set! flimit (flo:truncate->exact flimit.))
-  (set! default-random-source *random-state*)
+  (set! default-random-source (simple-random-state))
   (set! random-integer (random-source-make-integers default-random-source))
   (set! random-real (random-source-make-reals default-random-source))
   unspecific)
 
 (define (finalize-random-state-type!)
+  (set! *random-state* (make-fluid default-random-source))
   (add-event-receiver! event:after-restart
     (lambda ()
-      (random-source-randomize! *random-state*)
-      (if (not (eq? default-random-source *random-state*))
-	  (random-source-randomize! default-random-source))))
+      (let ((state (fluid *random-state*)))
+	(random-source-randomize! state)
+	(if (not (eq? default-random-source state))
+	    (random-source-randomize! default-random-source)))))
   (named-structure/set-tag-description! random-state-tag
     (make-define-structure-type 'VECTOR
 				'RANDOM-STATE

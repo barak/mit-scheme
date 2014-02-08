@@ -1364,7 +1364,7 @@ either an exact integer or an inexact real; the current implementation
 has been tuned to make these two cases fast.
 
 If @var{state} is given and not @code{#f}, it must be a random-state
-object; otherwise, it defaults to the value of the variable
+object; otherwise, it defaults to the value of the fluid
 @code{*random-state*}.  This object is used to maintain the state of the
 pseudo-random-number generator and is altered as a side effect of the
 @code{random} procedure.
@@ -1399,20 +1399,20 @@ procedure.  This allows a particular random-state object to be saved in
 order to replay a particular pseudo-random sequence.
 
 @defvr variable *random-state*
-This variable holds a data structure, a random-state object, that
+The value of this fluid is a data structure, a random-state object, that
 encodes the internal state of the random-number generator that
 @code{random} uses by default.  A call to @code{random} will perform a
-side effect on this data structure.  This variable may be changed, using
-@code{set!} or @code{fluid-let}, to hold a new random-state object.
+side effect on this data structure.  The fluid may be changed, using
+@code{set-fluid!} or @code{let-fluid}, to hold a new random-state object.
 @end defvr
 
 @deffn procedure make-random-state [state]
 This procedure returns a new random-state object, suitable for use as
-the value of the variable @code{*random-state*}, or as the @var{state}
+the value of the fluid @code{*random-state*}, or as the @var{state}
 argument to @code{random}.  If @var{state} is not given or @code{#f},
 @code{make-random-state} returns a @emph{copy} of the current
-random-number state object (the value of the variable
-@code{*random-state*}).  If @var{state} is a random-state object, a copy
+random-number state object (the value of the @code{*random-state*}
+fluid object).  If @var{state} is a random-state object, a copy
 of that object is returned.  If @var{state} is @code{#t}, then a new
 random-state object is returned that has been ``randomly'' initialized
 by some means (such as by a time-of-day clock).
