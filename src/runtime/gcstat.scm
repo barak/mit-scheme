@@ -30,7 +30,7 @@ USA.
 (declare (usual-integrations))
 
 (define (initialize-package!)
-  (set! hook/record-statistic! default/record-statistic!)
+  (set! hook/record-statistic! (make-fluid default/record-statistic!))
   (set! history-modes
 	`((NONE . ,none:install-history!)
 	  (BOUNDED . ,bounded:install-history!)
@@ -106,7 +106,7 @@ USA.
     (set! last-gc-start-clock start-clock)
     (set! last-gc-end-clock end-clock)
     (record-statistic! statistic)
-    (hook/record-statistic! statistic)))
+    ((fluid hook/record-statistic!) statistic)))
 
 (define (gc-statistic/meter stat)
   (car (gc-statistic/timestamp stat)))

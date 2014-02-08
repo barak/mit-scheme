@@ -30,29 +30,29 @@ USA.
 (declare (usual-integrations))
 
 (define (toggle-gc-notification!)
-  (set! hook/record-statistic!
-	(let ((current hook/record-statistic!))
-	  (cond ((eq? current gc-notification) default/record-statistic!)
-		((eq? current default/record-statistic!) gc-notification)
-		(else (error "Can't grab GC statistics hook")))))
+  (set-fluid! hook/record-statistic!
+	      (let ((current (fluid hook/record-statistic!)))
+		(cond ((eq? current gc-notification) default/record-statistic!)
+		      ((eq? current default/record-statistic!) gc-notification)
+		      (else (error "Can't grab GC statistics hook")))))
   unspecific)
 
 (define (set-gc-notification! #!optional on?)
   (let ((on? (if (default-object? on?) #T on?)))
-    (set! hook/record-statistic!
-	  (let ((current hook/record-statistic!))
-	    (if (or (eq? current gc-notification)
-		    (eq? current default/record-statistic!))
-		(if on?
-		    gc-notification
-		    default/record-statistic!)
-		(error "Can't grab GC statistics hook"))))
+    (set-fluid! hook/record-statistic!
+		(let ((current (fluid hook/record-statistic!)))
+		  (if (or (eq? current gc-notification)
+			  (eq? current default/record-statistic!))
+		      (if on?
+			  gc-notification
+			  default/record-statistic!)
+		      (error "Can't grab GC statistics hook"))))
     unspecific))
 
 (define (with-gc-notification! notify? thunk)
-  (fluid-let ((hook/record-statistic!
-	       (if notify? gc-notification default/record-statistic!)))
-    (thunk)))
+  (let-fluid hook/record-statistic!
+	     (if notify? gc-notification default/record-statistic!)
+    thunk))
 
 (define (gc-notification statistic)
   (print-statistic statistic (notification-output-port)))
