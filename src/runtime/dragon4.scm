@@ -127,33 +127,34 @@ not much different to numbers within a few orders of magnitude of 1.
 			  exponent)))))
 
 (define (flonum-unparser-cutoff-args)
-  (cond ((eq? 'NORMAL flonum-unparser-cutoff)
-	 (values 'NORMAL 0 flonum-unparser:normal-output))
-	((and (pair? flonum-unparser-cutoff)
-	      (pair? (cdr flonum-unparser-cutoff))
-	      (let ((mode (car flonum-unparser-cutoff))
-		    (place (cadr flonum-unparser-cutoff)))
-		(and (memq mode '(ABSOLUTE RELATIVE NORMAL))
-		     (exact-integer? place)
-		     (or (not (eq? 'RELATIVE mode))
-			 (positive? place))))
-	      (or (null? (cddr flonum-unparser-cutoff))
-		  (and (pair? (cddr flonum-unparser-cutoff))
-		       (null? (cdddr flonum-unparser-cutoff))
-		       (let ((mode (caddr flonum-unparser-cutoff)))
-			 (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
-			     (and (procedure? mode)
-				  (procedure-arity-valid? mode 3)))))))
-	 (values (car flonum-unparser-cutoff)
-		 (- (cadr flonum-unparser-cutoff))
-		 (if (null? (cddr flonum-unparser-cutoff))
-		     flonum-unparser:normal-output
-		     (lookup-symbolic-display-mode
-		      (caddr flonum-unparser-cutoff)))))
-	(else
-	 (warn "illegal flonum unparser cutoff parameter"
-	       flonum-unparser-cutoff)
-	 (values 'NORMAL 0 flonum-unparser:normal-output))))
+  (let ((cutoff (fluid flonum-unparser-cutoff)))
+    (cond ((eq? 'NORMAL cutoff)
+	   (values 'NORMAL 0 flonum-unparser:normal-output))
+	  ((and (pair? cutoff)
+		(pair? (cdr cutoff))
+		(let ((mode (car cutoff))
+		      (place (cadr cutoff)))
+		  (and (memq mode '(ABSOLUTE RELATIVE NORMAL))
+		       (exact-integer? place)
+		       (or (not (eq? 'RELATIVE mode))
+			   (positive? place))))
+		(or (null? (cddr cutoff))
+		    (and (pair? (cddr cutoff))
+			 (null? (cdddr cutoff))
+			 (let ((mode (caddr cutoff)))
+			   (or (memq mode '(NORMAL SCIENTIFIC ENGINEERING))
+			       (and (procedure? mode)
+				    (procedure-arity-valid? mode 3)))))))
+	   (values (car cutoff)
+		   (- (cadr cutoff))
+		   (if (null? (cddr cutoff))
+		       flonum-unparser:normal-output
+		       (lookup-symbolic-display-mode
+			(caddr cutoff)))))
+	  (else
+	   (warn "illegal flonum unparser cutoff parameter"
+		 cutoff)
+	   (values 'NORMAL 0 flonum-unparser:normal-output)))))
 
 (define (lookup-symbolic-display-mode mode)
   (case mode
@@ -163,7 +164,7 @@ not much different to numbers within a few orders of magnitude of 1.
     (else mode)))
 
 (define flonum-unparser-hook #f)
-(define flonum-unparser-cutoff 'NORMAL)
+(define flonum-unparser-cutoff)
 
 (define (dragon4-normalize x precision)
   (call-with-values (lambda () (flo:normalize x))
@@ -278,6 +279,7 @@ not much different to numbers within a few orders of magnitude of 1.
 (define expt-radix)
 
 (define (initialize-dragon4!)
+  (set! flonum-unparser-cutoff (make-fluid 'NORMAL))
   (set! expt-radix
 	(let ((v (make-initialized-vector 310 (lambda (i) (expt 10 i)))))
 	  (lambda (base exponent)
@@ -292,8 +294,9 @@ not much different to numbers within a few orders of magnitude of 1.
 
 (define (test)
   (define (try n settings . expecteds)
-    (let ((got (fluid-let ((flonum-unparser-cutoff settings))
-		 (number->string (exact->inexact n)))))
+    (let ((got (let-fluid flonum-unparser-cutoff settings
+		 (lambda ()
+		   (number->string (exact->inexact n))))))
       (if (member got expecteds)
 	  (set! successes (+ successes 1))
 	  (begin

@@ -934,9 +934,9 @@ the result, and consequently can be tolerated by many applications.
 @end defvr
 
 @defvr variable flonum-unparser-cutoff
-This variable controls the action of @code{number->string} when
+This fluid controls the action of @code{number->string} when
 @var{number} is a flonum (and consequently controls all printing of
-flonums).  The value of this variable is normally a list of three items:
+flonums).  The value of this fluid is normally a list of three items:
 
 @table @var
 @item rounding-type
@@ -995,38 +995,49 @@ Some examples of @code{flonum-unparser-cutoff}:
 @example
 (number->string (* 4 (atan 1 1)))
                                     @result{} "3.141592653589793"
-(fluid-let ((flonum-unparser-cutoff '(relative 5)))
-  (number->string (* 4 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(relative 5)
+  (lambda ()
+    (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.1416"
-(fluid-let ((flonum-unparser-cutoff '(relative 5)))
-  (number->string (* 4000 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(relative 5)
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.6"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
-  (number->string (* 4000 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(relative 5 scientific)
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3.1416e3"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 scientific)))
-  (number->string (* 40000 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(relative 5 scientific)
+  (lambda ()
+    (number->string (* 40000 (atan 1 1)))))
                                     @result{} "3.1416e4"
-(fluid-let ((flonum-unparser-cutoff '(relative 5 engineering)))
-  (number->string (* 40000 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(relative 5 engineering)
+  (lambda ()
+    (number->string (* 40000 (atan 1 1)))))
                                     @result{} "31.416e3"
-(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
-  (number->string (* 4 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute 5)
+  (lambda ()
+    (number->string (* 4 (atan 1 1)))))
                                     @result{} "3.14159"
-(fluid-let ((flonum-unparser-cutoff '(absolute 5)))
-  (number->string (* 4000 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute 5)
+  (lambda ()
+    (number->string (* 4000 (atan 1 1)))))
                                     @result{} "3141.59265"
-(fluid-let ((flonum-unparser-cutoff '(absolute -4)))
-  (number->string (* 4e10 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute -4)
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415930000."
-(fluid-let ((flonum-unparser-cutoff '(absolute -4 scientific)))
-  (number->string (* 4e10 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute -4 scientific)
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "3.141593e10"
-(fluid-let ((flonum-unparser-cutoff '(absolute -4 engineering)))
-  (number->string (* 4e10 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute -4 engineering)
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31.41593e9"
-(fluid-let ((flonum-unparser-cutoff '(absolute -5)))
-  (number->string (* 4e10 (atan 1 1))))
+(let-fluid flonum-unparser-cutoff '(absolute -5)
+  (lambda ()
+    (number->string (* 4e10 (atan 1 1)))))
                                     @result{} "31415900000."
 @end example
 

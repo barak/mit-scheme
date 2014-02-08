@@ -249,8 +249,9 @@ USA.
   (if (< n (expt 10 (- k 1)))
       (string-append (string-pad-left (number->string n) (- k 1)) " ")
       (let ((s
-	     (fluid-let ((flonum-unparser-cutoff `(RELATIVE ,k ENGINEERING)))
-	       (number->string (exact->inexact n)))))
+	     (let-fluid flonum-unparser-cutoff `(RELATIVE ,k ENGINEERING)
+	       (lambda ()
+		 (number->string (exact->inexact n))))))
 	(let ((regs (re-string-match "\\([0-9.]+\\)e\\([0-9]+\\)" s)))
 	  (let ((mantissa (re-match-extract s regs 1))
 		(exponent (string->number (re-match-extract s regs 2))))
