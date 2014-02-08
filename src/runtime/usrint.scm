@@ -382,12 +382,12 @@ USA.
 
 (define (port/gc-start port)
   (let ((operation (port/operation port 'GC-START)))
-    (if (and operation (not *within-restore-window?*))
+    (if (and operation (not (fluid *within-restore-window?*)))
 	(operation port))))
 
 (define (port/gc-finish port)
   (let ((operation (port/operation port 'GC-FINISH)))
-    (if (and operation (not *within-restore-window?*))
+    (if (and operation (not (fluid *within-restore-window?*)))
 	(operation port))))
 
 (define (port/read-start port)

@@ -41,7 +41,10 @@ USA.
 
 (define world-id "Image")
 (define time-world-saved #f)
-(define *within-restore-window?* #f)
+(define *within-restore-window?*)
+
+(define (initialize-package!)
+  (set! *within-restore-window?* (make-fluid #f)))
 
 (define (disk-save filename #!optional id)
   (let ((filename (->namestring (merge-pathnames filename)))
@@ -76,8 +79,9 @@ USA.
 	   (read-microcode-tables!)
 	   (lambda ()
 	     (set! time-world-saved time)
-	     (fluid-let ((*within-restore-window?* #t))
-	       (event-distributor/invoke! event:after-restore))
+	     (let-fluid *within-restore-window?* #t
+	       (lambda ()
+		 (event-distributor/invoke! event:after-restore)))
 	     (start-thread-timer)
 	     (cond ((string? id)
 		    (set! world-id id)
