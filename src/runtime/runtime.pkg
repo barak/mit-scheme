@@ -5961,7 +5961,8 @@ USA.
 	  structure-parser-values-length
 	  structure-parser-values-ref
 	  structure-parser-values?
-	  vector-parser))
+	  vector-parser)
+  (initialization (initialize-package!)))
 
 (define-package (runtime postgresql)
   (file-case options

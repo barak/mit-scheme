@@ -82,9 +82,10 @@ USA.
 ;;;; Compiler
 
 (define (compile-top-level pattern caller-context env)
-  (fluid-let ((name-counters (make-strong-eq-hash-table)))
-    (optimize-result
-     (compile-pattern pattern caller-context env))))
+  (let-fluid name-counters (make-strong-eq-hash-table)
+    (lambda ()
+      (optimize-result
+       (compile-pattern pattern caller-context env)))))
 
 (define (compile-pattern pattern caller-context env)
   (let ((pattern* (rewrite-pattern pattern)))
@@ -776,12 +777,16 @@ USA.
 (define (call-with-new-names names procedure)
   (apply procedure
 	 (map (lambda (name)
-		(let ((n (hash-table-ref/default name-counters name 0)))
-		  (hash-table-set! name-counters name (+ n 1))
+		(let* ((t (fluid name-counters))
+		       (n (hash-table-ref/default t name 0)))
+		  (hash-table-set! t name (+ n 1))
 		  (symbol name '. n)))
 	      names)))
 
 (define name-counters)
+
+(define (initialize-package!)
+  (set! name-counters (make-fluid unspecific)))
 
 ;;;; Optimizer
 
