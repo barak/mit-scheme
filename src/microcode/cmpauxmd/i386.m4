@@ -984,7 +984,8 @@ define_hook_label(generic_$1)
 	jne	asm_generic_$1_fail
 	OP(and,l)	TW(rmask,REG(edx))
 	OP(fld,l)	DOF(4,REG(edx))
-	ftst
+	fldz
+	fucomp	ST(1)
 	fstsw	REG(ax)
 	fstp	ST(0)
 	sahf
@@ -1088,7 +1089,8 @@ asm_generic_divide_flo_flo:
 	OP(mov,l)	TW(REG(ebx),REG(ecx))
 	OP(and,l)	TW(rmask,REG(ecx))
 	OP(fld,l)	DOF(4,REG(ecx))			# fldd
-	ftst
+	fldz
+	fucomp	ST(1)
 	fstsw	REG(ax)
 	sahf
 	je	asm_generic_divide_by_zero

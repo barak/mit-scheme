@@ -657,14 +657,14 @@ USA.
 	 (st2 (flonum-source! source2)))
     (cond ((zero? st1)
 	   (flonum-branch! predicate
-			   (LAP (FCOM (ST 0) (ST ,st2)))))
+			   (LAP (FUCOM (ST 0) (ST ,st2)))))
 	  ((zero? st2)
 	   (flonum-branch! (commute-flonum-predicate predicate)
-			   (LAP (FCOM (ST 0) (ST ,st1)))))
+			   (LAP (FUCOM (ST 0) (ST ,st1)))))
 	  (else
 	   (flonum-branch! predicate
 			   (LAP (FLD (ST ,st1))
-				(FCOMP (ST 0) (ST ,(1+ st2)))))))))
+				(FUCOMP (ST 0) (ST ,(1+ st2)))))))))
 
 (define-rule predicate
   (FLONUM-PRED-2-ARGS (? predicate)
@@ -692,18 +692,15 @@ USA.
 
 (define (flonum-compare-zero predicate source)
   (let ((sti (flonum-source! source)))
-    (if (zero? sti)
-	(flonum-branch! predicate
-			(LAP (FTST)))
-	(flonum-branch! (commute-flonum-predicate predicate)
-			(LAP (FLDZ)
-			     (FCOMP (ST 0) (ST ,(1+ sti))))))))
+    (flonum-branch! (commute-flonum-predicate predicate)
+		    (LAP (FLDZ)
+			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (flonum-compare-one predicate source)
   (let ((sti (flonum-source! source)))
     (flonum-branch! (commute-flonum-predicate predicate)
 		    (LAP (FLD1)
-			 (FCOMP (ST 0) (ST ,(1+ sti)))))))
+			 (FUCOMP (ST 0) (ST ,(1+ sti)))))))
 
 (define (commute-flonum-predicate pred)
   (case pred
