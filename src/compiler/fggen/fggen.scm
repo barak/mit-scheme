@@ -507,12 +507,14 @@ USA.
       (let ((first-action
 	     (generate/subproblem/effect
 	      block continuation context
-	      (scode/sequence-immediate-first expression) 'SEQUENCE-CONTINUE
+	      (car (scode/sequence-actions expression))
+              'SEQUENCE-CONTINUE
 	      expression)))
 	((scfg*ctype->ctype! continuation)
 	 first-action
-	 (generate/expression block continuation context
-			      (scode/sequence-immediate-second expression))))
+	 (generate/expression
+	  block continuation context
+	  (make-sequence (cdr (scode/sequence-actions expression))))))
       (error "Not a sequence" expression)))
 
 (define (generate/conditional block continuation context expression)
@@ -962,7 +964,7 @@ USA.
 	  (sc-macro-transformer
 	   (lambda (form environment)
 	     `(VECTOR-SET! DISPATCH-VECTOR
-			   ,(microcode-type (cadr form))
+			   (MICROCODE-TYPE ',(cadr form))
 			   ,(close-syntax (caddr form) environment)))))
 	 (dispatch-entries
 	  (sc-macro-transformer

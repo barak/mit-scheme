@@ -819,7 +819,7 @@ ARBITRARY:	The expression may be executed more than once.  It
 	((dispatch-entry
 	  (sc-macro-transformer
 	   (lambda (form environment)
-	     `(VECTOR-SET! DISPATCH-VECTOR ,(microcode-type (cadr form))
+	     `(VECTOR-SET! DISPATCH-VECTOR (MICROCODE-TYPE ',(cadr form))
 			   ,(close-syntax (caddr form) environment)))))
 
 	 (dispatch-entries
