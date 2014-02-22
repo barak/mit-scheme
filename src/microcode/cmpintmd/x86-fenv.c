@@ -104,10 +104,10 @@ feclearexcept (int excepts)
 	x87_clear_exceptions ();
       else
 	{
-	  x87_fenv_t fenv;
-	  x87_read_environment (fenv.environment_bytes);
-	  (fenv.environment.x87_status_word) &=~ excepts;
-	  x87_write_environment (fenv.environment_bytes);
+	  struct x87_fenv fenv;
+	  x87_read_environment (&fenv);
+	  (fenv.x87_status_word) &=~ excepts;
+	  x87_write_environment (&fenv);
 	}
     }
   return (! (sse_p || x87_p));
@@ -122,10 +122,10 @@ feraiseexcept (int excepts)
     sse_write_mxcsr ((sse_read_mxcsr ()) | excepts);
   if (x87_p)
     {
-      x87_fenv_t fenv;
-      x87_read_environment (fenv.environment_bytes);
-      (fenv.environment.x87_status_word) |= excepts;
-      x87_write_environment (fenv.environment_bytes);
+      struct x87_fenv fenv;
+      x87_read_environment (&fenv);
+      (fenv.x87_status_word) |= excepts;
+      x87_write_environment (&fenv);
       x87_trap_exceptions ();
     }
   /* There seems to be no good way to request a trap in SSE.
@@ -154,10 +154,10 @@ fesetexceptflag (const fexcept_t *flagp, int excepts)
     sse_write_mxcsr ((sse_read_mxcsr ()) | ((*flagp) & excepts));
   if (x87_p)
     {
-      x87_fenv_t fenv;
-      x87_read_environment (fenv.environment_bytes);
-      (fenv.environment.x87_status_word) |= ((*flagp) & excepts);
-      x87_write_environment (fenv.environment_bytes);
+      struct x87_fenv fenv;
+      x87_read_environment (&fenv);
+      (fenv.x87_status_word) |= ((*flagp) & excepts);
+      x87_write_environment (&fenv);
     }
   return (! (sse_p || x87_p));
 }
@@ -220,7 +220,7 @@ fegetenv (fenv_t *envp)
   if (sse_p)
     (envp->fenv_sse.sse_mxcsr) = (sse_read_mxcsr ());
   if (x87_p)
-    x87_read_environment (envp->fenv_x87.environment_bytes);
+    x87_read_environment (&envp->fenv_x87);
   return (! (sse_p || x87_p));
 }
 
@@ -230,7 +230,7 @@ fesetenv (const fenv_t *envp)
   if (sse_p)
     sse_write_mxcsr (envp->fenv_sse.sse_mxcsr);
   if (x87_p)
-    x87_write_environment (envp->fenv_x87.environment_bytes);
+    x87_write_environment (&envp->fenv_x87);
   return (! (sse_p || x87_p));
 }
 
@@ -249,7 +249,7 @@ feholdexcept (fenv_t *envp)
     {
       x87_clear_exceptions ();
       x87_write_control_word
-	((envp->fenv_x87.environment.x87_control_word) | FE_ALL_EXCEPT);
+	((envp->fenv_x87.x87_control_word) | FE_ALL_EXCEPT);
     }
   return (0);
 }
