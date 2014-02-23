@@ -237,14 +237,6 @@ USA.
   (QUALIFIER (rtl:constant-flonum-test operand flo:nonzero?))
   (rtl:make-object->float operand))
 
-(define-rule rewriting
-  (FLONUM-2-ARGS FLONUM-SUBTRACT
-                 (REGISTER (? operand1 register-known-value))
-                 (? operand2)
-                 (? overflow?))
-  (QUALIFIER (rtl:constant-flonum-test operand1 flo:zero?))
-  (rtl:make-flonum-1-arg 'FLONUM-NEGATE operand2 overflow?))
-
 (define (rtl:constant-flonum-test expression predicate)
   (and (rtl:object->float? expression)
        (let ((expression (rtl:object->float-expression expression)))
