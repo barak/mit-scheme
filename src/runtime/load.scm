@@ -142,8 +142,8 @@ USA.
   (let* ((pathname (merge-pathnames pathname))
 	 (thunk
 	  (if (pathname-type pathname)
-	      (or (try-fasl-file pathname)
-		  (try-object-file pathname))
+	      (or (try-object-file pathname)
+		  (try-fasl-file pathname))
 	      (or (try-fasl-file pathname)
 		  (try-fasl-file (pathname-new-type pathname "com"))
 		  (try-object-file (pathname-new-type pathname "so"))
