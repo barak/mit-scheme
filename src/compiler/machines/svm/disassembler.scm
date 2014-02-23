@@ -245,7 +245,8 @@ USA.
   (cond ((lambda? constant)
 	 (let ((expression (lambda-body constant)))
 	   (if (and (compiled-code-address? expression)
-		    (eq? (compiled-code-address->block expression) block))
+		    (eq? (compiled-code-address->block expression)
+			 (cursor-block cursor)))
 	       (begin
 		 (write-string "  (")
 		 (let ((offset (compiled-code-address->offset expression)))
