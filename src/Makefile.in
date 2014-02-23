@@ -146,6 +146,15 @@ target-toolchain: lib/runtime.com
 microcode/scheme:
 	(cd microcode && $(MAKE) all)
 
+# XXX This should really depend on microcode/gen-nonce and
+# microcode/extract-liarc-decls instead of microcode/scheme, but
+# splitting up dependencies within the microcode subdirectory is more
+# trouble than it's worth right now.  Later, we should reorganize the
+# directory structure to better reflect the build rather than just
+# shoving all the C code into microcode/.
+.PHONY: liarc-bundle-tools
+liarc-bundle-tools: microcode/scheme
+
 lib/runtime.com: all-runtime
 lib/runtime.com: cross-target
 lib/runtime.com: microcode/scheme
@@ -226,6 +235,7 @@ all-compiler: compile-compiler
 @IF_LIARC@all-compiler: bundle-compiler
 
 .PHONY: bundle-compiler
+bundle-compiler: liarc-bundle-tools
 bundle-compiler: compile-compiler
 bundle-compiler: compiler/compiler-unx.c
 	(cd compiler && $(MAKE) compile-liarc-bundle)
@@ -307,6 +317,7 @@ all-cref: compile-cref
 @IF_LIARC@all-cref: bundle-cref
 
 .PHONY: bundle-cref
+bundle-cref: liarc-bundle-tools
 bundle-cref: compile-cref
 bundle-cref: cref/cref-unx.c
 	(cd cref && $(MAKE) compile-liarc-bundle)
@@ -376,6 +387,7 @@ all-sf: compile-sf
 @IF_LIARC@all-sf: bundle-sf
 
 .PHONY: bundle-sf
+bundle-sf: liarc-bundle-tools
 bundle-sf: compile-sf
 bundle-sf: sf/sf-unx.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
@@ -416,6 +428,7 @@ all-edwin: compile-edwin
 @IF_LIARC@all-edwin: bundle-edwin
 
 .PHONY: bundle-edwin
+bundle-edwin: liarc-bundle-tools
 bundle-edwin: compile-edwin
 bundle-edwin: edwin/edwin.c
 bundle-edwin: edwin/edwin-unx.c
@@ -457,6 +470,7 @@ all-ffi: compile-ffi
 @IF_LIARC@all-ffi: bundle-ffi
 
 .PHONY: bundle-ffi
+bundle-ffi: liarc-bundle-tools
 bundle-ffi: compile-ffi
 bundle-ffi: ffi/ffi-unx.c
 	(cd ffi && $(MAKE) compile-liarc-bundle)
@@ -487,6 +501,7 @@ all-sos: compile-sos
 @IF_LIARC@all-sos: bundle-sos
 
 .PHONY: bundle-sos
+bundle-sos: liarc-bundle-tools
 bundle-sos: compile-sos
 bundle-sos: sos/sos-unx.c
 	(cd sos && $(MAKE) compile-liarc-bundle)
@@ -516,6 +531,7 @@ all-ssp: compile-ssp
 @IF_LIARC@all-ssp: bundle-ssp
 
 .PHONY: bundle-ssp
+bundle-ssp: liarc-bundle-tools
 bundle-ssp: compile-ssp
 bundle-ssp: ssp/ssp-unx.c
 	(cd ssp && $(MAKE) compile-liarc-bundle)
@@ -546,6 +562,7 @@ all-star-parser: compile-star-parser
 @IF_LIARC@all-star-parser: bundle-star-parser
 
 .PHONY: bundle-star-parser
+bundle-star-parser: liarc-bundle-tools
 bundle-star-parser: compile-star-parser
 bundle-star-parser: star-parser/parser-unx.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
@@ -605,6 +622,7 @@ all-xml: compile-xml
 @IF_LIARC@all-xml: bundle-xml
 
 .PHONY: bundle-xml
+bundle-xml: liarc-bundle-tools
 bundle-xml: compile-xml
 bundle-xml: xml/xml-unx.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
@@ -682,6 +700,7 @@ all-imail: compile-imail
 @IF_LIARC@all-imail: bundle-imail
 
 .PHONY: bundle-imail
+bundle-imail: liarc-bundle-tools
 bundle-imail: compile-imail
 bundle-imail: imail/imail-unx.c
 	(cd imail && $(MAKE) compile-liarc-bundle)
