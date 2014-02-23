@@ -68,4 +68,4 @@ USA.
 ((access syntax-files! (->environment '(COMPILER))))
 
 ;; Rebuild the package constructors and cref.
-(cref/generate-constructors "compiler")
+(cref/generate-constructors "compiler" 'ALL)
