@@ -237,7 +237,9 @@ all-compiler: compile-compiler
 .PHONY: bundle-compiler
 bundle-compiler: liarc-bundle-tools
 bundle-compiler: compile-compiler
+bundle-compiler: compiler/compiler-os2.c
 bundle-compiler: compiler/compiler-unx.c
+bundle-compiler: compiler/compiler-w32.c
 	(cd compiler && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-compiler
@@ -310,6 +312,10 @@ compiler/compiler-unx.pkd: cref-sf
 	 echo '    (cref/generate-trivial-constructor "compiler")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+compiler/compiler-os2.pkd: compiler/compiler-unx.pkd
+compiler/compiler-w32.pkd: compiler/compiler-unx.pkd
+
 # CREF
 
 .PHONY: all-cref
@@ -319,7 +325,9 @@ all-cref: compile-cref
 .PHONY: bundle-cref
 bundle-cref: liarc-bundle-tools
 bundle-cref: compile-cref
+bundle-cref: cref/cref-os2.c
 bundle-cref: cref/cref-unx.c
+bundle-cref: cref/cref-w32.c
 	(cd cref && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-cref
@@ -346,6 +354,10 @@ cref/cref-unx.pkd: cref/cref.pkg
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "cref")))') \
 	| $(TOOL_SYNTAXER)
+
+# XXX Kludgey bogus rules for liarc.
+cref/cref-os2.pkd: cref/cref-unx.pkd
+cref/cref-w32.pkd: cref/cref-unx.pkd
 
 # Runtime
 
@@ -382,6 +394,10 @@ runtime/runtime-unx.pkd: runtime/runtime.pkg
 	 echo '    (cref/generate-trivial-constructor "runtime")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+runtime/runtime-os2.pkd: runtime/runtime-unx.pkd
+runtime/runtime-w32.pkd: runtime/runtime-unx.pkd
+
 # SF
 
 .PHONY: all-sf
@@ -391,7 +407,9 @@ all-sf: compile-sf
 .PHONY: bundle-sf
 bundle-sf: liarc-bundle-tools
 bundle-sf: compile-sf
+bundle-sf: sf/sf-os2.c
 bundle-sf: sf/sf-unx.c
+bundle-sf: sf/sf-w32.c
 	(cd sf && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-sf
@@ -419,6 +437,10 @@ sf/sf-unx.pkd: sf/sf.pkg
 	 echo '    (cref/generate-trivial-constructor "sf")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+sf/sf-os2.pkd: sf/sf-unx.pkd
+sf/sf-w32.pkd: sf/sf-unx.pkd
+
 ### More stuff we build with tools.  We could build it with the newly
 ### built compiler in the native case, but we want to avoid having to
 ### do that to encourage cross-compilation.
@@ -433,7 +455,9 @@ all-edwin: compile-edwin
 bundle-edwin: liarc-bundle-tools
 bundle-edwin: compile-edwin
 bundle-edwin: edwin/edwin.c
+bundle-edwin: edwin/edwin-os2.c
 bundle-edwin: edwin/edwin-unx.c
+bundle-edwin: edwin/edwin-w32.c
 	(cd edwin && $(MAKE) compile-liarc-bundle)
 
 edwin/edwin.bld: syntax-edwin
@@ -465,6 +489,10 @@ edwin/edwin-unx.pkd: edwin/edwin.pkg
 	 echo '    (cref/generate-trivial-constructor "edwin")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+edwin/edwin-os2.pkd: edwin/edwin-unx.pkd
+edwin/edwin-w32.pkd: edwin/edwin-unx.pkd
+
 # FFI
 
 .PHONY: all-ffi
@@ -474,7 +502,9 @@ all-ffi: compile-ffi
 .PHONY: bundle-ffi
 bundle-ffi: liarc-bundle-tools
 bundle-ffi: compile-ffi
+bundle-ffi: ffi/ffi-os2.c
 bundle-ffi: ffi/ffi-unx.c
+bundle-ffi: ffi/ffi-w32.c
 	(cd ffi && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-ffi
@@ -496,6 +526,10 @@ ffi/ffi-unx.pkd: ffi/ffi.pkg
 	 echo '    (cref/generate-trivial-constructor "ffi")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+ffi/ffi-os2.pkd: ffi/ffi-unx.pkd
+ffi/ffi-w32.pkd: ffi/ffi-unx.pkd
+
 # SOS
 
 .PHONY: all-sos
@@ -505,7 +539,9 @@ all-sos: compile-sos
 .PHONY: bundle-sos
 bundle-sos: liarc-bundle-tools
 bundle-sos: compile-sos
+bundle-sos: sos/sos-os2.c
 bundle-sos: sos/sos-unx.c
+bundle-sos: sos/sos-w32.c
 	(cd sos && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-sos
@@ -526,6 +562,10 @@ sos/sos-unx.pkd: sos/sos.pkg
 	 echo '    (cref/generate-trivial-constructor "sos")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+sos/sos-os2.pkd: sos/sos-unx.pkd
+sos/sos-w32.pkd: sos/sos-unx.pkd
+
 # SSP
 
 .PHONY: all-ssp
@@ -535,7 +575,9 @@ all-ssp: compile-ssp
 .PHONY: bundle-ssp
 bundle-ssp: liarc-bundle-tools
 bundle-ssp: compile-ssp
+bundle-ssp: ssp/ssp-os2.c
 bundle-ssp: ssp/ssp-unx.c
+bundle-ssp: ssp/ssp-w32.c
 	(cd ssp && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-ssp
@@ -557,6 +599,10 @@ ssp/ssp-unx.pkd: ssp/ssp.pkg
 	 echo '    (cref/generate-trivial-constructor "ssp")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+ssp/ssp-os2.pkd: ssp/ssp-unx.pkd
+ssp/ssp-w32.pkd: ssp/ssp-unx.pkd
+
 # *PARSER
 
 .PHONY: all-star-parser
@@ -566,7 +612,9 @@ all-star-parser: compile-star-parser
 .PHONY: bundle-star-parser
 bundle-star-parser: liarc-bundle-tools
 bundle-star-parser: compile-star-parser
+bundle-star-parser: star-parser/parser-os2.c
 bundle-star-parser: star-parser/parser-unx.c
+bundle-star-parser: star-parser/parser-w32.c
 	(cd star-parser && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-star-parser
@@ -586,6 +634,10 @@ star-parser/parser-unx.pkd: star-parser/parser.pkg
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "parser")))') \
 	| $(TOOL_SYNTAXER)
+
+# XXX Kludgey bogus rules for liarc.
+star-parser/parser-os2.pkd: star-parser/parser-unx.pkd
+star-parser/parser-w32.pkd: star-parser/parser-unx.pkd
 
 # Windows FFI
 
@@ -617,6 +669,10 @@ win32/win32-unx.pkd: win32/win32.pkg
 	 echo '    (cref/generate-trivial-constructor "win32")))') \
 	| $(TOOL_SYNTAXER)
 
+# XXX Kludgey bogus rules for liarc.
+win32/win32-os2.pkd: win32/win32-unx.pkd
+win32/win32-w32.pkd: win32/win32-unx.pkd
+
 # XML
 
 .PHONY: all-xml
@@ -626,7 +682,9 @@ all-xml: compile-xml
 .PHONY: bundle-xml
 bundle-xml: liarc-bundle-tools
 bundle-xml: compile-xml
+bundle-xml: xml/xml-os2.c
 bundle-xml: xml/xml-unx.c
+bundle-xml: xml/xml-w32.c
 	(cd xml && $(MAKE) compile-liarc-bundle)
 
 .PHONY: compile-xml
@@ -648,6 +706,10 @@ xml/xml-unx.pkd: xml/xml.pkg
 	 echo '  (lambda ()' && \
 	 echo '    (cref/generate-trivial-constructor "xml")))') \
 	| $(TOOL_SYNTAXER)
+
+# XXX Kludgey bogus rules for liarc.
+xml/xml-os2.pkd: xml/xml-unx.pkd
+xml/xml-w32.pkd: xml/xml-unx.pkd
 
 ### Cross-compilation finish-up.
 
@@ -704,13 +766,27 @@ all-imail: compile-imail
 .PHONY: bundle-imail
 bundle-imail: liarc-bundle-tools
 bundle-imail: compile-imail
+bundle-imail: imail/imail-os2.c
 bundle-imail: imail/imail-unx.c
+bundle-imail: imail/imail-w32.c
 	(cd imail && $(MAKE) compile-liarc-bundle)
 
-# Must write this rule explicitly because we use TARGET_COMPILER, not
+# Must write these rules explicitly because we use TARGET_COMPILER, not
 # TOOL_COMPILER.
+#
+# XXX These depend on imail/imail-unx.pkd intentionally because make
+# has no good way to express a rule that generates multiple files at
+# once.
+imail/imail-os2.c: imail/imail-unx.pkd
+	echo '(cbf "imail/imail-os2.pkd")' | $(TARGET_COMPILER)
 imail/imail-unx.c: imail/imail-unx.pkd
 	echo '(cbf "imail/imail-unx.pkd")' | $(TARGET_COMPILER)
+imail/imail-w32.c: imail/imail-unx.pkd
+	echo '(cbf "imail/imail-w32.pkd")' | $(TARGET_COMPILER)
+
+# XXX We enter lib/imail/ rather than imail/ so that liarc library
+# directory pathnames get resolved to builtin objects.  This is a
+# kludge.
 
 .PHONY: compile-imail
 compile-imail: target-toolchain
@@ -723,7 +799,7 @@ compile-imail: cref-imail
 	 echo '  (load-option (quote *PARSER))' && \
 	 echo '  (load-option (quote EDWIN))' && \
 	 echo '  (load-option (quote SOS))' && \
-	 echo '  (with-working-directory-pathname "imail"' && \
+	 echo '  (with-working-directory-pathname "lib/imail"' && \
 	 echo '    (lambda ()' && \
 	 echo '      (load "compile"))))') \
 	| $(TARGET_TOOLCHAIN)
@@ -731,15 +807,26 @@ compile-imail: cref-imail
 .PHONY: cref-imail
 cref-imail: imail/imail-unx.pkd
 
+@IF_LIARC@IMAIL_CREF_PRELOAD = \
+@IF_LIARC@	echo '(load-option (quote SOS))' && \
+@IF_LIARC@	echo '(load-option (quote EDWIN))' && \
+@IF_LIARC@	echo '(load-option (quote *PARSER))' &&
+
 imail/imail-unx.pkd: target-toolchain
 imail/imail-unx.pkd: cref-edwin
 imail/imail-unx.pkd: cref-runtime
 imail/imail-unx.pkd: cref-sos
 imail/imail-unx.pkd: cref-star-parser
+@IF_LIARC@imail/imail-unx.pkd: all-edwin
+@IF_LIARC@imail/imail-unx.pkd: all-runtime
+@IF_LIARC@imail/imail-unx.pkd: all-sos
+@IF_LIARC@imail/imail-unx.pkd: all-star-parser
 imail/imail-unx.pkd: imail/imail.pkg
-	(echo '(with-working-directory-pathname "imail"' && \
-	 echo '  (lambda ()' && \
-	 echo '    (cref/generate-trivial-constructor "imail")))') \
+	(echo '(begin' && \
+	 $(IMAIL_CREF_PRELOAD) \
+	 echo '  (with-working-directory-pathname "lib/imail"' && \
+	 echo '    (lambda ()' && \
+	 echo '      (cref/generate-trivial-constructor "imail"))))') \
 	| $(TARGET_SYNTAXER)
 
 # **** Legacy serialized targets ****

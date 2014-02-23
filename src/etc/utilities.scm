@@ -108,31 +108,35 @@ USA.
 
 (define (bundle-files bundle)
   (let ((pkg-name (if (string=? bundle "star-parser") "parser" bundle)))
-    (cons (string-append pkg-name "-unx")
-	  (sort (let ((names
-		       (map ->namestring
-			    (cref/package-files
-			     (string-append bundle
-					    "/"
-					    pkg-name
-					    ".pkg")
-			     'unix))))
-		  (cond ((or (string=? bundle "6001")
-			     (string=? bundle "cref")
-			     (string=? bundle "runtime")
-			     (string=? bundle "sf"))
-			 (cons "make" names))
-			((string=? bundle "compiler")
-			 (cons* (compiler-make-file)
-				"base/make"
-				names))
-			((string=? bundle "edwin")
-			 (cons* "make"
-				"edwin"
-				"rename"
-				names))
-			(else names)))
-		string<?))))
+    (append
+     (map (lambda (os-suffix)
+	    (string-append pkg-name "-" os-suffix))
+	  ;; XXX Need them all to process other package descriptions.
+	  '("os2" "unx" "w32"))
+     (sort (let ((names
+		  (map ->namestring
+		       (cref/package-files
+			(string-append bundle
+				       "/"
+				       pkg-name
+				       ".pkg")
+			'unix))))
+	     (cond ((or (string=? bundle "6001")
+			(string=? bundle "cref")
+			(string=? bundle "runtime")
+			(string=? bundle "sf"))
+		    (cons "make" names))
+		   ((string=? bundle "compiler")
+		    (cons* (compiler-make-file)
+			   "base/make"
+			   names))
+		   ((string=? bundle "edwin")
+		    (cons* "make"
+			   "edwin"
+			   "rename"
+			   names))
+		   (else names)))
+	   string<?))))
 
 (define (compiler-make-file)
   (string-append
