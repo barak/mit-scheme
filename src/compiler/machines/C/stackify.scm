@@ -534,7 +534,13 @@ USA.
 			 prog)))
 	((flo:flonum? obj)
 	 (build/string stackify-opcode/push-flonum
-		       (number->string obj)
+		       ;; XXX Kludgey test for negative zero, to
+		       ;; support building from versions when
+		       ;; NUMBER->STRING failed to do that itself.
+		       (if (and (flo:zero? obj)
+				(flo:negative? (flo:atan2 obj -1.)))
+			   "-0."
+			   (number->string obj))
 		       prog))
 	;; The runtime system needs the following
 	((interpreter-return-address? obj)

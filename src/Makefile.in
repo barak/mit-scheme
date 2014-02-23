@@ -141,7 +141,7 @@ target-toolchain: all-sf
 target-toolchain: cross-target
 target-toolchain: lib/runtime.com
 
-@IF_LIARC@microcode/scheme: compile-runtime
+@IF_LIARC@microcode/scheme: all-runtime
 @IF_SVM@microcode/scheme: microcode/svm1-defns.h
 microcode/scheme:
 	(cd microcode && $(MAKE) all)
@@ -354,7 +354,9 @@ all-runtime: compile-runtime
 @IF_LIARC@all-runtime: bundle-runtime
 
 .PHONY: bundle-runtime
+bundle-runtime: runtime/runtime-os2.c
 bundle-runtime: runtime/runtime-unx.c
+bundle-runtime: runtime/runtime-w32.c
 
 .PHONY: compile-runtime
 compile-runtime: toolchain
