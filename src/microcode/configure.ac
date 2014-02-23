@@ -749,7 +749,6 @@ dnl Checks for system characteristics.
 AC_PATH_X
 AC_SYS_LARGEFILE
 AC_SYS_LONG_FILE_NAMES
-AC_SYS_RESTARTABLE_SYSCALLS
 
 dnl curses/termcap/terminfo support
 
