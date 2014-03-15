@@ -184,8 +184,10 @@ USA.
 			(body  (procedure/body procedure)))
 		    (if (open-block? body)
 			(cgen-open-block body)
-			(cgen/expression (list block)
-					 (procedure/body procedure)))))))
+			(make-open-block
+			 '()
+			 (maybe-flush-declarations (block/declarations block))
+			 (cgen/expression (list block) body)))))))
 
 (define (cgen-open-block expression)
   (let ((block (open-block/block expression)))
