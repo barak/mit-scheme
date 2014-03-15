@@ -957,13 +957,13 @@ asm_fixnum_rsh:
 	jge	asm_fixnum_rsh_overflow
 	OP(sar,q)	TW(REG(cl),REG(rax))
 
-	# Turn rax back into a detagged fixnum by masking off the low
-	# six bits.  -1 has all bits set, but its detagged format has
-	# the low six bits clear.  Use rcx as a temporary register
-	# because AND can't take a 64-bit immediate operand; only MOV
-	# can.
-	OP(mov,q)	TW(IMM_DETAGGED_FIXNUM_MINUS_ONE,REG(rcx))
-	OP(and,q)	TW(REG(rcx),REG(rax))
+	# Turn rax back into a detagged fixnum by zeroing the low six
+	# bits.  We shift right/left rather than ANDing with
+	# IMM_DETAGGED_FIXNUM_MINUS_ONE because the latter is too large
+	# for an immediate operand of AND and there are no scratch
+	# registers available to us right now.
+	OP(sar,q)	TW(IMM(TC_LENGTH),REG(rax))
+	OP(sal,q)	TW(IMM(TC_LENGTH),REG(rax))
 	ret
 
 asm_fixnum_rsh_overflow:
