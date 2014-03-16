@@ -90,6 +90,26 @@ USA.
 
 (define-rule statement
   (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-QUOTIENT
+			 (REGISTER (? source))
+			 (OBJECT->FIXNUM (CONSTANT (? d)))
+			 (? overflow?)))
+  (QUALIFIER (not (or (zero? d) (integer-power-of-2? d))))
+  overflow?				;ignore
+  (fixnum-quotient/constant target source d))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
+	  (FIXNUM-2-ARGS FIXNUM-REMAINDER
+			 (REGISTER (? source))
+			 (OBJECT->FIXNUM (CONSTANT (? d)))
+			 (? overflow?)))
+  (QUALIFIER (not (or (zero? d) (integer-power-of-2? d))))
+  overflow?				;ignore
+  (fixnum-remainder/constant target source d))
+
+(define-rule statement
+  (ASSIGN (REGISTER (? target))
 	  (FIXNUM-2-ARGS (? operator)
 			 (OBJECT->FIXNUM (CONSTANT (? constant)))
 			 (REGISTER (? source))
@@ -660,6 +680,110 @@ USA.
 		       (LABEL ,merge))))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
+
+;;;; Fast division by multiplication
+
+(define (fast-divide-prepare divisor width)
+  (let ((zeros (integer-length (- divisor 1))))
+    (values
+     (+ 1
+	(quotient (shift-left (- (shift-left 1 zeros) divisor) width) divisor))
+     (if (> zeros 1) 1 zeros)
+     (if (= zeros 0) 0 (- zeros 1)))))
+
+;;; For reference, this is what the code generated below computes.
+
+(define (fast-quotient n d width multiplier s1 s2)
+  d					;ignore
+  (let ((t (shift-right (* n multiplier) width)))
+    (shift-right (+ t (shift-right (- n t) s1)) s2)))
+
+(define (fast-remainder n d width multiplier s1 s2)
+  (- n (* d (fast-quotient n d width multiplier s1 s2))))
+
+(define (fast-divide-prepare/signed divisor width)
+  (fast-divide-prepare (abs divisor) width))
+
+(define (fast-quotient/signed n d width multiplier s1 s2)
+  (define (do-unsigned n d)
+    (fast-quotient n d width multiplier s1 s2))
+  (if (negative? d)
+      (if (negative? n)
+	  (do-unsigned (- 0 n) (- 0 d))
+	  (- 0 (do-unsigned n (- 0 d))))
+      (if (negative? n)
+	  (- 0 (do-unsigned (- 0 n) d))
+	  (do-unsigned n d))))
+
+(define (fast-remainder/signed n d width multiplier s1 s2)
+  (- n (* d (fast-quotient/signed n d width multiplier s1 s2))))
+
+(define (fast-division d get-target get-source finish)
+  (flush-register! rax)
+  (need-register! rax)
+  (flush-register! rdx)
+  (need-register! rdx)
+  (receive (multiplier s1 s2) (fast-divide-prepare (abs d) scheme-object-width)
+    (let* ((subroutine (generate-label 'QUOTIENT))
+	   (if-negative1 (generate-label 'QUO-NEGATIVE-1))
+	   (if-negative2 (generate-label 'QUO-NEGATIVE-2))
+	   (merge1 (generate-label 'QUO-MULTIPLY))
+	   (merge2 (generate-label 'QUO-RESULT))
+	   (source (get-source))
+	   (target (get-target)))
+      (LAP ;; Divide by 2^t so that factor doesn't mess us up.
+           (SAR Q ,target (&U ,scheme-type-width))
+	   ;; No need to CMP; SAR sets the SF bit for us to detect
+	   ;; whether the input is negative.
+	   (JS B (@PCR ,if-negative1))
+	   (JMP (@PCR ,merge1))
+	  (LABEL ,if-negative1)
+	   (NEG Q ,target)
+	  (LABEL ,merge1)
+	   ;; MUL takes argument in rax, so put it there.
+	   (MOV Q (R ,rax) ,target)
+	   ;; Load the multiplier into rdx, which is free until we MUL.
+	   (MOV Q (R ,rdx) (&U ,multiplier))
+	   ;; Compute the 128-bit product rax * multiplier, storing the
+	   ;; high 64 bits in rdx and the low 64 bits in rax.  We are
+	   ;; not interested in the low 64 bits, so rax is now free for
+	   ;; reuse.
+	   (MUL Q ((R ,rdx) : (R ,rax)) (R ,rdx))
+	   ;; Compute ((((n - p) >> s1) + p) >> s2) where p is the high
+	   ;; 64 bits of the product, in rdx.
+	   (SUB Q ,target (R ,rdx))
+	   (SHR Q ,target (&U ,s1))
+	   (ADD Q ,target (R ,rdx))
+	   (SHR Q ,target (&U ,s2))
+	   ;; Reapply the sign.
+	   (CMP Q ,source (& 0))
+	   (JL B (@PCR ,if-negative2))
+	   ,@(if (negative? d) (LAP (NEG Q ,target)) (LAP))
+	   (JMP (@PCR ,merge2))
+	  (LABEL ,if-negative2)
+	   ,@(if (negative? d) (LAP) (LAP (NEG Q ,target)))
+	  (LABEL ,merge2)
+	   ;; Convert back to fixnum representation with low zero bits.
+	   (SAL Q ,target (&U ,scheme-type-width))
+	   ,@(finish target source (INST-EA (R ,rax)))))))
+
+(define (fixnum-quotient/constant target source d)
+  (fast-division d
+    (lambda () (standard-move-to-target! source target))
+    (lambda () (standard-move-to-temporary! source))
+    (lambda (quotient numerator temp)
+      quotient numerator temp		;ignore
+      (LAP))))
+
+(define (fixnum-remainder/constant target source d)
+  (fast-division d
+    (lambda () (standard-move-to-temporary! source))
+    (lambda () (standard-move-to-target! source target))
+    (lambda (quotient numerator temp)
+      ;; Compute n - d q.
+      (LAP (MOV Q ,temp (& ,d))
+	   (IMUL Q ,quotient ,temp)
+	   (SUB Q ,numerator ,quotient)))))
 
 (define (fixnum-predicate/unary->binary predicate)
   (case predicate

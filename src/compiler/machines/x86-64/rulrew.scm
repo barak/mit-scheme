@@ -197,9 +197,9 @@ USA.
   (QUALIFIER
    (and (memq operator '(FIXNUM-QUOTIENT FIXNUM-REMAINDER))
 	(rtl:register? operand-1)
-	(rtl:constant-fixnum-test operand-2
-	  (lambda (n)
-	    (integer-power-of-2? (abs n))))))
+        (rtl:constant-fixnum-test operand-2
+          (lambda (value)
+            (not (zero? value))))))
   (rtl:make-fixnum-2-args operator operand-1 operand-2 overflow?))
 
 (define-rule rewriting
