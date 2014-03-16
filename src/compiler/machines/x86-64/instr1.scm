@@ -566,8 +566,6 @@ USA.
 (define-instruction JMP
   (((@PCR (? dest)))
    (VARIABLE-WIDTH (disp `(- ,dest (+ *PC* 2)))
-     ((0 0)
-      (BITS))
      ((#x-80 #x7f)
       (BITS (8 #xeb)
 	    (8 disp SIGNED)))
@@ -577,8 +575,6 @@ USA.
 
   (((@PCRO (? dest) (? offset)))
    (VARIABLE-WIDTH (disp `(- (+ ,dest ,offset) (+ *PC* 2)))
-     ((0 0)
-      (BITS))
      ((#x-80 #x7f)
       (BITS (8 #xeb)
 	    (8 disp SIGNED)))
