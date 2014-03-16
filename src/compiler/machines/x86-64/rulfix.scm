@@ -600,14 +600,19 @@ USA.
 	  ((integer-power-of-2? (if (negative? n) (- 0 n) n))
 	   =>
 	   (lambda (expt-of-2)
-	     (let ((label (generate-label 'QUO-SHIFT))
-		   (absn (if (negative? n) (- 0 n) n)))
+	     (let ((if-negative (generate-label 'QUO-NEGATIVE))
+		   (merge (generate-label 'QUO-SHIFT)))
 	       (LAP (CMP Q ,target (& 0))
-		    (JGE B (@PCR ,label))
-		    ,@(with-unsigned-immediate-operand (* (- absn 1) fixnum-1)
+		    ;; Forward branch for the negative case so the
+		    ;; static prediction is not-taken.
+		    (JL B (@PCR ,if-negative))
+		    (JMP (@PCR ,merge))
+		   (LABEL ,if-negative)
+		    ,@(with-unsigned-immediate-operand
+			  (* (- (abs n) 1) fixnum-1)
 			(lambda (operand)
 			  (LAP (ADD Q ,target ,operand))))
-		    (LABEL ,label)
+		   (LABEL ,merge)
 		    (SAR Q ,target (&U ,expt-of-2))
 		    ,@(word->fixnum target)
 		    ,@(if (negative? n)
@@ -626,7 +631,8 @@ USA.
 	     (load-fixnum-constant 0 target))
 	    ((integer-power-of-2? n)
 	     (let ((sign (temporary-register-reference))
-		   (label (generate-label 'REM-MERGE)))
+		   (if-negative (generate-label 'REM-NEGATIVE))
+		   (merge (generate-label 'REM-MERGE)))
 	       ;; There is some hair here to deal with immediates that
 	       ;; don't fit in 32 bits, and reusing a temporary
 	       ;; register to store them.
@@ -644,12 +650,14 @@ USA.
 		   (LAP (MOV Q ,sign ,target)
 			,@prefix:n-1
 			(AND Q ,target ,operand:n-1)
-			(JZ B (@PCR ,label))
+			(JNZ B (@PCR ,if-negative))
+			(JMP (@PCR ,merge))
+		       (LABEL ,if-negative)
 			(SAR Q ,sign (&U ,(-1+ scheme-object-width)))
 			,@prefix:-n
 			(AND Q ,sign ,operand:-n)
 			(OR Q ,target ,sign)
-			(LABEL ,label))))))
+		       (LABEL ,merge))))))
 	    (else
 	     (error "Fixnum-remainder/constant: Bad value" n))))))
 
