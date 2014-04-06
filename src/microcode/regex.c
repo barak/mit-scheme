@@ -543,8 +543,7 @@ re_match (unsigned char * pattern_start,
   translation = (buffer -> translation);
   syntax_table = (buffer -> syntax_table);
 
-  stack_start =
-    ((unsigned char **) (malloc ((2 * RE_NFAILURES) * (sizeof (char *)))));
+  stack_start = (malloc ((2 * RE_NFAILURES) * (sizeof (*stack_start))));
   if (stack_start == NULL)
     RE_RETURN (-3);
 
