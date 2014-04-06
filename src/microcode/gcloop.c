@@ -962,6 +962,8 @@ scan_newspace_addr (SCHEME_OBJECT * addr)
 #ifdef ENABLE_GC_DEBUGGING_TOOLS
   if (scan != (addr + 1))
     std_gc_death ("scan_newspace_addr overflowed");
+#else
+  (void) scan;			/* ignore */
 #endif
 }
 
