@@ -971,7 +971,7 @@ static void
 scan_ephemerons (void)
 {
   SCHEME_OBJECT ephemeron = ephemeron_list;
-  SCHEME_OBJECT * saved_newspace_next = newspace_next;
+  SCHEME_OBJECT * saved_newspace_next;
   scanning_ephemerons_p = true;
   while (EPHEMERON_P (ephemeron))
     {
