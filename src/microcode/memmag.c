@@ -266,6 +266,10 @@ the primitive GC daemons before returning.")
 
   ENTER_CRITICAL_SECTION ("garbage collector");
 
+#ifdef ENABLE_DEBUGGING_TOOLS
+  if (GC_Debug == true) verify_heap ();
+#endif
+
   open_tospace (heap_start);
   initialize_weak_chain ();
   ephemeron_count = 0;

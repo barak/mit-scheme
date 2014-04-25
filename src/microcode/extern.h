@@ -112,6 +112,7 @@ extern void set_ulong_register (unsigned int, unsigned long);
    extern bool Per_File;
    extern bool Bignum_Debug;
 
+   extern bool verify_heap (void);
    extern void Pop_Return_Break_Point (void);
    extern unsigned int debug_slotno;
    extern unsigned int debug_nslots;
