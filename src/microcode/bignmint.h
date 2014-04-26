@@ -56,8 +56,18 @@ typedef long bignum_length_type;
    space when a bignum's length is reduced from its original value. */
 #define BIGNUM_REDUCE_LENGTH(target, source, length)			\
 {									\
-  SET_VECTOR_LENGTH ((source), (BIGNUM_LENGTH_TO_GC_LENGTH (length)));	\
-  (target) = (source);							\
+  int new_gc_length = BIGNUM_LENGTH_TO_GC_LENGTH (length);		\
+  int old_gc_length = VECTOR_LENGTH (source);				\
+  int delta = old_gc_length - new_gc_length;				\
+  assert (delta >= 0);							\
+  assert ((target) == (source));					\
+  if (delta == 1)							\
+    VECTOR_SET (source, new_gc_length, SHARP_F);			\
+  else if (delta > 1)							\
+    VECTOR_SET (source, new_gc_length,					\
+		(MAKE_OBJECT (TC_MANIFEST_NM_VECTOR, delta - 1)));	\
+  if (delta != 0)							\
+    SET_VECTOR_LENGTH (source, new_gc_length);				\
 }
 
 #define BIGNUM_LENGTH_TO_GC_LENGTH(length)				\
