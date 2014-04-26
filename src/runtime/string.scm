@@ -173,19 +173,31 @@ USA.
 
 (define %string-head!
   (let ((reuse
-	 (lambda (string end)
+	 (named-lambda (%string-head! string end)
 	   (declare (no-type-checks) (no-range-checks))
 	   (let ((mask (set-interrupt-enables! interrupt-mask/none)))
 	     (if (fix:< end (string-length string))
 		 (begin
 		   (string-set! string end #\nul)
 		   (set-string-length! string end)))
-	     ((ucode-primitive primitive-object-set! 3)
-	      string
-	      0
-	      ((ucode-primitive primitive-object-set-type 2)
-	       (ucode-type manifest-nm-vector)
-	       (fix:+ 2 (fix:lsh end %octets->words-shift))))
+	     (string-set! string end #\nul)
+	     (set-string-length! string end)
+	     (let ((new-gc-length (fix:+ 2 (fix:lsh end %octets->words-shift)))
+		   (old-gc-length (system-vector-length string)))
+	       (let ((delta (fix:- old-gc-length new-gc-length)))
+		 (cond ((fix:= delta 1)
+			(system-vector-set! string new-gc-length #f))
+		       ((fix:> delta 1)
+			(system-vector-set!
+			 string new-gc-length
+			 ((ucode-primitive primitive-object-set-type 2)
+			  (ucode-type manifest-nm-vector) (fix:-1+ delta)))))
+		 (if (fix:> delta 0)
+		     ((ucode-primitive primitive-object-set! 3)
+		      string
+		      0
+		      ((ucode-primitive primitive-object-set-type 2)
+		       (ucode-type manifest-nm-vector) new-gc-length)))))
 	     (set-interrupt-enables! mask)
 	     string))))
     (if (compiled-procedure? reuse)
