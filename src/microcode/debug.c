@@ -955,6 +955,16 @@ verify_heap (void)
   return (c && h);
 }
 
+#else  /* !ENABLE_DEBUGGING_TOOLS */
+
+bool
+verify_heap (void)
+{
+  return true;
+}
+
+#endif
+
 DEFINE_PRIMITIVE ("VERIFY-HEAP", Prim_verify_heap, 0, 0,
 		  "Validate the heap.\n\
 Complains if a scan of the heap encounters anything unexpected.\n\
@@ -963,7 +973,6 @@ Returns #T if the scan was successful and #F if there were any complaints.")
   PRIMITIVE_HEADER (0);
   PRIMITIVE_RETURN (verify_heap () ? SHARP_T : SHARP_F);
 }
-#endif
 
 /* Code for interactively setting and clearing the interpreter
    debugging flags.  Invoked via the "D" command to the ^C
