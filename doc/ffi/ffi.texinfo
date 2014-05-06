@@ -154,11 +154,11 @@ data types is given in a case sensitive @file{.cdecl} file.  The C
 declarations look like this:
 
 @smallexample
-(extern (* GtkWidget)              @r{; gtk+-2.4.0/gtk/gtkwindow.h}
+(extern (* GtkWidget)
         gtk_window_new
         (type GtkWindowType))
 
-(typedef GtkWindowType             @r{; gtk+-2.4.0/gtk/gtkenums.h}
+(typedef GtkWindowType
          (enum
           (GTK_WINDOW_TOPLEVEL)
           (GTK_WINDOW_POPUP)))
@@ -321,7 +321,7 @@ examples in the synopsis might expand as shown here.
 (alien-byte-increment @verb{"#@43"} (* (C-sizeof "GdkColor")
                               (C-enum "GTK_STATE_NORMAL")))
 @expansion{}
-(alien-byte-increment @verb{"#@43"} 0)
+(alien-byte-increment @verb{"#@43"} (* 12 0))
 @myresult{} @verb{"#@44"}
 
 (C-array-loc! @verb{"#@43"} "GdkColor" (C-enum "GTK_STATE_PRELIGHT"))
@@ -329,7 +329,7 @@ examples in the synopsis might expand as shown here.
 (alien-byte-increment! @verb{"#@43"} (* (C-sizeof "GdkColor")
                                (C-enum "GTK_STATE_PRELIGHT")))
 @expansion{}
-(alien-byte-increment! @verb{"#@43"} 24)
+(alien-byte-increment! @verb{"#@43"} (* 12 2))
 @myresult{} @verb{"#@43"}
 @end smallexample
 
@@ -650,38 +650,7 @@ The following Makefile rules describe the process of building and
 installing a shim for the example ``Hello, World!'' program.
 
 @example
-@verbatim
-install-example: build-example
-	$(INSTALL_DATA) prhello-types.bin ../lib/.
-	$(INSTALL_DATA) prhello-const.bin ../lib/.
-	$(INSTALL_DATA) prhello-shim.so ../lib/.
-
-build-example: prhello-shim.so prhello-types.bin prhello-const.bin
-
-prhello-shim.so: prhello-shim.o
-	$(CC) -shared -fPIC -o $@ $^ `pkg-config --libs gtk+-2.0`
-
-prhello-shim.o: prhello-shim.c
-	$(CC) -I../lib -Wall -fPIC `pkg-config --cflags gtk+-2.0` -o $@ -c $<
-
-prhello-shim.c prhello-const.c prhello-types.bin: prhello.cdecl
-	(echo "(load-option 'FFI)"; \
-	 echo '(C-generate "prhello" "#include <gtk/gtk.h>")') \
-	| ../microcode/scheme --library ../lib --batch-mode
-
-prhello-const.bin: prhello-const.scm
-	echo '(sf "prhello-const")' | mit-scheme --compiler --batch-mode
-
-prhello-const.scm: prhello-const
-	./prhello-const
-
-prhello-const: prhello-const.o
-	@rm -f $@
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ `pkg-config --libs gtk+-2.0`
-
-prhello-const.o: prhello-const.c
-	$(CC) `pkg-config --cflags gtk+-2.0` $(CFLAGS) -o $@ -c $<
-@end verbatim
+@verbatiminclude prhello-Makefile
 @end example
 
 
