@@ -35,7 +35,8 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* FFI: (mit-scheme-ffi).		MIT/GNU Scheme Foreign Functions
+* MIT/GNU Scheme FFI: (mit-scheme-ffi).
+                                Foreign Function Interface
 @end direntry
 
 @titlepage

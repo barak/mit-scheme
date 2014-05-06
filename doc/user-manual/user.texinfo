@@ -40,7 +40,8 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* MIT/GNU Scheme User: (mit-scheme-user).	MIT/GNU Scheme User's Manual
+* MIT/GNU Scheme User: (mit-scheme-user).
+                                User's Manual
 @end direntry
 
 @titlepage

@@ -34,7 +34,8 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* SOS: (mit-scheme-sos).		MIT/GNU Scheme Object System
+* MIT/GNU Scheme SOS: (mit-scheme-sos).
+                                Scheme Object System
 @end direntry
 
 @titlepage

@@ -32,7 +32,8 @@ Documentation License.''
 
 @dircategory Programming Languages
 @direntry
-* IMAIL: (mit-scheme-imail).		IMAP/MIME mail reader for MIT/GNU Scheme
+* MIT/GNU Scheme IMAIL: (mit-scheme-imail).
+                                IMAP/MIME email reader
 @end direntry
 
 @titlepage
