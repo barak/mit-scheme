@@ -2,7 +2,7 @@
 
 Copyright (C) 1986, 1987, 1988, 1989, 1990, 1991, 1992, 1993, 1994,
     1995, 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005,
-    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Massachusetts
+    2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Massachusetts
     Institute of Technology
 
 This file is part of MIT/GNU Scheme.
@@ -112,9 +112,81 @@ USA.
   (write-string "  (standard-system-loader \"" out)
   (write-string dirname out)
   (write-string "\"))" out))
+
+(define (install-html destdir title)
+  (guarantee-string destdir 'INSTALL-HTML)
+  (guarantee-string title 'INSTALL-HTML)
+  (let ((conf (doc-conf)))
+    (let ((install (conf-words conf 'INSTALL))
+	  (htmldir (string-append destdir (conf-value conf 'HTMLDIR)))
+	  (files (files)))
+      (run-command (append install files (list htmldir)))
+      (rewrite-file (merge-pathnames "index.html"
+				     (pathname-as-directory htmldir))
+		    (lambda (in out)
+		      (rewrite-html-index (car files) title in out))))))
+
+(define (rewrite-html-index file title in out)
+
+  (define (match line)
+    (if (eof-object? line)
+	(error "Premature end of HTML documentation index." in))
+    (let ((regs (re-string-match "^<li><a href=\"\\(.*\\)\">\\(.*\\)</a></li>$"
+				 line)))
+      (if (not regs)
+	  #f
+	  (cons (re-match-extract line regs 1)
+		(re-match-extract line regs 2)))))
+
+  (define (write-item file.title)
+    (let ((file (car file.title))
+	  (title (cdr file.title)))
+      (write-string (string-append "<li><a href=\""file"\">"title"</a></li>")
+		    out)
+      (newline out)))
+
+  (define (copy-prefix)
+    (let* ((line (read-line in))
+	   (f.t (match line)))
+      (if (not f.t)
+	  (begin
+	    (write-string line out)
+	    (newline out)
+	    (copy-prefix))
+	  f.t)))
+
+  (define (copy-items)
+    (let loop ((items (list (copy-prefix))))
+      (let* ((line (read-line in))
+	     (f.t (match line)))
+	(if f.t
+	    (loop (cons f.t items))
+	    (let ((items (let ((entry (assoc file items)))
+			   (if entry
+			       (delq! entry items)
+			       items))))
+	      (for-each write-item
+			(sort (cons (cons file title) items)
+			      (lambda (f.title1 f.title2)
+				(string<? (cdr f.title1)
+					  (cdr f.title2)))))
+	      line)))))
+
+  (define (copy-suffix line)
+    (if (not (eof-object? line))
+	(begin
+	  (write-string line out)
+	  (newline out)
+	  (copy-suffix (read-line in)))))
+
+  (copy-suffix (copy-items)))
 
 (define (shim-conf)
   (load (system-library-pathname "shim-config.scm")))
+
+(define (doc-conf)
+  (load (string-append (conf-value (shim-conf) 'INFODIR)
+		       "mit-scheme-doc-config.scm")))
 
 (define (conf-values conf name)
   (let ((entry (assq name conf)))

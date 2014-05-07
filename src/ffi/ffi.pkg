@@ -46,4 +46,5 @@ FFI System Packaging |#
 	  compile-shim
 	  link-shim
 	  install-shim
-	  install-load-option))
+	  install-load-option
+	  install-html))
