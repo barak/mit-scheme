@@ -3,6 +3,19 @@
 AC_DEFUN([MIT_SCHEME_NATIVE_CODE],[
 _mit_scheme_native_code_spec=$1
 _mit_scheme_native_code_host_cpu=$2
+
+case ${_mit_scheme_native_code_spec} in
+yes|YES|y|Y)
+    case ${_mit_scheme_native_code_host_cpu} in
+    i?86)
+	AC_CHECK_DECL([__x86_64__],
+		      [_mit_scheme_native_code_host_cpu=x86_64],
+		      [_mit_scheme_native_code_host_cpu=i386])
+	;;
+    esac
+    ;;
+esac
+
 AC_MSG_CHECKING([for native-code support])
 case ${_mit_scheme_native_code_spec} in
 yes|YES|y|Y)
@@ -13,10 +26,8 @@ yes|YES|y|Y)
     hppa*)
 	mit_scheme_native_code=hppa
 	;;
-    i?86)
-	AC_CHECK_DECL([__x86_64__],
-		      [mit_scheme_native_code=x86-64],
-		      [mit_scheme_native_code=i386])
+    i386)
+	mit_scheme_native_code=i386
 	;;
     m68k|m680?0)
 	mit_scheme_native_code=mc68k
