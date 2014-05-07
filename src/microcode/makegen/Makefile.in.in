@@ -147,7 +147,7 @@ CLEAN_FILES = $(ALL_PROGRAMS) $(ALL_LIBS) $(ALL_DATA) $(EXTRA_PROGRAMS)
 
 DISTCLEAN_FILES = Makefile config.h config.cache config.log config.status \
 	cmpauxmd.m4 cmpauxmd.c cmpintmd.h makegen-cc \
-	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld ../ffi/build.scm
+	cmpintmd-config.h cmpintmd.c liarc-cc liarc-ld
 
 MAINTAINER_CLEAN_FILES = Makefile.in Makefile.deps liarc-vars liarc-rules \
 	config.h.in configure TAGS
@@ -269,7 +269,7 @@ install-auxLIBS: $(aux_LIBS)
 	    fi; \
 	done
 
-install-auxDATA: $(aux_DATA)
+install-auxDATA: shim-config.scm $(aux_DATA)
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)
 	@list='$(aux_DATA)'; \
 	for p in $$list; do \
@@ -279,6 +279,17 @@ install-auxDATA: $(aux_DATA)
 	    fi; \
 	done
 	$(INSTALL_DATA) pruxffi.h $(DESTDIR)$(AUXDIR)/mit-scheme.h
+	$(INSTALL_DATA) shim-config.scm $(DESTDIR)$(AUXDIR)/shim-config.scm
+
+shim-config.scm:
+	@echo "Saving shim compile/link/install configuration."
+	@ ( echo "(QUOTE"; \
+	    echo " ((COMPILE-SHIM \"@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@\""; \
+	    echo "                \"@CFLAGS@ @MODULE_CFLAGS@\")"; \
+	    echo "  (LINK-SHIM \"@CCLD@ @LDFLAGS@\" \"@MODULE_LDFLAGS@\")"; \
+	    echo "  (INSTALL \"@INSTALL_DATA@\")"; \
+	    echo "  (INFODIR \"$(infodir)/\")"; \
+	    echo "  (AUXDIR \"$(AUXDIR)/\")))" ) >shim-config.scm
 
 install-include:
 	$(mkinstalldirs) $(DESTDIR)$(AUXDIR)

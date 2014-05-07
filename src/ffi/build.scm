@@ -28,44 +28,53 @@ USA.
 ;;; package: (ffi build)
 
 (define (compile-shim)
-  (run-command (append cc-cmdline-prefix (command-line))))
+  (let ((vals (conf-values (shim-conf) 'COMPILE-SHIM))
+	(auxdir (conf-value (shim-conf) 'AUXDIR)))
+    (let ((prefix (append
+		   (filter (lambda (i) (not (string=? "-DMIT_SCHEME" i)))
+			   (parse-words (car vals)))
+		   (list (string-append "-I" auxdir))
+		   (parse-words (cadr vals)))))
+      (run-command (append prefix (command-line))))))
 
 (define (link-shim)
-  (run-command (append CCLD LDFLAGS (command-line) MODULE_LDFLAGS)))
+  (let ((vals (conf-values (shim-conf) 'LINK-SHIM)))
+    (let ((prefix (parse-words (car vals)))
+	  (suffix (parse-words (cadr vals))))
+      (run-command (append prefix (command-line) suffix)))))
 
 (define (install-shim destdir libname)
   (guarantee-string destdir 'INSTALL-SHIM)
   (guarantee-string libname 'INSTALL-SHIM)
-  (run-command (list "install" "-m" "644"
-		     (string-append libname "-shim.so")
-		     (string-append libname "-types.bin")
-		     (string-append libname "-const.bin")
-		     (string-append destdir
-				    (->namestring
-				     (system-library-directory-pathname))))))
+  (if (string-find-next-char libname #\/)
+      (error "Directory separator, #\/, in library name:" libname))
+  (let ((conf (shim-conf)))
+    (let ((install (conf-words conf 'INSTALL))
+	  (auxdir (conf-value conf 'AUXDIR)))
+      (run-command (append install
+			   (list (string-append libname "-shim.so")
+				 (string-append libname "-types.bin")
+				 (string-append libname "-const.bin")
+				 (string-append destdir auxdir)))))))
 
 (define (install-load-option destdir name #!optional directory)
   (guarantee-string destdir 'INSTALL-LOAD-OPTION)
   (guarantee-string name 'INSTALL-LOAD-OPTION)
-  (let ((dir (if (default-object? directory) name directory)))
+  (let ((conf (shim-conf))
+	(dir (if (default-object? directory)
+		 name
+		 directory)))
     (guarantee-string dir 'INSTALL-LOAD-OPTION)
-    (let ((library-dir
-	   (string-append destdir (->namestring
-				   (merge-pathnames
-				    (pathname-as-directory dir)
-				    (system-library-directory-pathname))))))
-      (run-command (list "rm" "-rf" library-dir))
-      (run-command (list "mkdir" library-dir))
-      (run-command (list "chmod" "755" library-dir))
-      (run-command (append (list "install" "-m644")
-			   (files) (list library-dir))))
-    (rewrite-file (string-append
-		   destdir
-		   (->namestring
-		    (merge-pathnames "optiondb.scm"
-				     (system-library-directory-pathname))))
-		  (lambda (in out)
-		    (rewrite-optiondb name dir in out)))))
+    (let ((install (conf-words conf 'INSTALL))
+	  (auxdir (conf-value conf 'AUXDIR)))
+      (let ((library-dir (string-append destdir auxdir dir)))
+	(run-command (list "rm" "-rf" library-dir))
+	(run-command (list "mkdir" library-dir))
+	(run-command (list "chmod" "755" library-dir))
+	(run-command (append install (files) (list library-dir)))
+	(rewrite-file (string-append destdir auxdir "optiondb.scm")
+		      (lambda (in out)
+			(rewrite-optiondb name dir in out)))))))
 
 (define (files)
   (append-map!
@@ -90,15 +99,6 @@ USA.
 		 files)))))
    (command-line)))
 
-(define (rewrite-file name rewriter)
-  (let ((tmp (pathname-new-type name "tmp")))
-    (call-with-exclusive-output-file tmp
-      (lambda (out)
-	(call-with-input-file name
-	  (lambda (in)
-	    (rewriter in out)))))
-    (rename-file tmp name)))
-
 (define (rewrite-optiondb name dirname in out)
   (do ((line (read-line in) (read-line in)))
       ((eof-object? line))
@@ -113,25 +113,38 @@ USA.
   (write-string dirname out)
   (write-string "\"))" out))
 
+(define (shim-conf)
+  (load (system-library-pathname "shim-config.scm")))
+
+(define (conf-values conf name)
+  (let ((entry (assq name conf)))
+    (if (pair? entry)
+	(if (list-of-type? (cdr entry) string?)
+	    (cdr entry)
+	    (error "Configuration value not a list:" name))
+	(error "Configuration value not found:" name))))
+
+(define (conf-value conf name)
+  (let ((vals (conf-values conf name)))
+    (if (= 1 (length vals))
+	(car vals)
+	(error "Configuration value not a single string:" name))))
+
+(define (conf-words conf name)
+  (let ((val (conf-value conf name)))
+    (parse-words val)))
+
+(define (rewrite-file name rewriter)
+  (let ((tmp (pathname-new-type name "tmp")))
+    (call-with-exclusive-output-file tmp
+      (lambda (out)
+	(call-with-input-file name
+	  (lambda (in)
+	    (rewriter in out)))))
+    (rename-file tmp name)))
+
 (define (parse-words string)
   (burst-string string char-set:whitespace #t))
-
-(define CC (parse-words "@CC@"))
-(define CFLAGS (parse-words "@CFLAGS@"))
-(define CCLD (parse-words "@CCLD@"))
-(define LDFLAGS (parse-words "@LDFLAGS@"))
-(define MODULE_LDFLAGS (parse-words "@MODULE_LDFLAGS@"))
-(define AUXDIR/ "@libdir@/@AUXDIR_NAME@/")
-(define INSTALL_DATA (parse-words "@INSTALL_DATA@"))
-(define cc-cmdline-prefix
-  (append
-   (filter
-    (lambda (i) (not (string=? "-DMIT_SCHEME" i)))
-    (parse-words "@CC@ @DEFS@ @SCHEME_DEFS@ @CPPFLAGS@"))
-   (list (string-append "-I" (->namestring
-			      (directory-pathname
-			       (system-library-pathname "mit-scheme.h")))))
-   (parse-words "@CFLAGS@ @MODULE_CFLAGS@")))
 
 (define (run-command command)
   (fresh-line)

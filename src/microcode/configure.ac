@@ -1129,7 +1129,6 @@ AC_SUBST([INSTALL_INCLUDE])
 AC_SUBST([CCLD])
 
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_FILES([../ffi/build.scm])
 AC_OUTPUT
 
 # Make custom compilation program for "makegen.scm".
