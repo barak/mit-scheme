@@ -28,15 +28,16 @@ USA.
 
 (with-working-directory-pathname (directory-pathname (current-load-pathname))
   (lambda ()
-    (let ((code
-	   (with-notification
-	    (lambda (port)
-	      (write-string "make all" port)
-	      (newline port))
-	    (lambda ()
-	      (run-synchronous-subprocess "make" (list "all"))))))
-      (if (not (zero? code))
-	  (warn "Test library build failed:" code)
+    (let ((port (notification-output-port)))
+      (fresh-line port)
+      (write-string "make all in tests/ffi/" port)
+      (newline port))
+    (let ((status (run-synchronous-subprocess "make" (list "all"))))
+      (if (not (zero? status))
+	  (begin
+	    (write-string "../tests/ffi/test-ffi.scm:0: Test FFI build failed."
+			  (notification-output-port))
+	    (error "Test FFI build failed:" status))
 	  (begin
 	    (fluid-let ((load/suppress-loading-message? #t))
 	      (load-option 'FFI))

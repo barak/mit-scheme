@@ -28,12 +28,11 @@ USA.
 ;;; package: (ffi build)
 
 (define (compile-shim)
-  (let ((vals (conf-values (shim-conf) 'COMPILE-SHIM))
-	(auxdir (conf-value (shim-conf) 'AUXDIR)))
+  (let ((vals (conf-values (shim-conf) 'COMPILE-SHIM)))
     (let ((prefix (append
 		   (filter (lambda (i) (not (string=? "-DMIT_SCHEME" i)))
 			   (parse-words (car vals)))
-		   (list (string-append "-I" auxdir))
+		   (list (string-append "-I" (auxdir)))
 		   (parse-words (cadr vals)))))
       (run-command (append prefix (command-line))))))
 
@@ -48,25 +47,21 @@ USA.
   (guarantee-string libname 'INSTALL-SHIM)
   (if (string-find-next-char libname #\/)
       (error "Directory separator, #\/, in library name:" libname))
-  (let ((conf (shim-conf)))
-    (let ((install (conf-words conf 'INSTALL))
-	  (auxdir (conf-value conf 'AUXDIR)))
-      (run-command (append install
-			   (list (string-append libname "-shim.so")
-				 (string-append libname "-types.bin")
-				 (string-append libname "-const.bin")
-				 (string-append destdir auxdir)))))))
+  (run-command (append (conf-words (shim-conf) 'INSTALL)
+		       (list (string-append libname "-shim.so")
+			     (string-append libname "-types.bin")
+			     (string-append libname "-const.bin")
+			     (string-append destdir (auxdir))))))
 
 (define (install-load-option destdir name #!optional directory)
   (guarantee-string destdir 'INSTALL-LOAD-OPTION)
   (guarantee-string name 'INSTALL-LOAD-OPTION)
-  (let ((conf (shim-conf))
-	(dir (if (default-object? directory)
+  (let ((dir (if (default-object? directory)
 		 name
 		 directory)))
     (guarantee-string dir 'INSTALL-LOAD-OPTION)
-    (let ((install (conf-words conf 'INSTALL))
-	  (auxdir (conf-value conf 'AUXDIR)))
+    (let ((install (conf-words (shim-conf) 'INSTALL))
+	  (auxdir (auxdir)))
       (let ((library-dir (string-append destdir auxdir dir)))
 	(run-command (list "rm" "-rf" library-dir))
 	(run-command (list "mkdir" library-dir))
@@ -181,12 +176,17 @@ USA.
 
   (copy-suffix (copy-items)))
 
+(define (auxdir)
+  (->namestring (system-library-directory-pathname)))
+
 (define (shim-conf)
-  (load (system-library-pathname "shim-config.scm")))
+  (fluid-let ((load/suppress-loading-message? #t))
+    (load (system-library-pathname "shim-config.scm"))))
 
 (define (doc-conf)
-  (load (string-append (conf-value (shim-conf) 'INFODIR)
-		       "mit-scheme-doc-config.scm")))
+  (fluid-let ((load/suppress-loading-message? #t))
+    (load (string-append (conf-value (shim-conf) 'INFODIR)
+				     "mit-scheme-doc-config.scm"))))
 
 (define (conf-values conf name)
   (let ((entry (assq name conf)))
