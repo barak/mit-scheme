@@ -2,8 +2,8 @@
 @comment %**start of header
 @setfilename mit-scheme-user
 @set EDITION 1.94
-@set VERSION 9.1
-@set UPDATED 2011-10-14
+@set VERSION 9.4
+@set UPDATED 2014-05-05
 @settitle MIT/GNU Scheme @value{VERSION}
 @comment %**end of header
 @setchapternewpage odd
@@ -389,12 +389,12 @@ MIT/GNU Scheme is invoked by double-clicking on a shortcut.  In
 either case, Scheme will load itself and print something like this:
 
 @example
-Copyright (C) 2011 Massachusetts Institute of Technology
+Copyright (C) 2014 Massachusetts Institute of Technology
 This is free software; see the source for copying conditions. There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-Image saved on Sunday May 1, 2011 at 4:38:16 PM
-  Release 9.1 || Microcode 15.3 || Runtime 15.7 || SF 4.41 || LIAR/x86-64 4.118
+Image saved on Friday May 16, 2014 at 10:35:55 PM
+  Release 9.2 || Microcode 15.3 || Runtime 15.7 || SF 4.41 || LIAR/x86-64 4.118
   Edwin 3.116
 @end example
 

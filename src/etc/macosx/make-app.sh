@@ -27,7 +27,7 @@
 set -e
 
 # These values are placeholders; we need to get the right ones.
-: ${VERSION_STRING=9.1}
+: ${VERSION_STRING=9.2}
 : ${LONG_VERSION_STRING="release ${VERSION_STRING}"}
 : ${YEAR=$(date +%Y)}
 : ${bindir=/usr/local/bin}
