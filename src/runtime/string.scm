@@ -180,8 +180,6 @@ USA.
 		 (begin
 		   (string-set! string end #\nul)
 		   (set-string-length! string end)))
-	     (string-set! string end #\nul)
-	     (set-string-length! string end)
 	     (let ((new-gc-length (fix:+ 2 (fix:lsh end %octets->words-shift)))
 		   (old-gc-length (system-vector-length string)))
 	       (let ((delta (fix:- old-gc-length new-gc-length)))
