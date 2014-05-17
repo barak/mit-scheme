@@ -514,7 +514,7 @@ USA.
 	      (make-constant-locative
 	       (make-variable-locative base
 				       (rtl:make-object->datum index))
-	       header-length-in-units)))))	       
+	       header-length-in-units)))))
       (if (rtl:constant? index)
 	  (let ((value (rtl:constant-value index)))
 	    (if (and (object-type? (ucode-type fixnum) value)
@@ -630,7 +630,7 @@ USA.
   (lambda (locative value finish)
     (let ((assignment (make-assignment locative value)))
       (if finish
-#|	  
+#|
 	  (load-temporary-register scfg*scfg->scfg! (make-fetch locative)
 	    (lambda (temporary)
 	      (scfg*scfg->scfg! assignment (finish temporary))))
