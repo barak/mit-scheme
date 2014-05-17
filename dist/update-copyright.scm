@@ -29,7 +29,7 @@ USA.
 (declare (usual-integrations))
 
 (define (translate-standard-dirs root-dir translation)
-  (let* ((root-dir (pathname-as-directory root-dir))
+  (let* ((root-dir (merge-pathnames (pathname-as-directory root-dir)))
 	 (target (merge-pathnames "translated-files" root-dir))
 	 (target-dir (pathname-as-directory target)))
     (make-directory target)
