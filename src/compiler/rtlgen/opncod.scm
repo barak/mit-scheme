@@ -66,7 +66,10 @@ USA.
 	 (rvalue/constant? callee)
 	 (let ((value (constant-value callee)))
 	   (and (scode/primitive-procedure? value)
-		(let ((entry (hash-table/get name->open-coders (primitive-procedure-name value) #f)))
+		(let ((entry
+		       (hash-table/get name->open-coders
+				       (primitive-procedure-name value)
+				       #f)))
 		  (and entry
 		       (try-handler combination value entry))))))))
 
